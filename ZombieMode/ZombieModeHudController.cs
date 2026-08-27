@@ -147,7 +147,7 @@ namespace BossRush
                 return string.Empty;
             }
 
-            if (!zombieModeRunState.ActiveSafeZoneActive)
+            if (!AnyZombieModeSafeZoneActive)
             {
                 return string.Empty;
             }
@@ -155,9 +155,13 @@ namespace BossRush
             string inside = zombieModeRunState.PlayerInsideSafeZone
                 ? L10n.T("BossRush_ZombieMode_Hud_SafeZone_Inside")
                 : L10n.T("BossRush_ZombieMode_Hud_SafeZone_Outside");
-            string stealth = zombieModeRunState.SafeZoneStealthBroken
-                ? L10n.T("BossRush_ZombieMode_Hud_SafeZone_StealthBroken")
-                : L10n.T("BossRush_ZombieMode_Hud_SafeZone_StealthOk");
+            string stealth = L10n.T("BossRush_ZombieMode_Hud_SafeZone_StealthOk");
+            // 战斗期部署的便携安全区没有准备倒计时，不显示恒为 0 的那一行。
+            if (zombieModeRunState.PreparationTimer <= 0f)
+            {
+                return inside + "\n" + stealth;
+            }
+
             string timer = string.Format(
                 L10n.T("BossRush_ZombieMode_Hud_PreparationTimer"),
                 Mathf.Max(0, Mathf.CeilToInt(zombieModeRunState.PreparationTimer)));
@@ -187,21 +191,15 @@ namespace BossRush
         }
 
         private static readonly Color ZombieModeHudSafeZoneInactiveColor = new Color(0.6f, 0.6f, 0.6f, 0.7f);
-        private static readonly Color ZombieModeHudSafeZoneStealthBrokenColor = new Color(0.85f, 0.42f, 0.20f, 0.95f);
         private static readonly Color ZombieModeHudSafeZoneInsideColor = new Color(0.18f, 0.78f, 0.32f, 0.95f);
         private static readonly Color ZombieModeHudSafeZoneFlashTargetColor = new Color(0.92f, 0.72f, 0.18f, 0.95f);
         private static readonly Color ZombieModeHudSafeZoneOutsideColor = new Color(0.92f, 0.72f, 0.18f, 0.85f);
 
         public Color GetZombieModeHudSafeZoneColor(int runId)
         {
-            if (!IsZombieModeRunValid(runId) || !zombieModeRunState.ActiveSafeZoneActive)
+            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
             {
                 return ZombieModeHudSafeZoneInactiveColor;
-            }
-
-            if (zombieModeRunState.SafeZoneStealthBroken)
-            {
-                return ZombieModeHudSafeZoneStealthBrokenColor;
             }
 
             if (zombieModeRunState.PreparationTimer > 0f &&
@@ -392,6 +390,15 @@ namespace BossRush
             rect.sizeDelta = size;
 
             bool stagePanel = name == "StagePanel";
+            // HUD 此前是三块裸文本，只靠投影和背景区分；补一层半透底板，
+            // 亮场景下才读得清。raycastTarget 必须关掉，HUD 不能挡住游戏内点击。
+            Image panelBackground = obj.AddComponent<Image>();
+            panelBackground.color = stagePanel
+                ? new Color(0.02f, 0.025f, 0.03f, 0.42f)
+                : new Color(0.02f, 0.025f, 0.03f, 0.55f);
+            BossRushUI.ApplyPanelSkin(panelBackground, 8);
+            panelBackground.raycastTarget = false;
+
             GameObject textObject = ZombieModeUIHelper.CreateRect(
                 "Text",
                 obj.transform,

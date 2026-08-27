@@ -19,7 +19,7 @@ SOURCES = {
     ),
     "KeepZombieModeEnemiesOutsideSafeZone": (
         Path("ZombieMode/ZombieModeSafeZoneController.cs"),
-        "private void KeepZombieModeEnemiesOutsideSafeZone()",
+        "private void KeepZombieModeEnemiesOutsideSafeZone(bool suppressThreat)",
     ),
     "SuppressZombieModeSafeZoneThreats": (
         Path("ZombieMode/ZombieModeSafeZoneController.cs"),

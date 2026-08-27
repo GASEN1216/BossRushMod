@@ -49,8 +49,6 @@ namespace BossRush
         private static class Pacing
         {
             public const float PreparationCountdownSeconds = 45f;
-            // Boss 波奖励与撤离决定 modal 不限时；玩家选择“继续”后才开始消耗这个更长的整理时间。
-            public const float BossPreparationCountdownSeconds = 45f;
             public const float BeaconChannelDurationSeconds = 3f;
             public const float ExtractionCountdownSeconds = 15f;
             public const float PreparationSpawnIntervalSeconds = 1.65f;
@@ -82,8 +80,15 @@ namespace BossRush
         {
             public const float TemporaryNpcProtectionTickIntervalSeconds = 0.25f;
             public const float BossStuckTimeoutSeconds = 12f;
+            /// <summary>
+            /// Boss 与玩家水平距离小于该值时视为正在交战，不按“位移不足”判定卡死。
+            /// 举盾、起手 telegraph 和贴脸近战 Boss 本来就不移动，不能被反复瞬移。
+            /// </summary>
+            public const float BossStuckEngagedDistance = 6f;
             public const int DropCleanupWaveAge = 3;
             public const float DropCleanupAgeSeconds = 300f;
+            /// <summary>拾取检查要对每个候选物做 GetComponent，不能每帧跑。</summary>
+            public const float DropPickupScanIntervalSeconds = 1f;
             public const float FarDistance = 60f;
             public const float NormalZombieDistantRecoveryDelaySeconds = 8f;
             public const float StarMagnetRadius = 30f;
@@ -400,7 +405,6 @@ namespace BossRush
 
         // Pacing
         public const float PreparationCountdownSeconds = Pacing.PreparationCountdownSeconds;
-        public const float BossPreparationCountdownSeconds = Pacing.BossPreparationCountdownSeconds;
         public const float BeaconChannelDurationSeconds = Pacing.BeaconChannelDurationSeconds;
         public const float ExtractionCountdownSeconds = Pacing.ExtractionCountdownSeconds;
         public const float PreparationSpawnIntervalSeconds = Pacing.PreparationSpawnIntervalSeconds;
@@ -428,8 +432,10 @@ namespace BossRush
         // Performance
         public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
         public const float BossStuckTimeoutSeconds = Performance.BossStuckTimeoutSeconds;
+        public const float BossStuckEngagedDistance = Performance.BossStuckEngagedDistance;
         public const int DropCleanupWaveAge = Performance.DropCleanupWaveAge;
         public const float DropCleanupAgeSeconds = Performance.DropCleanupAgeSeconds;
+        public const float DropPickupScanIntervalSeconds = Performance.DropPickupScanIntervalSeconds;
         public const float NormalZombieDistantRecoveryDistance = Performance.FarDistance;
         public const float NormalZombieDistantRecoveryDelaySeconds = Performance.NormalZombieDistantRecoveryDelaySeconds;
         public const float StarMagnetRadius = Performance.StarMagnetRadius;

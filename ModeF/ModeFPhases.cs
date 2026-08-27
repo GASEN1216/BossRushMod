@@ -4,6 +4,7 @@ using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 using Duckov.UI;
+using Duckov.Utilities;
 
 namespace BossRush
 {
@@ -20,9 +21,14 @@ namespace BossRush
         private const float MODEF_BLEED_RATE_HUNTSTORM = 0.02f;
         private const float MODEF_BLEED_RATE_EXTRACTION = 0.03f;
 
-        private const float MODEF_HEAL_NORMAL_KILL = 0.50f;
-        private const float MODEF_HEAL_BOUNTY_KILL_BONUS = 0.25f;
-        private const float MODEF_MAX_HP_GROWTH_NORMAL = 1f;
+        private const float MODEF_HEAL_NORMAL_KILL = 0.30f;
+        private const float MODEF_HEAL_BOUNTY_KILL = 0.45f;
+        private const float MODEF_HEAL_BOUNTY_PER_EXTRA_MARK = 0.05f;
+        private const float MODEF_HEAL_BOUNTY_MAX = 0.60f;
+        // 成长奖励与成长上限必须同为入场最大生命的比例，否则本局击杀量根本无法填满上限、命火永远充不满。
+        private const float MODEF_MAX_HP_GROWTH_RATIO_NORMAL = 0.04f;
+        private const float MODEF_MAX_HP_GROWTH_CAP_RATIO = 0.50f;
+        // 命火过载的常量、状态与流程见 ModeF/ModeFBloodfire.cs。
         private const float MODEF_HUNTSTORM_UNMARKED_SPEED_BONUS = 0.5f;
         private const float MODEF_EXTRACTION_ALL_SPEED_BONUS = 0.5f;
         private const float MODEF_FORCED_TRACE_DISTANCE = 500f;
@@ -57,15 +63,20 @@ namespace BossRush
         {
             try
             {
+                // 上一局若在 ExitModeF 中途抛出，残留的成长 Modifier 只能靠这里摘除：
+                // 一旦丢掉引用就再也没有第二条路径可以撤销它。
+                CleanupModeFPlayerMaxHealthGrowth();
                 modeFState.CurrentPhase = ModeFPhase.None;
                 modeFState.PhaseElapsed = 0f;
                 modeFState.TempMaxHealthGrowth = 0f;
+                modeFState.BloodfireCharge = 0f;
+                modeFState.BloodfireOverloadActive = false;
+                modeFState.BloodfireOverloadRemaining = 0f;
                 modeFState.PlayerKillCount = 0;
                 modeFState.PlayerBountyMarks = 0;
                 modeFPendingUtilityRewardCounts.Clear();
                 ResetModeFUiCaches();
                 MarkModeFPlayerNameTagDirty();
-                modeFMaxHealthModifier = null;
                 modeFBossRetargetTimer = 0f;
                 modeFBossIntegrityTimer = 0f;
                 modeFPlayerDeathHandled = false;
@@ -77,6 +88,7 @@ namespace BossRush
                 modeFBossForcedTargets.Clear();
                 modeFBossAppliedSpeedBonuses.Clear();
                 modeFBossAiControllers.Clear();
+                ClearModeFBloodfireOverloadModifiers();
                 modeFHasActiveFortificationHighlight = false;
                 MarkModeFBountyLeaderDirty();
                 EnsureModeFPlayerNameTag();
@@ -109,6 +121,8 @@ namespace BossRush
 
                 // 推进阶段计时
                 modeFState.PhaseElapsed += deltaTime;
+
+                TickModeFBloodfireOverload(deltaTime);
 
                 // 持续掉血
                 ApplyModeFBleedDamage(player, deltaTime);
@@ -260,6 +274,11 @@ namespace BossRush
                     rate *= MutatorManager.BleedRateMultiplier;
                 }
 
+                if (modeFState.BloodfireOverloadActive)
+                {
+                    rate *= MODEF_BLOODFIRE_BLEED_MULTIPLIER;
+                }
+
                 Health health = player.Health;
                 if (health == null || health.IsDead) return;
 
@@ -336,75 +355,112 @@ namespace BossRush
         /// <summary>
         /// 击杀 Boss 后的回血和最大生命成长
         /// </summary>
-        private (float healAmount, float maxHealthGain) ApplyModeFKillReward(bool isBountyBoss, int victimMarks)
+        private (float healAmount, float maxHealthGain, float bloodfireGain, bool overloadStarted, float overloadExtension)
+            ApplyModeFKillReward(bool isBountyBoss, int victimMarks)
         {
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null || player.Health == null || player.Health.IsDead)
                 {
-                    return (0f, 0f);
+                    return (0f, 0f, 0f, false, 0f);
                 }
 
                 Health health = player.Health;
+                int resolvedVictimMarks = Mathf.Max(0, victimMarks);
+                float initialMaxHealth = modeFState.InitialMaxHealthSnapshot;
+                if (initialMaxHealth <= 0.01f)
+                {
+                    initialMaxHealth = health.MaxHealth;
+                    modeFState.InitialMaxHealthSnapshot = initialMaxHealth;
+                }
 
-                // 回血
-                float healPercent = MODEF_HEAL_NORMAL_KILL;
+                // 回血始终按入场生命计算，避免随本局最大生命成长继续放大。
+                float healPercent;
                 if (isBountyBoss)
                 {
-                    healPercent += MODEF_HEAL_BOUNTY_KILL_BONUS;
+                    int extraMarks = Mathf.Max(0, resolvedVictimMarks - 1);
+                    healPercent = Mathf.Min(
+                        MODEF_HEAL_BOUNTY_MAX,
+                        MODEF_HEAL_BOUNTY_KILL + extraMarks * MODEF_HEAL_BOUNTY_PER_EXTRA_MARK);
                 }
-                float healAmount = health.MaxHealth * healPercent;
+                else
+                {
+                    healPercent = MODEF_HEAL_NORMAL_KILL;
+                }
+                float healAmount = initialMaxHealth * healPercent;
                 float newHp = Mathf.Min(health.CurrentHealth + healAmount, health.MaxHealth);
                 health.CurrentHealth = newHp;
                 DevLog("[ModeF] 击杀回血: " + healAmount.ToString("F1") + " (bounty=" + isBountyBoss + ")");
 
-                // 最大生命成长
-                int resolvedVictimMarks = Mathf.Max(0, victimMarks);
-                float growth = isBountyBoss
-                    ? Mathf.Max(MODEF_MAX_HP_GROWTH_NORMAL, resolvedVictimMarks)
-                    : MODEF_MAX_HP_GROWTH_NORMAL;
-                modeFState.TempMaxHealthGrowth += growth;
+                float growthUnit = initialMaxHealth * MODEF_MAX_HP_GROWTH_RATIO_NORMAL;
+                float growthReward = isBountyBoss
+                    ? growthUnit * Mathf.Max(1, resolvedVictimMarks)
+                    : growthUnit;
+                float growthCap = Mathf.Max(1f, initialMaxHealth * MODEF_MAX_HP_GROWTH_CAP_RATIO);
+                float previousGrowth = Mathf.Clamp(modeFState.TempMaxHealthGrowth, 0f, growthCap);
+                float appliedGrowth = Mathf.Min(growthReward, Mathf.Max(0f, growthCap - previousGrowth));
+                float overflowGrowth = Mathf.Max(0f, growthReward - appliedGrowth);
+                float actualMaxHealthGain = 0f;
 
-                // 应用最大生命 Modifier
-                try
+                if (appliedGrowth > 0.001f)
                 {
-                    var characterItem = player.CharacterItem;
-                    if (characterItem != null)
+                    try
                     {
-                        Stat maxHealthStat = characterItem.GetStat("MaxHealth");
-                        if (maxHealthStat != null)
+                        Item characterItem = player.CharacterItem;
+                        Stat maxHealthStat = characterItem != null ? characterItem.GetStat("MaxHealth") : null;
+                        if (maxHealthStat == null)
                         {
-                            // 移除旧 Modifier
-                            if (modeFMaxHealthModifier != null)
-                            {
-                                try { maxHealthStat.RemoveModifier(modeFMaxHealthModifier); } catch { }
-                            }
-
-                            // 添加新 Modifier
-                            modeFMaxHealthModifier = new Modifier(ModifierType.Add, modeFState.TempMaxHealthGrowth, this);
-                            maxHealthStat.AddModifier(modeFMaxHealthModifier);
-
-                            // 当前生命同步抬高
-                            health.CurrentHealth = Mathf.Min(health.CurrentHealth + growth, maxHealthStat.Value);
-                            DevLog("[ModeF] 最大生命成长: +" + growth
-                                + " (bounty=" + isBountyBoss
-                                + ", victimMarks=" + resolvedVictimMarks
-                                + ", 总计+" + modeFState.TempMaxHealthGrowth + ")");
+                            throw new InvalidOperationException("玩家 MaxHealth Stat 不可用");
                         }
+
+                        float oldMaxHealth = health.MaxHealth;
+                        if (modeFMaxHealthModifier != null)
+                        {
+                            try { modeFMaxHealthModifier.RemoveFromTarget(); } catch { }
+                        }
+
+                        modeFState.TempMaxHealthGrowth = previousGrowth + appliedGrowth;
+                        modeFMaxHealthModifier = new Modifier(ModifierType.Add, modeFState.TempMaxHealthGrowth, this);
+                        maxHealthStat.AddModifier(modeFMaxHealthModifier);
+
+                        float raisedMaxHealth = health.MaxHealth;
+                        actualMaxHealthGain = Mathf.Max(0f, raisedMaxHealth - oldMaxHealth);
+                        health.CurrentHealth = Mathf.Min(health.CurrentHealth + actualMaxHealthGain, raisedMaxHealth);
+                        DevLog("[ModeF] 最大生命成长: +" + actualMaxHealthGain.ToString("F1")
+                            + " (bounty=" + isBountyBoss
+                            + ", victimMarks=" + resolvedVictimMarks
+                            + ", 总计+" + modeFState.TempMaxHealthGrowth.ToString("F1")
+                            + ", 上限+" + growthCap.ToString("F1") + ")");
+                    }
+                    catch (Exception e)
+                    {
+                        DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 失败: " + e.Message);
+                        // 状态必须与实际生效的 Modifier 保持一致，否则后续击杀会按虚高的成长量
+                        // 计算上限余量，提前判定到顶。
+                        modeFState.TempMaxHealthGrowth = previousGrowth;
+                        modeFMaxHealthModifier = null;
+                        appliedGrowth = 0f;
+                        overflowGrowth = 0f;
                     }
                 }
-                catch (Exception e)
-                {
-                    DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 失败: " + e.Message);
-                }
 
-                return (healAmount, growth);
+                bool overloadStarted;
+                float overloadExtension;
+                float bloodfireGain = ApplyModeFBloodfireKillReward(
+                    player,
+                    overflowGrowth,
+                    growthCap,
+                    isBountyBoss,
+                    out overloadStarted,
+                    out overloadExtension);
+
+                return (healAmount, actualMaxHealthGain, bloodfireGain, overloadStarted, overloadExtension);
             }
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] ApplyModeFKillReward 失败: " + e.Message);
-                return (0f, 0f);
+                return (0f, 0f, 0f, false, 0f);
             }
         }
 
@@ -447,6 +503,53 @@ namespace BossRush
             }
         }
 
+        private void CleanupModeFPlayerMaxHealthGrowth()
+        {
+            Modifier growthModifier = modeFMaxHealthModifier;
+            modeFMaxHealthModifier = null;
+            // 只有本局确实授予过成长时才钳制，避免把官方超量治疗、其他 Mod 或装备 Buff 造成的
+            // 超额生命一并压掉——那些不是 Mode F 的账。
+            bool hadGrowth = growthModifier != null || modeFState.TempMaxHealthGrowth > 0.001f;
+            modeFState.TempMaxHealthGrowth = 0f;
+
+            if (growthModifier != null)
+            {
+                try
+                {
+                    // Modifier 在场景切换清理期间仍保留最初绑定的 Stat 目标。
+                    growthModifier.RemoveFromTarget();
+                }
+                catch (Exception e)
+                {
+                    DevLog("[ModeF] [WARNING] 最大生命成长 Modifier 清理失败: " + e.Message);
+                }
+            }
+
+            try
+            {
+                CharacterMainControl player = CharacterMainControl.Main;
+                Health health = player != null ? player.Health : null;
+                if (health == null || !hadGrowth)
+                {
+                    return;
+                }
+
+                float restoredMaxHealth = health.MaxHealth;
+                if (restoredMaxHealth > 0f && health.CurrentHealth > restoredMaxHealth)
+                {
+                    float previousHealth = health.CurrentHealth;
+                    health.SetHealth(restoredMaxHealth);
+                    DevLog("[ModeF] 退出时钳制超额生命: "
+                        + previousHealth.ToString("F1") + " -> " + health.CurrentHealth.ToString("F1")
+                        + " / " + restoredMaxHealth.ToString("F1"));
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeF] [WARNING] 退出时生命钳制失败: " + e.Message);
+            }
+        }
+
         /// <summary>
         /// 退出 Mode F，清理所有临时状态
         /// </summary>
@@ -469,21 +572,10 @@ namespace BossRush
                 // 清理变异词条（覆盖正常通关 / 玩家死亡 / 手动退出）
                 ClearMutatorsForMode("ModeF");
 
-                // 清理最大生命 Modifier
-                try
-                {
-                    CharacterMainControl player = CharacterMainControl.Main;
-                    if (player != null && player.CharacterItem != null && modeFMaxHealthModifier != null)
-                    {
-                        Stat maxHealthStat = player.CharacterItem.GetStat("MaxHealth");
-                        if (maxHealthStat != null)
-                        {
-                            maxHealthStat.RemoveModifier(modeFMaxHealthModifier);
-                        }
-                    }
-                }
-                catch { }
-                modeFMaxHealthModifier = null;
+                EndModeFBloodfireOverload(false);
+
+                // 撤销本局最大生命成长后，当前生命也必须回落到恢复后的真实上限。
+                CleanupModeFPlayerMaxHealthGrowth();
                 modeFBossRetargetTimer = 0f;
                 modeFBossIntegrityTimer = 0f;
                 modeFPlayerDeathHandled = false;

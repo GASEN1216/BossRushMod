@@ -109,8 +109,9 @@ namespace BossRush
             if (damageInfo.fromCharacter == null ||
                 !damageInfo.fromCharacter.IsMainCharacter ||
                 damageInfo.isFromBuffOrEffect ||
+                !IsZombieModeSafeZoneCancellingWeapon(damageInfo) ||
                 victim == null ||
-                !zombieModeRunState.ActiveSafeZoneActive ||
+                !AnyZombieModeSafeZoneActive ||
                 !IsZombieModePlayerInsideActiveSafeZone() ||
                 !ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase))
             {
@@ -118,6 +119,39 @@ namespace BossRush
             }
 
             CancelZombieModeSafeZone(runId, "PlayerAttack");
+        }
+
+        /// <summary>
+        /// 只有枪械与近战武器的直接伤害才会取消安全区。手雷、投掷物和以玩家为来源的
+        /// 奖励弹道不算，否则被动型奖励会让玩家在准备期完全保不住安全区。
+        /// </summary>
+        private bool IsZombieModeSafeZoneCancellingWeapon(DamageInfo damageInfo)
+        {
+            if (damageInfo.fromWeaponItemID <= 0)
+            {
+                return false;
+            }
+
+            ItemStatsSystem.ItemMetaData metaData = ItemStatsSystem.ItemAssetsCollection.GetMetaData(damageInfo.fromWeaponItemID);
+            if (metaData.id <= 0 || metaData.tags == null)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < metaData.tags.Length; i++)
+            {
+                Duckov.Utilities.Tag tag = metaData.tags[i];
+                if (tag != null &&
+                    (tag.name == "Gun" ||
+                     tag.name == "Weapon" ||
+                     tag.name == "MeleeWeapon" ||
+                     tag.name == "Melee"))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void RestoreZombieModeFinalDamageReduction(Health health, DamageInfo damageInfo, float absorbedFinalDamage)
@@ -251,9 +285,7 @@ namespace BossRush
                 return;
             }
 
-            bool preservePortableSafeZone = zombieModeRunState.ActiveSafeZoneActive &&
-                                             zombieModeRunState.ActiveSafeZonePortable;
-            CleanupZombieModePreparationObjects(runId, preservePortableSafeZone);
+            CleanupZombieModePreparationObjects(runId);
             zombieModeRunState.CombatPhase = initial
                 ? ZombieModeCombatPhase.InitialPreparation
                 : (extractionOpportunity ? ZombieModeCombatPhase.ExtractionOpportunity : ZombieModeCombatPhase.Preparation);
@@ -264,15 +296,7 @@ namespace BossRush
             zombieModeRunState.BeaconChanneling = false;
             zombieModeRunState.BeaconChannelStartTime = 0f;
             zombieModeRunState.ExtractionChanneling = false;
-            zombieModeRunState.SafeZoneStealthBroken = false;
-            if (!preservePortableSafeZone)
-            {
-                CreateZombieModeSafeZone(runId);
-            }
-            else
-            {
-                TickZombieModeSafeZone();
-            }
+            CreateZombieModeSafeZone(runId);
             CleanupZombieModeEnemiesNearPlayerSafeZone(runId, "BeginPreparation");
             EnsureZombieModeAmbientZombiePopulation(runId);
             if (extractionOpportunity)
@@ -294,7 +318,7 @@ namespace BossRush
                 return;
             }
 
-            if (zombieModeRunState.ActiveSafeZoneActive)
+            if (AnyZombieModeSafeZoneActive)
             {
                 TickZombieModeSafeZone();
             }
@@ -341,7 +365,6 @@ namespace BossRush
             zombieModeRunState.BeaconChanneling = false;
             zombieModeRunState.BeaconChannelStartTime = 0f;
             zombieModeRunState.ExtractionChanneling = false;
-            zombieModeRunState.SafeZoneStealthBroken = false;
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.Combat;
             ReleaseZombieModeSafeZoneThreatSuppression();
             SpawnPendingZombieModeEliteSquad(runId);

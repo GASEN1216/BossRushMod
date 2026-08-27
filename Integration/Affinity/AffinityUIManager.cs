@@ -128,6 +128,7 @@ namespace BossRush
                 popup.transform.SetParent(canvas.transform, false);
                 
                 TextMeshProUGUI text = popup.AddComponent<TextMeshProUGUI>();
+                BossRushUI.ApplyGameFont(text);
                 text.text = (delta > 0 ? "+" : "") + delta;
                 text.fontSize = 24;
                 text.alignment = TextAlignmentOptions.Center;
@@ -321,6 +322,7 @@ namespace BossRush
                 GameObject nameObj = new GameObject("NpcName");
                 nameObj.transform.SetParent(affinityPanel.transform, false);
                 npcNameText = nameObj.AddComponent<TextMeshProUGUI>();
+                BossRushUI.ApplyGameFont(npcNameText);
                 npcNameText.fontSize = 14;
                 npcNameText.alignment = TextAlignmentOptions.Center;
                 npcNameText.color = Color.white;
@@ -335,6 +337,7 @@ namespace BossRush
                 GameObject levelObj = new GameObject("LevelText");
                 levelObj.transform.SetParent(affinityPanel.transform, false);
                 levelText = levelObj.AddComponent<TextMeshProUGUI>();
+                BossRushUI.ApplyGameFont(levelText);
                 levelText.fontSize = 12;
                 levelText.alignment = TextAlignmentOptions.Left;
                 levelText.color = Color.white;

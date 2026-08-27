@@ -23,7 +23,7 @@ namespace BossRush
         {
             try
             {
-                Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                Font font = BossRushUI.GetLegacyChineseFont();
 
                 f3DebugCheatMenuRoot = new GameObject("F3DebugCheatMenu");
                 Canvas canvas = f3DebugCheatMenuRoot.AddComponent<Canvas>();
@@ -299,7 +299,7 @@ namespace BossRush
 
         private void BuildF3TeleportPage()
         {
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("传送与位置", "Teleport and Position"), L10n.T("回基地、回出生点、跳到 BossRush 起始点或当前场景默认点，并可切到现有 NPC 传送面板。", "Return home, return to spawn, jump to the BossRush start point or scene default point, or switch to the NPC teleport UI."), font);
 
             GameObject row1 = CreateF3Row(section.transform);
@@ -328,7 +328,7 @@ namespace BossRush
 
         private void BuildF3PlayerStatsPage()
         {
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("玩家属性调参", "Player Stat Tuning"), BuildCurrentPlayerStatsReadout(), font);
 
             GameObject hpRow = CreateF3LabeledInputRow(section.transform, font, L10n.T("最大生命倍率", "Max Health Multiplier"), out f3MaxHealthMultiplierInputField, f3DebugCheatPlayerState.maxHealthMultiplier.ToString("0.###", CultureInfo.InvariantCulture));
@@ -381,7 +381,7 @@ namespace BossRush
 
         private void BuildF3ResourcesPage()
         {
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("资源与物品", "Resources and Items"), L10n.T("快速发物品、加钱、清冷却、打开背包检查器。", "Spawn items, add money, clear cooldowns, and open the inventory inspector."), font);
 
             GameObject itemRow = CreateF3Row(section.transform);
@@ -438,7 +438,7 @@ namespace BossRush
 
         private void BuildF3BattlePage()
         {
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("战斗流程", "Battle Flow"), L10n.T("快速过流程，清场、跳图、发船票、切放置模式。", "Fast-forward combat flow with kill, win, map, and placement tools."), font);
 
             GameObject row1 = CreateF3Row(section.transform);
@@ -458,7 +458,7 @@ namespace BossRush
 
         private void BuildF3NpcStoryPage()
         {
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("NPC 与剧情测试", "NPC and Story Tests"), L10n.T("整合已有的婚姻、成就、NPC 刷新和日限制测试能力。", "Pulls together the existing marriage, achievement, NPC refresh, and daily-limit test actions."), font);
 
             GameObject row1 = CreateF3Row(section.transform);
@@ -559,7 +559,7 @@ namespace BossRush
 
         private void BuildF3SceneDebugPage()
         {
-            Font font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("场景调试", "Scene Diagnostics"), L10n.T("复用现有场景扫描和日志输出能力，用于定位地图、交互点和角色状态。", "Reuse the existing scene scanners and logs to inspect maps, interact points, and characters."), font);
 
             GameObject row1 = CreateF3Row(section.transform);

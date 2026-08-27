@@ -144,7 +144,14 @@ namespace BossRush
                     continue;
                 }
 
-                record.Cleanup(false);
+                try
+                {
+                    record.Cleanup(false);
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] prune run-only record cleanup 失败: " + e.Message);
+                }
                 zombieModeRunState.RunOnlyObjects.RemoveAt(i);
             }
         }
@@ -221,11 +228,14 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 安全区启用时清空区内敌人。普通丧尸直接移除，Boss 只推出边界。
+        /// 被移除的普通丧尸有意不计入击杀、也不下调击杀目标：安全区是站位工具，
+        /// 不是清怪手段，缺口由环境压力补刷回填。
+        /// </summary>
         private void ClearZombieModeEnemiesInsideActiveSafeZone(int runId, string reason)
         {
-            if (!IsZombieModeRunValid(runId) ||
-                !zombieModeRunState.ActiveSafeZoneActive ||
-                zombieModeRunState.ActiveSafeZoneRadius <= 0f)
+            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
             {
                 return;
             }

@@ -41,11 +41,21 @@ When a bounty target moves off-screen, the radar pins it to a safe screen edge:
 
 # Kill Rewards
 
-- **Regular Boss**: Heal 50%, max HP +1
-- **Bounty Boss**: Heal 75%, max HP + mark count (min +1), extra high-quality drops
+- **Regular Boss**: Heal 30% of your entry max HP, max HP +4% of entry max HP
+- **Bounty Boss**: Heal 45% of entry max HP, plus 5% per extra mark up to 60%; max HP +4% of entry max HP per mark (at least one), plus extra high-quality drops
 - **Kill drops**: 1 Cover Pack per kill / 1 Repair Spray per 3 / 1 Roadblock per 10 / 1 Barbed Wire per 20
 
 Bounty Boss drops = additional high-quality items equal to its mark count.
+
+# Bloodfire Overload
+
+- Run-only max-HP growth caps at **+50% of entry max HP**, so total max HP cannot exceed 150% through this mechanic; at +4% per kill that cap is reached in roughly 13 regular kills
+- Growth earned past that cap becomes `0–100` Bloodfire charge: each regular kill adds 8 charge, so about 13 more kills fill the gauge (roughly 25 kills to the first Overload)
+- At full charge, a **15-second Overload** starts automatically: gun and melee damage +40%, movement speed +15%, but Mode F bleed ×2 and you immediately receive the Burn Buff
+- Killing a Bounty Boss during Overload adds 3 seconds, up to 24 seconds remaining; a completed Overload leaves 25 charge
+- Player-head bubbles report charge, extensions, and Overload entry; phase broadcasts show charge or remaining Overload time
+
+Late-game power now becomes a dangerous damage window instead of unlimited passive durability.
 
 # Arena NPCs
 

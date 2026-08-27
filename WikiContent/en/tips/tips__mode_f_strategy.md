@@ -16,7 +16,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 
 - Bounty list generated — all surviving Bosses marked
 - Read the Bounty Radar's direction arrow, distance, and `x mark count`; when the gold LEADER marker appears, decide quickly whether you can take that high-value fight
-- Bounty kills heal 75% (vs 50% normal) + extra drops
+- Bounty kills heal 45%–60% of entry max HP (vs 30% for regular kills) + extra drops
 - Bosses kill each other and **inherit marks** — track the Bounty Leader
 - Marks accumulated = extraction reward count
 
@@ -58,7 +58,15 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 - More marks = richer extraction rewards
 - But more marks = more combat risk
 - **Getting out alive > a few extra marks**
-- High-mark kills heal 75% + increase max health per mark
+- High-mark kills improve healing and max-health growth, but run-only health growth stops at 150% of entry max HP
+
+### Bloodfire Overload
+
+- Once max-health growth reaches its cap, further growth charges Bloodfire; bubbles and phase broadcasts show progress
+- Full charge starts a 15-second burst with +40% gun/melee damage and +15% speed, but also doubles bleed and applies Burn
+- Prioritize Bounty Bosses during Overload: each kill adds 3 seconds, up to 24 seconds remaining
+- Keep moving while Overloaded. Burn and doubled bleed make stationary damage trading a losing play
+- A completed Overload leaves 25 charge; do not force another cycle while already low on health
 
 ### Recommended Gear
 

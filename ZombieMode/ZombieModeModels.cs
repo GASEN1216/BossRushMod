@@ -708,12 +708,18 @@ namespace BossRush
         public float ActiveSafeZoneRadius;
         public bool ActiveSafeZoneActive;
         public bool ActiveSafeZonePortable;
-        public bool SafeZoneStealthBroken;
         public bool PlayerInsideSafeZone;
         public bool SafeZoneThreatSuppressed;
         public float LastSafeZoneTickTime;
         public GameObject ActiveSafeZoneVisual;
         public SimplePointOfInterest ActiveSafeZoneMapPoi;
+        // 便携安全区副槽：准备期使用装置时与主槽并存（主槽带商人，副槽不带），
+        // 下一波开始时随准备期对象一起清除。战斗期部署仍写主槽。
+        public Vector3 PortableSafeZoneCenter;
+        public float PortableSafeZoneRadius;
+        public bool PortableSafeZoneActive;
+        public GameObject PortableSafeZoneVisual;
+        public SimplePointOfInterest PortableSafeZoneMapPoi;
         public int PollutionFromNatural;
         public int PollutionFromContracts;
         public int TotalPollution
@@ -788,12 +794,16 @@ namespace BossRush
             ActiveSafeZoneRadius = 0f;
             ActiveSafeZoneActive = false;
             ActiveSafeZonePortable = false;
-            SafeZoneStealthBroken = false;
             PlayerInsideSafeZone = false;
             SafeZoneThreatSuppressed = false;
             LastSafeZoneTickTime = 0f;
             ActiveSafeZoneVisual = null;
             ActiveSafeZoneMapPoi = null;
+            PortableSafeZoneCenter = Vector3.zero;
+            PortableSafeZoneRadius = 0f;
+            PortableSafeZoneActive = false;
+            PortableSafeZoneVisual = null;
+            PortableSafeZoneMapPoi = null;
             PollutionFromNatural = 0;
             PollutionFromContracts = 0;
             CurrentRewardNode = null;
@@ -871,12 +881,16 @@ namespace BossRush
             ActiveSafeZoneRadius = 0f;
             ActiveSafeZoneActive = false;
             ActiveSafeZonePortable = false;
-            SafeZoneStealthBroken = false;
             PlayerInsideSafeZone = false;
             SafeZoneThreatSuppressed = false;
             LastSafeZoneTickTime = 0f;
             ActiveSafeZoneVisual = null;
             ActiveSafeZoneMapPoi = null;
+            PortableSafeZoneCenter = Vector3.zero;
+            PortableSafeZoneRadius = 0f;
+            PortableSafeZoneActive = false;
+            PortableSafeZoneVisual = null;
+            PortableSafeZoneMapPoi = null;
             PollutionFromNatural = 0;
             PollutionFromContracts = 0;
             CurrentRewardNode = null;

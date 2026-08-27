@@ -671,6 +671,9 @@ namespace BossRush
             }
         }
 
+        /// <summary>候选掉落物的拾取检查上次执行时间。见 DropPickupScanIntervalSeconds。</summary>
+        private float zombieModeLastDropPickupScanTime;
+
         private void CleanupZombieModeExpiredDropCandidates()
         {
             CleanupZombieModeExpiredDropCandidates(false);
@@ -686,6 +689,14 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             Vector3 playerPosition = player != null ? player.transform.position : Vector3.zero;
             float now = GetZombieModeRuntimeNow();
+            // 拾取检查要对每个候选物做一次 GetComponent，中后期候选物有几十个，
+            // 不能每帧跑；波次清理必须立即准确，所以强制清理时不受节流限制。
+            bool scanPickups = forceWaveCleanup ||
+                               now - zombieModeLastDropPickupScanTime >= ZombieModeTuning.DropPickupScanIntervalSeconds;
+            if (scanPickups)
+            {
+                zombieModeLastDropPickupScanTime = now;
+            }
             bool shouldPruneDestroyedRunOnlyRecords = false;
             for (int i = zombieModeRunState.EntityDropCleanupCandidates.Count - 1; i >= 0; i--)
             {
@@ -699,12 +710,15 @@ namespace BossRush
 
                 // 普通掉落物被玩家拾取后仍可能保留候选记录；此时只移除记录，不能
                 // 在下一波启动时 Destroy 已经进入背包或装备槽的物品。
-                Item ownedItem = candidate.GameObject.GetComponent<Item>();
-                if (ownedItem != null && (ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null))
+                if (scanPickups)
                 {
-                    RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
-                    zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
-                    continue;
+                    Item ownedItem = candidate.GameObject.GetComponent<Item>();
+                    if (ownedItem != null && (ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null))
+                    {
+                        RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
+                        zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
+                        continue;
+                    }
                 }
 
                 bool waveExpired = forceWaveCleanup ||

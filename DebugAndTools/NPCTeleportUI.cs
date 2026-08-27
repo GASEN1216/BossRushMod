@@ -185,7 +185,7 @@ namespace BossRush
 
                 Text titleText = title.AddComponent<Text>();
                 titleText.text = "传送到NPC";
-                titleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                titleText.font = BossRushUI.GetLegacyChineseFont();
                 titleText.fontSize = 24;
                 titleText.alignment = TextAnchor.MiddleCenter;
                 titleText.color = Color.white;
@@ -255,7 +255,7 @@ namespace BossRush
 
                 Text closeBtnTextComponent = closeBtnText.AddComponent<Text>();
                 closeBtnTextComponent.text = "关闭 (ESC)";
-                closeBtnTextComponent.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+                closeBtnTextComponent.font = BossRushUI.GetLegacyChineseFont();
                 closeBtnTextComponent.fontSize = 18;
                 closeBtnTextComponent.alignment = TextAnchor.MiddleCenter;
                 closeBtnTextComponent.color = Color.white;
@@ -400,7 +400,7 @@ namespace BossRush
 
             Text text = textObj.AddComponent<Text>();
             text.text = npcName + (isActive ? "" : " (未刷新)");
-            text.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            text.font = BossRushUI.GetLegacyChineseFont();
             text.fontSize = 20;
             text.alignment = TextAnchor.MiddleCenter;
             text.color = isActive ? Color.white : new Color(0.5f, 0.5f, 0.5f, 1f);

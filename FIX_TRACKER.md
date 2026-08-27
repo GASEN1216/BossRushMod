@@ -39,12 +39,106 @@
 ```
 
 ---
+### 2026-08-27 全项目 UI 收口与观感升级（第一步：程序化皮肤）
+
+**状态**: fixed
+**Finding**: owner 功能要求（全项目 UI 优化美化）
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；UI 皮肤两步走——先纯代码程序化圆角九宫格并预留图集注入接口，将来出美术图集时直接换上
+
+**现象**: 全 Mod 44 个 UI 文件约 2.7 万行、20 个独立 Canvas，存在系统性问题：零圆角、零 `Image.Type.Sliced` 底图（"简陋感"根源）；两套遮罩色并存；6 套标题栏、4 套按钮工厂、4 套滚动列表各写各的；sortingOrder 分裂成 10~1001 与 28000~32000 两个孤岛，成就界面 `sortingOrder=10` 会被任何模态压住；3 个文件仍用 legacy `UI.Text` + 内置 Arial（渲染不了中文，界面上是方块）；`BossFilterUi` 的 `CanvasScaler` 加了却从未配置，4K 屏上面板缩成一小块。
+
+**修复内容**:
+- 新增 `Common/UI/BossRushUI.cs`：设计 token（`BossRushUIColors`）、Canvas 层级表（`BossRushUILayers`）、运行时程序化圆角九宫格（按半径缓存共享，1px 抗锯齿过渡带，`Sprite.Create` 带 border）、皮肤注入点（`BossRushUISkin`）、卡片/遮罩/Canvas 根工厂、面板打开动画。字体与模态输入租约仍转发 `ZombieModeUIHelper`，不重复实现也不搬动被 guard 钉死的原语。
+- 打开动画不用官方 `Duckov.UI.Animations.ScaleFade`：它的 duration/scale 全是私有 `[SerializeField]`，运行时 `AddComponent` 得到的 HiddenScale 恰好等于正常缩放（动画不可见），且需要 `FadeElement` 驱动。改用自包含的 `BossRushUIOpenAnimation`（unscaledDeltaTime，模态会把 timeScale 置 0）。
+- 圆角皮肤接到 `ZombieModeUIHelper.CreateButton` / `CreateModalSurface`，ZombieMode 与 ModeG 全线界面一次性受益；另外单独接了丧尸模式奖励卡、成就界面与条目、Boss 池面板、快递员确认框。
+- 丧尸模式 HUD 三块裸文本补半透底板（`raycastTarget=false`，不挡游戏内点击）。
+- 修 `BossFilterUi` 的 `CanvasScaler` 未配置（高分屏实际 bug）；成就界面 `sortingOrder` 10→2000、补 `matchWidthOrHeight`、配色从 Material Design 绿换成本 Mod 深色调 token；确认框 `sortingOrder` 10→3200；ModeF 悬赏雷达距离底板 alpha 0.14→0.55（亮场景几乎看不见）。
+- legacy Arial 清零：成就解锁弹窗与 NPC 传送面板转 TMP + 游戏字体；F3 作弊菜单把 `Font` 贯穿了十来个辅助方法并混用 legacy `InputField`，全量 TMP 化超出本轮范围，改用 `BossRushUI.GetLegacyChineseFont()`（优先取 TMP 字体的 `sourceFontFile`，取不到回退 Arial，不构成回退）。成就/好感度界面补上从未设置的 `.font`。
+- 新增 `tests/BossRushUISharedLibraryGuard.py`：锁住层级表严格递增、图集注入点、九宫格 border、`ResetStaticCaches` 销毁程序化贴图并挂在 OnDestroy 路径、字体走四级回退、编译清单登记、已迁移界面不得回退成裸数值或第二套遮罩色、源码不得再出现内置 Arial。
+- 新增 `docs/制作教程/BossRushUI_图集规格.md`：素材清单（尺寸/border/命名）、注入方式、fail-open 约定与层级表。
+
+**兼容性影响**: 纯表现层。不改存档、配置、TypeID、本地化 key、Harmony/反射目标或装备工厂。程序化贴图带 `HideFlags.DontSave`，已在 `ModBehaviour` 的 OnDestroy 路径显式销毁。Wiki 阅读器（美术驱动 prefab）与地图选择界面（克隆官方 prefab）有意不接管。
+
+**验证方法**:
+1. Python guard：全量 `tests/*.py` 通过（含新增的 `BossRushUISharedLibraryGuard`），既有 UI 结构 guard（`ZombieModeUIHelperGraphicCompositionGuard`、`ZombieModeTemporaryNpcResponsiveUiGuard`、`ZombieModeHudTextAssignmentGuard`、`ZombieModeChoiceUiPauseAndLayoutGuard`、`ModeFTmpFontReuseGuard`、`StaticCacheLifecycleGuard`）全部保持绿。
+2. 语法层校验：Roslyn CS1xxx 检查通过。
+
+**未验证/需人工**: 同上一条——本机未安装游戏，**没有真正编译**，也**完全没有实机看过界面**。UI 改动的观感、布局是否被圆角底图挤压、HUD 底板在各分辨率下的位置、TMP 转换后的对齐与字号，都只能实机确认。建议优先看：奖励三选一面板、丧尸模式 HUD、成就界面、Boss 池设置（1080p 与 4K 各一次），以及成就解锁弹窗和 F3 菜单的中文是否不再是方块。
+---
+### 2026-08-27 自 c36e011 起改动的全面审查修复
+
+**状态**: fixed
+**Finding**: CR-2026-08-27-001（本轮审查，覆盖 c36e011..HEAD 与工作区未提交改动）
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；命火成长改比例制 +4%/杀；便携安全区清场有意不计入击杀；便携安全区改为战斗期替换主槽、准备期并存副槽
+
+**现象**: 三项功能缺陷。1) Mode F 命火过载在真实数值下不可达：成长奖励是绝对 +1 HP，而封顶与充能基数是入场上限的 50%（约 425 HP），需约 850 杀才首次过载，实机日志一局仅约 24 杀，整套机制是死代码，本次改动净效果退化为纯回血削弱。2) 丧尸模式安全区的仇恨抑制会永久泄漏：弹出路径无条件按 `!SafeZoneStealthBroken`（恒 true）去仇恨，而释放路径被全局开关早退，玩家在区外时蹭到边界的丧尸/Boss 再也不会追击，且本次改动把 tick 从准备期扩到全阶段，战斗期即触发，构成卡波次风险。3) 玩家在安全区内用手雷或奖励弹道命中丧尸会误取消整个安全区，与注释承诺的“投掷不触发”相反。
+
+**根因**: 1) 成长奖励与成长上限量纲不一致（绝对 HP vs 入场上限比例）。2) 物理禁入与仇恨抑制两条规则被耦合在同一次弹出调用里，抑制记账又只走全局开关。3) 上一次改动删除 `IsZombieModeDamageFromStealthBreakingWeapon` 后只剩 `isFromBuffOrEffect` 过滤，武器 tag 门控丢失。
+
+**修复内容**:
+- Mode F 命火：新增 `MODEF_MAX_HP_GROWTH_RATIO_NORMAL = 0.04f`，成长奖励改为入场上限的 4%（悬赏 ×印记数），与 +50% 封顶同量纲；约 13 杀顶满上限、每杀充 8 点命火，一局约 25 杀迎来首次过载。回血 30%/45%/60% 不变。
+- Mode F 生命清理：`CleanupModeFPlayerMaxHealthGrowth()` 增加 `hadGrowth` 前置条件，只在本局确实授予过成长时才钳制当前生命，不再误伤其他来源的超额生命；`StartModeFRun()` 改调同一清理方法，修复上一局 `ExitModeF` 中途抛出时成长 Modifier 永久残留；`AddModifier` 失败时回滚 `TempMaxHealthGrowth` 与 Modifier 引用。
+- 丧尸模式安全区改双槽：新增 `PortableSafeZone*` 副槽字段与 `AnyZombieModeSafeZoneActive`。战斗期部署替换主槽、波次结束随准备期清理消失并重新生成带商人的正常安全区（原「保留便携区导致整个准备期没有商人终端」一并消失）；准备期部署写入独立副槽，不带商人、不回收主槽绑定服务，与正常区并存到下一波开始。几何查询、弹出、清场、视觉刷新与 HUD 全部按双槽处理，弹出方向按敌人实际所在槽计算。
+- 仇恨抑制泄漏：抑制判定提前到弹出之前并作为参数传入 `KeepZombieModeEnemiesOutsideSafeZone(bool)`，物理禁入不再擅自去仇恨；`SetZombieModeEnemyThreatSuppressed` 置位时同步记账 `SafeZoneThreatSuppressed`，保证任何来源的逐敌抑制都能被释放路径恢复。
+- 安全区取消：恢复武器 tag 门控 `IsZombieModeSafeZoneCancellingWeapon`，只有枪械/近战直伤取消安全区，且两槽一并取消。
+- 丧尸模式其他：掉落候选的 `GetComponent<Item>` 拾取检查由每帧改为 1 秒一次（波次强制清理不受节流）；Boss 解卡增加近身豁免 `BossStuckEngagedDistance = 6f`，避免举盾/telegraph/贴脸近战 Boss 被 12 秒阈值反复瞬移；背包废品回收改为移除成功后再记账，异常时不再白送净化点。
+- 清理：移除恒为 false 的死状态 `SafeZoneStealthBroken` 及其全部死分支与本地化 key、死常量 `BossPreparationCountdownSeconds`、无调用点且返回可变静态数组的 `GetZombieModePreparationDurationOptions`；`protectedTags` 提为静态只读；prune 路径的 `record.Cleanup` 补具名 catch；Harasser 弹道缓存 `Shader.Find` 并修掉首帧从世界原点拉线；`compile_official.bat` 缩进回归 4 空格。
+- 文件拆分（LargeFileBudgetGuard）：命火逻辑拆出 `ModeF/ModeFBloodfire.cs`，击杀奖励气泡文本拆出 `ModeF/ModeFUI_KillRewardBubble.cs`，两个新文件已登记 `compile_official.bat`。
+- 文档：AGENTS.md TypeID 台账更新为 500001-500058 / 下一可用 500059；ID 表修正 Mode G 入场条件（可携带自己的装备）；`BossRush_PortableSafeZoneDevice_Desc` 改为引用配置常量，消除双重注入文案分叉；中英 Wiki、在线 Wiki 与 repowiki 同步命火数值与便携安全区新生命周期。
+
+**兼容性影响**: 不改变存档 schema、配置 schema、TypeID、AssetBundle、Harmony/反射目标或装备工厂。删除的本地化 key `BossRush_ZombieMode_Hud_SafeZone_StealthBroken` 对应的状态已不可达，删除后无显示变化。新增副槽状态只存在于本局运行时。Mode F 局内成长与回血数值有调整。
+
+**验证方法**:
+1. Python guard：全量 `tests/*.py` 通过，仅剩两项与本轮无关的既有项——`DragonKingBossGunRocketSplitGuard`（在 c36e011 之前即为红，DragonKing 目录本轮未改动）与 `SmokeLogScan`（实机日志扫描，非结构 guard）。
+2. 同步更新的 guard：`ModeFBloodfireOverloadGuard`（新增比例量纲断言）、`ModeFKillRewardBubbleNoListGuard`、`ZombieModeSafeZoneGuard`（双槽与取消契约）、`ZombieModeSafeZoneMarkerReuseGuard`、`ZombieModeMarkerOwnerFallbackCacheGuard`、`ZombieModeRunOnlyMarkerFallbackCacheGuard`、`ZombieModePacingTuningGuard`、`ZombieModeStateModelGuard`、`ZombieModeRewardCatalogGuard`、`ZombieModeRewardServiceAtomicityGuard`。
+3. 在线 Wiki：`node scripts/sync-content.mjs` 通过，中英各 102 篇。
+
+**未验证/需人工**: **本机未安装《鸭科夫》**（Steam 库中无 Escape from Duckov，缺 `Duckov_Data\Managed`），`compile_official.bat` 无法运行，因此本轮没有真正编译。仅用 Roslyn 做了 CS1xxx 语法层校验，语义错误（签名不匹配、类型错误）无法覆盖，**必须在有游戏的机器上补一次正式编译**。实机 smoke 待验证：Mode F 约 25 杀触发首次过载与三条退出清理路径；丧尸模式战斗期部署便携区后波次结束能拿回带商人的正常安全区、准备期部署双区并存且商人保留、玩家在区外时被弹出的丧尸仍会追击、手雷命中丧尸不取消安全区、近战 Boss 12 秒内不被误传送。
+---
+### 2026-08-26 Mode F 退出钳制与命火过载后期曲线
+
+**状态**: fixed
+**Finding**: CR-2026-08-26-001
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 已确认；最大生命成长封顶 +50%，溢出转命火，满值进入带烧伤和双倍失血的短时过载；过载开始使用玩家头顶气泡提醒
+
+**现象**: 玩家在 Mode F 内通过击杀提高最大生命并回满后，退出模式仍可能保留高于正常上限的当前生命；同时局内最大生命与按当前上限计算的 50%/75% 回血均无封顶，后期固定伤害和持续失血占比不断下降，玩家逐渐成为普通敌人难以威胁的血牛。
+
+**根因**: `ExitModeF()` 只从 `MaxHealth` Stat 移除 `modeFMaxHealthModifier`，没有同步限制 `Health.CurrentHealth`。局内 `TempMaxHealthGrowth` 也没有上限，击杀回血按不断增长的 `health.MaxHealth` 计算，而模式失血固定按入场生命计算，形成越打越安全的单向正反馈。
+
+**修复内容**:
+- 修改 `ModeF/ModeFPhases.cs`：新增 `CleanupModeFPlayerMaxHealthGrowth()`，通过 Modifier 原始 Stat 目标撤销本局成长，再读取恢复后的真实上限并调用 `Health.SetHealth()` 压低超额当前生命；正常撤离、死亡和场景切换继续统一经过 `ExitModeF()`。
+- 玩家本局最大生命成长封顶于入场最大生命的 +50%；成长奖励本身也按入场上限比例结算——普通击杀 +4%、悬赏击杀 +4%×印记数（至少 1 倍），约 13 次普通击杀顶满上限。回血按入场生命结算：普通 30%，悬赏 45%，每层额外印记 +5%、最高 60%，不再随成长后的当前上限继续放大。
+- 超出生命成长上限的奖励按同一上限容量换算为 0～100 命火（每次普通击杀约 +8，顶满上限后再约 13 杀充满，一局约 25 杀迎来首次过载）。满命火进入 15 秒过载：枪械/近战 +40%、移速 +15%、Mode F 失血 ×2，并复用官方 `GameplayDataSettings.Buffs.Burn` 向玩家施加烧伤；悬赏击杀续时 3 秒、剩余时间最高 24 秒，自然结束保留 25 命火。
+- 过载开始通过现有玩家头顶气泡显示 4 秒高优先级提醒；普通命火增长、悬赏续时和每 15 秒阶段广播同步显示命火状态。
+- `ExitModeF()` 在生命钳制前调用 `EndModeFBloodfireOverload(false)`，撤销枪械、近战和移速 Modifier 并清空命火状态。
+- 新增 `tests/ModeFMaxHealthCleanupGuard.py`：锁定“撤销 Modifier → 读取恢复后上限 → 钳制当前生命”的顺序，并要求 `ExitModeF()` 使用集中清理方法。
+- 新增 `tests/ModeFBloodfireOverloadGuard.py`：锁定经 owner 确认的成长、回血、充能、过载、Burn、气泡和退出清理契约。
+- 同步中英文游戏内 Wiki、在线 Wiki、Mode F repowiki 知识卡与专项玩法文档。
+
+**兼容性影响**: 不改变存档、配置 schema、TypeID、本地化 key、资源、Harmony/反射目标或装备工厂；调整 Mode F 局内回血与生命成长数值，并新增只存在于本局的命火状态和临时 Stat Modifier。烧伤复用官方 Buff，不新增 Buff ID 或 AssetBundle。
+
+**验证方法**:
+1. Windows 正式编译：`compile_official.bat` 通过，已生成 `Build/BossRush.dll` 并部署到游戏 Mod 目录。
+2. 定向 Guard：`ModeFBloodfireOverloadGuard.py`、`ModeFMaxHealthCleanupGuard.py`、`ModeFKillRewardBubbleNoListGuard.py` 通过。
+3. 全量验证：15/15 个 `ModeF*Guard.py` 通过；`ArchitectureStructureGuard.py`、`OfficialCompileListFileExistenceGuard.py`、`EmptyCatchGuard.py`、`BossWikiGuideContentGuard.py` 通过。
+4. 在线 Wiki：`npm run build` 通过，同步中英文各 102 篇并由 VitePress 成功构建 204 篇页面。
+5. 静态检查：目标文件 `git diff --check` 通过，仅有仓库既有 LF/CRLF 提示。
+
+**未验证/需人工**: 需实机验证 150% 总生命上限、普通/多印记悬赏回血、命火充能速度、过载 Burn/火力/移速/双倍失血、悬赏续时上限、头顶气泡时长，以及成功撤离、玩家死亡和切图兜底三条退出清理路径。
+
+---
 ### 2026-08-25 丧尸模式波次体验、Boss 解卡、骚扰弹道、休息时间与安全区装置
 
 **状态**: fixed
 **Finding**: 玩家反馈 / owner 功能要求
 **兼容分类**: COMPAT / OPERATIONAL
-**版本/Commit**: 未提交
+**版本/Commit**: 85e91e2
 **Owner decision**: 已确认；普通散落物在下一波正式开始时清理，奖励界面默认折叠显示休息时长，修改范围 15～300 秒且跨波次沿用
 
 **现象**: 波次掉落长期堆积会造成卡顿；Boss 偶尔卡在异常位置导致波次不能结束；第 8～10 波骚扰者攻击缺少可读弹道且会在旧目标点补爆；玩家缺少高概率的背包废品兑换途径、可主动部署的安全区，以及每波可选的休息时长。
@@ -1455,6 +1549,10 @@
 
 | 日期 | 变更 | 说明 |
 | --- | --- | --- |
+| 2026-08-27 | 全项目 UI 收口与观感升级 | 新增共享 UI 库（设计 token、层级表、程序化圆角九宫格、图集注入点）；修高分屏面板不缩放与模态互压；legacy Arial 清零，中文不再显示为方块。 |
+| 2026-08-27 | 审查修复：命火量纲、安全区仇恨泄漏与双槽改造 | 命火成长改入场上限 4%/杀使机制真正可达；修复被弹出敌人永久失去仇恨的卡波次风险；便携安全区改为战斗期替换、准备期并存；恢复手雷不取消安全区的武器 tag 门控。 |
+| 2026-08-26 | 修复 Mode F 退出生命并新增命火过载 | 生命成长封顶 +50%，溢出转为带烧伤和双倍失血风险的短时火力/移速强化；退出时清理全部临时属性并钳制当前生命。 |
+| 2026-08-25 | 完善丧尸模式波次奖励与安全区体验 | 散落物按波次清理、Boss 解卡阈值下调、骚扰弹道可读化、可选休息时长 15～300 秒，新增背包废品回收与便携安全区装置（TypeID 500058）。 |
 | 2026-08-17 | 修复 Mode F 准备阶段停刷 | 移除 180 秒准备阶段的补位门控，四阶段均按死亡/失效缺口持续逐只补位，并保留单任务限流。 |
 | 2026-08-07 | 提高丧尸模式前期密度并修复停刷 | 击杀目标保持旧值；场上压力、补怪频率与硬上限至少提高 3 倍，并增加可靠刷新、计数校准和远怪回收。 |
 | 2026-08-07 | 修复 Mode E 两个重刷道具不可用 | 按 owner 决定完全移除重刷人口上限和点位裁剪，仅保留单任务互斥与会话安全。 |

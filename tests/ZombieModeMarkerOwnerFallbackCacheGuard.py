@@ -75,7 +75,7 @@ def main() -> int:
     if result:
         return result
 
-    safe_zone = extract_method_body(safe_zone_text, "private void KeepZombieModeEnemiesOutsideSafeZone()")
+    safe_zone = extract_method_body(safe_zone_text, "private void KeepZombieModeEnemiesOutsideSafeZone(bool suppressThreat)")
     if safe_zone is None:
         return fail("missing KeepZombieModeEnemiesOutsideSafeZone body")
     safe_zone_required = [

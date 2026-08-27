@@ -36,7 +36,6 @@ def main() -> int:
 
     for required in [
         "public const float PreparationCountdownSeconds = 45f;",
-        "public const float BossPreparationCountdownSeconds = 45f;",
     ]:
         if required not in text:
             return fail("preparation pacing contract missing -> " + required)

@@ -673,6 +673,24 @@ namespace BossRush
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.Projectile, projectile, runtime, null);
         }
 
+        /// <summary>
+        /// 缓存 Sprites/Default。Shader.Find 是按名字查着色器注册表的字符串查找，
+        /// 每发弹丸调两次纯属浪费；材质本身仍按弹丸各自持有（见 MaterialOwner 的回收契约）。
+        /// </summary>
+        private static Shader zombieModeCachedSpriteShader;
+        private static bool zombieModeSpriteShaderResolved;
+
+        private static Shader GetZombieModeSpriteShader()
+        {
+            if (!zombieModeSpriteShaderResolved)
+            {
+                zombieModeCachedSpriteShader = Shader.Find("Sprites/Default");
+                zombieModeSpriteShaderResolved = true;
+            }
+
+            return zombieModeCachedSpriteShader;
+        }
+
         private static void ConfigureZombieModeHarasserProjectileVisual(GameObject projectile)
         {
             if (projectile == null)
@@ -708,7 +726,7 @@ namespace BossRush
             trail.endWidth = 0.02f;
             trail.startColor = new Color(0.18f, 0.9f, 1f, 0.95f);
             trail.endColor = new Color(0.08f, 0.35f, 1f, 0f);
-            Shader trailShader = Shader.Find("Sprites/Default");
+            Shader trailShader = GetZombieModeSpriteShader();
             Material trailMaterial = null;
             if (trailShader != null)
             {
@@ -719,10 +737,14 @@ namespace BossRush
             LineRenderer trajectory = projectile.AddComponent<LineRenderer>();
             trajectory.positionCount = 2;
             trajectory.useWorldSpace = true;
+            // 首个 OnRuntimeTick 之前两个点都是零向量，会从世界原点拉出一条线；
+            // 生成时先把两端都钉在弹丸自身位置上。
+            trajectory.SetPosition(0, projectile.transform.position);
+            trajectory.SetPosition(1, projectile.transform.position);
             trajectory.widthMultiplier = 0.035f;
             trajectory.startColor = new Color(0.25f, 0.9f, 1f, 0.24f);
             trajectory.endColor = new Color(0.10f, 0.45f, 1f, 0.05f);
-            Shader lineShader = Shader.Find("Sprites/Default");
+            Shader lineShader = GetZombieModeSpriteShader();
             Material lineMaterial = null;
             if (lineShader != null)
             {

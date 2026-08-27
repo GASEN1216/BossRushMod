@@ -15,11 +15,6 @@ namespace BossRush
             240, 255, 270, 285, 300
         };
 
-        public IList<int> GetZombieModePreparationDurationOptions(int runId)
-        {
-            return ZombieModePreparationDurationOptions;
-        }
-
         public int GetZombieModeSelectedPreparationDuration(int runId)
         {
             if (!IsZombieModeRunValid(runId))

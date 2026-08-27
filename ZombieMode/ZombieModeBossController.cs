@@ -96,6 +96,11 @@ namespace BossRush
                     instance.Lifecycle.LastKnownPosition = current;
                     instance.Lifecycle.LastReachableTime = now;
                 }
+                else if (IsZombieModeBossEngagedWithPlayer(current))
+                {
+                    // 贴脸交战的 Boss 本来就不需要移动，不能按“位移不足”当成卡死。
+                    instance.Lifecycle.LastReachableTime = now;
+                }
 
                 // 受击时间不能阻止解卡：玩家持续射击一个卡在墙边的 Boss 时，
                 // LastHurtTime 会不断刷新；若把它作为硬门槛，波次可能永远无法结束。
@@ -504,6 +509,24 @@ namespace BossRush
             }
 
             zombieModeEnemyMarkerScratch.Clear();
+        }
+
+        /// <summary>
+        /// Boss 是否正贴身与玩家交战。交战中的 Boss 不移动是正常战斗形态
+        /// （举盾、起手 telegraph、近战贴脸），不属于卡死。
+        /// </summary>
+        private bool IsZombieModeBossEngagedWithPlayer(Vector3 bossPosition)
+        {
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null)
+            {
+                return false;
+            }
+
+            Vector3 delta = bossPosition - player.transform.position;
+            delta.y = 0f;
+            float engagedDistance = ZombieModeTuning.BossStuckEngagedDistance;
+            return delta.sqrMagnitude <= engagedDistance * engagedDistance;
         }
 
         private void TeleportZombieModeBossNearPlayer(ZombieModeBossInstance instance)

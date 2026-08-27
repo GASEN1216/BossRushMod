@@ -46,45 +46,6 @@ namespace BossRush
             catch { }
         }
 
-        private string BuildModeFKillRewardBubbleText(bool isBountyBoss, float healAmount, float maxHealthGain)
-        {
-            string result = null;
-            bool hasPart = false;
-
-            if (healAmount > 0.01f)
-            {
-                result = L10n.T(
-                    "血量 <color=red>+" + Mathf.RoundToInt(healAmount) + "</color>",
-                    "HP <color=red>+" + Mathf.RoundToInt(healAmount) + "</color>");
-                hasPart = true;
-            }
-
-            if (maxHealthGain > 0.01f)
-            {
-                string maxHealthText = L10n.T(
-                    "生命上限 <color=red>+" + Mathf.RoundToInt(maxHealthGain) + "</color>",
-                    "Max HP <color=red>+" + Mathf.RoundToInt(maxHealthGain) + "</color>");
-                result = hasPart ? result + " | " + maxHealthText : maxHealthText;
-                hasPart = true;
-            }
-
-            if (isBountyBoss)
-            {
-                string bountyText = L10n.T(
-                    "悬赏印记 <color=red>+1</color>",
-                    "Bounty <color=red>+1</color>");
-                result = hasPart ? result + " | " + bountyText : bountyText;
-                hasPart = true;
-            }
-
-            if (!hasPart)
-            {
-                return L10n.T("奖励已结算", "Reward applied");
-            }
-
-            return result;
-        }
-
         private void UpdateModeFPlayerNameTag()
         {
             if (!modeFActive)

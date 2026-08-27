@@ -87,8 +87,12 @@ def main() -> int:
         "OnZombieModeMainCharacterShoot",
         "UpdateZombieModeSafeZonePlayerPresence();",
         "TryMoveZombieModeEnemyOutsideSafeZone",
-        "if (!zombieModeRunState.ActiveSafeZoneActive)",
-        "IsZombieModePositionInsideSafeZoneEnemyExclusion(enemyTransform.position)",
+        # 主槽（正常安全区）与副槽（准备期便携区）任一激活都必须驱动物理禁入。
+        "if (!AnyZombieModeSafeZoneActive)",
+        "zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.PortableSafeZoneActive",
+        # 抑制判定必须先于弹出，且弹出只能沿用该判定结果，不得自行去仇恨。
+        "bool shouldSuppress = ShouldSuppressZombieModeEnemyAggroForSafeZone();\n            KeepZombieModeEnemiesOutsideSafeZone(shouldSuppress);",
+        "TryResolveZombieModeSafeZoneExclusionSlot(enemyTransform.position, out slotCenter, out slotRadius)",
         "ZombieModeTuning.SafeZoneEnemyExclusionPadding",
         "ZombieModeTuning.SafeZoneEnemyEjectionClearance",
         "ZombieModeTuning.SafeZoneEnemyEjectionNavMeshRadius",
@@ -108,10 +112,14 @@ def main() -> int:
         "ZombieModePhaseGuards.AllowsPortableSafeZoneDeployment",
         "ResetZombieModeSafeZoneForReplacement",
         "RemoveZombieModeSafeZoneRunOnlyRecord",
+        # 战斗期部署替换主槽（波次结束随准备期清理消失，再生成带商人的正常区）。
         "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, true, true);",
+        # 准备期部署写入独立副槽：不带商人、不回收主槽绑定的服务 NPC。
+        "CreateZombieModeSafeZone(zombieModeRunState.RunId, false, false, true, true);",
         "ClearZombieModeEnemiesInsideActiveSafeZone(runId, \"CreateSafeZone\");",
-        "private void CleanupZombieModePreparationObjects(int runId, bool preservePortableSafeZone = false)",
-        "bool keepPortableSafeZone = preservePortableSafeZone &&",
+        # 准备期清理必须无条件清掉两个槽，不再保留任何便携区跨越波次边界。
+        "private void CleanupZombieModePreparationObjects(int runId)",
+        "ClearZombieModePortableSafeZoneSlot();",
     ]:
         result = require(extraction, snippet, "safe zone lifecycle")
         if result:
@@ -128,21 +136,29 @@ def main() -> int:
 
     for snippet in [
         "TickZombieModeSafeZone();",
-        "if (zombieModeRunState.ActiveSafeZoneActive)",
-        "CleanupZombieModePreparationObjects(runId, preservePortableSafeZone);",
+        "if (AnyZombieModeSafeZoneActive)",
         "CleanupZombieModePreparationObjects(runId);",
     ]:
         result = require(waves, snippet, "wave controller safe zone tick")
         if result:
             return result
 
+    if "preservePortableSafeZone" in waves or "preservePortableSafeZone" in extraction:
+        return fail(
+            "ZombieModeSafeZoneGuard: portable safe zones must not survive a wave boundary; "
+            "combat deployments are cleared and replaced by the normal merchant-bearing zone"
+        )
+
     for snippet in [
         "TryHandleZombieModeSafeZonePlayerAttack",
         "!IsZombieModePlayerInsideActiveSafeZone()",
         "ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase)",
         "CancelZombieModeSafeZone(runId, \"PlayerAttack\");",
+        # 只有枪械/近战直伤取消安全区：手雷、投掷物与玩家来源的奖励弹道不算。
+        "!IsZombieModeSafeZoneCancellingWeapon(damageInfo)",
+        'tag.name == "MeleeWeapon"',
     ]:
-        result = require(waves, snippet, "damage-driven safe zone stealth break")
+        result = require(waves, snippet, "damage-driven safe zone cancel")
         if result:
             return result
 

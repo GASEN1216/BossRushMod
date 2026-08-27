@@ -217,13 +217,31 @@ def main() -> int:
             return result
 
     full_cleanup = extract_method_body(drops, "private void RecycleZombieModeTemporaryRealNpcs(int runId)")
+    if not full_cleanup:
+        return fail("full real NPC cleanup body not found")
+    result = require_before(
+        full_cleanup,
+        "CloseZombieModeTemporaryRealNpcServices(npc);",
+        "Destroy(npc.GameObject);",
+        "full real NPC cleanup",
+    )
+    if result:
+        return result
+
+    # 安全区绑定的回收路径改为经 run-only 记录清理：RemoveZombieModeRunOnlyObjectRecord
+    # 会执行注册时挂上的 CloseZombieModeTemporaryRealNpcServices 回调（见下方注册断言），
+    # 同时清掉指向已销毁 NPC 的失效记录。契约不变——服务必须在销毁之前关闭。
     safe_zone_cleanup = extract_method_body(drops, "private void RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(int runId)")
-    for body, label in [(full_cleanup, "full real NPC cleanup"), (safe_zone_cleanup, "safe-zone real NPC cleanup")]:
-        if not body:
-            return fail(label + " body not found")
-        result = require_before(body, "CloseZombieModeTemporaryRealNpcServices(npc);", "Destroy(npc.GameObject);", label)
-        if result:
-            return result
+    if not safe_zone_cleanup:
+        return fail("safe-zone real NPC cleanup body not found")
+    result = require_before(
+        safe_zone_cleanup,
+        "RemoveZombieModeRunOnlyObjectRecord(npc.GameObject);",
+        "Destroy(npc.GameObject);",
+        "safe-zone real NPC cleanup",
+    )
+    if result:
+        return result
 
     for snippet in [
         "RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.TemporaryNpc, npc, npc, () => CloseZombieModeTemporaryRealNpcServices(npc));",

@@ -544,6 +544,7 @@ namespace BossRush
                 GameObject tipObj = new GameObject("Tip");
                 tipObj.transform.SetParent(bossPoolContent, false);
                 TextMeshProUGUI tipText = tipObj.AddComponent<TextMeshProUGUI>();
+                BossRushUI.ApplyGameFont(tipText);
                 tipText.text = L10n.T("暂无 Boss 数据，请先进入游戏", "No Boss data available, please enter the game first");
                 tipText.fontSize = 16;
                 tipText.alignment = TextAlignmentOptions.Center;
@@ -590,6 +591,7 @@ namespace BossRush
             GameObject labelObj = new GameObject("Label");
             labelObj.transform.SetParent(selectorObj.transform, false);
             TextMeshProUGUI labelText = labelObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(labelText);
             string displayName = !string.IsNullOrEmpty(preset.displayName) ? preset.displayName : preset.name;
             labelText.text = displayName;
             labelText.fontSize = 18;
@@ -636,6 +638,7 @@ namespace BossRush
             GameObject factorTextObj = new GameObject("FactorText");
             factorTextObj.transform.SetParent(factorContainer.transform, false);
             TextMeshProUGUI factorText = factorTextObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(factorText);
             factorText.text = GetFactorLevelDisplayText(currentIndex);
             factorText.fontSize = 16;
             factorText.alignment = TextAlignmentOptions.Center;
@@ -977,6 +980,7 @@ namespace BossRush
                 GameObject tipObj = new GameObject("Tip");
                 tipObj.transform.SetParent(bossPoolContent, false);
                 TextMeshProUGUI tipText = tipObj.AddComponent<TextMeshProUGUI>();
+                BossRushUI.ApplyGameFont(tipText);
                 tipText.text = L10n.T("暂无 Boss 数据，请先进入游戏", "No Boss data available, please enter the game first");
                 tipText.fontSize = 16;
                 tipText.alignment = TextAlignmentOptions.Center;
@@ -1050,6 +1054,7 @@ namespace BossRush
             GameObject labelObj = new GameObject("Label");
             labelObj.transform.SetParent(toggleObj.transform, false);
             TextMeshProUGUI labelText = labelObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(labelText);
             string displayName = !string.IsNullOrEmpty(preset.displayName) ? preset.displayName : preset.name;
             labelText.text = displayName;
             labelText.fontSize = 18;

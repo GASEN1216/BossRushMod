@@ -7,7 +7,7 @@
 - **Entry & Utility** — Tickets, Banners, Transponder, Fate Echo Relic, Journal, Achievement Medal
 - **NPC Items** — Gifts, materials, special interaction items
 - **Consumables** — Healing, buffs, summoning
-- **Mode-Exclusive** — Faction War tactical items, Blood Hunt fortifications, and the Fate Echo Relic
+- **Mode-Exclusive** — Faction War tactical items, Blood Hunt fortifications, the Fate Echo Relic, and Zombie Mode's Portable Safe-Zone Device (run reward, single use)
 
 ### Where to Get Them
 

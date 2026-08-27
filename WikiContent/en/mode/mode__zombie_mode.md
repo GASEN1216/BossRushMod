@@ -45,7 +45,8 @@ Every 5th wave is a **Boss Wave**; all others are normal waves.
   - New zombies entering the zone are continuously pushed out, so the zone never becomes a zombie standing area
   - Zombies won't aggro you (threat suppression)
   - Directly damaging a zombie while inside cancels the entire safe zone immediately, including its circle, map marker, and bound terminal
-- A Portable Safe-Zone Device remains active through the reward screen and the next preparation phase, then is removed when the next wave formally starts. The same attack-cancellation rule applies during both combat and preparation.
+- Portable Safe-Zone Device: **used in combat** it moves the safe zone to your current position, and the normal merchant-bearing zone is recreated as usual once the wave ends; **used during preparation** it deploys an extra zone without a merchant that coexists with the normal one until the next wave formally starts, when both are cleared
+- Both uses obey the attack-cancellation rule above; damaging a zombie inside either zone cancels both.
 - Zone flashes yellow in the last 5 seconds as warning
 - A **Supply Terminal** (merchant NPC) spawns inside the safe zone
 - You can use the **Zombie Tide Beacon** to skip the countdown and start the next wave immediately (3-second channel)

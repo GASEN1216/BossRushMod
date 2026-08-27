@@ -116,6 +116,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Common\Lifecycle\BossRushRuntimeModuleRegistration.cs ^
     Common\Events\BossRushEventBus.cs ^
     Common\Infrastructure\ReflectionCache.cs ^
+    Common\UI\BossRushUI.cs ^
     Common\Infrastructure\ObjectCache.cs ^
     Common\Infrastructure\IHarmonyPatchGroup.cs ^
     Common\Infrastructure\HarmonyPatchGroupRegistrar.cs ^
@@ -282,6 +283,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFRuntimeHooks.cs ^
     ModeF\ModeFEntry.cs ^
     ModeF\ModeFPhases.cs ^
+    ModeF\ModeFBloodfire.cs ^
     ModeF\ModeFBounty.cs ^
     ModeG\ModeGEntry.cs ^
     ModeG\ModeGAvailability.cs ^
@@ -320,6 +322,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeF\ModeFUIStaticCacheReset.cs ^
     ModeF\ModeFUI.cs ^
     ModeF\ModeFUI_BountyRadarAndHealthBars.cs ^
+    ModeF\ModeFUI_KillRewardBubble.cs ^
     ModeF\ModeFUI_BountyRadarAssets.cs ^
     ModeF\ModeFMerchant.cs ^
     ZombieMode\ZombieModeModels.cs ^
@@ -341,10 +344,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ZombieMode\ZombieModeWaveController.cs ^
     ZombieMode\ZombieModeEnemyRuntime.cs ^
     ZombieMode\ZombieModeRewards.cs ^
-      ZombieMode\ZombieModeRewardCatalogAndSelection.cs ^
-      ZombieMode\ZombieModeRewardPreparationDuration.cs ^
-      ZombieMode\ZombieModeRewardEffectsAndNpc.cs ^
-      ZombieMode\ZombieModeBackpackJunkRecycle.cs ^
+    ZombieMode\ZombieModeRewardCatalogAndSelection.cs ^
+    ZombieMode\ZombieModeRewardPreparationDuration.cs ^
+    ZombieMode\ZombieModeRewardEffectsAndNpc.cs ^
+    ZombieMode\ZombieModeBackpackJunkRecycle.cs ^
     ZombieMode\ZombieModeRewardItemGrants.cs ^
     ZombieMode\ZombieModeRewardNpcServices.cs ^
     ZombieMode\ZombieModeRewardEffects.cs ^

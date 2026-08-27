@@ -19,8 +19,11 @@ namespace BossRush
                 bossPoolCanvas = new GameObject("BossPoolCanvas");
                 Canvas canvas = bossPoolCanvas.AddComponent<Canvas>();
                 canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                canvas.sortingOrder = 10;  // 降低层级，避免遮挡鼠标光标
-                bossPoolCanvas.AddComponent<CanvasScaler>();
+                canvas.sortingOrder = BossRushUILayers.Panel;
+                // 此前只 AddComponent 不配置，CanvasScaler 默认 ConstantPixelSize，
+                // 4K 屏上 550x650 的面板会缩成一小块。
+                CanvasScaler bossPoolScaler = bossPoolCanvas.AddComponent<CanvasScaler>();
+                ZombieModeUIHelper.ConfigureCanvasScaler(bossPoolScaler);
                 bossPoolCanvas.AddComponent<GraphicRaycaster>();
                 UnityEngine.Object.DontDestroyOnLoad(bossPoolCanvas);
 
@@ -28,7 +31,7 @@ namespace BossRush
                 GameObject bgObj = new GameObject("Background");
                 bgObj.transform.SetParent(bossPoolCanvas.transform, false);
                 Image bgImage = bgObj.AddComponent<Image>();
-                bgImage.color = new Color(0f, 0f, 0f, 0.7f);
+                bgImage.color = BossRushUIColors.Backdrop;
                 RectTransform bgRect = bgObj.GetComponent<RectTransform>();
                 bgRect.anchorMin = Vector2.zero;
                 bgRect.anchorMax = Vector2.one;
@@ -39,6 +42,7 @@ namespace BossRush
                 bossPoolPanel = new GameObject("Panel");
                 bossPoolPanel.transform.SetParent(bossPoolCanvas.transform, false);
                 Image panelImage = bossPoolPanel.AddComponent<Image>();
+                BossRushUI.ApplyPanelSkin(panelImage, 14);
                 panelImage.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
                 RectTransform panelRect = bossPoolPanel.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);
@@ -90,6 +94,7 @@ namespace BossRush
             GameObject titleTextObj = new GameObject("TitleText");
             titleTextObj.transform.SetParent(titleBar.transform, false);
             TextMeshProUGUI titleText = titleTextObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(titleText);
             titleText.text = L10n.T("Boss池设置", "Boss Pool Settings");
             titleText.fontSize = 24;
             titleText.alignment = TextAlignmentOptions.Center;

@@ -28,6 +28,9 @@ namespace BossRush
         public float PhaseDuration;
         public float InitialMaxHealthSnapshot;
         public float TempMaxHealthGrowth;
+        public float BloodfireCharge;
+        public bool BloodfireOverloadActive;
+        public float BloodfireOverloadRemaining;
         public int PlayerKillCount;
         public int PlayerBountyMarks;
         public CharacterMainControl CurrentBountyLeader;
@@ -49,6 +52,9 @@ namespace BossRush
             PhaseDuration = 0f;
             InitialMaxHealthSnapshot = 0f;
             TempMaxHealthGrowth = 0f;
+            BloodfireCharge = 0f;
+            BloodfireOverloadActive = false;
+            BloodfireOverloadRemaining = 0f;
             PlayerKillCount = 0;
             PlayerBountyMarks = 0;
             CurrentBountyLeader = null;

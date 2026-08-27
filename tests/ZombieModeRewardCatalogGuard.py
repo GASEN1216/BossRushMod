@@ -100,7 +100,6 @@ def main() -> int:
         "ZombieModeRewardType.PortableSafeZoneDevice",
         "SelectedPreparationDurationSeconds",
         "ZombieModePreparationDurationOptions",
-        "GetZombieModePreparationDurationOptions",
         "GetZombieModeSelectedPreparationDuration",
         "OpenZombieModePreparationDurationEditor",
         "SetZombieModePreparationDuration",

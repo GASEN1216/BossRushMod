@@ -6,10 +6,22 @@ namespace BossRush
     {
         private bool zombieModeShootStealthBreakerRegistered;
 
+        /// <summary>
+        /// 主槽（正常安全区，带商人）与副槽（准备期便携安全区，不带商人）任一激活。
+        /// 两槽只在准备期并存，下一波开始时一起清除。
+        /// </summary>
+        private bool AnyZombieModeSafeZoneActive
+        {
+            get
+            {
+                return zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.PortableSafeZoneActive;
+            }
+        }
+
         private void TickZombieModeSafeZone()
         {
             if (!IsZombieModeActive ||
-                !zombieModeRunState.ActiveSafeZoneActive ||
+                !AnyZombieModeSafeZoneActive ||
                 !ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase))
             {
                 ReleaseZombieModeSafeZoneThreatSuppression();
@@ -24,8 +36,10 @@ namespace BossRush
             zombieModeRunState.LastSafeZoneTickTime = Time.unscaledTime;
             UpdateZombieModeSafeZonePlayerPresence();
             UpdateZombieModeSafeZoneVisual();
-            KeepZombieModeEnemiesOutsideSafeZone();
+            // 抑制判定必须先于物理禁入：弹出本身不得附带去仇恨，否则玩家在区外时
+            // 蹭到边界的丧尸会被永久清空 forceTracePlayerDistance 而再也不追击。
             bool shouldSuppress = ShouldSuppressZombieModeEnemyAggroForSafeZone();
+            KeepZombieModeEnemiesOutsideSafeZone(shouldSuppress);
             if (shouldSuppress)
             {
                 zombieModeRunState.SafeZoneThreatSuppressed = shouldSuppress;
@@ -46,7 +60,7 @@ namespace BossRush
         private bool IsZombieModePlayerInsideActiveSafeZone()
         {
             CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || !zombieModeRunState.ActiveSafeZoneActive)
+            if (player == null || !AnyZombieModeSafeZoneActive)
             {
                 return false;
             }
@@ -54,50 +68,100 @@ namespace BossRush
             return IsZombieModePositionInsideActiveSafeZone(player.transform.position);
         }
 
-        private bool IsZombieModePositionInsideActiveSafeZone(Vector3 position)
+        /// <summary>
+        /// 判断位置是否落在单个安全区槽的水平圆内。padding 用于敌人禁入的外扩范围。
+        /// </summary>
+        private static bool IsPositionInsideZombieModeSafeZoneSlot(
+            Vector3 position,
+            bool slotActive,
+            Vector3 slotCenter,
+            float slotRadius,
+            float padding)
         {
-            if (!zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.ActiveSafeZoneRadius <= 0f)
+            if (!slotActive || slotRadius <= 0f)
             {
                 return false;
             }
 
-            Vector3 delta = position - zombieModeRunState.ActiveSafeZoneCenter;
+            float effectiveRadius = slotRadius + padding;
+            Vector3 delta = position - slotCenter;
             delta.y = 0f;
-            return delta.sqrMagnitude <= zombieModeRunState.ActiveSafeZoneRadius * zombieModeRunState.ActiveSafeZoneRadius;
+            return delta.sqrMagnitude <= effectiveRadius * effectiveRadius;
+        }
+
+        private bool IsZombieModePositionInsideActiveSafeZone(Vector3 position)
+        {
+            return IsPositionInsideZombieModeSafeZoneSlot(
+                       position,
+                       zombieModeRunState.ActiveSafeZoneActive,
+                       zombieModeRunState.ActiveSafeZoneCenter,
+                       zombieModeRunState.ActiveSafeZoneRadius,
+                       0f) ||
+                   IsPositionInsideZombieModeSafeZoneSlot(
+                       position,
+                       zombieModeRunState.PortableSafeZoneActive,
+                       zombieModeRunState.PortableSafeZoneCenter,
+                       zombieModeRunState.PortableSafeZoneRadius,
+                       0f);
         }
 
         private bool IsZombieModePositionInsideSafeZoneEnemyExclusion(Vector3 position)
         {
-            if (!zombieModeRunState.ActiveSafeZoneActive || zombieModeRunState.ActiveSafeZoneRadius <= 0f)
+            Vector3 unusedCenter;
+            float unusedRadius;
+            return TryResolveZombieModeSafeZoneExclusionSlot(position, out unusedCenter, out unusedRadius);
+        }
+
+        /// <summary>
+        /// 解析位置落在哪个安全区槽的敌人禁入范围内，并返回该槽的圆心与半径。
+        /// 弹出方向必须按敌人实际所在的那个槽计算，主槽优先。
+        /// </summary>
+        private bool TryResolveZombieModeSafeZoneExclusionSlot(Vector3 position, out Vector3 center, out float radius)
+        {
+            float padding = ZombieModeTuning.SafeZoneEnemyExclusionPadding;
+            if (IsPositionInsideZombieModeSafeZoneSlot(
+                    position,
+                    zombieModeRunState.ActiveSafeZoneActive,
+                    zombieModeRunState.ActiveSafeZoneCenter,
+                    zombieModeRunState.ActiveSafeZoneRadius,
+                    padding))
             {
-                return false;
+                center = zombieModeRunState.ActiveSafeZoneCenter;
+                radius = zombieModeRunState.ActiveSafeZoneRadius;
+                return true;
             }
 
-            float exclusionRadius = zombieModeRunState.ActiveSafeZoneRadius +
-                                    ZombieModeTuning.SafeZoneEnemyExclusionPadding;
-            Vector3 delta = position - zombieModeRunState.ActiveSafeZoneCenter;
-            delta.y = 0f;
-            return delta.sqrMagnitude <= exclusionRadius * exclusionRadius;
+            if (IsPositionInsideZombieModeSafeZoneSlot(
+                    position,
+                    zombieModeRunState.PortableSafeZoneActive,
+                    zombieModeRunState.PortableSafeZoneCenter,
+                    zombieModeRunState.PortableSafeZoneRadius,
+                    padding))
+            {
+                center = zombieModeRunState.PortableSafeZoneCenter;
+                radius = zombieModeRunState.PortableSafeZoneRadius;
+                return true;
+            }
+
+            center = Vector3.zero;
+            radius = 0f;
+            return false;
         }
 
         private bool ShouldSuppressZombieModeEnemyAggroForSafeZone()
         {
-            return zombieModeRunState.ActiveSafeZoneActive &&
+            return AnyZombieModeSafeZoneActive &&
                    IsZombieModePlayerInsideActiveSafeZone() &&
-                   !zombieModeRunState.SafeZoneStealthBroken &&
                    ZombieModePhaseGuards.AllowsSafeZone(zombieModeRunState.CombatPhase);
         }
 
-        private void KeepZombieModeEnemiesOutsideSafeZone()
+        /// <summary>
+        /// 把越界敌人推出安全区。suppressThreat 由 tick 统一判定后传入：
+        /// 物理禁入与仇恨抑制是两条独立规则，弹出不得擅自去仇恨。
+        /// </summary>
+        private void KeepZombieModeEnemiesOutsideSafeZone(bool suppressThreat)
         {
-            if (!zombieModeRunState.ActiveSafeZoneActive)
-            {
-                return;
-            }
-
-            Vector3 center = zombieModeRunState.ActiveSafeZoneCenter;
-            float radius = zombieModeRunState.ActiveSafeZoneRadius;
-            if (radius <= 0f)
+            if (!AnyZombieModeSafeZoneActive)
             {
                 return;
             }
@@ -141,7 +205,7 @@ namespace BossRush
                 TryMoveZombieModeEnemyOutsideSafeZone(
                     record.GameObject,
                     marker,
-                    !zombieModeRunState.SafeZoneStealthBroken);
+                    suppressThreat);
             }
         }
 
@@ -154,7 +218,7 @@ namespace BossRush
             ZombieModeEnemyRuntimeMarker marker,
             bool suppressThreat)
         {
-            if (enemyObject == null || !zombieModeRunState.ActiveSafeZoneActive)
+            if (enemyObject == null || !AnyZombieModeSafeZoneActive)
             {
                 return false;
             }
@@ -170,12 +234,15 @@ namespace BossRush
             }
 
             Transform enemyTransform = owner != null ? owner.transform : enemyObject.transform;
-            if (enemyTransform == null || !IsZombieModePositionInsideSafeZoneEnemyExclusion(enemyTransform.position))
+            Vector3 slotCenter;
+            float slotRadius;
+            if (enemyTransform == null ||
+                !TryResolveZombieModeSafeZoneExclusionSlot(enemyTransform.position, out slotCenter, out slotRadius))
             {
                 return false;
             }
 
-            Vector3 delta = enemyTransform.position - zombieModeRunState.ActiveSafeZoneCenter;
+            Vector3 delta = enemyTransform.position - slotCenter;
             delta.y = 0f;
             if (delta.sqrMagnitude < 0.01f)
             {
@@ -192,10 +259,10 @@ namespace BossRush
 
             float deltaDistanceSqr = delta.sqrMagnitude;
             float inverseDistance = 1f / Mathf.Sqrt(deltaDistanceSqr);
-            float ejectionRadius = zombieModeRunState.ActiveSafeZoneRadius +
+            float ejectionRadius = slotRadius +
                                    ZombieModeTuning.SafeZoneEnemyExclusionPadding +
                                    ZombieModeTuning.SafeZoneEnemyEjectionClearance;
-            Vector3 destination = zombieModeRunState.ActiveSafeZoneCenter +
+            Vector3 destination = slotCenter +
                                   delta * (ejectionRadius * inverseDistance);
             destination.y = enemyTransform.position.y;
             Vector3 resolved;
@@ -318,6 +385,9 @@ namespace BossRush
                 ai.forceTracePlayerDistance = 0f;
                 ai.searchedEnemy = null;
                 ai.noticed = false;
+                // 释放路径以这个开关早退。任何来源的逐敌抑制都必须记账，
+                // 否则被抑制的敌人再也不会恢复追击。
+                zombieModeRunState.SafeZoneThreatSuppressed = true;
                 return;
             }
 
@@ -338,8 +408,8 @@ namespace BossRush
         private bool ShouldZombieModeEnemyAggroPlayerNow()
         {
             return zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat ||
-                   (zombieModeRunState.ActiveSafeZoneActive &&
-                    (!IsZombieModePlayerInsideActiveSafeZone() || zombieModeRunState.SafeZoneStealthBroken));
+                   (AnyZombieModeSafeZoneActive &&
+                    !IsZombieModePlayerInsideActiveSafeZone());
         }
 
         private void TryRegisterZombieModeShootStealthBreaker(int runId)

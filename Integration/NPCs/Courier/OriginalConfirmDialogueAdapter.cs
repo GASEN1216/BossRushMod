@@ -38,7 +38,7 @@ namespace BossRush
     public static class OriginalConfirmDialogueAdapter
     {
         private const string CanvasName = "BossRush_SweepConfirmCanvas";
-        private const int SortingOrder = 10;
+        private const int SortingOrder = BossRushUILayers.ModalConfirm;
         private const float BackgroundAlpha = 0.45f;
         private const float PanelWidth = 680f;
         private const float PanelHeight = 300f;
@@ -177,6 +177,7 @@ namespace BossRush
                 panelRoot = new GameObject("Panel");
                 panelRoot.transform.SetParent(canvasRoot.transform, false);
                 Image panelImage = panelRoot.AddComponent<Image>();
+                BossRushUI.ApplyPanelSkin(panelImage, 14);
                 panelImage.color = new Color(0.12f, 0.12f, 0.12f, 0.94f);
                 RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);

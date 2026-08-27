@@ -774,6 +774,7 @@ namespace BossRush
             CleanupAchievementRuntime();
             SafeRuntime.Run("BossRushAchievementManager.ResetStaticCaches", () => BossRushAchievementManager.ResetStaticCaches());
             SafeRuntime.Run("AchievementIconLoader.ResetStaticCaches", () => AchievementIconLoader.ResetStaticCaches());
+            SafeRuntime.Run("BossRushUI.ResetStaticCaches", () => BossRushUI.ResetStaticCaches());
 
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();

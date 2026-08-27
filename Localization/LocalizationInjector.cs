@@ -574,7 +574,12 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieTideBeacon", "尸潮信标", "Zombie Tide Beacon");
             InjectZombieModeString("BossRush_ZombieTideBeacon_Desc", "在准备倒计时阶段使用，立即开始下一波。本局工具，不能带出。", "Use during preparation countdown to start the next wave immediately. Run-only tool.");
             InjectZombieModeString("BossRush_PortableSafeZoneDevice", "便携安全区装置", "Portable Safe-Zone Device");
-            InjectZombieModeString("BossRush_PortableSafeZoneDevice_Desc", "可在战斗或准备阶段于当前位置重新部署安全区，使用一次后消耗。", "Redeploy the safe zone at your position during combat or preparation; consumed after one use.");
+            // 描述只有一份事实来源：PortableSafeZoneDeviceConfig 的常量。
+            // 这里在 InjectLocalization() 之后再注入同一个 key，写死文案会静默覆盖掉配置里的版本。
+            InjectZombieModeString(
+                "BossRush_PortableSafeZoneDevice_Desc",
+                PortableSafeZoneDeviceConfig.DESCRIPTION_CN,
+                PortableSafeZoneDeviceConfig.DESCRIPTION_EN);
             InjectZombieModeString("BossRush_ZombieMode_Notify_PortableSafeZoneNotZombieMode", "便携安全区装置只能在丧尸模式中使用。", "The Portable Safe-Zone Device can only be used in Zombie Mode.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_PortableSafeZoneUnavailable", "当前阶段无法部署安全区。", "The safe zone cannot be deployed during the current phase.");
             InjectZombieModeString("BossRush_ZombieMode_Notify_PortableSafeZoneDeployed", "便携安全区已部署。", "Portable safe zone deployed.");
@@ -637,7 +642,6 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_Inside", "在安全区内", "Inside Safe Zone");
             InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_Outside", "离开安全区", "Outside Safe Zone");
             InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_StealthOk", "安全区：有效", "Safe Zone: Active");
-            InjectZombieModeString("BossRush_ZombieMode_Hud_SafeZone_StealthBroken", "安全区：已取消", "Safe Zone: Cancelled");
             InjectZombieModeString("BossRush_ZombieMode_Map_SafeZone", "安全区", "Safe Zone");
             InjectZombieModeString("BossRush_ZombieMode_Hud_RefreshAvailable", "免费刷新 {0}", "Free Refresh {0}");
             InjectZombieModeString("BossRush_ZombieMode_Hud_BeaconReady", "信标可用", "Beacon Ready");
@@ -653,7 +657,6 @@ namespace BossRush
             InjectZombieModeString("BossRush_ZombieMode_Banner_BossWaveCleared", "<color=yellow>Boss 节点完成</color>", "<color=yellow>Boss Node Cleared</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_PollutionUp", "<color=#bb55ff>污染上升至 {0}（{1}）</color>", "<color=#bb55ff>Pollution rose to {0} ({1})</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_ExtractionOpen", "<color=#22aaff>撤离点已开放</color>", "<color=#22aaff>Extraction Open</color>");
-            InjectZombieModeString("BossRush_ZombieMode_Banner_StealthBroken", "<color=#ff7733>安全区已取消</color>", "<color=#ff7733>Safe Zone Cancelled</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_SafeZoneCancelled", "<color=#ff7733>安全区已取消</color>", "<color=#ff7733>Safe Zone Cancelled</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_PerformanceProtect", "<color=gray>[Dev] 性能保护已启用</color>", "<color=gray>[Dev] Performance protect</color>");
             InjectZombieModeString("BossRush_ZombieMode_Banner_RepairPackReceived", "<color=#88dd44>已领取工事补给包</color>", "<color=#88dd44>Fortification Pack Received</color>");

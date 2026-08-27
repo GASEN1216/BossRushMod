@@ -22,7 +22,6 @@ REQUIRED_MODEL_SNIPPETS = [
     "public enum ZombieModeBossKind",
     "public static class ZombieModeTuning",
     "PreparationCountdownSeconds = 45f",
-    "BossPreparationCountdownSeconds = 45f",
     "BeaconChannelDurationSeconds = 3f",
     "ExtractionCountdownSeconds = 15f",
     "public static class ZombieModePhaseGuards",

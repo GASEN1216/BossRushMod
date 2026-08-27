@@ -32,7 +32,7 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 | `WavesArena/` | 标准 BossRush 与无间炼狱波次逻辑 |
 | `ModeD/`、`ModeE/`、`ModeF/` | 白手起家、划地为营、血猎追击 |
 | `ZombieMode/` | 末日丧尸模式，独立生命周期和奖励系统 |
-| `Common/` | 共享特效、装备能力、地图配置、统计 modifier、通用模型 |
+| `Common/` | 共享特效、装备能力、地图配置、统计 modifier、通用模型、共享 UI 库（`Common/UI/BossRushUI.cs`） |
 | `Utilities/` | 跨模块运行时 hooks、刷怪核心、场景门控、缓存、敌人恢复 |
 | `Patches/` | Harmony 补丁分组 |
 | `Config/` | 运行时配置、NPC 刷新点、黑名单等 |
@@ -72,9 +72,9 @@ cmd.exe /c "cd /d D:\...\BossRushMod && compile_official.bat"
 
 自定义物品/装备 TypeID 使用 5000xx 区间，严格递增，不回填已删 ID。TypeID 会进入存档键、掉落表、Wiki、调试流程，复用属于存档兼容风险。
 
-- 当前登记范围：`500001-500057`。
+- 当前登记范围：`500001-500058`。
 - 已知空缺：`500009`、`500047` 仍视为保留空洞，不回填。
-- 下一可用：`500058`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
+- 下一可用：`500059`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 - Boss/NPC/建筑字符串 ID 不占此序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -136,6 +136,20 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 - `zh/meta/`：repowiki 元数据。
 
 凡修改被这些文档描述的行为、架构、配置、Boss/NPC/装备/物品内容、流程或约束时，必须同步更新对应知识卡与内容文档（新增、改写或标注），保持 repowiki 与代码基线一致；新增子系统或大功能时补充对应条目。这属于变更的一部分，repowiki 内容过时视为未完成变更。
+
+
+### 4.14 UI 走共享库，不再各写各的
+
+新建或改动界面时：
+
+- Canvas 的 `sortingOrder` 一律引用 `BossRushUILayers` 常量，不写魔法数字。历史上这些值分成 10~1001 与 28000~32000 两个孤岛，跨模式叠加时谁压谁靠运气。
+- 颜色用 `BossRushUIColors` 的设计 token，尤其遮罩必须用 `Backdrop`，不要再引入第二套 `(0,0,0,0.7)`。
+- 面板/按钮/卡片底图走 `BossRushUI.ApplyPanelSkin`，当前是运行时程序化圆角九宫格，将来换美术图集时通过 `BossRushUISkin` 注入，调用方零改动（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。
+- 字体一律 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，**不要用 `Resources.GetBuiltinResource<Font>("Arial.ttf")`**——内置 Arial 渲染不了中文。新建文本用 TMP，不要用 legacy `UI.Text`。
+- `CanvasScaler` 必须调 `ZombieModeUIHelper.ConfigureCanvasScaler`；只 `AddComponent` 不配置会退化成 `ConstantPixelSize`，高分屏上面板会缩成一小块。
+- 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）的地方优先复用官方，不要用共享库重造。
+
+由 `tests/BossRushUISharedLibraryGuard.py` 守卫。
 
 ## 5. 不可破坏契约
 
@@ -247,6 +261,8 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 根级 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md` 是当前 AI 协作流程入口；旧 `docs/` 路径保留转发，避免老工具失联。
 
 ## 14. 最后更新
+
+2026-08-27：新增共享 UI 库 `Common/UI/BossRushUI.cs` 并登记 UI 约定（4.14）；TypeID 台账更新至 500058（下一可用 500059）。
 
 2026-08-12：登记 `.qoder/repowiki/` 为仓库详细 Wiki 内容库并纳入同步维护（4.13）。
 

@@ -66,7 +66,7 @@ namespace BossRush
         private static Sprite modeFBountyRadarPanelSprite = null;
         private static readonly Color ModeFBountyRadarRegularColor = new Color(1f, 0.48f, 0.22f, 1f);
         private static readonly Color ModeFBountyRadarLeaderColor = new Color(1f, 0.83f, 0.30f, 1f);
-        private static readonly Color ModeFBountyRadarDistancePanelColor = new Color(0.025f, 0.03f, 0.035f, 0.14f);
+        private static readonly Color ModeFBountyRadarDistancePanelColor = new Color(0.025f, 0.03f, 0.035f, 0.55f);
 
         private struct ModeFBountyRadarTarget
         {
@@ -294,25 +294,42 @@ namespace BossRush
 
                 string modeName = L10n.T("<color=red>血猎追击</color>", "<color=red>Bloodhunt</color>");
                 string phaseName = GetModeFPhaseName(modeFState.CurrentPhase);
+                string bloodfireStatus = BuildModeFBloodfireStatusText();
                 float remaining = modeFState.PhaseDuration - modeFState.PhaseElapsed;
 
                 if (modeFState.CurrentPhase == ModeFPhase.Extraction)
                 {
                     ShowBigBanner(L10n.T(
-                        modeName + " | <color=green>" + phaseName + "</color> | 掉血率: 3%/s | 速速撤离！",
-                        modeName + " | <color=green>" + phaseName + "</color> | Bleed: 3%/s | Evacuate now!"
+                        modeName + " | <color=green>" + phaseName + "</color> | " + bloodfireStatus + " | 掉血率: 3%/s | 速速撤离！",
+                        modeName + " | <color=green>" + phaseName + "</color> | " + bloodfireStatus + " | Bleed: 3%/s | Evacuate now!"
                     ));
                 }
                 else
                 {
                     int remainSec = Mathf.CeilToInt(remaining);
                     ShowBigBanner(L10n.T(
-                        modeName + " | " + phaseName + " | 剩余 <color=yellow>" + remainSec + "</color> 秒",
-                        modeName + " | " + phaseName + " | <color=yellow>" + remainSec + "</color>s remaining"
+                        modeName + " | " + phaseName + " | " + bloodfireStatus + " | 剩余 <color=yellow>" + remainSec + "</color> 秒",
+                        modeName + " | " + phaseName + " | " + bloodfireStatus + " | <color=yellow>" + remainSec + "</color>s remaining"
                     ));
                 }
             }
             catch { }
+        }
+
+        private string BuildModeFBloodfireStatusText()
+        {
+            if (modeFState.BloodfireOverloadActive)
+            {
+                int remainingSeconds = Mathf.CeilToInt(modeFState.BloodfireOverloadRemaining);
+                return L10n.T(
+                    "<color=#FF4500>命火过载 " + remainingSeconds + "秒</color>",
+                    "<color=#FF4500>Overload " + remainingSeconds + "s</color>");
+            }
+
+            int charge = Mathf.RoundToInt(modeFState.BloodfireCharge);
+            return L10n.T(
+                "命火 <color=#FF8C00>" + charge + "/100</color>",
+                "Bloodfire <color=#FF8C00>" + charge + "/100</color>");
         }
 
         /// <summary>
@@ -375,14 +392,14 @@ namespace BossRush
         /// <summary>
         /// 显示奖励气泡
         /// </summary>
-        private void ShowModeFRewardBubble(string text)
+        private void ShowModeFRewardBubble(string text, float duration = 2.5f)
         {
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null || player.transform == null) return;
 
-                DialogueBubblesManager.Show(text, player.transform, 2.5f, false, false, -1f, 3f);
+                DialogueBubblesManager.Show(text, player.transform, duration, false, false, -1f, 3f);
             }
             catch { }
         }

@@ -41,6 +41,11 @@ namespace BossRush
             return "BossRush_ZombieMode_Notify_PortableSafeZoneUnavailable";
         }
 
+        /// <summary>
+        /// 部署便携安全区。战斗中部署替换主槽，波次结束时随准备期清理消失，
+        /// 之后正常流程会重新生成带商人的安全区；准备期部署则写入独立副槽，
+        /// 与正常安全区（及其商人）并存，下一波开始时一起清除。
+        /// </summary>
         public bool TryUseZombieModePortableSafeZoneDevice()
         {
             if (!CanUseZombieModePortableSafeZoneDevice())
@@ -49,7 +54,14 @@ namespace BossRush
                 return false;
             }
 
-            CreateZombieModeSafeZone(zombieModeRunState.RunId, false, true, true);
+            if (zombieModeRunState.CombatPhase == ZombieModeCombatPhase.Combat)
+            {
+                CreateZombieModeSafeZone(zombieModeRunState.RunId, false, true, true);
+            }
+            else
+            {
+                CreateZombieModeSafeZone(zombieModeRunState.RunId, false, false, true, true);
+            }
             NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_PortableSafeZoneDeployed"));
             return true;
         }
@@ -449,7 +461,12 @@ namespace BossRush
             }
         }
 
-        private void CleanupZombieModePreparationObjects(int runId, bool preservePortableSafeZone = false)
+        /// <summary>
+        /// 清理准备期对象。两个安全区槽都在此清除：战斗期部署的便携区在波次结束时消失，
+        /// 之后由 BeginZombieModePreparation 重新生成带商人的正常安全区；准备期部署的
+        /// 便携副槽则随下一波开始一起清除。
+        /// </summary>
+        private void CleanupZombieModePreparationObjects(int runId)
         {
             if (!IsZombieModeRunValid(runId))
             {
@@ -458,47 +475,29 @@ namespace BossRush
 
             ClearZombieModeExtractionOpportunityUi();
             TryReleaseZombieModeExtractionCountdownUi();
-            bool keepPortableSafeZone = preservePortableSafeZone &&
-                                        zombieModeRunState.ActiveSafeZoneActive &&
-                                        zombieModeRunState.ActiveSafeZonePortable;
             ReleaseZombieModeSafeZoneThreatSuppression();
-            if (!keepPortableSafeZone)
-            {
-                RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
-                RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);
-            }
+            RecycleZombieModeSafeZoneBoundTemporaryNpcs(runId);
+            RecycleZombieModeSafeZoneBoundTemporaryRealNpcs(runId);
 
             DestroyZombieModeActiveExtractionArea();
 
-            if (!keepPortableSafeZone && zombieModeRunState.ActiveSafeZoneVisual != null)
+            if (zombieModeRunState.ActiveSafeZoneVisual != null)
             {
+                RemoveZombieModeSafeZoneRunOnlyRecord(zombieModeRunState.ActiveSafeZoneVisual);
                 try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneVisual 失败: " + e.Message); }
             }
-            if (!keepPortableSafeZone)
-            {
-                DestroyZombieModeSafeZoneMapPoi();
-            }
+            DestroyZombieModeSafeZoneMapPoi();
+            ClearZombieModePortableSafeZoneSlot();
 
-            if (!keepPortableSafeZone)
-            {
-                zombieModeRunState.ActiveSafeZoneCenter = Vector3.zero;
-                zombieModeRunState.ActiveSafeZoneRadius = 0f;
-                zombieModeRunState.ActiveSafeZoneActive = false;
-                zombieModeRunState.ActiveSafeZonePortable = false;
-                zombieModeRunState.SafeZoneStealthBroken = false;
-                zombieModeRunState.PlayerInsideSafeZone = false;
-                zombieModeRunState.SafeZoneThreatSuppressed = false;
-                zombieModeRunState.LastSafeZoneTickTime = 0f;
-                zombieModeRunState.ActiveSafeZoneVisual = null;
-                zombieModeRunState.ActiveSafeZoneMapPoi = null;
-            }
-            else
-            {
-                zombieModeRunState.SafeZoneStealthBroken = false;
-                zombieModeRunState.PlayerInsideSafeZone = false;
-                zombieModeRunState.SafeZoneThreatSuppressed = false;
-                zombieModeRunState.LastSafeZoneTickTime = 0f;
-            }
+            zombieModeRunState.ActiveSafeZoneCenter = Vector3.zero;
+            zombieModeRunState.ActiveSafeZoneRadius = 0f;
+            zombieModeRunState.ActiveSafeZoneActive = false;
+            zombieModeRunState.ActiveSafeZonePortable = false;
+            zombieModeRunState.PlayerInsideSafeZone = false;
+            zombieModeRunState.SafeZoneThreatSuppressed = false;
+            zombieModeRunState.LastSafeZoneTickTime = 0f;
+            zombieModeRunState.ActiveSafeZoneVisual = null;
+            zombieModeRunState.ActiveSafeZoneMapPoi = null;
         }
 
         private void DestroyZombieModeActiveExtractionArea()
@@ -514,9 +513,13 @@ namespace BossRush
             try { Destroy(area.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ExtractionArea 失败: " + e.Message); }
         }
 
+        /// <summary>
+        /// 玩家在区内主动攻击丧尸时取消安全区。主槽与便携副槽一并取消，
+        /// 不留下“攻击后仍有半个保护区”的暧昧状态。
+        /// </summary>
         private void CancelZombieModeSafeZone(int runId, string reason)
         {
-            if (!IsZombieModeRunValid(runId) || !zombieModeRunState.ActiveSafeZoneActive)
+            if (!IsZombieModeRunValid(runId) || !AnyZombieModeSafeZoneActive)
             {
                 return;
             }
@@ -531,12 +534,12 @@ namespace BossRush
                 try { Destroy(zombieModeRunState.ActiveSafeZoneVisual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy cancelled safe-zone visual 失败: " + e.Message); }
             }
             DestroyZombieModeSafeZoneMapPoi();
+            ClearZombieModePortableSafeZoneSlot();
 
             zombieModeRunState.ActiveSafeZoneCenter = Vector3.zero;
             zombieModeRunState.ActiveSafeZoneRadius = 0f;
             zombieModeRunState.ActiveSafeZoneActive = false;
             zombieModeRunState.ActiveSafeZonePortable = false;
-            zombieModeRunState.SafeZoneStealthBroken = false;
             zombieModeRunState.PlayerInsideSafeZone = false;
             zombieModeRunState.SafeZoneThreatSuppressed = false;
             zombieModeRunState.LastSafeZoneTickTime = 0f;
@@ -546,18 +549,30 @@ namespace BossRush
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Banner_SafeZoneCancelled"));
         }
 
+        /// <summary>
+        /// 创建安全区。useSecondarySlot=true 时写入便携副槽：与主槽并存、不带商人、
+        /// 不回收主槽绑定的服务 NPC，仅供准备期部署便携装置使用。
+        /// </summary>
         private void CreateZombieModeSafeZone(
             int runId,
             bool includeMerchantTerminal = true,
             bool clearBoundServices = true,
-            bool portable = false)
+            bool portable = false,
+            bool useSecondarySlot = false)
         {
             if (!IsZombieModeRunValid(runId))
             {
                 return;
             }
 
-            ResetZombieModeSafeZoneForReplacement(runId, clearBoundServices);
+            if (useSecondarySlot)
+            {
+                ClearZombieModePortableSafeZoneSlot();
+            }
+            else
+            {
+                ResetZombieModeSafeZoneForReplacement(runId, clearBoundServices);
+            }
 
             CharacterMainControl player = CharacterMainControl.Main;
             Vector3 position = player != null ? player.transform.position : Vector3.zero;
@@ -574,14 +589,24 @@ namespace BossRush
 
             ZombieModeSafeZoneController controller = safeZone.AddComponent<ZombieModeSafeZoneController>();
             controller.Initialize(runId);
-            zombieModeRunState.ActiveSafeZoneCenter = position;
-            zombieModeRunState.ActiveSafeZoneRadius = ZombieModeTuning.SafeZoneRadius;
-            zombieModeRunState.ActiveSafeZoneActive = true;
-            zombieModeRunState.ActiveSafeZonePortable = portable;
+            if (useSecondarySlot)
+            {
+                zombieModeRunState.PortableSafeZoneCenter = position;
+                zombieModeRunState.PortableSafeZoneRadius = ZombieModeTuning.SafeZoneRadius;
+                zombieModeRunState.PortableSafeZoneActive = true;
+                zombieModeRunState.PortableSafeZoneVisual = safeZone;
+            }
+            else
+            {
+                zombieModeRunState.ActiveSafeZoneCenter = position;
+                zombieModeRunState.ActiveSafeZoneRadius = ZombieModeTuning.SafeZoneRadius;
+                zombieModeRunState.ActiveSafeZoneActive = true;
+                zombieModeRunState.ActiveSafeZonePortable = portable;
+                zombieModeRunState.ActiveSafeZoneVisual = safeZone;
+            }
             zombieModeRunState.LastSafeZoneTickTime = 0f;
-            zombieModeRunState.ActiveSafeZoneVisual = safeZone;
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.SafeZone, safeZone, controller, null);
-            CreateZombieModeSafeZoneMapPoi(runId, position);
+            CreateZombieModeSafeZoneMapPoi(runId, position, useSecondarySlot);
             if (includeMerchantTerminal)
             {
                 EnsureZombieModeSafeZoneMerchantTerminal(runId);
@@ -619,7 +644,6 @@ namespace BossRush
             zombieModeRunState.ActiveSafeZoneRadius = 0f;
             zombieModeRunState.ActiveSafeZoneActive = false;
             zombieModeRunState.ActiveSafeZonePortable = false;
-            zombieModeRunState.SafeZoneStealthBroken = false;
             zombieModeRunState.PlayerInsideSafeZone = false;
             zombieModeRunState.SafeZoneThreatSuppressed = false;
             zombieModeRunState.LastSafeZoneTickTime = 0f;
@@ -722,14 +746,14 @@ namespace BossRush
             }
         }
 
-        private void CreateZombieModeSafeZoneMapPoi(int runId, Vector3 position)
+        private void CreateZombieModeSafeZoneMapPoi(int runId, Vector3 position, bool secondarySlot = false)
         {
             if (!IsZombieModeRunValid(runId))
             {
                 return;
             }
 
-            DestroyZombieModeSafeZoneMapPoi();
+            DestroyZombieModeSafeZoneMapPoi(secondarySlot);
 
             string sceneId = ResolveZombieModeSafeZoneMapSceneId();
             string displayName = L10n.T("BossRush_ZombieMode_Map_SafeZone");
@@ -759,7 +783,14 @@ namespace BossRush
             poi.IsArea = true;
             poi.AreaRadius = ZombieModeTuning.SafeZoneRadius;
             poi.Setup(null, displayName, false, sceneId);
-            zombieModeRunState.ActiveSafeZoneMapPoi = poi;
+            if (secondarySlot)
+            {
+                zombieModeRunState.PortableSafeZoneMapPoi = poi;
+            }
+            else
+            {
+                zombieModeRunState.ActiveSafeZoneMapPoi = poi;
+            }
             RegisterZombieModeRunOnlyObject(runId, ZombieModeRunOnlyObjectKind.SafeZone, poi.gameObject, poi, null);
             DevLog("[ZombieMode] 安全区地图标记已创建: sceneId=" + sceneId
                 + ", activeScene=" + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
@@ -796,8 +827,21 @@ namespace BossRush
             return zombieModeRunState.SceneName;
         }
 
-        private void DestroyZombieModeSafeZoneMapPoi()
+        private void DestroyZombieModeSafeZoneMapPoi(bool secondarySlot = false)
         {
+            if (secondarySlot)
+            {
+                if (zombieModeRunState.PortableSafeZoneMapPoi == null)
+                {
+                    return;
+                }
+
+                RemoveZombieModeSafeZoneRunOnlyRecord(zombieModeRunState.PortableSafeZoneMapPoi);
+                try { Destroy(zombieModeRunState.PortableSafeZoneMapPoi.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy PortableSafeZoneMapPoi 失败: " + e.Message); }
+                zombieModeRunState.PortableSafeZoneMapPoi = null;
+                return;
+            }
+
             if (zombieModeRunState.ActiveSafeZoneMapPoi == null)
             {
                 return;
@@ -806,6 +850,27 @@ namespace BossRush
             RemoveZombieModeSafeZoneRunOnlyRecord(zombieModeRunState.ActiveSafeZoneMapPoi);
             try { Destroy(zombieModeRunState.ActiveSafeZoneMapPoi.gameObject); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy ActiveSafeZoneMapPoi 失败: " + e.Message); }
             zombieModeRunState.ActiveSafeZoneMapPoi = null;
+        }
+
+        /// <summary>
+        /// 清除便携安全区副槽。副槽不带商人、不绑定服务 NPC，因此不回收 SafeZoneBound NPC，
+        /// 也不触碰主槽的任何状态。
+        /// </summary>
+        private void ClearZombieModePortableSafeZoneSlot()
+        {
+            GameObject visual = zombieModeRunState.PortableSafeZoneVisual;
+            if (visual != null)
+            {
+                RemoveZombieModeSafeZoneRunOnlyRecord(visual);
+                try { Destroy(visual); } catch (System.Exception e) { DevLog("[ZombieMode] Destroy portable safe-zone visual 失败: " + e.Message); }
+            }
+            DestroyZombieModeSafeZoneMapPoi(true);
+
+            zombieModeRunState.PortableSafeZoneCenter = Vector3.zero;
+            zombieModeRunState.PortableSafeZoneRadius = 0f;
+            zombieModeRunState.PortableSafeZoneActive = false;
+            zombieModeRunState.PortableSafeZoneVisual = null;
+            zombieModeRunState.PortableSafeZoneMapPoi = null;
         }
 
         private Vector3 ValidateZombieModeSafeZonePosition(Vector3 candidate)
@@ -836,21 +901,28 @@ namespace BossRush
 
         public void UpdateZombieModeSafeZoneVisual()
         {
-            if (!IsZombieModeActive || zombieModeRunState.ActiveSafeZoneVisual == null)
+            if (!IsZombieModeActive)
             {
                 return;
             }
 
-            Renderer renderer = zombieModeRunState.ActiveSafeZoneVisual.GetComponent<Renderer>();
+            UpdateZombieModeSafeZoneSlotVisual(false);
+            UpdateZombieModeSafeZoneSlotVisual(true);
+        }
+
+        private void UpdateZombieModeSafeZoneSlotVisual(bool secondarySlot)
+        {
+            GameObject visual = secondarySlot
+                ? zombieModeRunState.PortableSafeZoneVisual
+                : zombieModeRunState.ActiveSafeZoneVisual;
+            if (visual == null)
+            {
+                return;
+            }
+
+            Renderer renderer = visual.GetComponent<Renderer>();
             if (renderer == null)
             {
-                return;
-            }
-
-            if (zombieModeRunState.SafeZoneStealthBroken)
-            {
-                SetZombieModeRendererColor(renderer, new Color(0.85f, 0.42f, 0.20f, 0.40f));
-                UpdateZombieModeSafeZoneMapPoiColor(new Color(0.85f, 0.42f, 0.20f, 0.75f));
                 return;
             }
 
@@ -860,22 +932,25 @@ namespace BossRush
                 float flash = Mathf.PingPong(Time.unscaledTime / ZombieModeTuning.SafeZoneFlashCycleSeconds, 1f);
                 float alpha = Mathf.Lerp(0.15f, 0.55f, flash);
                 SetZombieModeRendererColor(renderer, new Color(0.92f, 0.72f, 0.18f, alpha));
-                UpdateZombieModeSafeZoneMapPoiColor(new Color(0.92f, 0.72f, 0.18f, 0.75f));
+                UpdateZombieModeSafeZoneMapPoiColor(new Color(0.92f, 0.72f, 0.18f, 0.75f), secondarySlot);
                 return;
             }
 
             SetZombieModeRendererColor(renderer, new Color(0.12f, 0.88f, 0.36f, 0.62f));
-            UpdateZombieModeSafeZoneMapPoiColor(new Color(0.12f, 0.88f, 0.36f, 0.85f));
+            UpdateZombieModeSafeZoneMapPoiColor(new Color(0.12f, 0.88f, 0.36f, 0.85f), secondarySlot);
         }
 
-        private void UpdateZombieModeSafeZoneMapPoiColor(Color color)
+        private void UpdateZombieModeSafeZoneMapPoiColor(Color color, bool secondarySlot = false)
         {
-            if (zombieModeRunState.ActiveSafeZoneMapPoi == null)
+            SimplePointOfInterest poi = secondarySlot
+                ? zombieModeRunState.PortableSafeZoneMapPoi
+                : zombieModeRunState.ActiveSafeZoneMapPoi;
+            if (poi == null)
             {
                 return;
             }
 
-            zombieModeRunState.ActiveSafeZoneMapPoi.Color = color;
+            poi.Color = color;
         }
     }
 

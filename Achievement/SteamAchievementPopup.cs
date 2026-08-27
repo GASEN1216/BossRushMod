@@ -351,13 +351,13 @@ namespace BossRush
             titleRect.anchoredPosition = new Vector2(textStartX, 12f);
             titleRect.sizeDelta = new Vector2(220f, 24f);
 
-            Text titleText = titleObj.AddComponent<Text>();
-            titleText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            TMPro.TextMeshProUGUI titleText = titleObj.AddComponent<TMPro.TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(titleText);
             titleText.fontSize = 16;
             titleText.color = TITLE_COLOR;
-            titleText.alignment = TextAnchor.MiddleLeft;
-            titleText.horizontalOverflow = HorizontalWrapMode.Overflow;
-            titleText.verticalOverflow = VerticalWrapMode.Overflow;
+            titleText.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+            titleText.enableWordWrapping = false;
+            titleText.overflowMode = TMPro.TextOverflowModes.Overflow;
             titleText.raycastTarget = false;
             titleText.text = isChinese ? achievement.nameCN : achievement.nameEN;
 
@@ -372,13 +372,13 @@ namespace BossRush
             descRect.anchoredPosition = new Vector2(textStartX, -12f);
             descRect.sizeDelta = new Vector2(220f, 20f);
 
-            Text descText = descObj.AddComponent<Text>();
-            descText.font = Resources.GetBuiltinResource<Font>("Arial.ttf");
+            TMPro.TextMeshProUGUI descText = descObj.AddComponent<TMPro.TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(descText);
             descText.fontSize = 13;
             descText.color = DESC_COLOR;
-            descText.alignment = TextAnchor.MiddleLeft;
-            descText.horizontalOverflow = HorizontalWrapMode.Overflow;
-            descText.verticalOverflow = VerticalWrapMode.Overflow;
+            descText.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+            descText.enableWordWrapping = false;
+            descText.overflowMode = TMPro.TextOverflowModes.Overflow;
             descText.raycastTarget = false;
             descText.text = isChinese ? achievement.descCN : achievement.descEN;
         }

@@ -191,8 +191,11 @@ namespace BossRush
                 string killMsg = BuildModeFKillRewardBubbleText(
                     isBounty,
                     killReward.healAmount,
-                    killReward.maxHealthGain);
-                ShowModeFRewardBubble(killMsg);
+                    killReward.maxHealthGain,
+                    killReward.bloodfireGain,
+                    killReward.overloadStarted,
+                    killReward.overloadExtension);
+                ShowModeFRewardBubble(killMsg, killReward.overloadStarted ? 4f : 2.5f);
 
                 ApplyModeFPhasePressure();
 

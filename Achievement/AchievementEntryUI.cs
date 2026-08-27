@@ -122,6 +122,7 @@ namespace BossRush
 
             // 背景图片
             Image bgImage = entryObj.AddComponent<Image>();
+            BossRushUI.ApplyPanelSkin(bgImage, 10);
             bgImage.color = BgColor;
 
             // 内边距容器
@@ -135,6 +136,7 @@ namespace BossRush
             innerRect.offsetMax = new Vector2(-2f, -2f);
 
             Image innerBg = innerObj.AddComponent<Image>();
+            BossRushUI.ApplyPanelSkin(innerBg, 8);
             innerBg.color = BgColorLocked;
 
             AchievementEntryUI entry = entryObj.AddComponent<AchievementEntryUI>();
@@ -215,6 +217,7 @@ namespace BossRush
             nameRect.offsetMax = new Vector2(-100f, -2f);
 
             nameText = nameObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(nameText);
             nameText.fontSize = 20;
             nameText.fontStyle = FontStyles.Bold;
             nameText.color = TextColor;
@@ -232,6 +235,7 @@ namespace BossRush
             descRect.offsetMax = new Vector2(-100f, -2f);
 
             descText = descObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(descText);
             descText.fontSize = 15;
             descText.color = DescColor;
             descText.alignment = TextAlignmentOptions.Left;
@@ -255,6 +259,7 @@ namespace BossRush
             rewardRect.sizeDelta = new Vector2(80f, 20f);
 
             rewardText = rewardObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(rewardText);
             rewardText.fontSize = 17;
             rewardText.fontStyle = FontStyles.Bold;
             rewardText.color = GoldColor;
@@ -273,6 +278,7 @@ namespace BossRush
             buttonRect.sizeDelta = new Vector2(75f, 30f);
 
             claimButtonImage = buttonObj.AddComponent<Image>();
+            BossRushUI.ApplyPanelSkin(claimButtonImage, 6);
             claimButtonImage.color = ButtonColor;
 
             claimButton = buttonObj.AddComponent<Button>();
@@ -290,6 +296,7 @@ namespace BossRush
             buttonTextRect.offsetMax = Vector2.zero;
 
             claimButtonText = buttonTextObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(claimButtonText);
             claimButtonText.fontSize = 15;
             claimButtonText.fontStyle = FontStyles.Bold;
             claimButtonText.color = Color.white;

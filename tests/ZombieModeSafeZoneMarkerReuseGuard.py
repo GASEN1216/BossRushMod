@@ -38,7 +38,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 def main() -> int:
     text = SOURCE.read_text(encoding="utf-8-sig")
     spawner_text = SPAWNER.read_text(encoding="utf-8-sig")
-    keep = extract_method_body(text, "private void KeepZombieModeEnemiesOutsideSafeZone()")
+    keep = extract_method_body(text, "private void KeepZombieModeEnemiesOutsideSafeZone(bool suppressThreat)")
     eject = extract_method_body(text, "private bool TryMoveZombieModeEnemyOutsideSafeZone(")
     suppress = extract_method_body(text, "private void SuppressZombieModeSafeZoneThreats()")
     release = extract_method_body(text, "private void ReleaseZombieModeSafeZoneThreatSuppression()")

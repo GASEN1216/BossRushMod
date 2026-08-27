@@ -40,11 +40,11 @@ namespace BossRush
         private static readonly Color TitleColor = new Color32(255, 215, 0, 255);
         private static readonly Color StatsColor = new Color32(180, 180, 180, 255);
         private static readonly Color ProgressBarBgColor = new Color32(40, 42, 50, 255);
-        private static readonly Color ProgressBarFillColor = new Color32(76, 175, 80, 255);
-        private static readonly Color ButtonColor = new Color32(76, 175, 80, 255);
-        private static readonly Color ButtonHoverColor = new Color32(100, 200, 100, 255);
+        private static readonly Color ProgressBarFillColor = BossRushUIColors.Accent;
+        private static readonly Color ButtonColor = BossRushUIColors.Success;
+        private static readonly Color ButtonHoverColor = new Color(0.24f, 0.66f, 0.45f, 1f);
         private static readonly Color ButtonDisabledColor = new Color32(60, 60, 65, 255);
-        private static readonly Color CloseButtonColor = new Color32(180, 50, 50, 255);
+        private static readonly Color CloseButtonColor = BossRushUIColors.Danger;
         private static readonly Color ScrollBgColor = new Color32(15, 17, 22, 255);
 
         #endregion
@@ -153,11 +153,12 @@ namespace BossRush
 
             canvas = canvasObj.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.sortingOrder = 10;
+            canvas.sortingOrder = BossRushUILayers.Panel;
 
+            // 原本 sortingOrder=10 会被任何模态压住；Scaler 也没设 match，
+            // 默认只按宽度缩放，超宽屏上面板会溢出。
             CanvasScaler scaler = canvasObj.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920, 1080);
+            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
 
             canvasObj.AddComponent<GraphicRaycaster>();
 
@@ -165,7 +166,7 @@ namespace BossRush
             GameObject bgObj = new GameObject("Background");
             bgObj.transform.SetParent(canvasObj.transform, false);
             Image bgImage = bgObj.AddComponent<Image>();
-            bgImage.color = new Color(0f, 0f, 0f, 0.7f);
+            bgImage.color = BossRushUIColors.Backdrop;
             RectTransform bgRect = bgObj.GetComponent<RectTransform>();
             bgRect.anchorMin = Vector2.zero;
             bgRect.anchorMax = Vector2.one;
@@ -207,6 +208,7 @@ namespace BossRush
             panelRect.sizeDelta = new Vector2(calculatedPanelWidth, calculatedPanelHeight);
 
             Image panelImage = panelRoot.AddComponent<Image>();
+            BossRushUI.ApplyPanelSkin(panelImage, 14);
             panelImage.color = PanelBgColor;
 
             Button panelButton = panelRoot.AddComponent<Button>();
@@ -242,6 +244,8 @@ namespace BossRush
             titleRect.offsetMax = new Vector2(-50f, 0f);
 
             titleText = titleObj.AddComponent<TextMeshProUGUI>();
+
+            BossRushUI.ApplyGameFont(titleText);
             titleText.fontSize = 24;
             titleText.fontStyle = FontStyles.Bold;
             titleText.color = TitleColor;
@@ -284,6 +288,7 @@ namespace BossRush
                 closeRect.sizeDelta = new Vector2(35f, 35f);
 
                 Image closeImage = closeObj.AddComponent<Image>();
+                BossRushUI.ApplyPanelSkin(closeImage, 6);
                 closeImage.color = CloseButtonColor;
 
                 exitButton = closeObj.AddComponent<Button>();
@@ -300,6 +305,8 @@ namespace BossRush
                 closeTextRect.offsetMax = Vector2.zero;
 
                 TextMeshProUGUI closeText = closeTextObj.AddComponent<TextMeshProUGUI>();
+
+                BossRushUI.ApplyGameFont(closeText);
                 closeText.fontSize = 20;
                 closeText.color = Color.white;
                 closeText.alignment = TextAlignmentOptions.Center;
@@ -352,6 +359,8 @@ namespace BossRush
             statsTextRect.offsetMax = Vector2.zero;
 
             statsText = statsTextObj.AddComponent<TextMeshProUGUI>();
+
+            BossRushUI.ApplyGameFont(statsText);
             statsText.fontSize = 14;
             statsText.color = StatsColor;
             statsText.alignment = TextAlignmentOptions.Left;
@@ -368,6 +377,7 @@ namespace BossRush
             progressBgRect.offsetMax = Vector2.zero;
 
             Image progressBgImage = progressBgObj.AddComponent<Image>();
+            BossRushUI.ApplyPanelSkin(progressBgImage, 4);
             progressBgImage.color = ProgressBarBgColor;
 
             // 进度条填充
@@ -382,6 +392,7 @@ namespace BossRush
             progressFillRect.offsetMax = Vector2.zero;
 
             progressBarFill = progressFillObj.AddComponent<Image>();
+            BossRushUI.ApplyPanelSkin(progressBarFill, 4);
             progressBarFill.color = ProgressBarFillColor;
         }
 
@@ -537,6 +548,8 @@ namespace BossRush
             totalRect.offsetMax = Vector2.zero;
 
             totalRewardText = totalObj.AddComponent<TextMeshProUGUI>();
+
+            BossRushUI.ApplyGameFont(totalRewardText);
             totalRewardText.fontSize = 16;
             totalRewardText.color = new Color32(255, 215, 0, 255);
             totalRewardText.alignment = TextAlignmentOptions.Left;
@@ -576,6 +589,7 @@ namespace BossRush
                 claimAllRect.sizeDelta = new Vector2(120f, 40f);
 
                 Image claimAllImage = claimAllObj.AddComponent<Image>();
+                BossRushUI.ApplyPanelSkin(claimAllImage, 6);
                 claimAllImage.color = ButtonColor;
 
                 claimAllButton = claimAllObj.AddComponent<Button>();
@@ -592,6 +606,8 @@ namespace BossRush
                 claimAllTextRect.offsetMax = Vector2.zero;
 
                 claimAllButtonText = claimAllTextObj.AddComponent<TextMeshProUGUI>();
+
+                BossRushUI.ApplyGameFont(claimAllButtonText);
                 claimAllButtonText.fontSize = 16;
                 claimAllButtonText.fontStyle = FontStyles.Bold;
                 claimAllButtonText.color = Color.white;

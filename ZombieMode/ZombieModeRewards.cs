@@ -332,6 +332,7 @@ namespace BossRush
                 position, size, new Vector2(0.5f, 0.5f));
             Image cardImage = card.AddComponent<Image>();
             cardImage.color = RewardCardColor;
+            BossRushUI.ApplyPanelSkin(cardImage, 10);
 
             // ── 顶部高亮条 ──
             GameObject sideAccent = ZombieModeUIHelper.CreateRect("SideAccent", card.transform,
@@ -339,6 +340,7 @@ namespace BossRush
                 new Vector2(2f, 0f), new Vector2(4f, 0f), new Vector2(0f, 0.5f));
             Image sideAccentImage = sideAccent.AddComponent<Image>();
             sideAccentImage.color = RewardCardAccentColor;
+            BossRushUI.ApplyPanelSkin(sideAccentImage, 2);
             sideAccentImage.raycastTarget = false;
 
             // ── 文本 ──
@@ -354,6 +356,7 @@ namespace BossRush
                 RewardCardColor,
                 RewardCardHoverColor,
                 RewardCardColor * 0.6f);
+            BossRushUI.PlayOpenAnimation(card);
 
             button.onClick.AddListener(delegate
             {

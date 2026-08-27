@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 
-SOURCE = Path("ModeF/ModeFUI_BountyRadarAndHealthBars.cs")
+SOURCE = Path("ModeF/ModeFUI_KillRewardBubble.cs")
 
 
 def fail(message: str) -> int:

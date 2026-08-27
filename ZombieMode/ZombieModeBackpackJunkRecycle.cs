@@ -47,10 +47,14 @@ namespace BossRush
 
                 try
                 {
-                    recycledValue += System.Math.Max(0, item.GetTotalRawValue());
-                    recycledItems += item.Stackable ? Mathf.Max(1, item.StackCount) : 1;
+                    // 先算好但后记账：移除或销毁抛出时物品仍在背包里，
+                    // 这时记分等于白送净化点。
+                    long itemValue = System.Math.Max(0, item.GetTotalRawValue());
+                    int itemCount = item.Stackable ? Mathf.Max(1, item.StackCount) : 1;
                     inventory.RemoveItem(item);
                     item.DestroyTree();
+                    recycledValue += itemValue;
+                    recycledItems += itemCount;
                 }
                 catch (System.Exception e)
                 {
@@ -71,6 +75,16 @@ namespace BossRush
                 gainedPoints));
             return true;
         }
+
+        /// <summary>
+        /// 永不回收的物品标签。提为静态只读，避免每件物品都重新分配这个数组。
+        /// </summary>
+        private static readonly string[] ZombieModeRecycleProtectedTags =
+        {
+            "Weapon", "Gun", "MeleeWeapon", "Armor", "BodyArmor", "Helmet", "Backpack", "Headset",
+            "Ammo", "Bullet", "Medical", "Medic", "Healing", "Food", "Drink",
+            "Key", "SpecialKey", "Special", "RunOnly", "Quest", "Task"
+        };
 
         private bool IsZombieModeRecyclableBackpackJunk(Item item)
         {
@@ -93,15 +107,9 @@ namespace BossRush
                 return false;
             }
 
-            string[] protectedTags =
+            for (int i = 0; i < ZombieModeRecycleProtectedTags.Length; i++)
             {
-                "Weapon", "Gun", "MeleeWeapon", "Armor", "BodyArmor", "Helmet", "Backpack", "Headset",
-                "Ammo", "Bullet", "Medical", "Medic", "Healing", "Food", "Drink",
-                "Key", "SpecialKey", "Special", "RunOnly", "Quest", "Task"
-            };
-            for (int i = 0; i < protectedTags.Length; i++)
-            {
-                if (ItemHasZombieModeTag(item, protectedTags[i]))
+                if (ItemHasZombieModeTag(item, ZombieModeRecycleProtectedTags[i]))
                 {
                     return false;
                 }

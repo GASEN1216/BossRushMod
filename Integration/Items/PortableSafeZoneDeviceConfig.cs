@@ -17,8 +17,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_PortableSafeZoneDevice";
         public const string DISPLAY_NAME_CN = "便携安全区装置";
         public const string DISPLAY_NAME_EN = "Portable Safe-Zone Device";
-        public const string DESCRIPTION_CN = "丧尸模式专用装置。可在战斗或准备阶段使用一次，在当前位置重新部署安全区，并消耗本装置。";
-        public const string DESCRIPTION_EN = "A Zombie Mode device. Use once during combat or preparation to redeploy the safe zone at your position; the device is consumed.";
+        public const string DESCRIPTION_CN = "丧尸模式专用装置。战斗中使用会把安全区移到当前位置，波次结束后恢复为带商人的正常安全区；准备阶段使用则额外部署一个不带商人的安全区，与正常安全区并存到下一波开始。使用一次即消耗。";
+        public const string DESCRIPTION_EN = "A Zombie Mode device. Used in combat it moves the safe zone to your position, and the normal merchant zone returns after the wave; used during preparation it deploys an extra zone without a merchant that lasts until the next wave. Consumed on use.";
         public const string USE_DESC_CN = "使用：在当前位置部署安全区";
         public const string USE_DESC_EN = "Use: deploy a safe zone at your position";
         public const int VALUE = 2400;

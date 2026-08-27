@@ -337,6 +337,7 @@ namespace BossRush
             rect.anchoredPosition = position;
             Image image = obj.AddComponent<Image>();
             image.color = backgroundColor;
+            BossRushUI.ApplyPanelSkin(image, 8);
             Button button = obj.AddComponent<Button>();
             button.interactable = interactable;
             CreateText("Text", obj.transform, text, fontSize, Vector2.zero, textSize, TextAlignmentOptions.Center, Color.white);
@@ -376,6 +377,7 @@ namespace BossRush
                 new Vector2(0.5f, 0.5f));
             Image surfaceImage = surface.AddComponent<Image>();
             surfaceImage.color = ModalSurfaceColor;
+            BossRushUI.ApplyPanelSkin(surfaceImage, 14);
 
             GameObject accent = CreateRect(
                 name + "_AccentRail",
@@ -387,6 +389,7 @@ namespace BossRush
                 new Vector2(0f, 0.5f));
             Image accentImage = accent.AddComponent<Image>();
             accentImage.color = accentColor;
+            BossRushUI.ApplyPanelSkin(accentImage, 2);
             accentImage.raycastTarget = false;
 
             GameObject topTrace = CreateRect(
