@@ -9,6 +9,8 @@
 - [ModBehaviour.cs](file://ModBehaviour.cs)
 - [ObjectCache.cs](file://Common/Infrastructure/ObjectCache.cs)
 - [ReflectionCache.cs](file://Common/Infrastructure/BossRushEagerReflectionCache.cs)
+- [BossRushUI.cs](file://Common/UI/BossRushUI.cs)
+- [MutatorUI.cs](file://Integration/Mutators/MutatorUI.cs)
 </cite>
 
 ## 目录
@@ -232,6 +234,23 @@ UI->>Notify : "Push(text)"
 章节来源
 - [UIAndSignsRuntimeBridges.cs:8-26](file://UIAndSigns/UIAndSignsRuntimeBridges.cs#L8-L26)
 - [ModBehaviour.cs:622-645](file://ModBehaviour.cs#L622-L645)
+
+### 共享 UI 库：BossRushUI（2026-08-27 全项目 UI 收口）
+全 Mod 界面统一收口到 `Common/UI/BossRushUI.cs`，新建或改动界面必须走共享库（AGENTS.md §4.14）：
+
+- **Canvas 层级表 `BossRushUILayers`**：全项目 sortingOrder 唯一事实源，严格递增。常规界面区（HudOverlay 1200 / Panel 2000 / Modal 3000 / ModalConfirm 3200 / Toast 4000）、ModeG 三档（900/940/950）、独立模式区（ZombieMode 28000~30500、婚礼过场 32000）。历史上 10~1001 与 28000~32000 两个孤岛的魔法数字已全部改为引用常量，其中成就界面（10→2000）、快递员确认框（10→3200）等低层级界面被抬入正确档位。
+- **设计 token `BossRushUIColors`**：遮罩统一 `Backdrop`，不再允许第二套 `(0,0,0,0.7)`；按钮态经 `ApplyButtonColors` 推导。
+- **程序化圆角九宫格 `ApplyPanelSkin`**：运行时生成、按半径缓存共享的圆角底图；将来换美术图集时通过 `BossRushUISkin` 注入，调用方零改动（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。
+- **字体**：`ApplyGameFont` / `GetLegacyChineseFont()` 统一取游戏字体，源码禁止再出现内置 Arial（渲染不了中文）；`CanvasScaler` 必须经 `ZombieModeUIHelper.ConfigureCanvasScaler` 配置。
+- **生命周期**：程序化贴图带 `HideFlags.DontSave`，由 `BossRushUI.ResetStaticCaches` 在 `ModBehaviour.OnDestroy` 路径显式销毁。
+- **变异词条 overlay**：`MutatorUI` 已从 IMGUI（OnGUI）迁为 uGUI Canvas（HudOverlay 层），由 `ModBehaviour.Update` 的 `Tick()` 驱动，抑制契约（判定早于显示、抑制期清悬停、异常按抑制处理）不变。
+
+结构由 `tests/BossRushUISharedLibraryGuard.py` 守卫：层级表严格递增、已迁移界面不得回退裸数值或第二套遮罩色、全仓禁止手写 `uiScaleMode` 赋值与内置 Arial。
+
+章节来源
+- [BossRushUI.cs](file://Common/UI/BossRushUI.cs)
+- [MutatorUI.cs](file://Integration/Mutators/MutatorUI.cs)
+- [BossRushUISharedLibraryGuard.py](file://tests/BossRushUISharedLibraryGuard.py)
 
 ## 依赖关系分析
 - 扫描与注入依赖：

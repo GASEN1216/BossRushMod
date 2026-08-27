@@ -46,3 +46,18 @@ The entry relic for Fate Echo. See Entry & Utility Items for the item details. I
 - Bring your own loadout, a BossRush Ticket, and the Relic
 - Choose one of two Fate Contracts after the map loads
 - A failed run does not return the consumed Relic
+
+---
+
+### Zombie Mode Exclusive
+
+#### Portable Safe-Zone Device
+
+**Portable Safe-Zone Device** (Purple, stack 1) — a Zombie Mode wave reward, single-use, only works inside a Zombie Mode run.
+
+- **Use in combat** — moves the safe zone to your current position; it disappears with the end-of-wave cleanup, and a normal safe zone with the merchant is regenerated
+- **Use during preparation** — deploys an extra safe zone without a merchant terminal, coexisting with the normal one until the next wave starts
+- On deployment it instantly clears normal/special/elite zombies inside (no kill credit, no drops, no purification points); Bosses are only pushed outside the exclusion boundary
+- Directly damaging a zombie with guns or melee while inside a safe zone cancels the whole zone — thrown items and reward projectiles do not trigger this
+
+See the Zombie Mode page for full safe-zone rules.

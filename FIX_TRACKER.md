@@ -39,6 +39,36 @@
 ```
 
 ---
+### 2026-08-27 c36e011..HEAD 全区间回归核对与 Wiki 同步缺口补齐
+
+**状态**: fixed
+**Finding**: 无（owner 要求的全区间回归核对）
+**兼容分类**: SAFE（文档/站点配置补齐，零代码改动）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: owner 要求确认 c36e011..HEAD 全部改动不影响原有玩法（只是优化），且 Wiki 内容已同步。
+
+**核对结论（六路独立审查 + 编译 + guard）**:
+1. Windows 正式编译通过（零错误，产出 `Build\BossRush.dll`）；全量 guard 443 脚本 442 PASS / 0 NEW-FAIL / 1 KNOWN-RED（既有红项）。
+2. 等价重构类改动（反射缓存改名 22 处调用点、Boss preset 收口、物品模板化、本地化注入提取、分派表化、UI 常量化同值段、死代码删除）全部独立复核为逐字等价，无残留引用。
+3. 区间内确认存在 owner 已确认的有意玩法变化（85e91e2 丧尸模式功能与数值、Mode F 命火/回血/成长重定、UI 观感升级与 9 处层级重排、MutatorUI IMGUI→uGUI、ModeG 宿敌击败计数按局一次），均已在既有 FIX_TRACKER 条目登记，非回归。
+4. 两条 UI 风险线索经官方源码复核排除：官方射击输入不走 uGUI 射线（全源码无 `IsPointerOverGameObject`），MutatorUI 面板射线拦截不影响开火；官方光标为硬件光标（`CursorManager` → `Cursor.SetCursor`），任何 Canvas 层级都不可能遮挡。
+5. 兼容面确认未变：存档 key、配置 key、TypeID（500058 合规新增）、本地化 key、AssetBundle、Harmony 目标；无新事件泄漏或 cleanup 缺口。
+
+**修复内容（Wiki 同步缺口补齐）**:
+- 修改文件: `wiki-site/docs/.vitepress/config.mts` —— 中英侧边栏补上宿命回响模式页与攻略页共 4 条导航（页面此前已生成但导航不可达）。
+- 修改文件: `WikiContent/zh|en/item/item__mode_f_items.md` —— 模式专属物品页补「末日丧尸模式专属：便携安全区装置」小节（消除与 item__overview 分类行的内部指向不一致），并重跑 `sync-content.mjs` 再生成站点 docs（中英各 102 篇）。
+- 修改文件: `.qoder/repowiki/zh/content/用户界面与本地化/UI 系统集成.md`、`.qoder/repowiki/zh/content/架构设计/组件交互模式.md` —— 补齐本轮 UI 收口（BossRushUI/BossRushUILayers/MutatorUI 迁移）与兼容性加固（Harmony 逐类 apply、HarmonyBindingSelfCheck、CriticalLog、急切反射缓存改名）的 repowiki 正文覆盖（此前仅修了死链）。
+
+**验证方法**:
+1. Guard: `python tools/run_guards.py` —— 442 PASS / 0 NEW-FAIL / 1 KNOWN-RED（补齐后复跑）。
+2. 站点: `node scripts/sync-content.mjs` 通过（204 篇）；`npm run build` 验证侧边栏链接。
+3. 编译: 本轮为文档/配置改动，无需重编（区间代码已于同日正式编译通过）。
+
+**未验证/需人工**: 实机 smoke 仍未做，重点清单沿用各 Phase 条目（Mode F 命火节奏、丧尸安全区双槽、UI 多分辨率观感、补丁自检汇总行）。
+
+---
 ### 2026-08-27 扩展性投资 Phase C：新增物品清单、Boss preset 收口与两条落地约定
 
 **状态**: fixed

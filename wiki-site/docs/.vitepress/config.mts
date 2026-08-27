@@ -64,6 +64,7 @@ function sidebarZh() {
         { text: '白手起家', link: '/game-modes/mode-d' },
         { text: '划地为营', link: '/game-modes/mode-e' },
         { text: '血猎追击', link: '/game-modes/mode-f' },
+        { text: '宿命回响', link: '/game-modes/mode-g' },
         { text: '末日丧尸模式', link: '/game-modes/zombie-mode' },
       ],
     },
@@ -150,6 +151,7 @@ function sidebarZh() {
         { text: '无间炼狱与白手起家', link: '/guides/hell-and-mode-d' },
         { text: '划地为营攻略', link: '/guides/mode-e-strategy' },
         { text: '血猎追击攻略', link: '/guides/mode-f-strategy' },
+        { text: '宿命回响攻略', link: '/guides/mode-g-strategy' },
       ],
     },
     {
@@ -185,6 +187,7 @@ function sidebarEn() {
         { text: 'From Scratch', link: '/en/game-modes/mode-d' },
         { text: 'Faction War', link: '/en/game-modes/mode-e' },
         { text: 'Blood Hunt', link: '/en/game-modes/mode-f' },
+        { text: 'Fate Echo', link: '/en/game-modes/mode-g' },
         { text: 'Zombie Mode', link: '/en/game-modes/zombie-mode' },
       ],
     },
@@ -271,6 +274,7 @@ function sidebarEn() {
         { text: 'Infinite Hell & From Scratch', link: '/en/guides/hell-and-mode-d' },
         { text: 'Faction War Guide', link: '/en/guides/mode-e-strategy' },
         { text: 'Blood Hunt Guide', link: '/en/guides/mode-f-strategy' },
+        { text: 'Fate Echo Guide', link: '/en/guides/mode-g-strategy' },
       ],
     },
     {
