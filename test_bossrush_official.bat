@@ -92,6 +92,30 @@ if exist "Assets\Data\*.json" (
     )
 )
 
+if exist "Assets\Data\ModeH\*.json" (
+    if not exist "%MOD_TARGET_DIR%\Assets\Data\ModeH" mkdir "%MOD_TARGET_DIR%\Assets\Data\ModeH"
+    xcopy /Y /I "Assets\Data\ModeH\*.json" "%MOD_TARGET_DIR%\Assets\Data\ModeH\" >nul
+    if errorlevel 1 (
+        echo [ERROR] Mode H data JSON deploy failed.
+        exit /b 1
+    ) else (
+        echo Deployed Mode H data JSON to: %MOD_TARGET_DIR%\Assets\Data\ModeH
+    )
+) else (
+    echo WARNING: Mode H data JSON missing at Assets\Data\ModeH; Mode H reports content not ready.
+)
+if exist "Assets\ui\modeh_presentation" (
+    if not exist "%MOD_TARGET_DIR%\Assets\ui" mkdir "%MOD_TARGET_DIR%\Assets\ui"
+    copy /Y "Assets\ui\modeh_presentation" "%MOD_TARGET_DIR%\Assets\ui\modeh_presentation" >nul 2>nul
+    if errorlevel 1 (
+        echo [ERROR] Mode H presentation bundle deploy failed.
+        exit /b 1
+    ) else (
+        echo Deployed Mode H presentation bundle to: %MOD_TARGET_DIR%\Assets\ui
+    )
+) else (
+    echo WARNING: Mode H presentation bundle missing at Assets\ui\modeh_presentation; Mode H entry fails closed.
+)
 if exist "Assets\Items\fate_echo_relic" (
     if not exist "%MOD_TARGET_DIR%\Assets\Items" mkdir "%MOD_TARGET_DIR%\Assets\Items"
     copy /Y "Assets\Items\fate_echo_relic" "%MOD_TARGET_DIR%\Assets\Items\fate_echo_relic" >nul

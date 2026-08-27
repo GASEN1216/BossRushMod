@@ -1,0 +1,411 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "4bf121c8aef8c2a057ce8a95fcf768e5d1b88582a15ea69b351813cd89f90b72",
+  "documentId": "modeh_scars",
+  "numberConvention": "integer-only; multipliers use milli (x1000) integers",
+  "injuries": [
+    {
+      "injuryId": "leg",
+      "nameKey": "BossRush_ModeH_Injury_leg",
+      "descKey": "BossRush_ModeH_Injury_leg_Desc",
+      "scope": "whole_match",
+      "components": [
+        {
+          "effectId": "leg.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 850,
+          "selfSettled": false
+        },
+        {
+          "effectId": "leg.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 850,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "injuryId": "hand",
+      "nameKey": "BossRush_ModeH_Injury_hand",
+      "descKey": "BossRush_ModeH_Injury_hand_Desc",
+      "scope": "whole_match",
+      "components": [
+        {
+          "effectId": "hand.skillCoolTimeRange",
+          "controlPointId": "skillCoolTimeRange",
+          "op": "multiply",
+          "multiplierMilli": 1150,
+          "selfSettled": false
+        },
+        {
+          "effectId": "hand.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": false,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "injuryId": "armor",
+      "nameKey": "BossRush_ModeH_Injury_armor",
+      "descKey": "BossRush_ModeH_Injury_armor_Desc",
+      "scope": "self_settled",
+      "components": [
+        {
+          "effectId": "armor.kit_suppression",
+          "controlPointId": "command_scale",
+          "op": "self_settled_kit_slot_disabled",
+          "slot": "Armor",
+          "selfSettled": true
+        }
+      ]
+    },
+    {
+      "injuryId": "old_wound",
+      "nameKey": "BossRush_ModeH_Injury_old_wound",
+      "descKey": "BossRush_ModeH_Injury_old_wound_Desc",
+      "scope": "triggered_once",
+      "triggerHealthFractionMilli": 350,
+      "components": [
+        {
+          "effectId": "old_wound.baseReactionTime",
+          "controlPointId": "baseReactionTime",
+          "op": "add_seconds_milli",
+          "addMilli": 150,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "injuryId": "spirit",
+      "nameKey": "BossRush_ModeH_Injury_spirit",
+      "descKey": "BossRush_ModeH_Injury_spirit_Desc",
+      "scope": "self_settled",
+      "requiresEnemyCountAtLeast": 2,
+      "components": [
+        {
+          "effectId": "spirit.command_scale",
+          "controlPointId": "command_scale",
+          "op": "self_settled",
+          "multiplierMilli": 850,
+          "selfSettled": true
+        }
+      ]
+    }
+  ],
+  "scars": [
+    {
+      "scarId": "broken_shield_charge",
+      "nameKey": "BossRush_ModeH_Scar_broken_shield_charge",
+      "descKey": "BossRush_ModeH_Scar_broken_shield_charge_Desc",
+      "trigger": "armor_first_break",
+      "windowSeconds": 5,
+      "compatibleArchetypeIds": [
+        "assault",
+        "tank"
+      ],
+      "benefitTag": "single_core",
+      "costTag": "attrition",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "broken_shield_charge.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 1250,
+          "role": "benefit",
+          "selfSettled": false
+        },
+        {
+          "effectId": "broken_shield_charge.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1200,
+          "role": "benefit",
+          "selfSettled": false
+        },
+        {
+          "effectId": "broken_shield_charge.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": false,
+          "role": "cost",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "scarId": "blood_rush",
+      "nameKey": "BossRush_ModeH_Scar_blood_rush",
+      "descKey": "BossRush_ModeH_Scar_blood_rush_Desc",
+      "trigger": "enemy_first_low_health",
+      "windowSeconds": 5,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher"
+      ],
+      "benefitTag": "reinforcement",
+      "costTag": "danger_edge",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "blood_rush.searchedEnemy",
+          "controlPointId": "searchedEnemy",
+          "op": "fire_lowest_health_target",
+          "role": "benefit",
+          "selfSettled": false
+        },
+        {
+          "effectId": "blood_rush.command_scale",
+          "controlPointId": "command_scale",
+          "op": "self_settled_command_scale",
+          "commandId": "center",
+          "multiplierMilli": 500,
+          "role": "cost",
+          "selfSettled": true
+        }
+      ]
+    },
+    {
+      "scarId": "longshot_memory",
+      "nameKey": "BossRush_ModeH_Scar_longshot_memory",
+      "descKey": "BossRush_ModeH_Scar_longshot_memory_Desc",
+      "trigger": "first_ranged_damage_taken",
+      "windowSeconds": 6,
+      "compatibleArchetypeIds": [
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "benefitTag": "ranged_pressure",
+      "costTag": "open_rush",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "longshot_memory.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 700,
+          "role": "benefit",
+          "selfSettled": false
+        },
+        {
+          "effectId": "longshot_memory.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 850,
+          "role": "cost",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "scarId": "relay_expert",
+      "nameKey": "BossRush_ModeH_Scar_relay_expert",
+      "descKey": "BossRush_ModeH_Scar_relay_expert_Desc",
+      "trigger": "relay_entered",
+      "windowSeconds": 8,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged"
+      ],
+      "benefitTag": "selected_sub",
+      "costTag": "selected_main",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "relay_expert.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply_capped",
+          "multiplierMilli": 1250,
+          "capMilli": 1000,
+          "role": "benefit",
+          "selfSettled": false
+        },
+        {
+          "effectId": "relay_expert.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1200,
+          "role": "benefit",
+          "selfSettled": false
+        },
+        {
+          "effectId": "relay_expert.starter_penalty",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply",
+          "multiplierMilli": 900,
+          "role": "cost",
+          "windowSeconds": 8,
+          "appliesWhen": "starter_opening",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "scarId": "bell_dependence",
+      "nameKey": "BossRush_ModeH_Scar_bell_dependence",
+      "descKey": "BossRush_ModeH_Scar_bell_dependence_Desc",
+      "trigger": "bell_rung",
+      "windowSeconds": 6,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "benefitTag": "late_reinforcement",
+      "costTag": "early_burst",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "bell_dependence.command_scale",
+          "controlPointId": "command_scale",
+          "op": "self_settled",
+          "multiplierMilli": 1200,
+          "role": "benefit",
+          "selfSettled": true
+        },
+        {
+          "effectId": "bell_dependence.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply",
+          "multiplierMilli": 900,
+          "role": "cost",
+          "appliesWhen": "before_bell",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "scarId": "center_keeper",
+      "nameKey": "BossRush_ModeH_Scar_center_keeper",
+      "descKey": "BossRush_ModeH_Scar_center_keeper_Desc",
+      "trigger": "arena_condition",
+      "windowSeconds": 0,
+      "compatibleArchetypeIds": [
+        "tank",
+        "sustain",
+        "ranged"
+      ],
+      "benefitTag": "danger_edge",
+      "costTag": "open_field",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "center_keeper.command_scale",
+          "controlPointId": "command_scale",
+          "op": "self_settled_command_scale",
+          "commandId": "center",
+          "multiplierMilli": 1250,
+          "role": "benefit",
+          "appliesWhen": "condition_danger_edge",
+          "selfSettled": true
+        },
+        {
+          "effectId": "center_keeper.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 850,
+          "role": "cost",
+          "appliesWhen": "condition_open_field",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "scarId": "skill_saver_scar",
+      "nameKey": "BossRush_ModeH_Scar_skill_saver_scar",
+      "descKey": "BossRush_ModeH_Scar_skill_saver_scar_Desc",
+      "trigger": "pending_reinforcement",
+      "windowSeconds": 0,
+      "compatibleArchetypeIds": [
+        "sustain",
+        "ranged",
+        "tank"
+      ],
+      "benefitTag": "reinforcement",
+      "costTag": "early_burst",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "skill_saver_scar.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply",
+          "multiplierMilli": 800,
+          "role": "benefit",
+          "appliesWhen": "reinforcement_pending",
+          "selfSettled": false
+        },
+        {
+          "effectId": "skill_saver_scar.itemSkillChance",
+          "controlPointId": "itemSkillChance",
+          "op": "multiply",
+          "multiplierMilli": 800,
+          "role": "cost",
+          "appliesWhen": "first_wave_alive",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "scarId": "crowd_favorite",
+      "nameKey": "BossRush_ModeH_Scar_crowd_favorite",
+      "descKey": "BossRush_ModeH_Scar_crowd_favorite_Desc",
+      "trigger": "enemy_count",
+      "windowSeconds": 0,
+      "compatibleArchetypeIds": [
+        "assault",
+        "sustain",
+        "tank"
+      ],
+      "benefitTag": "crowd",
+      "costTag": "single_core",
+      "benefitOdds": 3,
+      "costOdds": -3,
+      "components": [
+        {
+          "effectId": "crowd_favorite.sightAngle",
+          "controlPointId": "sightAngle",
+          "op": "multiply",
+          "multiplierMilli": 1250,
+          "role": "benefit",
+          "appliesWhen": "enemy_count_at_least_3",
+          "selfSettled": false
+        },
+        {
+          "effectId": "crowd_favorite.baseReactionTime",
+          "controlPointId": "baseReactionTime",
+          "op": "multiply",
+          "multiplierMilli": 900,
+          "role": "benefit",
+          "appliesWhen": "enemy_count_at_least_3",
+          "selfSettled": false
+        },
+        {
+          "effectId": "crowd_favorite.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply",
+          "multiplierMilli": 900,
+          "role": "cost",
+          "appliesWhen": "single_core_fight",
+          "selfSettled": false
+        }
+      ]
+    }
+  ]
+}

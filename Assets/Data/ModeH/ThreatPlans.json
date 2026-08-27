@@ -1,0 +1,437 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "de0a180426ba43c034a2f7f1ab8dd3be8eceb371a0cb9339f0264116e6244c01",
+  "documentId": "modeh_threat_plans",
+  "numberConvention": "integer-only; percentages are whole numbers, multipliers use milli (x1000) integers",
+  "budgetRules": {
+    "actionCountPremiumPercentPerExtraUnit": 20,
+    "synergyPremiumCapPercent": 10,
+    "budgetTolerancePercent": 5,
+    "maxPlanCandidateAttempts": 8
+  },
+  "matchCorridor": [
+    {
+      "matchIndex": 1,
+      "threatBudget": 100,
+      "simultaneousCap": 2,
+      "minFillPercent": 60,
+      "skeletonIds": [
+        "single_beast",
+        "duo"
+      ]
+    },
+    {
+      "matchIndex": 2,
+      "threatBudget": 115,
+      "simultaneousCap": 2,
+      "minFillPercent": 62,
+      "skeletonIds": [
+        "duo",
+        "core_and_escort"
+      ]
+    },
+    {
+      "matchIndex": 3,
+      "threatBudget": 130,
+      "simultaneousCap": 3,
+      "minFillPercent": 65,
+      "skeletonIds": [
+        "core_and_escort",
+        "relay_squad"
+      ]
+    },
+    {
+      "matchIndex": 4,
+      "threatBudget": 145,
+      "simultaneousCap": 3,
+      "minFillPercent": 68,
+      "skeletonIds": [
+        "pack",
+        "mixed_range"
+      ]
+    },
+    {
+      "matchIndex": 5,
+      "threatBudget": 165,
+      "simultaneousCap": 3,
+      "minFillPercent": 70,
+      "skeletonIds": [
+        "echo_core_and_escort",
+        "wounded_line"
+      ]
+    },
+    {
+      "matchIndex": 6,
+      "threatBudget": 190,
+      "simultaneousCap": 3,
+      "minFillPercent": 72,
+      "skeletonIds": [
+        "champion_beast",
+        "late_surge"
+      ]
+    }
+  ],
+  "skeletons": [
+    {
+      "skeletonId": "single_beast",
+      "nameKey": "BossRush_ModeH_Skeleton_single_beast",
+      "minUnits": 1,
+      "maxUnits": 1,
+      "publicTags": [
+        "single_core"
+      ]
+    },
+    {
+      "skeletonId": "duo",
+      "nameKey": "BossRush_ModeH_Skeleton_duo",
+      "minUnits": 2,
+      "maxUnits": 2,
+      "publicTags": [
+        "crossfire"
+      ]
+    },
+    {
+      "skeletonId": "core_and_escort",
+      "nameKey": "BossRush_ModeH_Skeleton_core_and_escort",
+      "minUnits": 2,
+      "maxUnits": 3,
+      "publicTags": [
+        "single_core",
+        "escort_screen"
+      ],
+      "hasHighThreatCore": true
+    },
+    {
+      "skeletonId": "pack",
+      "nameKey": "BossRush_ModeH_Skeleton_pack",
+      "minUnits": 3,
+      "maxUnits": 3,
+      "publicTags": [
+        "crowd"
+      ]
+    },
+    {
+      "skeletonId": "relay_squad",
+      "nameKey": "BossRush_ModeH_Skeleton_relay_squad",
+      "minUnits": 3,
+      "maxUnits": 4,
+      "publicTags": [
+        "reinforcement",
+        "attrition"
+      ]
+    },
+    {
+      "skeletonId": "mixed_range",
+      "nameKey": "BossRush_ModeH_Skeleton_mixed_range",
+      "minUnits": 3,
+      "maxUnits": 3,
+      "publicTags": [
+        "crossfire",
+        "ranged_pressure"
+      ]
+    },
+    {
+      "skeletonId": "wounded_line",
+      "nameKey": "BossRush_ModeH_Skeleton_wounded_line",
+      "minUnits": 2,
+      "maxUnits": 3,
+      "publicTags": [
+        "wounded_core"
+      ],
+      "woundedUnits": 1
+    },
+    {
+      "skeletonId": "echo_core_and_escort",
+      "nameKey": "BossRush_ModeH_Skeleton_echo_core_and_escort",
+      "minUnits": 2,
+      "maxUnits": 3,
+      "publicTags": [
+        "single_core",
+        "escort_screen"
+      ],
+      "hasHighThreatCore": true,
+      "requiresEchoReturn": true
+    },
+    {
+      "skeletonId": "champion_beast",
+      "nameKey": "BossRush_ModeH_Skeleton_champion_beast",
+      "minUnits": 1,
+      "maxUnits": 2,
+      "publicTags": [
+        "single_core"
+      ],
+      "hasHighThreatCore": true
+    },
+    {
+      "skeletonId": "late_surge",
+      "nameKey": "BossRush_ModeH_Skeleton_late_surge",
+      "minUnits": 3,
+      "maxUnits": 4,
+      "publicTags": [
+        "late_reinforcement",
+        "reinforcement"
+      ]
+    }
+  ],
+  "entryScripts": [
+    {
+      "entryScriptId": "scout_first",
+      "nameKey": "BossRush_ModeH_Entry_scout_first",
+      "hintKey": "BossRush_ModeH_EntryHint_scout_first",
+      "batchPattern": [
+        1,
+        2
+      ],
+      "publicTags": [
+        "slow_start"
+      ]
+    },
+    {
+      "entryScriptId": "front_loaded",
+      "nameKey": "BossRush_ModeH_Entry_front_loaded",
+      "hintKey": "BossRush_ModeH_EntryHint_front_loaded",
+      "batchPattern": [
+        2,
+        1
+      ],
+      "publicTags": [
+        "early_burst"
+      ]
+    },
+    {
+      "entryScriptId": "late_reinforcement",
+      "nameKey": "BossRush_ModeH_Entry_late_reinforcement",
+      "hintKey": "BossRush_ModeH_EntryHint_late_reinforcement",
+      "batchPattern": [
+        1,
+        1,
+        2
+      ],
+      "publicTags": [
+        "late_reinforcement",
+        "reinforcement"
+      ]
+    },
+    {
+      "entryScriptId": "alternating_range",
+      "nameKey": "BossRush_ModeH_Entry_alternating_range",
+      "hintKey": "BossRush_ModeH_EntryHint_alternating_range",
+      "batchPattern": [
+        1,
+        1,
+        1
+      ],
+      "publicTags": [
+        "crossfire"
+      ]
+    },
+    {
+      "entryScriptId": "core_last",
+      "nameKey": "BossRush_ModeH_Entry_core_last",
+      "hintKey": "BossRush_ModeH_EntryHint_core_last",
+      "batchPattern": [
+        2,
+        1
+      ],
+      "publicTags": [
+        "escort_screen",
+        "single_core"
+      ],
+      "coreEntersLast": true
+    },
+    {
+      "entryScriptId": "unknown_seat",
+      "nameKey": "BossRush_ModeH_Entry_unknown_seat",
+      "hintKey": "BossRush_ModeH_EntryHint_unknown_seat",
+      "batchPattern": [
+        2,
+        1
+      ],
+      "publicTags": [
+        "reinforcement"
+      ],
+      "hiddenSeat": true
+    }
+  ],
+  "arenaConditions": [
+    {
+      "conditionId": "center_cover",
+      "nameKey": "BossRush_ModeH_Condition_center_cover",
+      "publicTags": [
+        "ranged_pressure"
+      ],
+      "favoredArchetypeIds": [
+        "assault",
+        "finisher"
+      ],
+      "disfavoredArchetypeIds": [
+        "ranged"
+      ]
+    },
+    {
+      "conditionId": "danger_edge",
+      "nameKey": "BossRush_ModeH_Condition_danger_edge",
+      "publicTags": [
+        "danger_edge"
+      ],
+      "favoredArchetypeIds": [
+        "tank"
+      ],
+      "disfavoredArchetypeIds": [
+        "assault"
+      ]
+    },
+    {
+      "conditionId": "medical_limited",
+      "nameKey": "BossRush_ModeH_Condition_medical_limited",
+      "publicTags": [
+        "attrition"
+      ],
+      "favoredArchetypeIds": [
+        "assault",
+        "finisher"
+      ],
+      "disfavoredArchetypeIds": [
+        "sustain"
+      ]
+    },
+    {
+      "conditionId": "narrow_cage",
+      "nameKey": "BossRush_ModeH_Condition_narrow_cage",
+      "publicTags": [
+        "crowd"
+      ],
+      "favoredArchetypeIds": [
+        "assault",
+        "tank"
+      ],
+      "disfavoredArchetypeIds": [
+        "ranged"
+      ]
+    },
+    {
+      "conditionId": "open_field",
+      "nameKey": "BossRush_ModeH_Condition_open_field",
+      "publicTags": [
+        "open_rush",
+        "open_field"
+      ],
+      "favoredArchetypeIds": [
+        "ranged"
+      ],
+      "disfavoredArchetypeIds": [
+        "tank"
+      ]
+    },
+    {
+      "conditionId": "residual_might",
+      "nameKey": "BossRush_ModeH_Condition_residual_might",
+      "publicTags": [
+        "reinforcement"
+      ],
+      "favoredArchetypeIds": [
+        "finisher"
+      ],
+      "disfavoredArchetypeIds": [
+        "sustain"
+      ]
+    }
+  ],
+  "synergyCategories": [
+    {
+      "categoryId": "heal",
+      "publicTag": "healer_core",
+      "budgetShare": 5
+    },
+    {
+      "categoryId": "summon",
+      "publicTag": "summon_core",
+      "budgetShare": 5
+    },
+    {
+      "categoryId": "control",
+      "publicTag": "control_core",
+      "budgetShare": 5
+    }
+  ],
+  "archetypeCapabilityMatrix": [
+    {
+      "archetypeId": "assault",
+      "primaryAnswers": [
+        "melee_rush",
+        "burst"
+      ],
+      "hardLockedBy": [
+        "armor_heavy",
+        "area_denial"
+      ]
+    },
+    {
+      "archetypeId": "ranged",
+      "primaryAnswers": [
+        "ranged_pressure"
+      ],
+      "hardLockedBy": [
+        "narrow_cage_pressure",
+        "melee_rush"
+      ]
+    },
+    {
+      "archetypeId": "tank",
+      "primaryAnswers": [
+        "armor_heavy",
+        "hold_ground"
+      ],
+      "hardLockedBy": [
+        "area_denial",
+        "kiting"
+      ]
+    },
+    {
+      "archetypeId": "sustain",
+      "primaryAnswers": [
+        "area_denial",
+        "attrition"
+      ],
+      "hardLockedBy": [
+        "burst",
+        "melee_rush"
+      ]
+    },
+    {
+      "archetypeId": "finisher",
+      "primaryAnswers": [
+        "execute",
+        "kiting"
+      ],
+      "hardLockedBy": [
+        "armor_heavy",
+        "healer_core"
+      ]
+    }
+  ],
+  "reconChoices": [
+    {
+      "reconChoiceId": "hidden_quirk",
+      "nameKey": "BossRush_ModeH_Recon_hidden_quirk",
+      "revealField": "coreTraitTags"
+    },
+    {
+      "reconChoiceId": "current_injury",
+      "nameKey": "BossRush_ModeH_Recon_current_injury",
+      "revealField": "visibleWoundedEnemyCount"
+    },
+    {
+      "reconChoiceId": "member_order",
+      "nameKey": "BossRush_ModeH_Recon_member_order",
+      "revealField": "entryOrderHint"
+    },
+    {
+      "reconChoiceId": "second_equipment",
+      "nameKey": "BossRush_ModeH_Recon_second_equipment",
+      "revealField": "secondaryEquipmentHint"
+    }
+  ]
+}

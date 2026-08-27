@@ -1,0 +1,251 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "a9e422a248533a7e1fd8ee83bd6729899be3056f1bf26c8907de8b865dfeb716",
+  "documentId": "modeh_boss_profiles",
+  "numberConvention": "integer-only; threatScore is an integer capability score consumed by the encounter planner",
+  "stableKeySource": "CharacterRandomPreset.nameKey, surfaced as EnemyPresetInfo.name by WavesArena.InitializeEnemyPresets()",
+  "eligibilityNote": "productionCandidate only marks a key as eligible for runtime certification; ModeHProductionCertification decides the actual production pool and fails closed per key",
+  "profileTemplates": [
+    {
+      "profileTemplateId": "shotgun_brawler",
+      "stableKey": "Cname_Boss_Shot",
+      "displayNameKey": "BossRush_ModeH_Fighter_shotgun_brawler",
+      "rumorKey": "BossRush_ModeH_Rumor_shotgun_brawler",
+      "archetypeId": "assault",
+      "temperamentId": "aggressive",
+      "quirkId": "soft_target",
+      "anomalyId": "",
+      "signatureCommandId": "weakness",
+      "standInPatternId": "rail_charge",
+      "productionCandidate": true,
+      "productionOrder": 1,
+      "threatScore": 38,
+      "capabilityTags": [
+        "melee_rush",
+        "burst"
+      ]
+    },
+    {
+      "profileTemplateId": "frost_marshal",
+      "stableKey": "Cname_Speedy_Ice",
+      "displayNameKey": "BossRush_ModeH_Fighter_frost_marshal",
+      "rumorKey": "BossRush_ModeH_Rumor_frost_marshal",
+      "archetypeId": "assault",
+      "temperamentId": "trickster",
+      "quirkId": "",
+      "anomalyId": "blood",
+      "signatureCommandId": "weakness",
+      "standInPatternId": "erratic_dart",
+      "productionCandidate": true,
+      "productionOrder": 2,
+      "threatScore": 40,
+      "capabilityTags": [
+        "melee_rush",
+        "kiting"
+      ]
+    },
+    {
+      "profileTemplateId": "snow_sharpshooter",
+      "stableKey": "Cname_Snow_Fleeze",
+      "displayNameKey": "BossRush_ModeH_Fighter_snow_sharpshooter",
+      "rumorKey": "BossRush_ModeH_Rumor_snow_sharpshooter",
+      "archetypeId": "ranged",
+      "temperamentId": "cautious",
+      "quirkId": "reload_first",
+      "anomalyId": "",
+      "signatureCommandId": "last_mag",
+      "standInPatternId": "wall_hug",
+      "productionCandidate": true,
+      "productionOrder": 3,
+      "threatScore": 45,
+      "capabilityTags": [
+        "ranged_pressure"
+      ]
+    },
+    {
+      "profileTemplateId": "long_lens",
+      "stableKey": "Cname_Boss_Sniper",
+      "displayNameKey": "BossRush_ModeH_Fighter_long_lens",
+      "rumorKey": "BossRush_ModeH_Rumor_long_lens",
+      "archetypeId": "ranged",
+      "temperamentId": "cautious",
+      "quirkId": "skill_saver",
+      "anomalyId": "",
+      "signatureCommandId": "last_mag",
+      "standInPatternId": "wall_hug",
+      "productionCandidate": true,
+      "productionOrder": 4,
+      "threatScore": 42,
+      "capabilityTags": [
+        "ranged_pressure"
+      ]
+    },
+    {
+      "profileTemplateId": "triple_tap",
+      "stableKey": "Cname_Boss_3Shot",
+      "displayNameKey": "BossRush_ModeH_Fighter_triple_tap",
+      "rumorKey": "BossRush_ModeH_Rumor_triple_tap",
+      "archetypeId": "ranged",
+      "temperamentId": "hunter",
+      "quirkId": "",
+      "anomalyId": "error",
+      "signatureCommandId": "last_mag",
+      "standInPatternId": "slow_circle",
+      "productionCandidate": true,
+      "productionOrder": 5,
+      "threatScore": 40,
+      "capabilityTags": [
+        "ranged_pressure",
+        "burst"
+      ]
+    },
+    {
+      "profileTemplateId": "great_xing",
+      "stableKey": "Cname_XING",
+      "displayNameKey": "BossRush_ModeH_Fighter_great_xing",
+      "rumorKey": "BossRush_ModeH_Rumor_great_xing",
+      "archetypeId": "tank",
+      "temperamentId": "bulwark",
+      "quirkId": "center_keeper",
+      "anomalyId": "",
+      "signatureCommandId": "anchor",
+      "standInPatternId": "anchor_stand",
+      "productionCandidate": true,
+      "productionOrder": 6,
+      "threatScore": 55,
+      "capabilityTags": [
+        "armor_heavy",
+        "hold_ground"
+      ]
+    },
+    {
+      "profileTemplateId": "mech_snowman",
+      "stableKey": "Cname_SnowMan",
+      "displayNameKey": "BossRush_ModeH_Fighter_mech_snowman",
+      "rumorKey": "BossRush_ModeH_Rumor_mech_snowman",
+      "archetypeId": "tank",
+      "temperamentId": "bulwark",
+      "quirkId": "protect_sub",
+      "anomalyId": "",
+      "signatureCommandId": "anchor",
+      "standInPatternId": "anchor_stand",
+      "productionCandidate": true,
+      "productionOrder": 7,
+      "threatScore": 50,
+      "capabilityTags": [
+        "armor_heavy",
+        "hold_ground"
+      ]
+    },
+    {
+      "profileTemplateId": "big_ice",
+      "stableKey": "Cname_Snow_BigIce",
+      "displayNameKey": "BossRush_ModeH_Fighter_big_ice",
+      "rumorKey": "BossRush_ModeH_Rumor_big_ice",
+      "archetypeId": "tank",
+      "temperamentId": "bulwark",
+      "quirkId": "",
+      "anomalyId": "strong",
+      "signatureCommandId": "anchor",
+      "standInPatternId": "anchor_stand",
+      "productionCandidate": true,
+      "productionOrder": 8,
+      "threatScore": 58,
+      "capabilityTags": [
+        "armor_heavy",
+        "area_denial"
+      ]
+    },
+    {
+      "profileTemplateId": "bomb_maniac",
+      "stableKey": "Cname_Grenade",
+      "displayNameKey": "BossRush_ModeH_Fighter_bomb_maniac",
+      "rumorKey": "BossRush_ModeH_Rumor_bomb_maniac",
+      "archetypeId": "sustain",
+      "temperamentId": "trickster",
+      "quirkId": "slow_start",
+      "anomalyId": "",
+      "signatureCommandId": "together",
+      "standInPatternId": "erratic_dart",
+      "productionCandidate": true,
+      "productionOrder": 9,
+      "threatScore": 44,
+      "capabilityTags": [
+        "area_denial",
+        "attrition"
+      ]
+    },
+    {
+      "profileTemplateId": "goose_leader",
+      "stableKey": "Cname_PMCLeader",
+      "displayNameKey": "BossRush_ModeH_Fighter_goose_leader",
+      "rumorKey": "BossRush_ModeH_Rumor_goose_leader",
+      "archetypeId": "sustain",
+      "temperamentId": "pack",
+      "quirkId": "",
+      "anomalyId": "crowd",
+      "signatureCommandId": "together",
+      "standInPatternId": "gate_pace",
+      "productionCandidate": true,
+      "productionOrder": 10,
+      "threatScore": 48,
+      "capabilityTags": [
+        "attrition",
+        "control_core"
+      ]
+    },
+    {
+      "profileTemplateId": "orion_hunter",
+      "stableKey": "Cname_Hunter",
+      "displayNameKey": "BossRush_ModeH_Fighter_orion_hunter",
+      "rumorKey": "BossRush_ModeH_Rumor_orion_hunter",
+      "archetypeId": "finisher",
+      "temperamentId": "hunter",
+      "quirkId": "revenge",
+      "anomalyId": "",
+      "signatureCommandId": "handoff",
+      "standInPatternId": "slow_circle",
+      "productionCandidate": true,
+      "productionOrder": 11,
+      "threatScore": 40,
+      "capabilityTags": [
+        "execute",
+        "kiting"
+      ]
+    },
+    {
+      "profileTemplateId": "warden",
+      "stableKey": "Cname_Prison_Boss",
+      "displayNameKey": "BossRush_ModeH_Fighter_warden",
+      "rumorKey": "BossRush_ModeH_Rumor_warden",
+      "archetypeId": "finisher",
+      "temperamentId": "cautious",
+      "quirkId": "clutch",
+      "anomalyId": "",
+      "signatureCommandId": "handoff",
+      "standInPatternId": "wall_hug",
+      "productionCandidate": true,
+      "productionOrder": 12,
+      "threatScore": 62,
+      "capabilityTags": [
+        "execute",
+        "hold_ground"
+      ]
+    }
+  ],
+  "excludedStableKeys": [
+    "Cname_Boss_Red",
+    "Cname_Boss_Blue",
+    "Cname_Boss_Arcade",
+    "Cname_StormBoss1",
+    "Cname_StormBoss2",
+    "Cname_StormBoss3",
+    "Cname_StormBoss4",
+    "Cname_StormBoss5",
+    "Character_Ming",
+    "DragonDescendant",
+    "boss_dragonking"
+  ]
+}

@@ -1,0 +1,233 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "f28e75ec4299e828e602878b625c548bc8f693af43fdf7ebfa2ef6d8db40c4bd",
+  "documentId": "modeh_odds_weights",
+  "numberConvention": "integer-only; multipliers use milli (x1000) integers",
+  "oddsTiers": [
+    {
+      "odds": 1,
+      "minPublicEdge": 20,
+      "maxPublicEdge": 9999,
+      "toneKey": "BossRush_ModeH_OddsTone_x1"
+    },
+    {
+      "odds": 2,
+      "minPublicEdge": 5,
+      "maxPublicEdge": 19,
+      "toneKey": "BossRush_ModeH_OddsTone_x2"
+    },
+    {
+      "odds": 3,
+      "minPublicEdge": -9,
+      "maxPublicEdge": 4,
+      "toneKey": "BossRush_ModeH_OddsTone_x3"
+    },
+    {
+      "odds": 4,
+      "minPublicEdge": -24,
+      "maxPublicEdge": -10,
+      "toneKey": "BossRush_ModeH_OddsTone_x4"
+    },
+    {
+      "odds": 5,
+      "minPublicEdge": -9999,
+      "maxPublicEdge": -25,
+      "toneKey": "BossRush_ModeH_OddsTone_x5"
+    }
+  ],
+  "playerWeights": {
+    "relayAvailable": 5,
+    "relayEmpty": -12,
+    "starterCounters": 8,
+    "starterCountered": -8,
+    "relayCounters": 4,
+    "relayCountered": -4,
+    "kitQualityByGameQuality": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      5,
+      5
+    ],
+    "kitQualityTotalCap": 12,
+    "equipmentTagCounters": 4,
+    "equipmentTagCountered": -4,
+    "starterInjured": -5,
+    "relayInjured": -3,
+    "anomalyBlood": -5,
+    "anomalyCrowd": -7,
+    "anomalyStrong": -4,
+    "anomalyError": -2,
+    "scarBenefit": 3,
+    "scarCost": -3,
+    "scarTotalMin": -8,
+    "scarTotalMax": 8,
+    "commandAligned": 4,
+    "commandConflicted": -3,
+    "signatureCommandStarter": 5,
+    "signatureCommandRelay": 2,
+    "arenaFavorable": 4,
+    "arenaUnfavorable": -4
+  },
+  "enemyWeights": {
+    "stageByMatchIndex": [
+      0,
+      2,
+      5,
+      8,
+      12,
+      16
+    ],
+    "countUpperBound": [
+      0,
+      4,
+      8
+    ],
+    "highThreatCore": 10,
+    "synergyPerCategory": 5,
+    "synergyCap": 10,
+    "woundedEnemy": -5,
+    "anomalyBlood": -5,
+    "anomalyCrowd": -7,
+    "anomalyStrong": -4,
+    "anomalyError": -2
+  },
+  "archetypeMatrix": [
+    {
+      "attacker": "assault",
+      "defender": "ranged",
+      "value": 1
+    },
+    {
+      "attacker": "ranged",
+      "defender": "sustain",
+      "value": 1
+    },
+    {
+      "attacker": "sustain",
+      "defender": "tank",
+      "value": 1
+    },
+    {
+      "attacker": "tank",
+      "defender": "assault",
+      "value": 1
+    },
+    {
+      "attacker": "finisher",
+      "defender": "sustain",
+      "value": 1
+    },
+    {
+      "attacker": "ranged",
+      "defender": "finisher",
+      "value": 1
+    }
+  ],
+  "commandTagMap": [
+    {
+      "commandId": "all_in",
+      "alignedTags": [
+        "healer_core",
+        "slow_start"
+      ],
+      "conflictedTags": [
+        "attrition",
+        "danger_edge"
+      ]
+    },
+    {
+      "commandId": "center",
+      "alignedTags": [
+        "danger_edge"
+      ],
+      "conflictedTags": []
+    },
+    {
+      "commandId": "finish",
+      "alignedTags": [
+        "wounded_core",
+        "reinforcement"
+      ],
+      "conflictedTags": [
+        "escort_screen"
+      ]
+    },
+    {
+      "commandId": "guard",
+      "alignedTags": [
+        "early_burst",
+        "crossfire"
+      ],
+      "conflictedTags": [
+        "healer_core"
+      ]
+    },
+    {
+      "commandId": "hold",
+      "alignedTags": [
+        "late_reinforcement"
+      ],
+      "conflictedTags": [
+        "early_burst"
+      ]
+    },
+    {
+      "commandId": "press",
+      "alignedTags": [
+        "healer_core",
+        "slow_start"
+      ],
+      "conflictedTags": [
+        "attrition",
+        "danger_edge"
+      ]
+    },
+    {
+      "commandId": "spread",
+      "alignedTags": [
+        "crowd",
+        "crossfire"
+      ],
+      "conflictedTags": [
+        "single_core"
+      ]
+    },
+    {
+      "commandId": "steady",
+      "alignedTags": [
+        "early_burst",
+        "coward_pressure"
+      ],
+      "conflictedTags": [
+        "healer_core",
+        "late_reinforcement"
+      ]
+    }
+  ],
+  "testVectors": [
+    {
+      "vectorId": "public_edge_19_to_x2",
+      "playerPublicScore": 23,
+      "enemyPublicScore": 4,
+      "expectedOdds": 2
+    },
+    {
+      "vectorId": "public_edge_minus47_to_x5",
+      "playerPublicScore": -21,
+      "enemyPublicScore": 26,
+      "expectedOdds": 5
+    },
+    {
+      "vectorId": "public_edge_minus1_to_x3",
+      "playerPublicScore": 13,
+      "enemyPublicScore": 14,
+      "expectedOdds": 3
+    }
+  ]
+}

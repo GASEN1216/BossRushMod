@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "5ffd8374af8cc629dfe98efaac31c9dd19601b772298c36321ea58f1d1617e81",
+  "documentId": "modeh_command_compatibility",
+  "statusLegend": {
+    "0": "Unknown - must be measured by ModeHProductionCertification at runtime",
+    "1": "VerifiedBehavior",
+    "2": "ReportOnly",
+    "3": "Unavailable",
+    "4": "PartiallyVerified (command level only)"
+  },
+  "matrixKey": "(gameBuildSignature, modBuildSignature, contentCatalogSignature, stableKey, commandId, effectId)",
+  "selfSettledEffects": [
+    "steady.coward_mitigation"
+  ],
+  "effectCatalog": [
+    {
+      "commandId": "all_in",
+      "effectId": "all_in.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "all_in",
+      "effectId": "all_in.itemSkillChance",
+      "controlPointId": "itemSkillChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "all_in",
+      "effectId": "all_in.nextReleaseSkillTimeMarker",
+      "controlPointId": "nextReleaseSkillTimeMarker",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "all_in",
+      "effectId": "all_in.skillSuccessChance",
+      "controlPointId": "skillSuccessChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "anchor",
+      "effectId": "anchor.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "anchor",
+      "effectId": "anchor.shootCanMove",
+      "controlPointId": "shootCanMove",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "center",
+      "effectId": "center.moveToPos",
+      "controlPointId": "moveToPos",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "center",
+      "effectId": "center.sightDistance",
+      "controlPointId": "sightDistance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "finish",
+      "effectId": "finish.searchedEnemy",
+      "controlPointId": "searchedEnemy",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "finish",
+      "effectId": "finish.setNoticedToTarget",
+      "controlPointId": "setNoticedToTarget",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "guard",
+      "effectId": "guard.baseReactionTime",
+      "controlPointId": "baseReactionTime",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "guard",
+      "effectId": "guard.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "guard",
+      "effectId": "guard.shootCanMove",
+      "controlPointId": "shootCanMove",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "handoff",
+      "effectId": "handoff.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "handoff",
+      "effectId": "handoff.skillSuccessChance",
+      "controlPointId": "skillSuccessChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "hold",
+      "effectId": "hold.itemSkillChance",
+      "controlPointId": "itemSkillChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "hold",
+      "effectId": "hold.nextReleaseSkillTimeMarker",
+      "controlPointId": "nextReleaseSkillTimeMarker",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "hold",
+      "effectId": "hold.skillSuccessChance",
+      "controlPointId": "skillSuccessChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "last_mag",
+      "effectId": "last_mag.itemSkillChance",
+      "controlPointId": "itemSkillChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "last_mag",
+      "effectId": "last_mag.shootCanMove",
+      "controlPointId": "shootCanMove",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "press",
+      "effectId": "press.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "press",
+      "effectId": "press.setNoticedToTarget",
+      "controlPointId": "setNoticedToTarget",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "press",
+      "effectId": "press.shootCanMove",
+      "controlPointId": "shootCanMove",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "press",
+      "effectId": "press.sightDistance",
+      "controlPointId": "sightDistance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "spread",
+      "effectId": "spread.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "spread",
+      "effectId": "spread.shootCanMove",
+      "controlPointId": "shootCanMove",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "spread",
+      "effectId": "spread.sightAngle",
+      "controlPointId": "sightAngle",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "steady",
+      "effectId": "steady.baseReactionTime",
+      "controlPointId": "baseReactionTime",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "steady",
+      "effectId": "steady.combatTurnSpeed",
+      "controlPointId": "combatTurnSpeed",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "steady",
+      "effectId": "steady.coward_mitigation",
+      "controlPointId": "coward_mitigation",
+      "defaultStatus": 1
+    },
+    {
+      "commandId": "steady",
+      "effectId": "steady.shootCanMove",
+      "controlPointId": "shootCanMove",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "together",
+      "effectId": "together.itemSkillChance",
+      "controlPointId": "itemSkillChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "together",
+      "effectId": "together.skillSuccessChance",
+      "controlPointId": "skillSuccessChance",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "weakness",
+      "effectId": "weakness.searchedEnemy",
+      "controlPointId": "searchedEnemy",
+      "defaultStatus": 0
+    },
+    {
+      "commandId": "weakness",
+      "effectId": "weakness.sightDistance",
+      "controlPointId": "sightDistance",
+      "defaultStatus": 0
+    }
+  ],
+  "pinnedOverrides": []
+}

@@ -313,6 +313,18 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeG\ModeGHUD.cs ^
     ModeG\ModeGRecapPanel.cs ^
     ModeG\ModeGInteractable.cs ^
+    ModeH\ModeHCanonicalDigest.cs ^
+    ModeH\ModeHCommandCompatibilityRegistry.cs ^
+    ModeH\ModeHConfig.cs ^
+    ModeH\ModeHContentCatalog.cs ^
+    ModeH\ModeHHallOfFamePersistence.cs ^
+    ModeH\ModeHLoadoutKitRegistry.cs ^
+    ModeH\ModeHProfilePersistence.cs ^
+    ModeH\ModeHProfileRegistry.cs ^
+    ModeH\ModeHRuntimeGates.cs ^
+    ModeH\ModeHSaveFlushCoordinator.cs ^
+    ModeH\ModeHSeedStream.cs ^
+    ModeH\ModeHStateModel.cs ^
     ModeF\ModeFBounty_EquipmentAndLoot.cs ^
     ModeF\ModeFRespawn.cs ^
     ModeF\ModeFExtraction.cs ^
@@ -670,6 +682,28 @@ if %BUILD_EXIT_CODE% EQU 0 (
             ) else (
                 echo Deployed Data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data
             )
+        )
+        if exist "Assets\Data\ModeH\*.json" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH"
+            xcopy /Y /I "Assets\Data\ModeH\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH\" >nul
+            if errorlevel 1 (
+                echo WARNING: Mode H data JSON deploy failed.
+            ) else (
+                echo Deployed Mode H data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH
+            )
+        ) else (
+            echo WARNING: Mode H data JSON missing at Assets\Data\ModeH; Mode H reports content not ready.
+        )
+        if exist "Assets\ui\modeh_presentation" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\modeh_presentation" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\modeh_presentation" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: Mode H presentation bundle deploy failed.
+            ) else (
+                echo Deployed Mode H presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        ) else (
+            echo WARNING: Mode H presentation bundle missing at Assets\ui\modeh_presentation; Mode H entry fails closed.
         )
         if exist "Assets\ui\modeg_presentation" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"

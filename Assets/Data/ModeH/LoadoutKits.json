@@ -1,0 +1,479 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "49420e86ace492b459271413127ca154cee9da3332a8bf816cb2c69c64337a51",
+  "documentId": "modeh_loadout_kits",
+  "numberConvention": "integer-only",
+  "resolutionNote": "typeId 0 means the official item is resolved deterministically at load time via ItemAssetsCollection.Search(ItemFilter) using resolveTags + resolveMinQuality/resolveMaxQuality, then sorted ascending by typeId and indexed by resolveOrdinal. The resolved id is pinned into the runtime kit record and audited for slot, quality, ammo and forbidden types. Owner may replace typeId 0 with a pinned official id after the ModeHControlPointHarness item dump; pinned ids skip resolution but keep the same audit.",
+  "forbiddenRules": [
+    "no controlMindType weapons (nested control chain risk, section 17.6.5)",
+    "no backpacks, containers, consumables, random enchantments, unique items",
+    "no custom BossRush TypeIDs",
+    "no runtime durability inheritance",
+    "no attachment trees"
+  ],
+  "allowedSlots": [
+    "Armor",
+    "Helmat",
+    "MeleeWeapon",
+    "PrimaryWeapon",
+    "SecondaryWeapon"
+  ],
+  "maxKitsPerFighter": 4,
+  "kits": [
+    {
+      "kitId": "starter_field_armor",
+      "isStarterKit": true,
+      "starterOrder": 1,
+      "nameKey": "BossRush_ModeH_Kit_starter_field_armor",
+      "descKey": "BossRush_ModeH_Kit_starter_field_armor_Desc",
+      "replaceSlot": "Armor",
+      "typeId": 0,
+      "resolveTags": [
+        "BodyArmor"
+      ],
+      "resolveMinQuality": 2,
+      "resolveMaxQuality": 3,
+      "resolveOrdinal": 0,
+      "gameQuality": 3,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_light"
+      ]
+    },
+    {
+      "kitId": "starter_field_helmet",
+      "isStarterKit": true,
+      "starterOrder": 2,
+      "nameKey": "BossRush_ModeH_Kit_starter_field_helmet",
+      "descKey": "BossRush_ModeH_Kit_starter_field_helmet_Desc",
+      "replaceSlot": "Helmat",
+      "typeId": 0,
+      "resolveTags": [
+        "Helmat"
+      ],
+      "resolveMinQuality": 2,
+      "resolveMaxQuality": 3,
+      "resolveOrdinal": 0,
+      "gameQuality": 3,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_light"
+      ]
+    },
+    {
+      "kitId": "starter_assault_rifle",
+      "isStarterKit": true,
+      "starterOrder": 3,
+      "nameKey": "BossRush_ModeH_Kit_starter_assault_rifle",
+      "descKey": "BossRush_ModeH_Kit_starter_assault_rifle_Desc",
+      "replaceSlot": "PrimaryWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "Gun"
+      ],
+      "resolveMinQuality": 3,
+      "resolveMaxQuality": 4,
+      "resolveOrdinal": 0,
+      "gameQuality": 4,
+      "ammoTypeId": 0,
+      "ammoCount": 120,
+      "resolveAmmoByCaliber": true,
+      "compatibleArchetypeIds": [
+        "assault",
+        "sustain"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "burst"
+      ]
+    },
+    {
+      "kitId": "starter_assault_blade",
+      "isStarterKit": true,
+      "starterOrder": 4,
+      "nameKey": "BossRush_ModeH_Kit_starter_assault_blade",
+      "descKey": "BossRush_ModeH_Kit_starter_assault_blade_Desc",
+      "replaceSlot": "MeleeWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "MeleeWeapon"
+      ],
+      "resolveMinQuality": 2,
+      "resolveMaxQuality": 3,
+      "resolveOrdinal": 0,
+      "gameQuality": 3,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "tank",
+        "finisher"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "melee_rush"
+      ]
+    },
+    {
+      "kitId": "starter_marksman_rifle",
+      "isStarterKit": true,
+      "starterOrder": 5,
+      "nameKey": "BossRush_ModeH_Kit_starter_marksman_rifle",
+      "descKey": "BossRush_ModeH_Kit_starter_marksman_rifle_Desc",
+      "replaceSlot": "PrimaryWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "Gun"
+      ],
+      "resolveMinQuality": 4,
+      "resolveMaxQuality": 5,
+      "resolveOrdinal": 0,
+      "gameQuality": 5,
+      "ammoTypeId": 0,
+      "ammoCount": 90,
+      "resolveAmmoByCaliber": true,
+      "compatibleArchetypeIds": [
+        "ranged",
+        "finisher"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "ranged_pressure"
+      ]
+    },
+    {
+      "kitId": "starter_sidearm",
+      "isStarterKit": true,
+      "starterOrder": 6,
+      "nameKey": "BossRush_ModeH_Kit_starter_sidearm",
+      "descKey": "BossRush_ModeH_Kit_starter_sidearm_Desc",
+      "replaceSlot": "SecondaryWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "Gun"
+      ],
+      "resolveMinQuality": 2,
+      "resolveMaxQuality": 3,
+      "resolveOrdinal": 1,
+      "gameQuality": 3,
+      "ammoTypeId": 0,
+      "ammoCount": 60,
+      "resolveAmmoByCaliber": true,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "backup"
+      ]
+    },
+    {
+      "kitId": "starter_heavy_plate",
+      "isStarterKit": true,
+      "starterOrder": 7,
+      "nameKey": "BossRush_ModeH_Kit_starter_heavy_plate",
+      "descKey": "BossRush_ModeH_Kit_starter_heavy_plate_Desc",
+      "replaceSlot": "Armor",
+      "typeId": 0,
+      "resolveTags": [
+        "BodyArmor"
+      ],
+      "resolveMinQuality": 4,
+      "resolveMaxQuality": 5,
+      "resolveOrdinal": 0,
+      "gameQuality": 5,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "tank",
+        "sustain"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_heavy"
+      ]
+    },
+    {
+      "kitId": "starter_scout_helmet",
+      "isStarterKit": true,
+      "starterOrder": 8,
+      "nameKey": "BossRush_ModeH_Kit_starter_scout_helmet",
+      "descKey": "BossRush_ModeH_Kit_starter_scout_helmet_Desc",
+      "replaceSlot": "Helmat",
+      "typeId": 0,
+      "resolveTags": [
+        "Helmat"
+      ],
+      "resolveMinQuality": 3,
+      "resolveMaxQuality": 4,
+      "resolveOrdinal": 1,
+      "gameQuality": 4,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "finisher",
+        "ranged",
+        "sustain"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_light"
+      ]
+    },
+    {
+      "kitId": "reward_breacher_gun",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_breacher_gun",
+      "descKey": "BossRush_ModeH_Kit_reward_breacher_gun_Desc",
+      "replaceSlot": "PrimaryWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "Gun"
+      ],
+      "resolveMinQuality": 5,
+      "resolveMaxQuality": 6,
+      "resolveOrdinal": 0,
+      "gameQuality": 6,
+      "ammoTypeId": 0,
+      "ammoCount": 150,
+      "resolveAmmoByCaliber": true,
+      "compatibleArchetypeIds": [
+        "assault",
+        "sustain"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "burst"
+      ]
+    },
+    {
+      "kitId": "reward_long_barrel",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_long_barrel",
+      "descKey": "BossRush_ModeH_Kit_reward_long_barrel_Desc",
+      "replaceSlot": "PrimaryWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "Gun"
+      ],
+      "resolveMinQuality": 6,
+      "resolveMaxQuality": 7,
+      "resolveOrdinal": 0,
+      "gameQuality": 7,
+      "ammoTypeId": 0,
+      "ammoCount": 90,
+      "resolveAmmoByCaliber": true,
+      "compatibleArchetypeIds": [
+        "ranged",
+        "finisher"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "ranged_pressure"
+      ]
+    },
+    {
+      "kitId": "reward_riot_plate",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_riot_plate",
+      "descKey": "BossRush_ModeH_Kit_reward_riot_plate_Desc",
+      "replaceSlot": "Armor",
+      "typeId": 0,
+      "resolveTags": [
+        "BodyArmor"
+      ],
+      "resolveMinQuality": 6,
+      "resolveMaxQuality": 7,
+      "resolveOrdinal": 0,
+      "gameQuality": 7,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_heavy"
+      ]
+    },
+    {
+      "kitId": "reward_command_helmet",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_command_helmet",
+      "descKey": "BossRush_ModeH_Kit_reward_command_helmet_Desc",
+      "replaceSlot": "Helmat",
+      "typeId": 0,
+      "resolveTags": [
+        "Helmat"
+      ],
+      "resolveMinQuality": 5,
+      "resolveMaxQuality": 6,
+      "resolveOrdinal": 0,
+      "gameQuality": 6,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_light"
+      ]
+    },
+    {
+      "kitId": "reward_executioner_blade",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_executioner_blade",
+      "descKey": "BossRush_ModeH_Kit_reward_executioner_blade_Desc",
+      "replaceSlot": "MeleeWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "MeleeWeapon"
+      ],
+      "resolveMinQuality": 5,
+      "resolveMaxQuality": 6,
+      "resolveOrdinal": 0,
+      "gameQuality": 6,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "melee_rush"
+      ]
+    },
+    {
+      "kitId": "reward_hold_out_pistol",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_hold_out_pistol",
+      "descKey": "BossRush_ModeH_Kit_reward_hold_out_pistol_Desc",
+      "replaceSlot": "SecondaryWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "Gun"
+      ],
+      "resolveMinQuality": 4,
+      "resolveMaxQuality": 5,
+      "resolveOrdinal": 1,
+      "gameQuality": 5,
+      "ammoTypeId": 0,
+      "ammoCount": 60,
+      "resolveAmmoByCaliber": true,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "ranged",
+        "sustain",
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "backup"
+      ]
+    },
+    {
+      "kitId": "reward_bulwark_plate",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_bulwark_plate",
+      "descKey": "BossRush_ModeH_Kit_reward_bulwark_plate_Desc",
+      "replaceSlot": "Armor",
+      "typeId": 0,
+      "resolveTags": [
+        "BodyArmor"
+      ],
+      "resolveMinQuality": 7,
+      "resolveMaxQuality": 8,
+      "resolveOrdinal": 0,
+      "gameQuality": 8,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "tank"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "armor_heavy"
+      ]
+    },
+    {
+      "kitId": "reward_skirmisher_blade",
+      "isStarterKit": false,
+      "starterOrder": 0,
+      "nameKey": "BossRush_ModeH_Kit_reward_skirmisher_blade",
+      "descKey": "BossRush_ModeH_Kit_reward_skirmisher_blade_Desc",
+      "replaceSlot": "MeleeWeapon",
+      "typeId": 0,
+      "resolveTags": [
+        "MeleeWeapon"
+      ],
+      "resolveMinQuality": 4,
+      "resolveMaxQuality": 5,
+      "resolveOrdinal": 1,
+      "gameQuality": 5,
+      "ammoTypeId": 0,
+      "ammoCount": 0,
+      "resolveAmmoByCaliber": false,
+      "compatibleArchetypeIds": [
+        "assault",
+        "finisher",
+        "sustain"
+      ],
+      "compatibleProfileIds": [],
+      "publicTags": [
+        "melee_rush"
+      ]
+    }
+  ]
+}

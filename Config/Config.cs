@@ -78,6 +78,11 @@ namespace BossRush
 
             /// <summary>每局变异词条数量（1-10，默认3）</summary>
             public int mutatorCount = 3;
+
+            /// <summary>Mode H（百战留痕：黑市鸭王杯）入口总开关。
+            /// 设计提案 §24.1：这是 Mode H 唯一可写入口开关，默认关闭；
+            /// 真实仓库抵押没有配置字段，进入模式即知情同意。</summary>
+            public bool modeHEnabled = false;
         }
         
         #endregion
@@ -264,6 +269,7 @@ namespace BossRush
                 string deathWraithKey = ModName + "_EnableDeathWraithSystem";
                 string mutatorsKey = ModName + "_EnableMutators";
                 string mutatorCountKey = ModName + "_MutatorCount";
+                string modeHKey = ModName + "_ModeHEnabled";
 
                 MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
                 if (loadMethod != null)
@@ -392,6 +398,10 @@ namespace BossRush
                     object mutatorCountResult = intLoadMethod.Invoke(null, new object[] { mutatorCountKey, config.mutatorCount });
                     int loadedMutatorCount = ClampMutatorCount((int)mutatorCountResult);
                     config.mutatorCount = loadedMutatorCount;
+
+                    object modeHResult = boolLoadMethod.Invoke(null, new object[] { modeHKey, config.modeHEnabled });
+                    bool loadedModeH = (bool)modeHResult;
+                    config.modeHEnabled = loadedModeH;
 
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
@@ -572,6 +582,15 @@ namespace BossRush
                     config.mutatorCount = ClampMutatorCount((int)mutatorCountResult);
                     return true;
                 }
+
+                string modeHSingleKey = ModName + "_ModeHEnabled";
+                if (changedKey == modeHSingleKey)
+                {
+                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
+                    object modeHResult = boolLoadMethod.Invoke(null, new object[] { modeHSingleKey, config.modeHEnabled });
+                    config.modeHEnabled = (bool)modeHResult;
+                    return true;
+                }
             }
             catch (Exception ex)
             {
@@ -637,7 +656,8 @@ namespace BossRush
                    changedKey == ModName + "_EnableMutators" ||
                    changedKey == ModName + "_MutatorCount" ||
                    changedKey == ModName + "_ModeDEnemiesPerWave" ||
-                   changedKey == ModName + "_AchievementHotkey";
+                   changedKey == ModName + "_AchievementHotkey" ||
+                   changedKey == ModName + "_ModeHEnabled";
         }
 
         private void LogModConfigOptionChanged(string changedKey)
@@ -872,6 +892,23 @@ namespace BossRush
                 catch (Exception ex)
                 {
                     DevLog("[BossRush] 注册变异词条配置项失败: " + ex.Message);
+                }
+
+                // Mode H 入口总开关：默认关闭，玩家自行开启（§24.1）
+                try
+                {
+                    string modeHLabel = L10n.T("百战留痕：黑市鸭王杯", "Black Market Duck Cup");
+                    string modeHKey = ModName + "_ModeHEnabled";
+
+                    if (addBoolMethod != null)
+                    {
+                        addBoolMethod.Invoke(null, new object[] { ModName, modeHKey, modeHLabel, config.modeHEnabled });
+                        DevLog("[BossRush] Mode H 配置项注册成功");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DevLog("[BossRush] 注册 Mode H 配置项失败: " + ex.Message);
                 }
 
                 // ========== 数值滑条类配置 ==========
@@ -1123,6 +1160,23 @@ namespace BossRush
                 return config.enableDeathWraithSystem;
             }
             return true;
+        }
+
+        /// <summary>
+        /// Mode H 入口总开关的唯一只读入口（设计提案 §24.1）。
+        /// no-throw，缺配置时返回 false；运行时模块只能通过 owner 调用它，
+        /// 禁止反射私有字段或把开关缓存进 ModeHConfig / 存档。
+        /// </summary>
+        internal bool IsModeHConfiguredEnabled()
+        {
+            try
+            {
+                return config != null && config.modeHEnabled;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         #endregion

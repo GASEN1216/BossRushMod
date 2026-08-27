@@ -1,0 +1,383 @@
+{
+  "schemaVersion": 1,
+  "gameBuildSignature": "",
+  "modBuildSignature": "",
+  "contentSignature": "a357dff2b9b94da88a5d3f4c9920ef6425acda220dc475013bc9d40bbfc4e7be",
+  "documentId": "modeh_commands",
+  "numberConvention": "integer-only; multipliers use milli (x1000) integers",
+  "controlPointWhitelist": [
+    "skillSuccessChance",
+    "skillCoolTimeRange",
+    "nextReleaseSkillTimeMarker",
+    "itemSkillChance",
+    "itemSkillCoolTime",
+    "shootCanMove",
+    "sightDistance",
+    "sightAngle",
+    "combatTurnSpeed",
+    "patrolTurnSpeed",
+    "baseReactionTime",
+    "searchedEnemy",
+    "setNoticedToTarget",
+    "moveToPos",
+    "coward_mitigation",
+    "command_scale"
+  ],
+  "commandWindowSeconds": 6,
+  "reassertIntervalMilliseconds": 100,
+  "commonCommands": [
+    {
+      "commandId": "steady",
+      "nameKey": "BossRush_ModeH_Command_steady",
+      "descKey": "BossRush_ModeH_Command_steady_Desc",
+      "intent": "defensive",
+      "effects": [
+        {
+          "effectId": "steady.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": true,
+          "selfSettled": false
+        },
+        {
+          "effectId": "steady.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1200,
+          "selfSettled": false
+        },
+        {
+          "effectId": "steady.baseReactionTime",
+          "controlPointId": "baseReactionTime",
+          "op": "multiply",
+          "multiplierMilli": 900,
+          "selfSettled": false
+        },
+        {
+          "effectId": "steady.coward_mitigation",
+          "controlPointId": "coward_mitigation",
+          "op": "self_settled",
+          "multiplierMilli": 750,
+          "selfSettled": true
+        }
+      ]
+    },
+    {
+      "commandId": "press",
+      "nameKey": "BossRush_ModeH_Command_press",
+      "descKey": "BossRush_ModeH_Command_press_Desc",
+      "intent": "offensive",
+      "effects": [
+        {
+          "effectId": "press.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 1400,
+          "selfSettled": false
+        },
+        {
+          "effectId": "press.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1300,
+          "selfSettled": false
+        },
+        {
+          "effectId": "press.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": true,
+          "selfSettled": false
+        },
+        {
+          "effectId": "press.setNoticedToTarget",
+          "controlPointId": "setNoticedToTarget",
+          "op": "fire_notice_nearest",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "center",
+      "nameKey": "BossRush_ModeH_Command_center",
+      "descKey": "BossRush_ModeH_Command_center_Desc",
+      "intent": "reposition",
+      "effects": [
+        {
+          "effectId": "center.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 500,
+          "selfSettled": false
+        },
+        {
+          "effectId": "center.moveToPos",
+          "controlPointId": "moveToPos",
+          "op": "fire_move_to_arena_center",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "spread",
+      "nameKey": "BossRush_ModeH_Command_spread",
+      "descKey": "BossRush_ModeH_Command_spread_Desc",
+      "intent": "crowd_control",
+      "requiresEnemyCountAtLeast": 2,
+      "effects": [
+        {
+          "effectId": "spread.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": true,
+          "selfSettled": false
+        },
+        {
+          "effectId": "spread.sightAngle",
+          "controlPointId": "sightAngle",
+          "op": "multiply",
+          "multiplierMilli": 1300,
+          "selfSettled": false
+        },
+        {
+          "effectId": "spread.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1200,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "finish",
+      "nameKey": "BossRush_ModeH_Command_finish",
+      "descKey": "BossRush_ModeH_Command_finish_Desc",
+      "intent": "execute",
+      "effects": [
+        {
+          "effectId": "finish.searchedEnemy",
+          "controlPointId": "searchedEnemy",
+          "op": "fire_lowest_health_target",
+          "selfSettled": false
+        },
+        {
+          "effectId": "finish.setNoticedToTarget",
+          "controlPointId": "setNoticedToTarget",
+          "op": "fire_notice_current_target",
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "hold",
+      "nameKey": "BossRush_ModeH_Command_hold",
+      "descKey": "BossRush_ModeH_Command_hold_Desc",
+      "intent": "conserve",
+      "effects": [
+        {
+          "effectId": "hold.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply",
+          "multiplierMilli": 200,
+          "selfSettled": false
+        },
+        {
+          "effectId": "hold.itemSkillChance",
+          "controlPointId": "itemSkillChance",
+          "op": "multiply",
+          "multiplierMilli": 200,
+          "selfSettled": false
+        },
+        {
+          "effectId": "hold.nextReleaseSkillTimeMarker",
+          "controlPointId": "nextReleaseSkillTimeMarker",
+          "op": "set_marker_window_end",
+          "restore": false,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "guard",
+      "nameKey": "BossRush_ModeH_Command_guard",
+      "descKey": "BossRush_ModeH_Command_guard_Desc",
+      "intent": "defensive",
+      "effects": [
+        {
+          "effectId": "guard.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": false,
+          "selfSettled": false
+        },
+        {
+          "effectId": "guard.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1200,
+          "selfSettled": false
+        },
+        {
+          "effectId": "guard.baseReactionTime",
+          "controlPointId": "baseReactionTime",
+          "op": "multiply",
+          "multiplierMilli": 850,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "all_in",
+      "nameKey": "BossRush_ModeH_Command_all_in",
+      "descKey": "BossRush_ModeH_Command_all_in_Desc",
+      "intent": "offensive",
+      "effects": [
+        {
+          "effectId": "all_in.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "set_value",
+          "valueMilli": 1000,
+          "selfSettled": false
+        },
+        {
+          "effectId": "all_in.itemSkillChance",
+          "controlPointId": "itemSkillChance",
+          "op": "multiply_capped",
+          "multiplierMilli": 2000,
+          "capMilli": 1000,
+          "selfSettled": false
+        },
+        {
+          "effectId": "all_in.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1300,
+          "selfSettled": false
+        },
+        {
+          "effectId": "all_in.nextReleaseSkillTimeMarker",
+          "controlPointId": "nextReleaseSkillTimeMarker",
+          "op": "set_marker_past",
+          "restore": false,
+          "selfSettled": false
+        }
+      ]
+    }
+  ],
+  "signatureCommands": [
+    {
+      "commandId": "weakness",
+      "archetypeId": "assault",
+      "nameKey": "BossRush_ModeH_Command_weakness",
+      "descKey": "BossRush_ModeH_Command_weakness_Desc",
+      "effects": [
+        {
+          "effectId": "weakness.searchedEnemy",
+          "controlPointId": "searchedEnemy",
+          "op": "fire_lowest_health_target",
+          "selfSettled": false
+        },
+        {
+          "effectId": "weakness.sightDistance",
+          "controlPointId": "sightDistance",
+          "op": "multiply",
+          "multiplierMilli": 1300,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "anchor",
+      "archetypeId": "tank",
+      "nameKey": "BossRush_ModeH_Command_anchor",
+      "descKey": "BossRush_ModeH_Command_anchor_Desc",
+      "effects": [
+        {
+          "effectId": "anchor.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": false,
+          "selfSettled": false
+        },
+        {
+          "effectId": "anchor.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1150,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "last_mag",
+      "archetypeId": "ranged",
+      "nameKey": "BossRush_ModeH_Command_last_mag",
+      "descKey": "BossRush_ModeH_Command_last_mag_Desc",
+      "effects": [
+        {
+          "effectId": "last_mag.shootCanMove",
+          "controlPointId": "shootCanMove",
+          "op": "set_bool",
+          "boolValue": false,
+          "selfSettled": false
+        },
+        {
+          "effectId": "last_mag.itemSkillChance",
+          "controlPointId": "itemSkillChance",
+          "op": "multiply_capped",
+          "multiplierMilli": 1500,
+          "capMilli": 1000,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "together",
+      "archetypeId": "sustain",
+      "nameKey": "BossRush_ModeH_Command_together",
+      "descKey": "BossRush_ModeH_Command_together_Desc",
+      "effects": [
+        {
+          "effectId": "together.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply_capped",
+          "multiplierMilli": 1400,
+          "capMilli": 1000,
+          "selfSettled": false
+        },
+        {
+          "effectId": "together.itemSkillChance",
+          "controlPointId": "itemSkillChance",
+          "op": "multiply_capped",
+          "multiplierMilli": 1400,
+          "capMilli": 1000,
+          "selfSettled": false
+        }
+      ]
+    },
+    {
+      "commandId": "handoff",
+      "archetypeId": "finisher",
+      "nameKey": "BossRush_ModeH_Command_handoff",
+      "descKey": "BossRush_ModeH_Command_handoff_Desc",
+      "requiresRelayEntered": true,
+      "effects": [
+        {
+          "effectId": "handoff.skillSuccessChance",
+          "controlPointId": "skillSuccessChance",
+          "op": "multiply_capped",
+          "multiplierMilli": 1250,
+          "capMilli": 1000,
+          "selfSettled": false
+        },
+        {
+          "effectId": "handoff.combatTurnSpeed",
+          "controlPointId": "combatTurnSpeed",
+          "op": "multiply",
+          "multiplierMilli": 1200,
+          "selfSettled": false
+        }
+      ]
+    }
+  ]
+}
