@@ -20,6 +20,41 @@ namespace BossRush
     }
 
     /// <summary>
+    /// 三轴双门槛破解进度（规格 §4.2/§4.4 门槛，§15 HUD 呈现）。
+    ///
+    /// 唯一来源：破解判定与 HUD 进度必须共用本结构，避免 HUD 显示与实际结算口径漂移
+    /// （§15「不显示仍可得分的假进度」）。全部为 0..1 比例，呈现层负责取整成百分比。
+    /// </summary>
+    public struct ModeGAxisProgress
+    {
+        /// <summary>目标侧占本波全部可计分直伤的比例（0..1）</summary>
+        public readonly float share;
+        /// <summary>占比门槛（AxisBreakDamageShare）</summary>
+        public readonly float shareTarget;
+        /// <summary>目标侧累计直伤占冻结聚合主 Boss 最大血量的比例（0..1+）</summary>
+        public readonly float contribution;
+        /// <summary>贡献门槛（AxisBreakHealthContribution）</summary>
+        public readonly float contributionTarget;
+        /// <summary>本轴是否有有效目标（无反制/样本不可信时为 false）</summary>
+        public readonly bool active;
+
+        public ModeGAxisProgress(float share, float contribution, bool active)
+        {
+            this.share = share;
+            this.contribution = contribution;
+            this.active = active;
+            this.shareTarget = ModeGAdaptiveCombat.AxisBreakDamageShare;
+            this.contributionTarget = ModeGAdaptiveCombat.AxisBreakHealthContribution;
+        }
+
+        /// <summary>双门槛是否同时达标。</summary>
+        public bool ThresholdsMet
+        {
+            get { return active && share >= shareTarget && contribution >= contributionTarget; }
+        }
+    }
+
+    /// <summary>
     /// Mode G 三轴自适应战斗（规格 §4/§5/§6/§7/§8 重写版）。
     ///
     /// 轴波次固定（九波三幕循环）：距离轴波 2/5/8、弹药轴波 3/6/9、属性轴波 4/7。
@@ -43,10 +78,12 @@ namespace BossRush
         public const float ExtremeFarMeters = 18f;
         /// <summary>极端近距 <=8m（冻结）</summary>
         public const float ExtremeCloseMeters = 8f;
-        /// <summary>破解门槛：分类器接受的 Gun/Melee 伤害占比 >=35%（owner tunable）</summary>
-        public const float DistanceBreakDamageShare = 0.35f;
-        /// <summary>破解门槛：>=20% combatStartAggregatePrimaryMaxHealth 贡献（owner tunable，待确认）</summary>
-        public const float DistanceBreakHealthContribution = 0.20f;
+        // 距离轴（§4.2）与属性轴（§4.4）共用同一对破解门槛，因此使用轴中立命名：
+        // 单独调整某一轴时必须新增独立常量，不得就地改写共用值。
+        /// <summary>破解门槛：分类器接受的 Gun/Melee 伤害占比 >=35%（owner tunable，距离/属性轴共用）</summary>
+        public const float AxisBreakDamageShare = 0.35f;
+        /// <summary>破解门槛：>=20% combatStartAggregatePrimaryMaxHealth 贡献（owner tunable，距离/属性轴共用）</summary>
+        public const float AxisBreakHealthContribution = 0.20f;
 
         // ---- Close/Far 适应（§4.2 冻结）----
         public const float CloseAdaptationMeleeDamageBonus = 0.15f;   // 近战 +15%
@@ -175,33 +212,47 @@ namespace BossRush
         #region Distance Axis
 
         /// <summary>
-        /// 距离轴判定：极端带占比显著时给出 Close/Far 适应指令。
+        /// 距离轴目标极端带：上一署名波 Close -> 本波去 Far 破解；Far -> 去 Close 破解。
+        /// 距离方向只来自上一署名波最后一名 Boss 的可信终结距离（规格 §4.2），
+        /// 禁止改用整波命中分布推断。
         /// </summary>
-        public static ModeGDistanceVerdict EvaluateDistanceAxis(ModeGCombatTelemetry telemetry)
+        public static ModeGDistanceVerdict GetDistanceTargetBand(ModeGDistanceVerdict verdict)
         {
-            if (telemetry == null) return ModeGDistanceVerdict.None;
-            if (telemetry.CloseExtremeShare >= DistanceBreakDamageShare) return ModeGDistanceVerdict.Close;
-            if (telemetry.FarExtremeShare >= DistanceBreakDamageShare) return ModeGDistanceVerdict.Far;
+            if (verdict == ModeGDistanceVerdict.Close) return ModeGDistanceVerdict.Far;
+            if (verdict == ModeGDistanceVerdict.Far) return ModeGDistanceVerdict.Close;
             return ModeGDistanceVerdict.None;
         }
 
         /// <summary>
-        /// 距离轴破解判定（双门槛）：分类器伤害占比 >=35% 且对聚合主 Boss 血量贡献 >=20%。
+        /// 距离轴双门槛进度（§4.2）：目标极端带占本波可计分直伤 >=35%，
+        /// 且累计直伤 >=20% 冻结聚合主 Boss 最大血量。破解判定与 HUD 共用本方法。
+        /// </summary>
+        public static ModeGAxisProgress EvaluateDistanceProgress(
+            ModeGCombatTelemetry telemetry, ModeGDistanceVerdict verdict)
+        {
+            ModeGDistanceVerdict target = GetDistanceTargetBand(verdict);
+            if (telemetry == null || target == ModeGDistanceVerdict.None)
+                return new ModeGAxisProgress(0f, 0f, false);
+
+            float aggregate = telemetry.CombatStartAggregatePrimaryMaxHealth;
+            if (aggregate <= 0f) return new ModeGAxisProgress(0f, 0f, false);
+
+            float share = target == ModeGDistanceVerdict.Far
+                ? telemetry.FarExtremeDamageShare
+                : telemetry.CloseExtremeDamageShare;
+            float targetDamage = target == ModeGDistanceVerdict.Far
+                ? telemetry.FarExtremeDirectDamage
+                : telemetry.CloseExtremeDirectDamage;
+            return new ModeGAxisProgress(share, targetDamage / aggregate, true);
+        }
+
+        /// <summary>
+        /// 距离轴破解判定（双门槛）：与 <see cref="EvaluateDistanceProgress"/> 同一口径。
+        /// 距离分在本波可信完成时结算，不要求末击来源或末击位置（§4.2）。
         /// </summary>
         public static bool IsDistanceAxisBroken(ModeGCombatTelemetry telemetry, ModeGDistanceVerdict verdict)
         {
-            if (telemetry == null || verdict == ModeGDistanceVerdict.None) return false;
-            // 上一署名波 Close -> 本波去 Far 极端带破解；Far -> 去 Close 极端带破解。
-            float share = verdict == ModeGDistanceVerdict.Close
-                ? telemetry.FarExtremeDamageShare
-                : telemetry.CloseExtremeDamageShare;
-            if (share < DistanceBreakDamageShare) return false;
-            if (telemetry.CombatStartAggregatePrimaryMaxHealth <= 0f) return false;
-            float targetDamage = verdict == ModeGDistanceVerdict.Close
-                ? telemetry.FarExtremeDirectDamage
-                : telemetry.CloseExtremeDirectDamage;
-            float contribution = targetDamage / telemetry.CombatStartAggregatePrimaryMaxHealth;
-            return contribution >= DistanceBreakHealthContribution;
+            return EvaluateDistanceProgress(telemetry, verdict).ThresholdsMet;
         }
 
         /// <summary>
@@ -315,15 +366,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 单次违规伤害 clamp：10% 聚合血量（禁弹违规不直接扣血，只钳制计分上限）。
-        /// </summary>
-        public static float ClampAmmoViolationDamage(float damage, float aggregateMaxHealth)
-        {
-            float cap = aggregateMaxHealth * AmmoBanClampShare;
-            return damage > cap ? cap : damage;
-        }
-
         #endregion
 
         #region Attribute Axis
@@ -331,19 +373,28 @@ namespace BossRush
         /// <summary>
         /// 属性封锁：封锁玩家占比更高的一侧（Gun/Melee），PercentageMultiply ×0.75，order 200，私有 source。
         /// </summary>
+        /// <summary>
+        /// 预测/判定将被封锁的武器系：上一宿敌波玩家直接伤害的主导侧（§4.4）。
+        /// 两侧相等或都为 0 时返回 NotScoreable（不封锁、该分不可得）。
+        /// 唯一来源：ApplyAttributeLock 与休整期 HUD 预告必须共用本方法，避免预告与实际封锁不一致。
+        /// </summary>
+        public static ModeGDirectDamageClass PredictAttributeLockFamily(ModeGCombatTelemetry telemetry)
+        {
+            if (telemetry == null || telemetry.TotalDirectDamage <= 0f) return ModeGDirectDamageClass.NotScoreable;
+            if (Math.Abs(telemetry.GunDirectDamage - telemetry.MeleeDirectDamage) < 0.0001f)
+                return ModeGDirectDamageClass.NotScoreable;
+            return telemetry.GunDirectDamage > telemetry.MeleeDirectDamage
+                ? ModeGDirectDamageClass.Gun
+                : ModeGDirectDamageClass.Melee;
+        }
+
         public bool ApplyAttributeLock(CharacterMainControl player, ModeGCombatTelemetry telemetry)
         {
             if (player == null || telemetry == null) return false;
             ClearAttributeLock();
-            if (telemetry.TotalDirectDamage <= 0f
-                || Math.Abs(telemetry.GunDirectDamage - telemetry.MeleeDirectDamage) < 0.0001f)
-            {
-                return false;
-            }
 
-            ModeGDirectDamageClass family = telemetry.GunDirectDamage > telemetry.MeleeDirectDamage
-                ? ModeGDirectDamageClass.Gun
-                : ModeGDirectDamageClass.Melee;
+            ModeGDirectDamageClass family = PredictAttributeLockFamily(telemetry);
+            if (family == ModeGDirectDamageClass.NotScoreable) return false;
             string statName = family == ModeGDirectDamageClass.Gun ? StatGunDamage : StatMeleeDamage;
             if (player.CharacterItem == null) return false;
 
@@ -384,46 +435,56 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 被封锁侧的相反武器系（即破解所需的一侧）。未封锁时返回 NotScoreable。
+        /// </summary>
+        public ModeGDirectDamageClass AttributeBreakFamily
+        {
+            get
+            {
+                if (_activeAttributeLockedFamily == ModeGDirectDamageClass.Gun)
+                    return ModeGDirectDamageClass.Melee;
+                if (_activeAttributeLockedFamily == ModeGDirectDamageClass.Melee)
+                    return ModeGDirectDamageClass.Gun;
+                return ModeGDirectDamageClass.NotScoreable;
+            }
+        }
+
+        /// <summary>
+        /// 属性轴双门槛进度（§4.4）：相反武器系占本波 Gun+Melee 直伤 >=35%，
+        /// 且累计直伤 >=20% 冻结聚合主 Boss 最大血量。破解判定与 HUD 共用本方法。
+        /// 相反系直接终结是额外条件，不并入本进度（由 IsAttributeAxisBroken 单独校验）。
+        /// </summary>
+        public ModeGAxisProgress EvaluateAttributeProgress(ModeGCombatTelemetry telemetry)
+        {
+            ModeGDirectDamageClass opposite = AttributeBreakFamily;
+            if (telemetry == null || opposite == ModeGDirectDamageClass.NotScoreable)
+                return new ModeGAxisProgress(0f, 0f, false);
+
+            float aggregate = telemetry.CombatStartAggregatePrimaryMaxHealth;
+            if (aggregate <= 0f) return new ModeGAxisProgress(0f, 0f, false);
+
+            bool gun = opposite == ModeGDirectDamageClass.Gun;
+            float damage = gun ? telemetry.GunDirectDamage : telemetry.MeleeDirectDamage;
+            float share = gun ? telemetry.GunDamageShare : telemetry.MeleeDamageShare;
+            return new ModeGAxisProgress(share, damage / aggregate, true);
+        }
+
+        /// <summary>
+        /// 属性轴破解判定：双门槛达标且由相反武器系可计分直伤终结（§4.4）。
+        /// </summary>
         public bool IsAttributeAxisBroken(
             ModeGCombatTelemetry telemetry, ModeGDirectDamageClass terminalFamily)
         {
-            if (telemetry == null || _activeAttributeLockedFamily == ModeGDirectDamageClass.NotScoreable)
-                return false;
-            ModeGDirectDamageClass opposite = _activeAttributeLockedFamily == ModeGDirectDamageClass.Gun
-                ? ModeGDirectDamageClass.Melee
-                : ModeGDirectDamageClass.Gun;
-            if (terminalFamily != opposite || telemetry.CombatStartAggregatePrimaryMaxHealth <= 0f)
-                return false;
-
-            float damage = opposite == ModeGDirectDamageClass.Gun
-                ? telemetry.GunDirectDamage
-                : telemetry.MeleeDirectDamage;
-            float share = telemetry.TotalDirectDamage > 0f ? damage / telemetry.TotalDirectDamage : 0f;
-            return share >= DistanceBreakDamageShare
-                && damage / telemetry.CombatStartAggregatePrimaryMaxHealth >= DistanceBreakHealthContribution;
+            ModeGDirectDamageClass opposite = AttributeBreakFamily;
+            if (opposite == ModeGDirectDamageClass.NotScoreable || terminalFamily != opposite) return false;
+            return EvaluateAttributeProgress(telemetry).ThresholdsMet;
         }
 
         /// <summary>只移除属性封锁 source，保留 Boss 适应、宿敌和复仇 Modifier。</summary>
         public void ClearAttributeLock()
         {
-            for (int i = _modifierRecords.Count - 1; i >= 0; i--)
-            {
-                ZombieModeAttributeModifierRecord record = _modifierRecords[i];
-                if (record == null || record.Modifier == null
-                    || !ReferenceEquals(record.Modifier.Source, AttributeLockSource)) continue;
-                try
-                {
-                    Stat stat = record.Stat;
-                    if (stat == null && record.CharacterItem != null)
-                        stat = record.CharacterItem.GetStat(record.StatName);
-                    if (stat != null) stat.RemoveModifier(record.Modifier);
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[ModeG] 属性封锁精确移除失败: " + e.Message);
-                }
-                _modifierRecords.RemoveAt(i);
-            }
+            RemoveModifiersFromSource(AttributeLockSource);
             _activeAttributeLockedFamily = ModeGDirectDamageClass.NotScoreable;
         }
 

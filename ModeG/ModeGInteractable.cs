@@ -323,6 +323,14 @@ namespace BossRush
             }
             catch { /* 呈现失败不影响确认页 */ }
 
+            // 强制披露（规格 §3.1）：死亡损失遵循当前地图规则 + 高 Resolve 备装建议。
+            // 两行都必须在扣除入场物品前对玩家可见，不得省略。
+            ZombieModeUIHelper.CreateText("Disclosure", st,
+                L10n.T("BossRush_ModeG_Entry_DeathRule") + "\n"
+                    + L10n.T("BossRush_ModeG_Entry_LoadoutHint"),
+                14f, new Vector2(0f, -130f), new Vector2(ModalWidth - 80f, 40f),
+                TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
+
             // 立即迎战 / 放弃
             Button startButton = ZombieModeUIHelper.CreateButton(
                 "Start", st, L10n.T("立即迎战", "Fight Now"),

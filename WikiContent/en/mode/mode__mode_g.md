@@ -34,18 +34,21 @@ The axis schedule repeats across the run:
 - **Ammo Mark (waves 3, 6, 9)** — Samples the previous wave and names one high-threat ammo type. The ammo remains usable, but violations invalidate the wave's break condition; the calm gate, spawn-shot guard, and invalid samples prevent false reads.
 - **Attribute Lock (waves 4, 7)** — Identifies whether guns or melee carried the previous wave, then reduces that side's damage efficiency (about ×0.75). Switch damage style or rebuild your output pattern to break the lock.
 
-The HUD shows the act, wave, current counter target, and Resolve. A banner announces each counter before the wave begins so you can change your approach.
+The HUD shows the act, wave, this wave's single counter target, verifiable dual-threshold progress, Resolve, and your chosen contract.
+During intermission the HUD previews the next wave's counter (range direction / marked ammo / the family about to be locked), and a banner confirms it when the wave begins, so you have time to adapt.
 
 ### Last Stand
 
-When only the final Boss remains and its spawn transaction is stable, **Last Stand** begins:
+Last Stand occurs only on **multi-Boss waves (2, 5, and 8)**: once that wave's committed Bosses are killed down to the last one, **Last Stand** begins:
 
 - 12-second countdown
 - A scoreable direct gun or melee kill during the countdown grants 1 Resolve
 - Environmental, Buff, or unclassified final blows still clear the wave, but do not grant this Resolve
 - If the timer expires, the surviving Boss receives a revenge boost: healing, movement speed, and gun/melee damage
 
-It is a deliberate risk choice: secure the wave, or stay exposed for a better Resolve total.
+Single-Boss waves (1, 3, 4, 6, 7, 9) never trigger Last Stand, so a run offers at most 3 executions — matching the Last Stand cap of 3 Resolve.
+
+It is a deliberate risk choice on multi-Boss waves: secure the wave, or stay exposed for a better Resolve total.
 
 ### Nemesis
 
@@ -103,7 +106,7 @@ Defeat grants no normal reward, but eligible Nemesis and profile records remain 
 - After waves 1, 4, and 7, watch for the distance read and prepare the opposite range
 - Use waves 2, 5, and 8 to establish enough valid ammo samples; do not spray random ammo until the learning window is over
 - When an ammo mark is published, read the HUD before deciding whether to swap ammo, swap weapons, or go melee
-- Last Stand is optional. Secure the wave first, then gamble for Resolve and contract progress
+- Last Stand is optional and only appears on waves 2, 5, and 8. Secure the wave first, then gamble for Resolve and contract progress
 - Bring a backup answer for the Nemesis temperament in rematches; an R3 Nemesis is not the same fight as its first appearance
 
 [tip] Fate Echo is not about finding one permanently correct build. It is about keeping a second and third way to fight ready. The more you rely on one habit, the easier the next wave can counter it.

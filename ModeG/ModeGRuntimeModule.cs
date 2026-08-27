@@ -90,6 +90,7 @@ namespace BossRush
         private int _preparedAmmoBanWaveEpoch = -1;
         private int _preparedAmmoBanTypeId = -1;
         private int _preparedAmmoBanThreatSharePercent;
+        private bool _ammoViolationAnnounced;
         private int _intermissionObservedShotSequence;
         private string _runNemesisKey; // 本局出场宿敌 key（可能与持久化记录不同）
         private int _runNemesisStartingRank = 1;
@@ -905,6 +906,9 @@ namespace BossRush
                 if (!string.IsNullOrEmpty(_runNemesisKey)
                     && string.Equals(killedKey, _runNemesisKey, StringComparison.Ordinal))
                 {
+                    // 同一宿敌在波 3/6/9 重复登场，defeatsByPlayer 是「击败宿敌的场次」，
+                    // 只能按局累加一次；rank/墓碑仍需每次登场结算。
+                    bool firstDefeatThisRun = !_nemesisDefeatedThisRun;
                     _nemesisDefeatedThisRun = true;
 
                     int encounterRank = GetNemesisEncounterRank(_state.waveEpoch);
@@ -931,7 +935,7 @@ namespace BossRush
                                         bossPresetKey = dto.bossPresetKey,
                                         rank = Math.Max(dto.rank, encounterRank),
                                         temperamentId = dto.temperamentId,
-                                        defeatsByPlayer = dto.defeatsByPlayer + 1,
+                                        defeatsByPlayer = dto.defeatsByPlayer + (firstDefeatThisRun ? 1 : 0),
                                         defeatsOfPlayer = dto.defeatsOfPlayer,
                                         lastUpdatedTicks = dto.lastUpdatedTicks,
                                         originRunId = dto.originRunId,
@@ -1029,6 +1033,7 @@ namespace BossRush
         {
             _telemetry.ArmAmmoBan(ammoTypeId);
             _ammoBanCount++;
+            _ammoViolationAnnounced = false;
 
             string bannedAmmoName = ModeGRecapPanel.GetAmmoDisplayName(ammoTypeId);
             string banMessage = L10n.T("BossRush_ModeG_AmmoBan") + bannedAmmoName;
@@ -1089,6 +1094,9 @@ namespace BossRush
                             ApplyRevengeToSurvivor();
                         }
                     }
+
+                    // 弹药禁令违规一次性播报（Intermission/Spawning/Fighting/LastStand 全程有效）
+                    TickAmmoViolationAnnounce();
 
                     // 波结算（下一帧窄上报）
                     if (_waveSettlementPending && !_waveSpawnInFlight)

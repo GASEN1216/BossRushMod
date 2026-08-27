@@ -198,14 +198,13 @@ namespace BossRush
         private float _closeExtremeDirectDamage;
         private float _farExtremeDirectDamage;
         private int _totalShotCount;
-        private int _closeHitCount;    // <=8m 命中
-        private int _farHitCount;      // >=18m 命中
-        private int _totalScoreableHits;
         private int _armedBanViolationCount;
 
-        /// <summary>距离轴样本：战斗开始时的玩家-主 Boss XZ 平方距离累计</summary>
-        private double _distanceSqSum;
-        private int _distanceSampleCount;
+        // 有界缓存溢出降级标记（§15：telemetry overflow 必须显示「本波挑战无效」，不显示假进度）
+        /// <summary>run 级降级：weapon-family / 弹药 profile 缓存溢出后本局不再恢复</summary>
+        private bool _runTelemetryDegraded;
+        /// <summary>波级降级：本波弹药计数缓存溢出，随 ClearWaveCaches 复位</summary>
+        private bool _waveTelemetryDegraded;
 
         private struct BulletThreatProfile
         {
@@ -325,12 +324,8 @@ namespace BossRush
             _closeExtremeDirectDamage = 0f;
             _farExtremeDirectDamage = 0f;
             _totalShotCount = 0;
-            _closeHitCount = 0;
-            _farHitCount = 0;
-            _totalScoreableHits = 0;
             _armedBanViolationCount = 0;
-            _distanceSqSum = 0.0;
-            _distanceSampleCount = 0;
+            _waveTelemetryDegraded = false;
         }
 
         /// <summary>
@@ -390,7 +385,6 @@ namespace BossRush
 
                 float amount = info.damageValue;
                 _totalDirectDamage += amount;
-                _totalScoreableHits++;
                 if (cls == ModeGDirectDamageClass.Gun) _gunDirectDamage += amount;
                 else _meleeDirectDamage += amount;
 
@@ -402,7 +396,7 @@ namespace BossRush
                     _bossDirectDamage[health] = prev + amount;
                 }
 
-                // 距离轴：XZ 平方距离不开方
+                // 距离轴：XZ 平方距离不开方；只累计目标极端带伤害（中距离只进分母）
                 if (_playerCharacter != null)
                 {
                     UnityEngine.Vector3 a = info.damagePoint;
@@ -410,18 +404,8 @@ namespace BossRush
                     float dx = a.x - b.x;
                     float dz = a.z - b.z;
                     float sq = dx * dx + dz * dz;
-                    _distanceSqSum += sq;
-                    _distanceSampleCount++;
-                    if (sq <= ExtremeCloseSq)
-                    {
-                        _closeHitCount++;
-                        _closeExtremeDirectDamage += amount;
-                    }
-                    else if (sq >= ExtremeFarSq)
-                    {
-                        _farHitCount++;
-                        _farExtremeDirectDamage += amount;
-                    }
+                    if (sq <= ExtremeCloseSq) _closeExtremeDirectDamage += amount;
+                    else if (sq >= ExtremeFarSq) _farExtremeDirectDamage += amount;
                 }
             }
             catch
@@ -468,7 +452,9 @@ namespace BossRush
                     double explosionThreat = profile.explosionDamage * gun.ExplosionDamageMultiplier
                         * characterMultiplier * clampedProjectiles;
                     double rawThreat = directThreat + explosionThreat;
-                    double perShotCap = _combatStartAggregatePrimaryMaxHealth * 0.10;
+                    // 单次开火 clamp 到冻结的 10% 聚合血量（§4.3；常量由 AdaptiveCombat 单点持有）
+                    double perShotCap = (double)_combatStartAggregatePrimaryMaxHealth
+                        * ModeGAdaptiveCombat.AmmoBanClampShare;
                     if (double.IsNaN(rawThreat) || double.IsInfinity(rawThreat)
                         || rawThreat < 0.0 || perShotCap <= 0.0) return;
                     if (rawThreat > perShotCap) rawThreat = perShotCap;
@@ -483,6 +469,11 @@ namespace BossRush
                         double prev;
                         _ammoThreat.TryGetValue(ammoTypeId, out prev);
                         _ammoThreat[ammoTypeId] = prev + rawThreat;
+                    }
+                    else
+                    {
+                        // 第 33 个弹种：本波样本不再完整，关分而不是猜结果
+                        _waveTelemetryDegraded = true;
                     }
                 }
             }
@@ -532,7 +523,11 @@ namespace BossRush
             ModeGDirectDamageClass cached;
             if (_weaponFamilyCache.TryGetValue(weaponTypeId, out cached)) return cached;
             if (_weaponFamilyCache.Count >= WeaponFamilyCacheCapacity)
+            {
+                // 第 65 个武器 ID：后续新 ID 一律不计分，本局标记降级
+                _runTelemetryDegraded = true;
                 return ModeGDirectDamageClass.NotScoreable;
+            }
 
             ModeGDirectDamageClass resolved = ModeGDirectDamageClass.NotScoreable;
             try
@@ -567,7 +562,13 @@ namespace BossRush
         {
             if (_ammoThreatProfileCache.TryGetValue(ammoTypeId, out profile)) return profile.valid;
             profile = default(BulletThreatProfile);
-            if (ammoTypeId <= 0 || _ammoThreatProfileCache.Count >= AmmoCacheCapacity) return false;
+            if (ammoTypeId <= 0) return false;
+            if (_ammoThreatProfileCache.Count >= AmmoCacheCapacity)
+            {
+                // 第 33 个弹种 profile：关闭后续弹药分，本局标记降级
+                _runTelemetryDegraded = true;
+                return false;
+            }
             try
             {
                 ItemStatsSystem.Item prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(ammoTypeId);
@@ -606,10 +607,15 @@ namespace BossRush
         public float CloseExtremeDirectDamage { get { return _closeExtremeDirectDamage; } }
         public float FarExtremeDirectDamage { get { return _farExtremeDirectDamage; } }
         public int TotalShotCount { get { return _totalShotCount; } }
-        public int CloseHitCount { get { return _closeHitCount; } }
-        public int FarHitCount { get { return _farHitCount; } }
-        public int TotalScoreableHits { get { return _totalScoreableHits; } }
         public int ArmedBanViolationCount { get { return _armedBanViolationCount; } }
+
+        /// <summary>
+        /// 有界缓存溢出降级（§15）：为 true 时本波挑战无效，HUD 不得显示可得分进度。
+        /// </summary>
+        public bool IsTelemetryDegraded
+        {
+            get { return _runTelemetryDegraded || _waveTelemetryDegraded; }
+        }
         public bool ContaminatedByCharacterSwitch { get { return _contaminationByCharacterSwitch; } }
         public float CombatStartAggregatePrimaryMaxHealth { get { return _combatStartAggregatePrimaryMaxHealth; } }
 
@@ -627,22 +633,6 @@ namespace BossRush
         public float MeleeDamageShare
         {
             get { return _totalDirectDamage > 0f ? _meleeDirectDamage / _totalDirectDamage : 0f; }
-        }
-
-        /// <summary>
-        /// 极端远距命中占比（>=18m；样本为计分命中）。
-        /// </summary>
-        public float FarExtremeShare
-        {
-            get { return _totalScoreableHits > 0 ? _farHitCount / (float)_totalScoreableHits : 0f; }
-        }
-
-        /// <summary>
-        /// 极端近距命中占比（<=8m；样本为计分命中）。
-        /// </summary>
-        public float CloseExtremeShare
-        {
-            get { return _totalScoreableHits > 0 ? _closeHitCount / (float)_totalScoreableHits : 0f; }
         }
 
         public float CloseExtremeDamageShare
@@ -678,18 +668,6 @@ namespace BossRush
             return dx * dx + dz * dz <= BoundarySq
                 ? ModeGDistanceVerdict.Close
                 : ModeGDistanceVerdict.Far;
-        }
-
-        /// <summary>
-        /// 平均交战距离（米，开方一次仅在读取时）。
-        /// </summary>
-        public float AverageEngagementDistance
-        {
-            get
-            {
-                if (_distanceSampleCount <= 0) return 0f;
-                return (float)Math.Sqrt(_distanceSqSum / _distanceSampleCount);
-            }
         }
 
         /// <summary>

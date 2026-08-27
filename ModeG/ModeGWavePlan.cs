@@ -259,8 +259,8 @@ namespace BossRush
                         ref bossState, signatureWaveUsed, allowOfficialCopies);
                 }
                 if (selected == null) return null;
-                if (!allowOfficialCopies && !signatureWaveUsed.Add(selected)) return null;
-                signatureWaveUsed.Add(selected);
+                // Add 恒执行一次（幂等登记）；正常池要求严格互斥，小池允许确定性复用。
+                if (!signatureWaveUsed.Add(selected) && !allowOfficialCopies) return null;
                 signatureWaveKeys[i] = selected;
             }
 
@@ -309,8 +309,8 @@ namespace BossRush
                     string reserve = TakeNextOfficial(officialKeys, ref officialBag,
                         ref officialCursor, ref bossState, waveUsed, allowOfficialCopies);
                     if (reserve == null) return null;
-                    if (!allowOfficialCopies && !waveUsed.Add(reserve)) return null;
-                    waveUsed.Add(reserve);
+                    // Add 恒执行一次（幂等登记）；正常池要求严格互斥，小池允许确定性复用。
+                    if (!waveUsed.Add(reserve) && !allowOfficialCopies) return null;
                     reserveKeys[i] = reserve;
                 }
                 waves[w] = new WaveSlot(w, act, count, isNemesis, kind,

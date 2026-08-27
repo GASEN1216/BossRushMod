@@ -49,6 +49,8 @@ This is where many runs spend too much chasing Resolve. Contract progress matter
 
 # Should You Take Last Stand?
 
+Last Stand only triggers on multi-Boss waves (2, 5, 8) — at most 3 chances per run.
+
 - **Safe route**: finish the last Boss during the countdown and secure the wave
 - **Contract route**: only chase Resolve when a scoreable direct gun/melee final blow is ready
 - **Greedy route**: drag the timer for one more Resolve and let the Nemesis turn the fight

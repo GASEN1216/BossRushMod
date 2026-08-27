@@ -1343,6 +1343,49 @@
 **自动验证**: 全部 28 个 `ModeG*Guard.py` 通过；工作区内可执行的全库脚本 431/433 通过，剩余两项是未触及的龙王火箭分裂视觉旧断言与 ZombieMode RunScopedRegistry 旧断言。最新代码因构建脚本必须读取工作区外游戏 DLL 并部署到工作区外目录，本轮未重新编译；此前 Windows 编译早于本轮地图状态、partial 拆分和最终 flush 变更，不能作为当前构建通过证据。工作区 `Build/BossRush.dll`（2026-08-17 21:29:00 +08:00，3092480 bytes，SHA-256 `E6B1DA7A6A782A75F701C4E66FF63770994DD7F5AE0BA6B829725DD3A7777599`）同样标记为旧构建，不作为当前源码验证结果。
 **发布阻断**: 官方至少 6 个 Boss 的逐 key 实审、DEMO 地图 `Verified` 矩阵、九波三托管 Boss 实机 smoke、Legacy/Mode D/E/F/Zombie 回归、Profiler 与真实复玩/经济样本尚未完成；`IsProductionReady=false`、两个开发开关=false。
 
+### 2026-08-27 Mode G 呈现层补齐规格 §15 与三轴口径单点化
+
+**状态**: fixed（静态实现 + 专项门禁 + Roslyn 语法/绑定探针）；当前源码尚未 Windows 正式编译
+**Finding**: 全面代码/玩法审核（本轮）
+**兼容分类**: COMPAT（新增本地化 key 与只读视图；无 schema/存档 key 变更）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要（全部为「规格已规定但实现缺失」的补齐与死代码清理）；本轮**未**改动任何 owner 冻结的数值/结构决策，另见文末待裁决清单。
+
+**现象**:
+1. 战斗 HUD 只显示「幕/波次 + 轴名 + Resolve + 目标数」。玩家看不到距离反制方向、被点名弹药、被封锁武器系，也看不到 35%/20% 双门槛进度，三轴玩法实际不可操作——只能在波末看到「破解/没破解」，无法判断为何失败。
+2. 弹药轴波恒为宿敌波，而 HUD 在宿敌波把轴名整体替换成「宿敌降临」，因此「弹药点名」文本在 HUD 上永不可达；被点名弹药只在休整开始时用一次性 toast 公布，错过即无法找回，而单发违规即永久作废本波 Resolve。
+3. 入口确认页缺少规格 §3.1 强制披露：死亡损失遵循当前地图规则、高 Resolve 备装建议。
+4. 遥测/自适应存在多处死代码与重复实现，其中 `EvaluateDistanceAxis` 是被 guard 明令禁止使用的「整波分布推断」替代实现，留在源码中即为误用陷阱。
+5. 同一宿敌在波 3/6/9 重复登场，`defeatsByPlayer` 每局累加 3 次。
+
+**根因**: 规格 §15 的 HUD 契约从未实现，且没有对应 guard 冻结；呈现层直接反向读取 `RunState`/遥测/自适应对象，没有单一视图构建点，导致「显示什么」与「结算什么」两套口径各自演化。
+
+**修复内容**:
+- 新增文件: 无 `.cs` 新增（`ModeGHudModel`/`ModeGObjectiveState` 就近定义在 `ModeG/ModeGHUD.cs`），因此 `compile_official.bat` 无需改动；新增 guard `tests/ModeGHudContractGuard.py`。
+- `ModeGRuntimeModule_PublicApiAndShutdown.cs`: 新增唯一视图构建点 `BuildHudModel()` + `FillObjective()` + `ComposeNextWavePreview()` + `TickAmmoViolationAnnounce()`。
+- `ModeGHUD.cs`: 改为纯格式化层，只消费 `BuildHudModel()`；按 §15 呈现距离方向（需贴近 <=8m / 需拉开 >=18m）、被点名弹药名与未违禁/已违禁、被封锁武器系与所需相反系、双门槛进度、宿敌名称与本次 Rank、本局契约短标题；宿敌波不再替换轴名；Last Stand 改为附加倒计时行（§15：不构成第二份常驻目标清单）；休整期预告下一波反制。百分比一律 `FloorToInt`，保证「显示达标」不早于「实际达标」。
+- `ModeGAdaptiveCombat.cs`: 新增 `ModeGAxisProgress` 与 `EvaluateDistanceProgress`/`EvaluateAttributeProgress`/`GetDistanceTargetBand`/`AttributeBreakFamily`/`PredictAttributeLockFamily`；`IsDistanceAxisBroken`/`IsAttributeAxisBroken`/`ApplyAttributeLock` 全部复用之，破解结算与 HUD 进度从此单点化。删除死代码 `EvaluateDistanceAxis`（guard 已明令禁止其用法）与重复实现 `ClampAmmoViolationDamage`；`ClearAttributeLock` 改为复用 `RemoveModifiersFromSource`（原为两份等价实现）。距离/属性轴共用门槛改轴中立命名 `AxisBreakDamageShare`/`AxisBreakHealthContribution`。
+- `ModeGCombatTelemetry.cs`: 新增有界缓存溢出降级标记 `IsTelemetryDegraded`（§15 要求 overflow 显示「本波挑战无效」）；单次开火 clamp 改为消费 `ModeGAdaptiveCombat.AmmoBanClampShare` 而非硬编码 `0.10`；删除无消费者的 `AverageEngagementDistance`、极端带命中计数与 `CloseExtremeShare/FarExtremeShare`（热路径每次计分命中少一次距离累加与三次自增）。保留 `_bossDirectDamage`/`BossCacheCapacity`：其预分配容量是 guard 冻结契约，且属规格 §4.1 多 Boss 采样面。
+- `ModeGRuntimeModule.cs`: `defeatsByPlayer` 改为按局累加一次（rank/墓碑仍每次登场结算）；新增弹药禁令首次违规一次性播报。
+- `ModeGWavePlan.cs`: 去掉两处重复 `HashSet.Add`，改为「Add 恒执行一次 + 小池允许复用」的等价单次表达。
+- `ModeGInteractable.cs`: 确认页补 §3.1 两行强制披露。
+- `Localization/LocalizationInjector.cs`: 新增 24 个 `BossRush_ModeG_Hud_*` 与 2 个 `BossRush_ModeG_Entry_*` 双语 key。
+- guard 同步: `ModeGAdaptiveCombatGuard.py`（常量改名 + 新增「结算与 HUD 同口径」「属性预测单点」断言 + 把 `EvaluateDistanceAxis`/`ClampAmmoViolationDamage` 升级为存在即失败的禁项）；`ModeGPerformanceGuard.py`（StringBuilder 由冻结字面量 128 改为「已预分配且容量 >= 128」的语义断言）。
+- 文档同步: `wiki-site/docs`(zh/en) 与 `WikiContent`(zh/en) 的 mode-g 与 strategy 四对文件——修正「Last Stand 每一波都可能出现」（实际只在多 Boss 波 2/5/8，全局最多 3 次，与 Resolve 上限 3 一致）与「每波横幅先公布反制」（横幅在波开始时；提前量来自新增的休整期 HUD 预告）；`.qoder/repowiki` 架构卡与游戏模式系统内容文档同步。
+
+**自动验证**:
+- 全部 29 个 `ModeG*Guard.py` 通过（含新增 `ModeGHudContractGuard.py`）。
+- 全库 `tests/*.py` 438/440 通过；剩余 2 项与本次改动无关：`DragonKingBossGunRocketSplitGuard`（既有龙王火箭视觉旧断言）与 `SmokeLogScan`（扫描历史 `Player.log`，非源码守卫）。
+- Roslyn 探针（SDK 8.0.302 `csc.dll`，`-langversion:7.3 -nostdlib+ -noconfig`）解析 `ModeG/*.cs` + `Localization/*.cs`：0 个 CS1xxx 语法错误，0 个 CS0117/CS1061/CS7036/CS1503/CS0029/CS0161/CS0165 成员/签名/流分析错误，且无任何错误指向本次新增成员；其余错误全部是缺少游戏/Unity 引用导致的 CS0518/CS0246。
+
+**未验证/需人工**: 本机未安装《鸭科夫》（游戏 `Managed` 目录缺失），**未执行 `compile_official.bat`**，因此不能声称已正式编译或运行时验证。仍需人工 smoke：九波 HUD 实际排版与不换行（文本框已由 420x150/22f 调整为 560x210/20f）、双语切换、弹药违规播报时机、休整预告与实际反制一致性、属性封锁 HUD 与真实伤害一致性。
+
+**待 owner 裁决（本轮刻意未改，均属规格已冻结的产品/数值决策，见 AGENTS.md §7/§10）**:
+- 奖励分带：前 6 件恒为 `<P75` GeneralBase，Resolve 0→5 仅多 1 件低档物品，中段激励极弱。规格 §7 已指定补救方向是「扩大 Premium 与 GeneralBase 价值差」，且须先有经济实测样本，不得由实现方擅改档位表。
+- 宿命契约零收益：规格 §3.2 明文「不得为契约新增战斗轴、事件订阅或奖励」，因此 `EdgeWalker`/`ArsenalDiscipline`/`NemesisDenied` 近乎系统侧自动完成且无机制回报，属设计取舍而非缺陷。
+- 休整 8s/20s 与 Last Stand 12s 为 owner 冻结值，未做可配置化。
+- 距离轴只取上一署名波末击单点采样（规格 §4.2 明文，guard 明令禁止改用整波分布）：一次不可计分末击即静默失去 1 Resolve 并断连击。本轮已用 HUD「本波无反制」把该静默失败显式化，但采样模型本身未改。
+
 ### 2026-08-17 Mode G owner 发布裁决与正式入口开放
 
 **状态**: fixed（代码与专项静态门禁）；当前源码尚未重新 Windows 编译

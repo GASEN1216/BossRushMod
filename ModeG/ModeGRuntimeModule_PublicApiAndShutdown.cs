@@ -1,4 +1,5 @@
 using System;
+using UnityEngine;
 
 namespace BossRush
 {
@@ -109,6 +110,182 @@ namespace BossRush
             p.attributeLockCount = _attributeLockCount;
             p.ammoBanAvailableOnNemesisWaves = _ammoBanNemesisWaveCount;
             return p;
+        }
+
+        #endregion
+
+        #region HUD View Model（§15 唯一构建点）
+
+        /// <summary>
+        /// 构建 HUD 只读视图（§15）。呈现层不反向读取 RunState/遥测/自适应对象。
+        /// 进度数值全部来自与破解结算同一口径的 <see cref="ModeGAxisProgress"/>。
+        /// no-throw：异常时返回已填充的部分模型，HUD 自行降级。
+        /// </summary>
+        public ModeGHudModel BuildHudModel()
+        {
+            ModeGHudModel m = new ModeGHudModel();
+            m.resolveMax = ModeGAdaptiveCombat.MaxResolveTotal;
+            try
+            {
+                ModeGRunState state = _state;
+                if (state == null) return m;
+
+                m.actIndex = state.actIndex;
+                m.waveNumber = state.waveEpoch + 1;
+                m.resolve = _adaptive != null ? _adaptive.TotalResolve : 0;
+                m.lastStandActive = state.lastStandActive;
+                m.lastStandSeconds = Mathf.CeilToInt(Mathf.Max(0f, state.lastStandTimer));
+                m.intermissionActive = state.intermissionActive;
+                m.intermissionSeconds = Mathf.CeilToInt(Mathf.Max(0f, state.intermissionTimer));
+                m.targetsCommitted = state.SlotCommitted;
+                int alive = _spawnTransaction != null ? _spawnTransaction.ActiveBossCount : 0;
+                m.targetsKilled = Math.Max(0, m.targetsCommitted - alive);
+                m.contractTitle = state.fateContractId >= 0
+                    ? ModeGFateContract.GetById(state.fateContractId).GetDisplayName()
+                    : string.Empty;
+
+                ModeGWavePlan.WaveSlot wave = _wavePlan != null
+                    ? _wavePlan.GetWave(state.waveEpoch) : null;
+                if (wave != null && wave.isNemesisWave)
+                {
+                    m.isNemesisWave = true;
+                    m.nemesisName = ModeGEncounterVariation.GetManagedBossDisplayName(_runNemesisKey);
+                    m.nemesisRank = GetNemesisEncounterRank(state.waveEpoch);
+                    m.nemesisTemperament = _runNemesisTemperament;
+                }
+
+                m.axis = ModeGAdaptiveCombat.GetAxisForWave(state.waveEpoch);
+                FillObjective(ref m);
+
+                if (state.intermissionActive)
+                {
+                    int nextWave = state.waveEpoch + 1;
+                    bool calmGateWave = nextWave == 1 || nextWave == 4 || nextWave == 7;
+                    m.calmGateActive = calmGateWave
+                        && state.intermissionTimer <= ModeGAdaptiveCombat.CalmGateSeconds;
+                    m.nextWavePreview = ComposeNextWavePreview(nextWave);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] BuildHudModel 异常: " + e.Message);
+            }
+            return m;
+        }
+
+        /// <summary>
+        /// 填充本波唯一反制目标的状态与进度（§15：不显示仍可得分的假进度）。
+        /// </summary>
+        private void FillObjective(ref ModeGHudModel m)
+        {
+            // 代理控制污染与有界缓存溢出都会使本波全部计分 fail-closed
+            bool invalid = _telemetry != null
+                && (_telemetry.IsTelemetryDegraded || _telemetry.ContaminatedByCharacterSwitch);
+
+            if (m.axis == ModeGCounterAxis.Distance)
+            {
+                m.distanceTargetBand = ModeGAdaptiveCombat.GetDistanceTargetBand(_activeDistanceVerdict);
+                if (m.distanceTargetBand == ModeGDistanceVerdict.None)
+                {
+                    m.objectiveState = ModeGObjectiveState.NoCounter;
+                    return;
+                }
+                if (invalid) { m.objectiveState = ModeGObjectiveState.Invalid; return; }
+                m.progress = ModeGAdaptiveCombat.EvaluateDistanceProgress(_telemetry, _activeDistanceVerdict);
+                m.objectiveState = m.progress.ThresholdsMet
+                    ? ModeGObjectiveState.ThresholdsMet
+                    : ModeGObjectiveState.Active;
+                return;
+            }
+
+            if (m.axis == ModeGCounterAxis.Ammo)
+            {
+                int banId = _telemetry != null ? _telemetry.ArmedBanAmmoTypeId : 0;
+                if (banId <= 0) { m.objectiveState = ModeGObjectiveState.NoAmmoCandidate; return; }
+                m.bannedAmmoName = ModeGRecapPanel.GetAmmoDisplayName(banId);
+                if (_telemetry.ArmedBanViolationCount > 0)
+                    m.objectiveState = ModeGObjectiveState.AmmoViolated;
+                else
+                    m.objectiveState = invalid ? ModeGObjectiveState.Invalid : ModeGObjectiveState.Active;
+                return;
+            }
+
+            if (m.axis == ModeGCounterAxis.Attribute)
+            {
+                m.attributeLockedFamily = _adaptive != null
+                    ? _adaptive.ActiveAttributeLockedFamily
+                    : ModeGDirectDamageClass.NotScoreable;
+                if (m.attributeLockedFamily == ModeGDirectDamageClass.NotScoreable)
+                {
+                    m.objectiveState = ModeGObjectiveState.NoCounter;
+                    return;
+                }
+                if (invalid) { m.objectiveState = ModeGObjectiveState.Invalid; return; }
+                m.progress = _adaptive.EvaluateAttributeProgress(_telemetry);
+                m.objectiveState = m.progress.ThresholdsMet
+                    ? ModeGObjectiveState.ThresholdsMet
+                    : ModeGObjectiveState.Active;
+                return;
+            }
+
+            m.objectiveState = ModeGObjectiveState.NoCounter;
+        }
+
+        /// <summary>
+        /// 休整期下一波反制预告（§15：波开始前给出可操作提前量）。
+        /// 全部复用与实际生效路径同一的纯函数/已冻结值，不做独立推断。
+        /// </summary>
+        private string ComposeNextWavePreview(int nextWave)
+        {
+            ModeGCounterAxis nextAxis = ModeGAdaptiveCombat.GetAxisForWave(nextWave);
+            if (nextAxis == ModeGCounterAxis.Distance)
+            {
+                ModeGDistanceVerdict band = ModeGAdaptiveCombat.GetDistanceTargetBand(_lastTerminalDistance);
+                if (band == ModeGDistanceVerdict.None) return L10n.T("BossRush_ModeG_Hud_NoCounter");
+                return L10n.T("BossRush_ModeG_AxisDistance") + " · "
+                    + (band == ModeGDistanceVerdict.Far
+                        ? L10n.T("BossRush_ModeG_Hud_NeedFar")
+                        : L10n.T("BossRush_ModeG_Hud_NeedClose"));
+            }
+            if (nextAxis == ModeGCounterAxis.Ammo)
+            {
+                if (_preparedAmmoBanWaveEpoch != nextWave || _preparedAmmoBanTypeId <= 0)
+                    return L10n.T("BossRush_ModeG_Hud_NoAmmoCandidate");
+                return L10n.T("BossRush_ModeG_AxisAmmo") + " · "
+                    + ModeGRecapPanel.GetAmmoDisplayName(_preparedAmmoBanTypeId);
+            }
+            if (nextAxis == ModeGCounterAxis.Attribute)
+            {
+                ModeGDirectDamageClass family = ModeGAdaptiveCombat.PredictAttributeLockFamily(_telemetry);
+                if (family == ModeGDirectDamageClass.NotScoreable)
+                    return L10n.T("BossRush_ModeG_Hud_NoCounter");
+                return L10n.T("BossRush_ModeG_AxisAttribute") + " · "
+                    + (family == ModeGDirectDamageClass.Gun
+                        ? L10n.T("BossRush_ModeG_Hud_FamilyGun")
+                        : L10n.T("BossRush_ModeG_Hud_FamilyMelee"));
+            }
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 弹药禁令违规一次性播报（§4.3：违规后本波该 Resolve 永久不可得，必须让玩家立即可见）。
+        /// 每次公布新禁令时由 PublishAmmoBan 复位。
+        /// </summary>
+        private void TickAmmoViolationAnnounce()
+        {
+            if (_ammoViolationAnnounced || _telemetry == null || _state == null || _host == null) return;
+            if (_telemetry.ArmedBanAmmoTypeId <= 0 || _telemetry.ArmedBanViolationCount <= 0) return;
+            _ammoViolationAnnounced = true;
+            try
+            {
+                _host.ShowMessage(L10n.T(
+                    "<color=#B22222>弹药禁令已违规</color>，本波破解不可得。",
+                    "<color=#B22222>Ammo ban violated</color> — this wave's break is no longer available."));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 弹药违规播报失败: " + e.Message);
+            }
         }
 
         #endregion

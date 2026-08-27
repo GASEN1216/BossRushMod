@@ -938,6 +938,39 @@ namespace BossRush
                 InjectModeGString("BossRush_ModeG_Axis_Attempts", "次尝试", "attempts");
                 InjectModeGString("BossRush_ModeG_Axis_Breaks", "次破解", "breaks");
 
+                // 战斗 HUD（规格 §15：唯一反制目标 + 可验证双门槛进度）
+                InjectModeGString("BossRush_ModeG_Hud_Counter", "反制:", "Counter:");
+                InjectModeGString("BossRush_ModeG_Hud_FateProbe", "宿命试探", "Fate Probe");
+                InjectModeGString("BossRush_ModeG_Hud_NoCounter", "本波无反制", "No counter this wave");
+                InjectModeGString("BossRush_ModeG_Hud_Invalid", "本波挑战无效", "Objective void this wave");
+                InjectModeGString("BossRush_ModeG_Hud_NoAmmoCandidate", "宿敌未学会新弹药", "Nemesis learned no new ammo");
+                InjectModeGString("BossRush_ModeG_Hud_NeedClose", "需贴近 ≤8m", "Need ≤8m");
+                InjectModeGString("BossRush_ModeG_Hud_NeedFar", "需拉开 ≥18m", "Need ≥18m");
+                InjectModeGString("BossRush_ModeG_Hud_ContribWord", "总血贡献", "boss HP");
+                InjectModeGString("BossRush_ModeG_Hud_WillBreak", "双门槛已达标 · 波次完成即破解", "Thresholds met · breaks on wave clear");
+                InjectModeGString("BossRush_ModeG_Hud_BanPrefix", "禁用：", "Banned: ");
+                InjectModeGString("BossRush_ModeG_Hud_BanClean", "未违禁", "clean");
+                InjectModeGString("BossRush_ModeG_Hud_BanViolated", "已违禁", "VIOLATED");
+                InjectModeGString("BossRush_ModeG_Hud_FamilyGun", "枪械", "Gun");
+                InjectModeGString("BossRush_ModeG_Hud_FamilyMelee", "近战", "Melee");
+                InjectModeGString("BossRush_ModeG_Hud_LockedSuffix", "最终伤害 x0.75", " final damage x0.75");
+                InjectModeGString("BossRush_ModeG_Hud_NeedTerminal", "需该系终结", "needs finishing blow");
+                InjectModeGString("BossRush_ModeG_Hud_Intermission", "休整 · 下一波", "Intermission · next wave");
+                InjectModeGString("BossRush_ModeG_Hud_CalmGate", "停火中", "Hold fire");
+                InjectModeGString("BossRush_ModeG_Hud_NextWave", "下一波", "Next");
+                InjectModeGString("BossRush_ModeG_Hud_LastStand", "最后处决", "Last Stand");
+                InjectModeGString("BossRush_ModeG_Hud_Seconds", " 秒", "s");
+                InjectModeGString("BossRush_ModeG_Hud_Targets", "目标", "Targets");
+                InjectModeGString("BossRush_ModeG_Hud_Nemesis", "宿敌", "Nemesis");
+
+                // 入口确认页强制披露（规格 §3.1：死亡损失规则 + 高 Resolve 备装建议）
+                InjectModeGString("BossRush_ModeG_Entry_DeathRule",
+                    "死亡损失遵循当前地图规则（可能生成墓碑或掉落物品），本模式不提供额外保装。",
+                    "Death losses follow this map's own rules (tomb or dropped items). This mode adds no gear insurance.");
+                InjectModeGString("BossRush_ModeG_Entry_LoadoutHint",
+                    "高 Resolve 建议准备三种弹药与近战备用；这些只影响可选 Resolve，不影响通关。",
+                    "For high Resolve bring three ammo types plus a melee backup. These affect optional Resolve only, never the clear.");
+
                 // 宿敌追猎
                 InjectModeGString("BossRush_ModeG_NextNemesis", "下局宿敌", "Next nemesis:");
                 InjectModeGString("BossRush_ModeG_RankWord", "Rank", "Rank");

@@ -69,11 +69,25 @@ def main():
             ("DistanceBoundary", r"public const float DistanceBoundaryMeters = 13f;", "13m 分界"),
             ("ExtremeFar", r"public const float ExtremeFarMeters = 18f;", "极端远距 18m"),
             ("ExtremeClose", r"public const float ExtremeCloseMeters = 8f;", "极端近距 8m"),
-            ("BreakShare", r"public const float DistanceBreakDamageShare = 0\.35f;",
-             "破解门槛占比 35%"),
+            ("BreakShare", r"public const float AxisBreakDamageShare = 0\.35f;",
+             "破解门槛占比 35%（距离/属性轴共用，轴中立命名）"),
             ("BreakContribution",
-             r"public const float DistanceBreakHealthContribution = 0\.20f;",
-             "破解门槛血量贡献 20%"),
+             r"public const float AxisBreakHealthContribution = 0\.20f;",
+             "破解门槛血量贡献 20%（距离/属性轴共用，轴中立命名）"),
+            ("SharedAxisProgress",
+             r"public static ModeGAxisProgress EvaluateDistanceProgress\("
+             r"[\s\S]{0,1800}?public static bool IsDistanceAxisBroken\("
+             r"[\s\S]{0,220}?return EvaluateDistanceProgress\(telemetry, verdict\)\.ThresholdsMet;",
+             "距离轴破解判定与 HUD 进度共用同一口径"),
+            ("AttributeProgressShared",
+             r"public ModeGAxisProgress EvaluateAttributeProgress\("
+             r"[\s\S]{0,1800}?public bool IsAttributeAxisBroken\("
+             r"[\s\S]{0,400}?return EvaluateAttributeProgress\(telemetry\)\.ThresholdsMet;",
+             "属性轴破解判定与 HUD 进度共用同一口径"),
+            ("AttributeLockSinglePrediction",
+             r"public static ModeGDirectDamageClass PredictAttributeLockFamily\("
+             r"[\s\S]{0,1200}?ModeGDirectDamageClass family = PredictAttributeLockFamily\(telemetry\);",
+             "属性封锁目标由唯一纯函数预测（HUD 预告与实际封锁不得漂移）"),
             ("CloseAdaptation",
              r"public const float CloseAdaptationMeleeDamageBonus = 0\.15f;"
              r"[\s\S]*?public const float CloseAdaptationMaxHealthBonus = 0\.10f;",
@@ -181,8 +195,12 @@ def main():
                 r"if \(axis == ModeGCounterAxis\.Distance\)"
                 r"[\s\S]{0,260}?distanceVerdict = _lastTerminalDistance;", module):
             errors.append("[DistanceTerminalEcho] 距离轴未消费上一署名波 terminal distance")
-        if "distanceVerdict = ModeGAdaptiveCombat.EvaluateDistanceAxis(_telemetry)" in module:
-            errors.append("[DistanceWholeWaveGuess] 距离轴仍用上一整波命中分布替代 terminal distance")
+        if "EvaluateDistanceAxis" in module or (ad and "EvaluateDistanceAxis" in ad):
+            errors.append("[DistanceWholeWaveGuess] 整波命中分布推断实现必须彻底移除，"
+                          "距离方向只能来自上一署名波 terminal distance")
+        if ad and "ClampAmmoViolationDamage" in ad:
+            errors.append("[DuplicateAmmoClamp] 违规 clamp 必须由遥测单点消费 AmmoBanClampShare，"
+                          "不得保留重复实现")
         if not re.search(
                 r"if \(_state\.lastStandActive\)"
                 r"[\s\S]{0,420}?_lastTerminalFamily != ModeGDirectDamageClass\.NotScoreable"

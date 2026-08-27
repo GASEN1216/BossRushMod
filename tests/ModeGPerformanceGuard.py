@@ -125,13 +125,16 @@ def main():
             ("ChangeOnlyAssign",
              r"if \(!string\.Equals\(text, _lastText, StringComparison\.Ordinal\)\)",
              "文本仅 Ordinal 变化时赋值"),
-            ("BuilderPreallocated",
-             r"new StringBuilder\(128\)",
-             "StringBuilder(128) 预分配"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, hud):
                 errors.append("[{}] 不满足: {}".format(name, desc))
+
+        m = re.search(r"new StringBuilder\((\d+)\)", hud)
+        if not m:
+            errors.append("[BuilderPreallocated] HUD StringBuilder 未预分配容量")
+        elif int(m.group(1)) < 128:
+            errors.append("[BuilderPreallocated] HUD StringBuilder 预分配容量 {} < 128".format(m.group(1)))
 
     if cache:
         checks = [
