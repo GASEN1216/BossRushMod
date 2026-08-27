@@ -39,6 +39,358 @@
 ```
 
 ---
+### 2026-08-27 扩展性投资 Phase C：新增物品清单、Boss preset 收口与两条落地约定
+
+**状态**: fixed
+**Finding**: 无（全面代码审查产出的扩展性改进）
+**兼容分类**: SAFE（文档 + 静态等价重构）、COMPAT（新增共享 helper）
+**版本/Commit**: 未提交
+**Owner decision**: 已确认（推进顺序 A→D→B→C）
+
+**现象**:
+1. 新增一个物品要动 9–13 个文件，代码侧**零文档**——`docs/制作教程/` 下 14 篇教程全是
+   Unity 资源侧（建模/打包/图标）。漏掉任何一条接线都不会编译报错，只会运行时缺功能。
+2. 每个自定义 Boss 各写一份 `FindXxxPresetInfo()` / `IsXxxPreset()`，三份 `IsXxxPreset`
+   方法体逐字相同，只差各自 Config 的三个常量。加一个 Boss 就再抄一遍。
+3. `EndModeE()`（~110 行）/ `ExitModeF()`（~105 行）是纯人工清理清单，新增 per-run 状态
+   忘补一行即静默泄漏；模式激活标志 228 处裸读散在 8 个文件里各写 `else if` 链。
+
+**修复内容**:
+- **C1** 新增 `docs/制作教程/新增物品代码接线清单.md` —— 按最近两个真实物品
+  （`ZombieTideBeacon` 500046、`PortableSafeZoneDevice` 500058）的实测改动面整理：
+  两个新文件 + 8 个必改接线点（含"漏了会怎样"与对应守卫）+ 4 个必须同步的 guard
+  + 4 处必须同步的文档 + 验证命令 + 三个参考实现。特别写明简单消耗品应走
+  Phase B 新建的 `ModeFItemConfigHelper.ConfigureSimpleConsumable`，不要再手抄。
+- **C2** 新增 `Utilities/ModBossPresetLookup.cs`（已登记 `compile_official.bat`）——
+  `FindByNameKey` 与 `Matches` 两个静态方法收口 5 处重复实现（DragonKing / PhantomWitch
+  的 Find + DragonKing / PhantomWitch / DragonDescendant 的 Is）。
+  各 Boss 保留原方法名与可见性、改为一行转发，**调用点零改动**。
+  行为逐字一致：遍历顺序、null 处理、三个匹配条件的短路顺序均不变。
+  按 `docs/架构说明/Hooks分层约定.md` 放 `Utilities/`（跨模块基础设施）。
+- **C5** `docs/架构说明/Harmony补丁契约稳定性.md` 新增 §6.5「新增补丁 / 新增反射绑定的标准做法」，
+  把 Phase A 落地的三个范式登记为标准：补丁自检（新补丁类自动被覆盖，只有
+  `TargetMethod(s)` 动态选目标的需自行校验）、`CriticalLog` 的使用规则与热路径禁令、
+  以及 ModeG 的人工签署 verification revision 形态。
+- **C3/C4** `docs/架构说明/游戏模式状态机设计.md` 新增 §6.3.1 与 §6.3.2 两条落地约定：
+  新增 per-run 状态必须优先走 run-only 注册表、必须同一次改动补清理、清理要能被 guard 看见、
+  要配 guard；以及"判断当前模式先看现成聚合谓词，新代码不要再写 `else if` 链"。
+
+**降级说明（C3/C4 未按原方案改代码，理由）**:
+- 原方案要"扩展 `IsAnyBossRushLikeModeActive()` 一族聚合谓词"。核对后发现现有三个谓词
+  已覆盖实际用例，再加就是**没有消费者的预留抽象**，直接违反 `AGENTS.md` §4.9
+  「不要因'未来可能复用'提前提升到全局层」。
+- 原方案要"把 ModeF per-run 对象接入 `RunScopedRegistry`"。但本次没有新增 per-run 对象，
+  所以只能二选一：迁移存量（要改两个上百行清理方法的执行顺序，而 ModeE→ModeF→ZombieMode
+  的清理顺序有耦合，属 §10 需 owner 确认的状态机重构）或加无消费者的基础设施（同上违规）。
+- **处理：把两者都落成"下一个人该怎么写"的硬约定**，写进模式状态机设计文档。
+  这直接堵住审查发现的结构性风险（漏补一行即泄漏），且零行为变更。
+
+**兼容性影响**: 存档 key、配置 key、TypeID、本地化 key、Harmony 目标全部未变。
+C2 是提取方法 + 转发，其余为新增文档。
+
+**验证方法**:
+1. 编译: **已通过**（2026-08-27，`compile_official.bat`，GAME_PATH=`D:\software\steam\steamapps\common\Escape from Duckov`，WORKSHOP_PATH=`...\workshop\content\3167020`）——Roslyn 4.10 / C# 7.3，零错误零警告，产出 `Build\BossRush.dll`（3,132,928 字节）
+2. 语法探针: `python tools/verify_syntax.py --with-bcl` —— 533 源文件（新增 1 个），CS1xxx 零错误
+3. Guard: `python tools/run_guards.py` —— 443 脚本 **442 PASS / 0 NEW-FAIL / 1 KNOWN-RED**
+4. 人工 smoke: 未执行，见下
+
+**未验证/需人工**:
+- ~~Windows 正式编译未运行~~ → 已于 2026-08-27 补跑通过（见上）。
+- 实机 smoke 未做。C2 需确认：焚天龙皇、幽灵女巫、龙裔遗族三个自定义 Boss 仍能被正确识别与生成
+  （波次里出现、被 ModeG 托管分流认到、清理正常）。
+
+---
+### 2026-08-27 重复代码收口 Phase B：模板化、注册表化与两处编码损坏修复
+
+**状态**: fixed
+**Finding**: 无（全面代码审查产出的可维护性收口）
+**兼容分类**: SAFE（全部为静态可证明的等价重构或纯注释）
+**版本/Commit**: 未提交
+**Owner decision**: 已确认（推进顺序 A→D→B→C，硬要求"确保不影响原有功能"）
+
+**现象**: 审查发现多处复制粘贴与文档级缺陷。逐项核对后，**有两项的前提被证伪**，见"降级说明"。
+
+**修复内容（逐项独立落地，每项通过验证后才做下一项）**:
+
+- **B9 编码损坏（3 处，非 2 处）**: 全仓扫描 GBK→UTF-8 双重编码乱码，实际找到 3 个文件：
+  `LootAndRewards/LootAndRewardsRuntimeHooks.cs`（整文件注释）、
+  `Integration/DragonKing/DragonKingAssetManager.cs:457`（会输出到日志的 DevLog 字符串）、
+  `UIAndSigns/UIAndSigns.cs:52/55/58`（三行字段注释，审查线索未提及）。
+  其中两处含私有区字符（U+E62C 等），终端复制会丢字，改用字节级定位替换。
+  按字段名与上下文重写为准确中文，不是机械解码（解码结果本身也有丢字）。
+- **B9 场景常量副本**: `ModBehaviour.cs` 里 `BaseRootSceneName`/`BaseSceneSubName`/`BaseSewerSceneName`
+  三个常量与 `Utilities/SceneRuntimeGate.cs` 重复，且**全仓零引用**（`BaseSceneName` 有 8 处引用故保留）。
+  删除三个死常量并留注释说明完整清单在 SceneRuntimeGate。
+- **B7 Reforge 武器特效 if 链 → 分派表**: `Integration/Reforge/ReforgeDataPersistence.cs` 此前 TypeID 判断
+  和特效调用分散两处，加一把带特效武器要改两个地方。改为 `ShowcaseWeaponEffectEntry[]` 只读分派表
+  + `FindShowcaseWeaponEffect(typeId)`。行为等价（同 TypeID、同方法、同样只处理第一个 ItemGraphicInfo）。
+  注：最初写成 `private static readonly Dictionary<>`，被 `StaticCacheLifecycleGuard` 正确拦下
+  （它按 Dictionary 形状识别静态缓存）。这是不可变分派表而非缓存，改用只读数组表达——
+  既诚实也不用动 guard、不用进白名单。
+- **B4 ModeF 工事包 4 个同构 Config → 共享模板**: 四个 `ConfigureItem` 逐字相同 45 行，
+  实际只差 MaxStackCount / Value / Quality 三个数字和日志前缀。新增
+  `ModeFItemConfigHelper.ConfigureSimpleConsumable(...)`，四个 Config 各自缩到约 14 行。
+  改写脚本对每个文件断言了旧值（stack/value/quality）才允许替换，防止改错文件；
+  顺带移除因此失效的 `using System;`。TypeID、key、文案、赋值顺序、日志文案全部不变。
+- **B3 本地化注入三段复制 → 提取**: `Localization/LocalizationInjector.cs` 的船票/生日蛋糕/WikiBook
+  三个注入方法结构逐行相同。提取 `InjectItemLocalization(typeId, nameKeyCn, nameKeyEn, canonicalKey, ...)`。
+  **等价性已证明**：用脚本从 git HEAD 取出旧版本，提取三个方法注入的 key 表达式清单，
+  确认新实现产生的 key 集合逐字一致（`canonicalKey + "_Desc"` 恰好等于原来的字面量
+  `"BossRush_Ticket_Desc"` / `"BossRush_BirthdayCake_Desc"` / `"BossRush_WikiBook_Desc"`）；
+  WikiBook 额外的「冒险家日志」两条保留在调用方，key 互不相同故顺序无关。
+- **B8 NPC 模块共享基类**: `NPCModuleRegistry.cs` 的 Goblin/Nurse `ShouldSpawnInScene` 逐字相同
+  （只差取哪个 NPC_ID 判婚姻状态，而 NpcId 本就是接口成员）。提取 `ArenaSupportNpcModuleBase`。
+  快递员不并入——它没有婚姻门控、竞技场判定也不同。
+  已确认 `AutoDiscoverModules` 显式跳过 `type.IsAbstract`，新基类不会被误实例化。
+- **B2 CanvasScaler 收口（5 处）**: 5 个界面各自手写 CanvasScaler 参数。逐个核对后确认全部
+  与 `ZombieModeUIHelper.ConfigureCanvasScaler` 等值：三项参数完全相同；其中 3 处额外显式写了
+  `screenMatchMode = MatchWidthOrHeight`，而这正是新建 CanvasScaler 的默认值，且这 5 处的
+  CanvasScaler 均为新建（`AddComponent` 或 `new GameObject(typeof(CanvasScaler))`），故行为不变。
+  全仓手写 `uiScaleMode` 赋值已清零（仅剩 helper 自身实现）。
+- **B2 新增 guard 断言**: `tests/BossRushUISharedLibraryGuard.py` 增加第 8 条——
+  全仓除 helper 自身外不得出现 `.uiScaleMode =` 赋值，并把 3 个新收口文件加入 MIGRATED 白名单。
+  该断言做了负例测试（临时改回手写 → 正确 FAIL）。
+
+**降级说明（原计划两项，核对后证伪前提，未按原方案执行）**:
+
+1. **B1「ModeE/ModeF 血条名牌 ~500 行 1:1 逐字复制」——前提不成立。**
+   程序化归一化比对后，真正逐字相同的只有 3 个小方法
+   （`TryGetCached*HealthBar`、`Mark*NamesDirty`、`Sync*NameLanguageState`）。
+   其余已实质分叉：`RegisterHealthBar` 在 ModeE 多清一个 `BaseText` 字典；
+   节流位置不同（ModeE 在 `Find` 里、ModeF 在 `ScanAndCache(force)` 里）；
+   ModeF 另有 `FindModeFPlayerHealthBar` 与 `FindModeFHealthBar` 并存；
+   失败处理一边是限流日志一边是空 catch；ModeF 还额外挂悬赏后缀缓存与雷达节流。
+   抽公共基类必然要统一这些差异 = 改行为，与"不影响原有功能"冲突；
+   而只抽那 3 个小方法净收益接近零（省下的行数和新增 helper 相当）。
+   **处理：保持两套独立，在两个文件顶部写明差异清单与"不要合并"的结论**，
+   防止后续协作者按"看起来是复制粘贴"再次尝试合并并踩坑。
+2. **B6「ObjectCache 统一失效判断」——不做语义变更，降级为文档化。**
+   核对发现 `GetBoxColliders()` **全仓零调用点**（其只判 null 的写法不构成实际问题）；
+   `GetNotificationTexts` 走 `Resources.FindObjectsOfTypeAll`（资产级，不随场景销毁）。
+   把 `== null` 改成 `IsUnityObjectArrayAlive` 会改变重扫时机（对 BoxCollider 还可能是性能回归），
+   静态证明不了安全。**处理：补注释说明"场景级 vs 资产级"两类失效判断为何不同、
+   `_cachedCharacterPresets` 的不对称为何是有意的**，零行为变更。
+
+**兼容性影响**: 存档 key、配置 key、TypeID、本地化 key、AssetBundle 名、Harmony 目标、
+UI 数值与组件集合全部逐字未变。所有改动为提取方法/常量收口/删死代码/改注释。
+
+**一个可观察但无害的差别（B3 副作用，已记录在代码注释里）**：
+`BossRush_Ticket_Desc` / `BossRush_BirthdayCake_Desc` / `BossRush_WikiBook_Desc` 三个 key
+此前是源码字面量，现在由 `canonicalKey + "_Desc"` 运行时拼出，**源码里 grep 不到**。
+已用脚本核对：全仓（排除 Build/官方源码）对这三个字面量的引用为 0，
+且运行时注册的 key 集合与改动前完全一致。收口后全仓 `BossRush_*` 源码字面量
+从 756 个降为 753 个，差额恰好是这三个，无其它丢失、无新增。
+
+**验证方法**:
+1. 编译: **已通过**（2026-08-27，`compile_official.bat`，GAME_PATH=`D:\software\steam\steamapps\common\Escape from Duckov`，WORKSHOP_PATH=`...\workshop\content\3167020`）——Roslyn 4.10 / C# 7.3，零错误零警告，产出 `Build\BossRush.dll`（3,132,928 字节）
+2. 语法探针: 每项改动后跑 `python tools/verify_syntax.py --with-bcl` —— 532 源文件，CS1xxx 零错误
+3. Guard: 每项改动后跑 `python tools/run_guards.py --changed-only`，全部项完成后跑全量 ——
+   443 脚本 **442 PASS / 0 NEW-FAIL / 1 KNOWN-RED**（既有红项）
+4. 等价性证明: B3 用 git HEAD 版本做了 key 集合逐字比对；B4 改写时逐文件断言旧数值；
+   B2 逐站点核对了 CanvasScaler 参数与组件新建方式；B9 删常量前 grep 确认零引用
+5. 人工 smoke: 未执行，见下
+
+**未验证/需人工**:
+- ~~Windows 正式编译未运行~~ → 已于 2026-08-27 补跑通过（见上）。
+- 实机 smoke 未做。重点看：Mode F 工事包四件（折叠掩体/加固路障/阻滞铁丝网/应急维修喷雾）
+  名称、描述、堆叠上限、售价、品质与改动前一致；船票/生日蛋糕/冒险家日志的名称描述正常
+  （不出现 `*BossRush_xxx*` 星号原文）；重铸展示柜上龙息与霜之哀伤的展示特效仍在；
+  哥布林与护士的刷新场景规则不变；成就弹窗、婚礼过场、许愿池奖励动画、Mode F 赏金雷达
+  在 1080p 与 4K 下缩放正常。
+
+---
+### 2026-08-27 流程自动化 Phase D：聚合 guard runner、语法探针、授权清理与三个缺失 guard
+
+**状态**: fixed
+**Finding**: 无（全面代码审查产出的流程改进）
+**兼容分类**: OPERATIONAL（构建/验证流程与 git 纳管）、SAFE（死代码清理与新增 guard）
+**版本/Commit**: 未提交
+**Owner decision**: 已确认（授权删除 TeleportDebugMonitor.cs、SpeedrunGauntletTicket 常量、cleanup_old_files.bat；授权 git 纳管关键文件）
+
+**现象**:
+1. guard 体系是本仓最大质量资产（原 440 个脚本），但只能本地手动跑，且推荐的两种跑法都有硬伤：
+   `for %f in (tests\*.py) do python %f` 不聚合结果、不 fail-fast；`validate_refactor_step.bat` 的循环
+   是 fail-fast——既有红项 `DragonKingBossGunRocketSplitGuard`（字母序 D）会**永久遮蔽其后 300+ 个 guard**。
+   guard 中文输出在 cp936 控制台还会 mojibake。CI 里只有 Wiki 部署，零 guard。
+2. 本机没装游戏，`compile_official.bat` 跑不了，"验证"长期只到 guard 层，且没有可重复的语法层检查手段。
+3. 三条被反复强调的 golden rule 零自动化：TypeID 台账（4.3）、`DisplayNameRaw` 配本地化注入（4.4）、
+   repowiki 同步（4.13）。
+4. 死代码与危险遗留：`TeleportDebugMonitor.cs`（301 行 MonoBehaviour，全仓无任何 `AddComponent`，
+   从未被挂载）；`Config/Config.cs` 的 `SpeedrunGauntletTicket = 500047`（零使用点，且与三份契约文档
+   「500047 为保留空洞」直接矛盾）；`cleanup_old_files.bat`（含 `del /q *.py`、`del /q *.ps1`）。
+5. `test_bossrush_official.bat`（部署流水线）与 4 份被 guard 直接读取的 docs 未被 git 跟踪 →
+   fresh clone 跑 guard 必红，且部署流程丢了就无法复现。
+6. `AGENTS.md` §4.1 把编译清单文件数写死成 483，实际 532。
+
+**根因**: 验证工具链停留在"能跑就行"，没有把既有红项、编码、聚合、CI 这些工程化问题解决掉；
+golden rule 靠人工遵守；`docs/` 默认 local-only 的策略与「guard 硬依赖某些 docs」冲突。
+
+**修复内容**:
+- 新增文件: `tools/run_guards.py` + `run_guards.bat` —— 聚合式 runner：全量跑不中断、并发执行
+  （443 脚本约 30 秒，此前顺序循环数分钟）、PASS/FAIL 汇总与失败清单、强制 UTF-8、
+  `--changed-only`（按 git 改动挑相关 guard）、`--filter`、`--verbose`；
+  已知红项走 `tests/known_red_guards.txt` 基线，登记项失败不判红但单独列出，
+  **登记后又转绿的条目报 STALE-BASELINE 并判失败**，防止基线越积越多掩盖回归。
+- 新增文件: `tools/verify_syntax.py` + `verify_syntax.bat` —— 用本机 .NET SDK Roslyn 对编译清单
+  做语法层（CS1xxx）检查，输出显式声明「通过 ≠ 编译通过」；`--with-bcl` 可多挂 BCL 引用再抓一层。
+- 新增文件: `tests/TypeIdLedgerGuard.py` + `tests/typeid_literal_allowlist.txt` —— 从 `docs/contracts.md` §1
+  解析台账（范围 + 保留空洞）作为事实源，交叉核对 `AGENTS.md` §4.3 数字一致，再扫描全部源码
+  （**剥离注释**，保留字符串）里的 `5000xx` 字面量，命中保留空洞或越界即 FAIL。
+  已知非 TypeID 的同形数字走豁免清单（当前 1 条：成就阈值 500000）。实测 56 个在用 TypeID，
+  与「500001-500058 去掉 2 个空洞」完全吻合。
+- 新增文件: `tests/LocalizationInjectionGuard.py` + `tests/localization_injection_allowlist.txt` ——
+  golden rule 4.4 首次自动化。注意仓库里**没有**文档所写的字面量写法，统一是
+  `item.DisplayNameRaw = LOC_KEY_DISPLAY;`，且注入点常在别的文件（Mode F 工事包集中在
+  `BossRushIntegration.InjectModeFItemLoc`），因此 guard 先把常量解析回字符串，再在全仓
+  接受三种注入证据（同文件常量 / 限定名 `XxxConfig.LOC_KEY_DISPLAY` / 字面量）。
+  实测 19 个 `BossRush_*` 显示名 key 全部找到注入；2 处 `locKey` 是通用 helper 的方法参数，
+  按 WARN 列出（人工确认无误）。
+- 新增文件: `tests/RepowikiReferenceGuard.py` + `tests/repowiki_reference_allowlist.txt` ——
+  校验 `.qoder/repowiki` 全部 `file://` 引用的目标存在。落地时一次性修掉 **13 个死链、103 处引用**：
+  历史路径前缀写错（`BossRushMod/...`、`WavesArena/BossRushMod/...`）、缺目录前缀
+  （`ModeFPhases.cs` 等）、错字（`BossRashRuntimeModuleHost`）、改名文件
+  （`DragonFlameMarkMarkTracker`、`GoblinReforgeInteractable` 位置）、wiki-site 路径层级，
+  以及本轮 A6 改名遗留的 `Common/Infrastructure/ReflectionCache.cs`。
+- 新增文件: `.github/workflows/guards.yml` —— CI 跑 guard runner（ubuntu + Python 3.12）。
+  明确只跑 guard 不跑编译（runner 上没有也不该有游戏程序集）。
+- 删除文件: `TeleportDebugMonitor.cs`（同步 `compile_official.bat`、`AGENTS.md` 子系统地图、
+  `tests/ModBehaviourInstanceClassificationGuard.py` 的计数与 `docs/testing/2026-05-14-modbehaviour-instance-classification.md`
+  的基线 357→355、`docs/项目全景文档.md`、以及 2 篇 repowiki 内容文档）。
+  删除前二次确认：它是 MonoBehaviour 但全仓无任何 `AddComponent`，从未被挂载，属死代码。
+- 删除文件: `cleanup_old_files.bat`（2025 年遗留，含 `del /q *.py` / `del /q *.ps1` 危险命令）。
+- 修改文件: `Config/Config.cs` —— 移除 `SpeedrunGauntletTicket = 500047`，原地留注释说明 500047 是保留空洞。
+- 修改文件: `.gitignore` —— 移除已失效/误导的 `compile_official.bat`、`cleanup_old_files.bat` 条目；
+  放行 `test_bossrush_official.bat`；用精确的 `/docs/*` + 反选规则放行 4 份 guard 硬依赖的文档，
+  同时确认 `docs/飞书应用密钥.md`、`docs/项目全景文档.md` 等仍被忽略（已用 `git check-ignore` 逐条验证）。
+- git 纳管（已 `git add`，未提交）: `test_bossrush_official.bat`、
+  `docs/testing/2026-05-14-final-runtime-smoke.md`、`docs/testing/2026-05-14-modbehaviour-instance-classification.md`、
+  `docs/制作教程/便携安全区装置_Unity资源制作约定.md`、`docs/末日丧尸模式/末日丧尸模式_goal执行文档.md`。
+  注：审查线索称有 6 个 guard 依赖未跟踪 docs，实测只有 **4 个**真正读取文件，另两个仅在注释里提到路径。
+- 修改文件: `tests/OfficialCompileListFileExistenceGuard.py` —— 新增断言：`AGENTS.md` §4.1 不得再把
+  文件数写死（并在 PASS 行输出实测数量）。
+- 修改文件: `AGENTS.md` §4.1、`tests/AGENTS.md`、`CODE_REVIEW.md` —— 运行入口改指向新 runner 与语法探针，
+  并写明为什么不能再用旧的 `for %f in (tests\*.py)` 写法。
+
+**兼容性影响**:
+- 运行时零影响：删除的 `TeleportDebugMonitor` 从未被挂载；删除的 `SpeedrunGauntletTicket` 零使用点；
+  其余全是脚本、guard、CI 与文档。
+- 存档 key、配置 key、TypeID、本地化 key、Harmony 目标：全部未变（500047 仍是保留空洞，未回填）。
+- `.gitignore` 改动只影响哪些文件可被跟踪，不影响已跟踪文件。
+
+**验证方法**:
+1. 编译: **已通过**（2026-08-27，`compile_official.bat`，GAME_PATH=`D:\software\steam\steamapps\common\Escape from Duckov`，WORKSHOP_PATH=`...\workshop\content\3167020`）——Roslyn 4.10 / C# 7.3，零错误零警告，产出 `Build\BossRush.dll`（3,132,928 字节）
+2. 语法探针: `python tools/verify_syntax.py --with-bcl` —— 532 源文件，CS1xxx 零错误
+3. Guard: `python tools/run_guards.py` —— 443 脚本 **442 PASS / 0 NEW-FAIL / 1 KNOWN-RED**（既有红项）
+4. 新 guard 自测: TypeIdLedgerGuard 的注释剥离、台账解析、AGENTS 交叉核对做了正负例测试
+   （故意传错范围/空洞均正确报错）；OfficialCompileListFileExistenceGuard 的新断言做了负例测试
+   （临时把 999 写回文档 → 正确 FAIL，随后还原）；`.gitignore` 放行规则用 `git check-ignore` 正反验证。
+5. 人工 smoke: 不需要（无运行时改动）
+
+**未验证/需人工**:
+- ~~Windows 正式编译未运行~~ → 已于 2026-08-27 补跑通过（见上）。
+- `.github/workflows/guards.yml` 未在真实 CI 上跑过（仓库未推送），首次 PR 时需确认 runner 上
+  Python 3.12 能跑通全部 guard（本地 3.12 已通过）。
+- git 纳管的 5 个文件目前只是 `git add` 到暂存区，尚未提交（按 AGENTS.md §12，提交需 owner 明确要求）。
+
+---
+### 2026-08-27 兼容性加固 Phase A：关键失败日志、Harmony 逐类 apply 与绑定自检
+
+**状态**: fixed
+**Finding**: 无（全面代码审查产出的兼容性加固，非既有 finding）
+**兼容分类**: COMPAT（纯加法 + 失败路径改善）、SAFE（`ReflectionCache` 改名为静态等价重命名）、WIRE+（Harmony apply 粒度，owner 已确认）
+**版本/Commit**: 未提交
+**Owner decision**: 已确认（推进顺序 A→D→B→C；Harmony 改逐类 apply；四项授权清理待 Phase D）
+
+**现象**: 三项系统性兼容风险，官方游戏更新时会「静默塌方且玩家日志无痕」：
+1. `DevLog` 带 `[Conditional("BOSSRUSH_DEV")]`，而 `compile_official.bat` 正式构建不注入该 define，
+   编译器会整体删除全部 4748 处调用点——其中含 378 条 `[ERROR]` 与 874 条 `[WARNING]`。
+   Harmony 失败、反射绑定失败、AssetBundle 缺失、数据表损坏在玩家机器上一条都不打印。
+2. `harmony.PatchAll()` 用单个 try/catch 包住：官方改动 50 个补丁目标里任意 1 个，其余补丁全部不生效，
+   且失败日志被第 1 条编译掉。`Patches/Combat/ProjectileHalfObstaclePatch.cs:11` 的注释证明该风险已发生过一次。
+3. 约 744 处字符串反射绑定无集中失败上报；唯一自检 `EnsureCriticalPatchesApplied` 只覆盖 8 个方法。
+   另：`BossRush.ReflectionCache`（Common/Infrastructure，启动期急切绑定）与
+   `BossRush.Common.Utils.ReflectionCache`（懒字典缓存）同名，调用点语义只能靠 using 区分。
+
+**根因**: 可观测性设计假设「调试期能看到日志」，未考虑正式构建把诊断整体编译掉；
+补丁 apply 粒度沿用 Harmony 默认的全程序集一次性 `PatchAll`。
+
+**修复内容**:
+- 新增文件: `Common/Infrastructure/HarmonyBindingSelfCheck.cs`（已加入 `compile_official.bat`）——
+  启动期只读校验全部 `[HarmonyPatch]` 类的目标方法是否实际挂载本 Mod 补丁，输出 `verified/total` 与失败清单；
+  `TargetMethod(s)` 动态选目标的补丁类跳过不计入分母；全程 try/catch，不 apply、不补装。
+- 新增文件: `Common/Infrastructure/BossRushEagerReflectionCache.cs`（由 `Common/Infrastructure/ReflectionCache.cs` 改名而来，
+  编译清单同步替换）——消除与 `Common.Utils.ReflectionCache` 的同名歧义；28 处调用点同步更新，成员名与行为逐字不变。
+- 修改文件: `DebugAndTools/DebugAndTools.cs` —— 新增非 `Conditional` 的 `CriticalLog(message)` /
+  `CriticalLog(dedupeKey, message)`，按 key 去重、上限 64 条、含 `[ERROR]` 走 `LogError` 否则 `LogWarning`；
+  配套 `ResetCriticalLogStaticCaches()`。
+- 修改文件: `Utilities/AlwaysOnRuntimeHooks.cs` —— `harmony.PatchAll()` 改为
+  `ApplyHarmonyPatchesPerClass(harmony)`（同程序集、同类型顺序、同 processor，逐类 try/catch 隔离 + CriticalLog 汇总）；
+  接入 `HarmonyBindingSelfCheck.RunStartupSelfCheck`；OnDestroy 路径补两处去重状态重置。
+- 修改文件（DevLog → CriticalLog，仅失败分支）: `Utilities/SafeRuntime.cs`、`Common/Events/BossRushEventBus.cs`、
+  `Common/Lifecycle/BossRushRuntimeModuleHost.cs`、`Common/Infrastructure/BossRushEagerReflectionCache.cs`、
+  `Integration/BossRushDynamicItemRegistry.cs`、`Patches/ItemStatsSystem/ItemAssetsCollectionDynamicRegistrationPatch.cs`、
+  `Common/Data/JsonDataRegistry.cs`、`Common/MapConfig/MapSpawnPointRegistry.cs`、`Config/LootBlacklistRegistry.cs`。
+- 修改文件: `tests/ArchitectureStructureGuard.py` —— 钉住新结构（禁止回退 `harmony.PatchAll(`、
+  要求 `ApplyHarmonyPatchesPerClass` helper 及其四个关键 token、要求自检接入与两处 OnDestroy 重置），
+  并把 `HarmonyBindingSelfCheck.cs` 加入 `REQUIRED_COMPILE_SOURCES`。
+- 修改文件: `tests/ModeEShellHarmonyUiContractGuard.py` —— 反射缓存 token 同步改名。
+- 修改文件: `docs/架构说明/Harmony补丁契约稳定性.md` —— §0 注册点、§3 F1/F2/F5 可观测性、§6.1/§6.2 状态改为已实施。
+
+**兼容性影响**:
+- 存档 key、配置 key、TypeID、本地化 key、AssetBundle 名、Harmony 补丁目标：**全部逐字未变**。
+- Harmony apply：全部补丁成功时与 `PatchAll` 逐字等价（`PatchAll` 内部即
+  `AccessTools.GetTypesFromAssembly(assembly).Do(t => CreateClassProcessor(t).Patch())`）；
+  仅在「本来就已失败」的场景下表现不同——由 50 个全塌变为只塌失配的那一个。
+- 日志：正式构建新增少量契约级失败输出（去重 + 上限 64），成功路径零新增输出。
+- `ReflectionCache` 改名为纯重命名，`Common.Utils.ReflectionCache` 未受影响。
+
+**验证方法**:
+1. 编译: **已通过**（2026-08-27，`compile_official.bat`，GAME_PATH=`D:\software\steam\steamapps\common\Escape from Duckov`，WORKSHOP_PATH=`...\workshop\content\3167020`）——Roslyn 4.10 / C# 7.3，零错误零警告，产出 `Build\BossRush.dll`（3,132,928 字节）
+2. 语法/语义探针: 用本机 .NET SDK 8.0.302 Roslyn 对全部 533 个源文件做两轮探针——
+   仅 BCL 引用时 CS1xxx 语法错误 **0**；追加真实 `0Harmony.dll`(2.9) 引用后，
+   `HarmonyBindingSelfCheck.cs` 与 `AlwaysOnRuntimeHooks.cs` 诊断 **0**，
+   其余文件残留诊断全部为缺 Unity/Duckov 程序集的 CS0246，无一条可归因本次改动。
+   另用反射逐个核对了所用 Harmony API 签名（`CreateClassProcessor`、`PatchClassProcessor.Patch`、
+   `AccessTools.GetTypesFromAssembly/Method/PropertyGetter/PropertySetter/Constructor`、
+   `HarmonyMethod.Merge` 及其四个字段、`HarmonyAttribute.info`、`Patches.*`、`Patch.owner`、`Harmony.Id`）全部吻合。
+3. Guard: 全量 439 个脚本 **438 PASS / 1 FAIL**，唯一失败为既有红项 `DragonKingBossGunRocketSplitGuard`
+   （c36e011 之前即为红，与本次改动无关）。改动前后基线一致，零回归。
+4. 人工 smoke: 未执行，见下。
+
+**未验证/需人工**:
+- ~~Windows 正式编译未运行~~ → 已于 2026-08-27 补跑通过（见上）。
+- 实机 smoke 未做，需确认：进游戏后 `Player.log` 出现补丁自检汇总行且 `verified == total`；
+  正常流程下不出现 `[BossRush][CRITICAL]` 噪声；各模式补丁功能（阵营锁定、血条染色、售货机、
+  动态物品图标、亡魂、掉落箱、近战特效）表现与改动前一致。
+- 逐类 apply 的等价性依据 HarmonyLib 2.x `PatchAll` 实现（同程序集、同顺序、同 processor），
+  已用 2.9 程序集核对 API 但未在游戏内实跑，属静态推断。
+
+
+**状态**: fixed
+**Finding**: 无（防御性收口，当前组合不可达）
+**兼容分类**: SAFE（对现有调用点静态证明无行为变化）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+**现象**: 无玩家可见症状。`SpawnEnemyCoreInternalAsync` 的 `deferActivationUntilNextFrame` 分支提前 `return await ScheduleModeEFSpawnPostprocessAsync(...)`，参数列表不含 `options`，因此完全绕过 `HoldForExternalCommit` 冻结分支（SetInvincible + SetActive(false)）、`ApplySharedMutators` 门控和跳过 Legacy 提交回调的门控。当前不可达：Mode G 三处调用点均传 defer=false 且带 options；Mode E/F 走 defer=true 但 options=null。若将来出现 defer=true + HoldForExternalCommit=true 组合，冻结语义会被静默丢失（Boss 直接激活、应用共享变异并走 Legacy 提交）。
+
+**根因**: `ScheduleModeEFSpawnPostprocessAsync` 与 `ModeEFSpawnPostprocessJob` 在 Mode G options 契约（任务 #7）落地时未同步扩展，defer 队列收尾 `FinalizeModeEFSpawnPostprocessJob` 固定执行 SetActive(true) + ApplyToEnemy + onCommit。
+
+**修复内容**:
+- 修改文件: `Utilities/EnemySpawnCore.cs` —— `ModeEFSpawnPostprocessJob` 增加 `options` 字段；`ScheduleModeEFSpawnPostprocessAsync` 增加显式无默认值的 `EnemySpawnCoreOptions options` 参数（防止未来新增 defer 调用点静默漏传）并入队透传；`FinalizeModeEFSpawnPostprocessJob` 镜像同步路径三个门控：HoldForExternalCommit 冻结（SetInvincible + SetActive(false)）、ApplySharedMutators 门控变异、HoldForExternalCommit 跳过 Legacy 提交回调。`options == null` 时逐字保持原行为。
+- 修改文件: `tests/ModeEFSpawnPostprocessSchedulerGuard.py` —— 新增 6 条断言锁住 options 字段、显式签名、入队透传与三个门控。
+- 修改文件: `.qoder/repowiki/zh/content/游戏模式系统/标准 BossRush 模式/Boss 生成系统.md` —— 后处理队列小节补充 options 门控一致性说明。
+
+**兼容性影响**: 无。私有方法签名变化仅影响文件内唯一调用点；存档、配置、TypeID、Harmony/反射、资源均不涉及。
+
+**验证方法**:
+1. 编译: 未执行（本机无游戏安装，缺 `Duckov_Data\Managed` DLL，`compile_official.bat` 无法运行）
+2. Guard: `ModeEFSpawnPostprocessSchedulerGuard`、`EnemySpawnCoreObservableGuard`、`ModeGSpawnTransactionGuard`、`ManagedSpecialBossDeferredActivationGuard`、`ModeFRespawnObservableSpawnGuard`、`StandardBossRushSpecialBossMutatorGuard`、`ManagedBossSpawnOwnershipGuard` 全部 PASS
+3. 人工 smoke: 不需要（现有调用组合行为不变）；若将来启用 defer+hold 组合需实机验证批量激活
+
+**未验证/需人工**: Windows 编译未运行（无本机游戏），需在有游戏 DLL 的机器上跑一次 `compile_official.bat` 确认。改动仅用 C# 7.3 已有语法（字段、参数、if 门控），静态审查无语法风险。
+
+---
 ### 2026-08-27 全项目 UI 收口与观感升级（第一步：程序化皮肤）
 
 **状态**: fixed
