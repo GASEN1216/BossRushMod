@@ -29,6 +29,10 @@ namespace BossRush
 
         private static readonly object _lock = new object();
         private static bool _downedPending;
+
+        /// <summary>短无敌的兜底解除目标与到期时间（见 ReleaseStaleInvincibility）。</summary>
+        private static Health _invincibleHealth;
+        private static float _invincibleUntilUnscaled;
         private static string _pendingKillerName;
         private static string _pendingPlace;
         private static int _downedCount;
@@ -64,8 +68,13 @@ namespace BossRush
 
                 if (health != null)
                 {
-                    // 短无敌：钳到 1 血之后如果同帧还挨打，还是会死
+                    // 短无敌：钳到 1 血之后如果同帧还挨打，还是会死。
+                    // 正常路径下一 tick 就退场回收，无敌随角色一起消失；这里另记一个
+                    // 到期时间做兜底——万一 Tick 没跑（模块被关掉、宿主异常），
+                    // 不能把一只永久无敌的随从留在场上。
                     health.SetInvincible(true);
+                    _invincibleHealth = health;
+                    _invincibleUntilUnscaled = Time.unscaledTime + PetNestTuning.DownedInvincibleSeconds;
                 }
 
                 ModBehaviour.DevLog("[PetNest] 随从被打倒，登记重伤退场");
@@ -149,7 +158,11 @@ namespace BossRush
         /// </summary>
         internal static void Tick()
         {
-            if (!_downedPending) return;
+            if (!_downedPending)
+            {
+                ReleaseStaleInvincibility();
+                return;
+            }
 
             string killerName;
             string place;
@@ -195,6 +208,25 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 兜底解除超时未回收的短无敌。正常退场路径根本走不到这里（角色已销毁），
+        /// 它只防「Tick 停摆导致随从永久无敌」这一种极端情况。无待办时 O(1) 早返。
+        /// </summary>
+        private static void ReleaseStaleInvincibility()
+        {
+            if (_invincibleHealth == null) return;
+            if (Time.unscaledTime < _invincibleUntilUnscaled) return;
+            try
+            {
+                _invincibleHealth.SetInvincible(false);
+            }
+            catch (Exception)
+            {
+                // 角色可能已经销毁，丢引用即可
+            }
+            _invincibleHealth = null;
+        }
+
         #endregion
 
         #region 战痕
@@ -213,7 +245,7 @@ namespace BossRush
             scar.place = string.IsNullOrEmpty(place) ? SafeSceneName() : place;
             scar.killer = string.IsNullOrEmpty(killerName) ? "unknown" : killerName;
             scar.statKey = PickScarStatKey(pet);
-            scar.percent = PetNestTuning.ScarModifierPercent;
+            scar.percent = PetNestTuning.ScarModifierFraction;
 
             pet.scars.Add(scar);
 
@@ -237,7 +269,7 @@ namespace BossRush
             string[] candidates = { "WalkSpeed", "RunSpeed", "MaxHealth" };
             for (int i = 0; i < candidates.Length; i++)
             {
-                if (SumScarPercent(pet, candidates[i]) > PetNestTuning.ScarModifierCapPercent)
+                if (SumScarPercent(pet, candidates[i]) > PetNestTuning.ScarModifierCapFraction)
                 {
                     return candidates[i];
                 }
@@ -262,13 +294,13 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 某个 stat 上生效的战痕减益（已按叠加封顶钳制）。
-        /// 随从入场时按它给幼体挂 Modifier。
+        /// 某个 stat 上生效的战痕减益（已按叠加封顶钳制）。**封顶口径的唯一权威实现**，
+        /// 随从入场挂 Modifier（PetNestCompanionSpawner.ApplyScarModifiers）走它。
         /// </summary>
         internal static float GetEffectiveScarPercent(PetNestPetRecord pet, string statKey)
         {
             float sum = SumScarPercent(pet, statKey);
-            return Mathf.Max(sum, PetNestTuning.ScarModifierCapPercent);
+            return Mathf.Max(sum, PetNestTuning.ScarModifierCapFraction);
         }
 
         #endregion
@@ -318,6 +350,8 @@ namespace BossRush
                 _pendingKillerName = null;
                 _pendingPlace = null;
             }
+            _invincibleHealth = null;
+            _invincibleUntilUnscaled = 0f;
             _downedCount = 0;
         }
 

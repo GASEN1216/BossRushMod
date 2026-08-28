@@ -179,6 +179,7 @@ namespace BossRush
                 PetNestMuseumStats.ResetStaticCaches();
                 PetNestCompanionRuntime.CleanupOnce();
                 PetNestUI.ResetStaticCaches();
+                PetNestRenameModal.ResetStaticCaches();
                 PetNestHatchRevealView.ResetStaticCaches();
                 PetNestExpeditionRevealView.ResetStaticCaches();
                 PetNestCompanionHudView.ResetStaticCaches();
@@ -188,6 +189,8 @@ namespace BossRush
                     PetNestSaveCoordinator.ShutdownSubscription();
                 }
                 PetNestLineageCatalog.Invalidate();
+                // 与 RegisterOpener 成对：面板关掉并把打开器注销，避免 dormant 后还能开面板
+                PetNestUI.UnregisterOpener();
                 PetNestUIBridge.UnbindRuntime();
                 _bootstrapped = false;
                 _owner = null;
@@ -236,6 +239,8 @@ namespace BossRush
                 // 再打开开关时缓存里还是上一个档的崽与遗魂，一写就把旧档覆盖到新档上。
                 PetNestPersistenceAccess.ResetCachesForSlotReload();
                 PetNestLineageCatalog.Invalidate();
+                // 与 RegisterOpener 成对：面板关掉并把打开器注销，避免 dormant 后还能开面板
+                PetNestUI.UnregisterOpener();
                 PetNestUIBridge.UnbindRuntime();
             }
             catch (Exception e)

@@ -56,6 +56,13 @@ namespace BossRush
             Add(map, "Page_Expedition", "天灾远征", "Disaster Expedition");
             Add(map, "Page_Museum", "遗种博物馆", "Relic Museum");
             Add(map, "Page_Memorial", "阵亡纪念碑", "Memorial");
+
+            // 命名弹窗（SystemDesc 对玩家承诺过"起个名字"，入口在 PetNestRenameModal）
+            Add(map, "Rename_Title", "给它起个名字", "Name this cub");
+            Add(map, "Rename_Hint", "留空并点「用回血脉名」可以恢复默认称呼。",
+                "Leave it empty and pick \"Use bloodline name\" to restore the default.");
+            Add(map, "Rename_Confirm", "就叫这个", "Confirm");
+            Add(map, "Rename_Reset", "用回血脉名", "Use bloodline name");
         }
 
         #endregion

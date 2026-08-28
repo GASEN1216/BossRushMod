@@ -722,6 +722,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestCompanionHudView.cs ^
     PetNest\PetNestMuseumStats.cs ^
     PetNest\PetNestBaseIdleSpawner.cs ^
+    PetNest\PetNestRenameModal.cs ^
     PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
@@ -789,6 +790,28 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: building icon deploy failed.
             ) else (
                 echo Deployed building icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings
+            )
+        )
+        REM 遗种巢建筑模型 bundle：LoadPetNestBuildingModel 直接 AssetBundle.LoadFromFile 读取。
+        REM 缺文件时 Mod 会退回运行时占位圆柱体，不会 fail，但基地里就看不到真模型。
+        if exist "Assets\buildings\petnest_relic_nest" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings"
+            copy /Y "Assets\buildings\petnest_relic_nest" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings\petnest_relic_nest" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: PetNest building bundle deploy failed.
+            ) else (
+                echo Deployed PetNest building bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings
+            )
+        )
+        REM 物品图标 PNG：EquipmentHelperIcon 直接 File.ReadAllBytes 读取，不进 AssetBundle，
+        REM 必须随构建一起部署，否则自定义物品会顶着克隆源物品的图标出现在背包里。
+        if exist "Assets\Items\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items"
+            xcopy /Y /I "Assets\Items\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items\" >nul
+            if errorlevel 1 (
+                echo WARNING: item icon deploy failed.
+            ) else (
+                echo Deployed item icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items
             )
         )
         if exist "Assets\Data\ModeH\*.json" (

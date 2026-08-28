@@ -136,13 +136,16 @@ def check_handler(errors):
             if forbidden in body:
                 errors.append("[时序] 登记路径不得执行: " + forbidden)
 
-    tick = re.search(r"internal static void Tick\(\)[\s\S]{0,1400}?\n        \}", code)
+    tick = re.search(r"internal static void Tick\(\)\s*\n        \{[\s\S]{0,2200}?\n        \}", code)
     if tick is None:
         errors.append("[执行] 缺少 Tick() 执行入口")
     else:
         body = tick.group(0)
-        if "if (!_downedPending) return;" not in body:
+        # 无待办时必须 O(1) 走人：允许先做一次同为 O(1) 的兜底解除再 return
+        if "if (!_downedPending)" not in body:
             errors.append("[性能] Tick 无待办时必须 O(1) 早返")
+        if "ReleaseStaleInvincibility()" not in body:
+            errors.append("[兜底] Tick 停摆时必须能解除超时的短无敌，否则随从会永久无敌")
         if "PetNestCompanionRuntime.NotifyDowned()" not in body:
             errors.append("[执行] Tick 必须走统一的退场清理入口")
 
@@ -151,9 +154,9 @@ def check_handler(errors):
         errors.append("[存档体积] 战痕必须有每崽上限")
     if "pet.mergedOldScarCount++" not in code:
         errors.append("[存档体积] 溢出的战痕必须合并为旧伤计数，不得静默丢弃")
-    if "PetNestTuning.ScarModifierCapPercent" not in code:
+    if "PetNestTuning.ScarModifierCapFraction" not in code:
         errors.append("[数值] 战痕减益必须有叠加封顶")
-    if "PetNestTuning.ScarModifierPercent" not in code:
+    if "PetNestTuning.ScarModifierFraction" not in code:
         errors.append("[数值] 战痕减益必须走常量")
 
     # 凶手记录：只在随从在场期间订阅官方 OnHurt（全场热路径，不得常驻订阅）

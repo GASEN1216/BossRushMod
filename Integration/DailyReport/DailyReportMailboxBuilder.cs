@@ -57,6 +57,12 @@ namespace BossRush
         /// <summary>交互点偏移。</summary>
         private static readonly Vector3 DAILYREPORT_INTERACT_OFFSET = new Vector3(0f, 0f, 0f);
 
+        /// <summary>
+        /// bundle 模型归一化后的最大边长。报箱占地 1x1，比许愿台（2.2）小一号，
+        /// 免得借来的替身模型撑出格子压到旁边的建筑。
+        /// </summary>
+        private const float DAILYREPORT_MODEL_TARGET_MAX_DIM = 1.5f;
+
         // ====================================================================
         // 状态
         // ====================================================================
@@ -209,6 +215,7 @@ namespace BossRush
 
                 if (!File.Exists(bundlePath) || IsDailyReportPlaceholderBundle(bundlePath))
                 {
+                    if (TryBorrowStarwishModelAsStandIn()) return;
                     DevLog(DailyReportTuning.LogPrefix + "建筑模型 bundle 缺失或为占位，使用占位模型");
                     return;
                 }
@@ -250,6 +257,87 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 临时替身：没有自己的 bundle 时，借用许愿台**已经加载好的**模型 prefab，
+        /// 让报箱先有一个真模型，等 Meshy 出图后再换掉。
+        ///
+        /// 为什么是借引用而不是把 starwish_fountain 文件改名复制一份：
+        /// AssetBundle 的**内部 CAB 名不随文件名改变**（starwish 那份是
+        /// CAB-013421218a0469224cbbccdeb8d99772），而许愿台把 bundle 常驻在静态字段里
+        /// 直到 Cleanup 才卸载。于是改名复制后第二次 LoadFromFile 会因为
+        /// "同一批 serialized 文件已被加载"而失败，静默退回几何体占位——
+        /// 看起来像"没生效"，实际是撞了 Unity 的 bundle 唯一性限制。
+        /// 借引用完全绕开这条限制，还不新增任何二进制文件。
+        ///
+        /// 依赖执行顺序：许愿台的建筑注入排在报箱之前（基地场景装配管线与
+        /// OnSceneLoaded 早期注入两条路径都是），所以这里读到的静态字段已填好。
+        /// 读不到就老实退回几何体，不报错。
+        /// </summary>
+        private bool TryBorrowStarwishModelAsStandIn()
+        {
+            try
+            {
+                if (starwishModelPrefab == null) return false;
+
+                dailyReportModelPrefab = starwishModelPrefab;
+                DevLog(DailyReportTuning.LogPrefix
+                    + "[临时] 借用许愿台模型作为报箱替身（等待专属 AssetBundle）");
+                return true;
+            }
+            catch (Exception e)
+            {
+                DevLog(DailyReportTuning.LogPrefix + "借用许愿台模型失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// bundle 模型的统一修整：按包围盒归一到 1x1 建筑的尺度、底部对齐地面、
+        /// 修 shader、补碰撞体。复用许愿台那套已经趟平的工具方法
+        /// （同一个 partial class ModBehaviour，参数是通用的）。
+        /// </summary>
+        private void PrepareDailyReportBundleModel(GameObject modelInstance, GameObject graphicsContainer)
+        {
+            try
+            {
+                if (modelInstance == null || graphicsContainer == null) return;
+
+                Renderer[] renderers = CollectStarwishRenderableComponents(modelInstance);
+                if (renderers.Length == 0)
+                {
+                    DevLog(DailyReportTuning.LogPrefix + "bundle 模型未找到可用 Renderer，跳过修整");
+                    return;
+                }
+
+                Bounds bounds;
+                if (!TryGetCombinedBounds(renderers, out bounds)) return;
+
+                // 报箱占地 1x1，比许愿台小一号；过大过小都拉回目标尺度
+                float maxDim = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
+                if (maxDim > 0.001f)
+                {
+                    float scaleFactor = DAILYREPORT_MODEL_TARGET_MAX_DIM / maxDim;
+                    modelInstance.transform.localScale *= scaleFactor;
+                    DevLog(DailyReportTuning.LogPrefix + "bundle 模型缩放 " + scaleFactor + " 倍");
+                }
+
+                // 底部对齐地面，避免模型半截埋进地里或悬空
+                renderers = CollectStarwishRenderableComponents(modelInstance);
+                if (TryGetCombinedBounds(renderers, out bounds))
+                {
+                    float bottomLocal = bounds.min.y - graphicsContainer.transform.position.y;
+                    modelInstance.transform.localPosition = new Vector3(0f, -bottomLocal, 0f);
+                }
+
+                FixStarwishModelShaders(modelInstance);
+                AddStarwishGraphicsCollider(modelInstance, CollectStarwishRenderableComponents(modelInstance));
+            }
+            catch (Exception e)
+            {
+                DevLog(DailyReportTuning.LogPrefix + "修整 bundle 模型失败: " + e.Message);
+            }
+        }
+
         // ====================================================================
         // 预制体
         // ====================================================================
@@ -274,6 +362,7 @@ namespace BossRush
                     dailyReportModelPrefab, graphicsContainer.transform);
                 modelInstance.name = "Model";
                 modelInstance.SetActive(true);
+                PrepareDailyReportBundleModel(modelInstance, graphicsContainer);
             }
             else
             {

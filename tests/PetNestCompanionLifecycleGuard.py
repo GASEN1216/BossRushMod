@@ -164,8 +164,9 @@ def check_spawner(errors):
         errors.append("[养成] TryActivate 必须应用崽的天赋与战痕")
     if "PetNestPetProxyBridge.PetCapacityStatKey" not in code:
         errors.append("[养成] PetCapcity 必须跳过（官方读的是玩家 stat，挂幼体无效）")
-    if "PetNestTuning.ScarModifierCapPercent" not in code:
-        errors.append("[养成] 战痕减益必须按封顶钳制后再挂")
+    if "PetNestDownedHandler.GetEffectiveScarPercent(" not in code:
+        errors.append("[养成] 战痕减益必须走 DownedHandler 的唯一封顶实现后再挂，"
+                      "不得在 spawner 里另写一份")
 
 
 def check_exemptions(errors):

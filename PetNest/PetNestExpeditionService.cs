@@ -123,15 +123,18 @@ namespace BossRush
             return Mathf.Clamp01(rate);
         }
 
-        /// <summary>血脉元素是否与目的地匹配。</summary>
+        /// <summary>
+        /// 血脉元素是否与目的地匹配。
+        /// 目的地→元素只认 PetNestLineageCatalog.GetDestinationElement 这一份表，
+        /// 不在本文件另建第二份——两处一旦不同步，元素亲和会静默偏差。
+        /// </summary>
         internal static bool HasElementAffinity(PetNestPetRecord pet, string destinationId)
         {
             if (pet == null) return false;
             PetNestLineageInfo lineage;
             if (!PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) || lineage == null) return false;
-            PetNestDestinationInfo destination = TryGetDestination(destinationId);
-            if (destination == null) return false;
-            return lineage.Element == destination.Element;
+            if (TryGetDestination(destinationId) == null) return false;
+            return lineage.Element == PetNestLineageCatalog.GetDestinationElement(destinationId);
         }
 
         #endregion
@@ -161,22 +164,6 @@ namespace BossRush
             return record.petId;
         }
 
-        /// <summary>该崽是否正在远征途中。</summary>
-        internal static PetNestExpeditionRecord FindActiveByPet(string petId)
-        {
-            if (string.IsNullOrEmpty(petId)) return null;
-            List<PetNestExpeditionRecord> records = Records;
-            for (int i = 0; i < records.Count; i++)
-            {
-                PetNestExpeditionRecord r = records[i];
-                if (r != null && !r.revealed
-                    && string.Equals(r.petId, petId, StringComparison.Ordinal))
-                {
-                    return r;
-                }
-            }
-            return null;
-        }
 
         /// <summary>
         /// 派出一只崽。成功后崽被锁定（state=OnExpedition），记录立刻落档。
@@ -378,6 +365,8 @@ namespace BossRush
                     pet.lockedByExpeditionId = null;
                     pet.expeditionCount++;
                     pet.careerCount++;
+                    // 图鉴的"最高等级"以履历推进点为采样时机
+                    PetNestMuseumStats.RecordLevel(pet);
 
                     if (dead)
                     {

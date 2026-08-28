@@ -476,7 +476,8 @@ namespace BossRush
 
             foreach (KeyValuePair<string, float> pair in byStat)
             {
-                float clamped = Mathf.Max(pair.Value, PetNestTuning.ScarModifierCapPercent);
+                // 封顶口径只有一份权威实现，避免两处各写一遍后悄悄跑偏
+                float clamped = PetNestDownedHandler.GetEffectiveScarPercent(pet, pair.Key);
                 ApplyOneModifier(characterItem, pair.Key, clamped, true);
             }
         }

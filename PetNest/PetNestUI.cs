@@ -113,8 +113,17 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            // 子弹窗不能比宿主活得久，否则会留一个抢着 modal lease 的孤儿
+            PetNestRenameModal.Close();
             ReleaseLease();
             if (_instance == this) _instance = null;
+        }
+
+        /// <summary>模块关停时注销打开器，与 RegisterOpener 成对。</summary>
+        internal static void UnregisterOpener()
+        {
+            Close();
+            PetNestUIBridge.UnregisterPageOpener();
         }
 
         #endregion
@@ -281,8 +290,21 @@ namespace BossRush
                 case PetNestUIPage.Museum:
                     return PetNestUIPages.BuildMuseumPage();
                 default:
-                    return PetNestUIPages.BuildNestPage(Refresh);
+                    return PetNestUIPages.BuildNestPage(
+                        Refresh, ResolveSelectedPetId(), SelectPet, OpenRename);
             }
+        }
+
+        /// <summary>选中一只崽作为远征目标。</summary>
+        private void SelectPet(string petId)
+        {
+            _selectedPetId = petId;
+        }
+
+        /// <summary>打开命名弹窗。关闭后刷新面板，让新名字立刻可见。</summary>
+        private void OpenRename(string petId)
+        {
+            PetNestRenameModal.Open(petId, Refresh);
         }
 
         private string ResolveSelectedPetId()
@@ -357,9 +379,12 @@ namespace BossRush
         {
             if (data == null) return;
 
-            Color accent = data.Shiny
-                ? BossRushUIColors.RarityLegendary
-                : (data.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent);
+            // 选中态（远征目标）用 Warning 描边点出来，否则玩家无从判断"派的是哪只"
+            Color accent = data.Selected
+                ? BossRushUIColors.Warning
+                : (data.Shiny
+                    ? BossRushUIColors.RarityLegendary
+                    : (data.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent));
 
             GameObject card = BossRushUI.CreateCard(
                 "Card", _contentRoot, Vector2.zero, CardSize,
@@ -391,15 +416,30 @@ namespace BossRush
                 BossRushUI.ApplyGameFont(body);
             }
 
+            bool hasSecondary = !string.IsNullOrEmpty(data.SecondaryLabel);
+
             if (!string.IsNullOrEmpty(data.ActionLabel))
             {
                 ZombieModeUIHelper.CreateButton(
                     "CardAction", card.transform, data.ActionLabel,
-                    new Vector2(0.5f, 0.5f), new Vector2(430f, 0f), new Vector2(180f, 48f),
+                    new Vector2(0.5f, 0.5f),
+                    new Vector2(430f, hasSecondary ? 26f : 0f),
+                    new Vector2(180f, hasSecondary ? 44f : 48f),
                     data.OnClick != null ? BossRushUIColors.Accent : BossRushUIColors.Disabled,
-                    19f, new Vector2(170f, 44f),
+                    19f, new Vector2(170f, hasSecondary ? 40f : 44f),
                     data.OnClick != null ? new UnityEngine.Events.UnityAction(data.OnClick) : null,
                     data.OnClick != null);
+            }
+
+            if (hasSecondary)
+            {
+                ZombieModeUIHelper.CreateButton(
+                    "CardSecondary", card.transform, data.SecondaryLabel,
+                    new Vector2(0.5f, 0.5f), new Vector2(430f, -26f), new Vector2(180f, 44f),
+                    data.OnSecondary != null ? BossRushUIColors.SurfaceRaised : BossRushUIColors.Disabled,
+                    18f, new Vector2(170f, 40f),
+                    data.OnSecondary != null ? new UnityEngine.Events.UnityAction(data.OnSecondary) : null,
+                    data.OnSecondary != null);
             }
         }
 

@@ -39,6 +39,12 @@ namespace BossRush
         /// <summary>血脉 KV 键（与 PetNestTuning.EggLineageVariableKey 同一个契约）。</summary>
         public const string VAR_LINEAGE = "PetNest_Lineage";
 
+        /// <summary>
+        /// 图标资源名。EquipmentHelperIcon 会按 Assets/Items/{ICON_NAME}.png 找 PNG，
+        /// 缺文件时保持克隆源的图标（不 fail）。
+        /// </summary>
+        public const string ICON_NAME = "relic_egg";
+
         public const int VALUE = 3200;
         public const int MAX_STACK = 1;
         public const int QUALITY = 5;
@@ -88,6 +94,8 @@ namespace BossRush
                 ModeFItemConfigHelper.SetHiddenMember(item, "description", GetDescription());
                 ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", GetDescription());
                 EquipmentHelper.AddTagToItem(item, "Special");
+                // 专属图标：没有它就会顶着克隆源物品的脸出现在背包里
+                EquipmentHelperIcon.TryInjectIcon(item, null, ICON_NAME);
             }
             catch (Exception e)
             {

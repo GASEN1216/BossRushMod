@@ -44,6 +44,9 @@ namespace BossRush
         /// <summary>入场重试间隔（秒）。</summary>
         internal const float SpawnRetryIntervalSeconds = 1f;
 
+        /// <summary>本局已重伤退场（回基地才复位）。</summary>
+        internal const string ReasonPetDowned = "pet_downed_this_run";
+
         /// <summary>当前是否有随从在场。</summary>
         internal static bool HasCompanion
         {
@@ -81,6 +84,14 @@ namespace BossRush
             // 零常驻第一道闸：出战席位为空时连门控都不查
             PetNestPetRecord pet = PetNestService.DeployedPet;
             if (pet == null) return;
+            // 本局已重伤退场：局中途换图也不能让它重新入场
+            //（Downed 只在回基地由 RestoreDownedPetsOnReturnToBase 复位）
+            if (pet.state == (int)PetNestPetState.Downed)
+            {
+                _lastBlockReasonId = ReasonPetDowned;
+                CloseSpawnRetryWindow();
+                return;
+            }
 
             string blockReasonId;
             if (!PetNestModeGate.IsCompanionAllowed(owner, out blockReasonId))
@@ -188,9 +199,18 @@ namespace BossRush
                 handle = null;
 
                 // 捡漏背包：借席 + 容量 Modifier，与随从同寿命
+                // 借席失败（反射不可用 / 席位被他方随从占着）时**不给容量加成**：
+                // 席位仍归官方宠物，格子加在玩家身上等于白送给官方宠物背包，
+                // 与「随从没借到席就没有捡漏收益」的 fail-closed 语义相反。
                 string yieldReason;
-                PetNestPetProxyBridge.TryBorrowSeat(_handle.Character, out yieldReason);
-                PetNestPetProxyBridge.ApplyCapacityBonus(playerNow, ResolveCapacityBonus(pet));
+                if (PetNestPetProxyBridge.TryBorrowSeat(_handle.Character, out yieldReason))
+                {
+                    PetNestPetProxyBridge.ApplyCapacityBonus(playerNow, ResolveCapacityBonus(pet));
+                }
+                else
+                {
+                    ModBehaviour.DevLog("[PetNest] 借席未成功，跳过容量加成: " + yieldReason);
+                }
 
                 // 战痕要刻"被谁打倒"：只在随从在场期间订阅官方 OnHurt，离场立刻退订
                 PetNestDownedHandler.EnsureHurtSubscribed();

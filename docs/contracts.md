@@ -208,6 +208,10 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
   `Assets/UI/ModeH/ModeH_BlackMarketCup_Banner.png`
 - 构建器：兄弟 Unity 工程 `Assets/Editor/ModeHPresentationBundleBuilder.cs`
 - 构建输出：兄弟 Unity 工程 `ModeHExport/modeh_presentation`
+- **2026-08-29 已落位基线**：`97,301` 字节，
+  SHA-256 `04A9BFDFB7C9659A53A5E71CAFC453A133E2889D4E2AF2C9FEB7BF33233D24AC`，
+  回载验证 `ModeH_BlackMarketCup_Emblem 256x256` / `ModeH_BlackMarketCup_Banner 1024x576`，
+  依赖 `[]`。重新生成图片或换 Unity 版本后哈希变化属正常，但必须重跑全套验证再更新本行。
 
 运行时一次预检并同时加载两张 Sprite；缺包或缺资源 fail-closed。
 开发 raw PNG fallback 只由编译期常量 `ModeHAvailability.AllowDevRawPngFallback` 控制，
@@ -308,9 +312,23 @@ assembly-qualified 类型名写进存档，mod 程序集改名或类型重构就
 新分类只能追加到末尾——分类排序与存档都依赖 int 值，插在中间会让老档里已解锁成就的
 分类整体错位。
 
-**零新增资源制品。** 没有新的 AssetBundle、没有新的图标 PNG：建筑走占位模型
-（巢体 + 三枚蛋，`CreatePrimitive` 自带的 Collider 必须删），蛋图标复用官方 fallback 物品，
-幼体外观是官方模型缩放。将来补美术只需在 `Assets/buildings/` 放同名 bundle，代码零改动。
+**资源制品（2026-08-29 已落位，此前为占位）。** 三件，全部随 `compile_official.bat` 部署：
+
+| 制品 | 路径 | 规格 | 消费者 |
+| --- | --- | --- | --- |
+| 建筑模型 bundle | `Assets/buildings/petnest_relic_nest` | `UnityFS`，prefab 短名 `PetNestRelicNest`，14,387 B，43 renderer / 0 collider | `LoadPetNestBuildingModel()` |
+| 建筑图标 | `Assets/buildings/petnest_relic_nest.png` | 256×256 RGBA，铅笔线稿（与既有建筑图标同风格） | `LoadPetNestBuildingIcon()` |
+| 遗种蛋图标 | `Assets/Items/relic_egg.png` | 512×512 RGBA | `EquipmentHelperIcon.TryInjectIcon` |
+
+构建器 `Assets/Editor/PetNestBuildingBundleBuilder.cs`（兄弟 Unity 工程），
+prefab 由脚本确定性生成，不依赖手工场景摆放。
+
+**fallback 仍是契约**：三件资源任一缺失都不得 fail——建筑退回运行时占位圆柱体、
+图标退回官方默认。不要因为资源已落位就删掉 fallback 分支。
+
+历史口径（首版规划）：建筑走占位模型（巢体 + 三枚蛋，`CreatePrimitive` 自带的
+Collider 必须删），蛋图标复用官方 fallback 物品。占位路径至今保留为 fallback。
+幼体外观始终是官方模型缩放，这一条不变。
 
 **掉落范围。** 挂接点是 `LootAndRewards.RegisterBossRandomLootTracking` 体内单行并联，
 覆盖标准三档 / Mode D / E / F，天然**不含** Mode G 托管路径（其 adapter 会

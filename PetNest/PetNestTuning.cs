@@ -77,14 +77,24 @@ namespace BossRush
         /// <summary>幼体视觉缩放基准（只作用于 modelRoot，不动碰撞体）。</summary>
         internal const float DefaultCubModelScale = 0.4f;
 
-        /// <summary>战痕永久 Modifier 单条数值（负数=减益，百分比）。</summary>
-        internal const float ScarModifierPercent = -2f;
+        /// <summary>
+        /// 战痕永久 Modifier 单条数值。
+        ///
+        /// **单位是小数不是百分数**：官方 ModifierType.PercentageAdd 走的是
+        /// `result *= Mathf.Max(0f, 1f + 累加值)`（鸭科夫源码/ItemStatsSystem/Stat.cs:263），
+        /// 本仓同口径（Common/Stats/RuntimeStatModifierTracker.cs:31「0.30 = +30%」）。
+        /// 写成 -2f 会变成 -200% 而不是 -2%，展示层用 FormatModifierPercent 补 ×100。
+        /// </summary>
+        internal const float ScarModifierFraction = -0.02f;
 
-        /// <summary>同一 stat 的战痕减益叠加封顶（百分比）。</summary>
-        internal const float ScarModifierCapPercent = -10f;
+        /// <summary>同一 stat 的战痕减益叠加封顶（小数口径，见上）。</summary>
+        internal const float ScarModifierCapFraction = -0.10f;
 
         /// <summary>重伤退场前的短无敌时长（秒），避免钳血后同帧被连击打死。</summary>
         internal const float DownedInvincibleSeconds = 1.5f;
+
+        /// <summary>崽名字符上限（存档体积与 UI 宽度双重考虑）。</summary>
+        internal const int MaxPetNameLength = 12;
 
         /// <summary>随从进局提供的额外背包格子（挂在玩家 PetCapcity 上）。</summary>
         internal const int CompanionPetCapacityBonus = 4;

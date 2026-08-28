@@ -177,7 +177,9 @@ namespace BossRush
                 if (health == null) return PetNestTuning.MinSoulDropPerKill;
                 float maxHealth = health.MaxHealth;
                 if (maxHealth <= 0f) return PetNestTuning.MinSoulDropPerKill;
-                int souls = Mathf.FloorToInt(maxHealth / PetNestTuning.SoulDropHealthDivisor);
+                // 官方 SoulCollector.cs:59 用的是 RoundToInt，这里镜像同一口径；
+            // 用 Floor 会在同一 MaxHealth 下比官方少 1 点遗魂
+            int souls = Mathf.RoundToInt(maxHealth / PetNestTuning.SoulDropHealthDivisor);
                 return Mathf.Max(PetNestTuning.MinSoulDropPerKill, souls);
             }
             catch (Exception)

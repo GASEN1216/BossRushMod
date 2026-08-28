@@ -48,6 +48,12 @@ namespace BossRush
         public Action OnClick;
         /// <summary>点击按钮文案。</summary>
         public string ActionLabel;
+        /// <summary>次动作回调；为 null 表示不画第二个按钮。</summary>
+        public Action OnSecondary;
+        /// <summary>次动作按钮文案。</summary>
+        public string SecondaryLabel;
+        /// <summary>该卡是否处于选中态（远征目标）。</summary>
+        public bool Selected;
     }
 
     /// <summary>一个底部动作按钮。</summary>
@@ -81,6 +87,12 @@ namespace BossRush
                 : PetNestLocalization.DescribeFailure(failureReasonId);
         }
 
+        /// <summary>供同层弹窗（如命名弹窗）回写失败原因。</summary>
+        internal static void NoteExternalFailure(bool ok, string failureReasonId)
+        {
+            NoteFailure(ok, failureReasonId);
+        }
+
         /// <summary>清空失败提示（切页时调）。</summary>
         internal static void ClearFailure()
         {
@@ -95,7 +107,8 @@ namespace BossRush
         #region 巢
 
         /// <summary>巢页：崽列表 + 出战席位 + 遗魂账本摘要。</summary>
-        internal static PetNestPageContent BuildNestPage(Action refresh)
+        internal static PetNestPageContent BuildNestPage(
+            Action refresh, string selectedPetId, Action<string> select, Action<string> rename)
         {
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Nest");
@@ -108,13 +121,21 @@ namespace BossRush
             {
                 PetNestPetRecord pet = pets[i];
                 if (pet == null) continue;
-                page.Cards.Add(BuildPetCard(pet, deployedId, refresh));
+                page.Cards.Add(BuildPetCard(pet, deployedId, selectedPetId, refresh, select, rename));
             }
 
             if (pets.Count == 0)
             {
                 page.Lines.Add(L10n.T("巢是空的。去打 Boss，把它们的遗种带回来。",
                     "The nest is empty. Go kill bosses and bring their relics home."));
+            }
+            else
+            {
+                PetNestPetRecord selected = PetNestService.TryGetPet(selectedPetId);
+                page.Lines.Add(selected != null
+                    ? L10n.T("远征目标：", "Expedition target: ") + PetNestService.GetPetDisplayName(selected)
+                    : L10n.T("点「设为出战」或「改名」都会顺手把这只崽选为远征目标。",
+                        "Deploying or renaming a cub also picks it as the expedition target."));
             }
 
             page.Actions.Add(new PetNestActionData
@@ -131,9 +152,12 @@ namespace BossRush
             return page;
         }
 
-        private static PetNestCardData BuildPetCard(PetNestPetRecord pet, string deployedId, Action refresh)
+        private static PetNestCardData BuildPetCard(
+            PetNestPetRecord pet, string deployedId, string selectedPetId,
+            Action refresh, Action<string> select, Action<string> rename)
         {
             PetNestCardData card = new PetNestCardData();
+            card.Selected = string.Equals(pet.id, selectedPetId, StringComparison.Ordinal);
             card.Title = PetNestService.GetPetDisplayName(pet);
             card.Shiny = pet.shiny;
 
@@ -153,19 +177,30 @@ namespace BossRush
             bool selectable = pet.state != (int)PetNestPetState.OnExpedition
                 && pet.state != (int)PetNestPetState.Downed;
 
+            string cardPetId = pet.id;
+
             card.ActionLabel = deployed
                 ? L10n.T("已出战", "Deployed")
                 : L10n.T("设为出战", "Deploy");
             if (!deployed && selectable)
             {
-                string petId = pet.id;
                 card.OnClick = delegate
                 {
                     string reason;
-                    NoteFailure(PetNestService.TrySetDeployedPet(petId, out reason), reason);
+                    NoteFailure(PetNestService.TrySetDeployedPet(cardPetId, out reason), reason);
+                    // 上席同时选中它：远征页的默认目标随之跟上，省掉一次来回
+                    if (select != null) select(cardPetId);
                     if (refresh != null) refresh();
                 };
             }
+
+            // 次动作：远征中的崽也允许改名，只有它不能被选为新的远征目标
+            card.SecondaryLabel = L10n.T("改名", "Rename");
+            card.OnSecondary = delegate
+            {
+                if (select != null && selectable) select(cardPetId);
+                if (rename != null) rename(cardPetId);
+            };
             return card;
         }
 
@@ -196,16 +231,60 @@ namespace BossRush
                 PetNestTalentEntry t = pet.talents[i];
                 if (t == null) continue;
                 if (i > 0) text += "，";
-                text += t.statKey + (t.value >= 0f ? "+" : "") + t.value + (t.percentage ? "%" : "");
+                text += t.statKey + FormatModifierValue(t.value, t.percentage);
             }
             return text;
+        }
+
+        /// <summary>
+        /// 把 Modifier 数值格式化成玩家看得懂的文本。
+        /// 百分比项内部存的是**小数**（0.08 = +8%，官方 PercentageAdd 口径），
+        /// 展示时要 ×100，否则玩家看到的是 "+0.08%"。官方 EndowmentEntry 同款换算。
+        /// </summary>
+        private static string FormatModifierValue(float value, bool percentage)
+        {
+            if (!percentage)
+            {
+                return (value >= 0f ? "+" : "") + ((int)Math.Round(value)).ToString();
+            }
+            float percent = value * 100f;
+            return (percent >= 0f ? "+" : "") + percent.ToString("0.#") + "%";
         }
 
         private static string DescribeScars(PetNestPetRecord pet)
         {
             int total = (pet.scars != null ? pet.scars.Count : 0) + pet.mergedOldScarCount;
             if (total == 0) return L10n.T("战痕：无", "Scars: none");
-            return L10n.T("战痕：", "Scars: ") + total;
+
+            // 把当前生效的减益一并写出来：战痕是履历也是代价，代价必须可见
+            string text = L10n.T("战痕：", "Scars: ") + total;
+            string effect = DescribeScarEffect(pet);
+            if (!string.IsNullOrEmpty(effect)) text += "（" + effect + "）";
+            return text;
+        }
+
+        private static string DescribeScarEffect(PetNestPetRecord pet)
+        {
+            if (pet.scars == null || pet.scars.Count == 0) return null;
+            Dictionary<string, float> byStat = new Dictionary<string, float>(StringComparer.Ordinal);
+            for (int i = 0; i < pet.scars.Count; i++)
+            {
+                PetNestScarRecord s = pet.scars[i];
+                if (s == null || string.IsNullOrEmpty(s.statKey)) continue;
+                float sum;
+                byStat.TryGetValue(s.statKey, out sum);
+                byStat[s.statKey] = sum + s.percent;
+            }
+            if (byStat.Count == 0) return null;
+
+            string text = null;
+            foreach (KeyValuePair<string, float> pair in byStat)
+            {
+                float clamped = Math.Max(pair.Value, PetNestTuning.ScarModifierCapFraction);
+                if (text != null) text += "，";
+                text += pair.Key + FormatModifierValue(clamped, true);
+            }
+            return text;
         }
 
         #endregion
@@ -306,6 +385,12 @@ namespace BossRush
         /// </summary>
         internal static PetNestPageContent BuildExpeditionPage(Action refresh, string selectedPetId)
         {
+            // 玩家已经站在基地、远征在此期间到期时，场景回调不会再触发一次结算。
+            // 打开页面本身就是一次自然的结算时机，否则卡片会一直停在"剩余 0h0m"，
+            // 要重新过图回基地才翻牌。幂等：没到期的记录不受影响。
+            PetNestExpeditionService.SettleDueExpeditions();
+            PetNestExpeditionService.TryGrantPendingRewards();
+
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Expedition");
             page.Notice = L10n.T(

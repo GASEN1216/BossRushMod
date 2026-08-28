@@ -84,24 +84,5 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 当前是否处于禁入模式（与"没有任何局在跑"区分开：
-        /// 前者要给玩家明确的"本模式不能带崽"提示，后者只是还没开局）。
-        /// </summary>
-        internal static bool IsInBannedMode(ModBehaviour owner)
-        {
-            if (owner == null) return false;
-            try
-            {
-                return ModBehaviour.IsModeGRunInProgressSafe()
-                    || owner.IsZombieModeActive
-                    || ModBehaviour.IsModeHRunInProgressSafe();
-            }
-            catch (Exception)
-            {
-                // 查询失败按"不在禁入模式"处理：真正的拦截由 IsCompanionAllowed 兜底
-                return false;
-            }
-        }
     }
 }

@@ -40,17 +40,24 @@ namespace BossRush
         /// 出身天赋候选。数据形态镜像官方 EndowmentEntry 的 ModifierDescription：
         /// statKey + 数值 + 是否百分比。
         /// 注意 PetCapcity 是**格子数**（官方 Mathf.RoundToInt），必须用常量加而不是百分比。
+        ///
+        /// 两条硬约束：
+        /// 1) statKey 必须是**角色 Item** 上真实存在的 stat。"Damage" 是武器 Item 的
+        ///    stat，"SightDistance"/"DodgeChance" 在角色 Item 上不存在——挂上去
+        ///    Item.AddModifier 会直接返回 false，天赋静默失效。
+        /// 2) 百分比值的单位是**小数**（0.08 = +8%），见 PetNestTuning.ScarModifierFraction
+        ///    的说明。写成 8f 会变成 +800%。
         /// </summary>
         private static readonly PetNestTalentEntry[] TalentPool =
         {
-            MakeTalent("swift", "WalkSpeed", 8f, true),
-            MakeTalent("sprinter", "RunSpeed", 8f, true),
-            MakeTalent("tough", "MaxHealth", 12f, true),
-            MakeTalent("fierce", "Damage", 5f, true),
+            MakeTalent("swift", "WalkSpeed", 0.08f, true),
+            MakeTalent("sprinter", "RunSpeed", 0.08f, true),
+            MakeTalent("tough", "MaxHealth", 0.12f, true),
+            MakeTalent("fierce", "GunDamageMultiplier", 0.05f, true),
             MakeTalent("packmule", "PetCapcity", 2f, false),
-            MakeTalent("keeneye", "SightDistance", 10f, true),
-            MakeTalent("thickhide", "BodyArmor", 6f, true),
-            MakeTalent("nimble", "DodgeChance", 4f, true),
+            MakeTalent("brawler", "MeleeDamageMultiplier", 0.05f, true),
+            MakeTalent("thickhide", "BodyArmor", 0.06f, true),
+            MakeTalent("steady", "GunScatterMultiplier", -0.06f, true),
         };
 
         private static PetNestTalentEntry MakeTalent(string id, string statKey, float value, bool percentage)

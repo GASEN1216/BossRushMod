@@ -8,8 +8,10 @@
 // 最小化修改：全案**只加一个建筑**。巢 / 孵化 / 远征 / 博物馆四个功能都挂在同一个
 //   交互点上，走 NPCInteractionGroupHelper 的多选项交互菜单，不新增第二、第三个建筑。
 //
-// 零新增 Unity 资源：没有专属 AssetBundle 与图标 PNG，模型走占位圆柱体 fallback。
-//   将来补美术时只需在 Assets/buildings/ 放同名 bundle，本文件零改动。
+// 资源：Assets/buildings/petnest_relic_nest（模型 bundle，prefab 名 PetNestRelicNest）
+//       + Assets/buildings/petnest_relic_nest.png（建造界面图标）。
+// 两者都缺时**不 fail**，退回运行时占位圆柱体 + 官方默认图标——
+// 这条 fallback 是契约的一部分，不要因为资源已落位就删掉它。
 // ============================================================================
 
 using System;
@@ -169,7 +171,7 @@ namespace BossRush
         }
 
         // ====================================================================
-        // 资源加载（零新增资源：缺文件即走占位）
+        // 资源加载（缺文件即走占位，不 fail）
         // ====================================================================
 
         private void LoadPetNestBuildingIcon()
