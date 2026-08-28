@@ -139,6 +139,9 @@ namespace BossRush
             {
                 if (boss == null || string.IsNullOrEmpty(lineageKey)) return;
 
+                // 图鉴：按角色实例去重记一次血脉击杀
+                PetNestMuseumStats.RecordKill(boss, lineageKey);
+
                 // 非轨：遗魂必掉（纯账本，不掉实体）
                 int souls = ComputeSoulReward(boss);
                 if (souls > 0)

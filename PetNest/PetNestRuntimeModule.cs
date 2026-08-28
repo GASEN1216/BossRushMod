@@ -102,9 +102,12 @@ namespace BossRush
             try
             {
                 _sceneGeneration++;
+                // 跨局去重集合必须清，否则累积死引用
+                PetNestMuseumStats.ClearCountedKills();
                 if (!IsEnabled)
                 {
-                    // 关掉开关也要把上一局的随从与借席清干净
+                    // 关掉开关也要把上一局的随从、闲逛崽与借席清干净
+                    PetNestBaseIdleSpawner.CleanupAll();
                     PetNestCompanionRuntime.CleanupOnce();
                     ShutdownIfEnabledTurnedOff();
                     return;
@@ -120,8 +123,13 @@ namespace BossRush
                     PetNestExpeditionService.SettleDueExpeditions();
                     // 结算完再翻牌：翻牌只回放已 commit 的结果，中途退出下次还会弹
                     PetNestExpeditionRevealView.PlayPending();
+                    // 巢边闲逛崽：只在基地、≤3 只、分帧生成
+                    PetNestBaseIdleSpawner.RefreshForScene(_owner, _sceneGeneration, true);
                     return;
                 }
+
+                // 离开基地：闲逛崽全清
+                PetNestBaseIdleSpawner.RefreshForScene(_owner, _sceneGeneration, false);
 
                 // 切图：先清上一局，再按出战席位与门控决定是否入场
                 PetNestCompanionRuntime.OnSceneChanged(_owner, _sceneGeneration);
@@ -157,6 +165,8 @@ namespace BossRush
         {
             try
             {
+                PetNestBaseIdleSpawner.ResetStaticCaches();
+                PetNestMuseumStats.ResetStaticCaches();
                 PetNestCompanionRuntime.CleanupOnce();
                 PetNestUI.ResetStaticCaches();
                 PetNestHatchRevealView.ResetStaticCaches();

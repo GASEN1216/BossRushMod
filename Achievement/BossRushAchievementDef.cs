@@ -17,7 +17,10 @@ namespace BossRush
         BossKill,   // Boss击杀
         Cumulative, // 累计击杀
         Special,    // 特殊挑战
-        Ultimate    // 终极成就
+        Ultimate,   // 终极成就
+        // 新分类一律**追加到末尾**：分类排序与存档都依赖 int 值，插在中间会让
+        // 老档里已解锁成就的分类整体错位。
+        Taming      // 驯养（遗种巢）
     }
 
     /// <summary>

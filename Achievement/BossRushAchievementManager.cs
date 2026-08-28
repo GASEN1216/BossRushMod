@@ -212,6 +212,27 @@ namespace BossRush
                 "逆鳞图腾效果首次触发", "Trigger the Reverse Scale totem effect for the first time",
                 AchievementCategory.Special, 80000, 2);
 
+            // ========== 驯养成就（遗种巢）==========
+            Register("petnest_first_hatch", "初为人父", "First Hatch",
+                "在遗种巢孵出第一只幼体", "Hatch your first cub at the PetNest",
+                AchievementCategory.Taming, 60000, 1);
+
+            Register("petnest_lineage_10", "血脉收藏家", "Bloodline Collector",
+                "解锁 10 个血脉图鉴", "Unlock 10 bloodline entries",
+                AchievementCategory.Taming, 200000, 3);
+
+            Register("petnest_lineage_30", "全谱系执念", "Lineage Obsession",
+                "解锁 30 个血脉图鉴", "Unlock 30 bloodline entries",
+                AchievementCategory.Taming, 600000, 4);
+
+            Register("petnest_shiny", "淡紫色的那只", "The Pale Purple One",
+                "孵出一只异色幼体", "Hatch a shiny cub",
+                AchievementCategory.Taming, 300000, 4);
+
+            Register("petnest_memorial", "碑上有名", "A Name on the Stone",
+                "在阵亡纪念碑上刻下第一个名字", "Carve the first name into the memorial",
+                AchievementCategory.Taming, 120000, 2, true);
+
             // ========== 终极成就 ==========
             Register("completionist", "成就收集者", "Completionist",
                 "解锁所有成就", "Unlock all achievements",

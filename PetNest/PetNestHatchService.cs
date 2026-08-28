@@ -127,6 +127,8 @@ namespace BossRush
                 return false;
             }
 
+            PetNestMuseumStats.RecordHatch(pet);
+
             result = new PetNestHatchResult();
             result.Pet = pet;
             result.LineageDisplayName = lineage.DisplayName;
@@ -273,6 +275,8 @@ namespace BossRush
                 if (string.IsNullOrEmpty(failureReasonId)) failureReasonId = "roll_failed";
                 return false;
             }
+
+            PetNestMuseumStats.RecordHatch(pet);
 
             result = new PetNestHatchResult();
             result.Pet = pet;

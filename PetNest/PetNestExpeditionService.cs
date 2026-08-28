@@ -234,6 +234,7 @@ namespace BossRush
                     return false;
                 }
 
+                PetNestMuseumStats.RecordExpedition(pet);
                 record = r;
                 return true;
             }
@@ -563,6 +564,8 @@ namespace BossRush
                     museum.memorials.RemoveAt(0);
                     museum.mergedMemorialCount++;
                 }
+
+                PetNestMuseumStats.NotifyMemorialChanged();
             }
             catch (Exception e)
             {
