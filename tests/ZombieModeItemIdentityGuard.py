@@ -2,7 +2,13 @@ from pathlib import Path
 import sys
 
 
-CONFIG = Path("Config/Config.cs")
+# BossRushItemIds 是跨文件的 partial class：主表在 ConfigItemIds.cs，
+# 各子系统可在自己的 Config 分片里追加（如 ConfigPetNest.cs 的 RelicEgg）。
+# 这里把承载 TypeID 常量的分片全部读进来再断言，避免常量换文件就误报。
+CONFIG_ITEM_ID_PARTS = [
+    Path("Config/ConfigItemIds.cs"),
+    Path("Config/Config.cs"),
+]
 INVITATION = Path("Integration/Items/ZombieTideInvitationConfig.cs")
 BEACON = Path("Integration/Items/ZombieTideBeaconConfig.cs")
 BEACON_USAGE = Path("Integration/Items/ZombieTideBeaconUsage.cs")
@@ -29,7 +35,11 @@ def read_boss_rush_integration() -> str:
 
 
 def main() -> int:
-    config_text = CONFIG.read_text(encoding="utf-8")
+    config_text = "\n".join(
+        path.read_text(encoding="utf-8", errors="ignore")
+        for path in CONFIG_ITEM_ID_PARTS
+        if path.exists()
+    )
     invitation_text = INVITATION.read_text(encoding="utf-8")
     beacon_text = BEACON.read_text(encoding="utf-8")
     usage_text = BEACON_USAGE.read_text(encoding="utf-8")

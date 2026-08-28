@@ -471,4 +471,80 @@ namespace BossRush
 
         #endregion
     }
+
+    /// <summary>
+    /// 远征与博物馆两个 store 的服务层访问口。
+    ///
+    /// 与 PetNestService 同处服务层（同一文件，共享"只有服务层能碰 PetNestPersistence"
+    /// 的分层规则，见 tests/PetNestRuntimeModuleGuard.py）：玩法层一律经这里读写，
+    /// 不直接触碰持久化。
+    /// </summary>
+    internal static class PetNestPersistenceAccess
+    {
+        /// <summary>远征数据（首次访问触发加载）。永不为 null。</summary>
+        internal static PetNestExpeditionData Expedition
+        {
+            get
+            {
+                try
+                {
+                    PetNestExpeditionData data = PetNestPersistence.Expedition.Current;
+                    return data ?? PetNestCodec.CreateDefaultExpedition();
+                }
+                catch (Exception)
+                {
+                    return PetNestCodec.CreateDefaultExpedition();
+                }
+            }
+        }
+
+        /// <summary>博物馆数据（首次访问触发加载）。永不为 null。</summary>
+        internal static PetNestMuseumData Museum
+        {
+            get
+            {
+                try
+                {
+                    PetNestMuseumData data = PetNestPersistence.Museum.Current;
+                    return data ?? PetNestCodec.CreateDefaultMuseum();
+                }
+                catch (Exception)
+                {
+                    return PetNestCodec.CreateDefaultMuseum();
+                }
+            }
+        }
+
+        /// <summary>把远征数据入队（不落盘）。落盘由协调器统一触发。</summary>
+        internal static bool StageExpedition()
+        {
+            try
+            {
+                PetNestExpeditionData data = Expedition;
+                data.Normalize();
+                return PetNestPersistence.Expedition.Store(data);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 远征数据入队失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>把博物馆数据入队（不落盘）。</summary>
+        internal static bool StageMuseum()
+        {
+            try
+            {
+                PetNestMuseumData data = Museum;
+                data.Normalize();
+                return PetNestPersistence.Museum.Store(data);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 博物馆数据入队失败: " + e.Message);
+                return false;
+            }
+        }
+    }
 }

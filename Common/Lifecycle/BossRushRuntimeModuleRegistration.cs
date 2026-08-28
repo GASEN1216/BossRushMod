@@ -25,6 +25,11 @@ namespace BossRush
             // 建筑、面板、掉落、场景回调一律走 PetNestRuntime 门面，禁止二次 new。
             petNestRuntime = new PetNestRuntimeModule();
             runtimeModuleHost.Register(petNestRuntime);
+
+            // 鸭科夫日报同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 报箱交互、日报面板与调试快进都必须走 DailyReportRuntime 门面，禁止二次 new。
+            dailyReportRuntime = new DailyReportRuntimeModule();
+            runtimeModuleHost.Register(dailyReportRuntime);
         }
 
         /// <summary>Mode H 唯一运行时实例。</summary>
@@ -44,5 +49,14 @@ namespace BossRush
         /// 不得再次 new PetNestRuntimeModule()。
         /// </summary>
         internal PetNestRuntimeModule PetNestRuntime { get { return petNestRuntime; } }
+
+        /// <summary>鸭科夫日报唯一运行时实例。</summary>
+        private DailyReportRuntimeModule dailyReportRuntime;
+
+        /// <summary>
+        /// 日报唯一实例的只读门面。报箱交互、日报面板、调试快进与场景回调都只能用它，
+        /// 不得再次 new DailyReportRuntimeModule()。
+        /// </summary>
+        internal DailyReportRuntimeModule DailyReportRuntime { get { return dailyReportRuntime; } }
     }
 }

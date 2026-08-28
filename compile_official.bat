@@ -709,11 +709,21 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestCompanionRuntime.cs ^
     PetNest\PetNestDeathSuppressionRegistry.cs ^
     PetNest\PetNestDownedHandler.cs ^
+    PetNest\PetNestExpeditionService.cs ^
     PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
     PetNest\PetNestPetProxyBridge.cs ^
-    PetNest\PetNestDebugProbe.cs
+    PetNest\PetNestDebugProbe.cs ^
+    Config\ConfigItemIds.cs ^
+    Config\ConfigDailyReport.cs ^
+    Integration\DailyReport\DailyReportTuning.cs ^
+    Integration\DailyReport\DailyReportModels.cs ^
+    Integration\DailyReport\DailyReportCodec.cs ^
+    Integration\DailyReport\DailyReportPersistence.cs ^
+    Integration\DailyReport\DailyReportSaveCoordinator.cs ^
+    Integration\DailyReport\DailyReportService.cs ^
+    Integration\DailyReport\DailyReportRuntimeModule.cs
 
 set "BUILD_EXIT_CODE=%ERRORLEVEL%"
 

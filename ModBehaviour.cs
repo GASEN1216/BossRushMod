@@ -791,6 +791,13 @@ namespace BossRush
             SafeRuntime.Run("PetNestCompanionRuntime.ResetStaticCaches", () => PetNestCompanionRuntime.ResetStaticCaches());
             SafeRuntime.Run("PetNestDownedHandler.ResetStaticCaches", () => PetNestDownedHandler.ResetStaticCaches());
 
+            // 鸭科夫日报宿主销毁：顺序是硬约束——先把内存里的当天余数同步进 DTO，
+            // 再落盘，最后才清静态缓存；顺序颠倒会把当天进度写丢。
+            SafeRuntime.Run("DailyReportService.SyncCarrySecondsToPersistence", () => DailyReportService.SyncCarrySecondsToPersistence());
+            SafeRuntime.Run("DailyReportSaveCoordinator.TryFlushOnHostDestroy", () => DailyReportSaveCoordinator.TryFlushOnHostDestroy());
+            SafeRuntime.Run("DailyReportService.ResetStaticCaches", () => DailyReportService.ResetStaticCaches());
+            SafeRuntime.Run("DailyReportSaveCoordinator.ResetStaticCaches", () => DailyReportSaveCoordinator.ResetStaticCaches());
+
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
 
