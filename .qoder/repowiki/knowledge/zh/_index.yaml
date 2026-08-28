@@ -46,6 +46,7 @@ modules:
             - mode_e
             - mode_f
             - mode_g
+            - mode_h
             - tests
             - ui_and_signs
             - utilities
@@ -200,6 +201,20 @@ modules:
             - path: loot_and_rewards
             - path: integration_content
             - path: localization
+    mode_h:
+        dir_name: Mode H 百战留痕模式运行时
+        title: Mode H 百战留痕模式运行时
+        scope:
+            - ModeH/
+            - Localization/ModeHLocalization.cs
+            - Assets/Data/ModeH/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: localization
+            - path: waves_arena
+            - path: tests
     tests:
         dir_name: BossRushMod 静态守护与冒烟测试套件
         title: BossRushMod 静态守护与冒烟测试套件

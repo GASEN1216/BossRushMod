@@ -327,6 +327,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHContentCatalog.cs ^
     ModeH\ModeHContentCatalogParsers.cs ^
     ModeH\ModeHContentModels.cs ^
+    ModeH\ModeHControlPointHarness.cs ^
     ModeH\ModeHDeathSuppressionRegistry.cs ^
     ModeH\ModeHDraftController.cs ^
     ModeH\ModeHEncounterPlanner.cs ^

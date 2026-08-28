@@ -39,6 +39,72 @@
 ```
 
 ---
+### 2026-08-28 Mode H（百战留痕：黑市鸭王杯）一次性完整实现
+
+**状态**: fixed
+**Finding**: 无（owner 指定的新模式完整交付）
+**兼容分类**: COMPAT（新增一个配置字段）+ SCHEMA+（新增三个 v1 存档 key）+ OPERATIONAL（新增一个 local-only AssetBundle 制品）
+**版本/Commit**: 见本轮 8 个里程碑 commit（da3e373 / 6488c43 / 250bc36 / 035c5c3 / 99bf95f / 29ab1e6 / bfe4754 / 448590c / 3c27fd5）
+**Owner decision**: 需要；已拍板两项——(1) 资源门走“接线就位、PNG 与 bundle 由 owner 在 Unity 环境补”；(2) 提交策略走里程碑分批 commit。
+
+**现象**: 不是 bug 修复，而是按 `docs/设计提案/2026-08-17_斗蛐蛐新模式创意脑暴.md` §17–§29 的冻结契约，
+把 Mode H 从设计一次性实现为可实机验收的完整模式。交付前仓库中没有任何 Mode H 代码、数据或守卫。
+
+**实现内容**:
+- 新增 `ModeH/` 56 个 `.cs` + `Localization/ModeHLocalization.cs`，全部登记进 `compile_official.bat`。
+- 新增 `Assets/Data/ModeH/` 七份签名 JSON（BossProfiles / Commands / CommandCompatibility /
+  LoadoutKits / ThreatPlans / Scars / OddsWeights），加载后生成一个 `contentCatalogSignature`。
+- 修改既有文件：`Config/Config.cs`（只新增 `modeHEnabled` 一个字段 + 一个 getter + 六处 ModConfig 接线）、
+  入口链 6 处、旧模式最终入口 7 处双门、`Patches/Combat/CharacterOnDeadPatch.cs`、
+  地图配置与刷怪点注册表五个可选字段、`Common/UI/BossRushUI.cs`（四个层级常量按升序插入）、
+  `Common/Data/JsonDataRegistry.cs`（subDir 重载）、两个 bat 的部署块。
+- 新增 29 条 Python guard，全部纳入交付阻断（不进 known_red 基线）。
+
+**关键设计决策（都在代码注释与 `docs/contracts.md` §6.1 留痕）**:
+- **没有真实资产开关**：`modeHRealWarehouseStakeEnabled` / `IsModeHRealWarehouseStakeConfiguredEnabled` /
+  `GatePassed` 三个符号被守卫显式禁止；唯一的自动禁用来源是只读派生结果 `IsSlotConsistent`。
+- **Harmony 新增严格限于两个 postfix**（`CA_ControlOtherCharacter.CanMove` / `CanRun`）；
+  `CanUseHand` / `CanControlAim` 保持原版 `false`，这本身就是看台身体的引擎层隔离。
+- **口令、伤病与战痕共用同一套字段修改设施**，不允许第二条路径；控制点严格限于 §17.6.2 白名单。
+- **玩家真实资产只有三条白名单路径**，其余 Mode H 文件不得出现 `Inventory` / `PlayerStorage` /
+  玩家 `ItemTreeData` 任一符号。
+- **快照 fail-closed 一律回落“技术中止 + 同场重开”**，绝不判负、绝不声称继续了原战斗。
+
+**数据点回填（原计划需要 owner 跑一趟游戏，已改为零成本解决）**:
+`LoadoutKits.json` 的官方 typeId 原本打算由编译期 harness dump 后回填。改为直接采用官方 wiki
+（escapefromduckov.net）的物品数据库，并用仓库与反编译中的五个已知锚点交叉验证其 `typeID`
+就是游戏的 `Item.TypeID`：`862`=带火AK-47（对应仓库 `FIRE_AK47_TYPE_ID`）、`1254`=皇冠（`CROWN_TYPE_ID`）、
+`1158`=水族箱（反编译 `Aquarium.aquariumItemTypeID`）、`1165`=蓝色方块（`SoulCollector.soulCubeID`）、
+`868`=挑战船票（`GetBossRushTicketTypeId()` 兜底）。16 件 kit 与弹药全部固定为真实 typeId，
+且全部核对过 `ControlMindType=0`、非 hidden、无 `LockInDemo`、品质落在 Q1–Q8。
+`ModeHLoadoutKitRegistry.ResolveOne` 的 `typeId>0` 分支本就直读 `GetMetaData`，
+因此这是**纯数据改动、零代码改动、运行时零检索开销**；守卫追加断言防止退回运行时 Search。
+
+**验证方式**:
+- Windows `compile_official.bat` 通过，零错误，`Build/BossRush.dll` 已更新并部署到游戏目录。
+- 全量 guard：470 PASS / 1 待资源门红 / 1 既有红（DragonKing，与本轮无关）。
+  唯一的新红是 `ModeHPresentationAssetGuard` 的“bundle 存在”断言——展示 AssetBundle
+  是 local-only 制品，按 owner 拍板由其在 Unity 环境生成后复制；该守卫的其余断言全绿，
+  bundle 落位后自动整体转绿。
+- 运行时结论（生成无副作用、AI 双向伤害、资源显示、存档物理落盘、无泄漏、ERROR 互换、
+  押品 exactly-once）**尚未验证**，只能由设计提案 §26.5 的 18 项实机 smoke 矩阵确认。
+  交付状态为“完整实现已完成并待实机验收”。
+
+**文档同步**:
+- 改写 `docs/contracts.md` §6.1（旧稿的“只允许先做 H0 技术样机”“真实资产开关”“四门口径”全部作废）。
+- `.qoder/repowiki/`：模式索引两处平行副本补 Mode H（主索引同时把“七大”改为“八大”，
+  平行副本顺带补上此前缺失的 Mode G），新增 `Mode H：百战留痕（黑市鸭王杯）.md` 详解页，
+  新增 `knowledge/zh/.../Mode H 百战留痕模式运行时/` 五份知识卡并登记 `_index.yaml`。
+- `docs/未来拓展/` 的 `P2-ModeH-孤胆英雄` 三个文件加“名称让渡 / 已作废”标注，
+  防止未来检索时被误当作 `ModeH/` 的设计依据。
+- `AGENTS.md` §4.10 去掉写死的 guard 脚本数量。
+
+**遗留**:
+- 展示 AssetBundle 待 owner 按 `ArtSource/ModeH/prompts.md` 生成两张 PNG 并用
+  `ModeHPresentationBundleBuilder.BuildOnlyAndExit` 打包后复制到 `Assets/ui/modeh_presentation`。
+- 至少一张地图的 Mode H 五点位是基于既有 modeE 点位几何推算的，标注为待实机核准。
+
+---
 ### 2026-08-27 c36e011..HEAD 全区间回归核对与 Wiki 同步缺口补齐
 
 **状态**: fixed

@@ -119,7 +119,7 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ### 4.10 Python guard 同步
 
-`tests/` 当前有 435 个 `.py` 脚本，其中大多数是 `*Guard.py`。它们是结构不变式守卫，不是功能测试。改动被 guard 断言的结构时，必须同步 guard；不要通过放宽 guard 来掩盖行为变化。
+`tests/` 下有数百个 `.py` 脚本（准确数量以 `python tools/run_guards.py` 的输出为准，不要在文档里写死），其中大多数是 `*Guard.py`。它们是结构不变式守卫，不是功能测试。改动被 guard 断言的结构时，必须同步 guard；不要通过放宽 guard 来掩盖行为变化。
 
 ### 4.11 变异词条系统不变式
 

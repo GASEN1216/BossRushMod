@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: mode_h
+title: Mode H 百战留痕模式运行时
+scope:
+    - ModeH/
+    - Localization/ModeHLocalization.cs
+    - Assets/Data/ModeH/
+source_files: []
+depends_on: []
+related_to:
+    - path: localization
+    - path: waves_arena
+    - path: tests
