@@ -50,6 +50,8 @@ system	system__reforge_and_achievements	重铸系统	Reforge System	4
 system	system__boss_filter_and_wiki	Boss 筛选器	Boss Filter	5
 system	system__achievements_list	成就大全	Achievement List	6
 system	system__mutators	变异词条系统	Mutator System	7
+system	system__pet_nest	遗种巢	PetNest	8
+system	system__daily_report	鸭科夫日报	The Duckov Daily	9
 config	config__overview	配置选项	Configuration Options	1
 tips	tips__new_player_route	新手推荐路线	New Player Route	1
 tips	tips__hell_and_mode_d	无间炼狱与白手起家攻略	Infinite Hell & From Scratch Guide	2

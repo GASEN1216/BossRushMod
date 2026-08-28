@@ -228,6 +228,167 @@ source/input/bundle SHA-256；若未来要把它们纳入 Git，需另行登记 
 `ModeHHud = 960`、`ModeHDiagnostics = 970`、`ModeHModal = 980`（插在 `ModeGEntry = 950`
 与 `Hud = 1000` 之间），`ModeHRecovery = 3100`（插在 `Modal = 3000` 与 `ModalConfirm = 3200` 之间）。
 
+## 6.2 遗种巢外部契约（PetNest 养崽系统，已实现）
+
+遗种巢按 `docs/设计提案/2026-08-28_养崽系统创意脑暴.md` 与其附录 A（spec 定稿）实现：
+遗种蛋 + 遗魂双轨获取、全 Boss 谱系幼体化、孵化 roll 与命名、单席随从进局、
+重伤退场与战痕、天灾远征与真死、博物馆图鉴与纪念碑、驯养成就。
+**数值全表为草案，待 owner 审定**（集中在 `PetNest/PetNestTuning.cs`）；
+步骤 0 的实机闸门五项待 owner 验证。
+
+**配置面（COMPAT）。** `ModBehaviour.BossRushConfig` 只新增**一个**字段
+`petNestEnabled=false`，运行时只通过 `ModBehaviour.IsPetNestConfiguredEnabled()` 读取
+（定义在 `Config/ConfigPetNest.cs`，与 `Config/Config.cs` 同一 partial class，
+拆开只为 1200 行预算）。ModConfig 镜像键只有 `BossRush_PetNestEnabled`，
+不存在时保持默认关闭。关闭时整个子系统 dormant：不订阅存档、不建血脉目录、
+不 tick 协调器、不产蛋、不生成任何角色。开关运行时可变，
+bootstrap 幂等且可退回 dormant。
+
+**TypeID（SCHEMA+）。** 只占 `500059` 遗种蛋一个号。**通用蛋 + KV 记血脉**：
+全 Boss 谱系共用这一个 TypeID，血脉写在 `Item.Variables` 的 `PetNest_Lineage` 上，
+随 `ItemTreeData` 持久化；展示名走 `Var_PetNest_Lineage`。
+`MaxStackCount = 1` 是硬要求——堆叠合并会把两枚不同血脉的蛋并成一枚，血脉信息丢失。
+遗魂与遗物不占号（遗魂是纯账本，不掉实体）。
+
+**存档键（SCHEMA+）。** 三个 key 全部 `SavesSystem.Save<string>` **JSON 整存**：
+
+- `BossRush_PetNest_Nest_v1`（崽列表 / 出战席位 / 遗魂账本 / 巢容量）
+- `BossRush_PetNest_Expedition_v1`（进行中远征 + 已结算未翻牌）
+- `BossRush_PetNest_Museum_v1`（图鉴统计 / 纪念碑 / 异色收集）
+
+envelope 固定为 `{schemaVersion, payload}`。**不用 typed `Save<T>`**：ES3 会把
+assembly-qualified 类型名写进存档，mod 程序集改名或类型重构就会让老档读不回来。
+`schemaVersion` 不符、payload 不可读或 key 分类失败时只为对应 key 建立**写屏障**
+（只读不覆盖），另两个 key 仍可独立保存；写入路径异常进入单向 `StoreFaulted`。
+三个官方存档事件 `OnCollectSaveData` / `OnSetFile` / `OnSaveDeleted` 幂等订阅与退订。
+`PetNest/PetNestSaveCoordinator.cs` 是遗种巢**唯一**调用 `SavesSystem.SaveFile` 的地方，
+每批至多一次；`IsSaving` 时改走 deferred，重试有预算上限，超预算保留 pending 并报错。
+高频写（每次击杀记遗魂、统计计数）只入队不落盘，由官方采集与切图/回基地的 flush 写下去。
+
+**Harmony 面：零新增补丁。** 遗种巢不新增任何 `[HarmonyPatch]`，只在两条既有链上加消费者：
+
+- 致死钳制链（`Patches/Combat/BossLethalHealthProtectionPatch.cs`）第四消费者
+  `TryClampPetNestCompanion`：钳 1 血 + 登记退场，先读静态 armed bool 早返；
+- 死亡抑制链（`Patches/Combat/CharacterOnDeadPatch.cs`）第三 registry
+  `PetNestDeathSuppressionRegistry`：命中时**只**跳过本 Mod 的两个额外掉落 handler，
+  不返回 false、不改写原版 OnDead。
+
+`Health.Hurt` 的 Prefix 签名**不得改动**（`ReverseScaleLethalProtectionGuard` 与
+`ModeGPerformanceGuard` 断言该字面量）；战痕的凶手改由**只在随从在场期间**订阅的
+官方 `Health.OnHurt` 静态事件记录，离场立刻退订。
+
+**反射面：唯一一处反射写。** `PetNest/PetNestPetProxyBridge.cs` 反射写
+`LevelManager` 的私有字段 `petCharacter`（`AccessTools.Field`），用于让官方
+`PetProxy` 的捡漏背包跟随随从。**实测修正**：该字段并非"无可见赋值点"——每张图的
+关卡初始化都会创建官方宠物并占席，因此实现的是**借席不夺席**：只在非基地图借席、
+借席前记录原占位者、离场/死亡/切图必然还原、还席前核对席位仍是自己的随从、
+反射解析失败或字段类型变更一律 fail-closed（随从无背包，不崩）。
+
+**版本升级检查单（隐性契约）。** 官方更新后必须复查：
+
+- `LevelManager.petCharacter`（私有字段名与类型）——唯一反射写点；
+- `AICharacterController.leader`（public 字段）——跟随驱动；
+- `CharacterMainControl.modelRoot`（public Transform）——幼体视觉缩放；
+- `CharacterRandomPreset` 的 `hasSkill` / `exp` / `hasSoul` / `team` / `dropBoxOnDead`
+  ——中性化五件套；
+- `PetProxy.Update` 的门控条件与 `CharacterMainControl.PetCapcity` 容量同步语义
+  （官方拼写就是 `PetCapcity`，少一个 a）；
+- `Health.OnHurt` 静态事件签名——战痕凶手来源。
+
+**本地化。** key 统一使用 `BossRush_PetNest_` 前缀，唯一来源是
+`Localization/PetNestLocalization.cs`，由 `InjectLocalization_Extra_Integration()` 注入。
+建筑键按官方约定用 `Building_petnest_relic_nest` / `_Desc`（不带模块前缀）。
+
+**UI 层级面。** `BossRushUILayers` 新增三个常量，必须保持按数值升序声明：
+`PetNestCompanionHud = 990`（插在 `ModeHModal = 980` 与 `Hud = 1000` 之间）、
+`PetNestPanel = 2100`（插在 `Panel = 2000` 与 `Modal = 3000` 之间）、
+`PetNestModal = 3150`（插在 `ModeHRecovery = 3100` 与 `ModalConfirm = 3200` 之间）。
+
+**成就分类面（SCHEMA+）。** `AchievementCategory` 末尾追加 `Taming`。
+新分类只能追加到末尾——分类排序与存档都依赖 int 值，插在中间会让老档里已解锁成就的
+分类整体错位。
+
+**零新增资源制品。** 没有新的 AssetBundle、没有新的图标 PNG：建筑走占位模型
+（巢体 + 三枚蛋，`CreatePrimitive` 自带的 Collider 必须删），蛋图标复用官方 fallback 物品，
+幼体外观是官方模型缩放。将来补美术只需在 `Assets/buildings/` 放同名 bundle，代码零改动。
+
+**掉落范围。** 挂接点是 `LootAndRewards.RegisterBossRandomLootTracking` 体内单行并联，
+覆盖标准三档 / Mode D / E / F，天然**不含** Mode G 托管路径（其 adapter 会
+`ClearBossRandomLootTracking`）与丧尸模式。随从进局门控另有一刀切禁入名单：
+Mode G、末日丧尸、Mode H（实装期新增的保守判定，`Needs owner confirmation`）。
+
+Breaking：
+
+- 复用或回收 `500059`。
+- 改名三个存档 key 且无迁移。
+- 把 `AchievementCategory.Taming` 插到枚举中间。
+- 改动 `Health.Hurt` Prefix 的既有签名。
+- 把捡漏背包从"借席不夺席"改成夺席不还。
+
+## 6.3 鸭科夫日报外部契约（DailyReport 日报系统，已实现）
+
+日报按 `docs/未来拓展/设计/P2-日报系统.md` 实现：自算游戏日出刊、昨日战绩新闻化、
+每日悬赏、签到梯度奖励、明日天气预报与趣味杂谈，投递载体是玩家自建的报箱建筑。
+
+**配置面（COMPAT）。** `ModBehaviour.BossRushConfig` 只新增**一个**字段
+`dailyReportEnabled=true`，运行时只通过 `ModBehaviour.IsDailyReportConfiguredEnabled()` 读取
+（定义在 `Config/ConfigDailyReport.cs`，与 `Config/Config.cs` 同一 partial class，
+拆开只为 1200 行预算）。ModConfig 镜像键只有 `BossRush_DailyReportEnabled`。
+默认开启的理由：报箱要玩家花 500 金自建，已是天然门槛，不必再用开关拦一道。
+
+**存档面（SCHEMA+）。** 新增**一个**槽级 key `BossRush_DailyReport_v1`，
+`SavesSystem.Save<string>` 整存扁平 JSON，顶层带 `schemaVersion`。
+不用 typed `Save<T>`：ES3 会把 assembly-qualified 类型名写进存档，
+mod 程序集改名/重构就会让老档读不回来。
+未知或更高 `schemaVersion`、payload 不可读时进写屏障，**只读不写，绝不覆盖该 key**。
+`Integration/DailyReport/DailyReportSaveCoordinator.cs` 是日报**唯一**调用
+`SavesSystem.SaveFile` 的地方，且每批至多一次；`IsSaving` 时只登记 deferred 由宿主 tick 重试。
+
+**DTO 扁平化是契约的一部分。** 里程碑领取用位掩码 `periodClaimedMask` 而不是 token 列表，
+往期数据用定长编码而不是嵌套对象。这样编解码只需 `Utilities/SimpleJsonHelper.cs`，
+不必引入第三套 JSON 解析器（ModeH 有 `ModeHJsonValue`、遗种巢有 `PetNestJson`，
+两者都与各自模块语义绑定，互相 import 会让彼此成为对方的升级阻塞项）。
+
+**计时口径（不可改）。** 一天 = **86300 游戏秒**，镜像官方 `GameClock.SecondsPerDay`
+（**不是 86400**）。天数由 `DailyReportService` 自算：累计宿主
+`deltaTime × clockTimeScale`，与官方 `GameClock.Update` 逐帧同源。
+**禁止订阅 `GameClock.OnGameClockStep`，禁止改读 `GameClock.Day`**——
+官方睡觉（`SleepView`）与 Continue 跳早 7 点（`LevelManager.OnNewBoot`）走 `StepTimeTil`
+不经 `Update`，自算口径天然把这些跳变排除掉；改成跟随官方 Day 会让玩家睡一觉就白跳一期。
+由 `tests/DailyReportPersistenceGuard.py` 守卫。
+
+**建筑面（发布即冻结）。** 建筑 ID `bossrush_daily_mailbox`，占地 1x1，
+造价 500 金，`maxAmount=1`。玩家放置记录以此 ID 进官方 `BuildingData` 存档，
+**永不可改名**，否则老存档里的报箱会变成缺 prefab 的幽灵。
+prefab 名 `BossRushDailyMailbox` 必须与 `BuildingInfo.prefabName` 严格一致
+（官方 `GetPrefab` 按 `e.name == prefabName` 匹配）。
+
+**本地化面。** key 统一使用 `BossRush_DailyReport_` 前缀，唯一来源是
+`Localization/DailyReportLocalization.cs`，由 `InjectLocalization_Extra_Integration()` 注入。
+建筑键按官方约定用 `Building_bossrush_daily_mailbox` / `_Desc`（不带模块前缀）。
+**日报正文不进本地化表**：它是每天变的动态长文，塞进全局字符串表既污染表也无法按天变，
+一律走 `L10n.T(cn, en)` 内联。
+
+**UI 层级面。** 不新增层级常量，复用既有 `BossRushUILayers.Panel = 2000`。
+纸张的浅色配色是局部参数不是第二套 token：`BossRushUI.ApplyPanelSkin` 只给形状不给色。
+
+**零新增 TypeID、零新增资源制品。** 奖品全部从官方物品表按品质随机抽取
+（经 `LootBlacklistRegistry` 过滤），不新造物品；报箱走占位模型
+（立柱 + 箱体 + 斜盖 + 小红旗，`CreatePrimitive` 自带的 Collider 必须删）。
+将来补美术只需在 `Assets/buildings/` 放同名 bundle 与 png，代码零改动。
+
+**发奖路径。** 走 `CourierService.QuickDeliverItems` → `PlayerStorage` 快递缓冲
+（官方 `StorageDock` 待领 UI），因此玩家在战斗中跨天也安全，不会往战斗背包里塞东西。
+发放顺序是**先发后标记**：奖品到手才置领取掩码，宁可极端情况下重发也不吞奖励。
+
+Breaking：
+
+- 改名或复用建筑 ID `bossrush_daily_mailbox`。
+- 改名存档 key `BossRush_DailyReport_v1` 且无迁移。
+- 把一天的秒数从 86300 改成 86400（会与官方时钟累计漂移）。
+- 把计时改成跟随 `GameClock.Day` 或订阅 `OnGameClockStep`。
+- 把 DTO 改成嵌套结构（会逼出第三套 JSON 解析器）。
+
 ## 7. Harmony、反射与官方游戏契约
 
 Mod 对官方游戏没有稳定 public API，依赖 Harmony patch、`AccessTools`、字符串反射和强绑定类型。

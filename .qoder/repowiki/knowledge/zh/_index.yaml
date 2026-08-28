@@ -140,6 +140,18 @@ modules:
         depends_on: []
         related_to:
             - path: integration_content
+    daily_report:
+        dir_name: "BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑"
+        title: "BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑"
+        scope:
+            - Integration/DailyReport/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: config
+            - path: localization
+            - path: loot_and_rewards
     loot_and_rewards:
         dir_name: BossRush 掉落与奖励系统
         title: BossRush 掉落与奖励系统
