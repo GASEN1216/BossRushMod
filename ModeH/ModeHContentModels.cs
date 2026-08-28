@@ -256,6 +256,28 @@ namespace BossRush
         public List<string> DisfavoredArchetypeIds;
     }
 
+    /// <summary>协同类别（威胁预算上浮与公开摘要共用）。</summary>
+    public sealed class ModeHSynergyCategory
+    {
+        /// <summary>类别 ID：heal / summon / control。</summary>
+        public string CategoryId;
+        /// <summary>公开标签（进入 publicSummary.synergyTags）。</summary>
+        public string PublicTag;
+        /// <summary>命中时的预算上浮百分比。</summary>
+        public int BudgetShare;
+    }
+
+    /// <summary>侦察类别（§17.5 四类，每场至多消费一条）。</summary>
+    public sealed class ModeHReconChoiceSpec
+    {
+        /// <summary>侦察稳定 ID。</summary>
+        public string ReconChoiceId;
+        /// <summary>显示名 key。</summary>
+        public string NameKey;
+        /// <summary>被揭示的公开摘要字段名。</summary>
+        public string RevealField;
+    }
+
     /// <summary>原型能力矩阵条目（roster-level veto 使用）。</summary>
     public sealed class ModeHArchetypeCapability
     {

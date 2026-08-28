@@ -720,11 +720,60 @@ namespace BossRush
                 capabilities.Add(c);
             }
 
+            List<ModeHJsonValue> synergyItems;
+            if (!root.TryGetArray("synergyCategories", out synergyItems) || synergyItems.Count == 0)
+            {
+                _lastError = "synergy_categories_empty";
+                return false;
+            }
+            List<ModeHSynergyCategory> synergies = new List<ModeHSynergyCategory>(synergyItems.Count);
+            HashSet<string> synergyIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int i = 0; i < synergyItems.Count; i++)
+            {
+                ModeHJsonValue item = synergyItems[i];
+                ModeHSynergyCategory c = new ModeHSynergyCategory();
+                if (item == null || !item.TryGetString("categoryId", out c.CategoryId)
+                    || !synergyIds.Add(c.CategoryId)
+                    || !item.TryGetString("publicTag", out c.PublicTag)
+                    || !item.TryGetInt("budgetShare", out c.BudgetShare)
+                    || c.BudgetShare <= 0)
+                {
+                    _lastError = "synergy_category_invalid";
+                    return false;
+                }
+                synergies.Add(c);
+            }
+
+            List<ModeHJsonValue> reconItems;
+            if (!root.TryGetArray("reconChoices", out reconItems)
+                || reconItems.Count != ModeHStableIds.AllReconChoices.Length)
+            {
+                _lastError = "recon_choice_count_mismatch";
+                return false;
+            }
+            List<ModeHReconChoiceSpec> recons = new List<ModeHReconChoiceSpec>(reconItems.Count);
+            for (int i = 0; i < reconItems.Count; i++)
+            {
+                ModeHJsonValue item = reconItems[i];
+                ModeHReconChoiceSpec c = new ModeHReconChoiceSpec();
+                if (item == null || !item.TryGetString("reconChoiceId", out c.ReconChoiceId)
+                    || !IsKnown(ModeHStableIds.AllReconChoices, c.ReconChoiceId)
+                    || !item.TryGetString("revealField", out c.RevealField))
+                {
+                    _lastError = "recon_choice_invalid";
+                    return false;
+                }
+                item.TryGetString("nameKey", out c.NameKey);
+                recons.Add(c);
+            }
+
             _corridors = corridors;
             _skeletons = skeletons;
             _entryScripts = entryScripts;
             _arenaConditions = conditions;
             _archetypeCapabilities = capabilities;
+            _synergyCategories = synergies;
+            _reconChoices = recons;
             return true;
         }
 

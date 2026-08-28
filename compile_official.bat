@@ -324,12 +324,16 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHContentCatalogParsers.cs ^
     ModeH\ModeHContentModels.cs ^
     ModeH\ModeHDeathSuppressionRegistry.cs ^
+    ModeH\ModeHDraftController.cs ^
+    ModeH\ModeHEncounterPlanner.cs ^
     ModeH\ModeHEntry.cs ^
     ModeH\ModeHHallOfFamePersistence.cs ^
     ModeH\ModeHInteractable.cs ^
     ModeH\ModeHJsonValue.cs ^
+    ModeH\ModeHLoadoutKitApplicator.cs ^
     ModeH\ModeHLoadoutKitRegistry.cs ^
     ModeH\ModeHMapSupportRegistry.cs ^
+    ModeH\ModeHOddsController.cs ^
     ModeH\ModeHPresentationAssetCache.cs ^
     ModeH\ModeHPresetRegistry.cs ^
     ModeH\ModeHProductionCertification.cs ^
@@ -346,6 +350,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHStateDtos.cs ^
     ModeH\ModeHStateMachine.cs ^
     ModeH\ModeHStateModel.cs ^
+    ModeH\ModeHVirtualStakeController.cs ^
     ModeF\ModeFBounty_EquipmentAndLoot.cs ^
     ModeF\ModeFRespawn.cs ^
     ModeF\ModeFExtraction.cs ^

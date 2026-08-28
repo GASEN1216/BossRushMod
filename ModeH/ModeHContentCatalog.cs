@@ -39,6 +39,8 @@ namespace BossRush
         private static List<ModeHEntryScriptSpec> _entryScripts;
         private static List<ModeHArenaConditionSpec> _arenaConditions;
         private static List<ModeHArchetypeCapability> _archetypeCapabilities;
+        private static List<ModeHSynergyCategory> _synergyCategories;
+        private static List<ModeHReconChoiceSpec> _reconChoices;
         private static List<ModeHOddsTier> _oddsTiers;
         private static List<ModeHCommandTagMapping> _commandTagMap;
         private static List<ModeHOddsTestVector> _oddsTestVectors;
@@ -105,6 +107,12 @@ namespace BossRush
         /// <summary>原型能力矩阵。</summary>
         public static List<ModeHArchetypeCapability> ArchetypeCapabilities { get { return _archetypeCapabilities; } }
 
+        /// <summary>协同类别（威胁预算上浮与公开摘要共用）。</summary>
+        public static List<ModeHSynergyCategory> SynergyCategories { get { return _synergyCategories; } }
+
+        /// <summary>四类侦察定义。</summary>
+        public static List<ModeHReconChoiceSpec> ReconChoices { get { return _reconChoices; } }
+
         /// <summary>赔率档位。</summary>
         public static List<ModeHOddsTier> OddsTiers { get { return _oddsTiers; } }
 
@@ -150,6 +158,8 @@ namespace BossRush
                 _entryScripts = null;
                 _arenaConditions = null;
                 _archetypeCapabilities = null;
+                _synergyCategories = null;
+                _reconChoices = null;
                 _oddsTiers = null;
                 _commandTagMap = null;
                 _oddsTestVectors = null;

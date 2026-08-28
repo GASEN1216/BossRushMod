@@ -300,6 +300,35 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 通用行为查询：伤病/战痕/异常与 effect 共用同一张实测表，
+        /// 只有 VerifiedBehavior 才允许进入战斗结算与赔率（§17.5、§17.6.4）。
+        /// </summary>
+        public static bool HasVerifiedBehavior(string stableKey, string behaviorId)
+        {
+            if (string.IsNullOrEmpty(stableKey) || string.IsNullOrEmpty(behaviorId)) return false;
+            return GetEffectStatus(stableKey, behaviorId) == ModeHCommandCompatibilityStatus.VerifiedBehavior;
+        }
+
+        /// <summary>该 stable key 是否至少有一条伤病行为通过实测（敌方带伤分的前置）。</summary>
+        public static bool HasVerifiedInjuryBehavior(string stableKey)
+        {
+            List<ModeHInjurySpec> injuries = ModeHContentCatalog.Injuries;
+            if (injuries == null || string.IsNullOrEmpty(stableKey)) return false;
+            for (int i = 0; i < injuries.Count; i++)
+            {
+                if (injuries[i] == null) continue;
+                if (HasVerifiedBehavior(stableKey, injuries[i].InjuryId)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>该 stable key 的指定公开异常是否通过实测（异常分的前置）。</summary>
+        public static bool HasVerifiedAnomalyBehavior(string stableKey, string anomalyId)
+        {
+            return HasVerifiedBehavior(stableKey, anomalyId);
+        }
+
+        /// <summary>
         /// 构造用于持久化的逐 effect 状态快照（按 entryId ordinal 升序，由 canonical digest 再排一次）。
         /// </summary>
         public static List<ModeHBehaviorStatusDto> BuildBehaviorSnapshot(string stableKey)
