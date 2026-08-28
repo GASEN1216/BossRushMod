@@ -27,6 +27,7 @@ namespace BossRush
             ZombieTideInvitationConfig.RegisterConfigurator();
             ZombieTideBeaconConfig.RegisterConfigurator();
             PortableSafeZoneDeviceConfig.RegisterConfigurator();
+            RelicEggConfig.RegisterConfigurator();
             ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);

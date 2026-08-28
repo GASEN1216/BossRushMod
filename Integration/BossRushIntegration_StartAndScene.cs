@@ -41,6 +41,8 @@ namespace BossRush
             FactionFlagConfig.InjectLocalization();
             // Mode H 的 BossRush_ModeH_ 键统一来自 Localization/ModeHLocalization.cs
             ModeHLocalization.Inject();
+            // 遗种巢的 BossRush_PetNest_ 键统一来自 Localization/PetNestLocalization.cs
+            PetNestLocalization.Inject();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();

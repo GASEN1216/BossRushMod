@@ -333,6 +333,10 @@ namespace BossRush
                 countedDeadBosses.Remove(character);
                 MarkBossRushLootboxPathTracking(character);
 
+                // 遗种巢掉落双轨（加法分支）：本函数覆盖全部 Boss 生成调用位，且天然不含
+                // Mode G 托管路径与丧尸模式，正好等于首版掉落范围。开关关闭时内部直接返回。
+                PetNestDropService.TryTrack(this, character);
+
                 Action<DamageInfo> existingHandler = null;
                 if (trackedBossLootHooks.TryGetValue(character, out existingHandler) && existingHandler != null)
                 {
@@ -374,6 +378,8 @@ namespace BossRush
             {
                 return;
             }
+
+            PetNestDropService.ClearTracking(character);
 
             Action<DamageInfo> handler = null;
             if (trackedBossLootHooks.TryGetValue(character, out handler))

@@ -78,9 +78,9 @@ cmd.exe /c "cd /d D:\...\BossRushMod && compile_official.bat"
 
 自定义物品/装备 TypeID 使用 5000xx 区间，严格递增，不回填已删 ID。TypeID 会进入存档键、掉落表、Wiki、调试流程，复用属于存档兼容风险。
 
-- 当前登记范围：`500001-500058`。
+- 当前登记范围：`500001-500059`。
 - 已知空缺：`500009`、`500047` 仍视为保留空洞，不回填。
-- 下一可用：`500059`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
+- 下一可用：`500060`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 - Boss/NPC/建筑字符串 ID 不占此序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -267,6 +267,8 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 根级 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md` 是当前 AI 协作流程入口；旧 `docs/` 路径保留转发，避免老工具失联。
 
 ## 14. 最后更新
+
+2026-08-28：新增遗种巢（PetNest）养崽子系统，目录 `PetNest/`；TypeID 台账更新至 500059（遗种蛋，下一可用 500060）。
 
 2026-08-27：新增共享 UI 库 `Common/UI/BossRushUI.cs` 并登记 UI 约定（4.14）；TypeID 台账更新至 500058（下一可用 500059）。
 

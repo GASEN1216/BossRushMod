@@ -413,6 +413,25 @@ namespace BossRush
         #region 落档
 
         /// <summary>
+        /// 只入队不落盘。高频写入（每次击杀记遗魂）用它：逐次 SaveFile 会拖帧，
+        /// pending 会被官方 OnCollectSaveData 与切图/回基地的 flush 写下去。
+        /// </summary>
+        internal static bool StageCommit()
+        {
+            try
+            {
+                PetNestNestData nest = Nest;
+                nest.Normalize();
+                return PetNestPersistence.Nest.Store(nest);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 巢状态入队失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 把当前巢状态入队并请求落盘。写屏障 / StoreFaulted 时返回 false，
         /// 调用方据此给玩家「本次改动未能保存」的提示，而不是假装成功。
         /// </summary>

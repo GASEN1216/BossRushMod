@@ -334,6 +334,11 @@ namespace BossRush
                 ItemBundles = new string[] { PortableSafeZoneDeviceConfig.BUNDLE_NAME },
                 FallbackLoader = delegate(int typeId) { return PortableSafeZoneDeviceConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.PortableSafeZoneDevice);
+            // 遗种蛋：零新增 bundle，只有运行时克隆兜底（血脉写在 KV 上，全谱系共用一个 TypeID）
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return RelicEggConfig.EnsureRuntimeFallbackRegistrationShell(); }
+            }, BossRushItemIds.RelicEgg);
 
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);

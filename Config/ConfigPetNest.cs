@@ -99,4 +99,14 @@ namespace BossRush
             }
         }
     }
+
+    /// <summary>
+    /// 遗种巢占用的 TypeID。与 Config/Config.cs 里的主表是同一个 partial class，
+    /// 拆开只为单文件行数预算；台账见 docs/Bossrush使用物品ID表.md 与 AGENTS.md 4.3。
+    /// </summary>
+    public static partial class BossRushItemIds
+    {
+        /// <summary>遗种蛋。全 Boss 谱系共用这一个号，血脉写在物品 KV 上。</summary>
+        public const int RelicEgg = 500059;
+    }
 }

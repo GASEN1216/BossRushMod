@@ -109,6 +109,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Localization\LocalizationInjector_NpcUiAndItems.cs ^
     Localization\EquipmentLocalization.cs ^
     Localization\ModeHLocalization.cs ^
+    Localization\PetNestLocalization.cs ^
     Common\Lifecycle\IBossRushRuntimeModule.cs ^
     Common\Lifecycle\SceneRuntimeContext.cs ^
     Common\Lifecycle\BossRushRuntimeModuleHost.cs ^
@@ -591,6 +592,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\Items\AwenDepositTokenConfig.cs ^
     Integration\Items\AwenDepositTokenUsage.cs ^
     Integration\Items\ItemContentRegistry.cs ^
+    Integration\Items\RelicEggConfig.cs ^
     Integration\Items\AwenLootSweepTokenConfig.cs ^
     Integration\Items\AwenLootSweepTokenUsage.cs ^
     Integration\Items\BrickStoneConfig.cs ^
@@ -701,6 +703,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestPersistence.cs ^
     PetNest\PetNestSaveCoordinator.cs ^
     PetNest\PetNestService.cs ^
+    PetNest\PetNestDropService.cs ^
     PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
