@@ -707,6 +707,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestHatchService.cs ^
     PetNest\PetNestModeGate.cs ^
     PetNest\PetNestCompanionRuntime.cs ^
+    PetNest\PetNestDeathSuppressionRegistry.cs ^
+    PetNest\PetNestDownedHandler.cs ^
     PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^

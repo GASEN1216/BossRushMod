@@ -139,6 +139,7 @@ namespace BossRush
                     ShutdownIfEnabledTurnedOff();
                     return;
                 }
+                PetNestDownedHandler.Tick();
                 PetNestSaveCoordinator.Tick();
             }
             catch (Exception e)

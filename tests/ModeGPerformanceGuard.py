@@ -96,8 +96,11 @@ def main():
     if onde:
         checks = [
             ("StaticBoolGate",
-             r"if \(IsModeGSuppressionArmed\(\)(?: \|\| ModeHDeathSuppressionRegistry\.IsSuppressionArmed)?\)",
-             "Prefix 顶部静态 bool 快速早返闸门（2026-08-28：Mode H 追加同形快门，Mode G 语义不变）"),
+             r"if \(IsModeGSuppressionArmed\(\)"
+             r"(?:\s*\|\|\s*ModeHDeathSuppressionRegistry\.IsSuppressionArmed)?"
+             r"(?:\s*\|\|\s*PetNestDeathSuppressionRegistry\.IsSuppressionArmed)?\)",
+             "Prefix 顶部静态 bool 快速早返闸门（2026-08-28：Mode H 与遗种巢先后追加同形快门，"
+             "Mode G 语义不变）"),
             ("StaticBoolNoThrow",
              r"private static bool IsModeGSuppressionArmed\(\)"
              r"[\s\S]{0,200}?return ModeGRuntimeGates\.IsModeGSuppressionActive;"

@@ -74,8 +74,11 @@ def main():
     if patch:
         checks = [
             ("StaticBoolFirst",
-             r"if \(IsModeGSuppressionArmed\(\)(?: \|\| ModeHDeathSuppressionRegistry\.IsSuppressionArmed)?\)",
-             "先读静态 bool 快速早返（2026-08-28：Mode H 追加同形静态快门，Mode G 语义不变）"),
+             r"if \(IsModeGSuppressionArmed\(\)"
+             r"(?:\s*\|\|\s*ModeHDeathSuppressionRegistry\.IsSuppressionArmed)?"
+             r"(?:\s*\|\|\s*PetNestDeathSuppressionRegistry\.IsSuppressionArmed)?\)",
+             "先读静态 bool 快速早返（2026-08-28：Mode H 与遗种巢先后追加同形静态快门，"
+             "Mode G 语义不变）"),
             ("SuppressionQuery",
              r"ModeGRuntimeGates\.IsModeGOnDeadSuppressionActive\(deadHealth\)",
              "注册表抑制查询（staging preset/已登记 Character 引用身份）"),

@@ -139,6 +139,9 @@ namespace BossRush
                 PetNestPetProxyBridge.TryBorrowSeat(_handle.Character, out yieldReason);
                 PetNestPetProxyBridge.ApplyCapacityBonus(playerNow, ResolveCapacityBonus(pet));
 
+                // 战痕要刻"被谁打倒"：只在随从在场期间订阅官方 OnHurt，离场立刻退订
+                PetNestDownedHandler.EnsureHurtSubscribed();
+
                 ModBehaviour.DevLog("[PetNest] 随从入场: " + PetNestService.GetPetDisplayName(pet));
             }
             catch (Exception e)
@@ -228,6 +231,15 @@ namespace BossRush
         /// </summary>
         internal static void CleanupOnce()
         {
+            try
+            {
+                PetNestDownedHandler.ShutdownHurtSubscription();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 退订 OnHurt 失败: " + e.Message);
+            }
+
             try
             {
                 PetNestPetProxyBridge.ReleaseSeat();

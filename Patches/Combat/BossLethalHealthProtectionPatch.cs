@@ -198,8 +198,9 @@ namespace BossRush
         /// 契约：
         /// - 先读 PetNestCompanionAgent.IsCompanionArmed 静态 bool 快速早返，
         ///   未带崽时热路径零分配；
-        /// - 本方法只负责钳血，退场/战痕落档由步骤 7 的 PetNestDownedHandler 承接，
-        ///   不在 Hurt 内部改场景状态；
+        /// - 本方法只负责钳血 + 登记退场：真正的退场、战痕落档与角色回收由
+        ///   PetNestDownedHandler 在下一个宿主 tick 执行。在 Health.Hurt 的调用栈里
+        ///   销毁角色、写存档、改场景状态是宿主崩溃的经典配方；
         /// - 身份查询异常一律返回 false（不钳），绝不打断宿主受伤流程。
         /// </summary>
         private static bool TryClampPetNestCompanion(Health health, ref float value)
@@ -216,6 +217,10 @@ namespace BossRush
 
             value = 1f;
             PetNestCompanionAgent.NotifyLethalClamped(health);
+            // 凶手由 PetNestDownedHandler 自己订阅官方 Health.OnHurt 静态事件记录：
+            // 这里的 CurrentHealth setter 拿不到 DamageInfo，而给 Hurt 的 Prefix 加参数
+            // 会动到既有 guard 断言的签名字面量（ReverseScale / ModeG 性能守卫都盯着它）。
+            PetNestDownedHandler.NotifyLethalClamped(health);
             return true;
         }
 
