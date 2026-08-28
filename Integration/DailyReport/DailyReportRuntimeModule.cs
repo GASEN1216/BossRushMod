@@ -154,6 +154,7 @@ namespace BossRush
                     DailyReportService.SyncCarrySecondsToPersistence();
                     DailyReportSaveCoordinator.TryFlushOnHostDestroy();
                     DailyReportSaveCoordinator.ShutdownSubscription();
+                    DailyReportStatsCollector.ShutdownSubscription();
                 }
                 _bootstrapped = false;
                 _owner = null;
@@ -178,6 +179,7 @@ namespace BossRush
             if (!IsEnabled) return;
 
             DailyReportSaveCoordinator.EnsureSubscribed();
+            DailyReportStatsCollector.EnsureSubscribed();
             _bootstrapped = true;
             ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "运行时模块已启动");
         }

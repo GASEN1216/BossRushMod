@@ -11,6 +11,7 @@
 // 前缀统一 PetNestTuning.LocalizationPrefix = "BossRush_PetNest_"。
 // ============================================================================
 
+using System;
 using System.Collections.Generic;
 
 namespace BossRush
@@ -31,6 +32,8 @@ namespace BossRush
 
             // 遗种蛋物品自身的键（含 Var_ 展示名）由物品配置注入
             RelicEggConfig.InjectLocalization();
+            // 建筑与交互点的键（官方 Building_ 前缀，不带本模块前缀）
+            InjectBuildingKeys();
         }
 
         private static void Add(Dictionary<string, string> map, string suffix, string cn, string en)
@@ -107,6 +110,39 @@ namespace BossRush
         #endregion
 
         #region 远征目的地与档位
+
+        /// <summary>
+        /// 建筑与交互点的键。官方约定 BuildingInfo.DisplayNameKey = "Building_" + id，
+        /// DescriptionKey = "Building_" + id + "_Desc"，因此这一组不带 BossRush_PetNest_ 前缀。
+        /// 由建筑注入器在注入前调用（建造 UI 会立刻读这些键）。
+        /// </summary>
+        public static void InjectBuildingKeys()
+        {
+            try
+            {
+                string name = L10n.T("遗种巢", "PetNest");
+                string desc = L10n.T(
+                    "把 Boss 留下的遗种孵成幼体、带在身边打下一场，或者派它们去天灾深处。",
+                    "Hatch the relics bosses leave behind, take a cub along for your next run, "
+                    + "or send it into a disaster you would not face yourself.");
+
+                LocalizationHelper.InjectLocalization("Building_petnest_relic_nest", name);
+                LocalizationHelper.InjectLocalization("Building_petnest_relic_nest_Desc", desc);
+
+                LocalizationHelper.InjectLocalization(
+                    "BossRush_PetNest_Interact", L10n.T("查看遗种巢", "Open PetNest"));
+                LocalizationHelper.InjectLocalization(
+                    "BossRush_PetNest_Interact_Hatch", L10n.T("孵化遗种蛋", "Hatch Relic Egg"));
+                LocalizationHelper.InjectLocalization(
+                    "BossRush_PetNest_Interact_Expedition", L10n.T("派遣天灾远征", "Send on Expedition"));
+                LocalizationHelper.InjectLocalization(
+                    "BossRush_PetNest_Interact_Museum", L10n.T("遗种博物馆", "Relic Museum"));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 建筑本地化注入失败: " + e.Message);
+            }
+        }
 
         private static void AddDestinationsAndRisk(Dictionary<string, string> map)
         {

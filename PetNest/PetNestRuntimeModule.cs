@@ -162,6 +162,7 @@ namespace BossRush
                     PetNestSaveCoordinator.ShutdownSubscription();
                 }
                 PetNestLineageCatalog.Invalidate();
+                PetNestUIBridge.UnbindRuntime();
                 _bootstrapped = false;
                 _owner = null;
             }
@@ -186,6 +187,7 @@ namespace BossRush
 
             PetNestSaveCoordinator.EnsureSubscribed();
             PetNestLineageCatalog.EnsureBuilt(_owner);
+            PetNestUIBridge.BindRuntime(this);
             _bootstrapped = true;
             _lastEnabledState = true;
             ModBehaviour.DevLog("[PetNest] 运行时模块已启动，血脉条目数="
@@ -204,6 +206,7 @@ namespace BossRush
                 PetNestSaveCoordinator.TryFlushOnHostDestroy();
                 PetNestSaveCoordinator.ShutdownSubscription();
                 PetNestLineageCatalog.Invalidate();
+                PetNestUIBridge.UnbindRuntime();
             }
             catch (Exception e)
             {

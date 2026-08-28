@@ -285,6 +285,18 @@ namespace BossRush
             {
                 yield break;
             }
+            yield return RunDeferredStep_Integration("InitPetNestBuilding", () => InitPetNestBuilding());
+
+            if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
+            {
+                yield break;
+            }
+            yield return RunDeferredStep_Integration("RestorePetNestBuildings", () => RestorePetNestBuildings());
+
+            if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
+            {
+                yield break;
+            }
             ScheduleWishRewardPoolWarmup();
             appliedDeferredBaseSceneSetupHandle = sceneHandle;
             ClearDeferredBaseSceneSetup_Integration(sceneHandle);

@@ -268,6 +268,9 @@ namespace BossRush
                 return;
             }
 
+            // 0) 悬赏结算：必须在 Today 被重置之前算，进度源就是今日统计
+            SettleBounty(data);
+
             // 1) 断签：刚结束的这天没签到 -> 清回本期第 0 格（期号保留）
             if (data.LastSignedDayIndex != data.DayIndex)
             {
@@ -291,6 +294,146 @@ namespace BossRush
             // 3) 天号推进
             data.LastSettledDayIndex = data.DayIndex;
             data.DayIndex++;
+        }
+
+        #endregion
+
+        #region 悬赏
+
+        /// <summary>
+        /// 当日悬赏。它是 (bountySeed, dayIndex) 的纯函数，不占存档：
+        /// 任何时候重算都得到同一条，因此重启/读档不会换题。
+        /// </summary>
+        internal static DailyReportBountyDef GetActiveBounty()
+        {
+            try
+            {
+                DailyReportData data = DailyReportPersistence.Current;
+                if (data == null) return null;
+                return DailyReportBounty.SelectForDay(EnsureBountySeed(data), data.DayIndex);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>当日悬赏的实时进度（UI 用）。</summary>
+        internal static int GetActiveBountyProgress()
+        {
+            try
+            {
+                DailyReportData data = DailyReportPersistence.Current;
+                if (data == null) return 0;
+                DailyReportBountyDef def = DailyReportBounty.SelectForDay(
+                    EnsureBountySeed(data), data.DayIndex);
+                return DailyReportBounty.EvaluateProgress(def, data.Today);
+            }
+            catch (Exception)
+            {
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// 首次使用时派生并冻结悬赏种子。一旦写入就不再变，
+        /// 否则每次启动都会换题，"重启不重抽"的保证就没了。
+        /// </summary>
+        private static long EnsureBountySeed(DailyReportData data)
+        {
+            if (data == null) return 0L;
+            if (data.BountySeed != 0L) return data.BountySeed;
+
+            long derived = DateTime.UtcNow.Ticks ^ ((long)DailyReportTuning.CurrentSchemaVersion << 32);
+            if (derived == 0L) derived = 1L;
+            data.BountySeed = derived;
+            Persist(data);
+            ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏种子已派生并冻结");
+            return derived;
+        }
+
+        /// <summary>
+        /// 结算刚结束那一天的悬赏。必须在 Today 被重置之前调用。
+        /// 达成则立刻发奖并记 claimed；发奖失败保留未领状态，由玩家下次开报纸时补发。
+        /// </summary>
+        private static void SettleBounty(DailyReportData data)
+        {
+            try
+            {
+                DailyReportBountyDef def = DailyReportBounty.SelectForDay(
+                    EnsureBountySeed(data), data.DayIndex);
+                if (def == null)
+                {
+                    data.BountyKindId = string.Empty;
+                    data.BountyTarget = 0;
+                    data.BountyProgress = 0;
+                    data.BountyCompleted = false;
+                    data.BountyRewardClaimed = false;
+                    return;
+                }
+
+                DailyReportStats today = data.Today ?? new DailyReportStats();
+                int progress = DailyReportBounty.EvaluateProgress(def, today);
+                bool completed = progress >= def.Target && def.Target > 0;
+
+                data.BountyDayIndex = data.DayIndex;
+                data.BountyKindId = def.Id;
+                data.BountyTarget = def.Target;
+                data.BountyProgress = progress;
+                data.BountyCompleted = completed;
+                data.BountyRewardClaimed = false;
+
+                if (!completed) return;
+
+                string reason;
+                if (DailyReportRewards.TryGrantBountyCash(def.CashReward, out reason))
+                {
+                    data.BountyRewardClaimed = true;
+                }
+                else
+                {
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "[WARNING] 悬赏奖金发放失败（" + reason + "），保留未领状态待补发");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 悬赏结算异常: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 补发上一期未成功发放的悬赏奖金（打开日报面板时调用）。
+        /// 幂等：claimed 置位后不再重复发。
+        /// </summary>
+        internal static void TryRedeliverPendingBountyReward()
+        {
+            try
+            {
+                DailyReportData data = DailyReportPersistence.Current;
+                if (data == null) return;
+                if (!data.BountyCompleted || data.BountyRewardClaimed) return;
+                if (string.IsNullOrEmpty(data.BountyKindId)) return;
+
+                DailyReportBountyDef settled = DailyReportBounty.SelectForDay(
+                    EnsureBountySeed(data), data.BountyDayIndex);
+                if (settled == null || !string.Equals(settled.Id, data.BountyKindId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                string reason;
+                if (DailyReportRewards.TryGrantBountyCash(settled.CashReward, out reason))
+                {
+                    data.BountyRewardClaimed = true;
+                    Persist(data);
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏奖金补发成功");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 悬赏补发异常: " + e.Message);
+            }
         }
 
         #endregion
@@ -362,6 +505,80 @@ namespace BossRush
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[ERROR] 签到异常: " + e.Message);
                 result.Outcome = DailyReportSignInOutcome.PersistBlocked;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 签到 + 发奖的一站式入口（UI 按钮调这个）。
+        /// 顺序是**先发后标记**：发放成功才置掩码，宁可极端情况下重发也不吞奖励。
+        /// </summary>
+        internal static DailyReportSignInResult SignInAndClaim()
+        {
+            DailyReportSignInResult result;
+            if (!TrySignInToday(out result)) return result;
+            if (!result.HitMilestone || result.MilestoneQuality <= 0) return result;
+
+            try
+            {
+                DailyReportData data = DailyReportPersistence.Current;
+                if (data == null) return result;
+
+                string reason;
+                bool granted = DailyReportRewards.TryGrantMilestone(
+                    result.MilestoneQuality, EnsureBountySeed(data),
+                    data.DayIndex, result.PeriodSlot, out reason);
+
+                if (granted)
+                {
+                    MarkMilestoneClaimed(result.PeriodSlot);
+                }
+                else
+                {
+                    // 没发出去就不置掩码：下次开面板时 TryRedeliverPendingMilestone 会补。
+                    result.HitMilestone = false;
+                    result.MilestoneQuality = 0;
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "[WARNING] 里程碑奖励发放失败（" + reason + "），保留未领状态待补发");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 签到发奖异常: " + e.Message);
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 补发本期已签到但发放失败的里程碑奖励（打开面板时调用）。
+        /// 只补「格位已签到 && 掩码未置位」的里程碑，幂等。
+        /// </summary>
+        internal static void TryRedeliverPendingMilestones()
+        {
+            try
+            {
+                DailyReportData data = DailyReportPersistence.Current;
+                if (data == null) return;
+                if (data.PeriodSignedCount <= 0) return;
+
+                for (int slot = 1; slot <= data.PeriodSignedCount; slot++)
+                {
+                    int quality = GetMilestoneQuality(data.PeriodIndex, slot);
+                    if (quality <= 0) continue;
+                    if (IsMilestoneClaimed(data, slot)) continue;
+
+                    string reason;
+                    if (DailyReportRewards.TryGrantMilestone(quality, EnsureBountySeed(data),
+                        data.DayIndex, slot, out reason))
+                    {
+                        MarkMilestoneClaimed(slot);
+                        ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                            + "里程碑奖励补发成功：第 " + slot + " 格");
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 里程碑补发异常: " + e.Message);
             }
         }
 
@@ -458,6 +675,25 @@ namespace BossRush
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
             today.Extractions++;
+        }
+
+        /// <summary>累计造成的伤害，并顺带维护最大单次伤害。</summary>
+        internal static void ReportDamageDealt(float amount)
+        {
+            if (amount <= 0f) return;
+            DailyReportStats today = TryGetTodayStats();
+            if (today == null) return;
+            today.DamageDealt += amount;
+            if (amount > today.MaxSingleHit) today.MaxSingleHit = amount;
+        }
+
+        /// <summary>累计承受的伤害。</summary>
+        internal static void ReportDamageTaken(float amount)
+        {
+            if (amount <= 0f) return;
+            DailyReportStats today = TryGetTodayStats();
+            if (today == null) return;
+            today.DamageTaken += amount;
         }
 
         /// <summary>金钱变动（delta 正数记收入，负数记支出）。</summary>

@@ -151,6 +151,10 @@ namespace BossRush
 
             // 清理布满了灰尘的星愿许愿台建筑系统
             CleanupWishFountainBuilding();
+
+            // 清理遗种巢建筑系统
+            CleanupPetNestBuilding();
+            PetNestUIBridge.ResetStaticCaches();
             // 静态缓存兜底清理：星愿许愿台抽奖动画
             WishFountainRewardAnimationView.ResetStaticCaches();
             BossRushDynamicItemRegistry.ResetStaticCaches();
@@ -291,6 +295,7 @@ namespace BossRush
             {
                 TryInitializeWeddingBuildingEarly();
                 TryInitializeWishFountainEarly();
+                TryInitializePetNestEarly();
             }
 
             if (isGameplayScene)
