@@ -50,17 +50,17 @@ namespace BossRush
         /// <summary>
         /// 召唤一只 PoC 幼体。lineageKey 为空时取 Boss 池过滤结果的第一个官方 Boss。
         /// </summary>
-        internal static void SpawnProbeCompanion(string lineageKey)
+        internal static void SpawnProbeCompanion(ModBehaviour owner, string lineageKey)
         {
             if (_spawnInFlight)
             {
                 _lastStatus = "PoC 幼体正在生成中，请稍候";
                 return;
             }
-            SpawnProbeCompanionAsync(lineageKey).Forget();
+            SpawnProbeCompanionAsync(owner, lineageKey).Forget();
         }
 
-        private static async UniTaskVoid SpawnProbeCompanionAsync(string lineageKey)
+        private static async UniTaskVoid SpawnProbeCompanionAsync(ModBehaviour owner, string lineageKey)
         {
             _spawnInFlight = true;
             try
@@ -113,7 +113,7 @@ namespace BossRush
 
                 string failureReasonId;
                 Vector3 spawnPos = playerNow.transform.position + PetNestCompanionSpawner.SpawnOffset;
-                if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, playerNow, out failureReasonId))
+                if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, playerNow, owner, out failureReasonId))
                 {
                     PetNestCompanionSpawner.CleanupOnce(handle);
                     _lastStatus = "PoC 幼体激活失败: " + failureReasonId;

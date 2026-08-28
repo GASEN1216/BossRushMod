@@ -23,6 +23,8 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 using UnityEngine;
 
 namespace BossRush
@@ -233,6 +235,7 @@ namespace BossRush
             PetNestCompanionHandle handle,
             Vector3 spawnPos,
             CharacterMainControl master,
+            ModBehaviour owner,
             out string failureReasonId)
         {
             failureReasonId = null;
@@ -248,8 +251,21 @@ namespace BossRush
 
             try
             {
-                handle.Character.SetTeam(Teams.player);
+                // 阵营取**主人的实际阵营**而不是硬编码 Teams.player：
+                // Mode E 会把玩家改到别的阵营，硬编码会让随从在阵营混战里被误伤
+                // （同 Integration/NewWeapons/SummonStaff/SummonStaffAction.cs 的取法）。
+                Teams companionTeam = master != null ? master.Team : Teams.player;
+                handle.Character.SetTeam(companionTeam);
                 handle.Character.SetPosition(spawnPos);
+
+                // 复用既有净化入口：移除自爆技能与 BoomCar 特殊挂件。
+                // 官方敌方 preset 里确实有会自爆的，孵出来会把主人一起炸了。
+                if (owner != null)
+                {
+                    owner.SanitizeBossRushZombieSpawn(handle.Character, "PetNestCompanion");
+                }
+
+                NormalizeCombatOutput(handle.Character);
 
                 AICharacterController ai = handle.Character.GetComponentInChildren<AICharacterController>();
                 if (ai != null)
@@ -331,6 +347,48 @@ namespace BossRush
             handle.ClonePreset = null;
             handle.Activated = false;
         }
+
+        /// <summary>
+        /// 伤害归一：把幼体的输出压到「锦上添花不改天换地」的区间。
+        ///
+        /// 克隆自 Boss 的随从会原样继承 Boss 的武器与伤害倍率，不归一会直接抢镜。
+        /// 目标 DPS 占比见 PetNestTuning.CompanionDpsShareTarget（数值待 owner 审定）。
+        /// </summary>
+        internal static void NormalizeCombatOutput(CharacterMainControl companion)
+        {
+            if (companion == null) return;
+            try
+            {
+                CharacterRandomPreset preset = companion.characterPreset;
+                if (preset != null)
+                {
+                    preset.damageMultiplier = PetNestTuning.CompanionDpsShareTarget;
+                    preset.setMeleeDamageMultiplier = true;
+                    preset.meleeDamageMultiplier = PetNestTuning.CompanionDpsShareTarget;
+                    preset.gunCritRateGain = 0f;
+                }
+
+                Item characterItem = companion.CharacterItem;
+                if (characterItem != null)
+                {
+                    Stat damage = characterItem.GetStat("Damage");
+                    if (damage != null)
+                    {
+                        damage.AddModifier(new Modifier(
+                            ModifierType.PercentageMultiply,
+                            PetNestTuning.CompanionDpsShareTarget,
+                            CompanionDamageModifierSource));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 幼体伤害归一失败: " + e.Message);
+            }
+        }
+
+        /// <summary>伤害归一 Modifier 的 source tag（source-tagged 模式，便于整组摘除）。</summary>
+        internal static readonly object CompanionDamageModifierSource = new object();
 
         private static void DestroyClone(CharacterRandomPreset clone)
         {

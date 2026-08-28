@@ -31,6 +31,8 @@
 using System;
 using System.Reflection;
 using HarmonyLib;
+using ItemStatsSystem;
+using ItemStatsSystem.Stats;
 using UnityEngine;
 
 namespace BossRush
@@ -249,6 +251,88 @@ namespace BossRush
 
         #endregion
 
+        #region 容量天赋 Modifier（挂玩家，不挂宠物）
+
+        /// <summary>
+        /// 容量 Modifier 的 source tag。source-tagged 模式（照 EndowmentEntry.ApplyModifiers），
+        /// 离场时用 Item.RemoveAllModifiersFrom(source) 整组摘除，不逐条记账。
+        /// </summary>
+        internal static readonly object CapacityModifierSource = new object();
+
+        private static bool _capacityBonusApplied;
+
+        /// <summary>当前是否挂着容量加成。</summary>
+        internal static bool HasCapacityBonus { get { return _capacityBonusApplied; } }
+
+        /// <summary>
+        /// 给玩家挂随从带来的额外背包格子。
+        ///
+        /// 关键：官方 PetProxy 每秒读的是 **CharacterMainControl.Main.PetCapcity**
+        /// （PetProxy.cs:122-125），也就是**玩家**角色 Item 上的 stat，不是宠物的。
+        /// 因此 Modifier 必须挂在玩家身上，挂宠物完全无效。
+        ///
+        /// 另外 PetCapcity 是格子数（官方 Mathf.RoundToInt），必须用 ModifierType.Add
+        /// 常量加；用百分比在基础值为 0 时永远加不出格子。
+        /// </summary>
+        internal static bool ApplyCapacityBonus(CharacterMainControl player, int extraSlots)
+        {
+            if (player == null || extraSlots <= 0) return false;
+            try
+            {
+                Item characterItem = player.CharacterItem;
+                if (characterItem == null) return false;
+
+                // 幂等：先摘干净再挂，避免切图重挂叠加
+                characterItem.RemoveAllModifiersFrom(CapacityModifierSource);
+
+                Modifier modifier = new Modifier(ModifierType.Add, extraSlots, CapacityModifierSource);
+                if (!characterItem.AddModifier(PetCapacityStatKey, modifier))
+                {
+                    ModBehaviour.DevLog("[PetNest] [WARNING] 玩家没有 " + PetCapacityStatKey
+                        + " stat，捡漏背包容量加成未生效");
+                    return false;
+                }
+
+                _capacityBonusApplied = true;
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 挂容量 Modifier 失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>摘除容量加成。幂等；player 为空时也把标记清掉。</summary>
+        internal static void RemoveCapacityBonus(CharacterMainControl player)
+        {
+            if (!_capacityBonusApplied)
+            {
+                return;
+            }
+            _capacityBonusApplied = false;
+
+            try
+            {
+                if (player == null) return;
+                Item characterItem = player.CharacterItem;
+                if (characterItem == null) return;
+                characterItem.RemoveAllModifiersFrom(CapacityModifierSource);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 摘容量 Modifier 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 官方 stat key。注意官方拼写就是 PetCapcity（少一个 a），
+        /// 全库唯一拼法，改成 PetCapacity 会静默失效。
+        /// </summary>
+        internal const string PetCapacityStatKey = "PetCapcity";
+
+        #endregion
+
         #region 诊断
 
         /// <summary>
@@ -317,6 +401,7 @@ namespace BossRush
         /// <summary>清空静态状态（Mod 卸载 / 宿主重建 / 静态缓存重置）。</summary>
         internal static void ResetStaticCaches()
         {
+            RemoveCapacityBonus(SafeMainCharacter());
             lock (_lock)
             {
                 _seatBorrowed = false;
@@ -324,6 +409,12 @@ namespace BossRush
                 _borrowedFor = null;
                 _lastYieldReason = null;
             }
+        }
+
+        private static CharacterMainControl SafeMainCharacter()
+        {
+            try { return CharacterMainControl.Main; }
+            catch (Exception) { return null; }
         }
 
         #endregion

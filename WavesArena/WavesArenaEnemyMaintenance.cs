@@ -47,12 +47,18 @@ namespace BossRush
                         continue;
                     }
 
+                    // 遗种巢随从豁免（加法分支）：走静态身份表而不是 preset.team，
+                    // 因为运行时 SetTeam 不会改写 characterPreset.team（Mode E 换阵营时
+                    // 下面那段 isPet 的前置条件会失效）。
+                    if (PetNestCompanionAgent.IsCompanionCharacter(c)) continue;
+
                     bool isPet = false;
                     try
                     {
                         if (c.characterPreset != null && c.characterPreset.team == Teams.player)
                         {
-                            isPet = c.GetComponent<PetAI>() != null;
+                            isPet = c.GetComponent<PetAI>() != null
+                                || c.GetComponent<PetNestCompanionAgent>() != null;
                         }
                     }
                     catch {}
@@ -198,12 +204,19 @@ namespace BossRush
                         continue;
                     }
 
+                    // 遗种巢随从豁免（加法分支），理由同 ForceKillAllEnemies 处
+                    if (PetNestCompanionAgent.IsCompanionCharacter(c))
+                    {
+                        continue;
+                    }
+
                     bool isPet = false;
                     try
                     {
                         if (c.characterPreset != null && c.characterPreset.team == Teams.player)
                         {
-                            isPet = c.GetComponent<PetAI>() != null;
+                            isPet = c.GetComponent<PetAI>() != null
+                                || c.GetComponent<PetNestCompanionAgent>() != null;
                         }
                     }
                     catch {}

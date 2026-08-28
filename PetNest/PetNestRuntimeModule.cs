@@ -104,6 +104,8 @@ namespace BossRush
                 _sceneGeneration++;
                 if (!IsEnabled)
                 {
+                    // 关掉开关也要把上一局的随从与借席清干净
+                    PetNestCompanionRuntime.CleanupOnce();
                     ShutdownIfEnabledTurnedOff();
                     return;
                 }
@@ -113,7 +115,12 @@ namespace BossRush
                 if (IsBaseScene())
                 {
                     PetNestService.RestoreDownedPetsOnReturnToBase();
+                    PetNestCompanionRuntime.CleanupOnce();
+                    return;
                 }
+
+                // 切图：先清上一局，再按出战席位与门控决定是否入场
+                PetNestCompanionRuntime.OnSceneChanged(_owner, _sceneGeneration);
             }
             catch (Exception e)
             {
@@ -145,6 +152,7 @@ namespace BossRush
         {
             try
             {
+                PetNestCompanionRuntime.CleanupOnce();
                 if (_bootstrapped)
                 {
                     PetNestSaveCoordinator.TryFlushOnHostDestroy();

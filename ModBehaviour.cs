@@ -788,6 +788,7 @@ namespace BossRush
             SafeRuntime.Run("PetNestCompanionAgent.ResetStaticCaches", () => PetNestCompanionAgent.ResetStaticCaches());
             SafeRuntime.Run("PetNestLineageCatalog.ResetStaticCaches", () => PetNestLineageCatalog.ResetStaticCaches());
             SafeRuntime.Run("PetNestDropService.ResetStaticCaches", () => PetNestDropService.ResetStaticCaches());
+            SafeRuntime.Run("PetNestCompanionRuntime.ResetStaticCaches", () => PetNestCompanionRuntime.ResetStaticCaches());
 
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
@@ -1124,7 +1125,14 @@ namespace BossRush
                 // 强制改为 Teams.wolf（与龙王/龙裔 Boss 阵营一致，Mode E/F 走独立生成路径不受影响）。
                 try
                 {
-                    if (!Team.IsEnemy(Teams.player, character.Team))
+                    // 遗种巢随从豁免（防御性不变式）：随从走自家生成桥
+                    // PetNestCompanionSpawner，正常不会经过这条标准生成路径；
+                    // 万一将来有人把生成改道到这里，安全网也不能把玩家方随从改成敌对。
+                    if (PetNestCompanionAgent.IsCompanionCharacter(character))
+                    {
+                        DevLog("[BossRush] 敌对性安全网豁免遗种巢随从");
+                    }
+                    else if (!Team.IsEnemy(Teams.player, character.Team))
                     {
                         DevLog("[BossRush] 检测到非敌对 Boss (team=" + character.Team + ")，强制设为 Teams.wolf");
                         character.SetTeam(Teams.wolf);

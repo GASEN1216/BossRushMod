@@ -776,7 +776,7 @@ namespace BossRush
 
         private void SpawnPetNestProbeCompanionFromF3()
         {
-            PetNestDebugProbe.SpawnProbeCompanion(null);
+            PetNestDebugProbe.SpawnProbeCompanion(this, null);
             SetF3DebugCheatStatus(PetNestDebugProbe.LastStatus, false);
         }
 
