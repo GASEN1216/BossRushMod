@@ -780,6 +780,17 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed Data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data
             )
         )
+        REM 建筑图标：报箱等自定义建筑的 png 由 ModBehaviour 直接 File.ReadAllBytes 读取，
+        REM 不进 AssetBundle，所以必须随构建一起部署，否则建造界面只能显示官方默认图标。
+        if exist "Assets\buildings\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings"
+            xcopy /Y /I "Assets\buildings\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings\" >nul
+            if errorlevel 1 (
+                echo WARNING: building icon deploy failed.
+            ) else (
+                echo Deployed building icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings
+            )
+        )
         if exist "Assets\Data\ModeH\*.json" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH"
             xcopy /Y /I "Assets\Data\ModeH\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH\" >nul

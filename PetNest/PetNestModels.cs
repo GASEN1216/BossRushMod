@@ -185,6 +185,12 @@ namespace BossRush
         public string id;
         /// <summary>派出的崽 id。</summary>
         public string petId;
+        /// <summary>
+        /// 出发时固化的崽显示名。真死结算会把 PetRecord 从巢里移除，
+        /// 之后 TryGetPet 必然返回 null——恰好就是最需要显示名字的那张黑边卡。
+        /// 老档缺失时回落 petId。
+        /// </summary>
+        public string petDisplayName;
         /// <summary>目的地 id。</summary>
         public string destinationId;
         /// <summary>风险档位（PetNestRiskTier 的 int）。</summary>
@@ -204,6 +210,13 @@ namespace BossRush
         public bool settled;
         /// <summary>是否已翻牌展示过。</summary>
         public bool revealed;
+        /// <summary>
+        /// 奖励是否已发放。与 settled 分开的第二个标记：
+        /// "先落档再发奖"意味着落档成功而发奖失败（或中途崩溃）是可能的，
+        /// 只有独立的已发放标记才能让补发既幂等又可恢复。
+        /// 老档缺失时回落 false，回基地时会补发一次。
+        /// </summary>
+        public bool rewardsGranted;
         /// <summary>结算结果：崽是否阵亡。</summary>
         public bool outcomeDead;
         /// <summary>结算结果：崽是否负伤（留战痕）。</summary>

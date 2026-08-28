@@ -137,15 +137,13 @@ namespace BossRush
             BuildHeader(surface.transform);
             BuildTabs(surface.transform);
 
-            GameObject content = ZombieModeUIHelper.CreateRect(
-                "Content", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(1120f, 520f));
-            content.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -20f);
-            _contentRoot = content.transform;
-
-            GameObject actions = ZombieModeUIHelper.CreateRect(
-                "Actions", surface.transform, new Vector2(0.5f, 0.5f), new Vector2(1120f, 130f));
-            actions.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -308f);
-            _actionRoot = actions.transform;
+            // 内容区必须能滚动：巢容量上限 24、远征页 9 个档位按钮、博物馆的血脉卡 +
+            // 碑文都远超一屏。早先按固定 y 预算铺元素会静默截断——第 5 只之后的崽、
+            // 第三个远征目的地、整段纪念碑都会在 UI 上凭空消失。
+            _contentRoot = CreateScrollList(
+                surface.transform, "Content", new Vector2(0f, -20f), new Vector2(1120f, 520f));
+            _actionRoot = CreateScrollList(
+                surface.transform, "Actions", new Vector2(0f, -308f), new Vector2(1120f, 130f));
 
             _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestPanel");
             BossRushUI.PlayOpenAnimation(surface);
@@ -185,7 +183,7 @@ namespace BossRush
                     new Vector2(0.5f, 0.5f),
                     new Vector2(-420f + i * 200f, 268f), new Vector2(190f, 44f),
                     BossRushUIColors.SurfaceRaised, 20f, new Vector2(180f, 40f),
-                    delegate { _page = page; Refresh(); }, true);
+                    delegate { _page = page; PetNestUIPages.ClearFailure(); Refresh(); }, true);
             }
         }
 
@@ -201,23 +199,29 @@ namespace BossRush
                 PetNestPageContent content = BuildPageContent();
                 if (content == null) return;
 
-                float y = 210f;
+                // 失败提示排在最前：不给反馈的话，巢满 / 写屏障 / 远征锁定这些失败
+                // 在界面上与"点歪了"完全无法区分
+                if (!string.IsNullOrEmpty(PetNestUIPages.LastFailureText))
+                {
+                    SpawnNotice(PetNestUIPages.LastFailureText, BossRushUIColors.Danger);
+                }
                 if (!string.IsNullOrEmpty(content.Notice))
                 {
-                    SpawnNotice(content.Notice, ref y);
+                    SpawnNotice(content.Notice, BossRushUIColors.Warning);
                 }
                 if (!string.IsNullOrEmpty(content.Body))
                 {
-                    SpawnLine(content.Body, ref y, BossRushUIColors.TextPrimary);
+                    SpawnLine(content.Body, BossRushUIColors.TextPrimary);
                 }
 
-                for (int i = 0; i < content.Cards.Count && y > -240f; i++)
+                // 不再按 y 预算截断：内容区是滚动列表，全部铺出来
+                for (int i = 0; i < content.Cards.Count; i++)
                 {
-                    SpawnCard(content.Cards[i], ref y);
+                    SpawnCard(content.Cards[i]);
                 }
-                for (int i = 0; i < content.Lines.Count && y > -240f; i++)
+                for (int i = 0; i < content.Lines.Count; i++)
                 {
-                    SpawnLine(content.Lines[i], ref y, BossRushUIColors.TextSecondary);
+                    SpawnLine(content.Lines[i], BossRushUIColors.TextSecondary);
                 }
 
                 SpawnActions(content.Actions);
@@ -226,6 +230,44 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[PetNest] 面板刷新失败: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 建一个纵向滚动列表：ScrollRect + RectMask2D + VerticalLayoutGroup +
+        /// ContentSizeFitter。内容超出可视区时可滚动，绝不静默截断。
+        /// </summary>
+        private static Transform CreateScrollList(
+            Transform parent, string name, Vector2 position, Vector2 size)
+        {
+            GameObject viewport = ZombieModeUIHelper.CreateRect(name, parent, new Vector2(0.5f, 0.5f), size);
+            viewport.GetComponent<RectTransform>().anchoredPosition = position;
+            viewport.AddComponent<RectMask2D>();
+
+            ScrollRect scroll = viewport.AddComponent<ScrollRect>();
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 28f;
+
+            GameObject content = ZombieModeUIHelper.CreateRect(
+                name + "_Content", viewport.transform,
+                new Vector2(0f, 1f), new Vector2(1f, 1f),
+                Vector2.zero, new Vector2(0f, 0f), new Vector2(0.5f, 1f));
+
+            VerticalLayoutGroup layout = content.AddComponent<VerticalLayoutGroup>();
+            layout.spacing = 10f;
+            layout.padding = new RectOffset(8, 8, 8, 8);
+            layout.childControlHeight = false;
+            layout.childControlWidth = true;
+            layout.childForceExpandHeight = false;
+            layout.childForceExpandWidth = true;
+
+            ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            scroll.viewport = viewport.GetComponent<RectTransform>();
+            scroll.content = content.GetComponent<RectTransform>();
+            return content.transform;
         }
 
         private PetNestPageContent BuildPageContent()
@@ -280,29 +322,38 @@ namespace BossRush
             _spawned.Clear();
         }
 
-        private void SpawnNotice(string text, ref float y)
+        /// <summary>给布局组里的元素设固定高度（VerticalLayoutGroup 按它排布）。</summary>
+        private static void SetLayoutHeight(GameObject go, float height)
+        {
+            LayoutElement element = go.GetComponent<LayoutElement>();
+            if (element == null) element = go.AddComponent<LayoutElement>();
+            element.minHeight = height;
+            element.preferredHeight = height;
+        }
+
+        private void SpawnNotice(string text, Color color)
         {
             TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
                 "Notice", _contentRoot, text, 20f,
-                new Vector2(0f, y), new Vector2(1080f, 52f),
-                TextAlignmentOptions.Left, BossRushUIColors.Warning);
+                Vector2.zero, new Vector2(1080f, 52f),
+                TextAlignmentOptions.Left, color);
             BossRushUI.ApplyGameFont(label);
+            SetLayoutHeight(label.gameObject, 52f);
             _spawned.Add(label.gameObject);
-            y -= 58f;
         }
 
-        private void SpawnLine(string text, ref float y, Color color)
+        private void SpawnLine(string text, Color color)
         {
             TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
                 "Line", _contentRoot, text, 19f,
-                new Vector2(0f, y), new Vector2(1080f, 34f),
+                Vector2.zero, new Vector2(1080f, 34f),
                 TextAlignmentOptions.Left, color);
             BossRushUI.ApplyGameFont(label);
+            SetLayoutHeight(label.gameObject, 34f);
             _spawned.Add(label.gameObject);
-            y -= 38f;
         }
 
-        private void SpawnCard(PetNestCardData data, ref float y)
+        private void SpawnCard(PetNestCardData data)
         {
             if (data == null) return;
 
@@ -311,8 +362,9 @@ namespace BossRush
                 : (data.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent);
 
             GameObject card = BossRushUI.CreateCard(
-                "Card", _contentRoot, new Vector2(0f, y), CardSize,
+                "Card", _contentRoot, Vector2.zero, CardSize,
                 BossRushUIColors.SurfaceRaised, accent, true);
+            SetLayoutHeight(card, CardSize.y);
             _spawned.Add(card);
 
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
@@ -349,29 +401,28 @@ namespace BossRush
                     data.OnClick != null ? new UnityEngine.Events.UnityAction(data.OnClick) : null,
                     data.OnClick != null);
             }
-
-            y -= CardSize.y + 12f;
         }
 
+        /// <summary>
+        /// 底部动作按钮。**不截断**：远征页是 3 目的地 × 3 档位 = 9 个按钮，
+        /// 早先硬截断 6 个会让第三个目的地「极寒荒原」在整个游戏里不可达。
+        /// 动作区是滚动列表，多出来的往下排。
+        /// </summary>
         private void SpawnActions(List<PetNestActionData> actions)
         {
             if (actions == null) return;
-            int columns = 3;
-            for (int i = 0; i < actions.Count && i < 6; i++)
+            for (int i = 0; i < actions.Count; i++)
             {
                 PetNestActionData action = actions[i];
                 if (action == null) continue;
-                int column = i % columns;
-                int row = i / columns;
                 Button button = ZombieModeUIHelper.CreateButton(
                     "Action_" + i, _actionRoot, action.Label,
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(-360f + column * 360f, 30f - row * 56f),
-                    new Vector2(348f, 48f),
+                    new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1060f, 46f),
                     action.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.SurfaceRaised,
-                    18f, new Vector2(338f, 44f),
+                    18f, new Vector2(1040f, 42f),
                     action.OnClick != null ? new UnityEngine.Events.UnityAction(action.OnClick) : null,
                     action.Interactable && action.OnClick != null);
+                SetLayoutHeight(button.gameObject, 46f);
                 _spawned.Add(button.gameObject);
             }
         }

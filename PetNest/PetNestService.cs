@@ -109,7 +109,15 @@ namespace BossRush
 
                 pet.Normalize();
                 nest.pets.Add(pet);
-                return Commit(out failureReasonId);
+                if (!Commit(out failureReasonId))
+                {
+                    // Store 失败时什么都没入队，内存必须一并回滚：
+                    // 否则调用方（孵化）以为失败而不消耗蛋，内存里却多了一只崽，
+                    // 反复点击就能一枚蛋孵出满巢。
+                    nest.pets.Remove(pet);
+                    return false;
+                }
+                return true;
             }
             catch (Exception e)
             {
@@ -140,12 +148,21 @@ namespace BossRush
             try
             {
                 PetNestNestData nest = Nest;
+                int index = nest.pets.IndexOf(pet);
+                string previousDeployed = nest.deployedPetId;
                 nest.pets.Remove(pet);
                 if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
                 {
                     nest.deployedPetId = null;
                 }
-                return Commit(out failureReasonId);
+                if (!Commit(out failureReasonId))
+                {
+                    if (index >= 0 && index <= nest.pets.Count) nest.pets.Insert(index, pet);
+                    else nest.pets.Add(pet);
+                    nest.deployedPetId = previousDeployed;
+                    return false;
+                }
+                return true;
             }
             catch (Exception e)
             {
@@ -164,8 +181,14 @@ namespace BossRush
                 failureReasonId = "pet_not_found";
                 return false;
             }
+            string previousName = pet.displayName;
             pet.displayName = string.IsNullOrEmpty(displayName) ? null : displayName.Trim();
-            return Commit(out failureReasonId);
+            if (!Commit(out failureReasonId))
+            {
+                pet.displayName = previousName;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>崽的显示名：玩家起的名字优先，否则回落血脉名。</summary>
@@ -234,6 +257,10 @@ namespace BossRush
             {
                 PetNestNestData nest = Nest;
                 PetNestPetRecord previous = TryGetPet(nest.deployedPetId);
+                string previousDeployedId = nest.deployedPetId;
+                int previousState = previous != null ? previous.state : 0;
+                int petPreviousState = pet.state;
+
                 if (previous != null && previous != pet
                     && previous.state == (int)PetNestPetState.Deployed)
                 {
@@ -241,7 +268,15 @@ namespace BossRush
                 }
                 nest.deployedPetId = pet.id;
                 pet.state = (int)PetNestPetState.Deployed;
-                return Commit(out failureReasonId);
+
+                if (!Commit(out failureReasonId))
+                {
+                    if (previous != null) previous.state = previousState;
+                    pet.state = petPreviousState;
+                    nest.deployedPetId = previousDeployedId;
+                    return false;
+                }
+                return true;
             }
             catch (Exception e)
             {
@@ -258,12 +293,22 @@ namespace BossRush
             {
                 PetNestNestData nest = Nest;
                 PetNestPetRecord previous = TryGetPet(nest.deployedPetId);
+                string previousDeployedId = nest.deployedPetId;
+                int previousState = previous != null ? previous.state : 0;
+
                 if (previous != null && previous.state == (int)PetNestPetState.Deployed)
                 {
                     previous.state = (int)PetNestPetState.InNest;
                 }
                 nest.deployedPetId = null;
-                return Commit(out failureReasonId);
+
+                if (!Commit(out failureReasonId))
+                {
+                    if (previous != null) previous.state = previousState;
+                    nest.deployedPetId = previousDeployedId;
+                    return false;
+                }
+                return true;
             }
             catch (Exception e)
             {
@@ -389,17 +434,28 @@ namespace BossRush
             try
             {
                 PetNestNestData nest = Nest;
+                PetNestSoulLedgerEntry target = null;
+                int previousSouls = 0;
                 for (int i = 0; i < nest.soulLedger.Count; i++)
                 {
                     PetNestSoulLedgerEntry e = nest.soulLedger[i];
                     if (e != null && string.Equals(e.lineageKey, lineageKey, StringComparison.Ordinal))
                     {
+                        target = e;
+                        previousSouls = e.souls;
                         e.souls -= count;
                         if (e.souls < 0) e.souls = 0;
                         break;
                     }
                 }
-                return Commit(out failureReasonId);
+
+                if (!Commit(out failureReasonId))
+                {
+                    // 扣了遗魂却没入队 = 玩家凭空少 240 遗魂，必须原样加回来
+                    if (target != null) target.souls = previousSouls;
+                    return false;
+                }
+                return true;
             }
             catch (Exception e)
             {
@@ -435,6 +491,13 @@ namespace BossRush
         /// 把当前巢状态入队并请求落盘。写屏障 / StoreFaulted 时返回 false，
         /// 调用方据此给玩家「本次改动未能保存」的提示，而不是假装成功。
         /// </summary>
+        /// <remarks>
+        /// **成败以 Store（入队）为准，不以 flush 为准。** pending 一旦入队，
+        /// 官方 OnCollectSaveData 与后续任意一次 flush 都会把它写下去；此时若因为
+        /// flush 报错就返回 false，调用方会回滚内存，而磁盘上仍会落到"已提交"的那份，
+        /// 两边永久分叉（例如遗魂已扣但玩家看到"凝蛋失败"）。
+        /// 因此 flush 一律 best-effort，不影响返回值。
+        /// </remarks>
         internal static bool Commit(out string failureReasonId)
         {
             failureReasonId = null;
@@ -449,16 +512,9 @@ namespace BossRush
                         : "save_store_faulted";
                     return false;
                 }
-                string flushError;
-                if (!PetNestSaveCoordinator.RequestFlush(out flushError))
-                {
-                    // deferred 不算失败：pending 保留，协调器 tick 会重试
-                    if (!string.Equals(flushError, "flush_deferred_is_saving", StringComparison.Ordinal))
-                    {
-                        failureReasonId = flushError;
-                        return false;
-                    }
-                }
+
+                // best-effort：入队即视为已提交，落盘失败由协调器重试
+                PetNestSaveCoordinator.RequestFlush();
                 return true;
             }
             catch (Exception e)
@@ -530,6 +586,18 @@ namespace BossRush
                 return false;
             }
         }
+
+        /// <summary>三个 key 现在是否都能写。多 key 事务的前置检查。</summary>
+        internal static bool CanStoreAll { get { return PetNestPersistence.CanStoreAll; } }
+
+        /// <summary>任一 key 处于写屏障（用于区分屏障与故障两种失败原因）。</summary>
+        internal static bool HasAnyWriteBarrier { get { return PetNestPersistence.HasAnyWriteBarrier; } }
+
+        /// <summary>丢弃三个 key 的 pending。多 key 事务中途失败时的回滚。</summary>
+        internal static void DiscardAllPending() { PetNestPersistence.DiscardAllPending(); }
+
+        /// <summary>丢弃三个 key 的内存缓存，下次访问从当前存档槽重新加载。</summary>
+        internal static void ResetCachesForSlotReload() { PetNestPersistence.ResetCachesForSlotReload(); }
 
         /// <summary>把博物馆数据入队（不落盘）。</summary>
         internal static bool StageMuseum()

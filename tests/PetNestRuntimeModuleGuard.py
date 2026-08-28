@@ -112,6 +112,14 @@ def check_module(errors):
     # 运行时关开关要能回到 dormant
     if "ShutdownIfEnabledTurnedOff" not in code:
         errors.append("[dormant] 缺少运行时关开关后的退订路径")
+    # 关开关会把 OnSetFile 一起退订，之后玩家切档没人清缓存；
+    # 再打开开关时缓存里还是上一个档的数据，一写就把旧档覆盖到新档上
+    shutdown = re.search(
+        r"private void ShutdownIfEnabledTurnedOff\(\)[\s\S]{0,1200}?\n        \}", code)
+    if shutdown is None:
+        errors.append("[dormant] 无法解析 ShutdownIfEnabledTurnedOff")
+    elif "PetNestPersistenceAccess.ResetCachesForSlotReload()" not in shutdown.group(0):
+        errors.append("[跨档] 关开关必须清 store 缓存，否则切档再开会把旧档数据覆盖到新档")
 
     # 不新增全局 hook
     for forbidden in ["SceneManager.sceneLoaded", "Health.OnDead +=", "Health.OnHurt +=",
@@ -131,8 +139,29 @@ def check_service(errors):
         errors.append("[落档] 缺少统一落档入口 Commit(out string)")
     if "PetNestPersistence.Nest.Store(nest)" not in code:
         errors.append("[落档] Commit 必须经 store 入队")
-    if "PetNestSaveCoordinator.RequestFlush(out flushError)" not in code:
-        errors.append("[落档] Commit 必须请求协调器落盘")
+    if "PetNestSaveCoordinator.RequestFlush();" not in code:
+        errors.append("[落档] Commit 必须请求协调器落盘（best-effort）")
+    # 成败以入队为准：flush 失败时若返回 false，调用方会回滚内存，
+    # 而已入队的 pending 仍会被官方采集写下去，两边永久分叉
+    commit = re.search(
+        r"internal static bool Commit\(out string failureReasonId\)[\s\S]{0,1400}?\n        \}", code)
+    if commit is not None and "flush_deferred_is_saving" in commit.group(0):
+        errors.append("[落档] Commit 的成败必须以 Store 入队为准，不得因 flush 失败返回 false")
+
+    # 内存回滚：Store 失败时什么都没入队，内存必须一并回滚，否则内存与磁盘分叉
+    for fn, marker in [
+        ("TryAddPet", "nest.pets.Remove(pet);"),
+        ("TryRemovePet", "nest.deployedPetId = previousDeployed;"),
+        ("TrySetDeployedPet", "nest.deployedPetId = previousDeployedId;"),
+        ("ClearDeployedPet", "nest.deployedPetId = previousDeployedId;"),
+        ("TrySpendSouls", "target.souls = previousSouls;"),
+    ]:
+        block = re.search(
+            r"internal static bool " + fn + r"\([\s\S]{0,2600}?\n        \}", code)
+        if block is None:
+            errors.append("[回滚] 无法解析 " + fn)
+        elif marker not in block.group(0):
+            errors.append("[回滚] " + fn + " 在 Commit 失败时必须回滚内存: " + marker)
 
     # 单席契约
     if not re.search(r"internal static bool TrySetDeployedPet\(string petId, out string failureReasonId\)", code):

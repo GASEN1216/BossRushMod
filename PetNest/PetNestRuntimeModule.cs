@@ -121,6 +121,8 @@ namespace BossRush
                     PetNestCompanionRuntime.CleanupOnce();
                     // 回基地时扫一次到期远征：结算是幂等事务，重复进基地不会重复发奖
                     PetNestExpeditionService.SettleDueExpeditions();
+                    // 补发上一次落档成功但发奖失败/中断的奖励（幂等）
+                    PetNestExpeditionService.TryGrantPendingRewards();
                     // 结算完再翻牌：翻牌只回放已 commit 的结果，中途退出下次还会弹
                     PetNestExpeditionRevealView.PlayPending();
                     // 巢边闲逛崽：只在基地、≤3 只、分帧生成
@@ -128,8 +130,11 @@ namespace BossRush
                     return;
                 }
 
-                // 离开基地：闲逛崽全清
+                // 离开基地：闲逛崽全清；演出层宿主是 DontDestroyOnLoad，必须显式停，
+                // 否则翻牌/孵化演出会跟着过图，用全屏遮罩盖住战斗
                 PetNestBaseIdleSpawner.RefreshForScene(_owner, _sceneGeneration, false);
+                PetNestExpeditionRevealView.Stop();
+                PetNestHatchRevealView.Stop();
 
                 // 切图：先清上一局，再按出战席位与门控决定是否入场
                 PetNestCompanionRuntime.OnSceneChanged(_owner, _sceneGeneration);
@@ -152,6 +157,11 @@ namespace BossRush
                     return;
                 }
                 PetNestDownedHandler.Tick();
+                // 入场重试：模式标志通常晚于 sceneLoaded 才置位，只采样一次会永远进不了场
+                if (!IsBaseScene())
+                {
+                    PetNestCompanionRuntime.TickSpawnRetry(_owner, _sceneGeneration);
+                }
                 PetNestSaveCoordinator.Tick();
             }
             catch (Exception e)
@@ -222,6 +232,9 @@ namespace BossRush
             {
                 PetNestSaveCoordinator.TryFlushOnHostDestroy();
                 PetNestSaveCoordinator.ShutdownSubscription();
+                // **必须清缓存**：退订会把 OnSetFile 一起摘掉，之后玩家切档没人清缓存；
+                // 再打开开关时缓存里还是上一个档的崽与遗魂，一写就把旧档覆盖到新档上。
+                PetNestPersistenceAccess.ResetCachesForSlotReload();
                 PetNestLineageCatalog.Invalidate();
                 PetNestUIBridge.UnbindRuntime();
             }

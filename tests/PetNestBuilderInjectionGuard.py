@@ -82,6 +82,10 @@ def check_builder(errors):
         body = init.group(0)
         if "if (petNestBuildingInjected)" not in body:
             errors.append("[幂等] 初始化必须幂等早返")
+        # dormant：开关关闭且从未建过时不往官方建造 UI 里塞一个点不动的死建筑；
+        # 已建过的老档必须照常注册 prefab，否则官方 BuildingArea 会报缺 prefab
+        if "!IsPetNestConfiguredEnabled() && !HasPendingPetNestBuildingsInManager()" not in body:
+            errors.append("[dormant] 开关关闭且未建过时必须跳过建筑注入（已建过的老档除外）")
         if "if (!isEarlyInit && HasPendingPetNestBuildingsInManager())" not in body:
             errors.append("[早期注入] 早期注入分支不得触发建筑区重绘")
         for step in ["LoadPetNestBuildingIcon()", "LoadPetNestBuildingModel()",

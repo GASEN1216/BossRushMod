@@ -84,6 +84,17 @@ namespace BossRush
                     return;
                 }
 
+                // dormant 契约：开关关闭时不往官方建造 UI 里塞一个点不动的死建筑
+                // （出厂默认就是关闭，否则每个没开过这个选项的玩家都能花 1500 建一个
+                // 永远点不动的 2x2 摆件）。
+                // 例外是**老档里已经建过**——那种情况必须照常注册 prefab，
+                // 否则官方 BuildingArea 会报缺 prefab。
+                if (!IsPetNestConfiguredEnabled() && !HasPendingPetNestBuildingsInManager())
+                {
+                    DevLog("[PetNest] 入口开关关闭且未建过，跳过建筑注入（dormant）");
+                    return;
+                }
+
                 PetNestLocalization.InjectBuildingKeys();
                 LoadPetNestBuildingIcon();
                 LoadPetNestBuildingModel();

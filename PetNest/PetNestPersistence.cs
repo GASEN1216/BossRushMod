@@ -60,6 +60,35 @@ namespace BossRush
         /// <summary>是否有待落盘批次。</summary>
         internal bool HasPendingWrite { get { lock (_lock) { return _pendingActive && _pendingJson != null; } } }
 
+        /// <summary>
+        /// 现在 Store 会不会成功。**多 key 事务的前置检查**：
+        /// 一次业务操作要改多个 key 时，必须先把所有 key 都 CanStore 过一遍再开始 Store，
+        /// 否则先成功的那个 key 会把 pending 留下来，被官方 OnCollectSaveData 独立落盘，
+        /// 而调用方以为整个操作失败并回滚了内存——两边就此永久分叉。
+        /// </summary>
+        internal bool CanStore
+        {
+            get
+            {
+                if (_storeFaulted) return false;
+                lock (_lock) { return !_writeBarrier; }
+            }
+        }
+
+        /// <summary>
+        /// 丢弃尚未落盘的 pending。只用于多 key 事务的失败回滚：
+        /// 已经 Store 过的 key 必须把 pending 撤掉，否则会被独立落盘。
+        /// 已经物理落盘的批次撤不回来——这正是必须用 CanStore 前置检查的原因。
+        /// </summary>
+        internal void DiscardPending()
+        {
+            lock (_lock)
+            {
+                _pendingJson = null;
+                _pendingActive = false;
+            }
+        }
+
         /// <summary>最后一次失败原因。</summary>
         internal string LastError { get { return _lastError; } }
 
@@ -416,6 +445,34 @@ namespace BossRush
         internal static bool HasAnyPendingWrite
         {
             get { return _nest.HasPendingWrite || _expedition.HasPendingWrite || _museum.HasPendingWrite; }
+        }
+
+        /// <summary>三个 key 现在是否都能写。多 key 事务的前置检查。</summary>
+        internal static bool CanStoreAll
+        {
+            get { return _nest.CanStore && _expedition.CanStore && _museum.CanStore; }
+        }
+
+        /// <summary>丢弃三个 key 的 pending。多 key 事务失败时的回滚。</summary>
+        internal static void DiscardAllPending()
+        {
+            _nest.DiscardPending();
+            _expedition.DiscardPending();
+            _museum.DiscardPending();
+        }
+
+        /// <summary>
+        /// 丢弃三个 key 的内存缓存，下次访问从当前存档槽重新加载。
+        ///
+        /// **运行时关开关必须调它**：关开关会连 OnSetFile 一起退订，之后玩家切档时
+        /// 没人清缓存；再打开开关时缓存里还是上一个档的崽与遗魂账本，一旦写入就会把
+        /// 旧档数据整体覆盖到新档上。
+        /// </summary>
+        internal static void ResetCachesForSlotReload()
+        {
+            _nest.ResetForSlotChange();
+            _expedition.ResetForSlotChange();
+            _museum.ResetForSlotChange();
         }
 
         #endregion

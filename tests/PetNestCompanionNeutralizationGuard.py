@@ -51,6 +51,20 @@ def main():
         if not re.search(pattern, code):
             errors.append("[中性化] 缺少五件套条目: " + desc)
 
+    # 1b. 伤害归一必须写在 clone preset 上（CreateCharacterAsync **之前**）
+    # 官方只在 CreateCharacterAsync 内部消费这三个字段一次，创建返回后再写没有任何读者
+    for pattern, desc in [
+        (r"clone\.damageMultiplier = PetNestTuning\.CompanionDpsShareTarget;", "远程伤害倍率"),
+        (r"clone\.meleeDamageMultiplier = PetNestTuning\.CompanionDpsShareTarget;", "近战伤害倍率"),
+        (r"clone\.gunCritRateGain = 0f;", "暴击加成清零"),
+    ]:
+        if not re.search(pattern, code):
+            errors.append("[伤害归一] 必须在创建前写在 clone preset 上: " + desc)
+    # 角色 Item 上的伤害倍率 key 是 GunDamageMultiplier / MeleeDamageMultiplier，
+    # "Damage" 是**武器 Item** 的 stat，在角色 Item 上取不到
+    if re.search(r'GetStat\("Damage"\)', code):
+        errors.append("[伤害归一] \"Damage\" 是武器 Item 的 stat，角色 Item 上取不到")
+
     # 2. 中性化必须写在独立入口里，便于复用与断言
     if not re.search(r"internal static void NeutralizeClonePreset\(CharacterRandomPreset clone\)", code):
         errors.append("[中性化] 缺少统一入口 NeutralizeClonePreset(CharacterRandomPreset clone)")

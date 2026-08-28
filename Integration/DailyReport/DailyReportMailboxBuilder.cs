@@ -295,8 +295,16 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 占位模型：立柱 + 邮筒箱体 + 斜顶盖 + 一面小红旗。零新增资源的 fallback。
+        /// 占位模型：石砌基座 + 箱体 + **半圆柱顶** + 小红旗 + 探出的报纸卷。
+        /// 剪影刻意与建造图标 `Assets/buildings/bossrush_daily_mailbox.png` 对齐，
+        /// 让玩家在菜单里看到的和放下去看到的是同一个东西。
+        ///
+        /// 圆顶用的是躺倒的圆柱：Unity 圆柱轴向是 Y，绕 X 转 90° 后轴向变成 Z（前后），
+        /// 于是 localScale.y 决定筒长（即箱体进深），localScale.x/z 决定直径（即箱体宽度）。
+        ///
         /// CreatePrimitive 自带碰撞体，必须删掉——留着会干扰建筑放置与交互射线。
+        /// 这是无美术期的 fallback；`Assets/buildings/bossrush_daily_mailbox` 放上
+        /// AssetBundle 后本方法自动不再被调用。
         /// </summary>
         private void CreateDailyReportPlaceholderModel(GameObject graphicsContainer)
         {
@@ -305,41 +313,63 @@ namespace BossRush
                 Shader shader = Shader.Find("Unlit/Color");
                 if (shader == null) shader = Shader.Find("Standard");
 
-                // 立柱
+                Color stone = new Color(0.54f, 0.52f, 0.48f, 1f);
+                Color body = new Color(0.44f, 0.21f, 0.18f, 1f);
+                Color trim = new Color(0.30f, 0.15f, 0.13f, 1f);
+                Color paper = new Color(0.88f, 0.86f, 0.79f, 1f);
+
+                // 石砌基座（图标里是一段矮而粗的石台，不是细长杆）
                 CreateDailyReportPlaceholderPart(
-                    graphicsContainer, PrimitiveType.Cylinder, "Post",
-                    new Vector3(0.12f, 0.5f, 0.12f), new Vector3(0f, 0.5f, 0f),
-                    new Color(0.30f, 0.24f, 0.18f, 1f), shader, Quaternion.identity);
+                    graphicsContainer, PrimitiveType.Cube, "Pedestal",
+                    new Vector3(0.40f, 0.80f, 0.40f), new Vector3(0f, 0.40f, 0f),
+                    stone, shader, Quaternion.identity);
+
+                // 基座压顶
+                CreateDailyReportPlaceholderPart(
+                    graphicsContainer, PrimitiveType.Cube, "PedestalCap",
+                    new Vector3(0.50f, 0.06f, 0.50f), new Vector3(0f, 0.82f, 0f),
+                    new Color(0.46f, 0.44f, 0.41f, 1f), shader, Quaternion.identity);
 
                 // 箱体
                 CreateDailyReportPlaceholderPart(
                     graphicsContainer, PrimitiveType.Cube, "Box",
-                    new Vector3(0.55f, 0.38f, 0.36f), new Vector3(0f, 1.18f, 0f),
-                    new Color(0.42f, 0.20f, 0.18f, 1f), shader, Quaternion.identity);
+                    new Vector3(0.58f, 0.36f, 0.44f), new Vector3(0f, 1.03f, 0f),
+                    body, shader, Quaternion.identity);
 
-                // 斜顶盖
+                // 半圆柱顶：绕 X 转 90°，轴向指向前后
                 CreateDailyReportPlaceholderPart(
-                    graphicsContainer, PrimitiveType.Cube, "Lid",
-                    new Vector3(0.60f, 0.06f, 0.40f), new Vector3(0f, 1.40f, 0f),
-                    new Color(0.28f, 0.14f, 0.12f, 1f), shader,
-                    Quaternion.Euler(0f, 0f, 8f));
+                    graphicsContainer, PrimitiveType.Cylinder, "RoundTop",
+                    new Vector3(0.58f, 0.22f, 0.58f), new Vector3(0f, 1.21f, 0f),
+                    body, shader, Quaternion.Euler(90f, 0f, 0f));
+
+                // 正面投递口面板
+                CreateDailyReportPlaceholderPart(
+                    graphicsContainer, PrimitiveType.Cube, "DoorPanel",
+                    new Vector3(0.34f, 0.20f, 0.02f), new Vector3(0f, 1.00f, 0.225f),
+                    trim, shader, Quaternion.identity);
+
+                // 探出投递口的报纸卷
+                CreateDailyReportPlaceholderPart(
+                    graphicsContainer, PrimitiveType.Cylinder, "NewspaperRoll",
+                    new Vector3(0.11f, 0.13f, 0.11f), new Vector3(-0.13f, 1.16f, 0.28f),
+                    paper, shader, Quaternion.Euler(90f, 0f, 0f));
 
                 // 小红旗（有新报纸的视觉暗示）
                 CreateDailyReportPlaceholderPart(
                     graphicsContainer, PrimitiveType.Cube, "FlagPole",
-                    new Vector3(0.04f, 0.22f, 0.04f), new Vector3(0.32f, 1.32f, 0f),
+                    new Vector3(0.03f, 0.34f, 0.03f), new Vector3(0.33f, 1.30f, 0f),
                     new Color(0.25f, 0.22f, 0.20f, 1f), shader, Quaternion.identity);
 
                 CreateDailyReportPlaceholderPart(
                     graphicsContainer, PrimitiveType.Cube, "Flag",
-                    new Vector3(0.16f, 0.11f, 0.02f), new Vector3(0.41f, 1.40f, 0f),
+                    new Vector3(0.15f, 0.10f, 0.02f), new Vector3(0.41f, 1.42f, 0f),
                     new Color(0.78f, 0.24f, 0.20f, 1f), shader, Quaternion.identity);
 
-                // 底座
+                // 基座旁堆的旧报纸
                 CreateDailyReportPlaceholderPart(
-                    graphicsContainer, PrimitiveType.Cylinder, "BasePlate",
-                    new Vector3(0.42f, 0.05f, 0.42f), new Vector3(0f, 0.025f, 0f),
-                    new Color(0.20f, 0.17f, 0.14f, 1f), shader, Quaternion.identity);
+                    graphicsContainer, PrimitiveType.Cube, "PaperStack",
+                    new Vector3(0.20f, 0.07f, 0.16f), new Vector3(0.30f, 0.035f, 0.10f),
+                    paper, shader, Quaternion.Euler(0f, 18f, 0f));
             }
             catch (Exception e)
             {

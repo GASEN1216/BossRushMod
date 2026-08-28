@@ -109,6 +109,16 @@ namespace BossRush
                 clone.canDieIfNotRaidMap = true;
                 // 战斗强度归一，避免克隆继承 Boss 侧的 combat factor
                 clone.aiCombatFactor = 1f;
+
+                // —— 伤害归一必须写在这里 ——
+                // 官方只在 CreateCharacterAsync 内部消费这三个字段一次
+                // （SetCharacterStat("GunDamageMultiplier"/"MeleeDamageMultiplier"/
+                // "GunCritRateGain", ...) 写进角色 Item 的 BaseValue），创建返回之后再改
+                // preset 已经没有任何读者。写在这里才真的能把幼体输出压到目标占比。
+                clone.damageMultiplier = PetNestTuning.CompanionDpsShareTarget;
+                clone.setMeleeDamageMultiplier = true;
+                clone.meleeDamageMultiplier = PetNestTuning.CompanionDpsShareTarget;
+                clone.gunCritRateGain = 0f;
                 // 特殊挂件（炮台/召唤物一类）一律清空，首版幼体只留基础攻击
                 clone.specialAttachmentBases = new List<AISpecialAttachmentBase>();
             }
@@ -236,6 +246,7 @@ namespace BossRush
             Vector3 spawnPos,
             CharacterMainControl master,
             ModBehaviour owner,
+            PetNestPetRecord pet,
             out string failureReasonId)
         {
             failureReasonId = null;
@@ -266,6 +277,8 @@ namespace BossRush
                 }
 
                 NormalizeCombatOutput(handle.Character);
+                // 天赋与战痕必须真的挂上去，否则它们只是面板上的展示文本
+                ApplyPetModifiers(handle.Character, pet);
 
                 AICharacterController ai = handle.Character.GetComponentInChildren<AICharacterController>();
                 if (ai != null)
@@ -359,27 +372,15 @@ namespace BossRush
             if (companion == null) return;
             try
             {
-                CharacterRandomPreset preset = companion.characterPreset;
-                if (preset != null)
-                {
-                    preset.damageMultiplier = PetNestTuning.CompanionDpsShareTarget;
-                    preset.setMeleeDamageMultiplier = true;
-                    preset.meleeDamageMultiplier = PetNestTuning.CompanionDpsShareTarget;
-                    preset.gunCritRateGain = 0f;
-                }
-
                 Item characterItem = companion.CharacterItem;
-                if (characterItem != null)
-                {
-                    Stat damage = characterItem.GetStat("Damage");
-                    if (damage != null)
-                    {
-                        damage.AddModifier(new Modifier(
-                            ModifierType.PercentageMultiply,
-                            PetNestTuning.CompanionDpsShareTarget,
-                            CompanionDamageModifierSource));
-                    }
-                }
+                if (characterItem == null) return;
+
+                // 兜底钳制：主归一已经写在 clone preset 上（创建**之前**），这里只防
+                // 某条路径漏走 NeutralizeClonePreset。
+                // 注意 stat key：角色 Item 上的伤害倍率是 GunDamageMultiplier /
+                // MeleeDamageMultiplier；"Damage" 是**武器 Item** 的 stat，在这里取不到。
+                ClampDamageStat(characterItem, "GunDamageMultiplier");
+                ClampDamageStat(characterItem, "MeleeDamageMultiplier");
             }
             catch (Exception e)
             {
@@ -387,8 +388,117 @@ namespace BossRush
             }
         }
 
-        /// <summary>伤害归一 Modifier 的 source tag（source-tagged 模式，便于整组摘除）。</summary>
-        internal static readonly object CompanionDamageModifierSource = new object();
+        /// <summary>把某个伤害倍率 stat 的 BaseValue 钳到目标占比以内（只降不升）。</summary>
+        private static void ClampDamageStat(Item characterItem, string statKey)
+        {
+            try
+            {
+                Stat stat = characterItem.GetStat(statKey);
+                if (stat == null) return;
+                if (stat.BaseValue > PetNestTuning.CompanionDpsShareTarget)
+                {
+                    stat.BaseValue = PetNestTuning.CompanionDpsShareTarget;
+                }
+            }
+            catch (Exception)
+            {
+                // 该 stat 不存在时静默跳过：主归一已在 preset 侧生效
+            }
+        }
+
+        #endregion
+
+        #region 天赋与战痕（per-pet Modifier）
+
+        /// <summary>天赋与战痕 Modifier 的 source tag（source-tagged，便于整组摘除）。</summary>
+        internal static readonly object CompanionPetModifierSource = new object();
+
+        /// <summary>
+        /// 把崽的出身天赋与战痕应用到幼体身上。
+        ///
+        /// 不做这一步，天赋与战痕就只是面板上的展示文本——两只天赋完全不同的崽进局后
+        /// 属性一模一样，养成与战痕惩罚在玩法上等于不存在。
+        ///
+        /// 纪律：
+        /// - source-tagged，随角色销毁一起消失，不需要单独摘除；
+        /// - PetCapcity 跳过：官方读的是**玩家**的 stat，挂幼体身上完全无效
+        ///   （由 PetNestPetProxyBridge.ApplyCapacityBonus 挂到玩家身上）；
+        /// - stat 不存在时 AddModifier 返回 false，只记日志不报错。
+        /// </summary>
+        internal static void ApplyPetModifiers(CharacterMainControl companion, PetNestPetRecord pet)
+        {
+            if (companion == null || pet == null) return;
+            try
+            {
+                Item characterItem = companion.CharacterItem;
+                if (characterItem == null) return;
+
+                // 先摘干净，避免同一角色被重复应用
+                characterItem.RemoveAllModifiersFrom(CompanionPetModifierSource);
+
+                if (pet.talents != null)
+                {
+                    for (int i = 0; i < pet.talents.Count; i++)
+                    {
+                        PetNestTalentEntry t = pet.talents[i];
+                        if (t == null || string.IsNullOrEmpty(t.statKey)) continue;
+                        if (string.Equals(t.statKey, PetNestPetProxyBridge.PetCapacityStatKey,
+                                StringComparison.Ordinal))
+                        {
+                            continue;
+                        }
+                        ApplyOneModifier(characterItem, t.statKey, t.value, t.percentage);
+                    }
+                }
+
+                ApplyScarModifiers(characterItem, pet);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 应用崽属性失败: " + e.Message);
+            }
+        }
+
+        /// <summary>同一 stat 上的战痕合并成一条并按封顶钳制，避免逐条叠加突破上限。</summary>
+        private static void ApplyScarModifiers(Item characterItem, PetNestPetRecord pet)
+        {
+            if (pet.scars == null || pet.scars.Count == 0) return;
+
+            Dictionary<string, float> byStat = new Dictionary<string, float>(StringComparer.Ordinal);
+            for (int i = 0; i < pet.scars.Count; i++)
+            {
+                PetNestScarRecord s = pet.scars[i];
+                if (s == null || string.IsNullOrEmpty(s.statKey)) continue;
+                float sum;
+                byStat.TryGetValue(s.statKey, out sum);
+                byStat[s.statKey] = sum + s.percent;
+            }
+
+            foreach (KeyValuePair<string, float> pair in byStat)
+            {
+                float clamped = Mathf.Max(pair.Value, PetNestTuning.ScarModifierCapPercent);
+                ApplyOneModifier(characterItem, pair.Key, clamped, true);
+            }
+        }
+
+        private static void ApplyOneModifier(Item characterItem, string statKey, float value, bool percentage)
+        {
+            try
+            {
+                if (Mathf.Approximately(value, 0f)) return;
+                Modifier modifier = percentage
+                    ? new Modifier(ModifierType.PercentageAdd, value, CompanionPetModifierSource)
+                    : new Modifier(ModifierType.Add, value, CompanionPetModifierSource);
+                if (!characterItem.AddModifier(statKey, modifier))
+                {
+                    ModBehaviour.DevLog("[PetNest] [WARNING] 幼体没有 stat " + statKey + "，该条未生效");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 应用 Modifier 失败(" + statKey + "): " + e.Message);
+            }
+        }
 
         private static void DestroyClone(CharacterRandomPreset clone)
         {

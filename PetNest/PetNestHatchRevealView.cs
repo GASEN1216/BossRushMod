@@ -38,6 +38,7 @@ namespace BossRush
         private static PetNestHatchRevealView _instance;
 
         private Canvas _canvas;
+        private ZombieModeUIHelper.ModalInputLease _modalLease;
         private TextMeshProUGUI _rollText;
         private TextMeshProUGUI _resultText;
         private TextMeshProUGUI _detailText;
@@ -70,6 +71,7 @@ namespace BossRush
             try
             {
                 if (_instance == null) return;
+                _instance.ReleaseLease();
                 if (_instance.gameObject != null)
                 {
                     UnityEngine.Object.Destroy(_instance.gameObject);
@@ -87,13 +89,30 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            ReleaseLease();
             if (_instance == this) _instance = null;
+        }
+
+        private void ReleaseLease()
+        {
+            try
+            {
+                if (_modalLease != null)
+                {
+                    _modalLease.Release();
+                    _modalLease = null;
+                }
+            }
+            catch (Exception)
+            {
+                // 释放失败也要丢引用，避免二次 Release
+            }
         }
 
         private void Build()
         {
             _canvas = BossRushUI.CreateCanvasRoot(
-                "BossRush_PetNestHatchRevealCanvas", BossRushUILayers.PetNestModal, false);
+                "BossRush_PetNestHatchRevealCanvas", BossRushUILayers.PetNestModal, true);
             _canvas.transform.SetParent(transform, false);
 
             BossRushUI.CreateBackdrop(_canvas.transform);
@@ -121,6 +140,16 @@ namespace BossRush
                 new Vector2(0f, -70f), new Vector2(700f, 90f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
             BossRushUI.ApplyGameFont(_detailText);
+
+            ZombieModeUIHelper.CreateButton(
+                "Skip", surface.transform, L10n.T("跳过", "Skip"),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(160f, 44f),
+                BossRushUIColors.SurfaceRaised, 18f, new Vector2(150f, 40f),
+                delegate { Stop(); }, true);
+
+            // 接管输入：遮罩只是"看起来"挡住了，raycaster 关掉的话下面仍然活着的
+            // 孵化面板照样能被盲点到——列表刚好在这一刻重排，玩家会静默连吞第二枚蛋。
+            _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestHatchReveal");
 
             BossRushUI.PlayOpenAnimation(surface);
         }

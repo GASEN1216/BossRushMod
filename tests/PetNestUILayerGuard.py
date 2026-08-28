@@ -91,6 +91,24 @@ def check_panel(errors):
     if "internal static void Close()" not in code:
         errors.append("[惰性] 缺少 Close()，面板必须关闭即销毁不常驻")
 
+    # 内容区与动作区必须可滚动：巢容量上限 24、远征页 9 个档位按钮、
+    # 博物馆的血脉卡 + 碑文都远超一屏。按固定 y 预算铺元素会静默截断——
+    # 第 5 只之后的崽、第三个远征目的地、整段纪念碑都会在 UI 上凭空消失。
+    if "private static Transform CreateScrollList(" not in code:
+        errors.append("[滚动] 内容区必须是滚动列表，不能按固定 y 预算截断")
+    if "ScrollRect" not in code or "RectMask2D" not in code:
+        errors.append("[滚动] 滚动列表必须有 ScrollRect + RectMask2D")
+    if "ContentSizeFitter" not in code or "VerticalLayoutGroup" not in code:
+        errors.append("[滚动] 滚动内容必须由布局组 + ContentSizeFitter 自适应高度")
+    if re.search(r"y > -240f", code):
+        errors.append("[滚动] 不得再按裸 y 坐标预算截断元素")
+    if re.search(r"i < actions\.Count && i < \d+", code):
+        errors.append("[滚动] 动作按钮不得硬截断（远征页 3 目的地 × 3 档位 = 9 个）")
+
+    # 失败反馈：不给提示的话，巢满 / 写屏障 / 远征锁定在界面上与"点歪了"无法区分
+    if "PetNestUIPages.LastFailureText" not in code:
+        errors.append("[反馈] 面板必须显示最近一次操作的失败原因")
+
 
 def check_pages(errors):
     text = read_petnest("PetNestUIPages.cs")
@@ -113,6 +131,14 @@ def check_pages(errors):
     for builder in ["BuildNestPage", "BuildHatchPage", "BuildExpeditionPage", "BuildMuseumPage"]:
         if builder not in code:
             errors.append("[页面] 缺少构建器: " + builder)
+
+    # 失败原因必须落到玩家可读文案，DescribeFailure 不能是死代码
+    if "NoteFailure(" not in code:
+        errors.append("[反馈] 按钮回调不得丢弃 failureReasonId")
+    if "PetNestLocalization.DescribeFailure(" not in code:
+        errors.append("[反馈] 失败原因必须经 DescribeFailure 转成玩家可读文案")
+    if re.search(r"string reason;\s*\n\s*PetNest\w+\.(?:Try\w+|ClearDeployedPet)\([^;]*out reason\);", code):
+        errors.append("[反馈] 存在直接丢弃 out reason 的调用")
 
     # 远征出发页必须明示死亡率
     depart = re.search(r"private static void AppendDepartActions\([\s\S]{0,2400}?\n        \}", code)

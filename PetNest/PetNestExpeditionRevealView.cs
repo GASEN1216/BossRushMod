@@ -34,6 +34,7 @@ namespace BossRush
         private static PetNestExpeditionRevealView _instance;
 
         private Canvas _canvas;
+        private ZombieModeUIHelper.ModalInputLease _modalLease;
         private TextMeshProUGUI _titleText;
         private TextMeshProUGUI _cardText;
         private TextMeshProUGUI _detailText;
@@ -70,6 +71,7 @@ namespace BossRush
             try
             {
                 if (_instance == null) return;
+                _instance.ReleaseLease();
                 if (_instance.gameObject != null)
                 {
                     UnityEngine.Object.Destroy(_instance.gameObject);
@@ -87,13 +89,30 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            ReleaseLease();
             if (_instance == this) _instance = null;
+        }
+
+        private void ReleaseLease()
+        {
+            try
+            {
+                if (_modalLease != null)
+                {
+                    _modalLease.Release();
+                    _modalLease = null;
+                }
+            }
+            catch (Exception)
+            {
+                // 释放失败也要丢引用，避免二次 Release
+            }
         }
 
         private void Build()
         {
             _canvas = BossRushUI.CreateCanvasRoot(
-                "BossRush_PetNestExpeditionRevealCanvas", BossRushUILayers.PetNestModal, false);
+                "BossRush_PetNestExpeditionRevealCanvas", BossRushUILayers.PetNestModal, true);
             _canvas.transform.SetParent(transform, false);
 
             BossRushUI.CreateBackdrop(_canvas.transform);
@@ -123,7 +142,43 @@ namespace BossRush
                 TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
             BossRushUI.ApplyGameFont(_detailText);
 
+            // 跳过：一次派 6 只崽就是 13.5 秒全屏遮罩，没有跳过键是不可接受的
+            ZombieModeUIHelper.CreateButton(
+                "Skip", surface.transform, L10n.T("跳过", "Skip"),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(160f, 44f),
+                BossRushUIColors.SurfaceRaised, 18f, new Vector2(150f, 40f),
+                delegate { SkipAll(); }, true);
+
+            // 接管输入：遮罩盖住画面却不拦输入的话，玩家会在看不见的情况下
+            // 摸到交互点、打开面板、走进战斗
+            _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestExpeditionReveal");
+
             BossRushUI.PlayOpenAnimation(surface);
+        }
+
+        /// <summary>
+        /// 跳过剩余翻牌：把还没翻的记录一次性标记为已翻，然后收工。
+        /// 结果早已落档，跳过只是不看动画，不影响任何数据。
+        /// </summary>
+        private void SkipAll()
+        {
+            try
+            {
+                if (_pending != null)
+                {
+                    for (int i = 0; i < _pending.Count; i++)
+                    {
+                        if (_pending[i] == null) continue;
+                        string reason;
+                        PetNestExpeditionService.MarkRevealed(_pending[i], out reason);
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 跳过翻牌失败: " + e.Message);
+            }
+            Stop();
         }
 
         private IEnumerator PlayRoutine()
@@ -153,8 +208,7 @@ namespace BossRush
 
         private static string BuildCardTitle(PetNestExpeditionRecord record)
         {
-            PetNestPetRecord pet = PetNestService.TryGetPet(record.petId);
-            string name = pet != null ? PetNestService.GetPetDisplayName(pet) : record.petId;
+            string name = PetNestExpeditionService.DescribePetName(record);
 
             if (record.outcomeDead)
             {

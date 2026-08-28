@@ -113,7 +113,7 @@ namespace BossRush
 
                 string failureReasonId;
                 Vector3 spawnPos = playerNow.transform.position + PetNestCompanionSpawner.SpawnOffset;
-                if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, playerNow, owner, out failureReasonId))
+                if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, playerNow, owner, null, out failureReasonId))
                 {
                     PetNestCompanionSpawner.CleanupOnce(handle);
                     _lastStatus = "PoC 幼体激活失败: " + failureReasonId;

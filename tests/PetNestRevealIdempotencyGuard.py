@@ -58,6 +58,21 @@ def check_view(errors, name):
     if "internal static void ResetStaticCaches()" not in code:
         errors.append("[清理] " + name + " 缺少 ResetStaticCaches()")
 
+    # 必须接管输入：raycaster 关掉的话遮罩只是"看起来"挡住了，
+    # 下面仍然活着的面板照样能被盲点到（孵化时会静默连吞第二枚蛋）
+    if "BossRushUILayers.PetNestModal, true)" not in code:
+        errors.append("[输入] " + name + " 的 canvas 必须 interactive=true，否则遮罩不拦点击")
+    if "ZombieModeUIHelper.ClaimModalInput(" not in code:
+        errors.append("[输入] " + name + " 必须占用模态输入 lease")
+    if "_modalLease.Release();" not in code:
+        errors.append("[输入] " + name + " 的模态 lease 必须成对释放")
+    if not re.search(r"private void OnDestroy\(\)[\s\S]{0,200}?ReleaseLease\(\)", code):
+        errors.append("[输入] " + name + " 的 OnDestroy 必须兜底释放 lease")
+
+    # 必须可跳过：全屏遮罩 + 不可跳过 + 多张牌 = 最长 27 秒不能操作
+    if '"Skip"' not in code:
+        errors.append("[可跳过] " + name + " 必须提供跳过入口")
+
 
 def check_hatch_specific(errors):
     code = strip_cs_comments(read_petnest("PetNestHatchRevealView.cs") or "")
@@ -86,10 +101,23 @@ def check_expedition_specific(errors):
         errors.append("[明示] 翻牌必须显示出发时固化的死亡率")
 
 
+def check_scene_stop(errors):
+    """演出宿主是 DontDestroyOnLoad，切图必须显式停，否则会跟着过图盖住战斗。"""
+    module = read_petnest("PetNestRuntimeModule.cs")
+    if module is None:
+        errors.append("[File] 缺少 PetNest/PetNestRuntimeModule.cs")
+        return
+    code = strip_cs_comments(module)
+    for token in ["PetNestExpeditionRevealView.Stop()", "PetNestHatchRevealView.Stop()"]:
+        if token not in code:
+            errors.append("[切图] 离开基地必须停演出: " + token)
+
+
 def main():
     errors = []
     for name in VIEWS:
         check_view(errors, name)
+    check_scene_stop(errors)
     check_hatch_specific(errors)
     check_expedition_specific(errors)
     return report(GUARD, errors)

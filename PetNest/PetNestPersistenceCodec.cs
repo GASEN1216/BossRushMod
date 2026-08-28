@@ -277,6 +277,7 @@ namespace BossRush
                     sb.BeginObject()
                       .Str("id", r.id)
                       .Str("petId", r.petId)
+                      .Str("petDisplayName", r.petDisplayName)
                       .Str("destinationId", r.destinationId)
                       .Int("riskTier", r.riskTier)
                       .Long("departTicks", r.departTicks)
@@ -285,6 +286,7 @@ namespace BossRush
                       .Num("successRate", r.successRate)
                       .Bool("settled", r.settled)
                       .Bool("revealed", r.revealed)
+                      .Bool("rewardsGranted", r.rewardsGranted)
                       .Bool("outcomeDead", r.outcomeDead)
                       .Bool("outcomeInjured", r.outcomeInjured)
                       .Long("outcomeCash", r.outcomeCash);
@@ -336,6 +338,7 @@ namespace BossRush
                 PetNestExpeditionRecord r = new PetNestExpeditionRecord();
                 r.id = id;
                 r.petId = n.GetString("petId", null);
+                r.petDisplayName = n.GetString("petDisplayName", null);
                 r.destinationId = n.GetString("destinationId", null);
                 r.riskTier = n.GetInt("riskTier", (int)PetNestRiskTier.Safe);
                 r.departTicks = n.GetLong("departTicks", 0L);
@@ -344,6 +347,7 @@ namespace BossRush
                 r.successRate = n.GetFloat("successRate", 0f);
                 r.settled = n.GetBool("settled", false);
                 r.revealed = n.GetBool("revealed", false);
+                r.rewardsGranted = n.GetBool("rewardsGranted", false);
                 r.outcomeDead = n.GetBool("outcomeDead", false);
                 r.outcomeInjured = n.GetBool("outcomeInjured", false);
                 r.outcomeCash = n.GetLong("outcomeCash", 0L);

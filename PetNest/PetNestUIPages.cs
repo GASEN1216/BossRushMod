@@ -66,6 +66,27 @@ namespace BossRush
     /// <summary>四个页面的内容组装器。无状态，每次打开重新组装。</summary>
     internal static class PetNestUIPages
     {
+        /// <summary>
+        /// 最近一次操作的失败提示（已本地化）。面板每次重绘时读它并显示在顶部。
+        /// 不给反馈的话，巢满 / 存档写屏障 / 远征锁定这些失败在界面上与"点歪了"
+        /// 完全无法区分——玩家只会反复点同一个按钮。
+        /// </summary>
+        internal static string LastFailureText;
+
+        /// <summary>把 out failureReasonId 转成玩家可读文案并记下来。</summary>
+        private static void NoteFailure(bool ok, string failureReasonId)
+        {
+            LastFailureText = ok || string.IsNullOrEmpty(failureReasonId)
+                ? null
+                : PetNestLocalization.DescribeFailure(failureReasonId);
+        }
+
+        /// <summary>清空失败提示（切页时调）。</summary>
+        internal static void ClearFailure()
+        {
+            LastFailureText = null;
+        }
+
         private static string T(string suffix)
         {
             return LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + suffix);
@@ -103,7 +124,7 @@ namespace BossRush
                 OnClick = delegate
                 {
                     string reason;
-                    PetNestService.ClearDeployedPet(out reason);
+                    NoteFailure(PetNestService.ClearDeployedPet(out reason), reason);
                     if (refresh != null) refresh();
                 },
             });
@@ -141,7 +162,7 @@ namespace BossRush
                 card.OnClick = delegate
                 {
                     string reason;
-                    PetNestService.TrySetDeployedPet(petId, out reason);
+                    NoteFailure(PetNestService.TrySetDeployedPet(petId, out reason), reason);
                     if (refresh != null) refresh();
                 };
             }
@@ -223,8 +244,9 @@ namespace BossRush
                         PetNestHatchResult result;
                         string reason;
                         // commit-before-reveal：服务层先落档，成功后才把只读结果交演出层
-                        if (PetNestHatchService.TryHatchEgg(captured, out result, out reason)
-                            && onHatched != null)
+                        bool ok = PetNestHatchService.TryHatchEgg(captured, out result, out reason);
+                        NoteFailure(ok, reason);
+                        if (ok && onHatched != null)
                         {
                             onHatched(result);
                         }
@@ -262,8 +284,9 @@ namespace BossRush
                     {
                         PetNestHatchResult result;
                         string reason;
-                        if (PetNestHatchService.TryCondenseAndHatch(key, out result, out reason)
-                            && onHatched != null)
+                        bool ok = PetNestHatchService.TryCondenseAndHatch(key, out result, out reason);
+                        NoteFailure(ok, reason);
+                        if (ok && onHatched != null)
                         {
                             onHatched(result);
                         }
@@ -314,8 +337,7 @@ namespace BossRush
         private static PetNestCardData BuildExpeditionCard(PetNestExpeditionRecord r)
         {
             PetNestCardData card = new PetNestCardData();
-            PetNestPetRecord pet = PetNestService.TryGetPet(r.petId);
-            card.Title = pet != null ? PetNestService.GetPetDisplayName(pet) : r.petId;
+            card.Title = PetNestExpeditionService.DescribePetName(r);
             card.Subtitle = T("Dest_" + r.destinationId) + " · " + DescribeRisk(r.riskTier);
             card.IsDanger = r.riskTier == (int)PetNestRiskTier.Desperate;
 
@@ -360,7 +382,9 @@ namespace BossRush
                         {
                             PetNestExpeditionRecord record;
                             string reason;
-                            PetNestExpeditionService.TryDepart(petId, destinationId, tier, out record, out reason);
+                            NoteFailure(
+                                PetNestExpeditionService.TryDepart(petId, destinationId, tier, out record, out reason),
+                                reason);
                             if (refresh != null) refresh();
                         },
                     });

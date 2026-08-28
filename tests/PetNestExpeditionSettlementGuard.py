@@ -65,7 +65,7 @@ def main():
         errors.append("[回拨] 剩余时间必须 max(0, Δ) 钳制，不得出现负倒计时")
 
     # 4. 死亡率固化
-    depart = re.search(r"internal static bool TryDepart\([\s\S]{0,3000}?\n        \}", code)
+    depart = re.search(r"internal static bool TryDepart\([\s\S]{0,4500}?\n        \}", code)
     if depart is None:
         errors.append("[出发] 缺少 TryDepart 入口")
     else:
@@ -94,12 +94,18 @@ def main():
         if "record.settled = true;" not in body:
             errors.append("[结算] 必须写 settled 标记")
 
+        # 前置检查必须在 roll / 改内存**之前**：roll 之后再发现写不下去，
+        # 内存已经被改成"已结算"（真死路径还删了 PetRecord、刻了碑），回滚代价极大
+        precheck_pos = body.find("PetNestPersistenceAccess.CanStoreAll")
+        roll_pos = body.find("UnityEngine.Random.value < record.deathRate")
         commit_pos = body.find("CommitBoth(out failureReasonId)")
-        grant_pos = body.find("GrantRewards(record)")
+        grant_pos = body.find("TryGrantPendingRewards()")
         settled_pos = body.find("record.settled = true;")
-        if commit_pos < 0 or grant_pos < 0 or settled_pos < 0:
-            errors.append("[顺序] 无法定位落档/发奖/settled 三个锚点")
+        if precheck_pos < 0 or roll_pos < 0 or commit_pos < 0 or grant_pos < 0 or settled_pos < 0:
+            errors.append("[顺序] 无法定位前置检查/roll/落档/发奖/settled 五个锚点")
         else:
+            if precheck_pos > roll_pos:
+                errors.append("[事务] CanStoreAll 前置检查必须在 roll 与改内存之前")
             if settled_pos > commit_pos:
                 errors.append("[commit-before-reveal] settled 标记必须在落档之前写进内存")
             if grant_pos < commit_pos:
@@ -137,8 +143,8 @@ def main():
         if "museum.mergedMemorialCount++" not in body:
             errors.append("[存档体积] 溢出的碑必须合并为碑林计数，不得静默丢弃")
 
-    # 8. 三档一起提交（避免"崽没了但碑没刻"）
-    commit = re.search(r"private static bool CommitBoth\(out string failureReasonId\)[\s\S]{0,1200}?\n        \}", code)
+    # 8. 三档**原子**提交（避免"崽没了但碑没刻"、"奖发不出"、"遗魂凭空消失"）
+    commit = re.search(r"private static bool CommitBoth\(out string failureReasonId\)[\s\S]{0,1800}?\n        \}", code)
     if commit is None:
         errors.append("[事务] 缺少 CommitBoth")
     else:
@@ -150,6 +156,30 @@ def main():
         ]:
             if token not in body:
                 errors.append("[事务] 结算落档必须包含: " + desc)
+        # 原子性两条：先全体前置检查，中途失败丢弃全部 pending
+        if "PetNestPersistenceAccess.CanStoreAll" not in body:
+            errors.append("[原子性] 必须先把三个 key 都 CanStore 过一遍再开始 Store，"
+                          "否则先成功的 key 会被官方采集独立落盘")
+        if "PetNestPersistenceAccess.DiscardAllPending()" not in body:
+            errors.append("[原子性] Store 中途失败必须丢弃三个 key 的 pending")
+        if "flush_deferred_is_saving" in body:
+            errors.append("[原子性] 成败必须以入队为准，不得因 flush 失败让调用方回滚内存")
+
+    # 9. 发奖走可恢复的独立标记，落档成功而发奖失败时能补发
+    if "rewardsGranted" not in code:
+        errors.append("[发奖] 必须有独立的 rewardsGranted 标记（settled 之外的第二个标记）")
+    backfill = re.search(r"internal static int TryGrantPendingRewards\(\)[\s\S]{0,1400}?\n        \}", code)
+    if backfill is None:
+        errors.append("[发奖] 缺少可恢复的补发通道 TryGrantPendingRewards()")
+    else:
+        body = backfill.group(0)
+        if "!r.settled || r.rewardsGranted" not in body:
+            errors.append("[发奖] 补发必须幂等：只处理 settled 且未发奖的记录")
+        if "r.rewardsGranted = true;" not in body:
+            errors.append("[发奖] 补发后必须置已发放标记并落档")
+    reveal_block = re.search(r"internal static bool MarkRevealed\([\s\S]{0,1200}?\n        \}", code)
+    if reveal_block is not None and "!record.rewardsGranted" not in reveal_block.group(0):
+        errors.append("[发奖] 奖未发就把记录移出待翻列表 = 奖励永久丢失，翻牌前必须补发")
 
     # 9. 元素亲和
     if "PetNestTuning.ElementAffinityBonus" not in code:

@@ -54,8 +54,12 @@ namespace BossRush
                 {
                     if (_downedPending) return;
                     _downedPending = true;
-                    _pendingKillerName = _lastAttackerName;
                     _pendingPlace = SafeSceneName();
+                    // **凶手不在这里取**：官方 Health.Hurt 的顺序是
+                    //   CurrentHealth -= damage;   // ← 本回调在这里跑
+                    //   Health.OnHurt?.Invoke(...) // ← 本次致命伤的 DamageInfo 之后才到
+                    // 此刻 _lastAttackerName 里存的还是**上一次**受伤的攻击者。
+                    // 真正的凶手在下一个 tick 读（那时 OnHurt 已经派发过了）。
                 }
 
                 if (health != null)
@@ -153,7 +157,8 @@ namespace BossRush
             {
                 if (!_downedPending) return;
                 _downedPending = false;
-                killerName = _pendingKillerName;
+                // 到这一帧 OnHurt 已经把致命一击的攻击者写进 _lastAttackerName 了
+                killerName = _lastAttackerName;
                 place = _pendingPlace;
                 _pendingKillerName = null;
                 _pendingPlace = null;
@@ -169,6 +174,8 @@ namespace BossRush
                     if (pet != null)
                     {
                         AppendScar(pet, place, killerName);
+                        // 局内重伤是单 key 写，这里自行入队
+                        PetNestService.StageCommit();
                     }
                 }
             }
@@ -217,7 +224,8 @@ namespace BossRush
                 pet.mergedOldScarCount++;
             }
 
-            PetNestService.StageCommit();
+            // **不在这里入队**：远征结算会把 AppendScar 包在巢/远征/博物馆的原子事务中间，
+            // 独立入队会让巢先落盘、事务却整体失败，破坏原子性。入队由调用方负责。
         }
 
         /// <summary>

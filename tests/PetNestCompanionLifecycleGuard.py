@@ -97,6 +97,19 @@ def check_runtime(errors):
     if "PetNestPetProxyBridge.ApplyCapacityBonus(" not in code:
         errors.append("[捡漏背包] 入场必须挂容量 Modifier")
 
+    # 入场重试窗口：绝大多数地图在 sceneLoaded 这一刻还没有任何 run 标志为真
+    # （带 customSpawnPos 的竞技场要等协程、Mode D 有 0.5s 延迟、IsActive 要等开波），
+    # 只采样一次的话随从在多数入场路径上永远进不了场
+    if "internal static void TickSpawnRetry(" not in code:
+        errors.append("[入场] 缺少入场重试入口 TickSpawnRetry（只采样一次会永远进不了场）")
+    if "OpenSpawnRetryWindow()" not in code:
+        errors.append("[入场] 切图必须开一个入场重试窗口")
+    if "SpawnRetryWindowSeconds" not in code:
+        errors.append("[入场] 重试窗口必须有时长上限")
+    module = read_petnest("PetNestRuntimeModule.cs")
+    if module is not None and "PetNestCompanionRuntime.TickSpawnRetry(" not in strip_cs_comments(module):
+        errors.append("[入场] 宿主 tick 必须驱动入场重试")
+
 
 def check_bridge(errors):
     text = read_petnest("PetNestPetProxyBridge.cs")
@@ -142,6 +155,17 @@ def check_spawner(errors):
         errors.append("[伤害归一] 缺少伤害归一入口")
     if "PetNestTuning.CompanionDpsShareTarget" not in code:
         errors.append("[伤害归一] 必须走 PetNestTuning.CompanionDpsShareTarget 常量")
+
+    # 天赋与战痕必须真的挂上去，否则它们只是面板上的展示文本：
+    # 两只天赋完全不同的崽进局后属性一模一样，养成与战痕惩罚等于不存在
+    if "internal static void ApplyPetModifiers(" not in code:
+        errors.append("[养成] 缺少 ApplyPetModifiers：天赋与战痕必须真的挂成 Modifier")
+    if "ApplyPetModifiers(handle.Character, pet)" not in code:
+        errors.append("[养成] TryActivate 必须应用崽的天赋与战痕")
+    if "PetNestPetProxyBridge.PetCapacityStatKey" not in code:
+        errors.append("[养成] PetCapcity 必须跳过（官方读的是玩家 stat，挂幼体无效）")
+    if "PetNestTuning.ScarModifierCapPercent" not in code:
+        errors.append("[养成] 战痕减益必须按封顶钳制后再挂")
 
 
 def check_exemptions(errors):

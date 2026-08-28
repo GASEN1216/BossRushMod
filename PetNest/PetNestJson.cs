@@ -224,6 +224,14 @@ namespace BossRush
         internal PetNestJsonBuilder Num(string name, float value)
         {
             Key(name);
+            // NaN / ±Infinity 的 "R" 输出是 "NaN" / "Infinity"，**不是合法 JSON**：
+            // 写进去之后下次加载会解析失败 -> 该 key 进写屏障 -> 玩家从此静默存不上档。
+            // 非有限值一律写 0，宁可丢一个数值也不能毁掉整份存档。
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                _sb.Append('0');
+                return this;
+            }
             _sb.Append(value.ToString("R", CultureInfo.InvariantCulture));
             return this;
         }

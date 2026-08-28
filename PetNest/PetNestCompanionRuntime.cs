@@ -29,6 +29,21 @@ namespace BossRush
         private static bool _spawnInFlight;
         private static string _lastBlockReasonId;
 
+        /// <summary>
+        /// 入场重试窗口。**必须重试的原因**：绝大多数地图在 sceneLoaded 这一刻
+        /// 还没有任何 run 标志为真——带 customSpawnPos 的竞技场要等
+        /// SetupBossRushInGroundZero 协程才置 bossRushArenaActive，Mode D 有 0.5s 延迟，
+        /// IsActive 更是要等波次开始。只采样一次的话随从在 9 张竞技场里有 8 张永远进不了场。
+        /// </summary>
+        private static float _retryDeadlineUnscaled;
+        private static float _nextRetryUnscaled;
+
+        /// <summary>入场重试窗口时长（秒）。覆盖协程/延迟启动的模式置位。</summary>
+        internal const float SpawnRetryWindowSeconds = 90f;
+
+        /// <summary>入场重试间隔（秒）。</summary>
+        internal const float SpawnRetryIntervalSeconds = 1f;
+
         /// <summary>当前是否有随从在场。</summary>
         internal static bool HasCompanion
         {
@@ -93,6 +108,44 @@ namespace BossRush
             SpawnAsync(owner, pet, lineage, source, sceneGeneration).Forget();
         }
 
+        /// <summary>
+        /// 宿主 tick 驱动的入场重试。窗口内每 SpawnRetryIntervalSeconds 重试一次，
+        /// 成功或窗口耗尽即停。无待办时 O(1) 早返。
+        /// </summary>
+        internal static void TickSpawnRetry(ModBehaviour owner, int sceneGeneration)
+        {
+            if (_retryDeadlineUnscaled <= 0f) return;
+
+            float now = Time.unscaledTime;
+            if (now > _retryDeadlineUnscaled)
+            {
+                _retryDeadlineUnscaled = 0f;
+                return;
+            }
+            if (HasCompanion || _spawnInFlight)
+            {
+                _retryDeadlineUnscaled = 0f;
+                return;
+            }
+            if (now < _nextRetryUnscaled) return;
+            _nextRetryUnscaled = now + SpawnRetryIntervalSeconds;
+
+            TrySpawnForScene(owner, sceneGeneration);
+        }
+
+        /// <summary>开一个新的入场重试窗口（切图时调）。</summary>
+        private static void OpenSpawnRetryWindow()
+        {
+            _retryDeadlineUnscaled = Time.unscaledTime + SpawnRetryWindowSeconds;
+            _nextRetryUnscaled = 0f;
+        }
+
+        /// <summary>关闭入场重试窗口（回基地 / 关开关 / 清理）。</summary>
+        private static void CloseSpawnRetryWindow()
+        {
+            _retryDeadlineUnscaled = 0f;
+        }
+
         private static async UniTaskVoid SpawnAsync(
             ModBehaviour owner,
             PetNestPetRecord pet,
@@ -123,7 +176,7 @@ namespace BossRush
                 Vector3 spawnPos = playerNow.transform.position + PetNestCompanionSpawner.SpawnOffset;
 
                 string failureReasonId;
-                if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, playerNow, owner, out failureReasonId))
+                if (!PetNestCompanionSpawner.TryActivate(handle, spawnPos, playerNow, owner, pet, out failureReasonId))
                 {
                     PetNestCompanionSpawner.CleanupOnce(handle);
                     _lastBlockReasonId = failureReasonId;
@@ -233,6 +286,7 @@ namespace BossRush
         /// </summary>
         internal static void CleanupOnce()
         {
+            CloseSpawnRetryWindow();
             try
             {
                 PetNestCompanionHudView.Destroy();
@@ -292,6 +346,8 @@ namespace BossRush
         {
             CleanupOnce();
             _sceneGeneration = sceneGeneration;
+            // 先试一次；模式标志通常要等协程/延迟才置位，所以同时开一个重试窗口
+            OpenSpawnRetryWindow();
             TrySpawnForScene(owner, sceneGeneration);
         }
 
@@ -303,6 +359,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             CleanupOnce();
+            CloseSpawnRetryWindow();
             _sceneGeneration = -1;
             _spawnInFlight = false;
             _lastBlockReasonId = null;
