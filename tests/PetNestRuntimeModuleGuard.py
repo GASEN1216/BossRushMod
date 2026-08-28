@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+PetNestRuntimeModuleGuard — 遗种巢运行时模块守卫（实施计划 步骤 3）。
+
+不变式：
+- 全系统只有一个 PetNestRuntimeModule 实例：只在
+  Common/Lifecycle/BossRushRuntimeModuleRegistration.cs 里 new 一次，
+  存字段后把**同一个引用**注册给 host（Mode G 的实例分裂是反例）；
+- 只读门面 ModBehaviour.PetNestRuntime 存在；
+- 其余任何文件不得出现 `new PetNestRuntimeModule(`；
+- 只复用 host 已有的六个回调，不新增全局 hook（模块内不得 += 到 SceneManager 等）；
+- **petNestEnabled = false 时全系统 dormant**：bootstrap 被 IsEnabled 挡住，
+  未 bootstrap 时 OnUpdate O(1) 早返；开关是运行时可变的，因此 bootstrap 必须幂等
+  且在多个回调里重试，而不是只在 Awake 判一次；
+- 领域服务写操作一律走 Commit()，玩法层不得直接碰 PetNestPersistence。
+"""
+import os
+import re
+import sys
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
+
+from petnest_guard_util import (  # noqa: E402
+    PETNEST_DIR,
+    read_petnest,
+    read_text,
+    repo_path,
+    report,
+    strip_cs_comments,
+)
+
+GUARD = "PetNestRuntimeModuleGuard"
+REGISTRATION = os.path.join("Common", "Lifecycle", "BossRushRuntimeModuleRegistration.cs")
+
+
+def check_registration(errors):
+    text = read_text(repo_path(REGISTRATION))
+    if text is None:
+        errors.append("[File] 缺少 " + REGISTRATION)
+        return
+    code = strip_cs_comments(text)
+
+    if code.count("new PetNestRuntimeModule()") != 1:
+        errors.append("[单实例] 注册文件里必须且只能 new PetNestRuntimeModule() 一次")
+    if not re.search(r"petNestRuntime = new PetNestRuntimeModule\(\);\s*\n\s*runtimeModuleHost\.Register\(petNestRuntime\);", code):
+        errors.append("[单实例] 必须先存字段再把同一个引用注册给 host（禁止 Register(new ...)）")
+    if not re.search(r"private PetNestRuntimeModule petNestRuntime;", code):
+        errors.append("[单实例] 缺少 ModBehaviour 持有的字段 petNestRuntime")
+    if not re.search(r"internal PetNestRuntimeModule PetNestRuntime \{ get \{ return petNestRuntime; \} \}", code):
+        errors.append("[门面] 缺少只读门面 ModBehaviour.PetNestRuntime")
+
+
+def check_no_second_new(errors):
+    for root, _dirs, files in os.walk(REPO_ROOT):
+        rel_root = os.path.relpath(root, REPO_ROOT)
+        parts = rel_root.split(os.sep)
+        if any(p in ("Build", ".git", ".codex_tmp", "tests", "docs", "鸭科夫源码", "wiki-site") for p in parts):
+            continue
+        for name in files:
+            if not name.endswith(".cs"):
+                continue
+            rel = os.path.relpath(os.path.join(root, name), REPO_ROOT)
+            if rel.replace("/", os.sep) == REGISTRATION:
+                continue
+            text = read_text(os.path.join(root, name))
+            if text is None:
+                continue
+            if "new PetNestRuntimeModule(" in strip_cs_comments(text):
+                errors.append("[单实例] " + rel + " 不得二次 new PetNestRuntimeModule")
+
+
+def check_module(errors):
+    text = read_petnest("PetNestRuntimeModule.cs")
+    if text is None:
+        errors.append("[File] 缺少 PetNest/PetNestRuntimeModule.cs")
+        return
+    code = strip_cs_comments(text)
+
+    if "BossRushRuntimeModuleBase" not in code:
+        errors.append("[宿主] 必须继承 BossRushRuntimeModuleBase，复用 host 六回调")
+
+    # 开关只经 owner getter
+    if "_owner.IsPetNestConfiguredEnabled()" not in code:
+        errors.append("[开关] 必须只经 owner.IsPetNestConfiguredEnabled() 读取入口开关")
+    if re.search(r"petNestEnabled", code):
+        errors.append("[开关] 模块不得直接触碰配置字段 petNestEnabled")
+
+    # dormant：bootstrap 被 IsEnabled 挡住
+    boot = re.search(r"internal void EnsureBootstrapped\(\)[\s\S]{0,700}?\n        \}", code)
+    if boot is None:
+        errors.append("[dormant] 缺少幂等入口 EnsureBootstrapped()")
+    else:
+        body = boot.group(0)
+        if "if (_bootstrapped) return;" not in body:
+            errors.append("[dormant] EnsureBootstrapped 缺少幂等早返")
+        if "if (!IsEnabled) return;" not in body:
+            errors.append("[dormant] 关闭时必须直接返回，不订阅、不建目录")
+        if "PetNestSaveCoordinator.EnsureSubscribed()" not in body:
+            errors.append("[dormant] 订阅只能发生在 bootstrap 内")
+        if "PetNestLineageCatalog.EnsureBuilt(_owner)" not in body:
+            errors.append("[dormant] 血脉目录只能在 bootstrap 内构建")
+
+    # 订阅不得出现在 bootstrap 之外
+    if code.count("PetNestSaveCoordinator.EnsureSubscribed()") != 1:
+        errors.append("[dormant] EnsureSubscribed 只能在 bootstrap 内出现一次")
+
+    # OnUpdate 未 bootstrap 时零成本早返
+    if not re.search(r"public override void OnUpdate\(float deltaTime, float unscaledDeltaTime\)\s*\{\s*if \(!_bootstrapped\) return;", code):
+        errors.append("[性能] OnUpdate 必须在未 bootstrap 时 O(1) 早返")
+
+    # 运行时关开关要能回到 dormant
+    if "ShutdownIfEnabledTurnedOff" not in code:
+        errors.append("[dormant] 缺少运行时关开关后的退订路径")
+
+    # 不新增全局 hook
+    for forbidden in ["SceneManager.sceneLoaded", "Health.OnDead +=", "Health.OnHurt +=",
+                      "HarmonyPatch", "new Harmony("]:
+        if forbidden in code:
+            errors.append("[最小化] 模块不得新增全局 hook / 补丁: " + forbidden)
+
+
+def check_service(errors):
+    text = read_petnest("PetNestService.cs")
+    if text is None:
+        errors.append("[File] 缺少 PetNest/PetNestService.cs")
+        return
+    code = strip_cs_comments(text)
+
+    if not re.search(r"internal static bool Commit\(out string failureReasonId\)", code):
+        errors.append("[落档] 缺少统一落档入口 Commit(out string)")
+    if "PetNestPersistence.Nest.Store(nest)" not in code:
+        errors.append("[落档] Commit 必须经 store 入队")
+    if "PetNestSaveCoordinator.RequestFlush(out flushError)" not in code:
+        errors.append("[落档] Commit 必须请求协调器落盘")
+
+    # 单席契约
+    if not re.search(r"internal static bool TrySetDeployedPet\(string petId, out string failureReasonId\)", code):
+        errors.append("[单席] 缺少 TrySetDeployedPet 入口")
+    if 'failureReasonId = "pet_locked_by_expedition";' not in code:
+        errors.append("[远征锁定] 远征中的崽必须拒绝上席与移除")
+    if 'failureReasonId = "nest_full";' not in code:
+        errors.append("[容量] 超容必须显式失败，不得静默丢弃玩家的蛋")
+
+    # 玩法层不得直接碰持久化：Service 之外的 PetNest 文件不得引用 PetNestPersistence
+    allowed = {"PetNestService.cs", "PetNestPersistence.cs", "PetNestPersistenceCodec.cs",
+               "PetNestSaveCoordinator.cs"}
+    for name in sorted(os.listdir(PETNEST_DIR)):
+        if not name.endswith(".cs") or name in allowed:
+            continue
+        other = read_text(os.path.join(PETNEST_DIR, name))
+        if other is None:
+            continue
+        if "PetNestPersistence." in strip_cs_comments(other):
+            errors.append("[分层] " + name + " 不得直接访问 PetNestPersistence，必须走 Service")
+
+
+def main():
+    errors = []
+    check_registration(errors)
+    check_no_second_new(errors)
+    check_module(errors)
+    check_service(errors)
+    return report(GUARD, errors)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

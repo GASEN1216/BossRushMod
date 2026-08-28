@@ -700,6 +700,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestPersistenceCodec.cs ^
     PetNest\PetNestPersistence.cs ^
     PetNest\PetNestSaveCoordinator.cs ^
+    PetNest\PetNestService.cs ^
+    PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
     PetNest\PetNestPetProxyBridge.cs ^
