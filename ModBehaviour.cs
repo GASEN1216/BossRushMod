@@ -777,8 +777,11 @@ namespace BossRush
             SafeRuntime.Run("BossRushUI.ResetStaticCaches", () => BossRushUI.ResetStaticCaches());
             SafeRuntime.Run("MutatorUI.ResetStaticCaches", () => MutatorUI.ResetStaticCaches());
 
-            // 遗种巢（PetNest）静态状态复位：随从身份表、借席桥、PoC 探针。
+            // 遗种巢（PetNest）宿主销毁：先尽力落盘一次，再还席、退订、清表。
             // 借席桥必须先还席再清表，否则官方宠物席位会留着我们的死引用。
+            SafeRuntime.Run("PetNestSaveCoordinator.TryFlushOnHostDestroy", () => PetNestSaveCoordinator.TryFlushOnHostDestroy());
+            SafeRuntime.Run("PetNestPersistence.ResetStaticCaches", () => PetNestPersistence.ResetStaticCaches());
+            SafeRuntime.Run("PetNestSaveCoordinator.ResetStaticCaches", () => PetNestSaveCoordinator.ResetStaticCaches());
             SafeRuntime.Run("PetNestPetProxyBridge.ReleaseSeat", () => PetNestPetProxyBridge.ReleaseSeat());
             SafeRuntime.Run("PetNestDebugProbe.ResetStaticCaches", () => PetNestDebugProbe.ResetStaticCaches());
             SafeRuntime.Run("PetNestPetProxyBridge.ResetStaticCaches", () => PetNestPetProxyBridge.ResetStaticCaches());

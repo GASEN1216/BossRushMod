@@ -294,7 +294,10 @@ namespace BossRush
             catch (Exception)
             {
                 try { _self.transform.position = target; }
-                catch (Exception) { }
+                catch (Exception)
+                {
+                    // 传送兜底本身失败：保持原位，下一次维护再试
+                }
             }
         }
 

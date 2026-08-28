@@ -39,8 +39,8 @@ namespace BossRush
         /// BossRush 配置数据类
         /// </summary>
         [Serializable]
-        private class BossRushConfig
-        {
+        private partial class BossRushConfig
+        { // 遗种巢开关 petNestEnabled 见 Config/ConfigPetNest.cs（同一 partial 类）
             public float waveIntervalSeconds = 15f;
             public bool enableRandomBossLoot = true;
             public bool useLegacyBossLootProbabilities = true;
@@ -82,6 +82,7 @@ namespace BossRush
             /// <summary>Mode H 唯一可写入口开关（§24.1），默认关闭；
             /// 真实仓库抵押没有配置字段，进入模式即知情同意。</summary>
             public bool modeHEnabled = false;
+
         }
         
         #endregion
@@ -401,7 +402,7 @@ namespace BossRush
                     object modeHResult = boolLoadMethod.Invoke(null, new object[] { modeHKey, config.modeHEnabled });
                     bool loadedModeH = (bool)modeHResult;
                     config.modeHEnabled = loadedModeH;
-
+                    LoadPetNestEnabledFromModConfig(boolLoadMethod);
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
                 else
@@ -590,6 +591,7 @@ namespace BossRush
                     config.modeHEnabled = (bool)modeHResult;
                     return true;
                 }
+                if (TryLoadPetNestSingleModConfigValue(changedKey, loadMethod)) return true;
             }
             catch (Exception ex)
             {
@@ -909,7 +911,7 @@ namespace BossRush
                 {
                     DevLog("[BossRush] 注册 Mode H 配置项失败: " + ex.Message);
                 }
-
+                RegisterPetNestModConfigOption(addBoolMethod);
                 // ========== 数值滑条类配置 ==========
                 
                 // 波次间休息时间
@@ -1174,6 +1176,7 @@ namespace BossRush
                 return false;
             }
         }
+
 
         #endregion
     }

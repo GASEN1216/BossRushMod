@@ -203,7 +203,10 @@ namespace BossRush
                 string display = preset != null ? preset.DisplayName : null;
                 if (!string.IsNullOrEmpty(display)) return display;
             }
-            catch (Exception) { }
+            catch (Exception)
+            {
+                // 显示名解析失败：继续走下面的回落链
+            }
 
             if (info != null && !string.IsNullOrEmpty(info.displayName)) return info.displayName;
             if (info != null && !string.IsNullOrEmpty(info.name)) return info.name;
