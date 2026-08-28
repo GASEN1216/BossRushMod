@@ -335,6 +335,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHHarmonyPatches.cs ^
     ModeH\ModeHInjuryAndScarSystem.cs ^
     ModeH\ModeHInteractable.cs ^
+    ModeH\ModeHInventoryPersistenceBridge.cs ^
+    ModeH\ModeHItemTreeNormalizer.cs ^
     ModeH\ModeHJsonValue.cs ^
     ModeH\ModeHLoadoutKitApplicator.cs ^
     ModeH\ModeHLoadoutKitRegistry.cs ^
@@ -345,10 +347,12 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHProductionCertification.cs ^
     ModeH\ModeHProfilePersistence.cs ^
     ModeH\ModeHProfileRegistry.cs ^
+    ModeH\ModeHRewardTransaction.cs ^
     ModeH\ModeHRunState.cs ^
     ModeH\ModeHRuntimeGates.cs ^
     ModeH\ModeHRuntimeModule.cs ^
     ModeH\ModeHSaveFlushCoordinator.cs ^
+    ModeH\ModeHSeasonRewardService.cs ^
     ModeH\ModeHSeedStream.cs ^
     ModeH\ModeHSpawnBridge.cs ^
     ModeH\ModeHSpawnTransaction.cs ^
@@ -357,7 +361,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHStateDtos.cs ^
     ModeH\ModeHStateMachine.cs ^
     ModeH\ModeHStateModel.cs ^
+    ModeH\ModeHTransferMarket.cs ^
     ModeH\ModeHVirtualStakeController.cs ^
+    ModeH\ModeHWarehouseStakeJournal.cs ^
     ModeF\ModeFBounty_EquipmentAndLoot.cs ^
     ModeF\ModeFRespawn.cs ^
     ModeF\ModeFExtraction.cs ^

@@ -326,6 +326,7 @@ namespace BossRush
             ModeHCanonicalDigest.ResetStaticCaches();
             ModeHStateMachine.ResetStaticCaches();
             ModeHEventRouter.ResetStaticCaches();
+            ModeHWarehouseStakeJournal.ResetStaticCaches();
             ModeHPresetRegistry.ResetStaticCaches();
             ModeHDeathSuppressionRegistry.ResetStaticCaches();
         }
