@@ -44,9 +44,24 @@ namespace BossRush
         private string _activeStableKey;
         private string _activeAnomalyId;
 
+        private readonly ModeHStandInPerformer _standInPerformer = new ModeHStandInPerformer();
+
         private bool _relayWindowOpen;
         private bool _errorCheckDone;
         private bool _errorTriggered;
+
+        // ERROR 完整互换状态（§17.6.5）
+        private ModeHErrorSwapPhase _swapPhase = ModeHErrorSwapPhase.None;
+        private CharacterMainControl _playerBody;
+        private CharacterMainControl _controlledFighter;
+        private ModeHParticipantRef _controlledParticipant;
+        private Teams _playerOriginalTeam;
+        private Vector3 _playerOriginalPosition;
+        private bool _playerOriginalInvincible;
+        private bool _playerStateCaptured;
+        private float _swapDeadlineRemaining;
+        private string _swapProfileId;
+        private string _swapPatternId;
         private int _matchIndex;
         private long _runSeed;
         private int _entryBatchIndex;
@@ -72,6 +87,18 @@ namespace BossRush
 
         /// <summary>ERROR 判定是否已消耗。</summary>
         public bool ErrorCheckDone { get { return _errorCheckDone; } }
+
+        /// <summary>ERROR 互换是否生效中。</summary>
+        public bool IsErrorSwapActive { get { return _swapPhase == ModeHErrorSwapPhase.Active; } }
+
+        /// <summary>被互换的 profileId（空表示无）。</summary>
+        public string ErrorSwapProfileId { get { return _swapProfileId != null ? _swapProfileId : string.Empty; } }
+
+        /// <summary>当前看台表演模式 ID。</summary>
+        public string StandInPatternId { get { return _swapPatternId != null ? _swapPatternId : string.Empty; } }
+
+        /// <summary>看台表演驱动（只读，供诊断页展示）。</summary>
+        public ModeHStandInPerformer StandInPerformer { get { return _standInPerformer; } }
 
         /// <summary>接力自动窗口是否开启中。</summary>
         public bool IsRelayWindowOpen { get { return _relayWindowOpen; } }
@@ -190,6 +217,7 @@ namespace BossRush
                 deltaTime, _fireContext.ArenaCenter, _fireContext.NearestEnemy,
                 _fireContext.LowestHealthEnemy, _fireContext.EnemyCount);
             _injuryAndScar.Tick(deltaTime, _fireContext);
+            TickErrorSwap(deltaTime);
 
             EvaluateTriggeredInjuries();
 
@@ -422,6 +450,273 @@ namespace BossRush
 
         #endregion
 
+        #region ERROR 完整互换（§17.6.5）
+
+        /// <summary>
+        /// 登记玩家身体与看台点，供互换与恢复使用。
+        /// 由主循环在取得 spectator lease 之后调用一次。
+        /// </summary>
+        public void BindPlayerBody(CharacterMainControl playerBody)
+        {
+            _playerBody = playerBody;
+        }
+
+        /// <summary>
+        /// 尝试开始一次 ERROR 完整互换。执行顺序严格按 §17.6.5：
+        /// 1) 保存玩家身体的 team/position/invincible 与受控选手引用；
+        /// 2) `ControlOtherCharacter(target, -1f)`（无限时长，不得改传正数再乘算）；
+        /// 3) 2 秒 deadline 内确认 `LevelManager.ControllingCharacter` 变为目标选手；
+        /// 4) 先中立无敌、再解冻移动、最后启动表演——顺序不可颠倒。
+        /// </summary>
+        public bool TryBeginErrorSwap(ModeHProfileDto profile, out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (_swapPhase != ModeHErrorSwapPhase.None)
+            {
+                failureReasonId = "error_swap_already_active";
+                return false;
+            }
+            if (!_errorTriggered)
+            {
+                failureReasonId = "error_swap_not_triggered";
+                return false;
+            }
+            if (_playerBody == null || _activeFighter == null || _activeFighter.Character == null
+                || profile == null)
+            {
+                failureReasonId = "error_swap_missing_reference";
+                return false;
+            }
+
+            // 步骤 1：保存一次性状态；互换期间禁止开始结算或换装
+            if (!CaptureplayerState(out failureReasonId)) return false;
+
+            _controlledFighter = _activeFighter.Character;
+            _controlledParticipant = _activeFighter;
+            _swapProfileId = profile.profileId;
+            _swapPatternId = ModeHStandInPerformer.ResolvePatternId(profile.temperamentId);
+
+            // 步骤 2：调用原版控制权切换。StartAction 有优先级仲裁，可能返回 false，
+            // 由 2 秒 deadline 兜底；返回 false 也继续等待，不立刻判失败。
+            try { _playerBody.ControlOtherCharacter(_controlledFighter, -1f); }
+            catch (Exception e)
+            {
+                failureReasonId = "error_swap_control_exception:" + e.GetType().Name;
+                RestoreErrorSwap();
+                return false;
+            }
+
+            _swapPhase = ModeHErrorSwapPhase.AwaitingControl;
+            _swapDeadlineRemaining = ModeHConfig.ErrorControlSwitchDeadlineSeconds;
+            return true;
+        }
+
+        /// <summary>互换状态机的每帧推进（无协程，避免第二条生命周期）。</summary>
+        private void TickErrorSwap(float deltaTime)
+        {
+            if (_swapPhase == ModeHErrorSwapPhase.None) return;
+
+            if (_swapPhase == ModeHErrorSwapPhase.AwaitingControl)
+            {
+                _swapDeadlineRemaining -= deltaTime;
+                if (IsControllingCharacter(_controlledFighter))
+                {
+                    CompleteSwapHandover();
+                    return;
+                }
+                if (_swapDeadlineRemaining <= 0f)
+                {
+                    // 2 秒 deadline 超时：尚无任何影响 profile/settlement 的持久 token，
+                    // 按 §17.6.5 第 7 条完整回滚，比赛照常继续
+                    ModBehaviour.DevLog("[ModeH] ERROR 控制切换超时，已回滚");
+                    RestoreErrorSwap();
+                }
+                return;
+            }
+
+            if (_swapPhase != ModeHErrorSwapPhase.Active) return;
+
+            _standInPerformer.Tick(deltaTime);
+
+            // 受控选手倒地或原版把控制目标还原：以先发生者为准立刻恢复
+            if (_controlledFighter == null
+                || (_telemetry != null && _controlledParticipant != null
+                    && _telemetry.IsDown(_controlledParticipant.ProfileId))
+                || !IsControllingCharacter(_controlledFighter))
+            {
+                RestoreErrorSwap();
+            }
+        }
+
+        /// <summary>
+        /// 控制权已切换：先把身体移到看台、设中立、设无敌，
+        /// 然后才置解冻门并启动表演。顺序不可颠倒。
+        /// </summary>
+        private void CompleteSwapHandover()
+        {
+            Vector3 spectatorPos = _map != null ? _map.SpectatorPos : _playerOriginalPosition;
+
+            TrySetPosition(_playerBody, spectatorPos);
+            TrySetTeam(_playerBody, Teams.middle);
+            TrySetInvincible(_playerBody, true);
+
+            int bodyId = 0;
+            try { bodyId = _playerBody.gameObject.GetInstanceID(); }
+            catch (Exception)
+            {
+                // 身体已被回收：bodyId 保持 0，下面的门会因此拒绝置位
+                bodyId = 0;
+            }
+            ModeHRuntimeGates.SetStandInActive(bodyId != 0, bodyId);
+
+            string reason;
+            if (!_standInPerformer.TryStart(_playerBody, spectatorPos, _swapPatternId, out reason))
+            {
+                // 表演启动失败不升级为技术中止：互换本身仍然成立，身体只是静止
+                ModBehaviour.DevLog("[ModeH] 看台表演未启动: " + reason);
+            }
+
+            // 遥测归属映射：互换期间 fromCharacter 会被原版改写为 Main
+            ModeHEventRouter.SetErrorSwapControlledParticipant(_controlledParticipant);
+            _swapPhase = ModeHErrorSwapPhase.Active;
+        }
+
+        /// <summary>
+        /// 幂等恢复，顺序按 §17.6.5 第 5 条：
+        /// 停止表演 -> 清解冻门 -> 确认控制目标已还原 -> 受控选手重设回 scav
+        /// -> 恢复玩家身体 team -> 恢复 invincible -> 恢复位置。
+        /// 持有物显示由原版 `SwitchToWeaponBeforeUse` 自动恢复，这里不抢先改写。
+        /// </summary>
+        public void RestoreErrorSwap()
+        {
+            if (_swapPhase == ModeHErrorSwapPhase.None && !_playerStateCaptured) return;
+
+            // 1) 停止表演驱动
+            _standInPerformer.Stop();
+
+            // 2) 清零解冻门（ModeHIsolationGuard 断言退出后必须为 false）
+            ModeHRuntimeGates.SetStandInActive(false, 0);
+
+            // 3) 独立确认控制目标已回到玩家身体，不只信任原版回调
+            if (_playerBody != null && !IsControllingCharacter(_playerBody))
+            {
+                TryRestoreControllingCharacter(_playerBody);
+            }
+
+            // 4) 仍存活的受控选手重设回 scav（对冲原版开火时的 SetTeam(Teams.all) 改写）
+            if (_controlledFighter != null && !IsDead(_controlledFighter))
+            {
+                TrySetTeam(_controlledFighter, Teams.scav);
+            }
+
+            // 5..7) 恢复玩家身体 team -> invincible -> 位置
+            if (_playerStateCaptured && _playerBody != null)
+            {
+                TrySetTeam(_playerBody, _playerOriginalTeam);
+                TrySetInvincible(_playerBody, _playerOriginalInvincible);
+                TrySetPosition(_playerBody, _playerOriginalPosition);
+            }
+
+            ModeHEventRouter.SetErrorSwapControlledParticipant(null);
+            _swapPhase = ModeHErrorSwapPhase.None;
+            _controlledFighter = null;
+            _controlledParticipant = null;
+            _playerStateCaptured = false;
+            _swapDeadlineRemaining = 0f;
+        }
+
+        /// <summary>保存玩家身体的一次性状态。任一项读不到即拒绝互换（fail-closed）。</summary>
+        private bool CaptureplayerState(out string failureReasonId)
+        {
+            failureReasonId = null;
+            try
+            {
+                _playerOriginalTeam = _playerBody.Team;
+                _playerOriginalPosition = _playerBody.transform.position;
+                _playerOriginalInvincible = _playerBody.Health != null && _playerBody.Health.Invincible;
+                _playerStateCaptured = true;
+                return true;
+            }
+            catch (Exception e)
+            {
+                failureReasonId = "error_swap_capture_failed:" + e.GetType().Name;
+                _playerStateCaptured = false;
+                return false;
+            }
+        }
+
+        private static bool IsControllingCharacter(CharacterMainControl target)
+        {
+            if (target == null) return false;
+            try
+            {
+                return LevelManager.Instance != null
+                    && ReferenceEquals(LevelManager.Instance.ControllingCharacter, target);
+            }
+            catch (Exception)
+            {
+                // 关卡已卸载：按“未持有控制权”处理，恢复流程照常收尾
+                return false;
+            }
+        }
+
+        private static void TryRestoreControllingCharacter(CharacterMainControl body)
+        {
+            try
+            {
+                if (LevelManager.Instance != null) LevelManager.Instance.SetControllingCharacter(body);
+            }
+            catch (Exception)
+            {
+                // 关卡已卸载：控制目标随场景一并消失，无需补偿
+            }
+        }
+
+        private static bool IsDead(CharacterMainControl character)
+        {
+            try { return character.Health == null || character.Health.IsDead; }
+            catch (Exception)
+            {
+                // 读不到生命组件：按已死亡处理，不再改写阵营
+                return true;
+            }
+        }
+
+        private static void TrySetTeam(CharacterMainControl character, Teams team)
+        {
+            if (character == null) return;
+            try { character.SetTeam(team); }
+            catch (Exception)
+            {
+                // 单步失败不阻断恢复顺序的其余步骤
+            }
+        }
+
+        private static void TrySetInvincible(CharacterMainControl character, bool invincible)
+        {
+            if (character == null) return;
+            try
+            {
+                if (character.Health != null) character.Health.SetInvincible(invincible);
+            }
+            catch (Exception)
+            {
+                // 同上
+            }
+        }
+
+        private static void TrySetPosition(CharacterMainControl character, Vector3 position)
+        {
+            if (character == null) return;
+            try { character.SetPosition(position); }
+            catch (Exception)
+            {
+                // 同上
+            }
+        }
+
+        #endregion
+
         #region 快照与还原
 
         /// <summary>补齐上下文并采集一次快照。</summary>
@@ -454,6 +749,7 @@ namespace BossRush
         /// </summary>
         public void RestoreAll()
         {
+            RestoreErrorSwap();
             _commandController.RestoreAll();
             _injuryAndScar.RestoreAll();
             _relayWindowOpen = false;

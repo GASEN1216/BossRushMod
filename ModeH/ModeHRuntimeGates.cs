@@ -55,6 +55,13 @@ namespace BossRush
         private static string _riskReasonId;
         private static string _contentReasonId;
 
+        // ERROR 完整互换（§17.6.5 部件二）：看台身体解冻门。
+        // 只有 ModeHCombatControl 在持有有效 run owner token 且互换已完成时才置位；
+        // 释放、倒地、比赛结束、技术中止、切图与 OnDestroy 都必须清零。
+        // 两个 Harmony postfix 读的是它的零分配快路径。
+        private static volatile bool _standInActive;
+        private static int _standInBodyInstanceId;
+
         #endregion
 
         #region 五个只读结果
@@ -144,6 +151,8 @@ namespace BossRush
         public static void ResetStaticCaches()
         {
             ResetForSlotChange();
+            // 看台解冻门必须随 Mod 卸载归零（ModeHIsolationGuard 断言退出后为 false）
+            SetStandInActive(false, 0);
             lock (_lock)
             {
                 _slotGeneration = 0;
@@ -285,6 +294,28 @@ namespace BossRush
                 _contentReady = ready;
                 _contentReasonId = reason;
             }
+        }
+
+        /// <summary>
+        /// 看台身体是否已解冻（§17.6.5 部件二的唯一门）。
+        /// 热路径读取：零分配 bool，不加锁、不建集合。
+        /// </summary>
+        public static bool IsModeHStandInActive { get { return _standInActive; } }
+
+        /// <summary>
+        /// 置位/清零看台解冻门。唯一写入点由 ModeHCombatControl 持有；
+        /// bodyInstanceId 用于 postfix 的 O(1) 身份比对，清零时一并置 0。
+        /// </summary>
+        public static void SetStandInActive(bool active, int bodyInstanceId)
+        {
+            _standInBodyInstanceId = active ? bodyInstanceId : 0;
+            _standInActive = active && bodyInstanceId != 0;
+        }
+
+        /// <summary>该 GameObject 是否是本场已登记的玩家身体（postfix 的 O(1) 身份查询）。</summary>
+        public static bool IsModeHStandInBody(int instanceId)
+        {
+            return _standInActive && instanceId != 0 && instanceId == _standInBodyInstanceId;
         }
 
         /// <summary>由唯一 runtime 实例登记/撤销运行 owner。</summary>

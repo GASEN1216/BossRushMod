@@ -112,12 +112,28 @@ def main():
             if source.strip() != "typeId":
                 errors.append("[Refund] 只允许实例化船票 typeId，发现: " + source.strip())
 
-    # StandIn gate 归零（文件存在时才断言，ERROR 部件在步骤 11 落地）
+    # StandIn gate 归零：唯一写入点在 ModeHRuntimeGates.SetStandInActive，
+    # 战斗控制的恢复入口与宿主静态复位都必须调用清零形式。
+    gates = read_text(os.path.join(MODEH_DIR, "ModeHRuntimeGates.cs"))
+    if gates is not None:
+        gates_code = strip_cs_comments(gates)
+        if "public static bool IsModeHStandInActive" not in gates_code:
+            errors.append("[StandIn] 缺少 IsModeHStandInActive 门")
+        if len(re.findall(r"_standInActive\s*=", gates_code)) != 1:
+            errors.append("[StandIn] IsModeHStandInActive 只能有一个写入点")
+        reset = re.search(
+            r"public static void ResetStaticCaches\(\)[\s\S]*?\n        \}", gates_code)
+        if reset and "SetStandInActive(false, 0);" not in reset.group(0):
+            errors.append("[StandIn] 宿主静态复位必须把看台解冻门归零")
+
     combat = read_text(os.path.join(MODEH_DIR, "ModeHCombatControl.cs"))
     if combat is not None:
         code = strip_cs_comments(combat)
-        if "IsModeHStandInActive" in code and "IsModeHStandInActive = false" not in code:
-            errors.append("[StandIn] 退出路径必须把 IsModeHStandInActive 归零")
+        if "ModeHRuntimeGates.SetStandInActive(false, 0);" not in code:
+            errors.append("[StandIn] 互换恢复路径必须把看台解冻门归零")
+        restore_all = re.search(r"public void RestoreAll\(\)[\s\S]*?\n        \}", code)
+        if restore_all and "RestoreErrorSwap();" not in restore_all.group(0):
+            errors.append("[StandIn] 统一还原入口必须包含互换恢复")
 
     if errors:
         print("ModeHIsolationGuard: FAIL ({} errors)".format(len(errors)))

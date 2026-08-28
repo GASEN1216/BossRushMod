@@ -242,6 +242,20 @@ namespace BossRush
         PlayerDefeat = 2
     }
 
+    /// <summary>
+    /// ERROR 完整互换的运行时相位（§17.6.5）。只在内存，不进任何持久 DTO：
+    /// 快照里只保存 errorSwapActive / errorSwapProfileId / standInPatternId 三个事实。
+    /// </summary>
+    internal enum ModeHErrorSwapPhase
+    {
+        /// <summary>未互换</summary>
+        None = 0,
+        /// <summary>已调用 ControlOtherCharacter，等待 2 秒 deadline 内确认控制权</summary>
+        AwaitingControl = 1,
+        /// <summary>互换生效中（看台身体已中立无敌并解冻）</summary>
+        Active = 2
+    }
+
     /// <summary>真实资产路径：逐项 receipt 状态（§20.1 冻结）。</summary>
     public enum ModeHStakeReceiptStatus
     {

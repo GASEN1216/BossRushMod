@@ -332,6 +332,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHEntry.cs ^
     ModeH\ModeHEventRouter.cs ^
     ModeH\ModeHHallOfFamePersistence.cs ^
+    ModeH\ModeHHarmonyPatches.cs ^
     ModeH\ModeHInjuryAndScarSystem.cs ^
     ModeH\ModeHInteractable.cs ^
     ModeH\ModeHJsonValue.cs ^
@@ -352,6 +353,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHSpawnBridge.cs ^
     ModeH\ModeHSpawnTransaction.cs ^
     ModeH\ModeHSpectatorLease.cs ^
+    ModeH\ModeHStandInPerformer.cs ^
     ModeH\ModeHStateDtos.cs ^
     ModeH\ModeHStateMachine.cs ^
     ModeH\ModeHStateModel.cs ^
