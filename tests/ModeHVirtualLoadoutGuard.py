@@ -11,6 +11,9 @@ ModeHVirtualLoadoutGuard — Mode H 虚拟整备守卫（设计提案 §17.7、�
 - 只允许 PrimaryWeapon/SecondaryWeapon/MeleeWeapon/Armor/Helmat 五个槽位；
 - 每名选手最多 4 件 kit；
 - 枪械槽必须冻结弹药（固定 ammoTypeId 或按口径解析 + 数量）；
+- 全部 kit 的 typeId 必须固定为官方 Item.TypeID（>0）：固定 id 走
+  ModeHLoadoutKitRegistry.ResolveOne 的 typeId>0 直读分支，运行时零 Search 开销；
+  声明 gameQuality 必须与解析区间自洽；
 - 禁用类型断言存在，含 controlMindType != none 武器（§17.6.5）；
 - 只有 kit applicator 可以访问 owner 标记的临时选手 slots/inventory；
   kit registry 与其它 Mode H 文件不得引用 CharacterMainControl.Main / PlayerStorage / 玩家 ItemTreeData。
@@ -104,8 +107,16 @@ def main():
 
         type_id = kit.get("typeId", 0)
         resolve_tags = kit.get("resolveTags") or []
-        if not (isinstance(type_id, int) and type_id > 0) and not resolve_tags:
-            errors.append("[Kit] {} 既没有固定 typeId 也没有解析标签".format(kit_id))
+        if not (isinstance(type_id, int) and type_id > 0):
+            errors.append(
+                "[Kit] {} typeId 必须固定为官方 Item.TypeID（>0），"
+                "否则每次入口都要走 ItemAssetsCollection.Search".format(kit_id))
+        if not resolve_tags:
+            errors.append("[Kit] {} 缺少降级检索口径 resolveTags".format(kit_id))
+        if isinstance(type_id, int) and type_id > 0 and quality is not None:
+            if kit.get("resolveMinQuality") != quality or kit.get("resolveMaxQuality") != quality:
+                errors.append(
+                    "[Kit] {} 固定 typeId 后解析区间必须收敛到声明 gameQuality".format(kit_id))
         if resolve_tags:
             min_q = kit.get("resolveMinQuality")
             max_q = kit.get("resolveMaxQuality")

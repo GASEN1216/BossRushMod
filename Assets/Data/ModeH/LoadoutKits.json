@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "gameBuildSignature": "",
   "modBuildSignature": "",
-  "contentSignature": "49420e86ace492b459271413127ca154cee9da3332a8bf816cb2c69c64337a51",
+  "contentSignature": "fc91604e37cc6b6baa76cfb1b1b205cc4e7711b8c52a04e261a8b5a72e07da5a",
   "documentId": "modeh_loadout_kits",
   "numberConvention": "integer-only",
-  "resolutionNote": "typeId 0 means the official item is resolved deterministically at load time via ItemAssetsCollection.Search(ItemFilter) using resolveTags + resolveMinQuality/resolveMaxQuality, then sorted ascending by typeId and indexed by resolveOrdinal. The resolved id is pinned into the runtime kit record and audited for slot, quality, ammo and forbidden types. Owner may replace typeId 0 with a pinned official id after the ModeHControlPointHarness item dump; pinned ids skip resolution but keep the same audit.",
+  "resolutionNote": "typeId 已固定为官方 Item.TypeID（来源：官方 wiki 物品数据库，并用 862/1254/1158/1165/868 五个仓库与反编译锚点交叉验证）。ModeHLoadoutKitRegistry.ResolveOne 在 typeId>0 时直接读 ItemAssetsCollection.GetMetaData，不再走 Search，运行时零检索开销。resolveTags/resolveMinQuality/resolveMaxQuality/resolveOrdinal 保留为固定 id 在未来版本失效时的降级检索口径，正常路径不使用。",
   "forbiddenRules": [
     "no controlMindType weapons (nested control chain risk, section 17.6.5)",
     "no backpacks, containers, consumables, random enchantments, unique items",
@@ -29,11 +29,11 @@
       "nameKey": "BossRush_ModeH_Kit_starter_field_armor",
       "descKey": "BossRush_ModeH_Kit_starter_field_armor_Desc",
       "replaceSlot": "Armor",
-      "typeId": 0,
+      "typeId": 2,
       "resolveTags": [
         "BodyArmor"
       ],
-      "resolveMinQuality": 2,
+      "resolveMinQuality": 3,
       "resolveMaxQuality": 3,
       "resolveOrdinal": 0,
       "gameQuality": 3,
@@ -50,7 +50,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_light"
-      ]
+      ],
+      "officialItemName": "三级防弹衣"
     },
     {
       "kitId": "starter_field_helmet",
@@ -59,11 +60,11 @@
       "nameKey": "BossRush_ModeH_Kit_starter_field_helmet",
       "descKey": "BossRush_ModeH_Kit_starter_field_helmet_Desc",
       "replaceSlot": "Helmat",
-      "typeId": 0,
+      "typeId": 43,
       "resolveTags": [
         "Helmat"
       ],
-      "resolveMinQuality": 2,
+      "resolveMinQuality": 3,
       "resolveMaxQuality": 3,
       "resolveOrdinal": 0,
       "gameQuality": 3,
@@ -80,7 +81,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_light"
-      ]
+      ],
+      "officialItemName": "特警头盔"
     },
     {
       "kitId": "starter_assault_rifle",
@@ -89,17 +91,17 @@
       "nameKey": "BossRush_ModeH_Kit_starter_assault_rifle",
       "descKey": "BossRush_ModeH_Kit_starter_assault_rifle_Desc",
       "replaceSlot": "PrimaryWeapon",
-      "typeId": 0,
+      "typeId": 238,
       "resolveTags": [
         "Gun"
       ],
-      "resolveMinQuality": 3,
+      "resolveMinQuality": 4,
       "resolveMaxQuality": 4,
       "resolveOrdinal": 0,
       "gameQuality": 4,
-      "ammoTypeId": 0,
+      "ammoTypeId": 604,
       "ammoCount": 120,
-      "resolveAmmoByCaliber": true,
+      "resolveAmmoByCaliber": false,
       "compatibleArchetypeIds": [
         "assault",
         "sustain"
@@ -107,7 +109,9 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "burst"
-      ]
+      ],
+      "officialItemName": "AK-103",
+      "officialAmmoName": "AR-普通弹"
     },
     {
       "kitId": "starter_assault_blade",
@@ -116,11 +120,11 @@
       "nameKey": "BossRush_ModeH_Kit_starter_assault_blade",
       "descKey": "BossRush_ModeH_Kit_starter_assault_blade_Desc",
       "replaceSlot": "MeleeWeapon",
-      "typeId": 0,
+      "typeId": 1074,
       "resolveTags": [
         "MeleeWeapon"
       ],
-      "resolveMinQuality": 2,
+      "resolveMinQuality": 3,
       "resolveMaxQuality": 3,
       "resolveOrdinal": 0,
       "gameQuality": 3,
@@ -135,7 +139,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "melee_rush"
-      ]
+      ],
+      "officialItemName": "棒球棍"
     },
     {
       "kitId": "starter_marksman_rifle",
@@ -144,17 +149,17 @@
       "nameKey": "BossRush_ModeH_Kit_starter_marksman_rifle",
       "descKey": "BossRush_ModeH_Kit_starter_marksman_rifle_Desc",
       "replaceSlot": "PrimaryWeapon",
-      "typeId": 0,
+      "typeId": 782,
       "resolveTags": [
         "Gun"
       ],
-      "resolveMinQuality": 4,
+      "resolveMinQuality": 5,
       "resolveMaxQuality": 5,
       "resolveOrdinal": 0,
       "gameQuality": 5,
-      "ammoTypeId": 0,
-      "ammoCount": 90,
-      "resolveAmmoByCaliber": true,
+      "ammoTypeId": 622,
+      "ammoCount": 40,
+      "resolveAmmoByCaliber": false,
       "compatibleArchetypeIds": [
         "ranged",
         "finisher"
@@ -162,7 +167,9 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "ranged_pressure"
-      ]
+      ],
+      "officialItemName": "SV98",
+      "officialAmmoName": "普通狙击弹"
     },
     {
       "kitId": "starter_sidearm",
@@ -171,17 +178,17 @@
       "nameKey": "BossRush_ModeH_Kit_starter_sidearm",
       "descKey": "BossRush_ModeH_Kit_starter_sidearm_Desc",
       "replaceSlot": "SecondaryWeapon",
-      "typeId": 0,
+      "typeId": 254,
       "resolveTags": [
         "Gun"
       ],
       "resolveMinQuality": 2,
-      "resolveMaxQuality": 3,
+      "resolveMaxQuality": 2,
       "resolveOrdinal": 1,
-      "gameQuality": 3,
-      "ammoTypeId": 0,
+      "gameQuality": 2,
+      "ammoTypeId": 595,
       "ammoCount": 60,
-      "resolveAmmoByCaliber": true,
+      "resolveAmmoByCaliber": false,
       "compatibleArchetypeIds": [
         "assault",
         "finisher",
@@ -192,7 +199,9 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "backup"
-      ]
+      ],
+      "officialItemName": "格力克",
+      "officialAmmoName": "S-普通弹"
     },
     {
       "kitId": "starter_heavy_plate",
@@ -201,11 +210,11 @@
       "nameKey": "BossRush_ModeH_Kit_starter_heavy_plate",
       "descKey": "BossRush_ModeH_Kit_starter_heavy_plate_Desc",
       "replaceSlot": "Armor",
-      "typeId": 0,
+      "typeId": 35,
       "resolveTags": [
         "BodyArmor"
       ],
-      "resolveMinQuality": 4,
+      "resolveMinQuality": 5,
       "resolveMaxQuality": 5,
       "resolveOrdinal": 0,
       "gameQuality": 5,
@@ -219,7 +228,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_heavy"
-      ]
+      ],
+      "officialItemName": "五级防弹衣"
     },
     {
       "kitId": "starter_scout_helmet",
@@ -228,11 +238,11 @@
       "nameKey": "BossRush_ModeH_Kit_starter_scout_helmet",
       "descKey": "BossRush_ModeH_Kit_starter_scout_helmet_Desc",
       "replaceSlot": "Helmat",
-      "typeId": 0,
+      "typeId": 44,
       "resolveTags": [
         "Helmat"
       ],
-      "resolveMinQuality": 3,
+      "resolveMinQuality": 4,
       "resolveMaxQuality": 4,
       "resolveOrdinal": 1,
       "gameQuality": 4,
@@ -247,7 +257,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_light"
-      ]
+      ],
+      "officialItemName": "SightPRO头盔"
     },
     {
       "kitId": "reward_breacher_gun",
@@ -256,17 +267,17 @@
       "nameKey": "BossRush_ModeH_Kit_reward_breacher_gun",
       "descKey": "BossRush_ModeH_Kit_reward_breacher_gun_Desc",
       "replaceSlot": "PrimaryWeapon",
-      "typeId": 0,
+      "typeId": 1286,
       "resolveTags": [
         "Gun"
       ],
       "resolveMinQuality": 5,
-      "resolveMaxQuality": 6,
+      "resolveMaxQuality": 5,
       "resolveOrdinal": 0,
-      "gameQuality": 6,
-      "ammoTypeId": 0,
+      "gameQuality": 5,
+      "ammoTypeId": 604,
       "ammoCount": 150,
-      "resolveAmmoByCaliber": true,
+      "resolveAmmoByCaliber": false,
       "compatibleArchetypeIds": [
         "assault",
         "sustain"
@@ -274,7 +285,9 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "burst"
-      ]
+      ],
+      "officialItemName": "MK-47",
+      "officialAmmoName": "AR-普通弹"
     },
     {
       "kitId": "reward_long_barrel",
@@ -283,17 +296,17 @@
       "nameKey": "BossRush_ModeH_Kit_reward_long_barrel",
       "descKey": "BossRush_ModeH_Kit_reward_long_barrel_Desc",
       "replaceSlot": "PrimaryWeapon",
-      "typeId": 0,
+      "typeId": 869,
       "resolveTags": [
         "Gun"
       ],
-      "resolveMinQuality": 6,
+      "resolveMinQuality": 7,
       "resolveMaxQuality": 7,
       "resolveOrdinal": 0,
       "gameQuality": 7,
-      "ammoTypeId": 0,
-      "ammoCount": 90,
-      "resolveAmmoByCaliber": true,
+      "ammoTypeId": 870,
+      "ammoCount": 30,
+      "resolveAmmoByCaliber": false,
       "compatibleArchetypeIds": [
         "ranged",
         "finisher"
@@ -301,7 +314,9 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "ranged_pressure"
-      ]
+      ],
+      "officialItemName": "连珠弓",
+      "officialAmmoName": "低级穿甲箭"
     },
     {
       "kitId": "reward_riot_plate",
@@ -310,14 +325,14 @@
       "nameKey": "BossRush_ModeH_Kit_reward_riot_plate",
       "descKey": "BossRush_ModeH_Kit_reward_riot_plate_Desc",
       "replaceSlot": "Armor",
-      "typeId": 0,
+      "typeId": 885,
       "resolveTags": [
         "BodyArmor"
       ],
       "resolveMinQuality": 6,
-      "resolveMaxQuality": 7,
+      "resolveMaxQuality": 6,
       "resolveOrdinal": 0,
-      "gameQuality": 7,
+      "gameQuality": 6,
       "ammoTypeId": 0,
       "ammoCount": 0,
       "resolveAmmoByCaliber": false,
@@ -331,7 +346,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_heavy"
-      ]
+      ],
+      "officialItemName": "六级防弹衣"
     },
     {
       "kitId": "reward_command_helmet",
@@ -340,11 +356,11 @@
       "nameKey": "BossRush_ModeH_Kit_reward_command_helmet",
       "descKey": "BossRush_ModeH_Kit_reward_command_helmet_Desc",
       "replaceSlot": "Helmat",
-      "typeId": 0,
+      "typeId": 46,
       "resolveTags": [
         "Helmat"
       ],
-      "resolveMinQuality": 5,
+      "resolveMinQuality": 6,
       "resolveMaxQuality": 6,
       "resolveOrdinal": 0,
       "gameQuality": 6,
@@ -361,7 +377,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_light"
-      ]
+      ],
+      "officialItemName": "神之电焊头"
     },
     {
       "kitId": "reward_executioner_blade",
@@ -370,11 +387,11 @@
       "nameKey": "BossRush_ModeH_Kit_reward_executioner_blade",
       "descKey": "BossRush_ModeH_Kit_reward_executioner_blade_Desc",
       "replaceSlot": "MeleeWeapon",
-      "typeId": 0,
+      "typeId": 1175,
       "resolveTags": [
         "MeleeWeapon"
       ],
-      "resolveMinQuality": 5,
+      "resolveMinQuality": 6,
       "resolveMaxQuality": 6,
       "resolveOrdinal": 0,
       "gameQuality": 6,
@@ -389,7 +406,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "melee_rush"
-      ]
+      ],
+      "officialItemName": "爪刀"
     },
     {
       "kitId": "reward_hold_out_pistol",
@@ -398,17 +416,17 @@
       "nameKey": "BossRush_ModeH_Kit_reward_hold_out_pistol",
       "descKey": "BossRush_ModeH_Kit_reward_hold_out_pistol_Desc",
       "replaceSlot": "SecondaryWeapon",
-      "typeId": 0,
+      "typeId": 785,
       "resolveTags": [
         "Gun"
       ],
       "resolveMinQuality": 4,
-      "resolveMaxQuality": 5,
+      "resolveMaxQuality": 4,
       "resolveOrdinal": 1,
-      "gameQuality": 5,
-      "ammoTypeId": 0,
-      "ammoCount": 60,
-      "resolveAmmoByCaliber": true,
+      "gameQuality": 4,
+      "ammoTypeId": 640,
+      "ammoCount": 32,
+      "resolveAmmoByCaliber": false,
       "compatibleArchetypeIds": [
         "assault",
         "finisher",
@@ -419,7 +437,9 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "backup"
-      ]
+      ],
+      "officialItemName": "沙漠之鹰",
+      "officialAmmoName": "MAG-普通弹"
     },
     {
       "kitId": "reward_bulwark_plate",
@@ -428,14 +448,14 @@
       "nameKey": "BossRush_ModeH_Kit_reward_bulwark_plate",
       "descKey": "BossRush_ModeH_Kit_reward_bulwark_plate_Desc",
       "replaceSlot": "Armor",
-      "typeId": 0,
+      "typeId": 920,
       "resolveTags": [
         "BodyArmor"
       ],
       "resolveMinQuality": 7,
-      "resolveMaxQuality": 8,
+      "resolveMaxQuality": 7,
       "resolveOrdinal": 0,
-      "gameQuality": 8,
+      "gameQuality": 7,
       "ammoTypeId": 0,
       "ammoCount": 0,
       "resolveAmmoByCaliber": false,
@@ -445,7 +465,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "armor_heavy"
-      ]
+      ],
+      "officialItemName": "空间防护服终极版"
     },
     {
       "kitId": "reward_skirmisher_blade",
@@ -454,11 +475,11 @@
       "nameKey": "BossRush_ModeH_Kit_reward_skirmisher_blade",
       "descKey": "BossRush_ModeH_Kit_reward_skirmisher_blade_Desc",
       "replaceSlot": "MeleeWeapon",
-      "typeId": 0,
+      "typeId": 1174,
       "resolveTags": [
         "MeleeWeapon"
       ],
-      "resolveMinQuality": 4,
+      "resolveMinQuality": 5,
       "resolveMaxQuality": 5,
       "resolveOrdinal": 1,
       "gameQuality": 5,
@@ -473,7 +494,8 @@
       "compatibleProfileIds": [],
       "publicTags": [
         "melee_rush"
-      ]
+      ],
+      "officialItemName": "指虎刀"
     }
   ]
 }

@@ -315,7 +315,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeG\ModeGInteractable.cs ^
     ModeH\ModeHArenaIsolationLease.cs ^
     ModeH\ModeHAvailability.cs ^
+    ModeH\ModeHBattleSnapshot.cs ^
     ModeH\ModeHCanonicalDigest.cs ^
+    ModeH\ModeHCombatControl.cs ^
+    ModeH\ModeHCombatTelemetry.cs ^
     ModeH\ModeHCommandAdapters.cs ^
     ModeH\ModeHCommandCompatibilityRegistry.cs ^
     ModeH\ModeHCommandController.cs ^
@@ -327,7 +330,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHDraftController.cs ^
     ModeH\ModeHEncounterPlanner.cs ^
     ModeH\ModeHEntry.cs ^
+    ModeH\ModeHEventRouter.cs ^
     ModeH\ModeHHallOfFamePersistence.cs ^
+    ModeH\ModeHInjuryAndScarSystem.cs ^
     ModeH\ModeHInteractable.cs ^
     ModeH\ModeHJsonValue.cs ^
     ModeH\ModeHLoadoutKitApplicator.cs ^

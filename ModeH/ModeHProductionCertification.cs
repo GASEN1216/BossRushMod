@@ -28,6 +28,11 @@ namespace BossRush
 
         private readonly ModeHSpawnDiagnostics _diagnostics = new ModeHSpawnDiagnostics();
 
+        private readonly Dictionary<string, bool> _observedDamageByKey =
+            new Dictionary<string, bool>(StringComparer.Ordinal);
+        private readonly Dictionary<string, bool> _observedDeathByKey =
+            new Dictionary<string, bool>(StringComparer.Ordinal);
+
         private ModeHProductionCertificationDto _report;
         private bool _running;
         private bool _cancelled;
@@ -35,6 +40,12 @@ namespace BossRush
 
         /// <summary>诊断 owner 注册表：认证角色的事件只进认证记录，不进战斗遥测。</summary>
         private static readonly HashSet<int> _diagnosticHealthIds = new HashSet<int>();
+
+        /// <summary>
+        /// 当前正在运行认证的实例。ModeHEventRouter 命中诊断注册表后只把事件转到这里，
+        /// 认证结束/取消/异常都会立刻解绑，正式开战期间恒为 null。
+        /// </summary>
+        private static ModeHProductionCertification _activeDiagnosticSink;
 
         #endregion
 
@@ -53,6 +64,61 @@ namespace BossRush
         internal bool IsCurrentRuntimePassed
         {
             get { return _report != null && _report.overallPassed; }
+        }
+
+        /// <summary>正式开战前诊断事件接收端必须已解绑。</summary>
+        internal static bool IsDiagnosticSinkBound
+        {
+            get { return _activeDiagnosticSink != null; }
+        }
+
+        /// <summary>绑定诊断事件接收端（只由认证流程自身调用）。</summary>
+        internal static void BindDiagnosticSink(ModeHProductionCertification instance)
+        {
+            _activeDiagnosticSink = instance;
+        }
+
+        /// <summary>解绑诊断事件接收端；幂等，认证的每条退出路径都会调用。</summary>
+        internal static void UnbindDiagnosticSink()
+        {
+            _activeDiagnosticSink = null;
+        }
+
+        /// <summary>
+        /// 由 ModeHEventRouter 转来的诊断受伤事件。只写认证记录，
+        /// 绝不生成 ModeHFighterDownToken、伤病、战报或奖励。
+        /// </summary>
+        internal static void NotifyDiagnosticHurt(string stableKey, float damageValue)
+        {
+            ModeHProductionCertification sink = _activeDiagnosticSink;
+            if (sink == null || string.IsNullOrEmpty(stableKey)) return;
+            sink._diagnostics.DamageEventCount++;
+            sink._observedDamageByKey[stableKey] = true;
+        }
+
+        /// <summary>由 ModeHEventRouter 转来的诊断死亡事件。同样只写认证记录。</summary>
+        internal static void NotifyDiagnosticDead(string stableKey)
+        {
+            ModeHProductionCertification sink = _activeDiagnosticSink;
+            if (sink == null || string.IsNullOrEmpty(stableKey)) return;
+            sink._diagnostics.DeathEventCount++;
+            sink._observedDeathByKey[stableKey] = true;
+        }
+
+        /// <summary>该 key 在本次认证中是否观察到双向伤害。</summary>
+        internal bool HasObservedDamage(string stableKey)
+        {
+            bool value;
+            return !string.IsNullOrEmpty(stableKey)
+                && _observedDamageByKey.TryGetValue(stableKey, out value) && value;
+        }
+
+        /// <summary>该 key 在本次认证中是否观察到规范死亡。</summary>
+        internal bool HasObservedDeath(string stableKey)
+        {
+            bool value;
+            return !string.IsNullOrEmpty(stableKey)
+                && _observedDeathByKey.TryGetValue(stableKey, out value) && value;
         }
 
         /// <summary>正式开战前 diagnostic registry 必须为空。</summary>
@@ -135,6 +201,9 @@ namespace BossRush
             _cancelled = false;
             _records.Clear();
             _diagnosticHealthIds.Clear();
+            _observedDamageByKey.Clear();
+            _observedDeathByKey.Clear();
+            BindDiagnosticSink(this);
 
             float poolDeadline = Time.realtimeSinceStartup + ModeHConfig.CertificationPoolTimeoutSeconds;
 
@@ -165,6 +234,8 @@ namespace BossRush
             }
 
             _running = false;
+            // 认证结束的每条退出路径都必须先解绑诊断接收端：正式开战期间不得有诊断路由
+            UnbindDiagnosticSink();
             _report = BuildReport();
             ApplyReportToRegistries(_report);
 
@@ -183,6 +254,7 @@ namespace BossRush
         {
             _cancelled = true;
             _diagnosticHealthIds.Clear();
+            UnbindDiagnosticSink();
         }
 
         private IEnumerator CertifyKey(

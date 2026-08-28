@@ -27,6 +27,33 @@ namespace BossRush
         public Vector3 ExitPos;
         /// <summary>擂台中心（由刷怪点求均值，供 center 口令点火使用）。</summary>
         public Vector3 ArenaCenter;
+
+        /// <summary>
+        /// 擂台半径：由中心到最远刷怪点的距离再留一倍余量。
+        /// 战场快照重建的位置可用性判定使用同一个定义，避免出现第二套边界。
+        /// </summary>
+        public float ArenaRadius
+        {
+            get
+            {
+                if (ArenaSpawnPoints == null || ArenaSpawnPoints.Length == 0) return 0f;
+                float max = 0f;
+                for (int i = 0; i < ArenaSpawnPoints.Length; i++)
+                {
+                    float distance = Vector3.Distance(ArenaCenter, ArenaSpawnPoints[i]);
+                    if (distance > max) max = distance;
+                }
+                return max * 2f;
+            }
+        }
+
+        /// <summary>位置是否落在擂台边界内（快照重建的位置可用性判据）。</summary>
+        public bool IsInsideArena(Vector3 position)
+        {
+            float radius = ArenaRadius;
+            if (radius <= 0f) return false;
+            return Vector3.Distance(ArenaCenter, position) <= radius;
+        }
     }
 
     /// <summary>

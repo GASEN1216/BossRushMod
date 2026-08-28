@@ -51,6 +51,8 @@ namespace BossRush
 
         private AICharacterController _ai;
         private ModeHCommandSpec _spec;
+        private List<ModeHEffectSpec> _effects;
+        private string _ownerEntryId;
         private float _windowRemaining;
         private float _reassertAccumulator;
         private float _commandScale = 1f;
@@ -69,6 +71,12 @@ namespace BossRush
 
         /// <summary>当前口令 ID。</summary>
         public string CommandId { get { return _spec != null ? _spec.CommandId : null; } }
+
+        /// <summary>
+        /// 当前窗口的归属条目 ID：口令为 commandId，伤病/战痕为其稳定 ID。
+        /// 伤病与战痕复用同一套调制设施，因此需要一个统一的归属字段。
+        /// </summary>
+        public string OwnerEntryId { get { return _ownerEntryId; } }
 
         /// <summary>最后一次失败原因。</summary>
         public string LastError { get { return _lastError; } }
@@ -103,7 +111,33 @@ namespace BossRush
             out string failureReasonId)
         {
             failureReasonId = null;
-            if (ai == null || spec == null || spec.Effects == null)
+            if (spec == null || spec.Effects == null)
+            {
+                failureReasonId = "command_apply_invalid_input";
+                return false;
+            }
+
+            _spec = spec;
+            return ApplyEffects(
+                ai, spec.CommandId, spec.Effects, ModeHConfig.CommandWindowSeconds,
+                commandScale, fireContext, out failureReasonId);
+        }
+
+        /// <summary>
+        /// 通用调制入口：口令、伤病与战痕共用同一条字段修改路径（§17.4 明令禁止另建第二条）。
+        /// windowSeconds 由调用方给出——口令固定 6 秒，伤病为整场，战痕为其自有窗口。
+        /// </summary>
+        public bool ApplyEffects(
+            AICharacterController ai,
+            string ownerEntryId,
+            IList<ModeHEffectSpec> effects,
+            float windowSeconds,
+            float commandScale,
+            ModeHCommandFireContext fireContext,
+            out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (ai == null || effects == null)
             {
                 failureReasonId = "command_apply_invalid_input";
                 return false;
@@ -115,17 +149,18 @@ namespace BossRush
             }
 
             _ai = ai;
-            _spec = spec;
+            _ownerEntryId = ownerEntryId;
+            _effects = new List<ModeHEffectSpec>(effects);
             _commandScale = commandScale > 0f ? commandScale : 1f;
-            _windowRemaining = ModeHConfig.CommandWindowSeconds;
+            _windowRemaining = windowSeconds > 0f ? windowSeconds : 0f;
             _reassertAccumulator = 0f;
             _modulations.Clear();
 
             try
             {
-                for (int i = 0; i < spec.Effects.Count; i++)
+                for (int i = 0; i < _effects.Count; i++)
                 {
-                    ModeHEffectSpec effect = spec.Effects[i];
+                    ModeHEffectSpec effect = _effects[i];
                     if (effect == null) continue;
                     if (effect.SelfSettled) continue; // Mode H 自结算分量不写原版字段
                     ApplyEffect(effect, fireContext);
@@ -407,12 +442,12 @@ namespace BossRush
                     }
                 }
 
-                // 重申式点火：没有重申的点火不得计为该口令的效果来源
-                if (_spec != null && _spec.Effects != null)
+                // 重申式点火：没有重申的点火不得计为该条目的效果来源
+                if (_effects != null)
                 {
-                    for (int i = 0; i < _spec.Effects.Count; i++)
+                    for (int i = 0; i < _effects.Count; i++)
                     {
-                        ModeHEffectSpec effect = _spec.Effects[i];
+                        ModeHEffectSpec effect = _effects[i];
                         if (effect == null || effect.SelfSettled) continue;
                         if (effect.Op != null && effect.Op.StartsWith("fire_", StringComparison.Ordinal))
                         {
@@ -477,6 +512,8 @@ namespace BossRush
 
             _modulations.Clear();
             _spec = null;
+            _effects = null;
+            _ownerEntryId = null;
             _ai = null;
             _commandScale = 1f;
         }
