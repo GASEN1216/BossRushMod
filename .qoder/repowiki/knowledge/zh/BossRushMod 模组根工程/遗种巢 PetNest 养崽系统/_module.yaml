@@ -1,0 +1,13 @@
+schema_version: 1
+module_path: pet_nest
+title: 遗种巢 PetNest 养崽系统
+scope:
+    - PetNest/
+    - Localization/PetNestLocalization.cs
+source_files: []
+depends_on: []
+related_to:
+    - path: localization
+    - path: loot_and_rewards
+    - path: core_runtime
+    - path: tests

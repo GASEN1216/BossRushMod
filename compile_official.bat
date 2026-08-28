@@ -691,7 +691,11 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\WishFountain\WishFountainUIBridge.cs ^
     Integration\WishFountain\WishFountainRewardAnimationView.cs ^
     Integration\WishFountain\WishFountainBuilder.cs ^
-    Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
+    Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs ^
+    PetNest\PetNestCompanionAgent.cs ^
+    PetNest\PetNestCompanionSpawner.cs ^
+    PetNest\PetNestPetProxyBridge.cs ^
+    PetNest\PetNestDebugProbe.cs
 
 set "BUILD_EXIT_CODE=%ERRORLEVEL%"
 

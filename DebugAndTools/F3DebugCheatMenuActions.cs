@@ -767,5 +767,31 @@ namespace BossRush
                 SetF3DebugCheatStatus(L10n.T("输出角色信息失败", "Failed to dump scene characters"), true);
             }
         }
+
+        // ====================================================================
+        // 遗种巢 PoC 闸门（实施计划 步骤 0）
+        // 只服务于闸门实机验证：召唤幼体 / 回收幼体 / 输出探针报告。
+        // 闸门通过后本组按钮保留为调试工具，不参与正式玩法链路。
+        // ====================================================================
+
+        private void SpawnPetNestProbeCompanionFromF3()
+        {
+            PetNestDebugProbe.SpawnProbeCompanion(null);
+            SetF3DebugCheatStatus(PetNestDebugProbe.LastStatus, false);
+        }
+
+        private void DespawnPetNestProbeCompanionFromF3()
+        {
+            PetNestDebugProbe.DespawnProbeCompanion();
+            SetF3DebugCheatStatus(PetNestDebugProbe.LastStatus, false);
+        }
+
+        private void DumpPetNestProbeReportFromF3()
+        {
+            string report = PetNestDebugProbe.BuildProbeReport();
+            DevLog(report);
+            SetF3DebugCheatStatus(L10n.T("已输出遗种巢 PoC 探针报告（见日志）",
+                "PetNest PoC probe report dumped (see log)"), false);
+        }
     }
 }

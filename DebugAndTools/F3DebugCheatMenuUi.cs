@@ -569,6 +569,12 @@ namespace BossRush
                 RefreshF3DebugCheatSummary();
                 SetF3DebugCheatStatus(L10n.T("已刷新摘要", "Summary refreshed"), false);
             });
+
+            // 遗种巢 PoC 闸门（实施计划 步骤 0）：召唤 / 回收 / 探针报告
+            GameObject row2 = CreateF3Row(section.transform);
+            CreateActionButton(row2.transform, font, L10n.T("遗种巢：召唤 PoC 幼体", "PetNest: Spawn PoC Cub"), new Color(0.22f, 0.42f, 0.28f, 1f), SpawnPetNestProbeCompanionFromF3);
+            CreateActionButton(row2.transform, font, L10n.T("遗种巢：回收 PoC 幼体", "PetNest: Despawn PoC Cub"), new Color(0.44f, 0.22f, 0.22f, 1f), DespawnPetNestProbeCompanionFromF3);
+            CreateActionButton(row2.transform, font, L10n.T("遗种巢：输出探针报告", "PetNest: Dump Probe Report"), new Color(0.20f, 0.32f, 0.42f, 1f), DumpPetNestProbeReportFromF3);
         }
 
         private GameObject CreateF3Section(string title, string description, Font font)

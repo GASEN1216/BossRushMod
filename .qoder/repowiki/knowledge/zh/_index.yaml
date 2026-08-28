@@ -47,6 +47,7 @@ modules:
             - mode_f
             - mode_g
             - mode_h
+            - pet_nest
             - tests
             - ui_and_signs
             - utilities
@@ -214,6 +215,20 @@ modules:
         related_to:
             - path: localization
             - path: waves_arena
+            - path: tests
+    pet_nest:
+        dir_name: 遗种巢 PetNest 养崽系统
+        title: 遗种巢 PetNest 养崽系统
+        scope:
+            - PetNest/
+            - Localization/PetNestLocalization.cs
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: localization
+            - path: loot_and_rewards
+            - path: core_runtime
             - path: tests
     tests:
         dir_name: BossRushMod 静态守护与冒烟测试套件

@@ -136,7 +136,12 @@ namespace BossRush
                 return;
             }
 
-            TryClampDragonDescendant(__instance, ref value);
+            if (TryClampDragonDescendant(__instance, ref value))
+            {
+                return;
+            }
+
+            TryClampPetNestCompanion(__instance, ref value);
         }
 
         private static bool TryClampReverseScale(Health health, ref float value)
@@ -185,6 +190,46 @@ namespace BossRush
             value = 1f;
             ModBehaviour.DevLog("[DragonDescendant] 拦截致死伤害，保留复活触发窗口");
             return true;
+        }
+
+        /// <summary>
+        /// 致死钳制链第四消费者：遗种巢随从「重伤不死」（实施计划 步骤 0 / 步骤 7）。
+        ///
+        /// 契约：
+        /// - 先读 PetNestCompanionAgent.IsCompanionArmed 静态 bool 快速早返，
+        ///   未带崽时热路径零分配；
+        /// - 本方法只负责钳血，退场/战痕落档由步骤 7 的 PetNestDownedHandler 承接，
+        ///   不在 Hurt 内部改场景状态；
+        /// - 身份查询异常一律返回 false（不钳），绝不打断宿主受伤流程。
+        /// </summary>
+        private static bool TryClampPetNestCompanion(Health health, ref float value)
+        {
+            if (!IsPetNestCompanionClampArmed())
+            {
+                return false;
+            }
+
+            if (!PetNestCompanionAgent.IsCompanionHealth(health))
+            {
+                return false;
+            }
+
+            value = 1f;
+            PetNestCompanionAgent.NotifyLethalClamped(health);
+            return true;
+        }
+
+        /// <summary>随从钳制静态开关快速早返（no-throw；异常视为未激活）。</summary>
+        private static bool IsPetNestCompanionClampArmed()
+        {
+            try
+            {
+                return PetNestCompanionAgent.IsCompanionArmed;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }
