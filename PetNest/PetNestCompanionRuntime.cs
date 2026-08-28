@@ -141,6 +141,8 @@ namespace BossRush
 
                 // 战痕要刻"被谁打倒"：只在随从在场期间订阅官方 OnHurt，离场立刻退订
                 PetNestDownedHandler.EnsureHurtSubscribed();
+                // HUD 与随从同寿命：不带崽时连 canvas 都不建
+                PetNestCompanionHudView.EnsureCreated();
 
                 ModBehaviour.DevLog("[PetNest] 随从入场: " + PetNestService.GetPetDisplayName(pet));
             }
@@ -231,6 +233,15 @@ namespace BossRush
         /// </summary>
         internal static void CleanupOnce()
         {
+            try
+            {
+                PetNestCompanionHudView.Destroy();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 销毁随从 HUD 失败: " + e.Message);
+            }
+
             try
             {
                 PetNestDownedHandler.ShutdownHurtSubscription();

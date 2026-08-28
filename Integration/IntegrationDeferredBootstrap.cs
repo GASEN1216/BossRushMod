@@ -297,6 +297,18 @@ namespace BossRush
             {
                 yield break;
             }
+            yield return RunDeferredStep_Integration("InitDailyReportMailbox", () => InitDailyReportMailbox());
+
+            if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
+            {
+                yield break;
+            }
+            yield return RunDeferredStep_Integration("RestoreDailyReportMailboxes", () => RestoreDailyReportMailboxes());
+
+            if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
+            {
+                yield break;
+            }
             ScheduleWishRewardPoolWarmup();
             appliedDeferredBaseSceneSetupHandle = sceneHandle;
             ClearDeferredBaseSceneSetup_Integration(sceneHandle);

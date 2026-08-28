@@ -790,11 +790,18 @@ namespace BossRush
             SafeRuntime.Run("PetNestDropService.ResetStaticCaches", () => PetNestDropService.ResetStaticCaches());
             SafeRuntime.Run("PetNestCompanionRuntime.ResetStaticCaches", () => PetNestCompanionRuntime.ResetStaticCaches());
             SafeRuntime.Run("PetNestDownedHandler.ResetStaticCaches", () => PetNestDownedHandler.ResetStaticCaches());
+            SafeRuntime.Run("PetNestUI.ResetStaticCaches", () => PetNestUI.ResetStaticCaches());
+            SafeRuntime.Run("PetNestHatchRevealView.ResetStaticCaches", () => PetNestHatchRevealView.ResetStaticCaches());
+            SafeRuntime.Run("PetNestExpeditionRevealView.ResetStaticCaches", () => PetNestExpeditionRevealView.ResetStaticCaches());
+            SafeRuntime.Run("PetNestCompanionHudView.ResetStaticCaches", () => PetNestCompanionHudView.ResetStaticCaches());
 
             // 鸭科夫日报宿主销毁：顺序是硬约束——先把内存里的当天余数同步进 DTO，
             // 再落盘，最后才清静态缓存；顺序颠倒会把当天进度写丢。
             SafeRuntime.Run("DailyReportService.SyncCarrySecondsToPersistence", () => DailyReportService.SyncCarrySecondsToPersistence());
             SafeRuntime.Run("DailyReportSaveCoordinator.TryFlushOnHostDestroy", () => DailyReportSaveCoordinator.TryFlushOnHostDestroy());
+            SafeRuntime.Run("DailyReportStatsCollector.ResetStaticCaches", () => DailyReportStatsCollector.ResetStaticCaches());
+            SafeRuntime.Run("CleanupDailyReportMailbox", () => CleanupDailyReportMailbox());
+            SafeRuntime.Run("DailyReportRewards.ResetStaticCaches", () => DailyReportRewards.ResetStaticCaches());
             SafeRuntime.Run("DailyReportService.ResetStaticCaches", () => DailyReportService.ResetStaticCaches());
             SafeRuntime.Run("DailyReportSaveCoordinator.ResetStaticCaches", () => DailyReportSaveCoordinator.ResetStaticCaches());
 

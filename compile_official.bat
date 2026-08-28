@@ -110,6 +110,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Localization\EquipmentLocalization.cs ^
     Localization\ModeHLocalization.cs ^
     Localization\PetNestLocalization.cs ^
+    Localization\DailyReportLocalization.cs ^
     Common\Lifecycle\IBossRushRuntimeModule.cs ^
     Common\Lifecycle\SceneRuntimeContext.cs ^
     Common\Lifecycle\BossRushRuntimeModuleHost.cs ^
@@ -714,6 +715,11 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestInteractable.cs ^
     PetNest\PetNestBuilder.cs ^
     PetNest\PetNestBuilder_DataEventsAndRuntime.cs ^
+    PetNest\PetNestUIPages.cs ^
+    PetNest\PetNestUI.cs ^
+    PetNest\PetNestHatchRevealView.cs ^
+    PetNest\PetNestExpeditionRevealView.cs ^
+    PetNest\PetNestCompanionHudView.cs ^
     PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
@@ -731,6 +737,11 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\DailyReport\DailyReportService.cs ^
     Integration\DailyReport\DailyReportContent.cs ^
     Integration\DailyReport\DailyReportStatsCollector.cs ^
+    Integration\DailyReport\DailyReportInteractable.cs ^
+    Integration\DailyReport\DailyReportUI.cs ^
+    Integration\DailyReport\DailyReportUIBridge.cs ^
+    Integration\DailyReport\DailyReportMailboxBuilder.cs ^
+    Integration\DailyReport\DailyReportMailboxRuntime.cs ^
     Integration\DailyReport\DailyReportRuntimeModule.cs
 
 set "BUILD_EXIT_CODE=%ERRORLEVEL%"

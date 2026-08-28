@@ -118,6 +118,8 @@ namespace BossRush
                     PetNestCompanionRuntime.CleanupOnce();
                     // 回基地时扫一次到期远征：结算是幂等事务，重复进基地不会重复发奖
                     PetNestExpeditionService.SettleDueExpeditions();
+                    // 结算完再翻牌：翻牌只回放已 commit 的结果，中途退出下次还会弹
+                    PetNestExpeditionRevealView.PlayPending();
                     return;
                 }
 
@@ -156,6 +158,10 @@ namespace BossRush
             try
             {
                 PetNestCompanionRuntime.CleanupOnce();
+                PetNestUI.ResetStaticCaches();
+                PetNestHatchRevealView.ResetStaticCaches();
+                PetNestExpeditionRevealView.ResetStaticCaches();
+                PetNestCompanionHudView.ResetStaticCaches();
                 if (_bootstrapped)
                 {
                     PetNestSaveCoordinator.TryFlushOnHostDestroy();
@@ -188,6 +194,7 @@ namespace BossRush
             PetNestSaveCoordinator.EnsureSubscribed();
             PetNestLineageCatalog.EnsureBuilt(_owner);
             PetNestUIBridge.BindRuntime(this);
+            PetNestUI.RegisterOpener();
             _bootstrapped = true;
             _lastEnabledState = true;
             ModBehaviour.DevLog("[PetNest] 运行时模块已启动，血脉条目数="

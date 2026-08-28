@@ -575,6 +575,12 @@ namespace BossRush
             CreateActionButton(row2.transform, font, L10n.T("遗种巢：召唤 PoC 幼体", "PetNest: Spawn PoC Cub"), new Color(0.22f, 0.42f, 0.28f, 1f), SpawnPetNestProbeCompanionFromF3);
             CreateActionButton(row2.transform, font, L10n.T("遗种巢：回收 PoC 幼体", "PetNest: Despawn PoC Cub"), new Color(0.44f, 0.22f, 0.22f, 1f), DespawnPetNestProbeCompanionFromF3);
             CreateActionButton(row2.transform, font, L10n.T("遗种巢：输出探针报告", "PetNest: Dump Probe Report"), new Color(0.20f, 0.32f, 0.42f, 1f), DumpPetNestProbeReportFromF3);
+
+            // 日报：一个游戏日 = 24 现实分钟，冒烟不可能真等，必须能快进
+            GameObject row3 = CreateF3Row(section.transform);
+            CreateActionButton(row3.transform, font, L10n.T("日报：快进一天", "Daily: Skip One Day"), new Color(0.42f, 0.34f, 0.18f, 1f), AdvanceDailyReportOneDayFromF3);
+            CreateActionButton(row3.transform, font, L10n.T("日报：打开报纸", "Daily: Open Paper"), new Color(0.20f, 0.32f, 0.42f, 1f), OpenDailyReportFromF3);
+            CreateActionButton(row3.transform, font, L10n.T("日报：输出状态", "Daily: Dump State"), new Color(0.24f, 0.24f, 0.30f, 1f), DumpDailyReportStateFromF3);
         }
 
         private GameObject CreateF3Section(string title, string description, Font font)

@@ -27,6 +27,12 @@ MIGRATED = [
     # surface 内摆放内容，不碰 sortingOrder，它的裸数字禁令由 ModeHStructureGuard 覆盖。
     Path("ModeH/ModeHUI.cs"),
     Path("ModeH/ModeHRecoveryPanel.cs"),
+    # 遗种巢同理：只登记会**创建 canvas** 的文件。PetNestUIPages.cs 只在既有 surface
+    # 内摆放内容，不碰 sortingOrder，它的裸数字禁令由 PetNestUILayerGuard 覆盖。
+    Path("PetNest/PetNestUI.cs"),
+    # 日报面板：纸张是浅色的，但那只是调用方传给 ApplyPanelSkin 的颜色参数
+    # （皮肤只给形状不给色），层级常量与遮罩色仍然必须走共享库。
+    Path("Integration/DailyReport/DailyReportUI.cs"),
 ]
 
 # CanvasScaler 必须走 ZombieModeUIHelper.ConfigureCanvasScaler（AGENTS 4.14）。

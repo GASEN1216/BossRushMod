@@ -43,6 +43,8 @@ namespace BossRush
             ModeHLocalization.Inject();
             // 遗种巢的 BossRush_PetNest_ 键统一来自 Localization/PetNestLocalization.cs
             PetNestLocalization.Inject();
+            // 日报的 BossRush_DailyReport_ 键统一来自 Localization/DailyReportLocalization.cs
+            DailyReportLocalization.Inject();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();
@@ -296,6 +298,7 @@ namespace BossRush
                 TryInitializeWeddingBuildingEarly();
                 TryInitializeWishFountainEarly();
                 TryInitializePetNestEarly();
+                TryInitializeDailyReportMailboxEarly();
             }
 
             if (isGameplayScene)

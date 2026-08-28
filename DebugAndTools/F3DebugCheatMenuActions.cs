@@ -793,5 +793,55 @@ namespace BossRush
             SetF3DebugCheatStatus(L10n.T("已输出遗种巢 PoC 探针报告（见日志）",
                 "PetNest PoC probe report dumped (see log)"), false);
         }
+
+        // ====================================================================
+        // 鸭科夫日报
+        // ====================================================================
+
+        /// <summary>
+        /// 快进一个完整游戏日并立刻结算。
+        /// 一个游戏日是 86300 游戏秒（≈24 现实分钟），冒烟测试不可能真等，
+        /// 没有这个按钮就没法验证跨天/断签/发奖。
+        /// </summary>
+        private void AdvanceDailyReportOneDayFromF3()
+        {
+            DailyReportService.DebugAdvanceGameSeconds(DailyReportTuning.GameSecondsPerDay);
+            SetF3DebugCheatStatus(L10n.T(
+                "日报已快进一天，当前第 " + DailyReportService.Data.DayIndex + " 天",
+                "Daily advanced one day, now day " + DailyReportService.Data.DayIndex), false);
+        }
+
+        private void OpenDailyReportFromF3()
+        {
+            OpenDailyReportUI();
+            SetF3DebugCheatStatus(L10n.T("已打开日报面板", "Daily report panel opened"), false);
+        }
+
+        private void DumpDailyReportStateFromF3()
+        {
+            DailyReportData data = DailyReportService.Data;
+            if (data == null)
+            {
+                SetF3DebugCheatStatus(L10n.T("日报数据不可用", "Daily report data unavailable"), true);
+                return;
+            }
+
+            string report = DailyReportTuning.LogPrefix
+                + "第 " + data.DayIndex + " 天"
+                + " | 当日进度 " + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%"
+                + " | 第 " + data.PeriodIndex + " 期 " + data.PeriodSignedCount + "/"
+                    + DailyReportTuning.DaysPerPeriod
+                + " | 连签 " + data.Streak + " 累计 " + data.TotalSignedDays
+                + " | 领取掩码 0x" + data.PeriodClaimedMask.ToString("X")
+                + " | 今日击杀 " + data.Today.Kills + "（Boss " + data.Today.BossKills + "）"
+                + " 出击 " + data.Today.Raids + " 撤离 " + data.Today.Extractions
+                + " 阵亡 " + data.Today.Deaths
+                + " | 悬赏进度 " + DailyReportService.GetActiveBountyProgress()
+                + " | 本进程跨天 " + DailyReportService.RolloverCount + " 次";
+
+            DevLog(report);
+            SetF3DebugCheatStatus(L10n.T("已输出日报状态（见日志）",
+                "Daily report state dumped (see log)"), false);
+        }
     }
 }
