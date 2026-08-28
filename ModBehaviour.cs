@@ -783,6 +783,7 @@ namespace BossRush
             SafeRuntime.Run("PetNestDebugProbe.ResetStaticCaches", () => PetNestDebugProbe.ResetStaticCaches());
             SafeRuntime.Run("PetNestPetProxyBridge.ResetStaticCaches", () => PetNestPetProxyBridge.ResetStaticCaches());
             SafeRuntime.Run("PetNestCompanionAgent.ResetStaticCaches", () => PetNestCompanionAgent.ResetStaticCaches());
+            SafeRuntime.Run("PetNestLineageCatalog.ResetStaticCaches", () => PetNestLineageCatalog.ResetStaticCaches());
 
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();

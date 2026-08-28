@@ -692,6 +692,9 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Integration\WishFountain\WishFountainRewardAnimationView.cs ^
     Integration\WishFountain\WishFountainBuilder.cs ^
     Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs ^
+    PetNest\PetNestModels.cs ^
+    PetNest\PetNestTuning.cs ^
+    PetNest\PetNestLineageCatalog.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
     PetNest\PetNestPetProxyBridge.cs ^
