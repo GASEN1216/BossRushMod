@@ -231,11 +231,18 @@ namespace BossRush
         {
             lock (_lock)
             {
+                // §23.3 冻结顺序：先清空 Sprite 引用，再 Unload(true)。
+                // 反过来会让仍持有引用的 Image 在卸载后拿到已销毁的纹理。
+                _emblemSprite = null;
+                _bannerSprite = null;
+
+                AssetBundle bundle = _bundle;
+                _bundle = null;
                 try
                 {
-                    if (_bundle != null)
+                    if (bundle != null)
                     {
-                        _bundle.Unload(true);
+                        bundle.Unload(true);
                     }
                 }
                 catch (Exception e)
@@ -243,9 +250,6 @@ namespace BossRush
                     ModBehaviour.DevLog("[ModeH] [WARNING] 展示 bundle 卸载异常: " + e.Message);
                 }
 
-                _bundle = null;
-                _emblemSprite = null;
-                _bannerSprite = null;
                 _loadAttempted = false;
                 _emblemAttempted = false;
                 _bannerAttempted = false;

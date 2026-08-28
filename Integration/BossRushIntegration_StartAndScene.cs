@@ -39,6 +39,8 @@ namespace BossRush
             WildHornConfig.InjectLocalization();
             AwenLootSweepTokenConfig.InjectLocalization();
             FactionFlagConfig.InjectLocalization();
+            // Mode H 的 BossRush_ModeH_ 键统一来自 Localization/ModeHLocalization.cs
+            ModeHLocalization.Inject();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();

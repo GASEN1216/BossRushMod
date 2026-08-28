@@ -35,6 +35,12 @@ namespace BossRush
         internal const int ModeGRecap = 940;
         /// <summary>ModeG 入口确认页，ModeG 自己这组里最高。</summary>
         internal const int ModeGEntry = 950;
+        /// <summary>ModeH 观战 HUD（拍铃按钮可点，但不暂停时间）。</summary>
+        internal const int ModeHHud = 960;
+        /// <summary>ModeH 生产兼容性诊断覆盖层，压住自家 HUD。</summary>
+        internal const int ModeHDiagnostics = 970;
+        /// <summary>ModeH 唯一互动模态根（入口/看盘/赔率/结算/转会/名人堂）。</summary>
+        internal const int ModeHModal = 980;
         /// <summary>常驻 HUD（不接收点击）。</summary>
         internal const int Hud = 1000;
         /// <summary>雷达、状态角标一类的 HUD 附属层。</summary>
@@ -43,6 +49,8 @@ namespace BossRush
         internal const int Panel = 2000;
         /// <summary>需要抢焦点的模态窗口。</summary>
         internal const int Modal = 3000;
+        /// <summary>ModeH 恢复 / Suspended 壳，压住奖励揭晓层。</summary>
+        internal const int ModeHRecovery = 3100;
         /// <summary>模态之上的确认框。</summary>
         internal const int ModalConfirm = 3200;
         /// <summary>成就解锁一类的瞬时弹窗。</summary>

@@ -108,6 +108,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Localization\LocalizationInjector.cs ^
     Localization\LocalizationInjector_NpcUiAndItems.cs ^
     Localization\EquipmentLocalization.cs ^
+    Localization\ModeHLocalization.cs ^
     Common\Lifecycle\IBossRushRuntimeModule.cs ^
     Common\Lifecycle\SceneRuntimeContext.cs ^
     Common\Lifecycle\BossRushRuntimeModuleHost.cs ^
@@ -347,6 +348,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHProductionCertification.cs ^
     ModeH\ModeHProfilePersistence.cs ^
     ModeH\ModeHProfileRegistry.cs ^
+    ModeH\ModeHRecoveryPanel.cs ^
     ModeH\ModeHRewardTransaction.cs ^
     ModeH\ModeHRunState.cs ^
     ModeH\ModeHRuntimeGates.cs ^
@@ -362,6 +364,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHStateMachine.cs ^
     ModeH\ModeHStateModel.cs ^
     ModeH\ModeHTransferMarket.cs ^
+    ModeH\ModeHUI.cs ^
+    ModeH\ModeHUIPages.cs ^
     ModeH\ModeHVirtualStakeController.cs ^
     ModeH\ModeHWarehouseStakeJournal.cs ^
     ModeF\ModeFBounty_EquipmentAndLoot.cs ^

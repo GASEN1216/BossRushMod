@@ -22,7 +22,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
-from modeh_guard_util import read_modeh_group  # noqa: E402
+from modeh_guard_util import read_modeh_group, read_text, strip_cs_comments  # noqa: E402
 MODEH_DIR = os.path.join(REPO_ROOT, "ModeH")
 STATE_MODEL = os.path.join(MODEH_DIR, "ModeHStateModel.cs")
 CONFIG = os.path.join(MODEH_DIR, "ModeHConfig.cs")
@@ -222,6 +222,63 @@ def check_gitignore_allows_data_dir(errors):
             + result.stdout.decode("utf-8", "replace").strip())
 
 
+def check_ui_layers_and_deploy(errors):
+    """
+    §23.1：四个 Mode H 层级常量必须按数值升序插入 BossRushUILayers，
+    Mode H 界面文件只引用常量、不得出现裸 sortingOrder 数字；
+    §23.3：两个 bat 都要有 Mode H 数据与展示 bundle 的显式部署路径。
+    """
+    ui_library = read_text(os.path.join(REPO_ROOT, "Common", "UI", "BossRushUI.cs"))
+    if ui_library is None:
+        errors.append("[UI] 缺少 Common/UI/BossRushUI.cs")
+    else:
+        expected = [
+            ("ModeHHud", 960),
+            ("ModeHDiagnostics", 970),
+            ("ModeHModal", 980),
+            ("ModeHRecovery", 3100),
+        ]
+        for name, value in expected:
+            if not re.search(
+                    r"internal const int {} = {};".format(name, value), ui_library):
+                errors.append("[UI] 缺少层级常量 {} = {}".format(name, value))
+
+        # 声明顺序必须严格递增（追加到表尾会破坏叠放次序）
+        declared = re.findall(r"internal const int (\w+) = (\d+);", ui_library)
+        values = [int(v) for _, v in declared]
+        if values != sorted(values):
+            errors.append("[UI] BossRushUILayers 的声明顺序必须严格递增")
+
+    # Mode H 界面文件不得出现裸 sortingOrder 数字
+    for name in ["ModeHUI.cs", "ModeHUIPages.cs", "ModeHRecoveryPanel.cs"]:
+        path = os.path.join(MODEH_DIR, name)
+        code = read_text(path)
+        if code is None:
+            errors.append("[UI] 缺少 ModeH/" + name)
+            continue
+        stripped = strip_cs_comments(code)
+        if re.search(r"sortingOrder\s*=\s*\d", stripped):
+            errors.append("[UI] {} 出现裸 sortingOrder 数字".format(name))
+        if re.search(r"CreateCanvasRoot\([^)]*,\s*\d+\s*,", stripped):
+            errors.append("[UI] {} 的 CreateCanvasRoot 必须传层级常量".format(name))
+        # 第二套遮罩色禁令
+        if "new Color(0f, 0f, 0f, 0.7f)" in stripped:
+            errors.append("[UI] {} 仍在用第二套遮罩色".format(name))
+
+    # 两个 bat 的显式部署路径
+    for bat_name in ["compile_official.bat", "test_bossrush_official.bat"]:
+        text = read_text(os.path.join(REPO_ROOT, bat_name))
+        if text is None:
+            errors.append("[Deploy] 缺少 " + bat_name)
+            continue
+        for required, desc in [
+            ("Assets\\Data\\ModeH", "Mode H 数据目录"),
+            ("Assets\\ui\\modeh_presentation", "Mode H 展示 bundle"),
+        ]:
+            if required not in text:
+                errors.append("[Deploy] {} 缺少 {} 的部署路径".format(bat_name, desc))
+
+
 def main():
     errors = []
 
@@ -288,6 +345,7 @@ def main():
             errors.append("[Config] ModeHConfig 不得声明可写 Enabled 字段")
 
     check_gitignore_allows_data_dir(errors)
+    check_ui_layers_and_deploy(errors)
 
     if errors:
         print("ModeHStructureGuard: FAIL ({} errors)".format(len(errors)))

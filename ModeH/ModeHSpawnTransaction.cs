@@ -121,12 +121,22 @@ namespace BossRush
                 yield break;
             }
 
+            // 每帧生成预算：冻结常量为 1，这里显式计数而不是靠 await 的副作用，
+            // 常量改动时行为随之改变（ModeHPerformanceGuard 断言这条引用）。
+            int spawnedThisFrame = 0;
+
             for (int i = 0; i < presets.Count; i++)
             {
                 if (!IsActive)
                 {
                     result.FailureReasonId = "spawn_tx_cancelled";
                     yield break;
+                }
+
+                if (spawnedThisFrame >= ModeHConfig.MaxSpawnPerFrame)
+                {
+                    spawnedThisFrame = 0;
+                    yield return null;
                 }
 
                 int cap = isFighter
@@ -145,11 +155,12 @@ namespace BossRush
                     ModeHSpawnBridge.CreateIsolatedAsync(
                         presets[i], stableKeys[i], team, _map.StagingPos, diagnostics);
 
-                // 每帧最多一个角色：等待本次创建完成后再进入下一次
+                // 等待本次创建完成后再进入下一次；创建本身也算作本帧的一次生成预算
                 while (task.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
                 {
                     yield return null;
                 }
+                spawnedThisFrame++;
 
                 ModeHSpawnHandle handle = null;
                 bool faulted = false;

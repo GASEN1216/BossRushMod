@@ -23,6 +23,10 @@ MIGRATED = [
     Path("Achievement/SteamAchievementPopup.cs"),
     Path("Integration/Wedding/NPCMarriageSystem.cs"),
     Path("Integration/WishFountain/WishFountainRewardAnimationView.cs"),
+    # 只登记会**创建 canvas** 的 Mode H 界面文件；ModeHUIPages.cs 只在既有
+    # surface 内摆放内容，不碰 sortingOrder，它的裸数字禁令由 ModeHStructureGuard 覆盖。
+    Path("ModeH/ModeHUI.cs"),
+    Path("ModeH/ModeHRecoveryPanel.cs"),
 ]
 
 # CanvasScaler 必须走 ZombieModeUIHelper.ConfigureCanvasScaler（AGENTS 4.14）。

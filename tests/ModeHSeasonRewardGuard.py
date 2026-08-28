@@ -104,16 +104,22 @@ def check_service(errors):
 
 
 def check_reward_wheel_gate(errors):
-    """rewardKind=Kit 才允许喂官方奖励滚轮。"""
+    """
+    rewardKind=Kit 才允许**播放**官方奖励滚轮。
+    只在出现 PlayRuntime 调用时要求 AllowsRewardWheel 门；
+    §23.1 允许恢复壳在显示前销毁奖励揭晓层，那不是播放。
+    """
     for name in sorted(os.listdir(MODEH_DIR)):
         if not name.endswith(".cs"):
             continue
         code = strip_cs_comments(read_text(os.path.join(MODEH_DIR, name)) or "")
         if "WishFountainRewardAnimationView" not in code:
             continue
+        if "PlayRuntime" not in code:
+            continue
         if "AllowsRewardWheel" not in code:
             errors.append(
-                "[Wheel] {} 调用奖励滚轮前必须先过 AllowsRewardWheel 门".format(name))
+                "[Wheel] {} 播放奖励滚轮前必须先过 AllowsRewardWheel 门".format(name))
 
 
 def check_market(errors):
