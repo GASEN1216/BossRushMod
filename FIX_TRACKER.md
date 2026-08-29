@@ -39,6 +39,223 @@
 ```
 
 ---
+### 2026-08-29 四系统复审全面修复：Mode H 四个 P0 状态机断裂 + G/日报/遗种巢各自的 P1
+
+**状态**: fixed（本轮全部 confirmed finding）；模式H 战斗驱动与真实押注仍为计划内未接线
+**Finding**: CR-2026-08-29-008 ~ CR-2026-08-29-021（见 `CODE_REVIEW_FINDINGS.md`）
+**兼容分类**: COMPAT（全部；无 SCHEMA 改动——四个系统均未新增/改名存档 key、配置 key，
+DTO 与编解码零改动）
+**版本/Commit**: 本条目所在 commit
+**Owner decision**: 三处待拍板，见文末「需 owner 确认」
+
+**背景**: 上午四包修复提交后做了第二轮四代理全面复审。三个系统（模式G/日报/遗种巢）的
+上午修复全部复核成立，但各自查出新的 P1；模式H 批 2（a579c3e）宣称交付的
+「赔率→锁盘→分帧生成→回滚回看盘」经核实是**纸面交付**：调用方都在，调用必然失败。
+
+#### Mode H（4 个 P0 + 2 个 P1 + 6 项 P2，主会话直接修复）
+
+**根因共性**：全部是「运行时调用 vs 冻结转换表 / 关停闩锁」的断裂。编译与当时 33 条
+guard 全绿。上一次事故是「构件在、没人调」，这一次是「有人调、调不通」。
+
+- **CR-008 锁盘按钮永远无效（P0）**：批 2 按错记的表写成 `LoadoutEditing -> LoadoutLocked`，
+  而冻结表里锁盘只有 `OddsPreview -> LoadoutLocked`，且全仓无任何调用转入 `OddsPreview`。
+  赔率页是 `ClaimModalInput` 时停模态页且无关闭按钮，玩家只能靠游戏 ESC 菜单逃生。
+  修复：主干改为 `MatchBrief -> LoadoutEditing -> OddsPreview -> LoadoutLocked -> MatchSpawning`，
+  开页即推进 `OddsPreview`（同一页既是配装也是看赔率），锁盘前再幂等补一跳兜底。
+  **不改冻结表**（`ModeHRuntimeModule_MatchFlow.cs` 的 `EnterLoadoutEditing` /
+  新增 `EnsureOddsPreview` / `LockLoadoutAndStartMatch`）。
+- **CR-009 回滚退看盘转换非法（P0）**：`MatchSpawning` 无直达 `MatchBrief` 的边。
+  改为经 `Recovering` 过渡，由恢复驱动落回同场；这一支**刻意**用不消耗预算的
+  `RequestRecovering`——功能没写完不是技术故障。
+- **CR-010 `Recovering` 是死态（P0）**：所有技术故障出口都转进它，却无任何调用点以它为源
+  转出，`MaxAutomaticTechnicalRetriesPerMatch=2` 永远走不到第二次。新增
+  `DriveRecovery`（`OnUpdateInternal` 内按 stateSequence 判重驱动）+
+  `ResolveRecoveryResumeLifecycle`（战前战中一律回落同场 MatchBrief，早期/幕间回落自己）+
+  `RequestTechnicalRetry`（消耗预算 → 未超走 Recovering，超则挂起），
+  各故障点统一改用后者。**两条设计约束（都踩过）**：① 恢复驱动必须异步（下一帧），
+  因为 `EnsureMatchPlan` 是在页面组装里报故障的，同步回落会无限递归；
+  ② 页面组装路径上的故障必须消耗预算，否则「回落→重建页面→再失败」变成每帧死循环。
+- **CR-011 关停闩锁永不复位（P0）**：`_commandsClosed` / `_shutdownCompleted` 只在
+  `OnAwake`（每进程一次）复位，一次会话只能玩一局；再次入场船票已预扣、模块却静默早返，
+  玩家站在无人接管的原图上。新增 `BeginNewRunSession()`，在**意图匹配成功之后**复位
+  （放在匹配之后才不会因「路过一张受支持地图」就解除关停），顺带清残留 `_pendingContractMainId`。
+- **CR-012 恢复壳不可达（P1）**：船坞入口在 recovery-only 时直接拒绝；且存档恢复只在
+  `OnAwake` 跑一次，从主菜单载入中断赛季时 recovery-only 闸立不起来，玩家可以开新赛季
+  **静默覆盖**它。修复：`ModeHInteractable` 新增 `TryOpenRecoveryShellForEntry`
+  （有待恢复记录时打开恢复壳，但有其它模式在跑时不接管）；
+  `ModeHProfilePersistence` 的 SetFile/SaveDeleted 回调补
+  `ModeHRuntimeModule.NotifySlotRestored()` 重建内存 run owner。
+- **CR-013 中止链全程无文案（P1）**：`AbortSetup` 现给一句归类文案 + 退票告知
+  （新增 7 个 `Abort_*` 中英 key，`ResolveAbortMessageKey` 归类内部 reasonId）；
+  入口被拒有 `ShowUnavailableNotice`；`GetReasonLocalizationKey` 改为**白名单式 fail-safe**——
+  未注入的内部原因（如 `entry_exception:NullReference`）回落通用文案，
+  不再可能给玩家看到 `*星号原文*`。
+- **CR-018 六项 P2**：看盘页 `Label_Match` 改 `Replace("{0}", …)`（此前显示「第 {0} 场 1 / 6」）；
+  `ResetModeHStaticCaches` 补 `ModeHSaveFlushCoordinator.ShutdownSubscription()` 退订（4.6）；
+  `EnsureMatchPlan` 缓存判据补 `technicalRetrySequence`（此前技术重试会复用刚失败的同一计划）；
+  `_pendingContractMainId` 残留随 CR-011 一并清；repowiki 补 a579c3e 起漏同步的两批内容。
+- **自查追加修复（复核自己的改动时发现，不在原 finding 内）**：
+  ① `Suspended -> Recovering` 会被 `ApplyTransition` 把故障源**覆盖成 Suspended**，
+  真实故障源丢失，导致恢复目标解析不出来又弹回挂起——新增
+  `DeriveResumeFromSeasonProgress()` 从赛季进度反推（已开赛→同场看盘 / 签完约→名单 / 否则选秀）；
+  ② 玩家手动「同场重开」会被自动重试预算当场判定超预算弹回挂起，按钮等于没有——
+  `ModeHRunState.ResetTechnicalRetry()` 由 `ResumeFromSuspended` 调用，
+  手动重开拿回全新预算与新的计划候选。
+- **`RouteUiForLifecycle` 离开恢复通道时收起恢复壳**（`HideRecoveryShell`），
+  否则回落后的看盘页会被壳盖住。
+
+**Guard 增补（`tests/ModeHReachabilityGuard.py`）**：
+① 两端都写死的 `TryTransition` 调用点，其 (from, to) 必须在冻结表内；
+② 恢复通道三态一旦被进入，就必须有以它为源的转换调用点。
+只查恢复通道是因为普通玩法状态可由 `RequestRecovering` 这类**动态源**门面退出、
+静态归属不了会误报，而恢复通道是所有故障路径的终点、出口只能写死源状态。
+**反例验证**：把 CR-008 与 CR-010 各自改回原样 → guard 分别报「请求了非法转换
+LoadoutEditing -> LoadoutLocked」与「Recovering 是死态」；还原后 PASS。
+另：新增的宿主解析改走 `ModeHInteractable.ResolveHost`，保持
+`ModBehaviourInstanceClassificationGuard` 的 ModeH 基线恒为 1（该文档的既定约定）。
+
+#### Mode G（1 个 P1 + 4 项 P2，代理修复）
+
+- **CR-014 无伤成就跨局残留（P1）**：`BeginModeGAchievementSession` 只清去重集，
+  不重置 `HasTakenDamage`（唯一置 false 点 `ResetSessionStats` 的入口只被 ModeD 与
+  标准竞技场调用，模式G 启动路径不经过）。同进程受过一次伤，之后所有模式G 局的
+  `kill_dragon_king_flawless` / `kill_dragon_descendant_flawless` 永不解锁；
+  「进程首局无伤」的 smoke 恰好测不出。修复：**只重置 `HasTakenDamage`**，
+  不整体 `ResetSessionStats()`——逐字段核对后确认它还会重置 `ArenaEnterTime`（Legacy/ModeD 速通基准）、
+  `HasUsedHealItem`（无间炼狱）、`HasPickedUpItem`（ModeD），模式G 一个都不消费，
+  整体 reset 属纯跨模式副作用。
+- **P2 自动入场确认页打不开时静默**：补路牌同款玩家提示，并修正 else 分支
+  「确认页已取消」的错误日志（实际从未打开）。
+- **P2 宿敌存档「战斗中不写盘」承诺未实现**：选择**兑现承诺**而非改注释。
+  typed `Store` 保持立即（官方任一次存盘可顺带带走），只把物理 `SaveFile` 在战斗帧
+  记欠账顺延；欠账三处结清：下一次非战斗批次 / `End()` 归零相位后补写 /
+  `TryFlushOnHostDestroy` 强制落盘。未照搬日报的「只在基地落盘」——模式G 整局非基地，
+  那等于整局不落盘。
+- **P2 `OnDestroy` 用 `new` 隐藏基类 virtual**：改 `protected override` + `base.OnDestroy()`。
+- **P2 AFK 提示与可达操作不符**：改文案指向「撤离返回基地后重新入场」，
+  不新增场景交互物。
+
+#### 鸭科夫日报（1 个 P1 + 1 个 P2 + 3 项 P3，代理修复）
+
+- **CR-017 关开关期间换档跨档覆写（P1）**：关开关会退订 `OnSetFile`，此时换槽无人重置缓存，
+  重开开关后槽 A 的日报 JSON 会被写进槽 B（签到墙/连签/悬赏 claimed 被顶掉，
+  可致进度丢失或重复领悬赏现金）。修复：`LoadOrInit` 给缓存打**槽位烙印**，
+  命中缓存时比对 `SavesSystem.CurrentSlot`，不一致即自失效重读，并并联复位
+  `SaveCoordinator` 与 `Service` 的运行时状态（数据换了、计时也要换）。
+  另补 `DiscardCacheOnResubscribe()`：核对官方源码后确认
+  `SavesSystem.DeleteCurrentSave` 删的是当前槽且**不改 `CurrentSlot`**，
+  槽位烙印挡不住「同槽删档重开」，而 dormant 期间没有任何回调可用，
+  重新挂监听是唯一确定的重新对齐点。
+- **P2 悬赏现金忽略 `EconomyManager.Add` 失败返回值**：官方 `Add` 在 `Instance == null` 时
+  返回 false 且不抛异常，旧码仍置 `BountyRewardClaimed=true` 落盘，
+  补发被闸死、现金永久丢失且报纸公示「已寄出」。修复：接住返回值，失败不置 claimed。
+- **P3 瞬时失败被缓存成会话级空池**：空结果不再缓存（官方 `Search` 自带降品质兜底，
+  合法空池几乎不可能，缓存里的空数组必然是故障残影）。
+- **P3 F3 dump 悬赏题目打的是昨日已结算题**：改用今日在售题，与旁边的进度同源。
+- **P3 跨天补发换奖品**：**零 schema 改动**解决——断签会把 `PeriodSignedCount` 清零，
+  故 `1..PeriodSignedCount` 必然连续，第 slot 格的天号可由
+  `LastSignedDayIndex - (PeriodSignedCount - slot)` 从既有字段精确推导。
+
+
+
+#### 遗种巢（2 个 P1 + 1 个 P2 + 2 项防御性自愈 + 1 项语义对齐，代理修复）
+
+- **CR-015 会话重启后血脉目录空窗（P1）**：`InitializeEnemyPresets` 的调用点全在进竞技场路径
+  与调试面板，基地启动无一触发；重启后直接在基地孵官方血脉蛋必报 `lineage_unknown`
+  （玩家会以为蛋坏了），巢页/账本/博物馆大面积裸 key 或数字错乱。
+  修复：`WavesArena` 新增 `EnsureEnemyPresetsReadyForPetNest()`（池已填充零成本返回），
+  由 `PetNestRuntimeModule` 在**回基地分支最前**调用，并补一次 `InitializeBossPoolFilter()`
+  ——不补的话基地侧目录会用未过滤全池，把玩家禁用的 Boss 也算进血脉。
+  **不放在 `EnsureBootstrapped`**：它首次生效在主菜单期，
+  `Resources.FindObjectsOfTypeAll<CharacterRandomPreset>` 那时可能只扫到部分预设，
+  而 `_enemyPresetsInitialized` 一旦以 `Count>0` 置位就永不重扫，会把残缺池冻死。
+  4.12 门控落在调用侧（未开开关一次也走不到）。
+- **CR-016 关开关不清掉落追踪（P1）**：`ClearAllTracking()` 全仓唯一调用链是宿主销毁，
+  关开关后已追踪 Boss 死亡仍记遗魂/掉蛋，违反 dormant 契约。
+  修复：`ShutdownIfEnabledTurnedOff()` 在 `if (!_bootstrapped) return;` **之前**调用
+  （放早返之后等于没修）；handler 本体加开关检查作第二道防线（只在 Boss 死亡帧判一次）。
+- **CR-020 `_hooks` 慢泄漏（P2）**：弃局/直接撤离/切图销毁的 Boss 条目永不移除。
+  修复：场景回调清一次（比 `LootAndRewards` 的 stale 清扫覆盖更全——后者漏掉龙王手动订阅路径）；
+  已核实全部追踪登记都发生在 `CreateCharacterAsync` 完成回调里，晚于场景回调，不会误清本局。
+- **防御性自愈：OnExpedition 孤儿锁**：逐 key 独立 flush 失败可落盘出「崽=OnExpedition」
+  而远征记录缺失，该崽永久锁死且全仓无 reconcile。新增 `ReconcileOrphanedExpeditionLocks()`，
+  三条误修防线：`CanStoreAll` 为假时一步不走（读不回来 ≠ 记录不存在）、
+  匹配放宽到「id 命中」或「同崽未结算记录」、只有 `state==OnExpedition` 才复位状态。
+- **防御性自愈：跨存档槽缓存渗漏**（与日报同构）：`PetNestKeyStore<T>` 给缓存打槽位戳，
+  `LoadOrInit` / `Store` / `FlushPending` 三处校验。比日报多校验 `FlushPending` 一处，
+  因为官方 `OnCollectSaveData` 可能在换档之后、任何 `LoadOrInit` 之前先触发 flush。
+  **同槽删档**（`DeleteCurrentSave` 不改 `CurrentSlot`，槽位戳挡不住）在遗种巢侧
+  由既有的 `ResetCachesForSlotReload()`（关开关时即清缓存）覆盖，
+  日报侧则由新增的 `DiscardCacheOnResubscribe()` 覆盖——两系统机制不同但覆盖等价，
+  **无需再互相镜像**（本条为主会话核对结论）。
+- **远征奖励失败语义与注释不符**：注释宣称可补发，实际异常被内部吞掉后无条件置
+  `rewardsGranted = true`。选**按条目记账**（首选方案，零重复发放风险）：
+  记录新增 `cashGranted` / `grantedLootUnits` / `rewardGrantAttempts` 三个可选字段
+  （`SCHEMA+`，`CurrentSchemaVersion` 保持 1——老档缺键回落默认值语义正确，
+  bump 反而会让老档整体进写屏障）；现金接住 `EconomyManager.Add` 返回值后才记账、
+  战利品按件数游标续投。**必须配尝试上限**（`MaxRewardGrantAttempts = 6`）：
+  `MarkRevealed` 在 `rewardsGranted=false` 时拒绝翻牌，无上限会让一件永远发不出去的战利品
+  把翻牌永久卡住——那等于用一个新的永久锁换掉一次奖励丢失。
+
+#### 跨系统：模式H 清场会连玩家一起销毁（主会话核对 UNVERIFIED 线索时确认并修复）
+
+`ModeHArenaIsolationLease.ClearNativeEnemies` 的守卫写成
+`if (player != null && ReferenceEquals(character, player)) continue;`，
+`player == null` 时守卫被整条跳过——**玩家自己也会被 Destroy**，而注释却写着「不会误伤」。
+改为 fail-closed：认不出玩家就不清场，返回 `isolation_player_unresolved` 让开局走
+AbortSetup 退款离场。隔离失败可以重来，销毁玩家角色不可逆。
+（同线索里的「出战崽被无差别清场」经核实**不成立**：`PetNestModeGate` 已用
+`mode_h_banned` 禁止模式H 局内放崽。）
+
+**兼容性影响**:
+- 存档：仅遗种巢远征记录新增三个可选字段（`SCHEMA+`），老档缺键回落默认值且不触发写屏障；
+  其余三个系统零 schema 改动。四个系统的存档 key、配置 key 均未新增或改名。
+- 本地化：模式H 新增 7 个 `Abort_*` 中英 key（已按 4.4 注入并有消费点）；
+  模式G 沿用 `L10n.T(中文, English)` 内联双语，无新 key。
+- Harmony/反射：无改动。
+- 运行时总回退：各系统开关关闭即可回到 dormant，行为与修复前一致。
+
+**验证方法**:
+1. 编译: Windows `compile_official.bat` 通过并部署（合并四个系统改动后重编一次，`Build succeeded`）。
+2. Guard: `python tools/run_guards.py` 全量 494 项 → PASS=493 / NEW-FAIL=0 / KNOWN-RED=1。
+   同步并**反例验证**的 guard：`ModeHReachabilityGuard`（新增 2 条断言）、
+   `ModeGAchievementIsolationGuard`、`ModeGPersistenceFlushCoordinatorGuard`、
+   `DailyReportPersistenceGuard`、`PetNestRuntimeModuleGuard`、`PetNestDropLifecycleGuard`、
+   `PetNestPersistenceGuard`、`PetNestExpeditionSettlementGuard`。
+   四个系统合计 20+ 项反例验证（改坏→确认红→还原→确认绿），未放宽任何既有断言语义
+   （仅两处纯字符数上界因函数体合法变长而放宽）。
+3. 人工 smoke: **全部待实机**，见下。
+
+**未验证/需人工**（按系统）:
+- 模式H：船坞入口 → 认证 → 选秀 → 看盘 → **赔率页点锁盘应能推进到生成段**（这是本轮核心）；
+  生成校验后应回到同一场看盘且恢复壳不残留；同一会话**连续开两局**不再吞船票；
+  制造一次计划/生成失败，确认自动回落同场、超预算后挂起、恢复壳「同场重开」按钮真的能重开；
+  中断赛季后重启游戏，船坞入口应给恢复壳且旧赛季不被覆盖；各失败出口都应看到中文提示。
+- 模式G：先打一局受伤的任意模式，再打无伤模式G 击杀龙王/龙裔，确认 flawless 解锁；
+  波 3/6 宿敌死亡帧不应再有落盘卡顿，且整局结束/切图/Alt+F4 后宿敌记录完整。
+- 日报：槽 A 签到 → 关开关 → 载入槽 B → 开开关，确认看到 B 的进度且存盘后未被覆写；
+  同槽删档重开应从第 1 天干净开始；同槽连续游玩不应刷槽位漂移 WARNING。
+- 遗种巢：重启后直接在基地孵官方蛋应成功、UI 无裸 key；**基地首帧预热的卡顿幅度需实测**
+  （首次回基地会同步跑一次全内存预设扫描，若不可接受可改为延迟一帧，结构不变）；
+  战斗中关开关后击杀已追踪 Boss 应无进账。
+
+**需 owner 确认（3 项）**:
+1. **模式G 落盘推迟的丢数据窗口**：typed 数据仍立即入内存存档（官方任一次存盘可带走），
+   但战斗中途进程被强杀时，波 3 宿敌记账最长可能损失到本局结束（旧行为是死亡后约 1 帧落盘）。
+   这是「消除战斗帧卡顿」换来的确定性代价，判断可接受（宿敌记录只在下一局入口消费），但属产品取舍。
+2. **遗种巢 `MaxRewardGrantAttempts = 6`** 是草案值，与 `PetNestTuning` 全表同属待审定数值。
+3. **遗种巢基地侧预热时机**（场景加载帧内同步 vs 延迟一帧），取决于上面的卡顿实测结果。
+
+**未修（有意，已登记）**:
+- 模式H 战斗驱动与真实仓库押注仍为计划内未接线（见下一条目），本轮只保证未接线边界干净。
+- 模式H 的 P2「赔率页没有赔率」（`ModeHOddsController` 零调用）：属战斗/押注接线的一部分，
+  与下一批一起做更合理。
+- 日报 P3「未读提示不持久」：需新增可选持久字段才能正确实现，
+  不为一个数据无损的 P3 动 schema，留 owner 拍板。
+- 遗种巢 P3 一组（闲逛崽实为跟随玩家、主面板 modal lease 极端时序、天赋/战痕裸英文 key）
+  与模式G/H 的其余 UNVERIFIED 线索：见 `CODE_REVIEW_FINDINGS.md` 的 UNVERIFIED 区。
+
+---
 ### 2026-08-29 Mode H 编排层接线：入口、场景开局、状态投影与可达性守卫（四系统审查修复 包4 第一批）
 
 **状态**: fixed（编排骨架与入口）；真实押注接线仍为 accepted，见「未完成部分」
