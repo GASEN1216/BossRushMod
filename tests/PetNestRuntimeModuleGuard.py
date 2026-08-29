@@ -137,6 +137,30 @@ def check_module(errors):
             r"PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", boss_filter):
         errors.append("[目录时序] Boss 池过滤变化后未通知重建血脉目录")
 
+    # 光有「填充后重建」还不够：InitializeEnemyPresets 的调用点全在进竞技场路径与
+    # 调试面板，基地启动一处都不触发。每次重启会话后、进第一次竞技场之前，
+    # 目录里一个官方血脉都没有（蛋孵出 lineage_unknown / 巢页裸 key / 账本缺行）。
+    # 因此基地侧必须主动预热一次（CR-2026-08-29-015）。
+    prime = re.search(r"private void EnsureOfficialLineagesPrimed\(\)[\s\S]{0,800}?\n        \}", code)
+    if prime is None:
+        errors.append("[目录时序] 缺少基地侧预设池预热入口 EnsureOfficialLineagesPrimed()")
+    else:
+        prime_body = prime.group(0)
+        # 4.12：没开遗种巢开关的玩家不得平白多做一次全量预设扫描
+        if "if (!_bootstrapped || _owner == null) return;" not in prime_body:
+            errors.append("[性能门控] 预热必须被 bootstrap（= 开关开启）挡住，"
+                          "未开开关的玩家不得付出全量预设扫描成本")
+        if "_owner.EnsureEnemyPresetsReadyForPetNest()" not in prime_body:
+            errors.append("[目录时序] 预热必须经 owner 侧的幂等入口，不得自行重扫预设")
+    if not re.search(r"if \(IsBaseScene\(\)\)\s*\{\s*EnsureOfficialLineagesPrimed\(\);", code):
+        errors.append("[目录时序] 预热必须在回基地分支的最前面，"
+                      "晚于任何读血脉目录的一步就等于没修")
+
+    if waves is not None and not re.search(
+            r"internal bool EnsureEnemyPresetsReadyForPetNest\(\)[\s\S]{0,900}?"
+            r"InitializeEnemyPresets\(\);", waves):
+        errors.append("[目录时序] WavesArena 缺少幂等的 EnsureEnemyPresetsReadyForPetNest 入口")
+
     # OnUpdate 未 bootstrap 时零成本早返；开关运行时打开要当帧复活
     # （EnsureBootstrapped 在开关关闭时自身就是 O(1) 早返，不破坏 dormant 零开销）
     if not re.search(

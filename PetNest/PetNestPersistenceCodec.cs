@@ -287,6 +287,11 @@ namespace BossRush
                       .Bool("settled", r.settled)
                       .Bool("revealed", r.revealed)
                       .Bool("rewardsGranted", r.rewardsGranted)
+                      // 按条目记账三格（schemaVersion 不变：老档缺这三个键时
+                      // 解码回落到默认值，语义与旧行为一致，属向后兼容扩展）
+                      .Bool("cashGranted", r.cashGranted)
+                      .Int("grantedLootUnits", r.grantedLootUnits)
+                      .Int("rewardGrantAttempts", r.rewardGrantAttempts)
                       .Bool("outcomeDead", r.outcomeDead)
                       .Bool("outcomeInjured", r.outcomeInjured)
                       .Long("outcomeCash", r.outcomeCash);
@@ -348,6 +353,11 @@ namespace BossRush
                 r.settled = n.GetBool("settled", false);
                 r.revealed = n.GetBool("revealed", false);
                 r.rewardsGranted = n.GetBool("rewardsGranted", false);
+                // 老档没有这三个键：默认值等价于"整笔都还没发过"，
+                // 而老档的已发放记录 rewardsGranted 已是 true，补发通道不会重入。
+                r.cashGranted = n.GetBool("cashGranted", false);
+                r.grantedLootUnits = n.GetInt("grantedLootUnits", 0);
+                r.rewardGrantAttempts = n.GetInt("rewardGrantAttempts", 0);
                 r.outcomeDead = n.GetBool("outcomeDead", false);
                 r.outcomeInjured = n.GetBool("outcomeInjured", false);
                 r.outcomeCash = n.GetLong("outcomeCash", 0L);

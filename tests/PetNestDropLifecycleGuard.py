@@ -72,6 +72,16 @@ def check_service(errors):
     if "runtime.IsEnabled && runtime.IsBootstrapped" not in code:
         errors.append("[dormant] 必须同时要求开关开启与 bootstrap 完成")
 
+    # 已挂接的 handler 必须自带开关检查（第二道防线）：
+    # 只清追踪表不够 —— 将来新增关闭/停机路径又漏清时，场上已追踪的 Boss
+    # 死亡仍会记遗魂/掉蛋/弹提示，穿透"关闭即不产蛋不记魂"的 dormant 契约。
+    handler = re.search(
+        r"private static void OnBossBeforeSpawnLoot\([\s\S]{0,2000}?\n        \}", code)
+    if handler is None:
+        errors.append("[dormant] 无法解析掉落结算 handler OnBossBeforeSpawnLoot")
+    elif "if (!IsEnabled(owner)) return;" not in handler.group(0):
+        errors.append("[dormant] handler 本体必须再查一次开关（第二道防线）")
+
     # 遗魂公式
     if "PetNestTuning.SoulDropHealthDivisor" not in code:
         errors.append("[遗魂] 计量必须走 PetNestTuning.SoulDropHealthDivisor 常量")
@@ -142,11 +152,52 @@ def check_dragonking_parallel(errors):
         errors.append("[挂接] 龙王的 TryTrack 必须紧随手动掉落事件订阅")
 
 
+def check_shutdown_clears_tracking(errors):
+    """
+    关开关 / 切图两条路径都必须清掉追踪表。
+
+    - 关开关（CR-2026-08-29-016）：handler 是 bootstrap 期间挂到 per-boss 事件上的，
+      _bootstrapped 置回 false 之后它们仍挂在场上的 Boss 身上；不清就会穿透 dormant 契约。
+      两个关闭分支（OnSceneLoaded / OnUpdate）都经 ShutdownIfEnabledTurnedOff，
+      因此清理必须落在它的 _bootstrapped 早返**之前**。
+    - 切图（CR-2026-08-29-020）：未死亡也未被逐只清理的 Boss（弃局、直接撤离、切图销毁）
+      条目永不移除，长会话跨多局无上限累积。
+    """
+    text = read_petnest("PetNestRuntimeModule.cs")
+    if text is None:
+        errors.append("[File] 缺少 PetNest/PetNestRuntimeModule.cs")
+        return
+    code = strip_cs_comments(text)
+
+    scene = re.search(
+        r"public override void OnSceneLoaded\(SceneRuntimeContext context\)"
+        r"[\s\S]{0,600}?PetNestDropService\.ClearAllTracking\(\);", code)
+    if scene is None:
+        errors.append("[泄漏] 场景回调必须清掉上一局的掉落追踪表，"
+                      "否则未死亡的 Boss 条目跨局无上限累积")
+
+    shutdown = re.search(
+        r"private void ShutdownIfEnabledTurnedOff\(\)[\s\S]{0,1600}?\n        \}", code)
+    if shutdown is None:
+        errors.append("[dormant] 无法解析 ShutdownIfEnabledTurnedOff")
+    else:
+        body = shutdown.group(0)
+        clear_pos = body.find("PetNestDropService.ClearAllTracking();")
+        early_pos = body.find("if (!_bootstrapped) return;")
+        if clear_pos < 0:
+            errors.append("[dormant] 关开关必须并联 PetNestDropService.ClearAllTracking()，"
+                          "否则已挂接的 handler 会穿透 dormant 契约")
+        elif 0 <= early_pos < clear_pos:
+            errors.append("[dormant] ClearAllTracking 必须在 _bootstrapped 早返之前，"
+                          "否则 handler 挂着而清理被早返跳过")
+
+
 def main():
     errors = []
     check_service(errors)
     check_hook_site(errors)
     check_dragonking_parallel(errors)
+    check_shutdown_clears_tracking(errors)
     return report(GUARD, errors)
 
 

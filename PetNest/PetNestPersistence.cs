@@ -30,6 +30,13 @@ namespace BossRush
         private readonly Func<T> _createDefault;
 
         private T _cache;
+        /// <summary>
+        /// _cache / _pendingJson 所属的存档槽。**命中缓存前必须校验**：
+        /// 运行时关开关会把 OnSetFile 一起退订，之后玩家在主菜单换档没人清缓存，
+        /// 重开开关时缓存里还是上一个档的崽与遗魂账本，一写就把 A 档覆盖到 B 档。
+        /// 记槽位自校验之后，无论订阅是否还在都安全（与日报侧同一形态）。
+        /// </summary>
+        private int _cacheSlot;
         private string _pendingJson;
         private bool _pendingActive;
         private bool _writeBarrier;
@@ -92,12 +99,43 @@ namespace BossRush
         /// <summary>最后一次失败原因。</summary>
         internal string LastError { get { return _lastError; } }
 
-        /// <summary>加载或初始化。幂等：已有缓存直接返回。</summary>
+        /// <summary>
+        /// 当前存档槽。读失败时按"未变化"处理：诊断路径的失败绝不能反过来误清缓存。
+        /// 必须在 _lock 内调用（要读 _cacheSlot）。
+        /// </summary>
+        private int ReadCurrentSlotOrCached()
+        {
+            try
+            {
+                return SavesSystem.CurrentSlot;
+            }
+            catch (Exception)
+            {
+                return _cacheSlot;
+            }
+        }
+
+        /// <summary>加载或初始化。幂等：已有缓存且槽位一致时直接返回。</summary>
         internal T LoadOrInit()
         {
             lock (_lock)
             {
-                if (_cache != null) return _cache;
+                int slot = ReadCurrentSlotOrCached();
+                if (_cache != null)
+                {
+                    if (_cacheSlot == slot) return _cache;
+
+                    // 槽位与缓存不符：自失效重载。pending 属于旧档，绝不能带进新档
+                    // （写屏障也一并复位，新档要按它自己的 payload 重新判定）。
+                    ModBehaviour.DevLog("[PetNest] 存档槽变化（" + _cacheSlot + " -> " + slot
+                        + "），缓存自失效重载: " + _key);
+                    _cache = null;
+                    _pendingJson = null;
+                    _pendingActive = false;
+                    _writeBarrier = false;
+                    _lastError = null;
+                }
+                _cacheSlot = slot;
 
                 bool keyExists = false;
                 try
@@ -199,6 +237,8 @@ namespace BossRush
                 lock (_lock)
                 {
                     _cache = value;
+                    // 缓存与 pending 一起打上槽位戳，供 LoadOrInit / FlushPending 校验
+                    _cacheSlot = ReadCurrentSlotOrCached();
                     // 每 key 至多一个 pending：合并覆盖，不叠加
                     _pendingJson = json;
                     _pendingActive = true;
@@ -236,6 +276,17 @@ namespace BossRush
             {
                 if (!_pendingActive || _pendingJson == null) return true;
                 if (_writeBarrier) { _pendingActive = false; _pendingJson = null; return true; }
+
+                // 槽位保险：pending 属于它入队时的那个档。官方采集与协调器都可能在
+                // 换档之后才触发 flush，这里不拦就会把旧档的巢数据写进新档。
+                if (_cacheSlot != ReadCurrentSlotOrCached())
+                {
+                    _pendingJson = null;
+                    _pendingActive = false;
+                    _cache = null;
+                    ModBehaviour.DevLog("[PetNest] 存档槽已变化，丢弃跨档 pending: " + _key);
+                    return true;
+                }
 
                 try
                 {

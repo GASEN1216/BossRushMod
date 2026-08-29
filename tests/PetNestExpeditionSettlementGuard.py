@@ -174,7 +174,7 @@ def main():
     # 9. 发奖走可恢复的独立标记，落档成功而发奖失败时能补发
     if "rewardsGranted" not in code:
         errors.append("[发奖] 必须有独立的 rewardsGranted 标记（settled 之外的第二个标记）")
-    backfill = re.search(r"internal static int TryGrantPendingRewards\(\)[\s\S]{0,1400}?\n        \}", code)
+    backfill = re.search(r"internal static int TryGrantPendingRewards\(\)[\s\S]{0,2400}?\n        \}", code)
     if backfill is None:
         errors.append("[发奖] 缺少可恢复的补发通道 TryGrantPendingRewards()")
     else:
@@ -183,6 +183,68 @@ def main():
             errors.append("[发奖] 补发必须幂等：只处理 settled 且未发奖的记录")
         if "r.rewardsGranted = true;" not in body:
             errors.append("[发奖] 补发后必须置已发放标记并落档")
+        # 按条目记账：整体重试会让已到账的现金再发一次
+        if "GrantRewards(r)" not in body:
+            errors.append("[发奖] 补发必须经 GrantRewards 逐格续发，不得另起一套发放路径")
+        if "PetNestTuning.MaxRewardGrantAttempts" not in body:
+            errors.append("[发奖] 补发必须有尝试上限，否则一件永远发不出的战利品会把翻牌"
+                          "永久卡在 rewards_pending")
+
+    # 9b. 按条目记账：现金与战利品各有自己的账，补发只重做真正失败的那一格
+    grant = re.search(
+        r"private static bool GrantRewards\(PetNestExpeditionRecord record\)[\s\S]{0,3000}?\n        \}",
+        code)
+    if grant is None:
+        errors.append("[发奖记账] GrantRewards 必须返回 bool（是否已全部发出），"
+                      "否则注释宣称的可补发语义与实际行为不符")
+    else:
+        body = grant.group(0)
+        if "record.cashGranted = true;" not in body:
+            errors.append("[发奖记账] 现金必须单独记账，否则整体重试会重复发放现金")
+        if "EconomyManager.Add(record.outcomeCash)" not in body:
+            errors.append("[发奖记账] 缺少现金发放调用")
+        if "ok = EconomyManager.Add(record.outcomeCash);" not in body:
+            errors.append("[发奖记账] 官方 Add 在 Instance==null 时返回 false 不抛异常，"
+                          "必须接返回值判断是否真的到账")
+        if "record.grantedLootUnits" not in body:
+            errors.append("[发奖记账] 战利品必须按件数游标记账，补发从游标续投，不重投")
+        if "unit < record.grantedLootUnits" not in body:
+            errors.append("[发奖记账] 补发必须跳过游标之前已投出去的件数")
+
+    # 9c. 单件投递必须区分「可重试失败」与「确定性废件」：
+    # 废件当作失败会让记录永远发不全，可重试失败当作成功则静默吞奖
+    one = re.search(
+        r"private static bool GrantOneItem\(int typeId, PetNestExpeditionRecord record\)"
+        r"[\s\S]{0,2400}?\n        \}", code)
+    if one is None:
+        errors.append("[发奖记账] GrantOneItem 必须返回 bool（这一件是否已了结）")
+    else:
+        body = one.group(0)
+        if "return false;" not in body:
+            errors.append("[发奖记账] 可重试失败（实例化失败 / 异常）必须返回 false 保留欠账")
+
+    # 9d. 孤儿远征锁自愈：崽标记 OnExpedition 但远征表无匹配记录 = 永久锁死
+    orphan = re.search(
+        r"internal static int ReconcileOrphanedExpeditionLocks\(\)[\s\S]{0,2600}?\n        \}", code)
+    if orphan is None:
+        errors.append("[孤儿锁] 缺少自愈入口 ReconcileOrphanedExpeditionLocks()")
+    else:
+        body = orphan.group(0)
+        if "PetNestPersistenceAccess.CanStoreAll" not in body:
+            errors.append("[孤儿锁] 写屏障 / 故障态下 records 可能只是没读回来，"
+                          "此时复位会把在途远征全部误解锁，必须先过 CanStoreAll")
+        if "HasMatchingExpedition(records, pet)" not in body:
+            errors.append("[孤儿锁] 必须先确认远征表里确实没有匹配记录再复位")
+        if "pet.lockedByExpeditionId = null;" not in body:
+            errors.append("[孤儿锁] 复位必须同时清掉 lockedByExpeditionId")
+        if "PetNestPetState.OnExpedition" not in body:
+            errors.append("[孤儿锁] 只有 state==OnExpedition 的崽才复位状态，"
+                          "不得顺手改掉出战席位")
+    module_text = read_petnest("PetNestRuntimeModule.cs")
+    if module_text is not None and (
+            "PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();"
+            not in strip_cs_comments(module_text)):
+        errors.append("[孤儿锁] 回基地扫描必须接通孤儿远征锁自愈")
     reveal_block = re.search(r"internal static bool MarkRevealed\([\s\S]{0,1200}?\n        \}", code)
     if reveal_block is not None and "!record.rewardsGranted" not in reveal_block.group(0):
         errors.append("[发奖] 奖未发就把记录移出待翻列表 = 奖励永久丢失，翻牌前必须补发")

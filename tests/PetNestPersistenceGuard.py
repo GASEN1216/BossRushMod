@@ -95,6 +95,27 @@ def check_persistence(errors):
     if "readback" not in code:
         errors.append("[完整性] flush 后必须回读核对")
 
+    # 8. 跨存档槽自校验：关开关会把 OnSetFile 一起退订，之后玩家在主菜单换档
+    # 没人清缓存，重开开关时缓存仍是上一个档的数据，一写就把 A 档覆盖到 B 档。
+    # 记槽位并在命中缓存 / flush 前自校验，无论订阅是否还在都安全。
+    if "SavesSystem.CurrentSlot" not in code:
+        errors.append("[跨档] 缓存必须记录所属存档槽（SavesSystem.CurrentSlot）")
+    load = re.search(r"internal T LoadOrInit\(\)[\s\S]{0,4200}?\n            \}", code)
+    if load is None:
+        errors.append("[跨档] 无法解析 LoadOrInit")
+    else:
+        body = load.group(0)
+        if "if (_cacheSlot == slot) return _cache;" not in body:
+            errors.append("[跨档] 命中缓存前必须校验槽位，不一致时自失效重载")
+        if "_cacheSlot = slot;" not in body:
+            errors.append("[跨档] 加载后必须记下缓存所属的槽位")
+    flush = re.search(r"internal bool FlushPending\(\)[\s\S]{0,2000}?\n        \}", code)
+    if flush is None:
+        errors.append("[跨档] 无法解析 FlushPending")
+    elif "_cacheSlot != ReadCurrentSlotOrCached()" not in flush.group(0):
+        errors.append("[跨档] pending 属于入队时的那个档，落盘前必须校验槽位，"
+                      "否则官方采集会把旧档数据写进新档")
+
 
 def check_codec(errors):
     text = read_petnest("PetNestPersistenceCodec.cs")

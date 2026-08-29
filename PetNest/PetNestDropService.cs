@@ -141,6 +141,13 @@ namespace BossRush
             {
                 if (boss == null || string.IsNullOrEmpty(lineageKey)) return;
 
+                // 第二道防线（CR-2026-08-29-016）：关闭路径已经并联 ClearAllTracking，
+                // 这里再查一次开关，防止将来新增关闭/停机路径时又漏清 —— 那会让
+                // 已挂接的 handler 穿透 dormant 契约（关了开关照样记遗魂、掉蛋、弹提示）。
+                // 只在 Boss 死亡帧判一次，不是每帧热路径；判据本身是两次 null 检查
+                // 加一个 no-throw 配置 getter，开启态成本可忽略。
+                if (!IsEnabled(owner)) return;
+
                 // 图鉴：按角色实例去重记一次血脉击杀
                 PetNestMuseumStats.RecordKill(boss, lineageKey);
 

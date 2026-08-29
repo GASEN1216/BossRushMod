@@ -652,6 +652,50 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 遗种巢专用：确保 Boss 预设池在**基地**就已填充。
+        ///
+        /// 为什么必须有它（CR-2026-08-29-015）：InitializeEnemyPresets 的全部调用点都在
+        /// 进竞技场路径与调试面板，基地启动一处都不触发；而血脉目录的资格口径正是这张池
+        /// （GetFilteredEnemyPresets 在 enemyPresets==null 时返回空表）。于是每次重启会话后、
+        /// 进第一次竞技场之前，官方血脉在基地全面不可用：蛋孵出 lineage_unknown、
+        /// 巢页显示裸 Cname_* key、遗魂账本官方血脉整行缺失、凝蛋按钮消失。
+        ///
+        /// 幂等：池已填充时零成本返回，绝不重复扫描；未填充时走 InitializeEnemyPresets
+        /// 自身的完整流程（它填完会回调 PetNestRuntime.NotifyEnemyPresetsRefreshed 重建目录，
+        /// 因此这里不需要、也不应该再手动建一次目录）。
+        ///
+        /// 门控在调用侧（AGENTS.md 4.12）：只有已 bootstrap（= 玩家开着遗种巢开关）
+        /// 的会话才会走到这里，没开开关的玩家一次也不会为它付出全量预设扫描的成本。
+        /// </summary>
+        internal bool EnsureEnemyPresetsReadyForPetNest()
+        {
+            try
+            {
+                if (_enemyPresetsInitialized && enemyPresets != null && enemyPresets.Count > 0)
+                {
+                    return true;
+                }
+
+                InitializeEnemyPresets();
+
+                // 与进竞技场路径、Boss 池窗口路径同一套接法：池填好后必须把玩家配置的
+                // 禁用名单加载进来，否则基地侧目录会包含玩家已禁用的 Boss，
+                // 直到进一次竞技场才收敛（它自身幂等，并会 Invalidate 触发目录重建）。
+                if (!bossPoolFilterInitialized && enemyPresets != null && enemyPresets.Count > 0)
+                {
+                    InitializeBossPoolFilter();
+                }
+
+                return enemyPresets != null && enemyPresets.Count > 0;
+            }
+            catch (Exception e)
+            {
+                DevLog("[PetNest] [WARNING] 基地侧 Boss 预设池预热失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 无间炼狱模式下按权重随机选取一个敌人预设
         /// 权重根据基础血量与波次线性放大，高血量Boss在后期权重更高
         /// 同时应用用户设置的无间炼狱因子作为权重乘数

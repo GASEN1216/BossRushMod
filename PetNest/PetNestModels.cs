@@ -220,6 +220,24 @@ namespace BossRush
         /// 老档缺失时回落 false，回基地时会补发一次。
         /// </summary>
         public bool rewardsGranted;
+        /// <summary>
+        /// 现金是否已到账。**按条目记账的第一格**：EconomyManager.Add 在
+        /// Instance==null 时返回 false 而不抛异常，整体重试会让已到账的现金再发一次。
+        /// 有了这一格，补发只重做真正失败的部分。
+        /// 无现金产出（outcomeCash&lt;=0）时同样置 true，语义是"这一格没有欠账"。
+        /// </summary>
+        public bool cashGranted;
+        /// <summary>
+        /// 已成功投递的战利品「件数」游标（按 outcomeLootCounts 展开后的件数计）。
+        /// 补发从这里续投，已投出去的绝不重发。
+        /// </summary>
+        public int grantedLootUnits;
+        /// <summary>
+        /// 发奖尝试次数。到上限（PetNestTuning.MaxRewardGrantAttempts）仍未发全时
+        /// 放弃并置 rewardsGranted，避免一件永远发不出去的战利品把翻牌永久卡死
+        /// （MarkRevealed 在 rewardsGranted=false 时会拒绝翻牌）。
+        /// </summary>
+        public int rewardGrantAttempts;
         /// <summary>结算结果：崽是否阵亡。</summary>
         public bool outcomeDead;
         /// <summary>结算结果：崽是否负伤（留战痕）。</summary>

@@ -162,6 +162,13 @@ namespace BossRush
         /// <summary>血脉元素与目的地匹配时的成功率加成（绝对百分点）。</summary>
         internal const float ElementAffinityBonus = 0.12f;
 
+        /// <summary>
+        /// 发奖尝试次数上限。到顶仍未发全时放弃并置 rewardsGranted，
+        /// 避免一件永远发不出去的战利品把翻牌永久卡死（MarkRevealed 会拒绝未发奖的记录）。
+        /// 每次回基地至多消耗两次（模块扫一次 + 翻牌前补发一次）。
+        /// </summary>
+        internal const int MaxRewardGrantAttempts = 6;
+
         /// <summary>风浪档负伤概率（未阵亡时）。</summary>
         internal const float InjuryRateRough = 0.25f;
         /// <summary>亡命档负伤概率（未阵亡时）。</summary>

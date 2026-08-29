@@ -103,6 +103,12 @@ namespace BossRush
                 // 跨局去重集合必须清，否则累积死引用
                 PetNestMuseumStats.ClearCountedKills();
                 PetNestProgressionService.ClearSceneKillDedup();
+                // 掉落追踪同样按局清（CR-2026-08-29-020）：未死亡也未被逐只清理的 Boss
+                //（中途弃局、直接撤离、切图销毁）在 _hooks 里的条目永不移除，
+                // 长会话跨多局无上限累积（死角色 key + 捕获 owner/character 的委托）。
+                // 上一局的角色已随场景销毁，这里整表清空不会误清本局的追踪：
+                // Boss 是场景加载完成之后才生成并注册的。
+                PetNestDropService.ClearAllTracking();
                 if (!IsEnabled)
                 {
                     // 关掉开关也要把上一局的随从、闲逛崽与借席清干净
@@ -116,8 +122,15 @@ namespace BossRush
                 // 回基地：把「本局重伤退场」复位为在巢待命
                 if (IsBaseScene())
                 {
-                    // 必须最先做：它要读「仍在场的随从」与「重伤退场的崽」，
+                    // 必须在任何读血脉目录的一步之前：会话重启后 enemyPresets 还是空的，
+                    // 目录里一个官方血脉都没有（CR-2026-08-29-015）。
+                    EnsureOfficialLineagesPrimed();
+                    // 孤儿远征锁自愈：崽标记 OnExpedition 但远征表里没有匹配记录时复位，
+                    // 否则那只崽不可出战、不可放生、不可移除、永不结算（永久锁死）。
+                    PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();
+                    // 必须早于下面两行：它要读「仍在场的随从」与「重伤退场的崽」，
                     // 而下面两行分别会清掉 active id 与把 Downed 复位。
+                    // （上面两行只碰预设池与 OnExpedition 锁，不影响这两样输入。）
                     PetNestProgressionService.SettleRunHomecoming(
                         PetNestCompanionRuntime.ActiveCompanionPetId);
                     PetNestService.RestoreDownedPetsOnReturnToBase();
@@ -264,11 +277,44 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 基地侧的血脉目录预热（CR-2026-08-29-015）。
+        ///
+        /// InitializeEnemyPresets 的调用点全在进竞技场路径与调试面板，基地启动一处都不触发；
+        /// 血脉目录的资格口径又正是那张池，于是每次重启会话后、进第一次竞技场之前，
+        /// 官方血脉在基地全面不可用（蛋孵出 lineage_unknown、巢页裸 key、遗魂账本缺行）。
+        ///
+        /// 4.12 门控：只在已 bootstrap（= 玩家开着遗种巢开关）且回到基地时做一次，
+        /// 没开开关的玩家一次也不会为它付出全量预设扫描的成本；
+        /// 池已填充后 owner 侧零成本早返，之后每次回基地都不再有额外开销。
+        /// 填充成功由 owner 侧回调 NotifyEnemyPresetsRefreshed 重建目录，这里不重复建。
+        /// </summary>
+        private void EnsureOfficialLineagesPrimed()
+        {
+            try
+            {
+                if (!_bootstrapped || _owner == null) return;
+                _owner.EnsureEnemyPresetsReadyForPetNest();
+            }
+            catch (Exception e)
+            {
+                LogFailure("prime_presets", e);
+            }
+        }
+
+        /// <summary>
         /// 开关被玩家在运行时关掉：退订、作废目录、回到 dormant。
         /// 幂等；从未 bootstrap 过时 O(1) 早返。
         /// </summary>
         private void ShutdownIfEnabledTurnedOff()
         {
+            // **必须在 _bootstrapped 早返之前**（CR-2026-08-29-016）：handler 是在
+            // bootstrap 期间挂到 per-boss 事件上的，_bootstrapped 置回 false 之后它们
+            // 仍然挂在场上的 Boss 身上。不清的话，竞技场中途关掉开关后，
+            // 已追踪 Boss 死亡照样记遗魂/可能掉蛋/弹「可凝蛋」提示，
+            // 违反「关闭即不产蛋不记魂」的 dormant 契约。
+            // 两个关闭分支（OnSceneLoaded / OnUpdate）都经这里，是唯一的咽喉点；
+            // 无追踪时 ClearAllTracking 自身是 O(1) 早返，不破坏关闭态零开销。
+            PetNestDropService.ClearAllTracking();
             if (!_bootstrapped) return;
             try
             {
