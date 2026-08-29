@@ -87,7 +87,7 @@ namespace BossRush
                     return;
                 }
 
-                CharacterRandomPreset source = PetNestCompanionSpawner.ResolveSourcePreset(resolvedKey);
+                CharacterRandomPreset source = PetNestCompanionSpawner.ResolveCompanionSourcePreset(resolvedKey);
                 if (source == null)
                 {
                     _lastStatus = "血脉 preset 解析失败（fail-closed）: " + resolvedKey;

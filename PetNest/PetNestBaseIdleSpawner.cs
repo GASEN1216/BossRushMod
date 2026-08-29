@@ -44,6 +44,10 @@ namespace BossRush
             if (!isBaseScene)
             {
                 CleanupAll();
+                // 代数也要推进：分帧生成协程 await 之后只比对 _sceneGeneration，
+                // 离开基地时不推进的话 in-flight 协程会拿旧代数比对成功，
+                // 把闲逛崽落到战斗场景里（绕过模式门控与单席契约）。
+                _sceneGeneration = sceneGeneration;
                 return;
             }
             if (owner == null) return;
@@ -120,7 +124,7 @@ namespace BossRush
             PetNestLineageInfo lineage;
             if (!PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) || lineage == null) return;
 
-            CharacterRandomPreset source = PetNestCompanionSpawner.ResolveSourcePreset(pet.lineageKey);
+            CharacterRandomPreset source = PetNestCompanionSpawner.ResolveCompanionSourcePreset(pet.lineageKey);
             if (source == null) return;
 
             Vector3 stagingPos = player.transform.position + PetNestCompanionSpawner.StagingOffset;

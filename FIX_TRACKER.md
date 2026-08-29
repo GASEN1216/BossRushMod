@@ -39,6 +39,127 @@
 ```
 
 ---
+### 2026-08-29 遗种巢 血脉目录时序 P0、自定义崽 P1 与养成内容实装（四系统审查修复 包3）
+
+**状态**: fixed
+**Finding**: CR-2026-08-29-004（血脉目录时序 P0）、CR-2026-08-29-005（自定义崽 preset P1）、
+CR-2026-08-29-006（龙王掉落从未挂接）
+**兼容分类**: SAFE（P0/P1 修复与口径修正）+ COMPAT（等级/放生/扩容为纯新增玩法，存档字段早已就绪，
+老档 level=1/exp=0 由 Normalize 兜底，无 schema 变更）
+**版本/Commit**: 本条目所在 commit
+**Owner decision**: 需要；已拍板四项数值——扩容里程碑=图鉴 10/20/30 → 容量 16/20/24；
+等级 Lv10 封顶每级 100 exp、来源 归巢+10 / 崽击杀+2（单局顶 30）/ 远征存活+25、每 3 级 PetCapcity+1；
+放生返还 60 同血脉遗魂；careerCount 补进局计数。
+
+**现象**:
+1. （P0）玩家开启遗种巢后进竞技场杀**任何官方 Boss**：不掉蛋、不记遗魂、图鉴不涨；
+   已有的官方血脉蛋孵化报 `lineage_unknown`；官方血脉的崽设为出战后每局静默不入场。
+   即「全 Boss 皆可出崽」这一核心卖点对全部官方 Boss 失效。
+2. （P1）三个自定义 Boss（焚天龙皇 / 幽灵女巫 / 龙裔遗族）的蛋能孵出来，但崽永远进不了场
+   （`lineage_preset_missing`），基地闲逛也跳过；面板显示的是 `boss_dragonking` 这类裸 key。
+3. （新发现）龙王走的是自己的手动掉落订阅，从不经 `RegisterBossRandomLootTracking`，
+   因此遗种巢掉落追踪对它从未生效——焚天龙皇血脉连蛋都拿不到（P0 修完也依然拿不到）。
+4. （P2/P3）巢满 12 是硬墙（无放生、里程碑扩容未实装）；等级/经验是死系统（恒 Lv1 却到处展示）；
+   孵化揭晓页天赋数值少乘 100（"+0.08%"）；快速离开基地时闲逛崽可能落进战斗场景；
+   名字长度数据层 16 / UI 层 12 两套口径；`MarkRevealed` 先改内存后提交且失败不回滚；
+   运行时关开关不清在场随从；面板内结算的远征要等再次回基地才翻牌；两个死字段；
+   五个无消费者的本地化 key；入场重试窗口一次 in-flight 失败即永久关窗；
+   蛋只扫顶层容器（塞在背包件/箱子里的蛋在孵化页看不见）。
+
+**根因**:
+1. `PetNestLineageCatalog.EnsureBuilt` 在 bootstrap（`ModBehaviour.Start`）时执行，而
+   `enemyPresets` 要等玩家第一次进竞技场才由 `WavesArena.InitializeEnemyPresets` 填充。
+   构建时 `GetFilteredEnemyPresets()` 返回空表 → `AddOfficialLineages` 一条不加；
+   `_built = true` 之后 `EnsureBuilt` 永久 no-op，全程没有任何重建时机。
+2. 三个自定义 Boss 的 runtime preset 是各自生成那一刻才 `Instantiate` 的角色属性，不进任何全局
+   注册表，而 `ObjectCache.GetCharacterPresets()` 是一次性快照（有意不刷新），因此永远查不到。
+3. 龙王的掉落订阅是文件内自建的 `dragonKingLootEventHandlers` 手动路径。
+
+**修复内容**:
+- 新增文件（均已加入 `compile_official.bat`）:
+  - `PetNest/PetNestProgressionService.cs`（等级/经验/生涯场次；击杀订阅幂等成对、热路径零分配早返链）
+  - `PetNest/PetNestReleaseConfirmModal.cs`（放生二次确认弹窗，形态照 `PetNestRenameModal`）
+- 修改文件:
+  - `PetNest/PetNestRuntimeModule.cs`：新增 `NotifyEnemyPresetsRefreshed()` 重建入口；
+    基地分支最前面插归巢结算（必须早于 `RestoreDownedPetsOnReturnToBase` 与 `CleanupOnce`）；
+    OnUpdate 关闭分支补清随从与闲逛崽；删除死字段 `_lastEnabledState`。
+  - `WavesArena/WavesArena.cs`：`InitializeEnemyPresets` 填充完成后通知重建目录。
+  - `BossFilter/BossFilter.cs`：`InvalidateFilteredPresetsCache`（唯一咽喉点，覆盖 5 条过滤变化路径）
+    通知重建目录，使掉落资格随玩家在场内改 Boss 池即时收敛。
+  - `PetNest/PetNestCompanionSpawner.cs`：新增 `ResolveCompanionSourcePreset` 与
+    `ResolveCustomLineageBasePreset`（自定义血脉走各自官方底模 `Cname_Boss_Red` / `Cname_Ghost`）；
+    `CreateIsolatedAsync` 在中性化前写 `clone.nameKey = lineageKey` 身份戳。
+    **有意不改 `ResolveSourcePreset`**：目录的官方循环靠它对自定义 key 返 null 来 fail-closed 跳过，
+    改了会让官方循环以 `IsCustomBoss=false` 抢注自定义血脉，元素/缩放/显示名全部失效。
+  - `PetNest/PetNestCompanionRuntime.cs`、`PetNestBaseIdleSpawner.cs`、`PetNestDebugProbe.cs`：
+    三个消费点改调 `ResolveCompanionSourcePreset`。
+  - `PetNest/PetNestLineageCatalog.cs`：自定义血脉显示名改用各 Boss Config 的双语常量。
+  - `Integration/DragonKing/DragonKingBoss.cs`：手动掉落订阅处并联 `TryTrack`，
+    离场与死亡两个清理点并联 `ClearTracking`（不重构手动路径）。
+  - `PetNest/PetNestService.cs`：新增 `GetEffectiveNestCapacity()`（容量单点，纯派生不写档，
+    存档 capacity 作老档下限）、`TryReleasePet`（单事务：移出+清席+返魂，失败逐项回滚）、
+    私有回滚原语 `SetSouls`；`Capacity`/`TryAddPet` 收敛到同一口径。
+  - `PetNest/PetNestTuning.cs`：新增扩容里程碑表、放生返还数与 7 个养成常量。
+  - `PetNest/PetNestUIPages.cs`：巢页加放生动作（IsDanger，远征锁定禁用）与扩容进度提示；
+    卡片副标题加经验进度/成年徽记；`FormatModifierValue` 提升 `internal` 供揭晓页复用；
+    空巢补系统说明；凝蛋区加区头。
+  - `PetNest/PetNestUI.cs`：接入放生弹窗；关闭面板时补翻牌（基地门控，只挂用户点击路径）。
+  - `PetNest/PetNestHatchRevealView.cs`：天赋数值改用 `FormatModifierValue`（修 100 倍单位错）。
+  - `PetNest/PetNestBaseIdleSpawner.cs`：非基地分支同步推进 `_sceneGeneration`，
+    使 in-flight 分帧协程的代数比对必然失效。
+  - `PetNest/PetNestHatchService.cs`：`SanitizeName` 改用 `PetNestTuning.MaxPetNameLength`；
+    找蛋改为递归下钻 `Slots` + `Inventory`（深度限 16，逐层 try/catch，仅开孵化页时扫一次）。
+  - `PetNest/PetNestExpeditionService.cs`：`MarkRevealed` 补整体回滚（形态同 `TryDepart`）；
+    存活结算加 `AddExp(PetExpExpeditionSurvive)`（只改内存，落档并进既有 `CommitBoth`，不破坏原子性）。
+  - `PetNest/PetNestDropService.cs`：遗魂跨过「可凝一枚蛋」阈值时提示一次
+    （**不逐次击杀提示**：无间炼狱一局几十杀会刷屏）。
+  - `PetNest/PetNestDownedHandler.cs`：删除死字段 `_pendingKillerName`。
+  - `PetNest/PetNestModels.cs`：`Normalize` 补 level 上限、exp 与 careerCount 下限防御。
+  - `Localization/PetNestLocalization.cs`：新增放生 4 个 + 扩容提示 + 成年徽记共 6 个 key；
+    删除无实体道具对应的 `Soul`；`SystemDesc`/`SoulDesc`/`CondenseProgress`/`SoulGained` 接入消费点。
+- Guard 同步（全部做了反例验证）:
+  - `tests/PetNestRuntimeModuleGuard.py`：新增目录重建三断言 + WavesArena/BossFilter 两处通知断言。
+  - `tests/PetNestCompanionLifecycleGuard.py`：新增 companion 解析入口、底模分支、nameKey 身份戳
+    位置、以及两个消费点不得回退到通用解析。
+  - `tests/PetNestDropLifecycleGuard.py`：新增 `check_dragonking_parallel`（龙王并联对）。
+  - `tests/PetNestExpeditionSettlementGuard.py`：`MarkRevealed` 正则窗口 900 → 1600（回滚代码使其超窗，
+    不改必红），并新增两条回滚断言。
+
+**兼容性影响**:
+- 存档：无 schema 变更。`level`/`exp`/`careerCount` 字段与 codec 早已就绪，老档默认值由 Normalize 兜底。
+- 巢容量：不写档，纯由图鉴解锁数派生；曾手动扩过容的老档以存档值为下限，不会缩容。
+- TypeID / Harmony / 资源 / 部署：无变化。
+- 行为变化（均为修复方向）：官方 Boss 与龙王开始正常掉蛋记魂；自定义崽可出战；
+  崽开始积累等级与生涯场次；巢满可放生腾位。
+
+**验证方法**:
+1. 编译: Windows `compile_official.bat` 通过并部署。
+2. Guard: `python tools/run_guards.py` 全量 493 项 → PASS=492 / NEW-FAIL=0 / KNOWN-RED=1。
+   四个改动过的 guard 均做了反例验证（回退源码确认会红）。
+3. 人工 smoke: 待实机——见下。
+
+**未验证/需人工**:
+- **掉蛋（P0 主验证）**：开开关 → 进竞技场 → 日志应出现两次「血脉目录构建完成，条目数=<全量>」
+  （预设初始化末尾 + Boss 池过滤初始化）；杀官方 Boss 应记遗魂并有 4% 掉蛋；
+  **单独验证焚天龙皇**（P1 的龙王并联）。场内 Boss 池窗口关掉某 Boss 后，该 Boss 应立即不再记魂。
+- **自定义崽出战（P1 主验证）**：孵三个自定义血脉各一只，面板显示应为「焚天龙皇/幽灵女巫/龙裔遗族」
+  而非裸 key；设为出战应能正常入场（名条为血脉名、缩放正确、玩家阵营、伤害归一）。
+- 孵化揭晓页天赋应显示 "+8%" 而非 "+0.08%"。
+- 扩容：图鉴解锁 10 血脉后巢页容量应变 16，第 13 只不再 `nest_full`。
+- 升级：归巢 +10（重伤退场的崽也应 +10 且 careerCount+1）、崽击杀 +2 至单局 30 封顶、
+  远征存活 +25；Lv3 后捡漏背包应 +1 格；Lv10 显示「成年」；图鉴最高等级跟随。
+- 放生：远征中应被拒；确认后崽消失、同血脉 +60 遗魂、不进纪念碑；写屏障下失败应整体回滚（崽还在）。
+- 翻牌：远征页开着等到期 → 关面板应立即翻牌；开关关闭时关面板不得弹演出。
+- 闲逛崽：进基地后 1-2 秒内立刻过图，压测确认战斗场景不出现闲逛崽。
+- 嵌套蛋：把蛋放进背包里的箱子，孵化页应能看到。
+
+**留置项**:
+- 成年体快照 `PetNestAdultSnapshot` 本轮**不写入**（deferred）：Lv10 的三个触发点（归巢/击杀/远征）
+  大多不在局内，`maxHealth`/`damageFactor` 拿不到真值，写残缺快照会把坏 schema 语义冻进 v1 存档；
+  当前只做 Lv10 封顶 + 图鉴 `RecordLevel` + UI「成年」徽记（纯派生，零存档字段）。
+- 遗魂提示采用「跨过可凝蛋阈值」而非逐次击杀（documented），理由见上。
+
+---
 ### 2026-08-29 鸭科夫日报 开关复活、战斗帧落盘、死建筑闸与发放语义修复（四系统审查修复 包2）
 
 **状态**: fixed

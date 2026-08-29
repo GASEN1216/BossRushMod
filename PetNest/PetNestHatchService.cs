@@ -329,23 +329,73 @@ namespace BossRush
             return found;
         }
 
+        /// <summary>嵌套容器的下钻深度上限（结构安全阈值，防畸形数据造成的环）。</summary>
+        private const int MaxEggScanDepth = 16;
+
         private static void ScanInventoryForEggs(Inventory inventory, List<Item> found)
         {
             if (inventory == null || found == null) return;
             foreach (Item item in inventory)
             {
                 if (item == null) continue;
-                try
+                ScanItemForEggs(item, found, 0);
+            }
+        }
+
+        /// <summary>
+        /// 递归找蛋：蛋可能被玩家塞在背包件、箱子这类容器里。
+        /// 此前只扫顶层，放在容器里的蛋在孵化页直接看不见（蛋没丢，但玩家无从得知
+        /// 要先把它拿出来）。深度限 16，每层独立 try/catch，单个物品读失败不影响其余。
+        /// 只在打开孵化页时扫一次，非热路径。
+        /// </summary>
+        private static void ScanItemForEggs(Item item, List<Item> found, int depth)
+        {
+            if (item == null || found == null || depth > MaxEggScanDepth) return;
+
+            try
+            {
+                if (item.TypeID == RelicEggConfig.TYPE_ID)
                 {
-                    if (item.TypeID == RelicEggConfig.TYPE_ID)
+                    // 蛋本身不是容器，命中即收，不再下钻
+                    found.Add(item);
+                    return;
+                }
+            }
+            catch (Exception)
+            {
+                // 读 TypeID 失败：仍尝试下钻，容器坏掉不代表里面的蛋读不到
+            }
+
+            try
+            {
+                if (item.Slots != null)
+                {
+                    foreach (var slot in item.Slots)
                     {
-                        found.Add(item);
+                        if (slot == null || slot.Content == null) continue;
+                        ScanItemForEggs(slot.Content, found, depth + 1);
                     }
                 }
-                catch (Exception)
+            }
+            catch (Exception)
+            {
+                // 插槽不可枚举：继续试内部背包
+            }
+
+            try
+            {
+                if (item.Inventory != null)
                 {
-                    // 单个物品读取失败不影响其余扫描
+                    foreach (Item child in item.Inventory)
+                    {
+                        if (child == null) continue;
+                        ScanItemForEggs(child, found, depth + 1);
+                    }
                 }
+            }
+            catch (Exception)
+            {
+                // 内部背包不可枚举：本条到此为止，不影响外层继续扫
             }
         }
 
@@ -369,8 +419,11 @@ namespace BossRush
             if (string.IsNullOrEmpty(raw)) return null;
             string trimmed = raw.Trim();
             if (trimmed.Length == 0) return null;
-            const int MaxNameLength = 16;
-            if (trimmed.Length > MaxNameLength) trimmed = trimmed.Substring(0, MaxNameLength);
+            // 与输入框的 characterLimit 用同一个常量，避免数据层与 UI 层两套上限
+            if (trimmed.Length > PetNestTuning.MaxPetNameLength)
+            {
+                trimmed = trimmed.Substring(0, PetNestTuning.MaxPetNameLength);
+            }
             return trimmed;
         }
 

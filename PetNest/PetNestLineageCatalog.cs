@@ -175,7 +175,7 @@ namespace BossRush
 
                 PetNestLineageInfo entry = new PetNestLineageInfo();
                 entry.LineageKey = key;
-                entry.DisplayName = key;
+                entry.DisplayName = ResolveCustomDisplayName(key);
                 ElementTypes element;
                 entry.Element = CustomBossElements.TryGetValue(key, out element)
                     ? element
@@ -183,17 +183,33 @@ namespace BossRush
                 entry.ModelScale = ResolveModelScale(key);
                 entry.IsCustomBoss = true;
 
-                // 自定义 Boss 的 runtime preset 是运行时构造的，目录构建期通常查不到；
-                // 查得到时用它的显示名，查不到也照常登记（孵化期再解析，解析失败 fail-closed）。
-                CharacterRandomPreset preset = PetNestCompanionSpawner.ResolveSourcePreset(key);
-                if (preset != null)
-                {
-                    entry.DisplayName = ResolveDisplayName(preset, null);
-                }
-
                 byKey[entry.LineageKey] = entry;
                 ordered.Add(entry);
             }
+        }
+
+        /// <summary>
+        /// 自定义 Boss 血脉的显示名。
+        ///
+        /// 不再尝试从 preset 读：这三个 Boss 的 runtime preset 是各自生成时才构造的角色属性，
+        /// 目录构建期必然查不到，结果就是面板上显示 "boss_dragonking" 这类裸 key。
+        /// 直接复用各 Boss Config 的双语常量（与它们注册 EnemyPresetInfo.displayName 时同源）。
+        /// </summary>
+        private static string ResolveCustomDisplayName(string key)
+        {
+            if (string.Equals(key, DragonKingConfig.BossNameKey, StringComparison.Ordinal))
+            {
+                return L10n.T(DragonKingConfig.BossNameCN, DragonKingConfig.BossNameEN);
+            }
+            if (string.Equals(key, PhantomWitchConfig.BossNameKey, StringComparison.Ordinal))
+            {
+                return L10n.T(PhantomWitchConfig.BossNameCN, PhantomWitchConfig.BossNameEN);
+            }
+            if (string.Equals(key, DragonDescendantConfig.BOSS_NAME_KEY, StringComparison.Ordinal))
+            {
+                return L10n.T(DragonDescendantConfig.BOSS_NAME_CN, DragonDescendantConfig.BOSS_NAME_EN);
+            }
+            return key;
         }
 
         private static string ResolveDisplayName(CharacterRandomPreset preset, EnemyPresetInfo info)

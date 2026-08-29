@@ -157,6 +157,9 @@ namespace BossRush
             {
                 clone = UnityEngine.Object.Instantiate(sourcePreset);
                 clone.name = "PetNest_Companion_" + (string.IsNullOrEmpty(lineageKey) ? "unknown" : lineageKey);
+                // 血脉身份戳：自定义血脉的底模是官方角色（Cname_Boss_Red / Cname_Ghost），
+                // 不改 nameKey 的话名条与战痕凶手名会显示底模名。官方血脉本就等值，写入无害且幂等。
+                if (!string.IsNullOrEmpty(lineageKey)) clone.nameKey = lineageKey;
                 NeutralizeClonePreset(clone);
                 handle.ClonePreset = clone;
             }
@@ -517,6 +520,53 @@ namespace BossRush
         #endregion
 
         #region 血脉 preset 解析
+
+        /// <summary>
+        /// 幼体生成专用的源 preset 解析：自定义 Boss 血脉走各自的官方底模，其余走通用解析。
+        ///
+        /// 为什么不直接改 ResolveSourcePreset：血脉目录也调它，而目录的官方循环靠
+        /// "自定义 key 解析不到 → fail-closed 跳过" 把三个自定义 Boss 留给
+        /// AddCustomLineages 登记（带元素覆盖、缩放档与显示名）。若通用解析开始认自定义
+        /// key，官方循环会先以 IsCustomBoss=false 抢注它们，这些设定全部失效。
+        /// </summary>
+        internal static CharacterRandomPreset ResolveCompanionSourcePreset(string lineageKey)
+        {
+            CharacterRandomPreset custom = ResolveCustomLineageBasePreset(lineageKey);
+            if (custom != null) return custom;
+            return ResolveSourcePreset(lineageKey);
+        }
+
+        /// <summary>
+        /// 自定义 Boss 血脉的底模解析。
+        ///
+        /// 三个自定义 Boss 的 runtime preset 是各自 Boss 生成那一刻才 Instantiate 的角色属性，
+        /// 不进任何全局注册表，因此 ObjectCache 的一次性快照永远查不到它们——
+        /// 孵出来的崽会一直以 lineage_preset_missing 被拦在场外。
+        /// 这里改为解析它们共同的官方底模；幼体的数值由 NeutralizeClonePreset 覆盖，
+        /// 不需要复现 Boss 的属性/装备构造。血脉身份由 CreateIsolatedAsync 写 nameKey 戳。
+        /// </summary>
+        private static CharacterRandomPreset ResolveCustomLineageBasePreset(string lineageKey)
+        {
+            if (string.IsNullOrEmpty(lineageKey)) return null;
+
+            // 龙裔与龙王共用同一官方底模（龙王的 FindDragonKingBasePreset 走问号 preset，同源）
+            if (string.Equals(lineageKey, DragonDescendantConfig.BOSS_NAME_KEY, StringComparison.Ordinal)
+                || string.Equals(lineageKey, DragonKingConfig.BossNameKey, StringComparison.Ordinal))
+            {
+                return ResolveSourcePreset(DragonDescendantConfig.BasePresetNameKey);
+            }
+
+            if (string.Equals(lineageKey, PhantomWitchConfig.BossNameKey, StringComparison.Ordinal))
+            {
+                // 镜像 PhantomWitchBoss 的显式回落链：底模缺失时退到红 Boss，仍是常量到常量
+                CharacterRandomPreset ghost = ResolveSourcePreset(PhantomWitchConfig.BasePresetNameKey);
+                return ghost != null
+                    ? ghost
+                    : ResolveSourcePreset(PhantomWitchConfig.FallbackPresetNameKey);
+            }
+
+            return null;
+        }
 
         /// <summary>
         /// 按官方 preset 的 nameKey 精确解析源 preset。找不到返回 null（fail-closed：

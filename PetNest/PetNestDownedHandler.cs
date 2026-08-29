@@ -33,7 +33,6 @@ namespace BossRush
         /// <summary>短无敌的兜底解除目标与到期时间（见 ReleaseStaleInvincibility）。</summary>
         private static Health _invincibleHealth;
         private static float _invincibleUntilUnscaled;
-        private static string _pendingKillerName;
         private static string _pendingPlace;
         private static int _downedCount;
 
@@ -173,7 +172,6 @@ namespace BossRush
                 // 到这一帧 OnHurt 已经把致命一击的攻击者写进 _lastAttackerName 了
                 killerName = _lastAttackerName;
                 place = _pendingPlace;
-                _pendingKillerName = null;
                 _pendingPlace = null;
             }
 
@@ -347,7 +345,6 @@ namespace BossRush
             lock (_lock)
             {
                 _downedPending = false;
-                _pendingKillerName = null;
                 _pendingPlace = null;
             }
             _invincibleHealth = null;

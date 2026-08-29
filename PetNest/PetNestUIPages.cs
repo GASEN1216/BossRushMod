@@ -108,7 +108,8 @@ namespace BossRush
 
         /// <summary>巢页：崽列表 + 出战席位 + 遗魂账本摘要。</summary>
         internal static PetNestPageContent BuildNestPage(
-            Action refresh, string selectedPetId, Action<string> select, Action<string> rename)
+            Action refresh, string selectedPetId, Action<string> select, Action<string> rename,
+            Action<string> release)
         {
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Nest");
@@ -128,6 +129,8 @@ namespace BossRush
             {
                 page.Lines.Add(L10n.T("巢是空的。去打 Boss，把它们的遗种带回来。",
                     "The nest is empty. Go kill bosses and bring their relics home."));
+                // 空巢是新玩家第一次看到这个面板的地方，顺手把系统本身讲清楚
+                page.Lines.Add(T("SystemDesc"));
             }
             else
             {
@@ -136,6 +139,16 @@ namespace BossRush
                     ? L10n.T("远征目标：", "Expedition target: ") + PetNestService.GetPetDisplayName(selected)
                     : L10n.T("点「设为出战」或「改名」都会顺手把这只崽选为远征目标。",
                         "Deploying or renaming a cub also picks it as the expedition target."));
+            }
+
+            // 巢满时的扩建提示：容量由图鉴解锁数派生，数字取自 Tuning 避免两套真相
+            int[] milestones = PetNestTuning.NestCapacityMilestoneLineageCounts;
+            if (milestones != null && milestones.Length > 0
+                && PetNestService.Capacity < PetNestTuning.MaxNestCapacity)
+            {
+                page.Lines.Add(T("CapacityMilestoneHint") + " ("
+                    + PetNestMuseumStats.UnlockedLineageCount + " / "
+                    + ResolveNextCapacityMilestone(milestones) + ")");
             }
 
             page.Actions.Add(new PetNestActionData
@@ -149,7 +162,35 @@ namespace BossRush
                     if (refresh != null) refresh();
                 },
             });
+
+            // 放生：巢满时唯一可预期的腾位手段（此前只能押 22% 死亡率的亡命远征等崽死）。
+            // 不可逆，因此走确认弹窗；远征锁定期间禁用（服务层也会再拒一次）。
+            PetNestPetRecord releaseTarget = PetNestService.TryGetPet(selectedPetId);
+            page.Actions.Add(new PetNestActionData
+            {
+                Label = T("Release_Action") + (releaseTarget != null
+                    ? " · " + PetNestService.GetPetDisplayName(releaseTarget)
+                    : string.Empty),
+                IsDanger = true,
+                Interactable = release != null && releaseTarget != null
+                    && releaseTarget.state != (int)PetNestPetState.OnExpedition,
+                OnClick = delegate
+                {
+                    if (release != null) release(selectedPetId);
+                },
+            });
             return page;
+        }
+
+        /// <summary>下一个尚未达成的容量里程碑阈值；全部达成时返回最后一个。</summary>
+        private static int ResolveNextCapacityMilestone(int[] milestones)
+        {
+            int unlocked = PetNestMuseumStats.UnlockedLineageCount;
+            for (int i = 0; i < milestones.Length; i++)
+            {
+                if (unlocked < milestones[i]) return milestones[i];
+            }
+            return milestones[milestones.Length - 1];
         }
 
         private static PetNestCardData BuildPetCard(
@@ -167,6 +208,9 @@ namespace BossRush
                 : pet.lineageKey;
             card.Subtitle = lineageName
                 + " · Lv" + pet.level
+                + (PetNestProgressionService.IsAdult(pet)
+                    ? " · " + T("Level_Adult")
+                    : " (" + pet.exp + "/" + PetNestTuning.PetExpPerLevel + ")")
                 + " · " + T("Personality_" + (pet.personalityId ?? string.Empty));
 
             card.Body = DescribePetState(pet)
@@ -241,7 +285,12 @@ namespace BossRush
         /// 百分比项内部存的是**小数**（0.08 = +8%，官方 PercentageAdd 口径），
         /// 展示时要 ×100，否则玩家看到的是 "+0.08%"。官方 EndowmentEntry 同款换算。
         /// </summary>
-        private static string FormatModifierValue(float value, bool percentage)
+        /// <summary>
+        /// 天赋/战痕数值的统一格式化。百分比项在数据层存的是小数（0.08 = 8%），
+        /// 直接拼 "%" 会显示成 "+0.08%"，因此展示侧一律走这里。
+        /// internal：孵化揭晓演出也要用同一口径。
+        /// </summary>
+        internal static string FormatModifierValue(float value, bool percentage)
         {
             if (!percentage)
             {
@@ -343,6 +392,7 @@ namespace BossRush
             PetNestPageContent page, Action refresh, Action<PetNestHatchResult> onHatched)
         {
             IList<PetNestLineageInfo> lineages = PetNestLineageCatalog.All;
+            bool ledgerHeaderWritten = false;
             for (int i = 0; i < lineages.Count; i++)
             {
                 PetNestLineageInfo lineage = lineages[i];
@@ -350,8 +400,16 @@ namespace BossRush
                 int souls = PetNestService.GetSouls(lineage.LineageKey);
                 if (souls <= 0) continue;
 
+                if (!ledgerHeaderWritten)
+                {
+                    // 区头讲清「遗魂是什么、攒够能干嘛」，逐行只留进度
+                    page.Lines.Add(T("SoulLedger"));
+                    page.Lines.Add(T("SoulDesc"));
+                    ledgerHeaderWritten = true;
+                }
+
                 page.Lines.Add(lineage.DisplayName + "  "
-                    + souls + " / " + PetNestTuning.SoulsPerCondensedEgg + "  " + T("SoulLedger"));
+                    + souls + " / " + PetNestTuning.SoulsPerCondensedEgg + "  " + T("CondenseProgress"));
 
                 if (!PetNestHatchService.CanCondense(lineage.LineageKey)) continue;
 

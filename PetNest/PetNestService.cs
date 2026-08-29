@@ -45,8 +45,38 @@ namespace BossRush
             get { return Nest.pets; }
         }
 
-        /// <summary>巢容量。</summary>
-        internal static int Capacity { get { return Nest.capacity; } }
+        /// <summary>巢容量（里程碑派生，见 <see cref="GetEffectiveNestCapacity"/>）。</summary>
+        internal static int Capacity { get { return GetEffectiveNestCapacity(); } }
+
+        /// <summary>
+        /// 有效巢容量 = 基础 12 + 图鉴解锁血脉数每达一个里程碑 +4，封顶 24。
+        ///
+        /// 纯派生值，不写档：容量完全由图鉴解锁数决定，存档里的 capacity 字段只作
+        /// 老档下限兼容（曾经手动扩过的档不会因此缩容）。
+        /// 只在孵化/入巢/开面板这类低频时刻被读，UnlockedLineageCount 是一次线性扫描，
+        /// 血脉量级只有几十条，无每帧成本。
+        /// </summary>
+        internal static int GetEffectiveNestCapacity()
+        {
+            int capacity = PetNestTuning.DefaultNestCapacity;
+            try
+            {
+                int unlocked = PetNestMuseumStats.UnlockedLineageCount;
+                int[] milestones = PetNestTuning.NestCapacityMilestoneLineageCounts;
+                for (int i = 0; i < milestones.Length; i++)
+                {
+                    if (unlocked >= milestones[i]) capacity += PetNestTuning.NestCapacityMilestoneStep;
+                }
+
+                int stored = Nest.capacity;
+                if (stored > capacity) capacity = stored;
+            }
+            catch (Exception)
+            {
+                // 图鉴不可读：退回基础容量，不因统计故障锁死玩家的巢
+            }
+            return capacity > PetNestTuning.MaxNestCapacity ? PetNestTuning.MaxNestCapacity : capacity;
+        }
 
         /// <summary>当前崽数量。</summary>
         internal static int PetCount
@@ -96,7 +126,8 @@ namespace BossRush
             {
                 PetNestNestData nest = Nest;
                 if (nest.pets == null) nest.pets = new List<PetNestPetRecord>();
-                if (nest.pets.Count >= nest.capacity)
+                // 用同一个派生容量，避免与 Capacity/IsFull 出现两套口径
+                if (nest.pets.Count >= GetEffectiveNestCapacity())
                 {
                     failureReasonId = "nest_full";
                     return false;
@@ -167,6 +198,62 @@ namespace BossRush
             catch (Exception e)
             {
                 failureReasonId = "remove_pet_failed:" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 放生一只崽：移出巢并返还一部分同血脉遗魂，不刻碑（放生不是阵亡）。
+        ///
+        /// 单事务实现而非「TryRemovePet + AddSouls」两段提交：那样在第一段成功、
+        /// 第二段失败时会把崽和遗魂一起弄丢。这里内存改动全部做完再一次 Commit，
+        /// 失败则逐项回滚（崽插回原位、还席、遗魂减回）。
+        /// 远征锁定期间拒绝放生，与 TryRemovePet 同一原因码。
+        /// </summary>
+        internal static bool TryReleasePet(string petId, out string failureReasonId)
+        {
+            failureReasonId = null;
+            PetNestPetRecord pet = TryGetPet(petId);
+            if (pet == null)
+            {
+                failureReasonId = "pet_not_found";
+                return false;
+            }
+            if (pet.state == (int)PetNestPetState.OnExpedition)
+            {
+                failureReasonId = "pet_locked_by_expedition";
+                return false;
+            }
+
+            try
+            {
+                PetNestNestData nest = Nest;
+                string lineageKey = pet.lineageKey;
+                int index = nest.pets.IndexOf(pet);
+                string previousDeployed = nest.deployedPetId;
+                int previousSouls = GetSouls(lineageKey);
+
+                nest.pets.Remove(pet);
+                if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
+                {
+                    nest.deployedPetId = null;
+                }
+                AddSouls(lineageKey, PetNestTuning.ReleaseSoulRefund, false);
+
+                if (!Commit(out failureReasonId))
+                {
+                    // release 回滚标记：三项内存改动必须整体还原，否则崽没了遗魂也没进账
+                    if (index >= 0 && index <= nest.pets.Count) nest.pets.Insert(index, pet);
+                    else nest.pets.Add(pet);
+                    nest.deployedPetId = previousDeployed;
+                    SetSouls(lineageKey, previousSouls);
+                    return false;
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                failureReasonId = "release_pet_failed:" + e.GetType().Name;
                 return false;
             }
         }
@@ -417,6 +504,33 @@ namespace BossRush
         }
 
         /// <summary>扣减遗魂（凝蛋）。余额不足返回 false 且不扣。</summary>
+        /// <summary>
+        /// 直接把某血脉的遗魂数写成给定值。**仅供事务回滚使用**：
+        /// 正常增减一律走 AddSouls / TrySpendSouls，避免绕过它们的溢出与下限处理。
+        /// </summary>
+        private static void SetSouls(string lineageKey, int souls)
+        {
+            if (string.IsNullOrEmpty(lineageKey)) return;
+            try
+            {
+                PetNestNestData nest = Nest;
+                if (nest.soulLedger == null) return;
+                for (int i = 0; i < nest.soulLedger.Count; i++)
+                {
+                    PetNestSoulLedgerEntry e = nest.soulLedger[i];
+                    if (e != null && string.Equals(e.lineageKey, lineageKey, StringComparison.Ordinal))
+                    {
+                        e.souls = souls < 0 ? 0 : souls;
+                        return;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 遗魂回滚失败: " + e.Message);
+            }
+        }
+
         internal static bool TrySpendSouls(string lineageKey, int count, out string failureReasonId)
         {
             failureReasonId = null;

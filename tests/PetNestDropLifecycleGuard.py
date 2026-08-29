@@ -118,10 +118,35 @@ def check_hook_site(errors):
         errors.append("[挂接] ClearTracking 必须在 ClearBossRandomLootTracking 体内")
 
 
+def check_dragonking_parallel(errors):
+    """
+    龙王不走 RegisterBossRandomLootTracking，而是自己手动订阅
+    BeforeCharacterSpawnLootOnDead，因此遗种巢的掉落追踪必须在那条手动路径上并联，
+    否则焚天龙皇血脉永远不掉蛋、不记遗魂（蛋孵不出来，崽也就无从谈起）。
+    """
+    text = read_text(repo_path("Integration", "DragonKing", "DragonKingBoss.cs"))
+    if text is None:
+        errors.append("[File] 缺少 Integration/DragonKing/DragonKingBoss.cs")
+        return
+    code = strip_cs_comments(text)
+
+    if "PetNestDropService.TryTrack(this, character);" not in code:
+        errors.append("[挂接] 龙王手动掉落路径必须并联 PetNestDropService.TryTrack")
+    if code.count("PetNestDropService.ClearTracking(") < 2:
+        errors.append("[挂接] 龙王的离场与死亡两个清理点都必须并联 ClearTracking")
+
+    # TryTrack 必须挂在订阅掉落事件的同一处，而不是随便找个地方
+    if not re.search(
+            r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;[\s\S]{0,600}?"
+            r"PetNestDropService\.TryTrack\(this, character\);", code):
+        errors.append("[挂接] 龙王的 TryTrack 必须紧随手动掉落事件订阅")
+
+
 def main():
     errors = []
     check_service(errors)
     check_hook_site(errors)
+    check_dragonking_parallel(errors)
     return report(GUARD, errors)
 
 

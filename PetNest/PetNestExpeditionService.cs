@@ -381,6 +381,9 @@ namespace BossRush
                     else
                     {
                         pet.state = (int)PetNestPetState.InNest;
+                        // 活着回来给经验。AddExp 只改内存，落档并进下面的 CommitBoth，
+                        // 不破坏这条链「结果与 settled 一次原子写入」的语义。
+                        PetNestProgressionService.AddExp(pet, PetNestTuning.PetExpExpeditionSurvive);
                         if (injured)
                         {
                             PetNestDownedHandler.AppendScar(pet, record.destinationId, DescribeDisaster(record));
@@ -470,9 +473,32 @@ namespace BossRush
                 }
             }
 
+            // 先改内存再提交，失败必须整体回滚：否则记录已从待翻列表消失但盘上还在，
+            // 重启后这张牌会再弹一次（奖励有 rewardsGranted 保护不会重发，但体验错乱）。
+            // 回滚形态与 TryDepart 一致。
+            List<PetNestExpeditionRecord> records = PetNestPersistenceAccess.Expedition.records;
+            int previousIndex = records != null ? records.IndexOf(record) : -1;
+
             record.revealed = true;
-            PetNestPersistenceAccess.Expedition.records.Remove(record);
-            return CommitBoth(out failureReasonId);
+            if (records != null) records.Remove(record);
+
+            if (!CommitBoth(out failureReasonId))
+            {
+                record.revealed = false;
+                if (records != null)
+                {
+                    if (previousIndex >= 0 && previousIndex <= records.Count)
+                    {
+                        records.Insert(previousIndex, record);
+                    }
+                    else
+                    {
+                        records.Add(record);
+                    }
+                }
+                return false;
+            }
+            return true;
         }
 
         /// <summary>已结算但还没翻牌的记录（回基地时弹翻牌用）。</summary>

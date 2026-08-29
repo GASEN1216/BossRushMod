@@ -24,7 +24,6 @@ namespace BossRush
         private ModBehaviour _owner;
         private int _sceneGeneration;
         private bool _bootstrapped;
-        private bool _lastEnabledState;
 
         #endregion
 
@@ -71,7 +70,6 @@ namespace BossRush
             {
                 _owner = owner;
                 _bootstrapped = false;
-                _lastEnabledState = false;
                 EnsureBootstrapped();
             }
             catch (Exception e)
@@ -104,6 +102,7 @@ namespace BossRush
                 _sceneGeneration++;
                 // 跨局去重集合必须清，否则累积死引用
                 PetNestMuseumStats.ClearCountedKills();
+                PetNestProgressionService.ClearSceneKillDedup();
                 if (!IsEnabled)
                 {
                     // 关掉开关也要把上一局的随从、闲逛崽与借席清干净
@@ -117,6 +116,10 @@ namespace BossRush
                 // 回基地：把「本局重伤退场」复位为在巢待命
                 if (IsBaseScene())
                 {
+                    // 必须最先做：它要读「仍在场的随从」与「重伤退场的崽」，
+                    // 而下面两行分别会清掉 active id 与把 Downed 复位。
+                    PetNestProgressionService.SettleRunHomecoming(
+                        PetNestCompanionRuntime.ActiveCompanionPetId);
                     PetNestService.RestoreDownedPetsOnReturnToBase();
                     PetNestCompanionRuntime.CleanupOnce();
                     // 回基地时扫一次到期远征：结算是幂等事务，重复进基地不会重复发奖
@@ -159,6 +162,10 @@ namespace BossRush
             {
                 if (!IsEnabled)
                 {
+                    // 与 OnSceneLoaded 的关闭分支对齐：不清的话随从会留在场上，
+                    // 而 DownedHandler.Tick 已经停摆（致死钳只剩 1.5s 兜底解无敌，不退场）。
+                    PetNestBaseIdleSpawner.CleanupAll();
+                    PetNestCompanionRuntime.CleanupOnce();
                     ShutdownIfEnabledTurnedOff();
                     return;
                 }
@@ -186,6 +193,8 @@ namespace BossRush
                 PetNestCompanionRuntime.CleanupOnce();
                 PetNestUI.ResetStaticCaches();
                 PetNestRenameModal.ResetStaticCaches();
+                PetNestReleaseConfirmModal.ResetStaticCaches();
+                PetNestProgressionService.ResetStaticCaches();
                 PetNestHatchRevealView.ResetStaticCaches();
                 PetNestExpeditionRevealView.ResetStaticCaches();
                 PetNestCompanionHudView.ResetStaticCaches();
@@ -225,9 +234,33 @@ namespace BossRush
             PetNestUIBridge.BindRuntime(this);
             PetNestUI.RegisterOpener();
             _bootstrapped = true;
-            _lastEnabledState = true;
             ModBehaviour.DevLog("[PetNest] 运行时模块已启动，血脉条目数="
                 + PetNestLineageCatalog.Count);
+        }
+
+        /// <summary>
+        /// 敌人预设表填充完成、或 Boss 池过滤状态变化后的血脉目录重建入口。
+        ///
+        /// 为什么必须有它：目录在 bootstrap（ModBehaviour.Start）时构建，而
+        /// <c>enemyPresets</c> 要等玩家第一次进竞技场才由 InitializeEnemyPresets 填充。
+        /// 目录构建时读到的是空池，`_built` 一旦置位又永不重建，结果是全部官方 Boss
+        /// 都不在目录里——不掉蛋、不记遗魂、已有的蛋孵不出、崽也带不进局。
+        ///
+        /// 未 bootstrap 时跳过是安全的：之后 EnsureBootstrapped 会用已填充的池建目录。
+        /// 重建幂等且只发生在预设初始化与 Boss 池点选这类低频时刻，无每帧成本。
+        /// </summary>
+        internal void NotifyEnemyPresetsRefreshed()
+        {
+            try
+            {
+                if (!_bootstrapped) return;
+                PetNestLineageCatalog.Invalidate();
+                PetNestLineageCatalog.EnsureBuilt(_owner);
+            }
+            catch (Exception e)
+            {
+                LogFailure("presets_refreshed", e);
+            }
         }
 
         /// <summary>
@@ -254,7 +287,6 @@ namespace BossRush
                 LogFailure("shutdown_disabled", e);
             }
             _bootstrapped = false;
-            _lastEnabledState = false;
             ModBehaviour.DevLog("[PetNest] 入口开关已关闭，运行时模块回到 dormant");
         }
 

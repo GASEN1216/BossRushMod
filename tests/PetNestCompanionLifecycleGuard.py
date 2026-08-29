@@ -150,6 +150,27 @@ def check_spawner(errors):
     if 'owner.SanitizeBossRushZombieSpawn(handle.Character, "PetNestCompanion")' not in code:
         errors.append("[净化] 幼体必须经既有净化入口去掉自爆技能与特殊挂件")
 
+    # 自定义 Boss 血脉的 runtime preset 是各自生成时才构造的角色属性，不进任何全局注册表，
+    # ObjectCache 的一次性快照永远查不到 —— 直接用通用解析会让龙王/龙裔/女巫崽
+    # 永远以 lineage_preset_missing 进不了场。必须走底模解析分支。
+    if "internal static CharacterRandomPreset ResolveCompanionSourcePreset(" not in code:
+        errors.append("[自定义血脉] 缺少幼体专用的 ResolveCompanionSourcePreset 入口")
+    if "ResolveCustomLineageBasePreset(" not in code:
+        errors.append("[自定义血脉] 缺少自定义 Boss 底模解析分支")
+    if not re.search(
+            r"clone\.nameKey = lineageKey;[\s\S]{0,400}?NeutralizeClonePreset\(clone\);", code):
+        errors.append("[自定义血脉] 必须在中性化之前写入血脉 nameKey 身份戳")
+
+    # 三个消费点都必须走 companion 解析，回退到通用解析会让自定义血脉重新失效
+    for name in ("PetNestCompanionRuntime.cs", "PetNestBaseIdleSpawner.cs"):
+        consumer = read_petnest(name)
+        if consumer is None:
+            errors.append("[File] 缺少 PetNest/" + name)
+            continue
+        ccode = strip_cs_comments(consumer)
+        if "PetNestCompanionSpawner.ResolveSourcePreset(" in ccode:
+            errors.append("[自定义血脉] " + name + " 必须用 ResolveCompanionSourcePreset")
+
     # 伤害归一
     if "NormalizeCombatOutput(" not in code:
         errors.append("[伤害归一] 缺少伤害归一入口")

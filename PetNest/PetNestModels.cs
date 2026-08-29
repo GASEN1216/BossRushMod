@@ -136,6 +136,9 @@ namespace BossRush
             if (talents == null) talents = new List<PetNestTalentEntry>();
             if (scars == null) scars = new List<PetNestScarRecord>();
             if (level < 1) level = 1;
+            if (level > PetNestTuning.PetMaxLevel) level = PetNestTuning.PetMaxLevel;
+            if (exp < 0) exp = 0;
+            if (careerCount < 0) careerCount = 0;
         }
     }
 

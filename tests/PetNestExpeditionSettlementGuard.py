@@ -116,8 +116,8 @@ def main():
         if "PetNestService.Nest.pets.Remove(pet);" not in body:
             errors.append("[真死] 真死必须移除 PetRecord（不可逆）")
 
-    # 6. 翻牌只回放，绝不 roll
-    reveal = re.search(r"internal static bool MarkRevealed\([\s\S]{0,900}?\n        \}", code)
+    # 6. 翻牌只回放，绝不 roll；且落档失败必须整体回滚
+    reveal = re.search(r"internal static bool MarkRevealed\([\s\S]{0,1600}?\n        \}", code)
     if reveal is None:
         errors.append("[翻牌] 缺少 MarkRevealed 入口")
     else:
@@ -127,6 +127,12 @@ def main():
                 errors.append("[翻牌] 翻牌只回放已 commit 的结果，不得 roll: " + forbidden)
         if "if (!record.settled)" not in body:
             errors.append("[翻牌] 未结算的记录不得翻牌")
+        # 先改内存后提交，失败不回滚会让记录在内存里消失、盘上还在：
+        # 重启后这张牌再弹一次。回滚形态与 TryDepart 一致。
+        if "record.revealed = false;" not in body:
+            errors.append("[翻牌] CommitBoth 失败时必须回滚 revealed 标记")
+        if "records.Insert(" not in body:
+            errors.append("[翻牌] CommitBoth 失败时必须把记录放回待翻列表原位")
 
     # 7. 刻碑内容：风险档位与固化死亡率
     memorial = re.search(r"private static void AppendMemorial\([\s\S]{0,1400}?\n        \}", code)

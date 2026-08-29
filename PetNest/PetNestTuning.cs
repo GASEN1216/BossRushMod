@@ -58,6 +58,41 @@ namespace BossRush
         /// <summary>巢容量上限。</summary>
         internal const int MaxNestCapacity = 24;
 
+        /// <summary>
+        /// 巢容量里程碑：图鉴解锁血脉数达到各阈值时各 +NestCapacityMilestoneStep。
+        /// 与驯养成就同一口径（PetNestMuseumStats.UnlockedLineageCount），
+        /// 12 → 16 → 20 → 24 正好用满 MaxNestCapacity。
+        /// </summary>
+        internal static readonly int[] NestCapacityMilestoneLineageCounts = { 10, 20, 30 };
+
+        /// <summary>放生一只崽返还的同血脉遗魂数（凝一枚蛋需 SoulsPerCondensedEgg）。</summary>
+        internal const int ReleaseSoulRefund = 60;
+
+        #endregion
+
+        #region 养成（等级与经验）
+
+        /// <summary>崽的等级上限。到顶即「成年体」，不再成长。</summary>
+        internal const int PetMaxLevel = 10;
+
+        /// <summary>每级所需经验（线性曲线，不做阶梯）。</summary>
+        internal const int PetExpPerLevel = 100;
+
+        /// <summary>带崽进局并活着回巢的经验（重伤退场也算：战痕已经是惩罚了）。</summary>
+        internal const int PetExpHomecoming = 10;
+
+        /// <summary>随从每次击杀的经验。</summary>
+        internal const int PetExpPerCompanionKill = 2;
+
+        /// <summary>单局击杀经验上限，避免刷小怪把等级冲满。</summary>
+        internal const int PetExpCompanionKillRunCap = 30;
+
+        /// <summary>天灾远征存活归来的经验。</summary>
+        internal const int PetExpExpeditionSurvive = 25;
+
+        /// <summary>每多少级给玩家 +1 格捡漏背包（PetCapcity）。</summary>
+        internal const int PetLevelsPerCapacityBonus = 3;
+
         /// <summary>每崽战痕上限。溢出后最旧的合并进 mergedOldScarCount，防存档膨胀。</summary>
         internal const int MaxScarsPerPet = 8;
 

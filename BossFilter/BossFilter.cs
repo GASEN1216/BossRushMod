@@ -229,6 +229,18 @@ namespace BossRush
         private void InvalidateFilteredPresetsCache()
         {
             _filteredPresetsCacheDirty = true;
+
+            // 血脉目录的资格来源就是这张过滤池，因此过滤一变目录必须跟着重建，
+            // 否则玩家在场内改了 Boss 池之后，掉落资格仍停在旧快照上。
+            // 这是唯一的咽喉点，覆盖初始化/单点开关/全开/全关/预设刷新五条路径。
+            try
+            {
+                if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
+            }
+            catch (Exception e)
+            {
+                DevLog("[PetNest] Boss 池过滤变化后重建血脉目录失败: " + e.Message);
+            }
         }
 
         private void ResetBossPoolFilterStateForEnemyPresetRefresh()

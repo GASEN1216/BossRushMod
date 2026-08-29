@@ -638,6 +638,17 @@ namespace BossRush
 
             // [性能优化] 标记初始化完成，后续传送不再重复扫描
             _enemyPresetsInitialized = true;
+
+            // 遗种巢血脉目录是在 ModBehaviour.Start 建的，那时这张表还是空的。
+            // 池填满后必须让它重建一次，否则官方 Boss 全谱系都不在目录里（不掉蛋/不可孵/不可出战）。
+            try
+            {
+                if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
+            }
+            catch (Exception e)
+            {
+                DevLog("[PetNest] 预设初始化后重建血脉目录失败: " + e.Message);
+            }
         }
 
         /// <summary>

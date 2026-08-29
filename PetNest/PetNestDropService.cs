@@ -67,9 +67,10 @@ namespace BossRush
                 if (!PetNestLineageCatalog.IsKnownLineage(lineageKey)) return;
 
                 CharacterMainControl captured = character;
+                ModBehaviour capturedOwner = owner;
                 Action<DamageInfo> handler = delegate (DamageInfo info)
                 {
-                    OnBossBeforeSpawnLoot(captured, lineageKey);
+                    OnBossBeforeSpawnLoot(capturedOwner, captured, lineageKey);
                 };
                 _hooks[character] = handler;
 
@@ -133,7 +134,8 @@ namespace BossRush
 
         #region 掉落结算
 
-        private static void OnBossBeforeSpawnLoot(CharacterMainControl boss, string lineageKey)
+        private static void OnBossBeforeSpawnLoot(
+            ModBehaviour owner, CharacterMainControl boss, string lineageKey)
         {
             try
             {
@@ -148,9 +150,11 @@ namespace BossRush
                 {
                     // 只入队不落盘：一局可能几十次击杀，逐次 SaveFile 会拖帧。
                     // 官方 OnCollectSaveData 与切图/回基地的 flush 会把它写下去。
+                    int before = PetNestService.GetSouls(lineageKey);
                     PetNestService.AddSouls(lineageKey, souls, false);
                     PetNestService.StageCommit();
                     _stagedSoulWrites++;
+                    NotifyCondensableCrossed(owner, lineageKey, before);
                 }
 
                 // 欧轨：低概率直掉遗种蛋
@@ -162,6 +166,44 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PetNest] 遗种掉落结算失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 遗魂刚好攒够凝一枚蛋时提示一次。
+        ///
+        /// 不逐次击杀提示：无间炼狱一局几十次击杀会直接刷屏；
+        /// 只在跨过「可凝蛋」阈值这一刻说一句，既有反馈又是玩家真正需要行动的时机。
+        /// </summary>
+        private static void NotifyCondensableCrossed(
+            ModBehaviour owner, string lineageKey, int soulsBefore)
+        {
+            try
+            {
+                if (owner == null) return;
+                int threshold = PetNestTuning.SoulsPerCondensedEgg;
+                if (threshold <= 0) return;
+
+                // 只在跨过阈值整数倍的那一刻提示
+                int after = PetNestService.GetSouls(lineageKey);
+                if (soulsBefore / threshold >= after / threshold) return;
+
+                PetNestLineageInfo lineage;
+                string lineageName = PetNestLineageCatalog.TryGet(lineageKey, out lineage)
+                    && lineage != null && !string.IsNullOrEmpty(lineage.DisplayName)
+                    ? lineage.DisplayName
+                    : lineageKey;
+
+                owner.ShowMessage(
+                    LocalizationHelper.GetLocalizedText(
+                        PetNestTuning.LocalizationPrefix + "SoulGained")
+                    + " · " + lineageName + " · "
+                    + LocalizationHelper.GetLocalizedText(
+                        PetNestTuning.LocalizationPrefix + "CondenseEgg"));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 遗魂提示失败: " + e.Message);
             }
         }
 

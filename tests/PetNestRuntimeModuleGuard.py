@@ -105,6 +105,38 @@ def check_module(errors):
     if code.count("PetNestSaveCoordinator.EnsureSubscribed()") != 1:
         errors.append("[dormant] EnsureSubscribed 只能在 bootstrap 内出现一次")
 
+    # 血脉目录必须能重建：目录在 bootstrap（ModBehaviour.Start）时构建，而 enemyPresets
+    # 要等玩家第一次进竞技场才由 InitializeEnemyPresets 填充。没有重建入口时目录里
+    # 一个官方 Boss 都没有，且 _built 置位后永不重建 —— 全谱系不掉蛋/不可孵/不可出战。
+    refresh = re.search(
+        r"internal void NotifyEnemyPresetsRefreshed\(\)[\s\S]{0,600}?\n        \}", code)
+    if refresh is None:
+        errors.append("[目录时序] 缺少血脉目录重建入口 NotifyEnemyPresetsRefreshed()")
+    else:
+        refresh_body = refresh.group(0)
+        if "if (!_bootstrapped) return;" not in refresh_body:
+            errors.append("[目录时序] 重建入口未在未 bootstrap 时早返")
+        if "PetNestLineageCatalog.Invalidate();" not in refresh_body:
+            errors.append("[目录时序] 重建入口必须先作废旧目录")
+        if "PetNestLineageCatalog.EnsureBuilt(_owner)" not in refresh_body:
+            errors.append("[目录时序] 重建入口必须紧接着重建目录")
+
+    waves = read_text(repo_path(os.path.join("WavesArena", "WavesArena.cs")))
+    if waves is None:
+        errors.append("[File] 缺少 WavesArena/WavesArena.cs")
+    elif not re.search(
+            r"_enemyPresetsInitialized = true;[\s\S]{0,600}?"
+            r"PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", waves):
+        errors.append("[目录时序] InitializeEnemyPresets 填充完成后未通知重建血脉目录")
+
+    boss_filter = read_text(repo_path(os.path.join("BossFilter", "BossFilter.cs")))
+    if boss_filter is None:
+        errors.append("[File] 缺少 BossFilter/BossFilter.cs")
+    elif not re.search(
+            r"private void InvalidateFilteredPresetsCache\(\)[\s\S]{0,600}?"
+            r"PetNestRuntime\.NotifyEnemyPresetsRefreshed\(\);", boss_filter):
+        errors.append("[目录时序] Boss 池过滤变化后未通知重建血脉目录")
+
     # OnUpdate 未 bootstrap 时零成本早返；开关运行时打开要当帧复活
     # （EnsureBootstrapped 在开关关闭时自身就是 O(1) 早返，不破坏 dormant 零开销）
     if not re.search(

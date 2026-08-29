@@ -107,7 +107,7 @@ namespace BossRush
                 return;
             }
 
-            CharacterRandomPreset source = PetNestCompanionSpawner.ResolveSourcePreset(pet.lineageKey);
+            CharacterRandomPreset source = PetNestCompanionSpawner.ResolveCompanionSourcePreset(pet.lineageKey);
             if (source == null)
             {
                 // fail-closed：该血脉的 preset 不可用，本局不带崽，不影响其他血脉
@@ -133,11 +133,14 @@ namespace BossRush
                 _retryDeadlineUnscaled = 0f;
                 return;
             }
-            if (HasCompanion || _spawnInFlight)
+            if (HasCompanion)
             {
                 _retryDeadlineUnscaled = 0f;
                 return;
             }
+            // in-flight 只跳过本 tick，不关窗：那次异步生成若失败，窗口内还应继续重试。
+            // 此前合并判定会让一次瞬态失败之后本图永远不再尝试入场。
+            if (_spawnInFlight) return;
             if (now < _nextRetryUnscaled) return;
             _nextRetryUnscaled = now + SpawnRetryIntervalSeconds;
 
@@ -214,6 +217,8 @@ namespace BossRush
 
                 // 战痕要刻"被谁打倒"：只在随从在场期间订阅官方 OnHurt，离场立刻退订
                 PetNestDownedHandler.EnsureHurtSubscribed();
+                // 击杀经验同理：只在随从在场窗口内订阅 OnDead
+                PetNestProgressionService.EnsureKillTrackingSubscribed();
                 // HUD 与随从同寿命：不带崽时连 canvas 都不建
                 PetNestCompanionHudView.EnsureCreated();
 
@@ -258,7 +263,10 @@ namespace BossRush
         internal static int ResolveCapacityBonus(PetNestPetRecord pet)
         {
             int bonus = PetNestTuning.CompanionPetCapacityBonus;
-            if (pet == null || pet.talents == null) return bonus;
+            if (pet == null) return bonus;
+            // 等级成长：每 PetLevelsPerCapacityBonus 级 +1 格（Lv10 满级共 +3）
+            bonus += pet.level / PetNestTuning.PetLevelsPerCapacityBonus;
+            if (pet.talents == null) return bonus;
             for (int i = 0; i < pet.talents.Count; i++)
             {
                 PetNestTalentEntry t = pet.talents[i];
@@ -319,6 +327,7 @@ namespace BossRush
             try
             {
                 PetNestDownedHandler.ShutdownHurtSubscription();
+                PetNestProgressionService.ShutdownKillTracking();
             }
             catch (Exception e)
             {
@@ -366,6 +375,8 @@ namespace BossRush
         {
             CleanupOnce();
             _sceneGeneration = sceneGeneration;
+            // 没有出战崽就不必开窗：否则每秒一次空查询白跑满 90 秒
+            if (PetNestService.DeployedPet == null) return;
             // 先试一次；模式标志通常要等协程/延迟才置位，所以同时开一个重试窗口
             OpenSpawnRetryWindow();
             TrySpawnForScene(owner, sceneGeneration);

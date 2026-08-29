@@ -155,6 +155,13 @@ namespace BossRush
                     }
                 }
 
+                // 与上面的 TryTrack 并联成对（幂等）
+                try { PetNestDropService.ClearTracking(character); }
+                catch (Exception petNestEx)
+                {
+                    DevLog("[DragonKing] [WARNING] 离开竞技场时清理遗种巢追踪失败: " + petNestEx.Message);
+                }
+
                 UnityEngine.Events.UnityAction<DamageInfo> deathHandler;
                 if (dragonKingDeathEventHandlers.TryGetValue(character, out deathHandler) &&
                     deathHandler != null &&
@@ -343,7 +350,16 @@ namespace BossRush
                     };
                     dragonKingLootEventHandlers[character] = lootHandler;
                     character.BeforeCharacterSpawnLootOnDead += lootHandler;
-                    
+
+                    // 龙王走的是这条手动掉落订阅，不经 RegisterBossRandomLootTracking，
+                    // 因此遗种巢的掉落追踪从来没挂上——焚天龙皇血脉不掉蛋也不记遗魂。
+                    // 这里并联一次；PetNestDropService 内部幂等，且开关关闭时自身早返。
+                    try { PetNestDropService.TryTrack(this, character); }
+                    catch (Exception petNestEx)
+                    {
+                        DevLog("[DragonKing] 遗种巢掉落追踪挂接失败: " + petNestEx.Message);
+                    }
+
                     DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + bossSpawnTimes.Count);
                 }
                 catch (Exception recordEx)
@@ -595,6 +611,13 @@ namespace BossRush
                 }
             }
             dragonKingLootEventHandlers.Remove(deadKing);
+
+            // 与生成时的 TryTrack 并联成对（幂等；蛋/遗魂已在 BeforeSpawnLoot 阶段结算完）
+            try { PetNestDropService.ClearTracking(deadKing); }
+            catch (Exception petNestEx)
+            {
+                DevLog("[DragonKing] [WARNING] 清理遗种巢追踪失败: " + petNestEx.Message);
+            }
 
             // 清理死亡事件委托引用，避免多实例或异常退场后残留匿名监听。
             UnityEngine.Events.UnityAction<DamageInfo> deathHandler = null;

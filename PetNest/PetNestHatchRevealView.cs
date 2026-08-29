@@ -213,8 +213,8 @@ namespace BossRush
                 {
                     PetNestTalentEntry t = _result.Pet.talents[i];
                     if (t == null) continue;
-                    text += "\n" + t.statKey + (t.value >= 0f ? "+" : "") + t.value
-                        + (t.percentage ? "%" : "");
+                    // 复用面板的同一口径：百分比项存的是小数，直接拼 "%" 会变成 "+0.08%"
+                    text += "\n" + t.statKey + PetNestUIPages.FormatModifierValue(t.value, t.percentage);
                 }
             }
             if (_result.FromCondense)

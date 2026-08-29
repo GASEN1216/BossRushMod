@@ -94,8 +94,22 @@ When a cub's bloodline element matches the destination, its success rate goes up
 - **Memorial** — cubs lost on expeditions are carved in permanently: name, bloodline, where they fell, **the risk tier you chose**, the death rate at departure, and their career record. You pressed "Desperate"; the epitaph remembers that for you.
 - **Taming achievements** — First Hatch, Bloodline Collector, Lineage Obsession, The Pale Purple One (shiny), A Name on the Stone.
 
+### Levels
+
+Cubs grow by working with you, capping at level 10 ("Adult"), after which they stop growing.
+
+- **Experience** — deploying a cub and coming home alive: +10 (a cub carried out wounded still counts; the scar is already the price). Each of its own kills: +2, capped at +30 per run. Surviving a Disaster Expedition: +25.
+- **What levels give** — +1 pet-backpack slot every 3 levels, so +3 at max, stacking with the base slots and endowment slots.
+- The index records the highest level reached for each bloodline.
+
+### Nest capacity and releasing
+
+- **The nest starts with 12 places.** It expands by +4 each time your index reaches 10 / 20 / 30 unlocked bloodlines, up to 24.
+- **Releasing** — pick a cub on the nest page and release it to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released. This is the predictable way to make room when the nest is full, instead of gambling a Desperate expedition and waiting for a cub to die.
+
 ### Tips
 - Souls exist only to condense eggs. Bank enough of one bloodline and you can target that boss's egg directly — unlucky players can still complete the index.
-- Nest capacity is limited; check for room before hatching.
+- When the nest is full, expand or release: unlocking more bloodlines raises the cap, releasing frees a place immediately and refunds some souls.
+- Eggs are easiest to track in the top level of your bag or storage. Eggs tucked inside crates and containers are now found too, but the outer level keeps the count obvious.
 - Want a safe trickle? Send Safe runs. Want to gamble? Read the death rate before you press Desperate.
 - A cub on an expedition cannot be deployed or removed — the tension is exactly in those few days without it.

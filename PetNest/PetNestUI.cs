@@ -115,6 +115,7 @@ namespace BossRush
         {
             // 子弹窗不能比宿主活得久，否则会留一个抢着 modal lease 的孤儿
             PetNestRenameModal.Close();
+            PetNestReleaseConfirmModal.Close();
             ReleaseLease();
             if (_instance == this) _instance = null;
         }
@@ -171,7 +172,7 @@ namespace BossRush
                 "Close", parent, L10n.T("关闭", "Close"),
                 new Vector2(0.5f, 0.5f), new Vector2(520f, 330f), new Vector2(110f, 44f),
                 BossRushUIColors.SurfaceRaised, 20f, new Vector2(100f, 40f),
-                delegate { Close(); }, true);
+                delegate { CloseAndPlayPendingReveal(); }, true);
         }
 
         private void BuildTabs(Transform parent)
@@ -291,7 +292,7 @@ namespace BossRush
                     return PetNestUIPages.BuildMuseumPage();
                 default:
                     return PetNestUIPages.BuildNestPage(
-                        Refresh, ResolveSelectedPetId(), SelectPet, OpenRename);
+                        Refresh, ResolveSelectedPetId(), SelectPet, OpenRename, OpenRelease);
             }
         }
 
@@ -305,6 +306,35 @@ namespace BossRush
         private void OpenRename(string petId)
         {
             PetNestRenameModal.Open(petId, Refresh);
+        }
+
+        /// <summary>打开放生确认弹窗。关闭后刷新面板，让列表与遗魂账本立刻同步。</summary>
+        private void OpenRelease(string petId)
+        {
+            PetNestReleaseConfirmModal.Open(petId, Refresh);
+        }
+
+        /// <summary>
+        /// 玩家点关闭：顺手把面板内结算出来的远征结果翻掉。
+        ///
+        /// 远征页打开时就会 SettleDueExpeditions，但翻牌此前只挂在「回基地」场景回调上，
+        /// 卡片会一直停在「已结算，等待翻牌」直到玩家出图再回来。
+        /// 放在关闭时而不是打开时：翻牌是全屏演出，会被面板遮罩盖住。
+        /// 只挂用户点击这一条路径，不挂静态 Close()——dormant / 异常清理时不该弹演出。
+        /// </summary>
+        private void CloseAndPlayPendingReveal()
+        {
+            Close();
+            try
+            {
+                if (LevelManager.Instance == null || !LevelManager.Instance.IsBaseLevel) return;
+                // PlayPending 自身幂等：没有待翻记录时 O(1) 返回
+                PetNestExpeditionRevealView.PlayPending();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 关闭面板后翻牌失败: " + e.Message);
+            }
         }
 
         private string ResolveSelectedPetId()

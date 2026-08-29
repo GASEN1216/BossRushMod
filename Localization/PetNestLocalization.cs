@@ -63,6 +63,19 @@ namespace BossRush
                 "Leave it empty and pick \"Use bloodline name\" to restore the default.");
             Add(map, "Rename_Confirm", "就叫这个", "Confirm");
             Add(map, "Rename_Reset", "用回血脉名", "Use bloodline name");
+
+            // 放生与巢扩建
+            Add(map, "Release_Action", "放生选中的崽", "Release selected cub");
+            Add(map, "Release_Title", "放生确认", "Release this cub?");
+            Add(map, "Release_Warn",
+                "放生不可逆：它将永远离开巢，也不会进纪念碑。你会收回一部分同血脉遗魂。",
+                "Releasing is permanent: the cub leaves the nest for good and is not memorialized. "
+                + "You get back some relic souls of its bloodline.");
+            Add(map, "Release_Confirm", "放生", "Release");
+            Add(map, "Release_Cancel", "再想想", "Keep it");
+            Add(map, "CapacityMilestoneHint",
+                "解锁更多血脉可以扩建巢", "Unlock more bloodlines to expand the nest");
+            Add(map, "Level_Adult", "成年", "Adult");
         }
 
         #endregion
@@ -71,7 +84,7 @@ namespace BossRush
 
         private static void AddDropAndSouls(Dictionary<string, string> map)
         {
-            Add(map, "Soul", "Boss 遗魂", "Boss Relic Soul");
+            // 说明：遗魂没有实体道具，只有账本，因此不需要单独的物品名 key。
             Add(map, "SoulDesc",
                 "击杀 Boss 必得的血脉残响。只用于在巢中定向凝成该血脉的遗种蛋，不作货币、不进商店。",
                 "A bloodline echo guaranteed by every boss kill. It is only used to condense a relic egg "

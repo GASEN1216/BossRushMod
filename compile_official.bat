@@ -724,6 +724,8 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     PetNest\PetNestMuseumStats.cs ^
     PetNest\PetNestBaseIdleSpawner.cs ^
     PetNest\PetNestRenameModal.cs ^
+    PetNest\PetNestReleaseConfirmModal.cs ^
+    PetNest\PetNestProgressionService.cs ^
     PetNest\PetNestRuntimeModule.cs ^
     PetNest\PetNestCompanionAgent.cs ^
     PetNest\PetNestCompanionSpawner.cs ^
