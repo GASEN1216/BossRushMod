@@ -191,7 +191,17 @@ namespace BossRush
                 try { player = CharacterMainControl.Main; }
                 catch (Exception)
                 {
-                    // 玩家引用不可用时仍然清理，但不会误伤（下面按引用比较）
+                    // 取不到玩家引用：见下面的 fail-closed 判定
+                }
+
+                // 认不出玩家就绝不清场。旧实现在 player == null 时跳过引用比较继续销毁，
+                // 会把**玩家自己**一起 Destroy；注释却写着「不会误伤」。
+                // 隔离失败可以退款离场重来，销毁玩家角色不可逆。
+                if (player == null)
+                {
+                    failureReasonId = "isolation_player_unresolved";
+                    _lastError = failureReasonId;
+                    return false;
                 }
 
                 int cleared = 0;
@@ -199,7 +209,7 @@ namespace BossRush
                 {
                     CharacterMainControl character = characters[i];
                     if (character == null || character.gameObject == null) continue;
-                    if (player != null && object.ReferenceEquals(character, player)) continue;
+                    if (object.ReferenceEquals(character, player)) continue;
 
                     try
                     {

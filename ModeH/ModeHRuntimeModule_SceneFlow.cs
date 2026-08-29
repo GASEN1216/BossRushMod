@@ -80,7 +80,6 @@ namespace BossRush
             }
 
             if (!IsEnabled) return;
-            if (_commandsClosed) return;
 
             string sceneId = ResolveSceneId(context);
             int frozenGeneration;
@@ -91,7 +90,28 @@ namespace BossRush
                 return;
             }
 
+            // 命中了一次**新的**入场意图：船票已经预扣，这里必须复位上一局关停时落下的闩锁。
+            // 否则模块对新一局的全部命令静默早返，玩家站在没有任何模式接管的原图上，
+            // 票还被吞了（CR-2026-08-29-011）。闩锁复位必须发生在意图匹配之后，
+            // 才不会因为「路过一张受支持地图」就把关停状态解除。
+            BeginNewRunSession();
+
             BeginSeasonSetup(context.SceneName, sceneId);
+        }
+
+        /// <summary>
+        /// 新一局开始前复位「上一局残留」。关停闩锁与每局一次性字段都在这里归零，
+        /// 保证同一次游戏会话里可以连续开多局（§18.3 的关停是幂等的，但不是永久的）。
+        /// </summary>
+        private void BeginNewRunSession()
+        {
+            _commandsClosed = false;
+            _shutdownCompleted = false;
+            _lastExitReasonId = null;
+            _pendingContractMainId = null;
+            _recoveryDriveStateSequence = -1;
+            _leaseCheckAccumulator = 0f;
+            _seasonDirty = false;
         }
 
         private static string ResolveSceneId(SceneRuntimeContext context)
@@ -417,8 +437,67 @@ namespace BossRush
             _map = null;
             ModeHRuntimeGates.SetRunOwnerActive(false);
 
+            // 玩家带着船票专程进了图，被无声传回基地是不可接受的：
+            // 先给一句解释 + 退票告知，再执行退款离场（CR-2026-08-29-013）。
+            ShowAbortMessage(reasonId);
+
             try { ModeHEntry.AbortAndRefund(_owner, reasonId, mustExitScene); }
             catch (Exception e) { LogFailure("abort_refund", e); }
+        }
+
+        /// <summary>开局中止的玩家可见提示：一句归类文案 + 退票告知。失败不阻断退款。</summary>
+        private void ShowAbortMessage(string reasonId)
+        {
+            try
+            {
+                if (_owner == null) return;
+                string text = L10n.T(ModeHConfig.LocalizationKeyPrefix + ResolveAbortMessageKey(reasonId))
+                    + " " + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Unavailable_TicketRefunded");
+                _owner.ShowMessage(text);
+            }
+            catch (Exception)
+            {
+                // 提示失败不得影响退款与离场
+            }
+        }
+
+        /// <summary>
+        /// 把 AbortSetup 的内部 reasonId 归类成已注入的文案 key。
+        /// 未登记的原因回落 Abort_Generic —— 宁可给一句笼统解释，也不能让玩家看到
+        /// 未注入 key 的 *星号原文*。
+        /// </summary>
+        private static string ResolveAbortMessageKey(string reasonId)
+        {
+            if (string.IsNullOrEmpty(reasonId)) return "Abort_Generic";
+
+            if (reasonId.IndexOf("map_unsupported", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_MapUnsupported";
+            }
+            if (reasonId.IndexOf("player_cancelled", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_Cancelled";
+            }
+            if (reasonId.IndexOf("lease", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_Lease";
+            }
+            if (reasonId.IndexOf("certification", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_Certification";
+            }
+            if (reasonId.IndexOf("season_write", StringComparison.Ordinal) >= 0
+                || reasonId.IndexOf("season_readback", StringComparison.Ordinal) >= 0
+                || reasonId.IndexOf("create_season", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_Save";
+            }
+            if (reasonId.IndexOf("preset", StringComparison.Ordinal) >= 0
+                || reasonId.IndexOf("production_pool", StringComparison.Ordinal) >= 0)
+            {
+                return "Abort_Content";
+            }
+            return "Abort_Generic";
         }
 
         #endregion

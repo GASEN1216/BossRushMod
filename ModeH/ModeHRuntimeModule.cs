@@ -175,6 +175,41 @@ namespace BossRush
             ModeHRuntimeGates.InitializeContentForSlot();
         }
 
+        /// <summary>
+        /// 换档 / 删档后重建内存 run owner。
+        ///
+        /// 存档恢复过去只在 OnAwake 跑一次，而 OnAwake 每个进程只执行一次：
+        /// 玩家从主菜单载入一份「中断赛季」存档时，恢复逻辑根本不会重跑，
+        /// recovery-only 闸不会立起来，玩家可以直接开新赛季，
+        /// CreateDraftingSeason 会**静默覆盖**那份旧赛季（CR-2026-08-29-012）。
+        /// 由 ModeHProfilePersistence 的换档回调调用。
+        /// </summary>
+        internal static void NotifySlotRestored()
+        {
+            try
+            {
+                // 走 Mode H 唯一的宿主解析器，不在这里再取一次单例（分类基线：ModeH 恒为 1）
+                ModBehaviour mod = ModeHInteractable.ResolveHost(null);
+                ModeHRuntimeModule runtime = mod != null ? mod.ModeHRuntime : null;
+                if (runtime == null) return;
+                runtime.RestoreForSlotChange();
+            }
+            catch (Exception)
+            {
+                // 换档回调不得抛：恢复失败时保持无 run 状态，入口仍受可用性门保护
+            }
+        }
+
+        /// <summary>
+        /// 换档时重建 run owner。局内换档属异常路径，交给既有的场景失配出口处理，
+        /// 这里只在没有活动 run 时接管。
+        /// </summary>
+        private void RestoreForSlotChange()
+        {
+            if (HasActiveRun) return;
+            RestoreFromSaveIfPresent();
+        }
+
         /// <summary>存在活动 Season 时重建内存 run owner（生成新的 owner token）。</summary>
         private void RestoreFromSaveIfPresent()
         {
@@ -315,6 +350,9 @@ namespace BossRush
         /// </summary>
         internal static void ResetModeHStaticCaches()
         {
+            // 先退订再清缓存（4.6）：Mod 销毁后 SavesSystem 的三个事件不得再回调进 Mode H。
+            // 形态与 PetNest / 日报 / Mode G 的销毁路径一致。
+            ModeHSaveFlushCoordinator.ShutdownSubscription();
             ModeHRuntimeGates.ResetStaticCaches();
             ModeHSaveFlushCoordinator.ResetStaticCaches();
             ModeHContentCatalog.ResetStaticCaches();

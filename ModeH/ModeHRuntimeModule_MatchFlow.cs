@@ -26,6 +26,16 @@ namespace BossRush
             if (_commandsClosed) return;
             if (_runState == null) return;
 
+            // Recovering 是过渡态不是终点：进来之后必须有人把它推回同一场，
+            // 否则技术故障出口全部通向一个没有按钮的壳（CR-2026-08-29-010）。
+            // 放在这里而不是 RequestRecovering 内同步推进，是因为 EnsureMatchPlan 会在
+            // 页面组装（RouteUiForLifecycle）里报故障，同步回落会变成无限递归。
+            if (_runState.Lifecycle == ModeHLifecycle.Recovering)
+            {
+                DriveRecovery();
+                return;
+            }
+
             // 租约完整性：只查已登记的 spawner 与晚到实例，按秒节流（§19.2 明令不得每帧全场扫）
             _leaseCheckAccumulator += deltaTime;
             if (_leaseCheckAccumulator >= LeaseCheckIntervalSeconds)
@@ -52,14 +62,125 @@ namespace BossRush
                 }
                 if (!_arenaLease.CheckLateSpawners(out failureReasonId))
                 {
-                    // 晚到 spawner 属技术故障，不判负：按 §17.4 走同场重开路径
-                    RequestRecovering(failureReasonId != null ? failureReasonId : "late_spawner");
+                    // 晚到 spawner 属技术故障，不判负：按 §17.4 消耗一次同场重试预算后回落
+                    RequestTechnicalRetry(failureReasonId != null ? failureReasonId : "late_spawner");
                 }
             }
             catch (Exception e)
             {
                 LogFailure("lease_integrity", e);
             }
+        }
+
+        #endregion
+
+        #region 恢复驱动（Recovering -> 同场）
+
+        /// <summary>上一次驱动恢复时的状态序号，用于每次进入 Recovering 只驱动一次。</summary>
+        private int _recoveryDriveStateSequence = -1;
+
+        /// <summary>
+        /// 把 Recovering 推回可玩状态。每进入一次 Recovering 只尝试一次
+        /// （按 stateSequence 判重），避免失败时每帧重试刷日志。
+        /// </summary>
+        private void DriveRecovery()
+        {
+            if (_runState == null) return;
+            if (_runState.StateSequence == _recoveryDriveStateSequence) return;
+            _recoveryDriveStateSequence = _runState.StateSequence;
+
+            ModeHLifecycle resume = ResolveRecoveryResumeLifecycle();
+            if (resume == ModeHLifecycle.Unknown)
+            {
+                // 开局阶段（EntryIntent/SceneLoading/ProductionCertifying）没有可回落的同场，
+                // 挂起把处置权交回玩家，好过停在死态
+                RequestSuspended("recovery_target_unresolved");
+                return;
+            }
+
+            // 自动重试预算（§17.4）。故障点已经各自消耗过预算，这里是防御性兜底。
+            if (_runState.TechnicalRetrySequence > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
+            {
+                RequestSuspended("recovery_retry_exhausted");
+                return;
+            }
+
+            if (!TryTransition(ModeHLifecycle.Recovering, resume, "recovery_resume"))
+            {
+                RequestSuspended("recovery_resume_rejected");
+            }
+        }
+
+        /// <summary>
+        /// 恢复目标：战前/战中的任何故障一律回落到**同一场**看盘（§20.3），
+        /// 早期状态与幕间状态回落到自己（冻结表与早期恢复子表都允许）。
+        /// </summary>
+        private ModeHLifecycle ResolveRecoveryResumeLifecycle()
+        {
+            if (_runState == null) return ModeHLifecycle.Unknown;
+
+            ModeHLifecycle origin = _runState.RecoveryResumeTarget;
+            if (origin == ModeHLifecycle.Unknown) origin = _runState.RecoveryOriginalLifecycle;
+
+            switch (origin)
+            {
+                case ModeHLifecycle.Drafting:
+                case ModeHLifecycle.RosterLocked:
+                case ModeHLifecycle.Intermission:
+                case ModeHLifecycle.TransferWindow:
+                case ModeHLifecycle.HallOfFame:
+                    return origin;
+
+                case ModeHLifecycle.MatchBrief:
+                case ModeHLifecycle.LoadoutEditing:
+                case ModeHLifecycle.OddsPreview:
+                case ModeHLifecycle.LoadoutLocked:
+                case ModeHLifecycle.StakePrepared:
+                case ModeHLifecycle.MatchSpawning:
+                case ModeHLifecycle.MatchFighting:
+                case ModeHLifecycle.RelayPending:
+                case ModeHLifecycle.MatchSettling:
+                    return ModeHLifecycle.MatchBrief;
+
+                case ModeHLifecycle.Suspended:
+                case ModeHLifecycle.Unknown:
+                    // 玩家从挂起点「同场重开」时，ApplyTransition 会把故障源**覆盖成 Suspended**
+                    // （Suspended -> Recovering 这一跳满足它重置恢复元数据的条件），
+                    // 真实故障源已经丢失。从赛季进度反推才是可靠的，
+                    // 否则重开按钮会解析不出目标又弹回挂起。
+                    return DeriveResumeFromSeasonProgress();
+
+                default:
+                    // EntryIntent / SceneLoading / ProductionCertifying：开局阶段没有可回落的同场，
+                    // 这些状态的失败本来就走 AbortSetup 退款离场
+                    return ModeHLifecycle.Unknown;
+            }
+        }
+
+        /// <summary>按赛季实际进度反推可回落的状态：已开赛回同场看盘，签完约回名单，否则回选秀。</summary>
+        private ModeHLifecycle DeriveResumeFromSeasonProgress()
+        {
+            if (_runState == null || _season == null) return ModeHLifecycle.Unknown;
+            if (_runState.MatchIndex >= ModeHConfig.FirstMatchIndex) return ModeHLifecycle.MatchBrief;
+            if (_season.contract != null) return ModeHLifecycle.RosterLocked;
+            return ModeHLifecycle.Drafting;
+        }
+
+        /// <summary>
+        /// 技术故障统一入口：消耗一次同场重试预算，未超预算转 Recovering
+        /// （由 DriveRecovery 回落到同一场），超预算则挂起。绝不判负（§17.4）。
+        /// </summary>
+        private void RequestTechnicalRetry(string reasonId)
+        {
+            if (_runState == null) return;
+            int retries = _runState.IncrementTechnicalRetry();
+            ModBehaviour.DevLog("[ModeH] 技术故障 (" + (reasonId ?? "unknown") + ") retry=" + retries);
+            if (retries > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
+            {
+                RequestSuspended(reasonId != null ? reasonId : "technical_retry_exhausted");
+                return;
+            }
+            RequestRecovering(reasonId != null ? reasonId : "technical_fault");
         }
 
         #endregion
@@ -161,7 +282,9 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog("[ModeH] 试棚生成失败: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));
-                    RequestRecovering(failureReasonId != null ? failureReasonId : "draft_failed");
+                    // 本方法由页面组装调用：必须消耗重试预算，否则「回落 -> 重建页面 -> 再失败」
+                    // 会变成每帧一次的死循环
+                    RequestTechnicalRetry(failureReasonId != null ? failureReasonId : "draft_failed");
                     return;
                 }
 
@@ -265,8 +388,10 @@ namespace BossRush
             int displayIndex = _runState.MatchIndex > 0
                 ? _runState.MatchIndex
                 : ModeHConfig.FirstMatchIndex;
+            // Label_Match 是「第 {0} 场」这样的模板，不是纯前缀：直接拼接会把 "{0}" 原样显示给玩家
             page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match")
-                + " " + displayIndex + " / " + ModeHConfig.SeasonMatchCount;
+                    .Replace("{0}", displayIndex.ToString())
+                + " / " + ModeHConfig.SeasonMatchCount;
 
             // RosterLocked 只是签完约，还要先把本场敌军计划建出来才能看盘
             if (_runState.Lifecycle == ModeHLifecycle.RosterLocked)
@@ -303,7 +428,7 @@ namespace BossRush
                 string failureReasonId;
                 if (!_runState.TryAdvanceMatchIndex(out failureReasonId))
                 {
-                    RequestRecovering(failureReasonId != null ? failureReasonId : "match_index_failed");
+                    RequestTechnicalRetry(failureReasonId != null ? failureReasonId : "match_index_failed");
                     return;
                 }
             }
@@ -317,12 +442,16 @@ namespace BossRush
         /// <summary>
         /// 本场敌军计划只建一次：关页重开不得重抽（同 §17.2 的试棚纪律）。
         /// 计划生成失败属技术故障，走恢复而不是判负。
+        ///
+        /// 缓存判据是 (matchIndex, technicalRetrySequence) 两项：只比 matchIndex 会让技术重试
+        /// 复用刚刚失败的同一份计划，与 §17.4「重试换下一个候选」相悖（CR-2026-08-29-018 第 4 项）。
         /// </summary>
         private void EnsureMatchPlan()
         {
             if (_season == null || _runState == null) return;
             if (_season.currentMatchPlan != null
-                && _season.currentMatchPlan.matchIndex == _runState.MatchIndex)
+                && _season.currentMatchPlan.matchIndex == _runState.MatchIndex
+                && _season.currentMatchPlan.technicalRetrySequence == _runState.TechnicalRetrySequence)
             {
                 return;
             }
@@ -343,7 +472,8 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog("[ModeH] 敌军计划生成失败: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));
-                    RequestRecovering(failureReasonId != null ? failureReasonId : "plan_failed");
+                    // 同 EnsureDraftCandidates：本方法在页面组装里被调用，必须消耗重试预算
+                    RequestTechnicalRetry(failureReasonId != null ? failureReasonId : "plan_failed");
                     return;
                 }
 
@@ -353,7 +483,7 @@ namespace BossRush
             catch (Exception e)
             {
                 LogFailure("build_plan", e);
-                RequestRecovering("plan_exception");
+                RequestTechnicalRetry("plan_exception");
             }
         }
 
@@ -392,7 +522,26 @@ namespace BossRush
         private void EnterLoadoutEditing()
         {
             if (_runState == null) return;
-            TryTransition(ModeHLifecycle.MatchBrief, ModeHLifecycle.LoadoutEditing, "open_loadout");
+            if (!TryTransition(ModeHLifecycle.MatchBrief, ModeHLifecycle.LoadoutEditing, "open_loadout"))
+            {
+                return;
+            }
+            // 同一个页面既是配装也是看赔率，开页即进入 OddsPreview：
+            // §18.2 冻结表里锁盘只有 OddsPreview -> LoadoutLocked 一条边，
+            // 停在 LoadoutEditing 会让锁盘按钮永远被拒（CR-2026-08-29-008）。
+            EnsureOddsPreview();
+        }
+
+        /// <summary>
+        /// 把 LoadoutEditing 推进到 OddsPreview —— 冻结表中锁盘的唯一合法前驱。
+        /// 已在 OddsPreview 时是幂等真返回；不在这两个状态时返回 false，调用方不得继续锁盘。
+        /// </summary>
+        private bool EnsureOddsPreview()
+        {
+            if (_runState == null) return false;
+            if (_runState.Lifecycle == ModeHLifecycle.OddsPreview) return true;
+            if (_runState.Lifecycle != ModeHLifecycle.LoadoutEditing) return false;
+            return TryTransition(ModeHLifecycle.LoadoutEditing, ModeHLifecycle.OddsPreview, "open_odds");
         }
 
         private ModeHPageContent BuildOddsPageContent()
@@ -424,7 +573,7 @@ namespace BossRush
 
         /// <summary>
         /// 锁盘后立刻进入生成阶段。
-        /// 主干走 LoadoutEditing/OddsPreview -> LoadoutLocked -> MatchSpawning，
+        /// 主干走 LoadoutEditing -> OddsPreview -> LoadoutLocked -> MatchSpawning，
         /// **不经过 StakePrepared**——那是真实押品支路（ModeHStateMachineGuard 冻结这一点）。
         /// </summary>
         private void LockLoadoutAndStartMatch()
@@ -438,7 +587,11 @@ namespace BossRush
 
             try
             {
-                if (!TryTransition(_runState.Lifecycle, ModeHLifecycle.LoadoutLocked, "loadout_locked"))
+                // 冻结表只有 OddsPreview -> LoadoutLocked 这一条锁盘边。
+                // 正常路径开页时已经跳过去了，这里再补一次是为了任何进入 LoadoutEditing
+                // 的其它路径也能锁盘，而不是让按钮静默失效。
+                if (!EnsureOddsPreview()) return;
+                if (!TryTransition(ModeHLifecycle.OddsPreview, ModeHLifecycle.LoadoutLocked, "loadout_locked"))
                 {
                     return;
                 }
@@ -449,7 +602,7 @@ namespace BossRush
             catch (Exception e)
             {
                 LogFailure("lock_loadout", e);
-                RequestRecovering("lock_loadout_exception");
+                RequestTechnicalRetry("lock_loadout_exception");
             }
         }
 
@@ -547,7 +700,11 @@ namespace BossRush
             {
                 _owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Match_NotWiredYet"));
             }
-            TryTransition(_runState.Lifecycle, ModeHLifecycle.MatchBrief, "combat_wiring_pending");
+            // MatchSpawning 在冻结表里没有直达 MatchBrief 的边（CR-2026-08-29-009），
+            // 回落必须经 Recovering 过渡，由 DriveRecovery 落到同一场看盘。
+            // 这里**刻意**用不消耗预算的 RequestRecovering：功能没写完不是技术故障，
+            // 消耗重试预算会把玩家的赛季推进死路。
+            RequestRecovering("combat_wiring_pending");
         }
 
         /// <summary>
@@ -568,16 +725,7 @@ namespace BossRush
             _spawnTransaction = null;
 
             if (_runState == null) return;
-            int retries = _runState.IncrementTechnicalRetry();
-            ModBehaviour.DevLog("[ModeH] 生成中止 (" + (reasonId ?? "unknown")
-                + ") retry=" + retries);
-
-            if (retries > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
-            {
-                RequestSuspended(reasonId != null ? reasonId : "spawn_retry_exhausted");
-                return;
-            }
-            RequestRecovering(reasonId != null ? reasonId : "spawn_failed");
+            RequestTechnicalRetry(reasonId != null ? reasonId : "spawn_failed");
         }
 
         /// <summary>本场生成协程句柄，关停时取消。</summary>

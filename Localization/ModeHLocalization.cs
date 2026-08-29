@@ -542,6 +542,22 @@ namespace BossRush
             Add(map, "Unavailable_modeh_owner_missing", "运行实例缺失", "Runtime owner missing");
             Add(map, "Unavailable_TicketRefunded", "已退还船票", "Ticket refunded");
 
+            // 开局中止原因：AbortSetup 的 reasonId 是内部标识（不带 modeh_ 前缀），
+            // 由 ModeHRuntimeModule.ResolveAbortMessageKey 归类到下面这几条，
+            // 保证玩家被传回基地时永远看得到一句解释而不是静默（CR-2026-08-29-013）。
+            Add(map, "Abort_Generic", "开局失败，已退回基地", "Setup failed; returned to base");
+            Add(map, "Abort_MapUnsupported", "这张地图缺少本模式的点位",
+                "This map lacks the mode's spawn points");
+            Add(map, "Abort_Lease", "无法接管擂台场地，已退回基地",
+                "Could not take over the arena; returned to base");
+            Add(map, "Abort_Certification", "开赛前的生产认证未通过，已退回基地",
+                "Pre-match production certification failed; returned to base");
+            Add(map, "Abort_Cancelled", "已取消入场", "Entry cancelled");
+            Add(map, "Abort_Save", "赛季存档写入失败，已退回基地",
+                "Season save failed; returned to base");
+            Add(map, "Abort_Content", "选手或敌军内容不可用，已退回基地",
+                "Fighter or enemy content unavailable; returned to base");
+
             Add(map, "Diag_Passed", "通过", "Passed");
             Add(map, "Diag_Rejected", "拒绝", "Rejected");
             Add(map, "Diag_Progress", "认证进度", "Certification Progress");

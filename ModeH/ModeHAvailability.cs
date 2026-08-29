@@ -135,14 +135,38 @@ namespace BossRush
             }
         }
 
-        /// <summary>把原因 ID 转成本地化 key（缺失时回退到通用不可用文案）。</summary>
+        /// <summary>
+        /// 把原因 ID 转成本地化 key。
+        ///
+        /// 只有下面这张白名单里的原因才拼具体 key —— 它们与 ModeHLocalization 注入的
+        /// `Unavailable_modeh_*` 一一对应。运行期还会出现 `entry_exception:NullReference`
+        /// 这类内部原因，拼出来的 key 没有注入，官方本地化会把它显示成 *星号原文*，
+        /// 所以一律回落到通用文案。
+        /// </summary>
         public static string GetReasonLocalizationKey(string reasonId)
         {
-            if (string.IsNullOrEmpty(reasonId))
+            if (IsLocalizedReason(reasonId))
             {
-                return ModeHConfig.LocalizationKeyPrefix + "Unavailable_Generic";
+                return ModeHConfig.LocalizationKeyPrefix + "Unavailable_" + reasonId;
             }
-            return ModeHConfig.LocalizationKeyPrefix + "Unavailable_" + reasonId;
+            return ModeHConfig.LocalizationKeyPrefix + "Unavailable_Generic";
+        }
+
+        /// <summary>该原因 ID 是否有对应的已注入文案。</summary>
+        public static bool IsLocalizedReason(string reasonId)
+        {
+            if (string.IsNullOrEmpty(reasonId)) return false;
+            return reasonId == ReasonDisabled
+                || reasonId == ReasonRiskScanPending
+                || reasonId == ReasonExternalAssetRisk
+                || reasonId == ReasonRecoveryOnly
+                || reasonId == ReasonContentNotReady
+                || reasonId == ReasonRunOwnerActive
+                || reasonId == ReasonOtherModeActive
+                || reasonId == ReasonMapUnsupported
+                || reasonId == ReasonPresentationMissing
+                || reasonId == ReasonCertificationFailed
+                || reasonId == ReasonOwnerMissing;
         }
 
         #endregion

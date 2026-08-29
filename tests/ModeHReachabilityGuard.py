@@ -160,11 +160,154 @@ def check_map_data(errors):
             "入口即便接通也会被 map_unsupported 拒绝")
 
 
+def parse_frozen_transitions():
+    """
+    从 ModeHStateMachine.BuildTransitions 解析冻结转换表。
+    只取 BuildTransitions 段——BuildEarlyRecoveryTargets 用的是同样的 map[...] 写法。
+    """
+    path = os.path.join(MODEH_DIR, "ModeHStateMachine.cs")
+    text = read_text(path)
+    if text is None:
+        return None
+    code = strip_cs_comments(text)
+    # 字段初始化 `= BuildTransitions();` 出现在方法定义**之前**，所以取最后一次出现；
+    # 再在下一个 BuildEarlyRecoveryTargets 处截断，避免把早期恢复子表混进来。
+    start = code.rfind("BuildTransitions()")
+    if start < 0:
+        return None
+    head = code[start:]
+    cut = head.find("BuildEarlyRecoveryTargets")
+    if cut > 0:
+        head = head[:cut]
+
+    table = {}
+    for m in re.finditer(
+            r"map\[ModeHLifecycle\.(\w+)\]\s*=\s*new ModeHLifecycle\[\]\s*\{([^}]*)\}", head):
+        src = m.group(1)
+        targets = set(re.findall(r"ModeHLifecycle\.(\w+)", m.group(2)))
+        table[src] = targets
+    return table
+
+
+def collect_transition_call_sites(sources):
+    """
+    收集运行时对状态机门面的调用点。
+    返回 (literal_pairs, entered_states, exited_states)：
+      - literal_pairs: 两端都是字面量的 (from, to, 文件, 行号)
+      - entered_states: 出现在第二参数位置的字面量目标
+      - exited_states: 出现在第一参数位置的字面量源
+    """
+    literal_pairs = []
+    entered = set()
+    exited = set()
+
+    # 两个参数各自可能是字面量也可能是变量（DriveRecovery 的目标就是变量），
+    # 因此两端分别判定，不要求同时是字面量。
+    call_re = re.compile(r"TryTransition\(\s*([^,]+?)\s*,\s*([^,]+?)\s*,")
+    literal_re = re.compile(r"^ModeHLifecycle\.(\w+)$")
+
+    for rel, code in sources:
+        if not rel.startswith("ModeH/"):
+            continue
+        for line_no, line in enumerate(code.splitlines(), start=1):
+            for m in call_re.finditer(line):
+                src_literal = literal_re.match(m.group(1).strip())
+                dst_literal = literal_re.match(m.group(2).strip())
+                if src_literal:
+                    exited.add(src_literal.group(1))
+                if dst_literal:
+                    entered.add(dst_literal.group(1))
+                if src_literal and dst_literal:
+                    literal_pairs.append(
+                        (src_literal.group(1), dst_literal.group(1), rel, line_no))
+    return literal_pairs, entered, exited
+
+
+def check_transition_call_sites_legal(errors, sources, table):
+    """
+    每个两端都写死的 TryTransition 调用点，其 (from, to) 必须在冻结转换表内。
+
+    2026-08-29 第二次事故：批 2 的新代码按**错记的**转换表写成
+    `LoadoutEditing -> LoadoutLocked` 和 `MatchSpawning -> MatchBrief`，
+    两条边都不在冻结表里。运行时只打一行 DevLog 就静默返回，
+    玩家点锁盘毫无反应、被困在时停页里；编译与全部 33 条 guard 依然全绿。
+    """
+    if not table:
+        errors.append("[StateMachine] 无法解析 ModeHStateMachine 冻结转换表")
+        return
+
+    literal_pairs, _, _ = collect_transition_call_sites(sources)
+    for src, dst, rel, line_no in literal_pairs:
+        if src not in table:
+            errors.append("[StateMachine] {}:{} 的源状态 {} 不在冻结表内".format(
+                rel, line_no, src))
+            continue
+        if dst not in table[src]:
+            errors.append(
+                "[StateMachine] {}:{} 请求了非法转换 {} -> {} —— 冻结表不放行，"
+                "该调用在运行时必然被拒绝并静默返回".format(rel, line_no, src, dst))
+
+
+def check_no_dead_states(errors, sources, table):
+    """
+    恢复通道的三个状态一旦被进入，就必须有人以它为源把它推出去。
+
+    2026-08-29 第二次事故的另一半：所有技术故障出口都转进 Recovering，
+    但全仓没有任何调用点以 Recovering 为源发起转换——玩家进去就出不来，
+    面对一个没有按钮的恢复壳只能 ESC 离场。
+
+    为什么只查这三个状态：普通玩法状态可以由 RequestRecovering / RequestSuspended
+    这类**动态源**门面（`TryTransition(_runState.Lifecycle, ...)`）退出，静态上无法
+    归属到具体源状态，硬查会误报。而恢复通道本身是所有故障路径的终点，
+    它的出口只能写死源状态，正好可以静态断言——这也正是出事的那条不变式。
+    """
+    if not table:
+        return
+
+    _, entered, exited = collect_transition_call_sites(sources)
+
+    recovery_channel = ["Recovering", "ErrorRecoveryPending", "Suspended"]
+
+    # ErrorRecoveryPending 的唯一入口 RequestErrorRecoveryPending 目前零调用
+    # （战斗接线时才会用到），因此它还不是「活的死态」。一旦它有了调用方，
+    # 这条豁免自动失效，必须同时补出口。
+    exempt = set()
+    if not has_caller(sources, "RequestErrorRecoveryPending"):
+        exempt.add("ErrorRecoveryPending")
+
+    for state in recovery_channel:
+        if state not in entered or state in exempt:
+            continue
+        if state not in exited:
+            errors.append(
+                "[StateMachine] {} 是死态：有调用点把状态转进它，"
+                "却没有任何调用点以它为源转出去".format(state))
+
+
+def has_caller(sources, method_name):
+    """该方法在定义之外是否有调用点（定义形如 `void Name(` 或 `bool Name(`）。"""
+    call_re = re.compile(r"(?<![\w.])" + method_name + r"\s*\(")
+    define_re = re.compile(r"\b(void|bool|int|string)\s+" + method_name + r"\s*\(")
+    for rel, code in sources:
+        for line in code.splitlines():
+            if define_re.search(line):
+                continue
+            if call_re.search(line):
+                return True
+    return False
+
+
 def main():
     errors = []
     sources = list(iter_production_cs())
 
     check_partial_hooks(errors, sources)
+
+    # 状态机接缝：光有调用方还不够，调用还得能成功。
+    # 这两条专治「调用点存在但冻结表不放行」和「进得去出不来」。
+    table = parse_frozen_transitions()
+    check_transition_call_sites_legal(errors, sources, table)
+    check_no_dead_states(errors, sources, table)
 
     # 入口可达性：玩家必须能在游戏里打开这个模式。
     # 两条合法路径任选其一即可：

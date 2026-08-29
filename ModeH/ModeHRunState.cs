@@ -218,6 +218,20 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 重置同场技术重试预算。**只给玩家在恢复壳里手动「同场重开」用**：
+        /// 自动预算耗尽后玩家主动再来一次，应当拿到全新的预算与新的计划候选
+        /// （计划缓存判据含 technicalRetrySequence），否则重开按钮会立刻又被判定超预算，
+        /// 并且复用刚刚失败的那份计划。不推进 matchIndex，绝不判负（§17.4）。
+        /// </summary>
+        public void ResetTechnicalRetry()
+        {
+            lock (_lock)
+            {
+                _technicalRetrySequence = 0;
+            }
+        }
+
         #endregion
 
         #region 事件 token CAS

@@ -130,6 +130,9 @@ namespace BossRush
                 ModeHRuntimeGates.ResetForSlotChange();
                 ModeHRuntimeGates.InitializeRiskForSlot(_slotGeneration);
                 LoadCurrent();
+                // 新槽里如果有中断的赛季，必须重建内存 run owner 并立起 recovery-only 闸，
+                // 否则玩家能直接开新赛季把它覆盖掉（CR-2026-08-29-012）
+                ModeHRuntimeModule.NotifySlotRestored();
             }
             catch (Exception e)
             {
@@ -152,6 +155,8 @@ namespace BossRush
                 }
                 ModeHRuntimeGates.ResetForSlotChange();
                 ModeHRuntimeGates.InitializeRiskForSlot(_slotGeneration);
+                // 删档后同样要重建：读不到赛季时它会把 run owner 清空并撤下 recovery-only 闸
+                ModeHRuntimeModule.NotifySlotRestored();
             }
             catch (Exception e)
             {

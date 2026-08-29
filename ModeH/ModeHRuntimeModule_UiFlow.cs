@@ -151,6 +151,15 @@ namespace BossRush
             EnsureUi();
             if (_ui == null) return;
 
+            // 离开恢复通道时收起恢复壳。DriveRecovery 会把 Recovering 推回同一场看盘，
+            // 壳不收起来就会盖在新页面上（恢复壳不占模态输入，不收也不会锁死，但会挡视线）。
+            if (lifecycle != ModeHLifecycle.Recovering
+                && lifecycle != ModeHLifecycle.ErrorRecoveryPending
+                && lifecycle != ModeHLifecycle.Suspended)
+            {
+                HideRecoveryShell();
+            }
+
             switch (lifecycle)
             {
                 case ModeHLifecycle.Drafting:
@@ -232,6 +241,19 @@ namespace BossRush
             }
         }
 
+        /// <summary>收起恢复壳（幂等）。实例保留，下次 OpenRecoveryShell 复用。</summary>
+        private void HideRecoveryShell()
+        {
+            try
+            {
+                if (_recoveryPanel != null) _recoveryPanel.Hide();
+            }
+            catch (Exception e)
+            {
+                LogFailure("recovery_hide", e);
+            }
+        }
+
         private List<ModeHActionData> BuildRecoveryActions(ModeHSeasonDto season)
         {
             List<ModeHActionData> actions = new List<ModeHActionData>();
@@ -276,6 +298,10 @@ namespace BossRush
             try
             {
                 if (_runState == null) return;
+                // 玩家主动重开：先给回全新的同场重试预算，再进恢复通道。
+                // 不重置的话 DriveRecovery 会当场判定「预算已耗尽」把玩家弹回挂起，
+                // 这个按钮就等于没有；而且计划缓存含重试序号，不重置还会复用刚失败的那份计划。
+                _runState.ResetTechnicalRetry();
                 if (!TryTransition(ModeHLifecycle.Suspended, ModeHLifecycle.Recovering, "player_resume"))
                 {
                     return;

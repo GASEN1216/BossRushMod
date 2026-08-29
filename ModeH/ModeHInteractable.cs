@@ -52,6 +52,11 @@ namespace BossRush
                 {
                     LastReasonId = reasonId;
                     ModBehaviour.DevLog("[ModeH] 入口不可用: " + reasonId);
+                    // 恢复分支：有待处理的赛季记录时，入口的职责是**打开恢复壳**，
+                    // 而不是把玩家挡在门外——否则中断的赛季永远没有出口
+                    // （UIAndSigns 的注入门本来就为这一支放行，CR-2026-08-29-012）。
+                    if (TryOpenRecoveryShellForEntry(host, reasonId)) return true;
+                    ShowUnavailableNotice(reasonId);
                     return false;
                 }
 
@@ -128,10 +133,61 @@ namespace BossRush
         }
 
         /// <summary>
-        /// Mode H 内解析宿主的唯一入口。集中一处便于单例引用分类守卫审计，
-        /// 也避免各处重复解析单例。
+        /// 入口的恢复分支：存在待处理的赛季恢复记录时打开恢复壳并返回 true。
+        /// 按 §18.1，配置关闭也允许处理已有 H 记录；但**有其它模式在跑时不接管**。
         /// </summary>
-        private static ModBehaviour ResolveHost(ModBehaviour preferred)
+        private static bool TryOpenRecoveryShellForEntry(ModBehaviour host, string reasonId)
+        {
+            try
+            {
+                if (host == null) return false;
+
+                string recoveryReasonId;
+                if (ModeHAvailability.EvaluateRecovery(out recoveryReasonId)
+                    != ModeHAvailabilityStatus.Available)
+                {
+                    return false;
+                }
+
+                string conflictId;
+                if (host.HasLegacyModeConflictForModeH(out conflictId)) return false;
+
+                ModeHRuntimeModule runtime = host.ModeHRuntime;
+                if (runtime == null) return false;
+
+                runtime.OpenRecoveryShell(reasonId);
+                ModBehaviour.DevLog("[ModeH] 入口转恢复壳: " + (reasonId ?? "unknown"));
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeH] [WARNING] 恢复壳打开失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>入口被拒时给玩家一句解释。原因 key 由 ModeHAvailability 统一解析。</summary>
+        private static void ShowUnavailableNotice(string reasonId)
+        {
+            try
+            {
+                ModBehaviour mod = ResolveHost(null);
+                if (mod == null) return;
+                mod.ShowMessage(L10n.T(ModeHAvailability.GetReasonLocalizationKey(reasonId)));
+            }
+            catch (Exception)
+            {
+                // 提示失败不改变入口拒绝结论
+            }
+        }
+
+        /// <summary>
+        /// Mode H 内解析宿主的唯一入口。集中一处便于单例引用分类守卫审计，
+        /// 也避免各处重复解析单例（`docs/testing/2026-05-14-modbehaviour-instance-classification.md`
+        /// 里 ModeH 的基线就是「只在一个解析器里取活动 mod 实例」）。
+        /// 运行时模块的换档回调也走这里，不再自己取一次单例。
+        /// </summary>
+        internal static ModBehaviour ResolveHost(ModBehaviour preferred)
         {
             return preferred != null ? preferred : ModBehaviour.Instance;
         }
@@ -170,6 +226,7 @@ namespace BossRush
                 {
                     _lastReasonId = ModeHAvailability.ReasonMapUnsupported;
                     LastReasonId = _lastReasonId;
+                    ShowUnavailableNotice(_lastReasonId);
                     DismissActive();
                     return false;
                 }
@@ -185,6 +242,7 @@ namespace BossRush
                 if (!started)
                 {
                     ModeHEntry.CancelPendingEntry();
+                    ShowUnavailableNotice(reasonId);
                 }
                 DismissActive();
                 return started;
