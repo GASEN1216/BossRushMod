@@ -10,6 +10,11 @@ flush 协调不变式在宿敌/个人记录两个持久化类中共同实现：
 - 两个 key 分别维护未知版本写屏障；被屏障 key 不产生 dirty/Save，另一 key
   仍可独立进入同一 coordinator；
 - 冻结 CurrentSlot + slot generation，切槽/删档取消旧批次；运行中新增 dirty 会续批；
+- 战斗帧写屏障（CR-2026-08-29-019 第 2 项）：typed Save 永不推迟，只有物理
+  SavesSystem.SaveFile 在 ModeGRuntimeGates.IsModeGHostFileWriteDeferred 为真时
+  记欠账 _hostWriteDeferred 顺延；End() 在 Cleanup 之后补一次 RequestFlush 结清欠账；
+  TryFlushOnHostDestroy 走 forceHostWrite:true 强制落盘（关停无下一帧可等）；
+  切槽/删档与 fault 清空欠账；
 - Store 抛异常进入单向 _storeFaulted 且 Mode G 入口 fail-closed
   （RuntimeModule/DeathRouting 消费 IsStoreFaulted）。
 """
@@ -24,6 +29,9 @@ MODULE = os.path.join(REPO_ROOT, "ModeG", "ModeGRuntimeModule.cs")
 ROUTING = os.path.join(REPO_ROOT, "ModeG", "ModeGDeathRouting.cs")
 ENTRY = os.path.join(REPO_ROOT, "ModeG", "ModeGEntry.cs")
 COORDINATOR = os.path.join(REPO_ROOT, "ModeG", "ModeGPersistenceFlushCoordinator.cs")
+SHUTDOWN = os.path.join(
+    REPO_ROOT, "ModeG", "ModeGRuntimeModule_PublicApiAndShutdown.cs")
+STATE_MODEL = os.path.join(REPO_ROOT, "ModeG", "ModeGStateModel.cs")
 
 
 def read(path, errors):
@@ -80,6 +88,8 @@ def main():
     routing = read(ROUTING, errors)
     entry = read(ENTRY, errors)
     coordinator = read(COORDINATOR, errors)
+    shutdown = read(SHUTDOWN, errors)
+    state_model = read(STATE_MODEL, errors)
 
     if nemesis:
         check_flush_invariants(nemesis, "Nemesis", errors)
@@ -107,8 +117,30 @@ def main():
             ("FaultBeforeHostSave",
              r"ModeGNemesisPersistence\.IsStoreFaulted"
              r"[\s\S]{0,120}?ModeGProfilePersistence\.IsStoreFaulted"
-             r"[\s\S]{0,300}?SavesSystem\.SaveFile\(false\);",
+             r"[\s\S]{0,700}?SavesSystem\.SaveFile\(false\);",
              "DTO fault 检查先于 host SaveFile"),
+            ("TypedFlushBeforeDeferral",
+             r"ModeGNemesisPersistence\.FlushPending\(writeFile: false\);"
+             r"[\s\S]{0,300}?ModeGProfilePersistence\.FlushPending\(writeFile: false\);"
+             r"[\s\S]{0,600}?ModeGRuntimeGates\.IsModeGHostFileWriteDeferred",
+             "typed Save 先于战斗帧顺延判定（typed 永不推迟）"),
+            ("CombatHostWriteDeferral",
+             r"if \(!forceHostWrite && ModeGRuntimeGates\.IsModeGHostFileWriteDeferred\)"
+             r"[\s\S]{0,160}?_hostWriteDeferred = true;"
+             r"[\s\S]{0,60}?return;",
+             "战斗帧只顺延物理 SaveFile 并记欠账"),
+            ("DeferredDebtEntersBatch",
+             r"owedHostWrite = _hostWriteDeferred;"
+             r"[\s\S]{0,200}?if \(\(!hadDirty && !owedHostWrite\)",
+             "顺延欠账本身能重新进入批次（无 dirty 也补写）"),
+            ("HostDestroyForcesWrite",
+             r"internal static void TryFlushOnHostDestroy\(\)"
+             r"[\s\S]{0,1200}?FlushBatch\(slot, generation, forceHostWrite: true\);",
+             "宿主销毁强制落盘，不再顺延"),
+            ("SlotChangeDropsDebt",
+             r"internal static void NotifySlotChanged\(\)"
+             r"[\s\S]{0,260}?_hostWriteDeferred = false;",
+             "切槽/删档丢弃旧槽落盘欠账"),
             ("DirtyContinuation",
              r"_pending = false;[\s\S]*?if \(!_faulted"
              r"[\s\S]*?ModeGNemesisPersistence\.HasPendingFlush"
@@ -122,7 +154,7 @@ def main():
             ("HostDestroyBestEffort",
              r"internal static void TryFlushOnHostDestroy\(\)"
              r"[\s\S]{0,700}?if \(!_running && !SavesSystem\.IsSaving\)"
-             r"[\s\S]{0,900}?FlushBatch\(slot, generation\);",
+             r"[\s\S]{0,900}?FlushBatch\(slot, generation,",
              "宿主销毁时同步尽力 flush，繁忙时不重入"),
         ]
         for name, pattern, desc in coordinator_checks:
@@ -130,6 +162,22 @@ def main():
                 errors.append("[Coordinator:{}] 不满足: {}".format(name, desc))
         if coordinator.count("SavesSystem.SaveFile(false);") != 1:
             errors.append("[Coordinator:SingleSaveFile] coordinator 必须仅有一个 SaveFile(false) 调用点")
+
+    # 战斗帧顺延的欠账必须在终局帧结清（Cleanup 归零相位之后补一次 RequestFlush）
+    if shutdown and not re.search(
+            r"ModeGCleanupController\.Cleanup\(_state, reason\);"
+            r"[\s\S]{0,400}?ModeGPersistenceFlushCoordinator\.RequestFlush\(\);",
+            shutdown):
+        errors.append("[EndDrainsDeferredWrite] End() 未在 Cleanup 后补写顺延的落盘欠账")
+
+    # 顺延窗口语义冻结：仅 Active + Fighting/LastStand，且 no-throw 异常 false
+    if state_model and not re.search(
+            r"public static bool IsModeGHostFileWriteDeferred\b"
+            r"[\s\S]{0,500}?state\.lifecyclePhase == ModeGLifecyclePhase\.Active"
+            r"[\s\S]{0,80}?&& ModeGPhaseGuards\.IsCombatPhase\(state\.combatPhase\)"
+            r"[\s\S]{0,120}?catch[\s\S]{0,40}?return false;",
+            state_model):
+        errors.append("[DeferralWindowSemantics] 落盘顺延窗口语义/no-throw 不满足")
 
     if entry:
         preview = re.search(r"public ModeGEntryPreview GetOrCreateModeGEntryPreview\(\)([\s\S]*?)#endregion", entry)

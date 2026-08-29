@@ -458,6 +458,31 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 物理落盘顺延窗口：Mode G 正处于战斗帧（Active + Fighting/LastStand）。
+        /// 消费点唯一：ModeGPersistenceFlushCoordinator.FlushBatch —— typed Save
+        /// 照常立即执行（官方任意一次存盘都能顺带带走），只把 SavesSystem.SaveFile
+        /// 顺延到非战斗时机（波次结算/休整/终局/奖励/切图/宿主销毁）。
+        /// 语义与成就伤害窗口相同但刻意不复用：两者消费点、扩缩边界互不相干。
+        /// </summary>
+        public static bool IsModeGHostFileWriteDeferred
+        {
+            get
+            {
+                try
+                {
+                    ModeGRunState state = ModeGRunContext.Current;
+                    if (state == null) return false;
+                    return state.lifecyclePhase == ModeGLifecyclePhase.Active
+                        && ModeGPhaseGuards.IsCombatPhase(state.combatPhase);
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
         /// OnDead 抑制查询：staging preset / 已登记 Character 的引用身份查询。
         /// no-throw；未登记角色返回 false（走原 handler）。
         /// </summary>

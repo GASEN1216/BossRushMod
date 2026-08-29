@@ -492,9 +492,14 @@ namespace BossRush
 
         #endregion
 
-        private new void OnDestroy()
+        protected override void OnDestroy()
         {
+            // 清理顺序不变：先关自己的确认页（释放输入租约 + 退回预扣船票），
+            // 再交回基类。官方 InteractableBase.OnDestroy 是 protected virtual
+            // （Interacting 时 StopInteract），此前用 new 隐藏它，一旦本组件挂到
+            // 带碰撞体的实体上，销毁时官方交互就停不下来。
             try { CloseModal(); } catch { /* no-throw */ }
+            try { base.OnDestroy(); } catch { /* no-throw */ }
         }
     }
 

@@ -416,12 +416,21 @@ namespace BossRush
         private bool modeGAchievementSessionActive = false;
 
         /// <summary>
-        /// Mode G 开局时调用：开启独立 session 并清空去重集。
+        /// Mode G 开局时调用：重置本模式 flawless 判定基准、开启独立 session 并清空去重集。
         /// </summary>
         internal void BeginModeGAchievementSession()
         {
             try
             {
+                // flawless 基准归零：HasTakenDamage 是进程级静态，Mode G 启动路径不经过
+                // BeginAchievementSession，跨局残留会让「同进程受过一次伤」之后的真无伤
+                // 击杀永远解锁不了 kill_dragon_king_flawless / kill_dragon_descendant_flawless。
+                // 这里刻意不调 AchievementTracker.ResetSessionStats()：它还会重置
+                // ArenaEnterTime（Legacy/Mode D 速通基准）、HasUsedHealItem（无间炼狱
+                // hell_no_heal）、HasPickedUpItem（Mode D 无拾取），这三项 Mode G 一个都不
+                // 消费，整体 reset 只会污染 Legacy 会话语义。Mode G flawless 真正依赖的
+                // 只有 HasTakenDamage（消费点：ModeGRuntimeModule 的 wasFlawlessAtDeath 快照）。
+                AchievementTracker.HasTakenDamage = false;
                 modeGCountedAchievementReports.Clear();
                 modeGAchievementSessionActive = true;
                 DevLog("[Achievement] [ModeG] 独立成就 session 已开启");

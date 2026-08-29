@@ -334,6 +334,16 @@ namespace BossRush
                 RefundStartupPaymentOnTechnicalFailure(reason);
                 ModeGCleanupController.Cleanup(_state, reason);
 
+                // Cleanup 已把 combatPhase/lifecyclePhase 归零，战斗帧写屏障随之解除：
+                // 这里补一次 flush 请求，把宿敌/档案在战斗帧顺延下来的物理落盘欠账
+                // 在终局帧结清（无欠账时 FlushBatch 首个条件直接早返，零成本）。
+                try { ModeGPersistenceFlushCoordinator.RequestFlush(); }
+                catch (Exception flushException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 终局补写存档请求失败: "
+                        + flushException.Message);
+                }
+
                 // 局内终局即消费 pending 成就 report：必须早于下方 EndModeGAchievementSession，
                 // 否则 Report 入口按 session 已关闭直接早返，本局击杀成就永久丢失。
                 // drain 语义天然幂等，PrepareHostDestroy 的二次消费只会拿到空队列。

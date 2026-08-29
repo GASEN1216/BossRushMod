@@ -393,19 +393,23 @@ namespace BossRush
                 if (!IsModeGEntryPreviewValidForCurrentScene(preview))
                 {
                     DevLog("[ModeG] preview 缺失、过期或与当前 verified scene pair/revision 不一致");
+                    // 与上面同款：场内无可达入口，指向撤离重进而不是「重新打开入口」。
                     ShowMessage(L10n.T(
-                        "宿命回响预览已失效，请重新打开入口。",
-                        "Fate Echo preview is no longer valid. Reopen the entry."));
+                        "宿命回响预览已失效，请撤离返回基地后重新入场。",
+                        "Fate Echo preview is no longer valid. Extract to base, then re-enter."));
                     return false;
                 }
                 if (cachedPreview != null && !ReferenceEquals(cachedPreview, preview))
                 {
                     // 过期重建：契约候选与 runSeed 已换新，确认页上的旧选择随之作废。
-                    // 不静默沿用（玩家会拿到从未见过的契约），要求重看确认页。
+                    // 不静默沿用（玩家会拿到从未见过的契约）。
                     modeGSelectedContractId = -1;
+                    // 文案只能指向真实可达的操作：场内没有 Mode G 交互物（路牌不注入该
+                    // 选项），auto 确认页只在进图协程里开一次且协程已退出，玩家唯一出路
+                    // 是撤离回基地重新入场——不要再写「重新打开确认页」。
                     ShowMessage(L10n.T(
-                        "宿命契约候选已刷新，请重新打开确认页。",
-                        "Fate contract candidates refreshed - please confirm again."));
+                        "宿命契约候选已刷新，本次入场取消；请撤离返回基地后重新携带船票与信物入场。",
+                        "Fate contract candidates refreshed - entry cancelled. Extract to base, then re-enter with a ticket and relic."));
                     return false;
                 }
 

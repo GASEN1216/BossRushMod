@@ -9,7 +9,10 @@ namespace BossRush
     /// 硬约束（规格 §20 guard 22/24）：
     /// - 原生 Saves.SavesSystem typed API：KeyExisits 前置分类、Load&lt;T&gt;/Save；
     /// - OnCollectSaveData/OnSetFile/OnSaveDeleted 幂等订阅；
-    /// - 写屏障：战斗中不写盘，只在值变化结算/官方收集/切档删除时落；
+    /// - 写屏障：值变化即入队，typed Save 不推迟（下一帧由 coordinator 落进存档
+    ///   数据，官方任意一次存盘都能顺带带走）；物理 SavesSystem.SaveFile 则由
+    ///   ModeGPersistenceFlushCoordinator 在 Mode G 战斗帧顺延到非战斗时机
+    ///   （波次结算/休整/终局/切图/宿主销毁），战斗帧不写盘；
     /// - DTO 禁字段初始化器；schemaVersion 保持默认 0；
     /// - 墓碑（tombstone）；rank clamp = max(旧+1, current)；
     /// - SuspendedPersistentV1 挂起（内存挂起，不写盘）；

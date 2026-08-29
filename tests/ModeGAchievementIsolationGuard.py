@@ -16,6 +16,10 @@ ModeGAchievementIsolationGuard — Mode G 成就隔离守卫（规格 §20 第 2
   （HashSet.Add 失败即 return）；
 - 延迟入口不重读 HasTakenDamage：上报方法体以传入的死亡时刻快照
   wasFlawlessAtDeath 为准；方法体内禁 HasTakenDamage 读取；
+- 开局基准归零：BeginModeGAchievementSession 必须把 HasTakenDamage 置 false
+  （Mode G 不经过 BeginAchievementSession，跨局残留会永久锁死 flawless），
+  且禁止调用 Legacy 的 ResetSessionStats（会连带重置 ArenaEnterTime /
+  HasUsedHealItem / HasPickedUpItem，污染 Legacy/Mode D/无间炼狱语义）；
 - session 闸门：modeGAchievementSessionActive + achievementSystemInitialized
   双前置，全程 try/catch no-throw。
 """
@@ -74,6 +78,11 @@ def main():
             ("HurtGateReadOnly",
              r"if \(!IsActive && !IsModeGAchievementDamageWindowActiveSafe\(\)\) return;",
              "OnHurt 门控：只读 IsActive + 窗口（不写 IsActive）"),
+            ("SessionFlawlessBaseline",
+             r"internal void BeginModeGAchievementSession\(\)"
+             r"[\s\S]{0,900}?AchievementTracker\.HasTakenDamage = false;"
+             r"[\s\S]{0,120}?modeGCountedAchievementReports\.Clear\(\);",
+             "开局归零 flawless 基准（HasTakenDamage）后再清去重集"),
         ]
         for name, pattern, desc in checks:
             if not re.search(pattern, triggers):
@@ -103,6 +112,19 @@ def main():
                 errors.append("[NoReread] 上报方法体内重读 HasTakenDamage")
         else:
             errors.append("[ReportBody] ReportModeGBossKillAchievement 方法体未找到")
+
+        # 开局基准归零不得借道 Legacy 整体 reset（会连带清 Legacy/Mode D 的会话字段）
+        begin = re.search(
+            r"internal void BeginModeGAchievementSession\([\s\S]*?\n        \}",
+            triggers)
+        if begin:
+            body = strip_comments(begin.group(0))
+            if "ResetSessionStats" in body:
+                errors.append(
+                    "[SessionNoLegacyReset] Mode G session 调用 Legacy ResetSessionStats")
+        else:
+            errors.append(
+                "[SessionBody] BeginModeGAchievementSession 方法体未找到")
 
     if state:
         checks = [

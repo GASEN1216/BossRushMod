@@ -208,6 +208,16 @@ namespace BossRush
                             "宿命回响启动失败，入场物品已恢复。",
                             "Fate Echo failed to start. Entry items were restored."));
                     }
+                    else if (!openedModeG)
+                    {
+                        // 确认页从未打开（可用性闸/地图未登记/展示资源预检/preview 无效）。
+                        // 玩家带着船票和信物专程进图，只退款不解释等于静默失败；
+                        // 与路牌 OnTimeOut 路径同款文案，避免玩家以为物品被吞。
+                        DevLog("[BossRush] [WARNING] Mode G 确认页未能打开，本次入场中止");
+                        ShowMessage(L10n.T(
+                            "宿命回响入口准备失败，请稍后重试。",
+                            "Fate Echo entry is not ready. Please try again later."));
+                    }
                     else
                     {
                         DevLog("[BossRush] Mode G 确认页已取消，竞技场环境保持不变");
