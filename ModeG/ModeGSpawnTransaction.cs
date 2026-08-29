@@ -13,8 +13,8 @@ namespace BossRush
     /// - TryCommit 先 RegisterTrackedBoss 再 ResolveSlotOnce，失败回滚登记；
     /// - committed Character -> presetKey 映射（宿敌归因/遥测用，exact 引用身份）；
     /// - §13.1 Mode G 固定 options：AllowRandomRetryFallback=false、ApplySharedMutators=false；
-    ///   official 路径 HoldForExternalCommit=false（Legacy onCommit 提交），
-    ///   managed 路径 HoldForExternalCommit=true（托管 handle 自行提交）；
+    ///   official 与 managed 两路 HoldForExternalCommit 均为 true
+    ///   （official=slot 事务提交后批量激活，managed=托管 handle 自行提交）；
     /// - spawnLeasesInvalidated 后全部 lease fail-closed。
     /// </summary>
     public sealed class ModeGSpawnTransaction
@@ -163,7 +163,6 @@ namespace BossRush
         }
 
         public int ActiveBossCount { get { return _activeBosses.Count; } }
-        public int CommittedSlotCount { get { return _committedSlots.Count; } }
         public bool IsWaveSettled { get { return _state.AreAllSlotsResolved; } }
         public IReadOnlyList<CommitJournalEntry> Journal { get { return _journal; } }
 

@@ -72,10 +72,19 @@ def main():
             r"[\s\S]{0,220}?ModeGMapSupportRegistry\.IsSupported\("
             r"\s*preview\.sceneName, preview\.sceneId, preview\.verificationRevision\)", content):
         errors.append("[ExactSceneRevision] preview 未绑定当前 sceneName + sceneId + revision")
+    # 必须无条件走 GetOrCreateModeGEntryPreview()：`??` 短路会让字段里的过期 preview
+    # 绕过「过期即重建」，玩家挂机超时后点迎战只剩静默失败（无提示、无重试入口）。
+    if re.search(r"modeGEntryPreview \?\? GetOrCreateModeGEntryPreview\(\)", content):
+        errors.append("[StartRebuildsExpiredPreview] TryStartModeG 不得用 ?? 短路跳过过期 preview 重建")
     if not re.search(
-            r"ModeGEntryPreview preview = modeGEntryPreview \?\? GetOrCreateModeGEntryPreview\(\);"
+            r"ModeGEntryPreview preview = GetOrCreateModeGEntryPreview\(\);"
             r"[\s\S]{0,180}?if \(!IsModeGEntryPreviewValidForCurrentScene\(preview\)\)", content):
         errors.append("[StartConsumesPreviewValidation] TryStartModeG 未消费完整 preview 校验")
+    # 重建换了契约候选与 runSeed 时必须让玩家重看确认页，不得静默沿用旧选择
+    if not re.search(
+            r"!ReferenceEquals\(cachedPreview, preview\)"
+            r"[\s\S]{0,200}?modeGSelectedContractId = -1;", content):
+        errors.append("[RebuiltPreviewResetsContract] preview 重建后未作废旧契约选择")
 
     # 取消后在同地图重开不刷契约；换地图不得复用旧 pair 的 preview。
     if not re.search(

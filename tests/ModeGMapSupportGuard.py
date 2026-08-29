@@ -19,6 +19,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEG_DIR = os.path.join(REPO_ROOT, "ModeG")
 RUNTIME_SCENE = os.path.join(MODEG_DIR, "ModeGRuntimeModule_PublicApiAndShutdown.cs")
 INTEGRATION_CLEANUP = os.path.join(REPO_ROOT, "Integration", "BossRushIntegration_StartAndScene.cs")
+MODE_RUNTIME_HOOKS = os.path.join(REPO_ROOT, "Utilities", "ModeRuntimeHooks.cs")
 
 
 def read_file(name):
@@ -116,14 +117,25 @@ def main():
         if "verificationRevision" not in entry:
             errors.append("[EntryFreezesRevision] preview 未冻结 verificationRevision")
 
+    # 带局切图必须以 SceneChanged 显式终局后再关停。
+    # 历史实现放在 ModeGRuntimeModule.OnSceneLoaded override 里，但 host 注册的是空壳实例
+    # （真实 run 实例由 ModeGEntry 自建且从不注册），该 override 的 _state==null 早返使其永不可达，
+    # 终局原因被 Dispose 兜底成 ModDestroyed。现由 ModeRuntimeHooks 的场景清理路径承担。
+    if "OnSceneLoaded(SceneRuntimeContext context)" in runtime_scene:
+        errors.append("[RuntimeSceneOverrideUnreachable] "
+                      "ModeGRuntimeModule 不得实现 OnSceneLoaded：host 注册的是空壳实例，"
+                      "该回调不可达；带局切图终局应走 ModeRuntimeHooks")
+
+    mode_runtime_hooks = ""
+    if os.path.exists(MODE_RUNTIME_HOOKS):
+        with open(MODE_RUNTIME_HOOKS, "r", encoding="utf-8", errors="replace") as fh:
+            mode_runtime_hooks = fh.read()
     if not re.search(
-            r"OnSceneLoaded\(SceneRuntimeContext context\)[\s\S]{0,500}?"
-            r"context\.SceneName, _preview\.sceneName, StringComparison\.Ordinal\)"
-            r"[\s\S]{0,260}?ModeGMapSupportRegistry\.IsSupported\("
-            r"\s*_preview\.sceneName, _preview\.sceneId, _preview\.verificationRevision\)"
-            r"[\s\S]{0,260}?End\(ModeGExitReason\.SceneChanged\)",
-            runtime_scene):
-        errors.append("[RuntimeFrozenPair] 运行中切到另一张受支持地图时未按本局冻结 pair 结束")
+            r"if \(modeGActive\)[\s\S]{0,400}?"
+            r"modeGRuntime\.End\(ModeGExitReason\.SceneChanged\)"
+            r"[\s\S]{0,200}?ShutdownModeG\(\);",
+            mode_runtime_hooks):
+        errors.append("[RuntimeFrozenPair] 带局切图未先显式 End(SceneChanged) 再 ShutdownModeG")
 
     integration_cleanup = ""
     if os.path.exists(INTEGRATION_CLEANUP):

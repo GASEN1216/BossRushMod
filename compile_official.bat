@@ -233,6 +233,7 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     Utilities\ModeExtractionPointFactory.cs ^
     Utilities\MapSelectionEntryInjectionHelper.cs ^
     Config\Config.cs ^
+    Config\ConfigModeG.cs ^
     Config\NPCSpawnConfig.cs ^
     Config\LootBlacklistRegistry.cs ^
     WavesArena\WavesArena.cs ^

@@ -39,6 +39,95 @@
 ```
 
 ---
+### 2026-08-29 Mode G 成就断链、静默终局、放弃入口与双实例清理（四系统审查修复 包1）
+
+**状态**: fixed
+**Finding**: CR-2026-08-29-001（P1 成就断链）；其余为同批审查的 P2/P3
+**兼容分类**: SAFE（行为修复与死代码清理）+ COMPAT（新增 1 个可选配置字段 `modeGAbandonHotkey`）
+**版本/Commit**: 本条目所在 commit
+**Owner decision**: 需要；已拍板——补放弃入口接通既有 ManualExit 链、P3 全修、双实例走「删死分支」方案 B。
+
+**现象**:
+1. （P1）正常打完一局 Mode G 后，本局全部 Boss 击杀不计入任何成就（`kill_50/100/500/1000_bosses`、
+   `kill_dragon_king(_flawless)`、`dragon_slayer_master` 全部不涨），只有「本局仍活跃时直接退出游戏」才会补报。
+2. （P2）波中生成耗尽、奖励候选池不足、奖励事务启动失败等终局对玩家完全静默：无横幅、无 recap、无解释，
+   其中「胜利但奖励计划为空」一支还会连信物一起不返还。
+3. （P2）玩家中途想放弃只能走图，零代价且不记败，设计稿的 `ManualExit` 终局与契约连胜惩罚整链是死代码。
+4. （P3）recap「新纪录」每局必报；确认页挂机超 300 秒后点「立即迎战」静默失败且无重试路径；
+   `ModeGSpawnTransaction` 类头注释与代码相反；若干孤儿公共成员。
+
+**根因**:
+1. `ModeGCombatTelemetry._pendingReports` 的唯一消费点在 `ModeG.PrepareHostDestroy`（`ModeGEntry.cs`），
+   而正常终局 `End()` 先调 `EndModeGAchievementSession()` 关闭 session，
+   `AchievementTriggers.ReportModeGBossKillAchievement` 首行 `if (!modeGAchievementSessionActive) return;` 直接丢弃。
+   另外 token 由 `Fnv1a64(bossType|waveEpoch)` 派生，同波同类型多 Boss 会合并成一条被窄去重吞掉。
+2. `End()` 自身不发任何横幅，播报全部散落在 `ModeGDeathRouting` 的 Victory/PlayerDeath 两条路由上。
+3. `End(ModeGExitReason.ManualExit)` 全仓库无调用方；run 进行中场内 `ModeGInteractable` 被
+   `IsModeGEntryBlocked` 挡掉，HUD 是只读无按钮，玩家没有任何可达入口。
+4. `IsNewBestWave` 在 `RecordRun`（已把本局并入 profile）之后用 `>=` 比较；
+   `TryStartModeG` 的 `modeGEntryPreview ?? GetOrCreateModeGEntryPreview()` 短路让过期 preview 绕过「过期即重建」。
+
+**修复内容**:
+- 新增文件: `Config/ConfigModeG.cs`（已加入 `compile_official.bat`；从 `Config/Config.cs` 拆出只为
+  行数预算，`LargeFileBudgetGuard` 硬上限 1200 行，形态照 `ConfigDailyReport.cs`）
+- 修改文件:
+  - `ModeG/ModeGRuntimeModule_PublicApiAndShutdown.cs`：`End()` 在遥测退订前消费 pending 成就 report
+    （早于 `EndModeGAchievementSession`）；新增 `ShowTerminalBannerFallback(reason)` 按 reason 白名单兜底播报
+    （Victory/PlayerDeath 交给路由横幅，不双报）；删除永不可达的 `OnSceneLoaded` override。
+  - `ModeG/ModeGRuntimeModule.cs`：成就 token 掺入 `health.GetInstanceID()`，同波同类型多 Boss 不再合并。
+  - `ModeG/ModeGRunState.cs` / `ModeG/ModeGEntry.cs`：删除只写不读的 `pendingAchievementReportsConsumed`。
+  - `ModeG/ModeGRewardTransaction.cs`：`TryReturnRelicOnce` 提升 `internal`（幂等仍由 Interlocked CAS 保证）。
+  - `ModeG/ModeGDeathRouting.cs`：奖励事务未启动分支补幂等信物返还；两条终局路由在 `RecordRun` 之前
+    快照旧最佳波次并透传给 recap。
+  - `ModeG/ModeGRecapPanel.cs`：`Show` 增 `previousBestWave` 形参，`IsNewBestWave` 改 `>` 且不再读已更新的 profile。
+  - `ModeG/ModeGInteractable.cs`：同文件新增 `ModeGAbandonPresenter`（短命 presenter + `ClaimModalInput`
+    时停确认页 + §3.1 强制披露「船票与信物不返还，契约连胜清零」），确认分支唯一调用 `End(ManualExit)`。
+  - `ModeG/ModeGEntry.cs`：`UpdateModeG` 加放弃快捷键轮询（`state.IsActive` + `IsModalInputPaused` 双闸，
+    每帧一次 bool 链，零分配）；开局提示当前绑定键；`TryStartModeG` 去掉 `??` 短路并对过期/重建两种情形补提示。
+  - `Utilities/ModeRuntimeHooks.cs`：带局切图先显式 `End(SceneChanged)` 再 `ShutdownModeG`（原先被 Dispose
+    兜底成 `ModDestroyed`，reason 失真且兜底播报不可达）。
+  - `ModeG/ModeGSpawnTransaction.cs`：类头注释改为与代码/guard 一致（两路均 `HoldForExternalCommit=true`）；
+    删除无消费者的 `CommittedSlotCount`。
+  - `ModeG/ModeGCombatTelemetry.cs`：删除无消费者的 `TotalShotCount` / `NamedAmmoTypeIds` /
+    `GetBossDamageContribution`（backing 字段与在用的 `TotalAmmoSamples` 保留）。
+  - `Config/Config.cs`：三处接线改为委托新 partial 文件的三个方法。
+- Guard 同步:
+  - `tests/ModeGPlayerLoadoutGuard.py`：`TryReturnRelicOnce` 可见性正则 `private` → `internal`。
+  - `tests/ModeGMapSupportGuard.py`：`RuntimeFrozenPair` 不变式改述——禁止 `ModeGRuntimeModule` 再实现
+    `OnSceneLoaded`（host 注册的是空壳实例，该回调不可达），并断言 `ModeRuntimeHooks` 先
+    `End(SceneChanged)` 再 `ShutdownModeG`。
+  - `tests/ModeGEntryPreviewGuard.py`：新增「禁止 `??` 短路跳过过期 preview 重建」与
+    「重建后必须作废旧契约选择」两条断言。
+
+**兼容性影响**:
+- 存档：无。删除的 `pendingAchievementReportsConsumed` 是内存 volatile 字段，从不进任何 DTO。
+- 配置：新增可选 key `BossRush_ModeGAbandonHotkey`（默认 K）；缺失时取默认值，老配置无感。
+- TypeID / Harmony / 反射 / 资源 / 部署：无变化。
+- 成就：修复后击杀开始正常累计；此前丢失的历史击杀不追溯。
+
+**验证方法**:
+1. 编译: Windows `compile_official.bat` 通过并部署 `Build/BossRush.dll`。
+2. Guard: `python tools/run_guards.py` 全量 493 项 → PASS=492 / NEW-FAIL=0 / KNOWN-RED=1
+   （既有 `DragonKingBossGunRocketSplitGuard`，与本轮无关）。三个改动过的 guard 已做反例验证：
+   把源码回退成旧写法后确认会红。
+3. 人工 smoke: 待实机——见下。
+
+**未验证/需人工**:
+- 一局内击杀 2 只同类型 Boss，终局后**不退出游戏**打开成就面板确认计数 +2；无伤击杀龙王确认 flawless 解锁。
+- 放弃入口全流程：战斗中按 K 弹时停确认页 → 确认 → 横幅 + 日志 `reason=ManualExit` + 契约连胜清零 +
+  `IsModeGEntryBlocked` 解除可再次入场；Rewarding 阶段按键应无效；确认页打开时再按键不叠开。
+- 带局切图确认日志 `run 结束 reason=SceneChanged` 并出现「离开战场」提示。
+- 确认页挂机 >300 秒后点「立即迎战」：应提示候选已刷新、退回预扣船票、重开确认页可正常开局。
+- 回归红线：正常胜利一局（无双横幅、信物恰一枚、奖励发满）；正常失败一局（平纪录不再误报「新纪录」）。
+- 默认键 K 与官方键位是否冲突需实机确认（可在 ModConfig 下拉改绑）。
+
+**留置项**:
+- `ModeGCleanupController.EmergencyShutdown` 与 `ModeGNemesisPersistence.MarkTombstone` 无调用点，
+  但被 `ModeGStructureGuard` / `ModeGNemesisPersistenceGuard` 存在性冻结，本轮不动（deferred）。
+  其中 `EmergencyShutdown` 内的 `ModeGPresentationAssetCache.Unload()` 是全仓唯一 bundle 卸载点，
+  即展示 bundle 当前从不卸载（约 87KB 常驻），属既有轻微泄漏，接线需实机验证 bundle 生命周期后再做。
+
+---
 ### 2026-08-28 Mode H（百战留痕：黑市鸭王杯）一次性完整实现
 
 **状态**: fixed

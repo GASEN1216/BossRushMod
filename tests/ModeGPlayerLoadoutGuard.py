@@ -101,8 +101,10 @@ def main():
     if os.path.exists(REWARD):
         reward = read(REWARD)
         checks = [
+            # internal：胜利锁定但奖励事务未启动时，ModeGDeathRouting 放弃分支需补返；
+            # 幂等仍由下方 InterlockedGate 的 CAS 断言保证。
             ("ReturnRelicOnce",
-             r"private static bool TryReturnRelicOnce\(",
+             r"internal static bool TryReturnRelicOnce\(",
              "信物返还幂等入口"),
             ("InterlockedGate",
              r"Interlocked\.Exchange\(ref _relicReturnExecuted, 1\) != 0\) return true;",

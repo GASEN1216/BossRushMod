@@ -606,7 +606,6 @@ namespace BossRush
         public float MeleeDirectDamage { get { return _meleeDirectDamage; } }
         public float CloseExtremeDirectDamage { get { return _closeExtremeDirectDamage; } }
         public float FarExtremeDirectDamage { get { return _farExtremeDirectDamage; } }
-        public int TotalShotCount { get { return _totalShotCount; } }
         public int ArmedBanViolationCount { get { return _armedBanViolationCount; } }
 
         /// <summary>
@@ -680,25 +679,9 @@ namespace BossRush
         /// </summary>
         public IReadOnlyDictionary<int, int> AmmoShotCountTable { get { return _ammoShotCount; } }
 
-        /// <summary>
-        /// 已点名弹种只读视图。
-        /// </summary>
-        public IEnumerable<int> NamedAmmoTypeIds { get { return _namedAmmo; } }
-
         public bool WasAmmoNamed(int ammoTypeId)
         {
             return ammoTypeId > 0 && _namedAmmo.Contains(ammoTypeId);
-        }
-
-        /// <summary>
-        /// 某 Boss 的直伤贡献占聚合主 Boss 最大血量的比例（0..1+）。
-        /// </summary>
-        public float GetBossDamageContribution(Health health)
-        {
-            if (health == null || _combatStartAggregatePrimaryMaxHealth <= 0f) return 0f;
-            float dmg;
-            if (!_bossDirectDamage.TryGetValue(health, out dmg)) return 0f;
-            return dmg / _combatStartAggregatePrimaryMaxHealth;
         }
 
         /// <summary>

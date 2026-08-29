@@ -575,8 +575,10 @@ namespace BossRush
 
         /// <summary>
         /// 幂等返还 1 枚宿命回响信物（胜利结算专属，全局一次/run）。
+        /// internal：胜利已锁定但奖励事务未能启动时，ModeGDeathRouting 需在放弃分支补返，
+        /// _relicReturnExecuted 的 CAS 保证与 Execute 内部调用不会双发。
         /// </summary>
-        private static bool TryReturnRelicOnce(ItemStatsSystem.Inventory inventory)
+        internal static bool TryReturnRelicOnce(ItemStatsSystem.Inventory inventory)
         {
             if (System.Threading.Interlocked.Exchange(ref _relicReturnExecuted, 1) != 0) return true;
             ItemStatsSystem.Item relic = null;

@@ -380,6 +380,7 @@ namespace BossRush
                     object hotkeyResult = intLoadMethod.Invoke(null, new object[] { achievementHotkeyKey, currentHotkey });
                     int loadedHotkey = (int)hotkeyResult;
                     config.achievementHotkey = loadedHotkey;
+                    LoadModeGAbandonHotkeyFromModConfig(intLoadMethod);
 
                     // 加载荒野号角狼模型开关
                     string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
@@ -547,6 +548,8 @@ namespace BossRush
                     config.achievementHotkey = (int)hotkeyResult;
                     return true;
                 }
+
+                if (TryLoadModeGAbandonHotkeySingleModConfigValue(changedKey, loadMethod)) return true;
 
                 string wolfModelKey = ModName + "_UseWolfModelForWildHorn";
                 if (changedKey == wolfModelKey)
@@ -1066,6 +1069,7 @@ namespace BossRush
                         
                         addDropdownMethod.Invoke(null, new object[] { ModName, hotkeyKey, hotkeyLabel, hotkeyOptions, typeof(int), config.achievementHotkey });
                         DevLog("[BossRush] 成就界面快捷键配置项注册成功");
+                        RegisterModeGAbandonHotkeyDropdown(addDropdownMethod, hotkeyOptions);
                     }
                 }
                 catch (Exception ex)

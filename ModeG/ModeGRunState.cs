@@ -104,8 +104,6 @@ namespace BossRush
         public volatile bool rewardNonceInvalidated;
         /// <summary>spawn lease 已失效（host destroy / 有界 timeout 路径）</summary>
         public volatile bool spawnLeasesInvalidated;
-        /// <summary>成就 report 已同步消费（PrepareHostDestroy token CAS）</summary>
-        public volatile bool pendingAchievementReportsConsumed;
 
         #endregion
 

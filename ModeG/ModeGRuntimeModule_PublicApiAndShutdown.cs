@@ -292,25 +292,10 @@ namespace BossRush
 
         #region Module Lifecycle Hooks（BossRushRuntimeModuleBase）
 
-        public override void OnSceneLoaded(SceneRuntimeContext context)
-        {
-            try
-            {
-                if (_state == null || _ended || _disposed) return;
-                if (_state.lifecyclePhase == ModeGLifecyclePhase.None) return;
-                bool remainsInFrozenScenePair = _preview != null
-                    && string.Equals(context.SceneName, _preview.sceneName, StringComparison.Ordinal)
-                    && ModeGMapSupportRegistry.IsSupported(
-                        _preview.sceneName, _preview.sceneId, _preview.verificationRevision);
-                if (!remainsInFrozenScenePair)
-                {
-                    ModBehaviour.DevLog("[ModeG] 离开本局冻结 scene pair: "
-                        + (string.IsNullOrEmpty(context.SceneName) ? "<empty>" : context.SceneName));
-                    End(ModeGExitReason.SceneChanged);
-                }
-            }
-            catch { /* no-throw */ }
-        }
+        // 说明：本模块不实现 OnSceneLoaded。host 注册的是独立空壳实例（BossRushRuntimeModuleRegistration），
+        // 真实 run 实例由 ModeGEntry 自行创建且从不注册，因此 host 的场景回调永远打在 _state==null 的
+        // 空壳上，任何实现体都不可达。带局切图的终局与清理由
+        // ModBehaviour.CleanupModeRuntimeForSceneLoad 显式 End(SceneChanged) + ShutdownModeG 承担。
 
         public override void OnDestroy()
         {
@@ -348,6 +333,12 @@ namespace BossRush
 
                 RefundStartupPaymentOnTechnicalFailure(reason);
                 ModeGCleanupController.Cleanup(_state, reason);
+
+                // 局内终局即消费 pending 成就 report：必须早于下方 EndModeGAchievementSession，
+                // 否则 Report 入口按 session 已关闭直接早返，本局击杀成就永久丢失。
+                // drain 语义天然幂等，PrepareHostDestroy 的二次消费只会拿到空队列。
+                try { ModeGCombatTelemetry.ConsumePendingAchievementReports(_state); }
+                catch { /* 成就上报失败不得阻断终局清理 */ }
 
                 try
                 {
@@ -399,6 +390,8 @@ namespace BossRush
                 try { if (_host != null) _host.EndModeGAchievementSession(); } catch { }
                 try { ModeGRewardTransaction.ResetRelicReturnGate(); } catch { }
 
+                ShowTerminalBannerFallback(reason);
+
                 ModBehaviour.DevLog("[ModeG] run 结束 reason=" + reason
                     + " result=" + _state.battleResult + " wave=" + (_state.waveEpoch + 1));
             }
@@ -406,6 +399,52 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ModeG] [ERROR] End 异常: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 按 reason 兜底终局播报。Victory / PlayerDeath 由 ModeGDeathRouting 的路由横幅负责，
+        /// 此处跳过避免双报；其余终局此前对玩家完全静默（表现为「Boss 不再刷新、HUD 消失」）。
+        /// </summary>
+        private void ShowTerminalBannerFallback(ModeGExitReason reason)
+        {
+            if (_host == null) return;
+            try
+            {
+                switch (reason)
+                {
+                    case ModeGExitReason.RewardAbandoned:
+                        // 不得断言信物状态：Execute 内 TryReturnRelicOnce 可能已返还也可能未执行
+                        _host.ShowBigBanner(L10n.T(
+                            "<color=#B22222>宿命回响</color> 结算中止，奖励未完整发放",
+                            "<color=#B22222>Fate Echo</color> settlement aborted - rewards incomplete"));
+                        break;
+                    case ModeGExitReason.SpawnExhausted:
+                    case ModeGExitReason.TechnicalIntegrityLoss:
+                        // 首波开战前由 RefundStartupPaymentOnTechnicalFailure 播报退款，勿双报
+                        if (_firstWaveCombatStarted)
+                        {
+                            _host.ShowBigBanner(L10n.T(
+                                "<color=#B22222>宿命回响</color> 因技术故障中止",
+                                "<color=#B22222>Fate Echo</color> aborted on technical failure"));
+                        }
+                        break;
+                    case ModeGExitReason.ManualExit:
+                        _host.ShowBigBanner(L10n.T(
+                            "<color=#B8860B>宿命回响</color> 已放弃挑战",
+                            "<color=#B8860B>Fate Echo</color> challenge abandoned"));
+                        break;
+                    case ModeGExitReason.SceneChanged:
+                        _host.ShowMessage(L10n.T("离开战场，宿命回响挑战中止。",
+                            "Left the battlefield - Fate Echo run ended."));
+                        break;
+                    case ModeGExitReason.RewardInterruptedByDeath:
+                        _host.ShowMessage(L10n.T("结算中阵亡，宿命回响奖励中止。",
+                            "Died during settlement - Fate Echo rewards aborted."));
+                        break;
+                    // Victory / PlayerDeath：路由已播报；ModDestroyed / None：无 UI 语境
+                }
+            }
+            catch { /* 播报失败不阻塞 End */ }
         }
 
         private void RefundStartupPaymentOnTechnicalFailure(ModeGExitReason reason)

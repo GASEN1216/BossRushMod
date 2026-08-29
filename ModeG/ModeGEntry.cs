@@ -386,10 +386,26 @@ namespace BossRush
 
                 // Automatic arena entry mirrors Mode F. Freeze the preview here when the
                 // player did not open the optional information interaction first.
-                ModeGEntryPreview preview = modeGEntryPreview ?? GetOrCreateModeGEntryPreview();
+                // 不用 `modeGEntryPreview ?? GetOrCreate()`：字段里若是过期 preview，短路会跳过
+                // GetOrCreate 自带的「过期即重建」，玩家挂机超时后点迎战只能拿到静默失败。
+                ModeGEntryPreview cachedPreview = modeGEntryPreview;
+                ModeGEntryPreview preview = GetOrCreateModeGEntryPreview();
                 if (!IsModeGEntryPreviewValidForCurrentScene(preview))
                 {
                     DevLog("[ModeG] preview 缺失、过期或与当前 verified scene pair/revision 不一致");
+                    ShowMessage(L10n.T(
+                        "宿命回响预览已失效，请重新打开入口。",
+                        "Fate Echo preview is no longer valid. Reopen the entry."));
+                    return false;
+                }
+                if (cachedPreview != null && !ReferenceEquals(cachedPreview, preview))
+                {
+                    // 过期重建：契约候选与 runSeed 已换新，确认页上的旧选择随之作废。
+                    // 不静默沿用（玩家会拿到从未见过的契约），要求重看确认页。
+                    modeGSelectedContractId = -1;
+                    ShowMessage(L10n.T(
+                        "宿命契约候选已刷新，请重新打开确认页。",
+                        "Fate contract candidates refreshed - please confirm again."));
                     return false;
                 }
 
@@ -596,6 +612,20 @@ namespace BossRush
                     "<color=#B8860B>Fate Echo</color> Started"
                 ));
 
+                // 发现性：放弃入口只有快捷键，开局告知一次当前绑定键
+                try
+                {
+                    int abandonKey = config != null ? config.modeGAbandonHotkey : 0;
+                    if (abandonKey > 0)
+                    {
+                        string keyName = ((UnityEngine.KeyCode)abandonKey).ToString();
+                        ShowMessage(L10n.T(
+                            "按 [" + keyName + "] 可打开放弃挑战确认页。",
+                            "Press [" + keyName + "] to open the abandon confirmation."));
+                    }
+                }
+                catch { /* 提示失败不影响开局 */ }
+
                 DevLog("[ModeG] Mode G 启动成功 runId=" + runId.ToString("x"));
                 return true;
             }
@@ -625,6 +655,7 @@ namespace BossRush
 
             try
             {
+                TryHandleModeGAbandonHotkey();
                 modeGRuntime.Update(deltaTime);
                 if (modeGHUD != null) modeGHUD.Update(deltaTime);
 
@@ -639,6 +670,33 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeG] UpdateModeG 异常: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 放弃挑战快捷键轮询（每帧一次 bool 链 + 一次 GetKeyDown，零分配）。
+        /// 双闸：只在战斗进行中受理（Starting/Rewarding/终局不受理，防止弃奖误触），
+        /// 且已有模态（含本确认页自身）时不叠开。
+        /// </summary>
+        private void TryHandleModeGAbandonHotkey()
+        {
+            try
+            {
+                if (modeGRuntime == null) return;
+                ModeGRunState state = modeGRuntime.State;
+                if (state == null || !state.IsActive) return;
+                if (ModeGAbandonPresenter.IsOpen) return;
+                if (ZombieModeUIHelper.IsModalInputPaused) return;
+
+                int keyCode = config != null ? config.modeGAbandonHotkey : 0;
+                if (keyCode <= 0) return;
+                if (!UnityEngine.Input.GetKeyDown((UnityEngine.KeyCode)keyCode)) return;
+
+                ModeGAbandonPresenter.TryOpen(modeGRuntime);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeG] 放弃快捷键处理异常: " + e.Message);
             }
         }
 
@@ -818,10 +876,10 @@ namespace BossRush
 
                 if (state != null)
                 {
-                    // 1. 消费未 settled 成就 report（token CAS）
+                    // 1. 消费未 settled 成就 report（正常终局已在 End 内消费，此处是宿主销毁兜底；
+                    //    drain 幂等，队列为空时 O(1) 返回）
                     try
                     {
-                        state.pendingAchievementReportsConsumed = true;
                         ModeGCombatTelemetry.ConsumePendingAchievementReports(state);
                     }
                     catch { /* no-throw 契约 */ }

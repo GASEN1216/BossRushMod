@@ -801,8 +801,11 @@ namespace BossRush
                     string bossType;
                     _characterScratch.Clear();
                     bossType = ResolveBossAchievementType(health, out bossType) ? bossType : "Normal";
+                    // 掺入角色实例身份：同波同类型多 Boss（3 Boss 波）此前会派生同一 token，
+                    // 被 Achievement 侧窄去重当成重复上报吞掉第二只。
                     int token = unchecked((int)ModeGDeterministicRandom.Fnv1a64(
-                        (bossType ?? "Normal") + "|" + _state.waveEpoch));
+                        (bossType ?? "Normal") + "|" + _state.waveEpoch
+                        + "|" + (health != null ? health.GetInstanceID() : 0)));
                     ModeGCombatTelemetry.EnqueueAchievementReport(
                         token, bossType ?? "Normal", !AchievementTracker.HasTakenDamage);
                 }

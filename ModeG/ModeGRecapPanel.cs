@@ -151,7 +151,12 @@ namespace BossRush
         /// 显示终局 recap 面板（Victory/Defeat 各一次；幂等单实例）。
         /// 失败静默降级（无面板不阻塞结算）。
         /// </summary>
-        internal static void Show(ModeGRuntimeModule module, ModeGBattleResult result, string nemesisPreviewLine)
+        /// <param name="previousBestWave">
+        /// 调用方在 RecordRun **之前** 用 <see cref="ReadCurrentBestWave"/> 取的旧最佳波次，
+        /// 供「新纪录」判定；传入已含本局的值会让每局都误报新纪录。
+        /// </param>
+        internal static void Show(ModeGRuntimeModule module, ModeGBattleResult result,
+            string nemesisPreviewLine, int previousBestWave)
         {
             try
             {
@@ -187,7 +192,7 @@ namespace BossRush
                 int resolve = module.Adaptive != null ? module.Adaptive.TotalResolve : 0;
                 string summary = L10n.T("BossRush_ModeG_WaveWord") + " " + wave + L10n.T("BossRush_ModeG_WaveOfNine")
                     + " · Resolve " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
-                if (IsNewBestWave(module, wave))
+                if (IsNewBestWave(wave, previousBestWave))
                 {
                     summary += " · <color=#B8860B>" + L10n.T("BossRush_ModeG_NewRecord") + "</color>";
                 }
@@ -284,16 +289,25 @@ namespace BossRush
 
         #region Line Composition（near-miss 呈现；仅终局调用一次）
 
-        /// <summary>本局波次是否刷新个人最佳波次（profile 已含本局记账）。</summary>
-        private static bool IsNewBestWave(ModeGRuntimeModule module, int wave)
+        /// <summary>
+        /// 本局波次是否刷新个人最佳波次。
+        /// 必须与 RecordRun 之前的旧最佳值比较：RecordRun 已把本局波次并入 profile，
+        /// 再读 Current 会让任何一局都「追平自己」，平纪录也误报新纪录。
+        /// </summary>
+        internal static bool IsNewBestWave(int wave, int previousBestWave)
+        {
+            return wave > 0 && wave > previousBestWave;
+        }
+
+        /// <summary>RecordRun 之前读取旧的个人最佳波次；读不到按 0 处理（首局必报新纪录）。</summary>
+        internal static int ReadCurrentBestWave()
         {
             try
             {
-                if (wave <= 0) return false;
                 ModeGProfilePersistence.ProfileDto profile = ModeGProfilePersistence.Current;
-                return profile != null && wave >= profile.bestWaveReached;
+                return profile != null ? profile.bestWaveReached : 0;
             }
-            catch { return false; }
+            catch { return 0; }
         }
 
         /// <summary>

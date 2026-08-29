@@ -497,4 +497,184 @@ namespace BossRush
             try { CloseModal(); } catch { /* no-throw */ }
         }
     }
+
+    /// <summary>
+    /// Mode G 局内「放弃挑战」确认页（短命 presenter，形态复刻入场确认页的 auto-presenter）。
+    ///
+    /// 契约：
+    /// - 只由 ModeGEntry 的快捷键轮询创建，run 进行中场内没有可交互实体（IsModeGEntryBlocked
+    ///   会挡掉 ModeGInteractable），因此不做成 InteractableBase；
+    /// - 与入场确认页共用 ClaimModalInput 的时停语义，同一时刻只允许一个实例；
+    /// - 确认分支唯一调用 module.End(ModeGExitReason.ManualExit)，连胜清零由
+    ///   ModeGCleanupController 的既有 ManualExit 分支消费，本类不碰任何存档；
+    /// - 放弃不退还船票与信物（既定规则），页面必须强制披露。
+    /// </summary>
+    internal sealed class ModeGAbandonPresenter : MonoBehaviour
+    {
+        private const float ModalWidth = 720f;
+        private const float ModalHeight = 380f;
+
+        private static ModeGAbandonPresenter _active;
+
+        private GameObject _modalRoot;
+        private ZombieModeUIHelper.ModalInputLease _inputLease;
+        private ModeGRuntimeModule _module;
+
+        /// <summary>确认页是否已打开（轮询侧防重入）。</summary>
+        internal static bool IsOpen
+        {
+            get { return _active != null && _active._modalRoot != null; }
+        }
+
+        /// <summary>打开弃局确认页；已有实例或缺少运行中的 run 时返回 false。</summary>
+        internal static bool TryOpen(ModeGRuntimeModule module)
+        {
+            if (module == null || _active != null) return false;
+            GameObject host = null;
+            try
+            {
+                ModeGRunState state = module.State;
+                if (state == null || !state.IsActive) return false;
+
+                host = new GameObject("ModeG_AbandonConfirmPresenter");
+                UnityEngine.Object.DontDestroyOnLoad(host);
+                ModeGAbandonPresenter presenter = host.AddComponent<ModeGAbandonPresenter>();
+                presenter._module = module;
+                _active = presenter;
+                return presenter.OpenPage();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 放弃确认页创建失败: " + e.Message);
+                _active = null;
+                try { if (host != null) UnityEngine.Object.Destroy(host); }
+                catch { /* 宿主已被销毁：清理路径不再二次报错 */ }
+                return false;
+            }
+        }
+
+        private bool OpenPage()
+        {
+            GameObject root = new GameObject("ModeG_AbandonPage");
+            UnityEngine.Object.DontDestroyOnLoad(root);
+            _modalRoot = root;
+
+            Canvas canvas = root.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = BossRushUILayers.ModeGEntry;
+            CanvasScaler scaler = root.AddComponent<CanvasScaler>();
+            ZombieModeUIHelper.ConfigureCanvasScaler(scaler);
+            root.AddComponent<GraphicRaycaster>();
+
+            GameObject surface = ZombieModeUIHelper.CreateModalSurface(
+                "ModeG_Abandon", root.transform, new Vector2(ModalWidth, ModalHeight),
+                ZombieModeUIHelper.DangerColor);
+            Transform st = surface.transform;
+
+            ZombieModeUIHelper.CreateText("Title", st,
+                L10n.T("放弃宿命回响挑战？", "Abandon the Fate Echo run?"),
+                26f, new Vector2(0f, 118f), new Vector2(ModalWidth - 80f, 44f),
+                TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
+
+            // §3.1 强制披露：放弃的全部代价一次讲清，不得只写「确认放弃」
+            ZombieModeUIHelper.CreateText("Disclosure", st,
+                L10n.T(
+                    "放弃后本局进度作废：已消耗的船票与信物不返还，契约连胜清零。",
+                    "Abandoning voids this run: the ticket and relic are not refunded, "
+                    + "and your contract win streak resets."),
+                16f, new Vector2(0f, 40f), new Vector2(ModalWidth - 100f, 70f),
+                TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
+
+            Button keepButton = ZombieModeUIHelper.CreateButton(
+                "Keep", st, L10n.T("继续战斗", "Keep Fighting"),
+                new Vector2(0.5f, 0.5f), new Vector2(-120f, -110f), new Vector2(220f, 56f),
+                ZombieModeUIHelper.SuccessColor, 20f, new Vector2(200f, 48f),
+                Close, true);
+            ZombieModeUIHelper.ApplyButtonColors(keepButton,
+                ZombieModeUIHelper.SuccessColor, ZombieModeUIHelper.SuccessHoverColor,
+                ZombieModeUIHelper.DisabledColor);
+
+            Button abandonButton = ZombieModeUIHelper.CreateButton(
+                "Abandon", st, L10n.T("确认放弃", "Abandon Run"),
+                new Vector2(0.5f, 0.5f), new Vector2(120f, -110f), new Vector2(220f, 56f),
+                ZombieModeUIHelper.DangerColor, 20f, new Vector2(200f, 48f),
+                ConfirmAbandon, true);
+            ZombieModeUIHelper.ApplyButtonColors(abandonButton,
+                ZombieModeUIHelper.DangerColor, ZombieModeUIHelper.DangerHoverColor,
+                ZombieModeUIHelper.DisabledColor);
+
+            try
+            {
+                _inputLease = ZombieModeUIHelper.ClaimModalInput(root, "ModeGAbandonPage");
+                if (_inputLease == null || !ZombieModeUIHelper.IsModalInputPaused)
+                {
+                    throw new InvalidOperationException("Mode G abandon page could not acquire modal pause");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 放弃确认页输入占用失败: " + e.Message);
+                Close();
+                return false;
+            }
+            return true;
+        }
+
+        private void ConfirmAbandon()
+        {
+            ModeGRuntimeModule module = _module;
+            Close();
+            try
+            {
+                // End 幂等：终局横幅、连胜清零与关停由 End -> Cleanup -> UpdateModeG 的既有链承接
+                if (module != null) module.End(ModeGExitReason.ManualExit);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [ERROR] 放弃挑战终局失败: " + e.Message);
+            }
+        }
+
+        private void Close()
+        {
+            try
+            {
+                if (_inputLease != null)
+                {
+                    _inputLease.Release();
+                    _inputLease = null;
+                }
+            }
+            catch { /* 租约已被宿主回收：继续走完销毁，不得中断 */ }
+            try { if (_modalRoot != null) UnityEngine.Object.Destroy(_modalRoot); }
+            catch { /* 面板已随场景销毁：置空即可 */ }
+            _modalRoot = null;
+            _module = null;
+            if (ReferenceEquals(_active, this)) _active = null;
+            try { UnityEngine.Object.Destroy(gameObject); }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 放弃确认页销毁失败: " + e.Message);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            // 与 Close 同款兜底：presenter 被外部销毁时也必须还掉输入租约，否则时停不解除
+            try
+            {
+                if (_inputLease != null)
+                {
+                    _inputLease.Release();
+                    _inputLease = null;
+                }
+            }
+            catch { /* 租约已被宿主回收 */ }
+            try { if (_modalRoot != null) UnityEngine.Object.Destroy(_modalRoot); }
+            catch { /* 面板已随场景销毁 */ }
+            _modalRoot = null;
+            _module = null;
+            if (ReferenceEquals(_active, this)) _active = null;
+        }
+    }
 }

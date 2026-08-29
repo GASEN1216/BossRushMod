@@ -37,6 +37,11 @@ namespace BossRush
             if (modeGActive)
             {
                 DevLog("[ModeG] 场景切换清理 Mode G");
+                // 先显式以 SceneChanged 终局，再关停：否则终局原因被 Dispose 兜底成 ModDestroyed，
+                // 玩家侧也拿不到「离开战场，挑战中止」的提示。End 幂等，正常终局后不会走到这里
+                // （modeGActive 已为 false）。
+                try { if (modeGRuntime != null) modeGRuntime.End(ModeGExitReason.SceneChanged); }
+                catch { /* no-throw：清理路径不得抛出 */ }
                 ShutdownModeG();
             }
         }

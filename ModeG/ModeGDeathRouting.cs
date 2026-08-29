@@ -55,6 +55,10 @@ namespace BossRush
                 state.lastStandActive = false;
                 ModeGRecapPanel.NemesisAttribution attribution = AttributeDefeatToNemesis(module, state, player, info);
 
+                // 必须在 RecordRun 之前取旧最佳波次：RecordRun 会把本局并入 profile，
+                // 之后再读会让 recap 的「新纪录」每局都成立
+                int previousBestWave = ModeGRecapPanel.ReadCurrentBestWave();
+
                 try
                 {
                     ModeGProfilePersistence.RecordRun(
@@ -84,7 +88,7 @@ namespace BossRush
                 try
                 {
                     ModeGRecapPanel.Show(module, ModeGBattleResult.Defeat,
-                        ModeGRecapPanel.ComposeNemesisPreviewLine(attribution));
+                        ModeGRecapPanel.ComposeNemesisPreviewLine(attribution), previousBestWave);
                 }
                 catch { /* 呈现失败不阻塞结算 */ }
 
@@ -185,6 +189,9 @@ namespace BossRush
                 state.lastStandActive = false;
                 state.intermissionActive = false;
 
+                // 与失败路径同理：RecordRun 之前取旧最佳波次，供胜利 recap 的「新纪录」判定
+                int previousBestWave = ModeGRecapPanel.ReadCurrentBestWave();
+
                 try
                 {
                     ModeGProfilePersistence.RecordRun(
@@ -222,7 +229,7 @@ namespace BossRush
                     module.End(ModeGExitReason.TechnicalIntegrityLoss);
                     return;
                 }
-                SubmitVictoryReward(module, state);
+                SubmitVictoryReward(module, state, previousBestWave);
             }
             catch (Exception e)
             {
@@ -231,7 +238,11 @@ namespace BossRush
             }
         }
 
-        private static void SubmitVictoryReward(ModeGRuntimeModule module, ModeGRunState state)
+        /// <param name="previousBestWave">
+        /// HandleVictory 在 RecordRun 之前取的旧最佳波次，透传给胜利 recap 判定「新纪录」。
+        /// </param>
+        private static void SubmitVictoryReward(ModeGRuntimeModule module, ModeGRunState state,
+            int previousBestWave)
         {
             ModBehaviour host = module.Host;
             CharacterMainControl player = CharacterMainControl.Main;
@@ -269,7 +280,7 @@ namespace BossRush
                         host.ShowBigBanner(L10n.T(
                             "<color=#B8860B>宿命已改写</color> 九波胜利",
                             "<color=#B8860B>Fate Rewritten</color> Nine Waves Cleared"));
-                        try { ModeGRecapPanel.Show(module, ModeGBattleResult.Victory, string.Empty); }
+                        try { ModeGRecapPanel.Show(module, ModeGBattleResult.Victory, string.Empty, previousBestWave); }
                         catch (Exception e)
                         {
                             ModBehaviour.DevLog("[ModeG] [WARNING] 胜利 recap 展示失败: " + e.Message);
@@ -277,6 +288,13 @@ namespace BossRush
                         module.End(ModeGExitReason.Victory);
                     }))
             {
+                // 胜利已锁定但奖励事务未构建/未启动：信物是胜利必达品，此处幂等补返。
+                // Execute 内已返还时 _relicReturnExecuted 的 CAS 会让本次调用成为 no-op。
+                try { ModeGRewardTransaction.TryReturnRelicOnce(inventory); }
+                catch (Exception relicException)
+                {
+                    ModBehaviour.DevLog("[ModeG] [WARNING] 放弃分支信物补返异常: " + relicException.Message);
+                }
                 module.End(ModeGExitReason.RewardAbandoned);
                 return;
             }
