@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using UnityEngine;
 
 namespace BossRush
 {
@@ -73,6 +74,25 @@ namespace BossRush
         /// </summary>
         private void ReleaseMatchRuntime()
         {
+            // 2. 停生成队列
+            try
+            {
+                if (_spawnRoutine != null && _owner != null) _owner.StopCoroutine(_spawnRoutine);
+            }
+            catch (Exception) { /* 协程已结束 */ }
+            _spawnRoutine = null;
+
+            try
+            {
+                if (_spawnTransaction != null) _spawnTransaction.RollbackAll();
+            }
+            catch (Exception e)
+            {
+                LogFailure("release_spawn_tx", e);
+            }
+            _spawnTransaction = null;
+
+            // 3-5. 取消战斗计时、恢复 adapter、回收临时角色与 kit
             try
             {
                 ModeHEventRouter.ClearMatchRegistry();
@@ -239,12 +259,140 @@ namespace BossRush
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Brief");
             page.ShowRealStakeNotice = true;
-            if (_season == null) return page;
+            if (_season == null || _runState == null) return page;
 
+            // matchIndex 是 1-based（0 表示尚未开赛），展示时不再 +1
+            int displayIndex = _runState.MatchIndex > 0
+                ? _runState.MatchIndex
+                : ModeHConfig.FirstMatchIndex;
             page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Label_Match")
-                + " " + (_runState != null ? _runState.MatchIndex + 1 : 1)
-                + " / " + ModeHConfig.SeasonMatchCount;
+                + " " + displayIndex + " / " + ModeHConfig.SeasonMatchCount;
+
+            // RosterLocked 只是签完约，还要先把本场敌军计划建出来才能看盘
+            if (_runState.Lifecycle == ModeHLifecycle.RosterLocked)
+            {
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
+                    OnClick = delegate { OpenFirstMatchBrief(); },
+                });
+                return page;
+            }
+
+            EnsureMatchPlan();
+            page.Actions.Add(new ModeHActionData
+            {
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn"),
+                Interactable = _season.currentMatchPlan != null,
+                OnClick = delegate { EnterLoadoutEditing(); },
+            });
             return page;
+        }
+
+        /// <summary>
+        /// RosterLocked -> 第一场 MatchBrief。
+        /// matchIndex 是 1-based（构造时为 0 = 尚未开赛），这里推进到 FirstMatchIndex；
+        /// 后续场次的推进在 SeasonFlow.OpenNextMatchBrief，两处合起来仍是「只有真正
+        /// 打开下一场看盘时才推进一格」（§18.2）。
+        /// </summary>
+        private void OpenFirstMatchBrief()
+        {
+            if (_runState == null) return;
+            if (_runState.MatchIndex < ModeHConfig.FirstMatchIndex)
+            {
+                string failureReasonId;
+                if (!_runState.TryAdvanceMatchIndex(out failureReasonId))
+                {
+                    RequestRecovering(failureReasonId != null ? failureReasonId : "match_index_failed");
+                    return;
+                }
+            }
+            if (TryTransition(ModeHLifecycle.RosterLocked, ModeHLifecycle.MatchBrief, "roster_confirmed"))
+            {
+                EnsureMatchPlan();
+                TryPersistSeason("first_match_brief");
+            }
+        }
+
+        /// <summary>
+        /// 本场敌军计划只建一次：关页重开不得重抽（同 §17.2 的试棚纪律）。
+        /// 计划生成失败属技术故障，走恢复而不是判负。
+        /// </summary>
+        private void EnsureMatchPlan()
+        {
+            if (_season == null || _runState == null) return;
+            if (_season.currentMatchPlan != null
+                && _season.currentMatchPlan.matchIndex == _runState.MatchIndex)
+            {
+                return;
+            }
+
+            try
+            {
+                ModeHMatchPlanDto plan;
+                int usedCandidateIndex;
+                string failureReasonId;
+                if (!ModeHEncounterPlanner.TryBuildPlan(
+                        _runState.RunSeed,
+                        _runState.MatchIndex,
+                        _runState.TechnicalRetrySequence,
+                        ModeHPresetRegistry.ProductionKeys,
+                        ResolveEchoReturnStableKey(),
+                        ModeHTransferMarket.GetLiveContractProfileIds(_season),
+                        out plan, out usedCandidateIndex, out failureReasonId))
+                {
+                    ModBehaviour.DevLog("[ModeH] 敌军计划生成失败: "
+                        + (failureReasonId != null ? failureReasonId : "unknown"));
+                    RequestRecovering(failureReasonId != null ? failureReasonId : "plan_failed");
+                    return;
+                }
+
+                _season.currentMatchPlan = plan;
+                TryPersistSeason("match_plan");
+            }
+            catch (Exception e)
+            {
+                LogFailure("build_plan", e);
+                RequestRecovering("plan_exception");
+            }
+        }
+
+        /// <summary>
+        /// 第 5 场的回响返场 key（落选选手以敌军身份回来打你）；其余场次为空。
+        /// assignments 只记 profileId，stableKey 要回 profiles 里查。
+        /// </summary>
+        private string ResolveEchoReturnStableKey()
+        {
+            if (_season == null || _runState == null) return null;
+            if (_runState.MatchIndex != ModeHConfig.EchoReturnMatchIndex) return null;
+
+            List<ModeHEchoAssignmentDto> assignments = _season.echoAssignments;
+            List<ModeHProfileDto> profiles = _season.profiles;
+            if (assignments == null || profiles == null) return null;
+
+            for (int i = 0; i < assignments.Count; i++)
+            {
+                ModeHEchoAssignmentDto a = assignments[i];
+                if (a == null || a.resolved) continue;
+                if (!string.Equals(a.destinationId, "return_enemy", StringComparison.Ordinal)) continue;
+
+                for (int j = 0; j < profiles.Count; j++)
+                {
+                    ModeHProfileDto p = profiles[j];
+                    if (p == null) continue;
+                    if (string.Equals(p.profileId, a.profileId, StringComparison.Ordinal))
+                    {
+                        return p.stableKey;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private void EnterLoadoutEditing()
+        {
+            if (_runState == null) return;
+            TryTransition(ModeHLifecycle.MatchBrief, ModeHLifecycle.LoadoutEditing, "open_loadout");
         }
 
         private ModeHPageContent BuildOddsPageContent()
@@ -258,8 +406,185 @@ namespace BossRush
             page.RealStakeSelectorEnabled = false;
             page.RealStakeDisabledReason =
                 L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_Disabled");
+
+            if (_season == null || _runState == null) return page;
+
+            page.Actions.Add(new ModeHActionData
+            {
+                Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn"),
+                Interactable = _season.currentMatchPlan != null && _season.contract != null,
+                OnClick = LockLoadoutAndStartMatch,
+            });
             return page;
         }
+
+        #endregion
+
+        #region 锁盘与开打
+
+        /// <summary>
+        /// 锁盘后立刻进入生成阶段。
+        /// 主干走 LoadoutEditing/OddsPreview -> LoadoutLocked -> MatchSpawning，
+        /// **不经过 StakePrepared**——那是真实押品支路（ModeHStateMachineGuard 冻结这一点）。
+        /// </summary>
+        private void LockLoadoutAndStartMatch()
+        {
+            if (_commandsClosed || _season == null || _runState == null) return;
+            if (_runState.Lifecycle != ModeHLifecycle.LoadoutEditing
+                && _runState.Lifecycle != ModeHLifecycle.OddsPreview)
+            {
+                return;
+            }
+
+            try
+            {
+                if (!TryTransition(_runState.Lifecycle, ModeHLifecycle.LoadoutLocked, "loadout_locked"))
+                {
+                    return;
+                }
+                // 开战前的最后一个显式落盘点：技术中止要按它回到同一场
+                TryPersistSeason("loadout_locked");
+                StartMatchSpawning();
+            }
+            catch (Exception e)
+            {
+                LogFailure("lock_loadout", e);
+                RequestRecovering("lock_loadout_exception");
+            }
+        }
+
+        private void StartMatchSpawning()
+        {
+            if (_owner == null || _map == null || _runState == null) return;
+            if (!TryTransition(ModeHLifecycle.LoadoutLocked, ModeHLifecycle.MatchSpawning, "spawn_begin"))
+            {
+                return;
+            }
+            _spawnRoutine = _owner.StartCoroutine(DriveMatchSpawning());
+        }
+
+        /// <summary>
+        /// 分帧生成本场敌军与我方选手，提交后交给 CombatControl。
+        /// 任何一步失败都走「技术中止 + 同场重开」，**绝不判负**（§17.4）。
+        /// </summary>
+        private System.Collections.IEnumerator DriveMatchSpawning()
+        {
+            long ownerToken = _runState.OwnerToken;
+            int generation = _sceneGeneration;
+            string failureReasonId = null;
+            bool ok = false;
+
+            ModeHMatchPlanDto plan = _season != null ? _season.currentMatchPlan : null;
+            List<CharacterRandomPreset> enemyPresets = new List<CharacterRandomPreset>();
+            List<string> enemyKeys = new List<string>();
+
+            if (plan == null || plan.enemyStableKeys == null || plan.enemyStableKeys.Count == 0)
+            {
+                AbortMatchSpawning("plan_missing");
+                yield break;
+            }
+
+            for (int i = 0; i < plan.enemyStableKeys.Count; i++)
+            {
+                string key = plan.enemyStableKeys[i];
+                CharacterRandomPreset preset = ModeHPresetRegistry.GetAuditedPreset(key);
+                if (preset == null)
+                {
+                    AbortMatchSpawning("enemy_preset_missing:" + key);
+                    yield break;
+                }
+                enemyPresets.Add(preset);
+                enemyKeys.Add(key);
+            }
+
+            _spawnTransaction = new ModeHSpawnTransaction();
+            if (!_spawnTransaction.Begin(_map, generation, ownerToken, out failureReasonId))
+            {
+                AbortMatchSpawning(failureReasonId != null ? failureReasonId : "spawn_tx_begin_failed");
+                yield break;
+            }
+
+            ModeHSpawnBatchResult result = new ModeHSpawnBatchResult();
+            ModeHSpawnDiagnostics diagnostics = new ModeHSpawnDiagnostics();
+
+            System.Collections.IEnumerator batch = _spawnTransaction.SpawnBatch(
+                enemyPresets, enemyKeys, Teams.wolf, false, diagnostics, result);
+            while (batch.MoveNext())
+            {
+                if (!IsCallbackStillValid(ownerToken, generation)) yield break;
+                yield return null;
+            }
+            ok = result.Success;
+            if (!ok)
+            {
+                AbortMatchSpawning(result.FailureReasonId != null
+                    ? result.FailureReasonId : "enemy_spawn_failed");
+                yield break;
+            }
+
+            if (!IsCallbackStillValid(ownerToken, generation)) yield break;
+
+            _spawnRoutine = null;
+
+            // 本批交付到「敌军已按计划就位」为止；战斗驱动（口令窗口、接力、结算）尚未接线。
+            // 干净地回滚并退回看盘：**不**消耗同场重试预算、**不**挂起赛季——
+            // 那两者是给真实技术故障准备的，用在「功能没写完」上会把玩家的赛季推进死路。
+            try
+            {
+                if (_spawnTransaction != null) _spawnTransaction.RollbackAll();
+            }
+            catch (Exception e)
+            {
+                LogFailure("spawn_rollback_pending", e);
+            }
+            _spawnTransaction = null;
+
+            if (!IsCallbackStillValid(ownerToken, generation)) yield break;
+
+            ModBehaviour.DevLog("[ModeH] 生成校验通过（敌军 " + enemyKeys.Count
+                + " 名已就位并回滚）；战斗驱动尚未接线，退回看盘");
+            if (_owner != null)
+            {
+                _owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Match_NotWiredYet"));
+            }
+            TryTransition(_runState.Lifecycle, ModeHLifecycle.MatchBrief, "combat_wiring_pending");
+        }
+
+        /// <summary>
+        /// 生成阶段失败的统一出口：回滚整批、按同场重开计数，超过上限则挂起。
+        /// 绝不判负——技术故障不是玩家的锅（§17.4）。
+        /// </summary>
+        private void AbortMatchSpawning(string reasonId)
+        {
+            _spawnRoutine = null;
+            try
+            {
+                if (_spawnTransaction != null) _spawnTransaction.RollbackAll();
+            }
+            catch (Exception e)
+            {
+                LogFailure("spawn_rollback", e);
+            }
+            _spawnTransaction = null;
+
+            if (_runState == null) return;
+            int retries = _runState.IncrementTechnicalRetry();
+            ModBehaviour.DevLog("[ModeH] 生成中止 (" + (reasonId ?? "unknown")
+                + ") retry=" + retries);
+
+            if (retries > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
+            {
+                RequestSuspended(reasonId != null ? reasonId : "spawn_retry_exhausted");
+                return;
+            }
+            RequestRecovering(reasonId != null ? reasonId : "spawn_failed");
+        }
+
+        /// <summary>本场生成协程句柄，关停时取消。</summary>
+        private Coroutine _spawnRoutine;
+
+        /// <summary>本场生成事务。</summary>
+        private ModeHSpawnTransaction _spawnTransaction;
 
         private ModeHPageContent BuildSettlementPageContent()
         {

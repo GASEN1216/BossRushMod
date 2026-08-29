@@ -65,6 +65,10 @@ namespace BossRush
             Add(map, "Button_Confirm", "确认", "Confirm");
             Add(map, "Button_Cancel", "取消", "Cancel");
             Add(map, "Button_Retry", "重试", "Retry");
+            Add(map, "Match_NotWiredYet",
+                "敌军已按计划就位，但本场战斗的驱动尚未接线；赛季已退回看盘，不计败场。",
+                "The lineup spawned as planned, but match combat is not wired yet; "
+                + "the season returned to the brief and no loss was recorded.");
             Add(map, "Summary_NoOffer", "本次转会窗口没有报价", "No offers in this transfer window");
             Add(map, "Summary_Draft", "五席试棚：先点主将，再点替补，落选者按回响去向分流。",
                 "Five try-outs: pick your starter first, then the relay; "

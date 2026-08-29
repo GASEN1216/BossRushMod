@@ -128,8 +128,13 @@
 3. 人工 smoke: 待实机——见下。
 
 **未完成部分（accepted，按计划的资产安全顺序推进）**:
-- 战斗主体（MatchSpawning / MatchFighting / 拍铃 / 接力 / MatchSettling 结算）尚未接线：
-  `ModeHCombatControl` 等构件已就绪但仍无调用方。本批只交付到「进场 → 认证 → 建赛季 → 选秀」。
+- 本批交付到「进场 → 认证 → 建赛季 → 选秀 → 看盘（含敌军计划）→ 赔率 → 锁盘 → 分帧生成校验」。
+  生成事务会真的把本场敌军按计划生成出来并校验引用，随后**干净回滚并退回看盘**，
+  同时给玩家一条明确提示。这里刻意**不**消耗同场重试预算、**不**挂起赛季：
+  那两条路是给真实技术故障准备的，用在「功能尚未接线」上会把玩家的赛季推进死路。
+- 战斗驱动本身（`ModeHCombatControl.Tick` 每帧驱动、口令窗口、拍铃、接力、
+  ERROR 互换、四类快照采集、`MatchSettling` 单 token 结算）尚未接线：
+  构件已就绪但仍无调用方。这是下一批的主要内容。
 - **真实仓库押注一律不接线**：`ModeHWarehouseStakeJournal` 全部事务方法保持零调用，
   赔率页的押品选择器固定显示禁用原因。前置条件是 escrow 快照重建器（官方
   `ItemTreeData.InstantiateAsync` 路线）、满仓返还策略与 ManualIntervention 人工出口三者齐备，
