@@ -87,6 +87,7 @@ source_files:
 ### 3.3 存档
 
 - key `BossRush_DailyReport_v1`（槽级），`Save<string>` 整存扁平 JSON，顶层带 `schemaVersion`。
+- **缓存带槽位烙印**：`LoadOrInit` 命中缓存也要比对 `SavesSystem.CurrentSlot`，不一致就自失效重载并回调 `NotifySlotChanged` 复位运行时计时。原因是 `ShutdownSubscription`（关掉开关）会退订 `OnSetFile`，此后在主菜单换档没有任何回调能重置缓存，只靠事件就会把上一个槽的日报写进新档。校验必须在**读取侧**，这样订阅在不在都安全。
 - 不用 typed `Save<T>`：ES3 会把 assembly-qualified 类型名写进存档，mod 程序集改名就会让老档读不回来。
 - 未知/更高 `schemaVersion`、payload 不可读 → 写屏障，只读不写，**绝不覆盖该 key**。
 - 当天余数借官方 `OnCollectSaveData` 顺带写（零额外 IO），跨天才主动入队。
@@ -99,6 +100,8 @@ source_files:
 本期签满 30 后**不立刻翻期**，而是在下一次签到时先翻期再签，这样"第 30 格已签"能在 UI 上停留一整天。
 
 发奖顺序是**先发后标记**：`TryGrantMilestone` 成功才 `MarkMilestoneClaimed` 置掩码，宁可极端情况下重发也不吞奖励。发放失败时保留未领状态，下次打开面板由 `TryRedeliverPendingMilestones` 补发。
+
+抽奖序列的「天」这一维必须是**签到当日**而不是补发当日，否则跨天补发会抽到另一件，破坏「同一 `(seed, 签到当日, slot)` 得到同一件」的确定性承诺。签到当日**不占存档**，由 `ResolveMilestoneSignDayIndex` 从既有字段推导：断签会把 `PeriodSignedCount` 清零，因此 `1..PeriodSignedCount` 必然是连续签下来的，第 `slot` 格 = `LastSignedDayIndex - (PeriodSignedCount - slot)`。
 
 ### 3.5 悬赏
 
@@ -132,7 +135,8 @@ source_files:
 | `RuntimeModule.OnUpdate` | 两个早退判断 + 一次乘加 + 一次比较，零分配零反射 |
 | `Health.OnDead` / `OnHurt` handler | 开关早退 → 主角判定 → 整数/浮点自增；**禁字符串拼接、LINQ、装箱** |
 | 落盘 | 仅跨天入队与官方 collect 搭车；每批至多一次 `SaveFile`；绝无每帧 IO |
-| 奖品候选表 | 按品质缓存，`ItemAssetsCollection.Search` 是全表扫描，只跑一次 |
+| 奖品候选表 | 按品质缓存，`ItemAssetsCollection.Search` 是全表扫描，只跑一次；**空结果不入缓存**（官方 Search 自带降品质兜底，空数组必然是故障残影，缓存它会把一次瞬时失败放大成整会话 `no_candidate`） |
+| 槽位烙印比对 | 缓存命中路径上多一次 int 比较，无 IO 无分配（官方 `CurrentSlot` 只是静态可空 int 读取） |
 
 ## 5. 契约面（发布后冻结）
 
@@ -147,6 +151,8 @@ source_files:
 
 F3 调试菜单提供三个按钮：**快进一天**（一个游戏日是 24 现实分钟，冒烟不可能真等）、**打开报纸**、**输出状态**。
 
+「输出状态」里的「悬赏题目」打的是 `GetActiveBounty()?.Id`（**今日**在售题），与旁边的「悬赏进度」同源；存档里的 `data.BountyKindId` 是 `SettleBounty` 写入的**昨日**已结算题，新档首个 rollover 前恒空，不能拿来当在售题显示。
+
 「输出状态」除签到/悬赏/统计外，另打印当前场景名与官方 `LevelConfig.IsRaidMap`：出击与撤离两个计数完全由官方 `RaidUtilities` 的 raid 事件驱动，非 raid map 不会触发，而「成功撤离 N 次」「出击且零阵亡」两类悬赏依赖它们。用于实机确认竞技场地图是否会让这两类悬赏变成废题。
 
 ## 7. 2026-08-29 收口更新
@@ -160,3 +166,15 @@ F3 调试菜单提供三个按钮：**快进一天**（一个游戏日是 24 现
 **发放语义**：`CourierService.QuickDeliverItems` 新增带 `out fallbackDeliveredCount` 的重载（返回值语义不变，既有调用方零改动）。快递站入库失败但回退 `SendToPlayer` 成功时，物品已在玩家手上，日报侧视为已送达并标记领取——此前会对这件已到手的奖品调 `DestroyTree` 并标记未领，下次开面板重抽补发。只有两路都失败才销毁。
 
 **其余口径修正**：报纸选稿改走 `EnsureBountySeed`（新档首开不再用 0 号种子，同日重开不换稿）；签到墙里程碑「已领」配色以实际领取掩码为准；写屏障下不发悬赏现金（钱进官方存档而已领标记落不了盘，会跨会话重复领）；悬赏奖金通过发放侧 `SetMoneyDeltaSuppressed` 屏蔽，不再计入被报道那天的「进账」（结算顺序本身不动——进度判定必须用今日统计）；战绩栏新增输出/承伤行（承伤不含无来源者的环境伤害）。
+
+## 8. 2026-08-29 二次收口（P1 + P2 + P3）
+
+**跨存档槽渗漏（P1，CR-2026-08-29-017）**：`DailyReportPersistence` 的缓存加上槽位烙印 `_cacheSlot`。`LoadOrInit` 命中缓存时比对 `SavesSystem.CurrentSlot`，不一致就丢弃缓存与 pending、从新槽重读，并回调 `DailyReportSaveCoordinator.NotifySlotChanged()` + `DailyReportService.NotifySlotChanged()` 复位 `_initialized` / `_carrySeconds`（否则"数据换了、计时没换"）。补充一道 `DiscardCacheOnResubscribe`：重新订阅那一刻丢弃 dormant 期间的缓存——官方 `DeleteCurrentSave` 删的是当前槽、**不改 `CurrentSlot`**，同槽删档重开靠槽号比不出来，重新挂上监听是唯一确定的重新对齐点。`SyncCarrySecondsToPersistence` 取到数据后重新确认 `_initialized`，避免复位后把 0 写进新槽的当日余数。
+
+**悬赏现金失败被吞（P2，CR-2026-08-29-021 ①）**：官方 `EconomyManager.Add` 在 `Instance == null` 时**返回 false 且不抛异常**（场景级 MonoBehaviour，无 `DontDestroyOnLoad`）。`TryGrantBountyCash` 原先丢弃返回值一律返回 true → `SettleBounty` 置 `BountyRewardClaimed` 落盘 → 补发被 claimed 闸死，现金永久丢失而报纸仍公示「奖金已寄出」。现在检查返回值，失败返回 `economy_unavailable` 走既有补发路径，与里程碑物品路径的投递结果检查对齐。
+
+**其余 P3**：候选池空结果不再入缓存；里程碑发奖序列改用签到当日（见 3.4）；F3「悬赏题目」改打今日在售题（见 6）。
+
+**未修**：`_pendingIssueBanner` 仍只在内存（战斗中跨天 → 没回基地就退游戏，下次会话不再提示「新一期已送达」）。现有持久字段里没有任何「最后已读期号」语义可复用，修它必须新增存档字段（`SCHEMA+`），为一个数据无损的 P3 不值得，留给 owner 拍板。
+
+`tests/DailyReportPersistenceGuard.py` 相应新增四条断言（槽位烙印、`EconomyManager.Add` 返回值、里程碑签到当日序列、空候选池不缓存）。

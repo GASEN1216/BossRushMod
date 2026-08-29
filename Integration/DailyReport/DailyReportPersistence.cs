@@ -6,6 +6,9 @@
 //     assembly-qualified 类型名写进存档，mod 程序集改名/重构就会让老档读不回来；
 //     整存字符串把这层耦合切断。
 //   - `OnCollectSaveData` / `OnSetFile` / `OnSaveDeleted` **幂等订阅**且成对退订。
+//   - 缓存带槽位烙印：`LoadOrInit` 命中缓存也要比对 `SavesSystem.CurrentSlot`，
+//     不一致就自失效重载并复位运行时。退订之后（开关关闭）换档没有任何回调，
+//     只靠 `OnSetFile` 会让上一个槽的数据被写进新档，因此校验必须在读取侧。
 //   - 写屏障：未知/更高 schemaVersion、payload 不可读时只读不写，**绝不覆盖该 key**。
 //   - 战斗中不写盘：Store 只入队 pending，物理落盘统一由 DailyReportSaveCoordinator 触发，
 //     且协调器只在基地场景真正 SaveFile（宿主销毁与关停例外，见其头注释）。
@@ -25,6 +28,19 @@ namespace BossRush
         private static readonly object _lock = new object();
 
         private static DailyReportData _cache;
+
+        /// <summary>
+        /// `_cache` 归属的存档槽位。`SlotUnknown` = 未加载 / 槽位读不到。
+        /// 存在的唯一理由：`ShutdownSubscription` 会退订 OnSetFile（开关关闭时），
+        /// 此后玩家在主菜单换档没有任何回调会重置缓存，再打开开关就会把上一个槽
+        /// 的日报 JSON 写进新槽。加了这个字段之后，槽位校验发生在读取侧，
+        /// **无论订阅是否还在**都安全。
+        /// </summary>
+        private static int _cacheSlot = SlotUnknown;
+
+        /// <summary>槽位不可知的哨兵值（读 CurrentSlot 抛异常时用）。</summary>
+        private const int SlotUnknown = int.MinValue;
+
         private static string _pendingJson;
         private static bool _pendingActive;
         private static bool _writeBarrier;
@@ -63,6 +79,7 @@ namespace BossRush
         /// <summary>幂等订阅官方存档事件。模块 bootstrap 调一次。</summary>
         internal static void EnsureSubscribed()
         {
+            bool becameSubscribed = false;
             lock (_subscriptionLock)
             {
                 if (_subscribed) return;
@@ -72,12 +89,42 @@ namespace BossRush
                     SavesSystem.OnSetFile += HandleSetFile;
                     SavesSystem.OnSaveDeleted += HandleSaveDeleted;
                     _subscribed = true;
+                    becameSubscribed = true;
                 }
                 catch (Exception e)
                 {
                     ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 存档订阅失败: " + e.Message);
                 }
             }
+
+            // 复位通知放在订阅锁外，避免与运行时侧的锁产生嵌套顺序。
+            if (becameSubscribed) DiscardCacheOnResubscribe();
+        }
+
+        /// <summary>
+        /// 重新挂上监听时丢弃上一段「无人监听」期间可能已经过期的缓存。
+        ///
+        /// 槽位烙印（见 LoadOrInit）挡得住换档，但挡不住**同槽删档重开**：
+        /// 官方 `DeleteCurrentSave` 删的就是当前槽，`CurrentSlot` 不变，
+        /// 槽号比对看不出区别。而 dormant 期间没有任何回调能告诉我们发生过什么，
+        /// 重新订阅这一刻是唯一确定的重新对齐点。
+        ///
+        /// 代价是一次重读；首次订阅（无缓存）直接早返，正常开局零成本。
+        /// 关停路径已经先做过一次 bypassSceneGate 的最后落盘，此处不再有可救的进度。
+        /// </summary>
+        private static void DiscardCacheOnResubscribe()
+        {
+            bool hadCache;
+            lock (_lock)
+            {
+                hadCache = _cache != null;
+            }
+            if (!hadCache) return;
+
+            ResetForSlotChange();
+            ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                + "重新订阅存档事件，dormant 期间的缓存已丢弃并将从当前槽重读");
+            NotifySlotDrift();
         }
 
         /// <summary>幂等退订。宿主销毁 / 开关关闭时调用。</summary>
@@ -150,12 +197,43 @@ namespace BossRush
 
         #region 加载 / 入队
 
-        /// <summary>加载或初始化。幂等：已有缓存直接返回。</summary>
+        /// <summary>
+        /// 加载或初始化。幂等：缓存命中且**槽位一致**时直接返回。
+        /// 槽位不一致说明中途换过档（典型是开关关闭期间退订了 OnSetFile），
+        /// 此时缓存与 pending 全部作废并从新槽重读，避免把上一个槽的数据写进新档。
+        /// </summary>
         internal static DailyReportData LoadOrInit()
+        {
+            bool slotDrifted = false;
+            DailyReportData loaded = LoadOrInitCore(ref slotDrifted);
+
+            // 槽位漂移的复位通知放在锁外：运行时侧（协调器 / Service）各有自己的锁，
+            // 在持久层锁内回调会引入跨锁顺序。
+            if (slotDrifted)
+            {
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                    + "[WARNING] 检测到存档槽位已变更但未收到切档回调，日报缓存已自失效并从新槽重载");
+                NotifySlotDrift();
+            }
+            return loaded;
+        }
+
+        /// <summary>LoadOrInit 的锁内主体。slotDrifted 回报是否命中了槽位漂移。</summary>
+        private static DailyReportData LoadOrInitCore(ref bool slotDrifted)
         {
             lock (_lock)
             {
-                if (_cache != null) return _cache;
+                int slot = ReadCurrentSlotSafe();
+
+                if (_cache != null)
+                {
+                    // 绝大多数调用走这条：一次 int 比较，无 IO 无分配。
+                    if (_cacheSlot == slot) return _cache;
+                    slotDrifted = true;
+                    ResetForSlotChange();
+                }
+
+                _cacheSlot = slot;
 
                 bool keyExists;
                 try
@@ -223,6 +301,40 @@ namespace BossRush
 
         /// <summary>当前缓存（未加载时先加载）。</summary>
         internal static DailyReportData Current { get { return LoadOrInit(); } }
+
+        /// <summary>
+        /// no-throw 读当前槽位。官方 `SavesSystem.CurrentSlot` 只是一个静态可空 int 的
+        /// 读取（首次访问才读 PlayerPrefs），因此放在读取热路径上没有代价。
+        /// 读不到时返回哨兵值：此后哨兵与哨兵自比一致，不会反复自失效。
+        /// </summary>
+        private static int ReadCurrentSlotSafe()
+        {
+            try
+            {
+                return SavesSystem.CurrentSlot;
+            }
+            catch (Exception)
+            {
+                return SlotUnknown;
+            }
+        }
+
+        /// <summary>
+        /// 槽位漂移后的运行时复位。与 HandleSetFile 同一组下游，
+        /// 保证「数据换了、计时也换」——否则新槽会继承上一个槽的当日余数。
+        /// </summary>
+        private static void NotifySlotDrift()
+        {
+            try
+            {
+                DailyReportSaveCoordinator.NotifySlotChanged();
+                DailyReportService.NotifySlotChanged();
+            }
+            catch (Exception)
+            {
+                // no-throw：复位失败也不能拖崩读取路径
+            }
+        }
 
         /// <summary>
         /// 入队一次写入。战斗中不落盘，只更新缓存与 pending；
@@ -318,6 +430,7 @@ namespace BossRush
             lock (_lock)
             {
                 _cache = null;
+                _cacheSlot = SlotUnknown;
                 _pendingJson = null;
                 _pendingActive = false;
                 _writeBarrier = false;
@@ -332,6 +445,7 @@ namespace BossRush
             lock (_lock)
             {
                 _cache = null;
+                _cacheSlot = SlotUnknown;
                 _pendingJson = null;
                 _pendingActive = false;
                 _writeBarrier = false;

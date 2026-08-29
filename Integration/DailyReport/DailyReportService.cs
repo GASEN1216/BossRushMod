@@ -538,7 +538,8 @@ namespace BossRush
                 string reason;
                 bool granted = DailyReportRewards.TryGrantMilestone(
                     result.MilestoneQuality, EnsureBountySeed(data),
-                    data.DayIndex, result.PeriodSlot, out reason);
+                    ResolveMilestoneSignDayIndex(data, result.PeriodSlot),
+                    result.PeriodSlot, out reason);
 
                 if (granted)
                 {
@@ -579,8 +580,10 @@ namespace BossRush
                     if (IsMilestoneClaimed(data, slot)) continue;
 
                     string reason;
+                    // 用「签到当日」而不是当前 DayIndex：跨天补发必须抽回同一件，
+                    // 见 ResolveMilestoneSignDayIndex 与 DailyReportRewards 头注释的确定性承诺。
                     if (DailyReportRewards.TryGrantMilestone(quality, EnsureBountySeed(data),
-                        data.DayIndex, slot, out reason))
+                        ResolveMilestoneSignDayIndex(data, slot), slot, out reason))
                     {
                         MarkMilestoneClaimed(slot);
                         ModBehaviour.DevLog(DailyReportTuning.LogPrefix
@@ -592,6 +595,24 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 里程碑补发异常: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 推导本期第 slot 格是在第几天签到的。**不占存档**：
+        /// 断签会把 PeriodSignedCount 清零（SettleOneDay 第 1 步），因此
+        /// 1..PeriodSignedCount 这些格必然是**连续**签下来的，
+        /// 第 slot 格的天号 = LastSignedDayIndex - (PeriodSignedCount - slot)。
+        ///
+        /// 奖品序列必须用这个值而不是当前 DayIndex，否则第 N 天发放失败、第 M 天补发
+        /// 会抽到另一件，破坏 DailyReportRewards 头注释「同一 (seed, 签到当日, slot)
+        /// 重试得到同一件奖品」的确定性承诺。当日签到路径下两者恒等
+        /// （LastSignedDayIndex == DayIndex 且 PeriodSignedCount == slot），行为不变。
+        /// </summary>
+        private static int ResolveMilestoneSignDayIndex(DailyReportData data, int slot)
+        {
+            if (data == null) return 1;
+            int day = data.LastSignedDayIndex - (data.PeriodSignedCount - slot);
+            return day < 1 ? 1 : day;
         }
 
         /// <summary>里程碑奖励发放成功后调用，置位掩码防重发。</summary>
@@ -750,6 +771,12 @@ namespace BossRush
             {
                 DailyReportData data = DailyReportPersistence.Current;
                 if (data == null) return;
+
+                // Current 可能在这一步检测到槽位漂移并回调 NotifySlotChanged 复位运行时。
+                // 复位后 _carrySeconds 已经不属于这份数据了，再写回去等于把新槽的
+                // 当日余数清零，所以取到数据之后必须重新确认初始化标志。
+                if (!_initialized) return;
+
                 lock (_lock)
                 {
                     data.CarrySeconds = _carrySeconds;
@@ -762,7 +789,11 @@ namespace BossRush
             }
         }
 
-        /// <summary>切档 / 删档：丢弃运行时累计，下一帧从新槽重新初始化。</summary>
+        /// <summary>
+        /// 切档 / 删档：丢弃运行时累计，下一帧从新槽重新初始化。
+        /// 除官方 OnSetFile / OnSaveDeleted 之外，持久层在读取侧发现槽位漂移
+        /// （开关关闭期间换档，没有回调可用）时也会调这里，保证数据换了计时也换。
+        /// </summary>
         internal static void NotifySlotChanged()
         {
             lock (_lock)

@@ -826,6 +826,12 @@ namespace BossRush
                 return;
             }
 
+            // 旁边的「悬赏进度」用的是 GetActiveBountyProgress()（**今日**在售题），
+            // 题目也必须取今日在售题。存档里的 data.BountyKindId 是 SettleBounty 写入的
+            // **昨日**已结算题，新档首个 rollover 前恒为空 → 显示「<无>」而实际有在售题，
+            // 正好干扰这个 dump 本身要服务的排查。
+            DailyReportBountyDef activeBounty = DailyReportService.GetActiveBounty();
+
             string report = DailyReportTuning.LogPrefix
                 + "第 " + data.DayIndex + " 天"
                 + " | 当日进度 " + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%"
@@ -842,7 +848,8 @@ namespace BossRush
                 // 若竞技场地图未标记 isRaidMap，这两类题目在纯竞技场玩法下永远无法达成，
                 // 抽到即废题。下面三项用于在实机里定位这一点：进竞技场打一场再 dump，
                 // 看 Raids/Extractions 是否有增长。
-                + " | 悬赏题目 " + (string.IsNullOrEmpty(data.BountyKindId) ? "<无>" : data.BountyKindId)
+                + " | 悬赏题目 " + (activeBounty == null || string.IsNullOrEmpty(activeBounty.Id)
+                    ? "<无>" : activeBounty.Id)
                 + " | 当前场景 " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
                 + " | isRaidMap " + DescribeCurrentRaidMapFlag();
 

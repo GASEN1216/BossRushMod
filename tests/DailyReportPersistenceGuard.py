@@ -13,6 +13,12 @@
   5. 里程碑发奖必须先发后标记，且用位掩码做幂等。
   6. 事件订阅必须成对退订（AGENTS.md 4.6）。
   7. 新增 .cs 必须进编译清单（AGENTS.md 4.1）。
+  8. 存档缓存必须带槽位烙印：关掉开关会退订 OnSetFile，此后换档没有任何回调，
+     缓存不校验槽位就会把上一个槽的日报写进新档（CR-2026-08-29-017）。
+  9. 悬赏现金必须检查 EconomyManager.Add 的返回值：官方在 Instance==null 时
+     返回 false 且不抛异常，吞掉它 = 置 claimed 落盘 + 补发闸死 = 现金永久丢失。
+ 10. 里程碑发奖序列必须用**签到当日**，否则跨天补发会换成另一件奖品。
+ 11. 空候选池不得进缓存：一次瞬时失败会被放大成该品质整会话 no_candidate。
 """
 
 from pathlib import Path
@@ -150,6 +156,48 @@ def main():
                     "DailyReportStatsCollector.OnGlobalHurt"):
         if hooks.count("+= " + handler) != 1 or hooks.count("-= " + handler) != 1:
             return fail("PlayerLifecycleRuntimeHooks 中 " + handler + " 必须成对订阅/退订")
+
+    # ---- 8) 存档缓存必须带槽位烙印（跨档写污染，CR-2026-08-29-017） ----
+    persistence_code = strip_comments(persistence)
+    if "SavesSystem.CurrentSlot" not in persistence_code:
+        return fail(
+            "存档缓存必须记录 SavesSystem.CurrentSlot：ShutdownSubscription 会退订 "
+            "OnSetFile，此后在主菜单换档没有任何回调，缓存不校验槽位就会把上一个槽的"
+            "日报 JSON 写进新档")
+    if not re.search(r"_cacheSlot\s*==\s*slot", persistence_code):
+        return fail(
+            "LoadOrInit 命中缓存时必须比对槽位烙印（_cacheSlot == slot），"
+            "不一致要自失效并从新槽重载")
+    if "DailyReportService.NotifySlotChanged" not in persistence_code:
+        return fail(
+            "槽位复位必须同时复位 Service 的运行时计时状态，"
+            "否则会出现「数据换了、计时没换」")
+
+    # ---- 9) 悬赏现金必须检查 EconomyManager.Add 返回值 ----
+    rewards_code = strip_comments(rewards)
+    if re.search(r"^\s*Duckov\.Economy\.EconomyManager\.Add\(", rewards_code, re.M):
+        return fail(
+            "EconomyManager.Add 在 Instance==null 时返回 false 且不抛异常；"
+            "丢弃返回值会让 SettleBounty 置 BountyRewardClaimed 落盘、补发被闸死，"
+            "现金永久丢失而报纸仍公示「奖金已寄出」")
+
+    # ---- 10) 里程碑发奖序列必须用签到当日，不能用当前 DayIndex ----
+    if "ResolveMilestoneSignDayIndex" not in service_code:
+        return fail(
+            "里程碑发奖/补发必须用签到当日推导发奖序列"
+            "（ResolveMilestoneSignDayIndex），否则跨天补发会抽到另一件奖品")
+    if re.search(r"data\.DayIndex,\s*(slot|result\.PeriodSlot)", service_code):
+        return fail(
+            "TryGrantMilestone 不得直接传当前 data.DayIndex："
+            "第 N 天发放失败、第 M 天补发会换奖品，破坏"
+            "「同一 (seed, 签到当日, slot) 得到同一件」的确定性承诺")
+
+    # ---- 11) 空候选池不得进缓存 ----
+    if not re.search(r"built\.Length\s*<=\s*0\)\s*return\s+built", rewards_code):
+        return fail(
+            "空候选池不得写进 _candidateCache：官方 Search 自带降品质兜底，"
+            "空数组必然是 ItemAssetsCollection 未就绪或 Search 瞬时异常的故障残影，"
+            "缓存它会把一次瞬时失败放大成该品质整会话 no_candidate")
 
     # ---- 7) 编译清单 ----
     for path in REQUIRED_SOURCES:

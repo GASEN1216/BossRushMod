@@ -7,7 +7,10 @@
 //   - 发放走 CourierService.QuickDeliverItems -> PlayerStorage 快递缓冲：
 //     玩家在战斗中跨天也安全（东西进官方 StorageDock 待领，不塞进战斗背包）。
 //   - 抽取用 ModeHSeedStream（纯 PRNG，与 Mode H 赛季语义无关，只借算法），
-//     domain 用自己的字符串，保证同一 (seed, day, slot) 重试得到同一件奖品。
+//     domain 用自己的字符串，保证同一 (seed, 签到当日, slot) 重试得到同一件奖品。
+//     注意 day 这一维是**签到当日**，不是补发当日：调用方用
+//     DailyReportService.ResolveMilestoneSignDayIndex 从存档字段推导，
+//     否则跨天补发会抽到另一件，承诺就破了。
 //   - 候选表按品质缓存：ItemAssetsCollection.Search 是全表扫描，不能每次签到都跑。
 // ============================================================================
 
@@ -38,6 +41,10 @@ namespace BossRush
         /// 发放一件指定品质的随机奖品。成功返回 true。
         /// 调用方在成功后才调 DailyReportService.MarkMilestoneClaimed（先发后标记）。
         /// </summary>
+        /// <param name="dayIndex">
+        /// **签到当日**的天号（不是补发当日）。它与 slot 一起决定抽到哪一件，
+        /// 传错会让跨天补发换奖品。
+        /// </param>
         internal static bool TryGrantMilestone(int quality, long seed, int dayIndex, int slot,
             out string failureReason)
         {
@@ -116,18 +123,33 @@ namespace BossRush
 
             try
             {
+                bool added = false;
+
                 // 悬赏奖金不是玩家当天赚的钱，不能计进被报道那天的「进账」。
                 // 结算顺序是「先算悬赏再转存昨日快照」（进度判定必须用今日统计），
                 // 所以在发放侧屏蔽这一笔，而不是调换结算顺序。
                 DailyReportStatsCollector.SetMoneyDeltaSuppressed(true);
                 try
                 {
-                    Duckov.Economy.EconomyManager.Add(amount);
+                    // 官方 Add 在 EconomyManager.Instance == null 时**返回 false 且不抛异常**
+                    // （它是场景级 MonoBehaviour，没有 DontDestroyOnLoad）。吞掉这个返回值
+                    // 会让调用方置 claimed 并落盘，补发被闸死 = 现金永久丢失，
+                    // 与本系统「先发后标记、宁可重发不吞奖」的纪律相悖。
+                    added = Duckov.Economy.EconomyManager.Add(amount);
                 }
                 finally
                 {
                     DailyReportStatsCollector.SetMoneyDeltaSuppressed(false);
                 }
+
+                if (!added)
+                {
+                    failureReason = "economy_unavailable";
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "[WARNING] 悬赏奖金未入账（EconomyManager 不可用），保留未领状态待补发：" + amount);
+                    return false;
+                }
+
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏奖金发放：" + amount);
                 return true;
             }
@@ -145,7 +167,8 @@ namespace BossRush
 
         /// <summary>
         /// 按品质确定性抽一个 typeId。无候选返回 -1。
-        /// 同一 (seed, dayIndex, slot) 永远得到同一件，因此发放失败后重试不会换奖品。
+        /// 同一 (seed, dayIndex, slot) 永远得到同一件，因此发放失败后重试不会换奖品——
+        /// 前提是调用方传的 dayIndex 是**签到当日**（跨天补发也必须传原来那天）。
         /// </summary>
         private static int PickRewardTypeId(int quality, long seed, int dayIndex, int slot)
         {
@@ -159,7 +182,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 取某品质的候选 id 表（已过黑名单）。结果缓存，Search 只跑一次。
+        /// 取某品质的候选 id 表（已过黑名单）。**非空结果**才缓存，Search 只跑一次。
         /// </summary>
         private static int[] GetCandidates(int quality)
         {
@@ -170,6 +193,14 @@ namespace BossRush
             }
 
             int[] built = BuildCandidates(quality);
+
+            // 空结果不入缓存。官方 Search 自带降品质兜底（result.Length < 1 就一路降到
+            // quality < 0，见 鸭科夫源码/ItemStatsSystem/ItemAssetsCollection.cs:270-277），
+            // 合法的空池几乎不可能出现，所以空数组必然是 ItemAssetsCollection 未就绪或
+            // Search 瞬时异常的故障残影。缓存它会把一次瞬时失败放大成该品质整会话
+            // no_candidate，每次开面板补发都失败刷 WARNING。
+            // 非空结果照旧缓存：全表扫描不能每次签到都跑。
+            if (built == null || built.Length <= 0) return built;
 
             lock (_lock)
             {
