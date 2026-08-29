@@ -64,6 +64,11 @@ namespace BossRush
 
             Add(map, "Button_Confirm", "确认", "Confirm");
             Add(map, "Button_Cancel", "取消", "Cancel");
+            Add(map, "Button_Retry", "重试", "Retry");
+            Add(map, "Summary_NoOffer", "本次转会窗口没有报价", "No offers in this transfer window");
+            Add(map, "Summary_Draft", "五席试棚：先点主将，再点替补，落选者按回响去向分流。",
+                "Five try-outs: pick your starter first, then the relay; "
+                + "the rest are routed by echo destination.");
             Add(map, "Button_CancelAndRefund", "取消并退款", "Cancel & Refund");
             Add(map, "Button_Sign", "签约", "Sign");
             Add(map, "Button_Recon", "免费侦察一次", "Scout Once (Free)");
@@ -145,11 +150,22 @@ namespace BossRush
             Add(map, "Command_all_in_Desc", "全部压上，不留后手。",
                 "Everything forward, nothing held back.");
 
+            // 招牌口令：Commands.json 会引用 `_Desc`，缺了就在盘口页显示 raw key
             Add(map, "Command_weakness", "打弱点", "Weak Point");
+            Add(map, "Command_weakness_Desc", "命中判定更狠，技能更容易生效。",
+                "Hits land harder and skills connect more often.");
             Add(map, "Command_anchor", "钉住", "Anchor");
+            Add(map, "Command_anchor_Desc", "咬住当前目标不放，转火更慢。",
+                "Stays locked on the current target and switches more slowly.");
             Add(map, "Command_last_mag", "最后一梭", "Last Mag");
+            Add(map, "Command_last_mag_Desc", "残弹期倾泻输出，几乎不再走位。",
+                "Dumps everything while the mag lasts, barely repositioning.");
             Add(map, "Command_together", "一起上", "Together");
+            Add(map, "Command_together_Desc", "贴着队友推进，视野与反应一起拉高。",
+                "Pushes alongside teammates, raising sight and reaction together.");
             Add(map, "Command_handoff", "交给你", "Hand Off");
+            Add(map, "Command_handoff_Desc", "主动让位给接力者，自己转为拉扯。",
+                "Yields the front to the relay fighter and switches to pulling aggro.");
 
             Add(map, "CommandStatus_VerifiedBehavior", "已验证", "Verified");
             Add(map, "CommandStatus_PartiallyVerified", "部分验证", "Partially Verified");
@@ -472,6 +488,29 @@ namespace BossRush
                 "Suspended; you can resume the same match once the environment recovers");
             Add(map, "Recovery_SnapshotUnusable", "战场快照不可用，已回落到同场重开",
                 "Battle snapshot unusable; fell back to restarting the same match");
+            Add(map, "Recovery_RetryScan", "重试风险扫描", "Retry risk scan");
+
+            // 旧模式入口被拒时的两句文案：扫描失败与真实风险是两回事，
+            // 用同一句会把「读档出错」说成「你有笔押品没结算」。
+            Add(map, "LegacyBlocked_Scan",
+                "黑市鸭王杯的资产风险扫描未能完成（读档异常），正在重试；稍后再试其他模式。",
+                "Mode H's asset risk scan could not complete (save read error); retrying. "
+                + "Try other modes again shortly.");
+            Add(map, "LegacyBlocked_ActiveJournal",
+                "黑市鸭王杯仍有未结算的真实资产事务，暂时无法开始其他模式。",
+                "Mode H has unsettled real-asset transactions; other modes are blocked.");
+
+            // 恢复面板会按 ModeHLifecycle / ModeHStakePhase 的枚举名拼 key，
+            // 因此**所有**枚举值都要有对应条目，缺一个就会在面板上显示 raw key。
+            Add(map, "State_Unknown", "未知状态", "Unknown state");
+            Add(map, "State_None", "无进行中的赛季", "No active season");
+            Add(map, "State_EntryIntent", "已冻结入场意图", "Entry intent frozen");
+            Add(map, "State_SceneLoading", "等待场景就绪", "Waiting for the arena");
+            Add(map, "State_ProductionCertifying", "正在做生产认证", "Running production certification");
+            Add(map, "State_ErrorRecoveryPending", "等待恢复屏障", "Awaiting recovery barrier");
+            Add(map, "State_StakePrepared", "押品已锁盘", "Stake locked in escrow");
+            Add(map, "StakePhase_Unknown", "押品阶段未知", "Stake phase unknown");
+            Add(map, "StakePhase_None", "无押品事务", "No stake transaction");
 
             Add(map, "EntryInteract", "黑市鸭王杯", "Black Market Duck Cup");
 

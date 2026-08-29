@@ -55,6 +55,17 @@ namespace BossRush
         private static string _riskReasonId;
         private static string _contentReasonId;
 
+        /// <summary>
+        /// 风险扫描本身失败（I/O 异常）而非「确有未结算事务」。
+        /// 两者在 IsLegacyModeEntryAllowed 上同样是拒绝，但成因完全不同：
+        /// 前者可重试自愈，后者要走恢复流程。此前四个异常分支把两者混成一种，
+        /// 玩家只看到「仍有未结算的真实资产事务」这句误导文案，且没有任何重试手段。
+        /// </summary>
+        private static bool _riskScanFaulted;
+
+        /// <summary>上次风险重扫的槽代数，用于节流。</summary>
+        private static int _lastRiskRetryGeneration = -1;
+
         // ERROR 完整互换（§17.6.5 部件二）：看台身体解冻门。
         // 只有 ModeHCombatControl 在持有有效 run owner token 且互换已完成时才置位；
         // 释放、倒地、比赛结束、技术中止、切图与 OnDestroy 都必须清零。
@@ -173,6 +184,7 @@ namespace BossRush
                 _riskScanReady = false;
                 _externalAssetRiskBlocked = false;
                 _riskReasonId = null;
+                _riskScanFaulted = false;
             }
 
             bool keyExists;
@@ -187,6 +199,8 @@ namespace BossRush
                     _riskScanReady = false;
                     _externalAssetRiskBlocked = true;
                     _riskReasonId = "risk_key_probe_failed:" + e.GetType().Name;
+                    // I/O 异常：可重试自愈，不是「确有未结算事务」
+                    _riskScanFaulted = true;
                 }
                 return;
             }
@@ -215,6 +229,7 @@ namespace BossRush
                     _riskScanReady = false;
                     _externalAssetRiskBlocked = true;
                     _riskReasonId = "risk_header_unreadable:" + e.GetType().Name;
+                    _riskScanFaulted = true;
                 }
                 return;
             }
@@ -226,6 +241,8 @@ namespace BossRush
                     _riskScanReady = false;
                     _externalAssetRiskBlocked = true;
                     _riskReasonId = "risk_header_null";
+                    // 证据问题（头不可解析）：重扫也一样，必须走恢复流程
+                    _riskScanFaulted = false;
                 }
                 return;
             }
@@ -238,6 +255,7 @@ namespace BossRush
                     _riskScanReady = false;
                     _externalAssetRiskBlocked = true;
                     _riskReasonId = "risk_phase_unknown";
+                    _riskScanFaulted = false;
                 }
                 return;
             }
@@ -367,6 +385,85 @@ namespace BossRush
         public static bool IsLegacyModeEntryAllowed()
         {
             return IsModeHRiskScanReady && !IsModeHExternalAssetRiskBlocked;
+        }
+
+        /// <summary>
+        /// 风险扫描是否因 I/O 异常失败（可重试），而非「确有未结算真实资产事务」。
+        /// no-throw 只读。
+        /// </summary>
+        public static bool IsModeHRiskScanFaulted
+        {
+            get
+            {
+                try
+                {
+                    lock (_lock) { return _riskScanFaulted; }
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 重跑一次风险扫描。只在扫描曾因 I/O 失败时有意义；
+        /// 按槽代数节流，避免旧模式入口每次被拒都重扫一遍。
+        /// 返回是否真的重扫了。no-throw。
+        /// </summary>
+        public static bool TryRetryRiskScan(float unusedMinIntervalSeconds)
+        {
+            try
+            {
+                int generation;
+                lock (_lock)
+                {
+                    if (!_riskScanFaulted) return false;
+                    generation = _slotGeneration;
+                    if (_lastRiskRetryGeneration == generation) return false;
+                    _lastRiskRetryGeneration = generation;
+                }
+                InitializeRiskForSlot(generation);
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 旧模式入口被拒时的一站式处理：先给一次自愈重试，再返回该显示的文案 key。
+        /// 七个旧模式入口共用它，避免各自复制「重试 + 选文案」两行。
+        /// </summary>
+        public static string ResolveLegacyBlockedMessageKey()
+        {
+            TryRetryRiskScan(0f);
+            return GetLegacyBlockedMessageKey();
+        }
+
+        /// <summary>
+        /// 旧模式入口被拒时该显示哪句文案。
+        /// 扫描失败与真实风险是两回事，用同一句会把「读档出错」说成「你有笔账没结」。
+        /// </summary>
+        public static string GetLegacyBlockedMessageKey()
+        {
+            try
+            {
+                lock (_lock)
+                {
+                    if (_riskScanFaulted || !_riskScanReady)
+                    {
+                        return ModeHConfig.LocalizationKeyPrefix + "LegacyBlocked_Scan";
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 判定失败按扫描问题处理：那句文案不会误导玩家去找不存在的押品
+                return ModeHConfig.LocalizationKeyPrefix + "LegacyBlocked_Scan";
+            }
+            return ModeHConfig.LocalizationKeyPrefix + "LegacyBlocked_ActiveJournal";
         }
 
         /// <summary>

@@ -39,6 +39,115 @@
 ```
 
 ---
+### 2026-08-29 Mode H 编排层接线：入口、场景开局、状态投影与可达性守卫（四系统审查修复 包4 第一批）
+
+**状态**: fixed（编排骨架与入口）；真实押注接线仍为 accepted，见「未完成部分」
+**Finding**: CR-2026-08-29-007（模式整体不可达）
+**兼容分类**: SAFE（补齐从未生效的接线）+ SCHEMA+（一张地图新增五个可选点位字段）
++ COMPAT（旧模式拒绝文案由一句拆成两句，新增两个本地化 key）
+**版本/Commit**: 本条目所在 commit
+**Owner decision**: 需要；已拍板「模式H 全量完成含真实押注」。本批交付编排骨架，
+真实押注按计划的资产安全顺序留到虚拟注实机通过之后。
+
+**现象**: 玩家订阅 Mod 并打开「百战留痕」开关后，游戏内**找不到任何入口**；
+即使人为构造入场意图进图，也只会停在空场景——不认证、不选秀、不生成、无 UI。
+约 25/55 个 ModeH 文件是不可达代码。而 29 条 ModeH guard 全绿、编译通过、
+`docs/contracts.md` §6.1 写着「已一次性完整实现」。
+
+**根因**（三处独立缺件，任何一处都足以让模式不可达）:
+1. `ModeHInteractable.TryOpenEntry` 零调用方，也没有任何代码把它 AddComponent 到场景，
+   玩家没有触达路径。
+2. `ModeHRuntimeModule.cs:353-362` 四个 `partial void`（OnSceneLoadedInternal /
+   OnUpdateInternal / OnTransitionApplied / ShutdownRuntimeInternal）**只有声明没有实现体**。
+   C# 对无实现的 partial 方法会连同**全部调用点**一起静默删除：编译不报错、guard 不报错、
+   运行时什么都不发生。整个编排层就消失在这里。
+3. 九张 `Assets/SpawnPoints/*.json` 均无 `modeH*` 五点位，`SupportedMapCount` 恒为 0，
+   入口即便接通也会被 `modeh_map_unsupported` 拒绝。
+根因之上还有一层：29 条 guard 全部只断言「构件内部长什么样」，没有一条断言「构件有人调用」。
+
+**修复内容**:
+- 新增文件（均已登记 `compile_official.bat`）:
+  - `ModeH/ModeHRuntimeModule_SceneFlow.cs` —— 运行时字段唯一声明处 +
+    `OnSceneLoadedInternal`（意图匹配 → 双租约按 §19.2 顺序取得 → 认证协程 →
+    固定 runSeed 原子创建 Drafting Season 并读回）+ `ShutdownRuntimeInternal`（§18.3 十步顺序，
+    释放严格逆序）+ 统一失败出口 `AbortSetup`（退款、逆序释放；
+    arena 租约清过原生敌人时**强制离场**，绝不原地回落 Legacy）。
+  - `ModeH/ModeHRuntimeModule_UiFlow.cs` —— `OnTransitionApplied`（内存投影 + 页面路由 + 标脏）
+    与恢复壳。**落盘策略裁决**：转换本身只标脏，真正落盘只发生在少数显式点
+    （Drafting 创建 / RosterLocked / MatchBrief / MatchSettling / Intermission / TransferWindow /
+    HallOfFame / SeasonEnded / Suspended），满足 §20.3「每批至多一次 SaveFile」与
+    §17.8「MatchSettling 是唯一原子全量写入点」。
+  - `ModeH/ModeHRuntimeModule_MatchFlow.cs` —— `OnUpdateInternal`（租约完整性按秒节流巡检，
+    不每帧全场扫）+ 选秀命令与看盘/赔率/结算页内容组装。
+  - `ModeH/ModeHRuntimeModule_SeasonFlow.cs` —— 转会窗口（接受/拒绝/过期走同一出口）、
+    名人堂、赛季终局；**matchIndex 唯一推进点** `OpenNextMatchBrief`。
+  - `tests/ModeHReachabilityGuard.py` —— 见下。
+- 修改文件:
+  - `UIAndSigns/UIAndSigns.cs`：基地船坞交互组注入 Mode H 入口选项
+    （注入门 = 开关开启或有待恢复记录，避免出现点了必被拒的死选项）。
+  - `Assets/SpawnPoints/Level_DemoChallenge_1.json`：补五点位。
+    坐标由既有 Legacy 擂台环质心与远端 modeE 点几何推算，
+    staging 距 arenaCenter 约 218m、距看台约 238m，均远超 `MinStagingIsolationDistance=30`。
+    **其余八张暂不补**：registry 对缺字段天然 fail-closed，先实机核准这一张再铺开。
+  - `ModeH/ModeHRecoveryPanel.cs`：`Show` 增 `stopRewardAnimation` 回调形参，
+    删除 `FindObjectsOfType<WishFountainRewardAnimationView>()` 全场扫描——
+    它会把**原版许愿池**正在播放的奖励动画一并销毁；现在只终止本模式自己登记的那一个实例。
+  - `ModeH/ModeHRuntimeGates.cs`：区分「扫描因 I/O 失败」与「确有未结算事务」
+    （新增 `_riskScanFaulted`、`IsModeHRiskScanFaulted`、`TryRetryRiskScan` 按槽代数节流、
+    `GetLegacyBlockedMessageKey` / `ResolveLegacyBlockedMessageKey`）。
+    落实 `docs/contracts.md:157` 承诺却一直没有实现的「I/O 异常提供重试」。
+  - 七个旧模式入口（ModeD / ModeE / ModeF / ModeG / WavesArena / ZombieMode×2）：
+    统一改用 `ResolveLegacyBlockedMessageKey()`——先自愈重试一次，再按真实成因取文案。
+    此前 5 处硬编码同一句「仍有未结算的真实资产事务」，ZombieMode 一处显示无关的
+    「其他模式进行中」，另一处**完全静默**（点了没反应也不知道为什么）。
+  - `ZombieMode/ZombieModeMapSelection.cs`：新增 `IsZombieModeStartBlocked` 承接判定。
+    放在这里是因为 `ZombieModeEntry.cs` 已顶到 `large_file_existing_allowlist.txt` 的行数上限。
+  - `Localization/ModeHLocalization.cs`：补 14 个此前会显示 raw key 的条目——
+    `State_*`×7 与 `StakePhase_*`×2（恢复面板按枚举名拼 key，缺一个就露 raw key）、
+    招牌口令 `_Desc`×5（Commands.json 引用了它们）；另加本批新增的 4 个 key。
+  - `docs/contracts.md`：修正两处与 §6.1 自相矛盾的「Mode H 尚未实现」旧文，
+    并写明 `modeHRealWarehouseStakeEnabled` 是**禁止引入**的符号而非「拟议配置」。
+- **新增 guard `tests/ModeHReachabilityGuard.py`**（本批最重要的交付）:
+  它只回答一个问题——「这段代码到底会不会被执行」。断言：四个 partial 各有恰好一个
+  带方法体的实现、入口可达（挂载或程序化二选一）、`RequestSeasonWrite` 有调用方、
+  `TryMatchModeHSceneIntent` 有消费方、恢复壳有实例化、声明支持的地图五点位齐全。
+  已做反例验证：把 partial 实现体改回纯声明、删掉入口挂载、抹掉落盘调用方，三种情况都会红。
+- `tests/ModeHEntryIntegrationGuard.py`：允许旧模式入口把风险门判定委托给同一 partial class
+  的具名 helper，但必须登记 helper 名与所在文件，且该文件仍被逐字检查到 `IsLegacyModeEntryAllowed`。
+
+**兼容性影响**:
+- 存档：无 schema 变更。Season key 只在玩家真正开局时才产生。
+- 地图 JSON：新增五个**可选**字段，旧 JSON 缺字段时该图不支持 Mode H（既有 fail-closed 行为）。
+- 旧模式：拒绝逻辑不变，只是文案分成两句并多了一次自愈重试。
+- 运行时总回退：`modeHEnabled=false` 即可让入口不再注入。
+
+**验证方法**:
+1. 编译: Windows `compile_official.bat` 通过并部署。
+2. Guard: `python tools/run_guards.py` 全量 494 项（新增 1 条）→ PASS=493 / NEW-FAIL=0 /
+   KNOWN-RED=1。新 guard 与改动过的 guard 均做了反例验证。
+3. 人工 smoke: 待实机——见下。
+
+**未完成部分（accepted，按计划的资产安全顺序推进）**:
+- 战斗主体（MatchSpawning / MatchFighting / 拍铃 / 接力 / MatchSettling 结算）尚未接线：
+  `ModeHCombatControl` 等构件已就绪但仍无调用方。本批只交付到「进场 → 认证 → 建赛季 → 选秀」。
+- **真实仓库押注一律不接线**：`ModeHWarehouseStakeJournal` 全部事务方法保持零调用，
+  赔率页的押品选择器固定显示禁用原因。前置条件是 escrow 快照重建器（官方
+  `ItemTreeData.InstantiateAsync` 路线）、满仓返还策略与 ManualIntervention 人工出口三者齐备，
+  且虚拟注全链实机通过。在此之前接线会有资产丢失风险。
+- `ModeHInteractable.TryOpenEntry` 目前无调用方（入口走 AddComponent + OnTimeOut）。
+  保留而非删除：它与 `_autoPresenter`、`DismissActive` 构成一组协同语义——
+  只销毁自建的短命 presenter，不销毁挂在船坞组上的组件。删它会牵连这两处（documented）。
+
+**未验证/需人工**:
+- 基地船坞交互应出现「黑市鸭王杯」选项；关掉开关且无恢复记录时不应出现。
+- 选中后走地图选择 → 传送到 Level_DemoChallenge_1：日志应出现「跳过 Legacy 接管」，
+  随后双租约取得、认证诊断页出现、认证通过后日志出现「赛季已创建 runId=…」。
+- 认证诊断页点取消：应退还预扣船票并安全离场，且**不得**原地回落 Legacy BossRush。
+- 五点位实机核准：staging 点不可被索敌、看台视野能看到擂台、exit 点安全可站立。
+- 恢复壳打开时，原版许愿池正在播放的奖励动画**不应**被销毁。
+- 旧模式入口在风险门命中时应显示区分后的两句文案之一，ZombieMode 地图选择不再静默。
+
+---
 ### 2026-08-29 遗种巢 血脉目录时序 P0、自定义崽 P1 与养成内容实装（四系统审查修复 包3）
 
 **状态**: fixed

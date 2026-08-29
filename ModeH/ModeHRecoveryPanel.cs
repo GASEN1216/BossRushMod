@@ -42,14 +42,20 @@ namespace BossRush
         /// 显示恢复壳。`allowActions=false` 时全部动作按钮置灰（只读展示）。
         /// 重复调用只刷新内容，不重建面板。
         /// </summary>
+        /// <param name="stopRewardAnimation">
+        /// 由调用方提供的「终止奖励揭晓」回调。必须只终止**本模式自己**播放的那一个实例：
+        /// 此前这里用 FindObjectsOfType 全场扫 WishFountainRewardAnimationView 并全部销毁，
+        /// 会把原版许愿池正在放的奖励动画一并干掉。
+        /// </param>
         public void Show(
             string headline,
             IList<string> lines,
             IList<ModeHActionData> actions,
-            bool allowActions)
+            bool allowActions,
+            Action stopRewardAnimation)
         {
             // 先终止奖励揭晓层：恢复壳必须压住它，且不允许它继续接收输入
-            StopRewardAnimation();
+            StopRewardAnimation(stopRewardAnimation);
 
             if (_root == null) CreatePanel(headline);
             UpdateLines(lines);
@@ -230,22 +236,19 @@ namespace BossRush
         /// 终止奖励揭晓层。结果事实已提交时，跳过/销毁动画只改变表现，
         /// 不改变任何已提交的结算事实。
         /// </summary>
-        private static void StopRewardAnimation()
+        /// <remarks>
+        /// **不做全场扫描**：`FindObjectsOfType&lt;WishFountainRewardAnimationView&gt;` 会连原版许愿池
+        /// 正在播放的奖励动画一起销毁。调用方自己记着它播的是哪一个实例，这里只执行回调。
+        /// </remarks>
+        private static void StopRewardAnimation(Action stopRewardAnimation)
         {
             try
             {
-                WishFountainRewardAnimationView[] views =
-                    UnityEngine.Object.FindObjectsOfType<WishFountainRewardAnimationView>();
-                if (views == null) return;
-                for (int i = 0; i < views.Length; i++)
-                {
-                    if (views[i] == null) continue;
-                    UnityEngine.Object.Destroy(views[i].gameObject);
-                }
+                if (stopRewardAnimation != null) stopRewardAnimation();
             }
             catch (Exception)
             {
-                // 奖励动画类型不可用或已销毁：恢复壳照常显示
+                // 奖励动画已销毁或回调失败：恢复壳照常显示
             }
         }
 

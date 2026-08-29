@@ -830,6 +830,8 @@ namespace BossRush
 
                     DevLog("[BossRush] 成功注入 BossRush 选项到 " + target.name + " 的列表中！");
                     ShowMessage_UIAndSigns("BossRush 挑战已就绪！");
+
+                    TryInjectModeHEntryOption(target, list);
                 }
                 return true;
             }
@@ -837,6 +839,51 @@ namespace BossRush
             {
                 DevLog("[BossRush] [ERROR] 反射注入失败: " + e.Message);
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 往同一个交互组里追加 Mode H（百战留痕：黑市鸭王杯）入口。
+        ///
+        /// 为什么挂在这里而不是竞技场路牌：Mode H 必须在**切图之前**冻结入场意图
+        /// （sceneName + sceneId + generation），而路牌只在 Legacy 竞技场开战后才存在，
+        /// 时机不对。这里与「Boss Rush」共用基地侧的同一个交互组，形态与
+        /// PetNest / 日报的建筑交互一致：动态 AddComponent，不新增 prefab 或美术资源。
+        ///
+        /// 注入门：开关关闭且没有待恢复记录时不注入，避免玩家看到一个点了必被拒的死选项。
+        /// 恢复入口复用同一个选项（ModeHInteractable 内部按可用性分流）。
+        /// </summary>
+        private void TryInjectModeHEntryOption(InteractableBase target, List<InteractableBase> list)
+        {
+            try
+            {
+                if (target == null || list == null) return;
+
+                bool enabled = IsModeHConfiguredEnabled();
+                bool recoveryOnly = false;
+                try { recoveryOnly = ModeHRuntimeGates.IsRecoveryEntryAllowed(); }
+                catch (Exception) { recoveryOnly = false; }
+                if (!enabled && !recoveryOnly) return;
+
+                for (int i = 0; i < list.Count; i++)
+                {
+                    if (list[i] is ModeHInteractable) return;
+                }
+
+                GameObject obj = new GameObject("BossRushOption_ModeH");
+                obj.transform.SetParent(target.transform);
+                obj.transform.localPosition = Vector3.zero;
+                obj.transform.localRotation = Quaternion.identity;
+                obj.transform.localScale = Vector3.one;
+
+                ModeHInteractable modeH = obj.AddComponent<ModeHInteractable>();
+                list.Add(modeH);
+
+                DevLog("[ModeH] 已注入黑市鸭王杯入口到 " + target.name + " 的交互组");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeH] [WARNING] 入口注入失败: " + e.Message);
             }
         }
 

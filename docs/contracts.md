@@ -39,7 +39,8 @@ Breaking:
 - `enableDeathWraithSystem`
 - `milestoneRestBonusSeconds`
 
-Mode H 尚未实现；未来拟议的可选配置 `modeHEnabled=false`、`modeHRealWarehouseStakeEnabled=false` 见第 6.1 节，当前不得当作已存在的配置 key。
+Mode H 的唯一配置 key 是 `modeHEnabled`（默认 false），详见第 6.1 节。
+**不存在也不得引入** `modeHRealWarehouseStakeEnabled`：真实押品没有开关，进入模式即知情同意（§22.1），`ModeHConfigApiGuard` 断言该符号一律不出现。
 
 Breaking:
 
@@ -83,7 +84,7 @@ Breaking:
 - `displayNameCN`
 - `displayNameEN`
 
-Mode H 尚未实现；未来拟做可选 `SCHEMA+` 扩展：`modeHSpawnPoints`、`modeHStagingPos`、`modeHSpectatorPos`、`modeHPlayerSpawnPos`、`modeHExitPos`。旧 JSON 缺字段时只能使用已通过同一构建版本实机 smoke 的硬编码 fallback；没有有效擂台、隔离生成点、看台、玩家或出口点位就拒绝进入。Mode H entry intent 必须在切图前冻结精确 `sceneName + sceneID + sceneGeneration`，非目标或旧 generation 的 scene callback 不得消费。
+Mode H 的地图点位是已实现的可选 `SCHEMA+` 扩展：`modeHSpawnPoints`、`modeHStagingPos`、`modeHSpectatorPos`、`modeHPlayerSpawnPos`、`modeHExitPos`。旧 JSON 缺字段时只能使用已通过同一构建版本实机 smoke 的硬编码 fallback；没有有效擂台、隔离生成点、看台、玩家或出口点位就拒绝进入。Mode H entry intent 必须在切图前冻结精确 `sceneName + sceneID + sceneGeneration`，非目标或旧 generation 的 scene callback 不得消费。
 
 Breaking:
 

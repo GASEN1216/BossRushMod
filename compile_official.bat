@@ -357,6 +357,10 @@ dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
     ModeH\ModeHRunState.cs ^
     ModeH\ModeHRuntimeGates.cs ^
     ModeH\ModeHRuntimeModule.cs ^
+    ModeH\ModeHRuntimeModule_SceneFlow.cs ^
+    ModeH\ModeHRuntimeModule_UiFlow.cs ^
+    ModeH\ModeHRuntimeModule_MatchFlow.cs ^
+    ModeH\ModeHRuntimeModule_SeasonFlow.cs ^
     ModeH\ModeHSaveFlushCoordinator.cs ^
     ModeH\ModeHSeasonRewardService.cs ^
     ModeH\ModeHSeedStream.cs ^

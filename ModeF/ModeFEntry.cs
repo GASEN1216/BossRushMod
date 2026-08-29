@@ -75,9 +75,9 @@ namespace BossRush
             {
                 if (!ModeHRuntimeGates.IsLegacyModeEntryAllowed())
                 {
-                    ShowMessage(L10n.T(
-                        "黑市鸭王杯仍有未结算的真实资产事务，暂时无法开始其他模式。",
-                        "Mode H has unsettled real-asset transactions; other modes are blocked."));
+                    // 被拒的成因有两种：扫描本身失败（可自愈）与确有未结算押品。
+                    // 先给一次重试机会，再按真实成因取文案，别把读档出错说成「你有笔账没结」。
+                    ShowMessage(L10n.T(ModeHRuntimeGates.ResolveLegacyBlockedMessageKey()));
                     DevLog("[BossRush] 入口被 Mode H 真实资产风险门拒绝");
                     return false;
                 }

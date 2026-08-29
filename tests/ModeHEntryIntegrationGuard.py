@@ -48,6 +48,17 @@ FORBIDDEN_IN_LEGACY = [
     "IsModeHRunOwnerActive",
 ]
 
+# 允许把风险门判定委托给同一 partial class 里的具名 helper，但**必须**指明 helper 名与
+# 它所在的文件，且那个文件仍要被本 guard 逐字检查到 IsLegacyModeEntryAllowed。
+# 起因：ZombieMode/ZombieModeEntry.cs 已顶到 large_file_existing_allowlist 的行数上限，
+# 无法再容纳「区分扫描失败与真实押品风险」所需的分支。
+LEGACY_GATE_DELEGATES = {
+    "ZombieMode/ZombieModeEntry.cs": (
+        "IsZombieModeStartBlocked",
+        "ZombieMode/ZombieModeMapSelection.cs",
+    ),
+}
+
 
 def main():
     errors = []
@@ -187,7 +198,16 @@ def main():
             continue
         code = strip_cs_comments(text)
         if "IsLegacyModeEntryAllowed" not in code:
-            errors.append("[Legacy] {} 未接入 Mode H 真实资产风险门".format(rel))
+            delegate = LEGACY_GATE_DELEGATES.get(rel)
+            if delegate is None or delegate[0] not in code:
+                errors.append("[Legacy] {} 未接入 Mode H 真实资产风险门".format(rel))
+            else:
+                # 委托目标必须真的读了门，否则等于把判定丢了
+                host = strip_cs_comments(read_text(os.path.join(REPO_ROOT, delegate[1])) or "")
+                if delegate[0] not in host or "IsLegacyModeEntryAllowed" not in host:
+                    errors.append(
+                        "[Legacy] {} 委托的 {} 未在 {} 中真正读取风险门".format(
+                            rel, delegate[0], delegate[1]))
         for forbidden in FORBIDDEN_IN_LEGACY:
             if forbidden in code:
                 errors.append("[Legacy] {} 不得读取 Mode H 门: {}".format(rel, forbidden))
