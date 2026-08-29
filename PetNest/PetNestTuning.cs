@@ -21,7 +21,7 @@ namespace BossRush
         internal const float EggDropChance = 0.04f;
 
         /// <summary>
-        /// 遗魂掉落量除数：souls = floor(MaxHealth / 该值)，至少 1。
+        /// 遗魂掉落量除数：souls = round(MaxHealth / 该值)，至少 1。
         /// 镜像官方 SoulCollector 的 MaxHealth/15 公式口径，**不复用**官方灵魂方块 1165。
         /// </summary>
         internal const float SoulDropHealthDivisor = 15f;

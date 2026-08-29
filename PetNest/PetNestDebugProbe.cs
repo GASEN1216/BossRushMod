@@ -57,6 +57,10 @@ namespace BossRush
                 _lastStatus = "PoC 幼体正在生成中，请稍候";
                 return;
             }
+            // 同步先把状态写成"正在召唤"：下面是 fire-and-forget 异步，
+            // F3 按钮回调紧接着就会读 LastStatus，不写这一行玩家会看到上一次的状态
+            // （初始值"尚未召唤 PoC 幼体"），按钮看起来像没反应。
+            _lastStatus = "正在召唤 PoC 幼体……（完成后按「输出探针报告」看结果）";
             SpawnProbeCompanionAsync(owner, lineageKey).Forget();
         }
 

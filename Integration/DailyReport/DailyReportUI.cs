@@ -47,8 +47,17 @@ namespace BossRush
         #region 布局常量
 
         private const float PanelWidth = 1000f;
-        private const float PanelHeight = 700f;
+        private const float PanelHeight = 760f;
         private const float Margin = 28f;
+
+        /// <summary>签到墙右侧留给签到按钮与状态的宽度。</summary>
+        private const float SignInSideWidth = 250f;
+
+        /// <summary>签到格边长。34 太小，格子里还要塞"31★"这种两位数带星。</summary>
+        private const float SignInCellSize = 38f;
+
+        /// <summary>图例行高。</summary>
+        private const float LegendRowHeight = 20f;
 
         private const int HostSortingOrder = BossRushUILayers.Panel;
 
@@ -138,87 +147,64 @@ namespace BossRush
             BossRushUI.ApplyPanelSkin(paper, 12);
 
             float innerWidth = PanelWidth - Margin * 2f;
-            float top = PanelHeight * 0.5f - Margin;
+
+            // 纵向游标：每块自己申报高度，画完把游标推下去。
+            // 早先是逐块手算 `top - 118f` 这类绝对偏移，任何一块改高度都要重算后面所有块，
+            // 结果就是上半页空、下半页挤。用游标之后加减一块不影响别处。
+            float y = PanelHeight * 0.5f - Margin;
 
             // ---- 报头 ----
-            mastheadText = ZombieModeUIHelper.CreateText(
-                "Masthead", panelRect, L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"), 42f,
-                new Vector2(0f, top - 26f), new Vector2(innerWidth, 52f),
-                TextAlignmentOptions.Center, PaperInk);
-            LockFontSize(mastheadText, 42f);
+            mastheadText = CreateBlock(
+                "Masthead", L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"), 38f,
+                innerWidth, 48f, ref y, TextAlignmentOptions.Center, PaperInk, 0f);
 
-            issueText = ZombieModeUIHelper.CreateText(
-                "Issue", panelRect, string.Empty, 18f,
-                new Vector2(0f, top - 62f), new Vector2(innerWidth, 26f),
-                TextAlignmentOptions.Center, PaperInkSoft);
-            LockFontSize(issueText, 18f);
+            issueText = CreateBlock(
+                "Issue", string.Empty, 17f,
+                innerWidth, 24f, ref y, TextAlignmentOptions.Center, PaperInkSoft, 2f);
 
-            CreateRule(panelRect, new Vector2(0f, top - 82f), innerWidth);
+            AdvanceRule(panelRect, ref y, innerWidth);
 
             // ---- 头条 ----
-            headlineText = ZombieModeUIHelper.CreateText(
-                "Headline", panelRect, string.Empty, 30f,
-                new Vector2(0f, top - 118f), new Vector2(innerWidth, 46f),
-                TextAlignmentOptions.Center, PaperInk);
-            LockFontSize(headlineText, 30f);
+            headlineText = CreateBlock(
+                "Headline", string.Empty, 28f,
+                innerWidth, 38f, ref y, TextAlignmentOptions.Center, PaperInk, 4f);
 
-            headlineBodyText = ZombieModeUIHelper.CreateText(
-                "HeadlineBody", panelRect, string.Empty, 17f,
-                new Vector2(0f, top - 162f), new Vector2(innerWidth, 46f),
-                TextAlignmentOptions.Top, PaperInkSoft);
-            LockFontSize(headlineBodyText, 17f);
+            headlineBodyText = CreateBlock(
+                "HeadlineBody", string.Empty, 17f,
+                innerWidth, 46f, ref y, TextAlignmentOptions.Top, PaperInkSoft, 4f);
             AllowWrap(headlineBodyText);
 
-            CreateRule(panelRect, new Vector2(0f, top - 190f), innerWidth);
+            AdvanceRule(panelRect, ref y, innerWidth);
 
             // ---- 双栏：左战绩 / 右天气运势杂谈 ----
             float columnWidth = innerWidth * 0.5f - 14f;
             float columnCenterX = innerWidth * 0.25f + 7f;
-            float columnTop = top - 206f;
-            float columnHeight = 150f;
+            const float columnBodyHeight = 168f;
 
-            ZombieModeUIHelper.CreateText(
-                "StatsTitle", panelRect, L10n.T("昨 日 战 绩", "YESTERDAY"), 19f,
-                new Vector2(-columnCenterX, columnTop), new Vector2(columnWidth, 26f),
-                TextAlignmentOptions.Center, PaperInk);
+            float titleY = y - 13f;
+            CreateColumnTitle("StatsTitle", L10n.T("昨 日 战 绩", "YESTERDAY"),
+                -columnCenterX, titleY, columnWidth);
+            CreateColumnTitle("SideTitle", L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"),
+                columnCenterX, titleY, columnWidth);
+            y -= 30f;
 
-            statsText = ZombieModeUIHelper.CreateText(
-                "Stats", panelRect, string.Empty, 16f,
-                new Vector2(-columnCenterX, columnTop - 24f - columnHeight * 0.5f),
-                new Vector2(columnWidth, columnHeight),
-                TextAlignmentOptions.TopLeft, PaperInkSoft);
-            LockFontSize(statsText, 16f);
-            AllowWrap(statsText);
+            float bodyY = y - columnBodyHeight * 0.5f;
+            statsText = CreateColumnBody("Stats", -columnCenterX, bodyY, columnWidth, columnBodyHeight);
+            sideText = CreateColumnBody("Side", columnCenterX, bodyY, columnWidth, columnBodyHeight);
+            y -= columnBodyHeight + 6f;
 
-            ZombieModeUIHelper.CreateText(
-                "SideTitle", panelRect, L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"), 19f,
-                new Vector2(columnCenterX, columnTop), new Vector2(columnWidth, 26f),
-                TextAlignmentOptions.Center, PaperInk);
-
-            sideText = ZombieModeUIHelper.CreateText(
-                "Side", panelRect, string.Empty, 16f,
-                new Vector2(columnCenterX, columnTop - 24f - columnHeight * 0.5f),
-                new Vector2(columnWidth, columnHeight),
-                TextAlignmentOptions.TopLeft, PaperInkSoft);
-            LockFontSize(sideText, 16f);
-            AllowWrap(sideText);
-
-            float bountyTop = columnTop - 24f - columnHeight - 12f;
-            CreateRule(panelRect, new Vector2(0f, bountyTop), innerWidth);
+            AdvanceRule(panelRect, ref y, innerWidth);
 
             // ---- 悬赏栏 ----
-            bountyText = ZombieModeUIHelper.CreateText(
-                "Bounty", panelRect, string.Empty, 16f,
-                new Vector2(0f, bountyTop - 34f), new Vector2(innerWidth, 58f),
-                TextAlignmentOptions.TopLeft, PaperInkSoft);
-            LockFontSize(bountyText, 16f);
+            bountyText = CreateBlock(
+                "Bounty", string.Empty, 16f,
+                innerWidth, 62f, ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 4f);
             AllowWrap(bountyText);
 
-            float signTop = bountyTop - 70f;
-            CreateRule(panelRect, new Vector2(0f, signTop), innerWidth);
+            AdvanceRule(panelRect, ref y, innerWidth);
 
             // ---- 签到墙 ----
-            BuildSignInGrid(panelRect, innerWidth, signTop - 16f);
+            BuildSignInGrid(panelRect, innerWidth, ref y);
 
             // ---- 关闭 ----
             ZombieModeUIHelper.CreateButton(
@@ -230,15 +216,67 @@ namespace BossRush
                 OnCloseClicked, true);
         }
 
-        /// <summary>签到墙：一期 30 格，10 列 3 行。里程碑格用金色标出。</summary>
-        private void BuildSignInGrid(RectTransform parent, float innerWidth, float gridTop)
+        /// <summary>铺一整幅宽的文本块，并把游标推到它下面。</summary>
+        private TextMeshProUGUI CreateBlock(
+            string name, string content, float fontSize, float width, float height,
+            ref float y, TextAlignmentOptions alignment, Color color, float gapAfter)
+        {
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
+                name, panelRect, content, fontSize,
+                new Vector2(0f, y - height * 0.5f), new Vector2(width, height),
+                alignment, color);
+            LockFontSize(text, fontSize);
+            y -= height + gapAfter;
+            return text;
+        }
+
+        /// <summary>画一条分隔线并把游标推过它。</summary>
+        private void AdvanceRule(RectTransform parent, ref float y, float width)
+        {
+            y -= 5f;
+            CreateRule(parent, new Vector2(0f, y), width);
+            y -= 8f;
+        }
+
+        private void CreateColumnTitle(string name, string content, float x, float y, float width)
+        {
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
+                name, panelRect, content, 19f,
+                new Vector2(x, y), new Vector2(width, 26f),
+                TextAlignmentOptions.Center, PaperInk);
+            LockFontSize(text, 19f);
+        }
+
+        private TextMeshProUGUI CreateColumnBody(string name, float x, float y, float width, float height)
+        {
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
+                name, panelRect, string.Empty, 17f,
+                new Vector2(x, y), new Vector2(width, height),
+                TextAlignmentOptions.TopLeft, PaperInkSoft);
+            LockFontSize(text, 17f);
+            AllowWrap(text);
+            return text;
+        }
+
+        /// <summary>
+        /// 签到墙：一期 30 格，10 列 3 行，右侧是签到按钮与状态。
+        ///
+        /// 格子有四种配色（未签 / 已签 / 里程碑未签 / 里程碑已领），
+        /// **必须配图例**——四种土黄绿褐在纸面上彼此接近，没有图例玩家分不出
+        /// 哪格是"再签就能领奖"、哪格只是"还没到"。
+        /// </summary>
+        private void BuildSignInGrid(RectTransform parent, float innerWidth, ref float y)
         {
             const int columns = 10;
             const int rows = 3;
-            float cellSize = 34f;
-            float gapX = (innerWidth - 240f - columns * cellSize) / (columns - 1);
+            const float rowGap = 8f;
+
+            float gridWidth = innerWidth - SignInSideWidth;
+            float gapX = (gridWidth - columns * SignInCellSize) / (columns - 1);
             if (gapX < 2f) gapX = 2f;
-            float startX = -innerWidth * 0.5f + cellSize * 0.5f;
+            float startX = -innerWidth * 0.5f + SignInCellSize * 0.5f;
+
+            float gridTop = y;
 
             for (int i = 0; i < DailyReportTuning.DaysPerPeriod; i++)
             {
@@ -246,12 +284,13 @@ namespace BossRush
                 int col = i % columns;
                 if (row >= rows) break;
 
-                float x = startX + col * (cellSize + gapX);
-                float y = gridTop - 18f - row * (cellSize + 6f);
+                float x = startX + col * (SignInCellSize + gapX);
+                float cellY = gridTop - SignInCellSize * 0.5f - row * (SignInCellSize + rowGap);
 
                 GameObject cell = ZombieModeUIHelper.CreateRect(
-                    "Cell" + (i + 1), parent, new Vector2(0.5f, 0.5f), new Vector2(cellSize, cellSize));
-                cell.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, y);
+                    "Cell" + (i + 1), parent, new Vector2(0.5f, 0.5f),
+                    new Vector2(SignInCellSize, SignInCellSize));
+                cell.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, cellY);
 
                 Image img = cell.AddComponent<Image>();
                 img.color = CellEmpty;
@@ -259,23 +298,25 @@ namespace BossRush
                 signInCells.Add(img);
 
                 TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
-                    "Label", cell.transform, string.Empty, 13f,
-                    Vector2.zero, new Vector2(cellSize, cellSize),
+                    "Label", cell.transform, string.Empty, 15f,
+                    Vector2.zero, new Vector2(SignInCellSize, SignInCellSize),
                     TextAlignmentOptions.Center, PaperInk);
-                LockFontSize(label, 13f);
+                LockFontSize(label, 15f);
                 signInCellLabels.Add(label);
             }
 
-            // 签到按钮与状态放在网格右侧
-            float rightX = innerWidth * 0.5f - 108f;
-            float buttonY = gridTop - 18f - cellSize * 0.5f;
+            float gridHeight = rows * SignInCellSize + (rows - 1) * rowGap;
+
+            // 签到按钮与状态：竖向对齐到网格中线
+            float rightX = innerWidth * 0.5f - SignInSideWidth * 0.5f + 10f;
+            float gridMidY = gridTop - gridHeight * 0.5f;
 
             signInButton = ZombieModeUIHelper.CreateButton(
                 "SignIn", parent, L10n.T("签 到", "CHECK IN"),
                 new Vector2(0.5f, 0.5f),
-                new Vector2(rightX, buttonY),
-                new Vector2(190f, 44f),
-                CellMilestone, 19f, new Vector2(180f, 38f),
+                new Vector2(rightX, gridMidY + 34f),
+                new Vector2(200f, 46f),
+                CellMilestone, 19f, new Vector2(190f, 40f),
                 OnSignInClicked, true);
 
             if (signInButton != null)
@@ -284,11 +325,58 @@ namespace BossRush
             }
 
             signInStatusText = ZombieModeUIHelper.CreateText(
-                "SignInStatus", parent, string.Empty, 14f,
-                new Vector2(rightX, buttonY - 44f), new Vector2(200f, 56f),
+                "SignInStatus", parent, string.Empty, 15f,
+                new Vector2(rightX, gridMidY - 30f), new Vector2(220f, 76f),
                 TextAlignmentOptions.Top, PaperInkSoft);
-            LockFontSize(signInStatusText, 14f);
+            LockFontSize(signInStatusText, 15f);
             AllowWrap(signInStatusText);
+
+            y = gridTop - gridHeight - 10f;
+
+            BuildSignInLegend(parent, ref y, innerWidth);
+        }
+
+        /// <summary>四色图例：一行色块 + 说明，紧贴签到墙下沿。</summary>
+        private void BuildSignInLegend(RectTransform parent, ref float y, float innerWidth)
+        {
+            const float swatch = 14f;
+            float centerY = y - LegendRowHeight * 0.5f;
+            float x = -innerWidth * 0.5f + swatch * 0.5f + 2f;
+
+            x = AddLegendItem(parent, x, centerY, swatch, CellEmpty,
+                L10n.T("未签", "Upcoming"));
+            x = AddLegendItem(parent, x, centerY, swatch, CellSigned,
+                L10n.T("已签", "Signed"));
+            x = AddLegendItem(parent, x, centerY, swatch, CellMilestone,
+                L10n.T("★ 奖励格", "★ Reward"));
+            AddLegendItem(parent, x, centerY, swatch, CellMilestoneDone,
+                L10n.T("奖励已领", "Claimed"));
+
+            y -= LegendRowHeight;
+        }
+
+        /// <summary>画一个「色块 + 文字」并返回下一个条目的起始 x。</summary>
+        private float AddLegendItem(
+            RectTransform parent, float x, float centerY, float swatch, Color color, string label)
+        {
+            GameObject box = ZombieModeUIHelper.CreateRect(
+                "LegendSwatch", parent, new Vector2(0.5f, 0.5f), new Vector2(swatch, swatch));
+            box.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, centerY);
+            Image image = box.AddComponent<Image>();
+            image.color = color;
+            BossRushUI.ApplyPanelSkin(image, 4);
+            image.raycastTarget = false;
+
+            const float labelWidth = 92f;
+            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
+                "LegendLabel", parent, label, 14f,
+                new Vector2(x + swatch * 0.5f + 6f + labelWidth * 0.5f, centerY),
+                new Vector2(labelWidth, LegendRowHeight),
+                TextAlignmentOptions.Left, PaperInkSoft);
+            LockFontSize(text, 14f);
+            text.raycastTarget = false;
+
+            return x + swatch + 12f + labelWidth;
         }
 
         #endregion
