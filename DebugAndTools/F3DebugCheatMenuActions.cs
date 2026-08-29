@@ -837,11 +837,34 @@ namespace BossRush
                 + " 出击 " + data.Today.Raids + " 撤离 " + data.Today.Extractions
                 + " 阵亡 " + data.Today.Deaths
                 + " | 悬赏进度 " + DailyReportService.GetActiveBountyProgress()
-                + " | 本进程跨天 " + DailyReportService.RolloverCount + " 次";
+                + " | 本进程跨天 " + DailyReportService.RolloverCount + " 次"
+                // 撤离类悬赏（成功撤离 N 次 / 出击且零阵亡）完全依赖官方 raid 事件。
+                // 若竞技场地图未标记 isRaidMap，这两类题目在纯竞技场玩法下永远无法达成，
+                // 抽到即废题。下面三项用于在实机里定位这一点：进竞技场打一场再 dump，
+                // 看 Raids/Extractions 是否有增长。
+                + " | 悬赏题目 " + (string.IsNullOrEmpty(data.BountyKindId) ? "<无>" : data.BountyKindId)
+                + " | 当前场景 " + UnityEngine.SceneManagement.SceneManager.GetActiveScene().name
+                + " | isRaidMap " + DescribeCurrentRaidMapFlag();
 
             DevLog(report);
             SetF3DebugCheatStatus(L10n.T("已输出日报状态（见日志）",
                 "Daily report state dumped (see log)"), false);
+        }
+
+        /// <summary>
+        /// 当前地图是否被官方标记为 raid map。出击/撤离两个计数完全由官方
+        /// RaidUtilities 的 raid 事件驱动，非 raid map 不会触发。
+        /// </summary>
+        private string DescribeCurrentRaidMapFlag()
+        {
+            try
+            {
+                return LevelConfig.IsRaidMap ? "true" : "false";
+            }
+            catch (Exception)
+            {
+                return "<unavailable>";
+            }
         }
     }
 }

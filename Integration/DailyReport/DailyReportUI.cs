@@ -461,7 +461,11 @@ namespace BossRush
 
                 if (isMilestone)
                 {
-                    cell.color = signed ? CellMilestoneDone : CellMilestone;
+                    // 里程碑「已领」配色以实际领取掩码为准，不能只看签没签：
+                    // 发奖失败待补发的格子若显示成已领，图例就在撒谎。
+                    cell.color = DailyReportService.IsMilestoneClaimed(data, slot)
+                        ? CellMilestoneDone
+                        : CellMilestone;
                 }
                 else
                 {

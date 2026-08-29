@@ -96,6 +96,16 @@ namespace BossRush
                     return;
                 }
 
+                // dormant 契约：开关关闭时不往官方建造 UI 里塞死建筑——报箱要花 500 金自建，
+                // 买下后 DailyReportInteractable.IsInteractable 恒 false，连交互提示都不出，
+                // 玩家没有任何反馈。老档已建过是例外：必须照常注册 prefab，
+                // 否则官方 BuildingArea 会报缺 prefab。形态与 PetNestBuilder 一致。
+                if (!IsDailyReportConfiguredEnabled() && !HasPendingDailyReportBuildingsInManager())
+                {
+                    DevLog(DailyReportTuning.LogPrefix + "入口开关关闭且未建过，跳过建筑注入（dormant）");
+                    return;
+                }
+
                 DailyReportLocalization.InjectBuildingKeys();
                 LoadDailyReportBuildingIcon();
                 LoadDailyReportBuildingModel();

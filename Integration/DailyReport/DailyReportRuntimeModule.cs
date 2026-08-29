@@ -120,7 +120,14 @@ namespace BossRush
         /// </summary>
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
-            if (!_bootstrapped) return;
+            if (!_bootstrapped)
+            {
+                // 开关是运行时可变的：关掉再打开时必须当帧复活，否则计时器一直冻结、
+                // 订阅也不恢复，要等到下次切场景才活过来。
+                // 关闭状态下这里是两次 bool + 一次 no-throw getter，仍是 O(1) 早返。
+                EnsureBootstrapped();
+                if (!_bootstrapped) return;
+            }
             try
             {
                 if (!IsEnabled)
@@ -196,6 +203,9 @@ namespace BossRush
                 DailyReportService.SyncCarrySecondsToPersistence();
                 DailyReportSaveCoordinator.TryFlushOnHostDestroy();
                 DailyReportSaveCoordinator.ShutdownSubscription();
+                // 与 OnDestroy 对齐：dormant 契约要求不留任何订阅，否则关掉开关后
+                // 经济/raid 事件仍在回调里空转，统计也会继续写进持久层。
+                DailyReportStatsCollector.ShutdownSubscription();
             }
             catch (Exception e)
             {

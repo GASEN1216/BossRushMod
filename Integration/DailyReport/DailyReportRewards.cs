@@ -70,13 +70,24 @@ namespace BossRush
                     "《鸭科夫日报》签到奖励已寄往快递站",
                     "Daily check-in reward sent to your delivery point");
 
-                int sent = CourierService.QuickDeliverItems(new Item[] { item }, bannerText, true);
-                if (sent <= 0)
+                int fallbackDelivered;
+                int sent = CourierService.QuickDeliverItems(
+                    new Item[] { item }, bannerText, true, out fallbackDelivered);
+                if (sent <= 0 && fallbackDelivered <= 0)
                 {
                     failureReason = "deliver_failed";
-                    // 快递失败时销毁，避免留下无主的游离 Item 树
+                    // 快递与回退两路都没送出去，此时物品确为无主游离树，销毁避免泄漏
                     TryDestroy(item);
                     return false;
+                }
+
+                if (sent <= 0)
+                {
+                    // 快递站入库失败但回退已把物品直接交给玩家：视为已送达。
+                    // 绝不能走上面的销毁分支——那会把玩家刚拿到手的奖品凭空抹掉，
+                    // 且因返回 false 而在下次开面板时重抽补发（一件变两件或换一件）。
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "里程碑奖励经回退路径直接交付玩家：第 " + slot + " 格，typeId=" + typeId);
                 }
 
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "里程碑发奖成功：第 " + slot
@@ -105,7 +116,18 @@ namespace BossRush
 
             try
             {
-                Duckov.Economy.EconomyManager.Add(amount);
+                // 悬赏奖金不是玩家当天赚的钱，不能计进被报道那天的「进账」。
+                // 结算顺序是「先算悬赏再转存昨日快照」（进度判定必须用今日统计），
+                // 所以在发放侧屏蔽这一笔，而不是调换结算顺序。
+                DailyReportStatsCollector.SetMoneyDeltaSuppressed(true);
+                try
+                {
+                    Duckov.Economy.EconomyManager.Add(amount);
+                }
+                finally
+                {
+                    DailyReportStatsCollector.SetMoneyDeltaSuppressed(false);
+                }
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏奖金发放：" + amount);
                 return true;
             }

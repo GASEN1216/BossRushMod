@@ -53,9 +53,6 @@ namespace BossRush
         /// <summary>第 2 期起里程碑的固定品质。</summary>
         internal const int MilestoneQualityLaterPeriod = 8;
 
-        /// <summary>抽奖品时的最大重试次数（抽中黑名单物品就重抽）。</summary>
-        internal const int RewardRollMaxAttempts = 8;
-
         #endregion
 
         #region 建筑（发布后冻结，见 AGENTS.md §5 契约）

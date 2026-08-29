@@ -84,7 +84,10 @@ namespace BossRush
                 DailyReportData data = DailyReportService.Data;
                 if (data == null) return BuildEmptyIssue(issue);
 
-                long seed = data.BountySeed;
+                // 必须走 EnsureBountySeed 而不是直读字段：新档 BountySeed 为 0，
+                // 直读会让首次开报纸用 0 号种子选头条/运势/杂谈，之后任一悬赏查询
+                // 冻结真种子，同一天重开整版换稿，违背「同日重开不换稿」的承诺。
+                long seed = DailyReportService.EnsureBountySeed(data);
                 // 被报道的是"昨天"，即刚结算完的那一天
                 int reportedDay = data.DayIndex - 1;
                 if (reportedDay < 1) reportedDay = 1;
@@ -234,6 +237,12 @@ namespace BossRush
                     + "   Deaths: " + y.Deaths));
             issue.StatLines.Add(L10n.T("进账：" + y.MoneyEarned + "　支出：" + y.MoneySpent,
                 "Earned: " + y.MoneyEarned + "   Spent: " + y.MoneySpent));
+
+            // 输出/承伤此前只采集不展示。注意承伤口径：无来源者的环境伤害
+            // （摔落、燃烧等）不计入，采集侧要求 fromCharacter 非空。
+            issue.StatLines.Add(L10n.T(
+                "输出：" + (int)y.DamageDealt + "　承伤：" + (int)y.DamageTaken,
+                "Damage dealt: " + (int)y.DamageDealt + "   Taken: " + (int)y.DamageTaken));
 
             if (y.MaxSingleHit > 0f)
             {

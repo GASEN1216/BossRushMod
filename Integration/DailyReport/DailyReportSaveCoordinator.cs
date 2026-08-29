@@ -4,6 +4,10 @@
 // 硬约束（形态照 PetNest/PetNestSaveCoordinator.cs）：
 //   - 本类是日报**唯一**调用 SavesSystem.SaveFile 的地方，且每批至多一次；
 //   - SavesSystem.IsSaving 时不强写，只登记 deferred，由宿主 tick 重试；
+//   - 物理落盘只发生在基地场景：SaveFile 会做备份拷贝 + 整档同步写盘，而跨天由
+//     计时器触发、可能落在交火帧上；非基地一律推迟到回基地补写，
+//     宿主销毁与关停走 bypassSceneGate 兜底（最后机会，宁可写一次也不丢当日进度）。
+//     非基地的 Tick 不消耗 deferred 重试预算，否则长时间战斗会把 pending 丢成 budget_exhausted；
 //   - deferred 重试有预算上限，超预算保留 pending 并报告失败，不静默丢弃；
 //   - SaveFile(false) 不触发 OnCollectSaveData，因此绝不能把它单独当作
 //     "采集已完成"或"物理落盘原子性"的证明。
@@ -55,14 +59,14 @@ namespace BossRush
         /// </summary>
         internal static bool RequestFlush(out string error)
         {
-            return FlushBatch(out error);
+            return FlushBatch(out error, false);
         }
 
         /// <summary>无返回值的便捷入口（调用方不关心失败细节时用）。</summary>
         internal static void RequestFlush()
         {
             string error;
-            FlushBatch(out error);
+            FlushBatch(out error, false);
         }
 
         /// <summary>切档 / 删档：清空 deferred 状态。</summary>
@@ -80,6 +84,9 @@ namespace BossRush
         internal static void Tick()
         {
             if (!_deferredFlushPending) return;
+            // 非基地：保留 pending、不试写、**不计重试预算**。
+            // 战斗可以持续远超 600 帧，若在这里消耗预算会把 pending 直接丢成 budget_exhausted。
+            if (!IsBaseLevelSafe()) return;
             lock (_lock)
             {
                 _deferredRetryCount++;
@@ -94,7 +101,7 @@ namespace BossRush
                 }
             }
             string error;
-            FlushBatch(out error);
+            FlushBatch(out error, false);
         }
 
         /// <summary>宿主销毁时尽力提交一次；失败只记录，不抛出。</summary>
@@ -103,7 +110,8 @@ namespace BossRush
             try
             {
                 string error;
-                return FlushBatch(out error);
+                // 销毁/关停是最后机会，必须绕过场景闸：宁可在战斗帧写一次，也不能丢当日进度
+                return FlushBatch(out error, true);
             }
             catch (Exception)
             {
@@ -115,7 +123,10 @@ namespace BossRush
 
         #region 批次落盘（唯一物理写入点）
 
-        private static bool FlushBatch(out string error)
+        /// <param name="bypassSceneGate">
+        /// 绕过「只在基地物理落盘」的闸。只有宿主销毁与关停这类最后机会才允许传 true。
+        /// </param>
+        private static bool FlushBatch(out string error, bool bypassSceneGate)
         {
             error = null;
             if (!DailyReportPersistence.HasPendingWrite)
@@ -130,6 +141,16 @@ namespace BossRush
 
             try
             {
+                // 官方 SaveFile 会做备份文件拷贝 + 整档同步写盘。跨天由计时器触发，
+                // 完全可能落在交火帧上（每约 24 现实分钟一次），因此非基地一律推迟；
+                // pending 仍在持久层，回基地由 Tick 补写，官方任何一次存盘也会顺带带走。
+                if (!bypassSceneGate && !IsBaseLevelSafe())
+                {
+                    lock (_lock) { _deferredFlushPending = true; }
+                    error = "flush_deferred_not_base";
+                    return false;
+                }
+
                 if (SavesSystem.IsSaving)
                 {
                     lock (_lock) { _deferredFlushPending = true; }
@@ -169,6 +190,23 @@ namespace BossRush
                 _lastError = error;
                 lock (_lock) { _deferredFlushPending = true; }
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[ERROR] 存档批次落盘异常: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 当前是否在基地场景。读不到 LevelManager 时按「非基地」处理（保守推迟），
+        /// 宿主销毁/关停路径有 bypassSceneGate 兜底，不会因此丢盘。
+        /// 形态与 PetNestRuntimeModule.IsBaseScene 一致。
+        /// </summary>
+        private static bool IsBaseLevelSafe()
+        {
+            try
+            {
+                return LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel;
+            }
+            catch (Exception)
+            {
                 return false;
             }
         }

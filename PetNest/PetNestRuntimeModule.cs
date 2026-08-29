@@ -148,7 +148,13 @@ namespace BossRush
         /// <summary>host tick：只驱动存档协调器的 deferred 重试。关闭时零成本早返。</summary>
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
-            if (!_bootstrapped) return;
+            if (!_bootstrapped)
+            {
+                // 开关运行时可变：关掉再打开必须当帧复活，否则要等到下次切场景。
+                // 关闭状态下仍是两次 bool + 一次 no-throw getter 的 O(1) 早返。
+                EnsureBootstrapped();
+                if (!_bootstrapped) return;
+            }
             try
             {
                 if (!IsEnabled)

@@ -71,6 +71,21 @@ namespace BossRush
         /// </summary>
         public static int QuickDeliverItems(IEnumerable<Item> items, string bannerText = null, bool showBanner = true)
         {
+            int fallbackDeliveredCount;
+            return QuickDeliverItems(items, bannerText, showBanner, out fallbackDeliveredCount);
+        }
+
+        /// <summary>
+        /// 同上，额外报告「快递站发送失败但已由 SendToPlayer 直接交给玩家」的件数。
+        /// </summary>
+        /// <param name="fallbackDeliveredCount">
+        /// 回退交付成功的件数。这些物品**已经在玩家手上**，调用方绝不能再销毁它们；
+        /// 返回值（快递站件数）语义保持不变，既有调用方无需改动。
+        /// </param>
+        public static int QuickDeliverItems(IEnumerable<Item> items, string bannerText,
+            bool showBanner, out int fallbackDeliveredCount)
+        {
+            fallbackDeliveredCount = 0;
             if (items == null)
             {
                 return 0;
@@ -104,6 +119,10 @@ namespace BossRush
                         try
                         {
                             ItemUtilities.SendToPlayer(item, true, true);
+                            // 回退成功＝物品已进玩家背包/仓库/脚下。不计入 sentCount（它的语义是
+                            // 「进了快递站」），但必须单独报告，否则调用方会把已到手的物品当成
+                            // 发放失败销毁掉。
+                            fallbackDeliveredCount++;
                         }
                         catch (Exception restoreEx)
                         {

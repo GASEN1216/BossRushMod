@@ -7,7 +7,8 @@
 //     整存字符串把这层耦合切断。
 //   - `OnCollectSaveData` / `OnSetFile` / `OnSaveDeleted` **幂等订阅**且成对退订。
 //   - 写屏障：未知/更高 schemaVersion、payload 不可读时只读不写，**绝不覆盖该 key**。
-//   - 战斗中不写盘：Store 只入队 pending，物理落盘统一由 DailyReportSaveCoordinator 触发。
+//   - 战斗中不写盘：Store 只入队 pending，物理落盘统一由 DailyReportSaveCoordinator 触发，
+//     且协调器只在基地场景真正 SaveFile（宿主销毁与关停例外，见其头注释）。
 //   - 全程 no-throw：存档路径异常不得拖崩宿主。
 // ============================================================================
 

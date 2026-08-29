@@ -105,9 +105,13 @@ def check_module(errors):
     if code.count("PetNestSaveCoordinator.EnsureSubscribed()") != 1:
         errors.append("[dormant] EnsureSubscribed 只能在 bootstrap 内出现一次")
 
-    # OnUpdate 未 bootstrap 时零成本早返
-    if not re.search(r"public override void OnUpdate\(float deltaTime, float unscaledDeltaTime\)\s*\{\s*if \(!_bootstrapped\) return;", code):
-        errors.append("[性能] OnUpdate 必须在未 bootstrap 时 O(1) 早返")
+    # OnUpdate 未 bootstrap 时零成本早返；开关运行时打开要当帧复活
+    # （EnsureBootstrapped 在开关关闭时自身就是 O(1) 早返，不破坏 dormant 零开销）
+    if not re.search(
+            r"public override void OnUpdate\(float deltaTime, float unscaledDeltaTime\)\s*\{\s*"
+            r"if \(!_bootstrapped\)\s*\{[\s\S]{0,320}?EnsureBootstrapped\(\);\s*"
+            r"if \(!_bootstrapped\) return;\s*\}", code):
+        errors.append("[性能] OnUpdate 必须在未 bootstrap 时 O(1) 早返，且开关打开当帧复活")
 
     # 运行时关开关要能回到 dormant
     if "ShutdownIfEnabledTurnedOff" not in code:

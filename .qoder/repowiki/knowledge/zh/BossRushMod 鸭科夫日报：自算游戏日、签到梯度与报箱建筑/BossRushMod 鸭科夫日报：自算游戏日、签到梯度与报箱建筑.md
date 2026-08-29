@@ -146,3 +146,17 @@ source_files:
 ## 6. 调试
 
 F3 调试菜单提供三个按钮：**快进一天**（一个游戏日是 24 现实分钟，冒烟不可能真等）、**打开报纸**、**输出状态**。
+
+「输出状态」除签到/悬赏/统计外，另打印当前场景名与官方 `LevelConfig.IsRaidMap`：出击与撤离两个计数完全由官方 `RaidUtilities` 的 raid 事件驱动，非 raid map 不会触发，而「成功撤离 N 次」「出击且零阵亡」两类悬赏依赖它们。用于实机确认竞技场地图是否会让这两类悬赏变成废题。
+
+## 7. 2026-08-29 收口更新
+
+**开关热切**：`OnUpdate` 在未 bootstrap 时先尝试 `EnsureBootstrapped()` 再早返，玩家在场景内关掉再打开开关能当帧复活；此前唯一唤醒路径是 `OnSceneLoaded`，不切场景就会让计时器一直冻结、订阅不恢复。开关关闭路径 `ShutdownIfEnabledTurnedOff` 补上统计采集器退订，与 `OnDestroy` 对齐，dormant 期间不再留下经济/raid 订阅空转。PetNest 的同形写法同步修改，两系统保持同构。
+
+**落盘时机**：物理 `SaveFile` 只在基地场景执行。官方 `SaveFile` 会做备份文件拷贝 + 整档同步写盘，而跨天由计时器驱动（每约 24 现实分钟一次），完全可能落在交火帧上。非基地时 `FlushBatch` 保留 pending 并返回 `flush_deferred_not_base`，回基地由 `Tick` 补写；**非基地的 Tick 不消耗 deferred 重试预算**，否则长时间战斗会把 pending 丢成 `budget_exhausted`。宿主销毁与开关关停走 `bypassSceneGate` 绕过该闸（最后机会，宁可写一次也不丢当日进度）。
+
+**建筑 dormant 闸**：开关关闭且老档从未建过报箱时不再注入建造数据，避免玩家花 500 金买到一座交互恒 false、连提示都不出的死建筑；老档已建过是例外，必须照常注册 prefab 否则官方 `BuildingArea` 会报缺 prefab。形态与 `PetNestBuilder` 一致。
+
+**发放语义**：`CourierService.QuickDeliverItems` 新增带 `out fallbackDeliveredCount` 的重载（返回值语义不变，既有调用方零改动）。快递站入库失败但回退 `SendToPlayer` 成功时，物品已在玩家手上，日报侧视为已送达并标记领取——此前会对这件已到手的奖品调 `DestroyTree` 并标记未领，下次开面板重抽补发。只有两路都失败才销毁。
+
+**其余口径修正**：报纸选稿改走 `EnsureBountySeed`（新档首开不再用 0 号种子，同日重开不换稿）；签到墙里程碑「已领」配色以实际领取掩码为准；写屏障下不发悬赏现金（钱进官方存档而已领标记落不了盘，会跨会话重复领）；悬赏奖金通过发放侧 `SetMoneyDeltaSuppressed` 屏蔽，不再计入被报道那天的「进账」（结算顺序本身不动——进度判定必须用今日统计）；战绩栏新增输出/承伤行（承伤不含无来源者的环境伤害）。

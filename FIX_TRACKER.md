@@ -39,6 +39,100 @@
 ```
 
 ---
+### 2026-08-29 鸭科夫日报 开关复活、战斗帧落盘、死建筑闸与发放语义修复（四系统审查修复 包2）
+
+**状态**: fixed
+**Finding**: CR-2026-08-29-002（战斗帧同步落盘）、CR-2026-08-29-003（快递回退误销毁）；其余为同批审查 P2/P3
+**兼容分类**: SAFE（行为修复；无 schema/TypeID/Harmony 变化。删除三个无人查表的本地化 key 属注入表减项，老档无感）
+**版本/Commit**: 本条目所在 commit
+**Owner decision**: 需要；已拍板——P3 全修、悬赏抽取层不动（只加 F3 诊断供实机定位）。
+
+**现象**:
+1. （P2）玩家在游戏中关掉再打开日报开关且不切场景，模块永远 dormant：计时器冻结、当天永不推进，
+   期间战绩只留内存不随官方存盘落地。
+2. （P2）跨天结算会在触发帧同步整档写盘（官方 `SaveFile` 含备份文件拷贝），而跨天由计时器驱动、
+   每约 24 现实分钟一次，完全可能砸在交火帧上造成卡顿；与 `DailyReportPersistence` 头注释
+   「战斗中不写盘」自相矛盾。
+3. （P2）关闭开关后建造菜单里仍有报箱，玩家花 500 金买下后 `IsInteractable` 恒 false，
+   连交互提示都不出现，无任何反馈。
+4. （P2）`PlayerStorage.Push` 抛异常时 `CourierService` 会回退 `SendToPlayer` 把物品直接交给玩家，
+   但不计入 `sentCount`；日报据此判定发放失败，对一件**已经在玩家背包里**的物品调 `DestroyTree`，
+   并标记未领待补发（下次开面板重抽，可能换一件或变两件）。
+5. （P3）首次开报纸与之后开报纸的头条/运势/杂谈会整版换一次；签到墙里程碑「已领」配色不查领取掩码；
+   写屏障下悬赏现金仍会发放且已领标记落不了盘，可跨会话反复领；悬赏奖金被计入被报道那天的「进账」；
+   关开关时统计采集器不退订；一个死常量、三个无人查表的本地化 key；采集了却从不展示的输出/承伤统计。
+
+**根因**:
+1. `OnUpdate` 首行 `if (!_bootstrapped) return;` 位于 `IsEnabled` 判断之前且从不调 `EnsureBootstrapped`，
+   唯一的运行时唤醒路径是 `OnSceneLoaded`。
+2. `FlushBatch` 只挡 `SavesSystem.IsSaving`，没有任何场景判定。
+3. `InitDailyReportMailbox` 只有 `dailyReportBuildingInjected` 幂等判，缺 PetNest 同款的开关闸。
+4. `QuickDeliverItems` 的 catch 分支回退成功后不计数，返回值语义与调用方期待不一致。
+5. `DailyReportContent` 直读 `data.BountySeed`（新档为 0），真种子由后续任一悬赏查询才派生冻结；
+   签到墙只用 `signed` 决定配色；`SettleBounty` 发钱前无写屏障检查；
+   `EconomyManager.Add` 同步触发 `OnMoneyChanged`，而 `SettleBounty` 先于昨日快照转存执行。
+
+**修复内容**:
+- 新增文件: 无
+- 修改文件:
+  - `Integration/DailyReport/DailyReportRuntimeModule.cs`：`OnUpdate` 未 bootstrap 时先试
+    `EnsureBootstrapped()` 再早返（关闭状态仍是 O(1)）；`ShutdownIfEnabledTurnedOff` 补
+    `DailyReportStatsCollector.ShutdownSubscription()` 与 `OnDestroy` 对齐。
+  - `PetNest/PetNestRuntimeModule.cs`：`OnUpdate` 同形同修（两系统保持同构）。
+  - `Integration/DailyReport/DailyReportSaveCoordinator.cs`：`FlushBatch` 增 `bypassSceneGate` 形参，
+    非基地一律推迟并保留 pending；`Tick` 在非基地直接返回，**不消耗** deferred 重试预算
+    （战斗可远超 600 帧，否则 pending 会被丢成 `budget_exhausted`）；
+    `TryFlushOnHostDestroy` 传 `true` 绕过闸（销毁/关停是最后机会）；新增 `IsBaseLevelSafe()`。
+  - `Integration/DailyReport/DailyReportPersistence.cs`：头注释补「只在基地物理落盘」。
+  - `Integration/DailyReport/DailyReportMailboxBuilder.cs`：注入前加开关闸（老档已建过仍照常注册
+    prefab，形态与 `PetNestBuilder` 一致），两个入口汇入同一私有重载故一处即可。
+  - `Integration/NPCs/Courier/CourierService.cs`：新增带 `out int fallbackDeliveredCount` 的重载，
+    原 3 参方法委托之（**返回值语义不变**，`AwenDepositTokenUsage` 等既有调用方零改动）。
+  - `Integration/DailyReport/DailyReportRewards.cs`：两路皆 0 才销毁；仅回退成功视为已送达返回 true
+    （"先发后标记"顺序不变）；`TryGrantBountyCash` 用 try/finally 包住自家 `EconomyManager.Add`。
+  - `Integration/DailyReport/DailyReportStatsCollector.cs`：新增 `_suppressMoneyDelta` 静态开关与
+    `SetMoneyDeltaSuppressed`，`HandleMoneyChanged` 首行早返（零分配，热路径合规）。
+  - `Integration/DailyReport/DailyReportService.cs`：`EnsureBountySeed` 提升 `internal`；
+    `SettleBounty` 与 `TryRedeliverPendingBountyReward` 发钱前加写屏障闸。
+  - `Integration/DailyReport/DailyReportContent.cs`：改调 `EnsureBountySeed`；战绩栏新增输出/承伤行。
+  - `Integration/DailyReport/DailyReportUI.cs`：里程碑格配色改用 `IsMilestoneClaimed`。
+  - `Integration/DailyReport/DailyReportTuning.cs`：删除零消费者的 `RewardRollMaxAttempts`。
+  - `Localization/DailyReportLocalization.cs`：删除无人查表的 `SystemName` / `SignIn` / `AlreadySigned`
+    （刊头是刻意字距版式、按钮走内联 L10n.T），保留唯一被消费的 `Interact`。
+  - `DebugAndTools/F3DebugCheatMenuActions.cs`：日报 dump 增加悬赏题目、当前场景与
+    `LevelConfig.IsRaidMap`，用于实机定位撤离类悬赏可达性。
+- Guard 同步: `tests/PetNestRuntimeModuleGuard.py` 的 OnUpdate 早返正则改为新形（已做反例验证：
+  回退成旧写法会红）。`tests/DailyReportPersistenceGuard.py` 逐项核对后无需改动
+  （SaveFile 调用点计数未变、"先发后标记"顺序未变、订阅成对计数未变）。
+
+**兼容性影响**:
+- 存档：无 schema 变化。落盘时机推迟到基地，pending 仍在持久层，官方任何一次存盘也会顺带带走。
+- 配置：无新增 key。
+- 本地化：删除三个从未被查询的 key，玩家侧无可见变化。
+- 行为变化：关闭开关的新档不再能建造报箱（老档已建的照常可用）；悬赏奖金不再计入被报道那天的进账。
+
+**验证方法**:
+1. 编译: Windows `compile_official.bat` 通过并部署。
+2. Guard: `python tools/run_guards.py` 全量 493 项 → PASS=492 / NEW-FAIL=0 / KNOWN-RED=1。
+3. 人工 smoke: 待实机——见下。
+
+**未验证/需人工**:
+- 战斗图用 F3「快进一天」触发跨天：应出现 `flush_deferred_not_base` 且无卡顿；回基地后自动补落盘并出刊。
+- 战斗中跨天后直接杀进程重进：核对签到/悬赏数据一致性，不得出现重复发钱。
+- 场景内关开关再打开（不切图）：当帧应出现「运行时模块已启动」。
+- 关开关新档：建造 UI 不应出现报箱；老档已建过 + 关开关：不得报缺 prefab。
+- 完成一次悬赏跨天后，新一期「进账」不含奖金额。
+- **D6 线索**：进竞技场打一场后 F3 dump，确认 `Raids`/`Extractions` 是否增长、`isRaidMap` 取值。
+  若竞技场非 raid map，「成功撤离 N 次」「出击且零阵亡」两类悬赏在纯竞技场玩法下不可达，
+  后续修法应在**采集层**合成 raid 事件，绝不改抽取层（`SelectForDay` 是 `(seed, dayIndex)` 纯函数，
+  动它会破坏「重启不重抽」承诺）。
+
+**留置项**:
+- D4 的 `PlayerStorage.Push` 异常分支依赖仓库异常态，难以实机构造，本轮只做静态验证（deferred）。
+- 承伤统计不含无来源者的环境伤害（摔落/燃烧等），采集侧要求 `fromCharacter` 非空；
+  展示文案不声明该口径（documented）。
+
+---
 ### 2026-08-29 Mode G 成就断链、静默终局、放弃入口与双实例清理（四系统审查修复 包1）
 
 **状态**: fixed

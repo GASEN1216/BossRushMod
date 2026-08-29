@@ -339,7 +339,7 @@ namespace BossRush
         /// 首次使用时派生并冻结悬赏种子。一旦写入就不再变，
         /// 否则每次启动都会换题，"重启不重抽"的保证就没了。
         /// </summary>
-        private static long EnsureBountySeed(DailyReportData data)
+        internal static long EnsureBountySeed(DailyReportData data)
         {
             if (data == null) return 0L;
             if (data.BountySeed != 0L) return data.BountySeed;
@@ -385,6 +385,16 @@ namespace BossRush
 
                 if (!completed) return;
 
+                // 写屏障下不得发钱：钱进的是官方存档，而 BountyRewardClaimed 落不了盘，
+                // 下个会话会重新判定并再发一次（可跨会话反复领）。
+                // 与 TrySignInToday 的同款前置检查保持一致。
+                if (DailyReportPersistence.IsStoreFaulted || DailyReportPersistence.HasWriteBarrier)
+                {
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "[WARNING] 存档写屏障生效，悬赏奖金暂不发放（已领标记无法持久化）");
+                    return;
+                }
+
                 string reason;
                 if (DailyReportRewards.TryGrantBountyCash(def.CashReward, out reason))
                 {
@@ -414,6 +424,8 @@ namespace BossRush
                 if (data == null) return;
                 if (!data.BountyCompleted || data.BountyRewardClaimed) return;
                 if (string.IsNullOrEmpty(data.BountyKindId)) return;
+                // 与 SettleBounty 同理：写屏障下补发同样会造成跨会话重复发钱
+                if (DailyReportPersistence.IsStoreFaulted || DailyReportPersistence.HasWriteBarrier) return;
 
                 DailyReportBountyDef settled = DailyReportBounty.SelectForDay(
                     EnsureBountySeed(data), data.BountyDayIndex);

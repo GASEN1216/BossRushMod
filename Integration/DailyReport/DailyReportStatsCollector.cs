@@ -143,9 +143,22 @@ namespace BossRush
 
         #region 经济 / raid 事件
 
+        /// <summary>
+        /// 本 Mod 自己发钱时置位，避免奖金被当成玩家「进账」计入当日统计。
+        /// 只在同步的发放调用外包一层，窗口极窄；官方 OnMoneyChanged 是同步派发。
+        /// </summary>
+        private static bool _suppressMoneyDelta;
+
+        /// <summary>发放路径用：包住自家 EconomyManager.Add，防止奖金自我计入统计。</summary>
+        internal static void SetMoneyDeltaSuppressed(bool suppressed)
+        {
+            _suppressMoneyDelta = suppressed;
+        }
+
         /// <summary>金钱变动。官方给的是 (旧值, 新值)，这里换算成差值。</summary>
         private static void HandleMoneyChanged(long oldValue, long newValue)
         {
+            if (_suppressMoneyDelta) return;
             if (!IsActive()) return;
             try
             {

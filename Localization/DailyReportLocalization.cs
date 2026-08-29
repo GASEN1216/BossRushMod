@@ -39,10 +39,9 @@ namespace BossRush
 
         private static void AddCore(Dictionary<string, string> map)
         {
-            Add(map, "SystemName", "鸭科夫日报", "The Duckov Daily");
+            // 只注入官方会主动查表的 key。报纸刊头、签到按钮等由 UI 侧内联 L10n.T
+            // 直接给双语字面量（刊头还带刻意的字距版式），不走注入表。
             Add(map, "Interact", "阅读今日报纸", "Read today's paper");
-            Add(map, "SignIn", "签到", "Check in");
-            Add(map, "AlreadySigned", "今日已签", "Already checked in");
         }
 
         /// <summary>
