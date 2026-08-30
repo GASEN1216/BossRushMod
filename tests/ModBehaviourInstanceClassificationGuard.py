@@ -19,7 +19,7 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 243,
+    "Integration": 251,
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
@@ -31,6 +31,7 @@ EXPECTED_COUNTS = {
     "ModeG": 4,
     "ModeH": 1,
     "DebugAndTools": 1,
+    "RandomEvents": 5,
 }
 
 
@@ -67,13 +68,13 @@ def main() -> int:
         return fail("current counts differ from documented baseline: " + repr(counts))
 
     total = sum(counts.values())
-    if total != 361:
-        return fail("expected 361 ModBehaviour.Instance lines, got " + str(total))
+    if total != 374:
+        return fail("expected 374 ModBehaviour.Instance lines, got " + str(total))
 
     doc = DOC.read_text(encoding="utf-8")
     required_doc_tokens = [
-        "- Raw matches: 361",
-        "| `Integration/` | 243 |",
+        "- Raw matches: 374",
+        "| `Integration/` | 251 |",
         "| `ZombieMode/` | 38 |",
         "| `Interactables/` | 23 |",
         "| `ModeE/` | 26 |",

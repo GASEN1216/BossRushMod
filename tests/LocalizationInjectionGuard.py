@@ -41,6 +41,10 @@ RE_ASSIGN_LITERAL = re.compile(r'\.DisplayNameRaw\s*=\s*"([^"]+)"\s*;')
 RE_CONST_STRING = re.compile(r'\bconst\s+string\s+([A-Za-z_]\w*)\s*=\s*"([^"]*)"')
 # 任意 Inject 系列调用（InjectLocalization / InjectModeFItemLoc / InjectXxxLocalization ...）
 RE_INJECT_CALL = re.compile(r"\bInject\w*\s*\(", re.M)
+# 新一代本地化文件（Codex / ModeH / PetNest 等）不再逐个 Inject(...) 调用，
+# 而是先往 Dictionary<string,string> 里塞键、最后一次性 InjectLocalizations(map)。
+# 这里把「字典索引赋值」也算作注入证据，否则这种写法会被误报成漏注入。
+RE_MAP_ASSIGN = re.compile(r"\w+\[\s*([^\]]+?)\s*\]\s*=", re.M)
 
 RE_STRING_LITERAL = re.compile(r'"([^"\\]*(?:\\.[^"\\]*)*)"')
 RE_QUALIFIED = re.compile(r"\b([A-Za-z_]\w*)\.([A-Za-z_]\w*)\b")
@@ -117,6 +121,15 @@ def main():
                 inject_qualified.add(owner + "." + member)
             for ident in RE_IDENT.findall(args):
                 idents.add(ident)
+        # 字典索引式注入：map[CodexBookConfig.LOC_KEY_DISPLAY] = displayName;
+        if "InjectLocalizations" in text or "SetOverrideText" in text:
+            for key_expr in RE_MAP_ASSIGN.findall(text):
+                for lit in RE_STRING_LITERAL.findall(key_expr):
+                    inject_literals.add(lit)
+                for owner, member in RE_QUALIFIED.findall(key_expr):
+                    inject_qualified.add(owner + "." + member)
+                for ident2 in RE_IDENT.findall(key_expr):
+                    idents.add(ident2)
         inject_idents_by_file[rel] = idents
 
     # ---- 收集 DisplayNameRaw 赋值并解析 key ----

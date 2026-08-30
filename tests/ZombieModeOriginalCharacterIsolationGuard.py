@@ -52,7 +52,7 @@ def main() -> int:
         if token not in helper:
             return fail("missing helper behavior -> " + token)
 
-    if "Utilities\\OriginalCharacterIsolationHelper.cs ^" not in compile_text:
+    if "Utilities\\OriginalCharacterIsolationHelper.cs" not in compile_text:
         return fail("compile_official.bat must include Utilities\\OriginalCharacterIsolationHelper.cs")
 
     print("ZombieModeOriginalCharacterIsolationGuard: PASS")

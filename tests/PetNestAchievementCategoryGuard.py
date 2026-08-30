@@ -28,8 +28,11 @@ from petnest_guard_util import (  # noqa: E402
 
 GUARD = "PetNestAchievementCategoryGuard"
 
-# 冻结顺序：既有七项 + 末尾追加的 Taming
-EXPECTED_ORDER = [
+# 冻结前缀：既有七项 + Taming（遗种巢）。
+# 本 guard 守的是「Taming 的 int 值不许漂移」，不是「Taming 永远是最后一项」——
+# 后续系统会继续往末尾追加（2026-08-30 已追加 Codex 图鉴）。断言因此改为：
+# 前缀必须逐字相等，且 Taming 之后只允许新增、不允许插入或重排。
+FROZEN_PREFIX = [
     "Basic", "Flawless", "Speedrun", "BossKill",
     "Cumulative", "Special", "Ultimate", "Taming",
 ]
@@ -58,11 +61,12 @@ def main():
         names = re.findall(r"^\s*(\w+)\s*,?\s*$", block.group(0), re.MULTILINE)
         # 去掉声明行与花括号残留
         names = [n for n in names if n not in ("public", "enum", "AchievementCategory")]
-        if names != EXPECTED_ORDER:
-            errors.append("[枚举稳定性] 分类顺序必须是 " + repr(EXPECTED_ORDER)
-                          + "，当前是 " + repr(names))
-        if names and names[-1] != "Taming":
-            errors.append("[枚举稳定性] 新分类必须追加到末尾（排序与存档依赖 int 值）")
+        if names[:len(FROZEN_PREFIX)] != FROZEN_PREFIX:
+            errors.append("[枚举稳定性] 冻结前缀必须是 " + repr(FROZEN_PREFIX)
+                          + "，当前是 " + repr(names[:len(FROZEN_PREFIX)])
+                          + "。老档里已解锁成就的分类靠 int 值定位，插入或重排会整体错位。")
+        if len(names) < len(FROZEN_PREFIX):
+            errors.append("[枚举稳定性] 分类被删除：" + repr(names))
 
     manager = read_text(repo_path("Achievement", "BossRushAchievementManager.cs"))
     if manager is None:

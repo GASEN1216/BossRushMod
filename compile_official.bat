@@ -57,703 +57,760 @@ if not exist "%DOTNET_SDK%\Roslyn\bincore\csc.dll" (
     if not defined BOSSRUSH_NO_PAUSE pause
     exit /b 1
 )
-dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" ^
-    /langversion:7.3 ^
-    %BOSSRUSH_DEFINE_ARGS% ^
-    /target:library ^
-    /out:"%OUTPUT_DIR%\%MOD_NAME%.dll" ^
-    /lib:"%GAME_PATH%\Duckov_Data\Managed" ^
-    /reference:UnityEngine.dll ^
-    /reference:UnityEngine.CoreModule.dll ^
-    /reference:UnityEngine.PhysicsModule.dll ^
-    /reference:UnityEngine.UI.dll ^
-    /reference:UnityEngine.JSONSerializeModule.dll ^
-    /reference:UnityEngine.AIModule.dll ^
-    /reference:UnityEngine.AudioModule.dll ^
-    /reference:UnityEngine.UnityWebRequestWWWModule.dll ^
-    /reference:UnityEngine.UnityWebRequestModule.dll ^
-    /reference:UnityEngine.UnityWebRequestAudioModule.dll ^
-    /reference:Eflatun.SceneReference.dll ^
-    /reference:Assembly-CSharp.dll ^
-    /reference:UnityEngine.UIModule.dll ^
-    /reference:UnityEngine.InputLegacyModule.dll ^
-    /reference:UnityEngine.IMGUIModule.dll ^
-    /reference:UnityEngine.ImageConversionModule.dll ^
-    /reference:UnityEngine.TextRenderingModule.dll ^
-    /reference:UnityEngine.AssetBundleModule.dll ^
-    /reference:UnityEngine.AnimationModule.dll ^
-    /reference:UnityEngine.ParticleSystemModule.dll ^
-    /reference:UnityEngine.VideoModule.dll ^
-    /reference:Unity.TextMeshPro.dll ^
-    /reference:ItemStatsSystem.dll ^
-    /reference:UniTask.dll ^
-    /reference:Sirenix.OdinInspector.Attributes.dll ^
-    /reference:TeamSoda.Duckov.Core.dll ^
-    /reference:TeamSoda.Duckov.Utilities.dll ^
-    /reference:AstarPathfindingProject.dll ^
-    /reference:PackageTools.dll ^
-    /reference:Plugins.dll ^
-    /reference:Drawing.dll ^
-    /reference:SodaLocalization.dll ^
-    /reference:NodeCanvas.dll ^
-    /reference:ParadoxNotion.dll ^
-    /reference:System.Core.dll ^
-    /reference:System.dll ^
-    /reference:mscorlib.dll ^
-    /reference:netstandard.dll ^
-    /reference:"%WORKSHOP_PATH%\%HARMONY_MOD_ID%\0Harmony.dll" ^
-    /nowarn:CS0436,CS0162,CS0414 ^
-    Localization\L10n.cs ^
-    Localization\LocalizationHelper.cs ^
-    Localization\LocalizationInjector.cs ^
-    Localization\LocalizationInjector_NpcUiAndItems.cs ^
-    Localization\EquipmentLocalization.cs ^
-    Localization\ModeHLocalization.cs ^
-    Localization\PetNestLocalization.cs ^
-    Localization\DailyReportLocalization.cs ^
-    Common\Lifecycle\IBossRushRuntimeModule.cs ^
-    Common\Lifecycle\SceneRuntimeContext.cs ^
-    Common\Lifecycle\BossRushRuntimeModuleHost.cs ^
-    Common\Lifecycle\BossRushRuntimeModuleBase.cs ^
-    Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs ^
-    Common\Lifecycle\BossRushRuntimeModuleRegistration.cs ^
-    Common\Events\BossRushEventBus.cs ^
-    Common\Infrastructure\BossRushEagerReflectionCache.cs ^
-    Common\UI\BossRushUI.cs ^
-    Common\Infrastructure\ObjectCache.cs ^
-    Common\Infrastructure\IHarmonyPatchGroup.cs ^
-    Common\Infrastructure\HarmonyPatchGroupRegistrar.cs ^
-    Common\Infrastructure\HarmonyBindingSelfCheck.cs ^
-    Common\Data\JsonDataRegistry.cs ^
-    Common\MapConfig\BossRushMapConfig.cs ^
-    Common\MapConfig\MapSpawnPointRegistry.cs ^
-    Common\Utils\ReflectionCache.cs ^
-    Common\Utils\NPCBubbleAnimator.cs ^
-    Common\Effects\RingParticleEffect.cs ^
-    Common\Effects\MeleeWeaponFxPolicy.cs ^
-    Common\Equipment\EquipmentAbilityConfig.cs ^
-    Common\Equipment\EquipmentAbilityAction.cs ^
-    Common\Equipment\EquipmentAbilityManager.cs ^
-    Common\Equipment\EquipmentEffectManager.cs ^
-    Common\Equipment\AbilitySystemHelper.cs ^
-    Common\Stats\RuntimeStatModifierTracker.cs ^
-    ModBehaviour.cs ^
-    ModConfigApi.cs ^
-    UIAndSigns\UIAndSigns.cs ^
-    UIAndSigns\BossRushInteractionScan.cs ^
-    UIAndSigns\UIAndSignsRuntimeBridges.cs ^
-    DebugAndTools\DebugAndTools.cs ^
-    DebugAndTools\DebugAndToolsPlacementAndInspection.cs ^
-    DebugAndTools\DebugAndToolsStaticCacheReset.cs ^
-    DebugAndTools\DebugToolsRuntimeModule.cs ^
-    DebugAndTools\DebugToolsRuntimeHooks.cs ^
-    DebugAndTools\MarriageTestDebugUI.cs ^
-    DebugAndTools\ItemSpawner.cs ^
-    DebugAndTools\F3DebugCheatMenu.cs ^
-    DebugAndTools\F3DebugCheatMenuUi.cs ^
-    DebugAndTools\F3DebugCheatMenuPlayerStats.cs ^
-    DebugAndTools\F3DebugCheatMenuActions.cs ^
-    DebugAndTools\NPCTeleportUI.cs ^
-    Integration\BossRushDynamicItemRegistry.cs ^
-    Integration\BossRushIntegration.cs ^
-    Integration\BossRushIntegration_StartAndScene.cs ^
-    Integration\IntegrationDeferredBootstrap.cs ^
-    Integration\BossRushIntegration_TravelAndSetup.cs ^
-    Integration\BossRushIntegration_MapObjectsAndDragonBreath.cs ^
-    Integration\Mutators\MutatorDefinitions.cs ^
-    Integration\Mutators\MutatorManager.cs ^
-    Integration\Mutators\MutatorUI.cs ^
-    Integration\Mutators\MutatorRuntimeBridge.cs ^
-    Integration\ZombieModeIntegration.cs ^
-    Integration\DeathWraith\DeathWraithSystem.cs ^
-    Integration\DeathWraith\DeathWraithRecording.cs ^
-    Integration\DeathWraith\DeathWraithOriginalDeadBodyBridge.cs ^
-    Integration\DeathWraith\DeathWraithSpawnFlow.cs ^
-    Integration\DeathWraith\DeathWraithCombatLoadout.cs ^
-    Integration\DeathWraith\DeathWraithLifecycleAndPersistence.cs ^
-    Patches\BaseHub\BaseHubShopAwakePatch.cs ^
-    Patches\BaseHub\BaseHubBoatPatch.cs ^
-    Patches\BaseHub\BaseHubPatchGroup.cs ^
-    Patches\Combat\CharacterOnDeadPatch.cs ^
-    Patches\Combat\BossLethalHealthProtectionPatch.cs ^
-    Patches\Combat\ProjectileHalfObstaclePatch.cs ^
-    Patches\Combat\CombatPatchGroup.cs ^
-    Patches\Death\DeadBodyAppendPatch.cs ^
-    Patches\Death\DeadBodySpawnPatch.cs ^
-    Patches\Death\TombLootboxPatch.cs ^
-    Patches\Death\DeadBodyTouchedPatch.cs ^
-    Patches\Death\DeathPatchGroup.cs ^
-    Patches\Economy\StockShopGetItemInstanceDirectPatch.cs ^
-    Patches\ItemStatsSystem\ItemAssetsCollectionDynamicRegistrationPatch.cs ^
-    Patches\UI\ItemUIUtilitiesElementFactorFormatPatch.cs ^
-    Integration\BirthdayCakeItem.cs ^
-    Integration\EquipmentFactory.cs ^
-    Integration\EquipmentFactory_ItemProcessing.cs ^
-    Integration\EquipmentFactoryStaticCacheReset.cs ^
-    Integration\EquipmentContentRegistry.cs ^
-    Integration\EquipmentRuntimeHooks.cs ^
-    Integration\IntegrationRuntimeHooks.cs ^
-    Integration\EquipmentHelper.cs ^
-    Integration\EquipmentHelperIcon.cs ^
-    Integration\Bonus\DragonSetBonus.cs ^
-    Integration\Bonus\DragonSetBonus_Dash.cs ^
-    Integration\Bonus\SetBonusManager.cs ^
-    Integration\Bonus\FrostSetBonus.cs ^
-    Integration\Bonus\ThunderSetBonus.cs ^
-    Integration\Bonus\SetBonusPlaceholderRegistry.cs ^
-    Integration\Config\DragonSetConfig.cs ^
-    Integration\Config\FlightTotemConfig.cs ^
-    Integration\Config\DragonKingSetConfig.cs ^
-    Integration\Config\FrostThunderSetConfig.cs ^
-    Utilities\Utilities.cs ^
-    Utilities\AlwaysOnRuntimeHooks.cs ^
-    Utilities\PlayerLifecycleRuntimeHooks.cs ^
-    Utilities\EntityModelFactory.cs ^
-    Utilities\SimpleJsonHelper.cs ^
-    Utilities\AwenLootSweepMath.cs ^
-    Utilities\VictoryRewardShadowMath.cs ^
-    Utilities\F3DebugCheatMath.cs ^
-    Utilities\ManagedBossSpawnContracts.cs ^
-    Utilities\ModBossPresetLookup.cs ^
-    Utilities\EnemySpawnCore.cs ^
-    Utilities\ZombieSpawnSanitizer.cs ^
-    Utilities\EnemyRecoveryMonitor.cs ^
-    Utilities\GameplayRuntimeHooks.cs ^
-    Utilities\ModeRuntimeHooks.cs ^
-    Utilities\SpawnPositionHelper.cs ^
-    Utilities\RunScopedRegistry.cs ^
-    Utilities\RuntimeScope.cs ^
-    Utilities\SceneRuntimeGate.cs ^
-    Utilities\SafeRuntime.cs ^
-    Utilities\SteamHelper.cs ^
-    Utilities\BossCleanupHelpers.cs ^
-    Utilities\InteractableLootboxInventoryHelper.cs ^
-    Utilities\OriginalCharacterIsolationHelper.cs ^
-    Utilities\OriginalExtractionPointIsolationHelper.cs ^
-    Utilities\ModeExtractionPointFactory.cs ^
-    Utilities\MapSelectionEntryInjectionHelper.cs ^
-    Config\Config.cs ^
-    Config\ConfigModeG.cs ^
-    Config\NPCSpawnConfig.cs ^
-    Config\LootBlacklistRegistry.cs ^
-    WavesArena\WavesArena.cs ^
-    WavesArena\WavesArenaEntryAndTeleport.cs ^
-    WavesArena\WavesArenaBossSpawning.cs ^
-    WavesArena\WavesArenaRuntimeModule.cs ^
-    WavesArena\WavesArenaRuntimeHooks.cs ^
-    WavesArena\BossRushEntryFlow.cs ^
-    WavesArena\WavesArenaEnemyMaintenance.cs ^
-    WavesArena\WavesArenaSpawnerControl.cs ^
-    LootAndRewards\LegacyBossLootProbabilityModel.cs ^
-    LootAndRewards\LootAndRewards.cs ^
-    LootAndRewards\LootAndRewardsStaticCacheReset.cs ^
-    LootAndRewards\LootAndRewardsInfiniteHell.cs ^
-    LootAndRewards\LootAndRewardsVictoryRewards.cs ^
-    LootAndRewards\LootAndRewardsRandomBossLoot.cs ^
-    LootAndRewards\LootAndRewardsSpecialLoot.cs ^
-    LootAndRewards\LootAndRewardsRuntimeHooks.cs ^
-    LootAndRewards\VictoryRewardShadowCrateController.cs ^
-    LootAndRewards\ModeEFLootboxTracker.cs ^
-    Interactables\BossRushInteractables.cs ^
-    Interactables\BossRushLootboxInteractables.cs ^
-    ModeD\ModeD.cs ^
-    ModeD\ModeDStaticCacheReset.cs ^
-    ModeD\ModeDRuntimeModule.cs ^
-    ModeD\ModeDEquipment.cs ^
-    ModeD\ModeDEquipment_StarterKit.cs ^
-    ModeD\ModeDWaves.cs ^
-    ModeD\ModeDInteractables.cs ^
-    ModeD\ModeDGlobalLoot.cs ^
-    ModeD\ModeDGlobalLootStaticCacheReset.cs ^
-    ModeE\ModeE.cs ^
-    ModeE\ModeEUiAndHealthBars.cs ^
-    ModeE\ModeEStartup.cs ^
-    ModeE\ModeELifecycle.cs ^
-    ModeE\ModeEIntegrityAndHelpers.cs ^
-    ModeE\ModeERuntimeModule.cs ^
-    ModeE\ModeERuntimeHooks.cs ^
-    ModeE\ModeEMerchant.cs ^
-    ModeE\ModeEMerchantSupportClasses.cs ^
-    ModeE\ModeELotteryAndHiring.cs ^
-    ModeE\ModeESpawnAllocation.cs ^
-    ModeE\ModeEBattle.cs ^
-    ModeE\ModeEBattle_ScalingAndRuntime.cs ^
-    ModeE\FactionFlagConfig.cs ^
-    ModeE\ModeEHarmonyPatch.cs ^
-    ModeE\RespawnItemConfig.cs ^
-    ModeE\ModeERespawnItems.cs ^
-    ModeE\RespawnItemUsage.cs ^
-    ModeF\ModeFModels.cs ^
-    ModeF\ModeFRuntimeModule.cs ^
-    ModeF\ModeFRuntimeHooks.cs ^
-    ModeF\ModeFEntry.cs ^
-    ModeF\ModeFPhases.cs ^
-    ModeF\ModeFBloodfire.cs ^
-    ModeF\ModeFBounty.cs ^
-    ModeG\ModeGEntry.cs ^
-    ModeG\ModeGAvailability.cs ^
-    ModeG\ModeGDeterministicRandom.cs ^
-    ModeG\ModeGStateModel.cs ^
-    ModeG\ModeGRunState.cs ^
-    ModeG\ModeGWavePlan.cs ^
-    ModeG\ModeGAdaptiveCombat.cs ^
-    ModeG\ModeGCombatTelemetry.cs ^
-    ModeG\ModeGWeaponScoringCompatibilityMatrix.cs ^
-    ModeG\ModeGDeathRouting.cs ^
-    ModeG\ModeGNemesisPersistence.cs ^
-    ModeG\ModeGProfilePersistence.cs ^
-    ModeG\ModeGPersistenceFlushCoordinator.cs ^
-    ModeG\ModeGRewardTransaction.cs ^
-    ModeG\ModeGMapSupportRegistry.cs ^
-    ModeG\ModeGFateContract.cs ^
-    ModeG\ModeGEncounterVariation.cs ^
-    ModeG\ModeGPresentationAssetCache.cs ^
-    ModeG\ModeGSpawnTransaction.cs ^
-    ModeG\ModeGCleanupController.cs ^
-    ModeG\ModeGRuntimeModule.cs ^
-    ModeG\ModeGRuntimeModule_PublicApiAndShutdown.cs ^
-    ModeG\ModeGRuntimeLifecycle.cs ^
-    ModeG\ModeGRuntimeBridge.cs ^
-    ModeG\ModeGHUD.cs ^
-    ModeG\ModeGRecapPanel.cs ^
-    ModeG\ModeGInteractable.cs ^
-    ModeH\ModeHArenaIsolationLease.cs ^
-    ModeH\ModeHAvailability.cs ^
-    ModeH\ModeHBattleSnapshot.cs ^
-    ModeH\ModeHCanonicalDigest.cs ^
-    ModeH\ModeHCombatControl.cs ^
-    ModeH\ModeHCombatTelemetry.cs ^
-    ModeH\ModeHCommandAdapters.cs ^
-    ModeH\ModeHCommandCompatibilityRegistry.cs ^
-    ModeH\ModeHCommandController.cs ^
-    ModeH\ModeHConfig.cs ^
-    ModeH\ModeHContentCatalog.cs ^
-    ModeH\ModeHContentCatalogParsers.cs ^
-    ModeH\ModeHContentModels.cs ^
-    ModeH\ModeHControlPointHarness.cs ^
-    ModeH\ModeHDeathSuppressionRegistry.cs ^
-    ModeH\ModeHDraftController.cs ^
-    ModeH\ModeHEncounterPlanner.cs ^
-    ModeH\ModeHEntry.cs ^
-    ModeH\ModeHEventRouter.cs ^
-    ModeH\ModeHHallOfFamePersistence.cs ^
-    ModeH\ModeHHarmonyPatches.cs ^
-    ModeH\ModeHInjuryAndScarSystem.cs ^
-    ModeH\ModeHInteractable.cs ^
-    ModeH\ModeHInventoryPersistenceBridge.cs ^
-    ModeH\ModeHItemTreeNormalizer.cs ^
-    ModeH\ModeHJsonValue.cs ^
-    ModeH\ModeHLoadoutKitApplicator.cs ^
-    ModeH\ModeHLoadoutKitRegistry.cs ^
-    ModeH\ModeHMapSupportRegistry.cs ^
-    ModeH\ModeHOddsController.cs ^
-    ModeH\ModeHPresentationAssetCache.cs ^
-    ModeH\ModeHPresetRegistry.cs ^
-    ModeH\ModeHProductionCertification.cs ^
-    ModeH\ModeHProfilePersistence.cs ^
-    ModeH\ModeHProfileRegistry.cs ^
-    ModeH\ModeHRecoveryPanel.cs ^
-    ModeH\ModeHRewardTransaction.cs ^
-    ModeH\ModeHRunState.cs ^
-    ModeH\ModeHRuntimeGates.cs ^
-    ModeH\ModeHRuntimeModule.cs ^
-    ModeH\ModeHRuntimeModule_SceneFlow.cs ^
-    ModeH\ModeHRuntimeModule_UiFlow.cs ^
-    ModeH\ModeHRuntimeModule_MatchFlow.cs ^
-    ModeH\ModeHRuntimeModule_SeasonFlow.cs ^
-    ModeH\ModeHSaveFlushCoordinator.cs ^
-    ModeH\ModeHSeasonRewardService.cs ^
-    ModeH\ModeHSeedStream.cs ^
-    ModeH\ModeHSpawnBridge.cs ^
-    ModeH\ModeHSpawnTransaction.cs ^
-    ModeH\ModeHSpectatorLease.cs ^
-    ModeH\ModeHStandInPerformer.cs ^
-    ModeH\ModeHStateDtos.cs ^
-    ModeH\ModeHStateMachine.cs ^
-    ModeH\ModeHStateModel.cs ^
-    ModeH\ModeHTransferMarket.cs ^
-    ModeH\ModeHUI.cs ^
-    ModeH\ModeHUIPages.cs ^
-    ModeH\ModeHVirtualStakeController.cs ^
-    ModeH\ModeHWarehouseStakeJournal.cs ^
-    ModeF\ModeFBounty_EquipmentAndLoot.cs ^
-    ModeF\ModeFRespawn.cs ^
-    ModeF\ModeFExtraction.cs ^
-    ModeF\ModeFFortifications.cs ^
-    ModeF\ModeFFortifications_RuntimePlacement.cs ^
-    ModeF\ModeFFortifications_RepairRewardsCleanup.cs ^
-    ModeF\ModeFItemUsageAndTriggers.cs ^
-    ModeF\ModeFUIStaticCacheReset.cs ^
-    ModeF\ModeFUI.cs ^
-    ModeF\ModeFUI_BountyRadarAndHealthBars.cs ^
-    ModeF\ModeFUI_KillRewardBubble.cs ^
-    ModeF\ModeFUI_BountyRadarAssets.cs ^
-    ModeF\ModeFMerchant.cs ^
-    ZombieMode\ZombieModeModels.cs ^
-    ZombieMode\ZombieModeTuning.cs ^
-    ZombieMode\ZombieModeRuntimeModule.cs ^
-    ZombieMode\ZombieModeRuntimeHooks.cs ^
-    ZombieMode\ZombieModeEntry.cs ^
-    ZombieMode\ZombieModeEntry_StarterLoadout.cs ^
-    ZombieMode\ZombieModeMapSelection.cs ^
-    ZombieMode\ZombieModeMapSelectionHelper.cs ^
-    ZombieMode\ZombieModeInventoryTransfer.cs ^
-    ZombieMode\ZombieModeMapIsolation.cs ^
-    ZombieMode\ZombieModePollution.cs ^
-    ZombieMode\ZombieModePollution_RuntimeSkills.cs ^
-    ZombieMode\ZombieModePollution_RuntimeComponents.cs ^
-    ZombieMode\ZombieModeBossController.cs ^
-    ZombieMode\ZombieModePlayerSlowRuntime.cs ^
-    ZombieMode\ZombieModeSpawner.cs ^
-    ZombieMode\ZombieModeWaveController.cs ^
-    ZombieMode\ZombieModeEnemyRuntime.cs ^
-    ZombieMode\ZombieModeRewards.cs ^
-    ZombieMode\ZombieModeRewardCatalogAndSelection.cs ^
-    ZombieMode\ZombieModeRewardPreparationDuration.cs ^
-    ZombieMode\ZombieModeRewardEffectsAndNpc.cs ^
-    ZombieMode\ZombieModeBackpackJunkRecycle.cs ^
-    ZombieMode\ZombieModeRewardItemGrants.cs ^
-    ZombieMode\ZombieModeRewardNpcServices.cs ^
-    ZombieMode\ZombieModeRewardEffects.cs ^
-    ZombieMode\ZombieModeRewardOptionCore.cs ^
-    ZombieMode\ZombieModeRewardProjectileSpread.cs ^
-    ZombieMode\ZombieModeRewardRuntimeModifiers.cs ^
-    ZombieMode\ZombieModeRewardTriggerEffects.cs ^
-    ZombieMode\ZombieModeRewardProjectilePatch.cs ^
-    ZombieMode\ZombieModeDropsAndPerformance.cs ^
-    ZombieMode\ZombiePurificationPointController.cs ^
-    ZombieMode\ZombieModeSafeZoneController.cs ^
-    ZombieMode\ZombieModeExtractionController.cs ^
-    ZombieMode\ZombieModeHudController.cs ^
-    ZombieMode\ZombieModeUIHelper.cs ^
-    ZombieMode\ZombieModeCleanup.cs ^
-    ZombieMode\ZombieModeDebug.cs ^
-    ZombieMode\ZombieModeNpcCatalog.cs ^
-    ZombieMode\ZombieModeCashInvestmentView.cs ^
-    BossFilter\BossFilter.cs ^
-    BossFilter\BossFilterUi.cs ^
-    MapSelection\BossRushMapSelectionHelper.cs ^
-    MapSelection\MapThumbnailCache.cs ^
-    Integration\DragonDescendant\DragonDescendantConfig.cs ^
-    Integration\DragonDescendant\DragonDescendantAbilities.cs ^
-    Integration\DragonDescendant\DragonDescendantAbilities_ProjectilesAndGrenades.cs ^
-    Integration\DragonDescendant\DragonDescendantAbilities_ResurrectionAndPhase.cs ^
-    Integration\DragonDescendant\DragonDescendantAbilities_Phase2Combat.cs ^
-    Integration\DragonDescendant\DragonDescendantAbilities_CollisionAndIce.cs ^
-    Integration\DragonDescendant\DragonDescendantBoss.cs ^
-    Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs ^
-    Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs ^
-    Integration\DragonDescendant\DragonDescendantBoss_ModeGAdapter.cs ^
-    Integration\DragonDescendant\DragonBreathConfig.cs ^
-    Integration\DragonDescendant\DragonBreathBuffHandler.cs ^
-    Integration\DragonDescendant\DragonBreathWeaponConfig.cs ^
-    Integration\DragonDescendant\DragonBreathWeaponConfig_FireEffects.cs ^
-    Integration\DragonKing\DragonKingConfig.cs ^
-    Integration\DragonKing\DragonKingAssetManager.cs ^
-    Integration\DragonKing\DragonKingAbilityController.cs ^
-    Integration\DragonKing\DragonKingAbilityController_AttackFlow.cs ^
-    Integration\DragonKing\DragonKingAbilityController_ProjectileAndMovement.cs ^
-    Integration\DragonKing\DragonKingAbilityController_SpecialAttacks.cs ^
-    Integration\DragonKing\DragonKingAbilityController_ChildProtection.cs ^
-    Integration\DragonKing\DragonKingAbilityHelpers.cs ^
-    Integration\DragonKing\DragonKingShockwaveEffect.cs ^
-    Integration\DragonKing\DragonKingBoss.cs ^
-    Integration\DragonKing\DragonKingBoss_ModeGAdapter.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdIds.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdConfig.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdRuntime.cs ^
-    Integration\DragonKing\Weapons\DragonFlameMarkTracker.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunConfig.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunProfiles.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunProjectileZones.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunRuntime_ProjectilesAndPatches.cs ^
-    Integration\DragonKing\Weapons\DragonKingBossGunRuntimeStaticCacheReset.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdAction.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdAbilityManager.cs ^
-    Integration\DragonKing\Weapons\FenHuangComboManager.cs ^
-    Integration\DragonKing\Weapons\FenHuangComboPatchesAndFx.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdBootstrap.cs ^
-    Integration\DragonKing\Weapons\FenHuangHalberdWeaponConfig.cs ^
-    Integration\PhantomWitch\PhantomWitchConfig.cs ^
-    Integration\PhantomWitch\PhantomWitchPerformancePolicy.cs ^
-    Integration\PhantomWitch\PhantomWitchAmbientPresence.cs ^
-    Integration\PhantomWitch\PhantomWitchVfxRedesign.cs ^
-    Integration\PhantomWitch\PhantomWitchVfxRedesign_EmittersAndTextures.cs ^
-    Integration\PhantomWitch\PhantomWitchVfxRedesign_RuntimeComponents.cs ^
-    Integration\PhantomWitch\PhantomWitchVfxRedesignStaticCacheReset.cs ^
-    Integration\PhantomWitch\PhantomWitchAssetManager.cs ^
-    Integration\PhantomWitch\PhantomWitchAssetManager_RuntimeComponents.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_PackageScheduler.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_StealthAndAttacks.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_Minions.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_RuntimeTicks.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_PhaseAndLifecycle.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_MovementAndDamage.cs ^
-    Integration\PhantomWitch\PhantomWitchAbilityController_CleanupAndTelemetry.cs ^
-    Integration\PhantomWitch\PhantomWitchBossCurseRealmRuntime.cs ^
-    Integration\PhantomWitch\PhantomWitchBoss.cs ^
-    Integration\PhantomWitch\PhantomWitchBoss_ModeGAdapter.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheIds.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheConfig.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheSwingFx.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheWeaponConfig.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheAction.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheAction_RuntimeComponents.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheAbilityManager.cs ^
-    Integration\PhantomWitch\PhantomWitchCurseSweatVfx.cs ^
-    Integration\PhantomWitch\PhantomWitchScytheBootstrap.cs ^
-    Integration\Frostmourne\FrostmourneIds.cs ^
-    Integration\Frostmourne\FrostmourneConfig.cs ^
-    Integration\Frostmourne\FrostmourneWeaponConfig.cs ^
-    Integration\Frostmourne\FrostmourneSwingFx.cs ^
-    Integration\Frostmourne\FrostmourneAction.cs ^
-    Integration\Frostmourne\FrostmourneAbilityManager.cs ^
-    Integration\Frostmourne\FrostmourneBootstrap.cs ^
-    Integration\NewWeapons\Common\NewWeaponIds.cs ^
-    Integration\NewWeapons\Common\NewWeaponBootstrap.cs ^
-    Integration\NewWeapons\Common\NewWeaponPlaceholderRegistry.cs ^
-    Integration\NewWeapons\ViperDagger\ViperDaggerConfig.cs ^
-    Integration\NewWeapons\ViperDagger\ViperDaggerWeaponConfig.cs ^
-    Integration\NewWeapons\ViperDagger\ViperDaggerRuntime.cs ^
-    Integration\NewWeapons\SummonStaff\SummonStaffConfig.cs ^
-    Integration\NewWeapons\SummonStaff\SummonStaffWeaponConfig.cs ^
-    Integration\NewWeapons\SummonStaff\SummonStaffAction.cs ^
-    Integration\NewWeapons\SummonStaff\SummonStaffManager.cs ^
-    Integration\NewWeapons\EnergyShield\EnergyShieldConfig.cs ^
-    Integration\NewWeapons\EnergyShield\EnergyShieldWeaponConfig.cs ^
-    Integration\NewWeapons\EnergyShield\EnergyShieldRuntime.cs ^
-    Integration\NewWeapons\FrostSpear\FrostSpearConfig.cs ^
-    Integration\NewWeapons\FrostSpear\FrostSpearWeaponConfig.cs ^
-    Integration\NewWeapons\ThunderRing\ThunderRingConfig.cs ^
-    Integration\NewWeapons\ThunderRing\ThunderRingWeaponConfig.cs ^
-    Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs ^
-    Integration\FlightTotem\FlightConfig.cs ^
-    Integration\FlightTotem\FlightTotemFactory.cs ^
-    Integration\FlightTotem\FlightTotemBootstrap.cs ^
-    Integration\FlightTotem\FlightAbilityManager.cs ^
-    Integration\FlightTotem\FlightTotemEffectManager.cs ^
-    Integration\FlightTotem\FlightCloudEffect.cs ^
-    Integration\FlightTotem\CA_Flight.cs ^
-    Integration\Constants\GoblinNPCConstants.cs ^
-    Integration\Constants\GoblinMovementConstants.cs ^
-    Integration\Constants\NurseNPCConstants.cs ^
-    Utilities\AssetBundleUnloadHelper.cs ^
-    Integration\Utils\NPCExceptionHandler.cs ^
-    Integration\Utils\NPCAssetBundleHelper.cs ^
-    Integration\Utils\NPCUIAssetCache.cs ^
-    Integration\Utils\NPCHeartBubbleHelper.cs ^
-    Integration\Utils\NPCNameTagHelper.cs ^
-    Integration\Utils\NPCPathingHelper.cs ^
-    Integration\Utils\NPCFollowMovementBase.cs ^
-    Integration\Utils\NPCInteractionGroupHelper.cs ^
-    Integration\Utils\NPCCommonUtils.cs ^
-    Integration\NPCs\Common\NPCModuleRegistry.cs ^
-    Integration\NPCs\Common\CommonNpcRuntimeModule.cs ^
-    Integration\NPCs\Common\CommonNpcRuntimeHooks.cs ^
-    Integration\NPCs\Courier\CourierNPC.cs ^
-    Integration\NPCs\Courier\CourierNPCController.cs ^
-    Integration\NPCs\Courier\CourierMovement.cs ^
-    Integration\NPCs\Courier\CourierInteractables.cs ^
-    Integration\NPCs\Courier\CourierLootSweepRunner.cs ^
-    Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs ^
-    Integration\NPCs\Courier\CourierPaidLootSweepService.cs ^
-    Integration\NPCs\Goblin\GoblinNPC.cs ^
-    Integration\NPCs\Goblin\GoblinNPCController.cs ^
-    Integration\NPCs\Goblin\GoblinNPCAnimation.cs ^
-    Integration\NPCs\Goblin\GoblinNPCDialogue.cs ^
-    Integration\NPCs\Goblin\GoblinNPCReward.cs ^
-    Integration\NPCs\Goblin\GoblinMovement.cs ^
-    Integration\NPCs\Courier\CourierService.cs ^
-    Integration\NPCs\Courier\CourierService_Buttons.cs ^
-    Integration\NPCs\Courier\CourierService_CloseAndCleanup.cs ^
-    Integration\NPCs\Courier\DepositDataManager.cs ^
-    Integration\NPCs\Courier\StorageDepositService.cs ^
-    Integration\NPCs\Courier\CourierPaidLootSweepAccountingAndSort.cs ^
-    Integration\NPCs\Courier\StorageDepositLifecycle.cs ^
-    Integration\NPCs\Courier\StorageDepositTransactions.cs ^
-    Integration\NPCs\Courier\StorageDepositSingleRetrieve.cs ^
-    Integration\NPCs\Courier\StorageDepositInventoryQuickDeposit.cs ^
-    Integration\NPCs\Courier\StorageDepositBulkActions.cs ^
-    Integration\NPCs\Nurse\NurseNPC.cs ^
-    Integration\NPCs\Nurse\NurseNPCController.cs ^
-    Integration\NPCs\Nurse\NurseMovement.cs ^
-    Integration\NPCs\Nurse\NurseHealingService.cs ^
-    Integration\NPCs\Nurse\NurseHealInteractable.cs ^
-    Integration\NPCs\Nurse\NurseInteractable.cs ^
-    Integration\Reforge\GoblinReforgeInteractable.cs ^
-    Integration\Reforge\PropertyLockSystem.cs ^
-    Integration\Reforge\ColdQuenchFluidConfig.cs ^
-    Integration\Reforge\ReforgeSystem.cs ^
-    Integration\Reforge\ReforgeSystem_ApplyAndResults.cs ^
-    Integration\Reforge\ReforgeUIManager.cs ^
-    Integration\Reforge\ReforgeUIManager_ComparisonAndState.cs ^
-    Integration\Reforge\ReforgeUIManager_RuntimeAndCleanup.cs ^
-    Integration\Reforge\ReforgeDataPersistence.cs ^
-    Integration\Reforge\ReforgeDataPersistenceCleanup.cs ^
-    Integration\Reforge\CustomItemRuntimeStateHelperStaticCacheReset.cs ^
-    Integration\ItemFactory.cs ^
-    Integration\Items\AwenDepositTokenConfig.cs ^
-    Integration\Items\AwenDepositTokenUsage.cs ^
-    Integration\Items\ItemContentRegistry.cs ^
-    Integration\Items\RelicEggConfig.cs ^
-    Integration\Items\AwenLootSweepTokenConfig.cs ^
-    Integration\Items\AwenLootSweepTokenUsage.cs ^
-    Integration\Items\BrickStoneConfig.cs ^
-    Integration\Items\BrickStoneUsage.cs ^
-    Integration\Items\DiamondConfig.cs ^
-    Integration\Items\DiamondUsage.cs ^
-    Integration\Items\DiamondRingConfig.cs ^
-    Integration\Items\CalmingDropsConfig.cs ^
-    Integration\Items\CalmingDropsUsage.cs ^
-    Integration\Items\PeaceCharmConfig.cs ^
-    Integration\Items\PeaceCharmRuntime.cs ^
-    Integration\Items\DingdangDrawingConfig.cs ^
-    Integration\Items\DingdangDrawingUsage.cs ^
-    Integration\Items\WildHornConfig.cs ^
-    Integration\Items\WildHornUsage.cs ^
-    Integration\Items\BloodhuntTransponderConfig.cs ^
-    Integration\Items\FateEchoRelicConfig.cs ^
-    Integration\Items\ModeFItemConfigHelper.cs ^
-    Integration\Items\FoldableCoverPackConfig.cs ^
-    Integration\Items\ReinforcedRoadblockPackConfig.cs ^
-    Integration\Items\BarbedWirePackConfig.cs ^
-    Integration\Items\EmergencyRepairSprayConfig.cs ^
-    Integration\Items\ZombieTideInvitationConfig.cs ^
-    Integration\Items\ZombieTideInvitationUsage.cs ^
-    Integration\Items\ZombieTideBeaconConfig.cs ^
-    Integration\Items\ZombieTideBeaconUsage.cs ^
-    Integration\Items\PortableSafeZoneDeviceConfig.cs ^
-    Integration\Items\PortableSafeZoneDeviceUsage.cs ^
-    Integration\UI\ImageViewerUI.cs ^
-    Integration\Affinity\INPCAffinityConfig.cs ^
-    Integration\Affinity\AffinityConfig.cs ^
-    Integration\Affinity\AffinityData.cs ^
-    Integration\Affinity\AffinityJsonSerializer.cs ^
-    Integration\Affinity\AffinityManager.cs ^
-    Integration\Affinity\AffinityManagerPersistenceAndDecay.cs ^
-    Integration\Affinity\AffinityManagerStaticCacheReset.cs ^
-    Integration\Affinity\Core\INPCGiftConfig.cs ^
-    Integration\Affinity\Core\INPCDialogueConfig.cs ^
-    Integration\Affinity\Core\INPCRelationshipDialogueConfig.cs ^
-    Integration\Affinity\Core\INPCController.cs ^
-    Integration\Affinity\Core\INPCShopConfig.cs ^
-    Integration\Affinity\Core\INPCGiftContainerConfig.cs ^
-    Integration\Affinity\Core\NPCGiftContainerConfigDefaults.cs ^
-    Integration\Affinity\Services\NPCGiftContainerService.cs ^
-    Integration\Affinity\Systems\NPCGiftSystem.cs ^
-    Integration\Affinity\Systems\NPCDialogueSystem.cs ^
-    Integration\Affinity\Systems\NPCShopSystem.cs ^
-    Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs ^
-    Integration\Affinity\AffinityRuntimeHooks.cs ^
-    Integration\Affinity\Interactables\NPCInteractableBase.cs ^
-    Integration\Affinity\Interactables\NPCGiftInteractable.cs ^
-    Integration\Affinity\Interactables\NPCShopInteractable.cs ^
-    Integration\Affinity\NPCs\GoblinAffinityConfig.cs ^
-    Integration\Affinity\NPCs\NurseAffinityConfig.cs ^
-    Integration\Affinity\AffinityUIManager.cs ^
-    Integration\Dialogue\DialogueManager.cs ^
-    Integration\Dialogue\DialogueActorFactory.cs ^
-    Integration\WikiBookItem.cs ^
-    Integration\WikiUIManager.cs ^
-    Integration\WikiContentManager.cs ^
-    Integration\ReverseScale\ReverseScaleConfig.cs ^
-    Integration\ReverseScale\ReverseScaleEffectManager.cs ^
-    Integration\ReverseScale\ReverseScaleAbilityManager.cs ^
-    Integration\ReverseScale\ReverseScaleBootstrap.cs ^
-    Integration\ReverseScale\ReverseScaleFactory.cs ^
-    Injection\Injection.cs ^
-    Achievement\AchievementRuntimeModule.cs ^
-    Achievement\AchievementRuntimeHooks.cs ^
-    Achievement\BossRushAchievementDef.cs ^
-    Achievement\AchievementTracker.cs ^
-    Achievement\BossRushAchievementManager.cs ^
-    Achievement\AchievementIconLoader.cs ^
-    Achievement\SteamAchievementPopup.cs ^
-    Achievement\AchievementTriggers.cs ^
-    Achievement\AchievementUIStrings.cs ^
-    Achievement\AchievementEntryUI.cs ^
-    Achievement\AchievementView.cs ^
-    Achievement\AchievementMedalConfig.cs ^
-    Achievement\AchievementMedalItem.cs ^
-    Audio\BossRushAudioHooks.cs ^
-    Audio\BossRushAudioManager.cs ^
-    DebugAndTools\InventoryInspector.cs ^
-    WavesArena\InfiniteHellCashMagnet.cs ^
-    Integration\Wedding\NPCMarriageSystem.cs ^
-    Integration\Wedding\WeddingChapelInteractable.cs ^
-    Integration\Wedding\WeddingBuildingInjector.cs ^
-    Integration\Wedding\WeddingBuildingInjector_DataEventsAndRuntime.cs ^
-    Integration\Wedding\WeddingModBehaviourBridge.cs ^
-    Integration\WishFountain\WishFountainService.cs ^
-    Integration\WishFountain\WishFountainConfigAndValidation.cs ^
-    Integration\WishFountain\WishFountainRewardPoolBuild.cs ^
-    Integration\WishFountain\WishFountainRewardSelection.cs ^
-    Integration\WishFountain\WishFountainSendPipeline.cs ^
-    Integration\WishFountain\WishFountainFetchPipeline.cs ^
-    Integration\WishFountain\WishFountainInteractable.cs ^
-    Integration\WishFountain\WishFountainDanmakuView.cs ^
-    Integration\WishFountain\WishFountainUI.cs ^
-    Integration\WishFountain\WishFountainUIBridge.cs ^
-    Integration\WishFountain\WishFountainRewardAnimationView.cs ^
-    Integration\WishFountain\WishFountainBuilder.cs ^
-    Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs ^
-    PetNest\PetNestModels.cs ^
-    PetNest\PetNestTuning.cs ^
-    PetNest\PetNestLineageCatalog.cs ^
-    Config\ConfigPetNest.cs ^
-    PetNest\PetNestJson.cs ^
-    PetNest\PetNestPersistenceCodec.cs ^
-    PetNest\PetNestPersistence.cs ^
-    PetNest\PetNestSaveCoordinator.cs ^
-    PetNest\PetNestService.cs ^
-    PetNest\PetNestDropService.cs ^
-    PetNest\PetNestHatchService.cs ^
-    PetNest\PetNestModeGate.cs ^
-    PetNest\PetNestCompanionRuntime.cs ^
-    PetNest\PetNestDeathSuppressionRegistry.cs ^
-    PetNest\PetNestDownedHandler.cs ^
-    PetNest\PetNestExpeditionService.cs ^
-    PetNest\PetNestUIBridge.cs ^
-    PetNest\PetNestInteractable.cs ^
-    PetNest\PetNestBuilder.cs ^
-    PetNest\PetNestBuilder_DataEventsAndRuntime.cs ^
-    PetNest\PetNestUIPages.cs ^
-    PetNest\PetNestUI.cs ^
-    PetNest\PetNestHatchRevealView.cs ^
-    PetNest\PetNestExpeditionRevealView.cs ^
-    PetNest\PetNestCompanionHudView.cs ^
-    PetNest\PetNestMuseumStats.cs ^
-    PetNest\PetNestBaseIdleSpawner.cs ^
-    PetNest\PetNestRenameModal.cs ^
-    PetNest\PetNestReleaseConfirmModal.cs ^
-    PetNest\PetNestProgressionService.cs ^
-    PetNest\PetNestRuntimeModule.cs ^
-    PetNest\PetNestCompanionAgent.cs ^
-    PetNest\PetNestCompanionSpawner.cs ^
-    PetNest\PetNestPetProxyBridge.cs ^
-    PetNest\PetNestDebugProbe.cs ^
-    Config\ConfigItemIds.cs ^
-    Config\ConfigDailyReport.cs ^
-    Integration\DailyReport\DailyReportTuning.cs ^
-    Integration\DailyReport\DailyReportModels.cs ^
-    Integration\DailyReport\DailyReportCodec.cs ^
-    Integration\DailyReport\DailyReportPersistence.cs ^
-    Integration\DailyReport\DailyReportSaveCoordinator.cs ^
-    Integration\DailyReport\DailyReportRewards.cs ^
-    Integration\DailyReport\DailyReportBounty.cs ^
-    Integration\DailyReport\DailyReportService.cs ^
-    Integration\DailyReport\DailyReportContent.cs ^
-    Integration\DailyReport\DailyReportStatsCollector.cs ^
-    Integration\DailyReport\DailyReportInteractable.cs ^
-    Integration\DailyReport\DailyReportUI.cs ^
-    Integration\DailyReport\DailyReportUIBridge.cs ^
-    Integration\DailyReport\DailyReportMailboxBuilder.cs ^
-    Integration\DailyReport\DailyReportMailboxRuntime.cs ^
-    Integration\DailyReport\DailyReportRuntimeModule.cs
+:: ---------------------------------------------------------------------------
+:: 编译参数改经 Roslyn 响应文件传递（csc @file），不再拼成一条超长命令行。
+:: 原因：源码清单增长到约 690 个文件后，展开后的命令行超过进程创建上限，csc 根本
+:: 不会被启动，只报 "The system cannot execute the specified program" 并以 60 退出，
+:: 看起来像编译失败、却没有任何 C# 错误行，极难排查。响应文件没有这个长度限制。
+:: 写法要点（都踩过坑，勿随手改）：
+::   1) 用「括号块 + 块尾一次重定向」。不要用行首重定向（>>"file" echo ...），
+::      它在本机 cmd 上直接报 ERROR_INVALID_NAME(123)；也不要用行尾重定向，
+::      那会让 .cs 后面跟上 >>，OfficialCompileListFileExistenceGuard 的正则就扫不到。
+::   2) 用 echo( 而不是 echo：未开启 DEV 时 %BOSSRUSH_DEFINE_ARGS% 为空，
+::      echo 会写出 "ECHO is on." 污染响应文件，echo( 则正确写出空行。
+::   3) 块内含括号的路径（如 C:\Program Files (x86)\...）已实测安全，因为在引号内。
+:: 源码清单仍逐条显式列出（不用通配符），编译清单守卫照常双向生效。
+:: ---------------------------------------------------------------------------
+(
+echo(/langversion:7.3
+echo(%BOSSRUSH_DEFINE_ARGS%
+echo(/target:library
+echo(/out:"%OUTPUT_DIR%\%MOD_NAME%.dll"
+echo(/lib:"%GAME_PATH%\Duckov_Data\Managed"
+echo(/reference:UnityEngine.dll
+echo(/reference:UnityEngine.CoreModule.dll
+echo(/reference:UnityEngine.PhysicsModule.dll
+echo(/reference:UnityEngine.UI.dll
+echo(/reference:UnityEngine.JSONSerializeModule.dll
+echo(/reference:UnityEngine.AIModule.dll
+echo(/reference:UnityEngine.AudioModule.dll
+echo(/reference:UnityEngine.UnityWebRequestWWWModule.dll
+echo(/reference:UnityEngine.UnityWebRequestModule.dll
+echo(/reference:UnityEngine.UnityWebRequestAudioModule.dll
+echo(/reference:Eflatun.SceneReference.dll
+echo(/reference:Assembly-CSharp.dll
+echo(/reference:UnityEngine.UIModule.dll
+echo(/reference:UnityEngine.InputLegacyModule.dll
+echo(/reference:UnityEngine.IMGUIModule.dll
+echo(/reference:UnityEngine.ImageConversionModule.dll
+echo(/reference:UnityEngine.TextRenderingModule.dll
+echo(/reference:UnityEngine.AssetBundleModule.dll
+echo(/reference:UnityEngine.AnimationModule.dll
+echo(/reference:UnityEngine.ParticleSystemModule.dll
+echo(/reference:UnityEngine.VideoModule.dll
+echo(/reference:Unity.TextMeshPro.dll
+echo(/reference:ItemStatsSystem.dll
+echo(/reference:UniTask.dll
+echo(/reference:Sirenix.OdinInspector.Attributes.dll
+echo(/reference:TeamSoda.Duckov.Core.dll
+echo(/reference:TeamSoda.Duckov.Utilities.dll
+echo(/reference:AstarPathfindingProject.dll
+echo(/reference:PackageTools.dll
+echo(/reference:Plugins.dll
+echo(/reference:Drawing.dll
+echo(/reference:SodaLocalization.dll
+echo(/reference:NodeCanvas.dll
+echo(/reference:ParadoxNotion.dll
+echo(/reference:System.Core.dll
+echo(/reference:System.dll
+echo(/reference:mscorlib.dll
+echo(/reference:netstandard.dll
+echo(/reference:"%WORKSHOP_PATH%\%HARMONY_MOD_ID%\0Harmony.dll"
+echo(/nowarn:CS0436,CS0162,CS0414
+echo(Localization\L10n.cs
+echo(Localization\LocalizationHelper.cs
+echo(Localization\LocalizationInjector.cs
+echo(Localization\LocalizationInjector_NpcUiAndItems.cs
+echo(Localization\EquipmentLocalization.cs
+echo(Localization\ModeHLocalization.cs
+echo(Localization\PetNestLocalization.cs
+echo(Localization\DailyReportLocalization.cs
+echo(Common\Lifecycle\IBossRushRuntimeModule.cs
+echo(Common\Lifecycle\SceneRuntimeContext.cs
+echo(Common\Lifecycle\BossRushRuntimeModuleHost.cs
+echo(Common\Lifecycle\BossRushRuntimeModuleBase.cs
+echo(Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs
+echo(Common\Lifecycle\BossRushRuntimeModuleRegistration.cs
+echo(Common\Events\BossRushEventBus.cs
+echo(Common\Infrastructure\BossRushEagerReflectionCache.cs
+echo(Common\UI\BossRushUI.cs
+echo(Common\Infrastructure\ObjectCache.cs
+echo(Common\Infrastructure\IHarmonyPatchGroup.cs
+echo(Common\Infrastructure\HarmonyPatchGroupRegistrar.cs
+echo(Common\Infrastructure\HarmonyBindingSelfCheck.cs
+echo(Common\Data\JsonDataRegistry.cs
+echo(Common\MapConfig\BossRushMapConfig.cs
+echo(Common\MapConfig\MapSpawnPointRegistry.cs
+echo(Common\Utils\ReflectionCache.cs
+echo(Common\Utils\NPCBubbleAnimator.cs
+echo(Common\Effects\RingParticleEffect.cs
+echo(Common\Effects\MeleeWeaponFxPolicy.cs
+echo(Common\Equipment\EquipmentAbilityConfig.cs
+echo(Common\Equipment\EquipmentAbilityAction.cs
+echo(Common\Equipment\EquipmentAbilityManager.cs
+echo(Common\Equipment\EquipmentEffectManager.cs
+echo(Common\Equipment\AbilitySystemHelper.cs
+echo(Common\Stats\RuntimeStatModifierTracker.cs
+echo(ModBehaviour.cs
+echo(ModConfigApi.cs
+echo(UIAndSigns\UIAndSigns.cs
+echo(UIAndSigns\BossRushInteractionScan.cs
+echo(UIAndSigns\UIAndSignsRuntimeBridges.cs
+echo(DebugAndTools\DebugAndTools.cs
+echo(DebugAndTools\DebugAndToolsPlacementAndInspection.cs
+echo(DebugAndTools\DebugAndToolsStaticCacheReset.cs
+echo(DebugAndTools\DebugToolsRuntimeModule.cs
+echo(DebugAndTools\DebugToolsRuntimeHooks.cs
+echo(DebugAndTools\MarriageTestDebugUI.cs
+echo(DebugAndTools\ItemSpawner.cs
+echo(DebugAndTools\F3DebugCheatMenu.cs
+echo(DebugAndTools\F3DebugCheatMenuUi.cs
+echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
+echo(DebugAndTools\F3DebugCheatMenuActions.cs
+echo(DebugAndTools\NPCTeleportUI.cs
+echo(Integration\BossRushDynamicItemRegistry.cs
+echo(Integration\BossRushIntegration.cs
+echo(Integration\BossRushIntegration_StartAndScene.cs
+echo(Integration\IntegrationDeferredBootstrap.cs
+echo(Integration\BossRushIntegration_TravelAndSetup.cs
+echo(Integration\BossRushIntegration_MapObjectsAndDragonBreath.cs
+echo(Integration\Mutators\MutatorDefinitions.cs
+echo(Integration\Mutators\MutatorManager.cs
+echo(Integration\Mutators\MutatorUI.cs
+echo(Integration\Mutators\MutatorRuntimeBridge.cs
+echo(Integration\ZombieModeIntegration.cs
+echo(Integration\DeathWraith\DeathWraithSystem.cs
+echo(Integration\DeathWraith\DeathWraithRecording.cs
+echo(Integration\DeathWraith\DeathWraithOriginalDeadBodyBridge.cs
+echo(Integration\DeathWraith\DeathWraithSpawnFlow.cs
+echo(Integration\DeathWraith\DeathWraithCombatLoadout.cs
+echo(Integration\DeathWraith\DeathWraithLifecycleAndPersistence.cs
+echo(Patches\BaseHub\BaseHubShopAwakePatch.cs
+echo(Patches\BaseHub\BaseHubBoatPatch.cs
+echo(Patches\BaseHub\BaseHubPatchGroup.cs
+echo(Patches\Combat\CharacterOnDeadPatch.cs
+echo(Patches\Combat\BossLethalHealthProtectionPatch.cs
+echo(Patches\Combat\ProjectileHalfObstaclePatch.cs
+echo(Patches\Combat\CombatPatchGroup.cs
+echo(Patches\Death\DeadBodyAppendPatch.cs
+echo(Patches\Death\DeadBodySpawnPatch.cs
+echo(Patches\Death\TombLootboxPatch.cs
+echo(Patches\Death\DeadBodyTouchedPatch.cs
+echo(Patches\Death\DeathPatchGroup.cs
+echo(Patches\Economy\StockShopGetItemInstanceDirectPatch.cs
+echo(Patches\ItemStatsSystem\ItemAssetsCollectionDynamicRegistrationPatch.cs
+echo(Patches\UI\ItemUIUtilitiesElementFactorFormatPatch.cs
+echo(Integration\BirthdayCakeItem.cs
+echo(Integration\EquipmentFactory.cs
+echo(Integration\EquipmentFactory_ItemProcessing.cs
+echo(Integration\EquipmentFactoryStaticCacheReset.cs
+echo(Integration\EquipmentContentRegistry.cs
+echo(Integration\EquipmentRuntimeHooks.cs
+echo(Integration\IntegrationRuntimeHooks.cs
+echo(Integration\EquipmentHelper.cs
+echo(Integration\EquipmentHelperIcon.cs
+echo(Integration\Bonus\DragonSetBonus.cs
+echo(Integration\Bonus\DragonSetBonus_Dash.cs
+echo(Integration\Bonus\SetBonusManager.cs
+echo(Integration\Bonus\FrostSetBonus.cs
+echo(Integration\Bonus\ThunderSetBonus.cs
+echo(Integration\Bonus\SetBonusPlaceholderRegistry.cs
+echo(Integration\Config\DragonSetConfig.cs
+echo(Integration\Config\FlightTotemConfig.cs
+echo(Integration\Config\DragonKingSetConfig.cs
+echo(Integration\Config\FrostThunderSetConfig.cs
+echo(Utilities\Utilities.cs
+echo(Utilities\AlwaysOnRuntimeHooks.cs
+echo(Utilities\PlayerLifecycleRuntimeHooks.cs
+echo(Utilities\EntityModelFactory.cs
+echo(Utilities\SimpleJsonHelper.cs
+echo(Utilities\AwenLootSweepMath.cs
+echo(Utilities\VictoryRewardShadowMath.cs
+echo(Utilities\F3DebugCheatMath.cs
+echo(Utilities\ManagedBossSpawnContracts.cs
+echo(Utilities\ModBossPresetLookup.cs
+echo(Utilities\EnemySpawnCore.cs
+echo(Utilities\ZombieSpawnSanitizer.cs
+echo(Utilities\EnemyRecoveryMonitor.cs
+echo(Utilities\GameplayRuntimeHooks.cs
+echo(Utilities\ModeRuntimeHooks.cs
+echo(Utilities\SpawnPositionHelper.cs
+echo(Utilities\RunScopedRegistry.cs
+echo(Utilities\RuntimeScope.cs
+echo(Utilities\SceneRuntimeGate.cs
+echo(Utilities\SafeRuntime.cs
+echo(Utilities\SteamHelper.cs
+echo(Utilities\BossCleanupHelpers.cs
+echo(Utilities\InteractableLootboxInventoryHelper.cs
+echo(Utilities\OriginalCharacterIsolationHelper.cs
+echo(Utilities\OriginalExtractionPointIsolationHelper.cs
+echo(Utilities\ModeExtractionPointFactory.cs
+echo(Utilities\MapSelectionEntryInjectionHelper.cs
+echo(Config\Config.cs
+echo(Config\ConfigModeG.cs
+echo(Config\NPCSpawnConfig.cs
+echo(Config\LootBlacklistRegistry.cs
+echo(WavesArena\WavesArena.cs
+echo(WavesArena\WavesArenaEntryAndTeleport.cs
+echo(WavesArena\WavesArenaBossSpawning.cs
+echo(WavesArena\WavesArenaRuntimeModule.cs
+echo(WavesArena\WavesArenaRuntimeHooks.cs
+echo(WavesArena\BossRushEntryFlow.cs
+echo(WavesArena\WavesArenaEnemyMaintenance.cs
+echo(WavesArena\WavesArenaSpawnerControl.cs
+echo(LootAndRewards\LegacyBossLootProbabilityModel.cs
+echo(LootAndRewards\LootAndRewards.cs
+echo(LootAndRewards\LootAndRewardsStaticCacheReset.cs
+echo(LootAndRewards\LootAndRewardsInfiniteHell.cs
+echo(LootAndRewards\LootAndRewardsVictoryRewards.cs
+echo(LootAndRewards\LootAndRewardsRandomBossLoot.cs
+echo(LootAndRewards\LootAndRewardsSpecialLoot.cs
+echo(LootAndRewards\LootAndRewardsRuntimeHooks.cs
+echo(LootAndRewards\VictoryRewardShadowCrateController.cs
+echo(LootAndRewards\ModeEFLootboxTracker.cs
+echo(Interactables\BossRushInteractables.cs
+echo(Interactables\BossRushLootboxInteractables.cs
+echo(ModeD\ModeD.cs
+echo(ModeD\ModeDStaticCacheReset.cs
+echo(ModeD\ModeDRuntimeModule.cs
+echo(ModeD\ModeDEquipment.cs
+echo(ModeD\ModeDEquipment_StarterKit.cs
+echo(ModeD\ModeDWaves.cs
+echo(ModeD\ModeDInteractables.cs
+echo(ModeD\ModeDGlobalLoot.cs
+echo(ModeD\ModeDGlobalLootStaticCacheReset.cs
+echo(ModeE\ModeE.cs
+echo(ModeE\ModeEUiAndHealthBars.cs
+echo(ModeE\ModeEStartup.cs
+echo(ModeE\ModeELifecycle.cs
+echo(ModeE\ModeEIntegrityAndHelpers.cs
+echo(ModeE\ModeERuntimeModule.cs
+echo(ModeE\ModeERuntimeHooks.cs
+echo(ModeE\ModeEMerchant.cs
+echo(ModeE\ModeEMerchantSupportClasses.cs
+echo(ModeE\ModeELotteryAndHiring.cs
+echo(ModeE\ModeESpawnAllocation.cs
+echo(ModeE\ModeEBattle.cs
+echo(ModeE\ModeEBattle_ScalingAndRuntime.cs
+echo(ModeE\FactionFlagConfig.cs
+echo(ModeE\ModeEHarmonyPatch.cs
+echo(ModeE\RespawnItemConfig.cs
+echo(ModeE\ModeERespawnItems.cs
+echo(ModeE\RespawnItemUsage.cs
+echo(ModeF\ModeFModels.cs
+echo(ModeF\ModeFRuntimeModule.cs
+echo(ModeF\ModeFRuntimeHooks.cs
+echo(ModeF\ModeFEntry.cs
+echo(ModeF\ModeFPhases.cs
+echo(ModeF\ModeFBloodfire.cs
+echo(ModeF\ModeFBounty.cs
+echo(ModeG\ModeGEntry.cs
+echo(ModeG\ModeGAvailability.cs
+echo(ModeG\ModeGDeterministicRandom.cs
+echo(ModeG\ModeGStateModel.cs
+echo(ModeG\ModeGRunState.cs
+echo(ModeG\ModeGWavePlan.cs
+echo(ModeG\ModeGAdaptiveCombat.cs
+echo(ModeG\ModeGCombatTelemetry.cs
+echo(ModeG\ModeGWeaponScoringCompatibilityMatrix.cs
+echo(ModeG\ModeGDeathRouting.cs
+echo(ModeG\ModeGNemesisPersistence.cs
+echo(ModeG\ModeGProfilePersistence.cs
+echo(ModeG\ModeGPersistenceFlushCoordinator.cs
+echo(ModeG\ModeGRewardTransaction.cs
+echo(ModeG\ModeGMapSupportRegistry.cs
+echo(ModeG\ModeGFateContract.cs
+echo(ModeG\ModeGEncounterVariation.cs
+echo(ModeG\ModeGPresentationAssetCache.cs
+echo(ModeG\ModeGSpawnTransaction.cs
+echo(ModeG\ModeGCleanupController.cs
+echo(ModeG\ModeGRuntimeModule.cs
+echo(ModeG\ModeGRuntimeModule_PublicApiAndShutdown.cs
+echo(ModeG\ModeGRuntimeLifecycle.cs
+echo(ModeG\ModeGRuntimeBridge.cs
+echo(ModeG\ModeGHUD.cs
+echo(ModeG\ModeGRecapPanel.cs
+echo(ModeG\ModeGInteractable.cs
+echo(ModeH\ModeHArenaIsolationLease.cs
+echo(ModeH\ModeHAvailability.cs
+echo(ModeH\ModeHBattleSnapshot.cs
+echo(ModeH\ModeHCanonicalDigest.cs
+echo(ModeH\ModeHCombatControl.cs
+echo(ModeH\ModeHCombatTelemetry.cs
+echo(ModeH\ModeHCommandAdapters.cs
+echo(ModeH\ModeHCommandCompatibilityRegistry.cs
+echo(ModeH\ModeHCommandController.cs
+echo(ModeH\ModeHConfig.cs
+echo(ModeH\ModeHContentCatalog.cs
+echo(ModeH\ModeHContentCatalogParsers.cs
+echo(ModeH\ModeHContentModels.cs
+echo(ModeH\ModeHControlPointHarness.cs
+echo(ModeH\ModeHDeathSuppressionRegistry.cs
+echo(ModeH\ModeHDraftController.cs
+echo(ModeH\ModeHEncounterPlanner.cs
+echo(ModeH\ModeHEntry.cs
+echo(ModeH\ModeHEventRouter.cs
+echo(ModeH\ModeHHallOfFamePersistence.cs
+echo(ModeH\ModeHHarmonyPatches.cs
+echo(ModeH\ModeHInjuryAndScarSystem.cs
+echo(ModeH\ModeHInteractable.cs
+echo(ModeH\ModeHInventoryPersistenceBridge.cs
+echo(ModeH\ModeHItemTreeNormalizer.cs
+echo(ModeH\ModeHJsonValue.cs
+echo(ModeH\ModeHLoadoutKitApplicator.cs
+echo(ModeH\ModeHLoadoutKitRegistry.cs
+echo(ModeH\ModeHMapSupportRegistry.cs
+echo(ModeH\ModeHOddsController.cs
+echo(ModeH\ModeHPresentationAssetCache.cs
+echo(ModeH\ModeHPresetRegistry.cs
+echo(ModeH\ModeHProductionCertification.cs
+echo(ModeH\ModeHProfilePersistence.cs
+echo(ModeH\ModeHProfileRegistry.cs
+echo(ModeH\ModeHRecoveryPanel.cs
+echo(ModeH\ModeHRewardTransaction.cs
+echo(ModeH\ModeHRunState.cs
+echo(ModeH\ModeHRuntimeGates.cs
+echo(ModeH\ModeHRuntimeModule.cs
+echo(ModeH\ModeHRuntimeModule_SceneFlow.cs
+echo(ModeH\ModeHRuntimeModule_UiFlow.cs
+echo(ModeH\ModeHRuntimeModule_MatchFlow.cs
+echo(ModeH\ModeHRuntimeModule_SeasonFlow.cs
+echo(ModeH\ModeHSaveFlushCoordinator.cs
+echo(ModeH\ModeHSeasonRewardService.cs
+echo(ModeH\ModeHSeedStream.cs
+echo(ModeH\ModeHSpawnBridge.cs
+echo(ModeH\ModeHSpawnTransaction.cs
+echo(ModeH\ModeHSpectatorLease.cs
+echo(ModeH\ModeHStandInPerformer.cs
+echo(ModeH\ModeHStateDtos.cs
+echo(ModeH\ModeHStateMachine.cs
+echo(ModeH\ModeHStateModel.cs
+echo(ModeH\ModeHTransferMarket.cs
+echo(ModeH\ModeHUI.cs
+echo(ModeH\ModeHUIPages.cs
+echo(ModeH\ModeHVirtualStakeController.cs
+echo(ModeH\ModeHWarehouseStakeJournal.cs
+echo(ModeF\ModeFBounty_EquipmentAndLoot.cs
+echo(ModeF\ModeFRespawn.cs
+echo(ModeF\ModeFExtraction.cs
+echo(ModeF\ModeFFortifications.cs
+echo(ModeF\ModeFFortifications_RuntimePlacement.cs
+echo(ModeF\ModeFFortifications_RepairRewardsCleanup.cs
+echo(ModeF\ModeFItemUsageAndTriggers.cs
+echo(ModeF\ModeFUIStaticCacheReset.cs
+echo(ModeF\ModeFUI.cs
+echo(ModeF\ModeFUI_BountyRadarAndHealthBars.cs
+echo(ModeF\ModeFUI_KillRewardBubble.cs
+echo(ModeF\ModeFUI_BountyRadarAssets.cs
+echo(ModeF\ModeFMerchant.cs
+echo(ZombieMode\ZombieModeModels.cs
+echo(ZombieMode\ZombieModeTuning.cs
+echo(ZombieMode\ZombieModeRuntimeModule.cs
+echo(ZombieMode\ZombieModeRuntimeHooks.cs
+echo(ZombieMode\ZombieModeEntry.cs
+echo(ZombieMode\ZombieModeEntry_StarterLoadout.cs
+echo(ZombieMode\ZombieModeMapSelection.cs
+echo(ZombieMode\ZombieModeMapSelectionHelper.cs
+echo(ZombieMode\ZombieModeInventoryTransfer.cs
+echo(ZombieMode\ZombieModeMapIsolation.cs
+echo(ZombieMode\ZombieModePollution.cs
+echo(ZombieMode\ZombieModePollution_RuntimeSkills.cs
+echo(ZombieMode\ZombieModePollution_RuntimeComponents.cs
+echo(ZombieMode\ZombieModeBossController.cs
+echo(ZombieMode\ZombieModePlayerSlowRuntime.cs
+echo(ZombieMode\ZombieModeSpawner.cs
+echo(ZombieMode\ZombieModeWaveController.cs
+echo(ZombieMode\ZombieModeEnemyRuntime.cs
+echo(ZombieMode\ZombieModeRewards.cs
+echo(ZombieMode\ZombieModeRewardCatalogAndSelection.cs
+echo(ZombieMode\ZombieModeRewardPreparationDuration.cs
+echo(ZombieMode\ZombieModeRewardEffectsAndNpc.cs
+echo(ZombieMode\ZombieModeBackpackJunkRecycle.cs
+echo(ZombieMode\ZombieModeRewardItemGrants.cs
+echo(ZombieMode\ZombieModeRewardNpcServices.cs
+echo(ZombieMode\ZombieModeRewardEffects.cs
+echo(ZombieMode\ZombieModeRewardOptionCore.cs
+echo(ZombieMode\ZombieModeRewardProjectileSpread.cs
+echo(ZombieMode\ZombieModeRewardRuntimeModifiers.cs
+echo(ZombieMode\ZombieModeRewardTriggerEffects.cs
+echo(ZombieMode\ZombieModeRewardProjectilePatch.cs
+echo(ZombieMode\ZombieModeDropsAndPerformance.cs
+echo(ZombieMode\ZombiePurificationPointController.cs
+echo(ZombieMode\ZombieModeSafeZoneController.cs
+echo(ZombieMode\ZombieModeExtractionController.cs
+echo(ZombieMode\ZombieModeHudController.cs
+echo(ZombieMode\ZombieModeUIHelper.cs
+echo(ZombieMode\ZombieModeCleanup.cs
+echo(ZombieMode\ZombieModeDebug.cs
+echo(ZombieMode\ZombieModeNpcCatalog.cs
+echo(ZombieMode\ZombieModeCashInvestmentView.cs
+echo(BossFilter\BossFilter.cs
+echo(BossFilter\BossFilterUi.cs
+echo(MapSelection\BossRushMapSelectionHelper.cs
+echo(MapSelection\MapThumbnailCache.cs
+echo(Integration\DragonDescendant\DragonDescendantConfig.cs
+echo(Integration\DragonDescendant\DragonDescendantAbilities.cs
+echo(Integration\DragonDescendant\DragonDescendantAbilities_ProjectilesAndGrenades.cs
+echo(Integration\DragonDescendant\DragonDescendantAbilities_ResurrectionAndPhase.cs
+echo(Integration\DragonDescendant\DragonDescendantAbilities_Phase2Combat.cs
+echo(Integration\DragonDescendant\DragonDescendantAbilities_CollisionAndIce.cs
+echo(Integration\DragonDescendant\DragonDescendantBoss.cs
+echo(Integration\DragonDescendant\DragonDescendantBoss_RuntimeAndCleanup.cs
+echo(Integration\DragonDescendant\DragonDescendantBossStaticCacheReset.cs
+echo(Integration\DragonDescendant\DragonDescendantBoss_ModeGAdapter.cs
+echo(Integration\DragonDescendant\DragonBreathConfig.cs
+echo(Integration\DragonDescendant\DragonBreathBuffHandler.cs
+echo(Integration\DragonDescendant\DragonBreathWeaponConfig.cs
+echo(Integration\DragonDescendant\DragonBreathWeaponConfig_FireEffects.cs
+echo(Integration\DragonKing\DragonKingConfig.cs
+echo(Integration\DragonKing\DragonKingAssetManager.cs
+echo(Integration\DragonKing\DragonKingAbilityController.cs
+echo(Integration\DragonKing\DragonKingAbilityController_AttackFlow.cs
+echo(Integration\DragonKing\DragonKingAbilityController_ProjectileAndMovement.cs
+echo(Integration\DragonKing\DragonKingAbilityController_SpecialAttacks.cs
+echo(Integration\DragonKing\DragonKingAbilityController_ChildProtection.cs
+echo(Integration\DragonKing\DragonKingAbilityHelpers.cs
+echo(Integration\DragonKing\DragonKingShockwaveEffect.cs
+echo(Integration\DragonKing\DragonKingBoss.cs
+echo(Integration\DragonKing\DragonKingBoss_ModeGAdapter.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdIds.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdConfig.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdRuntime.cs
+echo(Integration\DragonKing\Weapons\DragonFlameMarkTracker.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunConfig.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunProfiles.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileZones.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime_ProjectilesAndPatches.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntimeStaticCacheReset.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdAction.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdAbilityManager.cs
+echo(Integration\DragonKing\Weapons\FenHuangComboManager.cs
+echo(Integration\DragonKing\Weapons\FenHuangComboPatchesAndFx.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdBootstrap.cs
+echo(Integration\DragonKing\Weapons\FenHuangHalberdWeaponConfig.cs
+echo(Integration\PhantomWitch\PhantomWitchConfig.cs
+echo(Integration\PhantomWitch\PhantomWitchPerformancePolicy.cs
+echo(Integration\PhantomWitch\PhantomWitchAmbientPresence.cs
+echo(Integration\PhantomWitch\PhantomWitchVfxRedesign.cs
+echo(Integration\PhantomWitch\PhantomWitchVfxRedesign_EmittersAndTextures.cs
+echo(Integration\PhantomWitch\PhantomWitchVfxRedesign_RuntimeComponents.cs
+echo(Integration\PhantomWitch\PhantomWitchVfxRedesignStaticCacheReset.cs
+echo(Integration\PhantomWitch\PhantomWitchAssetManager.cs
+echo(Integration\PhantomWitch\PhantomWitchAssetManager_RuntimeComponents.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_PackageScheduler.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_StealthAndAttacks.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_Minions.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_RuntimeTicks.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_PhaseAndLifecycle.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_MovementAndDamage.cs
+echo(Integration\PhantomWitch\PhantomWitchAbilityController_CleanupAndTelemetry.cs
+echo(Integration\PhantomWitch\PhantomWitchBossCurseRealmRuntime.cs
+echo(Integration\PhantomWitch\PhantomWitchBoss.cs
+echo(Integration\PhantomWitch\PhantomWitchBoss_ModeGAdapter.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheIds.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheConfig.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheSwingFx.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheWeaponConfig.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheAction.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheAction_RuntimeComponents.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheAbilityManager.cs
+echo(Integration\PhantomWitch\PhantomWitchCurseSweatVfx.cs
+echo(Integration\PhantomWitch\PhantomWitchScytheBootstrap.cs
+echo(Integration\Frostmourne\FrostmourneIds.cs
+echo(Integration\Frostmourne\FrostmourneConfig.cs
+echo(Integration\Frostmourne\FrostmourneWeaponConfig.cs
+echo(Integration\Frostmourne\FrostmourneSwingFx.cs
+echo(Integration\Frostmourne\FrostmourneAction.cs
+echo(Integration\Frostmourne\FrostmourneAbilityManager.cs
+echo(Integration\Frostmourne\FrostmourneBootstrap.cs
+echo(Integration\NewWeapons\Common\NewWeaponIds.cs
+echo(Integration\NewWeapons\Common\NewWeaponBootstrap.cs
+echo(Integration\NewWeapons\Common\NewWeaponPlaceholderRegistry.cs
+echo(Integration\NewWeapons\ViperDagger\ViperDaggerConfig.cs
+echo(Integration\NewWeapons\ViperDagger\ViperDaggerWeaponConfig.cs
+echo(Integration\NewWeapons\ViperDagger\ViperDaggerRuntime.cs
+echo(Integration\NewWeapons\SummonStaff\SummonStaffConfig.cs
+echo(Integration\NewWeapons\SummonStaff\SummonStaffWeaponConfig.cs
+echo(Integration\NewWeapons\SummonStaff\SummonStaffAction.cs
+echo(Integration\NewWeapons\SummonStaff\SummonStaffManager.cs
+echo(Integration\NewWeapons\EnergyShield\EnergyShieldConfig.cs
+echo(Integration\NewWeapons\EnergyShield\EnergyShieldWeaponConfig.cs
+echo(Integration\NewWeapons\EnergyShield\EnergyShieldRuntime.cs
+echo(Integration\NewWeapons\FrostSpear\FrostSpearConfig.cs
+echo(Integration\NewWeapons\FrostSpear\FrostSpearWeaponConfig.cs
+echo(Integration\NewWeapons\ThunderRing\ThunderRingConfig.cs
+echo(Integration\NewWeapons\ThunderRing\ThunderRingWeaponConfig.cs
+echo(Integration\NewWeapons\ThunderRing\ThunderRingRuntime.cs
+echo(Integration\FlightTotem\FlightConfig.cs
+echo(Integration\FlightTotem\FlightTotemFactory.cs
+echo(Integration\FlightTotem\FlightTotemBootstrap.cs
+echo(Integration\FlightTotem\FlightAbilityManager.cs
+echo(Integration\FlightTotem\FlightTotemEffectManager.cs
+echo(Integration\FlightTotem\FlightCloudEffect.cs
+echo(Integration\FlightTotem\CA_Flight.cs
+echo(Integration\Constants\GoblinNPCConstants.cs
+echo(Integration\Constants\GoblinMovementConstants.cs
+echo(Integration\Constants\NurseNPCConstants.cs
+echo(Utilities\AssetBundleUnloadHelper.cs
+echo(Integration\Utils\NPCExceptionHandler.cs
+echo(Integration\Utils\NPCAssetBundleHelper.cs
+echo(Integration\Utils\NPCUIAssetCache.cs
+echo(Integration\Utils\NPCHeartBubbleHelper.cs
+echo(Integration\Utils\NPCNameTagHelper.cs
+echo(Integration\Utils\NPCPathingHelper.cs
+echo(Integration\Utils\NPCFollowMovementBase.cs
+echo(Integration\Utils\NPCInteractionGroupHelper.cs
+echo(Integration\Utils\NPCCommonUtils.cs
+echo(Integration\NPCs\Common\NPCModuleRegistry.cs
+echo(Integration\NPCs\Common\CommonNpcRuntimeModule.cs
+echo(Integration\NPCs\Common\CommonNpcRuntimeHooks.cs
+echo(Integration\NPCs\Courier\CourierNPC.cs
+echo(Integration\NPCs\Courier\CourierNPCController.cs
+echo(Integration\NPCs\Courier\CourierMovement.cs
+echo(Integration\NPCs\Courier\CourierInteractables.cs
+echo(Integration\NPCs\Courier\CourierLootSweepRunner.cs
+echo(Integration\NPCs\Courier\OriginalConfirmDialogueAdapter.cs
+echo(Integration\NPCs\Courier\CourierPaidLootSweepService.cs
+echo(Integration\NPCs\Goblin\GoblinNPC.cs
+echo(Integration\NPCs\Goblin\GoblinNPCController.cs
+echo(Integration\NPCs\Goblin\GoblinNPCAnimation.cs
+echo(Integration\NPCs\Goblin\GoblinNPCDialogue.cs
+echo(Integration\NPCs\Goblin\GoblinNPCReward.cs
+echo(Integration\NPCs\Goblin\GoblinMovement.cs
+echo(Integration\NPCs\Courier\CourierService.cs
+echo(Integration\NPCs\Courier\CourierService_Buttons.cs
+echo(Integration\NPCs\Courier\CourierService_CloseAndCleanup.cs
+echo(Integration\NPCs\Courier\DepositDataManager.cs
+echo(Integration\NPCs\Courier\StorageDepositService.cs
+echo(Integration\NPCs\Courier\CourierPaidLootSweepAccountingAndSort.cs
+echo(Integration\NPCs\Courier\StorageDepositLifecycle.cs
+echo(Integration\NPCs\Courier\StorageDepositTransactions.cs
+echo(Integration\NPCs\Courier\StorageDepositSingleRetrieve.cs
+echo(Integration\NPCs\Courier\StorageDepositInventoryQuickDeposit.cs
+echo(Integration\NPCs\Courier\StorageDepositBulkActions.cs
+echo(Integration\NPCs\Nurse\NurseNPC.cs
+echo(Integration\NPCs\Nurse\NurseNPCController.cs
+echo(Integration\NPCs\Nurse\NurseMovement.cs
+echo(Integration\NPCs\Nurse\NurseHealingService.cs
+echo(Integration\NPCs\Nurse\NurseHealInteractable.cs
+echo(Integration\NPCs\Nurse\NurseInteractable.cs
+echo(Integration\Reforge\GoblinReforgeInteractable.cs
+echo(Integration\Reforge\PropertyLockSystem.cs
+echo(Integration\Reforge\ColdQuenchFluidConfig.cs
+echo(Integration\Reforge\ReforgeSystem.cs
+echo(Integration\Reforge\ReforgeSystem_ApplyAndResults.cs
+echo(Integration\Reforge\ReforgeUIManager.cs
+echo(Integration\Reforge\ReforgeUIManager_ComparisonAndState.cs
+echo(Integration\Reforge\ReforgeUIManager_RuntimeAndCleanup.cs
+echo(Integration\Reforge\ReforgeDataPersistence.cs
+echo(Integration\Reforge\ReforgeDataPersistenceCleanup.cs
+echo(Integration\Reforge\CustomItemRuntimeStateHelperStaticCacheReset.cs
+echo(Integration\ItemFactory.cs
+echo(Integration\Items\AwenDepositTokenConfig.cs
+echo(Integration\Items\AwenDepositTokenUsage.cs
+echo(Integration\Items\ItemContentRegistry.cs
+echo(Integration\Items\RelicEggConfig.cs
+echo(Integration\Items\AwenLootSweepTokenConfig.cs
+echo(Integration\Items\AwenLootSweepTokenUsage.cs
+echo(Integration\Items\BrickStoneConfig.cs
+echo(Integration\Items\BrickStoneUsage.cs
+echo(Integration\Items\DiamondConfig.cs
+echo(Integration\Items\DiamondUsage.cs
+echo(Integration\Items\DiamondRingConfig.cs
+echo(Integration\Items\CalmingDropsConfig.cs
+echo(Integration\Items\CalmingDropsUsage.cs
+echo(Integration\Items\PeaceCharmConfig.cs
+echo(Integration\Items\PeaceCharmRuntime.cs
+echo(Integration\Items\DingdangDrawingConfig.cs
+echo(Integration\Items\DingdangDrawingUsage.cs
+echo(Integration\Items\WildHornConfig.cs
+echo(Integration\Items\WildHornUsage.cs
+echo(Integration\Items\BloodhuntTransponderConfig.cs
+echo(Integration\Items\FateEchoRelicConfig.cs
+echo(Integration\Items\ModeFItemConfigHelper.cs
+echo(Integration\Items\FoldableCoverPackConfig.cs
+echo(Integration\Items\ReinforcedRoadblockPackConfig.cs
+echo(Integration\Items\BarbedWirePackConfig.cs
+echo(Integration\Items\EmergencyRepairSprayConfig.cs
+echo(Integration\Items\ZombieTideInvitationConfig.cs
+echo(Integration\Items\ZombieTideInvitationUsage.cs
+echo(Integration\Items\ZombieTideBeaconConfig.cs
+echo(Integration\Items\ZombieTideBeaconUsage.cs
+echo(Integration\Items\PortableSafeZoneDeviceConfig.cs
+echo(Integration\Items\PortableSafeZoneDeviceUsage.cs
+echo(Integration\UI\ImageViewerUI.cs
+echo(Integration\Affinity\INPCAffinityConfig.cs
+echo(Integration\Affinity\AffinityConfig.cs
+echo(Integration\Affinity\AffinityData.cs
+echo(Integration\Affinity\AffinityJsonSerializer.cs
+echo(Integration\Affinity\AffinityManager.cs
+echo(Integration\Affinity\AffinityManagerPersistenceAndDecay.cs
+echo(Integration\Affinity\AffinityManagerStaticCacheReset.cs
+echo(Integration\Affinity\Core\INPCGiftConfig.cs
+echo(Integration\Affinity\Core\INPCDialogueConfig.cs
+echo(Integration\Affinity\Core\INPCRelationshipDialogueConfig.cs
+echo(Integration\Affinity\Core\INPCController.cs
+echo(Integration\Affinity\Core\INPCShopConfig.cs
+echo(Integration\Affinity\Core\INPCGiftContainerConfig.cs
+echo(Integration\Affinity\Core\NPCGiftContainerConfigDefaults.cs
+echo(Integration\Affinity\Services\NPCGiftContainerService.cs
+echo(Integration\Affinity\Systems\NPCGiftSystem.cs
+echo(Integration\Affinity\Systems\NPCDialogueSystem.cs
+echo(Integration\Affinity\Systems\NPCShopSystem.cs
+echo(Integration\Affinity\Systems\NPCAffinityInteractionHelper.cs
+echo(Integration\Affinity\AffinityRuntimeHooks.cs
+echo(Integration\Affinity\Interactables\NPCInteractableBase.cs
+echo(Integration\Affinity\Interactables\NPCGiftInteractable.cs
+echo(Integration\Affinity\Interactables\NPCShopInteractable.cs
+echo(Integration\Affinity\NPCs\GoblinAffinityConfig.cs
+echo(Integration\Affinity\NPCs\NurseAffinityConfig.cs
+echo(Integration\Affinity\AffinityUIManager.cs
+echo(Integration\Dialogue\DialogueManager.cs
+echo(Integration\Dialogue\DialogueActorFactory.cs
+echo(Integration\WikiBookItem.cs
+echo(Integration\WikiUIManager.cs
+echo(Integration\WikiContentManager.cs
+echo(Integration\ReverseScale\ReverseScaleConfig.cs
+echo(Integration\ReverseScale\ReverseScaleEffectManager.cs
+echo(Integration\ReverseScale\ReverseScaleAbilityManager.cs
+echo(Integration\ReverseScale\ReverseScaleBootstrap.cs
+echo(Integration\ReverseScale\ReverseScaleFactory.cs
+echo(Injection\Injection.cs
+echo(Achievement\AchievementRuntimeModule.cs
+echo(Achievement\AchievementRuntimeHooks.cs
+echo(Achievement\BossRushAchievementDef.cs
+echo(Achievement\AchievementTracker.cs
+echo(Achievement\BossRushAchievementManager.cs
+echo(Achievement\AchievementIconLoader.cs
+echo(Achievement\SteamAchievementPopup.cs
+echo(Achievement\AchievementTriggers.cs
+echo(Achievement\AchievementUIStrings.cs
+echo(Achievement\AchievementEntryUI.cs
+echo(Achievement\AchievementView.cs
+echo(Achievement\AchievementMedalConfig.cs
+echo(Achievement\AchievementMedalItem.cs
+echo(Audio\BossRushAudioHooks.cs
+echo(Audio\BossRushAudioManager.cs
+echo(DebugAndTools\InventoryInspector.cs
+echo(WavesArena\InfiniteHellCashMagnet.cs
+echo(Integration\Wedding\NPCMarriageSystem.cs
+echo(Integration\Wedding\WeddingChapelInteractable.cs
+echo(Integration\Wedding\WeddingBuildingInjector.cs
+echo(Integration\Wedding\WeddingBuildingInjector_DataEventsAndRuntime.cs
+echo(Integration\Wedding\WeddingModBehaviourBridge.cs
+echo(Integration\WishFountain\WishFountainService.cs
+echo(Integration\WishFountain\WishFountainConfigAndValidation.cs
+echo(Integration\WishFountain\WishFountainRewardPoolBuild.cs
+echo(Integration\WishFountain\WishFountainRewardSelection.cs
+echo(Integration\WishFountain\WishFountainSendPipeline.cs
+echo(Integration\WishFountain\WishFountainFetchPipeline.cs
+echo(Integration\WishFountain\WishFountainInteractable.cs
+echo(Integration\WishFountain\WishFountainDanmakuView.cs
+echo(Integration\WishFountain\WishFountainUI.cs
+echo(Integration\WishFountain\WishFountainUIBridge.cs
+echo(Integration\WishFountain\WishFountainRewardAnimationView.cs
+echo(Integration\WishFountain\WishFountainBuilder.cs
+echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
+echo(PetNest\PetNestModels.cs
+echo(PetNest\PetNestTuning.cs
+echo(PetNest\PetNestLineageCatalog.cs
+echo(Config\ConfigPetNest.cs
+echo(PetNest\PetNestJson.cs
+echo(PetNest\PetNestPersistenceCodec.cs
+echo(PetNest\PetNestPersistence.cs
+echo(PetNest\PetNestSaveCoordinator.cs
+echo(PetNest\PetNestService.cs
+echo(PetNest\PetNestDropService.cs
+echo(PetNest\PetNestHatchService.cs
+echo(PetNest\PetNestModeGate.cs
+echo(PetNest\PetNestCompanionRuntime.cs
+echo(PetNest\PetNestDeathSuppressionRegistry.cs
+echo(PetNest\PetNestDownedHandler.cs
+echo(PetNest\PetNestExpeditionService.cs
+echo(PetNest\PetNestUIBridge.cs
+echo(PetNest\PetNestInteractable.cs
+echo(PetNest\PetNestBuilder.cs
+echo(PetNest\PetNestBuilder_DataEventsAndRuntime.cs
+echo(PetNest\PetNestUIPages.cs
+echo(PetNest\PetNestUI.cs
+echo(PetNest\PetNestHatchRevealView.cs
+echo(PetNest\PetNestExpeditionRevealView.cs
+echo(PetNest\PetNestCompanionHudView.cs
+echo(PetNest\PetNestMuseumStats.cs
+echo(PetNest\PetNestBaseIdleSpawner.cs
+echo(PetNest\PetNestRenameModal.cs
+echo(PetNest\PetNestReleaseConfirmModal.cs
+echo(PetNest\PetNestProgressionService.cs
+echo(PetNest\PetNestRuntimeModule.cs
+echo(PetNest\PetNestCompanionAgent.cs
+echo(PetNest\PetNestCompanionSpawner.cs
+echo(PetNest\PetNestPetProxyBridge.cs
+echo(PetNest\PetNestDebugProbe.cs
+echo(Config\ConfigItemIds.cs
+echo(Config\ConfigDailyReport.cs
+echo(Integration\DailyReport\DailyReportTuning.cs
+echo(Integration\DailyReport\DailyReportModels.cs
+echo(Integration\DailyReport\DailyReportCodec.cs
+echo(Integration\DailyReport\DailyReportPersistence.cs
+echo(Integration\DailyReport\DailyReportSaveCoordinator.cs
+echo(Integration\DailyReport\DailyReportRewards.cs
+echo(Integration\DailyReport\DailyReportBounty.cs
+echo(Integration\DailyReport\DailyReportService.cs
+echo(Integration\DailyReport\DailyReportContent.cs
+echo(Integration\DailyReport\DailyReportStatsCollector.cs
+echo(Integration\DailyReport\DailyReportInteractable.cs
+echo(Integration\DailyReport\DailyReportUI.cs
+echo(Integration\DailyReport\DailyReportUIBridge.cs
+echo(Integration\DailyReport\DailyReportMailboxBuilder.cs
+echo(Integration\DailyReport\DailyReportMailboxRuntime.cs
+echo(Integration\DailyReport\DailyReportRuntimeModule.cs
+echo(Config\ConfigCodex.cs
+echo(Integration\Codex\CodexTuning.cs
+echo(Integration\Codex\CodexModels.cs
+echo(Integration\Codex\CodexCodec.cs
+echo(Integration\Codex\CodexPersistence.cs
+echo(Integration\Codex\CodexSaveCoordinator.cs
+echo(Integration\Codex\CodexBossCatalog.cs
+echo(Integration\Codex\CodexKillCollector.cs
+echo(Integration\Codex\CodexMilestones.cs
+echo(Integration\Codex\CodexPortraitCache.cs
+echo(Integration\Codex\CodexView.cs
+echo(Integration\Codex\CodexView_Grid.cs
+echo(Integration\Codex\CodexBookItem.cs
+echo(Integration\Codex\CodexRuntimeModule.cs
+echo(Localization\CodexLocalization.cs
+echo(Config\ConfigRandomEvents.cs
+echo(RandomEvents\RandomEventsTuning.cs
+echo(RandomEvents\RandomEventModels.cs
+echo(RandomEvents\RandomEventModeGate.cs
+echo(RandomEvents\RandomEventDirector.cs
+echo(RandomEvents\RandomEventCatalog.cs
+echo(RandomEvents\RandomEventCatalog_Fun.cs
+echo(RandomEvents\RandomEventEffectsBridge.cs
+echo(RandomEvents\RandomEventEffectsBridge_Loot.cs
+echo(RandomEvents\RandomEventEffectsBridge_Spawn.cs
+echo(RandomEvents\RandomEventHud.cs
+echo(RandomEvents\RandomEventsRuntimeModule.cs
+echo(Config\ConfigAffixForge.cs
+echo(Integration\AffixForge\AffixDefinitions.cs
+echo(Integration\AffixForge\AffixItemData.cs
+echo(Integration\AffixForge\AffixForgeSystem.cs
+echo(Integration\AffixForge\AffixForgeStoneConfig.cs
+echo(Integration\AffixForge\AffixRuntimeService.cs
+echo(Integration\AffixForge\AffixRuntimeService_Effects.cs
+echo(Integration\AffixForge\AffixRuntimeTicker.cs
+echo(Integration\AffixForge\AffixBuffFactory.cs
+echo(Integration\AffixForge\GoblinAffixForgeInteractable.cs
+echo(Integration\AffixForge\AffixForgeHostCleanup.cs
+echo(Integration\Reforge\ReforgeUIManager_AffixForge.cs
+echo(Integration\Reforge\ReforgeUIManager_AffixForgePanel.cs
+echo(Localization\AffixForgeLocalization.cs
+)>"%OUTPUT_DIR%\bossrush.rsp"
 
+dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" @"%OUTPUT_DIR%\bossrush.rsp"
 set "BUILD_EXIT_CODE=%ERRORLEVEL%"
 
 if %BUILD_EXIT_CODE% EQU 0 (
@@ -850,6 +907,35 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: Mode G presentation bundle deploy failed.
             ) else (
                 echo Deployed Mode G presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        )
+        if exist "Assets\ui\codex_portraits" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\codex_portraits" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\codex_portraits" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: Codex portrait bundle deploy failed.
+            ) else (
+                echo Deployed Codex portrait bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        ) else (
+            echo NOTE: Codex portrait bundle missing at Assets\ui\codex_portraits; codex falls back to placeholder icons.
+        )
+        if exist "Assets\ui\AffixForge\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\AffixForge" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\AffixForge"
+            xcopy /Y /I "Assets\ui\AffixForge\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\AffixForge\" >nul
+            if errorlevel 1 (
+                echo WARNING: Affix icon deploy failed.
+            ) else (
+                echo Deployed affix icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\AffixForge
+            )
+        )
+        if exist "Assets\ui\random_events\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\random_events" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\random_events"
+            xcopy /Y /I "Assets\ui\random_events\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\random_events\" >nul
+            if errorlevel 1 (
+                echo WARNING: Random event icon deploy failed.
+            ) else (
+                echo Deployed random event icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\random_events
             )
         )
         if exist "Assets\Items\fate_echo_relic" (

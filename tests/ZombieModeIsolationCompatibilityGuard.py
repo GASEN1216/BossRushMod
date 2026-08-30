@@ -41,7 +41,7 @@ def main() -> int:
         if token in text:
             return fail("stale heuristic or old reversible spawner isolation remains -> " + token)
 
-    if "ZombieMode\\ZombieModeMapIsolation.cs ^" not in compile_text:
+    if "ZombieMode\\ZombieModeMapIsolation.cs" not in compile_text:
         return fail("compile_official.bat must include ZombieMode\\ZombieModeMapIsolation.cs")
 
     print("ZombieModeIsolationCompatibilityGuard: PASS")

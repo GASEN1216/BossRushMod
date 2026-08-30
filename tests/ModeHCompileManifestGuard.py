@@ -41,12 +41,16 @@ def main():
     listed = {}
     for line in lines:
         stripped = line.strip()
+        # 清单自 2026-08-30 起改经 Roslyn 响应文件传递，每行形如 `echo(<路径>`
+        # （原因见 compile_official.bat 顶部注释：拼成一条命令行会超进程创建上限）。
+        if stripped.startswith("echo("):
+            stripped = stripped[len("echo("):].strip()
         if not stripped.startswith("ModeH\\") and not stripped.startswith("Localization\\ModeH"):
             continue
         path = stripped[:-2].strip() if stripped.endswith("^") else stripped
         listed[path] = listed.get(path, 0) + 1
         # 格式：4 空格缩进 + 路径 + " ^"
-        if not re.match(r"^    [\w\\.]+\.cs \^$", line):
+        if not re.match(r"^echo\([\w\\.]+\.cs$", line):
             errors.append("[Format] 清单行格式不符: " + repr(line))
 
     # 磁盘上的 Mode H 源文件

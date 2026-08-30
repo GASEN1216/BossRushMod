@@ -131,10 +131,17 @@ def check_ledger(errors):
     if agents is None:
         errors.append("[File] 缺少 AGENTS.md")
     else:
-        if "`500001-500059`" not in agents:
-            errors.append("[台账] AGENTS.md 的 TypeID 登记范围未更新到 500059")
-        if "`500060`" not in agents:
-            errors.append("[台账] AGENTS.md 的下一可用 TypeID 未推进到 500060")
+        # 范围上界会随后续系统继续推进（当前 500061），这里只校验它确实覆盖了遗种蛋。
+        import re as _re
+        _rng = _re.search(r"`500001-500(\d{3})`", agents)
+        if not _rng or int(_rng.group(1)) < 59:
+            errors.append("[台账] AGENTS.md 的 TypeID 登记范围未覆盖 500059")
+        # 下一可用只要越过 500059 即可：本 guard 守的是「遗种蛋这个号已被占用」，
+        # 不是「它必须是最后一个」——后续系统会继续往后登记（当前已到 500061）。
+        import re as _re
+        _next = _re.search(r"下一可用[：:]\s*`?500(\d{3})`?", agents)
+        if not _next or int(_next.group(1)) <= 59:
+            errors.append("[台账] AGENTS.md 的下一可用 TypeID 未越过 500059")
 
 
 def main():

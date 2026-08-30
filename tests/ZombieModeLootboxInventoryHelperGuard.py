@@ -35,7 +35,7 @@ def main() -> int:
     if "internal static class InteractableLootboxInventoryHelper" not in helper:
         return fail("shared lootbox inventory helper missing")
 
-    if "Utilities\\InteractableLootboxInventoryHelper.cs ^" not in compile_text:
+    if "Utilities\\InteractableLootboxInventoryHelper.cs" not in compile_text:
         return fail("compile_official.bat must include Utilities\\InteractableLootboxInventoryHelper.cs")
 
     print("ZombieModeLootboxInventoryHelperGuard: PASS")
