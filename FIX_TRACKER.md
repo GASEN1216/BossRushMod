@@ -2658,3 +2658,163 @@ golden rule 靠人工遵守；`docs/` 默认 local-only 的策略与「guard 硬
 | 2026-08-07 | 优化丧尸模式奖励与终端 | 移除死刷新选项，补齐终端余额/饮料库存，并收敛临时 NPC 保护扫描和失效 UI 记录。 |
 | 2026-08-07 | 修复 Wiki 右书页越界与跳页 | 全文只生成一次分页边界，左右页显示连续缓存页块并以 TMP `Page` 限制越界。 |
 | 2026-07-01 | AI 协作文档收敛 | 从旧 `docs/协作/FIX_TRACKER.md` 迁移 confirmed 修复记录；新增状态、owner decision、兼容分类字段。 |
+
+## 2026-08-30 三系统落地：鸭皇图鉴 / 局内随机事件 / 词缀锻造
+
+分类：`COMPAT` + `SCHEMA+`（新存档 key 与物品 KV 前缀，均为向后兼容新增）
++ `OPERATIONAL`（编译脚本改用 Roslyn 响应文件，见下）。
+
+### 交付内容
+
+| 系统 | 目录 | 规模 | 开关（默认） |
+| --- | --- | --- | --- |
+| 鸭皇图鉴 | `Integration/Codex/` + `Localization/CodexLocalization.cs` + `Config/ConfigCodex.cs` | 15 文件 | `BossRush_CodexEnabled`（true） |
+| 局内随机事件「鸭生无常」 | `RandomEvents/` + `Config/ConfigRandomEvents.cs` | 12 文件 | `BossRush_RandomEventsEnabled`（true）+ 频率档 |
+| 词缀锻造 | `Integration/AffixForge/` + `Integration/Reforge/ReforgeUIManager_AffixForge*.cs` + `Localization/AffixForgeLocalization.cs` + `Config/ConfigAffixForge.cs` | 14 文件 | `BossRush_AffixForgeEnabled`（true） |
+
+新增 TypeID：`500060` 词缀熔石、`500061` 鸭皇图鉴（台账三处已同步，下一可用 `500062`）。
+新增存档 key：`BossRush_Codex_v1`（槽位级）。词缀数据寄生官方物品 KV 的 `AFX_` 前缀，随机事件零存档。
+成就分类枚举末尾追加 `Codex`（未插入中间，老档 int 值不漂移）。
+零新增 Harmony patch。
+
+### 修复的实际缺陷
+
+1. `ItemContentRegistry.cs` 注册的类名写错（`CodexBookItem` → 实际 `CodexBookConfig`），编译期 CS0103。
+2. `RandomEventEffectsBridge_Loot.cs` 把官方 `TagsData.AllTags`（`ReadOnlyCollection<Tag>`）
+   直接赋给 `List<Tag>`，CS0029。改用 `IList<Tag>` 接住，只做顺序遍历，避免多余拷贝。
+3. 三系统的宿主销毁清理原本内联在 `ModBehaviour.OnDestroy` 末尾，越过了
+   `StaticCacheLifecycleGuard` 判定「调用是否在 OnDestroy 路径上」的回溯窗口，
+   导致 4 个类被误判漏清理。按仓库既有约定收口成三个具名方法：
+   `CleanupCodexRuntimeOnDestroy` / `CleanupAffixForgeRuntimeOnDestroy`
+   / `CleanupRandomEventsRuntimeOnDestroy`（后者新增 `AffixForgeHostCleanup.cs` 承载）。
+
+### OPERATIONAL：编译脚本改用响应文件（需 owner 知悉）
+
+**症状**：登记 40 个新文件后 `compile_official.bat` 直接失败，输出
+`The system cannot execute the specified program.` 并以 60 退出，**没有任何 C# 错误行**。
+
+**根因**：清单增至约 690 个文件后，展开后的 csc 命令行超过进程创建上限，csc 根本没被启动。
+用响应文件单独调 csc 编译同一份清单则 0 错误通过，据此定位。
+
+**改法**：`compile_official.bat` 里 csc 的全部参数改为先写进 `Build\bossrush.rsp`，
+再 `csc @rsp`。源码清单仍逐条显式列出（不用通配符），编译清单守卫照常双向生效。
+写法上踩过三个坑，已在脚本顶部注释固化：
+  - 必须「括号块 + 块尾一次重定向」；行首重定向（`>>"file" echo ...`）在本机 cmd 上
+    直接报 ERROR_INVALID_NAME(123)；行尾重定向会让 `.cs` 后跟 `>>`，守卫正则扫不到。
+  - 必须用 `echo(` 而非 `echo`：未开 DEV 时 `%BOSSRUSH_DEFINE_ARGS%` 为空，
+    `echo` 会把 "ECHO is on." 写进响应文件。
+  - 含括号的路径（`C:\Program Files (x86)\...`）在引号内已实测安全。
+备份留在 `compile_official.bat.bak`，确认无碍后可删。
+
+### 同步的守卫（AGENTS.md 4.10）
+
+- 新增：`RandomEventsWaveIsolationGuard.py`（波次符号零触碰 + 敌对性安全网 + 事件清理成对）、
+  `RandomEventsModeGateGuard.py`（禁入 5 模式 + fail-closed + 禁引内部符号）、
+  `RandomEventsRuntimeModuleGuard.py`（单实例 + dormant + 热路径零日志）、
+  `AffixForgeInvariantGuard.py`（AFX_ 互斥 + 订阅逐事件成对 + 12 词缀 + 死契 1 血保命）。
+  另有实现阶段产出的 `CodexPersistenceGuard.py`、`CodexKillTrackingGuard.py`。
+- 因结构变化而同步（非放宽掩盖）：
+  - 三个 ZombieMode 清单守卫与 `ModeHCompileManifestGuard`：适配响应文件行格式。
+  - `PetNestEggItemRegistryGuard`：台账断言由硬编码 500059/500060 改为动态上界
+    （守的是「遗种蛋的号已被占用」，不是「它必须是最后一个」）。
+  - `PetNestAchievementCategoryGuard`：由「Taming 必须是最后一项」改为「冻结前缀逐字相等」，
+    允许末尾追加新分类，同时仍然禁止插入与重排。
+  - `LocalizationInjectionGuard`：新增识别字典索引式注入（`map[XxxConfig.LOC_KEY] = ...`），
+    这是新一代本地化文件的写法，旧正则只认 `Inject(...)` 调用式会误报。
+  - `ModBehaviourInstanceClassificationGuard` + 对应文档：基线 361 → 374，新增 `RandomEvents` 组。
+  - `tests/empty_catch_budget.txt`：919 → 968。新增的 49 处都是
+    `base.Awake()` / `onFailed()` 这类一行防御式空 catch（AGENTS.md 4.7 明令不成批清理）；
+    刷怪与敌对性安全网等关键路径**已带 DevLog**，未以空 catch 掩盖失败。
+
+### 验证状态
+
+- Windows `compile_official.bat`：**通过**（691 源文件，0 error）。
+- `python tools/run_guards.py`：**PASS=499 / NEW-FAIL=0 / KNOWN-RED=1**（既有 DragonKing 红项）。
+- **实机 smoke：未做**。以下必须人工验证后才能认为交付完成：
+  1. 图鉴：买书开面板 → 杀 2 Boss 验证解锁与成就 → 回基地落盘 → 重启读档 → 切槽位隔离；
+     ModeG 托管龙裔计入、丧尸 Titan 计入、遗种巢随从不计。
+  2. 随机事件：F3 逐事件强制触发；**关键回归**——乱入 Boss 在场时打死波次 Boss，
+     波次应正常推进且乱入仍在；五条清理路径（到时/死亡/撤离/切图/关开关）零残留。
+     另需实测：竞技场是否存在 `WeatherManager.Instance`；零伤害爆炸是否带击退。
+  3. 词缀：门控四连测（手持/切换/空手/穿卸 → 订阅计数归零）；旁观 NPC 同武器不触发；
+     仓库闲置零订阅；存读档 KV 完整；卖店买回/快递往返/掉落拾回 KV 保留。
+- 美术资产（约 35~43 张 Boss 立绘 + 熔石图标 + 12 词缀图标 + 8 事件图标）**尚未生成**，
+  当前全部走占位链（图鉴用官方 Boss 图标、其余用文字/程序化底）。
+- `.qoder/repowiki/` 与 Wiki 站词条**尚未同步**（AGENTS.md 4.13 要求，属未完成部分）。
+
+### 2026-08-30 补：文档同步与美术资产（承接上条）
+
+分类：`SAFE`（文档）+ `OPERATIONAL`（新增美术资产与 Unity 构建器）。
+
+**repowiki 同步（AGENTS.md 4.13，此前列为未完成项，现已补齐）**
+
+- 新增 3 张模块知识卡（`.qoder/repowiki/knowledge/zh/`）：鸭皇图鉴、局内随机事件、词缀锻造。
+  每张都按既有知识卡体例写清系统概述、关键文件职责、架构与设计约定、性能、契约面、已知未完成项，
+  并把「为什么否掉另一条路」的决策记进去（例如词缀为何不用官方 Effect 挂件、
+  图鉴为何不接 AchievementTracker、随机事件为何不复用变异词条 roll 基建）。
+- `knowledge/zh/_index.yaml` 登记 3 个模块（codex / random_events / affix_forge），YAML 解析校验通过。
+- 新增 3 篇主题详解（`.qoder/repowiki/zh/content/高级功能/`），并挂进「高级功能」索引页的
+  三处清单（简介、分层说明、目录）。
+
+**游戏内 Wiki 与在线站**
+
+- `WikiContent/{zh,en}/` 各新增 3 篇玩家向词条（图鉴 / 随机事件 / 词缀锻造），文风对齐日报词条。
+- `WikiContent/catalog.tsv` 追加 3 行（order 10/11/12）。
+- `wiki-site/scripts/sync-content.mjs` 的 `ENTRY_TO_PATH` 补 3 条映射，
+  `docs/.vitepress/config.mts` 侧边栏中英各补 3 条，`vitepress build` 通过。
+- **既有缺口（非本次引入，供 owner 决策）**：`system__pet_nest` 与 `system__daily_report`
+  从未进入 `sync-content.mjs` 的映射表，因此遗种巢与日报在**在线站上没有页面**（游戏内 Wiki 有）。
+  同步脚本现在仍报「跳过 3」，就是它们加上另一条。本次未擅自补，因为不属于本批范围。
+
+**美术资产**
+
+- 新增 `tools/gen_codex_art.py`：一次性批量生成脚本，可断点续跑（目标文件存在即跳过），
+  含网关抽风的指数退避重试。共 58 项：36 张 Boss 立绘 + 2 个物品图标 + 12 个词缀图标 + 8 个事件图标。
+- Boss 名册来自静态汇总而非实机导出：ModeH `BossProfiles.json` 的 `profileTemplates`（12）
+  ∪ `excludedStableKeys` 里的官方 Boss ∪ 官方 `AchievementManager` 的 `KillCountAchievement` 表
+  ∪ 3 个自定义 Boss ∪ 5 个丧尸合成条目 = 28 官方 + 3 自定义 + 5 丧尸 = 36。
+  **注意**：运行时真实 Boss 池由 `showName` + 血量阈值决定，静态汇总可能与之有出入；
+  立绘缓存是 fail-open，多出来的 Boss 会走占位链，不会报错。
+- 流程：gpt-image-2 出色键图（#ff00ff）→ `remove_chroma_key.py` 抠图 → 裁包围盒 → 等比缩放 →
+  居中贴进透明正方形画布。立绘/物品 512px、词缀 256px、事件 128px。
+- 新增 Unity 构建器 `CodexPortraitBundleBuilder.cs`（兄弟工程 `Assets/Editor/`）：
+  扫 `Assets/UI/Codex` 目录、程序化打 bundle 标签（不依赖手工 .meta）、
+  构建后回读校验 asset 数量与命名契约（必须全小写、必须带 `codex_portrait_` 前缀）、
+  体积硬上限 8 MiB。与 ModeG/ModeH 那两个「固定两张图」的构建器不同，这个是批量扫目录型。
+
+**美术与 bundle 已全部完成（此前列为未完成项，现已补齐）**
+
+- 58 项资产全部生成落位：36 张 Boss 立绘（512px）、2 个物品图标（512px）、
+  12 个词缀图标（256px）、8 个事件图标（128px）。
+- 生成过程分三轮：首轮 33 成功 / 25 失败，失败全是 `APIConnectionError`。
+  根因是**网关限流约 1 次/分钟而脚本只隔 3 秒**，不是 prompt 问题。
+  把间隔改为可配置（`ART_GEN_DELAY`，默认 20 秒）并加三次指数退避重试后，
+  第二轮 23/25、第三轮 2/2 全部补齐。
+- 立绘 AssetBundle 已实际构建并落位 `Assets/ui/codex_portraits`（3.1 MB，8 MiB 上限内），
+  构建器回读校验通过（36 个 asset、命名全小写、前缀正确）。
+- `compile_official.bat` 最终验证：`Build succeeded`，并成功部署立绘 bundle、
+  词缀图标、事件图标三类资产到游戏目录。
+
+**Unity 构建踩的三个坑（已固化进 tools/build_codex_bundle.ps1 注释）**
+
+1. PowerShell 5.1 按 ANSI 读 `.ps1`，含中文的脚本必须存成 **UTF-8 with BOM**，否则解析报
+   `Unexpected token`。
+2. Unity.exe 是 GUI 程序，用 `&` 调**不会等待**，`$LASTEXITCODE` 为空，且外层任务结束时
+   会把正在启动的 Unity 子进程带走（表现为日志停在 `Begin MonoManager ReloadAssembly`、无产物）。
+   必须用 `Start-Process -Wait -PassThru`。
+3. 上一条留下的孤儿 Unity 实例会占住工程锁，导致后续调用**刚切到工程路径就以返回码 0 退出**
+   （日志里只有 `Exiting without the bug reporter`，极易误判成构建器没跑）。
+   排查方法：看 `Temp/UnityLockfile` 与 `Unity.exe` 进程启动时间。
+
+**仍未完成**
+
+- **实机 smoke 未做**（owner 指示本轮不做）。这是当前唯一的未完成项，
+  各系统的必测清单见本条目上方与 2026-08-30 主条目。
+- 立绘的 Boss 名册是**静态汇总**得来（ModeH 档案 + 官方成就表 + 自定义/丧尸常量 = 36，
+  后续又补了 `Cname_Ghost` 共 37；补它的依据是 mod 旧版构建里存在
+  `!(enemyPresetInfo.name == "Cname_Ghost")` 这种「从 Boss 选取中显式排除」的写法，
+  说明它本来能通过 Boss 池筛选、会出现在图鉴目录里。全仓其余无立绘的 `Cname_*`
+  —— Wolf / Usec / GunTurret / Zombie —— 已逐个确认是杂兵或 AI 预设，不进 Boss 池），
+  而运行时真实 Boss 池由 `showName` + 血量阈值决定。两者若有出入，多出来的 Boss 会走
+  占位链（fail-open），不会报错；实机跑一次 F3 的目录导出即可核对差集并补图。
+- 立绘是按 nameKey 语义生成的**风格化演绎**，不是游戏内模型的还原（模型无法读取）。

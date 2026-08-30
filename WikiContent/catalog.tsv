@@ -52,6 +52,9 @@ system	system__achievements_list	成就大全	Achievement List	6
 system	system__mutators	变异词条系统	Mutator System	7
 system	system__pet_nest	遗种巢	PetNest	8
 system	system__daily_report	鸭科夫日报	The Duckov Daily	9
+system	system__codex	鸭皇图鉴	Duck King Codex	10
+system	system__random_events	局内随机事件	Random Events	11
+system	system__affix_forge	词缀锻造	Affix Forging	12
 config	config__overview	配置选项	Configuration Options	1
 tips	tips__new_player_route	新手推荐路线	New Player Route	1
 tips	tips__hell_and_mode_d	无间炼狱与白手起家攻略	Infinite Hell & From Scratch Guide	2

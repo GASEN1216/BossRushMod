@@ -140,6 +140,47 @@ modules:
         depends_on: []
         related_to:
             - path: integration_content
+    codex:
+        dir_name: "BossRushMod 鸭皇图鉴：全模式击杀采集、槽位级存档与立绘收集"
+        title: "BossRushMod 鸭皇图鉴：全模式击杀采集、槽位级存档与立绘收集"
+        scope:
+            - Integration/Codex/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: config
+            - path: localization
+            - path: achievement_system
+            - path: boss_filter
+            - path: waves_arena
+    random_events:
+        dir_name: "BossRushMod 局内随机事件「鸭生无常」：边缘轮询调度、波次隔离与模式门控"
+        title: "BossRushMod 局内随机事件「鸭生无常」：边缘轮询调度、波次隔离与模式门控"
+        scope:
+            - RandomEvents/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: config
+            - path: waves_arena
+            - path: mode_d
+            - path: loot_and_rewards
+            - path: utilities
+    affix_forge:
+        dir_name: "BossRushMod 词缀锻造：物品 KV 承载词缀、集中式运行时服务与手持穿戴门控"
+        title: "BossRushMod 词缀锻造：物品 KV 承载词缀、集中式运行时服务与手持穿戴门控"
+        scope:
+            - Integration/AffixForge/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: config
+            - path: localization
+            - path: reforge
+            - path: equipment
     daily_report:
         dir_name: "BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑"
         title: "BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑"
