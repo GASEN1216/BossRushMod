@@ -45,6 +45,10 @@ namespace BossRush
             PetNestLocalization.Inject();
             // 日报的 BossRush_DailyReport_ 键统一来自 Localization/DailyReportLocalization.cs
             DailyReportLocalization.Inject();
+            // 鸭皇图鉴的 BossRush_Codex_ 键统一来自 Localization/CodexLocalization.cs
+            CodexLocalization.Inject();
+            // 词缀锻造的 BossRush_Affix 键统一来自 Localization/AffixForgeLocalization.cs
+            AffixForgeLocalization.Inject();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();

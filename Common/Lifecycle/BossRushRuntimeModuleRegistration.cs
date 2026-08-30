@@ -30,6 +30,15 @@ namespace BossRush
             // 报箱交互、日报面板与调试快进都必须走 DailyReportRuntime 门面，禁止二次 new。
             dailyReportRuntime = new DailyReportRuntimeModule();
             runtimeModuleHost.Register(dailyReportRuntime);
+
+            // 鸭皇图鉴同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 图鉴面板、入口物品与击杀采集都必须走 CodexRuntime 门面，禁止二次 new。
+            codexRuntime = new CodexRuntimeModule();
+            runtimeModuleHost.Register(codexRuntime);
+
+            // 局内随机事件同款单实例纪律：调度器状态只有一份，禁止二次 new。
+            randomEventsRuntime = new RandomEventsRuntimeModule();
+            runtimeModuleHost.Register(randomEventsRuntime);
         }
 
         /// <summary>Mode H 唯一运行时实例。</summary>
@@ -58,5 +67,23 @@ namespace BossRush
         /// 不得再次 new DailyReportRuntimeModule()。
         /// </summary>
         internal DailyReportRuntimeModule DailyReportRuntime { get { return dailyReportRuntime; } }
+
+        /// <summary>鸭皇图鉴唯一运行时实例。</summary>
+        private CodexRuntimeModule codexRuntime;
+
+        /// <summary>
+        /// 图鉴唯一实例的只读门面。面板、入口物品、击杀采集与场景回调都只能用它，
+        /// 不得再次 new CodexRuntimeModule()。
+        /// </summary>
+        internal CodexRuntimeModule CodexRuntime { get { return codexRuntime; } }
+
+        /// <summary>局内随机事件唯一运行时实例。</summary>
+        private RandomEventsRuntimeModule randomEventsRuntime;
+
+        /// <summary>
+        /// 随机事件唯一实例的只读门面。调度器、事件效果与调试入口都只能用它，
+        /// 不得再次 new RandomEventsRuntimeModule()。
+        /// </summary>
+        internal RandomEventsRuntimeModule RandomEventsRuntime { get { return randomEventsRuntime; } }
     }
 }

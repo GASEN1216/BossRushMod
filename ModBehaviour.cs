@@ -807,6 +807,13 @@ namespace BossRush
             SafeRuntime.Run("DailyReportService.ResetStaticCaches", () => DailyReportService.ResetStaticCaches());
             SafeRuntime.Run("DailyReportSaveCoordinator.ResetStaticCaches", () => DailyReportSaveCoordinator.ResetStaticCaches());
 
+            // 三个新系统的宿主销毁清理各自收口成一个具名方法：
+            // OnDestroy 本身已经很长，内联下去会越过 StaticCacheLifecycleGuard 的方法归属
+            // 回溯窗口，让「已在 OnDestroy 路径上」的调用被误判成漏清理。
+            CleanupCodexRuntimeOnDestroy();
+            CleanupAffixForgeRuntimeOnDestroy();
+            CleanupRandomEventsRuntimeOnDestroy();
+
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
 

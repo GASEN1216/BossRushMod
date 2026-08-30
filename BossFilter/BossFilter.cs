@@ -236,6 +236,9 @@ namespace BossRush
             try
             {
                 if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
+                // 图鉴目录的展示池同样源自这张过滤池，过滤一变目录必须跟着重建，
+                // 否则玩家在场内改了 Boss 池之后，图鉴条目仍停在旧快照上。
+                CodexBossCatalog.Invalidate();
             }
             catch (Exception e)
             {

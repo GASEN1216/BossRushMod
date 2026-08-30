@@ -405,6 +405,9 @@ namespace BossRush
                     config.modeHEnabled = loadedModeH;
                     LoadPetNestEnabledFromModConfig(boolLoadMethod);
                     LoadDailyReportEnabledFromModConfig(boolLoadMethod);
+                    LoadCodexEnabledFromModConfig(boolLoadMethod);
+                    LoadAffixForgeEnabledFromModConfig(boolLoadMethod);
+                    LoadRandomEventsConfigFromModConfig(boolLoadMethod, intLoadMethod);
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
                 else
@@ -597,6 +600,9 @@ namespace BossRush
                 }
                 if (TryLoadPetNestSingleModConfigValue(changedKey, loadMethod)) return true;
                 if (TryLoadDailyReportSingleModConfigValue(changedKey, loadMethod)) return true;
+                if (TryLoadCodexSingleModConfigValue(changedKey, loadMethod)) return true;
+                if (TryLoadAffixForgeSingleModConfigValue(changedKey, loadMethod)) return true;
+                if (TryLoadRandomEventsSingleModConfigValue(changedKey, loadMethod)) return true;
             }
             catch (Exception ex)
             {
@@ -918,6 +924,9 @@ namespace BossRush
                 }
                 RegisterPetNestModConfigOption(addBoolMethod);
                 RegisterDailyReportModConfigOption(addBoolMethod);
+                RegisterCodexModConfigOption(addBoolMethod);
+                RegisterAffixForgeModConfigOption(addBoolMethod);
+                RegisterRandomEventsModConfigOptions(addBoolMethod, addSliderMethod);
                 // ========== 数值滑条类配置 ==========
                 
                 // 波次间休息时间

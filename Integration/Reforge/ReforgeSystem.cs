@@ -537,7 +537,11 @@ namespace BossRush
             return string.IsNullOrEmpty(key) ||
                    key == "Count" ||
                    key == "ReforgeCount" ||
-                   key.StartsWith("RF_", StringComparison.Ordinal);
+                   key.StartsWith("RF_", StringComparison.Ordinal) ||
+                   // 词缀锻造把词缀身份写在 AFX_ 前缀的物品 KV 上。这里是唯一咽喉点：
+                   // 挡住之后，词缀 KV 既不会进重铸 roll 池，也不会被属性锁定 UI 列出，
+                   // 更不会被 RF_ 差值同步覆盖——两套系统靠前缀双向互斥。
+                   key.StartsWith("AFX_", StringComparison.Ordinal);
         }
 
         /// <summary>

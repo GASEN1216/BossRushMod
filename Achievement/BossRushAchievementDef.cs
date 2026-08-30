@@ -20,7 +20,8 @@ namespace BossRush
         Ultimate,   // 终极成就
         // 新分类一律**追加到末尾**：分类排序与存档都依赖 int 值，插在中间会让
         // 老档里已解锁成就的分类整体错位。
-        Taming      // 驯养（遗种巢）
+        Taming,     // 驯养（遗种巢）
+        Codex       // 图鉴（鸭皇图鉴收集里程碑）
     }
 
     /// <summary>

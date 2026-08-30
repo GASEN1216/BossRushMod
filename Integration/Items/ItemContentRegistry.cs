@@ -28,6 +28,8 @@ namespace BossRush
             ZombieTideBeaconConfig.RegisterConfigurator();
             PortableSafeZoneDeviceConfig.RegisterConfigurator();
             RelicEggConfig.RegisterConfigurator();
+            AffixForgeStoneConfig.RegisterConfigurator();
+            CodexBookConfig.RegisterConfigurator();
             ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);
