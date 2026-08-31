@@ -491,6 +491,9 @@ namespace BossRush
                 catch (Exception) { }
 
                 GameObject shopObj = new GameObject("BossRushEventShop");
+                // StockShop.Awake 会立刻按 merchantID 加载并订阅存档；先保持 inactive，
+                // 等身份、刷新周期与条目全部写完后再激活，不能让 Awake 看见默认字段。
+                shopObj.SetActive(false);
                 shopObj.transform.SetParent(mainInteract.transform, false);
                 shopObj.transform.localPosition = Vector3.zero;
                 shopObj.transform.localRotation = Quaternion.identity;
@@ -506,6 +509,20 @@ namespace BossRush
                     System.Reflection.FieldInfo accountField = BossRushEagerReflectionCache.StockShop_AccountAvaliable;
                     if (merchantField != null) merchantField.SetValue(shop, RandomEventsTuning.MerchantIdConstant);
                     if (accountField != null) accountField.SetValue(shop, true);
+                    if (BossRushEagerReflectionCache.StockShop_RefreshAfterTimeSpan != null)
+                    {
+                        BossRushEagerReflectionCache.StockShop_RefreshAfterTimeSpan.SetValue(
+                            shop, TimeSpan.FromDays(1d).Ticks);
+                    }
+                    if (BossRushEagerReflectionCache.StockShop_RefreshStockOnStart != null)
+                    {
+                        BossRushEagerReflectionCache.StockShop_RefreshStockOnStart.SetValue(shop, false);
+                    }
+                    if (BossRushEagerReflectionCache.StockShop_LastTimeRefreshedStock != null)
+                    {
+                        BossRushEagerReflectionCache.StockShop_LastTimeRefreshedStock.SetValue(
+                            shop, DateTime.UtcNow.ToBinary());
+                    }
                 }
                 catch (Exception e)
                 {
@@ -550,6 +567,31 @@ namespace BossRush
                     DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人交互组注入失败: " + e.Message);
                 }
 
+                shopObj.SetActive(true);
+                // Awake 可能按稳定 merchantID 恢复了上一次事件商人的库存。每次新事件只在
+                // NPC 装配完成这一刻补一批；同一 NPC 后续重复打开不会再次执行这里。
+                try
+                {
+                    if (shop.entries != null)
+                    {
+                        for (int i = 0; i < shop.entries.Count; i++)
+                        {
+                            StockShop.Entry entry = shop.entries[i];
+                            if (entry == null) continue;
+                            entry.CurrentStock = entry.MaxStock;
+                            entry.Show = true;
+                        }
+                    }
+                    if (BossRushEagerReflectionCache.StockShop_LastTimeRefreshedStock != null)
+                    {
+                        BossRushEagerReflectionCache.StockShop_LastTimeRefreshedStock.SetValue(
+                            shop, DateTime.UtcNow.ToBinary());
+                    }
+                }
+                catch (Exception e)
+                {
+                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人初始库存复位失败: " + e.Message);
+                }
                 return shop;
             }
             catch (Exception e)
@@ -602,7 +644,7 @@ namespace BossRush
                     }
                     for (int k = 0; k < ids.Count; k++)
                     {
-                        if (AddRandomEventMerchantEntry(shop, ids[k], written))
+                        if (AddRandomEventMerchantEntry(shop, ids[k], 99, written))
                         {
                             added++;
                         }
@@ -631,7 +673,7 @@ namespace BossRush
                         for (int n = 0; n < RandomEventsTuning.MerchantRandomHighQualityCount && highQuality.Count > 0; n++)
                         {
                             int pick = UnityEngine.Random.Range(0, highQuality.Count);
-                            if (AddRandomEventMerchantEntry(shop, highQuality[pick], written))
+                            if (AddRandomEventMerchantEntry(shop, highQuality[pick], 1, written))
                             {
                                 added++;
                             }
@@ -652,7 +694,8 @@ namespace BossRush
             return added;
         }
 
-        private bool AddRandomEventMerchantEntry(StockShop shop, int typeId, HashSet<int> written)
+        private bool AddRandomEventMerchantEntry(
+            StockShop shop, int typeId, int maxStock, HashSet<int> written)
         {
             try
             {
@@ -663,7 +706,7 @@ namespace BossRush
 
                 StockShopDatabase.ItemEntry raw = new StockShopDatabase.ItemEntry();
                 raw.typeID = typeId;
-                raw.maxStock = 99;
+                raw.maxStock = maxStock > 0 ? maxStock : 1;
                 raw.forceUnlock = true;
                 raw.priceFactor = RandomEventsTuning.MerchantPriceFactor;
                 raw.possibility = 1f;

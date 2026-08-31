@@ -35,6 +35,9 @@ namespace BossRush
         public static readonly FieldInfo StockShop_MerchantID;
         public static readonly FieldInfo StockShop_ItemInstances;
         public static readonly FieldInfo StockShop_AccountAvaliable;
+        public static readonly FieldInfo StockShop_RefreshAfterTimeSpan;
+        public static readonly FieldInfo StockShop_RefreshStockOnStart;
+        public static readonly FieldInfo StockShop_LastTimeRefreshedStock;
 
         // CharacterRandomPreset.characterIconType (私有字段)
         public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
@@ -73,6 +76,12 @@ namespace BossRush
                     "itemInstances", privateInstance);
                 StockShop_AccountAvaliable = typeof(StockShop).GetField(
                     "accountAvaliable", privateInstance);
+                StockShop_RefreshAfterTimeSpan = typeof(StockShop).GetField(
+                    "refreshAfterTimeSpan", privateInstance);
+                StockShop_RefreshStockOnStart = typeof(StockShop).GetField(
+                    "refreshStockOnStart", privateInstance);
+                StockShop_LastTimeRefreshedStock = typeof(StockShop).GetField(
+                    "lastTimeRefreshedStock", privateInstance);
 
                 // CharacterRandomPreset.characterIconType
                 CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(

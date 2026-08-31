@@ -78,7 +78,20 @@ def main():
             SPAWN_BRIDGE.as_posix() + " 的生成物缺少 RndEvt_ 命名前缀，"
             "实机排查残留与区分波次 Boss 全靠它。")
 
-    # ---- 4) 事件实现与清理出口 ----
+    # ---- 4) 限时商店必须先配置后 Awake，且每次事件补满有限库存 ----
+    inactive_at = spawn_code.find("shopObj.SetActive(false)")
+    add_at = spawn_code.find("shopObj.AddComponent<StockShop>()")
+    active_at = spawn_code.find("shopObj.SetActive(true)")
+    if not (0 <= inactive_at < add_at < active_at):
+        return fail("限时商店必须 inactive 创建，字段/条目配置完成后再激活触发 StockShop.Awake")
+    for needle in ("StockShop_RefreshAfterTimeSpan", "StockShop_RefreshStockOnStart",
+                   "StockShop_LastTimeRefreshedStock", "entry.CurrentStock = entry.MaxStock"):
+        if needle not in spawn_code:
+            return fail("限时商店缺少库存/刷新不变式: " + needle)
+    if not re.search(r"AddRandomEventMerchantEntry\(shop, ids\[k\], 99, written\)", spawn_code):
+        return fail("弹药和医疗库存必须为 99，避免首购即售罄")
+
+    # ---- 5) 事件实现与清理出口 ----
     models = (EVENTS_DIR / "RandomEventModels.cs").read_text(encoding="utf-8", errors="ignore")
     enum_block = re.search(r"enum\s+RandomEventId\s*\{(.*?)\}", models, flags=re.S)
     if not enum_block:
