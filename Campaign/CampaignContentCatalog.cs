@@ -278,8 +278,8 @@ namespace BossRush
                 "ch1", 1, ModeStandard, "擂台旧影", "Echoes of the Ring", 20000, 1, "clue_ch1",
                 MakeObjective(CampaignObjectiveKind.StandardClear, 1,
                     "通关一局标准竞技场", "Clear one standard arena run"),
-                MakeObjective(CampaignObjectiveKind.NoDamageUntilWave, 3,
-                    "前 3 波一滴血不掉", "Take zero damage through wave 3")));
+                MakeObjective(CampaignObjectiveKind.NoDamageUntilWave, 2,
+                    "前 2 波一滴血不掉", "Take zero damage through wave 2")));
 
             list.Add(MakeChapter(
                 "ch2", 2, ModeModeD, "白手起家的誓言", "Vow of the Empty-Handed", 35000, 2, "clue_ch2",
@@ -291,7 +291,7 @@ namespace BossRush
             list.Add(MakeChapter(
                 "ch3", 3, ModeModeE, "立旗为界", "Planting the Banner", 50000, 3, "clue_ch3",
                 MakeObjective(CampaignObjectiveKind.FactionBossKills, 8,
-                    "清掉 8 个敌对阵营的头目", "Drop 8 bosses from hostile factions"),
+                    "击败 8 名头目", "Defeat 8 bosses"),
                 MakeObjective(CampaignObjectiveKind.SurviveMinutes, 10,
                     "在场上撑满 10 分钟", "Stay on the field a full 10 minutes")));
 

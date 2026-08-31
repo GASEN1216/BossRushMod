@@ -66,7 +66,7 @@ source_files:
 | `CampaignDialoguePlayer.cs` | 交付剧情：复用 `DialogueManager` 与官方对话 UI 的原生立绘位 |
 | `CampaignBoardBuilder.cs` | 公告板建筑注入（照日报报箱：反射 BuildingInfo、dormant 契约、老档幽灵防护） |
 | `CampaignBoardView.cs` | 公告板面板（走 `Common/UI/BossRushUI.cs` 共享库） |
-| `CampaignHud.cs` | 局内目标追踪条，未武装时早返，只在文本变化时写 TMP |
+| `CampaignHud.cs` | 局内目标追踪条，未武装时早返；每帧先做零分配脏检查（只比整数与 bool），内容真变了才拼字符串写 TMP |
 | `CampaignFinalBoss.cs` | 终章决战编排：召唤石维护、门禁、变体改造、让路策略 |
 
 ## 3. 架构与设计约定
@@ -113,6 +113,20 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 **用召唤石而非自动开战**：进场即刷 Boss 会抢掉玩家想跑的普通局，而且标准模式要等
 玩家点路牌才置 `bossRushArenaActive`，自动触发恰好卡在那个窗口里。
 
+**收尾有三条路径，缺一不可**（CR-2026-08-31-003 修复）：正常击杀走 `OnDeadEvent`；
+玩家中途开了别的模式走让路 tick；**玩家打输或离场走场景回调 + 「Boss 已不在场」检测**。
+第三条是重点——打输时 Boss 随场景销毁、死亡回调永远不会来，少了它
+`campaignFinalBossActive` 会永久卡在 true，召唤石不再生成、终章再也打不了，
+而终章恰恰是最可能打输的一场。另外生成是异步的，收尾会自增 `campaignFinalBossRunId`
+作废在飞的生成协程，协程回来发现编号对不上就销毁产物，避免留下无人记账的强化女巫。
+收尾还会清掉终章的局内追踪（终章不经模式桥武装，桥上那条「离开模式即 ResetSession」
+永远轮不到它，不清则 HUD 在基地常驻）。
+
+**召唤石维护的判定顺序是性能约束**：这是每帧路径，
+`IsCurrentSceneValidBossRushArena()` 内部走 `GetActiveScene().name`，每次调用分配字符串。
+因此零分配的终章契约查询必须排在前面短路，场景判定再按 scene generation 缓存
+（`IsCampaignArenaSceneCached`）。见 AGENTS.md 4.12。（CR-2026-08-31-005 修复。）
+
 ### 3.5 线索接入官方 NoteIndex 的坑
 
 官方 `NoteIndex.SetNoteDynamic(note)` 只调 `MSetEntryDynamic`，而后者**只写查询字典
@@ -158,3 +172,12 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 `Assets/buildings/bossrush_campaign_board.png`。全部 **fail-open**——缺资源时
 官方对话 UI 会自动隐藏立绘位，玩法一点不少。
 Unity 侧构建器：`Assets/Editor/CampaignPresentationBundleBuilder.cs`。
+
+## 8. 2026-08-31 交付与目标收口
+
+`ReadyToDeliver` 现为存档权威状态：目标全部达成时立即写入，重启后仍可回公告板交付。
+交付采用补偿式事务：先发奖金，再用独立存档副本把 Completed、设施 token 与线索一次入队；
+入队失败原路撤回奖金，且不会提前发布后山解锁事件，避免反复交付刷钱或写失败却提前解锁。
+
+第一章无伤阈值与数据表统一为前 2 波，避免 Boss 池缩小时不可完成；第三章文案与实际采集口径
+统一为击败 8 名头目。终章祭坛只在 `ContractActive` 时出现，待交付阶段不会重复开战。

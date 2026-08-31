@@ -25,6 +25,7 @@ import re
 import sys
 
 MODULE = Path("Campaign/CampaignRuntimeModule.cs")
+PROGRESS = Path("Campaign/CampaignProgressService.cs")
 UNLOCKS = Path("Campaign/CampaignFacilityUnlocks.cs")
 TUNING = Path("Campaign/CampaignTuning.cs")
 REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
@@ -57,11 +58,12 @@ def strip_comments(text):
 
 
 def main():
-    for path in [MODULE, UNLOCKS, TUNING, REGISTRATION] + CONFIG_SOURCES:
+    for path in [MODULE, PROGRESS, UNLOCKS, TUNING, REGISTRATION] + CONFIG_SOURCES:
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
     module = strip_comments(MODULE.read_text(encoding="utf-8", errors="ignore"))
+    progress = strip_comments(PROGRESS.read_text(encoding="utf-8", errors="ignore"))
     unlocks = strip_comments(UNLOCKS.read_text(encoding="utf-8", errors="ignore"))
     tuning = strip_comments(TUNING.read_text(encoding="utf-8", errors="ignore"))
     reg = strip_comments(REGISTRATION.read_text(encoding="utf-8", errors="ignore"))
@@ -170,6 +172,17 @@ def main():
             "征程开关又被注册进 ModConfig UI 了。它属于默认内容，不该暴露；"
             "若确要放出，请同时更新 ModConfigOptionChangeGuard 的 CONTENT_SYSTEM_SWITCHES "
             "并登记回 IsHandledModConfigOptionKey 白名单。")
+
+    # ---- 6) 待交付必须落盘；交付写失败不得重复发钱/提前发布 token ----
+    if "CampaignChapterState.ReadyToDeliver" not in progress or not re.search(
+            r"WriteState\(chapterId,\s*CampaignChapterState\.ReadyToDeliver\)", progress):
+        return fail("目标完成必须把 ReadyToDeliver 落盘，重启后仍能回公告板交付")
+    store_at = progress.find("WriteStateAndRewards(chapterId, CampaignChapterState.Completed, def)")
+    token_at = progress.find("CampaignFacilityUnlocks.TryGrant(def.FacilityToken)", store_at)
+    if store_at < 0 or token_at < store_at:
+        return fail("交付必须先写完成 payload，再发布后山 token；写失败不能提前解锁")
+    if "reward_rollback" not in progress or "CloneSaveData" not in progress:
+        return fail("交付写失败必须撤回本次奖金，且不得直接改写当前缓存对象")
 
     print("CampaignSkeletonGuard: PASS（单实例 + dormant + 冻结常量 + 契约 fail-closed）")
     return 0

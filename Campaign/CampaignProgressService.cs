@@ -13,10 +13,10 @@
 //   六章分别指向不同模式，同时接两个会让局内 HUD 与目标采集互相打架。
 //   TryAcceptContract 在已有进行中契约时直接拒绝。
 //
-// 【交付是幂等事务】
-//   发钱 → 授 token → 解锁线索 → 置 Completed → 入队落盘，任一步失败都不会
-//   让章节停在「钱发了但没标完成」的半状态：状态置位在发钱成功之后，
-//   而 token 授予本身幂等（TryGrant 重复调用返回 false 且不重复发事件）。
+// 【交付是补偿式事务】
+//   发钱 → 用独立副本把 Completed/token/线索一次入队 → 发布运行时 token。
+//   入队失败会原路撤回本次奖金；token 只在入队成功后发布且自身幂等，避免
+//   「钱发了但状态仍待交付」造成重复领奖，也避免写失败时后山先行解锁。
 // ============================================================================
 
 using System;
@@ -32,7 +32,7 @@ namespace BossRush
 
         private static bool _initialized;
 
-        /// <summary>本会话内「目标已达成、等交付」的章节（不落盘，靠局内追踪产生）。</summary>
+        /// <summary>本会话内「目标已达成、等交付」的章节缓存；权威状态同时落盘。</summary>
         private static string _readyToDeliverChapterId;
 
         #endregion
@@ -80,8 +80,8 @@ namespace BossRush
 
         /// <summary>
         /// 该章当前状态。推导规则：
-        /// 存档里记了 Completed 就是 Completed；本会话标了待交付就是 ReadyToDeliver；
-        /// 存档里记了 ContractActive 就是进行中；否则看前置章是否已完成。
+        /// 存档里的 Completed / ReadyToDeliver / ContractActive 均为权威状态；
+        /// 会话缓存只负责加速待交付查询，否则看前置章是否已完成。
         /// </summary>
         internal static CampaignChapterState GetState(string chapterId)
         {
@@ -93,6 +93,11 @@ namespace BossRush
 
                 int stored = ReadStoredState(chapterId);
                 if (stored == (int)CampaignChapterState.Completed) return CampaignChapterState.Completed;
+                if (stored == (int)CampaignChapterState.ReadyToDeliver)
+                {
+                    _readyToDeliverChapterId = chapterId;
+                    return CampaignChapterState.ReadyToDeliver;
+                }
 
                 if (string.Equals(_readyToDeliverChapterId, chapterId, StringComparison.Ordinal))
                 {
@@ -126,6 +131,11 @@ namespace BossRush
                 {
                     CampaignChapterRecord record = data.chapters[i];
                     if (record == null) continue;
+                    if (record.state == (int)CampaignChapterState.ReadyToDeliver)
+                    {
+                        _readyToDeliverChapterId = record.chapterId;
+                        return record.chapterId;
+                    }
                     if (record.state == (int)CampaignChapterState.ContractActive) return record.chapterId;
                 }
                 return null;
@@ -250,8 +260,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 局内目标全部达成。只置会话态，不落盘——玩家必须回公告板交付才算数，
-        /// 这样「达成即离场」不会跳过剧情对话。
+        /// 局内目标全部达成。把 ReadyToDeliver 落盘，但仍须回公告板主动交付；
+        /// 这样重启不丢进度，也不会跳过剧情对话。
         /// </summary>
         internal static void NotifyObjectivesSatisfied(string chapterId)
         {
@@ -261,6 +271,7 @@ namespace BossRush
                 if (!string.Equals(GetActiveChapterId(), chapterId, StringComparison.Ordinal)) return;
                 if (string.Equals(_readyToDeliverChapterId, chapterId, StringComparison.Ordinal)) return;
 
+                if (!WriteState(chapterId, CampaignChapterState.ReadyToDeliver)) return;
                 _readyToDeliverChapterId = chapterId;
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "契约目标已全部达成: " + chapterId);
 
@@ -277,7 +288,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 交付契约：发钱 → 授 token → 解锁线索 → 置 Completed → 入队落盘。
+        /// 交付契约：发钱 → 完成状态/token/线索同 payload 入队 → 发布运行时 token。
         /// 只有 ReadyToDeliver 状态可交付。
         /// </summary>
         internal static bool TryDeliver(string chapterId)
@@ -309,14 +320,33 @@ namespace BossRush
                     }
                 }
 
-                // token 授予幂等；重复交付（理论上不会发生）不会重复发事件
+                // 先把完成状态、token 与线索写进独立副本并入队。旧实现忽略这里的失败，
+                // 会让章节保持 ReadyToDeliver，玩家下一次交付再次领到现金。
+                if (!WriteStateAndRewards(chapterId, CampaignChapterState.Completed, def))
+                {
+                    bool refunded = def.RewardCash <= 0;
+                    if (def.RewardCash > 0)
+                    {
+                        try { refunded = EconomyManager.Pay(new Cost((long)def.RewardCash), true, true); }
+                        catch (Exception e) { LogFailure("reward_rollback", e); }
+                    }
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix
+                        + "[ERROR] 交付状态写入失败，奖金回滚=" + refunded + ": " + chapterId);
+                    Duckov.UI.NotificationText.Push(refunded
+                        ? L10n.T("交付写入失败，本次奖金已撤回，可稍后重试。",
+                            "Delivery could not be saved; the reward was rolled back. Try again later.")
+                        : L10n.T("交付写入与奖金回滚均失败；请勿重复交付。",
+                            "Delivery save and reward rollback both failed; do not submit again."));
+                    return false;
+                }
+
+                // 数据已进入同一份战役 payload 后再发布运行时解锁事件；重复发布本身幂等。
                 if (!string.IsNullOrEmpty(def.FacilityToken))
                 {
                     CampaignFacilityUnlocks.TryGrant(def.FacilityToken);
                 }
 
                 _readyToDeliverChapterId = null;
-                WriteStateAndRewards(chapterId, CampaignChapterState.Completed, def);
 
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "契约已交付: " + chapterId
                     + " 奖金=" + def.RewardCash);
@@ -347,8 +377,9 @@ namespace BossRush
         {
             try
             {
-                CampaignSaveData data = CampaignPersistence.Current;
-                if (data == null) return false;
+                CampaignSaveData current = CampaignPersistence.Current;
+                if (current == null) return false;
+                CampaignSaveData data = CloneSaveData(current);
 
                 List<CampaignChapterRecord> records = new List<CampaignChapterRecord>();
                 bool found = false;
@@ -396,6 +427,30 @@ namespace BossRush
                 LogFailure("write_state", e);
                 return false;
             }
+        }
+
+        private static CampaignSaveData CloneSaveData(CampaignSaveData source)
+        {
+            CampaignSaveData copy = new CampaignSaveData();
+            copy.schemaVersion = source.schemaVersion;
+            copy.lastUpdatedTicks = source.lastUpdatedTicks;
+
+            CampaignChapterRecord[] chapters = source.chapters ?? new CampaignChapterRecord[0];
+            copy.chapters = new CampaignChapterRecord[chapters.Length];
+            for (int i = 0; i < chapters.Length; i++)
+            {
+                CampaignChapterRecord record = chapters[i];
+                if (record == null) continue;
+                CampaignChapterRecord cloned = new CampaignChapterRecord();
+                cloned.chapterId = record.chapterId;
+                cloned.state = record.state;
+                copy.chapters[i] = cloned;
+            }
+            copy.grantedTokens = source.grantedTokens != null
+                ? (string[])source.grantedTokens.Clone() : new string[0];
+            copy.unlockedClues = source.unlockedClues != null
+                ? (string[])source.unlockedClues.Clone() : new string[0];
+            return copy;
         }
 
         private static string[] AppendUnique(string[] source, string value)

@@ -34,9 +34,18 @@ namespace BossRush
         private static TextMeshProUGUI _titleText;
         private static TextMeshProUGUI _bodyText;
 
-        /// <summary>上一次写进 TMP 的正文，用于避免每帧重复赋值。</summary>
-        private static string _shownBody;
-        private static string _shownTitle;
+        /// <summary>
+        /// 上一次写进 TMP 时对应的章节 ID；null 表示下一帧必须重建。
+        /// 与下面两个数组一起构成**零分配脏检查**：只有内容真的变了才拼字符串。
+        /// </summary>
+        private static string _shownChapterId;
+
+        /// <summary>上一次写进 TMP 时各目标的计数。容器复用，比对不分配。</summary>
+        private static readonly List<int> _shownCurrent = new List<int>();
+
+        /// <summary>上一次写进 TMP 时各目标的失败位。</summary>
+        private static readonly List<bool> _shownFailed = new List<bool>();
+
         private static bool _buildFailed;
 
         /// <summary>正文拼装缓冲。复用同一个 builder，避免每帧新建。</summary>
@@ -69,23 +78,59 @@ namespace BossRush
 
                 if (!_panel.activeSelf) _panel.SetActive(true);
 
+                // 脏检查放在**构建之前**：拼字符串本身就是分配，
+                // 先拼再比等于每帧都付了代价（本文件早先的写法正是如此）。
+                // 这里只比整数与 bool，零分配。
+                if (!HasProgressChanged(def)) return;
+
+                CaptureProgressSnapshot(def);
+
                 string title = L10n.T("契约 · " + def.TitleCN, "Contract · " + def.TitleEN);
-                if (!string.Equals(title, _shownTitle, StringComparison.Ordinal))
-                {
-                    _shownTitle = title;
-                    if (_titleText != null) _titleText.text = title;
-                }
+                if (_titleText != null) _titleText.text = title;
 
                 string body = BuildBody();
-                if (!string.Equals(body, _shownBody, StringComparison.Ordinal))
-                {
-                    _shownBody = body;
-                    if (_bodyText != null) _bodyText.text = body;
-                }
+                if (_bodyText != null) _bodyText.text = body;
             }
             catch (Exception)
             {
                 // 每帧路径：不抛也不打日志
+            }
+        }
+
+        /// <summary>
+        /// 显示内容是否需要重建。只读整数与 bool，不分配。
+        /// </summary>
+        private static bool HasProgressChanged(CampaignChapterDef def)
+        {
+            if (!string.Equals(_shownChapterId, def.ChapterId, StringComparison.Ordinal)) return true;
+
+            IList<CampaignObjectiveProgress> progress = CampaignObjectiveTracker.Progress;
+            if (_shownCurrent.Count != progress.Count) return true;
+
+            for (int i = 0; i < progress.Count; i++)
+            {
+                CampaignObjectiveProgress item = progress[i];
+                int current = item != null ? item.Current : 0;
+                bool failed = item != null && item.Failed;
+                if (_shownCurrent[i] != current) return true;
+                if (_shownFailed[i] != failed) return true;
+            }
+            return false;
+        }
+
+        /// <summary>记下这次显示对应的进度快照。</summary>
+        private static void CaptureProgressSnapshot(CampaignChapterDef def)
+        {
+            _shownChapterId = def.ChapterId;
+            _shownCurrent.Clear();
+            _shownFailed.Clear();
+
+            IList<CampaignObjectiveProgress> progress = CampaignObjectiveTracker.Progress;
+            for (int i = 0; i < progress.Count; i++)
+            {
+                CampaignObjectiveProgress item = progress[i];
+                _shownCurrent.Add(item != null ? item.Current : 0);
+                _shownFailed.Add(item != null && item.Failed);
             }
         }
 
@@ -181,8 +226,11 @@ namespace BossRush
             try
             {
                 if (_panel != null && _panel.activeSelf) _panel.SetActive(false);
-                _shownBody = null;
-                _shownTitle = null;
+                // 快照作废：下次显示时无条件重建一次，
+                // 顺带覆盖「隐藏期间换了语言」这种不体现在计数上的变化
+                _shownChapterId = null;
+                _shownCurrent.Clear();
+                _shownFailed.Clear();
             }
             catch (Exception e)
             {
@@ -209,8 +257,9 @@ namespace BossRush
             _panel = null;
             _titleText = null;
             _bodyText = null;
-            _shownBody = null;
-            _shownTitle = null;
+            _shownChapterId = null;
+            _shownCurrent.Clear();
+            _shownFailed.Clear();
             _buildFailed = false;
         }
 

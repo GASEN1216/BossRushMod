@@ -52,7 +52,7 @@ namespace BossRush
         /// <summary>本局到达指定波次。</summary>
         ReachWave = 4,
 
-        /// <summary>击杀敌对阵营 Boss 数达标（Mode E）。</summary>
+        /// <summary>击杀 Boss 数达标（Mode E；当前采集器不区分阵营）。</summary>
         FactionBossKills = 5,
 
         /// <summary>入场后存活时长达标（分钟）。</summary>

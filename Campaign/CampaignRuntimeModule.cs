@@ -101,6 +101,15 @@ namespace BossRush
             try
             {
                 _sceneGeneration++;
+
+                // 场景已换 = 上一场决战无论输赢都结束了。玩家打输时 Boss 随场景销毁、
+                // 死亡回调不会来，只有在这里收尾才能让 campaignFinalBossActive 复位，
+                // 否则召唤石永远不再出现、终章再也打不了。收尾本身幂等。
+                if (_owner != null)
+                {
+                    _owner.CleanupCampaignFinalBoss(false);
+                }
+
                 if (!IsEnabled)
                 {
                     ShutdownIfEnabledTurnedOff();
