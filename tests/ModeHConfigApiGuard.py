@@ -4,9 +4,9 @@ ModeHConfigApiGuard — Mode H 配置与运行时门守卫（设计提案 §24.1
 
 不变式：
 - ModBehaviour.BossRushConfig **只**新增 modeHEnabled 一个字段；
-- ModBehaviour 只新增 IsModeHConfiguredEnabled() 一个只读 getter，默认 false；
-- ModConfig 镜像键固定为 BossRush_ModeHEnabled，且加载顺序为
-  文件 -> ModConfig 覆盖 -> 回写；变更键必须进入 IsHandledModConfigOptionKey 白名单；
+- ModBehaviour 只新增 IsModeHConfiguredEnabled() 一个只读 getter，默认 true；
+- Mode H 属默认内容：旧 ModConfig 键仅保留兼容识别，不注册、不读取历史 false，
+  并由 ForceContentSystemSwitchesOn 恒定拉回开启；
 - ModeHRuntimeGates 暴露且只暴露五个 no-throw 只读结果；
 - 编译期开发门 AllowDevRawPngFallback / AllowDevControlPointHarness 恒为 false；
 - 全仓不得出现 modeHRealWarehouseStakeEnabled / IsModeHRealWarehouseStakeConfiguredEnabled /
@@ -27,6 +27,7 @@ CONFIG_CS = os.path.join(REPO_ROOT, "Config", "Config.cs")
 # 拆分只为 LargeFileBudgetGuard 的 1200 行预算）。ModConfig 接线断言要合并两份文本来看，
 # 否则「变更键进入白名单」会在方法搬家后假红。
 CONFIG_KEYS_CS = os.path.join(REPO_ROOT, "Config", "ConfigModConfigKeys.cs")
+CONFIG_SWITCHES_CS = os.path.join(REPO_ROOT, "Config", "ConfigContentSystemSwitches.cs")
 GATES = os.path.join(REPO_ROOT, "ModeH", "ModeHRuntimeGates.cs")
 AVAILABILITY = os.path.join(REPO_ROOT, "ModeH", "ModeHAvailability.cs")
 MODEH_CONFIG = os.path.join(REPO_ROOT, "ModeH", "ModeHConfig.cs")
@@ -55,14 +56,16 @@ def main():
         errors.append("[File] 缺少 Config/Config.cs")
     else:
         keys_source = read_text(CONFIG_KEYS_CS)
-        code = strip_cs_comments(config + "\n" + (keys_source or ""))
+        switches_source = read_text(CONFIG_SWITCHES_CS)
+        code = strip_cs_comments(config + "\n" + (keys_source or "")
+                                 + "\n" + (switches_source or ""))
         # 1) 只新增一个字段
         field_matches = re.findall(r"public bool modeH\w*\s*=", code)
         if len(field_matches) != 1:
             errors.append("[Field] BossRushConfig 必须且只能新增一个 modeHEnabled 字段，实际 {} 个".format(
                 len(field_matches)))
-        if not re.search(r"public bool modeHEnabled = false;", code):
-            errors.append("[Field] modeHEnabled 必须存在且默认 false")
+        if not re.search(r"public bool modeHEnabled = true;", code):
+            errors.append("[Field] modeHEnabled 必须存在且默认 true")
 
         # 2) 只新增一个 getter
         getter_matches = re.findall(r"bool IsModeH\w*ConfiguredEnabled\(\)", code)
@@ -74,18 +77,21 @@ def main():
         if not re.search(r"return config != null && config\.modeHEnabled;", code):
             errors.append("[Getter] getter 必须在 config 为 null 时返回 false")
 
-        # 3) ModConfig 接线
+        # 3) 默认内容恒开：兼容键仍被识别，但不得再注册/加载旧 false
         wiring = [
             (r'ModName \+ "_ModeHEnabled"', "ModConfig 镜像键 BossRush_ModeHEnabled"),
             (r"changedKey == ModName \+ \"_ModeHEnabled\"", "变更键进入白名单"),
-            (r"addBoolMethod\.Invoke\(null, new object\[\] \{ ModName, modeHKey, modeHLabel, config\.modeHEnabled \}\)",
-             "SetupModConfig 注册开关"),
-            (r"config\.modeHEnabled = loadedModeH;", "批量加载覆盖文件值"),
-            (r"config\.modeHEnabled = \(bool\)modeHResult;", "单键变更加载"),
+            (r"config\.modeHEnabled = true;", "ForceContentSystemSwitchesOn 恒定开启"),
         ]
         for pattern, desc in wiring:
             if not re.search(pattern, code):
                 errors.append("[ModConfig] 不满足: " + desc)
+        if re.search(r"addBoolMethod\.Invoke\([^\n]+modeH", code, re.IGNORECASE):
+            errors.append("[ModConfig] Mode H 默认内容不得注册可关闭选项")
+        for forbidden in ["config.modeHEnabled = loadedModeH;",
+                          "config.modeHEnabled = (bool)modeHResult;"]:
+            if forbidden in code:
+                errors.append("[ModConfig] Mode H 不得读取历史 false: " + forbidden)
 
         # 4) 禁止真实资产开关
         for symbol in FORBIDDEN_SYMBOLS:

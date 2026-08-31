@@ -39,7 +39,7 @@ EXPECTED_DELEGATED_KEYS = {
     "_ModeGAbandonHotkey",
 }
 
-# 内容系统总开关（owner 2026-08-30 定）：属于默认内容，恒为开启。
+# 内容系统总开关（owner 2026-08-31 定）：属于默认内容，恒为开启。
 # 既不许注册进 ModConfig UI，默认值也不许是 false，
 # 且必须被 ForceContentSystemSwitchesOn 抹平历史残留的 false。
 # 键名 -> BossRushConfig 字段名
@@ -51,6 +51,7 @@ CONTENT_SYSTEM_SWITCHES = {
     "_RandomEventsEnabled": "randomEventsEnabled",
     "_CampaignEnabled": "campaignEnabled",
     "_BackMountainEnabled": "backMountainEnabled",
+    "_ModeHEnabled": "modeHEnabled",
 }
 
 KEY_CONST_RE = re.compile(r'private const string (\w*ModConfigKeySuffix)\s*=\s*"([^"]+)"\s*;')

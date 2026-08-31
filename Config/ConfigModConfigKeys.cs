@@ -44,7 +44,7 @@ namespace BossRush
                    changedKey == ModName + "_ModeHEnabled" ||
                    // 以下键的单键加载委托给各子系统的 TryLoadXxxSingleModConfigValue，
                    // 这里直接复用各自的 KeySuffix 常量，避免白名单与注册处的字面量漂移。
-                   // 五个内容系统总开关已不再注册进 ModConfig UI（恒为开启），
+                   // 八个内容系统总开关已不再注册进 ModConfig UI（恒为开启），
                    // 因此不登记在此：登记了也永远收不到变更事件，属于死条目。
                    changedKey == ModName + RandomEventsFrequencyModConfigKeySuffix ||
                    changedKey == ModName + ModeGAbandonHotkeyModConfigKeySuffix ||

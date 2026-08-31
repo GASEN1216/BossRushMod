@@ -79,9 +79,8 @@ namespace BossRush
             /// <summary>每局变异词条数量（1-10，默认3）</summary>
             public int mutatorCount = 3;
 
-            /// <summary>Mode H 唯一可写入口开关（§24.1），默认关闭；
-            /// 真实仓库抵押没有配置字段，进入模式即知情同意。</summary>
-            public bool modeHEnabled = false;
+            /// <summary>Mode H 兼容字段。玩法已归入默认内容，运行时恒为开启。</summary>
+            public bool modeHEnabled = true;
 
         }
         
@@ -271,8 +270,6 @@ namespace BossRush
                 string deathWraithKey = ModName + "_EnableDeathWraithSystem";
                 string mutatorsKey = ModName + "_EnableMutators";
                 string mutatorCountKey = ModName + "_MutatorCount";
-                string modeHKey = ModName + "_ModeHEnabled";
-
                 MethodInfo loadMethod = optionsManagerType.GetMethod("Load", BindingFlags.Public | BindingFlags.Static);
                 if (loadMethod != null)
                 {
@@ -402,10 +399,8 @@ namespace BossRush
                     int loadedMutatorCount = ClampMutatorCount((int)mutatorCountResult);
                     config.mutatorCount = loadedMutatorCount;
 
-                    object modeHResult = boolLoadMethod.Invoke(null, new object[] { modeHKey, config.modeHEnabled });
-                    bool loadedModeH = (bool)modeHResult;
-                    config.modeHEnabled = loadedModeH;
-                    // 五个内容系统总开关不再从 ModConfig 读取：老版本可能存过 false，
+                    // Mode H 是恒开内容系统；保留旧键只为兼容，不再读取历史 false。
+                    // 八个内容系统总开关不再从 ModConfig 读取：老版本可能存过 false，
                     // 读回来会把玩家永久关在系统外面（UI 已撤，无处改回）。
                     LoadRandomEventsConfigFromModConfig(intLoadMethod);
                     LoadBackMountainConfigFromModConfig(boolLoadMethod);
@@ -594,9 +589,8 @@ namespace BossRush
                 string modeHSingleKey = ModName + "_ModeHEnabled";
                 if (changedKey == modeHSingleKey)
                 {
-                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
-                    object modeHResult = boolLoadMethod.Invoke(null, new object[] { modeHSingleKey, config.modeHEnabled });
-                    config.modeHEnabled = (bool)modeHResult;
+                    // Mode H 是恒开内容系统；单键刷新也不得把历史 false 灌回运行时。
+                    config.modeHEnabled = true;
                     return true;
                 }
                 if (TryLoadPetNestSingleModConfigValue(changedKey, loadMethod)) return true;
@@ -891,23 +885,8 @@ namespace BossRush
                     DevLog("[BossRush] 注册变异词条配置项失败: " + ex.Message);
                 }
 
-                // Mode H 入口总开关：默认关闭，玩家自行开启（§24.1）
-                try
-                {
-                    string modeHLabel = L10n.T("百战留痕：黑市鸭王杯", "Black Market Duck Cup");
-                    string modeHKey = ModName + "_ModeHEnabled";
-
-                    if (addBoolMethod != null)
-                    {
-                        addBoolMethod.Invoke(null, new object[] { ModName, modeHKey, modeHLabel, config.modeHEnabled });
-                        DevLog("[BossRush] Mode H 配置项注册成功");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    DevLog("[BossRush] 注册 Mode H 配置项失败: " + ex.Message);
-                }
-                // 遗种巢 / 日报 / 图鉴 / 词缀锻造 / 随机事件是默认内容，总开关不再
+                // 遗种巢 / 日报 / 图鉴 / 词缀锻造 / 随机事件 / 鸭王征程 /
+                // 竞技场后山 / Mode H 是默认内容，总开关不再
                 // 暴露给玩家（恒为开启，见 Config/ConfigContentSystemSwitches.cs）。
                 // 频率档这类调参旋钮照常暴露。
                 RegisterRandomEventsModConfigOptions(addSliderMethod);
