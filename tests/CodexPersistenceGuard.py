@@ -94,6 +94,7 @@ def main():
     coordinator = COORDINATOR.read_text(encoding="utf-8")
     coordinator_code = strip_comments(coordinator)
     collector_code = strip_comments(COLLECTOR.read_text(encoding="utf-8"))
+    book_code = strip_comments(BOOK_ITEM.read_text(encoding="utf-8"))
     tuning = TUNING.read_text(encoding="utf-8")
 
     # ---- 1) 存档 key 与 schema 版本是冻结的兼容面 ----
@@ -200,6 +201,14 @@ def main():
 
     if "_subscribed" not in persistence_code:
         return fail("存档订阅必须有布尔幂等守卫 _subscribed（AGENTS.md 4.6）")
+
+    # ---- 8) 图鉴实体不可倒卖，商店价格与库存存档必须保持可用 ----
+    if 'AddTagToItem(item, "NotSellable")' not in book_code:
+        return fail("鸭皇图鉴必须打官方 NotSellable 标签，避免买入后倒卖套利")
+    if not re.search(r"float\s+priceFactor\s*=\s*1f", book_code):
+        return fail("图鉴 StockShop.priceFactor 必须为 1；写 1/rawValue 会把 4000 金售价压成 1 金")
+    if "else if (cachedCodexBookStock >= 0)" not in book_code:
+        return fail("商店尚未注入时，存档收集必须保留已读取的售罄库存")
 
     # ---- 8) 条目上限必须 fail-closed，不得挤掉老条目 ----
     models_code = strip_comments(MODELS.read_text(encoding="utf-8"))

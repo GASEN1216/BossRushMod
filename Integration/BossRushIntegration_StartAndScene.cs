@@ -99,6 +99,8 @@ namespace BossRush
             SavesSystem.OnSetFile += OnSetFile_MedalStock;
             SavesSystem.OnCollectSaveData += OnCollectSaveData_BrickStoneStock;
             SavesSystem.OnSetFile += OnSetFile_BrickStoneStock;
+            SavesSystem.OnCollectSaveData += OnCollectSaveData_CodexBookStock;
+            SavesSystem.OnSetFile += OnSetFile_CodexBookStock;
             SavesSystem.OnSetFile += OnSetFile_DeathWraith;
 
             RegisterDragonSetEvents();
@@ -134,6 +136,8 @@ namespace BossRush
             SavesSystem.OnSetFile -= OnSetFile_MedalStock;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BrickStoneStock;
             SavesSystem.OnSetFile -= OnSetFile_BrickStoneStock;
+            SavesSystem.OnCollectSaveData -= OnCollectSaveData_CodexBookStock;
+            SavesSystem.OnSetFile -= OnSetFile_CodexBookStock;
             SavesSystem.OnSetFile -= OnSetFile_DeathWraith;
             SavesSystem.OnCollectSaveData -= OnCollectSaveData_BoundMeleeSnapshot_DeathWraith;
             // 卸载前把内存中尚未写盘的亡魂列表刷一次，再解绑刷写回调，避免丢失死亡记录。
@@ -222,8 +226,7 @@ namespace BossRush
             EquipmentHelperIcon.ResetStaticCaches();
             ModBehaviour.ResetDragonDescendantBossStaticCaches();
             ModBehaviour.ResetLootAndRewardsStaticCaches();
-            ReforgeUIManager.ResetStaticCaches();
-            ObjectCache.ResetStaticCaches();
+            CleanupIntegrationRuntimeStaticCaches();
             try
             {
                 Type modBehaviourType = FindModConfigType("ModConfig.ModBehaviour");
@@ -250,6 +253,16 @@ namespace BossRush
             _enemyPresetsInitialized = false;
 
             DevLog("[BossRush] Boss Rush Mod已卸载");
+        }
+
+        /// <summary>
+        /// OnDestroy 集成清理链上的共享静态缓存终点。单独成方法既缩短宿主销毁方法，
+        /// 也让 StaticCacheLifecycleGuard 能稳定识别这两个调用确实位于销毁路径。
+        /// </summary>
+        private void CleanupIntegrationRuntimeStaticCaches()
+        {
+            ReforgeUIManager.ResetStaticCaches();
+            ObjectCache.ResetStaticCaches();
         }
 
         /// <summary>

@@ -33,8 +33,8 @@ source_files:
 定位上它是「乘法型」内容：不新开模式，而是让已有的 9 个入口都产出可积累的收集进度。
 入口是可用物品「鸭皇图鉴」（TypeID 500061，使用不消耗），基地商店可购。
 
-总开关 `BossRush_CodexEnabled`（`Config/ConfigCodex.cs`，默认 true）。关闭时整系统 dormant：
-不订阅、不计数、不落盘。
+`codexEnabled` 字段与旧键 `BossRush_CodexEnabled` 为兼容保留；图鉴现属默认内容，
+不再注册总开关并在配置加载后强制为 true。dormant 清理契约仍保留供卸载与故障回落使用。
 
 ## 2. 关键文件与职责
 
@@ -148,3 +148,9 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 - 立绘 AssetBundle 需在兄弟 Unity 工程构建；`AllowDevRawPngFallback` 在发布构建恒 false，
   因此仅有 raw PNG 时正式包会走占位链。
 - 实机 smoke 未做（详见 `FIX_TRACKER.md` 2026-08-30 条目）。
+
+## 8. 2026-08-31 商店入口修复
+
+入口物品使用官方精确标签 `NotSellable` 禁止倒卖；商店 `priceFactor=1`，按物品原始 4000 金
+定价，不再使用 `1/rawValue` 把价格压成 1 金。库存随官方 `OnCollectSaveData` 保存、
+`OnSetFile` 复位；商店尚未注入时保留已加载缓存，售罄状态不会被默认库存 1 覆盖。

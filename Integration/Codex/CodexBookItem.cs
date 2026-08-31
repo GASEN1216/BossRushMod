@@ -116,6 +116,8 @@ namespace BossRush
                 AttachUsageBehavior(item);
 
                 EquipmentHelper.AddTagToItem(item, "Special");
+                // 图鉴是一次性入口物，不参与玩家向商人出售，避免买入后倒卖套利。
+                EquipmentHelper.AddTagToItem(item, "NotSellable");
                 // 专属图标：没有它就会顶着克隆源物品的脸出现在背包里
                 EquipmentHelperIcon.TryInjectIcon(item, null, ICON_NAME);
             }
@@ -350,23 +352,9 @@ namespace BossRush
                 return false;
             }
 
+            // StockShop 的 priceFactor 会乘物品原始价值。固定 1 表示按 4000 金出售；
+            // 旧实现用 1/rawValue 把售价压成了 1 金。
             float priceFactor = 1f;
-            try
-            {
-                Item itemPrefab = ItemAssetsCollection.GetPrefab(CodexBookConfig.TYPE_ID);
-                if (itemPrefab != null)
-                {
-                    int rawValue = itemPrefab.GetTotalRawValue();
-                    if (rawValue > 0)
-                    {
-                        priceFactor = 1f / rawValue;
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                // 定价系数取不到就用 1，不阻断上架
-            }
 
             StockShopDatabase.ItemEntry itemEntry = new StockShopDatabase.ItemEntry();
             itemEntry.typeID = CodexBookConfig.TYPE_ID;
@@ -400,7 +388,10 @@ namespace BossRush
             if (string.IsNullOrEmpty(currentScene))
             {
                 try { currentScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name; }
-                catch (Exception) { }
+                catch (Exception e)
+                {
+                    DevLog(CodexTuning.LogPrefix + "读取当前场景失败: " + e.Message);
+                }
             }
             if (currentScene != BaseSceneName)
             {
@@ -476,6 +467,11 @@ namespace BossRush
                 if (injectedCodexBookEntry != null)
                 {
                     stockToSave = injectedCodexBookEntry.CurrentStock;
+                }
+                else if (cachedCodexBookStock >= 0)
+                {
+                    // 商店尚未注入时保留已读缓存，不能把售罄库存重置成默认值。
+                    stockToSave = cachedCodexBookStock;
                 }
 
                 SavesSystem.Save<int>(CodexBookConfig.STOCK_SAVE_KEY, stockToSave);
