@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "_comment": "Boss 战循环 BGM / 胜利 stinger / 点唱机曲目。音频文件放 Assets/Sounds/BGM/。文件缺失的条目会被静默跳过，因此换曲目只需替换同名文件，不需要改代码。phase 字段 V1 恒为 0（非 0 的条目会被忽略），为二期 FMOD 阶段切歌预留。",
+  "_comment_dragonking": "DragonKing 故意不在 bossTracks 里：Assets/Sounds/DragonKing/dragonking.mp3 是作者已有的曲子，龙王维持旧的播放路径。将来若要接管，在这里加一条 bossKey=DragonKing 的条目并把文件放进 Assets/Sounds/BGM/ 即可，代码零改动。",
+  "_comment_format": "wav 与 mp3 都行（FMOD programmer sound 原生支持）。当前两条循环是程序化合成的氛围乐，32kHz 单声道，RMS 约 -20 dBFS；换成正式曲目时保持这个响度区间，否则会盖过枪声。",
+  "bossTracks": [
+    { "bossKey": "DragonDescendant", "file": "boss_descendant_loop.wav", "loop": true, "phase": 0 },
+    { "bossKey": "PhantomWitch", "file": "boss_witch_loop.wav", "loop": true, "phase": 0 }
+  ],
+  "stingers": [
+    { "eventKey": "BossVictory", "file": "stinger_boss_victory.wav" },
+    { "eventKey": "RunVictory", "file": "stinger_run_victory.wav" }
+  ],
+  "jukebox": [
+    { "musicName": "龙裔挽歌", "author": "BossRushMod", "file": "boss_descendant_loop.wav" },
+    { "musicName": "幽影回廊", "author": "BossRushMod", "file": "boss_witch_loop.wav" }
+  ]
+}

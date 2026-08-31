@@ -314,6 +314,9 @@ namespace BossRush
                 DevLog("[PhantomWitch] 幽灵女巫Boss生成完成");
                 ShowMessage(L10n.T(PhantomWitchConfig.SpawnMessageCN, PhantomWitchConfig.SpawnMessageEN));
 
+                // 专属 BGM：曲目表无条目或素材缺失时静默无操作
+                BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.PhantomWitch);
+
                 return character;
             }
             catch (Exception e)
@@ -629,6 +632,10 @@ namespace BossRush
         {
             DevLog("[PhantomWitch] 幽灵女巫被击败");
             ShowMessage(L10n.T(PhantomWitchConfig.DefeatedMessageCN, PhantomWitchConfig.DefeatedMessageEN));
+
+            // 只停自己起播的那首，别掐掉同波次其他 Boss 的曲子
+            BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch);
+            BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.BossVictory);
 
             if (deadWitch != null)
             {

@@ -69,10 +69,21 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 龙王 BGM。曲目表里配了 DragonKing 条目就走 BossBgmCoordinator 的循环 BGM，
+        /// 否则维持旧的 dragonking.mp3 一次性音效——零素材时行为与从前完全一致。
+        /// 三个既有调用点（生成、死亡、场景清理）因此不需要任何改动。
+        /// </summary>
         public void PlayDragonKingBGM()
         {
             if (isDragonKingBGMPlaying)
             {
+                return;
+            }
+
+            if (BossBgmCoordinator.PlayBossBgm(BossBgmKeys.DragonKing))
+            {
+                isDragonKingBGMPlaying = true;
                 return;
             }
 
@@ -93,6 +104,31 @@ namespace BossRush
         public void ResetDragonKingBGMState()
         {
             isDragonKingBGMPlaying = false;
+            // 只停由本 Boss 起播的循环 BGM：多 Boss 波次里别掐掉别人的曲子
+            BossBgmCoordinator.StopBossBgm(BossBgmKeys.DragonKing);
+        }
+
+        /// <summary>
+        /// 通用 Boss 战 BGM 起播。曲目表没条目或文件缺失时静默无操作。
+        /// 幂等：同一 Boss 重复调用不会把曲子掐回开头。
+        /// </summary>
+        public void PlayBossBGM(string bossKey)
+        {
+            BossBgmCoordinator.PlayBossBgm(bossKey);
+        }
+
+        /// <summary>
+        /// 通用 Boss 战 BGM 停止。只在当前正播的就是该 Boss 时才真正停止。
+        /// </summary>
+        public void StopBossBGM(string bossKey)
+        {
+            BossBgmCoordinator.StopBossBgm(bossKey);
+        }
+
+        /// <summary>一次性 stinger（不占 BGM 通道，不打断正在放的循环曲）。</summary>
+        public void PlayStinger(string eventKey)
+        {
+            BossBgmCoordinator.PlayStinger(eventKey);
         }
 
         public void PlayNPCInteractSFX(string npcId)

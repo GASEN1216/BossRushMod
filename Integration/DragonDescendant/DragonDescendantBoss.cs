@@ -201,6 +201,10 @@ namespace BossRush
 
                     DevLog("[DragonDescendant] 龙裔遗族Boss生成完成");
                     ShowMessage(L10n.T("龙裔遗族 出现了！", "Dragon Descendant has appeared!"));
+
+                    // 专属 BGM：曲目表无条目或素材缺失时静默无操作。
+                    // 只有正规龙裔走这里；「孩儿护我」召唤出来的不抢 BGM。
+                    BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.DragonDescendant);
                 }
                 else
                 {

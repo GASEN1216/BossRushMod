@@ -187,6 +187,10 @@ namespace BossRush
             {
                 DevLog("[DragonDescendant] 龙裔遗族被击败");
 
+                // 只停自己起播的那首，别掐掉同波次其他 Boss 的曲子
+                BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.DragonDescendant);
+                BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.BossVictory);
+
                 // 取消注册龙套装效果
                 UnregisterDragonDescendantSetBonus();
 
