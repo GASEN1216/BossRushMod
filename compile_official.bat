@@ -808,6 +808,47 @@ echo(Integration\AffixForge\AffixForgeHostCleanup.cs
 echo(Integration\Reforge\ReforgeUIManager_AffixForge.cs
 echo(Integration\Reforge\ReforgeUIManager_AffixForgePanel.cs
 echo(Localization\AffixForgeLocalization.cs
+echo(Audio\BossBgmCoordinator.cs
+echo(Common\UI\BossRushUISkinLoader.cs
+echo(Config\ConfigModConfigKeys.cs
+echo(Config\ConfigContentSystemSwitches.cs
+echo(Config\ConfigCampaign.cs
+echo(Campaign\CampaignTuning.cs
+echo(Campaign\CampaignModels.cs
+echo(Campaign\CampaignFacilityUnlocks.cs
+echo(Campaign\CampaignPersistence.cs
+echo(Campaign\CampaignSaveCoordinator.cs
+echo(Campaign\CampaignContentCatalog.cs
+echo(Campaign\CampaignObjectiveTracker.cs
+echo(Campaign\CampaignObjectiveCollector.cs
+echo(Campaign\CampaignProgressService.cs
+echo(Campaign\CampaignModeBridge.cs
+echo(Campaign\CampaignAssetCache.cs
+echo(Campaign\CampaignNoteBridge.cs
+echo(Campaign\CampaignDialoguePlayer.cs
+echo(Campaign\CampaignBoardView.cs
+echo(Campaign\CampaignBoardInteractable.cs
+echo(Campaign\CampaignBoardBuilder.cs
+echo(Campaign\CampaignHud.cs
+echo(Campaign\CampaignFinalBossInteractable.cs
+echo(Campaign\CampaignFinalBoss.cs
+echo(Localization\CampaignLocalization.cs
+echo(Campaign\CampaignRuntimeModule.cs
+echo(Config\ConfigBackMountain.cs
+echo(Integration\BackMountain\BackMountainConfig.cs
+echo(Integration\BackMountain\BackMountainUnlocks.cs
+echo(Integration\BackMountain\BackMountainItems.cs
+echo(Integration\BackMountain\GardenSeedInjector.cs
+echo(Integration\BackMountain\RaidMealUsageBehavior.cs
+echo(Integration\BackMountain\RaidMealService.cs
+echo(Integration\BackMountain\JukeboxTrackInjector.cs
+echo(Integration\BackMountain\BackMountainSeedDrops.cs
+echo(Integration\BackMountain\ShowcaseService.cs
+echo(Integration\BackMountain\ShowcaseUI.cs
+echo(Integration\BackMountain\ShowcaseInteractable.cs
+echo(Integration\BackMountain\ShowcaseBuildingBuilder.cs
+echo(Localization\BackMountainLocalization.cs
+echo(Integration\BackMountain\BackMountainRuntimeModule.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
 
 dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" @"%OUTPUT_DIR%\bossrush.rsp"
@@ -889,6 +930,36 @@ if %BUILD_EXIT_CODE% EQU 0 (
         ) else (
             echo WARNING: Mode H data JSON missing at Assets\Data\ModeH; Mode H reports content not ready.
         )
+        if exist "Assets\Data\Audio\*.json" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio"
+            xcopy /Y /I "Assets\Data\Audio\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio\" >nul
+            if errorlevel 1 (
+                echo WARNING: Audio data JSON deploy failed.
+            ) else (
+                echo Deployed Audio data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio
+            )
+        )
+        rem FMOD programmer sound 同时支持 wav 与 mp3，两种都要拷
+        if exist "Assets\Sounds\BGM\*.*" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM"
+            xcopy /Y /I "Assets\Sounds\BGM\*.mp3" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM\" >nul 2>nul
+            xcopy /Y /I "Assets\Sounds\BGM\*.wav" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM\" >nul 2>nul
+            xcopy /Y /I "Assets\Sounds\BGM\*.ogg" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM\" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: BGM deploy failed.
+            ) else (
+                echo Deployed BGM to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM
+            )
+        )
+        if exist "Assets\ui\bossrush_ui_skin" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\bossrush_ui_skin" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\bossrush_ui_skin" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: UI skin bundle deploy failed.
+            ) else (
+                echo Deployed UI skin bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        )
         if exist "Assets\ui\modeh_presentation" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
             copy /Y "Assets\ui\modeh_presentation" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\modeh_presentation" >nul 2>nul
@@ -919,6 +990,26 @@ if %BUILD_EXIT_CODE% EQU 0 (
             )
         ) else (
             echo NOTE: Codex portrait bundle missing at Assets\ui\codex_portraits; codex falls back to placeholder icons.
+        )
+        if exist "Assets\ui\campaign_presentation" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
+            copy /Y "Assets\ui\campaign_presentation" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\campaign_presentation" >nul 2>nul
+            if errorlevel 1 (
+                echo WARNING: Campaign presentation bundle deploy failed.
+            ) else (
+                echo Deployed Campaign presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
+            )
+        ) else (
+            echo NOTE: Campaign presentation bundle missing at Assets\ui\campaign_presentation; campaign falls back to raw PNG or no art.
+        )
+        if exist "Assets\ui\Campaign\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\Campaign" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\Campaign"
+            xcopy /Y /I "Assets\ui\Campaign\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\Campaign\" >nul
+            if errorlevel 1 (
+                echo WARNING: Campaign raw PNG deploy failed.
+            ) else (
+                echo Deployed Campaign raw PNG to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\Campaign
+            )
         )
         if exist "Assets\ui\AffixForge\*.png" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\AffixForge" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\AffixForge"
