@@ -35,6 +35,8 @@ TICKER = AFFIX_DIR / "AffixRuntimeTicker.cs"
 DEFS = AFFIX_DIR / "AffixDefinitions.cs"
 REFORGE = Path("Integration/Reforge/ReforgeSystem.cs")
 LOCALIZATION = Path("Localization/AffixForgeLocalization.cs")
+ITEM_DATA = AFFIX_DIR / "AffixItemData.cs"
+FORGE_SYSTEM = AFFIX_DIR / "AffixForgeSystem.cs"
 
 PAIRED_EVENTS = (
     "Health.OnHurt",
@@ -57,7 +59,7 @@ def strip_comments(text):
 
 
 def main():
-    for path in (SERVICE, DEFS, REFORGE, LOCALIZATION):
+    for path in (SERVICE, DEFS, REFORGE, LOCALIZATION, ITEM_DATA, FORGE_SYSTEM):
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
@@ -142,8 +144,27 @@ def main():
         if "[HarmonyPatch" in path.read_text(encoding="utf-8", errors="ignore"):
             return fail(path.as_posix() + " 新增了 Harmony patch，本系统要求零新增")
 
+    # ---- 7) 锻造事务：KV 回读成功后才收费，材料失败必须补偿 ----
+    item_data = strip_comments(ITEM_DATA.read_text(encoding="utf-8", errors="ignore"))
+    for needle, message in (
+        ("TryReadSlot(item, slotIndex, out readback)", "词缀槽写入后必须回读"),
+        ("GetString(NameKey(slotIndex), null)", "展示名 KV 必须回读"),
+        ("GetBool(LockKey(slotIndex), !locked) == locked", "锁定位必须回读"),
+    ):
+        if needle not in item_data:
+            return fail(ITEM_DATA.as_posix() + " " + message)
+
+    forge = strip_comments(FORGE_SYSTEM.read_text(encoding="utf-8", errors="ignore"))
+    roll_at = forge.find("ApplyRoll(item, capacity)")
+    pay_at = forge.find("EconomyManager.Pay(cost, true, true)")
+    stone_at = forge.find("ItemFactory.ConsumeItem(AffixForgeStoneConfig.TYPE_ID, stoneCost)")
+    if not (0 <= roll_at < pay_at < stone_at):
+        return fail("重铸结算顺序必须是 KV 写入/回读 -> 扣钱 -> 扣熔石")
+    if "bool refunded = EconomyManager.Add" not in forge or "RestoreSlots(item, result.Before)" not in forge:
+        return fail("熔石扣除失败必须检查退款结果并恢复词缀快照")
+
     print("AffixForgeInvariantGuard: PASS（" + str(len(ids))
-          + " 条词缀，订阅成对，AFX_ 互斥，死契保命）")
+          + " 条词缀，订阅成对，AFX_ 互斥，死契保命，事务回读）")
     return 0
 
 

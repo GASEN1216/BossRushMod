@@ -265,8 +265,15 @@ namespace BossRush
                 for (int i = 1; i <= capacity; i++)
                 {
                     EnsureSlotEntries(item, i);
+                    if (item.Variables.GetEntry(SlotKey(i)) == null
+                        || item.Variables.GetEntry(LockKey(i)) == null
+                        || item.Variables.GetEntry(NameKey(i)) == null)
+                    {
+                        return false;
+                    }
                 }
-                return true;
+                return GetSchemaVersion(item) == AffixDefinitions.KvSchemaVersion
+                    && GetCapacity(item) == capacity;
             }
             catch (Exception e)
             {
@@ -391,11 +398,15 @@ namespace BossRush
                 if (tier > 3) tier = 3;
 
                 EnsureSlotEntries(item, slotIndex);
-                item.Variables.Set(SlotKey(slotIndex), EncodeSlot(affixId, tier), true);
+                string encoded = EncodeSlot(affixId, tier);
+                item.Variables.Set(SlotKey(slotIndex), encoded, true);
                 item.Variables.SetDisplay(SlotKey(slotIndex), false);
 
-                StampNameKV(item, slotIndex, affixId);
-                return true;
+                if (!StampNameKV(item, slotIndex, affixId)) return false;
+                AffixSlotView readback;
+                return TryReadSlot(item, slotIndex, out readback)
+                    && string.Equals(readback.AffixId, affixId, StringComparison.Ordinal)
+                    && readback.Tier == tier;
             }
             catch (Exception e)
             {
@@ -427,7 +438,10 @@ namespace BossRush
 
                 item.Variables.Set(nameKey, AffixDefinitions.NameLocKeyPrefix + def.Id, true);
                 item.Variables.SetDisplay(nameKey, true);
-                return true;
+                return string.Equals(
+                    item.Variables.GetString(nameKey, null),
+                    AffixDefinitions.NameLocKeyPrefix + def.Id,
+                    StringComparison.Ordinal);
             }
             catch (Exception e)
             {
@@ -454,7 +468,10 @@ namespace BossRush
                 item.Variables.SetDisplay(NameKey(slotIndex), false);
                 item.Variables.Set(LockKey(slotIndex), false, true);
                 item.Variables.SetDisplay(LockKey(slotIndex), false);
-                return true;
+                AffixSlotView readback;
+                return TryReadSlot(item, slotIndex, out readback)
+                    && readback.IsEmpty && !readback.Locked
+                    && string.IsNullOrEmpty(item.Variables.GetString(NameKey(slotIndex), null));
             }
             catch (Exception e)
             {
@@ -485,7 +502,7 @@ namespace BossRush
                 EnsureSlotEntries(item, slotIndex);
                 item.Variables.Set(LockKey(slotIndex), locked, true);
                 item.Variables.SetDisplay(LockKey(slotIndex), false);
-                return true;
+                return item.Variables.GetBool(LockKey(slotIndex), !locked) == locked;
             }
             catch (Exception e)
             {

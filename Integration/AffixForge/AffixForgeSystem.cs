@@ -7,9 +7,9 @@
 //
 // 硬约束：
 //   1. **KV 只经 AffixItemData 写**。本文件不直接碰 Item.Variables。
-//   2. **结算顺序：先扣钱、后扣材料**。金钱可以用 EconomyManager.Add 原路退回，
-//      而消耗掉的物品无法安全复原；因此把不可逆的那一步放最后，
-//      材料扣失败时立刻退钱，绝不出现"钱扣了材料没扣"的黑洞。
+//   2. **结算顺序：先写 KV 并读回、再扣钱、最后扣材料**。金钱可以用
+//      EconomyManager.Add 原路退回，而消耗掉的物品无法安全复原；因此把不可逆的
+//      材料消耗放最后，材料扣失败时回滚 KV 并立刻退钱。
 //   3. **锁定不得锁满**：至少留一个未锁槽，否则重铸按钮永远无事可做。
 //   4. **未知 id fail-open**：读到本版本不认识的词缀时保留 KV 原样，
 //      既不清空也不参与去重以外的任何判断。
@@ -165,7 +165,8 @@ namespace BossRush
         #region 重铸
 
         /// <summary>
-        /// 重掷全部未锁槽。扣钱 → 扣熔石 → 写 KV → 通知运行时服务重建 context。
+        /// 重掷全部未锁槽。先完整写入并校验 KV，再扣钱与熔石；任一步失败都回滚槽位，
+        /// 避免玩家付费后拿不到词缀。
         /// 已锁定的槽保持不变，且它们的词缀 id 会计入本次去重排除集。
         /// </summary>
         public static AffixForgeResult RollUnlockedSlots(Item item)
@@ -191,6 +192,11 @@ namespace BossRush
 
                 SnapshotSlots(item, capacity, result.Before);
 
+                if (!AffixItemData.EnsureInitialized(item, capacity))
+                {
+                    return Fail(result, L10n.T("词缀数据初始化失败。", "Failed to initialize affix data."));
+                }
+
                 if (GetUnlockedSlotCount(item) <= 0)
                 {
                     return Fail(result, L10n.T("全部词缀槽都已锁定，没有可重铸的槽。",
@@ -211,23 +217,40 @@ namespace BossRush
                     return Fail(result, L10n.T("金钱不足。", "Not enough money."));
                 }
 
-                // 先扣钱（可原路退回），再扣材料（不可逆）
+                // KV 是最容易失败的一段，先做并保留快照；费用放在写入成功之后结算。
+                if (!ApplyRoll(item, capacity))
+                {
+                    bool restored = RestoreSlots(item, result.Before);
+                    return Fail(result, restored
+                        ? L10n.T("词缀写入失败，本次操作未收费。",
+                            "Failed to write affixes; no resources were charged.")
+                        : L10n.T("词缀写入与回滚均失败；本次未收费，请勿继续操作。",
+                            "Affix write and rollback both failed; no charge was made. Do not continue."));
+                }
+
                 if (!EconomyManager.Pay(cost, true, true))
                 {
-                    return Fail(result, L10n.T("扣款失败。", "Payment failed."));
+                    bool restored = RestoreSlots(item, result.Before);
+                    return Fail(result, restored
+                        ? L10n.T("扣款失败。", "Payment failed.")
+                        : L10n.T("扣款与词缀回滚均失败；请勿继续操作。",
+                            "Payment and affix rollback both failed; do not continue."));
                 }
+                result.MoneyPaid = moneyCost;
+
                 if (!ItemFactory.ConsumeItem(AffixForgeStoneConfig.TYPE_ID, stoneCost))
                 {
-                    EconomyManager.Add(moneyCost);
-                    return Fail(result, L10n.T("词缀熔石扣除失败，已退还费用。",
-                        "Failed to consume Affix Forge Stones; the money was refunded."));
+                    bool refunded = EconomyManager.Add(moneyCost);
+                    if (refunded) result.MoneyPaid = 0;
+                    bool restored = RestoreSlots(item, result.Before);
+                    return Fail(result, refunded && restored
+                        ? L10n.T("词缀熔石扣除失败，已退还费用。",
+                            "Failed to consume Affix Forge Stones; the money was refunded.")
+                        : L10n.T("熔石扣除失败，退款或词缀回滚未能完整完成；请勿继续操作。",
+                            "Stone consumption failed and refund or affix rollback was incomplete; do not continue."));
                 }
 
-                result.MoneyPaid = moneyCost;
                 result.StonesConsumed = stoneCost;
-
-                AffixItemData.EnsureInitialized(item, capacity);
-                ApplyRoll(item, capacity);
                 SnapshotSlots(item, capacity, result.After);
 
                 NotifyRuntime(item);
@@ -237,14 +260,34 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                bool compensationFailed = false;
+                if (result.StonesConsumed <= 0)
+                {
+                    if (result.MoneyPaid > 0)
+                    {
+                        bool refunded = false;
+                        try { refunded = EconomyManager.Add(result.MoneyPaid); }
+                        catch (Exception refundError)
+                        {
+                            ModBehaviour.DevLog("[AffixForgeSystem] [ERROR] 异常补偿退款失败: "
+                                + refundError.Message);
+                        }
+                        if (refunded) result.MoneyPaid = 0;
+                        else compensationFailed = true;
+                    }
+                    if (!RestoreSlots(item, result.Before)) compensationFailed = true;
+                }
                 ModBehaviour.DevLog("[AffixForgeSystem] 词缀重铸异常: " + e.Message);
-                return Fail(result, L10n.T("词缀锻造出错，本次操作已中止。",
-                    "Affix forging failed; the operation was aborted."));
+                return Fail(result, compensationFailed
+                    ? L10n.T("词缀锻造中止，但补偿未能完整完成；请勿继续操作。",
+                        "Forging stopped, but compensation was incomplete; do not continue.")
+                    : L10n.T("词缀锻造出错，本次操作已中止。",
+                        "Affix forging failed; the operation was aborted."));
             }
         }
 
         /// <summary>执行实际的槽位重掷（不含任何费用结算）。</summary>
-        private static void ApplyRoll(Item item, int capacity)
+        private static bool ApplyRoll(Item item, int capacity)
         {
             System.Random rng = GetRng();
             AffixEquipMask mask = AffixItemData.GetEquipMask(item);
@@ -254,30 +297,29 @@ namespace BossRush
             for (int i = 1; i <= capacity; i++)
             {
                 AffixSlotView view;
-                if (!AffixItemData.TryReadSlot(item, i, out view)) continue;
+                if (!AffixItemData.TryReadSlot(item, i, out view)) return false;
                 if (view.Locked && !view.IsEmpty) exclude.Add(view.AffixId);
             }
 
             for (int i = 1; i <= capacity; i++)
             {
                 AffixSlotView view;
-                if (!AffixItemData.TryReadSlot(item, i, out view)) continue;
+                if (!AffixItemData.TryReadSlot(item, i, out view)) return false;
                 if (view.Locked && !view.IsEmpty) continue;
 
                 string rolled = RollAffixId(rng, exclude, mask);
                 if (string.IsNullOrEmpty(rolled))
                 {
                     // 候选池被排除干净（槽数 > 可用词缀数）：清空该槽而不是塞重复词缀
-                    AffixItemData.ClearSlot(item, i);
+                    if (!AffixItemData.ClearSlot(item, i)) return false;
                     continue;
                 }
 
                 int tier = RollTier(rng);
-                if (AffixItemData.WriteSlot(item, i, rolled, tier))
-                {
-                    exclude.Add(rolled);
-                }
+                if (!AffixItemData.WriteSlot(item, i, rolled, tier)) return false;
+                exclude.Add(rolled);
             }
+            return true;
         }
 
         #endregion
@@ -329,13 +371,21 @@ namespace BossRush
                 {
                     return Fail(result, L10n.T("词缀熔石不足。", "Not enough Affix Forge Stones."));
                 }
+                // 先验证 KV 可写；材料扣除失败时立即恢复锁定位。
+                if (!AffixItemData.SetLock(item, slotIndex, true))
+                {
+                    return Fail(result, L10n.T("锁定状态写入失败，本次操作未收费。",
+                        "Failed to write the lock state; no resources were charged."));
+                }
                 if (!ItemFactory.ConsumeItem(AffixForgeStoneConfig.TYPE_ID, stoneCost))
                 {
-                    return Fail(result, L10n.T("词缀熔石扣除失败。",
-                        "Failed to consume Affix Forge Stones."));
+                    bool restored = AffixItemData.SetLock(item, slotIndex, false);
+                    return Fail(result, restored
+                        ? L10n.T("词缀熔石扣除失败。", "Failed to consume Affix Forge Stones.")
+                        : L10n.T("熔石扣除与锁定回滚均失败；请勿继续操作。",
+                            "Stone consumption and lock rollback both failed; do not continue."));
                 }
 
-                AffixItemData.SetLock(item, slotIndex, true);
                 result.StonesConsumed = stoneCost;
                 SnapshotSlots(item, capacity, result.After);
                 result.Success = true;
@@ -343,6 +393,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                if (result.StonesConsumed <= 0) RestoreSlots(item, result.Before);
                 ModBehaviour.DevLog("[AffixForgeSystem] 锁定词缀槽异常: " + e.Message);
                 return Fail(result, L10n.T("锁定失败，本次操作已中止。",
                     "Locking failed; the operation was aborted."));
@@ -374,13 +425,17 @@ namespace BossRush
                     return Fail(result, L10n.T("该词缀槽没有锁定。", "That affix slot is not locked."));
                 }
 
-                AffixItemData.SetLock(item, slotIndex, false);
+                if (!AffixItemData.SetLock(item, slotIndex, false))
+                {
+                    return Fail(result, L10n.T("解锁状态写入失败。", "Failed to write the unlock state."));
+                }
                 SnapshotSlots(item, capacity, result.After);
                 result.Success = true;
                 return result;
             }
             catch (Exception e)
             {
+                RestoreSlots(item, result.Before);
                 ModBehaviour.DevLog("[AffixForgeSystem] 解锁词缀槽异常: " + e.Message);
                 return Fail(result, L10n.T("解锁失败，本次操作已中止。",
                     "Unlocking failed; the operation was aborted."));
@@ -511,6 +566,25 @@ namespace BossRush
                 }
                 buffer.Add(view);
             }
+        }
+
+        /// <summary>按快照恢复槽位。仅用于事务失败补偿；best-effort 且不抛异常。</summary>
+        private static bool RestoreSlots(Item item, IList<AffixSlotView> snapshot)
+        {
+            if (item == null || snapshot == null) return false;
+            bool restored = true;
+            for (int i = 0; i < snapshot.Count; i++)
+            {
+                AffixSlotView view = snapshot[i];
+                int slotIndex = view.SlotIndex > 0 ? view.SlotIndex : i + 1;
+                bool written = view.IsEmpty
+                    ? AffixItemData.ClearSlot(item, slotIndex)
+                    : AffixItemData.WriteSlot(item, slotIndex, view.AffixId, view.Tier);
+                if (!written) restored = false;
+                if (!AffixItemData.SetLock(item, slotIndex, view.Locked)) restored = false;
+            }
+            NotifyRuntime(item);
+            return restored;
         }
 
         /// <summary>通知行为面重建 context。手持中的装备改词缀必须立刻生效。</summary>
