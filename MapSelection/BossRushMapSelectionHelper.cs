@@ -444,11 +444,16 @@ namespace BossRush
             {
                 GameObject entryObj = bossRushEntryObjects[i];
                 if (entryObj == null) continue;
-                
-                BossRushMapConfig mapConfig = mapConfigs[i];
+
+                BossRushMapEntryClickHandler clickHandler =
+                    entryObj.GetComponent<BossRushMapEntryClickHandler>();
+                int configIndex = clickHandler != null ? clickHandler.entryIndex : i;
+                if (configIndex < 0 || configIndex >= mapConfigs.Length) continue;
+                BossRushMapConfig mapConfig = mapConfigs[configIndex];
                 string displayName = GetBossRushEntryDisplayName(mapConfig);
                 MapSelectionEntryInjectionHelper.SetEntryDisplayNameDirect(entryObj, displayName);
-                ModBehaviour.DevLog("[BossRush] 延迟刷新显示名称(" + debugTag + "): " + displayName + " (index=" + i + ")");
+                ModBehaviour.DevLog("[BossRush] 延迟刷新显示名称(" + debugTag + "): "
+                    + displayName + " (index=" + configIndex + ")");
             }
         }
 
@@ -485,7 +490,8 @@ namespace BossRush
         {
             try
             {
-                BossRushMapConfig[] mapConfigs = ModBehaviour.GetAllMapConfigs();
+                BossRushMapConfig[] allMapConfigs = ModBehaviour.GetAllMapConfigs();
+                BossRushMapConfig[] mapConfigs = BuildSelectableMapConfigs(allMapConfigs);
                 if (mapConfigs == null || mapConfigs.Length == 0)
                 {
                     ModBehaviour.DevLog("[BossRush] 没有可用的地图配置");
@@ -553,9 +559,10 @@ namespace BossRush
                 {
                     clickHandler = entry.gameObject.AddComponent<BossRushMapEntryClickHandler>();
                 }
-                clickHandler.entryIndex = entryIndex;
+                clickHandler.entryIndex = FindMapConfigIndex(mapConfig);
                 
-                ModBehaviour.DevLog("[BossRush] 已配置 BossRush 条目: sceneID=" + mapConfig.sceneID + ", beaconIndex=" + mapConfig.beaconIndex + ", entryIndex=" + entryIndex);
+                ModBehaviour.DevLog("[BossRush] 已配置 BossRush 条目: sceneID=" + mapConfig.sceneID
+                    + ", beaconIndex=" + mapConfig.beaconIndex + ", entryIndex=" + clickHandler.entryIndex);
             }
             catch (Exception e)
             {
@@ -629,7 +636,59 @@ namespace BossRush
         public static void SetPendingMapEntryIndex(int index)
         {
             pendingMapEntryIndex = index;
+            if (pendingEntryKind == BossRushPendingEntryKind.ModeH)
+            {
+                BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+                if (configs != null && index >= 0 && index < configs.Length)
+                {
+                    ModeHSupportedMap selectedMap;
+                    if (ModeHMapSupportRegistry.TryGetMap(configs[index].sceneName, out selectedMap)
+                        && selectedMap != null)
+                    {
+                        // 只重绑本次 intent 的目标场景，不递增 generation；一次入场只创建一个 owner。
+                        pendingModeHTargetSceneName = selectedMap.SceneName;
+                        pendingModeHTargetSceneId = selectedMap.SceneId;
+                    }
+                }
+            }
             ModBehaviour.DevLog("[BossRush] 设置待处理地图条目索引: " + index);
+        }
+
+        private static BossRushMapConfig[] BuildSelectableMapConfigs(BossRushMapConfig[] allConfigs)
+        {
+            if (allConfigs == null || pendingEntryKind != BossRushPendingEntryKind.ModeH)
+            {
+                return allConfigs;
+            }
+
+            List<BossRushMapConfig> supported = new List<BossRushMapConfig>();
+            for (int i = 0; i < allConfigs.Length; i++)
+            {
+                BossRushMapConfig config = allConfigs[i];
+                if (config != null && ModeHMapSupportRegistry.IsSupportedPair(config.sceneName, config.sceneID))
+                {
+                    supported.Add(config);
+                }
+            }
+            return supported.ToArray();
+        }
+
+        private static int FindMapConfigIndex(BossRushMapConfig target)
+        {
+            BossRushMapConfig[] configs = ModBehaviour.GetAllMapConfigs();
+            if (configs == null || target == null) return -1;
+            for (int i = 0; i < configs.Length; i++)
+            {
+                BossRushMapConfig candidate = configs[i];
+                if (object.ReferenceEquals(candidate, target)
+                    || (candidate != null
+                        && string.Equals(candidate.sceneName, target.sceneName, StringComparison.Ordinal)
+                        && string.Equals(candidate.sceneID, target.sceneID, StringComparison.Ordinal)))
+                {
+                    return i;
+                }
+            }
+            return -1;
         }
         
         /// <summary>

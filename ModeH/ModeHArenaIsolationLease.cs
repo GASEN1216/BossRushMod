@@ -209,7 +209,7 @@ namespace BossRush
                 {
                     CharacterMainControl character = characters[i];
                     if (character == null || character.gameObject == null) continue;
-                    if (object.ReferenceEquals(character, player)) continue;
+                    if (ShouldPreserveNativeCharacter(character, player)) continue;
 
                     try
                     {
@@ -229,6 +229,27 @@ namespace BossRush
                 failureReasonId = "isolation_clear_failed:" + e.GetType().Name;
                 _lastError = failureReasonId;
                 return false;
+            }
+        }
+
+        private static bool ShouldPreserveNativeCharacter(
+            CharacterMainControl character, CharacterMainControl player)
+        {
+            if (character == null || object.ReferenceEquals(character, player)) return true;
+            try
+            {
+                if (character.IsMainCharacter || character.Team == Teams.player) return true;
+                if (PetNestCompanionAgent.IsCompanionCharacter(character)) return true;
+                if (character.GetComponentInChildren<INPCController>(true) != null) return true;
+
+                // 隔离只回收明确敌对玩家的原图战斗单位。中立 NPC、雇佣兵、配偶和其他
+                // 非敌对角色不属于“原生敌人”，不能因为 Mode H 清场而被永久销毁。
+                return !Team.IsEnemy(Teams.player, character.Team);
+            }
+            catch (Exception)
+            {
+                // 无法证明是敌人时 fail-closed 保留，技术隔离失败可重试，误删角色不可逆。
+                return true;
             }
         }
 

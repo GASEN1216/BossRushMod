@@ -291,6 +291,8 @@ namespace BossRush
             if (TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reasonId))
             {
                 ModeHRuntimeGates.SetRecoveryOnlyBlocked(true, reasonId);
+                // Suspended 是显式持久化点：恢复壳必须跨重启可达，不能只留内存脏标记。
+                TryPersistSeason("suspended");
             }
         }
 

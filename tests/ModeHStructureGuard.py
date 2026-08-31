@@ -28,12 +28,14 @@ STATE_MODEL = os.path.join(MODEH_DIR, "ModeHStateModel.cs")
 CONFIG = os.path.join(MODEH_DIR, "ModeHConfig.cs")
 SEED = os.path.join(MODEH_DIR, "ModeHSeedStream.cs")
 DIGEST = os.path.join(MODEH_DIR, "ModeHCanonicalDigest.cs")
+COMBAT_FLOW = os.path.join(MODEH_DIR, "ModeHRuntimeModule_CombatFlow.cs")
 
 REQUIRED_FILES = [
     STATE_MODEL,
     CONFIG,
     SEED,
     DIGEST,
+    COMBAT_FLOW,
 ]
 
 # 全部持久枚举：名称 -> 必须逐项出现的 "成员 = 整数" 列表
@@ -346,6 +348,19 @@ def main():
 
     check_gitignore_allows_data_dir(errors)
     check_ui_layers_and_deploy(errors)
+
+    combat = read(COMBAT_FLOW, errors)
+    for pattern, desc in [
+        (r"private bool EnsurePreparedMatchSelection\(", "确定性阵容/赔率准备"),
+        (r"private IEnumerator DriveCompleteMatchSpawning\(", "分帧实战生成"),
+        (r"private void TickActiveCombat\(", "战斗与接力 tick"),
+        (r"private void BeginMatchSettlement\(", "单批结算入口"),
+        (r"private void RemoveUnarchivedSettlementForCurrentMatch\(", "技术重试结算回滚"),
+    ]:
+        if not re.search(pattern, combat):
+            errors.append("[CombatFlow] 缺少: " + desc)
+    if "combat_wiring_pending" in strip_cs_comments(combat):
+        errors.append("[CombatFlow] 仍存在未接线占位符 combat_wiring_pending")
 
     if errors:
         print("ModeHStructureGuard: FAIL ({} errors)".format(len(errors)))

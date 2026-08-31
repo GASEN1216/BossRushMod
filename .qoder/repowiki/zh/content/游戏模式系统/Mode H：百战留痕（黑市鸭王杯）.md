@@ -35,7 +35,8 @@
 
 - 由 `ModeHInteractable` 的擂台门交互进入，走 `BossRushMapSelectionHelper` 的
   typed pending entry kind（`BossRushPendingEntryKind.ModeH`），与 Mode G 互斥。
-- 需要配置项 `modeHEnabled`（ModConfig 键 `BossRush_ModeHEnabled`，默认关闭）。
+- `modeHEnabled` 字段与旧键 `BossRush_ModeHEnabled` 仅为兼容保留；Mode H 现属默认内容，
+  不再注册总开关，并会在读配置后强制恢复为开启。
 - 入口页顶部**固定显示**真实资产风险行 `BossRush_ModeH_RealStakeRiskNotice`，
   不可折叠、不可关闭：本模式允许押上真实仓库物品，失败会永久没收，唯一装备也不豁免。
 - 五种拒绝原因（内容未就绪、地图不支持、展示资源缺失、旧模式冲突、生产认证失败）
@@ -172,9 +173,9 @@ rewardCandidateCount = 1 + min(2, floor(max(0, net) / 2))
 
 ## 真实仓库抵押（§22）
 
-没有真实资产开关。是否押上真实物品是玩家在 `LoadoutEditing` 中的逐场自愿选择，默认不选；
-不选也能完整打完六场。系统唯一会自行禁用押品的情况是只读派生结果
-`ModeHWarehouseStakeJournal.IsSlotConsistent` 为假。
+没有真实资产开关。当前正式可玩主线只启用虚拟筹码，`realStakeSelected` 固定为 false；
+真实仓库 journal 与恢复工具保留用于识别、保护历史未结事务，但新赛季不会创建新的真实押品。
+在完整实机验证 escrow 重建、满仓返还与 ManualIntervention 出口之前，不得把它当作“内容开关”强行放开。
 
 journal 阶段严格单向，`phase` 是唯一终态来源：
 
@@ -202,10 +203,22 @@ None → Prepared → EscrowSnapshotDurable → EscrowRemovedDurable → MatchLo
 - 额外死亡掉落抑制仍走既有的 `Patches/Combat/CharacterOnDeadPatch.cs` 扩展，
   不新增全局补丁。
 
+## 2026-08-31 可玩闭环收口
+
+`ModeHRuntimeModule_CombatFlow` 已把赔率页、虚拟下注、锁盘、分帧生成、双方入场、
+拍铃口令、接力、180 秒胜负、遥测、伤病/战痕 offer、奖励、幕间、转会和名人堂接成一条主线。
+选手快照与查询辅助拆在 `ModeHRuntimeModule_CombatProfiles`，只用于控制文件规模；
+技术故障从 `ErrorRecoveryPending` 有显式出口进入 `Recovering`，不会停在恢复死态。
+结算只生成一份未归档 report；恢复时优先路由到该 report，避免重放战斗或重复发奖。
+技术重试会撤销本场未归档 report、奖励 operation、虚拟筹码预约和战前快照，再回到同场看盘。
+
+地图选择只展示通过 Mode H 五点位审计的地图，玩家点击其他条目时只重绑冻结目标、
+不创建第二个 generation。原图隔离清场只销毁明确敌对玩家的战斗角色；玩家、玩家阵营、
+遗种巢随从、带 `INPCController` 的 NPC/配偶/商人与其他非敌对角色全部保留。
+HUD 的选手名在备战时缓存，战斗每帧只消费缓存与数值，不重复做本地化/名称解析。
+
 ## 已知待办
 
-- 展示 AssetBundle `Assets/ui/modeh_presentation` 是 local-only 制品，
-  由兄弟 Unity 工程 `Assets/Editor/ModeHPresentationBundleBuilder.cs` 生成后复制；
-  未落位时入口 fail-closed，`ModeHPresentationAssetGuard` 的“bundle 存在”断言为红。
 - 全部运行时结论（生成无副作用、AI 双向伤害、资源显示、存档物理落盘、无泄漏）
   只能由设计提案 §26.5 的 18 项实机 smoke 矩阵确认，静态守卫通过不等于运行时通过。
+- 真实仓库押品的新事务创建仍保持 fail-closed；虚拟筹码主线不受影响，可完整打完六场。

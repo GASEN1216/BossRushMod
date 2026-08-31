@@ -61,6 +61,12 @@ def main():
         (r"public bool CheckLateSpawners\(out string failureReasonId\)", "晚到 spawner 检查"),
         (r"public bool HasClearedNativeEnemies", "暴露是否已清理原生敌人（决定能否回落 Legacy）"),
         (r"isolation_scene_generation_mismatch", "scene generation 失配 fail-closed"),
+        (r"private static bool ShouldPreserveNativeCharacter\(", "原图清场保留角色判定"),
+        (r"character\.IsMainCharacter \|\| character\.Team == Teams\.player",
+         "玩家与玩家阵营保护"),
+        (r"PetNestCompanionAgent\.IsCompanionCharacter\(character\)", "遗种巢随从保护"),
+        (r"GetComponentInChildren<INPCController>\(true\)", "NPC/配偶/商人保护"),
+        (r"!Team\.IsEnemy\(Teams\.player, character\.Team\)", "非敌对角色保护"),
     ]
     for pattern, desc in checks:
         if not re.search(pattern, code):

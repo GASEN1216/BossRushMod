@@ -57,6 +57,37 @@ namespace BossRush
         /// <summary>低频巡检累加器：租约完整性每秒查一次，不每帧扫。</summary>
         private float _leaseCheckAccumulator;
 
+        /// <summary>当前比赛的战斗控制与遥测；只在 MatchFighting 生命周期非空。</summary>
+        private ModeHCombatControl _combatControl;
+        private ModeHCombatTelemetry _combatTelemetry;
+
+        /// <summary>战场快照上下文及其复用集合，避免每帧创建容器。</summary>
+        private ModeHBattleSnapshotContext _battleSnapshotContext;
+        private readonly List<string> _pendingBatchKeys = new List<string>();
+        private readonly List<ModeHSnapshotEnemyInput> _snapshotEnemies =
+            new List<ModeHSnapshotEnemyInput>();
+        private readonly ModeHSnapshotEnemyInput _snapshotEntrant = new ModeHSnapshotEnemyInput();
+
+        /// <summary>当前比赛的运行时角色、身份映射与虚拟 kit 事务。</summary>
+        private ModeHSpawnHandle _activeFighterHandle;
+        private ModeHParticipantRef _starterParticipant;
+        private ModeHParticipantRef _relayParticipant;
+        private readonly List<ModeHParticipantRef> _enemyParticipants =
+            new List<ModeHParticipantRef>();
+        private ModeHKitApplication _activeKitApplication;
+
+        /// <summary>接力者按需生成；先发倒地前不预热第二个角色。</summary>
+        private ModeHSpawnTransaction _relaySpawnTransaction;
+        private Coroutine _relaySpawnRoutine;
+
+        /// <summary>看盘阶段冻结的公开报价、虚拟下注与最近结算。</summary>
+        private ModeHOddsQuote _currentOddsQuote;
+        private int _selectedVirtualStake;
+        private string _starterDisplayName;
+        private string _relayDisplayName;
+        private ModeHMatchReportDto _lastSettlementReport;
+        private ModeHSeasonRewardOperationDto _lastRewardOperation;
+
         #endregion
 
         #region 场景到达
@@ -112,6 +143,12 @@ namespace BossRush
             _recoveryDriveStateSequence = -1;
             _leaseCheckAccumulator = 0f;
             _seasonDirty = false;
+            _selectedVirtualStake = 0;
+            _currentOddsQuote = null;
+            _starterDisplayName = null;
+            _relayDisplayName = null;
+            _lastSettlementReport = null;
+            _lastRewardOperation = null;
         }
 
         private static string ResolveSceneId(SceneRuntimeContext context)
@@ -373,7 +410,7 @@ namespace BossRush
                 season.matchReports = new List<ModeHMatchReportDto>();
                 season.seasonRewardOperations = new List<ModeHSeasonRewardOperationDto>();
                 season.appliedEventTokenIds = new List<string>();
-                season.unlockedKitIds = new List<string>();
+                season.unlockedKitIds = ModeHLoadoutKitRegistry.GetStarterKitIds();
                 season.virtualStakeCredits = ModeHConfig.InitialVirtualStakeCredits;
                 season.reservedVirtualStake = 0;
 

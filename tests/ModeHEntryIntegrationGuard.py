@@ -83,6 +83,9 @@ def main():
              "切图前冻结 scene pair 与 generation"),
             (r"modeHSceneGenerationCounter\+\+;", "generation 单调递增"),
             (r"public static bool TryMatchModeHSceneIntent\(", "只有匹配场景能消费 intent"),
+            (r"private static BossRushMapConfig\[\] BuildSelectableMapConfigs\(",
+             "Mode H 地图选择只展示已审计地图"),
+            (r"ModeHMapSupportRegistry\.IsSupportedPair\(", "地图列表按 Mode H 点位审计过滤"),
         ]
         for pattern, desc in checks:
             if not re.search(pattern, code):
@@ -99,6 +102,13 @@ def main():
                 errors.append("[Helper] 场景消费判定必须同时比较 sceneName 与 sceneID")
             if "modeHSceneGenerationCounter++" in body:
                 errors.append("[Helper] 场景消费判定不得再次递增 generation")
+
+        select_fn = re.search(
+            r"public static void SetPendingMapEntryIndex\([\s\S]{0,1400}?\n        \}", code)
+        if not select_fn or "pendingModeHTargetSceneName = selectedMap.SceneName;" not in select_fn.group(0):
+            errors.append("[Helper] 玩家改选地图时必须同步重绑 Mode H 冻结目标")
+        elif "modeHSceneGenerationCounter++" in select_fn.group(0):
+            errors.append("[Helper] 改选地图只重绑目标，不得创建第二个 generation")
 
         clear = re.search(r"public static void ClearPendingEntryFlowState\(\)[\s\S]{0,700}?\n        \}", code)
         if clear:

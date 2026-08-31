@@ -36,6 +36,12 @@ namespace BossRush
                 return;
             }
 
+            if (_runState.Lifecycle == ModeHLifecycle.MatchFighting
+                || _runState.Lifecycle == ModeHLifecycle.RelayPending)
+            {
+                TickActiveCombat(deltaTime);
+            }
+
             // 租约完整性：只查已登记的 spawner 与晚到实例，按秒节流（§19.2 明令不得每帧全场扫）
             _leaseCheckAccumulator += deltaTime;
             if (_leaseCheckAccumulator >= LeaseCheckIntervalSeconds)
@@ -161,6 +167,7 @@ namespace BossRush
         private ModeHLifecycle DeriveResumeFromSeasonProgress()
         {
             if (_runState == null || _season == null) return ModeHLifecycle.Unknown;
+            if (FindLatestPendingReport() != null) return ModeHLifecycle.Intermission;
             if (_runState.MatchIndex >= ModeHConfig.FirstMatchIndex) return ModeHLifecycle.MatchBrief;
             if (_season.contract != null) return ModeHLifecycle.RosterLocked;
             return ModeHLifecycle.Drafting;
@@ -173,6 +180,17 @@ namespace BossRush
         private void RequestTechnicalRetry(string reasonId)
         {
             if (_runState == null) return;
+            ModeHLifecycle origin = _runState.Lifecycle;
+            bool committedCombatFact = origin == ModeHLifecycle.MatchFighting
+                || origin == ModeHLifecycle.RelayPending
+                || origin == ModeHLifecycle.MatchSettling;
+            bool ownsMatchRuntime = committedCombatFact
+                || origin == ModeHLifecycle.MatchSpawning;
+            if (ownsMatchRuntime)
+            {
+                ReleaseCombatRuntimeObjects();
+                RestoreMatchReservationAndSnapshot();
+            }
             int retries = _runState.IncrementTechnicalRetry();
             ModBehaviour.DevLog("[ModeH] 技术故障 (" + (reasonId ?? "unknown") + ") retry=" + retries);
             if (retries > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
@@ -180,7 +198,22 @@ namespace BossRush
                 RequestSuspended(reasonId != null ? reasonId : "technical_retry_exhausted");
                 return;
             }
-            RequestRecovering(reasonId != null ? reasonId : "technical_fault");
+            if (committedCombatFact)
+            {
+                RequestErrorRecoveryPending(reasonId != null ? reasonId : "technical_fault");
+                if (_runState.Lifecycle != ModeHLifecycle.ErrorRecoveryPending
+                    || !TryTransition(ModeHLifecycle.ErrorRecoveryPending, ModeHLifecycle.Recovering,
+                        "recovery_barrier_complete"))
+                {
+                    RequestSuspended("recovery_barrier_rejected");
+                    return;
+                }
+            }
+            else
+            {
+                RequestRecovering(reasonId != null ? reasonId : "technical_fault");
+            }
+            TryPersistSeason("technical_retry_reset");
         }
 
         #endregion
@@ -190,8 +223,7 @@ namespace BossRush
         /// <summary>
         /// 回收本场战斗的运行期对象。由 ReleaseRuntimeObjects 调用，
         /// 对应 §18.3 的第 3-5 步（取消战斗计时、恢复 adapter、回收临时角色与 kit）。
-        /// 首发尚未接入 CombatControl 实例，这里保持幂等空实现的形态，
-        /// 后续接线时只在本方法内补，不改 ReleaseRuntimeObjects 的顺序。
+        /// 战斗控制、adapter、事件路由、临时角色与 kit 都在这里按逆序幂等释放。
         /// </summary>
         private void ReleaseMatchRuntime()
         {
@@ -214,22 +246,23 @@ namespace BossRush
             _spawnTransaction = null;
 
             // 3-5. 取消战斗计时、恢复 adapter、回收临时角色与 kit
-            try
-            {
-                ModeHEventRouter.ClearMatchRegistry();
-                ModeHEventRouter.Unbind();
-            }
-            catch (Exception e)
-            {
-                LogFailure("release_match_runtime", e);
-            }
+            ReleaseCombatRuntimeObjects();
         }
 
-        /// <summary>观战 HUD 的拍铃按钮。战斗未接入前只记录，不改任何事实。</summary>
+        /// <summary>观战 HUD 的拍铃按钮。每场至多一次，直接交给战斗控制器。</summary>
         private void OnBellPressed()
         {
             if (_commandsClosed || _runState == null) return;
-            ModBehaviour.DevLog("[ModeH] 拍铃请求 lifecycle=" + _runState.Lifecycle);
+            if (_runState.Lifecycle != ModeHLifecycle.MatchFighting || _combatControl == null) return;
+            RefreshBattleSnapshotContext();
+            string failureReasonId;
+            if (!_combatControl.TryRingBell(_battleSnapshotContext, out failureReasonId))
+            {
+                ModBehaviour.DevLog("[ModeH] 拍铃被拒绝: "
+                    + (failureReasonId != null ? failureReasonId : "unknown"));
+                return;
+            }
+            AttachAndPersistBattleSnapshot("bell_committed");
         }
 
         #endregion
@@ -558,10 +591,50 @@ namespace BossRush
 
             if (_season == null || _runState == null) return page;
 
+            string prepareFailure;
+            if (!EnsurePreparedMatchSelection(out prepareFailure))
+            {
+                page.Body = L10n.T("本场整备不可用：", "Match setup unavailable: ")
+                    + (prepareFailure != null ? prepareFailure : "unknown");
+                return page;
+            }
+
+            page.Body = L10n.T("我方公开分 ", "Player public score ")
+                + _currentOddsQuote.PlayerPublicScore
+                + L10n.T("　敌方公开分 ", "  Enemy public score ")
+                + _currentOddsQuote.EnemyPublicScore
+                + L10n.T("　锁定赔率 x", "  Locked odds x") + _currentOddsQuote.Odds
+                + L10n.T("\n虚拟筹码余额 ", "\nVirtual credits ") + _season.virtualStakeCredits
+                + L10n.T("　当前下注 ", "  Current stake ") + _selectedVirtualStake;
+
+            if (_currentOddsQuote.Breakdown != null)
+            {
+                for (int i = 0; i < _currentOddsQuote.Breakdown.Count; i++)
+                {
+                    ModeHOddsBreakdownEntry entry = _currentOddsQuote.Breakdown[i];
+                    if (entry == null) continue;
+                    page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + entry.LabelKey)
+                        + "  " + (entry.Value >= 0 ? "+" : string.Empty) + entry.Value);
+                }
+            }
+
+            int maxStake = ModeHVirtualStakeController.GetMaxStake(_season.virtualStakeCredits);
+            for (int stake = 0; stake <= maxStake; stake++)
+            {
+                int selected = stake;
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("下注 ", "Stake ") + selected,
+                    Interactable = selected != _selectedVirtualStake,
+                    OnClick = delegate { SelectVirtualStake(selected); },
+                });
+            }
+
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn"),
-                Interactable = _season.currentMatchPlan != null && _season.contract != null,
+                Interactable = _season.currentMatchPlan != null && _season.matchRoster != null
+                    && _currentOddsQuote != null,
                 OnClick = LockLoadoutAndStartMatch,
             });
             return page;
@@ -591,12 +664,25 @@ namespace BossRush
                 // 正常路径开页时已经跳过去了，这里再补一次是为了任何进入 LoadoutEditing
                 // 的其它路径也能锁盘，而不是让按钮静默失效。
                 if (!EnsureOddsPreview()) return;
+                string prepareFailure;
+                if (!PrepareLockedMatch(out prepareFailure))
+                {
+                    ModBehaviour.DevLog("[ModeH] 锁盘准备失败: "
+                        + (prepareFailure != null ? prepareFailure : "unknown"));
+                    return;
+                }
                 if (!TryTransition(ModeHLifecycle.OddsPreview, ModeHLifecycle.LoadoutLocked, "loadout_locked"))
                 {
+                    RestoreMatchReservationAndSnapshot();
                     return;
                 }
                 // 开战前的最后一个显式落盘点：技术中止要按它回到同一场
-                TryPersistSeason("loadout_locked");
+                if (!TryPersistSeason("loadout_locked"))
+                {
+                    RestoreMatchReservationAndSnapshot();
+                    RequestSuspended("loadout_persist_failed");
+                    return;
+                }
                 StartMatchSpawning();
             }
             catch (Exception e)
@@ -622,89 +708,8 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator DriveMatchSpawning()
         {
-            long ownerToken = _runState.OwnerToken;
-            int generation = _sceneGeneration;
-            string failureReasonId = null;
-            bool ok = false;
-
-            ModeHMatchPlanDto plan = _season != null ? _season.currentMatchPlan : null;
-            List<CharacterRandomPreset> enemyPresets = new List<CharacterRandomPreset>();
-            List<string> enemyKeys = new List<string>();
-
-            if (plan == null || plan.enemyStableKeys == null || plan.enemyStableKeys.Count == 0)
-            {
-                AbortMatchSpawning("plan_missing");
-                yield break;
-            }
-
-            for (int i = 0; i < plan.enemyStableKeys.Count; i++)
-            {
-                string key = plan.enemyStableKeys[i];
-                CharacterRandomPreset preset = ModeHPresetRegistry.GetAuditedPreset(key);
-                if (preset == null)
-                {
-                    AbortMatchSpawning("enemy_preset_missing:" + key);
-                    yield break;
-                }
-                enemyPresets.Add(preset);
-                enemyKeys.Add(key);
-            }
-
-            _spawnTransaction = new ModeHSpawnTransaction();
-            if (!_spawnTransaction.Begin(_map, generation, ownerToken, out failureReasonId))
-            {
-                AbortMatchSpawning(failureReasonId != null ? failureReasonId : "spawn_tx_begin_failed");
-                yield break;
-            }
-
-            ModeHSpawnBatchResult result = new ModeHSpawnBatchResult();
-            ModeHSpawnDiagnostics diagnostics = new ModeHSpawnDiagnostics();
-
-            System.Collections.IEnumerator batch = _spawnTransaction.SpawnBatch(
-                enemyPresets, enemyKeys, Teams.wolf, false, diagnostics, result);
-            while (batch.MoveNext())
-            {
-                if (!IsCallbackStillValid(ownerToken, generation)) yield break;
-                yield return null;
-            }
-            ok = result.Success;
-            if (!ok)
-            {
-                AbortMatchSpawning(result.FailureReasonId != null
-                    ? result.FailureReasonId : "enemy_spawn_failed");
-                yield break;
-            }
-
-            if (!IsCallbackStillValid(ownerToken, generation)) yield break;
-
-            _spawnRoutine = null;
-
-            // 本批交付到「敌军已按计划就位」为止；战斗驱动（口令窗口、接力、结算）尚未接线。
-            // 干净地回滚并退回看盘：**不**消耗同场重试预算、**不**挂起赛季——
-            // 那两者是给真实技术故障准备的，用在「功能没写完」上会把玩家的赛季推进死路。
-            try
-            {
-                if (_spawnTransaction != null) _spawnTransaction.RollbackAll();
-            }
-            catch (Exception e)
-            {
-                LogFailure("spawn_rollback_pending", e);
-            }
-            _spawnTransaction = null;
-
-            if (!IsCallbackStillValid(ownerToken, generation)) yield break;
-
-            ModBehaviour.DevLog("[ModeH] 生成校验通过（敌军 " + enemyKeys.Count
-                + " 名已就位并回滚）；战斗驱动尚未接线，退回看盘");
-            if (_owner != null)
-            {
-                _owner.ShowMessage(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Match_NotWiredYet"));
-            }
-            // MatchSpawning 在冻结表里没有直达 MatchBrief 的边（CR-2026-08-29-009），
-            // 回落必须经 Recovering 过渡，由 DriveRecovery 落到同一场看盘。
-            // 这里**刻意**用不消耗预算的 RequestRecovering：功能没写完不是技术故障，
-            // 消耗重试预算会把玩家的赛季推进死路。
-            RequestRecovering("combat_wiring_pending");
+            System.Collections.IEnumerator inner = DriveCompleteMatchSpawning();
+            while (inner.MoveNext()) yield return inner.Current;
         }
 
         /// <summary>
@@ -714,6 +719,7 @@ namespace BossRush
         private void AbortMatchSpawning(string reasonId)
         {
             _spawnRoutine = null;
+            ReleaseCombatRuntimeObjects();
             try
             {
                 if (_spawnTransaction != null) _spawnTransaction.RollbackAll();
@@ -723,6 +729,8 @@ namespace BossRush
                 LogFailure("spawn_rollback", e);
             }
             _spawnTransaction = null;
+
+            RestoreMatchReservationAndSnapshot();
 
             if (_runState == null) return;
             RequestTechnicalRetry(reasonId != null ? reasonId : "spawn_failed");
@@ -736,9 +744,7 @@ namespace BossRush
 
         private ModeHPageContent BuildSettlementPageContent()
         {
-            ModeHPageContent page = new ModeHPageContent();
-            page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Settlement");
-            return page;
+            return BuildCompletedSettlementPageContent();
         }
 
         #endregion

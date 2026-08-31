@@ -302,6 +302,26 @@ namespace BossRush
 
         #endregion
 
+        /// <summary>只销毁观战 HUD；结算页仍由同一 UI owner 继续使用。</summary>
+        public void DestroyHud()
+        {
+            if (_hudRoot != null)
+            {
+                UnityEngine.Object.Destroy(_hudRoot);
+                _hudRoot = null;
+                _hudCanvas = null;
+            }
+            _hudTimer = null;
+            _hudStarter = null;
+            _hudRelay = null;
+            _hudEnemies = null;
+            _bellButton = null;
+            _bellLabel = null;
+            _bellWindowBar = null;
+            _lastTimerSeconds = -1;
+            _lastEnemyCount = -1;
+        }
+
         #region 诊断覆盖层
 
         /// <summary>
@@ -537,21 +557,7 @@ namespace BossRush
         {
             ClosePage();
             DestroyDiagnostics();
-            if (_hudRoot != null)
-            {
-                UnityEngine.Object.Destroy(_hudRoot);
-                _hudRoot = null;
-                _hudCanvas = null;
-            }
-            _hudTimer = null;
-            _hudStarter = null;
-            _hudRelay = null;
-            _hudEnemies = null;
-            _bellButton = null;
-            _bellLabel = null;
-            _bellWindowBar = null;
-            _lastTimerSeconds = -1;
-            _lastEnemyCount = -1;
+            DestroyHud();
         }
 
         #endregion
