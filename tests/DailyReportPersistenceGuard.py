@@ -79,6 +79,9 @@ def main():
     coordinator = COORDINATOR.read_text(encoding="utf-8")
     rewards = REWARDS.read_text(encoding="utf-8")
     collector = COLLECTOR.read_text(encoding="utf-8")
+    models = Path("Integration/DailyReport/DailyReportModels.cs").read_text(encoding="utf-8")
+    codec = Path("Integration/DailyReport/DailyReportCodec.cs").read_text(encoding="utf-8")
+    ui = Path("Integration/DailyReport/DailyReportUI.cs").read_text(encoding="utf-8")
     compile_list = COMPILE_LIST.read_text(encoding="utf-8", errors="ignore")
 
     # ---- 1) 一天的秒数必须镜像官方值 ----
@@ -198,6 +201,16 @@ def main():
             "空候选池不得写进 _candidateCache：官方 Search 自带降品质兜底，"
             "空数组必然是 ItemAssetsCollection 未就绪或 Search 瞬时异常的故障残影，"
             "缓存它会把一次瞬时失败放大成该品质整会话 no_candidate")
+
+    # ---- 12) 跨天提示必须落盘；UI 销毁必须调用动画基类清理 ----
+    if "PendingIssueBanner" not in models:
+        return fail("新一期提示必须进入 DailyReportData，不能只留进程内布尔")
+    if codec.count('"pendingIssueBanner"') < 2:
+        return fail("pendingIssueBanner 必须同时编码和解码，旧档缺失按 false")
+    if "data.PendingIssueBanner = true" not in service_code or "data.PendingIssueBanner = false" not in service_code:
+        return fail("跨天置位和提示消费都必须同步持久化 pendingIssueBanner")
+    if not re.search(r"protected override void OnDestroy\(\)[\s\S]{0,180}?base\.OnDestroy\(\)", ui):
+        return fail("DailyReportUI.OnDestroy 必须调用 FadePanelController 基类清理")
 
     # ---- 7) 编译清单 ----
     for path in REQUIRED_SOURCES:

@@ -32,7 +32,8 @@ source_files:
 
 设计文档：`docs/未来拓展/设计/P2-日报系统.md`。
 
-系统由入口开关 `dailyReportEnabled`（默认 true）总控，关闭时整个子系统 dormant：不订阅存档、不计时、不出刊、不提示。
+`dailyReportEnabled` 字段与旧键只为兼容保留；日报现属恒开默认内容，不再注册总开关。
+dormant 退订与清理路径仍保留供卸载和故障回落。
 
 ## 2. 关键文件与职责
 
@@ -175,6 +176,8 @@ F3 调试菜单提供三个按钮：**快进一天**（一个游戏日是 24 现
 
 **其余 P3**：候选池空结果不再入缓存；里程碑发奖序列改用签到当日（见 3.4）；F3「悬赏题目」改打今日在售题（见 6）。
 
-**未修**：`_pendingIssueBanner` 仍只在内存（战斗中跨天 → 没回基地就退游戏，下次会话不再提示「新一期已送达」）。现有持久字段里没有任何「最后已读期号」语义可复用，修它必须新增存档字段（`SCHEMA+`），为一个数据无损的 P3 不值得，留给 owner 拍板。
+**新一期提示已持久化（SCHEMA+）**：新增可选字段 `pendingIssueBanner`。跨天时与内存标志同步置 true，
+提示真正发出后同步清 false；旧档缺字段由解码器按 false 处理。战斗中跨天后直接退游，下一次回基地
+仍会收到“新一期已送达”。`DailyReportUI.OnDestroy` 同时补回 `base.OnDestroy()`，确保 Fade/View 清理完整。
 
 `tests/DailyReportPersistenceGuard.py` 相应新增四条断言（槽位烙印、`EconomyManager.Add` 返回值、里程碑签到当日序列、空候选池不缓存）。

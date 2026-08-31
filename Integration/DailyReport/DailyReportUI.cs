@@ -620,9 +620,13 @@ namespace BossRush
             if (fadeGroup != null) fadeGroup.SkipHide();
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
-            if (Instance == this) Instance = null;
+            try { base.OnDestroy(); }
+            finally
+            {
+                if (Instance == this) Instance = null;
+            }
         }
 
         #endregion

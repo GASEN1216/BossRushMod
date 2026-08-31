@@ -172,6 +172,9 @@ namespace BossRush
         /// <summary>昨日快照是否有效（第一天时无昨日）。</summary>
         internal bool HasYesterday;
 
+        /// <summary>新一期提示是否尚未展示。落盘以免跨天后退游丢失提示。</summary>
+        internal bool PendingIssueBanner;
+
         #endregion
 
         #region 元数据
@@ -206,6 +209,7 @@ namespace BossRush
             copy.Today = Today != null ? Today.Clone() : new DailyReportStats();
             copy.Yesterday = Yesterday != null ? Yesterday.Clone() : new DailyReportStats();
             copy.HasYesterday = HasYesterday;
+            copy.PendingIssueBanner = PendingIssueBanner;
             copy.LastUpdatedTicks = LastUpdatedTicks;
             return copy;
         }

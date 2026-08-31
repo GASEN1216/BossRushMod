@@ -198,6 +198,7 @@ namespace BossRush
                     _carrySeconds = data.CarrySeconds;
                     _initialized = true;
                 }
+                _pendingIssueBanner = data.PendingIssueBanner;
                 return true;
             }
             catch (Exception e)
@@ -246,6 +247,7 @@ namespace BossRush
                 }
                 _rolloverCount += settled;
                 _pendingIssueBanner = true;
+                data.PendingIssueBanner = true;
 
                 Persist(data);
 
@@ -808,6 +810,18 @@ namespace BossRush
         internal static void ConsumeIssueBanner()
         {
             _pendingIssueBanner = false;
+            try
+            {
+                DailyReportData data = DailyReportPersistence.LoadOrInit();
+                if (data == null || !data.PendingIssueBanner) return;
+                data.PendingIssueBanner = false;
+                Persist(data);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                    + "[WARNING] 清除日报未读提示失败: " + e.Message);
+            }
         }
 
         /// <summary>把当前数据入队持久化并请求落盘。</summary>

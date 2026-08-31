@@ -49,6 +49,7 @@ namespace BossRush
             data.Today = new DailyReportStats();
             data.Yesterday = new DailyReportStats();
             data.HasYesterday = false;
+            data.PendingIssueBanner = false;
             data.LastUpdatedTicks = 0L;
             return data;
         }
@@ -87,6 +88,8 @@ namespace BossRush
             SimpleJsonHelper.AppendBool(sb, "bountyRewardClaimed", data.BountyRewardClaimed);
 
             SimpleJsonHelper.AppendBool(sb, "hasYesterday", data.HasYesterday);
+            // 可选追加字段；旧档缺失时 ExtractBool 返回 false，保持向后兼容。
+            SimpleJsonHelper.AppendBool(sb, "pendingIssueBanner", data.PendingIssueBanner);
 
             AppendStats(sb, "t_", data.Today);
             AppendStats(sb, "y_", data.Yesterday);
@@ -165,6 +168,7 @@ namespace BossRush
                 data.BountyRewardClaimed = SimpleJsonHelper.ExtractBool(json, "bountyRewardClaimed");
 
                 data.HasYesterday = SimpleJsonHelper.ExtractBool(json, "hasYesterday");
+                data.PendingIssueBanner = SimpleJsonHelper.ExtractBool(json, "pendingIssueBanner");
                 data.Today = DecodeStats(json, "t_");
                 data.Yesterday = DecodeStats(json, "y_");
 
