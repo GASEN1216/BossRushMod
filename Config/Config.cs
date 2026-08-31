@@ -408,6 +408,7 @@ namespace BossRush
                     // 五个内容系统总开关不再从 ModConfig 读取：老版本可能存过 false，
                     // 读回来会把玩家永久关在系统外面（UI 已撤，无处改回）。
                     LoadRandomEventsConfigFromModConfig(intLoadMethod);
+                    LoadBackMountainConfigFromModConfig(boolLoadMethod);
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
                 else
@@ -603,6 +604,7 @@ namespace BossRush
                 if (TryLoadCodexSingleModConfigValue(changedKey, loadMethod)) return true;
                 if (TryLoadAffixForgeSingleModConfigValue(changedKey, loadMethod)) return true;
                 if (TryLoadRandomEventsSingleModConfigValue(changedKey, loadMethod)) return true;
+                if (TryLoadBackMountainSingleModConfigValue(changedKey, loadMethod)) return true;
             }
             catch (Exception ex)
             {
@@ -909,6 +911,7 @@ namespace BossRush
                 // 暴露给玩家（恒为开启，见 Config/ConfigContentSystemSwitches.cs）。
                 // 频率档这类调参旋钮照常暴露。
                 RegisterRandomEventsModConfigOptions(addSliderMethod);
+                RegisterBackMountainModConfigOptions(addBoolMethod);
                 // ========== 数值滑条类配置 ==========
                 
                 // 波次间休息时间
