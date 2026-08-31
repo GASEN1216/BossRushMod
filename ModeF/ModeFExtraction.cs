@@ -191,6 +191,10 @@ namespace BossRush
                 int marks = modeFState.PlayerBountyMarks;
                 int storedUtilityRewards = DeliverModeFPendingUtilityRewardsToStorage();
                 DevLog("[ModeF] 撤离成功！玩家印记: " + marks);
+
+                // 通知战役契约（未启用时零成本早返）。必须在 ExitModeF 之前：
+                // 退出会把 modeFActive 置回 false，之后武装判定就认不出这是 Mode F 了。
+                NotifyCampaignModeFExtracted();
                 if (storedUtilityRewards > 0)
                 {
                     DevLog("[ModeF] 撤离结算：已将 " + storedUtilityRewards + " 个待发工事补给送入寄存/缓冲");

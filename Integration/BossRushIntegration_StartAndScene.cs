@@ -49,6 +49,12 @@ namespace BossRush
             CodexLocalization.Inject();
             // 词缀锻造的 BossRush_Affix 键统一来自 Localization/AffixForgeLocalization.cs
             AffixForgeLocalization.Inject();
+            // 鸭王征程的建筑/交互/线索键统一来自 Localization/CampaignLocalization.cs
+            CampaignLocalization.Inject();
+            // 后山种子与出击餐的 DisplayNameRaw 注入（AGENTS.md 4.4）
+            BackMountainItems.InjectLocalization();
+            // 后山建筑与交互键统一来自 Localization/BackMountainLocalization.cs
+            BackMountainLocalization.Inject();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();
@@ -303,6 +309,10 @@ namespace BossRush
                 TryInitializeWishFountainEarly();
                 TryInitializePetNestEarly();
                 TryInitializeDailyReportMailboxEarly();
+                // 老档已建过公告板/展示柜时，必须赶在 BuildingArea.Start 之前注册 prefab，
+                // 否则官方会先报「缺 prefab」留下幽灵建筑
+                TryInitializeCampaignBoardEarly();
+                TryInitializeBackMountainShowcaseEarly();
             }
 
             if (isGameplayScene)

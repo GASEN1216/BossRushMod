@@ -226,6 +226,10 @@ namespace BossRush
             SettleZombieModeExtractionCashShell();
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Settle_SuccessTitle"));
 
+            // 通知战役契约（未启用时零成本早返）。必须早于场景切换：
+            // 回基地后 LifecyclePhase 会复位，武装判定就认不出这是丧尸模式了。
+            NotifyCampaignZombieExtracted();
+
             bool dispatched = TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea);
             if (!dispatched)
             {

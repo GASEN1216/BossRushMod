@@ -17,6 +17,11 @@ namespace BossRush
             // 关闭时零成本早返；OnHurt 只用于「首次玩家伤害→死亡」的最快击杀计时。
             Health.OnDead += CodexKillCollector.OnGlobalDead;
             Health.OnHurt += CodexKillCollector.OnGlobalHurt;
+
+            // 战役契约目标采集。同样是命名 handler（AGENTS.md 4.6），
+            // handler 内部以「本局是否已武装契约」门控，未武装时第一行早返。
+            Health.OnDead += CampaignObjectiveCollector.OnGlobalDead;
+            Health.OnHurt += CampaignObjectiveCollector.OnGlobalHurt;
         }
 
         internal void CleanupPlayerLifecycleRuntimeEvents()
@@ -30,6 +35,9 @@ namespace BossRush
 
             Health.OnDead -= CodexKillCollector.OnGlobalDead;
             Health.OnHurt -= CodexKillCollector.OnGlobalHurt;
+
+            Health.OnDead -= CampaignObjectiveCollector.OnGlobalDead;
+            Health.OnHurt -= CampaignObjectiveCollector.OnGlobalHurt;
         }
     }
 }

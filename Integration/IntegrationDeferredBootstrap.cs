@@ -309,6 +309,20 @@ namespace BossRush
             {
                 yield break;
             }
+            yield return RunDeferredStep_Integration("InitCampaignBoardBuilding", () => InitCampaignBoardBuilding());
+
+            if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
+            {
+                yield break;
+            }
+            // 线索注册要在建筑之后：注册会读章节表并取海报图，
+            // 而海报与建筑图标共用同一套资源路径，放一起省一次冷启动。
+            yield return RunDeferredStep_Integration("RegisterCampaignNotes", () => RegisterCampaignNotesForScene());
+
+            if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
+            {
+                yield break;
+            }
             ScheduleWishRewardPoolWarmup();
             appliedDeferredBaseSceneSetupHandle = sceneHandle;
             ClearDeferredBaseSceneSetup_Integration(sceneHandle);

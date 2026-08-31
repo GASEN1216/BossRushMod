@@ -39,6 +39,17 @@ namespace BossRush
             // 局内随机事件同款单实例纪律：调度器状态只有一份，禁止二次 new。
             randomEventsRuntime = new RandomEventsRuntimeModule();
             runtimeModuleHost.Register(randomEventsRuntime);
+
+            // 鸭王征程同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 公告板、契约追踪、剧情对话与终章决战都必须走 CampaignRuntime 门面，禁止二次 new。
+            campaignRuntime = new CampaignRuntimeModule();
+            runtimeModuleHost.Register(campaignRuntime);
+
+            // 竞技场后山同款单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 必须排在征程之后：后山 bootstrap 要订阅征程的解锁事件，
+            // 而 host 按注册顺序回调，先注册的先 OnAwake。
+            backMountainRuntime = new BackMountainRuntimeModule();
+            runtimeModuleHost.Register(backMountainRuntime);
         }
 
         /// <summary>Mode H 唯一运行时实例。</summary>
@@ -85,5 +96,23 @@ namespace BossRush
         /// 不得再次 new RandomEventsRuntimeModule()。
         /// </summary>
         internal RandomEventsRuntimeModule RandomEventsRuntime { get { return randomEventsRuntime; } }
+
+        /// <summary>鸭王征程唯一运行时实例。</summary>
+        private CampaignRuntimeModule campaignRuntime;
+
+        /// <summary>
+        /// 征程唯一实例的只读门面。公告板、契约追踪、剧情对话与场景回调都只能用它，
+        /// 不得再次 new CampaignRuntimeModule()。
+        /// </summary>
+        internal CampaignRuntimeModule CampaignRuntime { get { return campaignRuntime; } }
+
+        /// <summary>竞技场后山唯一运行时实例。</summary>
+        private BackMountainRuntimeModule backMountainRuntime;
+
+        /// <summary>
+        /// 后山唯一实例的只读门面。菜地注入、展示柜、点唱机与场景回调都只能用它，
+        /// 不得再次 new BackMountainRuntimeModule()。
+        /// </summary>
+        internal BackMountainRuntimeModule BackMountainRuntime { get { return backMountainRuntime; } }
     }
 }

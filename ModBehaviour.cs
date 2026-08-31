@@ -775,6 +775,9 @@ namespace BossRush
             SafeRuntime.Run("BossRushAchievementManager.ResetStaticCaches", () => BossRushAchievementManager.ResetStaticCaches());
             SafeRuntime.Run("AchievementIconLoader.ResetStaticCaches", () => AchievementIconLoader.ResetStaticCaches());
             SafeRuntime.Run("BossRushUI.ResetStaticCaches", () => BossRushUI.ResetStaticCaches());
+            // 必须先复位皮肤注入点再卸 bundle，否则注入点里留的是已销毁的 Sprite
+            SafeRuntime.Run("BossRushUISkinLoader.Cleanup", () => BossRushUISkinLoader.Cleanup());
+            SafeRuntime.Run("BossBgmCoordinator.ResetStaticCaches", () => BossBgmCoordinator.ResetStaticCaches());
             SafeRuntime.Run("MutatorUI.ResetStaticCaches", () => MutatorUI.ResetStaticCaches());
 
             // 遗种巢（PetNest）宿主销毁：先尽力落盘一次，再还席、退订、清表。

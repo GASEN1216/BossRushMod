@@ -129,6 +129,17 @@ namespace BossRush
                 DevLog("[BossRush] [WARNING] WishFountainService initialization exception: " + e.Message);
             }
 
+            // UI 皮肤必须在**任何面板创建之前**注入：ApplyPanelSkin 只在创建时赋一次
+            // sprite，已建好的面板不会追溯换图。缺 bundle 时静默回退程序化皮肤（fail-open）。
+            try
+            {
+                BossRushUISkinLoader.EnsureInjected();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] UI skin injection exception: " + e.Message);
+            }
+
             WikiContentManager.Instance.ResetCache();
         }
 

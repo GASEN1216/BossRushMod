@@ -941,6 +941,9 @@ namespace BossRush
 
                 DevLog("[ModeD] 第 " + modeDWaveIndex + " 波完成！");
 
+                // 通知战役契约（未启用时零成本早返）
+                NotifyCampaignModeDWaveComplete(modeDWaveIndex);
+
                 // Mode D 完成10波视为"通关"，触发成就检查
                 if (modeDWaveIndex >= 5)
                 {

@@ -340,6 +340,20 @@ namespace BossRush
                 FallbackLoader = delegate(int typeId) { return RelicEggConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.RelicEgg);
 
+            // 后山种子与出击餐：同样零新增 bundle，走克隆兜底。
+            // 必须登记在这里——玩家背包/菜地里存着这些 TypeID，
+            // 漏登记会让重启后它们退化成官方 FallbackItem（AGENTS 契约第 6 节）。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return BackMountainItems.EnsureRuntimeRegistration(typeId); }
+            },
+                BossRushItemIds.DragonSeed,
+                BossRushItemIds.EmberSeed,
+                BossRushItemIds.PhantomSpore,
+                BossRushItemIds.DragonFruit,
+                BossRushItemIds.EmberChili,
+                BossRushItemIds.PhantomMushroom);
+
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);
             Add(plans, NewWeaponPlan("energyshield_totem_model", "energyshield_item"), NewWeaponIds.EnergyShieldTypeId);

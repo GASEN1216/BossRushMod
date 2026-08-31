@@ -62,8 +62,14 @@ namespace BossRush
             // 通知快递员 BossRush 通关
             NotifyCourierBossRushCompleted();
 
+            // 通知战役契约（未启用时零成本早返）
+            NotifyCampaignStandardCleared();
+
             ShowMessage(L10n.T("所有敌人已击败！你赢了！", "All enemies defeated! You win!"));
             DevLog("[BossRush] BossRush挑战完成！");
+
+            // 通关 stinger：曲目表无条目或素材缺失时静默无操作
+            BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.RunVictory);
 
             // 将路牌切换到凯旋状态，仅展示最终彩色标题
             try

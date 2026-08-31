@@ -630,6 +630,11 @@ namespace BossRush
 
                 FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 PhantomWitchScytheBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+
+                // 后山菜地种子。三个 Boss 各掉自己那一种，内部按解锁状态门控；
+                // 菜地未解锁或后山关闭时零行为。放在最后是因为它与上面的专属掉落
+                // 不互斥——种子是额外的，不该顶掉任何一件既有战利品。
+                TryAddBackMountainSeedLoot(inv, bossMain);
                 // 未来新增Boss在此添加 else if 分支
             }
             finally
