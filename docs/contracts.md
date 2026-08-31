@@ -5,8 +5,8 @@
 ## 1. TypeID 与存档身份
 
 - 自定义物品/装备 TypeID 使用 5000xx 区间。
-- 已登记范围：`500001-500061`，空洞 `500009`、`500047` 不回填。
-- `500058` 已登记为便携安全区装置，`500059` 已登记为遗种蛋（遗种巢通用蛋，血脉写在物品 KV `PetNest_Lineage` 上，全谱系共用一个号）；`500060` 已登记为词缀熔石（词缀锻造材料，词缀身份写在装备 KV `AFX_*` 上），`500061` 已登记为鸭皇图鉴（图鉴面板入口物品，使用不消耗）；下一可用 ID 以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
+- 已登记范围：`500001-500067`，空洞 `500009`、`500047` 不回填。
+- `500058` 已登记为便携安全区装置，`500059` 已登记为遗种蛋（遗种巢通用蛋，血脉写在物品 KV `PetNest_Lineage` 上，全谱系共用一个号）；`500060` 已登记为词缀熔石（词缀锻造材料，词缀身份写在装备 KV `AFX_*` 上），`500061` 已登记为鸭皇图鉴（图鉴面板入口物品，使用不消耗）；`500062-500064` 已登记为后山菜地种子（龙裔之种、龙皇焰种、幽魂孢子），`500065-500067` 已登记为后山出击餐（龙息果、焚心椒、幽影蘑菇）；下一可用 ID 以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 
 Breaking:
 
@@ -61,11 +61,46 @@ Mode G 冻结 key：
 建立当前槽写屏障，不覆盖未来版本；另一 key 仍可独立保存。`StoreFaulted` 在本 runtime
 单向 fail-closed，不能靠切槽清除。
 
+鸭王征程 / 竞技场后山 冻结 key（M0 起）：
+
+- `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token
+- `BossRush_BackMountain_Showcase_v1` — 展示柜收藏
+- `BossRush_BackMountain_RaidMeal_v1` — 出击餐待生效登记
+
+常量单点分别在 `Campaign/CampaignTuning.cs` 与
+`Integration/BackMountain/BackMountainConfig.cs`，由
+`tests/CampaignSkeletonGuard.py`、`tests/BackMountainStructureGuard.py` 钉住字面值。
+
 Breaking:
 
 - 改名旧 key 且无迁移。
 - 多 key 存储改成单 key 但不兼容读取旧格式。
 - 清空玩家成就、好感度、婚姻、寄存、配置、Wiki 状态等持久数据。
+
+## 3.1 战役 → 后山 跨系统解锁契约（M0 起）
+
+两个子系统之间唯一的耦合面，实现在 `Campaign/CampaignFacilityUnlocks.cs`。
+选静态 API 而非「后山去读战役的存档 key」：键名改一次两边会静默失联，
+方法签名改一次编译期就报错。
+
+冻结面：
+
+- token 字面值 `BossRush_Campaign_Unlock_Ch1` … `_Ch6`
+  （前缀常量 `CampaignTuning.FacilityTokenPrefix`，发布后不得改名）。
+- 语义：战役只发「第 N 章通行 token」；token → 具体设施的映射由后山自持
+  （`BackMountainConfig.GetRequiredChapter`），两侧解耦，调整映射不动战役侧。
+- `IsTokenGranted` / `GetGrantedTokens`：权威查询，**未装载存档时 fail-closed**。
+- `OnFacilityTokenGranted`：**只在本会话真正新授予时触发**；读档回放按契约不发事件。
+  因此消费方必须在自身 init 与每次场景加载时做全量查询，不得只依赖事件，
+  也不得缓存查询结果——否则玩家上次通关解锁的设施在重进游戏后会消失。
+- 换槽：`LoadGrantedTokens` 整体替换而非追加；`ResetForSlotReload` 负责复位，
+  防止 A 档解锁泄漏到 B 档。
+
+Breaking:
+
+- 改 token 字面值或前缀。
+- 让读档装载改为触发 `OnFacilityTokenGranted`（会导致每次读档重播解锁提示）。
+- 把查询侧改成缓存或默认已解锁（fail-open）。
 
 ## 4. 地图与 SpawnPoints JSON
 
@@ -242,10 +277,13 @@ source/input/bundle SHA-256；若未来要把它们纳入 Git，需另行登记 
 步骤 0 的实机闸门五项待 owner 验证。
 
 **配置面（COMPAT）。** `ModBehaviour.BossRushConfig` 只新增**一个**字段
-`petNestEnabled=false`，运行时只通过 `ModBehaviour.IsPetNestConfiguredEnabled()` 读取
+`petNestEnabled=true`，运行时只通过 `ModBehaviour.IsPetNestConfiguredEnabled()` 读取
 （定义在 `Config/ConfigPetNest.cs`，与 `Config/Config.cs` 同一 partial class，
-拆开只为 1200 行预算）。ModConfig 镜像键只有 `BossRush_PetNestEnabled`，
-不存在时保持默认关闭。关闭时整个子系统 dormant：不订阅存档、不建血脉目录、
+拆开只为 1200 行预算）。**owner 2026-08-30 定：遗种巢属于默认内容，总开关不再
+暴露给玩家**——`RegisterPetNestModConfigOption` 不再接线，`BossRush_PetNestEnabled`
+也不再从 ModConfig 读取，且由 `ForceContentSystemSwitchesOn()`
+（`Config/ConfigContentSystemSwitches.cs`）在读档后强制拉回 true，
+抹掉老版本可能存下的 false。关闭时整个子系统 dormant：不订阅存档、不建血脉目录、
 不 tick 协调器、不产蛋、不生成任何角色。开关运行时可变，
 bootstrap 幂等且可退回 dormant。
 

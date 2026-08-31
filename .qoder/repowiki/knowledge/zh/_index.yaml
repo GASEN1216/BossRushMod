@@ -154,6 +154,35 @@ modules:
             - path: achievement_system
             - path: boss_filter
             - path: waves_arena
+    campaign:
+        dir_name: "BossRushMod 鸭王征程：六章契约战役、零模式重构的目标采集与跨系统解锁"
+        title: "BossRushMod 鸭王征程：六章契约战役、零模式重构的目标采集与跨系统解锁"
+        scope:
+            - Campaign/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: config
+            - path: localization
+            - path: back_mountain
+            - path: waves_arena
+            - path: mode_d
+            - path: zombie_mode
+            - path: loot_and_rewards
+    back_mountain:
+        dir_name: "BossRushMod 竞技场后山：官方种植系统接入、战利品登记簿与点唱机战歌"
+        title: "BossRushMod 竞技场后山：官方种植系统接入、战利品登记簿与点唱机战歌"
+        scope:
+            - Integration/BackMountain/
+        source_files: []
+        children: []
+        depends_on: []
+        related_to:
+            - path: campaign
+            - path: config
+            - path: localization
+            - path: loot_and_rewards
     random_events:
         dir_name: "BossRushMod 局内随机事件「鸭生无常」：边缘轮询调度、波次隔离与模式门控"
         title: "BossRushMod 局内随机事件「鸭生无常」：边缘轮询调度、波次隔离与模式门控"

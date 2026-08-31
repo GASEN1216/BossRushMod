@@ -31,6 +31,8 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 | `Integration/` | 物品、装备、NPC、商店、Wiki、好感度、婚姻、重铸、新武器、死亡亡魂等集成总线 |
 | `WavesArena/` | 标准 BossRush 与无间炼狱波次逻辑 |
 | `ModeD/`、`ModeE/`、`ModeF/` | 白手起家、划地为营、血猎追击 |
+| `Campaign/` | 鸭王征程：剧情契约战役，六章串联现有模式；对模式代码零重构，只经全局采集器与 4 处 notify 漏斗挂钩 |
+| `Integration/BackMountain/` | 竞技场后山：菜地（复用官方种植系统）、战利品登记簿、点唱机战歌；由战役章节 token 解锁 |
 | `ZombieMode/` | 末日丧尸模式，独立生命周期和奖励系统 |
 | `Common/` | 共享特效、装备能力、地图配置、统计 modifier、通用模型、共享 UI 库（`Common/UI/BossRushUI.cs`） |
 | `Utilities/` | 跨模块运行时 hooks、刷怪核心、场景门控、缓存、敌人恢复 |
@@ -78,9 +80,9 @@ cmd.exe /c "cd /d D:\...\BossRushMod && compile_official.bat"
 
 自定义物品/装备 TypeID 使用 5000xx 区间，严格递增，不回填已删 ID。TypeID 会进入存档键、掉落表、Wiki、调试流程，复用属于存档兼容风险。
 
-- 当前登记范围：`500001-500061`。
+- 当前登记范围：`500001-500067`。
 - 已知空缺：`500009`、`500047` 仍视为保留空洞，不回填。
-- 下一可用：`500062`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
+- 下一可用：`500068`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 - Boss/NPC/建筑字符串 ID 不占此序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -267,6 +269,42 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 根级 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md` 是当前 AI 协作流程入口；旧 `docs/` 路径保留转发，避免老工具失联。
 
 ## 14. 最后更新
+
+2026-08-30（鸭王征程 + 竞技场后山 完整实装）：新增两个联动子系统。
+
+- **鸭王征程**（`Campaign/`）：六章剧情契约战役，1-5 章分别派往 标准/ModeD/ModeE/ModeF/丧尸 完成特殊目标，终章在竞技场打幽灵女巫的强化变体「冠军之影」（数值倍率 + 体型放大 + MaterialPropertyBlock 染色，零新增 3D 资产）。对五个既有模式**零重构**：只经全局 Health 采集器、`partial ModBehaviour` 状态桥轮询、以及 4 处一行 notify 漏斗挂钩。基地公告板建筑接取/交付契约，线索走官方 NoteIndex 图鉴，交付剧情复用现有 `DialogueManager`（官方对话 UI 原生带立绘位）。
+- **竞技场后山**（`Integration/BackMountain/`）：三设施由战役章节 token 解锁。菜地复用官方 `CropDatabase`（作物外观即产出物品的 ItemGraphic，故不需要植物模型）；战利品展示柜是**登记簿而非储物柜**（登记不收走物品，避免玩家在「留着传说武器」和「换几点属性」之间被迫二选一）；点唱机追加 mod 战歌。出击餐因官方 Buff 不跨场景，走「食用登记 → 下一局挂 Modifier」。
+- **横切**：`Audio/BossBgmCoordinator.cs` Boss 战 BGM 与 stinger（曲目表驱动，零素材时行为与从前完全一致）；`Common/UI/BossRushUISkinLoader.cs` UI 图集换皮（fail-open，缺 bundle 回退程序化皮肤）。
+- 开关：`campaignEnabled`、`backMountainEnabled` 已按「内容系统恒开」口径转为**默认内容**（默认 true、不进 ModConfig UI、由 `ForceContentSystemSwitchesOn` 抹平老档 false）；`BossRush_BackMountainUnlockAll` 是**旋钮**不是内容开关，照常注册进 UI，默认 false。字段与 dormant 契约全部保留。
+- **术语**：战役名统一为「鸭**王**征程」，与 ModeH 的「黑市鸭**王**杯」同名——剧情讲的就是那场赛事名人堂里的事，异名会让玩家以为是两个系统。（「鸭皇图鉴」是 Boss 图鉴，另一个域，不冲突。）
+- **剧情锚在 ModeH 的真实机制上**：名人堂 32 席、第 33 个进来最底下那个被挤掉。冠军不是被谁抹掉的，是排队排出去的；他之后每件事都在找一个不会被挤掉的名字，最后找到了——Boss 图鉴不挤人，代价是不再当选手。不新造世界观设定，不承诺 ModeH 未实现的机制（名人堂只读、不可招募）。
+- 美术资产已产出并部署：`Assets/ui/campaign_presentation`（2 立绘 + 6 章节海报，bundle 1.28 MB）、`Assets/ui/Campaign/*.png`（开发期 raw fallback）、两个建筑图标、六个物品图标。Unity 构建器 `Assets/Editor/CampaignPresentationBundleBuilder.cs`。
+- TypeID 台账更新至 500067（500062-500064 菜地种子、500065-500067 出击餐，下一可用 500068）。
+- `IsHandledModConfigOptionKey` 因 `Config/Config.cs` 触及 1200 行预算，已原样提取至 `Config/ConfigModConfigKeys.cs`（同一 partial 类，行为逐字不变），`ModConfigOptionChangeGuard` 与 `ModeHConfigApiGuard` 已同步两处查找。
+- 新增守卫：`CampaignSkeletonGuard`、`BackMountainStructureGuard`、`BossBgmCoordinatorGuard`、`BossRushUISkinLoaderGuard`；`ModConfigOptionChangeGuard` 的 `CONTENT_SYSTEM_SWITCHES` 已收录两个新开关。
+- `.qoder/repowiki/` 已补两张知识卡并登记进 `_index.yaml`（`campaign`、`back_mountain`）。
+- **UI 图集换皮已完成**：6 张九宫格底图程序化生成（灰度+alpha、描边与微渐变烘进图里），
+  `Assets/ui/bossrush_ui_skin`（8.8 KB）。九宫格 border **由构建器用代码设定并回读校验**
+  （`Assets/Editor/BossRushUISkinBundleBuilder.cs`）——border 漏设不会报错，运行时表现是
+  面板拉伸变形，所以不能靠手工在 Sprite Editor 里点。
+- **BGM 已完成**：龙裔与女巫的循环曲、两条 stinger（`Assets/Sounds/BGM/*.wav`，32kHz 单声道，
+  RMS 约 -20 dBFS）。**龙王刻意不进曲目表**，维持作者已有的 `dragonking.mp3` 路径。
+  曲目是程序化合成的氛围乐（本机网关只有文本与图像模型，无音频能力），换正式曲目只需
+  替换同名文件；保持 -20 dBFS 左右，否则会盖过枪声。
+- **实机 smoke（已做，2026-08-30）**：dev 构建 + Steam 启动到主菜单，Player.log 证据——
+  征程与后山两个运行时模块均已启动；**UI 皮肤注入成功**（`panel=True button=True`，
+  证明图集→bundle→loader→注入整条链通）；ModConfig 只出现调试旋钮、两个内容开关正确隐藏；
+  Harmony 仍是 53 个补丁类生效。唯一报错（3 个 `Cleanup` 方法 patch 失败）在 8/29 的旧日志里
+  一字不差地存在，属先前既有问题。
+- **仍待人工验证**：基地场景内的路径（官方 Garden 三连、公告板/展示柜建筑注入、线索进笔记图鉴、
+  出击餐生效与清理）需要加载存档进基地，无法由脚本驱动。验证前先用
+  `set BOSSRUSH_DEV_BUILD=1 && compile_official.bat` 出 dev 包，否则 `DevLog` 被
+  `[Conditional("BOSSRUSH_DEV")]` 整个剥离，日志里什么都看不到。
+- **已全面审核（2026-08-30）**：查出并修掉 5 个真问题——空 catch 预算回归、
+  幽影蘑菇「描述说减伤、实现给生命上限」、出击餐遇陌生 ID 被静默吃掉、
+  第一章无伤目标在 Boss 池被筛小时会卡死、终章门禁漏了 ModeG/ModeH。
+  明细见 `FIX_TRACKER.md` 同日条目。当前编译绿、503 guard 绿（1 既有红项）。
+- 完整方案见 `.claude/plans/mod-unity-starry-neumann.md`。
 
 2026-08-30：新增三个子系统——鸭皇图鉴（`Integration/Codex/`）、局内随机事件「鸭生无常」（`RandomEvents/`）、词缀锻造（`Integration/AffixForge/`）；成就分类枚举追加 `Codex`；重铸 `IsRuntimeTrackingVariableKey` 增加 `AFX_` 前缀互斥；TypeID 台账更新至 500061（500060 词缀熔石、500061 鸭皇图鉴，下一可用 500062）。
 

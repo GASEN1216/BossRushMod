@@ -2818,3 +2818,23 @@ golden rule 靠人工遵守；`docs/` 默认 local-only 的策略与「guard 硬
   而运行时真实 Boss 池由 `showName` + 血量阈值决定。两者若有出入，多出来的 Boss 会走
   占位链（fail-open），不会报错；实机跑一次 F3 的目录导出即可核对差集并补图。
 - 立绘是按 nameKey 语义生成的**风格化演绎**，不是游戏内模型的还原（模型无法读取）。
+
+## 2026-08-30 鸭王征程 / 竞技场后山 全面审核
+
+审核范围：本轮新增的 Campaign、Integration/BackMountain、BossBgmCoordinator、
+BossRushUISkinLoader 与相关接线。编译 + 503 guard + 内容一致性 + 逻辑走查。
+
+| # | 分类 | 问题 | 处理 |
+| --- | --- | --- | --- |
+| 1 | 回归 | `EmptyCatchGuard` 由绿转红：本轮新增 35 个空 catch 把全仓库总数从预算 968 顶到 1003。此前误报为"守卫全绿"——runner 只打印输出末行，看起来像一个无关文件 | 逐处按 AGENTS §4.7 处理：27 处冷路径（存档/注册/通知漏斗/清理）补 `DevLog`，8 处必须静默（日志函数自身会递归、`OnGlobalHurt` 是最热事件、每帧 tick）写明理由。**不动预算**，计数回到 968 |
+| 2 | BREAKING(玩法) | 幽影蘑菇物品描述中英文均写"受到的伤害更少 / takes less damage"，实现却加 `MaxHealth` +10%。两者不是一回事，玩家会被误导 | 改用 `ElementFactor_Physics` −10% PercentageAdd——受击侧伤害倍率，`Health` 结算时读取（`DragonSetConfig.cs:11` 有说明，丧尸模式守护护盾同款 −25%）。描述按项目惯例明写"物理伤害" |
+| 3 | 数据丢失 | `RaidMealService.ApplyForRun` 先清登记再 `switch`，遇到旧存档里的陌生 TypeID 会走 `default` 直接 return——饭被吃掉、加成没给、玩家无任何提示 | 改为先用 `GetDefinition` 确认认识该餐品再消费；无法识别时记 WARNING 并清掉（避免每局重试） |
+| 4 | 卡死 | 第一章"第 3 波前无伤"靠"波次超过门槛"置达成，而标准模式总波次 = BossFilter 过滤后的 Boss 数 / 每波数。玩家把 Boss 池筛小后波次可能永远到不了 4，目标卡死在未达成——哪怕全程没掉血 | 新增 `SatisfyNoDamageOnRunComplete()`，通关或撤离成功时补判（走完整局已蕴含"熬过全部波次"）；已破防的不会被救回 |
+| 5 | 冲突 | 终章决战门禁漏了 ModeG（宿命回响）与 ModeH（黑市鸭王杯），两者都在竞技场里跑，会与决战抢场地 | 门禁补上 `modeGActive` 与 `ModeHRuntime.RunState.Lifecycle != None` |
+
+已核对无问题：编译清单登记、TypeID 台账 500062-500067、本地化注入配对与
+`Note_<key>_Title` 键格式、订阅/退订配对（3/3、1/1、采集器 2/2）、19 处
+`ResetStaticCaches` 全部被中央复位调用、契约文档登记、恒开策略与 ModConfig
+白名单、repowiki 同步、JSON 合法性、六章硬编码内容完整。
+
+`Assets/Data/Campaign/*.json` 不存在属设计内：内容以全量硬编码为准，JSON 仅为可选调参层。
