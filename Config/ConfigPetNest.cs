@@ -23,10 +23,10 @@ namespace BossRush
         private partial class BossRushConfig
         {
             /// <summary>
-            /// 遗种巢（PetNest）唯一可写入口开关，实装期默认关闭。
+            /// 遗种巢（PetNest）唯一可写入口开关，默认开启（属于默认内容）。
             /// 关闭时整个子系统 dormant：不订阅存档、不建目录、不产蛋、不生成随从。
             /// </summary>
-            public bool petNestEnabled = false;
+            public bool petNestEnabled = true;
         }
 
         /// <summary>批量加载路径：从 ModConfig 读遗种巢开关。</summary>

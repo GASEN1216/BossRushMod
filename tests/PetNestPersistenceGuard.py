@@ -12,7 +12,8 @@ PetNestPersistenceGuard — 遗种巢存档管线守卫（实施计划 步骤 2�
 - 持久化层**不得**调用 SavesSystem.SaveFile（那是协调器的唯一职责）；
 - 编解码手写、不用反射（字段名是存档契约，必须可 grep）；
 - 解码后必须 Normalize()，容器不留 null；
-- 配置侧：petNestEnabled 默认 false + 唯一 no-throw getter + ModConfig 镜像键。
+- 配置侧：petNestEnabled 默认 true + 唯一 no-throw getter + ModConfig 镜像键。
+  （owner 2026-08-30：遗种巢属于默认内容，总开关不暴露给玩家，恒为开启。）
 """
 import os
 import re
@@ -184,8 +185,9 @@ def check_config(errors):
     main_code = strip_cs_comments(main_text)
     code = strip_cs_comments(part_text)
 
-    if not re.search(r"public bool petNestEnabled = false;", code):
-        errors.append("[配置] 缺少 petNestEnabled 字段且默认必须为 false")
+    if not re.search(r"public bool petNestEnabled = true;", code):
+        errors.append("[配置] 缺少 petNestEnabled 字段且默认必须为 true"
+                      "（遗种巢属于默认内容，恒为开启）")
     if not re.search(r"internal bool IsPetNestConfiguredEnabled\(\)", code):
         errors.append("[配置] 缺少唯一 no-throw getter IsPetNestConfiguredEnabled()")
     getter = re.search(r"internal bool IsPetNestConfiguredEnabled\(\)[\s\S]{0,400}?\n        \}", code)
@@ -199,13 +201,27 @@ def check_config(errors):
     # 镜像键与三处接线
     if 'PetNestModConfigKeySuffix = "_PetNestEnabled"' not in code:
         errors.append("[配置] 缺少 ModConfig 镜像键常量 _PetNestEnabled")
-    for call in ["LoadPetNestEnabledFromModConfig(boolLoadMethod)",
-                 "TryLoadPetNestSingleModConfigValue(changedKey, loadMethod)",
-                 "RegisterPetNestModConfigOption(addBoolMethod)"]:
-        if call not in main_code:
-            errors.append("[配置] Config.cs 缺少接线调用: " + call)
-        if call.split("(")[0] not in code:
-            errors.append("[配置] ConfigPetNest.cs 缺少实现: " + call.split("(")[0])
+    # 实现三件套都要在，将来重新放出开关只需恢复调用。
+    for impl in ["LoadPetNestEnabledFromModConfig",
+                 "TryLoadPetNestSingleModConfigValue",
+                 "RegisterPetNestModConfigOption"]:
+        if impl not in code:
+            errors.append("[配置] ConfigPetNest.cs 缺少实现: " + impl)
+
+    if "TryLoadPetNestSingleModConfigValue(changedKey, loadMethod)" not in main_code:
+        errors.append("[配置] Config.cs 缺少接线调用: "
+                      "TryLoadPetNestSingleModConfigValue(changedKey, loadMethod)")
+
+    # 总开关不暴露：注册与批量读取都不许接线，否则老版本存下的 false 会复活，
+    # 而 UI 已撤、玩家无处改回。详见 Config/ConfigContentSystemSwitches.cs。
+    for banned in ["RegisterPetNestModConfigOption(addBoolMethod)",
+                   "LoadPetNestEnabledFromModConfig(boolLoadMethod)"]:
+        if banned in main_code:
+            errors.append("[配置] 遗种巢总开关不该再接线（属于默认内容，恒为开启）: " + banned)
+
+    force = read_text(os.path.join(REPO_ROOT, "Config", "ConfigContentSystemSwitches.cs"))
+    if force is None or "config.petNestEnabled = true;" not in force:
+        errors.append("[配置] ConfigContentSystemSwitches.cs 必须把 petNestEnabled 强制拉回 true")
 
 
 def main():

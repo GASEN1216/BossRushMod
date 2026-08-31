@@ -196,6 +196,8 @@ namespace BossRush
                 {
                     SaveConfigToFile();
                 }
+
+                ForceContentSystemSwitchesOn();
             }
             catch (Exception e)
             {
@@ -403,11 +405,9 @@ namespace BossRush
                     object modeHResult = boolLoadMethod.Invoke(null, new object[] { modeHKey, config.modeHEnabled });
                     bool loadedModeH = (bool)modeHResult;
                     config.modeHEnabled = loadedModeH;
-                    LoadPetNestEnabledFromModConfig(boolLoadMethod);
-                    LoadDailyReportEnabledFromModConfig(boolLoadMethod);
-                    LoadCodexEnabledFromModConfig(boolLoadMethod);
-                    LoadAffixForgeEnabledFromModConfig(boolLoadMethod);
-                    LoadRandomEventsConfigFromModConfig(boolLoadMethod, intLoadMethod);
+                    // 五个内容系统总开关不再从 ModConfig 读取：老版本可能存过 false，
+                    // 读回来会把玩家永久关在系统外面（UI 已撤，无处改回）。
+                    LoadRandomEventsConfigFromModConfig(intLoadMethod);
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
                 else
@@ -652,25 +652,8 @@ namespace BossRush
             }
         }
 
-        private bool IsHandledModConfigOptionKey(string changedKey)
-        {
-            return changedKey == ModName + "_waveIntervalSeconds" ||
-                   changedKey == ModName + "_EnableRandomBossLoot" ||
-                   changedKey == ModName + "_UseLegacyBossLootProbabilities" ||
-                   changedKey == ModName + "_UseInteractBetweenWaves" ||
-                   changedKey == ModName + "_LootBoxBlocksBullets" ||
-                   changedKey == ModName + "_InfiniteHellBossesPerWave" ||
-                   changedKey == ModName + "_BossStatMultiplier" ||
-                   changedKey == ModName + "_milestoneRestBonusSeconds" ||
-                   changedKey == ModName + "_EnableDragonDash" ||
-                   changedKey == ModName + "_UseWolfModelForWildHorn" ||
-                   changedKey == ModName + "_EnableDeathWraithSystem" ||
-                   changedKey == ModName + "_EnableMutators" ||
-                   changedKey == ModName + "_MutatorCount" ||
-                   changedKey == ModName + "_ModeDEnemiesPerWave" ||
-                   changedKey == ModName + "_AchievementHotkey" ||
-                   changedKey == ModName + "_ModeHEnabled";
-        }
+        // IsHandledModConfigOptionKey 已提取至 Config/ConfigModConfigKeys.cs（同一 partial 类），
+        // 拆开只为单文件行数预算。新增配置项必须在那张白名单里登记。
 
         private void LogModConfigOptionChanged(string changedKey)
         {
@@ -922,11 +905,10 @@ namespace BossRush
                 {
                     DevLog("[BossRush] 注册 Mode H 配置项失败: " + ex.Message);
                 }
-                RegisterPetNestModConfigOption(addBoolMethod);
-                RegisterDailyReportModConfigOption(addBoolMethod);
-                RegisterCodexModConfigOption(addBoolMethod);
-                RegisterAffixForgeModConfigOption(addBoolMethod);
-                RegisterRandomEventsModConfigOptions(addBoolMethod, addSliderMethod);
+                // 遗种巢 / 日报 / 图鉴 / 词缀锻造 / 随机事件是默认内容，总开关不再
+                // 暴露给玩家（恒为开启，见 Config/ConfigContentSystemSwitches.cs）。
+                // 频率档这类调参旋钮照常暴露。
+                RegisterRandomEventsModConfigOptions(addSliderMethod);
                 // ========== 数值滑条类配置 ==========
                 
                 // 波次间休息时间

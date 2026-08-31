@@ -23,6 +23,10 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 from modeh_guard_util import read_text, strip_cs_comments  # noqa: E402
 
 CONFIG_CS = os.path.join(REPO_ROOT, "Config", "Config.cs")
+# IsHandledModConfigOptionKey 已提取到 Config/ConfigModConfigKeys.cs（同一 partial 类，
+# 拆分只为 LargeFileBudgetGuard 的 1200 行预算）。ModConfig 接线断言要合并两份文本来看，
+# 否则「变更键进入白名单」会在方法搬家后假红。
+CONFIG_KEYS_CS = os.path.join(REPO_ROOT, "Config", "ConfigModConfigKeys.cs")
 GATES = os.path.join(REPO_ROOT, "ModeH", "ModeHRuntimeGates.cs")
 AVAILABILITY = os.path.join(REPO_ROOT, "ModeH", "ModeHAvailability.cs")
 MODEH_CONFIG = os.path.join(REPO_ROOT, "ModeH", "ModeHConfig.cs")
@@ -50,7 +54,8 @@ def main():
     if config is None:
         errors.append("[File] 缺少 Config/Config.cs")
     else:
-        code = strip_cs_comments(config)
+        keys_source = read_text(CONFIG_KEYS_CS)
+        code = strip_cs_comments(config + "\n" + (keys_source or ""))
         # 1) 只新增一个字段
         field_matches = re.findall(r"public bool modeH\w*\s*=", code)
         if len(field_matches) != 1:

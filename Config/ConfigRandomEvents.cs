@@ -22,7 +22,8 @@ namespace BossRush
     {
         #region 键与默认值
 
-        /// <summary>ModConfig 镜像键后缀（与日报 / 遗种巢的开关同形）。</summary>
+        /// <summary>随机事件总开关的 ModConfig 镜像键后缀。
+        /// 已退役：总开关不再注册进 UI，本常量只作键名台账，防止将来被同名复用。</summary>
         private const string RandomEventsEnabledModConfigKeySuffix = "_RandomEventsEnabled";
 
         /// <summary>频率档 ModConfig 镜像键后缀。</summary>
@@ -56,20 +57,13 @@ namespace BossRush
 
         #region ModConfig 接线
 
-        /// <summary>批量加载路径：从 ModConfig 读随机事件开关与频率档。</summary>
-        private void LoadRandomEventsConfigFromModConfig(MethodInfo boolLoadMethod, MethodInfo intLoadMethod)
+        /// <summary>批量加载路径：从 ModConfig 读随机事件频率档。
+        /// 总开关不读——它恒为开启，不暴露给玩家。</summary>
+        private void LoadRandomEventsConfigFromModConfig(MethodInfo intLoadMethod)
         {
             try
             {
                 if (config == null) return;
-
-                if (boolLoadMethod != null)
-                {
-                    string enabledKey = ModName + RandomEventsEnabledModConfigKeySuffix;
-                    object enabledResult = boolLoadMethod.Invoke(
-                        null, new object[] { enabledKey, config.randomEventsEnabled });
-                    config.randomEventsEnabled = (bool)enabledResult;
-                }
 
                 if (intLoadMethod != null)
                 {
@@ -85,22 +79,13 @@ namespace BossRush
             }
         }
 
-        /// <summary>单键变更路径：命中随机事件的两个键之一时重新读取并返回 true。</summary>
+        /// <summary>单键变更路径：命中随机事件频率键时重新读取并返回 true。
+        /// 总开关不在此列——它不注册进 UI，永远收不到变更事件。</summary>
         private bool TryLoadRandomEventsSingleModConfigValue(string changedKey, MethodInfo loadMethod)
         {
             try
             {
                 if (loadMethod == null || config == null) return false;
-
-                string enabledKey = ModName + RandomEventsEnabledModConfigKeySuffix;
-                if (changedKey == enabledKey)
-                {
-                    MethodInfo boolLoadMethod = loadMethod.MakeGenericMethod(typeof(bool));
-                    object enabledResult = boolLoadMethod.Invoke(
-                        null, new object[] { enabledKey, config.randomEventsEnabled });
-                    config.randomEventsEnabled = (bool)enabledResult;
-                    return true;
-                }
 
                 string freqKey = ModName + RandomEventsFrequencyModConfigKeySuffix;
                 if (changedKey == freqKey)
@@ -121,23 +106,13 @@ namespace BossRush
             }
         }
 
-        /// <summary>向 ModConfig 注册随机事件的开关与频率档选项。</summary>
-        private void RegisterRandomEventsModConfigOptions(MethodInfo addBoolMethod, MethodInfo addSliderMethod)
+        /// <summary>向 ModConfig 注册随机事件的频率档选项。
+        /// 总开关不注册——随机事件属于默认内容，恒为开启。</summary>
+        private void RegisterRandomEventsModConfigOptions(MethodInfo addSliderMethod)
         {
             try
             {
                 if (config == null) return;
-
-                if (addBoolMethod != null)
-                {
-                    string enabledLabel = L10n.T(
-                        "局内随机事件（鸭生无常）",
-                        "In-run random events");
-                    string enabledKey = ModName + RandomEventsEnabledModConfigKeySuffix;
-                    addBoolMethod.Invoke(null, new object[] {
-                        ModName, enabledKey, enabledLabel, config.randomEventsEnabled });
-                    DevLog("[BossRush] 随机事件开关配置项注册成功");
-                }
 
                 if (addSliderMethod != null)
                 {
