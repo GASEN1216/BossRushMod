@@ -7,16 +7,19 @@
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 7 | 0 | 0 | 7 |
-| P1 | 0 | 11 | 0 | 0 | 11 |
-| P2 | 0 | 15 | 1 | 0 | 16 |
-| P3 | 0 | 7 | 1 | 0 | 8 |
+| P1 | 0 | 20 | 0 | 0 | 20 |
+| P2 | 0 | 20 | 0 | 0 | 20 |
+| P3 | 0 | 16 | 0 | 0 | 16 |
 
-最后更新：2026-08-29（四系统复审全面修复完成：CR-2026-08-29-008..021 全部 Fixed，
+最后更新：2026-08-31（用户明确要求全部修复并保持内容开启。CR-2026-08-31-001..006
+与原 deferred 的 CR-2026-08-31-007 七项均已 Fixed；新增 CR-2026-08-31-008 记录本轮
+静态确认并修复的 5 个 P1 + 2 个 P2。模式H 赔率、日报未读提示两个旧 deferred 也已闭环。
+修复内容与验证见 `FIX_TRACKER.md` 同日条目；涉及真实游戏对象、UI 和存档切槽的实机 smoke 仍待人工）。
+
+上一次更新：2026-08-29（四系统复审全面修复完成：CR-2026-08-29-008..021 全部 Fixed，
 修复内容与验证见 `FIX_TRACKER.md` 的「四系统复审全面修复」条目。
-Open 计数按问题条目计，分组条目内多项分别计数；两项 Deferred 分别是
-模式H「赔率页没有赔率」（并入下一批战斗/押注接线）与日报「未读提示不持久」
-（需新增可选存档字段，留 owner 拍板）。上午修复轮的 CR-2026-08-29-001..007
-未单独立条，见 `FIX_TRACKER.md` 四个修复包）。
+Open 计数按问题条目计，分组条目内多项分别计数。上午修复轮的
+CR-2026-08-29-001..007 未单独立条，见 `FIX_TRACKER.md` 四个修复包）。
 
 ## Confirmed Findings
 
@@ -529,7 +532,7 @@ AbortSetup / 入口拒绝出口统一走 ShowMessage + GetReasonLocalizationKey�
 
 **严重级**：P2（6 项）/ P3（3 项）
 **兼容分类**：`COMPAT`（⑥ 为 `SAFE` 文档同步）
-**状态**：Fixed（第 2 项「赔率页没有赔率」为 Deferred：属战斗/押注接线的一部分，并入下一批）
+**状态**：Fixed（第 2 项已于 2026-08-31 随完整战斗/押注闭环修复）
 **来源**：2026-08-29 四系统复审（各项均静态确认，零调用类经双重 grep）
 
 #### 问题清单
@@ -543,6 +546,11 @@ AbortSetup / 入口拒绝出口统一走 ShowMessage + GetReasonLocalizationKey�
 7. (P3) 赛季创建链两次相邻物理落盘（draft_candidates+首写；match_plan+first_match_brief）。
 8. (P3) `modeHPlayerSpawnPos`/`modeHExitPos` 被 MapSupportRegistry:152-153 必填校验但运行时零使用。
 9. (P3) 换档后模块内存 `_runState` 残留（BeginSeasonSetup 会覆盖，基本无害）。
+
+#### 2026-08-31 追加闭环
+
+看盘页现由正式对局控制器生成确定性公开分、胜率与赔率；锁盘后进入分帧生成、战斗、结算、
+伤病/战痕、赛间恢复、转会与名人堂流程，不再用 `combat_wiring_pending` 回滚看盘。
 
 ### CR-2026-08-29-019：模式G P2 打磨项汇总（复审确认，4 项）
 
@@ -582,8 +590,7 @@ stale 清扫处并联移除，或场景回调 `ClearAllTracking()`（与 016 同
 
 **严重级**：P2（1 项）/ P3（5 项）
 **兼容分类**：`COMPAT`
-**状态**：Fixed（第 6 项「未读提示不持久」为 Deferred：需新增可选存档字段，
-不为数据无损的 P3 动 schema，留 owner 拍板）
+**状态**：Fixed（第 6 项于 2026-08-31 以可选字段 `PendingIssueBanner` 向后兼容落盘）
 **来源**：2026-08-29 四系统复审（①经官方源语义核对）
 
 #### 问题清单
@@ -595,6 +602,195 @@ stale 清扫处并联移除，或场景回调 `ClearAllTracking()`（与 016 同
 5. (P3) **跨天补发里程碑会换奖品**：`DailyReportService.cs:582` 补发传当前 DayIndex，与 `DailyReportRewards.cs` 头注释「同一 (seed, day, slot) 同一件」矛盾；品质一致、无重复发放，纯确定性承诺破口。
 6. (P3) **未读提示不持久**：`DailyReportService.cs:83` `_pendingIssueBanner` 仅内存；战斗中跨天→未回基地退游戏，下会话不再提示（数据无损）。
 
+### CR-2026-08-31-001：后山 P1：出击餐在正常流程中永远不会生效
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：2026-08-31 征程/后山全面审核（静态证明 + 官方反编译源时序核对）
+
+#### 位置
+
+- `Integration/BackMountain/RaidMealService.cs:125` `ApplyForRun()` 要求 `CharacterMainControl.Main != null`
+- `Integration/BackMountain/BackMountainRuntimeModule.cs`（修复前）唯一调用点在 `RefreshFacilitiesForScene`，由 `SceneManager.sceneLoaded` 驱动
+
+#### 问题
+
+官方主角由 `LevelManager.CreateMainCharacterAsync` **异步**创建（反编译源 `LevelManager.cs:520`），`sceneLoaded` 回调那一刻 `CharacterMainControl.Main` 必然为 null。`ApplyForRun` 早返后**没有任何重试路径**（模块 `OnUpdate` 不重试，全仓仅此一个调用点）。`RaidMealService.cs:13` 的头注释自己写明生效点应为 `OnLevelInitialized`，但实现没接到那里。
+
+#### 影响
+
+三种出击餐（龙息果 / 焚心椒 / 幽影蘑菇）全部失效：玩家在基地吃下 → 提示「下一局出击时生效」→ 进局零加成零提示，且登记不被消费，之后每局同样失败。「种地 → 做饭 → 带增益出击」这条养成闭环的最后一环是断的。
+
+#### 修复
+
+模块拆成两个时机：设施注入留 `OnSceneLoaded`，角色加成改挂 `LevelManager.OnAfterLevelInitialized`（官方 `BuildingEffect` 与本 mod `SetBonusManager` / `DragonSetBonus` 用的同一时机）；订阅幂等 + 成对退订；模块若在关卡初始化之后才 bootstrap，用 `LevelManager.AfterInit` 补一次。
+
+#### 验证需求
+
+编译 + guard 已绿；**需实机 smoke**：基地吃餐 → 进局确认飘字与属性变化。
+
+### CR-2026-08-31-002：后山 P1：展示柜加成在战局内实际不存在
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：2026-08-31 征程/后山全面审核
+
+#### 位置
+
+- `Integration/BackMountain/ShowcaseService.cs:181` `ReapplyBonuses()`；修复前场景侧调用点与 001 同一时机
+
+#### 问题
+
+与 001 同源：主角尚不存在时 `ReapplyBonuses` 只摘不挂，而注释所称「等下次场景就绪再来」并无对应机制——下一次仍是同一个过早时机。加成实际只在「UI 里登记新战利品」与「交付章节触发解锁事件」两个瞬间挂上，此后任何一次切场景即消失且不再重挂。
+
+#### 影响
+
+建筑描述承诺的「登记得越多，你越经打」在战局里不成立：进竞技场打 Boss 时 MaxHealth 加成为零。
+
+#### 修复
+
+与 001 共用 `OnAfterLevelInitialized` 挂载点；解锁事件路径额外调一次 `RefreshCharacterBoundEffects()`，让交付当场生效。
+
+#### 验证需求
+
+编译 + guard 已绿；**需实机 smoke**：登记后进局确认最大生命提升。
+
+### CR-2026-08-31-003：征程 P1：终章决战打输一次即永久卡死
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：2026-08-31 征程/后山全面审核
+
+#### 位置
+
+- `Campaign/CampaignFinalBoss.cs`：修复前 `CleanupCampaignFinalBoss` 只有两个调用点（死亡回调、让路 tick）
+
+#### 问题
+
+玩家召唤「冠军之影」后死亡或中途离场时，Boss 随场景销毁、`OnDeadEvent` 永不触发，`campaignFinalBossActive` 卡在 true。后果三连：召唤石不再生成、`CanStartCampaignFinalBoss` 恒 false、契约 HUD 因模式桥短路且 `campaignLastObservedMode` 为 null 而永不 `ResetSession`，横幅在基地常驻。隐藏解法（随便开一局其它模式触发让路清理）玩家不可能自行发现。
+
+#### 影响
+
+战役高潮不可重试——而 1.6× 数值的强化 Boss 恰恰是最可能打输的一场。
+
+#### 修复
+
+三条收尾路径补齐：① `CampaignRuntimeModule.OnSceneLoaded` 幂等收尾（覆盖死亡回基地这条主路径）；② 让路 tick 增加「生成已出结果但实例已销毁」检测；③ 收尾自增 `campaignFinalBossRunId` 作废在飞的异步生成，协程回来发现编号不符即销毁产物，避免留下无人记账的强化女巫。收尾同时清掉终章局内追踪（仅在武装章节为终章时），修掉 HUD 在基地常驻。
+
+#### 验证需求
+
+编译 + guard 已绿；**需实机 smoke**：召唤决战 → 故意战死 → 回基地再进竞技场，确认召唤石重新出现且 HUD 不残留。
+
+### CR-2026-08-31-004：后山 P1：展示柜收藏跨存档槽泄漏，可写脏另一个档
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`（修复本身不改 schema；未修时会产生错误数据）
+**状态**：Fixed
+**来源**：2026-08-31 征程/后山全面审核
+
+#### 位置
+
+- `Integration/BackMountain/ShowcaseService.cs`：`_displayed` / `_loaded` 无槽位烙印、不订阅 `OnSetFile`；`NotifySlotChanged()`（:311）**全仓零调用**
+
+#### 问题
+
+同一次会话内从 A 档切到 B 档：B 档能看到并享受 A 档的收藏加成；在 B 档做一次登记，`Store()` 会把「A 档收藏 + 新条目」整体写进 B 档的 `BossRush_BackMountain_Showcase_v1`——永久污染。对照组 `CampaignPersistence` 做了完整防御（OnSetFile 订阅 + 槽位比对 + 下游广播），注释还点名「PetNest 曾踩过同类坑」。
+
+#### 修复
+
+两道防线：① 运行时模块订阅 `SavesSystem.OnSetFile` / `OnSaveDeleted`，调 `ShowcaseService.NotifySlotChanged()` 与 `GardenSeedInjector.NotifySlotChanged()`；② `ShowcaseService` 缓存加槽位烙印，`EnsureLoaded` 每次比对 `SavesSystem.CurrentSlot`，对不上就摘掉旧加成并从新槽重读。
+
+#### 验证需求
+
+编译 + guard 已绿；**需实机 smoke**：A 档登记 → 不退游戏切 B 档 → 确认 B 档展示柜为空且加成为 0。
+
+### CR-2026-08-31-005：征程 P2：召唤石维护 tick 每帧分配字符串
+
+**严重级**：P2 Minor
+**兼容分类**：`SAFE`
+**状态**：Fixed
+**来源**：2026-08-31 征程/后山全面审核
+
+#### 位置
+
+- `Campaign/CampaignFinalBoss.cs` `ShouldCampaignFinalBossAltarExist`（修复前把 `IsCurrentSceneValidBossRushArena()` 排在章节检查之前）
+- `ModBehaviour.cs:82`：`GetCurrentMapConfig` 经 `SceneManager.GetActiveScene().name` 每次分配托管字符串
+
+#### 问题
+
+战役恒开，该 tick 对每个玩家的每一帧生效，60fps 下约 2–4 KB/s 稳定 gen0 垃圾。量级不致掉帧，但违反仓库自身的热路径零分配纪律（AGENTS.md 4.12）。
+
+#### 修复
+
+判定改序：零分配的终章契约查询先短路；场景判定另按 `CampaignRuntimeModule.SceneGeneration` 缓存（`IsCampaignArenaSceneCached`），彻底消除每帧分配。
+
+### CR-2026-08-31-006：征程 P2：契约 HUD 每帧构建字符串，与头注释承诺不符
+
+**严重级**：P2 Minor
+**兼容分类**：`SAFE`
+**状态**：Fixed
+**来源**：2026-08-31 征程/后山全面审核
+
+#### 位置
+
+- `Campaign/CampaignHud.cs`：头注释称「其余帧只有一次字符串构建前的短路比较」，实现却是先构建后比较（title 两次拼接 + `BuildBody()` 的 `ToString()`，合计 ≥3 次分配），只有 TMP 赋值被短路
+
+#### 修复
+
+改为构建**之前**做零分配脏检查：用复用的 `List<int>` / `List<bool>` 记录上次显示时各目标的 `Current` 与 `Failed`，逐项比对整数与 bool；内容真变了才拼字符串。隐藏时快照作废，保证再次显示必重建一次。
+
+### CR-2026-08-31-007：征程/后山 P3 设计取舍汇总（7 项）
+
+**严重级**：P3 Note
+**兼容分类**：`COMPAT`
+**状态**：Fixed（用户于 2026-08-31 明确要求全部修复）
+**来源**：2026-08-31 征程/后山全面审核
+
+#### 问题清单
+
+1. **第一章对新玩家偏硬，且是整条内容线的总闸门**：ch1 要求「通关标准局 + 前 3 波无伤」同时达成，而 ch1 交付才解锁菜地。可考虑无伤挪去后面章节或降为 2 波。
+2. **ch3 文案与实现口径不一致（宽松方向）**：「清掉 8 个敌对阵营的头目」实现上计数所有 `isBossCharacter` 击杀，无阵营过滤（`CampaignObjectiveCollector.cs:50`）。玩家不吃亏。
+3. **展示柜「战利品」的真实定义是「手持 + Q≥5」**：登记走 `CurrentHoldItemAgent`（`ShowcaseUI.cs:249`），头盔/护甲等非手持高品质掉落无法登记；而出击餐（Q5、菜地可量产）反而可占 3 格并计入满柜加成。
+4. **`CampaignNoteBridge.cs:18` 注释声称的兜底展示面不存在**：公告板面板实际没有线索页签，线索唯一展示面是官方笔记图鉴。需删注释或补页签。
+5. **终章击杀后、交付前的毛边**：召唤石立即重新出现，可反复重打冠军之影（无重复奖励、无害，略破仪式感）。是否加 `ContractActive` 门禁由 owner 定。（同项的 HUD 常驻已随 003 修复。）
+6. **`RegisterMeal` 失败时饭仍被框架吃掉**：`RaidMealUsageBehavior.cs:60` 登记失败直接 return，但 `CA_UseItem.OnFinish` 照常扣物品且无提示。窗口极小（需恰逢 `IsSaving`）。
+7. **「目标已达成」不落盘，退游戏即整章重打**：ReadyToDeliver 是会话态（`CampaignProgressService.cs:36` 设计如此）。对 ch3（8 头目 + 撑满 10 分钟）这类长目标重打成本不低；是否为它落一位存档需 owner 取舍。
+
+#### 修复决策
+
+1. 第一章无伤门槛降为前 2 波，同时保留通关时的短局兜底判定。
+2. 第三章中英文文案统一为「击败 8 名头目」，与实际 Boss 判定一致。
+3. 展示柜增加穿戴物登记入口，并排除后山自产种子/餐品，避免量产物刷收藏。
+4. 注释改为只承诺官方笔记图鉴；不再声称公告板存在未实现的线索页签。
+5. 召唤石只在终章 `ContractActive` 时出现，击杀后等待交付期间不可重复召唤。
+6. 出击餐在存盘中、陌生 ID 或登记失败时禁止使用，不让框架先扣物品。
+7. `ReadyToDeliver` 作为可选字段向后兼容落盘，重启后恢复待交付态。
+
+### CR-2026-08-31-008：全内容可用性复核补充（5 个 P1 + 2 个 P2）
+
+**严重级**：P1（5 项）/ P2（2 项）
+**兼容分类**：`COMPAT` + `SCHEMA+`
+**状态**：Fixed
+**来源**：2026-08-31 全内容静态审核、调用链与失败路径复核
+
+#### 问题与修复
+
+1. (P1) **模式H 地图列表与冻结目标漂移**：通用地图页可选不受支持地图，票已预扣但运行时拒绝接管。现只展示 `ModeHMapSupportRegistry.IsSupportedPair` 支持项，点击时按原配置索引重新冻结 sceneName/sceneID。
+2. (P1) **模式H 清场误删友方/功能 NPC**：原生隔离会销毁除主玩家外的全部角色。现保留玩家队、主玩家、遗种巢随从和 `INPCController`，只清除明确敌对原生单位。
+3. (P1) **征程交付忽略存档失败**：先改活缓存/发现金再写盘，失败时可重复交付。现克隆存档做事务写入，存档成功后才发布运行时 token，现金发放失败或落盘失败均回滚并保持待交付。
+4. (P1) **词缀锻造静默写失败会吞现金/熔石或留下半成品**：现所有 KV 写入均读回核验；重铸、锁词缀按「核验旧值→扣款→扣材料→写入」执行，失败恢复槽位并核验退款/回滚结果，补偿失败会向玩家报错。
+5. (P1) **后山登记/餐品存档写失败仍报告成功**：展示柜与出击餐写入均读回核验，登记/移除失败恢复内存与角色加成；餐品只有持久清除成功后才施加局内效果。
+6. (P2) **鸭皇图鉴可被低价卖回且商店刷新会丢书**：图鉴设为不可出售、价格系数恢复正常；商店尚未可注入时保留缓存库存，存档事件订阅/退订成对。
+7. (P2) **随机商人初始化时序会让库存为空或每次启动刷新**：反射绑定前置，配置完成前保持 inactive；首次激活只补一次库存，刷新时间戳稳定，弹药/医疗堆叠 99、高品质物品单件。
+
+#### 验证需求
+
+Windows 编译、相关结构守卫与全量 guard；实机需覆盖模式H 受支持地图、友方 NPC 共图、
+模拟存档失败后的征程/锻造/后山重试，以及图鉴和随机商人的商店刷新。
+
 ## UNVERIFIED / Seeded Leads
 
 > 这里的内容不是 bug。升格前必须读代码或运行验证。
@@ -603,9 +799,7 @@ stale 清扫处并联移除，或场景回调 `ClearAllTracking()`（与 016 同
 - **遗种巢 远征奖励非崩溃失败被吞**：`PetNestExpeditionService.cs:420-447` 注释宣称可补发，但 `GrantRewards`（:560-631）内部吞异常正常返回、:432 无条件置 `rewardsGranted=true`——蛋实例化失败/EconomyManager 异常 = 一次性丢失。修复需按条目粒度记账（现金已发、物品失败的部分重发问题）。
 - **遗种巢 OnExpedition 孤儿锁无自愈**：Nest key flush 成功、Expedition key flush 异常进 StoreFaulted 后（`PetNestSaveCoordinator.cs:141-144` 逐 key 独立失败），官方存盘可落「崽=OnExpedition」而远征记录缺失；无 reconcile 路径，该崽永久锁死。建议 Normalize 处加「OnExpedition 且远征表无匹配 → 复位 InNest」自愈。
 - **遗种巢 P3 一组**：基地闲逛崽实为跟随玩家（含 >40m 传送，观感是仪仗队）；场景切换只停两个演出层、主面板 modal lease 极端时序可带进战斗图；天赋/战痕/蛋 KV 展示裸英文 key。
-- **模式H 地图选择不锁定冻结目标**：`ModeHEntry.TryEnter:130` 冻结唯一支持图后打开通用地图 UI；选其它图 → intent 仍为 ModeH → Legacy 三处让位、模块按场景名拒绝 → 无人接管、预扣票不退、无提示（静态成立，需实机复现）。
 - **模式H 关停竞态孤儿**：StopCoroutine 打断 `CreateCharacterAsync` await 期间，`CreateIsolatedAsync`（SpawnBridge:58-176）async 延续仍会完成并登记抑制表+生成隔离角色，RollbackAll 只回收已入列 handle（窗口数帧）。
-- **模式H `ClearNativeEnemies` 无差别清场**（ArenaIsolationLease:187-213）：销毁除主玩家外全部 CharacterMainControl——PetNest 出战崽/跟随配偶/快递员若出现在该图会被直接 Destroy（不走 OnDead）；`player==null` 异常分支下连玩家也会被清。
 - **模式G 弃局确认页开在 Spawning 相位且时停拖住工厂 >15s 是否误报 TechnicalIntegrityLoss**：取决于官方 `CreateCharacterAsync` 是否受 timeScale 影响，静态无法判定。
 - **模式G SceneChanged 终局的 `ShowMessage` 在 OnSceneLoaded 时机是否可见**：需实机确认。
 - **日报 中途弃 raid 可能计成「成功撤离」**：`DailyReportStatsCollector.cs:190-204` 按 `!info.dead` 计撤离；官方对「战局中退出→回基地」是否判死亡未定，若不判则撤离数可刷（并入 D6 冒烟项）。

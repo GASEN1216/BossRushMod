@@ -2838,3 +2838,142 @@ BossRushUISkinLoader 与相关接线。编译 + 503 guard + 内容一致性 + �
 白名单、repowiki 同步、JSON 合法性、六章硬编码内容完整。
 
 `Assets/Data/Campaign/*.json` 不存在属设计内：内容以全量硬编码为准，JSON 仅为可选调参层。
+
+---
+### 2026-08-31 征程/后山审核修复：四个 P1 + 两个 P2
+
+**状态**: fixed（P1×4、P2×2）；同轮 7 项 P3 为 needs-owner-decision，见 CR-2026-08-31-007
+**Finding**: CR-2026-08-31-001 ~ -006
+**兼容分类**: `COMPAT`（四个 P1，行为修正、不动 schema）+ `SAFE`（两个 P2，纯性能）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要（六项都是「实现与既定设计不符」，不涉产品取舍）；
+同轮 7 项 P3 需要，已单列 CR-2026-08-31-007
+
+**现象**
+
+1. 出击餐吃了没效果，每局都如此（三种餐全部）。
+2. 展示柜「登记得越多越经打」在战局里不成立，进图后加成为零。
+3. 终章决战打输一次，召唤石永不再现，终章无法重打（本会话内）。
+4. 同会话换档后，A 档的展示柜收藏在 B 档生效；在 B 档登记会把 A 档收藏整体写进 B 档存档。
+5. / 6. 两处每帧路径持续产生 gen0 垃圾（召唤石维护的场景名查询、HUD 的先构建后比较）。
+
+**根因**
+
+- 1 与 2 同源：官方主角由 `LevelManager.CreateMainCharacterAsync` **异步**创建，
+  而两处加成都挂在 `SceneManager.sceneLoaded` 驱动的场景回调上，那一刻
+  `CharacterMainControl.Main` 必为 null；早返后无任何重试路径。
+  `RaidMealService.cs` 的头注释本就写明该用 `OnLevelInitialized`，实现没接上。
+- 3：`CleanupCampaignFinalBoss` 只有「死亡回调」「让路 tick」两个调用点，
+  玩家打输时 Boss 随场景销毁、回调永不触发，`campaignFinalBossActive` 卡死。
+- 4：`ShowcaseService` 缓存无槽位烙印且不订阅换槽事件，`NotifySlotChanged()` 全仓零调用。
+- 5：判定顺序把每帧分配字符串的场景查询排在了零分配的契约查询之前。
+- 6：脏检查放在字符串构建**之后**，等于每帧都付了分配代价。
+
+**修复内容**
+
+- 修改文件（均为既有文件，无新增 `.cs`，`compile_official.bat` 无需改动）:
+  - `Integration/BackMountain/BackMountainRuntimeModule.cs`：新增 `LevelManager.OnAfterLevelInitialized`
+    与 `SavesSystem.OnSetFile` / `OnSaveDeleted` 两组幂等订阅（命名方法 + 成对退订，AGENTS.md 4.6）；
+    把「设施注入」与「角色加成」拆成 `RefreshFacilitiesForScene` / `RefreshCharacterBoundEffects`
+    两个时机；切场景走 `ClearCharacterBoundEffects`；bootstrap 迟到时用 `LevelManager.AfterInit` 补一次。
+  - `Integration/BackMountain/ShowcaseService.cs`：缓存加槽位烙印（`_loadedSlot` + `ReadCurrentSlotSafe`），
+    `EnsureLoaded` 检测到槽位漂移即摘旧加成并重读；`NotifySlotChanged` 一并复位烙印。
+  - `Campaign/CampaignFinalBoss.cs`：新增 `campaignFinalBossRunId`（作废在飞的异步生成）与
+    `campaignFinalBossSpawnResolved`（区分「生成中」与「Boss 已不在场」）；让路 tick 补
+    「Boss 已不在场」收尾；收尾复位终章局内追踪；召唤石判定改序 +
+    `IsCampaignArenaSceneCached` 按 scene generation 缓存场景判定。
+  - `Campaign/CampaignRuntimeModule.cs`：`OnSceneLoaded` 幂等调用 `CleanupCampaignFinalBoss(false)`。
+  - `Campaign/CampaignHud.cs`：改为构建前零分配脏检查（复用 `List<int>` / `List<bool>` 快照）。
+- 同步文档: `.qoder/repowiki/` 两张知识卡（后山 3.2/3.3、征程 3.4 与文件职责表）、
+  `CODE_REVIEW_FINDINGS.md`（新增 7 条 + 状态汇总）。
+
+**兼容性影响**
+
+- 存档：无 schema 变更。修复 4 之后，此前若已发生跨槽污染的存档不会被自动纠正
+  （已写进 B 档的收藏就是 B 档的数据），玩家可在展示柜面板自行确认；新污染不再产生。
+- 配置 / TypeID / Harmony / 反射 / 资源 / 部署：均无影响。
+- 新增两处官方事件订阅（`OnAfterLevelInitialized`、`OnSetFile` / `OnSaveDeleted`），
+  均为静态事件，已按 4.6 做幂等 + dormant 与宿主销毁两条路径退订。
+
+**验证方法**
+
+1. 编译: `compile_official.bat` → `Build succeeded!`，exit 0，DLL 与资源已部署。
+2. Guard: `python tools/run_guards.py` → PASS=503 / NEW-FAIL=0 / KNOWN-RED=1
+   （既有红项 `DragonKingBossGunRocketSplitGuard`，与本轮无关）。
+3. 静态复核: 订阅/退订 3/3 配对；`ApplyForRun` / `ReapplyBonuses` / `NotifySlotChanged`
+   调用点逐一确认；`CleanupCampaignFinalBoss` 现有 4 个调用点覆盖击杀/让路/Boss消失/切场景。
+
+**未验证/需人工**
+
+四条 P1 的实机 smoke 尚未做（脚本无法驱动进基地/进局）。建议顺序：
+① 基地吃出击餐 → 进局确认飘字与属性；② 登记一件 Q≥5 战利品 → 进局确认最大生命提升；
+③ 召唤终章 → 故意战死 → 回基地再进竞技场确认召唤石重现、HUD 不残留；
+④ A 档登记 → 不退游戏切 B 档 → 确认 B 档为空且加成为 0。
+先用 `set BOSSRUSH_DEV_BUILD=1 && compile_official.bat` 出 dev 包，否则 `DevLog` 被剥离。
+
+---
+
+### 2026-08-31 全内容开启与可用性闭环
+
+**状态**: fixed（静态实现、Windows 编译与 guard 已完成；实机玩法 smoke 待人工）
+**Finding**: CR-2026-08-29-018、CR-2026-08-29-021、CR-2026-08-31-007、CR-2026-08-31-008
+**兼容分类**: `COMPAT` + `SCHEMA+`（日报未读提示、征程待交付态仅新增可选字段）
+**版本/Commit**: 未提交
+
+**内容开启策略**
+
+- 遗种巢、日报、鸭皇图鉴、词缀锻造、鸭生无常、鸭王征程、竞技场后山、模式H
+  共八个内容系统的字段默认值均为 `true`。
+- `LoadConfigFromFile` 后统一执行 `ForceContentSystemSwitchesOn()`，抹平历史配置和旧档遗留的
+  `false`；八个总开关不再从 ModConfig 读取，也不再注册到 UI，避免玩家把正式内容误关。
+- `BossRush_BackMountainUnlockAll` 仍是默认关闭、可配置的调试旁路，不属于内容开关。
+- 模式H 的真实仓库押注仍保持 fail-closed；这不是内容总开关，正式玩法使用完整的虚拟押注与结算，
+  不对玩家仓库物品做未获授权的高风险扣押。
+
+**模式H 可玩闭环**
+
+- 新增 `ModeHRuntimeModule_CombatFlow.cs` 与查询/克隆辅助 partial
+  `ModeHRuntimeModule_CombatProfiles.cs` 并登记 `compile_official.bat`：完成确定性出战名单、
+  套装选择、公开分/胜率/赔率、分帧生成、战斗、拍铃接力、遥测、结算、伤病/战痕、奖励、
+  赛间恢复、转会、总决赛与名人堂更新，不再在生成成功后以 `combat_wiring_pending` 回滚看盘。
+- 报告恢复在继续前先核对已结算/奖励状态，技术重试回滚报告与奖励，避免重放和重复结算。
+- 地图选择页只展示 ModeH 支持的 sceneName/sceneID 组合，并按原地图配置索引重新冻结目标，
+  修复选中项与预扣票 intent 漂移。
+- 原生敌人隔离只清明确敌对角色，保留主玩家、玩家队、遗种巢随从及 `INPCController` 功能 NPC。
+
+**其余内容修复**
+
+- 鸭皇图鉴：书不可出售、价格系数正常；商店暂不可注入时保留库存缓存；存档订阅完整退订。
+- 鸭生无常随机商人：反射绑定前置，配置完成前 inactive；首次激活单次补货，时间戳稳定；
+  弹药/医疗按 99 堆叠，高品质物品单件出售。
+- 日报：`PendingIssueBanner` 作为可选 JSON 字段落盘；日报 UI 的 `OnDestroy` 调用基类清理。
+- 词缀锻造：全部 KV 写入读回核验；重铸/锁定按事务顺序扣款与扣材料，失败恢复槽位，
+  退款或回滚失败会给玩家明确错误，不再静默吞资源。
+- 鸭王征程：`ReadyToDeliver` 向后兼容持久化；第一章无伤降为 2 波，第三章文案统一 8 名头目；
+  终章召唤石仅在契约进行中出现；交付改为克隆存档事务，存档成功后才发布解锁 token，
+  现金或写盘失败均回滚并允许安全重试。
+- 竞技场后山：展示柜可登记手持或穿戴的高品质战利品，排除自产种子/餐品；登记、移除、
+  出击餐登记和清除均写后读回，失败恢复内存/加成；陌生旧餐品 ID 不再静默吞掉。
+- 七项原 P3 取舍已按用户明确指示闭环，详见 CR-2026-08-31-007。
+
+**守卫与文档**
+
+- 同步 ModeH 结构、入口地图、竞技场隔离、词缀事务、图鉴持久化、日报持久化、随机事件、
+  征程与后山结构守卫；相关九个 guard 单独执行均 PASS。
+- `.qoder/repowiki/` 已同步 ModeH、图鉴、日报、随机事件、词缀锻造、征程、后山知识卡和主题文档，
+  删除「ModeH 战斗未接线」「内容默认关闭」等过期描述。
+- `ModeHRuntimeModule_CombatFlow.cs` 拆分后为 1137 行，低于新文件 1200 行硬预算；
+  `ErrorRecoveryPending → Recovering` 改为显式状态机出口，恢复通道无死态。
+- Windows `compile_official.bat`：PASS（0 error，仅既有 JSON DTO `CS0649` warning），
+  DLL 与资源已部署到本机游戏 Mod 目录。
+- `test_logic_official.bat`：8/8 PASS。
+- `python tools/run_guards.py`：PASS=503 / NEW-FAIL=0 / KNOWN-RED=1；唯一已知红项仍是
+  `DragonKingBossGunRocketSplitGuard.py`，在本次基线提交之前已存在、与本轮无关。
+- `git diff --check` 与最终差异复核结果见交付回复。
+
+**实机待测**
+
+- 模式H：受支持地图筛选、六场完整赛季、拍铃接力、失败重试、总决赛/名人堂、友方 NPC 共图。
+- 存档故障注入：征程交付、词缀锻造、展示柜和出击餐在写失败后无资源丢失且可重试。
+- 商店：图鉴书刷新/回购限制、随机商人首次库存与跨日刷新。
+- 跨会话：日报未读提示、征程 ReadyToDeliver、后山登记与出击餐恢复。
