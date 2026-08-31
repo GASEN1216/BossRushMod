@@ -19,20 +19,23 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 251,
+    "Integration": 259,
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
-    "Audio": 8,
+    "Campaign": 14,
+    "Audio": 9,
     "ModeF": 6,
     "Patches": 7,
+    "RandomEvents": 5,
+    "ModeG": 4,
     "MapSelection": 3,
     "ModeD": 1,
-    "ModeG": 4,
     "ModeH": 1,
     "DebugAndTools": 1,
-    "RandomEvents": 5,
 }
+
+EXPECTED_TOTAL = 397
 
 
 def fail(message: str) -> int:
@@ -68,22 +71,25 @@ def main() -> int:
         return fail("current counts differ from documented baseline: " + repr(counts))
 
     total = sum(counts.values())
-    if total != 374:
-        return fail("expected 374 ModBehaviour.Instance lines, got " + str(total))
+    if total != EXPECTED_TOTAL:
+        return fail("expected " + str(EXPECTED_TOTAL)
+                    + " ModBehaviour.Instance lines, got " + str(total))
 
     doc = DOC.read_text(encoding="utf-8")
-    required_doc_tokens = [
-        "- Raw matches: 374",
-        "| `Integration/` | 251 |",
-        "| `ZombieMode/` | 38 |",
-        "| `Interactables/` | 23 |",
-        "| `ModeE/` | 26 |",
-        "| `Audio/` | 8 |",
-        "| `ModeF/` | 6 |",
-        "| `Patches/` | 7 |",
-        "| `MapSelection/` | 3 |",
-        "| `ModeG/` | 4 |",
-        "| `ModeD`, `DebugAndTools` | 2 |",
+
+    # 各目录的行数从 EXPECTED_COUNTS 派生，不再手抄一遍：
+    # 两处硬编码同一组数字，改动时必然漏掉一处（本守卫自己就漂移过）。
+    # ModeD 与 DebugAndTools 在文档里合并成一行，单独处理。
+    merged_groups = {"ModeD", "DebugAndTools"}
+    required_doc_tokens = ["- Raw matches: " + str(EXPECTED_TOTAL)]
+    for group, count in EXPECTED_COUNTS.items():
+        if group in merged_groups:
+            continue
+        required_doc_tokens.append("| `" + group + "/` | " + str(count) + " |")
+    merged_total = sum(EXPECTED_COUNTS.get(g, 0) for g in merged_groups)
+    required_doc_tokens.append("| `ModeD`, `DebugAndTools` | " + str(merged_total) + " |")
+
+    required_doc_tokens += [
         "Keep: Unity owner",
         "Keep: gameplay state",
         "Candidate: notification",
