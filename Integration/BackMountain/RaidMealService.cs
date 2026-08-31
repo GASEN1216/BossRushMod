@@ -77,6 +77,10 @@ namespace BossRush
                 if (SavesSystem.IsSaving) return false;
 
                 SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, mealTypeId);
+                if (SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey) != mealTypeId)
+                {
+                    return false;
+                }
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "出击餐已登记: " + mealTypeId);
                 return true;
             }
@@ -101,16 +105,18 @@ namespace BossRush
             }
         }
 
-        private static void ClearRegisteredMeal()
+        private static bool ClearRegisteredMeal()
         {
             try
             {
-                if (SavesSystem.IsSaving) return;
+                if (SavesSystem.IsSaving) return false;
                 SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, 0);
+                return SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey) == 0;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 清理出击餐登记失败: " + e.Message);
+                return false;
             }
         }
 
@@ -141,12 +147,24 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog(BackMountainConfig.LogPrefix
                         + "[WARNING] 登记的出击餐 ID 无法识别，已丢弃: " + mealTypeId);
-                    ClearRegisteredMeal();
+                    bool cleared = ClearRegisteredMeal();
+                    Duckov.UI.NotificationText.Push(cleared
+                        ? L10n.T("旧版出击餐记录无法识别，已清除。",
+                            "An unrecognized legacy meal record was cleared.")
+                        : L10n.T("出击餐记录无法识别且暂时不能清除，请稍后重试。",
+                            "The meal record is unrecognized and could not be cleared; try again later."));
                     return;
                 }
 
+                // 先持久消费登记，再挂本局 modifier；消费失败时绝不让同一份餐跨局重复生效。
+                if (!ClearRegisteredMeal())
+                {
+                    Duckov.UI.NotificationText.Push(
+                        L10n.T("出击餐登记暂时无法结算，本局未消耗也未生效。",
+                            "The meal record could not be settled; it was neither consumed nor applied."));
+                    return;
+                }
                 _appliedThisRun = true;
-                ClearRegisteredMeal();
 
                 switch (mealTypeId)
                 {

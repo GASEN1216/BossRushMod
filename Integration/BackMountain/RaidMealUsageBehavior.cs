@@ -14,6 +14,7 @@
 
 using System;
 using ItemStatsSystem;
+using Saves;
 
 namespace BossRush
 {
@@ -41,6 +42,8 @@ namespace BossRush
                 if (item == null) return false;
                 ModBehaviour owner = ModBehaviour.Instance;
                 if (owner == null || !owner.IsBackMountainConfiguredEnabled()) return false;
+                BackMountainItems.Definition def = BackMountainItems.GetDefinition(item.TypeID);
+                if (def == null || def.IsSeed || SavesSystem.IsSaving) return false;
                 return LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel;
             }
             catch (Exception)
@@ -57,7 +60,13 @@ namespace BossRush
                 if (item == null) return;
 
                 int typeId = item.TypeID;
-                if (!RaidMealService.RegisterMeal(typeId)) return;
+                if (!RaidMealService.RegisterMeal(typeId))
+                {
+                    Duckov.UI.NotificationText.Push(
+                        L10n.T("存档正忙，出击餐未登记；请稍后再试",
+                            "Save is busy; the meal was not registered. Please try again."));
+                    return;
+                }
 
                 BackMountainItems.Definition def = BackMountainItems.GetDefinition(typeId);
                 if (def != null)

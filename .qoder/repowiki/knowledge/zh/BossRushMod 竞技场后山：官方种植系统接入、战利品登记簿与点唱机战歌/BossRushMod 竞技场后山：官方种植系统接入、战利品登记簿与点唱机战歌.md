@@ -80,8 +80,19 @@ source_files:
 
 `CharacterBuffManager` 没有存档，角色对象每场景重建，在基地吃下的 Buff 进图就没了。
 所以「出击前吃、下一局生效」必须落存档：食用时登记一条待生效记录，下一局
-`OnLevelInitialized`（官方 `BuildingEffect` 给建筑加成用的同一时机）再挂 Modifier，
-清理走 `RuntimeStatModifierTracker.RemoveAll`。同一时间只保留一条，后吃覆盖先吃。
+`LevelManager.OnAfterLevelInitialized`（官方 `BuildingEffect` 给建筑加成用的同一时机，
+本 mod 的 `SetBonusManager` / `DragonSetBonus` 处理「已穿戴装备进入游戏」用的也是它）
+再挂 Modifier，清理走 `RuntimeStatModifierTracker.RemoveAll`。
+同一时间只保留一条，后吃覆盖先吃。
+
+**挂载时机是硬约束，不能退到 `sceneLoaded`**：官方主角由
+`LevelManager.CreateMainCharacterAsync` **异步**创建，`SceneManager.sceneLoaded`
+那一刻 `CharacterMainControl.Main` 必然还是 null。在场景回调里挂加成会静默失败
+且没有重试，玩家侧表现为「饭吃了没效果」「登记了不加血」。
+因此模块把两类刷新拆开：设施注入（作物表 / 点唱机 / 展示柜建筑）走 `OnSceneLoaded`，
+角色加成（出击餐 Modifier、展示柜加成）走 `OnAfterLevelInitialized`；
+模块若在关卡初始化之后才 bootstrap，用 `LevelManager.AfterInit` 补一次。
+（CR-2026-08-31-001 / -002 修复。）
 
 ### 3.3 展示柜是「登记簿」而不是储物柜
 
@@ -91,6 +102,14 @@ source_files:
 机会成本没了。附带好处：不需要动任何物品消耗/归还的 API，也就没有丢件的风险。
 
 加成按品质给：每高于 Q4 一级 +0.5% 最大生命，八格全满额外 +5%，上限约 +21%。
+
+**收藏缓存必须按槽隔离**：收藏是按槽存档的内存缓存（`ShowcaseService._displayed`）。
+不隔离的话，同一次会话里从 A 档切到 B 档，A 档的收藏会在 B 档继续生效，
+并在 B 档登记时把「A 档收藏 + 新条目」整体写进 B 档存档——永久污染。
+两道防线：运行时模块订阅 `SavesSystem.OnSetFile` / `OnSaveDeleted` 调
+`ShowcaseService.NotifySlotChanged()`；缓存自身也带槽位烙印，
+`EnsureLoaded` 每次比对 `SavesSystem.CurrentSlot`，对不上就自失效重读
+（与 `CampaignPersistence` 同款纪律）。（CR-2026-08-31-004 修复。）
 
 ### 3.4 解锁状态不得缓存
 
@@ -113,7 +132,7 @@ source_files:
 | 500064 | PhantomSpore | 幽魂孢子 | 幽灵女巫掉落（25%），种出幽影蘑菇 |
 | 500065 | DragonFruit | 龙息果 | 出击餐：下一局枪械与近战伤害 +10% |
 | 500066 | EmberChili | 焚心椒 | 出击餐：下一局移速 +8%、换弹 +10% |
-| 500067 | PhantomMushroom | 幽影蘑菇 | 出击餐：下一局最大生命 +10% |
+| 500067 | PhantomMushroom | 幽影蘑菇 | 出击餐：下一局物理受伤倍率 -10% |
 
 全部走克隆兜底注册（零新增 bundle，照 `RelicEggConfig`），并登记进
 `BossRushDynamicItemRegistry`——漏登记会让重启后它们退化成官方 FallbackItem。
@@ -147,3 +166,13 @@ source_files:
 3. `BaseBGMSelector` 追加时机与官方只存 index 导致的曲目移位（官方机制本身如此，
    mod 条目固定追加在官方之后）。
 4. 展示柜建筑注入全链（照日报报箱已趟平，仍需实机过一遍）。
+
+## 8. 2026-08-31 登记与餐食持久化收口
+
+展示柜可从当前手持或 Armor/Helmat/FaceMask 等穿戴槽登记，物品不被收走；菜地种子与全部
+后山餐食都排除在战利品外。登记写入返回 bool 并回读 JSON，官方正在保存或回读不一致时
+撤销刚加入的 TypeID，不再显示成功后重进丢失。
+
+出击餐在基地、非种子、已识别且 `SavesSystem.IsSaving == false` 时才允许使用；登记与消费都
+回读核对。进入下一局时先把登记持久清零，成功后才挂 modifier，清零失败则本局不消耗也不生效，
+避免同一份餐跨多局重复生效。旧档陌生 ID 会给玩家明确提示并尝试清除。

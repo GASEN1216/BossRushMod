@@ -57,12 +57,22 @@ namespace BossRush
         /// <summary>可陈列的最低品质。低于它的普通物品不给加成也不让存。</summary>
         private const int MinDisplayQuality = 5;
 
+        /// <summary>拿不到槽位号时的哨兵值（照 CampaignPersistence 的写法）。</summary>
+        private const int SlotUnknown = int.MinValue;
+
         #endregion
 
         #region 状态
 
         private static List<int> _displayed;
         private static bool _loaded;
+
+        /// <summary>
+        /// 缓存对应的存档槽位。**必须比对**：换槽回调是运行时模块订阅的，
+        /// 若那条链断了（模块 dormant、订阅失败），只靠 _loaded 会把 A 档的收藏
+        /// 带进 B 档，并在 B 档登记时整体写脏 B 档存档。
+        /// </summary>
+        private static int _loadedSlot = SlotUnknown;
 
         private static readonly List<ZombieModeAttributeModifierRecord> _records =
             new List<ZombieModeAttributeModifierRecord>();
@@ -102,6 +112,13 @@ namespace BossRush
                 }
 
                 EnsureLoaded();
+                BackMountainItems.Definition backMountainItem = BackMountainItems.GetDefinition(item.TypeID);
+                if (backMountainItem != null)
+                {
+                    reason = L10n.T("菜地种子和出击餐不能登记为战利品",
+                        "Garden seeds and raid meals are not trophies");
+                    return false;
+                }
                 if (_displayed.Count >= BackMountainConfig.ShowcaseSlotCount)
                 {
                     reason = L10n.T("展示柜已满", "The showcase is full");
@@ -137,7 +154,11 @@ namespace BossRush
                 if (_displayed.Contains(typeId)) return false;
 
                 _displayed.Add(typeId);
-                Store();
+                if (!Store())
+                {
+                    _displayed.Remove(typeId);
+                    return false;
+                }
                 ReapplyBonuses();
                 return true;
             }
@@ -157,9 +178,15 @@ namespace BossRush
             try
             {
                 EnsureLoaded();
-                if (!_displayed.Remove(typeId)) return false;
+                int index = _displayed.IndexOf(typeId);
+                if (index < 0) return false;
+                _displayed.RemoveAt(index);
 
-                Store();
+                if (!Store())
+                {
+                    _displayed.Insert(index, typeId);
+                    return false;
+                }
                 ReapplyBonuses();
                 return true;
             }
@@ -254,8 +281,20 @@ namespace BossRush
 
         private static void EnsureLoaded()
         {
-            if (_loaded) return;
+            int slot = ReadCurrentSlotSafe();
+            if (_loaded && _loadedSlot == slot) return;
+
+            if (_loaded)
+            {
+                // 槽位在没收到换槽回调的情况下变了：上一个槽的加成还挂在角色身上，
+                // 先摘干净，再从新槽重读
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix
+                    + "[WARNING] 检测到存档槽位已变更但未收到切档回调，展示柜缓存已自失效");
+                ClearBonuses();
+            }
+
             _loaded = true;
+            _loadedSlot = slot;
             _displayed = new List<int>();
 
             try
@@ -289,29 +328,54 @@ namespace BossRush
             }
         }
 
-        private static void Store()
+        private static bool Store()
         {
             try
             {
-                if (SavesSystem.IsSaving) return;
+                if (SavesSystem.IsSaving) return false;
 
                 ShowcaseSaveData data = new ShowcaseSaveData();
                 data.schemaVersion = CurrentSchemaVersion;
                 data.displayedTypeIds = _displayed.ToArray();
 
-                SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, JsonUtility.ToJson(data));
+                string json = JsonUtility.ToJson(data);
+                SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, json);
+                string readback = SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey);
+                if (!string.Equals(readback, json, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("showcase save readback mismatch");
+                }
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 展示柜落档失败: " + e.Message);
+                return false;
             }
         }
 
-        /// <summary>换槽/删档：丢弃缓存，下次访问从新槽重读。</summary>
+        /// <summary>当前存档槽位；拿不到时返回哨兵值。no-throw。</summary>
+        private static int ReadCurrentSlotSafe()
+        {
+            try
+            {
+                return SavesSystem.CurrentSlot;
+            }
+            catch (Exception)
+            {
+                return SlotUnknown;
+            }
+        }
+
+        /// <summary>
+        /// 换槽/删档：丢弃缓存，下次访问从新槽重读。
+        /// 由 BackMountainRuntimeModule 订阅 SavesSystem.OnSetFile / OnSaveDeleted 调用。
+        /// </summary>
         internal static void NotifySlotChanged()
         {
             ClearBonuses();
             _loaded = false;
+            _loadedSlot = SlotUnknown;
             _displayed = null;
         }
 

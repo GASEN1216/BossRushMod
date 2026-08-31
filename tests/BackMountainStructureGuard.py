@@ -20,6 +20,10 @@ import re
 import sys
 
 MODULE = Path("Integration/BackMountain/BackMountainRuntimeModule.cs")
+SHOWCASE = Path("Integration/BackMountain/ShowcaseService.cs")
+SHOWCASE_UI = Path("Integration/BackMountain/ShowcaseUI.cs")
+RAID_MEAL = Path("Integration/BackMountain/RaidMealService.cs")
+RAID_MEAL_USE = Path("Integration/BackMountain/RaidMealUsageBehavior.cs")
 UNLOCKS = Path("Integration/BackMountain/BackMountainUnlocks.cs")
 CONFIG_CONST = Path("Integration/BackMountain/BackMountainConfig.cs")
 REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
@@ -52,7 +56,8 @@ def strip_comments(text):
 
 
 def main():
-    for path in [MODULE, UNLOCKS, CONFIG_CONST, REGISTRATION] + CONFIG_SOURCES:
+    for path in [MODULE, SHOWCASE, SHOWCASE_UI, RAID_MEAL, RAID_MEAL_USE,
+                 UNLOCKS, CONFIG_CONST, REGISTRATION] + CONFIG_SOURCES:
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
@@ -62,6 +67,10 @@ def main():
     reg = strip_comments(REGISTRATION.read_text(encoding="utf-8", errors="ignore"))
     config = strip_comments("\n".join(
         path.read_text(encoding="utf-8", errors="ignore") for path in CONFIG_SOURCES))
+    showcase = strip_comments(SHOWCASE.read_text(encoding="utf-8", errors="ignore"))
+    showcase_ui = strip_comments(SHOWCASE_UI.read_text(encoding="utf-8", errors="ignore"))
+    raid_meal = strip_comments(RAID_MEAL.read_text(encoding="utf-8", errors="ignore"))
+    raid_use = strip_comments(RAID_MEAL_USE.read_text(encoding="utf-8", errors="ignore"))
 
     # ---- 1) 单实例纪律 ----
     if not re.search(r"backMountainRuntime\s*=\s*new\s+BackMountainRuntimeModule\s*\(", reg):
@@ -165,6 +174,18 @@ def main():
             "IsHandledModConfigOptionKey 白名单缺少后山旁路旋钮键（查了 "
             + ", ".join(p.as_posix() for p in CONFIG_SOURCES) + "），"
             "玩家拨动「跳过战役解锁」不会即时生效。")
+
+    # ---- 7) 登记/餐食写入必须可证实，失败不能静默报告成功 ----
+    if not re.search(r"private static bool Store\(\)", showcase):
+        return fail("展示柜 Store 必须返回 bool，让上层在写失败时回滚内存登记")
+    if "showcase save readback mismatch" not in showcase or "_displayed.Remove(typeId)" not in showcase:
+        return fail("展示柜登记必须回读核对，写失败时撤销刚加入的 TypeID")
+    if "ResolveEquippedTrophy" not in showcase_ui or "ResolveHeldItem" not in showcase_ui:
+        return fail("展示柜必须同时支持手持与穿戴战利品登记")
+    if "SavesSystem.IsSaving" not in raid_use or "def.IsSeed" not in raid_use:
+        return fail("出击餐 CanBeUsed 必须在存档忙/陌生物品/种子时拒绝消耗")
+    if "SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey)" not in raid_meal:
+        return fail("出击餐登记与消费必须回读核对，避免同一份餐跨局重复生效")
 
     print("BackMountainStructureGuard: PASS（单实例 + dormant + 解锁不缓存 + 冻结常量）")
     return 0

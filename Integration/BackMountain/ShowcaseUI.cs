@@ -2,11 +2,11 @@
 // ShowcaseUI.cs - 战利品展示柜面板
 // ============================================================================
 // 全部走 Common/UI/BossRushUI.cs 共享库（AGENTS.md 4.14）。
-// 面板结构：标题（含当前加成）→ 八格登记列表 → 登记按钮 → 关闭。
+// 面板结构：标题（含当前加成）→ 八格登记列表 → 手持/穿戴登记按钮 → 关闭。
 //
-// 【登记的是「手上那件」，而且不会收走它】
+// 【登记的是「手上或穿戴的那件」，而且不会收走它】
 //   不做背包选择器：那需要一整套物品栅格 UI，而展示柜的交互本来就该很轻。
-//   玩家手持想登记的战利品来交互，点一下即可；东西照样归自己（见 ShowcaseService
+//   玩家可登记当前手持物，也可从装备槽登记第一件合格战利品；东西照样归自己（见 ShowcaseService
 //   头注释里「为什么是登记簿而不是储物柜」）。因此也不需要「取回」按钮。
 // ============================================================================
 
@@ -192,14 +192,20 @@ namespace BossRush
         {
             ZombieModeUIHelper.CreateButton(
                 "Display", parent, L10n.T("登记手持战利品", "Record held trophy"),
-                new Vector2(0.5f, 0f), new Vector2(-100f, 40f), new Vector2(210f, 42f),
-                BossRushUIColors.Accent, 16f, new Vector2(200f, 34f),
+                new Vector2(0.5f, 0f), new Vector2(-190f, 40f), new Vector2(190f, 42f),
+                BossRushUIColors.Accent, 15f, new Vector2(180f, 34f),
                 delegate { OnDisplayHeld(); }, true);
 
             ZombieModeUIHelper.CreateButton(
+                "DisplayEquipped", parent, L10n.T("登记穿戴战利品", "Record equipped trophy"),
+                new Vector2(0.5f, 0f), new Vector2(15f, 40f), new Vector2(190f, 42f),
+                BossRushUIColors.Accent, 15f, new Vector2(180f, 34f),
+                delegate { OnDisplayEquipped(); }, true);
+
+            ZombieModeUIHelper.CreateButton(
                 "Close", parent, L10n.T("关闭", "Close"),
-                new Vector2(0.5f, 0f), new Vector2(100f, 40f), new Vector2(150f, 42f),
-                BossRushUIColors.SurfaceRaised, 16f, new Vector2(140f, 34f),
+                new Vector2(0.5f, 0f), new Vector2(210f, 40f), new Vector2(130f, 42f),
+                BossRushUIColors.SurfaceRaised, 16f, new Vector2(120f, 34f),
                 delegate { Close(); }, true);
         }
 
@@ -211,30 +217,53 @@ namespace BossRush
         {
             try
             {
-                Item held = ResolveHeldItem();
-                string reason;
-                if (!ShowcaseService.CanDisplay(held, out reason))
-                {
-                    ModBehaviour.Instance?.ShowMessage(reason);
-                    return;
-                }
-
-                int typeId = held.TypeID;
-                if (!ShowcaseService.TryDisplay(typeId))
-                {
-                    ModBehaviour.Instance?.ShowMessage(L10n.T("登记失败", "Failed to record"));
-                    return;
-                }
-
-                // 物品不收走：登记簿只记 TypeID，玩家继续用自己的战利品
-                ModBehaviour.Instance?.ShowMessage(
-                    L10n.T("已登记：", "Recorded: ") + ResolveItemName(typeId));
-                Open();
+                TryDisplayItem(ResolveHeldItem());
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 登记操作失败: " + e.Message);
             }
+        }
+
+        private static void OnDisplayEquipped()
+        {
+            try
+            {
+                Item equipped = ResolveEquippedTrophy();
+                if (equipped == null)
+                {
+                    Duckov.UI.NotificationText.Push(
+                        L10n.T("没有找到可登记的穿戴战利品", "No eligible equipped trophy found"));
+                    return;
+                }
+                TryDisplayItem(equipped);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 穿戴登记失败: " + e.Message);
+            }
+        }
+
+        private static void TryDisplayItem(Item item)
+        {
+            string reason;
+            if (!ShowcaseService.CanDisplay(item, out reason))
+            {
+                ModBehaviour.Instance?.ShowMessage(reason);
+                return;
+            }
+
+            int typeId = item.TypeID;
+            if (!ShowcaseService.TryDisplay(typeId))
+            {
+                ModBehaviour.Instance?.ShowMessage(L10n.T("登记失败", "Failed to record"));
+                return;
+            }
+
+            // 物品不收走：登记簿只记 TypeID，玩家继续用自己的战利品。
+            ModBehaviour.Instance?.ShowMessage(
+                L10n.T("已登记：", "Recorded: ") + ResolveItemName(typeId));
+            Open();
         }
 
         /// <summary>
@@ -250,6 +279,43 @@ namespace BossRush
                 if (main == null) return null;
                 DuckovItemAgent agent = main.CurrentHoldItemAgent;
                 return agent != null ? agent.Item : null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>按装备槽顺序找第一件符合登记条件的穿戴战利品。</summary>
+        private static Item ResolveEquippedTrophy()
+        {
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                Item characterItem = main != null ? main.CharacterItem : null;
+                if (characterItem == null || characterItem.Slots == null) return null;
+
+                string[] preferredSlots =
+                {
+                    "Armor", "Helmat", "Helmet", "FaceMask",
+                    "PrimaryWeapon", "SecondaryWeapon", "MeleeWeapon"
+                };
+                for (int i = 0; i < preferredSlots.Length; i++)
+                {
+                    try
+                    {
+                        var slot = characterItem.Slots.GetSlot(preferredSlots[i]);
+                        Item candidate = slot != null ? slot.Content : null;
+                        string ignored;
+                        if (ShowcaseService.CanDisplay(candidate, out ignored)) return candidate;
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog(BackMountainConfig.LogPrefix
+                            + "[WARNING] 扫描穿戴战利品失败: " + e.Message);
+                    }
+                }
+                return null;
             }
             catch (Exception)
             {
