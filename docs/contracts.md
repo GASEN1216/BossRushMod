@@ -102,6 +102,17 @@ Breaking:
 - 让读档装载改为触发 `OnFacilityTokenGranted`（会导致每次读档重播解锁提示）。
 - 把查询侧改成缓存或默认已解锁（fail-open）。
 
+## 3.2 鸭王征程章节数据契约
+
+正式内容文件为 `Assets/Data/Campaign/Chapters.json`，构建脚本必须部署到
+`BossRush/Assets/Data/Campaign/Chapters.json`。运行时整表校验 version、六章数量与顺序、
+模式、目标阈值、奖励、唯一 token/线索及终章位置；任一字段不合约即整表回退硬编码。
+解析必须使用 `ModeHCanonicalDigest` 的严格 token parser；实机已证实 Unity `JsonUtility`
+对该两层对象数组会只填 version、静默把 chapters 留空，禁止再用它解析本表。
+运行时公开 `CampaignContentCatalog.Source`（`Json` / `Fallback`）与
+`ContentSignature`。硬编码表是灾备而非正式发布来源：F3 完整验收只接受
+`Source=Json`、六章及与冻结 fallback 相同的内容签名。
+
 ## 4. 地图与 SpawnPoints JSON
 
 `Assets/SpawnPoints/*.json` 是地图刷新点数据契约。字段至少包括：
@@ -293,16 +304,22 @@ bootstrap 幂等且可退回 dormant。
 `MaxStackCount = 1` 是硬要求——堆叠合并会把两枚不同血脉的蛋并成一枚，血脉信息丢失。
 遗魂与遗物不占号（遗魂是纯账本，不掉实体）。
 
-**存档键（SCHEMA+）。** 三个 key 全部 `SavesSystem.Save<string>` **JSON 整存**：
+**存档键（SCHEMA+）。** `BossRush_PetNest_Bundle_v2` 是唯一权威状态，使用
+`SavesSystem.Save<string>` JSON 整存，顶层固定包含 `schemaVersion=2`、`generation`、
+`nest`、`expedition`、`museum`。所有运行时写操作均以深拷贝候选包提交，三个分区不会再
+独立写盘。
+
+以下三个 v1 key 永久保留为**只读迁移材料**，不得删除或复用：
 
 - `BossRush_PetNest_Nest_v1`（崽列表 / 出战席位 / 遗魂账本 / 巢容量）
 - `BossRush_PetNest_Expedition_v1`（进行中远征 + 已结算未翻牌）
 - `BossRush_PetNest_Museum_v1`（图鉴统计 / 纪念碑 / 异色收集）
 
-envelope 固定为 `{schemaVersion, payload}`。**不用 typed `Save<T>`**：ES3 会把
-assembly-qualified 类型名写进存档，mod 程序集改名或类型重构就会让老档读不回来。
-`schemaVersion` 不符、payload 不可读或 key 分类失败时只为对应 key 建立**写屏障**
-（只读不覆盖），另两个 key 仍可独立保存；写入路径异常进入单向 `StoreFaulted`。
+没有 v2 时才读取三份 v1 envelope（`{schemaVersion, payload}`），合并成候选 Bundle；
+v2 写入并回读成功后才完成迁移。v1 原键不删除，但之后不再分拆写入。v2 已存在却损坏、
+不可读或版本过新时 fail-closed 建立整包写屏障，**不得回退 v1**，以免用过期快照覆盖新状态。
+**不用 typed `Save<T>`**：ES3 会把 assembly-qualified 类型名写进存档，mod 程序集改名或
+类型重构就会让老档读不回来。写入路径异常进入单向 `StoreFaulted`。
 三个官方存档事件 `OnCollectSaveData` / `OnSetFile` / `OnSaveDeleted` 幂等订阅与退订。
 `PetNest/PetNestSaveCoordinator.cs` 是遗种巢**唯一**调用 `SavesSystem.SaveFile` 的地方，
 每批至多一次；`IsSaving` 时改走 deferred，重试有预算上限，超预算保留 pending 并报错。
@@ -374,10 +391,15 @@ Collider 必须删），蛋图标复用官方 fallback 物品。占位路径至�
 `ClearBossRandomLootTracking`）与丧尸模式。随从进局门控另有一刀切禁入名单：
 Mode G、末日丧尸、Mode H（实装期新增的保守判定，`Needs owner confirmation`）。
 
+远征奖励属于持久化债务：`cashGranted` 与 `grantedLootUnits` 是续发游标，
+`rewardsGranted` 仅在现金和全部物品单位送达后置位。基地 `LevelManager`、经济和物品资源
+未就绪时不尝试；失败按固定退避无限保留，不再因达到历史尝试次数而吞奖。官方经济/背包 API
+与 Mod 存档无法原子提交，采用至少一次语义：极端崩溃窗口下宁可重复，不允许静默少发。
+
 Breaking：
 
 - 复用或回收 `500059`。
-- 改名三个存档 key 且无迁移。
+- 改名 `BossRush_PetNest_Bundle_v2` 或三个 v1 迁移源、删除 v1 原键、让 v2 损坏时回退 v1。
 - 把 `AchievementCategory.Taming` 插到枚举中间。
 - 改动 `Health.Hurt` Prefix 的既有签名。
 - 把捡漏背包从"借席不夺席"改成夺席不还。
@@ -400,6 +422,11 @@ mod 程序集改名/重构就会让老档读不回来。
 未知或更高 `schemaVersion`、payload 不可读时进写屏障，**只读不写，绝不覆盖该 key**。
 `Integration/DailyReport/DailyReportSaveCoordinator.cs` 是日报**唯一**调用
 `SavesSystem.SaveFile` 的地方，且每批至多一次；`IsSaving` 时只登记 deferred 由宿主 tick 重试。
+
+所有状态变化必须先修改 `DailyReportData.Clone()` 候选副本，只有 `Store` 接受后才替换
+权威内存状态并向 UI 返回成功；签到、跨日、里程碑、悬赏种子、未读提示和补发路径都遵守
+同一规则。跨日悬赏先把完成结果作为“待发债务”随 rollover 落档，再触碰官方经济，最后以
+第二次候选提交标记领取；写盘失败时 UI 不得显示成功。
 
 **DTO 扁平化是契约的一部分。** 里程碑领取用位掩码 `periodClaimedMask` 而不是 token 列表，
 往期数据用定长编码而不是嵌套对象。这样编解码只需 `Utilities/SimpleJsonHelper.cs`，
@@ -465,6 +492,11 @@ Breaking/Operational:
 
 官方更新后按 `docs/架构说明/Harmony补丁契约稳定性.md` 复查。
 
+补丁启动扫描只允许把类级或方法级带 `[HarmonyPatch]` 元数据的类型交给 class processor；
+普通业务方法名为 `Cleanup` 不得被 Harmony 当作 cleanup 回调。动态角色的
+`MagicBlendState.OnStateEnter` 可能早于 `MagicBlending.Start`，兼容补丁只推迟未初始化的首个回调，
+已初始化角色必须完整走官方方法。
+
 ## 8. Wiki 内容契约
 
 - `WikiContent/catalog.tsv` 索引游戏内 Wiki 条目。
@@ -509,3 +541,50 @@ Mode G 入场与旧路牌契约（2026-08-18 owner 裁决）：
 - 玩家携带船票与宿命回响信物即可沿 Mode F 同类自动分流进入 Mode G，允许保留当前武器、装备、弹药和消耗品；营旗与血猎收发器仍按 Mode E/F 优先级拒绝 Mode G。
 - 旧 BossRush 路牌只保留三个 Legacy 难度选项，不再注入 Mode G 第四项。过图后由短命 `ModeGInteractable` presenter 打开契约二选一确认页。
 - Mode G 不移动、卸下、复制或保险玩家装备；死亡损失继续服从当前地图的官方规则。
+
+## 12. Dev F3 完整玩法验收契约（OPERATIONAL）
+
+`DebugAndTools/F3GameplayValidationRunner.cs` 只允许 Dev 构建在基地、专用测试档、无活动模式、
+无模态租约且存档空闲时启动。专用档标记与运行中标记均存当前槽；崩溃后运行标记保留，
+下次启动先提示中断并执行安全清理。测试会推进该测试档的日报、遗种巢、模式与战役状态，
+不得对普通档开放。
+
+独立报告固定写到
+`Application.persistentDataPath/BossRushTestReports/BossRushValidation_<runId>.log`；每个用例为
+`CASE_ID | PASS/FAIL/SKIP | 耗时 | 场景 | 指标 | 原因`。取消必须输出 `CANCELLED`，清理失败
+立即中止。最终空闲不变式包含模式、敌人、随机事件、临时 modifier、弹窗/输入租约、BGM owner
+及遗种巢奖励债务全部为零。
+
+“敌人”只指 runtime team 明确敌对 `Teams.player` 的存活角色；友军、设施 NPC 与遗种随从不构成
+清场债务。八种随机事件必须分别等待实际副作用完成并输出独立 `RANDOM_EVENT_*` case，不能只把
+`TryForceTrigger=true` 当成功。完整验收期间普通消息和大横幅不进入官方通知队列，所有退出路径
+必须复位该抑制标记。
+
+清场同时统计带 `BossRush_` / `ModeD_` / `ModeE_` / `ModeF_` / `RndEvt_` / `ZombieMode_`
+前缀的模式自有角色，即使对象已 inactive 也不能跨用例残留。调用安全清理后最多逐帧等待 2 秒，
+允许 Unity 完成延迟 Destroy；仍不满足空闲不变式时必须输出 hostile/owned 明细并立即中止。
+
+## 12.1 共享刷怪后处理与模式角色生命周期契约
+
+`ModeEFSpawnPostprocess` 是共享刷怪核心的分帧队列，不只服务 Mode E/F；标准模式随机事件 Boss
+也会借用。`TickModeEFSpawnPostprocessScheduler()` 必须在 `TickWavesArenaRuntime` 的 early-return
+之前推进，不能以 Mode E/F active 状态门控。空队列路径必须保持 O(1) 且无分配。
+
+Mode D 角色进入 `modeDCurrentWaveEnemies` 前必须确认 runtime team 对 `Teams.player` 敌对；
+仅设置 AI target 不构成敌对性证明。无法修正的角色必须拒绝登记并销毁。模式结束、重复结束与
+异常退出都必须注销恢复监控、禁掉落、销毁已登记实体，再清登记表。
+
+Mode E/F 的克隆 `CharacterRandomPreset` 归角色对象级 lease 所有，禁止在角色本体销毁前释放；
+Health、血条与 OnDestroy 链仍可能读取 `characterPreset`。模式结束按禁掉落、注销运行时、停用、
+销毁角色的顺序执行，不通过 `Health.Hurt` 伪造正常死亡。
+
+动态 Mode E `StockShop` 必须在 inactive 对象上创建，先写已存在的官方 bootstrap merchant ID，
+激活触发 Awake 后在同帧 Start 前恢复稳定 `ModeE_*` ID，再覆盖分类库存。身份反射回读失败时
+整个商人构建 fail-closed，不得退回默认 `Albert` 或现金商店路径。
+
+## 13. Boss BGM owner 租约契约
+
+Boss 音频调用使用 `AcquireBossBgm(bossKey, owner)` / `ReleaseBossBgm(bossKey, owner)`。
+同 key 多 owner 只在最后一个释放后停止；不同 key 按最近仍存活的 owner 抢占并在其释放后恢复。
+切场景统一清空租约。幽灵女巫普通局保留标准死亡表现；鸭王征程终章只允许 Campaign 发一次
+终章文案、胜利与 stinger，公共死亡清理始终执行且重复回调幂等。

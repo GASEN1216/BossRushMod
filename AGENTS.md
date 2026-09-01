@@ -270,6 +270,68 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ## 14. 最后更新
 
+2026-09-01（F3 完整玩法验收：三个产品 bug + 一次性测完改造）：由实机验收报告反查出的三个真 bug，
+**共性是「静默失败」——编译绿、guard 绿、日志里最多一行 warning，但功能实际不工作**。
+
+- **官方距离休眠会关掉 Mod 刷出的怪**：`CreateCharacterAsync` 传 `relatedScene != -1` 且 preset 的
+  `setActiveByPlayerDistance` 默认 true 时，角色进官方 `SetActiveByPlayerDistance`，
+  该组件每帧 `SetActive(距玩家 < 100m)`。玩家跑远后怪被静默关掉但 `IsDead` 仍 false，
+  波次永远不结算。新增 `Utilities/SpawnedEnemyActivationHelper.cs`，
+  在共享生成核心两个激活点 + 三个自管激活的托管 Boss 处统一解除；
+  Mode G 冻结分支与原版 spawner 角色**不适用**。Mode E 早就单独修过这件事，可对照。
+- **角色没有 `MoveSpeed` 这个 stat**：官方移动只读 `WalkSpeed` / `RunSpeed` / `Moveability`
+  （`CharacterMainControl` 的三个 hash 字段），`"MoveSpeed"` 只是 Animator 参数名。
+  给它挂 Modifier 会被 `RuntimeStatModifierTracker` 当缺失 stat 静默丢弃。写移动相关 Modifier 前先查这三个 key。
+- **手工 `MoveNext()` 驱动协程必须透传 `Current`**：`yield return` 出来的子 `IEnumerator`
+  要靠调用方递归驱动，丢掉 `Current` 等于子协程一次都不跑。Mode H 生产认证踩此坑
+  导致模式完全无法开局。正确写法见 `ModeHRuntimeModule_MatchFlow.DriveMatchSpawning`。
+- **F3 验收改为按用例隔离**：单个红项不再 `fatalAbort` 整套（旧版第 4/5 阶段一个都跑不到）。
+  七阶段、超时 2700s、`TIMEOUT`/`CANCELLED`/`ABORTED_DIRTY` 三态分离、`SUMMARY` 附 `failed_ids`。
+  用例按主题拆进 `DebugAndTools/F3GameplayValidation{Stages,Modes,BackMountain,Economy,Depth,Leaks}.cs`。
+  **无 code-drivable 入口的项（Mode E 撤离、Mode F 赏金与撤离、标准胜利奖励）如实记 `SKIP`
+  并标注「需人工」，不伪造 PASS，也不为凑绿给产品代码开测试后门。**
+- **`catch` 子句体内不能 `yield return`（CS1631）**：`yield break` 可以（不产生值），
+  `yield return` 不行。正确写法是 catch 里只置标志/记账，把 `yield return` 移到 catch 之外
+  （参照 `RunIsolatedCase` 的 `needsReclaim`）。由 `IteratorYieldInCatchGuard` 守卫。
+- **`verify_syntax.bat` 有结构性盲区，不能替代真编译**：本仓库缺 `Duckov_Data\Managed`，
+  几乎每个文件都有未解析类型（CS0246）。Roslyn 在绑定阶段解析不出类型就不进入
+  **迭代器方法体分析**，于是 CS16xx 这一类错误**根本不会被产出**——探针会报 PASS，
+  实机编译直接失败（本轮已实测双向验证）。`--with-bcl` 现已默认开启，能多抓一层 BCL 用法错误，
+  但抓不到这类。结论：探针 PASS 只代表词法/语法层没问题，**必须按 4.2 在 Windows 上真编译**。
+  另注：csc 在中文 Windows 下输出 GBK，用 grep 解析它的输出会静默失配，别拿空结果当「无错误」。
+- **JsonUtility 反序列化 DTO 的 CS0649 是误报**：字段由反射赋值，改成属性或加初始值会让
+  JsonUtility 绑不上（它只认公有字段）。定点 `#pragma warning disable/restore 0649` 包住 DTO，
+  并写明原因（见 `Audio/BossBgmCoordinator.cs`）。
+- 新增守卫：`ModeHCertificationCoroutineDriveGuard`、`IteratorYieldInCatchGuard`；
+  `ModeFBloodfireOverloadGuard` 与 `GameplayValidationRunnerGuard` 已同步。
+  明细见 `FIX_TRACKER.md` 同日条目。
+
+2026-09-01（可达性修复 + Mode H 真实押品接线）：本轮审核发现的缺陷**全部是「实现完整但入口没接线」**，
+508 个 guard 与编译都查不出——guard 断言结构不变式，不验证「玩家操作能否走到功能」；
+未被调用的 `internal` 方法编译完全合法。
+
+- **词缀锻造**曾 100% 不可达：`GoblinAffixForgeInteractable` 从未被 `AddSubInteractable`
+  （`GoblinReforgeInteractable.EnsureGroupedInteractionOptions` 挂了 6 个子交互独缺它），
+  而唯一开 UI 的 `ReforgeUIManager.OpenAffixForgeUI` 只被这个组件调用。已挂上 `AffixForgeOption`。
+- **鸭皇图鉴**曾 100% 不可达：`TryInjectCodexBookIntoShop` / `InjectCodexBookIntoShops` 零调用点。
+  已分别接进 `TryInjectAllBossRushItemsIntoShop` 与 `IntegrationDeferredBootstrap`。
+- **词缀熔石**曾无任何产出：补哥布林商店（好感 2 级、库存 5）+ Boss 掉落 8%
+  （`AffixForgeStoneDropService`，形态照 `PetNestDropService`）。注意熔石带 `Special` tag，
+  **不会**进星愿许愿台奖池（该池按 tag 排除 Special），旧 Wiki 的「许愿台」说法已更正。
+- **500060 / 500061 补登记进 `BossRushDynamicItemRegistry`**：shell 早已写好但没登记，
+  重启后玩家手里的熔石与图鉴书会退化成官方 `FallbackItem`（契约第 6 节）。
+- **Mode H 真实押品已接线**（owner 要求）：新增 `ModeHStakeJournalPersistence`（独立 key
+  `BossRush_ModeH_StakeJournal_v1`，此前只被风险扫描读、从来没人写）与 `ModeHRealStakeService`。
+  **落盘是阶段推进的一部分**（`TryAdvancePhase` 内联写盘、失败整体回滚），
+  押品那场走 `LoadoutLocked → StakePrepared → MatchSpawning` 支路。
+  单场上限 3 件；风险提示改为仅在真能押时显示，禁用原因分因展示。
+  `SCHEMA+`：该 key 必须同时可反序列化为 header 与完整 DTO，
+  **今后增删 journal 字段不得改动 header 的 7 个字段名**。
+- **`compile_official.bat` 注释全角标点改 ASCII**：`chcp 65001` 下 cmd 会把全角标点后的
+  注释尾段当命令执行，每次构建刷 5 行 `is not recognized`（既有问题）。中文正文保留。
+- 明细与未验证项见 `FIX_TRACKER.md` 同日条目。当前编译绿、508 guard 全绿；
+  **Mode H 押品的 escrow 重建 / 满仓返还 / ManualIntervention 三条路径仍待实机验证**。
+
 2026-08-30（鸭王征程 + 竞技场后山 完整实装）：新增两个联动子系统。
 
 - **鸭王征程**（`Campaign/`）：六章剧情契约战役，1-5 章分别派往 标准/ModeD/ModeE/ModeF/丧尸 完成特殊目标，终章在竞技场打幽灵女巫的强化变体「冠军之影」（数值倍率 + 体型放大 + MaterialPropertyBlock 染色，零新增 3D 资产）。对五个既有模式**零重构**：只经全局 Health 采集器、`partial ModBehaviour` 状态桥轮询、以及 4 处一行 notify 漏斗挂钩。基地公告板建筑接取/交付契约，线索走官方 NoteIndex 图鉴，交付剧情复用现有 `DialogueManager`（官方对话 UI 原生带立绘位）。

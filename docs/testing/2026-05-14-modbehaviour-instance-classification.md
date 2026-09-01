@@ -3,7 +3,7 @@
 ## Baseline
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 397
+- Raw matches: 399
 - Current event-bus pilot: achievement popup notification only.
 - Guard evidence: `BossRushEventBusLifecycleGuard.py` PASS; `LongTermGoalNonGoalGuard.py` still blocks broad `EventBus`, `IGameWorldProbe`, and `IBossRushEventSubscriber` abstractions.
 
@@ -28,12 +28,12 @@
 | `ModeF/` | 6 | gameplay state / UI | Mode F bounty radar/merchant/transponder paths use active Mode F session state. |
 | `Campaign/` | 14 | notification + gameplay state | 2026-08-30 新增。鸭王征程用它做三件事：玩家可见通知（`ShowMessage`：接约/交付/线索到手）、开关与波次查询（采集器与桥读活动模式状态）、以及公告板面板的宿主。全部属 Keep 类别——契约状态机本来就长在 `ModBehaviour` 的 partial 上（`CampaignModeBridge`），走事件总线反而要把私有模式状态再导出一遍。 |
 | `Audio/` | 9 | candidate notification + Unity owner | Audio manager uses `ModBehaviour.Instance` as the component host and sound playback bridge. It is a later candidate for a narrow audio service, not a broad event bus. 2026-08-30 +1：`BossBgmCoordinator` 经它播 stinger（复用既有 `PlaySoundEffect`，不另起音频通道）。 |
-| `Patches/` | 7 | patch entrypoint | Harmony patches need the current mod singleton to route base-game callbacks into the mod (含 `DeadBodyAppendPatch` 把原版尸体快照转发给亡魂系统)。 |
+| `Patches/` | 8 | patch entrypoint / Unity owner | Harmony patches need the current mod singleton to route base-game callbacks into the mod. `MagicBlendInitializationOrderPatch` additionally uses it as a coroutine owner while waiting for the official `MagicBlending.Start()` initialization, then replays the same state entry. |
 | `MapSelection/` | 3 | gameplay command | Map selection must call active mod entry/exit state. |
 | `ModeG/` | 4 | gameplay state / Unity owner | Mode G uses the live mod instance for entry, presentation and managed runtime ownership; these calls stay direct to preserve the run transaction boundary. |
 | `ModeH/` | 1 |
 | `RandomEvents/` | 5 | gameplay command / Unity owner | Mode H 场内交互只在一个解析器里取活动 mod 实例，其余路径复用捕获的 host，保持入口事务边界。 |
-| `ModeD`, `DebugAndTools` | 2 | debug/manual or mode command | Retained. |
+| `ModeD`, `DebugAndTools` | 3 | debug/manual or mode command | Retained. |
 
 ## Already Migrated
 
@@ -43,7 +43,7 @@
 
 ## Findings
 
-- The 355 raw matches are classified; broad replacement remains out of scope because it would touch combat, reward, UI, service, and patch entrypoints at once.
+- The 399 raw matches are classified; broad replacement remains out of scope because it would touch combat, reward, UI, service, and patch entrypoints at once.
 - The low-risk notification pilot is complete for achievements. Other notification candidates are documented but intentionally not migrated in this pass because the user required no player-visible behavior changes.
 - Any future migration should be one narrow event at a time, with a dedicated lifecycle guard and runtime smoke for the affected workflow.
 
