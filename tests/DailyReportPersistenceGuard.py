@@ -207,8 +207,10 @@ def main():
         return fail("新一期提示必须进入 DailyReportData，不能只留进程内布尔")
     if codec.count('"pendingIssueBanner"') < 2:
         return fail("pendingIssueBanner 必须同时编码和解码，旧档缺失按 false")
-    if "data.PendingIssueBanner = true" not in service_code or "data.PendingIssueBanner = false" not in service_code:
-        return fail("跨天置位和提示消费都必须同步持久化 pendingIssueBanner")
+    if "candidate.PendingIssueBanner = true" not in service_code or "candidate.PendingIssueBanner = false" not in service_code:
+        return fail("跨天置位和提示消费都必须在候选副本中持久化 pendingIssueBanner")
+    if not re.search(r"candidate\.PendingIssueBanner\s*=\s*false;[\s\S]{0,120}Persist\(candidate\)", service_code):
+        return fail("提示消费必须 Store 成功后才更新进程内标志")
     if not re.search(r"protected override void OnDestroy\(\)[\s\S]{0,180}?base\.OnDestroy\(\)", ui):
         return fail("DailyReportUI.OnDestroy 必须调用 FadePanelController 基类清理")
 

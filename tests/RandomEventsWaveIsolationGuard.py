@@ -24,6 +24,7 @@ import sys
 
 EVENTS_DIR = Path("RandomEvents")
 SPAWN_BRIDGE = EVENTS_DIR / "RandomEventEffectsBridge_Spawn.cs"
+MODE_RUNTIME_HOOKS = Path("Utilities/ModeRuntimeHooks.cs")
 
 FORBIDDEN_WAVE_SYMBOLS = (
     ("currentWaveBosses", "本波 Boss 集合：写入会让乱入 Boss 被计入波次进度"),
@@ -78,12 +79,26 @@ def main():
             SPAWN_BRIDGE.as_posix() + " 的生成物缺少 RndEvt_ 命名前缀，"
             "实机排查残留与区分波次 Boss 全靠它。")
 
-    # ---- 4) 限时商店必须先配置后 Awake，且每次事件补满有限库存 ----
+    # ---- 4) 共享后处理队列必须在 WavesArena early-return 前无条件推进 ----
+    hooks = strip_comments(MODE_RUNTIME_HOOKS.read_text(encoding="utf-8", errors="ignore"))
+    scheduler_at = hooks.find("TickModeEFSpawnPostprocessScheduler()")
+    early_return_at = hooks.find("TickWavesArenaRuntime(deltaTime)")
+    if not (0 <= scheduler_at < early_return_at):
+        return fail(
+            "共享刷怪后处理队列必须在 TickWavesArenaRuntime early-return 前推进；"
+            "标准模式的 Boss 乱入也使用该队列，Mode E/F 门控会让事件永久 Pending。")
+
+    # ---- 5) 限时商店用官方 ID 引导 Awake，再于 Start 前恢复稳定 ID 和事件库存 ----
     inactive_at = spawn_code.find("shopObj.SetActive(false)")
     add_at = spawn_code.find("shopObj.AddComponent<StockShop>()")
     active_at = spawn_code.find("shopObj.SetActive(true)")
     if not (0 <= inactive_at < add_at < active_at):
-        return fail("限时商店必须 inactive 创建，字段/条目配置完成后再激活触发 StockShop.Awake")
+        return fail("限时商店必须 inactive 创建，先配置 Awake 引导身份再激活")
+    bootstrap_at = spawn_code.find("RandomEventsTuning.MerchantAwakeBootstrapId")
+    stable_at = spawn_code.find("merchantField.SetValue(shop, RandomEventsTuning.MerchantIdConstant)")
+    fill_at = spawn_code.find("FillRandomEventMerchantEntries(shop)")
+    if not (add_at < bootstrap_at < active_at < stable_at < fill_at):
+        return fail("限时商店必须以官方 ID 通过 Awake，并在同帧 Start 前恢复稳定 ID 后填充事件库存")
     for needle in ("StockShop_RefreshAfterTimeSpan", "StockShop_RefreshStockOnStart",
                    "StockShop_LastTimeRefreshedStock", "entry.CurrentStock = entry.MaxStock"):
         if needle not in spawn_code:
@@ -91,7 +106,20 @@ def main():
     if not re.search(r"AddRandomEventMerchantEntry\(shop, ids\[k\], 99, written\)", spawn_code):
         return fail("弹药和医疗库存必须为 99，避免首购即售罄")
 
-    # ---- 5) 事件实现与清理出口 ----
+    # ---- 6) 异步事件必须向 F3 暴露实际完成状态，不能只验证 OnTrigger 返回值 ----
+    director = (EVENTS_DIR / "RandomEventDirector.cs").read_text(encoding="utf-8", errors="ignore")
+    model_code = (EVENTS_DIR / "RandomEventModels.cs").read_text(encoding="utf-8", errors="ignore")
+    event_code = "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in sources)
+    for needle in ("GetActiveValidationOutcome", "GetValidationOutcome(out string metrics)",
+                   "RandomEventValidationOutcome.Pending"):
+        if needle not in director and needle not in model_code and needle not in event_code:
+            return fail("随机事件缺少实机副作用验收协议: " + needle)
+    for needle in ("EnsureCharacterPresetsCacheReady()", "HandleIntruderSpawnFailed",
+                   "InvokeRandomEventSpawnCompletion", "InvokeRandomEventCashCompletion"):
+        if needle not in spawn_code and needle not in event_code:
+            return fail("异步生成完成/失败闭环缺失: " + needle)
+
+    # ---- 7) 事件实现与清理出口 ----
     models = (EVENTS_DIR / "RandomEventModels.cs").read_text(encoding="utf-8", errors="ignore")
     enum_block = re.search(r"enum\s+RandomEventId\s*\{(.*?)\}", models, flags=re.S)
     if not enum_block:

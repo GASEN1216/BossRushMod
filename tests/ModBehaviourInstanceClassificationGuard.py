@@ -26,16 +26,16 @@ EXPECTED_COUNTS = {
     "Campaign": 14,
     "Audio": 9,
     "ModeF": 6,
-    "Patches": 7,
+    "Patches": 8,
     "RandomEvents": 5,
     "ModeG": 4,
     "MapSelection": 3,
     "ModeD": 1,
     "ModeH": 1,
-    "DebugAndTools": 1,
+    "DebugAndTools": 2,
 }
 
-EXPECTED_TOTAL = 397
+EXPECTED_TOTAL = 399
 
 
 def fail(message: str) -> int:

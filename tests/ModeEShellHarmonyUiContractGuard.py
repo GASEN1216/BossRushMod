@@ -174,8 +174,8 @@ def main() -> int:
         '"merchant tags unavailable"',
         '"shop registration failed"',
         '"other shop registration failed"',
-        '"merchant identity contract failed"',
-        '"other shop identity contract failed"',
+        '"shop identity/bootstrap failed"',
+        '"other shop identity/bootstrap failed"',
     ]:
         if reason not in build:
             return fail("shell merchant build must fail closed -> " + reason)

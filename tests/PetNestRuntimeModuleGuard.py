@@ -150,16 +150,16 @@ def check_module(errors):
         if "if (!_bootstrapped || _owner == null) return;" not in prime_body:
             errors.append("[性能门控] 预热必须被 bootstrap（= 开关开启）挡住，"
                           "未开开关的玩家不得付出全量预设扫描成本")
-        if "_owner.EnsureEnemyPresetsReadyForPetNest()" not in prime_body:
+        if "_owner.EnsureEnemyPresetsReadyForGameplayCatalogs()" not in prime_body:
             errors.append("[目录时序] 预热必须经 owner 侧的幂等入口，不得自行重扫预设")
     if not re.search(r"if \(IsBaseScene\(\)\)\s*\{\s*EnsureOfficialLineagesPrimed\(\);", code):
         errors.append("[目录时序] 预热必须在回基地分支的最前面，"
                       "晚于任何读血脉目录的一步就等于没修")
 
     if waves is not None and not re.search(
-            r"internal bool EnsureEnemyPresetsReadyForPetNest\(\)[\s\S]{0,900}?"
+            r"internal bool EnsureEnemyPresetsReadyForGameplayCatalogs\(\)[\s\S]{0,900}?"
             r"InitializeEnemyPresets\(\);", waves):
-        errors.append("[目录时序] WavesArena 缺少幂等的 EnsureEnemyPresetsReadyForPetNest 入口")
+        errors.append("[目录时序] WavesArena 缺少图鉴/遗种巢共享的幂等预设初始化入口")
 
     # OnUpdate 未 bootstrap 时零成本早返；开关运行时打开要当帧复活
     # （EnsureBootstrapped 在开关关闭时自身就是 O(1) 早返，不破坏 dormant 零开销）
@@ -197,8 +197,8 @@ def check_service(errors):
 
     if not re.search(r"internal static bool Commit\(out string failureReasonId\)", code):
         errors.append("[落档] 缺少统一落档入口 Commit(out string)")
-    if "PetNestPersistence.Nest.Store(nest)" not in code:
-        errors.append("[落档] Commit 必须经 store 入队")
+    if "PetNestPersistenceAccess.CommitTransaction" not in code:
+        errors.append("[落档] Commit 必须经 Bundle_v2 候选包 Store 入队")
     if "PetNestSaveCoordinator.RequestFlush();" not in code:
         errors.append("[落档] Commit 必须请求协调器落盘（best-effort）")
     # 成败以入队为准：flush 失败时若返回 false，调用方会回滚内存，
@@ -208,20 +208,18 @@ def check_service(errors):
     if commit is not None and "flush_deferred_is_saving" in commit.group(0):
         errors.append("[落档] Commit 的成败必须以 Store 入队为准，不得因 flush 失败返回 false")
 
-    # 内存回滚：Store 失败时什么都没入队，内存必须一并回滚，否则内存与磁盘分叉
-    for fn, marker in [
-        ("TryAddPet", "nest.pets.Remove(pet);"),
-        ("TryRemovePet", "nest.deployedPetId = previousDeployed;"),
-        ("TrySetDeployedPet", "nest.deployedPetId = previousDeployedId;"),
-        ("ClearDeployedPet", "nest.deployedPetId = previousDeployedId;"),
-        ("TrySpendSouls", "target.souls = previousSouls;"),
-    ]:
+    # 写操作必须只改候选深拷贝：Store 失败时权威内存自然不变。
+    for fn in ["TryAddPet", "TryRemovePet", "TrySetDeployedPet", "ClearDeployedPet", "TrySpendSouls"]:
         block = re.search(
             r"internal static bool " + fn + r"\([\s\S]{0,2600}?\n        \}", code)
         if block is None:
-            errors.append("[回滚] 无法解析 " + fn)
-        elif marker not in block.group(0):
-            errors.append("[回滚] " + fn + " 在 Commit 失败时必须回滚内存: " + marker)
+            errors.append("[候选包] 无法解析 " + fn)
+        else:
+            body = block.group(0)
+            if "BeginCandidate(out failureReasonId)" not in body:
+                errors.append("[候选包] " + fn + " 必须先深拷贝权威包")
+            if "CommitCandidate(out failureReasonId)" not in body:
+                errors.append("[候选包] " + fn + " 必须 Store 成功后才交换权威状态")
 
     # 单席契约
     if not re.search(r"internal static bool TrySetDeployedPet\(string petId, out string failureReasonId\)", code):

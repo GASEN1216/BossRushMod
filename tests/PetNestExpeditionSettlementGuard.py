@@ -11,7 +11,7 @@ PetNestExpeditionSettlementGuard — 天灾远征结算守卫（实施计划 步
 - **commit-before-reveal**：roll → 结果与 settled 标记先落档 → 翻牌只回放。
   因此本文件不 import 任何 View 符号，MarkRevealed 里不得出现任何 roll；
 - 结算幂等：已 settled 直接返回，不重复 roll、不重复发奖；
-- 发奖必须在落档之后（先落档再发奖，崩溃最多少发一次，不会重复领取）；
+- 发奖必须在落档之后，现金/物品用独立游标表达可恢复欠账；
 - 派出期间崽锁定；真死移除 PetRecord 并刻碑，碑上**必须**有风险档位；
 - 纪念碑有上限，溢出合并为碑林计数。
 """
@@ -76,11 +76,13 @@ def main():
             errors.append("[明示] 成功率必须随出发记录固化")
         if "pet.state = (int)PetNestPetState.OnExpedition;" not in body:
             errors.append("[锁定] 派出期间必须锁定崽")
-        if "data.records.Remove(r);" not in body:
-            errors.append("[事务] 落档失败必须回滚内存状态")
+        if "PetNestPersistenceAccess.BeginTransaction" not in body:
+            errors.append("[事务] 出发必须先开启 v2 候选包事务")
+        if "CommitBoth(out failureReasonId)" not in body:
+            errors.append("[事务] 出发必须原子提交候选包")
 
     # 5. 结算：幂等 + roll 用固化概率 + 先落档再发奖
-    settle = re.search(r"internal static bool TrySettle\(PetNestExpeditionRecord record, out string failureReasonId\)[\s\S]{0,4000}?\n        \}", code)
+    settle = re.search(r"internal static bool TrySettle\(PetNestExpeditionRecord record, out string failureReasonId\)[\s\S]{0,6500}?\n        \}", code)
     if settle is None:
         errors.append("[结算] 缺少 TrySettle 入口")
     else:
@@ -99,17 +101,16 @@ def main():
         precheck_pos = body.find("PetNestPersistenceAccess.CanStoreAll")
         roll_pos = body.find("UnityEngine.Random.value < record.deathRate")
         commit_pos = body.find("CommitBoth(out failureReasonId)")
-        grant_pos = body.find("TryGrantPendingRewards()")
         settled_pos = body.find("record.settled = true;")
-        if precheck_pos < 0 or roll_pos < 0 or commit_pos < 0 or grant_pos < 0 or settled_pos < 0:
-            errors.append("[顺序] 无法定位前置检查/roll/落档/发奖/settled 五个锚点")
+        if precheck_pos < 0 or roll_pos < 0 or commit_pos < 0 or settled_pos < 0:
+            errors.append("[顺序] 无法定位前置检查/roll/落档/settled 四个锚点")
         else:
             if precheck_pos > roll_pos:
                 errors.append("[事务] CanStoreAll 前置检查必须在 roll 与改内存之前")
             if settled_pos > commit_pos:
                 errors.append("[commit-before-reveal] settled 标记必须在落档之前写进内存")
-            if grant_pos < commit_pos:
-                errors.append("[发奖] 必须先落档再发奖，否则会出现重复领取窗口")
+            if "GrantRewards(" in body:
+                errors.append("[发奖] 结算阶段不得直接发奖；必须等基地资源就绪后走欠账补发")
 
         if "AppendMemorial(record, pet);" not in body:
             errors.append("[纪念碑] 真死必须刻碑")
@@ -127,12 +128,10 @@ def main():
                 errors.append("[翻牌] 翻牌只回放已 commit 的结果，不得 roll: " + forbidden)
         if "if (!record.settled)" not in body:
             errors.append("[翻牌] 未结算的记录不得翻牌")
-        # 先改内存后提交，失败不回滚会让记录在内存里消失、盘上还在：
-        # 重启后这张牌再弹一次。回滚形态与 TryDepart 一致。
-        if "record.revealed = false;" not in body:
-            errors.append("[翻牌] CommitBoth 失败时必须回滚 revealed 标记")
-        if "records.Insert(" not in body:
-            errors.append("[翻牌] CommitBoth 失败时必须把记录放回待翻列表原位")
+        if "PetNestPersistenceAccess.BeginTransaction" not in body:
+            errors.append("[翻牌] 必须在 v2 候选包中修改 revealed")
+        if "if (candidate.rewardsGranted) Records.Remove(candidate);" not in body:
+            errors.append("[翻牌] 只有奖励已发完才可移除记录，欠账必须保留")
 
     # 7. 刻碑内容：风险档位与固化死亡率
     memorial = re.search(r"private static void AppendMemorial\([\s\S]{0,1400}?\n        \}", code)
@@ -149,25 +148,20 @@ def main():
         if "museum.mergedMemorialCount++" not in body:
             errors.append("[存档体积] 溢出的碑必须合并为碑林计数，不得静默丢弃")
 
-    # 8. 三档**原子**提交（避免"崽没了但碑没刻"、"奖发不出"、"遗魂凭空消失"）
+    # 8. v2 聚合包原子提交（避免"崽没了但碑没刻"）
     commit = re.search(r"private static bool CommitBoth\(out string failureReasonId\)[\s\S]{0,1800}?\n        \}", code)
     if commit is None:
         errors.append("[事务] 缺少 CommitBoth")
     else:
         body = commit.group(0)
-        for token, desc in [
-            ("PetNestService.StageCommit()", "巢"),
-            ("PetNestPersistenceAccess.StageExpedition()", "远征"),
-            ("PetNestPersistenceAccess.StageMuseum()", "博物馆"),
-        ]:
-            if token not in body:
-                errors.append("[事务] 结算落档必须包含: " + desc)
-        # 原子性两条：先全体前置检查，中途失败丢弃全部 pending
+        if "PetNestPersistenceAccess.IsTransactionActive" not in body:
+            errors.append("[事务] CommitBoth 必须拒绝无候选包的调用")
+        if "PetNestPersistenceAccess.CommitTransaction" not in body:
+            errors.append("[事务] 三分区必须通过一次 Bundle_v2 Store 提交")
         if "PetNestPersistenceAccess.CanStoreAll" not in body:
-            errors.append("[原子性] 必须先把三个 key 都 CanStore 过一遍再开始 Store，"
-                          "否则先成功的 key 会被官方采集独立落盘")
-        if "PetNestPersistenceAccess.DiscardAllPending()" not in body:
-            errors.append("[原子性] Store 中途失败必须丢弃三个 key 的 pending")
+            errors.append("[原子性] 提交前必须 fail-closed 检查 Bundle store")
+        if "PetNestPersistence.StoreBundle" in body:
+            errors.append("[原子性] 不得绕过活动候选包直接拼装 StoreBundle")
         if "flush_deferred_is_saving" in body:
             errors.append("[原子性] 成败必须以入队为准，不得因 flush 失败让调用方回滚内存")
 
@@ -186,9 +180,10 @@ def main():
         # 按条目记账：整体重试会让已到账的现金再发一次
         if "GrantRewards(r)" not in body:
             errors.append("[发奖] 补发必须经 GrantRewards 逐格续发，不得另起一套发放路径")
-        if "PetNestTuning.MaxRewardGrantAttempts" not in body:
-            errors.append("[发奖] 补发必须有尝试上限，否则一件永远发不出的战利品会把翻牌"
-                          "永久卡在 rewards_pending")
+        if "r.rewardGrantAttempts++" not in body:
+            errors.append("[发奖] 必须记录连续失败次数供可靠性诊断")
+        if re.search(r"rewardGrantAttempts\s*>=\s*PetNestTuning\.MaxRewardGrantAttempts[\s\S]{0,240}rewardsGranted\s*=\s*true", body):
+            errors.append("[发奖] 超过尝试次数不得伪装已发完，欠账必须永久保留")
 
     # 9b. 按条目记账：现金与战利品各有自己的账，补发只重做真正失败的那一格
     grant = re.search(
@@ -203,9 +198,9 @@ def main():
             errors.append("[发奖记账] 现金必须单独记账，否则整体重试会重复发放现金")
         if "EconomyManager.Add(record.outcomeCash)" not in body:
             errors.append("[发奖记账] 缺少现金发放调用")
-        if "ok = EconomyManager.Add(record.outcomeCash);" not in body:
+        if "EconomyManager.Add(record.outcomeCash)" not in body or "if (ok) record.cashGranted = true;" not in body:
             errors.append("[发奖记账] 官方 Add 在 Instance==null 时返回 false 不抛异常，"
-                          "必须接返回值判断是否真的到账")
+                          "必须接返回值判断是否真的到账（Dev 后端亦同口径）")
         if "record.grantedLootUnits" not in body:
             errors.append("[发奖记账] 战利品必须按件数游标记账，补发从游标续投，不重投")
         if "unit < record.grantedLootUnits" not in body:
@@ -245,9 +240,9 @@ def main():
             "PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();"
             not in strip_cs_comments(module_text)):
         errors.append("[孤儿锁] 回基地扫描必须接通孤儿远征锁自愈")
-    reveal_block = re.search(r"internal static bool MarkRevealed\([\s\S]{0,1200}?\n        \}", code)
-    if reveal_block is not None and "!record.rewardsGranted" not in reveal_block.group(0):
-        errors.append("[发奖] 奖未发就把记录移出待翻列表 = 奖励永久丢失，翻牌前必须补发")
+    reveal_block = re.search(r"internal static bool MarkRevealed\([\s\S]{0,1600}?\n        \}", code)
+    if reveal_block is not None and "candidate.rewardsGranted" not in reveal_block.group(0):
+        errors.append("[发奖] 翻牌可关闭，但有欠账的记录必须保留")
 
     # 9. 元素亲和
     if "PetNestTuning.ElementAffinityBonus" not in code:

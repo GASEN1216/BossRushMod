@@ -125,13 +125,21 @@ def main() -> int:
     for needle, message in (
         ('"GunDamageMultiplier", MODEF_BLOODFIRE_GUN_DAMAGE_BONUS', "overload must boost gun damage"),
         ('"MeleeDamageMultiplier", MODEF_BLOODFIRE_MELEE_DAMAGE_BONUS', "overload must boost melee damage"),
-        ('"MoveSpeed", MODEF_BLOODFIRE_MOVE_SPEED_BONUS', "overload must boost movement speed"),
+        # 官方角色只有 WalkSpeed / RunSpeed / Moveability 三个移动 stat；
+        # "MoveSpeed" 是 Animator 参数名，挂上去会被当作缺失 stat 静默丢弃。
+        ('"WalkSpeed", MODEF_BLOODFIRE_MOVE_SPEED_BONUS', "overload must boost walk speed"),
+        ('"RunSpeed", MODEF_BLOODFIRE_MOVE_SPEED_BONUS', "overload must boost run speed"),
         ("GameplayDataSettings.Buffs.Burn", "overload must use the official Burn Buff"),
         ("player.AddBuff(burnBuff, player, 0);", "overload must apply Burn to the player"),
     ):
         result = require(start, needle, message)
         if result is not None:
             return result
+
+    # 回归护栏：AddModeFBloodfireOverloadModifier 只能挂官方真实存在的 stat。
+    # 历史 bug 是挂了 "MoveSpeed"（Animator 参数名），modifier 被静默丢弃。
+    if 'AddModeFBloodfireOverloadModifier(player, "MoveSpeed"' in start:
+        return fail('"MoveSpeed" is not a character stat key; use WalkSpeed/RunSpeed/Moveability')
 
     bleed = extract_method_body(phases, "private void ApplyModeFBleedDamage(")
     if bleed is None or "rate *= MODEF_BLOODFIRE_BLEED_MULTIPLIER;" not in bleed:

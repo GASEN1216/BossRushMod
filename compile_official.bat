@@ -58,18 +58,18 @@ if not exist "%DOTNET_SDK%\Roslyn\bincore\csc.dll" (
     exit /b 1
 )
 :: ---------------------------------------------------------------------------
-:: 编译参数改经 Roslyn 响应文件传递（csc @file），不再拼成一条超长命令行。
-:: 原因：源码清单增长到约 690 个文件后，展开后的命令行超过进程创建上限，csc 根本
-:: 不会被启动，只报 "The system cannot execute the specified program" 并以 60 退出，
-:: 看起来像编译失败、却没有任何 C# 错误行，极难排查。响应文件没有这个长度限制。
-:: 写法要点（都踩过坑，勿随手改）：
-::   1) 用「括号块 + 块尾一次重定向」。不要用行首重定向（>>"file" echo ...），
-::      它在本机 cmd 上直接报 ERROR_INVALID_NAME(123)；也不要用行尾重定向，
-::      那会让 .cs 后面跟上 >>，OfficialCompileListFileExistenceGuard 的正则就扫不到。
-::   2) 用 echo( 而不是 echo：未开启 DEV 时 %BOSSRUSH_DEFINE_ARGS% 为空，
-::      echo 会写出 "ECHO is on." 污染响应文件，echo( 则正确写出空行。
-::   3) 块内含括号的路径（如 C:\Program Files (x86)\...）已实测安全，因为在引号内。
-:: 源码清单仍逐条显式列出（不用通配符），编译清单守卫照常双向生效。
+:: 编译参数改经 Roslyn 响应文件传递(csc @file),不再拼成一条超长命令行.
+:: 原因:源码清单增长到约 690 个文件后,展开后的命令行超过进程创建上限,csc 根本
+:: 不会被启动,只报 "The system cannot execute the specified program" 并以 60 退出,
+:: 看起来像编译失败,却没有任何 C# 错误行,极难排查.响应文件没有这个长度限制.
+:: 写法要点(都踩过坑,勿随手改):
+::   1) 用[括号块 + 块尾一次重定向].不要用行首重定向(>>"file" echo ...),
+::      它在本机 cmd 上直接报 ERROR_INVALID_NAME(123);也不要用行尾重定向,
+::      那会让 .cs 后面跟上 >>,OfficialCompileListFileExistenceGuard 的正则就扫不到.
+::   2) 用 echo( 而不是 echo:未开启 DEV 时 %BOSSRUSH_DEFINE_ARGS% 为空,
+::      echo 会写出 "ECHO is on." 污染响应文件,echo( 则正确写出空行.
+::   3) 块内含括号的路径(如 C:\Program Files (x86)\...)已实测安全,因为在引号内.
+:: 源码清单仍逐条显式列出(不用通配符),编译清单守卫照常双向生效.
 :: ---------------------------------------------------------------------------
 (
 echo(/langversion:7.3
@@ -167,6 +167,17 @@ echo(DebugAndTools\F3DebugCheatMenu.cs
 echo(DebugAndTools\F3DebugCheatMenuUi.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
+echo(DebugAndTools\F3GameplayValidationRunner.cs
+echo(DebugAndTools\F3GameplayValidationStages.cs
+echo(DebugAndTools\F3GameplayValidationModes.cs
+echo(DebugAndTools\F3GameplayValidationDiagnostics.cs
+echo(DebugAndTools\F3GameplayValidationRandomEvents.cs
+echo(DebugAndTools\F3GameplayValidationCodex.cs
+echo(DebugAndTools\F3GameplayValidationPersistence.cs
+echo(DebugAndTools\F3GameplayValidationBackMountain.cs
+echo(DebugAndTools\F3GameplayValidationEconomy.cs
+echo(DebugAndTools\F3GameplayValidationDepth.cs
+echo(DebugAndTools\F3GameplayValidationLeaks.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs
@@ -200,6 +211,7 @@ echo(Patches\Death\DeathPatchGroup.cs
 echo(Patches\Economy\StockShopGetItemInstanceDirectPatch.cs
 echo(Patches\ItemStatsSystem\ItemAssetsCollectionDynamicRegistrationPatch.cs
 echo(Patches\UI\ItemUIUtilitiesElementFactorFormatPatch.cs
+echo(Patches\Compatibility\MagicBlendInitializationOrderPatch.cs
 echo(Integration\BirthdayCakeItem.cs
 echo(Integration\EquipmentFactory.cs
 echo(Integration\EquipmentFactory_ItemProcessing.cs
@@ -229,6 +241,7 @@ echo(Utilities\VictoryRewardShadowMath.cs
 echo(Utilities\F3DebugCheatMath.cs
 echo(Utilities\ManagedBossSpawnContracts.cs
 echo(Utilities\ModBossPresetLookup.cs
+echo(Utilities\SpawnedEnemyActivationHelper.cs
 echo(Utilities\EnemySpawnCore.cs
 echo(Utilities\ZombieSpawnSanitizer.cs
 echo(Utilities\EnemyRecoveryMonitor.cs
@@ -365,6 +378,8 @@ echo(ModeH\ModeHPresentationAssetCache.cs
 echo(ModeH\ModeHPresetRegistry.cs
 echo(ModeH\ModeHProductionCertification.cs
 echo(ModeH\ModeHProfilePersistence.cs
+echo(ModeH\ModeHStakeJournalPersistence.cs
+echo(ModeH\ModeHRealStakeService.cs
 echo(ModeH\ModeHProfileRegistry.cs
 echo(ModeH\ModeHRecoveryPanel.cs
 echo(ModeH\ModeHRewardTransaction.cs
@@ -801,6 +816,7 @@ echo(Integration\AffixForge\AffixDefinitions.cs
 echo(Integration\AffixForge\AffixItemData.cs
 echo(Integration\AffixForge\AffixForgeSystem.cs
 echo(Integration\AffixForge\AffixForgeStoneConfig.cs
+echo(Integration\AffixForge\AffixForgeStoneDropService.cs
 echo(Integration\AffixForge\AffixRuntimeService.cs
 echo(Integration\AffixForge\AffixRuntimeService_Effects.cs
 echo(Integration\AffixForge\AffixRuntimeTicker.cs
@@ -888,8 +904,7 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed Data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data
             )
         )
-        REM 建筑图标：报箱等自定义建筑的 png 由 ModBehaviour 直接 File.ReadAllBytes 读取，
-        REM 不进 AssetBundle，所以必须随构建一起部署，否则建造界面只能显示官方默认图标。
+        REM 建筑图标:报箱等自定义建筑的 png 由 ModBehaviour 直接 File.ReadAllBytes 读取,不进 AssetBundle,所以必须随构建一起部署,否则建造界面只能显示官方默认图标.
         if exist "Assets\buildings\*.png" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings"
             xcopy /Y /I "Assets\buildings\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings\" >nul
@@ -899,8 +914,7 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed building icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings
             )
         )
-        REM 遗种巢建筑模型 bundle：LoadPetNestBuildingModel 直接 AssetBundle.LoadFromFile 读取。
-        REM 缺文件时 Mod 会退回运行时占位圆柱体，不会 fail，但基地里就看不到真模型。
+        REM 遗种巢建筑模型 bundle:LoadPetNestBuildingModel 直接 AssetBundle.LoadFromFile 读取.缺文件时 Mod 会退回运行时占位圆柱体,不会 fail,但基地里就看不到真模型.
         if exist "Assets\buildings\petnest_relic_nest" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings"
             copy /Y "Assets\buildings\petnest_relic_nest" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings\petnest_relic_nest" >nul 2>nul
@@ -910,8 +924,7 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed PetNest building bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\buildings
             )
         )
-        REM 物品图标 PNG：EquipmentHelperIcon 直接 File.ReadAllBytes 读取，不进 AssetBundle，
-        REM 必须随构建一起部署，否则自定义物品会顶着克隆源物品的图标出现在背包里。
+        REM 物品图标 PNG:EquipmentHelperIcon 直接 File.ReadAllBytes 读取,不进 AssetBundle,必须随构建一起部署,否则自定义物品会顶着克隆源物品的图标出现在背包里.
         if exist "Assets\Items\*.png" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items"
             xcopy /Y /I "Assets\Items\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items\" >nul
@@ -931,6 +944,17 @@ if %BUILD_EXIT_CODE% EQU 0 (
             )
         ) else (
             echo WARNING: Mode H data JSON missing at Assets\Data\ModeH; Mode H reports content not ready.
+        )
+        if exist "Assets\Data\Campaign\*.json" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Campaign" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Campaign"
+            xcopy /Y /I "Assets\Data\Campaign\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Campaign\" >nul
+            if errorlevel 1 (
+                echo WARNING: Campaign data JSON deploy failed.
+            ) else (
+                echo Deployed Campaign data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Campaign
+            )
+        ) else (
+            echo WARNING: Campaign data JSON missing; campaign will use its compiled fallback.
         )
         if exist "Assets\Data\Audio\*.json" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio"

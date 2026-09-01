@@ -10,7 +10,7 @@ PetNestDropLifecycleGuard — 遗种巢掉落生命周期守卫（实施计划 �
 - 开关关闭 / 未 bootstrap 时不注册任何 handler（dormant）；
 - 血脉不在目录里一律 fail-closed：既不掉蛋也不记遗魂；
 - 遗魂公式镜像官方 SoulCollector 的 MaxHealth/除数 口径且有下限；
-- 高频记账走 StageCommit（只入队不落盘），不得每次击杀都 SaveFile；
+- 高频记账走 AddSouls(commit=false) 的 v2 候选包入队，不得每次击杀 SaveFile；
 - 掉落服务不得直接触碰 PetNestPersistence（分层）。
 """
 import os
@@ -93,8 +93,8 @@ def check_service(errors):
     # 高频记账只入队
     if "PetNestService.AddSouls(lineageKey, souls, false)" not in code:
         errors.append("[性能] 遗魂记账必须走 commit=false 的入队路径")
-    if "PetNestService.StageCommit()" not in code:
-        errors.append("[性能] 遗魂记账后必须 StageCommit（只入队不落盘）")
+    if "PetNestService.StageCommit()" in code:
+        errors.append("[性能] AddSouls(commit=false) 已原子入队，不得再重复 StageCommit")
     if "PetNestSaveCoordinator" in code:
         errors.append("[性能] 掉落热路径不得直接请求落盘")
 

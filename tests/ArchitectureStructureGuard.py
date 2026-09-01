@@ -252,12 +252,17 @@ def main() -> int:
         return fail("ArchitectureStructureGuard: AlwaysOnRuntimeHooks missing ApplyHarmonyPatchesPerClass helper")
     for required in [
         "AccessTools.GetTypesFromAssembly(typeof(ModBehaviour).Assembly)",
+        "HasHarmonyPatchMetadata(type)",
         "harmony.CreateClassProcessor(type)",
         "processor.Patch();",
         'CriticalLog("harmony-per-class-apply",',
     ]:
         if required not in per_class_body:
             return fail("ArchitectureStructureGuard: ApplyHarmonyPatchesPerClass missing token: " + required)
+    metadata_body = extract_method_body(
+        always_on_hooks, "private static bool HasHarmonyPatchMetadata(System.Type type)")
+    if not metadata_body or "typeof(HarmonyPatch)" not in metadata_body or "BindingFlags.DeclaredOnly" not in metadata_body:
+        return fail("ArchitectureStructureGuard: Harmony class processor must filter non-patch types while preserving method-level patches")
     if "TickAlwaysOnRuntime();" not in update_body:
         return fail("ArchitectureStructureGuard: ModBehaviour.Update must route always-on runtime through wrapper")
     for forbidden in [
