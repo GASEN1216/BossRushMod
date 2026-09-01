@@ -119,6 +119,7 @@ namespace BossRush
                 CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Battle, L10n.T("战斗流程", "Battle"));
                 CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.NpcStory, L10n.T("NPC/剧情", "NPC/Story"));
                 CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.SceneDebug, L10n.T("场景调试", "Scene Debug"));
+                CreateF3DebugCheatNavButton(navPanel.transform, font, F3DebugCheatPage.Validation, L10n.T("验收测试", "Validation"));
 
                 GameObject contentPanel = CreateUIObject("ContentPanel", panel.transform);
                 RectTransform contentPanelRect = contentPanel.GetComponent<RectTransform>();
@@ -232,6 +233,7 @@ namespace BossRush
             f3MeleeDamageMultiplierInputField = null;
             f3HeadArmorInputField = null;
             f3BodyArmorInputField = null;
+            f3GameplayValidationStatusText = null;
         }
 
         private void CreateF3DebugCheatNavButton(Transform parent, Font font, F3DebugCheatPage page, string text)
@@ -289,6 +291,9 @@ namespace BossRush
                     break;
                 case F3DebugCheatPage.SceneDebug:
                     BuildF3SceneDebugPage();
+                    break;
+                case F3DebugCheatPage.Validation:
+                    BuildF3GameplayValidationPage();
                     break;
             }
 

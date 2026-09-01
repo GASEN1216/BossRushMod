@@ -22,7 +22,8 @@ namespace BossRush
             Resources,
             Battle,
             NpcStory,
-            SceneDebug
+            SceneDebug,
+            Validation
         }
 
         private sealed class F3DebugCheatPlayerState
@@ -115,6 +116,8 @@ namespace BossRush
                 return;
             }
 
+            F3GameplayValidationRunner.EnsureAttached(this);
+
             if (UnityEngine.Input.GetKeyDown(KeyCode.F3))
             {
                 ToggleF3DebugCheatMenu();
@@ -132,6 +135,7 @@ namespace BossRush
             if (f3DebugCheatMenuVisible && Time.unscaledTime >= f3DebugCheatSummaryNextRefreshTime)
             {
                 RefreshF3DebugCheatSummary();
+                RefreshF3GameplayValidationStatus();
                 f3DebugCheatSummaryNextRefreshTime = Time.unscaledTime + 0.25f;
             }
 
