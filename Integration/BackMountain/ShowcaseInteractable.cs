@@ -9,6 +9,7 @@
 // ============================================================================
 
 using System;
+using BossRush.Utils;
 using UnityEngine;
 
 namespace BossRush
@@ -27,6 +28,7 @@ namespace BossRush
             {
                 this.interactCollider = GetComponent<Collider>();
                 this.interactMarkerOffset = new Vector3(0f, 1.3f, 0f);
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[BackMountainShowcase]");
             }
             catch (Exception e)
             {

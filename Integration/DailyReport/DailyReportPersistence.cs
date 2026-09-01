@@ -46,6 +46,7 @@ namespace BossRush
         private static bool _writeBarrier;
         private static bool _storeFaulted;
         private static string _lastError;
+        private static bool _validationRejectStore;
 
         private static readonly object _subscriptionLock = new object();
         private static bool _subscribed;
@@ -343,6 +344,7 @@ namespace BossRush
         internal static bool Store(DailyReportData value)
         {
             if (value == null) return false;
+            if (_validationRejectStore && ModBehaviour.DevModeEnabled) return false;
             if (_storeFaulted) return false;
             if (HasWriteBarrier) return false;
 
@@ -369,6 +371,12 @@ namespace BossRush
                     + "[ERROR] 存档编码异常，进入 StoreFaulted: " + e.Message);
                 return false;
             }
+        }
+
+        internal static void SetValidationRejectStore(bool reject)
+        {
+            if (!ModBehaviour.DevModeEnabled) return;
+            _validationRejectStore = reject;
         }
 
         /// <summary>
@@ -450,6 +458,7 @@ namespace BossRush
                 _pendingActive = false;
                 _writeBarrier = false;
                 _storeFaulted = false;
+                _validationRejectStore = false;
                 _lastError = null;
             }
         }

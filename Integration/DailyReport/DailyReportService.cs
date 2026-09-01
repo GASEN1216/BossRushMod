@@ -221,18 +221,18 @@ namespace BossRush
         {
             try
             {
-                DailyReportData data = DailyReportPersistence.LoadOrInit();
-                if (data == null) return;
+                DailyReportData current = DailyReportPersistence.LoadOrInit();
+                if (current == null) return;
+                DailyReportData candidate = current.Clone();
+
+                double nextCarry;
+                lock (_lock) { nextCarry = _carrySeconds; }
 
                 int settled = 0;
-                while (true)
+                while (nextCarry >= DailyReportTuning.GameSecondsPerDay)
                 {
-                    lock (_lock)
-                    {
-                        if (_carrySeconds < DailyReportTuning.GameSecondsPerDay) break;
-                        _carrySeconds -= DailyReportTuning.GameSecondsPerDay;
-                    }
-                    SettleOneDay(data);
+                    nextCarry -= DailyReportTuning.GameSecondsPerDay;
+                    SettleOneDay(candidate);
                     settled++;
 
                     // 安全阀：正常永远是 1；异常情况下也不允许在一帧里空转。
@@ -241,18 +241,24 @@ namespace BossRush
 
                 if (settled <= 0) return;
 
-                lock (_lock)
+                candidate.CarrySeconds = nextCarry;
+                candidate.PendingIssueBanner = true;
+                if (!Persist(candidate))
                 {
-                    data.CarrySeconds = _carrySeconds;
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "[WARNING] 跨天结算未被存档层接受，内存状态保持原样等待重试");
+                    return;
                 }
+
+                lock (_lock) { _carrySeconds = nextCarry; }
                 _rolloverCount += settled;
                 _pendingIssueBanner = true;
-                data.PendingIssueBanner = true;
-
-                Persist(data);
 
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "跨天结算完成，当前第 "
-                    + data.DayIndex + " 天，本期已签 " + data.PeriodSignedCount + " 格");
+                    + candidate.DayIndex + " 天，本期已签 " + candidate.PeriodSignedCount + " 格");
+
+                // 悬赏状态已先作为待发债务持久化，之后才允许触碰官方经济。
+                TryRedeliverPendingBountyReward();
             }
             catch (Exception e)
             {
@@ -270,8 +276,8 @@ namespace BossRush
                 return;
             }
 
-            // 0) 悬赏结算：必须在 Today 被重置之前算，进度源就是今日统计
-            SettleBounty(data);
+            // 0) 悬赏结算只冻结待发债务；现金必须等整份 rollover 被持久层接受后再发。
+            StageBountySettlement(data);
 
             // 1) 断签：刚结束的这天没签到 -> 清回本期第 0 格（期号保留）
             if (data.LastSignedDayIndex != data.DayIndex)
@@ -346,24 +352,37 @@ namespace BossRush
             if (data == null) return 0L;
             if (data.BountySeed != 0L) return data.BountySeed;
 
-            long derived = DateTime.UtcNow.Ticks ^ ((long)DailyReportTuning.CurrentSchemaVersion << 32);
-            if (derived == 0L) derived = 1L;
-            data.BountySeed = derived;
-            Persist(data);
+            DailyReportData candidate = data.Clone();
+            long derived = DeriveBountySeed();
+            candidate.BountySeed = derived;
+            if (!Persist(candidate)) return 0L;
             ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏种子已派生并冻结");
             return derived;
+        }
+
+        private static long EnsureBountySeedInCandidate(DailyReportData data)
+        {
+            if (data == null) return 0L;
+            if (data.BountySeed == 0L) data.BountySeed = DeriveBountySeed();
+            return data.BountySeed;
+        }
+
+        private static long DeriveBountySeed()
+        {
+            long derived = DateTime.UtcNow.Ticks ^ ((long)DailyReportTuning.CurrentSchemaVersion << 32);
+            return derived == 0L ? 1L : derived;
         }
 
         /// <summary>
         /// 结算刚结束那一天的悬赏。必须在 Today 被重置之前调用。
         /// 达成则立刻发奖并记 claimed；发奖失败保留未领状态，由玩家下次开报纸时补发。
         /// </summary>
-        private static void SettleBounty(DailyReportData data)
+        private static void StageBountySettlement(DailyReportData data)
         {
             try
             {
                 DailyReportBountyDef def = DailyReportBounty.SelectForDay(
-                    EnsureBountySeed(data), data.DayIndex);
+                    EnsureBountySeedInCandidate(data), data.DayIndex);
                 if (def == null)
                 {
                     data.BountyKindId = string.Empty;
@@ -384,29 +403,6 @@ namespace BossRush
                 data.BountyProgress = progress;
                 data.BountyCompleted = completed;
                 data.BountyRewardClaimed = false;
-
-                if (!completed) return;
-
-                // 写屏障下不得发钱：钱进的是官方存档，而 BountyRewardClaimed 落不了盘，
-                // 下个会话会重新判定并再发一次（可跨会话反复领）。
-                // 与 TrySignInToday 的同款前置检查保持一致。
-                if (DailyReportPersistence.IsStoreFaulted || DailyReportPersistence.HasWriteBarrier)
-                {
-                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                        + "[WARNING] 存档写屏障生效，悬赏奖金暂不发放（已领标记无法持久化）");
-                    return;
-                }
-
-                string reason;
-                if (DailyReportRewards.TryGrantBountyCash(def.CashReward, out reason))
-                {
-                    data.BountyRewardClaimed = true;
-                }
-                else
-                {
-                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                        + "[WARNING] 悬赏奖金发放失败（" + reason + "），保留未领状态待补发");
-                }
             }
             catch (Exception e)
             {
@@ -439,9 +435,17 @@ namespace BossRush
                 string reason;
                 if (DailyReportRewards.TryGrantBountyCash(settled.CashReward, out reason))
                 {
-                    data.BountyRewardClaimed = true;
-                    Persist(data);
-                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏奖金补发成功");
+                    DailyReportData candidate = data.Clone();
+                    candidate.BountyRewardClaimed = true;
+                    if (Persist(candidate))
+                    {
+                        ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏奖金补发成功");
+                    }
+                    else
+                    {
+                        ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                            + "[WARNING] 悬赏奖金已发出但领取标记未被存档层接受，保留至少一次补偿语义");
+                    }
                 }
             }
             catch (Exception e)
@@ -470,21 +474,23 @@ namespace BossRush
                     return false;
                 }
 
-                DailyReportData data = DailyReportPersistence.LoadOrInit();
-                if (data == null)
+                DailyReportData current = DailyReportPersistence.LoadOrInit();
+                if (current == null)
                 {
                     result.Outcome = DailyReportSignInOutcome.PersistBlocked;
                     return false;
                 }
 
-                if (data.LastSignedDayIndex == data.DayIndex)
+                if (current.LastSignedDayIndex == current.DayIndex)
                 {
                     result.Outcome = DailyReportSignInOutcome.AlreadySigned;
-                    result.PeriodSlot = data.PeriodSignedCount;
-                    result.PeriodIndex = data.PeriodIndex;
-                    result.DisplayDayNumber = ToDisplayDayNumber(data.PeriodIndex, data.PeriodSignedCount);
+                    result.PeriodSlot = current.PeriodSignedCount;
+                    result.PeriodIndex = current.PeriodIndex;
+                    result.DisplayDayNumber = ToDisplayDayNumber(current.PeriodIndex, current.PeriodSignedCount);
                     return false;
                 }
+
+                DailyReportData data = current.Clone();
 
                 // 本期已签满：下一次签到先翻期，再从新一期第 1 格开始。
                 if (data.PeriodSignedCount >= DailyReportTuning.DaysPerPeriod)
@@ -504,14 +510,18 @@ namespace BossRush
                 int slot = data.PeriodSignedCount;
                 int quality = GetMilestoneQuality(data.PeriodIndex, slot);
 
+                if (!Persist(data))
+                {
+                    result.Outcome = DailyReportSignInOutcome.PersistBlocked;
+                    return false;
+                }
+
                 result.Outcome = DailyReportSignInOutcome.Success;
                 result.PeriodSlot = slot;
                 result.PeriodIndex = data.PeriodIndex;
                 result.DisplayDayNumber = ToDisplayDayNumber(data.PeriodIndex, slot);
                 result.HitMilestone = quality > 0 && !IsMilestoneClaimed(data, slot);
                 result.MilestoneQuality = result.HitMilestone ? quality : 0;
-
-                Persist(data);
                 return true;
             }
             catch (Exception e)
@@ -618,19 +628,21 @@ namespace BossRush
         }
 
         /// <summary>里程碑奖励发放成功后调用，置位掩码防重发。</summary>
-        internal static void MarkMilestoneClaimed(int slot)
+        internal static bool MarkMilestoneClaimed(int slot)
         {
             try
             {
                 DailyReportData data = DailyReportPersistence.LoadOrInit();
-                if (data == null) return;
-                if (slot < 1 || slot > DailyReportTuning.DaysPerPeriod) return;
-                data.PeriodClaimedMask |= (1 << (slot - 1));
-                Persist(data);
+                if (data == null) return false;
+                if (slot < 1 || slot > DailyReportTuning.DaysPerPeriod) return false;
+                DailyReportData candidate = data.Clone();
+                candidate.PeriodClaimedMask |= (1 << (slot - 1));
+                return Persist(candidate);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 里程碑标记失败: " + e.Message);
+                return false;
             }
         }
 
@@ -779,11 +791,9 @@ namespace BossRush
                 // 当日余数清零，所以取到数据之后必须重新确认初始化标志。
                 if (!_initialized) return;
 
-                lock (_lock)
-                {
-                    data.CarrySeconds = _carrySeconds;
-                }
-                DailyReportPersistence.Store(data.Clone());
+                DailyReportData candidate = data.Clone();
+                lock (_lock) { candidate.CarrySeconds = _carrySeconds; }
+                DailyReportPersistence.Store(candidate);
             }
             catch (Exception)
             {
@@ -809,13 +819,18 @@ namespace BossRush
         /// <summary>提示已发出，清挂起标志。</summary>
         internal static void ConsumeIssueBanner()
         {
-            _pendingIssueBanner = false;
             try
             {
                 DailyReportData data = DailyReportPersistence.LoadOrInit();
-                if (data == null || !data.PendingIssueBanner) return;
-                data.PendingIssueBanner = false;
-                Persist(data);
+                if (data == null) return;
+                if (!data.PendingIssueBanner)
+                {
+                    _pendingIssueBanner = false;
+                    return;
+                }
+                DailyReportData candidate = data.Clone();
+                candidate.PendingIssueBanner = false;
+                if (Persist(candidate)) _pendingIssueBanner = false;
             }
             catch (Exception e)
             {
@@ -825,13 +840,15 @@ namespace BossRush
         }
 
         /// <summary>把当前数据入队持久化并请求落盘。</summary>
-        private static void Persist(DailyReportData data)
+        private static bool Persist(DailyReportData data)
         {
-            if (data == null) return;
+            if (data == null) return false;
             if (DailyReportPersistence.Store(data.Clone()))
             {
                 DailyReportSaveCoordinator.RequestFlush();
+                return true;
             }
+            return false;
         }
 
         /// <summary>调试用：直接推进游戏内秒数（F3 快进，避免冒烟要等 24 现实分钟）。</summary>
