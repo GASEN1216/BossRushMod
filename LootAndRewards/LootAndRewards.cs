@@ -220,6 +220,7 @@ namespace BossRush
         }
 
         private List<EnemyPresetInfo> enemyPresets = new List<EnemyPresetInfo>();
+        private int _enemyPresetInitializationScanCount;
         private float minBossBaseHealth = 100f;
         private float maxBossBaseHealth = 100f;
 
@@ -337,6 +338,9 @@ namespace BossRush
                 // Mode G 托管路径与丧尸模式，正好等于首版掉落范围。开关关闭时内部直接返回。
                 PetNestDropService.TryTrack(this, character);
 
+                // 词缀熔石掉落（加法分支）：同一挂接点、同一三段式，开关关闭时内部直接返回。
+                AffixForgeStoneDropService.TryTrack(this, character);
+
                 Action<DamageInfo> existingHandler = null;
                 if (trackedBossLootHooks.TryGetValue(character, out existingHandler) && existingHandler != null)
                 {
@@ -380,6 +384,7 @@ namespace BossRush
             }
 
             PetNestDropService.ClearTracking(character);
+            AffixForgeStoneDropService.ClearTracking(character);
 
             Action<DamageInfo> handler = null;
             if (trackedBossLootHooks.TryGetValue(character, out handler))

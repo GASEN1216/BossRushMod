@@ -711,6 +711,8 @@ namespace BossRush
         {
             try
             {
+                ModeGInteractable.CloseActiveConfirmation();
+                ModeGAbandonPresenter.CloseIfOpen();
                 ModeGRunState state = modeGRuntime != null ? modeGRuntime.State : null;
 
                 if (modeGHUD != null)

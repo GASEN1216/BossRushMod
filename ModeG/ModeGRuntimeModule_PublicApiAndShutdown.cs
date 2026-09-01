@@ -300,6 +300,8 @@ namespace BossRush
         public override void OnDestroy()
         {
             try { ModeG.PrepareHostDestroy(); } catch { /* no-throw 契约 */ }
+            try { ModeGInteractable.CloseActiveConfirmation(); } catch { /* no-throw 契约 */ }
+            try { ModeGAbandonPresenter.CloseIfOpen(); } catch { /* no-throw 契约 */ }
         }
 
         #endregion
@@ -314,6 +316,8 @@ namespace BossRush
         {
             if (_ended || _state == null) return;
             _ended = true;
+            ModeGInteractable.CloseActiveConfirmation();
+            ModeGAbandonPresenter.CloseIfOpen();
             try
             {
                 if (reason != ModeGExitReason.Victory && _state.IsRewarding)

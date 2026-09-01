@@ -37,6 +37,19 @@ namespace BossRush
             get { return _activeConfirmation != null && _activeConfirmation._modalRoot != null; }
         }
 
+        /// <summary>过图/关停时幂等关闭仍存活的入场确认页。</summary>
+        internal static void CloseActiveConfirmation()
+        {
+            try
+            {
+                if (_activeConfirmation != null) _activeConfirmation.CloseModal();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 入场确认页清理失败: " + e.Message);
+            }
+        }
+
         internal static bool LastConfirmationAttemptedStart { get; private set; }
 
         /// <summary>
@@ -529,6 +542,19 @@ namespace BossRush
         internal static bool IsOpen
         {
             get { return _active != null && _active._modalRoot != null; }
+        }
+
+        /// <summary>模式结束、切图和宿主销毁共用的幂等关闭入口。</summary>
+        internal static void CloseIfOpen()
+        {
+            try
+            {
+                if (_active != null) _active.Close();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[ModeG] [WARNING] 放弃确认页清理失败: " + e.Message);
+            }
         }
 
         /// <summary>打开弃局确认页；已有实例或缺少运行中的 run 时返回 false。</summary>
