@@ -397,10 +397,6 @@ namespace BossRush
                     UnregisterModeEEnemyLootHandler(boss);
                     RemoveModeEScalingModifiers(boss);
 
-                    if (boss.characterPreset != null)
-                    {
-                        UnityEngine.Object.Destroy(boss.characterPreset);
-                    }
                 }
             }
             catch (Exception cleanupEx)

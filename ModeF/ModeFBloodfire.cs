@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
@@ -28,9 +29,8 @@ namespace BossRush
 
         #region 命火过载状态
 
-        private Modifier modeFBloodfireGunDamageModifier = null;
-        private Modifier modeFBloodfireMeleeDamageModifier = null;
-        private Modifier modeFBloodfireMoveSpeedModifier = null;
+        private readonly List<ZombieModeAttributeModifierRecord> modeFBloodfireModifiers =
+            new List<ZombieModeAttributeModifierRecord>();
 
         #endregion
 
@@ -90,12 +90,14 @@ namespace BossRush
             modeFState.BloodfireOverloadRemaining = MODEF_BLOODFIRE_OVERLOAD_DURATION;
 
             ClearModeFBloodfireOverloadModifiers();
-            modeFBloodfireGunDamageModifier = AddModeFBloodfireOverloadModifier(
-                player.CharacterItem, "GunDamageMultiplier", MODEF_BLOODFIRE_GUN_DAMAGE_BONUS);
-            modeFBloodfireMeleeDamageModifier = AddModeFBloodfireOverloadModifier(
-                player.CharacterItem, "MeleeDamageMultiplier", MODEF_BLOODFIRE_MELEE_DAMAGE_BONUS);
-            modeFBloodfireMoveSpeedModifier = AddModeFBloodfireOverloadModifier(
-                player.CharacterItem, "MoveSpeed", MODEF_BLOODFIRE_MOVE_SPEED_BONUS);
+            AddModeFBloodfireOverloadModifier(player, "GunDamageMultiplier", MODEF_BLOODFIRE_GUN_DAMAGE_BONUS);
+            AddModeFBloodfireOverloadModifier(player, "MeleeDamageMultiplier", MODEF_BLOODFIRE_MELEE_DAMAGE_BONUS);
+            // 官方角色只有 WalkSpeed / RunSpeed / Moveability 三个移动 stat
+            // （CharacterMainControl 的 walkSpeedHash / runSpeedHash / moveabilityHash）。
+            // "MoveSpeed" 只是 Animator 参数名，不是 stat key——曾挂在这里，
+            // 每次都被 RuntimeStatModifierTracker 当作缺失 stat 静默丢弃。
+            AddModeFBloodfireOverloadModifier(player, "WalkSpeed", MODEF_BLOODFIRE_MOVE_SPEED_BONUS);
+            AddModeFBloodfireOverloadModifier(player, "RunSpeed", MODEF_BLOODFIRE_MOVE_SPEED_BONUS);
 
             try
             {
@@ -121,25 +123,13 @@ namespace BossRush
             return true;
         }
 
-        private Modifier AddModeFBloodfireOverloadModifier(Item characterItem, string statName, float percent)
+        private void AddModeFBloodfireOverloadModifier(
+            CharacterMainControl player, string statName, float percent)
         {
-            try
+            if (!RuntimeStatModifierTracker.TryAdd(
+                player, statName, percent, this, modeFBloodfireModifiers, "ModeF Bloodfire"))
             {
-                Stat stat = characterItem != null ? characterItem.GetStat(statName) : null;
-                if (stat == null)
-                {
-                    DevLog("[ModeF] [WARNING] 命火过载缺少 Stat: " + statName);
-                    return null;
-                }
-
-                Modifier modifier = new Modifier(ModifierType.PercentageAdd, percent, this);
-                stat.AddModifier(modifier);
-                return modifier;
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeF] [WARNING] 命火过载 Modifier 失败: " + statName + ", " + e.Message);
-                return null;
+                DevLog("[ModeF] [WARNING] 命火过载缺少 Stat 或 Modifier 施加失败: " + statName);
             }
         }
 
@@ -181,28 +171,59 @@ namespace BossRush
 
         private void ClearModeFBloodfireOverloadModifiers()
         {
-            RemoveModeFBloodfireOverloadModifier(ref modeFBloodfireGunDamageModifier);
-            RemoveModeFBloodfireOverloadModifier(ref modeFBloodfireMeleeDamageModifier);
-            RemoveModeFBloodfireOverloadModifier(ref modeFBloodfireMoveSpeedModifier);
+            RuntimeStatModifierTracker.RemoveAll(modeFBloodfireModifiers, "ModeF Bloodfire");
         }
 
-        private void RemoveModeFBloodfireOverloadModifier(ref Modifier modifier)
+        /// <summary>Dev 验收专用：实挂三项速度 Modifier 并验证结束后精确恢复。</summary>
+        internal bool DebugValidateModeFBloodfire(out string metrics)
         {
-            Modifier target = modifier;
-            modifier = null;
-            if (target == null)
+            metrics = string.Empty;
+            if (!DevModeEnabled) return false;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null || player.CharacterItem == null) return false;
+
+            // 只核对官方真实存在的两个移动 stat；"MoveSpeed" 不是 stat key，
+            // 旧口径把它算进 speedModifierCount 期望值，导致本用例恒 FAIL 且 metrics 为空。
+            Stat walk = player.CharacterItem.GetStat("WalkSpeed");
+            Stat run = player.CharacterItem.GetStat("RunSpeed");
+            if (walk == null || run == null)
             {
-                return;
+                metrics = "missing_stat=" + (walk == null ? "WalkSpeed " : string.Empty)
+                    + (run == null ? "RunSpeed" : string.Empty);
+                return false;
             }
 
-            try
+            float walkBefore = walk.Value;
+            float runBefore = run.Value;
+            bool started = StartModeFBloodfireOverload(player);
+            float walkDuring = walk.Value;
+            float runDuring = run.Value;
+
+            int speedModifierCount = 0;
+            for (int i = 0; i < modeFBloodfireModifiers.Count; i++)
             {
-                target.RemoveFromTarget();
+                ZombieModeAttributeModifierRecord record = modeFBloodfireModifiers[i];
+                if (record == null || record.Modifier == null) continue;
+                if (record.StatName == "WalkSpeed" || record.StatName == "RunSpeed")
+                {
+                    if (Mathf.Approximately(record.Modifier.Value, MODEF_BLOODFIRE_MOVE_SPEED_BONUS))
+                    {
+                        speedModifierCount++;
+                    }
+                }
             }
-            catch (Exception e)
-            {
-                DevLog("[ModeF] [WARNING] 命火过载 Modifier 清理失败: " + e.Message);
-            }
+            bool modifierValues = speedModifierCount == 2;
+            EndModeFBloodfireOverload(false);
+
+            bool restored = Mathf.Approximately(walk.Value, walkBefore)
+                && Mathf.Approximately(run.Value, runBefore);
+            bool increased = walkDuring > walkBefore && runDuring > runBefore;
+            metrics = "before=" + walkBefore.ToString("F3") + "/" + runBefore.ToString("F3")
+                + ", during=" + walkDuring.ToString("F3") + "/" + runDuring.ToString("F3")
+                + ", speed_modifiers=" + speedModifierCount
+                + ", bonus=" + MODEF_BLOODFIRE_MOVE_SPEED_BONUS.ToString("F2")
+                + ", restored=" + restored;
+            return started && modifierValues && increased && restored;
         }
     }
 }
