@@ -354,6 +354,18 @@ namespace BossRush
                 BossRushItemIds.EmberChili,
                 BossRushItemIds.PhantomMushroom);
 
+            // 词缀熔石与鸭皇图鉴：同为零新增 bundle 的克隆兜底物品。
+            // 两者的 EnsureRuntimeFallbackRegistrationShell 早已写好，但一直没登记进本表，
+            // 于是重启后玩家背包/仓库里的它们会退化成官方 FallbackItem（AGENTS 契约第 6 节）。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return AffixForgeStoneConfig.EnsureRuntimeFallbackRegistrationShell(); }
+            }, BossRushItemIds.AffixForgeStone);
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return CodexBookConfig.EnsureRuntimeFallbackRegistrationShell(); }
+            }, BossRushItemIds.CodexBook);
+
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);
             Add(plans, NewWeaponPlan("energyshield_totem_model", "energyshield_item"), NewWeaponIds.EnergyShieldTypeId);

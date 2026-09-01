@@ -307,7 +307,9 @@ namespace BossRush
 
                 // 激活角色
                 character.gameObject.SetActive(true);
-                
+                // 解除官方距离休眠：理由同 DragonDescendantBoss。
+                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
+
                 // 请求显示血条
                 if (character.Health != null)
                 {

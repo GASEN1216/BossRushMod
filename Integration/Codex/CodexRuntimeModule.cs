@@ -187,6 +187,9 @@ namespace BossRush
             if (!IsEnabled) return;
 
             CodexSaveCoordinator.EnsureSubscribed();
+            // 官方 Boss 池过去只会在进竞技场时初始化，导致新会话在基地首次打开图鉴
+            // 只能看到自定义条目。共享预热入口自身幂等，且仅在内容系统启用时触发。
+            if (_owner != null) _owner.EnsureEnemyPresetsReadyForGameplayCatalogs();
             CodexBossCatalog.EnsureBuilt(_owner);
             _bootstrapped = true;
             ModBehaviour.DevLog(CodexTuning.LogPrefix + "运行时模块已启动");

@@ -79,9 +79,11 @@ namespace BossRush
         private static Dictionary<string, CodexBossInfo> _byKey;
         private static List<CodexBossInfo> _ordered;
         private static bool _built;
+        private static int _buildCount;
 
         /// <summary>目录是否已构建。</summary>
         internal static bool IsBuilt { get { return _built; } }
+        internal static int BuildCount { get { return _buildCount; } }
 
         /// <summary>目录条目数（未构建返回 0）。里程碑「全收集」判定用它当分母。</summary>
         internal static int Count
@@ -129,6 +131,7 @@ namespace BossRush
                 _byKey = byKey;
                 _ordered = ordered;
                 _built = true;
+                _buildCount++;
                 ModBehaviour.DevLog(CodexTuning.LogPrefix + "Boss 目录构建完成，条目数=" + ordered.Count);
             }
         }
@@ -409,6 +412,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             Invalidate();
+            _buildCount = 0;
         }
 
         #endregion

@@ -16,6 +16,12 @@ using ItemStatsSystem.Items;
 
 namespace BossRush
 {
+    public enum PhantomWitchDeathPresentation
+    {
+        Standard = 0,
+        CampaignFinal = 1
+    }
+
     /// <summary>
     /// 幽灵女巫Boss主控制器（partial class）
     /// </summary>
@@ -28,6 +34,9 @@ namespace BossRush
         /// </summary>
         private Dictionary<CharacterMainControl, PhantomWitchAbilityController> phantomWitchInstances
             = new Dictionary<CharacterMainControl, PhantomWitchAbilityController>();
+        private readonly Dictionary<CharacterMainControl, PhantomWitchDeathPresentation>
+            phantomWitchDeathPresentations =
+                new Dictionary<CharacterMainControl, PhantomWitchDeathPresentation>();
 
         /// <summary>
         /// 幽灵女巫是否已注册到预设列表
@@ -90,6 +99,7 @@ namespace BossRush
             foreach (CharacterMainControl character in trackedCharacters)
             {
                 bool releasedByController = false;
+                BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch, character);
 
                 PhantomWitchAbilityController abilities;
                 if (phantomWitchInstances.TryGetValue(character, out abilities) && abilities != null)
@@ -114,6 +124,7 @@ namespace BossRush
             }
 
             phantomWitchInstances.Clear();
+            phantomWitchDeathPresentations.Clear();
         }
 
         private void CleanupTrackedPhantomWitchCharacter(
@@ -140,7 +151,8 @@ namespace BossRush
         public async UniTask<CharacterMainControl> SpawnPhantomWitch(
             Vector3 position,
             bool notifyBossRushOnFailure = true,
-            bool deferActivationUntilNextFrame = false)
+            bool deferActivationUntilNextFrame = false,
+            PhantomWitchDeathPresentation deathPresentation = PhantomWitchDeathPresentation.Standard)
         {
             CharacterMainControl character = null;
             PhantomWitchAbilityController abilities = null;
@@ -263,6 +275,7 @@ namespace BossRush
                 abilities = controllerGO.AddComponent<PhantomWitchAbilityController>();
                 abilities.Initialize(character, position);
                 phantomWitchInstances[character] = abilities;
+                phantomWitchDeathPresentations[character] = deathPresentation;
 
                 if (deferActivationUntilNextFrame)
                 {
@@ -271,6 +284,8 @@ namespace BossRush
 
                 // 激活角色
                 character.gameObject.SetActive(true);
+                // 解除官方距离休眠：理由同 DragonDescendantBoss。
+                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
 
                 // 请求显示血条
                 if (character.Health != null)
@@ -315,7 +330,7 @@ namespace BossRush
                 ShowMessage(L10n.T(PhantomWitchConfig.SpawnMessageCN, PhantomWitchConfig.SpawnMessageEN));
 
                 // 专属 BGM：曲目表无条目或素材缺失时静默无操作
-                BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.PhantomWitch);
+                BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.PhantomWitch, character);
 
                 return character;
             }
@@ -350,6 +365,8 @@ namespace BossRush
             }
 
             phantomWitchInstances.Remove(character);
+            phantomWitchDeathPresentations.Remove(character);
+            BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch, character);
             ClearBossRandomLootTracking(character);
             FinalizeBossRushLootboxPathTracking(character);
             BossCleanupHelpers.DestroyRuntimePreset(
@@ -631,11 +648,16 @@ namespace BossRush
         private void OnPhantomWitchDeath(CharacterMainControl deadWitch, DamageInfo damageInfo)
         {
             DevLog("[PhantomWitch] 幽灵女巫被击败");
-            ShowMessage(L10n.T(PhantomWitchConfig.DefeatedMessageCN, PhantomWitchConfig.DefeatedMessageEN));
+            PhantomWitchDeathPresentation presentation;
+            if (!phantomWitchDeathPresentations.TryGetValue(deadWitch, out presentation))
+                presentation = PhantomWitchDeathPresentation.Standard;
+            if (presentation == PhantomWitchDeathPresentation.Standard)
+                ShowMessage(L10n.T(PhantomWitchConfig.DefeatedMessageCN, PhantomWitchConfig.DefeatedMessageEN));
 
             // 只停自己起播的那首，别掐掉同波次其他 Boss 的曲子
-            BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch);
-            BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.BossVictory);
+            BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch, deadWitch);
+            if (presentation == PhantomWitchDeathPresentation.Standard)
+                BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.BossVictory);
 
             if (deadWitch != null)
             {
@@ -658,6 +680,7 @@ namespace BossRush
 
             // 从实例字典中移除
             phantomWitchInstances.Remove(deadWitch);
+            phantomWitchDeathPresentations.Remove(deadWitch);
             ClearBossRandomLootTracking(deadWitch);
             FinalizeBossRushLootboxPathTracking(deadWitch);
 

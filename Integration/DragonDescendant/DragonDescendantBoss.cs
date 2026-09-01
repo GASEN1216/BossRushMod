@@ -171,6 +171,8 @@ namespace BossRush
 
                 // 激活角色
                 character.gameObject.SetActive(true);
+                // 解除官方距离休眠：Mod 刷怪点可能远离玩家，否则 Boss 会被每帧关掉。
+                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
 
                 // 请求显示血条（必须在角色激活后调用）
                 if (character.Health != null)
@@ -204,7 +206,7 @@ namespace BossRush
 
                     // 专属 BGM：曲目表无条目或素材缺失时静默无操作。
                     // 只有正规龙裔走这里；「孩儿护我」召唤出来的不抢 BGM。
-                    BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.DragonDescendant);
+                    BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.DragonDescendant, character);
                 }
                 else
                 {
