@@ -792,7 +792,11 @@ namespace BossRush
             {
                 new ShopItemEntry(DiamondConfig.TYPE_ID, DIAMOND_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5),
-                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1)  // 钻石戒指，7级解锁，限量1个
+                new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1),  // 钻石戒指，7级解锁，限量1个
+                // 词缀熔石：锻造的唯一消耗材料，游戏内 Wiki 承诺「哥布林商店（要好感度）」。
+                // 与商店同级解锁（2级）——锻造是纯自愿的基地玩法，不该再加一道好感度墙；
+                // 库存 5 与钻石/冷淬液同档，配合 Boss 掉落构成稳定 + 运气两条补给线。
+                new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, SHOP_UNLOCK_LEVEL, 5)
             };
         }
         

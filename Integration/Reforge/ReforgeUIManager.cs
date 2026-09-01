@@ -396,6 +396,7 @@ namespace BossRush
         /// </summary>
         public static void OpenUI(GoblinNPCController controller)
         {
+            EnsureDefaultForgeMode();
             ModBehaviour.DevLog("[ReforgeUI] OpenUI 调用");
 
             currentController = controller;
@@ -506,6 +507,8 @@ namespace BossRush
         /// </summary>
         private static void ReapplyModifications()
         {
+            if (AffixForge_HandleReapply()) return;
+
             try
             {
                 // 重新设置过滤条件
@@ -563,6 +566,8 @@ namespace BossRush
             {
                 yield break;
             }
+
+            if (AffixForge_HandleDelayedBuild()) yield break;
 
             CreateTendencySliderUI();
             CreateColdQuenchFluidUI();
@@ -730,7 +735,7 @@ namespace BossRush
                         charInv.Setup(
                             inventory,
                             null,
-                            (Item e) => e == null || ReforgeSystem.CanReforge(e),  // 只有可重铸物品才能操作
+                            (Item e) => e == null || IsForgeSelectable(e),  // 支持两种锻造模式
                             false,
                             null
                         );
@@ -748,7 +753,7 @@ namespace BossRush
                         storageInv.Setup(
                             PlayerStorage.Inventory,
                             null,
-                            (Item e) => e == null || ReforgeSystem.CanReforge(e),
+                            (Item e) => e == null || IsForgeSelectable(e),
                             false,
                             null
                         );
@@ -1174,6 +1179,8 @@ namespace BossRush
             originalProperties.Clear();
             ClearPropertyLockIcons();
             selectedItem = newItem;
+
+            if (AffixForge_HandleSelectionChanged()) return;
 
             if (selectedItem != null)
             {

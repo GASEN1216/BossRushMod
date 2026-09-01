@@ -16,6 +16,7 @@
 // ============================================================================
 
 using System;
+using BossRush.Utils;
 using UnityEngine;
 
 namespace BossRush
@@ -39,6 +40,8 @@ namespace BossRush
             catch { }
 
             try { this.interactMarkerOffset = new Vector3(0f, 0.15f, 0f); } catch { }
+
+            try { NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[AffixForge]"); } catch { }
 
             try { base.Awake(); } catch { }
 

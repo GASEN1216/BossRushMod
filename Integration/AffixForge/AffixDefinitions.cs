@@ -195,6 +195,19 @@ namespace BossRush
         /// <summary>锁定一个槽消耗的词缀熔石数量（解锁免费）。</summary>
         public const int ForgeStoneCostPerLock = 2;
 
+        /// <summary>
+        /// Boss 击杀直掉词缀熔石的概率。游戏内 Wiki 写的是「Boss 掉落（概率不高）」。
+        ///
+        /// 取 0.08：一次重随机只花 1 颗（ForgeStoneCostPerRoll），比遗种蛋的 0.04 宽松一倍——
+        /// 蛋是能开出随从的终局奖励，熔石只是消耗材料，卡材料比卡蛋难受得多。
+        /// 标准竞技场一局十几只 Boss 期望掉 1 颗左右，配合哥布林商店（好感 2 级、库存 5）
+        /// 构成「稳定买 + 运气捡」两条线，都不足以让玩家无限重随机。
+        /// </summary>
+        public const float ForgeStoneBossDropChance = 0.08f;
+
+        /// <summary>单次 Boss 掉落的熔石数量。</summary>
+        public const int ForgeStoneBossDropCount = 1;
+
         /// <summary>金钱费用下限，与重铸共用同一条底线。</summary>
         public const int MinMoneyCost = ReforgeSystem.MIN_REFORGE_COST;
 

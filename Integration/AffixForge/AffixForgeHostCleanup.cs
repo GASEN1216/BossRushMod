@@ -23,6 +23,9 @@ namespace BossRush
         {
             SafeRuntime.Run("AffixRuntimeService.ShutdownRuntime", () => AffixRuntimeService.ShutdownRuntime());
             SafeRuntime.Run("AffixRuntimeService.ResetStaticCaches", () => AffixRuntimeService.ResetStaticCaches());
+            // 掉落轨的 per-character 订阅必须与运行时服务同批退订，否则宿主重建后
+            // 旧 handler 仍挂在未回收的 Boss 上。
+            SafeRuntime.Run("AffixForgeStoneDropService.ResetStaticCaches", () => AffixForgeStoneDropService.ResetStaticCaches());
             SafeRuntime.Run("AffixBuffFactory.ResetStaticCaches", () => AffixBuffFactory.ResetStaticCaches());
             SafeRuntime.Run("AffixDefinitions.ResetStaticCaches", () => AffixDefinitions.ResetStaticCaches());
         }

@@ -216,6 +216,8 @@ namespace BossRush
         /// </summary>
         private static void ResetButtonState()
         {
+            if (AffixForge_HandleButtonState()) return;
+
             if (reforgeButton != null)
             {
                 if (selectedItem != null)
@@ -324,6 +326,8 @@ namespace BossRush
         /// </summary>
         private static void UpdateProbabilityDisplay()
         {
+            if (AffixForge_HandleProbabilityDisplay()) return;
+
             if (probabilityText == null) return;
 
             if (selectedItem == null)
@@ -414,6 +418,8 @@ namespace BossRush
         /// </summary>
         private static void OnReforgeButtonClick()
         {
+            if (AffixForge_HandleButtonClick()) return;
+
             if (!isReforgeMode) return;
             if (selectedItem == null) return;
             if (isReforging) return;

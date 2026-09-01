@@ -187,6 +187,36 @@ namespace BossRush
         /// <summary>当前激活词缀条数。门控自检 / F3 调试用。</summary>
         public static int ActiveAffixCount { get { return _active.Count; } }
 
+        /// <summary>
+        /// Dev 验收：把未装备的临时物品挂入一次运行时 context，然后用权威装备位
+        /// 全量重建回滚。不向背包加物品，不消耗货币或熔石。
+        /// </summary>
+        internal static bool DebugValidateTemporaryMount(Item item, out string metrics)
+        {
+            metrics = string.Empty;
+            if (!ModBehaviour.DevModeEnabled || item == null || !IsEnabled) return false;
+            int before = _active.Count;
+            try
+            {
+                CollectFromItem(item, true);
+                int mounted = _active.Count - before;
+                RebuildContext();
+                int restored = _active.Count;
+                metrics = "before=" + before + ", mounted=" + mounted + ", restored=" + restored;
+                return mounted > 0 && restored == before;
+            }
+            catch (Exception e)
+            {
+                try { RebuildContext(); }
+                catch (Exception rebuildError)
+                {
+                    ModBehaviour.DevLog(LogPrefix + " [WARNING] Dev 临时挂载回滚失败: " + rebuildError.Message);
+                }
+                metrics = e.GetType().Name + ":" + e.Message;
+                return false;
+            }
+        }
+
         /// <summary>战斗事件是否处于订阅态。门控自检 / guard 用。</summary>
         internal static bool IsCombatSubscribed { get { return _combatSubscribed; } }
 

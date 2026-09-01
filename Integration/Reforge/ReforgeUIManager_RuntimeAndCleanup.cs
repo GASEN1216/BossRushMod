@@ -428,6 +428,8 @@ namespace BossRush
         /// </summary>
         public static void Cleanup()
         {
+            CleanupAffixForgeUI();
+
             if (isReforgeMode)
             {
                 ItemUIUtilities.OnSelectionChanged -= OnItemSelectionChanged;
@@ -501,6 +503,7 @@ namespace BossRush
 
         public static void ResetStaticCaches()
         {
+            ResetAffixForgeStaticCaches();
             Cleanup();
 
             currentController = null;

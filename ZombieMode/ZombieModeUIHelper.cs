@@ -53,6 +53,12 @@ namespace BossRush
             get { return _modalInputLeaseCount > 0; }
         }
 
+        /// <summary>只读诊断计数。用于跨场景清理和 F3 验收，不改变租约语义。</summary>
+        internal static int ModalInputLeaseCount
+        {
+            get { return _modalInputLeaseCount; }
+        }
+
         internal sealed class ModalInputLease
         {
             internal readonly GameObject InputToken;

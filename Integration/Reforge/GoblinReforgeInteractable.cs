@@ -92,6 +92,7 @@ namespace BossRush
     {
         private GoblinNPCController controller;
         private GoblinReforgeInteractable reforgeInteractable;
+        private GoblinAffixForgeInteractable affixForgeInteractable;  // 词缀锻造子交互
         private NPCShopInteractable shopInteractable;  // 使用通用商店交互组件
         private NPCGiftInteractable giftInteractable;  // 使用通用礼物交互组件
         private NPCSpouseFollowInteractable spouseFollowInteractable;
@@ -218,6 +219,18 @@ namespace BossRush
                 reforgeInteractable = NPCInteractionGroupHelper.AddSubInteractable<GoblinReforgeInteractable>(
                     transform,
                     "ReforgeOption",
+                    groupList);
+            }
+
+            // 词缀锻造与重铸并列挂在同一个 group 里：两者共用 ReforgeUIManager 的
+            // View 与关闭路径，互斥由 UI 侧的模式标志负责。开关关闭与丧尸模式临时
+            // 哥布林的过滤都在 GoblinAffixForgeInteractable.IsInteractable 内部，
+            // 这里只负责把组件挂上去（挂载本身幂等：AddSubInteractable 复用同名子节点）。
+            if (affixForgeInteractable == null)
+            {
+                affixForgeInteractable = NPCInteractionGroupHelper.AddSubInteractable<GoblinAffixForgeInteractable>(
+                    transform,
+                    "AffixForgeOption",
                     groupList);
             }
 
