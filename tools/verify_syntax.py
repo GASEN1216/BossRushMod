@@ -42,11 +42,16 @@ _force_utf8_output()
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 COMPILE_BAT = os.path.join(REPO_ROOT, "compile_official.bat")
 
-# compile_official.bat 用 `^` 续行列出源码；最后一条没有续行符
-RE_CONTINUED = re.compile(r"^\s+(\S+\.cs)\s+\^\s*$", re.M)
-RE_LAST = re.compile(r"^\s+(\S+\.cs)\s*$", re.M)
+# compile_official.bat 当前通过 `echo(<file.cs` 生成 Roslyn 响应文件。
+# 同时兼容历史上的 `^` 续行源码清单，避免工具因构建脚本格式切换失明。
+RE_ECHO_SOURCE = re.compile(r"^\s*@?echo\(([^\r\n]+?\.cs)\s*$", re.M | re.I)
+RE_CONTINUED = re.compile(r"^\s+([^\s\r\n]+\.cs)\s+\^\s*$", re.M)
+RE_LAST = re.compile(r"^\s+([^\s\r\n]+\.cs)\s*$", re.M)
 
-# 只有 CS1xxx 属于词法/语法层；CS0xxx 基本都是「找不到类型/成员」这类需要引用才能判定的
+# 只有 CS1xxx 属于词法/语法层；CS0xxx 基本都是「找不到类型/成员」这类需要引用才能判定的。
+# 注意 CS16xx（如 CS1631「无法在 catch 子句体中生成值」）也在这个区间内，
+# 但它属于迭代器体分析，**必须挂上 BCL 引用**才会被 Roslyn 走到——
+# 这就是 --with-bcl 默认开启的原因（见 main() 里的说明）。
 RE_SYNTAX_ERROR = re.compile(r": error (CS1\d{3}):")
 RE_ANY_ERROR = re.compile(r": error (CS\d+):")
 
@@ -91,7 +96,9 @@ def find_bcl_dir():
 
 def read_source_list():
     text = open(COMPILE_BAT, encoding="utf-8", errors="ignore").read()
-    names = RE_CONTINUED.findall(text) + RE_LAST.findall(text)
+    names = (RE_ECHO_SOURCE.findall(text) +
+             RE_CONTINUED.findall(text) +
+             RE_LAST.findall(text))
     seen = set()
     ordered = []
     for name in names:
@@ -104,8 +111,14 @@ def read_source_list():
 
 def main():
     parser = argparse.ArgumentParser(description="C# 语法层探针（非编译验证）")
-    parser.add_argument("--with-bcl", action="store_true",
-                        help="挂上 .NET Framework 引用程序集，可多抓一层 BCL 用法错误")
+    # BCL 引用默认开启。原因（2026-09-01 踩过）：不挂引用时 Roslyn 在
+    # 「找不到 System.Object / IEnumerator」阶段就停下，根本走不到迭代器体分析，
+    # 于是 CS1631（catch 子句体内 yield）这类错误**完全检测不到**——
+    # 本探针曾据此给出「语法通过」，实机编译却直接报错。
+    parser.add_argument("--with-bcl", action="store_true", default=True,
+                        help="挂上 .NET Framework 引用程序集（默认开启）")
+    parser.add_argument("--no-bcl", dest="with_bcl", action="store_false",
+                        help="不挂 BCL 引用（会漏掉 CS16xx 类迭代器错误，仅排查探针自身问题时用）")
     parser.add_argument("--ref", action="append", default=[],
                         help="追加引用程序集路径，可重复")
     parser.add_argument("--show", type=int, default=20, help="最多打印多少条错误")
