@@ -1,11 +1,11 @@
 // ============================================================================
-// PetNestPersistence.cs - 遗种巢三 key 存档管线（实施计划 步骤 2）
+// PetNestPersistence.cs - 遗种巢 Bundle_v2 权威存档管线
 // ============================================================================
 // 硬约束（tests/PetNestPersistenceGuard.py 守卫）：
-//   - 三个 key 一律 `SavesSystem.Save<string>` **JSON 整存** + `{schemaVersion, payload}`
-//     envelope。不用 typed `Save<T>`：ES3 会把 assembly-qualified 类型名写进存档
-//     （见 SavesSystem.UpgradeSaveFileAssemblyInfo 的存在本身），mod 程序集改名/重构
-//     就会让老档读不回来；整存字符串把这层耦合彻底切断。
+//   - `BossRush_PetNest_Bundle_v2` 是唯一运行时权威状态；三个 v1 key 只在首次迁移时读取，
+//     永不删除、永不再分拆写入。Bundle 不用 typed `Save<T>`：ES3 会把
+//     assembly-qualified 类型名写进存档，程序集改名/重构会让老档读不回来；
+//     整存字符串把这层耦合彻底切断。
 //   - `OnCollectSaveData` / `OnSetFile` / `OnSaveDeleted` **幂等订阅**且必须成对退订；
 //   - 写屏障：未知/更高 schemaVersion、payload 不可读时只读不写，**绝不覆盖该 key**；
 //   - 战斗中不写盘：Store 只入队 pending，物理落盘统一由 PetNestSaveCoordinator 触发；
@@ -19,7 +19,7 @@ using Saves;
 namespace BossRush
 {
     /// <summary>
-    /// 一个存档 key 的整存 store。三个 key 共用同一套写屏障 / pending / 故障语义。
+    /// v1 兼容读取用的单 key store。运行时写入不再经过这里。
     /// </summary>
     internal sealed class PetNestKeyStore<T> where T : class
     {
@@ -349,37 +349,398 @@ namespace BossRush
         }
     }
 
+    /// <summary>v2 单包 store。所有运行时写入只经过这一份 pending。</summary>
+    internal sealed class PetNestBundleStore
+    {
+        private readonly object _lock = new object();
+        private PetNestBundleData _cache;
+        private int _cacheSlot;
+        private string _pendingJson;
+        private bool _pendingActive;
+        private bool _writeBarrier;
+        private bool _storeFaulted;
+        private string _lastError;
+
+        internal bool IsStoreFaulted { get { return _storeFaulted; } }
+        internal bool HasWriteBarrier { get { lock (_lock) { return _writeBarrier; } } }
+        internal bool HasPendingWrite { get { lock (_lock) { return _pendingActive && _pendingJson != null; } } }
+        internal bool CanStore { get { return !_storeFaulted && !HasWriteBarrier; } }
+        internal string LastError { get { return _lastError; } }
+
+        private int ReadCurrentSlotOrCached()
+        {
+            try { return SavesSystem.CurrentSlot; }
+            catch (Exception) { return _cacheSlot; }
+        }
+
+        internal PetNestBundleData LoadOrInit()
+        {
+            lock (_lock)
+            {
+                int slot = ReadCurrentSlotOrCached();
+                if (_cache != null && _cacheSlot == slot) return _cache;
+                if (_cache != null && _cacheSlot != slot) ResetForSlotChangeLocked();
+                _cacheSlot = slot;
+
+                bool exists;
+                try { exists = SavesSystem.KeyExisits(PetNestTuning.BundleStorageKey); }
+                catch (Exception e)
+                {
+                    EnterWriteBarrier("bundle_key_classification_failed:" + e.GetType().Name);
+                    return _cache;
+                }
+
+                if (exists)
+                {
+                    try
+                    {
+                        string raw = SavesSystem.Load<string>(PetNestTuning.BundleStorageKey);
+                        PetNestJsonNode root = PetNestJson.Parse(raw);
+                        int version = root != null ? root.GetInt("schemaVersion", -1) : -1;
+                        if (version != PetNestTuning.BundleSchemaVersion)
+                        {
+                            EnterWriteBarrier("bundle_schema_mismatch:" + version);
+                            return _cache;
+                        }
+                        PetNestBundleData decoded = PetNestCodec.DecodeBundle(root);
+                        if (decoded == null)
+                        {
+                            EnterWriteBarrier("bundle_decode_failed");
+                            return _cache;
+                        }
+                        _cache = decoded;
+                        return _cache;
+                    }
+                    catch (Exception e)
+                    {
+                        EnterWriteBarrier("bundle_load_failed:" + e.GetType().Name);
+                        return _cache;
+                    }
+                }
+
+                PetNestBundleData legacy;
+                bool hasLegacy;
+                string migrationError;
+                if (!PetNestPersistence.TryBuildLegacyBundle(out legacy, out hasLegacy, out migrationError))
+                {
+                    EnterWriteBarrier(migrationError ?? "legacy_migration_failed");
+                    return _cache;
+                }
+
+                _cache = legacy ?? PetNestCodec.CreateDefaultBundle();
+                if (hasLegacy)
+                {
+                    // 先入队，再统一由协调器 Save + 回读；失败时 v1 原键仍完整保留。
+                    if (!Store(_cache))
+                    {
+                        EnterWriteBarrier("legacy_migration_stage_failed");
+                        return _cache;
+                    }
+                    string ignored;
+                    PetNestSaveCoordinator.RequestFlush(out ignored);
+                    if (_pendingActive || _storeFaulted)
+                    {
+                        EnterWriteBarrier("legacy_migration_readback_failed");
+                    }
+                    else
+                    {
+                        ModBehaviour.DevLog("[PetNest] v1 三键已迁移到 Bundle_v2，旧键保留只读");
+                    }
+                }
+                return _cache;
+            }
+        }
+
+        internal PetNestBundleData Current { get { return LoadOrInit(); } }
+
+        internal bool Store(PetNestBundleData value)
+        {
+            if (value == null || _storeFaulted || HasWriteBarrier) return false;
+            try
+            {
+                PetNestBundleData staged = PetNestCodec.CloneBundle(value);
+                int currentGeneration = _cache != null ? _cache.generation : 0;
+                staged.generation = Math.Max(staged.generation, currentGeneration) + 1;
+                string json = PetNestCodec.EncodeBundle(staged);
+                if (string.IsNullOrEmpty(json)) return false;
+                lock (_lock)
+                {
+                    _cache = staged;
+                    _cacheSlot = ReadCurrentSlotOrCached();
+                    _pendingJson = json;
+                    _pendingActive = true;
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                _storeFaulted = true;
+                _lastError = "bundle_encode_failed:" + e.GetType().Name;
+                ModBehaviour.DevLog("[PetNest] [ERROR] Bundle_v2 编码异常: " + e.Message);
+                return false;
+            }
+        }
+
+        internal bool FlushPending()
+        {
+            lock (_lock)
+            {
+                if (!_pendingActive || _pendingJson == null) return true;
+                if (_writeBarrier) return false;
+                if (_cacheSlot != ReadCurrentSlotOrCached())
+                {
+                    ResetForSlotChangeLocked();
+                    return true;
+                }
+                try
+                {
+                    if (SavesSystem.IsSaving)
+                    {
+                        _lastError = "flush_deferred_is_saving";
+                        return false;
+                    }
+                    SavesSystem.Save<string>(PetNestTuning.BundleStorageKey, _pendingJson);
+                    string readback = SavesSystem.Load<string>(PetNestTuning.BundleStorageKey);
+                    if (!string.Equals(readback, _pendingJson, StringComparison.Ordinal))
+                        throw new InvalidOperationException("petnest bundle readback mismatch");
+                    _pendingJson = null;
+                    _pendingActive = false;
+                    _lastError = null;
+                    return true;
+                }
+                catch (Exception e)
+                {
+                    _storeFaulted = true;
+                    _lastError = "bundle_flush_failed:" + e.GetType().Name;
+                    ModBehaviour.DevLog("[PetNest] [ERROR] Bundle_v2 flush 异常: " + e.Message);
+                    return false;
+                }
+            }
+        }
+
+        internal void DiscardPending()
+        {
+            lock (_lock) { _pendingJson = null; _pendingActive = false; }
+        }
+
+        internal void ResetForSlotChange()
+        {
+            lock (_lock) { ResetForSlotChangeLocked(); }
+        }
+
+        private void ResetForSlotChangeLocked()
+        {
+            _cache = null;
+            _pendingJson = null;
+            _pendingActive = false;
+            _writeBarrier = false;
+            _lastError = null;
+        }
+
+        internal void ResetAll()
+        {
+            lock (_lock)
+            {
+                ResetForSlotChangeLocked();
+                _storeFaulted = false;
+            }
+        }
+
+        private void EnterWriteBarrier(string error)
+        {
+            _writeBarrier = true;
+            _lastError = error;
+            _pendingJson = null;
+            _pendingActive = false;
+            _cache = PetNestCodec.CreateDefaultBundle();
+            ModBehaviour.DevLog("[PetNest] [WARNING] Bundle_v2 进入写屏障: " + error);
+        }
+    }
+
+    /// <summary>保持既有服务调用形态的聚合包分区门面；Store 实际写入同一个 Bundle_v2。</summary>
+    internal sealed class PetNestBundlePartStore<T> where T : class
+    {
+        private readonly Func<PetNestBundleData, T> _get;
+        private readonly Action<PetNestBundleData, T> _set;
+
+        internal PetNestBundlePartStore(
+            Func<PetNestBundleData, T> get,
+            Action<PetNestBundleData, T> set)
+        {
+            _get = get;
+            _set = set;
+        }
+
+        internal T Current { get { return _get(PetNestPersistence.GetActiveBundle()); } }
+        internal bool IsStoreFaulted { get { return PetNestPersistence.Bundle.IsStoreFaulted; } }
+        internal bool HasWriteBarrier { get { return PetNestPersistence.Bundle.HasWriteBarrier; } }
+        internal bool CanStore { get { return PetNestPersistence.Bundle.CanStore; } }
+        internal bool HasPendingWrite { get { return PetNestPersistence.Bundle.HasPendingWrite; } }
+        internal string LastError { get { return PetNestPersistence.Bundle.LastError; } }
+
+        internal bool Store(T value)
+        {
+            if (value == null) return false;
+            if (PetNestPersistence.IsTransactionActive) return true;
+            PetNestBundleData candidate = PetNestCodec.CloneBundle(PetNestPersistence.Bundle.Current);
+            _set(candidate, value);
+            return PetNestPersistence.Bundle.Store(candidate);
+        }
+
+        internal bool FlushPending() { return PetNestPersistence.Bundle.FlushPending(); }
+        internal void DiscardPending() { PetNestPersistence.Bundle.DiscardPending(); }
+        internal void ResetForSlotChange() { PetNestPersistence.Bundle.ResetForSlotChange(); }
+        internal void ResetAll() { PetNestPersistence.Bundle.ResetAll(); }
+    }
+
     /// <summary>
-    /// 遗种巢持久化门面：三个 key 的 store + 官方存档事件生命周期。
+    /// 遗种巢持久化门面：Bundle_v2 权威 store + 三个 v1 只读迁移源。
     /// </summary>
     internal static class PetNestPersistence
     {
         #region Store 实例
 
-        private static readonly PetNestKeyStore<PetNestNestData> _nest =
+        private static readonly PetNestKeyStore<PetNestNestData> _legacyNest =
             new PetNestKeyStore<PetNestNestData>(
                 PetNestTuning.NestStorageKey,
                 PetNestCodec.EncodeNest,
                 PetNestCodec.DecodeNest,
                 PetNestCodec.CreateDefaultNest);
 
-        private static readonly PetNestKeyStore<PetNestExpeditionData> _expedition =
+        private static readonly PetNestKeyStore<PetNestExpeditionData> _legacyExpedition =
             new PetNestKeyStore<PetNestExpeditionData>(
                 PetNestTuning.ExpeditionStorageKey,
                 PetNestCodec.EncodeExpedition,
                 PetNestCodec.DecodeExpedition,
                 PetNestCodec.CreateDefaultExpedition);
 
-        private static readonly PetNestKeyStore<PetNestMuseumData> _museum =
+        private static readonly PetNestKeyStore<PetNestMuseumData> _legacyMuseum =
             new PetNestKeyStore<PetNestMuseumData>(
                 PetNestTuning.MuseumStorageKey,
                 PetNestCodec.EncodeMuseum,
                 PetNestCodec.DecodeMuseum,
                 PetNestCodec.CreateDefaultMuseum);
 
-        internal static PetNestKeyStore<PetNestNestData> Nest { get { return _nest; } }
-        internal static PetNestKeyStore<PetNestExpeditionData> Expedition { get { return _expedition; } }
-        internal static PetNestKeyStore<PetNestMuseumData> Museum { get { return _museum; } }
+        private static readonly PetNestBundleStore _bundle = new PetNestBundleStore();
+        [ThreadStatic]
+        private static PetNestBundleData _activeTransaction;
+        private static readonly PetNestBundlePartStore<PetNestNestData> _nest =
+            new PetNestBundlePartStore<PetNestNestData>(
+                b => b.nest, (b, v) => b.nest = PetNestCodec.CloneNest(v));
+        private static readonly PetNestBundlePartStore<PetNestExpeditionData> _expedition =
+            new PetNestBundlePartStore<PetNestExpeditionData>(
+                b => b.expedition, (b, v) => b.expedition = PetNestCodec.CloneExpedition(v));
+        private static readonly PetNestBundlePartStore<PetNestMuseumData> _museum =
+            new PetNestBundlePartStore<PetNestMuseumData>(
+                b => b.museum, (b, v) => b.museum = PetNestCodec.CloneMuseum(v));
+
+        internal static PetNestBundleStore Bundle { get { return _bundle; } }
+        internal static bool IsTransactionActive { get { return _activeTransaction != null; } }
+        internal static PetNestBundlePartStore<PetNestNestData> Nest { get { return _nest; } }
+        internal static PetNestBundlePartStore<PetNestExpeditionData> Expedition { get { return _expedition; } }
+        internal static PetNestBundlePartStore<PetNestMuseumData> Museum { get { return _museum; } }
+
+        internal static PetNestBundleData GetActiveBundle()
+        {
+            return _activeTransaction ?? _bundle.Current;
+        }
+
+        /// <summary>开启主线程候选包事务。事务内三个分区的 Current 全部指向候选副本。</summary>
+        internal static bool BeginTransaction(out string error)
+        {
+            error = null;
+            if (_activeTransaction != null)
+            {
+                error = "nested_transaction";
+                return false;
+            }
+            try
+            {
+                PetNestBundleData current = _bundle.Current;
+                if (!_bundle.CanStore)
+                {
+                    error = _bundle.HasWriteBarrier ? "save_write_barrier" : "save_store_faulted";
+                    return false;
+                }
+                _activeTransaction = PetNestCodec.CloneBundle(current);
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = "transaction_clone_failed:" + e.GetType().Name;
+                _activeTransaction = null;
+                return false;
+            }
+        }
+
+        internal static bool CommitTransaction(out string error)
+        {
+            error = null;
+            PetNestBundleData candidate = _activeTransaction;
+            if (candidate == null)
+            {
+                error = "transaction_missing";
+                return false;
+            }
+            _activeTransaction = null;
+            if (!_bundle.Store(candidate))
+            {
+                error = _bundle.HasWriteBarrier ? "save_write_barrier" : "save_store_faulted";
+                return false;
+            }
+            return true;
+        }
+
+        internal static void AbortTransaction()
+        {
+            _activeTransaction = null;
+        }
+
+        internal static bool TryBuildLegacyBundle(
+            out PetNestBundleData bundle, out bool hasLegacy, out string error)
+        {
+            bundle = PetNestCodec.CreateDefaultBundle();
+            hasLegacy = false;
+            error = null;
+            try
+            {
+                bool hasNest = SavesSystem.KeyExisits(PetNestTuning.NestStorageKey);
+                bool hasExpedition = SavesSystem.KeyExisits(PetNestTuning.ExpeditionStorageKey);
+                bool hasMuseum = SavesSystem.KeyExisits(PetNestTuning.MuseumStorageKey);
+                hasLegacy = hasNest || hasExpedition || hasMuseum;
+                if (!hasLegacy) return true;
+
+                bundle.nest = PetNestCodec.CloneNest(_legacyNest.LoadOrInit());
+                bundle.expedition = PetNestCodec.CloneExpedition(_legacyExpedition.LoadOrInit());
+                bundle.museum = PetNestCodec.CloneMuseum(_legacyMuseum.LoadOrInit());
+                if (_legacyNest.HasWriteBarrier || _legacyExpedition.HasWriteBarrier
+                    || _legacyMuseum.HasWriteBarrier || _legacyNest.IsStoreFaulted
+                    || _legacyExpedition.IsStoreFaulted || _legacyMuseum.IsStoreFaulted)
+                {
+                    error = "legacy_payload_unreadable";
+                    return false;
+                }
+                bundle.Normalize();
+                return true;
+            }
+            catch (Exception e)
+            {
+                error = "legacy_migration_exception:" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        internal static bool StoreBundle(
+            PetNestNestData nest, PetNestExpeditionData expedition, PetNestMuseumData museum)
+        {
+            if (!_bundle.CanStore) return false;
+            PetNestBundleData candidate = PetNestCodec.CloneBundle(_bundle.Current);
+            candidate.nest = PetNestCodec.CloneNest(nest);
+            candidate.expedition = PetNestCodec.CloneExpedition(expedition);
+            candidate.museum = PetNestCodec.CloneMuseum(museum);
+            candidate.Normalize();
+            return _bundle.Store(candidate);
+        }
 
         #endregion
 
@@ -435,10 +796,8 @@ namespace BossRush
         {
             try
             {
-                // 官方收集时把 pending 合并进存档，但**不单独** SaveFile
-                _nest.FlushPending();
-                _expedition.FlushPending();
-                _museum.FlushPending();
+                // 官方收集时把唯一 Bundle_v2 pending 合并进存档，但不单独 SaveFile。
+                _bundle.FlushPending();
             }
             catch (Exception)
             {
@@ -450,9 +809,10 @@ namespace BossRush
         {
             try
             {
-                _nest.ResetForSlotChange();
-                _expedition.ResetForSlotChange();
-                _museum.ResetForSlotChange();
+                _bundle.ResetForSlotChange();
+                _legacyNest.ResetForSlotChange();
+                _legacyExpedition.ResetForSlotChange();
+                _legacyMuseum.ResetForSlotChange();
                 PetNestSaveCoordinator.NotifySlotChanged();
             }
             catch (Exception)
@@ -465,9 +825,10 @@ namespace BossRush
         {
             try
             {
-                _nest.ResetForSlotChange();
-                _expedition.ResetForSlotChange();
-                _museum.ResetForSlotChange();
+                _bundle.ResetForSlotChange();
+                _legacyNest.ResetForSlotChange();
+                _legacyExpedition.ResetForSlotChange();
+                _legacyMuseum.ResetForSlotChange();
                 PetNestSaveCoordinator.NotifySlotChanged();
             }
             catch (Exception)
@@ -483,37 +844,35 @@ namespace BossRush
         /// <summary>任一 store 进入单向故障。入口据此 fail-closed。</summary>
         internal static bool IsAnyStoreFaulted
         {
-            get { return _nest.IsStoreFaulted || _expedition.IsStoreFaulted || _museum.IsStoreFaulted; }
+            get { return _bundle.IsStoreFaulted; }
         }
 
         /// <summary>任一 store 处于写屏障（老档 / 未知版本，只读不写）。</summary>
         internal static bool HasAnyWriteBarrier
         {
-            get { return _nest.HasWriteBarrier || _expedition.HasWriteBarrier || _museum.HasWriteBarrier; }
+            get { return _bundle.HasWriteBarrier; }
         }
 
         /// <summary>存在待落盘批次。</summary>
         internal static bool HasAnyPendingWrite
         {
-            get { return _nest.HasPendingWrite || _expedition.HasPendingWrite || _museum.HasPendingWrite; }
+            get { return _bundle.HasPendingWrite; }
         }
 
-        /// <summary>三个 key 现在是否都能写。多 key 事务的前置检查。</summary>
+        /// <summary>权威 Bundle 当前是否可写。保留旧属性名以减少服务层改动。</summary>
         internal static bool CanStoreAll
         {
-            get { return _nest.CanStore && _expedition.CanStore && _museum.CanStore; }
+            get { return _bundle.CanStore; }
         }
 
-        /// <summary>丢弃三个 key 的 pending。多 key 事务失败时的回滚。</summary>
+        /// <summary>丢弃权威 Bundle 的 pending。</summary>
         internal static void DiscardAllPending()
         {
-            _nest.DiscardPending();
-            _expedition.DiscardPending();
-            _museum.DiscardPending();
+            _bundle.DiscardPending();
         }
 
         /// <summary>
-        /// 丢弃三个 key 的内存缓存，下次访问从当前存档槽重新加载。
+        /// 丢弃 Bundle 与 v1 迁移源的内存缓存，下次访问从当前存档槽重新加载。
         ///
         /// **运行时关开关必须调它**：关开关会连 OnSetFile 一起退订，之后玩家切档时
         /// 没人清缓存；再打开开关时缓存里还是上一个档的崽与遗魂账本，一旦写入就会把
@@ -521,9 +880,10 @@ namespace BossRush
         /// </summary>
         internal static void ResetCachesForSlotReload()
         {
-            _nest.ResetForSlotChange();
-            _expedition.ResetForSlotChange();
-            _museum.ResetForSlotChange();
+            _bundle.ResetForSlotChange();
+            _legacyNest.ResetForSlotChange();
+            _legacyExpedition.ResetForSlotChange();
+            _legacyMuseum.ResetForSlotChange();
         }
 
         #endregion
@@ -534,9 +894,10 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             ShutdownSubscription();
-            _nest.ResetAll();
-            _expedition.ResetAll();
-            _museum.ResetAll();
+            _bundle.ResetAll();
+            _legacyNest.ResetAll();
+            _legacyExpedition.ResetAll();
+            _legacyMuseum.ResetAll();
         }
 
         #endregion

@@ -4,8 +4,8 @@
 // 职责：巢 CRUD / 出战席位 / 遗魂账本。是所有玩法层写巢状态的唯一入口。
 //
 // 纪律：
-//   - 所有写操作走「改内存 -> Store 入队 -> 协调器落盘」三段，禁止玩法层直接碰
-//     PetNestPersistence；
+//   - 所有写操作走「深拷贝候选包 -> Store 入队 -> 成功后交换内存」，禁止
+//     玩法层直接碰 PetNestPersistence；
 //   - 单席契约：出战席位至多一个 petId，设置新席位自动清旧席位；
 //   - 远征锁定：state==OnExpedition 的崽不可出战、不可移除（结算才解锁）；
 //   - 容量：超容不入巢，返回 false 由调用方给提示（不静默丢弃玩家的蛋）；
@@ -124,34 +124,31 @@ namespace BossRush
 
             try
             {
+                if (!BeginCandidate(out failureReasonId)) return false;
                 PetNestNestData nest = Nest;
                 if (nest.pets == null) nest.pets = new List<PetNestPetRecord>();
                 // 用同一个派生容量，避免与 Capacity/IsFull 出现两套口径
                 if (nest.pets.Count >= GetEffectiveNestCapacity())
                 {
                     failureReasonId = "nest_full";
+                    PetNestPersistenceAccess.AbortTransaction();
                     return false;
                 }
                 if (TryGetPet(pet.id) != null)
                 {
                     failureReasonId = "pet_duplicate";
+                    PetNestPersistenceAccess.AbortTransaction();
                     return false;
                 }
 
                 pet.Normalize();
+                nest.nameSerial++;
                 nest.pets.Add(pet);
-                if (!Commit(out failureReasonId))
-                {
-                    // Store 失败时什么都没入队，内存必须一并回滚：
-                    // 否则调用方（孵化）以为失败而不消耗蛋，内存里却多了一只崽，
-                    // 反复点击就能一枚蛋孵出满巢。
-                    nest.pets.Remove(pet);
-                    return false;
-                }
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "add_pet_failed:" + e.GetType().Name;
                 ModBehaviour.DevLog("[PetNest] 入巢失败: " + e.Message);
                 return false;
@@ -178,25 +175,19 @@ namespace BossRush
 
             try
             {
+                if (!BeginCandidate(out failureReasonId)) return false;
+                pet = TryGetPet(petId);
                 PetNestNestData nest = Nest;
-                int index = nest.pets.IndexOf(pet);
-                string previousDeployed = nest.deployedPetId;
                 nest.pets.Remove(pet);
                 if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
                 {
                     nest.deployedPetId = null;
                 }
-                if (!Commit(out failureReasonId))
-                {
-                    if (index >= 0 && index <= nest.pets.Count) nest.pets.Insert(index, pet);
-                    else nest.pets.Add(pet);
-                    nest.deployedPetId = previousDeployed;
-                    return false;
-                }
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "remove_pet_failed:" + e.GetType().Name;
                 return false;
             }
@@ -206,8 +197,8 @@ namespace BossRush
         /// 放生一只崽：移出巢并返还一部分同血脉遗魂，不刻碑（放生不是阵亡）。
         ///
         /// 单事务实现而非「TryRemovePet + AddSouls」两段提交：那样在第一段成功、
-        /// 第二段失败时会把崽和遗魂一起弄丢。这里内存改动全部做完再一次 Commit，
-        /// 失败则逐项回滚（崽插回原位、还席、遗魂减回）。
+        /// 第二段失败时会把崽和遗魂一起弄丢。这里在候选包内完成
+        /// 所有改动，只有 Store 成功才交换权威内存。
         /// 远征锁定期间拒绝放生，与 TryRemovePet 同一原因码。
         /// </summary>
         internal static bool TryReleasePet(string petId, out string failureReasonId)
@@ -227,11 +218,10 @@ namespace BossRush
 
             try
             {
+                if (!BeginCandidate(out failureReasonId)) return false;
+                pet = TryGetPet(petId);
                 PetNestNestData nest = Nest;
                 string lineageKey = pet.lineageKey;
-                int index = nest.pets.IndexOf(pet);
-                string previousDeployed = nest.deployedPetId;
-                int previousSouls = GetSouls(lineageKey);
 
                 nest.pets.Remove(pet);
                 if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
@@ -240,19 +230,11 @@ namespace BossRush
                 }
                 AddSouls(lineageKey, PetNestTuning.ReleaseSoulRefund, false);
 
-                if (!Commit(out failureReasonId))
-                {
-                    // release 回滚标记：三项内存改动必须整体还原，否则崽没了遗魂也没进账
-                    if (index >= 0 && index <= nest.pets.Count) nest.pets.Insert(index, pet);
-                    else nest.pets.Add(pet);
-                    nest.deployedPetId = previousDeployed;
-                    SetSouls(lineageKey, previousSouls);
-                    return false;
-                }
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "release_pet_failed:" + e.GetType().Name;
                 return false;
             }
@@ -268,14 +250,19 @@ namespace BossRush
                 failureReasonId = "pet_not_found";
                 return false;
             }
-            string previousName = pet.displayName;
-            pet.displayName = string.IsNullOrEmpty(displayName) ? null : displayName.Trim();
-            if (!Commit(out failureReasonId))
+            try
             {
-                pet.displayName = previousName;
+                if (!BeginCandidate(out failureReasonId)) return false;
+                pet = TryGetPet(petId);
+                pet.displayName = string.IsNullOrEmpty(displayName) ? null : displayName.Trim();
+                return CommitCandidate(out failureReasonId);
+            }
+            catch (Exception e)
+            {
+                PetNestPersistenceAccess.AbortTransaction();
+                failureReasonId = "rename_pet_failed:" + e.GetType().Name;
                 return false;
             }
-            return true;
         }
 
         /// <summary>崽的显示名：玩家起的名字优先，否则回落血脉名。</summary>
@@ -296,8 +283,7 @@ namespace BossRush
         internal static string AllocatePetId()
         {
             PetNestNestData nest = Nest;
-            nest.nameSerial++;
-            return "pet_" + nest.nameSerial.ToString() + "_" + DateTime.UtcNow.Ticks.ToString();
+            return "pet_" + (nest.nameSerial + 1).ToString() + "_" + DateTime.UtcNow.Ticks.ToString();
         }
 
         #endregion
@@ -342,11 +328,10 @@ namespace BossRush
 
             try
             {
+                if (!BeginCandidate(out failureReasonId)) return false;
+                pet = TryGetPet(petId);
                 PetNestNestData nest = Nest;
                 PetNestPetRecord previous = TryGetPet(nest.deployedPetId);
-                string previousDeployedId = nest.deployedPetId;
-                int previousState = previous != null ? previous.state : 0;
-                int petPreviousState = pet.state;
 
                 if (previous != null && previous != pet
                     && previous.state == (int)PetNestPetState.Deployed)
@@ -356,17 +341,11 @@ namespace BossRush
                 nest.deployedPetId = pet.id;
                 pet.state = (int)PetNestPetState.Deployed;
 
-                if (!Commit(out failureReasonId))
-                {
-                    if (previous != null) previous.state = previousState;
-                    pet.state = petPreviousState;
-                    nest.deployedPetId = previousDeployedId;
-                    return false;
-                }
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "set_deployed_failed:" + e.GetType().Name;
                 return false;
             }
@@ -378,10 +357,9 @@ namespace BossRush
             failureReasonId = null;
             try
             {
+                if (!BeginCandidate(out failureReasonId)) return false;
                 PetNestNestData nest = Nest;
                 PetNestPetRecord previous = TryGetPet(nest.deployedPetId);
-                string previousDeployedId = nest.deployedPetId;
-                int previousState = previous != null ? previous.state : 0;
 
                 if (previous != null && previous.state == (int)PetNestPetState.Deployed)
                 {
@@ -389,16 +367,11 @@ namespace BossRush
                 }
                 nest.deployedPetId = null;
 
-                if (!Commit(out failureReasonId))
-                {
-                    if (previous != null) previous.state = previousState;
-                    nest.deployedPetId = previousDeployedId;
-                    return false;
-                }
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "clear_deployed_failed:" + e.GetType().Name;
                 return false;
             }
@@ -411,9 +384,15 @@ namespace BossRush
         {
             try
             {
+                string transactionError;
+                if (!BeginCandidate(out transactionError)) return;
                 PetNestNestData nest = Nest;
                 List<PetNestPetRecord> pets = nest.pets;
-                if (pets == null) return;
+                if (pets == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    return;
+                }
                 bool changed = false;
                 for (int i = 0; i < pets.Count; i++)
                 {
@@ -429,11 +408,13 @@ namespace BossRush
                 if (changed)
                 {
                     string ignored;
-                    Commit(out ignored);
+                    CommitCandidate(out ignored);
                 }
+                else PetNestPersistenceAccess.AbortTransaction();
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 重伤状态复位失败: " + e.Message);
             }
         }
@@ -466,8 +447,11 @@ namespace BossRush
         internal static void AddSouls(string lineageKey, int count, bool commit)
         {
             if (string.IsNullOrEmpty(lineageKey) || count <= 0) return;
+            bool ownsTransaction = !PetNestPersistenceAccess.IsTransactionActive;
             try
             {
+                string transactionError;
+                if (ownsTransaction && !BeginCandidate(out transactionError)) return;
                 PetNestNestData nest = Nest;
                 if (nest.soulLedger == null) nest.soulLedger = new List<PetNestSoulLedgerEntry>();
 
@@ -491,46 +475,19 @@ namespace BossRush
                 long next = (long)entry.souls + count;
                 entry.souls = next > int.MaxValue ? int.MaxValue : (int)next;
 
-                if (commit)
+                if (ownsTransaction)
                 {
-                    string ignored;
-                    Commit(out ignored);
+                    CommitCandidate(out transactionError, commit);
                 }
             }
             catch (Exception e)
             {
+                if (ownsTransaction) PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 遗魂记账失败: " + e.Message);
             }
         }
 
         /// <summary>扣减遗魂（凝蛋）。余额不足返回 false 且不扣。</summary>
-        /// <summary>
-        /// 直接把某血脉的遗魂数写成给定值。**仅供事务回滚使用**：
-        /// 正常增减一律走 AddSouls / TrySpendSouls，避免绕过它们的溢出与下限处理。
-        /// </summary>
-        private static void SetSouls(string lineageKey, int souls)
-        {
-            if (string.IsNullOrEmpty(lineageKey)) return;
-            try
-            {
-                PetNestNestData nest = Nest;
-                if (nest.soulLedger == null) return;
-                for (int i = 0; i < nest.soulLedger.Count; i++)
-                {
-                    PetNestSoulLedgerEntry e = nest.soulLedger[i];
-                    if (e != null && string.Equals(e.lineageKey, lineageKey, StringComparison.Ordinal))
-                    {
-                        e.souls = souls < 0 ? 0 : souls;
-                        return;
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PetNest] 遗魂回滚失败: " + e.Message);
-            }
-        }
-
         internal static bool TrySpendSouls(string lineageKey, int count, out string failureReasonId)
         {
             failureReasonId = null;
@@ -547,32 +504,32 @@ namespace BossRush
 
             try
             {
+                if (!BeginCandidate(out failureReasonId)) return false;
                 PetNestNestData nest = Nest;
                 PetNestSoulLedgerEntry target = null;
-                int previousSouls = 0;
                 for (int i = 0; i < nest.soulLedger.Count; i++)
                 {
                     PetNestSoulLedgerEntry e = nest.soulLedger[i];
                     if (e != null && string.Equals(e.lineageKey, lineageKey, StringComparison.Ordinal))
                     {
                         target = e;
-                        previousSouls = e.souls;
                         e.souls -= count;
                         if (e.souls < 0) e.souls = 0;
                         break;
                     }
                 }
 
-                if (!Commit(out failureReasonId))
+                if (target == null)
                 {
-                    // 扣了遗魂却没入队 = 玩家凭空少 240 遗魂，必须原样加回来
-                    if (target != null) target.souls = previousSouls;
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "souls_insufficient";
                     return false;
                 }
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "spend_souls_failed:" + e.GetType().Name;
                 return false;
             }
@@ -590,9 +547,9 @@ namespace BossRush
         {
             try
             {
-                PetNestNestData nest = Nest;
-                nest.Normalize();
-                return PetNestPersistence.Nest.Store(nest);
+                if (!PetNestPersistenceAccess.IsTransactionActive) return false;
+                string error;
+                return CommitCandidate(out error, false);
             }
             catch (Exception e)
             {
@@ -617,19 +574,12 @@ namespace BossRush
             failureReasonId = null;
             try
             {
-                PetNestNestData nest = Nest;
-                nest.Normalize();
-                if (!PetNestPersistence.Nest.Store(nest))
+                if (!PetNestPersistenceAccess.IsTransactionActive)
                 {
-                    failureReasonId = PetNestPersistence.Nest.HasWriteBarrier
-                        ? "save_write_barrier"
-                        : "save_store_faulted";
+                    failureReasonId = "transaction_missing";
                     return false;
                 }
-
-                // best-effort：入队即视为已提交，落盘失败由协调器重试
-                PetNestSaveCoordinator.RequestFlush();
-                return true;
+                return CommitCandidate(out failureReasonId);
             }
             catch (Exception e)
             {
@@ -637,6 +587,18 @@ namespace BossRush
                 ModBehaviour.DevLog("[PetNest] 巢状态落档失败: " + e.Message);
                 return false;
             }
+        }
+
+        private static bool BeginCandidate(out string failureReasonId)
+        {
+            return PetNestPersistenceAccess.BeginTransaction(out failureReasonId);
+        }
+
+        private static bool CommitCandidate(out string failureReasonId, bool requestFlush = true)
+        {
+            if (!PetNestPersistenceAccess.CommitTransaction(out failureReasonId)) return false;
+            if (requestFlush) PetNestSaveCoordinator.RequestFlush();
+            return true;
         }
 
         #endregion
@@ -701,16 +663,33 @@ namespace BossRush
             }
         }
 
-        /// <summary>三个 key 现在是否都能写。多 key 事务的前置检查。</summary>
+        /// <summary>权威 Bundle 当前是否可写。</summary>
         internal static bool CanStoreAll { get { return PetNestPersistence.CanStoreAll; } }
 
-        /// <summary>任一 key 处于写屏障（用于区分屏障与故障两种失败原因）。</summary>
+        internal static bool IsTransactionActive { get { return PetNestPersistence.IsTransactionActive; } }
+
+        internal static bool BeginTransaction(out string error)
+        {
+            return PetNestPersistence.BeginTransaction(out error);
+        }
+
+        internal static bool CommitTransaction(out string error)
+        {
+            return PetNestPersistence.CommitTransaction(out error);
+        }
+
+        internal static void AbortTransaction()
+        {
+            PetNestPersistence.AbortTransaction();
+        }
+
+        /// <summary>Bundle 处于写屏障（用于区分屏障与故障两种失败原因）。</summary>
         internal static bool HasAnyWriteBarrier { get { return PetNestPersistence.HasAnyWriteBarrier; } }
 
-        /// <summary>丢弃三个 key 的 pending。多 key 事务中途失败时的回滚。</summary>
+        /// <summary>丢弃 Bundle 的 pending。</summary>
         internal static void DiscardAllPending() { PetNestPersistence.DiscardAllPending(); }
 
-        /// <summary>丢弃三个 key 的内存缓存，下次访问从当前存档槽重新加载。</summary>
+        /// <summary>丢弃 Bundle 与 v1 迁移源缓存，下次访问从当前槽重载。</summary>
         internal static void ResetCachesForSlotReload() { PetNestPersistence.ResetCachesForSlotReload(); }
 
         /// <summary>把博物馆数据入队（不落盘）。</summary>

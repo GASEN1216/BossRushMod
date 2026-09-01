@@ -8,7 +8,7 @@
 //   - SaveFile(false) 不触发 OnCollectSaveData，因此绝不能把它单独当作
 //     "仓库采集已完成"或"物理落盘原子性"的证明（同 ModeHSaveFlushCoordinator）。
 //
-// 形态照 ModeH/ModeHSaveFlushCoordinator.cs，语义按遗种巢三 key 调整。
+// 形态照 ModeH/ModeHSaveFlushCoordinator.cs，语义按遗种巢 Bundle_v2 调整。
 // ============================================================================
 
 using System;
@@ -16,7 +16,7 @@ using Saves;
 
 namespace BossRush
 {
-    /// <summary>遗种巢落盘协调器。三个 key 的 pending 合并成一批，一批一次 SaveFile。</summary>
+    /// <summary>遗种巢落盘协调器。Bundle_v2 每批一次 Save + 一次 SaveFile。</summary>
     internal static class PetNestSaveCoordinator
     {
         #region 状态
@@ -39,7 +39,7 @@ namespace BossRush
 
         #region 对外入口
 
-        /// <summary>幂等订阅三个 key 的生命周期。</summary>
+        /// <summary>幂等订阅 Bundle 与 v1 迁移源的生命周期。</summary>
         internal static void EnsureSubscribed()
         {
             PetNestPersistence.EnsureSubscribed();
@@ -82,6 +82,10 @@ namespace BossRush
         internal static void Tick()
         {
             if (!_deferredFlushPending) return;
+            // 非基地：保留 pending、不试写、**不计重试预算**。
+            // 战斗可以持续远超 600 帧，若在这里消耗预算会把 pending 直接丢成 budget_exhausted。
+            // 口径与图鉴 / 日报 / 征程三个协调器一致。
+            if (!IsBaseLevelSafe()) return;
             lock (_lock)
             {
                 _deferredRetryCount++;
@@ -138,10 +142,7 @@ namespace BossRush
                     return false;
                 }
 
-                bool allOk = true;
-                allOk &= PetNestPersistence.Nest.FlushPending();
-                allOk &= PetNestPersistence.Expedition.FlushPending();
-                allOk &= PetNestPersistence.Museum.FlushPending();
+                bool allOk = PetNestPersistence.Bundle.FlushPending();
 
                 if (!allOk)
                 {
@@ -175,6 +176,26 @@ namespace BossRush
                 _lastError = error;
                 lock (_lock) { _deferredFlushPending = true; }
                 ModBehaviour.DevLog("[PetNest] [ERROR] 存档批次落盘异常: " + e.Message);
+                return false;
+            }
+        }
+
+        #endregion
+
+        #region 辅助
+
+        /// <summary>
+        /// 当前是否在基地关卡。no-throw：取不到 LevelManager 时按"不在基地"处理，
+        /// 于是 Tick 保留 pending 不试写，等宿主销毁路径的绕闸兜底。
+        /// </summary>
+        private static bool IsBaseLevelSafe()
+        {
+            try
+            {
+                return LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel;
+            }
+            catch (Exception)
+            {
                 return false;
             }
         }

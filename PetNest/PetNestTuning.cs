@@ -87,7 +87,11 @@ namespace BossRush
         /// <summary>单局击杀经验上限，避免刷小怪把等级冲满。</summary>
         internal const int PetExpCompanionKillRunCap = 30;
 
-        /// <summary>天灾远征存活归来的经验。</summary>
+        /// <summary>
+        /// 天灾远征存活归来的经验（已废弃，改用分档常量）。
+        /// 保留字段以兼容旧代码引用，实际使用 PetExpExpeditionSurvive{Safe|Rough|Desperate}。
+        /// </summary>
+        [System.Obsolete("Use PetExpExpeditionSurviveSafe/Rough/Desperate instead", false)]
         internal const int PetExpExpeditionSurvive = 25;
 
         /// <summary>每多少级给玩家 +1 格捡漏背包（PetCapcity）。</summary>
@@ -149,8 +153,8 @@ namespace BossRush
         internal const float DeathRateSafe = 0f;
         /// <summary>风浪档死亡率。**出发前必须明示**。</summary>
         internal const float DeathRateRough = 0.06f;
-        /// <summary>亡命档死亡率。**出发前必须明示**。</summary>
-        internal const float DeathRateDesperate = 0.22f;
+        /// <summary>亡命档死亡率（原 0.22f，降低以使期望收益为正）。**出发前必须明示**。</summary>
+        internal const float DeathRateDesperate = 0.12f;
 
         /// <summary>平安档基础成功率。</summary>
         internal const float SuccessRateSafe = 0.55f;
@@ -174,6 +178,13 @@ namespace BossRush
         /// <summary>亡命档负伤概率（未阵亡时）。</summary>
         internal const float InjuryRateDesperate = 0.45f;
 
+        /// <summary>平安档远征经验（原全档统一 25，现改为梯度以补偿高难度风险）。</summary>
+        internal const int PetExpExpeditionSurviveSafe = 15;
+        /// <summary>风浪档远征经验。</summary>
+        internal const int PetExpExpeditionSurviveRough = 30;
+        /// <summary>亡命档远征经验（60 exp 可部分补偿 12% 死亡风险下的期望损失）。</summary>
+        internal const int PetExpExpeditionSurviveDesperate = 60;
+
         #endregion
 
         #region 基地展示与性能
@@ -187,6 +198,12 @@ namespace BossRush
         /// <summary>HUD 刷新节流间隔（秒，4Hz）。</summary>
         internal const float HudRefreshIntervalSeconds = 0.25f;
 
+        /// <summary>
+        /// 归巢经验结算冷却（秒）。防止玩家在竞技场外其他场景（Raid）长时间滞留后
+        /// 回基地一次性获得大量经验。10s 足够隔离连续切场景的误触，同时不影响正常游戏节奏。
+        /// </summary>
+        internal const float HomecomingSettleCooldownSeconds = 10f;
+
         #endregion
 
         #region 存档 key（v1 冻结，只增不改）
@@ -199,6 +216,11 @@ namespace BossRush
 
         /// <summary>博物馆：图鉴统计 / 纪念碑 / 异色收集。</summary>
         internal const string MuseumStorageKey = "BossRush_PetNest_Museum_v1";
+
+        /// <summary>v2 单包权威键；三个 v1 key 永久保留为只读迁移输入。</summary>
+        internal const string BundleStorageKey = "BossRush_PetNest_Bundle_v2";
+
+        internal const int BundleSchemaVersion = 2;
 
         /// <summary>当前 schema 版本。高版本 fail-closed 只读，不覆盖。</summary>
         internal const int CurrentSchemaVersion = 1;

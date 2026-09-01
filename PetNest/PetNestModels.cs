@@ -8,8 +8,9 @@
 //   - 不写字段初始化器：容器由 Normalize() 统一兜底，避免"构造出来非空、
 //     反序列化出来是 null"的两套真相（同 ModeG DTO 纪律）。
 //
-// 存档形态：三个 key 全部 Save<string> JSON 整存 + {schemaVersion, payload} envelope，
-//   编解码在 PetNest/PetNestJson.cs，落盘在 PetNest/PetNestPersistence.cs。
+// 存档形态：Bundle_v2 以 Save<string> JSON 聚合 nest / expedition / museum；
+//   三个 v1 key 只读保留用于迁移。编解码在 PetNest/PetNestJson.cs，
+//   落盘在 PetNest/PetNestPersistence.cs。
 // ============================================================================
 
 using System;
@@ -152,7 +153,7 @@ namespace BossRush
         public int souls;
     }
 
-    /// <summary>巢的整体状态（存档 key: BossRush_PetNest_Nest_v1）。</summary>
+    /// <summary>巢的整体状态（v2 聚合包中的 nest；v1 key 仅作迁移输入）。</summary>
     [Serializable]
     internal sealed class PetNestNestData
     {
@@ -233,9 +234,7 @@ namespace BossRush
         /// </summary>
         public int grantedLootUnits;
         /// <summary>
-        /// 发奖尝试次数。到上限（PetNestTuning.MaxRewardGrantAttempts）仍未发全时
-        /// 放弃并置 rewardsGranted，避免一件永远发不出去的战利品把翻牌永久卡死
-        /// （MarkRevealed 在 rewardsGranted=false 时会拒绝翻牌）。
+        /// 发奖尝试次数（诊断与退避用）。它不再是放弃奖励的上限；欠账会一直保留到成功。
         /// </summary>
         public int rewardGrantAttempts;
         /// <summary>结算结果：崽是否阵亡。</summary>
@@ -319,7 +318,7 @@ namespace BossRush
         public bool unlocked;
     }
 
-    /// <summary>博物馆总状态（存档 key: BossRush_PetNest_Museum_v1）。</summary>
+    /// <summary>博物馆总状态（v2 聚合包中的 museum；v1 key 仅作迁移输入）。</summary>
     [Serializable]
     internal sealed class PetNestMuseumData
     {
@@ -335,6 +334,29 @@ namespace BossRush
         {
             if (lineages == null) lineages = new List<PetNestLineageStats>();
             if (memorials == null) memorials = new List<PetNestMemorialEntry>();
+        }
+    }
+
+    /// <summary>
+    /// 遗种巢 v2 权威聚合状态。三个业务根在一次字符串写入中提交，避免多 key 半成功。
+    /// </summary>
+    [Serializable]
+    internal sealed class PetNestBundleData
+    {
+        public int generation;
+        public PetNestNestData nest;
+        public PetNestExpeditionData expedition;
+        public PetNestMuseumData museum;
+
+        public void Normalize()
+        {
+            if (generation < 0) generation = 0;
+            if (nest == null) nest = PetNestCodec.CreateDefaultNest();
+            if (expedition == null) expedition = PetNestCodec.CreateDefaultExpedition();
+            if (museum == null) museum = PetNestCodec.CreateDefaultMuseum();
+            nest.Normalize();
+            expedition.Normalize();
+            museum.Normalize();
         }
     }
 }

@@ -101,6 +101,8 @@ namespace BossRush
         {
             try
             {
+                string transactionError;
+                if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return;
                 List<PetNestPetRecord> settled = new List<PetNestPetRecord>();
 
                 PetNestPetRecord active = PetNestService.TryGetPet(activeCompanionPetId);
@@ -121,6 +123,7 @@ namespace BossRush
 
                 if (settled.Count == 0)
                 {
+                    PetNestPersistenceAccess.AbortTransaction();
                     ResetRunKillBudget();
                     return;
                 }
@@ -141,6 +144,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 归巢结算失败: " + e.Message);
             }
         }
@@ -209,19 +213,33 @@ namespace BossRush
                 if (info.fromCharacter == null || info.fromCharacter != companion) return;
                 // 随从自己倒下不算战功
                 if (PetNestCompanionAgent.IsCompanionHealth(health)) return;
-                if (!_countedVictims.Add(health)) return;
-
+                string transactionError;
+                if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return;
+                if (!_countedVictims.Add(health))
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    return;
+                }
                 PetNestPetRecord pet = PetNestService.TryGetPet(
                     PetNestCompanionRuntime.ActiveCompanionPetId);
-                if (pet == null) return;
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    return;
+                }
 
                 AddExp(pet, PetNestTuning.PetExpPerCompanionKill);
-                _runKillExpGranted += PetNestTuning.PetExpPerCompanionKill;
                 // 战斗中只入队，物理落盘由协调器在基地统一触发
-                PetNestService.StageCommit();
+                if (PetNestService.StageCommit())
+                {
+                    _runKillExpGranted += PetNestTuning.PetExpPerCompanionKill;
+                }
+                else _countedVictims.Remove(health);
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
+                _countedVictims.Remove(health);
                 ModBehaviour.DevLog("[PetNest] 随从击杀经验结算失败: " + e.Message);
             }
         }

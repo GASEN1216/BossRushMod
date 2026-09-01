@@ -293,16 +293,24 @@ namespace BossRush
             {
                 if (!string.IsNullOrEmpty(_deployedPetId))
                 {
+                    string transactionError;
+                    if (!PetNestPersistenceAccess.BeginTransaction(out transactionError))
+                    {
+                        CleanupOnce();
+                        return;
+                    }
                     PetNestPetRecord pet = PetNestService.TryGetPet(_deployedPetId);
                     if (pet != null)
                     {
                         pet.state = (int)PetNestPetState.Downed;
                         PetNestService.StageCommit();
                     }
+                    else PetNestPersistenceAccess.AbortTransaction();
                 }
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 标记重伤退场失败: " + e.Message);
             }
             CleanupOnce();

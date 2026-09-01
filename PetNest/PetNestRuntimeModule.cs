@@ -24,6 +24,9 @@ namespace BossRush
         private ModBehaviour _owner;
         private int _sceneGeneration;
         private bool _bootstrapped;
+        private bool _baseMaintenancePending;
+        private float _nextBaseMaintenanceTime;
+        private float _lastHomecomingSettleTime;
 
         #endregion
 
@@ -100,6 +103,7 @@ namespace BossRush
             try
             {
                 _sceneGeneration++;
+                CloseAllInteractiveViewsForSceneChange();
                 // 跨局去重集合必须清，否则累积死引用
                 PetNestMuseumStats.ClearCountedKills();
                 PetNestProgressionService.ClearSceneKillDedup();
@@ -125,29 +129,17 @@ namespace BossRush
                     // 必须在任何读血脉目录的一步之前：会话重启后 enemyPresets 还是空的，
                     // 目录里一个官方血脉都没有（CR-2026-08-29-015）。
                     EnsureOfficialLineagesPrimed();
-                    // 孤儿远征锁自愈：崽标记 OnExpedition 但远征表里没有匹配记录时复位，
-                    // 否则那只崽不可出战、不可放生、不可移除、永不结算（永久锁死）。
-                    PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();
-                    // 必须早于下面两行：它要读「仍在场的随从」与「重伤退场的崽」，
-                    // 而下面两行分别会清掉 active id 与把 Downed 复位。
-                    // （上面两行只碰预设池与 OnExpedition 锁，不影响这两样输入。）
-                    PetNestProgressionService.SettleRunHomecoming(
-                        PetNestCompanionRuntime.ActiveCompanionPetId);
-                    PetNestService.RestoreDownedPetsOnReturnToBase();
-                    PetNestCompanionRuntime.CleanupOnce();
-                    // 回基地时扫一次到期远征：结算是幂等事务，重复进基地不会重复发奖
-                    PetNestExpeditionService.SettleDueExpeditions();
-                    // 补发上一次落档成功但发奖失败/中断的奖励（幂等）
-                    PetNestExpeditionService.TryGrantPendingRewards();
-                    // 结算完再翻牌：翻牌只回放已 commit 的结果，中途退出下次还会弹
-                    PetNestExpeditionRevealView.PlayPending();
-                    // 巢边闲逛崽：只在基地、≤3 只、分帧生成
-                    PetNestBaseIdleSpawner.RefreshForScene(_owner, _sceneGeneration, true);
+                    // sceneLoaded 早于主角、经济与 ItemAssets 准备完成；其余基地工作延后到
+                    // OnUpdate 的 LevelManager.AfterInit 门控，避免一次场景回调烧光奖励重试。
+                    _baseMaintenancePending = true;
+                    _nextBaseMaintenanceTime = 0f;
                     return;
                 }
 
                 // 离开基地：闲逛崽全清；演出层宿主是 DontDestroyOnLoad，必须显式停，
                 // 否则翻牌/孵化演出会跟着过图，用全屏遮罩盖住战斗
+                _baseMaintenancePending = false;
+                _nextBaseMaintenanceTime = 0f;
                 PetNestBaseIdleSpawner.RefreshForScene(_owner, _sceneGeneration, false);
                 PetNestExpeditionRevealView.Stop();
                 PetNestHatchRevealView.Stop();
@@ -183,6 +175,7 @@ namespace BossRush
                     return;
                 }
                 PetNestDownedHandler.Tick();
+                if (IsBaseScene()) TickBaseMaintenance();
                 // 入场重试：模式标志通常晚于 sceneLoaded 才置位，只采样一次会永远进不了场
                 if (!IsBaseScene())
                 {
@@ -201,6 +194,7 @@ namespace BossRush
         {
             try
             {
+                CloseAllInteractiveViewsForSceneChange();
                 PetNestBaseIdleSpawner.ResetStaticCaches();
                 PetNestMuseumStats.ResetStaticCaches();
                 PetNestCompanionRuntime.CleanupOnce();
@@ -220,6 +214,8 @@ namespace BossRush
                 // 与 RegisterOpener 成对：面板关掉并把打开器注销，避免 dormant 后还能开面板
                 PetNestUI.UnregisterOpener();
                 PetNestUIBridge.UnbindRuntime();
+                _baseMaintenancePending = false;
+                _nextBaseMaintenanceTime = 0f;
                 _bootstrapped = false;
                 _owner = null;
             }
@@ -230,6 +226,44 @@ namespace BossRush
         }
 
         #endregion
+
+        private void TickBaseMaintenance()
+        {
+            if (!_baseMaintenancePending && !PetNestExpeditionService.HasPendingRewardDebt) return;
+            if (UnityEngine.Time.unscaledTime < _nextBaseMaintenanceTime) return;
+            if (LevelManager.Instance == null || !LevelManager.AfterInit
+                || CharacterMainControl.Main == null) return;
+
+            _nextBaseMaintenanceTime = UnityEngine.Time.unscaledTime + 5f;
+            try
+            {
+                if (_baseMaintenancePending)
+                {
+                    PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();
+                    // 归巢经验结算加冷却，防止玩家在非竞技场其他场景（Raid）长时间滞留后
+                    // 回基地一次性获得大量经验。10s 冷却足够隔离连续切场景的误触。
+                    float now = UnityEngine.Time.unscaledTime;
+                    if (now - _lastHomecomingSettleTime >= PetNestTuning.HomecomingSettleCooldownSeconds)
+                    {
+                        PetNestProgressionService.SettleRunHomecoming(
+                            PetNestCompanionRuntime.ActiveCompanionPetId);
+                        _lastHomecomingSettleTime = now;
+                    }
+                    PetNestService.RestoreDownedPetsOnReturnToBase();
+                    PetNestCompanionRuntime.CleanupOnce();
+                    PetNestExpeditionService.SettleDueExpeditions();
+                    PetNestBaseIdleSpawner.RefreshForScene(_owner, _sceneGeneration, true);
+                    _baseMaintenancePending = false;
+                }
+                PetNestExpeditionService.TryGrantPendingRewards();
+                PetNestExpeditionRevealView.PlayPending();
+            }
+            catch (Exception e)
+            {
+                LogFailure("base_maintenance", e);
+                _baseMaintenancePending = true;
+            }
+        }
 
         #region bootstrap
 
@@ -293,7 +327,7 @@ namespace BossRush
             try
             {
                 if (!_bootstrapped || _owner == null) return;
-                _owner.EnsureEnemyPresetsReadyForPetNest();
+                _owner.EnsureEnemyPresetsReadyForGameplayCatalogs();
             }
             catch (Exception e)
             {
@@ -318,6 +352,7 @@ namespace BossRush
             if (!_bootstrapped) return;
             try
             {
+                CloseAllInteractiveViewsForSceneChange();
                 PetNestSaveCoordinator.TryFlushOnHostDestroy();
                 PetNestSaveCoordinator.ShutdownSubscription();
                 // **必须清缓存**：退订会把 OnSetFile 一起摘掉，之后玩家切档没人清缓存；
@@ -333,7 +368,33 @@ namespace BossRush
                 LogFailure("shutdown_disabled", e);
             }
             _bootstrapped = false;
+            _baseMaintenancePending = false;
+            _nextBaseMaintenanceTime = 0f;
             ModBehaviour.DevLog("[PetNest] 入口开关已关闭，运行时模块回到 dormant");
+        }
+
+        #endregion
+
+        #region 跨场景 UI 清理
+
+        /// <summary>
+        /// 关闭全部遗种巢交互层。所有关闭函数都幂等；集中在这里可保证过图、热关闭与
+        /// 宿主销毁不会遗漏 DontDestroyOnLoad 根节点或模态输入租约。
+        /// </summary>
+        internal static void CloseAllInteractiveViewsForSceneChange()
+        {
+            try { PetNestUI.Close(); }
+            catch (Exception) { /* 清理路径继续 */ }
+            try { PetNestRenameModal.Close(); }
+            catch (Exception) { /* 清理路径继续 */ }
+            try { PetNestReleaseConfirmModal.Close(); }
+            catch (Exception) { /* 清理路径继续 */ }
+            try { PetNestHatchRevealView.Stop(); }
+            catch (Exception) { /* 清理路径继续 */ }
+            try { PetNestExpeditionRevealView.Stop(); }
+            catch (Exception) { /* 清理路径继续 */ }
+            try { PetNestCompanionHudView.Destroy(); }
+            catch (Exception) { /* 清理路径继续 */ }
         }
 
         #endregion

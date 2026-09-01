@@ -181,17 +181,22 @@ namespace BossRush
                 string petId = PetNestCompanionRuntime.ActiveCompanionPetId;
                 if (!string.IsNullOrEmpty(petId))
                 {
-                    PetNestPetRecord pet = PetNestService.TryGetPet(petId);
-                    if (pet != null)
+                    string transactionError;
+                    if (PetNestPersistenceAccess.BeginTransaction(out transactionError))
                     {
-                        AppendScar(pet, place, killerName);
-                        // 局内重伤是单 key 写，这里自行入队
-                        PetNestService.StageCommit();
+                        PetNestPetRecord pet = PetNestService.TryGetPet(petId);
+                        if (pet != null)
+                        {
+                            AppendScar(pet, place, killerName);
+                            PetNestService.StageCommit();
+                        }
+                        else PetNestPersistenceAccess.AbortTransaction();
                     }
                 }
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 战痕落档失败: " + e.Message);
             }
 

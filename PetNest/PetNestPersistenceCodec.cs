@@ -41,6 +41,75 @@ namespace BossRush
             return data;
         }
 
+        internal static PetNestBundleData CreateDefaultBundle()
+        {
+            PetNestBundleData data = new PetNestBundleData();
+            data.generation = 0;
+            data.nest = CreateDefaultNest();
+            data.expedition = CreateDefaultExpedition();
+            data.museum = CreateDefaultMuseum();
+            return data;
+        }
+
+        #endregion
+
+        #region v2 聚合包
+
+        internal static string EncodeBundle(PetNestBundleData data)
+        {
+            if (data == null) return null;
+            data.Normalize();
+            PetNestJsonBuilder sb = new PetNestJsonBuilder();
+            sb.BeginObject()
+              .Int("schemaVersion", PetNestTuning.BundleSchemaVersion)
+              .Int("generation", data.generation)
+              .Raw("nest", EncodeNest(data.nest))
+              .Raw("expedition", EncodeExpedition(data.expedition))
+              .Raw("museum", EncodeMuseum(data.museum))
+              .EndObject();
+            return sb.ToString();
+        }
+
+        internal static PetNestBundleData DecodeBundle(PetNestJsonNode root)
+        {
+            if (root == null || root.Kind != PetNestJsonKind.Object) return null;
+            if (root.GetInt("schemaVersion", -1) != PetNestTuning.BundleSchemaVersion) return null;
+            PetNestBundleData data = new PetNestBundleData();
+            data.generation = root.GetInt("generation", 0);
+            data.nest = DecodeNest(root.GetObject("nest"));
+            data.expedition = DecodeExpedition(root.GetObject("expedition"));
+            data.museum = DecodeMuseum(root.GetObject("museum"));
+            if (data.nest == null || data.expedition == null || data.museum == null) return null;
+            data.Normalize();
+            return data;
+        }
+
+        internal static PetNestBundleData CloneBundle(PetNestBundleData source)
+        {
+            if (source == null) return CreateDefaultBundle();
+            string json = EncodeBundle(source);
+            PetNestBundleData clone = DecodeBundle(PetNestJson.Parse(json));
+            return clone ?? CreateDefaultBundle();
+        }
+
+        internal static PetNestNestData CloneNest(PetNestNestData source)
+        {
+            PetNestNestData clone = DecodeNest(PetNestJson.Parse(EncodeNest(source)));
+            return clone ?? CreateDefaultNest();
+        }
+
+        internal static PetNestExpeditionData CloneExpedition(PetNestExpeditionData source)
+        {
+            PetNestExpeditionData clone = DecodeExpedition(PetNestJson.Parse(EncodeExpedition(source)));
+            return clone ?? CreateDefaultExpedition();
+        }
+
+        internal static PetNestMuseumData CloneMuseum(PetNestMuseumData source)
+        {
+            PetNestMuseumData clone = DecodeMuseum(PetNestJson.Parse(EncodeMuseum(source)));
+            return clone ?? CreateDefaultMuseum();
+        }
+
         #endregion
 
         #region 巢

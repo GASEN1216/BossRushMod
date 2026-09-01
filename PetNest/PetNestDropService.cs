@@ -159,7 +159,6 @@ namespace BossRush
                     // 官方 OnCollectSaveData 与切图/回基地的 flush 会把它写下去。
                     int before = PetNestService.GetSouls(lineageKey);
                     PetNestService.AddSouls(lineageKey, souls, false);
-                    PetNestService.StageCommit();
                     _stagedSoulWrites++;
                     NotifyCondensableCrossed(owner, lineageKey, before);
                 }

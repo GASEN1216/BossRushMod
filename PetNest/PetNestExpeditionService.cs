@@ -36,6 +36,34 @@ namespace BossRush
     /// <summary>天灾远征服务。数据层，无演出与 UI 依赖。</summary>
     internal static class PetNestExpeditionService
     {
+        internal interface IValidationRewardBackend
+        {
+            bool IsReady { get; }
+            bool TryGrantCash(long amount);
+            bool TryGrantItem(int typeId, PetNestExpeditionRecord record);
+        }
+
+        private static IValidationRewardBackend _validationRewardBackend;
+
+        internal static void SetValidationRewardBackend(IValidationRewardBackend backend)
+        {
+            if (!ModBehaviour.DevModeEnabled) return;
+            _validationRewardBackend = backend;
+            _nextRewardGrantAttemptTicks = 0L;
+        }
+
+        internal static void ResetValidationRewardBackend()
+        {
+            _validationRewardBackend = null;
+            _nextRewardGrantAttemptTicks = 0L;
+        }
+
+        internal static bool DebugGrantRewards(PetNestExpeditionRecord record)
+        {
+            if (!ModBehaviour.DevModeEnabled) return false;
+            return GrantRewards(record);
+        }
+
         #region 目的地表
 
         /// <summary>三个天灾目的地。首版是纯结算模拟：不加载场景、不改天气。</summary>
@@ -96,6 +124,17 @@ namespace BossRush
                 case PetNestRiskTier.Rough: return PetNestTuning.InjuryRateRough;
                 case PetNestRiskTier.Desperate: return PetNestTuning.InjuryRateDesperate;
                 default: return 0f;
+            }
+        }
+
+        /// <summary>该档位的远征存活经验奖励（梯度补偿高难度风险）。</summary>
+        internal static int GetExpeditionExpReward(PetNestRiskTier tier)
+        {
+            switch (tier)
+            {
+                case PetNestRiskTier.Rough: return PetNestTuning.PetExpExpeditionSurviveRough;
+                case PetNestRiskTier.Desperate: return PetNestTuning.PetExpExpeditionSurviveDesperate;
+                default: return PetNestTuning.PetExpExpeditionSurviveSafe;
             }
         }
 
@@ -195,6 +234,15 @@ namespace BossRush
 
             try
             {
+                if (!PetNestPersistenceAccess.BeginTransaction(out failureReasonId)) return false;
+                // 从候选包重新解析实体，禁止继续修改调用方持有的权威缓存引用。
+                pet = PetNestService.TryGetPet(petId);
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
                 PetNestExpeditionData data = PetNestPersistenceAccess.Expedition;
                 data.idSerial++;
 
@@ -219,10 +267,6 @@ namespace BossRush
                 data.records.Add(r);
 
                 // 崽锁定：不可出战、不可移除、不可陈列
-                int previousState = pet.state;
-                string previousLock = pet.lockedByExpeditionId;
-                string previousDeployedId = PetNestService.Nest.deployedPetId;
-
                 pet.state = (int)PetNestPetState.OnExpedition;
                 pet.lockedByExpeditionId = r.id;
                 if (string.Equals(PetNestService.Nest.deployedPetId, pet.id, StringComparison.Ordinal))
@@ -230,24 +274,14 @@ namespace BossRush
                     PetNestService.Nest.deployedPetId = null;
                 }
 
-                if (!CommitBoth(out failureReasonId))
-                {
-                    // 落档失败：CommitBoth 保证一个字节都没入队，因此内存整体回滚即可
-                    // （包括出战席位——不能让一次失败的派出顺手清空玩家的席位）
-                    data.records.Remove(r);
-                    data.idSerial--;
-                    pet.state = previousState;
-                    pet.lockedByExpeditionId = previousLock;
-                    PetNestService.Nest.deployedPetId = previousDeployedId;
-                    return false;
-                }
-
                 PetNestMuseumStats.RecordExpedition(pet);
+                if (!CommitBoth(out failureReasonId)) return false;
                 record = r;
                 return true;
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "depart_failed:" + e.GetType().Name;
                 ModBehaviour.DevLog("[PetNest] 远征出发失败: " + e.Message);
                 return false;
@@ -322,7 +356,7 @@ namespace BossRush
                 return false;
             }
 
-            // **前置检查**：三个 key 里但凡有一个写不了就一步都不走。
+            // **前置检查**：权威 Bundle 写不了就一步都不走。
             // roll 之后再发现写不下去，内存已经被改成"已结算"，回滚代价极大
             // （真死路径还删了 PetRecord、刻了碑）。
             if (!PetNestPersistenceAccess.CanStoreAll)
@@ -335,6 +369,15 @@ namespace BossRush
 
             try
             {
+                string recordId = record.id;
+                if (!PetNestPersistenceAccess.BeginTransaction(out failureReasonId)) return false;
+                record = FindRecordById(recordId);
+                if (record == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "record_missing";
+                    return false;
+                }
                 PetNestPetRecord pet = PetNestService.TryGetPet(record.petId);
 
                 // —— roll ——（用出发时固化的概率，不重新读常量）
@@ -381,9 +424,10 @@ namespace BossRush
                     else
                     {
                         pet.state = (int)PetNestPetState.InNest;
-                        // 活着回来给经验。AddExp 只改内存，落档并进下面的 CommitBoth，
+                        // 活着回来给经验（按风险档梯度发放）。AddExp 只改内存，落档并进下面的 CommitBoth，
                         // 不破坏这条链「结果与 settled 一次原子写入」的语义。
-                        PetNestProgressionService.AddExp(pet, PetNestTuning.PetExpExpeditionSurvive);
+                        int expReward = GetExpeditionExpReward((PetNestRiskTier)record.riskTier);
+                        PetNestProgressionService.AddExp(pet, expReward);
                         if (injured)
                         {
                             PetNestDownedHandler.AppendScar(pet, record.destinationId, DescribeDisaster(record));
@@ -398,13 +442,12 @@ namespace BossRush
                 }
 
                 // 发奖走独立的可恢复通道：落档成功而发奖失败（或中途崩溃）时，
-                // rewardsGranted 仍为 false，下次回基地按条目续发欠账（现金与战利品
-                // 各自记账，已发的不重发），连续 MaxRewardGrantAttempts 次仍发不全才放弃。
-                TryGrantPendingRewards();
+                // rewardsGranted 仍为 false；基地 LevelManager 与经济/物品资源就绪后再补发。
                 return true;
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "settle_failed:" + e.GetType().Name;
                 ModBehaviour.DevLog("[PetNest] 远征结算失败: " + e.Message);
                 return false;
@@ -420,18 +463,25 @@ namespace BossRush
         ///
         /// **按条目记账**：现金走 cashGranted，战利品走 grantedLootUnits 游标，
         /// 补发只重做真正失败的那一格 —— 已到账的现金绝不会因为一件物品失败而重发。
-        /// **有上限**：连续 MaxRewardGrantAttempts 次仍发不全就放弃并置 rewardsGranted，
-        /// 否则一件永远发不出去的战利品会让 MarkRevealed 永远返回 rewards_pending，
-        /// 把这张翻牌（以及这条记录）永久卡在待翻列表里。
+        /// 尝试次数只用于诊断；暂时不可用的经济/资源不会把欠账标成已完成。
         /// </summary>
+        private static long _nextRewardGrantAttemptTicks;
+
         internal static int TryGrantPendingRewards()
         {
             int granted = 0;
             try
             {
+                if (!IsRewardRuntimeReady()) return 0;
+                long now = DateTime.UtcNow.Ticks;
+                if (now < _nextRewardGrantAttemptTicks) return 0;
+                _nextRewardGrantAttemptTicks = now + TimeSpan.TicksPerSecond * 5L;
+
+                string transactionError;
+                if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return 0;
                 List<PetNestExpeditionRecord> records = Records;
                 bool changed = false;
-                for (int i = 0; i < records.Count; i++)
+                for (int i = records.Count - 1; i >= 0; i--)
                 {
                     PetNestExpeditionRecord r = records[i];
                     if (r == null || !r.settled || r.rewardsGranted) continue;
@@ -440,46 +490,56 @@ namespace BossRush
                     if (!complete)
                     {
                         r.rewardGrantAttempts++;
-                        if (r.rewardGrantAttempts >= PetNestTuning.MaxRewardGrantAttempts)
-                        {
-                            // 放弃：宁可少发一次，也不能让翻牌与记录永久卡死
-                            complete = true;
+                        if (r.rewardGrantAttempts == PetNestTuning.MaxRewardGrantAttempts)
                             ModBehaviour.DevLog("[PetNest] [ERROR] 远征奖励连续 "
-                                + r.rewardGrantAttempts + " 次未发全，放弃补发: " + r.id
-                                + "（现金已发=" + r.cashGranted
-                                + "，已投件数=" + r.grantedLootUnits + "）");
-                        }
+                                + r.rewardGrantAttempts + " 次未发全，欠账继续保留: " + r.id);
                     }
                     if (complete)
                     {
                         r.rewardsGranted = true;
                         granted++;
+                        if (r.revealed) records.RemoveAt(i);
                     }
                     changed = true;
                 }
                 if (changed)
                 {
-                    string ignored;
-                    CommitBoth(out ignored);
+                    string commitError;
+                    if (!CommitBoth(out commitError))
+                        ModBehaviour.DevLog("[PetNest] [WARNING] 奖励游标未能提交: " + commitError);
+                }
+                else
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
                 }
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 远征奖励补发失败: " + e.Message);
             }
             return granted;
         }
 
+        private static bool IsRewardRuntimeReady()
+        {
+            IValidationRewardBackend validation = _validationRewardBackend;
+            if (validation != null) return validation.IsReady;
+            return LevelManager.Instance != null
+                && LevelManager.AfterInit
+                && CharacterMainControl.Main != null
+                && EconomyManager.Instance != null
+                && ItemAssetsCollection.Instance != null;
+        }
+
         /// <summary>
         /// 孤儿远征锁自愈（回基地扫描）。
         ///
-        /// 成因：物理 flush 是逐 key 独立失败的（PetNestSaveCoordinator.FlushBatch），
-        /// Nest key 写成功而 Expedition key 异常进 StoreFaulted 时，官方任一次 SaveFile
-        /// 会落盘「崽=OnExpedition」而远征记录缺失。下一会话那只崽 state=OnExpedition
-        /// 却没有匹配记录：不可出战、不可放生、不可移除、永不结算，**永久锁死**。
+        /// 兼容历史 v1 三键时代可能留下的半截状态：崽是 OnExpedition，
+        /// 但远征表没有匹配记录。v2 已改为单包原子提交，仍保留本自愈入口用于迁移。
         ///
         /// 只在确认无匹配时复位，绝不误解锁正在进行的合法远征：
-        ///   - 三个 key 有任一写屏障/故障时一步都不走 —— 那时 records 为空很可能只是
+        ///   - Bundle 有写屏障/故障时一步都不走 —— 那时 records 为空很可能只是
         ///     没读回来，误判会把在途远征全部解锁，而且改动也根本落不了盘；
         ///   - 匹配放宽到「id 命中」或「同一只崽的未结算记录」两条，宁可漏修不可误修；
         ///   - 非 OnExpedition 的崽只清残留的 lockedByExpeditionId，不动它的席位状态。
@@ -491,9 +551,16 @@ namespace BossRush
             {
                 if (!PetNestPersistenceAccess.CanStoreAll) return 0;
 
+                string transactionError;
+                if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return 0;
+
                 List<PetNestExpeditionRecord> records = Records;
                 List<PetNestPetRecord> pets = PetNestService.Nest.pets;
-                if (pets == null) return 0;
+                if (pets == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    return 0;
+                }
 
                 for (int i = 0; i < pets.Count; i++)
                 {
@@ -525,9 +592,11 @@ namespace BossRush
                     string ignored;
                     CommitBoth(out ignored);
                 }
+                else PetNestPersistenceAccess.AbortTransaction();
             }
             catch (Exception e)
             {
+                PetNestPersistenceAccess.AbortTransaction();
                 ModBehaviour.DevLog("[PetNest] 孤儿远征锁自愈失败: " + e.Message);
             }
             return repaired;
@@ -558,6 +627,19 @@ namespace BossRush
             return false;
         }
 
+        private static PetNestExpeditionRecord FindRecordById(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            List<PetNestExpeditionRecord> records = Records;
+            for (int i = 0; i < records.Count; i++)
+            {
+                PetNestExpeditionRecord candidate = records[i];
+                if (candidate != null && string.Equals(candidate.id, id, StringComparison.Ordinal))
+                    return candidate;
+            }
+            return null;
+        }
+
         /// <summary>
         /// 标记为已翻牌并移除记录。演出层放完动画后调，**不做任何 roll**。
         /// </summary>
@@ -574,43 +656,19 @@ namespace BossRush
                 failureReasonId = "not_settled";
                 return false;
             }
-            if (!record.rewardsGranted)
+            string recordId = record.id;
+            if (!PetNestPersistenceAccess.BeginTransaction(out failureReasonId)) return false;
+            PetNestExpeditionRecord candidate = FindRecordById(recordId);
+            if (candidate == null)
             {
-                // 奖还没发就把记录移出待翻列表 = 奖励永久丢失。先补发再翻。
-                TryGrantPendingRewards();
-                if (!record.rewardsGranted)
-                {
-                    failureReasonId = "rewards_pending";
-                    return false;
-                }
-            }
-
-            // 先改内存再提交，失败必须整体回滚：否则记录已从待翻列表消失但盘上还在，
-            // 重启后这张牌会再弹一次（奖励有 rewardsGranted 保护不会重发，但体验错乱）。
-            // 回滚形态与 TryDepart 一致。
-            List<PetNestExpeditionRecord> records = PetNestPersistenceAccess.Expedition.records;
-            int previousIndex = records != null ? records.IndexOf(record) : -1;
-
-            record.revealed = true;
-            if (records != null) records.Remove(record);
-
-            if (!CommitBoth(out failureReasonId))
-            {
-                record.revealed = false;
-                if (records != null)
-                {
-                    if (previousIndex >= 0 && previousIndex <= records.Count)
-                    {
-                        records.Insert(previousIndex, record);
-                    }
-                    else
-                    {
-                        records.Add(record);
-                    }
-                }
+                PetNestPersistenceAccess.AbortTransaction();
+                failureReasonId = "record_missing";
                 return false;
             }
-            return true;
+            candidate.revealed = true;
+            // 翻牌展示与发奖债务解耦：有欠账时保留隐藏记录，补完后自动清除。
+            if (candidate.rewardsGranted) Records.Remove(candidate);
+            return CommitBoth(out failureReasonId);
         }
 
         /// <summary>已结算但还没翻牌的记录（回基地时弹翻牌用）。</summary>
@@ -624,6 +682,20 @@ namespace BossRush
                 if (r != null && r.settled && !r.revealed) pending.Add(r);
             }
             return pending;
+        }
+
+        internal static bool HasPendingRewardDebt
+        {
+            get
+            {
+                List<PetNestExpeditionRecord> records = Records;
+                for (int i = 0; i < records.Count; i++)
+                {
+                    PetNestExpeditionRecord r = records[i];
+                    if (r != null && r.settled && !r.rewardsGranted) return true;
+                }
+                return false;
+            }
         }
 
         #endregion
@@ -666,12 +738,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 发奖。**必须在结果落档之后调**：先落档再发奖，中途崩溃最多少发一次奖，
-        /// 不会出现"发了奖但记录还没 settled"的重复领取窗口。
+        /// 发奖。**必须在结果落档之后调**：先持久化奖励债务，再调用官方经济/物品 API。
+        /// 外部 API 与 Mod 存档无法组成原子事务，因此采用至少一次语义：极端崩溃窗口下
+        /// 宁可重复一件，也绝不把尚未确认送达的奖励静默标记为已发。
         ///
         /// **按条目记账**：现金与战利品各有自己的账（cashGranted / grantedLootUnits），
         /// 每成功一格就立刻记账。返回 false 表示还有欠账，由 TryGrantPendingRewards
-        /// 下次续发；已记账的格子不会重做，因此补发不可能造成重复发放。
+        /// 下次续发；正常重试不会重做已记账格子，只有“外部已送达、游标尚未落盘”这一
+        /// 无法消除的崩溃窗口可能重复。
         /// 记账只改内存，落档由调用方在扫完一轮后统一 CommitBoth。
         /// </summary>
         private static bool GrantRewards(PetNestExpeditionRecord record)
@@ -693,7 +767,10 @@ namespace BossRush
                     {
                         // 官方 Add 在 Instance==null 时返回 false 而**不抛异常**，
                         // 丢弃返回值等于把"钱没发出去"当成发过了
-                        ok = EconomyManager.Add(record.outcomeCash);
+                        IValidationRewardBackend validation = _validationRewardBackend;
+                        ok = validation != null
+                            ? validation.TryGrantCash(record.outcomeCash)
+                            : EconomyManager.Add(record.outcomeCash);
                     }
                     catch (Exception e)
                     {
@@ -719,7 +796,11 @@ namespace BossRush
                             unit++;
                             continue;
                         }
-                        if (!GrantOneItem(typeId, record))
+                        IValidationRewardBackend validation = _validationRewardBackend;
+                        bool itemGranted = validation != null
+                            ? validation.TryGrantItem(typeId, record)
+                            : GrantOneItem(typeId, record);
+                        if (!itemGranted)
                         {
                             complete = false;
                             break;
@@ -842,24 +923,14 @@ namespace BossRush
         #region 落档
 
         /// <summary>
-        /// 巢 / 远征 / 博物馆三档**原子**提交：一次结算会同时改崽状态、远征记录和纪念碑，
-        /// 分开提交会出现"崽没了但碑没刻"这类半截状态。
-        ///
-        /// 原子性靠两件事保证：
-        /// 1) **先把三个 key 都 CanStore 过一遍再开始 Store**。逐个 Store 到一半失败时，
-        ///    先成功的那个 key 会把 pending 留下来，被官方 OnCollectSaveData 独立落盘，
-        ///    而调用方以为整个操作失败并回滚了内存——两边就此永久分叉
-        ///    （崽被锁死在 OnExpedition、奖励发不出、遗魂凭空消失都是这一个根因）。
-        /// 2) 万一 Store 仍在中途失败（并发改状态），把三个 key 的 pending 一并丢弃。
-        ///
-        /// 成败以入队为准，不以 flush 为准：pending 一旦入队，官方采集与后续 flush
-        /// 都会把它写下去，此时因 flush 报错而让调用方回滚内存反而制造分叉。
+        /// 巢 / 远征 / 博物馆三分区的 v2 候选包原子提交。调用方必须先开启
+        /// BeginTransaction，候选包一次编码、一次 Store，成功后才交换权威内存。
         /// </summary>
         private static bool CommitBoth(out string failureReasonId)
         {
             failureReasonId = null;
 
-            // 前置检查：任一 key 写不了就一个字节都不写
+            // v2 单包：候选包一次编码、一次 Store，不再存在三个 key 的中途半成功。
             if (!PetNestPersistenceAccess.CanStoreAll)
             {
                 failureReasonId = PetNestPersistenceAccess.HasAnyWriteBarrier
@@ -868,15 +939,16 @@ namespace BossRush
                 return false;
             }
 
-            bool staged = PetNestService.StageCommit()
-                && PetNestPersistenceAccess.StageExpedition()
-                && PetNestPersistenceAccess.StageMuseum();
-
-            if (!staged)
+            if (!PetNestPersistenceAccess.IsTransactionActive)
             {
-                // 中途失败：把已入队的部分一并撤掉，绝不允许半份落盘
-                PetNestPersistenceAccess.DiscardAllPending();
-                failureReasonId = "save_store_faulted";
+                failureReasonId = "transaction_missing";
+                return false;
+            }
+
+            if (!PetNestPersistenceAccess.CommitTransaction(out failureReasonId))
+            {
+                PetNestPersistenceAccess.AbortTransaction();
+                if (string.IsNullOrEmpty(failureReasonId)) failureReasonId = "save_store_faulted";
                 return false;
             }
 
