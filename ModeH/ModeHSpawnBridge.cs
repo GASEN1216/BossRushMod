@@ -197,7 +197,14 @@ namespace BossRush
                 handle.Character.SetTeam(handle.Team);
                 handle.Character.SetPosition(arenaPos);
 
-                AICharacterController ai = handle.Character.GetComponentInChildren<AICharacterController>();
+                // 缓存字段是 Inspector 序列化的，Mod 刷出的选手上可能为空，所以回退不可省。
+                // 回退必须传 true：本方法在隔离期调用，此时角色已被 SetActive(false)，
+                // 不含未激活对象的重载会返回 null，强制追踪玩家就清不掉。
+                AICharacterController ai = handle.Character.aiCharacterController;
+                if (ai == null)
+                {
+                    ai = handle.Character.GetComponentInChildren<AICharacterController>(true);
+                }
                 if (ai != null)
                 {
                     // 安全项：forceTracePlayerDistance 生效阈值是 > 0.5f，且每帧在同队目标清理之前
@@ -231,6 +238,12 @@ namespace BossRush
                 {
                     handle.Health.SetInvincible(false);
                 }
+
+                // 选手是 Mod 刷出来的，必须摘掉官方距离休眠：观众席离擂台远超 100m，
+                // SetActiveByPlayerDistance.FixedUpdate 会把整场选手静默关掉，比赛就冻在原地。
+                // 放在激活之后：此时角色已落到擂台点位，helper 的强制激活与本方法意图一致。
+                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(handle.Character);
+
                 handle.Activated = true;
                 return true;
             }

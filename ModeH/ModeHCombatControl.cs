@@ -798,10 +798,27 @@ namespace BossRush
             _fireContext.LowestHealthEnemy = lowestHealthEnemy;
         }
 
+        /// <summary>
+        /// 取选手的 AI 控制器。
+        /// **不要**改回根节点 `GetComponent`：官方 `AICharacterController.Init` 会执行
+        /// `transform.SetParent(characterMainControl.transform, false)`，AI 组件是**子对象**，
+        /// 根节点上取恒为 null。旧实现如此，导致拍铃与伤病/战痕窗口整场静默失效
+        /// （两者都以 `_ai == null` 判空即拒，只走 DevLog，玩家侧毫无反馈）。
+        /// 先读官方缓存字段（`CharacterSpawnerRoot:254` 亦走这条），但它是 Inspector 序列化字段、
+        /// 没有任何代码为其赋值，Mod 刷出来的选手上可能为空（参见
+        /// `DeathWraithCombatLoadout` 克隆 AI 后手动回填）。所以 `GetComponentInChildren`
+        /// 回退是**主路径而非冗余**，不要当成多余分支删掉；且必须传 `true`，
+        /// 因为隔离期选手处于 deactivate 状态，不含未激活对象的重载同样取不到。
+        /// </summary>
         private static AICharacterController ResolveAi(CharacterMainControl character)
         {
             if (character == null) return null;
-            try { return character.GetComponent<AICharacterController>(); }
+            try
+            {
+                AICharacterController cached = character.aiCharacterController;
+                if (cached != null) return cached;
+                return character.GetComponentInChildren<AICharacterController>(true);
+            }
             catch (Exception)
             {
                 // 角色尚未装配 AI 组件：口令与伤病窗口会因 _ai == null 自然拒绝

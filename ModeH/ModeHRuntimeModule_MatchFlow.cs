@@ -260,9 +260,26 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ModeH] 拍铃被拒绝: "
                     + (failureReasonId != null ? failureReasonId : "unknown"));
+                // 拍铃是整场比赛唯一的玩家干预手段且每场限一次，失败必须有可见反馈，
+                // 否则玩家只看到"按钮没反应"。次数未被消耗，可以再次尝试。
+                ShowBellFailureMessage(failureReasonId);
                 return;
             }
             AttachAndPersistBattleSnapshot("bell_committed");
+        }
+
+        /// <summary>拍铃失败的玩家可见提示。提示失败不得影响比赛流程。</summary>
+        private void ShowBellFailureMessage(string failureReasonId)
+        {
+            try
+            {
+                if (_owner == null) return;
+                _owner.ShowMessage(L10n.T(ModeHCommandController.GetBellFailureLocalizationKey(failureReasonId)));
+            }
+            catch (Exception)
+            {
+                // 提示失败不得影响比赛流程
+            }
         }
 
         #endregion

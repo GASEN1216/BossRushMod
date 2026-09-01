@@ -112,6 +112,31 @@ namespace BossRush
 
         #region 拍铃
 
+        /// <summary>拍铃失败原因 ID 到本地化键。未收录的 ID 落到通用文案。</summary>
+        internal static string GetBellFailureLocalizationKey(string failureReasonId)
+        {
+            if (IsLocalizedBellFailure(failureReasonId))
+            {
+                return ModeHConfig.LocalizationKeyPrefix + "BellFailed_" + failureReasonId;
+            }
+            return ModeHConfig.LocalizationKeyPrefix + "BellFailed_Generic";
+        }
+
+        /// <summary>该拍铃失败 ID 是否有对应的已注入文案。</summary>
+        internal static bool IsLocalizedBellFailure(string failureReasonId)
+        {
+            if (string.IsNullOrEmpty(failureReasonId)) return false;
+            return failureReasonId == "command_owner_mismatch"
+                || failureReasonId == "command_bell_consumed"
+                || failureReasonId == "command_not_locked"
+                || failureReasonId == "command_no_active_fighter"
+                || failureReasonId == "command_spec_missing"
+                || failureReasonId == "command_signature_owner_absent"
+                || failureReasonId == "command_requires_relay"
+                || failureReasonId == "command_requires_enemy_count"
+                || failureReasonId == "command_lock_empty";
+        }
+
         /// <summary>
         /// 拍铃：每场唯一一次，CAS 保证；招牌口令只有持有者在场时才响应。
         /// </summary>
@@ -134,6 +159,8 @@ namespace BossRush
                 failureReasonId = "command_owner_mismatch";
                 return false;
             }
+            // 下方任一 return false 的 reasonId 都必须在 GetBellFailureLocalizationKey
+            // 与 ModeHLocalization 里有对应文案，否则玩家看到的是原始 ID。
             if (_bellConsumed || _bellUsesRemaining <= 0)
             {
                 failureReasonId = "command_bell_consumed";

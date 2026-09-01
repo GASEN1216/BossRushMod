@@ -542,6 +542,31 @@ namespace BossRush
             Add(map, "Unavailable_modeh_owner_missing", "运行实例缺失", "Runtime owner missing");
             Add(map, "Unavailable_TicketRefunded", "已退还船票", "Ticket refunded");
 
+            // 拍铃失败原因：key 由 ModeHCommandController.GetBellFailureLocalizationKey
+            // 用 "BellFailed_" + failureReasonId 拼出，后缀必须与 TryRingBell 里的
+            // failureReasonId 字面量一一对应。失败不消耗次数，文案统一提示可再试。
+            Add(map, "BellFailed_Generic", "拍铃未生效", "The bell had no effect");
+            Add(map, "BellFailed_command_owner_mismatch", "拍铃未生效：本场比赛已不由你主持",
+                "Bell failed: you no longer host this match");
+            Add(map, "BellFailed_command_bell_consumed", "本场拍铃次数已用完",
+                "No bell uses left this match");
+            Add(map, "BellFailed_command_not_locked", "赛前没有锁定口令，拍铃无口令可下",
+                "No command was locked before the match, so the bell has nothing to issue");
+            Add(map, "BellFailed_command_no_active_fighter", "场上没有可接令的选手，未消耗拍铃次数",
+                "No fighter can take the command; no bell use was consumed");
+            Add(map, "BellFailed_command_spec_missing", "锁定的口令已失效，未消耗拍铃次数",
+                "The locked command is no longer valid; no bell use was consumed");
+            Add(map, "BellFailed_command_signature_owner_absent", "招牌口令的持有者不在场上",
+                "The signature command's owner is not in the arena");
+            Add(map, "BellFailed_command_requires_relay", "该招牌口令要接力者上场后才能下",
+                "That signature command requires the relay fighter to enter first");
+            Add(map, "BellFailed_command_requires_enemy_count", "场上敌人数量不满足该口令的条件",
+                "The enemy count does not meet that command's condition");
+            // command_lock_empty 来自 LockCommand（锁盘时口令为空），与拍铃共用
+            // failureReasonId 通道，因此同样需要文案，避免回落到 Generic。
+            Add(map, "BellFailed_command_lock_empty", "没有选择要锁定的口令",
+                "No command was selected to lock");
+
             // 开局中止原因：AbortSetup 的 reasonId 是内部标识（不带 modeh_ 前缀），
             // 由 ModeHRuntimeModule.ResolveAbortMessageKey 归类到下面这几条，
             // 保证玩家被传回基地时永远看得到一句解释而不是静默（CR-2026-08-29-013）。

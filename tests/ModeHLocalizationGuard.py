@@ -118,6 +118,45 @@ def main():
         if ("State_" + state) not in injected:
             errors.append("[Missing] 缺少状态文案: " + PREFIX + "State_" + state)
 
+    # 拍铃失败原因：key 由 "BellFailed_" + failureReasonId 拼出，因此下面按
+    # ModeHCommandController.TryRingBell 里实际出现的 failureReasonId 反查注入，
+    # 而不是在 guard 里写死一份清单（写死会随代码新增原因而静默过期）。
+    command_controller = read_text(
+        os.path.join(MODEH_DIR, "ModeHCommandController.cs"))
+    if command_controller:
+        bell_reasons = sorted(set(re.findall(
+            r'failureReasonId\s*=\s*"([A-Za-z0-9_]+)"',
+            strip_cs_comments(command_controller))))
+        if not bell_reasons:
+            errors.append(
+                "[Source] 未能在 ModeHCommandController 中解析出 failureReasonId，"
+                "拍铃文案覆盖检查会失效")
+        for reason in bell_reasons:
+            if ("BellFailed_" + reason) not in injected:
+                errors.append(
+                    "[Missing] 拍铃失败原因缺少文案: " + PREFIX + "BellFailed_" + reason)
+
+        # GetBellFailureLocalizationKey 只对白名单内的 ID 拼具体 key，其余落 Generic。
+        # 白名单漏一条就会静默退化成通用文案，所以要求它与 failureReasonId 全集一致。
+        whitelist_body = re.search(
+            r"internal static bool IsLocalizedBellFailure\([\s\S]*?\n        \}",
+            strip_cs_comments(command_controller))
+        if not whitelist_body:
+            errors.append("[Source] 未找到 IsLocalizedBellFailure，拍铃文案会退化为通用提示")
+        else:
+            whitelisted = set(re.findall(
+                r'failureReasonId == "([A-Za-z0-9_]+)"', whitelist_body.group(0)))
+            for reason in bell_reasons:
+                if reason not in whitelisted:
+                    errors.append(
+                        "[Source] 拍铃失败原因未进 IsLocalizedBellFailure 白名单，"
+                        "会退化为通用文案: " + reason)
+            for reason in sorted(whitelisted - set(bell_reasons)):
+                errors.append(
+                    "[Source] IsLocalizedBellFailure 白名单含已不存在的原因: " + reason)
+        if "BellFailed_Generic" not in injected:
+            errors.append("[Missing] 缺少拍铃失败兜底文案: " + PREFIX + "BellFailed_Generic")
+
     # 选手与套装用带参 helper 注入，单独确认它们最终落到 Fighter_/Rumor_/Kit_ 前缀
     for helper, prefix in [("AddFighter", "Fighter_"), ("AddKit", "Kit_")]:
         body = re.search(
@@ -195,7 +234,8 @@ def main():
         "State_", "StakePhase_", "Fighter_", "Rumor_", "Kit_",
         "Unavailable_", "OddsTone_x", "Archetype_", "Temperament_",
         "Command_", "Anomaly_", "Injury_", "Scar_", "Recon_",
-        "Skeleton_", "Entry_", "EntryHint_", "Condition_")
+        "Skeleton_", "Entry_", "EntryHint_", "Condition_",
+        "BellFailed_")
     for suffix in sorted(used):
         if suffix in injected:
             continue

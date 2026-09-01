@@ -198,12 +198,6 @@ namespace BossRush
         /// <summary>HUD 刷新节流间隔（秒，4Hz）。</summary>
         internal const float HudRefreshIntervalSeconds = 0.25f;
 
-        /// <summary>
-        /// 归巢经验结算冷却（秒）。防止玩家在竞技场外其他场景（Raid）长时间滞留后
-        /// 回基地一次性获得大量经验。10s 足够隔离连续切场景的误触，同时不影响正常游戏节奏。
-        /// </summary>
-        internal const float HomecomingSettleCooldownSeconds = 10f;
-
         #endregion
 
         #region 存档 key（v1 冻结，只增不改）

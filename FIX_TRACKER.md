@@ -39,6 +39,101 @@
 ```
 
 ---
+### 2026-09-01 Mode H 拍铃与伤病系统整场静默失效 + PetNest 误修回滚
+
+**状态**: fixed
+**Finding**: 无（本轮全面审核发现，详见 `AUDIT_REPORT_2026-09-01_ModeH.md`）
+**兼容分类**: COMPAT（P0 AI 解析与距离休眠）+ SAFE（文案、guard、PetNest 回滚）
+**版本/Commit**: 本条目随当次提交入库
+**Owner decision**: 不需要
+
+#### 1. P0：`ResolveAi` 用根节点 `GetComponent`，返回值恒为 null
+
+**现象**: 拍铃 100% 失败，伤病/战痕窗口全部不生效。不崩溃、不报错，
+玩家看到的只是“按钮没反应”；510 个 guard 全绿也抓不到。
+
+**根因**: `ModeHCombatControl.ResolveAi` 原来调 `character.GetComponent<AICharacterController>()`。
+官方 `AICharacterController.Init`（`鸭科夫源码/.../AICharacterController.cs:75`）执行
+`this.transform.SetParent(characterMainControl.transform, false)`，AI 是**子对象**，
+根节点上取不到。`ModeHCommandController.cs:147` 与
+`ModeHInjuryAndScarSystem.cs:174` 都以 `_ai == null` 判空即拒，只走 DevLog。
+
+**修复内容**: 先读官方缓存字段 `aiCharacterController`，为空时回退
+`GetComponentInChildren<AICharacterController>(true)`。
+
+注意：`CharacterMainControl.aiCharacterController`（`CharacterMainControl.cs:3244`）是
+Inspector 序列化字段，**官方代码里没有任何地方为它赋值**
+（`DeathWraithCombatLoadout.cs:60` 是克隆 AI 后手动回填）。对 Mod 刷出的选手它大概率为空，
+因此 `GetComponentInChildren` 回退是**主路径而非冗余**，不要当多余分支删掉。
+已写入方法文档注释。
+
+#### 2. 拍铃失败无玩家可见反馈
+
+**根因**: `ModeHRuntimeModule_MatchFlow.cs` 拍铃被拒只写 DevLog。拍铃是整场比赛唯一的
+玩家干预手段且每场限一次，完全静默不可接受。
+
+**修复内容**: 新增 `ShowBellFailureMessage`，复用 `SceneFlow:569` 已有的
+`ShowMessage` + `L10n.T(key)` 模式；`ModeHCommandController` 新增
+`GetBellFailureLocalizationKey` / `IsLocalizedBellFailure`；九个失败 ID 全部注入中英文案。
+失败不消耗次数，文案统一提示可再试。
+
+#### 3. 选手被官方距离休眠静默关掉
+
+**根因**: 选手是 Mod 刷出的，仍在 `SetActiveByPlayerDistance` 登记下。观众席离擂台
+超过阈值时整场选手会被关掉，比赛冻在原地。
+
+**修复内容**: `ModeHSpawnBridge.TryActivate` 末尾接入现成的
+`SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep`（PetNest 同源）。放在激活之后，
+helper 的强制激活与擂台就位后的意图一致，不会和隔离期的故意 deactivate 打架。
+同文件 `TryPrepareForArena` 的 `GetComponentInChildren` 补上 `true`：该方法在隔离期调用、
+角色已 `SetActive(false)`，原重载取不到 AI，强制追踪玩家清不掉。
+
+#### 4. PetNest 归巢经验冷却：误修，已回滚
+
+**状态**: refuted（原“经验泄漏”不成立）
+
+`FIXES_2026-09-01.md` 里加的 10s 冷却是误修。归巢经验是每次固定
+`+PetExpHomecoming`，不随滞留时长累积，根本没有“久留后一次性暴涨”可堵；
+入口已由 `IsBaseLevel` 把关。而 `SettleRunHomecoming` 的**两条出口都调**
+`ResetRunKillBudget()`，冷却跳过它会把本局击杀预算静默漏到下一局——没堵住漏洞，
+反而耦合进一个新缺陷。已删除冷却逻辑与 `HomecomingSettleCooldownSeconds`（无 guard 引用），
+并在原处留注释说明为何不能加冷却。
+
+#### 5. guard 加固
+
+`tests/ModeHLocalizationGuard.py` 新增逐项检查：从源码提取 `failureReasonId` 全集，
+与文案、`IsLocalizedBellFailure` 白名单三方比对（双向：缺文案、未进白名单、
+白名单残留已删除 ID 都报错）。不写死清单，避免随代码新增原因而静默过期。
+
+**失败尝试**: 第一版检查是**空过**的——正则按 `internal` 匹配方法体（实际是
+`public`），且 reasonId 赋值在匹配体之外。改为类级提取后，**反向测试**（删一条白名单项）
+确认真的报 FAIL；修好后它当场抓出我自己漏掉的 `command_lock_empty`（来源
+`LockCommand`，与拍铃共用同一 `failureReasonId` 通道），已补文案。
+
+#### 旧审核文件不可信
+
+`AUDIT_2026-09-01.md` 声称 91 个 guard（实际 510），并引用了五个代码里不存在的符号
+（如图鉴 interactable 类，图鉴实为道具）。本轮结论全部直接取自源码。
+
+**修改文件**（无新增 `.cs`，编译清单无需改）:
+- `ModeH/ModeHCombatControl.cs`、`ModeH/ModeHCommandController.cs`
+- `ModeH/ModeHRuntimeModule_MatchFlow.cs`、`ModeH/ModeHSpawnBridge.cs`
+- `Localization/ModeHLocalization.cs`、`tests/ModeHLocalizationGuard.py`
+- `PetNest/PetNestRuntimeModule.cs`、`PetNest/PetNestTuning.cs`
+
+**兼容性影响**: 无存档 key 变更、无 TypeID 变更、无 Harmony 补丁变更、无资源路径变更。
+删除的 `HomecomingSettleCooldownSeconds` 是 `internal const`，无外部引用。
+
+**验证方法**:
+1. 编译: Windows `compile_official.bat` PASS（仅余既存无关的 `ModeHUIPages.cs(44,20)` CS0649）。
+2. Guard: `python tools/run_guards.py` PASS=510 / NEW-FAIL=0 / KNOWN-RED=0；
+   `tools/verify_syntax.py --with-bcl` PASS。新 guard 做过反向测试（确认能报 FAIL）。
+3. 人工 smoke: 未做（见下）。
+
+**未验证/需人工**: 按 AGENTS.md §4.2，WSL 不能断言运行时行为。下列需实机打一场确认：
+拍铃成功生效且失败时弹提示；伤病/战痕窗口实际生效；玩家远离擂台时选手不再被关掉。
+
+---
 ### 2026-09-01 编译错误 CS1631 + 语法探针的检测盲区 + 两组 CS0649
 
 **状态**: fixed

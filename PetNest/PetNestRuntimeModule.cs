@@ -26,7 +26,6 @@ namespace BossRush
         private bool _bootstrapped;
         private bool _baseMaintenancePending;
         private float _nextBaseMaintenanceTime;
-        private float _lastHomecomingSettleTime;
 
         #endregion
 
@@ -240,15 +239,12 @@ namespace BossRush
                 if (_baseMaintenancePending)
                 {
                     PetNestExpeditionService.ReconcileOrphanedExpeditionLocks();
-                    // 归巢经验结算加冷却，防止玩家在非竞技场其他场景（Raid）长时间滞留后
-                    // 回基地一次性获得大量经验。10s 冷却足够隔离连续切场景的误触。
-                    float now = UnityEngine.Time.unscaledTime;
-                    if (now - _lastHomecomingSettleTime >= PetNestTuning.HomecomingSettleCooldownSeconds)
-                    {
-                        PetNestProgressionService.SettleRunHomecoming(
-                            PetNestCompanionRuntime.ActiveCompanionPetId);
-                        _lastHomecomingSettleTime = now;
-                    }
+                    // 不要在这里加冷却：归巢经验是每次固定 +10（PetExpHomecoming），
+                    // 不随滞留时长累积，所以没有"久留后一次性暴涨"的泄漏可堵。
+                    // 而 SettleRunHomecoming 的两条出口都会调 ResetRunKillBudget()，
+                    // 跳过它会把本局击杀预算一起漏到下一局。入口已由 IsBaseLevel 把关。
+                    PetNestProgressionService.SettleRunHomecoming(
+                        PetNestCompanionRuntime.ActiveCompanionPetId);
                     PetNestService.RestoreDownedPetsOnReturnToBase();
                     PetNestCompanionRuntime.CleanupOnce();
                     PetNestExpeditionService.SettleDueExpeditions();
