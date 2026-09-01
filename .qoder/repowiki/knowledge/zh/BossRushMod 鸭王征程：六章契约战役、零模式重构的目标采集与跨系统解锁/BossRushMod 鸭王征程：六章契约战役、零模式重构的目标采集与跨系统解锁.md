@@ -181,3 +181,18 @@ Unity 侧构建器：`Assets/Editor/CampaignPresentationBundleBuilder.cs`。
 
 第一章无伤阈值与数据表统一为前 2 波，避免 Boss 池缩小时不可完成；第三章文案与实际采集口径
 统一为击败 8 名头目。终章祭坛只在 `ContractActive` 时出现，待交付阶段不会重复开战。
+
+## 9. 2026-08-31 章节 JSON 与终章验收
+
+正式章节来源新增 `Assets/Data/Campaign/Chapters.json`，内容与六章硬编码 fallback 完全一致。
+`CampaignContentCatalog` 对 version、六章顺序、模式、阈值、奖励、唯一 token/线索及终章位置做
+整表校验，任何错误整表 fallback，并公开 `Source` 与内容签名。构建脚本部署该 JSON；Dev F3
+只把 `Json + 六章 + 签名匹配` 判为通过，fallback 只承担灾备。
+
+首次实机 F3 发现 Unity `JsonUtility` 对该二级对象数组只填 version、把 chapters 静默留成 null，
+即使源文件与部署文件哈希完全一致也会 fallback。当前实现改为复用 Mode H 已在生产表使用的严格
+token parser（支持 BOM、严格数字/字符串/数组类型），再映射到只读章节模型；守卫禁止退回
+`JsonUtility.FromJson`。运行时复测必须报告 `source=Json`。
+
+终章冠军之影死亡表现由 Campaign 独占：幽灵女巫公共清理照常执行，但普通 Boss 的胜利文案与
+stinger 在终章受抑制，确保最终文案、`RunVictory` 与 stinger 各一次。

@@ -154,3 +154,26 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 入口物品使用官方精确标签 `NotSellable` 禁止倒卖；商店 `priceFactor=1`，按物品原始 4000 金
 定价，不再使用 `1/rawValue` 把价格压成 1 金。库存随官方 `OnCollectSaveData` 保存、
 `OnSetFile` 复位；商店尚未注入时保留已加载缓存，售罄状态不会被默认库存 1 覆盖。
+
+### 8.1 2026-09-01 补齐上架调用点（此前商店注入从未执行）
+
+上一轮只修了**定价与库存语义**，却漏了让注入真正跑起来的两个调用点，
+于是图鉴书在游戏里根本买不到，而 `ToggleCodexPanel` 的唯一调用点就是这本书的
+`UsageBehavior` —— 整个图鉴面板因此不可达。现已补齐：
+
+- `TryInjectCodexBookIntoShop` 加入 `TryInjectAllBossRushItemsIntoShop`
+  （覆盖「商店 Awake 晚于 Mod」的 Harmony 路径）；
+- `InjectCodexBookIntoShops` 加入 `IntegrationDeferredBootstrap`
+  （覆盖「场景已加载完再进基地」的补注入路径）。
+
+同时把 500061 登记进 `BossRushDynamicItemRegistry` 的 plans 表
+（`FallbackLoader` = `CodexBookConfig.EnsureRuntimeFallbackRegistrationShell`）。
+此前 shell 已写好但没登记，重启后玩家背包/仓库里的图鉴书会退化成官方
+`FallbackItem`（AGENTS 契约第 6 节）。词缀熔石 500060 同批补登记。
+
+## 9. 2026-08-31 官方预设池共享初始化
+
+图鉴与遗种巢共用 `EnsureEnemyPresetsReadyForGameplayCatalogs()`：至少一个消费者启用才触发，
+同一进程只做一次实际官方预设扫描。图鉴首次构建前必须先保证池就绪；Boss 过滤变化在同一
+咽喉点同时通知两方，已打开的图鉴立即重建，未打开时只失效缓存。Dev F3 会记录官方条目数、
+总分母、稳定键唯一性、过滤前后变化、目录 build 次数与预设 scan 次数。

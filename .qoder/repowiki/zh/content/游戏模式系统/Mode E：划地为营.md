@@ -370,6 +370,16 @@ Mode E 通过清晰的模块划分与稳健的会话/交易/缓存机制，实�
 
 [本节为总结，无需具体文件引用]
 
+## 角色预设与动态商店生命周期
+
+Mode E/F 为运行时角色克隆的 `CharacterRandomPreset` 由挂在角色对象上的 lease 持有，必须等角色
+本体 OnDestroy 链完成后再延迟释放。模式结束不再用 Hurt 触发死亡，而是先禁掉落、注销运行时追踪，
+再停用并销毁角色，避免 Health 或血条访问已失效 preset。
+
+分类 `StockShop` 在 inactive 子对象上创建，先以 `Merchant_Normal` 引导官方 Awake，同帧 Start 前
+切回稳定 `ModeE_*` ID，然后清空并填入分类库存。这样避免默认 `Albert` 的无效数据库查询，同时
+保持保存键、Mode E 贝壳交易 capability 与 fail-closed 身份回读契约。
+
 ## 附录
 - 战术建议：
   - 利用挑衅烟雾弹集中刷新 Boss，快速积累层数与经济收益。

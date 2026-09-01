@@ -181,3 +181,12 @@ F3 调试菜单提供三个按钮：**快进一天**（一个游戏日是 24 现
 仍会收到“新一期已送达”。`DailyReportUI.OnDestroy` 同时补回 `base.OnDestroy()`，确保 Fade/View 清理完整。
 
 `tests/DailyReportPersistenceGuard.py` 相应新增四条断言（槽位烙印、`EconomyManager.Add` 返回值、里程碑签到当日序列、空候选池不缓存）。
+
+## 9. 2026-08-31 候选提交与奖励债务
+
+签到、跨日、里程碑、种子、未读提示和补发路径统一改为“克隆候选 → `Store` → 成功后交换”。
+Store 拒绝时权威内存不变，调用方得到明确失败，UI 不得显示成功。跨日悬赏先把待发债务随
+rollover 落档，再发现金并以第二次候选提交标记领取，避免存档失败时提前宣告已发。
+
+Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存回读，并注入 Store 失败验证
+`PersistBlocked + 序列化状态不变`。

@@ -130,14 +130,28 @@ Dormant / Armed 状态每帧只有几次 bool 读 + 一次 float 累加；血月
 
 F3 调试菜单提供逐事件强制触发与立刻结束当前事件，是实机 smoke 的必备入口。
 
-## 8. 已知未完成项
+## 8. 实机状态与未完成项
 
-实机 smoke 未做。两项只能实机确认：竞技场是否存在 `WeatherManager.Instance`；
-零伤害 `CreateExplosion` 是否附带击退（若有则烟花改纯粒子）。
-关键回归项：乱入 Boss 在场时打死波次 Boss，波次应正常推进且乱入仍在。
+首次 F3 已在标准竞技场轮流调度八个事件，但旧 runner 每个仅等 0.35 秒并只看入口返回值：
+Boss 乱入五次预设解析均失败，最终仍误报 8/8 PASS；因此这次不能算功能通过。
+当前 runner 改为逐事件等待实际副作用并输出独立 case，完整复测待 owner 运行。
+
+仍只能实机确认的表现项：竞技场是否存在 `WeatherManager.Instance`；零伤害 `CreateExplosion`
+是否附带击退（若有则烟花改纯粒子）。关键回归项：乱入 Boss 在场时打死波次 Boss，
+波次应正常推进且乱入仍在。
 
 ## 9. 2026-08-31 限时商店修复
 
-商店对象先 inactive 创建，写完稳定 merchantID、刷新周期、启动刷新标志、刷新时间与全部条目后
-才激活触发 `StockShop.Awake`，避免 Awake 读取默认字段。弹药/医疗各 99 件、高品质彩头 1 件；
-每次新事件在 NPC 装配完成时补满一次并更新时间戳，同一 NPC 反复打开不重复补货。
+商店对象先 inactive 创建，用官方存在的 `Merchant_Normal` 引导 `StockShop.Awake`，避免数据库打印
+“未配置商人”；激活后的同一帧、`Start` 之前恢复稳定 Mod merchantID，再覆盖为事件库存。
+后续保存/读档订阅因此使用有界的稳定 Mod key。弹药/医疗各 99 件、高品质彩头 1 件；每次新事件
+只补满一次。动态商人的 Animator 若先于 `MagicBlending.Start` 进入状态，由共享兼容补丁有界推迟
+该次回调，初始化完成且仍在原状态时才重放。
+
+## 10. F3 实际副作用协议
+
+`RandomEventBase.GetValidationOutcome` 默认适用于同步事件；异步事件覆写后记录 requested、spawned、
+failed 与 completed。Boss/商人必须等实体和商店库存真实可用，空投等落地，声东击西/烟花等序列
+完成，金鸭雨/巡游等全部分帧生成回调。任一项 30 秒未收敛或生成数不符即 FAIL，随后先强制清理；
+只有清理安全才继续下一项。乱入桥调用 SpawnCore 前还会幂等初始化官方 preset cache，修复标准模式
+未经过 Mode D/Zombie 预热时“目录有 key、缓存无 preset”的空转。

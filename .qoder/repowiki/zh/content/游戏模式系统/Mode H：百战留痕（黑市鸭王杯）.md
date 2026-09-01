@@ -173,9 +173,35 @@ rewardCandidateCount = 1 + min(2, floor(max(0, net) / 2))
 
 ## 真实仓库抵押（§22）
 
-没有真实资产开关。当前正式可玩主线只启用虚拟筹码，`realStakeSelected` 固定为 false；
-真实仓库 journal 与恢复工具保留用于识别、保护历史未结事务，但新赛季不会创建新的真实押品。
-在完整实机验证 escrow 重建、满仓返还与 ManualIntervention 出口之前，不得把它当作“内容开关”强行放开。
+没有真实资产开关，可用性是**只读派生结果** `IsSlotConsistent`（§22.1 四条取值规则）。
+
+**2026-09-01 已接线**（owner 明确要求）。此前 `LoadPersisted` 没有任何调用点，
+`_slotConsistent` 恒为 false，整套抵押事务 API 与 `ModeHRewardTransaction` 全部零调用，
+但看盘页仍无条件显示「失败会永久没收」的风险提示——功能不存在却挂着恐吓文案。
+现在的实际形态：
+
+- 存档：新增 `ModeHStakeJournalPersistence`（独立 key `BossRush_ModeH_StakeJournal_v1`，
+  形态照 `ModeHProfilePersistence`）。该 key 必须同时能反序列化成
+  `ModeHStakeJournalHeaderDto`（`InitializeRiskForSlot` 的轻量风险扫描只读 header，
+  不许加载 Season/bundle/候选池）与完整 `ModeHStakeJournalDto`——header 是完整 DTO 的
+  字段子集，**增删 journal 字段时不得改动 header 的 7 个字段名**。
+- 落盘时机：**写盘是阶段推进的一部分**，`TryAdvancePhase` 内联 `RequestStakeJournalWrite`，
+  写失败整体回滚阶段。三个 `*Durable` 阶段的名字就是这个语义：内存说"已持久化"
+  而磁盘上没有，等于崩溃后无法证明玩家那件装备去了哪。
+- 编排：`ModeHRealStakeService` 是选择器与 journal 之间的唯一桥梁，自身不碰库存 API
+  （`ModeHIsolationGuard` 冻结「只有 journal 与 `ModeHInventoryPersistenceBridge`
+  可引用 `Inventory`/`PlayerStorage`」，选择器需要的只读查询已下沉进 bridge）。
+- 状态机：押了物品的那一场走冻结表为真实资产支路预留的
+  `LoadoutLocked → StakePrepared → MatchSpawning`；没押的主干仍是直连
+  （`ModeHStateMachineGuard` 冻结这一点）。
+- 数值：单场件数上限 `MaxRealStakeItemsPerMatch = 3`；最坏损失 = 全部押品（不暗中打折，
+  「唯一装备不豁免」）；胜利返还全部押品并按**原始整数倍率**发同品质奖励（x5 上限 = 5 件）。
+- 文案：风险提示改为仅在真能押时显示；禁用原因按 `slot_active_journal` /
+  `slot_manual_intervention` / `slot_storage_unavailable` 分因展示，
+  不再用一句「无法证明资产安全」让玩家以为存档坏了。
+
+⚠️ **仍待实机验证**：escrow 重建、满仓返还（`return_no_empty_slot`）与
+`ManualIntervention` 出口只能靠加载存档进基地实测，静态审计与 guard 无法覆盖。
 
 journal 阶段严格单向，`phase` 是唯一终态来源：
 
@@ -221,4 +247,6 @@ HUD 的选手名在备战时缓存，战斗每帧只消费缓存与数值，不�
 
 - 全部运行时结论（生成无副作用、AI 双向伤害、资源显示、存档物理落盘、无泄漏）
   只能由设计提案 §26.5 的 18 项实机 smoke 矩阵确认，静态守卫通过不等于运行时通过。
-- 真实仓库押品的新事务创建仍保持 fail-closed；虚拟筹码主线不受影响，可完整打完六场。
+- 真实仓库押品已于 2026-09-01 接线（见上文 §22 小节）。它仍是**自愿**支路：
+  不选押品时不创建 journal，虚拟筹码主线不受影响，可完整打完六场。
+  escrow 重建、满仓返还与 ManualIntervention 出口三条路径尚未实机验证。

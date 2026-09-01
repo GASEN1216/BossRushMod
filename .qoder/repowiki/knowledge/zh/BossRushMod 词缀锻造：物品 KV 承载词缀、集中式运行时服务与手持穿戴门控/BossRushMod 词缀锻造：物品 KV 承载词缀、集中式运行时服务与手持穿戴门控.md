@@ -31,6 +31,17 @@ source_files:
 入口是哥布林 NPC 的新子交互「词缀锻造」，复用现有重铸 UI 骨架，消耗新材料
 「词缀熔石」（TypeID 500060）+ 金钱。可锁定单个词缀槽后重随机。
 
+入口组件由 `GoblinReforgeInteractable.EnsureGroupedInteractionOptions` 与其余 6 个
+子交互一并 `AddSubInteractable`（子节点名 `AffixForgeOption`）。**这一行是 load-bearing**：
+2026-09-01 之前它缺失，导致组件从未被挂载、`ReforgeUIManager.OpenAffixForgeUI`
+（唯一开 UI 的入口）没有任何调用点，整个子系统对玩家完全不可达。
+
+熔石有两条产出线（游戏内 Wiki 承诺的口径）：
+哥布林商店（`GoblinAffinityConfig.GetShopItems`，好感度 2 级解锁、库存 5）
+与 Boss 掉落（`AffixForgeStoneDropService`，8%）。
+**注意熔石带 `Special` tag，因此不会进星愿许愿台奖池**（那条池子按 tag 排除 Special），
+旧 Wiki 曾写过「许愿台奖池」，已按实现更正。
+
 `affixForgeEnabled` 字段与旧键 `BossRush_AffixForgeEnabled` 仅兼容保留；系统现属恒开默认内容。
 关闭/卸载时隐藏入口且不激活行为的 dormant 契约仍保留，
 已附着在装备上的词缀数据**保留不丢**。
@@ -47,6 +58,7 @@ source_files:
 | `AffixRuntimeTicker.cs` | 每帧 tick 宿主，驱动死契流失 |
 | `AffixBuffFactory.cs` | 运行时构造 Buff（磐石 / 迅手 / 狂潮）并缓存 |
 | `AffixForgeStoneConfig.cs` | 熔石物品 500060（零 bundle，运行时克隆兜底） |
+| `AffixForgeStoneDropService.cs` | 熔石的 Boss 掉落轨（8%），并联挂在 `RegisterBossRandomLootTracking` 上，形态照 `PetNestDropService` |
 | `ReforgeUIManager_AffixForge*.cs` | `ForgeUIMode` 枚举与词缀模式 UI 差异 |
 | `AffixForgeHostCleanup.cs` | `partial ModBehaviour` 的具名销毁清理入口 |
 
