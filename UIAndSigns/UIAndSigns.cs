@@ -284,6 +284,7 @@ namespace BossRush
 
         private void ShowMessage_UIAndSigns(string msg)
         {
+            if (GameplayValidationSuppressNotifications) return;
             statusMessage = msg;
             messageTimer = 3f;
             DevLog("[BossRush] UI提示: " + msg);
@@ -431,6 +432,7 @@ namespace BossRush
         /// </summary>
         private void ShowBigBanner_UIAndSigns(string text)
         {
+            if (GameplayValidationSuppressNotifications) return;
             try
             {
                 string normalizedText = string.IsNullOrWhiteSpace(text) ? string.Empty : text.Trim();

@@ -570,6 +570,7 @@ namespace BossRush
                 return;
             }
 
+            _enemyPresetInitializationScanCount++;
             enemyPresets.Clear();;
 
             // 获取所有可能的敌人类型
@@ -639,20 +640,21 @@ namespace BossRush
             // [性能优化] 标记初始化完成，后续传送不再重复扫描
             _enemyPresetsInitialized = true;
 
-            // 遗种巢血脉目录是在 ModBehaviour.Start 建的，那时这张表还是空的。
-            // 池填满后必须让它重建一次，否则官方 Boss 全谱系都不在目录里（不掉蛋/不可孵/不可出战）。
+            // 遗种巢与图鉴目录都可能早于这张表构建。池填满后必须并联刷新，
+            // 否则官方 Boss 会从血脉目录或图鉴分母中缺失。
             try
             {
                 if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
+                if (CodexRuntime != null) CodexRuntime.NotifyEnemyPresetsRefreshed();
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 预设初始化后重建血脉目录失败: " + e.Message);
+                DevLog("[BossRush] 预设初始化后刷新玩法目录失败: " + e.Message);
             }
         }
 
         /// <summary>
-        /// 遗种巢专用：确保 Boss 预设池在**基地**就已填充。
+        /// 内容目录共用：确保 Boss 预设池在**基地**就已填充。
         ///
         /// 为什么必须有它（CR-2026-08-29-015）：InitializeEnemyPresets 的全部调用点都在
         /// 进竞技场路径与调试面板，基地启动一处都不触发；而血脉目录的资格口径正是这张池
@@ -664,10 +666,10 @@ namespace BossRush
         /// 自身的完整流程（它填完会回调 PetNestRuntime.NotifyEnemyPresetsRefreshed 重建目录，
         /// 因此这里不需要、也不应该再手动建一次目录）。
         ///
-        /// 门控在调用侧（AGENTS.md 4.12）：只有已 bootstrap（= 玩家开着遗种巢开关）
-        /// 的会话才会走到这里，没开开关的玩家一次也不会为它付出全量预设扫描的成本。
+        /// 门控在调用侧（AGENTS.md 4.12）：只有图鉴或遗种巢至少一个消费者已启用时
+        /// 才请求预热；池已填充后为 O(1) 早返，同一进程只做一次实际扫描。
         /// </summary>
-        internal bool EnsureEnemyPresetsReadyForPetNest()
+        internal bool EnsureEnemyPresetsReadyForGameplayCatalogs()
         {
             try
             {
@@ -690,9 +692,15 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] [WARNING] 基地侧 Boss 预设池预热失败: " + e.Message);
+                DevLog("[BossRush] [WARNING] 基地侧 Boss 预设池预热失败: " + e.Message);
                 return false;
             }
+        }
+
+        /// <summary>本宿主实例实际执行官方预设全量扫描的次数（F3 可靠性验收）。</summary>
+        internal int EnemyPresetInitializationScanCount
+        {
+            get { return _enemyPresetInitializationScanCount; }
         }
 
         /// <summary>

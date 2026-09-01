@@ -6,14 +6,14 @@ namespace BossRush
     {
         internal bool TickModeRuntimeGroup(float deltaTime, float unscaledDeltaTime)
         {
+            // 共享刷怪核心的分帧后处理并不只服务 Mode E/F：标准模式中的随机事件
+            // Boss 也会借用这条队列。必须在 WavesArena 的 early-return 之前推进，
+            // 否则标准模式下任务会永久停在 Queued，直到下一模式清空 scheduler。
+            TickModeEFSpawnPostprocessScheduler();
+
             if (TickWavesArenaRuntime(deltaTime))
             {
                 return true;
-            }
-
-            if (modeEActive || modeFActive)
-            {
-                TickModeEFSpawnPostprocessScheduler();
             }
 
             TickModeERuntime(deltaTime);

@@ -84,6 +84,11 @@ namespace BossRush
 
             foreach (var type in AccessTools.GetTypesFromAssembly(typeof(ModBehaviour).Assembly))
             {
+                if (!HasHarmonyPatchMetadata(type))
+                {
+                    continue;
+                }
+
                 try
                 {
                     var processor = harmony.CreateClassProcessor(type);
@@ -118,6 +123,45 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// Harmony 的 class processor 会把普通类型上名为 Cleanup 的方法误判为
+        /// Harmony cleanup 回调。PatchAll 内部虽遍历全程序集，但当前 Harmony 版本的
+        /// processor 对无补丁元数据类型并非安全 no-op，因此先做与声明元数据等价的门控。
+        /// 同时保留“类无特性、方法带 HarmonyPatch”的合法写法。
+        /// </summary>
+        private static bool HasHarmonyPatchMetadata(System.Type type)
+        {
+            if (type == null) return false;
+
+            try
+            {
+                if (type.GetCustomAttributes(typeof(HarmonyPatch), true).Length > 0)
+                {
+                    return true;
+                }
+
+                var methods = type.GetMethods(
+                    System.Reflection.BindingFlags.Public
+                    | System.Reflection.BindingFlags.NonPublic
+                    | System.Reflection.BindingFlags.Static
+                    | System.Reflection.BindingFlags.Instance
+                    | System.Reflection.BindingFlags.DeclaredOnly);
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    if (methods[i].GetCustomAttributes(typeof(HarmonyPatch), true).Length > 0)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] Harmony 元数据检查失败: " + type.FullName + ": " + e.Message);
+            }
+
+            return false;
+        }
+
         internal void InitializeAlwaysOnRuntime()
         {
             try
@@ -127,6 +171,15 @@ namespace BossRush
             catch (System.Exception e)
             {
                 DevLog("[BossRush] [WARNING] WishFountainService initialization exception: " + e.Message);
+            }
+
+            try
+            {
+                AffixRuntimeService.EnsureRuntime();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] AffixRuntimeService initialization exception: " + e.Message);
             }
 
             // UI 皮肤必须在**任何面板创建之前**注入：ApplyPanelSkin 只在创建时赋一次
@@ -211,6 +264,17 @@ namespace BossRush
             catch (System.Exception e)
             {
                 DevLog("[BossRush] [WARNING] EntityModelFactory 卸载异常: " + e.Message);
+            }
+
+            try
+            {
+                // MagicBlend 兼容补丁的两张热路径短路表。补丁本身随程序集常驻，
+                // 因此清理挂在 always-on 层，与它的生命周期一致。
+                BossRush.Patches.Compatibility.MagicBlendInitializationOrderPatch.ResetStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] MagicBlend 兼容补丁缓存清理异常: " + e.Message);
             }
 
             try
