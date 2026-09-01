@@ -8,5 +8,3 @@
 #   - 新写的 guard 不许进这里，新代码默认不进白名单（见 tests/AGENTS.md）。
 #   - 修好之后必须从本文件删除；runner 会把「基线里登记但已转绿」报为 STALE-BASELINE 并判失败，
 #     避免基线越积越多、掩盖真实回归。
-
-DragonKingBossGunRocketSplitGuard.py | 既有红项，c36e011 之前即为红，与后续改动无关；见 FIX_TRACKER
