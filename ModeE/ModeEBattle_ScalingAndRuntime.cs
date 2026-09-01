@@ -605,16 +605,6 @@ namespace BossRush
                 }
                 catch {}
 
-                // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
-                try
-                {
-                    if (enemy.characterPreset != null)
-                    {
-                        UnityEngine.Object.Destroy(enemy.characterPreset);
-                    }
-                }
-                catch { }
-
                 // 从所有运行时注册表移除，避免事件/列表/虚拟 spawner root 持续膨胀
                 CleanupModeEEnemyRuntimeState(enemy, enemyFaction);
 

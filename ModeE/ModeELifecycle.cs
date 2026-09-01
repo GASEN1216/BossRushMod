@@ -87,7 +87,7 @@ namespace BossRush
                 CleanupModeEPlayerNameTag();
                 ResetModeEUiCaches();
 
-                // 清理所有存活的 Mode E 敌人（优先使用游戏API触发正常死亡流程）
+                // 清理所有存活的 Mode E 敌人（模式已结束，直接撤销运行时注册并销毁）
                 // [L4修复] 清理前先阻止所有敌人掉落战利品箱子，防止模式结束时友军Boss掉落一堆箱子
                 modeEEndCleanupEnemyScratch.Clear();
                 for (int i = 0; i < modeEAliveEnemies.Count; i++)
@@ -112,36 +112,16 @@ namespace BossRush
                                 DevLog("[ModeE] [WARNING] 结束模式时读取敌人阵营失败: index=" + i + ", " + e.Message);
                             }
 
-                            CleanupModeEEnemyRuntimeState(enemy, enemyFaction);
-
-                            // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
-                            try
-                            {
-                                if (enemy.characterPreset != null)
-                                {
-                                    UnityEngine.Object.Destroy(enemy.characterPreset);
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                DevLog("[ModeE] [WARNING] 结束模式时销毁敌人 characterPreset 失败: index=" + i + ", " + e.Message);
-                            }
-
                             // 阻止掉落战利品箱子（模式结束清理，不应产生掉落物）
                             enemy.dropBoxOnDead = false;
 
-                            // 使用 Health.Hurt() 造成致命伤害，触发正常死亡流程（动画等）
-                            Health health = enemy.Health;
-                            if (health != null && !health.IsDead)
+                            CleanupModeEEnemyRuntimeState(enemy, enemyFaction);
+
+                            // 模式已经结束且死亡回调已退订，直接停用并销毁最可靠；
+                            // 预设由 ModeECharacterPresetLease 在角色销毁后延迟释放。
+                            if (enemy.gameObject != null)
                             {
-                                DamageInfo dmgInfo = new DamageInfo();
-                                dmgInfo.damageValue = health.MaxHealth * 10f;
-                                dmgInfo.ignoreArmor = true;
-                                health.Hurt(dmgInfo);
-                            }
-                            else
-                            {
-                                // Health 不可用时回退到直接销毁
+                                enemy.gameObject.SetActive(false);
                                 UnityEngine.Object.Destroy(enemy.gameObject);
                             }
                         }

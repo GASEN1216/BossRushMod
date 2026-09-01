@@ -43,19 +43,6 @@ namespace BossRush
 
                     if (enemy == null || enemy.gameObject == null || enemy.Health == null || enemy.Health.IsDead)
                     {
-                        // 销毁克隆的 characterPreset，防止 ScriptableObject 泄漏
-                        try
-                        {
-                            if (enemy != null && enemy.characterPreset != null)
-                            {
-                                UnityEngine.Object.Destroy(enemy.characterPreset);
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            DevLog("[ModeE] [WARNING] 自检时销毁敌人 characterPreset 失败: index=" + i + ", " + e.Message);
-                        }
-
                         // 从虚拟 SpawnerRoot 移除
                         UnregisterModeEEnemyFromSpawnerRoot(enemy);
 

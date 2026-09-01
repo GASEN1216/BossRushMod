@@ -679,6 +679,13 @@ namespace BossRush
                         customPreset.showHealthBar = true;
                     }
                     character.characterPreset = customPreset;
+                    ModeECharacterPresetLease presetLease =
+                        character.gameObject.GetComponent<ModeECharacterPresetLease>();
+                    if (presetLease == null)
+                    {
+                        presetLease = character.gameObject.AddComponent<ModeECharacterPresetLease>();
+                    }
+                    presetLease.Assign(customPreset);
                     DevLog("[ModeE] 已克隆预设并设置 aiCombatFactor=1"
                         + ((promotedToBoss || isModeFRun) ? ", showName=true" : "")
                         + ": " + ctx.preset.displayName);
@@ -846,5 +853,34 @@ namespace BossRush
 
 
         #endregion
+    }
+
+    /// <summary>
+    /// Mode E/F 运行时克隆预设的对象级租约。预设必须活到角色本体完成销毁，
+    /// 否则 Health、血条或 OnDestroy 链仍可能读取已经失效的 characterPreset。
+    /// </summary>
+    internal sealed class ModeECharacterPresetLease : MonoBehaviour
+    {
+        private CharacterRandomPreset _ownedPreset;
+
+        internal void Assign(CharacterRandomPreset preset)
+        {
+            if (_ownedPreset != null && _ownedPreset != preset)
+            {
+                UnityEngine.Object.Destroy(_ownedPreset, 0.05f);
+            }
+            _ownedPreset = preset;
+        }
+
+        private void OnDestroy()
+        {
+            CharacterRandomPreset preset = _ownedPreset;
+            _ownedPreset = null;
+            if (preset != null)
+            {
+                // 延迟到角色所有 OnDestroy 回调结束后再释放 ScriptableObject。
+                UnityEngine.Object.Destroy(preset, 0.05f);
+            }
+        }
     }
 }

@@ -38,6 +38,9 @@ namespace BossRush
         /// <summary>Mode E 神秘商人各分类商店列表（清理用）</summary>
         private List<StockShop> modeEMerchantShops = new List<StockShop>();
 
+        /// <summary>仅用于让动态 StockShop.Awake 通过官方商人资料初始化。</summary>
+        private const string ModeEMerchantAwakeBootstrapId = "Merchant_Normal";
+
         /// <summary>Mode E 医疗品商店需排除的原版物品 TypeID</summary>
         private static readonly HashSet<int> modeEMedicalShopExcludedIds = new HashSet<int>
         {
@@ -299,6 +302,44 @@ namespace BossRush
             }
         }
 
+        /// <summary>以官方 ID 引导动态 StockShop.Awake，再于 Start 前恢复稳定 ID。</summary>
+        private StockShop CreateConfiguredModeEMerchantShop(GameObject shopObject,
+            string stableMerchantId)
+        {
+            if (shopObject == null || string.IsNullOrEmpty(stableMerchantId)) return null;
+            try
+            {
+                shopObject.SetActive(false);
+                StockShop shop = shopObject.AddComponent<StockShop>();
+                if (!TryConfigureModeEMerchantShopIdentity(
+                        shop, ModeEMerchantAwakeBootstrapId, true))
+                {
+                    UnityEngine.Object.Destroy(shopObject);
+                    return null;
+                }
+                shopObject.SetActive(true);
+                if (!TryConfigureModeEMerchantShopIdentity(shop, stableMerchantId, true))
+                {
+                    shopObject.SetActive(false);
+                    UnityEngine.Object.Destroy(shopObject);
+                    return null;
+                }
+                return shop;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 动态分类商店初始化失败: "
+                    + stableMerchantId + ", " + e.Message);
+                try {
+                    shopObject.SetActive(false);
+                    UnityEngine.Object.Destroy(shopObject);
+                } catch (Exception cleanupException) {
+                    DevLog("[ModeE] [WARNING] 动态分类商店失败清理异常: " + cleanupException.Message);
+                }
+                return null;
+            }
+        }
+
         /// <summary>
         /// 找到商人原有的 InteractableBase，保留原版交互但修改其显示名称为"召唤煤球"，
         /// 并注入每个物品分类的独立商店交互选项。
@@ -438,8 +479,14 @@ namespace BossRush
                     shopObj.transform.localRotation = Quaternion.identity;
                     shopObj.transform.localScale = Vector3.one;
 
-                    // 创建 StockShop 组件
-                    StockShop shop = shopObj.AddComponent<StockShop>();
+                    // 创建 StockShop 组件：先以官方 ID 引导 Awake，再切回稳定分类 ID。
+                    StockShop shop = CreateConfiguredModeEMerchantShop(
+                        shopObj, "ModeE_" + suffix);
+                    if (shop == null)
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "shop identity/bootstrap failed");
+                        return;
+                    }
                     if (shellMode)
                     {
                         if (!RegisterModeEShellMerchantShop(shop))
@@ -452,16 +499,6 @@ namespace BossRush
                     else
                     {
                         modeEMerchantShops.Add(shop);
-                    }
-
-                    // merchantID 决定 Bullet 满堆规则，accountAvaliable 保留出售到账户语义。
-                    if (!TryConfigureModeEMerchantShopIdentity(
-                            shop,
-                            "ModeE_" + suffix,
-                            shellMode))
-                    {
-                        FailModeEShellMerchantBuild(npcGo, "merchant identity contract failed");
-                        return;
                     }
 
                     // 填充商品（子弹原价，其余 ×10）
@@ -512,7 +549,13 @@ namespace BossRush
                     otherShopObj.transform.localRotation = Quaternion.identity;
                     otherShopObj.transform.localScale = Vector3.one;
 
-                    StockShop otherShop = otherShopObj.AddComponent<StockShop>();
+                    StockShop otherShop = CreateConfiguredModeEMerchantShop(
+                        otherShopObj, "ModeE_Other");
+                    if (otherShop == null)
+                    {
+                        FailModeEShellMerchantBuild(npcGo, "other shop identity/bootstrap failed");
+                        return;
+                    }
                     if (shellMode)
                     {
                         if (!RegisterModeEShellMerchantShop(otherShop))
@@ -525,15 +568,6 @@ namespace BossRush
                     else
                     {
                         modeEMerchantShops.Add(otherShop);
-                    }
-
-                    if (!TryConfigureModeEMerchantShopIdentity(
-                            otherShop,
-                            "ModeE_Other",
-                            shellMode))
-                    {
-                        FailModeEShellMerchantBuild(npcGo, "other shop identity contract failed");
-                        return;
                     }
 
                     // 填充商品（ID=388，原价）
