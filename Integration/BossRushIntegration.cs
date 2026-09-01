@@ -432,6 +432,9 @@ namespace BossRush
             injectedCount += FactionFlagConfig.TryInjectIntoShop(shop);
             if (BloodhuntTransponderConfig.TryInjectIntoShop(shop, this)) injectedCount++;
             if (FateEchoRelicConfig.TryInjectIntoShop(shop, this)) injectedCount++;
+            // 鸭皇图鉴：面板的唯一入口就是这本书，漏了这行整个图鉴系统买不到也打不开。
+            // 内部自带基地普通商人判定与开关 dormant 早返。
+            if (TryInjectCodexBookIntoShop(shop)) injectedCount++;
             return injectedCount;
         }
 

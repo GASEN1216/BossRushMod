@@ -251,6 +251,7 @@ namespace BossRush
 
             // [性能优化] 重置敌人预设初始化标记，下次加载Mod时重新扫描
             _enemyPresetsInitialized = false;
+            _enemyPresetInitializationScanCount = 0;
 
             DevLog("[BossRush] Boss Rush Mod已卸载");
         }

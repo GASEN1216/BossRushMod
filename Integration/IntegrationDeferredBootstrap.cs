@@ -253,6 +253,9 @@ namespace BossRush
             }
             yield return RunDeferredStep_Integration("BloodhuntTransponderConfig.InjectIntoShops", () => BloodhuntTransponderConfig.InjectIntoShops(sceneName));
             yield return RunDeferredStep_Integration("FateEchoRelicConfig.InjectIntoShops", () => FateEchoRelicConfig.InjectIntoShops(sceneName));
+            // 图鉴：Harmony 的 BaseHubShopAwakePatch 只覆盖「商店 Awake 晚于 Mod」的情况，
+            // 场景已加载完再进基地时要靠这一步补注入（与上面几个 InjectIntoShops 同理）。
+            yield return RunDeferredStep_Integration("InjectCodexBookIntoShops", () => InjectCodexBookIntoShops(sceneName));
 
             StartCoroutine(DelayedBirthdayCakeGift());
             yield return null;
