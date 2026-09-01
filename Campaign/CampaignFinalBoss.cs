@@ -60,6 +60,7 @@ namespace BossRush
         private static readonly int CampaignBossColorProperty = Shader.PropertyToID("_Color");
         private static readonly int CampaignBossTintColorProperty = Shader.PropertyToID("_TintColor");
         private static readonly int CampaignBossBaseColorProperty = Shader.PropertyToID("_BaseColor");
+        private int campaignFinalBossDeathPresentationCount;
 
         #endregion
 
@@ -67,6 +68,8 @@ namespace BossRush
 
         /// <summary>决战是否进行中。</summary>
         internal bool IsCampaignFinalBossActive { get { return campaignFinalBossActive; } }
+        internal int CampaignFinalBossDeathPresentationCount { get { return campaignFinalBossDeathPresentationCount; } }
+        internal CharacterMainControl CampaignFinalBossInstanceForValidation { get { return campaignFinalBossInstance; } }
 
         #endregion
 
@@ -309,6 +312,17 @@ namespace BossRush
             }
         }
 
+        internal bool DebugStartCampaignFinalBossForValidation()
+        {
+            if (!DevModeEnabled || campaignFinalBossActive || !IsCampaignArenaSceneCached()) return false;
+            campaignFinalBossDeathPresentationCount = 0;
+            campaignFinalBossActive = true;
+            campaignFinalBossSpawnResolved = false;
+            int runId = ++campaignFinalBossRunId;
+            StartCampaignFinalBossAsync(runId).Forget();
+            return true;
+        }
+
         private async UniTask StartCampaignFinalBossAsync(int runId)
         {
             try
@@ -319,7 +333,8 @@ namespace BossRush
 
                 // notifyBossRushOnFailure:false —— 失败不能去通知标准竞技场流程，
                 // 那会在没有波次的情况下推进它的状态机
-                CharacterMainControl boss = await SpawnPhantomWitch(position, false);
+                CharacterMainControl boss = await SpawnPhantomWitch(
+                    position, false, false, PhantomWitchDeathPresentation.CampaignFinal);
 
                 // 生成是异步的：等待期间玩家可能已经切场景、死亡或开了别的模式，
                 // 那一场已经被收尾过了。此时绝不能把 Boss 认领回来——
@@ -358,7 +373,6 @@ namespace BossRush
                     boss.Health.OnDeadEvent.AddListener(OnCampaignFinalBossDead);
                 }
 
-                BossRushAudioManager.Instance?.PlayBossBGM(BossBgmKeys.PhantomWitch);
             }
             catch (Exception e)
             {
@@ -475,13 +489,18 @@ namespace BossRush
         /// <summary>决战 Boss 死亡：上报目标并收尾。</summary>
         private void OnCampaignFinalBossDead(DamageInfo damageInfo)
         {
+            // 同一帧的重复死亡回调只允许第一个取得表现 owner。
+            if (!campaignFinalBossActive) return;
+            campaignFinalBossActive = false;
+            campaignFinalBossDeathPresentationCount++;
             try
             {
                 DevLog(CampaignTuning.LogPrefix + "冠军之影已被击败");
                 ShowMessage(L10n.T("冠军之影已被击败", "The Shadow of the Champion has fallen"));
 
                 CampaignObjectiveTracker.ReportFinalBossKill();
-                BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch);
+                BossRushAudioManager.Instance?.StopBossBGM(
+                    BossBgmKeys.PhantomWitch, campaignFinalBossInstance);
                 BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.RunVictory);
             }
             catch (Exception e)
@@ -562,7 +581,8 @@ namespace BossRush
                         {
                             ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 清理终章决战失败: " + e.Message);
                         }
-                        BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.PhantomWitch);
+                        BossRushAudioManager.Instance?.StopBossBGM(
+                            BossBgmKeys.PhantomWitch, campaignFinalBossInstance);
                     }
                 }
             }

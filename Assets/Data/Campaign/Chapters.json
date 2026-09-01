@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "chapters": [
+    {
+      "chapterId": "ch1",
+      "order": 1,
+      "mode": "standard",
+      "titleCN": "擂台旧影",
+      "titleEN": "Echoes of the Ring",
+      "objectives": [
+        { "type": "standard_clear", "threshold": 1, "descCN": "通关一局标准竞技场", "descEN": "Clear one standard arena run" },
+        { "type": "no_damage_until_wave", "threshold": 2, "descCN": "前 2 波一滴血不掉", "descEN": "Take zero damage through wave 2" }
+      ],
+      "rewardCash": 20000,
+      "facilityToken": "BossRush_Campaign_Unlock_Ch1",
+      "clueId": "clue_ch1"
+    },
+    {
+      "chapterId": "ch2",
+      "order": 2,
+      "mode": "modeD",
+      "titleCN": "白手起家的誓言",
+      "titleEN": "Vow of the Empty-Handed",
+      "objectives": [
+        { "type": "reach_wave", "threshold": 5, "descCN": "裸装打到第 5 波", "descEN": "Reach wave 5 from nothing" },
+        { "type": "melee_kills", "threshold": 5, "descCN": "近战送走 5 个", "descEN": "Put down 5 with melee" }
+      ],
+      "rewardCash": 35000,
+      "facilityToken": "BossRush_Campaign_Unlock_Ch2",
+      "clueId": "clue_ch2"
+    },
+    {
+      "chapterId": "ch3",
+      "order": 3,
+      "mode": "modeE",
+      "titleCN": "立旗为界",
+      "titleEN": "Planting the Banner",
+      "objectives": [
+        { "type": "faction_boss_kills", "threshold": 8, "descCN": "击败 8 名头目", "descEN": "Defeat 8 bosses" },
+        { "type": "survive_minutes", "threshold": 10, "descCN": "在场上撑满 10 分钟", "descEN": "Stay on the field a full 10 minutes" }
+      ],
+      "rewardCash": 50000,
+      "facilityToken": "BossRush_Campaign_Unlock_Ch3",
+      "clueId": "clue_ch3"
+    },
+    {
+      "chapterId": "ch4",
+      "order": 4,
+      "mode": "modeF",
+      "titleCN": "猎杀名单",
+      "titleEN": "The Kill List",
+      "objectives": [
+        { "type": "bounty_kills", "threshold": 3, "descCN": "拿下 3 个带悬赏印记的", "descEN": "Take down 3 marked for bounty" },
+        { "type": "mode_extract", "threshold": 1, "descCN": "成功撤离", "descEN": "Extract successfully" }
+      ],
+      "rewardCash": 75000,
+      "facilityToken": "BossRush_Campaign_Unlock_Ch4",
+      "clueId": "clue_ch4"
+    },
+    {
+      "chapterId": "ch5",
+      "order": 5,
+      "mode": "zombie",
+      "titleCN": "末日信标",
+      "titleEN": "The Last Beacon",
+      "objectives": [
+        { "type": "reach_wave", "threshold": 4, "descCN": "在尸潮里熬到第 4 波", "descEN": "Ride the tide to wave 4" },
+        { "type": "mode_extract", "threshold": 1, "descCN": "成功撤离", "descEN": "Extract successfully" }
+      ],
+      "rewardCash": 100000,
+      "facilityToken": "BossRush_Campaign_Unlock_Ch5",
+      "clueId": "clue_ch5"
+    },
+    {
+      "chapterId": "ch6",
+      "order": 6,
+      "mode": "final",
+      "titleCN": "冠军之影",
+      "titleEN": "Shadow of the Champion",
+      "objectives": [
+        { "type": "final_boss_kill", "threshold": 1, "descCN": "打赢冠军之影", "descEN": "Beat the Shadow of the Champion" }
+      ],
+      "rewardCash": 200000,
+      "facilityToken": "BossRush_Campaign_Unlock_Ch6",
+      "clueId": "clue_ch6"
+    }
+  ]
+}

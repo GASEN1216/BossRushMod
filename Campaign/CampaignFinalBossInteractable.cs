@@ -12,6 +12,7 @@
 // ============================================================================
 
 using System;
+using BossRush.Utils;
 using UnityEngine;
 
 namespace BossRush
@@ -30,6 +31,7 @@ namespace BossRush
             {
                 this.interactCollider = GetComponent<Collider>();
                 this.interactMarkerOffset = new Vector3(0f, 1.2f, 0f);
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CampaignFinalBoss]");
             }
             catch (Exception e)
             {
