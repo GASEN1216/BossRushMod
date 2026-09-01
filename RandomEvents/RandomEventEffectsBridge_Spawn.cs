@@ -2,7 +2,8 @@
 // RandomEventEffectsBridge_Spawn.cs — 随机事件桥（E3 乱入 Boss / E8 鸭群巡游 / E4 神秘商人）
 // ============================================================================
 // 模块职责：
-//   三类生成物统一收口。全部走既有基建，零新增 Harmony patch、零新增反射绑定策略。
+//   三类生成物统一收口。全部走既有生成基建；动态官方角色的 MagicBlend 首帧竞态
+//   由 Patches/Compatibility 共享层处理，本桥不拥有专属 Harmony patch。
 //
 // 波次隔离（本文件最危险的部分，改动前先读 tests/RandomEventsWaveIsolationGuard.py）：
 //   乱入 Boss **绝不写入任何波次容器、绝不参与推波计数**。它只做三件事：
@@ -23,6 +24,7 @@
 
 using System;
 using System.Collections.Generic;
+using BossRush.Utils;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Cysharp.Threading.Tasks;
@@ -80,6 +82,11 @@ namespace BossRush
         {
             try
             {
+                // 标准 BossRush 不经过 Mode D/E/Zombie 的预设缓存初始化路径。
+                // 事件目录拿到的是稳定 nameKey，SpawnCore 随后仍要从该缓存解析官方 preset；
+                // 未在这里准备会出现“目录有条目但实体查找失败”的实机空转。
+                EnsureCharacterPresetsCacheReady();
+
                 // options 一律不传（= null = 完整 Legacy 行为）：自动吃当局变异词条与
                 // Boss 掉落追踪，与在场敌人口径一致。
                 EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
@@ -232,15 +239,18 @@ namespace BossRush
             Vector3 forward,
             int count,
             Func<bool> isStillValid,
-            Action<CharacterMainControl> onSpawned)
+            Action<CharacterMainControl> onSpawned,
+            Action<int, int> onCompleted)
         {
             try
             {
-                SpawnRandomEventParadeDucksAsync(startPos, forward, count, isStillValid, onSpawned).Forget();
+                SpawnRandomEventParadeDucksAsync(
+                    startPos, forward, count, isStillValid, onSpawned, onCompleted).Forget();
             }
             catch (Exception e)
             {
                 DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 鸭群巡游调度失败: " + e.Message);
+                InvokeRandomEventSpawnCompletion(onCompleted, Mathf.Max(0, count), 0, "鸭群巡游");
             }
         }
 
@@ -249,8 +259,11 @@ namespace BossRush
             Vector3 forward,
             int count,
             Func<bool> isStillValid,
-            Action<CharacterMainControl> onSpawned)
+            Action<CharacterMainControl> onSpawned,
+            Action<int, int> onCompleted)
         {
+            int requested = Mathf.Max(0, count);
+            int spawned = 0;
             try
             {
                 SpawnEgg behavior = null;
@@ -335,12 +348,32 @@ namespace BossRush
                         }
                     }
 
+                    spawned++;
+
                     await UniTask.Yield();
                 }
             }
             catch (Exception e)
             {
                 DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 鸭群巡游生成异常: " + e.Message);
+            }
+            finally
+            {
+                InvokeRandomEventSpawnCompletion(onCompleted, requested, spawned, "鸭群巡游");
+            }
+        }
+
+        private static void InvokeRandomEventSpawnCompletion(
+            Action<int, int> callback,
+            int requested,
+            int spawned,
+            string label)
+        {
+            if (callback == null) return;
+            try { callback(requested, spawned); }
+            catch (Exception e)
+            {
+                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] " + label + "完成回调失败: " + e.Message);
             }
         }
 
@@ -423,6 +456,7 @@ namespace BossRush
 
                 try { character.SetTeam(Teams.player); } catch (Exception) { }
                 try { SetModeEMerchantHealth(character); } catch (Exception) { }
+                try { character.gameObject.name = "RndEvt_Merchant"; } catch (Exception) { }
 
                 StockShop shop = BuildRandomEventMerchantShop(character.gameObject);
                 if (shop == null)
@@ -501,13 +535,14 @@ namespace BossRush
 
                 StockShop shop = shopObj.AddComponent<StockShop>();
 
-                // merchantID 必须是稳定常量：StockShop 会写一条 "StockShop_<merchantID>"
-                // 官方存档键，拼时间戳会让存档无界膨胀。
+                // StockShop.Awake 会先查官方 MerchantDatabase。先给它一个存在的引导 ID，
+                // 激活完成后在同一帧 Start 之前换回稳定 Mod ID，避免无意义的官方错误日志。
                 try
                 {
                     System.Reflection.FieldInfo merchantField = BossRushEagerReflectionCache.StockShop_MerchantID;
                     System.Reflection.FieldInfo accountField = BossRushEagerReflectionCache.StockShop_AccountAvaliable;
-                    if (merchantField != null) merchantField.SetValue(shop, RandomEventsTuning.MerchantIdConstant);
+                    if (merchantField == null) throw new InvalidOperationException("StockShop.merchantID field unavailable");
+                    merchantField.SetValue(shop, RandomEventsTuning.MerchantAwakeBootstrapId);
                     if (accountField != null) accountField.SetValue(shop, true);
                     if (BossRushEagerReflectionCache.StockShop_RefreshAfterTimeSpan != null)
                     {
@@ -527,14 +562,7 @@ namespace BossRush
                 catch (Exception e)
                 {
                     DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店身份设置失败: " + e.Message);
-                }
-
-                shop.entries = new List<StockShop.Entry>();
-                int filled = FillRandomEventMerchantEntries(shop);
-                if (filled == 0)
-                {
-                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店无可售商品，放弃生成");
-                    try { UnityEngine.Object.Destroy(shopObj); } catch (Exception) { }
+                    UnityEngine.Object.Destroy(shopObj);
                     return null;
                 }
 
@@ -568,10 +596,28 @@ namespace BossRush
                 }
 
                 shopObj.SetActive(true);
-                // Awake 可能按稳定 merchantID 恢复了上一次事件商人的库存。每次新事件只在
-                // NPC 装配完成这一刻补一批；同一 NPC 后续重复打开不会再次执行这里。
+                // 激活已同步执行 StockShop.Awake；Unity 的 Start 要到本帧稍后才执行。
+                // 在这个窗口恢复稳定 ID，并用事件库存覆盖引导商人的官方条目。
                 try
                 {
+                    System.Reflection.FieldInfo merchantField = BossRushEagerReflectionCache.StockShop_MerchantID;
+                    if (merchantField == null)
+                    {
+                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人稳定身份字段不可用，放弃生成");
+                        UnityEngine.Object.Destroy(shopObj);
+                        return null;
+                    }
+                    merchantField.SetValue(shop, RandomEventsTuning.MerchantIdConstant);
+
+                    shop.entries = new List<StockShop.Entry>();
+                    int filled = FillRandomEventMerchantEntries(shop);
+                    if (filled == 0)
+                    {
+                        DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人商店无可售商品，放弃生成");
+                        UnityEngine.Object.Destroy(shopObj);
+                        return null;
+                    }
+
                     if (shop.entries != null)
                     {
                         for (int i = 0; i < shop.entries.Count; i++)
@@ -591,6 +637,8 @@ namespace BossRush
                 catch (Exception e)
                 {
                     DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 商人初始库存复位失败: " + e.Message);
+                    UnityEngine.Object.Destroy(shopObj);
+                    return null;
                 }
                 return shop;
             }
@@ -804,6 +852,12 @@ namespace BossRush
                 {
                     this._overrideInteractNameKey = _displayNameKey;
                 }
+            }
+            catch (Exception) { }
+
+            try
+            {
+                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[RandomEventMerchantShop]");
             }
             catch (Exception) { }
 

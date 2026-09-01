@@ -63,12 +63,12 @@ namespace BossRush
         #region 权重（与 RandomEventId 一一对应；<= 0 表示不入池）
 
         internal const float WeightAirdropSupply = 30f;
-        internal const float WeightBloodMoon = 20f;
+        internal const float WeightBloodMoon = 15f;         // 降低惩罚性事件频率（原 20f）
         internal const float WeightBossIntrusion = 18f;
         internal const float WeightWanderingMerchant = 15f;
         internal const float WeightFeint = 12f;
         internal const float WeightFireworks = 10f;
-        internal const float WeightGoldenDuckRain = 12f;
+        internal const float WeightGoldenDuckRain = 25f;    // 提升至与空投相当（原 12f）
         internal const float WeightDuckParade = 8f;
 
         #endregion
@@ -112,8 +112,11 @@ namespace BossRush
         internal const float BloodMoonVignetteAlphaMax = 0.26f;
         internal const float BloodMoonVignetteBreathSeconds = 2.4f;
 
-        /// <summary>献祭：血月期间每击杀一只被挂 buff 的敌人补偿的现金。</summary>
-        internal const long BloodMoonCashPerKill = 500L;
+        /// <summary>
+        /// 献祭：血月期间每击杀一只被挂 buff 的敌人补偿的现金（提升至 1200 以平衡高风险）。
+        /// 75s 期间平均击杀 30-50 只怪，期望收益 36k-60k，可补偿 +25% 移速 +20% 伤害的风险。
+        /// </summary>
+        internal const long BloodMoonCashPerKill = 1200L;
 
         /// <summary>
         /// 官方 stinger 键（不含 "Music/Stinger/" 前缀，AudioManager.PlayStringer 内部会拼）。
@@ -149,6 +152,13 @@ namespace BossRush
         /// 拼动态后缀会让存档键无界膨胀。
         /// </summary>
         internal const string MerchantIdConstant = "BossRush_RandomEvent_Merchant";
+
+        /// <summary>
+        /// StockShop.Awake 会强制向官方 MerchantDatabase 查询 merchantID；自定义 ID 会先产生
+        /// “未配置商人”错误。只在 Awake 引导阶段临时使用这个已存在的官方 ID，随后立刻换回
+        /// 上面的稳定 Mod ID，并在同一帧 Start 前装入事件专属库存。
+        /// </summary>
+        internal const string MerchantAwakeBootstrapId = "Merchant_Normal";
 
         #endregion
 

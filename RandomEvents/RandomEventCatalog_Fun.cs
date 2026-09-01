@@ -38,6 +38,9 @@ namespace BossRush
     /// </summary>
     internal sealed class RandomEventFeint : RandomEventBase
     {
+        private bool _completed;
+        private int _emitted;
+
         internal override RandomEventId Id { get { return RandomEventId.Feint; } }
 
         internal override string DisplayName
@@ -62,6 +65,8 @@ namespace BossRush
 
                 owner.ShowRandomEventBanner(L10n.T("远处传来奇怪的动静……", "Strange noises from afar..."));
 
+                _completed = false;
+                _emitted = 0;
                 Coroutine co = owner.StartCoroutine(FeintRoutine(owner));
                 ctx.Scope.RegisterCoroutine(co);
                 return true;
@@ -92,6 +97,7 @@ namespace BossRush
                 }
 
                 owner.MakeRandomEventAiSound(p, RandomEventsTuning.FeintSoundRadius, SoundTypes.unknowNoise);
+                _emitted++;
                 owner.PopRandomEventText(
                     L10n.T("咕嘎?", "Quack?"),
                     p + Vector3.up * 1.2f,
@@ -100,6 +106,17 @@ namespace BossRush
 
                 yield return new WaitForSeconds(RandomEventsTuning.FeintSoundIntervalSeconds);
             }
+            _completed = true;
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            int expected = Mathf.Max(1, RandomEventsTuning.FeintSoundCount);
+            metrics = "completed=" + _completed + ",emitted=" + _emitted + ",expected=" + expected;
+            if (!_completed) return RandomEventValidationOutcome.Pending;
+            return _emitted == expected
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
         }
 
         private static bool TryResolveFeintPoint(CharacterMainControl player, int index, int count, out Vector3 point)
@@ -136,6 +153,9 @@ namespace BossRush
     /// </summary>
     internal sealed class RandomEventFireworks : RandomEventBase
     {
+        private bool _completed;
+        private int _burstsPlayed;
+
         internal override RandomEventId Id { get { return RandomEventId.Fireworks; } }
 
         internal override string DisplayName
@@ -160,6 +180,8 @@ namespace BossRush
 
                 owner.ShowRandomEventBanner(L10n.T("鸭王点燃了烟花！", "The Duck King lit the fireworks!"));
 
+                _completed = false;
+                _burstsPlayed = 0;
                 Coroutine co = owner.StartCoroutine(FireworksRoutine(owner));
                 ctx.Scope.RegisterCoroutine(co);
                 return true;
@@ -202,10 +224,22 @@ namespace BossRush
                     p,
                     ExplosionFxTypes.normal,
                     RandomEventsTuning.FireworksShakeStrength);
+                _burstsPlayed++;
                 owner.PopRandomEventText("★", p, palette[i % palette.Length], 1.6f);
 
                 yield return new WaitForSeconds(RandomEventsTuning.FireworksIntervalSeconds);
             }
+            _completed = true;
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            int expected = Mathf.Max(1, RandomEventsTuning.FireworksBurstCount);
+            metrics = "completed=" + _completed + ",played=" + _burstsPlayed + ",expected=" + expected;
+            if (!_completed) return RandomEventValidationOutcome.Pending;
+            return _burstsPlayed == expected
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
         }
 
         private static bool TryResolveBurstPoint(CharacterMainControl player, out Vector3 point)
@@ -245,6 +279,10 @@ namespace BossRush
     /// </summary>
     internal sealed class RandomEventGoldenDuckRain : RandomEventBase
     {
+        private bool _spawnCompleted;
+        private int _requestedPiles;
+        private int _spawnedPiles;
+
         internal override RandomEventId Id { get { return RandomEventId.GoldenDuckRain; } }
 
         internal override string DisplayName
@@ -273,12 +311,17 @@ namespace BossRush
                     RandomEventsTuning.GoldenDuckRainPileMin,
                     RandomEventsTuning.GoldenDuckRainPileMax + 1);
 
+                _spawnCompleted = false;
+                _requestedPiles = piles;
+                _spawnedPiles = 0;
+
                 ctx.AnchorPosition = player.transform.position;
                 owner.SpawnRandomEventCashPiles(
                     player.transform.position,
                     RandomEventsTuning.GoldenDuckRainTotalCash,
                     piles,
-                    RandomEventsTuning.GoldenDuckRainScatterRadius);
+                    RandomEventsTuning.GoldenDuckRainScatterRadius,
+                    HandleCashPilesCompleted);
 
                 owner.PlayRandomEventModSound("lottery/special.mp3");
                 return true;
@@ -288,6 +331,23 @@ namespace BossRush
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 金鸭雨触发失败: " + e.Message);
                 return false;
             }
+        }
+
+        private void HandleCashPilesCompleted(int requested, int spawned)
+        {
+            _requestedPiles = requested;
+            _spawnedPiles = spawned;
+            _spawnCompleted = true;
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            metrics = "completed=" + _spawnCompleted + ",requested=" + _requestedPiles
+                + ",spawned=" + _spawnedPiles;
+            if (!_spawnCompleted) return RandomEventValidationOutcome.Pending;
+            return _spawnedPiles == _requestedPiles && _requestedPiles > 0
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
         }
 
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)
@@ -310,6 +370,9 @@ namespace BossRush
         private readonly List<CharacterMainControl> _ducks = new List<CharacterMainControl>(8);
         private bool _cleanedUp = true;
         private int _sceneBuildIndex;
+        private bool _spawnCompleted;
+        private int _requestedDucks;
+        private int _spawnedDucks;
 
         internal override RandomEventId Id { get { return RandomEventId.DuckParade; } }
 
@@ -343,9 +406,13 @@ namespace BossRush
 
                 _ducks.Clear();
                 _cleanedUp = false;
+                _spawnCompleted = false;
+                _requestedDucks = count;
+                _spawnedDucks = 0;
                 _sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
 
-                owner.SpawnRandomEventParadeDucks(start, dir, count, IsSpawnStillValid, HandleDuckSpawned);
+                owner.SpawnRandomEventParadeDucks(
+                    start, dir, count, IsSpawnStillValid, HandleDuckSpawned, HandleDuckSpawnsCompleted);
 
                 ctx.AnchorPosition = start;
                 owner.ShowRandomEventBanner(L10n.T(
@@ -396,6 +463,23 @@ namespace BossRush
             }
 
             _ducks.Add(duck);
+        }
+
+        private void HandleDuckSpawnsCompleted(int requested, int spawned)
+        {
+            _requestedDucks = requested;
+            _spawnedDucks = spawned;
+            _spawnCompleted = true;
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            metrics = "completed=" + _spawnCompleted + ",requested=" + _requestedDucks
+                + ",spawned=" + _spawnedDucks + ",tracked=" + _ducks.Count;
+            if (!_spawnCompleted) return RandomEventValidationOutcome.Pending;
+            return _spawnedDucks == _requestedDucks && _requestedDucks > 0
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
         }
 
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)

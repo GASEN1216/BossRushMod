@@ -76,6 +76,14 @@ namespace BossRush
         TriggerFailed = 6
     }
 
+    /// <summary>F3 实机验收查询事件副作用是否真正完成，而不只看 OnTrigger 是否返回 true。</summary>
+    internal enum RandomEventValidationOutcome
+    {
+        Pending = 0,
+        Passed = 1,
+        Failed = 2
+    }
+
     /// <summary>
     /// 单次事件的运行期上下文。由调度器创建，OnCleanup 之后即丢弃，不做复用。
     /// </summary>
@@ -166,6 +174,16 @@ namespace BossRush
         /// <summary>运行期 tick（scaled deltaTime）。默认空实现；实现内禁止每帧日志与每帧分配。</summary>
         internal virtual void OnTick(RandomEventContext ctx, float deltaTime)
         {
+        }
+
+        /// <summary>
+        /// Dev 验收探针。同步事件在 OnTrigger 成功后即可视为完成；有异步生成物的事件
+        /// 必须覆写并等到生成回调收敛，避免“调度成功、实际空转”被误报为 PASS。
+        /// </summary>
+        internal virtual RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            metrics = "trigger_completed";
+            return RandomEventValidationOutcome.Passed;
         }
 
         /// <summary>

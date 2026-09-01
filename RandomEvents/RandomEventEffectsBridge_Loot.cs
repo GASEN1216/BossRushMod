@@ -427,15 +427,21 @@ namespace BossRush
         /// 抛撒现金堆。totalCash 均分到 pileCount 堆，逐堆分帧生成避免单帧尖刺。
         /// 现金 TypeID 451 的 StackCount 就是金额（EconomyManager.Cash == GetItemCount(451)）。
         /// </summary>
-        internal void SpawnRandomEventCashPiles(Vector3 center, long totalCash, int pileCount, float radius)
+        internal void SpawnRandomEventCashPiles(
+            Vector3 center,
+            long totalCash,
+            int pileCount,
+            float radius,
+            Action<int, int> onCompleted)
         {
             try
             {
-                SpawnRandomEventCashPilesAsync(center, totalCash, pileCount, radius).Forget();
+                SpawnRandomEventCashPilesAsync(center, totalCash, pileCount, radius, onCompleted).Forget();
             }
             catch (Exception e)
             {
                 DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 金鸭雨调度失败: " + e.Message);
+                InvokeRandomEventCashCompletion(onCompleted, Mathf.Max(1, pileCount), 0);
             }
         }
 
@@ -443,11 +449,13 @@ namespace BossRush
             Vector3 center,
             long totalCash,
             int pileCount,
-            float radius)
+            float radius,
+            Action<int, int> onCompleted)
         {
+            int piles = Mathf.Max(1, pileCount);
+            int spawned = 0;
             try
             {
-                int piles = Mathf.Max(1, pileCount);
                 long per = Math.Max(1L, totalCash / piles);
                 int sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
 
@@ -502,6 +510,7 @@ namespace BossRush
                             + Vector3.up * 0.3f;
 
                         cash.Drop(drop, true, UnityEngine.Random.insideUnitSphere.normalized, 20f);
+                        spawned++;
                     }
                     catch (Exception e)
                     {
@@ -515,6 +524,20 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 金鸭雨生成失败: " + e.Message);
+            }
+            finally
+            {
+                InvokeRandomEventCashCompletion(onCompleted, piles, spawned);
+            }
+        }
+
+        private static void InvokeRandomEventCashCompletion(Action<int, int> callback, int requested, int spawned)
+        {
+            if (callback == null) return;
+            try { callback(requested, spawned); }
+            catch (Exception e)
+            {
+                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 金鸭雨完成回调失败: " + e.Message);
             }
         }
     }

@@ -717,6 +717,27 @@ namespace BossRush
             }
         }
 
+        /// <summary>F3 验收读取当前事件的实际副作用完成状态。no-throw、fail-closed。</summary>
+        internal RandomEventValidationOutcome GetActiveValidationOutcome(out string metrics)
+        {
+            metrics = string.Empty;
+            try
+            {
+                if (_activeEvent == null || _activeContext == null)
+                {
+                    metrics = "active_event_missing";
+                    return RandomEventValidationOutcome.Failed;
+                }
+
+                return _activeEvent.GetValidationOutcome(out metrics);
+            }
+            catch (Exception e)
+            {
+                metrics = "validation_exception=" + e.GetType().Name + ":" + e.Message;
+                return RandomEventValidationOutcome.Failed;
+            }
+        }
+
         /// <summary>F3 菜单用：全部事件 id 的只读快照。no-throw，失败返回空表。</summary>
         internal IList<RandomEventId> GetAllEventIds()
         {

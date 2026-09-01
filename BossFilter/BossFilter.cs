@@ -238,11 +238,11 @@ namespace BossRush
                 if (PetNestRuntime != null) PetNestRuntime.NotifyEnemyPresetsRefreshed();
                 // 图鉴目录的展示池同样源自这张过滤池，过滤一变目录必须跟着重建，
                 // 否则玩家在场内改了 Boss 池之后，图鉴条目仍停在旧快照上。
-                CodexBossCatalog.Invalidate();
+                if (CodexRuntime != null) CodexRuntime.NotifyEnemyPresetsRefreshed();
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] Boss 池过滤变化后重建血脉目录失败: " + e.Message);
+                DevLog("[BossRush] Boss 池过滤变化后刷新玩法目录失败: " + e.Message);
             }
         }
 

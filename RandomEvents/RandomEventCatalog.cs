@@ -13,7 +13,8 @@
 //     由事件自有列表 + _cleanedUp 幂等闸负责。
 //   - OnTrigger / OnTick / OnCleanup 整体包 try/catch，异常只 DevLog 不外抛（AGENTS 4.7）。
 //   - OnTick 是每帧热路径：禁止日志、禁止每帧分配、禁止每帧扫场景（AGENTS 4.12）。
-//   - 零新增 Harmony patch；不订阅任何静态事件；唯一的事件订阅是 E3 的逐实例
+//   - 事件状态机自身不拥有 Harmony patch；动态官方角色的 MagicBlend 首帧竞态由
+//     Patches/Compatibility 的共享兼容层处理。不订阅任何静态事件；唯一的事件订阅是 E3 的逐实例
 //     Health.OnDeadEvent（UnityEvent，命名方法 + 缓存委托实例，清理时成对 RemoveListener）。
 //   - 不触碰任何波次状态机符号（隔离面见 tests/RandomEventsWaveIsolationGuard.py）。
 //   - UI 一律走共享库：sortingOrder 用 BossRushUILayers 常量，颜色用 BossRushUIColors，
@@ -151,6 +152,9 @@ namespace BossRush
     /// </summary>
     internal sealed class RandomEventAirdropSupply : RandomEventBase
     {
+        private InteractableLootbox _validationCrate;
+        private bool _validationLanded;
+
         internal override RandomEventId Id { get { return RandomEventId.AirdropSupply; } }
 
         internal override string DisplayName
@@ -215,6 +219,8 @@ namespace BossRush
 
                 ctx.AnchorPosition = ground;
                 ctx.Scope.RegisterObject(crate.gameObject);
+                _validationCrate = crate;
+                _validationLanded = false;
 
                 try
                 {
@@ -223,7 +229,7 @@ namespace BossRush
                         ground,
                         RandomEventsTuning.AirdropFallHeight,
                         RandomEventsTuning.AirdropFallSeconds,
-                        null));
+                        HandleAirdropLanded));
                     ctx.Scope.RegisterCoroutine(co);
                 }
                 catch (Exception e)
@@ -231,6 +237,7 @@ namespace BossRush
                     // 下落动画失败不致命：箱子已在半空登记，直接落到地面即可
                     ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投下落协程启动失败: " + e.Message);
                     try { crate.transform.position = ground; } catch (Exception) { }
+                    _validationLanded = true;
                 }
 
                 owner.ShowRandomEventDirectionalBanner(DisplayName, ground);
@@ -243,11 +250,26 @@ namespace BossRush
             }
         }
 
+        private void HandleAirdropLanded()
+        {
+            _validationLanded = true;
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            bool crateReady = _validationCrate != null && _validationCrate.gameObject != null;
+            metrics = "crate=" + crateReady + ",landed=" + _validationLanded;
+            if (!_validationLanded) return RandomEventValidationOutcome.Pending;
+            return crateReady ? RandomEventValidationOutcome.Passed : RandomEventValidationOutcome.Failed;
+        }
+
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)
         {
             // 首版按「事件结束即回收箱子」实现：不回收就会跨图泄漏，
             // 若将来要让箱子留到局末，必须改成自有列表并在切图 / 宿主销毁时销毁。
             RandomEventEffectHelpers.ClearScope(ctx, reason);
+            _validationCrate = null;
+            _validationLanded = false;
         }
     }
 
@@ -517,6 +539,15 @@ namespace BossRush
             }
         }
 
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            metrics = "tracked=" + _tracked.Count + ",modifiers=" + _records.Count
+                + ",weather=" + _weatherApplied + ",vignette=" + (_vignette != null);
+            return _tracked.Count > 0 && _records.Count > 0
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
+        }
+
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)
         {
             // 兜底 2/3：事件到时 / 局末 / 切图 / 关开关 / 宿主销毁全部走这里，
@@ -564,6 +595,9 @@ namespace BossRush
         private bool _cleanedUp = true;
         private int _sceneBuildIndex;
         private float _pruneTimer;
+        private int _pendingSpawns;
+        private int _spawnSuccesses;
+        private int _spawnFailures;
 
         internal override RandomEventId Id { get { return RandomEventId.BossIntrusion; } }
 
@@ -615,6 +649,9 @@ namespace BossRush
                 _sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
 
                 int count = Mathf.Max(1, RandomEventsTuning.BossIntrusionCount);
+                _pendingSpawns = count;
+                _spawnSuccesses = 0;
+                _spawnFailures = 0;
                 for (int i = 0; i < count; i++)
                 {
                     owner.SpawnRandomEventIntruderBoss(
@@ -656,10 +693,14 @@ namespace BossRush
 
         private void HandleIntruderSpawned(CharacterMainControl boss)
         {
+            if (_pendingSpawns > 0) _pendingSpawns--;
             if (boss == null)
             {
+                _spawnFailures++;
                 return;
             }
+
+            _spawnSuccesses++;
 
             ModBehaviour owner = ModBehaviour.Instance;
 
@@ -691,8 +732,20 @@ namespace BossRush
 
         private void HandleIntruderSpawnFailed()
         {
+            if (_pendingSpawns > 0) _pendingSpawns--;
+            _spawnFailures++;
             // 已播报的横幅不撤：玩家看到「乱入」但没找到人，比横幅闪烁体验更好
             ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "乱入 Boss 生成失败，本次事件空转");
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            metrics = "pending=" + _pendingSpawns + ",spawned=" + _spawnSuccesses
+                + ",failed=" + _spawnFailures + ",alive=" + _intruders.Count;
+            if (_pendingSpawns > 0) return RandomEventValidationOutcome.Pending;
+            return _spawnSuccesses > 0 && _spawnFailures == 0
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
         }
 
         internal override void OnTick(RandomEventContext ctx, float deltaTime)
@@ -915,6 +968,8 @@ namespace BossRush
         private StockShop _shop;
         private bool _cleanedUp = true;
         private int _sceneBuildIndex;
+        private bool _spawnCompleted;
+        private bool _spawnFailed;
 
         internal override RandomEventId Id { get { return RandomEventId.WanderingMerchant; } }
 
@@ -958,6 +1013,8 @@ namespace BossRush
                 _merchant = null;
                 _shop = null;
                 _cleanedUp = false;
+                _spawnCompleted = false;
+                _spawnFailed = false;
                 _sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
 
                 owner.SpawnRandomEventMerchant(
@@ -993,6 +1050,7 @@ namespace BossRush
 
         private void HandleMerchantSpawned(CharacterMainControl merchant, StockShop shop)
         {
+            _spawnCompleted = true;
             ModBehaviour owner = ModBehaviour.Instance;
 
             if (_cleanedUp)
@@ -1006,11 +1064,26 @@ namespace BossRush
 
             _merchant = merchant;
             _shop = shop;
+            _spawnFailed = merchant == null || shop == null || shop.entries == null || shop.entries.Count == 0;
         }
 
         private void HandleMerchantSpawnFailed()
         {
+            _spawnCompleted = true;
+            _spawnFailed = true;
             ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "神秘商人生成失败，本次事件空转");
+        }
+
+        internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
+        {
+            int entries = _shop != null && _shop.entries != null ? _shop.entries.Count : 0;
+            metrics = "completed=" + _spawnCompleted + ",failed=" + _spawnFailed
+                + ",merchant=" + (_merchant != null) + ",shop=" + (_shop != null)
+                + ",entries=" + entries;
+            if (!_spawnCompleted) return RandomEventValidationOutcome.Pending;
+            return !_spawnFailed && _merchant != null && _shop != null && entries > 0
+                ? RandomEventValidationOutcome.Passed
+                : RandomEventValidationOutcome.Failed;
         }
 
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)
