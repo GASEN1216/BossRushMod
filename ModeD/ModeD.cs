@@ -252,8 +252,12 @@ namespace BossRush
         {
             try
             {
-                // 如果 Mode D 未激活，无需重复结束
-                if (!modeDActive) return;
+                // 即使状态已提前关闭，也要幂等清理仍登记的实体。
+                if (!modeDActive)
+                {
+                    CleanupModeDWaveEnemiesOnExit();
+                    return;
+                }
 
                 // 先保存完成波次数，再清零
                 int completedWaves = modeDWaveIndex;
@@ -262,7 +266,7 @@ namespace BossRush
 
                 modeDActive = false;
                 modeDWaveIndex = 0;
-                modeDCurrentWaveEnemies.Clear();
+                CleanupModeDWaveEnemiesOnExit();
                 ClearEnemyRecoveryMonitorState();
 
                 // 清理变异词条（覆盖场景退出 / 玩家死亡 / 手动退出，幂等）
@@ -278,6 +282,35 @@ namespace BossRush
             {
                 DevLog("[ModeD] [ERROR] EndModeD 失败: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 退出 Mode D 时确定性销毁本波角色。只清列表会遗留仍在场景中的 AI，
+        /// 尤其中立预设不会被标准敌对清场路径识别。
+        /// </summary>
+        private void CleanupModeDWaveEnemiesOnExit()
+        {
+            for (int i = modeDCurrentWaveEnemies.Count - 1; i >= 0; i--)
+            {
+                CharacterMainControl enemy = modeDCurrentWaveEnemies[i];
+                if (enemy == null) continue;
+                try
+                {
+                    UnregisterEnemyRecovery(enemy);
+                    enemy.dropBoxOnDead = false;
+                    if (enemy.gameObject != null)
+                    {
+                        enemy.gameObject.SetActive(false);
+                        UnityEngine.Object.Destroy(enemy.gameObject);
+                    }
+                }
+                catch (Exception cleanupException)
+                {
+                    DevLog("[ModeD] [WARNING] 退出时销毁本波敌人失败: index=" + i
+                        + ", " + cleanupException.Message);
+                }
+            }
+            modeDCurrentWaveEnemies.Clear();
         }
 
         /// <summary>

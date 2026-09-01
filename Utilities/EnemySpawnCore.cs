@@ -434,6 +434,8 @@ namespace BossRush
             else
             {
                 character.gameObject.SetActive(true);
+                // Mod 刷怪点可能远离玩家；官方距离休眠会每帧把它关掉并卡住波次结算。
+                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
             }
 
             // Mode G 门控（加法分支）：job.options == null 逐字保持原行为
@@ -1007,6 +1009,8 @@ namespace BossRush
                             else
                             {
                                 character.gameObject.SetActive(true);
+                                // 同分帧路径：解除官方距离休眠，否则远处刷出的怪会被每帧关掉。
+                                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
                             }
 
                             // 应用变异词条效果到新生成的敌人

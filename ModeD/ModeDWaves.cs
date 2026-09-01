@@ -576,6 +576,54 @@ namespace BossRush
                         // 渐进式难度：按波次提升敌人属性
                         ApplyModeDWaveScaling(character, modeDWaveIndex);
 
+                        // 官方小怪预设可能是中立/玩家友方。仅设置 AI 目标不能改变伤害与
+                        // 敌对判定，因此在登记波次前补标准敌对性安全网。
+                        try
+                        {
+                            if (!Team.IsEnemy(Teams.player, character.Team))
+                            {
+                                character.SetTeam(Teams.wolf);
+                                DevLog("[ModeD] 敌对性安全网已将 " + ctx.preset.displayName
+                                    + " 阵营修正为 wolf");
+                            }
+                        }
+                        catch (Exception teamException)
+                        {
+                            DevLog("[ModeD] [WARNING] 敌对性安全网失败: " + teamException.Message);
+                            try
+                            {
+                                character.SetTeam(Teams.wolf);
+                            }
+                            catch (Exception fallbackException)
+                            {
+                                DevLog("[ModeD] [ERROR] 强制设置 wolf 阵营仍失败: "
+                                    + fallbackException.Message);
+                                if (character.gameObject != null)
+                                {
+                                    UnityEngine.Object.Destroy(character.gameObject);
+                                }
+                                return;
+                            }
+                        }
+
+                        bool confirmedHostile = false;
+                        try { confirmedHostile = Team.IsEnemy(Teams.player, character.Team); }
+                        catch (Exception verifyException)
+                        {
+                            DevLog("[ModeD] [WARNING] 敌对性回读失败: " + verifyException.Message);
+                        }
+                        if (!confirmedHostile)
+                        {
+                            DevLog("[ModeD] [ERROR] 敌对性修正后仍非玩家敌对，拒绝登记: "
+                                + ctx.preset.displayName);
+                            if (character.gameObject != null)
+                            {
+                                character.gameObject.SetActive(false);
+                                UnityEngine.Object.Destroy(character.gameObject);
+                            }
+                            return;
+                        }
+
                         // 强制设置 AI 仇恨到玩家
                         try
                         {
