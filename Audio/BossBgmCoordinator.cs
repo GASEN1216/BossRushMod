@@ -31,6 +31,12 @@ using UnityEngine;
 
 namespace BossRush
 {
+    // 以下四个类是 JsonUtility 反序列化目标：字段由 JsonUtility.FromJson 反射赋值，
+    // 代码里只读不写，所以编译器会对每个字段报 CS0649「从未赋值」。那是误报——
+    // 真按提示改成属性或加初始值，JsonUtility 就绑不上了（它只认公有字段）。
+    // 因此在这里定点关掉 CS0649，范围只覆盖这四个 DTO，不影响文件其余部分。
+#pragma warning disable 0649
+
     /// <summary>Boss 战 BGM 条目（JsonUtility 反序列化目标，字段名即 JSON 键名）。</summary>
     [Serializable]
     internal class BossBgmTrackEntry
@@ -86,6 +92,8 @@ namespace BossRush
         public BossBgmJukeboxEntry[] jukebox;
     }
 
+#pragma warning restore 0649
+
     /// <summary>Boss 标识常量。改名会让数据表静默失配，等同破坏契约。</summary>
     internal static class BossBgmKeys
     {
@@ -136,6 +144,18 @@ namespace BossRush
         /// 比对场景 handle 就能识别出这种陈旧状态，且不需要新增任何全局场景订阅。
         /// </summary>
         private static int _playingSceneHandle;
+
+        private sealed class BossBgmOwnerLease
+        {
+            internal int OwnerId;
+            internal UnityEngine.Object Owner;
+            internal string BossKey;
+            internal long ActivationOrder;
+        }
+
+        private static readonly List<BossBgmOwnerLease> _ownerLeases =
+            new List<BossBgmOwnerLease>();
+        private static long _nextActivationOrder;
 
         /// <summary>文件存在性缓存（照 SoundFileExistsCached 先例，避免反复打盘）。</summary>
         private static readonly Dictionary<string, bool> _fileExists =
@@ -337,6 +357,119 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 为一个具体 Boss 获取 BGM 租约。同一 owner 重复调用幂等；同 key 多 owner
+        /// 会共享曲目，最后一个 owner 释放之前不会停。
+        /// </summary>
+        internal static bool AcquireBossBgm(string bossKey, UnityEngine.Object owner)
+        {
+            if (owner == null || !HasBossTrack(bossKey)) return false;
+            try
+            {
+                EnsureOwnerLeasesForCurrentScene();
+                int ownerId = owner.GetInstanceID();
+                for (int i = 0; i < _ownerLeases.Count; i++)
+                {
+                    BossBgmOwnerLease existing = _ownerLeases[i];
+                    if (existing.OwnerId == ownerId)
+                    {
+                        return string.Equals(existing.BossKey, bossKey, StringComparison.Ordinal);
+                    }
+                }
+
+                BossBgmOwnerLease lease = new BossBgmOwnerLease();
+                lease.OwnerId = ownerId;
+                lease.Owner = owner;
+                lease.BossKey = bossKey;
+                lease.ActivationOrder = ++_nextActivationOrder;
+                _ownerLeases.Add(lease);
+
+                if (string.Equals(_playingBossKey, bossKey, StringComparison.Ordinal)
+                    && IsPlaybackFromCurrentScene()) return true;
+                if (PlayBossBgm(bossKey)) return true;
+
+                _ownerLeases.Remove(lease);
+                return false;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] owner BGM 获取失败: " + e.Message);
+                return false;
+            }
+        }
+
+        internal static void ReleaseBossBgm(string bossKey, UnityEngine.Object owner)
+        {
+            if (owner == null) return;
+            try
+            {
+                EnsureOwnerLeasesForCurrentScene();
+                int ownerId = owner.GetInstanceID();
+                for (int i = _ownerLeases.Count - 1; i >= 0; i--)
+                {
+                    BossBgmOwnerLease lease = _ownerLeases[i];
+                    if (lease.OwnerId == ownerId
+                        && string.Equals(lease.BossKey, bossKey, StringComparison.Ordinal))
+                    {
+                        _ownerLeases.RemoveAt(i);
+                    }
+                }
+
+                if (!string.Equals(_playingBossKey, bossKey, StringComparison.Ordinal)) return;
+                if (HasLiveLeaseForKey(bossKey)) return;
+
+                BossBgmOwnerLease resume = GetMostRecentLiveLease();
+                if (resume != null)
+                {
+                    PlayBossBgm(resume.BossKey);
+                }
+                else
+                {
+                    StopBossBgm(bossKey);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + "[WARNING] owner BGM 释放失败: " + e.Message);
+            }
+        }
+
+        private static void EnsureOwnerLeasesForCurrentScene()
+        {
+            int current = GetActiveSceneHandle();
+            if (_playingSceneHandle != 0 && current != 0 && _playingSceneHandle != current)
+            {
+                _ownerLeases.Clear();
+                _playingBossKey = null;
+                _playingSceneHandle = 0;
+            }
+            for (int i = _ownerLeases.Count - 1; i >= 0; i--)
+            {
+                if (_ownerLeases[i].Owner == null) _ownerLeases.RemoveAt(i);
+            }
+        }
+
+        private static bool HasLiveLeaseForKey(string bossKey)
+        {
+            for (int i = 0; i < _ownerLeases.Count; i++)
+                if (string.Equals(_ownerLeases[i].BossKey, bossKey, StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        private static BossBgmOwnerLease GetMostRecentLiveLease()
+        {
+            BossBgmOwnerLease best = null;
+            for (int i = 0; i < _ownerLeases.Count; i++)
+            {
+                BossBgmOwnerLease lease = _ownerLeases[i];
+                if (best == null || lease.ActivationOrder > best.ActivationOrder) best = lease;
+            }
+            return best;
+        }
+
+        internal static int ActiveOwnerLeaseCount { get { EnsureOwnerLeasesForCurrentScene(); return _ownerLeases.Count; } }
+        internal static string PlayingBossKey { get { return _playingBossKey; } }
+
+        /// <summary>
         /// 停止本协调器起播的 BGM。
         /// bossKey 非空时只在「当前在放的正是它」时才停——避免 A Boss 的死亡回调
         /// 掐掉 B Boss 刚起播的曲子（多 Boss 波次里这是常态）。
@@ -407,8 +540,10 @@ namespace BossRush
         /// </summary>
         internal static void NotifySceneChanged()
         {
+            _ownerLeases.Clear();
             _playingBossKey = null;
             _playingSceneHandle = 0;
+            _nextActivationOrder = 0L;
         }
 
         /// <summary>当前活动场景的 handle；取不到时返回 0。</summary>
@@ -555,6 +690,8 @@ namespace BossRush
             _jukebox = null;
             _playingBossKey = null;
             _playingSceneHandle = 0;
+            _ownerLeases.Clear();
+            _nextActivationOrder = 0L;
             _fileExists.Clear();
             _playCustomBgmMethod = null;
             _stopBgmMethod = null;

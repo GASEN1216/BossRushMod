@@ -117,12 +117,22 @@ namespace BossRush
             BossBgmCoordinator.PlayBossBgm(bossKey);
         }
 
+        public bool PlayBossBGM(string bossKey, UnityEngine.Object owner)
+        {
+            return BossBgmCoordinator.AcquireBossBgm(bossKey, owner);
+        }
+
         /// <summary>
         /// 通用 Boss 战 BGM 停止。只在当前正播的就是该 Boss 时才真正停止。
         /// </summary>
         public void StopBossBGM(string bossKey)
         {
             BossBgmCoordinator.StopBossBgm(bossKey);
+        }
+
+        public void StopBossBGM(string bossKey, UnityEngine.Object owner)
+        {
+            BossBgmCoordinator.ReleaseBossBgm(bossKey, owner);
         }
 
         /// <summary>一次性 stinger（不占 BGM 通道，不打断正在放的循环曲）。</summary>
