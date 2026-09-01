@@ -157,6 +157,16 @@ namespace BossRush
         /// <summary>奖励候选数上限（1 + min(2, floor(max(0, net) / 2))）。</summary>
         public const int MaxRewardCandidateCount = 3;
 
+        /// <summary>
+        /// 单场真实押品的件数上限。
+        ///
+        /// 取 3：§22.1 冻结的风险提示写明"失败会永久没收，唯一装备也不豁免"，
+        /// 而没收是不可逆的。3 件足够让玩家自愿承担有分量的风险（配合 x5 上限
+        /// 最多赢回 15 件同品质奖励），又不至于一场打完清空半个仓库。
+        /// 真实押品与虚拟筹码是并行的两套下注，互不折算。
+        /// </summary>
+        public const int MaxRealStakeItemsPerMatch = 3;
+
         /// <summary>奖励候选数公式的净收益除数。</summary>
         public const int RewardCandidateNetDivisor = 2;
 

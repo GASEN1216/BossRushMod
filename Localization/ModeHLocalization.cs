@@ -587,6 +587,20 @@ namespace BossRush
             Add(map, "RealStake_UniqueNotExempt", "唯一装备不豁免", "Your only copy is not exempt");
             Add(map, "RealStake_Disabled", "当前存档槽无法证明资产安全，押品已禁用",
                 "This save slot cannot prove asset safety; staking is disabled");
+            // 三条分因文案。旧的 RealStake_Disabled 只说「无法证明资产安全」，
+            // 玩家会误以为存档坏了；实际最常见的原因是上一笔押品还没结算完。
+            Add(map, "RealStake_Disabled_PendingTx",
+                "上一笔押品事务尚未结算，先去恢复面板处理完再押",
+                "A previous stake transaction is unsettled; resolve it in Recovery first");
+            Add(map, "RealStake_Disabled_ManualIntervention",
+                "押品事务需要人工介入，当前只读",
+                "The stake transaction needs manual intervention; read-only for now");
+            Add(map, "RealStake_Disabled_StorageUnavailable",
+                "仓库尚未就绪，押品暂不可用（进基地后再试）",
+                "Storage is not ready yet; staking is unavailable for now");
+            Add(map, "RealStake_WorstCasePreview", "最坏损失", "Worst case");
+            Add(map, "RealStake_RewardPreview", "胜利可得同品质", "On win, same quality");
+            Add(map, "RealStake_SelectedCount", "已押件数", "Staked items");
 
             Add(map, "StakePhase_Prepared", "已冻结计划", "Plan frozen");
             Add(map, "StakePhase_EscrowSnapshotDurable", "托管快照已落盘", "Escrow snapshot durable");

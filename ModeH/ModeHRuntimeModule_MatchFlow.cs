@@ -335,16 +335,54 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 选秀卡。`ModeHCardData.Body` / `IsAnomaly` 此前从未被赋值——
+        /// 渲染器（ModeHUIPages）读它们画正文与描边色，于是玩家看到的是**空白卡身**：
+        /// 只有名字和原型，看不到怪癖/异常、招牌口令和试棚传闻，等于让人盲选。
+        /// 三项信息 DTO 里都有（quirkId / anomalyId、signatureCommandId、rumorKey），
+        /// 这里按「异常优先于普通怪癖」（两者互斥）拼成正文。
+        ///
+        /// `GameQuality` 刻意保持不赋值：选手不是装备，没有品质等级，
+        /// 留 0 时渲染器走 accent 色，正是想要的表现。
+        /// </summary>
         private ModeHCardData BuildProfileCard(ModeHProfileDto profile)
         {
             ModeHCardData card = new ModeHCardData();
             card.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Fighter_" + profile.profileId);
             card.Subtitle = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Archetype_" + profile.archetypeId);
             card.ActionLabel = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Sign");
+            card.IsAnomaly = !string.IsNullOrEmpty(profile.anomalyId);
+            card.Body = BuildProfileCardBody(profile);
 
             string signedId = profile.profileId;
             card.OnClick = delegate { OnDraftPick(signedId); };
             return card;
+        }
+
+        /// <summary>
+        /// 拼选秀卡正文。缺字段就整行不出，不留「怪癖：」这种半截标签。
+        /// </summary>
+        private static string BuildProfileCardBody(ModeHProfileDto profile)
+        {
+            if (profile == null) return string.Empty;
+            string prefix = ModeHConfig.LocalizationKeyPrefix;
+            List<string> lines = new List<string>(3);
+
+            // 异常与普通怪癖互斥（见 ModeHProfileDto 字段注释），异常优先展示。
+            if (!string.IsNullOrEmpty(profile.anomalyId))
+                lines.Add(L10n.T(prefix + "Anomaly_" + profile.anomalyId));
+            else if (!string.IsNullOrEmpty(profile.quirkId))
+                lines.Add(L10n.T(prefix + "Quirk_" + profile.quirkId));
+
+            if (!string.IsNullOrEmpty(profile.signatureCommandId))
+                lines.Add(L10n.T(prefix + "Command_" + profile.signatureCommandId));
+
+            // rumorKey 已经是完整本地化 key（ModeHContentCatalogParsers 直接读的原值），
+            // 不再补前缀，否则会变成 BossRush_ModeH_BossRush_ModeH_xxx。
+            if (!string.IsNullOrEmpty(profile.rumorKey))
+                lines.Add(L10n.T(profile.rumorKey));
+
+            return string.Join("\n", lines.ToArray());
         }
 
         /// <summary>
@@ -577,17 +615,130 @@ namespace BossRush
             return TryTransition(ModeHLifecycle.LoadoutEditing, ModeHLifecycle.OddsPreview, "open_odds");
         }
 
+        /// <summary>
+        /// 看盘页的真实押品区：当前已押件数、最坏损失、胜利可得，以及逐格的选/取消按钮。
+        ///
+        /// 只在 IsSlotConsistent 为真时给出按钮（§22.1 的只读派生结果）。
+        /// 列表本身按仓库槽位顺序枚举**前若干格里能押的物品**，不做搜索与筛选 UI：
+        /// 这是看盘页的一个副区，不是仓库管理器；玩家真要挑特定物品可以先在
+        /// 官方仓库界面整理好位置。
+        /// </summary>
+        private void AppendRealStakeLinesAndActions(ModeHPageContent page)
+        {
+            if (page == null) return;
+            try
+            {
+                int selectedCount = ModeHRealStakeService.SelectedCount;
+                page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_SelectedCount")
+                    + "  " + selectedCount + " / " + ModeHConfig.MaxRealStakeItemsPerMatch);
+
+                if (!ModeHWarehouseStakeJournal.IsSlotConsistent)
+                {
+                    // 原因已由 RealStakeDisabledReason 在选择器上原位展示，这里不重复喷文案
+                    return;
+                }
+
+                if (selectedCount > 0 && _currentOddsQuote != null)
+                {
+                    page.Lines.Add(
+                        L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_WorstCasePreview")
+                        + "  " + ModeHRealStakeService.PreviewWorstCaseLossCount()
+                        + L10n.T(" 件", " item(s)")
+                        + "　"
+                        + L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_RewardPreview")
+                        + "  " + ModeHRealStakeService.PreviewRewardCount(_currentOddsQuote.Odds)
+                        + L10n.T(" 件", " item(s)"));
+                }
+
+                List<int> selectable = ModeHRealStakeService.GetSelectablePositions();
+                List<int> selected = ModeHRealStakeService.GetSelectedPositions();
+                for (int i = 0; i < selectable.Count; i++)
+                {
+                    int position = selectable[i];
+                    bool isSelected = selected.Contains(position);
+                    string label = ModeHRealStakeService.DescribePosition(position);
+                    page.Actions.Add(new ModeHActionData
+                    {
+                        Label = (isSelected ? "● " : "○ ") + label,
+                        // 已选中的永远可点（要能取消）；未选中的在满员时置灰
+                        Interactable = isSelected
+                            || selectedCount < ModeHConfig.MaxRealStakeItemsPerMatch,
+                        // 押真实物品是不可逆风险动作，用 Danger token 与虚拟下注区分开
+                        IsDanger = true,
+                        OnClick = delegate { ToggleRealStakeSelection(position); },
+                    });
+                }
+            }
+            catch (Exception e)
+            {
+                LogFailure("odds_real_stake_section", e);
+            }
+        }
+
+        /// <summary>切换一格押品选中态并刷新页面。失败时原位提示，不静默。</summary>
+        private void ToggleRealStakeSelection(int position)
+        {
+            if (_commandsClosed || _runState == null) return;
+            if (_runState.Lifecycle != ModeHLifecycle.OddsPreview
+                && _runState.Lifecycle != ModeHLifecycle.LoadoutEditing)
+            {
+                return;
+            }
+
+            string failureReasonId;
+            if (!ModeHRealStakeService.ToggleSelection(position, out failureReasonId))
+            {
+                ModBehaviour.DevLog("[ModeH] 押品选择被拒: "
+                    + (failureReasonId != null ? failureReasonId : "unknown"));
+            }
+            RouteUiForLifecycle(_runState.Lifecycle);
+        }
+
+        /// <summary>
+        /// 把 IsSlotConsistent=false 的内部 reasonId 翻译成玩家看得懂的一句话。
+        /// 分因很重要：「上一笔还没结算」是玩家能自己去恢复面板处理的，
+        /// 而笼统的「无法证明资产安全」会被读成"我的存档坏了"。
+        /// 未登记的原因回落通用文案，绝不把 reasonId 原文喷给玩家。
+        /// </summary>
+        private static string ResolveRealStakeDisabledReason()
+        {
+            string reasonId = ModeHWarehouseStakeJournal.SlotInconsistentReasonId;
+            string key = "RealStake_Disabled";
+            if (!string.IsNullOrEmpty(reasonId))
+            {
+                if (reasonId.IndexOf("slot_active_journal", StringComparison.Ordinal) >= 0
+                    || reasonId.IndexOf("slot_phase_unknown", StringComparison.Ordinal) >= 0)
+                {
+                    key = "RealStake_Disabled_PendingTx";
+                }
+                else if (reasonId.IndexOf("slot_manual_intervention", StringComparison.Ordinal) >= 0)
+                {
+                    key = "RealStake_Disabled_ManualIntervention";
+                }
+                else if (reasonId.IndexOf("slot_storage_unavailable", StringComparison.Ordinal) >= 0)
+                {
+                    key = "RealStake_Disabled_StorageUnavailable";
+                }
+            }
+            return L10n.T(ModeHConfig.LocalizationKeyPrefix + key);
+        }
+
         private ModeHPageContent BuildOddsPageContent()
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Odds");
-            page.ShowRealStakeNotice = true;
 
-            // 押品选择器：真实资产路径尚未接线，按 §22.1 的只读派生结果显示禁用原因，
-            // 绝不做成可写开关（ModeHConfigApiGuard 禁止任何 RealWarehouseStake 开关符号）。
-            page.RealStakeSelectorEnabled = false;
-            page.RealStakeDisabledReason =
-                L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_Disabled");
+            // 押品选择器可用性是 §22.1 的**只读派生结果**，不是开关
+            // （ModeHConfigApiGuard 禁止任何 RealWarehouseStake 开关符号）。
+            // 证据不足时禁用并原位说明原因，赛季照常用虚拟筹码跑完整闭环。
+            page.RealStakeSelectorEnabled = ModeHWarehouseStakeJournal.IsSlotConsistent;
+            // 风险提示只在真的能押的时候出：功能不可用还挂着「失败永久没收」
+            // 会让玩家以为自己的存档坏了，而不是"这个功能现在用不了"。
+            page.ShowRealStakeNotice = page.RealStakeSelectorEnabled;
+            if (!page.RealStakeSelectorEnabled)
+            {
+                page.RealStakeDisabledReason = ResolveRealStakeDisabledReason();
+            }
 
             if (_season == null || _runState == null) return page;
 
@@ -629,6 +780,8 @@ namespace BossRush
                     OnClick = delegate { SelectVirtualStake(selected); },
                 });
             }
+
+            AppendRealStakeLinesAndActions(page);
 
             page.Actions.Add(new ModeHActionData
             {
@@ -695,7 +848,23 @@ namespace BossRush
         private void StartMatchSpawning()
         {
             if (_owner == null || _map == null || _runState == null) return;
-            if (!TryTransition(ModeHLifecycle.LoadoutLocked, ModeHLifecycle.MatchSpawning, "spawn_begin"))
+
+            // 押了真实物品的这一场要经 StakePrepared 再进生成：冻结表为真实资产
+            // 支路专门留了 LoadoutLocked -> StakePrepared -> MatchSpawning 这条边，
+            // 让恢复流程能从 lifecycle 一眼看出"这一场有押品"。
+            // 没押的主干仍是 LoadoutLocked -> MatchSpawning 直连（guard 冻结这一点）。
+            ModeHLifecycle spawnOrigin = ModeHLifecycle.LoadoutLocked;
+            if (ModeHWarehouseStakeJournal.Active != null)
+            {
+                if (!TryTransition(ModeHLifecycle.LoadoutLocked, ModeHLifecycle.StakePrepared,
+                        "stake_prepared"))
+                {
+                    return;
+                }
+                spawnOrigin = ModeHLifecycle.StakePrepared;
+            }
+
+            if (!TryTransition(spawnOrigin, ModeHLifecycle.MatchSpawning, "spawn_begin"))
             {
                 return;
             }
