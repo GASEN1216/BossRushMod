@@ -7,16 +7,23 @@
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | P0 | 0 | 7 | 0 | 0 | 7 |
-| P1 | 0 | 20 | 0 | 0 | 20 |
-| P2 | 0 | 20 | 0 | 0 | 20 |
-| P3 | 0 | 16 | 0 | 0 | 16 |
+| P1 | 6 | 20 | 0 | 0 | 26 |
+| P2 | 4 | 20 | 0 | 0 | 24 |
+| P3 | 1 | 16 | 0 | 0 | 17 |
 
-最后更新：2026-08-31（用户明确要求全部修复并保持内容开启。CR-2026-08-31-001..006
+最后更新：2026-09-01（新增 CR-2026-09-01-010，记录第二次 F3 报告确认的
+2 个 P1 + 1 个 P2 + 1 个 P3；修复与静态验证已完成，下一份完整实机报告通过前保持 Open）。
+
+上一次更新：2026-08-31（新增 CR-2026-08-31-009，记录首次 F3 完整验收日志确认的
+4 个 P1 + 3 个 P2；代码、守卫和 Windows 编译修复已完成，但按发布门槛在下一份完整实机
+报告通过前保持 Open，不提前标 Fixed）。
+
+更早更新：2026-08-31（用户明确要求全部修复并保持内容开启。CR-2026-08-31-001..006
 与原 deferred 的 CR-2026-08-31-007 七项均已 Fixed；新增 CR-2026-08-31-008 记录本轮
 静态确认并修复的 5 个 P1 + 2 个 P2。模式H 赔率、日报未读提示两个旧 deferred 也已闭环。
 修复内容与验证见 `FIX_TRACKER.md` 同日条目；涉及真实游戏对象、UI 和存档切槽的实机 smoke 仍待人工）。
 
-上一次更新：2026-08-29（四系统复审全面修复完成：CR-2026-08-29-008..021 全部 Fixed，
+更早更新：2026-08-29（四系统复审全面修复完成：CR-2026-08-29-008..021 全部 Fixed，
 修复内容与验证见 `FIX_TRACKER.md` 的「四系统复审全面修复」条目。
 Open 计数按问题条目计，分组条目内多项分别计数。上午修复轮的
 CR-2026-08-29-001..007 未单独立条，见 `FIX_TRACKER.md` 四个修复包）。
@@ -790,6 +797,84 @@ stale 清扫处并联移除，或场景回调 `ClearAllTracking()`（与 016 同
 
 Windows 编译、相关结构守卫与全量 guard；实机需覆盖模式H 受支持地图、友方 NPC 共图、
 模拟存档失败后的征程/锻造/后山重试，以及图鉴和随机商人的商店刷新。
+
+### CR-2026-08-31-009：首次 F3 完整验收暴露的运行时回归（4 个 P1 + 3 个 P2）
+
+**严重级**：P1（4 项）/ P2（3 项）
+**兼容分类**：`COMPAT` + `OPERATIONAL`
+**状态**：Open（修复与静态验证已完成；等待下一份完整 F3 报告确认后转 Fixed）
+**来源**：Player.log + `BossRushValidation_20260831_125247_246.log`
+
+#### 已确认问题
+
+1. (P1) `CampaignContentCatalog` 使用 `JsonUtility` 解析两层对象数组时，实机只读出 version、
+   `chapters` 静默为 null，导致已部署且哈希正确的正式表回退到硬编码。
+2. (P1) Boss 乱入从图鉴目录抽到稳定 key 后直接进入 SpawnCore，但标准模式没有初始化
+   `cachedCharacterPresets`；五次候选都报未找到预设。F3 只看 `TryForceTrigger=true`，仍把空转计 PASS。
+3. (P1) F3 清场把除主玩家以外的所有存活角色都算成敌人；日志在开波前已有一个友方角色，
+   清掉唯一 Boss 后仍报 `enemies=1` 并中止后续全套模式。
+4. (P1) 动态商人 Animator 首个 `MagicBlendState.OnStateEnter` 早于 `MagicBlending.Start`，
+   对空 Playable 调 `SetJobData` 抛异常；同时自定义 merchantID 被官方数据库报“未配置商人”。
+5. (P2) Harmony 逐类隔离扫描对程序集内每个普通类型都创建 processor，普通业务方法名
+   `Cleanup` 被 Harmony 当成 cleanup 回调，产生 3 条虚假补丁失败；真实补丁实际为 53/53。
+6. (P2) 运行时 AddComponent 的日报报箱和征程公告板没有在 `base.Awake` 前初始化官方私有
+   `otherInterablesInGroup`，每次进基地都产生可稳定复现的 NRE 警告；同类新增交互组件有相同风险。
+7. (P2) F3 在 0.35 秒内轮流触发八种事件并立刻收尾，事件横幅在官方队列中延后播放，
+   验收结束后仍持续弹出；这既污染清场结论，也遮蔽异步生成失败。
+
+#### 已实现修复
+
+- 征程表复用 Mode H 的严格 token parser，并保留整表签名/顺序/目标校验。
+- 乱入桥先幂等准备官方 preset 缓存；八个事件新增实际副作用验收协议，F3 逐项等待至
+  `Passed/Failed` 或 30 秒超时并写独立 case，不再把调度成功等同功能成功。
+- 清场只统计 `Team.IsEnemy(Teams.player, team)` 的存活角色，明确排除遗种随从，并把残留实例、
+  运行时 team 与 preset key 写进报告。
+- 新增 MagicBlend 初始化顺序兼容补丁；商店以官方 ID 引导 Awake，同帧 Start 前切回稳定 Mod ID
+  并覆盖事件库存。
+- Harmony scanner 只处理类级或方法级含 `[HarmonyPatch]` 元数据的类型。
+- 新增交互体均在 `base.Awake` 前建立私有分组空表；完整验收期间抑制普通消息/大横幅入队，finally 复位。
+
+#### 验证需求
+
+下一份 Dev F3 完整报告必须满足：Campaign `source=Json`；八个 `RANDOM_EVENT_*` 分项均 PASS；
+Boss 乱入 `spawned>0`；商人 `merchant/shop=true, entries>0`；标准清场 `enemies=0`；完成后继续覆盖
+Mode D/E/F/G/H、Zombie、终章/BGM、回基地回读与最终性能。Player.log 同时不得再出现本条所列
+BossRush Harmony、Campaign、MagicBlend、merchantID 或自建 Interactable `base.Awake` 错误。
+
+### CR-2026-09-01-010：第二次 F3 验收暴露的共享队列与模式清理回归
+
+**严重级**：P1（2 项）/ P2（1 项）/ P3（1 项）
+**兼容分类**：`COMPAT` + `OPERATIONAL`
+**状态**：Open（修复与静态验证已完成；等待下一份完整 F3 报告确认后转 Fixed）
+**来源**：Player.log + `BossRushValidation_20260831_152526_013.log`
+
+#### 已确认问题
+
+1. (P1) 标准模式的 Boss 乱入复用 Mode E/F 分帧后处理队列，但 scheduler 位于
+   `TickWavesArenaRuntime` early-return 之后；标准模式中任务永远不推进，最终超时并在下一模式被清空。
+2. (P1) Mode E/F 克隆预设在角色销毁前被提前 Destroy。Unity 伪 null 使后续
+   `dropBoxOnDead`、Health 与 OnDestroy 链 NRE，Mode E 结束后留下 `no_preset` 角色并阻断整套验收。
+3. (P2) Mode D 生成只强制 AI 仇恨，没有把中立官方预设的 runtime team 改成玩家敌对；
+   角色虽进入本波登记表，却不满足战斗与 F3 敌对判定。旧 `EndModeD` 还只清列表，不销毁实体。
+4. (P3) Mode E 动态分类商店在配置 merchantID 前以默认 `Albert` 执行 Awake，每次生成商人产生
+   13 次无效官方数据库查询与警告；库存随后被覆盖，未造成当前用例失败，但污染日志并做无用工作。
+
+#### 已实现修复
+
+- 共享后处理 scheduler 在 WavesArena early-return 前无条件推进；空队列为 O(1) 快速返回。
+- Mode D 在登记前设置并回读 wolf 敌对状态，失败即销毁；结束路径确定性注销恢复、禁掉落并销毁实体，
+  非活动状态下重复调用也会清残留。
+- Mode E/F 克隆预设改由对象级 lease 持有，角色 OnDestroy 后延迟释放；退出路径不再 Hurt，按顺序
+  注销运行时并销毁角色。
+- Mode E StockShop 使用 inactive → 官方 bootstrap ID → Awake → 稳定 Mode ID → 分类库存流程。
+- F3 新增模式自有角色诊断与 2 秒逐帧清场等待；Mode D 报告登记对象的存活、阵营和敌对状态。
+
+#### 验证需求
+
+下一份完整 Dev F3 报告必须看到 `RANDOM_EVENT_BOSSINTRUSION`、`MODE_D_LIFECYCLE`、
+`CLEANUP_AFTER_MODE_D`、`MODE_E_LIFECYCLE` 与 `CLEANUP_AFTER_MODE_E` 全部 PASS，并继续执行
+Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不得再出现 Mode E 清理 NRE、
+`scheduler_cleared` 乱入失败或 Mode E 分类商店 `Albert` 未配置噪声。
 
 ## UNVERIFIED / Seeded Leads
 

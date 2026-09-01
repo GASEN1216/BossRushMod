@@ -39,6 +39,321 @@
 ```
 
 ---
+### 2026-09-01 编译错误 CS1631 + 语法探针的检测盲区 + 两组 CS0649
+
+**状态**: fixed
+**Finding**: 无（owner 实机 `compile_official.bat` 报出）
+**兼容分类**: COMPAT（CS1631 修复与 Mode H 卡面补全）+ SAFE（CS0649 抑制、探针默认值）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要
+
+#### 1. CS1631：catch 子句体内不能 yield（编译失败，必修）
+
+**现象**: `F3GameplayValidationStages.cs(100,17)` 与 `(122,21)` 两条
+`error CS1631: 无法在 catch 子句体中生成值`。
+
+**根因**: 我在 `RunIsolatedCase` 的两个 catch 体里写了
+`yield return ForceReclaimArena();`。C# 禁止在 catch 子句体内 `yield return`
+（`yield break` 允许，因为它不产生值）。
+
+**修复内容**: catch 里只置 `needsReclaim = true` 并记账，把 `yield return ForceReclaimArena()`
+移到 catch 块之外执行。语义不变（照样记 FAIL、照样强清、照样中止本用例）。
+
+**为什么没提前发现——这是本条最该记的部分**:
+`verify_syntax.bat` 当时报了 PASS，而它的过滤器 `CS1\d{3}` 本来就该匹配 CS1631。
+实测查明真因：**本仓库缺 `Duckov_Data\Managed` 游戏程序集，几乎每个文件都有未解析类型
+（CS0246）。Roslyn 一旦在绑定阶段解析不出类型/基类，就不会进入迭代器方法体分析，
+于是 CS16xx 这类错误根本不会被产出。** 已用最小样例双向验证：
+给类加一个不存在的基类，CS1631 就消失；去掉基类，CS1631 立刻出现。
+把 CS1631 注回真实源码后 `verify_syntax.bat`（含 `--with-bcl`）仍报 PASS，
+证明这是结构性盲区，不是配置问题。
+
+我在修复前跑的那次「两种写法都合法」的探针结论是**错的**：当时用
+`grep -oP "error CS\d+"` 解析 csc 输出，而 csc 在中文 Windows 下输出 GBK，
+grep 静默匹配失败 → 空结果被我读成「无错误」。
+
+**配套改动**:
+- `tools/verify_syntax.py`：`--with-bcl` 改为**默认开启**（新增 `--no-bcl` 反向开关），
+  并在文件头与 `RE_SYNTAX_ERROR` 处写明「CS16xx 需要 BCL 引用才走得到」。
+  这能多抓一层 BCL 用法错误，但**抓不到本仓库的 CS16xx**（原因同上）。
+- 新增 `tests/IteratorYieldInCatchGuard.py`：静态文本守卫，扫全仓 `.cs`，
+  禁止 catch 子句体内出现 `yield return`。刻意放过两个合法形态：
+  `catch { ...; yield break; }`（仓库里多处在用）与 `try { yield return ...; } finally { }`。
+  已做正反验证：干净仓库 PASS，注入 CS1631 后精确报出行号。
+  **这条规则只能靠静态守卫兜住，因为语法探针结构上做不到。**
+
+#### 2. `ModeHCardData` 三个字段从未赋值（CS0649，且是真实内容缺口）
+
+**现象**: `ModeHUIPages.cs` 报 `Body` / `GameQuality` / `IsAnomaly` 从未赋值。
+
+**根因**: 唯一的卡片生产者 `BuildProfileCard` 只填了 Title/Subtitle/ActionLabel/OnClick。
+但渲染器 `ModeHUIPages` 会读 `Body` 画正文、读 `IsAnomaly`/`GameQuality` 定描边色——
+**玩家看到的选秀卡是空白卡身**：只有名字和原型，看不到怪癖/异常、招牌口令和试棚传闻，
+等于让人盲选。这不是「多余字段」，是接线漏了一半。
+
+**修复内容**: `BuildProfileCard` 补 `IsAnomaly`（`anomalyId` 非空即真）与 `Body`
+（新增 `BuildProfileCardBody`：按「异常优先于普通怪癖」——两者按 DTO 注释互斥——
+拼「怪癖/异常 + 招牌口令 + 试棚传闻」三行，缺字段整行不出，不留半截标签）。
+本地化 key 已全部存在（`Anomaly_blood/crowd/strong/error`、`Quirk_*`、`Command_*`），
+`rumorKey` 在内容 JSON 里已是完整 key（`BossRush_ModeH_Rumor_*`）故不再补前缀。
+`GameQuality` **刻意保持不赋值**：选手不是装备、没有品质等级，留 0 时渲染器走 accent 色，
+正是想要的表现。
+
+#### 3. `BossBgmCoordinator` 四个 DTO 的 CS0649（误报，定点抑制）
+
+**根因**: `BossBgmTrackEntry` / `BossBgmStingerEntry` / `BossBgmJukeboxEntry` /
+`BossBgmTrackTable` 是 `JsonUtility.FromJson` 的反序列化目标，字段由反射赋值，
+代码里只读不写。按提示改成属性或加初始值反而会让 JsonUtility 绑不上（它只认公有字段）。
+
+**修复内容**: 在四个 DTO 外围加 `#pragma warning disable/restore 0649`，
+范围只覆盖这四个类（已核对 pragma 落在第 38/95 行，`BossBgmKeys` 等其余类型不受影响），
+并写明为什么不能按提示改。
+
+**兼容性影响**: 无 schema / 存档 key / TypeID / 配置 key 改动。Mode H 卡面补全只影响
+选秀页显示文本，不改任何状态机与结算。
+
+**验证方法**:
+1. 语法: `verify_syntax.bat` PASS；另用带 BCL 引用的 csc 全量跑，
+   逐文件核对我改过的 12 个文件只剩 CS0246（缺游戏程序集），**无 CS1631**。
+2. Guard: 全量 PASS，含新增 `IteratorYieldInCatchGuard`（已做注入式反向验证）。
+3. **仍需 owner 在装有《鸭科夫》的 Windows 上跑 `compile_official.bat` 确认真编译通过**——
+   本轮恰好证明了本机探针存在盲区，不能替代真编译。
+
+---
+### 2026-09-01 F3「完整玩法验收」三个 FAIL 的产品代码根因 + 一次性测完改造
+
+**状态**: fixed（三个产品 bug）；一处 `needs-owner-decision`（命火是否补 Moveability）
+**Finding**: 无（由 2026-09-01 实机验收报告
+`BossRushTestReports/BossRushValidation_20260901_012335_057.log` 反查得出）
+**兼容分类**: COMPAT（全部三项；无 schema / TypeID / 存档 key 改动）
+**版本/Commit**: 未提交
+**Owner decision**: 需要一处，见文末
+
+**现象**: 最近一次实机跑出 `SUMMARY | CANCELLED | pass=31 fail=3`，且在 Mode H 处整套中断，
+第 4/5 阶段（征程终章、最终清场回读）一个都没跑到。三个红项：
+`MODE_D_LIFECYCLE`、`MODE_F_BLOODFIRE`、`MODE_H_FIRST_CERTIFICATION`。
+经核查三个都是**产品代码真 bug**，不是验收器误报。
+
+#### 1. Mode D 敌人被官方距离休眠系统每帧关掉（真实玩法同样中招）
+
+**根因**: `EnemySpawnCore` 用 `CreateCharacterAsync(pos, dir, relatedScene, ...)` 生成敌人，
+`relatedScene` 是当前场景 buildIndex。官方 `CharacterMainControl.SetRelatedScene`
+在 preset 的 `setActiveByPlayerDistance`（默认 **true**）下把角色注册进
+`Duckov.Utilities.SetActiveByPlayerDistance`，该组件 `FixedUpdate` 每帧无条件执行
+`SetActive(距玩家 < 100m)`。
+
+报告证据是三只狼 `health_alive=True, team=wolf, hostile=True` 但 `active=False`——
+存活、敌对、就是被关掉了。实测距离：玩家在竞技场中心时 23 个刷怪点全在 100m 内（13.6~29.4m），
+而验收流程直接 `SceneLoader.LoadScene` 进图、没走 `BossRushEntryFlow` 的玩家传送，
+玩家停在原版落点，到刷怪点 221.7~254.3m，**0/23 在 100m 内**。
+
+**这在真实玩法里也是 bug，只是被掩盖了**：玩家一旦跑远，已刷出的怪会被静默关掉，
+`Health.IsDead` 仍为 false、仍在存活列表里 → 波次永远不结算 → 玩家卡波次。
+Mode E 早就单独处理过（`ModeERespawnItems.TryForceActivateModeEEnemy` 里显式 `Unregister`），
+Mode D / 标准波次 / Mode F / 三个自定义 Boss 都没有这层保护——这也解释了同一份报告里
+`MODE_E_LIFECYCLE` PASS（9 只）而 Mode D 是 0。
+
+**修复内容**:
+- 新增 `Utilities/SpawnedEnemyActivationHelper.cs`（已进 `compile_official.bat`）：
+  `ReleaseFromPlayerDistanceSleep` = `Unregister` + `SetSleeping(false)` + 必要时 `SetActive(true)`，
+  逐项 try/catch。把 Mode E 已验证的逻辑提到共享层（AGENTS.md 4.9：跨模块基础设施放 `Utilities/`）。
+- 接线 5 处激活点：`EnemySpawnCore` 同步路径与分帧路径各一处（Mode D/E/F/标准/丧尸共用），
+  以及三个自管激活的托管 Boss（`DragonDescendantBoss` / `DragonKingBoss` / `PhantomWitchBoss`）。
+- **不动** Mode G 的 `HoldForExternalCommit` 冻结分支。原版 spawner 生成的角色也不动——
+  那里的休眠优化该保留，否则远处整图 AI 都会常驻。
+
+#### 2. Mode F 命火过载挂了一个不存在的 stat
+
+**根因**: 角色身上**没有名为 `MoveSpeed` 的 stat**。官方移动只读三个 key
+（`CharacterMainControl` 的 `walkSpeedHash` / `runSpeedHash` / `moveabilityHash`）：
+`CharacterWalkSpeed = GetFloatStatValue(walkSpeedHash) * CharacterMoveability * 武器倍率`。
+全官方源码里 `"MoveSpeed"` 只作为 `Animator.StringToHash` 参数名出现。
+
+于是 `AddModeFBloodfireOverloadModifier(player, "MoveSpeed", ...)` 每次都走
+`RuntimeStatModifierTracker.TryAdd` 的 `stat == null → return false`，只留一条 DevLog。
+**玩家实际拿到的移速加成（Walk/Run +15%）一直是生效的**，坏的是那条无效 modifier
+和依赖它的验收断言（`speedModifierCount == 3` 恒不成立，且 metrics 为空——
+因为 `move == null` 在写 metrics 之前就 return 了）。
+
+**修复内容**:
+- `ModeF/ModeFBloodfire.cs`：删掉 `"MoveSpeed"` 那一行，只保留 Walk/Run 两条。
+  **玩家可感知数值零变化**（删的是从未生效的东西）。
+- `DebugValidateModeFBloodfire`：期望值 3 → 2，去掉 move stat 的取值与断言，
+  缺 stat 时也写明确的 `missing_stat=` metrics 而不是空串。
+- `tests/ModeFBloodfireOverloadGuard.py` 硬编码断言了那行 buggy 代码，已同步为
+  Walk/Run 两条，并加一条回归护栏禁止 `"MoveSpeed"` 重新出现
+  （AGENTS.md 4.10：改被 guard 断言的结构必须同步 guard，不许放宽掩盖）。
+
+#### 3. Mode H 认证的嵌套协程从未被推进（P0：正式入场同一路径）
+
+**根因**: `ModeHRuntimeModule_SceneFlow.DriveCertification` 手工 `MoveNext()` 驱动
+`ModeHProductionCertification.Run`，但循环体写死 `yield return null`，把 `inner.Current` 丢了。
+而 `Run` 内部是 `yield return CertifyKey(...)`——yield 出**子 IEnumerator**，
+指望调用方（Unity 协程调度器）递归驱动。
+
+结果子协程被创建但一次都没 MoveNext：逐 key 的生成、阵营核对、受控击杀、
+`RecordPassed/RecordRejected` 全没执行 → `keyResult.FailureReasonId` 恒 null
+→ 日志里 12 条**空原因**的「认证拒绝」→ `_records` 恒空 → `passedStableKeys.Count = 0`
+→ 撞 `MinProductionCandidateCount = 8` 门槛失败 → **Mode H 完全无法开局**。
+`StartCertification` 是唯一认证入口，所以这不是验收专属路径。
+
+同仓库正确写法就在隔壁：`ModeHRuntimeModule_MatchFlow.DriveMatchSpawning`
+的 `while (inner.MoveNext()) yield return inner.Current;`。
+
+**修复内容**:
+- `ModeH/ModeHRuntimeModule_SceneFlow.cs`：`yield return null;` → `yield return inner.Current;`。
+  `Current` 为 null 时语义等价于等一帧，所以每帧 owner/generation 校验与诊断页刷新节奏不变。
+- 新增 `tests/ModeHCertificationCoroutineDriveGuard.py`（已做正反验证：注入回归确实变红）。
+
+#### 4. 验收器改造：按用例隔离，一次跑完
+
+- `SuiteTimeoutSeconds` 1800 → 2700（覆盖面扩充后 30 分钟不够）。
+- 新增 `RunIsolatedCase`：协程异常只记本用例 FAIL，强清后继续下一个。
+  壳内**必须** `yield return inner.Current` 透传——与上面 Mode H 同款坑。
+- 清场失败降级：先 `ForceReclaimArena` 强清复检，只有**连续两次**不可恢复才 `_fatalAbort`。
+- 超时与取消分离：`TIMEOUT`（剩余记 SKIP，仍走完最终清场回读）vs `CANCELLED`（人喊停）
+  vs `ABORTED_DIRTY`。`SUMMARY` 增加 `failed_ids=` / `skipped_ids=`。
+- 阶段 5 → 7；新增 `ValidationForceClearArenaEnemies`（复用 F10 的 `ForceKillAllEnemies`）。
+
+**新增文件**（全部已进 `compile_official.bat`）:
+`DebugAndTools/F3GameplayValidation{Stages,Modes,BackMountain,Economy,Depth,Leaks}.cs`。
+主 runner 从 1182 行降到 1096（`LargeFileBudgetGuard` 新文件上限 1200，原本已顶格）。
+
+**新增用例**: 后山种子↔产出双向完备性/展示柜登记回落/出击餐覆盖语义/设施解锁门一致性、
+词缀拒绝路径零消耗/锁槽保全、图鉴编解码往返/清缓存回读、Mode D 多波连打、跨套件泄漏差值。
+**Mode E 撤离、Mode F 赏金与撤离、标准胜利奖励**在产品代码里全是 private 且无 Debug 入口，
+如实记 `SKIP` + 「需人工」，不伪造 PASS，也不为凑绿加测试后门。
+
+**兼容性影响**: 无 schema / 存档 key / TypeID / 配置 key 改动。Harmony 目标与反射绑定未动。
+行为变化两处，都是修复：① 已刷出的敌人不再因玩家跑远被关掉（竞技场内玩家始终在 100m 内，
+逐字无变化）；② Mode H 认证会**第一次真正执行**。
+
+**验证方法**:
+1. 语法: `verify_syntax.bat` PASS（750 源文件，CS1xxx 零错误；新增文件的错误码分布
+   与既有文件一致，只有缺游戏程序集的 CS0246/CS0518）。
+2. Guard: `python tools/run_guards.py` → PASS=509 NEW-FAIL=0 KNOWN-RED=0。
+   `ModeHCertificationCoroutineDriveGuard` 已做注入式反向验证。
+3. repowiki: 已同步 `zh/content/工具与调试/调试工具.md`。
+
+**未验证/需人工**:
+- **没有真编译**：本机是 WSL，无 `Duckov_Data\Managed`。必须在装有《鸭科夫》的 Windows 上
+  `set BOSSRUSH_DEV_BUILD=1 && compile_official.bat`（AGENTS.md 4.2）。
+- **Mode H 认证的真实结果无法静态预判**：修好之后逐 key 认证第一次真跑，
+  门槛是 8 个 key 通过 + 5 种原型覆盖，可能出现真实 reject。per-case 隔离保证它不再拖垮整套。
+- 距离休眠修复对「玩家跑远后波次仍能结算」的效果需实机复测（这才是它真正要修的玩法症状）。
+
+**Owner decision 待拍板**: 命火过载原本想给的是「移速 +15%」，实际生效的是 Walk/Run 各 +15%。
+官方还有一个 `Moveability`（Walk/Run 的公共乘数）。要不要补挂 `Moveability +15%`？
+本轮按**保守方案**处理（只删无效行、不新增），玩家数值零变化。补挂等于给命火实际加强，
+属于数值决策，按 AGENTS.md 第 7 条不擅自定案。
+
+---
+### 2026-09-01 新增玩法可达性修复：词缀锻造与鸭皇图鉴入口从未接线 + Mode H 真实押品接线
+
+**状态**: fixed
+**Finding**: 无（本轮全面审核新发现）
+**兼容分类**: COMPAT + SCHEMA+ + OPERATIONAL
+**版本/Commit**: 未提交
+**Owner decision**: 需要；owner 明确要求「概率与数值自行按项目既有口径决定，Mode H 直接接线，其余问题全部修复」
+
+**现象**:
+1. 词缀锻造（10 个源文件、13 条词缀）玩家**完全无法进入**：哥布林身上没有「词缀锻造」选项。
+2. 鸭皇图鉴（13 个源文件）玩家**完全无法进入**：基地商人不卖图鉴书，图鉴面板无从打开。
+3. 词缀熔石在游戏里**不存在任何产出途径**，而游戏内 Wiki 已承诺三条获取途径。
+4. Mode H 看盘页无条件显示「本模式允许你押上真实仓库物品，失败会永久没收」，
+   紧挨着却是「当前存档槽无法证明资产安全，押品已禁用」——功能不存在却挂着恐吓文案，
+   且第二句把「未实装」表述成「你的存档有问题」。
+5. 重启后玩家背包/仓库里的熔石与图鉴书会退化成官方 `FallbackItem`。
+
+**根因**:
+- 词缀锻造：`GoblinAffixForgeInteractable` 文件头写明"组件创建由
+  `EnsureGroupedInteractionOptions` 统一负责"，但那个方法挂了 6 个子交互、**独缺它**；
+  而 `ReforgeUIManager.OpenAffixForgeUI` 的唯一调用点就在这个从未被挂载的组件里。
+- 鸭皇图鉴：`TryInjectCodexBookIntoShop` / `InjectCodexBookIntoShops` **零调用点**。
+  8/31 的 `5842911`「修复鸭皇图鉴商店与库存持久化」修对了定价（旧实现
+  `priceFactor = 1/rawValue` 把 4000 金压成 1 金）与库存持久化，但没发现注入本身从未执行。
+- 熔石：只有 `ConsumeItem` / `GetItemCountInInventory` 三处消耗端，无掉落表、无商店条目。
+- Mode H：`ModeHWarehouseStakeJournal.LoadPersisted` 零调用点 → `_slotConsistent` 恒 false
+  → 整套抵押事务 API（14 个方法）与 `ModeHRewardTransaction` 全部无人调用。
+  存档 key `BossRush_ModeH_StakeJournal_v1` 只被风险扫描**读**过，从来没有人写。
+- 动态注册：两个 TypeID 的 `EnsureRuntimeFallbackRegistrationShell` 早已写好，
+  但一直没登记进 `BossRushDynamicItemRegistry` 的 plans 表（AGENTS 契约第 6 节）。
+- **为什么 508 个 guard 一个都没抓到**：guard 断言的是结构不变式（文件存在、清单登记、
+  订阅成对、层级常量），不验证「调用链能否从玩家操作走到功能」；编译也不报错，
+  因为未被调用的 `internal` 方法完全合法。
+
+**修复内容**:
+- 新增文件（均已加入 `compile_official.bat`）:
+  - `Integration/AffixForge/AffixForgeStoneDropService.cs` — 熔石 Boss 掉落轨，
+    形态逐字照 `PetNestDropService`（同一挂接点、同一三段式、同一 dormant 二道防线）
+  - `ModeH/ModeHStakeJournalPersistence.cs` — journal 独立 key 读写，照 `ModeHProfilePersistence`
+  - `ModeH/ModeHRealStakeService.cs` — 押品选择与结算编排
+- 修改文件:
+  - `Integration/Reforge/GoblinReforgeInteractable.cs` — 挂上 `AffixForgeOption` 子交互
+  - `Integration/BossRushIntegration.cs` + `Integration/IntegrationDeferredBootstrap.cs` — 图鉴上架两条路径
+  - `Integration/Affinity/NPCs/GoblinAffinityConfig.cs` — 熔石进哥布林商店（好感 2 级、库存 5）
+  - `Integration/AffixForge/AffixDefinitions.cs` — 掉落率 8%、单次 1 颗
+  - `Integration/BossRushDynamicItemRegistry.cs` — 补登记 500060 / 500061
+  - `LootAndRewards/LootAndRewards.cs` + `Integration/AffixForge/AffixForgeHostCleanup.cs` — 掉落轨挂接与退订
+  - `ModeH/ModeHWarehouseStakeJournal.cs` — 阶段推进内联落盘 + 失败整体回滚 + 终态重算一致性
+  - `ModeH/ModeHProfilePersistence.cs` — `OnSetFile` / `OnSaveDeleted` 装载/清空 journal
+  - `ModeH/ModeHSaveFlushCoordinator.cs` — 纳管 journal 的订阅与同批落盘
+  - `ModeH/ModeHInventoryPersistenceBridge.cs` — 下沉三个只读查询原语（守住 Isolation 白名单）
+  - `ModeH/ModeHRuntimeModule_{CombatFlow,MatchFlow,SceneFlow}.cs` — 锁盘/结算/中止三处接线 + 选择器 UI
+  - `ModeH/ModeHConfig.cs` — `MaxRealStakeItemsPerMatch = 3`
+  - `Localization/ModeHLocalization.cs` — 分因禁用文案 + 预览文案
+  - `PetNest/PetNestSaveCoordinator.cs` — 补上另外三个协调器都有的 `IsBaseLevelSafe` 场景闸
+  - `Patches/Compatibility/MagicBlendInitializationOrderPatch.cs` — 热路径 instanceID 白名单短路 + `ResetStaticCaches`
+  - `Utilities/AlwaysOnRuntimeHooks.cs` — 接上该补丁的缓存清理
+  - `compile_official.bat` — 注释里的全角标点改 ASCII（见下）
+  - Wiki / repowiki 同步（4.13）
+
+**数值决策**（owner 授权自行决定，全部对齐项目既有口径）:
+- 熔石 Boss 掉落 8%：遗种蛋是 0.04（能开出随从的终局奖励），熔石只是消耗材料且一次重随机
+  只花 1 颗，故放宽一倍。标准竞技场一局十几只 Boss 期望掉 1 颗。
+- 熔石商店：好感度 2 级（与 `SHOP_UNLOCK_LEVEL`、钻石同级）、库存 5（与钻石/冷淬液同档）。
+- Mode H 单场押品上限 3 件：配合 x5 赔率上限最多赢回 15 件同品质，又不至于一场清空半个仓库。
+
+**兼容性影响**:
+- 存档 `SCHEMA+`：`BossRush_ModeH_StakeJournal_v1` 从「只读不写」变为真正写入。
+  该 key 必须同时可反序列化为 header（风险扫描用）与完整 DTO，header 是完整 DTO 的字段子集，
+  **今后增删 journal 字段不得改动 header 的 7 个字段名**。老档无此 key 时按"从未押过"处理。
+- TypeID：无新增、无复用（仍是 500060 / 500061），仅补登记进动态注册表。
+- 玩家可见变化：哥布林多一个「词缀锻造」选项；基地商人多卖图鉴书（4000 金）；
+  Boss 会掉熔石；Mode H 看盘页出现可用的押品选择器。均为加法。
+- `OPERATIONAL`：`compile_official.bat` 注释里的全角标点会让 `chcp 65001` 下的 cmd
+  把注释尾段当命令执行（实测每次构建刷 5 行 `is not recognized`）。已改 ASCII 标点，
+  中文正文保留。这是既有问题，非本轮引入。
+
+**验证方法**:
+1. 编译: `cmd.exe /c "cd /d D:\code\ykf\BossRushMod && compile_official.bat"` →
+   **Build succeeded**，0 error，`Build\BossRush.dll` 4.09 MB 已部署；
+   构建输出中此前每次都出现的 5 行 `is not recognized` 噪声已消失。
+2. Guard: `python3 tools/run_guards.py` → **508/508 PASS**（0 NEW-FAIL、0 KNOWN-RED）。
+   过程中 `ModeHIsolationGuard` 曾拦下一次真实违规：`ModeHRealStakeService` 直接引用了
+   `Inventory`，而白名单只许 journal 与 bridge 碰玩家资产符号。**未放宽 guard**，
+   改为把只读查询下沉进 `ModeHInventoryPersistenceBridge`。
+3. 人工 smoke: 未做（见下）。
+
+**未验证/需人工**:
+- 全部运行时行为。WSL 只能编译与跑 Python guard（AGENTS 4.2）。
+- Mode H 押品三条路径必须实机走一遍：escrow 重建、**满仓返还**（`return_no_empty_slot`
+  分支）、`ManualIntervention` 出口。这三条静态审计与 guard 都覆盖不到，
+  且涉及玩家真实物品，**上线前务必先在备份存档上验证**。
+- 哥布林商店刷新是否真的出现熔石（需好感度 2 级）、图鉴书是否出现在基地商人货架。
+- 建议先出 dev 包再验：`set BOSSRUSH_DEV_BUILD=1 && compile_official.bat`，
+  否则 `DevLog` 被 `[Conditional("BOSSRUSH_DEV")]` 整个剥离，日志里什么都看不到。
+
+**失败尝试**:
+- 起初把押品事务 ID 派生在 `ModeHSeedStream.Domains.Reward` 上，与
+  `ModeHRewardTransaction` 抢同一条流的序列位置，会破坏「重启后重放同一场得到同一组 ID」
+  的幂等依赖；改用真实资产路径本来就预留的 `Domains.PlannedLoss`。
+- `slotId` 起初误传 `ModeHRuntimeGates.SlotGeneration`（那是 generation 不是槽号），
+  改为 `SavesSystem.CurrentSlot`，读不到时传 -1 而不是静默改写成 0 冒充 0 号槽。
+- 排查 bat 噪声时先怀疑 CRLF、字节偏移、`::` vs `REM`、全角括号，逐一实测否证；
+  最终二分定位到全角标点在 `chcp 65001` 下触发 cmd 的 token 切分。
+
+---
 ### 2026-08-29 四系统复审全面修复：Mode H 四个 P0 状态机断裂 + G/日报/遗种巢各自的 P1
 
 **状态**: fixed（本轮全部 confirmed finding）；模式H 战斗驱动与真实押注仍为计划内未接线
@@ -2837,7 +3152,8 @@ BossRushUISkinLoader 与相关接线。编译 + 503 guard + 内容一致性 + �
 `ResetStaticCaches` 全部被中央复位调用、契约文档登记、恒开策略与 ModConfig
 白名单、repowiki 同步、JSON 合法性、六章硬编码内容完整。
 
-`Assets/Data/Campaign/*.json` 不存在属设计内：内容以全量硬编码为准，JSON 仅为可选调参层。
+历史审核时 `Assets/Data/Campaign/*.json` 尚不存在；2026-08-31 已按发布门槛新增并改为正式来源，
+硬编码仅作整表校验失败时的灾备 fallback。
 
 ---
 ### 2026-08-31 征程/后山审核修复：四个 P1 + 两个 P2
@@ -2977,3 +3293,163 @@ BossRushUISkinLoader 与相关接线。编译 + 503 guard + 内容一致性 + �
 - 存档故障注入：征程交付、词缀锻造、展示柜和出击餐在写失败后无资源丢失且可重试。
 - 商店：图鉴书刷新/回购限制、随机商人首次库存与跨日刷新。
 - 跨会话：日报未读提示、征程 ReadyToDeliver、后山登记与出击餐恢复。
+
+---
+
+### 2026-08-31 新玩法可靠性修复与 F3 一键验收
+
+**状态**: implemented（代码、静态守卫与 Windows 编译完成；F3 全套实机报告待 owner 运行）
+**兼容分类**: `COMPAT` + `SCHEMA+`（PetNest Bundle_v2）+ `OPERATIONAL`（Dev F3 验收与 Campaign JSON 部署）
+**版本/Commit**: 未提交
+
+**修复内容**
+
+- Mode H：认证入口改为四元签名缓存优先，未命中从静态生产目录认证；首次进入不再依赖空的
+  `ProductionKeys`。缓存写失败只告警，本次通过的赛季继续；地图审计与双租约门槛保持前置。
+- 图鉴 / 遗种巢：官方敌人预设池改为两个消费者共享的一次性初始化；过滤变更同时失效两方，
+  增加扫描次数与图鉴构建次数诊断。
+- PetNest：新增权威 `BossRush_PetNest_Bundle_v2`，三个 v1 key 只读迁移且不删除；v2 损坏或过新
+  fail-closed。巢、远征、博物馆写入统一候选包事务。远征奖励以 `cashGranted` /
+  `grantedLootUnits` 续发，取消六次永久放弃，资源就绪后固定退避继续，采用至少一次语义。
+- UI / 输入：遗种巢全交互面板统一清理；Mode G 确认/放弃弹窗可幂等关闭；公开模态租约计数，
+  结束、死亡、切图、禁用和宿主销毁均走安全清理。
+- Mode F：血火负担同时挂 Move/Walk/Run 三项 1.15 倍速度与原伤害修正，统一 tracker 在所有出口移除。
+- Campaign：新增并部署 `Assets/Data/Campaign/Chapters.json`，严格六章整表校验，暴露 Json/Fallback
+  与内容签名；F3 只接受 Json + 六章 + 冻结签名匹配。
+- 日报：签到、跨日、里程碑、种子、横幅和奖励重投递统一候选提交；悬赏先落待发债务再触碰经济。
+  Dev 用例真实执行签到、跨日、保存、清缓存回读，并注入 Store 失败验证状态不变。
+- 音频 / 终章：Boss BGM 改 owner 租约，同 key 引用计数、异 key 恢复、切图清空；冠军之影只由
+  Campaign 发一次终章死亡表现、胜利与 stinger，公共清理仍幂等执行。
+- F3：新增五阶段串行完整玩法验收、专用档/运行标记、取消安全清理、超时、性能 p95/峰值采样、
+  独立 `BossRushTestReports/BossRushValidation_<runId>.log` 报告及崩溃后中断提示。
+
+**静态验证**
+
+- 新增源文件已登记 `compile_official.bat`，Campaign JSON 已加入正式部署步骤；
+  `tools/verify_syntax.py` 已支持 `echo(<file.cs`，736 个编译源语法探针通过。
+- DragonKing 火箭 guard 已改验当前对象池播放、容量、生成与清理不变式，不恢复旧 `Destroy` 路径。
+- 新增/更新 ModeH、PetNest、日报、图鉴、Campaign、BGM、F3 Runner 等守卫。
+- Windows 正式版与 Dev 版均编译成功（仅 JSON DTO 的既有 `CS0649` 警告）；Dev DLL 最后部署。
+- `test_logic_official.bat`：8/8 PASS。
+- `python tools/run_guards.py`：PASS=507 / NEW-FAIL=0 / KNOWN-RED=0。
+- `git diff --check`：无空白错误；`tools/verify_syntax.py`：737 个编译源语法探针 PASS。
+
+**实机待验收**
+
+在 Dev 构建、基地、专用测试档中打开 F3 → “验收测试”，先标记当前档，再运行完整验收。
+只有独立报告无 `FAIL` 且最终清场/性能门槛通过后，才把本条状态从 implemented 改为 fixed。
+
+---
+
+### 2026-08-31 首次 F3 报告同步与运行时回归修复
+
+**状态**: implemented（正式/Dev 编译与全量 guard 已通过；完整实机复测待 owner）
+**Finding**: CR-2026-08-31-009
+**兼容分类**: `COMPAT` + `OPERATIONAL`
+**版本/Commit**: 未提交
+
+**首次测试进度**
+
+- 报告：`BossRushValidation_20260831_125247_246.log`。
+- 已到阶段 3：13 PASS / 2 FAIL / 0 SKIP；基线 p95 18.19ms、峰值 47.84ms。
+- 已通过：数据图鉴、图鉴过滤刷新、后山数据、日报回滚、PetNest v2 与奖励债务、词缀临时物品、
+  UI 幂等清理、竞技场加载、标准模式启动。
+- 失败 1：Campaign 正式 JSON 被 `JsonUtility` 静默解析为空表，回退 Fallback。
+- 失败 2：清场把一个友方角色计成遗留敌人，触发安全中止。因此 Mode D/E/F/G/H、Zombie、
+  终章/BGM 与最终回读尚未执行，本次性能也没有最终样本。
+- Player.log 额外确认：Boss 乱入实际五次预设解析失败却被总表误报 PASS；动态商人出现
+  MagicBlend 空 Playable 异常和“未配置商人”；Harmony scanner 对三个普通 `Cleanup` 方法误报；
+  日报/征程运行时交互组件在 `base.Awake` 前缺官方私有分组空表。
+- `MakeTimeQuacker.Bed2Interactable` 的 NRE 来自另一 Mod，不属于 BossRush 修改范围；
+  DragonKing 缺少可选 trail prefab 已有对象池 fallback，本次日志未显示玩法失败。
+
+**本轮修复与测试代码升级**
+
+- Campaign 改用 `ModeHCanonicalDigest` 严格 parser；守卫禁止退回 `JsonUtility.FromJson`。
+- Boss 乱入调用 SpawnCore 前初始化官方 preset cache；F3 为八个事件输出独立
+  `RANDOM_EVENT_*` case，等待空投落地、Boss/商人生成、声源/烟花序列、现金堆和巡游鸭完成。
+- 清场统计改为明确敌对角色，并把残留对象名、runtime team、preset key 写入报告。
+- 限时商店以 `Merchant_Normal` 引导官方 Awake，同帧恢复稳定 Mod ID 后注入库存；新增
+  MagicBlend 初始化顺序兼容补丁，最多等待 10 帧且只重放仍处于当前状态的回调。
+- Harmony 逐类扫描先验证类级/方法级补丁元数据，不再让普通 `Cleanup` 方法进入 processor。
+- 日报、征程公告板/终章召唤石、后山展示柜、词缀锻造和随机商店子交互在
+  `base.Awake` 前统一初始化官方私有分组列表。
+- 完整验收运行期间不向官方普通消息/大横幅队列写入，取消、异常和正常完成均复位抑制标记。
+- 新增 `LatestPlayerLogRegressionGuard.py`，并加强 Campaign、随机事件、F3 与 Harmony 架构守卫。
+
+**当前静态验证**
+
+- Windows 正式版与 Dev 版 `compile_official.bat`：PASS（0 error，仅既有 JSON DTO `CS0649` warning）；
+  Dev DLL 已最后部署到游戏 Mod 目录。
+- `python tools/run_guards.py`：PASS=508 / NEW-FAIL=0 / KNOWN-RED=0；定向 Campaign、随机事件、
+  F3、Harmony 与最新日志回归守卫也全部 PASS。
+- `test_logic_official.bat`：8/8 PASS。
+- `tools/verify_syntax.py --with-bcl`：739 个编译源语法探针 PASS；生产源码与编译清单双向核对 739 项。
+- `git diff --check`：无空白错误。
+
+**下一步实机门槛**
+
+重新启动游戏后在同一专用测试档运行 F3 完整验收。CR-2026-08-31-009 在完整报告无 FAIL、
+最终清场通过且 Player.log 无对应异常之前保持 Open；不因本轮静态成功提前标 Fixed。
+
+---
+
+### 2026-09-01 第二次 F3 报告同步与模式生命周期修复
+
+**状态**: implemented（代码、定向守卫与 Windows 正式编译已通过；完整实机复测待 owner）
+**Finding**: CR-2026-09-01-010
+**兼容分类**: `COMPAT` + `OPERATIONAL`
+**版本/Commit**: 未提交
+
+**第二次测试进度**
+
+- 报告：`BossRushValidation_20260831_152526_013.log`，对应最新 `Player.log`。
+- 已到阶段 3：23 PASS / 4 FAIL。四个失败由三个根因产生，Mode E 清场失败后按安全规则中止。
+- 已通过：Campaign 正式 JSON、图鉴及过滤刷新、日报回滚、PetNest v2 与奖励债务、词缀临时物品、
+  UI 幂等清理、标准模式、7/8 随机事件、随机商人、标准清场与 Mode E 启动。
+- 性能中途样本：baseline p95 17.55ms、peak 51.32ms、无单帧超过 200ms；因安全中止没有最终样本。
+- 外部日志中的 `MakeTimeQuacker.Bed2Interactable.Awake` 与
+  `TriangleDuckAttachmentExpansion.CleanupAllSystems` NRE 不属于 BossRush，不在本轮修改范围。
+
+**确认根因与修复**
+
+- 随机事件 Boss 乱入进入共享 `ModeEFSpawnPostprocess` 队列后，标准 WavesArena 的 early-return
+  使 scheduler 不再 tick，任务一直 Pending，下一模式启动时才以 `scheduler_cleared` 失败。
+  现把 scheduler 提到模式组 early-return 前；空队列路径仅一次 Count 判断。
+- Mode D 只设置 AI target，未保证 runtime team 对玩家敌对；F3 因此看到已登记角色却没有可玩敌人。
+  生成登记前现执行 wolf 安全网并回读敌对状态，仍非敌对则拒绝登记并销毁。结束模式会注销恢复、
+  禁掉落并销毁本波角色；重复结束也会清理可能残留的登记实体。
+- Mode E/F 为角色克隆 `characterPreset`，旧清理先 Destroy preset，再访问角色的掉落、Health 与
+  OnDestroy 链，Unity 伪 null 窗口导致 14 个清理 NRE 和 3 个 `no_preset` 残留。现由角色上的
+  `ModeECharacterPresetLease` 持有克隆预设，角色销毁后再延迟释放；模式结束按
+  禁掉落 → 注销运行时 → 停用 → 销毁角色的顺序执行，不再用 Hurt 制造死亡副作用。
+- Mode E 分类 `StockShop` 现与随机商人相同：inactive 创建、先写 `Merchant_Normal` 引导 Awake，
+  同帧 Start 前恢复稳定 `ModeE_*` ID，再覆盖分类库存，消除每个分类以默认 `Albert` 查询的噪声。
+
+**F3 测试升级**
+
+- Mode D 用例同时输出登记对象的 active、Health、team 与 hostile 回读，避免只看总敌人数。
+- 清场新增模式自有角色扫描，覆盖 inactive 的 `BossRush_` / `ModeD_` / `ModeE_` / `ModeF_` /
+  `RndEvt_` / `ZombieMode_` 对象；普通敌对角色统计仍单独保留。
+- 每次模式结束后的清场由固定 0.5 秒改为最多 2 秒逐帧轮询，等待 Unity 延迟 Destroy 完成；
+  轮询失败会输出 owned/hostile 明细并立即中止，最终清场也复用同一诊断口径。
+
+**当前验证**
+
+- Windows 正式版与 Dev 版 `compile_official.bat`：PASS（0 error，仅既有 JSON DTO `CS0649` warning）；
+  Dev 版最后部署。Build 与游戏目录 DLL 的 SHA-256 均为
+  `6806798E82F9F015EF041C4E31A5D165566AEB5B616AA2B44CEDAD7BA8316625`。
+- 生产源码与编译清单双向核对：740 项 PASS。
+- `GameplayValidationRunnerGuard.py`、`LatestPlayerLogRegressionGuard.py`、
+  `RandomEventsWaveIsolationGuard.py`、`ModeEShellHarmonyUiContractGuard.py`、
+  `ModeEFSpawnPostprocessSchedulerGuard.py` 与相关 Mode D/E 守卫：PASS。
+- `python tools/run_guards.py`：PASS=508 / NEW-FAIL=0 / KNOWN-RED=0。
+- `tools/verify_syntax.py --with-bcl`：740 个编译源语法探针 PASS；`test_logic_official.bat`：8/8 PASS。
+- Campaign 源/部署 JSON SHA-256 均为
+  `45EB48336A246D88081349A040BC647045C224B32B2D8E480E8A11986B9C1E96`；
+  `compile_official.bat` 全部 1113 个换行均为 CRLF；`git -c core.autocrlf=false diff --check`：PASS。
+
+**下一步实机门槛**
+
+重新启动游戏后在专用测试档运行 F3 完整验收。CR-2026-09-01-010 只有在 Boss 乱入、Mode D、
+Mode E 清场及后续 Mode F/G/H、Zombie、终章、最终回读全部通过后才能转 Fixed。
