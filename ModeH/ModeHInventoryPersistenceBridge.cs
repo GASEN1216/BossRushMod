@@ -156,6 +156,116 @@ namespace BossRush
             return count;
         }
 
+        /// <summary>
+        /// 押品选择器用的只读查询：列出前 `maxPositions` 格里**非空**的槽位号。
+        ///
+        /// 放在本类而不是调用方，是因为 ModeHIsolationGuard 冻结了「只有 journal 与
+        /// 本桥可以引用 Inventory / PlayerStorage」。选择器只需要槽位号与展示名，
+        /// 不需要（也不应该）拿到 Item 引用——Item 引用跨场景就失效了。
+        ///
+        /// 只扫窗口内的格子：本方法不做树规范化，因此本身很便宜，
+        /// 但调用方随后对每格做的 TryCapture 不便宜，窗口由调用方决定。
+        /// </summary>
+        public static List<int> ListOccupiedPositions(int maxPositions)
+        {
+            List<int> result = new List<int>();
+            if (maxPositions <= 0) return result;
+
+            string reason;
+            Inventory inventory = TryGetInventory(out reason);
+            if (inventory == null) return result;
+
+            try
+            {
+                int capacity = inventory.Capacity;
+                int limit = capacity < maxPositions ? capacity : maxPositions;
+                for (int i = 0; i < limit; i++)
+                {
+                    if (inventory.GetItemAt(i) == null) continue;
+                    result.Add(i);
+                }
+            }
+            catch (Exception)
+            {
+                // 读取失败按"没有可押物品"处理，不抛给 UI
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// 一格物品的展示名与品质（押品选择器按钮文案用）。
+        /// 格子为空或读不出时返回 false，调用方回落槽位号。
+        /// </summary>
+        public static bool TryDescribePosition(int position, out string displayName, out int quality)
+        {
+            displayName = null;
+            quality = 0;
+
+            string reason;
+            Inventory inventory = TryGetInventory(out reason);
+            if (inventory == null) return false;
+
+            try
+            {
+                Item item = inventory.GetItemAt(position);
+                if (item == null) return false;
+
+                try { displayName = item.DisplayName; }
+                catch (Exception)
+                {
+                    displayName = null;
+                }
+                try { quality = item.Quality; }
+                catch (Exception)
+                {
+                    quality = 0;
+                }
+                return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 为一个槽位构造规范化快照并补齐真实出现次数（押品选择与锁盘用）。
+        /// 空格 / 读不出品质 / 出现次数解析失败一律返回 null（fail-closed：
+        /// 无法证明"同品质返还"的物品不允许押）。
+        /// </summary>
+        public static ModeHItemTreeSnapshotDto TryCaptureAt(int position, out string failureReasonId)
+        {
+            failureReasonId = null;
+            Inventory inventory = TryGetInventory(out failureReasonId);
+            if (inventory == null) return null;
+
+            Item item;
+            try { item = inventory.GetItemAt(position); }
+            catch (Exception e)
+            {
+                failureReasonId = "stake_slot_read_failed:" + e.GetType().Name;
+                return null;
+            }
+            if (item == null)
+            {
+                failureReasonId = "stake_slot_empty";
+                return null;
+            }
+
+            ModeHItemTreeSnapshotDto snapshot =
+                ModeHItemTreeNormalizer.TryCapture(item, position, 1, out failureReasonId);
+            if (snapshot == null) return null;
+
+            // preCount 必须是真实出现次数：TryDetachAt 会拿它做前置核对
+            snapshot.preCount = CountOccurrences(snapshot.semanticTreeDigest);
+            if (snapshot.preCount <= 0)
+            {
+                failureReasonId = "stake_occurrence_unresolved";
+                return null;
+            }
+            return snapshot;
+        }
+
         #endregion
 
         #region 写入原语

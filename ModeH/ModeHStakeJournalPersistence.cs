@@ -1,43 +1,57 @@
+// ============================================================================
+// ModeHStakeJournalPersistence.cs - 真实仓库抵押 journal 的存档读写
+// ============================================================================
+// 为什么单独一个 key（而不是塞进 Season）：
+//   ModeHRuntimeGates.InitializeRiskForSlot 在 OnSetFile 之后要做**轻量**风险扫描，
+//   契约明确写着「只调 KeyExisits 并读取 stake journal 的 raw envelope header，
+//   不加载 Season / HallOfFame / bundle / JSON / 候选池或完整 journal payload」。
+//   把 journal 塞进 Season 会让那次扫描被迫读整个赛季，破坏该契约。
+//   因此 journal 有自己的 v1 key：BossRush_ModeH_StakeJournal_v1。
+//
+// header 兼容契约（**不可破坏**）：
+//   同一个 key 必须既能反序列化成 ModeHStakeJournalHeaderDto（风险扫描用），
+//   也能反序列化成完整 ModeHStakeJournalDto（恢复流程用）。前者是后者的字段子集，
+//   字段名逐字一致。给 journal 增删字段时不得改动 header 的 7 个字段名。
+//
+// 硬约束（照 ModeHProfilePersistence 的同一套纪律）：
+//   - 原生 Saves.SavesSystem typed API，KeyExisits 前置分类；
+//   - 每次只写一个完整 ModeHStakeJournalDto，禁止拆成多次 Save；
+//   - 写 cache 后必须 Load 回读并核对 canonical payloadDigest；
+//   - 未知 schemaVersion / 不可读 payload / 摘要不符一律进入写入保护，
+//     **绝不覆盖旧值、绝不删除 journal**（那是玩家真实物品的唯一凭证）；
+//   - 本类绝不调用 SavesSystem.SaveFile：物理落盘唯一在 ModeHSaveFlushCoordinator。
+//
+// 与 Season 的一个关键差异：
+//   journal 不写 gameBuildSignature / contentCatalogSignature。押品事务只认
+//   modBuildSignature（journal 自己在 TryPrepare 里已经写过），游戏版本升级
+//   不该让玩家的未结算押品变成不可读——那会把可恢复的事务变成人工介入。
+// ============================================================================
+
 using System;
 using Saves;
 
 namespace BossRush
 {
-    /// <summary>
-    /// Mode H 赛季存档读写（设计提案 §20.3、§25.1）。
-    ///
-    /// 硬约束：
-    /// - 独立 v1 key：BossRush_ModeH_Season_v1；
-    /// - 原生 Saves.SavesSystem typed API，KeyExisits 前置分类；
-    /// - 每次只写一个完整 ModeHSeasonDto，禁止把 report / profile / roster / 虚拟奖励
-    ///   拆成多次 Save；
-    /// - 写 cache 后必须 Load 回读并核对 canonical payloadDigest；
-    /// - 未知 schemaVersion / signatureAlgorithmVersion、不可读 payload、摘要不符
-    ///   一律进入写入保护，只锁定 Mode H，不覆盖旧值、不删除 journal；
-    /// - OnCollectSaveData / OnSetFile / OnSaveDeleted 均为幂等命名处理器。
-    ///
-    /// 实际落盘由 ModeHSaveFlushCoordinator 统一调度（每批至多一次 SaveFile(false)）。
-    /// </summary>
-    public static class ModeHProfilePersistence
+    /// <summary>Mode H 抵押 journal 存档读写。单 slot 单 active journal。</summary>
+    public static class ModeHStakeJournalPersistence
     {
         #region 状态
 
         private static readonly object _lock = new object();
         private static bool _subscribed;
-        private static ModeHSeasonDto _cache;
-        private static ModeHSeasonDto _pending;
+        private static ModeHStakeJournalDto _cache;
+        private static ModeHStakeJournalDto _pending;
         private static string _pendingDigest;
         private static bool _storeFaulted;
         private static bool _writeBarrier;
         private static string _lastError;
-        private static int _slotGeneration;
 
         #endregion
 
         #region 只读
 
         /// <summary>存档 key。</summary>
-        public static string StorageKey { get { return ModeHConfig.SeasonStorageKey; } }
+        public static string StorageKey { get { return ModeHConfig.StakeJournalStorageKey; } }
 
         /// <summary>store 是否已进入单向故障状态。</summary>
         public static bool IsStoreFaulted { get { return _storeFaulted; } }
@@ -48,8 +62,8 @@ namespace BossRush
         /// <summary>最后一次失败原因。</summary>
         public static string LastError { get { return _lastError; } }
 
-        /// <summary>当前缓存的赛季对象（可能为 null）。</summary>
-        public static ModeHSeasonDto Current { get { return _cache; } }
+        /// <summary>当前缓存的 journal（可能为 null = 该槽从未押过真实物品）。</summary>
+        public static ModeHStakeJournalDto Current { get { return _cache; } }
 
         /// <summary>是否存在尚未落盘的写入。</summary>
         public static bool HasPendingWrite { get { return _pending != null; } }
@@ -58,7 +72,15 @@ namespace BossRush
 
         #region 订阅（幂等）
 
-        /// <summary>幂等订阅存档生命周期事件。</summary>
+        /// <summary>
+        /// 幂等订阅存档收集事件。
+        ///
+        /// **只订 OnCollectSaveData**：OnSetFile / OnSaveDeleted 由
+        /// ModeHProfilePersistence 统一处理（它在那两个 handler 里已经调了
+        /// ModeHRuntimeGates 的复位与风险重扫），本类只需要在切槽时被动清缓存，
+        /// 由 ClearCache/ResetStaticCaches 经那条路径带到。
+        /// 重复订阅同一个 SavesSystem 事件会让 journal 被写两次。
+        /// </summary>
         public static void EnsureSubscribed()
         {
             lock (_lock)
@@ -69,12 +91,10 @@ namespace BossRush
             try
             {
                 SavesSystem.OnCollectSaveData += HandleCollectSaveData;
-                SavesSystem.OnSetFile += HandleSetFile;
-                SavesSystem.OnSaveDeleted += HandleSaveDeleted;
             }
             catch (Exception e)
             {
-                _lastError = "season_subscribe_failed:" + e.GetType().Name;
+                _lastError = "journal_subscribe_failed:" + e.GetType().Name;
                 lock (_lock)
                 {
                     _subscribed = false;
@@ -93,8 +113,6 @@ namespace BossRush
             try
             {
                 SavesSystem.OnCollectSaveData -= HandleCollectSaveData;
-                SavesSystem.OnSetFile -= HandleSetFile;
-                SavesSystem.OnSaveDeleted -= HandleSaveDeleted;
             }
             catch (Exception)
             {
@@ -114,75 +132,16 @@ namespace BossRush
             }
         }
 
-        private static void HandleSetFile()
-        {
-            try
-            {
-                lock (_lock)
-                {
-                    _slotGeneration++;
-                    _cache = null;
-                    _pending = null;
-                    _pendingDigest = null;
-                    _writeBarrier = false;
-                    _lastError = null;
-                }
-                ModeHRuntimeGates.ResetForSlotChange();
-                ModeHRuntimeGates.InitializeRiskForSlot(_slotGeneration);
-                LoadCurrent();
-                // 抵押 journal 必须在 NotifySlotRestored 之前装载：恢复面板与押品选择器
-                // 都读 IsSlotConsistent，而它只有在 LoadPersisted 之后才反映真实槽状态。
-                // 漏这一步的后果是 _slotConsistent 恒 false，押品被永久禁用。
-                ModeHStakeJournalPersistence.ClearCache();
-                ModeHWarehouseStakeJournal.LoadPersisted(ModeHStakeJournalPersistence.LoadCurrent());
-                // 新槽里如果有中断的赛季，必须重建内存 run owner 并立起 recovery-only 闸，
-                // 否则玩家能直接开新赛季把它覆盖掉（CR-2026-08-29-012）
-                ModeHRuntimeModule.NotifySlotRestored();
-            }
-            catch (Exception e)
-            {
-                _lastError = "season_setfile_failed:" + e.GetType().Name;
-            }
-        }
-
-        private static void HandleSaveDeleted()
-        {
-            try
-            {
-                lock (_lock)
-                {
-                    _slotGeneration++;
-                    _cache = null;
-                    _pending = null;
-                    _pendingDigest = null;
-                    _writeBarrier = false;
-                    _lastError = null;
-                }
-                ModeHRuntimeGates.ResetForSlotChange();
-                ModeHRuntimeGates.InitializeRiskForSlot(_slotGeneration);
-                // 删档：journal 随存档一起没了，内存态必须跟着清空，
-                // 否则上一个槽的押品记录会挂在新槽上（LoadPersisted(null) 会把
-                // _slotConsistent 置回 true，等于"这个槽没有未结算事务"）。
-                ModeHStakeJournalPersistence.ClearCache();
-                ModeHWarehouseStakeJournal.LoadPersisted(null);
-                // 删档后同样要重建：读不到赛季时它会把 run owner 清空并撤下 recovery-only 闸
-                ModeHRuntimeModule.NotifySlotRestored();
-            }
-            catch (Exception e)
-            {
-                _lastError = "season_savedeleted_failed:" + e.GetType().Name;
-            }
-        }
-
         #endregion
 
         #region 读取
 
         /// <summary>
-        /// 读取当前槽的赛季对象。key 不存在返回 null（视为全新未进入 Mode H）；
-        /// 版本不兼容 / 摘要不符 / 不可读一律进入写入保护并返回 null。
+        /// 读取当前槽的 journal。key 不存在返回 null（该槽从未押过真实物品）；
+        /// 版本不兼容 / 摘要不符 / 不可读一律进入写入保护并返回 null——
+        /// 此时 RecomputeSlotConsistency 会因读不到而保持押品禁用，赛季照常用虚拟筹码跑。
         /// </summary>
-        public static ModeHSeasonDto LoadCurrent()
+        public static ModeHStakeJournalDto LoadCurrent()
         {
             try
             {
@@ -195,21 +154,21 @@ namespace BossRush
                     return null;
                 }
 
-                ModeHSeasonDto loaded = SavesSystem.Load<ModeHSeasonDto>(StorageKey);
+                ModeHStakeJournalDto loaded = SavesSystem.Load<ModeHStakeJournalDto>(StorageKey);
                 if (loaded == null)
                 {
-                    SetWriteBarrier("season_payload_null");
+                    SetWriteBarrier("journal_payload_null");
                     return null;
                 }
                 if (loaded.schemaVersion != ModeHConfig.CurrentSchemaVersion
                     || loaded.signatureAlgorithmVersion != ModeHConfig.CurrentSignatureAlgorithmVersion)
                 {
-                    SetWriteBarrier("season_schema_incompatible");
+                    SetWriteBarrier("journal_schema_incompatible");
                     return null;
                 }
                 if (!VerifyDigest(loaded))
                 {
-                    SetWriteBarrier("season_digest_mismatch");
+                    SetWriteBarrier("journal_digest_mismatch");
                     return null;
                 }
 
@@ -221,12 +180,12 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                SetWriteBarrier("season_load_exception:" + e.GetType().Name);
+                SetWriteBarrier("journal_load_exception:" + e.GetType().Name);
                 return null;
             }
         }
 
-        private static bool VerifyDigest(ModeHSeasonDto dto)
+        private static bool VerifyDigest(ModeHStakeJournalDto dto)
         {
             if (dto == null) return false;
             string declared = dto.payloadDigest;
@@ -246,10 +205,11 @@ namespace BossRush
             lock (_lock)
             {
                 _writeBarrier = true;
-                _cache = null;
+                // **不清 _cache**：与 Season 的差异点。journal 是玩家真实物品的凭证，
+                // 读不动的时候把它从内存里抹掉会让恢复面板连"有过这笔事务"都看不见。
                 _lastError = reasonId;
             }
-            ModeHRuntimeGates.SetRecoveryOnlyBlocked(true, reasonId);
+            ModeHRuntimeGates.SetExternalAssetRiskBlocked(true, reasonId);
         }
 
         #endregion
@@ -257,51 +217,37 @@ namespace BossRush
         #region 写入
 
         /// <summary>
-        /// 暂存一个完整赛季 payload。会补齐 schema / 三签名 / slotGeneration 并计算 payloadDigest。
+        /// 暂存一个完整 journal payload。会补齐 schema 并重算 payloadDigest。
         /// 写入保护或 store 故障时拒绝。
         /// </summary>
-        public static bool StageWrite(ModeHSeasonDto dto, out string error)
+        public static bool StageWrite(ModeHStakeJournalDto dto, out string error)
         {
             error = null;
             if (dto == null)
             {
-                error = "season_stage_null";
+                error = "journal_stage_null";
                 return false;
             }
             if (_writeBarrier)
             {
-                error = "season_write_barrier";
+                error = "journal_write_barrier";
                 return false;
             }
             if (_storeFaulted)
             {
-                error = "season_store_faulted";
-                return false;
-            }
-
-            string gameSignature;
-            string modSignature;
-            string signatureError;
-            if (!ModeHCanonicalDigest.TryGetGameBuildSignature(out gameSignature, out signatureError)
-                || !ModeHCanonicalDigest.TryGetModBuildSignature(out modSignature, out signatureError))
-            {
-                error = "season_signature_unavailable:" + signatureError;
+                error = "journal_store_faulted";
                 return false;
             }
 
             dto.schemaVersion = ModeHConfig.CurrentSchemaVersion;
             dto.signatureAlgorithmVersion = ModeHConfig.CurrentSignatureAlgorithmVersion;
-            dto.gameBuildSignature = gameSignature;
-            dto.modBuildSignature = modSignature;
-            dto.contentCatalogSignature = ModeHContentCatalog.ContentCatalogSignature;
-            dto.slotGeneration = _slotGeneration;
             dto.payloadDigest = null;
 
             string digest;
             string digestError;
             if (!ModeHCanonicalDigest.TryComputeObjectDigest(dto, "payloadDigest", out digest, out digestError))
             {
-                error = "season_digest_failed:" + digestError;
+                error = "journal_digest_failed:" + digestError;
                 return false;
             }
             dto.payloadDigest = digest;
@@ -321,7 +267,7 @@ namespace BossRush
         /// </summary>
         public static bool FlushPending()
         {
-            ModeHSeasonDto pending;
+            ModeHStakeJournalDto pending;
             string expectedDigest;
             lock (_lock)
             {
@@ -335,19 +281,20 @@ namespace BossRush
             {
                 if (SavesSystem.IsSaving) return false;
 
-                SavesSystem.Save<ModeHSeasonDto>(StorageKey, pending);
+                SavesSystem.Save<ModeHStakeJournalDto>(StorageKey, pending);
 
-                ModeHSeasonDto readback = SavesSystem.Load<ModeHSeasonDto>(StorageKey);
-                if (readback == null || !string.Equals(readback.payloadDigest, expectedDigest, StringComparison.Ordinal))
+                ModeHStakeJournalDto readback = SavesSystem.Load<ModeHStakeJournalDto>(StorageKey);
+                if (readback == null
+                    || !string.Equals(readback.payloadDigest, expectedDigest, StringComparison.Ordinal))
                 {
                     _storeFaulted = true;
-                    _lastError = "season_readback_mismatch";
+                    _lastError = "journal_readback_mismatch";
                     return false;
                 }
                 if (!VerifyDigest(readback))
                 {
                     _storeFaulted = true;
-                    _lastError = "season_readback_digest_invalid";
+                    _lastError = "journal_readback_digest_invalid";
                     return false;
                 }
 
@@ -363,12 +310,12 @@ namespace BossRush
             catch (Exception e)
             {
                 _storeFaulted = true;
-                _lastError = "season_flush_exception:" + e.GetType().Name;
+                _lastError = "journal_flush_exception:" + e.GetType().Name;
                 return false;
             }
         }
 
-        /// <summary>删档 / 赛季终局后清空当前 key 的内存缓存（不删除玩家其他数据）。</summary>
+        /// <summary>切槽时清空内存缓存（不删除磁盘上的 journal）。</summary>
         public static void ClearCache()
         {
             lock (_lock)
@@ -376,6 +323,8 @@ namespace BossRush
                 _cache = null;
                 _pending = null;
                 _pendingDigest = null;
+                _writeBarrier = false;
+                _lastError = null;
             }
         }
 

@@ -211,7 +211,17 @@ namespace BossRush
             locked.planDigest = _season.currentMatchPlan.planDigest;
             locked.loadoutDigest = roster.loadoutDigest;
             locked.lockedStateSequence = _runState.StateSequence;
-            locked.realStakeSelected = false;
+
+            // 真实押品：锁盘是唯一允许把玩家物品移出仓库的时刻（§22.2）。
+            // 没选押品时 TryLockForMatch 直接返回 true 且不建 journal（默认不押）。
+            // 失败必须整体拒绝锁盘——绝不能"当作没押"继续开战，那会让玩家
+            // 以为物品安全而实际可能已脱离仓库。
+            if (!ModeHRealStakeService.TryLockForMatch(
+                    _runState.RunId, _runState.MatchIndex, _runState.RunSeed, out failureReasonId))
+            {
+                return false;
+            }
+            locked.realStakeSelected = ModeHWarehouseStakeJournal.Active != null;
 
             _season.preMatchSnapshot = snapshot;
             _season.currentLoadoutLock = locked;
@@ -704,6 +714,18 @@ namespace BossRush
                 bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
                 int rewardCandidates = ModeHVirtualStakeController.Settle(
                     _season, _season.preMatchSnapshot, report, odds, won);
+
+                // 真实押品结算：无 journal 时是 no-op（本场没押）。
+                // 失败**不重打这一场**——虚拟筹码已经结算过，重来会重复发奖；
+                // journal 内部已进人工介入或保持 pending，交给恢复壳只读展示处置。
+                string realStakeFailure;
+                if (!ModeHRealStakeService.TrySettleMatch(
+                        _runState.RunSeed, _runState.MatchIndex, won, odds, out realStakeFailure))
+                {
+                    ModBehaviour.CriticalLog(
+                        "[ModeH] [WARNING] 真实押品结算未完成，已保留 journal 交恢复流程: "
+                        + (realStakeFailure != null ? realStakeFailure : "unknown"));
+                }
 
                 ModeHProfileDto rewardProfile = FindSeasonProfile(
                     !string.IsNullOrEmpty(survivingProfileId)

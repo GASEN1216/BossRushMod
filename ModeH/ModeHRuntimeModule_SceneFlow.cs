@@ -45,6 +45,9 @@ namespace BossRush
         /// <summary>生产认证实例（协程持有者）。</summary>
         private ModeHProductionCertification _certification;
 
+        /// <summary>最近一次认证是否命中持久化缓存（F3 验收只读）。</summary>
+        private bool _lastCertificationUsedCache;
+
         /// <summary>认证协程句柄，用于关停时取消。</summary>
         private Coroutine _certificationRoutine;
 
@@ -250,21 +253,31 @@ namespace BossRush
 
         private void StartCertification()
         {
-            List<string> keys = ModeHPresetRegistry.ProductionKeys;
-            if (keys == null || keys.Count == 0)
-            {
-                AbortSetup("production_pool_empty", true);
-                return;
-            }
-
             _certification = new ModeHProductionCertification();
-            ModeHCertificationResult result = new ModeHCertificationResult();
-
+            _lastCertificationUsedCache = false;
             if (_owner == null)
             {
                 AbortSetup("owner_missing", true);
                 return;
             }
+
+            // 首次进入时 ProductionKeys 尚未物化；认证输入必须来自静态生产目录。
+            // 有效缓存会把报告重新物化进注册表，因此仍需在双租约和地图审计之后命中。
+            if (_certification.TryUseCachedReport(ModeHRuntimeGates.SlotGeneration))
+            {
+                _lastCertificationUsedCache = true;
+                CreateDraftingSeason(_certification.Report);
+                return;
+            }
+
+            List<string> keys = ModeHProfileRegistry.GetProductionStableKeys();
+            if (keys == null || keys.Count == 0)
+            {
+                AbortSetup("production_catalog_empty", true);
+                return;
+            }
+
+            ModeHCertificationResult result = new ModeHCertificationResult();
 
             // 认证要真刀真枪跑一遍生成/战斗/掉落，只能走协程；诊断层给玩家一个可取消的进度页
             try
@@ -278,6 +291,19 @@ namespace BossRush
             }
 
             _certificationRoutine = _owner.StartCoroutine(DriveCertification(keys, result));
+        }
+
+        internal bool LastCertificationUsedCache { get { return _lastCertificationUsedCache; } }
+
+        /// <summary>Dev 验收专用：把 Drafting 测试赛季归档成 None，再走正常关停。</summary>
+        internal bool DebugFinishValidationSeason()
+        {
+            if (!ModBehaviour.DevModeEnabled || _runState == null) return false;
+            if (_runState.Lifecycle != ModeHLifecycle.Drafting) return false;
+            if (!TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.None, "f3_validation")) return false;
+            bool persisted = TryPersistSeason("f3_validation_finished");
+            RequestExit(ModeHExitReason.SeasonComplete, "f3_validation_finished");
+            return persisted;
         }
 
         private IEnumerator DriveCertification(List<string> keys, ModeHCertificationResult result)
@@ -311,7 +337,15 @@ namespace BossRush
                     try { _ui.UpdateDiagnostics(DescribeCertificationProgress(result)); }
                     catch (Exception) { /* 诊断页失败不影响认证本身 */ }
                 }
-                yield return null;
+                // 必须把 inner.Current 透传出去：Run 内部是 `yield return CertifyKey(...)`，
+                // 即 yield 出子 IEnumerator 交给 Unity 协程调度器递归驱动。曾经在这里写死
+                // `yield return null`，子协程被创建但一次都没 MoveNext——逐 key 的生成、
+                // 阵营核对、受控击杀、RecordPassed/RecordRejected 全部没执行，
+                // 每个 key 都打出一条空原因的「认证拒绝」，_records 恒空，
+                // 门槛必然撞 MinProductionCandidateCount 失败 → Mode H 完全无法开局。
+                // Current 为 null 时语义与 `yield return null` 等价（等一帧），
+                // 所以每帧的 owner/generation 校验与诊断页刷新节奏不变。
+                yield return inner.Current;
             }
 
             _certificationRoutine = null;
@@ -337,6 +371,15 @@ namespace BossRush
                 LogFailure("preset_materialize", e);
                 AbortSetup("preset_materialize_failed", true);
                 yield break;
+            }
+
+            string cacheError;
+            if (!ModeHSaveFlushCoordinator.RequestCertificationCacheWrite(
+                    result.Report, ModeHRuntimeGates.SlotGeneration, out cacheError))
+            {
+                // 缓存只负责下一次入场加速，不能让已通过的认证反过来阻断本局。
+                ModBehaviour.DevLog("[ModeH] [WARNING] 生产认证缓存写入失败，本局继续: "
+                    + (cacheError ?? "unknown"));
             }
 
             CreateDraftingSeason(result.Report);
@@ -465,6 +508,10 @@ namespace BossRush
             bool mustExitScene = leasesTaken
                 || (_arenaLease != null && _arenaLease.HasClearedNativeEnemies);
 
+            // 真实押品必须先还回去，再清 _runState —— 返还计划要用 RunSeed / MatchIndex。
+            // 中止不没收任何东西；无 journal 时是 no-op。
+            TryReturnRealStakeOnAbort("abort_setup:" + (reasonId != null ? reasonId : "unknown"));
+
             try { ReleaseRuntimeObjects(); }
             catch (Exception e) { LogFailure("abort_release", e); }
 
@@ -480,6 +527,35 @@ namespace BossRush
 
             try { ModeHEntry.AbortAndRefund(_owner, reasonId, mustExitScene); }
             catch (Exception e) { LogFailure("abort_refund", e); }
+        }
+
+        /// <summary>
+        /// 中止路径的真实押品完整返还。无 active journal 时是 no-op。
+        ///
+        /// 失败不抛、不阻断退款离场：journal 会留在非终态，下次进入时
+        /// RecomputeSlotConsistency 立起 external-asset 闸并把处置权交给恢复壳，
+        /// 那比在中止路径上卡住玩家更好。
+        /// </summary>
+        private void TryReturnRealStakeOnAbort(string context)
+        {
+            try
+            {
+                if (ModeHWarehouseStakeJournal.Active == null) return;
+                long runSeed = _runState != null ? _runState.RunSeed : 0L;
+                int matchIndex = _runState != null ? _runState.MatchIndex : 0;
+
+                string failureReasonId;
+                if (!ModeHRealStakeService.TryAbortReturn(runSeed, matchIndex, out failureReasonId))
+                {
+                    ModBehaviour.CriticalLog(
+                        "[ModeH] [WARNING] 中止返还真实押品未完成（" + context + "）: "
+                        + (failureReasonId != null ? failureReasonId : "unknown"));
+                }
+            }
+            catch (Exception e)
+            {
+                LogFailure("abort_real_stake_return", e);
+            }
         }
 
         /// <summary>开局中止的玩家可见提示：一句归类文案 + 退票告知。失败不阻断退款。</summary>

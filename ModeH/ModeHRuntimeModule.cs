@@ -21,7 +21,7 @@ namespace BossRush
         private ModBehaviour _owner;
         private ModeHRunState _runState;
         private int _sceneGeneration;
-        private bool _contentScanRequested;
+        private int _contentScanSlotGeneration = -1;
         private bool _shutdownCompleted;
         private string _lastExitReasonId;
 
@@ -166,12 +166,14 @@ namespace BossRush
         /// <summary>幂等执行一次静态内容扫描。</summary>
         internal void EnsureContentScanned()
         {
-            if (_contentScanRequested) return;
+            int slotGen = ModeHRuntimeGates.SlotGeneration;
+            if (_contentScanSlotGeneration == slotGen) return;
+
             bool hasRecoveryRecord = ModeHRuntimeGates.IsModeHRecoveryOnlyBlocked
                 || ModeHRuntimeGates.IsModeHExternalAssetRiskBlocked;
             if (!IsEnabled && !hasRecoveryRecord) return;
 
-            _contentScanRequested = true;
+            _contentScanSlotGeneration = slotGen;
             ModeHRuntimeGates.InitializeContentForSlot();
         }
 
@@ -367,6 +369,8 @@ namespace BossRush
             ModeHStateMachine.ResetStaticCaches();
             ModeHEventRouter.ResetStaticCaches();
             ModeHWarehouseStakeJournal.ResetStaticCaches();
+            ModeHStakeJournalPersistence.ResetStaticCaches();
+            ModeHRealStakeService.ResetStaticCaches();
             ModeHPresetRegistry.ResetStaticCaches();
             ModeHDeathSuppressionRegistry.ResetStaticCaches();
         }

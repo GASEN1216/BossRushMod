@@ -222,13 +222,49 @@ namespace BossRush
                 return false;
             }
 
+            int previousPhase = _active.phase;
+            int previousSequence = _active.phaseSequence;
+            int previousKind = _active.settlementKind;
+
             _active.phase = (int)next;
             _active.phaseSequence = _active.phaseSequence + 1;
             if (settlementKind != ModeHSettlementKind.None)
             {
                 _active.settlementKind = (int)settlementKind;
             }
-            return TryRestampDigest(out failureReasonId);
+            if (!TryRestampDigest(out failureReasonId))
+            {
+                _active.phase = previousPhase;
+                _active.phaseSequence = previousSequence;
+                _active.settlementKind = previousKind;
+                return false;
+            }
+
+            // 落盘是阶段推进的一部分，不是事后补登记。三个 *Durable 阶段的名字
+            // 就是这个意思：内存说"已持久化"而磁盘上没有，等于崩溃后无法证明
+            // 玩家那件装备去了哪。写失败必须整体回滚阶段，让调用方看到失败并停在原地
+            // ——绝不能出现"物品已脱离仓库但 journal 还停在上一阶段"的错位。
+            string writeError;
+            if (!ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out writeError))
+            {
+                _active.phase = previousPhase;
+                _active.phaseSequence = previousSequence;
+                _active.settlementKind = previousKind;
+                string restampError;
+                TryRestampDigest(out restampError);
+                failureReasonId = "journal_persist_failed:"
+                    + (writeError != null ? writeError : "unknown");
+                _lastError = failureReasonId;
+                return false;
+            }
+
+            // 终态落盘后重算一致性：三个终态都表示"这个槽没有未结算事务"，
+            // IsSlotConsistent 必须转回 true，否则玩家打完一场之后押品被永久禁用。
+            if (IsTerminalPhase(next))
+            {
+                RecomputeSlotConsistency(_active);
+            }
+            return true;
         }
 
         /// <summary>证据不一致的统一出口。绝不自动猜测、绝不修成取消。</summary>
@@ -239,6 +275,17 @@ namespace BossRush
             _active.phaseSequence = _active.phaseSequence + 1;
             string error;
             TryRestampDigest(out error);
+            // 人工介入必须落盘，否则重启后玩家看到的是上一个正常阶段，
+            // 而物品早已不在仓库里——那正是最需要留证据的情形。
+            // 这里**不因写失败回滚**：内存已经是人工介入态，回滚只会把它藏起来；
+            // 写不下去时 store 会进 faulted，恢复面板照样只读展示。
+            string writeError;
+            if (!ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out writeError))
+            {
+                ModBehaviour.CriticalLog(
+                    "[ModeH] [WARNING] 人工介入状态落盘失败，仅存在于内存: "
+                    + (writeError != null ? writeError : "unknown"));
+            }
             _slotConsistent = false;
             _slotInconsistentReasonId = reasonId;
             ModeHRuntimeGates.SetExternalAssetRiskBlocked(true, reasonId);
@@ -325,7 +372,29 @@ namespace BossRush
 
             _active = journal;
             _escrowItems.Clear();
-            return TryRestampDigest(out failureReasonId);
+            if (!TryRestampDigest(out failureReasonId))
+            {
+                _active = null;
+                return false;
+            }
+
+            // Prepared 是第一个阶段，没有经过 TryAdvancePhase，因此在这里单独落盘。
+            // 落不下去就把 journal 整体丢弃：此刻还没动过任何物品，丢弃是安全的，
+            // 而留着一个只存在于内存的 journal 会让下一笔交易撞上 journal_active_exists。
+            string writeError;
+            if (!ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out writeError))
+            {
+                _active = null;
+                failureReasonId = "journal_persist_failed:"
+                    + (writeError != null ? writeError : "unknown");
+                _lastError = failureReasonId;
+                return false;
+            }
+
+            // 新 journal 落盘后立刻重算：此时存在非终态 active journal，
+            // IsSlotConsistent 必须转 false，防止同槽再开第二笔交易。
+            RecomputeSlotConsistency(_active);
+            return true;
         }
 
         #endregion
