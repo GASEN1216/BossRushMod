@@ -263,15 +263,26 @@ namespace BossRush
         /// 局内目标全部达成。把 ReadyToDeliver 落盘，但仍须回公告板主动交付；
         /// 这样重启不丢进度，也不会跳过剧情对话。
         /// </summary>
-        internal static void NotifyObjectivesSatisfied(string chapterId)
+        internal static bool NotifyObjectivesSatisfied(string chapterId)
         {
             try
             {
-                if (string.IsNullOrEmpty(chapterId)) return;
-                if (!string.Equals(GetActiveChapterId(), chapterId, StringComparison.Ordinal)) return;
-                if (string.Equals(_readyToDeliverChapterId, chapterId, StringComparison.Ordinal)) return;
+                if (string.IsNullOrEmpty(chapterId)) return false;
+                if (!string.Equals(GetActiveChapterId(), chapterId, StringComparison.Ordinal)) return false;
+                // 已经是 ReadyToDeliver：本章早已上报成功，返回 true 让追踪器锁存，避免重复上报。
+                if (string.Equals(_readyToDeliverChapterId, chapterId, StringComparison.Ordinal)) return true;
 
-                if (!WriteState(chapterId, CampaignChapterState.ReadyToDeliver)) return;
+                if (!WriteState(chapterId, CampaignChapterState.ReadyToDeliver))
+                {
+                    // 写盘失败必须让调用方知道，否则 _notified 会锁死本局后续所有目标事件：
+                    // 玩家打完了、章节没推进、还没有任何提示。
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix
+                        + "[ERROR] 契约目标达成写入失败，本局将继续重试: " + chapterId);
+                    Duckov.UI.NotificationText.Push(L10n.T(
+                        "契约进度暂时无法保存，稍后会自动重试。",
+                        "Contract progress could not be saved yet; it will retry automatically."));
+                    return false;
+                }
                 _readyToDeliverChapterId = chapterId;
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "契约目标已全部达成: " + chapterId);
 
@@ -280,10 +291,12 @@ namespace BossRush
                 ModBehaviour.Instance?.ShowMessage(
                     L10n.T("契约目标已完成：", "Contract objectives complete: ") + title
                     + L10n.T("　回公告板交付", "  Return to the board to hand it in"));
+                return true;
             }
             catch (Exception e)
             {
                 LogFailure("objectives_satisfied", e);
+                return false;
             }
         }
 

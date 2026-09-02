@@ -263,9 +263,16 @@ namespace BossRush
 
             if (won)
             {
-                // 胜利：全部押品原样返还。同品质奖励的实物发放由奖励轮盘负责，
-                // 本类不伪造 typeId（§22.3 明令不以同 TypeID 新建物品冒充）。
+                // 胜利：先把全部押品原样返还，再兑付同品质奖励。
+                // 顺序不能反：押品是玩家本来就有的东西，必须优先占用空位；
+                // 奖励发不出时（仓库满/池为空）journal 保持 pending，押品已安全归位。
                 if (!ModeHWarehouseStakeJournal.ReturnEscrowItems(null, out failureReasonId))
+                {
+                    return false;
+                }
+                // typeId 在计划阶段是 0，此处按 gameQuality 完全相等确定性抽取并实例化
+                // （§22.3 不预先伪造 typeId，也不以同 TypeID 新建物品冒充原押品）。
+                if (!ModeHWarehouseStakeJournal.GrantPlannedRewards(runSeed, out failureReasonId))
                 {
                     return false;
                 }

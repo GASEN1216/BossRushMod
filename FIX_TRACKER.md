@@ -39,6 +39,48 @@
 ```
 
 ---
+### 2026-09-01 F3 一键验收把 5 条深度流程记为 SKIP，实机仍要人工走撤离点
+
+**状态**: fixed
+**Finding**: 无（owner 要求「按一次按钮就出实机报告，不要一个个手测」）
+**兼容分类**: SAFE（新增入口全部 `internal` + dev 门控，不改玩法默认行为）
+**版本/Commit**: 本条目随当次提交入库
+**Owner decision**: 需要；owner 已拍板「5 条全部补内部入口 + 只落日志文件，不加面板/剪贴板/Markdown 导出 + 保留 2700s 预算」
+
+**现象**: F3「完整玩法验收」跑完，Mode F 赏金、Mode F 撤离、Mode E 收尾、标准模式胜利奖励 4 条在报告里是 SKIP 并附人工提示，owner 仍要手动进图走撤离圈、打完整波 Boss 才能确认这些链路没坏。另有一类实机故障套件完全测不到：过场时 `clickToContinue=true` 的图要玩家鼠标点一下才继续，卡住时报告是绿的。
+
+**根因**: 这 4 条的推进条件只存在于产品代码的 private 路径里——阶段切换靠 `CheckModeFPhaseTransition` 读 `PhaseElapsed`、赏金结算靠 `OnModeFBossKilledByPlayer`、撤离靠官方 `CountDownArea.onCountDownSucceed`、胜利结算要 `currentEnemyIndex >= presetCount`。验收框架没有可调用入口，上一轮只能如实记 SKIP。点击门则是 `SceneLoader` 等待 `NotifyPointerClick`，而套件此前一律传 `clickToContinue=false`，绕开了这条路径。
+
+**修复内容**:
+- 新增文件: `DebugAndTools/F3GameplayValidationDeepFlows.cs`（已加入 `compile_official.bat`）
+- 修改文件: `ModeF/ModeFPhases.cs`、`ModeF/ModeFBounty.cs`、`ModeF/ModeFExtraction.cs`、`ModeE/ModeELifecycle.cs`、`WavesArena/WavesArenaBossSpawning.cs`、`DebugAndTools/F3GameplayValidationDepth.cs`、`DebugAndTools/F3GameplayValidationStages.cs`、`DebugAndTools/F3GameplayValidationRunner.cs`、`compile_official.bat`
+
+产品代码新增 5 个 `internal` 验收入口，均先查 `DevModeEnabled`，非 dev 直接拒绝。设计原则是**只补前提、不替玩法链**，断言一律取产品状态，避免凑绿造假：
+1. `DebugAdvanceModeFPhaseForValidation`：把 `PhaseElapsed` 推到 `PhaseDuration`，让真实阶段机自己切（banner / `GenerateBountyList` / `SpawnFinalExtractionPoint` / `ApplyModeFPhasePressure` 全程执行）。
+2. `DebugAwardModeFBountyMarkForValidation`：触发 `OnModeFBossKilledByPlayer` 完整悬赏结算链。
+3. `DebugTriggerModeFExtractionForValidation`：调用 `ActiveExtractionArea.onCountDownSucceed.Invoke()`，即玩家站圈倒计时走完时官方事件本身；监听器仍由 `RegisterModeFEventHandlers` 挂。
+4. `DebugSettleModeEExtractionForValidation`：Mode E 全模块无 `CountDownArea` 引用，玩家侧「撤离」实为 `EndModeE(false)` 收尾链，故 metrics 标 `semantics=end_settlement`，不冒充撤离点验证。
+5. `DebugStartSingleBossVictoryForValidation`：把 Boss 池临时收窄到 1 个再 `StartFirstWave()`，之后清掉这一个 Boss，`HandleBossDeath` → `ProceedAfterWaveFinished` → `OnAllEnemiesDefeated` 自然走完。改的是 owner 本就能在 Boss 池面板改的设置，结算判定仍是 `currentEnemyIndex >= presetCount` 那条真实条件；池子与 `bossesPerWave` 由 `RestoreBossPoolAfterValidation` 在 finally 还原。还原的判据是 `restoreStates != null`（池子有没有被改）而不是入口的返回值：该入口在收窄池子之后仍可能失败返回（`narrow_failed` / `start_first_wave_did_not_activate` / 中途抛异常），按「开波成功」判会漏还原，把 owner 的 Boss 池永久留在只剩一个 Boss 的状态。
+
+验收框架侧：深度阶段由「4 SKIP + 1 真测」改为 6 条全自动（新增 `MODE_F_BOUNTY` / `MODE_F_EXTRACTION` / `MODE_E_EXTRACTION` / `STANDARD_VICTORY_REWARD` / `SCENE_CLICK_GATE`，保留既有 `MODE_D_MULTI_WAVE`）；`ArenaCaseIds` 同步登记新 ID，保证 `SkipRemainingArenaCases` 在前置失败时仍能正确跳剩余项；`LoadScene` 协程在 `clickToContinue=true` 时按 `SceneClickFeedIntervalSeconds` 自动喂官方 `SceneLoader.NotifyPointerClick`，喂点次数记入 `_lastSceneClicksFed` 供断言。`SCENE_CLICK_GATE` 是唯一走 `clickToContinue=true` 的用例，其余仍传 `false`。
+
+该用例判定只认「进得去」，不把 `clicks_fed>0` 当硬断言。原因是 `clicked` 的重置时机无法从反编译确认：可见的只有 `NotifyPointerClick` 里的 `this.clicked = true`（`SceneLoader.cs:191`）和字段声明（`SceneLoader.cs:274`），而真正等待点击的 `LoadScene` 只是个转发壳（`SceneLoader.cs:106/150`），逻辑在编译器生成的 `<LoadScene>d__45.MoveNext` 里，该状态机体在这份反编译中被剥离（文件仅 275 行），所以「每次加载是否重置」既不能证实也不能证伪。若实际不重置、而本用例又排在第 5 阶段（前面已切过多次图），门可能早被满足、一次都不用喂。故 `clicks_fed=0` 记 **WARN**（这轮没压到点击门，覆盖有缺口）而非 FAIL，避免冤枉健康构建；WARN 计入 `_warnings`，在 SUMMARY 与屏上状态都打印（`F3GameplayValidationRunner.cs:981/1042`），且不影响总判定（`passed = !cancelled && _failed == 0`，`:486`），覆盖缺口不会被静默吞掉。
+
+**兼容性影响**: 无存档/配置/TypeID/协议变更。新增成员全部 `internal` 且 dev 门控，正式玩家路径不可达。`DebugStartSingleBossVictoryForValidation` 会临时改 Boss 池开关与 `bossesPerWave`，已在 finally 还原，且入口失败返回与用例内抛异常两条路径都会还原（判据为 `restoreStates != null`）。只有进程被强杀（finally 根本不执行）才可能残留收窄状态，重开一局或在 Boss 池面板重勾即可恢复。
+
+**验证方法**:
+1. 编译: **未做真编译**。WSL 无 .NET SDK，`tools/verify_syntax.py` 报 `未找到 Roslyn csc.dll`。
+2. Guard: `python3 tools/run_guards.py` → `PASS=510 NEW-FAIL=0 KNOWN-RED=0`，用时 161.3s。
+3. 人工 smoke: 未做，需进游戏跑。
+
+**未验证/需人工**:
+- 按 `AGENTS.md` 4.2 必须在 Windows 上跑 `compile_official.bat` 真编译。本轮新增多个 `internal` 成员与跨子系统调用，编译是 API 引用错误的最终防线，guard 全绿不能替代。
+- 实机跑一次 F3 全流程验收，确认 6 条新用例真 PASS 且报告格式正确。
+- `SCENE_CLICK_GATE` 若报 WARN（`clicks_fed=0`），说明这一轮没真正压到点击门，不是缺陷但也没有回归价值——要单独验证点击门，把该用例挪到套件最前面（`clicked` 未被消耗前）再跑一次。
+
+**失败尝试**: 无。
+
+---
 ### 2026-09-01 Mode H 拍铃与伤病系统整场静默失效 + PetNest 误修回滚
 
 **状态**: fixed

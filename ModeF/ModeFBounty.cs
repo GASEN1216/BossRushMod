@@ -15,6 +15,16 @@ namespace BossRush
         /// <summary>Mode F Boss 成长 Modifier 缓存</summary>
         private readonly Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)> modeFBossModifiers
             = new Dictionary<CharacterMainControl, (Modifier hp, Modifier gunDmg, Modifier meleeDmg)>();
+        /// <summary>
+        /// 最近一次"玩家击杀带印记 Boss"的瞬时闩。
+        /// 官方 Health 死亡序列先触发 OnDeadEvent（ModeF 在这里结算并移除印记），
+        /// 再触发静态 Health.OnDead（战役目标采集器在这里读印记）。两者相差几行，
+        /// 因此战役侧无法再从 BountyMarksByCharacterId 查到已被移除的印记。
+        /// 这个闩只在同一次死亡的这两个回调之间有效，由 instanceID 配对，读取即失效。
+        /// </summary>
+        private int modeFLastPlayerBountyKillVictimId = 0;
+        private bool modeFLastPlayerBountyKillWasBounty = false;
+
         private bool modeFBountyLeaderDirty = false;
         private CharacterMainControl modeFBountyLeaderPreferred = null;
         private string modeFBountyLeaderContextZh = null;
@@ -33,6 +43,37 @@ namespace BossRush
             typeof(ItemSetting_Gun).GetField("_bulletCountCache", ModeFPrivateInstanceFlags);
         private static readonly FieldInfo modeFGunBulletCountHashField =
             typeof(ItemSetting_Gun).GetField("bulletCountHash", ModeFPrivateInstanceFlags);
+
+        /// <summary>
+        /// 记下"这一次玩家击杀的 Boss 是否带印记"，供随后的 Health.OnDead 读取。
+        /// 必须在 BountyMarksByCharacterId.Remove 之前调用。
+        /// </summary>
+        private void LatchModeFPlayerBountyKill(int victimId, bool isBounty)
+        {
+            modeFLastPlayerBountyKillVictimId = victimId;
+            modeFLastPlayerBountyKillWasBounty = isBounty;
+        }
+
+        /// <summary>
+        /// 读取并清掉印记闩。只有 instanceID 与闩上记录一致才算命中，
+        /// 避免把上一次死亡的结果错记到另一个 Boss 身上。
+        /// </summary>
+        private bool ConsumeModeFPlayerBountyKillLatch(int victimId)
+        {
+            if (modeFLastPlayerBountyKillVictimId == 0) return false;
+            if (modeFLastPlayerBountyKillVictimId != victimId) return false;
+
+            bool wasBounty = modeFLastPlayerBountyKillWasBounty;
+            modeFLastPlayerBountyKillVictimId = 0;
+            modeFLastPlayerBountyKillWasBounty = false;
+            return wasBounty;
+        }
+
+        private void ResetModeFPlayerBountyKillLatch()
+        {
+            modeFLastPlayerBountyKillVictimId = 0;
+            modeFLastPlayerBountyKillWasBounty = false;
+        }
 
         private bool ShouldUseModeFAbstractPlunderLootTracking()
         {
@@ -178,6 +219,11 @@ namespace BossRush
                     DevLog("[ModeF] 玩家获得 +1 悬赏印记 (总计=" + modeFState.PlayerBountyMarks + ")");
                 }
 
+                // 官方死亡序列里 Health.OnDeadEvent（本函数所在链）先于 Health.OnDead 触发，
+                // 而战役目标采集器挂在后者。所以印记必须在 Remove 之前落到闩上，
+                // 否则战役侧永远查不到"这一杀带印记"，第 4 章的 BountyKills 恒为 0。
+                LatchModeFPlayerBountyKill(victimId, isBounty);
+
                 modeFState.BountyMarksByCharacterId.Remove(victimId);
                 modeFState.PlayerKillCount++;
 
@@ -208,6 +254,58 @@ namespace BossRush
             {
                 DevLog("[ModeF] [ERROR] OnModeFBossKilledByPlayer 失败: " + e.Message);
             }
+        }
+
+        /// <summary>玩家当前悬赏印记数，供 F3 验收断言赏金链真的结算了。</summary>
+        internal int ModeFPlayerBountyMarksForValidation
+        {
+            get { return modeFState != null ? modeFState.PlayerBountyMarks : 0; }
+        }
+
+        /// <summary>
+        /// Dev 验收专用：给场上一个存活 Boss 打上悬赏印记，再走既有
+        /// OnModeFBossKilledByPlayer——印记结算、回血、最大生命成长、命火、
+        /// 工事补给、领袖刷新整条链由产品代码自己跑完，这里只负责「击杀了一个悬赏目标」
+        /// 这个前提。不直接改 PlayerBountyMarks，那样只会测到一个赋值语句。
+        /// </summary>
+        internal bool DebugAwardModeFBountyMarkForValidation(out string reason)
+        {
+            reason = null;
+            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!modeFActive || modeFState == null || !modeFState.IsActive)
+            {
+                reason = "mode_f_not_active";
+                return false;
+            }
+
+            CharacterMainControl victim = null;
+            for (int i = 0; i < modeFState.ActiveBosses.Count; i++)
+            {
+                CharacterMainControl candidate = modeFState.ActiveBosses[i];
+                if (candidate == null || candidate.gameObject == null) continue;
+                if (candidate.Health == null || candidate.Health.IsDead) continue;
+                victim = candidate;
+                break;
+            }
+            if (victim == null)
+            {
+                reason = "no_alive_registered_boss";
+                return false;
+            }
+
+            try
+            {
+                // 悬赏印记本来由 GenerateBountyList 写入；这里补写是为了让被击杀者
+                // 一定是「带印记的目标」，从而走进 isBounty 分支（+1 印记那条）。
+                modeFState.BountyMarksByCharacterId[victim.GetInstanceID()] = 1;
+                OnModeFBossKilledByPlayer(victim);
+            }
+            catch (Exception e)
+            {
+                reason = e.GetType().Name + ":" + e.Message;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>

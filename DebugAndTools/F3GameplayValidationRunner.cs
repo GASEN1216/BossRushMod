@@ -127,7 +127,11 @@ namespace BossRush
             try
             {
                 if (ModeHRuntime != null && ModeHRuntime.HasActiveRun)
-                    ModeHRuntime.RequestExit(ModeHExitReason.TechnicalAbort, "f3_validation_cleanup");
+                {
+                    // 验证期间不能调 RequestExit，它会切回基地打断后续用例。
+                    // 直接置空状态让运行时停摆，切场景由验证套件自己控制。
+                    ModeHRuntime.ForceResetStateForValidation();
+                }
             }
             catch (Exception e) { DevLog("[Validation] ModeH 清理失败: " + e.Message); }
             try
@@ -251,6 +255,9 @@ namespace BossRush
         private const string RunMarkerKey = "BossRush_Validation_RunMarker_v1";
         private const float SuiteTimeoutSeconds = 2700f;
         private const float SceneTimeoutSeconds = 90f;
+        // 「点击继续」喂点击的间隔。官方那一屏只要收到一次点击就会继续，
+        // 但加载完成的时刻不可预知，所以按固定节奏重复喂而不是只喂一次。
+        private const float SceneClickFeedIntervalSeconds = 0.5f;
         private const float CaseTimeoutSeconds = 30f;
         private const float ModeHTimeoutSeconds = 180f;
 
@@ -278,6 +285,7 @@ namespace BossRush
         private long _finalMemory;
         private bool _operationSucceeded;
         private string _operationReason;
+        private int _lastSceneClicksFed;
 
         /// <summary>
         /// 连续「清场不可恢复」次数。单次脏状态多半是异步收尾没跑完，强化清场后能恢复；
@@ -463,7 +471,7 @@ namespace BossRush
                 SetStage("7/7 最终清场、泄漏与回读");
                 _host.ValidationSafeCleanup();
                 yield return LoadScene(BaseSceneNameForValidation(), "SCENE_RETURN_BASE");
-                if (_operationSucceeded) yield return WaitRuntimeReady("BASE_READY_FINAL", SceneTimeoutSeconds);
+                if (_operationSucceeded) yield return WaitSceneSettled("BASE_READY_FINAL", 2f);
                 yield return SamplePerformance("FINAL_5S", 5f, false);
                 RunSyncCase("FINAL_CLEAN_STATE", ValidateFinalCleanState);
                 RunSyncCase("FINAL_LEAK_DELTA", ValidateSuiteLeakDelta);
@@ -520,41 +528,77 @@ namespace BossRush
                 Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, "超过性能阈值");
         }
 
-        private IEnumerator LoadScene(string sceneId, string caseId)
+        /// <summary>
+        /// 切场景。clickToContinue 透传给官方 SceneLoader 的同名形参（注意官方拼写是
+        /// clickToConinue）：为 true 时加载完成后会停在「点击继续」，等
+        /// SceneLoader.NotifyPointerClick 才继续。玩家真实入图路径（丧尸模式选图）走的就是 true，
+        /// 所以验收必须能走这条，否则测的是一条玩家永远不会走的路。
+        ///
+        /// 无人值守时由本方法周期性调用官方 public NotifyPointerClick 自动喂点击——
+        /// 不反射私有 clicked 字段，也不改产品代码。
+        /// </summary>
+        private IEnumerator LoadScene(string sceneId, string caseId, bool clickToContinue = false)
         {
             Stopwatch sw = Stopwatch.StartNew();
             _operationSucceeded = false;
             _operationReason = null;
+            _lastSceneClicksFed = 0;
             UniTask task;
             try
             {
-                task = SceneLoader.Instance.LoadScene(sceneId, null, false, false, true, false,
+                task = SceneLoader.Instance.LoadScene(sceneId, null, clickToContinue, false, true, false,
                     default(MultiSceneLocation), true, false);
             }
             catch (Exception e)
             {
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, string.Empty, e.ToString());
+                Record(caseId, "FAIL", sw.ElapsedMilliseconds, "click_to_continue=" + clickToContinue, e.ToString());
                 yield break;
             }
             float deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
+            float nextClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
             while (task.Status == UniTaskStatus.Pending && Time.realtimeSinceStartup < deadline && !ShouldAbort())
+            {
+                if (clickToContinue && Time.realtimeSinceStartup >= nextClickAt)
+                {
+                    nextClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
+                    if (FeedSceneContinueClick()) _lastSceneClicksFed++;
+                }
                 yield return null;
+            }
+            string metrics = "click_to_continue=" + clickToContinue + ",clicks_fed=" + _lastSceneClicksFed;
             if (task.Status == UniTaskStatus.Pending)
             {
                 _operationReason = "scene_load_timeout";
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, string.Empty, _operationReason);
+                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, _operationReason);
                 yield break;
             }
             try
             {
                 task.GetAwaiter().GetResult();
                 _operationSucceeded = true;
-                Record(caseId, "PASS", sw.ElapsedMilliseconds, "scene=" + SceneManager.GetActiveScene().name, string.Empty);
+                Record(caseId, "PASS", sw.ElapsedMilliseconds,
+                    "scene=" + SceneManager.GetActiveScene().name + "," + metrics, string.Empty);
             }
             catch (Exception e)
             {
                 _operationReason = e.ToString();
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, string.Empty, _operationReason);
+                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, _operationReason);
+            }
+        }
+
+        /// <summary>喂一次官方「点击继续」。返回是否成功调用。</summary>
+        private bool FeedSceneContinueClick()
+        {
+            try
+            {
+                if (SceneLoader.Instance == null) return false;
+                SceneLoader.Instance.NotifyPointerClick(null);
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Validation] 喂「点击继续」失败: " + e.Message);
+                return false;
             }
         }
 
@@ -575,6 +619,39 @@ namespace BossRush
             Record(caseId, _operationSucceeded ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                 "scene=" + SceneManager.GetActiveScene().name,
                 _operationSucceeded ? string.Empty : "runtime_ready_timeout");
+        }
+
+        /// <summary>
+        /// 轻量场景就绪：只等 LevelManager 实例和短暂稳定，不要求 AfterInit（UI 层可能不来）。
+        /// 用于终态场景：不需要玩家操作，只做持久化校验。
+        /// </summary>
+        private IEnumerator WaitSceneSettled(string caseId, float settleSeconds)
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            _operationSucceeded = false;
+            float deadline = Time.realtimeSinceStartup + 10f;
+            while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
+            {
+                if (LevelManager.Instance != null)
+                {
+                    _operationSucceeded = true;
+                    break;
+                }
+                yield return null;
+            }
+            if (!_operationSucceeded)
+            {
+                Record(caseId, "FAIL", sw.ElapsedMilliseconds,
+                    "scene=" + SceneManager.GetActiveScene().name,
+                    "level_manager_never_spawned");
+                yield break;
+            }
+            yield return WaitSeconds(settleSeconds);
+            bool afterInit = LevelManager.AfterInit;
+            string metrics = "scene=" + SceneManager.GetActiveScene().name
+                + ",level_manager=True,after_init=" + afterInit + ",settled=" + settleSeconds + "s";
+            Record(caseId, "PASS", sw.ElapsedMilliseconds, metrics,
+                afterInit ? string.Empty : "UI 层未初始化但已跳过（终态场景无需 UI）");
         }
 
         private IEnumerator WaitSeconds(float seconds)
@@ -646,9 +723,12 @@ namespace BossRush
             }
             try
             {
+                CharacterMainControl player = CharacterMainControl.Main;
                 DamageInfo damage = new DamageInfo();
                 damage.damageValue = boss.Health.MaxHealth * 20f;
                 damage.ignoreArmor = true;
+                damage.fromCharacter = player;
+                damage.damageCreator = player != null ? player.gameObject : null;
                 boss.Health.Hurt(damage);
             }
             catch (Exception e)

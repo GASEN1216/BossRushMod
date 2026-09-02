@@ -45,6 +45,73 @@ namespace BossRush
         }
 
         /// <summary>
+        /// Dev 验收专用：走 Mode E 的完整结束收尾并回报收尾前后的可断言状态。
+        ///
+        /// 【语义说明，别当成撤离点交互】Mode E 没有自建撤离点（全模块无 CountDownArea 引用），
+        /// 玩家侧的"撤离"就是这条结束收尾链：阵营复位、存活敌人清空、Mutator 清理、
+        /// 商人/快递员 NPC 销毁。所以本入口驱动 EndModeE(false)，
+        /// 报告 metrics 里标 semantics=end_settlement，不冒充撤离点验证。
+        /// </summary>
+        internal bool DebugSettleModeEExtractionForValidation(out string metrics, out string reason)
+        {
+            metrics = string.Empty;
+            reason = null;
+            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!modeEActive)
+            {
+                reason = "mode_e_not_active";
+                return false;
+            }
+
+            int enemiesBefore = modeEAliveEnemies.Count;
+            Teams teamBefore = Teams.player;
+            try
+            {
+                CharacterMainControl playerBefore = CharacterMainControl.Main;
+                if (playerBefore != null) teamBefore = playerBefore.Team;
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [Validation] 读取收尾前阵营失败: " + e.Message);
+            }
+
+            try
+            {
+                EndModeE(false);
+            }
+            catch (Exception e)
+            {
+                reason = e.GetType().Name + ":" + e.Message;
+                return false;
+            }
+
+            Teams teamAfter = Teams.player;
+            bool teamRestored = false;
+            try
+            {
+                CharacterMainControl playerAfter = CharacterMainControl.Main;
+                if (playerAfter != null)
+                {
+                    teamAfter = playerAfter.Team;
+                    teamRestored = teamAfter == Teams.player;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [Validation] 读取收尾后阵营失败: " + e.Message);
+            }
+
+            int enemiesAfter = modeEAliveEnemies.Count;
+            metrics = "semantics=end_settlement,enemies=" + enemiesBefore + "->" + enemiesAfter
+                + ",team=" + teamBefore + "->" + teamAfter
+                + ",active=" + modeEActive;
+            if (modeEActive) reason = "结束收尾后 modeEActive 仍为 true";
+            else if (enemiesAfter != 0) reason = "结束收尾后仍有登记存活敌人: " + enemiesAfter;
+            else if (!teamRestored) reason = "结束收尾后玩家阵营未复位为 player: " + teamAfter;
+            return reason == null;
+        }
+
+        /// <summary>
         /// 结束 Mode E 模式
         /// </summary>
         public void EndModeE(bool showEndMessage = true)

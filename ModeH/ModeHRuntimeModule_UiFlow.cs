@@ -289,7 +289,70 @@ namespace BossRush
                 });
             }
 
+            // 内存里仍握着押品实物时，必须给一条出路。
+            // 这条动作刻意绕过 allowActions 的置灰（见 OpenRecoveryShell 的
+            // bypassReadOnly）：IsSlotConsistent=false 恰恰是"押品还没归位"的
+            // 同义词，用它把唯一的补救按钮关掉会让玩家除删档外无路可走。
+            // 只读保护的本意是"证据不足时不许动资产"，而把托管物还回玩家仓库
+            // 是**减少**资产暴露，不是增加，所以这里放行是安全的。
+            if (ModeHWarehouseStakeJournal.EscrowCount > 0)
+            {
+                actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow"),
+                    OnClick = ReturnEscrowFromRecovery,
+                    BypassReadOnly = true,
+                });
+            }
+
             return actions;
+        }
+
+        /// <summary>
+        /// 恢复壳里的「取回押品」：把仍在内存托管中的物品还回仓库。
+        /// 成功后闸门由 journal 侧按终态自行解除；失败保持 pending 并给出可见提示。
+        /// </summary>
+        private void ReturnEscrowFromRecovery()
+        {
+            try
+            {
+                // runSeed/matchIndex 只用于派生确定性的 operationId 与 eventTokenId，
+                // 所以必须取**落盘过的** journal/season 值而不是 _runState —— 恢复壳
+                // 常在 _runState 已被清掉之后打开（跨重启就是这种情形）。
+                ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
+                ModeHRunStateDto persistedRun = _season != null ? _season.runState : null;
+                long runSeed = persistedRun != null ? persistedRun.runSeed : 0L;
+                int matchIndex = journal != null
+                    ? journal.matchIndex
+                    : (persistedRun != null ? persistedRun.matchIndex : 0);
+
+                string failureReasonId;
+                if (ModeHRealStakeService.TryAbortReturn(runSeed, matchIndex, out failureReasonId))
+                {
+                    if (_owner != null)
+                    {
+                        _owner.ShowMessage(
+                            L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow_Done"));
+                    }
+                }
+                else
+                {
+                    ModBehaviour.CriticalLog("[ModeH] 恢复壳取回押品失败: "
+                        + (failureReasonId != null ? failureReasonId : "unknown"));
+                    if (_owner != null)
+                    {
+                        _owner.ShowMessage(
+                            L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_ReturnEscrow_Failed"));
+                    }
+                }
+                // 重开恢复壳而不是留着旧内容：押品行与动作列表都要按新阶段重算，
+                // 成功后 EscrowCount 归零，这个按钮会自然消失。
+                OpenRecoveryShell(_lastExitReasonId);
+            }
+            catch (Exception e)
+            {
+                LogFailure("recovery_return_escrow", e);
+            }
         }
 
         /// <summary>Suspended → Recovering：生成新 owner token 并按同一场重建。</summary>

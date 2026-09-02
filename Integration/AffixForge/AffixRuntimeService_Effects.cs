@@ -388,7 +388,11 @@ namespace BossRush
                 {
                     AffixStatModifierApplier.TryAdd(main, StatGunDamageMultiplier, ModifierType.PercentageAdd, value, ModifierSource, _persistentModifiers, LogPrefix);
                     AffixStatModifierApplier.TryAdd(main, StatMeleeDamageMultiplier, ModifierType.PercentageAdd, value, ModifierSource, _persistentModifiers, LogPrefix);
-                    if (AffixStatModifierApplier.TryAdd(main, StatMaxHealth, ModifierType.PercentageAdd, -value2, ModifierSource, _persistentModifiers, LogPrefix))
+                    // 生命上限惩罚必须用 PercentageMultiply：官方 Recalculate 对 PercentageAdd 是
+                    // 先把同 Order 的百分比求和再 Max(0, 1+sum)，狂血是 AppliesTo=All 的诅咒，
+                    // 手持 + 3 件穿戴叠满 4 层 tier3（4 × −25%）会让乘数正好归零、生命上限变 0，
+                    // 玩家开局即死且看不出原因。PercentageMultiply 逐层相乘（0.75^4 ≈ 0.32），永不归零。
+                    if (AffixStatModifierApplier.TryAdd(main, StatMaxHealth, ModifierType.PercentageMultiply, -value2, ModifierSource, _persistentModifiers, LogPrefix))
                     {
                         maxHealthTouched = true;
                     }

@@ -319,8 +319,12 @@ namespace BossRush
                 if (item == null || !item.IsSatisfied) return;
             }
 
-            _notified = true;
-            CampaignProgressService.NotifyObjectivesSatisfied(_armedChapterId);
+            // 只在上报**成功**后锁存。先置 _notified 再上报的话，写盘失败会让本局
+            // 后续所有目标事件在本方法第一行短路：玩家打完了、章节没推进、无法重试。
+            if (CampaignProgressService.NotifyObjectivesSatisfied(_armedChapterId))
+            {
+                _notified = true;
+            }
         }
 
         #endregion

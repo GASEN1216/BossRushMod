@@ -174,6 +174,59 @@ namespace BossRush
             }
         }
 
+        /// <summary>撤离点是否已生成，供 F3 验收断言撤离阶段真的落地了撤离点。</summary>
+        internal bool ModeFExtractionPointSpawnedForValidation
+        {
+            get { return modeFState != null && modeFState.ExtractionPointSpawned; }
+        }
+
+        /// <summary>撤离是否已结算，供 F3 验收断言撤离链走完。</summary>
+        internal bool ModeFExtractionResolvedForValidation
+        {
+            get { return modeFState != null && modeFState.ExtractionResolved; }
+        }
+
+        /// <summary>
+        /// Dev 验收专用：触发撤离区域的 onCountDownSucceed，即玩家站进撤离圈、
+        /// 倒计时走完时官方 CountDownArea 触发的那个事件（监听器由
+        /// ModeExtractionPointFactory.ConfigureEvents 注册）。
+        ///
+        /// 刻意**不**直接调 OnModeFExtractionSuccess：那样会跳过 IsCurrentArea 门与
+        /// notify/loadBase 两条 fallback 分支，等于把「接线是否正确」这件最容易坏的事
+        /// 排除在验收之外。走事件才和玩家路径同源。
+        /// </summary>
+        internal bool DebugTriggerModeFExtractionForValidation(out string reason)
+        {
+            reason = null;
+            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!modeFActive || modeFState == null || !modeFState.IsActive)
+            {
+                reason = "mode_f_not_active";
+                return false;
+            }
+            if (!modeFState.ExtractionPointSpawned || modeFState.ActiveExtractionArea == null)
+            {
+                reason = "extraction_point_not_spawned";
+                return false;
+            }
+            if (modeFState.ActiveExtractionArea.onCountDownSucceed == null)
+            {
+                reason = "count_down_event_missing";
+                return false;
+            }
+
+            try
+            {
+                modeFState.ActiveExtractionArea.onCountDownSucceed.Invoke();
+            }
+            catch (Exception e)
+            {
+                reason = e.GetType().Name + ":" + e.Message;
+                return false;
+            }
+            return true;
+        }
+
         /// <summary>
         /// 撤离成功处理。
         /// 当前悬赏奖励逐件直接复用共享高品质奖励池，并写入寄存/缓冲，不额外追加 Mode F 专属的 >=6 二次过滤。

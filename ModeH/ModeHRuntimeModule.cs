@@ -292,6 +292,10 @@ namespace BossRush
             if (_runState == null) return;
             if (TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reasonId))
             {
+                // 挂起可能跨进程重启，而 _escrowItems 是纯内存 List：不在这里返还，
+                // 物品就永久丢失。同场重开只会回落到 MatchBrief（见 ResolveRecoveryResumeLifecycle），
+                // 不会回到已锁盘状态，所以此处结清 journal 不会破坏恢复路径。
+                TryReturnRealStakeOnAbort("suspended:" + (reasonId != null ? reasonId : "unknown"));
                 ModeHRuntimeGates.SetRecoveryOnlyBlocked(true, reasonId);
                 // Suspended 是显式持久化点：恢复壳必须跨重启可达，不能只留内存脏标记。
                 TryPersistSeason("suspended");

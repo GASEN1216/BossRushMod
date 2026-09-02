@@ -493,6 +493,12 @@ namespace BossRush
             Add(map, "Recovery_SnapshotUnusable", "战场快照不可用，已回落到同场重开",
                 "Battle snapshot unusable; fell back to restarting the same match");
             Add(map, "Recovery_RetryScan", "重试风险扫描", "Retry risk scan");
+            Add(map, "Recovery_ReturnEscrow", "取回托管押品", "Retrieve escrowed stake");
+            Add(map, "Recovery_ReturnEscrow_Done",
+                "押品已退回仓库", "Escrowed stake returned to your warehouse");
+            Add(map, "Recovery_ReturnEscrow_Failed",
+                "押品退回失败，仓库需要空位；清出空格后可再试",
+                "Could not return the stake; free up warehouse space and try again");
 
             // 旧模式入口被拒时的两句文案：扫描失败与真实风险是两回事，
             // 用同一句会把「读档出错」说成「你有笔押品没结算」。
@@ -626,6 +632,14 @@ namespace BossRush
             Add(map, "RealStake_WorstCasePreview", "最坏损失", "Worst case");
             Add(map, "RealStake_RewardPreview", "胜利可得同品质", "On win, same quality");
             Add(map, "RealStake_SelectedCount", "已押件数", "Staked items");
+
+            // 押品选择被拒的两条分因。原先只写 DevLog，玩家点了装备毫无反应。
+            Add(map, "RealStake_Reject_LimitReached",
+                "本场押品已达上限，先取消一件再换",
+                "Stake limit reached for this match; deselect one first");
+            Add(map, "RealStake_Reject_Unstakeable",
+                "这件装备无法押注，换一件试试",
+                "This item cannot be staked; try another one");
 
             Add(map, "StakePhase_Prepared", "已冻结计划", "Plan frozen");
             Add(map, "StakePhase_EscrowSnapshotDurable", "托管快照已落盘", "Escrow snapshot durable");

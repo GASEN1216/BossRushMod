@@ -233,6 +233,28 @@ namespace BossRush
                 "在阵亡纪念碑上刻下第一个名字", "Carve the first name into the memorial",
                 AchievementCategory.Taming, 120000, 2, true);
 
+            // ========== 图鉴成就（鸭皇图鉴）==========
+            // 现金数额必须与 Integration/Codex/CodexTuning.cs 的 MilestoneCash* 台账一致。
+            Register(CodexTuning.AchievementFirstEntry, "初次登记", "First Entry",
+                "在图鉴里登记第一位鸭皇", "Log your first boss in the codex",
+                AchievementCategory.Codex, CodexTuning.MilestoneCashFirstEntry, 1);
+
+            Register(CodexTuning.AchievementTen, "小有收藏", "Ten Logged",
+                "解锁 10 条图鉴", "Unlock 10 codex entries",
+                AchievementCategory.Codex, CodexTuning.MilestoneCashTen, 2);
+
+            Register(CodexTuning.AchievementTwenty, "半部鸭史", "Half the Record",
+                "解锁 20 条图鉴", "Unlock 20 codex entries",
+                AchievementCategory.Codex, CodexTuning.MilestoneCashTwenty, 3);
+
+            Register(CodexTuning.AchievementAll, "鸭皇全谱", "The Complete Codex",
+                "解锁全部图鉴条目", "Unlock every codex entry",
+                AchievementCategory.Codex, CodexTuning.MilestoneCashAll, 5);
+
+            Register(CodexTuning.AchievementFastKill, "十秒之内", "Inside Ten Seconds",
+                "十秒内击杀一位鸭皇", "Take down a boss within ten seconds",
+                AchievementCategory.Codex, CodexTuning.MilestoneCashFastKill, 4);
+
             // ========== 终极成就 ==========
             Register("completionist", "成就收集者", "Completionist",
                 "解锁所有成就", "Unlock all achievements",

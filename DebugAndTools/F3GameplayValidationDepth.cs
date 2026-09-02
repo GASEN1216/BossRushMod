@@ -5,14 +5,11 @@
 //   生命周期用例只证明「模式能起来、场上有敌人、能清干净」。这一组往前走一步，
 //   验的是模式内部的推进链——那才是玩家真正会卡住的地方。
 //
-// 【只用现成入口】本文件不给产品代码开测试后门。经核查：
-//   - Mode D 多波连打可驱动：ModeDStartNextWave / ModeDWaveIndex 都是 public。
-//   - Mode E 撤离结算（ModeELifecycle）与 Mode F 赏金链、撤离（ModeFBounty /
-//     ModeFExtraction / ModeFPhases）**全部是 private 且无 Debug/Validation 入口**，
-//     只能靠真人走到撤离点交互。这两项如实记 SKIP 并写明「需人工」，
-//     不伪造 PASS，也不为了凑绿去加 internal 后门（那等于把验收本身变成谎言）。
-//   - 标准模式「波次完成→胜利奖励」同理：胜利判定挂在 Boss 死亡链上，
-//     LootAndRewardsVictoryRewards 只暴露生成入口，不暴露可断言的结算查询。
+// 【入口来源】Mode D 多波用现成 public 入口（ModeDStartNextWave / ModeDWaveIndex）。
+//   Mode E 收尾、Mode F 赏金/撤离、标准胜利奖励原本全是 private，上一轮如实记 SKIP；
+//   现已在产品代码补 internal 验收入口，用例编排见 F3GameplayValidationDeepFlows.cs。
+//   那些入口只补「前提」（推进阶段计时、给悬赏印记、触发官方倒计时事件、收窄 Boss 池），
+//   玩法链本身仍由产品代码跑，断言取自产品状态——不是为了凑绿造假 PASS。
 // ============================================================================
 
 using System;
@@ -24,22 +21,30 @@ namespace BossRush
 {
     internal sealed partial class F3GameplayValidationRunner
     {
-        /// <summary>5/7 阶段：模式深度流程。当前只有 Mode D 多波可全自动驱动。</summary>
+        /// <summary>
+        /// 5/7 阶段：模式深度流程。五项全自动驱动，逐项隔离——单项红不拖垮整套。
+        /// 每项后跟一次场地清洁校验，避免上一项的残留把下一项染红。
+        /// </summary>
         private IEnumerator RunModeDepthCases()
         {
             yield return RunIsolatedCase("MODE_D_MULTI_WAVE", RunModeDMultiWave);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_D_MULTI");
 
-            // 无 code-drivable 入口的项：如实记 SKIP。报告里留痕比留空白诚实，
-            // 也比硬凑一个恒绿断言有用——后者会让人误以为这条链被测过了。
-            Record("MODE_E_EXTRACTION", "SKIP", 0L, "drivable=false",
-                "Mode E 撤离结算无 code-drivable 入口（ModeELifecycle 均为 private），需人工走撤离点验证");
-            Record("MODE_F_BOUNTY", "SKIP", 0L, "drivable=false",
-                "Mode F 赏金链无 code-drivable 入口（ModeFBounty 均为 private），需人工击杀赏金 Boss 验证");
-            Record("MODE_F_EXTRACTION", "SKIP", 0L, "drivable=false",
-                "Mode F 撤离无 code-drivable 入口（ModeFExtraction 均为 private），需人工走撤离点验证");
-            Record("STANDARD_VICTORY_REWARD", "SKIP", 0L, "drivable=false",
-                "标准模式胜利奖励结算需打完全部波次，无可断言的结算查询入口，需人工验证");
+            yield return RunIsolatedCase("MODE_E_EXTRACTION", RunModeEExtraction);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_E_EXTRACTION");
+
+            yield return RunIsolatedCase("MODE_F_BOUNTY", RunModeFBounty);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_F_BOUNTY");
+
+            yield return RunIsolatedCase("MODE_F_EXTRACTION", RunModeFExtraction);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_F_EXTRACTION");
+
+            yield return RunIsolatedCase("STANDARD_VICTORY_REWARD", RunStandardVictoryReward);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_VICTORY_REWARD");
+
+            // 过场「点击继续」门放在最后：它会切场景，跑完由 RunArenaStages 的
+            // 收尾流程负责回基地，不影响前面几项的场地状态。
+            yield return RunIsolatedCase("SCENE_CLICK_GATE", RunSceneClickGate);
         }
 
         /// <summary>

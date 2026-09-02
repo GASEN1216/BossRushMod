@@ -126,7 +126,8 @@ namespace BossRush
             {
                 ModeHActionData action = actions[i];
                 if (action == null) continue;
-                bool interactable = allowActions && action.Interactable && action.OnClick != null;
+                bool interactable = (allowActions || action.BypassReadOnly)
+                    && action.Interactable && action.OnClick != null;
                 ZombieModeUIHelper.CreateButton(
                     "ModeH_RecoveryAction_" + i, surface, action.Label,
                     new Vector2(0.5f, 0f),

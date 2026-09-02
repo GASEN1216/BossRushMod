@@ -738,6 +738,82 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 兑付 `rewardOperation` 里 `resultKind == "reward"` 的同品质奖励计划。
+        /// typeId 在计划阶段是 0（§22.3 不预先伪造），此处按 `gameQuality` 完全相等
+        /// 从官方物品池确定性抽取并实例化，逐件写 receipt。
+        ///
+        /// 幂等：已 `Applied` 的 reward receipt 不会重复发放，所以崩溃重放安全。
+        /// 仓库满或池为空时保持 pending 并返回 false，绝不覆盖已有物品。
+        /// </summary>
+        public static bool GrantPlannedRewards(long runSeed, out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (_active == null)
+            {
+                failureReasonId = "journal_missing";
+                return false;
+            }
+            ModeHRewardOperationDto operation = _active.rewardOperation;
+            if (operation == null || operation.itemResults == null) return true;
+
+            for (int i = 0; i < operation.itemResults.Count; i++)
+            {
+                ModeHRewardItemResultDto planned = operation.itemResults[i];
+                if (planned == null) continue;
+                if (!string.Equals(planned.resultKind, "reward", StringComparison.Ordinal)) continue;
+                if (HasAppliedReceipt("escrow_reward", i)) continue;
+
+                int typeId = ModeHRewardItemPool.TryPickSameQualityTypeId(
+                    planned.gameQuality, runSeed, _active.txId, i, out failureReasonId);
+                if (typeId <= 0) return false;
+
+                Item granted = ModeHRewardItemPool.TryInstantiate(typeId, out failureReasonId);
+                if (granted == null) return false;
+
+                int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
+                if (position < 0)
+                {
+                    ModeHRewardItemPool.DestroyUngranted(granted);
+                    failureReasonId = "reward_no_empty_slot";
+                    return false;
+                }
+                string reason;
+                if (!ModeHInventoryPersistenceBridge.TryAddAtEmpty(granted, position, out reason))
+                {
+                    ModeHRewardItemPool.DestroyUngranted(granted);
+                    failureReasonId = "reward_add_failed:" + reason;
+                    return false;
+                }
+
+                planned.typeId = typeId;
+                AppendReceipt("escrow_reward", i, string.Empty, ModeHStakeReceiptStatus.Applied);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// 某条 reward 是否已发放过。重放时据此跳过，避免重复发实物。
+        /// </summary>
+        private static bool HasAppliedReceipt(string kind, int index)
+        {
+            if (_active == null || _active.receipts == null) return false;
+            string operationId = _active.txId + "|" + kind + "|" + index;
+            for (int i = 0; i < _active.receipts.Count; i++)
+            {
+                ModeHStakeReceiptDto receipt = _active.receipts[i];
+                if (receipt == null) continue;
+                if (!string.Equals(receipt.operationId, operationId, StringComparison.Ordinal)) continue;
+                ModeHStakeReceiptStatus status = (ModeHStakeReceiptStatus)receipt.status;
+                if (status == ModeHStakeReceiptStatus.Applied
+                    || status == ModeHStakeReceiptStatus.Verified)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 失败清算：只保留 `Prepared` 时冻结的 `plannedLosses`，其余 escrow 原样返还。
         /// 绝不在比赛结束时重新从仓库抽取。
         /// </summary>

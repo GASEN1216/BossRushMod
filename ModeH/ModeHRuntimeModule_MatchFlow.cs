@@ -707,8 +707,33 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[ModeH] 押品选择被拒: "
                     + (failureReasonId != null ? failureReasonId : "unknown"));
+                // 本文件头的契约要求"任何一步失败都不静默"：只写 DevLog 的话，
+                // 玩家点了装备却毫无反应，会以为是按钮坏了。
+                if (_owner != null) _owner.ShowMessage(ResolveStakeRejectReason(failureReasonId));
             }
             RouteUiForLifecycle(_runState.Lifecycle);
+        }
+
+        /// <summary>
+        /// 把押品选择被拒的内部 reasonId 翻译成玩家看得懂的一句话。
+        /// 分因的意义：「已达上限」是玩家自己可调整的，而「这件装备读不出品质」
+        /// 说明该格不可押、换一件即可，两者的下一步动作完全不同。
+        /// 未登记的原因回落通用文案，绝不把 reasonId 原文喷给玩家。
+        /// </summary>
+        private static string ResolveStakeRejectReason(string failureReasonId)
+        {
+            if (!string.IsNullOrEmpty(failureReasonId))
+            {
+                if (failureReasonId.IndexOf("stake_slot_inconsistent", StringComparison.Ordinal) >= 0)
+                {
+                    return ResolveRealStakeDisabledReason();
+                }
+                if (failureReasonId.IndexOf("stake_limit_reached", StringComparison.Ordinal) >= 0)
+                {
+                    return L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_Reject_LimitReached");
+                }
+            }
+            return L10n.T(ModeHConfig.LocalizationKeyPrefix + "RealStake_Reject_Unstakeable");
         }
 
         /// <summary>
@@ -915,6 +940,12 @@ namespace BossRush
                 LogFailure("spawn_rollback", e);
             }
             _spawnTransaction = null;
+
+            // 真实押品必须与虚拟筹码对称退还，且必须在 RestoreMatchReservationAndSnapshot
+            // 之前：那里会清掉 currentLoadoutLock，之后重试的 TryLockForMatch 会撞
+            // journal_active_exists 让锁盘永久失败。物品在 PrepareLockedMatch 里已被摘出仓库，
+            // 只活在内存的 _escrowItems 中，不还就是永久丢失。
+            TryReturnRealStakeOnAbort("spawn_abort:" + (reasonId != null ? reasonId : "spawn_failed"));
 
             RestoreMatchReservationAndSnapshot();
 

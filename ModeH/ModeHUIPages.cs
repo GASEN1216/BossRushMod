@@ -61,6 +61,16 @@ namespace BossRush
         public bool Interactable = true;
         /// <summary>是否是危险动作（用 Danger token）。</summary>
         public bool IsDanger;
+        /// <summary>
+        /// 是否无视恢复壳的只读置灰（`allowActions=false`）。
+        ///
+        /// 只有**减少**玩家资产暴露的动作才可以置 true —— 目前唯一的用例是
+        /// 「把内存托管中的押品还回仓库」。只读保护的本意是"证据不足时不许动
+        /// 资产"，而 IsSlotConsistent=false 本身就是"押品还没归位"的同义词，
+        /// 用它把唯一的补救按钮关掉会让玩家除删档外无路可走。
+        /// 任何会**新增**资产风险的动作都不得使用这个旁路。
+        /// </summary>
+        public bool BypassReadOnly;
     }
 
     /// <summary>

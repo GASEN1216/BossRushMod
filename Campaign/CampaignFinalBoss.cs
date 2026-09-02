@@ -333,8 +333,11 @@ namespace BossRush
 
                 // notifyBossRushOnFailure:false —— 失败不能去通知标准竞技场流程，
                 // 那会在没有波次的情况下推进它的状态机
+                // 体型倍率必须在生成时传入，不能生成后再改 localScale：
+                // localScale 会缩放碰撞体，而属性/AI 初始化会缓存碰撞器半径。
                 CharacterMainControl boss = await SpawnPhantomWitch(
-                    position, false, false, PhantomWitchDeathPresentation.CampaignFinal);
+                    position, false, false, PhantomWitchDeathPresentation.CampaignFinal,
+                    CampaignTuning.FinalBossScale);
 
                 // 生成是异步的：等待期间玩家可能已经切场景、死亡或开了别的模式，
                 // 那一场已经被收尾过了。此时绝不能把 Boss 认领回来——
@@ -419,15 +422,8 @@ namespace BossRush
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战数值倍率失败: " + e.Message);
             }
 
-            // 2) 体型：纯视觉放大，不动碰撞判定口径
-            try
-            {
-                boss.transform.localScale = boss.transform.localScale * CampaignTuning.FinalBossScale;
-            }
-            catch (Exception e)
-            {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战体型缩放失败: " + e.Message);
-            }
+            // 2) 体型：已由 SpawnPhantomWitch 的 extraModelScale 在碰撞器缓存之前应用，
+            //    这里不再二次缩放（事后改 localScale 会让碰撞体与模型口径不一致）。
 
             // 3) 染色：走 MaterialPropertyBlock，绝不碰 sharedMaterial（会污染同款所有敌人）
             try

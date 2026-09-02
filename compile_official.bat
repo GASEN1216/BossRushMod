@@ -177,6 +177,7 @@ echo(DebugAndTools\F3GameplayValidationPersistence.cs
 echo(DebugAndTools\F3GameplayValidationBackMountain.cs
 echo(DebugAndTools\F3GameplayValidationEconomy.cs
 echo(DebugAndTools\F3GameplayValidationDepth.cs
+echo(DebugAndTools\F3GameplayValidationDeepFlows.cs
 echo(DebugAndTools\F3GameplayValidationLeaks.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
@@ -382,6 +383,7 @@ echo(ModeH\ModeHStakeJournalPersistence.cs
 echo(ModeH\ModeHRealStakeService.cs
 echo(ModeH\ModeHProfileRegistry.cs
 echo(ModeH\ModeHRecoveryPanel.cs
+echo(ModeH\ModeHRewardItemPool.cs
 echo(ModeH\ModeHRewardTransaction.cs
 echo(ModeH\ModeHRunState.cs
 echo(ModeH\ModeHRuntimeGates.cs

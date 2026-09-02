@@ -79,6 +79,9 @@ namespace BossRush
                 clone.aiCombatFactor = 1f;
                 clone.dropBoxOnDead = false;
                 clone.team = team;
+                // 必须设为 true：官方 Boss preset 默认 canDieIfNotRaidMap=false（为防止基地意外触发死亡），
+                // 但 Mode H 认证需要在非 raid 图（如竞技场）可控击杀 Boss 并观测受伤/死亡事件。
+                clone.canDieIfNotRaidMap = true;
                 handle.ClonePreset = clone;
             }
             catch (Exception e)

@@ -169,6 +169,11 @@ namespace BossRush
             {
                 if (!modeFActive) return false;
                 if (boss == null) return false;
+
+                // 先读瞬时闩：ModeF 的 OnDeadEvent 已经在几行前把印记从字典里移除了，
+                // 此刻只有闩还记得这一杀带印记。命中即消费，避免重复计数。
+                if (ConsumeModeFPlayerBountyKillLatch(boss.GetInstanceID())) return true;
+
                 if (modeFState == null || modeFState.BountyMarksByCharacterId == null) return false;
 
                 int marks;

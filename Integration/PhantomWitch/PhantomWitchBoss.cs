@@ -148,11 +148,17 @@ namespace BossRush
         /// <summary>
         /// 生成幽灵女巫Boss
         /// </summary>
+        /// <param name="extraModelScale">
+        /// 额外体型倍率（战役「冠军之影」用 1.15）。必须走这个参数、不要在生成完成后
+        /// 再改 localScale：localScale 会缩放碰撞体，而属性/AI 初始化会缓存碰撞器半径，
+        /// 事后缩放会让命中判定与模型口径不一致。
+        /// </param>
         public async UniTask<CharacterMainControl> SpawnPhantomWitch(
             Vector3 position,
             bool notifyBossRushOnFailure = true,
             bool deferActivationUntilNextFrame = false,
-            PhantomWitchDeathPresentation deathPresentation = PhantomWitchDeathPresentation.Standard)
+            PhantomWitchDeathPresentation deathPresentation = PhantomWitchDeathPresentation.Standard,
+            float extraModelScale = 1f)
         {
             CharacterMainControl character = null;
             PhantomWitchAbilityController abilities = null;
@@ -242,11 +248,35 @@ namespace BossRush
                     character.Health.showHealthBar = true;
                 }
 
+                // 敌对性安全网：理由同 ModBehaviour 标准生成路径。基础预设 Cname_Ghost
+                // 若为 Teams.middle（海岛更新后部分预设如此），Team.IsEnemy(player, middle)==false
+                // 会让玩家打不掉 Boss、Boss 也打不到玩家（女巫自身的伤害在
+                // PhantomWitchAbilityController_MovementAndDamage 与 PhantomWitchScytheAction
+                // 里同样由 Team.IsEnemy 把关），战役第 6 章将没有完成路径。
+                // RegisterPhantomWitchPreset 里声明的 team 只是 EnemyPresetInfo 元数据，
+                // 从不施加到生成出的角色上，所以必须在这里显式兜底。
+                // 放在随从生成之前：随从会复制 Boss 的 team。
+                try
+                {
+                    if (!Team.IsEnemy(Teams.player, character.Team))
+                    {
+                        DevLog("[PhantomWitch] 检测到非敌对 Boss (team=" + character.Team
+                            + ")，强制设为 Teams.wolf");
+                        character.SetTeam(Teams.wolf);
+                    }
+                }
+                catch (Exception teamEx)
+                {
+                    DevLog("[PhantomWitch] [WARNING] 强制 Boss 阵营失败: " + teamEx.Message);
+                }
+
                 // BossRush 里把幽灵女巫整体放大 1 倍（= 2 倍视觉尺寸），
                 // 凸显 Boss 体型。放到属性/AI 初始化之前，避免碰撞器半径被缓存。
                 try
                 {
-                    character.transform.localScale = Vector3.one * PhantomWitchConfig.BossModelScale;
+                    float modelScale = PhantomWitchConfig.BossModelScale
+                        * (extraModelScale > 0f ? extraModelScale : 1f);
+                    character.transform.localScale = Vector3.one * modelScale;
                 }
                 catch (Exception scaleEx)
                 {

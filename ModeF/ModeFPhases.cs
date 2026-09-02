@@ -83,6 +83,7 @@ namespace BossRush
                 modeFPendingRespawnCount = 0;
                 modeFRespawnInFlightCount = 0;
                 modeFHandledBossDeathIds.Clear();
+                ResetModeFPlayerBountyKillLatch();
                 modeFBossDeathHandlers.Clear();
                 modeFBossLootHandlers.Clear();
                 modeFBossForcedTargets.Clear();
@@ -256,6 +257,54 @@ namespace BossRush
                     break;
                 // Extraction 无限持续
             }
+        }
+
+        /// <summary>当前 Mode F 阶段，供 F3 验收断言阶段推进是否真的发生。</summary>
+        internal ModeFPhase ModeFCurrentPhaseForValidation
+        {
+            get { return modeFState != null ? modeFState.CurrentPhase : ModeFPhase.None; }
+        }
+
+        /// <summary>
+        /// Dev 验收专用：把当前阶段的计时推到时长上限，然后走既有 CheckModeFPhaseTransition。
+        /// 真实阶段机（EnterModeFPhase 的 banner / GenerateBountyList / SpawnFinalExtractionPoint
+        /// / ApplyModeFPhasePressure）因此完整执行——这里只是把「等 180 秒」换成「时间到了」，
+        /// 不另写一条跳转路径，否则测的就不是玩家那条链了。
+        /// </summary>
+        internal bool DebugAdvanceModeFPhaseForValidation(out string reason)
+        {
+            reason = null;
+            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            if (!modeFActive || modeFState == null || !modeFState.IsActive)
+            {
+                reason = "mode_f_not_active";
+                return false;
+            }
+            if (modeFState.CurrentPhase == ModeFPhase.Extraction)
+            {
+                reason = "already_final_phase";
+                return false;
+            }
+
+            ModeFPhase before = modeFState.CurrentPhase;
+            try
+            {
+                modeFState.PhaseElapsed = modeFState.PhaseDuration;
+                CheckModeFPhaseTransition();
+            }
+            catch (Exception e)
+            {
+                reason = e.GetType().Name + ":" + e.Message;
+                return false;
+            }
+
+            if (modeFState.CurrentPhase == before)
+            {
+                reason = "phase_did_not_advance_from_" + before;
+                return false;
+            }
+            DevLog("[ModeF] [Validation] 阶段推进: " + before + " -> " + modeFState.CurrentPhase);
+            return true;
         }
 
         /// <summary>
@@ -582,6 +631,7 @@ namespace BossRush
                 modeFPendingRespawnCount = 0;
                 modeFRespawnInFlightCount = 0;
                 modeFHandledBossDeathIds.Clear();
+                ResetModeFPlayerBountyKillLatch();
                 CleanupModeFPlayerNameTag();
                 CleanupModeFBountyRadarUI();
                 CleanupModeFExtractionMapMarker();

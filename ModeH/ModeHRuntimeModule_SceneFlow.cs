@@ -306,6 +306,36 @@ namespace BossRush
             return persisted;
         }
 
+        /// <summary>
+        /// Dev 验收专用：强制重置运行时状态但不切场景。
+        /// ValidationSafeCleanup 调用此方法而非 RequestExit，避免 Mode H 超时失败时切回基地打断后续用例。
+        /// </summary>
+        internal void ForceResetStateForValidation()
+        {
+            if (!ModBehaviour.DevModeEnabled) return;
+            try
+            {
+                // 直接置空状态，让运行时停摆。不走 RequestExit 避免切场景。
+                _runState = null;
+                _season = null;
+                if (_arenaLease != null)
+                {
+                    _arenaLease.Dispose();
+                    _arenaLease = null;
+                }
+                if (_spectatorLease != null)
+                {
+                    _spectatorLease.Dispose();
+                    _spectatorLease = null;
+                }
+                _certification = null;
+            }
+            catch (Exception e)
+            {
+                LogFailure("force_reset_validation", e);
+            }
+        }
+
         private IEnumerator DriveCertification(List<string> keys, ModeHCertificationResult result)
         {
             long ownerToken = _runState != null ? _runState.OwnerToken : 0L;
@@ -621,6 +651,12 @@ namespace BossRush
         {
             // 1. 停止接收新命令
             _commandsClosed = true;
+
+            // 1.5 真实押品返还：必须在清 _runState 之前，返还计划要用 RunSeed/MatchIndex。
+            // _escrowItems 是纯内存 List，快照只能用于核对、无法重建 Item，所以关停时若不
+            // 返还，物品就随进程永久消失，而恢复壳因 IsSlotConsistent=false 会把所有补救
+            // 按钮置灰，玩家除删档外无出路。TryReturnRealStakeOnAbort 幂等且无 journal 时 no-op。
+            TryReturnRealStakeOnAbort("shutdown:" + (reasonId != null ? reasonId : "unknown"));
 
             // 2-5 + 6-7（租约逆序）+ 9（UI）：全部收敛到同一个幂等清理入口，
             // 保证 AbortSetup 与正常关停走完全一样的顺序。
