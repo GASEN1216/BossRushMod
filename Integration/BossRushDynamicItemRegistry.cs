@@ -44,6 +44,14 @@ namespace BossRush
             get { return Plans.Count; }
         }
 
+        internal static int[] GetPublishedTypeIds()
+        {
+            int[] ids = new int[Plans.Count];
+            Plans.Keys.CopyTo(ids, 0);
+            Array.Sort(ids);
+            return ids;
+        }
+
         internal static bool EnsureRegistered(int typeId)
         {
             RegistrationPlan plan;

@@ -1206,6 +1206,7 @@ namespace BossRush
 
                 // 激活敌人
                 character.gameObject.SetActive(true);
+                SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character);
 
                 // 应用变异词条效果到新生成的敌人
                 MutatorManager.ApplyToEnemy(character);

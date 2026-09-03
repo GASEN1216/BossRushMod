@@ -18,6 +18,7 @@
 
 using System;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
@@ -49,8 +50,14 @@ namespace BossRush
 
             try
             {
-                Duckov.Utilities.SetActiveByPlayerDistance.Unregister(
-                    characterObject, characterObject.scene.buildIndex);
+                // SetRelatedScene 把角色挂到 MultiSceneCore 的父物体下，实际 scene 会变成
+                // 主场景；距离表却仍以 relatedScene（子场景）为 key，不能用 GO.scene 退订。
+                // 只移除当前角色在已加载场景中的登记，不扫描角色、不改变其他敌人的休眠。
+                for (int i = 0; i < SceneManager.sceneCount; i++)
+                {
+                    int sceneIndex = SceneManager.GetSceneAt(i).buildIndex;
+                    while (Duckov.Utilities.SetActiveByPlayerDistance.Unregister(characterObject, sceneIndex)) { }
+                }
             }
             catch (Exception e)
             {

@@ -66,6 +66,16 @@ def main() -> int:
     if "ModeExtractionPointFactory.CreateExtractionPoint(request)" not in modef:
         return fail("ZombieModeExtractionFactoryGuard: Mode F does not use shared extraction factory")
 
+    create = extract_method(factory, "internal static ModeExtractionPointResult CreateExtractionPoint")
+    if not (0 <= create.find("ClearPersistentEvents(countDown)")
+            < create.find("ResolveFallbackActions(countDown.onCountDownSucceed")
+            < create.find("ConfigureEvents(countDown")):
+        return fail("ZombieModeExtractionFactoryGuard: 必须按清除后的事件决定通知/返基地兜底，不能依赖已删除回调")
+    events = extract_method(factory, "private static void ConfigureEvents")
+    if not (0 <= events.find("if (successDispatched") < events.find("successDispatched = true;")
+            < events.find("request.OnSucceed();")):
+        return fail("ZombieModeExtractionFactoryGuard: 成功事件必须先占有再结算，防止丧尸递归派发导致双重返程")
+
     for token in [
         "TryCreateModeFExtractionFromPrefab",
         "PrepareModeFExtractionPrefab",

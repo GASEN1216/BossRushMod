@@ -349,6 +349,7 @@ namespace BossRush
                     {
                         try
                         {
+                            ClearBossRandomLootTracking(boss);
                             UnityEngine.Object.Destroy(boss.gameObject);
                         }
                         catch (Exception e)
@@ -571,6 +572,7 @@ namespace BossRush
                     {
                         try
                         {
+                            ClearBossRandomLootTracking(campaignFinalBossInstance);
                             UnityEngine.Object.Destroy(campaignFinalBossInstance.gameObject);
                         }
                         catch (Exception e)

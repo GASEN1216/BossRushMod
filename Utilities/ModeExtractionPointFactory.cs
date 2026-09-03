@@ -67,9 +67,10 @@ namespace BossRush
 
             bool shouldNotifyGameEvacuation;
             bool shouldLoadBaseScene;
-            ResolveFallbackActions(countDown.onCountDownSucceed, out shouldNotifyGameEvacuation, out shouldLoadBaseScene);
             // 清除预制体自带的持久化事件，防止 CountDownArea 内置倒计时独立触发 LoadBaseScene 导致黑屏
             ClearPersistentEvents(countDown);
+            // 必须根据清除后的事件判断兜底；已删除的官方回调不会再负责通知或返基地。
+            ResolveFallbackActions(countDown.onCountDownSucceed, out shouldNotifyGameEvacuation, out shouldLoadBaseScene);
             ConfigureEvents(countDown, request, shouldNotifyGameEvacuation, shouldLoadBaseScene);
 
             ModeExtractionPointResult result = new ModeExtractionPointResult();
@@ -271,12 +272,15 @@ namespace BossRush
             {
                 countDown.onCountDownSucceed = new UnityEvent();
             }
+            // 丧尸结算会再次派发同一成功事件；先占有本次成功，防止重入/重复触发两次返程。
+            bool successDispatched = false;
             countDown.onCountDownSucceed.AddListener(delegate
             {
-                if (request.IsCurrentArea != null && !request.IsCurrentArea(countDown))
+                if (successDispatched || (request.IsCurrentArea != null && !request.IsCurrentArea(countDown)))
                 {
                     return;
                 }
+                successDispatched = true;
 
                 if (request.OnSucceed != null)
                 {
@@ -295,6 +299,18 @@ namespace BossRush
             });
         }
 
+        /// <summary>
+        /// 判断官方回调里是否已经有人负责「通知撤离」与「返回基地」，没有就由 Mod 兜底。
+        ///
+        /// **当前调用位置在 ClearPersistentEvents 之后**（CR-2026-09-02-006：先删回调再判断，
+        /// 否则会出现「既没有官方返程也不跑兜底」的黑屏），而那里是整体
+        /// `new UnityEvent()` 替换，所以进到这里时持久化回调数恒为 0，
+        /// 下面的循环**当前不会执行**，本方法恒返回 (true, true)。
+        ///
+        /// 保留循环而不是写死两个 true：它是防御性分支，只要 ClearPersistentEvents
+        /// 将来改成"选择性摘除"就会立刻重新生效。顺序不变式由
+        /// tests/ZombieModeExtractionFactoryGuard.py 冻结，不要把这里改回调用前判断。
+        /// </summary>
         private static void ResolveFallbackActions(
             UnityEvent onCountDownSucceed,
             out bool shouldNotifyGameEvacuation,

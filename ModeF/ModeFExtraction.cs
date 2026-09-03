@@ -180,10 +180,12 @@ namespace BossRush
             get { return modeFState != null && modeFState.ExtractionPointSpawned; }
         }
 
-        /// <summary>撤离是否已结算，供 F3 验收断言撤离链走完。</summary>
-        internal bool ModeFExtractionResolvedForValidation
+        private int modeFSuccessfulExtractionCount;
+
+        /// <summary>完成真实结算的次数；不随单局 Reset 清零，供验收比较本次事件前后增量。</summary>
+        internal int ModeFSuccessfulExtractionCountForValidation
         {
-            get { return modeFState != null && modeFState.ExtractionResolved; }
+            get { return modeFSuccessfulExtractionCount; }
         }
 
         /// <summary>
@@ -323,6 +325,7 @@ namespace BossRush
 
                 ExitModeF();
                 exitAttempted = true;
+                if (!modeFActive) modeFSuccessfulExtractionCount++;
             }
             catch (Exception e)
             {
