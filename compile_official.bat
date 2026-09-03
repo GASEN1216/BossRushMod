@@ -829,6 +829,7 @@ echo(Integration\Reforge\ReforgeUIManager_AffixForge.cs
 echo(Integration\Reforge\ReforgeUIManager_AffixForgePanel.cs
 echo(Localization\AffixForgeLocalization.cs
 echo(Audio\BossBgmCoordinator.cs
+echo(Audio\BossBgmTrackTable.cs
 echo(Common\UI\BossRushUISkinLoader.cs
 echo(Config\ConfigModConfigKeys.cs
 echo(Config\ConfigContentSystemSwitches.cs

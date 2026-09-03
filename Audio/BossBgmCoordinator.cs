@@ -31,69 +31,6 @@ using UnityEngine;
 
 namespace BossRush
 {
-    // 以下四个类是 JsonUtility 反序列化目标：字段由 JsonUtility.FromJson 反射赋值，
-    // 代码里只读不写，所以编译器会对每个字段报 CS0649「从未赋值」。那是误报——
-    // 真按提示改成属性或加初始值，JsonUtility 就绑不上了（它只认公有字段）。
-    // 因此在这里定点关掉 CS0649，范围只覆盖这四个 DTO，不影响文件其余部分。
-#pragma warning disable 0649
-
-    /// <summary>Boss 战 BGM 条目（JsonUtility 反序列化目标，字段名即 JSON 键名）。</summary>
-    [Serializable]
-    internal class BossBgmTrackEntry
-    {
-        /// <summary>Boss 标识。与 BossBgmKeys 的常量对应。</summary>
-        public string bossKey;
-
-        /// <summary>相对 Assets/Sounds/BGM/ 的文件名。</summary>
-        public string file;
-
-        /// <summary>是否循环。Boss 战 BGM 一律 true。</summary>
-        public bool loop = true;
-
-        /// <summary>
-        /// 阶段号。V1 恒为 0，为二期 FMOD SetState 阶段切歌预留。
-        /// 解析时非 0 的条目会被忽略并记一条日志，避免二期数据表被 V1 代码静默错播。
-        /// </summary>
-        public int phase;
-    }
-
-    /// <summary>一次性 stinger 条目。</summary>
-    [Serializable]
-    internal class BossBgmStingerEntry
-    {
-        /// <summary>事件标识。与 BossBgmEvents 的常量对应。</summary>
-        public string eventKey;
-
-        /// <summary>相对 Assets/Sounds/BGM/ 的文件名。</summary>
-        public string file;
-    }
-
-    /// <summary>点唱机追加曲目条目（后山设施消费，见 JukeboxTrackInjector）。</summary>
-    [Serializable]
-    internal class BossBgmJukeboxEntry
-    {
-        /// <summary>点唱机上显示的曲名。</summary>
-        public string musicName;
-
-        /// <summary>作者署名。</summary>
-        public string author;
-
-        /// <summary>相对 Assets/Sounds/BGM/ 的文件名。</summary>
-        public string file;
-    }
-
-    /// <summary>数据表根对象。</summary>
-    [Serializable]
-    internal class BossBgmTrackTable
-    {
-        public int version;
-        public BossBgmTrackEntry[] bossTracks;
-        public BossBgmStingerEntry[] stingers;
-        public BossBgmJukeboxEntry[] jukebox;
-    }
-
-#pragma warning restore 0649
-
     /// <summary>Boss 标识常量。改名会让数据表静默失配，等同破坏契约。</summary>
     internal static class BossBgmKeys
     {
@@ -191,10 +128,11 @@ namespace BossRush
                     return;
                 }
 
-                BossBgmTrackTable table = JsonUtility.FromJson<BossBgmTrackTable>(json);
-                if (table == null)
+                BossBgmTrackTable table;
+                string parseError;
+                if (!BossBgmTrackTable.TryParse(json, out table, out parseError))
                 {
-                    ModBehaviour.DevLog(LogPrefix + "[WARNING] 曲目表解析为空，BGM 功能保持静默");
+                    ModBehaviour.DevLog(LogPrefix + "[WARNING] 曲目表解析失败: " + parseError);
                     return;
                 }
 
