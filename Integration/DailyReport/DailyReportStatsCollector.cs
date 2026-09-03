@@ -216,7 +216,13 @@ namespace BossRush
             try
             {
                 ModBehaviour owner = ModBehaviour.Instance;
-                return owner != null && owner.IsDailyReportConfiguredEnabled();
+                if (owner == null || !owner.IsDailyReportConfiguredEnabled()) return false;
+                // Mode H 整体不进个人战绩（owner 2026-09-03 定）。门控放在这里而不是
+                // 逐个 handler：击杀、双向伤害与玩家阵亡是同一个采集器的三类输出，
+                // 只挡击杀会让同一场比赛「击杀不算但伤害算」，日报里出现自相矛盾的数据。
+                // ERROR 完整互换期间官方会把伤害/击杀来源改写成主角，三类都会被污染。
+                if (ModBehaviour.IsModeHRunInProgressSafe()) return false;
+                return true;
             }
             catch (Exception)
             {

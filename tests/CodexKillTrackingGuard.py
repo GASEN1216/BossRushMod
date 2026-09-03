@@ -45,6 +45,10 @@ REQUIRED_FILTERS = (
     ("Teams.player", "必须排除友军（宠物 / 雇佣兵 / 临时同伴）"),
     ("IsBaseLevelSafe", "必须排除基地场景（靶子与演示角色不进战绩）"),
     ("isBossCharacter", "必须只记 Boss，杂兵不得进图鉴"),
+    # owner 2026-09-03 定：Mode H 是观战模式，其击杀不计入图鉴。
+    # 这条不能靠 fromCharacter 判定兜住——ERROR 完整互换期间官方会把击杀来源
+    # 改写成主角，那一次击杀会伪装成"玩家亲手击杀"混进来。
+    ("IsModeHRunInProgressSafe", "必须排除 Mode H（ERROR 互换期间归属被改写成主角）"),
 )
 
 

@@ -85,6 +85,13 @@ namespace BossRush
                 // 2) 空目标
                 if (target == null) return;
 
+                // 2.5) 排 Mode H（owner 2026-09-03 定：观战模式的击杀不计入图鉴）。
+                //      必须在 fromCharacter 判定之前：ERROR 完整互换期间官方会把
+                //      fromCharacter 改写成主角（见 ModeHCombatControl 的互换注释与
+                //      ModeHEventRouter.SetErrorSwapControlledParticipant），
+                //      否则那一次击杀会伪装成"玩家亲手击杀"混进鸭皇图鉴。
+                if (ModBehaviour.IsModeHRunInProgressSafe()) return;
+
                 // 3) 排玩家死亡（玩家自己倒下不进图鉴）
                 if (target.IsMainCharacterHealth) return;
 
@@ -153,6 +160,9 @@ namespace BossRush
                 // 致命一击的 OnHurt 在 OnDead **之后**派发且 isDead 已置位，
                 // 这条早返把它挡在门外，否则会给死人重新开计时造成表泄漏。
                 if (target == null || target.IsDead) return;
+                // Mode H 的击杀不进图鉴，配套的最快击杀计时也不能开表——
+                // 否则计时条目只进不出，会白占 MaxFightStartTracked 的额度。
+                if (ModBehaviour.IsModeHRunInProgressSafe()) return;
                 if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
                 if (target.IsMainCharacterHealth) return;
                 if (info.finalDamage <= 0f) return;

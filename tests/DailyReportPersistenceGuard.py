@@ -153,6 +153,17 @@ def main():
                 path.as_posix() + " 的事件订阅与退订不成对（订阅 "
                 + str(adds) + " 处，退订 " + str(removes) + " 处）")
 
+    # ---- 6.5) Mode H 不进个人战绩（owner 2026-09-03 定） ----
+    # 门控必须在 IsActive 这个总闸上，而不是逐个 handler：击杀、双向伤害与玩家阵亡
+    # 是同一个采集器的三类输出，只挡击杀会让同一场比赛「击杀不算但伤害算」。
+    # 也不能指望 fromCharacter 判定兜住——ERROR 完整互换期间官方会把来源改写成主角。
+    collector_code = strip_comments(collector)
+    is_active = re.search(r"private static bool IsActive\(\)[\s\S]*?\n        \}", collector_code)
+    if not is_active or "IsModeHRunInProgressSafe" not in is_active.group(0):
+        return fail(
+            "DailyReportStatsCollector.IsActive 必须排除 Mode H："
+            "观战模式的击杀/伤害/阵亡都不计入个人战绩，且 ERROR 互换期间归属会被改写成主角")
+
     # Health 的两个静态事件由全局 hooks 统一注册，必须成对
     hooks = Path("Utilities/PlayerLifecycleRuntimeHooks.cs").read_text(encoding="utf-8")
     for handler in ("DailyReportStatsCollector.OnGlobalDead",
