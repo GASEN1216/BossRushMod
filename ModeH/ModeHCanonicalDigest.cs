@@ -47,7 +47,14 @@ namespace BossRush
             "unlockedKitIds",
             "appliedEventTokenIds",
             "scarIds",
+            // 字段名必须与 ModeHStateDtos 里的**序列化字段**逐字一致：归一化按字段名匹配。
+            // 这两个是**不同 DTO 上的两份**入场名单，都需要归一化，漏一个就等于
+            // 那一份集合的摘要依赖写入顺序（两者都来自 HashSet 枚举）：
+            //   enteredProfileIds -> ModeHMatchRosterDto（本场名单，随赛季落盘）
+            //   entrantIds        -> ModeHMatchReportDto（实际登场名单，随战报落盘）
+            // 曾经只登记了前者，后者一直没参与排序去重。
             "enteredProfileIds",
+            "entrantIds",
             "starterKitIds",
             "relayKitIds",
             "passedStableKeys",

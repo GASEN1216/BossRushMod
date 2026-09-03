@@ -359,8 +359,10 @@ namespace BossRush
         /// 三项信息 DTO 里都有（quirkId / anomalyId、signatureCommandId、rumorKey），
         /// 这里按「异常优先于普通怪癖」（两者互斥）拼成正文。
         ///
-        /// `GameQuality` 刻意保持不赋值：选手不是装备，没有品质等级，
-        /// 留 0 时渲染器走 accent 色，正是想要的表现。
+        /// `GameQuality` 刻意保持不赋值（编译期那条 CS0649 是有意的）：选手不是装备，
+        /// 没有品质等级。留 0 时 `ModeHUI.ResolveRarityColor(0)` 走
+        /// `BossRushUIColors.RarityCommon`（不是 accent——描边色只有 IsAnomaly 才换成
+        /// Warning），全部选秀卡因此共用同一条中性描边，正是想要的表现。
         /// </summary>
         private ModeHCardData BuildProfileCard(ModeHProfileDto profile)
         {
@@ -737,6 +739,39 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 把锁盘准备失败的内部 reasonId 翻译成玩家看得懂的一句话。
+        ///
+        /// 分因的意义与押品被拒同理：「没有可用口令」说明这名选手的预设没通过认证、
+        /// 换人或重新认证才有用；「阵容不可用」是合同选手全退役这类赛季级状况，
+        /// 两者的下一步动作完全不同。押品类原因直接委托给既有的押品文案，
+        /// 避免同一件事出现两套说法。未登记的原因回落通用文案，
+        /// **绝不把 reasonId 原文喷给玩家**。
+        /// </summary>
+        private static string ResolveLockRejectReason(string failureReasonId)
+        {
+            if (!string.IsNullOrEmpty(failureReasonId))
+            {
+                // 押品链的失败沿用押品自己的分因文案（含 slot 不一致的细分）
+                if (failureReasonId.IndexOf("stake_", StringComparison.Ordinal) >= 0)
+                {
+                    return ResolveStakeRejectReason(failureReasonId);
+                }
+                if (failureReasonId.IndexOf("command_missing", StringComparison.Ordinal) >= 0
+                    || failureReasonId.IndexOf("no_selectable_command", StringComparison.Ordinal) >= 0)
+                {
+                    return L10n.T(ModeHConfig.LocalizationKeyPrefix + "LockReject_CommandUnavailable");
+                }
+                if (failureReasonId.IndexOf("roster", StringComparison.Ordinal) >= 0
+                    || failureReasonId.IndexOf("starter_missing", StringComparison.Ordinal) >= 0
+                    || failureReasonId.IndexOf("selection_missing", StringComparison.Ordinal) >= 0)
+                {
+                    return L10n.T(ModeHConfig.LocalizationKeyPrefix + "LockReject_RosterMissing");
+                }
+            }
+            return L10n.T(ModeHConfig.LocalizationKeyPrefix + "LockReject_Generic");
+        }
+
+        /// <summary>
         /// 把 IsSlotConsistent=false 的内部 reasonId 翻译成玩家看得懂的一句话。
         /// 分因很重要：「上一笔还没结算」是玩家能自己去恢复面板处理的，
         /// 而笼统的「无法证明资产安全」会被读成"我的存档坏了"。
@@ -864,6 +899,10 @@ namespace BossRush
                 {
                     ModBehaviour.DevLog("[ModeH] 锁盘准备失败: "
                         + (prepareFailure != null ? prepareFailure : "unknown"));
+                    // 只写 DevLog 不行：它带 [Conditional("BOSSRUSH_DEV")]，正式构建里
+                    // 整个被剥离，玩家点了锁盘会**毫无反应**，和按钮坏了没有区别。
+                    // 锁盘是开战前的最后一步，静默失败等于把人堵死在赔率页。
+                    if (_owner != null) _owner.ShowMessage(ResolveLockRejectReason(prepareFailure));
                     return;
                 }
                 if (!TryTransition(ModeHLifecycle.OddsPreview, ModeHLifecycle.LoadoutLocked, "loadout_locked"))

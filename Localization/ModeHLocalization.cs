@@ -641,6 +641,18 @@ namespace BossRush
                 "这件装备无法押注，换一件试试",
                 "This item cannot be staked; try another one");
 
+            // 锁盘被拒的三条分因。原先同样只写 DevLog，而 DevLog 在正式构建里被
+            // [Conditional] 整个剥离——玩家点锁盘会毫无反应，堵死在赔率页。
+            Add(map, "LockReject_CommandUnavailable",
+                "这名选手没有可用口令，无法锁盘",
+                "This fighter has no usable command; cannot lock in");
+            Add(map, "LockReject_RosterMissing",
+                "本场阵容不可用，无法锁盘",
+                "The roster for this match is unavailable; cannot lock in");
+            Add(map, "LockReject_Generic",
+                "暂时无法锁盘，请稍后再试",
+                "Cannot lock in right now; try again shortly");
+
             Add(map, "StakePhase_Prepared", "已冻结计划", "Plan frozen");
             Add(map, "StakePhase_EscrowSnapshotDurable", "托管快照已落盘", "Escrow snapshot durable");
             Add(map, "StakePhase_EscrowRemovedDurable", "托管已脱离仓库", "Escrow removed from storage");

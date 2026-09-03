@@ -711,6 +711,14 @@ namespace BossRush
                 ResolveDownInjury(report, locked != null ? locked.matchStarterProfileId : null);
                 ResolveDownInjury(report, locked != null ? locked.matchRelayProfileId : null);
 
+                // 濒退制的另一半：没踏上擂台的带伤选手赛后解除带伤。
+                // 必须排在 ResolveDownInjury 之后——那条路径只在有倒地 token 时动手
+                // （意味着登场过），与 HasRested 互斥，顺序在此只是为了读起来是
+                // 「先结算这场发生了什么，再结算谁休息好了」。
+                _restedProfileIds.Clear();
+                ResolveRestRecovery(locked != null ? locked.matchStarterProfileId : null);
+                ResolveRestRecovery(locked != null ? locked.matchRelayProfileId : null);
+
                 bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
                 int rewardCandidates = ModeHVirtualStakeController.Settle(
                     _season, _season.preMatchSnapshot, report, odds, won);
@@ -811,6 +819,27 @@ namespace BossRush
             if (injury != null) report.injuryEvents.Add(injury);
         }
 
+        /// <summary>
+        /// 本场完整休息（带伤且从未登场）的选手赛后解除带伤。
+        ///
+        /// 结果只记进运行时的 <see cref="_restedProfileIds"/> 供结算页展示，
+        /// **不写任何 DTO 字段**：ModeHCanonicalDigest 按反射遍历全部公有实例字段
+        /// （null 也计入），给持久化 DTO 加字段会让所有已存赛季 VerifyDigest 失败并进写屏障。
+        /// </summary>
+        private void ResolveRestRecovery(string profileId)
+        {
+            if (string.IsNullOrEmpty(profileId)) return;
+            if (_combatTelemetry == null || _combatControl == null) return;
+            // 只要本场实际登场过（含接力后短暂登场）就不算休息
+            if (!_combatTelemetry.HasRested(profileId)) return;
+
+            ModeHProfileDto profile = FindSeasonProfile(profileId);
+            if (_combatControl.InjuryAndScar.ResolveRestRecovery(profile))
+            {
+                _restedProfileIds.Add(profileId);
+            }
+        }
+
         private void UpsertMatchReport(ModeHMatchReportDto report)
         {
             if (_season.matchReports == null) _season.matchReports = new List<ModeHMatchReportDto>();
@@ -829,142 +858,6 @@ namespace BossRush
                 return (a != null ? a.matchIndex : 0).CompareTo(b != null ? b.matchIndex : 0);
             });
         }
-
-        private ModeHPageContent BuildCompletedSettlementPageContent()
-        {
-            ModeHPageContent page = new ModeHPageContent();
-            page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Settlement");
-            ModeHMatchReportDto report = _lastSettlementReport ?? FindLatestPendingReport();
-            ModeHSeasonRewardOperationDto operation = _lastRewardOperation
-                ?? FindRewardOperation(report != null ? report.seasonRewardOperationId : null);
-            if (report == null)
-            {
-                page.Body = L10n.T("结算记录不可用", "Settlement record unavailable");
-                return page;
-            }
-
-            bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
-            page.Body = won ? L10n.T("本场胜利", "Victory") : L10n.T("本场失利", "Defeat");
-            page.Lines.Add(L10n.T("耗时：", "Time: ") + report.elapsedSeconds.ToString("0.0") + "s");
-            page.Lines.Add(L10n.T("赔率：x", "Odds: x") + report.lockedOdds
-                + L10n.T("　下注：", "  Stake: ") + report.virtualStakeAmount);
-            page.Lines.Add(L10n.T("筹码：", "Credits: ") + report.virtualStakeBalanceBefore
-                + " → " + report.virtualStakeBalanceAfter);
-            if (report.injuryEvents != null && report.injuryEvents.Count > 0)
-            {
-                page.Lines.Add(L10n.T("倒地伤病：", "Down injuries: ") + report.injuryEvents.Count);
-            }
-
-            if (operation != null
-                && operation.status == (int)ModeHSeasonRewardOperationStatus.Offered
-                && operation.candidateKitIds != null)
-            {
-                for (int i = 0; i < operation.candidateKitIds.Count; i++)
-                {
-                    string kitId = operation.candidateKitIds[i];
-                    string selectedKitId = kitId;
-                    page.Actions.Add(new ModeHActionData
-                    {
-                        Label = L10n.T("解锁整备：", "Unlock kit: ") + kitId,
-                        OnClick = delegate { SelectSettlementReward(selectedKitId, false); },
-                    });
-                }
-                page.Actions.Add(new ModeHActionData
-                {
-                    Label = L10n.T("放弃整备，换取名声", "Decline kits for fame"),
-                    OnClick = delegate { SelectSettlementReward(null, true); },
-                });
-            }
-            else
-            {
-                page.Actions.Add(new ModeHActionData
-                {
-                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
-                    OnClick = CompleteSettlementAndRoute,
-                });
-            }
-            return page;
-        }
-
-        private void SelectSettlementReward(string kitId, bool decline)
-        {
-            if (_season == null || _lastRewardOperation == null || _runState == null
-                || _runState.Lifecycle != ModeHLifecycle.Intermission)
-            {
-                return;
-            }
-            string failureReasonId;
-            bool ok = decline
-                ? ModeHSeasonRewardService.TryDeclineToFame(
-                    _season, _lastRewardOperation.operationId, out failureReasonId)
-                : ModeHSeasonRewardService.TrySelectKit(
-                    _season, _lastRewardOperation.operationId, kitId, out failureReasonId);
-            if (!ok)
-            {
-                ModBehaviour.DevLog("[ModeH] 奖励选择失败: " + (failureReasonId ?? "unknown"));
-                return;
-            }
-            CompleteSettlementAndRoute();
-        }
-
-        private void CompleteSettlementAndRoute()
-        {
-            if (_season == null || _runState == null
-                || _runState.Lifecycle != ModeHLifecycle.Intermission)
-            {
-                return;
-            }
-            ModeHMatchReportDto report = _lastSettlementReport ?? FindLatestPendingReport();
-            ModeHSeasonRewardOperationDto operation = _lastRewardOperation
-                ?? FindRewardOperation(report != null ? report.seasonRewardOperationId : null);
-            if (report == null || operation == null) return;
-
-            string failureReasonId;
-            if (operation.status == (int)ModeHSeasonRewardOperationStatus.Offered) return;
-            if (operation.status == (int)ModeHSeasonRewardOperationStatus.Applied
-                && !ModeHSeasonRewardService.TryArchive(
-                    _season, operation.operationId, out failureReasonId))
-            {
-                return;
-            }
-            report.reportStatus = (int)ModeHMatchReportStatus.Archived;
-            if (!TryPersistSeason("intermission_archive"))
-            {
-                RequestSuspended("intermission_archive_failed");
-                return;
-            }
-            RouteAfterIntermission(report);
-        }
-
-        private void RouteAfterIntermission(ModeHMatchReportDto report)
-        {
-            List<string> live = ModeHTransferMarket.GetLiveContractProfileIds(_season);
-            if (live == null || live.Count == 0)
-            {
-                FinishSeason("no_live_contracts");
-                return;
-            }
-            if (_runState.MatchIndex >= ModeHConfig.SeasonMatchCount)
-            {
-                if (report.winner == (int)ModeHMatchOutcome.PlayerVictory)
-                {
-                    EnterHallOfFame();
-                }
-                else
-                {
-                    FinishSeason("final_match_defeat");
-                }
-                return;
-            }
-            if (ModeHConfig.IsTransferWindowMatch(_runState.MatchIndex))
-            {
-                TryTransition(ModeHLifecycle.Intermission, ModeHLifecycle.TransferWindow,
-                    "transfer_window_open");
-                return;
-            }
-            OpenNextMatchBrief("intermission_complete");
-        }
-
         private void EnterHallOfFame()
         {
             ModeHHallOfFameRecordDto record = BuildHallOfFameRecord();

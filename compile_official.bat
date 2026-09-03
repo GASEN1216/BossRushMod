@@ -398,6 +398,7 @@ echo(ModeH\ModeHRuntimeModule_SceneFlow.cs
 echo(ModeH\ModeHRuntimeModule_UiFlow.cs
 echo(ModeH\ModeHRuntimeModule_MatchFlow.cs
 echo(ModeH\ModeHRuntimeModule_CombatFlow.cs
+echo(ModeH\ModeHRuntimeModule_SettlementFlow.cs
 echo(ModeH\ModeHRuntimeModule_CombatProfiles.cs
 echo(ModeH\ModeHRuntimeModule_SeasonFlow.cs
 echo(ModeH\ModeHSaveFlushCoordinator.cs

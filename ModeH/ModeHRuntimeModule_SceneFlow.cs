@@ -89,6 +89,14 @@ namespace BossRush
         private string _starterDisplayName;
         private string _relayDisplayName;
         private ModeHMatchReportDto _lastSettlementReport;
+
+        /// <summary>
+        /// 本场完整休息（带伤且从未登场、赛后已解除带伤）的选手 ID。
+        /// **纯运行时**：不进任何 DTO、不落盘——ModeHCanonicalDigest 会把持久化 DTO 的
+        /// 新增字段一起算进摘要，加字段等于让已存赛季 VerifyDigest 失败并进写屏障。
+        /// 只服务结算页展示，每场结算前由 SettleMatch 清空。
+        /// </summary>
+        private readonly List<string> _restedProfileIds = new List<string>();
         private ModeHSeasonRewardOperationDto _lastRewardOperation;
 
         #endregion

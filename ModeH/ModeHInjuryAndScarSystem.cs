@@ -360,6 +360,28 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 完整休息结算：带伤选手本场列入名单但**从未踏入擂台**时，赛后解除带伤。
+        ///
+        /// owner 裁决（2026-08-17 濒退制 / 2026-08-18 判定口径）：首次倒地进入带伤，
+        /// 休息一场解除带伤，带伤**实际再登场**后倒地才赛季退役；「实际登场」包含
+        /// 自动接力后的短暂登场，因此判据取 `ModeHCombatTelemetry.HasRested`
+        /// （本场 entrant 名单里没有它）而不是「是否被列入 starter/relay」。
+        ///
+        /// 与 <see cref="ResolveDownEvent"/> 天然互斥：有倒地 token 就意味着登场过，
+        /// 那时 HasRested 为 false，两条路径不会同时改同一个 profile。
+        /// 返回 true 表示确实发生了一次解除（供调用方决定是否展示「完整休息」）。
+        /// </summary>
+        public bool ResolveRestRecovery(ModeHProfileDto profile)
+        {
+            if (profile == null) return false;
+            if (profile.status != (int)ModeHParticipantStatus.Injured) return false;
+
+            profile.injuryId = string.Empty;
+            profile.status = (int)ModeHParticipantStatus.Available;
+            return true;
+        }
+
+        /// <summary>
         /// 从该 key 可用的伤病中确定性抽一条。可用条目少于 3 条时返回空串，
         /// 由调用方按 `IsModeHContentReady=false` 处理。
         /// </summary>

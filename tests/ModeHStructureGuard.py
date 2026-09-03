@@ -29,6 +29,7 @@ CONFIG = os.path.join(MODEH_DIR, "ModeHConfig.cs")
 SEED = os.path.join(MODEH_DIR, "ModeHSeedStream.cs")
 DIGEST = os.path.join(MODEH_DIR, "ModeHCanonicalDigest.cs")
 COMBAT_FLOW = os.path.join(MODEH_DIR, "ModeHRuntimeModule_CombatFlow.cs")
+SETTLEMENT_FLOW = os.path.join(MODEH_DIR, "ModeHRuntimeModule_SettlementFlow.cs")
 
 REQUIRED_FILES = [
     STATE_MODEL,
@@ -36,6 +37,7 @@ REQUIRED_FILES = [
     SEED,
     DIGEST,
     COMBAT_FLOW,
+    SETTLEMENT_FLOW,
 ]
 
 # 全部持久枚举：名称 -> 必须逐项出现的 "成员 = 整数" 列表
@@ -281,6 +283,132 @@ def check_ui_layers_and_deploy(errors):
                 errors.append("[Deploy] {} 缺少 {} 的部署路径".format(bat_name, desc))
 
 
+def check_injury_rest_recovery(errors):
+    """濒退制的「休息一场解除带伤」必须真的接线（CR-2026-09-03-002）。
+
+    owner 两次裁决（2026-08-17 濒退制、2026-08-18 按实际登场判定）冻结了这条规则，
+    但实现里长期只有「进带伤 / 进退役」两条边：HasRested 写好了零调用，
+    injuryId 与 status 都没有回到 Available 的路径，两个文案 key 也没人消费。
+    结果是把带伤选手按在替补席完全没有收益，伤病 debuff 与赔率惩罚整季不散。
+    """
+    injury = read_text(os.path.join(MODEH_DIR, "ModeHInjuryAndScarSystem.cs"))
+    combat = read_text(COMBAT_FLOW)
+    telemetry = read_text(os.path.join(MODEH_DIR, "ModeHCombatTelemetry.cs"))
+    # 结算呈现在 2026-09-03 被提取到同一 partial 的 SettlementFlow（行数预算），
+    # 展示类断言要在两个文件里一起找，否则拆文件会把 guard 变成假红。
+    settlement_flow = read_text(SETTLEMENT_FLOW)
+    presentation = combat + "\n" + settlement_flow
+
+    if "public bool HasRested(" not in telemetry:
+        errors.append("[Injury] ModeHCombatTelemetry 缺少 HasRested（按实际登场判定休息）")
+
+    recovery = re.search(
+        r"public bool ResolveRestRecovery\(ModeHProfileDto profile\)[\s\S]*?\n        \}", injury)
+    if not recovery:
+        errors.append("[Injury] 缺少 ResolveRestRecovery：休息解除带伤未实现")
+    else:
+        body = recovery.group(0)
+        if "ModeHParticipantStatus.Available" not in body:
+            errors.append("[Injury] 休息解除必须把 status 复位为 Available，否则下次倒地仍直接退役")
+        if "injuryId" not in body:
+            errors.append("[Injury] 休息解除必须清空 injuryId，否则伤病 debuff 与赔率惩罚会持续整季")
+
+    # 生产调用点：光有方法不算接线，这正是本条 finding 的成因
+    if "_combatTelemetry.HasRested(" not in combat:
+        errors.append("[Injury] HasRested 必须有生产调用点（结算时判定谁完整休息）")
+    if "InjuryAndScar.ResolveRestRecovery(" not in combat:
+        errors.append("[Injury] 结算路径必须调用 ResolveRestRecovery")
+
+    # 结算段必须对 starter 与 relay **两个**席位都结算休息，且与倒地结算成对出现。
+    # 只检查"方法存在"挡不住漏掉其中一席（带伤替补永远好不了）。
+    settlement = re.search(
+        r"private void BeginMatchSettlement\(\)[\s\S]*?\n        \}", combat)
+    if not settlement:
+        errors.append("[Injury] 缺少 BeginMatchSettlement")
+    else:
+        body = settlement.group(0)
+        downs = body.count("ResolveDownInjury(")
+        rests = body.count("ResolveRestRecovery(")
+        if downs < 2 or rests < 2:
+            errors.append(
+                "[Injury] 结算段必须对 matchStarter 与 matchRelay 两席都做倒地与休息结算"
+                "（当前倒地 {} 处 / 休息 {} 处）".format(downs, rests))
+        for slot in ("matchStarterProfileId", "matchRelayProfileId"):
+            rest_calls = re.findall(r"ResolveRestRecovery\([^;]*" + slot, body)
+            if not rest_calls:
+                errors.append("[Injury] 休息结算漏了席位: " + slot)
+
+    # 两个文案 key 必须真的被消费，否则玩家看不出「按在替补席」这个决定有没有生效
+    for key in ("Injury_Rested", "Injury_Retired"):
+        if key not in presentation:
+            errors.append("[Injury] 结算页必须展示 " + key)
+
+    # 展示态不得进持久化 DTO：ModeHCanonicalDigest 按反射遍历全部公有字段，
+    # 加字段会让已存赛季 VerifyDigest 失败并进写屏障
+    dtos = strip_cs_comments(read_text(os.path.join(MODEH_DIR, "ModeHStateDtos.cs")))
+    if "restedProfileIds" in dtos:
+        errors.append("[Injury] 休息名单必须留在运行时，不得写进持久化 DTO（会改变赛季摘要）")
+
+
+def check_lock_reject_feedback(errors):
+    """锁盘失败必须有玩家可见反馈（CR-2026-09-03-003）。
+
+    DevLog 带 [Conditional("BOSSRUSH_DEV")]，正式构建里整个被剥离，
+    玩家点锁盘会毫无反应。拍铃、押品选择都已修过同一类静默，锁盘是最后一个。
+    """
+    match_flow = read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule_MatchFlow.cs"))
+    lock_method = re.search(
+        r"private void LockLoadoutAndStartMatch\(\)[\s\S]*?\n        \}", match_flow)
+    if not lock_method:
+        errors.append("[Lock] 缺少 LockLoadoutAndStartMatch")
+        return
+    body = lock_method.group(0)
+    if "PrepareLockedMatch" not in body:
+        errors.append("[Lock] LockLoadoutAndStartMatch 必须经 PrepareLockedMatch")
+    prepare_fail = body.find("PrepareLockedMatch")
+    if prepare_fail >= 0 and "ShowMessage" not in body[prepare_fail:]:
+        errors.append("[Lock] 锁盘准备失败必须给玩家可见提示，只写 DevLog 在正式构建里等于静默")
+    if "ResolveLockRejectReason" not in match_flow:
+        errors.append("[Lock] 缺少 ResolveLockRejectReason（按原因分档的玩家文案）")
+    # 不得把内部 reasonId 原文喷给玩家
+    if re.search(r"ShowMessage\(\s*prepareFailure", match_flow):
+        errors.append("[Lock] 不得把内部 reasonId 直接展示给玩家")
+
+
+def check_digest_set_fields_exist(errors):
+    """摘要归一化清单必须与 DTO 对齐（CR-2026-09-03-008）。
+
+    归一化按**字段名**匹配，两类漂移编译与既有 guard 都发现不了：
+      1. 清单里的名字在 DTO 中根本不存在（纯拼错，该条恒不生效）；
+      2. DTO 上有两份同语义集合、清单只登记了其中一份。
+    实际发生的是第 2 类：入场名单在两个 DTO 上各有一份
+    （ModeHMatchRosterDto.enteredProfileIds 与 ModeHMatchReportDto.entrantIds），
+    清单长期只有前者，后者的摘要一直依赖 HashSet 枚举顺序。
+    """
+    digest = read_text(DIGEST)
+    dtos = read_text(os.path.join(MODEH_DIR, "ModeHStateDtos.cs"))
+
+    block = re.search(r"SetSemanticFields\s*=\s*new HashSet<string>\([\s\S]*?\n        \};", digest)
+    if not block:
+        errors.append("[Digest] 找不到 SetSemanticFields 清单")
+        return
+    declared = set(re.findall(r'"([A-Za-z_][A-Za-z0-9_]*)"', strip_cs_comments(block.group(0))))
+    dto_fields = set(re.findall(r"public\s+[A-Za-z_][\w<>,\[\]\. ]*\s+([A-Za-z_]\w*)\s*;", dtos))
+    for name in sorted(declared):
+        if name not in dto_fields:
+            errors.append(
+                "[Digest] SetSemanticFields 的 '" + name + "' 在 ModeHStateDtos 里不存在："
+                "归一化按字段名匹配，名字对不上等于该集合根本没参与排序去重")
+
+    # 两份入场名单分属不同 DTO，必须**都**登记；漏掉任一份，那一份就退化成依赖写入顺序
+    for name, owner in (("enteredProfileIds", "ModeHMatchRosterDto"),
+                        ("entrantIds", "ModeHMatchReportDto")):
+        if name not in declared:
+            errors.append(
+                "[Digest] SetSemanticFields 缺少 '" + name + "'（" + owner + " 的入场名单）："
+                "它来自 HashSet 枚举，不归一化摘要就依赖写入顺序")
+
+
 def main():
     errors = []
 
@@ -361,6 +489,10 @@ def main():
             errors.append("[CombatFlow] 缺少: " + desc)
     if "combat_wiring_pending" in strip_cs_comments(combat):
         errors.append("[CombatFlow] 仍存在未接线占位符 combat_wiring_pending")
+
+    check_injury_rest_recovery(errors)
+    check_lock_reject_feedback(errors)
+    check_digest_set_fields_exist(errors)
 
     if errors:
         print("ModeHStructureGuard: FAIL ({} errors)".format(len(errors)))
