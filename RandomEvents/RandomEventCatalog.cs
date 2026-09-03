@@ -150,10 +150,13 @@ namespace BossRush
     /// 空投补给：远处落下一个高品质奖励箱，落地伴随零伤爆炸与引怪声源。
     /// 清理 = 销毁箱子（Scope 托管），到时 / 局末 / 切图 / 关开关五条路径同一入口。
     /// </summary>
-    internal sealed class RandomEventAirdropSupply : RandomEventBase
+    internal sealed partial class RandomEventAirdropSupply : RandomEventBase
     {
         private InteractableLootbox _validationCrate;
         private bool _validationLanded;
+
+        // 翻箱保护（开箱期间暂停到期 + 销毁前关界面）拆在 RandomEvents/RandomEventAirdropHold.cs，
+        // 它是本类的 partial 追加部分。拆分原因见那个文件的头注释（本文件贴着 1200 行硬预算）。
 
         internal override RandomEventId Id { get { return RandomEventId.AirdropSupply; } }
 
@@ -222,6 +225,11 @@ namespace BossRush
                 _validationCrate = crate;
                 _validationLanded = false;
 
+                // 翻箱保护：缓存库存引用并把续期额度归零。事件实例会被目录复用，
+                // 必须在这里归零而不只在 OnCleanup——触发失败走 DiscardContext 那条支路
+                // 不经过 OnCleanup，残留额度会让下一局一秒宽限都拿不到。
+                PrimeAirdropHoldState(crate);
+
                 try
                 {
                     Coroutine co = owner.StartCoroutine(owner.RandomEventAirdropDropRoutine(
@@ -267,9 +275,15 @@ namespace BossRush
         {
             // 首版按「事件结束即回收箱子」实现：不回收就会跨图泄漏，
             // 若将来要让箱子留到局末，必须改成自有列表并在切图 / 宿主销毁时销毁。
+            //
+            // 顺序不可颠倒：先关界面再 ClearScope（Scope 会 Destroy 箱子）。
+            // 到这里说明「开箱续期」要么没用上、要么已经用满 AirdropHoldOpenMaxSeconds，
+            // 无论哪种都不该把界面留给一个即将消失的箱子。
+            CloseAirdropLootViewIfOpen();
             RandomEventEffectHelpers.ClearScope(ctx, reason);
             _validationCrate = null;
             _validationLanded = false;
+            ResetAirdropHoldState();
         }
     }
 

@@ -6,12 +6,18 @@
 
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 0 | 9 | 0 | 0 | 9 |
-| P1 | 6 | 30 | 0 | 0 | 36 |
-| P2 | 4 | 29 | 0 | 0 | 33 |
+| P0 | 0 | 10 | 0 | 0 | 10 |
+| P1 | 6 | 31 | 0 | 0 | 37 |
+| P2 | 4 | 30 | 0 | 0 | 34 |
 | P3 | 1 | 20 | 0 | 0 | 21 |
 
-最后更新：2026-09-03 七日全面审核（96 个提交 / 约 10 万行新增）。新增 CR-2026-09-03-001..008：
+最后更新：2026-09-03 f9b83c0 以来 365 个改动 .cs 的玩法向审核。新增 CR-2026-09-03-009..011：
+1 个 P0（非本波 Boss 经掉落漏斗推波——乱入 Boss 跳波 + Mode D 把标准 Boss 刷进自己局内）、
+1 个 P1（空投箱到时即销毁，不看玩家是否正在开箱）、1 个 P2（战役追踪按进场景而非开局武装）。
+三条均已修：Windows 编译通过、515 guard 全绿、两个新 guard 各做过反向验证（共 12 项逐条转红）。
+实机 smoke 五项待人工，见 `FIX_TRACKER.md` 同日条目。
+
+上一次更新：2026-09-03 七日全面审核（96 个提交 / 约 10 万行新增）。新增 CR-2026-09-03-001..008：
 1 个 P0（押品脱离仓库后无回滚，真实物品可永久丢失）、1 个 P1（濒退制「休息解除带伤」完全未接线）、
 2 个 P2（锁盘全静默；ERROR 互换归属渗入图鉴与日报）、4 个 P3。八条全部已修：
 Windows 编译通过、513 guard 全绿、新增/增补 guard 均经**反向验证**（逐条破坏不变式确认转红）。
@@ -318,6 +324,147 @@ CR-2026-09-02-006 把它挪到 `ClearPersistentEvents` 之后（修复本身正�
 
 两份都登记；`ModeHStructureGuard` 新增断言——清单字段必须在 DTO 中真实存在，
 且两份入场名单都必须登记，防止再次漂移。
+
+---
+
+### CR-2026-09-03-009：非本波 Boss 经掉落漏斗推进波次（跳波 + Mode D 跨模式串台）
+
+**严重级**：P0
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：2026-09-03 f9b83c0 以来 365 个改动 .cs 的审核（静态确认 + 逐调用点实读）
+
+#### 位置
+
+- `WavesArena/WavesArena.cs:348`（HandleBossDeath 无本波成员校验）
+- `LootAndRewards/LootAndRewardsRandomBossLoot.cs:296`（唯一没有成员证明的调用点）
+- `Utilities/EnemySpawnCore.cs:447` / `:1023`（isBoss 一律登记 bossSpawnTimes）
+- `RandomEvents/RandomEventEffectsBridge_Spawn.cs:92`（乱入 Boss 走 Legacy 掉落追踪）
+- `ModeD/ModeDWaves.cs:79` / `:255` / `:555`（Mode D 置 IsActive 且 Boss 同样进掉落追踪）
+
+#### 问题
+
+`HandleBossDeath` 的三个调用点里，`OnEnemyDiedWithDamageInfo` 的两个已先证明成员身份，
+但掉落漏斗那条走的是逐角色 `BeforeCharacterSpawnLootOnDead` 钩子，只验「在不在
+`bossSpawnTimes` 里」——任何走共享刷怪核心且 `isBoss=true` 的 Boss 都满足。
+唯一的排除项是 `bossName.Contains("DragonDescendant")` 名字启发式。
+
+#### 影响
+
+1. **标准 / 无间炼狱跳波**：杀死随机事件乱入 Boss（`RndEvt_Intruder_*`）即推进波次。
+   `ProceedAfterWaveFinished` 还会 `currentBoss = null` 把本波真 Boss 丢出状态机，
+   玩家再打死它时掉落漏斗**再推一次波**。最后一波则提前触发 `OnAllEnemiesDefeated`
+   （通关横幅 + 奖励箱），场上还留着没打完的 Boss。
+2. **Mode D 跨模式串台**（同一根因，独立于随机事件）：Mode D 会
+   `SetBossRushRuntimeActive(true)`，其 Boss 死亡同样落到这里，于是
+   `ProceedAfterWaveFinished → StartNextWaveCountdown → SpawnNextEnemy`
+   **把标准竞技场的 Boss 刷进 Mode D**；`currentEnemyIndex` 攒够还会在 Mode D 里
+   放标准通关演出。`OnEnemyDiedWithDamageInfo:219` 早有 `modeDActive` 早返，这条一直漏着。
+
+`tests/RandomEventsWaveIsolationGuard.py` 的 docstring 明确点名了「跳波」这个失效模式，
+但它只静态检查 `RandomEvents/` 目录内是否出现波次符号，看不到经共享刷怪核心的间接路径。
+
+#### 修复
+
+`HandleBossDeath` 在**成就与去重之后**加一道 `IsCurrentWaveBossMember` 分界线：
+分界线之上是与单次击杀绑定的记账（`countedDeadBosses` / `UnregisterEnemyRecovery` /
+`CheckBossKillAchievementsOnce`），之下才是波次账（无间炼狱现金池 / `currentWaveBosses`
+摘除 / `defeatedEnemies` / 推波）。
+
+`modeDActive` 判在成员 helper 内而**不是**方法开头：Mode D 的 Boss 击杀成就只经
+`HandleBossDeath` 的 `CheckBossKillAchievementsOnce` 计数（全仓库仅两个调用点之一），
+顶部早返会把它整条掐掉——这一点由本轮设计复核发现并纠正。
+
+成员判定复用 `OnEnemyDiedWithDamageInfo` 的三层比对（引用 → Health → gameObject），
+多 Boss 档查 `currentWaveBosses` 后回落 `currentBoss`（后者是无条件赋值的），
+异常一律 fail-closed。新增 `tests/WavesArenaBossMembershipGuard.py`（反向验证 5 项转红）。
+
+---
+
+### CR-2026-09-03-010：空投补给箱到时即销毁，不看玩家是否正在开箱
+
+**严重级**：P1
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：同上
+
+#### 位置
+
+- `RandomEvents/RandomEventCatalog.cs:266`（OnCleanup 无条件 ClearScope）
+- `RandomEvents/RandomEventDirector.cs:562`（EndActiveEvent 在 OnCleanup 后**无条件**再 Clear 一次）
+- `RandomEvents/RandomEventsTuning.cs:78`（AirdropDurationSeconds = 45f）
+
+#### 问题
+
+空投箱由 `ctx.Scope` 托管，事件到时（45s，含 2.6s 下落）即被 `Destroy`，
+不检查玩家是否已到达或正开着战利品界面。落点距玩家至少 18m，而一场 Boss 战常超过 45 秒。
+它是权重最高的事件（30）。同组金鸭雨反而写明「掉在地上的现金不回收——它已经是玩家收益」，
+两者口径不一致。
+
+#### 影响
+
+玩家眼前的箱子连同没拿走的东西一起消失；正开着界面时还会留下一个指着已销毁目标的面板。
+
+#### 修复
+
+关键是**延到期而不是延清理**——`EndActiveEvent` 的兜底 `ctx.Scope.Clear` 无条件执行，
+在 `OnCleanup` 里放行无效。改为覆写 `OnTick`，在玩家开着箱子时把
+`ctx.DurationSeconds` 推到 `ElapsedSeconds + 3s`，累计上限 120s（owner 拍板）。
+判据用 `InteractableBase.Interacting`（无副作用纯属性），
+`LootView.TargetInventory` 作兜底且库存引用在 `OnTrigger` 缓存一次
+（`InteractableLootbox.Inventory` 不是纯 getter）。销毁前先关界面。
+
+只有 `Expired` 一条路径可延后；`RunEnded` / `SceneChanged` / `SwitchDisabled` /
+`HostDestroyed` / `DebugForced` / `TriggerFailed` 都直接调 `EndActiveEvent`，照旧强制销毁。
+硬帽是必需的：并发恒 1，无上限则玩家挂着界面即可让本局后续事件全部不再触发。
+
+代码拆进新文件 `RandomEvents/RandomEventAirdropHold.cs`（partial）：内联会把
+`RandomEventCatalog.cs` 顶到 1237 行，超 `LargeFileBudgetGuard` 的 1200 硬预算（实测转红）。
+文件名刻意不以 `RandomEventCatalog` 开头，否则 `RandomEventsWaveIsolationGuard` 的
+子类/OnCleanup 配平计数会被多数一次。新增 `tests/RandomEventAirdropHoldGuard.py`（反向验证 7 项转红）。
+
+---
+
+### CR-2026-09-03-011：战役目标追踪按「进场景」而非「开局」武装，且换模式不解除
+
+**严重级**：P2
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：同上
+
+#### 位置
+
+- `Campaign/CampaignModeBridge.cs:117`（标准分支只看 bossRushArenaActive）
+- `Campaign/CampaignModeBridge.cs:112` / `:153`（丧尸用 LifecyclePhase != None）
+- `Campaign/CampaignObjectiveTracker.cs:73`（模式不符时 return 但不解除）
+
+#### 问题
+
+1. `bossRushArenaActive == true && IsActive == false` 是一等长存状态（整个大厅期都是它）。
+   第 1 章的无伤目标因此在玩家走去路牌的路上挨一下伤就被判死；胜利后
+   （`IsActive` 已复位、`bossRushArenaActive` 仍为真）追踪还赖着不走。
+2. `EnsureArmedFor` 在「当前章节模式 ≠ 传入模式」时直接 return **不解除**：
+   接了第 1 章再去打 Mode E，`_armedMode` 停在 `"standard"`，Mode E 里挨一下伤
+   会经 `ReportPlayerDamaged` 把第 1 章无伤判死（Mode E 的 `GetCampaignCurrentWave` 返回 0）。
+3. 丧尸的 `LifecyclePhase != None` 从 `SelectingMap` 就为真——玩家还在基地点地图选择界面
+   就已武装。
+
+#### 修复
+
+标准分支追加 `IsActive`；`EnsureArmedFor` 在模式不符时先 `ResetSession()`；
+丧尸两处改用模式自己的权威判据 `ZombieModePhaseGuards.IsRunActive`
+（`IsZombieModeActive` 用的就是它）。
+
+胜利结算不受影响：`SetBossRushRuntimeActive(false)` 与 `NotifyCampaignStandardCleared()`
+之间没有 await，且四条 Notify 漏斗各自会先调 `EnsureArmedFor`，此时仍是本局武装状态。
+
+> 首次落地时把 `IsRunActive` 写成 `ZombieModeTuning.IsRunActive` —— 它与
+> `ZombieModePhaseGuards` 同在 `ZombieModeTuning.cs` 一个文件里，探查按文件定位后
+> 类名归属记错。**Windows 真编译当场报 CS0117 拦下**，再次印证 AGENTS 4.2：
+> guard 全绿不能替代编译。
+
+**已知残留**（accepted）：Mode D 自身也有「已进图、未开波」窗口，但期间
+`ModeDWaveIndex == 0` 使 `ReachWave` 不会误报，竞技场此时已清场故 `MeleeKills` 也无从累加。
 
 ---
 

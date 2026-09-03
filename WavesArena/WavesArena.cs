@@ -365,6 +365,32 @@ namespace BossRush
                 // 识别 Boss 类型并触发成就（同一角色实例只计一次，避免专用死亡回调和通用死亡流重复计数）
                 CheckBossKillAchievementsOnce(bossMain);
 
+                // ── 本波成员校验：这条线以下全是波次记账，非本波 Boss 一律不得越过 ──
+                //
+                // 本方法有三个调用点，前两个在 OnEnemyDiedWithDamageInfo 内、成员身份已由那里的
+                // 比对证明；第三个是 OnBossBeforeSpawnLoot_LootAndRewards 的掉落漏斗，它只验了
+                // 「在不在 bossSpawnTimes 里」，任何走共享刷怪核心的 Boss 都满足。于是随机事件的
+                // 乱入 Boss（RndEvt_Intruder_*）死亡会被当成本波 Boss 死亡：波次提前推进，
+                // ProceedAfterWaveFinished 还会把 currentBoss 置 null 把真 Boss 丢出状态机，
+                // 玩家再打死它时又推一次波；最后一波则提前触发 OnAllEnemiesDefeated。
+                //
+                // 校验放在成就与去重之后：杀掉一只真 Boss 该算的成就照算，只是不参与波次账。
+                if (!IsCurrentWaveBossMember(bossMain))
+                {
+                    string nonMemberName = "<unknown>";
+                    try { nonMemberName = bossMain.gameObject.name; }
+                    catch (Exception e)
+                    {
+                        // 读名字只为日志，读不到不影响拦截结论
+                        DevLog("[BossRush] [WARNING] HandleBossDeath 读取非本波 Boss 名称失败: " + e.Message);
+                    }
+                    // 不打 [WARNING]：对乱入 Boss / Mode D / 孩儿护我龙裔来说，被拦下才是正常稳态，
+                    // 打成警告会让正常流程长期刷屏。
+                    DevLog("[BossRush] 非本波 Boss 死亡，跳过波次记账: " + nonMemberName
+                        + "（bossesPerWave=" + bossesPerWave + ", modeDActive=" + modeDActive + "）");
+                    return;
+                }
+
                 // 无间炼狱：先累加现金池
                 if (infiniteHellMode)
                 {
@@ -438,6 +464,103 @@ namespace BossRush
             {
                 DevLog("[BossRush] [ERROR] HandleBossDeath 错误: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 这只 Boss 是否属于本波，即它的死亡是否有资格推进波次。
+        ///
+        /// 比对口径逐字沿用 OnEnemyDiedWithDamageInfo 的既有语义：先比 CharacterMainControl 引用，
+        /// 再回落 Health 与 gameObject 引用（多阶段 Boss 换过组件引用时仍能认出来）。
+        ///
+        /// 单 Boss 档**只认 currentBoss**：currentWaveBosses 会在 SpawnNextEnemy 的单 Boss 分支里
+        /// 被清空，那时去查列表恒为空，会把真 Boss 也判成非成员。
+        ///
+        /// no-throw：任何比对异常都按「不是成员」处理（fail-closed），宁可漏推一次波
+        /// 也不能让旁路 Boss 推波——漏推还有 TryFixStuckWaveIfNoBossAlive 自愈，误推没有回头路。
+        /// </summary>
+        private bool IsCurrentWaveBossMember(CharacterMainControl bossMain)
+        {
+            if (bossMain == null)
+            {
+                return false;
+            }
+
+            // Mode D 有独立的敌人死亡处理（RegisterModeDEnemyDeath / modeDCurrentWaveEnemies），
+            // 口径与 OnEnemyDiedWithDamageInfo 开头那条 modeDActive 早返一致。
+            //
+            // 为什么判在这里而不是 HandleBossDeath 开头：Mode D 会 BeginAchievementSession("ModeD")，
+            // 而 Mode D 的 Boss 击杀成就**只**经 HandleBossDeath 里的 CheckBossKillAchievementsOnce
+            // 计数（那是它全仓库仅有的两个调用点之一）。放在方法开头早返会把 Mode D 的
+            // Boss 击杀成就整条掐掉。放在成员判定里则只挡波次记账，成就照常。
+            //
+            // 这条同时挡住 Mode D 里刷出的龙王/龙裔——它们会无条件写 currentBoss，
+            // 光靠下面的容器比对挡不住。
+            if (modeDActive)
+            {
+                return false;
+            }
+
+            // 多 Boss 档先查本波列表；查不到再回落 currentBoss。
+            // 回落不是冗余：currentBoss 在 SpawnEnemyAtPositionAsync 里是**无条件**赋值的
+            // （currentWaveBosses.Add 才受 bossesPerWave > 1 门控），多 Boss 档它就是本波最后
+            // 生成的那只。万一登记进列表那步失败，靠它仍能认出真 Boss，避免把真 Boss 判成
+            // 非成员导致卡波。
+            if (bossesPerWave > 1 && currentWaveBosses != null)
+            {
+                for (int i = 0; i < currentWaveBosses.Count; i++)
+                {
+                    if (IsSameWaveBossInstance(currentWaveBosses[i], bossMain))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return IsSameWaveBossInstance(currentBoss, bossMain);
+        }
+
+        /// <summary>
+        /// 单项比对：引用 -> Health -> gameObject，逐层 try/catch。
+        /// 与 OnEnemyDiedWithDamageInfo 的多 Boss 分支同一套判据。
+        /// </summary>
+        private bool IsSameWaveBossInstance(MonoBehaviour tracked, CharacterMainControl bossMain)
+        {
+            if (tracked == null || bossMain == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                CharacterMainControl trackedCharacter = tracked as CharacterMainControl;
+                if (trackedCharacter != null && trackedCharacter == bossMain)
+                {
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 本波成员比对角色失败: " + e.Message);
+            }
+
+            try
+            {
+                Health trackedHealth = tracked.GetComponent<Health>();
+                if (trackedHealth != null && trackedHealth == bossMain.Health)
+                {
+                    return true;
+                }
+                if (tracked.gameObject == bossMain.gameObject)
+                {
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 本波成员比对 Health/对象失败: " + e.Message);
+            }
+
+            return false;
         }
 
         /// <summary>

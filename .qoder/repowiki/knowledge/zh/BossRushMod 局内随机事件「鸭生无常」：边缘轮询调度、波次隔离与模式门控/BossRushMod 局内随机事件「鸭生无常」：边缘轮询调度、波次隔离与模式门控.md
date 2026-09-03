@@ -74,12 +74,46 @@ source_files:
 写进去会出两类事故：乱入被计入本波导致卡波；乱入死亡被当成波次死亡导致跳波。两者都只在
 实机长局里偶发，人工冒烟抓不到——因此由 `RandomEventsWaveIsolationGuard.py` 静态锁死符号面。
 
+> **2026-09-03 更正（CR-2026-09-03-009）**：只锁 `RandomEvents/` 的符号面**不够**。
+> 乱入 Boss 走 `SpawnEnemyCoreInternalAsync` 的 Legacy 路径（options 传 null）时，
+> 会被共享刷怪核心登记进 `bossSpawnTimes`，其死亡经
+> `LootAndRewardsRandomBossLoot.OnBossBeforeSpawnLoot_LootAndRewards` 调到 `HandleBossDeath`
+> ——那是一条**绕过本目录**的间接推波路径，静态符号守卫看不到，实机确实跳波。
+>
+> 现在的真正防线在被调方：`HandleBossDeath` 在成就与去重之后有一道
+> `IsCurrentWaveBossMember` 分界线，之下才是波次账。同一道闸顺带修好了 Mode D
+> 的跨模式串台（Mode D 也置 `IsActive`，其 Boss 曾能把标准竞技场的 Boss 刷进 Mode D）。
+> 由 `tests/WavesArenaBossMembershipGuard.py` 守卫。本目录的符号隔离仍然保留为第一道防线。
+
 乱入生成额外的硬要求：
 - `onCommit` 必须包含敌对性安全网 `SetTeam(Teams.wolf)`（AGENTS.md 4.5）；
 - 注册 recovery 锚点防卡死；
 - 生成物命名前缀 `RndEvt_Intruder_`，实机排查残留靠它。
 
-### 3.4 血月的两个坑
+### 3.4 空投箱的翻箱保护（2026-09-03 新增）
+
+空投箱由 `ctx.Scope` 托管，事件到时即 `Destroy`。首版不看玩家是否正开着箱子，
+于是权重最高的事件经常连同没拿走的东西一起在玩家眼前消失。
+
+修法的关键是**延「到期」而不是延「清理」**：`RandomEventDirector.EndActiveEvent` 在
+`evt.OnCleanup` 之后**无条件**再跑一次 `ctx.Scope.Clear`，所以在 `OnCleanup` 里放行无效。
+`RandomEventAirdropSupply` 覆写 `OnTick`，在 `InteractableBase.Interacting` 为真时把
+`ctx.DurationSeconds` 推到 `ElapsedSeconds + AirdropHoldOpenGraceSeconds`（3s）。
+
+两条硬约束：
+- **必须有硬帽**（`AirdropHoldOpenMaxSeconds` = 120s）。并发恒 1，事件停在 `EventActive`
+  期间本局不再抽下一个事件，无上限等于玩家挂着界面就能把整局随机事件卡死。
+- **只有 `Expired` 一条路径可延后**。`RunEnded` / `SceneChanged` / `SwitchDisabled` /
+  `HostDestroyed` / `DebugForced` / `TriggerFailed` 都直接调 `EndActiveEvent`，
+  绕过到期比较，照旧强制销毁，不存在跨图跨局泄漏。
+
+销毁前先关战利品界面（`crate.StopInteract()` 走官方联动，`LootView.TargetInventory` 比对兜底）。
+代码在 `RandomEvents/RandomEventAirdropHold.cs`（partial），拆出来是因为
+`RandomEventCatalog.cs` 贴着 `LargeFileBudgetGuard` 的 1200 行硬预算；文件名刻意不以
+`RandomEventCatalog` 开头，否则 `RandomEventsWaveIsolationGuard` 的「子类数 vs OnCleanup 数」
+配平计数会被多数一次。由 `tests/RandomEventAirdropHoldGuard.py` 守卫。
+
+### 3.5 血月的两个坑
 
 - `TimeOfDayController.NightViewAngleFactor` 等静态因子**会被官方 URP Volume 组件每帧回写**，
   Mod 直接写会被覆盖，因此**不采用**；改走全屏红 vignette（纯色 Image + alpha 呼吸）+

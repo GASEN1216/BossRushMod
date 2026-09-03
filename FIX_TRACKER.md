@@ -39,6 +39,50 @@
 ```
 
 ---
+### 2026-09-03 玩法向审核：3 条修复（跳波 P0 / 空投 P1 / 战役武装 P2）
+
+**状态**: fixed（代码、Windows 编译、515 guard 与两个新 guard 的反向验证完成；实机 smoke 五项待人工）
+**Finding**: CR-2026-09-03-009 / 010 / 011
+**兼容分类**: COMPAT
+**版本/Commit**: 未提交
+**Owner decision**: 需要；四项已拍板——非成员保留成就与去重、一并修 Mode D 串台、空投续期上限 120s、战役三项全修
+
+**现象**
+1. 标准 / 无间炼狱：打死随机事件「Boss 乱入」的乱入者会跳掉一个 Boss 波次；最后一波会提前放通关演出，场上还留着没打完的 Boss。
+2. Mode D：打死 Mode D 的 Boss 会把标准竞技场的 Boss 刷进 Mode D，长局还会在 Mode D 里放标准通关横幅与奖励箱。
+3. 空投补给箱在 45 秒到时被销毁，不看玩家是否已到达或正开着箱子；正开着时界面还会留在屏幕上指着已销毁目标。
+4. 第 1 章无伤目标在竞技场大厅挨一下伤就被判死；接了第 1 章去打 Mode E 挨伤同样把它判死；第 5 章在基地点地图选择界面时就已武装。
+
+**根因**
+1/2 同一根因：`HandleBossDeath` 无本波成员校验，而 `LootAndRewardsRandomBossLoot.cs:296` 的掉落漏斗只验 `bossSpawnTimes` 归属，任何 `isBoss=true` 且走共享刷怪核心的 Boss 都满足；唯一排除项是 `Contains("DragonDescendant")` 名字启发式。Mode D 另外还会 `SetBossRushRuntimeActive(true)`，绕过了 `OnEnemyDiedWithDamageInfo:219` 的 `modeDActive` 早返。
+3. 箱子由 `ctx.Scope` 托管，而 `RandomEventDirector.EndActiveEvent` 在 `OnCleanup` 之后**无条件**再跑一次 `ctx.Scope.Clear`——只改 `OnCleanup` 无效，必须延「到期」本身。
+4. 标准分支只看 `bossRushArenaActive`（大厅期恒为真）；`EnsureArmedFor` 模式不符时 return 但不解除；丧尸用 `LifecyclePhase != None`（从 `SelectingMap` 起为真）。
+
+**修复内容**
+- 新增文件: `RandomEvents/RandomEventAirdropHold.cs`（已加入 `compile_official.bat`）、`tests/WavesArenaBossMembershipGuard.py`、`tests/RandomEventAirdropHoldGuard.py`
+- 修改文件: `WavesArena/WavesArena.cs`、`LootAndRewards/LootAndRewardsRandomBossLoot.cs`、`RandomEvents/RandomEventCatalog.cs`、`RandomEvents/RandomEventsTuning.cs`、`Campaign/CampaignModeBridge.cs`、`Campaign/CampaignObjectiveTracker.cs`、`compile_official.bat`
+
+**兼容性影响**: 不动存档 key、TypeID、配置 schema、本地化 key、Harmony 目标与资源。空投事件最长占用由 45s 变为 165s（45 + 120 上限）。孩儿护我龙裔现在会正常计入 Boss 击杀成就（此前被名字启发式连同去重一起挡掉）。
+
+**验证方法**
+1. 编译: `& "D:\code\ykf\BossRushMod\compile_official.bat"` → Build succeeded（仅剩既有的 `ModeHUIPages.cs` CS0649，与本次无关）
+2. Guard: `python tools/run_guards.py` → PASS=515 NEW-FAIL=0 KNOWN-RED=0；两个新 guard 各自反向验证，共 12 项逐条确认转红后恢复全绿
+3. 人工 smoke: 见下「未验证/需人工」
+
+**未验证/需人工**（静态改不出结论）
+1. 标准竞技场触发 `BossIntrusion` 打死乱入者：波次号不前进、真 Boss 仍是当前目标、击杀成就照常 +1
+2. Mode D 打完一波 Boss：无标准 Boss 混入、无通关横幅、Mode D 的 Boss 击杀成就仍计数
+3. 空投开箱挂住超 45s 不消失、HUD 停在 3s；关箱后 3 秒内消失；挂满 120s 时界面被关、箱子销毁、后续事件仍能触发
+4. 龙王「孩儿护我」：打死召唤龙裔后联动死亡仍正常、本局能正常收尾
+5. 战役：大厅挨伤后开波，第 1 章无伤目标未被提前判死；接第 1 章去打 Mode E 挨伤后仍可回标准完成；第 5 章在基地开地图选择界面不武装
+
+**失败尝试**
+- 首版把 `if (modeDActive) return;` 放在 `HandleBossDeath` 开头。设计复核指出 Mode D 的 Boss 击杀成就**只**经该方法的 `CheckBossKillAchievementsOnce` 计数（全仓库仅两个调用点之一），顶部早返会静默掐掉它。已改为判在成员 helper 内。
+- 首版把翻箱保护内联进 `RandomEventCatalog.cs`，实测顶到 1237 行、超 `LargeFileBudgetGuard` 的 1200 硬预算并转红。已拆成 partial 新文件；文件名刻意不以 `RandomEventCatalog` 开头，否则 `RandomEventsWaveIsolationGuard` 的「子类数 vs OnCleanup 数」配平会被多数一次。
+- 首版把 `IsRunActive` 写成 `ZombieModeTuning.IsRunActive`；它实际在同文件的 `ZombieModePhaseGuards` 上。**515 guard 全绿但 Windows 编译当场报 CS0117**——再次印证 AGENTS 4.2「guard 不能替代编译」。
+- 两个新 guard 的首版都被自己的反向验证抓到漏判：成员 guard 允许 `modeDActive` 只出现在注释里、且只查了 `IsCurrentWaveBossMember` 没查 `IsSameWaveBossInstance` 的 catch；空投 guard 只查常量名出现、没锁定「早返」形态。均已加固后重跑通过。
+
+---
 ### 2026-09-03 七日全面审核：8 条 finding 全量修复（押品 P0 / 濒退制 P1 / 三处静默）
 
 **状态**: fixed（代码、Windows 编译、513 guard 与 guard 反向验证完成；实机 smoke 四项待人工）

@@ -68,6 +68,18 @@ namespace BossRush
                 if (string.IsNullOrEmpty(mode)) return;
                 if (IsArmed && string.Equals(_armedMode, mode, StringComparison.Ordinal)) return;
 
+                // 走到这里 = 未武装，或已武装但模式不符。后者必须先整局作废。
+                //
+                // 下面第 3 个早返（def.Mode != mode）是**不解除**的：接了第 1 章（standard）
+                // 再去打 Mode E 时，_armedMode 仍停在 "standard"、IsArmed 仍为 true，
+                // 于是 Mode E 里挨一下伤会经 ReportPlayerDamaged 把第 1 章的无伤目标判死
+                //（Mode E 在 GetCampaignCurrentWave 里落到 0，恒小于门槛）。
+                // 一次追踪只属于一个模式，跨模式的残留武装必须在这里清掉。
+                if (IsArmed)
+                {
+                    ResetSession();
+                }
+
                 CampaignChapterDef def = CampaignProgressService.GetActiveChapterDef();
                 if (def == null) return;
                 if (!string.Equals(def.Mode, mode, StringComparison.Ordinal)) return;

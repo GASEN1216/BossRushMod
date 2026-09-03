@@ -262,6 +262,11 @@ namespace BossRush
 
                 // 检查是否是孩儿护我召唤的龙裔（不在currentWaveBosses中但在bossSpawnTimes中）
                 // 这类龙裔只需要掉落，不参与波次计数
+                //
+                // 注意：这里的名字启发式如今是**第二道防线**。真正的口径已经收进
+                // HandleBossDeath 的 IsCurrentWaveBossMember——它按引用判本波成员，不看名字，
+                // 因此乱入 Boss、Mode D Boss 这些同样不在波次容器里的旁路 Boss 也一并被挡住。
+                // 保留本段是因为 DragonDescendantBoss 的注释仍在引用这个语义，且它能少走一次调用。
                 bool isChildProtectionDescendant = false;
                 if (bossesPerWave > 1 && currentWaveBosses != null)
                 {

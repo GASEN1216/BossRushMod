@@ -85,6 +85,27 @@ source_files:
 **标准竞技场没有 `currentWave` 字段**：它记的是 `currentEnemyIndex`（当前第几个敌人）
 与 `bossesPerWave`，波次要现算，口径与 `WavesArena.cs` 的 `completedWave` 一致。
 
+#### 武装时机（2026-09-03 修正，CR-2026-09-03-011）
+
+追踪按**开局**武装，不是按进场景：
+
+- **标准竞技场**必须 `bossRushArenaActive && IsActive`。
+  `bossRushArenaActive == true && IsActive == false` 是一等长存状态——整个大厅期都是它
+  （`WavesArenaEnemyMaintenance` 的持续清怪循环和路牌可交互判定都依赖这一点）。
+  只看前者会让第 1 章的无伤目标在玩家走去路牌的路上挨一下伤就被判死，
+  且胜利后（`IsActive` 已复位、`bossRushArenaActive` 仍为真）追踪还赖着不走。
+- **丧尸**用 `ZombieModePhaseGuards.IsRunActive`（`IsZombieModeActive` 用的就是它），
+  不用 `LifecyclePhase != None`——后者从 `SelectingMap` 就为真，
+  会让第 5 章在玩家还在基地点地图选择界面时就武装。
+  ⚠️ `IsRunActive` 在 `ZombieModePhaseGuards` 上，**不是** `ZombieModeTuning`，
+  两者同在 `ZombieModeTuning.cs` 一个文件里，按文件定位极易记错类名。
+- **换模式必须先解除**：`EnsureArmedFor` 在「当前章节模式 ≠ 传入模式」时先 `ResetSession()`
+  再走后续判定。否则接了第 1 章去打 Mode E，`_armedMode` 会停在 `"standard"`，
+  Mode E 里挨一下伤就把第 1 章的无伤目标判死（Mode E 在 `GetCampaignCurrentWave` 返回 0）。
+
+胜利结算不受影响：`SetBossRushRuntimeActive(false)` 与 `NotifyCampaignStandardCleared()`
+之间没有 await，且四条 Notify 漏斗各自会先调 `EnsureArmedFor`，此时仍是本局武装状态。
+
 ### 3.2 跨系统解锁契约
 
 选静态 API 而非「后山去读征程的存档 key」：键名改一次两边静默失联，方法签名改一次编译期报错。

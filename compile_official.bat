@@ -815,6 +815,7 @@ echo(RandomEvents\RandomEventModeGate.cs
 echo(RandomEvents\RandomEventDirector.cs
 echo(RandomEvents\RandomEventCatalog.cs
 echo(RandomEvents\RandomEventCatalog_Fun.cs
+echo(RandomEvents\RandomEventAirdropHold.cs
 echo(RandomEvents\RandomEventEffectsBridge.cs
 echo(RandomEvents\RandomEventEffectsBridge_Loot.cs
 echo(RandomEvents\RandomEventEffectsBridge_Spawn.cs

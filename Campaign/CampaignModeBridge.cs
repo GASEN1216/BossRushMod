@@ -108,13 +108,24 @@ namespace BossRush
                 if (modeFActive) return CampaignContentCatalog.ModeModeF;
                 if (modeDActive) return CampaignContentCatalog.ModeModeD;
 
+                // 用丧尸模式自己的权威判据（IsZombieModeActive 用的就是它），
+                // 而不是 LifecyclePhase != None：后者从 SelectingMap 就为真，
+                // 那会让第 5 章在**玩家还在基地点地图选择界面**时就武装。
                 if (zombieModeRunState != null
-                    && zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.None)
+                    && ZombieModePhaseGuards.IsRunActive(zombieModeRunState.LifecyclePhase))
                 {
                     return CampaignContentCatalog.ModeZombie;
                 }
 
-                if (bossRushArenaActive && !infiniteHellMode) return CampaignContentCatalog.ModeStandard;
+                // 必须带上 IsActive：bossRushArenaActive 从进场就为真，而开波要等玩家去点路牌，
+                // 「已进竞技场、还没开波」是一个可以任意长的一等状态。只看 bossRushArenaActive
+                // 会让第 1 章的无伤目标在大厅里挨一下伤就被判死，且胜利后（IsActive 已复位、
+                // bossRushArenaActive 仍为真）追踪还赖着不走。
+                // Mode D 也会置 IsActive，但它在上面 :109 已先行 return，不会落到这一支。
+                if (bossRushArenaActive && IsActive && !infiniteHellMode)
+                {
+                    return CampaignContentCatalog.ModeStandard;
+                }
 
                 // 终章决战不依赖任何模式标志，由 CampaignFinalBoss 自行武装
                 return null;
@@ -138,8 +149,10 @@ namespace BossRush
             {
                 if (modeDActive) return ModeDWaveIndex;
 
+                // 与 ResolveCampaignCurrentMode 同一判据，两处必须一致，
+                // 否则会出现「模式解析成标准、波次号却报丧尸的」错配。
                 if (zombieModeRunState != null
-                    && zombieModeRunState.LifecyclePhase != ZombieModeLifecyclePhase.None)
+                    && ZombieModePhaseGuards.IsRunActive(zombieModeRunState.LifecyclePhase))
                 {
                     return zombieModeRunState.CurrentWave;
                 }

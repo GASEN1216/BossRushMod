@@ -93,6 +93,19 @@ namespace BossRush
         internal const float AirdropMinPlayerDistance = 18f;
         internal const int AirdropLootboxInventoryCapacity = 512;
 
+        /// <summary>
+        /// 玩家正开着空投箱时，每帧把到期点推到 ElapsedSeconds + 本值。
+        /// 留 3 秒尾巴而不是 0：关箱瞬间就销毁会让「手滑关一下」直接吃掉整箱。
+        /// </summary>
+        internal const float AirdropHoldOpenGraceSeconds = 3f;
+
+        /// <summary>
+        /// 开箱续期的累计上限（秒）。**必须有上限**：调度器并发恒 1，
+        /// 事件停在 EventActive 期间本局不会再抽下一个事件，无上限等于玩家挂着箱子
+        /// 就能把整局随机事件卡死。到顶后强制关 UI 并按正常到期销毁。
+        /// </summary>
+        internal const float AirdropHoldOpenMaxSeconds = 120f;
+
         #endregion
 
         #region E2 血月凶兆
