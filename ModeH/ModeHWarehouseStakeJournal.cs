@@ -480,8 +480,26 @@ namespace BossRush
 
             _escrowItems.Clear();
             _escrowItems.AddRange(removed);
-            return TryAdvancePhase(
-                ModeHStakePhase.EscrowRemovedDurable, ModeHSettlementKind.None, out failureReasonId);
+            // 阶段推进内含落盘，`SavesSystem.IsSaving` 时必然失败（FlushBatch 的
+            // flush_deferred_is_saving），而此刻物品**已经脱离仓库**。TryAdvancePhase
+            // 失败会把 phase 回滚到 EscrowSnapshotDurable，若这里不同步把物品放回去，
+            // 就会留下「账上说没移除、仓库里却没有」的错位：之后每一条返还路径
+            // （TryAbortReturn -> TryCancelWithoutRemoval）都会被 cancel_escrow_still_held
+            // 挡死，重启后 LoadPersisted 清空 _escrowItems 更会让它被静默归档成
+            // CancelledTerminal，玩家的真实装备就此永久消失。
+            // 必须与上面 TryComputeInventoryDigest 失败分支完全对称。
+            string advanceError;
+            if (!TryAdvancePhase(
+                    ModeHStakePhase.EscrowRemovedDurable, ModeHSettlementKind.None, out advanceError))
+            {
+                failureReasonId = advanceError;
+                // 先清空再回滚：RollbackDetached 会把**放不回去**的那些重新塞进
+                // _escrowItems 并转人工介入，不清空会让成功放回的项也留在表里。
+                _escrowItems.Clear();
+                RollbackDetached(removed);
+                return false;
+            }
+            return true;
         }
 
         /// <summary>整批逆序放回。放不回去的项保持在内存 escrow 并转人工介入。</summary>
@@ -690,8 +708,57 @@ namespace BossRush
                 failureReasonId = "cancel_escrow_still_held";
                 return false;
             }
+            // _escrowItems 为空**不等于**物品还在仓库：LoadPersisted 在切槽/重启时
+            // 会把它清空，此时仅凭内存态判断会把「物品已脱离但阶段回滚过」的错位
+            // 静默归档成 CancelledTerminal（语义是"已证明从未移除"），等于确认丢失。
+            // 按设计稿 §22 恢复矩阵，取消前必须有 durable 证据证明 escrow 未脱离；
+            // 拿不出证据一律进人工介入，绝不自动猜测。
+            if (!VerifyEscrowStillInInventory(out failureReasonId))
+            {
+                EnterManualIntervention(failureReasonId);
+                return false;
+            }
             return TryAdvancePhase(
                 ModeHStakePhase.CancelledTerminal, ModeHSettlementKind.None, out failureReasonId);
+        }
+
+        /// <summary>
+        /// 逐项核对 escrow 快照对应的根物品是否仍在仓库里（取消前的 durable 证据）。
+        ///
+        /// 用逐项 occurrence 比对而不是整仓 `inventoryPreDigest` 全等：后者对
+        /// 「玩家在基地挪了任何别的东西」都会误报，而恢复壳打开时距 Prepare 可能已隔
+        /// 一次重启。逐项比对直接回答「押品还在不在」这一个不变式。
+        /// 读不出仓库或数量少于 preCount 一律判失败（fail-closed）。
+        /// </summary>
+        private static bool VerifyEscrowStillInInventory(out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (_active == null || _active.escrowItems == null) return true;
+
+            string storageReason;
+            if (!ModeHInventoryPersistenceBridge.IsStorageReady(out storageReason))
+            {
+                failureReasonId = "cancel_escrow_preimage_unreadable:" + storageReason;
+                return false;
+            }
+
+            for (int i = 0; i < _active.escrowItems.Count; i++)
+            {
+                ModeHItemTreeSnapshotDto snapshot = _active.escrowItems[i];
+                if (snapshot == null || string.IsNullOrEmpty(snapshot.semanticTreeDigest))
+                {
+                    failureReasonId = "cancel_escrow_preimage_snapshot_invalid";
+                    return false;
+                }
+                int current = ModeHInventoryPersistenceBridge.CountOccurrences(
+                    snapshot.semanticTreeDigest);
+                if (current < snapshot.preCount)
+                {
+                    failureReasonId = "cancel_escrow_preimage_mismatch";
+                    return false;
+                }
+            }
+            return true;
         }
 
         #endregion

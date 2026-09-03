@@ -106,6 +106,56 @@ def check_phase_machine(errors):
     if re.search(r"\bbool\s+_?terminal\b", code) or re.search(r"public\s+bool\s+IsTerminal\s*;", code):
         errors.append("[Journal] phase 是唯一终态来源，不得另设 terminal 布尔")
 
+    # CR-2026-09-03-001：物品脱离仓库之后的**每一条**失败出口都必须放回去。
+    # TryRemoveEscrow 的最后一步 TryAdvancePhase 内含落盘（IsSaving 时必然失败），
+    # 漏掉回滚会留下「账上没移除、仓库里没有」的错位，所有返还路径随后都被
+    # cancel_escrow_still_held 挡死，重启后更会被静默归档成 CancelledTerminal。
+    remove_escrow = re.search(
+        r"public static bool TryRemoveEscrow\(out string failureReasonId\)[\s\S]*?\n        \}", code)
+    if not remove_escrow:
+        errors.append("[Escrow] 缺少 TryRemoveEscrow")
+    else:
+        body = remove_escrow.group(0)
+        if body.count("RollbackDetached") < 2:
+            errors.append(
+                "[Escrow] TryRemoveEscrow 的每条失败出口都要 RollbackDetached："
+                "摘出仓库之后阶段推进失败若不回滚，玩家真实物品会永久丢失")
+        advance = body.find("ModeHStakePhase.EscrowRemovedDurable")
+        if advance < 0 or "RollbackDetached" not in body[advance:]:
+            errors.append(
+                "[Escrow] TryAdvancePhase(EscrowRemovedDurable) 失败分支必须回滚已脱离的物品")
+
+    # CR-2026-09-03-001：取消前必须有 durable 证据证明 escrow 从未脱离。
+    # 只看内存 _escrowItems 不够——LoadPersisted 在切槽/重启时会把它清空。
+    cancel = re.search(
+        r"public static bool TryCancelWithoutRemoval\(out string failureReasonId\)[\s\S]*?\n        \}",
+        code)
+    if not cancel:
+        errors.append("[Escrow] 缺少 TryCancelWithoutRemoval")
+    else:
+        body = cancel.group(0)
+        if "_escrowItems.Count" not in body:
+            errors.append("[Escrow] 取消前必须检查内存 escrow 是否仍被持有")
+        if "VerifyEscrowStillInInventory" not in body:
+            errors.append(
+                "[Escrow] 取消前必须核对 escrow 仍在仓库（内存态为空不等于物品还在）")
+        if "EnterManualIntervention" not in body:
+            errors.append("[Escrow] 拿不出 escrow 未脱离的证据时必须进人工介入，不得静默归档")
+    verify = re.search(
+        r"private static bool VerifyEscrowStillInInventory\(out string failureReasonId\)[\s\S]*?\n        \}",
+        code)
+    if not verify:
+        errors.append("[Escrow] 缺少 VerifyEscrowStillInInventory")
+    else:
+        body = verify.group(0)
+        for token, desc in [
+            ("IsStorageReady", "仓库读不出来时必须 fail-closed"),
+            ("CountOccurrences", "必须逐项核对根物品现存数量"),
+            ("preCount", "必须与 Prepare 时记录的出现次数比对"),
+        ]:
+            if token not in body:
+                errors.append("[Escrow] escrow 存在性核对缺少: " + desc)
+
     # 终结前必须先把父 operation 标 Settled
     settle = re.search(r"public static bool Settle\(out string failureReasonId\)[\s\S]*?\n        \}", code)
     if settle:
