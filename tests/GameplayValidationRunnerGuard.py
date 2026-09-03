@@ -15,11 +15,17 @@ COMPILE = Path("compile_official.bat")
 # 用例已按主题拆分到多个 partial 文件（主 runner 要守 1200 行预算）。
 # 不变式断言对全套文件的拼接生效，不关心具体某条落在哪个文件里。
 CASE_FILES = (
+    Path("DebugAndTools/F3GameplayValidationCoverage.cs"),
+    Path("DebugAndTools/F3GameplayValidationItems.cs"),
+    Path("DebugAndTools/F3GameplayValidationZombie.cs"),
+    Path("DebugAndTools/F3GameplayValidationModeHKits.cs"),
+    Path("DebugAndTools/F3GameplayValidationScenes.cs"),
     Path("DebugAndTools/F3GameplayValidationStages.cs"),
     Path("DebugAndTools/F3GameplayValidationModes.cs"),
     Path("DebugAndTools/F3GameplayValidationBackMountain.cs"),
     Path("DebugAndTools/F3GameplayValidationEconomy.cs"),
     Path("DebugAndTools/F3GameplayValidationDepth.cs"),
+    Path("DebugAndTools/F3GameplayValidationDeepFlows.cs"),
     Path("DebugAndTools/F3GameplayValidationLeaks.cs"),
 )
 
@@ -68,11 +74,67 @@ def main():
             "AFFIX_FORGE_REJECT_NO_COST", "CODEX_PERSISTENCE_READBACK",
             "MODE_D_MULTI_WAVE", "FINAL_LEAK_DELTA",
             "ValidationForceClearArenaEnemies",
+            "ValidationGetCommittedStandardBoss", "ValidationKillCommittedStandardBoss",
+            "ValidationDefeatModeDWave", "nextWaveDeadline", "modeDCurrentWaveEnemies.ToArray()",
+            "yield return _host.ValidationDefeatModeDWave", "internal IEnumerator ValidationDefeatModeDWave",
+            "ModeFSuccessfulExtractionCountForValidation != completedBefore",
+            "IsRuntimeReady(BaseSceneNameForValidation())", "extraction_base_not_ready",
         ):
             if token not in code:
                 errors.append("验收 runner 不变式缺失: " + token)
+
+        deep = Path("DebugAndTools/F3GameplayValidationDeepFlows.cs").read_text(encoding="utf-8")
+        victory = deep[deep.index("private IEnumerator RunStandardVictoryReward()"):]
+        if "ValidationCountHostileCharacters" in victory or "ValidationForceClearArenaEnemies" in victory:
+            errors.append("标准胜利必须等生产登记并走真实死亡，不能靠全场发现对象或 Destroy 清场")
+        diagnostics = DIAGNOSTICS_CASE.read_text(encoding="utf-8")
+        wave_start = diagnostics.find("internal IEnumerator ValidationDefeatModeDWave")
+        wave_end = diagnostics.find("private bool ValidationDefeatModeDEnemy", wave_start)
+        wave = diagnostics[wave_start:wave_end]
+        if not (0 <= wave.find("ValidationDefeatModeDEnemy(enemy") < wave.find("yield return null;")
+                < wave.find("onCompleted(true, null)")):
+            errors.append("Mode D 快照击杀必须逐帧推进，让死亡回调 UI 完成更新后再杀下一只")
+        if 'DevLog("[Validation] [ERROR] Mode D 伤害链失败: " + e)' not in diagnostics:
+            errors.append("Mode D 伤害异常必须保留完整栈，不能只记录异常类型")
+        modef = Path("ModeF/ModeFExtraction.cs").read_text(encoding="utf-8")
+        if "if (!modeFActive) modeFSuccessfulExtractionCount++;" not in modef:
+            errors.append("Mode F 撤离计数必须由实际结算并退出的路径写入")
         if "Destroy(gameObject)" in code:
             errors.append("runner 不得因 F3 页关闭自行销毁")
+
+        scenes = Path("DebugAndTools/F3GameplayValidationScenes.cs").read_text(encoding="utf-8")
+        runner = RUNNER.read_text(encoding="utf-8")
+        stages = Path("DebugAndTools/F3GameplayValidationStages.cs").read_text(encoding="utf-8")
+        for token in ("SceneLoader.Instance.LoadBaseScene(null, true)",
+                      "while (SceneLoader.IsSceneLoading", "previous_scene_load_timeout",
+                      "scene_loaded_but_runtime_not_ready", "DescribeSceneReadiness",
+                      "LevelManager.AfterInit", "player.gameObject.activeInHierarchy",
+                      "!player.Health.IsDead", "manager.GameCamera.isActiveAndEnabled",
+                      "SceneManager.GetActiveScene().name, expectedScene",
+                      "while (!IsRuntimeReady(expectedScene)",
+                      "_operationSucceeded = IsRuntimeReady(expectedScene)"):
+            if token not in scenes:
+                errors.append("过图不能只凭加载任务完成报 PASS，缺少: " + token)
+        if 'LoadScene(null, "SCENE_RETURN_BASE", returnToBase: true)' not in runner:
+            errors.append("F3 返基地必须走完整 LoadBaseScene 入口")
+        if "LoadScene(BaseSceneNameForValidation()" in runner or "WaitSceneSettled" in code:
+            errors.append("禁止直载 Base_SceneV2 或跳过 AfterInit 的弱终态检查")
+        gate_position = stages.find("yield return EnsureArenaForCase(caseId);")
+        factory_position = stages.find("inner = factory();")
+        if gate_position < 0 or factory_position < 0 or gate_position > factory_position:
+            errors.append("场内用例必须在创建/启动玩法协程前恢复并确认竞技场")
+        if '"base_runtime_not_ready"' not in runner or '"arena_runtime_not_ready"' not in stages:
+            errors.append("场景未就绪时应跳过依赖用例，不能继续制造模式 FAIL/PASS")
+        if "new DamageInfo(player)" not in runner or "damage.damageCreator" in runner:
+            errors.append("终章验收必须显式调用官方 DamageInfo 构造器初始化元素列表，不能引用不存在的字段")
+        modeh = Path("ModeH/ModeHRuntimeModule_SceneFlow.cs").read_text(encoding="utf-8")
+        reset = modeh.split("internal void ForceResetStateForValidation()", 1)[-1].split("private IEnumerator DriveCertification", 1)[0]
+        for token in ("if (!ModBehaviour.DevModeEnabled) return;", "ReleaseRuntimeObjects();",
+                      'TryReturnRealStakeOnAbort("f3_validation_cleanup")', "ModeHRuntimeGates.SetRunOwnerActive(false)"):
+            if token not in reset:
+                errors.append("Mode H 验收清理缺少: " + token)
+        if "_arenaLease.Dispose()" in reset or "_spectatorLease.Dispose()" in reset:
+            errors.append("Mode H 租约只支持 Release(sceneGeneration)，不存在 Dispose API")
 
         # 隔离壳必须透传子协程；写死 yield return null 会让 WaitSeconds 之类永不推进
         # （Mode H 认证踩过同款坑，见 ModeHCertificationCoroutineDriveGuard）。

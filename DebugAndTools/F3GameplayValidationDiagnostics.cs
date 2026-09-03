@@ -3,6 +3,7 @@
 // ============================================================================
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -36,6 +37,10 @@ namespace BossRush
                     labels.Add("index=" + i + ":name="
                         + (unityAlive ? enemy.gameObject.name : "destroyed")
                         + ",active=" + active + ",health_alive=" + healthAlive
+                        + ",active_self=" + (unityAlive && enemy.gameObject.activeSelf)
+                        + ",object_scene=" + (unityAlive ? enemy.gameObject.scene.name : "destroyed")
+                        + ",parent_active=" + (unityAlive && (enemy.transform.parent == null
+                            || enemy.transform.parent.gameObject.activeInHierarchy))
                         + ",team=" + team + ",hostile=" + hostile);
                 }
                 catch (Exception e)
@@ -72,7 +77,7 @@ namespace BossRush
 
         /// <summary>
         /// 验收强清专用：把场上残留角色确定性清掉。
-        /// 复用 F10 的 ForceKillAllEnemies（走 Health.Kill 触发死亡事件，
+        /// 复用 F10 的 ForceKillAllEnemies（走 Health.Hurt 触发死亡事件，
         /// 让各模式的死亡记账正常收尾），再补一次竞技场清场。
         /// 基地场景不做任何事——那里的 NPC 是设施，不是清场债务。
         /// </summary>
@@ -84,6 +89,91 @@ namespace BossRush
             catch (Exception e) { DevLog("[Validation] 强制清敌失败: " + e.Message); }
             try { ClearEnemiesForBossRush(); }
             catch (Exception e) { DevLog("[Validation] 竞技场清场失败: " + e.Message); }
+        }
+
+        /// <summary>只读取已被标准波次登记、完成同步初始化的单 Boss。</summary>
+        internal CharacterMainControl ValidationGetCommittedStandardBoss()
+        {
+            CharacterMainControl boss = currentBoss as CharacterMainControl;
+            return IsActive && bossesPerWave == 1 && boss != null && boss.Health != null
+                && !boss.Health.IsDead && boss.gameObject.activeInHierarchy ? boss : null;
+        }
+
+        /// <summary>胜利验收必须观察真实死亡，不能用 Destroy 清场冒充击杀。</summary>
+        internal bool ValidationKillCommittedStandardBoss(out string reason)
+        {
+            reason = null;
+            if (!DevModeEnabled) { reason = "dev_mode_disabled"; return false; }
+            CharacterMainControl boss = ValidationGetCommittedStandardBoss();
+            if (boss == null) { reason = "committed_boss_not_ready"; return false; }
+            try
+            {
+                DamageInfo damage = new DamageInfo(CharacterMainControl.Main);
+                damage.damageValue = boss.Health.MaxHealth * 10f;
+                damage.ignoreArmor = true;
+                boss.Health.SetInvincible(false);
+                boss.Health.Hurt(damage);
+                if (boss.Health.IsDead) return true;
+                reason = "committed_boss_did_not_die";
+            }
+            catch (Exception e) { reason = "boss_kill_exception:" + e.GetType().Name; }
+            return false;
+        }
+
+        /// <summary>快照当前波并逐帧击杀，让死亡订阅者的 UI/tween 有机会完成帧更新。</summary>
+        internal IEnumerator ValidationDefeatModeDWave(Action<bool, string> onCompleted)
+        {
+            if (onCompleted == null) yield break;
+            if (!DevModeEnabled || !IsModeDActive)
+            {
+                onCompleted(false, "mode_d_not_ready");
+                yield break;
+            }
+            CharacterMainControl[] enemies = modeDCurrentWaveEnemies.ToArray();
+            if (enemies.Length == 0)
+            {
+                onCompleted(false, "mode_d_wave_empty");
+                yield break;
+            }
+            foreach (CharacterMainControl enemy in enemies)
+            {
+                string reason;
+                if (!ValidationDefeatModeDEnemy(enemy, out reason))
+                {
+                    onCompleted(false, reason);
+                    yield break;
+                }
+                // 击杀提示首个 tween 的 setter 尚未运行时，同帧第二次击杀可能读到非数字经验文本。
+                yield return null;
+            }
+            onCompleted(true, null);
+        }
+
+        private bool ValidationDefeatModeDEnemy(CharacterMainControl enemy, out string reason)
+        {
+            reason = null;
+            try
+            {
+                if (enemy == null || enemy.Health == null) { reason = "mode_d_enemy_missing"; return false; }
+                if (enemy.Health.IsDead) return true;
+                if (!IsModeDActive) { reason = "mode_d_not_active"; return false; }
+                DamageInfo damage = new DamageInfo(CharacterMainControl.Main);
+                damage.damageValue = enemy.Health.MaxHealth * 10f;
+                damage.ignoreArmor = true;
+                damage.toDamageReceiver = enemy.mainDamageReceiver;
+                damage.damagePoint = enemy.transform.position;
+                enemy.Health.SetInvincible(false);
+                enemy.Health.Hurt(damage);
+                if (enemy.Health.IsDead) return true;
+                reason = "mode_d_enemy_did_not_die";
+                return false;
+            }
+            catch (Exception e)
+            {
+                reason = "mode_d_kill_exception:" + e.GetType().Name;
+                DevLog("[Validation] [ERROR] Mode D 伤害链失败: " + e);
+                return false;
+            }
         }
 
         internal bool ValidationTryGetArenaCleanState(out string metrics)

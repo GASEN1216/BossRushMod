@@ -116,17 +116,28 @@ namespace BossRush
             {
                 ModeHRunState state = _host.ModeHRuntime.RunState;
                 if (state != null && state.Lifecycle == ModeHLifecycle.Drafting) break;
+                // 认证已拒绝会清空状态并返基地，不再原地等满 180 秒。
+                if (!_host.ModeHRuntime.HasActiveRun || SceneLoader.IsSceneLoading
+                    || !string.Equals(SceneManager.GetActiveScene().name, map.SceneName, System.StringComparison.Ordinal)) break;
                 yield return null;
             }
             ModeHRunState finalState = _host.ModeHRuntime.RunState;
             bool drafting = finalState != null && finalState.Lifecycle == ModeHLifecycle.Drafting;
             bool cacheMatch = _host.ModeHRuntime.LastCertificationUsedCache == expectCache;
+            if (expectCache)
+            {
+                if (drafting) yield return RunModeHStarterKits(map);
+                else Record("MODE_H_STARTER_KITS", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
+            }
             bool archived = drafting && _host.ModeHRuntime.DebugFinishValidationSeason();
-            Record(id, drafting && cacheMatch && archived ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
+            bool intentCleared = !BossRushMapSelectionHelper.HasPendingModeHEntryIntent();
+            Record(id, drafting && cacheMatch && archived && intentCleared ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                 "drafting=" + drafting + ",cache=" + _host.ModeHRuntime.LastCertificationUsedCache
                     + ",cache_invalidated=" + (!expectCache)
-                    + ",archived=" + archived,
-                drafting ? (cacheMatch ? string.Empty : "cache_expectation_mismatch") : "certification_timeout_or_abort");
+                    + ",intent_cleared=" + intentCleared
+                    + ",archived=" + archived + ",exit_reason=" + _host.ModeHRuntime.LastExitReasonId,
+                !intentCleared ? "entry_intent_not_consumed"
+                    : (drafting ? (cacheMatch ? string.Empty : "cache_expectation_mismatch") : "certification_timeout_or_abort"));
             _host.ValidationSafeCleanup();
             yield return WaitSeconds(0.5f);
         }

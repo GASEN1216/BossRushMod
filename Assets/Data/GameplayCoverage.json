@@ -1,0 +1,1390 @@
+{
+  "version": 1,
+  "scope": "当前生产模块、Wiki 功能目录及 F3 自动断言；登记测试不等于实机通过。新增功能必须补用例。",
+  "features": [
+    {
+      "id": "ENTRY",
+      "title": "安装、入口与所有地图",
+      "sources": [
+        "ModBehaviour.cs",
+        "Injection",
+        "Integration/Config",
+        "Integration/Constants",
+        "MapSelection",
+        "Interactables"
+      ],
+      "automatic": [],
+      "wiki": [
+        "start__how_to_enter",
+        "start__first_run",
+        "map__overview"
+      ],
+      "manual": [
+        {
+          "id": "M_ENTRY_01",
+          "steps": "冷启动到主菜单、载入专用测试档；在基地逐个打开各模式入口，确认并取消一次。",
+          "expected": "入口实际可达；取消不扣票、不锁鼠标；禁用条件有原因；无重复 NPC/建筑。"
+        },
+        {
+          "id": "M_ENTRY_02",
+          "steps": "逐个选择地图菜单里当前可选地图，进入、移动、打怪后返回基地；含竞技场与其子场景。",
+          "expected": "角色、相机、NavMesh 与刷怪点可用；完整返回基地，输入恢复，无黑屏和越界出生。"
+        },
+        {
+          "id": "M_ENTRY_03",
+          "steps": "对每种收费/门票入口分别测试足额、不足、背包满、确认前取消和加载中失败。",
+          "expected": "扣费/扣票恰好一次；拒绝不扣；初始化失败按现有契约返还，无复制或遗失。"
+        }
+      ]
+    },
+    {
+      "id": "STANDARD",
+      "title": "标准 BossRush",
+      "sources": [
+        "WavesArena"
+      ],
+      "automatic": [
+        "MODE_STANDARD_WAVE",
+        "STANDARD_VICTORY_REWARD"
+      ],
+      "wiki": [
+        "mode__mode_a"
+      ],
+      "manual": [
+        {
+          "id": "M_STANDARD_01",
+          "steps": "正常开局、击杀推进到特殊 Boss 波，再打完本次配置的全部波次并开启胜利箱。",
+          "expected": "只在真实死亡后结算；胜利箱和奖励一次；自定义 Boss 正常进入阶段战。"
+        },
+        {
+          "id": "M_STANDARD_02",
+          "steps": "分别在备战和战斗时死亡、放弃、回基地，再开新局；战斗时远离敌人超过 100 米再回来。",
+          "expected": "敌人不会因距离休眠造成卡波；失败和重开不继承计数、订阅或残留敌人。"
+        }
+      ]
+    },
+    {
+      "id": "HELL",
+      "title": "无间炼狱",
+      "sources": [
+        "WavesArena"
+      ],
+      "automatic": [],
+      "wiki": [
+        "mode__mode_c"
+      ],
+      "manual": [
+        {
+          "id": "M_HELL_01",
+          "steps": "使用无间炼狱真实入口，连续推进多波并触发精英/特殊 Boss，领取阶段奖励。",
+          "expected": "波次、强度和奖励依当前配置推进；标准模式的终局不会提前截断炼狱。"
+        },
+        {
+          "id": "M_HELL_02",
+          "steps": "中途死亡/放弃后再开标准和炼狱各一局。",
+          "expected": "倍率、随机词条、奖励和敌人清理，不污染另一模式。"
+        }
+      ]
+    },
+    {
+      "id": "MODE_D",
+      "title": "白手起家",
+      "sources": [
+        "ModeD"
+      ],
+      "automatic": [
+        "MODE_D_LIFECYCLE",
+        "MODE_D_MULTI_WAVE"
+      ],
+      "wiki": [
+        "mode__mode_d"
+      ],
+      "manual": [
+        {
+          "id": "M_MODE_D_01",
+          "steps": "通过真实入口以规定初始资源进入，连续打多波并完成商店购买、奖励选择与下一波。",
+          "expected": "初始资源/装备符合模式规则；击杀计数、商店刷新和价格正确，无休眠卡波。"
+        },
+        {
+          "id": "M_MODE_D_02",
+          "steps": "同一帧爆炸击杀多怪、击杀远处怪；在奖励界面退出后再进入。",
+          "expected": "波次仅结算一次；击杀提示等已装 Mod 无异常；退出后输入、货币与对象清理。"
+        }
+      ]
+    },
+    {
+      "id": "MODE_E",
+      "title": "划地为营",
+      "sources": [
+        "ModeE"
+      ],
+      "automatic": [
+        "MODE_E_LIFECYCLE",
+        "MODE_E_EXTRACTION"
+      ],
+      "wiki": [
+        "mode__mode_e"
+      ],
+      "manual": [
+        {
+          "id": "M_MODE_E_01",
+          "steps": "选阵营、雇佣普通与允许的自定义 Boss，推进阶段，观察补兵并分别由玩家/友军击杀敌人。",
+          "expected": "敌我识别、友军跟随、补兵、经验与任务归属正确；友军不攻击玩家。"
+        },
+        {
+          "id": "M_MODE_E_02",
+          "steps": "占领/推进至胜负结算，从实际界面离场；另测中途放弃和玩家死亡。",
+          "expected": "战绩与奖励按胜负结算一次；阵营、雇佣单位和修正清空；本模式不虚构撤离点。"
+        }
+      ]
+    },
+    {
+      "id": "MODE_F",
+      "title": "血猎追击",
+      "sources": [
+        "ModeF"
+      ],
+      "automatic": [
+        "MODE_F_LIFECYCLE",
+        "MODE_F_BLOODFIRE",
+        "MODE_F_BOUNTY",
+        "MODE_F_EXTRACTION"
+      ],
+      "wiki": [
+        "mode__mode_f",
+        "item__mode_f_items"
+      ],
+      "manual": [
+        {
+          "id": "M_MODE_F_01",
+          "steps": "真实入场，战斗推进全部阶段；获取并使用悬赏印记，分别让玩家和友军击杀悬赏目标。",
+          "expected": "悬赏标记、奖励归属和阶段切换正确；不是只有调试发放印记可用。"
+        },
+        {
+          "id": "M_MODE_F_02",
+          "steps": "积累血火过载并跑走/站立/攻击，观察生命消耗、WalkSpeed/RunSpeed 与效果结束。",
+          "expected": "数值、提示和实际移动一致；卸载或退出后恢复，无 MoveSpeed 假 stat。"
+        },
+        {
+          "id": "M_MODE_F_03",
+          "steps": "步行进入撤离圈，离圈中断再回圈等倒计时结束，返回基地领取阿稳寄存奖励。",
+          "expected": "倒计时自然完成一次；取消不提前结算；返基地可操作，奖励不丢不重复。"
+        }
+      ]
+    },
+    {
+      "id": "MODE_G",
+      "title": "宿命回响",
+      "sources": [
+        "ModeG"
+      ],
+      "automatic": [
+        "MODE_G_LIFECYCLE"
+      ],
+      "wiki": [
+        "mode__mode_g"
+      ],
+      "manual": [
+        {
+          "id": "M_MODE_G_01",
+          "steps": "从入口打完 9 波，观察第 3/6 波宿敌与终局；测试 HUD、装备属性/弹药限制。",
+          "expected": "9 波推进、宿敌生成和最终结算完整；实际伤害与规则吻合，非法装备说明明确。"
+        },
+        {
+          "id": "M_MODE_G_02",
+          "steps": "上一局其他模式受伤后退出，再挑战 G 无伤条件；G 内死亡/放弃，再重启游戏回读记录。",
+          "expected": "无伤判定只取本局；记录持久化，失败/放弃不误发胜利奖励，冻结与属性锁解除。"
+        }
+      ]
+    },
+    {
+      "id": "MODE_H",
+      "title": "黑市鸭王杯：赛季与指令",
+      "sources": [
+        "ModeH"
+      ],
+      "automatic": [
+        "MODE_H_FIRST_CERTIFICATION",
+        "MODE_H_CACHE_HIT",
+        "MODE_H_STARTER_KITS"
+      ],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_MODE_H_01",
+          "steps": "真实入口依次走认证、选秀、赔率/阵容锁定、生成、指令战斗、单场结算，完成一整个赛季。",
+          "expected": "每个阶段可从界面进入；指令产生真实行为；赛季冠军和名人堂写入，奖励只一次。"
+        },
+        {
+          "id": "M_MODE_H_02",
+          "steps": "首轮认证后再开一局；在比赛失败后重试同场，再耗尽重试预算；暂停后继续。",
+          "expected": "缓存仍满足实际认证阈值；重试同场不越过锁定，预算耗尽有正确恢复入口。"
+        },
+        {
+          "id": "M_MODE_H_03",
+          "steps": "在允许续赛阶段保存并退出游戏，重启续赛；完成后连续开第二赛季。",
+          "expected": "未完成赛季不被覆盖；票据不多扣；32 席名人堂淘汰按既有顺序，观战与输入租约释放。"
+        }
+      ]
+    },
+    {
+      "id": "H_STAKE",
+      "title": "黑市真实押品与故障恢复",
+      "sources": [
+        "ModeH/ModeHRealStakeService.cs",
+        "ModeH/ModeHStakeJournalPersistence.cs"
+      ],
+      "automatic": [],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_H_STAKE_01",
+          "steps": "在可丢弃测试档内押 1 件、3 件并尝试第 4 件，锁定后分别赢、输和中途退出。",
+          "expected": "上限与禁用原因明确；押品扣取、输赢处置、退还准确且仅一次；词缀/实例信息保留。"
+        },
+        {
+          "id": "M_H_STAKE_02",
+          "steps": "在押品已准备、比赛中、待返还三处退出并重启，触发 escrow 重建；记录操作前后物品清单。",
+          "expected": "journal 与实物一致；重复恢复不复制、不丢失，不覆盖已有未完成押品。"
+        },
+        {
+          "id": "M_H_STAKE_03",
+          "steps": "在可丢弃测试副本填满返还仓位后触发退还，再腾位重试；另由开发调试器在测试副本模拟 escrow 回滚失败（当前无 F3 故障注入按钮）。",
+          "expected": "return_no_empty_slot 保留债务可重试；ManualIntervention 有原因且不销毁押品，修复前不放行新押品；无调试环境时记 BLOCKED，不冒充已通过。"
+        }
+      ]
+    },
+    {
+      "id": "ZOMBIE",
+      "title": "丧尸模式：入场、战斗、奖励与退出",
+      "sources": [
+        "ZombieMode"
+      ],
+      "automatic": [
+        "MODE_ZOMBIE_LIFECYCLE",
+        "MODE_ZOMBIE_EXTRACTION"
+      ],
+      "wiki": [
+        "mode__zombie_mode"
+      ],
+      "manual": [
+        {
+          "id": "M_ZOMBIE_01",
+          "steps": "逐种初始职业从真实入口进入，测试现金投入、保险、背包转移、初始选择取消/失败。",
+          "expected": "货币与物品转移恰好一次；未开局失败可回滚；职业装备与技能确实生效。"
+        },
+        {
+          "id": "M_ZOMBIE_02",
+          "steps": "连续推进普通波与至少两个 Boss 节点；逐种遇到精英词条和丧尸 Boss 技能，测试高密度战斗。",
+          "expected": "击杀目标和 Boss 存活计数正确；技能、掉落和污染按规则生效，刷怪位置/性能稳定。"
+        },
+        {
+          "id": "M_ZOMBIE_03",
+          "steps": "逐类选择局内奖励，测试免费刷新、付费刷新、半价、重复叠加、准备时长及奖励 NPC 服务。",
+          "expected": "每类奖励的真实战斗/经济效果符合描述；扣费准确，不接入共享变异 roll。"
+        },
+        {
+          "id": "M_ZOMBIE_04",
+          "steps": "正常安全区、便携安全区中移动并主动攻击，离开后回圈；使用信标并测试中断。",
+          "expected": "主动攻击解除保护；两类安全区与商人生命周期一致；信标消耗/中断提示正确。"
+        },
+        {
+          "id": "M_ZOMBIE_05",
+          "steps": "从实际 UI 发起撤离，离圈取消，再留圈等自然倒计时；另测继续战斗、死亡和强退重进。",
+          "expected": "自动用例只覆盖事件与结算；本项证明自然倒计时可达，现金/保险/物品、回基地和清理正确。"
+        }
+      ]
+    },
+    {
+      "id": "CAMPAIGN",
+      "title": "鸭王征程六章",
+      "sources": [
+        "Campaign"
+      ],
+      "automatic": [
+        "DATA_CAMPAIGN_JSON",
+        "CAMPAIGN_FINAL_BOSS"
+      ],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_CAMPAIGN_01",
+          "steps": "在公告板领取第 1 章，走标准模式无伤目标与交付；缩小可选 Boss 池后再测。",
+          "expected": "目标数按可达 Boss 池处理；任务可完成；线索进笔记，交付剧情和奖励一次。"
+        },
+        {
+          "id": "M_CAMPAIGN_02",
+          "steps": "依次完成第 2/3/4/5 章对应 D/E/F/丧尸目标；每章测试失败再试和回基地交付。",
+          "expected": "模式 notify 漏斗真实推进正确章节；错误模式不计数；章节 token 与后山解锁逐步到位。"
+        },
+        {
+          "id": "M_CAMPAIGN_03",
+          "steps": "完成终章、观看立绘海报与对话；活动 G/H 时尝试开启终章，再退出后重试。",
+          "expected": "冠军之影流程结束并结算一次；活动模式互斥；中英文可读、章节不跳号。"
+        },
+        {
+          "id": "M_CAMPAIGN_04",
+          "steps": "接取后、目标完成后、交付后三处重启并换到另一专用测试槽。",
+          "expected": "进度和已领奖状态正确回读，跨槽不串；重复交付不重复给奖。"
+        }
+      ]
+    },
+    {
+      "id": "GARDEN",
+      "title": "后山菜地与出击餐",
+      "sources": [
+        "Integration/BackMountain"
+      ],
+      "automatic": [
+        "DATA_BACKMOUNTAIN",
+        "BACKMOUNTAIN_HARVEST_MAPPING",
+        "BACKMOUNTAIN_RAID_MEAL",
+        "BACKMOUNTAIN_UNLOCK_GATE"
+      ],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_GARDEN_01",
+          "steps": "用章节 token 逐步解锁，实际建菜地；三种种子各自种植、等待成熟、收获并制作/食用出击餐。",
+          "expected": "官方 Garden 三连入口可用；作物外观与产出对应；食用后下一局实际属性/减伤生效。"
+        },
+        {
+          "id": "M_GARDEN_02",
+          "steps": "餐后保存重启再进各支持模式；死亡、退局、切图后检查属性；尝试非餐物品。",
+          "expected": "餐的领取与消费一次；陌生 ID 不被吃；局后 Modifier 清净，不因官方 Buff 不跨图丢失。"
+        }
+      ]
+    },
+    {
+      "id": "SHOWCASE",
+      "title": "后山战利品登记簿与点唱机",
+      "sources": [
+        "Integration/BackMountain"
+      ],
+      "automatic": [
+        "BACKMOUNTAIN_SHOWCASE_LEDGER",
+        "BGM_OWNER_LEASES"
+      ],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_SHOWCASE_01",
+          "steps": "从基地实际展示柜登记、重复登记、移除战利品；重启回读；触发上限/未解锁入口。",
+          "expected": "登记不拿走实物；重复不叠加；加成、展示和回读一致，门禁有说明。"
+        },
+        {
+          "id": "M_SHOWCASE_02",
+          "steps": "打开点唱机选择每条 Mod 战歌，停止、换曲、切场景再返回。",
+          "expected": "曲目可见且可听；音量合理，不串音，退出后播放 owner 正确释放。"
+        }
+      ]
+    },
+    {
+      "id": "CODEX",
+      "title": "鸭皇图鉴",
+      "sources": [
+        "Integration/Codex"
+      ],
+      "automatic": [
+        "DATA_CODEX_CATALOG",
+        "DATA_CODEX_FILTER_REFRESH",
+        "CODEX_CODEC_ROUNDTRIP",
+        "CODEX_PERSISTENCE_READBACK"
+      ],
+      "wiki": [
+        "system__codex"
+      ],
+      "manual": [
+        {
+          "id": "M_CODEX_01",
+          "steps": "在真实商店购买图鉴书，使用后搜索/筛选/切页；到不同模式击杀官方与自定义 Boss 再打开。",
+          "expected": "书的产出与入口可达；击杀、解锁、立绘与页面及时更新；未解锁展示合理。"
+        },
+        {
+          "id": "M_CODEX_02",
+          "steps": "携带图鉴书重启、A/B 槽切换，关闭界面后立即打开其他模态页。",
+          "expected": "书不变 FallbackItem；各槽记录独立；重复开关无鼠标和输入锁泄漏。"
+        }
+      ]
+    },
+    {
+      "id": "AFFIX",
+      "title": "词缀锻造与熔石",
+      "sources": [
+        "Integration/AffixForge"
+      ],
+      "automatic": [
+        "AFFIX_TEMP_ITEM_LIFECYCLE",
+        "AFFIX_FORGE_REJECT_NO_COST",
+        "AFFIX_LOCK_PRESERVES_SLOT"
+      ],
+      "wiki": [
+        "system__affix_forge"
+      ],
+      "manual": [
+        {
+          "id": "M_AFFIX_01",
+          "steps": "叮当好感达门槛后从真实交互打开词缀锻造；从商店买熔石并战斗验证 Boss 掉落入口。",
+          "expected": "交互与商店接线可达；库存、好感门槛和掉落按当前配置，不把许愿台当熔石来源。"
+        },
+        {
+          "id": "M_AFFIX_02",
+          "steps": "有足额钱和熔石时真实锻造、锁槽、再次付费重掷；再测缺材料/钱不足/不可锻造物品。",
+          "expected": "成功扣费与词缀变化匹配，锁定槽不变；拒绝不扣费；自动锁槽回读不替代本项。"
+        },
+        {
+          "id": "M_AFFIX_03",
+          "steps": "带词缀装备实际攻击/受击/移动，换手、卸装、丢弃、跨图、死亡、重启并交给 NPC。",
+          "expected": "实际效果按词缀触发且不重复叠加；未使用物品不启动重工作；与重铸互不重复计数。"
+        }
+      ]
+    },
+    {
+      "id": "REFORGE",
+      "title": "重铸",
+      "sources": [
+        "Integration/Reforge"
+      ],
+      "automatic": [],
+      "wiki": [
+        "system__reforge_and_achievements"
+      ],
+      "manual": [
+        {
+          "id": "M_REFORGE_01",
+          "steps": "叮当处对枪、近战、护甲、图腾分别重铸，测试确认取消、余额不足和效果锁定。",
+          "expected": "成功只扣一次且统计/实际属性同步；拒绝不扣，费用显示与账单一致。"
+        },
+        {
+          "id": "M_REFORGE_02",
+          "steps": "重铸后装备、仓储、寄存、重启，再次重铸；与 AFX 词缀同时存在。",
+          "expected": "KV 持久化、图标/说明与实际加成一致；运行时键不误当重铸词条，卸装还原。"
+        }
+      ]
+    },
+    {
+      "id": "RANDOM",
+      "title": "八种局内随机事件",
+      "sources": [
+        "RandomEvents"
+      ],
+      "automatic": [
+        "RANDOM_EVENTS_ALL",
+        "RANDOM_EVENT_*"
+      ],
+      "wiki": [
+        "system__random_events"
+      ],
+      "manual": [
+        {
+          "id": "M_RANDOM_01",
+          "steps": "在允许模式自然等待触发八种事件；分别实际拾取空投/金鸭、与商人交易、承受血月并打乱入 Boss。",
+          "expected": "自然调度可达；玩家可操作产出、伤害/奖励与提示吻合；调试触发成功不替代交互验证。"
+        },
+        {
+          "id": "M_RANDOM_02",
+          "steps": "每类事件运行时结束本局、切图或关闭事件开关，随后重开。",
+          "expected": "临时敌人、商人、特效、修正回收；波次与结算不被事件破坏，无重复奖励。"
+        }
+      ]
+    },
+    {
+      "id": "PETNEST",
+      "title": "遗种巢",
+      "sources": [
+        "PetNest"
+      ],
+      "automatic": [
+        "PETNEST_BUNDLE_V2",
+        "PETNEST_REWARD_DEBT"
+      ],
+      "wiki": [
+        "system__pet_nest"
+      ],
+      "manual": [
+        {
+          "id": "M_PETNEST_01",
+          "steps": "首次冷启动获取蛋，建巢并孵化；逐种可选幼崽领养/换装、带入战斗。",
+          "expected": "蛋产出、初次 Bundle、孵化计时和伴侣模型完整；无首次使用长卡顿。"
+        },
+        {
+          "id": "M_PETNEST_02",
+          "steps": "伴侣攻击、倒地、复活、召回、跨图；换槽和重启后再召唤。",
+          "expected": "队伍与伤害归属正确；NPC 不误作敌人；无重复伴侣和悬挂订阅。"
+        },
+        {
+          "id": "M_PETNEST_03",
+          "steps": "派出远征并领取奖励，测试背包满、部分成功、再次领取和领取间重启。",
+          "expected": "奖励债务只补未发部分；不丢不复制；远征和蛋掉落 hooks 局后清理。"
+        }
+      ]
+    },
+    {
+      "id": "DAILY",
+      "title": "日报与签到",
+      "sources": [
+        "Integration/DailyReport"
+      ],
+      "automatic": [
+        "DAILY_REPORT_ROLLBACK"
+      ],
+      "wiki": [
+        "system__daily_report"
+      ],
+      "manual": [
+        {
+          "id": "M_DAILY_01",
+          "steps": "从基地报箱开报纸，阅读各页、签到，重复点击；跨游戏日后再读。",
+          "expected": "新日、未读、奖励梯度和文案正确；重复签到不发奖，实际 UI 不只是后台可调用。"
+        },
+        {
+          "id": "M_DAILY_02",
+          "steps": "A 槽签到后到 B 槽，再回 A；保存重启；切换相关显示/调试配置。",
+          "expected": "各槽游戏日和已领记录独立；开关变化不抹进度，不造成重复日报建筑。"
+        }
+      ]
+    },
+    {
+      "id": "GOBLIN",
+      "title": "叮当服务与对话",
+      "sources": [
+        "Integration/NPCs/Goblin"
+      ],
+      "automatic": [],
+      "wiki": [
+        "npc__goblin"
+      ],
+      "manual": [
+        {
+          "id": "M_GOBLIN_01",
+          "steps": "找到叮当，逐个打开当前可见的商店、重铸、词缀锻造、聊天、送礼与其他子交互；拒绝后重开。",
+          "expected": "所有分组子交互实际挂接；门槛与价格说明正确；取消不锁交互，不重复开页。"
+        }
+      ]
+    },
+    {
+      "id": "NURSE",
+      "title": "羽织医疗与服务",
+      "sources": [
+        "Integration/NPCs/Nurse"
+      ],
+      "automatic": [],
+      "wiki": [
+        "npc__nurse"
+      ],
+      "manual": [
+        {
+          "id": "M_NURSE_01",
+          "steps": "受伤后接受治疗、打开商店与日常对话；测试钱不足、满血及不同好感等级。",
+          "expected": "医疗真实恢复且按规则扣费；拒绝有说明；跟随/临时 NPC 形态不丢服务入口。"
+        }
+      ]
+    },
+    {
+      "id": "COURIER",
+      "title": "阿稳快递、寄存与扫箱",
+      "sources": [
+        "Integration/NPCs/Courier",
+        "LootAndRewards"
+      ],
+      "automatic": [],
+      "wiki": [
+        "npc__courier"
+      ],
+      "manual": [
+        {
+          "id": "M_COURIER_01",
+          "steps": "携带普通、锁定、穿戴、宠物背包和带词缀物品，逐一寄存/取回/一键快递；重启再取。",
+          "expected": "实例与附件完整；锁定格按规则跳过；运费一致，不复制、不漏件。"
+        },
+        {
+          "id": "M_COURIER_02",
+          "steps": "满背包/满仓和钱不足时快递与取回；在 E/F 积累击杀获取扫箱令并使用，同时测试付费扫箱。",
+          "expected": "拒绝与部分交付保留剩余物品；按现有箱子收费，重复点击不重复扣费，代收箱可打开。"
+        }
+      ]
+    },
+    {
+      "id": "RELATIONSHIP",
+      "title": "好感、送礼、婚礼与配偶",
+      "sources": [
+        "Integration/Affinity",
+        "Integration/Dialogue",
+        "Integration/Wedding",
+        "Integration/NPCs/Common"
+      ],
+      "automatic": [],
+      "wiki": [
+        "npc__affinity_and_marriage"
+      ],
+      "manual": [
+        {
+          "id": "M_RELATIONSHIP_01",
+          "steps": "对支持好感的 NPC 聊天、送喜欢/普通/讨厌礼物及戒指，测试每日限制、等级变化与拒收。",
+          "expected": "消耗和好感准确；文本立绘正确；领取日礼、等级门槛与存档一致。"
+        },
+        {
+          "id": "M_RELATIONSHIP_02",
+          "steps": "满足条件建教堂求婚、看婚礼并重播；测试缺戒指/未解锁/已有配偶情况。",
+          "expected": "条件拒绝不扣错物品；婚礼/对话 fallback 完整，唯一配偶与纪念日正确保存。"
+        },
+        {
+          "id": "M_RELATIONSHIP_03",
+          "steps": "婚后跟随、回家、切图、死亡、好感跌破门槛、存档重启；检查婚后每日礼物。",
+          "expected": "跟随状态和居所恢复，礼物每日一次；镜头、输入、NPC 实例清理，无重复配偶。"
+        }
+      ]
+    },
+    {
+      "id": "WISH",
+      "title": "星愿许愿台",
+      "sources": [
+        "Integration/WishFountain"
+      ],
+      "automatic": [],
+      "wiki": [
+        "system__wish_fountain"
+      ],
+      "manual": [
+        {
+          "id": "M_WISH_01",
+          "steps": "建造后实际许愿，测试足额/不足、取消、背包满、动画中退出与连续许愿。",
+          "expected": "费用、奖品与显示一致；满包 fallback 不丢奖；Special 排除，动画/输入正常释放。"
+        }
+      ]
+    },
+    {
+      "id": "WRAITH",
+      "title": "死亡亡魂",
+      "sources": [
+        "Integration/DeathWraith"
+      ],
+      "automatic": [],
+      "wiki": [
+        "system__death_wraith"
+      ],
+      "manual": [
+        {
+          "id": "M_WRAITH_01",
+          "steps": "在支持场景死亡，再进入寻找并击败亡魂回收；另测未回收再次死亡和重启。",
+          "expected": "记录与掉落对应正确死亡事件；回收一次，不复制；亡魂敌对且可击杀，无跨槽串物。"
+        }
+      ]
+    },
+    {
+      "id": "REWARDS",
+      "title": "掉落、奖励与通用物品",
+      "sources": [
+        "LootAndRewards",
+        "Integration/Items",
+        "Integration/Bonus"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL",
+        "ITEM_FACTORY_*"
+      ],
+      "wiki": [
+        "system__rewards_and_loot",
+        "item__key_items",
+        "item__npc_items",
+        "item__consumables"
+      ],
+      "manual": [
+        {
+          "id": "M_REWARDS_01",
+          "steps": "从真实商店、Boss 和奖励箱逐类获得通用/功能/消耗品，使用、堆叠、交易和存档重启。",
+          "expected": "获得途径可达；数量、冷却、实际效果和本地化正确；不同 TypeID 不串，存档不变 FallbackItem。"
+        },
+        {
+          "id": "M_REWARDS_02",
+          "steps": "胜利/失败/退出各路径观察奖励箱和掉落；宠物拾取、扫箱期间再掉落，满背包下领取。",
+          "expected": "奖励归属和次数正确；箱子可交互；满包保留可领取物，退出无漏箱与残留追踪。"
+        }
+      ]
+    },
+    {
+      "id": "ACHIEVEMENTS",
+      "title": "成就",
+      "sources": [
+        "Achievement"
+      ],
+      "automatic": [],
+      "wiki": [
+        "system__achievements_list"
+      ],
+      "manual": [
+        {
+          "id": "M_ACHIEVEMENTS_01",
+          "steps": "逐类触发战斗、无伤、累计、装备收集、模式及图鉴成就；检查提示、页面、奖金。",
+          "expected": "按当前成就目录的条件解锁；特殊 Boss 复活不提前计击杀；解锁与奖金仅一次。"
+        },
+        {
+          "id": "M_ACHIEVEMENTS_02",
+          "steps": "受伤局后再开无伤局；解锁时保存重启、A/B 槽切换，并重复满足同一成就。",
+          "expected": "无伤/累计作用域正确；每槽进度隔离；已领取记录不重复发钱。"
+        }
+      ]
+    },
+    {
+      "id": "MUTATORS",
+      "title": "共享变异词条",
+      "sources": [
+        "Integration/Mutators"
+      ],
+      "automatic": [],
+      "wiki": [
+        "system__mutators"
+      ],
+      "manual": [
+        {
+          "id": "M_MUTATORS_01",
+          "steps": "按当前变异目录逐类触发，实际攻击/受击/死亡验证效果，并组合两个可叠加词条。",
+          "expected": "效果与描述和触发者一致；无 loot 类变异；丧尸模式不参与共享 roll。"
+        },
+        {
+          "id": "M_MUTATORS_02",
+          "steps": "携带词条结束、取消、死亡和切图，再打一局；关闭再开开关。",
+          "expected": "Modifier、生成物和死亡回调按 owner 清理，默认开关与旧配置处理正确。"
+        }
+      ]
+    },
+    {
+      "id": "FILTER_WIKI",
+      "title": "Boss 筛选与游戏内 Wiki",
+      "sources": [
+        "BossFilter",
+        "WikiContent"
+      ],
+      "automatic": [
+        "DATA_CODEX_FILTER_REFRESH"
+      ],
+      "wiki": [
+        "system__boss_filter_and_wiki"
+      ],
+      "manual": [
+        {
+          "id": "M_FILTER_WIKI_01",
+          "steps": "筛选全部/无/仅特殊 Boss，搜索与翻页后开局；使用游戏内 Wiki 打开所有目录页和外链。",
+          "expected": "实际 Boss 池与选择一致，空池有合法处理；Wiki 内容可读、索引不丢页，退出输入恢复。"
+        }
+      ]
+    },
+    {
+      "id": "CONFIG_UI",
+      "title": "配置、本地化与通用界面",
+      "sources": [
+        "Config",
+        "ModConfigApi.cs",
+        "Localization",
+        "UIAndSigns",
+        "Common/UI",
+        "Integration/UI"
+      ],
+      "automatic": [
+        "UI_IDEMPOTENT_CLEANUP"
+      ],
+      "wiki": [
+        "config__overview"
+      ],
+      "manual": [
+        {
+          "id": "M_CONFIG_UI_01",
+          "steps": "中文/英文各遍历模式、背包、NPC、奖励、任务、图鉴、日报和 F3；1080p/高分屏及窗口缩放。",
+          "expected": "无 *BossRush_* 占位；字体完整；按钮可点击，长文本、层级、遮罩和滚动不溢出。"
+        },
+        {
+          "id": "M_CONFIG_UI_02",
+          "steps": "打开模态 A 后打开 B，Esc/取消/确认反复切换；弹窗时切图、死亡、回菜单。",
+          "expected": "相机/鼠标/移动控制在最后租约释放后恢复，不透点、不残留遮罩。"
+        },
+        {
+          "id": "M_CONFIG_UI_03",
+          "steps": "通过 ModConfig 改各类旋钮，保存、重启；使用一份旧版测试配置加载，测试不可用配置值。",
+          "expected": "即时/下局生效口径符合说明；内容恒开项不暴露开关；旧键兼容，不悄然覆盖玩家设置。"
+        }
+      ]
+    },
+    {
+      "id": "AUDIO",
+      "title": "战斗 BGM、音效与资源 fallback",
+      "sources": [
+        "Audio",
+        "Assets"
+      ],
+      "automatic": [
+        "BGM_OWNER_LEASES"
+      ],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_AUDIO_01",
+          "steps": "龙裔、女巫和龙王实战分别听入场、循环、转阶段、胜负短音；调整游戏音量。",
+          "expected": "各自音轨可听且不盖枪声；龙王保留既有曲目路径；Boss 死亡/换局不串音。"
+        },
+        {
+          "id": "M_AUDIO_02",
+          "steps": "在隔离安装副本缺少可选皮肤/音频资源时启动，并打开相关界面。",
+          "expected": "按约定回退，错误有日志；无永久黑屏或空白 UI；正式安装资源不被测试修改。"
+        }
+      ]
+    },
+    {
+      "id": "EASTER",
+      "title": "彩蛋",
+      "sources": [
+        "DebugAndTools"
+      ],
+      "automatic": [],
+      "wiki": [
+        "easter__kunkun"
+      ],
+      "manual": [
+        {
+          "id": "M_EASTER_01",
+          "steps": "按当前彩蛋说明在支持场景触发、结束，再切图重试。",
+          "expected": "触发条件、表现和奖励正确；不吞输入，不污染场景和正常掉落。"
+        }
+      ]
+    },
+    {
+      "id": "DRAGON_DESCENDANT",
+      "title": "龙裔遗族",
+      "sources": [
+        "Integration/DragonDescendant"
+      ],
+      "automatic": [],
+      "wiki": [
+        "boss__dragon_descendant"
+      ],
+      "manual": [
+        {
+          "id": "M_DRAGON_DESCENDANT_01",
+          "steps": "打一阶段至首次致命伤，观察复活，火焰伤害与冰伤减速，再完成二阶段循环和最终击杀。",
+          "expected": "复活只一次；转阶段无敌与伤害转换正确；直线弹、冲刺、扇扫可见可躲，掉落/计数最终死亡才触发。"
+        },
+        {
+          "id": "M_DRAGON_DESCENDANT_02",
+          "steps": "战斗中跑远、暂停再继续、死亡/放弃后重开；在该 Boss 被允许的其他模式再生成。",
+          "expected": "Boss 不休眠卡住；AI/队伍/伤害归属正确；组件与音效不跨局残留。"
+        }
+      ]
+    },
+    {
+      "id": "DRAGON_KING",
+      "title": "焚天龙皇",
+      "sources": [
+        "Integration/DragonKing"
+      ],
+      "automatic": [],
+      "wiki": [
+        "boss__dragon_king"
+      ],
+      "manual": [
+        {
+          "id": "M_DRAGON_KING_01",
+          "steps": "打穿双阶段并观察全部技能与预警；触发孩儿护我后先击杀召唤龙裔，再结算龙皇。",
+          "expected": "悬浮、冲锋/二连冲锋、光束、弹幕、枪阵和召唤按状态推进；无敌可结束；唯一死亡与掉落。"
+        },
+        {
+          "id": "M_DRAGON_KING_02",
+          "steps": "战斗中跑远、暂停再继续、死亡/放弃后重开；在该 Boss 被允许的其他模式再生成。",
+          "expected": "Boss 不休眠卡住；AI/队伍/伤害归属正确；组件与音效不跨局残留。"
+        }
+      ]
+    },
+    {
+      "id": "PHANTOM_WITCH",
+      "title": "幽灵女巫",
+      "sources": [
+        "Integration/PhantomWitch"
+      ],
+      "automatic": [],
+      "wiki": [
+        "boss__phantom_witch"
+      ],
+      "manual": [
+        {
+          "id": "M_PHANTOM_WITCH_01",
+          "steps": "实际打完女巫三阶段，观察闪现/隐身、诅咒领域、镰刀横扫、亡灵召唤与最终死亡。",
+          "expected": "各技能的命中、目标与显示吻合；退场后召唤物/特效/音频清空，奖励和图鉴计数一次。"
+        },
+        {
+          "id": "M_PHANTOM_WITCH_02",
+          "steps": "战斗中跑远、暂停再继续、死亡/放弃后重开；在该 Boss 被允许的其他模式再生成。",
+          "expected": "Boss 不休眠卡住；AI/队伍/伤害归属正确；组件与音效不跨局残留。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_PHANTOM_SCYTHE",
+      "title": "噬魂挽歌",
+      "sources": [
+        "Integration/PhantomWitch"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__phantom_scythe"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_PHANTOM_SCYTHE_01",
+          "steps": "普攻触发诅咒叠层/到期，右键释放挽歌领域；核对体力、冷却与持械移速；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_PHANTOM_SCYTHE_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_DRAGON_SET",
+      "title": "龙裔套装",
+      "sources": [
+        "Integration/DragonDescendant"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__dragon_set"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_DRAGON_SET_01",
+          "steps": "分别穿单件和整套，接受火焰/普通伤害，对比免疫、回血与套装加成，并使用龙裔冲刺；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_DRAGON_SET_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_DRAGON_KING_SET",
+      "title": "龙王套装",
+      "sources": [
+        "Integration/DragonKing"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__dragon_king_set"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_DRAGON_KING_SET_01",
+          "steps": "单件与整套测试免疫、火焰回血、属性加成和套装联动；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_DRAGON_KING_SET_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_FLIGHT_TOTEM",
+      "title": "腾云驾雾",
+      "sources": [
+        "Integration/FlightTotem"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__flight_totem"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_FLIGHT_TOTEM_01",
+          "steps": "装备并使用飞行/位移，测试高低地形、障碍与落地，以及不支持场景；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_FLIGHT_TOTEM_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_REVERSE_SCALE",
+      "title": "逆鳞",
+      "sources": [
+        "Integration/ReverseScale"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__reverse_scale"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_REVERSE_SCALE_01",
+          "steps": "受到致死伤害触发保命回血、八向反击弹与短暂无敌，验证图腾消耗后不能再次保命；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_REVERSE_SCALE_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_HALBERD",
+      "title": "焚皇断界戟",
+      "sources": [
+        "Integration/DragonKing"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__halberd"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_HALBERD_01",
+          "steps": "打出三段连击、叠满龙焰印记，并右键释放龙皇裂地，测试单目标/多目标/墙体；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_HALBERD_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_DRAGON_BREATH",
+      "title": "龙息",
+      "sources": [
+        "Integration/DragonDescendant"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__dragon_breath"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_DRAGON_BREATH_01",
+          "steps": "装填支持弹药、连射/换弹/空弹，观察燃烧与枪械加成；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_DRAGON_BREATH_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_DRAGON_CANNON",
+      "title": "焚天龙铳",
+      "sources": [
+        "Integration/DragonKing"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__dragon_cannon"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_DRAGON_CANNON_01",
+          "steps": "对全部支持弹种分别装填、开火、换弹；更换弹匣/配件与容量，测试缩放和碰撞；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_DRAGON_CANNON_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_FROSTMOURNE",
+      "title": "霜之哀伤",
+      "sources": [
+        "Integration/Frostmourne"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__frostmourne"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_FROSTMOURNE_01",
+          "steps": "普攻触发 Cold 与自身寒冷防护，右键召唤亡灵，观察阵营、死亡无箱、体力与冷却；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_FROSTMOURNE_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_VIPER_DAGGER",
+      "title": "毒蛇匕首",
+      "sources": [
+        "Integration/NewWeapons/ViperDagger"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__viper_dagger"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_VIPER_DAGGER_01",
+          "steps": "普攻/连续命中施毒，观察持续伤害、叠层和到期，击杀后更换目标；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_VIPER_DAGGER_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_SUMMON_STAFF",
+      "title": "召唤法杖",
+      "sources": [
+        "Integration/NewWeapons/SummonStaff"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__summon_staff"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_SUMMON_STAFF_01",
+          "steps": "右键召唤灵魂战士，观察自动追敌、数量上限、击杀归属、死亡和存活时间到期回收；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_SUMMON_STAFF_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_ENERGY_SHIELD",
+      "title": "能量盾",
+      "sources": [
+        "Integration/NewWeapons/EnergyShield"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__energy_shield"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_ENERGY_SHIELD_01",
+          "steps": "穿戴后受到正面/侧面/背面伤害与连续攻击，核对正面受击回血比例、单次上限与冷却；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_ENERGY_SHIELD_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_FROST_SPEAR",
+      "title": "冰霜长矛",
+      "sources": [
+        "Integration/NewWeapons/FrostSpear"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__frost_spear"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_FROST_SPEAR_01",
+          "steps": "普通攻击验证冰属性与每次命中 Cold 效果、自身寒冷防护，比较普通敌人/Boss/免疫目标；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_FROST_SPEAR_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_THUNDER_RING",
+      "title": "雷电戒指",
+      "sources": [
+        "Integration/NewWeapons/ThunderRing"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__thunder_ring"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_THUNDER_RING_01",
+          "steps": "连续受击蓄至满层，以近战命中释放雷伤；测试蓄层冷却、超时清空以及一次释放不递归重触发；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_THUNDER_RING_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_FROST_SET",
+      "title": "霜冠套装",
+      "sources": [
+        "Common/Equipment"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__frost_set"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_FROST_SET_01",
+          "steps": "分别穿单件和整套，触发冰伤/防御相关效果，叠加霜之哀伤或冰霜长矛；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_FROST_SET_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "EQ_THUNDER_SET",
+      "title": "雷神套装",
+      "sources": [
+        "Common/Equipment"
+      ],
+      "automatic": [
+        "ITEM_FACTORY_ALL"
+      ],
+      "wiki": [
+        "equipment__thunder_set"
+      ],
+      "manual": [
+        {
+          "id": "M_EQ_THUNDER_SET_01",
+          "steps": "分别穿单件和整套，触发雷电效果，叠加雷电戒指并更换部件；以当前游戏说明与 Config 为数值基线，记录目标生命/属性变化。开发预览装备仅用 F2 授予测试，并记录其尚无常规获取途径。",
+          "expected": "实际伤害、状态、触发次数、弹药消耗、冷却、模型和特效符合说明；无误伤或无限叠加。"
+        },
+        {
+          "id": "M_EQ_THUNDER_SET_02",
+          "steps": "对该装备依次换手、卸下、背包闲置、交 NPC、入仓、重新装备、跨图、死亡和重启；首次装备立刻使用。",
+          "expected": "未使用时不扫描/预热；实际使用效果完整，卸载后修正和异步任务取消；存档属性/附件/词缀保持。"
+        }
+      ]
+    },
+    {
+      "id": "RUNTIME",
+      "title": "跨系统稳定性、清场、存档与验收器",
+      "sources": [
+        "Utilities",
+        "Patches",
+        "Common/Data",
+        "Common/Effects",
+        "Common/Events",
+        "Common/Infrastructure",
+        "Common/Lifecycle",
+        "Common/MapConfig",
+        "Common/Stats",
+        "Common/Utils",
+        "Integration/Utils",
+        "Integration/NewWeapons/Common"
+      ],
+      "automatic": [
+        "ARENA_READY",
+        "BASELINE_10S",
+        "BASE_READY_FINAL",
+        "CLEANUP_AFTER_CAMPAIGN_FINAL",
+        "CLEANUP_AFTER_MODE_D",
+        "CLEANUP_AFTER_MODE_D_MULTI",
+        "CLEANUP_AFTER_MODE_E",
+        "CLEANUP_AFTER_MODE_E_EXTRACTION",
+        "CLEANUP_AFTER_MODE_F",
+        "CLEANUP_AFTER_MODE_F_BOUNTY",
+        "CLEANUP_AFTER_MODE_F_EXTRACTION",
+        "CLEANUP_AFTER_MODE_G",
+        "CLEANUP_AFTER_MODE_H_CACHE",
+        "CLEANUP_AFTER_MODE_H_FIRST",
+        "CLEANUP_AFTER_STANDARD",
+        "CLEANUP_AFTER_VICTORY_REWARD",
+        "CLEANUP_AFTER_ZOMBIE",
+        "CLEANUP_AFTER_ZOMBIE_EXTRACTION",
+        "COVERAGE_MANIFEST",
+        "FINAL_5S",
+        "FINAL_CLEAN_STATE",
+        "FINAL_LEAK_DELTA",
+        "FINAL_SAVE_READBACK",
+        "SCENE_CLICK_GATE",
+        "SCENE_CLICK_GATE_ENTER",
+        "SCENE_CLICK_GATE_READY",
+        "SCENE_ENTER_ARENA",
+        "SCENE_RETURN_BASE"
+      ],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_RUNTIME_01",
+          "steps": "连续轮换全部模式三轮；一轮正常结束、一轮中途取消、一轮在加载阶段退出重进；保留每轮日志。",
+          "expected": "没有黑屏、无响应和异常刷屏；下一轮照常开局；敌人、事件、音频、输入 owner 回到基线。"
+        },
+        {
+          "id": "M_RUNTIME_02",
+          "steps": "以当前已安装的兼容 Mod 组合测试密集击杀、死亡、切图和 UI 叠加；再用干净测试配置对照。",
+          "expected": "关键 Harmony/反射绑定可用；保持原 Mod 文件不变；若只在组合中失败，记录组合及首次异常栈。"
+        },
+        {
+          "id": "M_RUNTIME_03",
+          "steps": "冷启动与连续游玩分别记录进场、装备首用、Boss 满技能和高密度波的帧时与内存。",
+          "expected": "没有持续增长的残留；性能门槛只作诊断，不靠削弱技能/刷怪换性能。"
+        },
+        {
+          "id": "M_RUNTIME_04",
+          "steps": "在专用档 F3 自动验收中途取消、超时/失败后查看日志与 coverage.md；重新跑一轮。",
+          "expected": "未执行显示 NOT_RUN/SKIP，人工显示 MANUAL_PENDING；失败不会被后续 PASS 覆盖；再跑不继承旧结果。"
+        }
+      ]
+    }
+  ]
+}

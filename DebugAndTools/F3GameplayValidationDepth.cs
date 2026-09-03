@@ -39,6 +39,9 @@ namespace BossRush
             yield return RunIsolatedCase("MODE_F_EXTRACTION", RunModeFExtraction);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_MODE_F_EXTRACTION");
 
+            yield return RunIsolatedCase("MODE_ZOMBIE_EXTRACTION", RunZombieExtraction);
+            yield return VerifyArenaCleanup("CLEANUP_AFTER_ZOMBIE_EXTRACTION");
+
             yield return RunIsolatedCase("STANDARD_VICTORY_REWARD", RunStandardVictoryReward);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_VICTORY_REWARD");
 
@@ -80,9 +83,21 @@ namespace BossRush
                 firstWave = _host.ModeDWaveIndex;
                 firstPlayable = _host.ValidationCountPlayableModeDEnemies(out firstDetails);
 
-                // 清掉第一波：走 Health.Kill 让 Mode D 的死亡记账正常收尾，
+                // 清掉第一波：走 Health.Hurt 让 Mode D 的死亡记账正常收尾，
                 // 这样波次完成条件（无存活敌人 + 生成全部结案）才会真实达成。
-                _host.ValidationForceClearArenaEnemies();
+                bool defeated = false;
+                string defeatReason = null;
+                yield return _host.ValidationDefeatModeDWave(delegate(bool success, string reason)
+                {
+                    defeated = success;
+                    defeatReason = reason;
+                });
+                if (!defeated)
+                {
+                    Record("MODE_D_MULTI_WAVE", "FAIL", sw.ElapsedMilliseconds,
+                        "wave=" + firstWave + ",first_details=" + firstDetails, defeatReason);
+                    yield break;
+                }
 
                 // 等波次结算。给足时间：掉落结算与自动开波协程都是异步的。
                 float deadline = Time.realtimeSinceStartup + 12f;
@@ -107,6 +122,13 @@ namespace BossRush
 
                 secondWave = _host.ModeDWaveIndex;
                 secondPlayable = _host.ValidationCountPlayableModeDEnemies(out secondDetails);
+                // 波次编号先增加，角色异步生成；自动开波也必须等到可玩的登记对象。
+                float nextWaveDeadline = Time.realtimeSinceStartup + 8f;
+                while (advanced && secondPlayable == 0 && Time.realtimeSinceStartup < nextWaveDeadline && !ShouldAbort())
+                {
+                    yield return null;
+                    secondPlayable = _host.ValidationCountPlayableModeDEnemies(out secondDetails);
+                }
 
                 bool passed = advanced && firstPlayable > 0 && secondPlayable > 0;
                 Record("MODE_D_MULTI_WAVE", passed ? "PASS" : "FAIL", sw.ElapsedMilliseconds,

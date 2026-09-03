@@ -134,21 +134,26 @@ namespace BossRush
                 }
 
                 string triggerReason;
+                int completedBefore = _host.ModeFSuccessfulExtractionCountForValidation;
                 bool triggered = _host.DebugTriggerModeFExtractionForValidation(out triggerReason);
 
-                bool resolved = false;
-                deadline = Time.realtimeSinceStartup + 15f;
+                bool resolved = _host.ModeFSuccessfulExtractionCountForValidation != completedBefore;
+                bool returnedToBase = false;
+                deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
                 while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
                 {
-                    if (_host.ModeFExtractionResolvedForValidation) { resolved = true; break; }
+                    if (IsRuntimeReady(BaseSceneNameForValidation())) { returnedToBase = true; break; }
+                    if (!triggered || !resolved) break;
                     yield return null;
                 }
 
-                bool passed = triggered && resolved;
+                bool passed = triggered && resolved && !_host.IsModeFActive && returnedToBase;
                 Record("MODE_F_EXTRACTION", passed ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                     "phase=" + phase + ",spawned=true,triggered=" + triggered
-                        + ",resolved=" + resolved + ",still_active=" + _host.IsModeFActive,
-                    passed ? string.Empty : (triggerReason ?? "extraction_not_resolved"));
+                        + ",resolved=" + resolved + ",still_active=" + _host.IsModeFActive
+                        + ",base_ready=" + returnedToBase,
+                    passed ? string.Empty : (triggerReason ?? (!resolved
+                        ? "extraction_not_resolved" : "extraction_base_not_ready")));
             }
             finally
             {
@@ -215,24 +220,29 @@ namespace BossRush
                     yield break;
                 }
 
-                // 等 Boss 真正生成，否则清场会清到空场，胜利判定不会被触发。
+                // 官方创建期间角色就能被全场扫描找到，必须等生产路径登记 currentBoss 后再击杀。
                 int spawned = 0;
-                string spawnDetails = string.Empty;
                 float deadline = Time.realtimeSinceStartup + 20f;
                 while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
                 {
-                    spawned = _host.ValidationCountHostileCharacters(out spawnDetails);
+                    spawned = _host.ValidationGetCommittedStandardBoss() != null ? 1 : 0;
                     if (spawned > 0) break;
                     yield return null;
                 }
                 if (spawned <= 0)
                 {
                     Record("STANDARD_VICTORY_REWARD", "FAIL", sw.ElapsedMilliseconds,
-                        "spawned=0,details=" + spawnDetails, "boss_never_spawned");
+                        "spawned=0", "boss_never_committed");
                     yield break;
                 }
 
-                _host.ValidationForceClearArenaEnemies();
+                string killReason;
+                if (!_host.ValidationKillCommittedStandardBoss(out killReason))
+                {
+                    Record("STANDARD_VICTORY_REWARD", "FAIL", sw.ElapsedMilliseconds,
+                        "spawned=" + spawned, killReason);
+                    yield break;
+                }
 
                 bool victory = false;
                 deadline = Time.realtimeSinceStartup + 25f;

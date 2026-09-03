@@ -24,8 +24,8 @@ namespace BossRush
             GameObject section = CreateF3Section(
                 L10n.T("完整玩法验收", "Full Gameplay Validation"),
                 L10n.T(
-                    "仅限 Dev 构建、基地场景和已明确标记的专用测试档。会切图、生成敌人、推进并保存测试档状态；结束后保留测试档和独立报告。",
-                    "Dev build only. Requires the base scene and an explicitly marked test save. It changes and saves that test slot."),
+                    "仅限 Dev 构建、基地和专用测试档。会切图、推进并保存测试档。自动验收同时生成完整人工清单；自动 PASS 不代表所有功能已验收。",
+                    "Dev build, base scene and marked test save required. Changes and saves that slot. Includes a manual checklist; automatic PASS does not mean full coverage."),
                 font);
 
             f3GameplayValidationStatusText = CreateLabel(
@@ -39,7 +39,7 @@ namespace BossRush
 
             GameObject row2 = CreateF3Row(section.transform);
             CreateActionButton(row2.transform, font,
-                L10n.T("完整玩法验收（25–45 分钟）", "Full Validation (25-45 min)"),
+                L10n.T("自动验收 + 完整待测清单", "Auto Validation + Full Checklist"),
                 new Color(0.22f, 0.44f, 0.28f, 1f), StartFullGameplayValidationFromF3);
             CreateActionButton(row2.transform, font,
                 L10n.T("取消并安全清理", "Cancel and Safe Cleanup"),
@@ -424,6 +424,8 @@ namespace BossRush
             ResetLeakBaselines();
             Directory.CreateDirectory(Path.GetDirectoryName(_reportPath));
             WriteRaw("BossRush 完整玩法验收 | runId=" + _runId + " | UTC=" + DateTime.UtcNow.ToString("O"));
+            WriteRaw("BUILD | mvid=" + typeof(ModBehaviour).Module.ModuleVersionId);
+            RunSyncCase("COVERAGE_MANIFEST", InitializeCoverage);
 
             if (!WriteRunMarker())
             {
@@ -450,6 +452,7 @@ namespace BossRush
                 RunSyncCase("PETNEST_REWARD_DEBT", ValidatePetNestRewardDebt);
                 RunSyncCase("AFFIX_TEMP_ITEM_LIFECYCLE", ValidateAffixTemporaryItem);
                 RunSyncCase("UI_IDEMPOTENT_CLEANUP", ValidateUiCleanup);
+                yield return RunPublishedItemCases();
 
                 SetStage("3/7 后山与经济");
                 yield return RunBaseEconomyCases();
@@ -470,12 +473,25 @@ namespace BossRush
 
                 SetStage("7/7 最终清场、泄漏与回读");
                 _host.ValidationSafeCleanup();
-                yield return LoadScene(BaseSceneNameForValidation(), "SCENE_RETURN_BASE");
-                if (_operationSucceeded) yield return WaitSceneSettled("BASE_READY_FINAL", 2f);
-                yield return SamplePerformance("FINAL_5S", 5f, false);
-                RunSyncCase("FINAL_CLEAN_STATE", ValidateFinalCleanState);
-                RunSyncCase("FINAL_LEAK_DELTA", ValidateSuiteLeakDelta);
-                RunSyncCase("FINAL_SAVE_READBACK", ValidateFinalSaveReadback);
+                yield return LoadScene(null, "SCENE_RETURN_BASE", returnToBase: true);
+                if (_operationSucceeded)
+                {
+                    yield return WaitRuntimeReady("BASE_READY_FINAL", SceneTimeoutSeconds,
+                        BaseSceneNameForValidation(), true);
+                }
+                else Record("BASE_READY_FINAL", "SKIP", 0L, string.Empty, "base_scene_load_failed");
+                if (_operationSucceeded)
+                {
+                    yield return SamplePerformance("FINAL_5S", 5f, false);
+                    RunSyncCase("FINAL_CLEAN_STATE", ValidateFinalCleanState);
+                    RunSyncCase("FINAL_LEAK_DELTA", ValidateSuiteLeakDelta);
+                    RunSyncCase("FINAL_SAVE_READBACK", ValidateFinalSaveReadback);
+                }
+                else
+                {
+                    foreach (string id in new[] { "FINAL_5S", "FINAL_CLEAN_STATE", "FINAL_LEAK_DELTA", "FINAL_SAVE_READBACK" })
+                        Record(id, "SKIP", 0L, string.Empty, "base_runtime_not_ready");
+                }
             }
             finally
             {
@@ -526,132 +542,6 @@ namespace BossRush
                 Record(caseId, "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
             else
                 Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, "超过性能阈值");
-        }
-
-        /// <summary>
-        /// 切场景。clickToContinue 透传给官方 SceneLoader 的同名形参（注意官方拼写是
-        /// clickToConinue）：为 true 时加载完成后会停在「点击继续」，等
-        /// SceneLoader.NotifyPointerClick 才继续。玩家真实入图路径（丧尸模式选图）走的就是 true，
-        /// 所以验收必须能走这条，否则测的是一条玩家永远不会走的路。
-        ///
-        /// 无人值守时由本方法周期性调用官方 public NotifyPointerClick 自动喂点击——
-        /// 不反射私有 clicked 字段，也不改产品代码。
-        /// </summary>
-        private IEnumerator LoadScene(string sceneId, string caseId, bool clickToContinue = false)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            _operationSucceeded = false;
-            _operationReason = null;
-            _lastSceneClicksFed = 0;
-            UniTask task;
-            try
-            {
-                task = SceneLoader.Instance.LoadScene(sceneId, null, clickToContinue, false, true, false,
-                    default(MultiSceneLocation), true, false);
-            }
-            catch (Exception e)
-            {
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, "click_to_continue=" + clickToContinue, e.ToString());
-                yield break;
-            }
-            float deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
-            float nextClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
-            while (task.Status == UniTaskStatus.Pending && Time.realtimeSinceStartup < deadline && !ShouldAbort())
-            {
-                if (clickToContinue && Time.realtimeSinceStartup >= nextClickAt)
-                {
-                    nextClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
-                    if (FeedSceneContinueClick()) _lastSceneClicksFed++;
-                }
-                yield return null;
-            }
-            string metrics = "click_to_continue=" + clickToContinue + ",clicks_fed=" + _lastSceneClicksFed;
-            if (task.Status == UniTaskStatus.Pending)
-            {
-                _operationReason = "scene_load_timeout";
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, _operationReason);
-                yield break;
-            }
-            try
-            {
-                task.GetAwaiter().GetResult();
-                _operationSucceeded = true;
-                Record(caseId, "PASS", sw.ElapsedMilliseconds,
-                    "scene=" + SceneManager.GetActiveScene().name + "," + metrics, string.Empty);
-            }
-            catch (Exception e)
-            {
-                _operationReason = e.ToString();
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, _operationReason);
-            }
-        }
-
-        /// <summary>喂一次官方「点击继续」。返回是否成功调用。</summary>
-        private bool FeedSceneContinueClick()
-        {
-            try
-            {
-                if (SceneLoader.Instance == null) return false;
-                SceneLoader.Instance.NotifyPointerClick(null);
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[Validation] 喂「点击继续」失败: " + e.Message);
-                return false;
-            }
-        }
-
-        private IEnumerator WaitRuntimeReady(string caseId, float timeout)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            _operationSucceeded = false;
-            float deadline = Time.realtimeSinceStartup + timeout;
-            while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
-            {
-                if (LevelManager.Instance != null && LevelManager.AfterInit && CharacterMainControl.Main != null)
-                {
-                    _operationSucceeded = true;
-                    break;
-                }
-                yield return null;
-            }
-            Record(caseId, _operationSucceeded ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
-                "scene=" + SceneManager.GetActiveScene().name,
-                _operationSucceeded ? string.Empty : "runtime_ready_timeout");
-        }
-
-        /// <summary>
-        /// 轻量场景就绪：只等 LevelManager 实例和短暂稳定，不要求 AfterInit（UI 层可能不来）。
-        /// 用于终态场景：不需要玩家操作，只做持久化校验。
-        /// </summary>
-        private IEnumerator WaitSceneSettled(string caseId, float settleSeconds)
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            _operationSucceeded = false;
-            float deadline = Time.realtimeSinceStartup + 10f;
-            while (Time.realtimeSinceStartup < deadline && !ShouldAbort())
-            {
-                if (LevelManager.Instance != null)
-                {
-                    _operationSucceeded = true;
-                    break;
-                }
-                yield return null;
-            }
-            if (!_operationSucceeded)
-            {
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds,
-                    "scene=" + SceneManager.GetActiveScene().name,
-                    "level_manager_never_spawned");
-                yield break;
-            }
-            yield return WaitSeconds(settleSeconds);
-            bool afterInit = LevelManager.AfterInit;
-            string metrics = "scene=" + SceneManager.GetActiveScene().name
-                + ",level_manager=True,after_init=" + afterInit + ",settled=" + settleSeconds + "s";
-            Record(caseId, "PASS", sw.ElapsedMilliseconds, metrics,
-                afterInit ? string.Empty : "UI 层未初始化但已跳过（终态场景无需 UI）");
         }
 
         private IEnumerator WaitSeconds(float seconds)
@@ -724,11 +614,13 @@ namespace BossRush
             try
             {
                 CharacterMainControl player = CharacterMainControl.Main;
-                DamageInfo damage = new DamageInfo();
+                // DamageInfo 是 struct；无参 new 不调用带可选参数的构造器，
+                // elementFactors 会保持 null，官方 Health.Hurt 访问 Count 时抛异常。
+                DamageInfo damage = new DamageInfo(player);
                 damage.damageValue = boss.Health.MaxHealth * 20f;
                 damage.ignoreArmor = true;
-                damage.fromCharacter = player;
-                damage.damageCreator = player != null ? player.gameObject : null;
+                damage.toDamageReceiver = boss.mainDamageReceiver;
+                damage.damagePoint = boss.transform.position;
                 boss.Health.Hurt(damage);
             }
             catch (Exception e)
@@ -1015,6 +907,7 @@ namespace BossRush
 
         private void Record(string id, string outcome, long elapsedMs, string metrics, string reason)
         {
+            if (_coverage != null) _coverage.Record(id, outcome);
             if (outcome == "PASS") _passed++;
             else if (outcome == "FAIL") { _failed++; _failedIds.Add(id); }
             else if (outcome == "SKIP") { _skipped++; _skippedIds.Add(id); }
@@ -1029,6 +922,8 @@ namespace BossRush
         {
             _status = stage + " | PASS=" + _passed + " FAIL=" + _failed + " SKIP=" + _skipped;
             WriteRaw("STAGE | " + stage);
+            try { WriteCoverageSnapshot(); }
+            catch (Exception e) { Record("COVERAGE_REPORT", "FAIL", 0L, string.Empty, e.ToString()); }
         }
 
         /// <summary>
@@ -1054,6 +949,10 @@ namespace BossRush
         {
             try
             {
+                string coverageState;
+                try { coverageState = FinishCoverage(); }
+                catch (Exception e) { coverageState = "ERROR"; Record("COVERAGE_REPORT", "FAIL", 0L, string.Empty, e.ToString()); }
+                passed = passed && _failed == 0;
                 if (_peakFrameMs > 200f)
                 {
                     _warnings++;
@@ -1076,10 +975,12 @@ namespace BossRush
                     + " memory_baseline=" + _baselineMemory + " memory_final=" + _finalMemory
                     + " | failed_ids=" + string.Join(",", _failedIds.ToArray())
                     + " | skipped_ids=" + string.Join(",", _skippedIds.ToArray())
+                    + " | coverage=" + coverageState
                     + " | report=" + _reportPath);
                 ClearRunMarker();
                 _status = "验收 " + status + "：PASS=" + _passed + " FAIL=" + _failed
                     + " SKIP=" + _skipped + " WARN=" + _warnings
+                    + "\n覆盖=" + coverageState + "；人工待验=" + (_coverage != null ? _coverage.ManualCount.ToString() : "未知")
                     + (_failedIds.Count > 0 ? "\n红项: " + string.Join(",", _failedIds.ToArray()) : string.Empty);
             }
             catch (Exception e)

@@ -168,6 +168,11 @@ echo(DebugAndTools\F3DebugCheatMenuUi.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
 echo(DebugAndTools\F3GameplayValidationRunner.cs
+echo(DebugAndTools\F3GameplayValidationCoverage.cs
+echo(DebugAndTools\F3GameplayValidationItems.cs
+echo(DebugAndTools\F3GameplayValidationZombie.cs
+echo(DebugAndTools\F3GameplayValidationModeHKits.cs
+echo(DebugAndTools\F3GameplayValidationScenes.cs
 echo(DebugAndTools\F3GameplayValidationStages.cs
 echo(DebugAndTools\F3GameplayValidationModes.cs
 echo(DebugAndTools\F3GameplayValidationDiagnostics.cs

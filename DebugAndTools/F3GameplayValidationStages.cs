@@ -27,8 +27,8 @@ namespace BossRush
             "MODE_D_LIFECYCLE", "MODE_D_MULTI_WAVE",
             "MODE_E_LIFECYCLE", "MODE_E_EXTRACTION",
             "MODE_F_LIFECYCLE", "MODE_F_BLOODFIRE", "MODE_F_BOUNTY", "MODE_F_EXTRACTION",
-            "MODE_G_LIFECYCLE", "MODE_H_FIRST_CERTIFICATION", "MODE_H_CACHE_HIT",
-            "MODE_ZOMBIE_LIFECYCLE", "BGM_OWNER_LEASES", "CAMPAIGN_FINAL_BOSS",
+            "MODE_G_LIFECYCLE", "MODE_H_FIRST_CERTIFICATION", "MODE_H_CACHE_HIT", "MODE_H_STARTER_KITS",
+            "MODE_ZOMBIE_LIFECYCLE", "MODE_ZOMBIE_EXTRACTION", "BGM_OWNER_LEASES", "CAMPAIGN_FINAL_BOSS",
             "STANDARD_VICTORY_REWARD", "SCENE_CLICK_GATE",
         };
 
@@ -65,7 +65,9 @@ namespace BossRush
             yield return RunModeDepthCases();
 
             SetStage("6/7 征程终章与音频");
-            RunSyncCase("BGM_OWNER_LEASES", ValidateBgmOwnerLeases);
+            yield return EnsureArenaForCase("BGM_OWNER_LEASES");
+            if (_operationSucceeded) RunSyncCaseGated("BGM_OWNER_LEASES", ValidateBgmOwnerLeases);
+            else Record("BGM_OWNER_LEASES", "SKIP", 0L, string.Empty, "arena_runtime_not_ready");
             yield return RunIsolatedCase("CAMPAIGN_FINAL_BOSS", RunCampaignFinalBoss);
             yield return VerifyArenaCleanup("CLEANUP_AFTER_CAMPAIGN_FINAL");
         }
@@ -87,6 +89,13 @@ namespace BossRush
             if (ShouldAbort())
             {
                 Record(caseId, "SKIP", 0L, string.Empty, DescribeAbortReason());
+                yield break;
+            }
+
+            yield return EnsureArenaForCase(caseId);
+            if (!_operationSucceeded)
+            {
+                Record(caseId, "SKIP", 0L, string.Empty, "arena_runtime_not_ready");
                 yield break;
             }
 
