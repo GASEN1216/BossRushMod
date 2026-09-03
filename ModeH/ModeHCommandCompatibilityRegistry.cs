@@ -198,6 +198,34 @@ namespace BossRush
             return stableKey + "|" + effectId;
         }
 
+        /// <summary>三签名匹配后恢复逐 effect 证据；口令级聚合状态必须重新派生，不能直接信任缓存字段。</summary>
+        internal static void RestoreCertificationEffects(List<ModeHPresetCertificationRecordDto> records)
+        {
+            if (!EnsureValidated() || records == null) return;
+            for (int i = 0; i < records.Count; i++)
+            {
+                ModeHPresetCertificationRecordDto record = records[i];
+                if (record == null || string.IsNullOrEmpty(record.stableKey)) continue;
+                ClearStableKey(record.stableKey);
+                if (record.status != (int)ModeHCertificationStatus.Passed || record.commandStatuses == null) continue;
+                for (int j = 0; j < record.commandStatuses.Count; j++)
+                {
+                    ModeHCommandCertificationStatusDto command = record.commandStatuses[j];
+                    if (command == null || command.effectStatuses == null) continue;
+                    List<string> knownEffects = GetEffectIds(command.commandId);
+                    if (knownEffects == null) continue;
+                    for (int k = 0; k < command.effectStatuses.Count; k++)
+                    {
+                        ModeHBehaviorStatusDto effect = command.effectStatuses[k];
+                        if (effect == null || effect.entryKind != "effect" || !knownEffects.Contains(effect.entryId)
+                            || effect.status < (int)ModeHCommandCompatibilityStatus.Unknown
+                            || effect.status > (int)ModeHCommandCompatibilityStatus.Unavailable) continue;
+                        RecordEffectStatus(record.stableKey, effect.entryId, (ModeHCommandCompatibilityStatus)effect.status);
+                    }
+                }
+            }
+        }
+
         #endregion
 
         #region 状态查询与派生

@@ -197,7 +197,15 @@ def main():
             (r"Teams\.wolf, map\.StagingPos", "wolf clone 在 staging 创建"),
             (r"Team\.IsEnemy\(Teams\.scav, Teams\.wolf\)", "双向敌对核对"),
             (r"certification_team_drift", "下一帧阵营稳定核对"),
-            (r"handle\.Health\.SetHealth\(0f\)", "受控规范死亡"),
+            (r"handle\.Health\.Hurt\(damage\)", "受控伤害必须走官方死亡链"),
+            (r"TryControlledKill\(wolfHandle, scavHandle\.Character", "wolf 受击必须带对侧诊断来源"),
+            (r"TryControlledKill\(scavHandle, wolfHandle\.Character", "scav 受击必须带对侧诊断来源"),
+            (r"new DamageInfo\(attacker\)", "完整伤害必须带非空 NPC 来源"),
+            (r"attacker == null \|\| attacker == handle\.Character \|\| attacker\.IsMainCharacter", "不得用空、自身或玩家来源伪造认证击杀"),
+            (r"handle\.Health\.IsDead && observedHurt && observedDeath", "同时确认真实死亡与两个事件"),
+            (r"!handle\.Health\.CanDieIfNotRaidMap", "校验生成角色在非 Raid 图可死亡"),
+            (r"OnHurtEvent\.RemoveListener\(onHurt\)", "认证伤害监听必须退订"),
+            (r"OnDeadEvent\.RemoveListener\(onDead\)", "认证死亡监听必须退订"),
             (r"CertificationPerKeyTimeoutSeconds", "逐 key 15 秒上限"),
             (r"CertificationPoolTimeoutSeconds", "全池 180 秒上限"),
             (r"certification_pool_timeout", "全池超时条目标 Rejected"),
@@ -217,6 +225,14 @@ def main():
         for pattern, desc in cert_checks:
             if not re.search(pattern, ccode):
                 errors.append("[Certification] 不满足: " + desc)
+
+        bridge = read_text(os.path.join(MODEH_DIR, "ModeHSpawnBridge.cs")) or ""
+        if "clone.canDieIfNotRaidMap = true;" not in strip_cs_comments(bridge):
+            errors.append("[Certification] 独立 clone 必须允许非 Raid 图死亡，不得改共享预设")
+        if "!preset.canDieIfNotRaidMap" in ccode or "handle.Health.SetHealth(0f)" in ccode:
+            errors.append("[Certification] 不得按原预设地图保护拒绝克隆，或用 SetHealth 冒充死亡")
+        if "new DamageInfo((CharacterMainControl)null)" in ccode:
+            errors.append("[Certification] 空伤害来源会触发第三方死亡订阅者空引用")
 
         # 缓存只跳过逐 key 诊断：不得出现跳过 lease/点位审计的分支
         for forbidden in ["SkipIsolationLease", "SkipSpectatorLease", "SkipMapAudit"]:

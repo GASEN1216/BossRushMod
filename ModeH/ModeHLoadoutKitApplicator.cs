@@ -33,6 +33,11 @@ namespace BossRush
     /// </summary>
     internal static class ModeHLoadoutKitApplicator
     {
+        // 官方同步写入 Inventory 不会使此缓存失效；置 -1 后由公开 getter 重算并同步 BulletCount 变量。
+        private static readonly System.Reflection.FieldInfo GunBulletCountCacheField =
+            typeof(ItemSetting_Gun).GetField("_bulletCountCache",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
         #region 装配
 
         /// <summary>
@@ -217,36 +222,71 @@ namespace BossRush
                 return false;
             }
 
-            Item ammo = null;
-            try { ammo = ItemAssetsCollection.InstantiateSync(ammoTypeId); }
-            catch (Exception)
+            try
             {
-                // 与主物品同样按 fail-closed 处理
-                ammo = null;
+                ItemSetting_Gun gun = gunItem.GetComponent<ItemSetting_Gun>();
+                if (gun == null || gunItem.Inventory == null || gun.Capacity <= 0)
+                {
+                    failureReasonId = "kit_apply_magazine_missing:" + kit.Spec.KitId;
+                    return false;
+                }
+                if (GunBulletCountCacheField == null)
+                { failureReasonId = "kit_apply_ammo_cache_binding_missing:" + kit.Spec.KitId; return false; }
+
+                // 新造枪的默认弹药也属于本事务，先清掉，保证总量严格等于冻结数量。
+                foreach (Item previous in new List<Item>(gunItem.Inventory))
+                {
+                    if (previous == null) continue;
+                    previous.Detach();
+                    previous.DestroyTree();
+                }
+                gun.SetTargetBulletType(ammoTypeId);
+                GunBulletCountCacheField.SetValue(gun, -1);
+                int loaded = Math.Min(kit.Spec.AmmoCount, gun.Capacity);
+                string reason;
+                // TryPlug 只尝试装备槽，不能存弹药。同步填弹匣与临时角色背包，避免异步换弹越过事务回收。
+                if (!TryStoreAmmo(gunItem.Inventory, ammoTypeId, loaded, gun, application, out reason)
+                    || !TryStoreAmmo(characterItem.Inventory, ammoTypeId, kit.Spec.AmmoCount - loaded,
+                        null, application, out reason))
+                {
+                    failureReasonId = reason + ":" + kit.Spec.KitId;
+                    return false;
+                }
+                GunBulletCountCacheField.SetValue(gun, -1);
+                if (gun.GetBulletCount() != loaded || gun.BulletCount != loaded)
+                {
+                    failureReasonId = "kit_apply_magazine_count_mismatch:" + kit.Spec.KitId;
+                    return false;
+                }
+                return true;
             }
-            if (ammo == null)
+            catch (Exception e)
             {
-                failureReasonId = "kit_apply_ammo_instantiate_failed:" + kit.Spec.KitId;
+                failureReasonId = "kit_apply_ammo_exception:" + kit.Spec.KitId + ":" + e.GetType().Name;
                 return false;
             }
-            application.CreatedItems.Add(ammo);
+        }
 
-            try { ammo.StackCount = kit.Spec.AmmoCount; }
-            catch (Exception)
+        private static bool TryStoreAmmo(Inventory inventory, int typeId, int count,
+            ItemSetting_Gun compatibilityCheck, ModeHKitApplication application, out string reason)
+        {
+            reason = null;
+            if (count == 0) return true;
+            if (inventory == null) { reason = "kit_apply_ammo_inventory_missing"; return false; }
+            while (count > 0)
             {
-                // 堆叠上限低于冻结数量时保持原值，弹药仍然可用
-            }
-
-            bool plugged = false;
-            try { plugged = characterItem.TryPlug(ammo, true, null, 0); }
-            catch (Exception)
-            {
-                plugged = false;
-            }
-            if (!plugged)
-            {
-                failureReasonId = "kit_apply_ammo_plug_failed:" + kit.Spec.KitId;
-                return false;
+                Item ammo = ItemAssetsCollection.InstantiateSync(typeId);
+                if (ammo == null) { reason = "kit_apply_ammo_instantiate_failed"; return false; }
+                application.CreatedItems.Add(ammo);
+                if (compatibilityCheck != null && !compatibilityCheck.IsValidBullet(ammo))
+                { reason = "kit_apply_ammo_incompatible"; return false; }
+                int stack = Math.Min(count, ammo.MaxStackCount);
+                if (stack <= 0) { reason = "kit_apply_ammo_stack_invalid"; return false; }
+                ammo.StackCount = stack;
+                // 不合并进旧物品：保留 CreatedItems 的独立所有权，失败时可完整逆序回收。
+                if (ammo.StackCount != stack || !inventory.AddItem(ammo))
+                { reason = "kit_apply_ammo_store_failed"; return false; }
+                count -= stack;
             }
             return true;
         }

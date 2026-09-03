@@ -378,6 +378,7 @@ echo(ModeH\ModeHOddsController.cs
 echo(ModeH\ModeHPresentationAssetCache.cs
 echo(ModeH\ModeHPresetRegistry.cs
 echo(ModeH\ModeHProductionCertification.cs
+echo(ModeH\ModeHCommandCertificationProbe.cs
 echo(ModeH\ModeHProfilePersistence.cs
 echo(ModeH\ModeHStakeJournalPersistence.cs
 echo(ModeH\ModeHRealStakeService.cs

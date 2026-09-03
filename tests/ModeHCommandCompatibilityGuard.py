@@ -31,6 +31,8 @@ CONFIG = os.path.join(REPO_ROOT, "ModeH", "ModeHConfig.cs")
 STATE_MODEL = os.path.join(REPO_ROOT, "ModeH", "ModeHStateModel.cs")
 COMPAT_JSON = os.path.join(REPO_ROOT, "Assets", "Data", "ModeH", "CommandCompatibility.json")
 COMMANDS_JSON = os.path.join(REPO_ROOT, "Assets", "Data", "ModeH", "Commands.json")
+CERTIFICATION = os.path.join(REPO_ROOT, "ModeH", "ModeHProductionCertification.cs")
+PROBE = os.path.join(REPO_ROOT, "ModeH", "ModeHCommandCertificationProbe.cs")
 
 
 def load_json(path):
@@ -76,6 +78,44 @@ def main():
     for pattern, desc in checks:
         if not re.search(pattern, code):
             errors.append("[Registry] 不满足: " + desc)
+
+    # 必须有实际生产写入者；只有矩阵接口和 gate 的形状，无法发现全池只有一条口令可用。
+    certification = strip_cs_comments(read_text(CERTIFICATION) or "")
+    probe = strip_cs_comments(read_text(PROBE) or "")
+    for token in ("new ModeHCommandCertificationProbe(scavHandle, wolfHandle)",
+                  "_commandProbe.Run(stableKey, map, keyDeadline)",
+                  "yield return probe.Current", "ReleaseDiagnosticPair();",
+                  "RestoreCertificationEffects(report.records)",
+                  "EvaluateThreshold(cached.passedStableKeys)",
+                  '_lastError ?? "certification_threshold_not_met"'):
+        if token not in certification:
+            errors.append("[Certification] 生产口令采样/缓存恢复/诊断漏接线: " + token)
+    run = certification.split("internal IEnumerator Run(", 1)[-1].split("internal void Cancel()", 1)[0]
+    if not (0 <= run.find("BindBuildSignature(") < run.find("yield return CertifyKey(")):
+        errors.append("[Certification] 必须在逐 key 测量前绑定签名，不能测完后清空矩阵")
+    for token in ("_scavAdapter.ApplyEffects(", "_wolfAdapter.ApplyEffects(",
+                  "yield return null;", "held.IntersectWith(_scavAdapter.Validate())",
+                  "held.IntersectWith(_wolfAdapter.Validate())", "_scavAdapter.Tick(delta, null)",
+                  "_wolfAdapter.Tick(delta, null)", "samples < 3", "effect.Restore",
+                  "scavAi.isActiveAndEnabled", "wolfAi.isActiveAndEnabled",
+                  "certification_command_restore:", "ModeHCommandCompatibilityRegistry.RecordEffectStatus(",
+                  "finally", "_scavAdapter.Restore();", "_wolfAdapter.Restore();"):
+        if token not in probe:
+            errors.append("[Probe] 缺少真实双角色跨帧采样及清理: " + token)
+    sampling = probe.split("while (elapsed < sampleWindow || samples < 3)", 1)[-1]
+    if not (0 <= sampling.find("yield return null;") < sampling.find("held.IntersectWith(")
+            < sampling.find("_scavAdapter.Tick(")):
+        errors.append("[Probe] 必须跨帧后先读再重申，不得用刚写入的值自证成功")
+    read_field = probe.split("private static object ReadField(", 1)[-1].split("public void Dispose()", 1)[0]
+    if any('case "' + point + '"' in read_field for point in
+           ("moveToPos", "nextReleaseSkillTimeMarker", "searchedEnemy", "setNoticedToTarget")):
+        errors.append("[Probe] 未接目标/路径/技能遥测的效果不能伪装为字段保持证据")
+    for token in ("RestoreCertificationEffects(", "ClearStableKey(record.stableKey)",
+                  "record.status != (int)ModeHCertificationStatus.Passed",
+                  "knownEffects.Contains(effect.entryId)", 'effect.entryKind != "effect"',
+                  "effect.status > (int)ModeHCommandCompatibilityStatus.Unavailable"):
+        if token not in code:
+            errors.append("[Registry] 缓存必须恢复合法逐 effect 证据: " + token)
 
     # 选择门只接受 VerifiedBehavior / PartiallyVerified
     selectable = re.search(

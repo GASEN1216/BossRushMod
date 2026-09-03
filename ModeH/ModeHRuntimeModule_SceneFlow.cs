@@ -315,20 +315,16 @@ namespace BossRush
             if (!ModBehaviour.DevModeEnabled) return;
             try
             {
-                // 直接置空状态，让运行时停摆。不走 RequestExit 避免切场景。
+                // 复用完整逆序释放：先停认证/生成，再清选手、租约和 UI。
+                // 清空状态前保留押品返还所需的 runSeed / matchIndex。
+                TryReturnRealStakeOnAbort("f3_validation_cleanup");
+                ReleaseRuntimeObjects();
+                if (BossRushMapSelectionHelper.HasPendingModeHEntryIntent()) ModeHEntry.CancelPendingEntry();
                 _runState = null;
                 _season = null;
-                if (_arenaLease != null)
-                {
-                    _arenaLease.Dispose();
-                    _arenaLease = null;
-                }
-                if (_spectatorLease != null)
-                {
-                    _spectatorLease.Dispose();
-                    _spectatorLease = null;
-                }
-                _certification = null;
+                _seasonDirty = false;
+                _map = null;
+                ModeHRuntimeGates.SetRunOwnerActive(false);
             }
             catch (Exception e)
             {
@@ -510,6 +506,9 @@ namespace BossRush
                 }
                 _seasonDirty = false;
 
+                // 首份赛季写入并读回后，入场已完成：消费意图与预扣票所有权。
+                // 失败路径仍在此前保留退款凭据；成功后不能在下一次经过此地图时重开赛季。
+                ModeHEntry.CancelPendingEntry();
                 ModBehaviour.DevLog("[ModeH] 赛季已创建 runId=" + _runState.RunId
                     + " seed=" + _runState.RunSeed.ToString("x"));
             }

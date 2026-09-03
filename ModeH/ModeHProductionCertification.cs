@@ -37,6 +37,9 @@ namespace BossRush
         private bool _running;
         private bool _cancelled;
         private string _lastError;
+        private ModeHCommandCertificationProbe _commandProbe;
+        private ModeHSpawnHandle _activeScavHandle;
+        private ModeHSpawnHandle _activeWolfHandle;
 
         /// <summary>诊断 owner 注册表：认证角色的事件只进认证记录，不进战斗遥测。</summary>
         private static readonly HashSet<int> _diagnosticHealthIds = new HashSet<int>();
@@ -165,6 +168,12 @@ namespace BossRush
 
             _report = cached;
             ApplyReportToRegistries(cached);
+            if (!EvaluateThreshold(cached.passedStableKeys))
+            {
+                ModBehaviour.DevLog("[ModeH] 认证缓存口令恢复未通过: " + _lastError);
+                _report = null;
+                return false;
+            }
             ModBehaviour.DevLog("[ModeH] 生产认证缓存命中，跳过逐 key 诊断");
             return true;
         }
@@ -203,6 +212,22 @@ namespace BossRush
             _diagnosticHealthIds.Clear();
             _observedDamageByKey.Clear();
             _observedDeathByKey.Clear();
+            _lastError = null;
+            string gameSignature;
+            string modSignature;
+            string signatureError;
+            if (!ModeHCommandCompatibilityRegistry.EnsureValidated()
+                || !ModeHCanonicalDigest.TryGetGameBuildSignature(out gameSignature, out signatureError)
+                || !ModeHCanonicalDigest.TryGetModBuildSignature(out modSignature, out signatureError))
+            {
+                _running = false;
+                result.Completed = true;
+                result.FailureReasonId = "certification_command_registry_or_signature_unavailable";
+                yield break;
+            }
+            // 先绑定构建，再测量；若在 BuildReport 之后首次绑定，会清掉刚得到的效果证据。
+            ModeHCommandCompatibilityRegistry.BindBuildSignature(
+                gameSignature, modSignature, ModeHContentCatalog.ContentCatalogSignature);
             BindDiagnosticSink(this);
 
             float poolDeadline = Time.realtimeSinceStartup + ModeHConfig.CertificationPoolTimeoutSeconds;
@@ -244,8 +269,12 @@ namespace BossRush
             result.Report = _report;
             if (!result.Passed && string.IsNullOrEmpty(result.FailureReasonId))
             {
-                result.FailureReasonId = "certification_threshold_not_met";
+                result.FailureReasonId = _lastError ?? "certification_threshold_not_met";
             }
+            ModBehaviour.DevLog("[ModeH] 认证汇总 records=" + _report.records.Count
+                + ",passed=" + _report.passedStableKeys.Count + ",common="
+                + _report.commonVerifiedCommandIds.Count + ",overall=" + result.Passed
+                + ",reason=" + (result.FailureReasonId ?? "none"));
             yield break;
         }
 
@@ -253,6 +282,8 @@ namespace BossRush
         internal void Cancel()
         {
             _cancelled = true;
+            _running = false;
+            ReleaseDiagnosticPair();
             _diagnosticHealthIds.Clear();
             UnbindDiagnosticSink();
         }
@@ -261,6 +292,7 @@ namespace BossRush
             string stableKey, ModeHSupportedMap map, float poolDeadline, ModeHCertificationKeyResult result)
         {
             float keyStart = Time.realtimeSinceStartup;
+            ModeHCommandCompatibilityRegistry.ClearStableKey(stableKey);
             float keyDeadline = Mathf.Min(
                 keyStart + ModeHConfig.CertificationPerKeyTimeoutSeconds, poolDeadline);
 
@@ -294,6 +326,7 @@ namespace BossRush
             }
             try { scavHandle = scavTask.GetAwaiter().GetResult(); }
             catch (Exception e) { failure = "certification_scav_create:" + e.GetType().Name; }
+            _activeScavHandle = scavHandle;
 
             if (failure == null && scavHandle == null) failure = "certification_scav_create_null";
             if (failure == null && _diagnostics.HasWindowSideEffects())
@@ -313,6 +346,7 @@ namespace BossRush
                 }
                 try { wolfHandle = wolfTask.GetAwaiter().GetResult(); }
                 catch (Exception e) { failure = "certification_wolf_create:" + e.GetType().Name; }
+                _activeWolfHandle = wolfHandle;
 
                 if (failure == null && wolfHandle == null) failure = "certification_wolf_create_null";
                 if (failure == null && _diagnostics.HasWindowSideEffects())
@@ -346,10 +380,43 @@ namespace BossRush
                 }
             }
 
+            // 两只诊断角色在真实 AI 更新中采样口令，完成还原后才执行受控死亡。
+            if (failure == null)
+            {
+                _commandProbe = new ModeHCommandCertificationProbe(scavHandle, wolfHandle);
+                IEnumerator probe = _commandProbe.Run(stableKey, map, keyDeadline);
+                try
+                {
+                    while (true)
+                    {
+                        bool more;
+                        try { more = probe.MoveNext(); }
+                        catch (Exception e)
+                        {
+                            failure = "certification_command_exception:" + e.GetType().Name;
+                            ModBehaviour.DevLog("[ModeH] [ERROR] 口令认证失败 " + stableKey + "\n" + e);
+                            break;
+                        }
+                        if (!more) break;
+                        yield return probe.Current;
+                    }
+                    if (failure == null) failure = _cancelled ? "certification_cancelled"
+                        : (_commandProbe != null ? _commandProbe.FailureReasonId : "certification_command_probe_lost");
+                }
+                finally
+                {
+                    IDisposable disposable = probe as IDisposable;
+                    if (disposable != null) disposable.Dispose();
+                    if (_commandProbe != null) _commandProbe.Dispose();
+                    _commandProbe = null;
+                }
+            }
+
             // 受控伤害 ping + 规范死亡（无战利品）
             if (failure == null)
             {
-                if (!TryControlledKill(wolfHandle, out failure))
+                if (!TryControlledKill(wolfHandle, scavHandle.Character, out failure)
+                    || !TryControlledKill(scavHandle, wolfHandle.Character, out failure))
                 {
                     // failure 已填
                 }
@@ -366,10 +433,7 @@ namespace BossRush
             }
 
             // 整批回收
-            UnregisterDiagnostic(scavHandle);
-            UnregisterDiagnostic(wolfHandle);
-            ModeHSpawnBridge.Recycle(wolfHandle);
-            ModeHSpawnBridge.Recycle(scavHandle);
+            ReleaseDiagnosticPair();
 
             if (failure != null)
             {
@@ -382,7 +446,8 @@ namespace BossRush
             result.Passed = true;
         }
 
-        private bool TryControlledKill(ModeHSpawnHandle handle, out string failureReasonId)
+        private bool TryControlledKill(ModeHSpawnHandle handle, CharacterMainControl attacker,
+            out string failureReasonId)
         {
             failureReasonId = null;
             if (handle == null || handle.Character == null || handle.Health == null)
@@ -390,17 +455,66 @@ namespace BossRush
                 failureReasonId = "certification_kill_handle_invalid";
                 return false;
             }
+            if (attacker == null || attacker == handle.Character || attacker.IsMainCharacter)
+            {
+                failureReasonId = "certification_attacker_invalid";
+                return false;
+            }
+            // 官方字段是“非 Raid 地图是否允许死亡”，不是预设是否能死亡。
+            // SpawnBridge 已只在独立 clone 上打开它；认证应验证实际生成角色。
+            if (!handle.Health.CanDieIfNotRaidMap)
+            {
+                failureReasonId = "audit_cannot_die";
+                return false;
+            }
+            if (handle.Health.OnHurtEvent == null || handle.Health.OnDeadEvent == null)
+            {
+                failureReasonId = "certification_health_events_missing";
+                return false;
+            }
+            bool observedHurt = false;
+            bool observedDeath = false;
+            UnityEngine.Events.UnityAction<DamageInfo> onHurt = delegate(DamageInfo info)
+            {
+                observedHurt = true;
+                NotifyDiagnosticHurt(handle.StableKey, info.damageValue);
+            };
+            UnityEngine.Events.UnityAction<DamageInfo> onDead = delegate(DamageInfo info)
+            {
+                observedDeath = true;
+                NotifyDiagnosticDead(handle.StableKey);
+            };
             try
             {
-                // 认证角色仍处于隔离态：先解除无敌，再用 SetHealth 归零走原版死亡路径。
+                // 认证早于战斗 router 绑定，临时监听当前 Health，finally 内立刻退订。
+                handle.Health.OnHurtEvent.AddListener(onHurt);
+                handle.Health.OnDeadEvent.AddListener(onDead);
+                // SetHealth 只改数值，不触发死亡。必须走 Hurt 并实际观察两个事件及 IsDead。
                 handle.Health.SetInvincible(false);
-                handle.Health.SetHealth(0f);
-                return true;
+                // 使用对侧诊断 clone 作为真实 NPC 来源：死亡订阅者可能直接读取来源角色。
+                // 不用主玩家代替，避免把认证记为玩家击杀、触发经验/击杀提示等奖励副作用。
+                DamageInfo damage = new DamageInfo(attacker);
+                damage.damageValue = Mathf.Max(1f, handle.Health.MaxHealth * 10f);
+                damage.ignoreArmor = true;
+                damage.toDamageReceiver = handle.Character.mainDamageReceiver;
+                damage.damagePoint = handle.Character.transform.position;
+                handle.Health.Hurt(damage);
+                if (handle.Health.IsDead && observedHurt && observedDeath) return true;
+                failureReasonId = "certification_death_not_observed";
+                return false;
             }
             catch (Exception e)
             {
                 failureReasonId = "certification_kill_failed:" + e.GetType().Name;
+                ModBehaviour.DevLog("[ModeH] [ERROR] 认证伤害链失败 key=" + handle.StableKey
+                    + ",team=" + handle.Team + ",hurt=" + observedHurt + ",death=" + observedDeath
+                    + "\n" + e);
                 return false;
+            }
+            finally
+            {
+                handle.Health.OnHurtEvent.RemoveListener(onHurt);
+                handle.Health.OnDeadEvent.RemoveListener(onDead);
             }
         }
 
@@ -464,11 +578,8 @@ namespace BossRush
                     failureReasonId = "audit_no_show_name";
                     return false;
                 }
-                if (!preset.canDieIfNotRaidMap)
-                {
-                    failureReasonId = "audit_cannot_die";
-                    return false;
-                }
+                // canDieIfNotRaidMap 在 SpawnBridge 的独立 clone 上归一化，
+                // 可死亡性由 TryControlledKill 对真实 Health 与死亡事件验证。
                 if (preset.specialAttachmentBases != null && preset.specialAttachmentBases.Count > 0)
                 {
                     failureReasonId = "audit_special_attachments";
@@ -503,6 +614,18 @@ namespace BossRush
             }
         }
 
+        private void ReleaseDiagnosticPair()
+        {
+            if (_commandProbe != null) _commandProbe.Dispose();
+            _commandProbe = null;
+            UnregisterDiagnostic(_activeScavHandle);
+            UnregisterDiagnostic(_activeWolfHandle);
+            ModeHSpawnBridge.Recycle(_activeWolfHandle);
+            ModeHSpawnBridge.Recycle(_activeScavHandle);
+            _activeScavHandle = null;
+            _activeWolfHandle = null;
+        }
+
         private void UnregisterDiagnostic(ModeHSpawnHandle handle)
         {
             if (handle == null || handle.Health == null) return;
@@ -528,6 +651,8 @@ namespace BossRush
             record.spawnTimelineDigest = string.Empty;
             record.durationMs = durationMs;
             _records[stableKey] = record;
+            ModBehaviour.DevLog("[ModeH] 认证通过 " + stableKey + ",commands="
+                + ModeHCommandCompatibilityRegistry.CountUsableCommonCommands(stableKey));
         }
 
         private void RecordRejected(string stableKey, string failureReasonId, int durationMs)
@@ -552,9 +677,10 @@ namespace BossRush
         {
             List<ModeHCommandCertificationStatusDto> statuses =
                 new List<ModeHCommandCertificationStatusDto>();
-            for (int i = 0; i < ModeHStableIds.AllCommonCommands.Length; i++)
+            List<ModeHCommandSpec> commands = ModeHContentCatalog.Commands;
+            for (int i = 0; commands != null && i < commands.Count; i++)
             {
-                string commandId = ModeHStableIds.AllCommonCommands[i];
+                string commandId = commands[i].CommandId;
                 ModeHCommandCertificationStatusDto dto = new ModeHCommandCertificationStatusDto();
                 dto.commandId = commandId;
                 dto.status = (int)ModeHCommandCompatibilityRegistry.GetCommandStatus(stableKey, commandId);
@@ -669,9 +795,10 @@ namespace BossRush
 
         private void ApplyReportToRegistries(ModeHProductionCertificationDto report)
         {
-            if (report == null) return;
+            if (report == null || !ModeHCommandCompatibilityRegistry.EnsureValidated()) return;
             ModeHCommandCompatibilityRegistry.BindBuildSignature(
                 report.gameBuildSignature, report.modBuildSignature, report.contentCatalogSignature);
+            ModeHCommandCompatibilityRegistry.RestoreCertificationEffects(report.records);
             ModeHPresetRegistry.MaterializeFromReport(report);
         }
 

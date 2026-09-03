@@ -172,6 +172,15 @@ def main():
 
     applicator = read_text(KIT_APPLICATOR)
     if applicator is not None:
+        for required in ['TryStoreAmmo(gunItem.Inventory', 'TryStoreAmmo(characterItem.Inventory',
+                         'Math.Min(count, ammo.MaxStackCount)', 'ammo.StackCount != stack',
+                         'inventory.AddItem(ammo)', 'GunBulletCountCacheField.SetValue(gun, -1)',
+                         'gun.GetBulletCount() != loaded || gun.BulletCount != loaded',
+                         'kit_apply_ammo_cache_binding_missing', 'compatibilityCheck.IsValidBullet(ammo)']:
+            if required not in applicator:
+                errors.append('[Ammo] 冻结弹药必须真实存入库存并核对可用数量: ' + required)
+        if re.search(r'TryPlug\s*\(\s*ammo\b', applicator):
+            errors.append('[Ammo] TryPlug 只操作装备槽，弹药必须存入库存')
         if contains_symbol(applicator, "PlayerStorage") or contains_symbol(applicator, "ItemTreeData"):
             errors.append("[Isolation] kit applicator 不得引用 PlayerStorage / 玩家 ItemTreeData")
         if contains_symbol(applicator, "CharacterMainControl.Main"):
