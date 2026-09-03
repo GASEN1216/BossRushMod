@@ -196,3 +196,11 @@ token parser（支持 BOM、严格数字/字符串/数组类型），再映射�
 
 终章冠军之影死亡表现由 Campaign 独占：幽灵女巫公共清理照常执行，但普通 Boss 的胜利文案与
 stinger 在终章受抑制，确保最终文案、`RunVictory` 与 stinger 各一次。
+
+## 2026-09-02 终章生成中止与掉落清理
+
+兼容分类：COMPAT。第五轮终章 spawn_timeout 的日志证明 H 残留入场意图在重访地图后重开赛季，触发决战主动让路；并非证据表明女巫资源无法生成。H 成功创建赛季后消费意图，保持终章对真实活动模式的既有互斥规则。
+
+`CampaignFinalBoss` 在生成编号失配的迟到分支与主动 destroyBoss 清理分支，先 `ClearBossRandomLootTracking` 再 Destroy；自然死亡不提前解除掉落回调。配合 Integration 场景订阅回收，避免最后一只 Boss 被销毁后静态熔石追踪留到下次刷怪。第六轮 `BossRushValidation_20260902_140735_794.log` 已实机确认终章 death_presentations=1、bgm_owners=0，最终熔石及其它被测订阅全部归零。H 重访不再抢占终章；主动中止/迟到生成故障注入仍独立保留。
+
+章节来源：`Campaign/CampaignFinalBoss.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`Integration/IntegrationRuntimeHooks.cs`。

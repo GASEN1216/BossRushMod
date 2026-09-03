@@ -1,5 +1,11 @@
 # Mode F：血猎追击
 
+2026-09-02 撤离修正（COMPAT）：`Utilities/ModeExtractionPointFactory.cs` 清空 prefab 官方事件后，
+再决定通知与返基地兜底；一次性成功标记在结算前占有，防止重复或递归事件发起双重加载。
+`ModeF/ModeFExtraction.cs` 在真实成功结算并退出后累计成功次数。F3 不再读取已被 Reset 的
+ExtractionResolved，而是核对计数增量、模式退出和基地完整就绪；第三轮 MODE_F_EXTRACTION
+已通过，baseReady=True。共享工厂的丧尸实际撤离不在此项覆盖范围。
+
 <cite>
 **本文引用的文件**
 - [ModeFEntry.cs](file://ModeF/ModeFEntry.cs)

@@ -162,3 +162,9 @@ context 只由**主角专属**事件重建：
 结算顺序冻结为“写 KV 并回读 → 扣钱 → 扣熔石”。槽内容、展示名与锁定位各自回读核对；
 任一写失败先按快照恢复且不收费。熔石扣除失败会检查现金退款返回值并恢复全部槽，
 退款或回滚不完整时向玩家显示“请勿继续操作”，不再把静默 setter 当成功。
+
+## 2026-09-02 熔石掉落订阅的场景边界
+
+兼容分类：COMPAT。`IntegrationRuntimeHooks.OnSceneLoadedIntegrationRuntime` 先调用 `AffixForgeStoneDropService.ClearAllTracking`，避免只有下一只 Boss 生成时才裁剪死引用。终章主动销毁及取消后迟到生成各自在 Destroy 前调用 `ClearBossRandomLootTracking`，覆盖晚于场景回调的登记。自然死亡仍由既有掉落回调结算，不提前解除、不改变掉落概率。第五轮原报告 affix_stone_hooks=0->1；第六轮 `BossRushValidation_20260902_140735_794.log` 已验证 0->0，终章和最终清理均 PASS。主动中止/迟到生成故障注入仍需单独验证。
+
+章节来源：`Integration/IntegrationRuntimeHooks.cs`、`Integration/AffixForge/AffixForgeStoneDropService.cs`、`Campaign/CampaignFinalBoss.cs`。

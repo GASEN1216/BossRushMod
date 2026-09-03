@@ -1,5 +1,27 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-02 F3 验收清理修正：`ForceResetStateForValidation` 复用完整的 `ReleaseRuntimeObjects`
+逆序收尾，先保留 run 上下文尝试押品返还，再停止认证/生成、释放选手与两种租约、关闭 UI，
+最后清空临时状态和 run owner。两种租约提供 `Release(sceneGeneration)`，不提供 `Dispose`。
+此入口仅限 Dev；正式认证拒绝仍按 `AbortSetup` 退款离场，F3 在下个场内用例前恢复竞技场。
+晚间完整报告的 H 拒绝后清理、场景恢复和最终泄漏差值已通过。
+
+同日生产认证修正：`ModeHSpawnBridge` 已为独立 clone 打开非 Raid 图死亡，
+`ModeHProductionCertification` 改为验证生成后 Health 的该标志，不再按原预设的地图保护标志拒绝。
+两个诊断 clone 均走完整 DamageInfo 的 Hurt，并观察 IsDead 与实例受伤/死亡事件；
+同步监听在 finally 退订。第三轮真实伤害出现空引用，静态检查发现已安装的击杀提示订阅
+直接读取伤害来源；认证现由两只诊断 clone 互作攻击者，拒绝空来源、自身和主玩家，
+避免认证计入玩家击杀提示。异常保留完整栈及事件状态，不能只看到 IsDead 就判通过。
+第四轮不再出现伤害异常或逐 key 拒绝，但整体认证仍被口令门槛拒绝。
+
+第四轮口令认证修正（COMPAT）：矩阵写入接口此前无人调用，只有 steady 自结算分量提供
+1 条可用口令，永远达不到 3 条门槛。`ModeHCommandCertificationProbe` 复用生产适配器，
+在双方诊断 AI 激活、无敌期间，对可读且可还原的字段跨至少 3 帧、累计 0.3 秒采样，
+先读后重申，并验证还原；双方均通过才写逐效果证据。无目标/路径/技能释放遥测的点火和 marker
+保持 ReportOnly。测量前绑定签名，缓存恢复合法逐效果而非相信口令聚合状态，恢复后再检查门槛；
+报告也保留招牌口令结果。取消/异常会还原适配器并回收诊断角色，日志输出实际门槛失败原因。
+8 个候选、5 原型、3 口令门槛不变；新流程经编译及模拟探针验证，整体首次认证和缓存仍待实机。
+
 <cite>
 **本文档引用的文件**
 - [ModeHConfig.cs](file://ModeH/ModeHConfig.cs)
@@ -12,6 +34,9 @@
 - [ModeHVirtualStakeController.cs](file://ModeH/ModeHVirtualStakeController.cs)
 - [ModeHCommandController.cs](file://ModeH/ModeHCommandController.cs)
 - [ModeHCommandAdapters.cs](file://ModeH/ModeHCommandAdapters.cs)
+- [ModeHCommandCertificationProbe.cs](file://ModeH/ModeHCommandCertificationProbe.cs)
+- [ModeHProductionCertification.cs](file://ModeH/ModeHProductionCertification.cs)
+- [ModeHCommandCompatibilityRegistry.cs](file://ModeH/ModeHCommandCompatibilityRegistry.cs)
 - [ModeHCombatControl.cs](file://ModeH/ModeHCombatControl.cs)
 - [ModeHCombatTelemetry.cs](file://ModeH/ModeHCombatTelemetry.cs)
 - [ModeHEventRouter.cs](file://ModeH/ModeHEventRouter.cs)
@@ -134,6 +159,15 @@ rewardCandidateCount = 1 + min(2, floor(max(0, net) / 2))
 `ModeHFighterDownToken` 是唯一规范倒地事件，每个 `participantId + matchIndex` 至多一次。
 只有本场**从未实际踏入擂台**的选手才算完整休息；带伤选手再次登场被击倒直接退役。
 
+**2026-09-03 补接线**：上述「休息一场解除带伤」此前只是设计与文案，代码里没有任何实现——
+`ModeHCombatTelemetry.HasRested` 写好了零调用，`injuryId` 与 `status` 都没有回到
+`Available` 的路径。结果是把带伤选手按在替补席毫无收益，伤病 debuff 与赔率惩罚（
+`starterInjured -5` / `relayInjured -3`）持续整个赛季，选手实际只有「两条命、无恢复」。
+现在 `BeginMatchSettlement` 对 `matchStarter` 与 `matchRelay` 两席各做一次休息结算，
+判据取 `HasRested`（本场 entrant 名单里没有它），与倒地结算天然互斥；
+结算页用 `Injury_Rested` / `Injury_Retired` 明示本场谁休息好了、谁退役了。
+休息名单只存运行时，不进持久化 DTO（赛季摘要按反射遍历全部字段，加字段会触发写屏障）。
+
 五条伤病（`leg` / `hand` / `armor` / `old_wound` / `spirit`）与八条战痕都必须落在
 已验证控制点或 Mode H 自结算上，**不存在“只有文案没有战斗影响”的条目**；
 任一分量对当前 key 不可用，整条就不进抽池——不允许“收益生效、代价失效”。
@@ -250,3 +284,15 @@ HUD 的选手名在备战时缓存，战斗每帧只消费缓存与数值，不�
 - 真实仓库押品已于 2026-09-01 接线（见上文 §22 小节）。它仍是**自愿**支路：
   不选押品时不创建 journal，虚拟筹码主线不受影响，可完整打完六场。
   escrow 重建、满仓返还与 ManualIntervention 出口三条路径尚未实机验证。
+
+## 2026-09-02 第五轮：成功入场消费与真实整备
+
+兼容分类：COMPAT / WIRE+。第五轮首次生产认证与缓存复用已实机 PASS（12 个候选，通用可用口令 7 条）；这只关闭认证链，不代表六场赛季与真实押品全部通过。
+
+`ModeHRuntimeModule_SceneFlow.CreateDraftingSeason` 在首份赛季写入并读回成功后调用 `ModeHEntry.CancelPendingEntry` 消费冻结入场意图及预扣票所有权。成功前保留退款凭据，防止后续单纯重访同一地图重开 H；Dev 强制清理也回收遗留意图。
+
+`ModeHLoadoutKitApplicator` 的枪械弹药必须存入新造枪的 Inventory 与临时选手 Inventory，不能用只操作装备槽的 TryPlug。严格保持 kit 的冻结总量，按 MaxStackCount 拆分，每个新实例都进入 CreatedItems；不合并进旧堆，任何失败整批逆序回收。直接写 Inventory 不会失效官方 `_bulletCountCache`，因此缓存反射字段置 -1 后由公开 BulletCount getter 重算并回读；字段缺失明确拒绝，不伪装可开火。
+
+F3 新 `MODE_H_STARTER_KITS` 在缓存认证后的 Drafting 租约内使用真实认证池与隔离生成桥，逐件检查全部 starter kit 的槽位、弹匣实际/可用数、库存总数与堆叠上限；异步迟到产物由请求 owner 回收。生产源码离线模拟 34 项通过。第六轮实机 `MODE_H_STARTER_KITS` 已 8/8 PASS，三枪弹匣可用数/总量分别 30/120、10/40、13/60；两次入场均 intent_cleared=True，后续重访未重开 H。该结果不代表完整 AI 比赛、六场赛季或真实押品恢复已通过（报告 `BossRushValidation_20260902_140735_794.log`）。
+
+章节来源：`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`ModeH/ModeHLoadoutKitApplicator.cs`、`DebugAndTools/F3GameplayValidationModeHKits.cs`。

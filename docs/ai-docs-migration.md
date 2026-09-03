@@ -113,3 +113,19 @@
 ## 验证
 
 以最终提交前实际执行的 Windows 编译、Python guard 和知识库静态检查为准。
+
+---
+
+## 2026-09-02 F3 复测暴露的文档与实际代码冲突
+
+兼容分类：SAFE（事实校正）；对应生产修复为 COMPAT，明细见 FIX_TRACKER。
+
+- Mode H 历史设计提案 §17.2 要求原 preset.canDieIfNotRaidMap=true，但实际 SpawnBridge
+  早已在独立 clone 打开该字段。官方 Health 只在非 Raid 图据此保护角色，静态按原值拒绝会
+  把全部 12 个候选挡在已实现的生成逻辑之外。当前约束以生成后的 Health 和真实死亡事件为准，
+  其他静态资格、最低候选数和签名门保留；历史提案不再作为此字段的执行事实。
+- 根 AGENTS 2026-09-01 的 BGM DTO/CS0649 记录属于当时版本。本次非空部署表实机读成空数组，
+  现改为 BossBgmTrackTable 显式 token 解析；该文件字段有实际赋值，原四个 JsonUtility DTO 的
+  局部 pragma 不再适用。一般 JsonUtility 字段契约仍不改变，未批量改造其他 DTO。
+- 旧注释将 SetHealth(0) 或 F10 称为 Health.Kill 不准确。官方 SetHealth 只写生命值；
+  标准验收和 Mode H 死亡认证必须走 Hurt 并观察 IsDead/实际事件。

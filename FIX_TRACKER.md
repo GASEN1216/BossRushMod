@@ -39,6 +39,334 @@
 ```
 
 ---
+### 2026-09-03 七日全面审核：8 条 finding 全量修复（押品 P0 / 濒退制 P1 / 三处静默）
+
+**状态**: fixed（代码、Windows 编译、513 guard 与 guard 反向验证完成；实机 smoke 四项待人工）
+
+**Finding**: CR-2026-09-03-001..008
+
+**兼容分类**: BREAKING 面修复（押品真实资产）+ COMPAT + SAFE（注释/文档）
+
+**版本/Commit**: 未提交
+
+**Owner decision**: 需要，已拍板两项——① F-4 口径：Mode H 是观战模式，击杀不计入全模式采集，
+日报**整个采集器**在 Mode H 跳过（而非只挡击杀）；② Mod 尚未上线仍在开发中，
+摘要归一化清单可直接优化，不需要为已存存档做迁移或版本门。
+
+**背景**: 对最近七天 96 个提交 / 约 10 万行新增做全面审核。基线是编译通过 + 512 guard 全绿，
+因此**这八条全部是"编译绿、guard 绿、运行时静默出错"**——与本仓库历史上的真 bug 同源。
+
+**修复内容**（细节见 `CODE_REVIEW_FINDINGS.md` 同 ID 条目）：
+
+- **CR-001 / P0 押品**：`TryRemoveEscrow` 的 `TryAdvancePhase(EscrowRemovedDurable)` 失败分支补
+  `RollbackDetached`（该推进内含落盘，`IsSaving` 时必然失败，而物品此刻已 `inventory.RemoveAt`）；
+  `TryCancelWithoutRemoval` 新增 `VerifyEscrowStillInInventory`，逐项 `CountOccurrences` 对
+  `preCount`，不足即 `EnterManualIntervention`。**为什么不用整仓 `inventoryPreDigest` 全等**：
+  恢复壳打开时距 Prepare 可能已隔一次重启，玩家在基地挪任何东西都会让整仓摘要变化，
+  逐项比对才直接回答「押品还在不在」这一个不变式。
+- **CR-002 / P1 濒退制**：新增 `ResolveRestRecovery`（清 `injuryId` + 复位 `Available`），
+  `BeginMatchSettlement` 对 starter/relay **两席各调一次**，判据 `HasRested`（本场 entrant
+  名单里没有它）。休息名单只存运行时 `_restedProfileIds`——`ModeHCanonicalDigest` 按反射
+  遍历全部公有字段（null 也计入），给持久化 DTO 加字段会让已存赛季 `VerifyDigest` 失败进写屏障，
+  这条约束贯穿本轮所有 Mode H 改动。
+- **CR-003 / P2 锁盘静默**：新增 `ResolveLockRejectReason` + 三条 `LockReject_*` 文案。
+  这是继拍铃、押品选择之后修掉的**第三处**同类静默，根因都是 `DevLog` 带 `[Conditional]`。
+- **CR-004 / P2 归属渗漏**：图鉴与日报各加 `IsModeHRunInProgressSafe` 门控。日报按 owner 选择
+  放在 `IsActive` 总闸，一次覆盖击杀/双向伤害/玩家阵亡，避免「击杀不算但伤害算」。
+  保留 `CodexTuning.ModeIdModeH` 与 `FormatModeName` 分支（存档兼容面）。
+- **CR-005 / P3 战役重复领奖**：会话级闩 `_cashPaidPendingChapterId`。
+- **CR-006 / P3 死逻辑**：**刻意不删** `ResolveFallbackActions`——guard 把它的调用顺序
+  冻结为 CR-2026-09-02-006 的回归防线，删掉等于放宽 guard（AGENTS.md 4.10）。仅补注释。
+- **CR-007 / P3**：`GameQuality` 注释改为真实取色（`RarityCommon` 而非 accent）。
+- **CR-008 / P3 摘要清单**：`enteredProfileIds`（Roster）与 `entrantIds`（Report）两份入场名单
+  **都**登记。
+
+**行数预算连带改动**：CR-002 使 `ModeHRuntimeModule_CombatFlow.cs` 触及 1200 行硬上限
+（`LargeFileBudgetGuard` 转红）。按 `Config.cs` / `ConfigModConfigKeys.cs` 的既有先例，
+把结算呈现与休整路由**逐字**提取到新文件 `ModeH/ModeHRuntimeModule_SettlementFlow.cs`
+（同一 partial 类，行为不变），并登记进 `compile_official.bat`（保持 CRLF）。
+未放宽该 guard。
+
+**新增/增补守卫**（全部经反向验证）：
+- `ModeHStakeJournalGuard`：脱离仓库后每条失败出口必须回滚；取消前必须核对 escrow 仍在仓库。
+- `ModeHStructureGuard`：休息解除必须接线且两席都做、必须清 `injuryId` 且复位 `status`；
+  锁盘失败必须 `ShowMessage` 且不得直接展示 reasonId；摘要清单字段必须在 DTO 中存在
+  且两份入场名单都登记。
+- `CodexKillTrackingGuard` / `DailyReportPersistenceGuard`：必须排除 Mode H。
+
+**验证**：
+1. Windows `compile_official.bat` 通过（exit 0），除既有 `ModeHUIPages.GameQuality` CS0649
+   外无新增警告；Build 与游戏部署 DLL 的 SHA-256 一致：
+   `d8fcbdf8e628a599f8fc9dcfd7cd16e7f744b6d5778f81988c116c14e3eb04aa`。
+2. `python tools/run_guards.py --jobs 8` → **PASS=513 NEW-FAIL=0 KNOWN-RED=0**。
+3. **Guard 反向验证**：对 12 处不变式逐条注入破坏（删回滚、删核对、漏一席休息结算、
+   不复位 status、不清 injuryId、删锁盘提示、漏登记任一份名单、字段名拼错、
+   删两处 Mode H 门控、删结算页两个文案），确认对应 guard **全部转红**后再逐条还原。
+   这一步查出并纠正了我对 CR-008 的**首次误判**——原以为清单指向不存在的字段而做了替换，
+   反向验证暴露 `enteredProfileIds` 也是真实 DTO 字段，遂改为两份都登记。
+4. 静态复核：`RollbackDetached` 出现在两条失败分支、`HasRested` 有生产调用点、
+   两处 Mode H 门控命中、五个新文案 key 均有消费点。
+
+**未验证/需人工**（按优先级）：
+- **CR-001**：Dev 下令 `RequestStakeJournalWrite` 返回 false，选押品→锁盘，
+  确认物品**回到仓库**且有可见提示；再验重启后 journal 不被静默归档成 CancelledTerminal。
+- **CR-002**：主将倒地（带伤）→ 下一场列入名单但全程不登场 → 赛后确认带伤解除、
+  结算页出现「完整休息」；再打一场让他登场并倒地，确认直接退役。
+- **CR-003**：制造一次锁盘失败，确认按钮不再无反应。
+- **CR-004**：Mode H 打完一场后开图鉴与日报，确认无新增条目与战绩。
+- F3 一键验收（`BOSSRUSH_DEV=1`）跑一轮确认无新增红项。
+
+**已接受的残留**：CR-005 的闩是会话级，跨重启失效；触发它本身要求「写盘失败 **且** 退款失败」
+两个低概率事件同时发生，不为 P3 增加存档字段。
+
+**失败尝试**：CR-008 首次按「字段名拼错」处理，把清单项从 `enteredProfileIds` 替换成
+`entrantIds`——这**移除了 Roster 那一份的归一化**，属于自造回归。由 guard 反向验证当场发现并更正。
+教训：给"清单与实现漂移"类问题下结论前，必须确认原条目**不是**在覆盖另一个同名语义的字段。
+
+---
+### 2026-09-02 F3 第六轮：自动验收全部通过，关闭第五轮四项问题
+
+**状态**: fixed（014–017 按实机证据关闭）/ documented（人工与既有异常边界）
+**Finding**: CR-2026-09-02-014..017
+**兼容分类**: SAFE（本轮仅更新验证记录、覆盖对账与 repowiki）
+**版本/Commit**: 未提交；无生产代码或部署变化
+**Owner decision**: 不需要
+
+**实机证据**：`BossRushValidation_20260902_140735_794.log`，UTC 14:07:35 至 14:11:56，
+SUMMARY 为 138 PASS / 0 FAIL / 0 SKIP / 0 WARN。BUILD MVID 为 `602c8ab3-c58d-4dda-ada0-db071a719fd3`，
+与当前本地 DLL 一致；本地及部署 SHA-256 均为 `12B731D2BEBE202FDA643DBA537EFA3F5484E3DA2BD0693CEB0BAADBC45D9CD4`。
+
+- H 首次认证与缓存继续通过，两次均 intent_cleared=True、archived=True。全日志只有两次测试赛季创建，后续重访未再次开 H。
+- 新 MODE_H_STARTER_KITS 8/8，三枪的实际/可用弹数分别 30/30、10/10、13/13，冻结总量 120、40、60；无 kit_apply 失败或 H 技术故障。
+- 丧尸净化点 0->3，实际现金增加 3、重复成功事件未再增加，模式退出且完整基地就绪。
+- 终章实际死亡呈现一次；最终 affix_stone_hooks 及全部被测订阅/租约回到基线。
+- 63 个动态物品工厂继续通过；完整返基地、角色/相机、清场与存档回读通过。
+
+**验证与边界**：本轮只读游戏日志，更新文档并用覆盖工具重建第六轮账本；无代码改动，不重编译或替换已通过的 DLL。
+F3 的 COVERAGE 仍为 INCOMPLETE（auto_not_passed=0，manual_pending=113），人工项目未自动勾选。
+最终 p95 19.59ms（基线 17.21ms），峰值 62.46ms，未触发 F3 性能警告；内存差值 54816768 字节不等于泄漏证明。
+Player.log 有 44 次 NullReferenceException，归为 3 种栈，上一轮均存在：CheckObsticle 30 次、SearchEnemyAround 10 次、MakeTimeQuacker 床交互 4 次。
+本次未出现新的异常栈种类，不能据此证明异常无害或排除 Mod 交互；这些保留为未唯一归因线索，不扩大本轮修复范围。
+
+详见 `docs/F3复测诊断-2026-09-02第六轮.md` 与 `docs/testing/F3第六轮覆盖对账.md`；113 条人工项目、整场 AI/六场赛季、押品恢复、自然撤离倒计时及主动中止/迟到生成故障注入继续独立验收。
+
+---
+### 2026-09-02 F3 第五轮：认证闭环，修正入场意图、真实整备与订阅收尾
+
+**状态**: fixed（代码、Windows 编译与离线验证完成；新增修复仍待 Unity 实测）
+**Finding**: CR-2026-09-02-014..017；005/013 由第五轮实机证据关闭
+**兼容分类**: COMPAT / WIRE+ / SAFE（文档）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；保持存档/配置 schema、TypeID、冻结弹药总量、掉落率和正常入场失败退款。
+
+**实际证据**：`BossRushValidation_20260902_133917_599.log`，134 PASS / 3 FAIL / 0 SKIP / 1 WARN。
+H 首次认证 45719ms、缓存 142ms，均 Drafting/归档通过，12 个候选和 7 条通用口令；
+63 个动态物品工厂全部通过。完整基地、角色、相机及最终回读通过，未重现此前黑屏中断。
+覆盖账本正确记录 3 自动红项与 113 人工待验，不等于全功能已完成。
+
+**修复**：
+- 丧尸用例在正常零点数开局后要求正数，尚未执行结算。通过生产拾取入口准备 3 点并回读，再做原有成功事件、重复回调、钱包和返程断言。
+- H 成功创建赛季未消费冻结入场意图，重访地图会无请求重开 H，抢占终章。首次写入/读回成功后消费意图，失败时保留退款；Dev 强清回收遗留意图，正常验收追加意图已清断言。
+- H 把弹药送入只识别装备槽的 TryPlug，导致真实比赛生成反复失败。装配器按冻结总量分堆填新枪弹匣/临时角色库存，核对口径和存入结果；失效官方 `_bulletCountCache` 后以公开 getter 核对可用弹数。新实例独立记账，任何失败整批逆序回收，绑定失效明确拒绝。
+- Integration 场景回调清掉旧熔石订阅；终章主动销毁及异步迟到分支先 ClearBossRandomLootTracking 再 Destroy。自然死亡时序与概率保持。
+- 新增 `DebugAndTools/F3GameplayValidationModeHKits.cs`，登记显式编译清单、F3 与 GameplayCoverage.json。MODE_H_STARTER_KITS 在 Drafting 隔离租约内，真实生成/装配全部 starter，核对槽位、弹匣和总弹药，超时/取消迟到实例也回收。旧日志显示该项 NOT_RUN。
+- 同步 `GameplayValidationCoverageGuard`、`ModeHVirtualLoadoutGuard`，新增 `GameplayValidationLifecycleGuard`；相关 repowiki 与验收维护说明同步。
+
+**验证**：Windows Dev 真编译成功并部署；99 个相关 guard 全通过。实际生产装配器 + 实际 LoadoutKits.json 的 34 项 C# 离线模拟检查通过，包括有限弹药分堆、缓存、错误口径、满库存、实例化/写入失败、owner 门禁与幂等回收。模拟类型不能证明 Unity 行为。
+
+本地与部署 DLL SHA-256：`1B2BCAA74984E339C14E040AAD19783AF2A85558BABA355158B1A25BE9521C46`；部署覆盖 JSON 与源码一致。
+新增 H 弹匣私有缓存字段绑定已对照本机官方源码；缺失按 fail-closed 返回明确原因，无全局 Harmony/反射策略替换。
+
+**未验证/需人工**：下一轮完整 F3 必须确认新增整备、意图清除、丧尸结算返程、终章和订阅差值；H 六场赛季/押品恢复及其它 113 条人工场景继续待验。第 1 阶段单帧峰值 274.37ms 的 WARN，以及官方 AI/外部 Mod 异常另保留线索，未宣称宿主日志零异常。
+详见 `docs/F3复测诊断-2026-09-02第五轮.md`。未改原始日志或玩家存档，未提交/发布。
+
+---
+### 2026-09-02 全功能验收覆盖清单与新增自动用例
+
+**状态**: fixed（覆盖登记、报告和离线验证完成；新增游戏用例尚未实机执行）
+
+**Finding**: 无；按 owner 要求扩展测试覆盖
+
+**兼容分类**: COMPAT / SAFE（文档）
+
+**版本/Commit**: 未提交
+
+**Owner decision**: 不需要；沿用 Dev、基地、专用测试档门禁，无玩家存档 schema / TypeID / 玩法数值变更。
+
+**变更**：
+- 新增 `Assets/Data/GameplayCoverage.json`，登记当前 52 个功能领域、113 条可填写结果与证据的人工场景，关联源码、Wiki 条目与自动断言；包括所有模式、H 完整赛季/真实押品、六章战役、后山、NPC、婚姻、Boss、16 类装备、奖励、存档/跨槽、UI/本地化、兼容与性能。数量以清单校验输出为准。
+- `F3GameplayValidationCoverage.cs` 在首个场景切换前生成同名 `.coverage.md`，按阶段与结束时更新；自动未执行为 `NOT_RUN`，人工为 `MANUAL_PENDING`，同轮 FAIL 不被重试 PASS 覆盖。SUMMARY 追加独立 `coverage=INCOMPLETE` 和 COVERAGE 明细；自动绿不代表人工验收完成。日志新增程序集 MVID 以定位实际构建。
+- `F3GameplayValidationItems.cs` 按动态注册表的排序 ID 快照逐帧生成游离临时物品，检查 TypeID、名称与图标，finally 销毁；不放入背包或穿戴。取消/超时剩余项及汇总记 SKIP。工厂通过不代表战斗效果通过。
+- `F3GameplayValidationZombie.cs` 调用真实准备/撤离 UI 入口和官方倒计时成功事件，核对净化点兑现的钱包差值、重复回调不再次结算、模式退出和完整基地就绪。它主动派发成功事件，**自然倒计时、离圈中断与正常波次解锁仍是人工场景**。
+- 三个新增 C# 均进入显式编译清单。新增清单利用既有 `Assets/Data/*.json` 部署逻辑，无流水线改造。
+- `tools/gameplay_coverage.py` / `GameplayValidationCoverageGuard` 对账功能目录、生产模块与 F3 固定断言，发现遗漏和坏引用；不会证明某个模块内所有分支已经执行。模块内部新增行为仍须评审并补具体场景。
+
+**验证**：Windows Dev 真编译通过并部署；96 个相关 guard 通过；实际 C# 报告模型/JSON parser 的 14 个离线断言通过；覆盖检查的 5 个缺项反例均被拒绝，完整清单通过。未进入 Unity，不把这些结果当新增游戏用例 PASS。
+
+本地与部署 DLL 的 SHA-256 均为 `894952DCD7C8A0BB48A7D74B2DA4EEDFB3C4B8F5C7CDDAD52CF9648E9695006D`；部署 JSON 也与源码清单哈希一致。编译保留既有 `ModeHUIPages.GameQuality` 的 CS0649 warning，无新增编译错误。
+
+**未验证/需人工**：新自动用例和报告在下一轮 F3 验证；113 条人工场景保留待验，H 现有认证修复的实机状态不变。清单见 `docs/testing/游戏内全功能验收清单.md`；维护说明见 `docs/testing/游戏内验收覆盖维护.md`。
+
+---
+### 2026-09-02 F3 第四轮：D 多波闭环，补接 H 口令生产认证和缓存恢复
+
+**状态**: fixed（代码与离线验证完成；H 完整开局/缓存待实机）
+**Finding**: CR-2026-09-02-013；第四轮关闭 010 / 011 / 012，005 保持 Open
+**兼容分类**: COMPAT / SAFE（文档）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；补齐既有认证写入与缓存恢复，不降低冻结门槛，不改存档 schema。
+
+**实机基线**: `BossRushValidation_20260902_124241_090.log`，69 PASS / 2 FAIL / 0 SKIP / 0 WARN。
+D 多波真实推进 1->2，playable=3/3；此前 H 伤害空引用与 D 格式异常未再出现。
+H 首次认证/缓存仍在整体门槛失败，未进入 Drafting。其他项目及完整返基地/清场/回读均 PASS。
+
+**根因**: 口令矩阵 RecordEffectStatus 无生产调用，所有 key 只有 steady 自结算分量提供的
+1 条可用口令，永远不满足至少 3 条。BuildReport 之后首次绑定签名会清空实测矩阵；
+读取缓存只恢复 preset、忽略逐 effect 状态。旧错误出口又把具体原因统一覆盖成 threshold_not_met。
+
+**修复**:
+- 新增 `ModeH/ModeHCommandCertificationProbe.cs` 并登记编译清单；使用既有 ApplyEffects/Tick/Validate/Restore，
+  在双方 AI 激活、无敌保护期间，对可读且可还原字段跨至少 3 帧、累计 0.3 秒采样。
+  采样先于重申，双方持续保持、还原回读成功才记录 VerifiedBehavior；点火/目标/路径/marker
+  无对应遥测，保持 ReportOnly。诊断取消、异常和结束均释放 adapter，认证 owner 回收双角色。
+- `ModeHProductionCertification` 在逐 key 前绑定签名、清旧 key 证据；采样完成后仍走真实 Hurt/死亡。
+  报告记录通用和招牌口令，日志输出每 key 可用数、总计和具体 gate 原因。
+- `ModeHCommandCompatibilityRegistry.RestoreCertificationEffects` 从已通过记录恢复合法逐 effect，
+  拒绝陌生 effect、错误所属口令/entryKind 和非法状态；缓存聚合状态重新派生，再检查内容门槛。
+- `ModeHCommandCompatibilityGuard` 增加生产可达写入、先读后重申、双角色清理和缓存恢复断言；repowiki 同步。
+
+**验证**: Windows Dev 正式编译并部署；92 项相关 guard 通过。
+独立 C# 7.3 探针直接编译生产 adapter、probe、registry 并读取实际 Commands.json：12 项通过，
+涵盖旧门槛失败复现、跨帧写入、双方还原、未测效果不升级、构建签名失效、缓存恢复、
+伪造聚合/外来效果拒绝、AI 回写、inactive、超时和取消。
+Unity/AI 对象与时间由模拟环境提供，不等同实机。
+Build 与本机游戏部署 DLL 的 SHA256 一致：`789577306FD0BF6ED7A33FC12BE83C5FD8E2CEDE671079C90B117CD1ED5D36EC`。
+
+**未验证/需人工**: 新 DLL 的 MODE_H_FIRST_CERTIFICATION / MODE_H_CACHE_HIT、Drafting 归档清理
+和最终状态仍待专用测试档完整 F3。首次认证现在执行跨帧口令采样，会比原来的纯击杀检查耗时更长。
+共享工厂的丧尸实际撤离仍未覆盖。未改原始报告、存档或外部 Mod，未提交或发布。
+详见 `docs/F3复测诊断-2026-09-02第四轮.md`。
+
+---
+### 2026-09-02 F3 第三轮：68 项通过，修正剩余两条伤害回调兼容路径
+
+**状态**: fixed（代码与构建/守卫/模拟回调验证完成；新 DLL 待游戏内复测）
+**Finding**: CR-2026-09-02-011 / 012；实机关闭 004 / 006 / 007 / 008 / 009
+**兼容分类**: COMPAT / SAFE（文档）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；沿用诊断角色和专用测试档流程，不改门槛、存档或外部 Mod。
+
+**实机基线**: `BossRushValidation_20260902_121947_845.log` 完整输出 68 PASS / 3 FAIL / 0 SKIP / 0 WARN。
+Mode D 首波三只狼均活跃；Mode F 真正撤离并完整返基地；标准胜利奖励箱生成；BGM 表 2/2/2、
+实际播放及 owner 租约通过；最终返基地、清场、泄漏差值和存档回读通过。
+剩余 MODE_H_FIRST_CERTIFICATION / MODE_H_CACHE_HIT 为真实击杀 NullReferenceException，
+MODE_D_MULTI_WAVE 为第二次死亡回调期间 FormatException。
+
+**证据与修复**:
+- 只读检查已安装 BattlefieldTypeKillNotice.dll：死亡订阅直接读取伤害来源 IsMainCharacter。
+  H 诊断伤害此前传 null，与之不兼容。两个诊断 clone 现在互作攻击者，拒绝 null/自身/主玩家；
+  仍必须完成真实 Hurt、IsDead、受伤与死亡事件。catch 增加 stable key、队伍、事件状态与完整栈。
+- 同一外部 Mod 的经验 UI 首次创建不初始化数字，首个 tween 后续更新才写文本；
+  同帧第二次击杀会 long.Parse 尚未更新的模板。F3 多波快照击杀改为协程，每只之后 yield 一帧，
+  保持当前波快照、不扫新波、死亡断言和推进后生成等待。单次伤害异常完整留痕并 FAIL。
+- 旧日志只输出异常类型；上述兼容触发条件已由实际 DLL 调用链确认并模拟复现，
+  对此次具体异常的唯一归因和新修复效果仍须游戏内完整栈/复测验证。
+
+**验证**: Windows Dev 正式编译并部署通过；91 项相关 guard 全通过。
+独立 C# 7.3 探针提取实际修改的方法，配模拟 Health/事件/经验 UI 回调，11 项通过：
+旧空来源与同帧异常可复现，新 NPC 来源、逐帧快照击杀、下一波隔离、来源拒绝、异常留痕和监听退订符合预期。
+该探针不是 Unity smoke，也没有运行外部 Mod 实际程序集。repowiki 和问题库已同步。
+Build 与游戏部署 DLL 的 SHA256 均为 `2AD8B88D530116ADEC156C269BEC2C1DB2E89368E96064D00F05DA220FD51BCD`。
+
+**后续实机结果**: 第四轮 69 PASS / 2 FAIL，D 多波已通过，010/011/012 关闭；
+H 整体认证仍受口令矩阵漏接线阻断，005 保持 Open，见第四轮条目。
+H 成功路径清理与共享工厂的丧尸撤离仍未覆盖。
+未启动游戏、未改原始日志/玩家存档/其他 Mod，未提交或发布。详见 `docs/F3复测诊断-2026-09-02第三轮.md`。
+
+---
+### 2026-09-02 F3 完整复测：剩余七个红项的生产链与验收判据修复
+
+**状态**: fixed（代码、Windows 编译及相关守卫通过；新代码待游戏内复测）
+**Finding**: CR-2026-09-02-004..010
+**兼容分类**: COMPAT / SAFE（文档）
+**版本/Commit**: 未提交
+**Owner decision**: 不需要；修正已确认的调用和判定错误，不改经济、存档或模式门槛。
+
+**实机基线**: `BossRushValidation_20260902_114245_015.log` 完整输出 SUMMARY：
+63 PASS / 7 FAIL / 0 SKIP。返基地、最终就绪、清场、泄漏差值、存档回读、终章一次性死亡呈现均 PASS；
+CR-2026-09-02-001/002 已完成本轮实机闭环。BGM 曲目尚未获取，终章的零 owner 不代表播放功能已验证。
+
+**根因与修复**:
+- Mode D 两项：官方 `SetRelatedScene` 通过 MultiSceneCore 重挂父级，GO 属于主场景，
+  休眠登记仍用子场景索引。helper 只按 GO.scene 退订无效。改为按已加载场景索引移除
+  当前角色的登记（含重复登记），保留其他角色；标准 Boss 生成也接入保护。无每帧扫描。
+- Mode H 两项：SpawnBridge 早已将独立 clone 的 `canDieIfNotRaidMap=true`，
+  静态资格却先拒绝原预设的 false。改为验证实际 Health 的该标志，保留其他资格与 8 个候选门槛。
+  同时修正 `SetHealth(0)` 不触发死亡的问题：两只认证角色均走 `Hurt`，使用完整 DamageInfo，
+  并在同步窗口监听实例的受伤/死亡事件，finally 退订；实际 IsDead 与两个事件齐全才通过。
+  认证早于战斗 router 绑定，不能只靠尚未绑定的全局路由计数。
+- Mode F：工厂原来先检查官方持久回调、再删除它们，导致既没有官方返程也不跑兜底。
+  改为清空事件后计算兜底；成功回调在业务结算前占有一次性标记，防止丧尸结算重新派发同一事件而重复返程。
+  验收按真实成功结算计数增量判定，并等待基地完整就绪；不再读取 ExitModeF.Reset 后的瞬时标志。
+- 标准胜利：日志中 F3 击杀先于“记录 Boss 生成信息”，场景扫描找到了尚未登记的创建中角色。
+  现在等 currentBoss 已登记、激活且存活，定点 Hurt 并验证死亡，再等待真实胜利奖励箱；
+  胜利用例不再调用带 Destroy 兜底的全场清理。
+- Mode D 多波测试也改为快照当前波登记对象并逐只 Hurt，避免清场扫到刚开始生成的下一波；
+  波次编号增加后继续有界等待活跃的登记敌人，不把“编号已推进”当作“生成已完成”。
+- BGM：已部署 JSON 与源码哈希一致，2/2/2 条数组在 JsonUtility 路径变成 0/0/0。
+  新 `Audio/BossBgmTrackTable.cs` 显式复用既有 ModeHJsonParser（已登记编译），保留空表、
+  可选字段、phase 与龙王旧 mp3 路径；错误数组类型给出解析原因。
+
+**验证**: Dev Windows 正式编译通过并部署本机；91 项相关 guard 通过，补齐多波竞态后再次运行相关集合。
+用实际生产解析源码和已部署 JSON 运行独立 C# 7.3 探针，9 项通过（包含三组数组、中文、BOM、
+缺省、显式 false/phase、坏 JSON 与错误数组类型）。repowiki 已同步。
+
+**后续实机结果**: 第三轮 68 PASS / 3 FAIL；Mode D 活跃、F 实际返基地、标准奖励箱、BGM 播放/租约已确认。
+H 首次认证/缓存和 D 多波仍受后续伤害回调异常阻断，详见上方第三轮条目。
+共享工厂的丧尸成功事件重入已作静态检查，丧尸撤离仍需实机覆盖。
+详见 `docs/F3复测诊断-2026-09-02晚间.md`。无提交，无玩家存档或原始报告改写。
+
+---
+### 2026-09-02 F3 返回基地黑屏、场内用例串到基地与终章伤害空引用
+
+**状态**: fixed（2026-09-02 晚间完整复测已通过对应项）
+
+**Finding**: CR-2026-09-02-001 / 002 / 003
+
+**兼容分类**: COMPAT（仅 Dev 验收路径）/ SAFE（诊断文档）
+
+**版本/Commit**: 未提交
+
+**Owner decision**: 不需要；沿用已有 F3 专用测试档流程
+
+**现象与证据**: `BossRushValidation_20260901_143149_397.log` 记录 52 PASS / 11 FAIL，
+没有 SUMMARY；用户反馈转场黑屏后关闭游戏。Player.log 最后返程只加载 `Base_SceneV2`。
+Mode H 更早因 `audit_cannot_die` 全池拒绝后返基地，后续若干场内用例仍在基地执行。
+
+**根因与修复**:
+- 返回基地误用子场景名作为完整入口；改为官方 `LoadBaseScene`。抽出
+  `DebugAndTools/F3GameplayValidationScenes.cs`（已登记编译清单），同时核对目标场景、加载状态、
+  LevelManager.AfterInit、活动且存活的玩家、CharacterItem 与启用的 GameCamera。
+  删除允许忽略初始化的终态检查；基地未就绪则跳过依赖检查并如实汇总。
+- 场内用例启动前统一恢复/确认竞技场；已有返程结束前不并发加载。H 已中止时立即记录
+  exit_reason，不再空等 180 秒。保留正式 H 失败退款离场行为。
+- 终章 `DamageInfo` 无参 struct 初始化使 elementFactors 为空；改为 `new DamageInfo(player)`。
+- 首次正式编译暴露当前源码的三个 CS1061：不存在的 damageCreator 字段与两个 Dispose 调用。
+  租约清理复用 `ReleaseRuntimeObjects` 的完整逆序路径，先保留 run 上下文尝试押品返还，
+  再释放认证/生成/选手/租约/UI 并清 owner。无存档、配置、TypeID 或正式准入条件变更。
+
+**验证**: Dev Windows 正式编译通过并由原构建脚本部署本机，产物哈希一致；
+`python tools/run_guards.py --changed-only` 43 项通过；repowiki 调试与 Mode H 卡片/主题已同步。
+
+**复测闭环**: `BossRushValidation_20260902_114245_015.log` 的 SCENE_RETURN_BASE、
+BASE_READY_FINAL、CAMPAIGN_FINAL_BOSS、最终清场/泄漏/回读均 PASS，完整 SUMMARY 已输出。
+Mode D、Mode H、BGM 及两个深度流程的独立红项转由上方晚间条目继续修复。
+详见 `docs/F3验收诊断-2026-09-02.md`。
+
+**失败尝试**: 首轮编译遇上述三个既有 API 错误，修正后通过；新增编译清单项使 patch 工具
+改写 bat 行尾，WindowsPathDetectionGuard 报错，已恢复 CRLF 后通过。
+
+---
 ### 2026-09-01 F3 一键验收把 5 条深度流程记为 SKIP，实机仍要人工走撤离点
 
 **状态**: fixed

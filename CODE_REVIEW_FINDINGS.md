@@ -6,12 +6,30 @@
 
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 0 | 7 | 0 | 0 | 7 |
-| P1 | 6 | 20 | 0 | 0 | 26 |
-| P2 | 4 | 20 | 0 | 0 | 24 |
-| P3 | 1 | 16 | 0 | 0 | 17 |
+| P0 | 0 | 9 | 0 | 0 | 9 |
+| P1 | 6 | 30 | 0 | 0 | 36 |
+| P2 | 4 | 29 | 0 | 0 | 33 |
+| P3 | 1 | 20 | 0 | 0 | 21 |
 
-最后更新：2026-09-01（新增 CR-2026-09-01-010，记录第二次 F3 报告确认的
+最后更新：2026-09-03 七日全面审核（96 个提交 / 约 10 万行新增）。新增 CR-2026-09-03-001..008：
+1 个 P0（押品脱离仓库后无回滚，真实物品可永久丢失）、1 个 P1（濒退制「休息解除带伤」完全未接线）、
+2 个 P2（锁盘全静默；ERROR 互换归属渗入图鉴与日报）、4 个 P3。八条全部已修：
+Windows 编译通过、513 guard 全绿、新增/增补 guard 均经**反向验证**（逐条破坏不变式确认转红）。
+实机 smoke 四项待人工，见 `FIX_TRACKER.md` 同日条目。
+
+上一次更新：2026-09-02 第六轮（138 PASS / 0 FAIL / 0 SKIP / 0 WARN；014–017 转 Fixed。
+H 初始整备 8/8、入场意图清除、丧尸结算返程、终章与最终订阅差值均实机通过。
+人工清单仍有 113 条待验；既有 AI / 外部 Mod 异常不等同已排除）。
+
+上一次更新：2026-09-02 第五轮（134 PASS / 3 FAIL / 1 WARN；H 首次认证及缓存通过，005/013 转 Fixed。
+新增 014–017：丧尸撤离测试缺少正数样本、H 成功入场意图未消费、H 弹药误走装备槽、终章掉落订阅残留。
+代码与离线验证完成；新增项在下一轮实机验证前保持 Open）。
+
+上一次更新：2026-09-02 第四轮（完整 F3 报告 69 PASS / 2 FAIL；D 多波通过，010/012 转 Fixed。
+H 逐候选不再拒绝或出现伤害异常，011 转 Fixed，但总体认证和缓存仍卡口令门，005 保持 Open。
+新增 013：口令矩阵无生产写入者、签名绑定顺序与缓存恢复缺失；已修正并编译，游戏内复测前保持 Open）。
+
+上一次更新：2026-09-01（新增 CR-2026-09-01-010，记录第二次 F3 报告确认的
 2 个 P1 + 1 个 P2 + 1 个 P3；修复与静态验证已完成，下一份完整实机报告通过前保持 Open）。
 
 上一次更新：2026-08-31（新增 CR-2026-08-31-009，记录首次 F3 完整验收日志确认的
@@ -29,6 +47,539 @@ Open 计数按问题条目计，分组条目内多项分别计数。上午修复
 CR-2026-08-29-001..007 未单独立条，见 `FIX_TRACKER.md` 四个修复包）。
 
 ## Confirmed Findings
+
+### CR-2026-09-03-001：模式H 押品脱离仓库后阶段推进失败无回滚，真实物品永久丢失
+
+**严重级**：P0
+**兼容分类**：BREAKING（玩家真实资产）
+**状态**：Fixed
+**来源**：2026-09-03 七日全面审核（静态确认，含官方 API 与设计稿逐条对照）
+
+#### 位置
+
+- `ModeH/ModeHWarehouseStakeJournal.cs:481`（TryRemoveEscrow 末步）
+- `ModeH/ModeHWarehouseStakeJournal.cs:690`（TryCancelWithoutRemoval 只看内存态）
+- `ModeH/ModeHSaveFlushCoordinator.cs:173`（IsSaving 时写盘必然失败）
+
+#### 问题
+
+`TryRemoveEscrow` 先 `inventory.RemoveAt` 把押品摘出仓库，再 `TryAdvancePhase(EscrowRemovedDurable)`。
+该推进内含落盘，`SavesSystem.IsSaving` 时返回 `flush_deferred_is_saving`，phase 回滚到
+`EscrowSnapshotDurable`，但**物品不回滚**——只活在内存 `_escrowItems` 里。
+同一函数的上一条失败路径（TryComputeInventoryDigest）是有 `RollbackDetached` 的，此处漏了。
+
+#### 影响
+
+三条出路全部封死：① 本会话取回走 `TryCancelWithoutRemoval`，被 `cancel_escrow_still_held`
+挡死（a570162 新加的关停/挂起/生成失败三条返还路径全部经此函数，全部失败）；
+② 重启/切槽后 `LoadPersisted` 清空 `_escrowItems`，该检查失效，journal 被静默归档成
+`CancelledTerminal`（语义是"已证明从未移除"）；③ 玩家侧 `PrepareLockedMatch` 失败只写
+`DevLog`，正式构建被 `[Conditional]` 剥离，按钮毫无反应。触发条件是「押品锁盘时恰逢官方自动存档」。
+
+违反设计稿 `docs/设计提案/2026-08-17_斗蛐蛐新模式创意脑暴.md:1744`「匹配不到 pre-image → 人工介入」。
+
+#### 修复
+
+① `TryAdvancePhase` 失败分支补 `RollbackDetached`，与既有分支对称；
+② 新增 `VerifyEscrowStillInInventory`：逐项 `CountOccurrences` 与 `preCount` 比对，
+不足即 `EnterManualIntervention`。用逐项比对而非整仓 digest 全等，避免"玩家挪了别的东西"误报。
+
+#### 验证需求
+
+Windows 编译 + 513 guard 通过；`ModeHStakeJournalGuard` 新增两条断言并经反向验证。
+**实机待做**：Dev 下令 `RequestStakeJournalWrite` 返回 false，确认物品回到仓库。
+
+---
+### CR-2026-09-03-002：模式H 濒退制「休息一场解除带伤」完全未实现
+
+**严重级**：P1
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：2026-09-03 七日全面审核（零调用点 grep 双重复核）
+
+#### 位置
+
+- `ModeH/ModeHCombatTelemetry.cs:169`（HasRested 零调用）
+- `ModeH/ModeHInjuryAndScarSystem.cs:355`（injuryId 只写不清）
+- `Localization/ModeHLocalization.cs:219-220`（Injury_Rested / Injury_Retired 零消费）
+
+#### 问题
+
+owner 2026-08-17（濒退制）与 2026-08-18（按实际登场判定休息）两次裁决冻结的规则，
+代码里只有「进带伤 / 进退役」两条边，没有任何从 `Injured` 回到 `Available` 的路径。
+判定用的积木 `HasRested` 写好了但全仓库零调用；两个文案 key 注入了但无人消费。
+
+#### 影响
+
+把带伤选手按在替补席完全没有收益（一个核心战术抉择是空的）；伤病 debuff
+（腿伤/手伤/护具受损/旧伤/心气受挫）在其后**每一场**都生效；赔率惩罚
+`starterInjured -5` / `relayInjured -3` 永久挂着。六场赛季比设计难度显著更高，
+选手实际是「两条命、无恢复」。
+
+#### 修复
+
+新增 `ModeHInjuryAndScarSystem.ResolveRestRecovery`（清 `injuryId` + 复位 `Available`）；
+`BeginMatchSettlement` 在两次 `ResolveDownInjury` 之后对 starter/relay 两席各调一次；
+结算页消费两个文案 key。休息名单只存运行时 `_restedProfileIds`，**不进持久化 DTO**——
+`ModeHCanonicalDigest` 按反射遍历全部公有字段，加字段会让已存赛季 VerifyDigest 失败进写屏障。
+
+#### 验证需求
+
+`ModeHStructureGuard` 新增断言（含"两席都要结算"）并经反向验证。
+**实机待做**：主将倒地带伤 → 下一场留替补席不登场 → 确认解除且结算页显示「完整休息」。
+
+---
+### CR-2026-09-03-003：模式H 锁盘按钮所有失败原因均静默
+
+**严重级**：P2
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：2026-09-03 七日全面审核
+
+#### 位置
+
+- `ModeH/ModeHRuntimeModule_MatchFlow.cs:863-868`
+
+#### 问题
+
+`PrepareLockedMatch` 失败只写 `DevLog`，而它带 `[Conditional("BOSSRUSH_DEV")]`，
+正式构建里整个被剥离。按钮 `Interactable` 也不检查这些前提。
+可返回的失败原因含 `lock_command_missing`、`match_no_selectable_command`、
+`lock_selection_missing`、`match_roster_no_live_contract` 与全部押品失败。
+
+#### 影响
+
+玩家点「锁盘」毫无反应，与按钮损坏无异，被堵在赔率页。`lock_command_missing` 现实可达：
+`GetSelectableCommands` 按 stableKey 取，某选手若无通过认证的口令即为空。
+这是继拍铃、押品选择之后的第三处同类静默。
+
+#### 修复
+
+新增 `ResolveLockRejectReason` 按原因分档（押品类委托既有押品文案），
+新增 `LockReject_CommandUnavailable` / `LockReject_RosterMissing` / `LockReject_Generic`
+三条中英文案；绝不把内部 reasonId 原文展示给玩家。
+
+#### 验证需求
+
+`ModeHStructureGuard` 断言失败分支必须 `ShowMessage` 且不得直接展示 reasonId，经反向验证。
+**实机待做**：制造一次锁盘失败确认有提示。
+
+---
+### CR-2026-09-03-004：ERROR 互换期间的击杀归属渗入图鉴与日报
+
+**严重级**：P2
+**兼容分类**：COMPAT
+**状态**：Fixed（owner 2026-09-03 裁决：Mode H 击杀不计入；日报整个采集器跳过）
+**来源**：2026-09-03 七日全面审核
+
+#### 位置
+
+- `Integration/Codex/CodexKillCollector.cs`（OnGlobalDead / OnGlobalHurt）
+- `Integration/DailyReport/DailyReportStatsCollector.cs`（IsActive）
+
+#### 问题
+
+两个全局采集器只按 `info.fromCharacter.IsMainCharacter` 过滤，而 ERROR 完整互换期间
+官方会把归属改写成主角（`ModeHEventRouter.SetErrorSwapControlledParticipant` 的存在即为佐证）。
+于是同一场 Mode H 比赛里 99% 的击杀（选手打的）不计、ERROR 那次却计。
+
+对照：战役侧本就安全（`ResolveCampaignCurrentMode` 对 G/H 返回 null）；
+成就侧不可达（`Assets/Data/ModeH/BossProfiles.json` 排除表已含 `DragonDescendant` / `boss_dragonking`）；
+PetNest 侧不可达（随从被 `PetNestModeGate` 挡在 Mode H 外）。
+
+#### 影响
+
+擂台 Boss 可进鸭皇图鉴并污染「最快击杀」记录；日报战绩与悬赏可在观战模式里推进。
+
+#### 修复
+
+两处加 `ModBehaviour.IsModeHRunInProgressSafe()` 门控（该门面已被 RandomEventModeGate、
+PetNestModeGate 用于同一目的）。日报按 owner 选择放在 `IsActive` 总闸上，一次覆盖
+击杀/双向伤害/玩家阵亡三类，避免「击杀不算但伤害算」的自相矛盾。
+保留 `CodexTuning.ModeIdModeH` 常量与 `FormatModeName` 分支（存档兼容面）。
+
+#### 验证需求
+
+`CodexKillTrackingGuard` / `DailyReportPersistenceGuard` 新增断言并经反向验证。
+**实机待做**：Mode H 打完一场后确认图鉴与日报无新增。
+
+---
+### CR-2026-09-03-005：战役交付退款失败时可重复领取奖金
+
+**严重级**：P3
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：2026-09-03 七日全面审核
+
+#### 位置
+
+- `Campaign/CampaignProgressService.cs:307-372`
+
+#### 问题
+
+交付先发钱再写状态，写状态失败则退款。但退款也失败时章节仍是 `ReadyToDeliver`，
+玩家可再次交付再拿一次奖金，此前只有一句文案「请勿重复交付」拦着。
+
+#### 影响
+
+经济漏洞面。需要「写盘失败 **且** 退款失败」两个低概率事件同时发生，实际概率极低。
+
+#### 修复
+
+新增会话级闩 `_cashPaidPendingChapterId`：发钱成功即置位，写盘成功或退款成功则清空；
+重试交付时若闩命中则跳过发钱、只补写状态。换槽与静态复位一并清空。
+**已接受的残留**：闩是会话级，跨重启失效——不为 P3 增加存档字段。
+
+#### 验证需求
+
+静态；实机不必专门构造（触发条件本身极罕见）。
+
+---
+### CR-2026-09-03-006：ResolveFallbackActions 已成死逻辑
+
+**严重级**：P3
+**兼容分类**：SAFE（仅注释）
+**状态**：Fixed（按注释澄清，**刻意不删代码**）
+**来源**：2026-09-03 七日全面审核
+
+#### 位置
+
+- `Utilities/ModeExtractionPointFactory.cs:69-73`
+
+#### 问题
+
+CR-2026-09-02-006 把它挪到 `ClearPersistentEvents` 之后（修复本身正确），
+而后者是整体 `new UnityEvent()` 替换，此后 `GetPersistentEventCount()` 恒为 0，
+函数内循环永不执行、恒返回 (true, true)。
+
+#### 影响
+
+无行为影响，但会误导后来者以为仍有「官方回调探测」能力。
+
+#### 修复
+
+**不删除函数**：`tests/ZombieModeExtractionFactoryGuard.py:50-73` 把
+`ClearPersistentEvents < ResolveFallbackActions < ConfigureEvents` 的顺序冻结为不变式，
+删掉等于抹掉该 finding 的回归防线（AGENTS.md 4.10 不得为改动放宽 guard）。
+改为补注释说明现状与「何时会重新生效」。零行为改动。
+
+---
+### CR-2026-09-03-007：GameQuality 的 CS0649 注释与实际取色不符
+
+**严重级**：P3
+**兼容分类**：SAFE（仅注释）
+**状态**：Fixed
+**来源**：2026-09-03 七日全面审核
+
+#### 位置
+
+- `ModeH/ModeHRuntimeModule_MatchFlow.cs:362`
+
+#### 问题
+
+注释称「留 0 时渲染器走 accent 色」，实际 `ModeHUI.ResolveRarityColor(0)` 返回
+`BossRushUIColors.RarityCommon`；accent 只在 `IsAnomaly` 时才换成 Warning。
+
+#### 影响
+
+表现无害（所有选秀卡统一中性描边），但「刻意不赋值」的理由写错了。
+
+#### 修复
+
+改注释为真实取色，保留结论（该 CS0649 是有意的）。
+
+---
+### CR-2026-09-03-008：摘要集合语义清单漏登记第二份入场名单
+
+**严重级**：P3
+**兼容分类**：COMPAT（未上线，owner 确认可直接优化）
+**状态**：Fixed
+**来源**：2026-09-03 制定修复计划时发现
+
+#### 位置
+
+- `ModeH/ModeHCanonicalDigest.cs:50`
+
+#### 问题
+
+入场名单在两个 DTO 上各有一份：`ModeHMatchRosterDto.enteredProfileIds`（:188）与
+`ModeHMatchReportDto.entrantIds`（:358）。`SetSemanticFields` 长期只登记前者，
+后者从未参与排序去重——而它来自 `HashSet` 枚举转 List。
+
+> 首次记录时曾误判为「清单指向不存在的字段」并改成替换，
+> 经 guard 反向验证发现 `enteredProfileIds` 也是真实字段，已更正为两份都登记。
+
+#### 影响
+
+潜在：`entrantIds` 顺序若变化会让同一逻辑状态算出不同摘要，误判
+`season_digest_mismatch` 并进写屏障（押品禁用、恢复壳接管）。当前顺序实际稳定，未触发。
+
+#### 修复
+
+两份都登记；`ModeHStructureGuard` 新增断言——清单字段必须在 DTO 中真实存在，
+且两份入场名单都必须登记，防止再次漂移。
+
+---
+
+### CR-2026-09-02-001：F3 直载基地子场景导致黑屏，模式失败返程污染后续用例
+
+**严重级**：P1 Major
+
+**兼容分类**：`COMPAT`
+
+**状态**：Fixed（2026-09-02 完整 F3 报告验证）
+
+**来源**：用户黑屏反馈、Player.log、`BossRushValidation_20260901_143149_397.log` 与实际调用链。
+
+原 `DebugAndTools/F3GameplayValidationRunner.cs` 用 `LoadScene("Base_SceneV2")` 直载子场景，
+日志只见该子场景、不见完整 `Base`；加载任务结束即记 PASS，终态还跳过 AfterInit。
+同时 H 认证全拒返基地后，后续场内用例仍在基地启动，造成受污染的 PASS/FAIL。
+新 `F3GameplayValidationScenes.cs` 使用官方 `LoadBaseScene` 并核对完整就绪状态；
+`F3GameplayValidationStages.cs` 每个场内用例前恢复竞技场，已有加载结束前不发起第二次加载。
+基地/竞技场未就绪则跳过依赖用例，如实记录状态；不放宽正式 H 认证退出约束。
+`BossRushValidation_20260902_114245_015.log` 中返程、完整就绪、最终清场/回读均 PASS，
+SUMMARY 完整输出，H 拒绝后的竞技场恢复也通过。本次报告未复现加载黑屏。
+
+### CR-2026-09-02-002：F3 终章 DamageInfo 零值初始化造成伤害空引用
+
+**严重级**：P1 Major
+
+**兼容分类**：`COMPAT`
+
+**状态**：Fixed（2026-09-02 实机 CAMPAIGN_FINAL_BOSS PASS）
+
+**来源**：Player.log 7400 行与官方 `DamageInfo` / `Health.Hurt` 源码。
+
+`RunCampaignFinalBoss` 使用无参 `new DamageInfo()`，对 struct 不会调用带可选参数的构造器，
+`elementFactors` 为 null；官方 Hurt 读取其 Count，必然空引用。改为 `new DamageInfo(player)`
+并填写受击目标与位置，继续走真实 Hurt/死亡/呈现链。新报告 death_presentations=1，清理 PASS。
+后续第三轮报告的曲目加载、播放及租约用例也已通过，见 CR-2026-09-02-007。
+
+### CR-2026-09-02-003：F3 验收源码引用三个不存在的 API，阻断正式编译
+
+**严重级**：P0 Blocker
+
+**兼容分类**：`COMPAT`
+
+**状态**：Fixed（Windows 正式编译通过）
+
+**来源**：Roslyn CS1061、官方 DamageInfo 与 Mode H 租约类定义。
+
+`F3GameplayValidationRunner.cs` 的 `damage.damageCreator`、
+`ModeHRuntimeModule_SceneFlow.cs` 的 `_arenaLease.Dispose()` / `_spectatorLease.Dispose()`
+均不存在。伤害改用实际字段；`ForceResetStateForValidation` 改用既有完整
+`ReleaseRuntimeObjects`（租约真实 API 是 Release(sceneGeneration)），保留 run 上下文先尝试
+押品返还，释放对象后再清临时赛季/地图和 owner。Dev 构建通过，43 项相关守卫通过。
+后续两轮 H 拒绝后的清理、场景恢复与最终泄漏差值通过；认证成功后的释放路径仍待覆盖。
+完整记录见 FIX_TRACKER 的 2026-09-02 条目。
+
+### CR-2026-09-02-004：距离休眠退订使用了角色的主场景索引
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed（第三轮 MODE_D_LIFECYCLE PASS）
+
+F3 的 Mode D 首波和多波均记录三只狼 inactive 且存活。当前游戏 DLL 的 CreateCharacterAsync
+调用 SetRelatedScene，后者将角色重挂到 MultiSceneCore 主场景父级，却按 relatedScene 子场景
+登记距离休眠。helper 用 GO.scene 退订，移除失败也不报异常。现改为按已加载场景索引只移除
+当前角色的登记，标准 Boss 路径也接入。F3 增补 activeSelf、父级与对象场景诊断。
+第三轮报告 `BossRushValidation_20260902_121947_845.log` 中三只狼全部 active/self/parent 为 true，
+实际对象场景为 Level_DemoChallenge_Main；首波生命周期通过。多波另受 CR-2026-09-02-012 阻断。
+
+### CR-2026-09-02-005：Mode H 认证拒绝已归一化的克隆，且旧受控击杀未触发死亡
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed（第五轮首次认证与缓存实机 PASS）
+
+12 个候选全部 audit_cannot_die。SpawnBridge 已在独立 clone 打开非 Raid 图死亡，但静态审计
+先按原 preset 拒绝；同时 SetHealth(0) 只写生命值，不设置 IsDead 或触发事件。现保留其他静态资格，
+改为检查实际 Health 的 CanDieIfNotRaidMap、对两个诊断 clone 执行完整 DamageInfo 的 Hurt，
+实例事件监听在 finally 退订，只有 IsDead 与受伤/死亡事件齐全才通过。候选数量和缓存签名门不变。
+第三轮候选均已进入真实击杀，但遇到 certification_kill_failed:NullReferenceException，
+见 CR-2026-09-02-011；首次认证和缓存仍未获得实机 PASS，不能提前关闭此项。
+第四轮没有逐 key 拒绝或伤害异常，流程进入整体门槛失败；口令矩阵漏测见 013。
+生产认证整体 PASS 前继续保留此项的完整验证要求。
+
+第五轮 `BossRushValidation_20260902_133917_599.log`：首次认证 45719ms、缓存 142ms，
+均 drafting=True、archived=True；Player.log 记录 passed=12、common=7、overall=True。
+本项认证链已闭环；全赛季、真实押品与本轮新增入场/整备问题分别验收，不扩大此 PASS 的范围。
+
+### CR-2026-09-02-006：撤离工厂删除官方回调后仍跳过通知与返程兜底
+
+**严重级**：P1 Major
+**兼容分类**：`COMPAT`
+**状态**：Fixed（第三轮 Mode F 撤离及完整返基地 PASS）
+
+Mode F 日志已经结算成功并退出模式，却未切回基地。ModeExtractionPointFactory 先从 prefab
+持久事件判定无需兜底，再用空事件替换全部回调，两个执行方同时消失。改为替换后判断；
+成功事件用一次性占有标记包住结算与兜底，避免 ZombieMode 在成功结算中重新派发同一事件导致双重返程。
+第三轮 MODE_F_EXTRACTION 记录 resolved=True、stillActive=False、baseReady=True。
+共享工厂的丧尸重入分支仅静态检查，丧尸实际撤离仍需单独实机覆盖。
+
+### CR-2026-09-02-007：BGM 非空曲目表经 JsonUtility 读取后数组为空
+
+**严重级**：P2 Minor
+**兼容分类**：`COMPAT`
+**状态**：Fixed（第三轮曲目加载、播放与租约 PASS）
+
+已部署文件与源码哈希一致且含 2/2/2 条目，运行时却多次记录 boss=0/stinger=0/jukebox=0。
+协调器未获得任何可播放曲目，租约用例随之失败。新增 BossBgmTrackTable 显式复用既有 token parser，
+三组数组与可选默认值独立探针通过；不改音频资源或龙王旧 mp3 路径。
+第三轮 Player.log 记录 boss=2/stinger=2/jukebox=2，女巫与龙裔播放/停止均有记录，
+BGM_OWNER_LEASES 的共享、替换恢复与最终清空断言全部通过。
+
+### CR-2026-09-02-008：F3 在 Mode F 退出重置后读取瞬时结算标志
+
+**严重级**：P2 Minor
+**兼容分类**：`COMPAT`
+**状态**：Fixed（第三轮 MODE_F_EXTRACTION PASS）
+
+成功事件同步调用 ExitModeF 并 Reset ExtractionResolved，测试随后读到 false。
+现比较生产成功结算计数增量，并同时验证模式退出与基地完整就绪，避免把“结算过”误当作“撤离完成”。
+
+### CR-2026-09-02-009：F3 在标准 Boss 完成登记之前击杀创建中对象
+
+**严重级**：P2 Minor
+**兼容分类**：`COMPAT`
+**状态**：Fixed（第三轮 STANDARD_VICTORY_REWARD PASS）
+
+Player.log 的 ForceKillAllEnemies 先于“记录 Boss 生成信息”和“生成成功”。
+全场扫描能提前发现官方 async 创建中的角色，此时死亡未命中 currentBoss。
+改为等生产登记的活跃 Boss，再定点 Hurt 并验证 IsDead；胜利仍由原波次逻辑与奖励箱断言确认。
+第三轮记录 spawned=1、victory=True、rewardCrate=True。
+
+### CR-2026-09-02-010：F3 多波测试把波次推进误当作下一波生成完成
+
+**严重级**：P2 Minor
+
+**兼容分类**：`COMPAT`
+
+**状态**：Fixed（第四轮 MODE_D_MULTI_WAVE PASS）
+
+ModeDStartNextWave 先增加编号，再异步生成新怪。旧测试自动开波后立即读取可玩数量，可能读到零；
+击杀后再全场 Destroy 清理也可能碰到零间隔启动的下一波。改为快照并逐只 Hurt 当前波登记角色，
+推进后有界等待新波活跃角色；两个波次仍都必须有真实活跃、存活、敌对的登记对象才 PASS。
+第三轮首波活跃，但第二只狼的伤害链抛 FormatException，未走到新波检查，见 CR-2026-09-02-012。
+第四轮 `BossRushValidation_20260902_124241_090.log` 记录 wave=1->2、playable=3/3、
+advanced=True、manual_push=True；两波激活/存活/敌对均确认。
+
+### CR-2026-09-02-011：Mode H 诊断伤害空来源与外部死亡订阅不兼容
+
+**严重级**：P1 Major
+**兼容分类**：COMPAT
+**状态**：Fixed（第四轮逐 key 不再拒绝或抛伤害异常；总体认证另受 013 阻断）
+
+第三轮首次认证和缓存用例中，12 个候选均在真实 Hurt 返回前出现 NullReferenceException。
+认证构造 `new DamageInfo((CharacterMainControl)null)`；只读反编译本机已安装的
+BattlefieldTypeKillNotice.dll，发现其 Health.OnDead 订阅直接读取 damageInfo.fromCharacter.IsMainCharacter，
+没有空值保护。空来源与该订阅的组合必然异常，独立模拟回调也复现；旧日志只记录异常类型，
+尚无原始完整栈能唯一归因这次异常，修复后游戏内结果仍需确认。
+
+现在两只诊断 clone 互作受控伤害来源，拒绝 null、自身或主玩家来源，避免认证记入玩家击杀提示；
+保持真实 Hurt、IsDead 与受伤/死亡事件断言。异常输出 stable key、队伍、已观察事件和完整栈，
+finally 始终退订临时监听；不吞异常冒充通过，不修改外部 Mod。
+第四轮日志没有认证伤害异常或逐 key 拒绝，仍由整体门槛拒绝。结合当前执行链可确认
+逐候选已完成，但这不代表 H 完整开局和缓存通过；原异常无完整栈的归因限制仍保留。
+
+### CR-2026-09-02-012：F3 同帧连续击杀触发外部经验提示的未初始化文本解析
+
+**严重级**：P2 Minor
+**兼容分类**：COMPAT
+**状态**：Fixed（第四轮 MODE_D_MULTI_WAVE PASS，无该伤害格式异常）
+
+第三轮 MODE_D_MULTI_WAVE 首波三只狼正常激活；前两只已进入死亡结算，第二次 Hurt 抛 FormatException。
+已安装 BattlefieldTypeKillNotice 的 BuildUI 未将经验文本初始化为数字，首次 tween 在后续更新才写入；
+同帧第二次击杀却会对旧模板文本调用 long.Parse。F3 原方法在一个循环内同步杀完快照，
+符合该触发条件，模拟回调已复现。原日志无完整异常栈，保留新日志与实机确认要求。
+
+当前波快照改由 IEnumerator 每次真实击杀后让出一帧，使 UI 更新有机会完成；
+仍检查每只 IsDead，异常记完整栈并 FAIL，推进后仍等待新波真实生成。
+改动只覆盖 F3 批量驱动节奏，不修改玩家正常战斗、官方死亡链或外部 Mod 的群体击杀实现。
+
+### CR-2026-09-02-013：Mode H 口令矩阵无人写入，缓存也未恢复逐效果证据
+
+**严重级**：P1 Major
+**兼容分类**：COMPAT
+**状态**：Fixed（第五轮首次认证与缓存实机 PASS）
+
+第四轮逐 key 无拒绝，却仍 certification_threshold_not_met。全仓调用检查确认
+RecordEffectStatus 只有声明、生产零调用；默认只有 steady 的自结算效果通过，
+所有 key 永远只有 1 条可用通用口令，无法满足冻结的至少 3 条门槛。真实矩阵源码和内容数据
+独立探针复现。认证后才首次 BindBuildSignature 还会清空矩阵，缓存 ApplyReportToRegistries
+只物化 preset、不恢复 commandStatuses，修好测量后仍会丢证据。
+
+新增已登记编译的 ModeHCommandCertificationProbe，复用生产 adapter 在两只实际激活的诊断
+角色上采样可读、可还原字段：每条跨至少 3 帧、累计 0.3 秒，先读后重申，双方均保持且
+还原成功才写逐效果 VerifiedBehavior；目标/路径/技能 marker 无对应遥测，保留 ReportOnly。
+不改 8 候选、5 原型、3 口令门槛；取消时还原 adapter、退订并回收双角色。
+
+测量前绑定三签名并清当前 key；报告涵盖通用和招牌口令。缓存恢复仅接受 Passed 记录中的
+已知逐 effect 合法状态，聚合口令状态重新派生并重查门槛，不能由缓存整体 Passed 绕过。
+日志增加逐 key 可用口令数、汇总计数和实际门槛失败原因。12 项生产源码模拟检查通过，
+不等于 Unity AI 运行时认证；下一份完整 F3 需确认首次认证、缓存命中、退出清理和最终状态。
+
+第五轮 `BossRushValidation_20260902_133917_599.log`：首次认证 45719ms、缓存 142ms，
+均 drafting=True、archived=True；Player.log 记录 passed=12、common=7、overall=True。
+本项认证链已闭环；全赛季、真实押品与本轮新增入场/整备问题分别验收，不扩大此 PASS 的范围。
+
+### CR-2026-09-02-014：丧尸撤离验收要求正数净化点，却没有准备样本
+
+**严重级**：P2 Minor
+**兼容分类**：COMPAT
+**状态**：Fixed（2026-09-02 第六轮实机通过）
+
+第五轮 `MODE_ZOMBIE_EXTRACTION` 因 `no_points_to_verify_settlement` 失败。生产开局净化点为 0，
+用例只等 6 秒，没有拾取或击杀，却要求净化点大于 0 才触发真实成功事件。
+现在先用生产 `CollectZombieModePurificationPoint` 收取 3 点并回读增量，再走撤离 UI/事件、
+两次派发、钱包差值、模式退出和完整返基地断言。保持生产初始值、奖励比例和人工自然倒计时场景。
+
+第六轮 `BossRushValidation_20260902_140735_794.log`：MODE_ZOMBIE_EXTRACTION PASS，pickup=0->3，现金 26302460->26302463->26302463，active=False、base_ready=True。成功事件与重复派发已验证；自然倒计时/离圈中断仍待人工。
+
+### CR-2026-09-02-015：H 成功创建赛季后保留入场意图，回到地图会重开 H
+
+**严重级**：P1 Major
+**兼容分类**：COMPAT
+**状态**：Fixed（2026-09-02 第六轮实机通过）
+
+第五轮 H 首次认证和缓存用例均通过，后续无 H 入场操作的场景恢复却再次出现“赛季已创建”。
+Player.log 9637 行创建新赛季，9691 行终章主动让路，9718 行销毁迟到 Boss，最终终章生成超时。
+`TryMatchModeHSceneIntent` 只匹配而不消费，成功 `CreateDraftingSeason` 与关停也未清理。
+首份赛季写入/读回成功后用既有 `CancelPendingEntry` 消费意图及预扣票所有权；失败时仍走原退款。
+Dev 强制清理增加遗留意图回收，F3 在正常归档后核对意图已消失。
+
+第六轮 `BossRushValidation_20260902_140735_794.log`：两次 H 入场均 intent_cleared=True、archived=True。Player.log 只创建两个测试赛季，后续重访竞技场不再额外创建；终章顺利完成。正常入场消费已验证；入场失败退款仍按独立场景验收。
+
+### CR-2026-09-02-016：H 将冻结弹药写入装备槽，真实比赛生成反复失败
+
+**严重级**：P1 Major
+**兼容分类**：COMPAT / WIRE+
+**状态**：Fixed（2026-09-02 第六轮实机通过）
+
+第五轮真实生成出现 `kit_apply_ammo_plug_failed:starter_sidearm` 与 `starter_marksman_rifle`。
+官方 `ItemUtilities.TryPlug` 只枚举装备槽，不能存入弹药；直接给 StackCount 写总量还会被上限截断。
+`ModeHLoadoutKitApplicator` 改为同步填新造枪弹匣和临时选手库存，按上限分堆，严格保留冻结总量；
+逐实例登记所有权，不合并到旧堆，任何失败逆序回收。校验口径、实际存入结果与真实弹匣数量。
+官方直接填库存不会刷新 `_bulletCountCache`：用缓存字段失效后通过公开 BulletCount getter 重算，
+字段缺失明确拒绝；绑定名称在本机反编译源码确认，不改变其它模式或玩家武器。
+新增 `MODE_H_STARTER_KITS` 在已认证 Drafting 租约内逐件生成/装配全部 starter，回读槽位、
+弹匣可用数与实际库存总数；超时/取消迟到实例仍回收。此测试不代表整场 AI 战斗或六场赛季通过。
+
+第六轮 `BossRushValidation_20260902_140735_794.log`：MODE_H_STARTER_KITS PASS，8/8。步枪 loaded=usable=30 / total=120，射手枪 10/40，手枪 13/60；全部槽位 TypeID 正确。Player.log 无 kit_apply_ammo_plug_failed 或 H 技术故障。装配已验证，完整 AI 比赛/六场赛季仍未由此证明。
+
+### CR-2026-09-02-017：终章直接销毁 Boss 未清掉熔石掉落订阅
+
+**严重级**：P2 Minor
+**兼容分类**：COMPAT
+**状态**：Fixed（2026-09-02 第六轮实机通过）
+
+第五轮终章让路销毁迟到 Boss 后，`FINAL_LEAK_DELTA` 记录 affix_stone_hooks=0->1。
+熔石服务只有死亡结算、宿主销毁和下一次登记时的死引用裁剪，没有场景收尾；
+终章直接 Destroy 与迟到生成分支也未经过 `ClearBossRandomLootTracking`。
+现在 Integration 场景回调先 ClearAllTracking；终章两条主动销毁路径先清自身掉落登记再 Destroy，
+覆盖场景回调之后才到达的实例。自然死亡流程不提前清理，不改变掉落概率、不用测试清场抹平计数。
+
+第六轮 `BossRushValidation_20260902_140735_794.log`：CAMPAIGN_FINAL_BOSS PASS，death_presentations=1、bgm_owners=0；FINAL_LEAK_DELTA PASS，affix_stone_hooks=0->0，全部被测登记回到基线。常规终章与返场已验证；主动中止/迟到生成分支仍属于故障注入边界。
 
 ### CR-2026-07-05-001：焚天龙铳切弹时容量 baseline 会被取整反推污染
 
