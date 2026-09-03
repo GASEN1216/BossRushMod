@@ -35,6 +35,15 @@ namespace BossRush
         /// <summary>本会话内「目标已达成、等交付」的章节缓存；权威状态同时落盘。</summary>
         private static string _readyToDeliverChapterId;
 
+        /// <summary>
+        /// 「奖金已发但状态没写成功、且退款也失败」的章节。
+        ///
+        /// 那种情形下章节仍是 ReadyToDeliver，玩家可以再交付一次——奖金就发了两遍。
+        /// 这个闩让重试只补写状态、跳过发钱。会话级：跨重启会丢，但触发它本身就要求
+        /// 「写盘失败 **且** 退款失败」两个低概率事件同时发生，不值得为它加存档字段。
+        /// </summary>
+        private static string _cashPaidPendingChapterId;
+
         #endregion
 
         #region 初始化
@@ -64,6 +73,8 @@ namespace BossRush
         {
             _initialized = false;
             _readyToDeliverChapterId = null;
+            // 闩是按章节记的，换槽后章节含义变了，留着会让新槽第一次交付白拿不到钱
+            _cashPaidPendingChapterId = null;
             try
             {
                 CampaignObjectiveTracker.ResetSession();
@@ -314,8 +325,12 @@ namespace BossRush
                 CampaignChapterDef def = CampaignContentCatalog.GetChapter(chapterId);
                 if (def == null) return false;
 
-                // 先发钱：失败就整体中止，让玩家可以重试交付，而不是白丢奖励
-                if (def.RewardCash > 0)
+                // 先发钱：失败就整体中止，让玩家可以重试交付，而不是白丢奖励。
+                // 但若上一次交付已经发过钱、只是状态没写成功且退款也失败（闩已置位），
+                // 这次重试只补写状态，绝不再发第二遍。
+                bool cashAlreadyPaid = string.Equals(
+                    _cashPaidPendingChapterId, chapterId, StringComparison.Ordinal);
+                if (def.RewardCash > 0 && !cashAlreadyPaid)
                 {
                     bool paid = false;
                     try
@@ -331,6 +346,9 @@ namespace BossRush
                         ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 奖金发放失败，交付中止: " + chapterId);
                         return false;
                     }
+                    // 钱已经进玩家口袋：从这一刻起到状态写成功（或退款成功）之间，
+                    // 任何重试都必须跳过发钱。
+                    _cashPaidPendingChapterId = chapterId;
                 }
 
                 // 先把完成状态、token 与线索写进独立副本并入队。旧实现忽略这里的失败，
@@ -343,6 +361,9 @@ namespace BossRush
                         try { refunded = EconomyManager.Pay(new Cost((long)def.RewardCash), true, true); }
                         catch (Exception e) { LogFailure("reward_rollback", e); }
                     }
+                    // 退款成功 = 玩家手里没有这笔钱了，下次交付要正常重新发；
+                    // 退款失败 = 钱还在玩家手里，闩必须留着挡住第二次发放。
+                    if (refunded) _cashPaidPendingChapterId = null;
                     ModBehaviour.DevLog(CampaignTuning.LogPrefix
                         + "[ERROR] 交付状态写入失败，奖金回滚=" + refunded + ": " + chapterId);
                     Duckov.UI.NotificationText.Push(refunded
@@ -360,6 +381,8 @@ namespace BossRush
                 }
 
                 _readyToDeliverChapterId = null;
+                // 状态已落盘，这笔奖金正式结清，闩不再需要
+                _cashPaidPendingChapterId = null;
 
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "契约已交付: " + chapterId
                     + " 奖金=" + def.RewardCash);
@@ -503,6 +526,7 @@ namespace BossRush
         {
             _initialized = false;
             _readyToDeliverChapterId = null;
+            _cashPaidPendingChapterId = null;
         }
 
         #endregion
