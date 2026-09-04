@@ -14,16 +14,19 @@ REM 已知红项登记在 tests\known_red_guards.txt。
 set "PYTHONIOENCODING=utf-8"
 set "PYTHONUTF8=1"
 
+REM 用 goto 分派而不是把命令写进 if(...) 块：块内的 %ERRORLEVEL% 会在**解析块**时
+REM 就展开（那一刻还是探测 py -3 失败留下的 1），于是无论 python 跑得多好都返回失败。
 py -3 --version >nul 2>nul
-if errorlevel 1 (
-    python --version >nul 2>nul
-    if errorlevel 1 (
-        echo [FAIL] 未找到 Python（既没有 py -3 也没有 python）
-        exit /b 1
-    )
-    python "tools\run_guards.py" %*
-    exit /b %ERRORLEVEL%
-)
+if not errorlevel 1 goto :use_py
+python --version >nul 2>nul
+if not errorlevel 1 goto :use_python
+echo [FAIL] 未找到 Python（既没有 py -3 也没有 python）
+exit /b 1
 
+:use_py
 py -3 "tools\run_guards.py" %*
+exit /b %ERRORLEVEL%
+
+:use_python
+python "tools\run_guards.py" %*
 exit /b %ERRORLEVEL%

@@ -18,16 +18,18 @@ REM   verify_syntax.bat --with-bcl   额外挂 .NET Framework 引用，多抓一
 set "PYTHONIOENCODING=utf-8"
 set "PYTHONUTF8=1"
 
+REM 同 run_guards.bat：if(...) 块内的 %ERRORLEVEL% 在解析期就展开，必须用 goto 分派。
 py -3 --version >nul 2>nul
-if errorlevel 1 (
-    python --version >nul 2>nul
-    if errorlevel 1 (
-        echo [FAIL] 未找到 Python（既没有 py -3 也没有 python）
-        exit /b 1
-    )
-    python "tools\verify_syntax.py" %*
-    exit /b %ERRORLEVEL%
-)
+if not errorlevel 1 goto :use_py
+python --version >nul 2>nul
+if not errorlevel 1 goto :use_python
+echo [FAIL] 未找到 Python（既没有 py -3 也没有 python）
+exit /b 1
 
+:use_py
 py -3 "tools\verify_syntax.py" %*
+exit /b %ERRORLEVEL%
+
+:use_python
+python "tools\verify_syntax.py" %*
 exit /b %ERRORLEVEL%
