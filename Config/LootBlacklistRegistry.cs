@@ -171,6 +171,20 @@ namespace BossRush
                 ZombieTideInvitationConfig.TYPE_ID,
                 ZombieTideBeaconConfig.TYPE_ID,
                 PortableSafeZoneDeviceConfig.TYPE_ID,
+
+                // 2026-09 新增内容的物品。它们都带 Special tag、品质 4-5，而星愿许愿台底池
+                // 与日报签到池只按本黑名单过滤——不列进来就会被当成随机奖励发出去。
+                // 最坏是刷出一颗**没有血脉**的遗种蛋：孵化按物品 KV 上的血脉 key 工作，
+                // 凭空造出来的那颗拿不到 key，等于一个永远孵不出东西的死物。
+                BossRushItemIds.RelicEgg,
+                BossRushItemIds.AffixForgeStone,
+                BossRushItemIds.CodexBook,
+                BossRushItemIds.DragonSeed,
+                BossRushItemIds.EmberSeed,
+                BossRushItemIds.PhantomSpore,
+                BossRushItemIds.DragonFruit,
+                BossRushItemIds.EmberChili,
+                BossRushItemIds.PhantomMushroom,
             };
         }
     }

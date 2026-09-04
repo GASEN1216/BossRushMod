@@ -316,8 +316,12 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 - **鸭皇图鉴**曾 100% 不可达：`TryInjectCodexBookIntoShop` / `InjectCodexBookIntoShops` 零调用点。
   已分别接进 `TryInjectAllBossRushItemsIntoShop` 与 `IntegrationDeferredBootstrap`。
 - **词缀熔石**曾无任何产出：补哥布林商店（好感 2 级、库存 5）+ Boss 掉落 8%
-  （`AffixForgeStoneDropService`，形态照 `PetNestDropService`）。注意熔石带 `Special` tag，
-  **不会**进星愿许愿台奖池（该池按 tag 排除 Special），旧 Wiki 的「许愿台」说法已更正。
+  （`AffixForgeStoneDropService`，形态照 `PetNestDropService`）。熔石带 `Special` tag。
+  **2026-09-04 更正**：先前这里写「Special 一律不进星愿许愿台奖池」过于绝对。实际是
+  底池按 tag **排除** Special（`WishFountainRewardPoolBuild.cs:869`），但 `gift` 与 `healing`
+  两个类别把 `Special` 列进了 **requireTags**（`:616`、`:617`），带 Special 的物品能从这两类进池。
+  日报签到池更宽：`requireTags = null`，**只**过 `LootBlacklistRegistry`（`DailyReportRewards.cs:222`）。
+  结论：自定义物品要挡住随机奖池，靠的是**登记掉落黑名单**，不能指望 Special tag。
 - **500060 / 500061 补登记进 `BossRushDynamicItemRegistry`**：shell 早已写好但没登记，
   重启后玩家手里的熔石与图鉴书会退化成官方 `FallbackItem`（契约第 6 节）。
 - **Mode H 真实押品已接线**（owner 要求）：新增 `ModeHStakeJournalPersistence`（独立 key

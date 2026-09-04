@@ -11,6 +11,17 @@ DATA_FILE = Path("Assets/Data/LootBlacklist.json")
 COMPILE = Path("compile_official.bat")
 
 CONSTANT_VALUES = {
+    # 2026-09 新增内容的九件物品（遗种巢 / 词缀锻造 / 图鉴 / 后山种子与出击餐）。
+    # 它们都带 Special tag、品质 4-5，而日报签到池只按掉落黑名单过滤，必须登记。
+    "BossRushItemIds.RelicEgg": 500059,
+    "BossRushItemIds.AffixForgeStone": 500060,
+    "BossRushItemIds.CodexBook": 500061,
+    "BossRushItemIds.DragonSeed": 500062,
+    "BossRushItemIds.EmberSeed": 500063,
+    "BossRushItemIds.PhantomSpore": 500064,
+    "BossRushItemIds.DragonFruit": 500065,
+    "BossRushItemIds.EmberChili": 500066,
+    "BossRushItemIds.PhantomMushroom": 500067,
     "DragonDescendantConfig.DRAGON_HELM_TYPE_ID": 500003,
     "DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID": 500004,
     "DragonBreathConfig.WEAPON_TYPE_ID": 500005,

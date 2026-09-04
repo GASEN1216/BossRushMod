@@ -204,3 +204,14 @@ source_files:
 
 章节来源：`Integration/BackMountain/RaidMealService.cs`、`ZombieMode/ZombieModeTuning.cs`、
 `tests/StatKeyExistenceGuard.py`。
+
+## 2026-09-04 审核修复
+
+**展示柜加成不再在开局等于零。** 官方进局治疗发生在 `ShowcaseService.ReapplyBonuses` 之前，
+治的是**加成前**的上限；随后抬高 MaxHealth，玩家于是每次进局都差着展示柜那一截血，
+加成在开局形同虚设。现在抬上限前先判断玩家是否满血，是则同步补到新的满血；
+**只在原本满血时补**，避免变成「收藏一变动就免费回血」。
+
+**三种种子与三种出击餐（500062-500067）已登记掉落黑名单。** 此前九个新 TypeID
+全部不在黑名单里，而日报签到池只按该黑名单过滤，许愿台的 `gift` / `healing` 两类
+更是把 `Special` 列进 `requireTags`——带 Special 的自定义物品能从那两类进池。
