@@ -36,6 +36,7 @@ namespace BossRush
         /// 所以渲染进独立的滚动选择器区而不是底部动作行。
         /// </summary>
         public List<ModeHActionData> RealStakeSlots = new List<ModeHActionData>();
+        public List<ModeHActionData> PreparationOptions = new List<ModeHActionData>();
         /// <summary>是否在顶部显示真实资产风险行（入口页必须为 true）。</summary>
         public bool ShowRealStakeNotice;
         /// <summary>押品选择器是否可用；不可用时原位显示 DisabledReason。</summary>
@@ -132,7 +133,9 @@ namespace BossRush
                     CreateCardGrid(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.Odds:
-                    CreateOddsPage(surface, panelSize, content, cursorY);
+                    if (content.PreparationOptions.Count > 0)
+                        CreatePreparationOptions(surface, panelSize, content, cursorY);
+                    else CreateOddsPage(surface, panelSize, content, cursorY);
                     break;
                 case ModeHPage.Brief:
                 case ModeHPage.Settlement:
@@ -509,6 +512,28 @@ namespace BossRush
             scroll.content = contentRoot.GetComponent<RectTransform>();
             scroll.viewport = viewport.GetComponent<RectTransform>();
             return contentRoot;
+        }
+
+        private static void CreatePreparationOptions(Transform surface, Vector2 panelSize,
+            ModeHPageContent content, float topY)
+        {
+            const float rowHeight = 48f;
+            float height = topY + panelSize.y * 0.5f - ActionBandReserve;
+            GameObject host = CreateScrollHost(surface, panelSize, topY, height,
+                Math.Max(height, content.PreparationOptions.Count * rowHeight));
+            RectTransform rect = host.GetComponent<RectTransform>();
+            rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
+            rect.anchoredPosition = Vector2.zero;
+            float width = panelSize.x - ModeHUI.SafeMargin * 2f - 24f;
+            for (int i = 0; i < content.PreparationOptions.Count; i++)
+            {
+                ModeHActionData option = content.PreparationOptions[i];
+                ZombieModeUIHelper.CreateButton("ModeH_Preparation_" + i, host.transform, option.Label,
+                    new Vector2(0.5f, 1f), new Vector2(0f, -(i + 0.5f) * rowHeight),
+                    new Vector2(width, rowHeight - 6f), BossRushUIColors.Surface,
+                    18f, new Vector2(width - 12f, rowHeight - 10f),
+                    new UnityEngine.Events.UnityAction(option.OnClick), option.Interactable);
+            }
         }
 
         private static ScrollRect TryInstantiateOfficialScrollRect(Transform parent)

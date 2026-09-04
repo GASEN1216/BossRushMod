@@ -119,20 +119,23 @@ namespace BossRush
                 return false;
             }
 
-            // 先入巢并落档（commit-before-reveal），成功之后才消耗蛋
-            if (!PetNestService.TryAddPet(pet, out failureReasonId))
+            // 先可逆摘取蛋，再把新崽与原容器一起提交；销毁只发生在候选包已接管之后。
+            if (!PetNestSaveCoordinator.RequireAssetSnapshot(out failureReasonId)) return false;
+            Inventory origin = egg.InInventory;
+            int position = origin != null ? origin.GetIndex(egg) : -1;
+            if (position < 0) { failureReasonId = "egg_owner_missing"; return false; }
+            Item removed;
+            if (!origin.RemoveAt(position, out removed) || !ReferenceEquals(removed, egg))
+            { failureReasonId = "egg_detach_failed"; return false; }
+            if (!PetNestService.TryAddPet(pet, out failureReasonId, false))
             {
+                if (!origin.AddAt(egg, position))
+                    ModBehaviour.CriticalLog("[PetNest] 孵化回滚无法恢复蛋的原槽位");
                 return false;
             }
-
-            if (!TryConsumeEgg(egg))
-            {
-                // 蛋没消耗掉是严重的重复孵化风险：回滚刚入巢的崽
-                string rollbackReason;
-                PetNestService.TryRemovePet(pet.id, out rollbackReason);
-                failureReasonId = "egg_consume_failed";
-                return false;
-            }
+            TryConsumeEgg(egg);
+            // 文件写失败时完整候选与实物欠账一起保留，不能把旧蛋放回造成重复孵化。
+            if (!PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)) return false;
 
             PetNestMuseumStats.RecordHatch(pet);
 

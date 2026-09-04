@@ -65,7 +65,7 @@ def main():
         (r"public static bool GrantPlannedRewards\(", "GrantPlannedRewards"),
         (r"private static void RollbackDetached\(", "RollbackDetached"),
     ):
-        body = body_of(journal, sig)
+        body = body_of(combined, sig)
         if body is None:
             errors.append("[Escrow] 找不到 " + label + " 方法体")
             continue
@@ -78,7 +78,7 @@ def main():
         (r"public static void LoadPersisted\(", "LoadPersisted"),
         (r"public static void ResetStaticCaches\(", "ResetStaticCaches"),
     ):
-        body = body_of(journal, sig)
+        body = body_of(combined, sig)
         if body is None:
             errors.append("[Escrow] 找不到 " + label + " 方法体")
             continue
@@ -116,7 +116,7 @@ def main():
         (r"public static bool CommitResult\(", "_active.resultToken = null;", "CommitResult"),
         (r"public static bool CommitAbortReturn\(", "_active.abortReturnToken = null;", "CommitAbortReturn"),
     ):
-        body = body_of(journal, sig)
+        body = body_of(combined, sig)
         if body is None:
             errors.append("[Settle] 找不到 " + label + " 方法体")
             continue

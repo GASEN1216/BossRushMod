@@ -24,6 +24,27 @@ namespace BossRush
     {
         #region 仓库溢出缓冲区出口
 
+        internal static bool RefreshAssetCache(out string error)
+        {
+            error = null;
+            if (_active == null) return true;
+            if (!CollectAssetSnapshot(_active, out error)) return false;
+            return ModeHStakeJournalPersistence.StageWrite(_active, out error);
+        }
+
+        internal static bool CollectAssetSnapshot(ModeHStakeJournalDto journal, out string error)
+        {
+            error = null;
+            if (journal == null) { error = "journal_missing"; return false; }
+            if (!ModeHInventoryPersistenceBridge.CollectSnapshot(journal.slotId, out error)) return false;
+            try
+            {
+                if (PlayerStorageBuffer.Instance != null) PlayerStorageBuffer.SaveBuffer();
+                return true;
+            }
+            catch (Exception e) { error = "buffer_collect_failed:" + e.GetType().Name; return false; }
+        }
+
         /// <summary>
         /// 把无法放回仓库的托管物交给官方溢出缓冲区（玩家之后在仓库码头 StorageDock 取回）。
         ///
@@ -153,6 +174,8 @@ namespace BossRush
         private static void DrainEscrowToStorageBuffer(string contextId, bool allowBufferHandoff)
         {
             if (_escrowItems.Count == 0) return;
+            allowBufferHandoff = allowBufferHandoff && _active != null
+                && _active.slotId == Saves.SavesSystem.CurrentSlot;
 
             bool buffered = false;
             for (int i = _escrowItems.Count - 1; i >= 0; i--)
@@ -169,9 +192,11 @@ namespace BossRush
                     continue;
                 }
 
+                int escrowIndex = FindUnsettledEscrowIndex(item);
                 string reason;
                 if (TryHandOffToStorageBuffer(item, out reason))
                 {
+                    if (escrowIndex >= 0) AppendReceipt("escrow_return", escrowIndex, string.Empty, ModeHStakeReceiptStatus.Verified);
                     buffered = true;
                     continue;
                 }
@@ -179,12 +204,122 @@ namespace BossRush
                     "[ModeH] [ERROR] " + contextId
                     + " 时托管押品无法送入仓库缓冲区，物品可能丢失: " + (reason ?? "unknown"));
             }
-            if (buffered) FlushStorageBuffer();
+            if (buffered)
+            {
+                string error;
+                if (!PersistAssetProgress(out error)) ModBehaviour.CriticalLog("[ModeH] cleanup 返还待落盘: " + error);
+            }
         }
 
         #endregion
 
         #region 托管表记账
+
+        /// <summary>
+        /// 整批逆序放回。放不回原仓库的项先送官方溢出缓冲区，再转人工介入。
+        /// 旧写法把它们留在纯内存 `_escrowItems`，重启即永久丢失——那是第三处滞留点。
+        /// </summary>
+        private static void RollbackDetached(List<Item> removed)
+        {
+            bool buffered = false;
+            for (int i = removed.Count - 1; i >= 0; i--)
+            {
+                int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
+                string reason;
+                if (position < 0
+                    || !ModeHInventoryPersistenceBridge.TryAddAtEmpty(removed[i], position, out reason))
+                {
+                    string bufferReason;
+                    if (TryHandOffToStorageBuffer(removed[i], out bufferReason))
+                    {
+                        buffered = true;
+                    }
+                    else
+                    {
+                        _escrowItems.Add(removed[i]);
+                    }
+                    EnterManualIntervention("escrow_rollback_failed");
+                }
+            }
+            if (buffered) FlushStorageBuffer();
+            // 回滚实物后撤销移除凭据，下一次重试/官方收集必须写入同一回滚版本。
+            if (_escrowItems.Count == 0)
+            {
+                _active.receipts.RemoveAll(r => r.operationId != null && r.operationId.Contains("|escrow_remove|"));
+                _active.inventoryPostDigest = _active.inventoryPreDigest;
+                string rollbackError;
+                TryRestampDigest(out rollbackError);
+                ModeHStakeJournalPersistence.StageWrite(_active, out rollbackError);
+            }
+        }
+
+        private static bool PersistAssetProgress(out string error)
+        {
+            bool modern = _active.escrowItems.Count == 0 || ModeHItemTreeNormalizer.HasRestoreData(_active.escrowItems[0]);
+            if (!ModeHInventoryPersistenceBridge.TryComputeInventoryDigest(out _active.inventoryPostDigest, out error, modern)) return false;
+            return ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out error);
+        }
+
+        /// <summary>只恢复已 durable 移除、未返还/没收的原始索引；整批预检后交官方缓冲区。</summary>
+        private static bool TryReturnPersistedEscrow(out string error)
+        {
+            error = null;
+            if (_active == null || _active.slotId != Saves.SavesSystem.CurrentSlot
+                || ModeHStakeJournalPersistence.IsWriteBarrier || _escrowItems.Count != 0
+                || PlayerStorageBuffer.Instance == null)
+            {
+                error = "restore_slot_or_owner_unavailable";
+                return false;
+            }
+            ModeHStakePhase phase = ToPhase(_active.phase);
+            if (phase != ModeHStakePhase.EscrowRemovedDurable && phase != ModeHStakePhase.MatchLocked
+                && phase != ModeHStakePhase.ResultCommitted && phase != ModeHStakePhase.AbortReturnCommitted
+                && phase != ModeHStakePhase.SettlementPending)
+            {
+                error = "restore_phase_unproven";
+                return false;
+            }
+            bool modern = _active.escrowItems.Count > 0 && ModeHItemTreeNormalizer.HasRestoreData(_active.escrowItems[0]);
+            string current;
+            if (!ModeHInventoryPersistenceBridge.TryComputeInventoryDigest(out current, out error, modern)
+                || current != _active.inventoryPostDigest)
+            {
+                error = "restore_postimage_mismatch";
+                return false;
+            }
+            List<ItemStatsSystem.Data.ItemTreeData> trees = new List<ItemStatsSystem.Data.ItemTreeData>();
+            List<int> indices = new List<int>();
+            for (int i = 0; i < _active.escrowItems.Count; i++)
+            {
+                if (!HasAppliedReceipt("escrow_remove", i) || HasAppliedReceipt("escrow_return", i)
+                    || HasAppliedReceipt("planned_loss", i)) continue;
+                var tree = ModeHItemTreeNormalizer.TryRestore(_active.escrowItems[i], out error);
+                if (tree == null) return false;
+                trees.Add(tree);
+                indices.Add(i);
+            }
+            for (int i = 0; i < trees.Count; i++)
+            {
+                PlayerStorageBuffer.Buffer.Add(trees[i]);
+                AppendReceipt("escrow_return", indices[i], _active.escrowItems[indices[i]].semanticTreeDigest,
+                    ModeHStakeReceiptStatus.Verified);
+            }
+            if (PersistAssetProgress(out error)) return true;
+            error = "restore_write_pending:" + error;
+            return false;
+        }
+
+        private static int FindUnsettledEscrowIndex(Item item)
+        {
+            for (int i = 0; i < _active.escrowItems.Count; i++)
+            {
+                if (HasAppliedReceipt("escrow_return", i) || HasAppliedReceipt("planned_loss", i)) continue;
+                string error;
+                ModeHItemTreeSnapshotDto snapshot = _active.escrowItems[i];
+                if (ModeHItemTreeNormalizer.Matches(snapshot, item, snapshot.preCount, out error)) return i;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// 按语义摘要从托管表里取走一件（没收物）并销毁。找不到就什么都不做。
@@ -230,21 +365,11 @@ namespace BossRush
         {
             if (_active == null || _active.receipts == null) return 0;
 
-            int removed = 0;
-            int settled = 0;
-            for (int i = 0; i < _active.receipts.Count; i++)
-            {
-                ModeHStakeReceiptDto receipt = _active.receipts[i];
-                if (receipt == null || string.IsNullOrEmpty(receipt.kind)) continue;
-                if (string.Equals(receipt.kind, "escrow_remove", StringComparison.Ordinal)) removed++;
-                else if (string.Equals(receipt.kind, "escrow_return", StringComparison.Ordinal)
-                    || string.Equals(receipt.kind, "planned_loss", StringComparison.Ordinal))
-                {
-                    settled++;
-                }
-            }
-            int outstanding = removed - settled;
-            return outstanding > 0 ? outstanding : 0;
+            int outstanding = 0;
+            for (int i = 0; i < _active.escrowItems.Count; i++)
+                if (HasAppliedReceipt("escrow_remove", i) && !HasAppliedReceipt("escrow_return", i)
+                    && !HasAppliedReceipt("planned_loss", i)) outstanding++;
+            return outstanding;
         }
 
         #endregion

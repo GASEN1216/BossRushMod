@@ -124,6 +124,8 @@ namespace BossRush
         {
             try
             {
+                string error;
+                if (!ModeHWarehouseStakeJournal.RefreshAssetCache(out error)) return;
                 FlushPending();
             }
             catch (Exception)
@@ -360,6 +362,7 @@ namespace BossRush
         /// <summary>切槽时清空内存缓存（不删除磁盘上的 journal）。</summary>
         public static void ClearCache()
         {
+            ModeHSaveFlushCoordinator.NotifySlotChanged();
             lock (_lock)
             {
                 _cache = null;

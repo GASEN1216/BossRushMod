@@ -66,6 +66,7 @@ namespace BossRush
 
         private static List<int> _displayed;
         private static bool _loaded;
+        private static bool _writeBarrier;
 
         /// <summary>
         /// 缓存对应的存档槽位。**必须比对**：换槽回调是运行时模块订阅的，
@@ -112,6 +113,11 @@ namespace BossRush
                 }
 
                 EnsureLoaded();
+                if (_writeBarrier)
+                {
+                    reason = L10n.T("收藏存档无法读取，暂时禁止登记", "Collection save is unreadable; recording is disabled");
+                    return false;
+                }
                 BackMountainItems.Definition backMountainItem = BackMountainItems.GetDefinition(item.TypeID);
                 if (backMountainItem != null)
                 {
@@ -149,7 +155,7 @@ namespace BossRush
             try
             {
                 EnsureLoaded();
-                if (typeId <= 0) return false;
+                if (_writeBarrier || typeId <= 0) return false;
                 if (_displayed.Count >= BackMountainConfig.ShowcaseSlotCount) return false;
                 if (_displayed.Contains(typeId)) return false;
 
@@ -330,10 +336,16 @@ namespace BossRush
             _loaded = true;
             _loadedSlot = slot;
             _displayed = new List<int>();
+            _writeBarrier = true;
 
             try
             {
-                if (!SavesSystem.KeyExisits(BackMountainConfig.ShowcaseSaveKey)) return;
+                if (slot == SlotUnknown || slot < 0) return;
+                if (!SavesSystem.KeyExisits(BackMountainConfig.ShowcaseSaveKey))
+                {
+                    _writeBarrier = false;
+                    return;
+                }
 
                 string raw = SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey);
                 if (string.IsNullOrEmpty(raw)) return;
@@ -355,6 +367,7 @@ namespace BossRush
                     if (_displayed.Contains(typeId)) continue;
                     _displayed.Add(typeId);
                 }
+                _writeBarrier = false;
             }
             catch (Exception e)
             {
@@ -366,6 +379,7 @@ namespace BossRush
         {
             try
             {
+                if (_writeBarrier || _loadedSlot != ReadCurrentSlotSafe()) return false;
                 if (SavesSystem.IsSaving) return false;
 
                 ShowcaseSaveData data = new ShowcaseSaveData();

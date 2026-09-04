@@ -797,6 +797,8 @@ namespace BossRush
             try
             {
                 // 官方收集时把唯一 Bundle_v2 pending 合并进存档，但不单独 SaveFile。
+                string assetError;
+                if (!PetNestSaveCoordinator.CollectPendingAssets(out assetError)) return;
                 _bundle.FlushPending();
             }
             catch (Exception)

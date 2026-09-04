@@ -404,6 +404,21 @@ namespace BossRush
         {
             try
             {
+                // 上一天还欠着没发出去的悬赏奖金时，**不能**改写这对字段：
+                // BountyCompleted/BountyRewardClaimed 是这笔债务唯一的载体，
+                // 而唯一的补发入口 TryRedeliverPendingBountyReward 的前置条件正是它俩。
+                // 无条件覆盖等于把债务的生存期压成一个游戏日（约 24 现实分钟），
+                // 玩家错过就静默消失、日志里也没有任何记录。
+                // 发放失败是真实可达的：官方 EconomyManager.Instance 为空时 Add 直接返回 false。
+                bool hasUnpaidBounty = data.BountyCompleted && !data.BountyRewardClaimed;
+                if (hasUnpaidBounty)
+                {
+                    // 日期参与奖金的确定性抽取，必须与 kind/target 一起冻结到补发成功。
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "上一笔悬赏奖金尚未发放，保留待发债务，本日不覆盖悬赏状态");
+                    return;
+                }
+
                 DailyReportBountyDef def = DailyReportBounty.SelectForDay(
                     EnsureBountySeedInCandidate(data), data.DayIndex);
                 if (def == null)
@@ -419,22 +434,6 @@ namespace BossRush
                 DailyReportStats today = data.Today ?? new DailyReportStats();
                 int progress = DailyReportBounty.EvaluateProgress(def, today);
                 bool completed = progress >= def.Target && def.Target > 0;
-
-                // 上一天还欠着没发出去的悬赏奖金时，**不能**改写这对字段：
-                // BountyCompleted/BountyRewardClaimed 是这笔债务唯一的载体，
-                // 而唯一的补发入口 TryRedeliverPendingBountyReward 的前置条件正是它俩。
-                // 无条件覆盖等于把债务的生存期压成一个游戏日（约 24 现实分钟），
-                // 玩家错过就静默消失、日志里也没有任何记录。
-                // 发放失败是真实可达的：官方 EconomyManager.Instance 为空时 Add 直接返回 false。
-                bool hasUnpaidBounty = data.BountyCompleted && !data.BountyRewardClaimed;
-                if (hasUnpaidBounty)
-                {
-                    // 进度仍照常刷新，只保留「有一笔没结清」这个事实与它的 kind/target。
-                    data.BountyDayIndex = data.DayIndex;
-                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                        + "上一笔悬赏奖金尚未发放，保留待发债务，本日不覆盖悬赏状态");
-                    return;
-                }
 
                 data.BountyDayIndex = data.DayIndex;
                 data.BountyKindId = def.Id;

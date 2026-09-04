@@ -71,21 +71,31 @@ namespace BossRush
         /// </summary>
         internal static bool RegisterMeal(int mealTypeId)
         {
+            int previous = 0;
+            bool writeAttempted = false;
             try
             {
                 if (BackMountainItems.GetDefinition(mealTypeId) == null) return false;
                 if (SavesSystem.IsSaving) return false;
-
+                if (SavesSystem.KeyExisits(BackMountainConfig.RaidMealSaveKey))
+                    previous = SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey);
+                writeAttempted = true;
                 SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, mealTypeId);
                 if (SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey) != mealTypeId)
                 {
-                    return false;
+                    throw new InvalidOperationException("meal_readback_mismatch");
                 }
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "出击餐已登记: " + mealTypeId);
                 return true;
             }
             catch (Exception e)
             {
+                if (writeAttempted)
+                {
+                    try { SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, previous); }
+                    catch (Exception rollbackError)
+                    { ModBehaviour.CriticalLog(BackMountainConfig.LogPrefix + "出击餐登记回滚失败: " + rollbackError.Message); }
+                }
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 出击餐登记失败: " + e.Message);
                 return false;
             }

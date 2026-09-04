@@ -27,12 +27,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Run guard suite
+      - name: Run source guards (external artifacts reported separately)
         env:
           # guard 输出中文；不固定 UTF-8 会在部分 runner 上乱码
           PYTHONIOENCODING: utf-8
           PYTHONUTF8: '1'
-        run: python tools/run_guards.py --verbose
+        run: python tools/run_guards.py --source-only --verbose
 
 # 说明：
 # - 已知红项登记在 tests/known_red_guards.txt，失败不影响退出码，但会单独列出。

@@ -84,6 +84,7 @@ namespace BossRush
 
             try
             {
+                ModeFItemConfigHelper.ClearInheritedUsage(item);
                 item.DisplayNameRaw = LOC_KEY_DISPLAY;
                 item.name = DISPLAY_NAME_EN;
                 // 不可堆叠：堆叠合并会让两枚不同血脉的蛋变成一枚，血脉信息丢失

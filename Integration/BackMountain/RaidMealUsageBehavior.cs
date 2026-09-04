@@ -8,8 +8,7 @@
 //   （登记的是"下一局"，而玩家已经在这一局里了），还会白白消耗掉一份。
 //   所以 CanBeUsed 在非基地场景直接返回 false，物品不会被消耗。
 //
-// 【物品消耗由框架处理】
-//   CA_UseItem.OnFinish 会自动扣数量，这里不要手动消耗——手动扣会扣两次。
+// CA_UseItem.OnFinish 无条件扣数量。失败时预补一份，抵消紧随其后的官方扣减。
 // ============================================================================
 
 using System;
@@ -55,6 +54,7 @@ namespace BossRush
         /// <summary>登记这份出击餐。物品消耗交给框架，这里不手动扣。</summary>
         protected override void OnUse(Item item, object user)
         {
+            bool registered = false;
             try
             {
                 if (item == null) return;
@@ -67,6 +67,7 @@ namespace BossRush
                             "Save is busy; the meal was not registered. Please try again."));
                     return;
                 }
+                registered = true;
 
                 BackMountainItems.Definition def = BackMountainItems.GetDefinition(typeId);
                 if (def != null)
@@ -79,6 +80,15 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 出击餐使用失败: " + e.Message);
+            }
+            finally
+            {
+                if (!registered && item != null && item.Stackable)
+                {
+                    // 用官方 Count KV 预补，不能用会钳制 MaxStackCount 的 setter。
+                    // OnFinish 同步接着执行 StackCount--，满堆和最后一份都原样保留。
+                    item.SetInt("Count", item.StackCount + 1, true);
+                }
             }
         }
     }

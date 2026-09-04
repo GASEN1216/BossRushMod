@@ -221,9 +221,14 @@ namespace BossRush
                 return false;
             }
 
-            if (!ModeHWarehouseStakeJournal.TryCommitEscrowSnapshot(out failureReasonId)) return false;
-            if (!ModeHWarehouseStakeJournal.TryRemoveEscrow(out failureReasonId)) return false;
-            if (!ModeHWarehouseStakeJournal.TryLockMatch(out failureReasonId)) return false;
+            if (!ModeHWarehouseStakeJournal.TryCommitEscrowSnapshot(out failureReasonId)
+                || !ModeHWarehouseStakeJournal.TryRemoveEscrow(out failureReasonId)
+                || !ModeHWarehouseStakeJournal.TryLockMatch(out failureReasonId))
+            {
+                string rollbackReason;
+                TryAbortReturn(runSeed, matchIndex, out rollbackReason);
+                return false;
+            }
 
             // journal 已接管这批物品，选择器状态不再需要
             ClearSelection();

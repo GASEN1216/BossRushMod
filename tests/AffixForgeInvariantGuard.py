@@ -94,9 +94,9 @@ def check_forge_stone_drop_wiring():
     if king.count("AffixForgeStoneDropService.ClearTracking(") < 2:
         return "龙王的离场与死亡两个清理点都必须并联熔石 ClearTracking"
     if not re.search(
-            r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;[\s\S]{0,1200}?"
-            r"AffixForgeStoneDropService\.TryTrack\(this, character\);", king):
-        return "龙王的熔石 TryTrack 必须紧随手动掉落事件订阅"
+            r"AffixForgeStoneDropService\.TryTrack\(this, character\);[\s\S]{0,1200}?"
+            r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;", king):
+        return "龙王的熔石 pending 生产者必须先于同步主掉落消费者订阅"
 
     return None
 

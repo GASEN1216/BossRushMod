@@ -304,6 +304,21 @@ namespace BossRush
         private readonly List<ZombieModeAttributeModifierRecord> _records =
             new List<ZombieModeAttributeModifierRecord>(64);
         private readonly List<CharacterMainControl> _tracked = new List<CharacterMainControl>(32);
+        private readonly HashSet<Health> _sacrificeTargets = new HashSet<Health>();
+        private bool _deathSubscribed;
+        private int _sacrificePending;
+
+        private void OnSacrificeDead(Health health, DamageInfo info)
+        {
+            if (_deathSubscribed && _sacrificeTargets.Remove(health)) _sacrificePending++;
+        }
+
+        private void StopSacrificeTracking()
+        {
+            if (!_deathSubscribed) return;
+            Health.OnDead -= OnSacrificeDead;
+            _deathSubscribed = false;
+        }
         private readonly List<CharacterMainControl> _collectBuffer = new List<CharacterMainControl>(64);
         private float _refreshTimer;
         private bool _weatherApplied;
@@ -389,6 +404,12 @@ namespace BossRush
                 owner.PlayRandomEventStinger(RandomEventsTuning.BloodMoonStingerKey);
                 owner.ShowRandomEventBanner(L10n.T("血月当空：敌人变得狂暴", "Blood Moon: enemies turn frenzied"));
 
+                if (!_deathSubscribed)
+                {
+                    Health.OnDead += OnSacrificeDead;
+                    _deathSubscribed = true;
+                    ctx.Scope.RegisterCleanup(StopSacrificeTracking);
+                }
                 RefreshEnemyModifiers(owner);
                 return true;
             }
@@ -475,6 +496,7 @@ namespace BossRush
                         RandomEventsTuning.BloodMoonEnemyDamageBonus, this, _records, "BloodMoon MeleeDamage");
 
                     _tracked.Add(c);
+                    if (c.Health != null) _sacrificeTargets.Add(c.Health);
                 }
 
                 _collectBuffer.Clear();
@@ -488,8 +510,8 @@ namespace BossRush
         #region 献祭（可选玩法，摘除时整块删掉即可）
 
         /// <summary>
-        /// 结算献祭收益。刻意**不新订死亡事件**：在 2 秒节流内比对已挂 buff 名单的存活状态，
-        /// 成本 O(已挂怪数)，与死亡回调链完全解耦。
+        /// 结算已登记的死亡事实，并兜底静态死亡事件之前触发的局末清理。
+        /// 对象销毁不视为击杀；同一 Health 只入账一次。
         /// </summary>
         private void SettleSacrifice(ModBehaviour owner)
         {
@@ -505,9 +527,7 @@ namespace BossRush
                         continue;
                     }
 
-                    bool dead = false;
-                    try { dead = c.Health == null || c.Health.IsDead; }
-                    catch (Exception) { dead = true; }
+                    bool dead = c.Health != null && c.Health.IsDead;
 
                     if (!dead)
                     {
@@ -515,11 +535,12 @@ namespace BossRush
                     }
 
                     _tracked.RemoveAt(i);
-                    try
-                    {
-                        Duckov.Economy.EconomyManager.Add(RandomEventsTuning.BloodMoonCashPerKill);
-                    }
-                    catch (Exception) { }
+                    if (_sacrificeTargets.Remove(c.Health)) _sacrificePending++;
+                }
+                while (_sacrificePending > 0)
+                {
+                    if (!Duckov.Economy.EconomyManager.Add(RandomEventsTuning.BloodMoonCashPerKill)) break;
+                    _sacrificePending--;
                 }
             }
             catch (Exception e)
@@ -566,6 +587,10 @@ namespace BossRush
         {
             // 兜底 2/3：事件到时 / 局末 / 切图 / 关开关 / 宿主销毁全部走这里，
             // 且必须先于 Scope 清理执行——即使遮罩销毁抛异常，属性也要摘干净。
+            SettleSacrifice(RandomEventEffectHelpers.ResolveOwner(ctx));
+            StopSacrificeTracking();
+            _sacrificeTargets.Clear();
+            _sacrificePending = 0;
             RestoreWeather();
 
             try

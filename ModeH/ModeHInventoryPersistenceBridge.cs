@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using ItemStatsSystem;
+using Saves;
 
 namespace BossRush
 {
@@ -73,7 +74,8 @@ namespace BossRush
         /// 计算整份仓库的规范摘要。这是 journal 的 pre/post image 唯一来源，
         /// 每次写屏障前后都要重算并读回核对。
         /// </summary>
-        public static bool TryComputeInventoryDigest(out string digest, out string failureReasonId)
+        public static bool TryComputeInventoryDigest(out string digest, out string failureReasonId,
+            bool includeRestoreData = true)
         {
             digest = null;
             Inventory inventory = TryGetInventory(out failureReasonId);
@@ -95,7 +97,7 @@ namespace BossRush
                     if (item == null) continue;
                     string reason;
                     ModeHItemTreeSnapshotDto snapshot =
-                        ModeHItemTreeNormalizer.TryCapture(item, i, 1, out reason);
+                        ModeHItemTreeNormalizer.TryCapture(item, i, 1, out reason, includeRestoreData);
                     if (snapshot == null)
                     {
                         failureReasonId = "storage_digest_item_failed:" + reason;
@@ -270,12 +272,49 @@ namespace BossRush
 
         #region 写入原语
 
+        /// <summary>显式采集官方仓库缓存；SaveFile(false) 本身不会做这一步。</summary>
+        internal static bool CollectSnapshot(int slotId, out string error)
+        {
+            Inventory inventory = TryGetInventory(out error);
+            if (inventory == null) return false;
+            try
+            {
+                if (slotId < 0 || SavesSystem.CurrentSlot != slotId)
+                {
+                    error = "storage_slot_mismatch";
+                    return false;
+                }
+                inventory.Save("PlayerStorage");
+                var saved = SavesSystem.Load<ItemStatsSystem.Data.InventoryData>("Inventory/", "PlayerStorage");
+                if (saved == null || saved.capacity != inventory.Capacity)
+                    throw new InvalidOperationException("storage_snapshot_readback");
+                int expectedCount = 0;
+                foreach (Item item in inventory.Content) if (item != null) expectedCount++;
+                if (saved.entries == null || saved.entries.Count != expectedCount)
+                    throw new InvalidOperationException("storage_snapshot_count");
+                HashSet<int> positions = new HashSet<int>();
+                foreach (var entry in saved.entries)
+                {
+                    Item item = inventory.GetItemAt(entry.inventoryPosition);
+                    string actual;
+                    string reason;
+                    var expected = ModeHItemTreeNormalizer.TryCapture(item, entry.inventoryPosition, 1, out reason);
+                    if (!positions.Add(entry.inventoryPosition) || expected == null
+                        || !ModeHItemTreeNormalizer.TryWriteNormalizedPayload(entry.itemTreeData, out actual, out reason)
+                        || actual != expected.normalizedTreePayload)
+                        throw new InvalidOperationException("storage_snapshot_tree");
+                }
+                return true;
+            }
+            catch (Exception e) { error = "storage_collect_failed:" + e.GetType().Name; return false; }
+        }
+
         /// <summary>
         /// 按位置摘取一个根物品（escrow 移入）。取出前核对摘要与出现次数；
         /// 任一不符即拒绝，不做“差不多就行”的近似匹配。
         /// </summary>
         public static Item TryDetachAt(
-            ModeHItemTreeSnapshotDto expected, out string failureReasonId)
+            ModeHItemTreeSnapshotDto expected, out string failureReasonId, int priorRemoved = 0)
         {
             failureReasonId = null;
             Inventory inventory = TryGetInventory(out failureReasonId);
@@ -299,7 +338,7 @@ namespace BossRush
             }
 
             int occurrences = CountOccurrences(expected.semanticTreeDigest);
-            if (!ModeHItemTreeNormalizer.Matches(expected, candidate, occurrences, out failureReasonId))
+            if (!ModeHItemTreeNormalizer.Matches(expected, candidate, occurrences + priorRemoved, out failureReasonId))
             {
                 return null;
             }

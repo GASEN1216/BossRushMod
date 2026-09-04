@@ -473,6 +473,9 @@ namespace BossRush
             try
             {
                 if (!IsRewardRuntimeReady()) return 0;
+                string assetError;
+                if (_validationRewardBackend == null
+                    && !PetNestSaveCoordinator.RequireAssetSnapshot(out assetError)) return 0;
                 long now = DateTime.UtcNow.Ticks;
                 if (now < _nextRewardGrantAttemptTicks) return 0;
                 _nextRewardGrantAttemptTicks = now + TimeSpan.TicksPerSecond * 5L;

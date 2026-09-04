@@ -147,9 +147,10 @@ def check_dragonking_parallel(errors):
 
     # TryTrack 必须挂在订阅掉落事件的同一处，而不是随便找个地方
     if not re.search(
-            r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;[\s\S]{0,600}?"
-            r"PetNestDropService\.TryTrack\(this, character\);", code):
-        errors.append("[挂接] 龙王的 TryTrack 必须紧随手动掉落事件订阅")
+            r"PetNestDropService\.TryTrack\(this, character\);[\s\S]{0,1200}?"
+            r"AffixForgeStoneDropService\.TryTrack\(this, character\);[\s\S]{0,600}?"
+            r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;", code):
+        errors.append("[挂接] 龙王两项额外掉落必须先于主掉落订阅，否则无间炼狱消费时尚未 roll")
 
 
 def check_shutdown_clears_tracking(errors):

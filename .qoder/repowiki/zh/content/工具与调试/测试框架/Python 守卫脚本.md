@@ -383,3 +383,11 @@ Python 守卫脚本为本项目提供了强大的静态不变量保障，覆盖�
 - [tests/LargeFileBudgetGuard.py:64-115](file://tests/LargeFileBudgetGuard.py#L64-L115)
 - [tests/StaticCacheLifecycleGuard.py:308-461](file://tests/StaticCacheLifecycleGuard.py#L308-L461)
 - [tests/FindObjectsHotPathGuard.py:75-129](file://tests/FindObjectsHotPathGuard.py#L75-L129)
+
+## 2026-09-04 深度复审修复
+
+`OPERATIONAL` / `SAFE`。干净源码 CI 使用 `python tools/run_guards.py --source-only --verbose`。所有源码断言仍执行；ModeGPresentationAssetGuard、ModeHPresentationAssetGuard、PortableSafeZoneDeviceBundleGuard 对外部 bundle、兄弟 Unity 工程 builder 和本地制作约定明确返回 PARTIAL（不计 PASS）。其他脚本的非零退出、这三个脚本的源码断言失败仍使 CI 失败。
+
+发布验收运行不带 `--source-only` 的完整命令，缺少/损坏制品仍失败；环境变量不能让完整 runner 降级。info.ini 和捏脸制作本地资料不再伪装成干净源码必有的 file:// 引用。不得用源码绿代替完整制品、Windows 真编译或游戏 smoke。
+
+新增 `tests/fixtures/ReviewSeptember/ReviewSeptember.csproj` 是隔离回归入口，直接链接生产协调器/节流/规范化/恢复源码；宿主 IO 使用 stub，未读取玩家数据。运行方式见同目录 README。章节来源：`tools/run_guards.py`、`.github/workflows/guards.yml`、`tests/SourceOnlyGuardProfileTests.py`。

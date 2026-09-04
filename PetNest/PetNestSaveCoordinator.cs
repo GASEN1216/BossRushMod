@@ -13,6 +13,8 @@
 
 using System;
 using Saves;
+using ItemStatsSystem;
+using Duckov.Economy;
 
 namespace BossRush
 {
@@ -33,6 +35,46 @@ namespace BossRush
         /// HasAnyPendingWrite 变 false，「还欠一次 SaveFile」会被误判成「无事可做」。
         /// </summary>
         private static bool _saveFilePending;
+        private static bool _assetSnapshotRequired;
+
+        /// <summary>实物变更前置检查；之后的所有落盘和官方采集都必须连同实物一起写。</summary>
+        internal static bool RequireAssetSnapshot(out string error)
+        {
+            error = null;
+            if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0 || CharacterMainControl.Main == null
+                || CharacterMainControl.Main.CharacterItem == null || PlayerStorage.Instance == null
+                || !PlayerStorage.Instance.HasInitialized() || PlayerStorage.Loading
+                || PlayerStorage.Inventory == null || PlayerStorageBuffer.Instance == null
+                || EconomyManager.Instance == null)
+            {
+                error = "asset_save_not_ready";
+                return false;
+            }
+            _assetSnapshotRequired = true;
+            return true;
+        }
+
+        internal static bool CollectPendingAssets(out string error)
+        {
+            error = null;
+            if (!_assetSnapshotRequired) return true;
+            if (!RequireAssetSnapshot(out error)) return false;
+            try
+            {
+                CharacterMainControl.Main.CharacterItem.Save("MainCharacterItemData");
+                PlayerStorage.Inventory.Save("PlayerStorage");
+                PlayerStorageBuffer.SaveBuffer();
+                SavesSystem.Save<EconomyManager.SaveData>("EconomyData",
+                    (EconomyManager.SaveData)EconomyManager.Instance.GenerateSaveData());
+                return true;
+            }
+            catch (Exception e) { error = "asset_collect_failed:" + e.GetType().Name; return false; }
+        }
+
+        internal static bool RequestAssetFlush(out string error)
+        {
+            return FlushBatch(out error, true);
+        }
 
         private const int MaxDeferredRetries = 600;
 
@@ -83,6 +125,7 @@ namespace BossRush
                 _deferredRetryCount = 0;
                 // 欠账位随槽/卸载一起清：旧槽欠的 SaveFile 不该拿新槽去补
                 _saveFilePending = false;
+                _assetSnapshotRequired = false;
                 _lastError = null;
             }
         }
@@ -117,7 +160,7 @@ namespace BossRush
             try
             {
                 string error;
-                return FlushBatch(out error);
+                return FlushBatch(out error, true);
             }
             catch (Exception)
             {
@@ -129,7 +172,7 @@ namespace BossRush
 
         #region 批次落盘（唯一物理写入点）
 
-        private static bool FlushBatch(out string error)
+        private static bool FlushBatch(out string error, bool forceAssetWrite = false)
         {
             error = null;
             bool saveFileOwed;
@@ -161,6 +204,12 @@ namespace BossRush
                     return false;
                 }
 
+                // typed 待办清空后的物理写重试，也重新采集容器。
+                if (!CollectPendingAssets(out error))
+                {
+                    _deferredFlushPending = true;
+                    return false;
+                }
                 if (PetNestPersistence.HasAnyPendingWrite)
                 {
                     if (!PetNestPersistence.Bundle.FlushPending())
@@ -186,7 +235,7 @@ namespace BossRush
                 // 跨子系统的每帧闸：五个协调器各有独立 SaveFile 调用点，
                 // 回基地首帧极易挤在同一帧。被拒时沿用已有的 deferred + Tick 重试链
                 // 在后续帧补写，与 IsSaving 分支同语义。
-                if (!BossRushSaveFileThrottle.TryBeginSaveFile(false))
+                if (!BossRushSaveFileThrottle.TryBeginSaveFile(forceAssetWrite))
                 {
                     lock (_lock) { _deferredFlushPending = true; }
                     error = "flush_deferred_savefile_frame_busy";
@@ -200,6 +249,7 @@ namespace BossRush
                     _deferredFlushPending = false;
                     _deferredRetryCount = 0;
                     _saveFilePending = false;
+                    _assetSnapshotRequired = false;
                     _lastError = null;
                 }
                 return true;
@@ -243,6 +293,7 @@ namespace BossRush
         {
             lock (_lock)
             {
+                _assetSnapshotRequired = false;
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
                 // 欠账位随槽/卸载一起清：旧槽欠的 SaveFile 不该拿新槽去补

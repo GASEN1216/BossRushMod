@@ -955,6 +955,8 @@ namespace BossRush
                 return page;
             }
 
+            if (_showLoadoutEditor) return BuildLoadoutEditorPage();
+
             page.Body = L10n.T("我方公开分 ", "Player public score ")
                 + _currentOddsQuote.PlayerPublicScore
                 + L10n.T("　敌方公开分 ", "  Enemy public score ")
@@ -991,6 +993,18 @@ namespace BossRush
             }
 
             AppendRealStakeLinesAndActions(page);
+
+            ModeHMatchRosterDto editOwner = _season.matchRoster;
+            page.Actions.Add(new ModeHActionData
+            {
+                Label = L10n.T("调整阵容 / 配装 / 口令", "Edit roster / kits / command"),
+                OnClick = delegate
+                {
+                    if (!CanEditLoadout(editOwner)) return;
+                    _showLoadoutEditor = true;
+                    RouteUiForLifecycle(_runState.Lifecycle);
+                },
+            });
 
             page.Actions.Add(new ModeHActionData
             {

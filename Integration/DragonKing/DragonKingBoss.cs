@@ -378,7 +378,6 @@ namespace BossRush
                         OnBossBeforeSpawnLoot(capturedCharForLoot, dmgInfo);
                     };
                     dragonKingLootEventHandlers[character] = lootHandler;
-                    character.BeforeCharacterSpawnLootOnDead += lootHandler;
 
                     // 龙王走的是这条手动掉落订阅，不经 RegisterBossRandomLootTracking，
                     // 因此遗种巢的掉落追踪从来没挂上——焚天龙皇血脉不掉蛋也不记遗魂。
@@ -399,6 +398,8 @@ namespace BossRush
                         DevLog("[DragonKing] 词缀熔石掉落追踪挂接失败: " + affixStoneEx.Message);
                     }
 
+                    // 无间炼狱同步消费 pending，先登记两项额外掉落，再订阅主消费者。
+                    character.BeforeCharacterSpawnLootOnDead += lootHandler;
                     DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + bossSpawnTimes.Count);
                 }
                 catch (Exception recordEx)

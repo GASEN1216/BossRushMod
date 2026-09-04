@@ -181,8 +181,10 @@ def main():
     check_cache(errors)
     check_dev_gate(errors)
     check_bats(errors)
-    check_builder(errors)
-    check_bundle_present(pending)
+    source_only = os.environ.get("BOSSRUSH_GUARD_SOURCE_ONLY") == "1"
+    if not source_only:
+        check_builder(errors)
+        check_bundle_present(pending)
 
     if errors:
         print("ModeHPresentationAssetGuard: FAIL ({} errors)".format(len(errors)))
@@ -198,6 +200,9 @@ def main():
             print("  - " + p)
         return 1
 
+    if source_only:
+        print("ModeHPresentationAssetGuard: PARTIAL (源码已验证；兄弟 Unity 工程构建器及 Mode H bundle 未验证)")
+        return 2
     print("ModeHPresentationAssetGuard: PASS")
     return 0
 

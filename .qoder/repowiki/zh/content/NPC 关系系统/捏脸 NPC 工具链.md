@@ -12,7 +12,7 @@
 - [AlwaysOnRuntimeHooks.cs](file://Utilities/AlwaysOnRuntimeHooks.cs)
 - [DeathWraithSpawnFlow.cs](file://Integration/DeathWraith/DeathWraithSpawnFlow.cs)
 - [ModeHArenaIsolationLease.cs](file://ModeH/ModeHArenaIsolationLease.cs)
-- [捏脸NPC工具.md](file://docs/制作教程/捏脸NPC工具.md)
+- `docs/制作教程/捏脸NPC工具.md`（本地制作资料）
 </cite>
 
 ## 目录
@@ -37,7 +37,7 @@
 `GameplayDataSettings.Prefabs.DefaultCharacterModel`。
 
 完整设计说明、官方 API 参照表、可捏参数区间与坑位清单见
-[docs/制作教程/捏脸NPC工具.md](file://docs/制作教程/捏脸NPC工具.md)。
+`docs/制作教程/捏脸NPC工具.md`（本地制作资料）。
 
 ## 与现有 NPC 的关系
 

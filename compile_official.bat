@@ -379,6 +379,8 @@ echo(ModeH\ModeHInjuryAndScarSystem.cs
 echo(ModeH\ModeHInteractable.cs
 echo(ModeH\ModeHInventoryPersistenceBridge.cs
 echo(ModeH\ModeHItemTreeNormalizer.cs
+echo(ModeH\ModeHItemTreeRestoration.cs
+echo(ModeH\ModeHRuntimeModule_LoadoutEditing.cs
 echo(ModeH\ModeHJsonValue.cs
 echo(ModeH\ModeHLoadoutKitApplicator.cs
 echo(ModeH\ModeHLoadoutKitRegistry.cs

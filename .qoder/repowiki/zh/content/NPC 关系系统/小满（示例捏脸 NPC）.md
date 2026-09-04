@@ -46,3 +46,9 @@
 - [捏脸 NPC 工具链](捏脸%20NPC%20工具链.md) —— 架构与原理
 - [捏脸NPC使用手册](../../../../docs/制作教程/捏脸NPC使用手册.md) —— 怎么加下一只
 - [好感度框架核心](好感度框架核心.md)
+
+## 2026-09-04 深度复审修复
+
+`COMPAT`。普通 DuckNpcModule 的场景判定和生成循环同时排除 isPermanent 蓝图，小满只交 DuckNpcPermanentModule 持有，避免普通分身绕过婚姻/交互生命周期。克隆类材料（遗种蛋、词缀熔石、种子）配置时调用 ModeFItemConfigHelper.ClearInheritedUsage，清来源行为并解绑空 UsageUtilities；空行为表在官方仍可用，不能只 Clear 列表。
+
+章节来源：`Integration/NPCs/DuckNpc/DuckNpcModule.cs`、`Integration/Items/ModeFItemConfigHelper.cs`、`Integration/AffixForge/AffixForgeStoneConfig.cs`。

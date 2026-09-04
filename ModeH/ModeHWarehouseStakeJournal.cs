@@ -407,15 +407,17 @@ namespace BossRush
                 return false;
             }
 
-            // Prepared 是第一个阶段，没有经过 TryAdvancePhase，因此在这里单独落盘。
-            // 落不下去就把 journal 整体丢弃：此刻还没动过任何物品，丢弃是安全的，
-            // 而留着一个只存在于内存的 journal 会让下一笔交易撞上 journal_active_exists。
+            // Prepared 先落盘；失败保留无实物变更的取消凭据供缓存重试。
             string writeError;
             if (!ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out writeError))
             {
                 // journal 整体作废，暂存的那份也必须跟着撤销，否则重试会把它写下去
                 ModeHStakeJournalPersistence.DiscardPending();
-                _active = null;
+                _active.phase = (int)ModeHStakePhase.CancelledTerminal;
+                _active.phaseSequence++;
+                string rollbackError;
+                TryRestampDigest(out rollbackError);
+                ModeHStakeJournalPersistence.StageWrite(_active, out rollbackError);
                 failureReasonId = "journal_persist_failed:"
                     + (writeError != null ? writeError : "unknown");
                 _lastError = failureReasonId;
@@ -485,8 +487,11 @@ namespace BossRush
             List<Item> removed = new List<Item>();
             for (int i = 0; i < _active.escrowItems.Count; i++)
             {
+                int priorRemoved = 0;
+                for (int j = 0; j < i; j++)
+                    if (_active.escrowItems[j].semanticTreeDigest == _active.escrowItems[i].semanticTreeDigest) priorRemoved++;
                 Item item = ModeHInventoryPersistenceBridge.TryDetachAt(
-                    _active.escrowItems[i], out failureReasonId);
+                    _active.escrowItems[i], out failureReasonId, priorRemoved);
                 if (item == null)
                 {
                     RollbackDetached(removed);
@@ -511,14 +516,7 @@ namespace BossRush
 
             _escrowItems.Clear();
             _escrowItems.AddRange(removed);
-            // 阶段推进内含落盘，`SavesSystem.IsSaving` 时必然失败（FlushBatch 的
-            // flush_deferred_is_saving），而此刻物品**已经脱离仓库**。TryAdvancePhase
-            // 失败会把 phase 回滚到 EscrowSnapshotDurable，若这里不同步把物品放回去，
-            // 就会留下「账上说没移除、仓库里却没有」的错位：之后每一条返还路径
-            // （TryAbortReturn -> TryCancelWithoutRemoval）都会被 cancel_escrow_still_held
-            // 挡死，重启后 LoadPersisted 清空 _escrowItems 更会让它被静默归档成
-            // CancelledTerminal，玩家的真实装备就此永久消失。
-            // 必须与上面 TryComputeInventoryDigest 失败分支完全对称。
+            // 写屏障失败时同时回滚实物与阶段，随后重新采集回滚版本。
             string advanceError;
             if (!TryAdvancePhase(
                     ModeHStakePhase.EscrowRemovedDurable, ModeHSettlementKind.None, out advanceError))
@@ -531,35 +529,6 @@ namespace BossRush
                 return false;
             }
             return true;
-        }
-
-        /// <summary>
-        /// 整批逆序放回。放不回原仓库的项先送官方溢出缓冲区，再转人工介入。
-        /// 旧写法把它们留在纯内存 `_escrowItems`，重启即永久丢失——那是第三处滞留点。
-        /// </summary>
-        private static void RollbackDetached(List<Item> removed)
-        {
-            bool buffered = false;
-            for (int i = removed.Count - 1; i >= 0; i--)
-            {
-                int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
-                string reason;
-                if (position < 0
-                    || !ModeHInventoryPersistenceBridge.TryAddAtEmpty(removed[i], position, out reason))
-                {
-                    string bufferReason;
-                    if (TryHandOffToStorageBuffer(removed[i], out bufferReason))
-                    {
-                        buffered = true;
-                    }
-                    else
-                    {
-                        _escrowItems.Add(removed[i]);
-                    }
-                    EnterManualIntervention("escrow_rollback_failed");
-                }
-            }
-            if (buffered) FlushStorageBuffer();
         }
 
         /// <summary>`MatchLocked`：计划、赔率、装备快照与 journal 全部不可变。</summary>
@@ -843,12 +812,13 @@ namespace BossRush
                 return false;
             }
 
-            // 对账：落过盘的 receipt 才是事实，`_escrowItems` 是纯内存表——重启、切槽、
-            // 崩溃都会让它变空。空表时直接 return true，调用方随即写 RefundedTerminal，
-            // 等于把「押品已经丢了」确认成「已原样返还」。短缺一律 fail-closed 进人工介入。
+            // 内存引用丢失时，仅按已移除且未返还的凭据恢复完整物品树。
             int outstanding = CountOutstandingEscrow();
             if (_escrowItems.Count < outstanding)
             {
+                if (TryReturnPersistedEscrow(out failureReasonId)) return true;
+                if (failureReasonId == "restore_slot_or_owner_unavailable"
+                    || (failureReasonId != null && failureReasonId.StartsWith("restore_write_pending:", StringComparison.Ordinal))) return false;
                 failureReasonId = "return_escrow_missing:"
                     + (outstanding - _escrowItems.Count) + "/" + outstanding;
                 if (!IsTerminalPhase(ToPhase(_active.phase)))
@@ -868,6 +838,8 @@ namespace BossRush
                     _escrowItems.RemoveAt(i);
                     continue;
                 }
+                int escrowIndex = FindUnsettledEscrowIndex(item);
+                if (escrowIndex < 0) { failureReasonId = "return_identity_unproven"; return false; }
                 int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
                 if (position < 0)
                 {
@@ -879,9 +851,10 @@ namespace BossRush
                         failureReasonId = "return_no_empty_slot:" + bufferReason;
                         return false;
                     }
-                    AppendReceipt("escrow_return", i, string.Empty, ModeHStakeReceiptStatus.Verified);
+                    AppendReceipt("escrow_return", escrowIndex, string.Empty, ModeHStakeReceiptStatus.Verified);
                     _escrowItems.RemoveAt(i);
                     buffered = true;
+                    if (!PersistAssetProgress(out failureReasonId)) return false;
                     continue;
                 }
                 string reason;
@@ -890,8 +863,9 @@ namespace BossRush
                     failureReasonId = "return_add_failed:" + reason;
                     return false;
                 }
-                AppendReceipt("escrow_return", i, string.Empty, ModeHStakeReceiptStatus.Verified);
+                AppendReceipt("escrow_return", escrowIndex, string.Empty, ModeHStakeReceiptStatus.Verified);
                 _escrowItems.RemoveAt(i);
+                if (!PersistAssetProgress(out failureReasonId)) return false;
             }
             if (buffered) FlushStorageBuffer();
             return true;
@@ -945,6 +919,7 @@ namespace BossRush
                     planned.typeId = typeId;
                     AppendReceipt("escrow_reward", i, string.Empty, ModeHStakeReceiptStatus.Applied);
                     buffered = true;
+                    if (!PersistAssetProgress(out failureReasonId)) return false;
                     continue;
                 }
                 string reason;
@@ -957,6 +932,7 @@ namespace BossRush
 
                 planned.typeId = typeId;
                 AppendReceipt("escrow_reward", i, string.Empty, ModeHStakeReceiptStatus.Applied);
+                if (!PersistAssetProgress(out failureReasonId)) return false;
             }
             if (buffered) FlushStorageBuffer();
             return true;
@@ -1000,12 +976,12 @@ namespace BossRush
             for (int i = 0; i < _active.lossItems.Count; i++)
             {
                 ModeHItemTreeSnapshotDto loss = _active.lossItems[i];
-                if (loss == null) continue;
+                if (loss == null || HasAppliedReceipt("planned_loss", i)) continue;
                 AppendReceipt("planned_loss", i, loss.semanticTreeDigest,
                     ModeHStakeReceiptStatus.Applied);
                 RemoveEscrowByDigest(loss.semanticTreeDigest);
             }
-            return true;
+            return PersistAssetProgress(out failureReasonId);
         }
 
         #endregion
@@ -1016,6 +992,7 @@ namespace BossRush
             string kind, int index, string digest, ModeHStakeReceiptStatus status)
         {
             if (_active == null) return;
+            if (HasAppliedReceipt(kind, index)) return;
             if (_active.receipts == null) _active.receipts = new List<ModeHStakeReceiptDto>();
 
             ModeHStakeReceiptDto receipt = new ModeHStakeReceiptDto();

@@ -137,7 +137,7 @@ namespace BossRush
         /// 入巢。超容返回 false（不静默丢弃玩家的蛋，由调用方给提示）。
         /// 成功后立即落档。
         /// </summary>
-        internal static bool TryAddPet(PetNestPetRecord pet, out string failureReasonId)
+        internal static bool TryAddPet(PetNestPetRecord pet, out string failureReasonId, bool requestFlush = true)
         {
             failureReasonId = null;
             if (pet == null || string.IsNullOrEmpty(pet.id))
@@ -168,7 +168,7 @@ namespace BossRush
                 pet.Normalize();
                 nest.nameSerial++;
                 nest.pets.Add(pet);
-                return CommitCandidate(out failureReasonId);
+                return CommitCandidate(out failureReasonId, requestFlush);
             }
             catch (Exception e)
             {

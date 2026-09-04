@@ -93,6 +93,7 @@ namespace BossRush
 
             try
             {
+                ModeFItemConfigHelper.ClearInheritedUsage(item);
                 item.DisplayNameRaw = LOC_KEY_DISPLAY;
                 item.name = DISPLAY_NAME_EN;
                 // 熔石之间完全同质，堆叠不丢信息，因此允许堆叠

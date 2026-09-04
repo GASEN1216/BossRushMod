@@ -212,3 +212,9 @@ Boss（龙裔 / 龙王 / 女巫）。抽中时 SpawnCore 会路由到它们的�
 **空投「翻箱保护」判据换成官方 loot 事件。** 旧判据 `InteractableBase.Interacting` 在官方
 打开战利品界面后一帧就变 false（界面仍开着），宽限窗口几乎永不生效。现改用公有静态事件
 `InteractableLootbox.OnStartLoot` / `OnStopLoot` 做闩，`Interacting` 保留为次要信号。
+
+## 2026-09-04 深度复审修复
+
+`COMPAT`。血月对已加成目标订阅一次具名 Health.OnDead，记录死亡事实；HashSet 移除保证同一目标只计一次。两秒 Tick 兑现欠款，OnCleanup 在退订、清表之前最后结算，也覆盖静态死亡通知之前触发的局末收尾。销毁/退场不能当作击杀。订阅有 owner 标记，Scope 和正常清理共用幂等退订。此规则替代先前仅靠轮询、结束直接清表的描述。
+
+章节来源：`RandomEvents/RandomEventCatalog.cs` 的 BloodMoonEvent。

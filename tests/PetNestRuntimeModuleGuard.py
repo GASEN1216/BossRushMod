@@ -218,7 +218,8 @@ def check_service(errors):
             body = block.group(0)
             if "BeginCandidate(out failureReasonId)" not in body:
                 errors.append("[候选包] " + fn + " 必须先深拷贝权威包")
-            if "CommitCandidate(out failureReasonId)" not in body:
+            commit = "CommitCandidate(out failureReasonId, requestFlush)" if fn == "TryAddPet" else "CommitCandidate(out failureReasonId)"
+            if commit not in body:
                 errors.append("[候选包] " + fn + " 必须 Store 成功后才交换权威状态")
 
     # 单席契约

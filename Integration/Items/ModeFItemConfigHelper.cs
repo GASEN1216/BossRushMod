@@ -5,6 +5,23 @@ namespace BossRush
 {
     internal static class ModeFItemConfigHelper
     {
+        /// <summary>清除克隆源使用入口。官方对空 behaviors 仍返回可用，故必须同时解绑。</summary>
+        internal static void ClearInheritedUsage(Item item)
+        {
+            UsageUtilities usage = item.GetComponent<UsageUtilities>();
+            if (usage != null)
+            {
+                if (usage.behaviors != null) usage.behaviors.Clear();
+                usage.OnItemUsedEvent = new UnityEngine.Events.UnityEvent();
+                usage.useDurability = false;
+                usage.durabilityUsage = 0;
+                usage.hasSound = false;
+                usage.actionSound = string.Empty;
+                usage.useSound = string.Empty;
+            }
+            SetHiddenMember(item, "usageUtilities", null);
+        }
+
         /// <summary>
         /// Mode F 工事包 / 应急维修喷雾这类简单消耗品的统一配置模板。
         ///

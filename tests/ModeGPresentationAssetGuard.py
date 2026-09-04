@@ -89,7 +89,10 @@ def main():
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
     # bundle 体积首版 <256 KiB（文件不存在时仅告警磁盘资产缺失）
-    if os.path.exists(BUNDLE_PATH):
+    source_only = os.environ.get("BOSSRUSH_GUARD_SOURCE_ONLY") == "1"
+    if source_only:
+        pass  # 源码断言仍全部执行，外部 bundle 在发布验证中强制检查。
+    elif os.path.exists(BUNDLE_PATH):
         size = os.path.getsize(BUNDLE_PATH)
         if size > MAX_BUNDLE_BYTES:
             errors.append("[BundleSize] bundle {} B 超过首版 256 KiB 上限".format(size))
@@ -102,6 +105,9 @@ def main():
             print("  - " + e)
         return 1
 
+    if source_only:
+        print("ModeGPresentationAssetGuard: PARTIAL (源码已验证；Mode G bundle 未验证)")
+        return 2
     print("ModeGPresentationAssetGuard: PASS")
     if os.path.exists(BUNDLE_PATH):
         print("  bundle 体积: {} B (<256 KiB)".format(os.path.getsize(BUNDLE_PATH)))

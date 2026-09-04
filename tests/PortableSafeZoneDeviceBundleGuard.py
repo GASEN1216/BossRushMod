@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 import sys
 
 
@@ -17,6 +18,14 @@ def fail(message: str) -> int:
 
 
 def main() -> int:
+    for path in [COMPILE_SCRIPT, TEST_DEPLOY_SCRIPT]:
+        if not path.is_file():
+            return fail("missing source script -> " + path.as_posix())
+        if 'Assets\\Items\\portable_safe_zone_device' not in path.read_text(encoding="utf-8"):
+            return fail("missing bundle deploy entry -> " + path.as_posix())
+    if os.environ.get("BOSSRUSH_GUARD_SOURCE_ONLY") == "1":
+        print("PortableSafeZoneDeviceBundleGuard: PARTIAL (部署接线已验证；本地 bundle 和制作约定未验证)")
+        return 2
     required_files = [BUNDLE, COMPILE_SCRIPT, TEST_DEPLOY_SCRIPT, CONTRACT_DOC]
     for path in required_files:
         if not path.is_file():

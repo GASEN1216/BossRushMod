@@ -19,7 +19,7 @@ namespace BossRush
     ///
     /// 本类不写库存、不实例化物品，只做只读快照与摘要。
     /// </summary>
-    internal static class ModeHItemTreeNormalizer
+    internal static partial class ModeHItemTreeNormalizer
     {
         #region 快照
 
@@ -28,7 +28,8 @@ namespace BossRush
         /// `inventoryPosition` 是它在仓库中的槽位，只作为提交前置条件之一。
         /// </summary>
         public static ModeHItemTreeSnapshotDto TryCapture(
-            Item rootItem, int inventoryPosition, int occurrenceCount, out string failureReasonId)
+            Item rootItem, int inventoryPosition, int occurrenceCount, out string failureReasonId,
+            bool includeRestoreData = true)
         {
             failureReasonId = null;
             if (rootItem == null)
@@ -51,7 +52,7 @@ namespace BossRush
             }
 
             string normalized;
-            if (!TryWriteNormalizedPayload(tree, out normalized, out failureReasonId)) return null;
+            if (!TryWriteNormalizedPayload(tree, out normalized, out failureReasonId, includeRestoreData)) return null;
 
             string digest, digestError;
             if (!ModeHCanonicalDigest.TryComputeSha256OfText(normalized, out digest, out digestError))
@@ -94,7 +95,7 @@ namespace BossRush
         /// 再按局部序号输出。任何 instance id 都不进入输出。
         /// </summary>
         public static bool TryWriteNormalizedPayload(
-            ItemTreeData tree, out string payload, out string failureReasonId)
+            ItemTreeData tree, out string payload, out string failureReasonId, bool includeRestoreData = true)
         {
             payload = null;
             failureReasonId = null;
@@ -137,6 +138,7 @@ namespace BossRush
                 node.AddProperty("slots", WriteSlots(entry, localIds));
                 node.AddProperty("inventory", WriteInventory(entry, localIds));
                 node.AddProperty("variables", WriteVariables(entry));
+                if (includeRestoreData) WriteRestoreData(node, entry);
                 nodes.Items.Add(node);
             }
             root.AddProperty("nodes", nodes);
@@ -311,7 +313,8 @@ namespace BossRush
             }
 
             ModeHItemTreeSnapshotDto actual = TryCapture(
-                candidate, expected.sourcePosition, occurrenceCount, out failureReasonId);
+                candidate, expected.sourcePosition, occurrenceCount, out failureReasonId,
+                HasRestoreData(expected));
             if (actual == null) return false;
 
             if (!string.Equals(actual.semanticTreeDigest, expected.semanticTreeDigest,

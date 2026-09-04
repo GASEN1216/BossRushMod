@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="Stubs.cs" />
+    <Compile Include="../../../ModeH/ModeHSaveFlushCoordinator.cs" />
+    <Compile Include="../../../Common/Lifecycle/BossRushSaveFileThrottle.cs" />
+    <Compile Include="../../../ModeH/ModeHItemTreeNormalizer.cs" />
+    <Compile Include="../../../ModeH/ModeHItemTreeRestoration.cs" />
+    <Compile Include="../../../ModeH/ModeHCanonicalDigest.cs" />
+    <Compile Include="../../../ModeH/ModeHJsonValue.cs" />
+  </ItemGroup>
+</Project>

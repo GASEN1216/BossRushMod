@@ -21,6 +21,8 @@ namespace BossRush
 
         private static readonly object _lock = new object();
         private static bool _deferredFlushPending;
+        private static bool _saveFileRequired;
+        private static bool _journalAssetPending;
         private static string _lastError;
         private static int _deferredRetryCount;
 
@@ -65,8 +67,14 @@ namespace BossRush
         public static bool RequestStakeJournalWrite(ModeHStakeJournalDto journal, out string error)
         {
             error = null;
+            _journalAssetPending = true;
+            _deferredFlushPending = true;
+            // 真实资产阶段是同步 durable 屏障，不能按普通 UI/战斗存档延期。
+            // 尚未动 cache 前拒绝保存忙，调用方可原位重试。
+            if (SavesSystem.IsSaving) { error = "flush_deferred_is_saving"; return false; }
+            if (!ModeHWarehouseStakeJournal.CollectAssetSnapshot(journal, out error)) return false;
             if (!ModeHStakeJournalPersistence.StageWrite(journal, out error)) return false;
-            return FlushBatch(out error);
+            return FlushBatch(out error, true);
         }
 
         /// <summary>
@@ -112,6 +120,7 @@ namespace BossRush
         public static void Tick()
         {
             if (!_deferredFlushPending) return;
+            if (IsCombatFrameWriteDeferred()) return;
             lock (_lock)
             {
                 _deferredRetryCount++;
@@ -175,7 +184,7 @@ namespace BossRush
             bool seasonPending = ModeHProfilePersistence.HasPendingWrite;
             bool hallPending = ModeHHallOfFamePersistence.HasPendingWrite;
             bool journalPending = ModeHStakeJournalPersistence.HasPendingWrite;
-            if (!seasonPending && !hallPending && !journalPending)
+            if (!seasonPending && !hallPending && !journalPending && !_saveFileRequired && !_journalAssetPending)
             {
                 lock (_lock)
                 {
@@ -196,6 +205,15 @@ namespace BossRush
                     error = "flush_deferred_is_saving";
                     return false;
                 }
+
+                // 某个 typed cache 写成功后，即使后续 key / SaveFile 失败也保留欠账。
+                // 失败后调用方可能回滚实物与阶段，重试必须重新采集这一对事实。
+                if (_journalAssetPending)
+                {
+                    if (!ModeHWarehouseStakeJournal.RefreshAssetCache(out error)) return false;
+                    journalPending = ModeHStakeJournalPersistence.HasPendingWrite;
+                }
+                if (seasonPending || hallPending || journalPending) _saveFileRequired = true;
 
                 if (seasonPending && !ModeHProfilePersistence.FlushPending())
                 {
@@ -272,6 +290,8 @@ namespace BossRush
                 }
 
                 SavesSystem.SaveFile(false);
+                _journalAssetPending = false;
+                _saveFileRequired = false;
 
                 lock (_lock)
                 {
@@ -297,9 +317,22 @@ namespace BossRush
 
         #region 清理
 
+        internal static void NotifySlotChanged()
+        {
+            _journalAssetPending = false;
+            lock (_lock)
+            {
+                _saveFileRequired = false;
+                _deferredFlushPending = false;
+                _deferredRetryCount = 0;
+                _lastError = null;
+            }
+        }
+
         /// <summary>清空全部静态状态（删档 / Mod 卸载 / 宿主重建）。</summary>
         public static void ResetStaticCaches()
         {
+            NotifySlotChanged();
             lock (_lock)
             {
                 _deferredFlushPending = false;

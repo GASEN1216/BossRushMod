@@ -61,6 +61,8 @@ namespace BossRush
                 }
                 roster.loadoutDigest = digest;
                 _season.matchRoster = roster;
+                _selectedMatchCommandId = null;
+                _showLoadoutEditor = false;
             }
 
             ModeHProfileDto selectedStarter =
@@ -87,9 +89,11 @@ namespace BossRush
                 return false;
             }
 
-            string commandId = commands.Contains(selectedStarter.signatureCommandId)
-                ? selectedStarter.signatureCommandId
-                : commands[0];
+            if (!commands.Contains(_selectedMatchCommandId))
+                _selectedMatchCommandId = commands.Contains(selectedStarter.signatureCommandId)
+                    ? selectedStarter.signatureCommandId : commands[0];
+            string commandId = _selectedMatchCommandId;
+            if (!RefreshSelectedLoadoutDigest(out failureReasonId)) return false;
             ModeHOddsPlayerInput input = new ModeHOddsPlayerInput();
             input.Starter = selectedStarter;
             input.Relay = selectedRelay;
@@ -157,9 +161,7 @@ namespace BossRush
                 relay != null ? relay.stableKey : null,
                 starter.signatureCommandId,
                 relay != null ? relay.signatureCommandId : null);
-            string commandId = commands.Contains(starter.signatureCommandId)
-                ? starter.signatureCommandId
-                : (commands.Count > 0 ? commands[0] : null);
+            string commandId = commands.Contains(_selectedMatchCommandId) ? _selectedMatchCommandId : null;
             if (string.IsNullOrEmpty(commandId))
             {
                 failureReasonId = "lock_command_missing";
@@ -219,6 +221,7 @@ namespace BossRush
             if (!ModeHRealStakeService.TryLockForMatch(
                     _runState.RunId, _runState.MatchIndex, _runState.RunSeed, out failureReasonId))
             {
+                ModeHVirtualStakeController.RestoreReservation(_season, snapshot);
                 return false;
             }
             locked.realStakeSelected = ModeHWarehouseStakeJournal.Active != null;
@@ -430,8 +433,12 @@ namespace BossRush
                 RegisterParticipant(_spawnTransaction.EnemyHandles[i], _enemyParticipants[i]);
             }
 
+            string lockedCommand = _season.currentLoadoutLock.commandId;
+            ModeHProfileDto commandRelay = FindSeasonProfile(_season.currentLoadoutLock.matchRelayProfileId);
+            string commandOwner = commandRelay != null && lockedCommand == commandRelay.signatureCommandId
+                && lockedCommand != starter.signatureCommandId ? commandRelay.profileId : starter.profileId;
             if (!_combatControl.CommandController.LockCommand(
-                    _season.currentLoadoutLock.commandId, starter.profileId,
+                    lockedCommand, commandOwner,
                     _runState.OwnerToken, out failureReasonId))
             {
                 return false;

@@ -33,6 +33,7 @@ ASSET_WHITELIST = {
     "ModeHWarehouseStakeJournalStorageBuffer.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
     "ModeHInventoryPersistenceBridge.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
     "ModeHItemTreeNormalizer.cs": {"ItemTreeData"},
+    "ModeHItemTreeRestoration.cs": {"ItemTreeData"},  # 同一只读 normalizer partial，恢复官方树数据
 }
 
 ASSET_SYMBOLS = ["PlayerStorage", "ItemTreeData", "Inventory"]

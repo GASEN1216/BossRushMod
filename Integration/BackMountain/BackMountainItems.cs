@@ -208,6 +208,7 @@ namespace BossRush
 
             try
             {
+                ModeFItemConfigHelper.ClearInheritedUsage(item);
                 item.DisplayNameRaw = def.LocKey;
                 item.name = def.NameEN;
                 // 不设 MaxStackCount 就会**隐式继承克隆兜底源**（遗种蛋，不可堆叠）的值，
@@ -259,6 +260,7 @@ namespace BossRush
                     usageUtils.behaviors.Add(usage);
                 }
 
+                SetUsageUtilitiesMaster(usageUtils, item);
                 SetItemUsageUtilities(item, usageUtils);
             }
             catch (Exception e)

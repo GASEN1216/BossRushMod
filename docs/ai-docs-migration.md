@@ -129,3 +129,8 @@
   局部 pragma 不再适用。一般 JsonUtility 字段契约仍不改变，未批量改造其他 DTO。
 - 旧注释将 SetHealth(0) 或 F10 称为 Health.Kill 不准确。官方 SetHealth 只写生命值；
   标准验收和 Mode H 死亡认证必须走 Hurt 并观察 IsDead/实际事件。
+
+
+## 2026-09-04 深度复审更正（SAFE / OPERATIONAL）
+
+旧龙皇掉落顺序 guard 只考虑等待宝箱的标准分支，漏掉无间炼狱同步消费；当前按 CR-2026-09-04-031 改为 pending 生产者先注册。源码 CI 按用户本轮“全部修复”授权明确外部制品 PARTIAL，发布完整验收不降级。info.ini/捏脸制作本地资料仍 local-only，不强制纳管。

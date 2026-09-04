@@ -47,6 +47,10 @@ KNOWN_RED_FILE = os.path.join(TESTS_DIR, "known_red_guards.txt")
 
 # 需要实机日志/游戏进程的脚本，不属于结构守卫，默认不跑
 SKIP_ALWAYS = {"SmokeLogScan.py"}
+EXTERNAL_ARTIFACT_GUARDS = {
+    "ModeGPresentationAssetGuard.py", "ModeHPresentationAssetGuard.py",
+    "PortableSafeZoneDeviceBundleGuard.py",
+}
 
 
 def load_known_red():
@@ -173,10 +177,14 @@ def main():
     parser.add_argument("--changed-only", action="store_true",
                         help="只跑与当前 git 改动相关的 guard（匹配不到时回退全量）")
     parser.add_argument("--verbose", action="store_true", help="打印失败 guard 的完整输出")
+    parser.add_argument("--source-only", action="store_true",
+                        help="源码 CI：执行全部源码断言，三个外部制品检查明确标记 PARTIAL；发布验证不要使用此项")
     parser.add_argument("--jobs", type=int, default=min(8, (os.cpu_count() or 4)),
                         help="并发进程数（默认 CPU 数，上限 8）")
     parser.add_argument("--list-red", action="store_true", help="只列出当前失败项，不打印其它内容")
     args = parser.parse_args()
+    # 不允许继承的环境变量让发布检查静默降级。
+    os.environ["BOSSRUSH_GUARD_SOURCE_ONLY"] = "1" if args.source_only else "0"
 
     scripts = collect_scripts(args.filter, args.changed_only)
     if not scripts:
@@ -200,7 +208,11 @@ def main():
             results.append(result)
 
     passed = [r for r in results if r[1] == 0]
-    failed = [r for r in results if r[1] != 0]
+    partial = [r for r in results if args.source_only and r[1] == 2 and r[0] in EXTERNAL_ARTIFACT_GUARDS]
+    failed = [r for r in results if r[1] != 0 and r not in partial]
+    for name, code, out, dur in partial:
+        print("  [PARTIAL] " + name + ": 已检查源码；外部制品未验证")
+        print("         " + out.strip().splitlines()[-1])
 
     new_failures = [r for r in failed if r[0] not in known_red]
     known_failures = [r for r in failed if r[0] in known_red]
@@ -237,6 +249,8 @@ def main():
 
     print("汇总: PASS={0}  NEW-FAIL={1}  KNOWN-RED={2}  用时 {3:.1f}s".format(
         len(passed), len(new_failures), len(known_failures), elapsed))
+    if args.source_only:
+        print("源码检查范围: PARTIAL={0}；发布前须运行不带 --source-only 的完整检查".format(len(partial)))
 
     if new_failures or stale_baseline:
         print("guard runner: FAIL")

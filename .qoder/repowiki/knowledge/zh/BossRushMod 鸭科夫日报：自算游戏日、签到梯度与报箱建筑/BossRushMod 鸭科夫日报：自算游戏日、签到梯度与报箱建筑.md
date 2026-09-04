@@ -190,3 +190,9 @@ rollover 落档，再发现金并以第二次候选提交标记领取，避免�
 
 Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存回读，并注入 Store 失败验证
 `PersistBlocked + 序列化状态不变`。
+
+## 2026-09-04 深度复审修复
+
+`COMPAT`。日报跨日结算先检测上一笔已完成但未付款的悬赏；存在欠款时保留 BountyDayIndex、种类、目标、进度与领取状态这一整组债务事实，不查询或替换为今日悬赏。补发仍按债务发生日和既有 seed 决定原金额，成功后才清偿。
+
+章节来源：`Integration/DailyReport/DailyReportService.cs` 的 StageBountySettlement、TryRedeliverPendingBountyReward。

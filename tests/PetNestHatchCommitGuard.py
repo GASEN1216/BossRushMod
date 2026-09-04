@@ -7,7 +7,7 @@ PetNestHatchCommitGuard — 遗种巢孵化 commit-before-reveal 守卫（实施
   不得 import 任何 View / UI 符号；演出层只读已 commit 的结果；
 - **fail-closed 不消耗蛋**：血脉 KV 读不到、或血脉不在目录里时返回失败且不销毁蛋
   （官方 preset 改名会让老蛋血脉漂移，绝不能把玩家的蛋吞掉）；
-- 入巢成功之后才消耗蛋；消耗失败必须回滚已入巢的崽（否则一枚蛋孵两只）；
+- 先可逆摘蛋，候选包接管后销毁；原容器与新崽同批落盘后才揭晓；
 - 凝蛋是事务：先扣遗魂再入巢，入巢失败必须退还遗魂；
 - roll 三层（天赋 ×2 / 性格 ×1 / 异色）走 PetNestTuning 常量，孵化即锁定；
 - 天赋里的 PetCapcity 必须是常量加（格子数），不能按百分比。
@@ -67,14 +67,18 @@ def main():
             errors.append("[顺序] 无法定位血脉判定与消耗蛋的位置")
         elif lineage_pos > consume_pos:
             errors.append("[fail-closed] 血脉判定必须发生在消耗蛋之前")
-        # 入巢在消耗之前，且消耗失败要回滚
-        add_pos = body.find("PetNestService.TryAddPet(pet, out failureReasonId)")
+        # 新崽入队前摘蛋，禁止 TryAddPet 提前触发物理写盘。
+        add_pos = body.find("PetNestService.TryAddPet(pet, out failureReasonId, false)")
         if add_pos < 0:
             errors.append("[顺序] 孵化必须经 PetNestService.TryAddPet 入巢")
         elif add_pos > consume_pos:
             errors.append("[commit-before-reveal] 必须先入巢落档，成功后才消耗蛋")
-        if "PetNestService.TryRemovePet(pet.id, out rollbackReason)" not in body:
-            errors.append("[回滚] 消耗蛋失败必须回滚已入巢的崽，避免一蛋两崽")
+        detach_pos = body.find("origin.RemoveAt(position, out removed)")
+        flush_pos = body.find("PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)")
+        if not 0 <= detach_pos < add_pos < consume_pos < flush_pos:
+            errors.append("[原子性] 必须按摘蛋、候选接管、销毁、联合落盘顺序执行")
+        if "origin.AddAt(egg, position)" not in body:
+            errors.append("[回滚] 候选包拒绝时必须把蛋放回原容器")
 
     # 3. 凝蛋事务：扣遗魂 -> 入巢 -> 失败退还
     condense = re.search(r"internal static bool TryCondenseAndHatch\([\s\S]{0,2200}?\n        \}", code)
