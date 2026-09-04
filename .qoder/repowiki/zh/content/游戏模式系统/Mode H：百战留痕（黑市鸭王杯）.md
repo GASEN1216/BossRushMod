@@ -451,3 +451,38 @@ canvas 参考分辨率固定 1920x1080；而赔率页把数量无上界的「押
 
 章节来源：`ModeH/ModeHUIPages.cs`、`ModeH/ModeHRecoveryPanel.cs`、
 `ModeH/ModeHRuntimeModule_MatchFlow.cs`、`tests/ModeHActionLayoutGuard.py`。
+
+## 2026-09-04 审核修复（真实押品与结算）
+
+**押品在仓库满时不再只留在内存。** `_escrowItems` 是纯内存 `static List<Item>`，
+而 `LoadPersisted` / `ResetStaticCaches` 会清空它。三处滞留点
+（`ReturnEscrowItems` / `GrantPlannedRewards` / `RollbackDetached`）此前在无空位时
+「保持 pending」，玩家退出 / 切槽 / 删档即物品蒸发，且没有任何路径能从 journal 的语义摘要
+反造物品。现全部改走官方 `PlayerStorage.Push(item, toBufferDirectly: true)`，
+物品进**持久**的 `IncomingItemBuffer`，玩家之后在 `StorageDock` 取回。
+
+落点被守卫约束死：只能写在 `ModeHWarehouseStakeJournal`
+（`check_bridge` 禁止 bridge 出现 `PlayerStorage.Push`，`check_single_writer` 禁止其余
+ModeH 文件引用 `PlayerStorage`）。为守 1200 行预算，helper 拆进同一 partial 类的
+`ModeHWarehouseStakeJournalStorageBuffer.cs`。
+
+**换槽刻意不做物理返还。** `HandleSetFile` 调 `LoadPersisted` 时 `PlayerStorage` 已经指向
+新槽，此时 Push 等于把旧档装备搬进新档。因此排空按调用场景分开：同槽的宿主销毁交缓冲区，
+换槽只记账、由该槽自己的 journal 在重新载入时经恢复壳处置。
+
+**三个死态可以续做了。** `ResultCommitted` / `AbortReturnCommitted` / `SettlementPending`
+在冻结表里没有通向 `AbortReturnCommitted` 的出边，而 `TryAbortReturn` 此前无条件提交一次
+abort return，必撞 `journal_illegal_transition`——押品退不回来，非终态 journal 还会经
+`RecomputeSlotConsistency` 把 D/E/F/G/无间/丧尸**七个旧模式入口**一起锁死。
+
+**冻结表未改动**：`ResultCommitted → SettlementPending → Terminal` 与
+`AbortReturnCommitted → SettlementPending → RefundedTerminal` 本来就是合法路径，
+缺的只是按阶段分派。新增 `TryCompleteFrozenSettlement` 沿用已冻结的 `settlementKind` 续做
+（切换 kind 会撞 `journal_settlement_kind_drift`）；`TrySettleMatch` 加重入保护；
+`CommitResult` / `CommitAbortReturn` 的字段写入随 `TryAdvancePhase` 一起回滚
+（不回滚会让 `commit_result_already_committed` 早退使任何重试永久失败）；
+`ManualIntervention` 单留一条**只返还不推进阶段**的物理出路。
+
+**结算失败有玩家可见文案了**（`Settle_Failed`）。此前只写 `CriticalLog`，
+而 `ShowMessage` 本身在正式构建里也是静默的（反射绑定恒 null，已同批修复），
+等于玩家完全无从察觉押品没结算完。

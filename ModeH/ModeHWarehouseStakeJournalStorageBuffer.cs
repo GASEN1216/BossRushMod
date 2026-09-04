@@ -142,7 +142,15 @@ namespace BossRush
         /// 清空内存 escrow 之前，把仍在托管的实物交给官方溢出缓冲区。
         /// 直接 `Clear()` 会让真实装备随引用一起消失——切槽、重启、删档都会走到这里。
         /// </summary>
-        private static void DrainEscrowToStorageBuffer(string contextId)
+        /// <param name="allowBufferHandoff">
+        /// 是否允许把托管物交给官方溢出缓冲区。
+        ///
+        /// **换槽时必须传 false**：`ModeHProfilePersistence.HandleSetFile` 调 `LoadPersisted`
+        /// 的时候 `PlayerStorage` 已经指向新槽（同一函数紧接着就读新槽），此时 Push
+        /// 等于把旧档的装备搬进新档——那比静默丢失更糟，会变成跨档搬运手段。
+        /// 旧槽的押品由该槽自己的 journal 记录，重新载入那个槽时经恢复壳处置。
+        /// </param>
+        private static void DrainEscrowToStorageBuffer(string contextId, bool allowBufferHandoff)
         {
             if (_escrowItems.Count == 0) return;
 
@@ -152,6 +160,14 @@ namespace BossRush
                 Item item = _escrowItems[i];
                 _escrowItems.RemoveAt(i);
                 if (item == null) continue;
+
+                if (!allowBufferHandoff)
+                {
+                    ModBehaviour.CriticalLog(
+                        "[ModeH] [ERROR] " + contextId
+                        + " 时仍有托管押品；跨槽不做物理返还，已记入 journal 交恢复流程");
+                    continue;
+                }
 
                 string reason;
                 if (TryHandOffToStorageBuffer(item, out reason))

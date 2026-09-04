@@ -1144,7 +1144,8 @@ namespace BossRush
         public static void LoadPersisted(ModeHStakeJournalDto persisted)
         {
             _active = persisted;
-            DrainEscrowToStorageBuffer("LoadPersisted");
+            // 换槽：PlayerStorage 已指向新槽，绝不能把旧槽的托管物 Push 过去。
+            DrainEscrowToStorageBuffer("LoadPersisted", false);
             _escrowItems.Clear();
             RecomputeSlotConsistency(persisted);
         }
@@ -1159,7 +1160,8 @@ namespace BossRush
         public static void ResetStaticCaches()
         {
             _active = null;
-            DrainEscrowToStorageBuffer("ResetStaticCaches");
+            // 宿主销毁 / Mod 卸载：仍是同一个槽，交缓冲区是安全且必要的。
+            DrainEscrowToStorageBuffer("ResetStaticCaches", true);
             _escrowItems.Clear();
             _lastError = null;
             _slotConsistent = false;

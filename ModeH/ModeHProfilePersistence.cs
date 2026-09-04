@@ -125,6 +125,10 @@ namespace BossRush
                     _pending = null;
                     _pendingDigest = null;
                     _writeBarrier = false;
+                    // _storeFaulted 也必须随槽复位：它记录的是「这个槽的 store 出过问题」。
+                    // 不清会让一次读回失败把**本进程剩下的所有存档槽**的赛季写入永久堵死，
+                    // 而且不像 _writeBarrier 那样有恢复壳出口，玩家只会看到「按钮没反应」。
+                    _storeFaulted = false;
                     _lastError = null;
                 }
                 ModeHRuntimeGates.ResetForSlotChange();
@@ -156,6 +160,10 @@ namespace BossRush
                     _pending = null;
                     _pendingDigest = null;
                     _writeBarrier = false;
+                    // _storeFaulted 也必须随槽复位：它记录的是「这个槽的 store 出过问题」。
+                    // 不清会让一次读回失败把**本进程剩下的所有存档槽**的赛季写入永久堵死，
+                    // 而且不像 _writeBarrier 那样有恢复壳出口，玩家只会看到「按钮没反应」。
+                    _storeFaulted = false;
                     _lastError = null;
                 }
                 ModeHRuntimeGates.ResetForSlotChange();

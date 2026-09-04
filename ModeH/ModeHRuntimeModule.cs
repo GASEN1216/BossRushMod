@@ -203,12 +203,20 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 换档时重建 run owner。局内换档属异常路径，交给既有的场景失配出口处理，
-        /// 这里只在没有活动 run 时接管。
+        /// 换档时重建 run owner。
+        ///
+        /// 旧写法在已有活动 run 时直接早退，注释说「交给既有的场景失配出口处理」——
+        /// 但那个出口只在 `OnSceneLoaded` 里触发，主菜单换档不产生 Mode H 认可的场景回调。
+        /// 结果是旧槽的 `_runState` 留在内存里，之后任何 `TryPersistSeason` 都会把
+        /// 旧槽赛季写进**新槽**。换槽本身就是 run owner 失效的充分条件，直接丢弃。
+        ///
+        /// 这里**不能**走 `ShutdownRuntime`：它的中止路径会把押品退还到「当前」仓库，
+        /// 而此刻 `PlayerStorage` 已经指向新槽，退还等于把旧槽装备搬进新槽。
+        /// 旧槽押品由该槽自己的 journal 记录，重新载入那个槽时经恢复壳处置。
         /// </summary>
         private void RestoreForSlotChange()
         {
-            if (HasActiveRun) return;
+            _runState = null;
             RestoreFromSaveIfPresent();
         }
 
