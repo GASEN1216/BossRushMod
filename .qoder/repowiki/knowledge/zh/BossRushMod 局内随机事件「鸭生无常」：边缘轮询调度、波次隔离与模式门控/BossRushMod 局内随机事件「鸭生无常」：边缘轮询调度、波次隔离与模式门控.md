@@ -189,3 +189,26 @@ failed 与 completed。Boss/商人必须等实体和商店库存真实可用，�
 完成，金鸭雨/巡游等全部分帧生成回调。任一项 30 秒未收敛或生成数不符即 FAIL，随后先强制清理；
 只有清理安全才继续下一项。乱入桥调用 SpawnCore 前还会幂等初始化官方 preset cache，修复标准模式
 未经过 Mode D/Zombie 预热时“目录有 key、缓存无 preset”的空转。
+
+## 2026-09-04 审核修复
+
+**乱入 Boss 不再夺走本波身份。** 事件池取自 `GetFilteredEnemyPresets()`，其中**含**三个自定义
+Boss（龙裔 / 龙王 / 女巫）。抽中时 SpawnCore 会路由到它们的专用生成器，而那些生成器此前
+无条件写 `currentBoss` 与 `currentWaveBosses`——本文件第 9 节承诺的「绝不写入任何波次容器」
+在这条路径上是失效的，因为写入发生在生成器体内，桥本身挡不住。
+后果：单 Boss 档真 Boss 击杀不再推波；乱入者被销毁后卡波自检读到「无存活 Boss」反而主动推波。
+现由 `EnemySpawnCoreOptions.SuppressWaveBossRegistration` 透传到三个生成器的
+`isNonWaveSpawn` 门控（形态照龙裔既有的 `isChildProtectionSummon`）。
+
+**商人与巡游鸭补解距离休眠。** 两者都走官方 `CreateCharacterAsync`，此前没调
+`SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep`；玩家跑远再回来会被官方
+`SetActiveByPlayerDistance` 每帧 `SetActive(false)` 关掉，表现为凭空消失。
+
+**商人交互名接上本地化。** `BossRush_RandomEvent_MerchantShop` 此前全仓零注入，
+玩家看到带星号的原始 key。新增 `Localization/RandomEventsLocalization.cs` 并挂进
+`InjectLocalization_Extra_Integration()`。本模块其余文案仍走内联 `L10n.T(中,英)`，
+只有走官方按 key 查表的 `_overrideInteractNameKey` 需要注入。
+
+**空投「翻箱保护」判据换成官方 loot 事件。** 旧判据 `InteractableBase.Interacting` 在官方
+打开战利品界面后一帧就变 false（界面仍开着），宽限窗口几乎永不生效。现改用公有静态事件
+`InteractableLootbox.OnStartLoot` / `OnStopLoot` 做闩，`Interacting` 保留为次要信号。

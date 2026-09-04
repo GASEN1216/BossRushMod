@@ -6,10 +6,10 @@
 
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 0 | 14 | 0 | 0 | 14 |
-| P1 | 6 | 40 | 0 | 0 | 46 |
-| P2 | 4 | 34 | 0 | 0 | 38 |
-| P3 | 1 | 23 | 0 | 0 | 24 |
+| P0 | 0 | 17 | 0 | 0 | 17 |
+| P1 | 6 | 44 | 0 | 0 | 50 |
+| P2 | 4 | 42 | 0 | 0 | 46 |
+| P3 | 1 | 25 | 0 | 0 | 26 |
 
 最后更新：2026-09-03 在线 Wiki 渲染层核查（owner 追问"页面风格是否一致"）。
 新增 CR-2026-09-03-021（P2，已修）：`[tip]/[warn]` 的 sync 正则 `(.+)$` 只吃第一行，
@@ -381,6 +381,237 @@ key 逐个验过，只有这一个是 0）。官方真名是 `ReloadSpeedGain`
 实机 smoke 待人工：血猎模式推进阶段，确认 Boss 移速确实变快。
 
 ---
+
+### CR-2026-09-04-010：Mode H 真实押品在仓库满时只留在内存，重启/切槽即永久丢失
+
+**严重级**：P0
+**兼容分类**：`COMPAT`（不改存档 schema；只新增 receipt 语义与一条官方缓冲区出口）
+**状态**：Fixed
+**来源**：2026-09-03 全面审核（静态确认 + 官方源码交叉核对，未运行验证）
+
+#### 位置
+
+- `ModeH/ModeHWarehouseStakeJournal.cs:789`（`ReturnEscrowItems` 无空位即 `return false`）
+- 同文件 `:846`（`GrantPlannedRewards` 同构）、`:506-519`（`RollbackDetached` 第三处滞留点）
+- 同文件 `:30`（`_escrowItems` 是纯内存 `static List<Item>`）、`:1090` / `:1104`（两处无条件 `Clear()`）
+
+#### 证据
+
+托管物只存在于 `_escrowItems`。仓库满时三条路径都「保持 pending」，而 `LoadPersisted`
+与 `ResetStaticCaches` 会把这张表清空——玩家退出游戏 / 切槽 / 删档，真实装备即蒸发；
+journal 里只剩语义摘要，全仓没有任何函数能从摘要反造物品
+（`ModeHRewardItemPool.TryInstantiate` 只接受 typeId）。
+
+官方本来就有正确出口：`PlayerStorage.Push(item, toBufferDirectly: true)`
+（官方源码 `PlayerStorage.cs:162`）把物品序列化进**持久**的 `IncomingItemBuffer`（`:43`/`:207`），
+玩家之后在 `StorageDock` 取回；官方任务奖励走的就是这条。Mode H 全程只用 `Inventory.AddAt`。
+
+#### 影响
+
+真实仓库装备无声蒸发，且此后该槽的真实押品被永久禁用。
+
+#### 修复
+
+三处滞留点全部改走官方溢出缓冲区，清空内存表之前先排空。落点必须是
+`ModeHWarehouseStakeJournal`——`ModeHStakeJournalGuard.check_bridge` 明令禁止 bridge 出现
+`PlayerStorage.Push`，`check_single_writer` 禁止其余 ModeH 文件引用 `PlayerStorage`。
+
+---
+
+### CR-2026-09-04-011：Mode H 押品阶段机三个死态，中止返还必然失败并连带锁死七个旧模式入口
+
+**严重级**：P0
+**兼容分类**：`COMPAT`（**未改动 §22.2 冻结转换表**，见下）
+**状态**：Fixed
+
+#### 位置
+
+- `ModeH/ModeHRealStakeService.cs:297-327`（`TryAbortReturn` 对一切非 Prepared/EscrowSnapshotDurable 阶段都走 `CommitAbortReturn`）
+- `ModeH/ModeHWarehouseStakeJournal.cs:563` / `:595`（`CommitResult` / `CommitAbortReturn` 的字段写入不随 `TryAdvancePhase` 回滚）
+- `ModeH/ModeHRuntimeModule_CombatFlow.cs:809-817`（结算失败只写 `CriticalLog`）
+
+#### 证据
+
+`ResultCommitted` / `AbortReturnCommitted` / `SettlementPending` 三态在冻结表里没有通向
+`AbortReturnCommitted` 的出边，`TryAbortReturn` 却无条件提交一次 abort return，
+必撞 `journal_illegal_transition`。三条入口（离场、Suspended、恢复壳「取回押品」按钮）全部失效。
+非终态 journal 经 `RecomputeSlotConsistency` 置 `SetExternalAssetRiskBlocked(true)`，
+而 `IsLegacyModeEntryAllowed()` 被 **7 个旧模式入口**消费
+（ModeD/E/F/G、WavesArena、ZombieMode×2）→ 该存档槽再也进不去任何旧模式。
+
+附带：`CommitResult` 先写 `resultToken` 再 `TryAdvancePhase`，后者失败时不回滚该字段，
+于是开头的 `commit_result_already_committed` 早退让**任何重试永久失败**。
+
+#### 修复
+
+**冻结表无需改动**——`ResultCommitted → SettlementPending → Terminal` 与
+`AbortReturnCommitted → SettlementPending → RefundedTerminal` 本来就是合法路径，
+缺的只是按阶段分派。新增 `TryCompleteFrozenSettlement` 沿用已冻结的 `settlementKind` 续做
+（绝不切换 kind，那会撞 `journal_settlement_kind_drift`）；`TrySettleMatch` 加重入保护；
+`Commit*` 的字段写入随阶段推进一起回滚；结算失败新增玩家可见文案 `Settle_Failed`。
+`ManualIntervention` 单独留一条**只返还不推进阶段**的物理出路——物理交付不能依赖账目走到终态。
+
+---
+
+### CR-2026-09-04-012：随机事件乱入 Boss 顶掉本波 Boss 身份，标准竞技场卡波或误推波
+
+**严重级**：P0
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+
+#### 位置
+
+- `RandomEvents/RandomEventCatalog.cs:639`（从 `GetFilteredEnemyPresets()` 取池，无排除）
+- `Utilities/EnemySpawnCore.cs:783/801/818`（路由到三个专用生成器）
+- `Integration/DragonKing/DragonKingBoss.cs:265`、`Integration/PhantomWitch/PhantomWitchBoss.cs:207`（`currentBoss = character;` 无条件）
+
+#### 证据
+
+`RandomEvents/` 全目录 grep 无 `IsManagedBossPreset` 排除，而池里含三个自定义 Boss
+（由各自 `Register*Preset()` 主动 Add 进去）。生成器无条件写波次身份容器，
+而 `WavesArena.IsCurrentWaveBossMember` 正信这两个容器。
+单 Boss 档：真 Boss 击杀不再推波；乱入者被销毁后 `TryFixStuckWaveIfNoBossAlive`
+读到「无存活 Boss」反而**主动推波**。这是 CR-2026-09-03-009 同类问题经**生成路径**的第二次发生。
+
+#### 修复
+
+三个生成器补 `isNonWaveSpawn` 门控（照龙裔既有的 `isChildProtectionSummon` 先例），
+经 `EnemySpawnCoreOptions.SuppressWaveBossRegistration` 从随机事件桥透传。
+
+---
+
+### CR-2026-09-04-013：`ShowMessage` 在正式构建里对玩家完全不可见（约 137 处调用）
+
+**严重级**：P1
+**兼容分类**：`SAFE`
+**状态**：Fixed
+
+#### 位置
+
+`Common/Infrastructure/BossRushEagerReflectionCache.cs:91`、`UIAndSigns/UIAndSigns.cs:292-300`
+
+#### 证据
+
+绑定写的是 `GetMethod("ShowNext", Public|Static)`，而官方 `NotificationText.ShowNext()` 是
+**私有实例零参**方法（官方源码 `NotificationText.cs:50`），公有静态的是 `Push(string)`（`:15`）。
+绑定恒为 null → 整段永不执行；`statusMessage` 是 write-only 字段、零渲染方；
+`DevLog` 被 `[Conditional("BOSSRUSH_DEV")]` 在正式构建里剥离。
+多个守卫（如 `ModeHStructureGuard` 的锁盘反馈检查）正是拿「有没有调 ShowMessage」
+当「有没有玩家可见反馈」的判据，因此一批「不再静默失败」的修复也跟着一起哑掉。
+
+#### 修复
+
+删掉反射，直接调官方公有静态 `NotificationText.Push`（样板：同文件 `ShowBigBanner`）。
+
+---
+
+### CR-2026-09-04-014：随机事件商人交互名 key 全仓零注入
+
+**严重级**：P1
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+
+`RandomEvents/RandomEventEffectsBridge_Spawn.cs:576` 把
+`RandomEventsTuning.LocalizationPrefix + "MerchantShop"` 写进 `_overrideInteractNameKey`，
+而全仓 grep 该前缀只有 2 处命中（都是常量定义本身），`Localization/` 下无对应注入文件。
+该模块其余文案走内联 `L10n.T(中,英)`，所以只有这个走查表的 key 漏出来，玩家看到带星号的原始 key。
+修复：新增 `Localization/RandomEventsLocalization.cs` 并挂进 `InjectLocalization_Extra_Integration()`。
+
+---
+
+### CR-2026-09-04-015：大兴兴血脉的遗种巢随从入场即被自家清理扫描销毁并循环重生
+
+**严重级**：P1
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+
+`ModBehaviour.cs:1375` 的 `TryCleanNonBossRushDaXingXing` 是全仓四条会 `Destroy` 角色的扫描里
+**唯一**没做随从豁免的一条（另三条都调 `PetNestCompanionAgent.IsCompanionCharacter`）。
+随从 clone 的中性化只改 team/exp/掉落、**不改 nameKey**，`DisplayName` 仍是「大兴兴」，
+正好命中该函数的名字匹配；又因为不是「受伤致死」，`pet.state` 不转 `Downed`，
+重试窗口内每秒重生一次再被杀一次，每轮还泄漏一个 clone preset。修复为一行级豁免。
+
+---
+
+### CR-2026-09-04-016：空投「翻箱保护」判据选错，宽限窗口几乎永不生效
+
+**严重级**：P1
+**兼容分类**：`SAFE`
+**状态**：Fixed
+
+CR-2026-09-03-010 用 `InteractableBase.Interacting` 判断「玩家正在翻箱」，但官方
+`InteractableLootbox` 在战利品界面打开后一帧就 `StopInteract()`，此后 `Interacting` 恒 false
+而界面仍开着——保护窗口等于没接上，箱子照旧到时带着物品销毁。
+修复：改用官方公有静态事件 `InteractableLootbox.OnStartLoot` / `OnStopLoot` 做闩
+（幂等订阅 + 成对退订），`Interacting` 保留为覆盖「正在打开」那一小段的次要信号。
+
+---
+
+### CR-2026-09-04-017：两个落盘协调器的重试链被自身消费，SaveFile 失败后数据永不落盘
+
+**严重级**：P2
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+
+`Campaign/CampaignSaveCoordinator.cs` 与 `Integration/Codex/CodexSaveCoordinator.cs` 同形：
+`FlushPending()` 一旦成功，pending 即被消费，`HasPendingWrite` 随之变 false。
+而 `FlushBatch` 开头只用 `HasPendingWrite` 判断「有没有事要做」，于是 `SaveFile` 失败后
+置起的重试标记在下一帧命中该早返直接 `return true`——**Tick 重试与宿主销毁兜底一起失效**，
+数据停在 SavesSystem 内存里从不落盘。这与两个文件里关于 deferred 重试的注释承诺相反。
+修复：新增独立的 `_saveFilePending`（欠一次 SaveFile），早返同时看它，只有 SaveFile 真正成功才清。
+
+---
+
+### CR-2026-09-04-018：Mode F 补位重生克隆 preset 未挂租约，每次补位泄漏一个 ScriptableObject
+
+**严重级**：P2
+**兼容分类**：`SAFE`
+**状态**：Fixed
+
+`ModeF/ModeFRespawn.cs` 的补位重生克隆了 `characterPreset` 却没挂
+`ModeECharacterPresetLease`（对照 `ModeE/ModeEBattle.cs:671-692` 的准备期路径）。
+commit `1583da1` 为修 CR-2026-09-01-010 #2 删掉了本文件的 `Destroy(characterPreset)`，
+这条路径于是从「提前销毁」变成「永不销毁」。Mode F 的两条 Boss 生成路径是分叉的
+（`RegisterModeFBoss` 全仓只有两个调用点），准备期那条有租约、战中补位这条没有。
+
+---
+
+### CR-2026-09-04-019：九个新 TypeID（500059-500067）全部未登记掉落黑名单
+
+**严重级**：P2
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+
+`Assets/Data/LootBlacklist.json` 与 `Config/LootBlacklistRegistry.cs` 的硬编码 fallback 都没有它们。
+日报签到池 `requireTags = null`、**只**过 `LootBlacklistRegistry`（`DailyReportRewards.cs:222`），
+因此这九件会被当随机奖励发出去；许愿台的 `gift`/`healing` 两类把 `Special` 列进 requireTags
+（`WishFountainRewardPoolBuild.cs:616-617`），带 Special 的自定义物品同样可能进池。
+最坏是刷出一颗**没有血脉**的遗种蛋——孵化按物品 KV 上的血脉 key 工作，凭空造的那颗拿不到 key，
+等于一个永远孵不出东西的死物。**附带更正 AGENTS.md §14**：先前「Special 一律不进许愿台」过于绝对。
+
+---
+
+### CR-2026-09-04-020：本轮次要项汇总（7 条 P2/P3）
+
+**严重级**：P2 ×5 / P3 ×2
+**兼容分类**：`SAFE` / `COMPAT`
+**状态**：Fixed
+
+1. `ModeHProfilePersistence` 的 `_storeFaulted` 切槽不复位 → 一次读回失败让**本进程所有槽**
+   都写不进赛季，且无玩家可见提示（P2）。
+2. `ModeHRuntimeModule.RestoreForSlotChange` 在已有活动 run 时早退 → 旧槽 `_runState` 留在内存，
+   之后任何 `TryPersistSeason` 把旧槽赛季写进新槽（P2）。修复时**刻意不走 `ShutdownRuntime`**：
+   它的中止路径会把押品退还到「当前」仓库，而此刻 `PlayerStorage` 已指向新槽。
+3. `CodexView.ResetStaticCaches` 绕过 `Close()` 直接 Destroy → 面板开着时宿主销毁会把
+   `InputManager.DisableInput` 永久留下，玩家输入锁死只能重启（P2）。
+4. `MagicBlendInitializationOrderPatch` 的两张短路表只在宿主销毁时清，注释却写「切场景 / 宿主销毁」
+   → 整会话按 Animator instanceID 无界增长（P2）。已并联进 `OnSceneUnloadAlwaysOnRuntime`。
+5. `EnemySpawnCore` 延后后处理失败销毁角色时不解绑掉落追踪 → 已死引用留到下次场景清理（P2）。
+6. 展示柜 MaxHealth 加成挂在官方满血治疗**之后** → 玩家每次进局都不满血、加成开局等于零（P2）。
+   修复只在「原本满血」时补到新上限，避免变成收藏一变动就免费回血。
+7. `PetNestUIPages.LastFailureText` 进程级静态残留；`run_guards.bat` / `verify_syntax.bat`
+   的 fallback 分支 `exit /b %ERRORLEVEL%` 在**解析期**展开导致恒返回失败；
+   `.gitignore` 漏放行 `docs/contracts.md`（`TypeIdLedgerGuard` 硬依赖它）（P3）。
 
 ### CR-2026-09-03-022：在线 Wiki 的 favicon 一直 404
 

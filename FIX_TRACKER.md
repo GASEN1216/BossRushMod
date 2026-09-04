@@ -161,6 +161,37 @@ TypeID、掉落概率、状态机冻结表）
 **第二轮验证**: 编译 Build succeeded；`python tools/run_guards.py` 529 脚本
 PASS=529 / NEW-FAIL=0 / KNOWN-RED=0；反向验证累计 7 例。
 
+**第三轮（owner "都修复"）—— 收尾并发会话遗留的三个红项**:
+
+这三项来自另一会话正在写的 `Integration/NPCs/DuckNpc/Permanent/`，不是本批产出，
+但按 owner 指示一并收口：
+
+1. **`StaticCacheLifecycleGuard` 的误报（守卫自身缺陷）**：它把
+   `private static Dictionary<int,int> BuildItemMap(int[] ids, int v)` 这种
+   **返回值恰好是字典的静态纯函数**当成了静态缓存字段，逼着两个完全无状态的
+   工具类去加空的 `ResetStaticCaches`——那是糊弄守卫不是修问题。
+   改 `is_cache_line`：先按「`(` 是否出现在 `=` 之前」排除方法声明。
+   反向验证：给该类注入一个真的 `private static readonly Dictionary<,> _x = new ...;`，
+   守卫立即转红；还原后转绿。所以不是放宽断言，是修准了检测。
+2. **真实泄漏两处**：`PermanentDuckNpcRegistry`（静态 `Dictionary<string, CharacterMainControl>`）
+   与 `PermanentDuckNpcModule`（按蓝图缓存的好感度配置表）都有 `ResetStaticCaches`
+   却没接进卸载路径。并联到 `Utilities/AlwaysOnRuntimeHooks.cs` 既有的
+   DuckNpc 缓存卸载块里，与同目录其余四个类同款。
+3. **`ModBehaviourInstanceClassificationGuard` 基线漂移 +4**：
+   `PermanentDuckNpcInteractable` 读配偶跟随/离婚/回家三个选项可见性 + 一次判空。
+   它是 MonoBehaviour、手上没有 owner 引用，`ModBehaviour.Instance` 是这类交互体的
+   既定取法（与 `Interactables/` 同款）且调用前已判空，属 Keep 类别。
+   基线 Integration 259→263、总计 400→404，并在
+   `docs/testing/2026-05-14-modbehaviour-instance-classification.md` 里
+   按既有格式写明这 4 处的归类理由（不是只改数字）。
+
+**第三轮验证**: 编译 Build succeeded；`python tools/run_guards.py` 530 脚本
+**PASS=530 / NEW-FAIL=0 / KNOWN-RED=0**；反向验证累计 8 例。
+
+**并发提示**: 该目录在本轮期间每 2-3 分钟新增一个文件（10:28→10:40 共 5 个），
+每个新文件落地时都会让上述守卫再红一次。本次收口只覆盖到 10:47 的快照；
+后续新增文件的登记与卸载接线，按 AGENTS §4.1/§4.10 归文件作者。
+
 **并发说明**: 本轮有 5 个 peer session 同时在写本仓库。
 计划里的「押品仓库满兜底」与「押品阶段机续跑」两条，在我动手前已由另一会话实现
 （`ModeHWarehouseStakeJournalStorageBuffer.cs` + `TryAbortReturn` 按阶段分支），
@@ -5077,3 +5108,72 @@ Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
 - 另有一次 `OfficialCompileListFileExistenceGuard` 瞬时红（抱怨
   `Utilities/__probe_test/BossCombatProbe.cs` 未登记），是 `tools/verify_syntax.py`
   的临时探针目录尚未清理导致，重跑即绿，非真实缺口。
+
+---
+### 2026-09-04 审核修复批（本会话）：3 个 P0 + 4 个 P1 + 9 条 P2/P3
+
+**状态**: fixed（Windows 编译 `Build succeeded` exit 0、本批改动零 error 零 warning；
+新增 5 个守卫并做过**反向验证：9 条人为破坏 9 条被抓到**；实机 smoke 待人工）
+
+**Finding**: CR-2026-09-04-010 ~ CR-2026-09-04-020
+
+**兼容分类**: `COMPAT` 为主，含 `SAFE`。**未触碰任何冻结契约**——
+原计划以为 P0-B 要动 §22.2 冻结转换表并已取得 owner 签字，实际核对后确认
+`ResultCommitted → SettlementPending → Terminal` 本来就是合法路径，缺的只是按阶段分派，
+因此该授权**未被使用**，`docs/contracts.md` 无需改动。
+
+**Owner decision**: 需要过 —— owner 2026-09-04 拍板「全部修复（P0→P3）」并批准动冻结表（未用上）；
+并行会话冲突时选择「避开它，我做其余部分」。
+
+**现象 / 根因**: 逐条见 `CODE_REVIEW_FINDINGS.md` 的 CR-2026-09-04-010..020。
+共性仍是本仓库反复出现的**静默失败**：编译绿、守卫绿、日志最多一行 warning，功能实际不工作。
+
+**修复内容**:
+- 新增文件: `ModeH/ModeHWarehouseStakeJournalStorageBuffer.cs`（journal 的 partial 第二文件，
+  为 1200 行预算拆出，先例照 `Config/ConfigModConfigKeys.cs`）、
+  `Localization/RandomEventsLocalization.cs`。**两个都已登记 `compile_official.bat`**。
+- 新增守卫: `ModeHStakeEscrowDurabilityGuard`、`NonWaveBossSpawnGuard`、
+  `SaveCoordinatorRetryGuard`、`PlayerFacingMessageGuard`、`CompanionCleanupExemptionGuard`。
+- 修改文件: `ModeHWarehouseStakeJournal` / `ModeHRealStakeService` / `ModeHRuntimeModule` /
+  `ModeHRuntimeModule_CombatFlow` / `ModeHProfilePersistence` / `ModeHLocalization` /
+  `EnemySpawnCore` / `DragonKingBoss` / `PhantomWitchBoss` / `DragonDescendantBoss` /
+  `RandomEventEffectsBridge_Spawn` / `RandomEventAirdropHold` / `ModBehaviour` /
+  `UIAndSigns` / `BossRushEagerReflectionCache` / `CampaignSaveCoordinator` /
+  `CodexSaveCoordinator` / `CodexView` / `ShowcaseService` / `ModeFRespawn` /
+  `AlwaysOnRuntimeHooks` / `PetNestUI` / `PetNestUIPages` / `LootBlacklistRegistry` /
+  `BossRushIntegration_StartAndScene` / `Assets/Data/LootBlacklist.json` /
+  `run_guards.bat` / `verify_syntax.bat` / `.gitignore` / `AGENTS.md` /
+  `tests/ModeHStakeJournalGuard.py` / `tests/ModeHIsolationGuard.py`。
+
+**兼容性影响**: 不改存档 schema、不改 TypeID、不改 Harmony 目标、不改冻结转换表。
+掉落黑名单新增 9 个 ID 属**加法**（这些物品本来就不该进随机奖池）。
+`_storeFaulted` 改为随槽复位、`RestoreForSlotChange` 改为丢弃旧 run，都是把「跨槽泄漏」收窄。
+
+**验证方法**:
+1. 编译: `& D:\code\ykf\BossRushMod\compile_official.bat` → `Build succeeded`，exit 0。
+2. Guard: `python tools/run_guards.py`。本批完成时全量 528 PASS；
+   之后工作树被并行会话的未登记新文件（`Integration/NPCs/DuckNpc/Permanent/`）改红，
+   与本批无关。
+3. 反向验证: 5 个新守卫共 9 条人为破坏，**9 条全部转红**，还原后全绿。
+   过程中该验证抓出我自己写的两条断言太弱（子串匹配可被 `xxx_REMOVED` 绕过），已改为正则词边界。
+
+**未验证/需人工**（全部为运行时行为，编译与守卫证明不了）:
+- 押品：仓库填满后胜利结算；构造结算落盘失败后走恢复壳「取回押品」；重启确认物品在仓库码头。
+- 乱入 Boss：标准竞技场触发 Boss 乱入，确认真 Boss 击杀仍推波、乱入者死亡不推波。
+- `ShowMessage`：任意触发一次，确认玩家看得到。
+- 空投：开着战利品界面到点，确认箱子被延后销毁。
+- 展示柜：带收藏进局确认开局满血且上限已抬高。
+
+**失败尝试 / 自我更正**:
+- P0-A 首版把「清空内存 escrow 前排空到官方缓冲区」也用在了 `LoadPersisted` 上。
+  但 `ModeHProfilePersistence.HandleSetFile` 调它时 `PlayerStorage` **已经指向新槽**，
+  那会把旧档的装备搬进新档——比原来的静默丢失更糟（可当作跨档搬运手段）。
+  已改为按调用场景分开：同槽的宿主销毁交缓冲区，换槽只记账不做物理转移。
+- 两次因新增空 catch 顶破 `empty_catch_budget.txt` 的零余量，**都用补日志解决，未上调预算**。
+
+**交接给并行会话 / owner 的项**:
+- Mode H 伤病 `armor` 是完全空操作（`IsArmorKitDisabled` 零读者）。正确修法要在 kit 装配时
+  查该选手的伤病，而 kit 装配发生在伤病绑定**之前**；且该子系统正被并行会话重构
+  （`ModeHEffectConditions` / `appliesWhen`），不宜由本会话强改。
+- Mode H `finish` 口令对任何 stable key 恒不可选（认证探针的 `ReadField` 不含点火型控制点）。
+  同属该子系统。

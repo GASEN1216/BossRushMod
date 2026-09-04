@@ -40,6 +40,7 @@ BossRush选项修改方案.md
 /docs/testing/*
 !/docs/testing/2026-05-14-final-runtime-smoke.md
 !/docs/testing/2026-05-14-modbehaviour-instance-classification.md
+!/docs/contracts.md
 !/docs/制作教程/
 /docs/制作教程/*
 !/docs/制作教程/便携安全区装置_Unity资源制作约定.md
