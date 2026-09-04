@@ -240,6 +240,18 @@ namespace BossRush
         {
             AffinityUIManager.OnSceneUnload();
             AffinityManager.OnSceneUnload();
+
+            try
+            {
+                // MagicBlend 的两张短路表按 Animator instanceID 记账。过图后这些 ID 全部失效，
+                // 不清会在整个会话里无界增长（该方法的注释本就写着「切场景 / 宿主销毁」，
+                // 但此前只有宿主销毁那一条调用点）。
+                BossRush.Patches.Compatibility.MagicBlendInitializationOrderPatch.ResetStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] MagicBlend 兼容补丁过图清表异常: " + e.Message);
+            }
         }
 
         internal void CleanupAlwaysOnRuntimeOnDestroy()

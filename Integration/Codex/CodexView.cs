@@ -92,11 +92,28 @@ namespace BossRush
             }
         }
 
-        /// <summary>静态缓存重置：销毁实例并清引用（宿主销毁 / Mod 卸载）。</summary>
+        /// <summary>
+        /// 静态缓存重置：销毁实例并清引用（宿主销毁 / Mod 卸载）。
+        ///
+        /// **必须先走 Close()**：面板打开时占了 `InputManager.DisableInput(gameObject)`，
+        /// 只有 `Close()` 会 `ActiveInput` 还回去。直接 Destroy 绕过它的话，
+        /// 宿主在面板开着时销毁会把玩家输入**永久**锁死，只能重启游戏。
+        /// </summary>
         public static void ResetStaticCaches()
         {
             try
             {
+                if (_instance != null)
+                {
+                    // 先归还输入占用，再销毁对象。Close 幂等，且不动 _instance，
+                    // 下面的销毁块照常执行（清 _instance 的是 OnDestroy）。
+                    try { _instance.Close(); }
+                    catch (Exception closeEx)
+                    {
+                        ModBehaviour.DevLog(
+                            CodexTuning.LogPrefix + "[WARNING] 图鉴面板关闭失败: " + closeEx.Message);
+                    }
+                }
                 if (_instance != null)
                 {
                     GameObject go = _instance.gameObject;

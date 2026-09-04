@@ -92,6 +92,9 @@ namespace BossRush
             finally
             {
                 _instance = null;
+                // 失败提示是进程级静态串，不清会把上一次（甚至上一个存档槽）的
+                // 失败文案带到下次开面板时重新弹一遍。
+                PetNestUIPages.ClearLastFailureText();
             }
         }
 

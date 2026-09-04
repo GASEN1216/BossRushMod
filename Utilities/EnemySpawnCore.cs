@@ -517,6 +517,19 @@ namespace BossRush
 
             if (destroyCharacter && character != null)
             {
+                // 先解绑再销毁：掉落追踪表（含遗种巢与词缀熔石的 per-boss handler）
+                // 以角色为键，销毁后不解绑会把已死引用留到下一次场景清理，
+                // 期间仍会被各种遍历扫到。
+                try
+                {
+                    ClearBossRandomLootTracking(character);
+                }
+                catch (Exception untrackEx)
+                {
+                    DevLog("[SpawnCore] [WARNING] 解绑后处理失败角色的掉落追踪异常: "
+                        + untrackEx.Message);
+                }
+
                 try
                 {
                     if (character.gameObject != null)

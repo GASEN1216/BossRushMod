@@ -337,6 +337,14 @@ namespace BossRush
                         return;
                     }
 
+                    // 同商人：解除官方距离休眠，否则玩家走远再回来巡游鸭就不见了。
+                    try { SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(duck); }
+                    catch (Exception e)
+                    {
+                        DevLog(RandomEventsTuning.LogPrefix
+                            + "[WARNING] 解除巡游鸭距离休眠失败: " + e.Message);
+                    }
+
                     try
                     {
                         duck.gameObject.name = "RndEvt_ParadeDuck";
@@ -462,6 +470,14 @@ namespace BossRush
                 try { character.SetTeam(Teams.player); } catch (Exception) { }
                 try { SetModeEMerchantHealth(character); } catch (Exception) { }
                 try { character.gameObject.name = "RndEvt_Merchant"; } catch (Exception) { }
+                // 解除官方距离休眠：不解的话玩家跑远再回来，商人会被
+                // SetActiveByPlayerDistance 每帧 SetActive(false) 关掉，看起来像凭空消失。
+                try { SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(character); }
+                catch (Exception e)
+                {
+                    DevLog(RandomEventsTuning.LogPrefix
+                        + "[WARNING] 解除商人距离休眠失败: " + e.Message);
+                }
 
                 StockShop shop = BuildRandomEventMerchantShop(character.gameObject);
                 if (shop == null)

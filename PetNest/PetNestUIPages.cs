@@ -76,8 +76,17 @@ namespace BossRush
         /// 最近一次操作的失败提示（已本地化）。面板每次重绘时读它并显示在顶部。
         /// 不给反馈的话，巢满 / 存档写屏障 / 远征锁定这些失败在界面上与"点歪了"
         /// 完全无法区分——玩家只会反复点同一个按钮。
+        ///
+        /// **进程级静态**，因此必须在面板关闭时显式清掉：不清会把上一次
+        /// （甚至上一个存档槽）的失败提示带到下次开面板时重新弹一遍。
         /// </summary>
         internal static string LastFailureText;
+
+        /// <summary>清空跨面板残留的失败提示。面板关闭 / 过图 / 切档都要调。</summary>
+        internal static void ClearLastFailureText()
+        {
+            LastFailureText = null;
+        }
 
         /// <summary>把 out failureReasonId 转成玩家可读文案并记下来。</summary>
         private static void NoteFailure(bool ok, string failureReasonId)

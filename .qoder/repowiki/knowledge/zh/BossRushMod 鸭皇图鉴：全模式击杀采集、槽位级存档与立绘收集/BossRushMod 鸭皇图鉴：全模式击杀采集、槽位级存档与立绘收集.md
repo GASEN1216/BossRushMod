@@ -177,3 +177,16 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 同一进程只做一次实际官方预设扫描。图鉴首次构建前必须先保证池就绪；Boss 过滤变化在同一
 咽喉点同时通知两方，已打开的图鉴立即重建，未打开时只失效缓存。Dev F3 会记录官方条目数、
 总分母、稳定键唯一性、过滤前后变化、目录 build 次数与预设 scan 次数。
+
+## 2026-09-04 审核修复
+
+**面板销毁必须走 `Close()`。** 面板打开时占了 `InputManager.DisableInput(gameObject)`，
+只有 `Close()` 里的 `ActiveInput` 会还回去。`ResetStaticCaches` 此前直接 `Destroy` 对象绕过它，
+宿主在面板开着时销毁会把玩家输入**永久**锁死，只能重启游戏。
+
+**落盘重试链修复。** `CodexSaveCoordinator` 与 `CampaignSaveCoordinator` 同形：
+`FlushPending()` 消费 pending 后 `HasPendingWrite` 变 false，旧早返会把「还欠一次 SaveFile」
+误判成「无事可做」，`SaveFile` 失败即永不重试。已新增 `_saveFilePending` 独立记账。
+
+**图鉴书（500061）已登记掉落黑名单。** 与其余 8 个新 TypeID 一同补入——
+日报签到池 `requireTags = null`、只过 `LootBlacklistRegistry`，不登记就会被当随机奖励发出去。
