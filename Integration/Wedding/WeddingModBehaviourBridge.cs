@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 
 namespace BossRush
@@ -68,6 +69,13 @@ namespace BossRush
                     else if (spouseNpcId == NurseAffinityConfig.NPC_ID)
                     {
                         SpawnNurseNPC(weddingPosition, true, true);
+                    }
+                    else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
+                    {
+                        // 泛化出口：所有捏脸永久 NPC 共用这一条，新增 NPC 时无需再改本文件。
+                        // 生成是 async，本方法是同步的 —— fire-and-forget，
+                        // 下面 GetSpouseInstance 这一轮会取不到，等下次场景初始化再接上。
+                        PermanentDuckNpcModule.ForceSpawnAtAsync(spouseNpcId, weddingPosition, true).Forget();
                     }
 
                     spouseInstance = GetSpouseInstance(spouseNpcId);
@@ -575,6 +583,12 @@ namespace BossRush
                 return nurseNPCInstance;
             }
 
+            CharacterMainControl duckNpc = PermanentDuckNpcRegistry.GetInstance(spouseNpcId);
+            if (duckNpc != null)
+            {
+                return duckNpc.gameObject;
+            }
+
             return null;
         }
 
@@ -609,6 +623,15 @@ namespace BossRush
             if (nurseController != null)
             {
                 nurseController.StartIdleAnimation();
+            }
+
+            // 捏脸永久 NPC：不禁用组件，用 Hold() 挂起 ——
+            // 禁用 DuckNpcMovement 会连朝向刷新一起停掉，NPC 会被旧 aimPoint 锁成横着站。
+            DuckNpcMovement duckMovement = spouseInstance.GetComponent<DuckNpcMovement>();
+            if (duckMovement != null)
+            {
+                duckMovement.DisablePlayerFollow();
+                duckMovement.Hold();
             }
         }
 
@@ -663,6 +686,17 @@ namespace BossRush
                 if (nurseController != null)
                 {
                     nurseController.StartIdleAnimation();
+                }
+
+                RefreshSpouseInteractionOptions(spouseInstance);
+            }
+            else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(npcId))
+            {
+                DuckNpcMovement duckMovement = spouseInstance.GetComponent<DuckNpcMovement>();
+                if (duckMovement != null)
+                {
+                    duckMovement.Release(0f);
+                    duckMovement.EnablePlayerFollow(playerTransform);
                 }
 
                 RefreshSpouseInteractionOptions(spouseInstance);

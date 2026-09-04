@@ -160,7 +160,12 @@ namespace BossRush
             ModBehaviour.DevLog("[NPCShop] 玩家选择商店服务: " + npcId);
             
             // 打开商店UI
-            NPCShopSystem.OpenShop(npcId, transform.parent, npcController);
+            // 取 NPC transform 优先走 npcController：子选项不一定是 NPC 根的直接子物体
+            // （捏脸 NPC 的交互挂在 InteractRoot 子物体下，transform.parent 会指向那个中间层）。
+            // 其余子交互（NPCGiftInteractable 等）本来就是这个写法，此处对齐；
+            // 对现有羽织/叮当行为等价——它们的 transform.parent 就是 NPC 根。
+            Transform npcTransform = npcController != null ? npcController.NpcTransform : transform.parent;
+            NPCShopSystem.OpenShop(npcId, npcTransform, npcController);
         }
     }
 }

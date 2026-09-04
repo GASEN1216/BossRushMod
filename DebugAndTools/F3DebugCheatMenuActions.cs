@@ -858,6 +858,128 @@ namespace BossRush
                 "Daily report state dumped (see log)"), false);
         }
 
+        // ====================================================================
+        // 捏脸 NPC 工具（数据采集 + 探针）
+        // ====================================================================
+        // 这一组按钮服务的是「未来用原版捏脸造新 NPC」这条路线的前置验证，
+        // 与现有哥布林/护士/快递员三个 AssetBundle NPC 完全无关，不触碰它们。
+        // 报告落盘在 Application.persistentDataPath/BossRushTestReports/。
+
+        private void DumpDuckNpcInventoryFromF3()
+        {
+            DuckNpcDebugProbe.DumpInventoryReport();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        private void ExportPlayerFaceFromF3()
+        {
+            DuckNpcDebugProbe.ExportPlayerFace();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        private void SpawnDuckNpcProbeWithPlayerFaceFromF3()
+        {
+            DuckNpcDebugProbe.SpawnProbe(DuckNpcProbeFaceSource.PlayerFace, false);
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        private void SpawnDuckNpcProbeWithBaselineFaceFromF3()
+        {
+            DuckNpcDebugProbe.SpawnProbe(DuckNpcProbeFaceSource.OfficialBaseline, false);
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        /// <summary>
+        /// 随机夸张脸。用来肉眼确认"生成出来的确实不一样" ——
+        /// 参数被故意推到官方区间两端，连点几次差异会非常明显。
+        /// </summary>
+        private void SpawnDuckNpcProbeWithRandomFaceFromF3()
+        {
+            DuckNpcDebugProbe.SpawnProbe(DuckNpcProbeFaceSource.RandomExaggerated, false);
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        /// <summary>随机夸张脸 + 随机官方装备（头盔/护甲/耳机/面罩/背包/主武器）。</summary>
+        private void SpawnDuckNpcProbeFullRandomFromF3()
+        {
+            DuckNpcDebugProbe.SpawnProbe(DuckNpcProbeFaceSource.RandomExaggerated, true);
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        /// <summary>就地把当前探针换成一张新的随机夸张脸，不重新生成角色。</summary>
+        private void RerollDuckNpcProbeFaceFromF3()
+        {
+            DuckNpcDebugProbe.RerollProbeFace();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        /// <summary>就地给当前探针重掷一套随机装备，不重新生成角色。</summary>
+        private void RerollDuckNpcProbeEquipmentFromF3()
+        {
+            DuckNpcDebugProbe.RerollProbeEquipment();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        /// <summary>
+        /// 把当前探针的脸 + 装备保存成可直接粘进 Assets/Data/DuckNpcs.json 的蓝图。
+        /// 这是「摇到满意的长相 → 固化成永久 NPC」这条作者流程的落点。
+        /// </summary>
+        private void SaveDuckNpcProbeAsPermanentFromF3()
+        {
+            DuckNpcDebugProbe.SaveProbeAsPermanentNpc();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        // ====================================================================
+        // 永久捏脸 NPC（模式 B）测试
+        // ====================================================================
+        // 永久 NPC 正常靠蓝图的 scenes 白名单自动生成；在还没决定它住哪张图之前，
+        // 这一组按钮提供「当场生成来验证」的路子。
+        // 现有婚姻/好感度调试 UI 全部写死叮当和护士的 NPC_ID，新 NPC 用不上，
+        // 所以这里自带好感度拉满/清零。
+
+        private void SpawnPermanentDuckNpcFromF3()
+        {
+            PermanentDuckNpcDebug.SpawnHere();
+            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
+        }
+
+        private void DespawnPermanentDuckNpcFromF3()
+        {
+            PermanentDuckNpcDebug.Despawn();
+            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
+        }
+
+        private void MaxPermanentDuckNpcAffinityFromF3()
+        {
+            PermanentDuckNpcDebug.MaxAffinity();
+            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
+        }
+
+        private void ResetPermanentDuckNpcAffinityFromF3()
+        {
+            PermanentDuckNpcDebug.ResetAffinity();
+            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
+        }
+
+        private void DumpPermanentDuckNpcStateFromF3()
+        {
+            PermanentDuckNpcDebug.DumpState();
+            SetF3DebugCheatStatus(PermanentDuckNpcDebug.LastStatus, false);
+        }
+
+        private void DespawnDuckNpcProbeFromF3()
+        {
+            DuckNpcDebugProbe.DespawnProbe();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
+        private void DumpDuckNpcProbeStateFromF3()
+        {
+            DuckNpcDebugProbe.DumpProbeState();
+            SetF3DebugCheatStatus(DuckNpcDebugProbe.LastStatus, false);
+        }
+
         /// <summary>
         /// 当前地图是否被官方标记为 raid map。出击/撤离两个计数完全由官方
         /// RaidUtilities 的 raid 事件驱动，非 raid map 不会触发。

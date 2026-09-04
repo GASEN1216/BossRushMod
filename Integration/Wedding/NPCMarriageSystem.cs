@@ -625,6 +625,15 @@ namespace BossRush
                 {
                     mod.DestroyNurseNPC();
                 }
+                else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(npcId))
+                {
+                    CharacterMainControl duckNpc = PermanentDuckNpcRegistry.GetInstance(npcId);
+                    if (duckNpc != null)
+                    {
+                        DuckNpcSpawner.Despawn(duckNpc);
+                    }
+                    PermanentDuckNpcRegistry.UnregisterInstance(npcId);
+                }
             }
             catch (Exception e)
             {

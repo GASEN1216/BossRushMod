@@ -324,6 +324,15 @@ INPCAffinityConfig <.. AffinityManager : "配置注册"
 - [AffinityManager.cs:590-695](file://Integration/Affinity/AffinityManager.cs#L590-L695)
 - [NPCMarriageSystem.cs:420-489](file://Integration/Wedding/NPCMarriageSystem.cs#L420-L489)
 
+## 未来新增 NPC 的另一条路线
+现有三位 NPC 走的是 AssetBundle 路线（自建模型 + 自管移动/动画栈）。未来新增**鸭形** NPC 时，
+本系统现有一位捏脸永久 NPC：[小满（示例捏脸 NPC）](小满（示例捏脸 NPC）.md)。
+
+还有一条成本低得多的路线：直接复用官方捏脸系统与官方角色管线，长相由一份进版本库的 JSON 定义，
+移动/动画/语音/脚步全部由官方栈提供。工具链见 [捏脸 NPC 工具链](捏脸%20NPC%20工具链.md)，
+代码位于 `Integration/NPCs/DuckNpc/`。该路线与现有三位 NPC 并行，不替代、不迁移；
+叮当（异形）技术上不适用。
+
 ## 结论
 该 NPC 关系系统以统一好感度等级为核心，结合礼物、对话、商店折扣与婚姻关系，形成完整的 NPC 交互生态。阿稳专注于高效可靠的寄存服务，叮当与羽织通过等级解锁丰富玩法。系统采用事件驱动与延迟保存，兼顾性能与稳定性。扩展新 NPC 只需实现配置接口并注册，即可无缝融入现有体系。
 

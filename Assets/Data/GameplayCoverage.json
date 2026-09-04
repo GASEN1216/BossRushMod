@@ -612,6 +612,27 @@
       ]
     },
     {
+      "id": "DUCK_NPC_TOOLS",
+      "title": "捏脸 NPC 工具链（新 NPC 路线验证）",
+      "sources": [
+        "Integration/NPCs/DuckNpc"
+      ],
+      "automatic": [],
+      "wiki": [],
+      "manual": [
+        {
+          "id": "M_DUCK_NPC_01",
+          "steps": "进任意关卡后按 F3 → NPC/剧情 页 → 捏脸 NPC 工具区，依次点「输出捏脸家底报告」与「导出玩家捏脸 JSON」。",
+          "expected": "persistentDataPath/BossRushTestReports/ 下生成 DuckNpcInventory_*.md 与 DuckNpcFace_*.json.txt；家底报告列出 7 类部件的 totalCount 与完整 ID 列表、去重底模池及其 CustomFace 挂载情况；脸 JSON 同时进剪贴板。"
+        },
+        {
+          "id": "M_DUCK_NPC_02",
+          "steps": "分别点「探针：用玩家脸生成」与「探针：用官方基线生成」，每次生成后点「探针：输出状态」，再走出 100m 外返回、切图返回，最后点「探针：回收」。",
+          "expected": "探针站得住、有待机动画、脸确实与周围鸭子不同、不攻击玩家也打不动；走远返回后仍在（距离休眠已解除）；切图后消失且无报错；状态报告里 characterPreset 为 null、DuckNpcRuntimeMarker 已挂载、Animator 有 Controller。"
+        }
+      ]
+    },
+    {
       "id": "RELATIONSHIP",
       "title": "好感、送礼、婚礼与配偶",
       "sources": [

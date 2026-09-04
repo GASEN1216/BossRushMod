@@ -3,7 +3,7 @@
 ## Baseline
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 400
+- Raw matches: 404
 - Current event-bus pilot: achievement popup notification only.
 - Guard evidence: `BossRushEventBusLifecycleGuard.py` PASS; `LongTermGoalNonGoalGuard.py` still blocks broad `EventBus`, `IGameWorldProbe`, and `IBossRushEventSubscriber` abstractions.
 
@@ -21,7 +21,7 @@
 
 | Area | Matches | Classification | Evidence / reason |
 |---|---:|---|---|
-| `Integration/` | 259 | mixed: Unity owner, gameplay state, temporary NPC service query, notification | Most usages are NPC/reward/reforge/courier/DragonKing/PhantomWitch wiring. They touch active run state, temporary NPC currency, coroutine owners, or audio/banner notifications. 2026-08-28 +5：日报报箱交互（3）、战绩采集门控（1）、日报面板横幅（1），三处都属 Keep 类别（交互回调宿主、开关查询、通知）。 |
+| `Integration/` | 263 | mixed: Unity owner, gameplay state, temporary NPC service query, notification | Most usages are NPC/reward/reforge/courier/DragonKing/PhantomWitch wiring. They touch active run state, temporary NPC currency, coroutine owners, or audio/banner notifications. 2026-08-28 +5：日报报箱交互（3）、战绩采集门控（1）、日报面板横幅（1），三处都属 Keep 类别（交互回调宿主、开关查询、通知）。2026-09-04 +4：常驻捏脸 NPC 交互体（`PermanentDuckNpcInteractable`）读配偶跟随/离婚/回家三个选项的可见性，外加一次 null 判空。它是 MonoBehaviour、手上没有 owner 引用，`ModBehaviour.Instance` 是这类交互体的既定取法（与 Interactables/ 同款），且调用前已判空，属 Keep 类别。 |
 | `ZombieMode/` | 38 | gameplay state and runtime owner | Runtime components ask for `ZombieModeCurrentRunId`, pause state, reward UI, temporary NPC service opening, and projectile/reward effects. These stay direct to avoid changing mode behavior. |
 | `Interactables/` | 23 | gameplay command and UI notification | BossRush sign, difficulty selection, lootbox return/clear actions call active mode commands. The Mode G entry path reuses one captured host instead of repeatedly resolving the singleton; the remaining calls are player-facing commands and should not be event-bus migrated without smoke. |
 | `ModeE/` | 26 | gameplay state / cached instance | Harmony patches and Mode E merchant/UI use the current active mode state and cached instance; guarded by Mode E/F no-gameplay-throttle and parity tests. |

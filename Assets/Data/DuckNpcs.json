@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "npcs": [
+    {
+      "id": "duck_npc_sample",
+      "displayNameKey": "",
+      "faceMode": "randomVaried",
+      "faceSeed": 20260904,
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": true,
+      "randomEquipment": true,
+      "equipmentSeed": 20260904,
+      "canWander": false,
+      "wanderRadius": 8.0,
+      "scenes": []
+    },
+    {
+      "id": "duck_npc_sample_wanderer",
+      "displayNameKey": "",
+      "faceMode": "randomExaggerated",
+      "faceSeed": 77771,
+      "baseModel": "CharacterModel_Custom_XiaoMing",
+      "modelScale": 1.15,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": true,
+      "randomEquipment": true,
+      "equipmentSeed": 77771,
+      "equipmentSlots": [
+        "Helmat",
+        "Armor",
+        "Backpack",
+        "PrimaryWeapon"
+      ],
+      "canWander": true,
+      "wanderRadius": 10.0,
+      "scenes": []
+    },
+    {
+      "id": "duck_npc_xiaoman",
+      "isPermanent": true,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.44,\"g\":0.76,\"b\":0.71,\"a\":1.0},\"headScaleOffset\":-0.05,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.22,\"g\":0.19,\"b\":0.24,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.42,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.36,\"g\":0.62,\"b\":0.6,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.44,\"g\":0.76,\"b\":0.71,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": true,
+      "randomEquipment": false,
+      "equipmentTypeIds": [
+        1252
+      ],
+      "canWander": true,
+      "wanderRadius": 6.0,
+      "scenes": [],
+      "permanent": {
+        "displayNameCn": "小满",
+        "displayNameEn": "Xiao Man",
+        "dailyChatAffinity": 30,
+        "positiveTags": [
+          "Consumable",
+          "Food"
+        ],
+        "positiveItemTypeIds": [],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          "诶——这个我正好喜欢！",
+          "谢谢你，我会好好收着的。",
+          "你怎么知道我想要这个呀？"
+        ],
+        "negativeBubbles": [
+          "……这个我大概用不上。",
+          "唔，谢谢，不过下次不用麻烦了。"
+        ],
+        "normalBubbles": [
+          "谢谢啦。",
+          "收下了，心意我记着。"
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                "又是你啊，今天外面还太平吗？",
+                "站在这儿看久了，连风都认得我了。",
+                "你回来了就好。"
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                "回来啦？我一直在这儿等着呢。",
+                "看到你没事，我这一天就算过好了。"
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                "你走的每一趟我都在数。这趟也数完了。",
+                "别的我不图，你平安回来就够了。"
+              ]
+            }
+          ],
+          "idle": [
+            "外面的天色又变了。",
+            "这地方待久了，倒也不觉得闷。",
+            "……嗯？没什么，随便看看。"
+          ],
+          "afterGift": [
+            "这个我收下了，真的谢谢你。",
+            "你总是这样。"
+          ],
+          "levelUp": [
+            "跟你说话越来越自在了。",
+            "感觉我们……算是熟起来了吧？"
+          ],
+          "farewell": [
+            "路上当心。",
+            "早点回来。"
+          ],
+          "alreadyGifted": [
+            "今天已经收过你的东西啦，够啦。"
+          ],
+          "alreadyGiftedPositive": [
+            "今天你已经送过我了，我可不好意思再要。"
+          ],
+          "alreadyGiftedNormal": [
+            "今天的份已经收过了。"
+          ],
+          "alreadyGiftedNegative": [
+            "今天……就先这样吧。"
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            "回来了？饭在锅里温着呢。",
+            "今天也辛苦了。"
+          ],
+          "dialogue_idle_married": [
+            "有你在，这地方才像个家。"
+          ],
+          "dialogue_farewell_married": [
+            "去吧，我等你。"
+          ],
+          "dialogue_after_gift_married": [
+            "都成一家人了还这么客气。"
+          ],
+          "gift_positive_married": [
+            "你还记得我喜欢这个呀。"
+          ],
+          "gift_normal_married": [
+            "收下了，谢谢你。"
+          ]
+        }
+      }
+    }
+  ]
+}

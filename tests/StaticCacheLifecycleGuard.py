@@ -82,10 +82,35 @@ def should_exclude(path: Path, repo_root: Path) -> bool:
     return False
 
 
+def is_method_declaration(stripped: str) -> bool:
+    """
+    区分「静态字段」与「返回值恰好是字典/列表的静态方法」。
+
+    `private static Dictionary<int,int> BuildItemMap(int[] ids, int v)` 是**方法**，
+    没有任何静态状态，不该要求 ResetStaticCaches；
+    `private static readonly Dictionary<string,int> _cache = new ...;` 才是字段。
+
+    判据：`(` 出现在 `=` 之前（或压根没有 `=`）。
+    字段初始化里的 `new Dictionary<...>()` 括号一定在 `=` 之后，不会误判；
+    方法声明的参数表括号一定在前。
+    """
+    paren = stripped.find("(")
+    if paren < 0:
+        return False
+    assign = stripped.find("=")
+    if assign < 0:
+        return True
+    return paren < assign
+
+
 def is_cache_line(line: str) -> bool:
     """判断一行是否声明了静态缓存字段"""
     stripped = line.strip()
     if stripped.startswith("//") or stripped.startswith("///") or stripped.startswith("*"):
+        return False
+    # 方法声明先排除，否则「返回字典的静态纯函数」会被当成静态缓存，
+    # 逼着无状态的工具类去加一个空的 ResetStaticCaches（那是糊弄守卫，不是修问题）
+    if is_method_declaration(stripped):
         return False
     if PATTERN_STATIC_DICT.search(line):
         return True

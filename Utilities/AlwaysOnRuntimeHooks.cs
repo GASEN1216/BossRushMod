@@ -298,6 +298,27 @@ namespace BossRush
 
             try
             {
+                // 捏脸 NPC 探针只在 F3 里用，但它的静态字段握着 CharacterMainControl 引用，
+                // 不清会把旧程序集的角色引用留到下一次加载。
+                DuckNpcDebugProbe.ResetStaticCaches();
+                // 装备候选池是全表扫描的结果，握着官方 TypeID 数组，同样要清。
+                DuckNpcOutfitter.ResetStaticCaches();
+                // 底模索引握着官方 CharacterModel 预制体引用。
+                DuckNpcFaceCatalog.ResetStaticCaches();
+                // 蓝图本身是纯数据，但重载后 JSON 可能已改，必须允许重读。
+                DuckNpcRegistry.ResetStaticCaches();
+                // 永久 NPC 实例表握着 CharacterMainControl 引用，配置缓存握着蓝图引用。
+                PermanentDuckNpcRegistry.ResetStaticCaches();
+                PermanentDuckNpcModule.ResetStaticCaches();
+                PermanentDuckNpcDebug.ResetStaticCaches();
+            }
+            catch (System.Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 捏脸 NPC 探针缓存卸载异常: " + e.Message);
+            }
+
+            try
+            {
                 MapThumbnailCache.ResetStaticCaches();
             }
             catch (System.Exception e)

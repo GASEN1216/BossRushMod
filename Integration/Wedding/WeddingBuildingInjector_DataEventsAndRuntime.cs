@@ -401,6 +401,15 @@ namespace BossRush
                 {
                     DestroyNurseNPC();
                 }
+                else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
+                {
+                    CharacterMainControl duckNpc = PermanentDuckNpcRegistry.GetInstance(spouseNpcId);
+                    if (duckNpc != null)
+                    {
+                        DuckNpcSpawner.Despawn(duckNpc);
+                    }
+                    PermanentDuckNpcRegistry.UnregisterInstance(spouseNpcId);
+                }
 
                 DevLog("[WeddingBuilding] 婚礼教堂被拆除，已清理驻留NPC");
             }

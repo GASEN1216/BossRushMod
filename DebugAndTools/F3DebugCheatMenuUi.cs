@@ -558,6 +558,98 @@ namespace BossRush
                 AppendMarriageTestLog("已记录花心事件，配偶=" + spouseId);
                 SetF3DebugCheatStatus(L10n.T("已记录 1 次花心事件", "Recorded one cheating incident"), false);
             });
+
+            BuildF3DuckNpcSection(font);
+        }
+
+        /// <summary>
+        /// 捏脸 NPC 工具区：为「未来用原版捏脸造新 NPC」采集实机数据。
+        /// 与现有哥布林/护士/快递员无关，不会改动它们。
+        /// </summary>
+        private void BuildF3DuckNpcSection(Font font)
+        {
+            GameObject section = CreateF3Section(
+                L10n.T("捏脸 NPC 工具（新 NPC 路线验证）", "Duck NPC Tools (New NPC Route)"),
+                L10n.T("清点官方捏脸家底、导出玩家捏脸 JSON、生成探针验证「无 preset 裸造角色」行为。报告落盘在 persistentDataPath/BossRushTestReports/。",
+                    "Inventory the official custom-face assets, export the player's face as JSON, and spawn a probe to validate preset-less character creation. Reports land in persistentDataPath/BossRushTestReports/."),
+                font);
+
+            GameObject row1 = CreateF3Row(section.transform);
+            CreateActionButton(row1.transform, font,
+                L10n.T("输出捏脸家底报告", "Dump Face Inventory"),
+                new Color(0.20f, 0.32f, 0.42f, 1f), DumpDuckNpcInventoryFromF3);
+            CreateActionButton(row1.transform, font,
+                L10n.T("导出玩家捏脸 JSON", "Export Player Face"),
+                new Color(0.24f, 0.34f, 0.44f, 1f), ExportPlayerFaceFromF3);
+
+            GameObject row2 = CreateF3Row(section.transform);
+            CreateActionButton(row2.transform, font,
+                L10n.T("探针：用玩家脸生成", "Probe: Player Face"),
+                new Color(0.22f, 0.42f, 0.28f, 1f), SpawnDuckNpcProbeWithPlayerFaceFromF3);
+            CreateActionButton(row2.transform, font,
+                L10n.T("探针：用官方基线生成", "Probe: Baseline Face"),
+                new Color(0.22f, 0.42f, 0.28f, 1f), SpawnDuckNpcProbeWithBaselineFaceFromF3);
+
+            GameObject randomRow = CreateF3Row(section.transform);
+            CreateActionButton(randomRow.transform, font,
+                L10n.T("探针：随机夸张脸", "Probe: Random Wild Face"),
+                new Color(0.42f, 0.28f, 0.46f, 1f), SpawnDuckNpcProbeWithRandomFaceFromF3);
+            CreateActionButton(randomRow.transform, font,
+                L10n.T("探针：随机脸+随机装备", "Probe: Wild Face + Gear"),
+                new Color(0.46f, 0.30f, 0.20f, 1f), SpawnDuckNpcProbeFullRandomFromF3);
+            CreateActionButton(randomRow.transform, font,
+                L10n.T("探针：原地换一张脸", "Probe: Reroll Face"),
+                new Color(0.30f, 0.38f, 0.46f, 1f), RerollDuckNpcProbeFaceFromF3);
+            CreateActionButton(randomRow.transform, font,
+                L10n.T("探针：重掷装备", "Probe: Reroll Gear"),
+                new Color(0.30f, 0.38f, 0.46f, 1f), RerollDuckNpcProbeEquipmentFromF3);
+
+            GameObject saveRow = CreateF3Row(section.transform);
+            CreateActionButton(saveRow.transform, font,
+                L10n.T("★ 保存为永久 NPC 数据", "★ Save As Permanent NPC"),
+                new Color(0.52f, 0.36f, 0.16f, 1f), SaveDuckNpcProbeAsPermanentFromF3);
+
+            BuildF3PermanentDuckNpcSection(font);
+        }
+
+        /// <summary>
+        /// 永久捏脸 NPC（模式 B）测试区。与上面的探针区分开：
+        /// 探针是"摇长相"的，这里是"验证永久 NPC 整条链路"的。
+        /// </summary>
+        private void BuildF3PermanentDuckNpcSection(Font font)
+        {
+            GameObject section = CreateF3Section(
+                L10n.T("永久捏脸 NPC（模式 B）", "Permanent Duck NPC (Mode B)"),
+                L10n.T("常驻 NPC：好感度 / 对话 / 送礼 / 婚姻，与羽织叮当同一套系统。"
+                       + "蓝图 scenes 留空时不会自动生成，用下面的按钮当场召唤来测。",
+                       "Persistent NPC with affinity/dialogue/gift/marriage. "
+                       + "Spawn on demand here when the blueprint has no scene whitelist."),
+                font);
+
+            GameObject row1 = CreateF3Row(section.transform);
+            CreateActionButton(row1.transform, font,
+                L10n.T("永久 NPC：在此生成", "Permanent: Spawn Here"),
+                new Color(0.22f, 0.42f, 0.28f, 1f), SpawnPermanentDuckNpcFromF3);
+            CreateActionButton(row1.transform, font,
+                L10n.T("永久 NPC：回收", "Permanent: Despawn"),
+                new Color(0.44f, 0.22f, 0.22f, 1f), DespawnPermanentDuckNpcFromF3);
+            CreateActionButton(row1.transform, font,
+                L10n.T("永久 NPC：输出状态", "Permanent: Dump State"),
+                new Color(0.30f, 0.25f, 0.42f, 1f), DumpPermanentDuckNpcStateFromF3);
+
+            GameObject row2 = CreateF3Row(section.transform);
+            CreateActionButton(row2.transform, font,
+                L10n.T("好感度拉满(含10级剧情标记)", "Max Affinity (+Story10)"),
+                new Color(0.46f, 0.30f, 0.20f, 1f), MaxPermanentDuckNpcAffinityFromF3);
+            CreateActionButton(row2.transform, font,
+                L10n.T("好感度清零", "Reset Affinity"),
+                new Color(0.34f, 0.30f, 0.20f, 1f), ResetPermanentDuckNpcAffinityFromF3);
+            CreateActionButton(row2.transform, font,
+                L10n.T("探针：回收", "Probe: Despawn"),
+                new Color(0.44f, 0.22f, 0.22f, 1f), DespawnDuckNpcProbeFromF3);
+            CreateActionButton(row2.transform, font,
+                L10n.T("探针：输出状态", "Probe: Dump State"),
+                new Color(0.30f, 0.25f, 0.42f, 1f), DumpDuckNpcProbeStateFromF3);
         }
 
         private void BuildF3SceneDebugPage()
