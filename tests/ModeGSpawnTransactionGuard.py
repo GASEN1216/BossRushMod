@@ -32,10 +32,22 @@ def read(path, errors):
         return fh.read()
 
 
+# 非生产源码目录：构建产物、工具过程材料、官方反编译源码与守卫自身。
+# 与 tests/EmptyCatchGuard.py 的 EXCLUDE_DIRS 同一口径。
+# 不排除的话，Build/ 下的构建产物或外部工具落的源码快照
+# （例如 Build/review-<commit>/tracked/... ）会被当成第二处 patch 误报。
+HURT_SCAN_EXCLUDE_DIRS = {
+    "Build", "output", "tmp", ".codex_tmp", ".git", ".kiro",
+    "docs", "tests", "wiki-site", "鸭科夫源码",
+}
+
+
 def count_hurt_patches(errors):
-    """全库扫描 Health.Hurt Harmony patch，必须恰好 1 处。"""
+    """扫描全部生产源码里的 Health.Hurt Harmony patch，必须恰好 1 处。"""
     count = 0
-    for dirpath, _, filenames in os.walk(REPO_ROOT):
+    for dirpath, dirnames, filenames in os.walk(REPO_ROOT):
+        # 就地裁剪，避免走进构建产物与官方源码目录
+        dirnames[:] = [d for d in dirnames if d not in HURT_SCAN_EXCLUDE_DIRS]
         if os.sep + "tests" in dirpath or dirpath.endswith("tests"):
             continue
         for f in filenames:
