@@ -33,15 +33,17 @@ SET_SEMANTIC_FIELDS = frozenset([
     "failureReasonIds",
 ])
 
-# 与 C# SortedObjectArrayFields 保持一致
+# 与 C# SortedObjectArrayFields 保持一致：值是**候选键列表**，按序取第一个
+# 「所有元素都具备」的键。records 有两个不同 DTO 共用（认证报告带 stableKey，
+# 名人堂信封只有 hallOfFameId），单键写法会让第 2 条名人堂记录起摘要必失败。
 SORTED_OBJECT_ARRAY_FIELDS = {
-    "profiles": "profileId",
-    "seasonRewardOperations": "operationId",
-    "matchReports": "matchIndex",
-    "behaviorStatuses": "entryId",
-    "effectStatuses": "entryId",
-    "records": "stableKey",
-    "commandStatuses": "commandId",
+    "profiles": ["profileId"],
+    "seasonRewardOperations": ["operationId"],
+    "matchReports": ["matchIndex"],
+    "behaviorStatuses": ["entryId"],
+    "effectStatuses": ["entryId"],
+    "records": ["stableKey", "hallOfFameId"],
+    "commandStatuses": ["commandId"],
 }
 
 _ESCAPES = {
@@ -119,12 +121,18 @@ def _write_array(items, owner_field, out):
         out.append("]")
         return
 
-    sort_key = SORTED_OBJECT_ARRAY_FIELDS.get(owner_field)
-    if sort_key is not None:
-        for item in items:
-            if not isinstance(item, dict) or sort_key not in item:
-                raise CanonicalError("对象数组缺少排序键: %s -> %s" % (owner_field, sort_key))
-        items = sorted(items, key=lambda it: it[sort_key])
+    candidates = SORTED_OBJECT_ARRAY_FIELDS.get(owner_field)
+    if candidates:
+        sort_key = None
+        for candidate in candidates:
+            if all(isinstance(it, dict) and candidate in it for it in items):
+                sort_key = candidate
+                break
+        if sort_key is None:
+            raise CanonicalError(
+                "对象数组缺少排序键: %s -> %s" % (owner_field, "|".join(candidates)))
+        if items:
+            items = sorted(items, key=lambda it: it[sort_key])
 
     out.append("[")
     for index, item in enumerate(items):

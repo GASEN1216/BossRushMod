@@ -29,6 +29,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using ItemStatsSystem;
@@ -261,6 +262,9 @@ namespace BossRush
 
         private static bool _capacityBonusApplied;
 
+        /// <summary>当前挂着的额外格子数（摘除时要按它算越界范围）。</summary>
+        private static int _capacityBonusSlots;
+
         /// <summary>当前是否挂着容量加成。</summary>
         internal static bool HasCapacityBonus { get { return _capacityBonusApplied; } }
 
@@ -294,6 +298,7 @@ namespace BossRush
                 }
 
                 _capacityBonusApplied = true;
+                _capacityBonusSlots = extraSlots;
                 return true;
             }
             catch (Exception e)
@@ -312,6 +317,13 @@ namespace BossRush
             }
             _capacityBonusApplied = false;
 
+            // 先把超出「摘掉加成后容量」的那几格清空，再摘加成。
+            // 官方 PetProxy.Update 每秒把宠物背包容量同步成玩家的 PetCapcity，
+            // 而 Inventory.SetCapacity 只改 defaultCapacity、**不动 content**：
+            // 物品没被销毁，但超出新容量后在宠物保险箱 UI 里既看不见也取不出，
+            // 玩家会当成东西丢了。交官方溢出缓冲区是既有解法（同 ModeH 押品满仓那条出路）。
+            RescuePetInventoryOverflow(player);
+
             try
             {
                 if (player == null) return;
@@ -322,6 +334,57 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PetNest] [WARNING] 摘容量 Modifier 失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 把宠物背包里超出「摘掉容量加成后」那部分槽位的物品捞出来，交官方溢出缓冲区。
+        ///
+        /// 判据用**摘除后的目标容量**而不是当前 Capacity：PetProxy 是每秒同步一次的，
+        /// 摘加成的那一帧容量还没跌下去，按当前值算会漏掉全部越界物品。
+        /// no-throw：捞不出来也不阻断离场流程，最坏是回到原来的「看不见」状态。
+        /// </summary>
+        private static void RescuePetInventoryOverflow(CharacterMainControl player)
+        {
+            try
+            {
+                Inventory petInventory = PetProxy.PetInventory;
+                if (petInventory == null) return;
+
+                int currentCapacity = petInventory.Capacity;
+                int targetCapacity = currentCapacity - _capacityBonusSlots;
+                if (targetCapacity < 0) targetCapacity = 0;
+                if (targetCapacity >= currentCapacity) return;
+
+                List<Item> content = petInventory.Content;
+                if (content == null) return;
+
+                int rescued = 0;
+                for (int i = content.Count - 1; i >= targetCapacity; i--)
+                {
+                    if (i >= content.Count) continue;
+                    Item item = content[i];
+                    if (item == null) continue;
+                    try
+                    {
+                        petInventory.RemoveItem(item);
+                        PlayerStorage.Push(item, true);
+                        rescued++;
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[PetNest] [WARNING] 捡漏背包越界物品回收失败: " + e.Message);
+                    }
+                }
+                if (rescued > 0)
+                {
+                    ModBehaviour.DevLog(
+                        "[PetNest] 随从离场，" + rescued + " 件越界物品已转入仓库待收取缓冲区");
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 捡漏背包越界检查失败: " + e.Message);
             }
         }
 

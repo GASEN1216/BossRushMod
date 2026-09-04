@@ -104,6 +104,13 @@ namespace BossRush
         /// 只服务结算页展示，每场结算前由 SettleMatch 清空。
         /// </summary>
         private readonly List<string> _restedProfileIds = new List<string>();
+
+        /// <summary>
+        /// 本场抽出但**尚未由玩家处置**的战痕候选归属选手。
+        /// 结算页据它决定要不要摆「留下 / 替换 / 拒绝」那组按钮。
+        /// 运行时状态：跨会话不保留（战报里的 scarOfferId 才是持久证据）。
+        /// </summary>
+        private string _pendingScarProfileId;
         private ModeHSeasonRewardOperationDto _lastRewardOperation;
 
         #endregion
@@ -168,6 +175,7 @@ namespace BossRush
             _relayDisplayName = null;
             _lastSettlementReport = null;
             _lastRewardOperation = null;
+            _pendingScarProfileId = null;
         }
 
         private static string ResolveSceneId(SceneRuntimeContext context)
@@ -282,6 +290,7 @@ namespace BossRush
             if (_certification.TryUseCachedReport(ModeHRuntimeGates.SlotGeneration))
             {
                 _lastCertificationUsedCache = true;
+                if (BlockSetupIfPersistedSeasonActive()) return;
                 CreateDraftingSeason(_certification.Report);
                 return;
             }
@@ -424,6 +433,7 @@ namespace BossRush
                     + (cacheError ?? "unknown"));
             }
 
+            if (BlockSetupIfPersistedSeasonActive()) yield break;
             CreateDraftingSeason(result.Report);
         }
 
@@ -467,6 +477,39 @@ namespace BossRush
         /// 认证通过后原子创建首份 lifecycle=Drafting 的 Season 并读回。
         /// 读回失败必须退款离场：宁可玩家重来一次，也不能带着一份写不下去的赛季继续。
         /// </summary>
+        /// <summary>
+        /// 磁盘上是否还挂着一份活动赛季。内存里没有活动赛季**不等于**磁盘上没有：
+        /// 局内退出会把 _season/_runState 清成 null，而此前 recovery-only 闸并没有立起，
+        /// 于是玩家再进一次图就会新建赛季并把旧的整份覆盖掉——合同选手、战痕、名声、
+        /// 虚拟筹码与已打场次全部静默清零（CR-2026-08-29-012 同类，但走的是进程内路径）。
+        ///
+        /// 命中时立回 recovery-only 闸，把处置权交还恢复壳（那里有「放弃赛季」出口）。
+        /// </summary>
+        private bool BlockSetupIfPersistedSeasonActive()
+        {
+            try
+            {
+                ModeHSeasonDto existing = ModeHProfilePersistence.LoadCurrent();
+                if (existing == null || existing.runState == null) return false;
+
+                ModeHLifecycle lifecycle = ModeHStateModel.ToLifecycle(existing.runState.lifecycle);
+                if (lifecycle == ModeHLifecycle.None || lifecycle == ModeHLifecycle.SeasonEnded)
+                {
+                    return false;
+                }
+
+                ModeHRuntimeGates.SetRecoveryOnlyBlocked(true, "season_recovery_shell");
+                AbortSetup("season_active_record_exists", true);
+                return true;
+            }
+            catch (Exception e)
+            {
+                // 读不出来不阻断开局：闸与恢复壳仍是兜底，这里宁可放行也不误伤新档
+                LogFailure("check_persisted_season", e);
+                return false;
+            }
+        }
+
         private void CreateDraftingSeason(ModeHProductionCertificationDto report)
         {
             try

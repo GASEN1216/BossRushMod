@@ -105,7 +105,16 @@ namespace BossRush
             }
         }
 
-        private static bool ClearRegisteredMeal()
+        /// <summary>
+        /// 清掉存档里的出击餐登记（写回 0）。
+        ///
+        /// 开放为 internal 的理由：`ClearForRun()` 按设计只摘本局 Modifier、**不碰存档键**，
+        /// 于是「撤销一次登记」在全仓没有任何可调用的入口。F3 验收用例因此只能用
+        /// ClearForRun 假装还原，把测试写进去的焚心椒永久留在玩家存档里——
+        /// 玩家下一次出局会被 ApplyForRun 消费掉，白吃一份自己没做过的餐。
+        /// 这不是为了让测试变绿而开的后门：它是一个本就缺失的正当动作入口。
+        /// </summary>
+        internal static bool ClearRegisteredMeal()
         {
             try
             {

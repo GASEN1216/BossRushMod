@@ -53,11 +53,31 @@ def main() -> int:
     if "RegisterBossRandomLootTracking(character, originalLootCount, 0f);" not in spawn_block:
         return fail("PhantomWitchLootboxTrackingGuard: SpawnPhantomWitch does not reuse RegisterBossRandomLootTracking(..., 0f)")
 
+    # 真正的清理路径：没有掉落管线在跑，必须两件都做。
     cleanup_targets = [
         "private void CleanupFailedPhantomWitchSpawn(CharacterMainControl character)",
         "private void CleanupTrackedPhantomWitchCharacter(",
-        "private void OnPhantomWitchDeath(CharacterMainControl deadWitch, DamageInfo damageInfo)",
     ]
+
+    # 死亡回调是**例外**：它在死亡帧同步执行，而四家 defer 掉落
+    # （噬魂挽歌/遗种蛋/词缀熔石/寒霜长矛）的消费点在
+    # AddBossSpecialLootToLootboxCoroutine 里、排在 `while (inv.Loading)
+    # yield WaitForSeconds(0.1f)` 之后。在这里 Finalize 会把它们全部 CancelPending，
+    # 女巫的特殊掉落在标准 BossRush 奖励箱路径上必丢。
+    # 收尾由协程自己的 try/finally 与其余七个 Finalize 调用点负责。
+    death_block = extract_block(
+        text,
+        "private void OnPhantomWitchDeath(CharacterMainControl deadWitch, DamageInfo damageInfo)",
+    )
+    if not death_block:
+        return fail("PhantomWitchLootboxTrackingGuard: missing OnPhantomWitchDeath block")
+    if "FinalizeBossRushLootboxPathTracking(" in death_block:
+        return fail(
+            "PhantomWitchLootboxTrackingGuard: OnPhantomWitchDeath 不得调用 "
+            "FinalizeBossRushLootboxPathTracking——它会抢在掉落协程消费之前取消 pending")
+    if "ClearBossRandomLootTracking(" not in death_block:
+        return fail(
+            "PhantomWitchLootboxTrackingGuard: OnPhantomWitchDeath 仍须 ClearBossRandomLootTracking")
 
     for signature in cleanup_targets:
         block = extract_block(text, signature)

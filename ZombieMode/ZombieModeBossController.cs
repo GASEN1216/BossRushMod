@@ -524,6 +524,12 @@ namespace BossRush
             }
 
             Vector3 delta = bossPosition - player.transform.position;
+
+            // 垂直差必须单独判：只压平 y 的话，掉进地形、卡在楼板上下或被几何体吞掉的
+            // Boss 只要水平投影离玩家够近，就会被当成「正在贴脸交战」而永远不解卡，
+            // 波次就此卡死。贴脸交战的真实形态是水平近**且**基本同一高度。
+            if (Mathf.Abs(delta.y) > ZombieModeTuning.BossStuckEngagedHeightTolerance) return false;
+
             delta.y = 0f;
             float engagedDistance = ZombieModeTuning.BossStuckEngagedDistance;
             return delta.sqrMagnitude <= engagedDistance * engagedDistance;

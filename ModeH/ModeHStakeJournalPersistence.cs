@@ -254,10 +254,32 @@ namespace BossRush
 
             lock (_lock)
             {
+                // 注意 _pending 与调用方的 _active 是**同一个引用**。这是有意的（journal
+                // 体积不小，逐字段深拷贝要随 DTO 增删同步维护），代价由两道闸兜住：
+                //   1. 调用方回滚阶段时必须 DiscardPending()（见 TryAdvancePhase / TryPrepare）；
+                //   2. FlushPending 落盘前会重算摘要与 _pendingDigest 核对，
+                //      对不上就丢弃 pending 而不是把它写下去。
                 _pending = dto;
                 _pendingDigest = digest;
             }
             return true;
+        }
+
+        /// <summary>
+        /// 丢弃暂存但尚未落盘的 payload。
+        ///
+        /// 阶段推进写盘失败后调用方会把 `_active` 回滚，此时那份 pending 描述的是
+        /// **已经被撤销**的阶段：留着它，下一次 Tick 重试就会把作废的状态写进存档，
+        /// 而它与 `_pendingDigest` 也已失配，会把 store 单向锁死。
+        /// 幂等、no-throw。
+        /// </summary>
+        public static void DiscardPending()
+        {
+            lock (_lock)
+            {
+                _pending = null;
+                _pendingDigest = null;
+            }
         }
 
         /// <summary>
@@ -280,6 +302,26 @@ namespace BossRush
             try
             {
                 if (SavesSystem.IsSaving) return false;
+
+                // pending 与调用方的 _active 同引用：落盘前先确认它自暂存以来没被改过。
+                // 改过说明调用方回滚了阶段却没 DiscardPending——此时把它写下去等于
+                // 写入一个已撤销的状态，而回读核对必然失配并把 store 单向锁死。
+                // 丢弃 + 报错是可恢复的，写下去不是。
+                string restaged;
+                string restageError;
+                if (!ModeHCanonicalDigest.TryComputeObjectDigest(
+                        pending, "payloadDigest", out restaged, out restageError))
+                {
+                    DiscardPending();
+                    _lastError = "journal_pending_digest_failed:" + restageError;
+                    return false;
+                }
+                if (!string.Equals(restaged, expectedDigest, StringComparison.Ordinal))
+                {
+                    DiscardPending();
+                    _lastError = "journal_pending_stale";
+                    return false;
+                }
 
                 SavesSystem.Save<ModeHStakeJournalDto>(StorageKey, pending);
 
@@ -324,6 +366,10 @@ namespace BossRush
                 _pending = null;
                 _pendingDigest = null;
                 _writeBarrier = false;
+                // _storeFaulted 也必须随槽复位：它记录的是「这个槽的 store 出过问题」。
+                // 不清会让一次读回失败把**本进程剩下的所有存档槽**的押品写入永久堵死。
+                // 形态与 ModeHProfilePersistence.HandleSetFile 一致。
+                _storeFaulted = false;
                 _lastError = null;
             }
         }

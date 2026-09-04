@@ -37,14 +37,18 @@ SET_SEMANTIC_FIELDS = [
     "failureReasonIds",
 ]
 
-# §20.2 冻结的“按指定键稳定排序”的对象数组
+# §20.2 冻结的“按指定键稳定排序”的对象数组。
+# 值是候选键列表：按序取第一个“所有元素都具备”的键。
+# records 被两个 DTO 共用——认证报告的元素带 stableKey，名人堂信封的只有
+# hallOfFameId；只登记 stableKey 会让第 2 条名人堂记录起摘要必失败、赛季被 Suspended。
 SORTED_OBJECT_ARRAYS = [
-    ("profiles", "profileId"),
-    ("seasonRewardOperations", "operationId"),
-    ("matchReports", "matchIndex"),
-    ("behaviorStatuses", "entryId"),
-    ("records", "stableKey"),
-    ("commandStatuses", "commandId"),
+    ("profiles", ["profileId"]),
+    ("seasonRewardOperations", ["operationId"]),
+    ("matchReports", ["matchIndex"]),
+    ("behaviorStatuses", ["entryId"]),
+    ("effectStatuses", ["entryId"]),
+    ("records", ["stableKey", "hallOfFameId"]),
+    ("commandStatuses", ["commandId"]),
 ]
 
 
@@ -144,10 +148,18 @@ def main():
             if not re.search(r'"{}"'.format(re.escape(field)), digest):
                 errors.append("[SetSemantic] 集合语义字段未登记: " + field)
 
-        for field, key in SORTED_OBJECT_ARRAYS:
-            pattern = r'\{{\s*"{}",\s*"{}"\s*\}}'.format(re.escape(field), re.escape(key))
+        for field, keys in SORTED_OBJECT_ARRAYS:
+            inner = r",\s*".join(r'"{}"'.format(re.escape(k)) for k in keys)
+            pattern = r'\{{\s*"{}",\s*new\[\]\s*\{{\s*{}\s*\}}\s*\}}'.format(
+                re.escape(field), inner)
             if not re.search(pattern, digest):
-                errors.append("[SortedArray] 对象数组排序键未登记: {} -> {}".format(field, key))
+                errors.append(
+                    "[SortedArray] 对象数组排序键未登记: {} -> {}".format(field, "|".join(keys)))
+
+        # 候选键必须真的被逐个试过：只取第一个候选等于回到单键写法，
+        # 名人堂第 2 条记录起又会撞 canonical_sort_key_missing。
+        if "ResolveSortKey" not in digest:
+            errors.append("[SortedArray] 缺少候选排序键解析（ResolveSortKey）")
 
         # 禁止把来源 JSON 文本直接哈希
         if re.search(r"TryComputeSha256OfText\(\s*rawJson", digest):

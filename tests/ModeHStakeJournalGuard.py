@@ -187,6 +187,26 @@ def check_phase_machine(errors):
         ]:
             if required not in body:
                 errors.append("[Slot] 取值规则缺失: " + desc)
+
+        # external asset 闸只能由「证据段」（只看 journal）决定，且只写一次。
+        # 回归背景：曾经把 IsStorageReady 失败也当成 §22.1 第三条并置闸，
+        # 而 OnSetFile 是在主菜单触发的、PlayerStorage 必然未就绪，于是每次正常选档
+        # 都把 IsLegacyModeEntryAllowed 打死，ModeD/E/F/G、标准竞技场、无间炼狱、
+        # 丧尸模式七个旧入口一起进不去，且写出的 blocked+!faulted 组合让重扫路径永远早退。
+        if "ModeHStakeJournalPersistence.IsWriteBarrier" not in body:
+            errors.append(
+                "[Slot] 证据判定必须先查 journal 写屏障，"
+                "否则 LoadCurrent() 返回的 null 会被当成「没有 journal」而清掉真闸")
+        gate_writes = body.count("SetExternalAssetRiskBlocked")
+        if gate_writes != 1:
+            errors.append(
+                "[Slot] external asset 闸必须由证据段一次性决定，当前有 {} 处写入".format(gate_writes))
+        storage_idx = body.find("slot_storage_unavailable")
+        gate_idx = body.find("SetExternalAssetRiskBlocked")
+        if storage_idx >= 0 and 0 <= gate_idx and gate_idx > storage_idx:
+            errors.append(
+                "[Slot] 仓库未就绪分支不得写 external asset 闸："
+                "那会因主菜单选档锁死七个旧模式入口")
     if re.search(r"public static bool IsSlotConsistent\s*\{\s*get", code) is None:
         errors.append("[Slot] IsSlotConsistent 必须是只读派生结果")
     if re.search(r"public static void SetSlotConsistent", code):

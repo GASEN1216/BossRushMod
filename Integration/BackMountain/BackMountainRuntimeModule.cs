@@ -393,6 +393,11 @@ namespace BossRush
             try
             {
                 ShowcaseService.NotifySlotChanged();
+                // 展示柜**建筑条目**必须从官方长寿表里摘掉并复位注入闸：
+                // 它的 requireBuildings/requireQuests 是空数组，官方
+                // RequirementsSatisfied() 恒 true，留着会让未解锁的新槽也能建一个
+                // 永远不可交互的柜子。回到原槽时基地装配管线会按该槽状态重新注入。
+                if (_owner != null) _owner.NotifyShowcaseSlotChanged();
                 // 新槽的菜地棘轮状态不同，必须重新判定（不从官方表里摘条目）
                 GardenSeedInjector.NotifySlotChanged();
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "存档槽已切换，后山按槽状态已复位");

@@ -25,6 +25,13 @@ TARGETS = [
      "CampaignPersistence", "CampaignSaveCoordinator"),
     (os.path.join(ROOT, "Integration", "Codex", "CodexSaveCoordinator.cs"),
      "CodexPersistence", "CodexSaveCoordinator"),
+    # 日报与遗种巢此前没有 _saveFilePending 欠账位：FlushPending 成功后
+    # HasPendingWrite 变 false，若随后的 SaveFile 抛异常，早返会把重试链掐断，
+    # 数据停在 SavesSystem 内存里永不落盘。补齐后一并纳入守卫。
+    (os.path.join(ROOT, "Integration", "DailyReport", "DailyReportSaveCoordinator.cs"),
+     "DailyReportPersistence", "DailyReportSaveCoordinator"),
+    (os.path.join(ROOT, "PetNest", "PetNestSaveCoordinator.cs"),
+     "PetNestPersistence", "PetNestSaveCoordinator", "HasAnyPendingWrite"),
 ]
 
 
@@ -38,7 +45,10 @@ def read(path):
 def main():
     errors = []
 
-    for path, persistence, name in TARGETS:
+    for target in TARGETS:
+        # 第 4 项可选：pending 属性名。遗种巢是三 key 聚合，叫 HasAnyPendingWrite。
+        path, persistence, name = target[0], target[1], target[2]
+        pending_prop = target[3] if len(target) > 3 else "HasPendingWrite"
         src = read(path)
         if src is None:
             errors.append("[File] 缺少 " + name + ".cs")
@@ -52,18 +62,18 @@ def main():
 
         # 早返条件必须同时看两者
         early = re.search(
-            r"if \(!" + persistence + r"\.HasPendingWrite[^)]*\)", src)
+            r"if \(!" + persistence + r"\." + pending_prop + r"[^)]*\)", src)
         if early is None:
-            errors.append("[" + name + "] 找不到 HasPendingWrite 早返条件")
+            errors.append("[" + name + "] 找不到 " + pending_prop + " 早返条件")
         elif "saveFileOwed" not in early.group(0):
             errors.append(
                 "[" + name + "] 早返条件必须同时排除「欠一次 SaveFile」的情况")
 
         # FlushPending 必须只在真有 pending 时调用，且成功后置位
-        m = re.search(r"if \(" + persistence + r"\.HasPendingWrite\)\s*\{", src)
+        m = re.search(r"if \(" + persistence + r"\." + pending_prop + r"\)\s*\{", src)
         if m is None:
             errors.append(
-                "[" + name + "] FlushPending 必须包在 HasPendingWrite 判断内"
+                "[" + name + "] FlushPending 必须包在 " + pending_prop + " 判断内"
                 "（无 pending 但欠落盘时不应再调它）")
         if "_saveFilePending = true;" not in src:
             errors.append("[" + name + "] FlushPending 成功后必须置位 _saveFilePending")

@@ -91,6 +91,30 @@ namespace BossRush
         /// <summary>巢是否已满。</summary>
         internal static bool IsFull { get { return PetCount >= Capacity; } }
 
+        /// <summary>
+        /// 存档是否处于只读保护（写屏障）。
+        ///
+        /// 进屏障时内存 bundle 被换成默认空包、写入被封锁，磁盘数据保持不动。
+        /// UI 必须能把这个状态与「真的一只崽都没有」区分开——否则读档失败会被
+        /// 呈现成「崽全丢了」，而存档其实完好。分层要求 UI 只经 Service 取值。
+        /// </summary>
+        internal static bool IsSaveReadOnly
+        {
+            get
+            {
+                try
+                {
+                    return PetNestPersistence.Bundle != null
+                        && PetNestPersistence.Bundle.HasWriteBarrier;
+                }
+                catch (Exception)
+                {
+                    // 判不出来就当作正常：宁可少提示一句，也不要误报「存档坏了」
+                    return false;
+                }
+            }
+        }
+
         /// <summary>按 id 查崽。查不到返回 null。</summary>
         internal static PetNestPetRecord TryGetPet(string petId)
         {

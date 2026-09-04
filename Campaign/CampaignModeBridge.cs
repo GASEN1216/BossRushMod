@@ -160,9 +160,12 @@ namespace BossRush
                 if (bossRushArenaActive)
                 {
                     if (infiniteHellMode) return infiniteHellWaveIndex;
-                    int perWave = bossesPerWave > 0 ? bossesPerWave : 1;
-                    // currentEnemyIndex 是 0 基的「当前第几个敌人」，+1 换算成 1 基波次
-                    return (currentEnemyIndex / perWave) + 1;
+                    // currentEnemyIndex 本身就是**已完成波数**：它只在
+                    // WavesArena.ProceedAfterWaveFinished（本波全部 Boss 阵亡时）自增一次，
+                    // 与 bossesPerWave 无关。此前又除了一次 bossesPerWave，
+                    // 多 Boss 难度下第 1 章「前 2 波无伤」实际被放大成「前 6 波无伤」。
+                    // +1 是把 0 基的已完成数换算成 1 基的当前波次。
+                    return currentEnemyIndex + 1;
                 }
 
                 return 0;

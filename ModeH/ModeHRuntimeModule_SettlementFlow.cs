@@ -51,6 +51,10 @@ namespace BossRush
                     + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Injury_Rested"));
             }
 
+            // 战痕候选先于整备呈现：它是不可逆的，且满三条时要玩家指名替换哪一条。
+            // 此前这一步在 BeginMatchSettlement 里被替玩家做掉了，结算页只字不提。
+            BuildSettlementScarActions(page, report);
+
             if (operation != null
                 && operation.status == (int)ModeHSeasonRewardOperationStatus.Offered
                 && operation.candidateKitIds != null)
@@ -61,7 +65,10 @@ namespace BossRush
                     string selectedKitId = kitId;
                     page.Actions.Add(new ModeHActionData
                     {
-                        Label = L10n.T("解锁整备：", "Unlock kit: ") + kitId,
+                        // kitId 是内部 ID（如 "assault_starter"）。32 条 Kit_ 文案早已注入，
+                        // 此前直接拼原文，玩家看到的是一串英文下划线标识。
+                        Label = L10n.T("解锁整备：", "Unlock kit: ")
+                            + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId),
                         OnClick = delegate { SelectSettlementReward(selectedKitId, false); },
                     });
                 }
@@ -159,6 +166,99 @@ namespace BossRush
                 return;
             }
             OpenNextMatchBrief("intermission_complete");
+        }
+
+        /// <summary>
+        /// 把战报里尚未处置的战痕候选摆到结算页上，由玩家决定。
+        ///
+        /// 三种形态：
+        ///   - 未满三条：接受 / 拒绝（拒绝换稳定名声）；
+        ///   - 已满三条：逐条列出「用候选替换 X」+ 拒绝——这正是 §17 冻结契约里
+        ///     「满三条时明确替换一条」的落点，此前 replacedScarId 恒传 null，走不到；
+        ///   - 无候选或已处置：整段不出现。
+        /// </summary>
+        private void BuildSettlementScarActions(ModeHPageContent page, ModeHMatchReportDto report)
+        {
+            if (page == null || report == null) return;
+            if (string.IsNullOrEmpty(report.scarOfferId)) return;
+            if (string.IsNullOrEmpty(_pendingScarProfileId)) return;
+
+            ModeHProfileDto profile = FindSeasonProfile(_pendingScarProfileId);
+            if (profile == null) return;
+
+            string scarName = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + report.scarOfferId);
+            page.Lines.Add(L10n.T("战痕候选：", "Scar offer: ") + scarName);
+
+            string offerId = report.scarOfferId;
+            bool full = profile.scarIds != null
+                && profile.scarIds.Count >= ModeHConfig.MaxScarsPerProfile;
+
+            if (!full)
+            {
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("留下战痕：", "Take scar: ") + scarName,
+                    OnClick = delegate { ResolveScarOffer(offerId, null, false); },
+                });
+            }
+            else if (profile.scarIds != null)
+            {
+                for (int i = 0; i < profile.scarIds.Count; i++)
+                {
+                    string replaced = profile.scarIds[i];
+                    page.Actions.Add(new ModeHActionData
+                    {
+                        Label = L10n.T("替换：", "Replace: ")
+                            + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + replaced),
+                        OnClick = delegate { ResolveScarOffer(offerId, replaced, false); },
+                    });
+                }
+            }
+
+            page.Actions.Add(new ModeHActionData
+            {
+                Label = L10n.T("拒绝战痕，换取名声", "Decline scar for fame"),
+                OnClick = delegate { ResolveScarOffer(offerId, null, true); },
+            });
+        }
+
+        /// <summary>处置战痕候选并落盘。失败时保留候选，让玩家能再试一次。</summary>
+        private void ResolveScarOffer(string scarId, string replacedScarId, bool decline)
+        {
+            try
+            {
+                ModeHProfileDto profile = FindSeasonProfile(_pendingScarProfileId);
+                if (profile == null) return;
+
+                if (decline)
+                {
+                    ModeHInjuryAndScarSystem.DeclineScar(profile);
+                }
+                else
+                {
+                    string acceptFailure;
+                    if (!ModeHInjuryAndScarSystem.TryAcceptScar(
+                            profile, scarId, replacedScarId, out acceptFailure))
+                    {
+                        ModBehaviour.DevLog("[ModeH] 战痕处置失败: "
+                            + (acceptFailure ?? "unknown"));
+                        if (_owner != null)
+                        {
+                            _owner.ShowMessage(
+                                L10n.T(ModeHAvailability.GetReasonLocalizationKey(acceptFailure)));
+                        }
+                        return;
+                    }
+                }
+
+                _pendingScarProfileId = null;
+                TryPersistSeason("scar_resolved");
+                if (_runState != null) RouteUiForLifecycle(_runState.Lifecycle);
+            }
+            catch (Exception e)
+            {
+                LogFailure("resolve_scar", e);
+            }
         }
     }
 }

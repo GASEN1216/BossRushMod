@@ -53,6 +53,9 @@ namespace BossRush
         private readonly HashSet<string> _consumedTriggers = new HashSet<string>(StringComparer.Ordinal);
 
         private AICharacterController _ai;
+        /// <summary>本场出战选手实际持有的伤病 ID（触发型入口的归属判据）。</summary>
+        private string _activeInjuryId;
+
         private string _activeProfileId;
         private string _activeStableKey;
         private int _matchIndex;
@@ -92,6 +95,7 @@ namespace BossRush
             _matchIndex = matchIndex;
             _selfSettledCommandScale = 1f;
             _armorKitDisabled = false;
+            _activeInjuryId = null;
         }
 
         /// <summary>
@@ -113,6 +117,13 @@ namespace BossRush
                 failureReasonId = "injury_not_verified:" + injuryId;
                 return false;
             }
+
+            // 登记「本场出战选手确实带着这条伤病」。触发型（old_wound / spirit）的施加
+            // 时机在后面的 OnHealthFractionChanged / OnEnemyCountChanged，而那两个入口
+            // 只按 injuryId 查全局内容目录、没有任何归属判定——不登记的话它们会对
+            // **所有**选手无条件生效，伤病系统的逐人差异形同虚设。
+            _activeInjuryId = injuryId;
+
             if (string.Equals(spec.Scope, "triggered_once", StringComparison.Ordinal)) return true;
 
             // 带敌军数量门的伤病（当前只有 spirit）由 OnEnemyCountChanged 按条件施加
@@ -281,6 +292,8 @@ namespace BossRush
         public void OnHealthFractionChanged(string injuryId, float healthFraction)
         {
             if (!string.Equals(injuryId, "old_wound", StringComparison.Ordinal)) return;
+            // 归属判定：只有真的带着这条伤的选手才触发（见 ApplyStandingInjury 的登记）
+            if (!string.Equals(_activeInjuryId, injuryId, StringComparison.Ordinal)) return;
             if (healthFraction > ModeHConfig.OldWoundTriggerHealthFraction) return;
             if (!_consumedTriggers.Add("old_wound|" + _activeProfileId)) return;
 
@@ -297,6 +310,8 @@ namespace BossRush
         public void OnEnemyCountChanged(string injuryId, int liveEnemyCount)
         {
             if (!string.Equals(injuryId, "spirit", StringComparison.Ordinal)) return;
+            // 归属判定：同 OnHealthFractionChanged
+            if (!string.Equals(_activeInjuryId, injuryId, StringComparison.Ordinal)) return;
             if (liveEnemyCount < ModeHConfig.SpiritInjuryEnemyThreshold) return;
             if (!_consumedTriggers.Add("spirit|" + _activeProfileId)) return;
             _selfSettledCommandScale *= ModeHConfig.SpiritInjuryCommandScale;
@@ -578,6 +593,35 @@ namespace BossRush
                 }
             }
             return true;
+        }
+
+        /// <summary>
+        /// 该伤病是否禁用某个整备槽。纯数据查询，不依赖运行时状态——因此可以在
+        /// **应用整备之前**判定。
+        ///
+        /// `IsArmorKitDisabled` 那个实例属性全仓零读者，而且它的置位发生在
+        /// `ApplyStandingInjury` 里、晚于 `ModeHLoadoutKitApplicator.TryApply`，
+        /// 就算有人读也已经晚了——`armor` 伤病因此是彻底的空操作。
+        /// </summary>
+        public static bool InjuryDisablesKitSlot(string injuryId, string slot)
+        {
+            if (string.IsNullOrEmpty(injuryId) || string.IsNullOrEmpty(slot)) return false;
+
+            ModeHInjurySpec spec = GetInjury(injuryId);
+            if (spec == null || spec.Components == null) return false;
+
+            for (int i = 0; i < spec.Components.Count; i++)
+            {
+                ModeHEffectSpec component = spec.Components[i];
+                if (component == null) continue;
+                if (!string.Equals(component.Op, "self_settled_kit_slot_disabled",
+                        StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                if (string.Equals(component.TargetSlot, slot, StringComparison.Ordinal)) return true;
+            }
+            return false;
         }
 
         private static ModeHInjurySpec GetInjury(string injuryId)

@@ -50,7 +50,7 @@ namespace BossRush
                         dragonDescendantInstance = capturedCharacter;
                         dragonDescendantAbilities = capturedController;
                         capturedController.Initialize(capturedCharacter, originalWeaponData);
-                        RegisterDragonDescendantSetBonus();
+                        RegisterDragonDescendantSetBonus(capturedCharacter);
                         setBonusRegistered = true;
                         CompleteActivateModeGManagedCharacter(capturedCharacter);
                         activated = true;
@@ -60,7 +60,7 @@ namespace BossRush
                     {
                         if (setBonusRegistered)
                         {
-                            UnregisterDragonDescendantSetBonus();
+                            UnregisterDragonDescendantSetBonus(capturedCharacter);
                             setBonusRegistered = false;
                         }
                     },
@@ -68,7 +68,7 @@ namespace BossRush
                     {
                         if (setBonusRegistered)
                         {
-                            UnregisterDragonDescendantSetBonus();
+                            UnregisterDragonDescendantSetBonus(capturedCharacter);
                             setBonusRegistered = false;
                         }
                         if (dragonDescendantInstance == capturedCharacter) dragonDescendantInstance = null;

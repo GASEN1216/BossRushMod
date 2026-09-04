@@ -47,9 +47,15 @@ namespace BossRush
         private bool dragonDescendantSetBonusRegistered = false;
 
         /// <summary>
-        /// 缓存的Boss Health引用（用于快速身份验证）
+        /// 当前在场的全部龙裔 Health（火焰免疫的身份表）。
+        ///
+        /// 曾经是单个 cachedBossHealth，而龙裔**同场可以有第二只**：龙皇的「孩儿护我」
+        /// 会召唤一只（DragonKingAbilityController_ChildProtection），随机事件乱入也会刷一只。
+        /// 单引用的后果是：套装只对最后生成的那只生效，且先死的那只会替另一只
+        /// 把 Health.OnHurt 退订掉——真龙裔在战斗中途静默失去火焰免疫。
+        /// 形态照 DragonKingBoss 的 activeDragonKingHealths。
         /// </summary>
-        private Health cachedBossHealth;
+        private readonly HashSet<Health> dragonDescendantBossHealths = new HashSet<Health>();
 
         // ========== 生成方法 ==========
 
@@ -197,11 +203,17 @@ namespace BossRush
                     // 订阅死亡事件（使用实例事件）- 仅普通龙裔Boss
                     if (character.Health != null)
                     {
-                        character.Health.OnDeadEvent.AddListener(OnDragonDescendantDeath);
+                        // 捕获本次生成的实例：死亡回调必须作用于**真正死掉的那只**。
+                        // 用无参方法组的话，回调里只能读共享字段，同场两只龙裔时
+                        // 先死的那只会替另一只停 BGM、摘套装、销毁 preset 并把字段置空。
+                        // 形态照 DragonKingBoss 的具名 handler + PhantomWitchBoss 的捕获闭包。
+                        CharacterMainControl capturedDescendant = character;
+                        character.Health.OnDeadEvent.AddListener(
+                            delegate (DamageInfo info) { OnDragonDescendantDeath(capturedDescendant, info); });
                     }
 
                     // 注册龙套装效果（火焰伤害免疫）- 仅普通龙裔Boss
-                    RegisterDragonDescendantSetBonus();
+                    RegisterDragonDescendantSetBonus(character);
 
                     DevLog("[DragonDescendant] 龙裔遗族Boss生成完成");
                     ShowMessage(L10n.T("龙裔遗族 出现了！", "Dragon Descendant has appeared!"));

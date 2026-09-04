@@ -202,7 +202,12 @@ namespace BossRush
 
         #region 三层剧本取值
 
-        private static ModeHMatchCorridor GetCorridor(int matchIndex)
+        /// <summary>
+        /// 取该场次的走廊（冻结数据的只读查询）。
+        /// 开放为 internal：分批入场要按 corridor.SimultaneousCap 判断何时放行下一批，
+        /// 而该上限只存在于走廊里（计划 DTO 不带它）。
+        /// </summary>
+        internal static ModeHMatchCorridor GetCorridor(int matchIndex)
         {
             List<ModeHMatchCorridor> corridors = ModeHContentCatalog.MatchCorridors;
             if (corridors == null) return null;
@@ -322,8 +327,24 @@ namespace BossRush
                 return false;
             }
 
-            int lowerBound = corridor.ThreatBudget * corridor.MinFillPercent / 100;
-            int upperBound = corridor.ThreatBudget * (100 + (int)(ModeHConfig.ThreatBudgetTolerance * 100f)) / 100;
+            // 走廊与被比较值必须同量纲。`ThreatPlans.json` 的 threatBudget（100/115/130/
+            // 145/165/190）是按**基础威胁和**编制的：12 个生产候选的分值 38..62，
+            // n=2 的基础和 78..120、n=3 是 118..175、n=4 是 158..225——预算区间正落在
+            // 这条量程上。而 ComputeEffectiveThreat 会再乘一遍行动溢价（每多一个单位
+            // +20%），于是 n=3 的有效值变成 165..245、n=4 变成 252..360，直接飞出走廊。
+            // 后果最严重的是第 4 场：两套骨架 pack / mixed_range 都固定 3 单位，
+            // 任意三件组合的有效值最小 165 > 上界 152，**全部 8 个候选必然被拒**，
+            // 赛季必定卡死在第 4 场（第 3 场的 relay_squad 分支同理恒不可行）。
+            //
+            // 修法是把预算一并按同一份行动溢价放大，等价于用「基础和 × 协同」与原始
+            // 走廊比较：协同仍是真实约束（高协同组合照样会被顶出上界），只是不再把
+            // 单位数溢价重复计一次。数据表与 ModeHConfig.MatchThreatBudgets 一字不动。
+            int budgetPremiumMilli = 1000
+                + (int)(ModeHConfig.ThreatActionCountCoefficient * 1000f) * (count - 1);
+            long scaledBudget = (long)corridor.ThreatBudget * budgetPremiumMilli / 1000L;
+            int lowerBound = (int)(scaledBudget * corridor.MinFillPercent / 100L);
+            int upperBound = (int)(scaledBudget
+                * (100 + (int)(ModeHConfig.ThreatBudgetTolerance * 100f)) / 100L);
 
             int maxRepairSteps = available.Count * count + 8;
             for (int step = 0; step <= maxRepairSteps; step++)

@@ -193,6 +193,16 @@ namespace BossRush
                         return false;
                     }
 
+                    // 跨子系统的每帧闸：五个协调器各有独立 SaveFile 调用点，
+                    // 回基地首帧极易挤在同一帧。被拒时沿用已有的 deferred + Tick
+                    // 重试链在后续帧补写，与 IsSaving 分支同语义。
+                    if (!BossRushSaveFileThrottle.TryBeginSaveFile(bypassSceneGate))
+                    {
+                        lock (_lock) { _deferredFlushPending = true; }
+                        error = "flush_deferred_savefile_frame_busy";
+                        return false;
+                    }
+
                     SavesSystem.SaveFile(false);
                 }
                 catch (Exception e)

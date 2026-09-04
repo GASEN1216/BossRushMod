@@ -40,6 +40,20 @@ namespace BossRush
                 return page;
             }
 
+            // 转会页走 CreateCardGrid，而那条渲染分支只画 Cards、从不读 page.Body。
+            // 此前这里只 Add 了确认/取消两个按钮，玩家看到的是「标题 + 两个按钮」，
+            // 对报价对象一无所知却要做不可逆的换人决定。复用选秀卡的构建器补上卡片。
+            ModeHProfileDto offered = FindSeasonProfile(offer.profileId);
+            if (offered != null)
+            {
+                ModeHCardData card = BuildProfileCard(offered);
+                // 转会卡不走「签下」点击：确认/取消由下面两个动作按钮承担，
+                // 卡片本身只负责把报价对象讲清楚。
+                card.ActionLabel = null;
+                card.OnClick = null;
+                page.Cards.Add(card);
+            }
+
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),

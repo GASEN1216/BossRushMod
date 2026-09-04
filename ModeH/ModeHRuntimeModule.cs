@@ -24,6 +24,7 @@ namespace BossRush
         private int _contentScanSlotGeneration = -1;
         private bool _shutdownCompleted;
         private string _lastExitReasonId;
+        private bool _levelEventSubscribed;
 
         #endregion
 
@@ -78,6 +79,7 @@ namespace BossRush
                 _owner = owner;
                 _shutdownCompleted = false;
                 ModeHSaveFlushCoordinator.EnsureSubscribed();
+                EnsureLevelReadySubscription();
                 ModeHRuntimeGates.ResetForSlotChange();
                 ModeHRuntimeGates.InitializeRiskForSlot(ModeHRuntimeGates.SlotGeneration);
                 RestoreFromSaveIfPresent();
@@ -93,6 +95,13 @@ namespace BossRush
         {
             try
             {
+                // 补跑：宿主可能在关卡初始化之后才起来（Mod 热重载、宿主重建），
+                // 那一次 OnAfterLevelInitialized 已经过去了。照 BackMountainRuntimeModule
+                // 的 EnsureBootstrapped 写法，用 LevelManager.AfterInit 兜住。
+                if (IsLevelAfterInit())
+                {
+                    ModeHWarehouseStakeJournal.TryRecomputeDeferredSlotConsistency();
+                }
                 EnsureContentScanned();
             }
             catch (Exception e)
@@ -115,6 +124,9 @@ namespace BossRush
                 {
                     _runState.UpdateSceneGeneration(_sceneGeneration);
                 }
+                // 兜底：正常情况下 OnAfterLevelInitialized 会先补算，但那次事件
+                // 若因宿主时序被错过，这里再试一次（不就绪就原样保持推迟，零副作用）
+                ModeHWarehouseStakeJournal.TryRecomputeDeferredSlotConsistency();
                 OnSceneLoadedInternal(context);
             }
             catch (Exception e)
@@ -149,6 +161,8 @@ namespace BossRush
         {
             try
             {
+                // 先退订官方事件，再走 shutdown：宿主销毁后 LevelManager 不得再回调进来
+                ShutdownLevelReadySubscription();
                 ShutdownRuntime(ModeHExitReason.ModDestroyed, "host_destroy");
                 // 幂等兜底：即使 shutdown 早退，也必须在宿主销毁路径上清空全部静态缓存
                 ModeHRuntimeModule.ResetModeHStaticCaches();
@@ -156,6 +170,80 @@ namespace BossRush
             catch (Exception e)
             {
                 LogFailure("destroy", e);
+            }
+        }
+
+        #endregion
+
+        #region 关卡就绪回调（槽位一致性补算）
+
+        /// <summary>
+        /// 幂等订阅关卡就绪事件。用命名方法（AGENTS.md 4.6，lambda 退订不掉）。
+        ///
+        /// **不能按 IsEnabled 门控**：这条回调补算的是 external asset 闸，而那道闸
+        /// 拦的是七个**旧模式**入口，与 Mode H 自己开没开无关。
+        /// </summary>
+        private void EnsureLevelReadySubscription()
+        {
+            try
+            {
+                if (_levelEventSubscribed) return;
+                LevelManager.OnAfterLevelInitialized += HandleLevelReady;
+                _levelEventSubscribed = true;
+            }
+            catch (Exception e)
+            {
+                LogFailure("level_subscribe", e);
+            }
+        }
+
+        /// <summary>幂等退订。宿主销毁路径必须调。</summary>
+        private void ShutdownLevelReadySubscription()
+        {
+            try
+            {
+                if (!_levelEventSubscribed) return;
+                LevelManager.OnAfterLevelInitialized -= HandleLevelReady;
+            }
+            catch (Exception e)
+            {
+                LogFailure("level_unsubscribe", e);
+            }
+            finally
+            {
+                // 退订失败也要把标记置回，避免重复订阅越滚越多
+                _levelEventSubscribed = false;
+            }
+        }
+
+        /// <summary>
+        /// 关卡初始化完成：`PlayerStorage` 此刻必然已 `HasInitialized()`
+        /// （它在自己的 Awake 里 `RegisterWaitForInitialization`），
+        /// 补一次被推迟的槽位一致性判定。
+        /// </summary>
+        private void HandleLevelReady()
+        {
+            try
+            {
+                ModeHWarehouseStakeJournal.TryRecomputeDeferredSlotConsistency();
+            }
+            catch (Exception e)
+            {
+                LogFailure("level_ready", e);
+            }
+        }
+
+        /// <summary>关卡是否已完成初始化。no-throw。</summary>
+        private static bool IsLevelAfterInit()
+        {
+            try
+            {
+                return LevelManager.AfterInit;
+            }
+            catch (Exception)
+            {
+                // 读不到就当作未就绪：补算会等下一次 OnAfterLevelInitialized
+                return false;
             }
         }
 
@@ -353,6 +441,27 @@ namespace BossRush
             }
 
             ModeHRuntimeGates.SetRunOwnerActive(false);
+
+            // 关停清掉了内存里的 _season/_runState，但磁盘上那份可能仍是活动 lifecycle。
+            // 不把 recovery-only 闸立回去，玩家回基地就能直接开新赛季，
+            // CreateDraftingSeason 会把中断的赛季整份覆盖掉。
+            try
+            {
+                ModeHSeasonDto persisted = ModeHProfilePersistence.LoadCurrent();
+                if (persisted != null && persisted.runState != null)
+                {
+                    ModeHLifecycle lifecycle = ModeHStateModel.ToLifecycle(persisted.runState.lifecycle);
+                    if (lifecycle != ModeHLifecycle.None
+                        && lifecycle != ModeHLifecycle.SeasonEnded)
+                    {
+                        ModeHRuntimeGates.SetRecoveryOnlyBlocked(true, "season_recovery_shell");
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                // 读不出来就不动闸：InitializeRiskForSlot 与恢复壳仍是兜底
+            }
 
             if (reason == ModeHExitReason.ModDestroyed)
             {

@@ -14,6 +14,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace BossRush
@@ -81,9 +82,10 @@ namespace BossRush
         /// 所以这里手工 MoveNext 并 catch：单个用例炸掉只记它自己的 FAIL，
         /// 强制清场后继续下一个。
         ///
-        /// 注意必须 `yield return inner.Current` 透传——用例内部还会
-        /// `yield return WaitSeconds(...)` 这类子协程；丢掉 Current 会让它们永不推进
-        /// （Mode H 认证就踩过这个坑，见 ModeHCertificationCoroutineDriveGuard）。
+        /// 注意必须透传 Current——用例内部还会 `yield return WaitSeconds(...)` 这类子协程；
+        /// 丢掉 Current 会让它们永不推进（Mode H 认证就踩过这个坑，
+        /// 见 ModeHCertificationCoroutineDriveGuard）。子 IEnumerator 由本壳自己压栈驱动，
+        /// 这样它们抛出的异常才会落进下面那个 catch（详见循环处的注释）。
         /// </summary>
         private IEnumerator RunIsolatedCase(string caseId, Func<IEnumerator> factory)
         {
@@ -127,12 +129,25 @@ namespace BossRush
             }
 
             Stopwatch sw = Stopwatch.StartNew();
-            while (true)
+
+            // 自持迭代器栈，**不把子 IEnumerator 交给 Unity**。
+            //
+            // 旧写法是 `yield return inner.Current;`：Current 一旦是 IEnumerator
+            // （用例里遍地都是 `yield return WaitSeconds(...)` / `yield return RunModeHErrorSwap(map)`），
+            // Unity 会自己把它压栈驱动，直到子迭代器结束才回来调 inner.MoveNext。
+            // 也就是说**子协程抛出的异常在物理上不会经过下面这次 MoveNext**，
+            // catch 分支不可能触发：既不记 FAIL 也不强清场，脏状态直接漏进下一个用例。
+            // 自己驱动子迭代器后，整条调用链上的异常都会落到同一个 catch 里。
+            List<IEnumerator> stack = new List<IEnumerator>(8);
+            stack.Add(inner);
+
+            while (stack.Count > 0)
             {
+                IEnumerator top = stack[stack.Count - 1];
                 bool moveNext = false;
                 try
                 {
-                    moveNext = inner.MoveNext();
+                    moveNext = top.MoveNext();
                 }
                 catch (Exception e)
                 {
@@ -147,8 +162,22 @@ namespace BossRush
                     yield return ForceReclaimArena();
                     yield break;
                 }
-                if (!moveNext) break;
-                yield return inner.Current;
+
+                if (!moveNext)
+                {
+                    stack.RemoveAt(stack.Count - 1);
+                    continue;
+                }
+
+                // 子迭代器压栈自己驱动；其余（null / WaitForSeconds / AsyncOperation…）
+                // 仍旧交给 Unity，语义与原来一致。
+                IEnumerator child = top.Current as IEnumerator;
+                if (child != null)
+                {
+                    stack.Add(child);
+                    continue;
+                }
+                yield return top.Current;
             }
         }
 

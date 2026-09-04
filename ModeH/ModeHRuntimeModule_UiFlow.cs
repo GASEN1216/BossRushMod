@@ -79,12 +79,22 @@ namespace BossRush
             {
                 ProjectRunStateIntoSeason();
                 MarkSeasonDirty();
+                // 战斗相位内顺延物理落盘（照 ModeG 的 IsModeGHostFileWriteDeferred）：
+                // 战场快照每 10 秒就要写一次整档 + 备份复制，正打着会卡帧。
+                ModeHRuntimeGates.SetCombatFrameActive(IsCombatLifecycle(record.To));
                 RouteUiForLifecycle(record.To);
             }
             catch (Exception e)
             {
                 LogFailure("transition_applied", e);
             }
+        }
+
+        /// <summary>正在打的相位（物理落盘要顺延到这之外）。</summary>
+        private static bool IsCombatLifecycle(ModeHLifecycle lifecycle)
+        {
+            return lifecycle == ModeHLifecycle.MatchFighting
+                || lifecycle == ModeHLifecycle.RelayPending;
         }
 
         /// <summary>
@@ -295,7 +305,15 @@ namespace BossRush
             // 同义词，用它把唯一的补救按钮关掉会让玩家除删档外无路可走。
             // 只读保护的本意是"证据不足时不许动资产"，而把托管物还回玩家仓库
             // 是**减少**资产暴露，不是增加，所以这里放行是安全的。
-            if (ModeHWarehouseStakeJournal.EscrowCount > 0)
+            //
+            // 判据不能只看内存 EscrowCount：`_escrowItems` 是纯内存 List，重启或切槽后
+            // 必为空，而 journal 里可能仍记着一笔非终态事务。只看内存的话，跨会话回来
+            // 的玩家看不到这个按钮，等于「有账没结却没有任何出口」。
+            ModeHStakeJournalDto activeJournal = ModeHWarehouseStakeJournal.Active;
+            bool journalUnsettled = activeJournal != null
+                && !ModeHWarehouseStakeJournal.IsTerminalPhase(
+                    ModeHStateModel.ToStakePhase(activeJournal.phase));
+            if (ModeHWarehouseStakeJournal.EscrowCount > 0 || journalUnsettled)
             {
                 actions.Add(new ModeHActionData
                 {
@@ -305,7 +323,96 @@ namespace BossRush
                 });
             }
 
+            // 中断赛季必须有一条「不玩了」的出路。此前只有 Suspended 给了「同场重开」，
+            // 而停在 Intermission / MatchBrief 的赛季一个动作都没有：recovery-only 闸
+            // 已经立起，新赛季开不了，玩家除删档外无路可走。
+            // 这条只做「放弃」：把 journal 结清、清掉活动赛季，回到能开新赛季的状态。
+            // 真正的「续赛」需要回载 _season 并补齐状态机落点，是独立一步。
+            if (HasResumableSeasonRecord(season))
+            {
+                actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_AbandonSeason"),
+                    OnClick = AbandonSeasonFromRecovery,
+                    BypassReadOnly = true,
+                });
+            }
+
             return actions;
+        }
+
+        /// <summary>磁盘上是否还有一份「活着但进行不下去」的赛季记录。</summary>
+        private static bool HasResumableSeasonRecord(ModeHSeasonDto season)
+        {
+            if (season == null || season.runState == null) return false;
+            ModeHLifecycle lifecycle = ModeHStateModel.ToLifecycle(season.runState.lifecycle);
+            return lifecycle != ModeHLifecycle.None
+                && lifecycle != ModeHLifecycle.SeasonEnded
+                && lifecycle != ModeHLifecycle.Unknown;
+        }
+
+        /// <summary>
+        /// 恢复壳里的「放弃赛季」：先把押品原样结清，再清掉赛季记录与 recovery-only 闸。
+        /// 顺序不能反——押品是玩家真实物品，赛季记录被清掉后就再没有恢复入口了。
+        /// </summary>
+        private void AbandonSeasonFromRecovery()
+        {
+            try
+            {
+                ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
+                if (journal != null
+                    && !ModeHWarehouseStakeJournal.IsTerminalPhase(
+                        ModeHStateModel.ToStakePhase(journal.phase)))
+                {
+                    // 押品没结清就不许放弃赛季：结清失败时 journal 会自行进人工介入，
+                    // 恢复壳保持可达，玩家不会因为这一步把证据弄丢。
+                    ReturnEscrowFromRecovery();
+                    ModeHStakeJournalDto after = ModeHWarehouseStakeJournal.Active;
+                    if (after != null
+                        && !ModeHWarehouseStakeJournal.IsTerminalPhase(
+                            ModeHStateModel.ToStakePhase(after.phase)))
+                    {
+                        return;
+                    }
+                }
+
+                // 把磁盘上的赛季记录标成已结束，而不是删 key：保留历史、也不动 schema。
+                // 标不成功就不解闸——宁可让玩家停在恢复壳，也不能出现「闸开了但磁盘上
+                // 还挂着一个活赛季」，那正是新赛季静默覆盖旧赛季的成因。
+                ModeHSeasonDto persisted = _season != null ? _season : ModeHProfilePersistence.LoadCurrent();
+                if (persisted != null && persisted.runState != null)
+                {
+                    persisted.runState.lifecycle = (int)ModeHLifecycle.SeasonEnded;
+                    string writeError;
+                    if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(persisted, out writeError))
+                    {
+                        ModBehaviour.CriticalLog("[ModeH] 放弃赛季落盘失败: "
+                            + (writeError != null ? writeError : "unknown"));
+                        if (_owner != null)
+                        {
+                            _owner.ShowMessage(
+                                L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_AbandonSeason_Failed"));
+                        }
+                        return;
+                    }
+                }
+
+                _season = null;
+                _runState = null;
+                _seasonDirty = false;
+                ModeHRuntimeGates.SetRunOwnerActive(false);
+                ModeHRuntimeGates.SetRecoveryOnlyBlocked(false, null);
+                HideRecoveryShell();
+                if (_owner != null)
+                {
+                    _owner.ShowMessage(
+                        L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recovery_AbandonSeason_Done"));
+                }
+            }
+            catch (Exception e)
+            {
+                LogFailure("recovery_abandon", e);
+            }
         }
 
         /// <summary>

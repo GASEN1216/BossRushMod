@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using UnityEngine;
+using SodaCraft.Localizations;
 using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using Duckov.ItemUsage;
@@ -766,6 +767,8 @@ namespace BossRush
             }
             catch { }
 
+            ShutdownLanguageChangeSubscription();
+
             CleanupDebugToolsOnDestroy();
 
             CleanupPlayerLifecycleRuntimeEvents();
@@ -788,6 +791,7 @@ namespace BossRush
             SafeRuntime.Run("PetNestPetProxyBridge.ReleaseSeat", () => PetNestPetProxyBridge.ReleaseSeat());
             SafeRuntime.Run("PetNestDebugProbe.ResetStaticCaches", () => PetNestDebugProbe.ResetStaticCaches());
             SafeRuntime.Run("PetNestPetProxyBridge.ResetStaticCaches", () => PetNestPetProxyBridge.ResetStaticCaches());
+            SafeRuntime.Run("BossRushSaveFileThrottle.ResetStaticCaches", () => BossRushSaveFileThrottle.ResetStaticCaches());
             SafeRuntime.Run("PetNestCompanionAgent.ResetStaticCaches", () => PetNestCompanionAgent.ResetStaticCaches());
             SafeRuntime.Run("PetNestLineageCatalog.ResetStaticCaches", () => PetNestLineageCatalog.ResetStaticCaches());
             SafeRuntime.Run("PetNestDropService.ResetStaticCaches", () => PetNestDropService.ResetStaticCaches());
@@ -859,6 +863,62 @@ namespace BossRush
         private void InjectLocalization()
         {
             InjectLocalization_Extra_Integration();
+        }
+
+        /// <summary>切语言重注入是否已订阅（幂等，AGENTS 4.6）。</summary>
+        private bool languageChangeSubscribed;
+
+        /// <summary>
+        /// 幂等订阅官方语言切换事件。
+        ///
+        /// 全 Mod 的注入型文案都是在注入那一刻用 `L10n.T(中,英)` 求值后写进
+        /// `LocalizationManager.SetOverrideText` 的，值被烘死；玩家中途切语言时
+        /// 官方自己的文案会跟着变，而 Mod 新增内容的物品名、交互名、Mode H 全部文案
+        /// 仍停在旧语言。注入本身是字典覆盖写，天然幂等，重跑一遍即可。
+        /// </summary>
+        private void EnsureLanguageChangeSubscription()
+        {
+            if (languageChangeSubscribed) return;
+            try
+            {
+                LocalizationManager.OnSetLanguage += OnGameLanguageChanged;
+                languageChangeSubscribed = true;
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 订阅语言切换失败: " + e.Message);
+            }
+        }
+
+        /// <summary>幂等退订。宿主销毁路径必须调。</summary>
+        private void ShutdownLanguageChangeSubscription()
+        {
+            if (!languageChangeSubscribed) return;
+            try
+            {
+                LocalizationManager.OnSetLanguage -= OnGameLanguageChanged;
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 退订语言切换失败: " + e.Message);
+            }
+            finally
+            {
+                languageChangeSubscribed = false;
+            }
+        }
+
+        private void OnGameLanguageChanged(SystemLanguage language)
+        {
+            try
+            {
+                DevLog("[BossRush] 语言切换，重注入本地化: " + language);
+                InjectLocalization();
+            }
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 语言切换重注入失败: " + e.Message);
+            }
         }
 
         /// <summary>

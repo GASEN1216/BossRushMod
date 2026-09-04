@@ -194,6 +194,24 @@ namespace BossRush
         private static void CreateCardGrid(
             Transform surface, Vector2 panelSize, ModeHPageContent content, float topY)
         {
+            // 先出正文：入口页的选秀操作说明、名人堂的席位数都写在 page.Body 上，
+            // 而这条渲染分支此前从不读它，那些文字对玩家完全不存在。
+            // 不能用 ModeHUI.CreateBody——它铺满整个面板高度，会盖在卡片上；
+            // 这里按行列表同款写法给一条限高的说明行。
+            if (!string.IsNullOrEmpty(content.Body))
+            {
+                GameObject bodyRow = ZombieModeUIHelper.CreateRect(
+                    "ModeH_CardGridBody", surface, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                    new Vector2(0f, topY - CardBodyHeight * 0.5f),
+                    new Vector2(panelSize.x - ModeHUI.SafeMargin * 2f - 24f, CardBodyHeight),
+                    new Vector2(0.5f, 0.5f));
+                TextMeshProUGUI bodyText = ZombieModeUIHelper.CreateTMPText(
+                    bodyRow, content.Body, 22f, TextAlignmentOptions.Left,
+                    BossRushUIColors.TextSecondary);
+                BossRushUI.ApplyGameFont(bodyText);
+                topY -= CardBodyHeight + CardGap;
+            }
+
             int count = content.Cards.Count;
             if (count == 0) return;
 
@@ -221,6 +239,21 @@ namespace BossRush
             float cardWidth = Mathf.Min(CardMaxWidth, (usableWidth - (columns - 1) * CardGap) / columns);
             float startX = -((columns - 1) * (cardWidth + CardGap)) * 0.5f;
 
+            // 加列到极限仍放不下时进滚动容器。名人堂就是这种情形：32 席上限，
+            // 约 10 条之后剩下的全被画到面板与屏幕之外，玩家既看不到也点不到
+            // （模态 surface 上没有 Mask，越界不会被裁掉）。
+            // 复用同文件 CreateLineList 已经在用的 CreateScrollHost：官方 ScrollRect
+            // prefab 优先，不可用时回退手搓 RectMask2D + ScrollRect。
+            int finalRows = (count + columns - 1) / columns;
+            float gridHeight = finalRows * CardHeight + Mathf.Max(0, finalRows - 1) * CardGap;
+            Transform host = surface;
+            if (gridHeight > availableHeight)
+            {
+                host = CreateScrollHost(
+                    surface, panelSize, topY, availableHeight, gridHeight).transform;
+                topY = gridHeight * 0.5f;
+            }
+
             for (int i = 0; i < count; i++)
             {
                 ModeHCardData data = content.Cards[i];
@@ -235,7 +268,7 @@ namespace BossRush
                     ? BossRushUIColors.Warning
                     : ModeHUI.ResolveRarityColor(data.GameQuality);
                 GameObject card = BossRushUI.CreateCard(
-                    "ModeH_Card_" + i, surface, position,
+                    "ModeH_Card_" + i, host, position,
                     new Vector2(cardWidth, CardHeight),
                     BossRushUIColors.SurfaceRaised, accent, true);
 
@@ -567,6 +600,9 @@ namespace BossRush
         private const float ActionBandReserve = ModeHUI.SafeMargin + 96f;
         private const float CardGap = 24f;
         private const float LineHeight = 34f;
+
+        /// <summary>卡片栅格顶部说明行的高度（page.Body 用）。</summary>
+        private const float CardBodyHeight = 56f;
         private static readonly Vector2 ActionSize = new Vector2(240f, 56f);
         private static readonly Vector2 StakeSelectorSize = new Vector2(420f, 220f);
         /// <summary>押品选择器顶部标题行高度，余下高度归押品格滚动区。</summary>

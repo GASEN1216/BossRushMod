@@ -59,7 +59,7 @@
       ],
       "canWander": true,
       "wanderRadius": 6.0,
-      "scenes": [],
+      "scenes": ["Base_SceneV2"],
       "permanent": {
         "displayNameCn": "小满",
         "displayNameEn": "Xiao Man",

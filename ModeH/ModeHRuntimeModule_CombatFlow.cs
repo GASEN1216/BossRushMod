@@ -1,4 +1,4 @@
-﻿// Mode H 实战、接力与单批结算；运行时对象统一声明在 SceneFlow。
+// Mode H 实战、接力与单批结算；运行时对象统一声明在 SceneFlow。
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -256,17 +256,12 @@ namespace BossRush
                 AbortMatchSpawning("spawn_enemy_plan_empty");
                 yield break;
             }
-            for (int i = 0; i < plan.enemyStableKeys.Count; i++)
+            // 只放行第 0 批：后续批次由 TryReleaseNextEnemyBatch 在前批减员后补放。
+            // 详见 ModeHRuntimeModule_CombatProfiles.SplitEnemyBatches 的注释。
+            if (!SplitEnemyBatches(plan, enemyPresets, enemyKeys, out failureReasonId))
             {
-                string key = plan.enemyStableKeys[i];
-                CharacterRandomPreset preset = ModeHPresetRegistry.GetAuditedPreset(key);
-                if (preset == null)
-                {
-                    AbortMatchSpawning("enemy_preset_missing:" + key);
-                    yield break;
-                }
-                enemyKeys.Add(key);
-                enemyPresets.Add(preset);
+                AbortMatchSpawning(failureReasonId ?? "spawn_enemy_batch_split_failed");
+                yield break;
             }
 
             CharacterRandomPreset fighterPreset = ModeHPresetRegistry.GetAuditedPreset(starter.stableKey);
@@ -317,7 +312,7 @@ namespace BossRush
             _activeFighterHandle = _spawnTransaction.FighterHandles[0];
             _activeFighterHandle.ProfileId = starter.profileId;
             if (!ModeHLoadoutKitApplicator.TryApply(
-                    _activeFighterHandle, locked.starterKitIds,
+                    _activeFighterHandle, FilterKitsForInjury(locked.starterKitIds, starter.injuryId),
                     out _activeKitApplication, out failureReasonId))
             {
                 AbortMatchSpawning(failureReasonId ?? "starter_kit_failed");
@@ -359,7 +354,7 @@ namespace BossRush
             _season.matchRoster.activeProfileId = starter.profileId;
 
             RefreshBattleSnapshotContext();
-            _combatControl.OnEnemyBatchEntered(ResolveLastEntryBatch(plan), _battleSnapshotContext);
+            _combatControl.OnEnemyBatchEntered(_currentEntryBatchIndex, _battleSnapshotContext);
             AttachAndPersistBattleSnapshot("initial_batch_entered");
 
             _spawnRoutine = null;
@@ -503,11 +498,17 @@ namespace BossRush
                     _combatTelemetry.LiveEnemyCount,
                     _combatControl.CommandController.CanRingBell,
                     _combatControl.CommandController.BellConsumed,
-                    _combatControl.CommandController.LockedCommandId,
+                    // 形参要的是**名字**，此前直接把内部 ID 传了进去，
+                    // 玩家在拍铃按钮上看到的是 "steady" / "all_in" 这类下划线标识。
+                    // Command_<id> 的中英文案早已注入，这里补上转换。
+                    ResolveCommandDisplayName(_combatControl.CommandController.LockedCommandId),
                     _combatControl.CommandController.CommandWindowRemainingSeconds);
             }
 
             if (_runState.Lifecycle == ModeHLifecycle.RelayPending) return;
+
+            // 前批减员到同时上限之下时放行下一批（见 CombatProfiles.TryReleaseNextEnemyBatch）
+            TryReleaseNextEnemyBatch();
 
             int snapshotSequence = _combatControl.Snapshot.SnapshotSequence;
             bool resultClaimed = _combatControl.Tick(deltaTime, _battleSnapshotContext);
@@ -650,7 +651,8 @@ namespace BossRush
             ModeHSpawnHandle handle = _relaySpawnTransaction.FighterHandles[0];
             handle.ProfileId = relay.profileId;
             if (!ModeHLoadoutKitApplicator.TryApply(
-                    handle, _season.currentLoadoutLock.relayKitIds,
+                    handle,
+                    FilterKitsForInjury(_season.currentLoadoutLock.relayKitIds, relay.injuryId),
                     out _activeKitApplication, out failureReasonId))
             {
                 _relaySpawnRoutine = null;
@@ -848,20 +850,14 @@ namespace BossRush
                     string scarFailure;
                     report.scarOfferId = ModeHInjuryAndScarSystem.PickScarOffer(
                         rewardProfile, _runState.RunSeed, _runState.MatchIndex, out scarFailure);
-                    if (!string.IsNullOrEmpty(report.scarOfferId))
-                    {
-                        string acceptFailure;
-                        if (rewardProfile.scarIds != null
-                            && rewardProfile.scarIds.Count >= ModeHConfig.MaxScarsPerProfile)
-                        {
-                            ModeHInjuryAndScarSystem.DeclineScar(rewardProfile);
-                        }
-                        else
-                        {
-                            ModeHInjuryAndScarSystem.TryAcceptScar(
-                                rewardProfile, report.scarOfferId, null, out acceptFailure);
-                        }
-                    }
+                    // 候选只**抽出并记进战报**，处置权交给结算页（BuildSettlementScarActions）。
+                    // 旧写法在这里替玩家定了：满三条直接 DeclineScar、否则直接 TryAcceptScar，
+                    // 玩家既没得选也看不到提示，而 §17 冻结契约里的「满三条时明确替换一条」
+                    // 因此永远走不到——replacedScarId 在生产代码里唯一的实参是 null。
+                    // 留在 pending 的候选由结算页负责收口；玩家若直接关页，
+                    // 下次打开结算页仍会看到它（战报里的 scarOfferId 是持久化的）。
+                    _pendingScarProfileId = !string.IsNullOrEmpty(report.scarOfferId)
+                        ? rewardProfile.profileId : null;
                 }
 
                 string rewardFailure;

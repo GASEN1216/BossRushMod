@@ -218,6 +218,25 @@ namespace BossRush
                 DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss 恢复监控退订失败: " + e.Message);
             }
 
+            // 乱入者若是龙裔/女巫这类自带 BGM 的自定义 Boss，生成时取过一份 owner 租约。
+            // 「撤退」走的是销毁而不是死亡，死亡回调不会跑，租约就永远挂着——
+            // Boss 战音乐在乱入结束后一直循环到本局结束。
+            // 按实例释放：只停这一只的，同波次其他 Boss 的曲子不受影响。
+            try
+            {
+                BossRushAudioManager audio = BossRushAudioManager.Instance;
+                if (audio != null)
+                {
+                    audio.StopBossBGM(BossBgmKeys.DragonDescendant, boss);
+                    audio.StopBossBGM(BossBgmKeys.PhantomWitch, boss);
+                    audio.StopBossBGM(BossBgmKeys.DragonKing, boss);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 乱入 Boss BGM 租约释放失败: " + e.Message);
+            }
+
             try
             {
                 if (boss.gameObject != null)

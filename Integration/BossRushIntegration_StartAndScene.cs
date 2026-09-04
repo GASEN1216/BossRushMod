@@ -84,6 +84,7 @@ namespace BossRush
             RefreshDeathWraithEventBindings_DeathWraith();
             ApplyDevModeRuntimeState();
             InjectLocalization();
+            EnsureLanguageChangeSubscription();
             RegisterCustomWeaponRuntimeConfigs();
 
             if (runtimeStateMonitorCoroutine == null)

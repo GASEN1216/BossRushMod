@@ -726,7 +726,15 @@ namespace BossRush
             phantomWitchInstances.Remove(deadWitch);
             phantomWitchDeathPresentations.Remove(deadWitch);
             ClearBossRandomLootTracking(deadWitch);
-            FinalizeBossRushLootboxPathTracking(deadWitch);
+            // **不要**在这里 FinalizeBossRushLootboxPathTracking：它会把噬魂挽歌、遗种蛋、
+            // 词缀熔石、寒霜长矛四家 defer 的掉落全部 CancelPending，而消费点在
+            // AddBossSpecialLootToLootboxCoroutine 里、排在 `while (inv.Loading)
+            // yield WaitForSeconds(0.1f)` 之后。本回调是死亡帧同步执行的（官方
+            // CharacterMainControl.OnDead 派发 BeforeCharacterSpawnLootOnDead 启动协程后
+            // 才轮到 Mod 注册的这个监听器），新建奖励箱的 Inventory 正在 Loading 时
+            // 协程必然跨帧，取消先到 —— 女巫的特殊掉落在标准 BossRush 路径上必丢。
+            // 该收尾由协程自己的 try/finally（LootAndRewardsSpecialLoot 的 finally）
+            // 与其余七个 Finalize 调用点负责，这里重复调只会抢跑。
 
             BossCleanupHelpers.DestroyRuntimePreset(
                 deadWitch,

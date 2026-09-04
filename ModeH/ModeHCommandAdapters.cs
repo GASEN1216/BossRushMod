@@ -148,6 +148,15 @@ namespace BossRush
         /// <summary>当前是否处于生效窗口。</summary>
         public bool IsActive { get { return _applied && _windowRemaining > 0f; } }
 
+        /// <summary>
+        /// 调制仍挂在 AI 上、尚未还原（窗口可能已经到期）。
+        ///
+        /// `IsActive` 的定义是「已施加 **且** 窗口未到期」，控制器若只用它当早退判据，
+        /// 窗口一归零就再也不驱动本 adapter，而 `Restore()` 只写在 `Tick` 内部——
+        /// 于是绝大多数情况下调制永不还原，一直挂到本场结束。
+        /// </summary>
+        public bool NeedsFinalize { get { return _applied; } }
+
         /// <summary>窗口剩余秒数。</summary>
         public float WindowRemainingSeconds { get { return _windowRemaining; } }
 
@@ -257,6 +266,10 @@ namespace BossRush
             {
                 failureReasonId = "command_apply_exception:" + e.GetType().Name;
                 _lastError = failureReasonId;
+                // Restore 现在会把已写入的部分调制逐条写回原值（见 Restore 的注释），
+                // 因此这里的回滚是真回滚，不再是空操作。留一行日志便于事后定位：
+                // 这条路径意味着官方 AI 字段结构变了，属于需要人工复查的契约面事故。
+                ModBehaviour.CriticalLog("[ModeH] 口令施加异常，已回滚部分调制: " + failureReasonId);
                 Restore();
                 return false;
             }
@@ -654,11 +667,12 @@ namespace BossRush
         /// </summary>
         public void Restore()
         {
-            if (!_applied)
-            {
-                _modulations.Clear();
-                return;
-            }
+            // **不能**因为 `!_applied` 就直接丢弃 _modulations：`ApplyEffects` 是在
+            // 整个循环跑完之后才置 `_applied = true` 的，中途抛异常时 `_applied`
+            // 仍为 false，而循环里已经写进 AI 的那几条调制全都记在 _modulations 里。
+            // 旧写法在这条路径上等于「既不还原、也不留记录」——部分调制永久挂在
+            // 选手身上直到本场结束，且没有任何痕迹可查。
+            // 统一走同一条还原路径：_modulations 为空时行为与旧写法逐字相同。
             _applied = false;
             _windowRemaining = 0f;
 

@@ -181,37 +181,40 @@ namespace BossRush
         /// <summary>
         /// 龙裔遗族死亡回调
         /// </summary>
-        private void OnDragonDescendantDeath(DamageInfo damageInfo)
+        private void OnDragonDescendantDeath(CharacterMainControl deadDescendant, DamageInfo damageInfo)
         {
             try
             {
                 DevLog("[DragonDescendant] 龙裔遗族被击败");
 
+                // 全程按**死掉的那只**操作，而不是共享字段：同场可能还有第二只龙裔
+                // （龙皇护崽召唤 / 随机事件乱入），拿字段会把另一只的 BGM 掐掉、
+                // 把它的套装摘掉、把它的 preset 销毁，并让它此后再也清理不掉。
+                if (deadDescendant == null) deadDescendant = dragonDescendantInstance;
+
                 // 只停自己起播的那首，别掐掉同波次其他 Boss 的曲子
                 BossRushAudioManager.Instance?.StopBossBGM(
-                    BossBgmKeys.DragonDescendant, dragonDescendantInstance);
+                    BossBgmKeys.DragonDescendant, deadDescendant);
                 BossRushAudioManager.Instance?.PlayStinger(BossBgmEvents.BossVictory);
 
-                // 取消注册龙套装效果
-                UnregisterDragonDescendantSetBonus();
+                // 只摘死者自己的套装登记；仍在场的另一只龙裔必须继续享有火焰免疫
+                UnregisterDragonDescendantSetBonus(deadDescendant);
 
                 // 注意：龙套装专属掉落逻辑已由 Boss 掉落箱协程统一处理
                 // 在 OnBossBeforeSpawnLoot_LootAndRewards -> AddBossSpecialLootToLootboxCoroutine 中追加
 
-                // 清理引用
-                if (dragonDescendantInstance != null && dragonDescendantInstance.Health != null)
-                {
-                    dragonDescendantInstance.Health.OnDeadEvent.RemoveListener(OnDragonDescendantDeath);
-                }
-
                 BossCleanupHelpers.DestroyRuntimePreset(
-                    dragonDescendantInstance,
+                    deadDescendant,
                     DragonDescendantConfig.BOSS_NAME_KEY,
                     "DragonDescendant_Preset",
                     "[DragonDescendant]");
 
-                dragonDescendantInstance = null;
-                dragonDescendantAbilities = null;
+                // 共享字段只在指向死者时才清：指向另一只时清掉会让那只永远收不了尾
+                if (dragonDescendantInstance == deadDescendant)
+                {
+                    dragonDescendantInstance = null;
+                    dragonDescendantAbilities = null;
+                }
 
                 // 触发BossRush标准死亡处理（如果在BossRush模式中）
                 // 这会由BossRush系统的OnEnemyDiedWithDamageInfo自动处理
@@ -229,16 +232,14 @@ namespace BossRush
         {
             try
             {
-                // 取消注册龙套装效果
-                UnregisterDragonDescendantSetBonus();
+                // 全场收尾：整表清掉（传 null）
+                UnregisterDragonDescendantSetBonus(null);
 
                 if (dragonDescendantInstance != null)
                 {
-                    if (dragonDescendantInstance.Health != null)
-                    {
-                        dragonDescendantInstance.Health.OnDeadEvent.RemoveListener(OnDragonDescendantDeath);
-                    }
-
+                    // 死亡监听已改为捕获死者的闭包（同场可能有两只龙裔），闭包退不掉；
+                    // 但它随角色一起销毁，且回调体内对已销毁实例是幂等的，
+                    // 与 PhantomWitchBoss 的同款写法一致。这里不再尝试 RemoveListener。
                     if (currentBoss == dragonDescendantInstance)
                     {
                         currentBoss = null;
@@ -334,24 +335,26 @@ namespace BossRush
         /// <summary>
         /// 注册Boss龙套装效果（火焰伤害免疫）
         /// </summary>
-        private void RegisterDragonDescendantSetBonus()
+        private void RegisterDragonDescendantSetBonus(CharacterMainControl instance)
         {
-            if (dragonDescendantSetBonusRegistered) return;
-
             try
             {
-                // 缓存Health引用用于快速身份验证
-                if (dragonDescendantInstance != null && dragonDescendantInstance.Health != null)
-                {
-                    cachedBossHealth = dragonDescendantInstance.Health;
-                    Health.OnHurt += OnDragonDescendantHurt;
-                    dragonDescendantSetBonusRegistered = true;
-                    DevLog("[DragonDescendant] 已注册龙套装效果（火焰免疫），Health引用已缓存");
-                }
-                else
+                if (instance == null || instance.Health == null)
                 {
                     DevLog("[DragonDescendant] [WARNING] 注册龙套装效果失败：Boss实例或Health为空");
+                    return;
                 }
+
+                // 按实例登记：同场可能有第二只龙裔（龙皇护崽召唤 / 随机事件乱入）。
+                // 全局事件只订一次，由集合是否为空决定。
+                if (!dragonDescendantBossHealths.Add(instance.Health)) return;
+                if (!dragonDescendantSetBonusRegistered)
+                {
+                    Health.OnHurt += OnDragonDescendantHurt;
+                    dragonDescendantSetBonusRegistered = true;
+                }
+                DevLog("[DragonDescendant] 已注册龙套装效果（火焰免疫），在场龙裔数="
+                    + dragonDescendantBossHealths.Count);
             }
             catch (Exception e)
             {
@@ -362,14 +365,26 @@ namespace BossRush
         /// <summary>
         /// 取消注册Boss龙套装效果
         /// </summary>
-        private void UnregisterDragonDescendantSetBonus()
+        private void UnregisterDragonDescendantSetBonus(CharacterMainControl instance)
         {
-            if (!dragonDescendantSetBonusRegistered) return;
-
             try
             {
+                // instance 为空 = 全场收尾（离场/卸载）：整表清掉。
+                // 否则只摘这一只——先死的那只**绝不能**替仍在场的另一只退订，
+                // 否则真龙裔会在战斗中途静默失去火焰免疫。
+                if (instance == null)
+                {
+                    dragonDescendantBossHealths.Clear();
+                }
+                else if (instance.Health != null)
+                {
+                    dragonDescendantBossHealths.Remove(instance.Health);
+                }
+
+                if (dragonDescendantBossHealths.Count > 0) return;
+                if (!dragonDescendantSetBonusRegistered) return;
+
                 Health.OnHurt -= OnDragonDescendantHurt;
-                cachedBossHealth = null; // 清理缓存
                 dragonDescendantSetBonusRegistered = false;
                 DevLog("[DragonDescendant] 已取消注册龙套装效果");
             }
@@ -385,8 +400,9 @@ namespace BossRush
         /// </summary>
         private void OnDragonDescendantHurt(Health health, DamageInfo damageInfo)
         {
-            // [性能优化] 快速过滤：使用缓存引用直接比较
-            if (cachedBossHealth == null || health != cachedBossHealth) return;
+            // [性能优化] 快速过滤：按在场龙裔集合判定（同场可能有第二只）
+            if (health == null || dragonDescendantBossHealths.Count == 0) return;
+            if (!dragonDescendantBossHealths.Contains(health)) return;
 
             try
             {

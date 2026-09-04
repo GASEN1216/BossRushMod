@@ -32,6 +32,9 @@ namespace BossRush
         private static bool _slotConsistent;
         private static string _slotInconsistentReasonId;
 
+        /// <summary>判定被推迟：撞上仓库未就绪，只给了临时结论，关卡就绪后须补算。</summary>
+        private static bool _slotConsistencyDeferred;
+
         #endregion
 
         #region 只读
@@ -67,55 +70,78 @@ namespace BossRush
         /// </summary>
         public static void RecomputeSlotConsistency(ModeHStakeJournalDto persisted)
         {
+            // 证据段（只看 journal，不看仓库）：**唯一**决定 external asset 闸的地方。
+            // §22.1 第三条的主语是 journal（路径/header/摘要/slot 身份），不是 PlayerStorage。
+            // 旧写法把 IsStorageReady 失败也当第三条并置闸，而本方法最常见的调用时点是
+            // OnSetFile——官方 SaveSlotSelectionButton 在**主菜单**里调它，此时 PlayerStorage
+            // 尚未随关卡创建、判定必失败，于是每次正常选档都打死 IsLegacyModeEntryAllowed，
+            // 七个旧模式入口一起进不去；且写出「blocked 且 !faulted」，重扫路径也永远早退。
+            string blockedReasonId = null;
+            if (ModeHStakeJournalPersistence.IsWriteBarrier)
+            {
+                // 第三条：journal 读不动。SetWriteBarrier 已立闸，此处必须维持——
+                // 那种情况下 LoadCurrent() 返回 null，当成「journal 不存在」会把真闸清掉。
+                blockedReasonId = "slot_journal_unreadable";
+            }
+            else if (persisted != null)
+            {
+                ModeHStakePhase phase = ToPhase(persisted.phase);
+                if (phase == ModeHStakePhase.ManualIntervention) blockedReasonId = "slot_manual_intervention";
+                else if (phase == ModeHStakePhase.Unknown) blockedReasonId = "slot_phase_unknown";
+                // 第二条：非终态 active journal -> 打开 §22.4 恢复流程；终态与不存在均放行
+                else if (!IsTerminalPhase(phase)) blockedReasonId = "slot_active_journal:" + phase;
+            }
+
+            ModeHRuntimeGates.SetExternalAssetRiskBlocked(blockedReasonId != null, blockedReasonId);
+            if (blockedReasonId != null)
+            {
+                _slotConsistent = false;
+                _slotInconsistentReasonId = blockedReasonId;
+                _slotConsistencyDeferred = false;
+                return;
+            }
+
+            // 可用性段（需要仓库就绪）：只决定 _slotConsistent，**绝不碰闸**。§22.1 第一行把
+            // 「PlayerStorage 已初始化」列为判 true 的前置，故不乐观给 true，登记待补算。
             string reason;
             if (!ModeHInventoryPersistenceBridge.IsStorageReady(out reason))
             {
-                // 第三条：路径 / header / 摘要 / slot 身份无法判定
                 _slotConsistent = false;
                 _slotInconsistentReasonId = "slot_storage_unavailable:" + reason;
-                ModeHRuntimeGates.SetExternalAssetRiskBlocked(true, _slotInconsistentReasonId);
+                _slotConsistencyDeferred = true;
                 return;
             }
 
-            if (persisted == null)
-            {
-                // 第一条：journal 不存在
-                _slotConsistent = true;
-                _slotInconsistentReasonId = null;
-                ModeHRuntimeGates.SetExternalAssetRiskBlocked(false, null);
-                return;
-            }
-
-            ModeHStakePhase phase = ToPhase(persisted.phase);
-            if (phase == ModeHStakePhase.ManualIntervention)
-            {
-                // 第四条：任一记录处于 ManualIntervention
-                _slotConsistent = false;
-                _slotInconsistentReasonId = "slot_manual_intervention";
-                ModeHRuntimeGates.SetExternalAssetRiskBlocked(true, _slotInconsistentReasonId);
-                return;
-            }
-            if (IsTerminalPhase(phase))
-            {
-                // 第一条：处于终态
-                _slotConsistent = true;
-                _slotInconsistentReasonId = null;
-                ModeHRuntimeGates.SetExternalAssetRiskBlocked(false, null);
-                return;
-            }
-            if (phase == ModeHStakePhase.Unknown)
-            {
-                _slotConsistent = false;
-                _slotInconsistentReasonId = "slot_phase_unknown";
-                ModeHRuntimeGates.SetExternalAssetRiskBlocked(true, _slotInconsistentReasonId);
-                return;
-            }
-
-            // 第二条：存在非终态 active journal -> 打开 §22.4 恢复流程
-            _slotConsistent = false;
-            _slotInconsistentReasonId = "slot_active_journal:" + phase;
-            ModeHRuntimeGates.SetExternalAssetRiskBlocked(true, _slotInconsistentReasonId);
+            _slotConsistent = true;
+            _slotInconsistentReasonId = null;
+            _slotConsistencyDeferred = false;
         }
+
+        /// <summary>
+        /// 仓库就绪后补一次被推迟的槽位一致性判定。由关卡就绪回调
+        /// （`LevelManager.OnAfterLevelInitialized`）驱动：官方 `PlayerStorage.Awake` 自己调
+        /// `RegisterWaitForInitialization`，所以关卡宣告初始化完成时它必已就绪。
+        /// 幂等 + no-throw：没待办、仓库仍不可读或判定抛异常时都原样保持推迟状态。
+        /// </summary>
+        public static bool TryRecomputeDeferredSlotConsistency()
+        {
+            try
+            {
+                if (!_slotConsistencyDeferred) return false;
+                string reason;
+                if (!ModeHInventoryPersistenceBridge.IsStorageReady(out reason)) return false;
+                RecomputeSlotConsistency(_active);
+                return true;
+            }
+            catch (Exception)
+            {
+                // 补算失败不改变既有结论：保持推迟，下次关卡就绪再试
+                return false;
+            }
+        }
+
+        /// <summary>槽位一致性是否仍在等仓库就绪后补算（诊断与守卫用）。</summary>
+        public static bool IsSlotConsistencyDeferred { get { return _slotConsistencyDeferred; } }
 
         /// <summary>三个终态。`phase` 是唯一终态来源。</summary>
         public static bool IsTerminalPhase(ModeHStakePhase phase)
@@ -247,6 +273,9 @@ namespace BossRush
             string writeError;
             if (!ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out writeError))
             {
+                // 先撤销暂存：pending 与 _active 同引用，回滚后它描述的是已撤销的阶段，
+                // 留着会被下一次 Tick 重试写进存档，并因摘要失配把 store 单向锁死。
+                ModeHStakeJournalPersistence.DiscardPending();
                 _active.phase = previousPhase;
                 _active.phaseSequence = previousSequence;
                 _active.settlementKind = previousKind;
@@ -384,6 +413,8 @@ namespace BossRush
             string writeError;
             if (!ModeHSaveFlushCoordinator.RequestStakeJournalWrite(_active, out writeError))
             {
+                // journal 整体作废，暂存的那份也必须跟着撤销，否则重试会把它写下去
+                ModeHStakeJournalPersistence.DiscardPending();
                 _active = null;
                 failureReasonId = "journal_persist_failed:"
                     + (writeError != null ? writeError : "unknown");
@@ -812,6 +843,22 @@ namespace BossRush
                 return false;
             }
 
+            // 对账：落过盘的 receipt 才是事实，`_escrowItems` 是纯内存表——重启、切槽、
+            // 崩溃都会让它变空。空表时直接 return true，调用方随即写 RefundedTerminal，
+            // 等于把「押品已经丢了」确认成「已原样返还」。短缺一律 fail-closed 进人工介入。
+            int outstanding = CountOutstandingEscrow();
+            if (_escrowItems.Count < outstanding)
+            {
+                failureReasonId = "return_escrow_missing:"
+                    + (outstanding - _escrowItems.Count) + "/" + outstanding;
+                if (!IsTerminalPhase(ToPhase(_active.phase)))
+                {
+                    // 终态不得再进人工介入（冻结不变式：MI 只能从非终态进入）
+                    EnterManualIntervention(failureReasonId);
+                }
+                return false;
+            }
+
             bool buffered = false;
             for (int i = _escrowItems.Count - 1; i >= 0; i--)
             {
@@ -959,35 +1006,6 @@ namespace BossRush
                 RemoveEscrowByDigest(loss.semanticTreeDigest);
             }
             return true;
-        }
-
-        private static void RemoveEscrowByDigest(string digest)
-        {
-            if (string.IsNullOrEmpty(digest)) return;
-            for (int i = _escrowItems.Count - 1; i >= 0; i--)
-            {
-                Item item = _escrowItems[i];
-                if (item == null)
-                {
-                    _escrowItems.RemoveAt(i);
-                    continue;
-                }
-                string reason;
-                ModeHItemTreeSnapshotDto snapshot =
-                    ModeHItemTreeNormalizer.TryCapture(item, 0, 1, out reason);
-                if (snapshot == null) continue;
-                if (!string.Equals(snapshot.semanticTreeDigest, digest, StringComparison.Ordinal))
-                {
-                    continue;
-                }
-                try { item.DestroyTree(); }
-                catch (Exception)
-                {
-                    // 没收物销毁失败不阻断结算：receipt 已记录，恢复面板可复核
-                }
-                _escrowItems.RemoveAt(i);
-                return;
-            }
         }
 
         #endregion
@@ -1166,6 +1184,7 @@ namespace BossRush
             _lastError = null;
             _slotConsistent = false;
             _slotInconsistentReasonId = null;
+            _slotConsistencyDeferred = false;
         }
 
         #endregion

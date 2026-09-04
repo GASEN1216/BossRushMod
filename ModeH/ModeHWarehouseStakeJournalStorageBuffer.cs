@@ -183,5 +183,70 @@ namespace BossRush
         }
 
         #endregion
+
+        #region 托管表记账
+
+        /// <summary>
+        /// 按语义摘要从托管表里取走一件（没收物）并销毁。找不到就什么都不做。
+        /// </summary>
+        private static void RemoveEscrowByDigest(string digest)
+        {
+            if (string.IsNullOrEmpty(digest)) return;
+            for (int i = _escrowItems.Count - 1; i >= 0; i--)
+            {
+                Item item = _escrowItems[i];
+                if (item == null)
+                {
+                    _escrowItems.RemoveAt(i);
+                    continue;
+                }
+                string reason;
+                ModeHItemTreeSnapshotDto snapshot =
+                    ModeHItemTreeNormalizer.TryCapture(item, 0, 1, out reason);
+                if (snapshot == null) continue;
+                if (!string.Equals(snapshot.semanticTreeDigest, digest, StringComparison.Ordinal))
+                {
+                    continue;
+                }
+                try { item.DestroyTree(); }
+                catch (Exception)
+                {
+                    // 没收物销毁失败不阻断结算：receipt 已记录，恢复面板可复核
+                }
+                _escrowItems.RemoveAt(i);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// journal 记载的「已脱离仓库且尚未了结」的件数
+        /// = escrow_remove − escrow_return − planned_loss。
+        ///
+        /// 这是返还路径的对账基准：内存 `_escrowItems` 是纯内存 List，重启、切槽、
+        /// 崩溃都会让它变空，而 journal 里的 receipt 是落过盘的事实。两者对不上就说明
+        /// 实物拿不出来了，绝不能把「什么都没还」记成 RefundedTerminal。
+        /// </summary>
+        private static int CountOutstandingEscrow()
+        {
+            if (_active == null || _active.receipts == null) return 0;
+
+            int removed = 0;
+            int settled = 0;
+            for (int i = 0; i < _active.receipts.Count; i++)
+            {
+                ModeHStakeReceiptDto receipt = _active.receipts[i];
+                if (receipt == null || string.IsNullOrEmpty(receipt.kind)) continue;
+                if (string.Equals(receipt.kind, "escrow_remove", StringComparison.Ordinal)) removed++;
+                else if (string.Equals(receipt.kind, "escrow_return", StringComparison.Ordinal)
+                    || string.Equals(receipt.kind, "planned_loss", StringComparison.Ordinal))
+                {
+                    settled++;
+                }
+            }
+            int outstanding = removed - settled;
+            return outstanding > 0 ? outstanding : 0;
+        }
+
+        #endregion
     }
 }

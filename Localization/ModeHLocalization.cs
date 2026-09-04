@@ -505,6 +505,15 @@ namespace BossRush
             Add(map, "Settle_Failed",
                 "本场押品结算未完成，押品已保留；请到恢复面板取回",
                 "Stake settlement did not finish; your stake is held. Retrieve it from the recovery panel");
+            // 中断赛季的「不玩了」出路。此前只有 Suspended 给了同场重开，停在
+            // Intermission / MatchBrief 的赛季一个动作都没有，而 recovery-only 闸已立起，
+            // 新赛季也开不了——玩家除删档外无路可走。
+            Add(map, "Recovery_AbandonSeason", "放弃本赛季并结清押品",
+                "Abandon this season and settle the stake");
+            Add(map, "Recovery_AbandonSeason_Done",
+                "赛季已放弃，可以开新赛季了", "Season abandoned; you can start a new one");
+            Add(map, "Recovery_AbandonSeason_Failed",
+                "赛季记录未能写入，请稍后再试", "Could not write the season record; try again later");
 
             // 旧模式入口被拒时的两句文案：扫描失败与真实风险是两回事，
             // 用同一句会把「读档出错」说成「你有笔押品没结算」。

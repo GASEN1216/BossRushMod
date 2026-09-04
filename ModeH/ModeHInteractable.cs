@@ -50,14 +50,7 @@ namespace BossRush
                 string reasonId;
                 if (!IsEntryAllowed(host, out reasonId))
                 {
-                    LastReasonId = reasonId;
-                    ModBehaviour.DevLog("[ModeH] 入口不可用: " + reasonId);
-                    // 恢复分支：有待处理的赛季记录时，入口的职责是**打开恢复壳**，
-                    // 而不是把玩家挡在门外——否则中断的赛季永远没有出口
-                    // （UIAndSigns 的注入门本来就为这一支放行，CR-2026-08-29-012）。
-                    if (TryOpenRecoveryShellForEntry(host, reasonId)) return true;
-                    ShowUnavailableNotice(reasonId);
-                    return false;
+                    return HandleEntryRejected(host, reasonId);
                 }
 
                 if (_activePresenter != null) return false;
@@ -136,6 +129,23 @@ namespace BossRush
         /// 入口的恢复分支：存在待处理的赛季恢复记录时打开恢复壳并返回 true。
         /// 按 §18.1，配置关闭也允许处理已有 H 记录；但**有其它模式在跑时不接管**。
         /// </summary>
+        /// <summary>
+        /// 入口被拒时的统一处置：先试恢复壳，接不住再退回不可用提示。
+        /// 静态入口（TryOpenEntry）与场内交互（OnTimeOut）共用，避免两条路的分流走偏。
+        ///
+        /// 恢复分支的意义：有待处理的赛季记录或未终结押品时，入口的职责是**打开恢复壳**
+        /// 而不是把玩家挡在门外——否则中断的赛季永远没有出口
+        /// （UIAndSigns 的注入门本来就为这一支放行，CR-2026-08-29-012）。
+        /// </summary>
+        private static bool HandleEntryRejected(ModBehaviour host, string reasonId)
+        {
+            LastReasonId = reasonId;
+            ModBehaviour.DevLog("[ModeH] 入口不可用: " + reasonId);
+            if (TryOpenRecoveryShellForEntry(host, reasonId)) return true;
+            ShowUnavailableNotice(reasonId);
+            return false;
+        }
+
         private static bool TryOpenRecoveryShellForEntry(ModBehaviour host, string reasonId)
         {
             try
@@ -304,14 +314,25 @@ namespace BossRush
             }
         }
 
-        /// <summary>场内交互可用性：与静态入口共用同一判定。</summary>
+        /// <summary>
+        /// 场内交互可用性：「能开新赛季」**或**「有恢复记录要处置」。
+        ///
+        /// 只判前者是 CR 级缺陷：recovery-only 闸立起时新赛季判定必然 Unavailable，
+        /// 官方 InteractableBase.StartInteract 直接 return false，OnTimeOut 永不执行，
+        /// 玩家连点都点不动——中断赛季与未终结押品因此**没有任何出口**。
+        /// UIAndSigns 的注入门本来就为恢复分支放行，这里必须与它一致。
+        /// </summary>
         protected override bool IsInteractable()
         {
             try
             {
                 ModBehaviour host = ResolveHost(_entryHost);
                 string reasonId;
-                return IsEntryAllowed(host, out reasonId);
+                if (IsEntryAllowed(host, out reasonId)) return true;
+
+                string recoveryReasonId;
+                return ModeHAvailability.EvaluateRecovery(out recoveryReasonId)
+                    == ModeHAvailabilityStatus.Available;
             }
             catch (Exception)
             {
@@ -319,13 +340,25 @@ namespace BossRush
             }
         }
 
-        /// <summary>交互完成：走同一入场流程。</summary>
+        /// <summary>
+        /// 交互完成：走带恢复分流的统一入场路径。
+        /// 新赛季不可用但有恢复记录时，入口的职责是**打开恢复壳**而不是把玩家挡在门外。
+        /// </summary>
         protected override void OnTimeOut()
         {
             try
             {
-                _entryHost = ResolveHost(_entryHost);
+                ModBehaviour host = ResolveHost(_entryHost);
+                _entryHost = host;
                 _activePresenter = this;
+
+                string reasonId;
+                if (!IsEntryAllowed(host, out reasonId))
+                {
+                    HandleEntryRejected(host, reasonId);
+                    return;
+                }
+
                 OpenEntryFlow();
             }
             catch (Exception e)

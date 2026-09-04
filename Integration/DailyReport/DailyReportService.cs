@@ -28,6 +28,7 @@
 // ============================================================================
 
 using System;
+using UnityEngine;
 
 namespace BossRush
 {
@@ -75,6 +76,12 @@ namespace BossRush
 
         /// <summary>当天已累计的游戏内秒数。热路径只改它，不碰存档。</summary>
         private static double _carrySeconds;
+
+        /// <summary>存档层拒写后的重试退避时点（Time.realtimeSinceStartup 域，0 = 不退避）。</summary>
+        private static float _settleRetryAfterRealtime;
+
+        /// <summary>跨天结算被拒后的重试间隔。跨天本身约 24 现实分钟一次，这个粒度足够。</summary>
+        private const float SettleRetryBackoffSeconds = 30f;
 
         /// <summary>是否已从存档初始化过 _carrySeconds。</summary>
         private static bool _initialized;
@@ -166,6 +173,16 @@ namespace BossRush
             // 绝大多数帧在这里返回：一次乘加 + 一次比较，零分配零反射。
             if (!needSettle) return;
 
+            // 存档层拒写时 _carrySeconds 不会被扣减，needSettle 于是恒为真——
+            // 没有退避的话 SettleRollover 会**每帧**跑一遍完整路径（两次 Stats 深拷贝
+            // + 悬赏结算 + 横幅置位），一直持续到本会话结束。_storeFaulted 还是单向的，
+            // 一旦置位就再也不会成功，等于永久每帧空转。
+            // 退避只影响失败后的重试节奏：成功路径把 _retryAfterRealtime 归零，行为不变。
+            if (_settleRetryAfterRealtime > 0f && Time.realtimeSinceStartup < _settleRetryAfterRealtime)
+            {
+                return;
+            }
+
             SettleRollover();
         }
 
@@ -245,11 +262,17 @@ namespace BossRush
                 candidate.PendingIssueBanner = true;
                 if (!Persist(candidate))
                 {
+                    // 退避后再试，并且**不**置 _pendingIssueBanner：横幅由成功路径负责，
+                    // 在这里置位会让出刊提示每个退避周期重弹一次。
+                    _settleRetryAfterRealtime =
+                        Time.realtimeSinceStartup + SettleRetryBackoffSeconds;
                     ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                        + "[WARNING] 跨天结算未被存档层接受，内存状态保持原样等待重试");
+                        + "[WARNING] 跨天结算未被存档层接受，内存状态保持原样，"
+                        + SettleRetryBackoffSeconds + " 秒后重试");
                     return;
                 }
 
+                _settleRetryAfterRealtime = 0f;
                 lock (_lock) { _carrySeconds = nextCarry; }
                 _rolloverCount += settled;
                 _pendingIssueBanner = true;
@@ -396,6 +419,22 @@ namespace BossRush
                 DailyReportStats today = data.Today ?? new DailyReportStats();
                 int progress = DailyReportBounty.EvaluateProgress(def, today);
                 bool completed = progress >= def.Target && def.Target > 0;
+
+                // 上一天还欠着没发出去的悬赏奖金时，**不能**改写这对字段：
+                // BountyCompleted/BountyRewardClaimed 是这笔债务唯一的载体，
+                // 而唯一的补发入口 TryRedeliverPendingBountyReward 的前置条件正是它俩。
+                // 无条件覆盖等于把债务的生存期压成一个游戏日（约 24 现实分钟），
+                // 玩家错过就静默消失、日志里也没有任何记录。
+                // 发放失败是真实可达的：官方 EconomyManager.Instance 为空时 Add 直接返回 false。
+                bool hasUnpaidBounty = data.BountyCompleted && !data.BountyRewardClaimed;
+                if (hasUnpaidBounty)
+                {
+                    // 进度仍照常刷新，只保留「有一笔没结清」这个事实与它的 kind/target。
+                    data.BountyDayIndex = data.DayIndex;
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
+                        + "上一笔悬赏奖金尚未发放，保留待发债务，本日不覆盖悬赏状态");
+                    return;
+                }
 
                 data.BountyDayIndex = data.DayIndex;
                 data.BountyKindId = def.Id;

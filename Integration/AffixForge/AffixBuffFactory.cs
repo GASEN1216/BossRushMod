@@ -152,14 +152,14 @@ namespace BossRush
         /// <summary>
         /// 注入三个 Buff 的名称/描述本地化。幂等；
         /// AffixForgeLocalization 若也注同名键，后写覆盖前写，值相同无副作用。
+        ///
+        /// **不能用一次性闩挡住重入**：文案是注入那一刻用 `L10n.T(中,英)` 求值后
+        /// 写进 SetOverrideText 的，玩家切语言时需要整体重注入一遍
+        /// （ModBehaviour 订阅了 LocalizationManager.OnSetLanguage）。
+        /// 闩住的话这三条会永远停在启动时的语言。注入本身是字典覆盖写，重跑无副作用。
         /// </summary>
         public static void InjectLocalization()
         {
-            if (localizationInjected)
-            {
-                return;
-            }
-
             localizationInjected = true;
 
             try

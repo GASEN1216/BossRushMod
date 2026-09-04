@@ -28,6 +28,15 @@ namespace BossRush
         private static int _deferredRetryCount;
         private static string _lastError;
 
+        /// <summary>
+        /// 已把 pending 交给 SavesSystem、但物理 SaveFile 还没成功。
+        /// 必须与 `_deferredFlushPending` 分开记：`FlushPending()` 一旦成功，
+        /// `HasPendingWrite` 就变 false，此后只靠它判断「有没有事要做」会把
+        /// 「还欠一次 SaveFile」误判成「无事可做」，重试链就此断掉。
+        /// 形态照 Integration/Codex/CodexSaveCoordinator.cs。
+        /// </summary>
+        private static bool _saveFilePending;
+
         /// <summary>deferred 重试上限；超过后保留 pending 并报告失败，不静默丢弃。</summary>
         private const int MaxDeferredRetries = 600;
 
@@ -76,6 +85,8 @@ namespace BossRush
             {
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
+                // 欠账位随槽/卸载一起清：旧槽欠的 SaveFile 不该拿新槽去补
+                _saveFilePending = false;
                 _lastError = null;
             }
         }
@@ -129,7 +140,16 @@ namespace BossRush
         private static bool FlushBatch(out string error, bool bypassSceneGate)
         {
             error = null;
-            if (!DailyReportPersistence.HasPendingWrite)
+            bool saveFileOwed;
+            lock (_lock)
+            {
+                saveFileOwed = _saveFilePending;
+            }
+
+            // 「没有 pending」**不等于**「无事可做」：FlushPending 成功后 pending 即被消费，
+            // 若随后的 SaveFile 失败，这里只看 HasPendingWrite 会直接早返 true，
+            // 把重试与宿主销毁兜底一起吃掉——数据停在 SavesSystem 内存里永不落盘。
+            if (!DailyReportPersistence.HasPendingWrite && !saveFileOwed)
             {
                 lock (_lock)
                 {
@@ -158,12 +178,18 @@ namespace BossRush
                     return false;
                 }
 
-                if (!DailyReportPersistence.FlushPending())
+                if (DailyReportPersistence.HasPendingWrite)
                 {
-                    error = "key_flush_failed";
-                    _lastError = error;
-                    lock (_lock) { _deferredFlushPending = true; }
-                    return false;
+                    if (!DailyReportPersistence.FlushPending())
+                    {
+                        error = "key_flush_failed";
+                        _lastError = error;
+                        lock (_lock) { _deferredFlushPending = true; }
+                        return false;
+                    }
+
+                    // 已进 SavesSystem 内存，但还没写盘：从这一刻起就欠一次 SaveFile。
+                    lock (_lock) { _saveFilePending = true; }
                 }
 
                 if (DailyReportPersistence.IsStoreFaulted)
@@ -174,12 +200,23 @@ namespace BossRush
                 }
 
                 // 每批至多一次物理落盘：这是日报唯一的 SaveFile 调用点。
+                // 跨子系统的每帧闸：五个协调器各有独立 SaveFile 调用点，
+                // 回基地首帧极易挤在同一帧。被拒时沿用已有的 deferred + Tick 重试链
+                // 在后续帧补写，与 IsSaving 分支同语义。
+                if (!BossRushSaveFileThrottle.TryBeginSaveFile(bypassSceneGate))
+                {
+                    lock (_lock) { _deferredFlushPending = true; }
+                    error = "flush_deferred_savefile_frame_busy";
+                    return false;
+                }
+
                 SavesSystem.SaveFile(false);
 
                 lock (_lock)
                 {
                     _deferredFlushPending = false;
                     _deferredRetryCount = 0;
+                    _saveFilePending = false;
                     _lastError = null;
                 }
                 return true;
@@ -222,6 +259,8 @@ namespace BossRush
             {
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
+                // 欠账位随槽/卸载一起清：旧槽欠的 SaveFile 不该拿新槽去补
+                _saveFilePending = false;
                 _lastError = null;
             }
             DailyReportPersistence.ResetStaticCaches();

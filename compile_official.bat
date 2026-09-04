@@ -132,6 +132,7 @@ echo(Common\Lifecycle\BossRushRuntimeModuleHost.cs
 echo(Common\Lifecycle\BossRushRuntimeModuleBase.cs
 echo(Common\Lifecycle\ArchitectureSentinelRuntimeModule.cs
 echo(Common\Lifecycle\BossRushRuntimeModuleRegistration.cs
+echo(Common\Lifecycle\BossRushSaveFileThrottle.cs
 echo(Common\Events\BossRushEventBus.cs
 echo(Common\Infrastructure\BossRushEagerReflectionCache.cs
 echo(Common\UI\BossRushUI.cs
@@ -965,6 +966,20 @@ if %BUILD_EXIT_CODE% EQU 0 (
             ) else (
                 echo Deployed item icons to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items
             )
+        )
+        REM WikiContent is read at runtime from <modDir>\WikiContent by WikiContentManager.
+        REM It is a multi-level tree (catalog.tsv + <lang>\<category>\*.md), so /E is required.
+        REM Missing content only DevLogs at runtime, which release builds strip - deploy it explicitly.
+        if exist "WikiContent\catalog.tsv" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\WikiContent" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\WikiContent"
+            xcopy /E /Y /I "WikiContent" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\WikiContent\" >nul
+            if errorlevel 1 (
+                echo WARNING: WikiContent deploy failed.
+            ) else (
+                echo Deployed WikiContent to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\WikiContent
+            )
+        ) else (
+            echo WARNING: WikiContent missing at WikiContent\catalog.tsv; in-game wiki will be empty.
         )
         if exist "Assets\Data\ModeH\*.json" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\ModeH"

@@ -691,6 +691,11 @@ namespace BossRush
                 if (state == null || !state.IsActive) return;
                 if (ModeGAbandonPresenter.IsOpen) return;
                 if (ZombieModeUIHelper.IsModalInputPaused) return;
+                // IsModalInputPaused 只覆盖 Mod 自己的模态租约，官方界面（背包、地图、
+                // 暂停菜单、对话）不走它。少了这道判定，玩家在官方界面里按到这个键
+                // 就会弹出放弃确认页并把 Time.timeScale 置 0、抢走输入。
+                // 仓库既有写法见 AchievementRuntimeHooks 的成就快捷键。
+                if (Duckov.UI.View.ActiveView != null) return;
 
                 int keyCode = config != null ? config.modeGAbandonHotkey : 0;
                 if (keyCode <= 0) return;

@@ -207,8 +207,12 @@ namespace BossRush
                 // 还原玩家原本的登记，别把测试用的餐留在存档里。
                 try
                 {
+                    // ClearForRun 只摘本局 Modifier、不清存档登记（用例自己在上面
+                    // 断言过这条语义）。玩家原本没有登记时必须调真正清键的入口，
+                    // 否则测试写进去的焚心椒会留在玩家存档里被下一局消费掉。
                     if (original != 0) RaidMealService.RegisterMeal(original);
-                    else RaidMealService.ClearForRun();
+                    else RaidMealService.ClearRegisteredMeal();
+                    RaidMealService.ClearForRun();
                 }
                 catch (Exception e)
                 {

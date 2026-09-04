@@ -60,8 +60,14 @@ def main():
          "逐 effect 状态查询"),
         (r"public static ModeHCommandCompatibilityStatus GetCommandStatus\(string stableKey, string commandId\)",
          "口令级状态由 effect 派生"),
-        (r"if \(passed == effectIds\.Count\) return ModeHCommandCompatibilityStatus\.VerifiedBehavior;",
+        # 全部通过才可能是 VerifiedBehavior；但「全部通过的都只是动作型证据」时
+        # 必须如实降级成 ActionApplied，不得冒充字段保持验证通过。
+        (r"if \(passed == effectIds\.Count\)",
          "全部通过才是 VerifiedBehavior"),
+        (r"actionPassed == effectIds\.Count"
+         r"[\s\S]{0,120}ModeHCommandCompatibilityStatus\.ActionApplied"
+         r"[\s\S]{0,120}ModeHCommandCompatibilityStatus\.VerifiedBehavior",
+         "全动作型证据必须降级为 ActionApplied，不得标成 VerifiedBehavior"),
         (r"if \(passed > 0\) return ModeHCommandCompatibilityStatus\.PartiallyVerified;",
          "部分通过为 PartiallyVerified"),
         (r"if \(unavailable == effectIds\.Count\) return ModeHCommandCompatibilityStatus\.Unavailable;",

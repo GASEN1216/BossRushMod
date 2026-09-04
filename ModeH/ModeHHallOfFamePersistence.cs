@@ -118,6 +118,10 @@ namespace BossRush
                     _pending = null;
                     _pendingDigest = null;
                     _writeBarrier = false;
+                    // _storeFaulted 随槽复位：它记录的是「这个槽的 store 出过问题」，
+                    // 不清会让一次读回失败把本进程所有存档槽的名人堂写入永久堵死。
+                    // 形态与 ModeHProfilePersistence.HandleSetFile 一致。
+                    _storeFaulted = false;
                     _lastError = null;
                 }
                 LoadCurrent();

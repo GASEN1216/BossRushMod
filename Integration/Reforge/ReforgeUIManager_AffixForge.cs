@@ -387,6 +387,14 @@ namespace BossRush
                 UpdateAffixStoneCount();
                 ShowAffixResultMessage(result);
                 UpdateAffixButtonInteractable();
+
+                // 上面四个刷新的都是 Mod 自建面板；官方物品详情面板没人动，
+                // 新词缀行要玩家重新点一次物品才出现。复用重铸成功后的同一条刷新链
+                // （RefreshItemDetailsDisplay 内部走缓存好的 ItemDetailsDisplay.Setup 反射）。
+                if (result != null && result.Success)
+                {
+                    RefreshItemDetailsDisplay();
+                }
             }
             catch (Exception e)
             {

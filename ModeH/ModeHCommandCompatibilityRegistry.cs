@@ -62,6 +62,28 @@ namespace BossRush
         /// 真正的实测改放 F3 验收（DebugAndTools/F3GameplayValidationModeHErrorSwap.cs）。
         /// </summary>
         private static HashSet<string> _selfSettledEffectIds;
+
+        /// <summary>
+        /// 动作型控制点：一次性动作，原版每帧自行改写，不适用「字段保持」判据。
+        /// 与 tests/ModeHCommandCompatibilityGuard.py 禁止出现在 ReadField 里的
+        /// 那四个控制点**逐字一致**——那条禁令与本集合是同一件事的两面：
+        /// 禁止它们混进字段保持证据链，同时给它们一条自己的验证路径。
+        /// </summary>
+        private static readonly HashSet<string> ActionControlPointIds =
+            new HashSet<string>(StringComparer.Ordinal)
+            {
+                "searchedEnemy",
+                "setNoticedToTarget",
+                "moveToPos",
+                "nextReleaseSkillTimeMarker",
+            };
+
+        /// <summary>该控制点是否为动作型（验证标准是后置条件，不是字段保持）。</summary>
+        internal static bool IsActionControlPoint(string controlPointId)
+        {
+            return !string.IsNullOrEmpty(controlPointId)
+                && ActionControlPointIds.Contains(controlPointId);
+        }
         private static string _matrixSignature;
 
         #endregion
@@ -351,15 +373,29 @@ namespace BossRush
             if (effectIds == null || effectIds.Count == 0) return ModeHCommandCompatibilityStatus.Unavailable;
 
             int passed = 0;
+            int actionPassed = 0;
             int unavailable = 0;
             for (int i = 0; i < effectIds.Count; i++)
             {
                 ModeHCommandCompatibilityStatus status = GetEffectStatus(stableKey, effectIds[i]);
                 if (status == ModeHCommandCompatibilityStatus.VerifiedBehavior) passed++;
+                else if (status == ModeHCommandCompatibilityStatus.ActionApplied)
+                {
+                    passed++;
+                    actionPassed++;
+                }
                 else if (status == ModeHCommandCompatibilityStatus.Unavailable) unavailable++;
             }
 
-            if (passed == effectIds.Count) return ModeHCommandCompatibilityStatus.VerifiedBehavior;
+            if (passed == effectIds.Count)
+            {
+                // 全部分量都只有动作型证据时如实标成 ActionApplied，不冒充字段验证通过。
+                // finish 就是这一类：两条分量都是动作（searchedEnemy / setNoticedToTarget），
+                // 旧写法因此恒 ReportOnly，8 条通用口令实际只有 7 条能到玩家手里。
+                return actionPassed == effectIds.Count
+                    ? ModeHCommandCompatibilityStatus.ActionApplied
+                    : ModeHCommandCompatibilityStatus.VerifiedBehavior;
+            }
             if (passed > 0) return ModeHCommandCompatibilityStatus.PartiallyVerified;
             if (unavailable == effectIds.Count) return ModeHCommandCompatibilityStatus.Unavailable;
             return ModeHCommandCompatibilityStatus.ReportOnly;
@@ -370,7 +406,10 @@ namespace BossRush
         {
             ModeHCommandCompatibilityStatus status = GetCommandStatus(stableKey, commandId);
             return status == ModeHCommandCompatibilityStatus.VerifiedBehavior
-                || status == ModeHCommandCompatibilityStatus.PartiallyVerified;
+                || status == ModeHCommandCompatibilityStatus.PartiallyVerified
+                // 动作型口令（finish）：动作已确认落地，只是不做字段保持验证。
+                // 排除它等于把一条实现完整、运行时也确实生效的口令永久藏起来。
+                || status == ModeHCommandCompatibilityStatus.ActionApplied;
         }
 
         /// <summary>取一条口令的全部 effectId（ordinal 升序）。</summary>

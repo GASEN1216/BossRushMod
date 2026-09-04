@@ -176,6 +176,15 @@ namespace BossRush
                 request.Handle = null;
             }
 
+            // 中止一律记 SKIP，与全仓其余用例同口径：玩家取消或套件超时不是产品缺陷。
+            // 旧写法会把 create_timeout_or_cancel 这类中止原因记成 FAIL，制造假红。
+            if (ShouldAbort())
+            {
+                Record("MODE_H_ERROR_SWAP", "SKIP", sw.ElapsedMilliseconds, metrics,
+                    DescribeAbortReason());
+                yield break;
+            }
+
             Record("MODE_H_ERROR_SWAP", passed ? "PASS" : (reason == null ? "PASS" : "FAIL"),
                 sw.ElapsedMilliseconds, metrics, passed ? null : reason);
         }

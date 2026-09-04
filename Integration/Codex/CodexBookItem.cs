@@ -143,6 +143,13 @@ namespace BossRush
             {
                 usageUtils.behaviors = new List<UsageBehavior>();
             }
+            else
+            {
+                // 兜底注册是从既有物品 Instantiate 出来的，克隆源的 UsageBehavior 会一并带过来
+                // （FindRuntimeFallbackSource 的首选就是成就勋章）。不清空的话，右键图鉴书
+                // 会连带触发克隆源的使用行为——实测是把成就界面一起开/关。
+                usageUtils.behaviors.Clear();
+            }
 
             CodexBookUsageBehavior usage = item.GetComponent<CodexBookUsageBehavior>();
             if (usage == null)

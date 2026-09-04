@@ -191,7 +191,18 @@ namespace BossRush
             if (string.IsNullOrEmpty(failureReasonId)) return string.Empty;
             string key = PetNestTuning.LocalizationPrefix + "Fail_" + failureReasonId;
             string text = LocalizationHelper.GetLocalizedText(key);
-            if (string.IsNullOrEmpty(text) || text == key) return failureReasonId;
+
+            // 官方 LocalizationManager.GetPlainText 查不到时返回的是 **"*" + key + "*"**，
+            // 不是 key 本身（源码 :132-139）。原来的 `text == key` 判据因此恒不成立，
+            // 回落是死代码，未登记的 failureReasonId 会以 *BossRush_PetNest_Fail_xxx*
+            // 的形态直接显示给玩家。这里按真实的星号包裹形态判定。
+            if (string.IsNullOrEmpty(text)) return failureReasonId;
+            if (text == key) return failureReasonId;
+            if (text.Length >= 2 && text[0] == '*' && text[text.Length - 1] == '*'
+                && text.Substring(1, text.Length - 2) == key)
+            {
+                return failureReasonId;
+            }
             return text;
         }
 

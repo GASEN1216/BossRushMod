@@ -680,7 +680,7 @@ namespace BossRush
     {
         public Carriable carryTarget;
 
-        private bool isCarrying = false;
+        private bool isCarrying = false; public bool IsCarrying { get { return isCarrying; } } // 空投回收宽限判据之一
         private CharacterMainControl carrier = null;
         private Transform carrierRoot = null;
         private Transform cachedTransform = null;

@@ -299,6 +299,67 @@ namespace BossRush
 
         #endregion
 
+        /// <summary>
+        /// 换槽 / 删档：把注入闸复位，并把已注入的建筑条目从官方长寿表里摘掉。
+        ///
+        /// `BuildingDataCollection` 是跨场景跨存档槽都不会重建的 ScriptableObject，
+        /// 而注入时 requireBuildings / requireQuests 都被显式设成空数组，官方
+        /// `RequirementsSatisfied()` 因此恒为 true——一旦在 A 档解锁并注入，
+        /// 同一次游戏会话里切到 B 档（哪怕全新档）建造菜单里照样列着展示柜，
+        /// 玩家能花 800 建一个在该档永远打不开的柜子（交互体的 IsInteractable
+        /// 会因 B 档未解锁而恒 false）。
+        ///
+        /// 摘掉之后不影响 A 档：回到 A 档时基地装配管线会重新走
+        /// InitBackMountainShowcase 按该槽的解锁状态重新注入。
+        /// </summary>
+        internal void NotifyShowcaseSlotChanged()
+        {
+            try
+            {
+                RemoveShowcaseBuildingData();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix
+                    + "[WARNING] 展示柜建筑条目摘除失败: " + e.Message);
+            }
+            finally
+            {
+                // 闸必须复位：不复位的话新槽解锁后反而注入不上（早返直接吃掉）
+                backMountainShowcaseInjected = false;
+            }
+        }
+
+        /// <summary>按 id 从官方 infos 列表里摘掉展示柜条目。找不到即无操作。</summary>
+        private void RemoveShowcaseBuildingData()
+        {
+            Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+            if (bdcType == null) return;
+
+            PropertyInfo instanceProp = bdcType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+            object bdcInstance = instanceProp != null ? instanceProp.GetValue(null, null) : null;
+            if (bdcInstance == null) return;
+
+            FieldInfo infosField = bdcType.GetField("infos", BindingFlags.NonPublic | BindingFlags.Instance);
+            IList infosList = infosField != null ? infosField.GetValue(bdcInstance) as IList : null;
+            if (infosList == null) return;
+
+            Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
+            FieldInfo infoIdField = buildingInfoType != null ? buildingInfoType.GetField("id") : null;
+            if (infoIdField == null) return;
+
+            for (int i = infosList.Count - 1; i >= 0; i--)
+            {
+                object info = infosList[i];
+                if (info == null) continue;
+                string existingId = infoIdField.GetValue(info) as string;
+                if (string.Equals(existingId, BACKMOUNTAIN_SHOWCASE_BUILDING_ID, StringComparison.Ordinal))
+                {
+                    infosList.RemoveAt(i);
+                }
+            }
+        }
+
         #region 数据注入
 
         private void InjectShowcaseBuildingData()

@@ -134,7 +134,7 @@ namespace BossRush
             try
             {
                 string error;
-                return FlushBatch(out error);
+                return FlushBatch(out error, true);
             }
             catch (Exception)
             {
@@ -147,6 +147,29 @@ namespace BossRush
         #region 批次落盘（唯一物理写入点）
 
         private static bool FlushBatch(out string error)
+        {
+            return FlushBatch(out error, false);
+        }
+
+        /// <summary>当前是否处在「顺延物理落盘」的战斗相位。no-throw。</summary>
+        private static bool IsCombatFrameWriteDeferred()
+        {
+            try
+            {
+                return ModeHRuntimeGates.IsModeHCombatFrameActive;
+            }
+            catch (Exception)
+            {
+                // 判不出来就照常落盘：欠账拖住比偶尔卡一帧更糟
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// <paramref name="forceHostWrite"/> = true 时绕过战斗帧顺延：宿主销毁与切槽
+        /// 必须立刻把欠账写下去，否则本局的赛季/名人堂/押品记录会随进程一起消失。
+        /// </summary>
+        private static bool FlushBatch(out string error, bool forceHostWrite)
         {
             error = null;
             bool seasonPending = ModeHProfilePersistence.HasPendingWrite;
@@ -221,7 +244,33 @@ namespace BossRush
                     return false;
                 }
 
+                // 战斗帧顺延物理落盘（照 ModeG 的 IsModeGHostFileWriteDeferred）：
+                // typed Save 上面已经做完，欠的只是 SavesSystem.SaveFile 这一下。
+                // 官方 SaveFile 会 CreateBackup() 复制整份备份、每 5 分钟再 CreateIndexedBackup、
+                // 最后 ES3.StoreCachedFile 同步写整档，全在主线程；而战场快照每 10 秒
+                // （外加每批入场/拍铃/倒地接力）就触发一次，正打着就卡一下。
+                // 顺延后由 Tick 在离开战斗后补写，欠账不会丢。
+                if (!forceHostWrite && IsCombatFrameWriteDeferred())
+                {
+                    lock (_lock)
+                    {
+                        _deferredFlushPending = true;
+                    }
+                    error = "flush_deferred_combat_frame";
+                    return false;
+                }
+
                 // 每批至多一次物理落盘：这是 Mode H 唯一的 SaveFile 调用点。
+                // 跨子系统的每帧闸：五个协调器各有独立 SaveFile 调用点，
+                // 回基地首帧极易挤在同一帧。被拒时沿用已有的 deferred + Tick 重试链
+                // 在后续帧补写，与 IsSaving 分支同语义。
+                if (!BossRushSaveFileThrottle.TryBeginSaveFile(forceHostWrite))
+                {
+                    lock (_lock) { _deferredFlushPending = true; }
+                    error = "flush_deferred_savefile_frame_busy";
+                    return false;
+                }
+
                 SavesSystem.SaveFile(false);
 
                 lock (_lock)

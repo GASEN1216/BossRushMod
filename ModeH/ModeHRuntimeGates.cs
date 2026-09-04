@@ -66,6 +66,21 @@ namespace BossRush
         /// <summary>上次风险重扫的槽代数，用于节流。</summary>
         private static int _lastRiskRetryGeneration = -1;
 
+        /// <summary>处于战斗相位：物理落盘顺延到战斗之外。</summary>
+        private static bool _combatFrameActive;
+
+        /// <summary>本槽代数内已消耗的重扫次数（只统计仍然失败的那几次）。</summary>
+        private static int _riskRetryAttemptsThisGeneration;
+
+        /// <summary>
+        /// 单个槽代数内允许的重扫次数上限。
+        /// 旧写法是「一次」，且**先写节流位再重扫**——只要那一次也失败，
+        /// 同一个槽就永远不会再扫，七个旧模式入口被锁到切槽或重启为止。
+        /// 现在改为「成功即不再计数、失败才计数」，并留一个上限防止
+        /// 玩家每次点入口都重扫一遍存档。
+        /// </summary>
+        private const int MaxRiskRetryAttemptsPerGeneration = 3;
+
         // ERROR 完整互换（§17.6.5 部件二）：看台身体解冻门。
         // 只有 ModeHCombatControl 在持有有效 run owner token 且互换已完成时才置位；
         // 释放、倒地、比赛结束、技术中止、切图与 OnDestroy 都必须清零。
@@ -155,6 +170,8 @@ namespace BossRush
                 _runOwnerActive = false;
                 _riskReasonId = null;
                 _contentReasonId = null;
+                // 换槽后不可能还留在上一个槽的战斗相位里
+                _combatFrameActive = false;
             }
         }
 
@@ -374,6 +391,36 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 是否处在「不许做物理落盘」的战斗相位。
+        /// 语义与 ModeG 的 `IsModeGHostFileWriteDeferred` 一致：typed Save 照常，
+        /// 只把 `SavesSystem.SaveFile`（整档写 + 备份复制）顺延到战斗之外。
+        /// </summary>
+        public static bool IsModeHCombatFrameActive
+        {
+            get
+            {
+                try
+                {
+                    lock (_lock) { return _combatFrameActive; }
+                }
+                catch (Exception)
+                {
+                    // 判不出来就当作不在战斗：宁可照常落盘，也不要把欠账拖住
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>由状态机转换回调维护。no-throw。</summary>
+        public static void SetCombatFrameActive(bool active)
+        {
+            lock (_lock)
+            {
+                _combatFrameActive = active;
+            }
+        }
+
         #endregion
 
         #region 组合判定
@@ -408,8 +455,14 @@ namespace BossRush
 
         /// <summary>
         /// 重跑一次风险扫描。只在扫描曾因 I/O 失败时有意义；
-        /// 按槽代数节流，避免旧模式入口每次被拒都重扫一遍。
+        /// 按槽代数限次，避免旧模式入口每次被拒都重扫一遍。
         /// 返回是否真的重扫了。no-throw。
+        ///
+        /// 【节流位只在仍然失败时才消耗】旧写法先写 `_lastRiskRetryGeneration`
+        /// 再重扫，于是「这一次也没成功」就等于「这个槽再也不重扫」，
+        /// 一次瞬时读档 I/O 抖动能把七个旧模式入口锁到切槽或重启为止。
+        /// 现在重扫成功（`_riskScanFaulted` 已清）就不计数，失败才计数，
+        /// 上限 <see cref="MaxRiskRetryAttemptsPerGeneration"/>。
         /// </summary>
         public static bool TryRetryRiskScan(float unusedMinIntervalSeconds)
         {
@@ -420,14 +473,30 @@ namespace BossRush
                 {
                     if (!_riskScanFaulted) return false;
                     generation = _slotGeneration;
-                    if (_lastRiskRetryGeneration == generation) return false;
-                    _lastRiskRetryGeneration = generation;
+                    if (_lastRiskRetryGeneration != generation)
+                    {
+                        // 换槽了：重扫预算重新开始计
+                        _lastRiskRetryGeneration = generation;
+                        _riskRetryAttemptsThisGeneration = 0;
+                    }
+                    if (_riskRetryAttemptsThisGeneration >= MaxRiskRetryAttemptsPerGeneration)
+                    {
+                        return false;
+                    }
                 }
+
                 InitializeRiskForSlot(generation);
+
+                lock (_lock)
+                {
+                    // 仍然 faulted 才算消耗掉一次预算；成功自愈的不计数
+                    if (_riskScanFaulted) _riskRetryAttemptsThisGeneration++;
+                }
                 return true;
             }
             catch (Exception)
             {
+                // 判定链路本身不得抛：调用方只会理解为「这次没重扫」
                 return false;
             }
         }

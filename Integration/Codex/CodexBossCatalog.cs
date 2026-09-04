@@ -376,6 +376,17 @@ namespace BossRush
             {
                 return info.DisplayName;
             }
+
+            // 目录外 Boss（例如战役终章「冠军之影」）的 key 就是官方 preset 的 nameKey，
+            // 它本身是一条**已注入的本地化键**。直接把 key 摆上卡片，玩家看到的是
+            // 一串带星号的原始键。这里再过一次本地化：查得到就用译文，查不到才回落 key。
+            string localized = LocalizationHelper.GetLocalizedText(key);
+            if (!string.IsNullOrEmpty(localized) && localized != key
+                && !(localized.Length >= 2 && localized[0] == '*'
+                    && localized[localized.Length - 1] == '*'))
+            {
+                return localized;
+            }
             return key;
         }
 

@@ -13,6 +13,15 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 DUCK_DIR = ROOT / "Integration" / "NPCs" / "DuckNpc"
 DATA_FILE = ROOT / "Assets" / "Data" / "DuckNpcs.json"
+
+# 合法场景名：基地枢纽四个变体（Utilities/SceneRuntimeGate.cs）
+# ∪ Assets/SpawnPoints/*.json 的 sceneName 全集（文件名即场景名）。
+# 比对是大小写敏感的 Ordinal（DuckNpcBlueprint.AllowsScene）。
+KNOWN_SCENE_NAMES = set(
+    ["Base", "Base_SceneV2", "Base_SceneV2_Sub_01",
+     "Level_HiddenWarehouse_CellarUnderGround"]
+    + [p.stem for p in (ROOT / "Assets" / "SpawnPoints").glob("*.json")]
+)
 COMPILE_LIST = ROOT / "compile_official.bat"
 
 FACTORY = DUCK_DIR / "DuckNpcFactory.cs"
@@ -329,6 +338,20 @@ def main() -> int:
                 else:
                     if not row["permanent"].get("displayNameCn"):
                         errors.append("永久 NPC " + npc_id + " 缺少 permanent.displayNameCn")
+                # scenes 为空 = 永远不生成：DuckNpcBlueprint.AllowsScene 对空数组
+                # 直接 return false，DuckNpcModule.ShouldSpawnInScene 因此恒假。
+                # 出厂数据曾经三条全是 []，整条捏脸 NPC 工具链一只都刷不出来，
+                # 而编译、守卫、日志全都看不出异常。
+                scenes = row.get("scenes")
+                if not isinstance(scenes, list) or len(scenes) == 0:
+                    errors.append(
+                        "永久 NPC " + npc_id + " 的 scenes 为空：AllowsScene 恒 false，永远不会生成")
+                else:
+                    for scene_name in scenes:
+                        if scene_name not in KNOWN_SCENE_NAMES:
+                            errors.append(
+                                "永久 NPC " + npc_id + " 的 scenes 含未知场景名 "
+                                + str(scene_name) + "（比对是大小写敏感的 Ordinal）")
 
     compile_text = read(COMPILE_LIST)
     for path in sorted(DUCK_DIR.glob("*.cs")) + sorted(PERM_DIR.glob("*.cs")):

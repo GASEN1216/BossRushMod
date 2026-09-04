@@ -87,6 +87,12 @@ namespace BossRush
             /// 举盾、起手 telegraph 和贴脸近战 Boss 本来就不移动，不能被反复瞬移。
             /// </summary>
             public const float BossStuckEngagedDistance = 6f;
+
+            /// <summary>
+            /// 「贴脸交战」豁免允许的最大垂直落差。超过它说明 Boss 与玩家根本不在同一层，
+            /// 那是掉进地形/卡在几何体里，必须照常解卡而不是当成交战。
+            /// </summary>
+            public const float BossStuckEngagedHeightTolerance = 3f;
             public const int DropCleanupWaveAge = 3;
             public const float DropCleanupAgeSeconds = 300f;
             /// <summary>拾取检查要对每个候选物做 GetComponent，不能每帧跑。</summary>
@@ -435,6 +441,7 @@ namespace BossRush
         public const float TemporaryNpcProtectionTickIntervalSeconds = Performance.TemporaryNpcProtectionTickIntervalSeconds;
         public const float BossStuckTimeoutSeconds = Performance.BossStuckTimeoutSeconds;
         public const float BossStuckEngagedDistance = Performance.BossStuckEngagedDistance;
+        public const float BossStuckEngagedHeightTolerance = Performance.BossStuckEngagedHeightTolerance;
         public const int DropCleanupWaveAge = Performance.DropCleanupWaveAge;
         public const float DropCleanupAgeSeconds = Performance.DropCleanupAgeSeconds;
         public const float DropPickupScanIntervalSeconds = Performance.DropPickupScanIntervalSeconds;

@@ -69,6 +69,13 @@ namespace BossRush
             internal bool IsSeed;
         }
 
+        /// <summary>
+        /// 六件后山物品的堆叠上限。种子与出击餐都是消耗品，理应可堆叠；
+        /// 不显式赋值会继承克隆兜底源（遗种蛋）的不可堆叠设定。
+        /// 取值与 <c>Integration/Items/CalmingDropsConfig.cs</c> 等既有可堆叠消耗品一致。
+        /// </summary>
+        private const int ItemMaxStackCount = 20;
+
         private static Definition[] _definitions;
 
         /// <summary>全部后山物品定义。种子在前，出击餐在后。</summary>
@@ -203,6 +210,11 @@ namespace BossRush
             {
                 item.DisplayNameRaw = def.LocKey;
                 item.name = def.NameEN;
+                // 不设 MaxStackCount 就会**隐式继承克隆兜底源**（遗种蛋，不可堆叠）的值，
+                // 六件种子/出击餐因此全都一格一个，换个兜底源还会跟着变。
+                // 取值与 CalmingDropsConfig 等既有可堆叠消耗品一致。
+                item.MaxStackCount = ItemMaxStackCount;
+                item.StackCount = 1;
                 item.Value = def.Value;
                 item.Quality = def.Quality;
                 ModeFItemConfigHelper.SetHiddenMember(item, "description", L10n.T(def.DescCN, def.DescEN));

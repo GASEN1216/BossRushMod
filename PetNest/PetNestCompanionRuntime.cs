@@ -59,6 +59,10 @@ namespace BossRush
         /// <summary>最近一次未能带崽的原因（诊断与 HUD 提示用）。</summary>
         internal static string LastBlockReasonId { get { return _lastBlockReasonId; } }
 
+        /// <summary>已就该场景代数提示过的受阻原因（去重用）。</summary>
+        private static string _notifiedBlockReasonId;
+        private static int _notifiedBlockGeneration = -1;
+
         /// <summary>在场随从的角色引用（HUD / 重伤处理读取）。</summary>
         internal static CharacterMainControl CompanionCharacter
         {
@@ -89,6 +93,7 @@ namespace BossRush
             if (pet.state == (int)PetNestPetState.Downed)
             {
                 _lastBlockReasonId = ReasonPetDowned;
+                NotifyBlockReasonOnce(owner, sceneGeneration);
                 CloseSpawnRetryWindow();
                 return;
             }
@@ -97,6 +102,7 @@ namespace BossRush
             if (!PetNestModeGate.IsCompanionAllowed(owner, out blockReasonId))
             {
                 _lastBlockReasonId = blockReasonId;
+                NotifyBlockReasonOnce(owner, sceneGeneration);
                 return;
             }
 
@@ -117,6 +123,33 @@ namespace BossRush
 
             _sceneGeneration = sceneGeneration;
             SpawnAsync(owner, pet, lineage, source, sceneGeneration).Forget();
+        }
+
+        /// <summary>
+        /// 把「这局为什么没带上崽」告诉玩家一次。
+        ///
+        /// LastBlockReasonId 此前全仓没有任何消费者，而 HUD 又只在成功入场后才创建，
+        /// 于是玩家设了出战崽却什么都没出现时，连一句解释都拿不到。
+        /// 按 (场景代数, 原因) 去重：入场是每秒重试的，不去重会刷屏。
+        /// </summary>
+        private static void NotifyBlockReasonOnce(ModBehaviour owner, int sceneGeneration)
+        {
+            try
+            {
+                if (owner == null || string.IsNullOrEmpty(_lastBlockReasonId)) return;
+                if (_notifiedBlockGeneration == sceneGeneration
+                    && string.Equals(_notifiedBlockReasonId, _lastBlockReasonId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+                _notifiedBlockGeneration = sceneGeneration;
+                _notifiedBlockReasonId = _lastBlockReasonId;
+                owner.ShowMessage(PetNestLocalization.DescribeFailure(_lastBlockReasonId));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 入场受阻提示失败: " + e.Message);
+            }
         }
 
         /// <summary>

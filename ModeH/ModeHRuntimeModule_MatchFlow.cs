@@ -367,6 +367,24 @@ namespace BossRush
         /// `BossRushUIColors.RarityCommon`（不是 accent——描边色只有 IsAnomaly 才换成
         /// Warning），全部选秀卡因此共用同一条中性描边，正是想要的表现。
         /// </summary>
+        /// <summary>
+        /// 侦察揭示的核心特质 ID -> 显示名。`coreTraitTags` 里混着底色（temperament）
+        /// 与怪癖（quirk）两类 ID，前缀不同，按已冻结的 ID 表判定该用哪个。
+        /// </summary>
+        private static string ResolveTraitDisplayName(string traitId)
+        {
+            if (string.IsNullOrEmpty(traitId)) return string.Empty;
+            string prefix = ModeHConfig.LocalizationKeyPrefix;
+            for (int i = 0; i < ModeHStableIds.AllTemperaments.Length; i++)
+            {
+                if (string.Equals(ModeHStableIds.AllTemperaments[i], traitId, StringComparison.Ordinal))
+                {
+                    return L10n.T(prefix + "Temperament_" + traitId);
+                }
+            }
+            return L10n.T(prefix + "Quirk_" + traitId);
+        }
+
         private ModeHCardData BuildProfileCard(ModeHProfileDto profile)
         {
             ModeHCardData card = new ModeHCardData();
@@ -537,11 +555,23 @@ namespace BossRush
                 {
                     line += L10n.T("：", ": ") + L10n.T(revealKey);
                 }
-                // reconResult 是「成员顺序」「第二装备」两项的文本结果，另两项直接写进
-                // publicSummary、由赔率页的公开摘要呈现，这里不重复展示。
+                // reconResult 是「成员顺序」「第二装备」两项的文本结果。
                 if (!string.IsNullOrEmpty(plan.reconResult))
                 {
                     line += "　" + plan.reconResult;
+                }
+                // coreTraitTags（「隐藏坏习惯」那一项）此前**全仓零消费**：写进
+                // publicSummary 后再没人读，玩家消耗掉本场唯一一次侦察机会却什么都看不到。
+                // 带伤数量那一项确实由赔率页摘要呈现（ModeHOddsController 读它），不重复。
+                List<string> traits = plan.publicSummary != null
+                    ? plan.publicSummary.coreTraitTags : null;
+                if (traits != null && traits.Count > 0)
+                {
+                    for (int t = 0; t < traits.Count; t++)
+                    {
+                        if (string.IsNullOrEmpty(traits[t])) continue;
+                        line += (t == 0 ? "　" : "、") + ResolveTraitDisplayName(traits[t]);
+                    }
                 }
                 page.Lines.Add(line);
                 return;
@@ -914,8 +944,14 @@ namespace BossRush
             string prepareFailure;
             if (!EnsurePreparedMatchSelection(out prepareFailure))
             {
+                // 这条分支此前直接 return，page.Actions 为空——而 CreateActions 遇到
+                // 零按钮直接 return，一个控件都不画；赔率页却已经 ClaimModalInput
+                // （timeScale=0 + 禁输入）且没有 ESC 处理，玩家就被困在时停页上。
+                // 整备拿不出阵容属技术故障，与 EnsureMatchPlan 同口径消耗一次重试预算，
+                // 由状态机把玩家路由到恢复壳（那里有可点的动作），而不是留在死页上。
                 page.Body = L10n.T("本场整备不可用：", "Match setup unavailable: ")
-                    + (prepareFailure != null ? prepareFailure : "unknown");
+                    + L10n.T(ModeHAvailability.GetReasonLocalizationKey(prepareFailure));
+                RequestTechnicalRetry(prepareFailure != null ? prepareFailure : "prepare_failed");
                 return page;
             }
 

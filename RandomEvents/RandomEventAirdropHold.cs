@@ -56,6 +56,9 @@ namespace BossRush
         /// </summary>
         private bool _crateLootViewOpen;
 
+        /// <summary>箱子上的「搬起」交互组件（惰性缓存）。</summary>
+        private BossRushCarryInteractable _crateCarry;
+
         /// <summary>官方 loot 事件是否已订阅（幂等 + 成对退订，AGENTS 4.6）。</summary>
         private bool _lootEventsHooked;
 
@@ -93,7 +96,11 @@ namespace BossRush
                 // 此后 Interacting 恒 false 而界面仍开着，只看它等于保护从不生效。
                 // Interacting 保留为次要信号（纯属性、无副作用），覆盖「正在打开」这一小段。
                 // 绝不在这里读 crate.Inventory（非纯 getter）。
-                if (!_crateLootViewOpen && !_validationCrate.Interacting) return;
+                // 第三种「玩家正在处理这个箱子」的形态：箱子被搬起来了。
+                // 创建时 DecorateLootbox 的 includeCarryInteraction=true 给它挂了「搬起」，
+                // 而宽限窗口此前只认战利品界面——玩家把箱子扛在手上时到点回收，
+                // 箱子连同里面没取的东西一起在手上蒸发。
+                if (!_crateLootViewOpen && !_validationCrate.Interacting && !IsCrateCarried()) return;
 
                 float remaining = ctx.DurationSeconds - ctx.ElapsedSeconds;
                 float step = RandomEventsTuning.AirdropHoldOpenGraceSeconds - remaining;
@@ -112,6 +119,29 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 箱子是否正被玩家扛着。缓存组件引用，每帧只读一个 bool。
+        /// no-throw：读不到就当没扛着，退回原有的两条判据。
+        /// </summary>
+        private bool IsCrateCarried()
+        {
+            try
+            {
+                if (_validationCrate == null) return false;
+                if (_crateCarry == null)
+                {
+                    _crateCarry = _validationCrate.GetComponent<BossRushCarryInteractable>();
+                    if (_crateCarry == null) return false;
+                }
+                return _crateCarry.IsCarrying;
+            }
+            catch (Exception)
+            {
+                // 每帧热路径，不刷日志（AGENTS 4.7 / 4.12）
+                return false;
+            }
+        }
+
+        /// <summary>
         /// 缓存箱子的本地库存引用，并把续期额度归零。OnTrigger 在箱子建好后调一次。
         ///
         /// 单独收口而不是写在 OnTrigger 里：InteractableLootbox.Inventory **不是纯 getter**
@@ -122,6 +152,7 @@ namespace BossRush
         private void PrimeAirdropHoldState(InteractableLootbox crate)
         {
             _crateInventory = null;
+            _crateCarry = null;
             _holdExtendedSeconds = 0f;
             _crateLootViewOpen = false;
             HookLootEvents();
@@ -146,6 +177,7 @@ namespace BossRush
             UnhookLootEvents();
             _crateLootViewOpen = false;
             _crateInventory = null;
+            _crateCarry = null;
             _holdExtendedSeconds = 0f;
         }
 

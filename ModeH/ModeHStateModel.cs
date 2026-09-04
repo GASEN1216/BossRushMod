@@ -183,7 +183,20 @@ namespace BossRush
         /// <summary>控制点缺失：完全隐藏，不得抽取</summary>
         Unavailable = 3,
         /// <summary>部分 effect 通过：可选，但文案只描述已通过部分</summary>
-        PartiallyVerified = 4
+        PartiallyVerified = 4,
+
+        /// <summary>
+        /// 动作型控制点已确认落地：**不做字段保持验证**，验证标准是动作的可观测后置条件
+        /// （searchedEnemy 指向了目标 / noticed 为真 / 已下达移动指令）。
+        ///
+        /// 为什么单列一档而不是复用 VerifiedBehavior：
+        ///   searchedEnemy / setNoticedToTarget / moveToPos / nextReleaseSkillTimeMarker
+        ///   是一次性动作，原版每帧都会自行改写它们，"字段仍等于我写进去的值"这条
+        ///   判据对它们**没有意义**。把它们塞进字段保持证据链会把「口令根本没生效」
+        ///   标成 VerifiedBehavior，这正是 ModeHCommandCompatibilityGuard 明令禁止的。
+        ///   单列一档既让 finish 这类纯动作口令能到玩家手里，又不谎称它通过了字段验证。
+        /// </summary>
+        ActionApplied = 5
     }
 
     /// <summary>名人堂跨 key 幂等命令状态（§20.1）。</summary>

@@ -65,19 +65,34 @@ namespace BossRush
         /// <summary>
         /// 需要按指定键稳定排序的对象数组（§20.2 冻结清单）。
         /// </summary>
-        private static readonly Dictionary<string, string> SortedObjectArrayFields =
-            new Dictionary<string, string>(StringComparer.Ordinal)
+        /// <summary>
+        /// §20.2 冻结的「按指定键稳定排序」的对象数组。值是**候选键列表**，按序取第一个
+        /// 「所有元素都具备」的键。
+        ///
+        /// 之所以要候选列表：有两个不同 DTO 的字段都叫 `records`——认证报告
+        /// （`ModeHProductionCertificationDto`）的元素带 `stableKey`，而名人堂信封
+        /// （`ModeHHallOfFameEnvelopeDto`）的元素只有 `hallOfFameId`。旧写法一律按
+        /// `stableKey` 排序，单条记录时比较器不被调用所以看不出来，**第 2 条名人堂记录
+        /// 起必然 `canonical_sort_key_missing`**，摘要算不出来 → 名人堂写入失败 →
+        /// 赛季被强制 Suspended。
+        /// </summary>
+        private static readonly Dictionary<string, string[]> SortedObjectArrayFields =
+            new Dictionary<string, string[]>(StringComparer.Ordinal)
             {
-                { "profiles", "profileId" },
-                { "seasonRewardOperations", "operationId" },
-                { "matchReports", "matchIndex" },
-                { "behaviorStatuses", "entryId" },
-                { "effectStatuses", "entryId" },
-                { "records", "stableKey" },
-                { "commandStatuses", "commandId" }
+                { "profiles", new[] { "profileId" } },
+                { "seasonRewardOperations", new[] { "operationId" } },
+                { "matchReports", new[] { "matchIndex" } },
+                { "behaviorStatuses", new[] { "entryId" } },
+                { "effectStatuses", new[] { "entryId" } },
+                { "records", new[] { "stableKey", "hallOfFameId" } },
+                { "commandStatuses", new[] { "commandId" } }
             };
 
         private static readonly object _signatureLock = new object();
+
+        /// <summary>复用的 SHA-256 provider（见 TryComputeSha256 的理由）。</summary>
+        private static SHA256 _sharedSha256;
+
         private static string _cachedGameSignature;
         private static string _cachedModSignature;
 
@@ -92,6 +107,15 @@ namespace BossRush
             {
                 _cachedGameSignature = null;
                 _cachedModSignature = null;
+                if (_sharedSha256 != null)
+                {
+                    try { _sharedSha256.Dispose(); }
+                    catch (Exception)
+                    {
+                        // provider 释放失败不影响卸载流程：置空后下次会重建
+                    }
+                    _sharedSha256 = null;
+                }
             }
         }
 
@@ -111,8 +135,18 @@ namespace BossRush
             }
             try
             {
-                using (SHA256 sha = SHA256.Create())
+                // provider 复用而不是每次 Create()：押品锁盘一次要对整个仓库逐件算语义摘要，
+                // 再叠上整仓摘要，单次操作的调用量是「仓库件数 × 若干轮」。每次新建
+                // CSP 实例既有分配也有句柄开销。SHA256 实例不是线程安全的，但本类的
+                // 全部调用点都在主线程（存档 / 押品 / 认证），且 _signatureLock 已是同一约定。
+                lock (_signatureLock)
                 {
+                    SHA256 sha = _sharedSha256;
+                    if (sha == null)
+                    {
+                        sha = SHA256.Create();
+                        _sharedSha256 = sha;
+                    }
                     if (sha == null)
                     {
                         error = "digest_provider_unavailable";
@@ -655,10 +689,19 @@ namespace BossRush
                 return true;
             }
 
-            string sortKey;
+            string[] sortKeyCandidates;
             if (!string.IsNullOrEmpty(ownerFieldName)
-                && SortedObjectArrayFields.TryGetValue(ownerFieldName, out sortKey))
+                && SortedObjectArrayFields.TryGetValue(ownerFieldName, out sortKeyCandidates))
             {
+                // 按序取第一个「所有元素都具备」的候选键。一个都对不上时不静默放行，
+                // 报缺失并让上层 fail-closed——排序键漂移会让同一份数据算出不同摘要。
+                string sortKey = ResolveSortKey(items, sortKeyCandidates);
+                if (sortKey == null)
+                {
+                    error = "canonical_sort_key_missing:" + string.Join("|", sortKeyCandidates);
+                    return false;
+                }
+
                 List<ModeHJsonValue> sorted = new List<ModeHJsonValue>(items);
                 string sortError = null;
                 sorted.Sort(delegate (ModeHJsonValue a, ModeHJsonValue b)
@@ -681,6 +724,34 @@ namespace BossRush
             }
             sb.Append(']');
             return true;
+        }
+
+        /// <summary>
+        /// 取第一个「所有元素都具备」的候选键；元素为空数组时取第一个候选（排序无实际作用）。
+        /// 一个都不满足返回 null，由调用方 fail-closed。
+        /// </summary>
+        private static string ResolveSortKey(List<ModeHJsonValue> items, string[] candidates)
+        {
+            if (candidates == null || candidates.Length == 0) return null;
+            if (items == null || items.Count == 0) return candidates[0];
+
+            for (int c = 0; c < candidates.Length; c++)
+            {
+                string candidate = candidates[c];
+                bool allHave = true;
+                for (int i = 0; i < items.Count; i++)
+                {
+                    ModeHJsonValue item = items[i];
+                    if (item == null || item.Kind != ModeHJsonKind.Object
+                        || item.GetProperty(candidate) == null)
+                    {
+                        allHave = false;
+                        break;
+                    }
+                }
+                if (allHave) return candidate;
+            }
+            return null;
         }
 
         private static int CompareByKey(ModeHJsonValue a, ModeHJsonValue b, string sortKey, ref string error)

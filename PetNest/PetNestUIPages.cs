@@ -136,10 +136,22 @@ namespace BossRush
 
             if (pets.Count == 0)
             {
-                page.Lines.Add(L10n.T("巢是空的。去打 Boss，把它们的遗种带回来。",
-                    "The nest is empty. Go kill bosses and bring their relics home."));
-                // 空巢是新玩家第一次看到这个面板的地方，顺手把系统本身讲清楚
-                page.Lines.Add(T("SystemDesc"));
+                // 读档失败与「真的一只都没有」必须分开讲。写屏障期间内存被换成了空包、
+                // 写入也已封锁（磁盘数据是安全的），此时再说「巢是空的」等于告诉玩家
+                // 崽全丢了——最吓人的是这话还出现在存档其实完好的情况下。
+                if (PetNestService.IsSaveReadOnly)
+                {
+                    page.Lines.Add(L10n.T(
+                        "存档读取失败，已暂停写入以保护数据。这不是「崽丢了」——请退回主菜单重进本档，或联系作者。",
+                        "Save data could not be read; writing is paused to protect it. Your cubs are not lost - reload this save slot."));
+                }
+                else
+                {
+                    page.Lines.Add(L10n.T("巢是空的。去打 Boss，把它们的遗种带回来。",
+                        "The nest is empty. Go kill bosses and bring their relics home."));
+                    // 空巢是新玩家第一次看到这个面板的地方，顺手把系统本身讲清楚
+                    page.Lines.Add(T("SystemDesc"));
+                }
             }
             else
             {

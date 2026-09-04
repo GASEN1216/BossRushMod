@@ -121,6 +121,7 @@ namespace BossRush
                 yield break;
             }
             List<ModeHEffectSpec> measurable = new List<ModeHEffectSpec>();
+            List<ModeHEffectSpec> actionable = new List<ModeHEffectSpec>();
             Dictionary<string, object> scavBefore = new Dictionary<string, object>(StringComparer.Ordinal);
             Dictionary<string, object> wolfBefore = new Dictionary<string, object>(StringComparer.Ordinal);
             for (int j = 0; j < effects.Count; j++)
@@ -130,6 +131,17 @@ namespace BossRush
                 // 没有目标/路径/技能释放遥测的点火和 marker 保留 ReportOnly。
                 ModeHCommandCompatibilityRegistry.RecordEffectStatus(stableKey, effect.EffectId,
                     ModeHCommandCompatibilityStatus.ReportOnly);
+                // 动作型控制点走独立路径：它们是一次性动作，原版每帧自行改写，
+                // 「字段仍等于我写进去的值」这条判据对它们没有意义，
+                // 塞进 ReadField 会把「口令没生效」标成 VerifiedBehavior
+                // （tests/ModeHCommandCompatibilityGuard.py 明令禁止，那条禁令是对的）。
+                // 它们的验证标准与运行时 Validate() 一致：动作的可观测后置条件。
+                if (ModeHCommandCompatibilityRegistry.IsActionControlPoint(effect.ControlPointId))
+                {
+                    actionable.Add(effect);
+                    continue;
+                }
+
                 object first = ReadField(scavAi, effect.ControlPointId);
                 object second = ReadField(wolfAi, effect.ControlPointId);
                 if (!effect.Restore || first == null || second == null) continue;
@@ -137,6 +149,14 @@ namespace BossRush
                 scavBefore[effect.EffectId] = first;
                 wolfBefore[effect.EffectId] = second;
             }
+
+            // 动作型分量单独跑一轮：需要真实点火上下文（ApplyFire 对 null 上下文直接早返），
+            // 两个探针角色互为对手，正好构成 NearestEnemy / LowestHealthEnemy。
+            if (actionable.Count > 0)
+            {
+                yield return ProbeActionGroup(stableKey, ownerEntryId, actionable, scavAi, wolfAi, deadline);
+            }
+
             if (measurable.Count == 0) yield break;
 
             HashSet<string> held = new HashSet<string>(StringComparer.Ordinal);
@@ -224,6 +244,88 @@ namespace BossRush
                 && scavAi.isActiveAndEnabled && wolfAi.isActiveAndEnabled
                 && _scav.Health != null && !_scav.Health.IsDead
                 && _wolf.Health != null && !_wolf.Health.IsDead;
+        }
+
+        /// <summary>
+        /// 动作型分量的认证：施加一次，然后按**动作的后置条件**判定是否落地
+        /// （adapter.Validate 对 searchedEnemy / setNoticedToTarget 检查的正是
+        /// `searchedEnemy != null` 与 `noticed`，与运行时同一套标准）。
+        ///
+        /// 通过者记 ActionApplied 而不是 VerifiedBehavior：如实表达「动作确实生效，
+        /// 但没有也不可能做字段保持验证」。这是 finish 这类纯动作口令唯一诚实的出路。
+        /// </summary>
+        private IEnumerator ProbeActionGroup(
+            string stableKey, string ownerEntryId, List<ModeHEffectSpec> actionable,
+            AICharacterController scavAi, AICharacterController wolfAi, float deadline)
+        {
+            string error = null;
+            bool applied = false;
+            HashSet<string> held = new HashSet<string>(StringComparer.Ordinal);
+
+            ModeHCommandFireContext scavContext = BuildProbeFireContext(_wolf);
+            ModeHCommandFireContext wolfContext = BuildProbeFireContext(_scav);
+            if (scavContext == null || wolfContext == null)
+            {
+                // 拿不到对手受击体：保持 ReportOnly，不臆断动作有效
+                yield break;
+            }
+
+            try
+            {
+                applied = _scavAdapter.ApplyEffects(scavAi, ownerEntryId, actionable,
+                    ModeHConfig.CommandWindowSeconds, 1f, scavContext, out error)
+                    && _wolfAdapter.ApplyEffects(wolfAi, ownerEntryId, actionable,
+                        ModeHConfig.CommandWindowSeconds, 1f, wolfContext, out error);
+                if (applied)
+                {
+                    // 动作是一次性的：施加当帧立刻判后置条件，不做保持率采样
+                    held.UnionWith(_scavAdapter.Validate());
+                    held.IntersectWith(_wolfAdapter.Validate());
+                }
+            }
+            finally
+            {
+                _scavAdapter.Restore();
+                _wolfAdapter.Restore();
+            }
+
+            if (!applied)
+            {
+                FailureReasonId = "certification_command_action_apply:" + error;
+                yield break;
+            }
+
+            for (int i = 0; i < actionable.Count; i++)
+            {
+                ModeHEffectSpec effect = actionable[i];
+                if (effect == null || !held.Contains(effect.EffectId)) continue;
+                ModeHCommandCompatibilityRegistry.RecordEffectStatus(stableKey, effect.EffectId,
+                    ModeHCommandCompatibilityStatus.ActionApplied);
+            }
+            yield break;
+        }
+
+        /// <summary>用另一个探针角色当对手，拼一个够 ApplyFire 用的点火上下文。</summary>
+        private static ModeHCommandFireContext BuildProbeFireContext(ModeHSpawnHandle opponent)
+        {
+            try
+            {
+                if (opponent == null || opponent.Character == null) return null;
+                DamageReceiver receiver = opponent.Character.GetComponentInChildren<DamageReceiver>(true);
+                if (receiver == null) return null;
+
+                ModeHCommandFireContext context = new ModeHCommandFireContext();
+                context.ArenaCenter = opponent.Character.transform.position;
+                context.NearestEnemy = receiver;
+                context.LowestHealthEnemy = receiver;
+                context.EnemyCount = 1;
+                return context;
+            }
+            catch (Exception)
+            {
+                // 拼不出上下文就让调用方保持 ReportOnly，不臆断
+                return null;
+            }
         }
 
         private static object ReadField(AICharacterController ai, string controlPointId)

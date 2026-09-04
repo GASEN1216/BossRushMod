@@ -239,6 +239,9 @@ namespace BossRush
         {
             if (!_adapter.IsActive)
             {
+                // 窗口已到期但调制还挂着：必须再驱动一次，让 adapter 的 Tick 走到
+                // Restore()。只判 IsActive 会让还原永远没有执行机会（见 NeedsFinalize）。
+                if (_adapter.NeedsFinalize) _adapter.Tick(deltaTime, _fireContext);
                 if (_activeCommandId != null && !_adapter.IsActive) _activeCommandId = null;
                 return;
             }

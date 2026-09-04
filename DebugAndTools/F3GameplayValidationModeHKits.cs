@@ -69,7 +69,19 @@ namespace BossRush
                 details.Add(kitId + "=" + (valid ? metrics : reason));
                 yield return null;
             }
-            bool allPassed = kitIds.Count > 0 && passed == kitIds.Count && !ShouldAbort();
+            // 中止（玩家取消 / 套件超时 / 连续脏状态）一律记 SKIP，与全仓其余用例同口径
+            // （RunIsolatedCase、RunSyncCaseGated、ITEM_FACTORY、MODE_ZOMBIE_EXTRACTION）。
+            // 旧写法把中止折进 allPassed，取消时唯一可能的结果就是 FAIL，理由还写成
+            // 「整备物化失败」这种指向产品缺陷的措辞——制造假红，掩盖真红。
+            if (ShouldAbort())
+            {
+                Record("MODE_H_STARTER_KITS", "SKIP", sw.ElapsedMilliseconds,
+                    "kits=" + passed + "/" + kitIds.Count + ",aborted=" + DescribeAbortReason(),
+                    DescribeAbortReason());
+                yield break;
+            }
+
+            bool allPassed = kitIds.Count > 0 && passed == kitIds.Count;
             Record("MODE_H_STARTER_KITS", allPassed ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                 "kits=" + passed + "/" + kitIds.Count + ",details=" + string.Join(";", details.ToArray()),
                 allPassed ? null : "starter_kit_materialization_failed");

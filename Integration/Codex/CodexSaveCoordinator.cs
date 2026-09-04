@@ -201,6 +201,16 @@ namespace BossRush
                 }
 
                 // 每批至多一次物理落盘：这是图鉴唯一的 SaveFile 调用点。
+                // 跨子系统的每帧闸：五个协调器各有独立 SaveFile 调用点，
+                // 回基地首帧极易挤在同一帧。被拒时沿用已有的 deferred + Tick 重试链
+                // 在后续帧补写，与 IsSaving 分支同语义。
+                if (!BossRushSaveFileThrottle.TryBeginSaveFile(bypassSceneGate))
+                {
+                    lock (_lock) { _deferredFlushPending = true; }
+                    error = "flush_deferred_savefile_frame_busy";
+                    return false;
+                }
+
                 SavesSystem.SaveFile(false);
 
                 lock (_lock)
