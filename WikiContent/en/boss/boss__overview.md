@@ -10,8 +10,8 @@
 
 ### When Do They Appear?
 
-- **Standard / Infinite Hell** — First 20 waves exclude heavy hitters (Four Horsemen, Dragon Descendant, Dragon Lord, Phantom Witch)
-- **From Scratch** — No Bosses for waves 1-5; waves 6-10 exclude heavy hitters; full pool after wave 16
+- **Standard / Infinite Hell** — First 20 waves exclude the vanilla Four Horsemen and Koko Koko, plus the Dragon Descendant and the Skyburner Dragon Lord. **The Phantom Witch is not on that list** and can turn up from wave 1
+- **From Scratch** — No Bosses for waves 1-5; waves 6-10 exclude heavy hitters (the Phantom Witch is not on that list either); full pool from wave 11
 - **Faction War** — Dragon Descendant max 1/session, Dragon Lord doesn't appear, Phantom Witch in normal draw
 - **Blood Hunt** — Same as Faction War; dead Bosses auto-replaced
 

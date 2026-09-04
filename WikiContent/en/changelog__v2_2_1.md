@@ -20,4 +20,4 @@
 #### Fixed: Item Loading Issue
 
 - Fixed an issue where some BossRush custom equipment and items could temporarily recover after toggling the mod, but turned back into white question-mark placeholder icons after a full game restart.
-- Save restore, storage, shops, and UI queries for these dynamic items now go through an on-demand registration fallback before resolving by TypeID, reducing fallback placeholder restores when the prefab has not been registered yet.
+- Loading a save, pulling something out of storage, browsing a shop, or just opening your bag now rebuilds these custom items first if they aren't ready yet, so they are far less likely to show up as question-mark placeholders.

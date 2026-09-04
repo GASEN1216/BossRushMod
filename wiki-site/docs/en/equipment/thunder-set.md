@@ -1,14 +1,14 @@
 # Thunder Set
 
 ::: warning
-Developer Preview: This set exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+Developer Preview: This set exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 :::
 
-# What Is It?
+## What Is It?
 
 A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunder Armor** body piece. Each item alone gives modest armor, but equipping both activates **Thunder's Wrath** — electricity resistance plus a close-range AOE lightning counter.
 
-# Set Pieces
+## Set Pieces
 
 | Item | Slot | Quality | Bonus | ID |
 |------|------|---------|-------|-----|
@@ -19,7 +19,7 @@ A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunde
 - **Drop**: No standard obtain path in current version
 - Won't drop on death
 
-# 2-Piece Effect: Thunder's Wrath
+## 2-Piece Effect: Thunder's Wrath
 
 Activates when both pieces are equipped simultaneously (screen notification appears).
 
@@ -32,7 +32,7 @@ Activates when both pieces are equipped simultaneously (screen notification appe
 - Maximum once every **3 seconds**
 - Does **not** damage yourself
 
-# Frost Set vs. Thunder Set
+## Frost Set vs. Thunder Set
 
 | | Frost Set (Frost Ward) | Thunder Set (Thunder's Wrath) |
 |--|--|--|
@@ -42,7 +42,7 @@ Activates when both pieces are equipped simultaneously (screen notification appe
 | Effect | Freeze attacker | AOE damage blast |
 | Cooldown | 5s | 3s |
 
-# Tips
+## Tips
 
 - Electricity resistance helps against Harasser enemies in Zombie Mode
 - 3s cooldown fires more frequently than Frost Set — better in sustained multi-target fights

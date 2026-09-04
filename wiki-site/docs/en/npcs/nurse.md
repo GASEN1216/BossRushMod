@@ -1,16 +1,16 @@
 # Yuori (Nurse)
 
-# Who Is She?
+## Who Is She?
 
 Former senior medical researcher at J-Lab. After the lab collapsed, she escaped to Duckov and opened a field clinic. **Your healer and debuff cleaner** — plus her own Affinity storyline.
 
-# Services
+## Services
 
 - **Chat** (from start) — Daily chat, Affinity +30/day
 - **Gift** (from start) — 1 gift/day
 - **Healing** (from start) — Restores HP + removes negative buffs. Cost drops with Affinity
 
-# Affinity Rewards
+## Affinity Rewards
 
 - **Lv.2** — 10% healing discount
 - **Lv.3** — Free Calming Drops ×5
@@ -22,20 +22,20 @@ Former senior medical researcher at J-Lab. After the lab collapsed, she escaped 
 - **Lv.9** — 40% discount
 - **Lv.10** — Story: Yuori's Confession
 
-# Gifts
+## Gifts
 
 - **Likes**: Diamond, Birthday Cake, consumable/medical items (+80)
 - **Loves**: Diamond Ring (+500)
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone — reminds her of the lab (-60)
 
-# Marriage
+## Marriage
 
 Affinity Lv.10 + Diamond Ring = wedding. She moves to the Wedding Chapel with marriage-exclusive dialogue.
 
 See Affinity and Marriage for details.
 
-# Tips
+## Tips
 
 - 40% healing discount at max Affinity — **worth the investment**
 - Calming Drops remove most negative buffs, clutch in hard modes

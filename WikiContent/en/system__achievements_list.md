@@ -1,7 +1,7 @@
 ## Achievement List
 
 ### Overview
-BossRush Mod currently contains 35 achievements across 7 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
+BossRush Mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
 
 ### Basic Completion
 - First Steps: Complete BossRush for the first time. Reward `$5,000`, difficulty `★`
@@ -53,9 +53,27 @@ BossRush Mod currently contains 35 achievements across 7 categories. Completing 
 
 [tip] "Iron Man" is a hidden achievement and will not appear in the achievement panel until unlocked.
 
+### Taming (PetNest)
+- First Hatch: Hatch your first cub at the PetNest. Reward `$60,000`, difficulty `★`
+- Bloodline Collector: Unlock 10 bloodline entries. Reward `$200,000`, difficulty `★★★`
+- Lineage Obsession: Unlock 30 bloodline entries. Reward `$600,000`, difficulty `★★★★`
+- The Pale Purple One: Hatch a shiny cub. Reward `$300,000`, difficulty `★★★★`
+- A Name on the Stone (Hidden): Carve the first name into the memorial. Reward `$120,000`, difficulty `★★`
+
+[tip] "A Name on the Stone" is a hidden achievement and will not appear in the achievement panel until unlocked.
+
+### Codex (Duck King Codex)
+- First Entry: Log your first boss in the codex. Reward `$50,000`, difficulty `★`
+- Ten Logged: Unlock 10 codex entries. Reward `$150,000`, difficulty `★★`
+- Half the Record: Unlock 20 codex entries. Reward `$400,000`, difficulty `★★★`
+- Inside Ten Seconds: Take down a boss within ten seconds. Reward `$200,000`, difficulty `★★★★`
+- The Complete Codex: Unlock every codex entry. Reward `$1,000,000`, difficulty `★★★★★`
+
+[tip] Kills in the Black Market Duck Cup do not enter the codex and do not advance this group.
+
 ### Ultimate
 - Completionist: Unlock all achievements. Reward `$5,000,000`, difficulty `★★★★★`
 
 ### Statistics
-- Total achievements: 35 (including 2 hidden)
-- Total reward amount: `$16,760,000`
+- Total achievements: 45 (including 3 hidden)
+- Total reward amount: `$19,840,000`

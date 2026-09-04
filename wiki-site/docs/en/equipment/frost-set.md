@@ -1,14 +1,14 @@
 # Frost Set
 
 ::: warning
-Developer Preview: This set exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+Developer Preview: This set exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 :::
 
-# What Is It?
+## What Is It?
 
 A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** body armor. Each piece gives a modest armor bonus on its own, but equipping both simultaneously activates **Frost Ward** — ice resistance plus a reactive freeze counter.
 
-# Set Pieces
+## Set Pieces
 
 | Item | Slot | Quality | Bonus | ID |
 |------|------|---------|-------|-----|
@@ -19,7 +19,7 @@ A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** b
 - **Drop**: No standard obtain path in current version
 - Won't drop on death
 
-# 2-Piece Effect: Frost Ward
+## 2-Piece Effect: Frost Ward
 
 Activates when both pieces are equipped simultaneously (screen notification appears).
 
@@ -31,7 +31,7 @@ Activates when both pieces are equipped simultaneously (screen notification appe
 - Maximum once every **5 seconds**
 - Triggers regardless of attack direction — any hit from close range qualifies
 
-# Tips
+## Tips
 
 - Ice resistance is most relevant in Zombie Mode against Plague and Corruptor enemies with poison/ice AOEs
 - 30% freeze proc fires frequently in melee brawls — great for sustained close-range combat

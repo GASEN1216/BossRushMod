@@ -2,18 +2,21 @@
 
 ### Who Is He?
 
-A goblin created by J-Lab, way smarter than your average green dude. **Your go-to NPC for gear upgrades** — Reforge service + exclusive shop.
+A goblin created by J-Lab, way smarter than your average green dude. **Your go-to NPC for gear upgrades** — reforging, affix forging, and an exclusive shop.
 
 ### Services
 
 - **Chat** (from start) — Daily chat, Affinity +40/day
 - **Gift** (from start) — 1 gift/day
-- **Shop** (Lv.2) — Sells Diamond, Cold Quench Fluid, etc. More stock + discounts as Affinity rises
-- **Reforge** (from start) — Equipment attribute rerolling
+- **Shop** (Lv.2) — Sells Diamond, Cold Quench Fluid, Affix Forge Stones, etc. More stock + discounts as Affinity rises
+- **Reforge** (from start) — Rerolls the **numbers** on a piece of gear
+- **Affix Forging** (from start) — Rolls on affixes that change **behavior**: kill explosions, hit lifesteal, armor thorns
+
+[tip] Reforging and affix forging are separate menu options and never interfere. One changes stats, the other changes behavior, and a single item can have both.
 
 ### Affinity Rewards
 
-- **Lv.2** — Shop opens; free Diamond
+- **Lv.2** — Shop opens (Affix Forge Stones stocked here, up to 5 per restock); free Diamond
 - **Lv.3** — 10% shop discount
 - **Lv.4** — Free Cold Quench Fluid
 - **Lv.5** — Story: Dingdang's Past (Part 1)
@@ -31,11 +34,14 @@ A goblin created by J-Lab, way smarter than your average green dude. **Your go-t
 
 [warn] Giving his Drawing back = -300 Affinity. That painting means everything to him. Don't.
 
-### Reforge
+### Reforge & Affix Forging
 
-Core of gear progression. Costs benefit from Affinity discounts: 10% at Lv.3, 15% at Lv.6, 20% at Lv.10.
+Dingdang runs both gear progression lines, and you handle both in one stop:
 
-See Reforge system for details.
+- **Reforge** — rerolls the stats the gear already has; Cold Quench Fluid locks the one you want to keep. See the Reforge system.
+- **Affix Forging** — spends Affix Forge Stones to roll on a behavior-changing affix; lock the ones you like and re-roll the rest. See Affix Forging.
+
+**Affinity discounts apply to both**: 10% at Lv.3, 15% at Lv.6, 20% at Lv.10 — affix forging uses the same price curve, so staying friendly pays twice.
 
 ### Marriage
 

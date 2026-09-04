@@ -1,6 +1,6 @@
 # Consumables
 
-# Birthday Cake
+## Birthday Cake
 
 - **Source**: Special events / **Affinity**: +150 to any NPC
 
@@ -8,7 +8,7 @@ Second only to Diamond Ring (+500) for raw Affinity gain. If you get one, **give
 
 ---
 
-# Calming Drops
+## Calming Drops
 
 Yuori's hand-prepared herbal drops. **Clears most negative buffs.**
 
@@ -19,7 +19,7 @@ Clutch item in hard modes. See NPC Items for details.
 
 ---
 
-# Cold Quench Fluid
+## Cold Quench Fluid
 
 The Reforge system's key material. **Locks one stat during Reforging** so it doesn't change.
 

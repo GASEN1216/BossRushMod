@@ -1,0 +1,33 @@
+# 游戏内 Wiki 引用的「官方名字」登记表
+#
+# 为什么需要这张表：WikiContent/ 是玩家页面，凡是提到原版 Boss / NPC / Buff / 任务时，
+# 必须写玩家在游戏里真正看得到的名字，不能写本地化 key，也不能写设计稿里的内部叫法。
+# 历史上出现过整页写 `Cname_Boss_Blue`（它的真实显示名其实就是字面的「???」）的情况。
+#
+# 由 tests/OfficialNameReferenceGuard.py 三向断言：
+#   1. 官方本地化表里这个 key 仍然映射到登记的官方名 —— 官方改名立刻转红；
+#   2. 登记的页面里仍然出现「页面写法」—— Wiki 被改写掉时立刻转红；
+#   3. 任何玩家页面都不许出现 key 本身 —— 防止本地化 key 回流到玩家文案。
+#
+# 列（TAB 分隔，共 6 列）：
+#   key <TAB> 官方中文名 <TAB> 官方英文名 <TAB> 中文页面写法 <TAB> 英文页面写法 <TAB> 页面
+#
+# - 「页面写法」写 `=` 表示与官方名逐字相同；只有在官方名带冠词/后缀、
+#   直接嵌进句子会别扭时才另写（例如官方 `The Four Horsemen`，正文里写 `Four Horsemen`）。
+# - 「页面」逗号分隔，相对 WikiContent/<lang>/，省略 .md；写 `-` 表示只做第 1、3 条断言。
+#
+# 官方本地化表来源与刷新方式见 docs/官方本地化表/README.md。表找不到时 guard 自行 skip。
+
+Cname_Boss_Blue	???	???	=	=	equipment/equipment__frostmourne,equipment/equipment__overview,system__rewards_and_loot
+Cname_StormBoss5	口口口口	Koko Koko	=	=	boss/boss__overview,mode/mode__mode_a,mode/mode__mode_d,tips/tips__hell_and_mode_d
+Quest_502	四骑士	The Four Horsemen	=	Four Horsemen	boss/boss__overview,mode/mode__mode_a,mode/mode__mode_d,tips/tips__hell_and_mode_d
+Buff_Cold	寒冷	Cold	=	=	equipment/equipment__frost_spear,equipment/equipment__frostmourne
+Cname_Ghost	幽灵	Ghost	=	=	boss/boss__phantom_witch
+Item_Crown	皇冠	Crown	=	=	mode/mode__mode_c,system__rewards_and_loot
+Character_SnowPMC	煤球	Coal Briquette	=	=	mode/mode__mode_e
+Cname_Merchant_Myst	神秘商人	Mysterious Merchant	=	=	-
+Cname_Boss_Red	???	???	=	=	-
+Cname_StormBoss1	噗咙噗咙	Pulu Pulu	=	=	-
+Cname_StormBoss2	咕噜咕噜	Gulu Gulu	=	=	-
+Cname_StormBoss3	啪啦啪啦	Pala Pala	=	=	-
+Cname_StormBoss4	比利比利	Billy Billy	=	=	-

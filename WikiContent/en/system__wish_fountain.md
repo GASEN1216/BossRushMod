@@ -10,7 +10,7 @@
 
 - Build the Dust-Covered StarWish Fountain from the base building menu.
 - Walk up to it and interact with `Make a Wish`.
-- It opens a runtime-created, vanilla-style `View` panel rather than the old IMGUI window.
+- It opens a panel styled to match the base game, so fonts, colors and controls feel native.
 
 ### Current UI Rules
 

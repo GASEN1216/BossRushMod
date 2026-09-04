@@ -1,21 +1,22 @@
 # Changelog Overview
 
-# How this section works
+## How this section works
 - The changelog is now split into a **top overview plus one page per version node**.
 - Read this page first for the timeline, then enter the specific version pages for details.
 
-# Source quality
+## Source quality
 - **v1.6.2 and later** are reconstructed from real version commits plus the commit subjects between version nodes.
 - **Earlier versions** are preserved as archive notes based on surviving docs and tags in the repo.
 
-# Main progression line
+## Main progression line
 - **1.6.x**: basic BossRush expansion and early Mode D work.
 - **1.7.x**: Ground Zero, birthday cake, interaction polish, reuse of original UI.
 - **1.9.x**: courier service, Dragon Descendant, dragon gear, localization, boss-pool tools.
 - **2.0.x**: wiki book, custom signpost, Dragon's Breath, dragon burn, dragon dash improvements.
 - **2.1.x**: Dragon King line, flight, reverse scale, reforge, achievements, affinity, wedding, Mode E, nurse, halberd, Dragon King gun, Zone 37 and Maze.
 - **2.2.x**: Zombie Mode (standalone Roguelite survival), the per-run mutator system, five new weapons and two new equipment sets, plus major transition-performance and bug fixes.
+- **2.3.x**: the Black Market Duck Cup (a ringside-manager mode where you never fight yourself), the Duck King Campaign (the Mod's first story line), the Arena Backyard, the PetNest, The Duckov Daily, the Duck King Codex, Affix Forging, the "Duck Life Is Uncertain" in-run random events, and eight content systems switched to on-by-default.
 
 ::: tip
-For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.2.0`. For the latest small update, see `v2.2.5`.
+For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.3.0`.
 :::

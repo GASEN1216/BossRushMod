@@ -103,6 +103,28 @@
 - Range: 1-10
 - Number of mutators drawn per run, default 3
 
+#### randomEventsFrequency
+- Default: 2
+- Range: 1-3 (1 low / 2 mid / 3 high)
+- How many in-run random events can fire in a single run: `2` on low, `3` on mid, `5` on high
+- It only changes that cap. The `45-75` second gap between events and the one-event-at-a-time
+  rule are unaffected
+
+#### modeGAbandonHotkey
+- Default: K
+- ModConfig dropdown: same key set as the achievement hotkey
+- Hotkey to abandon a Fate Echo run partway through
+
+#### backMountainUnlockAll
+- Default: false
+- Range: true/false
+- Skips the Duck King Campaign chapter unlocks and opens the Arena Backyard's garden, trophy
+  showcase and jukebox immediately
+- This is the "I would rather not follow the story" option; playing the campaign normally does
+  not require it
+
+[tip] PetNest, The Duckov Daily, the Duck King Codex, Affix Forging, in-run random events, the Duck King Campaign, the Arena Backyard and the Black Market Duck Cup are default content and are **always on** - there is no master switch for them in the settings screen. Tuning knobs like the ones above remain adjustable.
+
 ### Recommended Adjustments
 - Want a faster pace: lower `waveIntervalSeconds` (for example `5-8`).
 - Want higher difficulty: increase `bossStatMultiplier` (for example `1.5-2.0`).

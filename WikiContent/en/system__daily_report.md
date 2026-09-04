@@ -2,14 +2,19 @@
 
 ### What it is
 
-- The Duckov Daily is a newspaper delivered to your base automatically.
-- Every game day a new issue lands in your mailbox, writing up what you did the day before as news.
-- Each issue also carries a daily bounty, a check-in wall, tomorrow's forecast, and some
-  gossip that serves no purpose but is fun to read.
+The Duckov Daily is a newspaper delivered to your base automatically, one issue per game day,
+writing up what you did yesterday as news.
+
+It gives you no combat bonus at all. What it gives you is **rhythm**: a small thing to do every
+day, a bounty telling you where to point today's run, and a check-in wall that pays out when
+it fills. Finish a run, come home, flip through the paper - that's how base life in this Mod
+accumulates.
+
+How the paper writes about you, mind you, is not always flattering.
 
 ### Getting a subscription
 
-- Build a `Mailbox` from the base building menu. It costs `500` and you can only have one.
+- Build a `Mailbox` from the base building menu. It costs `500`, you can only have **one**, and you can put it wherever you like.
 - Walk up to it and you'll see the interact option `Read today's paper`.
 - That opens the full newspaper panel.
 
@@ -30,7 +35,8 @@
   wiping out dozens of enemies, dying repeatedly, or making a lot of money each get their own
   story. Doing nothing at all gets its own story too.
 - **Yesterday's recap**: kills, boss kills, deployments, extractions, deaths, money in and out,
-  and your biggest single hit.
+  and your biggest single hit. Black Market Duck Cup matches are excluded - your contracted
+  fighters did the work, not you, so bounties don't progress there either.
 - **Bounty column**: yesterday's bounty result, plus today's new bounty and live progress.
 - **Weather & gossip**: tomorrow's forecast (storm warnings included), today's do's and don'ts,
   and word on the street.
@@ -38,32 +44,62 @@
 
 ### Daily bounties
 
-- One per day, drawn from clearing enemies, slaying bosses, extracting successfully,
-  earning money, or deploying without dying.
-- The bounty stays the same no matter how many times you restart that day - it never rerolls.
+One per day, drawn from five categories, with a difficulty tier (easy / standard / hardcore)
+rolled alongside it. Target and payout move together:
+
+- **Clear enemies** - `30 / 60 / 120`, paying `800 / 1,600 / 3,200`
+- **Slay bosses** - `1 / 3 / 5`, paying `1,200 / 3,000 / 5,000`
+- **Extract successfully** - `1 / 2 / 4` times, paying `700 / 1,400 / 2,800`
+- **Earn in a day** - `5,000 / 15,000 / 40,000`, paying `900 / 2,000 / 4,500`
+- **Deploy without dying** - flat `1,500`
+
+A few rules:
+
+- The bounty stays the same no matter how many times you restart that day - **it never rerolls**.
+  If you don't like it, wait for tomorrow.
+- The paper shows live progress, so you can check how far off you are at any time.
 - Completing it is announced in **the next day's paper**, and the reward pays out automatically.
-- The "no deaths" bounty requires you to actually deploy at least once. Sitting in base all day
-  does not count.
+- "No deaths" requires you to **actually deploy at least once**. Sitting in base all day doesn't
+  count - of course you didn't die.
+
+[tip] Check the paper before you head out and line the bounty up with whatever you were going to play anyway: "slay 5 bosses" points at the standard arena, "extract 4 times" points at short runs. Money you make on the way is the only free money there is.
 
 ### Check-in and rewards
 
-- Open the paper and hit `Check in` once a day. One check-in per day.
-- Each period is a page of 30 days. In period 1, slots `7 / 15 / 24 / 30` each grant one random
-  item of quality `5 / 6 / 7 / 8` respectively.
-- After filling all 30 you turn to period 2, where the slots are numbered 31 through 60.
-  From period 2 onward a reward lands every 7 slots, always at quality `8`.
-- Milestone slots are gold on the wall and marked with `★`.
-- **Missing a day clears the current period**: if you skip a check-in, the period resets to
-  zero at the day boundary. Periods you already completed are not taken back.
+Open the paper and hit `Check in` once a day. One per day, 30 slots to a period.
+
+**Period 1** is the ramp, and the rewards climb:
+
+- Slot `7` → a random quality `5` item
+- Slot `15` → quality `6`
+- Slot `24` → quality `7`
+- Slot `30` → quality `8`
+
+**From period 2 onward** it settles into a steady payout: slots numbered 31 through 60, with a
+reward at slot `7 / 14 / 21 / 28` of each period, **always at quality `8`**. Survive the first
+month and you're collecting a top-tier item every week.
+
+- Milestone slots are gold on the wall and marked with `★` - impossible to miss.
+- **Missing a day clears the current period**: skip a check-in and the period resets to zero at
+  the day boundary. But **periods you already completed are not taken back** - you never drop
+  from period 2 back to period 1, so reward quality never regresses.
+
+[warn] Breaking the streak costs you "this month's progress", not everything. If it happens, don't give up on it: from period 2 on there's a Q8 every 7 slots, so one more week gets you back in the black.
 
 ### Where the rewards go
 
-- Everything is shipped to your **delivery point's pending list**, never straight into your bag.
+- Rewards go to your **delivery point's pending list** by default, not straight into your bag.
+  You'll see a "check-in reward sent to your delivery point" banner.
 - That means crossing a day mid-raid is perfectly safe - nothing is lost, collect it back at base.
-- If a delivery ever fails, it is re-sent automatically the next time you open the paper.
+- **If the delivery point can't take it** (a full buffer, say), the game falls back to handing it
+  to you directly - into your bag, your stash, or onto the ground at your feet. When that happens
+  it is **not** also queued at the delivery point, so an empty pending list doesn't mean the reward
+  was lost. Check your bag and the floor first.
+- Only if both routes fail is it counted as a failed delivery, and then it is re-sent
+  automatically the next time you open the paper.
 
-### Turning it off
+### Do I need to enable it?
 
-- If you don't want the Daily, disable the `Duckov Daily` toggle in ModConfig.
-- Once off the whole system goes dormant: no timing, no issues, no notifications,
-  and no performance cost.
+- No. The Daily is on by default and there is nothing to switch on.
+- The mailbox is what decides whether you can read it: with no mailbox there is nowhere to
+  open the paper. The days keep counting either way, so building one later is never too late.

@@ -25,10 +25,12 @@ Interact with the arena signpost to pick:
 5. On-screen compass shows Boss directions (E/W/S/N)
 6. Multi-Boss waves = surrounded from all sides. Fun!
 
+Screen suddenly going red, a supply crate falling out of the sky, or a Boss that clearly isn't part of this wave walking in? Those are timed random events, and Standard BossRush is one of the three modes that roll them. Each one is announced, runs for a set time, and cleans itself up — see the "Random Events" page.
+
 ### Boss Pool
 
-- All in-game Boss presets
-- First 20 waves exclude heavy hitters (Four Horsemen, Dragon Descendant, Skyburner Dragon Lord) — warm-up time
+- Every Boss in the game is in the pool
+- First 20 waves exclude heavy hitters (Four Horsemen, Koko Koko, Dragon Descendant, Skyburner Dragon Lord) — warm-up time. The Phantom Witch is not on that list and can turn up any time
 - Use the **Boss Filter** to disable specific Bosses
 
 ### Clear Rewards

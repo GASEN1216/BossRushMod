@@ -1,6 +1,6 @@
 # Mode-Exclusive Items
 
-# Faction War — Tactical Consumables
+## Faction War — Tactical Consumables
 
 Purchasable from Mystery Merchant "Other" shop. **Faction War only.**
 
@@ -15,7 +15,7 @@ Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss pop
 
 ---
 
-# Blood Hunt — Fortifications
+## Blood Hunt — Fortifications
 
 **Blood Hunt only.** From Boss kills or Mystery Merchant.
 
@@ -24,12 +24,12 @@ Taunt Smoke Bomb and Chaos Detonator are no longer blocked by an active-Boss pop
 - **Reinforced Roadblock** (Purple, stack 5) — Heavy cover, 500 HP
 - **Repair Spray** (Green, stack 10) — Fixes nearest friendly fortification within 3m, restores 25% max HP
 
-# Deployment
+### Deployment
 
 - Place with LMB, cancel with RMB, scroll to rotate, MMB for 90°
 - Deploys where your mouse points. Can't overlap, can't clip scenery. **Failed = refunded**
 
-# Drop Schedule
+### Drop Schedule
 
 - Every kill → 1 Cover / Every 3 → 1 Spray / Every 10 → 1 Roadblock / Every 20 → 1 Barbed Wire
 
@@ -37,9 +37,9 @@ Start with 1 free Cover Pack. Transponder: see Entry & Utility Items.
 
 ---
 
-# Fate Echo Exclusive
+## Fate Echo Exclusive
 
-# Fate Echo Relic
+### Fate Echo Relic
 
 The entry relic for Fate Echo. See Entry & Utility Items for the item details. It is consumed after confirmation and returned only after a wave-9 victory.
 
@@ -49,9 +49,9 @@ The entry relic for Fate Echo. See Entry & Utility Items for the item details. I
 
 ---
 
-# Zombie Mode Exclusive
+## Zombie Mode Exclusive
 
-# Portable Safe-Zone Device
+### Portable Safe-Zone Device
 
 **Portable Safe-Zone Device** (Purple, stack 1) — a Zombie Mode wave reward, single-use, only works inside a Zombie Mode run.
 

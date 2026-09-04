@@ -2,13 +2,13 @@
 
 3 custom NPCs, each with their own services and personality.
 
-# The Cast
+## The Cast
 
 - **Dingdang** (Goblin Smith) — Reforge, shop, daily chat
 - **Yuori** (Nurse) — Healing, debuff removal
 - **Awen** (Courier) — Item storage & retrieval
 
-# Affinity System
+## Affinity System
 
 Dingdang and Yuori have a full Affinity system (Awen doesn't — he's all business):
 
@@ -19,7 +19,7 @@ Dingdang and Yuori have a full Affinity system (Awen doesn't — he's all busine
 
 See Affinity and Marriage for details.
 
-# Where Do They Show Up?
+## Where Do They Show Up?
 
 - **Normal Maps** — All three ✓
 - **Wedding Chapel** — Dingdang ✓ / Yuori ✓ (after marriage)

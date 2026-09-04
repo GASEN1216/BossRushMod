@@ -2,18 +2,18 @@
 
 ### What Is It?
 
-Ice-element melee with an icy aura and a right-click **undead army summon**. Drops from vanilla Blue Bosses (50% extra chance). Stable, reliable, and brings friends.
+Ice-element melee with an icy aura and a right-click **undead army summon**. Drops from a vanilla Boss so nameless the game just calls it "???" (50% extra chance). Stable, reliable, and brings friends.
 
 ### Stats
 
-- **Type**: Melee / **Quality**: 6 / **Element**: Ice / **Drop**: Blue Boss (50% extra) / Won't drop on death
+- **Type**: Melee / **Quality**: 6 / **Element**: Ice / **Drop**: the vanilla "???" Boss (50% extra) / Won't drop on death
 - Dmg 38.5 / Speed 1.54 / Range 2.0m / Crit 7% / Crit Dmg 1.4x / Pierce 4.2
 - Bleed 10.5% / Block 0.7 / Stamina 7/hit / Move Speed 107% / Cold Protection +2 / Gem Slots 2
 
 ### Frost Power
 
 - All melee attacks deal ice damage
-- Applies vanilla `Cold` effect on hit
+- Applies the vanilla Cold status on hit
 - Grants Cold Protection +2
 
 ### Undead Summoning (Right Click)
@@ -29,4 +29,4 @@ Ice-element melee with an icy aura and a right-click **undead army summon**. Dro
 - Ice damage + cold protection = great on snow maps and debuff-heavy scenarios
 - Compared to Soulreaper's Requiem: higher raw damage, less mobility
 
-[tip] If it drops from a Blue Boss loot crate, it follows the same search flow as other items in that crate.
+[tip] If it drops into that Boss's loot crate, it follows the same search flow as everything else in there.

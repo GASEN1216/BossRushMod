@@ -1,10 +1,10 @@
 # Frost Spear
 
 ::: warning
-Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 :::
 
-# What Is It?
+## What Is It?
 
 An **ice-element spear** with the longest attack range of all the new weapons. Every hit applies a guaranteed freeze slow. Steady mid-range damage with low crit potential — built for controlled distance fighting.
 
@@ -12,17 +12,17 @@ An **ice-element spear** with the longest attack range of all the new weapons. E
 - **Drop**: No standard obtain path in current version
 - Won't drop on death
 
-# Stats
+## Stats
 
 - Dmg 32 / Speed 1.3 / Range **2.4m** / Crit 3% / Crit Dmg 1.2x / Pierce 3
 - Stamina 8/hit / Bleed 0% / Move Speed 104% / Cold Protection **+1**
 
-# Frost Thrust (Passive)
+## Frost Thrust (Passive)
 
-- Every melee hit deals **ice damage** and **100% applies** the vanilla `Cold` slow effect
+- Every melee hit deals **ice damage** and **100% applies** the vanilla Cold status (lower movement, fire rate and ice resistance)
 - Grants **Cold Protection +1** (better resistance in cold environments)
 
-# Tips
+## Tips
 
 - 2.4m reach means you keep distance from bosses while still hitting — ideal for low-mobility players
 - Guaranteed freeze on every hit makes kiting viable

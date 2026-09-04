@@ -1,12 +1,12 @@
 # Fate Echo
 
-# What Is It?
+## What Is It?
 
 Fate Echo is a nine-wave challenge that **remembers how you fight**. Bring your own weapons and supplies into the arena. The run samples your range, ammo, and damage style, then turns those habits into the next questions. You can brute-force the counter, or change your approach and convert the break into Resolve.
 
 The nine waves form three acts. Waves 3, 6, and 9 feature your Nemesis. Losing a run can create a persistent Nemesis, so the next attempt is a rematch rather than a clean reset.
 
-# Entry
+## Entry
 
 - **BossRush Ticket**
 - **Fate Echo Relic** (sold by the base merchant)
@@ -16,7 +16,7 @@ The nine waves form three acts. Waves 3, 6, and 9 feature your Nemesis. Losing a
 
 Canceling the confirmation costs nothing. A wave-9 victory returns one Relic. Death, defeat, and an aborted run grant no normal reward.
 
-# Nine Waves, Three Acts
+## Nine Waves, Three Acts
 
 The fixed Boss count is **1 / 2 / 1 Nemesis / 1 / 3 / 1 Nemesis / 1 / 3 / 1 Nemesis**:
 
@@ -26,18 +26,18 @@ The fixed Boss count is **1 / 2 / 1 Nemesis / 1 / 3 / 1 Nemesis / 1 / 3 / 1 Neme
 
 Normal intermissions last 8 seconds. Intermissions after waves 3 and 6 last 20 seconds. The wave plan is frozen at run start and does not change mid-run.
 
-# Three Counter Axes
+## Three Counter Axes
 
 The axis schedule repeats across the run:
 
 - **Distance Echo (waves 2, 5, 8)** — Uses the previous learning wave's credible terminal distance. Sustained close-range play gives Bosses melee and health adaptations; sustained long-range play gives them movement and firing-speed adaptations. Change range and deal meaningful damage from the new range to break the counter and earn Resolve.
-- **Ammo Mark (waves 3, 6, 9)** — Samples the previous wave and names one high-threat ammo type. The ammo remains usable, but violations invalidate the wave's break condition; the calm gate, spawn-shot guard, and invalid samples prevent false reads.
+- **Ammo Mark (waves 3, 6, 9)** — Samples the previous wave and names one high-threat ammo type. The ammo remains usable, but violations invalidate the wave's break condition. Only shots that actually land on enemies are judged: idle fire between waves, shots taken the instant an enemy spawns, and other unreliable samples are never counted as violations.
 - **Attribute Lock (waves 4, 7)** — Identifies whether guns or melee carried the previous wave, then reduces that side's damage efficiency (about ×0.75). Switch damage style or rebuild your output pattern to break the lock.
 
 The HUD shows the act, wave, this wave's single counter target, verifiable dual-threshold progress, Resolve, and your chosen contract.
 During intermission the HUD previews the next wave's counter (range direction / marked ammo / the family about to be locked), and a banner confirms it when the wave begins, so you have time to adapt.
 
-# Last Stand
+## Last Stand
 
 Last Stand occurs only on **multi-Boss waves (2, 5, and 8)**: once that wave's committed Bosses are killed down to the last one, **Last Stand** begins:
 
@@ -50,7 +50,7 @@ Single-Boss waves (1, 3, 4, 6, 7, 9) never trigger Last Stand, so a run offers a
 
 It is a deliberate risk choice on multi-Boss waves: secure the wave, or stay exposed for a better Resolve total.
 
-# Nemesis
+## Nemesis
 
 The Nemesis appears on waves 3, 6, and 9. The same Boss returns during the run and escalates:
 
@@ -60,7 +60,7 @@ The Nemesis appears on waves 3, 6, and 9. The same Boss returns during the run a
 
 When a run ends in defeat, the Boss responsible may become your next Nemesis. A successful rematch advances the Nemesis record and revenge progress. If a persistent record is temporarily unavailable, the run uses a substitute without overwriting the original record.
 
-# Fate Contracts
+## Fate Contracts
 
 The confirmation page deterministically offers two contracts from a pool of eight; choose one. Contracts belong to four families:
 
@@ -71,7 +71,7 @@ The confirmation page deterministically offers two contracts from a pool of eigh
 
 Contracts are extra objectives, not direct stat multipliers. Completed contracts record seals and contract streaks for future runs.
 
-# Resolve and Rewards
+## Resolve and Rewards
 
 Resolve caps at 11 and comes from axis breaks and Last Stand executions:
 
@@ -85,7 +85,7 @@ Resolve caps at 11 and comes from axis breaks and Last Stand executions:
 
 Rewards are paid only after wave 9 victory. Candidates come from the existing Boss loot pool, restricted to **Q5-Q8**, and are selected by price bands. The Relic is returned first, then normal rewards are delivered item by item; a full backpack falls back to storage buffering and a scene drop.
 
-# Arena Services
+## Arena Services
 
 Fate Echo uses the shared arena NPCs:
 
@@ -93,14 +93,32 @@ Fate Echo uses the shared arena NPCs:
 - **Dingdang** — Reforge and shop
 - **Yuori** — Healing
 
-# Win / Lose
+## Win / Lose
 
 - **Win** — Defeat the final Nemesis on wave 9 and complete victory settlement
 - **Lose** — Player death, voluntary abort, scene interruption, or a runtime integrity failure
 
 Defeat grants no normal reward, but eligible Nemesis and profile records remain available as a reason to run it back.
 
-# Practical Advice
+## Can't finish? You can abandon the run
+
+Press **K** in-run (default; rebindable in the Mod settings) to open the abandon confirmation page.
+
+- Two buttons: **Keep Fighting** and **Abandon Run**.
+- Before you confirm, the page spells out the price: **this run's progress is voided, the ticket
+  and relic you spent are not refunded, and your contract win streak resets.**
+- Confirming counts as a loss settlement - your Nemesis is still preserved, so next run still has
+  someone to hunt.
+
+The point of this exit is simple: Fate Echo is a nine-wave commitment, and grinding to death
+against a counter you can't break is not worth the time. Bowing out costs you less than being
+worn down for another ten minutes.
+
+::: warning
+Abandoning does **not** refund the ticket or the Fate Echo Relic. The relic costs 20,000 from the vending machine, so don't treat abandoning as a quick "reroll".
+:::
+
+## Practical Advice
 
 - Bring a second plan: guns, melee, and different ammo types can all become the next answer
 - After waves 1, 4, and 7, watch for the distance read and prepare the opposite range

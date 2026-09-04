@@ -1,6 +1,6 @@
 # NPC Related Items
 
-# Diamond
+## Diamond
 
 Real diamond. Use it to summon Dingdang (+5 Affinity), or gift it (+80 to either NPC).
 
@@ -9,7 +9,7 @@ Real diamond. Use it to summon Dingdang (+5 Affinity), or gift it (+80 to either
 
 ---
 
-# Brick Stone
+## Brick Stone
 
 Sparkly, light... and **fake**. Dingdang will know.
 
@@ -23,7 +23,7 @@ Gift a fake diamond at your own risk.
 
 ---
 
-# Diamond Ring
+## Diamond Ring
 
 The proposal item. +500 Affinity. At Lv.10: triggers a wedding.
 
@@ -35,7 +35,7 @@ See Affinity & Marriage for details.
 
 ---
 
-# Cold Quench Fluid
+## Cold Quench Fluid
 
 **Locks one stat** during Reforge. The most critical Reforge material.
 
@@ -43,7 +43,7 @@ See Affinity & Marriage for details.
 
 ---
 
-# Calming Drops
+## Calming Drops
 
 **Clears most negative buffs.** Herbal fragrance included.
 
@@ -52,7 +52,7 @@ See Affinity & Marriage for details.
 
 ---
 
-# Peace Amulet
+## Peace Amulet
 
 Passive lifesaver. 10% proc when HP drops below 50% → **full heal**. Once per scene.
 
@@ -61,7 +61,7 @@ Passive lifesaver. 10% proc when HP drops below 50% → **full heal**. Once per 
 
 ---
 
-# Awen Courier Token
+## Awen Courier Token
 
 Ships everything you're carrying home in one action. Brass token with Awen's duck mark.
 
@@ -71,7 +71,7 @@ Ships everything you're carrying home in one action. Brass token with Awen's duc
 
 ---
 
-# Awen Loot Sweep Token
+## Awen Loot Sweep Token
 
 Awen sweeps all existing lootboxes nearest-to-farthest. Faction War / Blood Hunt only.
 
@@ -82,7 +82,7 @@ Awen sweeps all existing lootboxes nearest-to-farthest. Faction War / Blood Hunt
 
 ---
 
-# Dingdang's Drawing
+## Dingdang's Drawing
 
 A painting he spent days on. Use to view fullscreen. Durability 999 — it's indestructible.
 
@@ -94,7 +94,7 @@ Gift it back to him = **-300 Affinity**. He will be devastated. Don't.
 
 ---
 
-# Wild Horn
+## Wild Horn
 
 Ancient horn. Blow it to summon a mount (3s cooldown). Use again to call it over.
 

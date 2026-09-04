@@ -1,27 +1,313 @@
-/* BossRush Wiki — 游戏 Wiki 风格主题覆盖 */
+/* ══════════════════════════════════════════════════════════════
+   BossRush Wiki — 「玩法档案」版式主题
+   与 BossRush 玩法档案报告同源的设计语言：
+     纸张底 + 黄铜强调 + 衬线标题 + 等宽微标签 + 直角硬边，无阴影无渐变。
+   只改表现层，不改 VitePress 结构与 WikiContent 内容管线。
+   ══════════════════════════════════════════════════════════════ */
 
+/* ── 1. 设计令牌（与档案报告逐值对齐）───────────────────── */
 :root {
-  /* 龙焰橙主色调 */
-  --vp-c-brand-1: #e65100;
-  --vp-c-brand-2: #ff6d00;
-  --vp-c-brand-3: #ffab00;
-  --vp-c-brand-soft: rgba(230, 81, 0, 0.14);
+  /* 纸张与油墨 */
+  --brs-ground: #eae6de;
+  --brs-surface: #f5f2ec;
+  --brs-sunk: #dfdad0;
+  --brs-ink: #1b1713;
+  --brs-ink-soft: #4b443b;
+  --brs-ink-faint: #7c7366;
+  --brs-rule: #c7c0b2;
+  --brs-rule-soft: #d6d0c4;
 
-  /* Hero 渐变 */
-  --vp-home-hero-name-color: transparent;
-  --vp-home-hero-name-background: linear-gradient(135deg, #e65100, #ffab00);
-  --vp-home-hero-image-background-image: linear-gradient(135deg, rgba(230, 81, 0, 0.3), rgba(255, 171, 0, 0.2));
-  --vp-home-hero-image-filter: blur(56px);
+  /* 强调色 */
+  --brs-brass: #8a6220;
+  --brs-brass-bright: #b8863b;
+  --brs-oxblood: #8c2f2a;
+  --brs-slate: #41565f;
+  --brs-moss: #4a6141;
+
+  /* 字族 */
+  --brs-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "SimSun", serif;
+  --brs-sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+  --brs-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* 微标签（等宽 / 全大写 / 宽字距）统一口径 */
+  --brs-label-size: 10.5px;
+  --brs-label-track: 0.19em;
 }
 
 .dark {
-  --vp-c-bg: #1a1a2e;
-  --vp-c-bg-soft: #1f1f3a;
-  --vp-c-bg-mute: #252547;
-  --vp-c-bg-alt: #16162a;
+  --brs-ground: #141110;
+  --brs-surface: #1d1917;
+  --brs-sunk: #100d0c;
+  --brs-ink: #ede6da;
+  --brs-ink-soft: #a79c8c;
+  --brs-ink-faint: #7c7366;
+  --brs-rule: #332c27;
+  --brs-rule-soft: #282220;
+
+  --brs-brass: #d3a055;
+  --brs-brass-bright: #e5b96f;
+  --brs-oxblood: #c86a5e;
+  --brs-slate: #8faab5;
+  --brs-moss: #8fa87f;
 }
 
-/* 内容区加宽 */
+/* ── 2. 映射到 VitePress 变量 ──────────────────────────── */
+:root {
+  /* 底色：正文＝纸面，导航/侧栏/页脚＝略深的桌面纸 */
+  --vp-c-bg: var(--brs-surface);
+  --vp-c-bg-alt: var(--brs-ground);
+  --vp-c-bg-elv: var(--brs-surface);
+  --vp-c-bg-soft: var(--brs-ground);
+  --vp-c-bg-mute: var(--brs-sunk);
+  --vp-sidebar-bg-color: var(--brs-ground);
+  --vp-nav-bg-color: var(--brs-ground);
+  --vp-local-nav-bg-color: var(--brs-ground);
+
+  /* 文字 */
+  --vp-c-text-1: var(--brs-ink);
+  --vp-c-text-2: var(--brs-ink-soft);
+  --vp-c-text-3: var(--brs-ink-faint);
+
+  /* 分隔线：gutter 用作导航/页脚重线，divider 用作细线 */
+  --vp-c-divider: var(--brs-rule);
+  --vp-c-border: var(--brs-rule);
+  --vp-c-gutter: var(--brs-ink);
+
+  /* 中性软块 */
+  --vp-c-default-1: var(--brs-ink-soft);
+  --vp-c-default-2: var(--brs-ink-faint);
+  --vp-c-default-3: var(--brs-rule);
+  --vp-c-default-soft: var(--brs-sunk);
+
+  /* 品牌＝黄铜 */
+  --vp-c-brand-1: var(--brs-brass);
+  --vp-c-brand-2: var(--brs-brass-bright);
+  --vp-c-brand-3: var(--brs-brass-bright);
+  --vp-c-brand-soft: rgba(138, 98, 32, 0.1);
+
+  /* 语义色：tip=石板蓝，warning/danger=牛血红，important=苔绿 */
+  --vp-c-tip-1: var(--brs-slate);
+  --vp-c-tip-2: var(--brs-slate);
+  --vp-c-tip-3: var(--brs-slate);
+  --vp-c-tip-soft: var(--brs-sunk);
+  --vp-c-note-1: var(--brs-slate);
+  --vp-c-note-soft: var(--brs-sunk);
+  --vp-c-warning-1: var(--brs-oxblood);
+  --vp-c-warning-2: var(--brs-oxblood);
+  --vp-c-warning-3: var(--brs-oxblood);
+  --vp-c-warning-soft: var(--brs-sunk);
+  --vp-c-caution-1: var(--brs-oxblood);
+  --vp-c-caution-soft: var(--brs-sunk);
+  --vp-c-danger-1: var(--brs-oxblood);
+  --vp-c-danger-2: var(--brs-oxblood);
+  --vp-c-danger-3: var(--brs-oxblood);
+  --vp-c-danger-soft: var(--brs-sunk);
+  --vp-c-important-1: var(--brs-moss);
+  --vp-c-important-soft: var(--brs-sunk);
+
+  /* 字体 */
+  --vp-font-family-base: var(--brs-sans);
+  --vp-font-family-mono: var(--brs-mono);
+
+  /* 版心：向报告的 1180px 印张靠拢 */
+  --vp-layout-max-width: 1320px;
+  --vp-sidebar-width: 258px;
+
+  /* 代码块 */
+  --vp-code-block-bg: var(--brs-sunk);
+  --vp-code-line-highlight-color: rgba(138, 98, 32, 0.12);
+  --vp-code-copy-code-bg: var(--brs-sunk);
+  --vp-code-copy-code-hover-bg: var(--brs-ground);
+  --vp-code-copy-code-active-text: var(--brs-brass);
+  --vp-code-tab-divider: var(--brs-rule);
+  --vp-code-tab-text-color: var(--brs-ink-soft);
+  --vp-code-tab-active-text-color: var(--brs-brass);
+  --vp-code-tab-active-bar-color: var(--brs-brass);
+
+  /* 按钮 */
+  --vp-button-brand-bg: var(--brs-brass);
+  --vp-button-brand-text: var(--brs-surface);
+  --vp-button-brand-border: var(--brs-brass);
+  --vp-button-brand-hover-bg: var(--brs-brass-bright);
+  --vp-button-brand-hover-border: var(--brs-brass-bright);
+  --vp-button-brand-hover-text: var(--brs-surface);
+  --vp-button-brand-active-bg: var(--brs-brass);
+  --vp-button-brand-active-border: var(--brs-brass);
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-text: var(--brs-ink);
+  --vp-button-alt-border: var(--brs-rule);
+  --vp-button-alt-hover-bg: transparent;
+  --vp-button-alt-hover-text: var(--brs-brass);
+  --vp-button-alt-hover-border: var(--brs-brass);
+  --vp-button-alt-active-bg: transparent;
+  --vp-button-alt-active-border: var(--brs-brass);
+
+  /* 首页 hero：去掉渐变与光晕 */
+  --vp-home-hero-name-color: var(--brs-ink);
+  --vp-home-hero-name-background: none;
+  --vp-home-hero-image-background-image: none;
+  --vp-home-hero-image-filter: none;
+
+  /* 阴影一律换成硬边描线 */
+  --vp-shadow-1: 0 0 0 1px var(--brs-rule);
+  --vp-shadow-2: 0 0 0 1px var(--brs-rule);
+  --vp-shadow-3: 0 0 0 1px var(--brs-rule);
+  --vp-shadow-4: 0 0 0 1px var(--brs-rule);
+  --vp-shadow-5: 0 0 0 1px var(--brs-rule);
+}
+
+.dark {
+  --vp-c-brand-soft: rgba(211, 160, 85, 0.12);
+  --vp-code-line-highlight-color: rgba(211, 160, 85, 0.12);
+  --vp-button-brand-text: #141110;
+  --vp-button-brand-hover-text: #141110;
+}
+
+/* ── 3. 全局排版 ───────────────────────────────────────── */
+body {
+  font-family: var(--brs-sans);
+  line-height: 1.75;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--brs-brass);
+  outline-offset: 3px;
+}
+
+/* 直角硬边：报告里没有一处圆角 */
+.VPNavBar .divider-line,
+.VPButton,
+.VPFeature,
+.VPBadge,
+.VPImage,
+.VPLocalSearchBox .shell,
+.VPLocalSearchBox .search-bar,
+.VPLocalSearchBox .result,
+.VPNavScreen,
+.VPFlyout .menu,
+.VPMenu,
+.VPSocialLink,
+.DocSearch-Button,
+.DocSearch-Button-Key,
+.vp-doc [class*="language-"],
+.vp-doc [class*="language-"] > button.copy,
+.vp-doc .custom-block,
+.vp-doc :not(pre) > code,
+.vp-doc table,
+.vp-doc img,
+.pager-link {
+  border-radius: 0 !important;
+}
+
+/* ── 4. 顶栏：报告刊头的那道重线 ───────────────────────── */
+.VPNavBar .divider-line {
+  background-color: var(--brs-ink);
+  box-shadow: 0 1px 0 var(--brs-ink);
+}
+
+.VPNavBarTitle .title {
+  font-family: var(--brs-serif);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  border-bottom: none;
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .VPFlyout .text {
+  font-family: var(--brs-mono);
+  font-size: 12.5px !important;
+  letter-spacing: 0.06em;
+}
+
+.VPNavBarMenuLink.active,
+.VPNavBarMenuLink:hover {
+  color: var(--brs-brass) !important;
+}
+
+.VPLocalNav {
+  border-bottom-color: var(--brs-rule);
+}
+
+.VPLocalNavOutlineDropdown button {
+  font-family: var(--brs-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+/* 搜索按钮：一枚硬边卡片 */
+.DocSearch-Button {
+  border: 1px solid var(--brs-rule);
+  background: transparent;
+}
+.DocSearch-Button:hover {
+  border-color: var(--brs-brass);
+  background: transparent;
+}
+.DocSearch-Button-Placeholder {
+  font-family: var(--brs-mono);
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.DocSearch-Button-Keys .DocSearch-Button-Key {
+  box-shadow: none;
+  border: 1px solid var(--brs-rule);
+  background: transparent;
+  font-family: var(--brs-mono);
+}
+
+/* ── 5. 侧栏：档案的「系统索引」导航轨 ─────────────────── */
+.VPSidebar {
+  border-right: 1px solid var(--brs-rule);
+  counter-reset: brs-nav;
+}
+
+.VPSidebarItem.level-0 {
+  padding-bottom: 20px;
+  counter-increment: brs-nav;
+}
+
+.VPSidebarItem.level-0 > .item > .text,
+.VPSidebarItem.level-0 > .item > .link > .text {
+  font-family: var(--brs-mono);
+  font-size: var(--brs-label-size);
+  font-weight: 600;
+  letter-spacing: var(--brs-label-track);
+  text-transform: uppercase;
+  color: var(--brs-brass);
+  padding: 4px 0;
+}
+
+.VPSidebarItem.level-0 > .item > .text::before,
+.VPSidebarItem.level-0 > .item > .link > .text::before {
+  content: counter(brs-nav, decimal-leading-zero) " · ";
+  color: var(--brs-ink-faint);
+}
+
+.VPSidebarItem.level-1 .text,
+.VPSidebarItem.level-2 .text {
+  font-size: 13px;
+  color: var(--brs-ink-soft);
+  padding: 3px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.VPSidebarItem .link:hover .text {
+  color: var(--brs-brass);
+  border-bottom-color: var(--brs-brass);
+}
+
+.VPSidebarItem.is-active > .item > .link > .text,
+.VPSidebarItem.is-active .link .text {
+  color: var(--brs-brass) !important;
+  font-weight: 500;
+}
+
+.VPSidebarItem.is-active > .item .indicator {
+  background-color: var(--brs-brass);
+}
+
+/* ── 6. 正文版心 ───────────────────────────────────────── */
 .vp-doc {
   max-width: 900px !important;
 }
@@ -31,36 +317,620 @@
   }
 }
 
-/* 表格增强 */
+/* 报告的行长约束：正文 68ch，表格与代码不受限 */
+.vp-doc p,
+.vp-doc ul,
+.vp-doc ol {
+  max-width: 68ch;
+}
+
+.vp-doc p,
+.vp-doc li {
+  color: var(--brs-ink-soft);
+}
+.vp-doc strong {
+  color: var(--brs-ink);
+  font-weight: 500;
+}
+.vp-doc li::marker {
+  color: var(--brs-brass);
+}
+.vp-doc ul,
+.vp-doc ol {
+  padding-left: 19px;
+}
+.vp-doc li + li {
+  margin-top: 7px;
+}
+
+/* 标题层级：h1 刊头 / h2 栏带 / h3 衬线 / h4 等宽微标签 */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4,
+.vp-doc h5,
+.vp-doc h6 {
+  font-family: var(--brs-serif);
+  text-wrap: balance;
+  color: var(--brs-ink);
+}
+
+.vp-doc h1 {
+  font-size: clamp(30px, 4.4vw, 44px);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  padding-bottom: 20px;
+  margin-bottom: 26px;
+  border-bottom: 2px solid var(--brs-ink);
+}
+
+.vp-doc h1::before {
+  content: "";
+  display: block;
+  width: 46px;
+  height: 2px;
+  background: var(--brs-brass);
+  margin-bottom: 18px;
+}
+
+/* h1 之后的第一段＝报告的导语（dek） */
+.vp-doc h1 + p {
+  font-family: var(--brs-serif);
+  font-size: 17.5px;
+  line-height: 1.65;
+  color: var(--brs-ink);
+  max-width: 60ch;
+}
+
+.vp-doc h2 {
+  font-family: var(--brs-sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+  margin: 56px 0 22px;
+  padding: 0 0 9px;
+  border-top: none;
+  border-bottom: 1px solid var(--brs-rule);
+}
+
+.vp-doc h3 {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  margin: 34px 0 12px;
+}
+
+.vp-doc h4 {
+  font-family: var(--brs-mono);
+  font-size: var(--brs-label-size);
+  font-weight: 600;
+  letter-spacing: var(--brs-label-track);
+  text-transform: uppercase;
+  color: var(--brs-brass);
+  margin: 26px 0 10px;
+}
+
+.vp-doc .header-anchor {
+  color: var(--brs-brass);
+  font-weight: 400;
+}
+
+.vp-doc a {
+  color: var(--brs-brass);
+  font-weight: 500;
+  text-decoration-color: var(--brs-rule);
+  text-underline-offset: 3px;
+}
+.vp-doc a:hover {
+  text-decoration-color: var(--brs-brass);
+}
+
+.vp-doc hr {
+  border-top: 1px solid var(--brs-rule);
+  margin: 40px 0;
+}
+
+/* ── 7. 表格：等宽小写字头 + 沉底表头 ──────────────────── */
+/* .brs-table-scroll 由 config.mts 的 markdown 规则生成，等价于档案报告里的 .tw */
+.vp-doc .brs-table-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--brs-rule-soft);
+  margin: 16px 0 24px;
+}
 .vp-doc table {
+  display: table;
   width: 100%;
+  min-width: 420px;
   border-collapse: collapse;
+  border: none;
+  font-size: 14px;
+  margin: 0;
 }
 .vp-doc table th {
-  background-color: var(--vp-c-brand-soft);
+  font-family: var(--brs-mono);
+  font-size: 10px;
   font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brs-ink-soft);
+  background: var(--brs-sunk);
+  white-space: nowrap;
+  text-align: left;
 }
 .vp-doc table th,
 .vp-doc table td {
-  border: 1px solid var(--vp-c-divider);
-  padding: 8px 12px;
+  border: none;
+  border-bottom: 1px solid var(--brs-rule-soft);
+  padding: 9px 14px;
+  vertical-align: top;
 }
-.vp-doc table tr:nth-child(even) {
-  background-color: var(--vp-c-bg-soft);
+.vp-doc table tr {
+  background: transparent;
+  border: none;
+}
+.vp-doc table tr:nth-child(2n) {
+  background: transparent;
+}
+.vp-doc table tbody tr:last-child td {
+  border-bottom: none;
+}
+.vp-doc table td strong {
+  color: var(--brs-ink);
 }
 
-/* tip / warning 容器用主题色 */
-.vp-doc .custom-block.tip {
-  border-color: var(--vp-c-brand-2);
+/* ── 8. 提示块：报告里的 .note ─────────────────────────── */
+.vp-doc .custom-block {
+  border: none;
+  border-left: 3px solid var(--brs-slate);
+  background: var(--brs-sunk);
+  padding: 14px 18px;
+  margin: 22px 0;
+  font-size: 14.5px;
+  line-height: 1.7;
+  color: var(--brs-ink-soft);
+  max-width: 68ch;
 }
-.vp-doc .custom-block.tip .custom-block-title {
-  color: var(--vp-c-brand-1);
+.vp-doc .custom-block p {
+  max-width: none;
 }
-.vp-doc .custom-block.warning {
-  border-color: #ffab00;
+.vp-doc .custom-block .custom-block-title {
+  font-family: var(--brs-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brs-slate);
+  margin-bottom: 5px;
+}
+.vp-doc .custom-block.warning,
+.vp-doc .custom-block.danger,
+.vp-doc .custom-block.caution {
+  border-left-color: var(--brs-oxblood);
+}
+.vp-doc .custom-block.warning .custom-block-title,
+.vp-doc .custom-block.danger .custom-block-title,
+.vp-doc .custom-block.caution .custom-block-title {
+  color: var(--brs-oxblood);
+}
+.vp-doc .custom-block.important {
+  border-left-color: var(--brs-moss);
+}
+.vp-doc .custom-block.important .custom-block-title {
+  color: var(--brs-moss);
+}
+.vp-doc .custom-block a {
+  color: var(--brs-brass);
 }
 
-/* 侧边栏活跃项高亮 */
-.VPSidebarItem.is-active > .item > .link > .text {
-  color: var(--vp-c-brand-1) !important;
+.vp-doc blockquote {
+  border-left: 3px solid var(--brs-slate);
+  background: var(--brs-sunk);
+  padding: 14px 18px;
+  margin: 22px 0;
+  max-width: 68ch;
+}
+.vp-doc blockquote > p {
+  color: var(--brs-ink-soft);
+  font-size: 14.5px;
+}
+
+/* ── 9. 代码 ───────────────────────────────────────────── */
+.vp-doc :not(pre) > code {
+  font-family: var(--brs-mono);
+  font-size: 0.88em;
+  color: var(--brs-brass);
+  background: var(--brs-sunk);
+  border: 1px solid var(--brs-rule-soft);
+  padding: 1px 5px;
+}
+.vp-doc h1 code,
+.vp-doc h2 code,
+.vp-doc h3 code {
+  font-size: 0.9em;
+}
+.vp-doc [class*="language-"] {
+  border: 1px solid var(--brs-rule-soft);
+  background: var(--brs-sunk);
+}
+.vp-doc [class*="language-"] code {
+  font-family: var(--brs-mono);
+}
+.vp-doc [class*="language-"] > span.lang {
+  font-family: var(--brs-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+/* ── 10. 右侧目录：档案的导航轨 ────────────────────────── */
+.VPDocAsideOutline .outline-title {
+  font-family: var(--brs-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: var(--brs-label-track);
+  text-transform: uppercase;
+  color: var(--brs-ink-soft);
+}
+.VPDocAsideOutline .outline-link {
+  font-size: 12.5px;
+  color: var(--brs-ink-soft);
+}
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active {
+  color: var(--brs-brass);
+}
+.VPDocAsideOutline .outline-marker {
+  background-color: var(--brs-brass);
+}
+
+/* ── 11. 上下篇 / 页脚 ─────────────────────────────────── */
+.pager-link {
+  border: 1px solid var(--brs-rule);
+  background: transparent;
+}
+.pager-link:hover {
+  border-color: var(--brs-brass);
+}
+.pager-link .desc {
+  font-family: var(--brs-mono);
+  font-size: 10px;
+  letter-spacing: var(--brs-label-track);
+  text-transform: uppercase;
+  color: var(--brs-brass);
+}
+.pager-link .title {
+  font-family: var(--brs-serif);
+  color: var(--brs-ink);
+}
+.VPDocFooter .edit-info,
+.VPDocFooter .last-updated {
+  font-family: var(--brs-mono);
+  font-size: 11.5px;
+  color: var(--brs-ink-faint);
+}
+
+/* 提权：默认主题的 .VPFooter 也写了 border-top，需要盖过它才有报告页脚的重线 */
+.Layout .VPFooter {
+  border-top: 2px solid var(--brs-ink);
+  background: var(--brs-ground);
+}
+.VPFooter .message,
+.VPFooter .copyright {
+  font-family: var(--brs-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--brs-ink-faint);
+}
+.VPFooter .message {
+  color: var(--brs-brass);
+}
+
+/* ── 12. 首页：报告刊头 + 编号栏目 ─────────────────────── */
+/* 首页整版落在「地」色上，卡片用「纸」色浮起，与档案的 ground / surface 关系一致 */
+.VPContent.is-home,
+.VPHome {
+  background: var(--brs-ground);
+}
+.VPHome {
+  padding-bottom: 72px;
+}
+.VPHero .container {
+  max-width: 1180px;
+}
+.VPHero .heading::before {
+  content: "鸭科夫 / ESCAPE FROM DUCKOV · BOSSRUSH MOD";
+  display: block;
+  font-family: var(--brs-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+  margin-bottom: 16px;
+}
+.VPHero .name,
+.VPHero .clip {
+  font-family: var(--brs-serif);
+  font-weight: 900;
+  letter-spacing: -0.01em;
+  color: var(--brs-ink);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+}
+.VPHero .text {
+  font-family: var(--brs-serif);
+  font-weight: 500;
+  color: var(--brs-ink-soft);
+}
+.VPHero .tagline {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--brs-ink-soft);
+  max-width: 62ch;
+  padding-top: 12px;
+  border-top: 1px solid var(--brs-rule);
+  margin-top: 22px;
+}
+.VPHero .actions {
+  padding-top: 26px;
+}
+.VPButton {
+  font-family: var(--brs-mono);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.VPHero .image {
+  display: none;
+}
+
+.VPFeatures {
+  padding-top: 8px;
+}
+.VPFeatures .container {
+  max-width: 1180px;
+}
+/* 栏带：与档案里 “新模式 / 基地循环” 那条分区横线同一口径 */
+.VPFeatures .container::before {
+  content: "本站收录";
+  display: block;
+  font-family: var(--brs-sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+  padding-bottom: 9px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--brs-rule);
+}
+html[lang="en"] .VPFeatures .container::before {
+  content: "What's Inside";
+}
+html[lang="en"] .VPHero .heading::before {
+  content: "ESCAPE FROM DUCKOV · BOSSRUSH MOD";
+}
+.VPFeatures .items {
+  counter-reset: brs-feat;
+}
+/* 选择器带上 .VPFeatures 提权，压过默认主题里同名的软边卡片规则 */
+.VPFeatures .VPFeature {
+  counter-increment: brs-feat;
+  border: 1px solid var(--brs-rule);
+  background: var(--brs-surface);
+  padding: 24px 26px 26px;
+  transition: border-color 0.2s;
+}
+.VPFeatures .VPFeature:hover {
+  border-color: var(--brs-brass);
+  background: var(--brs-surface);
+}
+.VPFeature .icon {
+  display: none;
+}
+.VPFeature .title {
+  font-family: var(--brs-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--brs-ink);
+  line-height: 1.35;
+}
+.VPFeature .title::before {
+  content: counter(brs-feat, decimal-leading-zero);
+  display: block;
+  font-family: var(--brs-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  color: var(--brs-brass);
+  margin-bottom: 10px;
+}
+.VPFeature .details {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--brs-ink-soft);
+  padding-top: 8px;
+}
+
+/* ── 13. 弹层与徽标 ────────────────────────────────────── */
+.VPFlyout .menu,
+.VPMenu,
+.VPLocalSearchBox .shell,
+.DocSearch-Modal {
+  border: 1px solid var(--brs-rule);
+  background: var(--brs-surface);
+}
+.VPMenuLink .link:hover,
+.VPMenuGroup .title {
+  color: var(--brs-brass);
+}
+.VPBadge {
+  font-family: var(--brs-mono);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid var(--brs-rule);
+  background: transparent;
+  color: var(--brs-ink-soft);
+}
+.VPBadge.tip,
+.VPBadge.info {
+  border-color: var(--brs-slate);
+  color: var(--brs-slate);
+}
+.VPBadge.warning,
+.VPBadge.danger {
+  border-color: var(--brs-oxblood);
+  color: var(--brs-oxblood);
+}
+
+/* 404 */
+.NotFound .code {
+  font-family: var(--brs-mono);
+  color: var(--brs-brass);
+  letter-spacing: 0.06em;
+}
+.NotFound .title {
+  font-family: var(--brs-serif);
+  letter-spacing: 0.16em;
+}
+.NotFound .divider {
+  background-color: var(--brs-rule);
+}
+.NotFound .quote {
+  color: var(--brs-ink-soft);
+}
+.NotFound .link {
+  border-radius: 0;
+  border-color: var(--brs-rule);
+  color: var(--brs-brass);
+  font-family: var(--brs-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.NotFound .link:hover {
+  border-color: var(--brs-brass);
+  color: var(--brs-brass);
+}
+
+/* 本地搜索结果 */
+.VPLocalSearchBox .result {
+  border: 1px solid transparent;
+}
+.VPLocalSearchBox .result.selected {
+  border-color: var(--brs-brass);
+  background: var(--brs-sunk);
+}
+.VPLocalSearchBox .titles,
+.VPLocalSearchBox .title {
+  color: var(--brs-ink);
+}
+.VPLocalSearchBox input {
+  font-family: var(--brs-sans);
+}
+.VPLocalSearchBox mark {
+  background: var(--brs-brass);
+  color: var(--brs-surface);
+}
+.dark .VPLocalSearchBox mark {
+  color: #141110;
+}
+
+/* ── 14. 配图：图鉴立绘墙 / 章节海报 / 建筑图标 ─────────── */
+/*
+ * 结构由 wiki-site/scripts/sync-content.mjs 的 renderImageBlock() 生成：
+ *   <div class="brs-…">  →  每张图与它的说明各成一个 <p>（图 + <em>）。
+ * 所以下面统一按「.容器 > p = 一个格子」来排版，三种尺寸只差网格宽度。
+ * 图片本身留白很多，用档案纸底 + 细边框压住，避免在浅色版心上"飘"。
+ */
+.brs-gallery,
+.brs-figure,
+.brs-icon {
+  display: grid;
+  gap: 18px 14px;
+  margin: 26px 0;
+}
+.brs-gallery {
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+}
+.brs-figure {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  max-width: 420px;
+}
+.brs-icon {
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  max-width: 340px;
+}
+
+.brs-gallery > p,
+.brs-figure > p,
+.brs-icon > p {
+  margin: 0;
+  text-align: center;
+}
+
+.brs-gallery img,
+.brs-figure img,
+.brs-icon img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--brs-rule);
+  background: var(--brs-sunk);
+  border-radius: 2px;
+}
+.brs-gallery img {
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+.brs-icon img {
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  padding: 6px;
+}
+
+/* 说明文字沿用表头那套等宽小写字头 */
+.brs-gallery em,
+.brs-figure em,
+.brs-icon em {
+  display: block;
+  margin-top: 6px;
+  font-family: var(--brs-mono);
+  font-style: normal;
+  font-size: var(--brs-label-size);
+  letter-spacing: 0.06em;
+  line-height: 1.4;
+  color: var(--brs-ink-faint);
+}
+.brs-figure em {
+  font-size: 11.5px;
+  color: var(--brs-ink-soft);
+}
+
+.dark .brs-gallery img,
+.dark .brs-figure img,
+.dark .brs-icon img {
+  border-color: var(--brs-rule);
+  background: var(--brs-sunk);
+}
+
+@media (max-width: 640px) {
+  .brs-gallery {
+    grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  }
+  .brs-figure {
+    max-width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
 }

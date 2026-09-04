@@ -1,6 +1,6 @@
 ## Frost Spear
 
-[warn] Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+[warn] Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 
 ### What Is It?
 
@@ -17,7 +17,7 @@ An **ice-element spear** with the longest attack range of all the new weapons. E
 
 ### Frost Thrust (Passive)
 
-- Every melee hit deals **ice damage** and **100% applies** the vanilla `Cold` slow effect
+- Every melee hit deals **ice damage** and **100% applies** the vanilla Cold status (lower movement, fire rate and ice resistance)
 - Grants **Cold Protection +1** (better resistance in cold environments)
 
 ### Tips

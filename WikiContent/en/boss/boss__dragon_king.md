@@ -75,6 +75,17 @@ On kill, **one item is chosen via weighted random** from these six (not six inde
 - Skyburner Halberd (Melee): 15% drop rate
 - Dragon Cannon (Firearm): 1% drop rate
 
+[tip] That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation - the hardest item in the Mod to obtain.
+
+**What every Boss drops on top of that** (parallel, never displacing each other)
+
+- **A regular loot crate** - the Dragon Lord's is larger than a normal Boss's
+- **Relic souls** - guaranteed, scaled to max health, and the Dragon Lord is tanky enough to pay well
+- **A relic egg (Dragon Lord bloodline)** - about 4%, landing on the body, so search it
+- **An Affix Forge Stone** - about 8%
+- **A Skyburner Ember Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the
+  garden**. Grows Emberheart Chili: +8% move speed and +10% reload speed for your next run
+
 ### Combat Strategy
 - The Skyburner Dragon Lord hovers in the air — melee weapons can barely reach it, **prioritize firearms**
 - The charge warning ring only appears in the last 0.3 seconds — move sideways immediately, don't get greedy with shots

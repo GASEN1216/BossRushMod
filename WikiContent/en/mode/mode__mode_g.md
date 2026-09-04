@@ -31,7 +31,7 @@ Normal intermissions last 8 seconds. Intermissions after waves 3 and 6 last 20 s
 The axis schedule repeats across the run:
 
 - **Distance Echo (waves 2, 5, 8)** — Uses the previous learning wave's credible terminal distance. Sustained close-range play gives Bosses melee and health adaptations; sustained long-range play gives them movement and firing-speed adaptations. Change range and deal meaningful damage from the new range to break the counter and earn Resolve.
-- **Ammo Mark (waves 3, 6, 9)** — Samples the previous wave and names one high-threat ammo type. The ammo remains usable, but violations invalidate the wave's break condition; the calm gate, spawn-shot guard, and invalid samples prevent false reads.
+- **Ammo Mark (waves 3, 6, 9)** — Samples the previous wave and names one high-threat ammo type. The ammo remains usable, but violations invalidate the wave's break condition. Only shots that actually land on enemies are judged: idle fire between waves, shots taken the instant an enemy spawns, and other unreliable samples are never counted as violations.
 - **Attribute Lock (waves 4, 7)** — Identifies whether guns or melee carried the previous wave, then reduces that side's damage efficiency (about ×0.75). Switch damage style or rebuild your output pattern to break the lock.
 
 The HUD shows the act, wave, this wave's single counter target, verifiable dual-threshold progress, Resolve, and your chosen contract.
@@ -99,6 +99,22 @@ Fate Echo uses the shared arena NPCs:
 - **Lose** — Player death, voluntary abort, scene interruption, or a runtime integrity failure
 
 Defeat grants no normal reward, but eligible Nemesis and profile records remain available as a reason to run it back.
+
+### Can't finish? You can abandon the run
+
+Press **K** in-run (default; rebindable in the Mod settings) to open the abandon confirmation page.
+
+- Two buttons: **Keep Fighting** and **Abandon Run**.
+- Before you confirm, the page spells out the price: **this run's progress is voided, the ticket
+  and relic you spent are not refunded, and your contract win streak resets.**
+- Confirming counts as a loss settlement - your Nemesis is still preserved, so next run still has
+  someone to hunt.
+
+The point of this exit is simple: Fate Echo is a nine-wave commitment, and grinding to death
+against a counter you can't break is not worth the time. Bowing out costs you less than being
+worn down for another ten minutes.
+
+[warn] Abandoning does **not** refund the ticket or the Fate Echo Relic. The relic costs 20,000 from the vending machine, so don't treat abandoning as a quick "reroll".
 
 ### Practical Advice
 

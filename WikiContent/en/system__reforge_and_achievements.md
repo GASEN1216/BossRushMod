@@ -1,26 +1,24 @@
-## Reforge & Achievements
+## Reforge System
 
 For the full achievement list, see the "Achievement List" page.
-
----
-
-## Reforge System
 
 ### Overview
 - The Reforge system allows you to re-randomize equipment stats, serving as the core equipment progression mechanic in BossRush Mod.
 - Accessed through Dingdang (the goblin artisan)'s Reforge service.
+
+[tip] Dingdang also runs a separate service called **Affix Forging**: reforging changes **numbers**, affixes change **behavior** (kill explosions, lifesteal on hit, armor thorns). The two never interfere - affixes are never wiped by a reforge and never appear in the reforge stat-lock list, and one item can have both. See the "Affix Forging" page.
 
 ### Reforgeable Equipment
 - The following types of equipment can be reforged:
   - Armor, helmets, masks, backpacks, headsets
   - Firearms, melee weapons
   - Totems
-- The Reforge pool mainly reads visible native properties on the item (modifiers, stats, and variables).
+- Reforge only rerolls the item's own stats — the ones you can see on its detail panel.
 
 #### Properties Excluded from the Reforge Pool
-- System-tracking fields, persisted reforge bookkeeping fields, and other runtime-only variables do not participate in Reforge.
-- Temporary modifiers / variables appended at runtime are not treated as normal reforgeable affixes.
-- Internal properties that directly control melee hit timing are excluded, such as `DealDamageTime`.
+- The hidden data an item uses to track its own state is never rerolled. You can't see it on the detail panel, and Reforge can't touch it.
+- Temporary effects picked up during a run (bonuses from buffs and debuffs) are exactly that — temporary. They don't count as the item's own stats, so Reforge never touches them.
+- A melee weapon's swing timing is never rerolled — otherwise the same blade would feel different after every reforge.
 
 ### Reforge Process
 - Interact with Dingdang and select "Reforge".
@@ -30,7 +28,7 @@ For the full achievement list, see the "Achievement List" page.
 - Click Reforge.
 
 ### Reforge Cost
-- Base cost = equipment value / 100 (minimum 100).
+- Base cost = **equipment value / 100**, minimum **100**. That's the bench fee for one attempt.
 - Dingdang Affinity discount: Lv.3 = 10% off, Lv.6 = 15% off, Lv.10 = 20% off.
 
 ### Reforge Results
@@ -58,11 +56,26 @@ For the full achievement list, see the "Achievement List" page.
 ### Reforge Data Persistence
 - Reforge results are permanently saved on the equipment.
 - Supported reforged stats are automatically restored after scene changes or save/load.
-- If an old item still carries legacy reforge data that is no longer supported, the game now removes that data automatically and rolls the affected property back to its prefab default value.
+- If an old item still carries a reforge result this version no longer supports, it is cleared on load and that stat returns to the value the item originally shipped with.
 - No need to worry about losing Reforge results.
+
+### How much money to invest
+
+On top of the bench fee you can **invest extra money** to improve your odds of a good roll. The
+curve scales with **multiples of the item's value**, not with an absolute amount:
+
+- Invest **10x** the item's value → roughly **+10%** chance of a positive change
+- Invest **100x** → roughly **+30%**
+- Invest **1000x** → roughly **+100%**
+
+So the returns fall off fast: going from 10x to 100x costs ten times the money and buys twenty
+percentage points.
+
+[tip] In practice: on cheap gear just throw 1000x at it, the base is small anyway. On valuable gear **100x** is usually the sweet spot - beyond that, your money buys more by funding extra attempts than by pushing one roll.
 
 ### Tips
 - Don't waste Reforge resources on temporary equipment — first decide which equipment you'll use long-term.
 - Reforge multiple times to find core stats first, then lock them with Cold Quench Fluid.
-- Investing more increases the chance of a positive outcome, but does not guarantee a positive change every time.
-- Affinity discounts significantly reduce long-term Reforge costs — it's recommended to build Affinity first.
+- Think in **multiples**, not absolute cash: stop at 100x on valuable gear and spend the rest on more attempts.
+- Affinity discounts significantly reduce long-term Reforge costs — build Affinity first, and note the same discount **also applies to affix forging**.
+- Settle the stats before you forge affixes. The other order works too, but fixing the numbers first makes it easier to judge whether a piece is worth investing in.

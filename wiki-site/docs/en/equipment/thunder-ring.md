@@ -1,10 +1,10 @@
 # Thunder Ring
 
 ::: warning
-Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 :::
 
-# What Is It?
+## What Is It?
 
 A **totem-slot charge-up item** — the more hits you take, the harder your next strike. Each hit you receive builds a lightning charge. At 5 charges, your next melee attack releases a 40 lightning-damage burst. High-risk, high-reward.
 
@@ -12,7 +12,7 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 - **Drop**: No standard obtain path in current version
 - Won't drop on death
 
-# Thunder Charge (Passive)
+## Thunder Charge (Passive)
 
 **Charging:**
 - Each hit taken adds **1 charge** (max 5)
@@ -23,7 +23,7 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 - At **5 charges**, your next melee hit deals **+40 lightning damage** and clears all charges
 - Charging immediately restarts after release
 
-# Tips
+## Tips
 
 - Fundamentally a "take damage to deal damage" design — rewards aggressive, face-to-face combat
 - Against slow stationary bosses you reliably build to 5 and repeatedly release

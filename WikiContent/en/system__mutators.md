@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-At the start of every run, the system draws **1–10 random mutators** from a pool of 28 and applies them immediately for the entire run. Mutators can buff enemies, buff the player, or change environment rules — randomized every time.
+At the start of every run, the system draws a handful of mutators from a pool of 28 and applies them immediately for the entire run. **How many is fixed**, set by `mutatorCount` in the config — **3** by default (adjustable 1-10); what gets drawn is the random part. Mutators can buff enemies, buff the player, or change environment rules.
 
 > **Zombie Mode is excluded**: it has its own independent in-run buff system and does not use this mechanic.
 
@@ -15,6 +15,8 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 | From Scratch (Mode D) | ✅ |
 | Faction War (Mode E) | ✅ |
 | Blood Hunt (Mode F) | ✅ |
+| Fate Echo (Mode G) | ❌ (the nine-wave counter schedule is fixed) |
+| Black Market Duck Cup (Mode H) | ❌ (what the odds sheet says is what you get) |
 | Zombie Mode | ❌ (separate system) |
 
 ### How to See Active Mutators
@@ -91,4 +93,4 @@ No. The draw is random and non-configurable mid-run.
 No. All mutators are cleanly removed on any run-end (clear, death, or manual exit).
 
 **Q: Does Volatile Remains chain-explode?**  
-The system has a re-entry guard — only the direct kill triggers an explosion, not the explosion's secondary kills. No infinite chain.
+No. Only the kill you land yourself sets off an explosion; kills caused by that explosion do not set off more. There is no infinite chain.

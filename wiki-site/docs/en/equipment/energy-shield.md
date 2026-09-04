@@ -1,10 +1,10 @@
 # Energy Shield
 
 ::: warning
-Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 :::
 
-# What Is It?
+## What Is It?
 
 A **totem-slot defensive item** that converts frontal incoming damage into health. It's not a weapon — equipping it doesn't change your attacks, but it makes you tankier against forward threats. Completely ineffective against side and rear attacks.
 
@@ -12,11 +12,11 @@ A **totem-slot defensive item** that converts frontal incoming damage into healt
 - **Drop**: No standard obtain path in current version
 - Won't drop on death
 
-# Stat Bonus
+## Stat Bonus
 
 - Body Armor: **+3**
 
-# Frontal Absorption (Passive)
+## Frontal Absorption (Passive)
 
 When hit from the **front (±60° arc)**:
 - Recover **30%** of the damage taken as HP
@@ -25,7 +25,7 @@ When hit from the **front (±60° arc)**:
 
 Side and rear attacks do **not** trigger the healing.
 
-# Tips
+## Tips
 
 - In a 1v1 against a frontal melee boss, this effectively negates 30% of all damage
 - Completely nullified when surrounded — positioning matters

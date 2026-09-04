@@ -13,7 +13,7 @@ Multi-faction sandbox chaos. Pick a faction, watch Bosses from different faction
 
 - **Random** — Surprise assignment to 1 of 5 NPC factions
 - **Scav / USEC / Lab** — Standard factions, balanced Boss pools
-- **BEAR** — No base-game BEAR presets, so BEAR units get a x2.5 stat boost. **Beefy allies**
+- **BEAR** — The base game has no BEAR units, so allies are filled in from regular enemies and get a x2.5 stat boost to compensate. **Beefy allies**
 - **Wolf** — Prioritizes all unique Wolf Bosses; extras become promoted minions
 - **Lone Wolf** — No allies. Every faction is your enemy. **Are you sure about this?**
 
@@ -104,7 +104,7 @@ Bosses from every faction can be hired. When you can afford a living Boss, appro
 
 #### Summon Coalball
 
-Main interaction with the merchant lets you summon **Coalball** — a pet combat companion on your faction. Follows you and fights hostile Bosses.
+Main interaction with the merchant lets you summon **Coalball** — a pet combat companion on your faction. Follows you and fights hostile Bosses. On the field it carries its vanilla name, **Coal Briquette**.
 
 ### Tactical Consumables
 

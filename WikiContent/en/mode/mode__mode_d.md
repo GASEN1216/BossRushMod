@@ -24,8 +24,8 @@ A lite roguelike run. You enter **completely naked**, get a random starter kit, 
 - **1-2** — Weakest grunts, 0 Bosses. Free loot
 - **3-5** — All grunts (no ghosts), 0 Bosses. Gear-up window
 - **6-10** — Grunts + 1 Boss (heavy hitters excluded). First real fight
-- **11-15** — 2 Bosses. Watch your positioning
-- **16+** — Full enemy pool, full Boss pool, 2+ Bosses. **Game on**
+- **11-15** — 2 Bosses, and **the heavy-hitter block lifts at wave 11**: the Four Horsemen, Koko Koko, the Dragon Descendant and the Skyburner Dragon Lord are all back in the draw
+- **16+** — **No more minions: every enemy in the wave is a Boss** (3 by default, following your enemies-per-wave setting). **Game on**
 
 3 enemies/wave by default (adjustable 1-10 in config).
 
@@ -56,5 +56,6 @@ Enemies carry random gear too — quality scales with wave and HP: `Quality = 1 
 - Random start = **use whatever you get**. Don't restart for a perfect roll
 - First 5 waves have no Bosses — scavenge upgrades
 - Medical supplies are precious: 3 items, that's it. **Don't get hit**
+- From Scratch rolls timed random events as well: an airdropped supply crate or a passing merchant is the best thing that can happen to you while you're still broke, while a Blood Moon or an uninvited Boss is worth thinking twice about. See the "Random Events" page
 
 [tip] See the Infinite Hell & From Scratch strategy guide for detailed tips.

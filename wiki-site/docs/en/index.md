@@ -2,7 +2,7 @@
 layout: home
 hero:
   name: BossRush Mod
-  text: Escape from Duckov Wiki
+  text: Official Wiki
   tagline: The ultimate guide to BossRush Mod — game modes, bosses, equipment, and more.
   actions:
     - theme: brand
@@ -13,22 +13,16 @@ hero:
       link: /en/game-modes/
 
 features:
-  - icon: ⚔️
-    title: 7 Game Modes
+  - title: 7 Game Modes
     details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Zombie Mode
-  - icon: 🐉
-    title: Custom Bosses
+  - title: Custom Bosses
     details: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch with unique skill sets
-  - icon: 🛡️
-    title: Equipment System
+  - title: Equipment System
     details: Dragon sets, totems, legendary weapons, plus new frost/thunder gear
-  - icon: 👥
-    title: NPC System
+  - title: NPC System
     details: Goblin Smith, Nurse, Courier — affinity, gifting, and marriage
-  - icon: 🎲
-    title: Run Mutators
+  - title: Run Mutators
     details: 1–10 random mutators per run change enemy, player, and environment rules
-  - icon: 🔧
-    title: Reforge System
+  - title: Reforge System
     details: Reroll equipment stats and lock affixes with Cold Quench Fluid
 ---

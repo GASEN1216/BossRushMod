@@ -1,22 +1,22 @@
 # Dragon King Set
 
-# What Is It?
+## What Is It?
 
 The Dragon Set, but **better in every way**. Dropped by Skyburner Dragon Lord. Keeps fire-to-heal, massively upgrades the dash, and removes the poison/FOV downsides. **Replace your Dragon Set immediately.**
 
-# Pieces
+## Pieces
 
-# Dragon King Crown
+### Dragon King Crown
 Armor 7 / Durability 200 / Phys Res -15% / Storm +1 / Cold +1 / Crit Dmg **+15%** / Fire Res -20% / Shock -20%
 - Drop: Dragon Lord (15%)
 - vs Crimson Dragon Helm: better crit, **no poison vuln, no FOV loss**
 
-# Dragon King Scale Armor
+### Dragon King Scale Armor
 Armor 7 / Durability 200 / Phys Res -25% / Storm +1 / Cold +1 / Fire Res -25% / Shock -25%
 - Drop: Dragon Lord (15%)
 - vs Flame Scale Armor: **no poison vuln**
 
-# Set Effect (Both Equipped)
+## Set Effect (Both Equipped)
 
 - **Fire-to-heal** — Same 80% conversion
 - **Dragon Eye** — Red breathing glow
@@ -25,7 +25,7 @@ Armor 7 / Durability 200 / Phys Res -25% / Storm +1 / Cold +1 / Fire Res -25% / 
 - **Magma Trail** — Dash path burns enemies (5 dmg/0.5s, 3s duration)
 - **Golden-orange afterimage** (distinct from Dragon Set's orange-red)
 
-# Dragon Set → Dragon King Set
+## Dragon Set → Dragon King Set
 
 - Dash: 3m → **6m + 3m chain**
 - Cooldown: 1.5s → **0.5s**

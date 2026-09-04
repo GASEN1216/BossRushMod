@@ -15,5 +15,6 @@
 - **2.0.x**: wiki book, custom signpost, Dragon's Breath, dragon burn, dragon dash improvements.
 - **2.1.x**: Dragon King line, flight, reverse scale, reforge, achievements, affinity, wedding, Mode E, nurse, halberd, Dragon King gun, Zone 37 and Maze.
 - **2.2.x**: Zombie Mode (standalone Roguelite survival), the per-run mutator system, five new weapons and two new equipment sets, plus major transition-performance and bug fixes.
+- **2.3.x**: the Black Market Duck Cup (a ringside-manager mode where you never fight yourself), the Duck King Campaign (the Mod's first story line), the Arena Backyard, the PetNest, The Duckov Daily, the Duck King Codex, Affix Forging, the "Duck Life Is Uncertain" in-run random events, and eight content systems switched to on-by-default.
 
-[tip] For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.2.0`. For the latest small update, see `v2.2.5`.
+[tip] For fast historical context, start with `v2.1.0` and `v2.1.20`. For the latest major additions, see `v2.3.0`.

@@ -1,9 +1,9 @@
 # Achievement List
 
-# Overview
-BossRush Mod currently contains 35 achievements across 7 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
+## Overview
+BossRush Mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
 
-# Basic Completion
+## Basic Completion
 - First Steps: Complete BossRush for the first time. Reward `$5,000`, difficulty `★`
 - Easy Peasy: Complete BossRush on Easy difficulty. Reward `$10,000`, difficulty `★`
 - Getting Serious: Complete BossRush on Normal difficulty. Reward `$25,000`, difficulty `★★`
@@ -14,7 +14,7 @@ BossRush Mod currently contains 35 achievements across 7 categories. Completing 
 - Hell Wave 100: Survive 100 waves in Infinite Hell mode. Reward `$800,000`, difficulty `★★★★★`
 - Hell Wave 200: Survive 200 waves in Infinite Hell mode. Reward `$2,000,000`, difficulty `★★★★★`
 
-# Cumulative
+## Cumulative
 - Regular: Complete BossRush 10 times in total. Reward `$50,000`, difficulty `★★`
 - Seasoned Challenger: Complete BossRush 50 times in total. Reward `$250,000`, difficulty `★★★`
 - Legendary Hunter: Complete BossRush 100 times in total. Reward `$800,000`, difficulty `★★★★`
@@ -23,13 +23,13 @@ BossRush Mod currently contains 35 achievements across 7 categories. Completing 
 - Dragon Hunter: Defeat 500 bosses in total. Reward `$500,000`, difficulty `★★★★`
 - Immortal Warlord: Defeat 1000 bosses in total. Reward `$1,500,000`, difficulty `★★★★★`
 
-# Flawless
+## Flawless
 - Flawless Easy: Complete Easy difficulty without taking damage. Reward `$80,000`, difficulty `★★★`
 - Flawless Normal: Complete Normal difficulty without taking damage. Reward `$250,000`, difficulty `★★★★`
 - Flawless Mode D: Complete 5 waves in From Scratch without taking damage. Reward `$350,000`, difficulty `★★★★`
 - Iron Will: Survive 10 waves in Infinite Hell without taking damage. Reward `$500,000`, difficulty `★★★★★`
 
-# Speedrun
+## Speedrun
 - Lightning Run: Reach the clear condition of any mode within 5 minutes. Reward `$30,000`, difficulty `★★`
 - Speed Demon: Reach the clear condition of any mode within 3 minutes. Reward `$120,000`, difficulty `★★★★`
 - Time Assassin: Reach the clear condition of any mode within 2 minutes. Reward `$400,000`, difficulty `★★★★★`
@@ -39,14 +39,14 @@ BossRush Mod currently contains 35 achievements across 7 categories. Completing 
 "Instant Kill" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
-# Boss Kill
+## Boss Kill
 - Dragon Slayer: Defeat the Dragon Descendant for the first time. Reward `$30,000`, difficulty `★★`
 - Perfect Dragon Hunt: Defeat the Dragon Descendant without taking damage. Reward `$200,000`, difficulty `★★★★`
 - Kingslayer: Defeat the Skyburner Dragon Lord for the first time. Reward `$100,000`, difficulty `★★★`
 - Perfect Kingslayer: Defeat the Skyburner Dragon Lord without taking damage. Reward `$500,000`, difficulty `★★★★★`
 - Dragon Slayer Master: Defeat the Skyburner Dragon Lord 10 times in total. Reward `$600,000`, difficulty `★★★★`
 
-# Special Challenges
+## Special Challenges
 - Iron Man (Hidden): Survive 10 waves in Infinite Hell without using healing items. Reward `$250,000`, difficulty `★★★★`
 - Dragon Descendant Collector: Collect all exclusive drops from Dragon Descendant. Reward `$300,000`, difficulty `★★★`
 - Dragon King Collector: Collect all exclusive drops from Skyburner Dragon Lord. Reward `$500,000`, difficulty `★★★★`
@@ -57,9 +57,31 @@ BossRush Mod currently contains 35 achievements across 7 categories. Completing 
 "Iron Man" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
-# Ultimate
+## Taming (PetNest)
+- First Hatch: Hatch your first cub at the PetNest. Reward `$60,000`, difficulty `★`
+- Bloodline Collector: Unlock 10 bloodline entries. Reward `$200,000`, difficulty `★★★`
+- Lineage Obsession: Unlock 30 bloodline entries. Reward `$600,000`, difficulty `★★★★`
+- The Pale Purple One: Hatch a shiny cub. Reward `$300,000`, difficulty `★★★★`
+- A Name on the Stone (Hidden): Carve the first name into the memorial. Reward `$120,000`, difficulty `★★`
+
+::: tip
+"A Name on the Stone" is a hidden achievement and will not appear in the achievement panel until unlocked.
+:::
+
+## Codex (Duck King Codex)
+- First Entry: Log your first boss in the codex. Reward `$50,000`, difficulty `★`
+- Ten Logged: Unlock 10 codex entries. Reward `$150,000`, difficulty `★★`
+- Half the Record: Unlock 20 codex entries. Reward `$400,000`, difficulty `★★★`
+- Inside Ten Seconds: Take down a boss within ten seconds. Reward `$200,000`, difficulty `★★★★`
+- The Complete Codex: Unlock every codex entry. Reward `$1,000,000`, difficulty `★★★★★`
+
+::: tip
+Kills in the Black Market Duck Cup do not enter the codex and do not advance this group.
+:::
+
+## Ultimate
 - Completionist: Unlock all achievements. Reward `$5,000,000`, difficulty `★★★★★`
 
-# Statistics
-- Total achievements: 35 (including 2 hidden)
-- Total reward amount: `$16,760,000`
+## Statistics
+- Total achievements: 45 (including 3 hidden)
+- Total reward amount: `$19,840,000`

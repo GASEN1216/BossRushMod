@@ -32,6 +32,9 @@ BossRush选项修改方案.md
 # docs/ 默认 local-only（AGENTS.md §13）。但下面这几份被 tests/ 的 guard 直接读取
 # （文件不存在时 guard 是硬失败，不是 skip），不纳管会让 fresh clone 一跑 guard 就红，
 # 因此显式放行。新增此类「guard 依赖的文档」时必须同步加到这里。
+#
+# 反例（不要放行）：docs/官方本地化表/ 是游戏本体资产的快照，
+# tests/OfficialNameReferenceGuard.py 读不到时会自行 skip 而不是转红，所以不纳管。
 /docs/*
 !/docs/testing/
 /docs/testing/*
@@ -58,6 +61,11 @@ BossRush选项修改方案.md
 wiki-site/node_modules/
 wiki-site/docs/.vitepress/dist/
 wiki-site/docs/.vitepress/cache/
+# 例外：wiki-site/docs/public/ 里的图必须进 git。
+# 源图在 /Assets/* 下（被上面的规则挡着），而在线 Wiki 由 GitHub Actions 直接从
+# 仓库构建，CI 里看不到 Assets/。这些是 tools/build_wiki_images.py 转好的 WebP
+# 产物（当前 52 张 + favicon，约 1.7 MB），不进 git 站点上就是一片 404。
+!wiki-site/docs/public/
 /codex-skills
 
 Assets/config/wish_config.dat

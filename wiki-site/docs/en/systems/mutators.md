@@ -1,12 +1,12 @@
 # Mutator System
 
-# What Is It?
+## What Is It?
 
-At the start of every run, the system draws **1–10 random mutators** from a pool of 28 and applies them immediately for the entire run. Mutators can buff enemies, buff the player, or change environment rules — randomized every time.
+At the start of every run, the system draws a handful of mutators from a pool of 28 and applies them immediately for the entire run. **How many is fixed**, set by `mutatorCount` in the config — **3** by default (adjustable 1-10); what gets drawn is the random part. Mutators can buff enemies, buff the player, or change environment rules.
 
 > **Zombie Mode is excluded**: it has its own independent in-run buff system and does not use this mechanic.
 
-# Applicable Modes
+## Applicable Modes
 
 | Mode | Rolls mutators? |
 |------|----------------|
@@ -15,16 +15,18 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 | From Scratch (Mode D) | ✅ |
 | Faction War (Mode E) | ✅ |
 | Blood Hunt (Mode F) | ✅ |
+| Fate Echo (Mode G) | ❌ (the nine-wave counter schedule is fixed) |
+| Black Market Duck Cup (Mode H) | ❌ (what the odds sheet says is what you get) |
 | Zombie Mode | ❌ (separate system) |
 
-# How to See Active Mutators
+## How to See Active Mutators
 
 - An **ACTIVE MUTATORS** list appears on the left edge after the run starts and shows the total count
 - Every row is labeled **Enemy / Boon / Rule**, with category colors for quick scanning
 - Hover a row to open the full descriptions on the right; the row you are reading is highlighted
 - The detail panel scrolls when the list is long, and remains open while moving the pointer from the compact list into the details
 
-# Configuration
+## Configuration
 
 - **Toggle**: `enableMutators` (default: `true`)
 - **Count**: `mutatorCount`, range 1–10, default **3** per run
@@ -32,9 +34,9 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 
 ---
 
-# Mutator Pool (28 Total)
+## Mutator Pool (28 Total)
 
-# ⚔ Enemy Buffs (9)
+### ⚔ Enemy Buffs (9)
 
 | Mutator | Effect |
 |---------|--------|
@@ -48,7 +50,7 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 | **Enemy Marksman** | All enemies gun scatter **−25%** (shots are tighter) |
 | **Frenzy** | All enemies movement speed and fire rate **+20%** |
 
-# ★ Player Boons (11)
+### ★ Player Boons (11)
 
 | Mutator | Effect |
 |---------|--------|
@@ -64,7 +66,7 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 | **Field Medic** | Player healing effectiveness **+50%** |
 | **Lucky Star** | Player gun and melee crit rate **+20%** |
 
-# ☠ Environment Rules (8)
+### ☠ Environment Rules (8)
 
 | Mutator | Effect | Note |
 |---------|--------|------|
@@ -79,7 +81,7 @@ At the start of every run, the system draws **1–10 random mutators** from a po
 
 ---
 
-# FAQ
+## FAQ
 
 **Q: Are player boon mutators equally likely?**  
 All 28 entries are in the same pool with equal weight. You might roll both "Giants" and "Glass Cannon" in the same run.
@@ -91,4 +93,4 @@ No. The draw is random and non-configurable mid-run.
 No. All mutators are cleanly removed on any run-end (clear, death, or manual exit).
 
 **Q: Does Volatile Remains chain-explode?**  
-The system has a re-entry guard — only the direct kill triggers an explosion, not the explosion's secondary kills. No infinite chain.
+No. Only the kill you land yourself sets off an explosion; kills caused by that explosion do not set off more. There is no infinite chain.

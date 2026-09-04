@@ -1,6 +1,6 @@
 ## Summoning Staff
 
-[warn] Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Only obtainable via dev/debug grant; an acquisition route is planned for a future update.
+[warn] Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
 
 ### What Is It?
 
@@ -30,4 +30,4 @@ A **summoner melee staff** with modest personal damage but a right-click that pu
 - 12s cooldown vs 15s lifetime means near-seamless uptime if you summon immediately on expiry
 - Shines most in Zombie Mode or multi-enemy scenarios where summons absorb attention
 
-[tip] Summons use the Cname_Zombie preset — they look like zombies but fight for you. Use them as meat shields against boss abilities to buy time.
+[tip] The summons look like zombies but fight for you. Use them as meat shields against boss abilities to buy time.

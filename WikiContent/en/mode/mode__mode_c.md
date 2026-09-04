@@ -52,5 +52,6 @@ In Infinite Hell, the signpost also shows:
 - +2% per wave sounds small. At wave 50 it's +100%. At wave 100 it's +200%. **It adds up fast.**
 - No loot crates = bring your best gear in, or rely on milestone rewards
 - Boss Filter lets you tune the pool — remove the Bosses you hate most
+- Infinite Hell rolls timed random events too: a Blood Moon buffs every enemy on the field for a while, so play it safe; Golden Duck Rain is free cash, and cash flies to you here anyway. See the "Random Events" page
 
 [tip] See the Infinite Hell & From Scratch strategy guide for detailed tips.

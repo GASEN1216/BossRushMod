@@ -1,0 +1,320 @@
+{
+  "codex": [
+    {
+      "key": "boss_dragonking",
+      "src": "/images/codex/boss-dragonking.webp",
+      "zh": "焚天龙皇",
+      "en": "Skyburner Dragon Lord"
+    },
+    {
+      "key": "boss_phantomwitch",
+      "src": "/images/codex/boss-phantomwitch.webp",
+      "zh": "幽灵女巫",
+      "en": "Phantom Witch"
+    },
+    {
+      "key": "cname_boss_3shot",
+      "src": "/images/codex/cname-boss-3shot.webp",
+      "zh": "三枪哥",
+      "en": "Triple-Shot Man"
+    },
+    {
+      "key": "cname_boss_arcade",
+      "src": "/images/codex/cname-boss-arcade.webp",
+      "zh": "暴走街机",
+      "en": "Rampaging Arcade"
+    },
+    {
+      "key": "cname_boss_blue",
+      "src": "/images/codex/cname-boss-blue.webp",
+      "zh": "???",
+      "en": "???"
+    },
+    {
+      "key": "cname_boss_fly",
+      "src": "/images/codex/cname-boss-fly.webp",
+      "zh": "蝇蝇队长",
+      "en": "Fly Captain"
+    },
+    {
+      "key": "cname_boss_red",
+      "src": "/images/codex/cname-boss-red.webp",
+      "zh": "???",
+      "en": "???"
+    },
+    {
+      "key": "cname_boss_shot",
+      "src": "/images/codex/cname-boss-shot.webp",
+      "zh": "喷子",
+      "en": "Shotgunner"
+    },
+    {
+      "key": "cname_boss_sniper",
+      "src": "/images/codex/cname-boss-sniper.webp",
+      "zh": "劳登",
+      "en": "Lordon"
+    },
+    {
+      "key": "cname_ghost",
+      "src": "/images/codex/cname-ghost.webp",
+      "zh": "幽灵",
+      "en": "Ghost"
+    },
+    {
+      "key": "cname_grenade",
+      "src": "/images/codex/cname-grenade.webp",
+      "zh": "炸弹狂人",
+      "en": "Mad Bomber"
+    },
+    {
+      "key": "cname_hunter",
+      "src": "/images/codex/cname-hunter.webp",
+      "zh": "猎户",
+      "en": "Hunter"
+    },
+    {
+      "key": "cname_labtestobjective",
+      "src": "/images/codex/cname-labtestobjective.webp",
+      "zh": "测试对象",
+      "en": "Test Object"
+    },
+    {
+      "key": "cname_pmcleader",
+      "src": "/images/codex/cname-pmcleader.webp",
+      "zh": "呆头鹅",
+      "en": "Goofy Goose"
+    },
+    {
+      "key": "cname_prison_boss",
+      "src": "/images/codex/cname-prison-boss.webp",
+      "zh": "典狱长",
+      "en": "Warden"
+    },
+    {
+      "key": "cname_roadblock",
+      "src": "/images/codex/cname-roadblock.webp",
+      "zh": "路障",
+      "en": "Roadblock"
+    },
+    {
+      "key": "cname_schoolbully",
+      "src": "/images/codex/cname-schoolbully.webp",
+      "zh": "校霸",
+      "en": "School Bully"
+    },
+    {
+      "key": "cname_shorteagle",
+      "src": "/images/codex/cname-shorteagle.webp",
+      "zh": "矮鸭",
+      "en": "Pato Chapo"
+    },
+    {
+      "key": "cname_snow_bigice",
+      "src": "/images/codex/cname-snow-bigice.webp",
+      "zh": "大冰冰",
+      "en": "Big Ice"
+    },
+    {
+      "key": "cname_snow_fleeze",
+      "src": "/images/codex/cname-snow-fleeze.webp",
+      "zh": "弗里兹",
+      "en": "Fleeze"
+    },
+    {
+      "key": "cname_snowman",
+      "src": "/images/codex/cname-snowman.webp",
+      "zh": "机械雪人",
+      "en": "Snow-Bot"
+    },
+    {
+      "key": "cname_speedy",
+      "src": "/images/codex/cname-speedy.webp",
+      "zh": "急速团长",
+      "en": "Speedy Group Commander"
+    },
+    {
+      "key": "cname_speedy_ice",
+      "src": "/images/codex/cname-speedy-ice.webp",
+      "zh": "急冻团长",
+      "en": "Frost Commander"
+    },
+    {
+      "key": "cname_stormboss1",
+      "src": "/images/codex/cname-stormboss1.webp",
+      "zh": "噗咙噗咙",
+      "en": "Pulu Pulu"
+    },
+    {
+      "key": "cname_stormboss2",
+      "src": "/images/codex/cname-stormboss2.webp",
+      "zh": "咕噜咕噜",
+      "en": "Gulu Gulu"
+    },
+    {
+      "key": "cname_stormboss3",
+      "src": "/images/codex/cname-stormboss3.webp",
+      "zh": "啪啦啪啦",
+      "en": "Pala Pala"
+    },
+    {
+      "key": "cname_stormboss4",
+      "src": "/images/codex/cname-stormboss4.webp",
+      "zh": "比利比利",
+      "en": "Billy Billy"
+    },
+    {
+      "key": "cname_stormboss5",
+      "src": "/images/codex/cname-stormboss5.webp",
+      "zh": "口口口口",
+      "en": "Koko Koko"
+    },
+    {
+      "key": "cname_ultraman",
+      "src": "/images/codex/cname-ultraman.webp",
+      "zh": "光之男",
+      "en": "Man of Light"
+    },
+    {
+      "key": "cname_vida",
+      "src": "/images/codex/cname-vida.webp",
+      "zh": "维达",
+      "en": "Vida"
+    },
+    {
+      "key": "cname_xing",
+      "src": "/images/codex/cname-xing.webp",
+      "zh": "大兴兴",
+      "en": "Big Xing"
+    },
+    {
+      "key": "dragondescendant",
+      "src": "/images/codex/dragondescendant.webp",
+      "zh": "龙裔遗族",
+      "en": "Dragon Descendant"
+    },
+    {
+      "key": "zombie_boss_corruptor",
+      "src": "/images/codex/zombie-boss-corruptor.webp",
+      "zh": "腐蚀地面",
+      "en": "Corruptor"
+    },
+    {
+      "key": "zombie_boss_hunter",
+      "src": "/images/codex/zombie-boss-hunter.webp",
+      "zh": "极速追猎",
+      "en": "Hunter"
+    },
+    {
+      "key": "zombie_boss_shielder",
+      "src": "/images/codex/zombie-boss-shielder.webp",
+      "zh": "护盾统御",
+      "en": "Shielder"
+    },
+    {
+      "key": "zombie_boss_splitter",
+      "src": "/images/codex/zombie-boss-splitter.webp",
+      "zh": "分裂尸群",
+      "en": "Splitter"
+    },
+    {
+      "key": "zombie_boss_titan",
+      "src": "/images/codex/zombie-boss-titan.webp",
+      "zh": "巨坦",
+      "en": "Titan"
+    }
+  ],
+  "campaign": [
+    {
+      "key": "poster-ch1",
+      "src": "/images/campaign/poster-ch1.webp",
+      "zh": "第 1 章 · 擂台旧影",
+      "en": "Chapter 1 — Echoes of the Ring"
+    },
+    {
+      "key": "poster-ch2",
+      "src": "/images/campaign/poster-ch2.webp",
+      "zh": "第 2 章 · 白手起家的誓言",
+      "en": "Chapter 2 — Vow of the Empty-Handed"
+    },
+    {
+      "key": "poster-ch3",
+      "src": "/images/campaign/poster-ch3.webp",
+      "zh": "第 3 章 · 立旗为界",
+      "en": "Chapter 3 — Planting the Banner"
+    },
+    {
+      "key": "poster-ch4",
+      "src": "/images/campaign/poster-ch4.webp",
+      "zh": "第 4 章 · 猎杀名单",
+      "en": "Chapter 4 — The Kill List"
+    },
+    {
+      "key": "poster-ch5",
+      "src": "/images/campaign/poster-ch5.webp",
+      "zh": "第 5 章 · 末日信标",
+      "en": "Chapter 5 — The Last Beacon"
+    },
+    {
+      "key": "poster-ch6",
+      "src": "/images/campaign/poster-ch6.webp",
+      "zh": "第 6 章 · 冠军之影",
+      "en": "Chapter 6 — Shadow of the Champion"
+    },
+    {
+      "key": "portrait-broker",
+      "src": "/images/campaign/portrait-broker.webp",
+      "zh": "中间人",
+      "en": "The Broker"
+    },
+    {
+      "key": "portrait-champion",
+      "src": "/images/campaign/portrait-champion.webp",
+      "zh": "冠军之影",
+      "en": "Shadow of the Champion"
+    }
+  ],
+  "icons": [
+    {
+      "key": "daily-mailbox",
+      "src": "/images/icons/daily-mailbox.webp",
+      "zh": "报箱",
+      "en": "The Mailbox"
+    },
+    {
+      "key": "campaign-board",
+      "src": "/images/icons/campaign-board.webp",
+      "zh": "征程公告板",
+      "en": "Campaign Board"
+    },
+    {
+      "key": "showcase",
+      "src": "/images/icons/showcase.webp",
+      "zh": "战利品展示柜",
+      "en": "Trophy Showcase"
+    },
+    {
+      "key": "petnest",
+      "src": "/images/icons/petnest.webp",
+      "zh": "遗种巢",
+      "en": "The Relic Nest"
+    },
+    {
+      "key": "codex-book",
+      "src": "/images/icons/codex-book.webp",
+      "zh": "鸭皇图鉴",
+      "en": "Duck King Codex"
+    },
+    {
+      "key": "forge-stone",
+      "src": "/images/icons/forge-stone.webp",
+      "zh": "词缀熔石",
+      "en": "Affix Forge Stone"
+    },
+    {
+      "key": "relic-egg",
+      "src": "/images/icons/relic-egg.webp",
+      "zh": "遗种蛋",
+      "en": "Relic Egg"
+    }
+  ]
+}

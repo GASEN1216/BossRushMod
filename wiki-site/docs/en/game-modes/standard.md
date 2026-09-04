@@ -1,14 +1,14 @@
 # Standard BossRush
 
-# What Is It?
+## What Is It?
 
 The bread-and-butter mode. Buy a ticket, pick a map, walk into the arena, choose your difficulty at the signpost, and start fighting Bosses. Kill 'em all, grab your loot, and evacuate.
 
-# Entry
+## Entry
 
 - **BossRush Ticket** (from the base merchant)
 
-# Difficulty
+## Difficulty
 
 Interact with the arena signpost to pick:
 
@@ -16,7 +16,7 @@ Interact with the arena signpost to pick:
 - **Normal** — 3 Bosses/wave, limited waves. The real deal
 - **Infinite Hell** — See Infinite Hell mode. Unlimited waves, no escape
 
-# How It Works
+## How It Works
 
 1. Pick difficulty → first wave spawns
 2. Kill all Bosses in the wave
@@ -25,13 +25,15 @@ Interact with the arena signpost to pick:
 5. On-screen compass shows Boss directions (E/W/S/N)
 6. Multi-Boss waves = surrounded from all sides. Fun!
 
-# Boss Pool
+Screen suddenly going red, a supply crate falling out of the sky, or a Boss that clearly isn't part of this wave walking in? Those are timed random events, and Standard BossRush is one of the three modes that roll them. Each one is announced, runs for a set time, and cleans itself up — see the "Random Events" page.
 
-- All in-game Boss presets
-- First 20 waves exclude heavy hitters (Four Horsemen, Dragon Descendant, Skyburner Dragon Lord) — warm-up time
+## Boss Pool
+
+- Every Boss in the game is in the pool
+- First 20 waves exclude heavy hitters (Four Horsemen, Koko Koko, Dragon Descendant, Skyburner Dragon Lord) — warm-up time. The Phantom Witch is not on that list and can turn up any time
 - Use the **Boss Filter** to disable specific Bosses
 
-# Clear Rewards
+## Clear Rewards
 
 - The completion reward crate no longer appears instantly by the signpost.
 - It now first shows up as a highlighted ghost crate above you, then slowly descends and becomes a normal interactable reward crate.
@@ -40,19 +42,19 @@ Interact with the arena signpost to pick:
 
 After clearing, an evacuation point opens. Interact to return to base.
 
-# Arena Facilities
+## Arena Facilities
 
 - **Ammo Shop** — Buy ammo
 - **Repair Station** — Fix durability
 - **Trash Can** — Clean up loot crates (clear boxes or clear all)
 - **Return to Spawn** — Teleport back to the safe zone
 
-# Arena NPCs
+## Arena NPCs
 
 - **Awen** (Courier): Always present, storage & retrieval
 - **Dingdang or Yuori** (random): Reforge/shop or healing (married NPCs excluded from random pool)
 
-# Related Achievements
+## Related Achievements
 
 - **Rookie** — First clear on any difficulty
 - **Easy / Normal** — Clear the respective difficulty

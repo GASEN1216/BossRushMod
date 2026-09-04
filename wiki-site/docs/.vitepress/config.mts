@@ -66,6 +66,7 @@ function sidebarZh() {
         { text: '血猎追击', link: '/game-modes/mode-f' },
         { text: '宿命回响', link: '/game-modes/mode-g' },
         { text: '末日丧尸模式', link: '/game-modes/zombie-mode' },
+        { text: '百战留痕（黑市鸭王杯）', link: '/game-modes/mode-h' },
       ],
     },
     {
@@ -133,9 +134,13 @@ function sidebarZh() {
         { text: '重铸系统', link: '/systems/reforge' },
         { text: 'Boss 筛选器', link: '/systems/boss-filter' },
         { text: '变异词条系统', link: '/systems/mutators' },
+        { text: '遗种巢', link: '/systems/petnest' },
+        { text: '鸭科夫日报', link: '/systems/daily-report' },
         { text: '鸭皇图鉴', link: '/systems/codex' },
         { text: '局内随机事件', link: '/systems/random-events' },
         { text: '词缀锻造', link: '/systems/affix-forge' },
+        { text: '鸭王征程', link: '/systems/campaign' },
+        { text: '竞技场后山', link: '/systems/arena-backyard' },
         { text: '好感度与婚姻', link: '/systems/affinity-marriage' },
         { text: '配置选项', link: '/systems/configuration' },
       ],
@@ -192,6 +197,7 @@ function sidebarEn() {
         { text: 'Blood Hunt', link: '/en/game-modes/mode-f' },
         { text: 'Fate Echo', link: '/en/game-modes/mode-g' },
         { text: 'Zombie Mode', link: '/en/game-modes/zombie-mode' },
+        { text: 'Black Market Duck Cup', link: '/en/game-modes/mode-h' },
       ],
     },
     {
@@ -259,9 +265,13 @@ function sidebarEn() {
         { text: 'Reforge System', link: '/en/systems/reforge' },
         { text: 'Boss Filter', link: '/en/systems/boss-filter' },
         { text: 'Mutator System', link: '/en/systems/mutators' },
+        { text: 'PetNest', link: '/en/systems/petnest' },
+        { text: 'The Duckov Daily', link: '/en/systems/daily-report' },
         { text: 'Duck King Codex', link: '/en/systems/codex' },
         { text: 'Random Events', link: '/en/systems/random-events' },
         { text: 'Affix Forging', link: '/en/systems/affix-forge' },
+        { text: 'Duck King Campaign', link: '/en/systems/campaign' },
+        { text: 'Arena Backyard', link: '/en/systems/arena-backyard' },
         { text: 'Affinity & Marriage', link: '/en/systems/affinity-marriage' },
         { text: 'Configuration', link: '/en/systems/configuration' },
       ],
@@ -306,8 +316,31 @@ export default defineConfig({
   base,
   cleanUrls: true,
 
+  markdown: {
+    // 表格外套一层横向滚动框：窄屏下宽表格自己滚，不撑破版心。
+    // 对应档案报告里的 .tw 包裹层，样式见 theme/style.css §7。
+    config(md) {
+      md.renderer.rules.table_open = () => '<div class="brs-table-scroll"><table>'
+      md.renderer.rules.table_close = () => '</table></div>'
+    },
+  },
+
   head: [
     ['link', { rel: 'icon', href: `${base}images/favicon.ico` }],
+    // 档案版式字体：衬线标题 + 正文黑体 + 等宽微标签，与玩法档案报告同源。
+    // 用 media=print + onload 切换，避免 fonts.googleapis.com 不可达时阻塞首屏；
+    // 取不到时按 style.css 里的本地字体栈降级（苹方 / 微软雅黑 / 宋体）。
+    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
+    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
+    [
+      'link',
+      {
+        rel: 'stylesheet',
+        href: 'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap',
+        media: 'print',
+        onload: "this.media='all'",
+      },
+    ],
   ],
 
   locales: {

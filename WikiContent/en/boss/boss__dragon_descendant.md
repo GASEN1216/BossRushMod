@@ -37,9 +37,24 @@ After revival it enters a frenzied state with a completely new rhythm:
 - **Ice Vulnerability**: After taking cumulative ice damage equal to 10% of max HP, it's slowed for 10 seconds
 
 ### Drops
-- Crimson Dragon Helm (Helmet): 30% drop rate
-- Flame Scale Armor (Armor): 60% drop rate
-- Dragon Breath (Firearm): 10% drop rate
+
+**Exclusive equipment** - each kill drops **exactly one** of the three, weighted (not independent rolls):
+
+- Flame Scale Armor (Armor): **60%**
+- Crimson Dragon Helm (Helmet): **30%**
+- Dragon Breath (Firearm): **10%**
+
+The three add up to 100%, so you are **guaranteed** one piece - but collecting all three takes
+several kills, and Dragon Breath is the stubborn one.
+
+**What every Boss drops on top of that** (parallel, never displacing each other)
+
+- **A regular loot crate** - size scales with its health
+- **Relic souls** - guaranteed, bankable toward a Dragon Descendant bloodline egg
+- **A relic egg (Descendant bloodline)** - about 4%, landing on the body, so search it
+- **An Affix Forge Stone** - about 8%
+- **A Dragon Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the garden**.
+  Grows Dragon Breath Fruit: +10% gun and melee damage for your next run
 
 ### Combat Strategy
 - Phase 1 pressure is low — keeping 5m+ distance avoids most damage

@@ -6,7 +6,7 @@ The Phantom Witch is the third custom Boss in BossRush Mod. She roams the battle
 ### Base Stats
 - HP: 1000
 - Damage Multiplier: 1.1x
-- Model Scale: 2x (based on Ghost preset)
+- Size: 2x a regular ghost
 - Held Weapon: Soulreaper's Requiem
 
 ### Phase Thresholds
@@ -77,7 +77,22 @@ Tracked Teleport → Requiem + Trail Combo → Curse Realm → Tracked Teleport
 Short Drift → Undead Summon → Curse Realm → Minion Retreat
 
 ### Drops
-- Soulreaper's Requiem (melee weapon): 50% extra drop chance
+
+**Exclusive equipment**
+
+- Soulreaper's Requiem (melee weapon): **50%** extra drop chance
+
+Unlike the two dragons, the Witch's drop is an **independent extra roll**: when it hits, the
+scythe is appended to the loot crate without displacing anything already in it.
+
+**What every Boss drops on top of that**
+
+- **A regular loot crate** - size scales with its health
+- **Relic souls** - guaranteed, bankable toward a Phantom Witch bloodline egg
+- **A relic egg (Witch bloodline)** - about 4%, landing on the body, so search it
+- **An Affix Forge Stone** - about 8%
+- **A Phantom Spore** - about 25%, **requires Duck King Campaign chapter 1 to unlock the garden**.
+  Grows Shadow Mushroom: -10% physical damage taken for your next run
 
 ### Combat Tips
 - **The violet tracking marker is the key signal**: keep strafing for 2 seconds until it locks, don't just take one step

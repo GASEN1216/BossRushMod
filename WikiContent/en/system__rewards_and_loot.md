@@ -100,20 +100,71 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
 
 ### Custom Boss Exclusive Drops
 
-When killing a custom Boss, in addition to the regular loot crate, exclusive equipment drops separately (independent roll, not affected by quality weights):
+Killing a custom Boss drops exclusive equipment on top of the regular loot crate. **The two
+dragons work differently from the Witch - read this before planning a farm route:**
 
-#### Dragon Descendant
-- Crimson Dragon Helm (Helmet): 30% drop rate
-- Flame Scale Armor (Armor): 60% drop rate
-- Dragon Breath (Firearm): 10% drop rate
+#### Dragon Descendant - one of three
 
-#### Skyburner Dragon Lord
-- Cloud Rider (Totem): 15% drop rate
-- Dragon King Crown (Helmet): 15% drop rate
-- Dragon King Scale Armor (Armor): 15% drop rate
-- Reverse Scale (Totem): 39% drop rate
-- Skyburner Halberd (Melee): 15% drop rate
-- Dragon Cannon (Firearm): 1% drop rate
+Each kill drops **exactly one** piece, weighted across three. The numbers add up to 100%:
 
-#### Phantom Witch
-- Soulreaper's Requiem (Melee): 50% drop rate
+- Flame Scale Armor (Armor): **60%**
+- Crimson Dragon Helm (Helmet): **30%**
+- Dragon Breath (Firearm): **10%**
+
+So you are **guaranteed** one piece, but collecting all three takes several kills, and Dragon
+Breath in particular is down to luck.
+
+#### Skyburner Dragon Lord - one of six
+
+Again **exactly one** piece, weighted across six:
+
+- Reverse Scale (Totem): **39%**
+- Cloud Rider (Totem): **15%**
+- Dragon King Crown (Helmet): **15%**
+- Dragon King Scale Armor (Armor): **15%**
+- Skyburner Halberd (Melee): **15%**
+- Dragon Cannon (Firearm): **1%**
+
+[tip] That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation. It is the hardest item in the Mod to obtain - go in knowing that.
+
+#### Phantom Witch - an independent extra
+
+The Witch works the other way: Soulreaper's Requiem is an **independent extra roll** at `50%`,
+appended to the loot crate without competing with anything else. Frostmourne's drop from the
+vanilla "???" Boss uses the same independent-extra mechanism.
+
+### Every Boss also drops these
+
+The above covers loot crates and exclusive gear. On top of that, **any Boss** you kill runs the
+rolls below. They're independent of each other and never take away anything you'd otherwise get.
+
+#### Relic Souls (guaranteed)
+
+Every Boss kill grants souls: **Boss max health / 15**, rounded, minimum 1. Tankier Bosses pay
+more. Souls exist only to condense eggs: bank **240** in one bloodline and you can condense that
+Boss's egg on demand.
+
+#### Relic Eggs (about 4%)
+
+A small chance to drop an egg of the matching bloodline outright. It lands on the Boss, so search
+the body. This is the lucky line; condensing is the guaranteed line - two parallel paths, so
+unlucky players can still complete the collection.
+
+#### Affix Forge Stones (about 8%)
+
+Material for affix forging, roughly one per standard arena run. The steady alternative is
+Dingdang's shop (affinity Lv.2, up to 5 per restock).
+
+#### Backyard Seeds (about 25%, the three custom Bosses only)
+
+**Requires delivering Duck King Campaign chapter 1 to unlock the garden.** After that, the three
+custom Bosses' loot crates each carry an extra seed:
+
+- Dragon Descendant -> **Dragon Seed** (grows Dragon Breath Fruit)
+- Skyburner Dragon Lord -> **Skyburner Ember Seed** (grows Emberheart Chili)
+- Phantom Witch -> **Phantom Spore** (grows Shadow Mushroom)
+
+The seed is free - it never displaces the Dragon set or Dragon Lord exclusive drops you'd
+otherwise get.
+
+[tip] So a full Skyburner Dragon Lord kill pays out: one loot crate + **one** piece of exclusive gear from the six + a pile of souls + a 4% egg + an 8% forge stone + a 25% ember seed. Don't just watch the gear slot.

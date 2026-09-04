@@ -1,46 +1,46 @@
 # Affinity and Marriage
 
-# Affinity System
+## Affinity System
 
 10 levels for Dingdang and Yuori. Chat daily, give gifts, unlock services and story content.
 
-# Level Thresholds
+### Level Thresholds
 
 - Lv.1: 0 → Lv.2: 50 → Lv.3: 150 → Lv.4: 300 → Lv.5: 500
 - Lv.6: 750 → Lv.7: 1,050 → Lv.8: 1,400 → Lv.9: 1,800 → Lv.10: 2,300
 
-# How to Gain Affinity
+### How to Gain Affinity
 
 - **Daily chat**: Dingdang +40 / Yuori +30 (once/day)
 - **Liked gift**: +80 / **Neutral gift**: +20 / **Disliked**: -40 (Yuori -60 for Brick Stone)
 - **Diamond Ring**: +500 / **Birthday Cake**: +150
 
-# Decay
+### Decay
 
 Skip a day (no chat or gift) = **-15 Affinity** next day. Don't neglect your NPCs.
 
-# Per-Level Unlocks
+### Per-Level Unlocks
 
 See individual Dingdang and Yuori pages.
 
 ---
 
-# Marriage
+## Marriage
 
-# Requirements
+### Requirements
 
 - Affinity Lv.10 with the target NPC
 - Wedding Chapel built and placed
 - Diamond Ring in hand
 
-# Wedding
+### Wedding
 
 - Give the Ring → proposal accepted
 - Full-screen cutscene plays (fallback dialogue if animation missing)
 - Heart bubble + anniversary date appear
 - NPC moves to the Wedding Chapel
 
-# After Marriage
+### After Marriage
 
 - **Location**: Wedding Chapel
 - **Dialogue**: Marriage-exclusive lines
@@ -51,13 +51,13 @@ See individual Dingdang and Yuori pages.
 - **Yuori perk**: Free Calming Drops during daily chat
 - Wedding cutscene can be replayed at the chapel
 
-# Rules
+### Rules
 
 - **Monogamy** — one spouse at a time
 - **Re-proposal**: Refused if already married; ring not consumed
 - **Cheating**: Give a ring to someone else = ring consumed, -120 Affinity, spouse scolds you next chat (+40 penalty per repeat offense)
 
-# Divorce
+### Divorce
 
 - Talk to spouse at the chapel → select "Divorce"
 - Affinity resets to zero

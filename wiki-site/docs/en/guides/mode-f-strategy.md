@@ -1,10 +1,10 @@
 # Blood Hunt Guide
 
-# Core Concept
+## Core Concept
 
 Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive four phases. Extract alive.
 
-# Phase 1: Preparation (180s, 1%/sec drain)
+## Phase 1: Preparation (180s, 1%/sec drain)
 
 - Lowest pressure — use it wisely
 - Kill early Bosses for health + fortification items
@@ -12,7 +12,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 - Pre-deploy covers at key spots
 - Memorize the map and spawn points
 
-# Phase 2: Bounty (180s, 1.5%/sec)
+## Phase 2: Bounty (180s, 1.5%/sec)
 
 - Bounty list generated — all surviving Bosses marked
 - Read the Bounty Radar's direction arrow, distance, and `x mark count`; when the gold LEADER marker appears, decide quickly whether you can take that high-value fight
@@ -20,7 +20,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 - Bosses kill each other and **inherit marks** — track the Bounty Leader
 - Marks accumulated = extraction reward count
 
-# Phase 3: Hunt Surge (180s, 2%/sec)
+## Phase 3: Hunt Surge (180s, 2%/sec)
 
 - All Bosses hunt you actively
 - Unmarked Bosses gain +50% speed
@@ -28,7 +28,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 - Fortifications are essential — create firing positions
 - Never stop moving
 
-# Phase 4: Extraction (unlimited, 3%/sec)
+## Phase 4: Extraction (unlimited, 3%/sec)
 
 - Extraction point spawns **far away**
 - All Bosses +50% speed, unmarked +100%
@@ -40,14 +40,14 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 3% drain per second. Hesitation = death.
 :::
 
-# Fortification Strategy
+## Fortification Strategy
 
 - **Covers** — Deploy liberally (most common drop)
 - **Roadblocks** — Key chokepoints + extraction point (500 HP, very durable)
 - **Barbed Wire** — On approach routes to slow Bosses
 - **Repair Spray** — Extend fortification lifespan
 
-# Extraction Defense
+## Extraction Defense
 
 1. Reach the point → immediately deploy Roadblocks on main approaches
 2. Barbed Wire to slow incoming Bosses
@@ -55,14 +55,14 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 4. Repair Spray on damaged fortifications
 5. **Hold 15 seconds.** That's all
 
-# Bounty Strategy
+## Bounty Strategy
 
 - More marks = richer extraction rewards
 - But more marks = more combat risk
 - **Getting out alive > a few extra marks**
 - High-mark kills improve healing and max-health growth, but run-only health growth stops at 150% of entry max HP
 
-# Bloodfire Overload
+## Bloodfire Overload
 
 - Once max-health growth reaches its cap, further growth charges Bloodfire; bubbles and phase broadcasts show progress
 - Full charge starts a 15-second burst with +40% gun/melee damage and +15% speed, but also doubles bleed and applies Burn
@@ -70,7 +70,7 @@ Hardest mode. You're **constantly bleeding out**. Kill Bosses to heal. Survive f
 - Keep moving while Overloaded. Burn and doubled bleed make stationary damage trading a losing play
 - A completed Overload leaves 25 charge; do not force another cycle while already low on health
 
-# Recommended Gear
+## Recommended Gear
 
 - **High DPS weapons** — Fast kills = sustain
 - **Dragon King Set** — Dash + fire immunity

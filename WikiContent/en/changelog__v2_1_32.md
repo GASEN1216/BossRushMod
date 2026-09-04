@@ -7,6 +7,6 @@
 - **Frostmourne, the StarWish Fountain, and a Death Wraith toggle**: this update adds a new weapon, a new interactive base building, and a dedicated config switch for the Death Wraith system.
 
 ### Detailed Update Log
-- Added the weapon `Frostmourne`; the vanilla `Cname_Boss_Blue` now has a `50%` extra-drop chance to award it.
+- Added the weapon `Frostmourne`; the vanilla "???" Boss now has a `50%` extra-drop chance to award it.
 - Added the building `Dust-Covered StarWish Fountain`; you can now make wishes from the base.
 - Added a configuration toggle for the `Death Wraith System`.

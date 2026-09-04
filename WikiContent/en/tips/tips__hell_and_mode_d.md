@@ -10,7 +10,7 @@ No end. Bosses gain +2% stats per wave. **Survive as long as you can.**
 - Cloud Rider for aerial dodging, Reverse Scale for emergency saves
 
 #### Pacing
-- First 20 waves = warm-up (heavy hitters excluded) — find your rhythm
+- First 20 waves = warm-up (Four Horsemen, Koko Koko, Dragon Descendant and Dragon Lord excluded; the Phantom Witch still shows up) — find your rhythm
 - Ammo shop near signpost — resupply often
 - Cash within 2m auto-flies to you, but you need to walk into range first
 - High-quality item every 5 waves — don't miss it

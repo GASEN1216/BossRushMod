@@ -1,26 +1,26 @@
 # 配置选项
 
-# 概述
+## 概述
 - BossRush Mod 提供多项可配置参数，允许你根据个人偏好调整游戏体验。
 
-# 配置方式
+## 配置方式
 - **配置文件**：`StreamingAssets/BossRushModConfig.txt`（JSON 格式），首次运行自动生成。
 - **游戏内设置**：如果游戏支持 ModConfig UI，可在 Mod 设置界面中直接修改。
 - 通过 ModConfig UI 修改由 BossRush 注册的配置项时，当前支持的选项会即时同步到运行中的 Mod，并写回本地配置文件。
 
-# 配置项一览
+## 配置项一览
 
-# waveIntervalSeconds
+### waveIntervalSeconds
 - 默认值：15
 - 范围：2-60
 - 波次之间的倒计时秒数
 
-# enableRandomBossLoot
+### enableRandomBossLoot
 - 默认值：true
 - 范围：true/false
 - 是否启用 BossRush 随机 Boss 掉落逻辑（关闭后 BossRush 不再接手原版 Boss 掉落逻辑）
 
-# useLegacyBossLootProbabilities
+### useLegacyBossLootProbabilities
 - 默认值：true
 - 范围：true/false
 - 战利品品质分布算法：`true` 使用原版概率模式（各品质独立概率 + Q5+ 保底），`false` 使用简化概率模式（高品质总概率 + 无保底）
@@ -30,12 +30,12 @@
   - 不影响上述模式的掉落数量，也不影响已装备武器、已装备护甲/头盔/配件、近战武器、当前子弹类型，以及血猎追击的悬赏额外奖励/撤离奖励
   - 当前版本中，这个作用范围已正确覆盖标准 BossRush 与白手起家 / 划地为营 / 血猎追击，不再只限于标准 BossRush
 
-# useInteractBetweenWaves
+### useInteractBetweenWaves
 - 默认值：false
 - 范围：true/false
 - 是否改为手动触发下一波（通过路牌互动）
 
-# lootBoxBlocksBullets
+### lootBoxBlocksBullets
 - 默认值：false
 - 范围：true/false
 - 战利品箱是否阻挡子弹
@@ -44,68 +44,89 @@
 此选项默认关闭。开启后，战利品箱可以充当临时掩体挡住敌人子弹，但同时也会挡住你自己的射击。在长线模式中箱子堆积较多时，开启此选项会显著改变场地战术。
 :::
 
-# infiniteHellBossesPerWave
+### infiniteHellBossesPerWave
 - 默认值：3
 - 范围：1-10
 - 无间炼狱每波 Boss 数量
 
-# bossStatMultiplier
+### bossStatMultiplier
 - 默认值：1.0
 - 范围：0.1-10
 - Boss 全局属性倍率（影响生命值和伤害）
 
-# milestoneRestBonusSeconds
+### milestoneRestBonusSeconds
 - 默认值：30
 - 范围：0-120
 - 每完成 5 波额外增加的休息时间；设为 0 表示关闭这段额外休息
 
-# modeDEnemiesPerWave
+### modeDEnemiesPerWave
 - 默认值：3
 - 范围：1-10
 - 白手起家每波敌人数量
 
-# disabledBosses
+### disabledBosses
 - 默认值：[]
 - 范围：Boss 名称列表
 - 禁用的 Boss 列表（也可通过 Boss 筛选器 UI 设置）
 
-# bossInfiniteHellFactors
+### bossInfiniteHellFactors
 - 默认值：{}
 - 范围：Boss:倍率
 - 各 Boss 在无间炼狱中的权重倍率
 
-# enableDragonDash
+### enableDragonDash
 - 默认值：true
 - 范围：true/false
 - 是否启用龙裔/龙王套装的冲刺能力
 
-# achievementHotkey
+### achievementHotkey
 - 默认值：L
 - ModConfig 下拉选项：L / K / J / H / G / Y / U / O / P / F5 / F6 / F7 / F8
 - 配置文件存储：`KeyCode` 对应的整数值
 - 成就面板快捷键
 
-# useWolfModelForWildHorn
+### useWolfModelForWildHorn
 - 默认值：true
 - 范围：true/false
 - 荒野号角召唤的坐骑是否使用狼模型
 
-# enableDeathWraithSystem
+### enableDeathWraithSystem
 - 默认值：true
 - 范围：true/false
 - 是否启用死亡亡魂系统；关闭后不会再记录或生成亡魂，并会清理当前存档里的亡魂记录
 
-# enableMutators
+### enableMutators
 - 默认值：true
 - 范围：true/false
 - 是否启用每局变异词条系统；关闭后各模式开局不再抽取变异词条（末日丧尸模式本就不受此系统影响）
 
-# mutatorCount
+### mutatorCount
 - 默认值：3
 - 范围：1-10
 - 每局抽取的变异词条数量，默认 3
 
-# 常用调整建议
+### randomEventsFrequency
+- 默认值：2
+- 范围：1-3（1 低 / 2 中 / 3 高）
+- 局内随机事件「鸭生无常」一局最多触发几次：低 `2` 次、中 `3` 次、高 `5` 次
+- 只改这个上限。两次事件之间的间隔（`45～75` 秒）和「同时只有一个事件」都不受影响
+
+### modeGAbandonHotkey
+- 默认值：K
+- ModConfig 下拉选项：与成就面板快捷键同一组按键
+- 宿命回响模式的中途放弃快捷键
+
+### backMountainUnlockAll
+- 默认值：false
+- 范围：true/false
+- 跳过鸭王征程的章节解锁，直接开放竞技场后山的菜地、战利品展示柜和点唱机
+- 给的是「不想跟着剧情走、直接玩后山」这个选择；正常推进征程不需要动它
+
+::: tip
+遗种巢、鸭科夫日报、鸭皇图鉴、词缀锻造、局内随机事件、鸭王征程、竞技场后山和百战留痕这八个系统属于默认内容，**恒为开启**，设置界面里没有对应的总开关。上面这类调参旋钮照常可调。
+:::
+
+## 常用调整建议
 - 想要更紧凑的节奏：降低 `waveIntervalSeconds`（如 `5-8`）。
 - 想要更高难度：提高 `bossStatMultiplier`（如 `1.5-2.0`）。
 - 想要手动控制节奏：启用 `useInteractBetweenWaves`。

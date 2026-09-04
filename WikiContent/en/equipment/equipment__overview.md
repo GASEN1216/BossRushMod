@@ -1,6 +1,6 @@
 ## Equipment Overview
 
-Custom gear from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch. Plus Frostmourne from vanilla Blue Bosses.
+Custom gear from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch. Plus Frostmourne from the vanilla "???" Boss.
 
 v2.2.0 also adds 5 new weapons and 2 new sets (9 items total), which currently have **no standard obtain path** — acquisition routes are planned for a future update.
 
@@ -14,7 +14,7 @@ v2.2.0 also adds 5 new weapons and 2 new sets (9 items total), which currently h
 - **Dragon Breath** — Fire gun with burn DOT (Dragon Descendant)
 - **Dragon Cannon** — 15 selectable ammo profiles (Dragon Lord, 1%)
 - **Soulreaper's Requiem** — Ghost scythe with curse (Phantom Witch, 50%)
-- **Frostmourne** — Ice melee with undead summon (Blue Boss, 50%)
+- **Frostmourne** — Ice melee with undead summon (vanilla "???" Boss, 50%)
 
 ### New Equipment (v2.2.0, Developer Preview · No Obtain Path Yet)
 
@@ -48,4 +48,4 @@ Both dragon sets give "fire-to-heal" + dash:
 1. Farm **Dragon Descendant** → Dragon Set + Dragon Breath (transitional gear)
 2. Farm **Skyburner Dragon Lord** → Dragon King Set + Halberd + Totems + Cannon
 3. Farm **Phantom Witch** → Soulreaper's Requiem (mobility + crowd control)
-4. Keep an eye on vanilla Blue Bosses for **Frostmourne** (ice + undead summon)
+4. Keep an eye on the vanilla "???" Boss for **Frostmourne** (ice + undead summon)

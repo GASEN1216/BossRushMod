@@ -15,6 +15,7 @@ TUNING = ROOT / "ZombieMode" / "ZombieModeTuning.cs"
 POLLUTION = ROOT / "ZombieMode" / "ZombieModePollution.cs"
 SKILLS = ROOT / "ZombieMode" / "ZombieModePollution_RuntimeSkills.cs"
 COMPONENTS = ROOT / "ZombieMode" / "ZombieModePollution_RuntimeComponents.cs"
+LOCALIZATION = ROOT / "Localization" / "LocalizationInjector.cs"
 
 CANONICAL = {
     "zh": ROOT / "WikiContent" / "zh" / "mode" / "mode__zombie_mode.md",
@@ -85,9 +86,15 @@ def extract_method(text: str, signature: str) -> str:
 
 def transform_content(raw: str) -> str:
     """Mirror wiki-site/scripts/sync-content.mjs's deterministic transform."""
-    content = re.sub(r"^####[ \t]", "### ", raw, flags=re.MULTILINE)
-    content = re.sub(r"^###[ \t]", "## ", content, flags=re.MULTILINE)
-    content = re.sub(r"^##[ \t]", "# ", content, flags=re.MULTILINE)
+    # 单次回调、层级无关：三次独立 re.sub 会级联（#### → ### → ## → #），
+    # 把所有层级压成 #。必须与 wiki-site/scripts/sync-content.mjs 的
+    # transformContent() 逐字对应——下面的比对是逐字节的。
+    content = re.sub(
+        r"^(#{2,6})([ \t])",
+        lambda m: "#" * (len(m.group(1)) - 1) + m.group(2),
+        raw,
+        flags=re.MULTILINE,
+    )
     content = re.sub(
         r"^\[tip\][ \t]*(.+)$",
         r"::: tip\n\1\n:::",
@@ -102,6 +109,25 @@ def transform_content(raw: str) -> str:
     )
     content = re.sub(r"\[([^\]]*)\]\(/[A-Za-z]:[^)]*\)", r"\1", content)
     return content
+
+
+def extract_injected_names(source: str, key_prefix: str):
+    """Map `<Kind>` -> (zh display name, en display name) from LocalizationInjector.
+
+    WikiContent is player-facing, so the mutant tables must be keyed by the name
+    the player actually sees popped over the zombie's head — never by the C#
+    enum member. Reading the injection table keeps the coverage invariant while
+    additionally pinning the Wiki wording to the shipped localization.
+    """
+    names = {}
+    pattern = re.compile(
+        r'InjectZombieModeString\(\s*"'
+        + re.escape(key_prefix)
+        + r'(\w+)"\s*,\s*"([^"]*)"\s*,\s*"([^"]*)"\s*\)'
+    )
+    for member, zh_name, en_name in pattern.findall(source):
+        names[member] = (zh_name, en_name)
+    return names
 
 
 def require_pair(source: str, zh: str, en: str, source_fragment: str,
@@ -122,6 +148,7 @@ def main() -> int:
         pollution = read(POLLUTION)
         skills = read(SKILLS)
         components = read(COMPONENTS)
+        localization = read(LOCALIZATION)
         zh = read(CANONICAL["zh"])
         en = read(CANONICAL["en"])
     except FileNotFoundError as error:
@@ -140,14 +167,22 @@ def main() -> int:
     en_special = section_between(en, "#### Special Zombies", "#### Elite Zombies")
     zh_elite = section_between(zh, "#### 精英丧尸", "#### 出现概率")
     en_elite = section_between(en, "#### Elite Zombies", "#### Spawn Probability")
+    special_names = extract_injected_names(
+        localization, "BossRush_ZombieMode_Special_"
+    )
+    affix_names = extract_injected_names(localization, "BossRush_ZombieMode_Affix_")
     for member in special_members:
-        token = "`" + member + "`"
-        if token not in zh_special or token not in en_special:
-            return fail("special enum member missing from both tables -> " + member)
+        if member not in special_names:
+            return fail("special kind has no injected display name -> " + member)
+        zh_name, en_name = special_names[member]
+        if zh_name not in zh_special or en_name not in en_special:
+            return fail("special kind missing from both tables -> " + member)
     for member in affix_members:
-        token = "`" + member + "`"
-        if token not in zh_elite or token not in en_elite:
-            return fail("elite enum member missing from both tables -> " + member)
+        if member not in affix_names:
+            return fail("elite affix has no injected display name -> " + member)
+        zh_name, en_name = affix_names[member]
+        if zh_name not in zh_elite or en_name not in en_elite:
+            return fail("elite affix missing from both tables -> " + member)
 
     source = "\n".join((tuning, pollution, skills, components))
     pairs = [
@@ -262,11 +297,18 @@ def main() -> int:
     ):
         if source_fragment not in pollution:
             return fail("missing visual identity source invariant -> " + source_fragment)
-    for page, language, fallback_token in (
-        (zh, "zh", "池化"),
-        (en, "en", "pooled"),
+    # The three visual-identity facts must stay documented, but WikiContent is a
+    # player-facing page: assert the player-facing wording, never the engine symbols
+    # (CharacterModel / pooled marker) that used to leak into it.
+    for page, language, blend_token, safe_token, fallback_token in (
+        (zh, "zh", "原本的配色",
+         "攻击范围、碰撞和走位都不受影响",
+         "脚下会有一个常驻标记"),
+        (en, "en", "blended toward",
+         "Attack range, collision and pathing are unaffected",
+         "persistent marker appears at its feet"),
     ):
-        if "65%" not in page or "CharacterModel" not in page or fallback_token not in page:
+        if blend_token not in page or safe_token not in page or fallback_token not in page:
             return fail("visual blending/safe subtree/fallback note missing -> " + language)
         if "Boss" not in page or "Titan" not in page:
             return fail("Boss exclusion note missing -> " + language)
