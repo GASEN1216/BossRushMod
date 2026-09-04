@@ -25,6 +25,15 @@ namespace BossRush
         private static readonly object _lock = new object();
         private static bool _deferredFlushPending;
         private static int _deferredRetryCount;
+
+        /// <summary>
+        /// pending 已经交给 SavesSystem、但物理落盘（SaveFile）尚未成功。
+        ///
+        /// 必须与 `_deferredFlushPending` 分开记：`FlushPending()` 一旦成功，
+        /// `HasPendingWrite` 就变 false，此后只靠它判断「有没有事要做」会把
+        /// 「还欠一次 SaveFile」误判成「无事可做」，重试链就此断掉。
+        /// </summary>
+        private static bool _saveFilePending;
         private static string _lastError;
 
         /// <summary>deferred 重试上限；超预算保留 pending 并报告失败，不静默丢弃。</summary>
@@ -65,6 +74,7 @@ namespace BossRush
             {
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
+                _saveFilePending = false;
                 _lastError = null;
             }
         }
@@ -119,7 +129,16 @@ namespace BossRush
             error = null;
             try
             {
-                if (!CampaignPersistence.HasPendingWrite)
+                bool saveFileOwed;
+                lock (_lock)
+                {
+                    saveFileOwed = _saveFilePending;
+                }
+
+                // 「没有 pending」**不等于**「无事可做」：FlushPending 成功后 pending 即被消费，
+                // 若随后的 SaveFile 失败，这里只看 HasPendingWrite 会直接早返 true，
+                // 把重试与宿主销毁兜底一起吃掉——数据停在 SavesSystem 内存里永不落盘。
+                if (!CampaignPersistence.HasPendingWrite && !saveFileOwed)
                 {
                     lock (_lock)
                     {
@@ -140,15 +159,25 @@ namespace BossRush
                     return false;
                 }
 
-                if (!CampaignPersistence.FlushPending())
+                if (CampaignPersistence.HasPendingWrite)
                 {
-                    error = CampaignPersistence.LastError ?? "flush_pending_failed";
+                    if (!CampaignPersistence.FlushPending())
+                    {
+                        error = CampaignPersistence.LastError ?? "flush_pending_failed";
+                        lock (_lock)
+                        {
+                            _deferredFlushPending = true;
+                            _lastError = error;
+                        }
+                        return false;
+                    }
+
+                    // 已进 SavesSystem 内存，但还没写盘：从这一刻起就欠一次 SaveFile，
+                    // 直到 SaveFile 真的成功才清掉。
                     lock (_lock)
                     {
-                        _deferredFlushPending = true;
-                        _lastError = error;
+                        _saveFilePending = true;
                     }
-                    return false;
                 }
 
                 try
@@ -182,6 +211,7 @@ namespace BossRush
                 {
                     _deferredFlushPending = false;
                     _deferredRetryCount = 0;
+                    _saveFilePending = false;
                     _lastError = null;
                 }
                 return true;
@@ -221,6 +251,7 @@ namespace BossRush
             {
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
+                _saveFilePending = false;
                 _lastError = null;
             }
         }

@@ -173,10 +173,14 @@ namespace BossRush
                         AddModifier(main, ZombieModeStatNames.MeleeDamageMultiplier, DragonFruitDamageBonus);
                         break;
                     case BossRushItemIds.EmberChili:
-                        AddModifier(main, ZombieModeStatNames.MoveSpeed, EmberChiliSpeedBonus);
+                        // 官方角色只有 WalkSpeed / RunSpeed / Moveability 三个移动 stat，
+                        // "MoveSpeed" 是 Animator 参数名（AGENTS §14），挂上去会被
+                        // RuntimeStatModifierTracker 当缺失 stat 静默丢弃，故不再挂。
                         AddModifier(main, ZombieModeStatNames.RunSpeed, EmberChiliSpeedBonus);
                         AddModifier(main, ZombieModeStatNames.WalkSpeed, EmberChiliSpeedBonus);
-                        AddModifier(main, ZombieModeStatNames.ReloadSpeedMultiplier, EmberChiliReloadBonus);
+                        // 换弹的官方 stat 是 ReloadSpeedGain（CharacterMainControl 的
+                        // reloadSpeedGainHash）；"ReloadSpeedMultiplier" 在官方源码里不存在。
+                        AddModifier(main, ZombieModeStatNames.ReloadSpeedGain, EmberChiliReloadBonus);
                         break;
                     case BossRushItemIds.PhantomMushroom:
                         AddModifier(main, ZombieModeStatNames.ElementFactorPhysics,

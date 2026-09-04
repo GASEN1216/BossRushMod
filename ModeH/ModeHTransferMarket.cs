@@ -350,7 +350,10 @@ namespace BossRush
             dto.status = (int)ModeHParticipantStatus.Available;
             dto.injuryId = string.Empty;
             dto.scarIds = new List<string>();
-            dto.behaviorStatuses = new List<ModeHBehaviorStatusDto>();
+            // 与选秀同口径（ModeHDraftController.BuildProfileDto）：空表会让转会签进来的
+            // 选手在赔率里永远不计伤病 / 异常 / 战痕分。
+            dto.behaviorStatuses =
+                ModeHCommandCompatibilityRegistry.BuildBehaviorSnapshot(template.StableKey);
             season.profiles.Add(dto);
         }
 

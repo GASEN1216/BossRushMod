@@ -39,6 +39,837 @@
 ```
 
 ---
+### 2026-09-04 新模式可玩性九条（掉落作废 / 赔率页锁盘出屏 / 幽灵 stat key）
+
+**状态**: fixed（Windows `compile_official.bat` Build succeeded；本轮相关守卫全绿，
+3 个新守卫共 5 例反向验证；实机 smoke 待人工，逐条列在末尾）
+
+**Finding**: CR-2026-09-04-001 ~ CR-2026-09-04-009
+
+**兼容分类**: `COMPAT`（九条全部只补接线与布局；不改数据 schema、存档 key、
+TypeID、掉落概率、状态机冻结表）
+
+**版本/Commit**: 未提交
+
+**Owner decision**: 不需要。九条都是「设计意图明确、实现漏接」，不涉数值或产品取舍。
+计划阶段曾判断押品阶段机改动需 owner 签字，复核 AGENTS §10 后**更正**：
+§10 禁的是「游戏模式状态机**大规模重构**」，加一条边不属于；
+真正需签字的是 `SCHEMA-`/`WIRE-`/`BREAKING`，本批一条都不沾。
+
+**现象**:
+- 刷再多 Boss 也开不出遗种蛋与词缀熔石（两个新系统的入门产出口），无任何报错；
+- 仓库里有 4 件以上东西时，Mode H 赔率页的「锁盘」被推到屏幕外点不到，
+  该页 timeScale=0 且无关闭按钮，玩家只能 ESC 弃局；
+- 入口页第 4、5 张选秀卡被底部按钮盖住；
+- 赔率页 18 条分量标签显示 `*BossRush_ModeH_BossRush_ModeH_Odds_xxx*`；
+- 焚心椒的换弹加成、丧尸模式的换弹速度奖励、Mode F 血猎 Boss 加速——三处全程无效果。
+
+**根因**:
+1. **掉落链**（001/002/003）：主掉落 handler 把 `dropBoxOnDead = false` 并另建带全新
+   本地 Inventory 的箱子，官方 `if (dropBoxOnDead) CreateFromItem(characterItem)` 不再执行；
+   而遗种蛋/熔石的 handler 注册点与主 handler 在**同一个函数体**内，必然配对生效。
+   仓库本有 defer 协议（寒霜长矛/女巫镰刀在用），两个新系统都没接。
+   无间炼狱那条分支更极端：关掉官方箱之后连新箱都不建，四个 integration 一起丢。
+   龙皇走手动注册路径，从没调用过 `MarkBossRushLootboxPathTracking`。
+2. **UI 布局**（004/005/006）：`CreateActions` / `RebuildActions` 都是无界单行居中平铺，
+   而 `CreateModalSurface` 上没有任何 Mask —— 越界子物体不会被裁掉，直接画到屏幕外。
+   赔率页把数量无上界的「押品格」也塞进了动作行。
+3. **本地化**（007）：生产侧已拼完整 key，消费侧又拼一次。守卫只扫字面量，看不见运行时拼接。
+4. **stat key**（008/009）：`"ReloadSpeedMultiplier"` 与 `"MoveSpeed"` 在官方源码里不存在，
+   `GetStat` 返回 null 后被静默丢弃（AGENTS §14 记载的坑）。
+
+**修复内容**:
+- 新增文件（均已加入 `compile_official.bat` 无关——纯 Python 守卫，不需登记）:
+  - `tests/StatKeyExistenceGuard.py`
+  - `tests/ExtraBossDropDeferGuard.py`
+  - `tests/ModeHActionLayoutGuard.py`
+- 修改文件:
+  - `PetNest/PetNestDropService.cs`、`Integration/AffixForge/AffixForgeStoneDropService.cs`
+    （各补 defer 协议四处接线；抽出 `TryCreateStampedEgg`/`TryCreateStone` 供三条投放路径复用）
+  - `Integration/Frostmourne/FrostmourneBootstrap.cs`、
+    `Integration/PhantomWitch/PhantomWitchScytheBootstrap.cs`（改用统一判定 + 世界掉落消费）
+  - `LootAndRewards/LootAndRewardsSpecialLoot.cs`（`ShouldDeferExtraBossDropToModPath`
+    + `DropPendingExtraLootIntoWorld` + 两处 consume 接线）
+  - `LootAndRewards/LootAndRewards.cs`（cancel fan-out 补两行）
+  - `LootAndRewards/LootAndRewardsRandomBossLoot.cs`（无间炼狱分支补世界掉落）
+  - `Integration/DragonKing/DragonKingBoss.cs`（补 `MarkBossRushLootboxPathTracking`）
+  - `ModeH/ModeHUIPages.cs`（`RealStakeSlots` + `CreateRealStakeSlots` 滚动区 +
+    `CreateActions` 换行 + `CreateCardGrid` 按可用高度加列 + `ActionBandReserve` 常量）
+  - `ModeH/ModeHRecoveryPanel.cs`（动作行换行）
+  - `ModeH/ModeHRuntimeModule_MatchFlow.cs`（押品格改写 `RealStakeSlots`；去掉双前缀）
+  - `Integration/BackMountain/RaidMealService.cs`、`ZombieMode/ZombieModeTuning.cs`、
+    `ZombieMode/ZombieModeRewards.cs`（`ReloadSpeedGain`；删幽灵常量与死 `MoveSpeed` 调用）
+  - `ModeF/ModeFPhases.cs`（Boss 加速改挂 Walk/Run，改用 `RuntimeStatModifierTracker`）
+  - `tests/ModeHLocalizationGuard.py`（新增双前缀反查 + 生产侧对偶断言）
+
+**兼容性影响**: 无破坏性变更。
+`AttributeBonuses` 是纯运行时字典不落盘，改 stat key 不影响存档；
+掉落概率、TypeID、Harmony 目标、存档 key 均未触碰。
+对老存档唯一可见变化是这些本就该生效的东西开始生效。
+`ZombieModeStatNames.MoveSpeed` 常量**保留**（`ZombieModeProductionReadinessGuard`
+要求它存在，丧尸模式另有两处带 Walk/Run 兜底的用法仍在用）。
+
+**验证方法**:
+1. 编译: `compile_official.bat` → Build succeeded（本会话四次，最后一次零自身警告）
+2. Guard: `python tools/run_guards.py` 全量；本轮涉及的 13 个守卫逐个 PASS
+   （StatKeyExistence / ExtraBossDropDefer / ModeHActionLayout / ModeHLocalization /
+   ModeHStructure / ModeHStakeJournal / ModeHIsolation / PetNestDropLifecycle /
+   PetNestUILayer / BossRushUISharedLibrary / LargeFileBudget / ModeHCompileManifest /
+   ModeHPerformance）
+3. 反向验证: 5 例——拆 PetNest 进箱消费、判定去掉 `infiniteHellMode`、
+   幽灵 key 复活、押品格退回 `page.Actions`、`CreateActions` 退回单行；
+   各自转红并报出对应断言，还原后转绿
+4. 语法探针: `python tools/verify_syntax.py` PASS
+5. 人工 smoke: 待做，见下
+
+**未验证/需人工**（六项，全部是运行时表现，静态无法证明）:
+1. 标准竞技场刷 Boss → 奖励箱里能开出遗种蛋与词缀熔石
+2. 无间炼狱刷 Boss → 地上能捡到额外掉落；龙皇同样
+3. 仓库放 ≥10 件物品进 Mode H 看盘页 → 「锁盘」可见可点、押品格可滚动、5 张选秀卡不被压
+4. 赔率页 18 条分量标签显示中文而非星号 raw key
+5. 吃焚心椒进局 → 换弹变快；丧尸模式取换弹速度奖励 → 生效
+6. 血猎模式推进阶段 → Boss 移速确实变快
+
+**失败尝试**: 无。
+
+**第二轮自审（同日，owner 要求"再次审核一遍"）又改了四处**:
+
+1. **我自己引入的缺陷**：`PetNestDropService.PrunePendingEntries` 用了「逐个 Remove 死 key」，
+   而同批参照的 `AffixForgeStoneDropService.PruneDestroyedEntries` 的注释里白纸黑字写着
+   这样不可靠（已销毁 Unity 对象之间的相等性与哈希不可依赖，可能只清掉其中一个）。
+   改为同款「只保留存活项重建」，并补 `_pendingScratch` 复用表。
+2. **我自己修复里的漏洞**：`CreateActions` 的每行容量原本写死 7，是按主面板
+   `MainPanelSize(1480)` 推的；结算页用的是更窄的 `ReportPanelSize(1180)`，
+   5 个按钮就出框。改为按传入的 `panelSize.x` 现算（主面板 5、结算页 4、恢复壳 4），
+   再与 `MaxSingleRowActions` 取小。
+3. **defer 协议还有 5 条漏网出口**：`FinalizeBossRushLootboxPathTracking` 会撤销 pending，
+   而 `LootAndRewardsRandomBossLoot` 里除已处理的无间炼狱外，还有五处 Finalize
+   之前没有给 pending 安排去处：找不到 Lootbox 模板、`!IsActive`、
+   `!bossSpawnTimes.ContainsKey`、`!enableRandomBossLoot`、以及总 catch。
+   前四条官方 characterItem 箱照建，新增 `ReturnPendingExtraLootToCharacterItem`
+   把 pending 还回去（直接复用各 integration 的进箱消费入口，换个目标 inventory 即可，
+   不需要第三套接口）；catch 那条无法判断官方箱是否还会建，走世界掉落（consume 会取走
+   pending，与协程那条不会重复发放）。其中 `!IsActive` 是真实可达的——
+   Boss 在 run 结束后才死就会走到。
+4. **守卫自身的假绿**：为 (3) 写的「每处 Finalize 前必须有 sink」断言最初用固定 8 行回看窗口，
+   反向验证时发现它会把**上一条分支**里的 sink 误认成本分支的，模拟新增一条无出路的早返
+   照样是绿的。改为按语句块回看（遇 `{`/`}` 即停），重做反向验证后才真正转红。
+
+这四条里有三条是我自己第一轮的产出，说明单轮自查不够；第 (3) 条则说明
+「逐个分支列白名单」不如「立一条总不变式」耐改。
+
+**第二轮验证**: 编译 Build succeeded；`python tools/run_guards.py` 529 脚本
+PASS=529 / NEW-FAIL=0 / KNOWN-RED=0；反向验证累计 7 例。
+
+**并发说明**: 本轮有 5 个 peer session 同时在写本仓库。
+计划里的「押品仓库满兜底」与「押品阶段机续跑」两条，在我动手前已由另一会话实现
+（`ModeHWarehouseStakeJournalStorageBuffer.cs` + `TryAbortReturn` 按阶段分支），
+故本批**不含**这两条，我加的重复实现已回滚删除，避免双份逻辑。
+`CODE_REVIEW_FINDINGS.md` 的状态汇总表是手工维护的近似计数
+（P2 实际条目 26 条 vs 表内 38），本次只按自己的增量微调，未重算历史口径。
+
+---
+### 2026-09-03 在线 Wiki 配图（图鉴立绘 / 章节海报 / 建筑图标）+ favicon 404
+
+**状态**: fixed（7 个 Wiki guard 全绿；`npx vitepress build docs` 成功、53 张图进 dist；
+浏览器实跑 DOM 核对 0 裂图。无需编译 C#）
+
+**Finding**: CR-2026-09-03-022（favicon 404）；配图本身是 owner 点的需求，不是 finding
+
+**兼容分类**: `OPERATIONAL`（新增二进制产物进仓库 + .gitignore 开例外）
+
+**Owner decision**: 2026-09-03 三问三答——① 配图只在站点侧注入，不进 WikiContent；
+② 二进制转 WebP 后进 git；③ 首批覆盖鸭皇图鉴、鸭王征程、建筑与物品图标。
+
+**为什么配图不能写进 WikiContent（关键约束）**:
+`WikiContent/` 同时喂游戏内 Wiki 书和在线站点。游戏内解析器
+`Integration/WikiContentManager.cs:144` 的 `RxMdLink = \[([^\]]+)\]\(([^)]+)\)`
+**没有图片规则**：`![alt](src)` 会被它吃掉 `[alt](src)` 而把 `!` 留在原地，
+实测渲染成 `!<color=#0066CC><u><link="...">alt</link></u></color>`——
+一个野生的 `!` 加一条指向不存在路径的蓝色可点链接。
+所以配图只在 sync 到 wiki-site 时注入，`WikiContent/` 保持纯文本，游戏内书一个字不受影响。
+
+**为什么产物必须进 git**:
+源图在 `/Assets/*` 下被 .gitignore 挡着，而在线 Wiki 由
+`.github/workflows/deploy.yml` 直接 checkout 仓库后 `npm run build`，CI 里看不到 Assets。
+不提交产物 = 线上整片 404。
+
+**修复/新增内容**:
+- 新增 `tools/build_wiki_images.py`：Assets PNG → WebP（立绘 320px / 海报 560px / 图标 128px，
+  q82），并生成 `wiki-site/scripts/image-manifest.json`。带 `--check` 只校验不写。
+  **25 MB 原图 → 1.7 MB 产物**（图鉴单张 362 KB → 36 KB）。
+  说明文字取自 `docs/官方本地化表/*.csv`，不自造译名；本 Mod 三个 Boss 与五个丧尸 Boss
+  用代码常量。官方写成 `???` 的 Boss 名照搬（游戏里就是这么显示的）。
+- 新增产物: `wiki-site/docs/public/images/**`（52 张 WebP + favicon.ico，53 个文件）
+- 修改 `.gitignore`: 加 `!wiki-site/docs/public/` 例外并写明理由
+- 修改 `wiki-site/scripts/sync-content.mjs`:
+  - `IMAGE_PLACEMENT` 按**标题序号**（非标题文字）定位，中英共用同一份序号
+  - `verifyPlacementParity()`：中英标题层级序列不一致时**直接抛错**中止同步——
+    否则配图会静默插到错误小节，图还在、页面不报错，最难发现
+  - `renderImageBlock()` 刻意用 markdown 图片语法而非裸 `<img>`：VitePress 只给
+    markdown 图片补 base 前缀（Pages 是 `/BossRushMod/`，Cloudflare 是 `/`），
+    裸 `<img src>` 不补，换部署目标就整片 404
+- 修改 `wiki-site/docs/.vitepress/theme/style.css`: 新增 §14，三种尺寸（画廊/海报/图标）
+  复用既有档案设计令牌（`--brs-rule` 边框、`--brs-mono` + `--brs-label-size` 说明文字），
+  含深色模式与 640px 断点
+- **顺带修 favicon 404**：`config.mts:329` 早就写了 `${base}images/favicon.ico`，
+  但 `docs/public/` 此前根本不存在，图标一直取不到。用图鉴书图标生成 16/32/48 三尺寸 ICO
+- 新增 `tests/WikiImageAssetGuard.py`
+
+**配图落点**: 图鉴（书图标 + 37 张 Boss 立绘墙）、鸭王征程（中间人立绘 + 公告板图标 +
+6 张章节海报 + 冠军之影立绘）、日报（报箱）、后山（展示柜）、遗种巢（巢 + 遗种蛋）、
+词缀锻造（熔石）。全站共 104 处图片引用。
+
+**兼容性影响**: `WikiContent/` 与 `catalog.tsv` 一个字未改，游戏内 Wiki 书零影响。
+仓库体积 +1.7 MB。
+
+**验证方法**:
+1. 编译: 不适用（零 `.cs` 改动）
+2. Guard: `--filter Wiki` 7 PASS；`WikiImageAssetGuard` 四项判据逐条反向验证
+   （产物被删 / 孤儿产物 / IMAGE_PLACEMENT 引用错 key / 清单被清空 → 全部转红，
+   基线与还原后转绿，文件逐字节还原）
+3. `verifyPlacementParity` 反向验证：给英文版单独加一节 → sync exit=1 并指出不一致；还原后 exit=0
+4. 静态全量核对：生成物 104 处图片引用，缺失 0、孤儿 0
+5. 生产构建（等价 CI）: `npx vitepress build docs` 成功，53 张图进 dist，
+   产出 HTML 里是 `src="/BossRushMod/images/..."`，base 前缀正确
+6. 浏览器实跑 DOM 核对: 图鉴页 37 图 0 裂、战役页 9 图 0 裂、favicon 由 404 转 **200**；
+   网格 1100px→9 列 / 760px→6 列 / 380px→3 列；边框取到 `--brs-rule` (#c7c0b2)、
+   说明文字 IBM Plex Mono 10.5px 非斜体
+7. 人工 smoke: 建议上线后扫一眼图鉴页观感（37 张立绘的密度是主观项）
+
+**未验证/需人工**: 立绘墙的视觉密度与海报尺寸属审美取舍，可按 owner 口味调
+`PORTRAIT_MAX` / `minmax()`。美术更新后需重跑 `python tools/build_wiki_images.py` 并提交产物。
+
+**失败尝试**: 首版把 favicon 源图当成 `codex-book.webp` 输出后没有任何页面引用，
+被 `WikiImageAssetGuard` 的孤儿检测逮到；已把书图标正式配到图鉴「怎么打开」小节。
+
+---
+### 2026-09-03 多行 callout 在线上 Wiki 掉出提示框
+
+**状态**: fixed（`--filter Wiki` 6 PASS、`ZombieModeMutantWiki` PASS、`Repowiki` PASS；
+生成物全量审计 224 篇零缺陷；VitePress dev server 实跑 DOM 核对通过。无需编译）
+
+**Finding**: CR-2026-09-03-021
+
+**兼容分类**: `SAFE`
+
+**Owner decision**: 不需要。渲染缺陷，按既有多数写法（单行 callout）对齐即可。
+
+**现象**: 线上 Wiki 的提示框只框住第一行，剩下半句掉在框外当普通段落，
+且多数是从逗号处断开。例：`systems/random-events.md` 的无间炼狱警告，
+"……不进现金池，"在框内，"打赢它唯一的收获是……"在框外。
+
+**根因**: `wiki-site/scripts/sync-content.mjs:150` 的
+`/^\[tip\]\s*(.+)$/gm → '::: tip\n$1\n:::'`——`.` 不匹配换行，只捕获第一行。
+作者按中文排版习惯折行时必然踩中。全站 42 处，**其中 8 处是上一条
+（CR-2026-09-03-016）改写整节时新引入的**，其余 34 处历史遗留。
+
+**为什么不改正则**: `transformContent` 被 `tests/ZombieModeMutantWikiGuard.py:87-106`
+**逐字节镜像**（该文件自带注释警告"改这里必须同步改那边"）。JS 与 Python 在
+`$` + MULTILINE 下的语义不同，两套正则方言各写一遍极易静默漂移——那会让 guard
+要么误红、要么在别的输入上假绿。单行 callout 本来就是本仓库的多数写法，改源文更小更稳。
+
+**修复内容**:
+- 修改文件（权威源）: `WikiContent/{zh,en}/**.md` 25 个文件，42 处 callout 续行并回首行
+  （中西文按首尾字符是否 CJK 决定加不加空格）
+- 修改文件: `WikiContent/{zh,en}/system__reforge_and_achievements.md`——
+  合并双 `##` 页面标题（`重铸与成就` + `重铸系统` → `重铸系统`，取 `catalog.tsv` 登记名）。
+  全站唯一的一页两 `<h1>`，是成就清单拆去 `system__achievements_list` 后留下的壳
+- 新增文件: `tests/WikiCalloutSingleLineGuard.py`（runner 自动发现，无需登记）
+- 生成产物: `wiki-site/docs/**` 重新 sync
+
+**兼容性影响**: 无。未改 `catalog.tsv`，未改 sync 脚本，未改任何 `.cs`。
+callout 的**文字内容一字未动**，只是把换行去掉。
+
+**验证方法**:
+1. 编译: 不适用（无 `.cs` 改动）
+2. Guard 反向验证（新 guard 4 例）:
+   折行 → RED、`**bold**` 续行 → RED、callout 后接真列表 → GREEN、基线 → GREEN；
+   目标文件逐字节还原确认
+3. 生成物全量审计（224 篇 / 179 个 callout）: 掉框 0、容器不配平 0、
+   未转换 `[tip]` 残留 0、标题跳级 0、多 h1 0
+4. 实跑: `node wiki-site/node_modules/vitepress/bin/vitepress.js dev wiki-site/docs`，
+   DOM 核对 `systems/random-events` 的 warning 框内含完整整句、`nextElementSibling`
+   为 `H2` 而非游离段落；`systems/reforge` 的 `h1count=1`、`h1→h2→h3` 无跳级
+5. 人工 smoke: 不需要
+
+**未验证/需人工**: 无。
+
+**失败尝试**: 第一版 guard / 折行脚本把 `**bold**` 当成 `*` 列表项，漏掉 3 处
+（`en/config__overview.md`、`en/tips__new_player_route.md`、
+`zh/system__reforge_and_achievements.md`）——bullet 判据必须要求 `*` 后跟空白。
+另：Browser pane 处于隐藏态时截图返回空白图，改用 `javascript_tool` 读 DOM 核对。
+
+---
+### 2026-09-03 游戏内 Wiki 三处内容与代码不符
+
+**状态**: fixed（纯内容改动；Wiki / repowiki / 图鉴 / 随机事件相关 guard 全绿，
+`wiki-site` sync 重新生成 222 篇成功。无需编译，无需实机）
+
+**Finding**: CR-2026-09-03-016
+
+**兼容分类**: `SAFE`（只改 markdown，不碰代码、schema、存档 key 或资源路径）
+
+**Owner decision**: 不需要。三条都是"文案说 A、代码做 B"，按代码校正即可，不涉及数值或产品取舍。
+
+**现象**:
+1. 玩家照图鉴页的说明在 Wiki 书里找"跳到图鉴面板"的入口，永远找不到——不存在。
+2. 玩家在无间炼狱里为"一箱战利品"多打一场乱入 Boss，打完什么都没有。
+3. 玩家按 Boss 筛选器页的说明以为禁用对所有模式生效，实际 Mode H 与丧尸模式不受影响；
+   反过来页面也没提宿命回响和乱入 Boss 池其实是受影响的。
+
+**根因**:
+1. `CodexRuntimeModule.ToggleCodexPanel()` 全仓库唯一调用点是
+   `Integration/Codex/CodexBookItem.cs:309`。Wiki 侧的 `_wiki_link` 分类是**外链在线 Wiki**，
+   不是图鉴入口；文案把这两件事混成一件。repowiki 同一条也写错。
+2. `OnBossBeforeSpawnLoot_LootAndRewards` 在 `infiniteHellMode` 分支无条件
+   `dropBoxOnDead = false`；而 CR-2026-09-03-009 修复后 `HandleBossDeath` 的
+   `IsCurrentWaveBossMember` 早返位置在**现金池累加之前**。两条叠起来 = 乱入 Boss
+   在无间炼狱零产出。文案写于该修复之前，只描述了标准档的行为。
+3. 筛选器页写于 Mode G / Mode H / 随机事件立项之前，此后
+   `GetFilteredEnemyPresets()` 的消费者从 4 个涨到 8 个，页面没跟。
+
+**修复内容**:
+- 新增文件: 无
+- 修改文件（权威源）:
+  - `WikiContent/{zh,en}/system__codex.md`
+  - `WikiContent/{zh,en}/system__random_events.md`
+  - `WikiContent/{zh,en}/system__boss_filter_and_wiki.md`
+  - `WikiContent/{zh,en}/changelog__highlights.md`（版本主线停在 2.2.x，"最新大块内容"
+    还指向 v2.2.0 / v2.2.5，而 v2.3.0 页已存在）
+  - `WikiContent/{zh,en}/equipment/equipment__{viper_dagger,summon_staff,energy_shield,frost_spear,thunder_ring,frost_set,thunder_set}.md`
+    （14 处："仅开发/调试授予可获得" → 叮当原话「上头还没批出库」，
+    该台词已在 `Localization/LocalizationInjector.cs:438`。面向玩家的页面不宣传调试路径）
+  - `.qoder/repowiki/zh/content/高级功能/鸭皇图鉴系统.md`（同一条图鉴入口错述，
+    改为明写唯一调用点，AGENTS 4.13）
+- 生成产物: `wiki-site/docs/**`（由 `node wiki-site/scripts/sync-content.mjs` 重新生成，
+  权威源始终是 `WikiContent/`，不手改 docs）
+
+**兼容性影响**: 无。本批**没有触碰** `WikiContent/catalog.tsv`（契约第 5 节的
+entryId / categoryId / order 索引），只改了已登记条目的正文。
+注：工作区里 `catalog.tsv` 另有一份**先前批次**的未提交改动（新增 `mode__mode_h`、
+`system__campaign`、`system__back_mountain` 三条 + changelog 段重排以插入 v2.3.0），
+与本条目无关，一并提交时按那批的口径记账。
+
+**验证方法**:
+1. 编译: 不适用（无 `.cs` 改动）
+2. Guard: `python tools/run_guards.py --filter Wiki` → 5 PASS；
+   `--filter Repowiki` → 1 PASS；`--filter Codex` → 2 PASS；`--filter RandomEvent` → 4 PASS
+3. 站点同步: `node wiki-site/scripts/sync-content.mjs` → 中文 111 / 英文 111，共 222 篇，
+   四处改动均已回读确认落到 `wiki-site/docs/`（含 `en/`）
+4. 人工 smoke: 不需要——三条均为静态可证（调用点计数 / 分支早返顺序 / 消费者清单）
+
+**本批核对范围（已逐条回代码确认一致，不改）**: Mode H 全部冻结常量（六场 / 180s /
+同屏 2-2-3-3-3-3 / 赔率五档阈值 / 筹码 6-30-2 / 整备 4 件 / 名人堂 32 席 / 押品 3 件与
+按 lockedOdds 发同品质 / 四类侦察 / 拍铃 6s×1）、遗种巢（240 遗魂 / 1.5% 异色 /
+巢 12→24 / 放生 60 / 满级 10 级 / 远征 2-4-8h 与 0%-6%-12% / 经验 15-30-60）、
+词缀锻造（12 条 / 62-30-8 / 60-30-10 / 槽位 1-2-3 / 锁 2 颗 / 8% 掉落 / 全部 T1-T3 数值）、
+日报（报箱 500 / 24 分钟游戏日 / 30 格 / 五类悬赏全部档位与奖金 / Q5-6-7-8 与 Q8）、
+图鉴（4000 / 全店 1 本 / 不消耗 / 4 列 / 五个里程碑金额）、随机事件（8 个事件权重换算出的
+百分比、全部时长与半径、90s 静默 / 45-75s 冷却 / 并发 1 / 2-3-5 三档）、
+战役（六章目标与 20k-35k-50k-75k-100k-200k / 前三章解锁菜地-展示柜-点唱机）、
+后山（展示柜 800 / 8 格 / Q5 起 / 每级 0.5% / 全满 +5% / 上限约 21% / 种子 25% /
+20 分钟 2 收 / 三种出击餐的实际 stat）、Mode F 命火（30%/45%+5%→60% / 4% / 50% 上限 /
+8 点每杀 / 15s / +40% / +15% / ×2 失血 / +3s→24s / 余 25）、成就 45 项全部名称金额难度与
+总额 1984 万、变异词条 28 条与五模式抽取名单、配置页全部暴露项与八个恒开内容系统、
+9 张地图与 Mode H 仅 DEMO 图。
+
+---
+### 2026-09-03 战痕条件层实装：appliesWhen 随战斗持续求值（owner 拍板）
+
+**状态**: fixed（Windows 编译零警告；`ModeHScarTriggerWiringGuard` 扩至 9 条断言、
+新增 4 条逐条反向验证；实机 smoke 待人工）
+
+**Finding**: CR-2026-09-03-020（由 accepted 转 fixed）
+
+**兼容分类**: `COMPAT`（只加条件判定与求值输入；`Scars.json` 一字未改，
+不动 TypeID / 存档 key / 配置 key / Harmony 目标）
+
+**Owner decision**: 需要，且已拍板——**随战斗持续求值**（2026-09-03）。
+同批拍板 Mode H 中断语义维持**重打这一场**，即 §20.3 现行行为，无需改动
+（与之互斥的局中重建死路径已在上一轮清理，见 CR-2026-09-03-018）。
+
+**现象**: 5 条战痕上的 9 个分量写了生效条件，但条件从未被求值，分量一律无条件施加。
+最明显的是 `crowd_favorite`：收益写「敌军≥3 才给」、代价写「单核战才吃」，
+两个互斥条件同时恒真，这条战痕在任何局面下都同时拿到全部收益与全部代价。
+
+**根因**: `appliesWhen` 被 `ModeHContentCatalogParsers` 解析进 `ModeHEffectSpec.AppliesWhen`
+之后**零读者**——全仓库只有字段声明与那一行赋值。
+
+**为什么不选「开窗时算一次」**: 常驻战痕在选手登场那一刻开窗，那时敌军尚未生成，
+`enemy_count_at_least_3` 恒假，`crowd_favorite` 的收益反而永远拿不到——比现状更糟。
+
+**修复内容**:
+
+- 修改文件: `ModeH/ModeHCommandAdapters.cs`
+  - 新增 `ModeHEffectConditions` 求值器，覆盖 8 种条件；`condition_<id>` 与本场
+    `plan.conditionId` 逐字比对（`danger_edge` / `open_field` 本就是 ThreatPlans 里真实的
+    `arenaConditionId`，无需映射表）；
+  - `ModeHCommandFireContext` 增加 5 个条件输入字段（`EnemyCount` 复用既有）；
+  - 新增 `SyncConditionalEffects`：条件翻转时才动手，假→真按**当前值**重新捕获并施加，
+    真→假还原并摘掉。捕获当前值而非开窗值，与本适配器一贯的嵌套语义一致；
+  - 重申式点火同样先过条件，否则"下线"只对调制类生效；
+  - `Restore == false` 的分量一旦施加不下线（维持 `nextReleaseSkillTimeMarker` 契约）；
+  - `Restore()` 与条件下线共用 `WriteOriginal`，消除两份 switch。
+- 修改文件: `ModeH/ModeHCombatControl.cs`（新增 `RefreshEffectConditionInputs`，**每帧**刷新；
+  `BeginMatch` 增加 `arenaConditionId` 与 `lastEntryBatchIndex` 两个整场恒定入参）
+- 修改文件: `ModeH/ModeHEventRouter.cs`（`ModeHParticipantRef` 增加 `BatchIndex`）
+- 修改文件: `ModeH/ModeHCombatTelemetry.cs`（新增 `HasLiveEnemyInBatch`，支撑 `first_wave_alive`）
+- 修改文件: `ModeH/ModeHRuntimeModule_CombatFlow.cs`（传入计划的条件与末批次；
+  按 `plan.enemyBatchIndices` 给敌军填 `BatchIndex`）
+- 修改文件: `ModeH/ModeHInjuryAndScarSystem.cs`（自结算分量按静态条件过滤）
+- 修改文件: `DebugAndTools/F3GameplayValidationModeHErrorSwap.cs`（补两个新入参）
+- 修改文件: `tests/ModeHScarTriggerWiringGuard.py`（+4 条断言）
+
+**自结算分量为何是例外**: `_selfSettledCommandScale` 是累乘标量，无法只撤销其中一项，
+因此只在开窗时求值一次。这**只**对整场恒定的条件成立，故守卫断言自结算分量只能带
+`condition_*` 族；将来若有人给自结算分量加动态条件，构建期就会红。
+
+**未知条件取值按 fail-open 处理**: 认不出的条件按「无条件生效」，而不是按假。
+按假会静默禁掉一个分量——那正是本轮要消灭的失败形态；拼写错误交由守卫在构建期拦。
+
+**兼容性影响**: 无破坏性变更。`BeginMatch` 与 `OnParticipantHurt` 都是 internal，
+调用点已同批更新。数值上这是一次**有意的**调整：此前恒生效的 9 个分量现在按条件生效。
+
+**验证方法**:
+
+1. 编译: `compile_official.bat` → Build succeeded，零警告。
+2. Guard: 本轮相关 guard 全绿（含 `ModeHControlPointWhitelistGuard` —— 期间因把
+   `Restore()` 的 `if (!m.Restore) continue;` 写成带判空的变体而转红，
+   已还原为被冻结的字面量而不是放宽 guard）。
+   新增 4 条断言各做过反向验证：Reassert 不调 Sync、条件失去判定分支、
+   `condition_<id>` 指向不存在的擂台条件、自结算分量带动态条件——四条都能转红。
+3. 人工 smoke: 待做，见下。
+
+**未验证/需人工**:
+
+- 实机：`crowd_favorite` 在敌军数跨过 3 的前后、`bell_dependence` 在拍铃前后，
+  观察分量是否真的上下线（可用 F3 诊断页看 held effect 集合的变化）。
+
+**失败尝试**: 无。
+
+**环境备注**: 本轮期间并发会话仍在改本仓库（`ModBehaviour.cs`、`Integration/`、
+`Utilities/EnemySpawnCore.cs` 等 13 个文件）。`ModBehaviourInstanceClassificationGuard`
+当前红（Integration 260 vs 基线 259，另多出 PetNest 1）——已逐文件核对：
+**本轮改动的文件里 `ModBehaviour.Instance` 出现次数为 0**，偏移全部来自并发改动。
+**未动该 guard 的基线**，它还要求同步更新配套的分类文档，属对方改动的一部分。
+---
+### 2026-09-03 全部玩法完整性扫描：战痕接线 P1 + appliesWhen 条件层 P2（accepted）
+
+**状态**: fixed（019）/ accepted（020，求值语义需 owner 拍板）。
+Windows 编译零警告、519 guard 全绿、新增 guard 5 项断言逐条反向验证；实机 smoke 待人工。
+
+**Finding**: CR-2026-09-03-019（P1，已修）、CR-2026-09-03-020（P2，accepted）
+
+**兼容分类**: `COMPAT`（只补代码侧接线与分量识别；`Scars.json` 一字未改，
+不动 TypeID / 存档 key / 配置 key / Harmony 目标）
+
+**Owner decision**: 019 不需要——数据表已写死语义，代码对不上属实现遗漏。
+020 **需要**，见未验证/需人工。
+
+**现象**:
+
+1. Mode H 打完一场拿到的永久战痕，8 条里只有 2 条真能生效；
+   `bell_dependence` 更糟——只兑现 −10% 代价，+20% 收益从未生效。
+2. 5 条战痕上共 9 个带 `appliesWhen` 的分量，条件一律不生效、全部无条件施加。
+
+**根因**:
+
+1. `TryOpenScarWindow` 逐字比对 `spec.Trigger` 与调用方传入的 triggerId，
+   不匹配时 `return false` 且**不设** failureReasonId——调用方当作"这次不该触发"，静默。
+   两处字面量对不上（`armor_broken`≠`armor_first_break`、`crowd_present`≠`enemy_count`），
+   两条根本没有调用点（`blood_rush`、`longshot_memory`），
+   一条常驻战痕被误当触发型调用（`crowd_favorite`）。
+2. `ApplySelfSettledComponents` 只认 `op=self_settled_command_scale`，
+   而数据表里 `bell_dependence`/`spirit` 用的是 `op=self_settled` + `controlPointId=command_scale`。
+3. `appliesWhen` 解析进 `ModeHEffectSpec.AppliesWhen` 后**零读者**。
+
+**修复内容**（019）:
+
+- 新增文件: `tests/ModeHScarTriggerWiringGuard.py`（自动发现，非 `.cs` 不进编译清单）
+- 修改文件: `ModeH/ModeHCombatControl.cs`
+  - 三条触发型战痕按数据表逐字对齐；新增 `IsActiveFighterArmorBroken` / `ResolveArmorItem`
+    （登场时缓存护甲物品，避免每帧 `GetArmorItem()`）；
+  - 目标扫描顺带记录 `_lowestEnemyHealthFraction`，`blood_rush` 复用它，不另开每帧遍历；
+  - 删除 `crowd_favorite` 的多余触发调用。
+- 修改文件: `ModeH/ModeHEventRouter.cs`（`IModeHTelemetrySink.OnParticipantHurt` 增加
+  `fromWeaponItemID` 参数，透传官方 `DamageInfo.fromWeaponItemID`）
+- 修改文件: `ModeH/ModeHCombatTelemetry.cs`（新增 `ActiveFighterTookRangedDamage`、
+  远程武器 tag 判定与缓存、`ResetStaticCaches`）
+- 修改文件: `ModeH/ModeHInjuryAndScarSystem.cs`（识别两种 command_scale 写法；
+  `gatedByCondition` 让带 `requiresEnemyCountAtLeast` 的条目跳过无条件施加）
+- 修改文件: `ModeH/ModeHRuntimeModule.cs`（关停链登记 `ModeHCombatTelemetry.ResetStaticCaches`）
+
+**兼容性影响**: 无破坏性变更。`OnParticipantHurt` 是 internal 接口，唯一实现与唯一调用点同批更新；
+`ModeHEventLifecycleGuard` 冻结的是 `Bind` 签名，不含本方法。
+
+**验证方法**:
+
+1. 编译: `compile_official.bat` → Build succeeded，零警告。
+2. Guard: `python tools/run_guards.py` → PASS=519 / NEW-FAIL=0。
+   `ModeHScarTriggerWiringGuard` 5 项断言反向验证：改坏 triggerId→FAIL、删调用点→FAIL、
+   退回只认 `self_settled_command_scale`→FAIL，还原后各自 PASS。
+   期间 `StaticCacheLifecycleGuard` 因新增静态缓存转红，按其规则补 `ResetStaticCaches` 后转绿
+   （**没有加白名单**）。
+3. 人工 smoke: 待做，见下。
+
+**未验证/需人工**:
+
+- 实机：让登场选手吃一次远程伤害 / 打破护甲 / 把敌人打到残血，确认三条战痕各自开窗；
+  确认 `bell_dependence` 拍铃后口令幅度确实 ×1.2。
+- **需 owner 拍板（CR-2026-09-03-020）**：`appliesWhen` 的求值语义。
+  「开窗时一次性求值」实现简单但对常驻战痕是错的（`crowd_favorite` 登场时敌军尚未生成，
+  `enemy_count_at_least_3` 恒假，收益永远拿不到）；
+  「随重申循环持续求值」语义最忠实，但要让共享的 `ModeHCommandAdapter` 支持按分量
+  中途 apply/restore（它当前整组施加、整组还原），会动到口令/伤病/战痕共用的设施，
+  且本身是一次数值改动（现在恒生效的分量会变成条件生效）。我推荐后者，但按 §7 不擅自定案。
+
+**失败尝试**: 无。
+
+**方法论备注**: 本轮两条 finding 都来自同一种扫描——**用数据表反查代码**：
+把 `Assets/**/*.json` 里所有 snake_case 标识符抽出来，逐个查它是否作为字符串字面量出现在
+编译清单内的 `.cs` 中。零调用点扫描查不出这类问题（`TryOpenScarWindow` 有调用点，
+只是参数对不上），guard 也查不出（它们断言结构不变式，不比对数据与代码）。
+---
+### 2026-09-03 新模式可玩性审核：口令点火目标 P1 + 快照重建链 P2 + 次要项 4 条
+
+**状态**: fixed（Windows 编译零警告；新增 1 个 guard，新旧断言共 8 项逐条反向验证；
+实机 smoke 两项待人工）
+
+**Finding**: CR-2026-09-03-017（P1）、CR-2026-09-03-018（P2）
+
+**兼容分类**: `COMPAT`（017 只补生产侧计算）+ `SAFE`（018 删除的全是零调用点分支，
+删除前后运行时行为逐字相同；采集侧与落盘字段一律不动）
+
+**Owner decision**: 017 不需要——点火目标有消费者无生产者属实现遗漏，不涉数值取舍。
+018 的**收敛方向**不需要（按已生效的 §20.3 与冻结转换表走），但
+「是否要真正启用局中重建」需要 owner 拍板，见下方未验证/需人工。
+
+**现象**:
+
+1. Mode H 拍铃选 `finish`（处决）后选手毫无反应——不转火、不换目标。`press` 的转火一项同样无效。
+   玩家侧无任何提示，日志也不报错；每场只有一次拍铃，等于把唯一干预机会扔掉。
+2. 战场快照每场按四类触发点采集并落盘，但从来没有被读回过；
+   本轮工作区新加的 ERROR 互换快照重建支路写在这条死路径里，落地即不可达。
+
+**根因**:
+
+1. `ModeHCommandFireContext.NearestEnemy` / `LowestHealthEnemy` 只有消费者
+   （`ModeHCommandAdapter.Fire` 的 `fire_notice_nearest` / `fire_lowest_health_target`），
+   唯一设值口 `ModeHCombatControl.SetFireTargets(...)` 全仓库零调用点。
+   `RefreshFireContext` 的注释写着"由生成事务在每次登记时刷新"，但生成事务里没有这段。
+   **三层检查全绿仍漏掉**：`Validate()` 判 `_ai.searchedEnemy != null` / `_ai.noticed`，
+   AI 自己有目标就算保持住，认证遂把 `finish` 标成 `VerifiedBehavior` 发给玩家。
+2. §17.4 的局中重建与 §20.3 的"回落同场看盘 + 整场回滚"是互斥的两套恢复语义，
+   代码实现的是后者；`ModeHStateMachine` 里 `Recovering` 的出边没有任何一条通向战斗态，
+   重建在状态机层面结构性不可达。
+
+**修复内容**:
+
+- 新增文件: `tests/ModeHCommandFireTargetGuard.py`（guard 由 `tools/run_guards.py` 自动发现，
+  无需登记；非 `.cs`，不进 `compile_official.bat`）
+- 修改文件: `ModeH/ModeHCombatControl.cs`
+  - 新增 `RefreshFireTargets(float, bool)`：按遥测存活敌军名单算最近/最残，
+    参照点是当前登场选手，目标取官方 `mainDamageReceiver`，生命归零者不计入"最残"；
+  - 按 `CommandReassertIntervalSeconds` 节流（对齐重申循环），拍铃 `RefreshFireContext(0f, true)` 强制重扫；
+  - `BeginMatch` 清空目标与节流累加器；删除 `SetFireTargets` 外部设值口；
+  - 删除 `RestoreFromSnapshot` 与 `_errorSwapRebuildProfileId` 身份门。
+- 修改文件: `ModeH/ModeHCombatTelemetry.cs`（新增零分配 `GetLiveEnemyAt(int)`；删 `RestoreFromSnapshot`）
+- 修改文件: `ModeH/ModeHInjuryAndScarSystem.cs`（缓存转发进来的活上下文 `_sharedFireContext`，
+  战痕开窗的首次点火不再用空上下文）
+- 修改文件: `ModeH/ModeHBattleSnapshot.cs`（删重建侧四个成员，原处留完整理由与启用清单；
+  类头契约同步改写为"只采集不重建"）
+- 修改文件: `ModeH/ModeHCommandController.cs`（删 `RestoreFromSnapshot`、`ResetForNextMatch`）
+- 修改文件: `ModeH/ModeHRuntimeModule_CombatFlow.cs`（`ReleaseCombatRuntimeObjects` 接上 `StopAcceptingBell()`）
+- 修改文件: `ModeH/ModeHRuntimeModule_MatchFlow.cs`（`OnBellPressed` 读 `IsBellAccepting`）
+- 修改文件: `ModeH/ModeHUIPages.cs`（`GameQuality` 定点 `#pragma warning disable 0649`，
+  该字段故意不赋值，压警告是为了不让噪声掩盖真正新增的警告）
+- 修改文件: `RandomEvents/RandomEventModels.cs`（删冗余的 `IsStillValid(director)`）
+- 修改文件: `tests/ModeHBattleSnapshotGuard.py`、`tests/ModeHStandInGuard.py`
+  （断言方向反转：由"重建链必须存在"改为"必须保持缺席"）
+- 修改文件: `tests/ModeHSpectatorLeaseGuard.py`（新增两条：拍铃门必须真的有调用者与读者）
+
+**次要项 4 条**（同批消化）：
+
+- 接线：拍铃门 `StopAcceptingBell` / `IsBellAccepting` 此前零调用零读者，现已接上。
+  它补的是"战斗运行时已释放、观战租约尚未 Release"那一小段窗口——
+  此前只靠 `_commandsClosed` + 生命周期挡，两者在该窗口内都还没变。
+- 删除：`ResetForNextMatch`（每场新 new `ModeHCombatControl`，不存在跨场复用）、
+  `RandomEventActiveEvent.IsStillValid`（各事件的 `IsSpawnStillValid` 已覆盖：
+  `HandleRunSignatureChanged` 自增 generation 的同一句之后就 `EndActiveEvent`，
+  必然把 `_cleanedUp` 置真）。
+- documented（不改代码，均为**有意**的零调用点，不是遗漏）：
+  `ModeHControlPointHarness` 由编译期常量 `AllowDevControlPointHarness` 门控、发布构建恒 false，
+  本就靠实现者本地翻常量手动调用；`ModeHLoadoutKitDto` 是 `ModeHStructureGuard` 冻结的
+  `[Serializable]` DTO 面，虽当前无字段引用（活解析走 `ModeHKitSpec`），
+  删除属 schema 面变更，按 AGENTS.md §10 不擅自动。
+
+**兼容性影响**: 无。不改 TypeID、存档 key、配置 key、Harmony/反射目标与资源路径。
+`currentBattleSnapshot` 字段与 §20.2 canonical digest **保持原样**——
+摘掉它才是 `SCHEMA-`，本轮明确不做。
+
+**验证方法**:
+
+1. 编译: `compile_official.bat` → Build succeeded，**零警告**（`GameQuality` 的 CS0649 已定点压掉）。
+2. Guard: `python tools/run_guards.py`，本轮相关 guard 全绿；
+   8 项断言逐条反向验证转红（改坏→FAIL→还原→PASS），含
+   `ModeHCommandFireTargetGuard` 5 项、`ModeHBattleSnapshotGuard` 重建缺席 1 项、
+   `ModeHStandInGuard` 1 项、`ModeHSpectatorLeaseGuard` 拍铃门 1 项。
+   其中"只清空未赋值"一条是反向验证时发现第一版写松了（清空语句本身含字段名，
+   把真正的赋值删掉照样 PASS），已收紧成"必须赋非 null"后重新验证。
+3. 人工 smoke: 待做，见下。
+
+**未验证/需人工**:
+
+- 实机：开一场 Mode H，分别用 `finish` 与 `press` 拍铃，确认选手确实转火到最残 / 最近的敌人；
+  再确认结算/技术中止后拍铃按钮不再受理。
+- **需 owner 拍板**：是否真正启用 Mode H 局中重建（中断后接着打，而不是重打这一场）。
+  要做就得同时改冻结转换表（给 `Recovering` 加战斗态出边）、接恢复驱动、重新引入被删的三个方法，
+  属状态机改造。当前语义（重打同一场，资产与结算全额回滚）自洽且安全。
+
+**失败尝试**: 无。
+
+**环境备注**: 本轮期间检测到**另一个进程在并发编辑本仓库**
+（`Integration/NPCs/DuckNpc/` 于 22:04-23:01 新建并改写，非本轮改动）。
+`EmptyCatchGuard` 当前红（976 > 968）**全部来自那两个文件的 8 处空 catch**——
+已逐文件核对：本轮改动在编译清单内的空 catch 增量为 **0**。
+**未动预算文件**，不能用抬预算掩盖他人在途改动。
+---
+### 2026-09-03 焚天龙皇不掉词缀熔石
+
+**状态**: fixed（Windows 编译成功、516 guard 全绿、3 条新断言各做过反向验证；实机 smoke 待人工）
+
+**Finding**: CR-2026-09-03-015（本轮 Wiki 内容核对时发现：写 Boss 页的掉落清单时
+逐条回查代码，发现龙王这条对不上）
+
+**兼容分类**: `COMPAT`（纯加法，只新增一处已有服务的挂接点；不改数据 schema、
+不改存档 key、不改掉落概率）
+
+**Owner decision**: 不需要。三个自定义 Boss 掉熔石是既有设计意图，龙王缺失属实现遗漏，
+不涉及数值取舍。
+
+**现象**: 击杀焚天龙皇永远不掉词缀熔石。龙裔遗族与幽灵女巫正常按
+`AffixDefinitions.ForgeStoneBossDropChance`（0.08）掉落。玩家侧表现为"专门刷龙王攒熔石
+一颗都刷不出来"，且无任何报错或日志。
+
+**根因**: `AffixForgeStoneDropService.TryTrack` 全仓库只有一个调用点，位于
+`LootAndRewards.RegisterBossRandomLootTracking`。焚天龙皇不经这条路径——它在
+`DragonKingBoss.cs` 里自己手动订阅 `BeforeCharacterSpawnLootOnDead`（该处已有注释
+说明这一点）。于是熔石 handler 从未挂到龙王身上。
+
+遗种巢在更早的一轮踩过完全相同的坑并已修复：同一处并联了 `PetNestDropService.TryTrack`，
+注释写明"龙王走的是这条手动掉落订阅，不经 RegisterBossRandomLootTracking，因此遗种巢的
+掉落追踪从来没挂上"。熔石是在同一批接线里加的，但漏做了这一步并联。
+后山种子不受影响——它挂在 `AddBossSpecialLootToLootboxCoroutine` 里，龙王经
+`OnBossBeforeSpawnLoot_LootAndRewards` 仍会走到。
+
+**修复内容**:
+- 新增文件: 无
+- 修改文件: `Integration/DragonKing/DragonKingBoss.cs`（+23 行，三处并联，逐字照搬
+  遗种巢既有写法）
+  - 生成侧：紧随 `character.BeforeCharacterSpawnLootOnDead += lootHandler;` 并联
+    `AffixForgeStoneDropService.TryTrack(this, character);`
+  - 离场清理：并联 `ClearTracking(character)`
+  - 死亡清理：并联 `ClearTracking(deadKing)`（`BeforeSpawnLoot` 已派发完，此处只退订）
+- 修改文件: `tests/AffixForgeInvariantGuard.py`（新增 `check_forge_stone_drop_wiring`）
+
+**兼容性影响**: 无。服务内部幂等（`TryTrack` 先 `ClearTracking` 再挂新），开关关闭时
+自身早返，因此 dormant 契约不变。掉落概率、存档 key、TypeID、Harmony 目标均未触碰。
+对老存档唯一可见变化是龙王开始按既定 8% 掉熔石——这本就是原设计。
+
+**验证方法**:
+1. 编译: `compile_official.bat` → Build succeeded，零错误零警告
+2. Guard: `python tools/run_guards.py` → 516 PASS / 0 NEW-FAIL
+3. 反向验证: 分别拆掉 `TryTrack`、拆掉一个 `ClearTracking`，guard 各自转红并报出对应
+   断言；还原后转绿
+4. 人工 smoke: 待做——进标准竞技场刷龙王若干次，确认掉落箱里能出现词缀熔石
+
+**未验证/需人工**: 实机确认龙王掉熔石。8% 概率下建议至少打 20 次再判定。
+
+**文档同步**: `.qoder/repowiki/zh/content/高级功能/词缀锻造系统.md` 新增同日条目；
+`WikiContent` 的龙王 Boss 页与掉落页已列回熔石这一条。
+
+---
+### 2026-09-03 Mode H 二次可达性扫描：免费侦察 P1 + 名人堂展示 P1
+
+**状态**: fixed（Windows 编译零错误、516 guard 全绿、2 条新断言各做过反向验证；实机 smoke 待人工）
+
+**兼容分类**: `COMPAT`（纯新增消费方，不改数据 schema、不改存档 key、不改冻结契约）
+
+**Finding**: 上一批把 ERROR 互换与异常/伤病/战痕认证接通后，对 `ModeH/` 重跑零调用扫描，
+又查出两条**实现完整但没有消费方**的内容。两条都不是新写的功能，是既有实现从未被接上：
+
+1. **免费侦察（§17.5）零调用 —— P1。**
+   `ModeHEncounterPlanner.TryApplyRecon` 全仓无调用方；`ThreatPlans.json` 的四条
+   `reconChoices` 有严格数量校验（少一条就整表拒绝加载）、`Button_Recon`「免费侦察一次」与
+   `Recon_Consumed`「本场侦察已用」文案齐备、`publicSummary.reconRevealKey` 字段也在，
+   但看盘页 `BuildBriefPageContent` 只构造了 `Button_LockIn` 一个按钮。
+   结果：「每场一次免费侦察」这条设计在游戏里不存在，玩家只能盲押。
+
+2. **名人堂只写不读 —— P1。**
+   `ModeHHallOfFamePersistence.GetRecords()` 全仓无调用方；
+   `BuildHallOfFamePageContent` 只渲染标题 + 一个「确认」按钮，`page.Cards` 从未填充。
+   玩家打完整季夺冠进名人堂，看到的是一张空页。
+   而 `ModeHPageContent.Cards` 的字段注释本来就写着「五席候选、市场 offer、**名人堂条目**」——
+   第三种用法一直缺着。影响不止 Mode H：**鸭王征程整条剧情线锚在「名人堂 32 席、
+   第 33 个把最底下挤掉」这条规则上**，玩家看不见它，那条剧情就落在空处。
+
+**修复内容**（均为既有文件，无新增 `.cs`，`compile_official.bat` 无需改动）:
+
+- `ModeH/ModeHRuntimeModule_MatchFlow.cs`：新增 `AppendReconLinesAndActions` 与
+  `ApplyRecon`。未用过时列出四个侦察项按钮，用过后只回显揭示了哪一项并撤掉按钮
+  （`TryApplyRecon` 自己也会以 `recon_already_consumed` 拒绝，这里是让玩家**看得见**，
+  而不是点了才知道）。`ApplyRecon` 只在 `MatchBrief` 放行——揭示必须发生在整备与下注**之前**
+  才有决策价值；成功后 `TryPersistSeason` + `RouteUiForLifecycle` 刷新。
+  **坑**：`ThreatPlans.json` 的 `nameKey` 存的是**完整** key（`BossRush_ModeH_Recon_*`），
+  再拼 `LocalizationKeyPrefix` 会变成 `BossRush_ModeH_BossRush_ModeH_xxx`。
+  另外四个按钮的回调必须先把 `ReconChoiceId` 拷进局部变量，直接闭包捕获循环变量会让
+  四个按钮全都触发最后一条（照 `SelectSettlementReward` 的既有写法）。
+- `ModeH/ModeHRuntimeModule_SeasonFlow.cs`：`BuildHallOfFamePageContent` 改为读
+  `GetRecords()` 并逐条构造卡片，正文显示「已入堂 N / 32 席」；新增 `BuildHallOfFameCard`
+  （名号优先 `aliasKey`、回落 `Fighter_<profileId>`、再回落「无名冠军」，绝不空标题；
+  带异常的冠军置 `IsAnomaly` 换 Warning 描边，与选秀卡同一套视觉口径）。
+  读盘整段包 try/catch：**读不出记录不能挡住「确认」按钮**——那是赛季终局的唯一出口。
+- `tests/ModeHReachabilityGuard.py`：新增 2 条断言。`.TryApplyRecon(` 带点号与括号是刻意的
+  （裸名会被同文件的定义行自身匹配）；两条的 `owner_prefixes` 都带 `DebugAndTools/`，
+  防止 F3 验收用例自己满足「有调用方」。
+
+**验证方法**:
+1. 编译：Windows `compile_official.bat` 通过，**零错误零新增警告**，DLL 已部署。
+2. Guard：`python tools/run_guards.py` → PASS=516 / NEW-FAIL=0 / KNOWN-RED=0。
+3. **反向验证**（两条各做一次）：把 `TryApplyRecon` 调用改成 `if (false)` → guard 报
+   `[Unreachable] 免费侦察`；把 `GetRecords()` 改成 `null` → 报 `[Unreachable] 名人堂展示`；
+   还原后均恢复 PASS。
+4. 游戏内 Wiki 同步：`mode__mode_h`（中英）补「免费侦察」与「名人堂：32 席」两小节——
+   这两节此前是**刻意省略**的，因为写页时功能还不生效，不能对玩家承诺不存在的机制。
+   `changelog__v2_3_0`（中英）同步两条。
+
+**未验证/需人工**:
+- 看盘页四个侦察按钮的实际排版与点击后刷新（`RouteUiForLifecycle` 重建页面）。
+- 侦察揭示后赔率是否按预期变动（`publicSummary` 进 `ModeHOddsController` 的公开分）。
+- 名人堂满 32 席后第 33 条挤掉最老一条的表现，以及卡片在长名号下的换行。
+
+**失败尝试**: 无
+
+---
+### 2026-09-03 可达性接线批：Mode H 内容层 P0 + ERROR 互换 P1 + 退役结算 P1 + 次要项 7 条
+
+**状态**: fixed（代码、Windows 编译、516 guard 与 15 项新断言的反向验证完成；实机 smoke 七项待人工）
+**Finding**: CR-2026-09-03-012 / 013 / 014，以及审核报告里的全部次要项
+**兼容分类**: COMPAT（认证缓存失效重跑一次）+ WIRE+（三处接线）+ SAFE（次要项）
+**版本/Commit**: 未提交
+**Owner decision**: 需要；三项已拍板——
+① ERROR 实测放 F3、运行时按自结算恒可用（「你要实测的话就放到那里面去……参考主流做法」）；
+② 终章战前加冠军独白；③ 伤病门不做成玩家可见的入场拒绝（「不应该给玩家看得到的吧」）。
+
+**现象**
+1. Mode H 战痕一条都开不出、伤病永远无名、四个公开异常一次不触发，
+   而选秀卡照样把异常名与描述当卖点展示；玩家侧伤病/异常/战痕赔率项一直计 0。
+2. ERROR 完整互换（§17.6.5）在游戏里从未发生过：赛后报告记「触发过」，画面上什么都没有。
+3. 主选手中途退役、替补顶上夺冠时，名人堂把已退役的主选手记成冠军，真正夺冠的替补记成替补。
+4. 次要项：冠军立绘随包发布却零引用；两个建筑清理零调用；Codex 场景接缝调的是别名的本体；
+   两个方法零调用且其一是陷阱（事务中静默返回 true）。
+
+**根因**
+1. 认证探针只遍历 `Commands`，只写 `<commandId>.<controlPointId>` 形状的 effectId；
+   `Scars.json` 的分量 ID 与四个裸异常 ID 永远查不到记录 → `HasVerifiedBehavior` 恒 false。
+   同源的另一半：`BuildBehaviorSnapshot` 零调用 → `behaviorStatuses` 恒空 → 赔率项恒 0。
+2. `TryBeginErrorSwap` 零调用点，`_swapPhase` 永远停在 None，`TickErrorSwap` 首行早返。
+   连带发现：观战租约 `DisableInput` 只在 Release 恢复，接通后玩家会拿到一个动不了的选手。
+3. `ApplyRetirement` 零调用点，合同槽从不结算；`BuildHallOfFameRecord` 直接读那两个槽。
+
+**修复内容**
+- 修改文件（Mode H）：`ModeHCommandCertificationProbe.cs`（提取 `ProbeGroup`，
+  依次驱动 Commands → Injuries → Scars，加 `(key, controlPointId)` 投影）、
+  `ModeHCommandCompatibilityRegistry.cs`（条目级 `GetBehaviorEntryStatus` / 
+  `GetBehaviorEffectIds` / `GetBehaviorEntryIds`，重写 `BuildBehaviorSnapshot`）、
+  `ModeHProductionCertification.cs`（`AppendEntryStatus`，三族同表落盘；`MeetsInjuryGate` 进 DevLog）、
+  `ModeHStateDtos.cs`（commandId 字段注释：现在也承载伤病/战痕条目 ID）、
+  `ModeHDraftController.cs` / `ModeHTransferMarket.cs`（填 `behaviorStatuses`）、
+  `ModeHCombatControl.cs`（`_errorSwapAttempted` 闩、快照重建身份门、CaptureplayerState 嵌套语义注释）、
+  `ModeHRuntimeModule_CombatFlow.cs`（`TryBeginErrorSwapIfDue` 唯一调用点、
+  `SyncErrorSwapInputYield`、`ApplyRetirement` 接线、释放路径兜底收回输入）、
+  `ModeHRuntimeModule_SceneFlow.cs`（`_errorSwapInputYielded` 字段与两处复位）、
+  `ModeHSpectatorLease.cs`（`YieldInputForErrorSwap` / `ReclaimInputAfterErrorSwap`）。
+- 数据：`Assets/Data/ModeH/CommandCompatibility.json` 的 `selfSettledEffects` 加四个异常 ID，
+  **并已 `python tools/modeh_stamp_data.py` 重新盖章**（不盖章会 content_signature_failed，Mode H 整个进不去）。
+- 新增文件：`DebugAndTools/F3GameplayValidationModeHErrorSwap.cs`（已登记 `compile_official.bat`、
+  `ArenaCaseIds`、`Assets/Data/GameplayCoverage.json`）。
+- 次要项：终章冠军独白（`CampaignDialoguePlayer` 独立 actor 宿主 + 四句台词，
+  `CampaignFinalBoss.StartCampaignFinalBossPrologueThenSpawnAsync`；F3 调试路径刻意绕过）、
+  两个建筑清理接进 `OnDestroy_Integration`、Codex 场景接缝改调 `NotifySceneChanged`、
+  删除 `AffixItemData.ParseSlots`（纯别名）与 `PetNestPersistenceAccess.StageExpedition`（陷阱）。
+
+**三条 documented 决定（写下理由避免重复排查，AGENTS §9）**
+1. `BossBgmCoordinator.NotifySceneChanged` **维持零调用**。接进 `ModBehaviour.OnSceneLoaded`
+   会是净回归：该方法不区分 `LoadSceneMode`，而本方法无条件清 `_ownerLeases`，
+   自愈路径只在活动场景 handle 真变了时才清。additive 加载时活动场景不变，
+   接线版会在 Boss 战中途抹掉租约，之后 `_playingBossKey` 为 null，
+   `ReleaseBossBgm` 提前返回、永远走不到 `StopBossBgm`，曲子会一直放到下次真正切场景。
+   唯一差量 `_nextActivationOrder` 归零可证无害亦无用（只被 `GetMostRecentLiveLease` 读，
+   而那个方法只遍历上一行刚清空的 `_ownerLeases`）。已把理由写进方法的文档注释。
+2. `ModeHInteractable.TryOpenEntry` **维持保留**。2026-09-03 复核 1183-1185 条目仍准确：
+   `_autoPresenter`（:24/:69/:203）与 `DismissActive`（:196/:230/:247/:254）都在用，
+   `ModeHReachabilityGuard` 由 `UIAndSigns.cs:881` 的 AddComponent 分支满足。
+3. 两个建筑清理**不销毁 Texture2D / Sprite**：官方 `BuildingInfo.iconReference` 仍持有该 sprite
+   且无反注入路径；全仓四个已接线 peer 都用 `Unload(false)` 保留已加载资源；
+   `CampaignAssetCache` 的销毁先例明确要求「先复位注入点再卸」，而这里无法复位注入点。
+   这是**有意为之的有界泄漏**（每建筑 1 texture + 1 sprite / 进程），不要「修」成 Destroy。
+
+**兼容性影响**
+- 无存档 schema 变更、无 TypeID 变更、无 Harmony/反射目标变更。
+- 认证缓存以 `modBuildSignature`（DLL 摘要）为键，本次重编译本来就让旧缓存失效并重跑一次，
+  因此无需 schema bump（`CurrentCertificationSchemaVersion = 1` 被守卫冻结）。
+- **新赛季赔率分布会变**：`behaviorStatuses` 此前恒空导致三类赔率项一直计 0，现在开始生效。
+  已存赛季保持空表、不追溯（该表进赛季 canonical digest，事后刷新会让 VerifyDigest 失败）。
+- 新增运行时本地化键 `BossRush_Campaign_FinalBossPrologue_0..3` 由 `DialogueManager` 动态注入，
+  不进冻结契约面；说话人名沿用既有的 `BossRush_Campaign_FinalBoss_Name`。
+
+**守卫**
+- 新增 `tests/ModeHDataStampGuard.py`：断言七个数据文件 `contentSignature` 新鲜。
+  这补的是一个真空——`tools/modeh_stamp_data.py --check` 不在 `run_guards.py` 采集范围，
+  盖章过期能过全部守卫、只在实机致命。
+- 更新 `ModeHReachabilityGuard`（三条 `check_callers`，`owner_prefixes` 带上 `DebugAndTools/`
+  以免 F3 用例自己满足断言；`TryBeginErrorSwap` 带点号，否则包装方法名 `TryBeginErrorSwapIfDue`
+  会把断言骗过去——已实测）、`ModeHCommandCompatibilityGuard`（四异常自结算、探针覆盖伤病战痕、
+  投影必须用在**记账那一支**、`RestoreCertificationEffects` **方法体内**必须用条目级查询
+  ——后两条的弱写法都实测能骗过断言）、`ModeHStandInGuard`（一次性闩 + 重建身份门）、
+  `ModeHSpectatorLeaseGuard`（让渡对称且不得改写 `_inputDisabled`）、
+  `CampaignSkeletonGuard`（卸载接线 + 冠军立绘有调用方 + 独立宿主 + F3 直连生成）、
+  `BackMountainStructureGuard`（卸载接线）、`GameplayValidationCoverageGuard`（新用例登记）。
+- `StaticCacheLifecycleGuard` 的方法归属窗口 5000 → 12000：卸载漏斗末尾的调用离方法声明
+  已 5169 字符，旧窗口下往漏斗中段插任何一行都会让末尾调用集体「找不到所属方法」。
+  放宽的是**归属识别的射程**，不是不变式本身（PASS 145→146、WARN 11 不变、FAIL 1→0，
+  只有那一个被误判的类翻转，无其他类被误credit）。
+- `ModBehaviourInstanceClassificationGuard` 基线 Campaign 14→15、总数 399→400，同步文档。
+
+**验证方法**
+1. 盖章：`python tools/modeh_stamp_data.py` + `--check` 全 ok。
+2. 编译：Windows `compile_official.bat` 通过并部署，零错误，唯一警告是既有的
+   `ModeHCardData.GameQuality` CS0649（有意为之，已在 `ModeHRuntimeModule_MatchFlow.cs:362` 注明）。
+3. Guard：`python tools/run_guards.py` → PASS=516 / NEW-FAIL=0 / KNOWN-RED=0。
+4. 反向验证：15 项新断言逐条破坏确认转红再还原。**其中 3 条第一次写弱了、破坏后仍绿，
+   已收紧后重验通过**——这正是反向验证存在的意义。
+
+**未验证/需人工**
+- 认证时长实机复核：`RecordPassed` 现在打出 `ms=`，确认每 key 仍在 15 秒内、全池在 180 秒内。
+- 缓存命中那一局伤病是否仍具名、战痕是否仍有候选（F3 `MODE_H_CACHE_HIT` 覆盖状态位，
+  但具名与候选要在结算页上看）。
+- **ERROR 接管期间玩家是否真的能操纵被控选手**——输入让渡这一腿 F3 只能验状态位，手感必须人工。
+- 互换还原后阵营 / 位置 / 无敌 / 持有物是否干净，铃在互换结束后是否仍可用。
+- 终章冠军立绘是否真的显示；随后交付 ch6 确认中间人**没有**顶着冠军的立绘
+  （这是 `DialogueActorFactory` 按 GameObject 缓存那个坑的直接测试）。
+- 卸载 mod 时两个建筑图标仍在（证明没有误销毁 sprite）。
+- 胆怯异常首次真正会触发：命中即整队弃赛，确认结算与文案表现符合预期。
+
+**失败尝试**
+- 曾考虑把 `blood_rush.searchedEnemy` 按「validate-only」放行以保住第 8 条战痕。放弃：
+  `Validate` 的判据只是 `_ai.searchedEnemy != null`，证明不了该字段仍是**我们**设的那个目标，
+  属于假阳性方向（认证一个实际不生效的效果），比少一条战痕更糟。战痕池维持 7 / 8。
+- 曾考虑用 PowerShell 的 `Set-Content -Encoding UTF8` 做守卫反向验证，它会给 JSON 加 BOM
+  导致 `modeh_stamp_data.py` 解析失败。改用 Python 读写并已 `git checkout` 复原。
+
+---
 ### 2026-09-03 玩法向审核：3 条修复（跳波 P0 / 空投 P1 / 战役武装 P2）
 
 **状态**: fixed（代码、Windows 编译、515 guard 与两个新 guard 的反向验证完成；实机 smoke 五项待人工）
@@ -3962,3 +4793,287 @@ BossRushUISkinLoader 与相关接线。编译 + 503 guard + 内容一致性 + �
 
 重新启动游戏后在专用测试档运行 F3 完整验收。CR-2026-09-01-010 只有在 Boss 乱入、Mode D、
 Mode E 清场及后续 Mode F/G/H、Zombie、终章、最终回读全部通过后才能转 Fixed。
+
+### 2026-09-03 游戏内 Wiki 与代码基线核对（f9b83c0..HEAD）
+
+范围：`WikiContent/`（游戏内百科的唯一权威源）+ 由它生成的 `wiki-site/docs/`。
+逐条核对 f9b83c0 以来新增/改写的玩法内容与当前代码常量，并按"面向玩家"清掉泄漏的内部标识。
+分类：`SAFE`（文档）+ 一处 guard 断言口径调整。
+
+**修正的事实性错误**
+
+- 遗种巢页写"遗种蛋落在 Boss 的战利品箱里"，与 `PetNest/PetNestDropService.cs`
+  `TrySpawnEggIntoBossInventory`（蛋写进 `boss.CharacterItem.Inventory`）相反，也和
+  `item__key_items` / `boss__*` / `start__first_run` 三页"搜尸"的说法自相矛盾。zh/en 均改为
+  "掉在 Boss 身上，不在战利品箱里"。
+- 模式总览"通用规则"写"9 张地图随便挑，每种模式都能打"，与同页及 `map__overview` 已写明的
+  "百战留痕只有 DEMO 终极挑战一张图"冲突（`Assets/SpawnPoints/` 里只有
+  `Level_DemoChallenge_1.json` 带 Mode H 点位）。zh/en 均改为按模式分列。
+- 丧尸模式的特殊丧尸与精英词缀在 zh 页用的是设计稿命名（疾行者 / 瘟疫者 / 坚韧 / 刚毅 /
+  指挥官 / 毒雾 / 适应…），玩家在游戏里看到的是 `LocalizationInjector` 注入的
+  冲刺丧尸 / 毒疫丧尸 / 厚皮 / 刚硬 / 号令 / 污染光环 / 反制。五个丧尸 Boss 同理
+  （泰坦→巨坦、猎手→极速追猎、分裂者→分裂尸群、护盾者→护盾统御、腐蚀者→腐蚀地面）。
+  zh 全部改为游戏内显示名；en 补齐 `* Zombie` 后缀与实际注入名一致。
+  `equipment__frost_spear`、`equipment__thunder_set` 与两篇 repowiki 内容文档一并同步。
+- Mode H 页补齐入口互斥名单（原文漏了标准竞技场与白手起家，`ModeHEntry.HasLegacyModeConflictForModeH`
+  实际把两者也算冲突），并修一个半角逗号。
+
+**清掉的内部标识（面向玩家）**
+
+- 丧尸模式两张表里的 C# 枚举成员（`Sprinter`/`Exploder`/`OfficialExploder`/`Swift`/`Tough`…）、
+  `Cname_Zombie` 预设名，以及"安全视觉子树 / safe visual subtree""官方 preset"等实现术语。
+- 召唤法杖页的 `Cname_Zombie` 预设、许愿台页的"运行时 View 面板 / 旧版 IMGUI 窗口"、
+  幽灵女巫页的"基于 Ghost 预设"。
+
+**同步的守卫（AGENTS.md 4.10）**
+
+- `tests/ZombieModeMutantWikiGuard.py` 原本要求两张表里出现反引号包裹的枚举成员，
+  这条断言本身就是"内部标识必须出现在玩家页面"。改为从
+  `Localization/LocalizationInjector.cs` 解析 `BossRush_ZombieMode_Special_*` /
+  `_Affix_*` 的中英显示名，再断言这两个名字出现在对应表里——覆盖不变，
+  额外多锁一层"Wiki 用词必须等于游戏内显示名"。反向验证：把任一注入名改掉即转红。
+
+**已核对无误（抽样列举）**
+
+- 遗种巢：240 凝蛋 / 1.5% 异色 / 12→24 容量与 10·20·30 里程碑 / 放生退 60 /
+  远征 2·4·8 小时与 0%·6%·12% / 10 级 100 exp / 每 3 级 +1 格（`PetNestTuning.cs`）。
+- 随机事件：八事件权重 30·25·18·15·15·12·10·8 换算出的 23/19/14/11/11/9/8/6%、
+  90 秒静默、45~75 秒间隔、频率档 2/3/5、空投 120 秒续期硬帽（`RandomEventsTuning.cs`）。
+- 词缀锻造：62/30/8 与 60/30/10、槽位阈值 5/7、锁 2 颗解锁免费、Boss 掉率 8%、
+  好感 Lv.2 库存 5，以及 12 条词缀的全部 T1/T2/T3 数值（`AffixDefinitions.cs`）。
+- Mode H：六场 180 秒、同屏敌 2/2/3/3/3/3、赔率阈值 20/5/-9/-24、筹码 6/30/2、
+  奖励候选除数 2 上限 3、押品单场 3 件与"按赔率整数倍发最高品质"、名人堂 32 席、
+  铃 1 次 6 秒、8+5 条口令、四类侦察、五个装备槽（`ModeHConfig.cs` / `ModeHStateModel.cs`）。
+- 鸭王征程六章目标与 20000/35000/50000/75000/100000/200000（`Assets/Data/Campaign/Chapters.json`）、
+  公告板 500、终章 1.6 倍属性 / 1.15 体型 / 绯红。
+- 后山：种子 25%、20 分钟现实时间成熟（官方 `Crop.Tick` 走 `DateTime.Now`）、收 2 个、
+  展示柜 800 金 2×1 只能一个、(品质-4)×0.5% + 满格 5% = 上限 21%、三种出击餐数值、
+  点唱机两首曲名。
+- 日报：报箱 500 只能一个、一个游戏日 86300/60 ≈ 24 分钟、五类悬赏三档目标与奖金、
+  签到 30 格与 7/15/24/30 → Q5/6/7/8、第 2 期起 7/14/21/28 → Q8。
+- 图鉴：售价 4000 库存 1、4 列网格、里程碑 5/15/40/100 万 + 十秒之内 20 万、Mode H 击杀不计。
+- 成就大全：45 项 / 9 分类 / 3 个隐藏 / 总额 $19,840,000（40 条主表 + 5 条图鉴条目实测求和）。
+- Mode F 命火：入场上限成长 4%/杀封顶 50%、每杀充 8 点、15 秒过载 +40%/+15%、
+  失血 ×2、悬赏 +3 秒封顶 24 秒、余烬 25 点。
+- 重铸投入曲线 10×/100×/1000× → +10%/+30%/+100%。
+- 配置页三项新旋钮（`randomEventsFrequency` / `modeGAbandonHotkey` / `backMountainUnlockAll`）
+  与实际注册项一一对应；八个内容系统总开关确实未注册进 ModConfig UI，页面的说明属实。
+
+**验证**
+
+- `python tools/run_guards.py`：PASS=516 / NEW-FAIL=0 / KNOWN-RED=0。
+- `node wiki-site/scripts/sync-content.mjs`：222 篇重新生成，
+  `BossWikiGuideContentGuard` 与 `ZombieModeMutantWikiGuard` 的逐字节比对 PASS。
+- 文档-only，未触碰 `.cs`，无需编译；游戏内 Wiki 面板的实机翻页仍待人工 smoke。
+
+### 2026-09-03 补：Wiki 二次审核（官方本地化表比对）
+
+第一轮之后 owner 追问 `Cname_Boss_Blue` 到底是什么，顺手把游戏本体的官方本地化表
+（`Duckov_Data/StreamingAssets/Localization/*.csv`）接进核对流程，重跑了一遍全量审核。
+分类：`SAFE`（文档）。
+
+**`Cname_Boss_Blue` 的答案：它的官方显示名就是字面的「???」**
+
+- `ChineseSimplified.csv:5503` 与 `English.csv:5532` 都写着 `\?\?\?`；
+  `Cname_Boss_Red`（龙裔遗族借用的那只）同样是「???」，`Cname_IslandBoss` 是「口口口口」。
+- `ModeD/ModeDWaves.cs:427` 前 1~2 波过滤小怪时也显式排掉 `"???"` / `"？？？"`，
+  佐证这是真实会显示出来的名字，不是缺 key。
+- 因此 zh/en 共 9 处 `Cname_Boss_Blue` / `Blue Boss` 全部改写为「原版那只名字显示为「???」的 Boss」，
+  不再向玩家暴露本地化 key。
+
+**二次审核新查出的事实性错误**
+
+- `boss__overview`（zh/en）写"前 20 波不会出现三大原创 Boss / heavy hitters 含 Phantom Witch"。
+  `WavesArena/WavesArena.cs:48` 的 `EarlyWaveExcludedBosses` 只有 StormBoss1-5、
+  `DragonDescendant`、`boss_dragonking`——**幽灵女巫（`boss_phantomwitch`）不在名单里**，
+  第 1 波就可能出现。zh/en 均改正，并在 `mode__mode_a` / `mode__mode_d` /
+  `tips__hell_and_mode_d` 同步补一句。
+- 同页写"白手起家 6-15 波屏蔽强力 Boss，16 波后全 Boss 池开放"。
+  `ModeD/ModeDWaves.cs:363` 的过滤条件是 `modeDWaveIndex <= 10`，**全池从第 11 波就开了**；
+  16 波是另一件事——`GetModeDWaveBossCount` 在 16+ 返回 `totalEnemies`，
+  即**整波不再有杂兵，全是 Boss**。zh/en 的 Mode D 页原写"2+ 个 Boss"，同样低估。
+- `system__mutators`（zh/en）写"每局随机抽取 1~10 个词条"，读起来像数量随机。
+  实际数量由 `mutatorCount` 固定（默认 3，可调 1~10），随机的只是抽到哪几条。
+- 词缀熔石与遗种蛋一样是**掉在 Boss 身上**（`AffixForgeStoneDropService.TrySpawnStoneIntoBossInventory`），
+  但只有遗种蛋那条写了"搜尸"。`system__affix_forge`、`item__key_items` 与三张 Boss 页
+  统一补上落点，并标注熔石的模式覆盖与遗种一致（宿命回响 / 百战留痕 / 丧尸不掉）；
+  种子则明确写"掉进战利品箱"（`BackMountainSeedDrops` 走 lootbox `inv.AddItem`）。
+- 丧尸模式的怪名继续对齐官方口径：`equipment__frost_spear`、`equipment__thunder_set`
+  两页残留的"疾行者 / 骚扰者（Harasser）"改为冲刺丧尸 / 骚扰丧尸。
+- `equipment__frost_spear` / `equipment__frostmourne` 写"触发原版 `Cold` 效果（减速目标）"。
+  官方 `Buff_Cold` 的中文名是「寒冷」，效果是"移动能力、射击速度与冰属性抗性都会下降"，
+  不止减速。改用显示名与完整效果描述。
+
+**继续清掉的内部术语**
+
+`Cname_Zombie` 预设、"运行时 View 面板 / 旧版 IMGUI 窗口"、"基于 Ghost 预设"，
+以及 `mode__mode_a` / `mode__mode_e` / `system__codex` / `system__boss_filter_and_wiki`
+里剩下的"预设 / preset"表述，全部改写成玩家看得懂的说法。
+
+**本轮额外核对通过（未发现偏差）**
+
+- 无间炼狱：每波 +2%（`ModBehaviour.cs:1281` `1 + 0.02 * waveIndex`）、现金 = 最大生命 ×10、
+  每 100 波皇冠 `2^(tier-1)` 与现金 `1000 万 × 2^(tier-1)`。
+- 白手起家开局包：护甲/头盔 50%、近战/背包 40%、图腾/面罩 30%、附件槽 30%、
+  医疗 3 件、弹药 120~180；敌人品质 `1 + 波次/5 + 血量/500` 封顶 6；每波血量 +3%。
+- 划地为营：BEAR ×2.5、Boss 每层 +5%、玩家每次 +0.1%、贝壳 500 血≈10 且翻倍 +3、
+  晋升 Boss 70%、8 米半奖、首次 +10、换算单位 2500、雇佣 1000 血≈200 且 50~2000 取整到 10、
+  13 个分类商店、四种战术道具的 10 点 / 全图 / 50 米 / 全图口径。
+- 宿命回响：波次编排 `{1,2,1,1,3,1,1,3,1}`、宿敌 3/6/9、休整 8s/20s、
+  Last Stand 12 秒且只在多 Boss 波、属性封锁 ×0.75、Resolve 上限 11 = 3+3+2+3。
+- 掉落：箱内件数 clamp 7~15、`bonusFactor = 0.8×血量 + 0.2×速度`、
+  Q8/Q7/Q6/Q5 的 0.05%→0.10% / 0.10%→1% / 1%→5% / 5%→10%、
+  低品质权重 0.1345:0.3655:0.3655:0.1345、Q5+ 保底门槛 250 血与 90/9/0.9/0.1 分布、
+  通关箱 3 件 / 10 件。
+- 变异词条：28 条，敌 9 / 玩家 11 / 环境 8，逐条数值与天降殉爆的 3 米 / 40 火伤。
+- 死亡亡魂：50%/10% 分档与 10×/6×/3× 生命、1.5/1.25/1.0 伤害、1.9/1.5/1.2 移速、
+  0.9/0.8 机动。
+- 许愿台：20~10000 字、发送冷却 30 秒、抽奖冷却 4 小时；Boss 筛选器 Ctrl+F10。
+- NPC：叮当聊天 +40 与 10%/15%/20% 折扣、羽织聊天 +30 与 10%/20%/25%/30%/40% 折扣、
+  喜欢 +80 / 普通 +20 / 戒指 +500 / 砖石 -60。
+- 龙裔加权掉落 60/30/10 合计 100%、龙王 15/15/15/15/1/39 合计 100%、
+  幽灵女巫 50% 独立追加；宿命回响信物 20000 库存 5、船票库存 10。
+
+**验证**
+
+- `python tools/run_guards.py`：PASS=516 / NEW-FAIL=0 / KNOWN-RED=0。
+- `node wiki-site/scripts/sync-content.mjs`：222 篇重新生成，两个 Wiki 逐字节比对 guard PASS。
+- 文档-only，未触碰 `.cs`。
+
+### 2026-09-03 补二：官方名字守卫 + 官方本地化表快照
+
+承接同日两次 Wiki 审核。owner 认可"写个 guard 盯官方改名"的提议，并要求把官方本地化表
+存进 `docs/` 便于以后查。分类：`SAFE`（文档 + 新增 guard）。
+
+**新增 `docs/官方本地化表/`（local-only）**
+
+- 从 `<GAME_PATH>\Duckov_Data\StreamingAssets\Localization\` 拷 `ChineseSimplified.csv`
+  与 `English.csv` 两份，附 `README.md` 说明格式、转义（`\?` `\ ` `\.`）、已知坑与刷新方式。
+- **不纳管**：它是游戏本体资产，落在 `.gitignore` 的 `/docs/*` 里。已在 .gitignore 的
+  「guard 依赖文档必须放行」注释块下补一条反例说明，避免下次有人误以为漏登记了。
+
+**新增 `tests/OfficialNameReferenceGuard.py` + `tests/official_name_references.tsv`**
+
+登记表 6 列：key / 官方中文名 / 官方英文名 / 中文页面写法 / 英文页面写法 / 页面清单。
+「页面写法」写 `=` 表示与官方名逐字相同，只有官方名带冠词时才另写
+（`Quest_502` 官方是 `The Four Horsemen`，正文里写 `Four Horsemen`）。
+
+三向断言：
+
+1. 官方表里 key 仍映射到登记的中英文名 —— **官方改名立刻转红**；
+2. 登记页面里仍出现「页面写法」—— Wiki 被改写时转红；
+3. 任何玩家页面都不许出现 key 本身 —— 防本地化 key 回流。
+
+表的解析顺序 `GAME_PATH` → `docs/官方本地化表/` → **skip**。skip 是刻意的：
+CI（`.github/workflows/guards.yml`）和 fresh clone 两处都没有游戏资产，硬失败只会制造噪声。
+
+当前登记 13 条：`Cname_Boss_Blue` / `Cname_Boss_Red`（都是「???」）、`Cname_StormBoss1-5`、
+`Cname_IslandBoss` 口径的口口口口、`Quest_502` 四骑士、`Buff_Cold` 寒冷、`Cname_Ghost` 幽灵、
+`Character_SnowPMC` 煤球、`Cname_Merchant_Myst` 神秘商人、`Item_Crown` 皇冠。
+
+反向验证六项全部逐条转红/转绿：改登记的官方名 → FAIL；页面删掉该名字 → FAIL；
+把 key 塞回玩家页面 → FAIL；两处表都移走 → SKIP 且 exit 0；`GAME_PATH` 分支 → PASS；
+恢复后 → PASS。
+
+**本轮据此修掉的描述不符**
+
+- `equipment__frostmourne`（zh）写"命中附加原版 Cold 效果（减速敌人）"与"Cold Protection +2"。
+  官方 `Buff_Cold` 中文名是「寒冷」，效果是"移动能力、射击速度与冰属性抗性都会下降"。
+  改用显示名与完整效果，并把 `Cold Protection` 改成「寒冷防护」。
+- `mode__mode_e`（en）把 Mode E 的宠物写成 `Coalball`。交互按钮确实是 `Summon Coalball`
+  （`LocalizationInjector_NpcUiAndItems.cs:533`），但召唤出来的是官方 `Character_SnowPMC`，
+  场上显示名是 `Coal Briquette`。补一句点明两个名字，避免玩家对不上号。
+- `item__key_items`（zh/en）：船票条目补「商店里的名字」一行。物品真名是
+  `Boss Rush船票` / `Boss Rush Ticket`（`LocalizationInjector.cs:26`），
+  而全站正文为可读性写作「BossRush 船票」。只在物品条目钉死真名，正文不做全站替换。
+
+**顺带查明、但属于代码侧的两条（已开 task chip，未擅自改 .cs）**
+
+- `GoblinAffinityConfig.cs:104` 好感 Lv.4 奖励列表写「冷萃液」，物品真名是「冷淬液」
+  （`ColdQuenchFluidConfig.cs:60`），英文 `Cold Quench Fluid` 也对应「淬」。玩家可见的错别字。
+- `WikiBookItem.cs:39/44/59` 的 `WIKI_BOOK_DISPLAY_NAME*`（"Boss Rush 百科全书"）全无调用点；
+  物品实际显示名走 `LocalizationInjector.cs:42` 的「冒险家日志」。同一物品挂着两套名字，
+  且没用的那套看起来更像权威常量。
+
+**另外核对无误**
+
+Mod 自有物品/装备的 52 个 `DISPLAY_NAME_CN` 逐个比对 Wiki，除上述船票与两处营旗的
+空格排版差异（`USEC营旗` vs 正文「USEC 营旗」，属中文排版惯例，不改）外全部一致；
+Mode E 阵营标签「拾荒者 / USEC / BEAR / 实验室 / 狼群 / 独狼」
+（`ModeEIntegrityAndHelpers.cs:213`）与 Wiki 一致——官方 `Cname_Usec` 的「雇佣兵」
+是单位名不是阵营名，不构成冲突。
+
+**验证**
+
+- `python tools/run_guards.py`：PASS=517 / NEW-FAIL=0 / KNOWN-RED=0（新 guard 已计入）。
+- `python tests/OfficialNameReferenceGuard.py`：PASS，13 条官方名核对通过。
+- `node wiki-site/scripts/sync-content.mjs`：222 篇重新生成，逐字节比对 guard PASS。
+- 文档 + guard，未触碰任何 `.cs`，无需编译。
+
+### 2026-09-03 补三：修掉两条代码侧描述不符（owner 批准）
+
+承接同日 Wiki 审核开出的两条 finding。owner 批准动代码。分类：`SAFE`（玩家可见文案修正 + 删死代码）。
+
+**1. 叮当好感面板把「冷淬液」写成「冷萃液」**
+
+`Integration/Affinity/NPCs/GoblinAffinityConfig.cs` 的 Lv.4 解锁项写的是字面量
+`L10n.T("冷萃液", "Cold Quench Fluid")`，物品真名是「冷淬液」
+（`Integration/Reforge/ColdQuenchFluidConfig.cs:60`），英文 `Cold Quench Fluid` 也对应「淬」。
+玩家在好感面板看到的是错别字，和物品本体对不上号。
+
+修法不是把字面量改对，而是**收口到物品 Config 自己的 `GetDisplayName()`**：
+Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
+`DiamondConfig.GetDisplayName()` / `ColdQuenchFluidConfig.GetDisplayName()` /
+`DiamondRingConfig.GetDisplayName()`，并就地留注释说明这里禁止抄字面量。
+这条 bug 的成因就是抄字面量，只改一个字下次照样会漂。
+
+时机语义不变：原代码同样在字典懒建时求值，`GetDisplayName()` 就是同一组常量上的 `L10n.T`。
+`Cold Quench Fluid` 是内联字面量不是本地化 key，不涉及存档/配置契约。
+
+羽织侧的同类清单（`NurseAffinityConfig.cs:94-102`）已逐项比对
+`CalmingDropsConfig` / `PeaceCharmConfig`，字面量与物品名一致，**无漂移，未改动**。
+
+**2. `WikiBookItem.cs` 里一整套零调用的显示名/描述常量**
+
+`Integration/WikiBookItem.cs` 曾同时存着：
+
+- `WIKI_BOOK_DISPLAY_NAME_CN = "Boss Rush 百科全书"` / `_EN = "Boss Rush Encyclopedia"`
+- `WIKI_BOOK_DESCRIPTION_CN` / `_EN`
+- 两个包装属性 `WIKI_BOOK_DISPLAY_NAME` / `WIKI_BOOK_DESCRIPTION`
+
+六个成员**全部零调用点**（grep 排除 Build/ 核对）。物品实际显示名与描述走
+`Localization/LocalizationInjector.cs:42` 的 `WIKI_BOOK_NAME_CN = "冒险家日志"`
+与 `WIKI_BOOK_DESC_CN`，由 `InjectWikiBookLocalization` 注入，预制体按 displayName 反查 key。
+
+即同一物品挂着两套名字，而**没生效的那套看起来更像权威常量**，读代码的人会被带偏。
+六个成员全部删除，原地留注释指明真名的唯一落点，并写明不要再补第二份。
+保留「冒险家日志」是无行为变化的那一侧：它已发布、且 `WikiContent/` 全站按它写。
+若 owner 想反过来改名为「Boss Rush 百科全书」，那是一次玩家可见改名 + 全站 Wiki 改写，另立项。
+
+**验证**
+
+- `tools/verify_syntax.py`：762 个编译源，语法层 CS1xxx 零错误。
+- Windows `compile_official.bat`（`GAME_PATH=D:\software\steam\...\Escape from Duckov`）：
+  **Build succeeded，0 error 0 warning**，编译器输出无任何 `CS####` 诊断行；已部署到游戏目录。
+- 覆盖改动文件的 guard 逐个手跑：`ArchitectureStructureGuard`、
+  `BossRushDynamicItemRegistryGuard`、`DeferredIntegrationBootstrapGuard`、
+  `MenuSceneRuntimeHookGuard`、`TestLogicWiringGuard`、`LocalizationInjectionGuard`、
+  `OfficialCompileListFileExistenceGuard`、`OfficialNameReferenceGuard` —— 全 PASS。
+- 游戏内人工 smoke 待做：叮当好感面板 Lv.2/4/7 三行文案、以及冒险家日志的物品名。
+
+**⚠️ 本条之外的两个红项不属于本次改动（Needs owner attention）**
+
+全量 `python tools/run_guards.py` 当前是 PASS=515 / NEW-FAIL=2：
+
+- `ModeHBattleSnapshotGuard.py`（11 项）与 `ModeHStandInGuard.py`（1 项）转红。
+- 这两个 guard 只读 `ModeH/*.cs`（BattleSnapshot / CombatControl / StandInPerformer /
+  StateDtos / StateModel / Config / HarmonyPatches / RuntimeGates），
+  本次改动只碰 `Integration/` 下两个文件，不在其读取范围内。
+- 直接原因是工作区里有一次**并行进行中的 ModeH 重构**：
+  `ModeH/ModeHBattleSnapshot.cs` 相对 HEAD 是 34 增 / 173 删，
+  `ModeH/ModeHCombatControl.cs` 是 143 增 / 38 删，mtime 21:17-21:18；
+  快照捕获与 fail-closed 判据被搬出 BattleSnapshot 后，guard 仍按原文件断言，故转红。
+- 按 AGENTS.md 4.10，这两个 guard 应由做该重构的人同步，本次不代改、不放宽断言。
+- 另有一次 `OfficialCompileListFileExistenceGuard` 瞬时红（抱怨
+  `Utilities/__probe_test/BossCombatProbe.cs` 未登记），是 `tools/verify_syntax.py`
+  的临时探针目录尚未清理导致，重跑即绿，非真实缺口。

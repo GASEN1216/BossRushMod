@@ -359,12 +359,6 @@ namespace BossRush
             return buffer.Count;
         }
 
-        /// <summary>ReadAllSlots 的别名，语义完全相同（保留给按"解析槽位"叙述的调用方）。</summary>
-        public static int ParseSlots(Item item, List<AffixSlotView> buffer)
-        {
-            return ReadAllSlots(item, buffer);
-        }
-
         /// <summary>某槽是否锁定。</summary>
         public static bool IsLocked(Item item, int slotIndex)
         {

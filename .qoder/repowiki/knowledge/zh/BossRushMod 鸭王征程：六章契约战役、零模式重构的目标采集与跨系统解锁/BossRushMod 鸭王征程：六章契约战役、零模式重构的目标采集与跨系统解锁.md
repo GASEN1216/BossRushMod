@@ -63,11 +63,11 @@ source_files:
 | `CampaignProgressService.cs` | 状态机核心：状态推导、接约/放弃/交付、奖励与 token 授予 |
 | `CampaignModeBridge.cs` | `partial ModBehaviour`：直读五个模式的私有状态 + 4 个 notify 漏斗 + 每帧 tick |
 | `CampaignNoteBridge.cs` | 线索接入官方 NoteIndex；**两边都写**（列表 + 字典），fail-open |
-| `CampaignDialoguePlayer.cs` | 交付剧情：复用 `DialogueManager` 与官方对话 UI 的原生立绘位 |
+| `CampaignDialoguePlayer.cs` | 交付剧情 + 终章冠军独白：复用 `DialogueManager` 与官方对话 UI 的原生立绘位。**两个说话人各有独立 actor 宿主 GameObject**——`DialogueActorFactory` 的缓存按 GameObject 索引，`Create` 命中缓存时会忽略传入的 actorId/nameKey/portrait，共用宿主会让冠军顶着中间人的名字和立绘说话 |
 | `CampaignBoardBuilder.cs` | 公告板建筑注入（照日报报箱：反射 BuildingInfo、dormant 契约、老档幽灵防护） |
 | `CampaignBoardView.cs` | 公告板面板（走 `Common/UI/BossRushUI.cs` 共享库） |
 | `CampaignHud.cs` | 局内目标追踪条，未武装时早返；每帧先做零分配脏检查（只比整数与 bool），内容真变了才拼字符串写 TMP |
-| `CampaignFinalBoss.cs` | 终章决战编排：召唤石维护、门禁、变体改造、让路策略 |
+| `CampaignFinalBoss.cs` | 终章决战编排：召唤石维护、门禁、变体改造、让路策略、**开战前冠军独白**（`StartCampaignFinalBossPrologueThenSpawnAsync` 先 await 独白再生成 Boss；F3 的 `DebugStartCampaignFinalBossForValidation` 刻意直连 `StartCampaignFinalBossAsync` 绕过独白，否则对话要等玩家点击才 resolve，验收会一路等到超时记 `spawn_timeout`）|
 
 ## 3. 架构与设计约定
 

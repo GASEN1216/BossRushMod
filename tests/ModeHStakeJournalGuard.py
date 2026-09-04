@@ -216,7 +216,11 @@ def check_single_writer(errors):
     for name in sorted(os.listdir(MODEH_DIR)):
         if not name.endswith(".cs"):
             continue
-        if name in ("ModeHWarehouseStakeJournal.cs", "ModeHInventoryPersistenceBridge.cs",
+        # ModeHWarehouseStakeJournalStorageBuffer.cs 是 journal 的 partial 第二文件
+        # （为 1200 行预算拆出，类与语义完全相同），因此与 journal 同等豁免。
+        if name in ("ModeHWarehouseStakeJournal.cs",
+                    "ModeHWarehouseStakeJournalStorageBuffer.cs",
+                    "ModeHInventoryPersistenceBridge.cs",
                     "ModeHEntry.cs"):
             continue
         text = strip_cs_comments(read_text(os.path.join(MODEH_DIR, name)) or "")

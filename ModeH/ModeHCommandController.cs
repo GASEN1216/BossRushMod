@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -269,26 +269,15 @@ namespace BossRush
             _activeCommandId = null;
         }
 
-        /// <summary>从战场快照恢复窗口状态（§17.4）。</summary>
-        public void RestoreFromSnapshot(
-            string lockedCommandId, bool bellConsumed, string activeCommandId, float windowRemaining)
-        {
-            _lockedCommandId = lockedCommandId;
-            _bellConsumed = bellConsumed;
-            _bellUsesRemaining = bellConsumed ? 0 : ModeHConfig.BellUsesPerMatch;
-            _activeCommandId = windowRemaining > 0f ? activeCommandId : null;
-        }
+        // 【RestoreFromSnapshot 已于 2026-09-03 移除】只被 ModeHCombatControl 的同名方法
+        // 调用，而那条 §17.4 局中重建链全链零调用点、且在冻结转换表下不可达。
+        // 理由见 ModeHBattleSnapshot.cs 的“重建校验（已随 §20.3 收敛而移除）”。
 
-        /// <summary>清空本场状态（进入下一场前）。</summary>
-        public void ResetForNextMatch()
-        {
-            RestoreAll();
-            _lockedCommandId = null;
-            _lockedOwnerProfileId = null;
-            _bellConsumed = false;
-            _bellUsesRemaining = 0;
-            _ownerToken = 0;
-        }
+        // 【ResetForNextMatch 已于 2026-09-03 移除】零调用点，且本来就不需要：
+        // ModeHCombatControl 每场由 InitializeCombatRuntime 新 new 一个，
+        // _commandController 是它的 readonly 字段，跟着一起是全新实例；
+        // 场末由 ReleaseCombatRuntimeObjects 置 null。留着它反而会让人以为
+        // 存在"跨场复用同一个控制器"的路径。
 
         #endregion
 

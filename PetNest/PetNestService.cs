@@ -647,21 +647,14 @@ namespace BossRush
             }
         }
 
-        /// <summary>把远征数据入队（不落盘）。落盘由协调器统一触发。</summary>
-        internal static bool StageExpedition()
-        {
-            try
-            {
-                PetNestExpeditionData data = Expedition;
-                data.Normalize();
-                return PetNestPersistence.Expedition.Store(data);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PetNest] 远征数据入队失败: " + e.Message);
-                return false;
-            }
-        }
+        // StageExpedition() 已于 2026-09-03 删除：它零调用，而且是个陷阱。
+        // PetNestBundlePartStore<T>.Store 在事务进行中会**静默返回 true**
+        // （PetNestPersistence.cs:583），而远征的每一条写入路径都开事务
+        // （PetNestExpeditionService 的 5 个写点，统一经 CommitBoth 提交）。
+        // 任何未来调用方都会拿到 true 却什么都没落盘，且没有任何报错。
+        // 姐妹方法 StageMuseum() 没有这个问题、因此被保留：博物馆统计是在事务**外**
+        // 入队的（PetNestMuseumStats 的四个调用点），这个不对称正是一个被接线、
+        // 另一个从来没有的原因。远征要落盘就走事务，不要再引入第二条路径。
 
         /// <summary>权威 Bundle 当前是否可写。</summary>
         internal static bool CanStoreAll { get { return PetNestPersistence.CanStoreAll; } }

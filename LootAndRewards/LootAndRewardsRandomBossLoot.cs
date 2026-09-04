@@ -219,6 +219,10 @@ namespace BossRush
                 bool allowModeEFIndependentLoot = modeFActive || modeEActive;
                 if (!IsActive && !isDragonKing && !allowModeEFIndependentLoot)
                 {
+                    // 本分支不碰 dropBoxOnDead，官方 characterItem 箱照建；
+                    // 但额外掉落已按"会有 BossRush 奖励箱"defer 进 pending，
+                    // 下面的 Finalize 会把它们撤销。先还回 characterItem。
+                    ReturnPendingExtraLootToCharacterItem(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     DevLog("[BossRush] 掉落事件跳过: IsActive=False，且既不是龙王Boss也不是 Mode E/F");
                     return;
@@ -253,6 +257,8 @@ namespace BossRush
                 // 只处理由 BossRush 生成且被追踪的 Boss
                 if (!bossSpawnTimes.ContainsKey(bossMain))
                 {
+                    // 同上：官方箱照建，pending 必须先还回去
+                    ReturnPendingExtraLootToCharacterItem(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     DevLog("[BossRush] 掉落事件跳过: bossSpawnTimes 不包含此Boss, 当前追踪数量=" + bossSpawnTimes.Count);
                     return;
@@ -315,6 +321,12 @@ namespace BossRush
                     {
                         LogLootWarningLimited("OnBossBeforeSpawnLoot_disableDrop", "无间炼狱关闭 Boss 掉落箱失败", e);
                     }
+                    // 无间炼狱既不建 BossRush 奖励箱、又刚把官方 characterItem 箱关掉，
+                    // 所以四个 integration 的额外掉落在这条分支上无处可去。
+                    // 走无间炼狱自己的奖励通道：把物品 Drop 到世界里
+                    // （里程碑现金用的就是这条，见 LootAndRewardsInfiniteHell）。
+                    // 必须排在 FinalizeBossRushLootboxPathTracking 之前——后者会撤销 pending。
+                    DropPendingExtraLootIntoWorld(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return;
                 }
@@ -367,6 +379,8 @@ namespace BossRush
                         }
                     }
 
+                    // 保持原版掉落 = 官方箱照建，pending 必须先还回去
+                    ReturnPendingExtraLootToCharacterItem(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return; // 未启用随机掉落，保持原版掉落
                 }
@@ -511,6 +525,11 @@ namespace BossRush
                 if (prefab == null)
                 {
                     DevLog("[BossRush] 未找到可用的 Lootbox 模板，回退到原版 Boss 掉落逻辑");
+                    // 这条回退分支**没有**把 dropBoxOnDead 置 false，官方箱照建。
+                    // 但额外掉落此刻还压在 pending 里（它们是按"会有 BossRush 奖励箱"
+                    // 才 defer 的），而下面的 Finalize 会把 pending 直接撤销 ——
+                    // 于是官方箱建起来了、里面却没有它们。先还回 characterItem。
+                    ReturnPendingExtraLootToCharacterItem(bossMain);
                     FinalizeBossRushLootboxPathTracking(bossMain);
                     return;
                 }
@@ -1071,6 +1090,10 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                // 异常点未知，dropBoxOnDead 可能已置 false 也可能没有，
+                // 无法判断官方箱是否还会建。世界掉落是唯一在两种情况下都可见的通道；
+                // consume 会把 pending 取走，因此与协程那条不会重复发放。
+                DropPendingExtraLootIntoWorld(bossMain);
                 FinalizeBossRushLootboxPathTracking(bossMain);
                 DevLog("[BossRush] RandomizeBossLoot 错误: " + e.Message);
             }

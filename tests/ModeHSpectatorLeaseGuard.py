@@ -119,6 +119,50 @@ def main():
     if re.search(r"StopAcceptingBell\(\)[\s\S]{0,200}?ActiveInput", code):
         errors.append("[Bell] 拍铃门控不得恢复角色输入")
 
+    # 拍铃门必须真的接上（2026-09-03）。
+    # 此前 StopAcceptingBell 零调用点、IsBellAccepting 零读者：门写好了但没人用，
+    # 拍铃只靠 _commandsClosed + 生命周期挡着，而"战斗运行时已释放、租约尚未 Release"
+    # 那一小段窗口里两者都还没变，玩家此刻点铃会打到 _combatControl 已为 null 的空档。
+    combat_flow = read_text(os.path.join(
+        os.path.dirname(LEASE), "ModeHRuntimeModule_CombatFlow.cs"))
+    match_flow = read_text(os.path.join(
+        os.path.dirname(LEASE), "ModeHRuntimeModule_MatchFlow.cs"))
+    if combat_flow is None or match_flow is None:
+        errors.append("[Bell] 缺少 ModeH 运行时编排文件，无法校验拍铃门接线")
+    else:
+        release = re.search(
+            r"private void ReleaseCombatRuntimeObjects\(\)[\s\S]*?\n        \}\n",
+            strip_cs_comments(combat_flow))
+        if release is None or "StopAcceptingBell()" not in release.group(0):
+            errors.append(
+                "[Bell] ReleaseCombatRuntimeObjects 必须调 StopAcceptingBell()："
+                "它是结算/倒地收尾/技术中止/离场的共同必经点")
+        bell = re.search(
+            r"private void OnBellPressed\(\)[\s\S]*?\n        \}\n",
+            strip_cs_comments(match_flow))
+        if bell is None or "IsBellAccepting" not in bell.group(0):
+            errors.append(
+                "[Bell] OnBellPressed 必须读 _spectatorLease.IsBellAccepting，"
+                "否则关了的门等于没关")
+
+    # ERROR 互换的输入让渡必须成对存在（§17.6.5）。
+    # 租约在 TryAcquire 步骤 1 就 DisableInput，只在 Release 恢复；
+    # 缺了让渡，接通后的互换会把一个**动不了的选手**交到玩家手上，
+    # §17.6.5 整条退化成一次镜头切换。
+    for token, label in (
+        ("public void YieldInputForErrorSwap()", "互换期间让渡输入"),
+        ("public void ReclaimInputAfterErrorSwap()", "互换结束收回输入"),
+    ):
+        if token not in code:
+            errors.append("[ErrorSwap] 缺少输入让渡入口: " + label)
+
+    # 让渡只能记在自己的 _inputYielded 上，不得动 _inputDisabled——
+    # 后者是 Release 的判据，被改掉会让释放路径漏掉恢复，玩家永久失去输入。
+    for name in ("YieldInputForErrorSwap", "ReclaimInputAfterErrorSwap"):
+        body = re.search(r"public void " + name + r"\(\)[\s\S]*?\n        \}", code)
+        if body is not None and "_inputDisabled" in body.group(0):
+            errors.append("[ErrorSwap] " + name + " 不得改写 _inputDisabled（Release 的判据）")
+
     if errors:
         print("ModeHSpectatorLeaseGuard: FAIL ({} errors)".format(len(errors)))
         for e in errors:

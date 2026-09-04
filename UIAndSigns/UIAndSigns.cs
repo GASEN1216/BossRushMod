@@ -289,15 +289,20 @@ namespace BossRush
             messageTimer = 3f;
             DevLog("[BossRush] UI提示: " + msg);
             
-            // 使用缓存的反射调用 NotificationText.ShowNext
+            // 官方公有静态入口，无需反射。
+            //
+            // 旧写法反射的是 NotificationText.ShowNext，但那是【私有实例零参】方法，
+            // 用 Public|Static 绑定恒为 null，于是这里整段永不执行——ShowMessage 的
+            // 全部调用点在正式构建里对玩家完全不可见（DevLog 被 [Conditional] 剥离，
+            // statusMessage 又没有任何渲染方）。同文件 ShowBigBanner 一直用的就是 Push。
             try
             {
-                if (BossRushEagerReflectionCache.NotificationText_ShowNext != null)
-                {
-                    BossRushEagerReflectionCache.NotificationText_ShowNext.Invoke(null, new object[] { msg });
-                }
+                NotificationText.Push(msg);
             }
-            catch {}
+            catch (Exception e)
+            {
+                DevLog("[BossRush] [WARNING] 推送 UI 提示失败: " + e.Message);
+            }
         }
         
         /// <summary>

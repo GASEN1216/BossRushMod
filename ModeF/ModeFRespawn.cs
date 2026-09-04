@@ -859,6 +859,19 @@ namespace BossRush
                     customPreset.showName = true;
                     customPreset.showHealthBar = true;
                     ctx.character.characterPreset = customPreset;
+
+                    // 挂租约，与 ModeEBattle 的准备期生成路径对齐。
+                    // Mode F 的两条 Boss 生成路径是分叉的（RegisterModeFBoss 只有两个调用点）：
+                    // 准备期那条走 ModeEBattle 有租约，战中补位这条没有。commit 1583da1 为修
+                    // CR-2026-09-01-010 #2 删掉了本文件的 Destroy(characterPreset)，于是这条
+                    // 路径从「提前销毁」变成了「永不销毁」——每次补位泄漏一个 ScriptableObject。
+                    ModeECharacterPresetLease presetLease =
+                        ctx.character.gameObject.GetComponent<ModeECharacterPresetLease>();
+                    if (presetLease == null)
+                    {
+                        presetLease = ctx.character.gameObject.AddComponent<ModeECharacterPresetLease>();
+                    }
+                    presetLease.Assign(customPreset);
                 }
 
                 Teams spawnedTeam = ResolveModeFBossCombatTeam(Teams.middle, spawnedPreset, spawnPos);

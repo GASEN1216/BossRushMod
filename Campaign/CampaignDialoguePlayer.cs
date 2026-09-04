@@ -33,6 +33,24 @@ namespace BossRush
         /// <summary>承载对话 actor 的常驻 GameObject。</summary>
         private static GameObject _actorHost;
 
+        /// <summary>前冠军的对话角色 ID。</summary>
+        private const string ChampionActorId = "bossrush_campaign_champion";
+
+        /// <summary>
+        /// 前冠军的角色名键。**复用终章 Boss 的名字键**（CampaignLocalization 已注入
+        /// 「冠军之影 / Shadow of the Champion」），让独白抬头与随后 Boss 血条上的名字
+        /// 逐字一致；分成两个键会让玩家以为是两个角色。
+        /// </summary>
+        private const string ChampionNameKey = "BossRush_Campaign_FinalBoss_Name";
+
+        /// <summary>
+        /// 承载冠军 actor 的常驻 GameObject。**必须与 _actorHost 分开**：
+        /// DialogueActorFactory 的缓存按 GameObject 索引，Create 命中缓存时直接返回，
+        /// 完全忽略传入的 actorId / nameKey / portrait。共用一个宿主会让冠军
+        /// 顶着中间人的名字和立绘说话。
+        /// </summary>
+        private static GameObject _championActorHost;
+
         /// <summary>章节交付后的剧情。fire-and-forget：不阻塞交付流程。</summary>
         internal static void PlayChapterDelivered(CampaignChapterDef def)
         {
@@ -75,6 +93,73 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 交付剧情异常: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 终章开战前的冠军独白。由 CampaignFinalBoss 在武装决战后、生成 Boss 前 await：
+        /// 玩家点完最后一句，Boss 才现身。
+        ///
+        /// 【为什么必须是独立的一段序列】DialogueManager.ShowDialogueSequenceBilingual
+        /// 的归属是**每段一个 actor**（整段所有台词都发给同一个 actor）。
+        /// 要换说话人只能再开一段，不能逐句换。
+        /// </summary>
+        internal static async UniTask PlayFinalBossPrologueAsync()
+        {
+            try
+            {
+                // 防御式注入：CampaignFinalBoss 也注同一个键，但那一步在生成 Boss 时才跑，
+                // 晚于本独白。缺了它抬头会显示 *BossRush_Campaign_FinalBoss_Name*。
+                LocalizationHelper.InjectLocalization(
+                    ChampionNameKey, L10n.T("冠军之影", "Shadow of the Champion"));
+
+                IDialogueActor actor = EnsureChampionActor();
+                if (actor == null)
+                {
+                    // 独白可以没有，但不能把开战流程卡住
+                    ModBehaviour.Instance?.ShowMessage(
+                        L10n.T("召唤石上浮出一道影子。", "A silhouette surfaces on the altar stone."));
+                    return;
+                }
+
+                await DialogueManager.ShowDialogueSequenceBilingual(
+                    actor, BuildFinalBossPrologueLines(), "BossRush_Campaign_FinalBossPrologue");
+            }
+            catch (Exception e)
+            {
+                // 对话中途抛异常会把输入禁用令牌留在 DisableInput 状态（玩家卡住不能动），
+                // 强制收场是既有 NPC 对话的同款兜底。
+                DialogueManager.ForceEndDialogue();
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 终章开战前的冠军独白。四句：出局 → 三年白找 → 找到不挤人的册子 → 开打。
+        ///
+        /// 【数字必须与既有线索对得上】三十二格 / 第三十三个（clue_ch1、ch1 与 ch6 台词）、
+        ///   三面旗（clue_ch3）、十一次（clue_ch4、ch4 台词）、三年（clue_ch2、ch6 台词）。
+        ///   改动这里之前先对一遍 CampaignLocalization.InjectClueKeys。
+        ///
+        /// 【不承诺 Mode H 未实现的机制】名人堂只读、冠军不可招募，
+        ///   所以他只说「不会掉」和「不写名字」，不说玩家能在哪里查到他。
+        /// </summary>
+        private static string[][] BuildFinalBossPrologueLines()
+        {
+            return new string[][]
+            {
+                new string[] {
+                    "别找名字。第三十三个人进来那天，最下面那行自己走了。我跟着走的。",
+                    "Don't look for a name. The day the thirty-third walked in, the bottom line walked out. I went with it." },
+                new string[] {
+                    "我当掉了战甲。挂过三面旗。给自己写的悬赏令改了十一次数字。三年，没有一处写得下我。",
+                    "I pawned the armor. Flew three banners. Rewrote my own bounty eleven times. Three years, and not one of them had room for me." },
+                new string[] {
+                    "后来我找到一本不挤人的册子。写进去的一条都不会掉。代价是那一页上不写名字。",
+                    "Then I found a book that evicts nobody. Nothing written in it ever falls out. The price is that the page carries no name." },
+                new string[] {
+                    "你来刮碑上那一行。刮不动了。动手吧——影子不认字，它只认打赢过它的。",
+                    "You came to scrape that line off the plaque. It won't come off. Draw. A silhouette can't read. It only remembers who beat it." },
+            };
         }
 
         /// <summary>
@@ -189,6 +274,28 @@ namespace BossRush
             }
         }
 
+        /// <summary>幂等创建冠军对话 actor。宿主与中间人分开，理由见 _championActorHost。</summary>
+        private static IDialogueActor EnsureChampionActor()
+        {
+            try
+            {
+                if (_championActorHost == null)
+                {
+                    _championActorHost = new GameObject("BossRushCampaignChampionActor");
+                    UnityEngine.Object.DontDestroyOnLoad(_championActorHost);
+                }
+
+                Sprite portrait = CampaignAssetCache.GetChampionPortrait();
+                return DialogueActorFactory.Create(
+                    _championActorHost, ChampionActorId, ChampionNameKey, null, portrait);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 冠军对话 actor 创建失败: " + e.Message);
+                return null;
+            }
+        }
+
         /// <summary>宿主销毁时的静态缓存复位。</summary>
         internal static void ResetStaticCaches()
         {
@@ -198,6 +305,11 @@ namespace BossRush
                 {
                     UnityEngine.Object.Destroy(_actorHost);
                     _actorHost = null;
+                }
+                if (_championActorHost != null)
+                {
+                    UnityEngine.Object.Destroy(_championActorHost);
+                    _championActorHost = null;
                 }
             }
             catch (Exception e)

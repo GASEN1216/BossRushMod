@@ -22,7 +22,7 @@ namespace BossRush
     /// - 禁止 Courier/Deposit 的“先删源再回调”，禁止把 `Item.GetInstanceID`/TypeID/
     ///   `LockIndex` 当作所有权证明。
     /// </summary>
-    internal static class ModeHWarehouseStakeJournal
+    internal static partial class ModeHWarehouseStakeJournal
     {
         #region 状态
 
@@ -502,9 +502,13 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>整批逆序放回。放不回去的项保持在内存 escrow 并转人工介入。</summary>
+        /// <summary>
+        /// 整批逆序放回。放不回原仓库的项先送官方溢出缓冲区，再转人工介入。
+        /// 旧写法把它们留在纯内存 `_escrowItems`，重启即永久丢失——那是第三处滞留点。
+        /// </summary>
         private static void RollbackDetached(List<Item> removed)
         {
+            bool buffered = false;
             for (int i = removed.Count - 1; i >= 0; i--)
             {
                 int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
@@ -512,10 +516,19 @@ namespace BossRush
                 if (position < 0
                     || !ModeHInventoryPersistenceBridge.TryAddAtEmpty(removed[i], position, out reason))
                 {
-                    _escrowItems.Add(removed[i]);
+                    string bufferReason;
+                    if (TryHandOffToStorageBuffer(removed[i], out bufferReason))
+                    {
+                        buffered = true;
+                    }
+                    else
+                    {
+                        _escrowItems.Add(removed[i]);
+                    }
                     EnterManualIntervention("escrow_rollback_failed");
                 }
             }
+            if (buffered) FlushStorageBuffer();
         }
 
         /// <summary>`MatchLocked`：计划、赔率、装备快照与 journal 全部不可变。</summary>
@@ -562,8 +575,19 @@ namespace BossRush
 
             _active.resultToken = resultToken;
             _active.rewardOperation = rewardOperation;
-            return TryAdvancePhase(
-                ModeHStakePhase.ResultCommitted, ModeHSettlementKind.MatchResult, out failureReasonId);
+            if (!TryAdvancePhase(
+                    ModeHStakePhase.ResultCommitted, ModeHSettlementKind.MatchResult,
+                    out failureReasonId))
+            {
+                // 阶段推进内含落盘，撞上 SavesSystem.IsSaving 时必然失败。TryAdvancePhase 只
+                // 回滚 phase/phaseSequence/settlementKind；这两个字段若不一并回滚，本函数开头的
+                // commit_result_already_committed 早退会让**任何重试永久失败**，
+                // 押品就此卡在 MatchLocked 再也结算不掉。
+                _active.resultToken = null;
+                _active.rewardOperation = null;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -592,12 +616,22 @@ namespace BossRush
                 return false;
             }
 
+            int previousOperationStatus = operation.status;
             _active.abortReturnToken = abortReturnToken;
             _active.abortReturnOperation = operation;
             operation.status = (int)ModeHAbortReturnOperationStatus.Committed;
-            return TryAdvancePhase(
-                ModeHStakePhase.AbortReturnCommitted, ModeHSettlementKind.AbortReturn,
-                out failureReasonId);
+            if (!TryAdvancePhase(
+                    ModeHStakePhase.AbortReturnCommitted, ModeHSettlementKind.AbortReturn,
+                    out failureReasonId))
+            {
+                // 同 CommitResult：落盘失败时这三处写入必须一并回滚，
+                // 否则下一次重试会带着半提交的父 operation 继续，证据链对不上。
+                _active.abortReturnToken = null;
+                _active.abortReturnOperation = null;
+                operation.status = previousOperationStatus;
+                return false;
+            }
+            return true;
         }
 
         /// <summary>
@@ -778,6 +812,7 @@ namespace BossRush
                 return false;
             }
 
+            bool buffered = false;
             for (int i = _escrowItems.Count - 1; i >= 0; i--)
             {
                 Item item = _escrowItems[i];
@@ -789,8 +824,18 @@ namespace BossRush
                 int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
                 if (position < 0)
                 {
-                    failureReasonId = "return_no_empty_slot";
-                    return false;
+                    // 仓库满时交官方溢出缓冲区，**绝不**保持 pending：保持 pending 等于把真实
+                    // 装备只留在内存 _escrowItems 里，玩家退出/切槽时 LoadPersisted 会抹掉它。
+                    string bufferReason;
+                    if (!TryHandOffToStorageBuffer(item, out bufferReason))
+                    {
+                        failureReasonId = "return_no_empty_slot:" + bufferReason;
+                        return false;
+                    }
+                    AppendReceipt("escrow_return", i, string.Empty, ModeHStakeReceiptStatus.Verified);
+                    _escrowItems.RemoveAt(i);
+                    buffered = true;
+                    continue;
                 }
                 string reason;
                 if (!ModeHInventoryPersistenceBridge.TryAddAtEmpty(item, position, out reason))
@@ -801,6 +846,7 @@ namespace BossRush
                 AppendReceipt("escrow_return", i, string.Empty, ModeHStakeReceiptStatus.Verified);
                 _escrowItems.RemoveAt(i);
             }
+            if (buffered) FlushStorageBuffer();
             return true;
         }
 
@@ -823,6 +869,7 @@ namespace BossRush
             ModeHRewardOperationDto operation = _active.rewardOperation;
             if (operation == null || operation.itemResults == null) return true;
 
+            bool buffered = false;
             for (int i = 0; i < operation.itemResults.Count; i++)
             {
                 ModeHRewardItemResultDto planned = operation.itemResults[i];
@@ -840,9 +887,18 @@ namespace BossRush
                 int position = ModeHInventoryPersistenceBridge.FindConfirmedEmptyPosition();
                 if (position < 0)
                 {
-                    ModeHRewardItemPool.DestroyUngranted(granted);
-                    failureReasonId = "reward_no_empty_slot";
-                    return false;
+                    // 与押品返还同口径：仓库满不代表奖励作废，交官方溢出缓冲区。
+                    string bufferReason;
+                    if (!TryHandOffToStorageBuffer(granted, out bufferReason))
+                    {
+                        ModeHRewardItemPool.DestroyUngranted(granted);
+                        failureReasonId = "reward_no_empty_slot:" + bufferReason;
+                        return false;
+                    }
+                    planned.typeId = typeId;
+                    AppendReceipt("escrow_reward", i, string.Empty, ModeHStakeReceiptStatus.Applied);
+                    buffered = true;
+                    continue;
                 }
                 string reason;
                 if (!ModeHInventoryPersistenceBridge.TryAddAtEmpty(granted, position, out reason))
@@ -855,6 +911,7 @@ namespace BossRush
                 planned.typeId = typeId;
                 AppendReceipt("escrow_reward", i, string.Empty, ModeHStakeReceiptStatus.Applied);
             }
+            if (buffered) FlushStorageBuffer();
             return true;
         }
 
@@ -1087,6 +1144,7 @@ namespace BossRush
         public static void LoadPersisted(ModeHStakeJournalDto persisted)
         {
             _active = persisted;
+            DrainEscrowToStorageBuffer("LoadPersisted");
             _escrowItems.Clear();
             RecomputeSlotConsistency(persisted);
         }
@@ -1101,6 +1159,7 @@ namespace BossRush
         public static void ResetStaticCaches()
         {
             _active = null;
+            DrainEscrowToStorageBuffer("ResetStaticCaches");
             _escrowItems.Clear();
             _lastError = null;
             _slotConsistent = false;

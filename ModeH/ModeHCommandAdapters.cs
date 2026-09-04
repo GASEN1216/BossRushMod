@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,6 +7,88 @@ namespace BossRush
     /// <summary>
     /// 一条正在生效的字段调制记录：保存原值以便幂等还原（设计提案 §17.6.1）。
     /// </summary>
+    /// <summary>
+    /// 分量生效条件（`appliesWhen`）的求值器。
+    ///
+    /// 【为什么是持续求值而不是开窗时算一次】
+    ///   2026-09-03 之前 `appliesWhen` 被解析进 `ModeHEffectSpec.AppliesWhen` 之后**零读者**，
+    ///   9 个分量一律无条件生效。最明显的是 `crowd_favorite`：收益写着"敌军≥3 才给"、
+    ///   代价写着"单核战才吃"，两个互斥条件同时恒真。
+    ///
+    ///   开窗时算一次是不够的：常驻战痕在选手登场那一刻开窗，那时敌军尚未生成，
+    ///   `enemy_count_at_least_3` 恒假，收益反而永远拿不到。所以按重申节奏
+    ///   （CommandReassertIntervalSeconds，0.1 秒）持续求值，分量随条件真伪上下线。
+    ///   —— owner 2026-09-03 拍板选此口径。
+    ///
+    /// 【未知取值一律按"无条件生效"处理】
+    ///   fail-open 而不是 fail-closed：认不出的条件如果按假处理，就会静默禁掉一个分量，
+    ///   那正是本次要消灭的失败形态。数据侧的拼写错误由
+    ///   `ModeHScarTriggerWiringGuard` 在构建期抓，不留给运行时。
+    /// </summary>
+    internal static class ModeHEffectConditions
+    {
+        /// <summary>擂台条件类前缀：这一类整场不变，因而允许被一次性求值。</summary>
+        internal const string ArenaConditionPrefix = "condition_";
+
+        /// <summary>该条件是否整场恒定（自结算分量只允许用这一类，见守卫）。</summary>
+        internal static bool IsStaticCondition(string appliesWhen)
+        {
+            return string.IsNullOrEmpty(appliesWhen)
+                || appliesWhen.StartsWith(ArenaConditionPrefix, StringComparison.Ordinal);
+        }
+
+        /// <summary>条件是否成立。空条件表示无条件生效。no-throw。</summary>
+        internal static bool IsSatisfied(string appliesWhen, ModeHCommandFireContext context)
+        {
+            if (string.IsNullOrEmpty(appliesWhen)) return true;
+            if (context == null) return true;
+            try
+            {
+                switch (appliesWhen)
+                {
+                    // 拍铃之前。窗口若由拍铃开启，这一条在窗口内恒假——这正是
+                    // bell_dependence 的代价分量应有的表现（它写的是"拍铃前才吃"）。
+                    case "before_bell":
+                        return !context.BellConsumed;
+
+                    // 先发的开场：接力者上场之后即不再成立。
+                    case "starter_opening":
+                        return !context.ActiveFighterIsRelay;
+
+                    case "enemy_count_at_least_3":
+                        return context.EnemyCount >= ModeHConfig.CowardCrowdEnemyThreshold;
+
+                    // 单核战：场上只剩一个（或没有）敌人时成立。
+                    case "single_core_fight":
+                        return context.EnemyCount <= 1;
+
+                    case "reinforcement_pending":
+                        return context.ReinforcementPending;
+
+                    case "first_wave_alive":
+                        return context.FirstWaveAlive;
+
+                    default:
+                        break;
+                }
+
+                // condition_<conditionId>：与本场擂台条件逐字比对。
+                // ThreatPlans.json 的 arenaConditions 里确有 danger_edge / open_field 两个 id，
+                // 所以这里不需要另建映射表。
+                if (appliesWhen.StartsWith(ArenaConditionPrefix, StringComparison.Ordinal))
+                {
+                    string conditionId = appliesWhen.Substring(ArenaConditionPrefix.Length);
+                    return string.Equals(context.ArenaConditionId, conditionId, StringComparison.Ordinal);
+                }
+            }
+            catch (Exception)
+            {
+                // 求值本身出问题时按无条件生效处理，理由同类头的 fail-open 说明
+                return true;
+            }
+            return true;
+        }
+    }
     internal sealed class ModeHControlPointModulation
     {
         /// <summary>effectId。</summary>
@@ -163,6 +245,8 @@ namespace BossRush
                     ModeHEffectSpec effect = _effects[i];
                     if (effect == null) continue;
                     if (effect.SelfSettled) continue; // Mode H 自结算分量不写原版字段
+                    // 条件不成立的分量此刻不施加；成立之后由 Reassert 补上。
+                    if (!ModeHEffectConditions.IsSatisfied(effect.AppliesWhen, fireContext)) continue;
                     ApplyEffect(effect, fireContext);
                 }
                 _applied = true;
@@ -412,12 +496,107 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 按当前场况让带 `appliesWhen` 的分量上下线（owner 拍板的"随战斗持续求值"口径）。
+        ///
+        /// 条件真伪翻转时才动手：真→假还原那一条并摘掉，假→真按当前值重新施加。
+        /// 重新施加时捕获的是**此刻**的原值而不是开窗时的原值——这与本适配器一贯的
+        /// 嵌套语义一致（口令、伤病、战痕三套窗口可能同时在改同一个控制点，
+        /// 每一层只负责还原到自己接手时看到的值）。
+        ///
+        /// `Restore == false` 的分量（当前只有 nextReleaseSkillTimeMarker）一旦施加就不摘：
+        /// 它的契约是"写入后把所有权交还原版，绝不还原"。
+        ///
+        /// 无条件分量在此方法里完全不被触碰，热路径成本是一次 O(分量数) 的字符串判空。
+        /// </summary>
+        private void SyncConditionalEffects(ModeHCommandFireContext fireContext)
+        {
+            if (_effects == null) return;
+            for (int i = 0; i < _effects.Count; i++)
+            {
+                ModeHEffectSpec effect = _effects[i];
+                if (effect == null || effect.SelfSettled) continue;
+                if (string.IsNullOrEmpty(effect.AppliesWhen)) continue;
+
+                bool shouldApply = ModeHEffectConditions.IsSatisfied(effect.AppliesWhen, fireContext);
+                int index = FindModulationIndex(effect.EffectId);
+                if (shouldApply)
+                {
+                    if (index < 0) ApplyEffect(effect, fireContext);
+                }
+                else if (index >= 0)
+                {
+                    RestoreSingleModulation(index);
+                }
+            }
+        }
+
+        /// <summary>按 effectId 找当前在线的调制；不在线返回 -1。分量数是个位数，线性扫即可。</summary>
+        private int FindModulationIndex(string effectId)
+        {
+            if (string.IsNullOrEmpty(effectId)) return -1;
+            for (int i = 0; i < _modulations.Count; i++)
+            {
+                ModeHControlPointModulation m = _modulations[i];
+                if (m != null && string.Equals(m.EffectId, effectId, StringComparison.Ordinal))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        /// <summary>还原并摘掉单条调制（条件转假时用）。Restore=false 的不摘。</summary>
+        private void RestoreSingleModulation(int index)
+        {
+            if (index < 0 || index >= _modulations.Count) return;
+            ModeHControlPointModulation m = _modulations[index];
+            if (m == null)
+            {
+                _modulations.RemoveAt(index);
+                return;
+            }
+            if (!m.Restore) return; // 契约：写入后不还原的分量不下线
+            WriteOriginal(m);
+            _modulations.RemoveAt(index);
+        }
+
+        /// <summary>把一条调制写回原值。Restore() 与条件下线共用，避免两份 switch 漂移。</summary>
+        private void WriteOriginal(ModeHControlPointModulation m)
+        {
+            if (_ai == null || m == null) return;
+            try
+            {
+                switch (m.ControlPointId)
+                {
+                    case "skillSuccessChance": _ai.skillSuccessChance = m.OriginalFloat; break;
+                    case "itemSkillChance": _ai.itemSkillChance = m.OriginalFloat; break;
+                    case "itemSkillCoolTime": _ai.itemSkillCoolTime = m.OriginalFloat; break;
+                    case "sightDistance": _ai.sightDistance = m.OriginalFloat; break;
+                    case "sightAngle": _ai.sightAngle = m.OriginalFloat; break;
+                    case "combatTurnSpeed": _ai.combatTurnSpeed = m.OriginalFloat; break;
+                    case "patrolTurnSpeed": _ai.patrolTurnSpeed = m.OriginalFloat; break;
+                    case "baseReactionTime": _ai.baseReactionTime = m.OriginalFloat; break;
+                    case "shootCanMove": _ai.shootCanMove = m.OriginalBool; break;
+                    case "skillCoolTimeRange": _ai.skillCoolTimeRange = m.OriginalVector; break;
+                    default: break;
+                }
+            }
+            catch (Exception)
+            {
+                // 单条还原失败不阻断其余还原
+            }
+        }
+
         /// <summary>重申一次全部调制与点火（行为树会周期性抹掉一次性写值）。</summary>
         public void Reassert(ModeHCommandFireContext fireContext)
         {
             if (!_applied || _ai == null) return;
             try
             {
+                // 先按当前场况让条件分量上下线，再重申仍在线的那些。
+                SyncConditionalEffects(fireContext);
+
                 for (int i = 0; i < _modulations.Count; i++)
                 {
                     ModeHControlPointModulation m = _modulations[i];
@@ -449,6 +628,9 @@ namespace BossRush
                     {
                         ModeHEffectSpec effect = _effects[i];
                         if (effect == null || effect.SelfSettled) continue;
+                        // 条件不成立时也不重发点火：否则"下线"只对调制类分量生效，
+                        // 点火类分量会绕过条件继续每 0.1 秒把 AI 的目标掰回去。
+                        if (!ModeHEffectConditions.IsSatisfied(effect.AppliesWhen, fireContext)) continue;
                         if (effect.Op != null && effect.Op.StartsWith("fire_", StringComparison.Ordinal))
                         {
                             Fire(effect, fireContext);
@@ -482,31 +664,13 @@ namespace BossRush
 
             if (_ai != null)
             {
+                // 逆序还原（LIFO），与条件下线共用同一个 WriteOriginal，
+                // 避免两处 switch 各自漂移出不同的控制点集合。
                 for (int i = _modulations.Count - 1; i >= 0; i--)
                 {
                     ModeHControlPointModulation m = _modulations[i];
                     if (!m.Restore) continue;
-                    try
-                    {
-                        switch (m.ControlPointId)
-                        {
-                            case "skillSuccessChance": _ai.skillSuccessChance = m.OriginalFloat; break;
-                            case "itemSkillChance": _ai.itemSkillChance = m.OriginalFloat; break;
-                            case "itemSkillCoolTime": _ai.itemSkillCoolTime = m.OriginalFloat; break;
-                            case "sightDistance": _ai.sightDistance = m.OriginalFloat; break;
-                            case "sightAngle": _ai.sightAngle = m.OriginalFloat; break;
-                            case "combatTurnSpeed": _ai.combatTurnSpeed = m.OriginalFloat; break;
-                            case "patrolTurnSpeed": _ai.patrolTurnSpeed = m.OriginalFloat; break;
-                            case "baseReactionTime": _ai.baseReactionTime = m.OriginalFloat; break;
-                            case "shootCanMove": _ai.shootCanMove = m.OriginalBool; break;
-                            case "skillCoolTimeRange": _ai.skillCoolTimeRange = m.OriginalVector; break;
-                            default: break;
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        // 单条还原失败不阻断其余还原
-                    }
+                    WriteOriginal(m);
                 }
             }
 
@@ -577,6 +741,17 @@ namespace BossRush
     {
         /// <summary>擂台中心。</summary>
         public Vector3 ArenaCenter;
+        /// <summary>拍铃是否已消耗（条件 before_bell 取它的反面）。</summary>
+        public bool BellConsumed;
+        /// <summary>当前登场者是否为接力者（条件 starter_opening 取它的反面）。</summary>
+        public bool ActiveFighterIsRelay;
+        /// <summary>本场擂台条件 ID（条件 condition_* 与它逐字比对）。整场不变。</summary>
+        public string ArenaConditionId;
+        /// <summary>是否还有后续入场批次未到场（条件 reinforcement_pending）。</summary>
+        public bool ReinforcementPending;
+        /// <summary>第一批敌军是否仍有活口（条件 first_wave_alive）。</summary>
+        public bool FirstWaveAlive;
+
         /// <summary>当前最近敌人的受击体。</summary>
         public DamageReceiver NearestEnemy;
         /// <summary>当前生命最低敌人的受击体。</summary>

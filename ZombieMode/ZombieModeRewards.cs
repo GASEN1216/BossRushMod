@@ -19,7 +19,10 @@ namespace BossRush
         private const string ZombieModeAttributeRunSpeedKey = "RunSpeed";
         private const string ZombieModeAttributeMeleeDamageKey = "MeleeDamageMultiplier";
         private const string ZombieModeAttributeRangedDamageKey = "GunDamageMultiplier";
-        private const string ZombieModeAttributeReloadSpeedKey = "ReloadSpeedMultiplier";
+        // 官方 stat 名是 ReloadSpeedGain（CharacterMainControl.reloadSpeedGainHash）；
+        // 曾误写成 "ReloadSpeedMultiplier"，该 stat 不存在，奖励被静默丢弃。
+        // AttributeBonuses 是纯运行时字典、不落盘，改 key 不影响存档。
+        private const string ZombieModeAttributeReloadSpeedKey = "ReloadSpeedGain";
         private const string ZombieModeAttributeDamageReductionKey = "ElementFactor_Physics";
         private const int ZombieModeContractGearDealMinQuality = 5;
 

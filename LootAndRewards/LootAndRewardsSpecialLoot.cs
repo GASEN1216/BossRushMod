@@ -630,6 +630,12 @@ namespace BossRush
 
                 FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 PhantomWitchScytheBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                // 遗种蛋与词缀熔石走同一条 defer 协议：它们在 BeforeCharacterSpawnLootOnDead
+                // 里已经 roll 过，但那时官方的 characterItem 掉落箱已被本路径关掉
+                // （RandomizeBossLoot_LootAndRewards 的 dropBoxOnDead = false），
+                // 只能等这里箱子建好后再投进来。
+                PetNestDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                AffixForgeStoneDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
 
                 // 后山菜地种子。三个 Boss 各掉自己那一种，内部按解锁状态门控；
                 // 菜地未解锁或后山关闭时零行为。放在最后是因为它与上面的专属掉落
@@ -648,6 +654,127 @@ namespace BossRush
             if (object.ReferenceEquals(bossMain, null))
             {
                 return false;
+            }
+
+            return bossRushLootboxPathBosses.Contains(bossMain);
+        }
+
+        /// <summary>
+        /// 把 pending 额外掉落还回 Boss 的 `characterItem`，交给官方掉落箱。
+        ///
+        /// 只有「找不到 Lootbox 模板、回退原版掉落」这一条分支会用：
+        /// 那条分支没有把 `dropBoxOnDead` 置 false，官方 `CreateFromItem(characterItem)`
+        /// 照常执行，所以还回 characterItem 就等于交付成功。
+        /// 直接复用各 integration 的进箱消费入口——它本来就是「加进给定 inventory」，
+        /// 换个目标 inventory 即可，不需要第三套接口。
+        /// 必须在 `FinalizeBossRushLootboxPathTracking` **之前**调用。
+        /// </summary>
+        private void ReturnPendingExtraLootToCharacterItem(CharacterMainControl bossMain)
+        {
+            if (bossMain == null)
+            {
+                return;
+            }
+
+            Inventory inv;
+            try
+            {
+                Item characterItem = bossMain.CharacterItem;
+                inv = characterItem != null ? characterItem.Inventory : null;
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited(
+                    "PrefabFallbackExtraDrop_inventory", "读取 Boss characterItem 库存失败", e);
+                return;
+            }
+            if (inv == null)
+            {
+                return;
+            }
+
+            try
+            {
+                FrostmourneBlueBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                PhantomWitchScytheBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                PetNestDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                AffixForgeStoneDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited(
+                    "PrefabFallbackExtraDrop_consume", "回退原版掉落时归还额外掉落失败", e);
+            }
+        }
+
+        /// <summary>
+        /// 把四个 integration 还挂着的 pending 额外掉落直接 `Drop` 到世界里。
+        ///
+        /// 只有无间炼狱分支会用：它把 `dropBoxOnDead` 关掉之后既不建 BossRush 奖励箱、
+        /// 官方 characterItem 箱也没了，`AddBossSpecialLootToLootboxCoroutine` 那条
+        /// 进箱通道根本不会跑，pending 会被 Finalize 直接撤销 —— 玩家什么都拿不到。
+        /// 落点与无间炼狱里程碑现金一致（Boss 尸体位置略抬高）。
+        /// 必须在 `FinalizeBossRushLootboxPathTracking` **之前**调用。
+        /// </summary>
+        private void DropPendingExtraLootIntoWorld(CharacterMainControl bossMain)
+        {
+            if (bossMain == null)
+            {
+                return;
+            }
+
+            Vector3 position;
+            try
+            {
+                position = bossMain.transform.position + Vector3.up * 0.1f;
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited(
+                    "InfiniteHellExtraDrop_position", "读取 Boss 位置失败，跳过世界掉落", e);
+                return;
+            }
+
+            try
+            {
+                FrostmourneBlueBossDropHandler.TryConsumePendingAsWorldDrop(bossMain, position);
+                PhantomWitchScytheBossDropHandler.TryConsumePendingAsWorldDrop(bossMain, position);
+                PetNestDropService.TryConsumePendingAsWorldDrop(bossMain, position);
+                AffixForgeStoneDropService.TryConsumePendingAsWorldDrop(bossMain, position);
+            }
+            catch (Exception e)
+            {
+                LogLootWarningLimited(
+                    "InfiniteHellExtraDrop_consume", "无间炼狱额外掉落世界投放失败", e);
+            }
+        }
+
+        /// <summary>
+        /// 额外掉落（寒霜长矛 / 女巫镰刀 / 遗种蛋 / 词缀熔石）是否必须 defer，
+        /// 即"不能直接塞进 `boss.CharacterItem.Inventory`"。
+        ///
+        /// 判据是**官方那只 characterItem 掉落箱到底会不会被创建**，而不是
+        /// "会不会有 BossRush 奖励箱"——本 Mod 有两条路径都会把它关掉：
+        ///   1. BossRush 奖励箱路径：`RandomizeBossLoot_LootAndRewards` 置
+        ///      `dropBoxOnDead = false` 后另建带全新本地 Inventory 的箱子；
+        ///   2. 无间炼狱：`OnBossBeforeSpawnLoot` 同样置 false，但连箱子都不建，
+        ///      奖励改走世界掉落。
+        /// 两条路径下写进 characterItem 的物品都会被静默丢掉，所以都要 defer。
+        /// 消费点分别是 `AddBossSpecialLootToLootboxCoroutine`（进箱）与
+        /// `DropPendingExtraLootIntoWorld`（落地）。
+        /// </summary>
+        internal bool ShouldDeferExtraBossDropToModPath(CharacterMainControl bossMain)
+        {
+            if (object.ReferenceEquals(bossMain, null))
+            {
+                return false;
+            }
+
+            // 无间炼狱下 MarkBossRushLootboxPathTracking 刻意不登记（它没有奖励箱），
+            // 所以不能只查集合，必须显式并上这一条，否则额外掉落全丢。
+            if (infiniteHellMode)
+            {
+                return true;
             }
 
             return bossRushLootboxPathBosses.Contains(bossMain);

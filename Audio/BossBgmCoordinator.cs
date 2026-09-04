@@ -475,6 +475,20 @@ namespace BossRush
         ///
         /// 注意：调用它不是必须的——播放记账靠 _playingSceneHandle 自愈，
         /// 没有任何调用点时行为也正确。提供它只是为了让确有场景回调的模块能主动清干净。
+        ///
+        /// 【为什么至今零调用点，且**不要**接进 ModBehaviour.OnSceneLoaded】
+        ///   2026-09-03 复核结论：接线会是净回归，不是修复。
+        ///   OnSceneLoaded 不区分 LoadSceneMode，而本方法**无条件**清 _ownerLeases；
+        ///   自愈路径 EnsureOwnerLeasesForCurrentScene 只在活动场景 handle 真的变了时才清。
+        ///   additive 加载时活动场景不变：接线版会在 Boss 战中途抹掉租约，
+        ///   之后 _playingBossKey 为 null，ReleaseBossBgm 提前返回、永远走不到 StopBossBgm，
+        ///   曲子会一直放到下一次真正切场景。
+        ///
+        ///   而唯一的行为差量 _nextActivationOrder 归零既无害也无用：它只被
+        ///   GetMostRecentLiveLease 读，那个方法只遍历 _ownerLeases——而 _ownerLeases
+        ///   在上一行已经被清空了。所以接线换不到任何正确性。
+        ///
+        ///   本方法保留给「将来确有单场景回调的模块」，届时由那个模块自己调。
         /// </summary>
         internal static void NotifySceneChanged()
         {

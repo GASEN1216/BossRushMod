@@ -39,8 +39,14 @@ namespace BossRush
 
         /// <summary>Mode F 最大生命成长 Modifier 引用（用于清理）</summary>
         private Modifier modeFMaxHealthModifier = null;
-        private readonly Dictionary<CharacterMainControl, Modifier> modeFBossMoveSpeedModifiers
-            = new Dictionary<CharacterMainControl, Modifier>();
+        /// <summary>
+        /// 每只 Boss 的移速 Modifier 记录。一只 Boss 会挂两条（WalkSpeed + RunSpeed），
+        /// 所以存 record 列表而不是单个 Modifier：官方角色没有 "MoveSpeed" 这个 stat
+        /// （那是 Animator 参数名，AGENTS §14），必须分别挂到两个真实 stat 上。
+        /// </summary>
+        private readonly Dictionary<CharacterMainControl, List<ZombieModeAttributeModifierRecord>>
+            modeFBossMoveSpeedModifiers
+            = new Dictionary<CharacterMainControl, List<ZombieModeAttributeModifierRecord>>();
         private readonly Dictionary<CharacterMainControl, float> modeFBossAppliedSpeedBonuses
             = new Dictionary<CharacterMainControl, float>();
         private readonly Dictionary<CharacterMainControl, CharacterMainControl> modeFBossForcedTargets
@@ -1072,17 +1078,14 @@ namespace BossRush
                     return;
                 }
 
-                Stat speedStat = boss.CharacterItem.GetStat("MoveSpeed");
-                if (speedStat == null)
+                // 先摘旧的，再按新数值挂。RemoveAll 会顺带清空列表，可直接复用。
+                List<ZombieModeAttributeModifierRecord> records;
+                if (!modeFBossMoveSpeedModifiers.TryGetValue(boss, out records) || records == null)
                 {
-                    return;
+                    records = new List<ZombieModeAttributeModifierRecord>();
+                    modeFBossMoveSpeedModifiers[boss] = records;
                 }
-
-                Modifier existingModifier = null;
-                if (modeFBossMoveSpeedModifiers.TryGetValue(boss, out existingModifier) && existingModifier != null)
-                {
-                    try { speedStat.RemoveModifier(existingModifier); } catch { }
-                }
+                RuntimeStatModifierTracker.RemoveAll(records, "ModeF BossMoveSpeed");
 
                 if (speedBonus <= 0f)
                 {
@@ -1091,10 +1094,24 @@ namespace BossRush
                     return;
                 }
 
-                float delta = speedStat.BaseValue * speedBonus;
-                Modifier newModifier = new Modifier(ModifierType.Add, delta, this);
-                speedStat.AddModifier(newModifier);
-                modeFBossMoveSpeedModifiers[boss] = newModifier;
+                // 官方移动只读 WalkSpeed / RunSpeed / Moveability 三个 stat。
+                // 这里两条都挂：Boss 追击时走 RunSpeed，巡逻时走 WalkSpeed，
+                // 只挂一条会让加速在另一半时间里看不出来。
+                bool walkAdded = RuntimeStatModifierTracker.TryAdd(
+                    boss, ZombieModeStatNames.WalkSpeed, speedBonus, this, records,
+                    "ModeF BossMoveSpeed");
+                bool runAdded = RuntimeStatModifierTracker.TryAdd(
+                    boss, ZombieModeStatNames.RunSpeed, speedBonus, this, records,
+                    "ModeF BossMoveSpeed");
+
+                if (!walkAdded && !runAdded)
+                {
+                    // 两个 stat 都取不到就别登记，免得 AppliedSpeedBonuses 谎报已生效
+                    modeFBossMoveSpeedModifiers.Remove(boss);
+                    modeFBossAppliedSpeedBonuses.Remove(boss);
+                    return;
+                }
+
                 modeFBossAppliedSpeedBonuses[boss] = speedBonus;
             }
             catch (Exception e)
@@ -1107,22 +1124,9 @@ namespace BossRush
         {
             foreach (var kvp in modeFBossMoveSpeedModifiers)
             {
-                try
-                {
-                    CharacterMainControl boss = kvp.Key;
-                    Modifier modifier = kvp.Value;
-                    if (boss == null || boss.CharacterItem == null || modifier == null)
-                    {
-                        continue;
-                    }
-
-                    Stat speedStat = boss.CharacterItem.GetStat("MoveSpeed");
-                    if (speedStat != null)
-                    {
-                        speedStat.RemoveModifier(modifier);
-                    }
-                }
-                catch { }
+                // RemoveAll 内部逐条 try/catch 并容忍已销毁的 Stat，
+                // 且记录的是 Stat 引用而不是 stat 名，Boss 已销毁时也不会误摘别人的。
+                RuntimeStatModifierTracker.RemoveAll(kvp.Value, "ModeF BossMoveSpeed");
             }
 
             modeFBossMoveSpeedModifiers.Clear();

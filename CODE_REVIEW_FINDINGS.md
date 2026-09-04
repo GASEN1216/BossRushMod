@@ -6,12 +6,55 @@
 
 | 严重级 | Open | Fixed | Deferred | WontFix | 合计 |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| P0 | 0 | 10 | 0 | 0 | 10 |
-| P1 | 6 | 31 | 0 | 0 | 37 |
-| P2 | 4 | 30 | 0 | 0 | 34 |
-| P3 | 1 | 20 | 0 | 0 | 21 |
+| P0 | 0 | 14 | 0 | 0 | 14 |
+| P1 | 6 | 40 | 0 | 0 | 46 |
+| P2 | 4 | 34 | 0 | 0 | 38 |
+| P3 | 1 | 23 | 0 | 0 | 24 |
 
-最后更新：2026-09-03 f9b83c0 以来 365 个改动 .cs 的玩法向审核。新增 CR-2026-09-03-009..011：
+最后更新：2026-09-03 在线 Wiki 渲染层核查（owner 追问"页面风格是否一致"）。
+新增 CR-2026-09-03-021（P2，已修）：`[tip]/[warn]` 的 sync 正则 `(.+)$` 只吃第一行，
+源文里折成两行的 callout 其续行会掉到闭合 `:::` 之外，线上渲染成「提示框 + 游离正文」，
+多数还是从逗号处断开。全站 42 处（其中 8 处是前一批 CR-2026-09-03-016 改写整节时新引入的），
+连同全站唯一的双 `<h1>` 页面（reforge）一并修平。修在源文不动正则——那个 transform 被
+`ZombieModeMutantWikiGuard` 逐字节镜像，JS/Python 的 `$`+MULTILINE 语义不同，改正则会静默漂移。
+新增 `WikiCalloutSingleLineGuard`（4 例反向验证），生成物全量审计 224 篇零缺陷，
+并起 VitePress dev server 做了 DOM 核对。
+
+上一次更新：2026-09-03「全部玩法完整性」全量扫描批（数据表 → 代码反查，覆盖全部 Assets/**/*.json）。
+新增 CR-2026-09-03-019（P1，已修）与 CR-2026-09-03-020（P2，已修）：
+Mode H 八条战痕**只有两条真能生效**——三条触发型的 triggerId 与数据表逐字对不上或干脆没有调用点，
+加上 `bell_dependence` 的自结算收益分量识别不到、只兑现代价的"纯负面利弊绑定"；
+以及 `appliesWhen` 条件层被解析后零读者，9 个分量一律无条件施加。
+两条均已修：019 当轮修复；020 由 owner 拍板「随战斗持续求值」后实施。
+编译零警告；`ModeHScarTriggerWiringGuard`（按 JSON 反查代码）共 9 条断言逐条反向验证。
+
+上一次更新：2026-09-03「新模式生产可玩性」审核批（f9b83c0..工作区，零调用点扫描）。
+新增 CR-2026-09-03-017（P1）与 CR-2026-09-03-018（P2），两条都属"实现完整但入口没接线"：
+口令点火目标无生产者导致 `finish` 整条是空操作（且认证/遥测都报 held，三层检查全绿），
+战场快照的重建侧全链零调用且与 §20.3 恢复语义互斥、在冻结转换表下结构性不可达。
+两条均已修：Windows 编译零警告、新增 `ModeHCommandFireTargetGuard`，
+新旧断言共 8 项逐条反向验证转红（其中 2 条断言方向由"必须存在"反转为"必须缺席"）。
+
+上一次更新：2026-09-03 游戏内 Wiki 内容核对批（f9b83c0 以来全量改动 vs `WikiContent/`）。
+新增 CR-2026-09-03-016：1 条合并立条的内容缺陷（1 个 P2 + 2 个 P3），全部玩家可见且已修——
+图鉴页写了一个不存在的"Wiki 书入口"（`ToggleCodexPanel` 全仓库只有物品这一个调用点）、
+随机事件页承诺乱入 Boss 掉战利品箱（无间炼狱里既不掉箱也不进现金池，杀它零产出）、
+Boss 筛选器页的生效范围停在 Mode G / Mode H / 随机事件立项之前。
+另有 14 处开发预览装备提示不再宣传"调试授予"路径。纯内容改动，`SAFE`，无代码变更；
+517 guard 中 Wiki/repowiki/图鉴/随机事件相关全绿（工作区另有 4 个与本批无关的红项，见下）。
+
+上一次更新：2026-09-03 可达性接线批（审核发现的全部问题，含次要项）。新增 CR-2026-09-03-012..014：
+1 个 P0（Mode H 伤病/战痕/公开异常三层内容整体不生效——认证只覆盖 13 条口令，
+异常与分量 ID 永远查不到实测记录，战痕一条开不出、伤病永远无名、四个异常一次不触发，
+而选秀卡照样把异常当卖点展示）、1 个 P1（ERROR 完整互换 §17.6.5 零调用点，
+连同两个 Harmony postfix 与看台表演整条是死代码；同时修掉观战租约不让渡输入这个硬阻断）、
+1 个 P1（ApplyRetirement 零调用点，名人堂把已退役的主选手记成冠军、真正夺冠的替补
+反被写进 substituteHistory，冠军与替补整个对调）。
+三条均已修：Windows 编译通过、516 guard 全绿（新增 ModeHDataStampGuard）、
+15 项新断言逐条反向验证转红。次要项 7 条一并消化（接线 4、删除 2、documented 1）。
+实机 smoke 七项待人工，见 `FIX_TRACKER.md` 同日条目。
+
+上一次更新：2026-09-03 f9b83c0 以来 365 个改动 .cs 的玩法向审核。新增 CR-2026-09-03-009..011：
 1 个 P0（非本波 Boss 经掉落漏斗推波——乱入 Boss 跳波 + Mode D 把标准 Boss 刷进自己局内）、
 1 个 P1（空投箱到时即销毁，不看玩家是否正在开箱）、1 个 P2（战役追踪按进场景而非开局武装）。
 三条均已修：Windows 编译通过、515 guard 全绿、两个新 guard 各做过反向验证（共 12 项逐条转红）。
@@ -54,6 +97,839 @@ CR-2026-08-29-001..007 未单独立条，见 `FIX_TRACKER.md` 四个修复包）
 
 ## Confirmed Findings
 
+### CR-2026-09-04-001：遗种蛋与词缀熔石 100% 作废（两个新系统的入门产出口全断）
+
+**严重级**：P0（遗种巢与词缀锻造的**唯一**入门获取路径，拿不到就整条养成链走不通）
+**兼容分类**：`COMPAT`（只补 defer 接线，不改掉落概率、TypeID、数据 schema）
+**状态**：Fixed
+**来源**：2026-09-04 f9b83c0..HEAD 新模式可玩性审核（官方源码逐条对照）
+
+#### 位置
+
+- `PetNest/PetNestDropService.cs`（TrySpawnEggIntoBossInventory 写 CharacterItem）
+- `Integration/AffixForge/AffixForgeStoneDropService.cs`（同上）
+- `LootAndRewards/LootAndRewards.cs:339/342`（两者的注册点）
+- `LootAndRewards/LootAndRewardsRandomBossLoot.cs:520`（`dropBoxOnDead = false`）
+
+#### 问题
+
+官方 `CharacterMainControl.cs:1297-1304` 先派发 `BeforeCharacterSpawnLootOnDead`，
+再 `if (dropBoxOnDead) CreateFromItem(characterItem)`。
+`RandomizeBossLoot_LootAndRewards` 把 `dropBoxOnDead` 置 false 并另建一个带
+**全新本地 Inventory**（`EnsureLocalInventory(lootbox, 512)`）的箱子，
+全仓库没有任何代码把 `CharacterItem.Inventory` 转移进新箱子。
+而遗种蛋与熔石的 handler 注册点就在主 handler 注册的**同一个函数体**内
+（`RegisterBossRandomLootTracking`），必然配对生效——写进去的东西必然作废。
+
+仓库本有正解 `ShouldDeferBlueBossExtraDropToBossRushLootbox`，
+grep 确认只有寒霜长矛与女巫镰刀接了，这两个新系统都没接。
+
+#### 影响
+
+遗种蛋 500059 除天灾远征外无第二产出口，而远征需先有崽——引导链彻底断开，
+玩家刷再多 Boss 也开不出第一枚蛋。词缀熔石同理（游戏内 Wiki 已向玩家承诺「Boss 掉落」）。
+静默失效，无任何报错或日志。
+
+#### 修复
+
+两个 service 各补齐 defer 协议四处接线（判定 / pending 登记 / 进箱消费 / 撤销），
+形态照寒霜长矛。PetNest 的 pending 用 `Dictionary<CharacterMainControl,string>`
+而非 HashSet——血脉必须带到 consume 时才能 `TryStampLineage`。
+新增 `tests/ExtraBossDropDeferGuard.py` 锁住四个 integration × 四处接线。
+
+#### 遗留
+
+实机 smoke 待人工：标准竞技场刷 Boss，确认奖励箱里能开出遗种蛋与词缀熔石。
+
+---
+### CR-2026-09-04-002：无间炼狱下全部额外掉落丢失（含既有的寒霜长矛与女巫镰刀）
+
+**严重级**：P0
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：同上批（修 001 时发现该分支根本不建箱子）
+
+#### 位置
+
+- `LootAndRewards/LootAndRewardsRandomBossLoot.cs:307-320`（infiniteHellMode 分支）
+- `LootAndRewards/LootAndRewards.cs:419-426`（Mark 条件含 `!infiniteHellMode`）
+
+#### 问题
+
+`MarkBossRushLootboxPathTracking` 的条件含 `!infiniteHellMode`，
+所以无间炼狱下 defer 判定恒假，额外掉落走 `CharacterItem` 路径；
+而无间炼狱分支 `dropBoxOnDead = false` 后**直接 return**，连箱子都不建。
+两头落空。这条洞在本次修复前就存在，寒霜长矛与女巫镰刀在无间炼狱同样全丢。
+
+#### 修复
+
+新增 `ShouldDeferExtraBossDropToModPath`（显式并上 `infiniteHellMode`）统一判定；
+无间炼狱分支在 `FinalizeBossRushLootboxPathTracking` **之前**调用
+`DropPendingExtraLootIntoWorld`，按该模式既有的世界掉落通道（`Item.Drop`，
+与里程碑现金同路）投放。一个插入点同时修好四个 integration。
+守卫断言含顺序（Finalize 会撤销 pending，顺序反了等于没接）。
+
+#### 遗留
+
+实机 smoke 待人工：无间炼狱刷 Boss，确认地上能捡到额外掉落。
+
+---
+### CR-2026-09-04-003：龙皇绕过掉落登记，defer 判定对它恒假
+
+**严重级**：P2
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：同上批
+
+#### 位置
+
+- `Integration/DragonKing/DragonKingBoss.cs`（手动注册路径）
+
+#### 问题
+
+龙皇自己手动订阅 `BeforeCharacterSpawnLootOnDead`，从不走
+`RegisterBossRandomLootTracking`，因此 `MarkBossRushLootboxPathTracking` 也没跑过，
+`bossRushLootboxPathBosses` 里没有它，defer 判定恒假，CR-001 的修复在龙皇身上不生效。
+
+#### 修复
+
+龙皇注册路径补一次 `MarkBossRushLootboxPathTracking(character)`。
+**未**调整 `PetNestDropService.TryTrack` 的注册顺序：进箱消费在
+`AddBossSpecialLootToLootboxCoroutine` 里，隔着至少一次 `yield`，
+必然晚于同帧的多播 handler，现有顺序是安全的；
+且 `PetNestDropLifecycleGuard:131-152` 冻结了「TryTrack 紧随订阅」，调序会误伤。
+
+---
+### CR-2026-09-04-004：Mode H 赔率页「锁盘」被推出屏幕，玩家只能弃局
+
+**严重级**：P0（`OddsPreview` 唯一的玩家侧出边就是锁盘）
+**兼容分类**：`COMPAT`（纯布局，不改状态机与数据）
+**状态**：Fixed
+**来源**：同上批（像素级推导 + 官方 UIInputManager 逃生路径核实）
+
+#### 位置
+
+- `ModeH/ModeHUIPages.cs`（CreateActions 单行居中平铺）
+- `ModeH/ModeHRuntimeModule_MatchFlow.cs`（押品格塞进 page.Actions）
+
+#### 问题
+
+`CreateActions` 单行居中平铺、步距 264（`ActionSize(240,56)` + `CardGap 24`），
+canvas 参考分辨率固定 1920x1080。按钮数 = 下注档(<=3) + **押品格(<=40)** + 锁盘(1)，
+最坏 44 个、行宽约 11600px。第 8 个按钮起右边缘越过 960，即
+**仓库前 40 格有 >=4 件物品就点不到「锁盘」**。
+`CreateModalSurface` 上没有任何 Mask，越界按钮不会被裁掉而是照常画到屏幕外。
+
+严重性已核实边界：该页 `ClaimModalInput` 置 timeScale=0 且 `InputManager.DisableInput`，
+但官方 ESC 菜单走 `UIInputManager`（`鸭科夫源码/.../UIInputManager.cs:405-407`）
+而非 `InputManager`，`View.ActiveView == null` 成立，**ESC 仍能开菜单退出关卡**。
+所以是「这一局打不下去、只能弃局」，不是杀进程级死锁；
+`EnforceModalInputPause` 每 LateUpdate 重置 timeScale=0，关掉 ESC 菜单也回不去。
+
+#### 修复
+
+押品格本质是**选择器**不是**动作**：移出动作行，进 `ModeHPageContent.RealStakeSlots`，
+由新增的 `CreateRealStakeSlots` 渲染到已预留的 `ModeH_RealStakeSelector` 区，
+超出视口即套 `ScrollRect + RectMask2D`。动作行只剩下注档 + 锁盘，固定 <=4 个。
+形态照 `PetNestUI.cs:150-156`（同架构、同坑、已修，且由 PetNestUILayerGuard 冻结）。
+`CreateActions` 另加换行兜底（`MaxSingleRowActions = 7`），越界向上堆而不是往两侧铺。
+
+#### 遗留
+
+实机 smoke 待人工：仓库放 >=10 件物品进看盘页，确认「锁盘」可见可点、押品格可滚动。
+
+---
+### CR-2026-09-04-005：Mode H 入口页第 4、5 张选秀卡被画在动作按钮底下
+
+**严重级**：P1（赛季开局第一个页面）
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：同上批
+
+#### 位置
+
+- `ModeH/ModeHUIPages.cs`（CreateCardGrid 固定 3 列、无高度校验）
+
+#### 问题
+
+入口页 `ShowRealStakeNotice = true` 把 `cursorY` 压到 226；
+`DraftCandidateCount = 5`、`columns` 固定为 3，第 2 行卡片 y 落在 [-398,-98]，
+与动作行 y [-382,-326] 重叠。第 4、5 张选秀卡被按钮盖住。
+
+#### 修复
+
+按可用高度（`topY` 到 `ActionBandReserve`）推 `maxRows`，放不下就**加列**
+（卡片变窄，下限 `CardMinWidth = 220`），而不是继续往下堆。
+`ActionBandReserve` 提为常量，行列表与卡片网格共用，避免两处漂移。
+
+---
+### CR-2026-09-04-006：Mode H 恢复壳动作行 5 个按钮就出面板
+
+**严重级**：P1（恢复壳是应急界面，它失效等于补救入口消失）
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：同上批
+
+#### 位置
+
+- `ModeH/ModeHRecoveryPanel.cs`（RebuildActions 同款无界单行公式）
+
+#### 问题
+
+与 CR-004 同一公式，步距 284、面板宽 1280，n>=5 即出面板。
+恢复壳正是「取回押品」「结束赛季」这些补救按钮所在处。
+
+#### 修复
+
+同样按 `MaxSingleRowActions`（此处 = 4，按 1280 面板推导）换行向上堆。
+新增 `tests/ModeHActionLayoutGuard.py` 同时锁住两处动作区、押品格去向与卡片网格避让。
+
+---
+### CR-2026-09-04-007：Mode H 赔率分量 18 条标签双前缀，全显示星号 raw key
+
+**严重级**：P1
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：同上批
+
+#### 位置
+
+- `ModeH/ModeHOddsController.cs:600`（生产侧已拼完整 key）
+- `ModeH/ModeHRuntimeModule_MatchFlow.cs:933`（消费侧又拼一次）
+
+#### 问题
+
+`entry.LabelKey` 已是完整 key，消费侧再拼 `LocalizationKeyPrefix`，得到
+`BossRush_ModeH_BossRush_ModeH_Odds_*`，`Localization/ModeHLocalization.cs:333-350`
+注册的 18 个 `Odds_*` 全部落空。
+同文件 `:523-524` 早有对这个坑的白纸黑字告警，正确写法在 `:562`。
+`ModeHLocalizationGuard` 只收字面量，运行时拼接进不了 `used` 集合，所以一直是绿的。
+
+#### 修复
+
+消费侧改为 `L10n.T(entry.LabelKey)`。
+`ModeHLocalizationGuard` 新增双前缀反查：`LocalizationKeyPrefix +` 后不得跟**成员读取**
+（裸后缀一定是字面量/局部变量/参数，成员读取拿到的是 DTO 里已拼好的完整 key），
+并加一条生产侧对偶断言，防止两边只改一半。
+
+---
+### CR-2026-09-04-008：焚心椒「换弹更利索」用了不存在的 stat key（丧尸模式同款奖励一并失效）
+
+**严重级**：P1
+**兼容分类**：`COMPAT`（`AttributeBonuses` 是纯运行时字典、不落盘，改 key 不影响存档）
+**状态**：Fixed
+**来源**：同上批（12 个 stat key 逐个对官方源码做存在性校验）
+
+#### 位置
+
+- `Integration/BackMountain/RaidMealService.cs:179`
+- `ZombieMode/ZombieModeTuning.cs:22`、`ZombieMode/ZombieModeRewards.cs:22`
+
+#### 问题
+
+`"ReloadSpeedMultiplier"` 在官方源码里**零命中**（`ZombieModeStatNames` 全部 12 个
+key 逐个验过，只有这一个是 0）。官方真名是 `ReloadSpeedGain`
+（`CharacterMainControl.cs:3588` 的 `reloadSpeedGainHash`），且早已定义在同一个文件里。
+`RuntimeStatModifierTracker.TryAdd` 走 `GetStat` 返回 null，静默丢弃（AGENTS §14）。
+不止后山：丧尸模式的「换弹速度」属性奖励用的是同一个幽灵 key，
+`ApplyZombieModePlayerAttributeModifiers` 直接把它传给 `GetStat`，无任何映射，同样全废。
+（丧尸模式的利弊/突变路径用的是正确的 `ReloadSpeedGain`，只有属性奖励这条错。）
+
+#### 修复
+
+两处改用 `ReloadSpeedGain`；删除幽灵常量本身；
+顺带删掉 `RaidMealService` 里同为死 key 的 `MoveSpeed` 那行
+（效果由并列的 `RunSpeed`/`WalkSpeed` 兜住，删除无行为变化）。
+**保留** `ZombieModeStatNames.MoveSpeed` 常量：`ZombieModeProductionReadinessGuard`
+要求它存在，且丧尸模式另有两处仍在用（那两处有 Walk/Run 扇出兜底）。
+
+新增 `tests/StatKeyExistenceGuard.py`：把 `ZombieModeStatNames` 每个常量值对
+`鸭科夫源码/` 做存在性校验，零命中即红；并单独判「MoveSpeed 挂给 Stat Modifier
+却没有 Walk/Run 兜底」（Animator 用法放行）。这条能防住整类 §14 缺陷。
+
+#### 遗留
+
+实机 smoke 待人工：吃焚心椒进局确认换弹变快；丧尸模式取换弹速度奖励确认生效。
+
+---
+### CR-2026-09-04-009：Mode F 血猎 Boss 加速完全不生效
+
+**严重级**：P1
+**兼容分类**：`COMPAT`
+**状态**：Fixed
+**来源**：同上批，由新加的 `StatKeyExistenceGuard` 自动抓出，不是人工翻到的
+
+#### 位置
+
+- `ModeF/ModeFPhases.cs`（ApplyModeFBossMoveSpeedModifier / ClearModeFBossMoveSpeedModifiers）
+
+#### 问题
+
+`boss.CharacterItem.GetStat("MoveSpeed")` 恒返回 null（官方没有这个 stat），
+紧接着 `if (speedStat == null) return;`，整个 Boss 加速函数每次都在这里静默退出。
+血猎追击的 Boss 提速档位从来没生效过。
+
+#### 修复
+
+改挂官方真实的 `WalkSpeed` + `RunSpeed` 两条（追击走 Run、巡逻走 Walk，
+只挂一条会让加速在另一半时间里看不出来），并改用共享的
+`RuntimeStatModifierTracker`（记 Stat 引用而非 stat 名，Boss 销毁时不会误摘别人的）。
+每只 Boss 的记录容器从单个 `Modifier` 改为 record 列表。
+
+#### 遗留
+
+实机 smoke 待人工：血猎模式推进阶段，确认 Boss 移速确实变快。
+
+---
+
+### CR-2026-09-03-022：在线 Wiki 的 favicon 一直 404
+
+**严重级**：P3
+**兼容分类**：SAFE
+**状态**：Fixed
+**来源**：2026-09-03 配图需求落地时顺带发现
+
+#### 位置
+
+- `wiki-site/docs/.vitepress/config.mts:329`
+- `wiki-site/docs/public/`（此前**不存在**）
+
+#### 问题
+
+`head` 里写了 `['link', { rel: 'icon', href: `${base}images/favicon.ico` }]`，
+但 `wiki-site/docs/public/` 这个目录从来没建过，VitePress 也就没有任何静态资源可发。
+线上标签页图标一直取不到，浏览器回落到默认地球图标。无报错、构建照样绿。
+
+#### 修复
+
+`tools/build_wiki_images.py` 用图鉴书图标生成 16/32/48 三尺寸 `favicon.ico`
+写进新建的 `wiki-site/docs/public/images/`。配图需求本来就要建这个目录，顺手补上。
+
+浏览器实跑核对：`fetch('/BossRushMod/images/favicon.ico')` 由 404 转 **200**。
+`WikiImageAssetGuard` 只守配图清单，不守 favicon——它是单文件、无清单，
+由 `build_wiki_images.py --check` 覆盖。
+
+---
+
+### CR-2026-09-03-021：多行 callout 在线上 Wiki 掉出提示框（渲染缺陷）
+
+**严重级**：P2
+**兼容分类**：SAFE（源文改排版 + 新增 guard，无代码/无 schema 改动）
+**状态**：Fixed
+**来源**：2026-09-03 owner 追问"在线 Wiki 页面风格是否一致"后的渲染层核查
+
+#### 位置
+
+- `wiki-site/scripts/sync-content.mjs:150-151`（callout 正则，**未改**）
+- `WikiContent/{zh,en}/**.md` 共 25 个文件、42 处 callout
+- `WikiContent/{zh,en}/system__reforge_and_achievements.md:1-7`（双页面标题）
+
+#### 问题
+
+sync 的 callout 转换是 `/^\[tip\]\s*(.+)$/gm → '::: tip\n$1\n:::'`。
+`.` 不匹配换行，`(.+)$` **只吃第一行**。源文件里把一条 callout 折成两行时，
+第二行被留在闭合 `:::` **之后**，线上渲染成「提示框 + 一段游离正文」，
+而且多数是从逗号处断开。实测 `systems/random-events.md`：
+
+```
+::: warning
+无间炼狱里请直接把它当障碍物绕开。它不推波、不掉箱、不进现金池，
+:::
+打赢它唯一的收获是弹药消耗和一段本可以用来推波的时间。   ← 掉出框外
+```
+
+全站 42 处，其中 **8 处是 CR-2026-09-03-016 那一批新引入的**（改写整节时按中文习惯折了行），
+其余 34 处为历史遗留。这是"线上风格是否一致"这一问的实质答案：**此前不一致**。
+
+顺带查出唯一的结构性不一致：`system__reforge_and_achievements` 有**两个** `##` 页面标题
+（`重铸与成就` + `重铸系统`），转换后是一页两个 `<h1>`，全站仅此一例；
+且第一个标题与 `catalog.tsv` 登记的条目名（`重铸系统`）对不上。
+成就清单早已拆去 `system__achievements_list`，这是拆分时留下的壳。
+
+#### 修复
+
+**修在源文，不动正则**：`transformContent` 被 `tests/ZombieModeMutantWikiGuard.py`
+逐字节镜像，而 JS 与 Python 在 `$` + MULTILINE 下语义不同，改正则容易让两边静默漂移；
+单行 callout 本来也是本仓库的多数写法。42 处续行全部并回首行
+（中文不加空格、西文加一个空格，按首尾字符是否 CJK 判定）。
+reforge 双标题合并为一个，取 `catalog.tsv` 的登记名。
+
+新增 `tests/WikiCalloutSingleLineGuard.py`：断言 callout 的下一行必须为空行、
+文件结尾或另一个块级起始。注意 `**bold**` 不是列表项——`*` 必须后跟空白才算 bullet，
+这一点第一版写错过，会漏掉 3 处。
+
+#### 验证
+
+- 新 guard 反向验证 4 例：折行 → RED、`**bold**` 续行 → RED、
+  callout 后接真列表 → GREEN、基线 → GREEN；目标文件逐字节还原。
+- 全量生成物审计（224 篇 / 179 个 callout）：掉框 0、容器不配平 0、未转换 `[tip]` 残留 0、
+  标题跳级 0、多 h1 0。仅剩 2 篇 `index.md` 无 h1——那是 VitePress `layout: home` 的
+  hero 页，本就没有 h1，属正常。
+- VitePress dev server 实跑，DOM 核对：warning 框内含完整整句、`nextElementSibling`
+  是 `H2` 而非游离段落；reforge 页 `h1count=1`、`h1 → h2 → h3` 无跳级。
+- `--filter Wiki` 6 PASS（新 guard 已被 runner 自动发现）、`ZombieModeMutantWiki` PASS、
+  `Repowiki` PASS。
+
+#### 遗留
+
+无。
+
+---
+### CR-2026-09-03-019：Mode H 八条战痕只有两条能生效（触发接线 + 自结算分量双重断链）
+
+**严重级**：P1（战痕是 Mode H 唯一的永久成长产出，"拿到了但永远不生效"）
+**兼容分类**：`COMPAT`（只补代码侧接线与分量识别，Scars.json 一字未改）
+**状态**：Fixed
+**来源**：2026-09-03「全部玩法完整性」全量扫描批（数据表 → 代码反查）
+
+#### 位置
+
+- `ModeH/ModeHCombatControl.cs`（`EvaluateTriggeredInjuries` 的触发调用）
+- `ModeH/ModeHInjuryAndScarSystem.cs`（`TryOpenScarWindow`、`ApplySelfSettledComponents`）
+- `Assets/Data/ModeH/Scars.json`（8 条战痕、5 条伤病）
+
+#### 问题
+
+`TryOpenScarWindow(scarId, triggerId)` 用 `string.Equals(spec.Trigger, triggerId, Ordinal)`
+逐字比对，不匹配时 `return false` 且**不设** failureReasonId——调用方拿到 (false, null)，
+只会当作"这次不该触发"。三种坏法同时存在：
+
+| scarId | Scars.json 的 trigger | 代码实际传入 | 结果 |
+| --- | --- | --- | --- |
+| `broken_shield_charge` | `armor_first_break` | `armor_broken` | 字面量不匹配，永不触发 |
+| `blood_rush` | `enemy_first_low_health` | 无调用点 | 永不触发 |
+| `longshot_memory` | `first_ranged_damage_taken` | 无调用点 | 永不触发 |
+| `crowd_favorite` | `enemy_count` | `crowd_present` | 多余调用（它是常驻战痕）|
+
+能生效的只剩 `bell_dependence` 与 `relay_expert` 两条触发型，加上三条常驻
+（`center_keeper` / `skill_saver_scar` / `crowd_favorite`，由 `ApplyStandingScars` 正常施加）。
+
+**第二处断链**：`ApplySelfSettledComponents` 只认 `op = self_settled_command_scale`，
+但数据表里 `bell_dependence` 与 `spirit` 用的是 `op = self_settled` +
+`controlPointId = command_scale`。于是 `bell_dependence` 的 **+20% 收益从未生效**，
+而它的 −10% `skillSuccessChance` 代价照常生效——一条**纯负面**的"利弊绑定"，
+恰好违反本系统"不允许收益生效、代价失效"的冻结契约。
+（`spirit` 不受影响：它另有 `OnEnemyCountChanged` 专用路径按常量 0.85 施加，与数据同值。）
+
+#### 修复
+
+- 三条触发型战痕按数据表逐字对齐并补上条件：
+  - `armor_first_break` → 护甲物品耐久首次归零（官方按 `damageInfo.armorBreak` 扣 `Item.Durability`，
+    耐久是唯一可靠事实源；护甲 stat 不随耐久线性下降。没穿甲则不触发，语义如此）；
+  - `enemy_first_low_health` → 复用点火目标扫描已算好的最残敌军比例，不另开每帧遍历；
+  - `first_ranged_damage_taken` → 遥测新增 `ActiveFighterTookRangedDamage`，
+    由 `IModeHTelemetrySink.OnParticipantHurt` 新增的 `fromWeaponItemID` 参数驱动，
+    远程判定沿用 ModeG / Campaign 既有的 Gun/MeleeWeapon tag 口径（本地复制，AGENTS 4.9）。
+- 删除 `crowd_favorite` 的多余触发调用（常驻战痕不走触发路径）。
+- `ApplySelfSettledComponents` 同时识别两种 command_scale 写法；
+  带条件门的条目（`requiresEnemyCountAtLeast`，当前只有 `spirit`）跳过无条件施加，
+  否则 ×0.85 会与专用路径叠成 ×0.7225。
+- 新增 `tests/ModeHScarTriggerWiringGuard.py`：按 JSON 反查代码，
+  锁住「触发型必须有逐字匹配的调用点」「常驻不得走触发路径」「自结算分量必须能被命中」。
+
+#### 遗留
+
+实机 smoke 待人工：让选手吃远程伤害 / 打破护甲 / 把敌人打残，确认三条战痕各自开窗。
+
+---
+
+### CR-2026-09-03-020：战痕的 `appliesWhen` 条件层完全未求值
+
+**严重级**：P2（不阻断玩法；影响的是 9 个分量的生效条件，属数值与手感）
+**兼容分类**：`COMPAT`（只加条件判定与求值输入，Scars.json 一字未改）
+**状态**：Fixed（owner 2026-09-03 拍板「随战斗持续求值」，已实施）
+**来源**：同上批
+
+#### 位置
+
+`Assets/Data/ModeH/Scars.json`（9 个分量）；
+`ModeH/ModeHContentModels.cs:37`（`AppliesWhen` 字段）；
+`ModeH/ModeHContentCatalogParsers.cs:264`（唯一写入点）
+
+#### 问题
+
+`appliesWhen` 被解析进 `ModeHEffectSpec.AppliesWhen`，然后**没有任何读者**——
+全仓库只有字段声明与那一行赋值。8 种条件（`before_bell`、`starter_opening`、
+`enemy_count_at_least_3`、`single_core_fight`、`condition_danger_edge`、
+`condition_open_field`、`reinforcement_pending`、`first_wave_alive`）一律不生效，
+9 个分量全部**无条件施加**。最明显的后果是 `crowd_favorite`：
+它的两个收益写着"场上敌军≥3 才给"、代价写着"单核战才吃"，两个互斥条件同时恒真，
+于是这条战痕在任何局面下都同时拿到全部收益和全部代价，设计意图被抹平。
+
+#### 修复（owner 拍板：随战斗持续求值）
+
+否决的是「开窗时一次性求值」：它对常驻战痕是错的——`crowd_favorite` 在选手登场时开窗，
+那时敌军还没生成，`enemy_count_at_least_3` 恒假，收益反而永远拿不到。
+
+实施口径：条件随重申循环（`CommandReassertIntervalSeconds`，0.1 秒）持续求值，
+分量按条件真伪**上下线**。
+
+- 新增 `ModeHEffectConditions` 求值器，覆盖全部 8 种条件。`condition_<id>` 直接与本场
+  `plan.conditionId` 逐字比对——`danger_edge` 与 `open_field` 本就是 ThreatPlans 里
+  真实存在的 `arenaConditionId`，不需要另建映射表。
+- `ModeHCommandAdapter` 新增 `SyncConditionalEffects`：条件真伪翻转时才动手，
+  假→真按**当前值**重新捕获并施加，真→假还原那一条并摘掉。
+  重新捕获当前值而不是开窗时的值，与本适配器一贯的嵌套语义一致
+  （口令/伤病/战痕三套窗口可能同时改同一个控制点，每层只还原到自己接手时看到的值）。
+- **点火类分量同样受条件约束**：否则"下线"只对调制类生效，点火分量会绕过条件
+  继续每 0.1 秒把 AI 的目标掰回去。
+- `Restore == false` 的分量（当前只有 `nextReleaseSkillTimeMarker`）一旦施加就不下线，
+  维持它"写入后交还原版、绝不还原"的契约。
+- `Restore()` 与条件下线共用同一个 `WriteOriginal`，避免两处 switch 漂移出不同的控制点集合。
+- 条件输入由 `ModeHCombatControl.RefreshEffectConditionInputs` **每帧**刷新
+  （不跟点火目标一起节流：重申落在哪一帧不由本类决定）。
+  新增 `ModeHParticipantRef.BatchIndex` 与 `ModeHCombatTelemetry.HasLiveEnemyInBatch`
+  以支撑 `first_wave_alive`；擂台条件与末批次序号在 `BeginMatch` 一次性交付，
+  战斗控制不反向持有 Season 引用。
+- **自结算分量例外**：`_selfSettledCommandScale` 是累乘标量，无法只撤销其中一项，
+  因此只在开窗时求值一次。这只对整场恒定的条件成立，故守卫断言
+  自结算分量只能带 `condition_*` 族。
+- 未知条件取值一律**按无条件生效**处理（fail-open）：认不出就按假会静默禁掉分量，
+  那正是本次要消灭的失败形态；拼写错误交由构建期守卫拦。
+
+`ModeHScarTriggerWiringGuard` 扩充 4 条断言并逐条反向验证：
+Reassert 不调 Sync、条件失去判定分支、`condition_<id>` 指向不存在的擂台条件、
+自结算分量带动态条件——四条都能转红。
+
+#### 遗留
+
+实机 smoke 待人工：`crowd_favorite` 在敌军数跨过 3 的前后、`bell_dependence` 在拍铃前后，
+观察分量是否真的上下线。
+
+---
+### CR-2026-09-03-017：Mode H 口令点火目标无生产者，`finish` 整条是空操作
+
+**严重级**：P1（玩家每场唯一一次的干预手段，八条口令里有一条点了等于没点）
+**兼容分类**：`COMPAT`（只补生产侧计算，不改数据表、不改存档、不改口令语义）
+**状态**：Fixed
+**来源**：2026-09-03「新模式生产可玩性」审核批（f9b83c0..工作区，零调用点扫描）
+
+#### 位置
+
+- `ModeH/ModeHCombatControl.cs`（`RefreshFireContext` / 已删除的 `SetFireTargets`）
+- `ModeH/ModeHCommandAdapters.cs:356,364`（两个消费分支）
+- `Assets/Data/ModeH/Commands.json:95,160`、`Assets/Data/ModeH/Scars.json:161`
+
+#### 问题
+
+`ModeHCommandFireContext` 的 `NearestEnemy` / `LowestHealthEnemy` 有消费者
+（`ModeHCommandAdapter.Fire` 的 `fire_notice_nearest` 与 `fire_lowest_health_target`），
+但**没有生产者**：唯一的设值口 `ModeHCombatControl.SetFireTargets(...)` 全仓库零调用点，
+`RefreshFireContext` 只填 `ArenaCenter` 与 `EnemyCount`，注释写着"最近/最残敌人由生成事务
+在每次登记时刷新"——而生成事务里没有这段。两个字段恒为 null，两个分支永远进不去。
+
+玩家侧后果：
+
+- **`finish`**（intent=execute）两个 effect 全依赖它。`fire_lowest_health_target` 空转，
+  `fire_notice_current_target` 只能把 AI 本来就有的目标重新 notice 一次——**整条口令是空操作**。
+  拍铃每场限一次，选它等于把唯一的干预机会扔掉。
+- **`press`** 4 个 effect 里 3 个正常，转火最近一项失效。
+- `Scars.json` 里带 `fire_lowest_health_target` 的战痕同样空转。
+
+**为什么编译、guard 与生产认证三道全绿还是漏了**：`ModeHCommandAdapter.Validate()`
+对这两个控制点的判据是 `_ai.searchedEnemy != null` 与 `_ai.noticed`——AI 自己有目标就算
+"保持住了"。于是认证把 `finish` 标成 `VerifiedBehavior` 正常发给玩家选，逐 effect 遥测也报 held。
+这是本仓库反复出现的"静默失败"最纯粹的一例：三层检查都绿，功能不存在。
+
+#### 修复
+
+目标改由 `ModeHCombatControl` 内部按遥测的存活敌军名单计算（`RefreshFireTargets`）：
+
+- 名单来源是 `ModeHCombatTelemetry._liveEnemies`（登记与死亡两处维护），
+  新增零分配访问口 `GetLiveEnemyAt(int)`，不暴露内部 List 也不复制；
+- 参照点是**当前登场选手**而不是擂台中心——口令是发给他的；
+- 目标取官方 `CharacterMainControl.mainDamageReceiver`（`searchedEnemy` 的类型）；
+- 生命归零的不计入"最残"（那是等待死亡结算的尸体）；
+- 热路径纪律（AGENTS 4.12）：按 `CommandReassertIntervalSeconds` 节流，
+  节奏与重申循环一致；拍铃走 `RefreshFireContext(0f, true)` 强制重扫，不吃缓存；
+  扫描是对个位数名单的一次 O(n) 遍历，无分配、无 `GetComponent`、无场景查找；
+- `BeginMatch` 清空两个目标，避免把上一场已销毁的引用带进新一场；
+- 战痕开窗的首次点火改用战斗控制器转发进来的活上下文（`_sharedFireContext`），
+  否则带 `fire_lowest_health_target` 的战痕在开窗那一下仍会空转；
+- 删除 `SetFireTargets` 外部设值口——它就是本 bug 的成因。
+
+新增 `tests/ModeHCommandFireTargetGuard.py`，5 项断言逐条反向验证转红
+（其中"只清空未赋值"一条是反向验证时才发现第一版写松了，已收紧成"必须赋非 null"）。
+
+#### 遗留
+
+实机 smoke 待人工：开一场 Mode H，分别选 `finish` 与 `press` 拍铃，
+确认选手确实转火到最残 / 最近的敌人。
+
+---
+
+### CR-2026-09-03-018：Mode H 战场快照的重建侧整条不可达，与 §20.3 恢复语义互斥
+
+**严重级**：P2（不是可玩性阻断——回滚语义本身自洽安全；但半接的路径会误导后续改动）
+**兼容分类**：`SAFE`（删除的全部是零调用点分支，删除前后运行时行为逐字相同）
+**状态**：Fixed（按 §20.3 收敛）
+**来源**：同上批
+
+#### 位置
+
+- `ModeH/ModeHBattleSnapshot.cs`（`Validate` / `IsPositionUsable` / `TryRestoreHealth`、`ModeHSnapshotRebuildPlan`）
+- `ModeH/ModeHCombatControl.cs`、`ModeHCommandController.cs`、`ModeHCombatTelemetry.cs`（三个 `RestoreFromSnapshot`）
+
+#### 问题
+
+采集侧很活跃：四类触发点都在写，且随 Season 落盘进 `currentBattleSnapshot`。
+读回侧**一个调用点都没有**——`ModeHCombatControl.RestoreFromSnapshot`、
+`ModeHBattleSnapshot.Validate`、`TryRestoreHealth` 全链零调用。
+
+这不是"少接一根线"，而是**两套互斥的恢复语义**，且实际生效的是另一套：
+§20.3 规定战前/战中的任何故障一律回落到**同一场看盘**
+（`ResolveRecoveryResumeLifecycle` 把 `MatchBrief..MatchSettling` 整个战斗族映射到 `MatchBrief`），
+由 `RestoreMatchReservationAndSnapshot` 整场回滚：退还预留、还原选手档案、
+删除未归档结算、清空 `currentBattleSnapshot`。
+
+冻结转换表站在 §20.3 这边：`ModeHStateMachine` 里 `Recovering` 的出边只有
+`EntryIntent / SceneLoading / Drafting / RosterLocked / MatchBrief / ErrorRecoveryPending /
+Intermission / TransferWindow / HallOfFame / Suspended`，**没有任何一条通向战斗态**。
+局中重建因此在状态机层面结构性不可达。
+
+连带影响：本轮工作区里新加的 ERROR 互换快照重建支路（`_errorSwapRebuildProfileId`，
+§17.6.5 第 8 条）写在这条死路径内部，**落地即不可达**。
+
+#### 修复
+
+按 §20.3 收敛，删除永远跑不到的重建侧，并在原处留下完整理由与"将来若要启用"的清单：
+
+- 删 `ModeHSnapshotRebuildPlan`、`Validate`、`IsPositionUsable`、`TryRestoreHealth`；
+- 删三个 `RestoreFromSnapshot` 与 `_errorSwapRebuildProfileId` 身份门；
+- **采集侧保留不动**：`currentBattleSnapshot` 是 Season 落盘字段并参与 §20.2 canonical digest，
+  摘掉它是 `SCHEMA-`（老档 `VerifyDigest` 会失败），属 AGENTS.md §10 需 owner 签字；
+- `ModeHBattleSnapshotGuard` 与 `ModeHStandInGuard` 的断言**方向反转**：
+  从"必须存在"改为"必须保持缺席"，防止后来者只接回一半又造出"写好了但跑不到"。
+  两条都做过反向验证。
+
+#### 遗留
+
+**需 owner 拍板**：是否要真正启用局中重建（玩家中断后接着打，而不是重打这一场）。
+那需要一起做三件事——冻结表给 `Recovering` 加战斗态出边、恢复驱动接重建、
+重新引入这三个方法——属状态机改造，本轮不擅自决定。当前语义（重打同一场，
+资产与结算全额回滚）本身自洽且安全，玩家不会卡死也不会被吞奖。
+
+---
+### CR-2026-09-03-016：游戏内 Wiki 三处内容与代码不符（玩家可见）
+
+**严重级**：P2（一条 P2 + 两条 P3 合并立条，均为玩家可见的错误信息）
+**兼容分类**：SAFE（纯内容修订，无代码改动）
+**状态**：Fixed
+**来源**：2026-09-03 f9b83c0 以来全量改动的 WikiContent 逐条回查批
+
+#### 位置
+
+- `WikiContent/{zh,en}/system__codex.md`（"怎么打开" 小节）
+- `WikiContent/{zh,en}/system__random_events.md`（"不速之客" 小节）
+- `WikiContent/{zh,en}/system__boss_filter_and_wiki.md`（"概述" 与 "禁用 Boss"）
+- `.qoder/repowiki/zh/content/高级功能/鸭皇图鉴系统.md:47`（同一条图鉴入口错述）
+
+#### 问题
+
+**1（P2）**：图鉴页写"Wiki 书里也有一个入口，点一下直接跳到图鉴面板"。
+`CodexRuntimeModule.ToggleCodexPanel()` 全仓库**唯一**调用点是
+`Integration/Codex/CodexBookItem.cs:309` 的 `UsageBehavior`；`WikiUIManager` /
+`WikiContentManager` 里没有任何图鉴按钮，也没有注册快捷键（`_wiki_link` 分类是
+外链在线 Wiki，不是图鉴）。玩家会照着这句话在 Wiki 书里反复找一个不存在的入口。
+repowiki 同一条也写了"Wiki 书里也有一个交叉入口，点击即关书并打开图鉴面板"。
+
+**2（P3）**：随机事件页写乱入 Boss"照常掉一个战利品箱"，并把整段结论落在
+"要不要为一箱战利品多打一场计划外的 Boss"。这在**无间炼狱**里不成立：
+`OnBossBeforeSpawnLoot_LootAndRewards` 在 `infiniteHellMode` 分支无条件
+`dropBoxOnDead = false`（改发现金池），而 CR-2026-09-03-009 修复后
+`HandleBossDeath` 的本波成员校验在现金池累加**之前**早返——乱入 Boss 两头都不占，
+杀它零产出。随机事件恰好在无间炼狱触发，玩家会为一个不存在的箱子多打一场。
+
+**3（P3）**：Boss 筛选器页的生效范围停在四个模式（标准/白手起家/划地为营/血猎追击），
+且"禁用后不再出现在**任何模式**的 Boss 池中"。实际 `GetFilteredEnemyPresets()`
+的消费者还包括 `ModeG/ModeGSpawnTransaction.cs`、`RandomEvents/RandomEventCatalog.cs`
+（乱入 Boss 池）、`Integration/Codex/CodexBossCatalog.cs` 与
+`PetNest/PetNestLineageCatalog.cs`；而 Mode H（自持 `BossProfiles.json`）与
+丧尸模式（自持丧尸）**不吃**这份筛选。页面写于 Mode G / Mode H / 随机事件立项之前。
+
+#### 修复
+
+三处按代码实读改写，中英双语同改，并同步 repowiki 那一条：
+
+- 图鉴页改为"这本书就是唯一的入口"，明写没有快捷键、没有第二入口。
+- 随机事件页按模式分列产出，并加 `[warn]`：无间炼狱里它不推波、不掉箱、不进现金池。
+- 筛选器页补齐六模式 + 乱入池，列出 Mode H / 丧尸两个例外，并说明图鉴与遗种巢
+  血脉名单跟随同一池子（但**已收集条目不消失**，与 `CodexPersistence` 的实际行为一致）。
+- "禁用 Boss"一句由"任何模式"改为"上面列出的那些模式"。
+
+顺带把 7 件开发预览装备（zh+en 共 14 处）的"仅开发/调试授予可获得"改为叮当的原话
+「上头还没批出库」——`LocalizationInjector.cs:438` 已有这句游戏内台词，
+面向玩家的页面不应该宣传调试授予路径。
+
+`wiki-site/docs/` 已由 `wiki-site/scripts/sync-content.mjs` 重新生成（222 篇）。
+
+#### 遗留
+
+无。三条均为静态可证（调用点计数 / 分支早返顺序 / 消费者清单），不需要实机复验。
+
+---
+### CR-2026-09-03-012：模式H 伤病 / 战痕 / 公开异常三层内容整体不生效
+
+**严重级**：P0
+**兼容分类**：COMPAT（认证缓存失效重跑一次；无存档 schema 变更）
+**状态**：Fixed
+**来源**：2026-09-03 可达性接线批（静态确认：调用链 + 数据表交叉核对，未运行验证）
+
+#### 位置
+
+- `ModeH/ModeHCommandCertificationProbe.cs:53`（Run 只遍历 `ModeHContentCatalog.Commands`）
+- `ModeH/ModeHCommandCompatibilityRegistry.cs:334`（HasVerifiedBehavior 只查 effect 级）
+- `ModeH/ModeHProductionCertification.cs:676`（BuildCommandStatuses 只落盘口令）
+- `Assets/Data/ModeH/CommandCompatibility.json`（selfSettledEffects 只有一条）
+
+#### 问题
+
+`HasVerifiedBehavior` 要求 `_effectStatuses[(stableKey, id)] == VerifiedBehavior`，
+或 id 在 `_selfSettledEffectIds` 里。而唯一写入者只遍历 `Commands`，只写
+`<commandId>.<controlPointId>` 形状的 id。于是 `Scars.json` 的分量 ID
+（`leg.sightDistance` 等）与四个裸异常 ID（`blood`/`crowd`/`strong`/`error`）
+**永远查不到记录**，`IsEntryUsableForKey` 与 `HasVerifiedAnomalyBehavior` 恒 false。
+
+玩家侧后果：战痕一条都开不出（`PickScarOffer` 恒 `scar_offer_no_candidate`）；
+伤病永远无名（可用条目只有全自结算的 `armor`/`spirit` 两条，少于门槛 3 条，
+`PickInjury` 返回空串）；三条胆怯与 ERROR 一次都不触发。
+而选秀卡 `BuildProfileCardBody` **无条件**展示异常名与描述，玩家据此签约。
+
+另有同源的一半：`BuildBehaviorSnapshot` 零调用，`profile.behaviorStatuses` 恒空，
+`ModeHOddsController.IsVerified` 恒 false，玩家侧伤病 / 异常 / 战痕赔率项也一直计 0。
+
+#### 修复
+
+探针提取 `ProbeGroup` 后依次驱动 Commands → Injuries → Scars（适配器 `ApplyEffects`
+本就是通用入口，`ownerEntryId` 只是标签）；注册表新增条目级 `GetBehaviorEntryStatus`
+（伤病战痕不设 PartiallyVerified，§17.4）；认证报告与缓存往返一并按条目级查询
+（不改这一处，结论会在名人堂缓存往返上整批丢失，且口令层看起来毫无异常）；
+四个公开异常按 §17.6.4 line 1308 转入 `selfSettledEffects` 并重新盖章；
+`BuildBehaviorSnapshot` 重写为只产出赔率真正查询的三类，在抽签与转会签入两处填充。
+
+#### 遗留
+
+战痕 `blood_rush` 仍不可开出：唯一非自结算分量 `blood_rush.searchedEnemy` 的
+`ReadField` 读不到（守卫明令禁止加 case——点火类效果没有目标遥测，
+`_ai.searchedEnemy != null` 证明不了仍是我们设的那个目标）。战痕池实际 7 / 8。
+
+---
+### CR-2026-09-03-013：ERROR 完整互换（§17.6.5）从未被调用，且租约不让渡输入
+
+**严重级**：P1
+**兼容分类**：WIRE+
+**状态**：Fixed
+**来源**：2026-09-03 可达性接线批（零调用 grep + 调用链复核；未运行验证）
+
+#### 位置
+
+- `ModeH/ModeHCombatControl.cs:490`（TryBeginErrorSwap，零调用点）
+- `ModeH/ModeHSpectatorLease.cs:116`（DisableInput 只在 Release 恢复）
+
+#### 问题
+
+`TryBeginErrorSwap` 是唯一能把 `_swapPhase` 推离 `None` 的入口，全仓零调用点。
+`TickErrorSwap` 首行早返，于是 `CompleteSwapHandover`、`SetStandInActive(true)`、
+`ModeHStandInPerformer` 与两个 Harmony postfix 在生产里全是死代码。
+`_errorTriggered` 只被写进赛后报告——「本局触发过 ERROR」被记下来，游戏里什么都没发生。
+这是 `FIX_TRACKER.md` 2026-08-29 条目那份「战斗驱动尚未接线」清单里唯一没跟上的一项。
+
+叠加的硬阻断：观战租约在 `TryAcquire` 步骤 1 就 `InputManager.DisableInput`，
+只在 `Release` 恢复。即使接通，玩家拿到的也是一个**动不了的选手**。
+
+#### 修复
+
+`ModeHRuntimeModule_CombatFlow.TryBeginErrorSwapIfDue` 作为唯一生产调用点，
+每帧轮询 `ErrorTriggered && !ErrorSwapAttempted`；新增 `_errorSwapAttempted` 闩
+（没有它，2 秒 deadline 回滚后条件立刻重新成立，玩家会被反复夺走控制权）；
+`RestoreFromSnapshot` 补 §17.6.5 第 8 条的重建（复用同一路径，带 profileId 身份门）；
+租约新增 `YieldInputForErrorSwap` / `ReclaimInputAfterErrorSwap`（只动自己的 token，
+`_inputDisabled` 保持 true 使 Release 分支不变，最终态恒为「输入已恢复」）。
+实测入口：F3 用例 `MODE_H_ERROR_SWAP`（owner 裁决：实测放 F3，不进生产认证）。
+
+#### 遗留
+
+互换期间光标被官方锁定、铃是 uGUI 按钮，因此点不到铃（结束后仍可用、未消耗）；
+被接管选手的背包在互换期间可达（§17.6.5 只保证看台身体不碰真实仓库）。两条列入 §26.5。
+
+---
+### CR-2026-09-03-015：焚天龙皇不掉词缀熔石（挂接点漏并联）
+
+**严重级**：P2
+**兼容分类**：COMPAT
+**状态**：Fixed
+**来源**：2026-09-03 WikiContent 内容核对批（写 Boss 页掉落清单时逐条回查代码发现）
+
+#### 位置
+
+- `Integration/AffixForge/AffixForgeStoneDropService.cs:56`（TryTrack，此前全仓库唯一调用点在共享路径）
+- `Integration/DragonKing/DragonKingBoss.cs:356`（龙王手动掉落订阅，注释已写明不经共享路径）
+
+#### 问题
+
+`AffixForgeStoneDropService.TryTrack` 只在 `LootAndRewards.RegisterBossRandomLootTracking`
+里被调用。焚天龙皇不走那条路径（它自己手动订阅 `BeforeCharacterSpawnLootOnDead`），
+因此熔石 handler 从未挂到龙王身上——三个自定义 Boss 里只有它不掉词缀熔石。
+
+无报错、无日志、编译与 guard 全绿，属于典型的"接线漏一处"静默失效。
+
+同一位置的遗种巢是**已修复的先例**：`PetNestDropService.TryTrack` 早已在这里并联，
+且带注释说明原因。熔石在同一批接线（`5d2a0e3`）里加入共享路径时漏做了这一步。
+
+对照确认不受影响：后山种子挂在 `AddBossSpecialLootToLootboxCoroutine` 内，龙王经
+`OnBossBeforeSpawnLoot_LootAndRewards` 仍会走到，种子掉落正常。
+
+#### 修复
+
+`DragonKingBoss.cs` 三处并联，逐字照搬遗种巢既有写法：生成侧紧随手动掉落订阅调
+`TryTrack`，离场与死亡两个清理点各调一次 `ClearTracking`。服务内部幂等、开关关闭时
+早返，因此 dormant 契约与掉落概率均不变。
+
+`tests/AffixForgeInvariantGuard.py` 新增 `check_forge_stone_drop_wiring`，三条断言
+（共享路径挂接、龙王挂接、龙王两处退订 + TryTrack 必须紧随订阅）均经反向验证转红。
+
+#### 遗留
+
+实机 smoke 待人工：8% 概率下建议至少刷 20 次龙王再判定。
+
+---
+### CR-2026-09-03-014：ApplyRetirement 零调用点，名人堂把冠军与替补记反
+
+**严重级**：P1
+**兼容分类**：WIRE+
+**状态**：Fixed
+**来源**：2026-09-03 可达性接线批（零调用 grep + 读侧复核；未运行验证）
+
+#### 位置
+
+- `ModeH/ModeHTransferMarket.cs:261`（ApplyRetirement，零调用点）
+- `ModeH/ModeHRuntimeModule_CombatFlow.cs:906`（BuildHallOfFameRecord 读 contractMain）
+
+#### 问题
+
+退役只写在 profile.status 上，合同槽从不结算。排兵布阵不受影响
+（`GetLiveContractProfileIds` 本来就过滤 Retired，下一场照样派活人上），
+但名人堂 `BuildHallOfFameRecord` 直接读 `contract.contractMainProfileId` 认冠军、
+读 `contractSubProfileId` 填 `substituteHistory`。
+结果是：主选手中途退役、替补顶上并夺冠时，**名人堂把已退役的主选手记成冠军，
+真正打完 3-6 场的替补反被记成替补**——两个字段整个对调。
+
+#### 修复
+
+`BeginMatchSettlement` 在两次 `ResolveRestRecovery` 之后、虚拟筹码结算之前调用一次
+（`ResolveDownInjury` 是赛季里唯一写 Retired 的路径，`ResolveRestRecovery` 只能解除
+从未登场者的带伤、不可能反退役，所以合同槽结算必须排在人事步骤最后）。
+`false` 返回不需要新路由：那一支意味着两名合同选手都已退役，
+`RouteAfterIntermission` 已经会走 `FinishSeason("no_live_contracts")`，
+且 `live.Count == 0` 短路在 `EnterHallOfFame` 之前。
+
+#### 遗留
+
+晋升后替补槽被清空，「替补顶上夺冠」这一支的 `substituteHistory` 会是空的
+（冠军字段本身已修好）。要记录被晋升者需加持久字段，而该 DTO 进 canonical digest，
+加字段会让所有已存名人堂信封 VerifyDigest 失败。留待单独评估。
+
+---
 ### CR-2026-09-03-001：模式H 押品脱离仓库后阶段推进失败无回滚，真实物品永久丢失
 
 **严重级**：P0

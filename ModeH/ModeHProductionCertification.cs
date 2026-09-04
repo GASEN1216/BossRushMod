@@ -651,8 +651,15 @@ namespace BossRush
             record.spawnTimelineDigest = string.Empty;
             record.durationMs = durationMs;
             _records[stableKey] = record;
+            // 伤病门（§17.5「可用伤病少于 3 条」）**只进诊断日志，永不阻断入场**：
+            // 对玩家来说「这条 key 可用伤病不足 3 条」不是可行动信息，把它做成入场拒绝
+            // 只会在某些机型/官方版本下把整个模式关在门外（owner 裁决 2026-09-03）。
+            // durationMs 一并打出来，是判断认证预算是否还够用的实机输入。
             ModBehaviour.DevLog("[ModeH] 认证通过 " + stableKey + ",commands="
-                + ModeHCommandCompatibilityRegistry.CountUsableCommonCommands(stableKey));
+                + ModeHCommandCompatibilityRegistry.CountUsableCommonCommands(stableKey)
+                + ",injuries=" + ModeHInjuryAndScarSystem.GetUsableInjuryIds(stableKey).Count
+                + ",injuryGate=" + ModeHInjuryAndScarSystem.MeetsInjuryGate(stableKey)
+                + ",ms=" + durationMs);
         }
 
         private void RecordRejected(string stableKey, string failureReasonId, int durationMs)
@@ -673,6 +680,13 @@ namespace BossRush
             _records[stableKey] = record;
         }
 
+        /// <summary>
+        /// 落盘的逐条目实测证据。**口令、伤病与战痕三族都要进**：
+        /// 缓存往返是 BuildReport -> 名人堂四签名缓存 -> TryUseCachedReport ->
+        /// RestoreCertificationEffects，任何没进这张表的条目，在缓存命中的那一局
+        /// 就等于从没测过——伤病重新变无名、战痕重新无候选，而口令层看起来毫无异常。
+        /// 这是本子系统最难查的一类回归，务必与 RestoreCertificationEffects 成对修改。
+        /// </summary>
         private List<ModeHCommandCertificationStatusDto> BuildCommandStatuses(string stableKey)
         {
             List<ModeHCommandCertificationStatusDto> statuses =
@@ -680,27 +694,43 @@ namespace BossRush
             List<ModeHCommandSpec> commands = ModeHContentCatalog.Commands;
             for (int i = 0; commands != null && i < commands.Count; i++)
             {
-                string commandId = commands[i].CommandId;
-                ModeHCommandCertificationStatusDto dto = new ModeHCommandCertificationStatusDto();
-                dto.commandId = commandId;
-                dto.status = (int)ModeHCommandCompatibilityRegistry.GetCommandStatus(stableKey, commandId);
-                dto.effectStatuses = new List<ModeHBehaviorStatusDto>();
-                List<string> effectIds = ModeHCommandCompatibilityRegistry.GetEffectIds(commandId);
-                if (effectIds != null)
-                {
-                    for (int j = 0; j < effectIds.Count; j++)
-                    {
-                        ModeHBehaviorStatusDto effect = new ModeHBehaviorStatusDto();
-                        effect.entryId = effectIds[j];
-                        effect.entryKind = "effect";
-                        effect.status = (int)ModeHCommandCompatibilityRegistry.GetEffectStatus(
-                            stableKey, effectIds[j]);
-                        dto.effectStatuses.Add(effect);
-                    }
-                }
-                statuses.Add(dto);
+                AppendEntryStatus(statuses, stableKey, commands[i].CommandId);
+            }
+
+            // 伤病与战痕：dto.commandId 承载条目 ID（见 ModeHStateDtos 的字段注释）。
+            // 不新增 DTO 字段是刻意的——ModeHBehaviorStatusDto / ModeHCommandCertificationStatusDto
+            // 都进 canonical digest，加字段会让所有已存赛季与名人堂信封 VerifyDigest 失败。
+            List<string> behaviorEntryIds = ModeHCommandCompatibilityRegistry.GetBehaviorEntryIds();
+            for (int i = 0; i < behaviorEntryIds.Count; i++)
+            {
+                AppendEntryStatus(statuses, stableKey, behaviorEntryIds[i]);
             }
             return statuses;
+        }
+
+        /// <summary>追加一条条目级证据（含其逐分量状态）。口令与伤病 / 战痕同构。</summary>
+        private void AppendEntryStatus(
+            List<ModeHCommandCertificationStatusDto> statuses, string stableKey, string entryId)
+        {
+            if (statuses == null || string.IsNullOrEmpty(entryId)) return;
+            ModeHCommandCertificationStatusDto dto = new ModeHCommandCertificationStatusDto();
+            dto.commandId = entryId;
+            dto.status = (int)ModeHCommandCompatibilityRegistry.GetBehaviorEntryStatus(stableKey, entryId);
+            dto.effectStatuses = new List<ModeHBehaviorStatusDto>();
+            List<string> effectIds = ModeHCommandCompatibilityRegistry.GetBehaviorEffectIds(entryId);
+            if (effectIds != null)
+            {
+                for (int j = 0; j < effectIds.Count; j++)
+                {
+                    ModeHBehaviorStatusDto effect = new ModeHBehaviorStatusDto();
+                    effect.entryId = effectIds[j];
+                    effect.entryKind = "effect";
+                    effect.status = (int)ModeHCommandCompatibilityRegistry.GetEffectStatus(
+                        stableKey, effectIds[j]);
+                    dto.effectStatuses.Add(effect);
+                }
+            }
+            statuses.Add(dto);
         }
 
         private ModeHProductionCertificationDto BuildReport()

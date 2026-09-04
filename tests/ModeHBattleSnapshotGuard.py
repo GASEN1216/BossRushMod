@@ -40,14 +40,16 @@ FORBIDDEN_DTO_TYPES = [
     "Health", "Action", "Func", "InstanceID", "GetInstanceID",
 ]
 
-# §17.4 的六类 fail-closed 条件
-FAIL_CLOSED_REASONS = [
-    "snapshot_missing",
-    "snapshot_digest_mismatch",
-    "snapshot_key_not_passed",
-    "snapshot_match_context_mismatch",
-    "snapshot_position_unusable",
+# §17.4 原本的六类 fail-closed 条件全部属于「局中重建」那条链，
+# 而重建在 2026-09-03 随 §20.3 收敛被移除（理由见 ModeHBattleSnapshot.cs 的
+# 「重建校验（已随 §20.3 收敛而移除）」）。于是本 guard 的断言方向反过来：
+# 不再要求这些 reason 存在，而是要求整条重建链**保持缺席**，
+# 防止后来者只接回其中一半，重新造出"写好了但跑不到"。
+REBUILD_ABSENT_SYMBOLS = [
+    "ModeHSnapshotRebuildPlan",
+    "TryRestoreHealth",
     "snapshot_restore_readback_mismatch",
+    "snapshot_position_unusable",
 ]
 
 
@@ -110,11 +112,7 @@ def check_capture(errors):
         (r"dto\.snapshotSequence = _snapshotSequence \+ 1;", "每次采集递增序号"),
         (r'TryComputeObjectDigest\(dto, "snapshotDigest"', "摘要排除自身字段"),
         (r"public void AttachTo\(ModeHSeasonDto season\)", "随 Season 一并落盘"),
-        (r"public static ModeHSnapshotRebuildPlan Validate\(", "重建校验入口"),
-        (r"public static bool TryRestoreHealth\(", "生命重建入口"),
-        (r"healthFraction \* health\.MaxHealth", "按比例乘 MaxHealth"),
-        (r"health\.SetHealth\(target\);", "调用原版 SetHealth"),
-        (r"float readBack = ModeHCombatTelemetry\.ReadHealthFraction\(character\);", "读回核对"),
+
         (r"private static void WritePosition\(", "位置写入只取 float 分量"),
     ]
     for pattern, desc in checks:
@@ -130,10 +128,13 @@ def check_capture(errors):
     if re.search(r"void Update\(", code):
         errors.append("[Capture] 快照不得挂在 Update 每帧路径")
 
-    # 六类 fail-closed 条件
-    for reason in FAIL_CLOSED_REASONS:
-        if reason not in code:
-            errors.append("[FailClosed] 缺少条件: " + reason)
+    # 局中重建链必须保持缺席（方向与旧版相反，理由见 REBUILD_ABSENT_SYMBOLS）
+    for symbol in REBUILD_ABSENT_SYMBOLS:
+        if symbol in code:
+            errors.append(
+                "[Rebuild] 局中重建链已随 §20.3 移除，不得复活: " + symbol
+                + "（要启用必须先改 ModeHStateMachine 冻结表给 Recovering 加战斗态出边，"
+                + "属 AGENTS.md §10 需 owner 签字）")
 
     # fail-closed 一律不得判负
     if re.search(r"PlayerDefeat", code):

@@ -43,6 +43,10 @@ namespace BossRush
             ModeHLocalization.Inject();
             // 遗种巢的 BossRush_PetNest_ 键统一来自 Localization/PetNestLocalization.cs
             PetNestLocalization.Inject();
+
+            // 随机事件的 BossRush_RandomEvent_ 键：该模块绝大多数文案走内联 L10n.T，
+            // 只有商人交互名走官方按 key 查表的 _overrideInteractNameKey，必须注入。
+            RandomEventsLocalization.Inject();
             // 日报的 BossRush_DailyReport_ 键统一来自 Localization/DailyReportLocalization.cs
             DailyReportLocalization.Inject();
             // 鸭皇图鉴的 BossRush_Codex_ 键统一来自 Localization/CodexLocalization.cs
@@ -170,6 +174,12 @@ namespace BossRush
 
             // 清理遗种巢建筑系统
             CleanupPetNestBuilding();
+
+            // 清理鸭王征程公告板建筑系统
+            CleanupCampaignBoardBuilding();
+
+            // 清理竞技场后山战利品展示柜建筑系统
+            CleanupBackMountainShowcase();
             PetNestUIBridge.ResetStaticCaches();
             // 静态缓存兜底清理：星愿许愿台抽奖动画
             WishFountainRewardAnimationView.ResetStaticCaches();

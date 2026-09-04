@@ -22,6 +22,7 @@
   4. 12 条词缀 id 与定义表一一对应，本地化按 GetAll() 全量生成（AGENTS.md 4.4）。
   5. 死契流失方法内不得出现 Hurt(，且必须有 1 点血的 clamp。
   6. AffixForge 目录零新增 Harmony patch。
+  7. 熔石掉落挂接覆盖龙王的手动路径（见 check_forge_stone_drop_wiring）。
 """
 
 from pathlib import Path
@@ -37,6 +38,9 @@ REFORGE = Path("Integration/Reforge/ReforgeSystem.cs")
 LOCALIZATION = Path("Localization/AffixForgeLocalization.cs")
 ITEM_DATA = AFFIX_DIR / "AffixItemData.cs"
 FORGE_SYSTEM = AFFIX_DIR / "AffixForgeSystem.cs"
+STONE_DROP = AFFIX_DIR / "AffixForgeStoneDropService.cs"
+LOOT_TRACKING = Path("LootAndRewards/LootAndRewards.cs")
+DRAGON_KING = Path("Integration/DragonKing/DragonKingBoss.cs")
 
 PAIRED_EVENTS = (
     "Health.OnHurt",
@@ -56,6 +60,45 @@ def fail(message):
 def strip_comments(text):
     text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
     return re.sub(r"//[^\n]*", "", text)
+
+
+def check_forge_stone_drop_wiring():
+    """
+    熔石掉落 handler 只在 AffixForgeStoneDropService.TryTrack 里挂接，而 TryTrack 的调用点
+    决定了哪些 Boss 会掉熔石。
+
+    共享刷怪核心走 RegisterBossRandomLootTracking，那一条覆盖绝大多数 Boss。
+    **焚天龙皇不走那条**——它在 DragonKingBoss 里自己手动订阅 BeforeCharacterSpawnLootOnDead，
+    所以熔石必须在那条手动路径上单独并联一次，否则三个自定义 Boss 里只有龙王不掉熔石
+    （历史上遗种巢踩过同一个坑，见 tests/PetNestDropLifecycleGuard.check_dragonking_parallel）。
+
+    挂接必须成对：龙王的离场与死亡两个清理点都要退订，否则 handler 会跨局残留。
+    """
+    for path in (STONE_DROP, LOOT_TRACKING, DRAGON_KING):
+        if not path.is_file():
+            return "找不到 " + path.as_posix()
+
+    stone = strip_comments(STONE_DROP.read_text(encoding="utf-8", errors="ignore"))
+    if "internal static void TryTrack(ModBehaviour owner, CharacterMainControl character)" not in stone:
+        return "AffixForgeStoneDropService 缺少 TryTrack(ModBehaviour, CharacterMainControl)"
+    if "internal static void ClearTracking(CharacterMainControl character)" not in stone:
+        return "AffixForgeStoneDropService 缺少 ClearTracking(CharacterMainControl)"
+
+    shared = strip_comments(LOOT_TRACKING.read_text(encoding="utf-8", errors="ignore"))
+    if "AffixForgeStoneDropService.TryTrack(this, character);" not in shared:
+        return "共享刷怪路径 RegisterBossRandomLootTracking 必须并联熔石 TryTrack"
+
+    king = strip_comments(DRAGON_KING.read_text(encoding="utf-8", errors="ignore"))
+    if "AffixForgeStoneDropService.TryTrack(this, character);" not in king:
+        return "龙王手动掉落路径必须并联 AffixForgeStoneDropService.TryTrack（否则龙王不掉熔石）"
+    if king.count("AffixForgeStoneDropService.ClearTracking(") < 2:
+        return "龙王的离场与死亡两个清理点都必须并联熔石 ClearTracking"
+    if not re.search(
+            r"character\.BeforeCharacterSpawnLootOnDead \+= lootHandler;[\s\S]{0,1200}?"
+            r"AffixForgeStoneDropService\.TryTrack\(this, character\);", king):
+        return "龙王的熔石 TryTrack 必须紧随手动掉落事件订阅"
+
+    return None
 
 
 def main():
@@ -163,8 +206,13 @@ def main():
     if "bool refunded = EconomyManager.Add" not in forge or "RestoreSlots(item, result.Before)" not in forge:
         return fail("熔石扣除失败必须检查退款结果并恢复词缀快照")
 
+    # ---- 7) 熔石掉落挂接覆盖龙王的手动路径 ----
+    wiring_error = check_forge_stone_drop_wiring()
+    if wiring_error is not None:
+        return fail(wiring_error)
+
     print("AffixForgeInvariantGuard: PASS（" + str(len(ids))
-          + " 条词缀，订阅成对，AFX_ 互斥，死契保命，事务回读）")
+          + " 条词缀，订阅成对，AFX_ 互斥，死契保命，事务回读，熔石掉落覆盖龙王）")
     return 0
 
 

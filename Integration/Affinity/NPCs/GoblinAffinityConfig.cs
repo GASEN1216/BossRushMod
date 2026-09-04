@@ -99,12 +99,15 @@ namespace BossRush
                 {
                     _unlocksByLevel = new Dictionary<int, string[]>
                     {
-                        { 2, new[] { L10n.T("商店", "Shop"), L10n.T("钻石", "Diamond") } },
+                        // 物品名一律引用各自 Config 的 GetDisplayName()，不要抄字面量：
+                        // 这里的「冷淬液」曾被抄成「冷萃液」，玩家在好感面板看到的是错别字，
+                        // 而物品本体仍叫「冷淬液」，对不上号。
+                        { 2, new[] { L10n.T("商店", "Shop"), DiamondConfig.GetDisplayName() } },
                         { 3, new[] { L10n.T("10%折扣", "10% Discount") } },
-                        { 4, new[] { L10n.T("冷萃液", "Cold Quench Fluid") } },
+                        { 4, new[] { ColdQuenchFluidConfig.GetDisplayName() } },
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
                         { 6, new[] { L10n.T("15%折扣", "15% Discount") } },
-                        { 7, new[] { L10n.T("钻石戒指", "Diamond Ring") } },
+                        { 7, new[] { DiamondRingConfig.GetDisplayName() } },
                         { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount") } }
                     };
                 }

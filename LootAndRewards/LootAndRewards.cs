@@ -440,6 +440,8 @@ namespace BossRush
             bossRushLootboxPathBosses.Remove(character);
             FrostmourneBlueBossDropHandler.CancelPendingBossRushLootboxDrop(character);
             PhantomWitchScytheBossDropHandler.CancelPendingBossRushLootboxDrop(character);
+            PetNestDropService.CancelPendingBossRushLootboxDrop(character);
+            AffixForgeStoneDropService.CancelPendingBossRushLootboxDrop(character);
         }
 
         internal void RefreshBossRushLootboxPathTrackingForTrackedBosses()

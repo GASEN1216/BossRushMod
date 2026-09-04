@@ -92,6 +92,16 @@ namespace BossRush
         /// 产生编辑冲突；Felix 侧自行强转。null = Legacy。
         /// </summary>
         public object ManagedBossContext = null;
+
+        /// <summary>
+        /// 本次生成不属于当前波次（随机事件乱入等），三个自定义 Boss 的专用生成器
+        /// 据此跳过波次身份登记。
+        ///
+        /// 为什么必须有它：龙王/女巫的生成器无条件写波次身份容器，乱入时会把本波真 Boss
+        /// 顶掉——单 Boss 档真 Boss 死亡不再推波，而乱入者被销毁后卡波自检又会读到
+        /// 「无存活 Boss」而主动推波。龙裔早有同语义的 isChildProtectionSummon 先例。
+        /// </summary>
+        public bool SuppressWaveBossRegistration = false;
     }
 
     /// <summary>
@@ -788,7 +798,8 @@ namespace BossRush
                                     position,
                                     isChildProtectionSummon: false,
                                     notifyBossRushOnFailure: false,
-                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame);
+                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame,
+                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration);
                             }
                             catch (Exception dragonEx)
                             {
@@ -805,7 +816,8 @@ namespace BossRush
                                 character = await SpawnDragonKing(
                                     position,
                                     notifyBossRushOnFailure: false,
-                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame);
+                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame,
+                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration);
                             }
                             catch (Exception kingEx)
                             {
@@ -822,7 +834,8 @@ namespace BossRush
                                 character = await SpawnPhantomWitch(
                                     position,
                                     notifyBossRushOnFailure: false,
-                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame);
+                                    deferActivationUntilNextFrame: deferActivationUntilNextFrame,
+                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration);
                             }
                             catch (Exception witchEx)
                             {

@@ -27,6 +27,7 @@ RAID_MEAL_USE = Path("Integration/BackMountain/RaidMealUsageBehavior.cs")
 UNLOCKS = Path("Integration/BackMountain/BackMountainUnlocks.cs")
 CONFIG_CONST = Path("Integration/BackMountain/BackMountainConfig.cs")
 REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 # 开关接线散在 Config.cs 与提取出去的白名单文件里（同一 partial 类，
 # 拆分只为 LargeFileBudgetGuard 的 1200 行预算），断言时合并来看。
 CONFIG_SOURCES = [
@@ -57,7 +58,7 @@ def strip_comments(text):
 
 def main():
     for path in [MODULE, SHOWCASE, SHOWCASE_UI, RAID_MEAL, RAID_MEAL_USE,
-                 UNLOCKS, CONFIG_CONST, REGISTRATION] + CONFIG_SOURCES:
+                 UNLOCKS, CONFIG_CONST, REGISTRATION, SCENE] + CONFIG_SOURCES:
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
@@ -186,6 +187,13 @@ def main():
         return fail("出击餐 CanBeUsed 必须在存档忙/陌生物品/种子时拒绝消耗")
     if "SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey)" not in raid_meal:
         return fail("出击餐登记与消费必须回读核对，避免同一份餐跨局重复生效")
+
+    # 卸载接线：展示柜注入器必须在 Mod 卸载路径上被清理
+    scene = strip_comments(SCENE.read_text(encoding="utf-8", errors="ignore"))
+    if "CleanupBackMountainShowcase();" not in scene:
+        return fail(
+            SCENE.as_posix() + " 的 Mod 卸载路径缺少 CleanupBackMountainShowcase()。"
+            "展示柜注入器的静态图标引用会跨卸载残留（与遗种巢/婚礼/许愿台同款接线）。")
 
     print("BackMountainStructureGuard: PASS（单实例 + dormant + 解锁不缓存 + 冻结常量）")
     return 0

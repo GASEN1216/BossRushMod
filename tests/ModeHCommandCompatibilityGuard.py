@@ -211,6 +211,69 @@ def main():
         if "steady.coward_mitigation" not in self_settled:
             errors.append("[Data] steady.coward_mitigation 必须登记为 Mode H 自结算")
 
+        # 四个公开异常必须登记为自结算（§17.6.4 line 1308）。
+        # 它们不写任何原版 AI 控制点，没有可实测的对象，认证探针永远不会给它们
+        # 写进 _effectStatuses；不登记的话 HasVerifiedAnomalyBehavior 恒 false，
+        # 三条胆怯与 ERROR 一次都不会触发，而选秀卡照样把异常名与描述展示给玩家。
+        for anomaly_id in ("blood", "crowd", "strong", "error"):
+            if anomaly_id not in self_settled:
+                errors.append(
+                    "[Data] 公开异常 " + anomaly_id + " 必须登记为 Mode H 自结算，"
+                    "否则该异常永远不会触发（玩家却能在选秀卡上看到它）")
+
+    # ---- 内容层实测：伤病与战痕必须与口令同路认证 ----
+    probe = read_text(PROBE)
+    if probe is not None:
+        for token, why in (
+            ("ModeHContentCatalog.Injuries", "伤病必须进认证探针"),
+            ("ModeHContentCatalog.Scars", "战痕必须进认证探针"),
+        ):
+            if token not in probe:
+                errors.append("[Probe] 缺少 " + token + "：" + why)
+
+        # 同条目内重复控制点必须投影后再记账。断言**记账那一支**真的用了投影集合，
+        # 只查标识符是否出现是不够的：构建投影却仍按 effectId 记账，照样让
+        # relay_expert 因为自己盖自己而对任何 key 永久不可用（已实测这种写法能骗过弱断言）。
+        if not re.search(
+                r"if\s*\(\s*heldControlPoints\.Contains\(\s*effect\.ControlPointId\s*\)\s*\)"
+                r"[\s\S]{0,400}?RecordEffectStatus\([^)]*VerifiedBehavior", probe):
+            errors.append(
+                "[Probe] VerifiedBehavior 的记账必须按 heldControlPoints 投影判定："
+                "同一条目里两条分量写同一个控制点时（战痕 relay_expert），"
+                "后写的会盖掉先写的，按 effectId 记账会让整条战痕永久不可用")
+
+    registry_code = read_text(REGISTRY)
+    if registry_code is not None:
+        # 缓存往返：BuildCommandStatuses 与 RestoreCertificationEffects 必须成对
+        # 用条目级查询，否则伤病战痕的实测结论会在名人堂缓存往返上整批丢失，
+        # 缓存命中的那一局伤病重新无名、战痕重新无候选，而口令层看起来毫无异常。
+        # 断言 RestoreCertificationEffects **方法体内**用条目级查询。
+        # 只查标识符是否出现在文件里是不够的：它的定义就在同一个文件，
+        # 把调用换回 GetEffectIds 照样绿（已实测），而那正是丢证据的写法。
+        restore = re.search(
+            r"internal static void RestoreCertificationEffects\([\s\S]{0,2000}?\n        \}",
+            registry_code)
+        if restore is None:
+            errors.append("[Registry] 找不到 RestoreCertificationEffects 方法体")
+        elif "GetBehaviorEffectIds(" not in restore.group(0):
+            errors.append(
+                "[Registry] RestoreCertificationEffects 必须用 GetBehaviorEffectIds 反查："
+                "用 GetEffectIds 的话，伤病/战痕的实测结论会在名人堂缓存往返上被整批丢弃，"
+                "缓存命中的那一局伤病重新无名、战痕重新无候选，而口令层看起来毫无异常")
+        entry_status = re.search(
+            r"public static ModeHCommandCompatibilityStatus GetBehaviorEntryStatus\("
+            r"[\s\S]{0,1600}?\n        \}", registry_code)
+        if entry_status is None:
+            errors.append("[Registry] 缺少 GetBehaviorEntryStatus 条目级状态派生")
+        elif "PartiallyVerified" in entry_status.group(0):
+            errors.append(
+                "[Registry] 伤病与战痕不得派生 PartiallyVerified（§17.4）："
+                "任一分量不可用整条就不进抽池，不允许「收益生效、代价失效」")
+
+    cert = read_text(CERTIFICATION)
+    if cert is not None and "GetBehaviorEntryIds()" not in cert:
+        errors.append("[Certification] BuildCommandStatuses 必须把伤病/战痕条目一起落盘")
+
     if errors:
         print("ModeHCommandCompatibilityGuard: FAIL ({} errors)".format(len(errors)))
         for e in errors:

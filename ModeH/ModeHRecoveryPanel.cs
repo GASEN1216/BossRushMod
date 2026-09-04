@@ -121,18 +121,33 @@ namespace BossRush
             }
             if (actions == null || actions.Count == 0) return;
 
-            float startX = -((actions.Count - 1) * (ActionSize.x + ActionGap)) * 0.5f;
+            // 与 ModeHUIPages.CreateActions 同一纪律：超过每行上限就换行向上堆，
+            // 绝不继续往两侧铺。恢复壳是**应急界面**——「取回押品」「结束赛季」这些
+            // 按钮被推出屏幕，等于玩家在资产出问题时连补救入口都点不到。
+            // 面板宽 1280，步距 284，半宽减 SafeMargin 与半个按钮：
+            // (n-1)*142 + 130 ≤ 640 → n ≤ 4。
+            int perRow = actions.Count <= MaxSingleRowActions
+                ? actions.Count
+                : MaxSingleRowActions;
+            float step = ActionSize.x + ActionGap;
+            float startX = -((perRow - 1) * step) * 0.5f;
+            float rowStride = ActionSize.y + ActionGap;
+            int totalRows = (actions.Count + perRow - 1) / perRow;
+
             for (int i = 0; i < actions.Count; i++)
             {
                 ModeHActionData action = actions[i];
                 if (action == null) continue;
                 bool interactable = (allowActions || action.BypassReadOnly)
                     && action.Interactable && action.OnClick != null;
+                int column = i % perRow;
+                int row = i / perRow;
+                float y = ModeHUI.SafeMargin + ActionSize.y * 0.5f
+                    + (totalRows - 1 - row) * rowStride;
                 ZombieModeUIHelper.CreateButton(
                     "ModeH_RecoveryAction_" + i, surface, action.Label,
                     new Vector2(0.5f, 0f),
-                    new Vector2(startX + i * (ActionSize.x + ActionGap),
-                        ModeHUI.SafeMargin + ActionSize.y * 0.5f),
+                    new Vector2(startX + column * step, y),
                     ActionSize,
                     interactable
                         ? (action.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent)
@@ -270,6 +285,14 @@ namespace BossRush
 
         private static readonly Vector2 ActionSize = new Vector2(260f, 56f);
         private const float ActionGap = 24f;
+
+        /// <summary>
+        /// 恢复壳单行动作区的按钮数上限。
+        /// 面板宽 `ModeHUI.RecoverySize.x` = 1280，步距 260+24 = 284：
+        /// (n-1)*142 + 130 ≤ 640 - SafeMargin(48) → n ≤ 4。
+        /// 超出即换行，由 ModeHActionLayoutGuard 守卫。
+        /// </summary>
+        private const int MaxSingleRowActions = 4;
 
         #endregion
     }

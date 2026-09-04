@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -19,19 +19,6 @@ namespace BossRush
         DownOrRelay = 4
     }
 
-    /// <summary>快照重建结果。</summary>
-    internal sealed class ModeHSnapshotRebuildPlan
-    {
-        /// <summary>是否可用（false 表示必须回落到同场重开）。</summary>
-        public bool Usable;
-        /// <summary>不可用原因（六类 fail-closed 之一）。</summary>
-        public string FailureReasonId;
-        /// <summary>按 planSlotIndex 升序的待重建敌军。</summary>
-        public List<ModeHBattleEnemyStateDto> Enemies = new List<ModeHBattleEnemyStateDto>();
-        /// <summary>待重建的我方选手。</summary>
-        public ModeHBattleEntrantStateDto Entrant;
-    }
-
     /// <summary>
     /// Mode H 战场快照（设计提案 §17.4、§25.1）。
     ///
@@ -41,10 +28,9 @@ namespace BossRush
     ///   随本场下一次 Season 写入一并落盘，不额外调用 `SaveFile`；
     /// - 位置只存 `float x/y/z` 与 `rotationY`，禁止 Unity 引用、`InstanceID` 与委托；
     /// - `snapshotDigest` 参与 §20.2 的同一 canonical digest（排除自身字段）；
-    /// - 重建走**同一个** `ModeHSpawnTransaction`，按 `healthFraction * MaxHealth`
-    ///   调 `SetHealth`，续接计时、批次、口令窗口、战痕窗口与一次性判定；
-    /// - 六类 fail-closed 条件任一命中都丢弃快照、回落到“技术中止 + 同场重开”，
-    ///   **绝不判负**，也绝不声称继续了原战斗。
+    /// - **本类只负责采集，不负责重建**：技术故障统一按 §20.3 回落到同一场看盘并整场回滚，
+    ///   不存在“继续原战斗”这条路径。§17.4 原计划的就地重建从未接线、且在冻结转换表下
+    ///   结构性不可达，已于 2026-09-03 移除，理由见下方“重建校验（已随 §20.3 收敛而移除）”。
     /// </summary>
     internal sealed class ModeHBattleSnapshot
     {
@@ -239,161 +225,36 @@ namespace BossRush
 
         #endregion
 
-        #region 重建校验
+        #region 重建校验（已随 §20.3 收敛而移除）
 
-        /// <summary>
-        /// 六类 fail-closed 校验（§17.4）：
-        /// 1) 快照缺失；2) `snapshotDigest` 不符；3) 任一 stableKey 已不再 Passed；
-        /// 4) 场次/重试序号不匹配；5) 位置不可行走；6) 缺少可重建的登场选手。
-        /// 任一命中都返回 Usable=false，由调用方回落到“技术中止 + 同场重开”。
-        /// </summary>
-        public static ModeHSnapshotRebuildPlan Validate(
-            ModeHBattleSnapshotDto snapshot,
-            int expectedMatchIndex,
-            int expectedTechnicalRetrySequence,
-            ModeHSupportedMap map)
-        {
-            ModeHSnapshotRebuildPlan plan = new ModeHSnapshotRebuildPlan();
-
-            if (snapshot == null)
-            {
-                plan.FailureReasonId = "snapshot_missing";
-                return plan;
-            }
-            if (snapshot.schemaVersion != ModeHConfig.CurrentSchemaVersion)
-            {
-                plan.FailureReasonId = "snapshot_schema_mismatch";
-                return plan;
-            }
-
-            string digest, digestError;
-            if (!ModeHCanonicalDigest.TryComputeObjectDigest(
-                    snapshot, "snapshotDigest", out digest, out digestError))
-            {
-                plan.FailureReasonId = "snapshot_digest_failed:" + digestError;
-                return plan;
-            }
-            if (!string.Equals(digest, snapshot.snapshotDigest, StringComparison.Ordinal))
-            {
-                plan.FailureReasonId = "snapshot_digest_mismatch";
-                return plan;
-            }
-
-            if (snapshot.matchIndex != expectedMatchIndex
-                || snapshot.technicalRetrySequence != expectedTechnicalRetrySequence)
-            {
-                plan.FailureReasonId = "snapshot_match_context_mismatch";
-                return plan;
-            }
-
-            if (snapshot.entrant == null || string.IsNullOrEmpty(snapshot.entrant.profileId))
-            {
-                plan.FailureReasonId = "snapshot_entrant_missing";
-                return plan;
-            }
-
-            if (snapshot.activeEnemies != null)
-            {
-                for (int i = 0; i < snapshot.activeEnemies.Count; i++)
-                {
-                    ModeHBattleEnemyStateDto enemy = snapshot.activeEnemies[i];
-                    if (enemy == null || string.IsNullOrEmpty(enemy.stableKey))
-                    {
-                        plan.FailureReasonId = "snapshot_enemy_invalid";
-                        return plan;
-                    }
-                    if (!ModeHPresetRegistry.IsProductionKey(enemy.stableKey))
-                    {
-                        plan.FailureReasonId = "snapshot_key_not_passed:" + enemy.stableKey;
-                        return plan;
-                    }
-                    if (!IsPositionUsable(map, enemy.positionX, enemy.positionY, enemy.positionZ))
-                    {
-                        plan.FailureReasonId = "snapshot_position_unusable:" + enemy.stableKey;
-                        return plan;
-                    }
-                    plan.Enemies.Add(enemy);
-                }
-            }
-
-            if (snapshot.pendingBatchStableKeys != null)
-            {
-                for (int i = 0; i < snapshot.pendingBatchStableKeys.Count; i++)
-                {
-                    string key = snapshot.pendingBatchStableKeys[i];
-                    if (!ModeHPresetRegistry.IsProductionKey(key))
-                    {
-                        plan.FailureReasonId = "snapshot_pending_key_not_passed:" + key;
-                        return plan;
-                    }
-                }
-            }
-
-            if (!IsPositionUsable(map, snapshot.entrant.positionX, snapshot.entrant.positionY,
-                    snapshot.entrant.positionZ))
-            {
-                plan.FailureReasonId = "snapshot_entrant_position_unusable";
-                return plan;
-            }
-
-            plan.Enemies.Sort(CompareEnemy);
-            plan.Entrant = snapshot.entrant;
-            plan.Usable = true;
-            return plan;
-        }
-
-        /// <summary>
-        /// 位置可用性：必须落在擂台边界内。零位（采集时角色已被回收）一律拒绝。
-        /// </summary>
-        private static bool IsPositionUsable(ModeHSupportedMap map, float x, float y, float z)
-        {
-            if (map == null) return false;
-            if (x == 0f && y == 0f && z == 0f) return false;
-            return map.IsInsideArena(new Vector3(x, y, z));
-        }
-
-        /// <summary>
-        /// 生命重建：`SetHealth(healthFraction * MaxHealth)`，随后读回核对。
-        /// 读回不符即 fail-closed（§17.4 的第五类条件）。
-        /// </summary>
-        public static bool TryRestoreHealth(
-            CharacterMainControl character, float healthFraction, out string failureReasonId)
-        {
-            failureReasonId = null;
-            if (character == null)
-            {
-                failureReasonId = "snapshot_restore_character_missing";
-                return false;
-            }
-            if (healthFraction <= 0f || healthFraction > 1f)
-            {
-                failureReasonId = "snapshot_restore_fraction_invalid";
-                return false;
-            }
-            try
-            {
-                Health health = character.Health;
-                if (health == null)
-                {
-                    failureReasonId = "snapshot_restore_health_missing";
-                    return false;
-                }
-                float target = healthFraction * health.MaxHealth;
-                health.SetHealth(target);
-                float readBack = ModeHCombatTelemetry.ReadHealthFraction(character);
-                if (Mathf.Abs(readBack - healthFraction) > 0.02f)
-                {
-                    failureReasonId = "snapshot_restore_readback_mismatch";
-                    return false;
-                }
-                return true;
-            }
-            catch (Exception e)
-            {
-                failureReasonId = "snapshot_restore_exception:" + e.GetType().Name;
-                return false;
-            }
-        }
+        // 【这里原本有 Validate / IsPositionUsable / TryRestoreHealth 三个方法，2026-09-03 移除】
+        //
+        // §17.4 曾计划：技术故障后按快照**就地重建**这一场——同一个 ModeHSpawnTransaction
+        // 重新生成敌军、按 healthFraction * MaxHealth 调 SetHealth、续接计时与各类窗口。
+        // 那套代码写完了（Validate 的六类 fail-closed、位置可行走判定、生命读回核对），
+        // 但**从来没有过调用点**。
+        //
+        // 真正生效的是 §20.3：战前/战中的任何故障一律回落到**同一场看盘**
+        // （ResolveRecoveryResumeLifecycle 把 MatchBrief..MatchSettling 整个战斗族
+        // 都映射到 MatchBrief），并由 RestoreMatchReservationAndSnapshot 做整场回滚
+        // ——退还预留、还原选手档案、删除未归档结算、清空 currentBattleSnapshot。
+        //
+        // 两者不是"少接了一根线"，而是**互斥的两种恢复语义**，且冻结转换表站在 §20.3 这边：
+        // ModeHStateMachine 里 Recovering 的出边只有
+        //   EntryIntent / SceneLoading / Drafting / RosterLocked / MatchBrief /
+        //   ErrorRecoveryPending / Intermission / TransferWindow / HallOfFame / Suspended，
+        // **没有任何一条通向 MatchFighting / MatchSpawning / RelayPending**。
+        // 也就是说局中重建在状态机层面结构性不可达；要启用它必须改冻结表，
+        // 那属于 AGENTS.md §10 需要 owner 签字的"模式状态机大规模重构"。
+        //
+        // 因此这里删掉的是**永远跑不到的分支**，不是删功能：删除前后运行时行为逐字相同。
+        // 采集侧（CaptureSnapshot / AttachAndPersistBattleSnapshot / ClearFrom）保留不动：
+        // currentBattleSnapshot 是 Season 的落盘字段并参与 §20.2 canonical digest，
+        // 摘掉它是 SCHEMA- 破坏性变更（老档 VerifyDigest 会失败），同样需要 owner 签字。
+        //
+        // 将来若 owner 决定启用局中重建，要一起做的是：冻结表加 Recovering -> 战斗态的边、
+        // 恢复驱动接重建、以及重新引入这三个方法。由 ModeHSnapshotRebuildAbsenceGuard 守卫，
+        // 防止只接回其中一半又变成今天这种"写好了但跑不到"。
 
         #endregion
     }

@@ -62,7 +62,8 @@ namespace BossRush
             Vector3 position,
             bool isChildProtectionSummon = false,
             bool notifyBossRushOnFailure = true,
-            bool deferActivationUntilNextFrame = false)
+            bool deferActivationUntilNextFrame = false,
+            bool isNonWaveSpawn = false)
         {
             try
             {
@@ -106,8 +107,9 @@ namespace BossRush
                 dragonDescendantInstance = character;
                 character.gameObject.name = "BossRush_DragonDescendant";
 
-                // 孩儿护我召唤的龙裔不加入波次追踪系统，避免死亡时误触发下一波
-                if (!isChildProtectionSummon)
+                // 孩儿护我召唤的龙裔不加入波次追踪系统，避免死亡时误触发下一波。
+                // 随机事件乱入（isNonWaveSpawn）是同一语义的第二个来源。
+                if (!isChildProtectionSummon && !isNonWaveSpawn)
                 {
                     // 关键：将龙裔遗族设置为当前Boss，以便BossRush系统能够追踪死亡事件
                     currentBoss = character;

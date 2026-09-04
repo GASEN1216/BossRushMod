@@ -34,6 +34,12 @@ namespace BossRush
         private bool _acquired;
         private bool _released;
         private bool _inputDisabled;
+
+        /// <summary>
+        /// ERROR 互换期间是否已把输入让渡给玩家。与 _inputDisabled 分开：
+        /// 后者表示「本租约仍欠一次恢复」，是 Release 的判据，让渡期间必须保持 true。
+        /// </summary>
+        private bool _inputYielded;
         private bool _teamChanged;
         private bool _invincibleChanged;
         private bool _positionChanged;
@@ -349,6 +355,59 @@ namespace BossRush
                 // token 销毁失败只丢弃引用
             }
             _inputToken = null;
+        }
+
+        #endregion
+
+        #region ERROR 互换期间的输入让渡（§17.6.5）
+
+        /// <summary>
+        /// 互换生效时临时解除本租约的输入阻断，让玩家真的能操纵被接管的选手。
+        ///
+        /// 【为什么必须有这一步】TryAcquire 的步骤 1 就 DisableInput 了，而且只在
+        /// Release / RollbackTo 里恢复。不让渡的话，接通后的 ERROR 互换会把一个
+        /// **动不了的选手**交到玩家手上，§17.6.5 整条退化成一次镜头切换。
+        ///
+        /// 【为什么不破坏 Release 的对称性】只操作本租约自己的 token，而
+        /// InputManager.blockInputSources 是 HashSet，同一 token 的增删幂等可重复。
+        /// _inputDisabled 保持 true，Release 照走同一条恢复分支（届时是 no-op），
+        /// 最终态恒为「输入已恢复」——安全方向。
+        ///
+        /// 让渡失败只意味着玩家仍动不了，绝不升级为技术中止。
+        /// </summary>
+        public void YieldInputForErrorSwap()
+        {
+            if (_inputYielded) return;
+            try
+            {
+                if (IsInputManagerAlive() && _inputToken != null)
+                {
+                    InputManager.ActiveInput(_inputToken);
+                    _inputYielded = true;
+                }
+            }
+            catch (Exception)
+            {
+                // instance 已消失：玩家仍动不了，但比赛与还原链不受影响
+            }
+        }
+
+        /// <summary>互换结束后立刻收回输入阻断。幂等，可被释放路径重复调用。</summary>
+        public void ReclaimInputAfterErrorSwap()
+        {
+            if (!_inputYielded) return;
+            _inputYielded = false;
+            try
+            {
+                if (IsInputManagerAlive() && _inputToken != null)
+                {
+                    InputManager.DisableInput(_inputToken);
+                }
+            }
+            catch (Exception)
+            {
+                // 收不回来时看台身体可动，但它是中立无敌的，不影响比赛结算
+            }
         }
 
         #endregion

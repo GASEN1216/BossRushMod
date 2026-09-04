@@ -87,8 +87,12 @@ namespace BossRush
                 // 未在这里准备会出现“目录有条目但实体查找失败”的实机空转。
                 EnsureCharacterPresetsCacheReady();
 
-                // options 一律不传（= null = 完整 Legacy 行为）：自动吃当局变异词条与
-                // Boss 掉落追踪，与在场敌人口径一致。
+                // options 只设「非本波生成」这一项，其余保持 Legacy 默认：乱入 Boss 照常
+                // 吃当局变异词条与掉落追踪，与在场敌人口径一致。
+                //
+                // 为什么必须设：抽中三个自定义 Boss 时 SpawnCore 会路由到它们的专用生成器，
+                // 而那些生成器会写波次身份容器。本文件头部承诺「绝不写入任何波次容器」，
+                // 但写入发生在生成器体内，桥自己挡不住——只能经 options 告诉它们别登记。
                 EnemySpawnCoreResult result = await SpawnEnemyCoreInternalAsync(
                     preset,
                     position,
@@ -98,7 +102,8 @@ namespace BossRush
                     skipDragonDescendant: false,
                     skipDragonKing: false,
                     deferActivationUntilNextFrame: true,
-                    onCommit: (spawnContext) => ConfigureRandomEventIntruderBoss(spawnContext, position));
+                    onCommit: (spawnContext) => ConfigureRandomEventIntruderBoss(spawnContext, position),
+                    options: new EnemySpawnCoreOptions { SuppressWaveBossRegistration = true });
 
                 if (result == null || !result.success || result.context == null || result.context.character == null)
                 {

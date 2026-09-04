@@ -257,7 +257,62 @@ namespace BossRush
         private static bool ShouldDeferToBossRushLootbox(CharacterMainControl boss)
         {
             ModBehaviour instance = ModBehaviour.Instance;
-            return instance != null && instance.ShouldDeferBlueBossExtraDropToBossRushLootbox(boss);
+            return instance != null && instance.ShouldDeferExtraBossDropToModPath(boss);
+        }
+
+        /// <summary>
+        /// 无间炼狱专用：那条分支既不建 BossRush 奖励箱、又已把官方 characterItem 箱关掉，
+        /// 额外掉落无处可去，只能走无间炼狱自己的世界掉落通道
+        /// （里程碑现金用的就是 Item.Drop，见 LootAndRewardsInfiniteHell）。
+        /// 幂等：取出即从 pending 移除。
+        /// </summary>
+        internal static void TryConsumePendingAsWorldDrop(
+            CharacterMainControl boss, UnityEngine.Vector3 position)
+        {
+            PruneInvalidHooks();
+
+            if (boss == null)
+            {
+                return;
+            }
+
+            if (!pendingBossRushLootboxDrops.Remove(boss))
+            {
+                return;
+            }
+
+            Item rewardItem = null;
+            try
+            {
+                rewardItem = ItemAssetsCollection.InstantiateSync(FrostmourneIds.WeaponTypeId);
+                if (rewardItem == null)
+                {
+                    ModBehaviour.DevLog("[Frostmourne] 世界掉落失败：无法实例化霜之哀伤");
+                    return;
+                }
+
+                UnityEngine.Vector3 dir = UnityEngine.Random.insideUnitSphere.normalized;
+                rewardItem.Drop(position, true, dir, UnityEngine.Random.Range(30f, 60f));
+                rewardItem = null;
+                ModBehaviour.DevLog("[Frostmourne] Blue Boss 无间炼狱额外掉落（世界掉落）");
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Frostmourne] 世界掉落失败: " + e.Message);
+            }
+            finally
+            {
+                try
+                {
+                    if (rewardItem != null)
+                    {
+                        rewardItem.DestroyTree();
+                    }
+                }
+                catch
+                {
+                }
+            }
         }
 
         private static bool TryAddFrostmourneToInventory(Inventory inventory, string logPrefix)

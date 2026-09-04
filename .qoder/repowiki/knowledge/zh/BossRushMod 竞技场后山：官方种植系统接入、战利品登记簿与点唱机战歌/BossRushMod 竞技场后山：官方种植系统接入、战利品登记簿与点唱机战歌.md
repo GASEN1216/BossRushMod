@@ -176,3 +176,31 @@ source_files:
 出击餐在基地、非种子、已识别且 `SavesSystem.IsSaving == false` 时才允许使用；登记与消费都
 回读核对。进入下一局时先把登记持久清零，成功后才挂 modifier，清零失败则本局不消耗也不生效，
 避免同一份餐跨多局重复生效。旧档陌生 ID 会给玩家明确提示并尝试清除。
+
+## 2026-09-04 焚心椒的换弹加成用了不存在的 stat key
+
+兼容分类：COMPAT。Finding CR-2026-09-04-008。
+
+`RaidMealService` 给焚心椒挂的是 `ZombieModeStatNames.ReloadSpeedMultiplier`，
+但 `"ReloadSpeedMultiplier"` 在官方反编译源码里**零命中**——把
+`ZombieModeStatNames` 全部 12 个常量逐个校验，只有这一个不存在。
+官方真名是 `ReloadSpeedGain`（`CharacterMainControl` 的 `reloadSpeedGainHash`），
+而且早就定义在同一个文件里、丧尸模式的利弊与突变路径用的就是正确的那个。
+`RuntimeStatModifierTracker.TryAdd` 走 `GetStat` 拿到 null 后静默丢弃，
+所以「焚心椒：换弹速度 +10%」这条从来没有生效过。
+
+同一行上方的 `MoveSpeed` 也是死 key（Animator 参数名），
+只是效果被并列的 `RunSpeed`/`WalkSpeed` 兜住了，删掉该行无行为变化。
+
+修复：改用 `ReloadSpeedGain`，删掉幽灵常量本身与死 `MoveSpeed` 调用。
+同一个幽灵 key 还让丧尸模式的「换弹速度」属性奖励一起失效，一并修正。
+保留 `ZombieModeStatNames.MoveSpeed` 常量——`ZombieModeProductionReadinessGuard`
+要求它存在，丧尸模式另有两处带 Walk/Run 扇出兜底的用法仍在用。
+
+回归守卫：新增 `tests/StatKeyExistenceGuard.py`，把 `ZombieModeStatNames` 每个常量值
+对 `鸭科夫源码/` 做存在性校验（零命中即红），并单独判「MoveSpeed 挂给 Stat Modifier
+却没有 Walk/Run 兜底」（`Animator.StringToHash("MoveSpeed")` 这类正确用法放行）。
+这条守卫落地当天就自动抓出了 Mode F Boss 加速的同类缺陷（CR-2026-09-04-009）。
+
+章节来源：`Integration/BackMountain/RaidMealService.cs`、`ZombieMode/ZombieModeTuning.cs`、
+`tests/StatKeyExistenceGuard.py`。

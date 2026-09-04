@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "gameBuildSignature": "",
   "modBuildSignature": "",
-  "contentSignature": "5ffd8374af8cc629dfe98efaac31c9dd19601b772298c36321ea58f1d1617e81",
+  "contentSignature": "dd9927fa2756cc40d49b12a6eb03e62b69d513a9f3840d525ad45bef144ea80d",
   "documentId": "modeh_command_compatibility",
   "statusLegend": {
     "0": "Unknown - must be measured by ModeHProductionCertification at runtime",
@@ -12,8 +12,13 @@
     "4": "PartiallyVerified (command level only)"
   },
   "matrixKey": "(gameBuildSignature, modBuildSignature, contentCatalogSignature, stableKey, commandId, effectId)",
+  "_comment_selfSettled": "Mode H 自结算条目：不写原版 AI 控制点，没有可实测对象，对任何 stable key 恒为 VerifiedBehavior。四个裸 ID 是公开异常（§17.6.4 line 1308：三种胆怯恒 Verified；error 同列为 2026-09-03 owner 裁决，互换自带 2 秒 deadline + 完整回滚已 fail-safe，实测改由 F3 验收覆盖）。",
   "selfSettledEffects": [
-    "steady.coward_mitigation"
+    "blood",
+    "crowd",
+    "error",
+    "steady.coward_mitigation",
+    "strong"
   ],
   "effectCatalog": [
     {

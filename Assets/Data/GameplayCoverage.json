@@ -206,9 +206,12 @@
       "automatic": [
         "MODE_H_FIRST_CERTIFICATION",
         "MODE_H_CACHE_HIT",
-        "MODE_H_STARTER_KITS"
+        "MODE_H_STARTER_KITS",
+        "MODE_H_ERROR_SWAP"
       ],
-      "wiki": [],
+      "wiki": [
+        "mode__mode_h"
+      ],
       "manual": [
         {
           "id": "M_MODE_H_01",
@@ -305,7 +308,9 @@
         "DATA_CAMPAIGN_JSON",
         "CAMPAIGN_FINAL_BOSS"
       ],
-      "wiki": [],
+      "wiki": [
+        "system__campaign"
+      ],
       "manual": [
         {
           "id": "M_CAMPAIGN_01",
@@ -341,7 +346,9 @@
         "BACKMOUNTAIN_RAID_MEAL",
         "BACKMOUNTAIN_UNLOCK_GATE"
       ],
-      "wiki": [],
+      "wiki": [
+        "system__back_mountain"
+      ],
       "manual": [
         {
           "id": "M_GARDEN_01",

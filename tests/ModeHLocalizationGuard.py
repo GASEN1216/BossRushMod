@@ -243,6 +243,43 @@ def main():
             continue
         errors.append("[Missing] 代码使用了未注入的 key: " + PREFIX + suffix)
 
+    # 双前缀反查。
+    # 历史 bug：ModeHOddsController.Add 已把完整 key 写进 entry.LabelKey，
+    # MatchFlow:933 又拼一次 → BossRush_ModeH_BossRush_ModeH_Odds_xxx，
+    # 18 条赔率分量标签全部显示星号 raw key。
+    # 上面的 `used` 只收字面量，运行时拼接进不了集合，所以必须单独反查。
+    #
+    # 判据：裸后缀一定是字面量、局部变量或参数（`key`、`labelSuffix`）；
+    # 而**成员读取**（`entry.LabelKey`、`choice.NameKey`）拿到的是 DTO 里
+    # 已经拼好前缀的完整 key，再拼一次必然双前缀。故只禁成员读取。
+    # `Resolve*(...)` 这类显式解析函数按约定返回裸后缀，放行。
+    for name in sorted(os.listdir(MODEH_DIR)):
+        if not name.endswith(".cs"):
+            continue
+        text = strip_cs_comments(read_text(os.path.join(MODEH_DIR, name)) or "")
+        for match in re.finditer(
+                r'ModeHConfig\.LocalizationKeyPrefix\s*\+\s*([A-Za-z_][A-Za-z0-9_.\(\)]*)', text):
+            operand = match.group(1).strip()
+            if re.match(r'^Resolve[A-Za-z0-9_]*\(', operand):
+                continue
+            if "." not in operand:
+                # 局部变量 / 参数：按约定持裸后缀
+                continue
+            errors.append(
+                "[DoublePrefix] {} 把 LocalizationKeyPrefix 拼到了成员读取上: {}"
+                "（DTO 里的 *Key 字段存的是完整 key，直接 L10n.T(它) 即可）".format(
+                    name, operand[:60]))
+
+    # 生产侧契约：LabelKey 必须由 ModeHOddsController 拼好完整前缀。
+    # 这条和上面那条互为对偶——一旦有人把生产侧改成写裸后缀，
+    # 消费侧的 L10n.T(entry.LabelKey) 就会变成查裸 key，这里会立刻报出来。
+    odds_controller = strip_cs_comments(
+        read_text(os.path.join(MODEH_DIR, "ModeHOddsController.cs")) or "")
+    if "entry.LabelKey = ModeHConfig.LocalizationKeyPrefix + labelSuffix;" not in odds_controller:
+        errors.append(
+            "[DoublePrefix] ModeHOddsController 必须在 Add() 里给 LabelKey 拼上完整前缀"
+            "（消费侧按完整 key 直接 L10n.T，两边必须同时改）")
+
     if errors:
         print("ModeHLocalizationGuard: FAIL ({} errors)".format(len(errors)))
         for e in errors:

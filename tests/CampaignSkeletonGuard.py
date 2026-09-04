@@ -29,6 +29,9 @@ PROGRESS = Path("Campaign/CampaignProgressService.cs")
 UNLOCKS = Path("Campaign/CampaignFacilityUnlocks.cs")
 TUNING = Path("Campaign/CampaignTuning.cs")
 REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
+SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
+PLAYER = Path("Campaign/CampaignDialoguePlayer.cs")
+FINAL_BOSS = Path("Campaign/CampaignFinalBoss.cs")
 # 开关接线散在 Config.cs 与提取出去的白名单文件里（同一 partial 类，
 # 拆分只为 LargeFileBudgetGuard 的 1200 行预算），断言时合并来看。
 CONFIG_SOURCES = [
@@ -58,7 +61,8 @@ def strip_comments(text):
 
 
 def main():
-    for path in [MODULE, PROGRESS, UNLOCKS, TUNING, REGISTRATION] + CONFIG_SOURCES:
+    for path in [MODULE, PROGRESS, UNLOCKS, TUNING, REGISTRATION,
+                 SCENE, PLAYER, FINAL_BOSS] + CONFIG_SOURCES:
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
@@ -184,7 +188,33 @@ def main():
     if "reward_rollback" not in progress or "CloneSaveData" not in progress:
         return fail("交付写失败必须撤回本次奖金，且不得直接改写当前缓存对象")
 
-    print("CampaignSkeletonGuard: PASS（单实例 + dormant + 冻结常量 + 契约 fail-closed）")
+    # ---- 7) 卸载接线：建筑注入器必须在 Mod 卸载路径上被清理 ----
+    scene = strip_comments(SCENE.read_text(encoding="utf-8", errors="ignore"))
+    if "CleanupCampaignBoardBuilding();" not in scene:
+        return fail(
+            SCENE.as_posix() + " 的 Mod 卸载路径缺少 CleanupCampaignBoardBuilding()。"
+            "公告板注入器的静态图标引用会跨卸载残留（与遗种巢/婚礼/许愿台同款接线）。")
+
+    # ---- 8) 终章冠军独白：立绘必须真的被用上，且宿主不得与中间人共用 ----
+    player = strip_comments(PLAYER.read_text(encoding="utf-8", errors="ignore"))
+    boss = strip_comments(FINAL_BOSS.read_text(encoding="utf-8", errors="ignore"))
+    if "CampaignAssetCache.GetChampionPortrait()" not in player:
+        return fail(
+            "冠军立绘（Assets/ui/Campaign/campaign_portrait_champion.png）又没有调用方了。"
+            "它是已随包发布的美术资产，零调用 = 玩家永远看不到。")
+    if "_championActorHost" not in player:
+        return fail(
+            "冠军对话 actor 必须有独立宿主 GameObject。DialogueActorFactory 的缓存按 "
+            "GameObject 索引，Create 命中缓存时会忽略传入的 actorId/nameKey/portrait，"
+            "与中间人共用宿主会让冠军顶着中间人的名字和立绘说话。")
+    if "PlayFinalBossPrologueAsync" not in boss:
+        return fail("决战开战路径没有播冠军独白。终章是玩家唯一一次听冠军说话的地方。")
+    if "StartCampaignFinalBossAsync(runId).Forget();" not in boss:
+        return fail(
+            "F3 验收路径（DebugStartCampaignFinalBossForValidation）必须绕过独白直连生成，"
+            "否则对话要等玩家点击才 resolve，RunCampaignFinalBoss 会一路等到超时记 spawn_timeout。")
+
+    print("CampaignSkeletonGuard: PASS（单实例 + dormant + 冻结常量 + 契约 fail-closed + 卸载接线 + 终章独白）")
     return 0
 
 

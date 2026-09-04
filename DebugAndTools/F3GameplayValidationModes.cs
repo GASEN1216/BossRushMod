@@ -128,6 +128,9 @@ namespace BossRush
             {
                 if (drafting) yield return RunModeHStarterKits(map);
                 else Record("MODE_H_STARTER_KITS", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
+                // ERROR 完整互换实测（§17.6.5 的逐角色 smoke 挪到这里，owner 2026-09-03）
+                if (drafting) yield return RunModeHErrorSwap(map);
+                else Record("MODE_H_ERROR_SWAP", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
             }
             bool archived = drafting && _host.ModeHRuntime.DebugFinishValidationSeason();
             bool intentCleared = !BossRushMapSelectionHelper.HasPendingModeHEntryIntent();

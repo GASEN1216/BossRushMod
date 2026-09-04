@@ -124,6 +124,7 @@ echo(Localization\LocalizationInjector_NpcUiAndItems.cs
 echo(Localization\EquipmentLocalization.cs
 echo(Localization\ModeHLocalization.cs
 echo(Localization\PetNestLocalization.cs
+echo(Localization\RandomEventsLocalization.cs
 echo(Localization\DailyReportLocalization.cs
 echo(Common\Lifecycle\IBossRushRuntimeModule.cs
 echo(Common\Lifecycle\SceneRuntimeContext.cs
@@ -172,6 +173,7 @@ echo(DebugAndTools\F3GameplayValidationCoverage.cs
 echo(DebugAndTools\F3GameplayValidationItems.cs
 echo(DebugAndTools\F3GameplayValidationZombie.cs
 echo(DebugAndTools\F3GameplayValidationModeHKits.cs
+echo(DebugAndTools\F3GameplayValidationModeHErrorSwap.cs
 echo(DebugAndTools\F3GameplayValidationScenes.cs
 echo(DebugAndTools\F3GameplayValidationStages.cs
 echo(DebugAndTools\F3GameplayValidationModes.cs
@@ -416,6 +418,7 @@ echo(ModeH\ModeHUI.cs
 echo(ModeH\ModeHUIPages.cs
 echo(ModeH\ModeHVirtualStakeController.cs
 echo(ModeH\ModeHWarehouseStakeJournal.cs
+echo(ModeH\ModeHWarehouseStakeJournalStorageBuffer.cs
 echo(ModeF\ModeFBounty_EquipmentAndLoot.cs
 echo(ModeF\ModeFRespawn.cs
 echo(ModeF\ModeFExtraction.cs

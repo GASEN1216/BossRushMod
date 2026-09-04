@@ -254,6 +254,9 @@ namespace BossRush
         {
             if (_commandsClosed || _runState == null) return;
             if (_runState.Lifecycle != ModeHLifecycle.MatchFighting || _combatControl == null) return;
+            // 观战租约的拍铃门：ReleaseCombatRuntimeObjects 已经关门时不再受理。
+            // 租约缺失不阻断（租约本来就允许取不到，那时按旧口径只靠上面两道门）。
+            if (_spectatorLease != null && !_spectatorLease.IsBellAccepting) return;
             RefreshBattleSnapshotContext();
             string failureReasonId;
             if (!_combatControl.TryRingBell(_battleSnapshotContext, out failureReasonId))
@@ -495,6 +498,7 @@ namespace BossRush
             }
 
             EnsureMatchPlan();
+            AppendReconLinesAndActions(page);
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_LockIn"),
@@ -502,6 +506,91 @@ namespace BossRush
                 OnClick = delegate { EnterLoadoutEditing(); },
             });
             return page;
+        }
+
+        /// <summary>
+        /// 免费侦察的看盘页呈现（§17.5）。
+        ///
+        /// 此前 `ModeHEncounterPlanner.TryApplyRecon` 与四条 `reconChoices` 数据、
+        /// `Button_Recon` / `Recon_Consumed` 文案全都写好了，但**没有任何按钮调用它**，
+        /// 于是「每场一次免费侦察」这条设计在游戏里根本不存在：玩家只能盲押。
+        ///
+        /// 呈现口径：
+        /// - 未用过：先出一行「免费侦察一次」当小标题，再逐条列出四个可选项；
+        /// - 已用过：只回显揭示了哪一项，不再出按钮（TryApplyRecon 自己也会以
+        ///   `recon_already_consumed` 拒绝，这里是让玩家看得见，而不是靠点了才知道）。
+        ///
+        /// `nameKey` 在 ThreatPlans.json 里存的是**完整** key（`BossRush_ModeH_Recon_*`），
+        /// 不要再拼 LocalizationKeyPrefix，否则会变成 BossRush_ModeH_BossRush_ModeH_xxx。
+        /// </summary>
+        private void AppendReconLinesAndActions(ModeHPageContent page)
+        {
+            if (page == null || _season == null) return;
+            ModeHMatchPlanDto plan = _season.currentMatchPlan;
+            if (plan == null) return;
+
+            if (!string.IsNullOrEmpty(plan.reconChoiceId))
+            {
+                string line = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Recon_Consumed");
+                string revealKey = plan.publicSummary != null ? plan.publicSummary.reconRevealKey : null;
+                if (!string.IsNullOrEmpty(revealKey))
+                {
+                    line += L10n.T("：", ": ") + L10n.T(revealKey);
+                }
+                // reconResult 是「成员顺序」「第二装备」两项的文本结果，另两项直接写进
+                // publicSummary、由赔率页的公开摘要呈现，这里不重复展示。
+                if (!string.IsNullOrEmpty(plan.reconResult))
+                {
+                    line += "　" + plan.reconResult;
+                }
+                page.Lines.Add(line);
+                return;
+            }
+
+            List<ModeHReconChoiceSpec> choices = ModeHContentCatalog.ReconChoices;
+            if (choices == null || choices.Count == 0) return;
+
+            page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Recon"));
+            for (int i = 0; i < choices.Count; i++)
+            {
+                ModeHReconChoiceSpec choice = choices[i];
+                if (choice == null || string.IsNullOrEmpty(choice.ReconChoiceId)) continue;
+                // 闭包不能捕获循环变量，否则四个按钮点下去都是最后一条（照 SelectSettlementReward 的写法）
+                string selectedReconId = choice.ReconChoiceId;
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T(choice.NameKey),
+                    OnClick = delegate { ApplyRecon(selectedReconId); },
+                });
+            }
+        }
+
+        /// <summary>
+        /// 免费侦察的**唯一生产调用点**。只在看盘页（MatchBrief）允许，
+        /// 因为揭示结果要在整备与下注之前对玩家可见才有决策价值。
+        ///
+        /// 侦察会改写 publicSummary 与 planDigest，属于赛季状态变更，必须落盘；
+        /// 落盘失败不回滚——TryApplyRecon 已经把结果写进内存中的 plan，
+        /// 这里再退回去反而会让「按钮点了没反应」，而侦察本身不涉及任何资产。
+        /// </summary>
+        private void ApplyRecon(string reconChoiceId)
+        {
+            if (_season == null || _runState == null) return;
+            if (_runState.Lifecycle != ModeHLifecycle.MatchBrief) return;
+
+            ModeHMatchPlanDto plan = _season.currentMatchPlan;
+            if (plan == null) return;
+
+            string failureReasonId;
+            if (!ModeHEncounterPlanner.TryApplyRecon(plan, reconChoiceId, out failureReasonId))
+            {
+                ModBehaviour.DevLog("[ModeH] 侦察未生效: "
+                    + (failureReasonId != null ? failureReasonId : "unknown"));
+                return;
+            }
+
+            TryPersistSeason("recon_applied");
+            RouteUiForLifecycle(_runState.Lifecycle);
         }
 
         /// <summary>
@@ -676,7 +765,10 @@ namespace BossRush
                     int position = selectable[i];
                     bool isSelected = selected.Contains(position);
                     string label = ModeHRealStakeService.DescribePosition(position);
-                    page.Actions.Add(new ModeHActionData
+                    // 走 RealStakeSlots 而不是 Actions：押品格数 = 仓库前 40 格的非空格数，
+                    // 无上界；塞进底部动作行会把单行居中平铺撑出屏幕，把排在最后的
+                    // 「锁盘」推到点不到的地方，玩家就卡在这个时停模态页了。
+                    page.RealStakeSlots.Add(new ModeHActionData
                     {
                         Label = (isSelected ? "● " : "○ ") + label,
                         // 已选中的永远可点（要能取消）；未选中的在满员时置灰
@@ -841,7 +933,11 @@ namespace BossRush
                 {
                     ModeHOddsBreakdownEntry entry = _currentOddsQuote.Breakdown[i];
                     if (entry == null) continue;
-                    page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + entry.LabelKey)
+                    // LabelKey 在 ModeHOddsController.Add 里已经拼过 LocalizationKeyPrefix，
+                    // 存的是**完整** key；这里再拼一次会变成
+                    // BossRush_ModeH_BossRush_ModeH_Odds_xxx，18 条分量标签全显示星号 raw key。
+                    // 同一个坑在本文件 :523 已有告警，正确写法见 :562。
+                    page.Lines.Add(L10n.T(entry.LabelKey)
                         + "  " + (entry.Value >= 0 ? "+" : string.Empty) + entry.Value);
                 }
             }

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -13,6 +13,11 @@ namespace BossRush
         public string StableKey;
         /// <summary>敌军的计划槽位序号；我方为 -1。</summary>
         public int PlanSlotIndex = -1;
+        /// <summary>
+        /// 敌军所属的入场批次序号（0 起）；我方与未知为 -1。
+        /// 供战痕分量的 `first_wave_alive` 条件判断"第一批是否还有活口"。
+        /// </summary>
+        public int BatchIndex = -1;
         /// <summary>是否为敌军。</summary>
         public bool IsEnemy;
         /// <summary>是否为本场接力者。</summary>
@@ -24,8 +29,15 @@ namespace BossRush
     /// <summary>Mode H 遥测接收端（由 ModeHCombatTelemetry 实现）。</summary>
     internal interface IModeHTelemetrySink
     {
-        /// <summary>一次受伤。attacker 可为空。</summary>
-        void OnParticipantHurt(ModeHParticipantRef target, ModeHParticipantRef attacker, float damageValue);
+        /// <summary>
+        /// 一次受伤。attacker 可为空。
+        /// `fromWeaponItemID` 透传官方 `DamageInfo.fromWeaponItemID`（0 表示不可归因），
+        /// 供「首次受到远程伤害」这类按伤害来源判定的战痕使用——
+        /// 不透传的话 longshot_memory 就没有任何可用信号（历史上它因此从未触发）。
+        /// </summary>
+        void OnParticipantHurt(
+            ModeHParticipantRef target, ModeHParticipantRef attacker, float damageValue,
+            int fromWeaponItemID);
 
         /// <summary>一次死亡。killer 可为空。</summary>
         void OnParticipantDead(ModeHParticipantRef target, ModeHParticipantRef killer);
@@ -277,7 +289,11 @@ namespace BossRush
                 if (!_participants.TryGetValue(id, out target)) return; // 看台身体与旧场对象没有登记
 
                 if (!TryConsumeToken("hurt", id, info)) return;
-                if (_sink != null) _sink.OnParticipantHurt(target, ResolveAttacker(info), info.damageValue);
+                if (_sink != null)
+                {
+                    _sink.OnParticipantHurt(
+                        target, ResolveAttacker(info), info.damageValue, info.fromWeaponItemID);
+                }
             }
             catch (Exception e)
             {

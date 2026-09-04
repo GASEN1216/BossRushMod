@@ -153,12 +153,17 @@ namespace BossRush
         /// 再改 localScale：localScale 会缩放碰撞体，而属性/AI 初始化会缓存碰撞器半径，
         /// 事后缩放会让命中判定与模型口径不一致。
         /// </param>
+        /// <param name="isNonWaveSpawn">
+        /// 本次生成不属于当前波次（随机事件乱入等），true 时跳过波次身份登记。
+        /// 形态照龙裔的 isChildProtectionSummon。
+        /// </param>
         public async UniTask<CharacterMainControl> SpawnPhantomWitch(
             Vector3 position,
             bool notifyBossRushOnFailure = true,
             bool deferActivationUntilNextFrame = false,
             PhantomWitchDeathPresentation deathPresentation = PhantomWitchDeathPresentation.Standard,
-            float extraModelScale = 1f)
+            float extraModelScale = 1f,
+            bool isNonWaveSpawn = false)
         {
             CharacterMainControl character = null;
             PhantomWitchAbilityController abilities = null;
@@ -203,13 +208,22 @@ namespace BossRush
 
                 character.gameObject.name = "BossRush_PhantomWitch";
 
-                // 设置为当前Boss
-                currentBoss = character;
-
-                // 多Boss模式支持
-                if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
+                // 非本波生成（随机事件乱入）不登记波次身份：写进去会顶掉本波真 Boss，
+                // 导致真 Boss 死亡不推波，且乱入者销毁后卡波自检会误判为「无存活 Boss」。
+                if (!isNonWaveSpawn)
                 {
-                    currentWaveBosses.Add(character);
+                    // 设置为当前Boss
+                    currentBoss = character;
+
+                    // 多Boss模式支持
+                    if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
+                    {
+                        currentWaveBosses.Add(character);
+                    }
+                }
+                else
+                {
+                    DevLog("[PhantomWitch] 非本波生成：跳过波次追踪系统注册");
                 }
 
                 // 创建独立预设副本

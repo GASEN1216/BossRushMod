@@ -128,8 +128,17 @@ def find_reset_calls_on_ondestroy_path(all_files: dict) -> set:
             called_class = call_match.group(1)
             call_pos = call_match.start()
 
-            # 确定调用所在的方法：向前搜索最近的方法声明
-            search_start = max(0, call_pos - 5000)
+            # 确定调用所在的方法：向前搜索最近的方法声明。
+            #
+            # 窗口 2026-09-03 由 5000 放宽到 12000：卸载漏斗
+            # OnDestroy_Integration 本身就是一个很长的方法（它的职责就是把几十个
+            # 子系统的清理串起来），末尾的调用离方法声明已经 5169 字符。
+            # 旧窗口下，只要往漏斗中段再插一行清理，末尾那些调用就会集体
+            # 「找不到所属方法」而被判成未在 OnDestroy 路径上——纯粹是启发式的悬崖，
+            # 与运行时行为无关（调用一直都在漏斗里）。
+            # 放宽的是**归属识别的射程**，不是不变式本身：
+            # 断言仍然是「必须在某个 OnDestroy 路径方法内被调用」。
+            search_start = max(0, call_pos - 12000)
             preceding = text[search_start:call_pos]
 
             method_sigs = list(METHOD_DECL_PATTERN.finditer(preceding))

@@ -328,6 +328,37 @@ def main():
     check_callers(errors, sources, "ModeHRecoveryPanel",
                   ["ModeH/ModeHRecoveryPanel.cs"], "恢复壳")
 
+    # ERROR 完整互换（§17.6.5）：没有调用方 = _swapPhase 永远停在 None，
+    # TickErrorSwap 首行早返，看台表演与两个 Harmony postfix 全是死代码，
+    # 而选秀卡照样把「控制权异常」当卖点展示给玩家。2026-09-03 修复前正是如此。
+    # owner_prefixes 必须带上 DebugAndTools/：F3 用例调用它是验收，不是生产接线，
+    # 不能让测试自己满足「有调用方」这条断言。
+    # 带点号是刻意的：裸 "TryBeginErrorSwap" 会被同文件里的包装方法名
+    # TryBeginErrorSwapIfDue 当成调用方，删掉真正的调用也照样绿（已实测）。
+    check_callers(errors, sources, ".TryBeginErrorSwap(",
+                  ["ModeH/ModeHCombatControl.cs", "DebugAndTools/"], "ERROR 完整互换")
+
+    # 退役结算：没有调用方 = 合同槽永不更新，名人堂把已退役的主选手记成冠军，
+    # 真正打完后半赛季的替补反被写进 substituteHistory，冠军与替补整个对调。
+    check_callers(errors, sources, "ApplyRetirement",
+                  ["ModeH/ModeHTransferMarket.cs", "DebugAndTools/"], "退役结算")
+
+    # 行为快照：没有调用方 = profile.behaviorStatuses 恒空，
+    # ModeHOddsController.IsVerified 恒 false，伤病/异常/战痕的赔率项全部计 0。
+    check_callers(errors, sources, "BuildBehaviorSnapshot",
+                  ["ModeH/ModeHCommandCompatibilityRegistry.cs", "DebugAndTools/"], "行为快照")
+
+    # 免费侦察（§17.5）：没有调用方 = 四条 reconChoices 数据、Button_Recon /
+    # Recon_Consumed 文案与 TryApplyRecon 全是死内容，玩家只能盲押。
+    # owner_prefixes 带 DebugAndTools/ 的理由同 ERROR 互换：验收不算生产接线。
+    check_callers(errors, sources, ".TryApplyRecon(",
+                  ["ModeH/ModeHEncounterPlanner.cs", "DebugAndTools/"], "免费侦察")
+
+    # 名人堂展示：没有调用方 = 记录只写不读，玩家打完整季进名人堂看到的是一张空页，
+    # 而「32 席、第 33 个把最底下挤掉」正是鸭王征程整条剧情线的锚点。
+    check_callers(errors, sources, "GetRecords",
+                  ["ModeH/ModeHHallOfFamePersistence.cs", "DebugAndTools/"], "名人堂展示")
+
     check_map_data(errors)
 
     if errors:

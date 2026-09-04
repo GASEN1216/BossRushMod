@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 
 namespace BossRush
@@ -38,7 +38,18 @@ namespace BossRush
         #region 状态
 
         private readonly List<ModeHActiveWindow> _activeWindows = new List<ModeHActiveWindow>();
+
+        /// <summary>本系统自带的空上下文，只在还没收到战斗控制器转发时兜底。</summary>
         private readonly ModeHCommandFireContext _fireContext = new ModeHCommandFireContext();
+
+        /// <summary>
+        /// 战斗控制器每帧转发进来的**活**上下文（它的 _fireContext 是 readonly，
+        /// 引用恒定，缓存安全）。开窗时的首次点火必须用它：只用本系统的空上下文，
+        /// 带 `fire_lowest_health_target` 的战痕在开窗那一下会空转，
+        /// 要等下一次重申（≤ CommandReassertIntervalSeconds）才补上。
+        /// </summary>
+        private ModeHCommandFireContext _sharedFireContext;
+
         private readonly HashSet<string> _consumedTriggers = new HashSet<string>(StringComparer.Ordinal);
 
         private AICharacterController _ai;
@@ -104,8 +115,11 @@ namespace BossRush
             }
             if (string.Equals(spec.Scope, "triggered_once", StringComparison.Ordinal)) return true;
 
+            // 带敌军数量门的伤病（当前只有 spirit）由 OnEnemyCountChanged 按条件施加
+            // 自结算系数，这里必须告诉 OpenWindow 别再施加一次，否则 x0.85 会叠成 x0.7225。
+            bool gated = spec.RequiresEnemyCountAtLeast > 0;
             return OpenWindow(injuryId, false, spec.Components, ModeHConfig.MatchDurationSeconds,
-                out failureReasonId);
+                out failureReasonId, gated);
         }
 
         /// <summary>施加该选手已持有的全部战痕（按窗口类型分为常驻与触发型）。</summary>
@@ -135,6 +149,7 @@ namespace BossRush
         /// <summary>推进全部窗口；窗口结束由 adapter 自身幂等还原。</summary>
         public void Tick(float deltaTime, ModeHCommandFireContext fireContext)
         {
+            if (fireContext != null) _sharedFireContext = fireContext;
             for (int i = _activeWindows.Count - 1; i >= 0; i--)
             {
                 ModeHActiveWindow window = _activeWindows[i];
@@ -168,7 +183,7 @@ namespace BossRush
 
         private bool OpenWindow(
             string entryId, bool isScar, IList<ModeHEffectSpec> components, float windowSeconds,
-            out string failureReasonId)
+            out string failureReasonId, bool gatedByCondition = false)
         {
             failureReasonId = null;
             if (_ai == null)
@@ -178,7 +193,7 @@ namespace BossRush
             }
 
             // 自结算分量不写原版字段，只调整 Mode H 自己的系数
-            ApplySelfSettledComponents(entryId, components);
+            ApplySelfSettledComponents(entryId, components, gatedByCondition);
 
             List<ModeHEffectSpec> engineComponents = new List<ModeHEffectSpec>();
             for (int i = 0; i < components.Count; i++)
@@ -188,7 +203,8 @@ namespace BossRush
             if (engineComponents.Count == 0) return true; // 纯自结算条目，无需 adapter
 
             ModeHCommandAdapter adapter = new ModeHCommandAdapter();
-            if (!adapter.ApplyEffects(_ai, entryId, engineComponents, windowSeconds, 1f, _fireContext,
+            if (!adapter.ApplyEffects(_ai, entryId, engineComponents, windowSeconds, 1f,
+                    _sharedFireContext != null ? _sharedFireContext : _fireContext,
                     out failureReasonId))
             {
                 return false;
@@ -207,12 +223,24 @@ namespace BossRush
         /// Mode H 自结算分量：`armor` 禁用本场 Armor 槽 kit，
         /// `spirit`/`bell_dependence`/`center_keeper`/`blood_rush` 调整口令调制幅度。
         /// </summary>
-        private void ApplySelfSettledComponents(string entryId, IList<ModeHEffectSpec> components)
+        private void ApplySelfSettledComponents(
+            string entryId, IList<ModeHEffectSpec> components, bool gatedByCondition)
         {
             for (int i = 0; i < components.Count; i++)
             {
                 ModeHEffectSpec component = components[i];
                 if (component == null || !component.SelfSettled) continue;
+
+                // 自结算分量的条件在开窗时一次性求值。这**只**对整场恒定的条件成立
+                // （condition_* 擂台条件族），而 ModeHScarTriggerWiringGuard 正是断言
+                // 自结算分量只能带这一类条件——否则这里就需要像调制类分量那样
+                // 随重申持续求值，而 _selfSettledCommandScale 是个累乘标量，做不到只撤销其中一项。
+                if (!ModeHEffectConditions.IsSatisfied(
+                        component.AppliesWhen,
+                        _sharedFireContext != null ? _sharedFireContext : _fireContext))
+                {
+                    continue;
+                }
 
                 if (string.Equals(component.Op, "self_settled_kit_slot_disabled", StringComparison.Ordinal))
                 {
@@ -222,8 +250,21 @@ namespace BossRush
                     }
                     continue;
                 }
-                if (string.Equals(component.Op, "self_settled_command_scale", StringComparison.Ordinal))
+                // 两种写法都表示"按 multiplierMilli 缩放口令调制幅度"：
+                //   op = self_settled_command_scale  —— 显式命名
+                //   op = self_settled + controlPointId = command_scale —— 按控制点区分
+                // 数据表里两种都在用（bell_dependence 与 spirit 用后者）。
+                // 2026-09-03 之前只认前者，于是 bell_dependence 的 +20% 收益从未生效，
+                // 而它的 -10% skillSuccessChance 代价照常生效——一条纯负面的"利弊绑定"。
+                bool isCommandScale =
+                    string.Equals(component.Op, "self_settled_command_scale", StringComparison.Ordinal)
+                    || (string.Equals(component.Op, "self_settled", StringComparison.Ordinal)
+                        && string.Equals(component.ControlPointId, "command_scale", StringComparison.Ordinal));
+                if (isCommandScale)
                 {
+                    // 带条件门的条目（当前只有 spirit：requiresEnemyCountAtLeast）
+                    // 由各自的专用路径按条件施加，这里跳过，否则会叠加两次。
+                    if (gatedByCondition) continue;
                     float multiplier = component.MultiplierMilli > 0 ? component.MultiplierMilli / 1000f : 1f;
                     _selfSettledCommandScale *= multiplier;
                 }

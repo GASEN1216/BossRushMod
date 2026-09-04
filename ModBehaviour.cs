@@ -1426,6 +1426,15 @@ namespace BossRush
                         continue;
                     }
 
+                    // 跳过遗种巢随从：它是玩家方单位，只是沿用了官方 preset 的身份
+                    // （clone 不改 nameKey，DisplayName 仍是「大兴兴」），会命中下面的
+                    // 名字匹配。全仓四条 Destroy 扫描里另外三条都做了这个豁免，
+                    // 漏掉这一条会让该血脉的崽入场即被销毁并循环重生。
+                    if (PetNestCompanionAgent.IsCompanionCharacter(c))
+                    {
+                        continue;
+                    }
+
                     // 跳过玩家角色
                     bool isMain = false;
                     try

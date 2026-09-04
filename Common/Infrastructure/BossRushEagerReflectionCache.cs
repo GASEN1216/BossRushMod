@@ -42,10 +42,7 @@ namespace BossRush
         // CharacterRandomPreset.characterIconType (私有字段)
         public static readonly FieldInfo CharacterRandomPreset_CharacterIconType;
 
-        // NotificationText.ShowNext (静态方法)
-        public static readonly MethodInfo NotificationText_ShowNext;
-
-        // 缓存初始化标志
+// 缓存初始化标志
         public static readonly bool IsInitialized;
 
         static BossRushEagerReflectionCache()
@@ -53,7 +50,6 @@ namespace BossRush
             try
             {
                 const BindingFlags privateInstance = BindingFlags.NonPublic | BindingFlags.Instance;
-                const BindingFlags publicStatic = BindingFlags.Public | BindingFlags.Static;
 
                 // InteractableBase.otherInterablesInGroup
                 InteractableBase_OtherInterablesInGroup = typeof(InteractableBase).GetField(
@@ -87,10 +83,7 @@ namespace BossRush
                 CharacterRandomPreset_CharacterIconType = typeof(CharacterRandomPreset).GetField(
                     "characterIconType", privateInstance);
 
-                // NotificationText.ShowNext 方法
-                NotificationText_ShowNext = typeof(NotificationText).GetMethod("ShowNext", publicStatic);
-
-                IsInitialized = true;
+IsInitialized = true;
             }
             catch (Exception e)
             {

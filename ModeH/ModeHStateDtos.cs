@@ -24,7 +24,12 @@ namespace BossRush
     [Serializable]
     public sealed class ModeHCommandCertificationStatusDto
     {
-        /// <summary>口令稳定 ID。</summary>
+        /// <summary>
+        /// 条目稳定 ID。**不只是口令**：伤病与战痕的条目 ID 也走这个字段
+        /// （BuildCommandStatuses 三族同表写入，RestoreCertificationEffects 用
+        /// GetBehaviorEffectIds 反查）。字段名保留 commandId 是因为它进 canonical digest，
+        /// 改名会让所有已存赛季与名人堂信封的 VerifyDigest 失败。
+        /// </summary>
         public string commandId;
         /// <summary>ModeHCommandCompatibilityStatus 的整数值。</summary>
         public int status;

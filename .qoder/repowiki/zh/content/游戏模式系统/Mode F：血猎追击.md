@@ -348,3 +348,24 @@ Mode F 通过清晰的状态机驱动高压生存体验，结合悬赏系统与�
 - [ModeFFortifications.cs:142-158](file://ModeF/ModeFFortifications.cs#L142-L158)
 - [ModeFUI.cs:24-38](file://ModeF/ModeFUI.cs#L24-L38)
 - [ModeFFortifications.cs:15-78](file://ModeF/ModeFFortifications.cs#L15-L78)
+
+## 2026-09-04 Boss 加速全程无效（幽灵 stat key）
+
+兼容分类：COMPAT。Finding CR-2026-09-04-009。
+
+`ApplyModeFBossMoveSpeedModifier` 取的是 `boss.CharacterItem.GetStat("MoveSpeed")`，
+但官方角色**没有** `MoveSpeed` 这个 stat（那是 Animator 参数名，AGENTS §14），
+`GetStat` 恒返回 null，紧接着的 `if (speedStat == null) return;` 让整个函数每次都静默退出。
+血猎追击的 Boss 提速档位从来没有生效过。
+
+修复：改挂官方真实的 `WalkSpeed` + `RunSpeed` 两条（追击走 Run、巡逻走 Walk，
+只挂一条会让加速在另一半时间里看不出来），并改用共享的 `RuntimeStatModifierTracker`
+——它记的是 Stat 引用而非 stat 名，Boss 销毁时不会误摘别人的 Modifier。
+每只 Boss 的记录容器从单个 `Modifier` 改为 record 列表。
+
+本条是新增的 `tests/StatKeyExistenceGuard.py` 自动抓出来的，不是人工翻到的：
+该守卫把 `ZombieModeStatNames` 每个常量值对官方反编译源码做存在性校验，
+并单独判「MoveSpeed 挂给 Stat Modifier 却没有 Walk/Run 兜底」。
+
+章节来源：`ModeF/ModeFPhases.cs`、`Common/Stats/RuntimeStatModifierTracker.cs`、
+`tests/StatKeyExistenceGuard.py`。

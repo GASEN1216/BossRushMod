@@ -302,7 +302,7 @@ namespace BossRush
                 campaignFinalBossSpawnResolved = false;
                 int runId = ++campaignFinalBossRunId;
                 CampaignObjectiveTracker.EnsureArmedFor(CampaignContentCatalog.ModeFinal);
-                StartCampaignFinalBossAsync(runId).Forget();
+                StartCampaignFinalBossPrologueThenSpawnAsync(runId).Forget();
             }
             catch (Exception e)
             {
@@ -310,6 +310,44 @@ namespace BossRush
                 campaignFinalBossSpawnResolved = false;
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战启动失败: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 决战开场：先播冠军独白，再进生成流程。这是全剧唯一一次冠军开口，
+        /// 也是 campaign_portrait_champion 立绘唯一的登场处。
+        ///
+        /// 【为什么独白在这一层、不写进 StartCampaignFinalBossAsync】
+        ///   F3 自动验收走 DebugStartCampaignFinalBossForValidation，它直连
+        ///   StartCampaignFinalBossAsync。对话要等玩家点击才 resolve，
+        ///   放进共用的异步里会让 RunCampaignFinalBoss 一路烧到 CaseTimeoutSeconds
+        ///   然后记 spawn_timeout FAIL。分成两层，调试路径自然不播独白。
+        ///
+        /// 【幂等】调用方已在上面把 campaignFinalBossActive 置真，而召唤石维护
+        ///   （ShouldCampaignFinalBossAltarExist）与交互体（CanStartCampaignFinalBoss）
+        ///   都以它为门，所以「每次成功武装播一次」是免费的，不需要额外的 played 标志。
+        ///   打输重进是新场景、新召唤石、新独白，即「每次挑战一次」。
+        /// </summary>
+        private async UniTask StartCampaignFinalBossPrologueThenSpawnAsync(int runId)
+        {
+            try
+            {
+                await CampaignDialoguePlayer.PlayFinalBossPrologueAsync();
+            }
+            catch (Exception e)
+            {
+                DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);
+            }
+
+            // 独白期间玩家可能已经死亡或切了场景：那时 CleanupCampaignFinalBoss
+            // 已经把编号自增并复位过状态。此时绝不能再生成 Boss，
+            // 也不要重置任何标志——收尾已经做过了。
+            if (runId != campaignFinalBossRunId)
+            {
+                DevLog(CampaignTuning.LogPrefix + "决战已在独白期间中止，放弃生成");
+                return;
+            }
+
+            await StartCampaignFinalBossAsync(runId);
         }
 
         internal bool DebugStartCampaignFinalBossForValidation()

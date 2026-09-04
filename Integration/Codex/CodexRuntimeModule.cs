@@ -104,7 +104,7 @@ namespace BossRush
                 _sceneGeneration++;
 
                 // 采集器的 run 级清理与开关无关：即使开关关着也要把残留清干净
-                CodexKillCollector.ClearRunScoped();
+                CodexKillCollector.NotifySceneChanged();
 
                 if (!IsEnabled)
                 {

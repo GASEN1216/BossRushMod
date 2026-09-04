@@ -1,4 +1,4 @@
-// Mode H 实战、接力与单批结算；运行时对象统一声明在 SceneFlow。
+﻿// Mode H 实战、接力与单批结算；运行时对象统一声明在 SceneFlow。
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -383,9 +383,14 @@ namespace BossRush
             {
                 highThreatKey = _season.currentMatchPlan.enemyStableKeys[0];
             }
+            // 擂台条件与最后批次序号都是分量条件（appliesWhen）的输入，整场不变，
+            // 因此和 highThreatKey 一样在开场一次性交给战斗控制，
+            // 而不是让它反过来持有 Season 引用。
             _combatControl.BeginMatch(
                 _runState, _map, _combatTelemetry, _runState.MatchIndex,
-                _runState.RunSeed, highThreatKey);
+                _runState.RunSeed, highThreatKey,
+                _season.currentMatchPlan.conditionId,
+                ResolveLastEntryBatch(_season.currentMatchPlan));
 
             _starterParticipant = BuildParticipant(_activeFighterHandle, starter.profileId, false, -1, false);
             ModeHProfileDto relay = FindSeasonProfile(_season.matchRoster.matchRelayProfileId);
@@ -408,6 +413,8 @@ namespace BossRush
                 ModeHSpawnHandle handle = _spawnTransaction.EnemyHandles[i];
                 handle.PlanSlotIndex = i;
                 ModeHParticipantRef enemy = BuildParticipant(handle, null, true, i, false);
+                // 入场批次跟着计划走，供战痕条件 first_wave_alive 判断第一批是否还有活口。
+                enemy.BatchIndex = ResolveEnemyBatchIndex(_season.currentMatchPlan, i);
                 _enemyParticipants.Add(enemy);
                 ModeHSnapshotEnemyInput snapshotEnemy = new ModeHSnapshotEnemyInput();
                 snapshotEnemy.PlanSlotIndex = i;
@@ -461,6 +468,15 @@ namespace BossRush
             }
         }
 
+        /// <summary>取该计划槽位的入场批次序号；查不到按第一批（0）处理。</summary>
+        private static int ResolveEnemyBatchIndex(ModeHMatchPlanDto plan, int planSlotIndex)
+        {
+            if (plan == null || plan.enemyBatchIndices == null) return 0;
+            if (planSlotIndex < 0 || planSlotIndex >= plan.enemyBatchIndices.Count) return 0;
+            int batch = plan.enemyBatchIndices[planSlotIndex];
+            return batch > 0 ? batch : 0;
+        }
+
         private static int ResolveLastEntryBatch(ModeHMatchPlanDto plan)
         {
             int max = 0;
@@ -495,6 +511,8 @@ namespace BossRush
 
             int snapshotSequence = _combatControl.Snapshot.SnapshotSequence;
             bool resultClaimed = _combatControl.Tick(deltaTime, _battleSnapshotContext);
+            // 紧跟 Tick：互换相位可能在 Tick 内部翻转（CompleteSwapHandover / RestoreErrorSwap）
+            SyncErrorSwapInputYield();
             if (_combatControl.Snapshot.SnapshotSequence != snapshotSequence)
             {
                 AttachAndPersistBattleSnapshot("combat_snapshot");
@@ -506,6 +524,9 @@ namespace BossRush
                 return;
             }
 
+            // 终局已锁定后不再开新互换，所以排在上面那个分支之后
+            TryBeginErrorSwapIfDue();
+
             if (_combatControl.IsRelayWindowOpen && _relaySpawnRoutine == null)
             {
                 if (!TryTransition(ModeHLifecycle.MatchFighting, ModeHLifecycle.RelayPending,
@@ -515,6 +536,59 @@ namespace BossRush
                     return;
                 }
                 _relaySpawnRoutine = _owner.StartCoroutine(DriveRelaySpawning());
+            }
+        }
+
+        /// <summary>
+        /// ERROR 完整互换的**唯一生产调用点**（§17.6.5）。
+        ///
+        /// profile 必须是当前登场选手自己的档案：异常门读的是 _activeAnomalyId，
+        /// 接管的也是 _activeFighter.Character，取错人等于把控制权交给另一名选手。
+        /// ActiveProfileId 由 OnFighterEntered 从同一个 profile 写入，构造上保证一致。
+        ///
+        /// 为什么由模块回查而不是让 ModeHCombatControl 自己持有 DTO：后者完全不持有
+        /// Season 引用（只存三个字符串），而模块本来就要在这里决定输入让渡。
+        ///
+        /// 开始失败不判负、不技术中止、不消耗同场重试预算——§17.6.5 第 7 条要求
+        /// 完整回滚后比赛照常继续。每场至多一次由 ErrorSwapAttempted 闩住。
+        /// </summary>
+        private void TryBeginErrorSwapIfDue()
+        {
+            if (_combatControl == null) return;
+            if (!_combatControl.ErrorTriggered || _combatControl.ErrorSwapAttempted) return;
+
+            ModeHProfileDto profile = FindSeasonProfile(_combatControl.ActiveProfileId);
+            // 引用尚未就绪：闩还没置位，下一帧自然重试
+            if (profile == null) return;
+
+            string failureReasonId;
+            if (!_combatControl.TryBeginErrorSwap(profile, out failureReasonId))
+            {
+                ModBehaviour.DevLog("[ModeH] ERROR 互换未开始: "
+                    + (failureReasonId != null ? failureReasonId : "unknown"));
+            }
+        }
+
+        /// <summary>
+        /// 把「互换是否生效」同步成「租约是否让渡输入」。
+        /// 只在状态位翻转时才真正调用 InputManager：每帧路径，O(1)、零分配。
+        ///
+        /// 观战租约在开战前就 DisableInput 了，不让渡的话玩家接到手的是一个动不了的选手。
+        /// </summary>
+        private void SyncErrorSwapInputYield()
+        {
+            if (_spectatorLease == null || _combatControl == null) return;
+            bool wanted = _combatControl.IsErrorSwapActive;
+            if (wanted == _errorSwapInputYielded) return;
+            _errorSwapInputYielded = wanted;
+            try
+            {
+                if (wanted) _spectatorLease.YieldInputForErrorSwap();
+                else _spectatorLease.ReclaimInputAfterErrorSwap();
+            }
+            catch (Exception e)
+            {
+                LogFailure("error_swap_input_sync", e);
             }
         }
 
@@ -719,6 +793,28 @@ namespace BossRush
                 ResolveRestRecovery(locked != null ? locked.matchStarterProfileId : null);
                 ResolveRestRecovery(locked != null ? locked.matchRelayProfileId : null);
 
+                // 退役结算（§17.3）必须排在人事步骤最后：ResolveDownInjury 是赛季里唯一
+                // 把 profile 写成 Retired 的路径，而 ResolveRestRecovery 只能解除
+                // 「从未登场者」的带伤，不可能把人反退役。
+                //
+                // 不接这一步的后果不在排兵布阵上（GetLiveContractProfileIds 本来就过滤
+                // Retired，所以下一场照样派活人上），而在**合同槽本身**：
+                // BuildHallOfFameRecord 读 contract.contractMainProfileId 认冠军、
+                // 读 contractSubProfileId 填 substituteHistory。槽不结算，
+                // 名人堂就会把已退役的主选手记成冠军，把真正打完 3-6 场的替补记成替补。
+                string retireFailure;
+                if (!ModeHTransferMarket.ApplyRetirement(_season, out retireFailure))
+                {
+                    // false 只有两种含义：contract 缺失，或两名合同选手都已退役。
+                    // 后者是赛季自然终局，两个槽保持原样，GetLiveContractProfileIds 返回空，
+                    // RouteAfterIntermission 已经会走 FinishSeason("no_live_contracts")，
+                    // 且 live.Count == 0 短路在 EnterHallOfFame 之前。这里绝不自己跳状态机：
+                    // 那会跳过结算页与已构造的奖励 operation，而且这不是技术故障，
+                    // 不该消耗同场重试预算。
+                    ModBehaviour.DevLog("[ModeH] 退役结算未改动合同槽: "
+                        + (retireFailure != null ? retireFailure : "unknown"));
+                }
+
                 bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
                 int rewardCandidates = ModeHVirtualStakeController.Settle(
                     _season, _season.preMatchSnapshot, report, odds, won);
@@ -733,6 +829,13 @@ namespace BossRush
                     ModBehaviour.CriticalLog(
                         "[ModeH] [WARNING] 真实押品结算未完成，已保留 journal 交恢复流程: "
                         + (realStakeFailure != null ? realStakeFailure : "unknown"));
+                    // CriticalLog 之外必须有玩家可见的一句：这里涉及玩家的真实仓库装备，
+                    // 只写日志等于让他以为押品已经结算完毕（本仓库反复出现的「静默失败」形态）。
+                    if (_owner != null)
+                    {
+                        _owner.ShowMessage(
+                            L10n.T(ModeHConfig.LocalizationKeyPrefix + "Settle_Failed"));
+                    }
                 }
 
                 ModeHProfileDto rewardProfile = FindSeasonProfile(
@@ -920,6 +1023,11 @@ namespace BossRush
             record.scarIds = champion.scarIds != null
                 ? new List<string>(champion.scarIds) : new List<string>();
             record.matchReportIds = new List<string>();
+            // 已知残留：ApplyRetirement 晋升替补后会把 subProfileId 清空，
+            // 于是「主选手中途退役、替补顶上并夺冠」这一支的 substituteHistory 是空的
+            // （冠军字段本身已经对了——那正是接通退役结算修好的部分）。
+            // 要把被晋升者也记进来就得加持久字段，而本 DTO 进 canonical digest，
+            // 加字段会让所有已存名人堂信封 VerifyDigest 失败。留待单独评估。
             record.substituteHistory = new List<string>();
             if (_season.contract != null
                 && !string.IsNullOrEmpty(_season.contract.contractSubProfileId))
@@ -966,6 +1074,26 @@ namespace BossRush
 
             try { if (_combatControl != null) _combatControl.RestoreAll(); }
             catch (Exception e) { LogFailure("combat_restore", e); }
+
+            // 停止接收拍铃。本方法是结算、倒地收尾、技术中止与离场的共同必经点，
+            // 正是 StopAcceptingBell 注释写的那四个时机。
+            //
+            // 此前这个门从未被调用，`IsBellAccepting` 也没有读者：拍铃只靠
+            // _commandsClosed + 生命周期挡着，而战斗运行时已经释放、
+            // 观战租约却还没 Release 的那一小段窗口里两者都还没变，
+            // 玩家此刻点铃会打到一个 _combatControl 已为 null 的空档。
+            try { if (_spectatorLease != null) _spectatorLease.StopAcceptingBell(); }
+            catch (Exception e) { LogFailure("bell_gate_close", e); }
+
+            // 兜底收回输入阻断：结算与技术中止路径不会再进 TickActiveCombat，
+            // 靠 SyncErrorSwapInputYield 的状态翻转已经等不到了。
+            // 收回而不是放着不管，是因为看台身体在租约释放前仍应保持不可操作。
+            if (_errorSwapInputYielded)
+            {
+                try { if (_spectatorLease != null) _spectatorLease.ReclaimInputAfterErrorSwap(); }
+                catch (Exception e) { LogFailure("error_swap_input_reclaim", e); }
+                _errorSwapInputYielded = false;
+            }
 
             try
             {

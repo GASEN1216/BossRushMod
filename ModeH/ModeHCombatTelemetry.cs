@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
@@ -63,6 +63,12 @@ namespace BossRush
         private bool _highThreatCoreKilled;
         private string _highThreatCoreStableKey;
 
+        /// <summary>本场登场选手是否吃过远程伤害（longshot_memory 战痕的触发信号）。</summary>
+        private bool _activeFighterTookRangedDamage;
+
+        /// <summary>weaponTypeId -> 是否远程。避免每次挨打都查一遍物品元数据。</summary>
+        private static readonly Dictionary<int, bool> _rangedWeaponCache = new Dictionary<int, bool>();
+
         #endregion
 
         #region 只读
@@ -103,8 +109,36 @@ namespace BossRush
         /// <summary>当前存活敌军数量。</summary>
         public int LiveEnemyCount { get { return _liveEnemies.Count; } }
 
+        /// <summary>
+        /// 按下标取存活敌军。供口令点火上下文按 `LiveEnemyCount` 做零分配遍历：
+        /// 不暴露内部 List、也不复制一份出去，热路径每帧都会走这条。
+        /// 越界返回 null（调用方跳过即可），不抛。
+        /// </summary>
+        public ModeHParticipantRef GetLiveEnemyAt(int index)
+        {
+            if (index < 0 || index >= _liveEnemies.Count) return null;
+            return _liveEnemies[index];
+        }
+
+        /// <summary>
+        /// 指定入场批次是否还有活口。战痕分量的 `first_wave_alive` 用 batch 0 问它。
+        /// 存活名单是个位数，按重申节奏（0.1 秒）扫一次，无分配。
+        /// </summary>
+        public bool HasLiveEnemyInBatch(int batchIndex)
+        {
+            for (int i = 0; i < _liveEnemies.Count; i++)
+            {
+                ModeHParticipantRef enemy = _liveEnemies[i];
+                if (enemy != null && enemy.BatchIndex == batchIndex) return true;
+            }
+            return false;
+        }
+
         /// <summary>本场待处理的倒地 profileId（供接力判定读取后清空）。</summary>
         public string PendingDownProfileId { get { return _pendingDownProfileId; } }
+
+        /// <summary>本场登场选手是否已吃过远程伤害（战痕 longshot_memory 的触发条件）。</summary>
+        public bool ActiveFighterTookRangedDamage { get { return _activeFighterTookRangedDamage; } }
 
         #endregion
 
@@ -129,22 +163,12 @@ namespace BossRush
             _lastSpecialKillProfileId = null;
             _highThreatCoreKilled = false;
             _highThreatCoreStableKey = highThreatCoreStableKey;
+            _activeFighterTookRangedDamage = false;
         }
 
-        /// <summary>从战场快照续接计时与一次性事实。</summary>
-        public void RestoreFromSnapshot(
-            float elapsedSeconds, bool relayConsumed, IList<string> enteredProfileIds)
-        {
-            _elapsedSeconds = elapsedSeconds > 0f ? elapsedSeconds : 0f;
-            _relayConsumed = relayConsumed;
-            if (enteredProfileIds != null)
-            {
-                for (int i = 0; i < enteredProfileIds.Count; i++)
-                {
-                    if (!string.IsNullOrEmpty(enteredProfileIds[i])) _enteredProfileIds.Add(enteredProfileIds[i]);
-                }
-            }
-        }
+        // 【RestoreFromSnapshot 已于 2026-09-03 移除】只被 ModeHCombatControl 的同名方法
+        // 调用，而那条 §17.4 局中重建链全链零调用点、且在冻结转换表下不可达。
+        // 理由见 ModeHBattleSnapshot.cs 的“重建校验（已随 §20.3 收敛而移除）”。
 
         /// <summary>一名敌军进入擂台。</summary>
         public void OnEnemyEntered(ModeHParticipantRef enemy)
@@ -187,10 +211,22 @@ namespace BossRush
 
         /// <summary>受伤：只更新生命比例缓存，用于 last_stand 与伤病触发判定。</summary>
         public void OnParticipantHurt(
-            ModeHParticipantRef target, ModeHParticipantRef attacker, float damageValue)
+            ModeHParticipantRef target, ModeHParticipantRef attacker, float damageValue,
+            int fromWeaponItemID)
         {
             if (target == null) return;
             UpdateHealthFraction(target);
+
+            // 「本场登场选手是否吃过远程伤害」——longshot_memory 战痕的唯一信号源。
+            // 只认我方登场选手挨打，敌军互殴与环境伤害不算。
+            if (!_activeFighterTookRangedDamage
+                && !target.IsEnemy
+                && _activeFighter != null
+                && ReferenceEquals(target, _activeFighter)
+                && IsRangedWeapon(fromWeaponItemID))
+            {
+                _activeFighterTookRangedDamage = true;
+            }
         }
 
         /// <summary>
@@ -254,6 +290,59 @@ namespace BossRush
         }
 
         /// <summary>读取生命比例；读不到时返回 1（不因读数失败伪造濒死事实）。</summary>
+        /// <summary>
+        /// 宿主销毁 / 关停时的静态缓存复位（StaticCacheLifecycleGuard 要求）。
+        /// 只清武器类型缓存：它按 typeId 索引，官方物品表在 Mod 重载后可能变化。
+        /// </summary>
+        internal static void ResetStaticCaches()
+        {
+            _rangedWeaponCache.Clear();
+        }
+
+        /// <summary>
+        /// 该武器是否远程。判定口径与 ModeGCombatTelemetry / CampaignObjectiveCollector 一致：
+        /// 物品 tag 里有 Gun 而没有 MeleeWeapon/Melee 才算远程，两者都有或都没有时不算。
+        ///
+        /// 按 AGENTS.md 4.9「不要因未来可能复用提前提升」，这 15 行判定沿用既有做法
+        /// 本地复制，不去动那两处已稳定的实现。带缓存，热路径不重复查元数据。
+        /// </summary>
+        private static bool IsRangedWeapon(int weaponTypeId)
+        {
+            if (weaponTypeId <= 0) return false;
+
+            bool cached;
+            if (_rangedWeaponCache.TryGetValue(weaponTypeId, out cached)) return cached;
+
+            bool ranged = false;
+            try
+            {
+                ItemStatsSystem.ItemMetaData metaData =
+                    ItemStatsSystem.ItemAssetsCollection.GetMetaData(weaponTypeId);
+                bool gun = false;
+                bool melee = false;
+                if (metaData.id > 0 && metaData.tags != null)
+                {
+                    for (int i = 0; i < metaData.tags.Length; i++)
+                    {
+                        Duckov.Utilities.Tag tag = metaData.tags[i];
+                        if (tag == null) continue;
+                        if (string.Equals(tag.name, "Gun", StringComparison.Ordinal)) gun = true;
+                        else if (string.Equals(tag.name, "MeleeWeapon", StringComparison.Ordinal)
+                                 || string.Equals(tag.name, "Melee", StringComparison.Ordinal)) melee = true;
+                    }
+                }
+                ranged = gun && !melee;
+            }
+            catch (Exception)
+            {
+                // 查不到元数据按「非远程」处理：宁可战痕不触发，也不误触发
+                ranged = false;
+            }
+
+            _rangedWeaponCache[weaponTypeId] = ranged;
+            return ranged;
+        }
+
         public static float ReadHealthFraction(CharacterMainControl character)
         {
             if (character == null) return 0f;

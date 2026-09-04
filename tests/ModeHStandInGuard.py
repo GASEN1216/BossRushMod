@@ -228,6 +228,27 @@ def check_swap_order(errors):
     if restore_all and "RestoreErrorSwap();" not in restore_all.group(0):
         errors.append("[Swap] 统一还原入口必须包含互换恢复")
 
+    # 每场至多一次的闩：必须在 TryBeginErrorSwap 内置位，且不得被 RestoreErrorSwap 清掉。
+    # 没有它，唯一调用点会在 _errorTriggered 恒真时每帧重入——2 秒 deadline 回滚后
+    # _swapPhase 回到 None，开始条件立刻重新成立，玩家会被反复夺走控制权。
+    begin = re.search(r"public bool TryBeginErrorSwap\([\s\S]*?\n        \}", code)
+    if begin is not None and "_errorSwapAttempted = true;" not in begin.group(0):
+        errors.append("[Swap] TryBeginErrorSwap 必须置位每场一次的 _errorSwapAttempted 闩")
+    restore_swap = re.search(r"public void RestoreErrorSwap\(\)[\s\S]*?\n        \}", code)
+    if restore_swap is not None and "_errorSwapAttempted" in restore_swap.group(0):
+        errors.append("[Swap] RestoreErrorSwap 不得清除一次性闩（回滚后会立刻重入）")
+
+    # §17.6.5 第 8 条的「快照重建身份门」已随局中重建链一并移除（2026-09-03）：
+    # 重建的唯一入口 ModeHCombatControl.RestoreFromSnapshot 全仓库零调用点，
+    # 且冻结转换表里 Recovering 没有通向战斗态的出边，恢复语义是 §20.3 回落同场看盘。
+    # 身份门失去了它要保护的场景，留着只会让人以为重建还在。断言改为要求它保持缺席，
+    # 与 ModeHBattleSnapshotGuard 的 REBUILD_ABSENT_SYMBOLS 同向。
+    for symbol in ["error_swap_rebuild_profile_mismatch", "_errorSwapRebuildProfileId"]:
+        if symbol in code:
+            errors.append(
+                "[Swap] 局中重建已移除，其身份门不得单独复活: " + symbol
+                + "（要恢复必须连同 RestoreFromSnapshot 与冻结表出边一起做，需 owner 签字）")
+
     # 不得新增第三个补丁去抑制击杀计数或经验
     for forbidden in ["SavesCounter", "EXPManager", "AddKillCount", "AddExp"]:
         if contains_symbol(code, forbidden):

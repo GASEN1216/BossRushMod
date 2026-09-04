@@ -29,6 +29,8 @@ ASSET_WHITELIST = {
     "ModeHEntry.cs": {"Inventory"},
     "ModeHLoadoutKitApplicator.cs": {"Inventory"},
     "ModeHWarehouseStakeJournal.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
+    # journal 的 partial 第二文件（为 1200 行预算拆出，类与语义完全相同），同等豁免
+    "ModeHWarehouseStakeJournalStorageBuffer.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
     "ModeHInventoryPersistenceBridge.cs": {"Inventory", "PlayerStorage", "ItemTreeData"},
     "ModeHItemTreeNormalizer.cs": {"ItemTreeData"},
 }

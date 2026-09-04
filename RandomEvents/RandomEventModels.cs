@@ -1,4 +1,4 @@
-// ============================================================================
+﻿// ============================================================================
 // RandomEventModels.cs - 随机事件的枚举、运行期上下文与事件基类（方案二 步骤 2）
 // ============================================================================
 // 职责：
@@ -119,25 +119,13 @@ namespace BossRush
             get { return Mathf.Max(0f, DurationSeconds - ElapsedSeconds); }
         }
 
-        /// <summary>
-        /// generation + run signature + 场景三判。
-        /// 异步续作（UniTask / 协程）回调前必须先问这一句，否则跨局跨图泄漏生成物。no-throw。
-        /// </summary>
-        internal bool IsStillValid(RandomEventDirector director)
-        {
-            try
-            {
-                if (director == null) return false;
-                if (director.Generation != Generation) return false;
-                if (director.CurrentRunSignature != RunSignature) return false;
-                return UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == SceneBuildIndex;
-            }
-            catch (Exception)
-            {
-                // fail-closed：查询本身出问题时按「已失效」处理，宁可少生成也不泄漏
-                return false;
-            }
-        }
+        // 【IsStillValid(director) 已于 2026-09-03 移除】零调用点，且是冗余的第二套判据。
+        // 各事件的异步续作走自己的 IsSpawnStillValid（`!_cleanedUp && 场景 buildIndex 相同`），
+        // 而 _cleanedUp 已经覆盖了 generation / runSignature 变化：
+        // RandomEventDirector.HandleRunSignatureChanged 在自增 _generation 的同一句之后
+        // 就调 EndActiveEvent(RunEnded)，进而触发 OnCleanup 把 _cleanedUp 置真。
+        // 换句话说"换局"必然先关掉在跑的事件，事件侧不可能观察到 generation 已变而自己还活着。
+        // 留两套判据只会让人以为其中一套没接上。
     }
 
     /// <summary>

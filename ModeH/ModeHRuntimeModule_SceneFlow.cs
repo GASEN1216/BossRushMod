@@ -60,6 +60,13 @@ namespace BossRush
         /// <summary>低频巡检累加器：租约完整性每秒查一次，不每帧扫。</summary>
         private float _leaseCheckAccumulator;
 
+        /// <summary>
+        /// ERROR 互换期间是否已让渡输入给玩家（见 SyncErrorSwapInputYield）。
+        /// 与租约自己的 _inputYielded 是两份记账：这一份是模块的「我请求过让渡」，
+        /// 那一份是租约的「我确实改过 InputManager」，租约不在时这一份也要能归零。
+        /// </summary>
+        private bool _errorSwapInputYielded;
+
         /// <summary>当前比赛的战斗控制与遥测；只在 MatchFighting 生命周期非空。</summary>
         private ModeHCombatControl _combatControl;
         private ModeHCombatTelemetry _combatTelemetry;
@@ -153,6 +160,7 @@ namespace BossRush
             _pendingContractMainId = null;
             _recoveryDriveStateSequence = -1;
             _leaseCheckAccumulator = 0f;
+            _errorSwapInputYielded = false;
             _seasonDirty = false;
             _selectedVirtualStake = 0;
             _currentOddsQuote = null;
@@ -736,6 +744,7 @@ namespace BossRush
             catch (Exception e) { LogFailure("destroy_ui", e); }
 
             _leaseCheckAccumulator = 0f;
+            _errorSwapInputYielded = false;
         }
 
         #endregion

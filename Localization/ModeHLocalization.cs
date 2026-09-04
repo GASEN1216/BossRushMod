@@ -496,9 +496,15 @@ namespace BossRush
             Add(map, "Recovery_ReturnEscrow", "取回托管押品", "Retrieve escrowed stake");
             Add(map, "Recovery_ReturnEscrow_Done",
                 "押品已退回仓库", "Escrowed stake returned to your warehouse");
+            // 这句原本写死「仓库需要空位」，但退回失败不止这一个成因（阶段机、落盘、
+            // 缓冲区未就绪都会走到这里）。仓库满现在由官方溢出缓冲区兜住，不再是主因，
+            // 所以文案改为不预设成因，具体 reasonId 由恢复面板原位展示。
             Add(map, "Recovery_ReturnEscrow_Failed",
-                "押品退回失败，仓库需要空位；清出空格后可再试",
-                "Could not return the stake; free up warehouse space and try again");
+                "押品退回未完成，请查看恢复面板上的原因说明",
+                "Could not return the stake; see the reason shown on the recovery panel");
+            Add(map, "Settle_Failed",
+                "本场押品结算未完成，押品已保留；请到恢复面板取回",
+                "Stake settlement did not finish; your stake is held. Retrieve it from the recovery panel");
 
             // 旧模式入口被拒时的两句文案：扫描失败与真实风险是两回事，
             // 用同一句会把「读档出错」说成「你有笔押品没结算」。

@@ -19,7 +19,9 @@ namespace BossRush
         // 倍率类（给 Reward.Attribute 用，对应鸭科夫源码 stat 名）
         public const string MeleeDamageMultiplier = "MeleeDamageMultiplier";
         public const string GunDamageMultiplier = "GunDamageMultiplier";
-        public const string ReloadSpeedMultiplier = "ReloadSpeedMultiplier";
+        // 注意：不要再加 "ReloadSpeedMultiplier" —— 官方源码里没有这个 stat，
+        // 挂上去会被 RuntimeStatModifierTracker 静默丢弃（AGENTS §14）。
+        // 换弹一律用下面的 ReloadSpeedGain，由 StatKeyExistenceGuard 守卫。
         public const string GunCritRateGain = "GunCritRateGain";
         public const string ReloadSpeedGain = "ReloadSpeedGain";
         public const string DashSpeed = "DashSpeed";

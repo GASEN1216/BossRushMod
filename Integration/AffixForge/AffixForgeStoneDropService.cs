@@ -45,6 +45,17 @@ namespace BossRush
         /// <summary>当前追踪中的 Boss 数（诊断用）。</summary>
         internal static int TrackedCount { get { return _hooks.Count; } }
 
+        /// <summary>
+        /// 已 roll 中、但要等 BossRush 奖励箱建好再投放的熔石。
+        ///
+        /// 主掉落 handler 会把 `dropBoxOnDead = false` 并另建一个带全新本地 Inventory
+        /// 的箱子，官方那句 `if (dropBoxOnDead) CreateFromItem(characterItem)` 于是不再执行——
+        /// 直接塞进 `boss.CharacterItem.Inventory` 的熔石会被整只丢掉。
+        /// 寒霜长矛与女巫镰刀早就走这条 defer 协议，这里照搬。
+        /// </summary>
+        private static readonly HashSet<CharacterMainControl> _pendingLootboxDrops =
+            new HashSet<CharacterMainControl>();
+
         #endregion
 
         #region 注册 / 退订（三段式）
@@ -166,6 +177,9 @@ namespace BossRush
         internal static void ClearAllTracking()
         {
             _scratch.Clear();
+            // pending 必须无条件清：_hooks 可能已被逐个 ClearTracking 清空，
+            // 而 pending 还挂着上一局的 Boss —— 早返会把它们留到下一局。
+            _pendingLootboxDrops.Clear();
             if (_hooks.Count == 0) return;
             List<CharacterMainControl> keys = new List<CharacterMainControl>(_hooks.Keys);
             for (int i = 0; i < keys.Count; i++)
@@ -198,6 +212,14 @@ namespace BossRush
 
                 if (UnityEngine.Random.value >= AffixDefinitions.ForgeStoneBossDropChance) return;
 
+                // roll 必须在 defer 判定之前：defer 记的是"这只 Boss 中了"，
+                // 不是"稍后再 roll"（与寒霜长矛同序）。
+                if (ShouldDeferToBossRushLootbox(owner, boss))
+                {
+                    _pendingLootboxDrops.Add(boss);
+                    return;
+                }
+
                 TrySpawnStoneIntoBossInventory(boss);
             }
             catch (Exception e)
@@ -208,19 +230,24 @@ namespace BossRush
 
         private static void TrySpawnStoneIntoBossInventory(CharacterMainControl boss)
         {
+            Item bossItem = boss != null ? boss.CharacterItem : null;
+            Inventory inventory = bossItem != null ? bossItem.Inventory : null;
+            if (inventory == null) return;
+            TryAddStoneToInventory(inventory, "Boss 库存");
+        }
+
+        /// <summary>造一颗按配置堆好数量的熔石。造不出来返回 null。</summary>
+        private static Item TryCreateStone()
+        {
             Item stone = null;
             try
             {
-                Item bossItem = boss.CharacterItem;
-                Inventory inventory = bossItem != null ? bossItem.Inventory : null;
-                if (inventory == null) return;
-
                 BossRushDynamicItemRegistry.EnsureRegistered(AffixForgeStoneConfig.TYPE_ID);
                 stone = ItemAssetsCollection.InstantiateSync(AffixForgeStoneConfig.TYPE_ID);
                 if (stone == null)
                 {
                     ModBehaviour.DevLog("[AffixForge] 熔石实例化失败，本次不掉落");
-                    return;
+                    return null;
                 }
 
                 try { stone.StackCount = AffixDefinitions.ForgeStoneBossDropCount; }
@@ -228,32 +255,128 @@ namespace BossRush
                 {
                     // 堆叠数写不进去就按 1 颗掉，不阻断掉落
                 }
+                return stone;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[AffixForge] 熔石创建失败: " + e.Message);
+                DestroyStoneQuietly(stone);
+                return null;
+            }
+        }
 
+        private static void DestroyStoneQuietly(Item stone)
+        {
+            if (stone == null) return;
+            try { stone.DestroyTree(); }
+            catch (Exception)
+            {
+                // 回收失败只丢引用，不阻断掉落流程
+            }
+        }
+
+        /// <summary>把熔石加进指定库存。失败即销毁，绝不泄漏悬空 Item。</summary>
+        private static void TryAddStoneToInventory(Inventory inventory, string destinationLabel)
+        {
+            if (inventory == null) return;
+            Item stone = TryCreateStone();
+            if (stone == null) return;
+
+            try
+            {
                 EnsureExtraInventoryCapacity(inventory);
                 if (!inventory.AddAndMerge(stone, 0))
                 {
-                    ModBehaviour.DevLog("[AffixForge] 熔石无法加入 Boss 库存，本次不掉落");
+                    ModBehaviour.DevLog(
+                        "[AffixForge] 熔石无法加入" + destinationLabel + "，本次不掉落");
+                    DestroyStoneQuietly(stone);
                     return;
                 }
-
-                stone = null;
-                ModBehaviour.DevLog("[AffixForge] 掉落词缀熔石");
+                ModBehaviour.DevLog("[AffixForge] 掉落词缀熔石（" + destinationLabel + "）");
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[AffixForge] 熔石掉落失败: " + e.Message);
+                DestroyStoneQuietly(stone);
             }
-            finally
+        }
+
+        #endregion
+
+        #region BossRush 奖励箱 defer 协议
+
+        /// <summary>
+        /// 是否要把这次掉落 defer 到 Mod 自己的投放点。
+        ///
+        /// 直接用 handler 闭包里捕获的 `owner`，不查全局单例：
+        /// 调用点在 `OnBossBeforeSpawnLoot` 的 `IsEnabled(owner)` 之后，
+        /// 那一步已经保证 owner 非空，再查一次单例既多余、又会把这里
+        /// 卷进宿主单例引用的分类台账（见 ModBehaviourInstanceClassificationGuard）。
+        /// </summary>
+        private static bool ShouldDeferToBossRushLootbox(ModBehaviour owner, CharacterMainControl boss)
+        {
+            return owner != null && owner.ShouldDeferExtraBossDropToModPath(boss);
+        }
+
+        /// <summary>
+        /// 并联到 AddBossSpecialLootToLootboxCoroutine：把 defer 的熔石投进 BossRush 奖励箱。
+        /// 幂等：取出即从 pending 移除，重复调用不会掉两颗。
+        /// </summary>
+        internal static void TryConsumePendingBossRushLootboxDrop(
+            CharacterMainControl boss, Inventory inventory)
+        {
+            PrunePendingEntries();
+            if (boss == null || inventory == null) return;
+            if (!_pendingLootboxDrops.Remove(boss)) return;
+
+            TryAddStoneToInventory(inventory, "BossRush 奖励箱");
+        }
+
+        /// <summary>
+        /// 无间炼狱专用：那条分支根本不建箱子，奖励通道是把物品 `Drop` 到世界里。
+        /// 不接这条，无间炼狱下的熔石会和箱子一起消失。
+        /// </summary>
+        internal static void TryConsumePendingAsWorldDrop(
+            CharacterMainControl boss, Vector3 position)
+        {
+            PrunePendingEntries();
+            if (boss == null) return;
+            if (!_pendingLootboxDrops.Remove(boss)) return;
+
+            Item stone = TryCreateStone();
+            if (stone == null) return;
+            try
             {
-                try
-                {
-                    if (stone != null) stone.DestroyTree();
-                }
-                catch (Exception)
-                {
-                    // 回收失败只丢引用，不阻断掉落流程
-                }
+                Vector3 dir = UnityEngine.Random.insideUnitSphere.normalized;
+                stone.Drop(position, true, dir, UnityEngine.Random.Range(30f, 60f));
+                ModBehaviour.DevLog("[AffixForge] 掉落词缀熔石（世界掉落）");
             }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[AffixForge] 熔石世界掉落失败: " + e.Message);
+                DestroyStoneQuietly(stone);
+            }
+        }
+
+        /// <summary>
+        /// 并联到 FinalizeBossRushLootboxPathTracking：这只 Boss 不会再有奖励箱了，
+        /// 撤销它的 pending，避免条目常驻累积。
+        /// </summary>
+        internal static void CancelPendingBossRushLootboxDrop(CharacterMainControl boss)
+        {
+            if (object.ReferenceEquals(boss, null)) return;
+            _pendingLootboxDrops.Remove(boss);
+            PrunePendingEntries();
+        }
+
+        /// <summary>清掉已随场景销毁的 Boss 条目（key 是 Unity 对象，会变成"假 null"）。</summary>
+        private static void PrunePendingEntries()
+        {
+            if (_pendingLootboxDrops.Count == 0) return;
+            _pendingLootboxDrops.RemoveWhere(delegate (CharacterMainControl boss)
+            {
+                return boss == null;
+            });
         }
 
         private static void EnsureExtraInventoryCapacity(Inventory inventory)

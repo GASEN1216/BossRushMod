@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -31,6 +31,29 @@ namespace BossRush
         private readonly ModeHInjuryAndScarSystem _injuryAndScar = new ModeHInjuryAndScarSystem();
         private readonly ModeHBattleSnapshot _snapshot = new ModeHBattleSnapshot();
         private readonly ModeHCommandFireContext _fireContext = new ModeHCommandFireContext();
+
+        /// <summary>点火目标重扫的节流累加器，节奏对齐 CommandReassertIntervalSeconds。</summary>
+        private float _fireTargetAccumulator;
+
+        /// <summary>
+        /// 上一次目标扫描算出的最残敌军生命比例（1 表示没有可用敌军）。
+        /// 战痕 blood_rush 的触发条件复用它，不再单开一轮每帧扫描。
+        /// </summary>
+        private float _lowestEnemyHealthFraction = 1f;
+
+        /// <summary>
+        /// 当前登场选手的护甲物品，登场时缓存一次。战痕 broken_shield_charge 的触发条件
+        /// 是它的耐久首次归零；每帧重新 GetArmorItem() 属于没必要的热路径开销。
+        /// 为 null 表示这名选手没穿护甲——那么「护甲破损」本就不该触发。
+        /// </summary>
+        private ItemStatsSystem.Item _activeFighterArmorItem;
+
+        /// <summary>本场擂台条件 ID（整场不变），供分量条件 condition_* 比对。</summary>
+        private string _arenaConditionId;
+
+        /// <summary>本场最后一个入场批次序号，用来判断"是否还有后续批次"。</summary>
+        private int _lastEntryBatchIndex;
+
         private readonly HashSet<string> _cowardChecksDone = new HashSet<string>(StringComparer.Ordinal);
 
         private ModeHCombatTelemetry _telemetry;
@@ -62,6 +85,15 @@ namespace BossRush
         private float _swapDeadlineRemaining;
         private string _swapProfileId;
         private string _swapPatternId;
+
+        /// <summary>
+        /// 本场 ERROR 互换是否已尝试过。成功、引用缺失、deadline 回滚都算消耗。
+        ///
+        /// 没有这个闩，唯一调用点会在 _errorTriggered 恒为 true 的情况下每帧重入：
+        /// 2 秒 deadline 回滚后 _swapPhase 回到 None，开始条件立刻重新成立。
+        /// </summary>
+        private bool _errorSwapAttempted;
+
         private int _matchIndex;
         private long _runSeed;
         private int _entryBatchIndex;
@@ -87,6 +119,9 @@ namespace BossRush
 
         /// <summary>ERROR 判定是否已消耗。</summary>
         public bool ErrorCheckDone { get { return _errorCheckDone; } }
+
+        /// <summary>本场 ERROR 互换是否已尝试过（每场至多一次的对外判据）。</summary>
+        public bool ErrorSwapAttempted { get { return _errorSwapAttempted; } }
 
         /// <summary>ERROR 互换是否生效中。</summary>
         public bool IsErrorSwapActive { get { return _swapPhase == ModeHErrorSwapPhase.Active; } }
@@ -117,7 +152,9 @@ namespace BossRush
             ModeHCombatTelemetry telemetry,
             int matchIndex,
             long runSeed,
-            string highThreatCoreStableKey)
+            string highThreatCoreStableKey,
+            string arenaConditionId,
+            int lastEntryBatchIndex)
         {
             _runState = runState;
             _map = map;
@@ -128,6 +165,16 @@ namespace BossRush
             _relayWindowOpen = false;
             _errorCheckDone = false;
             _errorTriggered = false;
+            _errorSwapAttempted = false;
+            // 目标缓存与节流都属于本场状态：不清会让新一场的第一次重申
+            // 沿用上一场已销毁的敌军引用
+            _fireTargetAccumulator = 0f;
+            _fireContext.NearestEnemy = null;
+            _fireContext.LowestHealthEnemy = null;
+            _lowestEnemyHealthFraction = 1f;
+            _activeFighterArmorItem = null;
+            _arenaConditionId = arenaConditionId;
+            _lastEntryBatchIndex = lastEntryBatchIndex > 0 ? lastEntryBatchIndex : 0;
             _cowardChecksDone.Clear();
             _activeFighter = null;
             _relayFighter = null;
@@ -164,6 +211,7 @@ namespace BossRush
             _activeFighter = fighter;
             _activeProfileId = profile.profileId;
             _activeStableKey = profile.stableKey;
+            _activeFighterArmorItem = ResolveArmorItem(fighter.Character);
             _activeAnomalyId = profile.anomalyId;
             _activeAi = ResolveAi(fighter.Character);
 
@@ -208,7 +256,7 @@ namespace BossRush
         {
             if (_telemetry == null || _telemetry.HasResult) return false;
 
-            RefreshFireContext();
+            RefreshFireContext(deltaTime, false);
 
             // 优先级 4：180 秒
             if (_telemetry.Tick(deltaTime)) return true;
@@ -322,7 +370,9 @@ namespace BossRush
         /// </summary>
         public bool TryRingBell(ModeHBattleSnapshotContext snapshotContext, out string failureReasonId)
         {
-            RefreshFireContext();
+            // 拍铃是每场唯一一次的玩家干预，目标必须是**按下那一刻**的最新值，
+            // 不能拿最多晚 CommandReassertIntervalSeconds 的缓存：强制重扫。
+            RefreshFireContext(0f, true);
             bool relayEntered = _telemetry != null && _telemetry.RelayConsumed;
             bool ok = _commandController.TryRingBell(
                 _activeAi,
@@ -433,19 +483,69 @@ namespace BossRush
             _injuryAndScar.OnHealthFractionChanged("old_wound", fraction);
             _injuryAndScar.OnEnemyCountChanged("spirit", _telemetry.LiveEnemyCount);
 
+            // 【触发型战痕的 triggerId 必须与 Scars.json 的 `trigger` 逐字相同】
+            // TryOpenScarWindow 在不匹配时 `return false` 且**不设** failureReasonId，
+            // 调用方只会当作"这次不该触发"，静默。2026-09-03 之前这里有两处对不上：
+            //   broken_shield_charge 传 "armor_broken"（表里是 armor_first_break）
+            //   crowd_favorite       传 "crowd_present"（表里是 enemy_count）
+            // 另有两条触发型战痕根本没有调用点（blood_rush / longshot_memory）。
+            // 结果是 8 条战痕里只有 2 条真能开窗。
+            //
+            // crowd_favorite 的那次调用已删除：它 windowSeconds=0，属**常驻**战痕，
+            // 由 OnFighterEntered -> ApplyStandingScars 施加，本来就不该走触发路径。
             string reason;
-            if (fraction <= ModeHConfig.LastStandHealthFraction)
+
+            // armor_first_break：护甲耐久首次归零。没穿护甲的选手不触发（语义如此）。
+            if (IsActiveFighterArmorBroken())
             {
-                _injuryAndScar.TryOpenScarWindow("broken_shield_charge", "armor_broken", out reason);
+                _injuryAndScar.TryOpenScarWindow(
+                    "broken_shield_charge", "armor_first_break", out reason);
             }
-            if (_telemetry.LiveEnemyCount >= ModeHConfig.CowardCrowdEnemyThreshold)
+
+            // enemy_first_low_health：任一存活敌军首次进入残血。
+            // 复用点火目标扫描已经算好的最残比例，不另开一轮每帧遍历。
+            if (_lowestEnemyHealthFraction <= ModeHConfig.LastStandHealthFraction)
             {
-                _injuryAndScar.TryOpenScarWindow("crowd_favorite", "crowd_present", out reason);
+                _injuryAndScar.TryOpenScarWindow(
+                    "blood_rush", "enemy_first_low_health", out reason);
             }
+
+            // first_ranged_damage_taken：本场登场选手首次吃到远程伤害。
+            if (_telemetry.ActiveFighterTookRangedDamage)
+            {
+                _injuryAndScar.TryOpenScarWindow(
+                    "longshot_memory", "first_ranged_damage_taken", out reason);
+            }
+
             if (_activeFighter.IsRelay)
             {
                 _injuryAndScar.TryOpenScarWindow("relay_expert", "relay_entered", out reason);
             }
+        }
+
+        /// <summary>
+        /// 当前登场选手的护甲是否已破损（耐久归零）。
+        /// 官方在 `Health` 里按 `damageInfo.armorBreak` 扣 `Item.Durability`，
+        /// 所以耐久是"护甲破损"唯一可靠的事实源；护甲 stat 不随耐久线性下降，不能用它判。
+        /// 没有护甲物品时恒 false —— 没穿甲就谈不上破甲。
+        /// </summary>
+        private bool IsActiveFighterArmorBroken()
+        {
+            if (_activeFighterArmorItem == null) return false;
+            try { return _activeFighterArmorItem.Durability <= 0f; }
+            catch (Exception)
+            {
+                // 物品已销毁：按未破损处理，宁可不触发也不误触发
+                return false;
+            }
+        }
+
+        /// <summary>登场时取一次护甲物品，避免每帧 GetArmorItem()。取不到返回 null。</summary>
+        private static ItemStatsSystem.Item ResolveArmorItem(CharacterMainControl character)
+        {
+            if (character == null) return null;
+            try { return character.GetArmorItem(); }
+            catch (Exception) { return null; }
         }
 
         #endregion
@@ -481,12 +581,19 @@ namespace BossRush
                 failureReasonId = "error_swap_not_triggered";
                 return false;
             }
+
+            // 每场至多一次。必须在引用检查**之前**置位：唯一调用点每帧轮询
+            // _errorTriggered && !ErrorSwapAttempted，若把闩放在后面，
+            // 引用缺失那一支会每帧重试，deadline 回滚后同样会重入。
+            _errorSwapAttempted = true;
+
             if (_playerBody == null || _activeFighter == null || _activeFighter.Character == null
                 || profile == null)
             {
                 failureReasonId = "error_swap_missing_reference";
                 return false;
             }
+
 
             // 步骤 1：保存一次性状态；互换期间禁止开始结算或换装
             if (!CaptureplayerState(out failureReasonId)) return false;
@@ -625,7 +732,16 @@ namespace BossRush
             _swapDeadlineRemaining = 0f;
         }
 
-        /// <summary>保存玩家身体的一次性状态。任一项读不到即拒绝互换（fail-closed）。</summary>
+        /// <summary>
+        /// 保存玩家身体的一次性状态。任一项读不到即拒绝互换（fail-closed）。
+        ///
+        /// 【这里存下来的是「观战租约改过之后」的状态，不是玩家的原始状态】
+        /// ModeHSpectatorLease.TryAcquire 早在开战前就把玩家设成了
+        /// Teams.middle + SetInvincible(true) + 看台坐标，本方法晚于它执行。
+        /// 因此 RestoreErrorSwap 还原到的是「看台态」，真正的原值由租约在 Release 时还原。
+        /// 这是正确的**嵌套**，不是双重还原：CompleteSwapHandover 再设一次相同的值是幂等的。
+        /// 不要「修」成直接还原玩家原始状态——那会在互换结束后把玩家从看台放回擂台。
+        /// </summary>
         private bool CaptureplayerState(out string failureReasonId)
         {
             failureReasonId = null;
@@ -756,46 +872,131 @@ namespace BossRush
             _activeAi = null;
         }
 
-        /// <summary>从战场快照恢复本场一次性判定与窗口状态。</summary>
-        public void RestoreFromSnapshot(ModeHBattleSnapshotDto snapshot)
-        {
-            if (snapshot == null) return;
-            _entryBatchIndex = snapshot.entryBatchIndex;
-            _errorCheckDone = snapshot.errorCheckDone;
-            _cowardChecksDone.Clear();
-            if (snapshot.cowardCheckDone != null)
-            {
-                for (int i = 0; i < snapshot.cowardCheckDone.Count; i++)
-                {
-                    _cowardChecksDone.Add(snapshot.cowardCheckDone[i]);
-                }
-            }
-            _commandController.RestoreFromSnapshot(
-                _commandController.LockedCommandId, snapshot.bellConsumed,
-                snapshot.activeCommandId, snapshot.commandWindowRemainingSeconds);
-            _injuryAndScar.RestoreScarWindows(snapshot.scarWindowStates);
-            if (_telemetry != null)
-            {
-                _telemetry.RestoreFromSnapshot(
-                    snapshot.elapsedSeconds,
-                    snapshot.entrant != null && snapshot.entrant.isRelay,
-                    null);
-            }
-        }
-
-        /// <summary>刷新点火上下文（零分配复用）。</summary>
-        private void RefreshFireContext()
+        // 【RestoreFromSnapshot 已于 2026-09-03 移除】
+        // 它是 §17.4 局中重建链的顶点，全仓库零调用点；链上的
+        // ModeHBattleSnapshot.Validate / TryRestoreHealth、ModeHCommandController 与
+        // ModeHCombatTelemetry 的同名方法也只被它调用，已一并移除。
+        // 生效的恢复语义是 §20.3 回落同场看盘 + 整场回滚，且冻结转换表里
+        // Recovering 没有任何通向战斗态的出边——理由与将来若要启用的完整清单
+        // 见 ModeHBattleSnapshot.cs 的“重建校验（已随 §20.3 收敛而移除）”。
+        // 这也意味着 §17.6.5 第 8 条的「快照带互换事实时重建一次」在当前语义下
+        // 不成立：回落到看盘后是重新开一场，一次性判定本就该全部重置。
+        /// <summary>
+        /// 刷新点火上下文（零分配复用）。
+        ///
+        /// 【为什么在这里算，而不是等外部喂】
+        ///   旧实现只填 ArenaCenter 与 EnemyCount，把最近/最残敌人留给一个
+        ///   `SetFireTargets(...)` 外部设值口——而那个方法全仓库零调用点。
+        ///   于是 `NearestEnemy` / `LowestHealthEnemy` 恒为 null，
+        ///   `fire_notice_nearest` 与 `fire_lowest_health_target` 两个 op 永远进不去分支：
+        ///   `finish` 口令整条退化成空操作，`press` 少一个 effect。
+        ///   更糟的是 `ModeHCommandAdapter.Validate()` 对这两个控制点的判据是
+        ///   `_ai.searchedEnemy != null` / `_ai.noticed`——AI 自己有目标就算“保持住了”，
+        ///   所以生产认证仍会把它们标成 Verified，玩家侧与诊断侧都看不出坏了。
+        ///
+        ///   唯一持有存活敌军名单的是遥测（`_liveEnemies`，登记与死亡两处维护），
+        ///   外部没有比这里更好的信息源，因此收口到本方法内部计算。
+        ///
+        /// 【热路径预算（AGENTS 4.12）】
+        ///   本方法每帧被 `Tick` 调一次。目标扫描按 `CommandReassertIntervalSeconds`
+        ///   节流——那正是点火的消费节奏（重申循环），拍铃走 `RefreshFireContext(0f, true)`
+        ///   强制取最新。扫描本身是对 `LiveEnemyCount` 的一次 O(n) 遍历，
+        ///   无分配、无 GetComponent、无场景查找；n 是本场存活敌军数（个位数）。
+        /// </summary>
+        private void RefreshFireContext(float deltaTime, bool forceTargetRescan)
         {
             _fireContext.ArenaCenter = _map != null ? _map.ArenaCenter : Vector3.zero;
             _fireContext.EnemyCount = _telemetry != null ? _telemetry.LiveEnemyCount : 0;
-            // 最近/最残敌人由生成事务在每次登记时刷新；这里不做场景扫描
+            RefreshEffectConditionInputs();
+            RefreshFireTargets(deltaTime, forceTargetRescan);
         }
 
-        /// <summary>把最近/最残敌人引用交给点火上下文（由主循环在敌军变更时调用）。</summary>
-        public void SetFireTargets(DamageReceiver nearestEnemy, DamageReceiver lowestHealthEnemy)
+        /// <summary>
+        /// 刷新分量条件（`appliesWhen`）所需的场上事实。每帧 O(存活敌军数)，无分配。
+        /// 与点火目标分开：点火目标可以按 0.1 秒节流，条件必须每帧准确——
+        /// 重申发生在哪一帧不由本类决定。
+        /// </summary>
+        private void RefreshEffectConditionInputs()
         {
-            _fireContext.NearestEnemy = nearestEnemy;
-            _fireContext.LowestHealthEnemy = lowestHealthEnemy;
+            _fireContext.BellConsumed = _commandController.BellConsumed;
+            _fireContext.ActiveFighterIsRelay = _activeFighter != null && _activeFighter.IsRelay;
+            _fireContext.ArenaConditionId = _arenaConditionId;
+            _fireContext.ReinforcementPending = _entryBatchIndex < _lastEntryBatchIndex;
+            _fireContext.FirstWaveAlive =
+                _telemetry != null && _telemetry.HasLiveEnemyInBatch(0);
+        }
+
+        /// <summary>
+        /// 按节流重算最近 / 最残敌人。两者都以**当前登场选手**为参照：
+        /// 口令是发给他的，"最近"当然是离他最近，而不是离擂台中心最近。
+        /// 选手引用缺失时清空目标（fail-closed：宁可点火空转，也不把 AI 引到错误目标）。
+        /// </summary>
+        private void RefreshFireTargets(float deltaTime, bool force)
+        {
+            if (!force)
+            {
+                // 用调用方传进来的 deltaTime，不读 Time.deltaTime：
+                // 本类所有计时都由 Tick 的同一个 delta 驱动，混用两个时基会让
+                // 节流节奏与重申循环对不上。
+                _fireTargetAccumulator += deltaTime;
+                if (_fireTargetAccumulator < ModeHConfig.CommandReassertIntervalSeconds) return;
+            }
+            _fireTargetAccumulator = 0f;
+
+            _fireContext.NearestEnemy = null;
+            _fireContext.LowestHealthEnemy = null;
+
+            if (_telemetry == null) return;
+            CharacterMainControl origin = _activeFighter != null ? _activeFighter.Character : null;
+            if (origin == null) return;
+
+            Vector3 originPos;
+            try { originPos = origin.transform.position; }
+            catch (Exception) { return; }
+
+            float bestSqr = float.MaxValue;
+            float bestFraction = float.MaxValue;
+            _lowestEnemyHealthFraction = 1f;
+            int count = _telemetry.LiveEnemyCount;
+            for (int i = 0; i < count; i++)
+            {
+                ModeHParticipantRef enemy = _telemetry.GetLiveEnemyAt(i);
+                // continue 而不是 return：中途放弃会留下一份只扫了前半段的目标，
+                // 那正是本文件要修的那类"看起来有值、其实是残缺结果"
+                if (enemy == null) continue;
+                CharacterMainControl character = enemy.Character;
+                if (character == null) continue;
+
+                DamageReceiver receiver;
+                Vector3 enemyPos;
+                try
+                {
+                    receiver = character.mainDamageReceiver;
+                    if (receiver == null) continue;
+                    enemyPos = character.transform.position;
+                }
+                catch (Exception)
+                {
+                    // 单个敌军引用已销毁不该毁掉整轮扫描
+                    continue;
+                }
+
+                float sqr = (enemyPos - originPos).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    bestSqr = sqr;
+                    _fireContext.NearestEnemy = receiver;
+                }
+
+                float fraction = ModeHCombatTelemetry.ReadHealthFraction(character);
+                // 已经归零的不再当作"最残"目标：那是等待死亡结算的尸体
+                if (fraction > 0f && fraction < bestFraction)
+                {
+                    bestFraction = fraction;
+                    _lowestEnemyHealthFraction = fraction;
+                    _fireContext.LowestHealthEnemy = receiver;
+                }
+            }
         }
 
         /// <summary>

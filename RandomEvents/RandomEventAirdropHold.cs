@@ -49,6 +49,17 @@ namespace BossRush
         private float _holdExtendedSeconds;
 
         /// <summary>
+        /// 本箱的战利品界面是否开着。由官方 OnStartLoot / OnStopLoot 驱动。
+        ///
+        /// 不能只看 InteractableBase.Interacting：官方在界面打开后一帧就 StopInteract()，
+        /// 那之后 Interacting 恒为 false，而界面还开着——旧判据因此几乎永不命中。
+        /// </summary>
+        private bool _crateLootViewOpen;
+
+        /// <summary>官方 loot 事件是否已订阅（幂等 + 成对退订，AGENTS 4.6）。</summary>
+        private bool _lootEventsHooked;
+
+        /// <summary>
         /// 玩家正开着空投箱时把到期点往后推。
         ///
         /// 【为什么延的是「到期」而不是「清理」】
@@ -78,9 +89,11 @@ namespace BossRush
                 if (ctx == null || _validationCrate == null) return;
                 if (_holdExtendedSeconds >= RandomEventsTuning.AirdropHoldOpenMaxSeconds) return;
 
-                // InteractableBase.Interacting == (interactCharacter != null)：无副作用的纯属性，
-                // openning 与 looting 两个子态都覆盖。绝不在这里读 crate.Inventory（非纯 getter）。
-                if (!_validationCrate.Interacting) return;
+                // 主判据是官方 loot 事件维护的闩：界面打开后一帧官方就会 StopInteract()，
+                // 此后 Interacting 恒 false 而界面仍开着，只看它等于保护从不生效。
+                // Interacting 保留为次要信号（纯属性、无副作用），覆盖「正在打开」这一小段。
+                // 绝不在这里读 crate.Inventory（非纯 getter）。
+                if (!_crateLootViewOpen && !_validationCrate.Interacting) return;
 
                 float remaining = ctx.DurationSeconds - ctx.ElapsedSeconds;
                 float step = RandomEventsTuning.AirdropHoldOpenGraceSeconds - remaining;
@@ -110,6 +123,8 @@ namespace BossRush
         {
             _crateInventory = null;
             _holdExtendedSeconds = 0f;
+            _crateLootViewOpen = false;
+            HookLootEvents();
 
             try
             {
@@ -128,8 +143,71 @@ namespace BossRush
         /// <summary>清空翻箱保护状态。OnCleanup 调用；事件实例被目录复用，必须成对归零。</summary>
         private void ResetAirdropHoldState()
         {
+            UnhookLootEvents();
+            _crateLootViewOpen = false;
             _crateInventory = null;
             _holdExtendedSeconds = 0f;
+        }
+
+        /// <summary>订阅官方 loot 事件。幂等：重复调用只订阅一次。</summary>
+        private void HookLootEvents()
+        {
+            if (_lootEventsHooked) return;
+            try
+            {
+                InteractableLootbox.OnStartLoot += HandleLootStarted;
+                InteractableLootbox.OnStopLoot += HandleLootStopped;
+                _lootEventsHooked = true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix
+                    + "[WARNING] 订阅开箱事件失败，翻箱保护将只靠 Interacting 判定: " + e.Message);
+            }
+        }
+
+        /// <summary>退订官方 loot 事件。事件实例被目录复用，必须与 Hook 成对。</summary>
+        private void UnhookLootEvents()
+        {
+            if (!_lootEventsHooked) return;
+            _lootEventsHooked = false;
+            try
+            {
+                InteractableLootbox.OnStartLoot -= HandleLootStarted;
+                InteractableLootbox.OnStopLoot -= HandleLootStopped;
+            }
+            catch (Exception)
+            {
+                // 退订失败不阻断清理：闩已复位，最坏是多一次无害回调。
+            }
+        }
+
+        private void HandleLootStarted(InteractableLootbox box)
+        {
+            try
+            {
+                if (box != null && ReferenceEquals(box, _validationCrate)) _crateLootViewOpen = true;
+            }
+            catch (Exception e)
+            {
+                // 官方静态事件的回调必须 no-throw，否则会打断同一事件的其他订阅方。
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix
+                    + "[WARNING] 开箱事件回调异常: " + e.Message);
+            }
+        }
+
+        private void HandleLootStopped(InteractableLootbox box)
+        {
+            try
+            {
+                if (box != null && ReferenceEquals(box, _validationCrate)) _crateLootViewOpen = false;
+            }
+            catch (Exception e)
+            {
+                // 官方静态事件的回调必须 no-throw，否则会打断同一事件的其他订阅方。
+                ModBehaviour.DevLog(RandomEventsTuning.LogPrefix
+                    + "[WARNING] 开箱事件回调异常: " + e.Message);
+            }
         }
 
         /// <summary>

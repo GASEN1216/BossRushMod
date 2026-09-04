@@ -243,10 +243,20 @@ namespace BossRush
             failureReasonId = null;
             ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
             if (journal == null) return true;
-            if (ModeHWarehouseStakeJournal.IsTerminalPhase(
-                    ModeHStateModel.ToStakePhase(journal.phase)))
+            ModeHStakePhase settlePhase = ModeHStateModel.ToStakePhase(journal.phase);
+            if (ModeHWarehouseStakeJournal.IsTerminalPhase(settlePhase))
             {
                 return true;
+            }
+
+            // 重入保护：上一次结算可能停在 CommitResult 之后、Settle 之前（例如落盘撞上自动
+            // 存档）。此时再走一次 CommitResult 会被 commit_result_already_committed 永久挡住，
+            // 必须直接续做已冻结的结算。
+            if (settlePhase == ModeHStakePhase.ResultCommitted
+                || settlePhase == ModeHStakePhase.AbortReturnCommitted
+                || settlePhase == ModeHStakePhase.SettlementPending)
+            {
+                return TryCompleteFrozenSettlement(runSeed, settlePhase, out failureReasonId);
             }
 
             string resultToken = "res|" + journal.txId + "|" + matchIndex;
@@ -310,6 +320,21 @@ namespace BossRush
                 return ModeHWarehouseStakeJournal.TryCancelWithoutRemoval(out failureReasonId);
             }
 
+            // 已冻结 settlementKind 的三个阶段：续做，不能再提交一次 abort return。
+            if (phase == ModeHStakePhase.ResultCommitted
+                || phase == ModeHStakePhase.AbortReturnCommitted
+                || phase == ModeHStakePhase.SettlementPending)
+            {
+                return TryCompleteFrozenSettlement(runSeed, phase, out failureReasonId);
+            }
+
+            // 人工介入在冻结表里没有任何出边，是设计上的终点。但押品实物必须还给玩家：
+            // 物理交付不能依赖账目走到终态，否则「等人工处理」等于「东西拿不回来」。
+            if (phase == ModeHStakePhase.ManualIntervention)
+            {
+                return ModeHWarehouseStakeJournal.ReturnEscrowItems(null, out failureReasonId);
+            }
+
             string abortToken = "abt|" + journal.txId + "|" + matchIndex;
             ModeHAbortReturnOperationDto operation = ModeHRewardTransaction.BuildAbortReturnPlan(
                 journal, runSeed, matchIndex, abortToken, journal.payloadDigest,
@@ -329,6 +354,86 @@ namespace BossRush
         #endregion
 
         #region 辅助
+
+        /// <summary>
+        /// 续做一笔已经冻结了 `settlementKind` 的结算。
+        ///
+        /// `ResultCommitted` / `AbortReturnCommitted` / `SettlementPending` 三个阶段此前是死态：
+        /// 它们在 §22.2 冻结表里没有通向 `AbortReturnCommitted` 的出边，而 `TryAbortReturn`
+        /// 却无条件走 `CommitAbortReturn`，于是必然撞 `journal_illegal_transition`——
+        /// 押品实物永远退不回来；更糟的是非终态 journal 会经 `RecomputeSlotConsistency`
+        /// 置 `SetExternalAssetRiskBlocked(true)`，把 D/E/F/G/无间/丧尸七个旧模式入口一起锁死。
+        ///
+        /// **冻结表本身不需要改动**：`ResultCommitted → SettlementPending → Terminal` 与
+        /// `AbortReturnCommitted → SettlementPending → RefundedTerminal` 本来就是合法路径，
+        /// 缺的只是按阶段正确分派。这里沿用已冻结的 kind 接着往下做，**绝不切换 kind**
+        /// （切换会撞 `journal_settlement_kind_drift`，那是冻结不变式）。
+        /// </summary>
+        private static bool TryCompleteFrozenSettlement(
+            long runSeed, ModeHStakePhase phase, out string failureReasonId)
+        {
+            failureReasonId = null;
+
+            // 已在 SettlementPending 时再调 EnterSettlementPending 是自环，冻结表判非法。
+            if (phase != ModeHStakePhase.SettlementPending)
+            {
+                if (!ModeHWarehouseStakeJournal.EnterSettlementPending(out failureReasonId))
+                {
+                    return false;
+                }
+            }
+
+            ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
+            if (journal == null)
+            {
+                failureReasonId = "journal_missing";
+                return false;
+            }
+
+            if (journal.settlementKind == (int)ModeHSettlementKind.MatchResult)
+            {
+                // 胜负从已冻结的结果计划反推：只有失败计划才会写 "loss" 条目。
+                // lossItems 为空时两条分支都退化成「只返还」，所以即使判反也不会多没收。
+                if (HasPlannedLossEntry(journal))
+                {
+                    if (!ModeHWarehouseStakeJournal.ApplyPlannedLosses(out failureReasonId)) return false;
+                    if (!ModeHWarehouseStakeJournal.ReturnEscrowItems(null, out failureReasonId)) return false;
+                }
+                else
+                {
+                    if (!ModeHWarehouseStakeJournal.ReturnEscrowItems(null, out failureReasonId)) return false;
+                    if (!ModeHWarehouseStakeJournal.GrantPlannedRewards(runSeed, out failureReasonId)) return false;
+                }
+            }
+            else
+            {
+                // AbortReturn：中止不没收任何东西，全部原样退回。
+                if (!ModeHWarehouseStakeJournal.ReturnEscrowItems(null, out failureReasonId)) return false;
+            }
+
+            return ModeHWarehouseStakeJournal.Settle(out failureReasonId);
+        }
+
+        /// <summary>已冻结的结果计划里是否含没收条目（= 这一场是失败结算）。</summary>
+        private static bool HasPlannedLossEntry(ModeHStakeJournalDto journal)
+        {
+            if (journal == null
+                || journal.rewardOperation == null
+                || journal.rewardOperation.itemResults == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < journal.rewardOperation.itemResults.Count; i++)
+            {
+                ModeHRewardItemResultDto result = journal.rewardOperation.itemResults[i];
+                if (result != null
+                    && string.Equals(result.resultKind, "loss", StringComparison.Ordinal))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         /// <summary>
         /// 派生本场押品事务 ID。

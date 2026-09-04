@@ -162,6 +162,12 @@ namespace BossRush
                     DevLog("[DragonKing] [WARNING] 离开竞技场时清理遗种巢追踪失败: " + petNestEx.Message);
                 }
 
+                try { AffixForgeStoneDropService.ClearTracking(character); }
+                catch (Exception affixStoneEx)
+                {
+                    DevLog("[DragonKing] [WARNING] 离开竞技场时清理词缀熔石追踪失败: " + affixStoneEx.Message);
+                }
+
                 UnityEngine.Events.UnityAction<DamageInfo> deathHandler;
                 if (dragonKingDeathEventHandlers.TryGetValue(character, out deathHandler) &&
                     deathHandler != null &&
@@ -213,10 +219,15 @@ namespace BossRush
         /// <summary>
         /// 生成龙王Boss
         /// </summary>
+        /// <param name="isNonWaveSpawn">
+        /// 本次生成不属于当前波次（随机事件乱入等），true 时跳过波次身份登记。
+        /// 形态照龙裔的 isChildProtectionSummon。
+        /// </param>
         public async UniTask<CharacterMainControl> SpawnDragonKing(
             Vector3 position,
             bool notifyBossRushOnFailure = true,
-            bool deferActivationUntilNextFrame = false)
+            bool deferActivationUntilNextFrame = false,
+            bool isNonWaveSpawn = false)
         {
             try
             {
@@ -255,13 +266,22 @@ namespace BossRush
                 dragonKingInstances[character] = null; // 先占位，后面赋值控制器
                 character.gameObject.name = "BossRush_DragonKing";
                 
-                // 设置为当前Boss
-                currentBoss = character;
-                
-                // 多Boss模式支持
-                if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
+                // 非本波生成（随机事件乱入）不登记波次身份：写进去会顶掉本波真 Boss，
+                // 导致真 Boss 死亡不推波，且乱入者销毁后卡波自检会误判为「无存活 Boss」。
+                if (!isNonWaveSpawn)
                 {
-                    currentWaveBosses.Add(character);
+                    // 设置为当前Boss
+                    currentBoss = character;
+
+                    // 多Boss模式支持
+                    if (bossesPerWave > 1 && currentWaveBosses != null && !currentWaveBosses.Contains(character))
+                    {
+                        currentWaveBosses.Add(character);
+                    }
+                }
+                else
+                {
+                    DevLog("[DragonKing] 非本波生成：跳过波次追踪系统注册");
                 }
                 
                 // 创建独立预设副本
@@ -342,6 +362,13 @@ namespace BossRush
                 {
                     bossSpawnTimes[character] = Time.time;
                     bossOriginalLootCounts[character] = 5; // 龙王掉落更多
+
+                    // 龙王绕过 RegisterBossRandomLootTracking，所以那里的
+                    // MarkBossRushLootboxPathTracking 也没跑过——`ShouldDeferExtraBossDropToModPath`
+                    // 于是对龙王恒假，额外掉落（遗种蛋 / 词缀熔石 / 寒霜长矛）会照旧写进
+                    // characterItem，而下面这条 handler 走的正是会把 dropBoxOnDead 关掉的
+                    // OnBossBeforeSpawnLoot，写进去的东西全部作废。这里补登记一次。
+                    MarkBossRushLootboxPathTracking(character);
                     
                     // 使用命名委托替代Lambda，以便后续可以正确取消订阅（避免内存泄漏）
                     // 每个龙皇实例独立的掉落事件处理器
@@ -360,6 +387,16 @@ namespace BossRush
                     catch (Exception petNestEx)
                     {
                         DevLog("[DragonKing] 遗种巢掉落追踪挂接失败: " + petNestEx.Message);
+                    }
+
+                    // 词缀熔石同理：AffixForgeStoneDropService.TryTrack 全仓库只在
+                    // RegisterBossRandomLootTracking 里被调用，龙王绕过那条路径，于是熔石
+                    // 判定从来没挂上——三个自定义 Boss 里只有龙王不掉熔石。
+                    // 与上面的遗种巢并联同一时点；服务内部幂等，开关关闭时自身早返。
+                    try { AffixForgeStoneDropService.TryTrack(this, character); }
+                    catch (Exception affixStoneEx)
+                    {
+                        DevLog("[DragonKing] 词缀熔石掉落追踪挂接失败: " + affixStoneEx.Message);
                     }
 
                     DevLog("[DragonKing] 已订阅掉落事件，bossSpawnTimes.Count=" + bossSpawnTimes.Count);
@@ -619,6 +656,13 @@ namespace BossRush
             catch (Exception petNestEx)
             {
                 DevLog("[DragonKing] [WARNING] 清理遗种巢追踪失败: " + petNestEx.Message);
+            }
+
+            // 熔石同理：BeforeSpawnLoot 已经派发完，这里只做退订。
+            try { AffixForgeStoneDropService.ClearTracking(deadKing); }
+            catch (Exception affixStoneEx)
+            {
+                DevLog("[DragonKing] [WARNING] 清理词缀熔石追踪失败: " + affixStoneEx.Message);
             }
 
             // 清理死亡事件委托引用，避免多实例或异常退场后残留匿名监听。

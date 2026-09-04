@@ -30,6 +30,37 @@ namespace BossRush
         private static Dictionary<string, ModeHCommandCompatibilityStatus> _effectStatuses;
 
         private static Dictionary<string, List<string>> _effectIdsByCommand;
+
+        /// <summary>
+        /// 伤病 / 战痕条目 ID -> 其**非自结算**分量 effectId（ordinal 升序）。
+        ///
+        /// 为什么单独一张表而不并进 _effectIdsByCommand：口令的条目 ID 与分量 ID 是
+        /// `cmd` / `cmd.controlPoint` 的父子关系，伤病战痕也是（`leg` / `leg.sightDistance`），
+        /// 但两族的条目 ID 不能混在同一张字典里——GetCommandStatus 只允许口令派生
+        /// PartiallyVerified，伤病战痕按 §17.4 line 1118 不设该档（任一分量不可用整条不进抽池）。
+        ///
+        /// 自结算分量不进表：它们对任何 key 恒可用，参与条目级判定只会把结论稀释。
+        /// </summary>
+        private static Dictionary<string, List<string>> _effectIdsByBehaviorEntry;
+
+        /// <summary>伤病 / 战痕条目 ID -> entryKind（"injury" / "scar"）。落盘 DTO 用。</summary>
+        private static Dictionary<string, string> _behaviorEntryKinds;
+
+        /// <summary>
+        /// Mode H 自结算的 effect / 行为 ID。这里同时收两类东西：
+        /// - `steady.coward_mitigation` 这种「口令的自结算分量」；
+        /// - `blood` / `crowd` / `strong` / `error` 四个**公开异常 ID**。
+        ///
+        /// 异常为什么在这里：它们完全不写原版 AI 控制点，后果整个由 Mode H 自己结算
+        /// （胆怯 = 整队弃赛，ERROR = 走 ControlOtherCharacter 的完整互换），
+        /// 没有任何可实测的字段，因此对任何 stable key 恒为 VerifiedBehavior。
+        /// 依据 §17.6.4 line 1308「三种胆怯对任何 key 恒为 VerifiedBehavior」。
+        ///
+        /// `error` 同列是 owner 裁决（2026-09-03）：§17.6.5 原本要一份逐角色白名单，
+        /// 但互换自带 2 秒 deadline + 完整回滚（TickErrorSwap :528-533），
+        /// 切换不成功就整体还原、比赛照常，运行时已经 fail-safe，白名单加不了安全性。
+        /// 真正的实测改放 F3 验收（DebugAndTools/F3GameplayValidationModeHErrorSwap.cs）。
+        /// </summary>
         private static HashSet<string> _selfSettledEffectIds;
         private static string _matrixSignature;
 
@@ -60,6 +91,8 @@ namespace BossRush
                 _lastError = null;
                 _effectStatuses = null;
                 _effectIdsByCommand = null;
+                _effectIdsByBehaviorEntry = null;
+                _behaviorEntryKinds = null;
                 _selfSettledEffectIds = null;
                 _matrixSignature = null;
             }
@@ -129,13 +162,66 @@ namespace BossRush
                 }
             }
 
+            // 伤病与战痕：与口令同构地建「条目 -> 非自结算分量」表。
+            // 目录在本方法开头已由 EnsureLoaded 保证加载，这里直接读。
+            Dictionary<string, List<string>> byBehaviorEntry =
+                new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            Dictionary<string, string> behaviorEntryKinds =
+                new Dictionary<string, string>(StringComparer.Ordinal);
+
+            List<ModeHInjurySpec> injuries = ModeHContentCatalog.Injuries;
+            if (injuries != null)
+            {
+                for (int i = 0; i < injuries.Count; i++)
+                {
+                    ModeHInjurySpec injury = injuries[i];
+                    if (injury == null || string.IsNullOrEmpty(injury.InjuryId)) continue;
+                    byBehaviorEntry[injury.InjuryId] = CollectEngineEffectIds(injury.Components);
+                    behaviorEntryKinds[injury.InjuryId] = "injury";
+                }
+            }
+
+            List<ModeHScarSpec> scars = ModeHContentCatalog.Scars;
+            if (scars != null)
+            {
+                for (int i = 0; i < scars.Count; i++)
+                {
+                    ModeHScarSpec scar = scars[i];
+                    if (scar == null || string.IsNullOrEmpty(scar.ScarId)) continue;
+                    byBehaviorEntry[scar.ScarId] = CollectEngineEffectIds(scar.Components);
+                    behaviorEntryKinds[scar.ScarId] = "scar";
+                }
+            }
+
             _effectIdsByCommand = byCommand;
+            _effectIdsByBehaviorEntry = byBehaviorEntry;
+            _behaviorEntryKinds = behaviorEntryKinds;
             _selfSettledEffectIds = selfSettled;
             _effectStatuses = new Dictionary<string, ModeHCommandCompatibilityStatus>(StringComparer.Ordinal);
             _matrixSignature = null;
             _validated = true;
             _lastError = null;
             return true;
+        }
+
+        /// <summary>
+        /// 取一组分量里**需要实测**的那些 effectId（ordinal 升序）。
+        /// 自结算分量被排除：它们不写原版字段，没有可测量的对象，
+        /// 恒可用，参与条目级判定只会把结论稀释。
+        /// </summary>
+        private static List<string> CollectEngineEffectIds(List<ModeHEffectSpec> components)
+        {
+            List<string> ids = new List<string>();
+            if (components == null) return ids;
+            for (int i = 0; i < components.Count; i++)
+            {
+                ModeHEffectSpec component = components[i];
+                if (component == null || component.SelfSettled) continue;
+                if (string.IsNullOrEmpty(component.EffectId)) continue;
+                ids.Add(component.EffectId);
+            }
+            ids.Sort(StringComparer.Ordinal);
+            return ids;
         }
 
         #endregion
@@ -212,7 +298,11 @@ namespace BossRush
                 {
                     ModeHCommandCertificationStatusDto command = record.commandStatuses[j];
                     if (command == null || command.effectStatuses == null) continue;
-                    List<string> knownEffects = GetEffectIds(command.commandId);
+                    // 条目级查询：commandId 字段现在同时承载口令 ID 与伤病 / 战痕条目 ID
+                    // （见 BuildCommandStatuses）。仍用 GetEffectIds 的话，
+                    // 伤病战痕那批行会因为「不是已知口令」被整批丢弃——
+                    // 缓存命中的那一局伤病又变无名、战痕又无候选，而口令层看起来毫无异常。
+                    List<string> knownEffects = GetBehaviorEffectIds(command.commandId);
                     if (knownEffects == null) continue;
                     for (int k = 0; k < command.effectStatuses.Count; k++)
                     {
@@ -291,6 +381,85 @@ namespace BossRush
             return _effectIdsByCommand.TryGetValue(commandId, out effectIds) ? effectIds : null;
         }
 
+        /// <summary>全部伤病 / 战痕条目 ID（ordinal 升序）。缓存落盘与诊断遍历用。</summary>
+        public static List<string> GetBehaviorEntryIds()
+        {
+            List<string> ids = new List<string>();
+            if (_effectIdsByBehaviorEntry == null) return ids;
+            foreach (KeyValuePair<string, List<string>> pair in _effectIdsByBehaviorEntry)
+            {
+                ids.Add(pair.Key);
+            }
+            ids.Sort(StringComparer.Ordinal);
+            return ids;
+        }
+
+        /// <summary>条目的 entryKind："command" / "injury" / "scar"；未知返回空串。</summary>
+        public static string GetBehaviorEntryKind(string entryId)
+        {
+            if (string.IsNullOrEmpty(entryId)) return string.Empty;
+            if (_effectIdsByCommand != null && _effectIdsByCommand.ContainsKey(entryId)) return "command";
+            string kind;
+            if (_behaviorEntryKinds != null && _behaviorEntryKinds.TryGetValue(entryId, out kind)) return kind;
+            return string.Empty;
+        }
+
+        /// <summary>
+        /// 取一条条目的实测分量：口令取其 effects，伤病 / 战痕取其非自结算分量。
+        ///
+        /// 口令优先查：两族条目 ID 之间不存在碰撞（口令 ID 与伤病战痕 ID 分属
+        /// ModeHStableIds 的不同冻结表），这里的顺序只为让口令走最短路径。
+        /// </summary>
+        public static List<string> GetBehaviorEffectIds(string entryId)
+        {
+            List<string> effectIds = GetEffectIds(entryId);
+            if (effectIds != null) return effectIds;
+            if (_effectIdsByBehaviorEntry == null || string.IsNullOrEmpty(entryId)) return null;
+            return _effectIdsByBehaviorEntry.TryGetValue(entryId, out effectIds) ? effectIds : null;
+        }
+
+        /// <summary>
+        /// 条目级状态。口令沿用既有派生；伤病 / 战痕**不设 PartiallyVerified**——
+        /// §17.4 line 1118：任一分量对该 key 不可用，整条就不进抽池，
+        /// 不允许「收益生效、代价失效」或反之。
+        ///
+        /// 全部分量都是自结算（如伤病 armor / spirit）时分量表为空，恒 VerifiedBehavior：
+        /// 这类条目不写原版字段，没有可失败的对象。
+        ///
+        /// 都不是条目 ID 时回落到 effect 级查询，让四个公开异常这种「裸 ID」
+        /// 能经 _selfSettledEffectIds 拿到 VerifiedBehavior。
+        /// </summary>
+        public static ModeHCommandCompatibilityStatus GetBehaviorEntryStatus(string stableKey, string entryId)
+        {
+            if (string.IsNullOrEmpty(entryId)) return ModeHCommandCompatibilityStatus.Unavailable;
+
+            if (_effectIdsByCommand != null && _effectIdsByCommand.ContainsKey(entryId))
+            {
+                return GetCommandStatus(stableKey, entryId);
+            }
+
+            List<string> componentIds;
+            if (_effectIdsByBehaviorEntry != null
+                && _effectIdsByBehaviorEntry.TryGetValue(entryId, out componentIds))
+            {
+                if (componentIds == null || componentIds.Count == 0)
+                {
+                    return ModeHCommandCompatibilityStatus.VerifiedBehavior;
+                }
+                for (int i = 0; i < componentIds.Count; i++)
+                {
+                    if (GetEffectStatus(stableKey, componentIds[i])
+                        != ModeHCommandCompatibilityStatus.VerifiedBehavior)
+                    {
+                        return ModeHCommandCompatibilityStatus.ReportOnly;
+                    }
+                }
+                return ModeHCommandCompatibilityStatus.VerifiedBehavior;
+            }
+
+            return GetEffectStatus(stableKey, entryId);
+        }
+
         /// <summary>
         /// 候选卡/选令文案只能由已通过的 effect 生成（§17.6.4）：
         /// 返回该口令中状态为 VerifiedBehavior 的 effectId。
@@ -334,7 +503,12 @@ namespace BossRush
         public static bool HasVerifiedBehavior(string stableKey, string behaviorId)
         {
             if (string.IsNullOrEmpty(stableKey) || string.IsNullOrEmpty(behaviorId)) return false;
-            return GetEffectStatus(stableKey, behaviorId) == ModeHCommandCompatibilityStatus.VerifiedBehavior;
+            // 走条目级查询：behaviorId 既可能是分量 ID（leg.sightDistance，
+            // ModeHInjuryAndScarSystem.IsEntryUsableForKey 逐分量查这一种），
+            // 也可能是条目 ID（leg，HasVerifiedInjuryBehavior 查这一种），
+            // 还可能是裸异常 ID（error，经自结算集合命中）。三种都要能答。
+            return GetBehaviorEntryStatus(stableKey, behaviorId)
+                == ModeHCommandCompatibilityStatus.VerifiedBehavior;
         }
 
         /// <summary>该 stable key 是否至少有一条伤病行为通过实测（敌方带伤分的前置）。</summary>
@@ -357,35 +531,58 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 构造用于持久化的逐 effect 状态快照（按 entryId ordinal 升序，由 canonical digest 再排一次）。
+        /// 构造随选手档案落盘的行为状态快照（按 entryId ordinal 升序，canonical digest 会再排一次）。
+        ///
+        /// 【只产出赔率真正查询的三类】伤病、战痕、公开异常。
+        /// ModeHOddsController.IsVerified 只按 profile.injuryId / anomalyId / scarId 三种
+        /// 去 behaviorStatuses 里找，塞进 13 条口令 + 35 条 effect 只会让每个选手档案
+        /// 白白胖 48 行，还全都没人查。
+        ///
+        /// 【绝不在读档时刷新】本表进赛季 canonical digest，抽签时一次写定。
+        /// 事后改写会让已存赛季 VerifyDigest 失败并进写屏障——
+        /// 这也是老赛季保持空表、不追溯改赔率的原因。
         /// </summary>
         public static List<ModeHBehaviorStatusDto> BuildBehaviorSnapshot(string stableKey)
         {
             List<ModeHBehaviorStatusDto> result = new List<ModeHBehaviorStatusDto>();
-            if (_effectIdsByCommand == null) return result;
+            if (string.IsNullOrEmpty(stableKey)) return result;
 
-            List<string> commandIds = new List<string>(_effectIdsByCommand.Keys);
-            commandIds.Sort(StringComparer.Ordinal);
-            for (int i = 0; i < commandIds.Count; i++)
+            List<string> entryIds = GetBehaviorEntryIds();
+            for (int i = 0; i < entryIds.Count; i++)
             {
-                string commandId = commandIds[i];
-                ModeHBehaviorStatusDto commandDto = new ModeHBehaviorStatusDto();
-                commandDto.entryId = commandId;
-                commandDto.entryKind = "command";
-                commandDto.status = (int)GetCommandStatus(stableKey, commandId);
-                result.Add(commandDto);
+                string entryId = entryIds[i];
+                ModeHBehaviorStatusDto dto = new ModeHBehaviorStatusDto();
+                dto.entryId = entryId;
+                dto.entryKind = GetBehaviorEntryKind(entryId);
+                dto.status = (int)GetBehaviorEntryStatus(stableKey, entryId);
+                result.Add(dto);
+            }
 
-                List<string> effectIds = _effectIdsByCommand[commandId];
-                for (int j = 0; j < effectIds.Count; j++)
+            string[] anomalies = ModeHStableIds.AllAnomalies;
+            if (anomalies != null)
+            {
+                for (int i = 0; i < anomalies.Length; i++)
                 {
-                    ModeHBehaviorStatusDto effectDto = new ModeHBehaviorStatusDto();
-                    effectDto.entryId = effectIds[j];
-                    effectDto.entryKind = "effect";
-                    effectDto.status = (int)GetEffectStatus(stableKey, effectIds[j]);
-                    result.Add(effectDto);
+                    string anomalyId = anomalies[i];
+                    if (string.IsNullOrEmpty(anomalyId)) continue;
+                    ModeHBehaviorStatusDto dto = new ModeHBehaviorStatusDto();
+                    dto.entryId = anomalyId;
+                    dto.entryKind = "anomaly";
+                    dto.status = (int)GetBehaviorEntryStatus(stableKey, anomalyId);
+                    result.Add(dto);
                 }
             }
+
+            result.Sort(CompareBehaviorStatusByEntryId);
             return result;
+        }
+
+        /// <summary>按 entryId ordinal 升序。显式比较器：C# 7.3 下不用 lambda 省一次闭包分配。</summary>
+        private static int CompareBehaviorStatusByEntryId(ModeHBehaviorStatusDto a, ModeHBehaviorStatusDto b)
+        {
+            string left = a != null && a.entryId != null ? a.entryId : string.Empty;
+            string right = b != null && b.entryId != null ? b.entryId : string.Empty;
+            return string.CompareOrdinal(left, right);
         }
 
         #endregion

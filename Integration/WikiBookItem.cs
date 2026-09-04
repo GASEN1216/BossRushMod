@@ -33,36 +33,15 @@ namespace BossRush
         /// </summary>
         private const int WIKI_BOOK_TYPE_ID = BossRushItemIds.AdventureJournal;
         
-        /// <summary>
-        /// Wiki Book 显示名称（中文）
-        /// </summary>
-        private const string WIKI_BOOK_DISPLAY_NAME_CN = "Boss Rush 百科全书";
-        
-        /// <summary>
-        /// Wiki Book 显示名称（英文）
-        /// </summary>
-        private const string WIKI_BOOK_DISPLAY_NAME_EN = "Boss Rush Encyclopedia";
-        
-        /// <summary>
-        /// Wiki Book 描述（中文）
-        /// </summary>
-        private const string WIKI_BOOK_DESCRIPTION_CN = "记载了 Boss Rush 模式的各种知识，包括 Boss 介绍、装备说明、模式攻略等。";
-        
-        /// <summary>
-        /// Wiki Book 描述（英文）
-        /// </summary>
-        private const string WIKI_BOOK_DESCRIPTION_EN = "A comprehensive guide to Boss Rush mode, including boss introductions, equipment descriptions, and strategy guides.";
-        
-        /// <summary>
-        /// 获取本地化的 Wiki Book 名称
-        /// </summary>
-        private static string WIKI_BOOK_DISPLAY_NAME { get { return L10n.T(WIKI_BOOK_DISPLAY_NAME_CN, WIKI_BOOK_DISPLAY_NAME_EN); } }
-        
-        /// <summary>
-        /// 获取本地化的 Wiki Book 描述
-        /// </summary>
-        private static string WIKI_BOOK_DESCRIPTION { get { return L10n.T(WIKI_BOOK_DESCRIPTION_CN, WIKI_BOOK_DESCRIPTION_EN); } }
-        
+        // 【本文件不保存显示名与描述】
+        // 这本书的名字和描述唯一落在 Localization/LocalizationInjector.cs 的
+        // WIKI_BOOK_NAME_CN / WIKI_BOOK_DESC_CN（「冒险家日志」/「Adventurer's Journal」），
+        // 由 InjectWikiBookLocalization 注入，物品预制体按 displayName 反查这个 key。
+        //
+        // 这里曾另存一套 WIKI_BOOK_DISPLAY_NAME_CN = "Boss Rush 百科全书" + 同名描述常量
+        // 与一对包装属性，全部零调用点——同一物品挂着两套名字，而没生效的那套看起来更像
+        // 权威常量，读代码的人会被带偏。已删除，不要再在这里补第二份。
+
         /// <summary>
         /// Wiki AssetBundle 文件名
         /// </summary>

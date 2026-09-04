@@ -111,7 +111,15 @@ namespace BossRush
             dto.scarIds = new List<string>();
             dto.fameDisplayCount = 0;
             dto.enteredMatchCount = 0;
-            dto.behaviorStatuses = new List<ModeHBehaviorStatusDto>();
+            // 抽签时一次写定该 key 的伤病 / 战痕 / 异常实测结论。
+            // 空表意味着 ModeHOddsController.IsVerified 恒 false，玩家侧的
+            // 伤病、异常、战痕赔率项全部计 0——赔率牌面上看着有这些行，实际一分不动。
+            // 认证必然早于选秀完成（SceneFlow: result.Passed -> MaterializeFromReport
+            // -> CreateDraftingSeason），此处注册表已就绪。
+            // **不得在读档时刷新**：本表进赛季 canonical digest，事后改写会让已存赛季
+            // VerifyDigest 失败并进写屏障，所以老赛季保持空表、不追溯改赔率。
+            dto.behaviorStatuses =
+                ModeHCommandCompatibilityRegistry.BuildBehaviorSnapshot(template.StableKey);
             return dto;
         }
 
