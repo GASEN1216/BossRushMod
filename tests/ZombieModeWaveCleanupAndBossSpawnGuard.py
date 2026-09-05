@@ -35,6 +35,14 @@ def main() -> int:
     ]:
         if token not in drops:
             return fail("wave cleanup contract missing -> " + token)
+    cleanup = drops[drops.index("private void CleanupZombieModeExpiredDropCandidates("):]
+    cleanup = cleanup[:cleanup.index("private void RecycleZombieModeTemporaryNpcs")]
+    rescan = cleanup.find("if (!scanPickups)")
+    destroy = cleanup.find("Destroy(candidate.GameObject)")
+    if rescan < 0 or rescan > destroy:
+        return fail("expired candidates must check ownership even between throttled pickup scans")
+    if "ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null" not in cleanup[rescan:destroy]:
+        return fail("pre-destroy ownership protection must cover inventory and equipped slots")
     cleanup_token = "CleanupZombieModeExpiredDropCandidates(true);"
     if cleanup_token not in waves:
         return fail("next wave start does not force ordinary drop cleanup")

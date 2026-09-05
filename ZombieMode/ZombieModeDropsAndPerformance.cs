@@ -733,6 +733,19 @@ namespace BossRush
                     continue;
                 }
 
+                // 全表拾取扫描可以降频，销毁前的所有权保护不能降频。
+                // 只给本帧实际到期的候选补查，避免重新引入每帧全表 GetComponent。
+                if (!scanPickups)
+                {
+                    Item ownedItem = candidate.GameObject.GetComponent<Item>();
+                    if (ownedItem != null && (ownedItem.InInventory != null || ownedItem.PluggedIntoSlot != null))
+                    {
+                        RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
+                        zombieModeRunState.EntityDropCleanupCandidates.RemoveAt(i);
+                        continue;
+                    }
+                }
+
                 if (forceWaveCleanup)
                 {
                     RemoveZombieModeRunOnlyObjectRecord(candidate.GameObject);
