@@ -51,8 +51,9 @@ several kills, and Dragon Breath is the stubborn one.
 
 - **A regular loot crate** - size scales with its health
 - **Relic souls** - guaranteed, bankable toward a Dragon Descendant bloodline egg
-- **A relic egg (Descendant bloodline)** - about 4%, landing on the body, so search it
-- **An Affix Forge Stone** - about 8%
+- **A relic egg (Descendant bloodline)** - about 4%; where it lands depends on the mode (the loot
+  crate in the arena - see Rewards & Loot)
+- **An Affix Forge Stone** - about 8%, landing the same way
 - **A Dragon Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the garden**.
   Grows Dragon Breath Fruit: +10% gun and melee damage for your next run
 

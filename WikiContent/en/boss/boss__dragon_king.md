@@ -81,8 +81,9 @@ On kill, **one item is chosen via weighted random** from these six (not six inde
 
 - **A regular loot crate** - the Dragon Lord's is larger than a normal Boss's
 - **Relic souls** - guaranteed, scaled to max health, and the Dragon Lord is tanky enough to pay well
-- **A relic egg (Dragon Lord bloodline)** - about 4%, landing on the body, so search it
-- **An Affix Forge Stone** - about 8%
+- **A relic egg (Dragon Lord bloodline)** - about 4%; where it lands depends on the mode (the loot
+  crate in the arena - see Rewards & Loot)
+- **An Affix Forge Stone** - about 8%, landing the same way
 - **A Skyburner Ember Seed** - about 25%, **requires Duck King Campaign chapter 1 to unlock the
   garden**. Grows Emberheart Chili: +8% move speed and +10% reload speed for your next run
 

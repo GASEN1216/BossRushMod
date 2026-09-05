@@ -13,10 +13,10 @@ PetNest is on by default and needs no setting turned on anywhere — build the n
 ### 1. Kill bosses, collect relics
 Every boss kill feeds two tracks at once:
 
-- **Relic Egg (the lucky track)**: a low-probability direct drop of that boss's egg. It lands **on the boss itself**, not in the loot crate — search the body.
+- **Relic Egg (the lucky track)**: a low-probability direct drop of that boss's egg. It follows that boss's normal loot path — into the **loot crate** in standard arena and From Scratch, **onto the ground** in Infinite Hell (no crate there), and **on the boss itself** only in Faction War and Blood Hunt, where you do have to search the body.
 - **Boss Relic Soul (the guaranteed track)**: **always dropped**, scaled by the boss's max health. Souls are only used to condense an egg of that bloodline — they are not currency and never enter shops.
 
-Drops cover the three standard difficulties, From Nothing, Faction Sandbox and Bloodhunt. **Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop relics** - Bosses in those three modes spawn through their own separate paths and never enter the relic ledger.
+Drops cover the three standard difficulties, From Scratch, Faction War and Blood Hunt. **Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop relics** - Bosses in those three modes spawn through their own separate paths and never enter the relic ledger.
 
 ### 2. Build a PetNest in your base
 Find "PetNest" in the base bunker's build menu. Once built, interacting with it offers four options:
@@ -64,7 +64,7 @@ While a cub is out with you, the pet backpack travels with it. Capacity comes fr
 ### Where cubs are not allowed
 - **Cubs allowed**
   - The three standard difficulties
-  - From Nothing / Faction Sandbox / Bloodhunt
+  - From Scratch / Faction War / Blood Hunt
 - **No cubs**
   - Fate Echo: a grudge between two has no room for a third
   - Zombie Mode: it runs its own lifecycle and rewards

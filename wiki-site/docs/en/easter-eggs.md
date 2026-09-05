@@ -1,42 +1,67 @@
 # Easter Eggs
 
-BossRush Mod hides some fun easter eggs and details, waiting for you to discover.
+Some things the Mod never tells you about. These are the ones that have been dug up so far.
 
-## Dingdang's Drawing
+## "Protect me, my child!"
 
-When Dingdang's Affinity reaches max level, he will give you a drawing he spent many days working on. Using it lets you view the drawing in full screen.
+When the Skyburner Dragon Lord's health bottoms out, it doesn't fall over. It rises into the air
+and shouts: **"Protect me, my child!"**
 
-But if you give the drawing back to Dingdang... he will be very upset, and his Affinity drops by -300. This drawing means a great deal to him.
+And a Dragon Descendant drops in front of it and answers with one word: **"Father!"**
 
-## Brick Stone & Fake Diamond
+The first custom Boss you ever learned to fight turns out to be the final Boss's kid. Nothing warns
+you about this. You find out at the moment it happens.
 
-Brick Stone looks sparkly, but it is just an ordinary stone. Give it to Dingdang and he will immediately see through the fake diamond and become unhappy. Give it to Yuori and it will remind her of unpleasant memories from the J-Lab Laboratory.
+## That drawing — never give it back
 
-## Skyburner Dragon Lord's Family Bond
+Max out Dingdang's affinity and he hands you a doodle he says took him days.
+Use it to view the picture full-screen.
 
-When the Skyburner Dragon Lord's health drops to its lowest, it does not die immediately. Instead, it ascends into the sky and shouts "Protect me, my child!", summoning a Dragon Descendant to protect it. The Dragon Descendant responds with "Father!" — it turns out the Dragon Descendant is the offspring of the Skyburner Dragon Lord.
+**Do not gift it back to him.** Affinity drops by **300** on the spot — nothing else in this Mod
+punishes you that hard. He isn't offended by a cheap present; that drawing meant something to him,
+and you handed it back.
 
-## Wolf Mount's Dietary Preference
+## One fake diamond, two different wounds
 
-If you enable the wolf model mount in the configuration, the summoned mount's appearance changes to a wolf. Interestingly, the wolf mount does not eat carrots — it eats dumplings instead.
+A Brick Stone glitters convincingly. It is a rock.
 
-## Ammo Merchant's Quip
+- **Give it to Dingdang** — he sees through it instantly. Affinity **−40**. A craftsman's pride.
+- **Give it to Yuori** — **−60**, worse than Dingdang. What it brings back for her is J-Lab.
 
-If you purchase a large quantity of a single ammo type (more than 10) at once from the arena's ammo shop, a quip banner is triggered: "Hey hey, are you here to stock up or what?"
+Same worthless rock; it hurts them in different places.
 
-## Hidden Achievements
+## Wolves don't eat carrots
 
-There are two hidden achievements in the achievement list, displayed as "???" before being unlocked:
+Switch the mount to the wolf model in the config and you really do get a wolf. It also
+**eats dumplings now** — carrots won't do it.
 
-- Iron Man Challenge: Survive 10 waves in Infinite Hell without using any healing items
-- Instant Kill: Complete a run within 1 minute
+## The ammo vendor has opinions
 
-Both achievements are extremely difficult — challenges reserved for truly hardcore players.
+Buy more than **10** of the same ammo type in one go at the arena ammo shop and a banner pops up:
 
-## Yuori and Dingdang's Past
+> Hey now, are you here to restock a store or what?
 
-Through story dialogues unlocked by raising Affinity, you will gradually learn about the connection between Dingdang and Yuori — Yuori was once a researcher at the J-Lab Laboratory, and Dingdang was created in that very lab. When Dingdang was bullied by other goblins, Yuori was the only one who secretly brought him food and treated his wounds.
+## The three hidden achievements
+
+**3** achievements in the panel show only `???` until you unlock them:
+
+- **Iron Man** — clear 10 waves of Infinite Hell without using a single healing item
+- **Instant Kill** — meet any mode's clear condition inside 1 minute
+- **A Name on the Stone** — carve the first name into the PetNest memorial
+
+The first two are hardcore challenges. The last one… requires sending a cub off to die first.
+
+## Dingdang and Yuori already knew each other
+
+Push both affinity lines up and the story dialogue slowly assembles one fact:
+
+Yuori was a researcher at **J-Lab**, and Dingdang is what that lab created.
+
+When the other goblins bullied him, she was the only one who slipped him food and patched up
+his wounds.
+
+So finding the two of them in the same base is not a coincidence.
 
 ::: tip
-There are more easter eggs waiting for you to discover in the game...
+There are more that aren't written down here. Whatever you find is yours.
 :::

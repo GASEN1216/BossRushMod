@@ -78,5 +78,5 @@ Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond refor
 :::
 
 ::: tip
-Every arena Boss you kill banks **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands on the Boss - search the body.
+Every arena Boss you kill banks **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.
 :::

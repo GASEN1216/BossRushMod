@@ -74,6 +74,9 @@ By the official difficulty rating, lowest first:
   you, so **you never take a hit**. The difficulty isn't in the aiming, it's in the decisions
   you make before the bell
 - **Infinite Hell** ★★★★ — unlimited waves, find your ceiling
+- **Zombie Mode** ★★★★ — Horde Invitation to enter. Naked against an endless horde, running its
+  own Purification Point economy. It shares nothing with the modes above, and Duck King Campaign
+  chapter 5 sends you here
 - **Fate Echo** ★★★★★ — Current gear + Ticket + Relic. Bosses counter whatever you did last wave
 - **Blood Hunt** ★★★★★ — Naked + Ticket + Transponder. The hardest challenge
 

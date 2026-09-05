@@ -64,6 +64,23 @@ Each fighter carries up to **4 pieces** across five slots — armor, helmet, pri
 
 Win a match and you are offered one to three **reward kits**. Pick one to unlock it for the rest of the season. How many you are offered depends on how much your stake won that match.
 
+### The pre-match page: roster, kits and command
+
+The odds page carries an **Edit roster / kits / command** button, and that one page settles all four
+pre-match decisions:
+
+- **Who starts** — pick one of your two contracted fighters to open.
+- **Who relays** — the one who takes over when the starter goes down.
+- **Rest relay; fight solo** — bench the sub for the whole match and win it with your starter alone.
+- **Kits and command** — swap reward kits slot by slot, and lock this match's order.
+
+Go back to the odds page and the odds and public summary are recalculated from **the selection you
+actually made**, and only then do you lock the board.
+
+::: tip
+"Rest relay" is the switch that heals an injured fighter. An injured fighter recovers only if they never set foot in the ring that match — so bench them here on purpose; don't just hope the starter holds.
+:::
+
 ## Reading the Board and Betting
 
 The enemy plan is frozen **before** you start building your loadout. What you see on the board is final — nothing you equip makes them swap anyone in — so build straight against it.
@@ -139,6 +156,30 @@ That last line matters: benching an injured fighter genuinely pays off, because 
 
 If your starter retires, the relay is promoted. **If both contracted fighters retire, the season ends right there** — even in match 3.
 
+## Scars: The Riskier the Win, the More There Is to Keep
+
+Win a match **at locked odds of x3 or better** and the settlement page offers the surviving fighter
+a **scar**, at most one per match. Safe boards (x1, x2) offer nothing — scars only grow out of hard fights.
+
+A scar is one permanent change with **an upside and a downside welded together**, drawn only from those
+compatible with that fighter's archetype. Two examples:
+
+- **Broken Shield Charge** — after armor first breaks: sharper sight and turning, but no shooting on the move in that window.
+- **Bell Dependence** — orders hit harder after the bell, and skills land less often before it.
+
+The settlement page gives you three ways to answer:
+
+- **Take it** — added to that fighter's scar list and live immediately.
+- **Replace one** — the list caps at **3**. When it is full the page lists all three so you can swap one out.
+- **Decline for fame** — fame `+1` (capped at 99). Fame **changes nothing** about combat, odds, rewards
+  or transfers; it is just a number on the record.
+
+::: tip
+Closing the settlement page does not void the offer — it is written into the match report and will still be there next time. If you are unsure, leave it and come back after the next match.
+:::
+
+That "N scars" line in the Hall of Fame is the running total of these decisions you made for them.
+
 ## Real Stakes (Read This Before You Bet)
 
 ::: warning
@@ -176,12 +217,13 @@ Being pushed out is not a failure. It is what the rule was always going to do �
 ## Questions You Might Have
 
 - **Can I fight myself?** No. You are the manager here, and you stay in the stands the whole way.
-- **Can I bring my Wild Seed companions?** No. You never enter the ring, so there is nothing for them to follow.
+- **Can I bring my PetNest companions?** No. You never enter the ring, so there is nothing for them to follow.
 - **Are there mutation affixes?** No. This mode applies no mutation affixes and fires no in-run random events. What the board says is what walks into the ring.
 - **Do kills here count toward the Duck King Codex?** No. Your fighter landed the blow, not you.
 - **Can I reroll the candidates?** No. Closing and reopening the page changes nothing. Those five are the five.
 - **What happens after a season?** The season closes and your champion is recorded in the **Hall of Fame**. The Hall keeps only **32 places** — the 33rd entry pushes out the oldest one.
 - **Does a technical failure count as a loss?** No. The match restarts from the same brief and no defeat is recorded.
+- **My season is stuck and won't continue.** Interact with the boat and you get a recovery page instead of the usual entry. It can hand your staked items back, and it offers **Abandon this season and settle stakes** — that closes the stake ledger, clears the stuck season and lets you start a new one. Stakes are returned as they were; the season itself is gone.
 
 ::: tip
 The real work in this mode happens before the whistle: who you signed, which order you locked, and whether you dared to stake the full two credits. Once the bell rings, the rest is up to them.

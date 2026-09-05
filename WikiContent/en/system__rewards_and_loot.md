@@ -146,14 +146,25 @@ Boss's egg on demand.
 
 #### Relic Eggs (about 4%)
 
-A small chance to drop an egg of the matching bloodline outright. It lands on the Boss, so search
-the body. This is the lucky line; condensing is the guaranteed line - two parallel paths, so
-unlucky players can still complete the collection.
+A small chance to drop an egg of the matching bloodline outright. This is the lucky line;
+condensing is the guaranteed line - two parallel paths, so unlucky players can still complete
+the collection.
 
 #### Affix Forge Stones (about 8%)
 
 Material for affix forging, roughly one per standard arena run. The steady alternative is
 Dingdang's shop (affinity Lv.2, up to 5 per restock).
+
+#### Where eggs and stones actually land
+
+Both **follow that Boss's normal loot path** - they are not always left on the corpse:
+
+- **Standard BossRush, From Scratch** - into the **BossRush loot crate**, alongside everything else
+- **Infinite Hell** - this mode spawns no crate at all, so eggs and stones **drop on the ground**;
+  check where the Boss fell
+- **Faction War, Blood Hunt** - no mod crate here, so the item **stays on the Boss** - search the body
+
+[tip] One-line rule: if there's a crate, look in the crate; if there isn't, look at the ground; only then search the body.
 
 #### Backyard Seeds (about 25%, the three custom Bosses only)
 

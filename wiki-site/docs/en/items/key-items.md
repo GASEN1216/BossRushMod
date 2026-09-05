@@ -39,7 +39,8 @@ See the Duck King Codex page.
 The material for rolling affixes onto gear. Spent when you pick "Affix Forging" at Dingdang.
 
 - **Source**: Dingdang's shop (unlocks at affinity **Lv.2**, up to 5 per restock); about **8%** from arena Bosses,
-  dropped on the boss itself rather than into the loot crate — search the body
+  landing wherever that Boss's normal loot lands — the loot crate in standard arena and From Scratch,
+  the ground in Infinite Hell, the body itself in Faction War and Blood Hunt
 - **Cost**: **1** stone per re-roll, **2** to lock a slot (unlocking is free)
 - **Stack**: up to 20
 
@@ -51,8 +52,8 @@ See the Affix Forging page.
 
 An egg of one Boss bloodline. Take it to the PetNest to hatch a cub that fights alongside you.
 
-- **Source**: about **4%** direct drop from arena Bosses (it lands on the Boss - search the body);
-  or condense one at the PetNest for **240** relic souls of that bloodline
+- **Source**: about **4%** direct drop from arena Bosses (lands under the same rule as forge stones,
+  so it varies by mode); or condense one at the PetNest for **240** relic souls of that bloodline
 - **Use**: consumed on hatching
 - **Stack**: **does not stack** - each egg carries its own bloodline, and stacking would lose that
 

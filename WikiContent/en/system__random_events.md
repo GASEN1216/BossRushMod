@@ -47,14 +47,16 @@ One Boss pulled at random from the current Boss pool, walking in from `30` metre
 - **It is not part of the current wave.** You don't need to kill it to advance, and killing
   it won't skip a wave either.
 - In **Standard BossRush** and **From Scratch** it still drops a full loot crate — one free crate.
-- **In Infinite Hell it pays nothing at all.** That mode never drops Boss crates (it pays into
-  a cash pool instead), and the cash pool only counts wave Bosses — an intruder is neither.
+- **In Infinite Hell it drops no crate and feeds no cash pool.** That mode never drops Boss crates
+  (it pays into a cash pool instead), and the cash pool only counts wave Bosses — an intruder is
+  neither. It still banks **relic souls** as normal, and still carries the `4%` relic egg and `8%`
+  forge stone rolls (both land on the ground in this mode).
 - Wait out the `120` seconds and it withdraws, leaving nothing.
 
 So it's a clean choice: you have two minutes, and one crate is on the table if you want to
 fight an unscheduled Boss for it. Healthy? Take it. Low? Hide. There's no penalty either way.
 
-[warn] In Infinite Hell, just treat it as an obstacle and walk around it. It doesn't advance the wave, doesn't drop a crate and doesn't feed the cash pool — all you get for winning is spent ammo and time you could have spent pushing waves.
+[warn] In Infinite Hell it doesn't advance the wave, doesn't drop a crate and doesn't feed the cash pool, so the only payout left is relic souls plus that egg/stone roll. Unless you're banking a bloodline, walk around it and spend the time pushing waves.
 
 [tip] It shares the field with the wave Boss. Don't lose track of which is which — only the wave Boss advances the wave.
 

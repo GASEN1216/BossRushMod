@@ -69,4 +69,4 @@ Once you're comfortable:
 
 [tip] Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond reforging, Dingdang also does **affix forging** - affixes that change how your gear behaves, like kill explosions, lifesteal on hit, or armor that throws damage back.
 
-[tip] Every arena Boss you kill banks **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands on the Boss - search the body.
+[tip] Every arena Boss you kill banks **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.

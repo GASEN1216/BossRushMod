@@ -19,6 +19,13 @@ Your personal item courier. No Affinity, no gifts, no drama — just business. S
 - Retrieve from any scene where Awen appears
 - **Cross-mode bridge**: store items in one mode, retrieve in another
 
+#### Daily check-in rewards land here too
+
+Duckov Daily check-in prizes are never pushed straight into your backpack; they are mailed to
+Awen's pending list. Rolling over the day mid-raid is therefore safe — collect them from Awen
+back at base. (Only if the courier cannot take them does the game hand them to you directly,
+in which case check your backpack and the ground first.)
+
 #### Blood Hunt Integration
 
 Successful extraction rewards are auto-sent to Storage Point. Find Awen on normal maps to collect them.

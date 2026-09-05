@@ -4,7 +4,7 @@
 
 ## The Cast
 
-- **Dingdang** (Goblin Smith) — Reforge, shop, daily chat
+- **Dingdang** (Goblin Smith) — Reforge, affix forging, shop, daily chat
 - **Yuori** (Nurse) — Healing, debuff removal
 - **Awen** (Courier) — Item storage & retrieval
 

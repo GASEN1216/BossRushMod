@@ -1,55 +1,56 @@
 ## Death Wraith
 
-### Overview
-- The Death Wraith system turns one of your deaths into a return fight against your own aftermath.
-- When you die in a normal gameplay scene, the game records your death location, appearance, gear, name, and weapon state.
-- The next time you return to the same map and sub-scene, a Wraith appears at that death spot, using a name like "Strong / Balanced / Weak + player name + 's Wraith."
+### What Is It?
 
-### When It Appears
-- It only works in normal gameplay scenes, not in menus or loading screens.
-- A Wraith only appears in the same map and the same sub-scene where you died.
-- It does not instantly aggro the moment you enter the map. It now follows normal enemy perception and starts fighting after naturally noticing you.
+Wherever you died, the body is still standing there — waiting for you to come back.
 
-### What the Wraith Inherits
-- Appearance: it copies your face setup and character look from the moment of death.
-- Gear: it recreates most of the equipment you were wearing and carrying.
-- Audio feel: it also inherits your voice type and footstep material.
-- Combat style:
-  - If you died with a gun-focused loadout, it uses a firearm-oriented enemy behavior template.
-  - If you died in melee mode, it uses a wolf-style melee behavior template.
+The next time you set foot on that same map, in that same sub-scene, something will be standing on
+the spot: **wearing your gear, wearing your face, breathing with your voice.** Its name is written
+above it: `Strong / Balanced / Weak` + your name + `'s Wraith`.
 
-### How Strength Is Calculated
-- The system compares the total value of the items you were carrying at death against your total wealth: cash + carried item value.
-- The more of your total wealth was tied up in what you carried, the stronger the Wraith becomes.
+How hard it hits depends on **how expensive you were when you died**.
 
-#### Strong Wraith
-- Trigger: carried item value is at least 50% of total wealth
-- Around 10x health
-- Around 1.5x gun and melee damage
-- Around 1.9x movement-related speed
-- Around 1.0 mobility
+### What It Inherits From You
 
-#### Balanced Wraith
-- Trigger: carried item value is 10% to 50% of total wealth
-- Around 6x health
-- Around 1.25x gun and melee damage
-- Around 1.5x movement-related speed
-- Around 0.9 mobility
+- **Your face** — the exact head and character look you died with.
+- **Your gear** — most of what you were wearing and carrying is now on it.
+- **Your voice** — right down to your voice lines and footstep material.
+- **Your style** — died holding a gun and it fights as a gunner; died in melee and it closes the
+  distance and chases you down.
 
-#### Weak Wraith
-- Trigger: carried item value is below 10% of total wealth
-- Around 3x health
-- No extra damage bonus
-- Around 1.2x movement-related speed
-- Around 0.8 mobility
+It won't lunge the second you load in. Like any vanilla enemy it has to notice you first — which
+gives you a moment to look at what's standing there before it looks back.
 
-### Refresh and Cleanup Rules
-- Only one valid Death Wraith record is kept at a time.
-- If you die again, the new death record overwrites the old one.
-- If an older Wraith is still alive in the current scene, it gets replaced when a new death is recorded.
-- Once you kill the Wraith, that record is cleared and will not keep respawning until you die again.
+### You Set Its Strength Yourself
 
-### Rewards and Risk
-- A Death Wraith shows its own name and health bar, so it is easy to identify.
-- It does not drop a loot crate when killed.
-- The more expensive your loadout was when you died, the more dangerous the rematch will be when you come back.
+The measure is one ratio: **the value you were carrying ÷ (cash + the value you were carrying)**.
+
+Which means: **walk out with your whole estate on your back, die once, and you have personally
+built yourself a monster.**
+
+| Tier | Trigger | Health | Damage | Move speed | Moveability |
+| --- | --- | --- | --- | --- | --- |
+| **Strong** | carried share **≥ 50%** | **10x** | **1.5x** | 1.9x | 1.0 |
+| **Balanced** | carried share **10%–50%** | 6x | 1.25x | 1.5x | 0.9 |
+| **Weak** | carried share **< 10%** | 3x | none | 1.2x | 0.8 |
+
+10x health with 1.5x damage is not a figure of speech. Wipe while kitted out, and going back to
+clean up after yourself is often harder than the Boss that killed you in the first place.
+
+### The Fine Print
+
+- **Only one at a time.** There is a single active wraith record. Die again and the new one
+  overwrites the old — even if the old one is still alive and standing on the field, it gets replaced.
+- **Beating it settles the account.** Kill the wraith and the record clears. It does not respawn
+  again and again; nothing comes back until your next death.
+- **It drops nothing.** A wraith has no loot crate, and killing it returns not one piece of gear.
+  This is a grudge match, not baggage reclaim.
+- **Normal game scenes only** — menus and loading screens never trigger it.
+- It carries its own name and health bar, so you can pick your own echo out at a glance.
+
+### Do I Need to Turn It On?
+
+On by default. `enableDeathWraithSystem` in ModConfig switches it off — after which nothing is
+recorded and nothing spawns, and the existing wraith record in your save is cleared out.
+
+[warn] Think it through before you head out: what you're wearing now is what you'll be fighting next.

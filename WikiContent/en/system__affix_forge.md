@@ -37,7 +37,9 @@ below list **T1 / T2 / T3** — you will usually get the leftmost number.
 
 - **Dingdang's shop** — unlocks at affinity Lv.2, up to 5 per restock. This is the steady line.
 - **Boss drops** — around `8%`, so roughly one stone per standard arena run. This is the lucky line.
-  Stones land **on the boss itself**, not in the loot crate — search the body, same as relic eggs.
+  Stones land wherever that boss's normal loot lands, same as relic eggs: the **loot crate** in
+  standard arena and From Scratch, **on the ground** in Infinite Hell, and **on the boss itself**
+  only in Faction War and Blood Hunt.
   Covers the three standard difficulties, From Scratch, Faction War and Blood Hunt; Fate Echo, the Black Market Duck Cup and Zombie Mode do not drop them.
 
 Neither line is generous enough to let you re-roll forever. That's deliberate: stones being

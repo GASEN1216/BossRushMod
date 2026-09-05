@@ -58,6 +58,7 @@ The Phantom Witch cycles between true stealth, semi-stealth, and visible states:
 - True stealth max duration: 1.1s
 
 ### Curse Debuff
+- Shows up on your status bar as **Ghost Curse**
 - Duration: 5 seconds
 - Max stacks: 3
 - Per-stack slow: -30% move speed
@@ -89,8 +90,9 @@ scythe is appended to the loot crate without displacing anything already in it.
 
 - **A regular loot crate** - size scales with its health
 - **Relic souls** - guaranteed, bankable toward a Phantom Witch bloodline egg
-- **A relic egg (Witch bloodline)** - about 4%, landing on the body, so search it
-- **An Affix Forge Stone** - about 8%
+- **A relic egg (Witch bloodline)** - about 4%; where it lands depends on the mode (the loot crate
+  in the arena - see Rewards & Loot)
+- **An Affix Forge Stone** - about 8%, landing the same way
 - **A Phantom Spore** - about 25%, **requires Duck King Campaign chapter 1 to unlock the garden**.
   Grows Shadow Mushroom: -10% physical damage taken for your next run
 
