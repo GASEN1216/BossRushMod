@@ -156,7 +156,11 @@ namespace BossRush
             }
         }
 
-        /// <summary>host 销毁：收掉在跑事件、销毁 HUD、复位静态缓存。</summary>
+        /// <summary>
+        /// host 销毁：收掉在跑事件、销毁 HUD、复位静态缓存。随机事件清理的**唯一 owner**：
+        /// 宿主 OnDestroy 不再另写一份（此前 CleanupRandomEventsRuntimeOnDestroy 与这里重复复位调度器）。
+        /// 调度器与 HUD 都是纯运行时态，无落盘，但残留的强制天气、敌人增益与生成物必须在这里一并归零。
+        /// </summary>
         public override void OnDestroy()
         {
             try
@@ -167,6 +171,8 @@ namespace BossRush
                 }
                 RandomEventHud.Destroy();
                 RandomEventDirector.ResetStaticCaches();
+                SafeRuntime.Run("RandomEventCatalog.ResetStaticCaches", () => RandomEventCatalog.ResetStaticCaches());
+                SafeRuntime.Run("RandomEventHud.ResetStaticCaches", () => RandomEventHud.ResetStaticCaches());
             }
             catch (Exception e)
             {

@@ -783,43 +783,11 @@ namespace BossRush
             SafeRuntime.Run("BossBgmCoordinator.ResetStaticCaches", () => BossBgmCoordinator.ResetStaticCaches());
             SafeRuntime.Run("MutatorUI.ResetStaticCaches", () => MutatorUI.ResetStaticCaches());
 
-            // 遗种巢（PetNest）宿主销毁：先尽力落盘一次，再还席、退订、清表。
-            // 借席桥必须先还席再清表，否则官方宠物席位会留着我们的死引用。
-            SafeRuntime.Run("PetNestSaveCoordinator.TryFlushOnHostDestroy", () => PetNestSaveCoordinator.TryFlushOnHostDestroy());
-            SafeRuntime.Run("PetNestPersistence.ResetStaticCaches", () => PetNestPersistence.ResetStaticCaches());
-            SafeRuntime.Run("PetNestSaveCoordinator.ResetStaticCaches", () => PetNestSaveCoordinator.ResetStaticCaches());
-            SafeRuntime.Run("PetNestPetProxyBridge.ReleaseSeat", () => PetNestPetProxyBridge.ReleaseSeat());
-            SafeRuntime.Run("PetNestDebugProbe.ResetStaticCaches", () => PetNestDebugProbe.ResetStaticCaches());
-            SafeRuntime.Run("PetNestPetProxyBridge.ResetStaticCaches", () => PetNestPetProxyBridge.ResetStaticCaches());
-            SafeRuntime.Run("BossRushSaveFileThrottle.ResetStaticCaches", () => BossRushSaveFileThrottle.ResetStaticCaches());
-            SafeRuntime.Run("PetNestCompanionAgent.ResetStaticCaches", () => PetNestCompanionAgent.ResetStaticCaches());
-            SafeRuntime.Run("PetNestLineageCatalog.ResetStaticCaches", () => PetNestLineageCatalog.ResetStaticCaches());
-            SafeRuntime.Run("PetNestDropService.ResetStaticCaches", () => PetNestDropService.ResetStaticCaches());
-            SafeRuntime.Run("PetNestCompanionRuntime.ResetStaticCaches", () => PetNestCompanionRuntime.ResetStaticCaches());
-            SafeRuntime.Run("PetNestDownedHandler.ResetStaticCaches", () => PetNestDownedHandler.ResetStaticCaches());
-            SafeRuntime.Run("PetNestUI.ResetStaticCaches", () => PetNestUI.ResetStaticCaches());
-            SafeRuntime.Run("PetNestHatchRevealView.ResetStaticCaches", () => PetNestHatchRevealView.ResetStaticCaches());
-            SafeRuntime.Run("PetNestExpeditionRevealView.ResetStaticCaches", () => PetNestExpeditionRevealView.ResetStaticCaches());
-            SafeRuntime.Run("PetNestCompanionHudView.ResetStaticCaches", () => PetNestCompanionHudView.ResetStaticCaches());
-            SafeRuntime.Run("PetNestBaseIdleSpawner.ResetStaticCaches", () => PetNestBaseIdleSpawner.ResetStaticCaches());
-            SafeRuntime.Run("PetNestMuseumStats.ResetStaticCaches", () => PetNestMuseumStats.ResetStaticCaches());
-
-            // 鸭科夫日报宿主销毁：顺序是硬约束——先把内存里的当天余数同步进 DTO，
-            // 再落盘，最后才清静态缓存；顺序颠倒会把当天进度写丢。
-            SafeRuntime.Run("DailyReportService.SyncCarrySecondsToPersistence", () => DailyReportService.SyncCarrySecondsToPersistence());
-            SafeRuntime.Run("DailyReportSaveCoordinator.TryFlushOnHostDestroy", () => DailyReportSaveCoordinator.TryFlushOnHostDestroy());
-            SafeRuntime.Run("DailyReportStatsCollector.ResetStaticCaches", () => DailyReportStatsCollector.ResetStaticCaches());
-            SafeRuntime.Run("CleanupDailyReportMailbox", () => CleanupDailyReportMailbox());
-            SafeRuntime.Run("DailyReportRewards.ResetStaticCaches", () => DailyReportRewards.ResetStaticCaches());
-            SafeRuntime.Run("DailyReportService.ResetStaticCaches", () => DailyReportService.ResetStaticCaches());
-            SafeRuntime.Run("DailyReportSaveCoordinator.ResetStaticCaches", () => DailyReportSaveCoordinator.ResetStaticCaches());
-
-            // 三个新系统的宿主销毁清理各自收口成一个具名方法：
-            // OnDestroy 本身已经很长，内联下去会越过 StaticCacheLifecycleGuard 的方法归属
-            // 回溯窗口，让「已在 OnDestroy 路径上」的调用被误判成漏清理。
-            CleanupCodexRuntimeOnDestroy();
+            // 遗种巢 / 日报 / 图鉴 / 随机事件 / 征程 / 后山 / Mode H 的宿主销毁清理各自只有
+            // 一个 owner：对应 RuntimeModule 的 OnDestroy()，经下方 runtimeModuleHost.OnDestroy()
+            // 到达。宿主不再逐条内联同一批 ResetStaticCaches（曾与模块各写一份、宿主先清，
+            // 导致模块自己的落盘空转）。词缀锻造没有运行时模块，仍由具名方法收口。
             CleanupAffixForgeRuntimeOnDestroy();
-            CleanupRandomEventsRuntimeOnDestroy();
 
             // 取消订阅好感度系统事件并保存数据
             CleanupAlwaysOnRuntimeOnDestroy();
@@ -827,6 +795,8 @@ namespace BossRush
             CleanupIntegrationRuntimeOnDestroy();
             CleanupModeRuntimeOnDestroy();
             runtimeModuleHost.OnDestroy();
+            // 跨子系统的每帧落盘闸：必须等全部模块做完最后一次 TryFlushOnHostDestroy 之后再复位
+            SafeRuntime.Run("BossRushSaveFileThrottle.ResetStaticCaches", () => BossRushSaveFileThrottle.ResetStaticCaches());
             HarmonyPatchGroupRegistrar.Clear();
             if (ReferenceEquals(Instance, this))
             {

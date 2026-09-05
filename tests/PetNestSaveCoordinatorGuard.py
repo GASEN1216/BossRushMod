@@ -82,17 +82,43 @@ def main():
     if not re.search(r"if \(!_deferredFlushPending\) return;", code):
         errors.append("[性能] Tick 未 deferred 时必须 O(1) 早返")
 
-    # 7. 宿主 OnDestroy 实际接线
+    # 7. 宿主销毁实际接线 —— 清理 owner 唯一化：
+    #    宿主 OnDestroy 只经 runtimeModuleHost.OnDestroy() 到达 PetNestRuntimeModule.OnDestroy，
+    #    落盘与静态复位必须接在模块里，且 ModBehaviour.OnDestroy 不得再内联一份
+    #    （曾经两处各写一份、宿主先清，模块自己的落盘随即空转）。
+    module = read_petnest("PetNestRuntimeModule.cs")
+    if module is None:
+        errors.append("[File] 缺少 PetNest/PetNestRuntimeModule.cs")
+    else:
+        mcode = strip_cs_comments(module)
+        destroy = re.search(r"public override void OnDestroy\(\)[\s\S]*?\n        \}", mcode)
+        body = destroy.group(0) if destroy else ""
+        if not body:
+            errors.append("[接线] 无法解析 PetNestRuntimeModule.OnDestroy")
+        flush_call = "PetNestSaveCoordinator.TryFlushOnHostDestroy()"
+        reset_call = "PetNestSaveCoordinator.ResetStaticCaches()"
+        for call in [flush_call, reset_call]:
+            if call not in body:
+                errors.append("[接线] PetNestRuntimeModule.OnDestroy 缺少: " + call)
+        if flush_call in body and reset_call in body and body.find(flush_call) > body.find(reset_call):
+            errors.append("[接线] 模块 OnDestroy 必须先落盘再复位协调器")
+        # 协调器复位必须传递到持久层，否则模块不直接触碰 PetNestPersistence（分层约定）就没人清它
+        if "PetNestPersistence.ResetStaticCaches()" not in code:
+            errors.append("[接线] PetNestSaveCoordinator.ResetStaticCaches 必须连带复位 PetNestPersistence")
+
     host = read_text(repo_path("ModBehaviour.cs"))
     if host is None:
         errors.append("[File] 缺少 ModBehaviour.cs")
     else:
         hcode = strip_cs_comments(host)
-        for call in ["PetNestSaveCoordinator.TryFlushOnHostDestroy()",
-                     "PetNestPersistence.ResetStaticCaches()",
-                     "PetNestSaveCoordinator.ResetStaticCaches()"]:
-            if call not in hcode:
-                errors.append("[接线] 宿主销毁路径缺少: " + call)
+        host_destroy = re.search(r"void OnDestroy\(\)[\s\S]*?\n        \}", hcode)
+        hbody = host_destroy.group(0) if host_destroy else ""
+        if "runtimeModuleHost.OnDestroy()" not in hbody:
+            errors.append("[owner] ModBehaviour.OnDestroy 必须经 runtimeModuleHost.OnDestroy() 到达模块清理")
+        for forbidden in ["PetNestSaveCoordinator.", "PetNestPersistence."]:
+            if forbidden in hbody:
+                errors.append("[owner] ModBehaviour.OnDestroy 不得再内联遗种巢清理（" + forbidden
+                              + "），唯一 owner 是 PetNestRuntimeModule.OnDestroy")
 
     return report(GUARD, errors)
 

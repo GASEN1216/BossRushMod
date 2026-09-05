@@ -211,8 +211,17 @@ def check_exemptions(errors):
         hcode = strip_cs_comments(host)
         if "PetNestCompanionAgent.IsCompanionCharacter(character)" not in hcode:
             errors.append("[安全网] 敌对性安全网必须豁免玩家方随从（AGENTS.md 4.5）")
-        if "PetNestCompanionRuntime.ResetStaticCaches()" not in hcode:
-            errors.append("[清理] 宿主销毁必须复位随从运行时")
+
+    # 宿主销毁必须复位随从运行时。清理 owner 唯一化后，宿主 OnDestroy 只经
+    # runtimeModuleHost.OnDestroy() 到达 PetNestRuntimeModule.OnDestroy，复位调用接在模块里。
+    module = read_petnest("PetNestRuntimeModule.cs")
+    if module is None:
+        errors.append("[File] 缺少 PetNest/PetNestRuntimeModule.cs")
+    else:
+        destroy = re.search(r"public override void OnDestroy\(\)[\s\S]*?\n        \}",
+                            strip_cs_comments(module))
+        if destroy is None or "PetNestCompanionRuntime.ResetStaticCaches()" not in destroy.group(0):
+            errors.append("[清理] 宿主销毁必须复位随从运行时（PetNestRuntimeModule.OnDestroy）")
 
 
 def main():

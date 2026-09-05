@@ -151,18 +151,34 @@ namespace BossRush
             }
         }
 
-        /// <summary>host 销毁：尽力落盘一次，随后退订并清状态。</summary>
+        /// <summary>
+        /// host 销毁：日报清理的**唯一 owner**。宿主 OnDestroy 不再逐条内联同一批清理，
+        /// 只经 runtimeModuleHost.OnDestroy() 到达这里。
+        ///
+        /// 顺序是硬约束：先把内存里的当天余数同步进 DTO，再落盘，再退订，最后才清静态缓存；
+        /// 顺序颠倒会把当天进度写丢。每一步用 SafeRuntime.Run 隔离，单点失败不影响后续步骤。
+        /// 不按 _bootstrapped 门控：各步骤在未初始化时都是 O(1) 早返。
+        /// </summary>
         public override void OnDestroy()
         {
             try
             {
-                if (_bootstrapped)
+                SafeRuntime.Run("DailyReportService.SyncCarrySecondsToPersistence", () => DailyReportService.SyncCarrySecondsToPersistence());
+                SafeRuntime.Run("DailyReportSaveCoordinator.TryFlushOnHostDestroy", () => DailyReportSaveCoordinator.TryFlushOnHostDestroy());
+                SafeRuntime.Run("DailyReportSaveCoordinator.ShutdownSubscription", () => DailyReportSaveCoordinator.ShutdownSubscription());
+                SafeRuntime.Run("DailyReportStatsCollector.ShutdownSubscription", () => DailyReportStatsCollector.ShutdownSubscription());
+                SafeRuntime.Run("DailyReportStatsCollector.ResetStaticCaches", () => DailyReportStatsCollector.ResetStaticCaches());
+
+                // 报箱建筑注入器的状态挂在宿主实例上（partial ModBehaviour），经 owner 清
+                ModBehaviour owner = _owner;
+                if (owner != null)
                 {
-                    DailyReportService.SyncCarrySecondsToPersistence();
-                    DailyReportSaveCoordinator.TryFlushOnHostDestroy();
-                    DailyReportSaveCoordinator.ShutdownSubscription();
-                    DailyReportStatsCollector.ShutdownSubscription();
+                    SafeRuntime.Run("CleanupDailyReportMailbox", () => owner.CleanupDailyReportMailbox());
                 }
+
+                SafeRuntime.Run("DailyReportRewards.ResetStaticCaches", () => DailyReportRewards.ResetStaticCaches());
+                SafeRuntime.Run("DailyReportService.ResetStaticCaches", () => DailyReportService.ResetStaticCaches());
+                SafeRuntime.Run("DailyReportSaveCoordinator.ResetStaticCaches", () => DailyReportSaveCoordinator.ResetStaticCaches());
                 _bootstrapped = false;
                 _owner = null;
             }

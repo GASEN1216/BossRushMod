@@ -154,16 +154,25 @@ namespace BossRush
             }
         }
 
-        /// <summary>host 销毁：尽力落盘一次，随后退订并清状态（顺序是硬约束）。</summary>
+        /// <summary>
+        /// host 销毁：图鉴清理的**唯一 owner**。宿主 OnDestroy 不再另写一份
+        /// （此前 CleanupCodexRuntimeOnDestroy 与这里各做一次落盘 + 退订）。
+        /// 顺序是硬约束：先落盘、再退订、最后清静态缓存，颠倒会把本次会话新解锁的条目写丢。
+        /// 每一步用 SafeRuntime.Run 隔离；不按 _bootstrapped 门控，各步骤未初始化时 O(1) 早返。
+        /// </summary>
         public override void OnDestroy()
         {
             try
             {
-                if (_bootstrapped)
-                {
-                    CodexSaveCoordinator.TryFlushOnHostDestroy();
-                    CodexSaveCoordinator.ShutdownSubscription();
-                }
+                SafeRuntime.Run("CodexSaveCoordinator.TryFlushOnHostDestroy", () => CodexSaveCoordinator.TryFlushOnHostDestroy());
+                SafeRuntime.Run("CodexSaveCoordinator.ShutdownSubscription", () => CodexSaveCoordinator.ShutdownSubscription());
+                SafeRuntime.Run("CodexKillCollector.ResetStaticCaches", () => CodexKillCollector.ResetStaticCaches());
+                SafeRuntime.Run("CodexMilestones.ResetStaticCaches", () => CodexMilestones.ResetStaticCaches());
+                SafeRuntime.Run("CodexView.ResetStaticCaches", () => CodexView.ResetStaticCaches());
+                SafeRuntime.Run("CodexPortraitCache.ResetStaticCaches", () => CodexPortraitCache.ResetStaticCaches());
+                SafeRuntime.Run("CodexBossCatalog.ResetStaticCaches", () => CodexBossCatalog.ResetStaticCaches());
+                // 协调器复位内含 CodexPersistence.ResetStaticCaches（其中会再退订一次，幂等）
+                SafeRuntime.Run("CodexSaveCoordinator.ResetStaticCaches", () => CodexSaveCoordinator.ResetStaticCaches());
                 _bootstrapped = false;
                 _owner = null;
             }

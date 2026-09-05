@@ -188,31 +188,55 @@ namespace BossRush
             }
         }
 
-        /// <summary>host 销毁：尽力落盘一次，随后退订并清状态。</summary>
+        /// <summary>
+        /// host 销毁：遗种巢清理的**唯一 owner**。宿主 OnDestroy 不再逐条内联同一批清理，
+        /// 只经 runtimeModuleHost.OnDestroy() 到达这里（此前宿主与模块各写一份、宿主先清，
+        /// 模块自己的落盘随即空转）。
+        ///
+        /// 顺序是硬约束：先尽力落盘，再还席，再退订，最后清静态表——
+        /// 借席桥必须先还席再清表，否则官方宠物席位会留着我们的死引用。
+        /// 每一步用 SafeRuntime.Run 隔离：清理路径上单点失败不得让后面的步骤跟着丢。
+        /// 不按 _bootstrapped 门控：各步骤在未初始化时都是 O(1) 早返，而掉落与服务层
+        /// 可能在模块尚未 bootstrap 的窗口里入队过 pending。
+        /// </summary>
         public override void OnDestroy()
         {
             try
             {
                 CloseAllInteractiveViewsForSceneChange();
-                PetNestBaseIdleSpawner.ResetStaticCaches();
-                PetNestMuseumStats.ResetStaticCaches();
-                PetNestCompanionRuntime.CleanupOnce();
-                PetNestUI.ResetStaticCaches();
-                PetNestRenameModal.ResetStaticCaches();
-                PetNestReleaseConfirmModal.ResetStaticCaches();
-                PetNestProgressionService.ResetStaticCaches();
-                PetNestHatchRevealView.ResetStaticCaches();
-                PetNestExpeditionRevealView.ResetStaticCaches();
-                PetNestCompanionHudView.ResetStaticCaches();
-                if (_bootstrapped)
-                {
-                    PetNestSaveCoordinator.TryFlushOnHostDestroy();
-                    PetNestSaveCoordinator.ShutdownSubscription();
-                }
-                PetNestLineageCatalog.Invalidate();
-                // 与 RegisterOpener 成对：面板关掉并把打开器注销，避免 dormant 后还能开面板
-                PetNestUI.UnregisterOpener();
-                PetNestUIBridge.UnbindRuntime();
+
+                // 1) 落盘 + 退订
+                SafeRuntime.Run("PetNestSaveCoordinator.TryFlushOnHostDestroy", () => PetNestSaveCoordinator.TryFlushOnHostDestroy());
+                SafeRuntime.Run("PetNestSaveCoordinator.ShutdownSubscription", () => PetNestSaveCoordinator.ShutdownSubscription());
+
+                // 2) 还席
+                SafeRuntime.Run("PetNestPetProxyBridge.ReleaseSeat", () => PetNestPetProxyBridge.ReleaseSeat());
+
+                // 3) 场上对象、随从与统计
+                SafeRuntime.Run("PetNestBaseIdleSpawner.ResetStaticCaches", () => PetNestBaseIdleSpawner.ResetStaticCaches());
+                SafeRuntime.Run("PetNestCompanionRuntime.ResetStaticCaches", () => PetNestCompanionRuntime.ResetStaticCaches());
+                SafeRuntime.Run("PetNestCompanionAgent.ResetStaticCaches", () => PetNestCompanionAgent.ResetStaticCaches());
+                SafeRuntime.Run("PetNestDownedHandler.ResetStaticCaches", () => PetNestDownedHandler.ResetStaticCaches());
+                SafeRuntime.Run("PetNestDropService.ResetStaticCaches", () => PetNestDropService.ResetStaticCaches());
+                SafeRuntime.Run("PetNestProgressionService.ResetStaticCaches", () => PetNestProgressionService.ResetStaticCaches());
+                SafeRuntime.Run("PetNestMuseumStats.ResetStaticCaches", () => PetNestMuseumStats.ResetStaticCaches());
+
+                // 4) UI（与 RegisterOpener 成对：面板关掉并把打开器注销，避免 dormant 后还能开面板）
+                SafeRuntime.Run("PetNestUI.ResetStaticCaches", () => PetNestUI.ResetStaticCaches());
+                SafeRuntime.Run("PetNestRenameModal.ResetStaticCaches", () => PetNestRenameModal.ResetStaticCaches());
+                SafeRuntime.Run("PetNestReleaseConfirmModal.ResetStaticCaches", () => PetNestReleaseConfirmModal.ResetStaticCaches());
+                SafeRuntime.Run("PetNestHatchRevealView.ResetStaticCaches", () => PetNestHatchRevealView.ResetStaticCaches());
+                SafeRuntime.Run("PetNestExpeditionRevealView.ResetStaticCaches", () => PetNestExpeditionRevealView.ResetStaticCaches());
+                SafeRuntime.Run("PetNestCompanionHudView.ResetStaticCaches", () => PetNestCompanionHudView.ResetStaticCaches());
+                SafeRuntime.Run("PetNestUI.UnregisterOpener", () => PetNestUI.UnregisterOpener());
+                SafeRuntime.Run("PetNestUIBridge.UnbindRuntime", () => PetNestUIBridge.UnbindRuntime());
+
+                // 5) 目录、探针、借席桥，最后是存档缓存（协调器复位内含持久层复位）
+                SafeRuntime.Run("PetNestLineageCatalog.ResetStaticCaches", () => PetNestLineageCatalog.ResetStaticCaches());
+                SafeRuntime.Run("PetNestDebugProbe.ResetStaticCaches", () => PetNestDebugProbe.ResetStaticCaches());
+                SafeRuntime.Run("PetNestPetProxyBridge.ResetStaticCaches", () => PetNestPetProxyBridge.ResetStaticCaches());
+                SafeRuntime.Run("PetNestSaveCoordinator.ResetStaticCaches", () => PetNestSaveCoordinator.ResetStaticCaches());
+
                 _baseMaintenancePending = false;
                 _nextBaseMaintenanceTime = 0f;
                 _bootstrapped = false;
