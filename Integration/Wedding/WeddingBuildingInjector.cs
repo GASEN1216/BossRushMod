@@ -382,6 +382,8 @@ namespace BossRush
         /// </summary>
         public void CleanupWeddingBuilding()
         {
+            InvalidatePermanentSpouseRestore();
+            spouseFollowRestoreRequestId++;
             try
             {
                 UnregisterWeddingBuildingEvents();

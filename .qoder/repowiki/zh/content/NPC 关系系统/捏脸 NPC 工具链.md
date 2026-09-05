@@ -26,6 +26,12 @@
 
 ## 简介
 
+### 永久配偶异步 owner（2026-09-05，COMPAT）
+
+永久 NPC 的婚后驻留和跨图跟随都由 `WeddingModBehaviourBridge.RequestPermanentSpouseRestore` 接入真实异步收尾。请求按 NPC、场景 handle、驻留/跟随状态去重；完成时复核当前配偶、owner/request 代际以及建筑或玩家可用性。`ForceSpawnAtAsync` 还验证模块代际，失效请求只销毁自身新建对象，不影响 registry 中更新的实例。驻留 marker、占位物清理与子物体交互刷新必须发生在生成完成后；跟随使用完成时的玩家位置。普通未婚生成同样在 await 后检查关系与代际。关系键及 schema 不变。
+
+章节来源：`Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs`、`Integration/Wedding/WeddingModBehaviourBridge.cs`。专属守卫：`tests/PermanentSpouseRestoreLifecycleGuard.py`；生产方法隔离验证：`tests/fixtures/RuntimeOwnership`。
+
 `Integration/NPCs/DuckNpc/` 是**未来新增鸭形 NPC** 的工具链：不建模、不打 AssetBundle，
 直接复用官方捏脸系统（`CustomFaceSettingData` / `CustomFaceInstance`）与官方角色管线
 （`CharacterCreator.CreateCharacter`）造 NPC。NPC 的长相由一份可进版本库的 JSON 定义，

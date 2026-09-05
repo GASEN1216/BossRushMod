@@ -183,18 +183,36 @@ namespace BossRush
         // ====================================================================
 
         private bool _spawnInFlight;
+        private static int _spawnGeneration;
+        private PermanentSpawnRequest _activeSpawnRequest;
+        private PermanentSpawnRequest _pendingSpawnRequest;
+
+        private sealed class PermanentSpawnRequest
+        {
+            public ModBehaviour Owner;
+            public string SceneName;
+            public int SceneHandle;
+            public int Generation;
+        }
 
         public void Spawn(ModBehaviour mod)
         {
-            if (mod == null || _spawnInFlight)
+            if (mod == null)
             {
                 return;
             }
 
-            string sceneName;
             try
             {
-                sceneName = UnityEngine.SceneManagement.SceneManager.GetActiveScene().name;
+                var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                // 旧请求仍在 await 时只保留最新目的地；清理不会提前释放 busy。
+                _pendingSpawnRequest = new PermanentSpawnRequest
+                {
+                    Owner = mod,
+                    SceneName = scene.name,
+                    SceneHandle = scene.handle,
+                    Generation = _spawnGeneration
+                };
             }
             catch (Exception e)
             {
@@ -202,11 +220,23 @@ namespace BossRush
                 return;
             }
 
-            _spawnInFlight = true;
-            SpawnForSceneAsync(sceneName).Forget();
+            TryStartPendingSpawn();
         }
 
-        private async UniTaskVoid SpawnForSceneAsync(string sceneName)
+        private void TryStartPendingSpawn()
+        {
+            if (_spawnInFlight) return;
+            PermanentSpawnRequest request = _pendingSpawnRequest;
+            _pendingSpawnRequest = null;
+            if (!IsSpawnRequestValid(request)) return;
+            if (!ShouldSpawnInScene(request.Owner, request.SceneName)) return;
+
+            _activeSpawnRequest = request;
+            _spawnInFlight = true;
+            SpawnForSceneAsync(request).Forget();
+        }
+
+        private async UniTaskVoid SpawnForSceneAsync(PermanentSpawnRequest request)
         {
             try
             {
@@ -215,8 +245,12 @@ namespace BossRush
                 List<DuckNpcBlueprint> permanents = PermanentDuckNpcRegistry.GetAllPermanent();
                 for (int i = 0; i < permanents.Count; i++)
                 {
+                    if (!IsSpawnRequestValid(request))
+                    {
+                        return;
+                    }
                     DuckNpcBlueprint blueprint = permanents[i];
-                    if (blueprint == null || !blueprint.AllowsScene(sceneName))
+                    if (blueprint == null || !blueprint.AllowsScene(request.SceneName))
                     {
                         continue;
                     }
@@ -234,7 +268,7 @@ namespace BossRush
                     // 与羽织/叮当一致：生成时统一结算每日好感度衰减
                     NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(blueprint.id, LogPrefix);
 
-                    await SpawnOneAsync(blueprint, sceneName);
+                    await SpawnOneAsync(blueprint, request);
                 }
             }
             catch (Exception e)
@@ -243,14 +277,20 @@ namespace BossRush
             }
             finally
             {
-                _spawnInFlight = false;
+                // 只有持有当前请求的收尾能交接 busy，旧 finally 不得清掉后继状态。
+                if (_activeSpawnRequest == request)
+                {
+                    _activeSpawnRequest = null;
+                    _spawnInFlight = false;
+                    TryStartPendingSpawn();
+                }
             }
         }
 
-        private async UniTask SpawnOneAsync(DuckNpcBlueprint blueprint, string sceneName)
+        private async UniTask SpawnOneAsync(DuckNpcBlueprint blueprint, PermanentSpawnRequest request)
         {
             Vector3 position;
-            if (!TryResolveSpawnPosition(sceneName, out position))
+            if (!TryResolveSpawnPosition(request.SceneName, out position))
             {
                 ModBehaviour.DevLog(LogPrefix + " 取不到刷新点，跳过: " + blueprint.id);
                 return;
@@ -262,18 +302,25 @@ namespace BossRush
                 return;
             }
 
-            // await 之后场景可能已切走：这只 NPC 属于上一张图，立刻回收，
-            // 否则会在新场景里留下一只无人管理的孤儿。
-            if (!IsStillSameScene(sceneName))
+            bool registered = false;
+            try
             {
-                ModBehaviour.DevLog(LogPrefix + " 生成完成时场景已切换，回收: " + blueprint.id);
-                DuckNpcSpawner.Despawn(npc);
-                return;
-            }
+                // await 后重验 owner、世代和场景实例；失效对象只回收自身。
+                if (!IsSpawnRequestValid(request) || AffinityManager.IsMarriedToPlayer(blueprint.id)
+                    || PermanentDuckNpcRegistry.GetInstance(blueprint.id) != null)
+                {
+                    return;
+                }
 
-            AttachPermanentParts(npc, blueprint, position);
-            PermanentDuckNpcRegistry.RegisterInstance(blueprint.id, npc);
-            ModBehaviour.DevLog(LogPrefix + " 已生成永久 NPC " + blueprint.id + " @ " + position);
+                AttachPermanentParts(npc, blueprint, position);
+                PermanentDuckNpcRegistry.RegisterInstance(blueprint.id, npc);
+                registered = true;
+                ModBehaviour.DevLog(LogPrefix + " 已生成永久 NPC " + blueprint.id + " @ " + position);
+            }
+            finally
+            {
+                if (!registered) DuckNpcSpawner.Despawn(npc);
+            }
         }
 
         private static void AttachPermanentParts(
@@ -324,11 +371,14 @@ namespace BossRush
             }
         }
 
-        private static bool IsStillSameScene(string expectedSceneName)
+        private static bool IsSpawnRequestValid(PermanentSpawnRequest request)
         {
+            if (request == null || request.Owner == null || ModBehaviour.Instance != request.Owner
+                || request.Generation != _spawnGeneration) return false;
             try
             {
-                return UnityEngine.SceneManagement.SceneManager.GetActiveScene().name == expectedSceneName;
+                var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                return scene.name == request.SceneName && scene.handle == request.SceneHandle;
             }
             catch
             {
@@ -372,6 +422,8 @@ namespace BossRush
 
         public void Destroy(ModBehaviour mod)
         {
+            _spawnGeneration++;
+            _pendingSpawnRequest = null;
             List<DuckNpcBlueprint> permanents = PermanentDuckNpcRegistry.GetAllPermanent();
             for (int i = 0; i < permanents.Count; i++)
             {
@@ -397,8 +449,15 @@ namespace BossRush
         /// 由婚姻系统的泛化分支调用：在指定位置强制生成一只永久 NPC（婚礼教堂用）。
         /// </summary>
         internal static async UniTask<CharacterMainControl> ForceSpawnAtAsync(
-            string npcId, Vector3 position, bool stayStill)
+            string npcId, Vector3 position, bool stayStill, Func<bool> isRequestValid = null)
         {
+            int generation = _spawnGeneration;
+            int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            if (isRequestValid != null && !isRequestValid())
+            {
+                return null;
+            }
+
             DuckNpcBlueprint blueprint;
             if (!PermanentDuckNpcRegistry.TryGetBlueprint(npcId, out blueprint))
             {
@@ -417,31 +476,59 @@ namespace BossRush
                 return null;
             }
 
-            AttachPermanentParts(npc, blueprint, position);
-
-            if (stayStill)
+            bool registered = false;
+            try
             {
-                try
+                // await 后先验证 owner，再挂交互/登记。失效请求只回收自己生成的对象，
+                // 不注销 registry，避免删掉较新请求已经登记的同名 NPC。
+                if (generation != _spawnGeneration
+                    || sceneHandle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle
+                    || (isRequestValid != null && !isRequestValid()))
                 {
-                    DuckNpcMovement movement = npc.GetComponent<DuckNpcMovement>();
-                    if (movement != null)
+                    return null;
+                }
+
+                existing = PermanentDuckNpcRegistry.GetInstance(npcId);
+                if (existing != null)
+                {
+                    return existing;
+                }
+
+                AttachPermanentParts(npc, blueprint, position);
+
+                if (stayStill)
+                {
+                    try
                     {
-                        movement.Hold();
+                        DuckNpcMovement movement = npc.GetComponent<DuckNpcMovement>();
+                        if (movement != null)
+                        {
+                            movement.Hold();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog(LogPrefix + " [WARNING] 站桩设置失败 " + npcId + ": " + e.Message);
                     }
                 }
-                catch (Exception e)
+
+                PermanentDuckNpcRegistry.RegisterInstance(npcId, npc);
+                registered = true;
+                return npc;
+            }
+            finally
+            {
+                if (!registered)
                 {
-                    ModBehaviour.DevLog(LogPrefix + " [WARNING] 站桩设置失败 " + npcId + ": " + e.Message);
+                    DuckNpcSpawner.Despawn(npc);
                 }
             }
-
-            PermanentDuckNpcRegistry.RegisterInstance(npcId, npc);
-            return npc;
         }
 
         /// <summary>清空配置缓存。Mod 卸载时调用。</summary>
         internal static void ResetStaticCaches()
         {
+            _spawnGeneration++;
             _configs.Clear();
         }
     }

@@ -16,6 +16,16 @@ namespace BossRush
         private const float SpouseFollowRestoreTimeout = 20f;
         private const float FollowingSpouseDialogueStayDuration = 0.05f;
         private int spouseFollowRestoreRequestId = 0;
+        private int permanentSpouseRestoreGeneration;
+        private PermanentSpouseRestoreRequest permanentSpouseRestoreRequest;
+
+        private sealed class PermanentSpouseRestoreRequest
+        {
+            internal string NpcId;
+            internal int SceneHandle;
+            internal int Generation;
+            internal bool Following;
+        }
 
         public bool HasWeddingBuildingPlaced()
         {
@@ -72,10 +82,8 @@ namespace BossRush
                     }
                     else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
                     {
-                        // 泛化出口：所有捏脸永久 NPC 共用这一条，新增 NPC 时无需再改本文件。
-                        // 生成是 async，本方法是同步的 —— fire-and-forget，
-                        // 下面 GetSpouseInstance 这一轮会取不到，等下次场景初始化再接上。
-                        PermanentDuckNpcModule.ForceSpawnAtAsync(spouseNpcId, weddingPosition, true).Forget();
+                        // 冷加载时先留占位物；真实实例完成后由请求 owner 收尾。
+                        RequestPermanentSpouseRestore(spouseNpcId, weddingPosition, false);
                     }
 
                     spouseInstance = GetSpouseInstance(spouseNpcId);
@@ -211,6 +219,7 @@ namespace BossRush
                     return false;
                 }
 
+                InvalidatePermanentSpouseRestore();
                 PrepareSpouseInstanceForFollow(spouseInstance, npcId);
                 ShowMessage(L10n.T("配偶开始跟随你了。", "Your spouse is now following you."));
                 return true;
@@ -273,6 +282,7 @@ namespace BossRush
                     return false;
                 }
 
+                InvalidatePermanentSpouseRestore();
                 if (AffinityManager.IsSpouseFollowingPlayer(npcId))
                 {
                     AffinityManager.SetSpouseFollowingPlayer(npcId, false);
@@ -300,6 +310,11 @@ namespace BossRush
                     else if (npcId == NurseAffinityConfig.NPC_ID)
                     {
                         DestroyNurseNPC();
+                    }
+                    else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(npcId))
+                    {
+                        DuckNpcSpawner.Despawn(PermanentDuckNpcRegistry.GetInstance(npcId));
+                        PermanentDuckNpcRegistry.UnregisterInstance(npcId);
                     }
                 }
 
@@ -418,6 +433,7 @@ namespace BossRush
         {
             try
             {
+                InvalidatePermanentSpouseRestore();
                 DestroyWeddingPlaceholder();
 
                 if (npcId == GoblinAffinityConfig.NPC_ID)
@@ -543,6 +559,11 @@ namespace BossRush
                     {
                         SpawnNurseNPC(restorePosition, false, true);
                     }
+                    else if (PermanentDuckNpcRegistry.IsPermanentDuckNpc(spouseNpcId))
+                    {
+                        RequestPermanentSpouseRestore(spouseNpcId, restorePosition, true);
+                        return;
+                    }
 
                     spouseInstance = GetSpouseInstance(spouseNpcId);
                 }
@@ -568,6 +589,97 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[WeddingBridge] 恢复配偶跟随失败: " + e.Message);
+            }
+        }
+
+        private void InvalidatePermanentSpouseRestore()
+        {
+            permanentSpouseRestoreGeneration++;
+            permanentSpouseRestoreRequest = null;
+        }
+
+        private void RequestPermanentSpouseRestore(string npcId, Vector3 position, bool following)
+        {
+            int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            PermanentSpouseRestoreRequest pending = permanentSpouseRestoreRequest;
+            if (pending != null && pending.NpcId == npcId && pending.SceneHandle == sceneHandle
+                && pending.Following == following && IsPermanentSpouseRestoreCurrent(pending))
+            {
+                return;
+            }
+
+            var request = new PermanentSpouseRestoreRequest
+            {
+                NpcId = npcId,
+                SceneHandle = sceneHandle,
+                Generation = ++permanentSpouseRestoreGeneration,
+                Following = following
+            };
+            permanentSpouseRestoreRequest = request;
+            RestorePermanentSpouseAsync(request, position).Forget();
+        }
+
+        private bool IsPermanentSpouseRestoreCurrent(PermanentSpouseRestoreRequest request)
+        {
+            if (this == null || Instance != this || request != permanentSpouseRestoreRequest
+                || request.Generation != permanentSpouseRestoreGeneration
+                || request.SceneHandle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle
+                || !string.Equals(AffinityManager.GetCurrentSpouseNpcId(), request.NpcId, StringComparison.Ordinal)
+                || !AffinityManager.IsMarriedToPlayer(request.NpcId)
+                || AffinityManager.IsSpouseFollowingPlayer(request.NpcId) != request.Following)
+            {
+                return false;
+            }
+
+            if (request.Following)
+            {
+                return CanCurrentSpouseFollowPlayer(request.NpcId) && CharacterMainControl.Main != null;
+            }
+
+            return IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name)
+                && HasWeddingBuildingPlaced() && FindWeddingBuildingNPCPosition() != Vector3.zero;
+        }
+
+        private async UniTaskVoid RestorePermanentSpouseAsync(PermanentSpouseRestoreRequest request, Vector3 position)
+        {
+            try
+            {
+                CharacterMainControl npc = await PermanentDuckNpcModule.ForceSpawnAtAsync(
+                    request.NpcId, position, !request.Following, () => IsPermanentSpouseRestoreCurrent(request));
+                if (npc == null || !IsPermanentSpouseRestoreCurrent(request))
+                {
+                    return;
+                }
+
+                if (request.Following)
+                {
+                    // 加载期间玩家可以移动；完成后使用当前玩家位置。
+                    Vector3 followPosition;
+                    if (TryGetSpouseFollowSpawnPosition(out followPosition))
+                    {
+                        SnapSpouseInstanceToPosition(npc.gameObject, followPosition);
+                    }
+                    PrepareSpouseInstanceForFollow(npc.gameObject, request.NpcId);
+                }
+                else
+                {
+                    SnapSpouseInstanceToPosition(npc.gameObject, FindWeddingBuildingNPCPosition());
+                    SetWeddingNpcIdle(npc.gameObject);
+                    MarkWeddingNpcInstance(npc.gameObject, request.NpcId);
+                    DestroyWeddingPlaceholder();
+                    RefreshSpouseInteractionOptions(npc.gameObject);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[WeddingBridge] 永久配偶恢复失败: " + e.Message);
+            }
+            finally
+            {
+                if (permanentSpouseRestoreRequest == request)
+                {
+                    permanentSpouseRestoreRequest = null;
+                }
             }
         }
 
@@ -720,6 +832,12 @@ namespace BossRush
             if (nurseMovement != null)
             {
                 nurseMovement.DisablePlayerFollow();
+            }
+
+            DuckNpcMovement duckMovement = spouseInstance.GetComponent<DuckNpcMovement>();
+            if (duckMovement != null)
+            {
+                duckMovement.DisablePlayerFollow();
             }
         }
 
@@ -879,6 +997,12 @@ namespace BossRush
             if (nurseInteractable != null)
             {
                 nurseInteractable.RefreshMarriageOptionVisibility();
+            }
+
+            PermanentDuckNpcInteractable duckInteractable = spouseInstance.GetComponentInChildren<PermanentDuckNpcInteractable>(true);
+            if (duckInteractable != null)
+            {
+                duckInteractable.RefreshMarriageOptionVisibility();
             }
         }
     }

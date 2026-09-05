@@ -388,6 +388,7 @@ namespace BossRush
                     return;
                 }
 
+                InvalidatePermanentSpouseRestore();
                 ResetWeddingBuildingLocationCache();
                 ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
                 DestroyWeddingPlaceholder();

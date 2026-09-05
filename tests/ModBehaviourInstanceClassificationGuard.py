@@ -19,7 +19,7 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 263,
+    "Integration": 264,
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
@@ -35,7 +35,7 @@ EXPECTED_COUNTS = {
     "DebugAndTools": 2,
 }
 
-EXPECTED_TOTAL = 404
+EXPECTED_TOTAL = 405
 
 
 def fail(message: str) -> int:
