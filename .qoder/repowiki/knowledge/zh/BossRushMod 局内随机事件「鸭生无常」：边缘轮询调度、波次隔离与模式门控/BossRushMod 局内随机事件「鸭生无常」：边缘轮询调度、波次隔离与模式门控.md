@@ -218,3 +218,7 @@ Boss（龙裔 / 龙王 / 女巫）。抽中时 SpawnCore 会路由到它们的�
 `COMPAT`。血月对已加成目标订阅一次具名 Health.OnDead，记录死亡事实；HashSet 移除保证同一目标只计一次。两秒 Tick 兑现欠款，OnCleanup 在退订、清表之前最后结算，也覆盖静态死亡通知之前触发的局末收尾。销毁/退场不能当作击杀。订阅有 owner 标记，Scope 和正常清理共用幂等退订。此规则替代先前仅靠轮询、结束直接清表的描述。
 
 章节来源：`RandomEvents/RandomEventCatalog.cs` 的 BloodMoonEvent。
+
+## 2026-09-05：空投池按实际消费路径过滤
+
+`COMPAT`，CR-2026-09-05-017。`RandomEventEffectsBridge_Loot` 将规范化的品质上下限传给实际 randomPool 构建，以元数据有效 ID/品质和统一黑名单过滤候选。不能只写 `loader.qualities`：官方 randomFromPool 为 true 时不会读这个容器。三模式既定区间保持普通 Q4–Q7、Mode D Q4–Q5、无间炼狱 Q4–Q8；每个非空品质总权重为 1，品质内物品等权。先清模板池，候选为空或字段绑定不可用就不启动填充，避免继承模板奖励或对空池启动。验证入口为 `tests/fixtures/AirdropSecondReview/run.py`，结构约束为 `tests/RandomEventAirdropQualityGuard.py`；没有以隔离执行替代实机抽箱。

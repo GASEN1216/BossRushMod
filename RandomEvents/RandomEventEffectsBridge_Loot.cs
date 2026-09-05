@@ -231,9 +231,10 @@ namespace BossRush
             }
 
             // ── 随机池 ────────────────────────────────────────
+            bool hasRandomPool = false;
             try
             {
-                FillRandomEventAirdropPool(loader);
+                hasRandomPool = FillRandomEventAirdropPool(loader, qMin, qMax);
             }
             catch (Exception e)
             {
@@ -270,6 +271,11 @@ namespace BossRush
             //    不会再自动走 GetOrCreateInventory，必须手动 StartSetup 才有内容 ──
             try
             {
+                if (!hasRandomPool)
+                {
+                    DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱没有有效品质候选，跳过填充");
+                    return;
+                }
                 loader.randomFromPool = true;
                 loader.ignoreLevelConfig = true;
                 loader.CalculateChances();
@@ -281,14 +287,14 @@ namespace BossRush
             }
         }
 
-        /// <summary>把通用 Boss 掉落候选写进 loader 的随机池，权重均等。</summary>
-        private void FillRandomEventAirdropPool(Duckov.Utilities.LootBoxLoader loader)
+        /// <summary>实际随机池按品质过滤，非空品质等权，同品质内物品等权。</summary>
+        private bool FillRandomEventAirdropPool(Duckov.Utilities.LootBoxLoader loader, int qualityMin, int qualityMax)
         {
             Type loaderEntryType = BossLootBoxLoaderReflection.LoaderEntryType;
             FieldInfo randomPoolField = BossLootBoxLoaderReflection.RandomPoolField;
             if (loaderEntryType == null || randomPoolField == null)
             {
-                return;
+                return false;
             }
 
             object randomPoolObj = randomPoolField.GetValue(loader);
@@ -299,13 +305,13 @@ namespace BossRush
             }
             if (randomPoolObj == null)
             {
-                return;
+                return false;
             }
 
             FieldInfo entriesField = BossLootBoxLoaderReflection.RandomPoolEntriesField;
             if (entriesField == null)
             {
-                return;
+                return false;
             }
 
             IList entriesList = entriesField.GetValue(randomPoolObj) as IList;
@@ -323,16 +329,20 @@ namespace BossRush
             if (entriesList == null || entryType == null ||
                 lootEntryItemIdField == null || valueField == null || weightField == null)
             {
-                return;
+                return false;
             }
 
+            // 先清模板池：候选为空或元数据失效时不能退回不受限制的原池。
+            entriesList.Clear();
             HashSet<int> candidates = BuildGeneralBossLootCandidateIdSet();
             if (candidates == null || candidates.Count == 0)
             {
-                return;
+                return false;
             }
 
-            entriesList.Clear();
+            int qMin = Mathf.Clamp(qualityMin, 1, 8);
+            int qMax = Mathf.Clamp(Mathf.Max(qualityMin, qualityMax), 1, 8);
+            var qualityEntries = new List<object>[9];
             foreach (int id in candidates)
             {
                 try
@@ -342,18 +352,44 @@ namespace BossRush
                         continue;
                     }
 
+                    // randomFromPool 分支不读取 loader.qualities，必须过滤实际消费的池。
+                    var metadata = ItemAssetsCollection.GetMetaData(id);
+                    if (metadata.id != id || metadata.quality < qMin || metadata.quality > qMax)
+                    {
+                        continue;
+                    }
+
                     object entry = Activator.CreateInstance(entryType);
                     object entryValue = Activator.CreateInstance(loaderEntryType);
                     lootEntryItemIdField.SetValue(entryValue, id);
                     valueField.SetValue(entry, entryValue);
-                    weightField.SetValue(entry, 1f);
-                    entriesList.Add(entry);
+                    List<object> bucket = qualityEntries[metadata.quality];
+                    if (bucket == null)
+                    {
+                        bucket = new List<object>();
+                        qualityEntries[metadata.quality] = bucket;
+                    }
+                    bucket.Add(entry);
                 }
                 catch (Exception)
                 {
                     // 单个候选失败不影响整箱
                 }
             }
+
+            // 每个非空品质的总权重为 1；不因某品质物品种类更多而提高该品质概率。
+            for (int q = qMin; q <= qMax; q++)
+            {
+                List<object> bucket = qualityEntries[q];
+                if (bucket == null || bucket.Count == 0) continue;
+                float weight = 1f / bucket.Count;
+                for (int i = 0; i < bucket.Count; i++)
+                {
+                    weightField.SetValue(bucket[i], weight);
+                    entriesList.Add(bucket[i]);
+                }
+            }
+            return entriesList.Count > 0;
         }
 
         /// <summary>
