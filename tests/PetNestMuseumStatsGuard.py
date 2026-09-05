@@ -50,14 +50,18 @@ def check_stats(errors):
         errors.append("[去重] 缺少 ClearCountedKills() 跨局清理入口")
 
     # 四类统计齐全
-    for fn in ["RecordKill", "RecordHatch", "RecordExpedition", "RecordLevel"]:
+    for fn in ["RecordKill", "TryStageHatch", "RecordExpedition", "RecordLevel"]:
         if fn not in code:
             errors.append("[统计] 缺少入口: " + fn)
 
     # 首次孵化解锁
-    hatch = re.search(r"internal static void RecordHatch\(PetNestPetRecord pet\)[\s\S]{0,900}?\n        \}", code)
-    if hatch is not None and "stats.unlocked = true;" not in hatch.group(0):
+    hatch = re.search(r"internal static bool TryStageHatch\(PetNestPetRecord pet\)[\s\S]*?\n        \}", code)
+    if hatch is None or "stats.unlocked = true;" not in hatch.group(0):
         errors.append("[图鉴] 首次孵化必须解锁该血脉图鉴页")
+    elif "!PetNestPersistenceAccess.IsTransactionActive" not in hatch.group(0):
+        errors.append("[事务] 孵化统计只能修改已开启的候选包")
+    elif "StageMuseum()" in hatch.group(0) or "CheckTamingAchievements()" in hatch.group(0):
+        errors.append("[事务] 孵化统计不得独立提交或在候选接受前发布成就")
 
     # 不得逐次落盘
     if "PetNestSaveCoordinator" in code:
@@ -77,8 +81,11 @@ def check_stats(errors):
     hatch_service = read_petnest("PetNestHatchService.cs")
     if hatch_service is not None:
         hcode = strip_cs_comments(hatch_service)
-        if hcode.count("PetNestMuseumStats.RecordHatch(pet);") < 2:
-            errors.append("[接线] 孵化与凝蛋两条路径都必须记孵化")
+        if hcode.count("PetNestService.TryCommitHatch(pet,") != 2:
+            errors.append("[接线] 孵化与凝蛋必须复用含统计的同一候选提交")
+    coordinator = strip_cs_comments(read_petnest("PetNestSaveCoordinator.cs") or "")
+    if not 0 <= coordinator.find("SavesSystem.SaveFile(false);") < coordinator.find("PetNestMuseumStats.EvaluatePersistedAchievements();"):
+        errors.append("[成就] 孵化延期重试保存成功后必须重查成就")
 
     expedition = read_petnest("PetNestExpeditionService.cs")
     if expedition is not None and "PetNestMuseumStats.RecordExpedition(pet);" not in strip_cs_comments(expedition):

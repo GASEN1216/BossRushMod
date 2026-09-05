@@ -55,11 +55,11 @@ def main():
     if "SavesSystem.Save<string>(PetNestTuning.NestStorageKey" in persistence:
         errors.append("v1 键只读，不得恢复运行时分拆写")
 
-    for method in ("TryAddPet", "TryRemovePet", "TryReleasePet", "TryRenamePet",
+    for method in ("TryCommitHatch", "TryRemovePet", "TryReleasePet", "TryRenamePet",
                    "TrySetDeployedPet", "ClearDeployedPet", "TrySpendSouls"):
         start = service.find("internal static bool " + method)
         body = service[start:start + 3300] if start >= 0 else ""
-        if "BeginCandidate(out failureReasonId)" not in body or "CommitCandidate(out failureReasonId)" not in body:
+        if "BeginCandidate(out failureReasonId)" not in body or "CommitCandidate(out failureReasonId" not in body:
             errors.append(method + " 未完整经过候选包提交")
 
     for token in ("cashGranted", "grantedLootUnits", "rewardsGranted"):

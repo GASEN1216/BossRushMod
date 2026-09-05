@@ -26,7 +26,7 @@ VIEWS = ["PetNestHatchRevealView.cs", "PetNestExpeditionRevealView.cs"]
 
 FORBIDDEN_ROLL = ["Random.value", "Random.Range", "RollNewPet", "RollCashReward", "RollLoot"]
 FORBIDDEN_WRITE = ["StageCommit(", "PetNestService.Commit(", "SavesSystem",
-                   "PetNestPersistence", "TryAddPet(", "TrySpendSouls(", "AddSouls("]
+                   "PetNestPersistence", "TryCommitHatch(", "TrySpendSouls(", "AddSouls("]
 # 官方演出本体：只借节奏语言，不复用实现
 FORBIDDEN_OFFICIAL = ["LotteryBox", "DeathLottery", "ItemPicker"]
 

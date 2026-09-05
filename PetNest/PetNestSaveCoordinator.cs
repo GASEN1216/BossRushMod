@@ -185,7 +185,7 @@ namespace BossRush
             // 若随后的 SaveFile 失败，这里只看 HasAnyPendingWrite 会直接早返 true，
             // 把重试与宿主销毁兜底一起吃掉——数据停在 SavesSystem 内存里永不落盘。
             // 形态照 Integration/Codex/CodexSaveCoordinator.cs。
-            if (!PetNestPersistence.HasAnyPendingWrite && !saveFileOwed)
+            if (!PetNestPersistence.HasAnyPendingWrite && !saveFileOwed && !_assetSnapshotRequired)
             {
                 lock (_lock)
                 {
@@ -252,6 +252,7 @@ namespace BossRush
                     _assetSnapshotRequired = false;
                     _lastError = null;
                 }
+                PetNestMuseumStats.EvaluatePersistedAchievements();
                 return true;
             }
             catch (Exception e)

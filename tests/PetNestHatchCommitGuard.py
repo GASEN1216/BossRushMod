@@ -8,7 +8,7 @@ PetNestHatchCommitGuard — 遗种巢孵化 commit-before-reveal 守卫（实施
 - **fail-closed 不消耗蛋**：血脉 KV 读不到、或血脉不在目录里时返回失败且不销毁蛋
   （官方 preset 改名会让老蛋血脉漂移，绝不能把玩家的蛋吞掉）；
 - 先可逆摘蛋，候选包接管后销毁；原容器与新崽同批落盘后才揭晓；
-- 凝蛋是事务：先扣遗魂再入巢，入巢失败必须退还遗魂；
+- 凝蛋是单个候选包事务：扣遗魂、入巢与统计一次提交，拒绝时整体不变；
 - roll 三层（天赋 ×2 / 性格 ×1 / 异色）走 PetNestTuning 常量，孵化即锁定；
 - 天赋里的 PetCapcity 必须是常量加（格子数），不能按百分比。
 """
@@ -67,10 +67,10 @@ def main():
             errors.append("[顺序] 无法定位血脉判定与消耗蛋的位置")
         elif lineage_pos > consume_pos:
             errors.append("[fail-closed] 血脉判定必须发生在消耗蛋之前")
-        # 新崽入队前摘蛋，禁止 TryAddPet 提前触发物理写盘。
-        add_pos = body.find("PetNestService.TryAddPet(pet, out failureReasonId, false)")
+        # 新崽入队前摘蛋，候选包暂不触发物理写盘。
+        add_pos = body.find("PetNestService.TryCommitHatch(pet, 0, out failureReasonId, false)")
         if add_pos < 0:
-            errors.append("[顺序] 孵化必须经 PetNestService.TryAddPet 入巢")
+            errors.append("[顺序] 孵化必须经 PetNestService.TryCommitHatch 入巢")
         elif add_pos > consume_pos:
             errors.append("[commit-before-reveal] 必须先入巢落档，成功后才消耗蛋")
         detach_pos = body.find("origin.RemoveAt(position, out removed)")
@@ -80,21 +80,29 @@ def main():
         if "origin.AddAt(egg, position)" not in body:
             errors.append("[回滚] 候选包拒绝时必须把蛋放回原容器")
 
-    # 3. 凝蛋事务：扣遗魂 -> 入巢 -> 失败退还
+    # 3. 凝蛋事务：同一候选包扣遗魂、入巢与统计，禁止两个独立提交。
     condense = re.search(r"internal static bool TryCondenseAndHatch\([\s\S]{0,2200}?\n        \}", code)
     if condense is None:
         errors.append("[入口] 缺少 TryCondenseAndHatch 入口")
     else:
         body = condense.group(0)
-        spend_pos = body.find("PetNestService.TrySpendSouls(")
-        add_pos = body.find("PetNestService.TryAddPet(")
-        refund_pos = body.find("PetNestService.AddSouls(lineageKey, PetNestTuning.SoulsPerCondensedEgg, true)")
-        if spend_pos < 0 or add_pos < 0:
-            errors.append("[事务] 凝蛋必须先扣遗魂再入巢")
-        elif spend_pos > add_pos:
-            errors.append("[事务] 扣遗魂必须发生在入巢之前")
-        if refund_pos < 0:
-            errors.append("[事务] 入巢失败必须退还遗魂")
+        if body.count("PetNestService.TryCommitHatch(pet, PetNestTuning.SoulsPerCondensedEgg,") != 1:
+            errors.append("[事务] 凝蛋必须用含魂成本的单次孵化候选提交")
+        for forbidden in ("TrySpendSouls(", "AddSouls(", "RecordHatch("):
+            if forbidden in body:
+                errors.append("[事务] 凝蛋不得拆分扣魂、退款或统计提交: " + forbidden)
+    service = strip_cs_comments(read_petnest("PetNestService.cs") or "")
+    transaction = re.search(r"internal static bool TryCommitHatch\([\s\S]*?\n        \}", service)
+    if transaction is None:
+        errors.append("[事务] 缺少 TryCommitHatch")
+    else:
+        body = transaction.group(0)
+        positions = [body.find(token) for token in (
+            "BeginCandidate(out failureReasonId)", "balance.souls -= soulCost;",
+            "nest.pets.Add(pet);", "PetNestMuseumStats.TryStageHatch(pet)",
+            "CommitCandidate(out failureReasonId, requestFlush)")]
+        if min(positions) < 0 or positions != sorted(positions):
+            errors.append("[事务] 扣魂、入巢、孵化统计必须在单候选包提交之前")
 
     # 4. roll 走常量且孵化即锁定
     for const in ["PetNestTuning.ShinyChance", "PetNestTuning.TalentRollCount",

@@ -209,16 +209,16 @@ def check_service(errors):
         errors.append("[落档] Commit 的成败必须以 Store 入队为准，不得因 flush 失败返回 false")
 
     # 写操作必须只改候选深拷贝：Store 失败时权威内存自然不变。
-    for fn in ["TryAddPet", "TryRemovePet", "TrySetDeployedPet", "ClearDeployedPet", "TrySpendSouls"]:
+    for fn in ["TryCommitHatch", "TryRemovePet", "TrySetDeployedPet", "ClearDeployedPet", "TrySpendSouls"]:
         block = re.search(
-            r"internal static bool " + fn + r"\([\s\S]{0,2600}?\n        \}", code)
+            r"internal static bool " + fn + r"\([\s\S]{0,3500}?\n        \}", code)
         if block is None:
             errors.append("[候选包] 无法解析 " + fn)
         else:
             body = block.group(0)
             if "BeginCandidate(out failureReasonId)" not in body:
                 errors.append("[候选包] " + fn + " 必须先深拷贝权威包")
-            commit = "CommitCandidate(out failureReasonId, requestFlush)" if fn == "TryAddPet" else "CommitCandidate(out failureReasonId)"
+            commit = "CommitCandidate(out failureReasonId, requestFlush)" if fn == "TryCommitHatch" else "CommitCandidate(out failureReasonId)"
             if commit not in body:
                 errors.append("[候选包] " + fn + " 必须 Store 成功后才交换权威状态")
 

@@ -63,25 +63,26 @@ namespace BossRush
             }
         }
 
-        /// <summary>记一次孵化。首次孵化解锁该血脉图鉴页。</summary>
-        internal static void RecordHatch(PetNestPetRecord pet)
+        /// <summary>只在孵化候选包内记统计；失败由调用方整体撤销，不能独立保存。</summary>
+        internal static bool TryStageHatch(PetNestPetRecord pet)
         {
-            if (pet == null || string.IsNullOrEmpty(pet.lineageKey)) return;
+            if (pet == null || string.IsNullOrEmpty(pet.lineageKey)
+                || !PetNestPersistenceAccess.IsTransactionActive) return false;
             try
             {
                 PetNestLineageStats stats = GetOrCreate(pet.lineageKey);
-                if (stats == null) return;
+                if (stats == null) return false;
                 stats.hatched++;
                 if (pet.shiny) stats.shinyHatched++;
                 // 首次孵化解锁图鉴页
                 stats.unlocked = true;
                 if (pet.level > stats.maxLevel) stats.maxLevel = pet.level;
-                PetNestPersistenceAccess.StageMuseum();
-                CheckTamingAchievements();
+                return true;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PetNest] 孵化统计失败: " + e.Message);
+                return false;
             }
         }
 
@@ -160,6 +161,12 @@ namespace BossRush
 
         /// <summary>外部（纪念碑刻档后）触发一次成就检查。</summary>
         internal static void NotifyMemorialChanged()
+        {
+            CheckTamingAchievements();
+        }
+
+        /// <summary>物理保存成功后重查；延期孵化也由协调器补发，不再依赖揭晓成功路径。</summary>
+        internal static void EvaluatePersistedAchievements()
         {
             CheckTamingAchievements();
         }

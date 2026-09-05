@@ -127,7 +127,7 @@ namespace BossRush
             Item removed;
             if (!origin.RemoveAt(position, out removed) || !ReferenceEquals(removed, egg))
             { failureReasonId = "egg_detach_failed"; return false; }
-            if (!PetNestService.TryAddPet(pet, out failureReasonId, false))
+            if (!PetNestService.TryCommitHatch(pet, 0, out failureReasonId, false))
             {
                 if (!origin.AddAt(egg, position))
                     ModBehaviour.CriticalLog("[PetNest] 孵化回滚无法恢复蛋的原槽位");
@@ -136,8 +136,6 @@ namespace BossRush
             TryConsumeEgg(egg);
             // 文件写失败时完整候选与实物欠账一起保留，不能把旧蛋放回造成重复孵化。
             if (!PetNestSaveCoordinator.RequestAssetFlush(out failureReasonId)) return false;
-
-            PetNestMuseumStats.RecordHatch(pet);
 
             result = new PetNestHatchResult();
             result.Pet = pet;
@@ -241,7 +239,7 @@ namespace BossRush
         /// 用遗魂定向凝成一枚该血脉的遗种蛋，直接孵化入巢（不产出实体蛋，
         /// 避免"凝出来的蛋放不进背包"这种半成品状态）。
         ///
-        /// 事务式：先扣遗魂再入巢；入巢失败把遗魂退回去。
+        /// 扣魂、入巢、孵化统计在同一份候选 Bundle 内一次提交，拒绝时整包不变。
         /// </summary>
         internal static bool TryCondenseAndHatch(
             string lineageKey, out PetNestHatchResult result, out string failureReasonId)
@@ -272,21 +270,14 @@ namespace BossRush
                 return false;
             }
 
-            if (!PetNestService.TrySpendSouls(lineageKey, PetNestTuning.SoulsPerCondensedEgg, out failureReasonId))
-            {
-                return false;
-            }
-
             PetNestPetRecord pet = RollNewPet(lineageKey);
-            if (pet == null || !PetNestService.TryAddPet(pet, out failureReasonId))
+            if (pet == null)
             {
-                // 入巢失败：把遗魂退回去，玩家不该为系统故障买单
-                PetNestService.AddSouls(lineageKey, PetNestTuning.SoulsPerCondensedEgg, true);
-                if (string.IsNullOrEmpty(failureReasonId)) failureReasonId = "roll_failed";
+                failureReasonId = "roll_failed";
                 return false;
             }
-
-            PetNestMuseumStats.RecordHatch(pet);
+            if (!PetNestService.TryCommitHatch(pet, PetNestTuning.SoulsPerCondensedEgg, out failureReasonId))
+                return false;
 
             result = new PetNestHatchResult();
             result.Pet = pet;

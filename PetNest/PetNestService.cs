@@ -134,13 +134,15 @@ namespace BossRush
         #region 巢 CRUD
 
         /// <summary>
-        /// 入巢。超容返回 false（不静默丢弃玩家的蛋，由调用方给提示）。
-        /// 成功后立即落档。
+        /// 孵化的唯一候选提交：扣遗魂（实体蛋传 0）、入巢与博物馆统计一起保存。
+        /// 实体蛋路径先摘蛋，使用 requestFlush=false，随后连同原容器统一落盘。
         /// </summary>
-        internal static bool TryAddPet(PetNestPetRecord pet, out string failureReasonId, bool requestFlush = true)
+        internal static bool TryCommitHatch(PetNestPetRecord pet, int soulCost,
+            out string failureReasonId, bool requestFlush = true)
         {
             failureReasonId = null;
-            if (pet == null || string.IsNullOrEmpty(pet.id))
+            if (pet == null || string.IsNullOrEmpty(pet.id) || string.IsNullOrEmpty(pet.lineageKey)
+                || soulCost < 0)
             {
                 failureReasonId = "pet_invalid";
                 return false;
@@ -165,9 +167,33 @@ namespace BossRush
                     return false;
                 }
 
+                if (soulCost > 0)
+                {
+                    PetNestSoulLedgerEntry balance = null;
+                    for (int i = 0; i < nest.soulLedger.Count; i++)
+                    {
+                        PetNestSoulLedgerEntry entry = nest.soulLedger[i];
+                        if (entry != null && string.Equals(entry.lineageKey, pet.lineageKey, StringComparison.Ordinal))
+                        { balance = entry; break; }
+                    }
+                    if (balance == null || balance.souls < soulCost)
+                    {
+                        failureReasonId = "souls_insufficient";
+                        PetNestPersistenceAccess.AbortTransaction();
+                        return false;
+                    }
+                    balance.souls -= soulCost;
+                }
+
                 pet.Normalize();
                 nest.nameSerial++;
                 nest.pets.Add(pet);
+                if (!PetNestMuseumStats.TryStageHatch(pet))
+                {
+                    failureReasonId = "hatch_stats_failed";
+                    PetNestPersistenceAccess.AbortTransaction();
+                    return false;
+                }
                 return CommitCandidate(out failureReasonId, requestFlush);
             }
             catch (Exception e)
@@ -677,7 +703,7 @@ namespace BossRush
         // （PetNestExpeditionService 的 5 个写点，统一经 CommitBoth 提交）。
         // 任何未来调用方都会拿到 true 却什么都没落盘，且没有任何报错。
         // 姐妹方法 StageMuseum() 没有这个问题、因此被保留：博物馆统计是在事务**外**
-        // 入队的（PetNestMuseumStats 的四个调用点），这个不对称正是一个被接线、
+        // 入队的（孵化统计除外，它随孵化候选包提交），这个不对称正是一个被接线、
         // 另一个从来没有的原因。远征要落盘就走事务，不要再引入第二条路径。
 
         /// <summary>权威 Bundle 当前是否可写。</summary>
