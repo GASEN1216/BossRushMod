@@ -22,6 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # VitePress 的 lastUpdated 取 git 提交时间。默认浅克隆（depth 1）里
+          # 每个文件都只有那一个提交，全站「最后更新」会显示成同一天。
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

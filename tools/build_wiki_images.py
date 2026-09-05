@@ -35,6 +35,11 @@ REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ASSETS = os.path.join(REPO, "Assets")
 OUT_DIR = os.path.join(REPO, "wiki-site", "docs", "public", "images")
 MANIFEST = os.path.join(REPO, "wiki-site", "scripts", "image-manifest.json")
+# 在线 Wiki 导航图标的边车清单，由 tools/gen_wiki_icons.py 写出并提交。
+# 它的源图在 Assets/wiki_icons/（local-only），别人的机器上没有，
+# 所以这一组只能照清单登记，不能靠扫 Assets/ 重建——否则重跑本工具会把 ui 组抹掉，
+# 留下一堆 WikiImageAssetGuard 判定为孤儿的 WebP 产物。
+UI_SIDECAR = os.path.join(REPO, "wiki-site", "scripts", "wiki-icons.json")
 LOC_ZH = os.path.join(REPO, "docs", "官方本地化表", "ChineseSimplified.csv")
 LOC_EN = os.path.join(REPO, "docs", "官方本地化表", "English.csv")
 
@@ -145,6 +150,20 @@ def convert(src, rel_out, max_edge, check_only):
     return "/images/" + rel_out + ".webp", os.path.getsize(dst)
 
 
+def load_ui_sidecar():
+    """读 wiki-icons.json。缺失或损坏时返回空表并出声——这一组是可选的，
+    不该因为没跑过 gen_wiki_icons.py 就让整个转换失败。"""
+    if not os.path.isfile(UI_SIDECAR):
+        return []
+    try:
+        with open(UI_SIDECAR, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (ValueError, OSError) as err:
+        print("build_wiki_images: 警告 - wiki-icons.json 读取失败，本次不登记 ui 组：%s" % err)
+        return []
+    return [e for e in data if isinstance(e, dict) and e.get("key") and e.get("src")]
+
+
 def build_favicon(check_only):
     """config.mts 的 head 里写死了 ${base}images/favicon.ico，但 public/ 此前根本不存在
     ——图标一直 404。用图鉴书的图标补上。"""
@@ -167,7 +186,7 @@ def main():
     args = parser.parse_args()
 
     official = load_official_names()
-    manifest = {"codex": [], "campaign": [], "icons": []}
+    manifest = {"codex": [], "campaign": [], "icons": [], "ui": []}
     total_bytes = 0
     missing = []
 
@@ -208,6 +227,17 @@ def main():
         total_bytes += size
         manifest["icons"].append({"key": rel.split("/")[-1], "src": url, "zh": zh, "en": en})
 
+    # ── 在线 Wiki 导航图标（边车清单直通）────────────────────────
+    for entry in load_ui_sidecar():
+        # src 形如 /images/ui/xxx.webp，而 OUT_DIR 本身就是 .../public/images
+        rel = entry["src"][len("/images/"):]
+        path = os.path.join(OUT_DIR, rel.replace("/", os.sep))
+        if not os.path.isfile(path):
+            missing.append(entry["src"].lstrip("/"))
+            continue
+        total_bytes += os.path.getsize(path)
+        manifest["ui"].append(entry)
+
     ok_icon = build_favicon(args.check)
 
     if args.check:
@@ -217,18 +247,18 @@ def main():
             for m in missing[:10]:
                 print("  " + m)
             return 1
-        print("build_wiki_images: OK - 产物齐全（%d 图鉴 / %d 战役 / %d 图标），共 %.1f MB"
+        print("build_wiki_images: OK - 产物齐全（%d 图鉴 / %d 战役 / %d 图标 / %d 站点图标），共 %.1f MB"
               % (len(manifest["codex"]), len(manifest["campaign"]),
-                 len(manifest["icons"]), total_bytes / 1048576.0))
+                 len(manifest["icons"]), len(manifest["ui"]), total_bytes / 1048576.0))
         return 0
 
     with open(MANIFEST, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(manifest, fh, ensure_ascii=False, indent=2, sort_keys=False)
         fh.write("\n")
 
-    print("build_wiki_images: 写出 %d 图鉴立绘 / %d 战役图 / %d 图标，合计 %.1f MB"
+    print("build_wiki_images: 写出 %d 图鉴立绘 / %d 战役图 / %d 图标 / %d 站点图标，合计 %.1f MB"
           % (len(manifest["codex"]), len(manifest["campaign"]),
-             len(manifest["icons"]), total_bytes / 1048576.0))
+             len(manifest["icons"]), len(manifest["ui"]), total_bytes / 1048576.0))
     print("  产物: wiki-site/docs/public/images/")
     print("  清单: wiki-site/scripts/image-manifest.json")
     if missing:

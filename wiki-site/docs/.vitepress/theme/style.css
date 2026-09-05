@@ -23,6 +23,8 @@
   --brs-oxblood: #8c2f2a;
   --brs-slate: #41565f;
   --brs-moss: #4a6141;
+  /* 稀有度色阶的中档（5 石板蓝 → 6 紫晶 → 7 黄铜），用它的 .wiki-rarity 在 extras.css §0 */
+  --brs-amethyst: #5b4a7a;
 
   /* 字族 */
   --brs-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "SimSun", serif;
@@ -49,6 +51,7 @@
   --brs-oxblood: #c86a5e;
   --brs-slate: #8faab5;
   --brs-moss: #8fa87f;
+  --brs-amethyst: #a893c8;
 }
 
 /* ── 2. 映射到 VitePress 变量 ──────────────────────────── */
@@ -109,9 +112,9 @@
   --vp-font-family-base: var(--brs-sans);
   --vp-font-family-mono: var(--brs-mono);
 
-  /* 版心：向报告的 1180px 印张靠拢 */
-  --vp-layout-max-width: 1320px;
-  --vp-sidebar-width: 258px;
+  /* 版心：1440 视口下侧栏 272 + 正文 820 + 右栏 224 正好铺满，不留大片死白 */
+  --vp-layout-max-width: 1440px;
+  --vp-sidebar-width: 272px;
 
   /* 代码块 */
   --vp-code-block-bg: var(--brs-sunk);
@@ -141,12 +144,6 @@
   --vp-button-alt-hover-border: var(--brs-brass);
   --vp-button-alt-active-bg: transparent;
   --vp-button-alt-active-border: var(--brs-brass);
-
-  /* 首页 hero：去掉渐变与光晕 */
-  --vp-home-hero-name-color: var(--brs-ink);
-  --vp-home-hero-name-background: none;
-  --vp-home-hero-image-background-image: none;
-  --vp-home-hero-image-filter: none;
 
   /* 阴影一律换成硬边描线 */
   --vp-shadow-1: 0 0 0 1px var(--brs-rule);
@@ -178,7 +175,6 @@ body {
 /* 直角硬边：报告里没有一处圆角 */
 .VPNavBar .divider-line,
 .VPButton,
-.VPFeature,
 .VPBadge,
 .VPImage,
 .VPLocalSearchBox .shell,
@@ -267,6 +263,18 @@ body {
   counter-increment: brs-nav;
 }
 
+/*
+ * 类目标题：未选中是柔墨色，选中才上黄铜。
+ *
+ * 从前反着来——十二个类目标题**全部**是黄铜色，唯独当前所在的那个是黑的。
+ * 那不是本主题写错了，是默认主题的 `.level-0.has-active > .item > .text`
+ * 三个类选择器压过了这里两个类的写法，把选中项改成了正文色。
+ * 结果既是一墙黄铜没有层次，选中态又反而最不显眼。
+ *
+ * 现在把两条都显式写死：未选中 ink-soft，选中 brass + 左侧黄铜标。
+ * 侧栏分组现在默认全折叠（config.mts），所以这一列就是十二行类目名，
+ * 选中态必须一眼能认出来。
+ */
 .VPSidebarItem.level-0 > .item > .text,
 .VPSidebarItem.level-0 > .item > .link > .text {
   font-family: var(--brs-mono);
@@ -274,8 +282,19 @@ body {
   font-weight: 600;
   letter-spacing: var(--brs-label-track);
   text-transform: uppercase;
-  color: var(--brs-brass);
+  color: var(--brs-ink-soft);
   padding: 4px 0;
+}
+
+/* 默认主题那条写在组件 scoped 样式里，带 [data-v-*] 属性选择器，权重比同名选择器高一档
+   —— 同样三个类压不过它，只能提 !important（本文件里 .is-active 一直就是这么写的）。 */
+.VPSidebarItem.level-0.has-active > .item > .text,
+.VPSidebarItem.level-0.has-active > .item > .link > .text {
+  color: var(--brs-brass) !important;
+}
+
+.VPSidebarItem.level-0.has-active > .item {
+  box-shadow: inset 2px 0 0 var(--brs-brass);
 }
 
 .VPSidebarItem.level-0 > .item > .text::before,
@@ -308,20 +327,24 @@ body {
 }
 
 /* ── 6. 正文版心 ───────────────────────────────────────── */
+/*
+ * 一条右边界，不是两条。
+ *
+ * 改之前是「容器 900px + 段落 68ch」两套限宽同时生效：1440 视口下量出来
+ * 段落 604px、表格与配图 663px，右边界差 59px——满页的块左边对齐、右边参差，
+ * 这就是「布局不协调」最直接的来源。
+ *
+ * 现在只在**容器**上限一次宽（820px ≈ 50 个汉字，中文舒适行长），
+ * 段落、表格、代码、配图共用同一条右边界。速查框右浮动时，
+ * 正文行盒自动绕开、表格/代码块（自带 overflow，形成 BFC）自动收窄。
+ */
 .vp-doc {
-  max-width: 900px !important;
+  max-width: none !important;
 }
 @media (min-width: 960px) {
   .VPContent.has-sidebar .content-container {
-    max-width: 900px !important;
+    max-width: 820px !important;
   }
-}
-
-/* 报告的行长约束：正文 68ch，表格与代码不受限 */
-.vp-doc p,
-.vp-doc ul,
-.vp-doc ol {
-  max-width: 68ch;
 }
 
 .vp-doc p,
@@ -383,24 +406,37 @@ body {
   max-width: 60ch;
 }
 
+/*
+ * h2/h3 的字号阶梯。
+ *
+ * 改之前 h2 是 14px 的等宽大写小标签、h3 是 21px 衬线标题——层级是**倒的**：
+ * 在 Boss 页上「概述」比它下面的「持续射击」小了三分之一，读者会把 h3 当成章节头，
+ * 把 h2 当成它的副标题。右侧目录同时列 h2/h3，倒置在那里更明显。
+ *
+ * 现在 h2 = 22px 衬线 + 上方黄铜重线（档案里的分区栏带，只是把字放大到该有的分量），
+ * h3 = 17px 衬线 + 一枚黄铜短标。栏带、直角、黄铜这些设计语言一个没丢，
+ * 只是让大小重新对上层级。
+ */
 .vp-doc h2 {
-  font-family: var(--brs-sans);
-  font-size: 14px;
+  font-family: var(--brs-serif);
+  font-size: 22px;
   font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--brs-brass);
-  margin: 56px 0 22px;
-  padding: 0 0 9px;
-  border-top: none;
-  border-bottom: 1px solid var(--brs-rule);
+  letter-spacing: -0.005em;
+  text-transform: none;
+  color: var(--brs-ink);
+  margin: 54px 0 20px;
+  padding: 14px 0 0;
+  border-top: 2px solid var(--brs-brass);
+  border-bottom: none;
 }
 
 .vp-doc h3 {
-  font-size: 21px;
+  font-size: 17px;
   font-weight: 700;
   letter-spacing: -0.005em;
-  margin: 34px 0 12px;
+  margin: 30px 0 10px;
+  padding-left: 13px;
+  border-left: 3px solid var(--brs-rule);
 }
 
 .vp-doc h4 {
@@ -481,6 +517,48 @@ body {
   color: var(--brs-ink);
 }
 
+/* ── 7.5 正文里的实体引用：小图标 + 名字 ─────────────────── */
+/*
+ * 由 config.mts 的 entityLinkPlugin 在渲染期生成（见那里的注释）。
+ * 泰拉瑞亚 Wiki 的清单长这样：贴图紧挨着名字，图标与文字基线对齐，
+ * 整体仍读作一行文字而不是一张卡片——所以图标压到 22px、行高不撑开。
+ *
+ * 用**纯行内**布局，不用 inline-flex。
+ *   第一版是 inline-flex + align-items:center，在宽列表里没问题；等 TABLEIZE 把
+ *   模式总览转成表格之后，窄单元格里名字一换行，flex 就把图标按两行高度**垂直居中**，
+ *   看起来像掉到了第二行（「标准」在上、图标+「BossRush」在下）。
+ *   行内布局没有这个问题：图标就是行首那个字符，文字自然接着流。
+ *   图标与名字之间不留空格（token 是紧挨着的），所以浏览器不会从中间断行。
+ */
+.vp-doc .brs-eref {
+  text-decoration: none;
+}
+
+.vp-doc .brs-eref strong {
+  color: var(--brs-brass);
+  font-weight: 700;
+  border-bottom: 1px solid transparent;
+}
+
+.vp-doc .brs-eref:hover strong {
+  border-bottom-color: var(--brs-brass);
+}
+
+.vp-doc .brs-eref__icon {
+  width: 22px;
+  height: 22px;
+  margin: 0 6px 0 0;
+  border: 1px solid var(--brs-rule-soft);
+  background: var(--brs-sunk);
+  padding: 1px;
+  box-sizing: border-box;
+  object-fit: contain;
+  /* 行内图默认会被 .vp-doc img 的块级规则拉成整行，这里拉回来 */
+  display: inline-block;
+  vertical-align: -6px;
+  border-radius: 0;
+}
+
 /* ── 8. 提示块：报告里的 .note ─────────────────────────── */
 .vp-doc .custom-block {
   border: none;
@@ -491,7 +569,6 @@ body {
   font-size: 14.5px;
   line-height: 1.7;
   color: var(--brs-ink-soft);
-  max-width: 68ch;
 }
 .vp-doc .custom-block p {
   max-width: none;
@@ -530,7 +607,6 @@ body {
   background: var(--brs-sunk);
   padding: 14px 18px;
   margin: 22px 0;
-  max-width: 68ch;
 }
 .vp-doc blockquote > p {
   color: var(--brs-ink-soft);
@@ -628,132 +704,32 @@ body {
   color: var(--brs-brass);
 }
 
-/* ── 12. 首页：报告刊头 + 编号栏目 ─────────────────────── */
-/* 首页整版落在「地」色上，卡片用「纸」色浮起，与档案的 ground / surface 关系一致 */
-.VPContent.is-home,
-.VPHome {
+/* ── 12. 首页：门户版式 ────────────────────────────────── */
+/*
+ * 首页已经从 VitePress 的 layout: home（hero + features 卡片）换成
+ * layout: page + <WikiHome />（见 docs/index.md 与 theme/components/WikiHome.vue）。
+ * 原来这一节里的 .VPHero / .VPFeature 覆写随之全部删掉——那些选择器在站上
+ * 已经没有对应元素，留着只会让人以为首页还归 CSS 管。
+ *
+ * 门户自身的排版写在 WikiHome.vue 的 <style> 里，这里只管两件外层的事：
+ * 整版底色落在「地」色上，以及去掉 page 版式默认的上下留白。
+ */
+.VPContent:has(.wiki-home),
+.VPPage:has(.wiki-home) {
   background: var(--brs-ground);
 }
-.VPHome {
-  padding-bottom: 72px;
+
+/* :has() 之外的兜底：老浏览器取不到上面那条时，至少门户自己有底色 */
+.wiki-home {
+  background: var(--brs-ground);
 }
-.VPHero .container {
-  max-width: 1180px;
-}
-.VPHero .heading::before {
-  content: "鸭科夫 / ESCAPE FROM DUCKOV · BOSSRUSH MOD";
-  display: block;
-  font-family: var(--brs-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--brs-brass);
-  margin-bottom: 16px;
-}
-.VPHero .name,
-.VPHero .clip {
-  font-family: var(--brs-serif);
-  font-weight: 900;
-  letter-spacing: -0.01em;
-  color: var(--brs-ink);
-  background: none;
-  -webkit-text-fill-color: currentColor;
-}
-.VPHero .text {
-  font-family: var(--brs-serif);
-  font-weight: 500;
-  color: var(--brs-ink-soft);
-}
-.VPHero .tagline {
-  font-size: 17px;
-  line-height: 1.7;
-  color: var(--brs-ink-soft);
-  max-width: 62ch;
-  padding-top: 12px;
-  border-top: 1px solid var(--brs-rule);
-  margin-top: 22px;
-}
-.VPHero .actions {
-  padding-top: 26px;
-}
+
 .VPButton {
   font-family: var(--brs-mono);
   font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-size: 12px;
-}
-.VPHero .image {
-  display: none;
-}
-
-.VPFeatures {
-  padding-top: 8px;
-}
-.VPFeatures .container {
-  max-width: 1180px;
-}
-/* 栏带：与档案里 “新模式 / 基地循环” 那条分区横线同一口径 */
-.VPFeatures .container::before {
-  content: "本站收录";
-  display: block;
-  font-family: var(--brs-sans);
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--brs-brass);
-  padding-bottom: 9px;
-  margin-bottom: 26px;
-  border-bottom: 1px solid var(--brs-rule);
-}
-html[lang="en"] .VPFeatures .container::before {
-  content: "What's Inside";
-}
-html[lang="en"] .VPHero .heading::before {
-  content: "ESCAPE FROM DUCKOV · BOSSRUSH MOD";
-}
-.VPFeatures .items {
-  counter-reset: brs-feat;
-}
-/* 选择器带上 .VPFeatures 提权，压过默认主题里同名的软边卡片规则 */
-.VPFeatures .VPFeature {
-  counter-increment: brs-feat;
-  border: 1px solid var(--brs-rule);
-  background: var(--brs-surface);
-  padding: 24px 26px 26px;
-  transition: border-color 0.2s;
-}
-.VPFeatures .VPFeature:hover {
-  border-color: var(--brs-brass);
-  background: var(--brs-surface);
-}
-.VPFeature .icon {
-  display: none;
-}
-.VPFeature .title {
-  font-family: var(--brs-serif);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--brs-ink);
-  line-height: 1.35;
-}
-.VPFeature .title::before {
-  content: counter(brs-feat, decimal-leading-zero);
-  display: block;
-  font-family: var(--brs-mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.16em;
-  color: var(--brs-brass);
-  margin-bottom: 10px;
-}
-.VPFeature .details {
-  font-size: 14px;
-  line-height: 1.7;
-  color: var(--brs-ink-soft);
-  padding-top: 8px;
 }
 
 /* ── 13. 弹层与徽标 ────────────────────────────────────── */
@@ -854,17 +830,28 @@ html[lang="en"] .VPHero .heading::before {
   display: grid;
   gap: 18px 14px;
   margin: 26px 0;
+  /* 速查框在宽屏是右浮动的：配图块若不清除浮动，会挤在它左边被压成一条 */
+  clear: both;
 }
 .brs-gallery {
   grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
 }
+/*
+ * 单图「插版」与图标条比正文窄是有意的——一张章节海报铺满 820px 会盖过正文。
+ * 但三种块此前是三个各不相干的数（无 / 420 / 340），并排出现时右边界参差。
+ * 现在统一到同一套栅格：图标条 = 插版的一半宽，插版 = 正文的一半宽，
+ * 三者的右边界都落在正文测量线上或它的二分之一处。
+ */
 .brs-figure {
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  max-width: 420px;
+  max-width: 410px;
 }
 .brs-icon {
   grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
-  max-width: 340px;
+  max-width: 205px;
+}
+.brs-icon:has(> p ~ p) {
+  max-width: 410px;
 }
 
 .brs-gallery > p,
@@ -907,6 +894,7 @@ html[lang="en"] .VPHero .heading::before {
   line-height: 1.4;
   color: var(--brs-ink-faint);
 }
+/* 插版是单图，说明文字承担图注职责，比缩略图网格里的标签重一档 */
 .brs-figure em {
   font-size: 11.5px;
   color: var(--brs-ink-soft);
@@ -923,7 +911,9 @@ html[lang="en"] .VPHero .heading::before {
   .brs-gallery {
     grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   }
-  .brs-figure {
+  .brs-figure,
+  .brs-icon,
+  .brs-icon:has(> p ~ p) {
     max-width: 100%;
   }
 }

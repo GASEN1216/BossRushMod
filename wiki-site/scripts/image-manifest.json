@@ -316,5 +316,355 @@
       "zh": "遗种蛋",
       "en": "Relic Egg"
     }
+  ],
+  "ui": [
+    {
+      "key": "cat-start",
+      "src": "/images/ui/cat-start.webp",
+      "zh": "入门",
+      "en": "Getting Started"
+    },
+    {
+      "key": "cat-modes",
+      "src": "/images/ui/cat-modes.webp",
+      "zh": "游戏模式",
+      "en": "Game Modes"
+    },
+    {
+      "key": "cat-bosses",
+      "src": "/images/ui/cat-bosses.webp",
+      "zh": "Boss",
+      "en": "Bosses"
+    },
+    {
+      "key": "cat-equipment",
+      "src": "/images/ui/cat-equipment.webp",
+      "zh": "装备",
+      "en": "Equipment"
+    },
+    {
+      "key": "cat-items",
+      "src": "/images/ui/cat-items.webp",
+      "zh": "物品",
+      "en": "Items"
+    },
+    {
+      "key": "cat-npcs",
+      "src": "/images/ui/cat-npcs.webp",
+      "zh": "NPC",
+      "en": "NPCs"
+    },
+    {
+      "key": "cat-maps",
+      "src": "/images/ui/cat-maps.webp",
+      "zh": "地图",
+      "en": "Maps"
+    },
+    {
+      "key": "cat-systems",
+      "src": "/images/ui/cat-systems.webp",
+      "zh": "系统",
+      "en": "Systems"
+    },
+    {
+      "key": "cat-achievements",
+      "src": "/images/ui/cat-achievements.webp",
+      "zh": "成就",
+      "en": "Achievements"
+    },
+    {
+      "key": "cat-guides",
+      "src": "/images/ui/cat-guides.webp",
+      "zh": "攻略",
+      "en": "Guides"
+    },
+    {
+      "key": "cat-easter",
+      "src": "/images/ui/cat-easter.webp",
+      "zh": "彩蛋",
+      "en": "Easter Eggs"
+    },
+    {
+      "key": "cat-changelog",
+      "src": "/images/ui/cat-changelog.webp",
+      "zh": "更新日志",
+      "en": "Changelog"
+    },
+    {
+      "key": "start-install",
+      "src": "/images/ui/start-install.webp",
+      "zh": "安装与启用",
+      "en": "Installation"
+    },
+    {
+      "key": "start-firstrun",
+      "src": "/images/ui/start-firstrun.webp",
+      "zh": "新手上路",
+      "en": "First Steps"
+    },
+    {
+      "key": "mode-standard",
+      "src": "/images/ui/mode-standard.webp",
+      "zh": "标准 BossRush",
+      "en": "Standard BossRush"
+    },
+    {
+      "key": "mode-hell",
+      "src": "/images/ui/mode-hell.webp",
+      "zh": "无间炼狱",
+      "en": "Infinite Hell"
+    },
+    {
+      "key": "mode-scratch",
+      "src": "/images/ui/mode-scratch.webp",
+      "zh": "白手起家",
+      "en": "From Scratch"
+    },
+    {
+      "key": "mode-faction",
+      "src": "/images/ui/mode-faction.webp",
+      "zh": "划地为营",
+      "en": "Faction War"
+    },
+    {
+      "key": "mode-bloodhunt",
+      "src": "/images/ui/mode-bloodhunt.webp",
+      "zh": "血猎追击",
+      "en": "Blood Hunt"
+    },
+    {
+      "key": "mode-fate",
+      "src": "/images/ui/mode-fate.webp",
+      "zh": "宿命回响",
+      "en": "Fate Echo"
+    },
+    {
+      "key": "mode-zombie",
+      "src": "/images/ui/mode-zombie.webp",
+      "zh": "末日丧尸模式",
+      "en": "Zombie Mode"
+    },
+    {
+      "key": "mode-cup",
+      "src": "/images/ui/mode-cup.webp",
+      "zh": "百战留痕",
+      "en": "Black Market Duck Cup"
+    },
+    {
+      "key": "eq-phantom-scythe",
+      "src": "/images/ui/eq-phantom-scythe.webp",
+      "zh": "噬魂挽歌",
+      "en": "Soulreaper Requiem"
+    },
+    {
+      "key": "eq-dragon-set",
+      "src": "/images/ui/eq-dragon-set.webp",
+      "zh": "龙裔套装",
+      "en": "Dragon Set"
+    },
+    {
+      "key": "eq-dragon-king-set",
+      "src": "/images/ui/eq-dragon-king-set.webp",
+      "zh": "龙王套装",
+      "en": "Dragon King Set"
+    },
+    {
+      "key": "eq-flight-totem",
+      "src": "/images/ui/eq-flight-totem.webp",
+      "zh": "腾云驾雾图腾",
+      "en": "Cloud Rider Totem"
+    },
+    {
+      "key": "eq-reverse-scale",
+      "src": "/images/ui/eq-reverse-scale.webp",
+      "zh": "逆鳞",
+      "en": "Reverse Scale"
+    },
+    {
+      "key": "eq-halberd",
+      "src": "/images/ui/eq-halberd.webp",
+      "zh": "焚皇断界戟",
+      "en": "Skyburner Halberd"
+    },
+    {
+      "key": "eq-dragon-breath",
+      "src": "/images/ui/eq-dragon-breath.webp",
+      "zh": "龙息",
+      "en": "Dragon Breath"
+    },
+    {
+      "key": "eq-dragon-cannon",
+      "src": "/images/ui/eq-dragon-cannon.webp",
+      "zh": "焚天龙铳",
+      "en": "Dragon Cannon"
+    },
+    {
+      "key": "eq-frostmourne",
+      "src": "/images/ui/eq-frostmourne.webp",
+      "zh": "霜之哀伤",
+      "en": "Frostmourne"
+    },
+    {
+      "key": "eq-viper-dagger",
+      "src": "/images/ui/eq-viper-dagger.webp",
+      "zh": "毒蛇匕首",
+      "en": "Viper Dagger"
+    },
+    {
+      "key": "eq-summon-staff",
+      "src": "/images/ui/eq-summon-staff.webp",
+      "zh": "召唤法杖",
+      "en": "Summoning Staff"
+    },
+    {
+      "key": "eq-energy-shield",
+      "src": "/images/ui/eq-energy-shield.webp",
+      "zh": "能量盾",
+      "en": "Energy Shield"
+    },
+    {
+      "key": "eq-frost-spear",
+      "src": "/images/ui/eq-frost-spear.webp",
+      "zh": "冰霜长矛",
+      "en": "Frost Spear"
+    },
+    {
+      "key": "eq-thunder-ring",
+      "src": "/images/ui/eq-thunder-ring.webp",
+      "zh": "雷电戒指",
+      "en": "Thunder Ring"
+    },
+    {
+      "key": "eq-frost-set",
+      "src": "/images/ui/eq-frost-set.webp",
+      "zh": "霜冠套装",
+      "en": "Frost Set"
+    },
+    {
+      "key": "eq-thunder-set",
+      "src": "/images/ui/eq-thunder-set.webp",
+      "zh": "雷神套装",
+      "en": "Thunder Set"
+    },
+    {
+      "key": "item-key",
+      "src": "/images/ui/item-key.webp",
+      "zh": "入场与功能物品",
+      "en": "Entry & Utility Items"
+    },
+    {
+      "key": "item-npc",
+      "src": "/images/ui/item-npc.webp",
+      "zh": "NPC 相关物品",
+      "en": "NPC Items"
+    },
+    {
+      "key": "item-consumable",
+      "src": "/images/ui/item-consumable.webp",
+      "zh": "消耗品",
+      "en": "Consumables"
+    },
+    {
+      "key": "item-mode",
+      "src": "/images/ui/item-mode.webp",
+      "zh": "模式专属物品",
+      "en": "Mode-Exclusive Items"
+    },
+    {
+      "key": "npc-goblin",
+      "src": "/images/ui/npc-goblin.webp",
+      "zh": "叮当",
+      "en": "Dingdang"
+    },
+    {
+      "key": "npc-nurse",
+      "src": "/images/ui/npc-nurse.webp",
+      "zh": "羽织",
+      "en": "Yuori"
+    },
+    {
+      "key": "npc-courier",
+      "src": "/images/ui/npc-courier.webp",
+      "zh": "阿稳",
+      "en": "Awen"
+    },
+    {
+      "key": "sys-loot",
+      "src": "/images/ui/sys-loot.webp",
+      "zh": "掉落与奖励",
+      "en": "Loot & Rewards"
+    },
+    {
+      "key": "sys-wraith",
+      "src": "/images/ui/sys-wraith.webp",
+      "zh": "死亡亡魂",
+      "en": "Death Wraith"
+    },
+    {
+      "key": "sys-fountain",
+      "src": "/images/ui/sys-fountain.webp",
+      "zh": "星愿许愿台",
+      "en": "StarWish Fountain"
+    },
+    {
+      "key": "sys-reforge",
+      "src": "/images/ui/sys-reforge.webp",
+      "zh": "重铸系统",
+      "en": "Reforge System"
+    },
+    {
+      "key": "sys-filter",
+      "src": "/images/ui/sys-filter.webp",
+      "zh": "Boss 筛选器",
+      "en": "Boss Filter"
+    },
+    {
+      "key": "sys-mutator",
+      "src": "/images/ui/sys-mutator.webp",
+      "zh": "变异词条系统",
+      "en": "Mutator System"
+    },
+    {
+      "key": "sys-events",
+      "src": "/images/ui/sys-events.webp",
+      "zh": "局内随机事件",
+      "en": "Random Events"
+    },
+    {
+      "key": "sys-marriage",
+      "src": "/images/ui/sys-marriage.webp",
+      "zh": "好感度与婚姻",
+      "en": "Affinity & Marriage"
+    },
+    {
+      "key": "sys-config",
+      "src": "/images/ui/sys-config.webp",
+      "zh": "配置选项",
+      "en": "Configuration"
+    },
+    {
+      "key": "sys-petnest",
+      "src": "/images/ui/sys-petnest.webp",
+      "zh": "遗种巢",
+      "en": "PetNest"
+    },
+    {
+      "key": "sys-daily",
+      "src": "/images/ui/sys-daily.webp",
+      "zh": "鸭科夫日报",
+      "en": "The Duckov Daily"
+    },
+    {
+      "key": "sys-campaign",
+      "src": "/images/ui/sys-campaign.webp",
+      "zh": "鸭王征程",
+      "en": "Duck King Campaign"
+    },
+    {
+      "key": "sys-backyard",
+      "src": "/images/ui/sys-backyard.webp",
+      "zh": "竞技场后山",
+      "en": "Arena Backyard"
+    }
   ]
 }

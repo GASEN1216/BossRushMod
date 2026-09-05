@@ -4,83 +4,101 @@
 BossRush Mod currently contains 45 achievements across 9 categories. Completing achievements grants cash rewards. Press L (default, configurable) to open the achievement panel and check your progress.
 
 ## Basic Completion
-- First Steps: Complete BossRush for the first time. Reward `$5,000`, difficulty `★`
-- Easy Peasy: Complete BossRush on Easy difficulty. Reward `$10,000`, difficulty `★`
-- Getting Serious: Complete BossRush on Normal difficulty. Reward `$25,000`, difficulty `★★`
-- From Nothing: Complete 10 waves in From Scratch mode. Reward `$30,000`, difficulty `★★`
-- Hell Wave 10: Survive 10 waves in Infinite Hell mode. Reward `$50,000`, difficulty `★★★`
-- Hell Wave 25: Survive 25 waves in Infinite Hell mode. Reward `$150,000`, difficulty `★★★`
-- Hell Wave 50: Survive 50 waves in Infinite Hell mode. Reward `$350,000`, difficulty `★★★★`
-- Hell Wave 100: Survive 100 waves in Infinite Hell mode. Reward `$800,000`, difficulty `★★★★★`
-- Hell Wave 200: Survive 200 waves in Infinite Hell mode. Reward `$2,000,000`, difficulty `★★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| First Steps | Complete BossRush for the first time | $5,000 | ★ |
+| Easy Peasy | Complete BossRush on Easy difficulty | $10,000 | ★ |
+| Getting Serious | Complete BossRush on Normal difficulty | $25,000 | ★★ |
+| From Nothing | Complete 10 waves in From Scratch mode | $30,000 | ★★ |
+| Hell Wave 10 | Survive 10 waves in Infinite Hell mode | $50,000 | ★★★ |
+| Hell Wave 25 | Survive 25 waves in Infinite Hell mode | $150,000 | ★★★ |
+| Hell Wave 50 | Survive 50 waves in Infinite Hell mode | $350,000 | ★★★★ |
+| Hell Wave 100 | Survive 100 waves in Infinite Hell mode | $800,000 | ★★★★★ |
+| Hell Wave 200 | Survive 200 waves in Infinite Hell mode | $2,000,000 | ★★★★★ |
 
 ## Cumulative
-- Regular: Complete BossRush 10 times in total. Reward `$50,000`, difficulty `★★`
-- Seasoned Challenger: Complete BossRush 50 times in total. Reward `$250,000`, difficulty `★★★`
-- Legendary Hunter: Complete BossRush 100 times in total. Reward `$800,000`, difficulty `★★★★`
-- Novice Hunter: Defeat 50 bosses in total. Reward `$20,000`, difficulty `★`
-- Veteran: Defeat 100 bosses in total. Reward `$80,000`, difficulty `★★`
-- Dragon Hunter: Defeat 500 bosses in total. Reward `$500,000`, difficulty `★★★★`
-- Immortal Warlord: Defeat 1000 bosses in total. Reward `$1,500,000`, difficulty `★★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| Regular | Complete BossRush 10 times in total | $50,000 | ★★ |
+| Seasoned Challenger | Complete BossRush 50 times in total | $250,000 | ★★★ |
+| Legendary Hunter | Complete BossRush 100 times in total | $800,000 | ★★★★ |
+| Novice Hunter | Defeat 50 bosses in total | $20,000 | ★ |
+| Veteran | Defeat 100 bosses in total | $80,000 | ★★ |
+| Dragon Hunter | Defeat 500 bosses in total | $500,000 | ★★★★ |
+| Immortal Warlord | Defeat 1000 bosses in total | $1,500,000 | ★★★★★ |
 
 ## Flawless
-- Flawless Easy: Complete Easy difficulty without taking damage. Reward `$80,000`, difficulty `★★★`
-- Flawless Normal: Complete Normal difficulty without taking damage. Reward `$250,000`, difficulty `★★★★`
-- Flawless Mode D: Complete 5 waves in From Scratch without taking damage. Reward `$350,000`, difficulty `★★★★`
-- Iron Will: Survive 10 waves in Infinite Hell without taking damage. Reward `$500,000`, difficulty `★★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| Flawless Easy | Complete Easy difficulty without taking damage | $80,000 | ★★★ |
+| Flawless Normal | Complete Normal difficulty without taking damage | $250,000 | ★★★★ |
+| Flawless Mode D | Complete 5 waves in From Scratch without taking damage | $350,000 | ★★★★ |
+| Iron Will | Survive 10 waves in Infinite Hell without taking damage | $500,000 | ★★★★★ |
 
 ## Speedrun
-- Lightning Run: Reach the clear condition of any mode within 5 minutes. Reward `$30,000`, difficulty `★★`
-- Speed Demon: Reach the clear condition of any mode within 3 minutes. Reward `$120,000`, difficulty `★★★★`
-- Time Assassin: Reach the clear condition of any mode within 2 minutes. Reward `$400,000`, difficulty `★★★★★`
-- Instant Kill (Hidden): Reach the clear condition of any mode within 1 minute. Reward `$800,000`, difficulty `★★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| Lightning Run | Reach the clear condition of any mode within 5 minutes | $30,000 | ★★ |
+| Speed Demon | Reach the clear condition of any mode within 3 minutes | $120,000 | ★★★★ |
+| Time Assassin | Reach the clear condition of any mode within 2 minutes | $400,000 | ★★★★★ |
+| Instant Kill (Hidden) | Reach the clear condition of any mode within 1 minute | $800,000 | ★★★★★ |
 
 ::: tip
 "Instant Kill" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
 ## Boss Kill
-- Dragon Slayer: Defeat the Dragon Descendant for the first time. Reward `$30,000`, difficulty `★★`
-- Perfect Dragon Hunt: Defeat the Dragon Descendant without taking damage. Reward `$200,000`, difficulty `★★★★`
-- Kingslayer: Defeat the Skyburner Dragon Lord for the first time. Reward `$100,000`, difficulty `★★★`
-- Perfect Kingslayer: Defeat the Skyburner Dragon Lord without taking damage. Reward `$500,000`, difficulty `★★★★★`
-- Dragon Slayer Master: Defeat the Skyburner Dragon Lord 10 times in total. Reward `$600,000`, difficulty `★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| Dragon Slayer | Defeat the Dragon Descendant for the first time | $30,000 | ★★ |
+| Perfect Dragon Hunt | Defeat the Dragon Descendant without taking damage | $200,000 | ★★★★ |
+| Kingslayer | Defeat the Skyburner Dragon Lord for the first time | $100,000 | ★★★ |
+| Perfect Kingslayer | Defeat the Skyburner Dragon Lord without taking damage | $500,000 | ★★★★★ |
+| Dragon Slayer Master | Defeat the Skyburner Dragon Lord 10 times in total | $600,000 | ★★★★ |
 
 ## Special Challenges
-- Iron Man (Hidden): Survive 10 waves in Infinite Hell without using healing items. Reward `$250,000`, difficulty `★★★★`
-- Dragon Descendant Collector: Collect all exclusive drops from Dragon Descendant. Reward `$300,000`, difficulty `★★★`
-- Dragon King Collector: Collect all exclusive drops from Skyburner Dragon Lord. Reward `$500,000`, difficulty `★★★★`
-- Wind Rider: Take flight for the first time using Cloud Rider Totem. Reward `$50,000`, difficulty `★`
-- Dragon's Wrath: Trigger the Reverse Scale totem effect for the first time. Reward `$80,000`, difficulty `★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| Iron Man (Hidden) | Survive 10 waves in Infinite Hell without using healing items | $250,000 | ★★★★ |
+| Dragon Descendant Collector | Collect all exclusive drops from Dragon Descendant | $300,000 | ★★★ |
+| Dragon King Collector | Collect all exclusive drops from Skyburner Dragon Lord | $500,000 | ★★★★ |
+| Wind Rider | Take flight for the first time using Cloud Rider Totem | $50,000 | ★ |
+| Dragon's Wrath | Trigger the Reverse Scale totem effect for the first time | $80,000 | ★★ |
 
 ::: tip
 "Iron Man" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
 ## Taming (PetNest)
-- First Hatch: Hatch your first cub at the PetNest. Reward `$60,000`, difficulty `★`
-- Bloodline Collector: Unlock 10 bloodline entries. Reward `$200,000`, difficulty `★★★`
-- Lineage Obsession: Unlock 30 bloodline entries. Reward `$600,000`, difficulty `★★★★`
-- The Pale Purple One: Hatch a shiny cub. Reward `$300,000`, difficulty `★★★★`
-- A Name on the Stone (Hidden): Carve the first name into the memorial. Reward `$120,000`, difficulty `★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| First Hatch | Hatch your first cub at the PetNest | $60,000 | ★ |
+| Bloodline Collector | Unlock 10 bloodline entries | $200,000 | ★★★ |
+| Lineage Obsession | Unlock 30 bloodline entries | $600,000 | ★★★★ |
+| The Pale Purple One | Hatch a shiny cub | $300,000 | ★★★★ |
+| A Name on the Stone (Hidden) | Carve the first name into the memorial | $120,000 | ★★ |
 
 ::: tip
 "A Name on the Stone" is a hidden achievement and will not appear in the achievement panel until unlocked.
 :::
 
 ## Codex (Duck King Codex)
-- First Entry: Log your first boss in the codex. Reward `$50,000`, difficulty `★`
-- Ten Logged: Unlock 10 codex entries. Reward `$150,000`, difficulty `★★`
-- Half the Record: Unlock 20 codex entries. Reward `$400,000`, difficulty `★★★`
-- Inside Ten Seconds: Take down a boss within ten seconds. Reward `$200,000`, difficulty `★★★★`
-- The Complete Codex: Unlock every codex entry. Reward `$1,000,000`, difficulty `★★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| First Entry | Log your first boss in the codex | $50,000 | ★ |
+| Ten Logged | Unlock 10 codex entries | $150,000 | ★★ |
+| Half the Record | Unlock 20 codex entries | $400,000 | ★★★ |
+| Inside Ten Seconds | Take down a boss within ten seconds | $200,000 | ★★★★ |
+| The Complete Codex | Unlock every codex entry | $1,000,000 | ★★★★★ |
 
 ::: tip
 Kills in the Black Market Duck Cup do not enter the codex and do not advance this group.
 :::
 
 ## Ultimate
-- Completionist: Unlock all achievements. Reward `$5,000,000`, difficulty `★★★★★`
+| Achievement | Requirement | Reward | Difficulty |
+| --- | --- | --- | --- |
+| Completionist | Unlock all achievements | $5,000,000 | ★★★★★ |
 
 ## Statistics
 - Total achievements: 45 (including 3 hidden)

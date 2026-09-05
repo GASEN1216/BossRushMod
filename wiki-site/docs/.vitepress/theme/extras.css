@@ -1,0 +1,457 @@
+/* ══════════════════════════════════════════════════════════════
+   BossRush Wiki — 站点功能层样式
+   style.css 管「档案版式」的视觉语言（令牌、映射、正文排版）；
+   本文件管后加的功能构件：速查对比表、版本时间线、首页搜索框、打印。
+   全部只用 style.css 里定义的 --brs-* 令牌，不引入第二套颜色。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 0. 共享工具类 ─────────────────────────────────────── */
+/*
+ * 稀有度色片。泰拉瑞亚 Wiki 按稀有度给物品名上色，一眼能分出档次；
+ * 这里不照抄它那套十二级配色（那是它自己的视觉语言），而是在本站
+ * 已有的三个强调色里排一条递进：5 石板蓝 → 6 紫晶 → 7 黄铜（令牌在 style.css §1）。
+ * 只有 tier 字段写了的行才会变成色片，见 data/infobox.mts。
+ *
+ * 放在这里而不是某个组件的 <style> 里，因为速查框（WikiInfobox）与对比表（WikiCompare）
+ * 都用它——写在组件里，另一个组件就得依赖「那个块没加 scoped」这件事。
+ */
+.wiki-rarity {
+  display: inline-block;
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  font-family: var(--brs-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--brs-ink-soft);
+}
+
+.wiki-rarity[data-tier="5"] {
+  color: var(--brs-slate);
+}
+.wiki-rarity[data-tier="6"] {
+  color: var(--brs-amethyst);
+}
+.wiki-rarity[data-tier="7"] {
+  color: var(--brs-brass);
+}
+
+/* ── 1. 速查对比表（WikiCompare）──────────────────────── */
+.wiki-compare {
+  clear: both;
+  margin-top: 52px;
+}
+
+.wiki-compare__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--brs-rule);
+  font-family: var(--brs-sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+}
+
+.wiki-compare__hint {
+  margin-left: auto;
+  font-family: var(--brs-mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  color: var(--brs-ink-faint);
+}
+
+.wiki-compare__group + .wiki-compare__group {
+  margin-top: 26px;
+}
+
+.wiki-compare__subtitle {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-family: var(--brs-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--brs-ink);
+}
+
+.wiki-compare__count {
+  font-family: var(--brs-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--brs-ink-faint);
+}
+
+/* 与正文表格同一套「等宽小写字头 + 沉底表头」，窄屏横向滚动 */
+.wiki-compare__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--brs-rule-soft);
+  background: var(--brs-surface);
+}
+
+.wiki-compare__table {
+  width: 100%;
+  min-width: 560px;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.wiki-compare__table thead th {
+  padding: 0;
+  background: var(--brs-sunk);
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--brs-rule-soft);
+}
+
+.wiki-compare__table thead button {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 9px 14px;
+  font-family: var(--brs-mono);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brs-ink-soft);
+  cursor: pointer;
+}
+
+.wiki-compare__table thead button:hover,
+.wiki-compare__table thead th[aria-sort="ascending"] button,
+.wiki-compare__table thead th[aria-sort="descending"] button {
+  color: var(--brs-brass);
+}
+
+.wiki-compare__table thead button:focus-visible {
+  outline: 2px solid var(--brs-brass);
+  outline-offset: -2px;
+}
+
+/* 排序方向用一枚三角标：未排序时占位不显示，避免表头跳动 */
+.wiki-compare__arrow {
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 5px solid currentColor;
+  opacity: 0;
+  transition: opacity 0.12s, transform 0.12s;
+}
+
+.wiki-compare__table thead th[aria-sort="ascending"] .wiki-compare__arrow {
+  opacity: 1;
+}
+
+.wiki-compare__table thead th[aria-sort="descending"] .wiki-compare__arrow {
+  opacity: 1;
+  transform: rotate(180deg);
+}
+
+.wiki-compare__table tbody th,
+.wiki-compare__table td {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--brs-rule-soft);
+  vertical-align: middle;
+  text-align: left;
+  color: var(--brs-ink-soft);
+}
+
+.wiki-compare__table tbody tr:last-child > * {
+  border-bottom: none;
+}
+
+.wiki-compare__table tbody tr:hover > * {
+  background: var(--brs-ground);
+}
+
+.wiki-compare__table td.is-empty {
+  color: var(--brs-rule);
+}
+
+.wiki-compare__name {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-family: var(--brs-serif);
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--brs-ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.wiki-compare__name:hover span {
+  color: var(--brs-brass);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── 2. 版本时间线（WikiChangelogTimeline）───────────── */
+.wiki-timeline {
+  clear: both;
+  margin-top: 48px;
+}
+
+.wiki-timeline__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 6px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--brs-rule);
+  font-family: var(--brs-sans);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+}
+
+.wiki-timeline__count {
+  font-family: var(--brs-mono);
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--brs-ink-faint);
+}
+
+.wiki-timeline__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiki-timeline__row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 0 16px;
+  align-items: start;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--brs-rule-soft);
+}
+
+.wiki-timeline__row:last-child {
+  border-bottom: none;
+}
+
+.wiki-timeline__series {
+  padding-top: 3px;
+  font-family: var(--brs-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--brs-brass);
+  white-space: nowrap;
+}
+
+.wiki-timeline__series small {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--brs-ink-faint);
+}
+
+.wiki-timeline__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wiki-timeline__chips li {
+  margin: 0;
+}
+
+.wiki-timeline__chips a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border: 1px solid var(--brs-rule);
+  font-family: var(--brs-mono);
+  font-size: 11.5px;
+  color: var(--brs-ink-soft);
+  text-decoration: none;
+  transition: border-color 0.12s, color 0.12s;
+}
+
+.wiki-timeline__chips a:hover {
+  border-color: var(--brs-brass);
+  color: var(--brs-brass);
+}
+
+.wiki-timeline__chips a.is-here {
+  border-color: var(--brs-ink);
+  background: var(--brs-ink);
+  color: var(--brs-surface);
+}
+
+.wiki-timeline__latest {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+}
+
+.wiki-timeline__chips a.is-here .wiki-timeline__latest {
+  color: var(--brs-brass-bright);
+}
+
+@media (max-width: 640px) {
+  .wiki-timeline__row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* ── 3. 首页搜索框（WikiSearchBar）────────────────────── */
+.wiki-searchbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.wiki-searchbar__input {
+  flex: 1 1 320px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--brs-ink);
+  background: var(--brs-surface);
+  color: var(--brs-ink-faint);
+  font-family: var(--brs-sans);
+  font-size: 15px;
+  text-align: left;
+  cursor: text;
+  transition: border-color 0.15s;
+}
+
+.wiki-searchbar__input:hover,
+.wiki-searchbar__input:focus-visible {
+  border-color: var(--brs-brass);
+}
+
+.wiki-searchbar__input svg {
+  flex: none;
+  color: var(--brs-brass);
+}
+
+.wiki-searchbar__placeholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wiki-searchbar__input kbd {
+  flex: none;
+  padding: 1px 7px;
+  border: 1px solid var(--brs-rule);
+  font-family: var(--brs-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--brs-ink-faint);
+}
+
+.wiki-searchbar__random {
+  padding: 12px 18px;
+  border: 1px solid var(--brs-rule);
+  background: transparent;
+  font-family: var(--brs-mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brs-brass);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.wiki-searchbar__random:hover {
+  border-color: var(--brs-brass);
+}
+
+/* ── 4. 打印：只剩正文与速查框，黑字白纸 ───────────────── */
+@media print {
+  .VPNav,
+  .VPLocalNav,
+  .VPSidebar,
+  .VPDocAside,
+  .VPFooter,
+  .VPDocFooter .prev-next,
+  .VPDocFooter .edit-link,
+  .wiki-crumbs,
+  .wiki-navbox,
+  .wiki-grid-section,
+  .wiki-compare,
+  .wiki-timeline,
+  .wiki-searchbar {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  .VPContent,
+  .VPDoc,
+  .VPDoc .container,
+  .VPDoc .content {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+  }
+
+  .VPContent.has-sidebar .content-container {
+    max-width: none !important;
+  }
+
+  .vp-doc {
+    color: #000;
+  }
+
+  .wiki-infobox {
+    float: none !important;
+    width: auto !important;
+    margin: 0 0 18px !important;
+    break-inside: avoid;
+  }
+
+  .vp-doc a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .vp-doc h2,
+  .vp-doc h3 {
+    break-after: avoid;
+  }
+
+  .vp-doc .brs-table-scroll,
+  .brs-gallery,
+  .brs-figure,
+  .vp-doc .custom-block {
+    break-inside: avoid;
+  }
+}

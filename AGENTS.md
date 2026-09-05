@@ -16,7 +16,7 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 ## 2. 进入仓库后的阅读顺序
 
 1. `AGENTS.md`（本文件）。
-2. 任务所在目录最近的 `AGENTS.md`，例如 `Integration/AGENTS.md`、`Patches/AGENTS.md`、`Utilities/AGENTS.md`、`ZombieMode/AGENTS.md`、`tests/AGENTS.md`、`docs/AGENTS.md`。
+2. 任务所在目录最近的 `AGENTS.md`，例如 `Integration/AGENTS.md`、`Patches/AGENTS.md`、`Utilities/AGENTS.md`、`ZombieMode/AGENTS.md`、`wiki-site/AGENTS.md`、`tests/AGENTS.md`、`docs/AGENTS.md`。
 3. 代码审查或修复任务读 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md`。
 4. 涉及外部契约读 `docs/contracts.md`。
 5. 涉及架构边界读 `docs/架构说明/` 下对应专项文档。
@@ -44,7 +44,7 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 | `Assets/` | JSON 数据、图片、AssetBundle 等运行时资源 |
 | `tests/` | Python 静态守卫脚本，不是 C# 单元测试 |
 | `docs/` | 本地设计、迁移、契约和历史资料，默认 local-only |
-| `wiki-site/` | VitePress 在线 Wiki 站点 |
+| `wiki-site/` | VitePress 在线 Wiki 站点；导航结构的唯一事实源是 `docs/.vitepress/data/structure.mts`，正文仍来自 `WikiContent/`（见 `wiki-site/AGENTS.md`） |
 | `.qoder/repowiki/` | 详细 Wiki 内容库：`knowledge/zh/` 模块级知识卡 + `zh/content/` 主题级详解，随代码同步维护（见 4.13） |
 | `鸭科夫源码/` | 官方 `Assembly-CSharp.dll` 反编译源码，对照用，非 Mod 源码 |
 
@@ -166,7 +166,9 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 - TypeID、存档 key、`SavesSystem` key、配置 key。
 - `StreamingAssets/BossRushModConfig.txt` JSON 配置格式。
 - `Assets/SpawnPoints/*.json` 地图刷新点格式与硬编码 fallback。
-- `WikiContent/catalog.tsv` 与 Wiki markdown 内容索引。
+- `WikiContent/catalog.tsv` 与 Wiki markdown 内容索引；在线站另有一份导航结构
+  `wiki-site/docs/.vitepress/data/structure.mts`，两者条目一一对应，由
+  `tests/WikiSiteStructureGuard.py` 双向守卫。
 - 本地化 key，尤其 `BossRush_*` raw key。
 - AssetBundle 文件名、Prefab base name、EquipmentFactory/ItemFactory 命名规则。
 - Harmony 目标、`AccessTools` 字段、字符串反射绑定。当前代码约 31 个 `[HarmonyPatch(typeof(...))]`，并有大量 `GetField/GetMethod/GetProperty` 动态绑定，官方更新后需按 `docs/架构说明/Harmony补丁契约稳定性.md` 复查。

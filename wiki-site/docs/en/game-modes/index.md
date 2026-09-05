@@ -4,14 +4,16 @@
 
 ## At a Glance
 
-- **Standard BossRush** — Ticket / Limited waves / Classic Boss wave challenge / ★★☆☆☆
-- **Infinite Hell** — Ticket (select at signpost) / Unlimited waves / Bosses get stronger forever / ★★★★☆
-- **From Scratch** — Naked + Ticket / Unlimited waves / Random start, grow from zero / ★★★☆☆
-- **Faction War** — Naked + Banner / Sandbox / Multi-faction Boss brawl / ★★★☆☆
-- **Blood Hunt** — Naked + Ticket + Transponder / 4 phases / Constant bleed, kill to heal / ★★★★★
-- **Fate Echo** — Current loadout + Ticket + Fate Echo Relic / 9 waves, 3 acts / Counter your habits, then hunt your nemesis / ★★★★★
-- **Zombie Mode** — Zombie Tide Invitation / Roguelite survival / Enter empty-handed, endless zombie waves + escalating pollution + purification-point economy, separate from the seven modes above / ★★★★☆
-- **Black Market Duck Cup** — One BossRush ticket, from the option next to "Boss Rush" at base / Six matches per season / You never step in: sign two fighters, then read the odds, place your bets, and call one order per match / ★★★☆☆
+| Mode | Entry | Waves | What it is | Difficulty |
+| --- | --- | --- | --- | --- |
+| **Standard BossRush** | Ticket | Limited waves | Classic Boss wave challenge | ★★☆☆☆ |
+| **Infinite Hell** | Ticket (select at signpost) | Unlimited waves | Bosses get stronger forever | ★★★★☆ |
+| **From Scratch** | Naked + Ticket | Unlimited waves | Random start, grow from zero | ★★★☆☆ |
+| **Faction War** | Naked + Banner | Sandbox | Multi-faction Boss brawl | ★★★☆☆ |
+| **Blood Hunt** | Naked + Ticket + Transponder | 4 phases | Constant bleed, kill to heal | ★★★★★ |
+| **Fate Echo** | Current loadout + Ticket + Fate Echo Relic | 9 waves, 3 acts | Counter your habits, then hunt your nemesis | ★★★★★ |
+| **Zombie Mode** | Zombie Tide Invitation | Roguelite survival | Enter empty-handed, endless zombie waves + escalating pollution + purification-point economy, separate from the seven modes above | ★★★★☆ |
+| **Black Market Duck Cup** | One BossRush ticket, from the option next to "Boss Rush" at base | Six matches per season | You never step in: sign two fighters, then read the odds, place your bets, and call one order per match | ★★★☆☆ |
 
 ## Mode Detection Priority
 

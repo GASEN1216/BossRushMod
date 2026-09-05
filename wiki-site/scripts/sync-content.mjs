@@ -9,6 +9,8 @@
  *   2. Callout 转换：[tip] → ::: tip, [warn] → ::: warning
  *   3. 清理本地绝对路径链接
  *   4. 配图注入：按 IMAGE_PLACEMENT 把 image-manifest.json 里的图插进指定小节
+ *   5. 列表转表格：按 TABLEIZE 把固定句式的列表段落排成表格
+ *   6. 类目主页：把 wiki-site/hubs/ 下手写的系统 / 攻略主页复制进 docs/
  *
  * 关于配图为什么只在这一侧（重要）：
  *   WikiContent/ 同时喂**游戏内 Wiki 书**和本站点。游戏内解析器
@@ -22,16 +24,16 @@
  *   （源图在 Assets/ 下，被 .gitignore 挡着，CI 里看不到）。
  */
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync } from 'fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, rmSync, copyFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { MOD_ROOT, getRoute, readCatalog } from './entry-map.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MOD_ROOT = join(__dirname, '..', '..');
 const ZH_WIKI = join(MOD_ROOT, 'WikiContent', 'zh');
 const EN_WIKI = join(MOD_ROOT, 'WikiContent', 'en');
-const CATALOG = join(MOD_ROOT, 'WikiContent', 'catalog.tsv');
 const DOCS_DIR = join(__dirname, '..', 'docs');
+const HUB_DIR = join(__dirname, '..', 'hubs');
 
 // ── 这些目录由 sync 管理（清理 + 生成）──────────────────
 const CONTENT_DIRS = [
@@ -170,103 +172,96 @@ function injectImages(content, entryId, lang) {
   return lines.join('\n');
 }
 
-// ── entryId → wiki-site 路径映射（中英文共用）────────────
-const ENTRY_TO_PATH = {
-  'start__overview':            'getting-started/overview.md',
-  'start__how_to_enter':        'getting-started/installation.md',
-  'start__first_run':           'getting-started/first-steps.md',
-  'mode__overview':             'game-modes/index.md',
-  'mode__mode_a':               'game-modes/standard.md',
-  'mode__mode_c':               'game-modes/infinite-hell.md',
-  'mode__mode_d':               'game-modes/mode-d.md',
-  'mode__mode_e':               'game-modes/mode-e.md',
-  'mode__mode_f':               'game-modes/mode-f.md',
-  'mode__mode_g':               'game-modes/mode-g.md',
-  'mode__zombie_mode':          'game-modes/zombie-mode.md',
-  'mode__mode_h':               'game-modes/mode-h.md',
-  'map__overview':              'maps/index.md',
-  'boss__overview':             'bosses/index.md',
-  'boss__dragon_descendant':    'bosses/dragon-descendant.md',
-  'boss__dragon_king':          'bosses/dragon-king.md',
-  'boss__phantom_witch':        'bosses/phantom-witch.md',
-  'npc__overview':              'npcs/index.md',
-  'npc__goblin':                'npcs/goblin.md',
-  'npc__nurse':                 'npcs/nurse.md',
-  'npc__courier':               'npcs/courier.md',
-  'npc__affinity_and_marriage': 'systems/affinity-marriage.md',
-  'equipment__overview':        'equipment/index.md',
-  'equipment__phantom_scythe':  'equipment/phantom-scythe.md',
-  'equipment__dragon_set':      'equipment/dragon-set.md',
-  'equipment__dragon_king_set': 'equipment/dragon-king-set.md',
-  'equipment__flight_totem':    'equipment/flight-totem.md',
-  'equipment__reverse_scale':   'equipment/reverse-scale.md',
-  'equipment__halberd':         'equipment/halberd.md',
-  'equipment__dragon_breath':   'equipment/dragon-breath.md',
-  'equipment__dragon_cannon':   'equipment/dragon-cannon.md',
-  'equipment__frostmourne':     'equipment/frostmourne.md',
-  'equipment__viper_dagger':    'equipment/viper-dagger.md',
-  'equipment__summon_staff':    'equipment/summon-staff.md',
-  'equipment__energy_shield':   'equipment/energy-shield.md',
-  'equipment__frost_spear':     'equipment/frost-spear.md',
-  'equipment__thunder_ring':    'equipment/thunder-ring.md',
-  'equipment__frost_set':       'equipment/frost-set.md',
-  'equipment__thunder_set':     'equipment/thunder-set.md',
-  'item__overview':             'items/index.md',
-  'item__key_items':            'items/key-items.md',
-  'item__npc_items':            'items/npc-items.md',
-  'item__consumables':          'items/consumables.md',
-  'item__mode_f_items':         'items/mode-items.md',
-  'system__rewards_and_loot':   'systems/loot-rewards.md',
-  'system__death_wraith':       'systems/death-wraith.md',
-  'system__wish_fountain':      'systems/starwish-fountain.md',
-  'system__reforge_and_achievements': 'systems/reforge.md',
-  'system__boss_filter_and_wiki':     'systems/boss-filter.md',
-  'system__achievements_list':        'achievements/index.md',
-  'system__mutators':                 'systems/mutators.md',
-  'system__pet_nest':                 'systems/petnest.md',
-  'system__daily_report':             'systems/daily-report.md',
-  'system__codex':                    'systems/codex.md',
-  'system__random_events':            'systems/random-events.md',
-  'system__affix_forge':              'systems/affix-forge.md',
-  'system__campaign':                 'systems/campaign.md',
-  'system__back_mountain':            'systems/arena-backyard.md',
-  'config__overview':                 'systems/configuration.md',
-  'tips__new_player_route':     'guides/beginner-route.md',
-  'tips__hell_and_mode_d':      'guides/hell-and-mode-d.md',
-  'tips__mode_e_strategy':      'guides/mode-e-strategy.md',
-  'tips__boss_fights':          'guides/boss-fights.md',
-  'tips__mode_f_strategy':      'guides/mode-f-strategy.md',
-  'tips__mode_g_strategy':      'guides/mode-g-strategy.md',
-  'easter__kunkun':             'easter-eggs.md',
-  'changelog__highlights':      'changelog/index.md',
-  'changelog__legacy_archive':  'changelog/legacy-archive.md',
+// ── 列表转表格 ──────────────────────────────────────────
+/**
+ * 把「每行都是同一种 key-value 句式」的列表段落转成表格。
+ *
+ * 只对**在线站**做，而且只对登记过的 entryId 做：
+ *   - WikiContent/ 必须保持纯文本，游戏内解析器不认表格（会原样显示成竖线），
+ *     所以源文件那边只能是列表；
+ *   - 只登记确实值得表格化的页面。成就大全是最典型的一个——45 条
+ *     「名称：条件。奖励 X，难度 Y」写成项目符号，读者想按奖金或难度比较就得逐行读；
+ *     排成四列之后一眼可扫。
+ *
+ * 全有或全无：一个连续列表段里只要有一行不匹配，整段原样保留。
+ * 这样作者哪天换了句式，最坏结果是「表格变回列表」，而不是掉数据或出半截表。
+ */
+const TABLEIZE = {
+  system__achievements_list: {
+    zh: {
+      head: ['成就', '解锁条件', '奖金', '难度'],
+      re: /^- (.+?)[：:](.+?)奖励 `([^`]+)`[，,]\s*难度 `([^`]+)`\s*$/,
+    },
+    en: {
+      head: ['Achievement', 'Requirement', 'Reward', 'Difficulty'],
+      re: /^- (.+?): (.+?)Reward `([^`]+)`,\s*difficulty `([^`]+)`\s*$/i,
+    },
+  },
+  // 模式总览的「一张表看明白」：八行「**模式** — 入场 / 波次 / 玩法 / 难度 ★」。
+  // 首列连加粗一起保留，config.mts 的 entityLinkPlugin 会把它换成「图标 + 链接」。
+  mode__overview: {
+    zh: {
+      head: ['模式', '入场', '波次', '玩法', '难度'],
+      re: /^- (\*\*.+?\*\*) — (.+?) \/ (.+?) \/ (.+?) \/ 难度 (\S+)\s*$/,
+    },
+    en: {
+      head: ['Mode', 'Entry', 'Waves', 'What it is', 'Difficulty'],
+      re: /^- (\*\*.+?\*\*) — (.+?) \/ (.+?) \/ (.+?) \/ (★[★☆]*)\s*$/,
+    },
+  },
 };
 
-function getRoute(entryId) {
-  if (entryId in ENTRY_TO_PATH) return ENTRY_TO_PATH[entryId];
-  const vMatch = entryId.match(/^changelog__v(\d+)_(\d+)_(\d+)$/);
-  if (vMatch) return `changelog/v${vMatch[1]}.${vMatch[2]}.${vMatch[3]}.md`;
-  return null;
+/** 单元格里的竖线会把表格结构撑断，转义掉。 */
+function cell(text) {
+  return text.trim().replace(/\|/g, '\\|');
 }
 
-// ── 解析 catalog.tsv ──────────────────────────────────────
-function parseCatalog() {
-  const raw = readFileSync(CATALOG, 'utf-8');
-  const lines = raw.trim().split('\n');
-  const entries = [];
-  for (let i = 1; i < lines.length; i++) {
-    const cols = lines[i].split('\t');
-    if (cols.length < 5) continue;
-    entries.push({
-      categoryId: cols[0],
-      entryId:    cols[1],
-      titleZh:    cols[2],
-      titleEn:    cols[3],
-      order:      parseInt(cols[4], 10),
-    });
+function tableizeLists(content, entryId, lang) {
+  const spec = TABLEIZE[entryId] && TABLEIZE[entryId][lang];
+  if (!spec) return content;
+
+  const lines = content.split('\n');
+  const out = [];
+  let converted = 0;
+
+  for (let i = 0; i < lines.length; ) {
+    if (!lines[i].startsWith('- ')) {
+      out.push(lines[i++]);
+      continue;
+    }
+
+    // 收下这一整段连续的列表行
+    let end = i;
+    while (end < lines.length && lines[end].startsWith('- ')) end++;
+    const run = lines.slice(i, end);
+
+    // 单条也转：「终极成就」那一节只有一条，留成孤零零一个项目符号夹在八张表中间
+    // 反而更不协调。误判风险由 TABLEIZE 的按页登记兜住，不靠条数。
+    const rows = run.map((line) => spec.re.exec(line));
+    if (rows.every(Boolean)) {
+      out.push('| ' + spec.head.join(' | ') + ' |');
+      out.push('| ' + spec.head.map(() => '---').join(' | ') + ' |');
+      for (const m of rows) {
+        // 每个捕获组一列；句尾的句号在表格里是多余的，去掉
+        const cells = m.slice(1).map((text) => cell(text).replace(/[。.]$/, ''));
+        out.push('| ' + cells.join(' | ') + ' |');
+      }
+      converted++;
+    } else {
+      out.push(...run);
+    }
+    i = end;
   }
-  return entries;
+
+  if (converted === 0) {
+    console.warn(`[sync] ${entryId} (${lang}): 登记了列表转表格但一段都没匹配上，句式可能变了`);
+  }
+  return out.join('\n');
 }
+
+// ── entryId → 路径映射（ENTRY_TO_PATH / getRoute）与 catalog.tsv 读取（readCatalog）──
+// 都在 ./entry-map.mjs：config.mts 与 seo.mts 也要用同一份，本文件一被 import 就会跑 main()，
+// 所以纯数据与纯函数不能留在这里。加页面时改那边的 ENTRY_TO_PATH。
 
 // ── 查找 WikiContent 源文件（先找子目录，再找根目录）─────
 function findSourceFile(wikiDir, entryId, categoryId) {
@@ -318,7 +313,7 @@ function cleanOutput() {
 
 // ── 同步单语言 ──────────────────────────────────────────
 function syncLanguage(wikiDir, outBase, langLabel, langKey) {
-  const catalog = parseCatalog();
+  const catalog = readCatalog();
   let count = 0, skipped = 0;
 
   for (const entry of catalog) {
@@ -333,7 +328,10 @@ function syncLanguage(wikiDir, outBase, langLabel, langKey) {
     }
 
     const raw = readFileSync(srcPath, 'utf-8');
-    const transformed = injectImages(transformContent(raw), entry.entryId, langKey);
+    // transformContent 被 tests/ZombieModeMutantWikiGuard.py 逐字节镜像，
+    // 所以列表转表格与配图注入都作为**它之后的独立步骤**，不动它本身。
+    const tabled = tableizeLists(transformContent(raw), entry.entryId, langKey);
+    const transformed = injectImages(tabled, entry.entryId, langKey);
     const outPath = join(outBase, route);
 
     mkdirSync(dirname(outPath), { recursive: true });
@@ -346,37 +344,52 @@ function syncLanguage(wikiDir, outBase, langLabel, langKey) {
 
 // ── 生成英文首页 ─────────────────────────────────────────
 function generateEnIndex(outPath) {
+  // 英文首页与中文首页同构：都是 layout: page + <WikiHome />，
+  // 门户内容由主题组件读 structure.mts 生成，这里不再重复一份 features 清单。
   const content = `---
-layout: home
-hero:
-  name: BossRush Mod
-  text: Official Wiki
-  tagline: The ultimate guide to BossRush Mod — game modes, bosses, equipment, and more.
-  actions:
-    - theme: brand
-      text: Getting Started
-      link: /en/getting-started/overview
-    - theme: alt
-      text: Game Modes
-      link: /en/game-modes/
-
-features:
-  - title: 7 Game Modes
-    details: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Zombie Mode
-  - title: Custom Bosses
-    details: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch with unique skill sets
-  - title: Equipment System
-    details: Dragon sets, totems, legendary weapons, plus new frost/thunder gear
-  - title: NPC System
-    details: Goblin Smith, Nurse, Courier — affinity, gifting, and marriage
-  - title: Run Mutators
-    details: 1–10 random mutators per run change enemy, player, and environment rules
-  - title: Reforge System
-    details: Reroll equipment stats and lock affixes with Cold Quench Fluid
+layout: page
+sidebar: false
+aside: false
 ---
+
+<WikiHome />
 `;
   mkdirSync(dirname(outPath), { recursive: true });
   writeFileSync(outPath, content, 'utf-8');
+}
+
+// ── 类目主页（hubs/）──────────────────────────────────────
+/**
+ * 系统、攻略两个类目在 WikiContent 里没有「总览」条目——游戏内那本书按类目翻页，
+ * 不需要；在线站却需要一个真正的类目主页，否则顶栏「系统」只能落在「掉落与奖励」上，
+ * 面包屑里的类目链接也只能指向自己。
+ *
+ * 这些页只服务在线站，所以手写在 wiki-site/hubs/ 而不是 WikiContent/，由本脚本复制：
+ *   hubs/<dir>.zh.md → docs/<dir>/index.md
+ *   hubs/<dir>.en.md → docs/en/<dir>/index.md
+ * 缺任一语言直接报错——不允许半份。正文里以 **条目名** 开头的列表项会被
+ * config.mts 的 entityLinkPlugin 换成图标 + 链接，所以写清单时用 structure.mts 里的名字。
+ * 对应的类目路径与「总览」条目登记在 structure.mts（WikiSiteStructureGuard 会双向校验）。
+ */
+const HUBS = ['systems', 'guides'];
+
+function copyHubs() {
+  let count = 0;
+  for (const dir of HUBS) {
+    for (const lang of ['zh', 'en']) {
+      const src = join(HUB_DIR, `${dir}.${lang}.md`);
+      if (!existsSync(src)) {
+        throw new Error(`[sync] 类目主页缺失：${src}（hubs/ 下中英两份都要有）`);
+      }
+      const out = lang === 'zh'
+        ? join(DOCS_DIR, dir, 'index.md')
+        : join(DOCS_DIR, 'en', dir, 'index.md');
+      mkdirSync(dirname(out), { recursive: true });
+      copyFileSync(src, out);
+      count++;
+    }
+  }
+  return count;
 }
 
 /**
@@ -398,7 +411,7 @@ function verifyPlacementParity() {
       .join(',');
   };
 
-  const catalog = parseCatalog();
+  const catalog = readCatalog();
   for (const entry of catalog) {
     if (!IMAGE_PLACEMENT[entry.entryId]) continue;
     const z = levels(ZH_WIKI, entry.entryId, entry.categoryId);
@@ -435,6 +448,9 @@ function main() {
     generateEnIndex(enIndexPath);
     console.log('[sync] 生成英文首页');
   }
+
+  // 4. 类目主页（系统 / 攻略），中英各一份
+  console.log(`[sync] 类目主页: ${copyHubs()} 篇`);
 
   console.log('');
   console.log(`[sync] 同步完成！共 ${zh.count + en.count} 篇`);
