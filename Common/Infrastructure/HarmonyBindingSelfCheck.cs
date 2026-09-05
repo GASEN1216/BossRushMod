@@ -96,7 +96,7 @@ namespace BossRush
                         continue;
                     }
 
-                    if (IsOwnedByHarmony(original, harmony.Id))
+                    if (IsPatchClassApplied(type, original, harmony.Id))
                     {
                         verified++;
                     }
@@ -226,8 +226,8 @@ namespace BossRush
             }
         }
 
-        /// <summary>目标方法上是否存在由本 Mod owner 施加的补丁</summary>
-        private static bool IsOwnedByHarmony(MethodBase original, string owner)
+        /// <summary>逐个核对当前类的补丁方法，不能用同目标上另一个类的 owner 命中代替。</summary>
+        private static bool IsPatchClassApplied(Type patchType, MethodBase original, string owner)
         {
             try
             {
@@ -237,10 +237,35 @@ namespace BossRush
                     return false;
                 }
 
-                return ContainsOwner(patchInfo.Prefixes, owner)
-                    || ContainsOwner(patchInfo.Postfixes, owner)
-                    || ContainsOwner(patchInfo.Transpilers, owner)
-                    || ContainsOwner(patchInfo.Finalizers, owner);
+                int expected = 0;
+                MethodInfo[] methods = patchType.GetMethods(BindingFlags.Static | BindingFlags.Public
+                    | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+                for (int i = 0; i < methods.Length; i++)
+                {
+                    MethodInfo method = methods[i];
+                    if (IsPatchMethod(method, "Prefix", typeof(HarmonyPrefix)))
+                    {
+                        expected++;
+                        if (!ContainsPatch(patchInfo.Prefixes, owner, method)) return false;
+                    }
+                    if (IsPatchMethod(method, "Postfix", typeof(HarmonyPostfix)))
+                    {
+                        expected++;
+                        if (!ContainsPatch(patchInfo.Postfixes, owner, method)) return false;
+                    }
+                    if (IsPatchMethod(method, "Transpiler", typeof(HarmonyTranspiler)))
+                    {
+                        expected++;
+                        if (!ContainsPatch(patchInfo.Transpilers, owner, method)) return false;
+                    }
+                    if (IsPatchMethod(method, "Finalizer", typeof(HarmonyFinalizer)))
+                    {
+                        expected++;
+                        if (!ContainsPatch(patchInfo.Finalizers, owner, method)) return false;
+                    }
+                }
+
+                return expected > 0;
             }
             catch
             {
@@ -248,7 +273,12 @@ namespace BossRush
             }
         }
 
-        private static bool ContainsOwner(IList<Patch> patches, string owner)
+        private static bool IsPatchMethod(MethodInfo method, string conventionalName, Type attributeType)
+        {
+            return method.Name == conventionalName || method.IsDefined(attributeType, false);
+        }
+
+        private static bool ContainsPatch(IList<Patch> patches, string owner, MethodInfo expectedMethod)
         {
             if (patches == null)
             {
@@ -257,7 +287,8 @@ namespace BossRush
 
             for (int i = 0; i < patches.Count; i++)
             {
-                if (patches[i] != null && patches[i].owner == owner)
+                if (patches[i] != null && patches[i].owner == owner
+                    && patches[i].PatchMethod == expectedMethod)
                 {
                     return true;
                 }
