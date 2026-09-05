@@ -125,6 +125,7 @@ namespace BossRush
         /// </summary>
         partial void OnSceneLoadedInternal(SceneRuntimeContext context)
         {
+            if (TryHandleSeasonResumeScene(context)) return;
             // 已有活动 run 时先做归属校验：离开本局场景就按 §18.3 安全离场
             if (HasActiveRun && _arenaLease != null && _arenaLease.IsActive)
             {
@@ -161,6 +162,8 @@ namespace BossRush
         /// </summary>
         private void BeginNewRunSession()
         {
+            _restoredSeasonPending = false;
+            _resumeNeedsMatchReset = false;
             _commandsClosed = false;
             _shutdownCompleted = false;
             _lastExitReasonId = null;
@@ -257,12 +260,13 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 本局唯一 runId。只用场景名 + generation：同一存档槽内单调递增的 generation
-        /// 保证不同局不会撞 id，也不引入时钟依赖（存档回放要可复现）。
+        /// 新赛季只生成一次随机身份，避免进程内 generation 在重启后复用。
+        /// runId/runSeed 随 Season 保存；恢复沿用原 DTO，不重新抽取。
         /// </summary>
         private static string ComposeRunId(string sceneName, int sceneGeneration)
         {
-            return "mh_" + (sceneName ?? "unknown") + "_" + sceneGeneration.ToString("x");
+            return "mh_" + (sceneName ?? "unknown") + "_" + sceneGeneration.ToString("x")
+                + "_" + Guid.NewGuid().ToString("N");
         }
 
         /// <summary>runId 派生固定 runSeed：同一局的全部确定性抽取都以它为根。</summary>
@@ -553,7 +557,7 @@ namespace BossRush
 
                 // OnTransitionApplied 已把 runState 投影进 _season，这里做首次原子写入 + 读回
                 string error;
-                if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(_season, out error))
+                if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(_season, out error, true))
                 {
                     AbortSetup(error != null ? "season_write_failed:" + error : "season_write_failed", true);
                     return;
@@ -764,7 +768,8 @@ namespace BossRush
             catch (Exception) { /* 认证已停 */ }
             _certification = null;
 
-            ReleaseMatchRuntime();
+            try { ReleaseMatchRuntime(); }
+            catch (Exception e) { LogFailure("release_match", e); }
 
             // 6. 释放 spectator lease（后取先放）
             try

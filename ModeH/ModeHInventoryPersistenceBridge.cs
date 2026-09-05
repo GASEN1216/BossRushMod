@@ -128,6 +128,19 @@ namespace BossRush
         /// <summary>统计某个语义摘要在仓库中的出现次数（防“同 TypeID 顶替”）。</summary>
         public static int CountOccurrences(string semanticTreeDigest)
         {
+            return CountOccurrences(semanticTreeDigest, true);
+        }
+
+        /// <summary>旧 journal 沿用原快照的摘要格式，不把恢复元数据混入旧摘要。</summary>
+        public static int CountOccurrences(ModeHItemTreeSnapshotDto expected)
+        {
+            if (expected == null) return 0;
+            return CountOccurrences(expected.semanticTreeDigest,
+                ModeHItemTreeNormalizer.HasRestoreData(expected));
+        }
+
+        private static int CountOccurrences(string semanticTreeDigest, bool includeRestoreData)
+        {
             string reason;
             Inventory inventory = TryGetInventory(out reason);
             if (inventory == null || string.IsNullOrEmpty(semanticTreeDigest)) return 0;
@@ -141,7 +154,7 @@ namespace BossRush
                     Item item = content[i];
                     if (item == null) continue;
                     ModeHItemTreeSnapshotDto snapshot =
-                        ModeHItemTreeNormalizer.TryCapture(item, i, 1, out reason);
+                        ModeHItemTreeNormalizer.TryCapture(item, i, 1, out reason, includeRestoreData);
                     if (snapshot == null) continue;
                     if (string.Equals(snapshot.semanticTreeDigest, semanticTreeDigest,
                             StringComparison.Ordinal))
@@ -259,7 +272,7 @@ namespace BossRush
             if (snapshot == null) return null;
 
             // preCount 必须是真实出现次数：TryDetachAt 会拿它做前置核对
-            snapshot.preCount = CountOccurrences(snapshot.semanticTreeDigest);
+            snapshot.preCount = CountOccurrences(snapshot);
             if (snapshot.preCount <= 0)
             {
                 failureReasonId = "stake_occurrence_unresolved";
@@ -337,7 +350,7 @@ namespace BossRush
                 return null;
             }
 
-            int occurrences = CountOccurrences(expected.semanticTreeDigest);
+            int occurrences = CountOccurrences(expected);
             if (!ModeHItemTreeNormalizer.Matches(expected, candidate, occurrences + priorRemoved, out failureReasonId))
             {
                 return null;

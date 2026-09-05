@@ -319,8 +319,8 @@ def check_injury_rest_recovery(errors):
     if "InjuryAndScar.ResolveRestRecovery(" not in combat:
         errors.append("[Injury] 结算路径必须调用 ResolveRestRecovery")
 
-    # 结算段必须对 starter 与 relay **两个**席位都结算休息，且与倒地结算成对出现。
-    # 只检查"方法存在"挡不住漏掉其中一席（带伤替补永远好不了）。
+    # 倒地按锁定出战席位；休息按有效合同集合与实际登场遥测。
+    # “接力休息”会清空锁定 relay，不能再用它枚举休息者。
     settlement = re.search(
         r"private void BeginMatchSettlement\(\)[\s\S]*?\n        \}", combat)
     if not settlement:
@@ -328,15 +328,12 @@ def check_injury_rest_recovery(errors):
     else:
         body = settlement.group(0)
         downs = body.count("ResolveDownInjury(")
-        rests = body.count("ResolveRestRecovery(")
-        if downs < 2 or rests < 2:
-            errors.append(
-                "[Injury] 结算段必须对 matchStarter 与 matchRelay 两席都做倒地与休息结算"
-                "（当前倒地 {} 处 / 休息 {} 处）".format(downs, rests))
-        for slot in ("matchStarterProfileId", "matchRelayProfileId"):
-            rest_calls = re.findall(r"ResolveRestRecovery\([^;]*" + slot, body)
-            if not rest_calls:
-                errors.append("[Injury] 休息结算漏了席位: " + slot)
+        if downs < 2:
+            errors.append("[Injury] 倒地结算必须覆盖 matchStarter 与 matchRelay")
+        if "ModeHTransferMarket.GetLiveContractProfileIds(_season)" not in body:
+            errors.append("[Injury] 休息结算必须枚举有效合同选手，不能只查锁定出战席位")
+        if not re.search(r"for\s*\([^)]*restingCandidates\.Count[^)]*\)[\s\S]*?ResolveRestRecovery\(restingCandidates\[i\]\)", body):
+            errors.append("[Injury] 有效合同集合必须逐项进入实际登场/休息判定")
 
     # 两个文案 key 必须真的被消费，否则玩家看不出「按在替补席」这个决定有没有生效
     for key in ("Injury_Rested", "Injury_Retired"):

@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../../../Build/modeh-review-fixes/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Build/modeh-review-fixes/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

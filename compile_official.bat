@@ -400,6 +400,7 @@ echo(ModeH\ModeHRewardTransaction.cs
 echo(ModeH\ModeHRunState.cs
 echo(ModeH\ModeHRuntimeGates.cs
 echo(ModeH\ModeHRuntimeModule.cs
+echo(ModeH\ModeHRuntimeModule_Recovery.cs
 echo(ModeH\ModeHRuntimeModule_SceneFlow.cs
 echo(ModeH\ModeHRuntimeModule_UiFlow.cs
 echo(ModeH\ModeHRuntimeModule_MatchFlow.cs

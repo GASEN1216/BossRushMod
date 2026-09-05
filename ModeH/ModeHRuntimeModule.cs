@@ -304,13 +304,23 @@ namespace BossRush
         /// </summary>
         private void RestoreForSlotChange()
         {
+            // 只回收运行期对象，不经过会返还真实押品的 shutdown。
+            _commandsClosed = true;
+            CancelSeasonResume();
             _runState = null;
+            ReleaseRuntimeObjects();
+            _season = null;
+            _map = null;
+            BeginNewRunSession();
             RestoreFromSaveIfPresent();
         }
 
         /// <summary>存在活动 Season 时重建内存 run owner（生成新的 owner token）。</summary>
         private void RestoreFromSaveIfPresent()
         {
+            _season = null;
+            _restoredSeasonPending = false;
+            _restoredSlotGeneration = ModeHRuntimeGates.SlotGeneration;
             ModeHSeasonDto season = ModeHProfilePersistence.LoadCurrent();
             if (season == null || season.runState == null)
             {
@@ -336,6 +346,8 @@ namespace BossRush
             _runState = ModeHRunState.FromDto(season.runState);
             if (_runState != null)
             {
+                _season = season;
+                _restoredSeasonPending = true;
                 _runState.RestoreEventTokens(season.appliedEventTokenIds);
                 _sceneGeneration = _runState.SceneGeneration;
                 ModeHRuntimeGates.SetRunOwnerActive(true);
@@ -427,6 +439,7 @@ namespace BossRush
         {
             if (_shutdownCompleted) return;
             _shutdownCompleted = true;
+            CancelSeasonResume();
             _lastExitReasonId = reasonId;
 
             ShutdownRuntimeInternal(reason, reasonId);

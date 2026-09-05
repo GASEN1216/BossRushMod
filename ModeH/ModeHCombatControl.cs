@@ -54,6 +54,9 @@ namespace BossRush
         /// <summary>本场最后一个入场批次序号，用来判断"是否还有后续批次"。</summary>
         private int _lastEntryBatchIndex;
 
+        /// <summary>生成 owner 报告的待入场/在途工作；清零活敌不代表整份计划已完成。</summary>
+        private bool _enemySpawningPending;
+
         private readonly HashSet<string> _cowardChecksDone = new HashSet<string>(StringComparer.Ordinal);
 
         private ModeHCombatTelemetry _telemetry;
@@ -175,6 +178,7 @@ namespace BossRush
             _activeFighterArmorItem = null;
             _arenaConditionId = arenaConditionId;
             _lastEntryBatchIndex = lastEntryBatchIndex > 0 ? lastEntryBatchIndex : 0;
+            _enemySpawningPending = false;
             _cowardChecksDone.Clear();
             _activeFighter = null;
             _relayFighter = null;
@@ -216,7 +220,8 @@ namespace BossRush
             _activeAi = ResolveAi(fighter.Character);
 
             _telemetry.OnFighterEntered(fighter);
-            _injuryAndScar.BindFighter(_activeAi, profile.profileId, profile.stableKey, _matchIndex);
+            RefreshFireContext(0f, true);
+            _injuryAndScar.BindFighter(_activeAi, profile.profileId, profile.stableKey, _matchIndex, _fireContext);
 
             string reason;
             if (!_injuryAndScar.ApplyStandingInjury(profile.injuryId, out reason))
@@ -242,6 +247,12 @@ namespace BossRush
         public void OnEnemyEntered(ModeHParticipantRef enemy)
         {
             if (_telemetry != null) _telemetry.OnEnemyEntered(enemy);
+        }
+
+        /// <summary>由本场生成 owner 在终局判定前同步，不改变超时、胆怯或倒地处理。</summary>
+        public void SetEnemySpawningPending(bool pending)
+        {
+            _enemySpawningPending = pending;
         }
 
         #endregion
@@ -282,8 +293,9 @@ namespace BossRush
 
             TryEvaluateErrorTrigger();
 
-            // 优先级 1：敌军全灭且我方存活
-            if (_telemetry.LiveEnemyCount == 0 && IsAnyFighterAlive())
+            // 优先级 1：全部计划批次已入场、没有生成工作，敌军全灭且我方存活。
+            if (_entryBatchIndex >= _lastEntryBatchIndex && !_enemySpawningPending
+                && _telemetry.LiveEnemyCount == 0 && IsAnyFighterAlive())
             {
                 if (_telemetry.TryClaimVictory(true))
                 {
@@ -377,7 +389,7 @@ namespace BossRush
             bool ok = _commandController.TryRingBell(
                 _activeAi,
                 _activeProfileId,
-                _injuryAndScar.SelfSettledCommandScale,
+                _injuryAndScar.GetCommandScaleForBell(_commandController.LockedCommandId),
                 _fireContext.ArenaCenter,
                 _fireContext.NearestEnemy,
                 _fireContext.LowestHealthEnemy,
@@ -389,6 +401,7 @@ namespace BossRush
             if (!ok) return false;
 
             // 拍铃后 6 秒内的战痕窗口（bell_dependence）
+            RefreshEffectConditionInputs();
             string reason;
             _injuryAndScar.TryOpenScarWindow("bell_dependence", "bell_rung", out reason);
             CaptureSnapshot(ModeHSnapshotTrigger.BellCommitted, snapshotContext);

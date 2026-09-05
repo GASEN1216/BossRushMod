@@ -34,6 +34,9 @@ namespace BossRush
         private long _ownerToken;
         private ModeHSupportedMap _map;
 
+        // Begin/回滚都推进，旧异步完成即使遇到同一事务重新 Begin 也不能认领新 owner。
+        private int _spawnGeneration;
+
         #endregion
 
         #region 只读
@@ -91,6 +94,7 @@ namespace BossRush
             _begun = true;
             _committed = false;
             _cancelled = false;
+            _spawnGeneration++;
             return true;
         }
 
@@ -109,6 +113,7 @@ namespace BossRush
             if (result == null) yield break;
             result.Success = false;
             result.FailureReasonId = null;
+            int batchGeneration = _spawnGeneration;
 
             if (!IsActive)
             {
@@ -127,7 +132,7 @@ namespace BossRush
 
             for (int i = 0; i < presets.Count; i++)
             {
-                if (!IsActive)
+                if (!IsActive || batchGeneration != _spawnGeneration)
                 {
                     result.FailureReasonId = "spawn_tx_cancelled";
                     yield break;
@@ -137,6 +142,12 @@ namespace BossRush
                 {
                     spawnedThisFrame = 0;
                     yield return null;
+                }
+
+                if (!IsActive || batchGeneration != _spawnGeneration)
+                {
+                    result.FailureReasonId = "spawn_tx_cancelled";
+                    yield break;
                 }
 
                 int cap = isFighter
@@ -152,8 +163,8 @@ namespace BossRush
                 }
 
                 Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> task =
-                    ModeHSpawnBridge.CreateIsolatedAsync(
-                        presets[i], stableKeys[i], team, _map.StagingPos, diagnostics);
+                    CreateOwnedIsolatedAsync(
+                        presets[i], stableKeys[i], team, isFighter, diagnostics);
 
                 // 等待本次创建完成后再进入下一次；创建本身也算作本帧的一次生成预算
                 while (task.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
@@ -174,11 +185,16 @@ namespace BossRush
                     RecordFailure("spawn_await_failed:" + e.GetType().Name);
                 }
 
+                if (!IsActive || batchGeneration != _spawnGeneration)
+                {
+                    result.FailureReasonId = "spawn_tx_cancelled";
+                    yield break;
+                }
+
                 if (faulted || handle == null || handle.Character == null || handle.Health == null)
                 {
                     result.FailureReasonId = "spawn_create_failed:" + stableKeys[i];
                     RecordFailure(result.FailureReasonId);
-                    if (handle != null) ModeHSpawnBridge.Recycle(handle);
                     RollbackAll();
                     yield break;
                 }
@@ -187,20 +203,56 @@ namespace BossRush
                 {
                     result.FailureReasonId = "spawn_window_side_effect:" + stableKeys[i];
                     RecordFailure(result.FailureReasonId);
-                    ModeHSpawnBridge.Recycle(handle);
                     RollbackAll();
                     yield break;
                 }
-
-                if (isFighter) _fighterHandles.Add(handle);
-                else _enemyHandles.Add(handle);
-                _spawnedStableKeys.Add(stableKeys[i]);
 
                 // 分帧：下一次创建放到下一帧
                 yield return null;
             }
 
+            if (!IsActive || batchGeneration != _spawnGeneration)
+            {
+                result.FailureReasonId = "spawn_tx_cancelled";
+                yield break;
+            }
             result.Success = true;
+        }
+
+        /// <summary>
+        /// 完成创建的同步续作立即接管 handle，而不是等外层协程下一次 MoveNext。
+        /// 即使协程已被停止，晚结果仍会按事务代次回收；沿用 UniTask/官方创建的主线程续作。
+        /// </summary>
+        private async Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> CreateOwnedIsolatedAsync(
+            CharacterRandomPreset preset, string stableKey, Teams team, bool isFighter,
+            ModeHSpawnDiagnostics diagnostics)
+        {
+            if (!IsActive) return null;
+            int generation = _spawnGeneration;
+            ModeHSpawnHandle handle;
+            try
+            {
+                handle = await ModeHSpawnBridge.CreateIsolatedAsync(
+                    preset, stableKey, team, _map.StagingPos, diagnostics);
+            }
+            catch (Exception e)
+            {
+                // 外层协程可能已停止，仍在这里观察创建故障；旧请求不写新事务的诊断。
+                if (generation == _spawnGeneration && IsActive)
+                    RecordFailure("spawn_await_failed:" + e.GetType().Name);
+                return null;
+            }
+            if (handle == null) return null;
+            if (!IsActive || generation != _spawnGeneration)
+            {
+                ModeHSpawnBridge.Recycle(handle);
+                return null;
+            }
+
+            if (isFighter) _fighterHandles.Add(handle);
+            else _enemyHandles.Add(handle);
+            _spawnedStableKeys.Add(stableKey);
+            return handle;
         }
 
         /// <summary>
@@ -371,6 +423,10 @@ namespace BossRush
         /// <summary>整批逆序回收（含 runtime preset clone），并标记事务取消。</summary>
         public void RollbackAll()
         {
+            // 先封住异步接管入口，再回收已拥有的对象；重复调用保持幂等。
+            _cancelled = true;
+            _committed = false;
+            _spawnGeneration++;
             for (int i = _fighterHandles.Count - 1; i >= 0; i--)
             {
                 ModeHSpawnBridge.Recycle(_fighterHandles[i]);
@@ -382,8 +438,6 @@ namespace BossRush
             _fighterHandles.Clear();
             _enemyHandles.Clear();
             _spawnedStableKeys.Clear();
-            _cancelled = true;
-            _committed = false;
         }
 
         /// <summary>回收单个已倒地/已替换的选手实例（不影响整批事务）。</summary>

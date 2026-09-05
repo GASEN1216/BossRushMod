@@ -126,12 +126,17 @@ namespace BossRush
         /// <summary>把当前 Season 落盘一次（显式落盘点专用）。失败只标记，不抛。</summary>
         private bool TryPersistSeason(string reasonId)
         {
+            return TryPersistSeason(reasonId, false);
+        }
+
+        private bool TryPersistSeason(string reasonId, bool requireDurable)
+        {
             if (_season == null) return false;
             try
             {
                 ProjectRunStateIntoSeason();
                 string error;
-                if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(_season, out error))
+                if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(_season, out error, requireDurable))
                 {
                     ModBehaviour.DevLog("[ModeH] [WARNING] Season 落盘失败 (" + reasonId + "): "
                         + (error != null ? error : "unknown"));
@@ -270,7 +275,8 @@ namespace BossRush
             if (season == null || _runState == null) return actions;
 
             // Suspended：允许玩家从同一场重开（技术中止绝不判负，§17.4）
-            if (_runState.Lifecycle == ModeHLifecycle.Suspended)
+            if ((_runState.Lifecycle == ModeHLifecycle.Suspended || _restoredSeasonPending)
+                && !_resumeScenePending)
             {
                 actions.Add(new ModeHActionData
                 {
@@ -384,7 +390,7 @@ namespace BossRush
                 {
                     persisted.runState.lifecycle = (int)ModeHLifecycle.SeasonEnded;
                     string writeError;
-                    if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(persisted, out writeError))
+                    if (!ModeHSaveFlushCoordinator.RequestSeasonWrite(persisted, out writeError, true))
                     {
                         ModBehaviour.CriticalLog("[ModeH] 放弃赛季落盘失败: "
                             + (writeError != null ? writeError : "unknown"));
@@ -397,8 +403,16 @@ namespace BossRush
                     }
                 }
 
+                // durable 成功后才退出；owner 与 generation 必须活到逆序释放完成，
+                // 否则 spectator 的输入锁、arena 与比赛页面将失去最后的清理入口。
+                _commandsClosed = true;
+                CancelSeasonResume();
+                ReleaseRuntimeObjects();
+                _shutdownCompleted = true;
+                _restoredSeasonPending = false;
                 _season = null;
                 _runState = null;
+                _map = null;
                 _seasonDirty = false;
                 ModeHRuntimeGates.SetRunOwnerActive(false);
                 ModeHRuntimeGates.SetRecoveryOnlyBlocked(false, null);
@@ -468,6 +482,18 @@ namespace BossRush
             try
             {
                 if (_runState == null) return;
+                if (_resumeScenePending) return;
+                string resumeFailure;
+                if (!TryPrepareSeasonResume(out resumeFailure))
+                {
+                    OpenRecoveryShell(resumeFailure);
+                    return;
+                }
+                if (_restoredSeasonPending || _arenaLease == null || !_arenaLease.IsActive)
+                {
+                    BeginSeasonResumeScene();
+                    return;
+                }
                 // 玩家主动重开：先给回全新的同场重试预算，再进恢复通道。
                 // 不重置的话 DriveRecovery 会当场判定「预算已耗尽」把玩家弹回挂起，
                 // 这个按钮就等于没有；而且计划缓存含重试序号，不重置还会复用刚失败的那份计划。

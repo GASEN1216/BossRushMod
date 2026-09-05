@@ -184,6 +184,23 @@ namespace BossRush
             return ModeHSaveFlushCoordinator.RequestCertificationCacheInvalidate(out error);
         }
 
+        /// <summary>恢复已通过完整 Season 摘要校验的认证快照，仍执行当前构建和门槛验证。</summary>
+        internal bool TryRestoreSeasonReport(ModeHProductionCertificationDto report)
+        {
+            string game, mod, error;
+            if (report == null || !report.overallPassed || report.records == null
+                || !ModeHCanonicalDigest.TryGetGameBuildSignature(out game, out error)
+                || !ModeHCanonicalDigest.TryGetModBuildSignature(out mod, out error)
+                || !string.Equals(report.gameBuildSignature, game, StringComparison.Ordinal)
+                || !string.Equals(report.modBuildSignature, mod, StringComparison.Ordinal)
+                || !string.Equals(report.contentCatalogSignature,
+                    ModeHContentCatalog.ContentCatalogSignature, StringComparison.Ordinal)) return false;
+            ApplyReportToRegistries(report);
+            if (!EvaluateThreshold(report.passedStableKeys)) return false;
+            _report = report;
+            return true;
+        }
+
         #endregion
 
         #region 认证主流程

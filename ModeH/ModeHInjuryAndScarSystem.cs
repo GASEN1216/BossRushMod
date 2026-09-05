@@ -16,6 +16,14 @@ namespace BossRush
         public float RemainingSeconds;
     }
 
+    /// <summary>按口令范围与剩余窗口持有的自结算调制；不写入选手或存档。</summary>
+    internal sealed class ModeHSelfSettledCommandModulation
+    {
+        public string TargetCommandId;
+        public float Multiplier;
+        public float RemainingSeconds;
+    }
+
     /// <summary>
     /// Mode H 伤病与战痕系统（设计提案 §17.4、§25.1）。
     ///
@@ -38,6 +46,9 @@ namespace BossRush
         #region 状态
 
         private readonly List<ModeHActiveWindow> _activeWindows = new List<ModeHActiveWindow>();
+        private readonly List<ModeHSelfSettledCommandModulation> _commandModulations =
+            new List<ModeHSelfSettledCommandModulation>();
+        private readonly HashSet<string> _ownedScarIds = new HashSet<string>(StringComparer.Ordinal);
 
         /// <summary>本系统自带的空上下文，只在还没收到战斗控制器转发时兜底。</summary>
         private readonly ModeHCommandFireContext _fireContext = new ModeHCommandFireContext();
@@ -67,10 +78,47 @@ namespace BossRush
         #region 只读
 
         /// <summary>
-        /// Mode H 自结算的口令调制幅度系数（`spirit` x0.85、`bell_dependence` x1.2 等）。
-        /// 由口令控制器在 Apply 时读取。
+        /// 组合当前口令仍在窗口内的自结算调制。无目标 ID 的分量作用于全部口令；
+        /// spirit 的整场系数独立保留，由口令控制器在 Apply 时读取。
         /// </summary>
-        public float SelfSettledCommandScale { get { return _selfSettledCommandScale; } }
+        public float GetCommandScale(string commandId)
+        {
+            float scale = _selfSettledCommandScale;
+            for (int i = 0; i < _commandModulations.Count; i++)
+            {
+                ModeHSelfSettledCommandModulation modulation = _commandModulations[i];
+                if (modulation.RemainingSeconds <= 0f) continue;
+                if (string.IsNullOrEmpty(modulation.TargetCommandId)
+                    || string.Equals(modulation.TargetCommandId, commandId, StringComparison.Ordinal))
+                {
+                    scale *= modulation.Multiplier;
+                }
+            }
+            return scale;
+        }
+
+        /// <summary>
+        /// 拍铃本次 Apply 的只读预览。资格失败不会消费战痕；控制器成功后才实际开窗，
+        /// 但本次口令必须已经包含 bell_dependence 的收益，不能等 Apply 完才得到倍率。
+        /// </summary>
+        public float GetCommandScaleForBell(string commandId)
+        {
+            float scale = GetCommandScale(commandId);
+            ModeHScarSpec spec;
+            string reason;
+            if (!TryGetScarTriggerSpec("bell_dependence", "bell_rung", out spec, out reason)) return scale;
+            for (int i = 0; i < spec.Components.Count; i++)
+            {
+                ModeHEffectSpec component = spec.Components[i];
+                if (component == null || !component.SelfSettled || !IsCommandScale(component)) continue;
+                if (!string.IsNullOrEmpty(component.TargetCommandId)
+                    && !string.Equals(component.TargetCommandId, commandId, StringComparison.Ordinal)) continue;
+                if (!ModeHEffectConditions.IsSatisfied(component.AppliesWhen,
+                        _sharedFireContext != null ? _sharedFireContext : _fireContext)) continue;
+                scale *= component.MultiplierMilli > 0 ? component.MultiplierMilli / 1000f : 1f;
+            }
+            return scale;
+        }
 
         /// <summary>本场 `Armor` 槽虚拟 kit 是否被 `armor` 伤病禁用。</summary>
         public bool IsArmorKitDisabled { get { return _armorKitDisabled; } }
@@ -86,7 +134,8 @@ namespace BossRush
         /// 绑定本场登场选手。切换先发/接力者时重复调用：会先还原上一位的全部窗口。
         /// </summary>
         public void BindFighter(
-            AICharacterController ai, string profileId, string stableKey, int matchIndex)
+            AICharacterController ai, string profileId, string stableKey, int matchIndex,
+            ModeHCommandFireContext fireContext)
         {
             RestoreAll();
             _ai = ai;
@@ -96,6 +145,7 @@ namespace BossRush
             _selfSettledCommandScale = 1f;
             _armorKitDisabled = false;
             _activeInjuryId = null;
+            _sharedFireContext = fireContext;
         }
 
         /// <summary>
@@ -138,6 +188,11 @@ namespace BossRush
         {
             failureReasonId = null;
             if (scarIds == null) return true;
+            // 先完整登记归属，触发型也必须登记；后续任何一条施加失败都不能遗漏其他持有项。
+            for (int i = 0; i < scarIds.Count; i++)
+            {
+                if (!string.IsNullOrEmpty(scarIds[i])) _ownedScarIds.Add(scarIds[i]);
+            }
             for (int i = 0; i < scarIds.Count; i++)
             {
                 ModeHScarSpec spec = GetScar(scarIds[i]);
@@ -169,9 +224,19 @@ namespace BossRush
                     _activeWindows.RemoveAt(i);
                     continue;
                 }
-                window.Adapter.Tick(deltaTime, fireContext != null ? fireContext : _fireContext);
+                window.Adapter.Tick(deltaTime, _sharedFireContext != null ? _sharedFireContext : _fireContext);
                 window.RemainingSeconds = window.Adapter.WindowRemainingSeconds;
-                if (!window.Adapter.IsActive) _activeWindows.RemoveAt(i);
+                if (!window.Adapter.IsActive)
+                {
+                    // owner 只有在还原后才释放窗口，不能把计时结束等同于已经清理。
+                    window.Adapter.Restore();
+                    _activeWindows.RemoveAt(i);
+                }
+            }
+            for (int i = _commandModulations.Count - 1; i >= 0; i--)
+            {
+                _commandModulations[i].RemainingSeconds -= deltaTime;
+                if (_commandModulations[i].RemainingSeconds <= 0f) _commandModulations.RemoveAt(i);
             }
         }
 
@@ -186,10 +251,14 @@ namespace BossRush
                 if (window != null && window.Adapter != null) window.Adapter.Restore();
             }
             _activeWindows.Clear();
+            _commandModulations.Clear();
+            _ownedScarIds.Clear();
             _consumedTriggers.Clear();
             _selfSettledCommandScale = 1f;
             _armorKitDisabled = false;
             _ai = null;
+            _activeInjuryId = null;
+            _sharedFireContext = null;
         }
 
         private bool OpenWindow(
@@ -203,15 +272,16 @@ namespace BossRush
                 return false;
             }
 
-            // 自结算分量不写原版字段，只调整 Mode H 自己的系数
-            ApplySelfSettledComponents(entryId, components, gatedByCondition);
-
             List<ModeHEffectSpec> engineComponents = new List<ModeHEffectSpec>();
             for (int i = 0; i < components.Count; i++)
             {
                 if (components[i] != null && !components[i].SelfSettled) engineComponents.Add(components[i]);
             }
-            if (engineComponents.Count == 0) return true; // 纯自结算条目，无需 adapter
+            if (engineComponents.Count == 0)
+            {
+                ApplySelfSettledComponents(components, windowSeconds, gatedByCondition);
+                return true; // 纯自结算条目由自己的窗口计时，无需 adapter
+            }
 
             ModeHCommandAdapter adapter = new ModeHCommandAdapter();
             if (!adapter.ApplyEffects(_ai, entryId, engineComponents, windowSeconds, 1f,
@@ -227,6 +297,8 @@ namespace BossRush
             window.Adapter = adapter;
             window.RemainingSeconds = windowSeconds;
             _activeWindows.Add(window);
+            // 原版字段施加成功后才提交自结算分量，避免失败窗口遗留倍率。
+            ApplySelfSettledComponents(components, windowSeconds, gatedByCondition);
             return true;
         }
 
@@ -235,7 +307,7 @@ namespace BossRush
         /// `spirit`/`bell_dependence`/`center_keeper`/`blood_rush` 调整口令调制幅度。
         /// </summary>
         private void ApplySelfSettledComponents(
-            string entryId, IList<ModeHEffectSpec> components, bool gatedByCondition)
+            IList<ModeHEffectSpec> components, float windowSeconds, bool gatedByCondition)
         {
             for (int i = 0; i < components.Count; i++)
             {
@@ -245,7 +317,7 @@ namespace BossRush
                 // 自结算分量的条件在开窗时一次性求值。这**只**对整场恒定的条件成立
                 // （condition_* 擂台条件族），而 ModeHScarTriggerWiringGuard 正是断言
                 // 自结算分量只能带这一类条件——否则这里就需要像调制类分量那样
-                // 随重申持续求值，而 _selfSettledCommandScale 是个累乘标量，做不到只撤销其中一项。
+                // 随重申持续求值；本路径只管理静态条件命中后的范围与期限。
                 if (!ModeHEffectConditions.IsSatisfied(
                         component.AppliesWhen,
                         _sharedFireContext != null ? _sharedFireContext : _fireContext))
@@ -267,19 +339,27 @@ namespace BossRush
                 // 数据表里两种都在用（bell_dependence 与 spirit 用后者）。
                 // 2026-09-03 之前只认前者，于是 bell_dependence 的 +20% 收益从未生效，
                 // 而它的 -10% skillSuccessChance 代价照常生效——一条纯负面的"利弊绑定"。
-                bool isCommandScale =
-                    string.Equals(component.Op, "self_settled_command_scale", StringComparison.Ordinal)
-                    || (string.Equals(component.Op, "self_settled", StringComparison.Ordinal)
-                        && string.Equals(component.ControlPointId, "command_scale", StringComparison.Ordinal));
-                if (isCommandScale)
+                if (IsCommandScale(component))
                 {
                     // 带条件门的条目（当前只有 spirit：requiresEnemyCountAtLeast）
                     // 由各自的专用路径按条件施加，这里跳过，否则会叠加两次。
                     if (gatedByCondition) continue;
                     float multiplier = component.MultiplierMilli > 0 ? component.MultiplierMilli / 1000f : 1f;
-                    _selfSettledCommandScale *= multiplier;
+                    ModeHSelfSettledCommandModulation modulation = new ModeHSelfSettledCommandModulation();
+                    modulation.TargetCommandId = component.TargetCommandId;
+                    modulation.Multiplier = multiplier;
+                    modulation.RemainingSeconds = component.WindowSeconds > 0
+                        ? Math.Min(component.WindowSeconds, windowSeconds) : windowSeconds;
+                    _commandModulations.Add(modulation);
                 }
             }
+        }
+
+        private static bool IsCommandScale(ModeHEffectSpec component)
+        {
+            return string.Equals(component.Op, "self_settled_command_scale", StringComparison.Ordinal)
+                || (string.Equals(component.Op, "self_settled", StringComparison.Ordinal)
+                    && string.Equals(component.ControlPointId, "command_scale", StringComparison.Ordinal));
         }
 
         #endregion
@@ -322,8 +402,25 @@ namespace BossRush
         /// </summary>
         public bool TryOpenScarWindow(string scarId, string triggerId, out string failureReasonId)
         {
+            ModeHScarSpec spec;
+            if (!TryGetScarTriggerSpec(scarId, triggerId, out spec, out failureReasonId)) return false;
+            float window = spec.WindowSeconds > 0 ? spec.WindowSeconds : ModeHConfig.MatchDurationSeconds;
+            if (!OpenWindow(scarId, true, spec.Components, window, out failureReasonId)) return false;
+            _consumedTriggers.Add(scarId + "|" + _activeProfileId + "|" + _matchIndex);
+            return true;
+        }
+
+        private bool TryGetScarTriggerSpec(
+            string scarId, string triggerId, out ModeHScarSpec spec, out string failureReasonId)
+        {
             failureReasonId = null;
-            ModeHScarSpec spec = GetScar(scarId);
+            spec = null;
+            if (!_ownedScarIds.Contains(scarId))
+            {
+                failureReasonId = "scar_not_owned:" + scarId;
+                return false;
+            }
+            spec = GetScar(scarId);
             if (spec == null)
             {
                 failureReasonId = "scar_spec_missing:" + scarId;
@@ -335,10 +432,7 @@ namespace BossRush
                 failureReasonId = "scar_not_verified:" + scarId;
                 return false;
             }
-            if (!_consumedTriggers.Add(scarId + "|" + _activeProfileId + "|" + _matchIndex)) return false;
-
-            float window = spec.WindowSeconds > 0 ? spec.WindowSeconds : ModeHConfig.MatchDurationSeconds;
-            return OpenWindow(scarId, true, spec.Components, window, out failureReasonId);
+            return !_consumedTriggers.Contains(scarId + "|" + _activeProfileId + "|" + _matchIndex);
         }
 
         /// <summary>导出当前战痕窗口状态（战场快照采集用）。</summary>
@@ -371,6 +465,7 @@ namespace BossRush
             {
                 ModeHScarWindowStateDto dto = windows[i];
                 if (dto == null || dto.remainingSeconds <= 0f) continue;
+                if (!_ownedScarIds.Contains(dto.scarId)) continue;
                 ModeHScarSpec spec = GetScar(dto.scarId);
                 if (spec == null || !IsEntryUsable(spec.Components)) continue;
                 _consumedTriggers.Add(dto.scarId + "|" + _activeProfileId + "|" + _matchIndex);

@@ -514,8 +514,13 @@ namespace BossRush
 
             if (_runState.Lifecycle == ModeHLifecycle.RelayPending) return;
 
-            // 前批减员到同时上限之下时放行下一批（见 CombatProfiles.TryReleaseNextEnemyBatch）
+            // 整批容量足够时放行下一批；同步失败可能已进入技术中止并释放控制器。
             TryReleaseNextEnemyBatch();
+            if (_combatControl == null || _combatTelemetry == null || _runState == null
+                || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
+            _combatControl.SetEnemySpawningPending(
+                _pendingEnemyBatchKeys.Count > 0 || _reinforcementSpawnInFlight
+                || _reinforcementReservedEnemyCount > 0);
 
             int snapshotSequence = _combatControl.Snapshot.SnapshotSequence;
             bool resultClaimed = _combatControl.Tick(deltaTime, _battleSnapshotContext);
@@ -799,8 +804,11 @@ namespace BossRush
                 // （意味着登场过），与 HasRested 互斥，顺序在此只是为了读起来是
                 // 「先结算这场发生了什么，再结算谁休息好了」。
                 _restedProfileIds.Clear();
-                ResolveRestRecovery(locked != null ? locked.matchStarterProfileId : null);
-                ResolveRestRecovery(locked != null ? locked.matchRelayProfileId : null);
+                List<string> restingCandidates = ModeHTransferMarket.GetLiveContractProfileIds(_season);
+                for (int i = 0; i < restingCandidates.Count; i++)
+                {
+                    ResolveRestRecovery(restingCandidates[i]);
+                }
 
                 // 退役结算（§17.3）必须排在人事步骤最后：ResolveDownInjury 是赛季里唯一
                 // 把 profile 写成 Retired 的路径，而 ResolveRestRecovery 只能解除
@@ -882,7 +890,7 @@ namespace BossRush
 
                 _lastSettlementReport = report;
                 _lastRewardOperation = operation;
-                if (!TryPersistSeason("match_settling"))
+                if (!TryPersistSeason("match_settling", true))
                 {
                     // 战报与奖励 operation 已完整构造，保留它们进入恢复壳；恢复时直接
                     // 回 Intermission，绝不能退回看盘重打一场并重复结算。
@@ -985,18 +993,18 @@ namespace BossRush
             command.recordDigest = digest;
             command.status = (int)ModeHHallOfFameCommandStatus.Pending;
             _season.hallOfFameCommand = command;
-            if (!TryPersistSeason("hall_command_pending"))
+            if (!TryPersistSeason("hall_command_pending", true))
             {
                 RequestSuspended("hall_command_persist_failed");
                 return;
             }
-            if (!ModeHSaveFlushCoordinator.RequestHallOfFameInsert(record, out error))
+            if (!ModeHSaveFlushCoordinator.RequestHallOfFameInsert(record, out error, true))
             {
                 RequestSuspended("hall_insert_failed:" + error);
                 return;
             }
             command.status = (int)ModeHHallOfFameCommandStatus.Completed;
-            if (!TryPersistSeason("hall_command_completed"))
+            if (!TryPersistSeason("hall_command_completed", true))
             {
                 RequestSuspended("hall_complete_persist_failed");
                 return;
@@ -1065,6 +1073,8 @@ namespace BossRush
 
         private void ReleaseCombatRuntimeObjects()
         {
+            // 先作废本场增援身份，停协程并回收所有批次，再清战斗路由与控制器。
+            ReleaseReinforcementRuntimeObjects();
             try
             {
                 if (_relaySpawnRoutine != null && _owner != null)

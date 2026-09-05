@@ -173,6 +173,12 @@ namespace BossRush
         /// <summary>增援生成协程句柄（同时只允许一路）。</summary>
         private Coroutine _reinforcementRoutine;
 
+        private readonly List<ModeHSpawnTransaction> _reinforcementTransactions =
+            new List<ModeHSpawnTransaction>();
+        private bool _reinforcementSpawnInFlight;
+        private int _reinforcementReservedEnemyCount;
+        private int _reinforcementOwnerVersion;
+
         /// <summary>
         /// 按 plan.enemyBatchIndices 把敌军拆成「开场批」与「后续批」。
         ///
@@ -190,7 +196,7 @@ namespace BossRush
             out string failureReasonId)
         {
             failureReasonId = null;
-            _pendingEnemyBatchKeys.Clear();
+            ReleaseReinforcementRuntimeObjects();
             _currentEntryBatchIndex = 0;
 
             for (int i = 0; i < plan.enemyStableKeys.Count; i++)
@@ -228,121 +234,204 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 前批减员到同时上限之下时放行下一批。每帧调用，绝大多数帧是几次比较的早返。
+        /// 整批加上当前活敌与在途预留均不超限时才放行，不改变计划的整批入场语义。
         /// </summary>
         private void TryReleaseNextEnemyBatch()
         {
             if (_pendingEnemyBatchKeys.Count == 0) return;
-            if (_reinforcementRoutine != null) return;
+            if (_reinforcementSpawnInFlight || _reinforcementRoutine != null) return;
             if (_combatTelemetry == null || _combatControl == null) return;
+            if (_combatTelemetry.HasResult) return;
             if (_runState == null || _runState.Lifecycle != ModeHLifecycle.MatchFighting) return;
 
             ModeHMatchCorridor corridor = ModeHEncounterPlanner.GetCorridor(_runState.MatchIndex);
             int cap = corridor != null && corridor.SimultaneousCap > 0
-                ? corridor.SimultaneousCap : int.MaxValue;
-            if (_combatTelemetry.LiveEnemyCount >= cap) return;
+                ? Math.Min(corridor.SimultaneousCap, ModeHConfig.MaxConcurrentEnemyInstances)
+                : ModeHConfig.MaxConcurrentEnemyInstances;
+            int nextBatch = int.MaxValue;
+            int nextBatchCount = 0;
+            for (int i = 0; i < _pendingEnemyBatchKeys.Count; i++)
+            {
+                int batch = _pendingEnemyBatchKeys[i].BatchIndex;
+                if (batch < nextBatch) { nextBatch = batch; nextBatchCount = 0; }
+                if (batch == nextBatch) nextBatchCount++;
+            }
+            if (nextBatchCount > cap)
+            {
+                RequestTechnicalRetry("reinforcement_batch_exceeds_cap");
+                return;
+            }
+            if (nextBatchCount > cap - _combatTelemetry.LiveEnemyCount
+                    - _reinforcementReservedEnemyCount) return;
 
             if (_owner == null) return;
-            _reinforcementRoutine = _owner.StartCoroutine(DriveReinforcementSpawn());
+            _reinforcementSpawnInFlight = true;
+            _reinforcementReservedEnemyCount = nextBatchCount;
+            int version = _reinforcementOwnerVersion;
+            try
+            {
+                Coroutine routine = _owner.StartCoroutine(DriveReinforcementSpawn(version));
+                // StartCoroutine 会同步推进到首个 yield；同步失败后不得把旧句柄重新写回来。
+                if (version == _reinforcementOwnerVersion && _reinforcementSpawnInFlight)
+                    _reinforcementRoutine = routine;
+            }
+            catch (Exception e)
+            {
+                if (version != _reinforcementOwnerVersion) return;
+                _reinforcementSpawnInFlight = false;
+                _reinforcementReservedEnemyCount = 0;
+                RequestTechnicalRetry("reinforcement_start_exception:" + e.GetType().Name);
+            }
         }
 
         /// <summary>
-        /// 放行一整批增援。形态照 DriveRelaySpawning：独立事务、失败只记技术故障，
-        /// 绝不回滚已经在场的敌人。
+        /// 每批事务创建后立即归本场所有，提交成功后仍持有到统一收尾。
+        /// 失败请求技术重试；取消、异常与手工驱动的子迭代器都从 finally 释放。
         /// </summary>
-        private IEnumerator DriveReinforcementSpawn()
+        private IEnumerator DriveReinforcementSpawn(int version)
         {
             long ownerToken = _runState.OwnerToken;
             int generation = _sceneGeneration;
-
-            int nextBatch = int.MaxValue;
-            for (int i = 0; i < _pendingEnemyBatchKeys.Count; i++)
-            {
-                if (_pendingEnemyBatchKeys[i].BatchIndex < nextBatch)
-                {
-                    nextBatch = _pendingEnemyBatchKeys[i].BatchIndex;
-                }
-            }
-
-            List<CharacterRandomPreset> presets = new List<CharacterRandomPreset>();
-            List<string> keys = new List<string>();
-            for (int i = _pendingEnemyBatchKeys.Count - 1; i >= 0; i--)
-            {
-                ModeHPendingEnemyEntry entry = _pendingEnemyBatchKeys[i];
-                if (entry.BatchIndex != nextBatch) continue;
-                CharacterRandomPreset preset = ModeHPresetRegistry.GetAuditedPreset(entry.StableKey);
-                if (preset == null)
-                {
-                    // 认证过的 preset 在局中失效：丢弃该条，不拖垮整场
-                    ModBehaviour.DevLog("[ModeH] 增援 preset 缺失，已跳过: " + entry.StableKey);
-                    _pendingEnemyBatchKeys.RemoveAt(i);
-                    continue;
-                }
-                keys.Add(entry.StableKey);
-                presets.Add(preset);
-                _pendingEnemyBatchKeys.RemoveAt(i);
-            }
-
-            if (presets.Count == 0)
-            {
-                _reinforcementRoutine = null;
-                yield break;
-            }
-
+            int matchIndex = _runState.MatchIndex;
+            ModeHCombatControl control = _combatControl;
             ModeHSpawnTransaction tx = new ModeHSpawnTransaction();
-            string failureReasonId;
-            if (!tx.Begin(_map, generation, ownerToken, out failureReasonId))
-            {
-                _reinforcementRoutine = null;
-                RequestTechnicalRetry(failureReasonId != null ? failureReasonId : "reinforcement_tx_begin_failed");
-                yield break;
-            }
-
-            ModeHSpawnDiagnostics diagnostics = new ModeHSpawnDiagnostics();
+            _reinforcementTransactions.Add(tx);
+            IEnumerator batch = null;
             ModeHSpawnBatchResult result = new ModeHSpawnBatchResult();
-            IEnumerator batch = tx.SpawnBatch(presets, keys, Teams.wolf, false, diagnostics, result);
-            while (batch.MoveNext())
+            string failureReasonId = null;
+            int nextBatch = int.MaxValue;
+            bool completed = false;
+            try
             {
-                if (!IsCallbackStillValid(ownerToken, generation))
+                try
                 {
-                    tx.Cancel();
-                    _reinforcementRoutine = null;
+                    for (int i = 0; i < _pendingEnemyBatchKeys.Count; i++)
+                        nextBatch = Math.Min(nextBatch, _pendingEnemyBatchKeys[i].BatchIndex);
+                    List<CharacterRandomPreset> presets = new List<CharacterRandomPreset>();
+                    List<string> keys = new List<string>();
+                    for (int i = _pendingEnemyBatchKeys.Count - 1; i >= 0; i--)
+                    {
+                        ModeHPendingEnemyEntry entry = _pendingEnemyBatchKeys[i];
+                        if (entry.BatchIndex != nextBatch) continue;
+                        CharacterRandomPreset preset = ModeHPresetRegistry.GetAuditedPreset(entry.StableKey);
+                        if (preset == null)
+                        {
+                            failureReasonId = "reinforcement_preset_missing:" + entry.StableKey;
+                            break;
+                        }
+                        keys.Add(entry.StableKey);
+                        presets.Add(preset);
+                    }
+                    if (failureReasonId == null && presets.Count == 0)
+                        failureReasonId = "reinforcement_batch_empty";
+                    if (failureReasonId == null && tx.Begin(_map, generation, ownerToken, out failureReasonId))
+                    {
+                        for (int i = _pendingEnemyBatchKeys.Count - 1; i >= 0; i--)
+                            if (_pendingEnemyBatchKeys[i].BatchIndex == nextBatch)
+                                _pendingEnemyBatchKeys.RemoveAt(i);
+                        batch = tx.SpawnBatch(presets, keys, Teams.wolf, false,
+                            new ModeHSpawnDiagnostics(), result);
+                    }
+                }
+                catch (Exception e) { failureReasonId = "reinforcement_prepare_exception:" + e.GetType().Name; }
+                if (batch == null)
+                {
+                    if (failureReasonId == null) failureReasonId = "reinforcement_tx_begin_failed";
                     yield break;
                 }
-                yield return batch.Current;
-            }
 
-            if (!result.Success)
+                while (IsReinforcementOwnerCurrent(version, ownerToken, generation, matchIndex, control))
+                {
+                    bool moved = false;
+                    object current = null;
+                    try { moved = batch.MoveNext(); if (moved) current = batch.Current; }
+                    catch (Exception e) { failureReasonId = "reinforcement_spawn_exception:" + e.GetType().Name; }
+                    if (!moved || failureReasonId != null) break;
+                    yield return current;
+                }
+                if (!IsReinforcementOwnerCurrent(version, ownerToken, generation, matchIndex, control)) yield break;
+                if (failureReasonId != null) yield break;
+                if (!result.Success)
+                {
+                    failureReasonId = result.FailureReasonId ?? "reinforcement_spawn_failed";
+                    yield break;
+                }
+
+                try
+                {
+                    if (!tx.TryCommit(_map.ArenaSpawnPoints, _map.PlayerSpawnPos, out failureReasonId))
+                    {
+                        if (failureReasonId == null) failureReasonId = "reinforcement_commit_failed";
+                    }
+                    else if (IsReinforcementOwnerCurrent(version, ownerToken, generation, matchIndex, control))
+                    {
+                        for (int i = 0; i < tx.EnemyHandles.Count; i++)
+                        {
+                            ModeHSpawnHandle handle = tx.EnemyHandles[i];
+                            ModeHParticipantRef enemy = BuildParticipant(handle, null, true, -1, false);
+                            enemy.BatchIndex = nextBatch;
+                            _enemyParticipants.Add(enemy);
+                            RegisterParticipant(handle, enemy);
+                            control.OnEnemyEntered(enemy);
+                        }
+                        _currentEntryBatchIndex = nextBatch;
+                        RefreshBattleSnapshotContext();
+                        control.OnEnemyBatchEntered(nextBatch, _battleSnapshotContext);
+                        AttachAndPersistBattleSnapshot("reinforcement_batch_entered");
+                        completed = true;
+                    }
+                }
+                catch (Exception e) { failureReasonId = "reinforcement_commit_exception:" + e.GetType().Name; }
+            }
+            finally
             {
-                tx.RollbackAll();
-                _reinforcementRoutine = null;
-                RequestTechnicalRetry(result.FailureReasonId != null ? result.FailureReasonId : "reinforcement_spawn_failed");
-                yield break;
+                try { IDisposable disposable = batch as IDisposable; if (disposable != null) disposable.Dispose(); }
+                catch (Exception e) { LogFailure("reinforcement_batch_dispose", e); }
+                if (!completed)
+                {
+                    try { tx.Cancel(); }
+                    catch (Exception e) { LogFailure("reinforcement_tx_cancel", e); }
+                    _reinforcementTransactions.Remove(tx);
+                }
+                // 同图下一场可能仍有相同 run owner/generation；旧 finally 不能清新场句柄或请求重试。
+                if (version == _reinforcementOwnerVersion)
+                {
+                    _reinforcementRoutine = null;
+                    _reinforcementSpawnInFlight = false;
+                    _reinforcementReservedEnemyCount = 0;
+                    if (failureReasonId != null && IsReinforcementOwnerCurrent(
+                            version, ownerToken, generation, matchIndex, control))
+                        RequestTechnicalRetry(failureReasonId);
+                }
             }
+        }
 
-            if (!tx.TryCommit(_map.ArenaSpawnPoints, _map.PlayerSpawnPos, out failureReasonId))
-            {
-                tx.RollbackAll();
-                _reinforcementRoutine = null;
-                RequestTechnicalRetry(failureReasonId != null ? failureReasonId : "reinforcement_commit_failed");
-                yield break;
-            }
+        private bool IsReinforcementOwnerCurrent(int version, long ownerToken, int generation,
+            int matchIndex, ModeHCombatControl control)
+        {
+            return version == _reinforcementOwnerVersion && IsCallbackStillValid(ownerToken, generation)
+                && _runState != null && _runState.MatchIndex == matchIndex
+                && ReferenceEquals(control, _combatControl)
+                && (_runState.Lifecycle == ModeHLifecycle.MatchFighting
+                    || _runState.Lifecycle == ModeHLifecycle.RelayPending);
+        }
 
-            for (int i = 0; i < tx.EnemyHandles.Count; i++)
-            {
-                ModeHSpawnHandle handle = tx.EnemyHandles[i];
-                ModeHParticipantRef enemy = BuildParticipant(handle, null, true, -1, false);
-                enemy.BatchIndex = nextBatch;
-                _enemyParticipants.Add(enemy);
-                RegisterParticipant(handle, enemy);
-                _combatControl.OnEnemyEntered(enemy);
-            }
-
-            _currentEntryBatchIndex = nextBatch;
-            RefreshBattleSnapshotContext();
-            _combatControl.OnEnemyBatchEntered(_currentEntryBatchIndex, _battleSnapshotContext);
-            AttachAndPersistBattleSnapshot("reinforcement_batch_entered");
+        private void ReleaseReinforcementRuntimeObjects()
+        {
+            _reinforcementOwnerVersion++;
+            Coroutine routine = _reinforcementRoutine;
             _reinforcementRoutine = null;
+            _reinforcementSpawnInFlight = false;
+            _reinforcementReservedEnemyCount = 0;
+            _pendingEnemyBatchKeys.Clear();
+            try { if (routine != null && _owner != null) _owner.StopCoroutine(routine); }
+            catch (Exception e) { LogFailure("reinforcement_coroutine_stop", e); }
+            for (int i = _reinforcementTransactions.Count - 1; i >= 0; i--)
+            {
+                try { _reinforcementTransactions[i].Cancel(); }
+                catch (Exception e) { LogFailure("reinforcement_tx_release", e); }
+            }
+            _reinforcementTransactions.Clear();
         }
 
         #endregion

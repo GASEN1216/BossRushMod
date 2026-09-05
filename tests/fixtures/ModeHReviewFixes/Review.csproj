@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" /><Compile Include="Harness.cs" />
+    <Compile Include="../../../Build/modeh-review-fixes/generated/Extracted.cs" />
+    <Compile Include="../../../Build/modeh-review-fixes/generated/HostStubs.cs" />
+    <Compile Include="../../../ModeH/ModeHSaveFlushCoordinator.cs" />
+    <Compile Include="../../../Common/Lifecycle/BossRushSaveFileThrottle.cs" />
+    <Compile Include="../../../ModeH/ModeHItemTreeNormalizer.cs" />
+    <Compile Include="../../../ModeH/ModeHItemTreeRestoration.cs" />
+    <Compile Include="../../../ModeH/ModeHCanonicalDigest.cs" />
+    <Compile Include="../../../ModeH/ModeHJsonValue.cs" />
+    <Compile Include="../../../ModeH/ModeHConfig.cs" />
+    <Compile Include="../../../ModeH/ModeHStateModel.cs" />
+    <Compile Include="../../../ModeH/ModeHStateDtos.cs" />
+    <Compile Include="../../../ModeH/ModeHRunState.cs" />
+    <Compile Include="../../../ModeH/ModeHStateMachine.cs" />
+  </ItemGroup>
+  <Target Name="ExtractProductionMethods" BeforeTargets="CoreCompile">
+    <Exec Command="python &quot;$(MSBuildProjectDirectory)/generate.py&quot;" />
+  </Target>
+</Project>

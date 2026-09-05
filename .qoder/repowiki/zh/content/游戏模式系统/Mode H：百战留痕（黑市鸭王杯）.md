@@ -214,10 +214,27 @@ effectId，于是 `Scars.json` 里那批分量 ID（`leg.sightDistance` 等）�
 `crowd_favorite` 的多余触发调用已删（它本就是常驻）。
 由 `ModeHScarTriggerWiringGuard` 按 JSON 反查代码守卫。
 
+**选手归属与窗口收尾（2026-09-05，CR-2026-09-05-002 / 008，COMPAT）**：
+登场时先登记该选手持有的全部 `scarIds`，常驻与触发型共享同一份归属集合；
+触发入口与快照窗口恢复都必须通过持有检查、逐字触发匹配和整条可用性检查。
+切换选手/清理时清空归属与一次性触发记录。健康选手不会因为全局存在某条战痕就得到效果；
+`old_wound` / `spirit` 的伤病归属检查独立保留。
+适配器每帧扣减后先检查到期并还原，再考虑 0.1 秒重申节流；伤病战痕 owner 在移除窗口前
+再次幂等还原，避免 5/6/8 秒窗口在重申间隙结束时遗留字段修改。
+
 自结算分量的 `command_scale` 有两种等价写法（`op=self_settled_command_scale`，
 或 `op=self_settled` + `controlPointId=command_scale`），两种都必须被识别：
 此前只认前者，`bell_dependence` 的 +20% 收益从未生效而 −10% 代价照常生效，
 恰好违反上面那条“不允许收益生效、代价失效”。
+
+**自结算范围与期限（2026-09-05，CR-2026-09-05-009，COMPAT）**：
+每个口令倍率分量保存 `TargetCommandId`、倍率和剩余秒数；有目标 ID 的只作用于对应口令，
+空目标作用于全部口令。分量期限优先取自身 `windowSeconds`，且不超过所属条目窗口；
+未指定时跟随条目窗口，纯自结算条目也按帧到期移除。`spirit` 的整场 x0.85 仍独立保留，
+不会与敌军数量门叠加两次；`blood_rush` 的 x0.5 只在五秒窗口内影响 `center`。
+拍铃在 Apply 时读取当前口令的组合倍率，并只读预览持有且尚未消费的 `bell_dependence` +20%；
+控制器返回成功后才实际打开战痕窗口，并先刷新拍铃条件。资格拒绝或 Apply 失败不会消费战痕；
+口令控制器原有“Apply 失败仍消耗本场拍铃次数”契约保持不变。已开始的口令使用 Apply 时的倍率。
 
 **分量条件 `appliesWhen`：随战斗持续求值**（owner 2026-09-03 拍板，CR-2026-09-03-020）。
 8 种条件由 `ModeHEffectConditions` 按重申节奏（0.1 秒）求值，分量随条件真伪**上下线**：
@@ -227,8 +244,16 @@ effectId，于是 `Scars.json` 里那批分量 ID（`leg.sightDistance` 等）�
 `condition_<id>` 与本场 `plan.conditionId` 逐字比对——`danger_edge` 与 `open_field`
 本就是 `ThreatPlans.json` 里真实存在的 `arenaConditionId`，不存在第二套映射表。
 
-**自结算分量是例外**：`_selfSettledCommandScale` 是累乘标量，无法只撤销其中一项，
-因此只在开窗时求值一次；守卫据此断言自结算分量只能带整场恒定的 `condition_*` 族条件。
+**自结算条件仍只在开窗时求值**：虽然倍率已按范围和期限保存为可撤销记录，动态条件重申
+尚未接入该路径，守卫继续限制其只带整场恒定的 `condition_*` 族条件。
+登场时 `ModeHCombatControl` 先刷新并向 `BindFighter` 传入当前上下文，再施加常驻效果，
+因此首发的 `center_keeper` 在 `danger_edge` 中立即取得 `center` x1.25，
+在 `open_field` 中立即取得视距代价（2026-09-05，CR-2026-09-05-010，COMPAT）。
+
+上述四项由 `ModeHEffectLifecycleGuard`（含反向变异检查）及
+`tests/fixtures/modeh_effects/run.py` 验证。夹具直接编译效果系统、适配器、口令控制器，
+并逐字提取生产登场/拍铃方法，读取当前 Scars.json；AI 字段、场况采集和兼容矩阵是宿主替身，
+因此结果只证明调用顺序、数值回读与生命周期，真实 AI 行为和认证后的战痕可用性仍需实机。
 
 此前这一层**完全没有实现**：`appliesWhen` 解析后零读者，9 个分量一律无条件施加。
 最明显的是 `crowd_favorite`：收益写“敌军≥3 才给”、代价写“单核战才吃”，
@@ -496,3 +521,38 @@ abort return，必撞 `journal_illegal_transition`——押品退不回来，非
 赔率页新增“调整阵容 / 配装 / 口令”入口：可换首发、接力或让接力休息，从已解锁且适配选手的套装中选择；同槽替换，每人最多四件。口令按两席当前可用矩阵列出。滚动列表使用共享 UI；回调检查当前 roster 实例和整备生命周期。选择共同驱动赔率、loadoutDigest 与最终锁盘；接力专属招牌绑定接力持有者；锁盘失败退回预留虚拟筹码。默认值只在创建本场 roster 时提供。
 
 章节来源：`ModeH/ModeHSaveFlushCoordinator.cs`、`ModeH/ModeHInventoryPersistenceBridge.cs`、`ModeH/ModeHWarehouseStakeJournalStorageBuffer.cs`、`ModeH/ModeHItemTreeRestoration.cs`、`ModeH/ModeHRuntimeModule_LoadoutEditing.cs`。
+
+
+## 2026-09-05 全面复审修复：续赛、保存屏障与合同休息
+
+兼容分类：`COMPAT`。CR-2026-09-05-001 与 CR-2026-09-04-022/024/025 已完成代码修复；没有更改冻结状态表、持久 DTO、存档 key、摘要算法或数值。
+
+`RestoreFromSaveIfPresent` 同时恢复完整 Season 与新 run owner，并保持恢复门。待恢复阶段停止战斗更新；玩家明确续赛后，`ModeHRuntimeModule_Recovery` 校验槽位、游戏/Mod/内容三签名、原地图、资产 journal 和生产认证报告，重新加载原图，按序取得 arena/spectator 租约，然后回到合法恢复目标。续赛不重扣船票、不创建新赛季；有已结算 report 时回幕间，否则撤销本场预约并恢复战前快照后回同场看盘。异步请求绑定 owner、槽位和入场意图代次，换槽/关停取消旧请求；换槽只释放运行时，不向新槽返还旧槽押品。不能证明兼容时保留恢复壳，不重盖旧签名。
+
+强制物理写仅用于需要即时提交结果才能继续的节点：首份赛季、锁盘、结算、幕间归档、名人堂终局及明确弃赛。这些节点通过显式 `requireDurable` 绕过普通每帧节流，允许押品四阶段后的同帧锁盘和冠军终局连续提交；仍尊重官方 IsSaving、typed Store、回读及 I/O 失败。普通写继续节流并保留物理欠账，没有关闭全局节流器。
+
+旧 Prepared 核对按待匹配 snapshot 是否包含恢复载荷选择对应捕获格式；预计数、移除后计数与取消核对均传完整 snapshot，而非只传 digest。保留旧摘要，不能因相同 TypeID 就视为同一押品，新格式的变量/显示/排序锁检查仍有效。
+
+赛后伤病恢复枚举全部有效合同 profile（包含 Injured，排除 Retired/Released/Removed），再由实际入场遥测判断是否休息。清空接力席的选手因此仍有恢复机会；实际出战者不会获得休息恢复。
+
+验证：`tests/fixtures/ModeHReviewFixes/` 用生产源码和准确提取的方法通过 35 条执行断言；`ModeHReviewFixesGuard` 用 6 个反向变异守卫调用关系。地图/租约/认证环境及 I/O 是明确替身，完整六场、真实押品和 Unity 场景调度仍需实机验证。
+
+章节来源：`ModeH/ModeHRuntimeModule_Recovery.cs`、`ModeH/ModeHRuntimeModule.cs`、`ModeH/ModeHRuntimeModule_MatchFlow.cs`、`ModeH/ModeHRuntimeModule_CombatFlow.cs`、`ModeH/ModeHRuntimeModule_SettlementFlow.cs`、`ModeH/ModeHSaveFlushCoordinator.cs`、`ModeH/ModeHInventoryPersistenceBridge.cs`、`ModeH/ModeHWarehouseStakeJournal.cs`、`ModeH/ModeHProductionCertification.cs`。
+
+## 2026-09-05 第二轮修复：恢复动作、赛季身份与增援所有权
+
+兼容分类：`COMPAT`。CR-2026-09-05-011/012/013/014/015/016；不改持久 DTO、存档 key、随机算法、敌军计划数值或冻结状态表。
+
+幕间页面、奖励点击与归档统一从当前场次的持久 report/operation 取事实，恢复不依赖 `_lastRewardOperation` 展示缓存。套装、名声和确认按钮捕获 owner token、matchIndex 与 operationId，重新校验当前生命周期和命令门；旧 owner、旧场次和重复点击不能应用到另一个奖励。
+
+放弃赛季先处理未结押品，再要求 SeasonEnded 写入 durable 成功，随后关闭命令、取消续赛并调用既有 `ReleaseRuntimeObjects`。比赛对象、观战租约、竞技场租约和 UI 释放完成后才清 run/season 与恢复门。ReleaseMatchRuntime 异常隔离，不阻断后续双租约/UI 的释放尝试；写失败仍保留运行 owner 与恢复控件。
+
+新赛季 runId 在地图/generation 前缀后追加一次 Guid，避免进程重启后计数复用。runId 与派生 seed 一起持久化；FromDto 原样保留旧、新格式身份和 seed，只有内存 owner token 更新。名人堂继续用 `hof|runId` 幂等插入，跨季新冠军不会因重启计数相同而被误去重。
+
+增援属于本场运行所有权：整批事务在 Begin 前登记，成功批次也持有到统一战斗收尾才回收；本场版本、场次、control 引用和 run/scene owner 共同阻止晚回调写入下一场。生成事务另持独立代次，官方 UniTask 完成时立即接管 handle，协程已停的晚结果也进入回收。判胜要求最后一批已入场且无 pending/in-flight/预留；整批容量必须和当前存活数、已预留数共同满足场次上限及全局上限，两者都不因分帧生成而放宽。
+
+恢复回归：`tests/fixtures/ModeHRecoverySecondReview/` 每次编译提取 21 个完整生产方法，直接编译 DTO、run owner、状态机与 seed 实现，33 条执行断言覆盖恢复点击、过期动作、失败/异常弃赛、逆序清理、两独立进程 ID、旧档恢复和冠军去重；`ModeHRecoverySecondReviewGuard` 拦截 9 个反向变异。Unity、租约和 I/O 为明确替身，清理异常只证明后续阶段继续尝试；真实输入还原、地图重开和完整六场仍需实机确认。
+
+增援回归：`tests/fixtures/ModeHReinforcementSecondReview/` 的 93 条执行断言与 `ModeHReinforcementSecondReviewGuard` 的 11 个反向变异覆盖真实计划、生成时序、容量、接力、统一清理、旧迭代器及晚结果。除异步完成续作外，SpawnBatch 迭代器也冻结 batchGeneration，旧迭代器不能在事务重新 Begin 后回滚新批。生产沿用官方主线程 UniTask，无额外线程池。相关 44 个 Mode H guards 通过；真实 AI 和 Unity 调度仍需实机。
+
+章节来源：`ModeH/ModeHRuntimeModule_SettlementFlow.cs`、`ModeH/ModeHRuntimeModule_UiFlow.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`ModeH/ModeHRuntimeModule_CombatFlow.cs`、`ModeH/ModeHRuntimeModule_CombatProfiles.cs`、`ModeH/ModeHSpawnTransaction.cs`、`ModeH/ModeHRunState.cs`、`tests/ModeHRecoverySecondReviewGuard.py`。

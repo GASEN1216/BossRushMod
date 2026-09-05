@@ -455,7 +455,7 @@ namespace BossRush
                     return false;
                 }
                 int occurrences =
-                    ModeHInventoryPersistenceBridge.CountOccurrences(snapshot.semanticTreeDigest);
+                    ModeHInventoryPersistenceBridge.CountOccurrences(snapshot);
                 if (occurrences < snapshot.preCount)
                 {
                     failureReasonId = "escrow_occurrence_shrunk";
@@ -500,7 +500,7 @@ namespace BossRush
                 removed.Add(item);
                 _active.escrowItems[i].postCount =
                     ModeHInventoryPersistenceBridge.CountOccurrences(
-                        _active.escrowItems[i].semanticTreeDigest);
+                        _active.escrowItems[i]);
                 AppendReceipt("escrow_remove", i, _active.escrowItems[i].semanticTreeDigest,
                     ModeHStakeReceiptStatus.Applied);
             }
@@ -785,7 +785,7 @@ namespace BossRush
                     return false;
                 }
                 int current = ModeHInventoryPersistenceBridge.CountOccurrences(
-                    snapshot.semanticTreeDigest);
+                    snapshot);
                 if (current < snapshot.preCount)
                 {
                     failureReasonId = "cancel_escrow_preimage_mismatch";

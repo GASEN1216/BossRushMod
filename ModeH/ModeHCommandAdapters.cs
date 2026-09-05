@@ -497,16 +497,17 @@ namespace BossRush
             }
 
             _windowRemaining -= deltaTime;
+            if (_windowRemaining <= 0f)
+            {
+                Restore();
+                return;
+            }
             _reassertAccumulator += deltaTime;
             if (_reassertAccumulator < ModeHConfig.CommandReassertIntervalSeconds) return;
             _reassertAccumulator = 0f;
 
             Reassert(fireContext);
 
-            if (_windowRemaining <= 0f)
-            {
-                Restore();
-            }
         }
 
         /// <summary>

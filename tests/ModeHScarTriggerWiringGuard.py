@@ -190,13 +190,13 @@ def main():
                         errors.append(
                             "[Condition] %s 的 %r 指向的擂台条件 %r 不在 ThreatPlans.json 的 "
                             "arenaConditions 里，永远不会成立" % (entry_id, cond, cid))
-                # 自结算分量只能带整场恒定的条件：_selfSettledCommandScale 是累乘标量，
-                # 无法只撤销其中一项，所以它只在开窗时求值一次。
+                # 自结算分量目前只在开窗时求值；虽已按范围/期限持有可撤销记录，
+                # 尚未接入动态条件重申，因此仍只允许整场恒定条件。
                 if comp.get("selfSettled") and not cond.startswith("condition_"):
                     errors.append(
-                        "[Condition] 自结算分量 %s 带了动态条件 %r。自结算系数是累乘标量、"
+                        "[Condition] 自结算分量 %s 带了动态条件 %r。自结算条件目前"
                         "只在开窗时求值一次，动态条件会算错；要么改成调制类分量，"
-                        "要么把系数改成可撤销结构" % (comp.get("effectId"), cond))
+                        "要么接入自结算条件重申" % (comp.get("effectId"), cond))
 
     # 不匹配时静默是本 bug 的放大器：保留这一行为就必须保留本守卫
     if not re.search(

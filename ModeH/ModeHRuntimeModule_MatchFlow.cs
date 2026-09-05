@@ -25,6 +25,7 @@ namespace BossRush
         {
             if (_commandsClosed) return;
             if (_runState == null) return;
+            if (_restoredSeasonPending || _resumeScenePending) return;
 
             // Recovering 是过渡态不是终点：进来之后必须有人把它推回同一场，
             // 否则技术故障出口全部通向一个没有按钮的壳（CR-2026-08-29-010）。
@@ -104,6 +105,13 @@ namespace BossRush
                 return;
             }
 
+            // 跨会话同场重开只恢复战前预约，不重放已存在的结算事实。
+            if (_resumeNeedsMatchReset && resume == ModeHLifecycle.MatchBrief)
+            {
+                RestoreMatchReservationAndSnapshot();
+            }
+            _resumeNeedsMatchReset = false;
+
             // 自动重试预算（§17.4）。故障点已经各自消耗过预算，这里是防御性兜底。
             if (_runState.TechnicalRetrySequence > ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch)
             {
@@ -146,7 +154,8 @@ namespace BossRush
                 case ModeHLifecycle.MatchFighting:
                 case ModeHLifecycle.RelayPending:
                 case ModeHLifecycle.MatchSettling:
-                    return ModeHLifecycle.MatchBrief;
+                    return FindLatestPendingReport() != null
+                        ? ModeHLifecycle.Intermission : ModeHLifecycle.MatchBrief;
 
                 case ModeHLifecycle.Suspended:
                 case ModeHLifecycle.Unknown:
@@ -1057,7 +1066,7 @@ namespace BossRush
                     return;
                 }
                 // 开战前的最后一个显式落盘点：技术中止要按它回到同一场
-                if (!TryPersistSeason("loadout_locked"))
+                if (!TryPersistSeason("loadout_locked", true))
                 {
                     RestoreMatchReservationAndSnapshot();
                     RequestSuspended("loadout_persist_failed");

@@ -14,14 +14,19 @@ namespace BossRush
         {
             ModeHPageContent page = new ModeHPageContent();
             page.Title = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Page_Settlement");
-            ModeHMatchReportDto report = _lastSettlementReport ?? FindLatestPendingReport();
-            ModeHSeasonRewardOperationDto operation = _lastRewardOperation
-                ?? FindRewardOperation(report != null ? report.seasonRewardOperationId : null);
+            ModeHMatchReportDto report = _runState != null ? FindLatestPendingReport() : null;
+            ModeHSeasonRewardOperationDto operation = FindRewardOperation(
+                report != null ? report.seasonRewardOperationId : null);
             if (report == null)
             {
                 page.Body = L10n.T("结算记录不可用", "Settlement record unavailable");
                 return page;
             }
+
+            // 页面与动作都按本场持久记录定位；恢复时 _last* 仅是空的展示缓存。
+            long ownerToken = _runState.OwnerToken;
+            int matchIndex = report.matchIndex;
+            string operationId = report.seasonRewardOperationId;
 
             bool won = report.winner == (int)ModeHMatchOutcome.PlayerVictory;
             page.Body = won ? L10n.T("本场胜利", "Victory") : L10n.T("本场失利", "Defeat");
@@ -69,13 +74,13 @@ namespace BossRush
                         // 此前直接拼原文，玩家看到的是一串英文下划线标识。
                         Label = L10n.T("解锁整备：", "Unlock kit: ")
                             + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId),
-                        OnClick = delegate { SelectSettlementReward(selectedKitId, false); },
+                        OnClick = delegate { SelectSettlementReward(selectedKitId, false, ownerToken, matchIndex, operationId); },
                     });
                 }
                 page.Actions.Add(new ModeHActionData
                 {
                     Label = L10n.T("放弃整备，换取名声", "Decline kits for fame"),
-                    OnClick = delegate { SelectSettlementReward(null, true); },
+                    OnClick = delegate { SelectSettlementReward(null, true, ownerToken, matchIndex, operationId); },
                 });
             }
             else
@@ -83,25 +88,40 @@ namespace BossRush
                 page.Actions.Add(new ModeHActionData
                 {
                     Label = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Button_Confirm"),
-                    OnClick = CompleteSettlementAndRoute,
+                    OnClick = delegate
+                    {
+                        if (IsSettlementActionCurrent(ownerToken, matchIndex, operationId))
+                            CompleteSettlementAndRoute();
+                    },
                 });
             }
             return page;
         }
 
-        private void SelectSettlementReward(string kitId, bool decline)
+        private bool IsSettlementActionCurrent(long ownerToken, int matchIndex, string operationId)
         {
-            if (_season == null || _lastRewardOperation == null || _runState == null
-                || _runState.Lifecycle != ModeHLifecycle.Intermission)
-            {
-                return;
-            }
+            if (_commandsClosed || _season == null || _runState == null
+                || !_runState.IsOwnerTokenValid(ownerToken)
+                || _runState.MatchIndex != matchIndex
+                || _runState.Lifecycle != ModeHLifecycle.Intermission) return false;
+            ModeHMatchReportDto report = FindLatestPendingReport();
+            return report != null && string.Equals(
+                report.seasonRewardOperationId, operationId, StringComparison.Ordinal);
+        }
+
+        private void SelectSettlementReward(
+            string kitId, bool decline, long ownerToken, int matchIndex, string operationId)
+        {
+            if (!IsSettlementActionCurrent(ownerToken, matchIndex, operationId)) return;
+            ModeHSeasonRewardOperationDto operation = FindRewardOperation(operationId);
+            if (operation == null
+                || operation.status != (int)ModeHSeasonRewardOperationStatus.Offered) return;
             string failureReasonId;
             bool ok = decline
                 ? ModeHSeasonRewardService.TryDeclineToFame(
-                    _season, _lastRewardOperation.operationId, out failureReasonId)
+                    _season, operation.operationId, out failureReasonId)
                 : ModeHSeasonRewardService.TrySelectKit(
-                    _season, _lastRewardOperation.operationId, kitId, out failureReasonId);
+                    _season, operation.operationId, kitId, out failureReasonId);
             if (!ok)
             {
                 ModBehaviour.DevLog("[ModeH] 奖励选择失败: " + (failureReasonId ?? "unknown"));
@@ -112,14 +132,14 @@ namespace BossRush
 
         private void CompleteSettlementAndRoute()
         {
-            if (_season == null || _runState == null
+            if (_commandsClosed || _season == null || _runState == null
                 || _runState.Lifecycle != ModeHLifecycle.Intermission)
             {
                 return;
             }
-            ModeHMatchReportDto report = _lastSettlementReport ?? FindLatestPendingReport();
-            ModeHSeasonRewardOperationDto operation = _lastRewardOperation
-                ?? FindRewardOperation(report != null ? report.seasonRewardOperationId : null);
+            ModeHMatchReportDto report = _runState != null ? FindLatestPendingReport() : null;
+            ModeHSeasonRewardOperationDto operation = FindRewardOperation(
+                report != null ? report.seasonRewardOperationId : null);
             if (report == null || operation == null) return;
 
             string failureReasonId;
@@ -131,7 +151,7 @@ namespace BossRush
                 return;
             }
             report.reportStatus = (int)ModeHMatchReportStatus.Archived;
-            if (!TryPersistSeason("intermission_archive"))
+            if (!TryPersistSeason("intermission_archive", true))
             {
                 RequestSuspended("intermission_archive_failed");
                 return;

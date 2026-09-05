@@ -83,17 +83,32 @@ namespace BossRush
         /// </summary>
         public static bool RequestSeasonWrite(ModeHSeasonDto season, out string error)
         {
+            return RequestSeasonWrite(season, out error, false);
+        }
+
+        /// <summary>
+        /// 显式事务屏障可越过同帧节流；仍需 typed 回读和物理写入全部成功。
+        /// 仅供开赛、结算与名人堂推进使用，普通快照继续等待下一帧。
+        /// </summary>
+        public static bool RequestSeasonWrite(ModeHSeasonDto season, out string error, bool requireDurable)
+        {
             error = null;
             if (!ModeHProfilePersistence.StageWrite(season, out error)) return false;
-            return FlushBatch(out error);
+            return FlushBatch(out error, requireDurable);
         }
 
         /// <summary>按稳定 ID 幂等插入一条名人堂记录并落盘。</summary>
         public static bool RequestHallOfFameInsert(ModeHHallOfFameRecordDto record, out string error)
         {
+            return RequestHallOfFameInsert(record, out error, false);
+        }
+
+        public static bool RequestHallOfFameInsert(
+            ModeHHallOfFameRecordDto record, out string error, bool requireDurable)
+        {
             error = null;
             if (!ModeHHallOfFamePersistence.StageRecordInsert(record, out error)) return false;
-            return FlushBatch(out error);
+            return FlushBatch(out error, requireDurable);
         }
 
         /// <summary>写入按四签名键控的生产认证缓存并落盘。</summary>
