@@ -2,8 +2,68 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-05 二次深度复审：10 项已完成代码修复（2026-09-06 验收）
+
+固定基线 `f9b83c0fa21a3ef03e8abc0941fb71beb3201ba2..29cb0c12dfe33164e35ce775e470621ea4afcb4b`，并纳入当前未提交修复与 Wiki 工作。
+本批新增 **5 P1 / 5 P2，共 10 项，现均 Fixed**（代码修复与隔离执行回归通过，Unity 实机待验）；不重复下方已 Fixed 的 15 项，也不是历史累计统计。
+原触发链与修复前证据保留在 [二次深度复审报告](docs/代码审查/2026-09-05-f9b83c0-二次深度复审.md)，表中代码锚点保留原缺陷位置。用户要求“全面修复”后，全部修复为 `COMPAT`，文档为 `SAFE`；修复后行为及验证见 [二次复审修复验收](docs/代码审查/2026-09-06-二次复审修复验收.md)。未提交 commit。
+
+| ID | 级别 / 分类 | 当前工作区已确认缺陷与代码锚点 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-05-011 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_SettlementFlow.cs:92` 恢复幕间能按持久数据显示奖励按钮，动作却依赖空的 `_lastRewardOperation`，两个选项均早退，无法推进。 | Fixed |
+| CR-2026-09-05-012 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_UiFlow.cs:406` 场内放弃中断赛季后直接清 owner，未释放观战输入、竞技场租约及旧页面。 | Fixed |
+| CR-2026-09-05-013 | P1 / COMPAT | `ModeH/ModeHCombatControl.cs:287` 零活敌即判胜，遗漏未入场/生成中的后批；当前多批计划可在增援强制分帧期间提前结算。 | Fixed |
+| CR-2026-09-05-014 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_CombatProfiles.cs:292` 增援事务只存局部变量，场末未停止增援协程或回收成功批次；迟到提交还可访问已清控制器。 | Fixed |
+| CR-2026-09-05-015 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_SceneFlow.cs:266` 赛季 ID 仅由地图与进程内 generation 组成，重启重复后，名人堂去重吞掉另一个新冠军。 | Fixed |
+| CR-2026-09-05-016 | P2 / COMPAT | `ModeH/ModeHRuntimeModule_CombatProfiles.cs:239` 后批门控只看是否还有空位，不检查整批容量；真实 `[2,2]` 计划可突破 cap=3。 | Fixed |
+| CR-2026-09-05-017 | P2 / COMPAT | `RandomEvents/RandomEventEffectsBridge_Loot.cs:329` 实际 randomPool 使用 Q1–Q8 通用候选；官方池分支跳过 qualities，三模式空投上下限失效。 | Fixed |
+| CR-2026-09-05-018 | P2 / COMPAT | `Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs:190` 旧异步生成忙时丢弃新场景唯一请求，旧请求失效后只清 busy，新场景不再生成永久 NPC。 | Fixed |
+| CR-2026-09-05-019 | P2 / COMPAT | `Integration/BackMountain/ShowcaseService.cs:237` 先撤生命上限加成再判原本满血，登记收藏将 101/102 的受伤状态补到 102.5/102.5。 | Fixed |
+| CR-2026-09-05-020 | P2 / COMPAT | `Common/Infrastructure/HarmonyBindingSelfCheck.cs:99` 按补丁类计数，却只查目标上的 owner；同目标两类仅装一类仍报 2/2 通过。 | Fixed |
+
+修复验收：完整 786 项生产输入的 Windows Release/Dev 真编译均通过；**544 guard 全绿**；新增 **219** 加既有 **183**，共 **402 条执行断言通过**。覆盖恢复奖励动作、弃赛清理、跨进程唯一 ID、增援异步所有权/容量/判胜、NPC 后继、生命采样、空投实际池与真实 Harmony 部分挂载；相关 repowiki 10 篇已同步。未进行 Unity 实机 smoke、部署或提交。
+原审查的 538 guard、19 条缺陷复现断言及 Wiki 冻结快照结果仍保留在原报告，不与修复后的正确行为断言混淆。其他任务的后续 Wiki 修改不在本次修复验收内。
+
+## 2026-09-05 全面复审：15 项已完成代码修复
+
+固定基线 `f9b83c0fa21a3ef03e8abc0941fb71beb3201ba2..29cb0c12dfe33164e35ce775e470621ea4afcb4b`。
+本批确认 **9 P1 / 6 P2，共 15 项，现均 Fixed**（10 项新增、5 项复核既有问题）；不是整个历史问题库的累计统计。
+每项完整触发链、修复建议与验证边界见 [全面复审报告](docs/代码审查/2026-09-05-f9b83c0-29cb0c1-全面复审.md)。
+用户要求全部修复后，15 项已完成代码修复和隔离回归，Unity 实机待验；见 [修复验收记录](docs/代码审查/2026-09-05-全面复审修复验收.md)。本批修复均为 `COMPAT`，记录文档为 `SAFE`，表中分类及代码行号保留修复前缺陷证据（旧 022 的缺陷影响仍标 `BREAKING`）。未提交 commit。
+
+| ID | 级别 / 分类 | 已确认缺陷与代码锚点 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-05-001 | P1 / COMPAT | `ModeH/ModeHRuntimeModule.cs:336` 恢复只填 run owner，不填 `_season`；有效 Suspended 赛季同场重开仍得到 Unknown，再次挂起。 | Fixed |
+| CR-2026-09-05-002 | P1 / COMPAT | `ModeH/ModeHInjuryAndScarSystem.cs:332` 触发战痕不查当前选手持有集合；认证通过后，零战痕选手也能触发全局战痕。 | Fixed |
+| CR-2026-09-05-003 | P1 / COMPAT | `Campaign/CampaignProgressService.cs:356` 完成状态成功落盘，但奖金未采集到 EconomyData；下次官方采集前重载会永久漏领。 | Fixed |
+| CR-2026-09-05-004 | P1 / COMPAT | `Integration/DailyReport/DailyReportService.cs:477` 悬赏 claimed 与现金快照不同步；正常补发后重载可能只留下已领标志。 | Fixed |
+| CR-2026-09-05-005 | P1 / COMPAT | `PetNest/PetNestHatchService.cs:275` 凝蛋扣魂与入巢各自提交，同帧第二次物理写延期；中断可留下“已扣魂、没有崽”的永久半交易。 | Fixed |
+| CR-2026-09-05-006 | P1 / COMPAT | `ZombieMode/ZombieModeDropsAndPerformance.cs:713` 所有权检查每秒一次，销毁仍逐帧；扫描间隔内已拾取的过期物品仍可被 Destroy。 | Fixed |
+| CR-2026-09-05-007 | P1 / COMPAT | `Integration/Wedding/WeddingModBehaviourBridge.cs:78` 永久配偶真正异步生成后没有婚姻收尾；同文件 `538` 的跨图跟随恢复也缺永久 NPC 生成分支。 | Fixed |
+| CR-2026-09-05-008 | P2 / COMPAT | `ModeH/ModeHInjuryAndScarSystem.cs:172` 窗口在 adapter 尚未 Restore 时被移出 owner 列表，限时修改无法正常还原。 | Fixed |
+| CR-2026-09-05-009 | P2 / COMPAT | `ModeH/ModeHInjuryAndScarSystem.cs:274` 自结算倍率丢失 TargetCommandId 和有效期，指定口令 5 秒效果变成整场全口令效果。 | Fixed |
+| CR-2026-09-05-010 | P2 / COMPAT | `ModeH/ModeHCombatControl.cs:218` 首发先开常驻战痕、后填场地上下文；center_keeper 条件收益首次误判后不重算。 | Fixed |
+
+复核既有 ID，避免重复立条：
+
+| ID | 级别 / 分类 | 当前证据及本次增补 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-04-024 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_MatchFlow.cs:1060` 押品强写后普通赛季写被同帧闸拒绝；本次另确认无押品冠军终局在 `ModeHRuntimeModule_CombatFlow.cs:987` 同样挂起，恢复重试仍失败。 | Fixed |
+| CR-2026-09-04-022 | P1 / BREAKING | `ModeH/ModeHInventoryPersistenceBridge.cs:143` 旧 Prepared 摘要仍固定用新格式计数，相同实物误报不存在并进入 ManualIntervention。 | Fixed |
+| CR-2026-09-04-025 | P2 / COMPAT | `ModeH/ModeHRuntimeModule_LoadoutEditing.cs:67` 清空接力 ID 后，真正休息的带伤选手被排除于赛后恢复遍历。 | Fixed |
+| CR-2026-09-04-034 | P2 / COMPAT | `Integration/BackMountain/RaidMealUsageBehavior.cs:45` 官方完成帧二次 CanBeUsed 可绕过 OnUse 补偿，SaveFile 故障后仍可扣餐无效果。 | Fixed |
+| CR-2026-09-04-036 | P2 / COMPAT | `PetNest/PetNestHatchService.cs:138` 资产采集失败后早退漏 RecordHatch，后续 Tick 补盘不补统计。 | Fixed |
+
+修复验证：Windows Release/Dev 真编译通过（786 个生产输入，无 C# diagnostics）；新增 155 条和既有 28 条执行断言通过。当前全量守卫为 537 PASS / 1 FAIL，唯一失败为其他未提交 Wiki 工作中新出现的 `npc-goblin.webp` 未登记图片清单；本轮相关守卫全部通过，未删除其他工作产物或放宽断言。
+新增修复夹具验证修复后的正确行为，与原审查用于复现缺陷的定向夹具区分；没有 Unity 实机 smoke。原审查时的 534 guard 及干净 HEAD 结果保留在原报告中。
+以下 2026-09-04 注记与状态汇总保留为历史快照，不应覆盖本节的最新复核结论。
+
 > 2026-09-04 深度复审增补：固定基线 `f9b83c0..adf1f3e`，新增 **CR-2026-09-04-021..035：2 P0 / 10 P1 / 3 P2，均 Open**。
 > 完整触发链、修复建议与验证边界见 [本轮审查报告](docs/代码审查/2026-09-04-f9b83c0-adf1f3e-深度复审.md)。下面的原状态汇总是此前历史统计，未包含本批。
+>
+> 2026-09-04 修复复审：固定基线 `adf1f3e..29cb0c1`。021、023、026–033、035 原缺陷已修复；
+> 022、025、034 重新打开，024 仍未闭环；026 原缺陷已修复，但新增 036。当前残留 2 P1 / 3 P2。
+> 完整证据见 [修复复审报告](docs/代码审查/2026-09-04-adf1f3e-29cb0c1-修复复审.md)。
 
 ## 状态汇总
 
@@ -2694,11 +2754,14 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 
 ### CR-2026-09-04-022：持久化 escrow 快照没有跨会话实物重建入口
 
-**严重级**：P0；**兼容分类**：`COMPAT`；**状态**：Fixed（实机复测待完成）；**来源**：完整静态调用链。
+**严重级**：P1；**兼容分类**：`BREAKING`；**状态**：Reopened（修复复审确认旧 journal 回归）；**来源**：完整静态调用链与隔离复现。
 
 `ModeH/ModeHWarehouseStakeJournal.cs:1162–1167` 装载 journal 后清空 `_escrowItems`；`normalizedTreePayload` 全仓只有写入与声明，没有读取重建者。已有押品移除被官方保存后若进程中断，恢复返还在 `849–859` 恒因物品短缺进入人工介入。需核验持久证据后实现一次性重建与 receipt 防重。CR-2026-09-04-010 的满仓缓冲修复没有覆盖此支路。未实机复现。
 
 **修复**：新增完整物品树恢复消费者，按槽、阶段、post-image 与逐项凭据恢复到官方缓冲区；旧载荷缺失变量类型时保留人工介入。 **验证**：见 FIX_TRACKER 同日深度复审修复条目；未进行游戏实机测试。
+
+**修复复审**：新格式重建链成立；但旧 `Prepared` / `EscrowSnapshotDurable` 取消时，
+`CountOccurrences` 始终生成新格式摘要，无法命中旧摘要，物品仍在仓库也会进入人工介入。
 
 ### CR-2026-09-04-023：Mode H 延迟物理落盘后下一帧丢弃欠账
 
@@ -2710,19 +2773,25 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 
 ### CR-2026-09-04-024：真实押品同步四阶段必然撞每帧保存节流
 
-**严重级**：P1；**兼容分类**：`COMPAT`；**状态**：Fixed（实机复测待完成）；**来源**：静态完整锁盘链与节流源码复现。
+**严重级**：P1；**兼容分类**：`COMPAT`；**状态**：Reopened（修复复审确认仍阻断）；**来源**：静态完整锁盘链与节流源码复现。
 
 `ModeH/ModeHRealStakeService.cs:224–226` 在同一按钮回调中连续请求四个 durable 阶段。Prepare 首次落盘后下一阶段必被每帧闸拒绝，回滚到 Prepared 又留下 slot inconsistent，之后无法正常锁盘。需可续做的分帧事务或明确的资产屏障；不能把延期当永久失败，也不能提前声明 durable。仅补 023 的欠账位无效。完整 UI 锁盘待实机验证。
 
 **修复**：真实押品四阶段使用强制同步屏障，失败回滚实物并重暂存一致账本；虚拟筹码预留同步撤回。 **验证**：见 FIX_TRACKER 同日深度复审修复条目；未进行游戏实机测试。
 
+**修复复审**：四阶段本身可以同帧完成，但紧随其后的 `loadout_locked` 赛季保存走普通节流，
+必被本帧最后一次强制写盘挡下；调用方回滚并挂起，仍无法开赛。
+
 ### CR-2026-09-04-025：Mode H 赛前阵容、kit 与口令缺少玩家编辑入口
 
-**严重级**：P1；**兼容分类**：`COMPAT`；**状态**：Fixed（实机复测待完成）；**来源**：生产写入点与当前设计/Wiki 对照。
+**严重级**：P2；**兼容分类**：`COMPAT`；**状态**：Reopened（主体已修，休息结算残留）；**来源**：生产写入点与当前设计/Wiki 对照。
 
 `ModeH/ModeHRuntimeModule_CombatFlow.cs:34–48` 固定前两名为首发/接力、默认选 kit；`90–92` 固定口令。赔率页 `ModeHRuntimeModule_MatchFlow.cs:980–1002` 仅提供下注、押品、锁盘。玩家不能按现有承诺选择阵容、装备与通用令，亦不能主动让受伤主将休息。需把三个选择器接入真实编辑状态、赔率与摘要，并让锁盘消费玩家选择。未实机验证。
 
 **修复**：赔率页接入阵容/休息/套装/口令滚动编辑；赔率、摘要与锁盘共同消费选择，并校验回调 owner。 **验证**：见 FIX_TRACKER 同日深度复审修复条目；未进行游戏实机测试。
+
+**修复复审**：阵容、kit、口令编辑主体已接通；“接力休息”清空 relay ID 后，结算仍只遍历
+锁定的 starter/relay，明确休息的带伤选手不在恢复范围内。
 
 ### CR-2026-09-04-026：孵化新崽已保存但蛋消耗未采集
 
@@ -2790,11 +2859,16 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 
 ### CR-2026-09-04-034：出击餐登记失败 return 仍触发官方扣量
 
-**严重级**：P2；**兼容分类**：`COMPAT`；**状态**：Fixed（实机复测待完成）；**来源**：官方使用完成链静态确认。
+**严重级**：P2；**兼容分类**：`COMPAT`；**状态**：Reopened（故障路径仍可绕过补偿）；**来源**：官方使用完成链静态确认。
 
 `Integration/BackMountain/RaidMealUsageBehavior.cs:63–68` 在 Save/Load 失败或读回不匹配时仅 return，官方 `CA_UseItem.OnFinish` 仍在 Use 后 StackCount--，餐品丢失且未登记。需登记成功才消耗的单一责任或可靠补偿。此为故障注入条件，不能推断为普通保存并发竞争或正常必现。需真实使用阶段注入失败验证，未实机复现。
 
 **修复**：登记失败预补数量抵消官方随后扣量，满堆不钳制；写/回读失败恢复旧餐登记。 **验证**：见 FIX_TRACKER 同日深度复审修复条目；未进行游戏实机测试。
+
+**修复复审**：动作结束时官方会再次检查 `CanBeUsed`；若 SaveFile I/O 异常把 `IsSaving`
+留在 true，餐食行为的 `OnUse`/finally 均被跳过，官方完成动作仍扣数量。
+隔离对照已确认原栈 1→0，登记/补偿/提示均未执行；日志 `Build/review-29cb0c1/content/repro.log`，
+宿主依赖为 stub，未实机验证。
 
 ### CR-2026-09-04-035：血月收尾清表前未结清最后轮询窗口的击杀
 
@@ -2803,6 +2877,15 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 `RandomEvents/RandomEventCatalog.cs:573–580` 直接清 _tracked；收益只在每 2 秒 Tick 轮询结算。最后扫描之后、75 秒到期之前杀死带增益敌人，或杀敌后立即局末，1200 收益会漏发。需结束清理前 drain 已发生死亡，或活动期间先记录死亡事实再兑现。需最后 2 秒/立即局末测试且验证不重复，未实机复现。
 
 **修复**：具名幂等死亡订阅记录事实，Tick 与结束前结算共用去重计数，再退订清表。 **验证**：见 FIX_TRACKER 同日深度复审修复条目；未进行游戏实机测试。
+
+### CR-2026-09-04-036：孵化资产延期成功后不再补记孵化统计
+
+**严重级**：P2；**兼容分类**：`COMPAT`；**状态**：Open；**来源**：修复差异、完整调用链与隔离故障注入。
+
+`PetNest/PetNestHatchService.cs:138` 在新崽已接管、蛋已销毁后，资产采集或写盘失败会直接返回，
+跳过 140 行唯一 `RecordHatch`。协调器后续只重试候选与资产落盘，不会重放统计；因此崽最终存在，
+但孵化数、异色数与首次血脉解锁永久漏记。隔离用例以首次资产序列化失败、下一 Tick 成功复现。
+应把统计纳入可重放候选，或让 durable 完成回调按 pet ID 幂等补记。未实机故障注入。
 
 ## UNVERIFIED / Seeded Leads
 
