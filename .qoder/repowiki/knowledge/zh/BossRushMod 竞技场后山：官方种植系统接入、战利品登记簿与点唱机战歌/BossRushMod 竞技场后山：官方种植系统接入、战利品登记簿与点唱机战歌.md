@@ -223,3 +223,18 @@ source_files:
 种子和出击餐配置首先清除克隆来源的 UsageUtilities、旧行为和使用事件；种子解绑使用入口，餐食只挂 RaidMealUsageBehavior。官方 CA_UseItem 在 Use 返回后无条件扣一份，登记失败时通过 Count KV 预补一份抵消扣减（包含满堆与最后一份）；登记写/读回异常尝试恢复上一餐登记，不把 UI 提示失败误判成登记失败。餐食仍只允许基地使用。
 
 章节来源：`Integration/BackMountain/ShowcaseService.cs`、`Integration/BackMountain/RaidMealUsageBehavior.cs`、`Integration/BackMountain/RaidMealService.cs`、`Integration/BackMountain/BackMountainItems.cs`。
+
+
+## 2026-09-05 出击餐完成阶段补偿
+
+`COMPAT`。官方 `UsageUtilities.Use` 在使用完成时会再次调用 `CanBeUsed`，而 `CA_UseItem.OnFinish` 随后无条件扣一份。`CanBeUsed` 保留基地、内容启用与餐食身份门禁，但不能用瞬态 `SavesSystem.IsSaving` 拦掉 `OnUse`：使用开始后若变成存档忙，仍要进入登记层拒绝分支，由 `finally` 预补 Count KV 抵消官方扣量。登记成功仍只消费一份，种子与陌生物品仍不可食用。
+
+`tests/fixtures/ContentTransactions/run.py` 保留上述官方二次检查调用顺序，覆盖最后一份、满堆、登记拒绝/异常及重试成功；实际场景切换中断和 Unity 使用动画仍需实机 smoke。
+
+## 2026-09-05 展示柜满血采样顺序（COMPAT）
+
+`ReapplyBonuses` 必须在摘除旧 modifier 之前读取当前生命与旧最大生命，再按收藏重新挂加成；只有原本满血且新上限更高时才补满。例如原上限 102、当前 101 是受伤，新增收藏后上限 102.5，当前生命仍为 101。不能先摘成基础上限 100 再把 101 误判为满血。首次入场原本 100/100 时仍补到新上限，保留开局加成的完整收益。
+
+玩家缺失、设施锁定或收藏为空仍摘旧加成；读取生命失败时只禁用补血，不影响加成刷新。重复刷新不叠加、不重复补血。收藏存档和数值保持不变。
+
+章节来源：`Integration/BackMountain/ShowcaseService.cs`。验证：`tests/ShowcaseHealthSnapshotGuard.py`、`tests/fixtures/ContentSecondReview/` 的四种生命状态与清理/失败分支；真实角色 stat 事件和血条更新仍需游戏内 smoke。

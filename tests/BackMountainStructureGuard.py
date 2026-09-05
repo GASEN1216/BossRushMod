@@ -183,8 +183,12 @@ def main():
         return fail("展示柜登记必须回读核对，写失败时撤销刚加入的 TypeID")
     if "ResolveEquippedTrophy" not in showcase_ui or "ResolveHeldItem" not in showcase_ui:
         return fail("展示柜必须同时支持手持与穿戴战利品登记")
-    if "SavesSystem.IsSaving" not in raid_use or "def.IsSeed" not in raid_use:
-        return fail("出击餐 CanBeUsed 必须在存档忙/陌生物品/种子时拒绝消耗")
+    if "def == null || def.IsSeed" not in raid_use:
+        return fail("出击餐 CanBeUsed 必须拒绝陌生物品和种子")
+    if "SavesSystem.IsSaving" in raid_use:
+        return fail("出击餐不得在官方二次 CanBeUsed 门禁因存档忙而跳过 OnUse 补偿")
+    if "SavesSystem.IsSaving" not in raid_meal or 'item.SetInt("Count", item.StackCount + 1, true)' not in raid_use:
+        return fail("出击餐登记层必须拒绝存档忙，OnUse 失败补偿官方无条件扣量")
     if "SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey)" not in raid_meal:
         return fail("出击餐登记与消费必须回读核对，避免同一份餐跨局重复生效")
 

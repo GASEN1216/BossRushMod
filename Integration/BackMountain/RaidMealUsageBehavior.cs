@@ -13,7 +13,6 @@
 
 using System;
 using ItemStatsSystem;
-using Saves;
 
 namespace BossRush
 {
@@ -42,7 +41,9 @@ namespace BossRush
                 ModBehaviour owner = ModBehaviour.Instance;
                 if (owner == null || !owner.IsBackMountainConfiguredEnabled()) return false;
                 BackMountainItems.Definition def = BackMountainItems.GetDefinition(item.TypeID);
-                if (def == null || def.IsSeed || SavesSystem.IsSaving) return false;
+                // 官方在 OnFinish 再查一次此门禁，随后无条件扣量。
+                // 存档忙只能由 OnUse/RegisterMeal 拒绝，才能执行下面的扣量补偿。
+                if (def == null || def.IsSeed) return false;
                 return LevelManager.Instance != null && LevelManager.Instance.IsBaseLevel;
             }
             catch (Exception)

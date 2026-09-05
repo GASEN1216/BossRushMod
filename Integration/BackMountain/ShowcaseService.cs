@@ -215,24 +215,17 @@ namespace BossRush
         {
             try
             {
-                RuntimeStatModifierTracker.RemoveAll(_records, "Showcase");
-
-                if (!BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase)) return;
-
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null) return;
 
-                float total = CalculateBonus();
-                if (total <= 0f) return;
-
-                // 抬上限之前先记住玩家是不是满血：官方进局治疗发生在本方法之前，
+                // 摘旧加成之前先记住玩家是不是满血，不能用降低后的上限判断。
+                // 官方进局治疗发生在本方法之前，
                 // 治的是**加成前**的上限。不补这一下，玩家每次进局都差着展示柜那一截血，
                 // 加成在开局等于零。只在原本满血时补，避免收藏一变动就免费回血。
                 bool wasFull = false;
                 float beforeMax = 0f;
                 try
                 {
-                    if (main.Health != null)
+                    if (main != null && main.Health != null)
                     {
                         beforeMax = main.Health.MaxHealth;
                         wasFull = main.Health.CurrentHealth >= beforeMax - 0.01f;
@@ -242,6 +235,14 @@ namespace BossRush
                 {
                     wasFull = false;
                 }
+
+                RuntimeStatModifierTracker.RemoveAll(_records, "Showcase");
+
+                if (!BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase)) return;
+                if (main == null) return;
+
+                float total = CalculateBonus();
+                if (total <= 0f) return;
 
                 RuntimeStatModifierTracker.TryAdd(
                     main, ZombieModeStatNames.MaxHealth, total, _modifierSource, _records, "Showcase");
