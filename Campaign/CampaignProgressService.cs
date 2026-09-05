@@ -332,6 +332,7 @@ namespace BossRush
                     _cashPaidPendingChapterId, chapterId, StringComparison.Ordinal);
                 if (def.RewardCash > 0 && !cashAlreadyPaid)
                 {
+                    if (!CampaignSaveCoordinator.TryPrepareCashReward()) return false;
                     bool paid = false;
                     try
                     {

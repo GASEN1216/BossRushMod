@@ -235,3 +235,12 @@ stinger 在终章受抑制，确保最终文案、`RunVictory` 与 stinger 各�
 SavesSystem 内存里从不落盘。现新增独立的 `_saveFilePending`（欠一次 SaveFile），
 早返同时看它，只有 SaveFile 真正成功才清除。`Integration/Codex/CodexSaveCoordinator.cs`
 是同一形态，已同批修复。
+
+
+## 2026-09-05 余额与完成标记同批保存
+
+`COMPAT`。官方 `EconomyManager.Add` 不采集存档，`SaveFile(false)` 不调用 `OnCollectSaveData`。现金发放前通过 `CampaignSaveCoordinator.TryPrepareCashReward` 确认当前槽、经济实例与存档就绪，并登记余额采集义务。协调器和官方采集回调都先通过 `GenerateSaveData` 保存官方 `EconomyData`，再刷新战役完成标记。
+
+余额采集义务与 typed pending、物理写欠账分开保存；任何采集失败、物理失败、基地门禁或同帧节流都不会清除该义务。后续重试重新采集实时余额，避免复用奖励发放时的旧快照覆盖之后的收入/支出。物理 SaveFile 成功后才清除，切槽与卸载清空旧槽会话义务。原有存档键、schema、金额、状态机和退款策略保持兼容。
+
+回归：`tests/ContentCashSnapshotGuard.py`、`tests/fixtures/ContentTransactions/run.py`。夹具直接编译完整战役进度和持久化源码，模拟缓存与物理文件边界、采集失败、物理失败、节流、官方采集和切槽；Unity/ES3 与公告板 UI 仍需实机验证。

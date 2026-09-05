@@ -471,6 +471,7 @@ namespace BossRush
                 }
 
                 string reason;
+                if (!DailyReportSaveCoordinator.TryPrepareCashReward()) return;
                 if (DailyReportRewards.TryGrantBountyCash(settled.CashReward, out reason))
                 {
                     DailyReportData candidate = data.Clone();

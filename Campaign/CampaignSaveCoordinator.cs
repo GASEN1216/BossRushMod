@@ -14,6 +14,7 @@
 
 using System;
 using Saves;
+using Duckov.Economy;
 
 namespace BossRush
 {
@@ -34,6 +35,8 @@ namespace BossRush
         /// 「还欠一次 SaveFile」误判成「无事可做」，重试链就此断掉。
         /// </summary>
         private static bool _saveFilePending;
+        // 奖金与 Completed 必须同批采集；物理写失败或节流后仍保留采集义务。
+        private static bool _cashSnapshotRequired;
         private static string _lastError;
 
         /// <summary>deferred 重试上限；超预算保留 pending 并报告失败，不静默丢弃。</summary>
@@ -46,6 +49,36 @@ namespace BossRush
         #endregion
 
         #region 对外入口
+
+        internal static bool TryPrepareCashReward()
+        {
+            try
+            {
+                if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0 || EconomyManager.Instance == null)
+                    return false;
+                _cashSnapshotRequired = true;
+                return true;
+            }
+            catch (Exception) { return false; }
+        }
+
+        internal static bool CollectPendingCash()
+        {
+            if (!_cashSnapshotRequired) return true;
+            try
+            {
+                if (EconomyManager.Instance == null || SavesSystem.CurrentSlot < 0 || SavesSystem.IsSaving)
+                    return false;
+                SavesSystem.Save<EconomyManager.SaveData>("EconomyData",
+                    (EconomyManager.SaveData)EconomyManager.Instance.GenerateSaveData());
+                return true;
+            }
+            catch (Exception e)
+            {
+                _lastError = "cash_snapshot_failed:" + e.GetType().Name;
+                return false;
+            }
+        }
 
         internal static void EnsureSubscribed()
         {
@@ -75,6 +108,7 @@ namespace BossRush
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
                 _saveFilePending = false;
+                _cashSnapshotRequired = false;
                 _lastError = null;
             }
         }
@@ -138,7 +172,7 @@ namespace BossRush
                 // 「没有 pending」**不等于**「无事可做」：FlushPending 成功后 pending 即被消费，
                 // 若随后的 SaveFile 失败，这里只看 HasPendingWrite 会直接早返 true，
                 // 把重试与宿主销毁兜底一起吃掉——数据停在 SavesSystem 内存里永不落盘。
-                if (!CampaignPersistence.HasPendingWrite && !saveFileOwed)
+                if (!CampaignPersistence.HasPendingWrite && !saveFileOwed && !_cashSnapshotRequired)
                 {
                     lock (_lock)
                     {
@@ -156,6 +190,13 @@ namespace BossRush
                         _deferredFlushPending = true;
                         _lastError = error;
                     }
+                    return false;
+                }
+
+                if (!CollectPendingCash())
+                {
+                    error = _lastError ?? "cash_snapshot_unavailable";
+                    lock (_lock) { _deferredFlushPending = true; }
                     return false;
                 }
 
@@ -222,6 +263,7 @@ namespace BossRush
                     _deferredFlushPending = false;
                     _deferredRetryCount = 0;
                     _saveFilePending = false;
+                    _cashSnapshotRequired = false;
                     _lastError = null;
                 }
                 return true;
@@ -262,6 +304,7 @@ namespace BossRush
                 _deferredFlushPending = false;
                 _deferredRetryCount = 0;
                 _saveFilePending = false;
+                _cashSnapshotRequired = false;
                 _lastError = null;
             }
         }

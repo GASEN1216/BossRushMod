@@ -196,3 +196,12 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 `COMPAT`。日报跨日结算先检测上一笔已完成但未付款的悬赏；存在欠款时保留 BountyDayIndex、种类、目标、进度与领取状态这一整组债务事实，不查询或替换为今日悬赏。补发仍按债务发生日和既有 seed 决定原金额，成功后才清偿。
 
 章节来源：`Integration/DailyReport/DailyReportService.cs` 的 StageBountySettlement、TryRedeliverPendingBountyReward。
+
+
+## 2026-09-05 现金领取与余额同批保存
+
+`COMPAT`。官方 `EconomyManager.Add` 只改变实时余额；`SaveFile(false)` 只把已采集键写盘。因此补发前先由 `DailyReportSaveCoordinator.TryPrepareCashReward` 确认当前槽、经济管理器和存档就绪，并登记余额采集义务。协调器与官方 `OnCollectSaveData` 回调均先生成并保存官方 `EconomyData`，再刷新领取标记。
+
+余额采集义务独立于 typed pending；采集失败、物理写失败或同帧节流都保留它，重试重新采集当时余额，不重发已接受候选的奖金。仅成功写盘或切槽/卸载后清除。沿用原保存键、字段、金额和 Store 拒绝后的至少一次补偿策略。
+
+回归：`tests/ContentCashSnapshotGuard.py`、`tests/fixtures/ContentTransactions/run.py`。夹具覆盖正常一次领取、缺经济实例、余额采集失败、typed pending 清空后的物理失败、节流、官方采集与切槽复位；不替代 Unity/ES3 实机验证。

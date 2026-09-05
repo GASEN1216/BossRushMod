@@ -136,6 +136,7 @@ namespace BossRush
         {
             try
             {
+                if (!CampaignSaveCoordinator.CollectPendingCash()) return;
                 FlushPending();
             }
             catch (Exception e)

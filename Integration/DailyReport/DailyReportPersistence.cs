@@ -158,6 +158,7 @@ namespace BossRush
             try
             {
                 DailyReportService.SyncCarrySecondsToPersistence();
+                if (!DailyReportSaveCoordinator.CollectPendingCash()) return;
                 FlushPending();
             }
             catch (Exception)
