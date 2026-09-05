@@ -141,6 +141,7 @@ echo(Common\Infrastructure\IHarmonyPatchGroup.cs
 echo(Common\Infrastructure\HarmonyPatchGroupRegistrar.cs
 echo(Common\Infrastructure\HarmonyBindingSelfCheck.cs
 echo(Common\Data\JsonDataRegistry.cs
+echo(Common\Data\BossRushJsonValue.cs
 echo(Common\MapConfig\BossRushMapConfig.cs
 echo(Common\MapConfig\MapSpawnPointRegistry.cs
 echo(Common\Utils\ReflectionCache.cs
@@ -381,7 +382,6 @@ echo(ModeH\ModeHInventoryPersistenceBridge.cs
 echo(ModeH\ModeHItemTreeNormalizer.cs
 echo(ModeH\ModeHItemTreeRestoration.cs
 echo(ModeH\ModeHRuntimeModule_LoadoutEditing.cs
-echo(ModeH\ModeHJsonValue.cs
 echo(ModeH\ModeHLoadoutKitApplicator.cs
 echo(ModeH\ModeHLoadoutKitRegistry.cs
 echo(ModeH\ModeHMapSupportRegistry.cs
@@ -769,7 +769,6 @@ echo(PetNest\PetNestModels.cs
 echo(PetNest\PetNestTuning.cs
 echo(PetNest\PetNestLineageCatalog.cs
 echo(Config\ConfigPetNest.cs
-echo(PetNest\PetNestJson.cs
 echo(PetNest\PetNestPersistenceCodec.cs
 echo(PetNest\PetNestPersistence.cs
 echo(PetNest\PetNestSaveCoordinator.cs

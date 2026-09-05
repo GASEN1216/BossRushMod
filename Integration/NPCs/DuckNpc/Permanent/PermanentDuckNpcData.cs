@@ -19,7 +19,7 @@
 //     ]
 //   取 minLevel 不超过当前等级的最高一档。
 //
-//   解析同样走 ModeHJsonParser，不用 Unity JsonUtility —— 理由见 DuckNpcBlueprint 文件头。
+//   解析同样走 BossRushJsonParser，不用 Unity JsonUtility —— 理由见 DuckNpcBlueprint 文件头。
 // ============================================================================
 
 using System;
@@ -134,9 +134,9 @@ namespace BossRush
         /// <summary>
         /// 从蓝图行里的 `permanent` 子对象解析。缺该子对象返回 null。
         /// </summary>
-        internal static PermanentDuckNpcData Parse(ModeHJsonValue row, string blueprintId)
+        internal static PermanentDuckNpcData Parse(BossRushJsonValue row, string blueprintId)
         {
-            ModeHJsonValue node;
+            BossRushJsonValue node;
             if (row == null || !row.TryGetObject("permanent", out node))
             {
                 return null;
@@ -185,9 +185,9 @@ namespace BossRush
         }
 
         private static Dictionary<string, List<PermanentDuckNpcDialogueTier>> ParseDialogues(
-            ModeHJsonValue node, string blueprintId)
+            BossRushJsonValue node, string blueprintId)
         {
-            ModeHJsonValue dialogues;
+            BossRushJsonValue dialogues;
             if (!node.TryGetObject("dialogues", out dialogues) || dialogues.Properties == null)
             {
                 return null;
@@ -198,7 +198,7 @@ namespace BossRush
 
             for (int i = 0; i < dialogues.Properties.Count; i++)
             {
-                ModeHJsonProperty prop = dialogues.Properties[i];
+                BossRushJsonProperty prop = dialogues.Properties[i];
                 if (prop == null || string.IsNullOrEmpty(prop.Name) || prop.Value == null)
                 {
                     continue;
@@ -221,9 +221,9 @@ namespace BossRush
         /// 两种都支持，简单 NPC 不必写档位包装。
         /// </summary>
         private static List<PermanentDuckNpcDialogueTier> ParseTiers(
-            ModeHJsonValue value, string blueprintId, string category)
+            BossRushJsonValue value, string blueprintId, string category)
         {
-            if (value.Kind != ModeHJsonKind.Array || value.Items == null || value.Items.Count == 0)
+            if (value.Kind != BossRushJsonKind.Array || value.Items == null || value.Items.Count == 0)
             {
                 return null;
             }
@@ -231,13 +231,13 @@ namespace BossRush
             List<PermanentDuckNpcDialogueTier> tiers = new List<PermanentDuckNpcDialogueTier>();
 
             // 形态 1：整个数组都是字符串
-            if (value.Items[0] != null && value.Items[0].Kind == ModeHJsonKind.String)
+            if (value.Items[0] != null && value.Items[0].Kind == BossRushJsonKind.String)
             {
                 List<string> lines = new List<string>(value.Items.Count);
                 for (int i = 0; i < value.Items.Count; i++)
                 {
-                    ModeHJsonValue item = value.Items[i];
-                    if (item != null && item.Kind == ModeHJsonKind.String)
+                    BossRushJsonValue item = value.Items[i];
+                    if (item != null && item.Kind == BossRushJsonKind.String)
                     {
                         lines.Add(item.StringValue);
                     }
@@ -257,8 +257,8 @@ namespace BossRush
             // 形态 2：{minLevel, lines} 对象数组
             for (int i = 0; i < value.Items.Count; i++)
             {
-                ModeHJsonValue item = value.Items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue item = value.Items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Object)
                 {
                     continue;
                 }
@@ -297,9 +297,9 @@ namespace BossRush
         }
 
         private static Dictionary<string, string[]> ParseMarriedDialogues(
-            ModeHJsonValue node, string blueprintId)
+            BossRushJsonValue node, string blueprintId)
         {
-            ModeHJsonValue married;
+            BossRushJsonValue married;
             if (!node.TryGetObject("marriedDialogues", out married) || married.Properties == null)
             {
                 return null;
@@ -310,7 +310,7 @@ namespace BossRush
 
             for (int i = 0; i < married.Properties.Count; i++)
             {
-                ModeHJsonProperty prop = married.Properties[i];
+                BossRushJsonProperty prop = married.Properties[i];
                 if (prop == null || string.IsNullOrEmpty(prop.Name))
                 {
                     continue;
@@ -329,14 +329,14 @@ namespace BossRush
             return result.Count > 0 ? result : null;
         }
 
-        private static int[] ReadIntArray(ModeHJsonValue node, string key, string blueprintId)
+        private static int[] ReadIntArray(BossRushJsonValue node, string key, string blueprintId)
         {
             if (node.GetProperty(key) == null)
             {
                 return null;
             }
 
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!node.TryGetArray(key, out items))
             {
                 ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId + " 的 " + key + " 不是数组，已忽略");
@@ -346,8 +346,8 @@ namespace BossRush
             List<int> result = new List<int>(items.Count);
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Integer)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Integer)
                 {
                     ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId
                         + " 的 " + key + " 含非整数项，已忽略整个数组");
@@ -358,7 +358,7 @@ namespace BossRush
             return result.ToArray();
         }
 
-        private static string[] ReadStringArray(ModeHJsonValue node, string key, string blueprintId)
+        private static string[] ReadStringArray(BossRushJsonValue node, string key, string blueprintId)
         {
             if (node.GetProperty(key) == null)
             {

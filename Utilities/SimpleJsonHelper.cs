@@ -70,7 +70,13 @@ namespace BossRush
         /// </summary>
         public static void AppendFloat(StringBuilder sb, string key, float value, bool addComma = true)
         {
-            sb.Append('"').Append(key).Append("\":").Append(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            // NaN / ±Infinity 的 ToString 是 "NaN" / "Infinity"，不是合法 JSON：读侧的节点解析器
+            // （BossRushJsonValue）会整篇拒收，该 key 从此进写屏障。非有限值一律写 0，
+            // 宁可丢一个数值也不能毁掉整份存档（与 BossRushJsonWriter.Num 同口径）。
+            string text = float.IsNaN(value) || float.IsInfinity(value)
+                ? "0"
+                : value.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            sb.Append('"').Append(key).Append("\":").Append(text);
             if (addComma) sb.Append(',');
         }
         

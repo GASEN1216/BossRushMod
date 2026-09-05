@@ -319,7 +319,7 @@ PWB --> Bus
 
 ## 2026-08-31 Boss BGM owner 租约与终章死亡表现
 
-2026-09-02 曲目读取补充：`Audio/BossBgmTrackTable.cs` 复用现有 ModeHJsonParser，显式解析
+2026-09-02 曲目读取补充：`Audio/BossBgmTrackTable.cs` 复用现有 BossRushJsonParser，显式解析
 bossTracks/stingers/jukebox 三组数组，修复 JsonUtility 从非空部署文件读出空数组的问题。
 缺省数组仍是零曲目、loop 默认 true，phase 与素材存在性仍由协调器过滤；龙王旧 mp3 路径保留。
 实际部署表的独立解析探针已通过，播放与租约仍需新 DLL 的 F3 实机确认。

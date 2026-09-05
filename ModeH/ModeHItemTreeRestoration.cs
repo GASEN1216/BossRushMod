@@ -15,24 +15,24 @@ namespace BossRush
                 && snapshot.normalizedTreePayload.Contains("\"variableRecords\"");
         }
 
-        private static void WriteRestoreData(ModeHJsonValue node, ItemTreeData.DataEntry entry)
+        private static void WriteRestoreData(BossRushJsonValue node, ItemTreeData.DataEntry entry)
         {
-            ModeHJsonValue records = ModeHJsonValue.NewArray();
+            BossRushJsonValue records = BossRushJsonValue.NewArray();
             List<CustomData> variables = new List<CustomData>(entry.variables);
             variables.Sort(delegate(CustomData a, CustomData b) { return string.CompareOrdinal(a.Key, b.Key); });
             foreach (CustomData data in variables)
             {
-                ModeHJsonValue record = ModeHJsonValue.NewObject();
-                record.AddProperty("key", ModeHJsonValue.NewString(data.Key));
-                record.AddProperty("type", ModeHJsonValue.NewInteger((int)data.DataType));
-                record.AddProperty("display", ModeHJsonValue.NewInteger(data.Display ? 1 : 0));
-                record.AddProperty("raw", ModeHJsonValue.NewString(ToHex(data.GetRawCopied())));
+                BossRushJsonValue record = BossRushJsonValue.NewObject();
+                record.AddProperty("key", BossRushJsonValue.NewString(data.Key));
+                record.AddProperty("type", BossRushJsonValue.NewInteger((int)data.DataType));
+                record.AddProperty("display", BossRushJsonValue.NewInteger(data.Display ? 1 : 0));
+                record.AddProperty("raw", BossRushJsonValue.NewString(ToHex(data.GetRawCopied())));
                 records.Items.Add(record);
             }
             node.AddProperty("variableRecords", records);
-            ModeHJsonValue locks = ModeHJsonValue.NewArray();
+            BossRushJsonValue locks = BossRushJsonValue.NewArray();
             if (entry.inventorySortLocks != null)
-                foreach (int index in entry.inventorySortLocks) locks.Items.Add(ModeHJsonValue.NewInteger(index));
+                foreach (int index in entry.inventorySortLocks) locks.Items.Add(BossRushJsonValue.NewInteger(index));
             node.AddProperty("sortLocks", locks);
         }
 
@@ -42,7 +42,7 @@ namespace BossRush
             error = null;
             try
             {
-                ModeHJsonValue root;
+                BossRushJsonValue root;
                 if (snapshot == null || !ModeHCanonicalDigest.TryParse(snapshot.normalizedTreePayload, out root, out error))
                     return null;
                 string digest;
@@ -50,7 +50,7 @@ namespace BossRush
                     || digest != snapshot.semanticTreeDigest) throw new InvalidOperationException("payload_digest");
                 ItemTreeData tree = new ItemTreeData();
                 tree.rootInstanceID = ReadInt(root, "rootLocalId");
-                foreach (ModeHJsonValue node in root.GetProperty("nodes").Items)
+                foreach (BossRushJsonValue node in root.GetProperty("nodes").Items)
                 {
                     ItemTreeData.DataEntry entry = new ItemTreeData.DataEntry();
                     entry.instanceID = ReadInt(node, "localId");
@@ -58,10 +58,10 @@ namespace BossRush
                     BossRushDynamicItemRegistry.EnsureRegistered(entry.typeID);
                     Item prefab = ItemAssetsCollection.GetPrefab(entry.typeID);
                     if (prefab == null) throw new InvalidOperationException("tree_prefab_missing:" + entry.typeID);
-                    ModeHJsonValue records = node.GetProperty("variableRecords");
+                    BossRushJsonValue records = node.GetProperty("variableRecords");
                     if (records != null)
                     {
-                        foreach (ModeHJsonValue record in records.Items)
+                        foreach (BossRushJsonValue record in records.Items)
                         {
                             int kind = ReadInt(record, "type");
                             if (!Enum.IsDefined(typeof(CustomDataType), kind)) throw new InvalidOperationException("variable_type");
@@ -74,7 +74,7 @@ namespace BossRush
                     else
                     {
                         // 旧载荷没保存动态变量类型，只有 prefab 中可证实的类型可恢复，绝不猜测。
-                        foreach (ModeHJsonValue value in node.GetProperty("variables").Items)
+                        foreach (BossRushJsonValue value in node.GetProperty("variables").Items)
                         {
                             string line = value.StringValue;
                             int split = line.LastIndexOf('=');
@@ -87,14 +87,14 @@ namespace BossRush
                             entry.variables.Add(data);
                         }
                     }
-                    foreach (ModeHJsonValue slot in node.GetProperty("slots").Items)
+                    foreach (BossRushJsonValue slot in node.GetProperty("slots").Items)
                         entry.slotContents.Add(new ItemTreeData.SlotInstanceIDPair(
                             slot.GetProperty("slot").StringValue, ReadInt(slot, "localId")));
-                    foreach (ModeHJsonValue item in node.GetProperty("inventory").Items)
+                    foreach (BossRushJsonValue item in node.GetProperty("inventory").Items)
                         entry.inventory.Add(new ItemTreeData.InventoryDataEntry(ReadInt(item, "position"), ReadInt(item, "localId")));
-                    ModeHJsonValue locks = node.GetProperty("sortLocks");
+                    BossRushJsonValue locks = node.GetProperty("sortLocks");
                     if (locks != null)
-                        foreach (ModeHJsonValue index in locks.Items) entry.inventorySortLocks.Add(checked((int)index.IntegerValue));
+                        foreach (BossRushJsonValue index in locks.Items) entry.inventorySortLocks.Add(checked((int)index.IntegerValue));
                     if (entry.StackCount != ReadInt(node, "stackCount")) throw new InvalidOperationException("stack_count");
                     tree.entries.Add(entry);
                 }
@@ -122,10 +122,10 @@ namespace BossRush
             catch (Exception e) { error = "escrow_restore_failed:" + e.Message; return null; }
         }
 
-        private static int ReadInt(ModeHJsonValue node, string key)
+        private static int ReadInt(BossRushJsonValue node, string key)
         {
-            ModeHJsonValue value = node.GetProperty(key);
-            if (value == null || value.Kind != ModeHJsonKind.Integer) throw new InvalidOperationException(key);
+            BossRushJsonValue value = node.GetProperty(key);
+            if (value == null || value.Kind != BossRushJsonKind.Integer) throw new InvalidOperationException(key);
             return checked((int)value.IntegerValue);
         }
 

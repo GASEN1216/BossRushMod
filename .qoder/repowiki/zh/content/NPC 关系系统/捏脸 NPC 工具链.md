@@ -211,7 +211,7 @@ Rigidbody（kinematic / detectCollisions）、根 `CapsuleCollider`（enabled、
 
 - **蓝图表不用 Unity `JsonUtility`**。实机 Unity 2022.3 在「int version + 对象数组」
   的 internal DTO 上会只填 version、静默把数组留成 null（Campaign 章节表实测，
-  `Campaign/CampaignContentCatalog.cs:136`），故复用 `ModeHJsonParser`；
+  `Campaign/CampaignContentCatalog.cs:136`），故复用 `BossRushJsonParser`；
   配套 DTO 禁字段初始化器，默认值只在 `ParseRow` 里给。
 - **移动只接 `AI_PathControl` + `Seeker`，不接 `AICharacterController`**。
   后者的 `pathControl` 与四棵行为树都是 private SerializeField（只能反射 preset 掏），

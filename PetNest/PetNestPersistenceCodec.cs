@@ -59,7 +59,7 @@ namespace BossRush
         {
             if (data == null) return null;
             data.Normalize();
-            PetNestJsonBuilder sb = new PetNestJsonBuilder();
+            BossRushJsonWriter sb = new BossRushJsonWriter();
             sb.BeginObject()
               .Int("schemaVersion", PetNestTuning.BundleSchemaVersion)
               .Int("generation", data.generation)
@@ -70,9 +70,9 @@ namespace BossRush
             return sb.ToString();
         }
 
-        internal static PetNestBundleData DecodeBundle(PetNestJsonNode root)
+        internal static PetNestBundleData DecodeBundle(BossRushJsonValue root)
         {
-            if (root == null || root.Kind != PetNestJsonKind.Object) return null;
+            if (root == null || root.Kind != BossRushJsonKind.Object) return null;
             if (root.GetInt("schemaVersion", -1) != PetNestTuning.BundleSchemaVersion) return null;
             PetNestBundleData data = new PetNestBundleData();
             data.generation = root.GetInt("generation", 0);
@@ -88,25 +88,25 @@ namespace BossRush
         {
             if (source == null) return CreateDefaultBundle();
             string json = EncodeBundle(source);
-            PetNestBundleData clone = DecodeBundle(PetNestJson.Parse(json));
+            PetNestBundleData clone = DecodeBundle(BossRushJsonParser.ParseOrNull(json));
             return clone ?? CreateDefaultBundle();
         }
 
         internal static PetNestNestData CloneNest(PetNestNestData source)
         {
-            PetNestNestData clone = DecodeNest(PetNestJson.Parse(EncodeNest(source)));
+            PetNestNestData clone = DecodeNest(BossRushJsonParser.ParseOrNull(EncodeNest(source)));
             return clone ?? CreateDefaultNest();
         }
 
         internal static PetNestExpeditionData CloneExpedition(PetNestExpeditionData source)
         {
-            PetNestExpeditionData clone = DecodeExpedition(PetNestJson.Parse(EncodeExpedition(source)));
+            PetNestExpeditionData clone = DecodeExpedition(BossRushJsonParser.ParseOrNull(EncodeExpedition(source)));
             return clone ?? CreateDefaultExpedition();
         }
 
         internal static PetNestMuseumData CloneMuseum(PetNestMuseumData source)
         {
-            PetNestMuseumData clone = DecodeMuseum(PetNestJson.Parse(EncodeMuseum(source)));
+            PetNestMuseumData clone = DecodeMuseum(BossRushJsonParser.ParseOrNull(EncodeMuseum(source)));
             return clone ?? CreateDefaultMuseum();
         }
 
@@ -116,7 +116,7 @@ namespace BossRush
 
         internal static string EncodeNest(PetNestNestData data)
         {
-            PetNestJsonBuilder sb = new PetNestJsonBuilder();
+            BossRushJsonWriter sb = new BossRushJsonWriter();
             sb.BeginObject()
               .Str("deployedPetId", data.deployedPetId)
               .Int("capacity", data.capacity)
@@ -153,7 +153,7 @@ namespace BossRush
             return sb.ToString();
         }
 
-        private static void EncodePet(PetNestJsonBuilder sb, PetNestPetRecord pet)
+        private static void EncodePet(BossRushJsonWriter sb, PetNestPetRecord pet)
         {
             if (pet == null) return;
             sb.BeginObject()
@@ -223,7 +223,7 @@ namespace BossRush
             sb.EndObject();
         }
 
-        internal static PetNestNestData DecodeNest(PetNestJsonNode payload)
+        internal static PetNestNestData DecodeNest(BossRushJsonValue payload)
         {
             if (payload == null) return null;
             PetNestNestData data = new PetNestNestData();
@@ -232,7 +232,7 @@ namespace BossRush
             data.nameSerial = payload.GetInt("nameSerial", 0);
 
             data.pets = new List<PetNestPetRecord>();
-            List<PetNestJsonNode> petNodes = payload.GetArray("pets");
+            List<BossRushJsonValue> petNodes = payload.GetArray("pets");
             for (int i = 0; i < petNodes.Count; i++)
             {
                 PetNestPetRecord pet = DecodePet(petNodes[i]);
@@ -240,11 +240,11 @@ namespace BossRush
             }
 
             data.soulLedger = new List<PetNestSoulLedgerEntry>();
-            List<PetNestJsonNode> ledgerNodes = payload.GetArray("soulLedger");
+            List<BossRushJsonValue> ledgerNodes = payload.GetArray("soulLedger");
             for (int i = 0; i < ledgerNodes.Count; i++)
             {
-                PetNestJsonNode n = ledgerNodes[i];
-                if (n == null || n.Kind != PetNestJsonKind.Object) continue;
+                BossRushJsonValue n = ledgerNodes[i];
+                if (n == null || n.Kind != BossRushJsonKind.Object) continue;
                 string lineageKey = n.GetString("lineageKey", null);
                 if (string.IsNullOrEmpty(lineageKey)) continue;
                 PetNestSoulLedgerEntry e = new PetNestSoulLedgerEntry();
@@ -257,9 +257,9 @@ namespace BossRush
             return data;
         }
 
-        private static PetNestPetRecord DecodePet(PetNestJsonNode node)
+        private static PetNestPetRecord DecodePet(BossRushJsonValue node)
         {
-            if (node == null || node.Kind != PetNestJsonKind.Object) return null;
+            if (node == null || node.Kind != BossRushJsonKind.Object) return null;
             string id = node.GetString("id", null);
             if (string.IsNullOrEmpty(id)) return null;
 
@@ -279,11 +279,11 @@ namespace BossRush
             pet.mergedOldScarCount = node.GetInt("mergedOldScarCount", 0);
 
             pet.talents = new List<PetNestTalentEntry>();
-            List<PetNestJsonNode> talentNodes = node.GetArray("talents");
+            List<BossRushJsonValue> talentNodes = node.GetArray("talents");
             for (int i = 0; i < talentNodes.Count; i++)
             {
-                PetNestJsonNode t = talentNodes[i];
-                if (t == null || t.Kind != PetNestJsonKind.Object) continue;
+                BossRushJsonValue t = talentNodes[i];
+                if (t == null || t.Kind != BossRushJsonKind.Object) continue;
                 PetNestTalentEntry entry = new PetNestTalentEntry();
                 entry.id = t.GetString("id", null);
                 entry.statKey = t.GetString("statKey", null);
@@ -293,11 +293,11 @@ namespace BossRush
             }
 
             pet.scars = new List<PetNestScarRecord>();
-            List<PetNestJsonNode> scarNodes = node.GetArray("scars");
+            List<BossRushJsonValue> scarNodes = node.GetArray("scars");
             for (int i = 0; i < scarNodes.Count; i++)
             {
-                PetNestJsonNode s = scarNodes[i];
-                if (s == null || s.Kind != PetNestJsonKind.Object) continue;
+                BossRushJsonValue s = scarNodes[i];
+                if (s == null || s.Kind != BossRushJsonKind.Object) continue;
                 PetNestScarRecord scar = new PetNestScarRecord();
                 scar.ticks = s.GetLong("ticks", 0L);
                 scar.place = s.GetString("place", null);
@@ -307,7 +307,7 @@ namespace BossRush
                 pet.scars.Add(scar);
             }
 
-            PetNestJsonNode adult = node.GetObject("adultSnapshot");
+            BossRushJsonValue adult = node.GetObject("adultSnapshot");
             if (adult != null)
             {
                 PetNestAdultSnapshot a = new PetNestAdultSnapshot();
@@ -331,7 +331,7 @@ namespace BossRush
 
         internal static string EncodeExpedition(PetNestExpeditionData data)
         {
-            PetNestJsonBuilder sb = new PetNestJsonBuilder();
+            BossRushJsonWriter sb = new BossRushJsonWriter();
             sb.BeginObject()
               .Int("idSerial", data.idSerial);
 
@@ -394,18 +394,18 @@ namespace BossRush
             return sb.ToString();
         }
 
-        internal static PetNestExpeditionData DecodeExpedition(PetNestJsonNode payload)
+        internal static PetNestExpeditionData DecodeExpedition(BossRushJsonValue payload)
         {
             if (payload == null) return null;
             PetNestExpeditionData data = new PetNestExpeditionData();
             data.idSerial = payload.GetInt("idSerial", 0);
             data.records = new List<PetNestExpeditionRecord>();
 
-            List<PetNestJsonNode> nodes = payload.GetArray("records");
+            List<BossRushJsonValue> nodes = payload.GetArray("records");
             for (int i = 0; i < nodes.Count; i++)
             {
-                PetNestJsonNode n = nodes[i];
-                if (n == null || n.Kind != PetNestJsonKind.Object) continue;
+                BossRushJsonValue n = nodes[i];
+                if (n == null || n.Kind != BossRushJsonKind.Object) continue;
                 string id = n.GetString("id", null);
                 if (string.IsNullOrEmpty(id)) continue;
 
@@ -432,14 +432,14 @@ namespace BossRush
                 r.outcomeCash = n.GetLong("outcomeCash", 0L);
 
                 r.outcomeLootTypeIds = new List<int>();
-                List<PetNestJsonNode> ids = n.GetArray("outcomeLootTypeIds");
+                List<BossRushJsonValue> ids = n.GetArray("outcomeLootTypeIds");
                 for (int k = 0; k < ids.Count; k++)
                 {
                     r.outcomeLootTypeIds.Add(ids[k].AsInt(0));
                 }
 
                 r.outcomeLootCounts = new List<int>();
-                List<PetNestJsonNode> counts = n.GetArray("outcomeLootCounts");
+                List<BossRushJsonValue> counts = n.GetArray("outcomeLootCounts");
                 for (int k = 0; k < counts.Count; k++)
                 {
                     r.outcomeLootCounts.Add(counts[k].AsInt(0));
@@ -459,7 +459,7 @@ namespace BossRush
 
         internal static string EncodeMuseum(PetNestMuseumData data)
         {
-            PetNestJsonBuilder sb = new PetNestJsonBuilder();
+            BossRushJsonWriter sb = new BossRushJsonWriter();
             sb.BeginObject()
               .Int("mergedMemorialCount", data.mergedMemorialCount);
 
@@ -510,18 +510,18 @@ namespace BossRush
             return sb.ToString();
         }
 
-        internal static PetNestMuseumData DecodeMuseum(PetNestJsonNode payload)
+        internal static PetNestMuseumData DecodeMuseum(BossRushJsonValue payload)
         {
             if (payload == null) return null;
             PetNestMuseumData data = new PetNestMuseumData();
             data.mergedMemorialCount = payload.GetInt("mergedMemorialCount", 0);
 
             data.lineages = new List<PetNestLineageStats>();
-            List<PetNestJsonNode> lineageNodes = payload.GetArray("lineages");
+            List<BossRushJsonValue> lineageNodes = payload.GetArray("lineages");
             for (int i = 0; i < lineageNodes.Count; i++)
             {
-                PetNestJsonNode n = lineageNodes[i];
-                if (n == null || n.Kind != PetNestJsonKind.Object) continue;
+                BossRushJsonValue n = lineageNodes[i];
+                if (n == null || n.Kind != BossRushJsonKind.Object) continue;
                 string key = n.GetString("lineageKey", null);
                 if (string.IsNullOrEmpty(key)) continue;
                 PetNestLineageStats s = new PetNestLineageStats();
@@ -536,11 +536,11 @@ namespace BossRush
             }
 
             data.memorials = new List<PetNestMemorialEntry>();
-            List<PetNestJsonNode> memorialNodes = payload.GetArray("memorials");
+            List<BossRushJsonValue> memorialNodes = payload.GetArray("memorials");
             for (int i = 0; i < memorialNodes.Count; i++)
             {
-                PetNestJsonNode n = memorialNodes[i];
-                if (n == null || n.Kind != PetNestJsonKind.Object) continue;
+                BossRushJsonValue n = memorialNodes[i];
+                if (n == null || n.Kind != BossRushJsonKind.Object) continue;
                 PetNestMemorialEntry m = new PetNestMemorialEntry();
                 m.displayName = n.GetString("displayName", null);
                 m.lineageKey = n.GetString("lineageKey", null);

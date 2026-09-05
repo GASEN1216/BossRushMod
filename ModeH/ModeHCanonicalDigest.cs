@@ -357,9 +357,9 @@ namespace BossRush
         public static bool TryComputeContentSignature(string rawJson, out string signature, out string error)
         {
             signature = null;
-            ModeHJsonValue root;
-            if (!ModeHJsonParser.TryParse(rawJson, out root, out error)) return false;
-            if (root == null || root.Kind != ModeHJsonKind.Object)
+            BossRushJsonValue root;
+            if (!BossRushJsonParser.TryParse(rawJson, out root, out error)) return false;
+            if (root == null || root.Kind != BossRushJsonKind.Object)
             {
                 error = "content_root_not_object";
                 return false;
@@ -373,15 +373,15 @@ namespace BossRush
         /// </summary>
         public static bool TryParseAndVerifyContent(
             string rawJson,
-            out ModeHJsonValue root,
+            out BossRushJsonValue root,
             out string declaredSignature,
             out string error)
         {
             root = null;
             declaredSignature = null;
-            ModeHJsonValue parsed;
-            if (!ModeHJsonParser.TryParse(rawJson, out parsed, out error)) return false;
-            if (parsed == null || parsed.Kind != ModeHJsonKind.Object)
+            BossRushJsonValue parsed;
+            if (!BossRushJsonParser.TryParse(rawJson, out parsed, out error)) return false;
+            if (parsed == null || parsed.Kind != BossRushJsonKind.Object)
             {
                 error = "content_root_not_object";
                 return false;
@@ -393,8 +393,8 @@ namespace BossRush
                 return false;
             }
 
-            ModeHJsonValue reparsed;
-            if (!ModeHJsonParser.TryParse(rawJson, out reparsed, out error)) return false;
+            BossRushJsonValue reparsed;
+            if (!BossRushJsonParser.TryParse(rawJson, out reparsed, out error)) return false;
             reparsed.RemoveProperty("contentSignature");
             string computed;
             if (!TryComputeValueDigest(reparsed, out computed, out error)) return false;
@@ -461,12 +461,12 @@ namespace BossRush
                 return string.CompareOrdinal(a.Key, b.Key);
             });
 
-            ModeHJsonValue array = ModeHJsonValue.NewArray();
+            BossRushJsonValue array = BossRushJsonValue.NewArray();
             for (int i = 0; i < entries.Count; i++)
             {
-                ModeHJsonValue item = ModeHJsonValue.NewObject();
-                item.AddProperty("contentSignature", ModeHJsonValue.NewString(entries[i].Value));
-                item.AddProperty("path", ModeHJsonValue.NewString(entries[i].Key));
+                BossRushJsonValue item = BossRushJsonValue.NewObject();
+                item.AddProperty("contentSignature", BossRushJsonValue.NewString(entries[i].Value));
+                item.AddProperty("path", BossRushJsonValue.NewString(entries[i].Key));
                 array.Items.Add(item);
             }
             return TryComputeValueDigest(array, out catalogSignature, out error);
@@ -506,9 +506,9 @@ namespace BossRush
                 error = "canonical_null_dto";
                 return false;
             }
-            ModeHJsonValue root;
+            BossRushJsonValue root;
             if (!TryConvertToJsonValue(dto, 0, out root, out error)) return false;
-            if (root == null || root.Kind != ModeHJsonKind.Object)
+            if (root == null || root.Kind != BossRushJsonKind.Object)
             {
                 error = "canonical_root_not_object";
                 return false;
@@ -521,7 +521,7 @@ namespace BossRush
         }
 
         /// <summary>计算已解析 token 的规范摘要。</summary>
-        public static bool TryComputeValueDigest(ModeHJsonValue value, out string digest, out string error)
+        public static bool TryComputeValueDigest(BossRushJsonValue value, out string digest, out string error)
         {
             digest = null;
             string canonical;
@@ -534,7 +534,7 @@ namespace BossRush
         #region 规范 JSON 写出
 
         /// <summary>按 §20.2 规则写出规范 JSON 文本。</summary>
-        public static bool TryWriteCanonical(ModeHJsonValue value, out string canonicalJson, out string error)
+        public static bool TryWriteCanonical(BossRushJsonValue value, out string canonicalJson, out string error)
         {
             canonicalJson = null;
             error = null;
@@ -550,7 +550,7 @@ namespace BossRush
         }
 
         private static bool WriteValue(
-            ModeHJsonValue value,
+            BossRushJsonValue value,
             string ownerFieldName,
             StringBuilder sb,
             int depth,
@@ -570,29 +570,29 @@ namespace BossRush
 
             switch (value.Kind)
             {
-                case ModeHJsonKind.Null:
+                case BossRushJsonKind.Null:
                     sb.Append("null");
                     return true;
 
-                case ModeHJsonKind.Bool:
+                case BossRushJsonKind.Bool:
                     sb.Append(value.BoolValue ? "true" : "false");
                     return true;
 
-                case ModeHJsonKind.Integer:
+                case BossRushJsonKind.Integer:
                     sb.Append(value.IntegerValue.ToString(CultureInfo.InvariantCulture));
                     return true;
 
-                case ModeHJsonKind.Float:
+                case BossRushJsonKind.Float:
                     return WriteFloat(value.FloatValue, sb, out error);
 
-                case ModeHJsonKind.String:
+                case BossRushJsonKind.String:
                     WriteString(value.StringValue, sb);
                     return true;
 
-                case ModeHJsonKind.Array:
+                case BossRushJsonKind.Array:
                     return WriteArray(value, ownerFieldName, sb, depth, out error);
 
-                case ModeHJsonKind.Object:
+                case BossRushJsonKind.Object:
                     return WriteObject(value, sb, depth, out error);
 
                 default:
@@ -651,22 +651,22 @@ namespace BossRush
         }
 
         private static bool WriteArray(
-            ModeHJsonValue value,
+            BossRushJsonValue value,
             string ownerFieldName,
             StringBuilder sb,
             int depth,
             out string error)
         {
             error = null;
-            List<ModeHJsonValue> items = value.Items != null ? value.Items : new List<ModeHJsonValue>();
+            List<BossRushJsonValue> items = value.Items != null ? value.Items : new List<BossRushJsonValue>();
 
             if (!string.IsNullOrEmpty(ownerFieldName) && SetSemanticFields.Contains(ownerFieldName))
             {
                 List<string> texts = new List<string>(items.Count);
                 for (int i = 0; i < items.Count; i++)
                 {
-                    ModeHJsonValue item = items[i];
-                    if (item == null || item.Kind != ModeHJsonKind.String)
+                    BossRushJsonValue item = items[i];
+                    if (item == null || item.Kind != BossRushJsonKind.String)
                     {
                         error = "canonical_set_field_not_string:" + ownerFieldName;
                         return false;
@@ -702,9 +702,9 @@ namespace BossRush
                     return false;
                 }
 
-                List<ModeHJsonValue> sorted = new List<ModeHJsonValue>(items);
+                List<BossRushJsonValue> sorted = new List<BossRushJsonValue>(items);
                 string sortError = null;
-                sorted.Sort(delegate (ModeHJsonValue a, ModeHJsonValue b)
+                sorted.Sort(delegate (BossRushJsonValue a, BossRushJsonValue b)
                 {
                     return CompareByKey(a, b, sortKey, ref sortError);
                 });
@@ -730,7 +730,7 @@ namespace BossRush
         /// 取第一个「所有元素都具备」的候选键；元素为空数组时取第一个候选（排序无实际作用）。
         /// 一个都不满足返回 null，由调用方 fail-closed。
         /// </summary>
-        private static string ResolveSortKey(List<ModeHJsonValue> items, string[] candidates)
+        private static string ResolveSortKey(List<BossRushJsonValue> items, string[] candidates)
         {
             if (candidates == null || candidates.Length == 0) return null;
             if (items == null || items.Count == 0) return candidates[0];
@@ -741,8 +741,8 @@ namespace BossRush
                 bool allHave = true;
                 for (int i = 0; i < items.Count; i++)
                 {
-                    ModeHJsonValue item = items[i];
-                    if (item == null || item.Kind != ModeHJsonKind.Object
+                    BossRushJsonValue item = items[i];
+                    if (item == null || item.Kind != BossRushJsonKind.Object
                         || item.GetProperty(candidate) == null)
                     {
                         allHave = false;
@@ -754,25 +754,25 @@ namespace BossRush
             return null;
         }
 
-        private static int CompareByKey(ModeHJsonValue a, ModeHJsonValue b, string sortKey, ref string error)
+        private static int CompareByKey(BossRushJsonValue a, BossRushJsonValue b, string sortKey, ref string error)
         {
-            if (a == null || b == null || a.Kind != ModeHJsonKind.Object || b.Kind != ModeHJsonKind.Object)
+            if (a == null || b == null || a.Kind != BossRushJsonKind.Object || b.Kind != BossRushJsonKind.Object)
             {
                 if (error == null) error = "canonical_sorted_array_not_object:" + sortKey;
                 return 0;
             }
-            ModeHJsonValue ka = a.GetProperty(sortKey);
-            ModeHJsonValue kb = b.GetProperty(sortKey);
+            BossRushJsonValue ka = a.GetProperty(sortKey);
+            BossRushJsonValue kb = b.GetProperty(sortKey);
             if (ka == null || kb == null)
             {
                 if (error == null) error = "canonical_sort_key_missing:" + sortKey;
                 return 0;
             }
-            if (ka.Kind == ModeHJsonKind.Integer && kb.Kind == ModeHJsonKind.Integer)
+            if (ka.Kind == BossRushJsonKind.Integer && kb.Kind == BossRushJsonKind.Integer)
             {
                 return ka.IntegerValue.CompareTo(kb.IntegerValue);
             }
-            if (ka.Kind == ModeHJsonKind.String && kb.Kind == ModeHJsonKind.String)
+            if (ka.Kind == BossRushJsonKind.String && kb.Kind == BossRushJsonKind.String)
             {
                 return string.CompareOrdinal(
                     ka.StringValue != null ? ka.StringValue : string.Empty,
@@ -782,14 +782,14 @@ namespace BossRush
             return 0;
         }
 
-        private static bool WriteObject(ModeHJsonValue value, StringBuilder sb, int depth, out string error)
+        private static bool WriteObject(BossRushJsonValue value, StringBuilder sb, int depth, out string error)
         {
             error = null;
-            List<ModeHJsonProperty> properties = value.Properties != null
-                ? new List<ModeHJsonProperty>(value.Properties)
-                : new List<ModeHJsonProperty>();
+            List<BossRushJsonProperty> properties = value.Properties != null
+                ? new List<BossRushJsonProperty>(value.Properties)
+                : new List<BossRushJsonProperty>();
 
-            properties.Sort(delegate (ModeHJsonProperty a, ModeHJsonProperty b)
+            properties.Sort(delegate (BossRushJsonProperty a, BossRushJsonProperty b)
             {
                 string na = a != null && a.Name != null ? a.Name : string.Empty;
                 string nb = b != null && b.Name != null ? b.Name : string.Empty;
@@ -799,7 +799,7 @@ namespace BossRush
             sb.Append('{');
             for (int i = 0; i < properties.Count; i++)
             {
-                ModeHJsonProperty p = properties[i];
+                BossRushJsonProperty p = properties[i];
                 if (p == null || string.IsNullOrEmpty(p.Name))
                 {
                     error = "canonical_property_name_empty";
@@ -824,15 +824,15 @@ namespace BossRush
 
         #endregion
 
-        /// <summary>解析 JSON 文本为 token 树（转发到 ModeHJsonParser，保持单一实现）。</summary>
-        public static bool TryParse(string json, out ModeHJsonValue root, out string error)
+        /// <summary>解析 JSON 文本为 token 树（转发到 BossRushJsonParser，保持单一实现）。</summary>
+        public static bool TryParse(string json, out BossRushJsonValue root, out string error)
         {
-            return ModeHJsonParser.TryParse(json, out root, out error);
+            return BossRushJsonParser.TryParse(json, out root, out error);
         }
 
         #region DTO -> token（反射，禁 Dictionary）
 
-        private static bool TryConvertToJsonValue(object o, int depth, out ModeHJsonValue value, out string error)
+        private static bool TryConvertToJsonValue(object o, int depth, out BossRushJsonValue value, out string error)
         {
             value = null;
             error = null;
@@ -843,7 +843,7 @@ namespace BossRush
             }
             if (o == null)
             {
-                value = ModeHJsonValue.NewNull();
+                value = BossRushJsonValue.NewNull();
                 return true;
             }
 
@@ -851,23 +851,23 @@ namespace BossRush
 
             if (type == typeof(string))
             {
-                value = ModeHJsonValue.NewString((string)o);
+                value = BossRushJsonValue.NewString((string)o);
                 return true;
             }
             if (type == typeof(bool))
             {
-                value = ModeHJsonValue.NewBool((bool)o);
+                value = BossRushJsonValue.NewBool((bool)o);
                 return true;
             }
             if (type.IsEnum)
             {
-                value = ModeHJsonValue.NewInteger(Convert.ToInt64(o, CultureInfo.InvariantCulture));
+                value = BossRushJsonValue.NewInteger(Convert.ToInt64(o, CultureInfo.InvariantCulture));
                 return true;
             }
             if (type == typeof(sbyte) || type == typeof(byte) || type == typeof(short) || type == typeof(ushort)
                 || type == typeof(int) || type == typeof(uint) || type == typeof(long))
             {
-                value = ModeHJsonValue.NewInteger(Convert.ToInt64(o, CultureInfo.InvariantCulture));
+                value = BossRushJsonValue.NewInteger(Convert.ToInt64(o, CultureInfo.InvariantCulture));
                 return true;
             }
             if (type == typeof(ulong))
@@ -878,7 +878,7 @@ namespace BossRush
                     error = "canonical_ulong_overflow";
                     return false;
                 }
-                value = ModeHJsonValue.NewInteger((long)raw);
+                value = BossRushJsonValue.NewInteger((long)raw);
                 return true;
             }
             if (type == typeof(float) || type == typeof(double))
@@ -889,7 +889,7 @@ namespace BossRush
                     error = "canonical_non_finite_number";
                     return false;
                 }
-                value = ModeHJsonValue.NewFloat(d);
+                value = BossRushJsonValue.NewFloat(d);
                 return true;
             }
             if (type == typeof(decimal))
@@ -904,11 +904,11 @@ namespace BossRush
             }
             if (o is IEnumerable)
             {
-                ModeHJsonValue array = ModeHJsonValue.NewArray();
+                BossRushJsonValue array = BossRushJsonValue.NewArray();
                 IEnumerator enumerator = ((IEnumerable)o).GetEnumerator();
                 while (enumerator.MoveNext())
                 {
-                    ModeHJsonValue item;
+                    BossRushJsonValue item;
                     if (!TryConvertToJsonValue(enumerator.Current, depth + 1, out item, out error)) return false;
                     array.Items.Add(item);
                 }
@@ -917,7 +917,7 @@ namespace BossRush
             }
             if (type.IsClass)
             {
-                ModeHJsonValue obj = ModeHJsonValue.NewObject();
+                BossRushJsonValue obj = BossRushJsonValue.NewObject();
                 FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
                 if (fields != null)
                 {
@@ -935,7 +935,7 @@ namespace BossRush
                             error = "canonical_field_read_exception:" + field.Name + ":" + e.GetType().Name;
                             return false;
                         }
-                        ModeHJsonValue converted;
+                        BossRushJsonValue converted;
                         if (!TryConvertToJsonValue(fieldValue, depth + 1, out converted, out error)) return false;
                         obj.AddProperty(field.Name, converted);
                     }

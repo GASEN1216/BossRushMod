@@ -62,10 +62,14 @@ def read(path, errors):
 
 def main():
     errors = []
-    digest = read_modeh_group("ModeHCanonicalDigest.cs", "ModeHJsonValue.cs")
+    # 规范写出在 ModeH/ModeHCanonicalDigest.cs；token 与解析器自 2026-09-06 起是全 Mod 共享的
+    # Common/Data/BossRushJsonValue.cs（原 ModeH/ModeHJsonValue.cs）。两者仍是同一个逻辑单元，
+    # 按契约合并断言：ParseBeforeHash / DepthGuard / NoThrowParse 三条落在解析器文件里。
+    digest = read_modeh_group("ModeHCanonicalDigest.cs")
     if digest is None:
         errors.append("[File] 缺少 ModeH 规范摘要文件组")
         digest = ""
+    digest = digest + "\n" + read(os.path.join(REPO_ROOT, "Common", "Data", "BossRushJsonValue.cs"), errors)
     config = read(CONFIG, errors)
 
     if digest:
@@ -131,7 +135,7 @@ def main():
              r'error = "canonical_dictionary_not_supported";',
              "禁止 Dictionary 默认输出参与摘要"),
             ("ParseBeforeHash",
-             r"public static bool TryParse\(string json, out ModeHJsonValue root, out string error\)",
+             r"public static bool TryParse\(string json, out BossRushJsonValue root, out string error\)",
              "先解析成结构化 token 再写出"),
             ("DepthGuard",
              r"private const int MaxDepth = 32;",

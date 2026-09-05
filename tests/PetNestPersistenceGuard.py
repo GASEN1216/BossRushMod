@@ -138,7 +138,7 @@ def check_codec(errors):
 
     # 解码后 Normalize
     for decoder in ["DecodeNest", "DecodeExpedition", "DecodeMuseum"]:
-        block = re.search(r"internal static \w+ " + decoder + r"\(PetNestJsonNode payload\)[\s\S]*?\n        \}", code)
+        block = re.search(r"internal static \w+ " + decoder + r"\(BossRushJsonValue payload\)[\s\S]*?\n        \}", code)
         if block and "data.Normalize();" not in block.group(0):
             errors.append("[兜底] " + decoder + " 解码后必须 Normalize()")
 
@@ -150,26 +150,38 @@ def check_codec(errors):
 
 
 def check_json(errors):
-    text = read_petnest("PetNestJson.cs")
+    # 2026-09-06（D-3）：遗种巢不再自带 PetNestJson，统一走全 Mod 共享的
+    # Common/Data/BossRushJsonValue.cs（原 ModeH/ModeHJsonValue.cs，并入了 PetNestJsonBuilder）。
+    # 这里守的是共享解析器对遗种巢存档路径的三条承诺：InvariantCulture、解析失败返回 null
+    # 供上层 fail-closed、递归深度上限；以及「不得复活第二套解析器」。
+    text = read_text(repo_path("Common", "Data", "BossRushJsonValue.cs"))
     if text is None:
-        errors.append("[File] 缺少 PetNest/PetNestJson.cs")
+        errors.append("[File] 缺少 Common/Data/BossRushJsonValue.cs（遗种巢的 JSON 解析器）")
         return
     code = strip_cs_comments(text)
 
-    # 不 import ModeH 的 JsonValue
-    if "ModeHJsonValue" in code:
-        errors.append("[解耦] 不得复用 ModeH 的 JsonValue（两套系统不互为升级阻塞项）")
     # 文化无关的数字读写
     if "CultureInfo.InvariantCulture" not in code:
         errors.append("[本地化] 数字读写必须用 InvariantCulture")
-    # 解析失败返回 null
-    if not re.search(r"internal static PetNestJsonNode Parse\(string text\)", code):
-        errors.append("[解析] 缺少 Parse(string) 入口")
-    if "return null;" not in code:
-        errors.append("[解析] 解析失败必须返回 null 供上层 fail-closed")
+    # 解析失败返回 null（存档 fail-closed 路径的入口）
+    if not re.search(r"public static BossRushJsonValue ParseOrNull\(string json\)", code):
+        errors.append("[解析] 缺少 ParseOrNull(string) 入口（解析失败返回 null 供上层 fail-closed）")
     # 深度上限，防恶意/损坏档爆栈
     if "MaxDepth" not in code:
         errors.append("[健壮性] 递归解析必须有深度上限")
+    # 写出器随解析器一起共享（envelope / payload 写出用），非有限浮点必须写 0
+    if "class BossRushJsonWriter" not in code:
+        errors.append("[写出] 共享解析器必须自带 BossRushJsonWriter")
+    if not re.search(r"float\.IsNaN\(value\) \|\| float\.IsInfinity\(value\)", code):
+        errors.append("[写出] Num() 必须把 NaN / Infinity 写成 0，否则整份存档会进写屏障")
+
+    # 不得复活第二套解析器
+    if read_petnest("PetNestJson.cs") is not None:
+        errors.append("[去重] PetNest/PetNestJson.cs 不得复活：JSON 解析统一走 Common/Data/BossRushJsonValue.cs")
+    for name in ("PetNestPersistence.cs", "PetNestPersistenceCodec.cs"):
+        other = read_petnest(name)
+        if other is not None and re.search(r"\bPetNestJson\w*\b", strip_cs_comments(other)):
+            errors.append("[去重] " + name + " 仍引用已删除的 PetNestJson*")
 
 
 def check_config(errors):

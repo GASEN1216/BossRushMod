@@ -136,10 +136,10 @@ namespace BossRush
                 // 不使用 Unity JsonUtility：实机 Unity 2022.3 会在这个包含二级对象数组的
                 // internal DTO 上只填 version、静默把 chapters 留成 null。Mode H 的 token
                 // parser 已经承担七张生产表并支持 BOM/严格类型，这里复用同一实现。
-                ModeHJsonValue root;
+                BossRushJsonValue root;
                 string parseError;
                 if (!ModeHCanonicalDigest.TryParse(json, out root, out parseError)
-                    || root == null || root.Kind != ModeHJsonKind.Object)
+                    || root == null || root.Kind != BossRushJsonKind.Object)
                 {
                     LogTableRejected("JSON 解析失败: " + (parseError ?? "root_not_object"));
                     return null;
@@ -152,7 +152,7 @@ namespace BossRush
                     return null;
                 }
 
-                List<ModeHJsonValue> chapterRows;
+                List<BossRushJsonValue> chapterRows;
                 if (!root.TryGetArray("chapters", out chapterRows)
                     || chapterRows == null || chapterRows.Count == 0)
                 {
@@ -165,9 +165,9 @@ namespace BossRush
 
                 for (int i = 0; i < chapterRows.Count; i++)
                 {
-                    ModeHJsonValue row = chapterRows[i];
+                    BossRushJsonValue row = chapterRows[i];
                     string chapterId;
-                    if (row == null || row.Kind != ModeHJsonKind.Object
+                    if (row == null || row.Kind != BossRushJsonKind.Object
                         || !row.TryGetString("chapterId", out chapterId)
                         || string.IsNullOrEmpty(chapterId))
                     {
@@ -206,13 +206,13 @@ namespace BossRush
                         return null;
                     }
 
-                    List<ModeHJsonValue> objectiveRows;
+                    List<BossRushJsonValue> objectiveRows;
                     if (row.TryGetArray("objectives", out objectiveRows) && objectiveRows != null)
                     {
                         for (int j = 0; j < objectiveRows.Count; j++)
                         {
-                            ModeHJsonValue objRow = objectiveRows[j];
-                            if (objRow == null || objRow.Kind != ModeHJsonKind.Object)
+                            BossRushJsonValue objRow = objectiveRows[j];
+                            if (objRow == null || objRow.Kind != BossRushJsonKind.Object)
                             {
                                 LogTableRejected("目标格式非法: " + def.ChapterId + "#" + j);
                                 return null;

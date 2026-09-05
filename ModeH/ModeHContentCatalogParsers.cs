@@ -10,9 +10,9 @@ namespace BossRush
     {
         #region 解析：BossProfiles
 
-        private static bool ParseBossProfiles(ModeHJsonValue root)
+        private static bool ParseBossProfiles(BossRushJsonValue root)
         {
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!root.TryGetArray("profileTemplates", out items) || items.Count == 0)
             {
                 _lastError = "boss_profiles_empty";
@@ -26,8 +26,8 @@ namespace BossRush
 
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Object)
                 {
                     _lastError = "boss_profile_not_object";
                     return false;
@@ -131,7 +131,7 @@ namespace BossRush
 
         #region 解析：Commands 与兼容矩阵
 
-        private static bool ParseCommands(ModeHJsonValue root)
+        private static bool ParseCommands(BossRushJsonValue root)
         {
             List<string> whitelist;
             if (!root.TryGetStringList("controlPointWhitelist", out whitelist) || whitelist.Count == 0)
@@ -160,9 +160,9 @@ namespace BossRush
         }
 
         private static bool ParseCommandArray(
-            ModeHJsonValue root, string field, bool isSignature, List<ModeHCommandSpec> output)
+            BossRushJsonValue root, string field, bool isSignature, List<ModeHCommandSpec> output)
         {
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!root.TryGetArray(field, out items) || items.Count == 0)
             {
                 _lastError = "commands_section_missing:" + field;
@@ -170,8 +170,8 @@ namespace BossRush
             }
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Object)
                 {
                     _lastError = "command_not_object:" + field;
                     return false;
@@ -214,10 +214,10 @@ namespace BossRush
         }
 
         private static bool ParseEffects(
-            ModeHJsonValue owner, string field, string ownerId, out List<ModeHEffectSpec> effects)
+            BossRushJsonValue owner, string field, string ownerId, out List<ModeHEffectSpec> effects)
         {
             effects = new List<ModeHEffectSpec>();
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!owner.TryGetArray(field, out items) || items.Count == 0)
             {
                 _lastError = "effects_missing:" + ownerId;
@@ -225,8 +225,8 @@ namespace BossRush
             }
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Object)
                 {
                     _lastError = "effect_not_object:" + ownerId;
                     return false;
@@ -280,13 +280,13 @@ namespace BossRush
             return true;
         }
 
-        private static bool ParseCommandCompatibility(ModeHJsonValue root)
+        private static bool ParseCommandCompatibility(BossRushJsonValue root)
         {
             List<string> selfSettled;
             root.TryGetStringList("selfSettledEffects", out selfSettled);
             _selfSettledEffectIds = selfSettled != null ? selfSettled : new List<string>();
 
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!root.TryGetArray("effectCatalog", out items) || items.Count == 0)
             {
                 _lastError = "effect_catalog_empty";
@@ -297,8 +297,8 @@ namespace BossRush
             HashSet<string> seen = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Object)
                 {
                     _lastError = "effect_catalog_not_object";
                     return false;
@@ -353,9 +353,9 @@ namespace BossRush
 
         #region 解析：LoadoutKits
 
-        private static bool ParseLoadoutKits(ModeHJsonValue root)
+        private static bool ParseLoadoutKits(BossRushJsonValue root)
         {
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!root.TryGetArray("kits", out items) || items.Count == 0)
             {
                 _lastError = "kits_empty";
@@ -367,8 +367,8 @@ namespace BossRush
 
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Object)
                 {
                     _lastError = "kit_not_object";
                     return false;
@@ -463,9 +463,9 @@ namespace BossRush
 
         #region 解析：Scars（伤病 + 战痕）
 
-        private static bool ParseScars(ModeHJsonValue root)
+        private static bool ParseScars(BossRushJsonValue root)
         {
-            List<ModeHJsonValue> injuryItems;
+            List<BossRushJsonValue> injuryItems;
             if (!root.TryGetArray("injuries", out injuryItems)
                 || injuryItems.Count != ModeHStableIds.AllInjuries.Length)
             {
@@ -475,7 +475,7 @@ namespace BossRush
             List<ModeHInjurySpec> injuries = new List<ModeHInjurySpec>(injuryItems.Count);
             for (int i = 0; i < injuryItems.Count; i++)
             {
-                ModeHJsonValue item = injuryItems[i];
+                BossRushJsonValue item = injuryItems[i];
                 ModeHInjurySpec spec = new ModeHInjurySpec();
                 if (item == null || !item.TryGetString("injuryId", out spec.InjuryId)
                     || !IsKnown(ModeHStableIds.AllInjuries, spec.InjuryId))
@@ -492,7 +492,7 @@ namespace BossRush
                 injuries.Add(spec);
             }
 
-            List<ModeHJsonValue> scarItems;
+            List<BossRushJsonValue> scarItems;
             if (!root.TryGetArray("scars", out scarItems) || scarItems.Count != ModeHStableIds.AllScars.Length)
             {
                 _lastError = "scars_count_mismatch";
@@ -501,7 +501,7 @@ namespace BossRush
             List<ModeHScarSpec> scars = new List<ModeHScarSpec>(scarItems.Count);
             for (int i = 0; i < scarItems.Count; i++)
             {
-                ModeHJsonValue item = scarItems[i];
+                BossRushJsonValue item = scarItems[i];
                 ModeHScarSpec spec = new ModeHScarSpec();
                 if (item == null || !item.TryGetString("scarId", out spec.ScarId)
                     || !IsKnown(ModeHStableIds.AllScars, spec.ScarId))
@@ -550,9 +550,9 @@ namespace BossRush
 
         #region 解析：ThreatPlans
 
-        private static bool ParseThreatPlans(ModeHJsonValue root)
+        private static bool ParseThreatPlans(BossRushJsonValue root)
         {
-            List<ModeHJsonValue> corridorItems;
+            List<BossRushJsonValue> corridorItems;
             if (!root.TryGetArray("matchCorridor", out corridorItems)
                 || corridorItems.Count != ModeHConfig.SeasonMatchCount)
             {
@@ -562,7 +562,7 @@ namespace BossRush
             List<ModeHMatchCorridor> corridors = new List<ModeHMatchCorridor>(corridorItems.Count);
             for (int i = 0; i < corridorItems.Count; i++)
             {
-                ModeHJsonValue item = corridorItems[i];
+                BossRushJsonValue item = corridorItems[i];
                 ModeHMatchCorridor c = new ModeHMatchCorridor();
                 if (item == null
                     || !item.TryGetInt("matchIndex", out c.MatchIndex)
@@ -588,7 +588,7 @@ namespace BossRush
                 corridors.Add(c);
             }
 
-            List<ModeHJsonValue> skeletonItems;
+            List<BossRushJsonValue> skeletonItems;
             if (!root.TryGetArray("skeletons", out skeletonItems) || skeletonItems.Count == 0)
             {
                 _lastError = "skeletons_empty";
@@ -598,7 +598,7 @@ namespace BossRush
             HashSet<string> skeletonIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < skeletonItems.Count; i++)
             {
-                ModeHJsonValue item = skeletonItems[i];
+                BossRushJsonValue item = skeletonItems[i];
                 ModeHSkeletonSpec s = new ModeHSkeletonSpec();
                 if (item == null || !item.TryGetString("skeletonId", out s.SkeletonId)
                     || !skeletonIds.Add(s.SkeletonId))
@@ -633,7 +633,7 @@ namespace BossRush
                 }
             }
 
-            List<ModeHJsonValue> entryItems;
+            List<BossRushJsonValue> entryItems;
             if (!root.TryGetArray("entryScripts", out entryItems) || entryItems.Count == 0)
             {
                 _lastError = "entry_scripts_empty";
@@ -642,7 +642,7 @@ namespace BossRush
             List<ModeHEntryScriptSpec> entryScripts = new List<ModeHEntryScriptSpec>(entryItems.Count);
             for (int i = 0; i < entryItems.Count; i++)
             {
-                ModeHJsonValue item = entryItems[i];
+                BossRushJsonValue item = entryItems[i];
                 ModeHEntryScriptSpec e = new ModeHEntryScriptSpec();
                 if (item == null || !item.TryGetString("entryScriptId", out e.EntryScriptId))
                 {
@@ -654,7 +654,7 @@ namespace BossRush
                 item.TryGetStringList("publicTags", out e.PublicTags);
                 item.TryGetBool("coreEntersLast", out e.CoreEntersLast);
                 item.TryGetBool("hiddenSeat", out e.HiddenSeat);
-                List<ModeHJsonValue> batch;
+                List<BossRushJsonValue> batch;
                 if (!item.TryGetArray("batchPattern", out batch) || batch.Count == 0)
                 {
                     _lastError = "entry_script_batch_missing:" + e.EntryScriptId;
@@ -663,7 +663,7 @@ namespace BossRush
                 e.BatchPattern = new List<int>(batch.Count);
                 for (int j = 0; j < batch.Count; j++)
                 {
-                    if (batch[j] == null || batch[j].Kind != ModeHJsonKind.Integer || batch[j].IntegerValue <= 0)
+                    if (batch[j] == null || batch[j].Kind != BossRushJsonKind.Integer || batch[j].IntegerValue <= 0)
                     {
                         _lastError = "entry_script_batch_invalid:" + e.EntryScriptId;
                         return false;
@@ -673,7 +673,7 @@ namespace BossRush
                 entryScripts.Add(e);
             }
 
-            List<ModeHJsonValue> conditionItems;
+            List<BossRushJsonValue> conditionItems;
             if (!root.TryGetArray("arenaConditions", out conditionItems) || conditionItems.Count == 0)
             {
                 _lastError = "arena_conditions_empty";
@@ -682,7 +682,7 @@ namespace BossRush
             List<ModeHArenaConditionSpec> conditions = new List<ModeHArenaConditionSpec>(conditionItems.Count);
             for (int i = 0; i < conditionItems.Count; i++)
             {
-                ModeHJsonValue item = conditionItems[i];
+                BossRushJsonValue item = conditionItems[i];
                 ModeHArenaConditionSpec c = new ModeHArenaConditionSpec();
                 if (item == null || !item.TryGetString("conditionId", out c.ConditionId))
                 {
@@ -696,7 +696,7 @@ namespace BossRush
                 conditions.Add(c);
             }
 
-            List<ModeHJsonValue> capabilityItems;
+            List<BossRushJsonValue> capabilityItems;
             if (!root.TryGetArray("archetypeCapabilityMatrix", out capabilityItems)
                 || capabilityItems.Count != ModeHStableIds.AllArchetypes.Length)
             {
@@ -707,7 +707,7 @@ namespace BossRush
                 new List<ModeHArchetypeCapability>(capabilityItems.Count);
             for (int i = 0; i < capabilityItems.Count; i++)
             {
-                ModeHJsonValue item = capabilityItems[i];
+                BossRushJsonValue item = capabilityItems[i];
                 ModeHArchetypeCapability c = new ModeHArchetypeCapability();
                 if (item == null || !item.TryGetString("archetypeId", out c.ArchetypeId)
                     || !IsKnown(ModeHStableIds.AllArchetypes, c.ArchetypeId))
@@ -720,7 +720,7 @@ namespace BossRush
                 capabilities.Add(c);
             }
 
-            List<ModeHJsonValue> synergyItems;
+            List<BossRushJsonValue> synergyItems;
             if (!root.TryGetArray("synergyCategories", out synergyItems) || synergyItems.Count == 0)
             {
                 _lastError = "synergy_categories_empty";
@@ -730,7 +730,7 @@ namespace BossRush
             HashSet<string> synergyIds = new HashSet<string>(StringComparer.Ordinal);
             for (int i = 0; i < synergyItems.Count; i++)
             {
-                ModeHJsonValue item = synergyItems[i];
+                BossRushJsonValue item = synergyItems[i];
                 ModeHSynergyCategory c = new ModeHSynergyCategory();
                 if (item == null || !item.TryGetString("categoryId", out c.CategoryId)
                     || !synergyIds.Add(c.CategoryId)
@@ -744,7 +744,7 @@ namespace BossRush
                 synergies.Add(c);
             }
 
-            List<ModeHJsonValue> reconItems;
+            List<BossRushJsonValue> reconItems;
             if (!root.TryGetArray("reconChoices", out reconItems)
                 || reconItems.Count != ModeHStableIds.AllReconChoices.Length)
             {
@@ -754,7 +754,7 @@ namespace BossRush
             List<ModeHReconChoiceSpec> recons = new List<ModeHReconChoiceSpec>(reconItems.Count);
             for (int i = 0; i < reconItems.Count; i++)
             {
-                ModeHJsonValue item = reconItems[i];
+                BossRushJsonValue item = reconItems[i];
                 ModeHReconChoiceSpec c = new ModeHReconChoiceSpec();
                 if (item == null || !item.TryGetString("reconChoiceId", out c.ReconChoiceId)
                     || !IsKnown(ModeHStableIds.AllReconChoices, c.ReconChoiceId)
@@ -781,7 +781,7 @@ namespace BossRush
 
         #region 解析：OddsWeights（唯一允许同版本内置 fallback 的纯数值表）
 
-        private static bool ParseOddsWeights(ModeHJsonValue root)
+        private static bool ParseOddsWeights(BossRushJsonValue root)
         {
             if (TryParseOddsWeightsCore(root))
             {
@@ -794,14 +794,14 @@ namespace BossRush
             return true;
         }
 
-        private static bool TryParseOddsWeightsCore(ModeHJsonValue root)
+        private static bool TryParseOddsWeightsCore(BossRushJsonValue root)
         {
-            List<ModeHJsonValue> tierItems;
+            List<BossRushJsonValue> tierItems;
             if (!root.TryGetArray("oddsTiers", out tierItems) || tierItems.Count != 5) return false;
             List<ModeHOddsTier> tiers = new List<ModeHOddsTier>(5);
             for (int i = 0; i < tierItems.Count; i++)
             {
-                ModeHJsonValue item = tierItems[i];
+                BossRushJsonValue item = tierItems[i];
                 ModeHOddsTier tier = new ModeHOddsTier();
                 if (item == null
                     || !item.TryGetInt("odds", out tier.Odds)
@@ -815,17 +815,17 @@ namespace BossRush
                 tiers.Add(tier);
             }
 
-            ModeHJsonValue player;
-            ModeHJsonValue enemy;
+            BossRushJsonValue player;
+            BossRushJsonValue enemy;
             if (!root.TryGetObject("playerWeights", out player)) return false;
             if (!root.TryGetObject("enemyWeights", out enemy)) return false;
 
-            List<ModeHJsonValue> matrixItems;
+            List<BossRushJsonValue> matrixItems;
             if (!root.TryGetArray("archetypeMatrix", out matrixItems) || matrixItems.Count == 0) return false;
             List<string> pairs = new List<string>(matrixItems.Count);
             for (int i = 0; i < matrixItems.Count; i++)
             {
-                ModeHJsonValue item = matrixItems[i];
+                BossRushJsonValue item = matrixItems[i];
                 string attacker;
                 string defender;
                 if (item == null || !item.TryGetString("attacker", out attacker)
@@ -841,7 +841,7 @@ namespace BossRush
                 pairs.Add(attacker + ">" + defender);
             }
 
-            List<ModeHJsonValue> mapItems;
+            List<BossRushJsonValue> mapItems;
             if (!root.TryGetArray("commandTagMap", out mapItems)
                 || mapItems.Count != ModeHStableIds.AllCommonCommands.Length)
             {
@@ -850,7 +850,7 @@ namespace BossRush
             List<ModeHCommandTagMapping> map = new List<ModeHCommandTagMapping>(mapItems.Count);
             for (int i = 0; i < mapItems.Count; i++)
             {
-                ModeHJsonValue item = mapItems[i];
+                BossRushJsonValue item = mapItems[i];
                 ModeHCommandTagMapping m = new ModeHCommandTagMapping();
                 if (item == null || !item.TryGetString("commandId", out m.CommandId)) return false;
                 if (!IsKnown(ModeHStableIds.AllCommonCommands, m.CommandId)) return false;
@@ -861,12 +861,12 @@ namespace BossRush
                 map.Add(m);
             }
 
-            List<ModeHJsonValue> vectorItems;
+            List<BossRushJsonValue> vectorItems;
             if (!root.TryGetArray("testVectors", out vectorItems) || vectorItems.Count < 3) return false;
             List<ModeHOddsTestVector> vectors = new List<ModeHOddsTestVector>(vectorItems.Count);
             for (int i = 0; i < vectorItems.Count; i++)
             {
-                ModeHJsonValue item = vectorItems[i];
+                BossRushJsonValue item = vectorItems[i];
                 ModeHOddsTestVector v = new ModeHOddsTestVector();
                 if (item == null
                     || !item.TryGetString("vectorId", out v.VectorId)
@@ -901,64 +901,64 @@ namespace BossRush
             _oddsTiers.Add(MakeTier(4, ModeHConfig.OddsThresholdX4MinEdge, ModeHConfig.OddsThresholdX3MinEdge - 1));
             _oddsTiers.Add(MakeTier(5, -9999, ModeHConfig.OddsThresholdX4MinEdge - 1));
 
-            ModeHJsonValue player = ModeHJsonValue.NewObject();
-            player.AddProperty("relayAvailable", ModeHJsonValue.NewInteger(5));
-            player.AddProperty("relayEmpty", ModeHJsonValue.NewInteger(-12));
-            player.AddProperty("starterCounters", ModeHJsonValue.NewInteger(8));
-            player.AddProperty("starterCountered", ModeHJsonValue.NewInteger(-8));
-            player.AddProperty("relayCounters", ModeHJsonValue.NewInteger(4));
-            player.AddProperty("relayCountered", ModeHJsonValue.NewInteger(-4));
-            player.AddProperty("kitQualityTotalCap", ModeHJsonValue.NewInteger(12));
-            player.AddProperty("equipmentTagCounters", ModeHJsonValue.NewInteger(4));
-            player.AddProperty("equipmentTagCountered", ModeHJsonValue.NewInteger(-4));
-            player.AddProperty("starterInjured", ModeHJsonValue.NewInteger(-5));
-            player.AddProperty("relayInjured", ModeHJsonValue.NewInteger(-3));
-            player.AddProperty("anomalyBlood", ModeHJsonValue.NewInteger(-5));
-            player.AddProperty("anomalyCrowd", ModeHJsonValue.NewInteger(-7));
-            player.AddProperty("anomalyStrong", ModeHJsonValue.NewInteger(-4));
-            player.AddProperty("anomalyError", ModeHJsonValue.NewInteger(-2));
-            player.AddProperty("scarBenefit", ModeHJsonValue.NewInteger(3));
-            player.AddProperty("scarCost", ModeHJsonValue.NewInteger(-3));
-            player.AddProperty("scarTotalMin", ModeHJsonValue.NewInteger(-8));
-            player.AddProperty("scarTotalMax", ModeHJsonValue.NewInteger(8));
-            player.AddProperty("commandAligned", ModeHJsonValue.NewInteger(4));
-            player.AddProperty("commandConflicted", ModeHJsonValue.NewInteger(-3));
-            player.AddProperty("signatureCommandStarter", ModeHJsonValue.NewInteger(5));
-            player.AddProperty("signatureCommandRelay", ModeHJsonValue.NewInteger(2));
-            player.AddProperty("arenaFavorable", ModeHJsonValue.NewInteger(4));
-            player.AddProperty("arenaUnfavorable", ModeHJsonValue.NewInteger(-4));
-            ModeHJsonValue kitQuality = ModeHJsonValue.NewArray();
+            BossRushJsonValue player = BossRushJsonValue.NewObject();
+            player.AddProperty("relayAvailable", BossRushJsonValue.NewInteger(5));
+            player.AddProperty("relayEmpty", BossRushJsonValue.NewInteger(-12));
+            player.AddProperty("starterCounters", BossRushJsonValue.NewInteger(8));
+            player.AddProperty("starterCountered", BossRushJsonValue.NewInteger(-8));
+            player.AddProperty("relayCounters", BossRushJsonValue.NewInteger(4));
+            player.AddProperty("relayCountered", BossRushJsonValue.NewInteger(-4));
+            player.AddProperty("kitQualityTotalCap", BossRushJsonValue.NewInteger(12));
+            player.AddProperty("equipmentTagCounters", BossRushJsonValue.NewInteger(4));
+            player.AddProperty("equipmentTagCountered", BossRushJsonValue.NewInteger(-4));
+            player.AddProperty("starterInjured", BossRushJsonValue.NewInteger(-5));
+            player.AddProperty("relayInjured", BossRushJsonValue.NewInteger(-3));
+            player.AddProperty("anomalyBlood", BossRushJsonValue.NewInteger(-5));
+            player.AddProperty("anomalyCrowd", BossRushJsonValue.NewInteger(-7));
+            player.AddProperty("anomalyStrong", BossRushJsonValue.NewInteger(-4));
+            player.AddProperty("anomalyError", BossRushJsonValue.NewInteger(-2));
+            player.AddProperty("scarBenefit", BossRushJsonValue.NewInteger(3));
+            player.AddProperty("scarCost", BossRushJsonValue.NewInteger(-3));
+            player.AddProperty("scarTotalMin", BossRushJsonValue.NewInteger(-8));
+            player.AddProperty("scarTotalMax", BossRushJsonValue.NewInteger(8));
+            player.AddProperty("commandAligned", BossRushJsonValue.NewInteger(4));
+            player.AddProperty("commandConflicted", BossRushJsonValue.NewInteger(-3));
+            player.AddProperty("signatureCommandStarter", BossRushJsonValue.NewInteger(5));
+            player.AddProperty("signatureCommandRelay", BossRushJsonValue.NewInteger(2));
+            player.AddProperty("arenaFavorable", BossRushJsonValue.NewInteger(4));
+            player.AddProperty("arenaUnfavorable", BossRushJsonValue.NewInteger(-4));
+            BossRushJsonValue kitQuality = BossRushJsonValue.NewArray();
             int[] qualityScores = new int[] { 0, 1, 2, 3, 4, 5, 5, 5 };
             for (int i = 0; i < qualityScores.Length; i++)
             {
-                kitQuality.Items.Add(ModeHJsonValue.NewInteger(qualityScores[i]));
+                kitQuality.Items.Add(BossRushJsonValue.NewInteger(qualityScores[i]));
             }
             player.AddProperty("kitQualityByGameQuality", kitQuality);
             _playerWeights = player;
 
-            ModeHJsonValue enemy = ModeHJsonValue.NewObject();
-            ModeHJsonValue stage = ModeHJsonValue.NewArray();
+            BossRushJsonValue enemy = BossRushJsonValue.NewObject();
+            BossRushJsonValue stage = BossRushJsonValue.NewArray();
             int[] stageScores = new int[] { 0, 2, 5, 8, 12, 16 };
             for (int i = 0; i < stageScores.Length; i++)
             {
-                stage.Items.Add(ModeHJsonValue.NewInteger(stageScores[i]));
+                stage.Items.Add(BossRushJsonValue.NewInteger(stageScores[i]));
             }
             enemy.AddProperty("stageByMatchIndex", stage);
-            ModeHJsonValue counts = ModeHJsonValue.NewArray();
+            BossRushJsonValue counts = BossRushJsonValue.NewArray();
             int[] countScores = new int[] { 0, 4, 8 };
             for (int i = 0; i < countScores.Length; i++)
             {
-                counts.Items.Add(ModeHJsonValue.NewInteger(countScores[i]));
+                counts.Items.Add(BossRushJsonValue.NewInteger(countScores[i]));
             }
             enemy.AddProperty("countUpperBound", counts);
-            enemy.AddProperty("highThreatCore", ModeHJsonValue.NewInteger(10));
-            enemy.AddProperty("synergyPerCategory", ModeHJsonValue.NewInteger(5));
-            enemy.AddProperty("synergyCap", ModeHJsonValue.NewInteger(10));
-            enemy.AddProperty("woundedEnemy", ModeHJsonValue.NewInteger(-5));
-            enemy.AddProperty("anomalyBlood", ModeHJsonValue.NewInteger(-5));
-            enemy.AddProperty("anomalyCrowd", ModeHJsonValue.NewInteger(-7));
-            enemy.AddProperty("anomalyStrong", ModeHJsonValue.NewInteger(-4));
-            enemy.AddProperty("anomalyError", ModeHJsonValue.NewInteger(-2));
+            enemy.AddProperty("highThreatCore", BossRushJsonValue.NewInteger(10));
+            enemy.AddProperty("synergyPerCategory", BossRushJsonValue.NewInteger(5));
+            enemy.AddProperty("synergyCap", BossRushJsonValue.NewInteger(10));
+            enemy.AddProperty("woundedEnemy", BossRushJsonValue.NewInteger(-5));
+            enemy.AddProperty("anomalyBlood", BossRushJsonValue.NewInteger(-5));
+            enemy.AddProperty("anomalyCrowd", BossRushJsonValue.NewInteger(-7));
+            enemy.AddProperty("anomalyStrong", BossRushJsonValue.NewInteger(-4));
+            enemy.AddProperty("anomalyError", BossRushJsonValue.NewInteger(-2));
             _enemyWeights = enemy;
 
             _archetypeMatrixPairs = new List<string>();

@@ -40,10 +40,11 @@ def main():
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
         "Integration/BackMountain/RaidMealUsageBehavior.cs",
         "Common/Lifecycle/BossRushSaveFileThrottle.cs",
+        "Common/Data/BossRushJsonValue.cs",
         "Utilities/SimpleJsonHelper.cs",
     ] + ["PetNest/" + name + ".cs" for name in (
         "PetNestService", "PetNestModels", "PetNestTuning", "PetNestPersistenceCodec",
-        "PetNestJson", "PetNestPersistence", "PetNestSaveCoordinator", "PetNestHatchService", "PetNestMuseumStats")]
+        "PetNestPersistence", "PetNestSaveCoordinator", "PetNestHatchService", "PetNestMuseumStats")]
     paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", OUT / "Extracted.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)

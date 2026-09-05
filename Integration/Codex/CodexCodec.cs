@@ -2,15 +2,11 @@
 // CodexCodec.cs - 鸭皇图鉴存档编解码
 // ============================================================================
 // 硬约束（形态照 Integration/DailyReport/DailyReportCodec.cs）：
-//   - 只用仓库既有的 Utilities/SimpleJsonHelper.cs，不再造第四套 JSON 解析器
-//     （ModeH 有 ModeHJsonValue、遗种巢有 PetNestJson，互相 import 会让彼此成为
-//     对方的升级阻塞项）。
-//   - envelope 是**扁平对象 + 一层 entries 数组**：SimpleJsonHelper.FindArrayBounds
-//     取的是全局第一个 '[' 与最后一个 ']'，因此 envelope 里**只能有一个数组**，
-//     且 `entries` 必须是**最后一个字段**——在它之后再加任何字段都会破坏边界。
-//   - 提取器按 `"key":` 前缀匹配，所有 key 必须两两不构成「带引号前缀」关系。
-//     现有集合 schemaVersion / lastUpdatedTicks / k / n / kills / first / fm / fast
-//     已逐对核对；将来加字段必须重新核对。
+//   - 写侧走 Utilities/SimpleJsonHelper.cs 的 Append* 系列：字节格式是发布后冻结的存档面，
+//     不因读侧升级而改；读侧走全 Mod 共享的节点解析器 Common/Data/BossRushJsonValue.cs
+//     （2026-09-06 起，此前用 SimpleJsonHelper 的前缀提取器）。
+//     节点解析器让 envelope 不再受「只能有一个数组」「entries 必须是最后一个字段」
+//     「key 互不为带引号前缀」这些提取器约束；新增字段只需保持向后兼容默认值。
 //   - CreateDefault() 是**唯一**默认值出处，避免「构造出来的默认」与
 //     「读档读出来的默认」两套语义漂移。
 //   - 全程 no-throw：解码失败返回 null，由 CodexPersistence 走写屏障 fail-closed。
@@ -21,6 +17,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace BossRush
@@ -58,8 +55,7 @@ namespace BossRush
                 SimpleJsonHelper.AppendInt(sb, "schemaVersion", CodexTuning.CurrentSchemaVersion);
                 SimpleJsonHelper.AppendLong(sb, "lastUpdatedTicks", data.LastUpdatedTicks);
 
-                // entries 必须是**最后一个字段**：FindArrayBounds 取的是第一个 '[' 与
-                // 最后一个 ']'，把数组放最后就不会被显示名里的方括号带偏。
+                // 字段顺序保持不变：写出字节是冻结的存档面（回读核对按整串比对）。
                 sb.Append("\"entries\":[");
                 bool first = true;
                 int written = 0;
@@ -96,14 +92,14 @@ namespace BossRush
 
         #region 解码
 
-        /// <summary>读取 payload 的 schemaVersion。缺字段返回 -1（走写屏障，绝不覆盖）。</summary>
+        /// <summary>读取 payload 的 schemaVersion。缺字段或读不动返回 -1（走写屏障，绝不覆盖）。</summary>
         internal static int ReadSchemaVersion(string json)
         {
             if (string.IsNullOrEmpty(json)) return -1;
             try
             {
-                if (json.IndexOf("\"schemaVersion\":", StringComparison.Ordinal) < 0) return -1;
-                return SimpleJsonHelper.ExtractInt(json, "schemaVersion");
+                BossRushJsonValue root = BossRushJsonParser.ParseOrNull(json);
+                return root != null ? root.GetInt("schemaVersion", -1) : -1;
             }
             catch (Exception)
             {
@@ -120,36 +116,38 @@ namespace BossRush
             if (string.IsNullOrEmpty(json)) return null;
             try
             {
+                BossRushJsonValue root = BossRushJsonParser.ParseOrNull(json);
+                if (root == null || root.Kind != BossRushJsonKind.Object) return null;
+
                 CodexData data = new CodexData();
-                data.LastUpdatedTicks = SimpleJsonHelper.ExtractLong(json, "lastUpdatedTicks");
+                data.LastUpdatedTicks = root.GetLong("lastUpdatedTicks", 0L);
 
-                int arrayStart, arrayEnd;
-                if (SimpleJsonHelper.FindArrayBounds(json, out arrayStart, out arrayEnd))
+                List<BossRushJsonValue> entries = root.GetArray("entries");
+                for (int i = 0; i < entries.Count; i++)
                 {
-                    SimpleJsonHelper.ForEachObject(json, arrayStart, arrayEnd, delegate(string j, int s, int e)
-                    {
-                        string key = SimpleJsonHelper.ExtractString(j, "k", s, e);
-                        if (string.IsNullOrEmpty(key)) return;
-                        // 上限截断：超出的条目丢弃，已读进来的照常保留
-                        if (data.Entries.Count >= CodexTuning.MaxEntries) return;
+                    BossRushJsonValue node = entries[i];
+                    if (node == null || node.Kind != BossRushJsonKind.Object) continue;
+                    string key = node.GetString("k", null);
+                    if (string.IsNullOrEmpty(key)) continue;
+                    // 上限截断：超出的条目丢弃，已读进来的照常保留
+                    if (data.Entries.Count >= CodexTuning.MaxEntries) break;
 
-                        CodexEntry entry = new CodexEntry();
-                        entry.Key = key;
-                        entry.DisplayName = SimpleJsonHelper.ExtractString(j, "n", s, e);
-                        entry.Kills = SimpleJsonHelper.ExtractInt(j, "kills", s, e);
-                        entry.FirstKillTicks = SimpleJsonHelper.ExtractLong(j, "first", s, e);
-                        entry.FirstMode = SimpleJsonHelper.ExtractString(j, "fm", s, e);
-                        entry.FastestKillSeconds = SimpleJsonHelper.ExtractFloat(j, "fast", s, e);
+                    CodexEntry entry = new CodexEntry();
+                    entry.Key = key;
+                    entry.DisplayName = node.GetString("n", string.Empty);
+                    entry.Kills = node.GetInt("kills", 0);
+                    entry.FirstKillTicks = node.GetLong("first", 0L);
+                    entry.FirstMode = node.GetString("fm", string.Empty);
+                    entry.FastestKillSeconds = node.GetFloat("fast", 0f);
 
-                        // 取值收敛：老档缺字段时提取器返回 0，负数一律钳回合法域
-                        if (entry.Kills < 0) entry.Kills = 0;
-                        if (entry.FirstKillTicks < 0L) entry.FirstKillTicks = 0L;
-                        if (entry.FastestKillSeconds < 0f) entry.FastestKillSeconds = 0f;
-                        if (entry.DisplayName == null) entry.DisplayName = string.Empty;
-                        if (entry.FirstMode == null) entry.FirstMode = string.Empty;
+                    // 取值收敛：老档缺字段时回落 0，负数一律钳回合法域
+                    if (entry.Kills < 0) entry.Kills = 0;
+                    if (entry.FirstKillTicks < 0L) entry.FirstKillTicks = 0L;
+                    if (entry.FastestKillSeconds < 0f) entry.FastestKillSeconds = 0f;
+                    if (entry.DisplayName == null) entry.DisplayName = string.Empty;
+                    if (entry.FirstMode == null) entry.FirstMode = string.Empty;
 
-                        data.Entries.Add(entry);
-                    });
+                    data.Entries.Add(entry);
                 }
 
                 if (data.LastUpdatedTicks < 0L) data.LastUpdatedTicks = 0L;

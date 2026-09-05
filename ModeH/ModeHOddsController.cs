@@ -105,7 +105,7 @@ namespace BossRush
             ModeHOddsPlayerInput input, ModeHMatchPlanDto plan, List<ModeHOddsBreakdownEntry> breakdown)
         {
             if (input == null || input.Starter == null || plan == null || plan.publicSummary == null) return 0;
-            ModeHJsonValue w = ModeHContentCatalog.PlayerWeights;
+            BossRushJsonValue w = ModeHContentCatalog.PlayerWeights;
             ModeHPublicSummaryDto summary = plan.publicSummary;
             int total = 0;
 
@@ -189,7 +189,7 @@ namespace BossRush
         /// 整套公开 tag 明确克制/被克制只计一次，同时命中取 0。
         /// </summary>
         private static int ComputeEquipmentScore(
-            ModeHOddsPlayerInput input, ModeHPublicSummaryDto summary, ModeHJsonValue w)
+            ModeHOddsPlayerInput input, ModeHPublicSummaryDto summary, BossRushJsonValue w)
         {
             int qualityScore = 0;
             qualityScore += SumKitQuality(input.StarterKitIds, w);
@@ -208,7 +208,7 @@ namespace BossRush
             return qualityScore + tagScore;
         }
 
-        private static int SumKitQuality(IList<string> kitIds, ModeHJsonValue w)
+        private static int SumKitQuality(IList<string> kitIds, BossRushJsonValue w)
         {
             if (kitIds == null) return 0;
             int score = 0;
@@ -254,7 +254,7 @@ namespace BossRush
             return IsVerified(profile, profile.injuryId);
         }
 
-        private static int ComputeAnomalyScore(ModeHProfileDto profile, ModeHJsonValue w)
+        private static int ComputeAnomalyScore(ModeHProfileDto profile, BossRushJsonValue w)
         {
             if (profile == null || string.IsNullOrEmpty(profile.anomalyId)) return 0;
             if (!IsVerified(profile, profile.anomalyId)) return 0;
@@ -279,7 +279,7 @@ namespace BossRush
 
         /// <summary>战痕：benefit/cost tag 命中公开摘要各 ±3；双方同时命中取 0。</summary>
         private static int ComputeScarScore(
-            ModeHProfileDto profile, ModeHPublicSummaryDto summary, ModeHJsonValue w)
+            ModeHProfileDto profile, ModeHPublicSummaryDto summary, BossRushJsonValue w)
         {
             if (profile == null || profile.scarIds == null || summary == null) return 0;
             List<ModeHScarSpec> scars = ModeHContentCatalog.Scars;
@@ -316,7 +316,7 @@ namespace BossRush
 
         /// <summary>口令：通用相合/冲突 ±4/-3；招牌由先发持有且相合 +5，接力者持有 +2。</summary>
         private static int ComputeCommandScore(
-            ModeHOddsPlayerInput input, ModeHPublicSummaryDto summary, ModeHJsonValue w)
+            ModeHOddsPlayerInput input, ModeHPublicSummaryDto summary, BossRushJsonValue w)
         {
             if (string.IsNullOrEmpty(input.CommandId)) return 0;
 
@@ -392,7 +392,7 @@ namespace BossRush
 
         /// <summary>擂台条件：对当前双人组合整场只计一次；同时有利与不利取 0。</summary>
         private static int ComputeArenaScore(
-            ModeHOddsPlayerInput input, string conditionId, ModeHJsonValue w)
+            ModeHOddsPlayerInput input, string conditionId, BossRushJsonValue w)
         {
             if (string.IsNullOrEmpty(conditionId)) return 0;
             List<ModeHArenaConditionSpec> conditions = ModeHContentCatalog.ArenaConditions;
@@ -445,7 +445,7 @@ namespace BossRush
             ModeHMatchPlanDto plan, List<ModeHOddsBreakdownEntry> breakdown)
         {
             if (plan == null || plan.publicSummary == null) return 0;
-            ModeHJsonValue w = ModeHContentCatalog.EnemyWeights;
+            BossRushJsonValue w = ModeHContentCatalog.EnemyWeights;
             ModeHPublicSummaryDto summary = plan.publicSummary;
             int total = 0;
 
@@ -473,7 +473,7 @@ namespace BossRush
             return total;
         }
 
-        private static int ComputeEnemySynergyScore(ModeHPublicSummaryDto summary, ModeHJsonValue w)
+        private static int ComputeEnemySynergyScore(ModeHPublicSummaryDto summary, BossRushJsonValue w)
         {
             if (summary.synergyTags == null) return 0;
             List<ModeHSynergyCategory> categories = ModeHContentCatalog.SynergyCategories;
@@ -492,7 +492,7 @@ namespace BossRush
 
         /// <summary>公开带伤敌人与公开异常；只有 VerifiedBehavior 才计分。</summary>
         private static int ComputeEnemyStatusScore(
-            ModeHMatchPlanDto plan, ModeHPublicSummaryDto summary, ModeHJsonValue w)
+            ModeHMatchPlanDto plan, ModeHPublicSummaryDto summary, BossRushJsonValue w)
         {
             int score = 0;
             if (summary.visibleWoundedEnemyCount > 0)

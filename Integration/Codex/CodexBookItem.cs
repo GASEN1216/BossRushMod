@@ -497,23 +497,8 @@ namespace BossRush
             injectedCodexBookEntry = null;
             DevLog(CodexTuning.LogPrefix + "检测到读档，重置图鉴库存缓存");
         }
-    
-        /// <summary>
-        /// 鸭皇图鉴的宿主销毁清理。顺序是硬约束：先落盘、再退订、最后清静态缓存，
-        /// 颠倒会把本次会话新解锁的条目写丢。
-        /// </summary>
-        internal void CleanupCodexRuntimeOnDestroy()
-        {
-            SafeRuntime.Run("CodexSaveCoordinator.TryFlushOnHostDestroy", () => CodexSaveCoordinator.TryFlushOnHostDestroy());
-            SafeRuntime.Run("CodexSaveCoordinator.ShutdownSubscription", () => CodexSaveCoordinator.ShutdownSubscription());
-            SafeRuntime.Run("CodexPersistence.ShutdownSubscription", () => CodexPersistence.ShutdownSubscription());
-            SafeRuntime.Run("CodexKillCollector.ResetStaticCaches", () => CodexKillCollector.ResetStaticCaches());
-            SafeRuntime.Run("CodexMilestones.ResetStaticCaches", () => CodexMilestones.ResetStaticCaches());
-            SafeRuntime.Run("CodexView.ResetStaticCaches", () => CodexView.ResetStaticCaches());
-            SafeRuntime.Run("CodexPortraitCache.ResetStaticCaches", () => CodexPortraitCache.ResetStaticCaches());
-            SafeRuntime.Run("CodexBossCatalog.ResetStaticCaches", () => CodexBossCatalog.ResetStaticCaches());
-            SafeRuntime.Run("CodexPersistence.ResetStaticCaches", () => CodexPersistence.ResetStaticCaches());
-            SafeRuntime.Run("CodexSaveCoordinator.ResetStaticCaches", () => CodexSaveCoordinator.ResetStaticCaches());
-        }
+
+        // 图鉴的宿主销毁清理已收进 CodexRuntimeModule.OnDestroy（唯一 owner），
+        // 宿主经 runtimeModuleHost.OnDestroy() 到达，不再在 partial ModBehaviour 上另写一份。
 }
 }

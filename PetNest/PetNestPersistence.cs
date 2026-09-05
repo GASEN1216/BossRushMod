@@ -26,7 +26,7 @@ namespace BossRush
         private readonly object _lock = new object();
         private readonly string _key;
         private readonly Func<T, string> _encode;
-        private readonly Func<PetNestJsonNode, T> _decode;
+        private readonly Func<BossRushJsonValue, T> _decode;
         private readonly Func<T> _createDefault;
 
         private T _cache;
@@ -46,7 +46,7 @@ namespace BossRush
         internal PetNestKeyStore(
             string key,
             Func<T, string> encode,
-            Func<PetNestJsonNode, T> decode,
+            Func<BossRushJsonValue, T> decode,
             Func<T> createDefault)
         {
             _key = key;
@@ -171,8 +171,8 @@ namespace BossRush
                     return _cache;
                 }
 
-                PetNestJsonNode envelope = PetNestJson.Parse(raw);
-                if (envelope == null || envelope.Kind != PetNestJsonKind.Object)
+                BossRushJsonValue envelope = BossRushJsonParser.ParseOrNull(raw);
+                if (envelope == null || envelope.Kind != BossRushJsonKind.Object)
                 {
                     _writeBarrier = true;
                     _lastError = "payload_unreadable";
@@ -193,7 +193,7 @@ namespace BossRush
                     return _cache;
                 }
 
-                PetNestJsonNode payload = envelope.GetObject("payload");
+                BossRushJsonValue payload = envelope.GetObject("payload");
                 T decoded = null;
                 try
                 {
@@ -257,7 +257,7 @@ namespace BossRush
         private string BuildEnvelope(T value)
         {
             string payload = _encode(value);
-            PetNestJsonBuilder sb = new PetNestJsonBuilder();
+            BossRushJsonWriter sb = new BossRushJsonWriter();
             sb.BeginObject()
               .Int("schemaVersion", PetNestTuning.CurrentSchemaVersion)
               // payload 已是完整 JSON 对象文本，内联即可，不做二次转义
@@ -395,7 +395,7 @@ namespace BossRush
                     try
                     {
                         string raw = SavesSystem.Load<string>(PetNestTuning.BundleStorageKey);
-                        PetNestJsonNode root = PetNestJson.Parse(raw);
+                        BossRushJsonValue root = BossRushJsonParser.ParseOrNull(raw);
                         int version = root != null ? root.GetInt("schemaVersion", -1) : -1;
                         if (version != PetNestTuning.BundleSchemaVersion)
                         {

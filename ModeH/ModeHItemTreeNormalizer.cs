@@ -124,17 +124,17 @@ namespace BossRush
             List<ItemTreeData.DataEntry> ordered = new List<ItemTreeData.DataEntry>();
             AssignLocalIds(tree.rootInstanceID, byInstance, localIds, ordered);
 
-            ModeHJsonValue root = ModeHJsonValue.NewObject();
-            root.AddProperty("rootLocalId", ModeHJsonValue.NewInteger(0));
+            BossRushJsonValue root = BossRushJsonValue.NewObject();
+            root.AddProperty("rootLocalId", BossRushJsonValue.NewInteger(0));
 
-            ModeHJsonValue nodes = ModeHJsonValue.NewArray();
+            BossRushJsonValue nodes = BossRushJsonValue.NewArray();
             for (int i = 0; i < ordered.Count; i++)
             {
                 ItemTreeData.DataEntry entry = ordered[i];
-                ModeHJsonValue node = ModeHJsonValue.NewObject();
-                node.AddProperty("localId", ModeHJsonValue.NewInteger(localIds[entry.instanceID]));
-                node.AddProperty("typeId", ModeHJsonValue.NewInteger(entry.typeID));
-                node.AddProperty("stackCount", ModeHJsonValue.NewInteger(entry.StackCount));
+                BossRushJsonValue node = BossRushJsonValue.NewObject();
+                node.AddProperty("localId", BossRushJsonValue.NewInteger(localIds[entry.instanceID]));
+                node.AddProperty("typeId", BossRushJsonValue.NewInteger(entry.typeID));
+                node.AddProperty("stackCount", BossRushJsonValue.NewInteger(entry.StackCount));
                 node.AddProperty("slots", WriteSlots(entry, localIds));
                 node.AddProperty("inventory", WriteInventory(entry, localIds));
                 node.AddProperty("variables", WriteVariables(entry));
@@ -202,10 +202,10 @@ namespace BossRush
             return a.position.CompareTo(b.position);
         }
 
-        private static ModeHJsonValue WriteSlots(
+        private static BossRushJsonValue WriteSlots(
             ItemTreeData.DataEntry entry, Dictionary<int, int> localIds)
         {
-            ModeHJsonValue array = ModeHJsonValue.NewArray();
+            BossRushJsonValue array = BossRushJsonValue.NewArray();
             if (entry.slotContents == null) return array;
             List<ItemTreeData.SlotInstanceIDPair> pairs =
                 new List<ItemTreeData.SlotInstanceIDPair>(entry.slotContents);
@@ -214,19 +214,19 @@ namespace BossRush
             {
                 int local;
                 if (!localIds.TryGetValue(pairs[i].instanceID, out local)) continue;
-                ModeHJsonValue node = ModeHJsonValue.NewObject();
-                node.AddProperty("slot", ModeHJsonValue.NewString(
+                BossRushJsonValue node = BossRushJsonValue.NewObject();
+                node.AddProperty("slot", BossRushJsonValue.NewString(
                     pairs[i].slot != null ? pairs[i].slot : string.Empty));
-                node.AddProperty("localId", ModeHJsonValue.NewInteger(local));
+                node.AddProperty("localId", BossRushJsonValue.NewInteger(local));
                 array.Items.Add(node);
             }
             return array;
         }
 
-        private static ModeHJsonValue WriteInventory(
+        private static BossRushJsonValue WriteInventory(
             ItemTreeData.DataEntry entry, Dictionary<int, int> localIds)
         {
-            ModeHJsonValue array = ModeHJsonValue.NewArray();
+            BossRushJsonValue array = BossRushJsonValue.NewArray();
             if (entry.inventory == null) return array;
             List<ItemTreeData.InventoryDataEntry> items =
                 new List<ItemTreeData.InventoryDataEntry>(entry.inventory);
@@ -235,9 +235,9 @@ namespace BossRush
             {
                 int local;
                 if (!localIds.TryGetValue(items[i].instanceID, out local)) continue;
-                ModeHJsonValue node = ModeHJsonValue.NewObject();
-                node.AddProperty("position", ModeHJsonValue.NewInteger(items[i].position));
-                node.AddProperty("localId", ModeHJsonValue.NewInteger(local));
+                BossRushJsonValue node = BossRushJsonValue.NewObject();
+                node.AddProperty("position", BossRushJsonValue.NewInteger(items[i].position));
+                node.AddProperty("localId", BossRushJsonValue.NewInteger(local));
                 array.Items.Add(node);
             }
             return array;
@@ -247,9 +247,9 @@ namespace BossRush
         /// 变量按 key ordinal 升序输出，值取原始字节的十六进制串：
         /// 绕开浮点文本化的表示漂移，同一份数据在任何运行时得到同一段文本。
         /// </summary>
-        private static ModeHJsonValue WriteVariables(ItemTreeData.DataEntry entry)
+        private static BossRushJsonValue WriteVariables(ItemTreeData.DataEntry entry)
         {
-            ModeHJsonValue array = ModeHJsonValue.NewArray();
+            BossRushJsonValue array = BossRushJsonValue.NewArray();
             if (entry.variables == null) return array;
             List<string> lines = new List<string>();
             for (int i = 0; i < entry.variables.Count; i++)
@@ -274,7 +274,7 @@ namespace BossRush
             lines.Sort(StringComparer.Ordinal);
             for (int i = 0; i < lines.Count; i++)
             {
-                array.Items.Add(ModeHJsonValue.NewString(lines[i]));
+                array.Items.Add(BossRushJsonValue.NewString(lines[i]));
             }
             return array;
         }

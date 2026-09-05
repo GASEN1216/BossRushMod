@@ -9,7 +9,8 @@
 //     反序列化出来是 null"的两套真相（同 ModeG DTO 纪律）。
 //
 // 存档形态：Bundle_v2 以 Save<string> JSON 聚合 nest / expedition / museum；
-//   三个 v1 key 只读保留用于迁移。编解码在 PetNest/PetNestJson.cs，
+//   三个 v1 key 只读保留用于迁移。编解码在 PetNest/PetNestPersistenceCodec.cs
+//   （JSON 解析器与写出器是全 Mod 共享的 Common/Data/BossRushJsonValue.cs），
 //   落盘在 PetNest/PetNestPersistence.cs。
 // ============================================================================
 

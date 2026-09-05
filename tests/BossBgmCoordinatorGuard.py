@@ -65,7 +65,7 @@ def main():
     table = strip_comments(TABLE.read_text(encoding="utf-8"))
     if "BossBgmTrackTable.TryParse(json" not in coord or "JsonUtility.FromJson" in coord:
         return fail("曲目表必须经显式 token 数组解析，不能回退实机产出空表的 JsonUtility 路径")
-    for token in ('ModeHJsonParser.TryParse', '"bossTracks"', '"stingers"', '"jukebox"',
+    for token in ('BossRushJsonParser.TryParse', '"bossTracks"', '"stingers"', '"jukebox"',
                   "table.bossTracks = bosses.ToArray()", "table.stingers = events.ToArray()",
                   "table.jukebox = music.ToArray()", "bool loop = true"):
         if token not in table:

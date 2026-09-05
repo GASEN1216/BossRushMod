@@ -12,7 +12,7 @@ report = (ROOT / 'DebugAndTools/F3GameplayValidationCoverage.cs').read_text(enco
 runner = (ROOT / 'DebugAndTools/F3GameplayValidationRunner.cs').read_text(encoding='utf-8-sig')
 items = (ROOT / 'DebugAndTools/F3GameplayValidationItems.cs').read_text(encoding='utf-8-sig')
 zombie = (ROOT / 'DebugAndTools/F3GameplayValidationZombie.cs').read_text(encoding='utf-8-sig')
-for token in ['ModeHJsonParser.TryParse', 'NOT_RUN', 'MANUAL_PENDING', 'INCOMPLETE', 'AutomaticNotPassed',
+for token in ['BossRushJsonParser.TryParse', 'NOT_RUN', 'MANUAL_PENDING', 'INCOMPLETE', 'AutomaticNotPassed',
               'WriteCoverageSnapshot();', 'previous == "FAIL"', 'GetPublishedTypeIds()', 'Enum.GetValues(typeof(RandomEventId))']:
     if token not in report:
         errors.append('覆盖账本缺少约束: ' + token)

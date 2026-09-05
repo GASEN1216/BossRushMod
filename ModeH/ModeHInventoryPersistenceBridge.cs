@@ -81,8 +81,8 @@ namespace BossRush
             Inventory inventory = TryGetInventory(out failureReasonId);
             if (inventory == null) return false;
 
-            ModeHJsonValue root = ModeHJsonValue.NewObject();
-            ModeHJsonValue slots = ModeHJsonValue.NewArray();
+            BossRushJsonValue root = BossRushJsonValue.NewObject();
+            BossRushJsonValue slots = BossRushJsonValue.NewArray();
             try
             {
                 List<Item> content = inventory.Content;
@@ -103,9 +103,9 @@ namespace BossRush
                         failureReasonId = "storage_digest_item_failed:" + reason;
                         return false;
                     }
-                    ModeHJsonValue node = ModeHJsonValue.NewObject();
-                    node.AddProperty("position", ModeHJsonValue.NewInteger(i));
-                    node.AddProperty("digest", ModeHJsonValue.NewString(snapshot.semanticTreeDigest));
+                    BossRushJsonValue node = BossRushJsonValue.NewObject();
+                    node.AddProperty("position", BossRushJsonValue.NewInteger(i));
+                    node.AddProperty("digest", BossRushJsonValue.NewString(snapshot.semanticTreeDigest));
                     slots.Items.Add(node);
                 }
             }

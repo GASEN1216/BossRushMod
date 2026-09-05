@@ -6,7 +6,7 @@
 //     Assets/Data/DuckNpcs.json  +  Registry  +  硬编码 fallback
 //
 //   读取走全仓唯一入口 JsonDataRegistry.TryReadDataFile()，不另建第二个 parser。
-//   解析走 ModeHJsonParser（Campaign / Audio 两张生产表用的同一个 token parser），
+//   解析走 BossRushJsonParser（Campaign / Audio 两张生产表用的同一个 token parser），
 //   **不用 Unity JsonUtility** —— 实机 Unity 2022.3 在「int version + 对象数组」
 //   这种 internal DTO 上会只填 version、静默把数组留成 null，
 //   实测记录见 Campaign/CampaignContentCatalog.cs:136。本表与它完全同形。

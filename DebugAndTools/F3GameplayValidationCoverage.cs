@@ -17,8 +17,14 @@ namespace BossRush
             _coverage = null;
             try
             {
-                string path = Path.Combine(ModBehaviour.GetModPath(), "Assets", "Data", "GameplayCoverage.json");
-                _coverage = GameplayCoverageReport.Parse(File.ReadAllText(path));
+                // 数据表统一经 JsonDataRegistry 读取（AGENTS.md 4.8 第 3 层的唯一读取入口）
+                string coverageJson;
+                if (!JsonDataRegistry.TryReadDataFile("GameplayCoverage.json", out coverageJson))
+                {
+                    reason = "coverage_manifest_unreadable";
+                    return false;
+                }
+                _coverage = GameplayCoverageReport.Parse(coverageJson);
                 _coverage.Expand("ITEM_FACTORY_*", Array.ConvertAll(
                     BossRushDynamicItemRegistry.GetPublishedTypeIds(), id => "ITEM_FACTORY_" + id));
                 List<string> events = new List<string>();
@@ -84,25 +90,25 @@ namespace BossRush
 
         internal static GameplayCoverageReport Parse(string json)
         {
-            ModeHJsonValue root;
+            BossRushJsonValue root;
             string error;
-            if (!ModeHJsonParser.TryParse(json, out root, out error)) throw new FormatException(error);
+            if (!BossRushJsonParser.TryParse(json, out root, out error)) throw new FormatException(error);
             int version;
-            List<ModeHJsonValue> rows;
+            List<BossRushJsonValue> rows;
             if (root == null || !root.TryGetInt("version", out version) || version != 1
                 || !root.TryGetArray("features", out rows) || rows.Count == 0)
                 throw new FormatException("coverage_manifest_invalid");
             GameplayCoverageReport report = new GameplayCoverageReport();
             HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
-            foreach (ModeHJsonValue row in rows)
+            foreach (BossRushJsonValue row in rows)
             {
                 Feature feature = new Feature();
                 feature.Id = Required(row, "id");
                 feature.Title = Required(row, "title");
-                List<ModeHJsonValue> manual;
+                List<BossRushJsonValue> manual;
                 if (!ids.Add(feature.Id) || !row.TryGetStringList("automatic", out feature.Automatic)
                     || !row.TryGetArray("manual", out manual)) throw new FormatException("invalid_feature:" + feature.Id);
-                foreach (ModeHJsonValue item in manual)
+                foreach (BossRushJsonValue item in manual)
                 {
                     ManualCase test = new ManualCase { Id = Required(item, "id"), Steps = Required(item, "steps"),
                         Expected = Required(item, "expected") };
@@ -116,7 +122,7 @@ namespace BossRush
             return report;
         }
 
-        private static string Required(ModeHJsonValue row, string key)
+        private static string Required(BossRushJsonValue row, string key)
         {
             string value;
             if (row == null || !row.TryGetString(key, out value) || string.IsNullOrWhiteSpace(value))

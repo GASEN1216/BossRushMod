@@ -16,7 +16,7 @@
 //      Campaign 的章节表就是因此改用 token parser 的
 //      （见 Campaign/CampaignContentCatalog.cs:136 的实测记录），
 //      Audio 的曲目表同理（Audio/BossBgmTrackTable.cs:33）。
-//      本表结构与它们完全同形，因此同样复用 ModeHJsonParser。
+//      本表结构与它们完全同形，因此同样复用 BossRushJsonParser。
 //
 //   2. **字段禁用初始化器**（同 Campaign/CampaignPersistence.cs:15 的 ModeG 纪律）。
 //      默认值一律在 TryParse 里显式写，读代码时"JSON 没写会变成什么"一目了然，
@@ -183,13 +183,13 @@ namespace BossRush
         {
             table = null;
 
-            ModeHJsonValue root;
-            if (!ModeHJsonParser.TryParse(json, out root, out error))
+            BossRushJsonValue root;
+            if (!BossRushJsonParser.TryParse(json, out root, out error))
             {
                 return false;
             }
 
-            if (root == null || root.Kind != ModeHJsonKind.Object)
+            if (root == null || root.Kind != BossRushJsonKind.Object)
             {
                 error = "root_not_object";
                 return false;
@@ -202,7 +202,7 @@ namespace BossRush
                 return false;
             }
 
-            List<ModeHJsonValue> rows;
+            List<BossRushJsonValue> rows;
             if (!root.TryGetArray("npcs", out rows))
             {
                 error = "npcs_not_array";
@@ -212,8 +212,8 @@ namespace BossRush
             List<DuckNpcBlueprint> parsed = new List<DuckNpcBlueprint>(rows.Count);
             for (int i = 0; i < rows.Count; i++)
             {
-                ModeHJsonValue row = rows[i];
-                if (row == null || row.Kind != ModeHJsonKind.Object)
+                BossRushJsonValue row = rows[i];
+                if (row == null || row.Kind != BossRushJsonKind.Object)
                 {
                     ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图第 " + i + " 行不是对象，已丢弃");
                     continue;
@@ -236,7 +236,7 @@ namespace BossRush
         /// <summary>
         /// 解析一行。缺省值全部在这里显式给出 —— 这就是「JSON 没写会变成什么」的唯一答案。
         /// </summary>
-        private static DuckNpcBlueprint ParseRow(ModeHJsonValue row, int index)
+        private static DuckNpcBlueprint ParseRow(BossRushJsonValue row, int index)
         {
             DuckNpcBlueprint b = new DuckNpcBlueprint();
 
@@ -364,14 +364,14 @@ namespace BossRush
             return b;
         }
 
-        private static int[] ReadIntArray(ModeHJsonValue row, string key, string blueprintId)
+        private static int[] ReadIntArray(BossRushJsonValue row, string key, string blueprintId)
         {
             if (row.GetProperty(key) == null)
             {
                 return null;
             }
 
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (!row.TryGetArray(key, out items))
             {
                 ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId + " 的 " + key + " 不是数组，已忽略");
@@ -381,8 +381,8 @@ namespace BossRush
             List<int> result = new List<int>(items.Count);
             for (int i = 0; i < items.Count; i++)
             {
-                ModeHJsonValue item = items[i];
-                if (item == null || item.Kind != ModeHJsonKind.Integer)
+                BossRushJsonValue item = items[i];
+                if (item == null || item.Kind != BossRushJsonKind.Integer)
                 {
                     ModBehaviour.DevLog("[DuckNpc] [WARNING] 蓝图 " + blueprintId + " 的 " + key + " 含非整数项，已忽略整个数组");
                     return null;
@@ -392,7 +392,7 @@ namespace BossRush
             return result.ToArray();
         }
 
-        private static string[] ReadStringArray(ModeHJsonValue row, string key, string blueprintId)
+        private static string[] ReadStringArray(BossRushJsonValue row, string key, string blueprintId)
         {
             if (row.GetProperty(key) == null)
             {

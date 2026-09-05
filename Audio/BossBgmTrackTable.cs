@@ -43,25 +43,25 @@ namespace BossRush
         internal static bool TryParse(string json, out BossBgmTrackTable table, out string error)
         {
             table = null;
-            ModeHJsonValue root;
-            if (!ModeHJsonParser.TryParse(json, out root, out error)) return false;
-            if (root == null || root.Kind != ModeHJsonKind.Object)
+            BossRushJsonValue root;
+            if (!BossRushJsonParser.TryParse(json, out root, out error)) return false;
+            if (root == null || root.Kind != BossRushJsonKind.Object)
             {
                 error = "root_not_object";
                 return false;
             }
 
-            List<ModeHJsonValue> bossRows;
-            List<ModeHJsonValue> stingerRows;
-            List<ModeHJsonValue> jukeboxRows;
+            List<BossRushJsonValue> bossRows;
+            List<BossRushJsonValue> stingerRows;
+            List<BossRushJsonValue> jukeboxRows;
             if (!TryReadRows(root, "bossTracks", out bossRows, out error)
                 || !TryReadRows(root, "stingers", out stingerRows, out error)
                 || !TryReadRows(root, "jukebox", out jukeboxRows, out error)) return false;
 
             List<BossBgmTrackEntry> bosses = new List<BossBgmTrackEntry>();
-            foreach (ModeHJsonValue row in bossRows)
+            foreach (BossRushJsonValue row in bossRows)
             {
-                if (row == null || row.Kind != ModeHJsonKind.Object) continue;
+                if (row == null || row.Kind != BossRushJsonKind.Object) continue;
                 BossBgmTrackEntry entry = new BossBgmTrackEntry();
                 if (!row.TryGetString("bossKey", out entry.bossKey)
                     || !row.TryGetString("file", out entry.file)) continue;
@@ -71,9 +71,9 @@ namespace BossRush
             }
 
             List<BossBgmStingerEntry> events = new List<BossBgmStingerEntry>();
-            foreach (ModeHJsonValue row in stingerRows)
+            foreach (BossRushJsonValue row in stingerRows)
             {
-                if (row == null || row.Kind != ModeHJsonKind.Object) continue;
+                if (row == null || row.Kind != BossRushJsonKind.Object) continue;
                 BossBgmStingerEntry entry = new BossBgmStingerEntry();
                 if (!row.TryGetString("eventKey", out entry.eventKey)
                     || !row.TryGetString("file", out entry.file)) continue;
@@ -81,9 +81,9 @@ namespace BossRush
             }
 
             List<BossBgmJukeboxEntry> music = new List<BossBgmJukeboxEntry>();
-            foreach (ModeHJsonValue row in jukeboxRows)
+            foreach (BossRushJsonValue row in jukeboxRows)
             {
-                if (row == null || row.Kind != ModeHJsonKind.Object) continue;
+                if (row == null || row.Kind != BossRushJsonKind.Object) continue;
                 BossBgmJukeboxEntry entry = new BossBgmJukeboxEntry();
                 if (!row.TryGetString("musicName", out entry.musicName)
                     || !row.TryGetString("file", out entry.file)) continue;
@@ -100,14 +100,14 @@ namespace BossRush
             return true;
         }
 
-        private static bool TryReadRows(ModeHJsonValue root, string key,
-            out List<ModeHJsonValue> rows, out string error)
+        private static bool TryReadRows(BossRushJsonValue root, string key,
+            out List<BossRushJsonValue> rows, out string error)
         {
             error = null;
-            ModeHJsonValue value = root.GetProperty(key);
-            if (value == null || value.Kind == ModeHJsonKind.Null)
+            BossRushJsonValue value = root.GetProperty(key);
+            if (value == null || value.Kind == BossRushJsonKind.Null)
             {
-                rows = new List<ModeHJsonValue>();
+                rows = new List<BossRushJsonValue>();
                 return true;
             }
             if (root.TryGetArray(key, out rows)) return true;

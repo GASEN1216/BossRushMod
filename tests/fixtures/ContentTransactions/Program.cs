@@ -153,7 +153,7 @@ class Program
     }
     static PetNestBundleData DiskNest()
     {
-        return PetNestCodec.DecodeBundle(PetNestJson.Parse((string)SavesSystem.Disk[PetNestTuning.BundleStorageKey]));
+        return PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull((string)SavesSystem.Disk[PetNestTuning.BundleStorageKey]));
     }
     static void CheckPetBundle(PetNestBundleData bundle, string message)
     {

@@ -434,16 +434,8 @@ namespace BossRush
                 // 音频非关键路径，无 FMOD / 无 AudioManager 实例时静默降级
             }
         }
-    
-        /// <summary>
-        /// 局内随机事件的宿主销毁清理。调度器与 HUD 都是纯运行时态，无落盘，
-        /// 但残留的强制天气、敌人增益与生成物必须在这里一并归零。
-        /// </summary>
-        internal void CleanupRandomEventsRuntimeOnDestroy()
-        {
-            SafeRuntime.Run("RandomEventDirector.ResetStaticCaches", () => RandomEventDirector.ResetStaticCaches());
-            SafeRuntime.Run("RandomEventCatalog.ResetStaticCaches", () => RandomEventCatalog.ResetStaticCaches());
-            SafeRuntime.Run("RandomEventHud.ResetStaticCaches", () => RandomEventHud.ResetStaticCaches());
-        }
+
+        // 随机事件的宿主销毁清理已收进 RandomEventsRuntimeModule.OnDestroy（唯一 owner），
+        // 宿主经 runtimeModuleHost.OnDestroy() 到达，不再在 partial ModBehaviour 上另写一份。
 }
 }

@@ -92,7 +92,7 @@ dormant 退订与清理路径仍保留供卸载和故障回落。
 - 不用 typed `Save<T>`：ES3 会把 assembly-qualified 类型名写进存档，mod 程序集改名就会让老档读不回来。
 - 未知/更高 `schemaVersion`、payload 不可读 → 写屏障，只读不写，**绝不覆盖该 key**。
 - 当天余数借官方 `OnCollectSaveData` 顺带写（零额外 IO），跨天才主动入队。
-- DTO 保持扁平是刻意的：里程碑领取用**位掩码** `PeriodClaimedMask` 而不是 token 列表，因此只需 `SimpleJsonHelper`，不必引入第三套 JSON 解析器（ModeH 有 `ModeHJsonValue`、遗种巢有 `PetNestJson`，都与各自模块语义绑定）。
+- DTO 保持扁平是刻意的：里程碑领取用**位掩码** `PeriodClaimedMask` 而不是 token 列表，因此只需 `SimpleJsonHelper`，不必引入第三套 JSON 解析器（ModeH 有 `BossRushJsonValue`、遗种巢有 `PetNestJson`，都与各自模块语义绑定）。
 
 ### 3.4 签到梯度
 

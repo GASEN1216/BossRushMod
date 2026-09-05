@@ -44,8 +44,8 @@ namespace BossRush
         private static List<ModeHOddsTier> _oddsTiers;
         private static List<ModeHCommandTagMapping> _commandTagMap;
         private static List<ModeHOddsTestVector> _oddsTestVectors;
-        private static ModeHJsonValue _playerWeights;
-        private static ModeHJsonValue _enemyWeights;
+        private static BossRushJsonValue _playerWeights;
+        private static BossRushJsonValue _enemyWeights;
         private static List<string> _archetypeMatrixPairs;
         private static bool _usedOddsFallback;
 
@@ -123,10 +123,10 @@ namespace BossRush
         public static List<ModeHOddsTestVector> OddsTestVectors { get { return _oddsTestVectors; } }
 
         /// <summary>玩家侧权重（原始 token，按需取整数）。</summary>
-        public static ModeHJsonValue PlayerWeights { get { return _playerWeights; } }
+        public static BossRushJsonValue PlayerWeights { get { return _playerWeights; } }
 
         /// <summary>敌方侧权重（原始 token，按需取整数）。</summary>
-        public static ModeHJsonValue EnemyWeights { get { return _enemyWeights; } }
+        public static BossRushJsonValue EnemyWeights { get { return _enemyWeights; } }
 
         /// <summary>原型克制对（"attacker&gt;defender" 形式，反向取负值）。</summary>
         public static List<string> ArchetypeMatrixPairs { get { return _archetypeMatrixPairs; } }
@@ -195,7 +195,7 @@ namespace BossRush
         {
             List<string> paths = new List<string>();
             List<string> signatures = new List<string>();
-            Dictionary<string, ModeHJsonValue> roots = new Dictionary<string, ModeHJsonValue>(StringComparer.Ordinal);
+            Dictionary<string, BossRushJsonValue> roots = new Dictionary<string, BossRushJsonValue>(StringComparer.Ordinal);
 
             for (int i = 0; i < ModeHConfig.RequiredDataFileNames.Length; i++)
             {
@@ -206,7 +206,7 @@ namespace BossRush
                     _lastError = "content_file_missing:" + fileName;
                     return false;
                 }
-                ModeHJsonValue root;
+                BossRushJsonValue root;
                 string signature;
                 string error;
                 if (!ModeHCanonicalDigest.TryParseAndVerifyContent(raw, out root, out signature, out error))
@@ -256,7 +256,7 @@ namespace BossRush
         /// 数据文件里的 game/mod 构建签名是“可选绑定”：空字符串表示不绑定具体构建；
         /// 非空时必须与当前实际加载的程序集摘要一致，否则 fail-closed。
         /// </summary>
-        private static bool VerifyOptionalBuildPin(ModeHJsonValue root, string field, bool isGame, string fileName)
+        private static bool VerifyOptionalBuildPin(BossRushJsonValue root, string field, bool isGame, string fileName)
         {
             string declared;
             if (!root.TryGetString(field, out declared))
@@ -289,7 +289,7 @@ namespace BossRush
         #region 工具
 
         /// <summary>取整数权重；缺失时返回 fallbackValue。</summary>
-        public static int GetWeight(ModeHJsonValue weights, string field, int fallbackValue)
+        public static int GetWeight(BossRushJsonValue weights, string field, int fallbackValue)
         {
             int value;
             if (weights != null && weights.TryGetInt(field, out value)) return value;
@@ -297,13 +297,13 @@ namespace BossRush
         }
 
         /// <summary>取整数权重数组中的一项；越界返回 fallbackValue。</summary>
-        public static int GetWeightAt(ModeHJsonValue weights, string field, int index, int fallbackValue)
+        public static int GetWeightAt(BossRushJsonValue weights, string field, int index, int fallbackValue)
         {
-            List<ModeHJsonValue> items;
+            List<BossRushJsonValue> items;
             if (weights == null || !weights.TryGetArray(field, out items)) return fallbackValue;
             if (index < 0 || index >= items.Count) return fallbackValue;
-            ModeHJsonValue item = items[index];
-            if (item == null || item.Kind != ModeHJsonKind.Integer) return fallbackValue;
+            BossRushJsonValue item = items[index];
+            if (item == null || item.Kind != BossRushJsonKind.Integer) return fallbackValue;
             return (int)item.IntegerValue;
         }
 

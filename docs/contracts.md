@@ -429,9 +429,11 @@ mod 程序集改名/重构就会让老档读不回来。
 第二次候选提交标记领取；写盘失败时 UI 不得显示成功。
 
 **DTO 扁平化是契约的一部分。** 里程碑领取用位掩码 `periodClaimedMask` 而不是 token 列表，
-往期数据用定长编码而不是嵌套对象。这样编解码只需 `Utilities/SimpleJsonHelper.cs`，
-不必引入第三套 JSON 解析器（ModeH 有 `ModeHJsonValue`、遗种巢有 `PetNestJson`，
-两者都与各自模块语义绑定，互相 import 会让彼此成为对方的升级阻塞项）。
+往期数据用定长编码而不是嵌套对象；这是发布后冻结的存档字段面，不因解析器升级而改。
+写出仍走 `Utilities/SimpleJsonHelper.cs` 的 `Append*` 系列（字节格式不变）；读取自 2026-09-06 起
+改走全 Mod 共享的节点解析器 `Common/Data/BossRushJsonValue.cs`（原 `ModeH/ModeHJsonValue.cs`，
+遗种巢的 `PetNestJson` 已并入），不再依赖「key 互不为带引号前缀」「envelope 只能有一个数组」
+这类提取器约束。仓库只保留这一套嵌套 JSON 解析器。
 
 **计时口径（不可改）。** 一天 = **86300 游戏秒**，镜像官方 `GameClock.SecondsPerDay`
 （**不是 86400**）。天数由 `DailyReportService` 自算：累计宿主

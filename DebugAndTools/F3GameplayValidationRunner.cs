@@ -696,7 +696,7 @@ namespace BossRush
         {
             PetNestBundleData bundle = PetNestPersistence.Bundle.Current;
             string json = PetNestCodec.EncodeBundle(bundle);
-            PetNestBundleData decoded = PetNestCodec.DecodeBundle(PetNestJson.Parse(json));
+            PetNestBundleData decoded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(json));
             bool ok = decoded != null && decoded.nest != null && decoded.expedition != null && decoded.museum != null
                 && !PetNestPersistence.HasAnyWriteBarrier && !PetNestPersistence.IsAnyStoreFaulted;
             metrics = "generation=" + (bundle != null ? bundle.generation : -1)
@@ -744,7 +744,7 @@ namespace BossRush
             record.rewardGrantAttempts = PetNestTuning.MaxRewardGrantAttempts + 2;
             PetNestBundleData bundle = PetNestCodec.CreateDefaultBundle();
             bundle.expedition.records.Add(record);
-            PetNestBundleData rebooted = PetNestCodec.DecodeBundle(PetNestJson.Parse(PetNestCodec.EncodeBundle(bundle)));
+            PetNestBundleData rebooted = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeBundle(bundle)));
             PetNestExpeditionRecord recovered = rebooted.expedition.records[0];
             backend.ItemSuccessBudget = 1;
             bool completed = PetNestExpeditionService.DebugGrantRewards(recovered);

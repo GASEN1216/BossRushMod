@@ -168,9 +168,9 @@ def main() -> int:
         if re.search(r"JsonUtility\s*\.\s*(FromJson|ToJson)", code_only(text)):
             errors.append(
                 name + " 不得用 JsonUtility 解析蓝图表（实机会静默把对象数组留成 null，"
-                       "见 Campaign/CampaignContentCatalog.cs:136），应走 ModeHJsonParser")
-    if "ModeHJsonParser" not in blueprint_code:
-        errors.append("DuckNpcBlueprint 必须走 ModeHJsonParser 解析")
+                       "见 Campaign/CampaignContentCatalog.cs:136），应走 BossRushJsonParser")
+    if "BossRushJsonParser" not in blueprint_code:
+        errors.append("DuckNpcBlueprint 必须走 BossRushJsonParser 解析")
 
     # ------------------------------------------------------------------
     # 6. 蓝图 DTO 禁字段初始化器
