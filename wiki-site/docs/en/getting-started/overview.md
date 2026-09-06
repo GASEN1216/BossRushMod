@@ -10,8 +10,8 @@ A massive content expansion for Escape from Duckov (Steam Workshop). What starte
 - **9 Maps** — Covering most in-game scenes
 - **3 Custom Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
 - **3 NPCs** — Dingdang (Smith), Yuori (Nurse), Awen (Courier)
-- **16 Custom Equipment Pieces** — **9 are obtainable today**: the Dragon and Dragon King sets, two totems, the Skyburner Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem and Frostmourne.
-  The 5 newer weapons and the Frost and Thunder sets are still a **development preview** with no drop source yet (see Equipment Overview)
+- **20 Custom Equipment Pieces** (sets counted piece by piece) — **15 are obtainable today**: the Dragon and Dragon King sets, two totems, the Skyburner Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, plus the Frost and Thunder sets.
+  The other 5 (the newer weapons) are still a **development preview** with no drop source yet (see Equipment Overview)
 - **40+ Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
 - **A Story Campaign** — Duck King Campaign: six contracts that string the existing modes into one cold case, one piece of evidence per chapter
 - **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox, Campaign board, Trophy showcase
