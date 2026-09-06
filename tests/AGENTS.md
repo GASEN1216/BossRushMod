@@ -1,6 +1,6 @@
 # tests/AGENTS.md — Python 守卫专项规则
 
-> 先读根目录 `AGENTS.md`。本目录的 Python 脚本是静态守卫，不是 C# 单元测试。
+> 先读根目录 `AGENTS.md`。顶层 Python 脚本是结构守卫；`fixtures/` 另有链接生产源码、隔离宿主依赖的 C# 执行回归。二者均不能替代 Unity 实机验证。
 
 ## 规则
 
@@ -46,6 +46,23 @@ CI（`.github/workflows/guards.yml`）跑的就是这个 runner。CI **不跑编
 `compile_official.bat` 需要游戏程序集，只能在装有《鸭科夫》的 Windows 机器上跑。
 
 如果只能在 Linux/WSL 跑，需要说明这不是 Windows 编译验证。
+
+## 生产源码执行回归
+
+```bash
+python tools/run_runtime_regressions.py
+python tools/run_runtime_regressions.py --filter ModeH
+python tools/run_runtime_regressions.py --list
+```
+
+入口显式登记 `tests/fixtures/` 下的生产源码回归，全部运行后聚合结果，失败返回非零退出码；
+每组日志与 `results.json` 写入 `Build/runtime-regressions/`。新增这类 fixture 时同步入口清单，
+不能只留下单独运行过一次的工程。默认同时运行三组，可用 `--jobs 1` 串行排查。
+需要本机 .NET SDK；部分 Harmony 夹具还依赖已安装的游戏程序集和 Harmony，缺失会明确失败，
+不可据此宣称通过。夹具中真实生产逻辑与宿主替身的边界必须写进 README。
+
+Wiki 导航另跑 `npm --prefix wiki-site run test:navigation`；构建后的完整链接检查见
+`wiki-site/AGENTS.md` 与 `tools/check_wiki_links.py --help`。
 
 ## 语法探针
 
