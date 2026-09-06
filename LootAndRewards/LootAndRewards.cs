@@ -442,6 +442,7 @@ namespace BossRush
             PhantomWitchScytheBossDropHandler.CancelPendingBossRushLootboxDrop(character);
             PetNestDropService.CancelPendingBossRushLootboxDrop(character);
             AffixForgeStoneDropService.CancelPendingBossRushLootboxDrop(character);
+            SetBonusBossDropHandler.CancelPendingBossRushLootboxDrop(character);
         }
 
         internal void RefreshBossRushLootboxPathTrackingForTrackedBosses()

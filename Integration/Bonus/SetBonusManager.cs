@@ -137,10 +137,15 @@ namespace BossRush
             try
             {
                 DevLog("[SetBonus] 场景加载完成，检测套装状态...");
+                // 官方每次进图都重建主角与 CharacterItem：挂在旧 Item 上的抗性 Modifier、挂在旧角色上的
+                // 眼光/霜雾都已随之作废，而 frostSetActive / thunderSetActive 仍为 true，单纯重查不会翻转。
+                // 先停用再重查，Modifier / 事件 / 视觉一次全部重建；announce=false 避免每图刷横幅。
+                DeactivateFrostSetBonus();
+                DeactivateThunderSetBonus();
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main != null)
                 {
-                    CheckSetBonusStatus(main);
+                    CheckSetBonusStatus(main, false);
                 }
             }
             catch (Exception e)
@@ -166,7 +171,8 @@ namespace BossRush
         /// <summary>
         /// 检测所有套装状态
         /// </summary>
-        private void CheckSetBonusStatus(CharacterMainControl character)
+        /// <param name="announce">激活时是否弹横幅；场景重载后的静默重建传 false</param>
+        private void CheckSetBonusStatus(CharacterMainControl character, bool announce = true)
         {
             try
             {
@@ -191,7 +197,7 @@ namespace BossRush
                 {
                     if (newFrostSet)
                     {
-                        ActivateFrostSetBonus(character);
+                        ActivateFrostSetBonus(character, announce);
                     }
                     else
                     {
@@ -205,7 +211,7 @@ namespace BossRush
                 {
                     if (newThunderSet)
                     {
-                        ActivateThunderSetBonus(character);
+                        ActivateThunderSetBonus(character, announce);
                     }
                     else
                     {

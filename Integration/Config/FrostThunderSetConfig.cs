@@ -16,10 +16,22 @@ namespace BossRush
 {
     public static class FrostThunderSetConfig
     {
-        private const int FROST_HELMET_ID = 500053;
-        private const int FROST_ARMOR_ID = 500054;
-        private const int THUNDER_HELMET_ID = 500055;
-        private const int THUNDER_ARMOR_ID = 500056;
+        public const int FROST_HELMET_ID = 500053;
+        public const int FROST_ARMOR_ID = 500054;
+        public const int THUNDER_HELMET_ID = 500055;
+        public const int THUNDER_ARMOR_ID = 500056;
+
+        // ========== 获取路径（2026-09-06 开放） ==========
+        // 稳定线：叮当好感商店；运气线：Boss 专属掉落格（LootAndRewardsSetBonusLoot.cs）。
+        // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1 与钻戒同款（NPCShopSystem 每次开店重置）。
+        public const int SET_PIECE_UNLOCK_LEVEL = 6;
+        public const int SET_PIECE_MAX_STOCK = 1;
+        // 单件售价。StockShop 价格 = Value × 耐久比 × priceFactor，不设 Value 商店会卖 0 元。
+        // 品质 6 套装件，取寄存牌 18000 与龙王宝库成就 50000 之间的档位；数值可调。
+        public const int SET_PIECE_VALUE = 30000;
+        // 天气防护：官方 StormWeather 在 StormProtection > 0.9 时不再施加风暴 buff，每件 +1 即免疫；
+        // ColdProtection 同为官方 stat（龙王套装每件也是 +1）。
+        private const float WEATHER_PROTECTION_PER_PIECE = 1f;
 
         private const string FROST_HELMET_BASE = "FrostCrown_Helmet";
         private const string FROST_ARMOR_BASE = "IceArmor_Armor";
@@ -140,6 +152,10 @@ namespace BossRush
 
             EquipmentHelper.AddTagToItem(item, slotTag);
             EnsureBaseArmorModifier(item, armorStatKey, DEFAULT_ARMOR_VALUE);
+            // 雷霆件加风暴防护、冰霜件加寒冷防护（与龙王套装同款 stat；幂等，占位符重配也不会叠加）
+            bool isThunderPiece = typeId == THUNDER_HELMET_ID || typeId == THUNDER_ARMOR_ID;
+            EnsureBaseArmorModifier(item, isThunderPiece ? "StormProtection" : "ColdProtection", WEATHER_PROTECTION_PER_PIECE);
+            item.Value = SET_PIECE_VALUE;
             EquipmentHelperIcon.TryInjectIcon(item, bundleName, iconAssetName);
 
             if (bindSupportingResources)

@@ -11,7 +11,7 @@ ExtraBossDropDeferGuard — 额外 Boss 掉落的 defer 协议守卫。
 必然配对生效）。
 
 不变式：
-1. 四个 integration（寒霜长矛 / 女巫镰刀 / 遗种蛋 / 词缀熔石）都必须走 defer 协议，
+1. 五个 integration（寒霜长矛 / 女巫镰刀 / 遗种蛋 / 词缀熔石 / 冰霜雷霆套装）都必须走 defer 协议，
    四处接线（判定 / 登记 / 进箱消费 / 撤销）一处都不能少；
 2. defer 判定统一走 `ShouldDeferExtraBossDropToModPath`，
    该判定必须显式并上 `infiniteHellMode`——无间炼狱同样关掉官方箱且不建新箱；
@@ -49,6 +49,10 @@ INTEGRATIONS = {
     "AffixForge": (
         os.path.join(REPO_ROOT, "Integration", "AffixForge", "AffixForgeStoneDropService.cs"),
         "AffixForgeStoneDropService",
+    ),
+    "SetBonus": (
+        os.path.join(REPO_ROOT, "Integration", "Bonus", "SetBonusBossDropHandler.cs"),
+        "SetBonusBossDropHandler",
     ),
 }
 
@@ -105,7 +109,7 @@ def check_defer_predicate(errors):
 
 
 def check_integrations_wired(errors):
-    """四个 integration 的四处接线齐全。"""
+    """每个 integration 的四处接线齐全。"""
     special = load(SPECIAL_LOOT, errors)
     core = load(LOOT_CORE, errors)
     if special is None or core is None:
@@ -228,7 +232,7 @@ def check_prefab_fallback_returns_pending(errors):
             "[模板回退] ReturnPendingExtraLootToCharacterItem 必须排在 "
             "FinalizeBossRushLootboxPathTracking 之前")
 
-    # 四个 integration 一个都不能漏
+    # 每个 integration 一个都不能漏
     for name, (_path, handler) in sorted(INTEGRATIONS.items()):
         body = re.search(
             r"private void ReturnPendingExtraLootToCharacterItem\([^)]*\)\s*\{(.*?)\n        \}",

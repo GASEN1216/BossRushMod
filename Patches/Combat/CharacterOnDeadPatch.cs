@@ -57,7 +57,7 @@ namespace BossRush
                 {
                     // 命中 Mode G / Mode H 的 staging preset/已登记 Character 身份，
                     // 或遗种巢随从身份（随从倒下不是战利品事件）：
-                    // 整段跳过霜之哀伤与女巫镰刀两个额外掉落 handler；
+                    // 整段跳过霜之哀伤、女巫镰刀与冰霜/雷霆套装三个额外掉落 handler；
                     // 原版 CharacterMainControl.OnDead 与 Health.OnDead 继续执行
                     return;
                 }
@@ -65,6 +65,9 @@ namespace BossRush
 
             FrostmourneBlueBossDropHandler.TryHandleBlueBossDeath(__instance);
             PhantomWitchScytheBossDropHandler.TryHandlePhantomWitchDeath(__instance);
+            // 冰霜/雷霆套装：风暴区 Boss 掉雷霆、「???」Boss 掉冰霜。挂在这里而不是奖励箱协程里，
+            // 是为了让原版地图击杀同样能掉——奖励箱协程只覆盖 BossRush 场次。
+            SetBonusBossDropHandler.TryHandleSetBonusBossDeath(__instance);
         }
 
         /// <summary>

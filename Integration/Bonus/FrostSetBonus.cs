@@ -1,18 +1,21 @@
 // ============================================================================
-// FrostSetBonus.cs - 冰霜套装效果
+// FrostSetBonus.cs - 冰霜套装效果（寒冰之护）
 // ============================================================================
 // 模块说明：
-//   冰霜套装（霜冠 + 寒冰铠甲）的套装效果：
-//   - 被动：冰抗提升（ElementFactor_Ice -0.5，即减少50%冰伤）
-//   - 受击触发：30% 概率冻结近身攻击者（减速80%，持续2秒）
-//   - 冷却时间：5秒
+//   冰霜套装（霜冠 500053 + 寒冰铠甲 500054）的 2 件套效果：
+//   - 被动：冰抗提升（ElementFactor_Ice -0.5，即减少 50% 冰伤）
+//   - 被动：受到的冰系伤害按 50% 回补为治疗（算法照龙套装的火焰转治疗）
+//   - 常驻：淡蓝双眼慢呼吸 + 脚下霜雾（FrostMistEffect）
+//   - 击杀触发「冰葬」：尸体处霜爆，范围内敌人受冰伤并冻结（见 FrostSetBonus_Nova.cs）
+//   - 受击触发：被 5 米内的攻击者命中时 30% 概率冻结攻击者（减速 80%，持续 2 秒；5 秒冷却），附爆发环与音效
 //
 // 实现方式：
-//   通过 Health.OnHurt 静态事件监听玩家受击，
+//   通过 Health.OnHurt / Health.OnDead 静态事件（命名方法、成对订阅、私有 bool 幂等）监听主角受击与全局死亡，
 //   使用 IsMainCharacterHealth 过滤非玩家伤害。
 //   冻结优先使用自定义 FrostSet Buff（如 AssetBundle 提供）；
 //   AssetBundle 缺失时回退到原版 Buffs.Cold（与冰霜长矛同款冻结），
-//   仍失败时再走纯 Modifier 减速兜底。
+//   仍失败时再走纯 Modifier 减速兜底。三级回退统一在 TryApplyFrostFreeze，反击与冰葬共用。
+//   两件装备的 ColdProtection +1、售价等静态属性在 FrostThunderSetConfig。
 // ============================================================================
 
 using System;
@@ -25,7 +28,7 @@ using Duckov.Buffs;
 namespace BossRush
 {
     /// <summary>
-    /// 冰霜套装效果 - 受击冻结反制
+    /// 冰霜套装效果 - 冰伤转治疗 + 受击冻结反制（冰葬在 FrostSetBonus_Nova.cs）
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
@@ -34,8 +37,13 @@ namespace BossRush
         // 冰霜套数值配置
         private const float FROST_SET_FREEZE_CHANCE = 0.3f;       // 30% 冻结概率
         private const float FROST_SET_ICE_RESIST_BONUS = 0.5f;    // 冰抗 +50%（减少50%冰伤）
+        private const float FROST_SET_ICE_HEAL_RATIO = 0.5f;      // 受到的冰系伤害 50% 回补为治疗
         private const float FROST_SET_COOLDOWN = 5f;              // 冻结冷却时间（秒）
         private const float FROST_SET_CLOSE_RANGE = 5f;           // 只冻结近身攻击者
+        private const float FROST_SET_EYE_INTENSITY = 5f;
+
+        private static readonly Color FROST_SET_BURST_COLOR = new Color(0.7f, 0.9f, 1f, 0.8f);
+        private static readonly Color FROST_SET_EYE_COLOR = new Color(0.55f, 0.85f, 1f);
 
         // 冰霜套状态
         private bool frostSetActive = false;
@@ -43,6 +51,8 @@ namespace BossRush
         private Modifier frostSetIceResistModifier = null;
         private Stat frostSetIceResistStat = null;
         private float lastFrostTriggerTime = -999f;
+        private SetEyeLightState frostSetEyeLights = null;
+        private FrostMistEffect frostMistEffect = null;
 
         private sealed class FrostFallbackSlowState
         {
@@ -64,7 +74,8 @@ namespace BossRush
         /// <summary>
         /// 激活冰霜套装效果
         /// </summary>
-        private void ActivateFrostSetBonus(CharacterMainControl player)
+        /// <param name="announce">是否弹横幅；场景重载后的静默重建传 false</param>
+        private void ActivateFrostSetBonus(CharacterMainControl player, bool announce = true)
         {
             try
             {
@@ -94,14 +105,21 @@ namespace BossRush
                     }
                 }
 
-                // 2. 注册受击事件
+                // 2. 注册受击/死亡事件（反击 + 冰葬）
                 RegisterFrostSetHurtEvent();
 
-                // 3. 显示激活提示
-                ShowMessage(L10n.T(
-                    "<color=#87CEEB>【寒冰之护】</color> 套装效果激活！\n受击时有概率冻结攻击者",
-                    "<color=#87CEEB>[Frost Ward]</color> Set bonus activated!\nChance to freeze attackers when hit"
-                ));
+                // 3. 常驻表现：眼光慢呼吸 + 脚下霜雾
+                frostSetEyeLights = CreateSetEyeLights(player, FROST_SET_EYE_COLOR, FROST_SET_EYE_INTENSITY, SetEyePulseMode.Breathe);
+                StartFrostMist(player);
+
+                // 4. 显示激活提示
+                if (announce)
+                {
+                    ShowMessage(L10n.T(
+                        "<color=#87CEEB>【寒冰之护】</color> 套装效果激活！\n冰伤转治疗 · 击杀冰葬霜爆 · 受击冻结攻击者",
+                        "<color=#87CEEB>[Frost Ward]</color> Set bonus activated!\nIce heals you · kills unleash a frost nova · freeze attackers when hit"
+                    ));
+                }
             }
             catch (Exception e)
             {
@@ -133,16 +151,54 @@ namespace BossRush
                     frostSetIceResistStat = null;
                 }
 
-                // 2. 取消受击事件
+                // 2. 取消受击/死亡事件
                 UnregisterFrostSetHurtEvent();
 
                 // 3. 停止仍在飞的 fallback 减速协程，并立刻把对应 Modifier 摘掉
                 StopAndClearFrostFallbackSlowCoroutines();
+
+                // 4. 清理表现层与冰葬状态
+                DestroySetEyeLights(ref frostSetEyeLights);
+                StopFrostMist();
+                ResetFrostNovaState();
             }
             catch (Exception e)
             {
                 DevLog("[FrostSet] DeactivateFrostSetBonus 出错: " + e.Message);
             }
+        }
+
+        private void StartFrostMist(CharacterMainControl player)
+        {
+            StopFrostMist();
+            if (player == null) return;
+
+            try
+            {
+                frostMistEffect = FrostMistEffect.Create<FrostMistEffect>(
+                    player.transform,
+                    player.transform.position + new Vector3(0f, -0.3f, 0f));
+            }
+            catch (Exception e)
+            {
+                DevLog("[FrostSet] 创建霜雾特效失败: " + e.Message);
+                frostMistEffect = null;
+            }
+        }
+
+        private void StopFrostMist()
+        {
+            if (frostMistEffect == null) return;
+
+            try
+            {
+                frostMistEffect.StopEffect();
+            }
+            catch (Exception e)
+            {
+                DevLog("[FrostSet] 停止霜雾特效失败: " + e.Message);
+            }
+            frostMistEffect = null;
         }
 
         #endregion
@@ -159,7 +215,7 @@ namespace BossRush
             try
             {
                 Health.OnHurt += OnFrostSetHurt;
-                Health.OnDead += OnFrostSetMainCharacterDead;
+                Health.OnDead += OnFrostSetAnyDead;
                 frostSetHurtRegistered = true;
                 DevLog("[FrostSet] 已注册受击事件");
             }
@@ -179,7 +235,7 @@ namespace BossRush
             try
             {
                 Health.OnHurt -= OnFrostSetHurt;
-                Health.OnDead -= OnFrostSetMainCharacterDead;
+                Health.OnDead -= OnFrostSetAnyDead;
                 frostSetHurtRegistered = false;
                 DevLog("[FrostSet] 已取消注册受击事件");
             }
@@ -190,19 +246,27 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 玩家死亡时重置冷却 + 停止仍在飞的减速协程。
-        /// Mode E/F 等模式支持局内复活，避免复活后冷却仍在挂、敌人仍被减速的体感残留。
+        /// 全局死亡分派器（唯一的 Health.OnDead 订阅点，保证 += / -= 同文件配对）：
+        /// - 主角死亡：重置冷却 + 停止仍在飞的减速协程。Mode E/F 等模式支持局内复活，
+        ///   避免复活后冷却仍在挂、敌人仍被减速的体感残留。
+        /// - 其他角色死亡：交给冰葬判定（FrostSetBonus_Nova.cs），只在套装激活时有效。
         /// </summary>
-        private void OnFrostSetMainCharacterDead(Health target, DamageInfo damageInfo)
+        private void OnFrostSetAnyDead(Health target, DamageInfo damageInfo)
         {
             if (target == null) return;
-            if (!target.IsMainCharacterHealth) return;
-            lastFrostTriggerTime = -999f;
-            StopAndClearFrostFallbackSlowCoroutines();
+            if (target.IsMainCharacterHealth)
+            {
+                lastFrostTriggerTime = -999f;
+                ResetFrostNovaState();
+                StopAndClearFrostFallbackSlowCoroutines();
+                return;
+            }
+
+            TryScheduleFrostNova(target, damageInfo);
         }
 
         /// <summary>
-        /// 冰霜套受击回调 - 概率冻结攻击者
+        /// 冰霜套受击回调 - 冰伤转治疗 + 概率冻结攻击者
         /// </summary>
         private void OnFrostSetHurt(Health health, DamageInfo damageInfo)
         {
@@ -211,6 +275,18 @@ namespace BossRush
                 // 只处理主角受击
                 if (!frostSetActive || health == null || !health.IsMainCharacterHealth) return;
 
+                // 1) 冰伤转治疗（OnHurt 在扣血之后派发，只做回补，下一帧生效）
+                float iceDamage = GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.ice);
+                if (iceDamage > 0f)
+                {
+                    float heal = iceDamage * FROST_SET_ICE_HEAL_RATIO;
+                    if (heal > 0f)
+                    {
+                        StartCoroutine(DelayedHeal(health, heal));
+                    }
+                }
+
+                // 2) 反击冻结
                 // 冷却检测
                 if (Time.time - lastFrostTriggerTime < FROST_SET_COOLDOWN) return;
 
@@ -234,35 +310,55 @@ namespace BossRush
 
                 lastFrostTriggerTime = Time.time;
 
-                // 优先使用自定义 FrostSet Buff（资源 Bundle 提供时），否则回退到原版 Cold（真冻结）
-                Buff freezeBuff = EquipmentFactory.GetLoadedBuff("FrostSet");
-                if (freezeBuff == null)
+                if (TryApplyFrostFreeze(damageInfo.fromCharacter))
                 {
-                    try
-                    {
-                        freezeBuff = Duckov.Utilities.GameplayDataSettings.Buffs != null
-                            ? Duckov.Utilities.GameplayDataSettings.Buffs.Cold
-                            : null;
-                    }
-                    catch { freezeBuff = null; }
-                }
-
-                if (freezeBuff != null)
-                {
-                    damageInfo.fromCharacter.AddBuff(freezeBuff, player, 0);
-                    DevLog("[FrostSet] 冰冻触发！目标: " + damageInfo.fromCharacter.name +
-                           " (Buff=" + freezeBuff.name + ")");
-                }
-                else
-                {
-                    // 极端兜底：原版 Cold 也拿不到时，用临时减速 Modifier（信息性兜底，不应触达）
-                    ApplyFrostSetFallbackSlow(damageInfo.fromCharacter);
+                    Vector3 attackerPosition = damageInfo.fromCharacter.transform.position;
+                    SpawnSetBurst(attackerPosition, FROST_SET_BURST_COLOR, 1.2f, 0.3f, 4);
+                    PlaySoundEffect(SetBonusSfx.FrostCounter);
                 }
             }
             catch (Exception e)
             {
                 DevLog("[FrostSet] OnFrostSetHurt 出错: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 冻结目标：自定义 FrostSet Buff → 原版 Cold（真冻结）→ 临时减速 Modifier 三级回退。
+        /// 反击与冰葬共用；目标为空或已死亡返回 false。
+        /// </summary>
+        private bool TryApplyFrostFreeze(CharacterMainControl target)
+        {
+            if (target == null) return false;
+
+            Health targetHealth = target.Health;
+            if (targetHealth == null || targetHealth.IsDead) return false;
+
+            CharacterMainControl player = CharacterMainControl.Main;
+
+            // 优先使用自定义 FrostSet Buff（资源 Bundle 提供时），否则回退到原版 Cold（真冻结）
+            Buff freezeBuff = EquipmentFactory.GetLoadedBuff("FrostSet");
+            if (freezeBuff == null)
+            {
+                try
+                {
+                    freezeBuff = Duckov.Utilities.GameplayDataSettings.Buffs != null
+                        ? Duckov.Utilities.GameplayDataSettings.Buffs.Cold
+                        : null;
+                }
+                catch { freezeBuff = null; }
+            }
+
+            if (freezeBuff != null)
+            {
+                target.AddBuff(freezeBuff, player, 0);
+                DevLog("[FrostSet] 冰冻触发！目标: " + target.name + " (Buff=" + freezeBuff.name + ")");
+                return true;
+            }
+
+            // 极端兜底：原版 Cold 也拿不到时，用临时减速 Modifier（信息性兜底，不应触达）
+            ApplyFrostSetFallbackSlow(target);
+            return true;
         }
 
         /// <summary>

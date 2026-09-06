@@ -636,6 +636,7 @@ namespace BossRush
                 // 只能等这里箱子建好后再投进来。
                 PetNestDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 AffixForgeStoneDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                SetBonusBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
 
                 // 后山菜地种子。三个 Boss 各掉自己那一种，内部按解锁状态门控；
                 // 菜地未解锁或后山关闭时零行为。放在最后是因为它与上面的专属掉落
@@ -699,6 +700,7 @@ namespace BossRush
                 PhantomWitchScytheBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 PetNestDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
                 AffixForgeStoneDropService.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
+                SetBonusBossDropHandler.TryConsumePendingBossRushLootboxDrop(bossMain, inv);
             }
             catch (Exception e)
             {
@@ -741,6 +743,7 @@ namespace BossRush
                 PhantomWitchScytheBossDropHandler.TryConsumePendingAsWorldDrop(bossMain, position);
                 PetNestDropService.TryConsumePendingAsWorldDrop(bossMain, position);
                 AffixForgeStoneDropService.TryConsumePendingAsWorldDrop(bossMain, position);
+                SetBonusBossDropHandler.TryConsumePendingAsWorldDrop(bossMain, position);
             }
             catch (Exception e)
             {

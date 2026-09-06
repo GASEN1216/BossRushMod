@@ -566,14 +566,14 @@ namespace BossRush
         // 霜冠（冰霜头盔）
         private static readonly string FrostHelmNameCN = "霜冠";
         private static readonly string FrostHelmNameEN = "Frost Crown";
-        private static readonly string FrostHelmDescCN = "寒冰凝结的王冠，散发着刺骨的冷气。\n<color=#87CEEB>套装件之一（2/2 激活套装效果）</color>";
-        private static readonly string FrostHelmDescEN = "A crown forged from condensed ice, radiating bone-chilling cold.\n<color=#87CEEB>Set piece (2/2 to activate set bonus)</color>";
+        private static readonly string FrostHelmDescCN = "寒冰凝结的王冠，散发着刺骨的冷气。\n<color=#87CEEB>套装件之一（2/2 激活「寒冰之护」）</color>\n<color=#AADDFF>套装效果：冰抗+50%，受到的冰伤 50% 转为治疗；击杀敌人触发「冰葬」——尸体处 4.5 米霜爆，20 冰伤并冻结（1.5 秒冷却）；被 5 米内攻击者命中时 30% 概率冻结对方（5 秒冷却）</color>\n<color=#BBBBBB>来源：「???」Boss 掉落 / 叮当的小店（好感 6 级）</color>";
+        private static readonly string FrostHelmDescEN = "A crown forged from condensed ice, radiating bone-chilling cold.\n<color=#87CEEB>Set piece (2/2 activates Frost Ward)</color>\n<color=#AADDFF>Set bonus: +50% Ice Resist, 50% of ice damage taken heals you; kills unleash Frost Nova (4.5 m burst at the corpse, 20 ice damage + freeze, 1.5 s cooldown); 30% chance to freeze attackers within 5 m (5 s cooldown)</color>\n<color=#BBBBBB>Source: \"???\" boss drop / Dingdang's Shop (affinity level 6)</color>";
 
         // 寒冰铠甲
         private static readonly string FrostArmorNameCN = "寒冰铠甲";
         private static readonly string FrostArmorNameEN = "Ice Armor";
-        private static readonly string FrostArmorDescCN = "以万年寒冰铸就的铠甲，受击时能冻结来犯之敌。\n<color=#87CEEB>套装件之一（2/2 激活套装效果）</color>\n<color=#AADDFF>套装效果：冰抗+50%，受击30%概率冻结攻击者</color>";
-        private static readonly string FrostArmorDescEN = "Armor forged from ancient ice. Freezes attackers when struck.\n<color=#87CEEB>Set piece (2/2 to activate set bonus)</color>\n<color=#AADDFF>Set bonus: +50% Ice Resist, 30% chance to freeze attacker</color>";
+        private static readonly string FrostArmorDescCN = "以万年寒冰铸就的铠甲，受击时能冻结来犯之敌。\n<color=#87CEEB>套装件之一（2/2 激活「寒冰之护」）</color>\n<color=#AADDFF>套装效果：冰抗+50%，受到的冰伤 50% 转为治疗；击杀敌人触发「冰葬」——尸体处 4.5 米霜爆，20 冰伤并冻结（1.5 秒冷却）；被 5 米内攻击者命中时 30% 概率冻结对方（5 秒冷却）</color>\n<color=#BBBBBB>来源：「???」Boss 掉落 / 叮当的小店（好感 6 级）</color>";
+        private static readonly string FrostArmorDescEN = "Armor forged from ancient ice. Freezes attackers when struck.\n<color=#87CEEB>Set piece (2/2 activates Frost Ward)</color>\n<color=#AADDFF>Set bonus: +50% Ice Resist, 50% of ice damage taken heals you; kills unleash Frost Nova (4.5 m burst at the corpse, 20 ice damage + freeze, 1.5 s cooldown); 30% chance to freeze attackers within 5 m (5 s cooldown)</color>\n<color=#BBBBBB>Source: \"???\" boss drop / Dingdang's Shop (affinity level 6)</color>";
 
         // 冰冻 Buff
         private static readonly string FrostBuffNameCN = "冰冻";
@@ -588,14 +588,14 @@ namespace BossRush
         // 雷神之角（雷霆头盔）
         private static readonly string ThunderHelmNameCN = "雷神之角";
         private static readonly string ThunderHelmNameEN = "Thunder Horn";
-        private static readonly string ThunderHelmDescCN = "蕴含雷霆之力的角盔，电弧在表面游走。\n<color=#FFD700>套装件之一（2/2 激活套装效果）</color>";
-        private static readonly string ThunderHelmDescEN = "A horned helm imbued with thunder, arcs of lightning dance across its surface.\n<color=#FFD700>Set piece (2/2 to activate set bonus)</color>";
+        private static readonly string ThunderHelmDescCN = "蕴含雷霆之力的角盔，电弧在表面游走。\n<color=#FFD700>套装件之一（2/2 激活「雷霆之怒」）</color>\n<color=#FFEE88>套装效果：电抗+50%，受到的电伤 50% 转为治疗；击杀敌人触发「引雷术」——6 米内最多 3 个敌人被连锁闪电击中（35 电伤，最多连跳 3 次）；被 6 米内攻击者命中时 25% 概率雷霆反震（4 米 30 电伤，3 秒冷却，不伤自己）</color>\n<color=#BBBBBB>来源：风暴区 Boss 掉落 / 叮当的小店（好感 6 级）</color>";
+        private static readonly string ThunderHelmDescEN = "A horned helm imbued with thunder, arcs of lightning dance across its surface.\n<color=#FFD700>Set piece (2/2 activates Thunder's Wrath)</color>\n<color=#FFEE88>Set bonus: +50% Elec Resist, 50% of shock damage taken heals you; kills trigger Chain Lightning (up to 3 enemies within 6 m, 35 shock damage, chains up to 3 times); 25% chance to counter-shock attackers within 6 m (4 m, 30 damage, 3 s cooldown, never hurts you)</color>\n<color=#BBBBBB>Source: Storm Zone boss drop / Dingdang's Shop (affinity level 6)</color>";
 
         // 雷霆战甲
         private static readonly string ThunderArmorNameCN = "雷霆战甲";
         private static readonly string ThunderArmorNameEN = "Thunder Armor";
-        private static readonly string ThunderArmorDescCN = "以雷电淬炼的战甲，受击时释放电击反制周围敌人。\n<color=#FFD700>套装件之一（2/2 激活套装效果）</color>\n<color=#FFEE88>套装效果：电抗+50%，受击25%概率释放电击AOE</color>";
-        private static readonly string ThunderArmorDescEN = "Armor tempered by lightning. Releases electric counter when struck.\n<color=#FFD700>Set piece (2/2 to activate set bonus)</color>\n<color=#FFEE88>Set bonus: +50% Elec Resist, 25% chance to release lightning AOE</color>";
+        private static readonly string ThunderArmorDescCN = "以雷电淬炼的战甲，受击时释放电击反制周围敌人。\n<color=#FFD700>套装件之一（2/2 激活「雷霆之怒」）</color>\n<color=#FFEE88>套装效果：电抗+50%，受到的电伤 50% 转为治疗；击杀敌人触发「引雷术」——6 米内最多 3 个敌人被连锁闪电击中（35 电伤，最多连跳 3 次）；被 6 米内攻击者命中时 25% 概率雷霆反震（4 米 30 电伤，3 秒冷却，不伤自己）</color>\n<color=#BBBBBB>来源：风暴区 Boss 掉落 / 叮当的小店（好感 6 级）</color>";
+        private static readonly string ThunderArmorDescEN = "Armor tempered by lightning. Releases electric counter when struck.\n<color=#FFD700>Set piece (2/2 activates Thunder's Wrath)</color>\n<color=#FFEE88>Set bonus: +50% Elec Resist, 50% of shock damage taken heals you; kills trigger Chain Lightning (up to 3 enemies within 6 m, 35 shock damage, chains up to 3 times); 25% chance to counter-shock attackers within 6 m (4 m, 30 damage, 3 s cooldown, never hurts you)</color>\n<color=#BBBBBB>Source: Storm Zone boss drop / Dingdang's Shop (affinity level 6)</color>";
 
         #endregion
 

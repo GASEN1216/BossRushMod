@@ -799,7 +799,15 @@ namespace BossRush
                 // 词缀熔石：锻造的唯一消耗材料，游戏内 Wiki 承诺「哥布林商店（要好感度）」。
                 // 与商店同级解锁（2级）——锻造是纯自愿的基地玩法，不该再加一道好感度墙；
                 // 库存 5 与钻石/冷淬液同档，配合 Boss 掉落构成稳定 + 运气两条补给线。
-                new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, SHOP_UNLOCK_LEVEL, 5)
+                new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, SHOP_UNLOCK_LEVEL, 5),
+                // 冰霜/雷霆套装（500053-500056）：「上头批出库了」。这里是稳定线，运气线是 Boss 专属掉落格
+                // （风暴区 Boss 掉雷霆、「???」Boss 掉冰霜，见 LootAndRewardsSetBonusLoot.cs）。
+                // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1 与钻戒同款（每次开店重置）。
+                // 掉落黑名单保留不动：它只挡随机奖池，NPC 商店不查它（词缀熔石同款）。
+                new ShopItemEntry(FrostThunderSetConfig.FROST_HELMET_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
+                new ShopItemEntry(FrostThunderSetConfig.FROST_ARMOR_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
+                new ShopItemEntry(FrostThunderSetConfig.THUNDER_HELMET_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
+                new ShopItemEntry(FrostThunderSetConfig.THUNDER_ARMOR_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK)
             };
         }
         

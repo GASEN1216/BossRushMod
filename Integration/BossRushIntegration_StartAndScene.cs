@@ -189,6 +189,7 @@ namespace BossRush
             EquipmentFactory.ResetStaticCaches();
             NewWeaponPlaceholderRegistry.ResetStaticCaches();
             SetBonusPlaceholderRegistry.ResetStaticCaches();
+            SetBonusBossDropHandler.ResetStaticCaches();
             FactionFlagConfig.ResetStaticCaches();
             ModeGEncounterVariation.ResetStaticCaches();
             ModeGMapSupportRegistry.ResetStaticCaches();

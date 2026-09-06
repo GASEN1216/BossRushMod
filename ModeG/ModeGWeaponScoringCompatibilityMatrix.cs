@@ -132,12 +132,21 @@ namespace BossRush
                 false, false,
                 "DragonSet_BurnPassive_BuffEffect", RequiredVerificationRevision),
 
-            // 雷霆套装（雷神之角+雷霆战甲）：受击电击 AOE 被动不计分，伤害/推进不变；无普通攻击输出
+            // 雷霆套装（雷神之角+雷霆战甲）：受击电击 AOE 与击杀引雷术连锁均为 buff/effect 通道
+            // （new DamageInfo(Main)、TypeID 0、isFromBuffOrEffect），登记不计分，伤害/推进不变；无普通攻击输出
             new ModeGWeaponScoringEntry(
                 "ThunderSet", 0,
                 WeaponFamily.None, false, false, false,
                 false, false,
                 "ThunderSet_ShockAoE_BuffEffect", RequiredVerificationRevision),
+
+            // 冰霜套装（霜冠+寒冰铠甲）：击杀冰葬霜爆为 buff/effect 通道（new DamageInfo(Main)、TypeID 0、
+            // isFromBuffOrEffect），登记不计分，伤害/冻结/推进不变；无普通攻击输出。只追加，不重排。
+            new ModeGWeaponScoringEntry(
+                "FrostSet", 0,
+                WeaponFamily.None, false, false, false,
+                false, false,
+                "FrostSet_FrostNova_BuffEffect", RequiredVerificationRevision),
         };
 
         /// <summary>冻结条目只读访问（索引序即登记序）。</summary>

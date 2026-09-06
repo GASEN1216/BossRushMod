@@ -92,6 +92,12 @@ namespace BossRush.Common.Effects
         protected virtual float WorldEmissionRate => 10f;
         protected virtual float WorldShapeRadius => 0.05f;
         protected virtual int WorldEmitPerFrame => 1;
+
+        /// <summary>
+        /// 粒子着色（RGB；alpha 仍由 LocalAlpha / WorldAlpha 控制）。默认白色，与历史行为一致。
+        /// 材质与纹理仍是全局共享的白色贴图，着色只走 startColor / colorOverLifetime，不产生新材质。
+        /// </summary>
+        protected virtual Color ParticleTint => Color.white;
         
         // ========== 内部状态 ==========
         
@@ -297,7 +303,8 @@ namespace BossRush.Common.Effects
             main.startLifetime = lifetime;
             main.startSpeed = speed;
             main.startSize = size;
-            main.startColor = new Color(1f, 1f, 1f, alpha);
+            Color tint = ParticleTint;
+            main.startColor = new Color(tint.r, tint.g, tint.b, alpha);
             main.simulationSpace = space;
             main.loop = true;
             
@@ -317,7 +324,7 @@ namespace BossRush.Common.Effects
             colorOverLifetime.enabled = true;
             Gradient g = new Gradient();
             g.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                new GradientColorKey[] { new GradientColorKey(tint, 0f), new GradientColorKey(tint, 1f) },
                 new GradientAlphaKey[] { new GradientAlphaKey(alpha, 0f), new GradientAlphaKey(0f, 1f) }
             );
             colorOverLifetime.color = g;

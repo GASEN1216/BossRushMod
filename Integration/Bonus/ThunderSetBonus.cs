@@ -1,18 +1,24 @@
 // ============================================================================
-// ThunderSetBonus.cs - 雷霆套装效果
+// ThunderSetBonus.cs - 雷霆套装效果（雷霆之怒）
 // ============================================================================
 // 模块说明：
-//   雷霆套装（雷神之角 + 雷霆战甲）的套装效果：
-//   - 被动：电抗提升（ElementFactor_Electricity -0.5，即减少50%电伤）
-//   - 受击触发：25% 概率以玩家为中心释放电击 AOE（4米范围，25伤害）
-//   - 冷却时间：3秒
+//   雷霆套装（雷神之角 500055 + 雷霆战甲 500056）的 2 件套效果：
+//   - 被动：电抗提升（ElementFactor_Electricity -0.5，即减少 50% 电伤）
+//   - 被动：受到的电系伤害按 50% 回补为治疗（算法照龙套装的火焰转治疗）
+//   - 常驻：青白色双眼电闪 + 肩部环境电弧（见 ThunderSetBonus_Storm.cs）
+//   - 击杀触发「引雷术」：连锁闪电（见 ThunderSetBonus_Storm.cs）
+//   - 受击触发「雷霆反震」：被 6 米内的攻击者命中时 25% 概率以玩家为中心释放电击 AOE
+//     （4 米 / 30 电伤 / 3 秒冷却 / canHurtSelf=false 不伤自己与友军），附电弧与爆发环
 //
 // 实现方式：
-//   通过 Health.OnHurt 静态事件监听玩家受击，
-//   使用 ExplosionManager.CreateExplosion 实现 AOE 电击。
+//   通过 Health.OnHurt / Health.OnDead 静态事件（命名方法、成对订阅、私有 bool 幂等）监听主角受击与全局死亡；
+//   反震与引雷术的结算都延后一帧到协程：OnHurt 可能正处在敌方爆炸的 ExplosionManager 循环里，
+//   嵌套 CreateExplosion 会覆写其共享缓冲；OnDead 内同步再 Hurt 也会让死亡派发顺序倒置。
+//   两件装备的 StormProtection +1（风暴天气免疫）、售价等静态属性在 FrostThunderSetConfig。
 // ============================================================================
 
 using System;
+using System.Collections;
 using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
@@ -21,7 +27,7 @@ using ItemStatsSystem.Items;
 namespace BossRush
 {
     /// <summary>
-    /// 雷霆套装效果 - 受击电击反制
+    /// 雷霆套装效果 - 电伤转治疗 + 受击雷霆反震（引雷术在 ThunderSetBonus_Storm.cs）
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
@@ -29,12 +35,18 @@ namespace BossRush
 
         // 雷霆套数值配置
         private const float THUNDER_SET_COUNTER_CHANCE = 0.25f;       // 25% 反击概率
-        private const float THUNDER_SET_COUNTER_DAMAGE = 25f;         // 电击伤害
+        private const float THUNDER_SET_COUNTER_DAMAGE = 30f;         // 电击伤害
         private const float THUNDER_SET_COUNTER_RADIUS = 4f;          // 电击范围（米）
         private const float THUNDER_SET_COOLDOWN = 3f;                // 电击冷却时间（秒）
         private const float THUNDER_SET_ELEC_RESIST_BONUS = 0.5f;     // 电抗 +50%
+        private const float THUNDER_SET_ELEC_HEAL_RATIO = 0.5f;       // 受到的电系伤害 50% 回补为治疗
         // 触发距离：与冰霜套保持一致，远程攻击不触发反制（设计意图是"近身反制"）
         private const float THUNDER_SET_CLOSE_RANGE = 6f;
+        private const float THUNDER_SET_EYE_INTENSITY = 6f;
+
+        private static readonly Color THUNDER_SET_ARC_COLOR = new Color(0.65f, 0.9f, 1f, 0.95f);
+        private static readonly Color THUNDER_SET_BURST_COLOR = new Color(0.55f, 0.8f, 1f, 0.75f);
+        private static readonly Color THUNDER_SET_EYE_COLOR = new Color(0.6f, 0.9f, 1f);
 
         // 雷霆套状态
         private bool thunderSetActive = false;
@@ -42,6 +54,7 @@ namespace BossRush
         private Modifier thunderSetElecResistModifier = null;
         private Stat thunderSetElecResistStat = null;
         private float lastThunderTriggerTime = -999f;
+        private SetEyeLightState thunderSetEyeLights = null;
 
         #endregion
 
@@ -50,7 +63,8 @@ namespace BossRush
         /// <summary>
         /// 激活雷霆套装效果
         /// </summary>
-        private void ActivateThunderSetBonus(CharacterMainControl player)
+        /// <param name="announce">是否弹横幅；场景重载后的静默重建传 false</param>
+        private void ActivateThunderSetBonus(CharacterMainControl player, bool announce = true)
         {
             try
             {
@@ -80,14 +94,21 @@ namespace BossRush
                     }
                 }
 
-                // 2. 注册受击事件
+                // 2. 注册受击/死亡事件（反震 + 引雷术）
                 RegisterThunderSetHurtEvent();
 
-                // 3. 显示激活提示
-                ShowMessage(L10n.T(
-                    "<color=#FFD700>【雷霆之怒】</color> 套装效果激活！\n受击时有概率释放电击反制",
-                    "<color=#FFD700>[Thunder's Wrath]</color> Set bonus activated!\nChance to counter with lightning when hit"
-                ));
+                // 3. 常驻表现：眼光电闪 + 肩部环境电弧
+                thunderSetEyeLights = CreateSetEyeLights(player, THUNDER_SET_EYE_COLOR, THUNDER_SET_EYE_INTENSITY, SetEyePulseMode.Flicker);
+                StartThunderAmbientArcLoop(player);
+
+                // 4. 显示激活提示
+                if (announce)
+                {
+                    ShowMessage(L10n.T(
+                        "<color=#FFD700>【雷霆之怒】</color> 套装效果激活！\n电伤转治疗 · 击杀引雷连锁 · 受击雷霆反震",
+                        "<color=#FFD700>[Thunder's Wrath]</color> Set bonus activated!\nShock heals you · kills chain lightning · counter-shock when hit"
+                    ));
+                }
             }
             catch (Exception e)
             {
@@ -119,8 +140,14 @@ namespace BossRush
                     thunderSetElecResistStat = null;
                 }
 
-                // 2. 取消受击事件
+                // 2. 取消受击/死亡事件
                 UnregisterThunderSetHurtEvent();
+
+                // 3. 清理表现层与引雷术状态
+                StopThunderAmbientArcLoop();
+                DestroySetEyeLights(ref thunderSetEyeLights);
+                DestroySetArcPool();
+                ResetThunderChainState();
             }
             catch (Exception e)
             {
@@ -142,7 +169,7 @@ namespace BossRush
             try
             {
                 Health.OnHurt += OnThunderSetHurt;
-                Health.OnDead += OnThunderSetMainCharacterDead;
+                Health.OnDead += OnThunderSetAnyDead;
                 thunderSetHurtRegistered = true;
                 DevLog("[ThunderSet] 已注册受击事件");
             }
@@ -162,7 +189,7 @@ namespace BossRush
             try
             {
                 Health.OnHurt -= OnThunderSetHurt;
-                Health.OnDead -= OnThunderSetMainCharacterDead;
+                Health.OnDead -= OnThunderSetAnyDead;
                 thunderSetHurtRegistered = false;
                 DevLog("[ThunderSet] 已取消注册受击事件");
             }
@@ -173,19 +200,25 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 玩家死亡时重置冷却。
-        /// Mode E/F 等模式支持局内复活，避免复活瞬间被打就触发反制（虽然技术上不算 bug，
-        /// 但与"挨打才反弹"的设计语义一致——重新计算冷却让节奏更可预期）。
+        /// 全局死亡分派器（唯一的 Health.OnDead 订阅点，保证 += / -= 同文件配对）：
+        /// - 主角死亡：重置冷却。Mode E/F 等模式支持局内复活，避免复活瞬间被打就触发反制。
+        /// - 其他角色死亡：交给引雷术判定（ThunderSetBonus_Storm.cs），只在套装激活时有效。
         /// </summary>
-        private void OnThunderSetMainCharacterDead(Health target, DamageInfo damageInfo)
+        private void OnThunderSetAnyDead(Health target, DamageInfo damageInfo)
         {
             if (target == null) return;
-            if (!target.IsMainCharacterHealth) return;
-            lastThunderTriggerTime = -999f;
+            if (target.IsMainCharacterHealth)
+            {
+                lastThunderTriggerTime = -999f;
+                ResetThunderChainState();
+                return;
+            }
+
+            TryScheduleThunderChain(target, damageInfo);
         }
 
         /// <summary>
-        /// 雷霆套受击回调 - 概率释放电击 AOE
+        /// 雷霆套受击回调 - 电伤转治疗 + 概率雷霆反震
         /// </summary>
         private void OnThunderSetHurt(Health health, DamageInfo damageInfo)
         {
@@ -194,6 +227,18 @@ namespace BossRush
                 // 只处理主角受击
                 if (!thunderSetActive || health == null || !health.IsMainCharacterHealth) return;
 
+                // 1) 电伤转治疗（OnHurt 在扣血之后派发，只做回补，下一帧生效）
+                float electricDamage = GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.electricity);
+                if (electricDamage > 0f)
+                {
+                    float heal = electricDamage * THUNDER_SET_ELEC_HEAL_RATIO;
+                    if (heal > 0f)
+                    {
+                        StartCoroutine(DelayedHeal(health, heal));
+                    }
+                }
+
+                // 2) 雷霆反震
                 // 冷却检测
                 if (Time.time - lastThunderTriggerTime < THUNDER_SET_COOLDOWN) return;
 
@@ -215,29 +260,61 @@ namespace BossRush
 
                 lastThunderTriggerTime = Time.time;
 
-                // 安全检查 LevelManager
-                if (LevelManager.Instance == null || LevelManager.Instance.ExplosionManager == null) return;
-
-                // 构建伤害信息
-                DamageInfo dmg = new DamageInfo(player);
-                dmg.damageValue = THUNDER_SET_COUNTER_DAMAGE;
-                dmg.isExplosion = true;
-                dmg.AddElementFactor(ElementTypes.electricity, 1.0f);
-
-                // 使用 ExplosionManager 创建爆炸（已有 API，无需新系统）
-                LevelManager.Instance.ExplosionManager.CreateExplosion(
-                    player.transform.position,
-                    THUNDER_SET_COUNTER_RADIUS,
-                    dmg,
-                    ExplosionFxTypes.normal,
-                    0.3f
-                );
-
-                DevLog("[ThunderSet] 电击反制触发！范围: " + THUNDER_SET_COUNTER_RADIUS + "m");
+                // 延后一帧结算：OnHurt 可能正处在敌方爆炸的 ExplosionManager 循环内，
+                // 嵌套 CreateExplosion 会覆写其共享 colliders/damagedHealth 缓冲。
+                StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter));
             }
             catch (Exception e)
             {
                 DevLog("[ThunderSet] OnThunderSetHurt 出错: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 雷霆反震结算：电击 AOE（不伤自己与友军）+ 玩家→攻击者电弧 + 爆发环 + 音效
+        /// </summary>
+        private IEnumerator ThunderCounterStep(CharacterMainControl player, CharacterMainControl attacker)
+        {
+            yield return null;
+
+            if (!thunderSetActive || player == null) yield break;
+            if (LevelManager.Instance == null || LevelManager.Instance.ExplosionManager == null) yield break;
+
+            try
+            {
+                Vector3 origin = player.transform.position;
+
+                // 构建伤害信息：buff/effect 通道（Mode G 矩阵登记为不计分）、无武器 TypeID
+                DamageInfo dmg = new DamageInfo(player);
+                dmg.damageValue = THUNDER_SET_COUNTER_DAMAGE;
+                dmg.isExplosion = true;
+                dmg.isFromBuffOrEffect = true;
+                dmg.fromWeaponItemID = 0;
+                dmg.AddElementFactor(ElementTypes.electricity, 1.0f);
+
+                // canHurtSelf=false：官方默认 true 时 selfTeam=Teams.all，爆炸中心的玩家自己必吃这一下
+                LevelManager.Instance.ExplosionManager.CreateExplosion(
+                    origin,
+                    THUNDER_SET_COUNTER_RADIUS,
+                    dmg,
+                    ExplosionFxTypes.normal,
+                    0.3f,
+                    false
+                );
+
+                SpawnSetBurst(origin, THUNDER_SET_BURST_COLOR, THUNDER_SET_COUNTER_RADIUS, 0.35f, 0);
+                if (attacker != null && attacker.transform != null)
+                {
+                    SpawnSetArc(origin + Vector3.up * 1f, attacker.transform.position + Vector3.up * 1f,
+                        THUNDER_SET_ARC_COLOR, 0.08f, 0.2f);
+                }
+                PlaySoundEffect(SetBonusSfx.ThunderCounter);
+
+                DevLog("[ThunderSet] 雷霆反震触发！范围: " + THUNDER_SET_COUNTER_RADIUS + "m");
+            }
+            catch (Exception e)
+            {
+                DevLog("[ThunderSet] ThunderCounterStep 出错: " + e.Message);
             }
         }
 
