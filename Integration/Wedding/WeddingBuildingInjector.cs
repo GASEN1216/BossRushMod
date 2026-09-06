@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // WeddingBuildingInjector.cs - 婚礼教堂建筑注入器
 // ============================================================================
 // 模块说明：
@@ -90,26 +90,6 @@ namespace BossRush
         /// <summary>缓存的婚礼NPC站位点</summary>
         private Transform cachedWeddingNpcSpawnPoint = null;
 
-        /// <summary>BuildingManager 类型缓存</summary>
-        private static Type cachedBuildingManagerType = null;
-        private static bool buildingManagerTypeResolved = false;
-
-        /// <summary>BuildingManager.Any 方法缓存</summary>
-        private static MethodInfo cachedBuildingManagerAnyMethod = null;
-        private static bool buildingManagerAnyMethodResolved = false;
-
-        /// <summary>BuildingManager.GetBuildingData 方法缓存</summary>
-        private static MethodInfo cachedGetBuildingDataMethod = null;
-        private static bool getBuildingDataMethodResolved = false;
-
-        /// <summary>Building 类型缓存</summary>
-        private static Type cachedBuildingType = null;
-        private static bool buildingTypeResolved = false;
-
-        /// <summary>Building.ID 属性缓存</summary>
-        private static PropertyInfo cachedBuildingIdProperty = null;
-        private static bool buildingIdPropertyResolved = false;
-
         // ============================================================================
         // 工具方法
         // ============================================================================
@@ -120,93 +100,32 @@ namespace BossRush
         /// </summary>
         private static Type FindGameType(string fullTypeName)
         {
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    Type t = asm.GetType(fullTypeName);
-                    if (t != null) return t;
-                }
-                catch { }
-            }
-            return null;
+            return BuildingInjectionHelper.FindGameType(fullTypeName);
         }
 
         private static Type GetBuildingManagerType()
         {
-            if (!buildingManagerTypeResolved)
-            {
-                cachedBuildingManagerType = FindGameType("Duckov.Buildings.BuildingManager");
-                buildingManagerTypeResolved = true;
-            }
-
-            return cachedBuildingManagerType;
+            return BuildingInjectionHelper.GetBuildingManagerType();
         }
 
         private static MethodInfo GetBuildingManagerAnyMethod()
         {
-            if (!buildingManagerAnyMethodResolved)
-            {
-                Type buildingManagerType = GetBuildingManagerType();
-                if (buildingManagerType != null)
-                {
-                    cachedBuildingManagerAnyMethod = buildingManagerType.GetMethod(
-                        "Any",
-                        BindingFlags.Public | BindingFlags.Static,
-                        null,
-                        new Type[] { typeof(string), typeof(bool) },
-                        null);
-                }
-
-                buildingManagerAnyMethodResolved = true;
-            }
-
-            return cachedBuildingManagerAnyMethod;
+            return BuildingInjectionHelper.GetBuildingManagerAnyMethod();
         }
 
         private static MethodInfo GetBuildingDataMethod()
         {
-            if (!getBuildingDataMethodResolved)
-            {
-                Type buildingManagerType = GetBuildingManagerType();
-                if (buildingManagerType != null)
-                {
-                    cachedGetBuildingDataMethod = buildingManagerType.GetMethod(
-                        "GetBuildingData",
-                        BindingFlags.NonPublic | BindingFlags.Static);
-                }
-
-                getBuildingDataMethodResolved = true;
-            }
-
-            return cachedGetBuildingDataMethod;
+            return BuildingInjectionHelper.GetBuildingDataMethod();
         }
 
         private static Type GetBuildingType()
         {
-            if (!buildingTypeResolved)
-            {
-                cachedBuildingType = FindGameType("Duckov.Buildings.Building");
-                buildingTypeResolved = true;
-            }
-
-            return cachedBuildingType;
+            return BuildingInjectionHelper.GetBuildingType();
         }
 
         private static PropertyInfo GetBuildingIdProperty()
         {
-            if (!buildingIdPropertyResolved)
-            {
-                Type buildingType = GetBuildingType();
-                if (buildingType != null)
-                {
-                    cachedBuildingIdProperty = buildingType.GetProperty("ID");
-                }
-
-                buildingIdPropertyResolved = true;
-            }
-
-            return cachedBuildingIdProperty;
+            return BuildingInjectionHelper.GetBuildingIdProperty();
         }
 
         private void ResetWeddingBuildingLocationCache()
@@ -888,34 +807,7 @@ namespace BossRush
 
         private void AssignBuildingContainerField(FieldInfo field, Component buildingComp, Transform container)
         {
-            if (field == null || buildingComp == null)
-            {
-                return;
-            }
-
-            if (container == null)
-            {
-                field.SetValue(buildingComp, null);
-                return;
-            }
-
-            Type fieldType = field.FieldType;
-            if (typeof(Transform).IsAssignableFrom(fieldType))
-            {
-                field.SetValue(buildingComp, container);
-            }
-            else if (typeof(GameObject).IsAssignableFrom(fieldType))
-            {
-                field.SetValue(buildingComp, container.gameObject);
-            }
-            else if (typeof(Component).IsAssignableFrom(fieldType))
-            {
-                field.SetValue(buildingComp, container.GetComponent(fieldType));
-            }
-            else
-            {
-                field.SetValue(buildingComp, container);
-            }
+            BuildingInjectionHelper.AssignBuildingContainerField(field, buildingComp, container);
         }
 
         /// <summary>

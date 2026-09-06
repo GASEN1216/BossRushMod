@@ -14,7 +14,7 @@ PetNestBuilderInjectionGuard — 遗种巢建筑注入守卫（实施计划 步�
   占位图元自带的 Collider 必须删（会干扰建筑放置与交互）；
 - OnBuildingBuilt / OnBuildingDestroyed 订阅与退订成对；
 - 交互点装配时先 SetActive(false) 再挂组件，填好字段后才激活；
-- 共享反射工具不得重复定义（FindGameType 等定义在 Integration/Wedding/ 下同一 partial class）；
+- 共享反射工具不得重复定义（FindGameType 等定义在 BuildingInjectionHelper）；
 - 基地场景装配管线与 Mod 卸载路径都已接线。
 """
 import os
@@ -34,7 +34,7 @@ from petnest_guard_util import (  # noqa: E402
 
 GUARD = "PetNestBuilderInjectionGuard"
 
-# 这些共享 helper 定义在 Integration/Wedding/ 下、属于同一个 partial class ModBehaviour，
+# 这些共享 helper 定义在 Common/Buildings/BuildingInjectionHelper，
 # 遗种巢再定义一份会编译报重复成员
 SHARED_HELPERS = [
     "private static Type FindGameType(",
@@ -65,7 +65,7 @@ def check_builder(errors):
             errors.append("[常量] 缺少: " + desc)
 
     # 早期注入
-    early = re.search(r"private void TryInitializePetNestEarly\(\)[\s\S]{0,1200}?\n        \}", code)
+    early = re.search(r"internal void TryInitializePetNestEarly\(\)[\s\S]*?\n        \}", code)
     if early is None:
         errors.append("[早期注入] 缺少 TryInitializePetNestEarly()")
     else:
@@ -84,7 +84,7 @@ def check_builder(errors):
             errors.append("[幂等] 初始化必须幂等早返")
         # dormant：开关关闭且从未建过时不往官方建造 UI 里塞一个点不动的死建筑；
         # 已建过的老档必须照常注册 prefab，否则官方 BuildingArea 会报缺 prefab
-        if "!IsPetNestConfiguredEnabled() && !HasPendingPetNestBuildingsInManager()" not in body:
+        if "!_owner.IsPetNestConfiguredEnabled() && !HasPendingPetNestBuildingsInManager()" not in body:
             errors.append("[dormant] 开关关闭且未建过时必须跳过建筑注入（已建过的老档除外）")
         if "if (!isEarlyInit && HasPendingPetNestBuildingsInManager())" not in body:
             errors.append("[早期注入] 早期注入分支不得触发建筑区重绘")
@@ -152,7 +152,7 @@ def check_runtime(errors):
             errors.append("[注入] 必须先判重再注入（同进程 BuildingDataCollection 是长寿资产）")
 
     # Building 组件字段
-    comp = re.search(r"private void AddPetNestBuildingComponent\(GameObject go\)[\s\S]{0,1600}?\n        \}", code)
+    comp = re.search(r"private void AddPetNestBuildingComponent\(GameObject go\)[\s\S]*?\n        \}", code)
     if comp is None:
         errors.append("[组件] 缺少 AddPetNestBuildingComponent()")
     else:

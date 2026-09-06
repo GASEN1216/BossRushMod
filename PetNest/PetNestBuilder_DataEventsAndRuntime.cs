@@ -1,12 +1,12 @@
 // ============================================================================
 // PetNestBuilder_DataEventsAndRuntime.cs - 遗种巢建筑的数据注入、事件与场景恢复
 // ============================================================================
-// 与 PetNestBuilder.cs 拆开只为单文件行数预算；语义是同一 partial class。
+// 与 PetNestBuilder.cs 同属模块类型 PetNestBuilder。
 // 形态照 Integration/WishFountain/WishFountainBuilder_DataEventsAndRuntime.cs。
 //
 // 共享反射工具（FindGameType / GetBuildingType / GetBuildingDataMethod /
 // AssignBuildingContainerField / RequestBaseBuildingAreaRepaint 等）定义在
-// Integration/Wedding/ 下、属于同一个 partial class ModBehaviour，**不得重复定义**。
+// BuildingInjectionHelper；重绘与协程经显式 _owner，不再访问兄弟模块私有状态。
 // ============================================================================
 
 using System;
@@ -16,7 +16,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    public partial class ModBehaviour
+    internal sealed partial class PetNestBuilder
     {
         // ====================================================================
         // Building 组件（反射挂官方类型 + 填私有字段）
@@ -24,7 +24,7 @@ namespace BossRush
 
         private void AddPetNestBuildingComponent(GameObject go)
         {
-            Type buildingType = FindGameType("Duckov.Buildings.Building");
+            Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
             if (buildingType == null)
             {
                 ModBehaviour.LogError("[PetNest] 无法找到 Building 类型");
@@ -43,20 +43,20 @@ namespace BossRush
             FieldInfo graphicsField = buildingType.GetField("graphicsContainer", privateFlags);
             if (graphicsField != null)
             {
-                AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
+                BuildingInjectionHelper.AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
             }
 
             FieldInfo functionField = buildingType.GetField("functionContainer", privateFlags);
             if (functionField != null)
             {
-                AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
+                BuildingInjectionHelper.AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
             }
 
             // areaMesh 置 null，让实例自己在 Awake 里 CreateAreaMesh
             FieldInfo areaMeshField = buildingType.GetField("areaMesh", privateFlags);
             if (areaMeshField != null) areaMeshField.SetValue(buildingComp, null);
 
-            DevLog("[PetNest] Building 组件已添加，ID=" + PETNEST_BUILDING_ID);
+            ModBehaviour.DevLog("[PetNest] Building 组件已添加，ID=" + PETNEST_BUILDING_ID);
         }
 
         // ====================================================================
@@ -65,7 +65,7 @@ namespace BossRush
 
         private void InjectPetNestBuildingData()
         {
-            Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+            Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
             if (bdcType == null)
             {
                 ModBehaviour.LogError("[PetNest] 无法找到 BuildingDataCollection 类型");
@@ -88,7 +88,7 @@ namespace BossRush
                 return;
             }
 
-            Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
+            Type buildingInfoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
             if (buildingInfoType == null)
             {
                 ModBehaviour.LogError("[PetNest] 无法找到 BuildingInfo 类型");
@@ -104,7 +104,7 @@ namespace BossRush
                 string existingId = infoIdField.GetValue(enumerator.Current) as string;
                 if (string.Equals(existingId, PETNEST_BUILDING_ID, StringComparison.Ordinal))
                 {
-                    DevLog("[PetNest] 建筑数据已存在，跳过注入");
+                    ModBehaviour.DevLog("[PetNest] 建筑数据已存在，跳过注入");
                     return;
                 }
             }
@@ -126,14 +126,14 @@ namespace BossRush
             if (addMethod != null)
             {
                 addMethod.Invoke(infosList, new object[] { newInfo });
-                DevLog("[PetNest] BuildingInfo 已注入");
+                ModBehaviour.DevLog("[PetNest] BuildingInfo 已注入");
             }
 
             FieldInfo prefabsField = bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance);
             object prefabsList = prefabsField != null ? prefabsField.GetValue(bdcInstance) : null;
             if (prefabsList != null)
             {
-                Type buildingType = FindGameType("Duckov.Buildings.Building");
+                Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
                 Component buildingComp = buildingType != null && petNestBuildingPrefabGO != null
                     ? petNestBuildingPrefabGO.GetComponent(buildingType)
                     : null;
@@ -143,7 +143,7 @@ namespace BossRush
                     if (prefabAddMethod != null)
                     {
                         prefabAddMethod.Invoke(prefabsList, new object[] { buildingComp });
-                        DevLog("[PetNest] Building prefab 已注入");
+                        ModBehaviour.DevLog("[PetNest] Building prefab 已注入");
                     }
                 }
             }
@@ -152,7 +152,7 @@ namespace BossRush
             FieldInfo readonlyField = bdcType.GetField("readonlyInfos", BindingFlags.Public | BindingFlags.Instance);
             if (readonlyField != null) readonlyField.SetValue(bdcInstance, null);
 
-            DevLog("[PetNest] 建筑数据注入完成");
+            ModBehaviour.DevLog("[PetNest] 建筑数据注入完成");
         }
 
         private static void SetBuildingInfoField(Type buildingInfoType, object target, string fieldName, object value)
@@ -166,7 +166,7 @@ namespace BossRush
         {
             try
             {
-                Type costType = FindGameType("Duckov.Economy.Cost");
+                Type costType = BuildingInjectionHelper.FindGameType("Duckov.Economy.Cost");
                 if (costType == null) return;
 
                 object cost;
@@ -193,7 +193,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑费用设置失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑费用设置失败: " + e.Message);
             }
         }
 
@@ -210,7 +210,7 @@ namespace BossRush
             if (petNestBuildingEventsRegistered) return;
             try
             {
-                Type bmType = GetBuildingManagerType();
+                Type bmType = BuildingInjectionHelper.GetBuildingManagerType();
                 if (bmType == null) return;
 
                 EventInfo builtEvent = bmType.GetEvent("OnBuildingBuilt", BindingFlags.Public | BindingFlags.Static);
@@ -226,7 +226,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑事件订阅失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑事件订阅失败: " + e.Message);
             }
         }
 
@@ -236,7 +236,7 @@ namespace BossRush
             petNestBuildingEventsRegistered = false;
             try
             {
-                Type bmType = GetBuildingManagerType();
+                Type bmType = BuildingInjectionHelper.GetBuildingManagerType();
                 if (bmType == null) return;
 
                 EventInfo builtEvent = bmType.GetEvent("OnBuildingBuilt", BindingFlags.Public | BindingFlags.Static);
@@ -267,12 +267,12 @@ namespace BossRush
             try
             {
                 if (!IsPetNestBuildingGuid(buildingInstanceId)) return;
-                ObjectCache.InvalidateSceneObjectsByType(GetBuildingType());
+                ObjectCache.InvalidateSceneObjectsByType(BuildingInjectionHelper.GetBuildingType());
                 RequestRestorePetNestBuildings("OnBuildingBuilt");
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑放置回调失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑放置回调失败: " + e.Message);
             }
         }
 
@@ -280,7 +280,7 @@ namespace BossRush
         {
             // 子物体由 Unity 随建筑一起销毁，这里只需要让缓存失效
             preparedPetNestBuildingInstanceIds.Clear();
-            DevLog("[PetNest] 建筑被拆除，交互点缓存已清空");
+            ModBehaviour.DevLog("[PetNest] 建筑被拆除，交互点缓存已清空");
         }
 
         // ====================================================================
@@ -299,11 +299,11 @@ namespace BossRush
             if (petNestRestoreCoroutine != null) return;
             try
             {
-                petNestRestoreCoroutine = StartCoroutine(RestorePetNestBuildingsDelayed(source));
+                petNestRestoreCoroutine = _owner.StartCoroutine(RestorePetNestBuildingsDelayed(source));
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑恢复协程启动失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑恢复协程启动失败: " + e.Message);
             }
         }
 
@@ -318,7 +318,7 @@ namespace BossRush
                 RefreshPetNestPreparedBuildingCacheForActiveScene();
                 if (!HasPendingPetNestBuildingsInManager()) yield break;
 
-                Type buildingType = GetBuildingType();
+                Type buildingType = BuildingInjectionHelper.GetBuildingType();
                 if (buildingType == null) yield break;
 
                 UnityEngine.Object[] allBuildings = ObjectCache.GetSceneObjectsByType(buildingType);
@@ -359,7 +359,7 @@ namespace BossRush
         private void ResetPetNestPreparedBuildingCache()
         {
             preparedPetNestBuildingInstanceIds.Clear();
-            try { ObjectCache.InvalidateSceneObjectsByType(GetBuildingType()); }
+            try { ObjectCache.InvalidateSceneObjectsByType(BuildingInjectionHelper.GetBuildingType()); }
             catch (Exception)
             {
                 // 缓存失效失败不阻断清理
@@ -372,7 +372,7 @@ namespace BossRush
         {
             try
             {
-                MethodInfo anyMethod = GetBuildingManagerAnyMethod();
+                MethodInfo anyMethod = BuildingInjectionHelper.GetBuildingManagerAnyMethod();
                 if (anyMethod == null) return true;
                 return anyMethod.Invoke(null, new object[] { PETNEST_BUILDING_ID, false }) is bool result && result;
             }
@@ -390,7 +390,7 @@ namespace BossRush
         {
             try
             {
-                MethodInfo getData = GetBuildingDataMethod();
+                MethodInfo getData = BuildingInjectionHelper.GetBuildingDataMethod();
                 if (getData == null) return false;
                 object buildingData = getData.Invoke(null, new object[] { guid, null });
                 if (buildingData == null) return false;
@@ -414,7 +414,7 @@ namespace BossRush
 
             try
             {
-                PropertyInfo idProp = GetBuildingIdProperty();
+                PropertyInfo idProp = BuildingInjectionHelper.GetBuildingIdProperty();
                 if (idProp != null)
                 {
                     string id = idProp.GetValue(buildingComp, null) as string;
@@ -519,7 +519,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 交互点装配失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 交互点装配失败: " + e.Message);
             }
         }
     }

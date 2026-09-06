@@ -13,8 +13,7 @@
 // 之后本文件零改动。
 //
 // 共享反射工具（FindGameType / AssignBuildingContainerField /
-// RequestBaseBuildingAreaRepaint）定义在 Integration/Wedding/ 下、
-// 属于同一个 partial class ModBehaviour，**不得重复定义**。
+// RequestBaseBuildingAreaRepaint）由共享工具与显式 _owner 提供，模块不再借 partial 访问兄弟私有状态。
 // ============================================================================
 
 using System;
@@ -26,9 +25,17 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>展示柜建筑注入器（partial class ModBehaviour）。</summary>
-    public partial class ModBehaviour
+    /// <summary>展示柜建筑注入器（显式 ModBehaviour owner）。</summary>
+    internal sealed partial class ShowcaseBuildingBuilder
     {
+        private readonly ModBehaviour _owner;
+
+        internal ShowcaseBuildingBuilder(ModBehaviour owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            _owner = owner;
+        }
+
         #region 常量
 
         private const string BACKMOUNTAIN_SHOWCASE_BUILDING_ID = BackMountainConfig.ShowcaseBuildingId;
@@ -61,11 +68,11 @@ namespace BossRush
             {
                 if (backMountainShowcaseInjected) return;
 
-                bool unlocked = IsBackMountainConfiguredEnabled()
+                bool unlocked = _owner.IsBackMountainConfiguredEnabled()
                     && BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase);
                 if (!unlocked && !HasPendingShowcaseBuildingsInManager())
                 {
-                    DevLog(BackMountainConfig.LogPrefix + "展示柜未解锁且未建过，跳过建筑注入（dormant）");
+                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜未解锁且未建过，跳过建筑注入（dormant）");
                     return;
                 }
 
@@ -78,10 +85,10 @@ namespace BossRush
 
                 if (!isEarlyInit && HasPendingShowcaseBuildingsInManager())
                 {
-                    RequestBaseBuildingAreaRepaint("InitBackMountainShowcase");
+                    _owner.RequestBaseBuildingAreaRepaint("InitBackMountainShowcase");
                 }
 
-                DevLog(BackMountainConfig.LogPrefix + "展示柜建筑注入完成");
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜建筑注入完成");
             }
             catch (Exception e)
             {
@@ -100,9 +107,9 @@ namespace BossRush
                 if (backMountainShowcaseInjected) return;
 
                 Scene activeScene = SceneManager.GetActiveScene();
-                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name)) return;
+                if (!activeScene.IsValid() || !ModBehaviour.IsBaseHubSceneName(activeScene.name)) return;
 
-                Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+                Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
                 if (bdcType == null) return;
 
                 PropertyInfo instanceProp = bdcType.GetProperty(
@@ -113,7 +120,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜早期注入跳过: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜早期注入跳过: " + e.Message);
             }
         }
 
@@ -140,7 +147,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜图标加载失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜图标加载失败: " + e.Message);
             }
         }
 
@@ -169,7 +176,7 @@ namespace BossRush
             EnsureShowcaseFunctionPoints(backMountainShowcasePrefabGO);
             backMountainShowcasePrefabGO.SetActive(true);
 
-            DevLog(BackMountainConfig.LogPrefix + "展示柜预制体创建完成");
+            ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜预制体创建完成");
         }
 
         /// <summary>
@@ -201,7 +208,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜占位模型创建失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜占位模型创建失败: " + e.Message);
             }
         }
 
@@ -230,13 +237,13 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜占位部件失败 " + name + ": " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜占位部件失败 " + name + ": " + e.Message);
             }
         }
 
         private void AddShowcaseBuildingComponent(GameObject go)
         {
-            Type buildingType = FindGameType("Duckov.Buildings.Building");
+            Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
             if (buildingType == null)
             {
                 ModBehaviour.LogError(BackMountainConfig.LogPrefix + "无法找到 Building 类型");
@@ -255,13 +262,13 @@ namespace BossRush
             FieldInfo graphicsField = buildingType.GetField("graphicsContainer", privateFlags);
             if (graphicsField != null)
             {
-                AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
+                BuildingInjectionHelper.AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
             }
 
             FieldInfo functionField = buildingType.GetField("functionContainer", privateFlags);
             if (functionField != null)
             {
-                AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
+                BuildingInjectionHelper.AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
             }
 
             FieldInfo areaMeshField = buildingType.GetField("areaMesh", privateFlags);
@@ -293,7 +300,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜交互点装配失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜交互点装配失败: " + e.Message);
             }
         }
 
@@ -333,7 +340,7 @@ namespace BossRush
         /// <summary>按 id 从官方 infos 列表里摘掉展示柜条目。找不到即无操作。</summary>
         private void RemoveShowcaseBuildingData()
         {
-            Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+            Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
             if (bdcType == null) return;
 
             PropertyInfo instanceProp = bdcType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
@@ -344,7 +351,7 @@ namespace BossRush
             IList infosList = infosField != null ? infosField.GetValue(bdcInstance) as IList : null;
             if (infosList == null) return;
 
-            Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
+            Type buildingInfoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
             FieldInfo infoIdField = buildingInfoType != null ? buildingInfoType.GetField("id") : null;
             if (infoIdField == null) return;
 
@@ -364,7 +371,7 @@ namespace BossRush
 
         private void InjectShowcaseBuildingData()
         {
-            Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+            Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
             if (bdcType == null) return;
 
             PropertyInfo instanceProp = bdcType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
@@ -375,7 +382,7 @@ namespace BossRush
             object infosList = infosField != null ? infosField.GetValue(bdcInstance) : null;
             if (infosList == null) return;
 
-            Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
+            Type buildingInfoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
             if (buildingInfoType == null) return;
 
             // 判重：BuildingDataCollection 是长寿 ScriptableObject，不能重复注入
@@ -412,7 +419,7 @@ namespace BossRush
             object prefabsList = prefabsField != null ? prefabsField.GetValue(bdcInstance) : null;
             if (prefabsList != null)
             {
-                Type buildingType = FindGameType("Duckov.Buildings.Building");
+                Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
                 Component buildingComp = buildingType != null && backMountainShowcasePrefabGO != null
                     ? backMountainShowcasePrefabGO.GetComponent(buildingType)
                     : null;
@@ -439,7 +446,7 @@ namespace BossRush
         {
             try
             {
-                Type costType = FindGameType("Duckov.Economy.Cost");
+                Type costType = BuildingInjectionHelper.FindGameType("Duckov.Economy.Cost");
                 if (costType == null) return;
 
                 object cost;
@@ -466,7 +473,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜费用设置失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜费用设置失败: " + e.Message);
             }
         }
 
@@ -475,7 +482,7 @@ namespace BossRush
         {
             try
             {
-                Type managerType = FindGameType("Duckov.Buildings.BuildingManager");
+                Type managerType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingManager");
                 if (managerType == null) return false;
 
                 MethodInfo getAmount = managerType.GetMethod(
@@ -506,7 +513,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(BackMountainConfig.LogPrefix + "展示柜清理失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜清理失败: " + e.Message);
             }
         }
 

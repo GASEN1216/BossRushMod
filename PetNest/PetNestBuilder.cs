@@ -24,9 +24,17 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>遗种巢建筑注入器（partial class ModBehaviour）。</summary>
-    public partial class ModBehaviour
+    /// <summary>遗种巢建筑注入器（显式 ModBehaviour owner）。</summary>
+    internal sealed partial class PetNestBuilder
     {
+        private readonly ModBehaviour _owner;
+
+        internal PetNestBuilder(ModBehaviour owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            _owner = owner;
+        }
+
         // ====================================================================
         // 常量
         // ====================================================================
@@ -82,7 +90,7 @@ namespace BossRush
             {
                 if (petNestBuildingInjected)
                 {
-                    DevLog("[PetNest] 建筑已注入，跳过");
+                    ModBehaviour.DevLog("[PetNest] 建筑已注入，跳过");
                     return;
                 }
 
@@ -91,9 +99,9 @@ namespace BossRush
                 // 永远点不动的 2x2 摆件）。
                 // 例外是**老档里已经建过**——那种情况必须照常注册 prefab，
                 // 否则官方 BuildingArea 会报缺 prefab。
-                if (!IsPetNestConfiguredEnabled() && !HasPendingPetNestBuildingsInManager())
+                if (!_owner.IsPetNestConfiguredEnabled() && !HasPendingPetNestBuildingsInManager())
                 {
-                    DevLog("[PetNest] 入口开关关闭且未建过，跳过建筑注入（dormant）");
+                    ModBehaviour.DevLog("[PetNest] 入口开关关闭且未建过，跳过建筑注入（dormant）");
                     return;
                 }
 
@@ -109,10 +117,10 @@ namespace BossRush
                 // 早期注入时 BuildingArea 还没 Start，重绘会白跑一趟
                 if (!isEarlyInit && HasPendingPetNestBuildingsInManager())
                 {
-                    RequestBaseBuildingAreaRepaint("InitPetNestBuilding");
+                    _owner.RequestBaseBuildingAreaRepaint("InitPetNestBuilding");
                 }
 
-                DevLog("[PetNest] 建筑注入完成");
+                ModBehaviour.DevLog("[PetNest] 建筑注入完成");
             }
             catch (Exception e)
             {
@@ -124,16 +132,16 @@ namespace BossRush
         /// 早期注入：老存档里已经建过这个建筑时，必须**赶在 BuildingArea.Start 之前**
         /// 把 prefab 注册好，否则官方会先报"缺 prefab"。
         /// </summary>
-        private void TryInitializePetNestEarly()
+        internal void TryInitializePetNestEarly()
         {
             try
             {
                 if (petNestBuildingInjected) return;
 
                 Scene activeScene = SceneManager.GetActiveScene();
-                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name)) return;
+                if (!activeScene.IsValid() || !ModBehaviour.IsBaseHubSceneName(activeScene.name)) return;
 
-                Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+                Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
                 if (bdcType == null) return;
 
                 PropertyInfo instanceProp = bdcType.GetProperty(
@@ -144,7 +152,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 早期注入跳过: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 早期注入跳过: " + e.Message);
             }
         }
 
@@ -155,7 +163,7 @@ namespace BossRush
             {
                 if (petNestRestoreCoroutine != null)
                 {
-                    StopCoroutine(petNestRestoreCoroutine);
+                    _owner.StopCoroutine(petNestRestoreCoroutine);
                     petNestRestoreCoroutine = null;
                 }
                 ResetPetNestPreparedBuildingCache();
@@ -166,7 +174,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑清理失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑清理失败: " + e.Message);
             }
         }
 
@@ -185,7 +193,7 @@ namespace BossRush
                 iconPath = Path.Combine(iconPath, PETNEST_BUILDING_ID + ".png");
                 if (!File.Exists(iconPath))
                 {
-                    DevLog("[PetNest] 建筑图标缺失，使用官方默认图标");
+                    ModBehaviour.DevLog("[PetNest] 建筑图标缺失，使用官方默认图标");
                     return;
                 }
 
@@ -199,7 +207,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑图标加载失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑图标加载失败: " + e.Message);
             }
         }
 
@@ -215,7 +223,7 @@ namespace BossRush
 
                 if (!File.Exists(bundlePath) || IsPetNestPlaceholderBundle(bundlePath))
                 {
-                    DevLog("[PetNest] 建筑模型 bundle 缺失或为占位，使用占位圆柱体");
+                    ModBehaviour.DevLog("[PetNest] 建筑模型 bundle 缺失或为占位，使用占位圆柱体");
                     return;
                 }
 
@@ -234,7 +242,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 建筑模型加载失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 建筑模型加载失败: " + e.Message);
             }
         }
 
@@ -297,7 +305,7 @@ namespace BossRush
             EnsurePetNestFunctionPoints(petNestBuildingPrefabGO);
             petNestBuildingPrefabGO.SetActive(true);
 
-            DevLog("[PetNest] 预制体创建完成");
+            ModBehaviour.DevLog("[PetNest] 预制体创建完成");
         }
 
         /// <summary>
@@ -338,7 +346,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog("[PetNest] 占位模型创建失败: " + e.Message);
+                ModBehaviour.DevLog("[PetNest] 占位模型创建失败: " + e.Message);
             }
         }
 

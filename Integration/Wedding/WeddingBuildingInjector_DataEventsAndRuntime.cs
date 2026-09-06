@@ -186,7 +186,7 @@ namespace BossRush
             }
         }
 
-        private void RequestBaseBuildingAreaRepaint(string source)
+        internal void RequestBaseBuildingAreaRepaint(string source)
         {
             if (!IsBaseHubSceneName(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name))
             {

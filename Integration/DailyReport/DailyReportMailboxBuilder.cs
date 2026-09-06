@@ -10,8 +10,7 @@
 //   将来补美术时只需在 Assets/buildings/ 放同名 bundle 与 png，本文件零改动。
 //
 // 共享反射工具（FindGameType / GetBuildingType / AssignBuildingContainerField /
-// RequestBaseBuildingAreaRepaint 等）定义在 Integration/Wedding/ 下、
-// 属于同一个 partial class ModBehaviour，**不得重复定义**。
+// RequestBaseBuildingAreaRepaint 等）由共享工具与显式 _owner 提供，模块不再借 partial 访问兄弟私有状态。
 // ============================================================================
 
 using System;
@@ -24,9 +23,17 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>报箱建筑注入器（partial class ModBehaviour）。</summary>
-    public partial class ModBehaviour
+    /// <summary>报箱建筑注入器（显式 ModBehaviour owner）。</summary>
+    internal sealed partial class DailyReportMailboxBuilder
     {
+        private readonly ModBehaviour _owner;
+
+        internal DailyReportMailboxBuilder(ModBehaviour owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            _owner = owner;
+        }
+
         // ====================================================================
         // 常量
         // ====================================================================
@@ -92,7 +99,7 @@ namespace BossRush
             {
                 if (dailyReportBuildingInjected)
                 {
-                    DevLog(DailyReportTuning.LogPrefix + "建筑已注入，跳过");
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑已注入，跳过");
                     return;
                 }
 
@@ -100,9 +107,9 @@ namespace BossRush
                 // 买下后 DailyReportInteractable.IsInteractable 恒 false，连交互提示都不出，
                 // 玩家没有任何反馈。老档已建过是例外：必须照常注册 prefab，
                 // 否则官方 BuildingArea 会报缺 prefab。形态与 PetNestBuilder 一致。
-                if (!IsDailyReportConfiguredEnabled() && !HasPendingDailyReportBuildingsInManager())
+                if (!_owner.IsDailyReportConfiguredEnabled() && !HasPendingDailyReportBuildingsInManager())
                 {
-                    DevLog(DailyReportTuning.LogPrefix + "入口开关关闭且未建过，跳过建筑注入（dormant）");
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "入口开关关闭且未建过，跳过建筑注入（dormant）");
                     return;
                 }
 
@@ -118,10 +125,10 @@ namespace BossRush
                 // 早期注入时 BuildingArea 还没 Start，重绘会白跑一趟
                 if (!isEarlyInit && HasPendingDailyReportBuildingsInManager())
                 {
-                    RequestBaseBuildingAreaRepaint("InitDailyReportMailbox");
+                    _owner.RequestBaseBuildingAreaRepaint("InitDailyReportMailbox");
                 }
 
-                DevLog(DailyReportTuning.LogPrefix + "建筑注入完成");
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑注入完成");
             }
             catch (Exception e)
             {
@@ -141,9 +148,9 @@ namespace BossRush
                 if (dailyReportBuildingInjected) return;
 
                 Scene activeScene = SceneManager.GetActiveScene();
-                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name)) return;
+                if (!activeScene.IsValid() || !ModBehaviour.IsBaseHubSceneName(activeScene.name)) return;
 
-                Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+                Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
                 if (bdcType == null) return;
 
                 PropertyInfo instanceProp = bdcType.GetProperty(
@@ -154,7 +161,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "早期注入跳过: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "早期注入跳过: " + e.Message);
             }
         }
 
@@ -165,7 +172,7 @@ namespace BossRush
             {
                 if (dailyReportRestoreCoroutine != null)
                 {
-                    StopCoroutine(dailyReportRestoreCoroutine);
+                    _owner.StopCoroutine(dailyReportRestoreCoroutine);
                     dailyReportRestoreCoroutine = null;
                 }
                 ResetDailyReportPreparedBuildingCache();
@@ -176,7 +183,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "建筑清理失败: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑清理失败: " + e.Message);
             }
         }
 
@@ -195,7 +202,7 @@ namespace BossRush
                 iconPath = Path.Combine(iconPath, DAILYREPORT_BUILDING_ID + ".png");
                 if (!File.Exists(iconPath))
                 {
-                    DevLog(DailyReportTuning.LogPrefix + "建筑图标缺失，使用官方默认图标");
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑图标缺失，使用官方默认图标");
                     return;
                 }
 
@@ -209,7 +216,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "建筑图标加载失败: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑图标加载失败: " + e.Message);
             }
         }
 
@@ -226,7 +233,7 @@ namespace BossRush
                 if (!File.Exists(bundlePath) || IsDailyReportPlaceholderBundle(bundlePath))
                 {
                     if (TryBorrowStarwishModelAsStandIn()) return;
-                    DevLog(DailyReportTuning.LogPrefix + "建筑模型 bundle 缺失或为占位，使用占位模型");
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑模型 bundle 缺失或为占位，使用占位模型");
                     return;
                 }
 
@@ -245,7 +252,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "建筑模型加载失败: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑模型加载失败: " + e.Message);
             }
         }
 
@@ -287,16 +294,16 @@ namespace BossRush
         {
             try
             {
-                if (starwishModelPrefab == null) return false;
+                if (_owner.StarwishBuildingModelPrefab == null) return false;
 
-                dailyReportModelPrefab = starwishModelPrefab;
-                DevLog(DailyReportTuning.LogPrefix
+                dailyReportModelPrefab = _owner.StarwishBuildingModelPrefab;
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix
                     + "[临时] 借用许愿台模型作为报箱替身（等待专属 AssetBundle）");
                 return true;
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "借用许愿台模型失败: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "借用许愿台模型失败: " + e.Message);
                 return false;
             }
         }
@@ -304,7 +311,7 @@ namespace BossRush
         /// <summary>
         /// bundle 模型的统一修整：按包围盒归一到 1x1 建筑的尺度、底部对齐地面、
         /// 修 shader、补碰撞体。复用许愿台那套已经趟平的工具方法
-        /// （同一个 partial class ModBehaviour，参数是通用的）。
+        /// （BuildingModelHelper 保留既有通用实现，许愿台与报箱共用）。
         /// </summary>
         private void PrepareDailyReportBundleModel(GameObject modelInstance, GameObject graphicsContainer)
         {
@@ -312,15 +319,15 @@ namespace BossRush
             {
                 if (modelInstance == null || graphicsContainer == null) return;
 
-                Renderer[] renderers = CollectStarwishRenderableComponents(modelInstance);
+                Renderer[] renderers = BuildingModelHelper.CollectStarwishRenderableComponents(modelInstance);
                 if (renderers.Length == 0)
                 {
-                    DevLog(DailyReportTuning.LogPrefix + "bundle 模型未找到可用 Renderer，跳过修整");
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "bundle 模型未找到可用 Renderer，跳过修整");
                     return;
                 }
 
                 Bounds bounds;
-                if (!TryGetCombinedBounds(renderers, out bounds)) return;
+                if (!BuildingModelHelper.TryGetCombinedBounds(renderers, out bounds)) return;
 
                 // 报箱占地 1x1，比许愿台小一号；过大过小都拉回目标尺度
                 float maxDim = Mathf.Max(bounds.size.x, Mathf.Max(bounds.size.y, bounds.size.z));
@@ -328,23 +335,23 @@ namespace BossRush
                 {
                     float scaleFactor = DAILYREPORT_MODEL_TARGET_MAX_DIM / maxDim;
                     modelInstance.transform.localScale *= scaleFactor;
-                    DevLog(DailyReportTuning.LogPrefix + "bundle 模型缩放 " + scaleFactor + " 倍");
+                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "bundle 模型缩放 " + scaleFactor + " 倍");
                 }
 
                 // 底部对齐地面，避免模型半截埋进地里或悬空
-                renderers = CollectStarwishRenderableComponents(modelInstance);
-                if (TryGetCombinedBounds(renderers, out bounds))
+                renderers = BuildingModelHelper.CollectStarwishRenderableComponents(modelInstance);
+                if (BuildingModelHelper.TryGetCombinedBounds(renderers, out bounds))
                 {
                     float bottomLocal = bounds.min.y - graphicsContainer.transform.position.y;
                     modelInstance.transform.localPosition = new Vector3(0f, -bottomLocal, 0f);
                 }
 
-                FixStarwishModelShaders(modelInstance);
-                AddStarwishGraphicsCollider(modelInstance, CollectStarwishRenderableComponents(modelInstance));
+                BuildingModelHelper.FixStarwishModelShaders(modelInstance);
+                BuildingModelHelper.AddStarwishGraphicsCollider(modelInstance, BuildingModelHelper.CollectStarwishRenderableComponents(modelInstance));
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "修整 bundle 模型失败: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "修整 bundle 模型失败: " + e.Message);
             }
         }
 
@@ -390,7 +397,7 @@ namespace BossRush
             EnsureDailyReportFunctionPoints(dailyReportBuildingPrefabGO);
             dailyReportBuildingPrefabGO.SetActive(true);
 
-            DevLog(DailyReportTuning.LogPrefix + "预制体创建完成");
+            ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "预制体创建完成");
         }
 
         /// <summary>
@@ -472,7 +479,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(DailyReportTuning.LogPrefix + "占位模型创建失败: " + e.Message);
+                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "占位模型创建失败: " + e.Message);
             }
         }
 

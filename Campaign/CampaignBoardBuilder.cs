@@ -18,8 +18,7 @@
 // 将来补美术只需在 Assets/buildings/ 放同名 bundle 与 png，本文件零改动。
 //
 // 共享反射工具（FindGameType / AssignBuildingContainerField /
-// RequestBaseBuildingAreaRepaint）定义在 Integration/Wedding/ 下、
-// 属于同一个 partial class ModBehaviour，**不得重复定义**。
+// RequestBaseBuildingAreaRepaint）由共享工具与显式 _owner 提供，模块不再借 partial 访问兄弟私有状态。
 // ============================================================================
 
 using System;
@@ -31,9 +30,17 @@ using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
-    /// <summary>征程公告板建筑注入器（partial class ModBehaviour）。</summary>
-    public partial class ModBehaviour
+    /// <summary>征程公告板建筑注入器（显式 ModBehaviour owner）。</summary>
+    internal sealed partial class CampaignBoardBuilder
     {
+        private readonly ModBehaviour _owner;
+
+        internal CampaignBoardBuilder(ModBehaviour owner)
+        {
+            if (owner == null) throw new ArgumentNullException(nameof(owner));
+            _owner = owner;
+        }
+
         #region 常量
 
         /// <summary>建筑 ID（官方本地化 key 为 "Building_" + id）。发布后永不可改名。</summary>
@@ -80,9 +87,9 @@ namespace BossRush
 
                 // dormant 契约：开关关闭时不往建造 UI 塞建筑。
                 // 老档已建过是例外——必须注册 prefab，否则官方会报缺 prefab 的幽灵建筑。
-                if (!IsCampaignConfiguredEnabled() && !HasPendingCampaignBoardsInManager())
+                if (!_owner.IsCampaignConfiguredEnabled() && !HasPendingCampaignBoardsInManager())
                 {
-                    DevLog(CampaignTuning.LogPrefix + "入口开关关闭且未建过，跳过建筑注入（dormant）");
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "入口开关关闭且未建过，跳过建筑注入（dormant）");
                     return;
                 }
 
@@ -96,10 +103,10 @@ namespace BossRush
                 // 早期注入时 BuildingArea 还没 Start，重绘会白跑一趟
                 if (!isEarlyInit && HasPendingCampaignBoardsInManager())
                 {
-                    RequestBaseBuildingAreaRepaint("InitCampaignBoardBuilding");
+                    _owner.RequestBaseBuildingAreaRepaint("InitCampaignBoardBuilding");
                 }
 
-                DevLog(CampaignTuning.LogPrefix + "建筑注入完成");
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑注入完成");
             }
             catch (Exception e)
             {
@@ -119,9 +126,9 @@ namespace BossRush
                 if (campaignBoardInjected) return;
 
                 Scene activeScene = SceneManager.GetActiveScene();
-                if (!activeScene.IsValid() || !IsBaseHubSceneName(activeScene.name)) return;
+                if (!activeScene.IsValid() || !ModBehaviour.IsBaseHubSceneName(activeScene.name)) return;
 
-                Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+                Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
                 if (bdcType == null) return;
 
                 PropertyInfo instanceProp = bdcType.GetProperty(
@@ -132,7 +139,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "早期注入跳过: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "早期注入跳过: " + e.Message);
             }
         }
 
@@ -151,7 +158,7 @@ namespace BossRush
                 iconPath = Path.Combine(iconPath, CAMPAIGN_BOARD_BUILDING_ID + ".png");
                 if (!File.Exists(iconPath))
                 {
-                    DevLog(CampaignTuning.LogPrefix + "建筑图标缺失，使用官方默认图标");
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑图标缺失，使用官方默认图标");
                     return;
                 }
 
@@ -165,7 +172,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "建筑图标加载失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑图标加载失败: " + e.Message);
             }
         }
 
@@ -199,7 +206,7 @@ namespace BossRush
             EnsureCampaignBoardFunctionPoints(campaignBoardPrefabGO);
             campaignBoardPrefabGO.SetActive(true);
 
-            DevLog(CampaignTuning.LogPrefix + "预制体创建完成");
+            ModBehaviour.DevLog(CampaignTuning.LogPrefix + "预制体创建完成");
         }
 
         /// <summary>
@@ -250,7 +257,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "占位模型创建失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "占位模型创建失败: " + e.Message);
             }
         }
 
@@ -281,7 +288,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "占位部件创建失败 " + name + ": " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "占位部件创建失败 " + name + ": " + e.Message);
             }
         }
 
@@ -291,7 +298,7 @@ namespace BossRush
 
         private void AddCampaignBoardBuildingComponent(GameObject go)
         {
-            Type buildingType = FindGameType("Duckov.Buildings.Building");
+            Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
             if (buildingType == null)
             {
                 ModBehaviour.LogError(CampaignTuning.LogPrefix + "无法找到 Building 类型");
@@ -310,20 +317,20 @@ namespace BossRush
             FieldInfo graphicsField = buildingType.GetField("graphicsContainer", privateFlags);
             if (graphicsField != null)
             {
-                AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
+                BuildingInjectionHelper.AssignBuildingContainerField(graphicsField, buildingComp, go.transform.Find("Graphics"));
             }
 
             FieldInfo functionField = buildingType.GetField("functionContainer", privateFlags);
             if (functionField != null)
             {
-                AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
+                BuildingInjectionHelper.AssignBuildingContainerField(functionField, buildingComp, go.transform.Find("Function"));
             }
 
             // areaMesh 置 null，让实例自己在 Awake 里 CreateAreaMesh
             FieldInfo areaMeshField = buildingType.GetField("areaMesh", privateFlags);
             if (areaMeshField != null) areaMeshField.SetValue(buildingComp, null);
 
-            DevLog(CampaignTuning.LogPrefix + "Building 组件已添加，ID=" + CAMPAIGN_BOARD_BUILDING_ID);
+            ModBehaviour.DevLog(CampaignTuning.LogPrefix + "Building 组件已添加，ID=" + CAMPAIGN_BOARD_BUILDING_ID);
         }
 
         /// <summary>装配交互点：碰撞体 + CampaignBoardInteractable。</summary>
@@ -353,7 +360,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "交互点装配失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "交互点装配失败: " + e.Message);
             }
         }
 
@@ -363,7 +370,7 @@ namespace BossRush
 
         private void InjectCampaignBoardData()
         {
-            Type bdcType = FindGameType("Duckov.Buildings.BuildingDataCollection");
+            Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
             if (bdcType == null)
             {
                 ModBehaviour.LogError(CampaignTuning.LogPrefix + "无法找到 BuildingDataCollection 类型");
@@ -386,7 +393,7 @@ namespace BossRush
                 return;
             }
 
-            Type buildingInfoType = FindGameType("Duckov.Buildings.BuildingInfo");
+            Type buildingInfoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
             if (buildingInfoType == null)
             {
                 ModBehaviour.LogError(CampaignTuning.LogPrefix + "无法找到 BuildingInfo 类型");
@@ -402,7 +409,7 @@ namespace BossRush
                 string existingId = infoIdField.GetValue(enumerator.Current) as string;
                 if (string.Equals(existingId, CAMPAIGN_BOARD_BUILDING_ID, StringComparison.Ordinal))
                 {
-                    DevLog(CampaignTuning.LogPrefix + "建筑数据已存在，跳过注入");
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑数据已存在，跳过注入");
                     return;
                 }
             }
@@ -425,14 +432,14 @@ namespace BossRush
             if (addMethod != null)
             {
                 addMethod.Invoke(infosList, new object[] { newInfo });
-                DevLog(CampaignTuning.LogPrefix + "BuildingInfo 已注入");
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "BuildingInfo 已注入");
             }
 
             FieldInfo prefabsField = bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance);
             object prefabsList = prefabsField != null ? prefabsField.GetValue(bdcInstance) : null;
             if (prefabsList != null)
             {
-                Type buildingType = FindGameType("Duckov.Buildings.Building");
+                Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
                 Component buildingComp = buildingType != null && campaignBoardPrefabGO != null
                     ? campaignBoardPrefabGO.GetComponent(buildingType)
                     : null;
@@ -442,7 +449,7 @@ namespace BossRush
                     if (prefabAddMethod != null)
                     {
                         prefabAddMethod.Invoke(prefabsList, new object[] { buildingComp });
-                        DevLog(CampaignTuning.LogPrefix + "Building prefab 已注入");
+                        ModBehaviour.DevLog(CampaignTuning.LogPrefix + "Building prefab 已注入");
                     }
                 }
             }
@@ -451,7 +458,7 @@ namespace BossRush
             FieldInfo readonlyField = bdcType.GetField("readonlyInfos", BindingFlags.Public | BindingFlags.Instance);
             if (readonlyField != null) readonlyField.SetValue(bdcInstance, null);
 
-            DevLog(CampaignTuning.LogPrefix + "建筑数据注入完成");
+            ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑数据注入完成");
         }
 
         private static void SetCampaignBoardInfoField(
@@ -466,7 +473,7 @@ namespace BossRush
         {
             try
             {
-                Type costType = FindGameType("Duckov.Economy.Cost");
+                Type costType = BuildingInjectionHelper.FindGameType("Duckov.Economy.Cost");
                 if (costType == null) return;
 
                 object cost;
@@ -493,7 +500,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "建筑费用设置失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑费用设置失败: " + e.Message);
             }
         }
 
@@ -502,7 +509,7 @@ namespace BossRush
         {
             try
             {
-                Type managerType = FindGameType("Duckov.Buildings.BuildingManager");
+                Type managerType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingManager");
                 if (managerType == null) return false;
 
                 MethodInfo getAmount = managerType.GetMethod(
@@ -532,13 +539,13 @@ namespace BossRush
         {
             try
             {
-                if (!IsCampaignConfiguredEnabled()) return;
+                if (!_owner.IsCampaignConfiguredEnabled()) return;
                 CampaignProgressService.EnsureInitialized();
                 CampaignNoteBridge.EnsureNotesRegistered();
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "线索注册跳过: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "线索注册跳过: " + e.Message);
             }
         }
 
@@ -555,7 +562,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                DevLog(CampaignTuning.LogPrefix + "建筑清理失败: " + e.Message);
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑清理失败: " + e.Message);
             }
         }
 
