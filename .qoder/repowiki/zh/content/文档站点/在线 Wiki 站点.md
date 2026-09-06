@@ -75,6 +75,9 @@ F --> G[".github/workflows/deploy.yml<br/>GitHub Actions 部署"]
 - [wiki-site/.github/workflows/deploy.yml:1-55](file://wiki-site/.github/workflows/deploy.yml#L1-L55)
 
 ## 核心组件
+
+2026-09-06 导航修复：`theme/composables/useWiki.ts` 的 `href` 必须保留规范路径前导 `/`，先添加语言前缀再调用 `withBase`，避免深层页面把 `bosses/...` 相对链接拼成重复目录。`npm --prefix wiki-site run test:navigation` 执行真实组合函数与 VitePress URL 适配器，覆盖中英、根部署和 `/BossRushMod/` 部署；`python tools/check_wiki_links.py` 对构建 HTML 按浏览器 URL 规则检查目标与锚点（根部署追加 `--base /`）。这两项验证独立于页面能否构建成功，不改 WikiContent 正文或线上部署。
+
 - 内容同步脚本：将 WikiContent 中的 Markdown 转换为 VitePress 文档结构——标题层级提升、Callout 转换、链接清理、按 IMAGE_PLACEMENT 注入配图、按 TABLEIZE 把固定句式列表转成表格（成就大全、模式总览），并把 hubs/ 下的类目主页复制进 docs/。
 - VitePress 配置：站点标题、基础路径、多语言（中文根路径、英文 /en）；导航与侧边栏由 structure.mts 生成；本地搜索接入 search.mts 的中文二元分词；sitemap、逐页 description / Open Graph / canonical / hreflang（seo.mts）、「编辑此页」指向 WikiContent 源文件、更新日志 RSS（feed.mts）、中文 404 文案；markdown-it 层的 entityLinkPlugin 把列表项与表格首列里的实体名换成图标 + 链接。
 - 主题层：Layout.vue 在默认主题的 doc-before / doc-footer-before 插槽注入面包屑、速查框、速查对比表（WikiCompare，从 infobox.mts 只读生成、可点表头排序）、条目宫格、同类导航或版本时间线；首页是 layout: page + WikiHome（刊头、搜索框与随机条目、数据速览、三步上手、门户宫格、最近更新）。style.css 是纸张底 + 黄铜强调 + 衬线标题的「玩法档案」版式，extras.css 是功能构件与打印样式。

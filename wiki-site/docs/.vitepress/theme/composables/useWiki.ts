@@ -24,6 +24,7 @@ import {
   type WikiEntry,
 } from '../../data/structure.mts'
 import { data as releases } from '../../data/changelog.data.mts'
+import { INFOBOX } from '../../data/infobox.mts'
 
 interface ManifestItem {
   key: string
@@ -85,7 +86,7 @@ export function useWiki() {
   const hubCategory = computed(() => categoryOfHub(canonical.value))
 
   /** 给站内路径补语言前缀与 base，直接可用于 <a href> */
-  const href = (path: string) => withBase(localizePath(path, locale.value).replace(/^\//, ''))
+  const href = (path: string) => withBase(localizePath(path, locale.value))
 
   const entryLabel = (entry: WikiEntry) => (locale.value === 'en' ? entry.en : entry.zh)
   const entryBlurb = (entry: WikiEntry) =>
@@ -103,6 +104,15 @@ export function useWiki() {
     return hit ? hit.entry : null
   }
 
+  /**
+   * 条目的稀有度档位，给物品名上色用（extras.css §0 的 [data-tier] 规则）。
+   * 取自 infobox.mts 里第一条带 tier 的行；没有速查框或没写 tier 就是 undefined，
+   * 模板上 :data-tier="undefined" 会整个不渲染这个属性，名字保持默认色。
+   * 与 config.mts 里 entityLinkPlugin 写 data-tier 用的是同一条数据，两处不会漂。
+   */
+  const tierOf = (path: string): number | undefined =>
+    INFOBOX[canonicalPath(path)]?.rows.find((r) => r.tier)?.tier
+
   return {
     locale,
     t,
@@ -116,6 +126,7 @@ export function useWiki() {
     entryBlurb,
     entryTag,
     entryByPath,
+    tierOf,
     categoryLabel,
     categoryBlurb,
     categories: CATEGORIES,

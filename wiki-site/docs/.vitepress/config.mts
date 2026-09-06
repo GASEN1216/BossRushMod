@@ -3,6 +3,7 @@ import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
 import { defineConfig, type DefaultTheme, type HeadConfig } from 'vitepress'
 import { CATEGORIES, CHANGELOG_CATEGORY, localizePath, type Locale } from './data/structure.mts'
+import { INFOBOX } from './data/infobox.mts'
 import { getRoute, readCatalog } from '../../scripts/entry-map.mjs'
 import { SEARCH } from './search.mts'
 import { decoratePage, headFor, siteUrl } from './seo.mts'
@@ -243,6 +244,10 @@ export function entityLinkPlugin(md: any) {
         // 写规范路径而不是 href：href 带了 base 与语言前缀，组件那边还要再剥一次。
         ['data-brs-ref', hit.canonical],
       ]
+      // 稀有度：物品名按档上色（extras.css §0 的 [data-tier] 规则）。
+      // 只有 infobox.mts 给了 tier 的条目才写这个属性，Boss / 模式 / 系统没有稀有度。
+      const tier = INFOBOX[hit.canonical]?.rows.find((r) => r.tier)?.tier
+      if (tier) linkOpen.attrs.push(['data-tier', String(tier)])
       const linkClose = new state.Token('link_close', 'a', -1)
 
       const pieces: any[] = [linkOpen]

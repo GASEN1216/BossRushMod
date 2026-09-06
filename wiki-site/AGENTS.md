@@ -122,9 +122,14 @@ grep -rho '<a class="brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vit
 
 ## 4.6 速查框里的稀有度与物品 ID
 
-- `InfoboxRow.tier` 写了才渲染成稀有度色片（5 石板蓝 / 6 紫晶 / 7 黄铜）。
+- `InfoboxRow.tier` 写了才渲染成稀有度色片（5 石板蓝 / 6 紫晶 / 7 黄铜 / 8 余烬）。
   **显式字段，不去嗅探「品质」这个标签**——标签一改口径就静默失效。
-  没照抄泰拉那套十二级配色，用的是本站已有的三个强调色排的递进。
+  没照抄泰拉那套十二级配色，用的是本站强调色排的递进。
+- 同一个 `tier` 还会让**物品名**在正文链接、宫格、页尾导航、速查框相关条目里按档上色
+  （`extras.css` §0 的 `[data-tier]` 规则；正文链接由 `entityLinkPlugin` 写属性，组件挂 `.wiki-tier`）。
+  16 件装备的 tier 现已齐全，其中龙裔 / 龙王套装、龙息、龙铳的值**不在代码或正文里**，
+  是用 UnityPy 从 `Assets/Equipment/dragon_equipment`、`dragonking_equipment` 预制体的
+  typetree 读出来的（`Quality` 字段）。改这几件的品质要重读预制体，别猜。
 - `物品 ID` 行抄自 `docs/Bossrush使用物品ID表.md`。
   **那份表不在 git 里**（`.gitignore` 挡了 `/docs/*`），所以 CI 无法交叉校验，
   guard 也没法管——改 TypeID 时要人工同步这里，别指望有东西提醒你。
@@ -222,6 +227,8 @@ GitHub Actions 构建时看不到源图。`gen_wiki_icons.py` 额外写一份
 ```bash
 npm --prefix wiki-site run dev      # 本地预览（会先跑 sync）
 npm --prefix wiki-site run build    # 构建，CI 跑的就是这条；产物含 sitemap.xml 与 feed.xml
+npm --prefix wiki-site run test:navigation   # 真实 useWiki/withBase 的中英文与两种 base 路由回归
+python tools/check_wiki_links.py            # 构建后核对链接与资源落点；根部署追加 --base /
 SITE_URL=https://example.com/ npm --prefix wiki-site run build   # 换域名部署时给绝对地址用
 python tools/build_wiki_images.py --check    # 只校验图片产物齐不齐
 python tools/gen_wiki_icons.py --webp-only   # 不生图，只重出 WebP 与边车清单

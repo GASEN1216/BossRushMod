@@ -23,7 +23,7 @@ import WikiIcon from './WikiIcon.vue'
 import { useWiki } from '../composables/useWiki'
 import { INFOBOX } from '../../data/infobox.mts'
 
-const { canonical, located, locale, t, href, entryLabel, entryByPath } = useWiki()
+const { canonical, located, locale, t, href, entryLabel, entryByPath, tierOf } = useWiki()
 
 const box = computed(() => INFOBOX[canonical.value] ?? null)
 
@@ -81,7 +81,7 @@ const links = computed(() =>
           :data-brs-ref="link.path"
         >
           <WikiIcon :icon="link.icon" :label="link.label" :size="20" />
-          <span>{{ link.label }}</span>
+          <span class="wiki-tier" :data-tier="tierOf(link.path)">{{ link.label }}</span>
         </a>
       </div>
     </div>

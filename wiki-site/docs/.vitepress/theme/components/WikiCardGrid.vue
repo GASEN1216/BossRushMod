@@ -16,7 +16,7 @@ import type { WikiCategory } from '../../data/structure.mts'
 
 const props = defineProps<{ category: WikiCategory }>()
 
-const { href, t, canonical, entryLabel, entryBlurb, entryTag, categoryLabel } = useWiki()
+const { href, t, canonical, entryLabel, entryBlurb, entryTag, categoryLabel, tierOf } = useWiki()
 
 const items = computed(() => {
   const here = canonical.value.replace(/\/$/, '')
@@ -43,7 +43,8 @@ const items = computed(() => {
           <WikiIcon :icon="entry.icon" :label="entryLabel(entry)" :size="40" />
           <div class="wiki-card__body">
             <p class="wiki-card__name">
-              {{ entryLabel(entry) }}
+              <!-- 物品名按稀有度上色；没有 tier 的条目（Boss / 模式 / 系统）属性不渲染，保持墨色 -->
+              <span class="wiki-tier" :data-tier="tierOf(entry.path)">{{ entryLabel(entry) }}</span>
               <span v-if="entryTag(entry)" class="wiki-card__tag">{{ entryTag(entry) }}</span>
             </p>
             <p v-if="entryBlurb(entry)" class="wiki-card__blurb">{{ entryBlurb(entry) }}</p>

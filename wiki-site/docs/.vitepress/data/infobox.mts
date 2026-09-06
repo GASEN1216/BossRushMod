@@ -175,6 +175,8 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '枪械 · 火焰',
     eyebrowEn: 'Gun · Fire',
     rows: [
+      // 品质来自 Assets/Equipment/dragon_equipment 预制体
+      { zh: '品质', en: 'Rarity', vz: '7', tier: 7 },
       { zh: '伤害', en: 'Damage', vz: '23' },
       { zh: '射速 / 弹匣', en: 'Fire rate / Mag', vz: '13 / 20' },
       { zh: '装填', en: 'Reload', vz: '3 秒', ve: '3 s' },
@@ -190,6 +192,8 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '枪械 · 火焰',
     eyebrowEn: 'Gun · Fire',
     rows: [
+      // 品质来自 Assets/Equipment/dragonking_equipment 预制体
+      { zh: '品质', en: 'Rarity', vz: '8', tier: 8 },
       { zh: '基础伤害', en: 'Base damage', vz: '26' },
       { zh: '射速 / 弹匣', en: 'Fire rate / Mag', vz: '9.2 / 15' },
       { zh: '装填', en: 'Reload', vz: '3.35 秒', ve: '3.35 s' },
@@ -259,6 +263,8 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '套装 · 2 件',
     eyebrowEn: 'Armor set · 2 pieces',
     rows: [
+      // 品质来自 Assets/Equipment/dragon_equipment 预制体（Config 不设 Quality，随预制体走）
+      { zh: '品质', en: 'Rarity', vz: '6', tier: 6 },
       { zh: '部件', en: 'Pieces', vz: '赤龙首（头盔）/ 焰鳞甲（护甲）', ve: 'Dragon Helm / Flamescale Armor' },
       { zh: '护甲 / 耐久', en: 'Armor / Durability', vz: '7 / 200（每件）', ve: '7 / 200 each' },
       { zh: '套装效果', en: 'Set bonus', vz: '火焰伤害转治疗', ve: 'Fire damage converts to healing' },
@@ -273,6 +279,8 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowZh: '套装 · 2 件',
     eyebrowEn: 'Armor set · 2 pieces',
     rows: [
+      // 品质来自 Assets/Equipment/dragonking_equipment 预制体（Config 不设 Quality，随预制体走）
+      { zh: '品质', en: 'Rarity', vz: '8', tier: 8 },
       { zh: '部件', en: 'Pieces', vz: '龙王之冕（头盔）/ 龙王鳞铠（护甲）', ve: 'Dragon Crown / Dragon Scale Mail' },
       { zh: '护甲 / 耐久', en: 'Armor / Durability', vz: '7 / 200（每件）', ve: '7 / 200 each' },
       { zh: '套装效果', en: 'Set bonus', vz: '火焰伤害转治疗', ve: 'Fire damage converts to healing' },
@@ -290,8 +298,8 @@ export const INFOBOX: Record<string, Infobox> = {
       { zh: '品质', en: 'Rarity', vz: '6', tier: 6 },
       { zh: '部件', en: 'Pieces', vz: '霜冠（头盔）/ 寒冰铠甲（护甲）', ve: 'Frost Crown / Ice Armor' },
       { zh: '耐久', en: 'Durability', vz: '999（近似永久）', ve: '999 (effectively permanent)' },
-      { zh: '套装效果', en: 'Set bonus', vz: '寒冰之护：冰系减伤 + 反击冻结', ve: 'Ice resistance plus a freezing riposte' },
-      { zh: '获取', en: 'Availability', vz: '暂无常规来源（开发预览）', ve: 'No regular source yet (preview)' },
+      { zh: '套装效果', en: 'Set bonus', vz: '寒冰之护：冰伤转治疗 + 击杀冰葬霜爆 + 反击冻结', ve: 'Ice heals you, kills unleash a frost nova, freezing riposte' },
+      { zh: '获取', en: 'Availability', vz: '「???」Boss 掉落（每件 20%，原版地图也算）/ 叮当商店好感 6 级', ve: "\"???\" boss drop (20% per piece, vanilla raids too) / Dingdang's shop at affinity 6" },
       { zh: '物品 ID', en: 'Internal ID', vz: '500053 / 500054' },
     ],
     links: ['/equipment/thunder-set'],
@@ -303,8 +311,8 @@ export const INFOBOX: Record<string, Infobox> = {
       { zh: '品质', en: 'Rarity', vz: '6', tier: 6 },
       { zh: '部件', en: 'Pieces', vz: '雷神之角（头盔）/ 雷霆战甲（护甲）', ve: 'Thunder Horns / Storm Plate' },
       { zh: '耐久', en: 'Durability', vz: '999（近似永久）', ve: '999 (effectively permanent)' },
-      { zh: '套装效果', en: 'Set bonus', vz: '雷霆之怒：电系减伤 + 反击雷击 AOE', ve: 'Shock resistance plus a lightning AoE riposte' },
-      { zh: '获取', en: 'Availability', vz: '暂无常规来源（开发预览）', ve: 'No regular source yet (preview)' },
+      { zh: '套装效果', en: 'Set bonus', vz: '雷霆之怒：电伤转治疗 + 击杀引雷连锁 + 反击雷击 AOE', ve: 'Shock heals you, kills chain lightning, lightning AoE riposte' },
+      { zh: '获取', en: 'Availability', vz: '风暴区 Boss 掉落（每件 20%，原版地图也算）/ 叮当商店好感 6 级', ve: "Storm Zone boss drop (20% per piece, vanilla raids too) / Dingdang's shop at affinity 6" },
       { zh: '物品 ID', en: 'Internal ID', vz: '500055 / 500056' },
     ],
     links: ['/equipment/frost-set'],

@@ -12,7 +12,7 @@
 import { computed } from 'vue'
 import { useWiki } from '../composables/useWiki'
 
-const { located, href, t, canonical, entryLabel, categoryLabel } = useWiki()
+const { located, href, t, canonical, entryLabel, categoryLabel, tierOf } = useWiki()
 
 const siblings = computed(() => located.value?.category.entries ?? [])
 const show = computed(() => siblings.value.length > 1)
@@ -28,7 +28,11 @@ const isHere = (path: string) =>
     </a>
     <ul class="wiki-navbox__list">
       <li v-for="entry in siblings" :key="entry.path">
+        <!-- .wiki-tier 给装备名上稀有度色；当前页的 .is-here（(0,2,1)）比它（(0,2,0)）权重高，
+             所以当前条目仍显示为墨色下划线，不会被稀有度色盖掉 -->
         <a
+          class="wiki-tier"
+          :data-tier="tierOf(entry.path)"
           :href="href(entry.path)"
           :class="{ 'is-here': isHere(entry.path) }"
           :aria-current="isHere(entry.path) ? 'page' : undefined"

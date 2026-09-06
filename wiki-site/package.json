@@ -5,7 +5,8 @@
     "sync": "node scripts/sync-content.mjs",
     "dev": "npm run sync && vitepress dev docs",
     "build": "npm run sync && vitepress build docs",
-    "preview": "vitepress preview docs"
+    "preview": "vitepress preview docs",
+    "test:navigation": "node scripts/check-navigation.mjs"
   },
   "devDependencies": {
     "vitepress": "^1.6.0"

@@ -23,8 +23,10 @@
   --brs-oxblood: #8c2f2a;
   --brs-slate: #41565f;
   --brs-moss: #4a6141;
-  /* 稀有度色阶的中档（5 石板蓝 → 6 紫晶 → 7 黄铜），用它的 .wiki-rarity 在 extras.css §0 */
+  /* 稀有度色阶（5 石板蓝 → 6 紫晶 → 7 黄铜 → 8 余烬），用它们的 .wiki-rarity 在 extras.css §0。
+     余烬是给龙王套装 / 龙铳这一档准备的：比黄铜更"热"，又和牛血红（warning 语义）拉开距离。 */
   --brs-amethyst: #5b4a7a;
+  --brs-ember: #b3471f;
 
   /* 字族 */
   --brs-serif: "Noto Serif SC", "Source Han Serif SC", "Songti SC", Georgia, "SimSun", serif;
@@ -52,6 +54,7 @@
   --brs-slate: #8faab5;
   --brs-moss: #8fa87f;
   --brs-amethyst: #a893c8;
+  --brs-ember: #e8895a;
 }
 
 /* ── 2. 映射到 VitePress 变量 ──────────────────────────── */

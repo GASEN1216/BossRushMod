@@ -9,8 +9,10 @@
 /*
  * 稀有度色片。泰拉瑞亚 Wiki 按稀有度给物品名上色，一眼能分出档次；
  * 这里不照抄它那套十二级配色（那是它自己的视觉语言），而是在本站
- * 已有的三个强调色里排一条递进：5 石板蓝 → 6 紫晶 → 7 黄铜（令牌在 style.css §1）。
+ * 已有的强调色里排一条递进：5 石板蓝 → 6 紫晶 → 7 黄铜 → 8 余烬（令牌在 style.css §1）。
  * 只有 tier 字段写了的行才会变成色片，见 data/infobox.mts。
+ * 第 8 档是从 Assets/Equipment/dragonking_equipment 预制体里读出来的（龙王套装、龙铳），
+ * 代码和正文里都没写，别按"最高 7"去理解这条色阶。
  *
  * 放在这里而不是某个组件的 <style> 里，因为速查框（WikiInfobox）与对比表（WikiCompare）
  * 都用它——写在组件里，另一个组件就得依赖「那个块没加 scoped」这件事。
@@ -34,6 +36,35 @@
 }
 .wiki-rarity[data-tier="7"] {
   color: var(--brs-brass);
+}
+.wiki-rarity[data-tier="8"] {
+  color: var(--brs-ember);
+}
+
+/*
+ * 物品**名字**按稀有度上色——泰拉瑞亚 Wiki 里物品名每一处出现都带它的稀有度色，
+ * 不只在信息框里。带 data-tier 的有两类元素：
+ *   - 正文里的实体链接（config.mts 的 entityLinkPlugin 从 infobox.mts 取 tier 写上去）
+ *   - 组件里的名字（宫格 / 页尾导航 / 速查框相关条目，统一挂 .wiki-tier）
+ * 只有 infobox.mts 配了 tier 的条目才有这个属性；Boss / 模式 / 系统没有稀有度，保持黄铜。
+ * 之所以现在才做：此前 16 件装备只有 12 件查得到品质，剩下 4 件上不了色会像渲染坏了；
+ * 从预制体里读出最后 4 件之后，装备这一类才凑齐。
+ */
+.vp-doc .brs-eref[data-tier="5"] strong,
+.wiki-tier[data-tier="5"] {
+  color: var(--brs-slate);
+}
+.vp-doc .brs-eref[data-tier="6"] strong,
+.wiki-tier[data-tier="6"] {
+  color: var(--brs-amethyst);
+}
+.vp-doc .brs-eref[data-tier="7"] strong,
+.wiki-tier[data-tier="7"] {
+  color: var(--brs-brass);
+}
+.vp-doc .brs-eref[data-tier="8"] strong,
+.wiki-tier[data-tier="8"] {
+  color: var(--brs-ember);
 }
 
 /* ── 1. 速查对比表（WikiCompare）──────────────────────── */
