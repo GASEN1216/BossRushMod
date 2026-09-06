@@ -149,6 +149,7 @@ echo(Common\MapConfig\MapSpawnPointRegistry.cs
 echo(Common\Utils\ReflectionCache.cs
 echo(Common\Utils\NPCBubbleAnimator.cs
 echo(Common\Effects\RingParticleEffect.cs
+echo(Common\Effects\SetBonusArcPool.cs
 echo(Common\Buildings\BuildingInjectionHelper.cs
 echo(Common\Buildings\BuildingModelHelper.cs
 echo(Common\Effects\MeleeWeaponFxPolicy.cs

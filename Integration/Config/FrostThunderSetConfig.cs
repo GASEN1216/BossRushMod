@@ -156,6 +156,10 @@ namespace BossRush
             bool isThunderPiece = typeId == THUNDER_HELMET_ID || typeId == THUNDER_ARMOR_ID;
             EnsureBaseArmorModifier(item, isThunderPiece ? "StormProtection" : "ColdProtection", WEATHER_PROTECTION_PER_PIECE);
             item.Value = SET_PIECE_VALUE;
+            // 可维修标签：官方 Item.Repairable = UseDurability && Tags.Contains("Repairable")，
+            // 而 UseDurability 就是 MaxDurability > 0——耐久 999 的这四件必然为 true。
+            // 不打这个标签，维修台会直接显示「无法维修」，磨损只能永久带着（龙王套装同款处理）。
+            EquipmentHelper.AddRepairableTag(item);
             EquipmentHelperIcon.TryInjectIcon(item, bundleName, iconAssetName);
 
             if (bindSupportingResources)

@@ -143,7 +143,8 @@ namespace BossRush
                 // 2. 取消受击/死亡事件
                 UnregisterThunderSetHurtEvent();
 
-                // 3. 清理表现层与引雷术状态
+                // 3. 清理表现层与引雷术状态。先递增代数，让已排队的延时结算协程整条作废
+                BumpSetBonusGeneration();
                 StopThunderAmbientArcLoop();
                 DestroySetEyeLights(ref thunderSetEyeLights);
                 DestroySetArcPool();
@@ -262,7 +263,7 @@ namespace BossRush
 
                 // 延后一帧结算：OnHurt 可能正处在敌方爆炸的 ExplosionManager 循环内，
                 // 嵌套 CreateExplosion 会覆写其共享 colliders/damagedHealth 缓冲。
-                StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter));
+                StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));
             }
             catch (Exception e)
             {
@@ -273,11 +274,11 @@ namespace BossRush
         /// <summary>
         /// 雷霆反震结算：电击 AOE（不伤自己与友军）+ 玩家→攻击者电弧 + 爆发环 + 音效
         /// </summary>
-        private IEnumerator ThunderCounterStep(CharacterMainControl player, CharacterMainControl attacker)
+        private IEnumerator ThunderCounterStep(CharacterMainControl player, CharacterMainControl attacker, int generation)
         {
             yield return null;
 
-            if (!thunderSetActive || player == null) yield break;
+            if (!thunderSetActive || generation != setBonusGeneration || player == null) yield break;
             if (LevelManager.Instance == null || LevelManager.Instance.ExplosionManager == null) yield break;
 
             try

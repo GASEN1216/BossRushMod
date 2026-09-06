@@ -58,7 +58,7 @@ namespace BossRush
                 if (!TryResolveSetBonusKillVictim(target, damageInfo, out victim, out position)) return;
 
                 lastFrostNovaTime = Time.time;
-                StartCoroutine(FrostNovaStep(position, victim));
+                StartCoroutine(FrostNovaStep(position, victim, setBonusGeneration));
             }
             catch (Exception e)
             {
@@ -69,11 +69,12 @@ namespace BossRush
         /// <summary>
         /// 霜爆结算：爆发环 + 碎片 + 音效 → 扫描 → 逐目标冰伤 + 冻结
         /// </summary>
-        private IEnumerator FrostNovaStep(Vector3 origin, CharacterMainControl corpse)
+        private IEnumerator FrostNovaStep(Vector3 origin, CharacterMainControl corpse, int generation)
         {
             yield return frostNovaWait;
 
-            if (!frostSetActive) yield break;
+            // 代数不符 = 这条是上一次激活（多半是上一张图）排队下来的，坐标已作废
+            if (!frostSetActive || generation != setBonusGeneration) yield break;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null) yield break;
 

@@ -106,7 +106,7 @@ def main() -> int:
         "Health.OnDead += OnThunderSetAnyDead;",
         "Health.OnDead -= OnThunderSetAnyDead;",
         "TryScheduleThunderChain(target, damageInfo);",
-        "StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter));",
+        "StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));",
         "dmg.isFromBuffOrEffect = true;",
         "dmg.fromWeaponItemID = 0;",
         "DestroySetEyeLights(ref thunderSetEyeLights);",
@@ -127,9 +127,15 @@ def main() -> int:
             return fail("thunder counter CreateExplosion must pass canHurtSelf=false explicitly")
 
     rc = require(thunder_storm, (
-        "if (depth >= THUNDER_CHAIN_MAX_DEPTH) return;",
+        # 链必须是线性的：下一跳由本协程自己接，绝不能靠 Hurt 同步派发的 OnDead 再进来一次
+        # （那样一跳里死掉的每个目标都会各起一条链，3 目标 × 3 跳 = 最坏 39 次结算）
+        "if (thunderChainInFlight || thunderChainDepth != 0) return;",
         "if (damageInfo.isFromBuffOrEffect) return;",
+        "if (hasNext && hop < THUNDER_CHAIN_MAX_DEPTH)",
+        "StartCoroutine(ThunderChainStep(nextOrigin, nextCorpse, hop + 1, generation));",
         "yield return thunderChainHopWait;",
+        "generation != setBonusGeneration",
+        "thunderChainHits",          # 同一敌人在一条链里只吃一次
         "thunderChainDepth = hop;",
         "thunderChainDepth = 0;",
         "dmg.isFromBuffOrEffect = true;",
@@ -138,6 +144,11 @@ def main() -> int:
     ), "thunder storm")
     if rc:
         return rc
+
+    # 恰好两处启动：OnDead 分派器起第一跳、协程自己接后续一跳。
+    # 多出第三处通常意味着又把「每个死亡目标各起一条」写回来了。
+    if thunder_storm.count("StartCoroutine(ThunderChainStep(") != 2:
+        return fail("ThunderChainStep must be started exactly twice (one schedule + one linear continuation)")
 
     if "Health.OnDead +=" in thunder_storm or "Health.OnDead +=" in frost_nova or "Health.OnDead +=" in visuals:
         return fail("only ThunderSetBonus.cs / FrostSetBonus.cs may subscribe Health.OnDead (paired += / -= in one file)")
@@ -152,6 +163,8 @@ def main() -> int:
         "Team.IsEnemy(Teams.player, character.Team)",
         "private void DestroySetArcPool()",
         "private void DestroySetEyeLights(ref SetEyeLightState state)",
+        # 电弧池是独立 MonoBehaviour：宿主只留门面，不把 LineRenderer 细节堆回 ModBehaviour
+        "BossRush.Common.Effects.SetBonusArcPool.Create()",
     ), "set bonus visuals")
     if rc:
         return rc

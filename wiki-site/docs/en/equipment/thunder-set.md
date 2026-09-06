@@ -13,7 +13,8 @@ A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunde
 - **Thunder Horn** (helmet): quality 6, Head Armor +5, Storm Protection +1, item ID 500055
 - **Thunder Armor** (body armor): quality 6, Body Armor +5, Storm Protection +1, item ID 500056
 - Durability: 999 (effectively permanent)
-- Won't drop on death
+- On death: like the Dragon King set, these drop with the rest of your gear (they are not bound) — bring them knowing you can lose them
+- Repairable at the workbench (durability 999, so wear is slow)
 
 ## How to Get It
 

@@ -6,7 +6,7 @@
 //   - 双眼点光：复用 DragonSetBonus 的头骨查找（FindHeadTransform / cachedHeadTransform），
 //     两种脉动模式（Breathe 慢呼吸 / Flicker 电闪）
 //   - 元素爆发环 + 放射碎片：复用 DragonSetBonus_Dash 的程序化圆形精灵
-//   - 折线电弧：LineRenderer 实例池，随 ModBehaviour 生命周期，不用静态缓存
+//   - 折线电弧：委托 Common/Effects/SetBonusArcPool（独立 MonoBehaviour 池，惰性建、停用即销毁）
 //   - 击杀过滤（照 CodexKillCollector.OnGlobalDead 的过滤序）与敌人扫描（照 PlayerLavaZone）
 //   - 音效路径常量（照 DragonKingConfig.SoundBasePath）
 //
@@ -279,34 +279,22 @@ namespace BossRush
 
         #endregion
 
-        #region 电弧（LineRenderer 实例池）
+        #region 电弧（委托 Common/Effects/SetBonusArcPool）
 
-        private const int SET_ARC_POOL_MAX = 12;
-        private const int SET_ARC_SEGMENTS = 8;
-        private const float SET_ARC_RESAMPLE_INTERVAL = 0.03f;
+        // 池体本身是独立 MonoBehaviour：那段只跟 LineRenderer / 材质 / 自身协程打交道，
+        // 不读任何模式状态，留在 ModBehaviour 上只会继续堆高宿主职责。
+        private BossRush.Common.Effects.SetBonusArcPool setArcPool;
 
-        // 实例池：随 ModBehaviour 生命周期；池满时丢弃这一道纯视觉，不扩容。
-        private readonly List<LineRenderer> setArcIdle = new List<LineRenderer>(SET_ARC_POOL_MAX);
-        private readonly List<LineRenderer> setArcActive = new List<LineRenderer>(SET_ARC_POOL_MAX);
-        private Material setArcMaterial;
-
-        /// <summary>
-        /// 从 from 到 to 画一道折线电弧，life 秒内每 0.03 秒重采样抖动并线性淡出，结束后回池。
-        /// </summary>
+        /// <summary>从 from 到 to 画一道折线电弧（惰性建池；池满时丢弃这一道纯视觉）。</summary>
         private void SpawnSetArc(Vector3 from, Vector3 to, Color color, float width, float life)
         {
             try
             {
-                LineRenderer lr = RentSetArc();
-                if (lr == null) return;
-
-                lr.startWidth = width;
-                lr.endWidth = width * 0.6f;
-                lr.positionCount = SET_ARC_SEGMENTS + 1;
-                ResampleSetArc(lr, from, to, width * 3f);
-                ApplySetArcColor(lr, color, color.a);
-                lr.gameObject.SetActive(true);
-                StartCoroutine(AnimateSetArc(lr, from, to, color, width, life));
+                if (setArcPool == null)
+                {
+                    setArcPool = BossRush.Common.Effects.SetBonusArcPool.Create();
+                }
+                setArcPool.Spawn(from, to, color, width, life);
             }
             catch (Exception e)
             {
@@ -314,164 +302,20 @@ namespace BossRush
             }
         }
 
-        private LineRenderer RentSetArc()
-        {
-            // 随场景销毁的对象在 Unity 里 == null 为 true，先把空槽剔掉
-            for (int i = setArcIdle.Count - 1; i >= 0; i--)
-            {
-                if (setArcIdle[i] == null) setArcIdle.RemoveAt(i);
-            }
-            for (int i = setArcActive.Count - 1; i >= 0; i--)
-            {
-                if (setArcActive[i] == null) setArcActive.RemoveAt(i);
-            }
-
-            LineRenderer lr;
-            if (setArcIdle.Count > 0)
-            {
-                lr = setArcIdle[setArcIdle.Count - 1];
-                setArcIdle.RemoveAt(setArcIdle.Count - 1);
-            }
-            else if (setArcActive.Count >= SET_ARC_POOL_MAX)
-            {
-                return null;
-            }
-            else
-            {
-                lr = CreateSetArcRenderer();
-            }
-
-            if (lr != null)
-            {
-                setArcActive.Add(lr);
-            }
-            return lr;
-        }
-
-        private LineRenderer CreateSetArcRenderer()
-        {
-            GameObject go = new GameObject("SetBonusArc");
-            LineRenderer lr = go.AddComponent<LineRenderer>();
-            lr.useWorldSpace = true;
-            lr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            lr.receiveShadows = false;
-            lr.numCapVertices = 2;
-            lr.numCornerVertices = 2;
-            lr.textureMode = LineTextureMode.Stretch;
-            lr.sortingOrder = 120;
-
-            Material material = GetSetArcMaterial();
-            if (material != null)
-            {
-                lr.material = material;
-            }
-            return lr;
-        }
-
-        private Material GetSetArcMaterial()
-        {
-            if (setArcMaterial != null) return setArcMaterial;
-
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Color");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) return null;
-
-            setArcMaterial = new Material(shader);
-            setArcMaterial.name = "SetBonusArcMat";
-            return setArcMaterial;
-        }
-
-        private static void ApplySetArcColor(LineRenderer lr, Color color, float alpha)
-        {
-            lr.startColor = new Color(color.r, color.g, color.b, alpha);
-            lr.endColor = new Color(color.r, color.g, color.b, alpha * 0.6f);
-        }
-
-        private static void ResampleSetArc(LineRenderer lr, Vector3 from, Vector3 to, float jitter)
-        {
-            Vector3 direction = to - from;
-            Vector3 side = Vector3.Cross(direction.normalized, Vector3.up);
-            if (side.sqrMagnitude < 1e-4f)
-            {
-                side = Vector3.right;
-            }
-
-            for (int i = 0; i <= SET_ARC_SEGMENTS; i++)
-            {
-                float t = (float)i / SET_ARC_SEGMENTS;
-                Vector3 point = Vector3.Lerp(from, to, t);
-                if (i > 0 && i < SET_ARC_SEGMENTS)
-                {
-                    float amplitude = jitter * Mathf.Sin(t * Mathf.PI);   // 两端钉死，中段抖动
-                    point += side * UnityEngine.Random.Range(-amplitude, amplitude)
-                           + Vector3.up * (UnityEngine.Random.Range(-amplitude, amplitude) * 0.5f);
-                }
-                lr.SetPosition(i, point);
-            }
-        }
-
-        private IEnumerator AnimateSetArc(LineRenderer lr, Vector3 from, Vector3 to, Color color, float width, float life)
-        {
-            float elapsed = 0f;
-            float nextResample = 0f;
-            while (elapsed < life && lr != null)
-            {
-                elapsed += Time.deltaTime;
-                if (elapsed >= nextResample)
-                {
-                    ResampleSetArc(lr, from, to, width * 3f);
-                    nextResample = elapsed + SET_ARC_RESAMPLE_INTERVAL;
-                }
-                ApplySetArcColor(lr, color, Mathf.Lerp(color.a, 0f, elapsed / life));
-                yield return null;
-            }
-
-            ReturnSetArc(lr);
-        }
-
-        private void ReturnSetArc(LineRenderer lr)
-        {
-            if (lr == null) return;   // 已随场景销毁；RentSetArc 会清掉空槽
-
-            setArcActive.Remove(lr);
-            lr.gameObject.SetActive(false);
-            if (setArcIdle.Count < SET_ARC_POOL_MAX)
-            {
-                setArcIdle.Add(lr);
-            }
-            else
-            {
-                UnityEngine.Object.Destroy(lr.gameObject);
-            }
-        }
-
-        /// <summary>套装停用 / Mod 卸载时销毁整个电弧池与材质。</summary>
+        /// <summary>套装停用 / Mod 卸载时销毁整个电弧池（材质在池的 OnDestroy 里释放）。</summary>
         private void DestroySetArcPool()
         {
+            if (setArcPool == null) return;
+
             try
             {
-                for (int i = 0; i < setArcIdle.Count; i++)
-                {
-                    if (setArcIdle[i] != null) UnityEngine.Object.Destroy(setArcIdle[i].gameObject);
-                }
-                for (int i = 0; i < setArcActive.Count; i++)
-                {
-                    if (setArcActive[i] != null) UnityEngine.Object.Destroy(setArcActive[i].gameObject);
-                }
-                setArcIdle.Clear();
-                setArcActive.Clear();
-
-                if (setArcMaterial != null)
-                {
-                    UnityEngine.Object.Destroy(setArcMaterial);
-                    setArcMaterial = null;
-                }
+                UnityEngine.Object.Destroy(setArcPool.gameObject);
             }
             catch (Exception e)
             {
                 DevLog("[SetBonusVisuals] DestroySetArcPool 出错: " + e.Message);
             }
+            setArcPool = null;
         }
 
         #endregion
@@ -519,8 +363,13 @@ namespace BossRush
         /// <summary>
         /// 扫描 center 周围 radius 内的存活敌人（Team.IsEnemy(Teams.player, …)），按距离升序最多保留 maxCount 个，
         /// 结果写入 setBonusScanResults（复用缓冲与列表，零分配）。形态照 PlayerLavaZone.DamageEnemiesInRange。
+        ///
+        /// 调用方在拿到结果后**不得 yield**：整张 setBonusScanResults 是冰霜/雷霆共用的复用列表，
+        /// 中途让出会被另一条协程覆写。当前三个调用点都是「扫描 → 立即结算」，无 yield。
         /// </summary>
-        private int ScanSetBonusEnemies(Vector3 center, float radius, CharacterMainControl exclude, int maxCount)
+        /// <param name="excludeHealths">本次链/爆已命中过的目标，传 null 表示不排除（用于连锁去重）</param>
+        private int ScanSetBonusEnemies(Vector3 center, float radius, CharacterMainControl exclude, int maxCount,
+            List<Health> excludeHealths = null)
         {
             setBonusScanResults.Clear();
             if (maxCount <= 0) return 0;
@@ -550,6 +399,20 @@ namespace BossRush
                 Health health = character.Health;
                 if (health == null || health.IsDead) continue;
                 if (!Team.IsEnemy(Teams.player, character.Team)) continue;
+
+                if (excludeHealths != null)
+                {
+                    bool alreadyHit = false;
+                    for (int k = 0; k < excludeHealths.Count; k++)
+                    {
+                        if (object.ReferenceEquals(excludeHealths[k], health))
+                        {
+                            alreadyHit = true;
+                            break;
+                        }
+                    }
+                    if (alreadyHit) continue;
+                }
 
                 bool duplicate = false;
                 for (int k = 0; k < setBonusScanResults.Count; k++)
@@ -591,6 +454,18 @@ namespace BossRush
         }
 
         internal bool HasSetBonusElementHealing { get { return frostSetActive || thunderSetActive; } }
+
+        /// <summary>
+        /// 套装激活代数。每次停用递增，供已经排队的延时结算协程识别「我这条属于上一次激活」。
+        /// 场景重载走的是「先停用再重查」，同一帧里 xxxSetActive 会先 false 再 true，
+        /// 光看这个布尔挡不住上一张图排队的连锁/霜爆拿着旧坐标在新场景里结算。
+        /// </summary>
+        private int setBonusGeneration = 0;
+
+        private void BumpSetBonusGeneration()
+        {
+            unchecked { setBonusGeneration++; }
+        }
 
         #endregion
     }

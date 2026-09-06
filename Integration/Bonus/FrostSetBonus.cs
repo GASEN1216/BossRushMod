@@ -157,7 +157,8 @@ namespace BossRush
                 // 3. 停止仍在飞的 fallback 减速协程，并立刻把对应 Modifier 摘掉
                 StopAndClearFrostFallbackSlowCoroutines();
 
-                // 4. 清理表现层与冰葬状态
+                // 4. 清理表现层与冰葬状态。先递增代数，让已排队的延时结算协程整条作废
+                BumpSetBonusGeneration();
                 DestroySetEyeLights(ref frostSetEyeLights);
                 StopFrostMist();
                 ResetFrostNovaState();

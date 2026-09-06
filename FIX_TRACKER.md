@@ -29,7 +29,8 @@ Wiki共享链接生成相对地址；NPC暂停遗漏在途寻路、跟随不重�
 ### 2026-09-06 冰霜 / 雷霆套装龙王级重做 + 开放获取（含反击自伤真 bug）
 
 **状态**: fixed（Windows 真编译通过、guard 全绿、Wiki 站构建通过；游戏内 smoke 待做）  
-**Finding**: CR-2026-09-06-004（反击炸自己）、CR-2026-09-06-005（过图丢抗性 Modifier 与视觉）、CR-2026-09-06-006（OnHurt 内嵌套爆炸覆写共享缓冲）  
+**Finding**: CR-2026-09-06-004（反击炸自己）、-005（过图丢抗性 Modifier 与视觉）、-006（OnHurt 内嵌套爆炸覆写共享缓冲）；
+owner 要求「全面审核一遍」后追加 -007（引雷术指数分叉）、-008（跨图陈旧延时结算）、-009（缺 Repairable 标签）、-010（Wiki 死亡掉落说明与实际相反）  
 **兼容分类**: COMPAT（玩法/数值扩展、开放获取）；OPERATIONAL 低风险（`compile_official.bat` 部署段照 BGM 块追加 `Assets\Sounds\SetBonus` 拷贝）  
 **版本/Commit**: 未提交  
 **Owner decision**: 用户 2026-09-06 拍板：两套都做炫酷重做；获取 = Boss 掉落 + 叮当商店；主动技能风格 = 引雷术（击杀触发）。随后追加「可以走原版 boss 的掉落的，让玩家更有体验」——掉落遂从奖励箱协程改为 Harmony `OnDead` 前缀 + defer 协议，原版地图击杀同样生效。售价 30000 / 解锁 6 级 / 掉率 20% 为建议值，集中在常量，待实机调参。
@@ -46,8 +47,15 @@ Wiki共享链接生成相对地址；NPC暂停遗漏在途寻路、跟随不重�
 2. Guard: `python tools/run_guards.py` 全绿（含扩展后的 `SetBonusLifecycleGuard`）。
 3. Wiki: `npm --prefix wiki-site run build` 通过（sync 重生成两页）。
 4. 人工 smoke（待做）: F2 给两套穿齐看横幅/眼光/霜雾/电弧；击杀触发引雷术 3 跳与冰葬冻结；近身受击反震不掉自己血；过图后抗性与视觉自动重建且不重复横幅；叮当 6 级四件上架且价格 30000；风暴区 Boss / 「???」Boss 按三条路线各抽样掉率（原版地图官方箱 / BossRush 奖励箱 / 无间炼狱世界掉落），确认不重复发放。
-**未验证/需人工**: 全部运行时行为（引雷术连锁体感与帧率、霜雾/电弧观感、音效响度、掉率、商店价格、跨图重建）只能实机确认；`SoundFileExistsCached` 会缓存「文件不存在」，音效需在启动游戏前部署好。龙套装同样有过图丢眼光的问题，本轮未动（越界）。
-**失败尝试**: 无。
+**全面审核追加修复（同日，owner 要求「全面审核一遍」）**:
+- **CR-007 引雷术指数分叉**（P1）：原实现靠 `Hurt` 同步派发的 `OnDead` 再入来接下一跳，一跳打死 3 个就分出 3 条链，最坏 3+9+27 = 39 次结算/电弧/音效挤在 0.24 秒内，且同一敌人可被反复电。改为线性链——下一跳由 `ThunderChainStep` 自己接（每跳只取第一具尸体），`thunderChainInFlight` + `isFromBuffOrEffect` 双保险挡再入，`thunderChainHits` 跨跳去重，全程至多 9 次伤害。守卫加断言：`StartCoroutine(ThunderChainStep(` 全文件恰好 2 处（一次调度 + 一次线性续跳）。
+- **CR-008 跨图陈旧结算**（P2）：新增 `setBonusGeneration`（停用时递增），`ThunderChainStep` / `FrostNovaStep` / `ThunderCounterStep` 三个延时协程都带代数校验——场景重载走「先停用再重查」，同一帧 `xxxSetActive` 会 false→true，只看布尔挡不住上一张图排队的结算。
+- **CR-009 缺 `Repairable`**（P2）：`ConfigureSetItem` 补 `EquipmentHelper.AddRepairableTag(item)`。官方 `Item.Repairable = UseDurability && Tags.Contains("Repairable")`，耐久 999 使 `UseDurability` 恒真，不打标签维修台会显示「无法维修」。龙王套装一直有。
+- **CR-010 Wiki 死亡掉落说明反了**（P2/SAFE）：四份 Wiki 原写「不会因死亡掉落」，但这四件既无 `DontDropOnDeadInSlot` 也非 `Sticky`，官方 `CharacterMainControl.cs:1963` 只对这两者免除。已按实际改写（与龙王套装一致：会掉）并补维修说明。**若 owner 想改成绑定不掉，是加一行 tag 的事，但属经济/难度取舍，未擅自决定。**
+- **顺带的设计整改**：`ModBehaviourPartialBudgetGuard` 因上述修复顶破总行数预算。**没有抬预算**，而是按该守卫的本意把电弧池从 `partial class ModBehaviour` 抽成独立 MonoBehaviour `Common/Effects/SetBonusArcPool.cs`（宿主只留 `SpawnSetArc` / `DestroySetArcPool` 门面），宿主行数反而降到预算内。
+
+**未验证/需人工**: 全部运行时行为（引雷术连锁体感与帧率、霜雾/电弧观感、音效响度、掉率、商店价格、跨图重建、维修台可修）只能实机确认；`SoundFileExistsCached` 会缓存「文件不存在」，音效需在启动游戏前部署好。龙套装同样有过图丢眼光的问题，本轮未动（越界）。
+**失败尝试**: 用 `sed -i` 改 `compile_official.bat` 把 CRLF 换成了 LF，cmd 报 `'ing' is not recognized` 一类与代码无关的错，已按字节还原并写进 AGENTS §14；仓库本来就有 `WindowsPathDetectionGuard` 守这条，是我先动手才发现。
 
 ---
 

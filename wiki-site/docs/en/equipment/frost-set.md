@@ -13,7 +13,8 @@ A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** b
 - **Frost Crown** (helmet): quality 6, Head Armor +5, Cold Protection +1, item ID 500053
 - **Ice Armor** (body armor): quality 6, Body Armor +5, Cold Protection +1, item ID 500054
 - Durability: 999 (effectively permanent)
-- Won't drop on death
+- On death: like the Dragon King set, these drop with the rest of your gear (they are not bound) — bring them knowing you can lose them
+- Repairable at the workbench (durability 999, so wear is slow)
 
 ## How to Get It
 

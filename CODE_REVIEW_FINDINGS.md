@@ -34,6 +34,18 @@
 | CR-2026-09-06-002 | P2 / COMPAT | `ModeH/ModeHJsonValue.cs` 已被 9 个 ModeH 之外的文件依赖却挂 ModeH 前缀；`PetNest/PetNestJson.cs` 是第二套嵌套解析器；`CodexCodec.cs:5-12` / `DailyReportCodec.cs:6-7` 为避开两者选了最弱的前缀提取器，把 schema 绑在「只能一个数组 / entries 必须最后 / key 不得互为前缀」上；`F3GameplayValidationCoverage.cs:20` 绕过 `JsonDataRegistry` 这个「唯一读取入口」。 | Fixed：`Common/Data/BossRushJsonValue.cs` 单一解析器 + 写出器，Codex / 日报读侧改走节点解析器（写侧字节不变） |
 | CR-2026-09-06-003 | P2 / COMPAT | 落盘协调器 ×4（归一化后 Codex↔DailyReport 仅差 84 行）、单 key 存档门面 ×3（Codex↔DailyReport 仅差 49 行）、建筑交互体 ×5（DailyReport↔Campaign 仅差 27 行）逐字复制；`_saveFilePending` 那类修复需逐份重做，`SaveCoordinatorRetryGuard` 只能逐份锁同一条不变式。 | Fixed：`BossRushSaveCoordinatorEngine` / `BossRushSlotJsonStore<T>` / `BossRushBuildingInteractableBase`，子系统只保留一行式门面与绑定，调用面不变 |
 
+## 2026-09-06 冰霜 / 雷霆套装开放获取后的全面审核：4 项（均已修）
+
+owner 要求「全面审核一遍」后，对本轮改动及其直接影响面（套装效果、表现层、掉落链路、配置与文案）逐条复核所得。
+修复见 `FIX_TRACKER.md` 同日条目；实机 smoke 待做。
+
+| ID | 级别 / 分类 | 已确认缺陷与代码锚点 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-06-007 | P1 / COMPAT | `Integration/Bonus/ThunderSetBonus_Storm.cs`（修复前）引雷术靠 `Hurt` 同步派发的 `OnDead` 再进 `TryScheduleThunderChain` 来接下一跳，而一跳最多打死 3 个目标、每个都满足 `thunderChainDepth < MAX_DEPTH`，于是**每个死亡目标各起一条链**：3 目标 × 3 跳 = 最坏 3+9+27 = 39 次伤害结算、39 道电弧与 39 次音效挤在 0.24 秒内，且无跨跳去重，同一敌人可被反复电。与说明/Wiki/F3 用例承诺的「最多 3 跳」不符，密集波次下是可感知的帧率与数值双重问题。现改为线性链：下一跳由协程自己接（每跳只取第一具尸体），`thunderChainInFlight` + `isFromBuffOrEffect` 双保险挡住再入，`thunderChainHits` 做跨跳去重，全程至多 9 次伤害。 | Fixed |
+| CR-2026-09-06-008 | P2 / COMPAT | `Integration/Bonus/{ThunderSetBonus_Storm,FrostSetBonus_Nova}.cs`（修复前）延时结算协程只检查 `xxxSetActive`。场景重载走的是 `SetBonusManager` 的「先停用再重查」，同一帧内该布尔会先 false 再 true，于是上一张图排队的连锁/霜爆会带着**旧场景坐标**在新场景结算。现引入 `setBonusGeneration`（停用时递增），三个延时协程都带代数校验。静态推断，需实机复测。 | Fixed |
+| CR-2026-09-06-009 | P2 / COMPAT | `Integration/Config/FrostThunderSetConfig.cs`（修复前）四件装备耐久 999 但从未打 `Repairable` 标签。官方 `Item.Repairable = UseDurability && Tags.Contains("Repairable")`，而 `UseDurability` 就是 `MaxDurability > 0`——必然为 true，因此维修台会显式显示「无法维修」（`ItemRepairView.cs:263` 的 `cannotRepairIndicator`），磨损永久带着并按耐久比折损售价（`Item.GetTotalRawValue`）。装备不可获取时无影响，本轮开放获取后成为玩家可见问题。龙王套装一直有这个标签。现补 `EquipmentHelper.AddRepairableTag(item)`。 | Fixed |
+| CR-2026-09-06-010 | P2 / SAFE | `WikiContent/{zh,en}/equipment/equipment__{frost,thunder}_set.md`（修复前）四份都写「**死亡掉落**：不会因死亡掉落 / Won't drop on death」，但这四件既没有 `DontDropOnDeadInSlot` 标签也不是 `Sticky`。官方 `CharacterMainControl.cs:1963/1971/2002` 只对带该标签或 Sticky 的主角物品免除死亡掉落，所以实际会掉。装备不可获取时无影响，本轮开放获取后是**直接误导玩家的错误说明**。现按实际行为改写（与龙王套装一致：会掉），并补一行维修说明。若 owner 希望改成绑定不掉，是 `AddTagToItem(item, "DontDropOnDeadInSlot")` 一行，但那属经济/难度取舍，未擅自决定。 | Fixed |
+
 ## 2026-09-06 冰霜 / 雷霆套装重做时确认的 3 项（均已修）
 
 在把 500053-500056 从开发预览转为正式内容的过程中确认。修复见 `FIX_TRACKER.md` 同日条目；实机 smoke 待做。
