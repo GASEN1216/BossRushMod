@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../../../Build/content-building-ownership/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Build/content-building-ownership/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>
