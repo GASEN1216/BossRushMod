@@ -10,7 +10,8 @@ ModeGSpawnTransactionGuard — Mode G 生成事务守卫（规格 §20 第 13 �
 - Mode G 固定 options：HoldForExternalCommit=true、ApplySharedMutators=false、
   AllowRandomRetryFallback=false（official/managed 两路均冻结）；
 - 唯一改变 Health.Hurt 准入/事务深度的补丁仍是 BossRushHealthHurtContextPatch；
-  仅额外允许精确路径/类名的 SetBonusDamageObservation 只读贡献观察补丁，
+  仅额外允许精确路径/类名的 SetBonusDamageObservation 只读贡献观察补丁与既有的
+  ModeEHiredBossKillAttributionPatch 击杀归属 transpiler，
   不允许第二个事务补丁、第三个 Hurt 补丁或借观察补丁改写伤害/返回值；
 - __state 配对：BossLethalHealthProtectionPatch Prefix ref bool __state 与
   Finalizer bool __state 成对。
@@ -26,6 +27,9 @@ HURT_PATCH_ATTR = "[HarmonyPatch(typeof(Health), nameof(Health.Hurt))]"
 HURT_OWNERS = {
     "Patches/Combat/BossLethalHealthProtectionPatch.cs": "BossRushHealthHurtContextPatch",
     "Integration/Bonus/SetBonusDamageObservation.cs": "SetBonusDamageObservation",
+    # Mode E 雇佣 Boss 击杀归属的 transpiler，早于本轮就在库里；它用 "Hurt" 字符串形式
+    # 声明目标，之前的字面量匹配看不见它。登记的是精确身份，不是把预算放宽到 3。
+    "ModeE/ModeEHarmonyPatch.cs": "ModeEHiredBossKillAttributionPatch",
 }
 HURT_PATCH_RE = re.compile(
     r'\[HarmonyPatch\s*\(\s*typeof\s*\(\s*(?:global::)?Health\s*\)\s*,\s*'
@@ -84,11 +88,12 @@ def validate_hurt_patch_owners(sources, errors):
         errors.append("[HurtPatchOwner] 未授权的 Health.Hurt patch: " + path)
     for path, owner in HURT_OWNERS.items():
         text = code_without_comments(sources.get(path, ""))
-        count = len(HURT_PATCH_RE.findall(text))
+        matches = list(HURT_PATCH_RE.finditer(text))
         # 每个路径都必须且只能有自己的一个直接补丁；同文件复制第二个类也必须失败。
-        expected = re.escape(HURT_PATCH_ATTR) + r"\s*internal\s+static\s+class\s+" + owner + r"\b"
-        if count != 1 or not re.search(expected, text):
-            errors.append("[HurtPatchOwner] {} 必须只声明精确补丁 {}（当前 {} 处）".format(path, owner, count))
+        # 类名紧跟在该补丁属性之后；nameof 与 "Hurt" 两种声明形式都要能钉住身份。
+        declaration = re.compile(r"\)\]\s*(?:public|internal)\s+static\s+class\s+" + owner + r"\b")
+        if len(matches) != 1 or not declaration.search(text, matches[0].start()):
+            errors.append("[HurtPatchOwner] {} 必须只声明精确补丁 {}（当前 {} 处）".format(path, owner, len(matches)))
 
     observer = code_without_comments(sources.get("Integration/Bonus/SetBonusDamageObservation.cs", ""))
     if not observer:
