@@ -42,9 +42,9 @@ source_files:
 | --- | --- |
 | `CodexTuning.cs` | 全部常量单点：存档 key、schema 版本、里程碑阈值与奖励、丧尸合成 key、立绘 bundle 名、计时表容量上限 |
 | `CodexModels.cs` | `CodexData` / `CodexEntryData` DTO（`k` / `n` / `kills` / `first` / `fm` / `fast`） |
-| `CodexCodec.cs` | `SimpleJsonHelper` 编解码（扁平对象 + 一层 `entries` 数组），`CreateDefault()` 是唯一默认值出处，no-throw |
-| `CodexPersistence.cs` | 槽位级存档门面：订阅官方存档事件、写屏障、`Store()` 只入队 |
-| `CodexSaveCoordinator.cs` | 图鉴**唯一** `SavesSystem.SaveFile` 调用点：基地场景闸 + deferred 重试预算 |
+| `CodexCodec.cs` | 写侧 `SimpleJsonHelper` 追加（字节格式冻结），读侧 2026-09-06 起走共享节点解析器 `Common/Data/BossRushJsonValue.cs`；`CreateDefault()` 是唯一默认值出处，no-throw |
+| `CodexPersistence.cs` | 槽位级存档门面：只保留 key / schema / 编解码绑定与下游复位，状态机（幂等订阅、槽位烙印、写屏障、回读核对、`Store()` 只入队）在共享的 `Common/Lifecycle/BossRushSlotJsonStore.cs` |
+| `CodexSaveCoordinator.cs` | 图鉴**唯一**物理落盘入口：门面持有一个 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs` 实例（基地场景闸 + deferred 重试预算 + 欠一次 SaveFile 记账），`SaveFile` 本身只在引擎里 |
 | `CodexBossCatalog.cs` | 展示目录：过滤池 ∪ 3 自定义 Boss ∪ 5 丧尸合成条目 ∪ 存档历史条目 |
 | `CodexKillCollector.cs` | `Health.OnDead/OnHurt` 的命名 handler，过滤序 + 实例去重 + 最快击杀计时 |
 | `CodexMilestones.cs` | 解锁数变化后调成就 `TryUnlock`，幂等 |
@@ -187,6 +187,16 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 **落盘重试链修复。** `CodexSaveCoordinator` 与 `CampaignSaveCoordinator` 同形：
 `FlushPending()` 消费 pending 后 `HasPendingWrite` 变 false，旧早返会把「还欠一次 SaveFile」
 误判成「无事可做」，`SaveFile` 失败即永不重试。已新增 `_saveFilePending` 独立记账。
+2026-09-06 起这份记账连同整个协调状态机只存在于共享引擎 `BossRushSaveCoordinatorEngine`，
+图鉴 / 征程 / 日报 / 遗种巢各持一个实例；同类修复不再需要在四份副本里各做一遍。
 
 **图鉴书（500061）已登记掉落黑名单。** 与其余 8 个新 TypeID 一同补入——
 日报签到池 `requireTags = null`、只过 `LootBlacklistRegistry`，不登记就会被当随机奖励发出去。
+
+## 2026-09-06 历史条目即时入册与全录判定
+
+`COMPAT`。首次击杀目录外 Boss（包括战役终章冠军之影）并被存档队列接受后，`CodexKillCollector` 在成就评估前调用 `CodexBossCatalog.SynchronizeHistoricalEntries`，增量并入历史 key。已有官方池无需每次击杀重建；目录版本变化也会使里程碑缓存重新评估。面板补判先同步历史条目，切槽仍使整个目录失效重建。
+
+全录由 `IsFullyUnlocked` 逐一检查每个实际目录 key 的条目存在且 Kills > 0。额外历史条目或重复记录数量不能代替尚未击杀的 Boss；空目录绝不授予全录。保存 key、成就 ID、奖励数值与原击杀过滤不变。
+
+回归：`tests/ContentThirdReviewFixesGuard.py` 与 `tests/fixtures/ContentThirdReviewFixes/run.py`，直接链接实际击杀采集器、目录与成就判定，覆盖冠军即时显示、补齐最后 key 才全录、相同数量但缺 key、重复击杀不重建、面板补判及切槽。Unity 面板和真实成就派奖仍需实机验证。

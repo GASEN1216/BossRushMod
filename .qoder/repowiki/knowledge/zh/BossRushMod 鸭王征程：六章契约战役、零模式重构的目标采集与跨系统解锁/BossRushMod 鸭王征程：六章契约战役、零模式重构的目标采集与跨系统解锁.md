@@ -55,8 +55,8 @@ source_files:
 | `CampaignTuning.cs` | 常量单点：存档 key、token 前缀、建筑 ID、笔记 key 前缀（四个冻结契约）、章节数、终章倍率/缩放/染色 |
 | `CampaignModels.cs` | `CampaignChapterState` / `CampaignObjectiveKind` 枚举与章节、目标、进度模型 |
 | `CampaignFacilityUnlocks.cs` | **与后山之间唯一的耦合面**：token 授予、权威查询、实时事件、换槽复位 |
-| `CampaignPersistence.cs` | 槽位级存档门面：JSON 整存、写屏障、槽位烙印、`Store()` 只入队 |
-| `CampaignSaveCoordinator.cs` | 征程**唯一** `SavesSystem.SaveFile` 调用点：基地场景闸 + deferred 重试预算 |
+| `CampaignPersistence.cs` | 槽位级存档门面：DTO、key / schema、JsonUtility 编解码绑定、token 发布与下游复位；JSON 整存、写屏障、槽位烙印、`Store()` 只入队在共享的 `Common/Lifecycle/BossRushSlotJsonStore.cs` |
+| `CampaignSaveCoordinator.cs` | 征程**唯一**物理落盘入口：门面持有 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs` 实例（基地场景闸 + deferred 重试预算）并携带现金快照义务；`SaveFile` 本身只在引擎里 |
 | `CampaignContentCatalog.cs` | 章节表：JSON 优先、校验不过**整表**回退硬编码；六章全量兜底 |
 | `CampaignObjectiveTracker.cs` | 单局目标追踪，**完全不落盘**；武装/计数/计时/失败判定 |
 | `CampaignObjectiveCollector.cs` | `Health.OnDead/OnHurt` 命名 handler，热路径零分配；近战与悬赏印记判定 |
@@ -234,7 +234,10 @@ stinger 在终章受抑制，确保最终文案、`RunVictory` 与 stinger 各�
 在下一帧命中该早返直接返回成功——**Tick 重试与宿主销毁兜底一起失效**，进度停在
 SavesSystem 内存里从不落盘。现新增独立的 `_saveFilePending`（欠一次 SaveFile），
 早返同时看它，只有 SaveFile 真正成功才清除。`Integration/Codex/CodexSaveCoordinator.cs`
-是同一形态，已同批修复。
+是同一形态，已同批修复。2026-09-06 起这套状态机只存在于共享引擎
+`Common/Lifecycle/BossRushSaveCoordinatorEngine.cs`，四个内容子系统各持一个实例，
+同类修复不再需要逐份重做；公告板 / 终章召唤石交互体的骨架也收进了
+`Interactables/BossRushBuildingInteractableBase.cs`。
 
 
 ## 2026-09-05 余额与完成标记同批保存
@@ -244,3 +247,11 @@ SavesSystem 内存里从不落盘。现新增独立的 `_saveFilePending`（欠�
 余额采集义务与 typed pending、物理写欠账分开保存；任何采集失败、物理失败、基地门禁或同帧节流都不会清除该义务。后续重试重新采集实时余额，避免复用奖励发放时的旧快照覆盖之后的收入/支出。物理 SaveFile 成功后才清除，切槽与卸载清空旧槽会话义务。原有存档键、schema、金额、状态机和退款策略保持兼容。
 
 回归：`tests/ContentCashSnapshotGuard.py`、`tests/fixtures/ContentTransactions/run.py`。夹具直接编译完整战役进度和持久化源码，模拟缓存与物理文件边界、采集失败、物理失败、节流、官方采集和切槽；Unity/ES3 与公告板 UI 仍需实机验证。
+
+## 2026-09-06 建筑注入器归属收口（D-1）
+
+`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/ContentBuildingBridges.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
+
+官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
+
+验证：`tests/ContentBuildingOwnershipGuard.py` 与 `tests/fixtures/ContentBuildingOwnership/run.py`。实际共享反射工具和宿主桥的执行回归覆盖反射契约、容器赋值、调用顺序与 owner 隔离；不替代 Unity 旧档建筑恢复和建造交互 smoke。实现总述见 `.qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md`。

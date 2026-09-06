@@ -277,11 +277,17 @@ ECM2 层碰撞矩阵）**且全程无报错**。
 **Phase 1（已落地）**：家底清点、脸数据编解码、生成核心、运行时标记、F3 采集。
 纯新增，默认不激活任何玩法路径，未改动现有 NPC、preset、存档 key、TypeID、本地化或 Harmony 目标。
 
-**Phase 2（待实机数据回来后进行）**：
+**蓝图、永久 NPC 与移动层（已落地）**：
 
 - 蓝图层 `DuckNpcBlueprint` + `Assets/Data/DuckNpcs.json` + Registry + 硬编码 fallback
   （按 `AGENTS.md` 4.8 的 Config 三层归位第 3 层，属 `SCHEMA+`）
 - 模块层 `DuckNpcModule : INPCModule`，接进 `NPCModuleRegistry` 复用现成的场景刷新/销毁
-- 移动层接官方 `AICharacterController`（`MoveToPos` / `StopMove` / `IsMoving` /
-  `ReachedEndOfPath` / `HasPath` / `PutBackWeapon` / `TakeOutWeapon`）
+- 移动层只接官方 `AI_PathControl` 与 A* `Seeker`，不引入带战斗行为树的 `AICharacterController`。
+  `DuckNpcMovement` 自管请求版本与完成回调，取消时同时归零路径；旧成功回调不得在暂停/停用后重新驱动移动。
+- 驻留与对话独立持有暂停，时间暂停优先于跟随。跟随移动中仍每 0.6 秒重规划，
+  计算中的路径保留至超时，近距离停车和远距离追赶可以立即取消在途请求。
 - Python guard 断言上述四条不变式不被回退
+
+2026-09-06（`COMPAT`）移动回归：`tests/fixtures/IntegrationThirdReviewFixes/run.py` 直接执行生产
+`DuckNpcMovement`、`DuckNpcRuntimeMarker` 与官方 `AI_PathControl`，覆盖晚回调、取消异常、
+停用、对话/驻留交叉释放及跟随重规划。隔离执行不等于 Unity 导航实机验证。

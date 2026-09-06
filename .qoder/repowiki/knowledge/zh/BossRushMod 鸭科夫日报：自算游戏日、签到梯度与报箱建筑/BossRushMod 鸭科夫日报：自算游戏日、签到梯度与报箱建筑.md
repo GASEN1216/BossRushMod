@@ -41,9 +41,9 @@ dormant 退订与清理路径仍保留供卸载和故障回落。
 |---|---|
 | `DailyReportTuning.cs` | 数值常量单点（一天秒数、签到梯度、建筑参数、存档 key、本地化前缀） |
 | `DailyReportModels.cs` | 运行时 DTO（`DailyReportData` / `DailyReportStats`），刻意保持**扁平** |
-| `DailyReportCodec.cs` | 扁平 JSON 编解码，复用 `Utilities/SimpleJsonHelper.cs`，不新造解析器 |
-| `DailyReportPersistence.cs` | 单 key 存档管线：整存 `Save<string>`、写屏障、回读核对、fail-closed |
-| `DailyReportSaveCoordinator.cs` | **唯一** `SaveFile` 调用点，每批至多一次；`IsSaving` 时 deferred 重试 |
+| `DailyReportCodec.cs` | 扁平 JSON 编解码：写侧 `Utilities/SimpleJsonHelper.cs` 追加（字节格式冻结），读侧 2026-09-06 起走共享节点解析器 `Common/Data/BossRushJsonValue.cs` |
+| `DailyReportPersistence.cs` | 单 key 存档门面：只保留 key / schema / 编解码绑定、采集前置（同步余数 + 采现金）与下游复位；整存 `Save<string>`、写屏障、回读核对、fail-closed 在共享的 `Common/Lifecycle/BossRushSlotJsonStore.cs` |
+| `DailyReportSaveCoordinator.cs` | **唯一**物理落盘入口：门面持有 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs` 实例（每批至多一次 SaveFile；`IsSaving` 时 deferred 重试）并携带现金快照义务 |
 | `DailyReportService.cs` | 核心状态机：自算计时、跨天结算、断签、签到、悬赏、统计写入 |
 | `DailyReportBounty.cs` | 悬赏目录与判定（当日悬赏是纯函数，不占存档） |
 | `DailyReportContent.cs` | 版面组装：头条选题、战绩栏、天气预报、运势与杂谈 |
@@ -52,7 +52,7 @@ dormant 退订与清理路径仍保留供卸载和故障回落。
 | `DailyReportRuntimeModule.cs` | 宿主回调唯一落点，单实例由 ModBehaviour 持有 |
 | `DailyReportMailboxBuilder.cs` / `_MailboxRuntime.cs` | 报箱建筑注入（资源、prefab、数据、事件、场景恢复） |
 | `DailyReportUI.cs` / `_UIBridge.cs` | 报纸面板（官方 `Duckov.UI.View` + FadeGroup） |
-| `DailyReportInteractable.cs` | 报箱交互组件（`InteractableBase`） |
+| `DailyReportInteractable.cs` | 报箱交互组件：只声明交互名 key / 交互组标签 / 可交互条件 / 打开面板，骨架在共享的 `Interactables/BossRushBuildingInteractableBase.cs` |
 
 ## 3. 架构与设计约定
 
@@ -205,3 +205,21 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 余额采集义务独立于 typed pending；采集失败、物理写失败或同帧节流都保留它，重试重新采集当时余额，不重发已接受候选的奖金。仅成功写盘或切槽/卸载后清除。沿用原保存键、字段、金额和 Store 拒绝后的至少一次补偿策略。
 
 回归：`tests/ContentCashSnapshotGuard.py`、`tests/fixtures/ContentTransactions/run.py`。夹具覆盖正常一次领取、缺经济实例、余额采集失败、typed pending 清空后的物理失败、节流、官方采集与切槽复位；不替代 Unity/ES3 实机验证。
+
+## 2026-09-06 里程碑欠奖独立保存
+
+`SCHEMA+ / COMPAT`。`BossRush_DailyReport_v1`、schemaVersion=1 和旧字段均保留。新增可选扁平字段 `pendingMilestoneCount` 与 `m{n}_periodIndex`、`m{n}_slot`、`m{n}_signDayIndex`、`m{n}_quality`、`m{n}_seed`，将已挣得但尚未发出的奖励独立记账。签到入队、断签清零、满期翻页之前，Service 先根据当前未领掩码补齐债务，并冻结原期号、格位、签到日、品质与抽样种子；旧 v1 档无扩展字段时按现存进度补建，已被旧版本清除的历史信息不作猜测性补偿。
+
+断签仍清零本期进度且保留期号，满 30 格仍在下一次签到翻期。补发遍历独立债务，所以旧期或上轮连续签到的奖励仍可送达；成功后只删除匹配身份的债务，只有期号、格位、签到日均匹配当前签到墙才置当前掩码。解析到损坏的已声明债务时整份 payload 拒收，走写屏障，不丢弃债务或重新抽奖。
+
+发实物前先确保欠奖候选已被 Store 接受，再复查 IsStoreFaulted/HasWriteBarrier。签到入队时新发生的故障同样阻断首次发奖。先发后标记的至少一次恢复语义保留：发物之后才出现故障时保留欠奖，恢复后允许补偿；已知故障期间反复打开面板不再继续发物。
+
+回归：`tests/ContentThirdReviewFixesGuard.py` 与 `tests/fixtures/ContentThirdReviewFixes/run.py`。执行夹具链接真实 Service、Codec 和共享 JSON 工具，涵盖字面旧档、跨期/断签/同格不同签到日、重载、故障与拒写；实物配送与 ES3 仍需实机复测。
+
+## 2026-09-06 建筑注入器归属收口（D-1）
+
+`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/ContentBuildingBridges.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
+
+官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
+
+验证：`tests/ContentBuildingOwnershipGuard.py` 与 `tests/fixtures/ContentBuildingOwnership/run.py`。实际共享反射工具和宿主桥的执行回归覆盖反射契约、容器赋值、调用顺序与 owner 隔离；不替代 Unity 旧档建筑恢复和建造交互 smoke。实现总述见 `.qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md`。

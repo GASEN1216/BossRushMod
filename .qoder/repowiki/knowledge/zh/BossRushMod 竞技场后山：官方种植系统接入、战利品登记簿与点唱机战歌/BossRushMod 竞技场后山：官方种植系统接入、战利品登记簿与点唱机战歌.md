@@ -51,7 +51,7 @@ source_files:
 | `JukeboxTrackInjector.cs` | 往官方 `BaseBGMSelector.entries` 幂等追加 mod 战歌 |
 | `BackMountainSeedDrops.cs` | `partial ModBehaviour`：三个自定义 Boss 的种子掉落，接在掉落箱协程末尾 |
 | `ShowcaseService.cs` | 战利品登记簿：TypeID 集合持久化 + 品质加成计算 + Modifier 挂/摘 |
-| `ShowcaseUI.cs` / `ShowcaseInteractable.cs` / `ShowcaseBuildingBuilder.cs` | 面板 / 交互 / 建筑注入 |
+| `ShowcaseUI.cs` / `ShowcaseInteractable.cs` / `ShowcaseBuildingBuilder.cs` | 面板 / 交互（骨架在共享的 `Interactables/BossRushBuildingInteractableBase.cs`，本文件只声明 key、标签、解锁条件与打开面板） / 建筑注入 |
 | `BackMountainRuntimeModule.cs` | 宿主回调唯一落点：dormant 契约、幂等 bootstrap、场景级设施刷新 |
 
 ## 3. 架构与设计约定
@@ -238,3 +238,11 @@ source_files:
 玩家缺失、设施锁定或收藏为空仍摘旧加成；读取生命失败时只禁用补血，不影响加成刷新。重复刷新不叠加、不重复补血。收藏存档和数值保持不变。
 
 章节来源：`Integration/BackMountain/ShowcaseService.cs`。验证：`tests/ShowcaseHealthSnapshotGuard.py`、`tests/fixtures/ContentSecondReview/` 的四种生命状态与清理/失败分支；真实角色 stat 事件和血条更新仍需游戏内 smoke。
+
+## 2026-09-06 建筑注入器归属收口（D-1）
+
+`SAFE / COMPAT`。报箱、征程公告板、后山展示柜、遗种巢的建筑实现分别归 `DailyReportMailboxBuilder`、`CampaignBoardBuilder`、`ShowcaseBuildingBuilder`、`PetNestBuilder` 四个模块类型，各自持有创建它的 `ModBehaviour _owner`。原有 init、early、restore、notes、slot-change、cleanup 入口保留在 `Integration/ContentBuildingBridges.cs` 薄转发；同一宿主内复用模块实例，既有场景装配顺序、事件退订、恢复协程和清理义务不变。
+
+官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
+
+验证：`tests/ContentBuildingOwnershipGuard.py` 与 `tests/fixtures/ContentBuildingOwnership/run.py`。实际共享反射工具和宿主桥的执行回归覆盖反射契约、容器赋值、调用顺序与 owner 隔离；不替代 Unity 旧档建筑恢复和建造交互 smoke。实现总述见 `.qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md`。

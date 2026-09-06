@@ -65,3 +65,16 @@
 Destroy 清掉等待请求并推进世代，不提前放开仍在途的生成；无后继请求就不会销毁后复生。异步完成后再次核对婚姻与同名登记，竞争失败或异常仅回收自己创建的角色，保留较新实例。婚后教堂/跟随仍沿用上一节的恢复桥，不改变关系存档。
 
 章节来源：`Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs`。验证：`tests/PermanentNpcSuccessorRequestGuard.py`、`tests/fixtures/ContentSecondReview/`；真实场景连续切换及 NPC 交互/导航仍需游戏内 smoke。
+
+## 聊天、教堂驻留与跟随（2026-09-06，COMPAT）
+
+聊天暂停现在有独立所有者，结束聊天只释放该暂停，保留教堂驻留的 `Hold`；反过来切换驻留状态
+也不解除尚未结束的对话。聊天后的停留时间独立于跟随重规划，切换跟随或较短暂停不会提前放行。
+暂停、停用或切换移动意图会取消在途 A* 请求，并以版本屏蔽已进入完成队列的旧回调。
+
+跟随在正在走路时仍按 0.6 秒检查目标并重规划；靠近玩家时取消旧路径，距离超过 40 米继续使用
+原有追赶瞬移。计算中的慢路径不被频繁重启，超时后重试。移动层仍使用官方 `AI_PathControl`，
+没有可用 A* 图时保持明确退回站桩。
+
+章节来源：`Integration/NPCs/DuckNpc/DuckNpcMovement.cs`、`DuckNpcRuntimeMarker.cs`。
+执行回归：`tests/fixtures/IntegrationThirdReviewFixes/run.py`，使用官方路径跟随方法体与可投递晚回调的替身；实机导航仍待验。

@@ -2,6 +2,48 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-06 全量深度审查：新增 5 P1 / 5 P2，待修复
+
+范围 `f9b83c0fa21a3ef03e8abc0941fb71beb3201ba2..18c43dacb32749b65057c97fdd454888af5abe57`（131 个提交），加最终 2026-09-06 01:11:56 +08:00 的工作区快照。
+本批 **10 项新 confirmed finding 均 Open**；其中 016 来自审查期间并发新增的套装代码。已有 D-1 / D-5 继续沿用旧设计复审编号，不重复立条；下方历史批次的 Fixed 状态不变。
+完整触发链、建议与证据见 [全量深度审查报告](docs/代码审查/2026-09-06-f9b83c0-全量深度审查.md)。本轮仅审查及登记，没有修改生产代码；文档 `SAFE`，表中分类为建议修复方向。
+
+| ID | 级别 / 分类 | 已确认缺陷与当前代码锚点 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-06-007 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_MatchFlow.cs:201` 技术重试只恢复虚拟筹码和锁盘快照，旧真实押品 journal 仍 MatchLocked；恢复页面显示零件，空选择绕过一致性检查后继续承担旧押品。 | Open |
+| CR-2026-09-06-008 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_SettlementFlow.cs:204` 持久战痕候选的动作依赖内存 `_pendingScarProfileId`，冷恢复丢接受／拒绝，随后装备选择归档推进，无法补做。 | Open |
+| CR-2026-09-06-009 | P1 / COMPAT | `Integration/DailyReport/DailyReportService.cs:624-638` 已知存档门面单向故障时仍反复补发里程碑，领取标记永远失败；每次开报纸都增加同一件实物。 | Open |
+| CR-2026-09-06-010 | P1 / SCHEMA+ | `Integration/DailyReport/DailyReportService.cs:315-316、538-539` 断签／翻期清空唯一未领奖励载体，第7格／第30格已经赚取但发放失败的奖励永久消失；建议独立持久欠账，保留现有签到规则。 | Open |
+| CR-2026-09-06-011 | P1 / COMPAT | `wiki-site/docs/.vitepress/theme/composables/useWiki.ts:89` 在 withBase 前剥离 `/`，深层中英文页面的共享导航成为相对链接、重复拼接目录；冻结构建有 6,212 处无效引用。 | Open |
+| CR-2026-09-06-012 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcMovement.cs:325` Hold／PauseFor 只 StopMove，未取消在途寻路；晚回调使官方 PathControl 再次移动，聊天暂停失效。 | Open |
+| CR-2026-09-06-013 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcMovement.cs:197-205` Moving 早返挡住后面的0.6秒跟随重规划与40米追赶，必须等旧路径结束或12秒超时。 | Open |
+| CR-2026-09-06-014 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcRuntimeMarker.cs:136-140` 结束聊天无条件 Release，释放婚姻系统原有的教堂 Hold，6秒后配偶重新随机漫步。 | Open |
+| CR-2026-09-06-015 | P2 / COMPAT | `Integration/Codex/CodexKillCollector.cs:339-344` 新增冠军之影等历史 key 后不使目录失效；卡片缺失，解锁数使用新集合、全录分母使用旧集合，可提前授予全谱成就。 | Open |
+| CR-2026-09-06-016 | P2 / COMPAT | `Integration/Bonus/SetBonusVisuals.cs:610` 冰霜／雷霆吸收按减免前元素比划分减免后总伤害，把物理伤害错误算为元素治疗；来自并发工作区增量。 | Open |
+
+验证：冻结的 **793 个生产输入 Windows Release/Dev 真编译通过**；**544 guard 全绿**；10组既有执行回归共 **402 条正确行为断言通过**。
+另新增 **25 条缺陷复现检查**和 Wiki 构建／链接审计证明本批错误仍存在，不计为修复通过。没有 Unity 实机验证、部署或提交；完整输入哈希、执行证据与并发范围见报告。
+
+## 2026-09-06 设计与代码规范复审：D-4 / D-3 / D-2 三项已修复
+
+来源 [设计与代码规范复审报告](docs/代码审查/2026-09-05-f9b83c0-设计与代码规范复审.md)（范围 `f9b83c0..HEAD`，视角为设计 / 复用 / 可维护性，与同日三轮玩法缺陷审核互补，不重开它们的条目）。owner 2026-09-06 指示按 D-4 → D-3 → D-2 顺序全部修复；D-1 / D-5 及 8 条 P3 仍为 Open，见该报告。修复流水账见 `FIX_TRACKER.md` 同日条目。提交状态：D-4 已由并行会话拆提交为 `18c43da`，D-3 为 `71356fa`；D-2 与本轮文档 / 守卫收尾仍在工作树，未提交。
+
+| ID | 级别 / 分类 | 缺陷与代码锚点（修复前） | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-06-001 | P2 / SAFE | `ModBehaviour.cs:785-816` 遗种巢 / 日报的宿主销毁清理与模块 `OnDestroy` 各写一份（PetNest 7 条重叠、10 条只在宿主、8 条只在模块）且宿主先清，模块自己的落盘随即空转；图鉴 / 随机事件经 `CleanupCodexRuntimeOnDestroy` / `CleanupRandomEventsRuntimeOnDestroy` 同形。 | Fixed：清理 owner 唯一化到各 `RuntimeModule.OnDestroy()`，宿主只经 `runtimeModuleHost.OnDestroy()` |
+| CR-2026-09-06-002 | P2 / COMPAT | `ModeH/ModeHJsonValue.cs` 已被 9 个 ModeH 之外的文件依赖却挂 ModeH 前缀；`PetNest/PetNestJson.cs` 是第二套嵌套解析器；`CodexCodec.cs:5-12` / `DailyReportCodec.cs:6-7` 为避开两者选了最弱的前缀提取器，把 schema 绑在「只能一个数组 / entries 必须最后 / key 不得互为前缀」上；`F3GameplayValidationCoverage.cs:20` 绕过 `JsonDataRegistry` 这个「唯一读取入口」。 | Fixed：`Common/Data/BossRushJsonValue.cs` 单一解析器 + 写出器，Codex / 日报读侧改走节点解析器（写侧字节不变） |
+| CR-2026-09-06-003 | P2 / COMPAT | 落盘协调器 ×4（归一化后 Codex↔DailyReport 仅差 84 行）、单 key 存档门面 ×3（Codex↔DailyReport 仅差 49 行）、建筑交互体 ×5（DailyReport↔Campaign 仅差 27 行）逐字复制；`_saveFilePending` 那类修复需逐份重做，`SaveCoordinatorRetryGuard` 只能逐份锁同一条不变式。 | Fixed：`BossRushSaveCoordinatorEngine` / `BossRushSlotJsonStore<T>` / `BossRushBuildingInteractableBase`，子系统只保留一行式门面与绑定，调用面不变 |
+
+## 2026-09-06 冰霜 / 雷霆套装重做时确认的 3 项（均已修）
+
+在把 500053-500056 从开发预览转为正式内容的过程中确认。修复见 `FIX_TRACKER.md` 同日条目；实机 smoke 待做。
+
+| ID | 级别 / 分类 | 已确认缺陷与代码锚点 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-06-004 | P1 / COMPAT | `Integration/Bonus/ThunderSetBonus.cs:228`（修复前）反击 `CreateExplosion(pos, 4f, dmg, normal, 0.3f)` 漏传第 6 参 `canHurtSelf`；官方 `ExplosionManager.cs:17/32-36` 默认 `true` 时 `selfTeam = Teams.all`，`Team.IsEnemy(Teams.all, x)` 恒真，爆炸中心的玩家自己必吃 25 电伤，与四份 Wiki「对自身无伤害」相反。现显式传 `false` 并置 `isFromBuffOrEffect`/`fromWeaponItemID = 0`。 | Fixed |
+| CR-2026-09-06-005 | P1 / COMPAT | `Integration/Bonus/SetBonusManager.cs:135-150`（修复前）场景加载只重查不重挂：官方每图重建主角与 `CharacterItem`（`LevelManager.LoadOrCreateCharacterItemInstance`），旧 Item 上的电抗/冰抗 Modifier 作废，`xxxSetActive` 仍为 true 于是不翻转，被动静默丢失直到重新穿脱。现先停用两套再 `CheckSetBonusStatus(main, announce:false)`。静态推断，需实机复测。龙套装眼光同病未在本轮修。 | Fixed |
+| CR-2026-09-06-006 | P2 / COMPAT | `Integration/Bonus/ThunderSetBonus.cs:228`（修复前）在 `Health.OnHurt` 回调内直接 `CreateExplosion`：若触发伤害本身来自敌方爆炸，此时正处在 `ExplosionManager` 的 `for` 循环里，嵌套调用会覆写其实例共享的 `colliders[8]` 并 `damagedHealth.Clear()`，外层循环继续跑脏数据。现把反震结算延后一帧（`ThunderCounterStep` 协程）。静态推断，需实机复测。 | Fixed |
+
 ## 2026-09-05 二次深度复审：10 项已完成代码修复（2026-09-06 验收）
 
 固定基线 `f9b83c0fa21a3ef03e8abc0941fb71beb3201ba2..29cb0c12dfe33164e35ce775e470621ea4afcb4b`，并纳入当前未提交修复与 Wiki 工作。

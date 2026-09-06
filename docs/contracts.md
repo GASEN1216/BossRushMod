@@ -66,10 +66,25 @@ Mode G 冻结 key：
 - `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token
 - `BossRush_BackMountain_Showcase_v1` — 展示柜收藏
 - `BossRush_BackMountain_RaidMeal_v1` — 出击餐待生效登记
+- `BossRush_BackMountain_GardenRatchet_v1` — 槽位级 `bool`，由
+  `GardenSeedInjector.RatchetSaveKey` 定义。缺键或读取失败视为 false，由当前解锁状态决定是否注入；
+  解锁并注入作物后单向写 true，表示本槽可能已经种过 Mod 作物，以后即使解锁查询暂不可用也维持注入。
+  它不是 JSON，没有独立 `schemaVersion` 字段；不得改名、重置为 false 或清掉旧值，否则可能使已种作物失去引用。
 
 常量单点分别在 `Campaign/CampaignTuning.cs` 与
 `Integration/BackMountain/BackMountainConfig.cs`，由
 `tests/CampaignSkeletonGuard.py`、`tests/BackMountainStructureGuard.py` 钉住字面值。
+
+鸭皇图鉴冻结 key：
+
+- `BossRush_Codex_v1` — `CodexTuning.StorageKey`，槽位级 JSON 字符串，`schemaVersion = 1`。
+  已有条目的 Boss key、击杀进度与收藏身份属于兼容面；使用当前 `CodexCodec` 读取，
+  缺键创建默认空数据，未知版本或不可读内容由共享存档门面建立本槽写屏障，禁止覆盖原数据。
+  门面的 `StoreFaulted` 是本 runtime 的单向故障状态，不能通过换槽绕过。
+  `CodexPersistence.Store` 只接受待保存快照，物理落盘由 `CodexSaveCoordinator` 负责。
+  切槽／删档／槽位漂移必须同步复位目录、采集器及保存协调器，不得把上一槽的收藏带入下一槽。
+
+以上两键于 2026-09-06 补齐登记（D-5，`SAFE`）：只记录既有实际格式，不增加字段或迁移数据。
 
 Breaking:
 
@@ -217,6 +232,17 @@ envelope 带 `schemaVersion`、`gameBuildSignature`、`modBuildSignature`、
 按 ID 幂等插入、读回后再标记完成，上限 32 条。
 删档清空对应 cache、pending barrier、recovery shell、owner/token、presentation 引用与 slot generation。
 
+**战痕选择凭据（2026-09-06，COMPAT）。** 复用现有 `appliedEventTokenIds` 保存
+`scar_offered|<operationId>|<scarId>` 与 `scar_resolved|<operationId>|<scarId>`，不新增字段、
+key 或 schemaVersion，不改变 canonical digest 算法。归属由持久 report / operation 恢复；
+接受、拒绝或替换与 profile / 名声变化在同一 Season 持久屏障中完成，重复或过期动作不再次发奖。
+候选可跨幕间保留，终局前处理完成。旧版没有凭据且未持有该候选的记录无法区分「未选择」与
+「已拒绝领取名声」：保留记录并提示，不猜测补发、不清除旧记录、不阻断继续赛季。
+
+**技术重试押品边界（2026-09-06，COMPAT）。** 旧场真实押品必须完成 journal 退款屏障，
+才能还原虚拟预约、清理旧锁盘并重新选择；失败保留快照与恢复入口。零件选择同样检查历史
+journal；已提交结果不得转成退款重打，已退款的旧场不得标记为新场押品。
+
 **玩家资产边界。** 只有三条白名单路径可以触碰玩家真实资产：
 `ModeHEntry.TryRefundPrepaidTicket()`（唯一退款实现点）、
 `ModeHLoadoutKitApplicator`（只访问 owner 标记且 inactive 的临时选手实例）、
@@ -321,8 +347,9 @@ v2 写入并回读成功后才完成迁移。v1 原键不删除，但之后不�
 **不用 typed `Save<T>`**：ES3 会把 assembly-qualified 类型名写进存档，mod 程序集改名或
 类型重构就会让老档读不回来。写入路径异常进入单向 `StoreFaulted`。
 三个官方存档事件 `OnCollectSaveData` / `OnSetFile` / `OnSaveDeleted` 幂等订阅与退订。
-`PetNest/PetNestSaveCoordinator.cs` 是遗种巢**唯一**调用 `SavesSystem.SaveFile` 的地方，
-每批至多一次；`IsSaving` 时改走 deferred，重试有预算上限，超预算保留 pending 并报错。
+`PetNest/PetNestSaveCoordinator.cs` 是遗种巢**唯一**的物理落盘入口（2026-09-06 起它持有一个
+共享引擎 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs` 实例，`SavesSystem.SaveFile` 本身只在引擎里；
+PetNest/ 目录零处直调），每批至多一次；`IsSaving` 时改走 deferred，重试有预算上限，超预算保留 pending 并报错。
 高频写（每次击杀记遗魂、统计计数）只入队不落盘，由官方采集与切图/回基地的 flush 写下去。
 
 **Harmony 面：零新增补丁。** 遗种巢不新增任何 `[HarmonyPatch]`，只在两条既有链上加消费者：
@@ -420,8 +447,10 @@ Breaking：
 不用 typed `Save<T>`：ES3 会把 assembly-qualified 类型名写进存档，
 mod 程序集改名/重构就会让老档读不回来。
 未知或更高 `schemaVersion`、payload 不可读时进写屏障，**只读不写，绝不覆盖该 key**。
-`Integration/DailyReport/DailyReportSaveCoordinator.cs` 是日报**唯一**调用
-`SavesSystem.SaveFile` 的地方，且每批至多一次；`IsSaving` 时只登记 deferred 由宿主 tick 重试。
+`Integration/DailyReport/DailyReportSaveCoordinator.cs` 是日报**唯一**的物理落盘入口
+（2026-09-06 起它持有一个共享引擎 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs` 实例，
+`SavesSystem.SaveFile` 本身只在引擎里），且每批至多一次；`IsSaving` 时只登记 deferred 由宿主 tick 重试。
+单 key 整存门面的状态机同样共享：`Common/Lifecycle/BossRushSlotJsonStore.cs`（征程 / 图鉴 / 日报三者共用）。
 
 所有状态变化必须先修改 `DailyReportData.Clone()` 候选副本，只有 `Store` 接受后才替换
 权威内存状态并向 UI 返回成功；签到、跨日、里程碑、悬赏种子、未读提示和补发路径都遵守
@@ -434,6 +463,15 @@ mod 程序集改名/重构就会让老档读不回来。
 改走全 Mod 共享的节点解析器 `Common/Data/BossRushJsonValue.cs`（原 `ModeH/ModeHJsonValue.cs`，
 遗种巢的 `PetNestJson` 已并入），不再依赖「key 互不为带引号前缀」「envelope 只能有一个数组」
 这类提取器约束。仓库只保留这一套嵌套 JSON 解析器。
+
+**里程碑欠奖（2026-09-06，SCHEMA+）。** `schemaVersion=1` 与旧字段保留；
+追加可选 `pendingMilestoneCount`，以及每笔 `m{n}_periodIndex` / `m{n}_slot` /
+`m{n}_signDayIndex` / `m{n}_quality` / `m{n}_seed` 扁平字段，`n` 从 0 开始。
+它们冻结已经赚取但未送达的奖励身份，独立于当前签到墙；断签和翻期只重置原进度，
+不能清除欠账。旧档缺少追加字段时，先从尚存的已签格位与未领掩码补建，再允许重置；
+历史版本已经丢失的信息不猜测回填。计数、身份或种子损坏时整体拒绝解码，不能静默删债或重抽。
+实际发物前必须确认存储层未故障且无写屏障；发后才删除对应欠账并标记匹配的当前格位。
+一次送达后恰逢写失败仍保留至少一次恢复语义，已知永久故障之后则不得反复送出同一奖励。
 
 **计时口径（不可改）。** 一天 = **86300 游戏秒**，镜像官方 `GameClock.SecondsPerDay`
 （**不是 86400**）。天数由 `DailyReportService` 自算：累计宿主
@@ -498,6 +536,12 @@ Breaking/Operational:
 普通业务方法名为 `Cleanup` 不得被 Harmony 当作 cleanup 回调。动态角色的
 `MagicBlendState.OnStateEnter` 可能早于 `MagicBlending.Start`，兼容补丁只推迟未初始化的首个回调，
 已初始化角色必须完整走官方方法。
+
+套装元素吸收另有兼容观察补丁 `SetBonusDamageObservation`（2026-09-06，`COMPAT` / `WIRE+`），
+目标仍为官方 `Health.Hurt`。安装必须唯一匹配元素抗性调用、连乘、最低 1 点、累加与
+`finalDamage` 的数据流，只插入观察调用，不改写伤害。缺失或失配明确诊断并跳过元素治疗；
+官方更新必须复验实际程序集 IL，不能回退为减免前因子占比估算。上下文只在主玩家启用相应
+套装时采集，按一次 Hurt 调用持有并由 Finalizer 清理，嵌套调用互不污染。
 
 ## 8. Wiki 内容契约
 

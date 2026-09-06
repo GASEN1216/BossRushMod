@@ -4,6 +4,115 @@
 
 ## 最新修复
 
+### 2026-09-06 f9b83c0 以来全量深度审查登记（未修复）
+
+**状态**：documented / Open。新确认 `CR-2026-09-06-007..016` 共 **5 P1 / 5 P2**，仅登记审查结论，不是修复完成。完整报告：
+[2026-09-06 全量深度审查](docs/代码审查/2026-09-06-f9b83c0-全量深度审查.md)。
+
+**范围**：基准 `f9b83c0fa21a3ef03e8abc0941fb71beb3201ba2` 至 HEAD `18c43dacb32749b65057c97fdd454888af5abe57` 的131个提交及工作区；
+最终编译快照 2026-09-06 01:11:56 +08:00，793个生产源码。016是并发新增的冰霜／雷霆代码，其余九项在审查开始时的增量中已存在。
+
+**问题**：ModeH技术重试旧押品与零选择界面不一致、战痕恢复丢动作；日报已知存档故障无限补发、断签／翻期吞旧欠奖；
+Wiki共享链接生成相对地址；NPC暂停遗漏在途寻路、跟随不重规划、聊天解掉教堂驻留；图鉴新增条目不更新目录及全录分母；套装按错误元素占比治疗。
+既有设计D-1（宿主partial边界）与D-5（两存档key契约漏记）仍Open，沿用原报告，不重复计数。
+
+**兼容分类**：本轮文档 `SAFE`；建议修复主要 `COMPAT`，日报独立欠奖账本建议 `SCHEMA+`；不得为修复而改变既定断签规则、复用ID或破坏旧存档格式。
+
+**验证**：同清单、同游戏DLL／Harmony引用的Windows Roslyn Release/Dev编译均exit 0，产物隔离在Build下，未运行自动部署；
+544个结构守卫通过，验证中并发修改的SetBonusLifecycleGuard另单独通过；10组既有执行回归402条断言通过。
+定向夹具另以25条检查复现九项逻辑错误，Wiki冻结构建229页、38,791个本地引用中6,212处无效落点（涉及226页）复现导航错误。
+首轮的旧guard锚点与并发编辑中ContentTransactions脚本故障已在其他任务适配后复跑排除，没有放宽断言。
+
+**未验证**：没有Unity实机、真实ES3/库存失败恢复、A*场景与UI时序、资源观感、线上部署验证；未改生产代码、未操作玩家数据、未提交或推送。
+上述编译／守卫／夹具绿灯不代表本批finding已修复，后续必须按报告补正确行为回归及对应实机复测。
+
+### 2026-09-06 冰霜 / 雷霆套装龙王级重做 + 开放获取（含反击自伤真 bug）
+
+**状态**: fixed（Windows 真编译通过、guard 全绿、Wiki 站构建通过；游戏内 smoke 待做）  
+**Finding**: CR-2026-09-06-004（反击炸自己）、CR-2026-09-06-005（过图丢抗性 Modifier 与视觉）、CR-2026-09-06-006（OnHurt 内嵌套爆炸覆写共享缓冲）  
+**兼容分类**: COMPAT（玩法/数值扩展、开放获取）；OPERATIONAL 低风险（`compile_official.bat` 部署段照 BGM 块追加 `Assets\Sounds\SetBonus` 拷贝）  
+**版本/Commit**: 未提交  
+**Owner decision**: 用户 2026-09-06 拍板：两套都做炫酷重做；获取 = Boss 掉落 + 叮当商店；主动技能风格 = 引雷术（击杀触发）。随后追加「可以走原版 boss 的掉落的，让玩家更有体验」——掉落遂从奖励箱协程改为 Harmony `OnDead` 前缀 + defer 协议，原版地图击杀同样生效。售价 30000 / 解锁 6 级 / 掉率 20% 为建议值，集中在常量，待实机调参。
+**现象**: 500053-500056 只能靠 Dev 构建 F2 生成；雷霆反击爆炸把玩家自己也炸（Wiki 却写「不会误伤」）；过图后电抗/冰抗静默丢失直到重新穿脱。
+**根因**: `ThunderSetBonus.cs` 的 `CreateExplosion(pos, r, dmg, fx, 0.3f)` 漏传第 6 参 `canHurtSelf`（默认 `true` → `selfTeam = Teams.all` → `IsEnemy` 恒真）；`SetBonusManager.CheckSetBonusStatus` 只在状态翻转时 Activate，而官方每图重建 `CharacterItem`，旧 Item 上的 Modifier 随之作废；四件装备从未接进任何获取入口（叮当台词、Wiki、infobox、F3 用例四处登记为「暂未开放」）。
+**修复内容**:
+- 新增文件（均已登记 `compile_official.bat`）: `Integration/Bonus/SetBonusVisuals.cs`（眼光/爆发环/电弧池/击杀过滤/敌人扫描/音效路径）、`Integration/Bonus/ThunderSetBonus_Storm.cs`（引雷术 + 环境电弧）、`Integration/Bonus/FrostSetBonus_Nova.cs`（冰葬）、`Integration/Bonus/FrostMistEffect.cs`（霜雾，`RingParticleEffect` 子类）、`Integration/Bonus/SetBonusBossDropHandler.cs`（原版 Boss 额外掉落，走 OnDead 前缀 + defer 协议）；`tools/gen_setbonus_sfx.py`（numpy 合成 4 个 wav 到 `Assets/Sounds/SetBonus/`，local-only）。
+- 修改文件: `ThunderSetBonus.cs`（canHurtSelf=false、isFromBuffOrEffect、伤害 25→30、电伤 50% 转治疗、反震延后一帧、单一 OnDead 分派器 `OnThunderSetAnyDead`、眼光/电弧、announce 参数）、`FrostSetBonus.cs`（冰伤 50% 转治疗、`TryApplyFrostFreeze` 提炼、单一 OnDead 分派器、眼光/霜雾、反击爆发环）、`SetBonusManager.cs`（场景重载先停用再重查、`announce` 透传）、`FrostThunderSetConfig.cs`（ID 常量 public、`SET_PIECE_UNLOCK_LEVEL/MAX_STOCK/VALUE`、`item.Value`、`StormProtection`/`ColdProtection +1`）、`GoblinAffinityConfig.cs`（四件上架）、`Patches/Combat/CharacterOnDeadPatch.cs`（第三个额外掉落 handler）、`LootAndRewardsSpecialLoot.cs` 与 `LootAndRewards.cs`（defer 协议四处 fan-out 各 +1 行）、`Common/Effects/RingParticleEffect.cs`（`ParticleTint` 虚属性）、`Localization/EquipmentLocalization.cs`（四件描述）、`Localization/LocalizationInjector.cs`（叮当改口）、`ModeG/ModeGWeaponScoringCompatibilityMatrix.cs`（追加 FrostSet）、`compile_official.bat`、`tests/SetBonusLifecycleGuard.py`、`tests/ExtraBossDropDeferGuard.py`（INTEGRATIONS 四个 → 五个）、`tests/ModBehaviourInstanceClassificationGuard.py` 与 `docs/testing/2026-05-14-modbehaviour-instance-classification.md`（Integration 计数 264 → 268）、`WikiContent/{zh,en}/equipment/equipment__{frost,thunder}_set.md`、`wiki-site/docs/.vitepress/data/{infobox,structure}.mts`、`Assets/Data/GameplayCoverage.json`、`README.md`、`docs/Bossrush使用物品ID表.md`、`.qoder/repowiki` 两篇、`AGENTS.md`。
+- **掉落路径（按 owner 追加要求改）**: 初版只在 `AddBossSpecialLootToLootboxCoroutine` 里加一行，等于只覆盖 BossRush 奖励箱路径、原版地图击杀不掉。现改为 `SetBonusBossDropHandler` 挂 Harmony `CharacterMainControl.OnDead` 前缀（与霜之哀伤、女巫镰刀并列，同受 Mode G / Mode H / 遗种巢随从的死亡抑制门控），并补齐 defer 协议四处接线：判定 `ShouldDeferExtraBossDropToModPath` / 登记 pending / 进箱消费（正常 + characterItem 回退）/ 无间炼狱世界掉落 / Finalize 撤销。roll 在死亡帧定下并把 TypeID 存进 `Dictionary<CharacterMainControl,int>`，保证三条消费通道发的是同一件。
+- **并行会话同期改动（保留未改回）**: 另一会话在同一工作树新增 `Integration/Bonus/SetBonusDamageObservation.cs`——`Health.Hurt` 的 IL 观察补丁，把元素回血从「按因子占比估算」换成「消费官方算出的每元素真实贡献」，并把 `GetSetBonusElementDamagePortion` 改为 `(health, info, element)` 签名、给 `SetBonusVisuals` 加 `HasSetBonusElementHealing`。该文件已自行登记编译清单，本轮编译与守卫是在含它的工作树上跑绿的。
+**兼容性影响**: 不新增 TypeID、不改存档 schema / 配置 key / Harmony 目标 / 本地化 key 集合（只改描述文本）；掉落黑名单不动（只挡随机奖池，专属掉落格与 NPC 商店不查它）；`RingParticleEffect.ParticleTint` 默认白色，`FlightCloudEffect` 零行为变化；`ModeG` 矩阵只追加不重排、同 revision。
+**验证方法**:
+1. 编译: `& D:\code\ykf\BossRushMod\compile_official.bat` → `Build succeeded!`，exit 0；`Deployed SetBonus SFX` 出现。
+2. Guard: `python tools/run_guards.py` 全绿（含扩展后的 `SetBonusLifecycleGuard`）。
+3. Wiki: `npm --prefix wiki-site run build` 通过（sync 重生成两页）。
+4. 人工 smoke（待做）: F2 给两套穿齐看横幅/眼光/霜雾/电弧；击杀触发引雷术 3 跳与冰葬冻结；近身受击反震不掉自己血；过图后抗性与视觉自动重建且不重复横幅；叮当 6 级四件上架且价格 30000；风暴区 Boss / 「???」Boss 按三条路线各抽样掉率（原版地图官方箱 / BossRush 奖励箱 / 无间炼狱世界掉落），确认不重复发放。
+**未验证/需人工**: 全部运行时行为（引雷术连锁体感与帧率、霜雾/电弧观感、音效响度、掉率、商店价格、跨图重建）只能实机确认；`SoundFileExistsCached` 会缓存「文件不存在」，音效需在启动游戏前部署好。龙套装同样有过图丢眼光的问题，本轮未动（越界）。
+**失败尝试**: 无。
+
+---
+
+### 2026-09-06 设计复审 D-4 / D-3 / D-2 全部修复（清理 owner 唯一化、共享 JSON 解析器、落盘 / 存档 / 交互体去重）
+
+**状态**：fixed（Windows `compile_official.bat` → `Build succeeded`，exit 0；全量守卫 544/544 PASS；
+`tests/fixtures/ReviewSeptember` 28 断言通过；并行会话的 `tests/fixtures/ContentTransactions` 61 断言通过
+——它按签名抽取 `HandleCollectSaveData` 与用反射改 `CampaignPersistence._storeFaulted` 两处对旧结构的假设已适配到共享门面；
+实机 smoke 待人工）。owner 2026-09-06 指示「按 D-4 → D-3 → D-2 的顺序全部修复」。
+
+**Finding**：CR-2026-09-06-001（D-4）、-002（D-3）、-003（D-2），来源
+`docs/代码审查/2026-09-05-f9b83c0-设计与代码规范复审.md`；D-1 / D-5 与 8 条 P3 仍 Open。
+
+**兼容分类**：`COMPAT`（存档 key / schema / TypeID / Harmony 目标 / 冻结状态机均未动；存档**字节格式不变**，
+只有读侧解析器换成节点解析器，老档可读性经字段级比对），文档 `SAFE`。两处刻意的行为统一，需 owner 知悉：
+(1) `CampaignSaveCoordinator` 现与其余三个协调器一样，在 typed 门面单向故障（`IsStoreFaulted`）后不再物理落盘
+（typed 数据仍在 ES3 缓存，由官方存盘带走）；(2) `CampaignPersistence` 重新订阅时与图鉴 / 日报一样丢弃 dormant
+期间的缓存（战役恒开，实际只在宿主重建时发生）。
+
+**修复内容**：
+- **D-4 清理 owner 唯一化**：PetNest / 日报 / 图鉴 / 随机事件的宿主销毁清理全部收进各自
+  `RuntimeModule.OnDestroy()`（每步 `SafeRuntime.Run` 隔离；顺序：先落盘、再还席、再退订、最后清表；
+  不再按 `_bootstrapped` 门控——各步骤未初始化时都是 O(1) 早返，而掉落 / 服务层可能在未 bootstrap 的窗口入队过）。
+  `ModBehaviour.OnDestroy` 删除 45 行内联清理与 `CleanupCodexRuntimeOnDestroy` / `CleanupRandomEventsRuntimeOnDestroy`
+  两个 partial 方法；`BossRushSaveFileThrottle.ResetStaticCaches` 移到 `runtimeModuleHost.OnDestroy()` 之后（要等全部模块做完最后一次落盘）。
+- **D-3 共享 JSON 解析器**：`ModeH/ModeHJsonValue.cs` 经 `git mv` 迁为 `Common/Data/BossRushJsonValue.cs`
+  （类型改名 `BossRushJsonValue / Kind / Property / Parser`，全库 41 处引用同步），并入遗种巢 `PetNestJsonBuilder`
+  （现 `BossRushJsonWriter`）与宽松读取 API（`GetString/GetInt/GetLong/GetFloat/GetBool/GetArray/GetObject/AsInt/AsLong/AsFloat/AsString`、
+  `TryGetLong`、`ParseOrNull`）；删除 `PetNest/PetNestJson.cs`；Codex / DailyReport 编解码读侧改走节点解析器，
+  写侧字节不变，解除「envelope 只能一个数组 / entries 必须最后 / key 不得互为前缀」三条约束；
+  `SimpleJsonHelper.AppendFloat` 非有限值写 0（否则严格解析器会把整份存档打进写屏障）；F3 覆盖表改走 `JsonDataRegistry`。
+- **D-2 去重**：新增 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs`（`IBossRushSaveBatchSource` + 引擎，
+  四个内容子系统唯一的 SaveFile 调用点；PetNest 以 `deferOutsideBaseScene=false` 保持「实物屏障任何场景立即写」）、
+  `Common/Lifecycle/BossRushSlotJsonStore.cs`（槽位级单 key 整存门面：幂等订阅 / 槽位烙印 / 写屏障 / 回读核对 / 重新订阅丢弃缓存）、
+  `Interactables/BossRushBuildingInteractableBase.cs`；Campaign / Codex / DailyReport / PetNest 四个协调器与
+  Campaign / Codex / DailyReport 三个存档门面退化为绑定 + 一行式门面（调用面不变，现金 / 实物快照义务仍由门面持有并经数据源交给引擎）；
+  报箱 / 公告板 / 展示柜 / 许愿台 / 终章召唤石五个交互体改为子类只声明 key、标签、高度、条件与动作（许愿台沿用不建交互组）。
+- 新增 3 个 `.cs` 已登记 `compile_official.bat`，删除 2 个已移出；`ReviewSeptember` / `ModeHReviewFixes` / `ContentTransactions`
+  三个 fixture 工程同步链接（含 `SimpleJsonHelper.cs`，共享写出器依赖它的转义）。
+- 顺手修正：`HarmonyPatchGroupRegistrar` 之外的一处陈旧注释（`CodexKillCollector.cs:307` 指向的 `FlushBatch`）、
+  `BossRushSaveFileThrottle` 头注释里「五个各自独立的协调器」的口径。
+
+**守卫同步（均为忠实迁移，不放宽）**：`SaveCoordinatorRetryGuard`（不变式钉在引擎 + 四个门面经引擎且目录内零处 SaveFile 直调）、
+`PetNestSaveCoordinatorGuard`（引擎 + 实物屏障绕闸 + 清理 owner 唯一化）、`PetNestCompanionLifecycleGuard`、`PetNestMuseumStatsGuard`、
+`PetNestPersistenceGuard`（不得复活第二套解析器）、`CodexPersistenceGuard`、`DailyReportPersistenceGuard`、`ContentCashSnapshotGuard`、
+`LatestPlayerLogRegressionGuard`、`ModeHCanonicalDigestGuard`、`DuckNpcInvariantGuard`、`GameplayValidationCoverageGuard`。
+**反向验证：11 条人为破坏 11 条转红，还原后全绿**（脚本见本会话 scratchpad，覆盖引擎早返、欠账位、PetNest 基地闸、
+模块复位、宿主重新内联、交互组标签、门面绑定、现金采集顺序、`ParseOrNull`、写屏障拒写、成就重查）。
+
+**验证方法**：编译 / 全量守卫 / 两个 dotnet fixture；均为静态或替身执行。
+
+**未验证 / 需人工（实机）**：(1) 退到主菜单再重进，确认遗种巢 / 日报 / 图鉴 / 随机事件无重复清理日志且存档完整；
+(2) 图鉴击杀、日报签到、征程交付、遗种巢孵化各做一次并重启读回；(3) 报箱 / 公告板 / 展示柜 / 许愿台 / 召唤石的交互名与可交互条件；
+(4) 带 Codex / 日报 JSON 的老档读取。
+
+**并发说明**：本会话开始时另一会话正在修 CR-2026-09-05-011..020（ModeH / RandomEvents / Showcase / PermanentDuckNpc / HarmonyBindingSelfCheck），
+本批未触碰那些文件；`tests/ContentCashSnapshotGuard.py` 与 `tests/fixtures/ContentTransactions/*` 是该会话的未跟踪文件，
+因断言的结构被本批改动而做了最小适配，需该会话知悉。该会话在本批进行中已把 D-4 拆提交为 `18c43da`、D-3 为 `71356fa`；
+D-2 与文档 / 守卫收尾仍在工作树。收尾时该会话又在新增 `Integration/Bonus/*` 与 `LootAndRewards/LootAndRewardsSetBonusLoot.cs`
+（已登记编译清单、文件尚未建出），因此那一刻的全量 `compile_official.bat` 与 `OfficialCompileListFileExistenceGuard`
+红项来自它们的半成品；随后该会话建出这些文件后，793 个源码的完整清单经同一响应文件（仅改 `/out:` 到临时目录）
+用同一 Roslyn `csc.dll` 编译通过（exit 0，未部署）。
+
+---
+
 ### 2026-09-06 二次深度复审 10 项修复验收
 
 **状态**：Fixed（代码修复、真实引用编译及隔离执行回归通过；Unity 实机待验）。用户明确要求“全面修复”。

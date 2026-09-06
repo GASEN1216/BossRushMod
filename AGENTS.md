@@ -9,7 +9,7 @@
 BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 BossRush 竞技场为核心，扩展了多模式玩法、自定义 Boss/装备/NPC、成就、Wiki、重铸、婚姻、丧尸模式和大量运行时稳定性修复。
 
 - 语言：C# 7.3。
-- 构建：无 `.csproj`，`compile_official.bat` 显式列出源码并直接调用 Roslyn `csc.dll`。
+- 构建：生产 Mod 不使用 `.csproj`，`compile_official.bat` 显式列出源码并直接调用 Roslyn `csc.dll`；隔离执行回归另有 `tests/fixtures/` 工程。
 - 命名空间：全 Mod 统一使用 `BossRush`。
 - 维护语言：中文。设计文档、需求讨论、回复和提交信息默认中文。
 
@@ -42,7 +42,7 @@ BossRushMod 是《鸭科夫 / Escape from Duckov》的大型 Unity Mod，以 Bos
 | `LootAndRewards/` | 掉落、奖励箱、扫箱令、胜利奖励 |
 | `Achievement/`、`Audio/`、`BossFilter/`、`Interactables/`、`MapSelection/`、`UIAndSigns/`、`WikiContent/` | 各自独立子系统 |
 | `Assets/` | JSON 数据、图片、AssetBundle 等运行时资源 |
-| `tests/` | Python 静态守卫脚本，不是 C# 单元测试 |
+| `tests/` | 顶层 Python 结构守卫；`fixtures/` 链接生产源码做隔离 C# 执行回归，均不能替代 Unity 实机 |
 | `docs/` | 本地设计、迁移、契约和历史资料，默认 local-only |
 | `wiki-site/` | VitePress 在线 Wiki 站点；导航结构的唯一事实源是 `docs/.vitepress/data/structure.mts`，正文仍来自 `WikiContent/`（见 `wiki-site/AGENTS.md`） |
 | `.qoder/repowiki/` | 详细 Wiki 内容库：`knowledge/zh/` 模块级知识卡 + `zh/content/` 主题级详解，随代码同步维护（见 4.13） |
@@ -159,6 +159,15 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 由 `tests/BossRushUISharedLibraryGuard.py` 守卫。
 
+### 4.15 新子系统的状态归属与宿主 partial 预算
+
+- 新子系统的状态、异步任务和专属算法放在自己的 RuntimeModule、服务或对象中，不新增承载这些职责的 `partial class ModBehaviour`。
+- 宿主保留必要的生命周期分发和旧公开入口；兼容转发应尽量是一行调用，不通过增加 partial 文件绕过单文件预算。
+- 跨模块建筑反射与注入工具走独立 `BuildingInjectionHelper`，模块不应为了访问另一个模块的私有方法而加入同一宿主类型。
+- `tests/ModBehaviourPartialBudgetGuard.py` 同时检查生产 partial 文件清单、文件数和所在文件总行数。
+  `tests/modbehaviour_partial_budget.json` 记录整类规模上限；收敛后下调，不能为普通功能增长抬高预算或添加新例外。
+  该指标包含注释及所在文件的其他类型，不等于 AST 方法体行数；不得通过压缩排版或删必要注释来凑预算。
+
 ## 5. 不可破坏契约
 
 详细契约见 `docs/contracts.md`。本节列出进入代码前必须先识别的兼容面：
@@ -171,7 +180,7 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
   `tests/WikiSiteStructureGuard.py` 双向守卫。
 - 本地化 key，尤其 `BossRush_*` raw key。
 - AssetBundle 文件名、Prefab base name、EquipmentFactory/ItemFactory 命名规则。
-- Harmony 目标、`AccessTools` 字段、字符串反射绑定。当前代码约 31 个 `[HarmonyPatch(typeof(...))]`，并有大量 `GetField/GetMethod/GetProperty` 动态绑定，官方更新后需按 `docs/架构说明/Harmony补丁契约稳定性.md` 复查。
+- Harmony 目标、`AccessTools` 字段、字符串反射绑定。补丁类与动态绑定数量随代码变化，以当前源码及逐类安装日志为准；官方更新后需按 `docs/架构说明/Harmony补丁契约稳定性.md` 复查。
 - 地图 `sceneName` / `sceneID`、场景传送坐标、NPC/建筑字符串 ID。
 - Python guard 断言的结构约束。
 
@@ -271,6 +280,61 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 根级 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md` 是当前 AI 协作流程入口；旧 `docs/` 路径保留转发，避免老工具失联。
 
 ## 14. 最后更新
+
+2026-09-06（冰霜 / 雷霆套装龙王级重做 + 开放获取）：500053-500056 从「开发预览」转为正式内容。
+
+- **真 bug**：`ThunderSetBonus` 的反击 `CreateExplosion` 漏传第 6 参 `canHurtSelf`，官方默认 `true` 时
+  `selfTeam = Teams.all`、`Team.IsEnemy(Teams.all, x)` 恒真，爆炸中心的玩家自己必吃这一下——与四份 Wiki
+  「对自身无伤害」相反。**自建爆炸/伤害必须显式传 `canHurtSelf: false` 并置 `isFromBuffOrEffect = true`、
+  `fromWeaponItemID = 0`**。同时把反震结算延后一帧：`OnHurt` 可能正处在敌方爆炸的 `ExplosionManager`
+  循环里，嵌套 `CreateExplosion` 会覆写它的共享 `colliders[8]` / `damagedHealth` 缓冲。
+- **过图丢被动**：官方每次进图重建主角与 `CharacterItem`（`LevelManager.LoadOrCreateCharacterItemInstance`），
+  挂在旧 Item 上的运行时 Modifier 与挂在旧角色上的特效随之作废，而 `xxxSetActive` 不翻转，`CheckSetBonusStatus`
+  就不会重挂。**套装/装备类「激活态」在 `LevelManager.OnAfterLevelInitialized` 必须先停用再重查**
+  （`SetBonusManager.OnLevelInitializedCheckSetBonus`）。龙套装同病未在本轮修（越界，待 owner）。
+- **击杀触发技能的写法**：`Health.OnDead` 回调里只做过滤与调度，结算延后到协程；每个系统只保留一个订阅点
+  （`EventSubscriptionLifecycleGuard` 要求 `+=`/`-=` 同文件配对）；嵌套死亡用深度计数（引雷术 `thunderChainDepth`）
+  或结算中标志（冰葬 `frostNovaResolving`）门控；首跳只认 `!isFromBuffOrEffect` 的直接击杀，避免 DoT / 自身伤害起链。
+  过滤序照 `CodexKillCollector.OnGlobalDead`（含 Mode H 早返：官方 ERROR 互换会把 `fromCharacter` 改写成主角）。
+- **获取接线**：**想让原版地图击杀也掉，必须挂 Harmony `CharacterMainControl.OnDead` 前缀**
+  （`Patches/Combat/CharacterOnDeadPatch.cs`）而不是 `AddBossSpecialLootToLootboxCoroutine`——后者只在
+  Mod 奖励箱路径上跑（龙王套装就是这样，原版地图打它不掉）。走 OnDead 的代价是必须补齐 defer 协议四处接线
+  （判定 / 登记 pending / 进箱消费含 characterItem 回退 / 无间炼狱世界掉落 / Finalize 撤销），
+  由 `ExtraBossDropDeferGuard` 逐条断言，新增 integration 要登记进它的 `INTEGRATIONS`。
+  掉落内容有随机性时，**roll 必须在死亡帧定下并随 pending 携带**（存 TypeID 而不是 bool），
+  否则三条消费通道会各摇一次、掉出不同东西。NPC 商店必须给 `item.Value`，否则价格为 0
+  （`StockShop` 价格 = Value × 耐久比 × priceFactor）；**掉落黑名单不动**——它只挡随机奖池，
+  额外掉落与 NPC 商店都不查它（龙王套装、词缀熔石同款）。
+- 新文件：`Integration/Bonus/SetBonusVisuals.cs`、`ThunderSetBonus_Storm.cs`、`FrostSetBonus_Nova.cs`、`FrostMistEffect.cs`、
+  `SetBonusBossDropHandler.cs`、`tools/gen_setbonus_sfx.py`（音效 `Assets/Sounds/SetBonus/`，local-only，
+  构建脚本照 BGM 块部署）。`RingParticleEffect` 新增 `ParticleTint` 虚属性（默认白，旧子类零变化）。
+  守卫 `SetBonusLifecycleGuard` 扩展、`ExtraBossDropDeferGuard` 扩到五个 integration；
+  `ModeGWeaponScoringCompatibilityMatrix` 追加 `FrostSet`（不计分）。
+  实机 smoke 待做，明细见 `FIX_TRACKER.md` 同日条目。
+- **改 `compile_official.bat` 不要用 `sed -i`**：它会把 CRLF 换成 LF，cmd 随后把长行截断成
+  `'ing' is not recognized` 这类无厘头报错，与代码无关。用 Edit 工具，或改完用
+  `python -c` 按字节把 `\n` 还原成 `\r\n`。
+
+2026-09-06（设计复审 D-4 / D-3 / D-2 落地：清理 owner 唯一化、共享 JSON 解析器、落盘 / 存档 / 交互体去重）：
+
+- **子系统清理只有一个 owner**：各 `RuntimeModule.OnDestroy()`（每步 `SafeRuntime.Run` 隔离，
+  顺序先落盘、再还席、再退订、最后清表）。`ModBehaviour.OnDestroy` 只经 `runtimeModuleHost.OnDestroy()`
+  到达它们，不再逐条内联 `ResetStaticCaches`——`StaticCacheLifecycleGuard` 本就接受模块 `OnDestroy`，
+  「怕越过归属窗口所以内联到宿主」的理由不成立。跨子系统资源（`BossRushSaveFileThrottle`）在 host.OnDestroy 之后复位。
+- **仓库只有一套嵌套 JSON 解析器**：`Common/Data/BossRushJsonValue.cs`（原 `ModeH/ModeHJsonValue.cs`，
+  并入遗种巢的 `PetNestJsonBuilder` → `BossRushJsonWriter`；`Try*` 严格读给内容表 / 摘要，
+  `Get*(name, fallback)` 宽松读给存档解码，`ParseOrNull` 给 fail-closed 路径）。`Utilities/SimpleJsonHelper.cs`
+  只保留扁平写出与转义；**不要再新建第二套解析器，也不要用前缀提取器读存档**。`AppendFloat` / `Num` 对非有限值写 0。
+- **内容子系统的落盘与存档走共享实现**：`Common/Lifecycle/BossRushSaveCoordinatorEngine.cs`
+  （`IBossRushSaveBatchSource` 数据源；征程 / 图鉴 / 日报 / 遗种巢各持一个实例，是它们唯一的 SaveFile 调用点）
+  与 `Common/Lifecycle/BossRushSlotJsonStore.cs`（槽位级单 key 整存门面）。新子系统接存档时只写门面绑定
+  （key / schema / 编解码 / 盖章 / 下游复位 / 快照义务），**不要再复制状态机**。Mode G / Mode H 的协调器因
+  战斗帧顺延与多 key 屏障语义不同仍各自独立。
+- **建筑交互体走 `Interactables/BossRushBuildingInteractableBase`**：子类只声明交互名 key、日志前缀、
+  交互组标签、标记高度、可交互条件与完成动作。
+- 12 个守卫已把断言从各份副本迁到共享实现 + 门面绑定上（反向验证 11 条人为破坏 11 条转红）；
+  编译绿、544 守卫绿、两个 dotnet fixture（28 + 61 断言）通过；实机 smoke 待人工。明细见 `FIX_TRACKER.md` 同日条目；
+  设计复审本身（含仍 Open 的 D-1 / D-5 / 8 条 P3）见 `docs/代码审查/2026-09-05-f9b83c0-设计与代码规范复审.md`。
 
 2026-09-01（F3 完整玩法验收：三个产品 bug + 一次性测完改造）：由实机验收报告反查出的三个真 bug，
 **共性是「静默失败」——编译绿、guard 绿、日志里最多一行 warning，但功能实际不工作**。

@@ -397,7 +397,7 @@ None → Prepared → EscrowSnapshotDurable → EscrowRemovedDurable → MatchLo
 选手快照与查询辅助拆在 `ModeHRuntimeModule_CombatProfiles`，只用于控制文件规模；
 技术故障从 `ErrorRecoveryPending` 有显式出口进入 `Recovering`，不会停在恢复死态。
 结算只生成一份未归档 report；恢复时优先路由到该 report，避免重放战斗或重复发奖。
-技术重试会撤销本场未归档 report、奖励 operation、虚拟筹码预约和战前快照，再回到同场看盘。
+技术重试只有在尚无完整持久战报、真实押品取消/返还终态与槽证据均通过时，才恢复虚拟筹码预约和战前快照并回到同场看盘；已有战报只续做结算，不再回滚重打。
 
 地图选择只展示通过 Mode H 五点位审计的地图，玩家点击其他条目时只重绑冻结目标、
 不创建第二个 generation。原图隔离清场只销毁明确敌对玩家的战斗角色；玩家、玩家阵营、
@@ -556,3 +556,17 @@ abort return，必撞 `journal_illegal_transition`——押品退不回来，非
 增援回归：`tests/fixtures/ModeHReinforcementSecondReview/` 的 93 条执行断言与 `ModeHReinforcementSecondReviewGuard` 的 11 个反向变异覆盖真实计划、生成时序、容量、接力、统一清理、旧迭代器及晚结果。除异步完成续作外，SpawnBatch 迭代器也冻结 batchGeneration，旧迭代器不能在事务重新 Begin 后回滚新批。生产沿用官方主线程 UniTask，无额外线程池。相关 44 个 Mode H guards 通过；真实 AI 和 Unity 调度仍需实机。
 
 章节来源：`ModeH/ModeHRuntimeModule_SettlementFlow.cs`、`ModeH/ModeHRuntimeModule_UiFlow.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`ModeH/ModeHRuntimeModule_CombatFlow.cs`、`ModeH/ModeHRuntimeModule_CombatProfiles.cs`、`ModeH/ModeHSpawnTransaction.cs`、`ModeH/ModeHRunState.cs`、`tests/ModeHRecoverySecondReviewGuard.py`。
+
+## 2026-09-06 第三轮修复：技术重试押品屏障与战痕持久处置
+
+兼容分类：`COMPAT`。CR-2026-09-06-007 / 008。不增删持久 DTO 字段、存档 key 或 schemaVersion，保留 v1 canonical 摘要兼容。
+
+`ModeHRealStakeService.TryPrepareTechnicalRetry` 是回到可编辑同场准备页前的资产屏障。它先检查 journal 的 run / match 身份和已提交结果；无结果的当前押品只能沿原冻结阶段取消或全额返还，核对 `CancelledTerminal` / `RefundedTerminal` 与 `IsSlotConsistent` 后才清空选择。初次生成失败、战斗自动重试和 `DriveRecovery` 共用此屏障；失败保留锁盘与赛前快照并挂起，不能先撤销虚拟预约或隐式再退款。已有完整战报只恢复幕间结算，已提交 MatchResult 不改为退款后重打。空选择仍检查历史 journal 一致性；退款终态 journal 不属于新比赛的真实押品。
+
+战痕候选归属从战报关联的 `ModeHSeasonRewardOperationDto.rewardProfileId` 恢复，并核对 matchIndex / resultToken。新候选在原有 `appliedEventTokenIds` 中写入 `scar_offered|<operationId>|<scarId>`，处置写入 `scar_resolved|<operationId>|<scarId>`；两者由 `ModeHRunState` 维护并投影进 Season。接受、拒绝换名声和显式替换把 profile 收益与处置 token 同屏障持久化。写入结果不确定时保留两者、进入挂起，不能再次发收益或把 token 单独回滚。UI 回调同时核对 owner token、当前页面场次、历史 operation 和候选身份。
+
+选完装备可继续下一场，未处理战痕仍留在原战报；后续结算按记录逐条显示，避免积压按钮撑出页面。最后一场结束前必须处理剩余有效候选。旧版没有持久处置凭据，无法区分未领取与已拒绝；不能根据 `scarOfferId` 单独推定应补发，旧记录保持不自动发放的既有行为，明确提示无法确认领取结果、保留记录且不阻断赛季。已持有该战痕的旧记录不会被重新判为未领取，查看和保存不补造历史 token。
+
+验证：`tests/fixtures/ModeHThirdReviewFixes/run.py` 直接编译押品服务、结算页面及状态模型，逐字提取恢复/投影/奖励方法，覆盖 59 条执行断言；`ModeHThirdReviewFixesGuard` 拒绝 13 个回归变异。旧两套恢复夹具分别保留 35 / 33 条通过。Unity、真实库存与磁盘是显式替身，官方 ES3、满仓返还、切槽与六场实机仍待验证。
+
+章节来源：`ModeH/ModeHRealStakeService.cs`、`ModeH/ModeHRuntimeModule_MatchFlow.cs`、`ModeH/ModeHRuntimeModule_SettlementFlow.cs`、`ModeH/ModeHRuntimeModule_CombatFlow.cs`、`ModeH/ModeHRuntimeModule.cs`、`tests/ModeHThirdReviewFixesGuard.py`、`tests/fixtures/ModeHThirdReviewFixes/README.md`。
