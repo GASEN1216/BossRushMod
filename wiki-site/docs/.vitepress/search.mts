@@ -13,6 +13,22 @@
  *   （serializeFunctions → fn.toString()），在浏览器里用 new Function 还原。
  *   所以 cjkTokenize **不能引用本文件的任何其他变量或 import**，正则也要写在函数体内。
  *   建索引（Node，构建期）与查询（浏览器）两侧都用它，切法一致才能命中。
+ *
+ * 分工：本文件只管**索引怎么建、文案怎么写**（构建期 + themeConfig）。
+ *   弹层的交互（加载态、IME、AND/OR、动效）在
+ *   theme/components/WikiSearchBox.vue —— 那是默认弹层的 fork，
+ *   由 config.mts 里一条 Vite alias 顶上去的。
+ *
+ * 别再试 `options._render`（2026-09-06 实测过两件事，都是否定结论）：
+ *   1. 它压根不会被调用。索引器读的是 `siteConfig.site.themeConfig.search.options`，
+ *      这一层里拿不到这个函数——放一个把 "BOSS" 换成标记词的探针进去重新构建，
+ *      标记词不进索引，词表数一个都不差。
+ *   2. 就算调得到也没用。本来想用它在块级标签后补空格，避免中文二元组在
+ *      表格单元格接缝处拼出「鳞击」这种假词；但 markdown-it 渲染块级元素时
+ *      **本来就带换行**（`</td>` 与下一个 `<td>` 之间就有一个换行符），
+ *      去掉标签后单元格已经被换行隔开，切词器照样断得开。假词不存在。
+ *   中文索引 21548 词 / 英文 5593 词的差距是二元组切词本身的代价（n 个字 n-1 个词），
+ *   不是哪里写错了。要压体积得换切词策略，那是另一件事。
  */
 import type { DefaultTheme } from 'vitepress'
 

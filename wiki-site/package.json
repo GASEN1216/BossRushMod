@@ -9,6 +9,10 @@
     "test:navigation": "node scripts/check-navigation.mjs"
   },
   "devDependencies": {
-    "vitepress": "^1.6.0"
+    "@vueuse/core": "^12.4.0",
+    "@vueuse/integrations": "^12.4.0",
+    "mark.js": "8.11.1",
+    "minisearch": "^7.1.0",
+    "vitepress": "1.6.4"
   }
 }

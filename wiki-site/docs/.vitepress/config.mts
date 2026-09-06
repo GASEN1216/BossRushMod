@@ -1,5 +1,5 @@
 import { readFileSync } from 'fs'
-import { dirname, resolve } from 'path'
+import { dirname, resolve, sep } from 'path'
 import { fileURLToPath } from 'url'
 import { defineConfig, type DefaultTheme, type HeadConfig } from 'vitepress'
 import { CATEGORIES, CHANGELOG_CATEGORY, localizePath, type Locale } from './data/structure.mts'
@@ -117,6 +117,11 @@ const SITE_URL = siteUrl(base)
 const FEED_HEAD: HeadConfig[] = SITE_URL
   ? [['link', { rel: 'alternate', type: 'application/rss+xml', title: 'BossRush Wiki · 更新日志', href: `${SITE_URL}feed.xml` }]]
   : []
+
+// 档案版式字体。head 里引用两次（异步那条 + noscript 兜底），提出来免得改一处漏一处。
+const FONT_HREF =
+  'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900' +
+  '&family=Noto+Sans+SC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
 
 /**
  * 「编辑此页」：指向 WikiContent/ 的源文件，不是 wiki-site/docs/ 的生成物（改生成物会被 sync 抹掉）。
@@ -269,6 +274,63 @@ export function entityLinkPlugin(md: any) {
   })
 }
 
+// ── 速查框注入到 h1 之后 ────────────────────────────────────
+/**
+ * 速查框（WikiInfobox）从前挂在默认主题的 `doc-before` 插槽上。那个插槽落在
+ * `.content-container` 里、`main > .vp-doc` **之前**，于是 DOM 顺序是
+ * 「速查框 → h1」：宽屏上框右浮，h1 却在更深一层、仍是整宽块，它那条 2px 底线
+ * 就整幅画过框身（实测 1500 视口下正好穿过第一行数据）；窄屏上更直白——
+ * 读者先看到一张大卡片，才看到标题。
+ *
+ * 正确的位置是**标题之后、正文之前**，和泰拉瑞亚 / 维基百科一样。
+ * 但正文来自 sync 产物，一个字节都不能改（`ZombieModeMutantWikiGuard` 逐字节比对），
+ * 所以和 entityLinkPlugin 同一套办法：在**渲染层**往 token 流里插一个 `html_block`，
+ * 内容是 `<WikiInfobox path="..." />`。它随后由 VitePress 的 markdown→Vue 编译原样带进模板，
+ * 解析成全局注册的组件（`docs/index.md` 里的 `<WikiHome />` 走的就是这条路）。
+ *
+ * 两个必须这么写的点：
+ *   - 组件名后面带 `path` 属性（规范路径），**不让组件自己去查路由**。
+ *     它现在渲染在页面组件里而不是 Layout 里，SSR 阶段少一层对路由的依赖，
+ *     就少一类 hydration 不一致的风险；顺带 DOM 上能直接看出这框属于哪个条目。
+ *   - 只给 `INFOBOX` 里有数据的页面插。没有数据的页面插了也只会渲染出空，
+ *     组件里那句 `v-if="box && located"` 是第二道闸。
+ *
+ * 搜索索引器用的是同一个 markdown 实例（见 vitepress 的 localSearchPlugin），
+ * 所以索引里的 HTML 也会带上这个标签——它随后被 `clearHtmlTags` 整个剥掉，
+ * 索引内容不受影响。
+ */
+export function infoboxSlotPlugin(md: any) {
+  md.core.ruler.push('brs_infobox_slot', (state: any) => {
+    // md.parseInline() 也会跑 core 规则（VitePress 推断页面标题时就会调它），
+    // 那趟的 env 是空对象、tokens 是一条 inline。不挡住就会往标题里插一个组件标签。
+    if (state.inlineMode) return
+
+    const { canonical } = pageIdentity(state.env?.relativePath ?? '')
+    if (!INFOBOX[canonical]) return
+
+    const tokens = state.tokens
+
+    // 插在第一个 h1 的 heading_close 之后；没有 h1 的页面退回开头
+    // （等于旧的 doc-before 位置，宁可版式退化也不能把框弄丢）。
+    let at = 0
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type !== 'heading_open' || tokens[i].tag !== 'h1') continue
+      for (let j = i + 1; j < tokens.length; j++) {
+        if (tokens[j].type === 'heading_close' && tokens[j].tag === 'h1') {
+          at = j + 1
+          break
+        }
+      }
+      break
+    }
+
+    const slot = new state.Token('html_block', '', 0)
+    slot.content = `<WikiInfobox path="${canonical}" />\n`
+    slot.block = true
+    tokens.splice(at, 0, slot)
+  })
+}
+
 export default defineConfig({
   title: 'BossRush Wiki',
   description: 'Escape from Duckov — BossRush Mod 百科',
@@ -302,6 +364,29 @@ export default defineConfig({
       md.renderer.rules.table_open = () => '<div class="brs-table-scroll"><table>'
       md.renderer.rules.table_close = () => '</table></div>'
       md.use(entityLinkPlugin)
+      md.use(infoboxSlotPlugin)
+    },
+  },
+
+  // ── 覆盖默认主题的搜索弹层 ───────────────────────────────────
+  //
+  // VitePress 官方给的「Overriding Internal Components」办法：给组件文件路径配一条
+  // Vite alias。`VPNavBarSearch.vue` 里那句 `import('./VPLocalSearchBox.vue')`
+  // 会被重定向到本站的 fork，顶栏按钮、Ctrl+K / `/` 快捷键、`showSearch` 开关
+  // 统统还是官方那份，只有弹层本体换人（fork 的改动清单见组件文件头）。
+  //
+  // 必须用**数组**形式：VitePress 自己的 alias（@theme / vitepress / vue …）也是数组，
+  // Vite 的 mergeConfig 会把两边拼起来，对象形式会把它那份挤掉。
+  // 拼接顺序是「VitePress 的在前、这条在后」，而它那几条都匹配不上这个路径，
+  // 所以这条能被命中。路径分隔符要抹平：Windows 上 resolve() 出来的是反斜杠，Vite 只认正斜杠。
+  vite: {
+    resolve: {
+      alias: [
+        {
+          find: /^.*\/VPLocalSearchBox\.vue$/,
+          replacement: resolve(__dirname, 'theme/components/WikiSearchBox.vue').split(sep).join('/'),
+        },
+      ],
     },
   },
 
@@ -320,11 +405,14 @@ export default defineConfig({
       'link',
       {
         rel: 'stylesheet',
-        href: 'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900&family=Noto+Sans+SC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap',
+        href: FONT_HREF,
         media: 'print',
         onload: "this.media='all'",
       },
     ],
+    // `media=print + onload` 的代价是没有 JS 就永远切不回 all（onload 里那句是 JS）。
+    // 关了脚本的浏览器于是只剩本地字体栈——补一条 noscript 直接按 all 加载。
+    ['noscript', {}, `<link rel="stylesheet" href="${FONT_HREF}">`],
   ],
 
   locales: {

@@ -77,8 +77,29 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
 
 ## 4. 速查框（infobox）
 
-`docs/.vitepress/data/infobox.mts` 按条目路径配置，`Layout.vue` 通过 `doc-before`
-插槽注入，正文一个字都不用改。
+`docs/.vitepress/data/infobox.mts` 按条目路径配置，正文一个字都不用改。
+
+**注入位置：正文第一个 `h1` 之后**，由 `config.mts` 的 `infoboxSlotPlugin`
+在渲染期往 token 流里插一个 `html_block`（`<WikiInfobox path="..." />`），
+组件在 `theme/index.ts` **全局注册**。和 §4.5 的实体链接同一套办法：
+只动渲染层，生成的 `.md` 一个字节不变。
+
+它**曾经**挂在默认主题的 `doc-before` 插槽上，那是 2026-09-06 修掉的版式 bug 的根源：
+那个插槽落在 `.content-container` 里、`main > .vp-doc` **之前**，DOM 顺序是「框 → 标题」，
+于是宽屏上 `h1` 那条 2px 底线整幅画过浮动的框身，窄屏上读者先看到一张大卡片再看到标题。
+**别往回搬。**`tests/WikiSiteThemeWiringGuard.py` 会同时检查
+「插件登记了」「组件全局注册了」「Layout 里没有重复渲染」三件事。
+
+两条随之而来的约束：
+
+- **框现在长在 `.vp-doc` 里**，默认主题那套正文排版会级联进来。框里因此不用 `<p>`
+  （`.vp-doc p` 的 16px 外边距和行高权重压得过组件自己的类），链接也在组件样式里
+  用 `.vp-doc` 前缀显式压回来。往框里加新元素前先想一下 `.vp-doc` 有没有管它。
+- **带整幅边线 / 底色的块要自成 BFC**。浮动只让行盒避让，块盒的边框和底色照旧铺满
+  容器宽度——`h2` 的黄铜栏带、分隔线、提示块会从框底下穿过去。`style.css` §6 给
+  `h2/h3/h4/hr/blockquote/.custom-block` 在 `≥1400px` 下加了 `display: flow-root`。
+  表格和代码块自带 `overflow` 本来就是 BFC，配图块走 `clear: both`。
+  `h1` **不在**这份名单里：框插在它之后，够不着它。
 
 - 数值以 `WikiContent/zh` 正文为准，**改数值时两边一起改**。guard 只校验路径与图标，
   不校验数值——它没法判断哪边才是对的。
@@ -160,6 +181,34 @@ grep -rho '<a class="brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vit
 所以它必须自包含：不能引用文件里的其他变量或 import，正则写在函数体内。
 `config.mts` 里的 `EDIT_LINK_PATTERN` 受同一条约束。
 
+### 4.8.1 弹层是 fork，不是默认那份
+
+`theme/components/WikiSearchBox.vue` 是 **vitepress 自带 `VPLocalSearchBox.vue` 的副本**，
+靠 `config.mts` 里一条 Vite alias（官方文档的 Overriding Internal Components 办法）顶上去。
+顶栏按钮、`Ctrl+K` / `/` 快捷键、开关状态全都还是官方那份，只有弹层本体换人。
+
+fork 相对上游的改动逐条写在**那个文件的头注释**里，不在这儿重复。要点：
+
+- 索引加载搬到 `theme/composables/searchIndex.ts`，模块级缓存 + 首屏空闲预热
+  （`Layout.vue` 的 `scheduleWarmup`）。上游把 `loadJSON` 写在 setup 的 `computedAsync` 里，
+  而弹层是 `v-if` 挂载的，**每打开一次就重新解析一遍** 1 MB 索引。
+- 预热分两档：弹层组件总是拉，索引只在连接不省流量时拉；鼠标移到搜索框上则强制拉全套。
+  多数读者从不搜索，不该替他们决定下载 250 KB。
+- 先 AND 后 OR（不足 5 条才用 OR 补齐）。二元组下 AND 约等于短语匹配。
+- `ArrowUp` / `ArrowDown` 判 `isComposing`——上游只有 Enter 判了，中文输入法候选框
+  开着时上下键会被结果列表抢走。
+
+**升级 VitePress 时必须把上游同名组件重新 diff 一遍。**
+`WikiSiteThemeWiringGuard` 用 fork 头部的 `UPSTREAM: vitepress@x.y.z` 与
+`package-lock.json` 的实际版本对齐，版本一动就先红在那里。
+`package.json` 因此把 `vitepress` 钉死在具体版本，并显式登记了 fork 用到的
+`minisearch` / `mark.js` / `@vueuse/*`（原先靠 npm 提升的幽灵依赖）。
+
+**别再试 `options._render`**（2026-09-06 实测过）：索引器读的那一层拿不到它，
+放探针进去重新构建，标记词根本不进索引；而且就算调得到也没用——markdown-it
+渲染块级元素时本来就带换行，去标签后单元格已经隔开，不存在「跨单元格拼出假词」这回事。
+理由完整记在 `search.mts` 头注释里。
+
 ## 4.9 逐页 SEO、编辑链接与 RSS
 
 - `seo.mts`：`transformPageData` 从正文第一段抽 `description`（frontmatter 写了就用 frontmatter 的），
@@ -233,6 +282,7 @@ SITE_URL=https://example.com/ npm --prefix wiki-site run build   # 换域名部�
 python tools/build_wiki_images.py --check    # 只校验图片产物齐不齐
 python tools/gen_wiki_icons.py --webp-only   # 不生图，只重出 WebP 与边车清单
 python tools/run_guards.py --filter Wiki     # 跑全部 Wiki 相关 guard
+npm --prefix wiki-site run preview           # 看构建产物（版式改动要按 1500 / 1366 / 375 三档各看一遍）
 ```
 
 ## 7. 相关 guard
@@ -240,6 +290,7 @@ python tools/run_guards.py --filter Wiki     # 跑全部 Wiki 相关 guard
 | Guard | 管什么 |
 | --- | --- |
 | `WikiSiteStructureGuard.py` | 结构 / 页面 / 图标 key 三方一致 |
+| `WikiSiteThemeWiringGuard.py` | 速查框注入的三处接线、搜索弹层 fork 的 alias 与上游版本、`cjkTokenize` 自包含 |
 | `WikiImageAssetGuard.py` | 图片清单、产物、引用三者对得上 |
 | `WikiCalloutSingleLineGuard.py` | `WikiContent` 的 callout 必须单行 |
 | `ZombieModeMutantWikiGuard.py` | 丧尸模式页与生成产物逐字节一致（**改 `transformContent` 必须同步改它的 Python 镜像**） |

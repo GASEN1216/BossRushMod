@@ -45,7 +45,7 @@
   - `scripts/entry-map.mjs`：entryId ↔ 站内路径的唯一映射与 catalog.tsv 读取，sync / config / seo 三处共用。
   - `hubs/`：系统、攻略两个类目主页的手写正文（中英各一份），由 sync 复制进 docs/；它们在 WikiContent 里没有对应条目。
   - `docs/.vitepress/data/`：`structure.mts`（导航结构唯一事实源）、`infobox.mts`（速查框数据）、`changelog.data.mts` / `stats.data.mts`（构建期数据加载器）。
-  - `docs/.vitepress/theme/`：`Layout.vue` 通过默认主题插槽注入面包屑、速查框、速查对比表、条目宫格、同类导航、版本时间线；`style.css` 是「玩法档案」版式语言，`extras.css` 是功能构件样式与打印样式。
+  - `docs/.vitepress/theme/`：`Layout.vue` 通过默认主题插槽注入面包屑、速查对比表、条目宫格、同类导航、版本时间线（速查框改由渲染期插进正文，见下）；`components/WikiSearchBox.vue` 是默认搜索弹层的 fork，`composables/searchIndex.ts` 管索引加载与预热；`style.css` 是「玩法档案」版式语言，`extras.css` 是功能构件样式与打印样式。
   - `docs/.vitepress/search.mts` / `seo.mts` / `feed.mts`：中文分词搜索、逐页 SEO 与编辑链接、更新日志 RSS，均在构建期生效。
 - WikiContent：权威内容源，按语言分 zh/en，并通过 catalog.tsv 统一编排条目与顺序。
 - .github/workflows（仓库根目录）：GitHub Actions 工作流，负责构建与发布。`wiki-site/.github/workflows/deploy.yml` 是一份未被 GitHub 读取的历史副本，以根目录那份为准。
@@ -80,7 +80,7 @@ F --> G[".github/workflows/deploy.yml<br/>GitHub Actions 部署"]
 
 - 内容同步脚本：将 WikiContent 中的 Markdown 转换为 VitePress 文档结构——标题层级提升、Callout 转换、链接清理、按 IMAGE_PLACEMENT 注入配图、按 TABLEIZE 把固定句式列表转成表格（成就大全、模式总览），并把 hubs/ 下的类目主页复制进 docs/。
 - VitePress 配置：站点标题、基础路径、多语言（中文根路径、英文 /en）；导航与侧边栏由 structure.mts 生成；本地搜索接入 search.mts 的中文二元分词；sitemap、逐页 description / Open Graph / canonical / hreflang（seo.mts）、「编辑此页」指向 WikiContent 源文件、更新日志 RSS（feed.mts）、中文 404 文案；markdown-it 层的 entityLinkPlugin 把列表项与表格首列里的实体名换成图标 + 链接。
-- 主题层：Layout.vue 在默认主题的 doc-before / doc-footer-before 插槽注入面包屑、速查框、速查对比表（WikiCompare，从 infobox.mts 只读生成、可点表头排序）、条目宫格、同类导航或版本时间线；首页是 layout: page + WikiHome（刊头、搜索框与随机条目、数据速览、三步上手、门户宫格、最近更新）。style.css 是纸张底 + 黄铜强调 + 衬线标题的「玩法档案」版式，extras.css 是功能构件与打印样式。
+- 主题层：Layout.vue 在默认主题的 doc-before / doc-footer-before 插槽注入面包屑、速查对比表（WikiCompare，从 infobox.mts 只读生成、可点表头排序）、条目宫格、同类导航或版本时间线；速查框（WikiInfobox）不走插槽，由 config.mts 的 infoboxSlotPlugin 在渲染期插到正文第一个 h1 之后、组件全局注册——插槽版排在 h1 之前，会让标题的底线整幅穿过右浮动的框身；首页是 layout: page + WikiHome（刊头、搜索框与随机条目、数据速览、三步上手、门户宫格、最近更新）。style.css 是纸张底 + 黄铜强调 + 衬线标题的「玩法档案」版式，extras.css 是功能构件与打印样式。
 - 自动化部署：GitHub Actions 在推送 main 分支或手动触发时以 fetch-depth: 0 检出（页面「最后更新」与 RSS 日期取 git 时间），安装依赖、执行构建并上传至 GitHub Pages。
 
 章节来源
@@ -160,6 +160,7 @@ GenEnIndex --> Done
   - base 根据 DEPLOY_TARGET 环境变量切换，便于在不同平台部署（如 cloudflare 使用根路径）。
 - 搜索与社交
   - 启用本地搜索；search.mts 提供中文二元分词（「焚天龙皇」→ 焚天 / 天龙 / 龙皇，建索引与查询同一切法）、详细结果视图与中文文案。该 tokenizer 会被 VitePress 序列化进站点数据、在浏览器里还原，因此必须自包含。
+  - 搜索弹层是 vitepress 自带 VPLocalSearchBox 的 fork（theme/components/WikiSearchBox.vue），经 config.mts 的 Vite alias 顶替：索引改为模块级缓存 + 首屏空闲预热、索引未就绪时显示加载态、先 AND 后 OR 检索、上下键判输入法组合态、弹层开合带动画。升级 VitePress 需重新对照上游，由 WikiSiteThemeWiringGuard 用版本标记守卫。
   - 社交链接指向 GitHub 仓库。
 - SEO、编辑链接与订阅
   - sitemap.xml（hostname 含 base，中英页面配成 hreflang 对）；transformPageData 从正文第一段抽逐页 description；transformHead 输出 Open Graph、Twitter 卡片、canonical、zh-CN ⇄ en hreflang；buildEnd 生成 feed.xml。
@@ -271,13 +272,14 @@ Build --> Deploy["deploy.yml"]
 ## 性能与 SEO 优化
 - 性能
   - 使用 VitePress 静态站点生成；Google Fonts 以 media=print + onload 方式加载，不可达时按本地字体栈降级，不阻塞首屏。
-  - 本地搜索索引按语言拆分、首次打开搜索时才加载；中文二元分词后的中文索引约 1 MB（gzip 后约 250 KB）。
+  - 本地搜索索引按语言拆分；中文二元分词后的中文索引约 1 MB（gzip 后约 250 KB）。索引与弹层组件在首屏空闲时预热（省流量连接上只预热组件，鼠标移到搜索框上才强制拉索引），同一语言只解析一次。
   - 图标与配图为提交进仓库的 WebP 产物，img 带 loading=lazy。
 - SEO
   - 逐页 description（正文第一段或 frontmatter）、Open Graph / Twitter 卡片、canonical、zh-CN ⇄ en hreflang 与 x-default，全部由 seo.mts 在构建期注入；sitemap.xml 含 lastmod 与语言对；更新日志另有 feed.xml。
   - 条目页的 og:image 取该条目图标。
 - 用户体验
-  - 深色模式、首页整行搜索框与随机条目、类目主页的可排序对比表、更新日志时间线、面包屑与同类导航、指向源文件的「编辑此页」、中文 404、打印样式。
+  - 深色模式（手动切换时同步 theme-color，手机地址栏跟着变）、首页整行搜索框与随机条目、类目主页的可排序对比表、更新日志时间线、面包屑与同类导航、指向源文件的「编辑此页」、中文 404、打印样式。
+  - 条目页版式：标题整宽 → 速查框（≥1400px 右浮、更窄时通栏卡片）→ 正文绕排；带整幅边线或底色的块在浮动侧自成 BFC，横线止于框边而不是从底下穿过。
   - 侧边栏与导航结构由 structure.mts 生成，中英双语一致。
 
 章节来源

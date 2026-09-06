@@ -3,6 +3,7 @@ import DefaultTheme from 'vitepress/theme'
 import Layout from './Layout.vue'
 import WikiHome from './components/WikiHome.vue'
 import WikiCardGrid from './components/WikiCardGrid.vue'
+import WikiInfobox from './components/WikiInfobox.vue'
 import WikiIcon from './components/WikiIcon.vue'
 import './style.css'
 // 功能构件的样式（对比表 / 时间线 / 首页搜索框 / 打印）单独一份，style.css 只管版式语言
@@ -16,6 +17,9 @@ export default {
     // 另外两个是给正文里偶尔要手工插一块宫格 / 图标时准备的。
     app.component('WikiHome', WikiHome)
     app.component('WikiCardGrid', WikiCardGrid)
+    // 速查框由 config.mts 的 infoboxSlotPlugin 在渲染期写进正文（h1 之后），
+    // 所以必须全局注册——它出现在页面组件的模板里，不在 Layout 的作用域内。
+    app.component('WikiInfobox', WikiInfobox)
     app.component('WikiIcon', WikiIcon)
   },
 } satisfies Theme

@@ -1,0 +1,140 @@
+# -*- coding: utf-8 -*-
+"""WikiSiteThemeWiringGuard - 在线 Wiki 主题层那几处「断了也不报错」的接线。
+
+背景：
+    2026-09-06 这轮前端修复引入了两处**跨文件的隐式约定**，它们断掉之后
+    既不会让构建失败，也不会让任何现有 guard 变红，只会在线上悄悄变样：
+
+    一、速查框的注入点。
+        它从前挂在默认主题的 doc-before 插槽上，排在正文 h1 **之前**，
+        于是 h1 那条 2px 底线整幅画过浮动的框身（这就是 owner 报的「布局错乱」）。
+        现在改成 config.mts 的 infoboxSlotPlugin 在渲染期把 `<WikiInfobox />`
+        插到第一个 h1 之后，组件在 theme/index.ts 里**全局注册**。
+        三处缺一：
+          - 插件没登记 -> 全站速查框整个消失（页面照常构建，只是少了框）；
+          - 组件没全局注册 -> Vue 渲染出一个惰性的 <wikiinfobox> 未知元素，
+            浏览器当它不存在，同样是「框没了」，控制台只有一条警告；
+          - Layout.vue 里那句没删干净 -> 一页出现**两个**框。
+
+    二、搜索弹层的 fork。
+        theme/components/WikiSearchBox.vue 是 vitepress 自带 VPLocalSearchBox.vue
+        的副本，靠 config.mts 里一条 Vite alias 顶上去。alias 一旦写错或被删，
+        站点会**静默退回**官方弹层：还能搜，只是首开又变回三四秒白屏、
+        中文输入法上下键又被抢走——没有任何报错。
+        更隐蔽的是升级 VitePress：fork 冻结在某个版本的实现上，上游改了
+        （比如换了索引加载方式或结果结构）而这边没跟，同样只在运行时表现异常。
+        所以这里把 fork 头部登记的 UPSTREAM 版本与 package-lock.json 里
+        实际装的版本对齐——版本一动，先红在这里，逼人重新 diff 一遍。
+
+判据：
+    1. config.mts 注册了 infoboxSlotPlugin，且 theme/index.ts 全局注册了 WikiInfobox；
+    2. Layout.vue 里不再渲染 <WikiInfobox（防止和渲染期注入重复）；
+    3. config.mts 有指向 WikiSearchBox.vue 的 VPLocalSearchBox alias，且该文件存在；
+    4. WikiSearchBox.vue 头部的 `UPSTREAM: vitepress@x.y.z` == package-lock.json
+       里 node_modules/vitepress 的版本；
+    5. search.mts 仍导出 cjkTokenize，且函数体自包含（不引用外部标识符）——
+       它会被序列化进站点数据、在浏览器里 new Function 还原，引用外部变量会静默失效。
+
+    本 guard 只管**接线在不在**，不管样式好不好看：版式是人眼的事。
+"""
+import json
+import os
+import re
+import sys
+
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SITE = os.path.join(REPO_ROOT, "wiki-site")
+VP = os.path.join(SITE, "docs", ".vitepress")
+CONFIG = os.path.join(VP, "config.mts")
+SEARCH = os.path.join(VP, "search.mts")
+THEME = os.path.join(VP, "theme")
+THEME_INDEX = os.path.join(THEME, "index.ts")
+LAYOUT = os.path.join(THEME, "Layout.vue")
+SEARCH_BOX = os.path.join(THEME, "components", "WikiSearchBox.vue")
+LOCK = os.path.join(SITE, "package-lock.json")
+
+UPSTREAM_RE = re.compile(r"^\s*\*\s*UPSTREAM:\s*vitepress@([0-9][^\s]*)\s*$", re.M)
+# fork 里除了注释，其余对外部标识符的引用都在 import 行上；cjkTokenize 的函数体
+# 只允许出现它自己的局部名字。这里只做粗筛：函数体内不得出现这两个名字。
+FORBIDDEN_IN_TOKENIZER = ("SEARCH", "import ")
+
+
+def fail(message):
+    print("WikiSiteThemeWiringGuard: FAIL - " + message)
+    return 1
+
+
+def read(path):
+    with open(path, "r", encoding="utf-8") as fh:
+        return fh.read()
+
+
+def tokenizer_body(src):
+    """取 cjkTokenize 的函数体（到下一个顶格 `}` 为止）。"""
+    start = src.find("export function cjkTokenize")
+    if start < 0:
+        return None
+    end = src.find("\n}", start)
+    return src[start:end] if end > 0 else src[start:]
+
+
+def main():
+    for path in (CONFIG, SEARCH, THEME_INDEX, LAYOUT, SEARCH_BOX, LOCK):
+        if not os.path.isfile(path):
+            return fail("缺文件：" + os.path.relpath(path, REPO_ROOT))
+
+    config_src = read(CONFIG)
+    theme_src = read(THEME_INDEX)
+    layout_src = read(LAYOUT)
+    box_src = read(SEARCH_BOX)
+    search_src = read(SEARCH)
+
+    # 1. 速查框注入的三处接线
+    if "md.use(infoboxSlotPlugin)" not in config_src:
+        return fail("config.mts 没有 md.use(infoboxSlotPlugin)：速查框不会被插进正文，全站的框会消失")
+    if "function infoboxSlotPlugin" not in config_src:
+        return fail("config.mts 里找不到 infoboxSlotPlugin 的定义")
+    if "app.component('WikiInfobox'" not in theme_src:
+        return fail("theme/index.ts 没有全局注册 WikiInfobox：渲染期插进正文的标签会解析不到组件")
+
+    # 2. 不能同时还挂在 Layout 的插槽上
+    if "<WikiInfobox" in layout_src:
+        return fail("Layout.vue 里还渲染着 <WikiInfobox />，会和渲染期注入的那份重复出现两个速查框")
+
+    # 3. 搜索弹层 alias
+    if "VPLocalSearchBox" not in config_src or "WikiSearchBox.vue" not in config_src:
+        return fail("config.mts 里没有把 VPLocalSearchBox.vue 指向 WikiSearchBox.vue 的 Vite alias："
+                    "搜索会静默退回官方弹层（首开白屏、中文输入法上下键被抢）")
+
+    # 4. fork 的上游版本必须跟得上实际装的 vitepress
+    matched = UPSTREAM_RE.search(box_src)
+    if not matched:
+        return fail("WikiSearchBox.vue 头部缺少 `UPSTREAM: vitepress@<版本>` 标记，"
+                    "升级 VitePress 时无从判断这个 fork 是否还对得上上游")
+    declared = matched.group(1)
+    with open(LOCK, "r", encoding="utf-8") as fh:
+        lock = json.load(fh)
+    installed = (lock.get("packages", {}).get("node_modules/vitepress", {}) or {}).get("version")
+    if not installed:
+        return fail("package-lock.json 里读不到 node_modules/vitepress 的版本")
+    if declared != installed:
+        return fail("WikiSearchBox.vue 是 vitepress@%s 的 fork，但现在装的是 %s。"
+                    "请把上游同名组件重新 diff 一遍，把改动搬过来，再更新头部的 UPSTREAM 标记"
+                    % (declared, installed))
+
+    # 5. cjkTokenize 的自包含约束
+    body = tokenizer_body(search_src)
+    if body is None:
+        return fail("search.mts 不再导出 cjkTokenize：中文搜索会退回按整句切词，基本等于不可用")
+    for token in FORBIDDEN_IN_TOKENIZER:
+        if token in body:
+            return fail("cjkTokenize 的函数体里出现了 %r。它会被序列化进站点数据、"
+                        "在浏览器里用 new Function 还原，引用外部标识符会在运行时静默失效" % token)
+
+    print("WikiSiteThemeWiringGuard: PASS - 速查框注入三处接线齐全、"
+          "搜索弹层 fork 对齐 vitepress@%s、cjkTokenize 自包含" % installed)
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

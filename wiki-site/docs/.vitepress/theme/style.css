@@ -248,11 +248,27 @@ body {
   font-size: 12px;
   letter-spacing: 0.05em;
 }
+/* 两枚键帽拼成一块，中缝只留一条线：默认主题靠 border-right/left: none 拼接，
+   我们这条 `border: 1px` 把它拆回了两个各自带边的盒子，中间就成了双线。 */
 .DocSearch-Button-Keys .DocSearch-Button-Key {
   box-shadow: none;
   border: 1px solid var(--brs-rule);
+  border-right: none;
   background: transparent;
   font-family: var(--brs-mono);
+}
+.DocSearch-Button-Keys .DocSearch-Button-Key + .DocSearch-Button-Key {
+  border-right: 1px solid var(--brs-rule);
+  border-left: none;
+}
+
+/* 窄屏上按钮退化成一枚放大镜图标，此时那圈边框会变成一个 48x55 的空方框，
+   和旁边裸着的汉堡菜单不配套——图标态不要边框。 */
+@media (max-width: 767px) {
+  .DocSearch-Button,
+  .DocSearch-Button:hover {
+    border-color: transparent;
+  }
 }
 
 /* ── 5. 侧栏：档案的「系统索引」导航轨 ─────────────────── */
@@ -350,6 +366,36 @@ body {
   }
 }
 
+/*
+ * 速查框在 >=1400px 是右浮动的（WikiInfobox.vue）。浮动只让**行盒**避让，
+ * 块盒的边框和底色照旧铺满整个容器宽度——于是 h2 的黄铜栏带顶线、分隔线、
+ * 提示块的底色会从框身底下整幅穿过去。它们还都是 position: relative（默认主题
+ * 给所有标题加的），层叠上还压在框上面，看起来就像一条线把框划成了两半。
+ *
+ * 让它们各自成为 BFC 就好了：BFC 的边框盒不允许和浮动的外边距盒重叠
+ * （CSS 2.1 §9.5），浏览器会自动把它们收窄到框左边。`display: flow-root` 是
+ * 专门干这个的值，不像 `overflow: hidden` 那样带裁切副作用——标题上那枚
+ * 绝对定位的 .header-anchor（挂在左侧空白里）不会被切掉。
+ *
+ * 表格（.brs-table-scroll 有 overflow）与代码块本来就是 BFC，不用管；
+ * 配图块走的是 clear: both（§14），整块让开。
+ *
+ * h1 不在这份名单里：框插在 h1 **之后**，浮动的顶边落在 h1 下外边距之下，
+ * 够不着它。加了反而会让 h1 的下外边距不再与后续块合并，凭空多出一段空白。
+ *
+ * 只在浮动存在的宽度下开：窄屏是通栏卡片，没有浮动要避让。
+ */
+@media (min-width: 1400px) {
+  .vp-doc h2,
+  .vp-doc h3,
+  .vp-doc h4,
+  .vp-doc hr,
+  .vp-doc blockquote,
+  .vp-doc .custom-block {
+    display: flow-root;
+  }
+}
+
 .vp-doc p,
 .vp-doc li {
   color: var(--brs-ink-soft);
@@ -400,8 +446,13 @@ body {
   margin-bottom: 18px;
 }
 
-/* h1 之后的第一段＝报告的导语（dek） */
-.vp-doc h1 + p {
+/* h1 之后的第一段＝报告的导语（dek）。
+   第二条选择器是给「导语 + 速查框」同时出现的页面备的：框由渲染期插在 h1 之后，
+   会把导语挤成 h1 的第二个兄弟。眼下这两样还没在同一页上碰过面
+   （速查框那 30 个条目的正文都是 h1 直接接 h2），但任何一边一改就会碰上，
+   而症状是导语悄悄退回普通正文样式——不容易被发现，所以先接住。 */
+.vp-doc h1 + p,
+.vp-doc h1 + .wiki-infobox + p {
   font-family: var(--brs-serif);
   font-size: 17.5px;
   line-height: 1.65;
@@ -797,14 +848,10 @@ body {
   color: var(--brs-brass);
 }
 
-/* 本地搜索结果 */
-.VPLocalSearchBox .result {
-  border: 1px solid transparent;
-}
-.VPLocalSearchBox .result.selected {
-  border-color: var(--brs-brass);
-  background: var(--brs-sunk);
-}
+/* 本地搜索结果。
+   结果条的边框与选中态写在 WikiSearchBox.vue（弹层 fork）的 scoped 样式里，不在这儿定——
+   scoped 选择器多带一个属性、又后加载，同权重下总是它赢，写两份只会让人以为这边生效。
+   下面这几条留在这儿，是因为它们够不着：mark 在 v-html 里，scoped 选不中。 */
 .VPLocalSearchBox .titles,
 .VPLocalSearchBox .title {
   color: var(--brs-ink);

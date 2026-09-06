@@ -17,9 +17,17 @@ import { useWiki } from '../composables/useWiki'
 const { t, href, categories } = useWiki()
 const router = useRouter()
 
+/**
+ * 快捷键徽标跟着顶栏那枚走。
+ *
+ * VitePress 在 <head> 里注入过一段 `check-mac-os` 脚本，按 navigator.platform
+ * 给 <html> 打 `.mac` 类，顶栏搜索按钮的 ⌘ / Ctrl 就是靠它用 CSS content 切的。
+ * 这里读同一个结论，不再自己写一遍平台嗅探——从前那份正则漏了 iPod，
+ * 而且和顶栏那枚各判各的，同一个页面上可能显示成两种样子。
+ */
 const shortcut = ref('Ctrl K')
 onMounted(() => {
-  if (/mac|iphone|ipad/i.test(navigator.platform)) shortcut.value = '⌘ K'
+  if (document.documentElement.classList.contains('mac')) shortcut.value = '⌘ K'
 })
 
 function openSearch() {

@@ -4,6 +4,60 @@
 
 ## 最新修复
 
+### 2026-09-06 在线 Wiki 前端：速查框穿线版式 bug + 搜索体验重做
+
+**状态**：fixed（浏览器实测）/ 一项待人工。owner 报「布局错乱 + 搜索不丝滑」，附截图。
+
+**真 bug（版式）**：速查框 `WikiInfobox` 挂在默认主题的 `doc-before` 插槽上，那个插槽落在
+`.content-container` 里、`main > .vp-doc` **之前**，DOM 顺序是「框 → 标题」。宽屏（≥1400px）框右浮，
+而 `h1` 在更深一层、仍是整宽块且 `position: relative`，它那条 2px 底线**整幅画在框身上面**。
+1500 视口实测：h1 底线 y=246，正好落在速查框第一行「入场 · BossRush 船票」（227–262）中间。
+`h2` 的黄铜顶线同病（龙皇页「基础数据」顶线穿过框里的「相关条目」）。窄屏则是「先一张大卡片、再标题」。
+根因两条：**位置**（框排在标题前）+ **没有 BFC**（带整幅边线/底色的块不会在浮动旁收窄）。
+
+**修法**：`config.mts` 新增 markdown-it core 规则 `infoboxSlotPlugin`，在渲染期把
+`<WikiInfobox path="..." />` 插到正文第一个 `h1` 之后（组件在 `theme/index.ts` 全局注册，
+`Layout.vue` 的插槽只留面包屑）；`style.css` §6 给 `h2/h3/h4/hr/blockquote/.custom-block`
+在 ≥1400px 下加 `display: flow-root`。和 §4.5 实体链接同一套约束：**只动渲染层，
+生成的 `.md` 一个字节不变**（`ZombieModeMutantWikiGuard` 逐字节比对那条链路不受影响）。
+框搬进 `.vp-doc` 后要挡默认正文排版的级联：框内 `<p>` 全改 `<div>`，链接样式加 `.vp-doc` 前缀提权。
+
+**搜索**：默认弹层首开要先下 64 KB 组件（实测 1.3 s）再下 1.03 MB 索引，然后同步 `loadJSON`，
+全程**空白面板无提示**，点击到出结果 3~4 秒；且弹层是 `v-if` 挂载，**每开一次重新解析一遍索引**。
+改为 fork 默认弹层（`theme/components/WikiSearchBox.vue`，`config.mts` 一条 Vite alias 顶替，
+官方文档的 Overriding Internal Components 办法）：索引加载搬到 `composables/searchIndex.ts`
+做模块级缓存 + 首屏空闲预热（省流量连接只预热组件，指到搜索框才强制拉索引）；
+索引未就绪时显示「正在加载搜索索引……」；先 AND 后 OR（不足 5 条才补齐）；
+`ArrowUp`/`ArrowDown` 补 `isComposing` 判断（上游只有 Enter 判了，拼音候选框会被结果列表抢走）；
+开合加 0.14s CSS 动画（不用 `<Transition>`，理由同 `WikiRefPreview`）；结果条边框 1px 消抖；
+快捷键条加结果计数；输入框占位符不再复用按钮那两个字。
+
+**顺手**：手动切深色时同步 `theme-color`（原来只跟系统偏好）；字体 `<link>` 补 `noscript` 兜底；
+Ctrl|K 两枚键帽之间的双线；窄屏搜索按钮的空心方框；首页快捷键徽标改读 VitePress 已算好的 `.mac` 类。
+
+**否定结论（别再试）**：`search.mts` 的 `options._render` 加不上——索引器读的那一层拿不到它
+（放把 "BOSS" 换成标记词的探针进去重新构建，标记词不进索引、词表数一个不差）；
+而且就算调得到也没用，markdown-it 渲染块级元素本来就带换行，去标签后单元格已经隔开，
+「跨单元格拼出假词」这回事不存在。中文索引 21548 词 vs 英文 5593 词是二元组切词本身的代价。
+理由完整记在 `search.mts` 头注释里。
+
+**兼容分类**：`SAFE` / `COMPAT`（纯表现层）；`package.json` 把 `vitepress` 钉到 `1.6.4`
+并显式登记 fork 用到的 `minisearch` / `mark.js` / `@vueuse/*`（原先是 npm 提升的幽灵依赖）—— 轻量 `OPERATIONAL`，
+lockfile 版本一个没变。`WikiContent/`、`sync-content.mjs`、`wiki-site/docs/**` 产物零改动。
+
+**新增守卫**：`tests/WikiSiteThemeWiringGuard.py` —— 速查框注入的三处接线（插件登记 / 组件全局注册 /
+Layout 里没有重复渲染）、搜索 fork 的 alias 与 `UPSTREAM: vitepress@x.y.z` 对齐 lockfile、
+`cjkTokenize` 自包含。反向验证：6 条人为破坏 6 条转红，恢复后绿。
+
+**验证**：`npm run build` 绿（222 页，索引体积与改前持平）；`test:navigation` 80 条断言绿；
+`check_wiki_links.py` 绿；Wiki 相关 guard 全绿。浏览器实测（dev 5199）——
+1500 / 1366 / 375 三档 × 浅色 / 深色：标题整宽、框在标题之下、`h2` 在浮动侧收窄到 453px（`allNarrowed: true`）、
+窄屏顺序「标题 → 卡片」；搜索预热在首屏 1 s 后到位、「无间炼狱奖励」从 16 条杂项收敛到 5 条全部命中该小节、
+单字「龙」仍可搜、英文侧 `Frostmorne` 模糊匹配仍命中、加载态取证（临时注入 4 s 延迟后截图）、
+Esc / 返回键 / 首页搜索框 / 移动端全屏形态均正常。
+
+**未验证**：中文输入法候选框开着时按上下键应翻候选而不是翻结果——需要真实 IME，脚本驱动不了，待人工复测。
+
 ### 2026-09-06 f9b83c0 以来全量深度审查登记（未修复）
 
 **状态**：documented / Open。新确认 `CR-2026-09-06-007..016` 共 **5 P1 / 5 P2**，仅登记审查结论，不是修复完成。完整报告：

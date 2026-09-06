@@ -6,26 +6,50 @@
  * 项目符号，读者想比两把武器就得来回翻正文。速查框把这些提到页顶一眼可比，
  * 正文回去讲机制和体验。
  *
+ * 摆在哪——**正文第一个 h1 之后**，由 config.mts 的 infoboxSlotPlugin 在渲染期
+ * 插进 token 流（`<WikiInfobox path="..." />`），组件在 theme/index.ts 全局注册。
+ *   从前它挂在默认主题的 `doc-before` 插槽上，那个插槽在 `main > .vp-doc` **之前**，
+ *   于是 DOM 顺序是「速查框 → h1」：宽屏上框右浮、h1 却在更深一层仍是整宽块，
+ *   它那条 2px 底线整幅画过框身（实测 1500 视口正好穿过第一行数据）；
+ *   窄屏上则是「先一张大卡片、再标题」。标题必须在框之前，这是版式的地基。
+ *
+ * 身份从 `path` 属性来，不自己查路由：组件现在渲染在页面组件里而不是 Layout 里，
+ * 少一层对路由的依赖就少一类 SSR / hydration 不一致的风险，DOM 上也能直接看出
+ * 这框属于哪个条目。没传 path 时退回路由（手工写进 markdown 时仍可用）。
+ *
  * 版式——两种形态，按可用宽度切换：
- *   ≥1400px  右浮动 288px 的竖框。正文行盒自动绕开它；表格 / 代码块 / 配图
- *            自带 overflow 形成 BFC，会在浮动旁边收窄而不是被压住。
- *   <1400px  通栏卡片，条目横排成 2~3 列。
+ *   >=1400px  右浮动 288px 的竖框。正文行盒自动绕开它；带整幅边线 / 底色的块
+ *             （h2 栏带、分隔线、提示块）靠 style.css §6 的 `display: flow-root`
+ *             自成 BFC，在框旁收窄而不是从底下穿过去。
+ *   <1400px   通栏卡片，条目横排成 2~3 列，夹在 h1 与正文之间。
  *
  *   为什么门槛这么高：侧栏 272 + 右侧目录 224 吃掉近 500px，1280 视口下正文
  *   容器只剩 ~610px，再浮一个 288 的框，文字就只剩 280px 一行五六个词，
  *   比不浮动难读得多。宁可在中等宽度老老实实通栏。
  *
- *   通栏时隐藏框内的条目名：它紧挨着下面的 h1，两行同名字读起来像出了错。
- *   眉标（「自定义 Boss · 最终」）留着，正好当 h1 的引题。
+ *   通栏时隐藏框内的条目名：它紧挨着上面的 h1，两行同名字读起来像出了错。
+ *   眉标（「自定义 Boss · 最终」）留着，正好当 h1 的注脚。
+ *
+ * ⚠ 现在这个框长在 `.vp-doc` 里面，默认主题那套正文排版会级联进来
+ *   （`.vp-doc p` 的 16px 外边距 / 28px 行高、`.vp-doc a` 的下划线与品牌色…）。
+ *   所以框里不用 `<p>`（该是标签的地方用 `<div>`，数据行本来就是 `<dl>`），
+ *   链接那几条也在样式里显式压回来。往框里加新元素时先想一下 .vp-doc 有没有管它。
  */
 import { computed } from 'vue'
 import WikiIcon from './WikiIcon.vue'
 import { useWiki } from '../composables/useWiki'
 import { INFOBOX } from '../../data/infobox.mts'
+import { canonicalPath, locate } from '../../data/structure.mts'
 
-const { canonical, located, locale, t, href, entryLabel, entryByPath, tierOf } = useWiki()
+const props = defineProps<{ path?: string }>()
 
-const box = computed(() => INFOBOX[canonical.value] ?? null)
+const { canonical, located: routeLocated, locale, t, href, entryLabel, entryByPath, tierOf } = useWiki()
+
+/** 规范路径：优先用注入时写死的 path，退回当前路由。 */
+const key = computed(() => (props.path ? canonicalPath(props.path) : canonical.value))
+const located = computed(() => (props.path ? locate(key.value) : routeLocated.value))
+
+const box = computed(() => INFOBOX[key.value] ?? null)
 
 const rows = computed(() =>
   (box.value?.rows ?? []).map((r) => ({
@@ -51,10 +75,10 @@ const links = computed(() =>
     <div class="wiki-infobox__head">
       <WikiIcon :icon="located.entry.icon" :label="entryLabel(located.entry)" :size="46" />
       <div class="wiki-infobox__ident">
-        <p class="wiki-infobox__eyebrow">
+        <div class="wiki-infobox__eyebrow">
           {{ locale === 'en' ? box.eyebrowEn : box.eyebrowZh }}
-        </p>
-        <p class="wiki-infobox__name">{{ entryLabel(located.entry) }}</p>
+        </div>
+        <div class="wiki-infobox__name">{{ entryLabel(located.entry) }}</div>
       </div>
     </div>
 
@@ -69,7 +93,7 @@ const links = computed(() =>
     </dl>
 
     <div v-if="links.length" class="wiki-infobox__links">
-      <p class="wiki-infobox__linkhead">{{ t('相关条目', 'See also') }}</p>
+      <div class="wiki-infobox__linkhead">{{ t('相关条目', 'See also') }}</div>
       <div class="wiki-infobox__linklist">
         <!-- data-brs-ref 让这几条也吃到悬停预览（WikiRefPreview）：它们和正文里的
              实体链接是同一类东西，只有这里没有预览会显得规则不一致。
@@ -183,16 +207,30 @@ const links = computed(() =>
   color: var(--brs-ink-faint);
 }
 
+/*
+ * 提权到 .vp-doc 之下：默认主题的 `.vp-doc a`（下划线 + 品牌色）与
+ * `.vp-doc a:hover`（换色）和原来的 `.wiki-infobox__linklist a` 权重打平或更高，
+ * 框搬进正文之后就会把这几条链接染成正文链接的样子。加一节 .vp-doc 前缀，
+ * hover 那条再多带一个伪类，两边都稳赢。
+ */
+.vp-doc .wiki-infobox__linklist a,
 .wiki-infobox__linklist a {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 4px 0;
   font-size: 13px;
+  font-weight: 500;
   color: var(--brs-brass);
   text-decoration: none;
 }
 
+.vp-doc .wiki-infobox__linklist a:hover,
+.wiki-infobox__linklist a:hover {
+  color: var(--brs-brass);
+}
+
+.vp-doc .wiki-infobox__linklist a:hover span,
 .wiki-infobox__linklist a:hover span {
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -227,7 +265,8 @@ const links = computed(() =>
   .wiki-infobox {
     float: right;
     width: 288px;
-    margin: 4px 0 22px 28px;
+    /* 框顶不额外下沉：它跟在 h1 的下外边距之后，顶边天然与导语首行齐平 */
+    margin: 0 0 22px 28px;
   }
 
   .wiki-infobox__row:last-child {
