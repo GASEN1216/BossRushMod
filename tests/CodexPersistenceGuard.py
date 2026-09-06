@@ -4,21 +4,26 @@
 而且症状要等玩家下次打开面板才显现，人工冒烟基本抓不到。因此存档侧的
 fail-closed 纪律必须由结构守卫钉死。
 
+2026-09-06（D-2）起：单 key 整存状态机在 Common/Lifecycle/BossRushSlotJsonStore.cs，
+落盘协调状态机在 Common/Lifecycle/BossRushSaveCoordinatorEngine.cs；图鉴只保留门面
+（存档 key / schema / 编解码 / 下游复位）。本守卫把共享实现的不变式钉在共享文件上，
+把绑定与下游复位钉在图鉴门面上。
+
 守卫内容：
   1. 存档整存：SavesSystem.Save<string> + KeyExisits 前置分类，不用 typed Save<T>
      （ES3 会把 assembly-qualified 类型名写进档，mod 程序集改名就读不回来）。
   2. schemaVersion 前置校验 + 写屏障 fail-closed：未知版本 / 不可读 payload
-     只读不覆盖，且 Store 必须真的被写屏障挡住。
+     只读不写，且 Store 必须真的被写屏障挡住。
   3. 写入后回读核对（readback mismatch）。
   4. 槽位烙印：ShutdownSubscription 会退订 OnSetFile，此后在主菜单换档没有任何
      回调，缓存不校验 SavesSystem.CurrentSlot 就会把上一个槽的图鉴写进新档
      （与日报 CR-2026-08-29-017 同面）。
   5. 槽位漂移/切档/删档必须同时复位协调器、采集器与目录三个下游，
      否则会出现「数据换了、去重集与目录没换」。
-  6. SavesSystem.SaveFile 只能出现在 CodexSaveCoordinator，且每批至多一次；
-     采集器/编解码/目录/面板一律只能入队。
-  7. 入队之后必须显式 RequestFlush()：_deferredFlushPending 只在 FlushBatch 里
-     置位，而 Tick() 在它为 false 时 O(1) 早返——少了这一行，整条「非基地推迟、
+  6. SavesSystem.SaveFile 只能出现在共享引擎，且每批至多一次；
+     图鉴目录内一律只能入队。
+  7. 入队之后必须显式 RequestFlush()：deferred 只在 FlushBatch 里置位，
+     而 Tick() 在它为 false 时 O(1) 早返——少了这一行，整条「非基地推迟、
      回基地补写」的链路都是死代码，图鉴只能靠官方存盘顺带带走。
   8. 存档事件订阅必须成对退订且用命名方法（AGENTS.md 4.6，禁 lambda）。
   9. 新增 .cs 必须进编译清单（AGENTS.md 4.1）。图鉴的清单由主控合并两个实现
@@ -49,6 +54,9 @@ RUNTIME_MODULE = CODEX_DIR / "CodexRuntimeModule.cs"
 CONFIG = Path("Config/ConfigCodex.cs")
 LOCALIZATION = Path("Localization/CodexLocalization.cs")
 
+STORE = Path("Common/Lifecycle/BossRushSlotJsonStore.cs")
+ENGINE = Path("Common/Lifecycle/BossRushSaveCoordinatorEngine.cs")
+
 COMPILE_LIST = Path("compile_official.bat")
 
 REQUIRED_SOURCES = [
@@ -57,9 +65,11 @@ REQUIRED_SOURCES = [
     CONFIG, LOCALIZATION,
 ]
 
-# 除协调器之外，任何图鉴源文件都不得出现物理落盘调用
+SHARED_SOURCES = [STORE, ENGINE]
+
+# 除共享引擎之外，任何图鉴源文件都不得出现物理落盘调用
 NO_SAVEFILE_SOURCES = [
-    CODEC, PERSISTENCE, CATALOG, COLLECTOR, MILESTONES,
+    CODEC, PERSISTENCE, COORDINATOR, CATALOG, COLLECTOR, MILESTONES,
     PORTRAITS, VIEW, VIEW_GRID, RUNTIME_MODULE,
 ]
 
@@ -85,14 +95,14 @@ def strip_comments(text):
 
 
 def main():
-    for path in REQUIRED_SOURCES:
+    for path in REQUIRED_SOURCES + SHARED_SOURCES:
         if not path.exists():
             return fail("缺少源文件 " + path.as_posix())
 
-    persistence = PERSISTENCE.read_text(encoding="utf-8")
-    persistence_code = strip_comments(persistence)
-    coordinator = COORDINATOR.read_text(encoding="utf-8")
-    coordinator_code = strip_comments(coordinator)
+    persistence_code = strip_comments(PERSISTENCE.read_text(encoding="utf-8"))
+    coordinator_code = strip_comments(COORDINATOR.read_text(encoding="utf-8"))
+    store_code = strip_comments(STORE.read_text(encoding="utf-8"))
+    engine_code = strip_comments(ENGINE.read_text(encoding="utf-8"))
     collector_code = strip_comments(COLLECTOR.read_text(encoding="utf-8"))
     book_code = strip_comments(BOOK_ITEM.read_text(encoding="utf-8"))
     tuning = TUNING.read_text(encoding="utf-8")
@@ -104,34 +114,47 @@ def main():
     if "CurrentSchemaVersion = 1" not in tuning:
         return fail("schemaVersion 必须是 1；升版必须同时写迁移路径")
 
-    # ---- 2) 整存 + 前置分类 + 版本校验 + 写屏障 + 回读核对 ----
+    # ---- 1.5) 门面必须把 key / schema / 编解码绑进共享门面 ----
+    if "BossRushSlotJsonStore<CodexData>" not in persistence_code:
+        return fail("CodexPersistence 必须经共享门面 BossRushSlotJsonStore<CodexData>，不得自带第二份状态机")
+    for binding in (
+        "StorageKey = CodexTuning.StorageKey",
+        "SchemaVersion = CodexTuning.CurrentSchemaVersion",
+        "Encode = CodexCodec.Encode",
+        "ReadSchemaVersion = CodexCodec.ReadSchemaVersion",
+        "Decode = CodexCodec.Decode",
+        "CreateDefault = CodexCodec.CreateDefault",
+    ):
+        if binding not in persistence_code:
+            return fail("CodexPersistence 门面缺少绑定: " + binding)
+
+    # ---- 2) 整存 + 前置分类 + 版本校验 + 写屏障 + 回读核对（共享实现） ----
     for needle, message in (
         ("SavesSystem.Save<string>", "必须 Save<string> 整存 JSON，不用 typed Save<T>"),
         ("SavesSystem.KeyExisits", "必须用 KeyExisits 前置分类新档与老档（官方拼写少一个 t）"),
-        ("ReadSchemaVersion", "必须在解码前校验 schemaVersion"),
+        ("ReadSchemaVersion(raw)", "必须在解码前校验 schemaVersion"),
         ("_writeBarrier = true", "未知版本 / 不可读 payload 必须进写屏障"),
         ("readback mismatch", "写入后必须回读核对"),
     ):
-        if needle not in persistence_code:
+        if needle not in store_code:
             return fail(message + " -> " + needle)
 
-    if not re.search(
-            r"version\s*!=\s*CodexTuning\.CurrentSchemaVersion", persistence_code):
+    if not re.search(r"version\s*!=\s*_spec\.SchemaVersion", store_code):
         return fail(
             "schemaVersion 不等于当前版本时必须 fail-closed（高低版本一律只读不覆盖）")
 
     # 写屏障必须真的挡住写入，而不只是记一个标志
-    if "if (HasWriteBarrier) return false;" not in persistence_code:
+    if "if (HasWriteBarrier) return false;" not in store_code:
         return fail(
             "Store 必须在写屏障时拒写，否则会用空图鉴覆盖掉读不动的存档")
 
     # ---- 3) 槽位烙印（跨档写污染） ----
-    if "SavesSystem.CurrentSlot" not in persistence_code:
+    if "SavesSystem.CurrentSlot" not in store_code:
         return fail(
             "存档缓存必须记录 SavesSystem.CurrentSlot：ShutdownSubscription 会退订 "
             "OnSetFile，此后在主菜单换档没有任何回调，缓存不校验槽位就会把上一个槽的"
             "图鉴 JSON 写进新档")
-    if not re.search(r"_cacheSlot\s*==\s*slot", persistence_code):
+    if not re.search(r"_cacheSlot\s*==\s*slot", store_code):
         return fail(
             "LoadOrInit 命中缓存时必须比对槽位烙印（_cacheSlot == slot），"
             "不一致要自失效并从新槽重载")
@@ -146,60 +169,65 @@ def main():
             return fail(
                 "槽位复位必须同时通知 " + downstream
                 + "，否则新槽会继承上一个槽的去重集与目录快照")
+    if "NotifySlotChanged = NotifySlotChangedDownstream" not in persistence_code:
+        return fail("下游复位必须绑进共享门面（NotifySlotChanged = NotifySlotChangedDownstream）")
 
-    # ---- 5) SaveFile 只能在协调器里，且每批至多一次 ----
+    # ---- 5) SaveFile 只能在共享引擎里，且每批至多一次 ----
     for path in NO_SAVEFILE_SOURCES:
         text = strip_comments(path.read_text(encoding="utf-8"))
         if "SaveFile(" in text:
             return fail(
                 path.as_posix() + " 不得直接调 SavesSystem.SaveFile，"
-                "物理落盘唯一入口是 CodexSaveCoordinator")
+                "物理落盘唯一入口是共享引擎 BossRushSaveCoordinatorEngine")
         if "SaveGlobal(" in text:
             return fail(
                 path.as_posix() + " 不得写全局存档：图鉴是跟槽位的收藏进度，"
                 "SaveGlobal 会让所有存档共用一份图鉴")
 
-    if coordinator_code.count("SavesSystem.SaveFile(") != 1:
-        return fail("协调器里 SaveFile 必须有且只有一次调用（每批至多一次物理落盘）")
-
-    if "SavesSystem.IsSaving" not in coordinator_code:
-        return fail("协调器必须在 IsSaving 时改走 deferred，不得强写")
-
-    if "IsBaseLevelSafe" not in coordinator_code:
+    if "new BossRushSaveCoordinatorEngine(new Source(), true)" not in coordinator_code:
         return fail(
-            "协调器必须有基地场景闸：SaveFile 会做备份拷贝 + 整档同步写盘，"
-            "而图鉴的写入点必然落在交火帧上")
+            "协调器必须持有共享引擎且 deferOutsideBaseScene=true：SaveFile 会做备份拷贝 + "
+            "整档同步写盘，而图鉴的写入点必然落在交火帧上")
 
-    if "bypassSceneGate" not in coordinator_code:
+    if engine_code.count("SavesSystem.SaveFile(") != 1:
+        return fail("引擎里 SaveFile 必须有且只有一次调用（每批至多一次物理落盘）")
+
+    if "SavesSystem.IsSaving" not in engine_code:
+        return fail("引擎必须在 IsSaving 时改走 deferred，不得强写")
+
+    if "IsBaseLevelSafe" not in engine_code:
+        return fail("引擎必须有基地场景闸")
+
+    if "bypassGates" not in engine_code:
         return fail(
-            "宿主销毁 / 关停必须能绕过场景闸落盘（bypassSceneGate），"
+            "宿主销毁 / 关停必须能绕过场景闸落盘（bypassGates），"
             "否则退出游戏时非基地的 pending 会整批丢掉")
 
     # ---- 6) 入队之后必须请求落盘，否则 deferred 重试是死代码 ----
     if "CodexSaveCoordinator.RequestFlush" not in collector_code:
         return fail(
             "CodexKillCollector 入队（CodexPersistence.Store）之后必须调 "
-            "CodexSaveCoordinator.RequestFlush()：_deferredFlushPending 只在 FlushBatch "
+            "CodexSaveCoordinator.RequestFlush()：deferred 只在 FlushBatch "
             "里置位，Tick() 在它为 false 时 O(1) 早返，少了这一行整条「非基地推迟、"
             "回基地补写」链路都不会被点着")
 
-    # ---- 7) 存档事件订阅成对退订且用命名方法 ----
-    adds = re.findall(r"(SavesSystem\.\w+)\s*\+=\s*(\w+)", persistence_code)
-    removes = re.findall(r"(SavesSystem\.\w+)\s*-=\s*(\w+)", persistence_code)
+    # ---- 7) 存档事件订阅成对退订且用命名方法（共享实现） ----
+    adds = re.findall(r"(SavesSystem\.\w+)\s*\+=\s*(\w+)", store_code)
+    removes = re.findall(r"(SavesSystem\.\w+)\s*-=\s*(\w+)", store_code)
     if not adds:
-        return fail("CodexPersistence 必须订阅官方存档事件（OnCollectSaveData/OnSetFile/OnSaveDeleted）")
+        return fail("共享门面必须订阅官方存档事件（OnCollectSaveData/OnSetFile/OnSaveDeleted）")
     if sorted(adds) != sorted(removes):
         return fail(
-            "CodexPersistence 的存档事件订阅与退订不成对：订阅 "
+            "共享门面的存档事件订阅与退订不成对：订阅 "
             + str(sorted(adds)) + "，退订 " + str(sorted(removes)))
     for event, handler in adds:
         if not handler.startswith("Handle"):
             return fail(
                 event + " 必须用命名方法订阅（AGENTS.md 4.6），当前是 " + handler)
-    if re.search(r"SavesSystem\.\w+\s*\+=\s*(delegate|\()", persistence_code):
+    if re.search(r"SavesSystem\.\w+\s*\+=\s*(delegate|\()", store_code):
         return fail("静态存档事件禁止用 lambda / 匿名委托订阅，退订时退不掉")
 
-    if "_subscribed" not in persistence_code:
+    if "_subscribed" not in store_code:
         return fail("存档订阅必须有布尔幂等守卫 _subscribed（AGENTS.md 4.6）")
 
     # ---- 8) 图鉴实体不可倒卖，商店价格与库存存档必须保持可用 ----
@@ -235,6 +263,10 @@ def main():
         warn(
             "图鉴源文件尚未登记进 compile_official.bat（等待主控合并两个实现 agent 的"
             "清单一次加全）。登记后本 guard 会自动转为强制断言。")
+    for path in SHARED_SOURCES:
+        entry = path.as_posix().replace("/", "\\")
+        if entry not in compile_list:
+            return fail("共享存档实现未登记进 compile_official.bat: " + entry)
 
     print("CodexPersistenceGuard: PASS")
     return 0

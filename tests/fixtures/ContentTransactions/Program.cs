@@ -16,8 +16,15 @@ class Program
     static void SetPrivate(object instance, string name, object value)
     {
         var type = instance as Type ?? instance.GetType();
-        type.GetField(name, BindingFlags.Static | BindingFlags.Instance | BindingFlags.NonPublic)
-            .SetValue(instance is Type ? null : instance, value);
+        var field = type.GetField(name, BindingFlags.Static | BindingFlags.Instance | BindingFlags.NonPublic);
+        if (field == null && instance is Type)
+        {
+            // 2026-09-06 (D-2): facade state now lives on the shared BossRushSlotJsonStore instance
+            // held in the facade's private static "_store"; resolve through it.
+            var store = type.GetField("_store", BindingFlags.Static | BindingFlags.NonPublic)?.GetValue(null);
+            if (store != null) { SetPrivate(store, name, value); return; }
+        }
+        field.SetValue(instance is Type ? null : instance, value);
     }
     static void Reset()
     {

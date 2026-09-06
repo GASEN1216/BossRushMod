@@ -19,7 +19,7 @@ import sys
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
-from petnest_guard_util import read_petnest, report, strip_cs_comments  # noqa: E402
+from petnest_guard_util import read_petnest, read_text, repo_path, report, strip_cs_comments  # noqa: E402
 
 GUARD = "PetNestMuseumStatsGuard"
 
@@ -83,8 +83,14 @@ def check_stats(errors):
         hcode = strip_cs_comments(hatch_service)
         if hcode.count("PetNestService.TryCommitHatch(pet,") != 2:
             errors.append("[接线] 孵化与凝蛋必须复用含统计的同一候选提交")
+    # 2026-09-06（D-2）起物理落盘在共享引擎里：SaveFile 成功后回调数据源的
+    # OnPhysicalSaveSucceeded，遗种巢在那里重查成就。两段合起来才是原来的「保存成功后重查」。
     coordinator = strip_cs_comments(read_petnest("PetNestSaveCoordinator.cs") or "")
-    if not 0 <= coordinator.find("SavesSystem.SaveFile(false);") < coordinator.find("PetNestMuseumStats.EvaluatePersistedAchievements();"):
+    engine = strip_cs_comments(read_text(repo_path("Common", "Lifecycle", "BossRushSaveCoordinatorEngine.cs")) or "")
+    succeeded = re.search(r"public void OnPhysicalSaveSucceeded\(\)[\s\S]*?\n            \}", coordinator)
+    if (succeeded is None
+            or "PetNestMuseumStats.EvaluatePersistedAchievements();" not in succeeded.group(0)
+            or not 0 <= engine.find("SavesSystem.SaveFile(false);") < engine.find("_source.OnPhysicalSaveSucceeded();")):
         errors.append("[成就] 孵化延期重试保存成功后必须重查成就")
 
     expedition = read_petnest("PetNestExpeditionService.cs")

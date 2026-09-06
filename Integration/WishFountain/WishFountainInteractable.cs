@@ -2,108 +2,40 @@
 // WishFountainInteractable.cs - 布满了灰尘的星愿许愿台交互组件
 // ============================================================================
 // 模块说明：
-//   继承 InteractableBase，为布满了灰尘的星愿许愿台建筑提供"许愿"交互选项。
+//   为布满了灰尘的星愿许愿台建筑提供"许愿"交互选项。
 //   玩家靠近并触发交互后，打开运行时创建的许愿 View。
 //   当心愿正在发送时，交互会被暂时禁用，避免重复打开和重复提交。
 //
-// 遵循现有交互组件的防御性编程模式（每个操作 try-catch）。
+// 骨架（交互名注入、碰撞体启用、base.* 隔离、完成后回调）自 2026-09-06 起只有一份：
+// Interactables/BossRushBuildingInteractableBase.cs（它就是照本文件的防御式写法抽出来的）。
+// 许愿台上线以来不初始化交互组，这里沿用（InteractionGroupLabel 保持默认 null）。
 // ============================================================================
-
-using System;
-using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>
     /// 布满了灰尘的星愿许愿台交互组件
     /// </summary>
-    public class WishFountainInteractable : InteractableBase
+    public class WishFountainInteractable : BossRushBuildingInteractableBase
     {
-        protected override void Awake()
-        {
-            try
-            {
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_StarWish_Interact";
-                this.InteractName = "BossRush_StarWish_Interact";
-            }
-            catch { }
+        protected override string InteractNameKey { get { return "BossRush_StarWish_Interact"; } }
 
-            try
-            {
-                this.interactCollider = GetComponent<Collider>();
-            }
-            catch { }
+        protected override string LogPrefix { get { return "[WishFountain] "; } }
 
-            try
-            {
-                this.interactMarkerOffset = new Vector3(0f, 1.5f, 0f);
-            }
-            catch { }
+        protected override float InteractMarkerHeight { get { return 1.5f; } }
 
-            try
-            {
-                base.Awake();
-            }
-            catch { }
-
-            try
-            {
-                if (this.interactCollider != null)
-                {
-                    this.interactCollider.enabled = true;
-                }
-            }
-            catch { }
-        }
-
-        protected override void Start()
-        {
-            try
-            {
-                base.Start();
-            }
-            catch { }
-
-            try
-            {
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = "BossRush_StarWish_Interact";
-                this.InteractName = "BossRush_StarWish_Interact";
-            }
-            catch { }
-        }
-
-        protected override bool IsInteractable()
+        protected override bool IsBuildingInteractable()
         {
             // 发送中时不允许再次交互
-            if (WishFountainService.IsSending)
-            {
-                return false;
-            }
-
-            return true;
+            return !WishFountainService.IsSending;
         }
 
-        protected override void OnTimeOut()
+        protected override void OnInteractCompleted()
         {
-            try
+            // 打开许愿 UI
+            if (ModBehaviour.Instance != null)
             {
-                base.OnTimeOut();
-            }
-            catch { }
-
-            try
-            {
-                // 打开许愿 UI
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.OpenWishFountainUI();
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[WishFountain] 交互触发异常: " + e.Message);
+                ModBehaviour.Instance.OpenWishFountainUI();
             }
         }
     }

@@ -9,116 +9,34 @@
 //
 // 交互体本身随场景销毁；召唤石由 CampaignFinalBoss 的维护逻辑按需重建，
 // 因此这里不做任何持久化。
+//
+// 骨架（交互名注入、碰撞体启用、交互组初始化、base.* 隔离、完成后回调）
+// 自 2026-09-06 起只有一份：Interactables/BossRushBuildingInteractableBase.cs。
 // ============================================================================
-
-using System;
-using BossRush.Utils;
-using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>终章决战召唤石的交互组件。</summary>
-    public class CampaignFinalBossInteractable : InteractableBase
+    public class CampaignFinalBossInteractable : BossRushBuildingInteractableBase
     {
         /// <summary>交互名的本地化键（由 CampaignLocalization 注入）。</summary>
-        private const string InteractNameKey = "BossRush_Campaign_FinalBoss_Interact";
+        protected override string InteractNameKey { get { return "BossRush_Campaign_FinalBoss_Interact"; } }
 
-        protected override void Awake()
+        protected override string LogPrefix { get { return CampaignTuning.LogPrefix; } }
+
+        protected override string InteractionGroupLabel { get { return "[CampaignFinalBoss]"; } }
+
+        protected override float InteractMarkerHeight { get { return 1.2f; } }
+
+        protected override bool IsBuildingInteractable()
         {
-            ApplyInteractName("awake");
-
-            try
-            {
-                this.interactCollider = GetComponent<Collider>();
-                this.interactMarkerOffset = new Vector3(0f, 1.2f, 0f);
-                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[CampaignFinalBoss]");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战交互体绑定失败: " + e.Message);
-            }
-
-            try
-            {
-                base.Awake();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] base.Awake 异常: " + e.Message);
-            }
-
-            try
-            {
-                if (this.interactCollider != null) this.interactCollider.enabled = true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战交互体启用失败: " + e.Message);
-            }
+            ModBehaviour owner = ModBehaviour.Instance;
+            return owner != null && owner.CanStartCampaignFinalBoss();
         }
 
-        protected override void Start()
+        protected override void OnInteractCompleted()
         {
-            try
-            {
-                base.Start();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] base.Start 异常: " + e.Message);
-            }
-
-            ApplyInteractName("start");
-        }
-
-        private void ApplyInteractName(string stage)
-        {
-            try
-            {
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = InteractNameKey;
-                this.InteractName = InteractNameKey;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix
-                    + "[WARNING] 决战交互名设置失败(" + stage + "): " + e.Message);
-            }
-        }
-
-        protected override bool IsInteractable()
-        {
-            try
-            {
-                ModBehaviour owner = ModBehaviour.Instance;
-                return owner != null && owner.CanStartCampaignFinalBoss();
-            }
-            catch (Exception)
-            {
-                // 每帧靠近都会跑，失败时静默禁用，不打日志免得刷屏
-                return false;
-            }
-        }
-
-        protected override void OnTimeOut()
-        {
-            try
-            {
-                base.OnTimeOut();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] base.OnTimeOut 异常: " + e.Message);
-            }
-
-            try
-            {
-                ModBehaviour.Instance?.StartCampaignFinalBoss();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "决战触发异常: " + e.Message);
-            }
+            ModBehaviour.Instance?.StartCampaignFinalBoss();
         }
     }
 }

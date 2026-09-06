@@ -182,6 +182,7 @@ namespace BossRush
     {
         public static DailyReportData Current;
         public static bool HasPendingWrite, IsStoreFaulted, HasWriteBarrier, RejectStore;
+        public static string LastError;
         public static void EnsureSubscribed() { }
         public static void ShutdownSubscription() { }
         public static void ResetStaticCaches() { HasPendingWrite = false; IsStoreFaulted = HasWriteBarrier = RejectStore = false; }

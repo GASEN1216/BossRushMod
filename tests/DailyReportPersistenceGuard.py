@@ -4,12 +4,16 @@
 断签与悬赏并发奖。这些不变式一旦被破坏，玩家会丢签到进度或重复领奖，
 而且症状要等一个游戏日（≈24 现实分钟）之后才显现，人工冒烟很难抓。
 
+2026-09-06（D-2）起：单 key 整存状态机在 Common/Lifecycle/BossRushSlotJsonStore.cs，
+落盘协调状态机在 Common/Lifecycle/BossRushSaveCoordinatorEngine.cs；日报只保留门面。
+共享实现的不变式钉在共享文件上，绑定与下游复位钉在日报门面上。
+
 守卫内容：
   1. 计时口径：只累计宿主 deltaTime * clockTimeScale，禁止订阅 GameClock.OnGameClockStep
      或改读 GameClock.Day（那会把睡觉/newBoot 的时间跳变算进来）。
   2. 一天的秒数必须与官方 GameClock.SecondsPerDay 一致（86300，不是 86400）。
   3. 存档走 Save<string> 整存 + schemaVersion 前置校验 + 回读核对 + 写屏障 fail-closed。
-  4. SaveFile 只能出现在协调器里，且每批至多一次。
+  4. SaveFile 只能出现在共享引擎里，且每批至多一次。
   5. 里程碑发奖必须先发后标记，且用位掩码做幂等。
   6. 事件订阅必须成对退订（AGENTS.md 4.6）。
   7. 新增 .cs 必须进编译清单（AGENTS.md 4.1）。
@@ -33,6 +37,8 @@ COORDINATOR = Path("Integration/DailyReport/DailyReportSaveCoordinator.cs")
 REWARDS = Path("Integration/DailyReport/DailyReportRewards.cs")
 COLLECTOR = Path("Integration/DailyReport/DailyReportStatsCollector.cs")
 MODULE = Path("Integration/DailyReport/DailyReportRuntimeModule.cs")
+STORE = Path("Common/Lifecycle/BossRushSlotJsonStore.cs")
+ENGINE = Path("Common/Lifecycle/BossRushSaveCoordinatorEngine.cs")
 COMPILE_LIST = Path("compile_official.bat")
 
 REQUIRED_SOURCES = [
@@ -48,6 +54,7 @@ REQUIRED_SOURCES = [
     Path("Integration/DailyReport/DailyReportMailboxRuntime.cs"),
     Path("Config/ConfigDailyReport.cs"),
     Path("Localization/DailyReportLocalization.cs"),
+    STORE, ENGINE,
 ]
 
 
@@ -77,12 +84,18 @@ def main():
     service = SERVICE.read_text(encoding="utf-8")
     persistence = PERSISTENCE.read_text(encoding="utf-8")
     coordinator = COORDINATOR.read_text(encoding="utf-8")
+    store = STORE.read_text(encoding="utf-8")
+    engine = ENGINE.read_text(encoding="utf-8")
     rewards = REWARDS.read_text(encoding="utf-8")
     collector = COLLECTOR.read_text(encoding="utf-8")
     models = Path("Integration/DailyReport/DailyReportModels.cs").read_text(encoding="utf-8")
     codec = Path("Integration/DailyReport/DailyReportCodec.cs").read_text(encoding="utf-8")
     ui = Path("Integration/DailyReport/DailyReportUI.cs").read_text(encoding="utf-8")
     compile_list = COMPILE_LIST.read_text(encoding="utf-8", errors="ignore")
+    store_code = strip_comments(store)
+    engine_code = strip_comments(engine)
+    persistence_code = strip_comments(persistence)
+    coordinator_code = strip_comments(coordinator)
 
     # ---- 1) 一天的秒数必须镜像官方值 ----
     if "GameSecondsPerDay = 86300d" not in tuning:
@@ -101,49 +114,66 @@ def main():
     if "clockTimeScale" not in service_code:
         return fail("计时必须乘官方 clockTimeScale，才能跟随玩家改过的时钟倍率")
 
-    # ---- 3) 存档整存 + 版本前置 + 回读核对 + 写屏障 ----
+    # ---- 3) 存档整存 + 版本前置 + 回读核对 + 写屏障（共享实现 + 门面绑定） ----
+    if "BossRushSlotJsonStore<DailyReportData>" not in persistence_code:
+        return fail("DailyReportPersistence 必须经共享门面 BossRushSlotJsonStore<DailyReportData>")
+    for binding in (
+        "StorageKey = DailyReportTuning.StorageKey",
+        "SchemaVersion = DailyReportTuning.CurrentSchemaVersion",
+        "ReadSchemaVersion = DailyReportCodec.ReadSchemaVersion",
+        "Decode = DailyReportCodec.Decode",
+        "CreateDefault = DailyReportCodec.CreateDefault",
+    ):
+        if binding not in persistence_code:
+            return fail("DailyReportPersistence 门面缺少绑定: " + binding)
     for needle, message in (
         ("SavesSystem.Save<string>", "必须 Save<string> 整存 JSON，不用 typed Save<T>"),
         ("SavesSystem.KeyExisits", "必须用 KeyExisits 前置分类新档与老档"),
-        ("ReadSchemaVersion", "必须在解码前校验 schemaVersion"),
+        ("ReadSchemaVersion(raw)", "必须在解码前校验 schemaVersion"),
         ("_writeBarrier = true", "未知版本 / 不可读 payload 必须进写屏障"),
         ("readback mismatch", "写入后必须回读核对"),
     ):
-        if needle not in persistence:
+        if needle not in store_code:
             return fail(message + " -> " + needle)
 
     # 写屏障必须真的挡住写入
-    if "if (HasWriteBarrier) return false;" not in persistence:
+    if "if (HasWriteBarrier) return false;" not in store_code:
         return fail("Store 必须在写屏障时拒写，否则会覆盖更高版本的存档")
 
-    # ---- 4) SaveFile 只能在协调器里，且每批至多一次 ----
+    # ---- 4) SaveFile 只能在共享引擎里，且每批至多一次 ----
     for path, text in (
         (SERVICE, service_code),
-        (PERSISTENCE, strip_comments(persistence)),
+        (PERSISTENCE, persistence_code),
+        (COORDINATOR, coordinator_code),
         (REWARDS, strip_comments(rewards)),
         (COLLECTOR, strip_comments(collector)),
     ):
         if "SaveFile(" in text:
             return fail(
                 path.as_posix() + " 不得直接调 SavesSystem.SaveFile，"
-                "物理落盘唯一入口是 DailyReportSaveCoordinator")
+                "物理落盘唯一入口是共享引擎 BossRushSaveCoordinatorEngine")
 
-    if strip_comments(coordinator).count("SavesSystem.SaveFile(") != 1:
-        return fail("协调器里 SaveFile 必须有且只有一次调用（每批至多一次物理落盘）")
+    if "new BossRushSaveCoordinatorEngine(new Source(), true)" not in coordinator_code:
+        return fail("协调器必须持有共享引擎且 deferOutsideBaseScene=true（跨天可能落在交火帧上）")
 
-    if "SavesSystem.IsSaving" not in coordinator:
-        return fail("协调器必须在 IsSaving 时改走 deferred，不得强写")
+    if engine_code.count("SavesSystem.SaveFile(") != 1:
+        return fail("引擎里 SaveFile 必须有且只有一次调用（每批至多一次物理落盘）")
+
+    if "SavesSystem.IsSaving" not in engine_code:
+        return fail("引擎必须在 IsSaving 时改走 deferred，不得强写")
 
     # ---- 5) 里程碑幂等：位掩码 + 先发后标记 ----
     if "PeriodClaimedMask" not in service:
         return fail("里程碑领取必须用位掩码做幂等")
     grant_index = service.find("TryGrantMilestone")
-    mark_index = service.find("MarkMilestoneClaimed(result.PeriodSlot)")
+    mark_index = service.find("bool marked = MarkMilestoneClaimed(debt)")
     if grant_index < 0 or mark_index < 0 or grant_index > mark_index:
         return fail("必须先发奖成功再置领取掩码（先发后标记），否则发放失败会吞掉奖励")
+    if "DailyReportMilestoneDebt" not in service or "StagePendingMilestones" not in service:
+        return fail("里程碑必须先冻结独立欠奖，不能仅靠断签/翻期会清零的掩码补发")
 
     # ---- 6) 事件订阅成对退订 ----
-    for text, path in ((persistence, PERSISTENCE), (collector, COLLECTOR)):
+    for text, path in ((store, STORE), (persistence, PERSISTENCE), (collector, COLLECTOR)):
         adds = len(re.findall(r"\+=\s*Handle|\+=\s*On", text))
         removes = len(re.findall(r"-=\s*Handle|-=\s*On", text))
         if adds == 0:
@@ -152,6 +182,8 @@ def main():
             return fail(
                 path.as_posix() + " 的事件订阅与退订不成对（订阅 "
                 + str(adds) + " 处，退订 " + str(removes) + " 处）")
+    if not re.search(r"SavesSystem\.OnCollectSaveData\s*\+=\s*Handle", store_code):
+        return fail("共享门面必须订阅 OnCollectSaveData（命名方法）")
 
     # ---- 6.5) Mode H 不进个人战绩（owner 2026-09-03 定） ----
     # 门控必须在 IsActive 这个总闸上，而不是逐个 handler：击杀、双向伤害与玩家阵亡
@@ -172,13 +204,12 @@ def main():
             return fail("PlayerLifecycleRuntimeHooks 中 " + handler + " 必须成对订阅/退订")
 
     # ---- 8) 存档缓存必须带槽位烙印（跨档写污染，CR-2026-08-29-017） ----
-    persistence_code = strip_comments(persistence)
-    if "SavesSystem.CurrentSlot" not in persistence_code:
+    if "SavesSystem.CurrentSlot" not in store_code:
         return fail(
             "存档缓存必须记录 SavesSystem.CurrentSlot：ShutdownSubscription 会退订 "
             "OnSetFile，此后在主菜单换档没有任何回调，缓存不校验槽位就会把上一个槽的"
             "日报 JSON 写进新档")
-    if not re.search(r"_cacheSlot\s*==\s*slot", persistence_code):
+    if not re.search(r"_cacheSlot\s*==\s*slot", store_code):
         return fail(
             "LoadOrInit 命中缓存时必须比对槽位烙印（_cacheSlot == slot），"
             "不一致要自失效并从新槽重载")
@@ -186,6 +217,8 @@ def main():
         return fail(
             "槽位复位必须同时复位 Service 的运行时计时状态，"
             "否则会出现「数据换了、计时没换」")
+    if "NotifySlotChanged = NotifySlotChangedDownstream" not in persistence_code:
+        return fail("下游复位必须绑进共享门面（NotifySlotChanged = NotifySlotChangedDownstream）")
 
     # ---- 9) 悬赏现金必须检查 EconomyManager.Add 返回值 ----
     rewards_code = strip_comments(rewards)

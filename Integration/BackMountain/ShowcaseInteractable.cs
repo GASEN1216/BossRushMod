@@ -1,122 +1,36 @@
 // ============================================================================
 // ShowcaseInteractable.cs - 战利品展示柜交互组件
 // ============================================================================
-// 形态照 Integration/DailyReport/DailyReportInteractable.cs：继承官方 InteractableBase，
-// 交互完成（OnTimeOut）后打开展示柜面板。
-//
-// base.Awake() / base.Start() 单独包 try/catch：其他 Mod 可能 patch 了
-// InteractableBase，它们的异常不能把我们的建筑一起拖挂。
+// 骨架（交互名注入、碰撞体启用、交互组初始化、base.* 隔离、完成后回调）
+// 自 2026-09-06 起只有一份：Interactables/BossRushBuildingInteractableBase.cs。
+// 本文件只声明展示柜自己的几项：交互名 key、交互组标签、可交互条件（含设施解锁）、
+// 打开展示柜面板。
 // ============================================================================
-
-using System;
-using BossRush.Utils;
-using UnityEngine;
 
 namespace BossRush
 {
     /// <summary>基地战利品展示柜的交互组件。</summary>
-    public class ShowcaseInteractable : InteractableBase
+    public class ShowcaseInteractable : BossRushBuildingInteractableBase
     {
         /// <summary>交互名的本地化键（由 BackMountainLocalization 注入）。</summary>
-        private const string InteractNameKey = "BossRush_BackMountain_Showcase_Interact";
+        protected override string InteractNameKey { get { return "BossRush_BackMountain_Showcase_Interact"; } }
 
-        protected override void Awake()
+        protected override string LogPrefix { get { return BackMountainConfig.LogPrefix; } }
+
+        protected override string InteractionGroupLabel { get { return "[BackMountainShowcase]"; } }
+
+        protected override float InteractMarkerHeight { get { return 1.3f; } }
+
+        protected override bool IsBuildingInteractable()
         {
-            ApplyInteractName("awake");
-
-            try
-            {
-                this.interactCollider = GetComponent<Collider>();
-                this.interactMarkerOffset = new Vector3(0f, 1.3f, 0f);
-                NPCInteractionGroupHelper.GetOrCreateGroupList(this, "[BackMountainShowcase]");
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 展示柜交互体绑定失败: " + e.Message);
-            }
-
-            try
-            {
-                base.Awake();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] base.Awake 异常: " + e.Message);
-            }
-
-            try
-            {
-                if (this.interactCollider != null) this.interactCollider.enabled = true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 展示柜交互体启用失败: " + e.Message);
-            }
+            ModBehaviour owner = ModBehaviour.Instance;
+            if (owner == null || !owner.IsBackMountainConfiguredEnabled()) return false;
+            return BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase);
         }
 
-        protected override void Start()
+        protected override void OnInteractCompleted()
         {
-            try
-            {
-                base.Start();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] base.Start 异常: " + e.Message);
-            }
-
-            ApplyInteractName("start");
-        }
-
-        private void ApplyInteractName(string stage)
-        {
-            try
-            {
-                this.overrideInteractName = true;
-                this._overrideInteractNameKey = InteractNameKey;
-                this.InteractName = InteractNameKey;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix
-                    + "[WARNING] 展示柜交互名设置失败(" + stage + "): " + e.Message);
-            }
-        }
-
-        protected override bool IsInteractable()
-        {
-            try
-            {
-                ModBehaviour owner = ModBehaviour.Instance;
-                if (owner == null || !owner.IsBackMountainConfiguredEnabled()) return false;
-                return BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase);
-            }
-            catch (Exception)
-            {
-                // 每次靠近都会跑，失败时静默禁用，不打日志免得刷屏
-                return false;
-            }
-        }
-
-        protected override void OnTimeOut()
-        {
-            try
-            {
-                base.OnTimeOut();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] base.OnTimeOut 异常: " + e.Message);
-            }
-
-            try
-            {
-                ModBehaviour.Instance?.OpenShowcaseUI();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜交互触发异常: " + e.Message);
-            }
+            ModBehaviour.Instance?.OpenShowcaseUI();
         }
     }
 }

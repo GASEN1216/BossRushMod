@@ -2,6 +2,7 @@
 """Guard: fixes derived from the 2026-08-31 F3 Player.log remain wired."""
 
 from pathlib import Path
+import re
 import sys
 
 
@@ -29,8 +30,25 @@ def main() -> int:
         "Integration/AffixForge/GoblinAffixForgeInteractable.cs": "[AffixForge]",
         "RandomEvents/RandomEventEffectsBridge_Spawn.cs": "[RandomEventMerchantShop]",
     }
+    # 2026-09-06（D-2）起，建筑交互体的骨架收进 Interactables/BossRushBuildingInteractableBase.cs：
+    # 「otherInterablesInGroup 在 base.Awake 前初始化」的时序由基类保证一次，
+    # 子类只需把标签交给 InteractionGroupLabel。基类本身仍按原样断言；
+    # 不走基类的文件（随机事件商人）沿用逐文件断言。
+    base_path = "Interactables/BossRushBuildingInteractableBase.cs"
+    base_code = read(base_path)
+    base_label_at = base_code.find("InteractionGroupLabel;")
+    base_awake_at = base_code.find("base.Awake()", base_label_at)
+    if (base_label_at < 0 or base_awake_at < base_label_at
+            or "GetOrCreateGroupList" not in base_code[base_label_at:base_awake_at]):
+        errors.append(base_path + " 未在 base.Awake 前初始化 otherInterablesInGroup")
     for path, label in required_group_init.items():
         code = read(path)
+        if ": BossRushBuildingInteractableBase" in code:
+            label_override = re.search(
+                r"protected override string InteractionGroupLabel\s*\{\s*get\s*\{\s*return\s*\"([^\"]+)\";", code)
+            if label_override is None or label_override.group(1) != label:
+                errors.append(path + " 必须经 InteractionGroupLabel 交出交互组标签 " + label)
+            continue
         at = code.find(label)
         base_at = code.find("base.Awake()", at)
         if at < 0 or base_at < at or "GetOrCreateGroupList" not in code[max(0, at - 180):base_at]:

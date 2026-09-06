@@ -29,7 +29,11 @@ def main():
     for signature in ("internal static void TryRedeliverPendingBountyReward()", "private static bool Persist(DailyReportData data)"):
         extracted += method("Integration/DailyReport/DailyReportService.cs", signature) + "\n"
     extracted += "}\ninternal static partial class DailyReportPersistence {\n"
-    extracted += method("Integration/DailyReport/DailyReportPersistence.cs", "private static void HandleCollectSaveData()")
+    # 2026-09-06 (D-2): the collect callback lives in the shared BossRushSlotJsonStore; the daily
+    # facade only contributes BeforeCollectSaveData(). Extract that hook and rebuild the callback
+    # shape the store executes (hook -> FlushPending) so the ordering assertion still runs.
+    extracted += method("Integration/DailyReport/DailyReportPersistence.cs", "private static bool BeforeCollectSaveData()") + "\n"
+    extracted += "private static void HandleCollectSaveData() { try { if (!BeforeCollectSaveData()) return; FlushPending(); } catch (Exception) { } }\n"
     extracted += "}\ninternal static partial class DailyReportRewards {\n"
     extracted += method("Integration/DailyReport/DailyReportRewards.cs", "internal static bool TryGrantBountyCash(long amount, out string failureReason)")
     extracted += "}}"
@@ -40,6 +44,8 @@ def main():
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
         "Integration/BackMountain/RaidMealUsageBehavior.cs",
         "Common/Lifecycle/BossRushSaveFileThrottle.cs",
+        "Common/Lifecycle/BossRushSaveCoordinatorEngine.cs",
+        "Common/Lifecycle/BossRushSlotJsonStore.cs",
         "Common/Data/BossRushJsonValue.cs",
         "Utilities/SimpleJsonHelper.cs",
     ] + ["PetNest/" + name + ".cs" for name in (
