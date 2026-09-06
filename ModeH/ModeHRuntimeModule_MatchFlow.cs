@@ -105,10 +105,19 @@ namespace BossRush
                 return;
             }
 
-            // 跨会话同场重开只恢复战前预约，不重放已存在的结算事实。
-            if (_resumeNeedsMatchReset && resume == ModeHLifecycle.MatchBrief)
+            // 自动重试和恢复壳共用资产屏障；未结清的押品不得进入可重新锁盘的页面。
+            if (resume == ModeHLifecycle.MatchBrief)
             {
-                RestoreMatchReservationAndSnapshot();
+                string assetFailure;
+                if (!ModeHRealStakeService.TryPrepareTechnicalRetry(
+                        _runState.RunId, _runState.RunSeed, _runState.MatchIndex, out assetFailure))
+                {
+                    RequestSuspended(assetFailure ?? "retry_assets_unresolved", false);
+                    return;
+                }
+                // 同会话挂起后重试可能复用原租约，不经过续赛切图设置 reset 标志。
+                if (_resumeNeedsMatchReset || (_season != null && _season.preMatchSnapshot != null))
+                    RestoreMatchReservationAndSnapshot();
             }
             _resumeNeedsMatchReset = false;
 
@@ -198,7 +207,19 @@ namespace BossRush
             if (ownsMatchRuntime)
             {
                 ReleaseCombatRuntimeObjects();
-                RestoreMatchReservationAndSnapshot();
+            }
+            // 已有完整战报时只恢复结算；绝不撤销结果或重复发奖。
+            if (FindLatestPendingReport() == null)
+            {
+                string assetFailure;
+                if (!ModeHRealStakeService.TryPrepareTechnicalRetry(
+                        _runState.RunId, _runState.RunSeed, _runState.MatchIndex, out assetFailure))
+                {
+                    RequestSuspended(assetFailure ?? "retry_assets_unresolved", false);
+                    return;
+                }
+                if (ownsMatchRuntime || (_season != null && _season.preMatchSnapshot != null))
+                    RestoreMatchReservationAndSnapshot();
             }
             int retries = _runState.IncrementTechnicalRetry();
             ModBehaviour.DevLog("[ModeH] 技术故障 (" + (reasonId ?? "unknown") + ") retry=" + retries);
@@ -1062,13 +1083,13 @@ namespace BossRush
                 }
                 if (!TryTransition(ModeHLifecycle.OddsPreview, ModeHLifecycle.LoadoutLocked, "loadout_locked"))
                 {
-                    RestoreMatchReservationAndSnapshot();
+                    RequestTechnicalRetry("loadout_transition_failed");
                     return;
                 }
                 // 开战前的最后一个显式落盘点：技术中止要按它回到同一场
                 if (!TryPersistSeason("loadout_locked", true))
                 {
-                    RestoreMatchReservationAndSnapshot();
+                    // 挂起保留赛前快照；恢复时经资产屏障确认退款后才撤销预约。
                     RequestSuspended("loadout_persist_failed");
                     return;
                 }
@@ -1090,7 +1111,8 @@ namespace BossRush
             // 让恢复流程能从 lifecycle 一眼看出"这一场有押品"。
             // 没押的主干仍是 LoadoutLocked -> MatchSpawning 直连（guard 冻结这一点）。
             ModeHLifecycle spawnOrigin = ModeHLifecycle.LoadoutLocked;
-            if (ModeHWarehouseStakeJournal.Active != null)
+            if (_season != null && _season.currentLoadoutLock != null
+                && _season.currentLoadoutLock.realStakeSelected)
             {
                 if (!TryTransition(ModeHLifecycle.LoadoutLocked, ModeHLifecycle.StakePrepared,
                         "stake_prepared"))
@@ -1135,14 +1157,7 @@ namespace BossRush
             }
             _spawnTransaction = null;
 
-            // 真实押品必须与虚拟筹码对称退还，且必须在 RestoreMatchReservationAndSnapshot
-            // 之前：那里会清掉 currentLoadoutLock，之后重试的 TryLockForMatch 会撞
-            // journal_active_exists 让锁盘永久失败。物品在 PrepareLockedMatch 里已被摘出仓库，
-            // 只活在内存的 _escrowItems 中，不还就是永久丢失。
-            TryReturnRealStakeOnAbort("spawn_abort:" + (reasonId != null ? reasonId : "spawn_failed"));
-
-            RestoreMatchReservationAndSnapshot();
-
+            // 真实押品与虚拟预约在统一技术重试入口按屏障顺序收口。
             if (_runState == null) return;
             RequestTechnicalRetry(reasonId != null ? reasonId : "spawn_failed");
         }

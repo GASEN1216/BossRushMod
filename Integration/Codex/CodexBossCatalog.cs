@@ -266,6 +266,35 @@ namespace BossRush
             }
         }
 
+        /// <summary>新解锁的目录外 Boss 立即入册；保留已构建的官方池，避免每次击杀全量重建。</summary>
+        internal static void SynchronizeHistoricalEntries(CodexData data)
+        {
+            EnsureBuilt(ModBehaviour.Instance);
+            lock (_lock)
+            {
+                if (!_built || _byKey == null || _ordered == null) return;
+                int before = _ordered.Count;
+                AddHistoricalEntries(data, _byKey, _ordered);
+                if (_ordered.Count != before) _buildCount++;
+            }
+        }
+
+        /// <summary>全录按每个实际目录 key 判定，额外历史条目不能抵掉尚未解锁的 Boss。</summary>
+        internal static bool IsFullyUnlocked(CodexData data)
+        {
+            if (data == null) return false;
+            lock (_lock)
+            {
+                if (!_built || _ordered == null || _ordered.Count == 0) return false;
+                for (int i = 0; i < _ordered.Count; i++)
+                {
+                    CodexEntry entry = data.Find(_ordered[i].Key);
+                    if (entry == null || entry.Kills <= 0) return false;
+                }
+                return true;
+            }
+        }
+
         #endregion
 
         #region 显示名回落链

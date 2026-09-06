@@ -23,11 +23,12 @@
 //    - 本期签满 DaysPerPeriod 后不立刻翻期，而是在**下一次签到时**先翻期再签，
 //      这样 UI 上"第 30 格已签"的状态能停留一整天（owner 决策：满 30 下一天变第 2 期）。
 //
-// 4) 里程碑发奖用位掩码 PeriodClaimedMask 做幂等，不用 token 列表；
+// 4) 独立 PendingMilestones 保存原奖励身份，PeriodClaimedMask 只标记当前签到墙；
 //    发奖顺序是**先发后标记**（MarkMilestoneClaimed），宁可极端情况下重发也不吞奖励。
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -301,6 +302,7 @@ namespace BossRush
 
             // 0) 悬赏结算只冻结待发债务；现金必须等整份 rollover 被持久层接受后再发。
             StageBountySettlement(data);
+            StagePendingMilestones(data);
 
             // 1) 断签：刚结束的这天没签到 -> 清回本期第 0 格（期号保留）
             if (data.LastSignedDayIndex != data.DayIndex)
@@ -530,6 +532,7 @@ namespace BossRush
                 }
 
                 DailyReportData data = current.Clone();
+                StagePendingMilestones(data);
 
                 // 本期已签满：下一次签到先翻期，再从新一期第 1 格开始。
                 if (data.PeriodSignedCount >= DailyReportTuning.DaysPerPeriod)
@@ -548,6 +551,7 @@ namespace BossRush
 
                 int slot = data.PeriodSignedCount;
                 int quality = GetMilestoneQuality(data.PeriodIndex, slot);
+                StagePendingMilestones(data);
 
                 if (!Persist(data))
                 {
@@ -584,25 +588,15 @@ namespace BossRush
             try
             {
                 DailyReportData data = DailyReportPersistence.Current;
-                if (data == null) return result;
-
-                string reason;
-                bool granted = DailyReportRewards.TryGrantMilestone(
-                    result.MilestoneQuality, EnsureBountySeed(data),
-                    ResolveMilestoneSignDayIndex(data, result.PeriodSlot),
-                    result.PeriodSlot, out reason);
-
-                if (granted)
-                {
-                    MarkMilestoneClaimed(result.PeriodSlot);
-                }
-                else
+                DailyReportMilestoneDebt debt = FindCurrentMilestone(data, result.PeriodSlot);
+                bool persistenceBlocked;
+                if (!TryDeliverMilestone(debt, out persistenceBlocked))
                 {
                     // 没发出去就不置掩码：下次开面板时 TryRedeliverPendingMilestone 会补。
                     result.HitMilestone = false;
                     result.MilestoneQuality = 0;
                     ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                        + "[WARNING] 里程碑奖励发放失败（" + reason + "），保留未领状态待补发");
+                        + "[WARNING] 里程碑奖励未完成发放，保留欠奖待补发");
                 }
             }
             catch (Exception e)
@@ -613,39 +607,85 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 补发本期已签到但发放失败的里程碑奖励（打开面板时调用）。
-        /// 只补「格位已签到 && 掩码未置位」的里程碑，幂等。
+        /// 补发所有已挣得的里程碑奖励，包括断签前与旧期债务（打开面板时调用）。
+        /// 发奖前先入队欠奖并复查故障；已知无法标记时不得继续发送实物。
         /// </summary>
         internal static void TryRedeliverPendingMilestones()
         {
             try
             {
                 DailyReportData data = DailyReportPersistence.Current;
-                if (data == null) return;
-                if (data.PeriodSignedCount <= 0) return;
+                if (data == null || !CanDeliverMilestone()) return;
+                DailyReportData candidate = data.Clone();
+                StagePendingMilestones(candidate);
+                if (candidate.PendingMilestones.Count == 0) return;
+                if (!Persist(candidate) || !CanDeliverMilestone()) return;
 
-                for (int slot = 1; slot <= data.PeriodSignedCount; slot++)
+                // 使用快照迭代；每次成功标记都替换持久层缓存，不能修改被枚举的列表。
+                for (int i = 0; i < candidate.PendingMilestones.Count; i++)
                 {
-                    int quality = GetMilestoneQuality(data.PeriodIndex, slot);
-                    if (quality <= 0) continue;
-                    if (IsMilestoneClaimed(data, slot)) continue;
-
-                    string reason;
-                    // 用「签到当日」而不是当前 DayIndex：跨天补发必须抽回同一件，
-                    // 见 ResolveMilestoneSignDayIndex 与 DailyReportRewards 头注释的确定性承诺。
-                    if (DailyReportRewards.TryGrantMilestone(quality, EnsureBountySeed(data),
-                        ResolveMilestoneSignDayIndex(data, slot), slot, out reason))
-                    {
-                        MarkMilestoneClaimed(slot);
-                        ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                            + "里程碑奖励补发成功：第 " + slot + " 格");
-                    }
+                    if (!CanDeliverMilestone()) break;
+                    bool persistenceBlocked;
+                    TryDeliverMilestone(candidate.PendingMilestones[i], out persistenceBlocked);
+                    if (persistenceBlocked) break;
                 }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 里程碑补发异常: " + e.Message);
             }
+        }
+
+        private static bool CanDeliverMilestone()
+        {
+            return !DailyReportPersistence.IsStoreFaulted && !DailyReportPersistence.HasWriteBarrier;
+        }
+
+        /// <summary>从当前未领格位补齐债务；必须在断签/翻期改变原身份前调用。</summary>
+        private static void StagePendingMilestones(DailyReportData data)
+        {
+            if (data.PendingMilestones == null)
+                data.PendingMilestones = new List<DailyReportMilestoneDebt>();
+            for (int slot = 1; slot <= data.PeriodSignedCount; slot++)
+            {
+                int quality = GetMilestoneQuality(data.PeriodIndex, slot);
+                if (quality <= 0 || IsMilestoneClaimed(data, slot)) continue;
+                if (FindCurrentMilestone(data, slot) != null) continue;
+                data.PendingMilestones.Add(new DailyReportMilestoneDebt
+                {
+                    PeriodIndex = data.PeriodIndex,
+                    Slot = slot,
+                    SignDayIndex = ResolveMilestoneSignDayIndex(data, slot),
+                    Quality = quality,
+                    Seed = EnsureBountySeedInCandidate(data),
+                });
+            }
+        }
+
+        private static DailyReportMilestoneDebt FindCurrentMilestone(DailyReportData data, int slot)
+        {
+            if (data == null || data.PendingMilestones == null) return null;
+            int day = ResolveMilestoneSignDayIndex(data, slot);
+            for (int i = 0; i < data.PendingMilestones.Count; i++)
+            {
+                DailyReportMilestoneDebt debt = data.PendingMilestones[i];
+                if (debt.PeriodIndex == data.PeriodIndex && debt.Slot == slot && debt.SignDayIndex == day)
+                    return debt;
+            }
+            return null;
+        }
+
+        private static bool TryDeliverMilestone(DailyReportMilestoneDebt debt, out bool persistenceBlocked)
+        {
+            persistenceBlocked = !CanDeliverMilestone();
+            if (debt == null || persistenceBlocked) return false;
+            string reason;
+            if (!DailyReportRewards.TryGrantMilestone(debt.Quality, debt.Seed,
+                debt.SignDayIndex, debt.Slot, out reason)) return false;
+            // 保留先发后标记的至少一次语义；失败不吞债务，故障后本会话停止发物。
+            bool marked = MarkMilestoneClaimed(debt);
+            persistenceBlocked = !marked || !CanDeliverMilestone();
+            return marked;
         }
 
         /// <summary>
@@ -667,15 +707,20 @@ namespace BossRush
         }
 
         /// <summary>里程碑奖励发放成功后调用，置位掩码防重发。</summary>
-        internal static bool MarkMilestoneClaimed(int slot)
+        private static bool MarkMilestoneClaimed(DailyReportMilestoneDebt debt)
         {
             try
             {
                 DailyReportData data = DailyReportPersistence.LoadOrInit();
                 if (data == null) return false;
-                if (slot < 1 || slot > DailyReportTuning.DaysPerPeriod) return false;
                 DailyReportData candidate = data.Clone();
-                candidate.PeriodClaimedMask |= (1 << (slot - 1));
+                int index = candidate.PendingMilestones.FindIndex(pending => pending.SameIdentity(debt));
+                if (index < 0) return false;
+                candidate.PendingMilestones.RemoveAt(index);
+                // 同一期断签重来的相同格位也不是同一笔债务，不能误标新一轮的奖励。
+                if (debt.PeriodIndex == candidate.PeriodIndex && debt.Slot <= candidate.PeriodSignedCount
+                    && debt.SignDayIndex == ResolveMilestoneSignDayIndex(candidate, debt.Slot))
+                    candidate.PeriodClaimedMask |= (1 << (debt.Slot - 1));
                 return Persist(candidate);
             }
             catch (Exception e)

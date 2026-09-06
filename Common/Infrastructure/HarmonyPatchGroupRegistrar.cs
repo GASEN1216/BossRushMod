@@ -5,7 +5,7 @@ namespace BossRush
     /// <summary>
     /// Harmony Patch 分组注册入口
     /// 职责：维护分组列表、输出分组日志
-    /// 本轮不改变 Patch apply 方式，仍委托 harmony.PatchAll(assembly)
+    /// 逐类调用 CreateClassProcessor().Patch()，隔离单个补丁类的安装失败。
     /// </summary>
     internal static class HarmonyPatchGroupRegistrar
     {

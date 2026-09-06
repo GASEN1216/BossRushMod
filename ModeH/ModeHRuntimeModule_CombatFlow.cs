@@ -224,7 +224,8 @@ namespace BossRush
                 ModeHVirtualStakeController.RestoreReservation(_season, snapshot);
                 return false;
             }
-            locked.realStakeSelected = ModeHWarehouseStakeJournal.Active != null;
+            locked.realStakeSelected = ModeHRealStakeService.HasLockedStakeForMatch(
+                _runState.RunId, _runState.MatchIndex);
 
             _season.preMatchSnapshot = snapshot;
             _season.currentLoadoutLock = locked;
@@ -870,9 +871,7 @@ namespace BossRush
                     // 玩家既没得选也看不到提示，而 §17 冻结契约里的「满三条时明确替换一条」
                     // 因此永远走不到——replacedScarId 在生产代码里唯一的实参是 null。
                     // 留在 pending 的候选由结算页负责收口；玩家若直接关页，
-                    // 下次打开结算页仍会看到它（战报里的 scarOfferId 是持久化的）。
-                    _pendingScarProfileId = !string.IsNullOrEmpty(report.scarOfferId)
-                        ? rewardProfile.profileId : null;
+                    // 下方关联奖励 operation 后同批登记 offered token，重启和下一场仍可处理。
                 }
 
                 string rewardFailure;
@@ -885,6 +884,7 @@ namespace BossRush
                     return;
                 }
                 report.seasonRewardOperationId = operation.operationId;
+                RecordScarOffer(report);
                 UpsertMatchReport(report);
                 _combatControl.Snapshot.ClearFrom(_season);
 

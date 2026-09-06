@@ -12,6 +12,8 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Text;
 
 namespace BossRush
@@ -34,6 +36,7 @@ namespace BossRush
             data.PeriodIndex = 1;
             data.PeriodSignedCount = 0;
             data.PeriodClaimedMask = 0;
+            data.PendingMilestones = new List<DailyReportMilestoneDebt>();
             data.Streak = 0;
             data.LastSignedDayIndex = 0;
             data.TotalSignedDays = 0;
@@ -76,6 +79,7 @@ namespace BossRush
             SimpleJsonHelper.AppendInt(sb, "streak", data.Streak);
             SimpleJsonHelper.AppendInt(sb, "lastSignedDayIndex", data.LastSignedDayIndex);
             SimpleJsonHelper.AppendInt(sb, "totalSignedDays", data.TotalSignedDays);
+            AppendPendingMilestones(sb, data.PendingMilestones);
 
             SimpleJsonHelper.AppendLong(sb, "bountySeed", data.BountySeed);
             SimpleJsonHelper.AppendInt(sb, "bountyDayIndex", data.BountyDayIndex);
@@ -112,6 +116,23 @@ namespace BossRush
             SimpleJsonHelper.AppendFloat(sb, prefix + "damageDealt", s.DamageDealt);
             SimpleJsonHelper.AppendFloat(sb, prefix + "damageTaken", s.DamageTaken);
             SimpleJsonHelper.AppendFloat(sb, prefix + "maxSingleHit", s.MaxSingleHit);
+        }
+
+        // 保留 v1 的扁平对象；索引字段是可选扩展，旧字段与签到掩码含义不变。
+        private static void AppendPendingMilestones(StringBuilder sb, List<DailyReportMilestoneDebt> debts)
+        {
+            int count = debts != null ? debts.Count : 0;
+            SimpleJsonHelper.AppendInt(sb, "pendingMilestoneCount", count);
+            for (int i = 0; i < count; i++)
+            {
+                DailyReportMilestoneDebt debt = debts[i];
+                string prefix = "m" + i.ToString(CultureInfo.InvariantCulture) + "_";
+                SimpleJsonHelper.AppendInt(sb, prefix + "periodIndex", debt.PeriodIndex);
+                SimpleJsonHelper.AppendInt(sb, prefix + "slot", debt.Slot);
+                SimpleJsonHelper.AppendInt(sb, prefix + "signDayIndex", debt.SignDayIndex);
+                SimpleJsonHelper.AppendInt(sb, prefix + "quality", debt.Quality);
+                SimpleJsonHelper.AppendLong(sb, prefix + "seed", debt.Seed);
+            }
         }
 
         #endregion
@@ -159,6 +180,8 @@ namespace BossRush
                 data.Streak = root.GetInt("streak", 0);
                 data.LastSignedDayIndex = root.GetInt("lastSignedDayIndex", 0);
                 data.TotalSignedDays = root.GetInt("totalSignedDays", 0);
+                data.PendingMilestones = DecodePendingMilestones(root);
+                if (data.PendingMilestones == null) return null;
 
                 data.BountySeed = root.GetLong("bountySeed", 0L);
                 data.BountyDayIndex = root.GetInt("bountyDayIndex", 0);
@@ -198,6 +221,34 @@ namespace BossRush
             s.DamageTaken = root.GetFloat(prefix + "damageTaken", 0f);
             s.MaxSingleHit = root.GetFloat(prefix + "maxSingleHit", 0f);
             return s;
+        }
+
+        private static List<DailyReportMilestoneDebt> DecodePendingMilestones(BossRushJsonValue root)
+        {
+            List<DailyReportMilestoneDebt> debts = new List<DailyReportMilestoneDebt>();
+            BossRushJsonValue countValue = root.GetProperty("pendingMilestoneCount");
+            if (countValue == null) return debts; // 旧 v1 档：Service 在任何进度重置前补建欠奖。
+            int count = root.GetInt("pendingMilestoneCount", -1);
+            if (countValue.Kind != BossRushJsonKind.Integer || count < 0
+                || count > root.Properties.Count / 5) return null;
+            for (int i = 0; i < count; i++)
+            {
+                string prefix = "m" + i.ToString(CultureInfo.InvariantCulture) + "_";
+                DailyReportMilestoneDebt debt = new DailyReportMilestoneDebt();
+                debt.PeriodIndex = root.GetInt(prefix + "periodIndex", 0);
+                debt.Slot = root.GetInt(prefix + "slot", 0);
+                debt.SignDayIndex = root.GetInt(prefix + "signDayIndex", 0);
+                debt.Quality = root.GetInt(prefix + "quality", 0);
+                debt.Seed = root.GetLong(prefix + "seed", 0L);
+                if (debt.PeriodIndex < 1 || debt.Slot < 1 || debt.Slot > DailyReportTuning.DaysPerPeriod
+                    || debt.SignDayIndex < 1 || debt.Quality < 1 || debt.Quality > 8 || debt.Seed == 0L)
+                    return null; // 损坏欠奖不能静默丢弃或重抽，交给持久层写屏障。
+                for (int j = 0; j < debts.Count; j++)
+                    if (debts[j].PeriodIndex == debt.PeriodIndex && debts[j].Slot == debt.Slot
+                        && debts[j].SignDayIndex == debt.SignDayIndex) return null;
+                debts.Add(debt);
+            }
+            return debts;
         }
 
         /// <summary>

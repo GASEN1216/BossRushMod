@@ -5,6 +5,7 @@ using ItemStatsSystem;
 namespace ItemStatsSystem { public class Inventory { public List<Item> Content = new List<Item>(); } }
 namespace BossRush
 {
+    public static class L10n { public static string T(string cn, string en) { return cn; } }
     public partial class ModBehaviour
     {
         public bool Conflict;
@@ -33,6 +34,9 @@ namespace BossRush
     public static class ModeHRealStakeService
     {
         public static bool TryAbortReturn(long seed, int match, out string error) { error = null; return true; }
+        // 真实押品重试屏障由 ModeHThirdReviewFixes 单独执行验证。
+        public static bool TryPrepareTechnicalRetry(string run, long seed, int match, out string error)
+        { error = null; return ModeHWarehouseStakeJournal.IsSlotConsistent; }
     }
     public static class ModeHContentCatalog { public static string ContentCatalogSignature = "content"; }
     public class ModeHProductionCertification
@@ -109,7 +113,9 @@ namespace BossRush
         private void BeginNewRunSession() { _commandsClosed = false; _seasonDirty = false; }
         private void OnTransitionApplied(ModeHTransitionRecord r) { ProjectRunStateIntoSeason(); }
         private void LogFailure(string tag, Exception e) { Failure = tag; }
-        private void RequestSuspended(string reason) { Failure = reason; TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reason); }
+        private void RequestSuspended(string reason, bool attemptStakeReturn = true) { Failure = reason; TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reason); }
+        private bool HasPendingScarOffers() { return false; } // 新战痕凭据由 ModeHThirdReviewFixes 覆盖。
+        private void RouteUiForLifecycle(ModeHLifecycle lifecycle) { }
         private void RequestTechnicalRetry(string reason) { Failure = reason; }
         private void OpenRecoveryShell(string failure) { Failure = failure; }
         private void ReleaseRuntimeObjects() { Released++; }

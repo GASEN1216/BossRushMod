@@ -2,18 +2,39 @@
 // DailyReportModels.cs - 日报运行时数据模型（P0 步骤 1）
 // ============================================================================
 // 设计要点（设计文档 §3.3）：
-//   - **DTO 保持扁平**：里程碑领取用位掩码而不是 token 列表，昨日快照用前缀字段而
-//     不是嵌套对象。这样编解码只需仓库既有的 Utilities/SimpleJsonHelper.cs
-//     （扁平对象工具），不必再引入第三套 JSON 解析器
-//     （ModeH 有 BossRushJsonValue、遗种巢有 PetNestJson，都与各自模块语义绑定）。
+//   - JSON 保持扁平：本期领取用位掩码，独立欠奖列表用数量与索引前缀字段展开，
+//     今日/昨日快照同样用前缀字段。读写复用共享 JSON 工具，不更改已发布字段。
 //   - 普通 C# 类，不加 [Serializable]：本模块走 Save<string> 整存 JSON，
 //     不用 ES3 typed save，因此不受 assembly-qualified 类型名变更影响。
 //   - 无字段初始化器；默认值统一由 DailyReportCodec.CreateDefault() 给，
 //     避免"构造出来的默认"和"读档读出来的默认"两套语义漂移。
 // ============================================================================
 
+using System.Collections.Generic;
+
 namespace BossRush
 {
+    /// <summary>已经挣得的里程碑奖励；身份在签到时冻结，独立于签到墙重置。</summary>
+    internal sealed class DailyReportMilestoneDebt
+    {
+        internal int PeriodIndex;
+        internal int Slot;
+        internal int SignDayIndex;
+        internal int Quality;
+        internal long Seed;
+
+        internal DailyReportMilestoneDebt Clone()
+        {
+            return (DailyReportMilestoneDebt)MemberwiseClone();
+        }
+
+        internal bool SameIdentity(DailyReportMilestoneDebt other)
+        {
+            return other != null && PeriodIndex == other.PeriodIndex && Slot == other.Slot
+                && SignDayIndex == other.SignDayIndex && Quality == other.Quality && Seed == other.Seed;
+        }
+    }
+
     /// <summary>一天的战绩统计。今日累计与昨日快照共用这个形状。</summary>
     internal sealed class DailyReportStats
     {
@@ -121,9 +142,12 @@ namespace BossRush
 
         /// <summary>
         /// 本期里程碑领取位掩码：bit(n-1) 置位表示本期第 n 格的奖励已发放。
-        /// 用掩码而不是 token 列表：天然幂等、定长、翻期/断签一次清零即可。
+        /// 掩码只负责当前签到墙；翻期/断签清零之前，未领项先冻结到 PendingMilestones。
         /// </summary>
         internal int PeriodClaimedMask;
+
+        /// <summary>跨断签/翻期保留的未发奖励。旧档缺字段时由当前未领格位补建。</summary>
+        internal List<DailyReportMilestoneDebt> PendingMilestones;
 
         /// <summary>当前连续签到天数（展示用；断签清 0）。</summary>
         internal int Streak;
@@ -196,6 +220,12 @@ namespace BossRush
             copy.PeriodIndex = PeriodIndex;
             copy.PeriodSignedCount = PeriodSignedCount;
             copy.PeriodClaimedMask = PeriodClaimedMask;
+            copy.PendingMilestones = new List<DailyReportMilestoneDebt>();
+            if (PendingMilestones != null)
+            {
+                for (int i = 0; i < PendingMilestones.Count; i++)
+                    copy.PendingMilestones.Add(PendingMilestones[i].Clone());
+            }
             copy.Streak = Streak;
             copy.LastSignedDayIndex = LastSignedDayIndex;
             copy.TotalSignedDays = TotalSignedDays;

@@ -28,6 +28,7 @@ namespace BossRush
         /// 它只是省调用的短路缓存，不是真值——真值永远是成就系统自己的已解锁集合。
         /// </summary>
         private static int _lastEvaluatedUnlockedCount = -1;
+        private static int _lastCatalogBuildCount = -1;
 
         /// <summary>
         /// 一次击杀之后的里程碑评估。全程 no-throw。
@@ -42,9 +43,10 @@ namespace BossRush
                 BossRushAchievementManager.Initialize();
 
                 int unlocked = data.UnlockedCount;
-                if (unlocked != _lastEvaluatedUnlockedCount)
+                if (unlocked != _lastEvaluatedUnlockedCount || !CodexBossCatalog.IsBuilt
+                    || _lastCatalogBuildCount != CodexBossCatalog.BuildCount)
                 {
-                    EvaluateUnlockCount(unlocked);
+                    EvaluateUnlockCount(data);
                 }
 
                 // 速杀与解锁数无关：同一个 Boss 反复速杀也应该能补发
@@ -72,7 +74,7 @@ namespace BossRush
             {
                 BossRushAchievementManager.Initialize();
                 _lastEvaluatedUnlockedCount = -1;
-                EvaluateUnlockCount(data.UnlockedCount);
+                EvaluateUnlockCount(data);
             }
             catch (Exception e)
             {
@@ -84,13 +86,17 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             _lastEvaluatedUnlockedCount = -1;
+            _lastCatalogBuildCount = -1;
         }
 
         #region 私有
 
         /// <summary>按解锁条目数判定四个累计里程碑。</summary>
-        private static void EvaluateUnlockCount(int unlocked)
+        private static void EvaluateUnlockCount(CodexData data)
         {
+            CodexBossCatalog.SynchronizeHistoricalEntries(data);
+            _lastCatalogBuildCount = CodexBossCatalog.BuildCount;
+            int unlocked = data.UnlockedCount;
             if (unlocked <= 0)
             {
                 _lastEvaluatedUnlockedCount = unlocked;
@@ -111,8 +117,7 @@ namespace BossRush
 
             // 目录为空时（尚未构建 / 构建失败）绝不发全录成就：
             // unlocked >= 0 恒成立会白送一个最高难度成就。
-            int total = CodexBossCatalog.Count;
-            if (total > 0 && unlocked >= total)
+            if (CodexBossCatalog.IsFullyUnlocked(data))
             {
                 BossRushAchievementManager.TryUnlock(CodexTuning.AchievementAll);
             }

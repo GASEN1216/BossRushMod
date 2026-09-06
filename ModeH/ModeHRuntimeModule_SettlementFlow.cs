@@ -162,6 +162,15 @@ namespace BossRush
         private void RouteAfterIntermission(ModeHMatchReportDto report)
         {
             List<string> live = ModeHTransferMarket.GetLiveContractProfileIds(_season);
+            if ((live == null || live.Count == 0 || _runState.MatchIndex >= ModeHConfig.SeasonMatchCount)
+                && HasPendingScarOffers())
+            {
+                // 中途可把候选留到下一场结算；赛季终局之前必须处理，避免新赛季覆盖奖励。
+                if (_owner != null) _owner.ShowMessage(L10n.T(
+                    "赛季结束前，请先处理剩余战痕候选。", "Resolve the remaining scar offers before ending the season."));
+                RouteUiForLifecycle(_runState.Lifecycle);
+                return;
+            }
             if (live == null || live.Count == 0)
             {
                 FinishSeason("no_live_contracts");
@@ -199,29 +208,55 @@ namespace BossRush
         /// </summary>
         private void BuildSettlementScarActions(ModeHPageContent page, ModeHMatchReportDto report)
         {
-            if (page == null || report == null) return;
-            if (string.IsNullOrEmpty(report.scarOfferId)) return;
-            if (string.IsNullOrEmpty(_pendingScarProfileId)) return;
+            if (page == null || report == null || _season == null || _runState == null
+                || _season.matchReports == null) return;
+            // 一次只摆一组动作，处理后再展示下一条，避免历史候选把结算按钮行撑出屏幕。
+            bool legacyNoticeShown = false;
+            for (int i = 0; i < _season.matchReports.Count; i++)
+            {
+                ModeHMatchReportDto candidate = _season.matchReports[i];
+                ModeHProfileDto profile;
+                if (!TryGetScarOfferProfile(candidate, out profile)) continue;
+                if (!IsScarOfferPending(candidate))
+                {
+                    if (!legacyNoticeShown && !_runState.HasEventToken(ScarOfferToken(candidate, false))
+                        && (profile.scarIds == null || !profile.scarIds.Contains(candidate.scarOfferId)))
+                    {
+                        // 旧版没有处置凭据：保留原战报，不猜测它是未领还是已经拒绝过。
+                        page.Lines.Add(L10n.T("旧版未记录战痕是否已领取，无法确认结果。原记录已保留，本次不补发，赛季可继续。",
+                            "The old version did not record whether a scar was claimed. Its record is preserved; no extra reward is granted, and the season can continue."));
+                        legacyNoticeShown = true;
+                    }
+                    continue;
+                }
+                AppendScarOfferActions(page, candidate, profile);
+                return;
+            }
+        }
 
-            ModeHProfileDto profile = FindSeasonProfile(_pendingScarProfileId);
-            if (profile == null) return;
-
+        private void AppendScarOfferActions(
+            ModeHPageContent page, ModeHMatchReportDto report, ModeHProfileDto profile)
+        {
             string scarName = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + report.scarOfferId);
-            page.Lines.Add(L10n.T("战痕候选：", "Scar offer: ") + scarName);
+            page.Lines.Add(L10n.T("战痕候选：", "Scar offer: ") + scarName + "　"
+                + ResolveProfileDisplayName(profile.profileId) + "　#" + report.matchIndex);
 
             string offerId = report.scarOfferId;
+            string operationId = report.seasonRewardOperationId;
+            long ownerToken = _runState.OwnerToken;
+            int pageMatchIndex = _runState.MatchIndex;
             bool full = profile.scarIds != null
                 && profile.scarIds.Count >= ModeHConfig.MaxScarsPerProfile;
 
-            if (!full)
+            if (!full && (profile.scarIds == null || !profile.scarIds.Contains(offerId)))
             {
                 page.Actions.Add(new ModeHActionData
                 {
                     Label = L10n.T("留下战痕：", "Take scar: ") + scarName,
-                    OnClick = delegate { ResolveScarOffer(offerId, null, false); },
+                    OnClick = delegate { ResolveScarOffer(operationId, offerId, null, false, ownerToken, pageMatchIndex); },
                 });
             }
-            else if (profile.scarIds != null)
+            else if (full && !profile.scarIds.Contains(offerId))
             {
                 for (int i = 0; i < profile.scarIds.Count; i++)
                 {
@@ -230,7 +265,7 @@ namespace BossRush
                     {
                         Label = L10n.T("替换：", "Replace: ")
                             + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + replaced),
-                        OnClick = delegate { ResolveScarOffer(offerId, replaced, false); },
+                        OnClick = delegate { ResolveScarOffer(operationId, offerId, replaced, false, ownerToken, pageMatchIndex); },
                     });
                 }
             }
@@ -238,27 +273,88 @@ namespace BossRush
             page.Actions.Add(new ModeHActionData
             {
                 Label = L10n.T("拒绝战痕，换取名声", "Decline scar for fame"),
-                OnClick = delegate { ResolveScarOffer(offerId, null, true); },
+                OnClick = delegate { ResolveScarOffer(operationId, offerId, null, true, ownerToken, pageMatchIndex); },
             });
         }
 
-        /// <summary>处置战痕候选并落盘。失败时保留候选，让玩家能再试一次。</summary>
-        private void ResolveScarOffer(string scarId, string replacedScarId, bool decline)
+        /// <summary>候选与处置凭据复用现有事件集合，不扩展 DTO，保留 v1 摘要兼容。</summary>
+        private static string ScarOfferToken(ModeHMatchReportDto report, bool resolved)
         {
+            return (resolved ? "scar_resolved|" : "scar_offered|")
+                + report.seasonRewardOperationId + "|" + report.scarOfferId;
+        }
+
+        private void RecordScarOffer(ModeHMatchReportDto report)
+        {
+            ModeHProfileDto profile;
+            if (TryGetScarOfferProfile(report, out profile))
+                _runState.TryApplyEventToken(ScarOfferToken(report, false));
+        }
+
+        private bool TryGetScarOfferProfile(ModeHMatchReportDto report, out ModeHProfileDto profile)
+        {
+            profile = null;
+            if (_runState == null || report == null || string.IsNullOrEmpty(report.scarOfferId)
+                || string.IsNullOrEmpty(report.resultToken) || report.matchIndex > _runState.MatchIndex)
+                return false;
+            ModeHSeasonRewardOperationDto operation = FindRewardOperation(report.seasonRewardOperationId);
+            if (operation == null || operation.matchIndex != report.matchIndex
+                || !string.Equals(operation.resultToken, report.resultToken, StringComparison.Ordinal)) return false;
+            profile = FindSeasonProfile(operation.rewardProfileId);
+            return profile != null;
+        }
+
+        private bool IsScarOfferPending(ModeHMatchReportDto report)
+        {
+            return _runState != null && report != null && !string.IsNullOrEmpty(report.scarOfferId)
+                && _runState.HasEventToken(ScarOfferToken(report, false))
+                && !_runState.HasEventToken(ScarOfferToken(report, true));
+        }
+
+        private bool HasPendingScarOffers()
+        {
+            if (_season == null || _season.matchReports == null) return false;
+            for (int i = 0; i < _season.matchReports.Count; i++)
+            {
+                ModeHProfileDto profile;
+                if (IsScarOfferPending(_season.matchReports[i])
+                    && TryGetScarOfferProfile(_season.matchReports[i], out profile)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 以页面 owner、当前场次、历史 operation 和候选共同验证动作。
+        /// 收益与 resolved token 同一 Season 写屏障；失败保留两者并挂起，恢复只补写不重复收益。
+        /// </summary>
+        private void ResolveScarOffer(string operationId, string scarId, string replacedScarId, bool decline,
+            long ownerToken, int pageMatchIndex)
+        {
+            if (_commandsClosed || _season == null || _runState == null
+                || !_runState.IsOwnerTokenValid(ownerToken) || _runState.MatchIndex != pageMatchIndex
+                || _runState.Lifecycle != ModeHLifecycle.Intermission || _season.matchReports == null) return;
             try
             {
-                ModeHProfileDto profile = FindSeasonProfile(_pendingScarProfileId);
-                if (profile == null) return;
-
+                ModeHMatchReportDto report = null;
+                for (int i = 0; i < _season.matchReports.Count; i++)
+                {
+                    ModeHMatchReportDto candidate = _season.matchReports[i];
+                    if (candidate != null && string.Equals(candidate.seasonRewardOperationId, operationId, StringComparison.Ordinal)
+                        && string.Equals(candidate.scarOfferId, scarId, StringComparison.Ordinal))
+                    { report = candidate; break; }
+                }
+                ModeHProfileDto profile;
+                if (!IsScarOfferPending(report) || !TryGetScarOfferProfile(report, out profile)) return;
+                ModeHProfileDto updated = CloneProfile(profile);
                 if (decline)
                 {
-                    ModeHInjuryAndScarSystem.DeclineScar(profile);
+                    ModeHInjuryAndScarSystem.DeclineScar(updated);
                 }
                 else
                 {
                     string acceptFailure;
                     if (!ModeHInjuryAndScarSystem.TryAcceptScar(
-                            profile, scarId, replacedScarId, out acceptFailure))
+                            updated, scarId, replacedScarId, out acceptFailure))
                     {
                         ModBehaviour.DevLog("[ModeH] 战痕处置失败: "
                             + (acceptFailure ?? "unknown"));
@@ -271,13 +367,19 @@ namespace BossRush
                     }
                 }
 
-                _pendingScarProfileId = null;
-                TryPersistSeason("scar_resolved");
+                if (!_runState.TryApplyEventToken(ScarOfferToken(report, true))) return;
+                ReplaceSeasonProfile(updated);
+                if (!TryPersistSeason("scar_resolved", true))
+                {
+                    RequestSuspended("scar_resolution_persist_failed");
+                    return;
+                }
                 if (_runState != null) RouteUiForLifecycle(_runState.Lifecycle);
             }
             catch (Exception e)
             {
                 LogFailure("resolve_scar", e);
+                RequestSuspended("scar_resolution_exception");
             }
         }
     }

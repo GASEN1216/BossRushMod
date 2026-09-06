@@ -394,8 +394,8 @@ namespace BossRush
             TryTransition(_runState.Lifecycle, ModeHLifecycle.ErrorRecoveryPending, reasonId);
         }
 
-        /// <summary>恢复证据不足或自动重试预算耗尽：持久挂起。</summary>
-        internal void RequestSuspended(string reasonId)
+        /// <summary>持久挂起；刚执行失败的资产屏障可禁止再次隐式返还，保留原证据。</summary>
+        internal void RequestSuspended(string reasonId, bool attemptStakeReturn = true)
         {
             if (_runState == null) return;
             if (TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reasonId))
@@ -403,7 +403,8 @@ namespace BossRush
                 // 挂起可能跨进程重启，而 _escrowItems 是纯内存 List：不在这里返还，
                 // 物品就永久丢失。同场重开只会回落到 MatchBrief（见 ResolveRecoveryResumeLifecycle），
                 // 不会回到已锁盘状态，所以此处结清 journal 不会破坏恢复路径。
-                TryReturnRealStakeOnAbort("suspended:" + (reasonId != null ? reasonId : "unknown"));
+                if (attemptStakeReturn)
+                    TryReturnRealStakeOnAbort("suspended:" + (reasonId != null ? reasonId : "unknown"));
                 ModeHRuntimeGates.SetRecoveryOnlyBlocked(true, reasonId);
                 // Suspended 是显式持久化点：恢复壳必须跨重启可达，不能只留内存脏标记。
                 TryPersistSeason("suspended");

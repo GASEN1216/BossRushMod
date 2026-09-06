@@ -304,7 +304,7 @@ namespace BossRush
 
         /// <summary>
         /// 写入一次击杀。**只入队，不落盘**——物理写盘唯一发生在
-        /// CodexSaveCoordinator.FlushBatch。
+        /// BossRushSaveCoordinatorEngine.FlushBatch。
         /// fightSeconds &lt;= 0 表示本次没有有效计时，不参与最快击杀。
         /// </summary>
         private static void RecordKill(string key, float fightSeconds)
@@ -339,6 +339,7 @@ namespace BossRush
             if (CodexPersistence.Store(data))
             {
                 CodexSaveCoordinator.RequestFlush();
+                if (firstUnlock) CodexBossCatalog.SynchronizeHistoricalEntries(data);
             }
 
             CodexMilestones.Evaluate(data, fightSeconds);

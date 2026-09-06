@@ -62,8 +62,12 @@ namespace BossRush
         private float _wanderRadius = 8f;
         private float _nextMoveTime;
         private float _pathDeadline;
+        private float _pauseUntil;
         private bool _ready;
         private bool _held;
+        private bool _dialogueHeld;
+        private bool _pathPending;
+        private int _pathRevision;
         private Transform _followTarget;
 
         // ====================================================================
@@ -145,7 +149,7 @@ namespace BossRush
                 // 停刷就会被生成时那个陈旧的 aimPoint 锁死（NPC 横着站/横着走）。
                 UpdateFacing();
 
-                if (_held)
+                if (IsHeld || Time.time < _pauseUntil)
                 {
                     return;
                 }
@@ -156,6 +160,7 @@ namespace BossRush
             {
                 // 移动出错不该拖垮 NPC 本身：停掉移动，NPC 退回站桩仍可交互。
                 ModBehaviour.DevLog(LogPrefix + " [WARNING] 移动更新异常，已停用移动: " + e.Message);
+                CancelMovement();
                 _ready = false;
                 enabled = false;
             }
@@ -194,12 +199,22 @@ namespace BossRush
 
         private void UpdateWander()
         {
-            if (_pathControl.Moving)
+            // 跟随在走路期间也要检查新目标；暂停/驻留已由 Update 优先拦截。
+            if (_followTarget != null)
+            {
+                if (Time.time >= _nextMoveTime)
+                {
+                    MoveTowardFollowTarget();
+                }
+                return;
+            }
+
+            if (_pathControl.path != null || _pathPending)
             {
                 // 寻路卡住（目标不可达、图有洞）时不能无限等，否则 NPC 会永久僵在原地。
                 if (Time.time > _pathDeadline)
                 {
-                    _pathControl.StopMove();
+                    CancelMovement();
                     ScheduleNextMove();
                 }
                 return;
@@ -207,17 +222,6 @@ namespace BossRush
 
             if (Time.time < _nextMoveTime)
             {
-                return;
-            }
-
-            if (_pathControl.WaitingForPathResult)
-            {
-                return;
-            }
-
-            if (_followTarget != null)
-            {
-                MoveTowardFollowTarget();
                 return;
             }
 
@@ -231,10 +235,11 @@ namespace BossRush
         {
             Vector3 targetPos = _followTarget.position;
             float distance = Vector3.Distance(transform.position, targetPos);
+            _nextMoveTime = Time.time + FollowRepathSeconds;
 
             if (distance <= FollowStopDistance)
             {
-                ScheduleNextMove();
+                CancelMovement();
                 return;
             }
 
@@ -243,21 +248,20 @@ namespace BossRush
             {
                 try
                 {
-                    _pathControl.StopMove();
+                    CancelMovement();
                     _character.SetPosition(targetPos);
                 }
                 catch (Exception e)
                 {
                     ModBehaviour.DevLog(LogPrefix + " [WARNING] 跟随瞬移失败: " + e.Message);
                 }
-                ScheduleNextMove();
                 return;
             }
 
-            _pathControl.MoveToPos(targetPos);
-            _pathDeadline = Time.time + PathTimeoutSeconds;
-            // 跟随时重规划要比漫步频繁，否则玩家一直走它就一直落后
-            _nextMoveTime = Time.time + FollowRepathSeconds;
+            // 计算尚未完成时保留这次请求，避免慢图被每 0.6 秒取消而永远算不完。
+            // 距离过近/过远的分支仍可立即取消；异常超时后允许重试。
+            if (_pathPending && Time.time <= _pathDeadline) return;
+            RequestMovement(targetPos);
         }
 
         private void MoveToRandomPointNearHome()
@@ -265,9 +269,60 @@ namespace BossRush
             Vector2 offset = UnityEngine.Random.insideUnitCircle * _wanderRadius;
             Vector3 target = _homePosition + new Vector3(offset.x, 0f, offset.y);
 
-            _pathControl.MoveToPos(target);
-            _pathDeadline = Time.time + PathTimeoutSeconds;
+            RequestMovement(target);
             ScheduleNextMove();
+        }
+
+        /// <summary>只接管请求所有权；路径跟随仍由官方 AI_PathControl 完成。</summary>
+        private void RequestMovement(Vector3 target)
+        {
+            CancelMovement();
+            int revision = _pathRevision;
+            _pathPending = true;
+            _pathDeadline = Time.time + PathTimeoutSeconds;
+            _pathControl.seeker.StartPath(transform.position, target, path =>
+            {
+                // CancelCurrentPathRequest 不能替代所有权判断：已进入完成队列的旧回调也必须失效。
+                if (revision != _pathRevision || !_ready || !isActiveAndEnabled
+                    || _character == null || IsHeld || Time.time < _pauseUntil) return;
+                _pathPending = false;
+                if (path != null && !path.error)
+                {
+                    _pathControl.OnPathComplete(path);
+                }
+            });
+        }
+
+        private void CancelMovement()
+        {
+            unchecked { _pathRevision++; }
+            _pathPending = false;
+            if (_pathControl == null) return;
+            try
+            {
+                if (_pathControl.seeker != null)
+                {
+                    _pathControl.seeker.CancelCurrentPathRequest(true);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + " [WARNING] 取消寻路失败: " + e.Message);
+            }
+            // 取消失败也要归零输入；所有权版本已经令旧回调失效。
+            try
+            {
+                _pathControl.StopMove();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + " [WARNING] 停止移动失败: " + e.Message);
+            }
+        }
+
+        private void OnDisable()
+        {
+            CancelMovement();
         }
 
         private void ScheduleNextMove()
@@ -288,6 +343,7 @@ namespace BossRush
         /// </remarks>
         internal void EnablePlayerFollow(Transform target)
         {
+            CancelMovement();
             _followTarget = target;
             _nextMoveTime = 0f;
         }
@@ -295,6 +351,7 @@ namespace BossRush
         /// <summary>停止跟随，回到以 home 为中心的漫步。</summary>
         internal void DisablePlayerFollow()
         {
+            CancelMovement();
             _followTarget = null;
             _nextMoveTime = Time.time + MinIdleSeconds;
         }
@@ -309,58 +366,46 @@ namespace BossRush
         /// 无限期挂起移动，直到 Release()。
         /// </summary>
         /// <remarks>
-        /// 与 PauseFor(秒) 的区别：对话的时长事先不知道（玩家可能挂着 UI 不动），
-        /// 用"暂停 N 秒"表达不了"停到对话结束为止"。
+        /// 供婚姻驻留等移动意图使用；对话通过独立的 HoldForDialogue 持有暂停。
         /// </remarks>
         internal void Hold()
         {
             _held = true;
-            if (!_ready)
-            {
-                return;
-            }
-
-            try
-            {
-                _pathControl.StopMove();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + " [WARNING] 挂起移动失败: " + e.Message);
-            }
+            CancelMovement();
         }
 
         /// <summary>解除挂起，并在 idleSeconds 后才重新开始漫步。</summary>
         internal void Release(float idleSeconds)
         {
             _held = false;
-            _nextMoveTime = Time.time + Mathf.Max(0f, idleSeconds);
+            PauseFor(idleSeconds);
+        }
+
+        internal void HoldForDialogue()
+        {
+            _dialogueHeld = true;
+            CancelMovement();
+        }
+
+        internal void ReleaseFromDialogue(float idleSeconds)
+        {
+            if (!_dialogueHeld) return;
+            _dialogueHeld = false;
+            PauseFor(idleSeconds);
         }
 
         /// <summary>当前是否被挂起。</summary>
         internal bool IsHeld
         {
-            get { return _held; }
+            get { return _held || _dialogueHeld; }
         }
 
         /// <summary>停下并在原地待命指定秒数（对话期间用）。</summary>
         internal void PauseFor(float seconds)
         {
-            if (!_ready)
-            {
-                return;
-            }
-
-            try
-            {
-                _pathControl.StopMove();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(LogPrefix + " [WARNING] 停止移动失败: " + e.Message);
-            }
-
-            _nextMoveTime = Time.time + Mathf.Max(0f, seconds);
+            CancelMovement();
+            _pauseUntil = Mathf.Max(_pauseUntil, Time.time + Mathf.Max(0f, seconds));
+            _nextMoveTime = Time.time;
         }
 
         /// <summary>是否正在移动。</summary>

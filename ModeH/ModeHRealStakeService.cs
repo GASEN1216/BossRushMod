@@ -182,7 +182,7 @@ namespace BossRush
         /// <summary>
         /// 把当前选择翻译成 journal 并推进到 MatchLocked。
         ///
-        /// 没有选择时返回 true 且不建 journal —— 这是"默认不押"的正常路径，
+        /// 槽位历史证据一致且没有选择时返回 true、不建 journal —— 这是"默认不押"的正常路径，
         /// 调用方据此继续走纯虚拟筹码的比赛。
         /// 任何一步失败都返回 false 并带出原因；已经动过的物品由 journal 内部回滚。
         /// </summary>
@@ -190,13 +190,12 @@ namespace BossRush
             string runId, int matchIndex, long runSeed, out string failureReasonId)
         {
             failureReasonId = null;
-            if (_selectedPositions.Count == 0) return true;
-
             if (!ModeHWarehouseStakeJournal.IsSlotConsistent)
             {
                 failureReasonId = "stake_slot_inconsistent";
                 return false;
             }
+            if (_selectedPositions.Count == 0) return true;
 
             List<ModeHItemTreeSnapshotDto> escrow = new List<ModeHItemTreeSnapshotDto>();
             for (int i = 0; i < _selectedPositions.Count; i++)
@@ -359,6 +358,60 @@ namespace BossRush
         #endregion
 
         #region 辅助
+
+        /// <summary>锁盘后只把本 run / 本场的 MatchLocked journal 视为本场押品。</summary>
+        internal static bool HasLockedStakeForMatch(string runId, int matchIndex)
+        {
+            ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
+            return journal != null && journal.phase == (int)ModeHStakePhase.MatchLocked
+                && journal.matchIndex == matchIndex
+                && string.Equals(journal.runId, runId, StringComparison.Ordinal);
+        }
+
+        /// <summary>
+        /// 同场重开之前的资产屏障。只有已取消/返还且槽证据一致才允许重新选阵容与押品；
+        /// 已提交胜负不能改成退款后重打，人工介入即使交还了实物也不能冒充账目已结清。
+        /// </summary>
+        internal static bool TryPrepareTechnicalRetry(
+            string runId, long runSeed, int matchIndex, out string failureReasonId)
+        {
+            failureReasonId = null;
+            ModeHStakeJournalDto journal = ModeHWarehouseStakeJournal.Active;
+            if (journal != null)
+            {
+                ModeHStakePhase phase = ModeHStateModel.ToStakePhase(journal.phase);
+                bool sameMatch = string.Equals(journal.runId, runId, StringComparison.Ordinal)
+                    && journal.matchIndex == matchIndex;
+                if (sameMatch && journal.settlementKind == (int)ModeHSettlementKind.MatchResult)
+                {
+                    failureReasonId = "retry_match_result_already_committed";
+                    return false;
+                }
+                if (!ModeHWarehouseStakeJournal.IsTerminalPhase(phase))
+                {
+                    if (!sameMatch)
+                    {
+                        failureReasonId = "retry_stake_owner_mismatch";
+                        return false;
+                    }
+                    if (!TryAbortReturn(runSeed, matchIndex, out failureReasonId)) return false;
+                    phase = ModeHStateModel.ToStakePhase(journal.phase);
+                    if (phase != ModeHStakePhase.CancelledTerminal
+                        && phase != ModeHStakePhase.RefundedTerminal)
+                    {
+                        failureReasonId = "retry_stake_not_refunded";
+                        return false;
+                    }
+                }
+            }
+            if (!ModeHWarehouseStakeJournal.IsSlotConsistent)
+            {
+                failureReasonId = "retry_stake_slot_inconsistent";
+                return false;
+            }
+            ClearSelection();
+            return true;
+        }
 
         /// <summary>
         /// 续做一笔已经冻结了 `settlementKind` 的结算。

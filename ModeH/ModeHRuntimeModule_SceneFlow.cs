@@ -105,12 +105,6 @@ namespace BossRush
         /// </summary>
         private readonly List<string> _restedProfileIds = new List<string>();
 
-        /// <summary>
-        /// 本场抽出但**尚未由玩家处置**的战痕候选归属选手。
-        /// 结算页据它决定要不要摆「留下 / 替换 / 拒绝」那组按钮。
-        /// 运行时状态：跨会话不保留（战报里的 scarOfferId 才是持久证据）。
-        /// </summary>
-        private string _pendingScarProfileId;
         private ModeHSeasonRewardOperationDto _lastRewardOperation;
 
         #endregion
@@ -178,7 +172,6 @@ namespace BossRush
             _relayDisplayName = null;
             _lastSettlementReport = null;
             _lastRewardOperation = null;
-            _pendingScarProfileId = null;
         }
 
         private static string ResolveSceneId(SceneRuntimeContext context)

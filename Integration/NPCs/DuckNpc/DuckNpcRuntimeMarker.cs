@@ -17,7 +17,8 @@
 //      子类可以直接挂到捏脸 NPC 上，不用改一行现有代码。
 //
 //   本组件**不实现移动**，但负责把对话状态转达给移动组件：
-//   StartDialogue → DuckNpcMovement.Hold()，EndDialogueWithStay → Release(stay)。
+//   StartDialogue → HoldForDialogue()，EndDialogueWithStay → ReleaseFromDialogue(stay)。
+//   对话只释放自己的暂停，不会解除婚姻驻留 Hold。
 //   站桩 NPC 身上没有 DuckNpcMovement，那两处是 no-op。
 //   真正的移动在 DuckNpcMovement（走官方 AI_PathControl，不引入战斗 AI）。
 // ============================================================================
@@ -116,7 +117,7 @@ namespace BossRush
             DuckNpcMovement move = ResolveMovement();
             if (move != null)
             {
-                move.Hold();
+                move.HoldForDialogue();
             }
         }
 
@@ -132,12 +133,12 @@ namespace BossRush
                 dialogueReleaseTime = -1f;
             }
 
-            // 会走动的 NPC（永久 NPC）在这里解除挂起，并按 stayDuration 站一会儿再走。
+            // 只解除对话持有的暂停，保留婚姻驻留等独立移动意图。
             // 站桩 NPC 没有 movement，ResolveMovement 返回 null，这里是 no-op。
             DuckNpcMovement move = ResolveMovement();
             if (move != null)
             {
-                move.Release(stayDuration);
+                move.ReleaseFromDialogue(stayDuration);
             }
         }
 

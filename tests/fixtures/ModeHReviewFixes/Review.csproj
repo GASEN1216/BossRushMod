@@ -13,6 +13,7 @@
     <Compile Include="../../../ModeH/ModeHItemTreeRestoration.cs" />
     <Compile Include="../../../ModeH/ModeHCanonicalDigest.cs" />
     <Compile Include="../../../Common/Data/BossRushJsonValue.cs" />
+    <Compile Include="../../../Utilities/SimpleJsonHelper.cs" />
     <Compile Include="../../../ModeH/ModeHConfig.cs" />
     <Compile Include="../../../ModeH/ModeHStateModel.cs" />
     <Compile Include="../../../ModeH/ModeHStateDtos.cs" />
