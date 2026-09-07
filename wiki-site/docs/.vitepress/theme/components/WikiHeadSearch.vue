@@ -151,8 +151,10 @@ function move(delta: number, event: KeyboardEvent) {
   event.preventDefault()
   const total = results.value.length
   if (!total) return
-  active.value = (active.value + delta + total + 1) % (total + 1) - 1
-  if (active.value < -1) active.value = total - 1
+  // active 是 -1..total-1：-1 表示落在末行「搜索包含…的页面」上。
+  // 取模前先 +1 抬进 0..total 再减回来，少了这个 +1 就会「按下键原地不动、
+  // 按上键一次跳两条」——两个方向都错，而且不报错。
+  active.value = (active.value + 1 + delta + total + 1) % (total + 1) - 1
 }
 
 function onEnter(event: KeyboardEvent) {

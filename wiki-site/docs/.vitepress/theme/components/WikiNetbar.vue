@@ -7,20 +7,29 @@
  * 同一条位置放：站名 + 创意工坊入口 / 外观 + 语言 + 仓库。
  *
  * 「外观」是本站唯一的换肤入口，机制见 composables/useSkinTheme.ts。
- * 下拉靠 :hover 与 :focus-within 开合（layout.css），不写 JS：
- * 标题是 <button>，所以触屏点一下拿到焦点也能展开。
+ * 下拉靠 :hover 与 :focus-within 开合（layout.css），标题是 <button>，
+ * 所以触屏点一下拿到焦点也能展开；Esc 关闭那一条纯 CSS 做不到，
+ * 由 useDropdownDismiss 补。
  */
 import { computed } from 'vue'
 import { useData, withBase } from 'vitepress'
 import { useUiText } from '../composables/useUiText'
 import { useSkinTheme } from '../composables/useSkinTheme'
 import { usePageLinks } from '../composables/usePageLinks'
+import { useDropdownDismiss } from '../composables/useDropdownDismiss'
 import { canonicalPath, localizePath } from '../../data/structure.mts'
 import { useRoute } from 'vitepress'
 
 const ui = useUiText()
 const { current, themes, set } = useSkinTheme()
 const { repo } = usePageLinks()
+const {
+  dismissed: skinDismissed,
+  trigger: skinTrigger,
+  dismiss: skinDismiss,
+  onFocusOut: skinFocusOut,
+  reopen: skinReopen,
+} = useDropdownDismiss()
 const { lang, site } = useData()
 const route = useRoute()
 
@@ -51,12 +60,20 @@ const otherLangHref = computed(() =>
     </div>
 
     <nav class="wgg-netbar__right" :aria-label="ui.appearance">
-      <div id="p-appearance" class="vector-menu vector-menu-dropdown">
+      <div
+        id="p-appearance"
+        class="vector-menu vector-menu-dropdown"
+        :class="{ 'is-dismissed': skinDismissed }"
+        @keydown.esc="skinDismiss"
+        @focusout="skinFocusOut"
+      >
         <button
+          ref="skinTrigger"
           class="vector-menu-heading"
           type="button"
           :aria-label="ui.appearance"
           aria-haspopup="true"
+          @click="skinReopen"
         >
           <span class="tw-icon tw-icon--brush" aria-hidden="true" />
           <span>{{ ui.appearance }}</span>

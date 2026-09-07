@@ -65,6 +65,10 @@ LAYOUT = os.path.join(THEME, "Layout.vue")
 SEARCH_BOX = os.path.join(THEME, "components", "WikiSearchBox.vue")
 HEAD_SEARCH = os.path.join(THEME, "components", "WikiHeadSearch.vue")
 LIGHTBOX = os.path.join(THEME, "components", "WikiLightbox.vue")
+HEAD = os.path.join(THEME, "components", "WikiHead.vue")
+NETBAR = os.path.join(THEME, "components", "WikiNetbar.vue")
+DROPDOWN_DISMISS = os.path.join(THEME, "composables", "useDropdownDismiss.ts")
+LAYOUT_CSS = os.path.join(THEME, "css", "layout.css")
 # 2026-09-07 换皮：style.css / extras.css 拆成 theme/css/*.css。
 # 可点图的光标在 widgets.css，配图块的展示宽度在 content.css。
 ZOOM_CSS = os.path.join(THEME, "css", "widgets.css")
@@ -242,8 +246,59 @@ def main():
     if "<WikiRefPreview" not in layout_src:
         return fail("Layout.vue 没有挂 WikiRefPreview：实体链接的悬停预览整个不出现")
 
+    # 13. 两个下拉是「CSS 开、JS 关」的混合体，最容易被拆散：
+    #     开合全靠 :hover / :focus-within（零 JS、SSR 就位、和目标站一致），
+    #     但纯 CSS 关不掉 Esc——焦点还在里面 :focus-within 就还是真。
+    #     缺口由 useDropdownDismiss 补：Esc 时把焦点送回标题按钮 + 挂 is-dismissed。
+    #     少了 CSS 那半边就是「按了没反应」，少了 JS 那半边就是「Esc 无效」，
+    #     两种都不报错。而且压制规则的选择器必须带容器前缀：
+    #     裸类名特指度比 `#mw-head …:focus-within` 低一档，压不住。
+    for path in (DROPDOWN_DISMISS, HEAD, NETBAR, LAYOUT_CSS):
+        if not os.path.isfile(path):
+            return fail("缺 %s：两个下拉会退回「Esc 关不掉」"
+                        % os.path.relpath(path, REPO_ROOT))
+    layout_css = read(LAYOUT_CSS)
+    for name, src in (("WikiHead.vue", read(HEAD)), ("WikiNetbar.vue", read(NETBAR))):
+        # 查**接线**，不查「名字出现过」——文档注释里提一句就能让在场检查通过，
+        # 改名 / 删 import / 拆掉 @keydown.esc 三种改坏方式因此全都不会红。
+        # 做法：先解出 `= useDropdownDismiss()` 的解构别名，再拿别名去模板里对。
+        if not re.search(r"import\s*\{[^}]*\buseDropdownDismiss\b[^}]*\}\s*from"
+                         r"\s*'\.\./composables/useDropdownDismiss'", src):
+            return fail("%s 没有 import useDropdownDismiss：这个下拉按 Esc 关不掉，"
+                        "焦点还在里面 :focus-within 就还是真" % name)
+        destructured = re.search(r"const\s*\{([^}]*)\}\s*=\s*useDropdownDismiss\(\)", src)
+        if not destructured:
+            return fail("%s 里找不到 `const { … } = useDropdownDismiss()`："
+                        "本 guard 靠解构出来的别名去核模板接线，写法变了要同步" % name)
+        alias = dict(re.findall(r"(\w+)\s*:\s*(\w+)", destructured.group(1)))
+        for field in ("dismissed", "dismiss", "onFocusOut", "reopen"):
+            if field not in alias:
+                return fail("%s 的解构里少了 %s：Esc 关闭这条链缺一环就不起作用"
+                            % (name, field))
+        wiring = (
+            (r'\@keydown \.esc="%s"' % alias["dismiss"],
+             "@keydown.esc 没绑到 dismiss：按 Esc 不会有任何反应"),
+            (r'\@focusout="%s"' % alias["onFocusOut"],
+             "@focusout 没绑到 onFocusOut：按过 Esc 之后这个下拉就再也打不开了"),
+            (r"'is-dismissed'\s*:\s*%s" % alias["dismissed"],
+             "':class' 没把 is-dismissed 绑到 dismissed：Esc 的状态传不到 CSS"),
+            (r'\@click="%s"' % alias["reopen"],
+             "标题按钮没绑 reopen：按过 Esc 之后鼠标点标题打不开"),
+        )
+        for pattern, why in wiring:
+            if not re.search(pattern.replace(" ", ""), src.replace(" ", "")):
+                return fail("%s：%s" % (name, why))
+    for prefix in ("#mw-head", ".wgg-netbar"):
+        pattern = re.escape(prefix) + r"\s+\.vector-menu-dropdown\.is-dismissed\s+\.vector-menu-content\s*\{"
+        if not re.search(pattern, layout_css):
+            return fail("css/layout.css 缺 `%s .vector-menu-dropdown.is-dismissed "
+                        ".vector-menu-content`。压制规则必须和展开规则同样带容器前缀，"
+                        "裸类名的特指度低一档、压不住 :focus-within，"
+                        "表现是类挂上了但菜单没关" % prefix)
+
     print("WikiSiteThemeWiringGuard: PASS - 速查框注入三处接线齐全、灯箱已挂载、"
           "配图产物不小于展示尺寸、目录框与位置提示注入齐全、未继承默认主题也未引网络字体、"
+          "两个下拉的 Esc 关闭 JS 与 CSS 两半都在、"
           "搜索弹层 fork 对齐 vitepress@%s、cjkTokenize 自包含" % installed)
     return 0
 

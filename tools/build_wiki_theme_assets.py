@@ -25,8 +25,10 @@
 
 三类贴图三种做法，不是都靠生图：
     天空、木纹、冰霜             -> 生图（painterly 风格与图鉴立绘同源）
-    Logo 徽记                    -> 从入库的 preview.png（创意工坊主视觉）里 GrabCut 抠出来。
-                                    模组自己的龙裔遗族读者已经认得，比另画一个徽记强
+    Logo 徽记                    -> 生图，但**不是** painterly 那一套：赛璐璐平涂的动画风
+                                    （粗描边 / 单层阴影 / 无笔触），画的是模组主视觉那只
+                                    龙裔遗族。Logo 只有 421x140 的位子，徽记实际显示约
+                                    122px，平涂比厚涂在这个尺寸上认得清得多
     木纹 / 冰霜的**平铺化**      -> 镜像四拼，接缝天然为零
     木纹 / 冰霜的**透明化**      -> 只保留亮度起伏做成半透明颗粒层，
                                     这样同一张贴图铺在棕色面板上是木头、铺在浅蓝上是冰
@@ -54,6 +56,7 @@ import time
 
 HOME = os.path.expanduser("~")
 IMAGEGEN = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "image_gen.py")
+CHROMA = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "remove_chroma_key.py")
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC_DIR = os.path.join(REPO, "Assets", "wiki_theme")
@@ -83,6 +86,20 @@ TILE_STYLE = (" Painterly stylized game-art texture, flat even lighting with no 
               "no shadows, no vignette, no perspective, no depth of field, shot straight on, "
               "the material fills the entire frame edge to edge with no border and no object. "
               "No text, no watermark, no logo.")
+
+# 徽记单独一套风格：赛璐璐平涂。景与材质那两套是厚涂，缩到 122px 会糊成一团色。
+EMBLEM_STYLE = (" Clean flat cel-shaded anime style: bold even dark outlines, flat color fills "
+                "with only one soft shadow tone, no texture, no gradient, no painterly brush "
+                "strokes, no realistic rendering. Crisp bold silhouette that stays readable when "
+                "scaled down to thumbnail size. Bright saturated palette. "
+                "Create the subject on a perfectly flat solid #ff00ff chroma-key background. "
+                "Do not use #ff00ff anywhere in the subject. No text, no watermark, no logo, "
+                "no border, no frame, no ground, no cast shadow, no background elements.")
+
+# 生图模型很容易把「拟人鸭」画成人，必须在正面描述里反复点名（2026-08-29 实测）。
+DUCK = ("The subject is an ANTHROPOMORPHIC DUCK - a duck, not a human, not a bird of prey: "
+        "big rounded duck head, wide flat orange duck bill, white feathers, round black eyes, "
+        "short wings used as arms, standing upright on two orange webbed feet. ")
 
 # key, 生图尺寸, prompt（None = 不生图，程序化产出）
 SOURCES = [
@@ -118,7 +135,7 @@ def fail(message):
 
 # ── 生图 ────────────────────────────────────────────────────────────
 
-def generate_one(key, size, prompt):
+def generate_one(key, size, prompt, chroma=False):
     """出一张源图到 Assets/wiki_theme/<key>.png。已存在则跳过。返回是否成功。"""
     from PIL import Image
 
@@ -146,7 +163,22 @@ def generate_one(key, size, prompt):
             print("   [FAIL] " + last_err, flush=True)
             return False
 
-    Image.open(raw).convert("RGB").save(dst, "PNG")
+    if not chroma:
+        Image.open(raw).convert("RGB").save(dst, "PNG")
+        return True
+
+    # 网关有时直接回带 alpha 的图，先验一眼省一道工序（2026-08-29 实测）
+    im = Image.open(raw)
+    if im.mode == "RGBA" and im.split()[-1].getextrema()[0] < 255:
+        im.convert("RGBA").save(dst, "PNG")
+        return True
+    cut = os.path.join(RAW_DIR, key + "_cut.png")
+    subprocess.run(
+        [sys.executable, CHROMA, "--input", raw, "--out", cut,
+         "--auto-key", "border", "--soft-matte",
+         "--transparent-threshold", "12", "--opaque-threshold", "220", "--despill"],
+        capture_output=True, text=True, timeout=300)
+    Image.open(cut if os.path.exists(cut) else raw).convert("RGBA").save(dst, "PNG")
     return True
 
 
@@ -273,65 +305,25 @@ def _mix(a, b, t):
 
 # ── 后期：Logo 徽记 ─────────────────────────────────────────────
 
-PREVIEW = os.path.join(REPO, "preview.png")
-# 角色在 512x512 预览图里的位置。下边界落在胯部而不是脚底：
-# 抠图到脚底会连地面一起带出来（脚和焦土同色），而 Logo 里角色是**贴着画布下沿**放的，
-# 平切口正好被边框吃掉，看上去就是「角色从下边缘探出来」，是常见的 Logo 手法。
-EMBLEM_BOX = (176, 118, 367, 356)
-EMBLEM_CACHE = os.path.join(SRC_DIR, "emblem-cut.png")
+EMBLEM_SRC = os.path.join(SRC_DIR, "emblem.png")
 
 
 def build_emblem():
-    """从创意工坊预览图 preview.png 里抠出龙裔遗族，作 Logo 的徽记。
+    """读生图抠好的徽记（Assets/wiki_theme/emblem.png），裁掉四周透明边。
 
-    为什么不生图：模组自己的主视觉就是这只龙裔遗族，读者在创意工坊见过它，
-    Logo 用同一个形象比另画一个徽记认得快。preview.png 是入库文件（big_preview.png
-    被 .gitignore 挡着），所以换台机器也能一模一样地重建。
-
-    背景是同色系的火海战场，硬阈值抠不动，用 GrabCut 给个矩形初值迭代 8 轮，
-    再只留最大连通块、闭运算补洞、开运算削毛刺，最后轻微高斯柔化边缘。
-    抠好的图缓存到 Assets/wiki_theme/emblem-cut.png，重出 Logo 时不必再算一遍。
+    徽记试过三条路，前两条 owner 都否了，留个记录省得再走一遍：
+      1. 厚涂的纹章式鸭头徽 —— 缩到 122px 糊成一团；
+      2. 从创意工坊预览图 GrabCut 抠出来的角色 —— 边缘干净，但那是厚涂写实风，
+         摆在字标旁边显脏；
+      3. 现在这版：同一只龙裔遗族，改用赛璐璐平涂重画。粗描边和单层阴影
+         在小尺寸上不掉细节，这是关键。
     """
     from PIL import Image
 
-    if os.path.isfile(EMBLEM_CACHE):
-        return Image.open(EMBLEM_CACHE).convert("RGBA")
-
-    try:
-        import cv2
-        import numpy as np
-    except ImportError:
-        raise SystemExit("build_wiki_theme_assets: 抠角色需要 opencv-python 与 numpy："
-                         "python -m pip install opencv-python numpy")
-
-    src = cv2.imread(PREVIEW)
-    if src is None:
-        raise SystemExit("build_wiki_theme_assets: 读不到 " + PREVIEW)
-    crop = src[EMBLEM_BOX[1]:EMBLEM_BOX[3], EMBLEM_BOX[0]:EMBLEM_BOX[2]]
-    # 先放大一倍再抠：512 的原图上 GrabCut 的边界会有台阶，放大后柔和得多
-    crop = cv2.resize(crop, (crop.shape[1] * 2, crop.shape[0] * 2), interpolation=cv2.INTER_LANCZOS4)
-    h, w = crop.shape[:2]
-
-    mask = np.zeros((h, w), np.uint8)
-    bgd = np.zeros((1, 65), np.float64)
-    fgd = np.zeros((1, 65), np.float64)
-    rect = (int(w * 0.05), int(h * 0.03), int(w * 0.90), int(h * 0.95))
-    cv2.grabCut(crop, mask, rect, bgd, fgd, 8, cv2.GC_INIT_WITH_RECT)
-
-    fg = np.where((mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD), 255, 0).astype(np.uint8)
-    count, labels, stats, _ = cv2.connectedComponentsWithStats(fg, 8)
-    if count > 1:
-        biggest = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
-        fg = np.where(labels == biggest, 255, 0).astype(np.uint8)
-    fg = cv2.morphologyEx(fg, cv2.MORPH_CLOSE, np.ones((7, 7), np.uint8))
-    fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
-    fg = cv2.GaussianBlur(fg, (5, 5), 0)
-
-    rgba = np.dstack([cv2.cvtColor(crop, cv2.COLOR_BGR2RGB), fg])
-    im = Image.fromarray(rgba, "RGBA")
-    os.makedirs(SRC_DIR, exist_ok=True)
-    im.save(EMBLEM_CACHE, "PNG")
-    return im
+    if not os.path.isfile(EMBLEM_SRC):
+        raise SystemExit("build_wiki_theme_assets: 缺 " + EMBLEM_SRC +
+                         "；先跑一次生图（不要 --no-gen）")
+    return _trim_alpha(Image.open(EMBLEM_SRC).convert("RGBA"))
 
 
 # ── 后期：Logo ──────────────────────────────────────────────────────
@@ -363,7 +355,7 @@ def _font(candidates, size):
 def build_logo():
     """徽记 + 字标拼成 842x280 的站点 Logo（= 版位 421x140 的 2x）。
 
-    徽记是从创意工坊预览图里抠出来的龙裔遗族（见 build_emblem），字标是 Pillow 排的
+    徽记是生图出的龙裔遗族（见 build_emblem），字标是 Pillow 排的
     ——生图模型写不对字母，这是实测结论。字标做成「深墨描边 + 金色渐变填充 + 落影」，
     深浅两套皮肤的天空底都压得住，不用出两版。
     """
@@ -371,12 +363,12 @@ def build_logo():
 
     canvas = Image.new("RGBA", (LOGO_W, LOGO_H), (0, 0, 0, 0))
 
-    # 徽记：等比缩到几乎满高，**贴着画布下沿**放（见 EMBLEM_BOX 的注释）
-    em = _trim_alpha(build_emblem())
-    scale = 272.0 / em.size[1]
-    em = em.resize((max(1, int(round(em.size[0] * scale))), 272), Image.LANCZOS)
-    canvas.alpha_composite(em, (6, LOGO_H - em.size[1]))
-    text_left = 6 + em.size[0] + 14
+    # 徽记：等比缩到几乎满高，贴着画布下沿放（角色站在版位底边上，和字标齐脚）
+    em = build_emblem()
+    scale = 268.0 / em.size[1]
+    em = em.resize((max(1, int(round(em.size[0] * scale))), 268), Image.LANCZOS)
+    canvas.alpha_composite(em, (8, LOGO_H - em.size[1] - 6))
+    text_left = 8 + em.size[0] + 14
 
     avail = LOGO_W - text_left - 20
     main_font, stroke, main_box = _fit(FONT_MAIN, WORDMARK, avail)
@@ -580,7 +572,7 @@ def main():
         for i, (key, size, prompt) in enumerate(todo, 1):
             print("[%d/%d] %s (%s)" % (i, len(todo), key, size), flush=True)
             try:
-                ok = generate_one(key, size, prompt)
+                ok = generate_one(key, size, prompt, key in CHROMA_KEYS)
                 print("   [%s] %s" % ("OK" if ok else "FAIL", key), flush=True)
             except Exception as e:  # noqa: BLE001 - 单张失败不该中断整批
                 print("   [ERR] %s" % e, flush=True)

@@ -146,6 +146,13 @@
 .wgg-netbar .vector-menu-dropdown:focus-within .vector-menu-content {
   display: block;
 }
+/* 按过 Esc 之后压住：焦点被送回标题按钮了，:focus-within 仍然为真，
+   少了这条就是「按了没反应」。选择器要跟上面那条同样带容器前缀——
+   裸类名的特指度低一档，压不住。焦点真正离开时 useDropdownDismiss 清掉这个类。 */
+.wgg-netbar .vector-menu-dropdown.is-dismissed .vector-menu-content {
+  display: none;
+}
+
 .wgg-netbar .vector-menu-content ul {
   margin: 0;
   padding: 0;
@@ -518,6 +525,10 @@
 #mw-head .vector-menu-dropdown:focus-within .vector-menu-content {
   display: block;
 }
+#mw-head .vector-menu-dropdown.is-dismissed .vector-menu-content {
+  display: none;
+}
+
 #mw-head .vector-menu-dropdown .vector-menu-content ul {
   margin: 0;
   padding: 4px;

@@ -11,7 +11,8 @@
  * 路径来自 seo.mts 写进 frontmatter 的 editSource；首页与 404 没有源文件，
  * 这三枚就不渲染——不给读者一个 404 的入口。
  *
- * 下拉靠 CSS 的 :hover / :focus-within 开合，标题是 <button> 所以触屏也能点开。
+ * 下拉靠 CSS 的 :hover / :focus-within 开合，标题是 <button> 所以触屏也能点开；
+ * 纯 CSS 关不掉 Esc，那一条由 useDropdownDismiss 补。
  */
 import { computed } from 'vue'
 import { useData, useRouter } from 'vitepress'
@@ -19,6 +20,7 @@ import WikiHeadSearch from './WikiHeadSearch.vue'
 import { useUiText } from '../composables/useUiText'
 import { usePageLinks } from '../composables/usePageLinks'
 import { useWiki } from '../composables/useWiki'
+import { useDropdownDismiss } from '../composables/useDropdownDismiss'
 import { CATEGORIES, CHANGELOG_CATEGORY } from '../../data/structure.mts'
 
 const ui = useUiText()
@@ -26,6 +28,14 @@ const router = useRouter()
 const { theme } = useData()
 const { viewSource, viewHistory, editPage, talk, repo } = usePageLinks()
 const { href } = useWiki()
+
+const {
+  dismissed: moreDismissed,
+  trigger: moreTrigger,
+  dismiss: moreDismiss,
+  onFocusOut: moreFocusOut,
+  reopen: moreReopen,
+} = useDropdownDismiss()
 
 const hasSource = computed(() => viewSource.value !== null)
 // 根部署且没配 SITE_URL 时 feed.xml 根本不生成，这时不渲染这一项
@@ -86,8 +96,21 @@ function print() {
         </ul>
       </nav>
 
-      <nav id="p-cactions" class="mw-portlet vector-menu vector-menu-dropdown" :aria-label="ui.more">
-        <button class="vector-menu-heading" type="button" aria-haspopup="true">
+      <nav
+        id="p-cactions"
+        class="mw-portlet vector-menu vector-menu-dropdown"
+        :class="{ 'is-dismissed': moreDismissed }"
+        :aria-label="ui.more"
+        @keydown.esc="moreDismiss"
+        @focusout="moreFocusOut"
+      >
+        <button
+          ref="moreTrigger"
+          class="vector-menu-heading"
+          type="button"
+          aria-haspopup="true"
+          @click="moreReopen"
+        >
           <span class="tw-icon tw-icon--dots-vertical" aria-hidden="true" />
           <span class="tab-label">{{ ui.more }}</span>
         </button>

@@ -410,7 +410,7 @@ DOM 的 id 与 class 一律沿用 MediaWiki 的原名（`#mw-panel` / `#mw-head`
 | `sky-overworld.webp` / `sky-snow.webp` | 各一套 | 生图（1536×1024 → 裁 16:10 → WebP） | `--theme-site-background-image` |
 | `wood.webp` / `frost.webp` | 各一套 | 生图 → 镜像四拼平铺 → 只留亮度起伏的半透明颗粒层 | `--theme-widget-texture` |
 | `grass.png` / `grass-snow.png` | 各一套 | 程序化绘制（192×26，CSS 按 96×13 铺） | `--theme-top-background` |
-| `logo.webp` | 两套共用 | 从入库的 `preview.png` 抠出龙裔遗族 + Pillow 排字标 | `--theme-site-logo-image` |
+| `logo.webp` | 两套共用 | 生图（赛璐璐平涂）出徽记 + Pillow 排字标 | `--theme-site-logo-image` |
 
 三件事值得知道：
 
@@ -419,13 +419,14 @@ DOM 的 id 与 class 一律沿用 MediaWiki 的原名（`#mw-panel` / `#mw-head`
   换皮肤不会串色。做法是只保留源图的亮度起伏（比平均亮给白、暗给黑，偏离越多越不透明）。
 - **平铺靠镜像四拼**，接缝两侧像素天然相等，永远不会有缝。代价是有对称感，
   所以图样越「像个东西」（冰花是典型）越要先柔化、再压低不透明度。
-- **草皮条、Logo 徽记与字标都不生图。** 13px 的草皮条：1024 的图缩下去只会糊成
-  一条色带，程序化画又小又脆还能保证左右接缝对齐。徽记：模组自己的主视觉
-  （创意工坊的 `preview.png`，入库文件）里那只龙裔遗族读者已经认得，比另画一个
-  徽记强；背景是同色系火海，硬阈值抠不动，用 GrabCut 给矩形初值迭代。
-  抠图**下沿切在胯部**、Logo 里角色**贴着画布下沿**放——脚和焦土同色，
-  抠到脚底会把地面一起带出来，而平切口贴着边框就成了「角色从下边缘探出来」。
-  字标：生图模型写不对字母。
+- **草皮条与字标不生图。** 13px 的草皮条：1024 的图缩下去只会糊成一条色带，
+  程序化画又小又脆还能保证左右接缝对齐。字标：生图模型写不对字母。
+- **徽记生图，但和景 / 材质不是同一套风格串。** 那两套是厚涂（painterly），
+  徽记在 Logo 里实际只显示约 122px，厚涂缩到这个尺寸会糊成一团色；
+  徽记那套是**赛璐璐平涂**（粗描边 / 单层阴影 / 无笔触），小尺寸不掉细节。
+  画的仍是模组主视觉那只龙裔遗族——读者在创意工坊见过它。
+  另外：拟人鸭必须在正面描述里反复点名 `ANTHROPOMORPHIC DUCK`，
+  写在 negative prompt 里挡不住模型把它画成人。
 
 产物放 `theme/assets/`（**不要**放 `docs/public/images/`——那是 `WikiImageAssetGuard`
 的地盘，没进 `image-manifest.json` 的 WebP 会被判成孤儿）。放这儿还有个好处：
@@ -437,11 +438,27 @@ Vite 会打哈希并自动补 `base` 前缀，根部署和子路径部署都不�
 `tests/WikiThemeAssetGuard.py` 守着在场、归属、字节数与预算四件事，
 归属以 `tokens.css` 里级联解出来的实际值为准，不认清单里手写的。
 
-天空与两张材质的源图在 `Assets/wiki_theme/`，是 local-only 的（`Assets/` 被
-`.gitignore` 挡着），重出要走生图网关；徽记的源是入库的 `preview.png`，
-换台机器也能一模一样地重建（抠好的图缓存在 `Assets/wiki_theme/emblem-cut.png`，
-删掉会自动重抠，需要 `opencv-python`）。
+四张源图（天空 ×2、木纹、冰霜）与徽记都在 `Assets/wiki_theme/`，是 local-only 的
+（`Assets/` 被 `.gitignore` 挡着），重出要走生图网关。
 别人机器上没有源图也能校验，因为 guard 只读产物大小和清单。
+
+### 8.4 下拉的 Esc：CSS 开、JS 关
+
+「更多」（`#p-cactions`）与「外观」（`#p-appearance`）两个下拉照抄 Vector-legacy，
+开合全靠 CSS 的 `:hover` / `:focus-within`——零状态、SSR 就位、鼠标体验和目标站一致。
+但**纯 CSS 关不掉 Esc**：焦点还在下拉里，`:focus-within` 就还是真。
+
+缺口由 `composables/useDropdownDismiss.ts` 补，两个下拉共用一份：
+
+- Esc → 把焦点送回标题按钮（WAI-ARIA 对菜单的期待），同时挂 `is-dismissed`；
+- `focusout` 且新焦点不在下拉内 → 清掉 `is-dismissed`，否则下次 Tab 进来打不开；
+- 标题按钮的 `click` → 也清掉，让按过 Esc 之后鼠标还能正常打开。
+
+**压制规则的选择器必须带容器前缀**（`#mw-head …` / `.wgg-netbar …`）：
+裸类名的特指度比展开规则里那条 `#mw-head …:focus-within` 低一档，压不住，
+表现是「类挂上了、菜单没关」。`WikiSiteThemeWiringGuard` 的检查 13 守这一整条链，
+而且是按**解构出来的别名**去核模板接线的——只查「名字出现过」的话，
+文档注释里提一句就能骗过去（反向验证实测）。
 
 ## 9. 不再有的东西
 
