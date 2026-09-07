@@ -16,7 +16,15 @@
             浏览器当它不存在，同样是「框没了」，控制台只有一条警告；
           - Layout.vue 里那句没删干净 -> 一页出现**两个**框。
 
-    二、搜索弹层的 fork。
+    二、配图灯箱与图片口径。
+        WikiLightbox 靠 Layout.vue 挂载 + extras.css 给可点的图上 zoom-in 光标，
+        两处的选择器必须和组件里的 SELECTOR 对得上；漏了光标读者根本不知道图能点。
+        更隐蔽的是**产物尺寸**：正文里 `.brs-icon` 按 205px 显示，而图标产物一度只有
+        128px，浏览器默认会把它拉大——页面不报错，只是糊。owner 报的「有些太糊」
+        就是这么来的。所以这里把 build_wiki_images.py 的尺寸常量和 style.css 里的
+        展示宽度绑在一起：产物只能比展示尺寸大，不能小。
+
+    三、搜索弹层的 fork。
         theme/components/WikiSearchBox.vue 是 vitepress 自带 VPLocalSearchBox.vue
         的副本，靠 config.mts 里一条 Vite alias 顶上去。alias 一旦写错或被删，
         站点会**静默退回**官方弹层：还能搜，只是首开又变回三四秒白屏、
@@ -34,6 +42,10 @@
        里 node_modules/vitepress 的版本；
     5. search.mts 仍导出 cjkTokenize，且函数体自包含（不引用外部标识符）——
        它会被序列化进站点数据、在浏览器里 new Function 还原，引用外部变量会静默失效。
+    6. Layout.vue 挂了 WikiLightbox，extras.css 给可点的图配了 zoom-in 光标；
+    7. config.mts 给 markdown 图片补了 loading=lazy（图鉴那页 38 张图，漏了就是一开页
+       全量拉取）；
+    8. ICON_MAX / POSTER_MAX 不小于 style.css 里 .brs-icon / .brs-figure 的展示宽度。
 
     本 guard 只管**接线在不在**，不管样式好不好看：版式是人眼的事。
 """
@@ -51,7 +63,17 @@ THEME = os.path.join(VP, "theme")
 THEME_INDEX = os.path.join(THEME, "index.ts")
 LAYOUT = os.path.join(THEME, "Layout.vue")
 SEARCH_BOX = os.path.join(THEME, "components", "WikiSearchBox.vue")
+LIGHTBOX = os.path.join(THEME, "components", "WikiLightbox.vue")
+EXTRAS_CSS = os.path.join(THEME, "extras.css")
+STYLE_CSS = os.path.join(THEME, "style.css")
+BUILD_IMAGES = os.path.join(REPO_ROOT, "tools", "build_wiki_images.py")
 LOCK = os.path.join(SITE, "package-lock.json")
+
+# style.css 里这两个配图块的展示宽度，就是对应产物尺寸的下限
+DISPLAY_WIDTH_RULES = (
+    (".brs-icon", "ICON_MAX"),
+    (".brs-figure", "POSTER_MAX"),
+)
 
 UPSTREAM_RE = re.compile(r"^\s*\*\s*UPSTREAM:\s*vitepress@([0-9][^\s]*)\s*$", re.M)
 # fork 里除了注释，其余对外部标识符的引用都在 import 行上；cjkTokenize 的函数体
@@ -79,7 +101,8 @@ def tokenizer_body(src):
 
 
 def main():
-    for path in (CONFIG, SEARCH, THEME_INDEX, LAYOUT, SEARCH_BOX, LOCK):
+    for path in (CONFIG, SEARCH, THEME_INDEX, LAYOUT, SEARCH_BOX, LIGHTBOX,
+                 EXTRAS_CSS, STYLE_CSS, BUILD_IMAGES, LOCK):
         if not os.path.isfile(path):
             return fail("缺文件：" + os.path.relpath(path, REPO_ROOT))
 
@@ -131,8 +154,52 @@ def main():
             return fail("cjkTokenize 的函数体里出现了 %r。它会被序列化进站点数据、"
                         "在浏览器里用 new Function 还原，引用外部标识符会在运行时静默失效" % token)
 
-    print("WikiSiteThemeWiringGuard: PASS - 速查框注入三处接线齐全、"
-          "搜索弹层 fork 对齐 vitepress@%s、cjkTokenize 自包含" % installed)
+    # 6. 灯箱接线
+    if "<WikiLightbox" not in layout_src:
+        return fail("Layout.vue 没有挂 WikiLightbox：正文配图点了不会放大")
+    extras_src = read(EXTRAS_CSS)
+    if "cursor: zoom-in" not in extras_src:
+        return fail("extras.css 里没有 zoom-in 光标：图能点但没有任何提示，读者不会去点")
+    box_selectors = [sel for sel in (".brs-gallery img", ".brs-figure img", ".brs-icon img")
+                     if sel not in extras_src]
+    if box_selectors:
+        return fail("extras.css 的可点图选择器和 WikiLightbox 的 SELECTOR 对不上，缺：%s"
+                    % ", ".join(box_selectors))
+
+    # 7. 正文图片懒加载
+    # 认实际那句 attrSet，不能只找 "lazy" —— 上面那段注释里就有这个词，
+    # 代码删了照样能蒙混过去（本 guard 的反向验证第一版就是这么漏的）。
+    if "attrSet('loading', 'lazy')" not in config_src:
+        return fail("config.mts 没给 markdown 图片补 loading=lazy："
+                    "图鉴那页 38 张图会在开页时一次性全部拉取")
+
+    # 8. 产物尺寸 >= 展示尺寸（否则浏览器把图拉大，看起来就是糊）
+    style_src = read(STYLE_CSS)
+    images_src = read(BUILD_IMAGES)
+    for selector, const_name in DISPLAY_WIDTH_RULES:
+        # 同一个选择器在 style.css 里出现多次（共用的网格规则 + 各自的限宽），
+        # 扫全部同名规则块取最大的那个 max-width —— 那才是这张图能被撑到的宽度。
+        pattern = "^" + re.escape(selector) + r" \{(.*?)^\}"
+        widths = []
+        for block in re.finditer(pattern, style_src, re.S | re.M):
+            found = re.search(r"max-width:\s*(\d+)px", block.group(1))
+            if found:
+                widths.append(int(found.group(1)))
+        if not widths:
+            return fail("style.css 里没找到 %s 的 max-width，无法核对它会不会把图放大；"
+                        "规则写法改了的话本 guard 的正则要同步" % selector)
+        const = re.search(r"^%s\s*=\s*(\d+)" % const_name, images_src, re.M)
+        if not const:
+            return fail("build_wiki_images.py 里找不到 %s" % const_name)
+        shown, produced = max(widths), int(const.group(1))
+        if produced < shown:
+            return fail("%s 在正文里按 %dpx 显示，而 %s 只出到 %dpx —— 浏览器会把它拉大，"
+                        "页面上就是一张糊图。要么把产物尺寸提上去，要么把展示宽度降下来"
+                        % (selector, shown, const_name, produced))
+
+    print("WikiSiteThemeWiringGuard: PASS - 速查框注入三处接线齐全、灯箱已挂载、"
+          "配图产物不小于展示尺寸、搜索弹层 fork 对齐 vitepress@%s、cjkTokenize 自包含"
+          % installed)
     return 0
 
 

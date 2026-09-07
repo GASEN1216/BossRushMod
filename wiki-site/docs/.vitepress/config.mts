@@ -365,6 +365,27 @@ export default defineConfig({
       md.renderer.rules.table_close = () => '</table></div>'
       md.use(entityLinkPlugin)
       md.use(infoboxSlotPlugin)
+
+      /*
+       * 正文配图一律懒加载。
+       *
+       * markdown 里的 `![]()` 渲染出来是一个光秃秃的 <img>，没有 loading 属性——
+       * 图鉴那一页有 38 张图，等于一开页就把整组立绘（1.3 MB）全拉下来，
+       * 而首屏最多看得到十来张。WikiIcon.vue 那些组件图标一直是 lazy 的，
+       * 只有走 markdown 这条路的漏了。
+       *
+       * 包住既有规则而不是替换：图片 src 的 base 前缀是 VitePress 在别处做的，
+       * 这里只往 token 上补两个属性再交回去，不碰它的渲染逻辑。
+       */
+      const renderImage = md.renderer.rules.image
+      md.renderer.rules.image = (tokens: any, idx: number, options: any, env: any, self: any) => {
+        const token = tokens[idx]
+        if (!token.attrGet('loading')) token.attrSet('loading', 'lazy')
+        if (!token.attrGet('decoding')) token.attrSet('decoding', 'async')
+        return renderImage
+          ? renderImage(tokens, idx, options, env, self)
+          : self.renderToken(tokens, idx, options)
+      }
     },
   },
 

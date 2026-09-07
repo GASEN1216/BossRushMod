@@ -247,6 +247,23 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 // 250ms 后应有 .brs-peek；再 dispatch mouseout 应立刻消失
 ```
 
+## 4.11 配图灯箱（WikiLightbox）
+
+正文里三类配图块（`.brs-gallery` / `.brs-figure` / `.brs-icon`）与速查框顶上那枚大图
+可以点开看大图，组件在 `theme/components/WikiLightbox.vue`，挂在 `Layout.vue` 的
+`layout-bottom` 插槽上。
+
+- **永不超过原始像素**。这是组件唯一一条硬规则：放大到超过原图只会得到一张更大的糊图，
+  症结在产物尺寸不在展示尺寸（见 §5）。
+- 切图前**先 `decode()` 再换**。正文图片是懒加载的，没进过视口的那些 `naturalWidth`
+  是 0；直接读会按缩略图尺寸把灯箱打开（实测第二张会变成 143px）。
+  弹层里那张图的 `@load` 再回写一次作为兜底。
+- 可点的图由 `extras.css` 给 `cursor: zoom-in`，选择器和组件里的 `SELECTOR`
+  **必须一一对应**，guard 会核对。
+- **不覆盖**正文里的实体链接小图标与导航图标：那些是 20px 上下的功能贴图，
+  没有更多细节，而且点它们应该跳转不是弹窗。
+- 不用 `<Transition>`，理由同 §4.10 的悬停预览。
+
 ## 5. 图标
 
 `structure.mts` 与 `infobox.mts` 的 `icon` 字段写的是
@@ -257,6 +274,16 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 - 正因为缺图标静默降级，**打错的 key 和还没出的图长得一模一样**。
   `WikiSiteStructureGuard.py` 因此要求每个 key 要么已在清单里，
   要么已在 `tools/gen_wiki_icons.py` 的 `ICONS` 待生成清单里。
+
+**产物尺寸不得小于展示尺寸。** 浏览器把小图拉大是静默的，页面不报错、只是糊——
+「有些图太糊」这条反馈就是这么来的：`.brs-icon` 在正文里按 205px 显示，
+而图标产物一度只有 128px，一直在被拉伸。`tools/build_wiki_images.py` 顶部三个常量
+（`PORTRAIT_MAX` / `POSTER_MAX` / `ICON_MAX`）就是这条纪律的落点，
+`WikiSiteThemeWiringGuard` 把它们和 `style.css` 里 `.brs-icon` / `.brs-figure`
+的 `max-width` 绑在一起核对。改展示宽度或改产物尺寸时，两边一起想。
+
+顺带：正文 markdown 图片由 `config.mts` 统一补 `loading="lazy" decoding="async"`。
+图鉴那一页有 38 张图，漏了这条就是一开页把整组立绘全拉下来。
 
 三个图片来源：
 
@@ -290,7 +317,7 @@ npm --prefix wiki-site run preview           # 看构建产物（版式改动要
 | Guard | 管什么 |
 | --- | --- |
 | `WikiSiteStructureGuard.py` | 结构 / 页面 / 图标 key 三方一致 |
-| `WikiSiteThemeWiringGuard.py` | 速查框注入的三处接线、搜索弹层 fork 的 alias 与上游版本、`cjkTokenize` 自包含 |
+| `WikiSiteThemeWiringGuard.py` | 速查框注入的三处接线、灯箱挂载与 zoom-in 光标、正文图片懒加载、配图产物不小于展示尺寸、搜索弹层 fork 的 alias 与上游版本、`cjkTokenize` 自包含 |
 | `WikiImageAssetGuard.py` | 图片清单、产物、引用三者对得上 |
 | `WikiCalloutSingleLineGuard.py` | `WikiContent` 的 callout 必须单行 |
 | `ZombieModeMutantWikiGuard.py` | 丧尸模式页与生成产物逐字节一致（**改 `transformContent` 必须同步改它的 Python 镜像**） |

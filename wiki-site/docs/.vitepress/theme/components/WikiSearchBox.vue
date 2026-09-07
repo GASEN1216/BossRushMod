@@ -661,6 +661,9 @@ function onMouseMove(e: MouseEvent) {
   position: absolute;
   inset: 0;
   background: var(--vp-backdrop-bg-color);
+  /* 遮罩颜色本身在 style.css 里改成了本主题的墨色（默认那层纯黑压在纸底上
+     像"整屏先黑一下"）。这里再加一点点模糊：页面还认得出来，但退到背景里去。 */
+  backdrop-filter: blur(2px);
   transition: opacity 0.5s;
 }
 

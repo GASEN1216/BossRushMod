@@ -20,7 +20,7 @@
  *                        VPDocFooter 只在有 pager 或 lastUpdated 时渲染，
  *                        所以 config.mts 打开了 lastUpdated —— 顺手也把
  *                        「最后更新」那个早就配好却从未生效的标签点亮了。
- *   layout-bottom     —— 悬停预览（position:fixed 的页面级浮层）。
+ *   layout-bottom     —— 悬停预览与配图灯箱（position:fixed 的页面级浮层）。
  *
  * 类目主页上的顺序：先对比表（数据），再宫格（导航），最后同类导航。
  * 更新日志的页面用版本时间线代替同类导航——四十多个版本平铺成一行没法读。
@@ -34,6 +34,7 @@ import WikiCardGrid from './components/WikiCardGrid.vue'
 import WikiNavbox from './components/WikiNavbox.vue'
 import WikiChangelogTimeline from './components/WikiChangelogTimeline.vue'
 import WikiRefPreview from './components/WikiRefPreview.vue'
+import WikiLightbox from './components/WikiLightbox.vue'
 import { useWiki } from './composables/useWiki'
 
 const { hubCategory, isChangelog } = useWiki()
@@ -109,10 +110,11 @@ onMounted(() => {
 
 <template>
   <DefaultTheme.Layout>
-    <!-- 悬停预览是页面级浮层，挂在 layout-bottom 而不是正文插槽里：
-         它 position:fixed，放在正文流里会被 .vp-doc 的层叠上下文关住。 -->
+    <!-- 悬停预览与配图灯箱都是页面级浮层，挂在 layout-bottom 而不是正文插槽里：
+         它们 position:fixed，放在正文流里会被 .vp-doc 的层叠上下文关住。 -->
     <template #layout-bottom>
       <WikiRefPreview />
+      <WikiLightbox />
     </template>
 
     <template #doc-before>

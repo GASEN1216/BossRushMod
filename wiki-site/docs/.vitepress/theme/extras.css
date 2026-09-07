@@ -422,7 +422,155 @@
   border-color: var(--brs-brass);
 }
 
-/* ── 4. 打印：只剩正文与速查框，黑字白纸 ───────────────── */
+/* ── 4. 配图灯箱（WikiLightbox）────────────────────────── */
+/*
+ * 可点开的图给个 zoom-in 光标 —— 不给提示的话没人知道图能点。
+ * 选择器和组件里的 SELECTOR 一一对应，改一处记得改另一处。
+ */
+.vp-doc .brs-gallery img,
+.vp-doc .brs-figure img,
+.vp-doc .brs-icon img,
+.wiki-infobox__head img {
+  cursor: zoom-in;
+}
+
+.vp-doc .brs-gallery img:focus-visible,
+.vp-doc .brs-figure img:focus-visible,
+.vp-doc .brs-icon img:focus-visible,
+.wiki-infobox__head img:focus-visible {
+  outline: 2px solid var(--brs-brass);
+  outline-offset: 2px;
+}
+
+.brs-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 80; /* 高于悬停预览的 60，低于搜索弹层的 100 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: var(--vp-backdrop-bg-color);
+  backdrop-filter: blur(3px);
+  animation: brs-lightbox-in 0.14s ease-out;
+}
+
+@keyframes brs-lightbox-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.brs-lightbox__frame {
+  margin: 0;
+  max-width: 92vw;
+  border: 1px solid var(--brs-rule);
+  border-top: 2px solid var(--brs-ink);
+  background: var(--brs-surface);
+  padding: 12px 12px 0;
+  animation: brs-lightbox-rise 0.14s ease-out;
+}
+
+@keyframes brs-lightbox-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* 关键一条：永不超过原始像素。宽度上限由组件按 min(原图, 视口) 算好写在行内，
+   这里只负责让图填满那个宽度、按比例走高。 */
+.brs-lightbox__frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--brs-sunk);
+}
+
+.brs-lightbox__frame figcaption {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  padding: 10px 2px 12px;
+}
+
+.brs-lightbox__cap {
+  font-family: var(--brs-serif);
+  font-size: 14px;
+  color: var(--brs-ink);
+}
+
+.brs-lightbox__meta {
+  font-family: var(--brs-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  color: var(--brs-ink-faint);
+}
+
+.brs-lightbox__close,
+.brs-lightbox__nav {
+  flex: none;
+  border: 1px solid var(--brs-rule);
+  background: var(--brs-surface);
+  color: var(--brs-ink-soft);
+  font-family: var(--brs-mono);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.brs-lightbox__close:hover,
+.brs-lightbox__nav:hover {
+  border-color: var(--brs-brass);
+  color: var(--brs-brass);
+}
+
+.brs-lightbox__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.brs-lightbox__nav {
+  width: 34px;
+  height: 56px;
+  font-size: 22px;
+  line-height: 1;
+}
+
+/* 窄屏：翻页键沉到底部横排，别挤掉图本身 */
+@media (max-width: 640px) {
+  .brs-lightbox {
+    padding: 12px;
+  }
+
+  .brs-lightbox__frame {
+    max-width: 100%;
+  }
+
+  .brs-lightbox__nav {
+    position: absolute;
+    bottom: 16px;
+    width: 56px;
+    height: 40px;
+  }
+
+  .brs-lightbox__nav--prev {
+    left: 16px;
+  }
+
+  .brs-lightbox__nav--next {
+    right: 16px;
+  }
+}
+
+/* ── 5. 打印：只剩正文与速查框，黑字白纸 ───────────────── */
 @media print {
   .VPNav,
   .VPLocalNav,
@@ -431,6 +579,7 @@
   .VPFooter,
   .VPDocFooter .prev-next,
   .VPDocFooter .edit-link,
+  .brs-lightbox,
   .wiki-crumbs,
   .wiki-navbox,
   .wiki-grid-section,

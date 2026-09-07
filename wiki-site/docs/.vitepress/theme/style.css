@@ -116,6 +116,14 @@
   --vp-font-family-mono: var(--brs-mono);
 
   /* 版心：1440 视口下侧栏 272 + 正文 820 + 右栏 224 正好铺满，不留大片死白 */
+  /*
+   * 弹层遮罩。默认是 rgba(0,0,0,0.6) 的纯黑，压在这套暖纸底上像「整屏先黑一下」
+   * ——点开搜索的观感是黑屏再弹框，而不是一层薄纱盖住页面。
+   * 换成本主题的墨色、压到 0.32，再配一点点模糊，页面还看得见，
+   * 注意力也仍然落在弹层上。
+   */
+  --vp-backdrop-bg-color: rgba(27, 23, 19, 0.32);
+
   --vp-layout-max-width: 1440px;
   --vp-sidebar-width: 272px;
 
@@ -158,6 +166,8 @@
 
 .dark {
   --vp-c-brand-soft: rgba(211, 160, 85, 0.12);
+  /* 深色底上纸张本来就暗，遮罩太重会全黑，透明度比浅色略高一点点即可 */
+  --vp-backdrop-bg-color: rgba(0, 0, 0, 0.5);
   --vp-code-line-highlight-color: rgba(211, 160, 85, 0.12);
   --vp-button-brand-text: #141110;
   --vp-button-brand-hover-text: #141110;
@@ -277,8 +287,21 @@ body {
   counter-reset: brs-nav;
 }
 
+/*
+ * 分组之间那条线用**软线**。默认主题画的是 --vp-c-divider（在本主题里映射到
+ * --brs-rule，和卡片外框同一档），十二个类目就是十一条和外框一样重的横线，
+ * 一列扫下来像张账本。分隔线的职责只是分组，不该和结构线抢注意力。
+ *
+ * 同时把上下留白拉齐：默认展开的分组 padding-bottom 24、折叠的 10，
+ * 于是「展开哪个类目，哪一段的行距就变一次」，线的间距忽宽忽窄。
+ */
+.VPSidebar .group + .group {
+  border-top-color: var(--brs-rule-soft);
+  padding-top: 16px;
+}
+
 .VPSidebarItem.level-0 {
-  padding-bottom: 20px;
+  padding-bottom: 16px;
   counter-increment: brs-nav;
 }
 
@@ -312,8 +335,19 @@ body {
   color: var(--brs-brass) !important;
 }
 
-.VPSidebarItem.level-0.has-active > .item {
-  box-shadow: inset 2px 0 0 var(--brs-brass);
+/*
+ * 类目的「你在这里」标记。
+ *
+ * 原先写的是 `box-shadow: inset 2px 0 0`——inset 阴影画在盒子**内部**，
+ * 而 .item 没有左内边距、文字紧贴左边缘，于是那条黄铜线正好压在类目编号的
+ * 第一个字符上：「03 · BOSS」在屏幕上读成「93 · BOSS」。
+ *
+ * 默认主题本来就为此准备了 .indicator（绝对定位在 left: -17px 的栏外沟槽里，
+ * 层级 2 以下的条目一直在用它）。这里给类目层也点亮同一枚，位置天然不压字，
+ * 而且和下面条目的选中标记对齐成一条竖线。
+ */
+.VPSidebarItem.level-0.has-active > .item > .indicator {
+  background-color: var(--brs-brass);
 }
 
 .VPSidebarItem.level-0 > .item > .text::before,
@@ -368,9 +402,11 @@ body {
 
 /*
  * 速查框在 >=1400px 是右浮动的（WikiInfobox.vue）。浮动只让**行盒**避让，
- * 块盒的边框和底色照旧铺满整个容器宽度——于是 h2 的黄铜栏带顶线、分隔线、
- * 提示块的底色会从框身底下整幅穿过去。它们还都是 position: relative（默认主题
- * 给所有标题加的），层叠上还压在框上面，看起来就像一条线把框划成了两半。
+ * 块盒的边框和底色照旧铺满整个容器宽度——于是分隔线会从框身底下整幅穿过去，
+ * 提示块与引用块的底色也会铺到框底下，看起来像被划了一刀。
+ *
+ * 标题不在这份名单里：h2 的栏带已经改成定宽黄铜标（见下），h3 只有左边一条竖标，
+ * 都不会横穿浮动物；它们的**文字**本来就会自动绕开浮动。
  *
  * 让它们各自成为 BFC 就好了：BFC 的边框盒不允许和浮动的外边距盒重叠
  * （CSS 2.1 §9.5），浏览器会自动把它们收窄到框左边。`display: flow-root` 是
@@ -380,15 +416,9 @@ body {
  * 表格（.brs-table-scroll 有 overflow）与代码块本来就是 BFC，不用管；
  * 配图块走的是 clear: both（§14），整块让开。
  *
- * h1 不在这份名单里：框插在 h1 **之后**，浮动的顶边落在 h1 下外边距之下，
- * 够不着它。加了反而会让 h1 的下外边距不再与后续块合并，凭空多出一段空白。
- *
  * 只在浮动存在的宽度下开：窄屏是通栏卡片，没有浮动要避让。
  */
 @media (min-width: 1400px) {
-  .vp-doc h2,
-  .vp-doc h3,
-  .vp-doc h4,
   .vp-doc hr,
   .vp-doc blockquote,
   .vp-doc .custom-block {
@@ -471,6 +501,18 @@ body {
  * h3 = 17px 衬线 + 一枚黄铜短标。栏带、直角、黄铜这些设计语言一个没丢，
  * 只是让大小重新对上层级。
  */
+/*
+ * h2 用一枚**定宽**黄铜标，不用通栏横线。
+ *
+ * 通栏横线在有速查框的页面上会变长变短：框右浮时 h2 收窄到 453px，
+ * 框结束之后又回到 769px，同一页上出现三种长度的横线，扫下来就是「线条错乱」。
+ * 收窄本身是对的——不收窄就会从框底下穿过去；问题在于「这条线该多长」
+ * 取决于它旁边有没有浮动物，那不是一条稳定的版式规则。
+ *
+ * 定宽标没有这个问题：它永远 34px，和 h1 上方那枚 46px 的标同族、小一号，
+ * 层级关系反而更清楚。顺带把正文里的通栏横线减到只剩 h1 底下那一条，
+ * 页面立刻干净一截。
+ */
 .vp-doc h2 {
   font-family: var(--brs-serif);
   font-size: 22px;
@@ -478,10 +520,19 @@ body {
   letter-spacing: -0.005em;
   text-transform: none;
   color: var(--brs-ink);
-  margin: 54px 0 20px;
-  padding: 14px 0 0;
-  border-top: 2px solid var(--brs-brass);
+  margin: 52px 0 18px;
+  padding: 0;
+  border-top: none;
   border-bottom: none;
+}
+
+.vp-doc h2::before {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 2px;
+  background: var(--brs-brass);
+  margin-bottom: 14px;
 }
 
 .vp-doc h3 {

@@ -242,8 +242,21 @@ const links = computed(() =>
     display: none;
   }
 
+  /*
+   * 通栏形态下头部要减重。竖框里「46px 图标 + 眉标 + 条目名」是三行信息，
+   * 撑得住一条独立的头带；横过来之后条目名隐藏（它就在上面的 h1 里），
+   * 剩下一枚大图标加半行小字，右边空出七百多像素，读起来像卡片没加载完。
+   * 把图标压到 30px、去掉那条分隔线，让它退回成数据网格上方的一行小标题。
+   */
   .wiki-infobox__head {
-    padding-bottom: 10px;
+    gap: 9px;
+    padding-bottom: 2px;
+    border-bottom: none;
+  }
+
+  .wiki-infobox__head .wiki-icon {
+    width: 30px;
+    height: 30px;
   }
 
   .wiki-infobox__rows {
