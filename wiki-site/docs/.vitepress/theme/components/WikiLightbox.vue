@@ -29,12 +29,16 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onContentUpdated, useRouter } from 'vitepress'
 import { useScrollLock } from '@vueuse/core'
+import { useUiText } from '../composables/useUiText'
+
+const ui = useUiText()
 
 type Shot = { src: string; alt: string; caption: string; w: number; h: number }
 
 /** 哪些图可以点开。选择器写在一处，enhance 与点击判定共用。 */
 const SELECTOR =
-  '.vp-doc .brs-gallery img, .vp-doc .brs-figure img, .vp-doc .brs-icon img, .wiki-infobox__head img'
+  '.mw-parser-output .brs-gallery img, .mw-parser-output .brs-figure img, ' +
+  '.mw-parser-output .brs-icon img, .infobox .section.images img'
 
 const shots = ref<Shot[]>([])
 const index = ref(0)
@@ -229,48 +233,50 @@ onBeforeUnmount(() => {
 <template>
   <div
     v-if="open && current"
-    class="brs-lightbox"
+    class="mw-mmv-wrapper"
     role="dialog"
     aria-modal="true"
     :aria-label="current.caption || current.alt"
     @click="close"
   >
-    <button class="brs-lightbox__close" type="button" aria-label="关闭" @click.stop="close">
-      ✕
+    <button class="mw-mmv-close" type="button" :aria-label="ui.close" @click.stop="close">
+      <span class="tw-icon tw-icon--x" aria-hidden="true" />
     </button>
 
     <button
       v-if="shots.length > 1"
-      class="brs-lightbox__nav brs-lightbox__nav--prev"
+      class="mw-mmv-prev-image"
       type="button"
-      aria-label="上一张"
+      :aria-label="ui.prevImage"
       @click.stop="step(-1)"
     >
-      ‹
+      <span class="tw-icon tw-icon--chevron-left" aria-hidden="true" />
     </button>
 
-    <figure class="brs-lightbox__frame" :style="frameStyle" @click.stop>
-      <img
-        :src="current.src"
-        :alt="current.alt"
-        :width="current.w || undefined"
-        :height="current.h || undefined"
-        @load="onImgLoad"
-      />
-      <figcaption>
-        <span class="brs-lightbox__cap">{{ current.caption || current.alt }}</span>
-        <span class="brs-lightbox__meta">{{ metaText }}</span>
+    <figure class="mw-mmv-main" @click.stop>
+      <div class="mw-mmv-image" :style="frameStyle">
+        <img
+          :src="current.src"
+          :alt="current.alt"
+          :width="current.w || undefined"
+          :height="current.h || undefined"
+          @load="onImgLoad"
+        />
+      </div>
+      <figcaption class="mw-mmv-post-image">
+        <span class="mw-mmv-title-para">{{ current.caption || current.alt }}</span>
+        <span class="mw-mmv-image-metadata">{{ metaText }}</span>
       </figcaption>
     </figure>
 
     <button
       v-if="shots.length > 1"
-      class="brs-lightbox__nav brs-lightbox__nav--next"
+      class="mw-mmv-next-image"
       type="button"
-      aria-label="下一张"
+      :aria-label="ui.nextImage"
       @click.stop="step(1)"
     >
-      ›
+      <span class="tw-icon tw-icon--chevron-right" aria-hidden="true" />
     </button>
   </div>
 </template>

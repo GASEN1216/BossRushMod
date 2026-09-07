@@ -1,78 +1,56 @@
 <script setup lang="ts">
 /**
- * Layout — 在默认主题外面套一层，把 Wiki 化的构件塞进它的插槽。
+ * Layout — 整站骨架，照 MediaWiki Vector-legacy 的 DOM 重建。
  *
- * 一个字都不改 WikiContent/，也不改 sync-content.mjs 的产物：正文照旧是那些
- * markdown，面包屑 / 速查框 / 条目宫格 / 页尾导航全部由路由反查 structure.mts 得来。
- * 这样在线站可以长出泰拉瑞亚 Wiki 那套结构，而**游戏内 Wiki 书一个字都不受影响**
- * （它的解析器不认表格也不认图片，见 Integration/WikiContentManager.cs）。
+ * 这一版**不再继承 VitePress 默认主题**。默认主题的 DOM（固定顶栏 VPNav、
+ * 272px 的 VPSidebar、右侧 VPDocAside 目录、上下篇 VPDocFooter）在 Vector 那套
+ * 皮里一个都没有对应物：网络栏、Logo 带、门户框、标签页、分类栏、页脚全得新造。
+ * 继续套着它就只能「先 display:none 掉一半，再往插槽里塞另一半」，最后是两套 DOM
+ * 叠着加上千行 !important。自己写这二百行反而是改动更小的那条路。
  *
- * 插槽选择：
- *   doc-before        —— 只剩面包屑。
- *                        **速查框不在这里了**：这个插槽落在 .content-container 里、
- *                        `main > .vp-doc` 之前，速查框摆在这儿就排在 h1 前面，
- *                        宽屏上 h1 的底线会整幅穿过浮动的框身，窄屏上则是
- *                        「先一张大卡片、再标题」。现在改由 config.mts 的
- *                        infoboxSlotPlugin 在渲染期插到正文第一个 h1 之后，
- *                        组件在 theme/index.ts 里全局注册。
- *   doc-footer-before —— 速查对比表 + 条目宫格 + 页尾导航。放在 doc-after 会掉到
- *                        「上一篇 / 下一篇」下面，读起来像附录；这里才在正文末尾。
- *                        VPDocFooter 只在有 pager 或 lastUpdated 时渲染，
- *                        所以 config.mts 打开了 lastUpdated —— 顺手也把
- *                        「最后更新」那个早就配好却从未生效的标签点亮了。
- *   layout-bottom     —— 悬停预览与配图灯箱（position:fixed 的页面级浮层）。
+ * 换掉的只有表现层。数据与逻辑一行没动：structure.mts / infobox.mts /
+ * useWiki / searchIndex / search.mts / seo.mts / feed.mts / sync-content.mjs
+ * 全部照旧，VitePress 仍然管构建、路由、i18n、<Content>、page.headers、
+ * lastUpdated 与本地搜索索引。
  *
- * 类目主页上的顺序：先对比表（数据），再宫格（导航），最后同类导航。
- * 更新日志的页面用版本时间线代替同类导航——四十多个版本平铺成一行没法读。
+ * id 与 class 一律沿用 MediaWiki 的原名（#mw-panel / #mw-head / #content /
+ * .catlinks / .mw-parser-output …）：它们是通用名字，照抄能让 CSS 逐条对着
+ * 目标站的实现改，将来排错不用做心智转换。
+ *
+ * 网格挂在 .mw-layout 而不是 <body> 上——VitePress 的根是 #app，
+ * 这是与目标站唯一的结构性差别。
  */
-import { onMounted, watch } from 'vue'
-import DefaultTheme from 'vitepress/theme'
-import { useData } from 'vitepress'
-import WikiBreadcrumb from './components/WikiBreadcrumb.vue'
+import { computed, onMounted } from 'vue'
+import { Content, useData } from 'vitepress'
+import WikiNetbar from './components/WikiNetbar.vue'
+import WikiPanel from './components/WikiPanel.vue'
+import WikiHead from './components/WikiHead.vue'
+import WikiCatlinks from './components/WikiCatlinks.vue'
+import WikiFooter from './components/WikiFooter.vue'
 import WikiCompare from './components/WikiCompare.vue'
 import WikiCardGrid from './components/WikiCardGrid.vue'
 import WikiNavbox from './components/WikiNavbox.vue'
-import WikiChangelogTimeline from './components/WikiChangelogTimeline.vue'
+import WikiNotFound from './components/WikiNotFound.vue'
 import WikiRefPreview from './components/WikiRefPreview.vue'
 import WikiLightbox from './components/WikiLightbox.vue'
 import { useWiki } from './composables/useWiki'
+import { useUiText } from './composables/useUiText'
 
-const { hubCategory, isChangelog } = useWiki()
-const { isDark, localeIndex, theme } = useData()
+const ui = useUiText()
+const { page, frontmatter, localeIndex, theme, site } = useData()
+const { hubCategory } = useWiki()
 
-/**
- * 手机地址栏配色跟着**实际**主题走。
- *
- * config.mts 里那两枚 theme-color 各带一个 prefers-color-scheme media，
- * 只认系统偏好；读者手动按下顶栏那个开关之后，系统仍是浅色的话地址栏还是纸色，
- * 与页面对不上。这里把两枚的 content 一起改成当前主题的颜色——
- * 无论哪一枚的 media 命中，拿到的都是对的值。媒体查询保留着，
- * 关了 JS 的浏览器仍按系统偏好走，不会退化成没有 theme-color。
- *
- * 取值与 style.css §1 的 --brs-ground 一致。
- */
-function syncThemeColor(dark: boolean) {
-  const color = dark ? '#141110' : '#eae6de'
-  document
-    .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
-    .forEach((meta) => meta.setAttribute('content', color))
-}
+/** 首页是门户版式：不出分类栏，也不出页尾同类导航。 */
+const isHome = computed(() => frontmatter.value.layout === 'page')
 
 /**
- * 搜索预热。
+ * 搜索预热（原样保留，只把「意图」的选择器换成新搜索框的 #searchInput）。
  *
- * 索引是全站最大的一块资源（中文 1.03 MB），默认要等读者点开弹层才开始下载
- * 与解析，中间是一片空白面板。这里在首屏空闲时先把它和弹层组件拉下来，
- * 按下 Ctrl+K 时通常已经是热的。细节见 composables/searchIndex.ts。
- *
- * 分两档，因为多数读者是来看某一页的、从不搜索，不该替他们决定下载 250 KB：
- *   空闲档  —— 总是拉弹层组件；索引只在连接不省流量时拉。
- *   意图档  —— 鼠标移到搜索框上或它拿到焦点，说明真要搜了，强制拉全套。
- * 意图事件用 pointerover / focusin（都冒泡），一次性委托在 document 上；
- * pointerenter 不冒泡，委托不到。
+ * 索引是全站最大的一块资源（中文 1.03 MB），默认要等读者点开才开始下载与解析。
+ * 分两档：空闲时总是拉弹层组件，索引只在连接不省流量时拉；鼠标移到搜索框上
+ * 或它拿到焦点，说明真要搜了，强制拉全套。细节见 composables/searchIndex.ts。
  */
 function scheduleWarmup() {
-  // 0 = 没预热过，1 = 空闲预热（省流量连接上只拉弹层组件），2 = 已强制拉全套
   let level = 0
 
   const warm = (force: boolean) => {
@@ -90,7 +68,7 @@ function scheduleWarmup() {
 
   function onIntent(event: Event) {
     const el = event.target as HTMLElement | null
-    if (el?.closest?.('.DocSearch-Button, .wiki-searchbar__input')) warm(true)
+    if (el?.closest?.('#searchInput, #searchButton')) warm(true)
   }
 
   document.addEventListener('pointerover', onIntent, true)
@@ -101,31 +79,55 @@ function scheduleWarmup() {
   else window.setTimeout(() => warm(false), 1500)
 }
 
-onMounted(() => {
-  syncThemeColor(isDark.value)
-  watch(isDark, syncThemeColor)
-  scheduleWarmup()
-})
+onMounted(scheduleWarmup)
 </script>
 
 <template>
-  <DefaultTheme.Layout>
-    <!-- 悬停预览与配图灯箱都是页面级浮层，挂在 layout-bottom 而不是正文插槽里：
-         它们 position:fixed，放在正文流里会被 .vp-doc 的层叠上下文关住。 -->
-    <template #layout-bottom>
-      <WikiRefPreview />
-      <WikiLightbox />
-    </template>
+  <div class="mw-layout" :class="{ 'is-home': isHome, 'page-notfound': page.isNotFound }">
+    <a class="mw-jump-link" href="#content">{{ ui.jumpToContent }}</a>
 
-    <template #doc-before>
-      <WikiBreadcrumb />
-    </template>
+    <WikiNetbar />
 
-    <template #doc-footer-before>
-      <WikiCompare v-if="hubCategory" :category="hubCategory" />
-      <WikiCardGrid v-if="hubCategory" :category="hubCategory" />
-      <WikiChangelogTimeline v-if="isChangelog" />
-      <WikiNavbox v-else />
-    </template>
-  </DefaultTheme.Layout>
+    <div id="p-logo" role="banner">
+      <a class="mw-wiki-logo" :href="site.base" :title="site.title">
+        <span class="mw-wiki-logo__wordmark">
+          BossRush
+          <em>WIKI</em>
+        </span>
+      </a>
+    </div>
+
+    <div id="mw-navigation">
+      <WikiHead />
+      <WikiPanel />
+    </div>
+
+    <div class="content-wrapper">
+      <div id="mw-page-base" class="noprint" />
+
+      <div id="content" class="mw-body" role="main">
+        <WikiNotFound v-if="page.isNotFound" />
+        <template v-else>
+          <div id="bodyContent" class="vector-body">
+            <div id="mw-content-text" class="mw-body-content">
+              <!-- 正文内部的顺序由 config.mts 在渲染期决定：
+                   h1 → #contentSub → 速查框 → 导语 → 目录框 → h2 … -->
+              <Content class="mw-parser-output" />
+
+              <WikiCompare v-if="hubCategory" :category="hubCategory" />
+              <WikiCardGrid v-if="hubCategory" :category="hubCategory" />
+              <WikiNavbox v-if="!isHome" />
+            </div>
+          </div>
+          <WikiCatlinks v-if="!isHome" />
+        </template>
+      </div>
+    </div>
+
+    <WikiFooter />
+
+    <!-- 两枚页面级浮层：position:fixed，放在正文流里会被内容面板的层叠上下文关住 -->
+    <WikiRefPreview />
+    <WikiLightbox />
+  </div>
 </template>

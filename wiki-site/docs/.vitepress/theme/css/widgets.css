@@ -1,0 +1,754 @@
+/* ══════════════════════════════════════════════════════════════
+   widgets.css — 构件：稀有度 / 信息框 / 导航盒 / 条目卡 / 对比表 /
+   悬停预览 / 灯箱 / 搜索联想
+
+   §0 的稀有度规则**不许**搬进任何组件的 <style>：信息框、对比表、宫格、
+   页尾导航、正文实体链接五处共用它，写进组件就等于依赖「那个块没加 scoped」。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── §0 稀有度 ─────────────────────────────────────────── */
+/* 泰拉瑞亚 Wiki 里物品名每一处出现都带稀有度色。本站四档（5 / 6 / 7 / 8）
+   取自 infobox.mts 的 tier 字段；没写 tier 的条目保持默认色。
+   第 8 档是龙王套装 / 龙铳那一级，值是从预制体 typetree 里读出来的。 */
+.wiki-rarity {
+  display: inline-block;
+  padding: 0 6px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+  font-size: var(--font-size-s);
+  font-weight: bold;
+  line-height: 1.5;
+  color: var(--theme-text-color-note);
+}
+
+.wiki-rarity[data-tier="5"],
+.wiki-tier[data-tier="5"],
+.mw-parser-output .brs-eref[data-tier="5"] {
+  color: var(--theme-rarity-5);
+}
+.wiki-rarity[data-tier="6"],
+.wiki-tier[data-tier="6"],
+.mw-parser-output .brs-eref[data-tier="6"] {
+  color: var(--theme-rarity-6);
+}
+.wiki-rarity[data-tier="7"],
+.wiki-tier[data-tier="7"],
+.mw-parser-output .brs-eref[data-tier="7"] {
+  color: var(--theme-rarity-7);
+}
+.wiki-rarity[data-tier="8"],
+.wiki-tier[data-tier="8"],
+.mw-parser-output .brs-eref[data-tier="8"] {
+  color: var(--theme-rarity-8);
+}
+
+/* ── §1 信息框 ─────────────────────────────────────────── */
+.infobox {
+  float: right;
+  clear: right;
+  width: 300px;
+  max-width: 100%;
+  margin: 0.5em 0 0.5em 1em;
+  padding: var(--layout-box-padding);
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius-inner);
+  background-color: var(--theme-box-background);
+  font-size: var(--font-size-s);
+  line-height: 1.5;
+  box-sizing: border-box;
+}
+
+.infobox > .title {
+  padding: 6px 3px;
+  border: 1px solid var(--theme-box-border-color-inner);
+  border-radius: var(--theme-box-border-radius-inner);
+  background: var(--theme-modetabs-classic-background);
+  color: var(--theme-modetabs-classic-text-color);
+  font-size: var(--font-size-l);
+  font-weight: bold;
+  line-height: 1.2;
+  text-align: center;
+}
+.infobox > .title .namesub {
+  display: block;
+  font-size: var(--font-size-s);
+  font-style: italic;
+  font-weight: normal;
+  color: var(--theme-text-color-note);
+}
+
+.infobox .section {
+  margin-bottom: 4px;
+}
+.infobox .section:last-child {
+  margin-bottom: 0;
+}
+.infobox .section > .title {
+  margin: 6px 0 4px;
+  padding: 2px 0;
+  border: 1px solid var(--theme-box-border-color-inner);
+  border-radius: var(--theme-box-border-radius-inner);
+  background: var(--theme-modetabs-classic-background);
+  color: var(--theme-modetabs-classic-text-color);
+  font-weight: bold;
+  text-align: center;
+}
+
+.infobox .section.images {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 40px;
+  padding: 6px 0;
+  text-align: center;
+}
+.infobox .section.images img,
+.infobox .section.images .wiki-icon {
+  max-width: 100%;
+  height: auto;
+}
+
+.infobox table.stat {
+  width: 100%;
+  margin: 0;
+  border-spacing: 0;
+  background: none;
+}
+.infobox table.stat th,
+.infobox table.stat td {
+  padding: 2px;
+  border: 0;
+  vertical-align: middle;
+}
+.infobox table.stat th {
+  width: 5em;
+  white-space: nowrap;
+  text-align: right;
+  font-weight: bold;
+  color: var(--theme-text-color-note);
+}
+.infobox table.stat td {
+  padding-left: 6px;
+  color: var(--theme-text-color);
+}
+
+.infobox .tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 2px 0;
+}
+.infobox .tags .tag {
+  display: inline-block;
+  padding: 0 4px;
+  border: 1px solid rgba(var(--theme-text-color--rgb), 0.4);
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.infobox .tags .tag:has(> a) {
+  border-color: rgba(var(--theme-link-color--rgb), 0.4);
+}
+
+.infobox .section.ids {
+  margin-top: 6px;
+  padding: 2px 0;
+  border-top: 1px solid var(--theme-box-border-color);
+  background: var(--theme-modetabs-classic-background);
+  color: var(--theme-modetabs-classic-text-color);
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+  text-align: center;
+}
+
+.infobox .section.links ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.infobox .section.links li {
+  margin: 0;
+  padding: 2px 0;
+  border-bottom: 1px solid var(--theme-box-border-color-light);
+}
+.infobox .section.links li:last-child {
+  border-bottom: 0;
+}
+.infobox .section.links .i {
+  white-space: normal;
+}
+
+/* 模式页签（经典 / 专家 / 大师）：目前没有多模式数据，样式先备着 */
+.infobox .modetabs {
+  display: flex;
+  margin: 6px -6px;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--theme-box-border-color);
+}
+.infobox .modetabs .tab {
+  flex: 1 1 33.3333%;
+  margin: 0 2px -1px;
+  padding: 4px 0 3px;
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 3px 3px 0 0;
+  text-align: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+.infobox .modetabs .tab.current {
+  background: var(--theme-box-background);
+  border-color: var(--theme-box-border-color);
+}
+.infobox .modetabs .tab.expert {
+  color: var(--theme-modetabs-expert-text-color-label);
+}
+.infobox .modetabs .tab.master {
+  color: var(--theme-modetabs-master-text-color-label);
+}
+
+/* ── §2 导航盒（页尾同类导航 / 版本导航）───────────────── */
+.navbox {
+  position: relative;
+  clear: both;
+  width: 100%;
+  margin: var(--layout-gap-l) 0 0;
+  padding: var(--layout-box-padding);
+  border: 1px solid var(--theme-box-border-color-inner);
+  border-radius: var(--theme-box-border-radius-inner);
+  background: var(--theme-highlight-background);
+  box-sizing: border-box;
+  font-size: var(--font-size-s);
+  line-height: var(--line-height-s);
+}
+.navbox > .header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 1em;
+  padding: 4px 6px;
+  border: 1px solid var(--theme-box-border-color-inner);
+  border-radius: var(--theme-box-border-radius-inner);
+  background: var(--theme-highlight-background);
+  color: var(--theme-text-color-highlight);
+  font-size: var(--font-size-l);
+  font-weight: bold;
+  line-height: 2;
+  text-align: left;
+}
+.navbox > .header .navbox-title {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.navbox > .header .navbox-toggle {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  color: var(--theme-link-color);
+  font: inherit;
+  font-size: var(--font-size-s);
+  cursor: pointer;
+}
+.navbox > .header .navbox-toggle::before {
+  content: "";
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  vertical-align: -0.15em;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-chevron-down) no-repeat center / contain;
+  mask: var(--icon-chevron-down) no-repeat center / contain;
+  transform: scaleY(-1);
+}
+.navbox.is-collapsed > .header .navbox-toggle::before {
+  transform: none;
+}
+.navbox.is-collapsed > .navbox-body {
+  display: none;
+}
+
+.navbox-body {
+  display: table;
+  width: 100%;
+  margin: 4px 0 0;
+  border-collapse: collapse;
+}
+.navbox-row {
+  display: table-row;
+}
+.navbox-row > .title,
+.navbox-row > .dotlist {
+  display: table-cell;
+  padding: 4px 7px;
+  vertical-align: middle;
+  box-shadow: inset 0 0 0 1px var(--theme-background);
+}
+.navbox-row > .title {
+  width: 1%;
+  background: var(--theme-highlight-background);
+  color: var(--theme-text-color-highlight);
+  font-weight: bold;
+  text-align: right;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.navbox-row > .title::after {
+  content: "：";
+}
+
+.dotlist ul {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dotlist li {
+  display: inline-block;
+  margin: 0;
+}
+.dotlist li::after {
+  content: "•";
+  padding: 0 0.4em;
+  color: var(--theme-text-color-note);
+}
+.dotlist li:last-child::after {
+  display: none;
+}
+.dotlist .is-here > a {
+  color: var(--theme-text-color-highlight);
+  font-weight: bold;
+}
+
+/* ── §3 条目卡与图标清单（类目宫格 / 首页盒）──────────── */
+.infocard {
+  box-sizing: border-box;
+  margin: var(--layout-gap-l) 0 0;
+  padding: 1em;
+  border: 1px solid;
+  border-color: var(--theme-widget-border-color);
+  border-radius: var(--theme-box-border-radius-inner);
+  background: var(--theme-box-background);
+}
+.infocard.compact {
+  padding: 0.5em;
+}
+.infocard * {
+  box-sizing: border-box;
+}
+.infocard > .main-heading {
+  position: relative;
+  margin: -0.5em -0.5em 0.5em;
+  padding-left: 1em;
+  border-right: 3em solid transparent;
+  background: var(--theme-highlight-background);
+  line-height: 1;
+}
+.infocard > .main-heading .hgroup {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 1em;
+  background: var(--theme-background);
+}
+.infocard > .main-heading .hgroup > .main {
+  display: inline-block;
+  padding: 0.35em 0;
+  font-family: var(--font-family-heading);
+  font-size: 1.25em;
+  color: var(--theme-text-color-highlight);
+}
+.infocard > .main-heading .hgroup > .main a {
+  color: inherit;
+}
+.infocard > .main-heading .hgroup > .namenote {
+  margin-left: 0.5em;
+  font-size: var(--font-size-s);
+  color: var(--theme-text-color-note);
+}
+.infocard > .main-heading .icon {
+  position: absolute;
+  top: 50%;
+  right: -2.5em;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-50%);
+}
+
+.mclist {
+  overflow-x: auto;
+}
+.mclist ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  columns: 3;
+  column-gap: 1em;
+}
+.mclist li {
+  margin: 0 0 1px;
+  break-inside: avoid;
+}
+.mclist .i {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 32px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.mclist .i:hover {
+  background: var(--theme-highlight-background);
+  text-decoration: none;
+}
+.mclist .i > .wiki-icon {
+  flex: 0 0 auto;
+}
+.mclist .i .mclist__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.mclist .i .mclist__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mclist .i .mclist__blurb {
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-xs);
+  color: var(--theme-text-color-note);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mclist--wide ul {
+  columns: 2;
+}
+.mclist--wide .i {
+  min-height: 60px;
+}
+.mclist--single ul {
+  columns: 1;
+}
+
+/* ── §4 对比表的排序表头 ───────────────────────────────── */
+table.terraria.sortable th.headerSort {
+  padding: 0;
+}
+table.terraria.sortable th.headerSort > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 3px 6px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+table.terraria.sortable th.headerSort .headerSort__arrow {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-chevron-down) no-repeat center / contain;
+  mask: var(--icon-chevron-down) no-repeat center / contain;
+  opacity: 0.25;
+}
+table.terraria.sortable th.headerSortDown .headerSort__arrow,
+table.terraria.sortable th.headerSortUp .headerSort__arrow {
+  opacity: 1;
+}
+table.terraria.sortable th.headerSortUp .headerSort__arrow {
+  transform: scaleY(-1);
+}
+
+/* 对比表外面那层小标题（表格本身走 table.terraria） */
+.brs-compare {
+  display: flow-root;
+  clear: both;
+  margin-top: var(--layout-gap-l);
+}
+.brs-compare__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6em;
+  margin: 18px 0 12px;
+  font-family: var(--font-family-heading);
+  font-size: 26px;
+  line-height: 32px;
+}
+.brs-compare__title::after {
+  content: "";
+  display: block;
+  flex: 1 1 auto;
+  height: 0;
+  border-top: 1px solid var(--theme-hr-color-top);
+  border-bottom: 1px solid var(--theme-hr-color-bottom);
+}
+.brs-compare__hint {
+  flex: 0 0 auto;
+  font-family: var(--font-family);
+  font-size: var(--font-size-s);
+  color: var(--theme-text-color-note);
+}
+.brs-compare__subtitle {
+  margin: 14px 0 7px;
+  font-family: var(--font-family-heading);
+  font-size: 18px;
+  font-weight: bold;
+}
+.brs-compare__count {
+  margin-left: 0.4em;
+  font-size: var(--font-size-s);
+  font-weight: normal;
+  color: var(--theme-text-color-note);
+}
+.brs-compare td.is-empty {
+  color: var(--theme-text-color-note);
+  text-align: center;
+}
+
+/* ── §5 悬停预览（MediaWiki Popups 口径）────────────────── */
+.mwe-popups {
+  position: fixed;
+  z-index: 60;
+  width: 264px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background-image: var(--theme-widget-texture);
+  background-color: var(--theme-dropdown-background);
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.45);
+  font-size: var(--font-size-s);
+  line-height: 1.5;
+  pointer-events: none;
+  animation: mwe-popups-in 0.12s ease-out;
+}
+@keyframes mwe-popups-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+.mwe-popups-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mwe-popups-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-family-heading);
+  font-size: var(--font-size);
+  color: var(--theme-text-color-highlight);
+}
+.mwe-popups-extract table.stat {
+  width: 100%;
+  border-spacing: 0;
+}
+.mwe-popups-extract table.stat th {
+  width: 5.5em;
+  padding: 1px 6px 1px 0;
+  text-align: right;
+  font-weight: bold;
+  white-space: nowrap;
+  color: var(--theme-text-color-note);
+}
+.mwe-popups-extract table.stat td {
+  padding: 1px 0;
+}
+.mwe-popups-more {
+  margin: 0;
+  color: var(--theme-text-color-note);
+  font-size: var(--font-size-xs);
+}
+
+/* ── §6 灯箱（MediaWiki MultimediaViewer 口径）─────────── */
+/* 可点开的图给 zoom-in 光标——不给提示就没人知道图能点。
+   这四条选择器和 WikiLightbox.vue 里的 SELECTOR 一一对应，guard 会核对。 */
+.mw-parser-output .brs-gallery img,
+.mw-parser-output .brs-figure img,
+.mw-parser-output .brs-icon img,
+.infobox .section.images img {
+  cursor: zoom-in;
+}
+.mw-parser-output .brs-gallery img:focus-visible,
+.mw-parser-output .brs-figure img:focus-visible,
+.mw-parser-output .brs-icon img:focus-visible,
+.infobox .section.images img:focus-visible {
+  outline: 2px solid var(--theme-link-color);
+  outline-offset: 2px;
+}
+
+.mw-mmv-wrapper {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.9);
+  animation: mw-mmv-in 0.14s ease-out;
+}
+@keyframes mw-mmv-in {
+  from {
+    opacity: 0;
+  }
+}
+.mw-mmv-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 92vw;
+  max-height: 86vh;
+  margin: 0;
+}
+.mw-mmv-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+.mw-mmv-image img {
+  display: block;
+  max-width: 100%;
+  max-height: 72vh;
+  width: auto;
+  height: auto;
+}
+.mw-mmv-post-image {
+  max-width: 60ch;
+  color: #eee;
+  text-align: center;
+}
+.mw-mmv-title-para {
+  margin: 0;
+  font-size: var(--font-size);
+}
+.mw-mmv-image-metadata {
+  margin: 2px 0 0;
+  font-size: var(--font-size-s);
+  color: #b9b9b9;
+}
+.mw-mmv-close,
+.mw-mmv-prev-image,
+.mw-mmv-next-image {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  cursor: pointer;
+}
+.mw-mmv-close:hover,
+.mw-mmv-prev-image:hover,
+.mw-mmv-next-image:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+.mw-mmv-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+}
+
+/* ── §7 搜索联想下拉 ───────────────────────────────────── */
+.suggestions {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 140;
+  width: max(28em, 100%);
+  max-width: min(38em, 92vw);
+  border: var(--theme-dropdown-border-width) var(--theme-dropdown-border-style);
+  border-color: var(--theme-dropdown-border-color);
+  border-radius: var(--theme-dropdown-border-radius);
+  background-image: var(--theme-widget-texture);
+  background-color: var(--theme-dropdown-background);
+  box-shadow: var(--theme-dropdown-shadow), 0 12px 32px -12px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  white-space: normal;
+}
+.suggestions-results {
+  padding: 4px;
+}
+.suggestions-result {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: calc(var(--theme-widget-border-radius) - 2px);
+  color: var(--theme-text-color);
+}
+.suggestions-result:hover,
+.suggestions-result.is-current {
+  background: var(--theme-highlight-background);
+  color: var(--theme-text-color);
+  text-decoration: none;
+}
+.suggestions-thumbnail {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+}
+.suggestions-text {
+  min-width: 0;
+}
+.suggestions-label {
+  display: block;
+  font-weight: bold;
+  color: var(--theme-text-color-highlight);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggestions-description {
+  display: block;
+  font-size: var(--font-size-s);
+  color: var(--theme-text-color-note);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggestions-special {
+  display: block;
+  padding: 6px 12px;
+  border-top: 1px solid var(--theme-box-border-color-light);
+  color: var(--theme-link-color);
+  font-size: var(--font-size-s);
+}
+.suggestions-special:hover,
+.suggestions-special.is-current {
+  background: var(--theme-highlight-background);
+  text-decoration: none;
+}
+.suggestions-empty {
+  padding: 10px 12px;
+  color: var(--theme-text-color-note);
+  font-size: var(--font-size-s);
+}
+
+/* 搜索结果里的高亮词 */
+mark {
+  background: var(--theme-text-background-color-highlight);
+  color: var(--theme-text-color-highlight);
+}

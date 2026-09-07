@@ -18,7 +18,7 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
 | 路径 | 作用 |
 | --- | --- |
 | `docs/index.md` | 中文首页（`layout: page` + `<WikiHome />`） |
-| `docs/.vitepress/` | 配置、结构数据、主题组件、样式，以及 `search.mts` / `seo.mts` / `feed.mts` 三个构建期模块 |
+| `docs/.vitepress/` | 配置、结构数据、主题组件、样式（`theme/css/`，见 §8），以及 `search.mts` / `seo.mts` / `feed.mts` 三个构建期模块 |
 | `docs/public/` | 图片产物与 favicon |
 
 英文首页 `docs/en/index.md` 由 `sync-content.mjs` 的 `generateEnIndex()` 生成，
@@ -47,13 +47,16 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
 
 ## 3. 站点结构的唯一事实源
 
-`docs/.vitepress/data/structure.mts` 一处定义全部类目与条目，下面五处**全部**由它生成：
+`docs/.vitepress/data/structure.mts` 一处定义全部类目与条目，下面六处**全部**由它生成：
 
-- `config.mts` 的 `nav` 与 `sidebar`（中英各一份，不再手写）
-- `WikiHome.vue` 的首页门户宫格
-- `WikiCardGrid.vue` 的类目主页条目宫格
+- `WikiPanel.vue` 的左侧门户框栏与 `WikiHead.vue` 的标签行
+  （**不再经过 `config.mts` 的 `nav` / `sidebar`**：换皮之后左栏是 MediaWiki 那种
+  门户框、顶上是标签页，都不是 VitePress 默认主题的构件，组件直接读本文件。
+  横条模式下哪几个类目留在外面由本文件导出的 `NAV_PRIMARY` / `NAV_MORE` 决定。）
+- `WikiHome.vue` 的首页门户盒
+- `WikiCardGrid.vue` 的类目主页条目清单
 - `WikiNavbox.vue` 的页尾同类导航
-- `WikiBreadcrumb.vue` 的面包屑
+- `WikiContentSub.vue` 的位置提示（`#siteSub` / `#contentSub`）与 `WikiCatlinks.vue` 的分类栏
 - `WikiCompare.vue` 的类目主页对比表（按类目的 `entries` 逐条去 `infobox.mts` 取数据）
 
 **加一个页面要做三件事**，缺一不可：
@@ -92,21 +95,23 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
 
 两条随之而来的约束：
 
-- **框现在长在 `.vp-doc` 里**，默认主题那套正文排版会级联进来。框里因此不用 `<p>`
-  （`.vp-doc p` 的 16px 外边距和行高权重压得过组件自己的类），链接也在组件样式里
-  用 `.vp-doc` 前缀显式压回来。往框里加新元素前先想一下 `.vp-doc` 有没有管它。
+- **框长在 `.mw-parser-output` 里**（换皮之后正文容器改用 MediaWiki 的同名 class，
+  `.vp-doc` 已经整个不存在了）。往框里加新元素前先想一下 `content.css` 里
+  `.mw-parser-output` 那几条有没有管它。
 - **带整幅边线 / 底色的块要自成 BFC**。浮动只让行盒避让，块盒的边框和底色照旧铺满
-  容器宽度——`h2` 的黄铜栏带、分隔线、提示块会从框底下穿过去。`style.css` §6 给
-  `h2/h3/h4/hr/blockquote/.custom-block` 在 `≥1400px` 下加了 `display: flow-root`。
-  表格和代码块自带 `overflow` 本来就是 BFC，配图块走 `clear: both`。
-  `h1` **不在**这份名单里：框插在它之后，够不着它。
+  容器宽度——`h2` 那条底线、分隔线、提示块会从框底下穿过去（2026-09-06 报的
+  「线穿框」就是这个）。`css/content.css` 给 `h1`~`h6` / `hr` / `blockquote` /
+  `.message-box` / `.toc` 都加了 `display: flow-root`（等价于 MediaWiki 给标题的
+  `overflow: hidden`，但不会把锚点裁掉）。表格与代码块自带 `overflow` 本来就是 BFC，
+  配图块走 `clear: both`。
 
 - 数值以 `WikiContent/zh` 正文为准，**改数值时两边一起改**。guard 只校验路径与图标，
   不校验数值——它没法判断哪边才是对的。
 - `links` 里写路径不写标题，标题从 `structure.mts` 取，避免改名时两处漂移。
-- 版式：≥1400px 右浮动竖框，更窄时通栏横排并隐藏与 `h1` 重名的那行。
-  门槛之所以定在 1400 是因为侧栏 272 + 右侧目录 224 吃掉近 500px，
-  1280 视口下正文只剩 ~610px，再浮一个框文字就没法读了。
+- 版式：≥641px 右浮动 300px 竖框，更窄时通栏居中。
+  门槛从前是 1400，因为默认主题的侧栏 272 + 右侧目录 224 吃掉近 500px；
+  换皮之后侧栏 188、目录改成正文里的方框，正文宽度回来了，门槛也就跟着
+  目标站回到「窄屏才通栏」。
 
 ## 4.5 正文列表里的实体名 → 图标 + 链接
 
@@ -137,7 +142,7 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
 
 ```bash
 npm --prefix wiki-site run build
-grep -rho '<a class="brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vitepress/dist --include='*.html' \
+grep -rho '<a class="i brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vitepress/dist --include='*.html' \
   | grep -o '<strong>.*' | sort -u
 ```
 
@@ -147,7 +152,10 @@ grep -rho '<a class="brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vit
   **显式字段，不去嗅探「品质」这个标签**——标签一改口径就静默失效。
   没照抄泰拉那套十二级配色，用的是本站强调色排的递进。
 - 同一个 `tier` 还会让**物品名**在正文链接、宫格、页尾导航、速查框相关条目里按档上色
-  （`extras.css` §0 的 `[data-tier]` 规则；正文链接由 `entityLinkPlugin` 写属性，组件挂 `.wiki-tier`）。
+  （`css/widgets.css` §0 的 `[data-tier]` 规则；正文链接由 `entityLinkPlugin` 写属性，
+  组件挂 `.wiki-tier`）。三类消费者（`.wiki-rarity` / `.wiki-tier` / `.brs-eref`）
+  每一档都要有规则，`tests/WikiThemeTokensGuard.py` 逐条核对。
+  色值取自 `css/tokens.css` 的 `--theme-rarity-5..8`，深浅两套各一组。
   16 件装备的 tier 现已齐全，其中龙裔 / 龙王套装、龙息、龙铳的值**不在代码或正文里**，
   是用 UnityPy 从 `Assets/Equipment/dragon_equipment`、`dragonking_equipment` 预制体的
   typetree 读出来的（`Quality` 字段）。改这几件的品质要重读预制体，别猜。
@@ -165,8 +173,10 @@ grep -rho '<a class="brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vit
 - 列 = 组内**至少两个条目**都有的标签，按首次出现顺序；只在一个条目上出现的属性留在条目页；
 - 组里只有一个条目时不出表；「获取 / 来源」「基础伤害 / 伤害」在组件里按别名合并，不动数据；
   「物品 ID」行只进速查框、不进对比表（组件里的 `HIDDEN`），内部 TypeID 拿来比没有意义；
-- 带 `tier` 的格子和速查框一样渲染成稀有度色片；`.wiki-rarity` 定义在 `theme/extras.css` §0，
-  两个组件共用，**不要挪回任一组件的 `<style>`**（一加 scoped 另一处就静默变灰）；
+- 带 `tier` 的格子和速查框一样渲染成稀有度色片；`.wiki-rarity` 定义在 `theme/css/widgets.css` §0，
+  五处共用，**不要挪回任一组件的 `<style>`**（一加 scoped 其余几处就静默变灰）；
+  分组规则（眉标首段）与页尾导航盒共用 `theme/composables/useNavbox.ts` 的
+  `eyebrowGroupKey`，改一处两边一起变；
 - 点表头排序：值开头的数字、`★` 个数、否则字符串；缺值行沉底。
 
 想让某个属性可比，只要让至少两个条目在速查框里用**同一个标签**写它。
@@ -183,9 +193,13 @@ grep -rho '<a class="brs-eref"[^>]*><img[^>]*><strong>[^<]*' wiki-site/docs/.vit
 
 ### 4.8.1 弹层是 fork，不是默认那份
 
-`theme/components/WikiSearchBox.vue` 是 **vitepress 自带 `VPLocalSearchBox.vue` 的副本**，
-靠 `config.mts` 里一条 Vite alias（官方文档的 Overriding Internal Components 办法）顶上去。
-顶栏按钮、`Ctrl+K` / `/` 快捷键、开关状态全都还是官方那份，只有弹层本体换人。
+`theme/components/WikiSearchBox.vue` 是 **vitepress 自带 `VPLocalSearchBox.vue` 的副本**。
+
+换皮之前它靠 `config.mts` 里一条 Vite alias 顶替默认主题那份；现在默认主题整个不用了，
+改由标签行里的搜索框 `WikiHeadSearch.vue` 直接 `import('./WikiSearchBox.vue')`。
+两者的分工照抄目标站：**联想下拉**（`WikiHeadSearch`，打字即出、认页面级结果）负责日常，
+**弹层**只在回车且没选中候选时打开，当「完整结果页」用，带摘录与高亮。
+`Ctrl+K` 开弹层、`/` 聚焦输入框这两个快捷键搬进了 `WikiHeadSearch`。
 
 fork 相对上游的改动逐条写在**那个文件的头注释**里，不在这儿重复。要点：
 
@@ -203,6 +217,9 @@ fork 相对上游的改动逐条写在**那个文件的头注释**里，不在�
 `package-lock.json` 的实际版本对齐，版本一动就先红在那里。
 `package.json` 因此把 `vitepress` 钉死在具体版本，并显式登记了 fork 用到的
 `minisearch` / `mark.js` / `@vueuse/*`（原先靠 npm 提升的幽灵依赖）。
+
+fork 的 scoped 样式里还留着七个 `--vp-*`，**不要逐条改写**（改了就没法再和上游 diff），
+它们由 `theme/css/vp-bridge.css` 映射到本站令牌——那也是全站唯一允许给 `--vp-*` 赋值的地方。
 
 **别再试 `options._render`**（2026-09-06 实测过）：索引器读的那一层拿不到它，
 放探针进去重新构建，标记词根本不进索引；而且就算调得到也没用——markdown-it
@@ -258,7 +275,7 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 - 切图前**先 `decode()` 再换**。正文图片是懒加载的，没进过视口的那些 `naturalWidth`
   是 0；直接读会按缩略图尺寸把灯箱打开（实测第二张会变成 143px）。
   弹层里那张图的 `@load` 再回写一次作为兜底。
-- 可点的图由 `extras.css` 给 `cursor: zoom-in`，选择器和组件里的 `SELECTOR`
+- 可点的图由 `css/widgets.css` §6 给 `cursor: zoom-in`，选择器和组件里的 `SELECTOR`
   **必须一一对应**，guard 会核对。
 - **不覆盖**正文里的实体链接小图标与导航图标：那些是 20px 上下的功能贴图，
   没有更多细节，而且点它们应该跳转不是弹窗。
@@ -279,8 +296,9 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 「有些图太糊」这条反馈就是这么来的：`.brs-icon` 在正文里按 205px 显示，
 而图标产物一度只有 128px，一直在被拉伸。`tools/build_wiki_images.py` 顶部三个常量
 （`PORTRAIT_MAX` / `POSTER_MAX` / `ICON_MAX`）就是这条纪律的落点，
-`WikiSiteThemeWiringGuard` 把它们和 `style.css` 里 `.brs-icon` / `.brs-figure`
-的 `max-width` 绑在一起核对。改展示宽度或改产物尺寸时，两边一起想。
+`WikiSiteThemeWiringGuard` 把它们和 `css/content.css` 里 `.brs-icon` / `.brs-figure`
+的 `max-width` 绑在一起核对（那两条规则必须顶格单独成块，guard 的正则认这个写法）。
+改展示宽度或改产物尺寸时，两边一起想。
 
 顺带：正文 markdown 图片由 `config.mts` 统一补 `loading="lazy" decoding="async"`。
 图鉴那一页有 38 张图，漏了这条就是一开页把整组立绘全拉下来。
@@ -308,17 +326,132 @@ python tools/check_wiki_links.py            # 构建后核对链接与资源落�
 SITE_URL=https://example.com/ npm --prefix wiki-site run build   # 换域名部署时给绝对地址用
 python tools/build_wiki_images.py --check    # 只校验图片产物齐不齐
 python tools/gen_wiki_icons.py --webp-only   # 不生图，只重出 WebP 与边车清单
+python tools/build_wiki_theme_assets.py --check   # 只校验版式贴图与清单（不需要 Pillow）
 python tools/run_guards.py --filter Wiki     # 跑全部 Wiki 相关 guard
-npm --prefix wiki-site run preview           # 看构建产物（版式改动要按 1500 / 1366 / 375 三档各看一遍）
+npm --prefix wiki-site run preview           # 看构建产物（版式改动要按 1500 / 1366 / 900 / 375 四档各看一遍）
 ```
+
+版式改动的目视清单（预览时逐档过）：网络顶栏 35px 固定、Logo 带 140px（背景图，
+字标是无障碍隐藏的文本）、第一枚门户框顶上的草皮条、门户框与标签行的木纹/冰霜贴图、
+页面底图的天空、当前类目默认展开、选中标签与内容面板连成一体、`h1` / `h2` 的双线不穿过
+右浮的速查框、目录框在导语之后第一个 `h2` 之前、页尾 navbox → 分类栏 → 页脚三段齐全。
+浅色皮肤在 URL 后加 `?skin-theme=Snow` 就能直接看，不用点菜单。
 
 ## 7. 相关 guard
 
 | Guard | 管什么 |
 | --- | --- |
 | `WikiSiteStructureGuard.py` | 结构 / 页面 / 图标 key 三方一致 |
-| `WikiSiteThemeWiringGuard.py` | 速查框注入的三处接线、灯箱挂载与 zoom-in 光标、正文图片懒加载、配图产物不小于展示尺寸、搜索弹层 fork 的 alias 与上游版本、`cjkTokenize` 自包含 |
+| `WikiSiteThemeWiringGuard.py` | 速查框 / 位置提示 / 目录框三套渲染期注入的接线、灯箱与悬停预览挂载、zoom-in 光标、`markdown.headers`、正文图片懒加载、配图产物不小于展示尺寸、搜索弹层 fork 的直接 import 与上游版本、`cjkTokenize` 自包含、没有继承默认主题也没有引网络字体 |
+| `WikiThemeTokensGuard.py` | 皮肤令牌的契约：引用的令牌都有定义、浅色皮肤覆盖齐全、`--brs-*` 已退场、`--vp-*` 只在桥接文件里赋值、稀有度规则没被搬进组件、`useWiki.ts` 不 import 组件 |
+| `WikiThemeSwitchGuard.py` | 换肤的三方对齐（内联脚本 / `themes.mts` / `tokens.css`）与页脚的版式归属声明 |
+| `WikiThemeAssetGuard.py` | 版式贴图的在场 / 归属 / 字节数 / 每套皮肤的下载预算，外加「没有网络字体」 |
 | `WikiImageAssetGuard.py` | 图片清单、产物、引用三者对得上 |
 | `WikiCalloutSingleLineGuard.py` | `WikiContent` 的 callout 必须单行 |
 | `ZombieModeMutantWikiGuard.py` | 丧尸模式页与生成产物逐字节一致（**改 `transformContent` 必须同步改它的 Python 镜像**） |
 | `BossWikiGuideContentGuard.py` | Boss 攻略页内容约束 |
+
+## 8. 版式与皮肤
+
+站点版式参照 **Official Terraria Wiki**（`terraria.wiki.gg`，MediaWiki 的 Vector-legacy
+皮肤 + 它自己那套主题系统）的公开呈现，逐值测量之后**净室重写**：`theme/css/` 里没有
+一行来自它的样式表，Logo、纹理、徽标全部自制，未使用任何 Re-Logic 素材。
+它的 Wiki 内容以 CC BY-NC-SA 4.0 授权、游戏美术版权归 Re-Logic，本站均未收录。
+界面图标按 Tabler Icons（MIT）的线条口径自绘，内联成 data URI 当 CSS mask 用。
+
+页脚那行归属声明（文案在 `theme/composables/useUiText.ts` 的 `attribution`）是这件事
+的唯一对外说明，`tests/WikiThemeSwitchGuard.py` 守着它。
+
+DOM 的 id 与 class 一律沿用 MediaWiki 的原名（`#mw-panel` / `#mw-head` / `#content` /
+`.mw-parser-output` / `.infobox` / `.navbox` / `.toc` / `.catlinks` / `table.terraria` /
+`.i` …）。它们是通用名字，照抄的好处是 CSS 能逐条对着目标站的实现改，排错时不用做
+心智转换。**例外**是几个被别处绑住的自有 class，改名会连带弄坏别的东西：
+`.brs-gallery` / `.brs-figure` / `.brs-icon`（`sync-content.mjs` 写进 `.md`，产物被
+`ZombieModeMutantWikiGuard` 逐字节比对）、`.brs-table-scroll`、`.brs-eref` 与
+`data-brs-ref` / `data-tier`（悬停预览与稀有度上色的钩子）。
+
+样式分九层，`theme/index.ts` 里的 import 顺序就是层叠顺序：
+
+| 文件 | 管什么 |
+| --- | --- |
+| `css/tokens.css` | 全部 `--theme-*` / `--layout-*` / 字体令牌；`:root` 是默认皮肤 Overworld（深色），`html.theme-Snow` 是浅色 |
+| `css/base.css` | 浏览器默认值。**没有**抄目标站那句 `* { outline: 0 }`——那会让键盘用户彻底看不见焦点，这里改成只在 `:focus-visible` 描边 |
+| `css/icons.css` | Tabler 口径的图标，`--icon-*` + `.tw-icon--*`，用 CSS mask 上色，所以自动跟着皮肤走 |
+| `css/vp-bridge.css` | **唯一**允许给 `--vp-*` 赋值的地方，只服务搜索弹层那个 fork |
+| `css/layout.css` | 网格骨架与外壳：网络顶栏 / Logo 带 / 门户栏 / 标签行 / 内容面板 / 分类栏 / 页脚 |
+| `css/content.css` | `.mw-parser-output` 里的一切：标题、目录框、提示框、表格、配图块、代码 |
+| `css/widgets.css` | 稀有度、信息框、导航盒、条目卡、对比表表头、悬停预览、灯箱、搜索联想 |
+| `css/mainpage.css` | 首页 `#mainpage-wrapper` |
+| `css/responsive.css` | 全部媒体查询集中在这里：≥2472 / ≤1800 / ≤1366 / ≤900 / ≤720 / ≤640 / ≤600 |
+| `css/print.css` | 打印 |
+
+**颜色一律走令牌，不写字面值。** 加一套皮肤三步，构件一个字不用改：
+
+1. `css/tokens.css` 抄一段 `html.theme-<Name>` 覆盖块，把每个 `--theme-*` 填满；
+2. `data/themes.mts` 的 `THEMES` 加一条 `{ name, view, label }`，`label` 是
+   `useUiText.ts` 里的词条键；
+3. `config.mts` 里 `SKIN_THEME_INIT` 那段内联脚本的主题表加一项。
+
+三处漏一处都不会报错，只会「刷新丢皮肤」「菜单里选不到」或「类挂上了颜色没换」，
+所以 `tests/WikiThemeSwitchGuard.py` 把它们绑在一起核对。
+
+那段内联脚本必须**自包含**：它以字符串形式写进 HTML，拿不到模块作用域，引用任何
+外部标识符都会在浏览器里直接抛错（和 `search.mts` 的 `cjkTokenize`、`config.mts` 的
+`EDIT_LINK_PATTERN` 是同一条约束）。`config.mts` 也因此设了 `appearance: false`——
+否则 VitePress 自带的 `check-dark-mode` 会和它抢 `<html>` 上的 `.dark`。
+
+### 8.1 版式贴图
+
+材质由 `theme/assets/` 下的七张图提供，由 `tools/build_wiki_theme_assets.py` 在本机产出，
+清单（含字节数与所属皮肤）落在 `wiki-site/scripts/wiki-theme-assets.json`：
+
+| 产物 | 皮肤 | 怎么来的 | 接在哪个令牌 |
+| --- | --- | --- | --- |
+| `sky-overworld.webp` / `sky-snow.webp` | 各一套 | 生图（1536×1024 → 裁 16:10 → WebP） | `--theme-site-background-image` |
+| `wood.webp` / `frost.webp` | 各一套 | 生图 → 镜像四拼平铺 → 只留亮度起伏的半透明颗粒层 | `--theme-widget-texture` |
+| `grass.png` / `grass-snow.png` | 各一套 | 程序化绘制（192×26，CSS 按 96×13 铺） | `--theme-top-background` |
+| `logo.webp` | 两套共用 | 从入库的 `preview.png` 抠出龙裔遗族 + Pillow 排字标 | `--theme-site-logo-image` |
+
+三件事值得知道：
+
+- **贴图是半透明的颗粒层，不是不透明的图。** 底色仍由 `--theme-panel-background`
+  之类决定，所以同一张 `wood.webp` 铺在棕色面板上是木头、铺在浅蓝上是冰，
+  换皮肤不会串色。做法是只保留源图的亮度起伏（比平均亮给白、暗给黑，偏离越多越不透明）。
+- **平铺靠镜像四拼**，接缝两侧像素天然相等，永远不会有缝。代价是有对称感，
+  所以图样越「像个东西」（冰花是典型）越要先柔化、再压低不透明度。
+- **草皮条、Logo 徽记与字标都不生图。** 13px 的草皮条：1024 的图缩下去只会糊成
+  一条色带，程序化画又小又脆还能保证左右接缝对齐。徽记：模组自己的主视觉
+  （创意工坊的 `preview.png`，入库文件）里那只龙裔遗族读者已经认得，比另画一个
+  徽记强；背景是同色系火海，硬阈值抠不动，用 GrabCut 给矩形初值迭代。
+  抠图**下沿切在胯部**、Logo 里角色**贴着画布下沿**放——脚和焦土同色，
+  抠到脚底会把地面一起带出来，而平切口贴着边框就成了「角色从下边缘探出来」。
+  字标：生图模型写不对字母。
+
+产物放 `theme/assets/`（**不要**放 `docs/public/images/`——那是 `WikiImageAssetGuard`
+的地盘，没进 `image-manifest.json` 的 WebP 会被判成孤儿）。放这儿还有个好处：
+Vite 会打哈希并自动补 `base` 前缀，根部署和子路径部署都不用改一个字；
+小于 4 KB 的（两张草皮条）会被直接内联成 data URI，省两个请求。
+
+浏览器只请求**当前皮肤真的用到**的 `url()`，所以预算是按皮肤算的：
+单套 ≤ 600 KB、单张天空 ≤ 200 KB，现状 Overworld / Snow 各约 100 KB。
+`tests/WikiThemeAssetGuard.py` 守着在场、归属、字节数与预算四件事，
+归属以 `tokens.css` 里级联解出来的实际值为准，不认清单里手写的。
+
+天空与两张材质的源图在 `Assets/wiki_theme/`，是 local-only 的（`Assets/` 被
+`.gitignore` 挡着），重出要走生图网关；徽记的源是入库的 `preview.png`，
+换台机器也能一模一样地重建（抠好的图缓存在 `Assets/wiki_theme/emblem-cut.png`，
+删掉会自动重抠，需要 `opencv-python`）。
+别人机器上没有源图也能校验，因为 guard 只读产物大小和清单。
+
+## 9. 不再有的东西
+
+换皮之后这几样按目标站的做法**取消**了，不是漏做：
+
+- VitePress 的顶栏 / 侧边栏 / 右侧悬浮目录（改成门户框栏 + 标签行 + 正文里的 `.toc` 方框）；
+- 正文底部的「上一篇 / 下一篇」（同类导航由页尾的 navbox 承担）；
+- 面包屑（改成 `#siteSub` + `#contentSub` 两行小字，占的高度只有一半）；
+- 首页那个大搜索框（搜索入口统一在标签行右侧）；
+- Google Fonts 三族（正文 Helvetica、标题 Verdana，中文交给系统字体，与目标站中文版
+  的实际渲染同一口径）。这一项加上不再打包默认主题，产物少了 14 个 woff2、
+  3 条外链，样式表从 147 KB 降到 85 KB（含内联的两张草皮条），
+  换来的版式贴图每套皮肤约 100 KB。

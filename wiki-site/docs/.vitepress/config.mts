@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs'
-import { dirname, resolve, sep } from 'path'
+import { dirname, resolve } from 'path'
 import { fileURLToPath } from 'url'
-import { defineConfig, type DefaultTheme, type HeadConfig } from 'vitepress'
-import { CATEGORIES, CHANGELOG_CATEGORY, localizePath, type Locale } from './data/structure.mts'
+import { defineConfig, type HeadConfig } from 'vitepress'
+import { CATEGORIES, localizePath, type Locale } from './data/structure.mts'
 import { INFOBOX } from './data/infobox.mts'
 import { getRoute, readCatalog } from '../../scripts/entry-map.mjs'
 import { SEARCH } from './search.mts'
@@ -11,101 +11,15 @@ import { writeChangelogFeed } from './feed.mts'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-// ── 更新日志：条目多且按版本号排序，仍从 catalog.tsv 生成 ─────────
-// 其余导航一律来自 data/structure.mts（唯一事实源），不在本文件里手写。
-
-function getChangelogLink(entryId: string, prefix: string) {
-  if (entryId === 'changelog__highlights') return `${prefix}/changelog/`
-  if (entryId === 'changelog__legacy_archive') return `${prefix}/changelog/legacy-archive`
-
-  const versionMatch = entryId.match(/^changelog__v(\d+)_(\d+)_(\d+)$/)
-  if (!versionMatch) return null
-
-  return `${prefix}/changelog/v${versionMatch[1]}.${versionMatch[2]}.${versionMatch[3]}`
-}
-
-function getChangelogItems(locale: Locale) {
-  const prefix = locale === 'en' ? '/en' : ''
-
-  return readCatalog()
-    .filter((row) => row.categoryId === 'changelog')
-    .map((row) => ({
-      entryId: row.entryId,
-      text: locale === 'en' ? row.titleEn : row.titleZh,
-      order: row.order,
-    }))
-    .sort((a, b) => a.order - b.order)
-    .map((entry) => {
-      const link = getChangelogLink(entry.entryId, prefix)
-      if (!link) return null
-      return { text: entry.text, link }
-    })
-    .filter((entry): entry is { text: string; link: string } => entry !== null)
-}
-
-// ── 侧边栏 / 顶栏：由 structure.mts 生成 ─────────────────────────
-//
-// 全部分组默认折叠。VitePress 会把**包含当前页**的那一组自动展开
-// （useSidebarControl 里 hasActiveLink 会把 collapsed 打回 false），
-// 所以读者看到的永远是「十来个类目 + 展开的这一类」，
-// 而不是从前那种一屏装不下的 80 行长列表。
-
-function sidebarFor(locale: Locale): DefaultTheme.SidebarItem[] {
-  const groups: DefaultTheme.SidebarItem[] = CATEGORIES.map((category) => ({
-    text: locale === 'en' ? category.en : category.zh,
-    collapsed: true,
-    items: category.entries.map((entry) => ({
-      text: locale === 'en' ? entry.en : entry.zh,
-      link: localizePath(entry.path, locale),
-    })),
-  }))
-
-  groups.push({
-    text: locale === 'en' ? CHANGELOG_CATEGORY.en : CHANGELOG_CATEGORY.zh,
-    collapsed: true,
-    items: getChangelogItems(locale),
-  })
-
-  return groups
-}
-
-/**
- * 顶栏：五个高频入口 + 一个「更多」把剩下的类目收进去。
+/*
+ * 导航不再由本文件生成。
  *
- * 从前顶栏只有 6 个类目、侧栏有 11 个，物品 / NPC / 系统 / 成就 / 地图 / 彩蛋
- * 在顶栏里根本不存在——窄屏侧栏收起来之后就没有入口了。现在顶栏覆盖全部类目。
+ * 换皮之后左栏是 MediaWiki 那种「门户框」而不是 VitePress 的侧边栏，
+ * 标签行也不是 VPNavBar，两者都由 theme/components/WikiPanel.vue 与
+ * WikiHead.vue 直接读 data/structure.mts 渲染。于是从前这里的
+ * navFor / sidebarFor / getChangelogItems 一并删掉，
+ * NAV_PRIMARY / NAV_MORE 挪回了唯一事实源 structure.mts。
  */
-const NAV_PRIMARY = ['getting-started', 'game-modes', 'bosses', 'equipment', 'guides']
-const NAV_MORE = ['items', 'npcs', 'maps', 'systems', 'achievements', 'easter-eggs']
-
-function navFor(locale: Locale): DefaultTheme.NavItem[] {
-  const byId = (id: string) => CATEGORIES.find((c) => c.id === id)!
-  const label = (id: string) => {
-    const c = byId(id)
-    return locale === 'en' ? c.en : c.zh
-  }
-
-  const items: DefaultTheme.NavItem[] = NAV_PRIMARY.map((id) => ({
-    text: label(id),
-    link: localizePath(byId(id).path, locale),
-    activeMatch: `^${localizePath('/' + byId(id).path.split('/')[1], locale)}/`,
-  }))
-
-  items.push({
-    text: locale === 'en' ? 'More' : '更多',
-    items: NAV_MORE.map((id) => ({
-      text: label(id),
-      link: localizePath(byId(id).path, locale),
-    })),
-  })
-
-  items.push({
-    text: locale === 'en' ? CHANGELOG_CATEGORY.en : CHANGELOG_CATEGORY.zh,
-    link: localizePath(CHANGELOG_CATEGORY.path, locale),
-  })
-
-  return items
-}
 
 // ── 导出配置 ──────────────────────────────────────────────
 const base = process.env.DEPLOY_TARGET === 'cloudflare' ? '/' : '/BossRushMod/'
@@ -118,10 +32,19 @@ const FEED_HEAD: HeadConfig[] = SITE_URL
   ? [['link', { rel: 'alternate', type: 'application/rss+xml', title: 'BossRush Wiki · 更新日志', href: `${SITE_URL}feed.xml` }]]
   : []
 
-// 档案版式字体。head 里引用两次（异步那条 + noscript 兜底），提出来免得改一处漏一处。
-const FONT_HREF =
-  'https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700;900' +
-  '&family=Noto+Sans+SC:wght@300;400;500;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap'
+/**
+ * 首帧就把皮肤类挂到 <html> 上，避免刷新时先闪一下默认色。
+ *
+ * 必须**自包含**：它是以字符串形式写进 HTML 的内联脚本，引用不到任何模块。
+ * 主题表要与 data/themes.mts 和 theme/css/tokens.css 里的 html.theme-* 对齐
+ * （tests/WikiThemeSwitchGuard.py 三方核对）。
+ * 认 ?skin-theme=Snow 查询串，方便截图与分享指定皮肤。
+ */
+const SKIN_THEME_INIT =
+  "(function(){try{var T={Overworld:'dark',Snow:'light'},d=document.documentElement,q=null;" +
+  "try{q=new URL(location.href).searchParams.get('skin-theme')}catch(e){}" +
+  "var t=q||localStorage.getItem('skin-theme');if(!T[t])t='Overworld';" +
+  "d.classList.add('theme-'+t,'view-'+T[t]);if(T[t]==='dark')d.classList.add('dark');}catch(e){}})()"
 
 /**
  * 「编辑此页」：指向 WikiContent/ 的源文件，不是 wiki-site/docs/ 的生成物（改生成物会被 sync 抹掉）。
@@ -243,7 +166,9 @@ export function entityLinkPlugin(md: any) {
       // link_open / image 渲染规则会照常补 base、走客户端路由、纳入死链扫描。
       const linkOpen = new state.Token('link_open', 'a', 1)
       linkOpen.attrs = [
-        ['class', 'brs-eref'],
+        // `i` 是 MediaWiki / 泰拉瑞亚 Wiki 里「带贴图的物品链接」那个类；
+        // `brs-eref` 留着不动，悬停预览与稀有度上色都靠它认人。
+        ['class', 'i brs-eref'],
         ['href', hit.href],
         // 悬停预览（WikiRefPreview.vue）靠这个属性反查速查框数据。
         // 写规范路径而不是 href：href 带了 base 与语言前缀，组件那边还要再剥一次。
@@ -331,11 +256,84 @@ export function infoboxSlotPlugin(md: any) {
   })
 }
 
+/**
+ * #siteSub / #contentSub：标题之下那两行小字，插在第一个 h1 之后。
+ *
+ * 与速查框同一套办法（渲染期往 token 流里塞一个 html_block），因此 sync 的
+ * 产物一个字节不变。**必须比 infoboxSlotPlugin 后登记**：两者插入点都是
+ * 「h1 之后」，后登记的先执行完再被前一个推开，最终顺序才是
+ * h1 → #contentSub → 速查框，与目标站一致。
+ */
+export function contentSubSlotPlugin(md: any) {
+  md.core.ruler.push('brs_contentsub_slot', (state: any) => {
+    if (state.inlineMode) return
+    const { canonical } = pageIdentity(state.env?.relativePath ?? '')
+    if (canonical === '/') return // 首页是门户版式，没有这两行
+
+    const tokens = state.tokens
+    let at = -1
+    for (let i = 0; i < tokens.length; i++) {
+      if (tokens[i].type !== 'heading_open' || tokens[i].tag !== 'h1') continue
+      for (let j = i + 1; j < tokens.length; j++) {
+        if (tokens[j].type === 'heading_close' && tokens[j].tag === 'h1') {
+          at = j + 1
+          break
+        }
+      }
+      break
+    }
+    if (at < 0) return // 没有 h1 就不插：位置提示挂在标题下面才讲得通
+
+    const slot = new state.Token('html_block', '', 0)
+    slot.content = `<WikiContentSub path="${canonical}" />\n`
+    slot.block = true
+    tokens.splice(at, 0, slot)
+  })
+}
+
+/**
+ * 目录框：插在**第一个 h2 之前**（MediaWiki 的位置——导语之后、正文之前）。
+ *
+ * 组件自己判断标题够不够四个，不够就整个不渲染，所以这里无脑插即可。
+ * 没有 h2 的页面（首页、少数短页）不插。
+ */
+export function tocSlotPlugin(md: any) {
+  md.core.ruler.push('brs_toc_slot', (state: any) => {
+    if (state.inlineMode) return
+    const { canonical } = pageIdentity(state.env?.relativePath ?? '')
+    if (canonical === '/') return
+
+    const tokens = state.tokens
+    const at = tokens.findIndex((t: any) => t.type === 'heading_open' && t.tag === 'h2')
+    if (at < 0) return
+
+    const slot = new state.Token('html_block', '', 0)
+    slot.content = '<WikiToc />\n'
+    slot.block = true
+    tokens.splice(at, 0, slot)
+  })
+}
+
+/** ::: tip / ::: warning 的容器名 -> 提示框配色与图标（照抄 MediaWiki 的 .message-box）。 */
+const MSGBOX: Record<string, { color: string; icon: string }> = {
+  tip: { color: 'blue', icon: 'info' },
+  info: { color: 'green', icon: 'info' },
+  warning: { color: 'yellow', icon: 'alert' },
+  danger: { color: 'red', icon: 'alert' },
+}
+
 export default defineConfig({
   title: 'BossRush Wiki',
   description: 'Escape from Duckov — BossRush Mod 百科',
   base,
   cleanUrls: true,
+
+  // 深浅切换归本站的 skin-theme 管（见 head 里的内联脚本与 theme/composables/useSkinTheme.ts）。
+  // 不关掉的话 VitePress 自己那段 check-dark-mode 会和我们抢 <html> 上的 .dark。
+  appearance: false,
+
+  // 锚点跳转要让开固定的网络顶栏（35px），默认值 134 是给它自己那条顶栏的
+  scrollOffset: 35,
 
   // 页面「最后更新」时间取自 git。CI 的 checkout 必须 fetch-depth: 0，
   // 否则浅克隆里所有文件都是同一个提交时间（见 .github/workflows/deploy.yml）。
@@ -360,11 +358,43 @@ export default defineConfig({
     // 表格外套一层横向滚动框：窄屏下宽表格自己滚，不撑破版心。
     // 这层 BFC 顺带让表格在速查框（右浮动）旁边自动收窄而不是被压住。
     // 对应档案报告里的 .tw 包裹层，样式见 theme/style.css §7。
+    // 目录框要用 page.headers，而 VitePress 只有开了这一项才会填它（默认不填）。
+    headers: { level: [2, 3] },
+
     config(md) {
-      md.renderer.rules.table_open = () => '<div class="brs-table-scroll"><table>'
+      // 表格套 terraria 皮（内框 + 高亮表头），外面那层横向滚动框保持不变
+      md.renderer.rules.table_open = () =>
+        '<div class="brs-table-scroll"><table class="terraria lined">'
       md.renderer.rules.table_close = () => '</table></div>'
+
+      // h1 补 firstHeading：正文里那条标题线与 MediaWiki 同名同款
+      const renderToken = md.renderer.renderToken.bind(md.renderer)
+      md.renderer.rules.heading_open = (tokens: any, idx: number, options: any, _env: any, self: any) => {
+        if (tokens[idx].tag === 'h1') tokens[idx].attrJoin('class', 'firstHeading')
+        return renderToken(tokens, idx, options, self)
+      }
+
+      /*
+       * 提示框改写成 .message-box。
+       *
+       * VitePress 的容器插件在本回调**之前**注册（dist 里 containerPlugin 先跑、
+       * options.config(md) 最后跑），所以这里覆盖它的渲染规则是稳的。
+       * 只改渲染层：生成的 .md 仍是 `::: tip`，ZombieModeMutantWikiGuard 的
+       * 逐字节比对不受影响。
+       */
+      for (const [name, box] of Object.entries(MSGBOX)) {
+        md.renderer.rules[`container_${name}_open`] = () =>
+          `<div class="message-box msgbox-color-${box.color}">` +
+          `<div class="icon"><span class="tw-icon tw-icon--${box.icon}" aria-hidden="true"></span></div>` +
+          `<div class="msgbox-text">\n`
+        md.renderer.rules[`container_${name}_close`] = () => '</div></div>\n'
+      }
+
       md.use(entityLinkPlugin)
       md.use(infoboxSlotPlugin)
+      // 顺序要紧：contentSub 后登记，才会排在速查框**之前**（两者插入点同为 h1 之后）
+      md.use(contentSubSlotPlugin)
+      md.use(tocSlotPlugin)
 
       /*
        * 正文配图一律懒加载。
@@ -389,68 +419,32 @@ export default defineConfig({
     },
   },
 
-  // ── 覆盖默认主题的搜索弹层 ───────────────────────────────────
-  //
-  // VitePress 官方给的「Overriding Internal Components」办法：给组件文件路径配一条
-  // Vite alias。`VPNavBarSearch.vue` 里那句 `import('./VPLocalSearchBox.vue')`
-  // 会被重定向到本站的 fork，顶栏按钮、Ctrl+K / `/` 快捷键、`showSearch` 开关
-  // 统统还是官方那份，只有弹层本体换人（fork 的改动清单见组件文件头）。
-  //
-  // 必须用**数组**形式：VitePress 自己的 alias（@theme / vitepress / vue …）也是数组，
-  // Vite 的 mergeConfig 会把两边拼起来，对象形式会把它那份挤掉。
-  // 拼接顺序是「VitePress 的在前、这条在后」，而它那几条都匹配不上这个路径，
-  // 所以这条能被命中。路径分隔符要抹平：Windows 上 resolve() 出来的是反斜杠，Vite 只认正斜杠。
-  vite: {
-    resolve: {
-      alias: [
-        {
-          find: /^.*\/VPLocalSearchBox\.vue$/,
-          replacement: resolve(__dirname, 'theme/components/WikiSearchBox.vue').split(sep).join('/'),
-        },
-      ],
-    },
-  },
+  // 搜索弹层从前靠一条 Vite alias 顶替 VitePress 默认主题里的 VPLocalSearchBox；
+  // 现在默认主题整个不在了，`theme/components/WikiHeadSearch.vue` 直接
+  // import('./WikiSearchBox.vue')，alias 也就没必要了（fork 本身照旧，
+  // 仍要按它头部的 UPSTREAM 标记跟着 VitePress 版本走）。
 
   head: [
     ['link', { rel: 'icon', href: `${base}images/favicon.ico` }],
-    // 移动端浏览器地址栏染成纸面色，与顶栏连成一片；深色偏好下用深色地（值与 style.css §1 的 --brs-ground 一致）
-    ['meta', { name: 'theme-color', content: '#eae6de', media: '(prefers-color-scheme: light)' }],
-    ['meta', { name: 'theme-color', content: '#141110', media: '(prefers-color-scheme: dark)' }],
+    // 地址栏配色跟着皮肤走；这里给的是默认皮肤（Overworld）的值，
+    // 读者切换时由 useSkinTheme 就地改写成 --theme-meta-color。
+    ['meta', { name: 'theme-color', content: '#000538' }],
     ...FEED_HEAD,
-    // 档案版式字体：衬线标题 + 正文黑体 + 等宽微标签，与玩法档案报告同源。
-    // 用 media=print + onload 切换，避免 fonts.googleapis.com 不可达时阻塞首屏；
-    // 取不到时按 style.css 里的本地字体栈降级（苹方 / 微软雅黑 / 宋体）。
-    ['link', { rel: 'preconnect', href: 'https://fonts.googleapis.com' }],
-    ['link', { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' }],
-    [
-      'link',
-      {
-        rel: 'stylesheet',
-        href: FONT_HREF,
-        media: 'print',
-        onload: "this.media='all'",
-      },
-    ],
-    // `media=print + onload` 的代价是没有 JS 就永远切不回 all（onload 里那句是 JS）。
-    // 关了脚本的浏览器于是只剩本地字体栈——补一条 noscript 直接按 all 加载。
-    ['noscript', {}, `<link rel="stylesheet" href="${FONT_HREF}">`],
+    // 首帧就把皮肤类挂上，避免刷新时闪一下。必须在样式表之前同步执行。
+    ['script', { id: 'skin-theme-init' }, SKIN_THEME_INIT],
+    // 字体一个都不下载：正文 Helvetica、标题 Verdana，中文交给系统字体，
+    // 与目标站中文版的实际渲染同一口径（见 theme/css/tokens.css）。
   ],
 
   locales: {
     root: {
       label: '中文',
       lang: 'zh-CN',
+      // nav / sidebar / outline / docFooter 这些都是默认主题的配置项，本站已经不用它了：
+      // 导航来自 structure.mts、目录是正文里的 .toc、上下篇按目标站的做法取消。
+      // 界面文案统一在 theme/composables/useUiText.ts（放这里会被序列化进每一页）。
       themeConfig: {
-        nav: navFor('zh'),
-        sidebar: sidebarFor('zh'),
-        outline: { level: [2, 3], label: '本页目录' },
-        docFooter: { prev: '上一篇', next: '下一篇' },
-        lastUpdated: { text: '最后更新' },
         editLink: { pattern: EDIT_LINK_PATTERN, text: '在 GitHub 上编辑此页' },
-        returnToTopLabel: '返回顶部',
-        sidebarMenuLabel: '菜单',
-        darkModeSwitchLabel: '深色模式',
-        langMenuLabel: '切换语言',
         notFound: {
           code: '404',
           title: '这一页不存在',
@@ -465,20 +459,26 @@ export default defineConfig({
       lang: 'en',
       description: 'Escape from Duckov — BossRush Mod Wiki',
       themeConfig: {
-        nav: navFor('en'),
-        sidebar: sidebarFor('en'),
-        outline: { level: [2, 3], label: 'On this page' },
-        lastUpdated: { text: 'Last updated' },
         editLink: { pattern: EDIT_LINK_PATTERN, text: 'Edit this page on GitHub' },
       },
     },
   },
 
   themeConfig: {
-    // 本地搜索：中文二元分词 + 文案，见 search.mts
-    search: SEARCH,
+    /*
+     * RSS 的地址（没有就是 null）。
+     *
+     * feed.mts 只在拿得到站点绝对地址时才写 dist/feed.xml —— `DEPLOY_TARGET=cloudflare`
+     * 又没设 SITE_URL 时它整个不生成。主题层几处「订阅」入口因此不能写死链接，
+     * 得按这个值决定渲染不渲染；写死的下场是根部署下三处死链
+     * （2026-09-07 实测：check_wiki_links --base / 报 feed.xml missing output）。
+     */
+    feedUrl: SITE_URL ? base + 'feed.xml' : null,
 
-    socialLinks: [{ icon: 'github', link: 'https://github.com/GASEN1216/BossRushMod' }],
+    // 本地搜索：中文二元分词 + 文案，见 search.mts。
+    // provider 必须留着 'local'——@localSearchIndex 这个虚拟模块由它决定生不生成，
+    // 与用哪套主题无关。
+    search: SEARCH,
 
     footer: {
       message: 'BossRush Mod for Escape from Duckov',

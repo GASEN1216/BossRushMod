@@ -1,0 +1,97 @@
+/* ══════════════════════════════════════════════════════════════
+   print.css — 打印：只留正文，白底黑字
+   ══════════════════════════════════════════════════════════════ */
+
+@media print {
+  html {
+    background: #fff !important;
+  }
+  body {
+    color: #000;
+    font-size: 10pt;
+    line-height: 1.45;
+  }
+
+  .mw-layout {
+    display: block;
+  }
+
+  #wgg-netbar,
+  #p-logo,
+  #mw-navigation,
+  #mw-head,
+  #mw-panel,
+  #mw-page-base,
+  #p-search,
+  .suggestions,
+  .mwe-popups,
+  .mw-mmv-wrapper,
+  .navbox,
+  .catlinks,
+  #footer-places,
+  #footer-icons,
+  .header-anchor,
+  .toctogglelabel,
+  .navbox-toggle,
+  .mw-jump-link {
+    display: none !important;
+  }
+
+  #content {
+    display: block;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    color: #000;
+  }
+
+  #siteSub {
+    display: block;
+  }
+
+  .mw-parser-output a {
+    color: #000;
+    text-decoration: none;
+  }
+
+  /* 信息框保持右浮（版式与屏幕一致），但不许被切成两页 */
+  .infobox,
+  .toc,
+  .message-box,
+  .brs-figure,
+  .brs-icon,
+  table.terraria {
+    border-color: #999;
+    background: none;
+    break-inside: avoid;
+  }
+  .infobox > .title,
+  .infobox .section > .title,
+  .infobox .section.ids,
+  table.terraria th,
+  .navbox > .header {
+    background: #eee;
+    color: #000;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: #000;
+    break-after: avoid;
+    break-inside: avoid;
+  }
+
+  #footer {
+    border: 0;
+    border-top: 1px solid #999;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    color: #000;
+  }
+}

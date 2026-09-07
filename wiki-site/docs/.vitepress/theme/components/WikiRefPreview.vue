@@ -30,9 +30,11 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vitepress'
 import WikiIcon from './WikiIcon.vue'
 import { useWiki } from '../composables/useWiki'
+import { useUiText } from '../composables/useUiText'
 import { INFOBOX } from '../../data/infobox.mts'
 import { locate } from '../../data/structure.mts'
 
+const ui = useUiText()
 const { locale, entryLabel, canonical } = useWiki()
 const router = useRouter()
 
@@ -162,7 +164,7 @@ onBeforeUnmount(() => {
   -->
   <aside
     v-if="visible"
-    class="brs-peek"
+    class="mwe-popups mwe-popups-is-not-tall"
     aria-hidden="true"
     :style="{
       left: x + 'px',
@@ -170,135 +172,31 @@ onBeforeUnmount(() => {
       width: CARD_W + 'px',
     }"
   >
-      <div class="brs-peek__head">
-        <WikiIcon :icon="entry!.icon" :label="entryLabel(entry!)" :size="34" />
-        <div>
-          <p class="brs-peek__eyebrow">
-            {{ locale === 'en' ? box!.eyebrowEn : box!.eyebrowZh }}
-          </p>
-          <p class="brs-peek__name">{{ entryLabel(entry!) }}</p>
-        </div>
+    <div class="mwe-popups-container">
+      <p class="mwe-popups-title">
+        <span class="mwe-popups-thumbnail">
+          <WikiIcon :icon="entry!.icon" :label="entryLabel(entry!)" :size="26" />
+        </span>
+        <span>{{ entryLabel(entry!) }}</span>
+      </p>
+
+      <div class="mwe-popups-extract">
+        <table class="stat">
+          <tbody>
+            <tr v-for="row in rows" :key="row.label">
+              <th>{{ row.label }}</th>
+              <td>
+                <span v-if="row.tier" class="wiki-rarity" :data-tier="row.tier">
+                  {{ row.value }}
+                </span>
+                <template v-else>{{ row.value }}</template>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
 
-      <dl class="brs-peek__rows">
-        <div v-for="row in rows" :key="row.label">
-          <dt>{{ row.label }}</dt>
-          <dd>
-            <span v-if="row.tier" class="wiki-rarity" :data-tier="row.tier">{{ row.value }}</span>
-            <template v-else>{{ row.value }}</template>
-          </dd>
-        </div>
-      </dl>
-
-    <p v-if="more" class="brs-peek__more">
-      {{ locale === 'en' ? `+${more} more on the page` : `条目页还有 ${more} 项` }}
-    </p>
+      <p v-if="more" class="mwe-popups-more">{{ ui.morePropsOnPage(more) }}</p>
+    </div>
   </aside>
 </template>
-
-<style>
-.brs-peek {
-  position: fixed;
-  z-index: 60;
-  padding: 11px 13px 12px;
-  border: 1px solid var(--brs-rule);
-  border-top: 2px solid var(--brs-ink);
-  background: var(--brs-surface);
-  box-shadow: 0 6px 22px rgb(0 0 0 / 14%);
-  pointer-events: none; /* 卡片本身不吃鼠标，否则会挡住它下面的链接 */
-}
-
-.brs-peek__head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding-bottom: 9px;
-  border-bottom: 1px solid var(--brs-rule);
-}
-
-.brs-peek__eyebrow {
-  margin: 0;
-  font-family: var(--brs-mono);
-  font-size: 9.5px;
-  font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
-  color: var(--brs-brass);
-}
-
-.brs-peek__name {
-  margin: 2px 0 0;
-  font-family: var(--brs-serif);
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--brs-ink);
-}
-
-.brs-peek__rows {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.5;
-}
-
-.brs-peek__rows > div {
-  display: grid;
-  grid-template-columns: minmax(52px, auto) 1fr;
-  gap: 0 12px;
-  align-items: baseline;
-  padding: 5px 0;
-  border-bottom: 1px solid var(--brs-rule-soft);
-}
-
-.brs-peek__rows > div:last-child {
-  border-bottom: none;
-}
-
-.brs-peek__rows dt,
-.brs-peek__rows dd {
-  margin: 0;
-}
-
-.brs-peek__rows dt {
-  font-family: var(--brs-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--brs-ink-faint);
-}
-
-.brs-peek__rows dd {
-  color: var(--brs-ink);
-  text-align: right;
-}
-
-.brs-peek__more {
-  margin: 8px 0 0;
-  font-family: var(--brs-mono);
-  font-size: 9.5px;
-  letter-spacing: 0.06em;
-  color: var(--brs-ink-faint);
-}
-
-@keyframes brs-peek-in {
-  from {
-    opacity: 0;
-  }
-}
-
-.brs-peek {
-  animation: brs-peek-in 0.12s ease;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .brs-peek {
-    animation: none;
-  }
-}
-
-@media print {
-  .brs-peek {
-    display: none;
-  }
-}
-</style>

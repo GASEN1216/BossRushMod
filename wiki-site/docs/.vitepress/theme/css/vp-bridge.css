@@ -1,0 +1,22 @@
+/* ══════════════════════════════════════════════════════════════
+   vp-bridge.css — 唯一允许给 --vp-* 赋值的地方
+
+   本站不再用 VitePress 默认主题，--vp-* 那套变量按说该整个消失。但有一处
+   例外：theme/components/WikiSearchBox.vue 是**上游 VPLocalSearchBox 的 fork**，
+   它的 scoped 样式里还留着七个 --vp-* 引用。把它们逐条改写会让这个 fork 与
+   上游没法再 diff（升级 VitePress 时全靠对照上游同名文件，见 AGENTS §4.8.1），
+   所以宁可在这里搭一层薄桥：变量名照旧，值全部落到本站令牌上。
+
+   纪律：只准出现在这一份文件里，右值必须是 var(--theme-*)，不许写字面色。
+   WikiThemeTokensGuard 会核对这两条。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  --vp-c-brand-1: var(--theme-link-color);
+  --vp-c-divider: var(--theme-box-border-color-light);
+  --vp-backdrop-bg-color: rgba(0, 0, 0, 0.6);
+  --vp-local-search-bg: var(--theme-dropdown-background);
+  --vp-local-search-result-bg: var(--theme-box-background);
+  --vp-local-search-highlight-bg: var(--theme-text-background-color-highlight);
+  --vp-local-search-highlight-text: var(--theme-text-color-highlight);
+}

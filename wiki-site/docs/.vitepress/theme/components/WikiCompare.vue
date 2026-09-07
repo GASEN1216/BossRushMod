@@ -17,13 +17,15 @@
  *   合并成一列。这是表现层的合并，不动 infobox.mts。
  * 排序：点表头。值开头有数字按数字排，星级按 ★ 的个数，都没有按字符串；
  *   缺值的行永远沉底。
- * 样式：表格本身在 theme/extras.css §1；带 tier 的格子复用稀有度色片 .wiki-rarity，
- *   定义在 extras.css §0（与 WikiInfobox 共用，刻意不放在任一组件的 <style> 里）。
+ * 样式：表格用 theme/css/content.css 里的 table.terraria（与正文表格同一套皮），
+ *   排序表头在 widgets.css §4；带 tier 的格子复用稀有度色片 .wiki-rarity，
+ *   定义在 widgets.css §0（与 WikiInfobox 共用，刻意不放在任一组件的 <style> 里）。
  */
 import { computed, ref } from 'vue'
 import WikiIcon from './WikiIcon.vue'
 import { useWiki } from '../composables/useWiki'
 import { INFOBOX } from '../../data/infobox.mts'
+import { eyebrowGroupKey } from '../composables/useNavbox'
 import type { WikiCategory, WikiEntry } from '../../data/structure.mts'
 
 const props = defineProps<{ category: WikiCategory }>()
@@ -64,7 +66,8 @@ const groups = computed<Group[]>(() => {
     const box = INFOBOX[entry.path.replace(/\/$/, '')]
     if (!box) continue
 
-    const key = (en ? box.eyebrowEn : box.eyebrowZh).split(' · ')[0].trim()
+    // 分组规则与页尾导航盒共用一份（composables/useNavbox.ts），两处不会漂
+    const key = eyebrowGroupKey(en ? box.eyebrowEn : box.eyebrowZh)
     let group = byKey.get(key)
     if (!group) {
       group = { key, columns: [], rows: [] }
@@ -100,6 +103,13 @@ function toggle(groupKey: string, col: string) {
   const current = sortState.value[groupKey]
   const dir: 1 | -1 = current && current.col === col && current.dir === 1 ? -1 : 1
   sortState.value = { ...sortState.value, [groupKey]: { col, dir } }
+}
+
+/** tablesorter 那套类名：升 headerSortUp / 降 headerSortDown，样式在 widgets.css §4 */
+function sortClass(groupKey: string, col: string): string {
+  const s = sortState.value[groupKey]
+  if (!s || s.col !== col) return ''
+  return s.dir === 1 ? 'headerSortUp' : 'headerSortDown'
 }
 
 function ariaSort(groupKey: string, col: string): 'ascending' | 'descending' | 'none' {
@@ -144,32 +154,44 @@ function sortedRows(group: Group): Row[] {
 </script>
 
 <template>
-  <section v-if="groups.length" class="wiki-compare" :aria-label="t('速查对比', 'Comparison table')">
-    <h2 class="wiki-compare__title">
+  <section v-if="groups.length" class="wiki-compare brs-compare" :aria-label="t('速查对比', 'Comparison table')">
+    <h2 class="brs-compare__title">
       {{ t('速查对比', 'Compare at a glance') }}
-      <span class="wiki-compare__hint">{{ t('点击表头排序', 'Click a header to sort') }}</span>
+      <span class="brs-compare__hint">{{ t('点击表头排序', 'Click a header to sort') }}</span>
     </h2>
 
-    <div v-for="group in groups" :key="group.key" class="wiki-compare__group">
-      <h3 v-if="groups.length > 1" class="wiki-compare__subtitle">
+    <div v-for="group in groups" :key="group.key" class="brs-compare__group">
+      <h3 v-if="groups.length > 1" class="brs-compare__subtitle">
         {{ group.key }}
-        <span class="wiki-compare__count">{{ group.rows.length }}</span>
+        <span class="brs-compare__count">{{ group.rows.length }}</span>
       </h3>
 
-      <div class="wiki-compare__scroll">
-        <table class="wiki-compare__table">
+      <div class="brs-table-scroll">
+        <table class="terraria lined sortable">
           <thead>
             <tr>
-              <th scope="col" :aria-sort="ariaSort(group.key, NAME_COL)">
+              <th
+                scope="col"
+                class="headerSort"
+                :class="sortClass(group.key, NAME_COL)"
+                :aria-sort="ariaSort(group.key, NAME_COL)"
+              >
                 <button type="button" @click="toggle(group.key, NAME_COL)">
                   {{ t('名称', 'Name') }}
-                  <span class="wiki-compare__arrow" aria-hidden="true"></span>
+                  <span class="headerSort__arrow" aria-hidden="true"></span>
                 </button>
               </th>
-              <th v-for="col in group.columns" :key="col" scope="col" :aria-sort="ariaSort(group.key, col)">
+              <th
+                v-for="col in group.columns"
+                :key="col"
+                scope="col"
+                class="headerSort"
+                :class="sortClass(group.key, col)"
+                :aria-sort="ariaSort(group.key, col)"
+              >
                 <button type="button" @click="toggle(group.key, col)">
                   {{ col }}
-                  <span class="wiki-compare__arrow" aria-hidden="true"></span>
+                  <span class="headerSort__arrow" aria-hidden="true"></span>
                 </button>
               </th>
             </tr>
@@ -177,7 +199,7 @@ function sortedRows(group: Group): Row[] {
           <tbody>
             <tr v-for="row in sortedRows(group)" :key="row.entry.path">
               <th scope="row">
-                <a class="wiki-compare__name" :href="href(row.entry.path)">
+                <a class="i" :href="href(row.entry.path)">
                   <WikiIcon :icon="row.entry.icon" :label="entryLabel(row.entry)" :size="26" />
                   <span>{{ entryLabel(row.entry) }}</span>
                 </a>

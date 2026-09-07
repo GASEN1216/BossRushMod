@@ -1,128 +1,107 @@
 <script setup lang="ts">
 /**
- * WikiNavbox — 页尾的同类导航条，对应泰拉瑞亚 Wiki 底部那种 navbox 模板。
+ * WikiNavbox — 页尾的导航盒（MediaWiki / 泰拉瑞亚 Wiki 的 .navbox）。
  *
- * 读完一件装备通常要接着看下一件，但 VitePress 默认页脚只给「上一篇 / 下一篇」
- * 两个链接，读者要跳到同类第五条就得回侧栏。navbox 把整类平铺在页尾，
- * 一行一类、当前条目高亮，读完直接横跳。
+ * 一个横跨正文宽度的盒子，标题是所属类目，底下按「组名：条目 • 条目 • 条目」
+ * 逐行列出同类页面。相比从前那种平铺一行的同类导航，分组之后一眼能看出
+ * 「我在近战武器这一档，隔壁还有套装和枪械」。
  *
- * 只在能定位到类目的页面出现；类目里只有一条（地图、成就、彩蛋）时不渲染——
- * 一个只指向自己的导航条没有意义。
+ * 分组规则来自 composables/useNavbox.ts，与类目主页那张对比表**同一条**
+ * （速查框眉标的第一段），改一处两边一起变。
+ *
+ * 更新日志页不按类目分组——四十多个版本平铺没法读，改按大版本（2.3.x）分行。
  */
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useWiki } from '../composables/useWiki'
+import { useUiText } from '../composables/useUiText'
+import { groupByEyebrow } from '../composables/useNavbox'
+import { CHANGELOG_CATEGORY } from '../../data/structure.mts'
+import { data as releases } from '../../data/changelog.data.mts'
 
-const { located, href, t, canonical, entryLabel, categoryLabel, tierOf } = useWiki()
+const ui = useUiText()
+const { canonical, located, isChangelog, locale, href, entryLabel, categoryLabel, tierOf } =
+  useWiki()
 
-const siblings = computed(() => located.value?.category.entries ?? [])
-const show = computed(() => siblings.value.length > 1)
+const collapsed = ref(false)
+const norm = (p: string) => (p.length > 1 ? p.replace(/\/$/, '') : p)
+const isHere = (path: string) => norm(path) === norm(canonical.value)
 
-const isHere = (path: string) =>
-  path.replace(/\/$/, '') === canonical.value.replace(/\/$/, '')
+interface Row {
+  key: string
+  items: { path: string; label: string; tier?: number }[]
+}
+
+const title = computed(() => {
+  if (isChangelog.value) {
+    return locale.value === 'en' ? CHANGELOG_CATEGORY.en : CHANGELOG_CATEGORY.zh
+  }
+  return located.value ? categoryLabel(located.value.category) : ''
+})
+
+const titleHref = computed(() =>
+  isChangelog.value
+    ? href(CHANGELOG_CATEGORY.path)
+    : located.value
+      ? href(located.value.category.path)
+      : href('/')
+)
+
+const rows = computed<Row[]>(() => {
+  // 更新日志：按 major.minor 分行，同一行内按版本号排
+  if (isChangelog.value) {
+    const order: string[] = []
+    const bySeries = new Map<string, Row['items']>()
+    for (const rel of releases) {
+      const parts = rel.version.split('.')
+      const series = `${parts[0]}.${parts[1]}.x`
+      if (!bySeries.has(series)) {
+        bySeries.set(series, [])
+        order.push(series)
+      }
+      bySeries.get(series)!.push({ path: rel.path, label: 'v' + rel.version })
+    }
+    return order.map((key) => ({ key, items: bySeries.get(key)! }))
+  }
+
+  const category = located.value?.category
+  if (!category) return []
+  return groupByEyebrow(category, locale.value, category.path, ui.value.allEntries).map(
+    (group) => ({
+      key: group.key,
+      items: group.entries.map((entry) => ({
+        path: entry.path,
+        label: entryLabel(entry),
+        tier: tierOf(entry.path),
+      })),
+    })
+  )
+})
 </script>
 
 <template>
-  <nav v-if="located && show" class="wiki-navbox" :aria-label="t('同类条目', 'Related pages')">
-    <a class="wiki-navbox__cat" :href="href(located.category.path)">
-      {{ categoryLabel(located.category) }}
-    </a>
-    <ul class="wiki-navbox__list">
-      <li v-for="entry in siblings" :key="entry.path">
-        <!-- .wiki-tier 给装备名上稀有度色；当前页的 .is-here（(0,2,1)）比它（(0,2,0)）权重高，
-             所以当前条目仍显示为墨色下划线，不会被稀有度色盖掉 -->
-        <a
-          class="wiki-tier"
-          :data-tier="tierOf(entry.path)"
-          :href="href(entry.path)"
-          :class="{ 'is-here': isHere(entry.path) }"
-          :aria-current="isHere(entry.path) ? 'page' : undefined"
-        >
-          {{ entryLabel(entry) }}
-        </a>
-      </li>
-    </ul>
+  <nav v-if="rows.length" class="navbox" :class="{ 'is-collapsed': collapsed }">
+    <div class="header">
+      <span class="navbox-title"><a :href="titleHref">{{ title }}</a></span>
+      <button
+        class="navbox-toggle"
+        type="button"
+        :aria-expanded="!collapsed"
+        @click="collapsed = !collapsed"
+      />
+    </div>
+    <div class="navbox-body">
+      <div v-for="row in rows" :key="row.key" class="navbox-row">
+        <div class="title">{{ row.key }}</div>
+        <div class="dotlist">
+          <ul>
+            <li v-for="item in row.items" :key="item.path" :class="{ 'is-here': isHere(item.path) }">
+              <a :href="href(item.path)" class="wiki-tier" :data-tier="item.tier">
+                {{ item.label }}
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
   </nav>
 </template>
-
-<style>
-.wiki-navbox {
-  clear: both;
-  display: grid;
-  grid-template-columns: minmax(90px, auto) 1fr;
-  gap: 0 18px;
-  align-items: start;
-  margin-top: 48px;
-  padding-top: 14px;
-  border-top: 1px solid var(--brs-rule);
-}
-
-.wiki-navbox__cat {
-  font-family: var(--brs-mono);
-  font-size: var(--brs-label-size);
-  font-weight: 600;
-  letter-spacing: var(--brs-label-track);
-  text-transform: uppercase;
-  color: var(--brs-brass);
-  text-decoration: none;
-  padding-top: 3px;
-}
-
-.wiki-navbox__cat:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.wiki-navbox__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  max-width: none;
-}
-
-.wiki-navbox__list li {
-  margin: 0;
-}
-
-.wiki-navbox__list li::marker {
-  content: none;
-}
-
-/* 用竖线分隔而不是逗号或点：与档案版式的直角硬边一致 */
-.wiki-navbox__list li + li::before {
-  content: "";
-  display: inline-block;
-  width: 1px;
-  height: 10px;
-  margin: 0 10px;
-  background: var(--brs-rule);
-  vertical-align: -1px;
-}
-
-.wiki-navbox__list a {
-  font-size: 13px;
-  color: var(--brs-ink-soft);
-  text-decoration: none;
-}
-
-.wiki-navbox__list a:hover {
-  color: var(--brs-brass);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.wiki-navbox__list a.is-here {
-  color: var(--brs-ink);
-  font-weight: 500;
-  border-bottom: 2px solid var(--brs-brass);
-}
-
-@media (max-width: 640px) {
-  .wiki-navbox {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-}
-</style>

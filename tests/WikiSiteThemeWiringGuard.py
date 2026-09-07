@@ -63,9 +63,12 @@ THEME = os.path.join(VP, "theme")
 THEME_INDEX = os.path.join(THEME, "index.ts")
 LAYOUT = os.path.join(THEME, "Layout.vue")
 SEARCH_BOX = os.path.join(THEME, "components", "WikiSearchBox.vue")
+HEAD_SEARCH = os.path.join(THEME, "components", "WikiHeadSearch.vue")
 LIGHTBOX = os.path.join(THEME, "components", "WikiLightbox.vue")
-EXTRAS_CSS = os.path.join(THEME, "extras.css")
-STYLE_CSS = os.path.join(THEME, "style.css")
+# 2026-09-07 换皮：style.css / extras.css 拆成 theme/css/*.css。
+# 可点图的光标在 widgets.css，配图块的展示宽度在 content.css。
+ZOOM_CSS = os.path.join(THEME, "css", "widgets.css")
+FIGURE_CSS = os.path.join(THEME, "css", "content.css")
 BUILD_IMAGES = os.path.join(REPO_ROOT, "tools", "build_wiki_images.py")
 LOCK = os.path.join(SITE, "package-lock.json")
 
@@ -101,8 +104,8 @@ def tokenizer_body(src):
 
 
 def main():
-    for path in (CONFIG, SEARCH, THEME_INDEX, LAYOUT, SEARCH_BOX, LIGHTBOX,
-                 EXTRAS_CSS, STYLE_CSS, BUILD_IMAGES, LOCK):
+    for path in (CONFIG, SEARCH, THEME_INDEX, LAYOUT, SEARCH_BOX, HEAD_SEARCH, LIGHTBOX,
+                 ZOOM_CSS, FIGURE_CSS, BUILD_IMAGES, LOCK):
         if not os.path.isfile(path):
             return fail("缺文件：" + os.path.relpath(path, REPO_ROOT))
 
@@ -124,10 +127,14 @@ def main():
     if "<WikiInfobox" in layout_src:
         return fail("Layout.vue 里还渲染着 <WikiInfobox />，会和渲染期注入的那份重复出现两个速查框")
 
-    # 3. 搜索弹层 alias
-    if "VPLocalSearchBox" not in config_src or "WikiSearchBox.vue" not in config_src:
-        return fail("config.mts 里没有把 VPLocalSearchBox.vue 指向 WikiSearchBox.vue 的 Vite alias："
-                    "搜索会静默退回官方弹层（首开白屏、中文输入法上下键被抢）")
+    # 3. 搜索弹层的接线。
+    #    从前靠 config.mts 里一条 Vite alias 顶替默认主题的 VPLocalSearchBox；
+    #    换皮之后默认主题整个不在了，改由标签行的搜索框直接 import 这个 fork。
+    #    断了的话搜索只剩联想下拉、没有「完整结果」那一层，而且不会报错。
+    head_search_src = read(HEAD_SEARCH)
+    if "./WikiSearchBox.vue" not in head_search_src:
+        return fail("WikiHeadSearch.vue 没有 import('./WikiSearchBox.vue')："
+                    "回车打不开完整结果弹层，搜索会静默退化成只有联想下拉")
 
     # 4. fork 的上游版本必须跟得上实际装的 vitepress
     matched = UPSTREAM_RE.search(box_src)
@@ -157,13 +164,13 @@ def main():
     # 6. 灯箱接线
     if "<WikiLightbox" not in layout_src:
         return fail("Layout.vue 没有挂 WikiLightbox：正文配图点了不会放大")
-    extras_src = read(EXTRAS_CSS)
-    if "cursor: zoom-in" not in extras_src:
-        return fail("extras.css 里没有 zoom-in 光标：图能点但没有任何提示，读者不会去点")
+    zoom_src = read(ZOOM_CSS)
+    if "cursor: zoom-in" not in zoom_src:
+        return fail("css/widgets.css 里没有 zoom-in 光标：图能点但没有任何提示，读者不会去点")
     box_selectors = [sel for sel in (".brs-gallery img", ".brs-figure img", ".brs-icon img")
-                     if sel not in extras_src]
+                     if sel not in zoom_src]
     if box_selectors:
-        return fail("extras.css 的可点图选择器和 WikiLightbox 的 SELECTOR 对不上，缺：%s"
+        return fail("css/widgets.css 的可点图选择器和 WikiLightbox 的 SELECTOR 对不上，缺：%s"
                     % ", ".join(box_selectors))
 
     # 7. 正文图片懒加载
@@ -174,7 +181,7 @@ def main():
                     "图鉴那页 38 张图会在开页时一次性全部拉取")
 
     # 8. 产物尺寸 >= 展示尺寸（否则浏览器把图拉大，看起来就是糊）
-    style_src = read(STYLE_CSS)
+    style_src = read(FIGURE_CSS)
     images_src = read(BUILD_IMAGES)
     for selector, const_name in DISPLAY_WIDTH_RULES:
         # 同一个选择器在 style.css 里出现多次（共用的网格规则 + 各自的限宽），
@@ -186,7 +193,7 @@ def main():
             if found:
                 widths.append(int(found.group(1)))
         if not widths:
-            return fail("style.css 里没找到 %s 的 max-width，无法核对它会不会把图放大；"
+            return fail("css/content.css 里没找到 %s 的 max-width，无法核对它会不会把图放大；"
                         "规则写法改了的话本 guard 的正则要同步" % selector)
         const = re.search(r"^%s\s*=\s*(\d+)" % const_name, images_src, re.M)
         if not const:
@@ -197,9 +204,47 @@ def main():
                         "页面上就是一张糊图。要么把产物尺寸提上去，要么把展示宽度降下来"
                         % (selector, shown, const_name, produced))
 
+    # 9. 目录框的三处接线。
+    #    page.headers **只有** markdown.headers 打开时才会被填（VitePress 默认不填），
+    #    漏了这一项目录框永远判定「标题不足四个」而整个不渲染，页面照常构建。
+    if "headers: { level: [2, 3] }" not in config_src:
+        return fail("config.mts 的 markdown 没开 headers：page.headers 会一直是空的，"
+                    "全站目录框静默消失（VitePress 默认不填这个字段）")
+    if "md.use(tocSlotPlugin)" not in config_src or "function tocSlotPlugin" not in config_src:
+        return fail("config.mts 没有登记 tocSlotPlugin：目录框不会被插进正文")
+    if "app.component('WikiToc'" not in theme_src:
+        return fail("theme/index.ts 没有全局注册 WikiToc：渲染期插进正文的标签解析不到组件")
+
+    # 10. 标题下那两行位置提示，同一套注入机制、同一类静默失效
+    if "md.use(contentSubSlotPlugin)" not in config_src or "function contentSubSlotPlugin" not in config_src:
+        return fail("config.mts 没有登记 contentSubSlotPlugin：#siteSub / #contentSub 会整个消失")
+    if "app.component('WikiContentSub'" not in theme_src:
+        return fail("theme/index.ts 没有全局注册 WikiContentSub")
+    # 插入点都是「h1 之后」，谁后登记谁排在前面。顺序错了框会跑到位置提示上面去。
+    if config_src.index("md.use(infoboxSlotPlugin)") > config_src.index("md.use(contentSubSlotPlugin)"):
+        return fail("md.use(contentSubSlotPlugin) 必须排在 md.use(infoboxSlotPlugin) **之后**："
+                    "两者插入点同为 h1 之后，后登记的才会排在前面，"
+                    "顺序反了速查框会跑到位置提示上方")
+
+    # 11. 换皮的两条底线：不许再继承默认主题，不许再拉网络字体。
+    #     这两件事都不会让构建失败，只会让页面悄悄变回旧样子 / 多两个跨域请求。
+    if "vitepress/theme" in theme_src or "vitepress/theme" in layout_src:
+        return fail("theme/index.ts 或 Layout.vue 又 import 了 vitepress/theme："
+                    "默认主题的 DOM 与样式会被拖回来，和自绘的 Vector 骨架叠在一起")
+    if not re.search(r"^\s*appearance:\s*false\s*,", config_src, re.M):
+        return fail("config.mts 少了 appearance: false：VitePress 自带的 check-dark-mode 脚本"
+                    "会和本站的 skin-theme 抢 <html> 上的 .dark，切换皮肤时闪回深色")
+    if "fonts.googleapis.com" in config_src or "fonts.gstatic.com" in config_src:
+        return fail("config.mts 又引了 Google Fonts：这套皮用系统字体栈"
+                    "（正文 Helvetica / 标题 Verdana），不该有第三方字体请求")
+
+    # 12. 两枚页面级浮层都得挂在 Layout 上（fixed 定位，放进正文流会被层叠上下文关住）
+    if "<WikiRefPreview" not in layout_src:
+        return fail("Layout.vue 没有挂 WikiRefPreview：实体链接的悬停预览整个不出现")
+
     print("WikiSiteThemeWiringGuard: PASS - 速查框注入三处接线齐全、灯箱已挂载、"
-          "配图产物不小于展示尺寸、搜索弹层 fork 对齐 vitepress@%s、cjkTokenize 自包含"
-          % installed)
+          "配图产物不小于展示尺寸、目录框与位置提示注入齐全、未继承默认主题也未引网络字体、"
+          "搜索弹层 fork 对齐 vitepress@%s、cjkTokenize 自包含" % installed)
     return 0
 
 

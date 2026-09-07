@@ -35,6 +35,15 @@
  *   8. 结果条边框固定 1px（上游 2px，与 style.css 里那条 1px 打架，选中态会抖），
  *      摘要缓存 16 -> 32 篇。
  *   9. 快捷键条左侧加一个结果计数。
+ *  10. 新增 `query` prop，供标签行的搜索框（WikiHeadSearch）把已输入的词带进来——
+ *      在这套皮肤里，弹层的角色是「完整结果页」，不再是唯一的搜索入口。
+ *  11. 摘录容器的 class 由 `vp-doc` 改成 `mw-parser-output`：换皮之后正文容器
+ *      改用 MediaWiki 的同名 class，`.vp-doc` 已经整个不存在了。
+ *  12. scoped 样式里剩下的七个 --vp-* 变量**不逐条改写**（改了就没法再和上游
+ *      diff），改由 theme/css/vp-bridge.css 把它们映射到本站令牌上。
+ *
+ * 另：第 7、8 条注释里提到的 style.css 现已拆成 theme/css/*.css，
+ * 全局的 prefers-reduced-motion 在 tokens.css，结果条那条 1px 在 widgets.css。
  */
 import localSearchIndex from '@localSearchIndex'
 import {
@@ -72,6 +81,12 @@ import { loadSearchIndex } from '../composables/searchIndex'
 const emit = defineEmits<{
   (e: 'close'): void
 }>()
+
+/**
+ * 10. 新增 `query` prop：标签行那个搜索框（WikiHeadSearch）按下回车而没有选中
+ *     联想项时，把弹层当作「完整结果页」打开，输入过的词要带进来。
+ */
+const props = defineProps<{ query?: string }>()
 
 const el = shallowRef<HTMLElement>()
 const resultsEl = shallowRef<HTMLElement>()
@@ -124,6 +139,8 @@ const disableQueryPersistence = computed(() => {
 const filterText = disableQueryPersistence.value
   ? ref('')
   : useSessionStorage('vitepress:local-search-filter', '')
+
+if (props.query) filterText.value = props.query
 
 const showDetailedList = useLocalStorage(
   'vitepress:local-search-detailed-list',
@@ -598,7 +615,7 @@ function onMouseMove(e: MouseEvent) {
 
                 <div v-if="showDetailedList" class="excerpt-wrapper">
                   <div v-if="p.text" class="excerpt" inert>
-                    <div class="vp-doc" v-html="p.text" />
+                    <div class="mw-parser-output" v-html="p.text" />
                   </div>
                   <div class="excerpt-gradient-bottom" />
                   <div class="excerpt-gradient-top" />
@@ -853,7 +870,7 @@ function onMouseMove(e: MouseEvent) {
   line-height: 1rem;
   /* 1px：theme/style.css 里那套硬边描线用的都是 1px，上游 2px 会让选中态
      每条结果多撑出 2px，翻结果时整列跟着抖。 */
-  border: 1px solid var(--brs-rule-soft);
+  border: 1px solid var(--theme-box-border-color-light);
   outline: none;
 }
 
@@ -900,9 +917,8 @@ function onMouseMove(e: MouseEvent) {
 
 .result.selected {
   /* 摘要上下那两条渐变遮罩用的就是这个变量，底色改了要一起改，否则接缝处会露白 */
-  --vp-local-search-result-bg: var(--brs-sunk);
-  background: var(--brs-sunk);
-  border-color: var(--brs-brass);
+  background: var(--theme-box-background);
+  border-color: var(--theme-link-color);
 }
 
 .excerpt-wrapper {
@@ -975,16 +991,16 @@ function onMouseMove(e: MouseEvent) {
 }
 
 .no-results.brs-loading {
-  font-family: var(--brs-mono);
+  font-family: var(--font-family-mono);
   font-size: 0.8rem;
   letter-spacing: 0.06em;
-  color: var(--brs-ink-faint);
+  color: var(--theme-text-color-note);
 }
 
 .brs-count {
-  font-family: var(--brs-mono);
+  font-family: var(--font-family-mono);
   letter-spacing: 0.06em;
-  color: var(--brs-brass);
+  color: var(--theme-link-color);
 }
 
 svg {

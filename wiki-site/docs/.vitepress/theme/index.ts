@@ -1,25 +1,36 @@
 import type { Theme } from 'vitepress'
-import DefaultTheme from 'vitepress/theme'
 import Layout from './Layout.vue'
 import WikiHome from './components/WikiHome.vue'
 import WikiCardGrid from './components/WikiCardGrid.vue'
 import WikiInfobox from './components/WikiInfobox.vue'
+import WikiContentSub from './components/WikiContentSub.vue'
+import WikiToc from './components/WikiToc.vue'
 import WikiIcon from './components/WikiIcon.vue'
-import './style.css'
-// 功能构件的样式（对比表 / 时间线 / 首页搜索框 / 打印）单独一份，style.css 只管版式语言
-import './extras.css'
+
+/* 样式分层，顺序即层叠顺序：令牌 → 重置 → 图标 → 骨架 → 正文 → 构件 → 首页
+   → 响应式 → 打印。--vp-* 的桥接单独一份，只服务搜索弹层那个 fork。 */
+import './css/tokens.css'
+import './css/base.css'
+import './css/icons.css'
+import './css/vp-bridge.css'
+import './css/layout.css'
+import './css/content.css'
+import './css/widgets.css'
+import './css/mainpage.css'
+import './css/responsive.css'
+import './css/print.css'
 
 export default {
-  extends: DefaultTheme,
   Layout,
   enhanceApp({ app }) {
-    // 首页 index.md 用 layout: page + <WikiHome />，所以要全局注册。
-    // 另外两个是给正文里偶尔要手工插一块宫格 / 图标时准备的。
+    // 首页 index.md 用 layout: page + <WikiHome />
     app.component('WikiHome', WikiHome)
     app.component('WikiCardGrid', WikiCardGrid)
-    // 速查框由 config.mts 的 infoboxSlotPlugin 在渲染期写进正文（h1 之后），
-    // 所以必须全局注册——它出现在页面组件的模板里，不在 Layout 的作用域内。
+    // 这三个由 config.mts 的 markdown-it 插件在渲染期写进正文（h1 之后 / 首个 h2 之前），
+    // 出现在页面组件的模板里而不是 Layout 的作用域内，所以必须全局注册。
     app.component('WikiInfobox', WikiInfobox)
+    app.component('WikiContentSub', WikiContentSub)
+    app.component('WikiToc', WikiToc)
     app.component('WikiIcon', WikiIcon)
   },
 } satisfies Theme

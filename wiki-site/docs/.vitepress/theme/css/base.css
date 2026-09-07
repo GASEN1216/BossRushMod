@@ -1,0 +1,165 @@
+/* ══════════════════════════════════════════════════════════════
+   base.css — 浏览器默认值与全局基线
+   对应 MediaWiki 的 elements.less：只做把浏览器差异抹平这一件事，
+   具体构件的样式在 layout / content / widgets 里。
+   ══════════════════════════════════════════════════════════════ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* 顶栏是 fixed 的，锚点跳转要留出它的高度，否则目标标题被盖住 */
+  scroll-padding-top: calc(var(--wikigg-header-height) + 8px);
+  /* 短页也常驻滚动条：否则展开侧栏门户框时整页会横向抖一下 */
+  overflow-y: scroll;
+  background: var(--theme-site-background-image), var(--theme-site-background);
+  background-attachment: fixed;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  color: var(--theme-text-color);
+  background: none;
+}
+
+/* 链接：默认不带下划线，悬停才有——目标站的口径 */
+a {
+  color: var(--theme-link-color);
+  text-decoration: none;
+}
+a:visited {
+  color: var(--theme-link-color-visited);
+}
+a:hover,
+a:active {
+  color: var(--theme-link-color-hover);
+  text-decoration: underline;
+}
+a.new,
+a.new:visited {
+  color: var(--theme-link-color-redlink);
+}
+
+img,
+video {
+  vertical-align: middle;
+  max-width: 100%;
+}
+
+/* 目标站全站写了 `* { outline: 0 }`。**不抄**：那会让键盘用户完全看不见焦点。
+   改成只在键盘焦点时描边，鼠标点击不出框——观感一致，可及性不塌。 */
+:focus-visible {
+  outline: 2px solid var(--theme-link-color-accent);
+  outline-offset: 1px;
+}
+
+ul,
+ol {
+  margin: 2px 0 2px 1.5em;
+  padding: 0;
+}
+
+li {
+  margin: 0 0 2px 0;
+}
+
+hr {
+  height: 0;
+  border: 0;
+  border-top: 1px solid var(--theme-hr-color-top);
+  border-bottom: 1px solid var(--theme-hr-color-bottom);
+  overflow: hidden;
+  background: none;
+  margin: 4px 0;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-heading);
+  line-height: 1.25;
+  color: var(--theme-heading-color);
+}
+
+small {
+  font-size: var(--font-size-s);
+  line-height: var(--line-height-s);
+}
+
+sup,
+sub {
+  font-size: var(--font-size-s);
+}
+
+pre {
+  margin: 0;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-family-mono);
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* 「跳转到正文」：键盘用户的第一个焦点，平时视觉隐藏 */
+.mw-jump-link {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(1px, 1px, 1px, 1px);
+  white-space: nowrap;
+}
+.mw-jump-link:focus {
+  position: fixed;
+  top: calc(var(--wikigg-header-height) + 6px);
+  left: 6px;
+  z-index: 300;
+  width: auto;
+  height: auto;
+  margin: 0;
+  clip: auto;
+  padding: 6px 12px;
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-background);
+  border: 1px solid var(--theme-box-border-color);
+  color: var(--theme-text-color);
+}
+
+/* 像素画不要被插值糊掉——游戏贴图基本都是这一类 */
+.pixel img,
+img.pixel {
+  image-rendering: pixelated;
+}

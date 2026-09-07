@@ -1,0 +1,420 @@
+/* ══════════════════════════════════════════════════════════════
+   responsive.css — 全部媒体查询集中在这一份
+
+   五档，照抄目标站的断点：
+     >=2472  两侧留白吃掉多余宽度，内容列封顶
+     <=1800  两侧留白归零
+     <=1366  左侧门户栏折成横条（悬停下拉），搜索框移进横条右侧
+     <= 900  单列；横条收成汉堡；外圈圆角与侧边线去掉
+     <= 720  标签只剩图标；内容内距收窄
+     <= 640  信息框通栏；清单单栏
+     <= 600  Logo 缩到一半
+   ══════════════════════════════════════════════════════════════ */
+
+@media screen and (min-width: 2472px) {
+  :root {
+    --layout-sidespace: minmax(0, 1fr);
+    --layout-content-width: 2200px;
+  }
+}
+
+@media screen and (max-width: 1800px) {
+  :root {
+    --layout-sidespace: 0px;
+  }
+}
+
+/* ── <=1366：门户栏变横条 ──────────────────────────────── */
+@media screen and (max-width: 1366px) {
+  .mw-layout {
+    grid-template-columns:
+      [body-left] 0
+      [aside-left nav-left content-left footer-left] var(--layout-content-width)
+      [content-right aside-right nav-right footer-right] 0
+      [body-right];
+    grid-template-rows:
+      [body-start] var(--wikigg-header-height)
+      [page-start] var(--layout-box-gap-y)
+      [logo-start] var(--layout-logo-height)
+      [logo-end] var(--layout-box-gap-y)
+      [aside-start] auto
+      [aside-end] var(--layout-box-gap-y)
+      [nav-start] auto
+      [nav-end content-start] auto
+      [content-end footer-start] auto
+      [footer-end] minmax(var(--layout-box-gap-y), 1fr)
+      [page-end] var(--layout-footerspace)
+      [body-end];
+  }
+
+  #mw-panel {
+    position: relative;
+    z-index: 100;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    align-self: end;
+    height: min-content;
+    padding: 0 4px;
+    border: 1px solid;
+    border-color: var(--theme-widget-border-color);
+    border-radius: var(--theme-widget-border-radius);
+    box-shadow: var(--theme-widget-shadow);
+    background-image: var(--theme-widget-texture);
+    background-color: var(--theme-panel-background);
+    gap: 0;
+  }
+  /* 草皮条从「第一枚门户框」挪到整条横条上 */
+  #mw-panel .portal:first-of-type::before {
+    display: none;
+  }
+  #mw-panel::before {
+    content: "";
+    position: absolute;
+    top: var(--theme-top-background-offset);
+    left: 0;
+    z-index: 1;
+    width: 100%;
+    height: var(--theme-top-background-height);
+    background: var(--theme-top-background);
+    border-radius: 3px 3px 0 0;
+    pointer-events: none;
+  }
+
+  #mw-panel .portal {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: none;
+  }
+  #mw-panel .vector-menu-heading {
+    padding: 12px 8px 9px;
+    border-radius: 0;
+    background: none;
+  }
+  #mw-panel .vector-menu-heading::after {
+    transform: none;
+    margin-left: 3px;
+  }
+  #mw-panel .portal .vector-menu-content {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 120;
+    display: none;
+    width: max-content;
+    min-width: 9em;
+    max-width: 22em;
+    border: var(--theme-dropdown-border-width) var(--theme-dropdown-border-style);
+    border-color: var(--theme-dropdown-border-color);
+    border-radius: 0 0 var(--theme-dropdown-border-radius) var(--theme-dropdown-border-radius);
+    background-image: var(--theme-widget-texture);
+    background-color: var(--theme-dropdown-background);
+    box-shadow: var(--theme-widget-shadow);
+  }
+  #mw-panel .portal .vector-menu-content::before {
+    display: none;
+  }
+  #mw-panel .portal:hover .vector-menu-content,
+  #mw-panel .portal:focus-within .vector-menu-content {
+    display: block;
+  }
+  #mw-panel .portal:hover .vector-menu-heading,
+  #mw-panel .portal:focus-within .vector-menu-heading {
+    background: var(--theme-highlight-background);
+  }
+  #mw-panel .portal:hover .vector-menu-heading::after,
+  #mw-panel .portal:focus-within .vector-menu-heading::after {
+    transform: scaleY(-1);
+  }
+  /* 折叠态在横条里没有意义——一律按下拉走 */
+  #mw-panel .portal.collapsed .vector-menu-content {
+    display: none;
+  }
+  #mw-panel .mw-list-item a {
+    padding: 6px 12px;
+  }
+
+  /* 横条只放：导航 + 五个高频类目 + 更多 + 更新日志 + 语言。
+     其余类目的独立门户框收起来，改由「更多」里的清单进入。 */
+  #mw-panel .portal--secondary {
+    display: none;
+  }
+  #mw-panel .portal--barmenu {
+    display: block;
+  }
+
+  /* 搜索框浮到横条右侧那一行 */
+  #p-search {
+    position: absolute;
+    right: 0;
+    top: -45px;
+    z-index: 101;
+    padding: 0;
+    border: 0;
+    background: none;
+  }
+  #mw-head {
+    position: relative;
+  }
+}
+
+/* ── <=900：单列 ───────────────────────────────────────── */
+@media screen and (max-width: 900px) {
+  :root {
+    --layout-logo-scale: 0.75;
+  }
+  .mw-layout {
+    grid-template-columns:
+      [body-left aside-left nav-left content-left footer-left] var(--layout-content-width)
+      [content-right aside-right nav-right footer-right body-right];
+  }
+  html {
+    /* 移动端固定背景重绘代价高，改成随页面滚动 */
+    background-attachment: scroll;
+  }
+  #mw-page-base,
+  #mw-panel,
+  #mw-head,
+  #content,
+  #footer {
+    border-radius: 0;
+    border-left: 0;
+    border-right: 0;
+  }
+  #mw-page-base {
+    box-shadow: none;
+  }
+  #mw-panel::before {
+    left: 0;
+  }
+
+  /* 横条收成一枚汉堡 + 一枚语言图标 */
+  #mw-panel {
+    display: block;
+    height: 41px;
+    padding: 0;
+  }
+  #mw-panel .menu-toggle,
+  #mw-panel .menu-lang-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border: 0;
+    background: none;
+    color: var(--theme-heading-color);
+    cursor: pointer;
+  }
+  #mw-panel .menu-toggle .tw-icon,
+  #mw-panel .menu-lang-toggle .tw-icon {
+    width: 22px;
+    height: 22px;
+  }
+  #mw-panel .menu-lang-toggle {
+    position: absolute;
+    left: 44px;
+    top: 0;
+  }
+  #mw-panel .portal {
+    display: none;
+    border-radius: 0;
+    background: var(--theme-dropdown-background);
+  }
+  #mw-panel.is-open {
+    height: auto;
+    padding-bottom: 8px;
+  }
+  #mw-panel.is-open .portal,
+  #mw-panel.is-open .portal--secondary {
+    display: block;
+  }
+  #mw-panel.is-open .portal--barmenu {
+    display: none;
+  }
+  #mw-panel .vector-menu-heading {
+    display: block;
+    padding: 0 12px 4px;
+    background: none;
+    font-size: var(--font-size);
+    color: var(--theme-text-color-note);
+    cursor: default;
+  }
+  #mw-panel .vector-menu-heading::after {
+    display: none;
+  }
+  #mw-panel .portal .vector-menu-content,
+  #mw-panel .portal.collapsed .vector-menu-content {
+    position: static;
+    display: block;
+    width: 100%;
+    max-width: none;
+    padding: 0 0 8px;
+    border: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+  }
+  #mw-panel .vector-menu-content-list {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 0 12px;
+  }
+  #mw-panel .mw-list-item a {
+    padding: 4px 8px;
+    white-space: nowrap;
+  }
+  #mw-panel .portal:first-of-type .vector-menu-heading {
+    padding-top: 8px;
+  }
+
+  #p-search {
+    top: -45px;
+    padding-right: 12px;
+  }
+  #simpleSearch {
+    width: 65vw;
+    max-width: none;
+  }
+
+  /* 标题字号阶梯 */
+  .firstHeading,
+  .mw-parser-output h1 {
+    font-size: 24px;
+    line-height: 32px;
+  }
+  .mw-parser-output h2 {
+    font-size: 20px;
+    line-height: 28px;
+  }
+  .mw-parser-output h3 {
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .mw-parser-output h4 {
+    font-size: 16px;
+  }
+  .mw-parser-output h5 {
+    font-size: 14px;
+  }
+  .mw-parser-output h6 {
+    font-size: 12px;
+  }
+
+  .mclist ul {
+    columns: 2;
+  }
+  #main-section .infocard,
+  #main-section .infocard.box-wide,
+  #main-section .infocard.box-news {
+    flex: 1 1 100%;
+  }
+}
+
+/* ── <=720：标签只剩图标 ───────────────────────────────── */
+@media screen and (max-width: 720px) {
+  :root {
+    --layout-padding-x: 12px;
+    --layout-padding-y: 12px;
+  }
+  #mw-head .vector-menu-tabs .mw-list-item > a > .tab-label,
+  #mw-head .vector-menu-dropdown > .vector-menu-heading > .tab-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+  }
+  #mw-head .vector-menu-tabs .mw-list-item > a,
+  #mw-head .vector-menu-dropdown > .vector-menu-heading {
+    padding: 4px 8px;
+  }
+  #mw-head .vector-menu-dropdown > .vector-menu-heading::after {
+    display: none;
+  }
+  #mw-head .vector-menu-tabs .mw-list-item > a .tw-icon,
+  #mw-head .vector-menu-dropdown > .vector-menu-heading .tw-icon {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+/* ── <=640：信息框通栏 ─────────────────────────────────── */
+@media screen and (max-width: 640px) {
+  .infobox {
+    float: none;
+    width: auto;
+    max-width: 420px;
+    margin: 0.5em auto;
+  }
+  .mclist ul {
+    columns: 1;
+  }
+  .navbox-body,
+  .navbox-row,
+  .navbox-row > .title,
+  .navbox-row > .dotlist {
+    display: block;
+    width: auto;
+  }
+  .navbox-row > .title {
+    text-align: left;
+    box-shadow: none;
+    padding-bottom: 0;
+  }
+  .mw-mmv-wrapper {
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+  .mw-mmv-main {
+    order: -1;
+    flex: 1 0 100%;
+  }
+  .hat-note {
+    margin-left: 0;
+  }
+}
+
+/* ── <=640：顶栏收成图标 ───────────────────────────────── */
+/* 网络顶栏是一条 35px 的固定高度行，塞不下就会互相压字（375 下实测「创意工坊」
+   会盖住「外观」）。窄屏只留图标，文字视觉隐藏——信息没丢，aria-label 还在。 */
+@media screen and (max-width: 640px) {
+  #wgg-netbar {
+    gap: 0.4em;
+    padding: 0 0.5em;
+  }
+  .wgg-netbar__left,
+  .wgg-netbar__right {
+    gap: 0.4em;
+  }
+  .wgg-netbar__pill,
+  .wgg-netbar .vector-menu-heading {
+    padding: 0 8px;
+  }
+  .wgg-netbar__pill > span:not(.tw-icon),
+  .wgg-netbar .vector-menu-heading > span:not(.tw-icon) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(1px, 1px, 1px, 1px);
+  }
+  /* 收起文字之后箭头孤零零的，去掉 */
+  .wgg-netbar .vector-menu-heading > .tw-icon--chevron-down {
+    display: none;
+  }
+  .wgg-netbar__logo {
+    font-size: 13px;
+  }
+}
+
+/* ── <=600：Logo 缩一半 ────────────────────────────────── */
+@media screen and (max-width: 600px) {
+  :root {
+    --layout-logo-scale: 0.5;
+  }
+}

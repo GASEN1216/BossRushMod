@@ -1,0 +1,54 @@
+{
+  "files": [
+    {
+      "file": "sky-overworld.webp",
+      "bytes": 40852,
+      "skins": [
+        "Overworld"
+      ]
+    },
+    {
+      "file": "sky-snow.webp",
+      "bytes": 31496,
+      "skins": [
+        "Snow"
+      ]
+    },
+    {
+      "file": "wood.webp",
+      "bytes": 18652,
+      "skins": [
+        "Overworld"
+      ]
+    },
+    {
+      "file": "frost.webp",
+      "bytes": 26510,
+      "skins": [
+        "Snow"
+      ]
+    },
+    {
+      "file": "grass.png",
+      "bytes": 2144,
+      "skins": [
+        "Overworld"
+      ]
+    },
+    {
+      "file": "grass-snow.png",
+      "bytes": 1996,
+      "skins": [
+        "Snow"
+      ]
+    },
+    {
+      "file": "logo.webp",
+      "bytes": 43332,
+      "skins": [
+        "Overworld",
+        "Snow"
+      ]
+    }
+  ]
+}

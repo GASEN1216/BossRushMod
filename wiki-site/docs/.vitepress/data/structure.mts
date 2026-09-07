@@ -802,6 +802,17 @@ export const CHANGELOG_CATEGORY = {
   blurbEn: 'What changed in every release since v1.6',
 }
 
+/**
+ * 门户栏（#mw-panel）与窄屏横条里类目的排布。
+ *
+ * 宽屏每个类目一枚独立门户框；<=1366px 折成横条之后放不下十三枚，
+ * 于是只留 NAV_PRIMARY 这五个高频类目，其余收进「更多」下拉。
+ * 从前这两份清单写在 config.mts 里给 VitePress 的 nav 用，现在导航由
+ * WikiPanel.vue 直接读 structure.mts，清单也跟着挪到唯一事实源这边来。
+ */
+export const NAV_PRIMARY = ['getting-started', 'game-modes', 'bosses', 'equipment', 'guides']
+export const NAV_MORE = ['items', 'npcs', 'maps', 'systems', 'achievements', 'easter-eggs']
+
 // ── 查询辅助 ─────────────────────────────────────────────
 
 /** 给站内路径加语言前缀：'/bosses/' + en -> '/en/bosses/' */
@@ -847,6 +858,25 @@ export function locate(canonical: string): Located | null {
     }
   }
   return null
+}
+
+/**
+ * 反查规范路径属于的**全部**类目。
+ *
+ * `locate()` 只给第一个命中（面包屑只能显示一条），但页尾的分类栏要把
+ * 一个条目挂着的每个类目都列出来——「好感度与婚姻」同时属于 NPC 与系统，
+ * 分类栏只写一个就等于藏了另一半。
+ */
+export function locateAll(canonical: string): Located[] {
+  const hits: Located[] = []
+  for (const category of CATEGORIES) {
+    for (let i = 0; i < category.entries.length; i++) {
+      if (samePath(category.entries[i].path, canonical)) {
+        hits.push({ category, entry: category.entries[i], index: i })
+      }
+    }
+  }
+  return hits
 }
 
 /** 该路径是否是某个类目的主页（决定要不要在页尾铺条目宫格）。 */

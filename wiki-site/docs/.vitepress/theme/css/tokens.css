@@ -1,0 +1,288 @@
+/* ══════════════════════════════════════════════════════════════
+   BossRush Wiki — 设计令牌
+
+   版式参照 Official Terraria Wiki（terraria.wiki.gg，MediaWiki Vector-legacy
+   皮肤 + 其自定义主题系统）的公开呈现逐值测量后**净室重写**：本文件与 css/ 下
+   其余文件没有一行来自其样式表，贴图与 Logo 全部自制，未使用任何 Re-Logic 素材。
+
+   变量名沿用它那套 --theme-* / --layout-* 口径，日后加主题只要照抄一段
+   html.theme-<Name> 覆盖块（见 wiki-site/AGENTS.md §9）。
+
+   默认主题 Overworld 是**深色**（与目标站一致），浅色主题是 Snow。
+   主题类由 config.mts 的 skin-theme-init 内联脚本在首屏前写到 <html> 上，
+   所以刷新不会闪一下白。
+   ══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── 版式尺寸 ───────────────────────────────────────── */
+  --wikigg-header-height: 35px;
+  --layout-sidebar-width: 188px;
+  --layout-sidespace: 24px;
+  --layout-content-width: minmax(0, 1fr);
+  --layout-box-gap-x: 12px;
+  --layout-box-gap-y: 12px;
+  --layout-footerspace: 24px;
+  --layout-logo-scale: 1;
+  --theme-site-logo-width: 421px;
+  --theme-site-logo-height: 140px;
+  --layout-logo-width: calc(var(--theme-site-logo-width) * var(--layout-logo-scale));
+  --layout-logo-height: calc(var(--theme-site-logo-height) * var(--layout-logo-scale));
+  --layout-box-padding: 6px;
+  --layout-padding-x: 24px;
+  --layout-padding-y: 16px;
+  --layout-gap: 6px;
+  --layout-gap-l: 12px;
+  --layout-dropdown-item-padding-x: 12px;
+  --layout-dropdown-item-padding-y: 6px;
+
+  /* ── 字族与字号 ─────────────────────────────────────── */
+  /* 不加载任何网络字体：正文 Helvetica、标题 Verdana，中文由系统字体回退
+     （与 terraria.wiki.gg/zh 的实际渲染同一口径）。顶栏那条用 Nunito，装了就用。 */
+  --font-family: Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-family-heading: Verdana, Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-family-netbar: Nunito, Helvetica, Arial, sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --font-weight-heading: normal;
+  --font-size: 14px;
+  --line-height: 24px;
+  --font-size-s: 12px;
+  --line-height-s: 20px;
+  --font-size-l: 16px;
+  --line-height-l: 24px;
+  --font-size-xs: 10px;
+  --line-height-xs: 16px;
+
+  /* ══ Overworld（默认，深色）══════════════════════════ */
+  /* 站底与 Logo */
+  --theme-site-background: #b8bad0;
+  /* 天空图后面垫一层同色渐变：图还没到、或被拦下时，页面也不是一块死色。 */
+  --theme-site-background-image: url(../assets/sky-overworld.webp),
+    linear-gradient(to bottom, #8fa8d8 0%, #a9bfe0 38%, #c9cfdc 72%, #b8bad0 100%);
+  /* 字标是一张图（842x140 的 2x），深浅两套皮肤共用一张：
+     金色填充配深墨描边，压得住蓝天也压得住雪天。 */
+  --theme-site-logo-image: url(../assets/logo.webp);
+
+  /* 面与墨 */
+  --theme-background: #5a433a;
+  --theme-background-accent: rgba(20, 20, 20, 0.5);
+  --theme-top-background: url(../assets/grass.png) 0 0 / 96px 13px repeat-x;
+  --theme-top-background-height: 13px;
+  --theme-top-background-offset: -6px;
+
+  --theme-text-color: #eae3d1;
+  --theme-text-color--rgb: 234, 227, 209;
+  --theme-text-color-note: #b5bdb2;
+  --theme-text-color-em: #c4ebd0;
+  --theme-text-color-highlight: #fff;
+  --theme-text-color-control: #000;
+  --theme-text-color-placeholder: rgba(234, 227, 209, 0.4);
+  --theme-heading-color: var(--theme-text-color);
+  --theme-text-color-green: #00d400;
+  --theme-text-color-orange: #ffa500;
+  --theme-text-color-red: #fe9b9b;
+  --theme-text-color-expert: #ffb556;
+  --theme-text-color-master: #ff5656;
+  --theme-text-color-journey: #ff69c4;
+  --theme-text-background-color-highlight: #645130;
+
+  /* 链接 */
+  --theme-link-color: #9fecf0;
+  --theme-link-color--rgb: 159, 236, 240;
+  --theme-link-color-hover: #86dcdf;
+  --theme-link-color-visited: #86dcdf;
+  --theme-link-color-redlink: #f66;
+  --theme-link-color-accent: var(--theme-text-color-em);
+
+  /* 图标 */
+  --theme-icon-color: var(--theme-text-color);
+  --theme-icon-color-link: var(--theme-link-color);
+  --theme-icon-color-hover: var(--theme-link-color-hover);
+  --theme-highlight-background: rgba(20, 20, 20, 0.25);
+
+  /* 部件（门户框 / 标签行 / 下拉 / 页脚共用的那层「木板」）*/
+  --theme-widget-shadow: 0 0 15px 0 rgba(10, 10, 10, 0.7);
+  --theme-widget-border-color: rgba(255, 255, 255, 0.1) rgba(13, 4, 2, 0.2) rgba(13, 4, 2, 0.2) rgba(255, 255, 255, 0.1);
+  --theme-widget-border-radius: 6px;
+  /* 贴图是**半透明**的颗粒层，只加材质不加颜色：
+     底色仍由 --theme-panel-background 之类决定，所以同一张图铺在哪套皮肤上都不串色。 */
+  --theme-widget-texture: url(../assets/wood.webp);
+  --theme-widget-background: #60473b;
+
+  /* 盒（信息框 / 目录 / 提示框 / 配图框）*/
+  --theme-box-border-color: #000;
+  --theme-box-border-color--rgb: 0, 0, 0;
+  --theme-box-border-color-light: rgba(255, 255, 255, 0.1);
+  --theme-box-border-color-inner: var(--theme-box-border-color);
+  --theme-box-background: rgba(20, 20, 20, 0.12);
+  --theme-box-border-radius: 5px;
+  --theme-box-border-radius-inner: 8px;
+  --theme-box-inset-shadow: inset 0 0 4px 1px rgba(255, 255, 255, 0.08);
+  --theme-border-color: var(--theme-box-border-color);
+  --theme-border-color-accent: #999;
+  --theme-hr-color-top: rgb(20, 20, 20);
+  --theme-hr-color-bottom: rgba(255, 255, 255, 0.1);
+
+  /* 下拉 */
+  --theme-dropdown-border-width: 1px;
+  --theme-dropdown-border-style: solid;
+  --theme-dropdown-border-radius: var(--theme-widget-border-radius);
+  --theme-dropdown-border-color: var(--theme-widget-border-color);
+  --theme-dropdown-background: #60473b;
+  --theme-dropdown-shadow: 0 0 5px 0 rgba(10, 10, 10, 0.3);
+
+  /* 提示框七色：边 hsl(H 60% 72%)，底 hsl(H 80% 90% / 0.2) */
+  --theme-notice-blue-hue: 200;
+  --theme-notice-red-hue: 0;
+  --theme-notice-purple-hue: 243;
+  --theme-notice-green-hue: 84;
+  --theme-notice-yellow-hue: 58;
+  --theme-notice-orange-hue: 28;
+  --theme-notice-pink-hue: 324;
+  --theme-notice-red-text-color: hsl(0 100% 70%);
+  --theme-notice-orange-text-color: hsl(28 100% 70%);
+
+  /* 模式页签（经典 / 专家 / 大师）*/
+  --theme-modetabs-classic-background: var(--theme-box-background);
+  --theme-modetabs-classic-border-color: var(--theme-border-color);
+  --theme-modetabs-classic-text-color: var(--theme-text-color-highlight);
+  --theme-modetabs-expert-background: #a1743a80;
+  --theme-modetabs-expert-border-color: #ffca67;
+  --theme-modetabs-expert-text-color-label: #ffb556;
+  --theme-modetabs-master-background: #a9545467;
+  --theme-modetabs-master-border-color: #ffbaba;
+  --theme-modetabs-master-text-color-label: #ff6c60;
+
+  /* 局部：门户栏 / 标签行 / 页脚 / 分类栏 */
+  --theme-panel-background: #593e35;
+  --theme-panel-heading-background: rgba(20, 20, 20, 0.15);
+  --theme-head-darken: rgba(20, 20, 20, 0.1);
+  --theme-head-background-shadow: linear-gradient(to top, rgba(10, 10, 10, 0.25), transparent 30%);
+  --theme-head-border-bottom-color: rgba(255, 255, 255, 0.1);
+  --theme-tab-background-selected: #5a433a;
+  --theme-tab-darken: rgba(20, 20, 20, 0.4);
+  --theme-tab-border-color: rgba(255, 255, 255, 0.1) rgba(13, 4, 2, 0.2) rgba(13, 4, 2, 0.2) rgba(255, 255, 255, 0.1);
+  --theme-tab-border-color-selected: rgba(255, 255, 255, 0.15) rgba(13, 4, 2, 0.3) rgba(13, 4, 2, 0.3) rgba(255, 255, 255, 0.15);
+  --theme-search-border-color: rgba(13, 4, 2, 0.2) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(13, 4, 2, 0.2);
+  --theme-search-border-color-active: rgba(13, 4, 2, 0.3) rgba(255, 255, 255, 0.15) rgba(255, 255, 255, 0.15) rgba(13, 4, 2, 0.3);
+  --theme-footer-darken: rgba(20, 20, 20, 0.3);
+  --theme-footer-inner-shadow: inset 0 0 15px 0 rgba(10, 10, 10, 0.7);
+  --theme-catlinks-background: rgba(10, 10, 10, 0.3);
+  --theme-catlinks-border-color: rgba(13, 4, 2, 0.5) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(13, 4, 2, 0.5);
+  --theme-badge-background: #323337;
+  --theme-badge-border-color: #645c60;
+
+  /* 网络顶栏（wiki.gg 口径，不随主题变）*/
+  --wikigg-header-background-color: #000538;
+  --wikigg-accent-color: #ff1985;
+  --wikigg-header-text-color: #fff;
+  --wikigg-header-icon-color: #dedee5;
+  --wikigg-header-button-size: 30px;
+  --wikigg-themeprefs-background-color: #29305c;
+  --wikigg-themeprefs-background-color--hover: #2e3460;
+  --wikigg-themeprefs-background-color--active: #313762;
+  --wikigg-themeprefs-content-background-color: #111431;
+
+  /* 本站派生 */
+  --theme-meta-color: #000538;
+  --theme-code-background: #282828;
+  --theme-code-color: #f4f4f4;
+  /* 稀有度 5–8：按泰拉瑞亚稀有度序的粉 / 紫 / 绿 / 黄 */
+  --theme-rarity-5: #ff96ff;
+  --theme-rarity-6: #d2a0ff;
+  --theme-rarity-7: #96ff0a;
+  --theme-rarity-8: #ffff0a;
+}
+
+/* ══ Snow（浅色）══════════════════════════════════════ */
+html.theme-Snow {
+  --theme-site-background: #9079c8;
+  --theme-site-background-image: url(../assets/sky-snow.webp),
+    linear-gradient(to bottom, #b6a6de 0%, #cbc0e8 40%, #ded6ef 75%, #9079c8 100%);
+  --theme-background: #eaeef1;
+  --theme-background-accent: rgba(20, 20, 20, 0.2);
+  --theme-top-background: url(../assets/grass-snow.png) 0 0 / 96px 13px repeat-x;
+
+  --theme-text-color: #080a13;
+  --theme-text-color--rgb: 8, 10, 19;
+  --theme-text-color-note: #666;
+  --theme-text-color-em: #1d3b28;
+  --theme-text-color-highlight: #000;
+  --theme-text-color-placeholder: rgba(8, 10, 19, 0.45);
+  --theme-text-color-green: #007e00;
+  --theme-text-color-orange: #9d5900;
+  --theme-text-color-red: #d61616;
+  --theme-text-color-expert: #9b5700;
+  --theme-text-color-master: #dd1414;
+  --theme-text-color-journey: #c70a7d;
+  --theme-text-background-color-highlight: #d1e1e6;
+
+  --theme-link-color: #2d4068;
+  --theme-link-color--rgb: 45, 64, 104;
+  --theme-link-color-hover: #16264a;
+  --theme-link-color-visited: #2d4068;
+  --theme-link-color-redlink: #9f0000;
+  --theme-link-color-accent: #23394f;
+
+  --theme-highlight-background: rgba(20, 20, 20, 0.1);
+  --theme-widget-shadow: 0 0 15px 0 rgba(10, 10, 40, 0.45);
+  --theme-widget-texture: url(../assets/frost.webp);
+  --theme-widget-background: #d6dbdf;
+  --theme-widget-border-color: rgba(255, 255, 255, 0.6) rgba(0, 0, 0, 0.15) rgba(0, 0, 0, 0.15) rgba(255, 255, 255, 0.6);
+
+  --theme-box-border-color: #aaa;
+  --theme-box-border-color--rgb: 170, 170, 170;
+  --theme-box-border-color-light: rgba(0, 0, 0, 0.1);
+  --theme-box-background: rgba(200, 200, 210, 0.15);
+  --theme-box-inset-shadow: inset 0 0 4px 1px rgba(0, 0, 0, 0.05);
+  --theme-border-color-accent: #333;
+  --theme-hr-color-top: rgba(0, 0, 0, 0.25);
+  --theme-hr-color-bottom: rgba(255, 255, 255, 0.5);
+  --theme-dropdown-background: #d6dbdf;
+  --theme-dropdown-border-color: var(--theme-widget-border-color);
+
+  --theme-modetabs-classic-background: var(--theme-highlight-background);
+  --theme-modetabs-expert-background: #ffeece;
+  --theme-modetabs-expert-text-color-label: #9b5700;
+  --theme-modetabs-master-background: #ffe9e9;
+  --theme-modetabs-master-border-color: #ffbaba;
+  --theme-modetabs-master-text-color-label: #dd1414;
+
+  --theme-panel-background: #d7e5f2;
+  --theme-panel-heading-background: rgba(20, 20, 60, 0.1);
+  --theme-head-darken: rgba(20, 20, 20, 0.02);
+  --theme-head-background-shadow: linear-gradient(to top, rgba(10, 10, 10, 0.15), transparent 30%);
+  --theme-head-border-bottom-color: rgba(0, 0, 0, 0.15);
+  --theme-tab-background-selected: #eaeef1;
+  --theme-tab-darken: rgba(20, 20, 20, 0.08);
+  --theme-tab-border-color: rgba(255, 255, 255, 0.6) rgba(0, 0, 0, 0.15) rgba(0, 0, 0, 0.15) rgba(255, 255, 255, 0.6);
+  --theme-tab-border-color-selected: rgba(255, 255, 255, 0.8) rgba(0, 0, 0, 0.2) rgba(0, 0, 0, 0.2) rgba(255, 255, 255, 0.8);
+  --theme-search-border-color: rgba(0, 0, 0, 0.2) rgba(255, 255, 255, 0.7) rgba(255, 255, 255, 0.7) rgba(0, 0, 0, 0.2);
+  --theme-search-border-color-active: rgba(0, 0, 0, 0.3) rgba(255, 255, 255, 0.9) rgba(255, 255, 255, 0.9) rgba(0, 0, 0, 0.3);
+  --theme-footer-darken: rgba(20, 20, 20, 0.05);
+  --theme-footer-inner-shadow: inset 0 0 15px 0 rgba(10, 10, 40, 0.2);
+  --theme-catlinks-background: rgb(198, 204, 215);
+  --theme-catlinks-border-color: rgba(0, 0, 0, 0.2) rgba(255, 255, 255, 0.6) rgba(255, 255, 255, 0.6) rgba(0, 0, 0, 0.2);
+  --theme-badge-background: #f8f9fa;
+  --theme-badge-border-color: #72777d;
+
+  --theme-meta-color: #d7e5f2;
+  --theme-code-background: #f2f4f6;
+  --theme-code-color: #24292f;
+  /* 同色相压暗到浅底上对比度 >= 4.5:1 */
+  --theme-rarity-5: #a1189f;
+  --theme-rarity-6: #6f3bbd;
+  --theme-rarity-7: #3f7a00;
+  --theme-rarity-8: #7a6a00;
+}
+
+/* 动效偏好：一律关掉，交给读者的系统设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

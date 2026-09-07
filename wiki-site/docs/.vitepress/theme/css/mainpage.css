@@ -1,0 +1,286 @@
+/* ══════════════════════════════════════════════════════════════
+   mainpage.css — 首页门户
+
+   结构照抄目标站的主页：一块「欢迎 + 站点数据 + 最新版本」的抬头，
+   底下是一排会自己换行的 .infocard 盒，每盒一个类目的图标清单。
+   ══════════════════════════════════════════════════════════════ */
+
+#mainpage-wrapper {
+  min-width: 300px;
+}
+
+/* ── 抬头 ──────────────────────────────────────────────── */
+#box-wikiheader {
+  position: relative;
+  margin-bottom: 2px;
+  padding: 7px;
+  border: 1px solid;
+  border-color: var(--theme-widget-border-color);
+  border-radius: var(--theme-box-border-radius-inner);
+  background: var(--theme-highlight-background);
+}
+#box-wikiheader > .inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 8px 5px;
+  background: var(--theme-background);
+}
+
+#box-wikiheader .main-title {
+  flex: 1 1 411px;
+  margin: 3px 0;
+  font-size: 12px;
+  text-align: center;
+}
+#box-wikiheader .main-title > .welcome {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-family-heading);
+  font-size: 24px;
+  line-height: 1.2;
+  color: var(--theme-text-color-highlight);
+}
+#box-wikiheader .main-title > .tagline {
+  margin: auto 0.25em;
+  color: var(--theme-text-color-note);
+}
+
+.dotlist.statistics {
+  margin: 0.5em auto 0;
+}
+.dotlist.statistics ul {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.dotlist.statistics li {
+  display: inline-block;
+}
+.dotlist.statistics li::after {
+  content: "•";
+  padding: 0 0.4em;
+  color: var(--theme-text-color-note);
+}
+.dotlist.statistics li:last-child::after {
+  display: none;
+}
+.dotlist.statistics strong {
+  color: var(--theme-text-color-highlight);
+}
+
+#box-wikiheader .related-info {
+  flex: 1 1 1230px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em 1.5em;
+  margin: 2px 0;
+}
+#box-wikiheader .related-info .ii {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 5px 0;
+}
+#box-wikiheader .related-info .iconlist-label {
+  font-weight: bold;
+  color: var(--theme-text-color-note);
+}
+#box-wikiheader .related-info a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+#latest-version {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5em 1em;
+  margin: 0.5em 0 0;
+  font-size: 12px;
+  line-height: 1;
+}
+#latest-version li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+#latest-version ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em 1em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+#latest-version .pic .tw-icon {
+  width: 26px;
+  height: 26px;
+  color: var(--theme-text-color-note);
+}
+#latest-version .platform-and-version-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-align: left;
+}
+#latest-version .platform {
+  font-size: 9px;
+  line-height: 9px;
+  color: var(--theme-text-color-note);
+}
+#latest-version .versionnumber {
+  font-size: 15px;
+  font-weight: bold;
+  line-height: 15px;
+}
+#latest-version .equivalentversion {
+  font-size: 9px;
+  line-height: 9px;
+  color: var(--theme-text-color-note);
+}
+
+/* ── 盒子阵列 ──────────────────────────────────────────── */
+#main-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 2px;
+}
+#main-section .infocard {
+  flex: 1 1 460px;
+  min-width: 260px;
+  margin: 0;
+}
+#main-section .infocard.box-wide {
+  flex: 3 0 620px;
+}
+#main-section .infocard.box-news {
+  flex: 1 0 380px;
+}
+#main-section .infocard > .outro {
+  padding-top: 2px;
+}
+#main-section .introtext {
+  margin: 0 0 0.75em;
+}
+#main-section .introtext p {
+  margin: 0.4em 0;
+}
+
+/* 新闻盒：dl 是当期头条，ul 是往期列表 */
+.newspart .news dl {
+  margin: 0 0 0.5em;
+}
+.newspart .news dd {
+  margin: 0;
+  font-weight: bold;
+}
+.newspart .news ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.newspart .news li {
+  margin: 0 0 3px;
+}
+.newspart .news time {
+  margin-right: 0.4em;
+  color: var(--theme-text-color-note);
+  font-size: var(--font-size-s);
+}
+.newspart .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-gap) var(--layout-gap-l);
+  margin-top: var(--layout-gap-l);
+}
+.newspart .links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: bold;
+}
+
+/* 社区盒：dt/dd 成对 */
+.infocard .outro dl {
+  margin: 0;
+}
+.infocard .outro dt {
+  margin-top: 0.6em;
+  font-weight: bold;
+}
+.infocard .outro dt:first-child {
+  margin-top: 0;
+}
+.infocard .outro dd {
+  margin: 0;
+  color: var(--theme-text-color-note);
+}
+
+/* 「从这里开始」的三步 */
+.startsteps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-gap);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.startsteps li {
+  flex: 1 1 200px;
+  margin: 0;
+}
+.startsteps a {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  height: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-box-background);
+}
+.startsteps a:hover {
+  background: var(--theme-highlight-background);
+  text-decoration: none;
+}
+.startsteps .stepnum {
+  font-family: var(--font-family-heading);
+  font-size: 20px;
+  color: var(--theme-text-color-note);
+}
+.startsteps .steptitle {
+  display: block;
+  color: var(--theme-text-color-highlight);
+  font-weight: bold;
+}
+.startsteps .stepdesc {
+  display: block;
+  font-size: var(--font-size-s);
+  color: var(--theme-text-color-note);
+}
+
+/* 页尾的一小块说明 */
+#mainpage-wrapper > .footer {
+  margin: 0.75em 2px 0;
+  text-align: center;
+}
+#mainpage-wrapper > .footer > div {
+  max-width: 25em;
+  margin: auto;
+  padding: 0.5em;
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-highlight-background);
+  color: var(--theme-text-color-note);
+  font-size: var(--font-size-s);
+}

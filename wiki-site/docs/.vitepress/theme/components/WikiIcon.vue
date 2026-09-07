@@ -68,8 +68,8 @@ const hue = computed(() => {
   display: block;
   flex: none;
   object-fit: contain;
-  border: 1px solid var(--brs-rule-soft);
-  background: var(--brs-sunk);
+  border: 1px solid var(--theme-box-border-color-light);
+  background: var(--theme-box-background);
   padding: 3px;
   /* 有图那支靠 width/height 属性定尺寸、还带 padding + border，
      字牌那支只有 width/height——不统一到 border-box，同一行里
@@ -81,7 +81,7 @@ const hue = computed(() => {
   display: grid;
   place-items: center;
   padding: 0;
-  font-family: var(--brs-serif);
+  font-family: var(--font-family-heading);
   font-weight: 700;
   line-height: 1;
   color: hsl(var(--wiki-icon-hue) 34% 32%);
@@ -89,7 +89,7 @@ const hue = computed(() => {
   border-color: hsl(var(--wiki-icon-hue) 22% 74%);
 }
 
-.dark .wiki-icon--fallback {
+.view-dark .wiki-icon--fallback {
   color: hsl(var(--wiki-icon-hue) 42% 74%);
   background: hsl(var(--wiki-icon-hue) 20% 18%);
   border-color: hsl(var(--wiki-icon-hue) 18% 30%);

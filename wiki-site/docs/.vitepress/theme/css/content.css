@@ -1,0 +1,629 @@
+/* ══════════════════════════════════════════════════════════════
+   content.css — 正文排版与正文级构件
+
+   正文容器是 <Content class="mw-parser-output" />（MediaWiki 的同名容器），
+   本文件里的规则一律带这个前缀，免得波及外壳。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 标题 ──────────────────────────────────────────────── */
+.firstHeading,
+.mw-parser-output h1,
+.mw-parser-output h2,
+.mw-parser-output h3,
+.mw-parser-output h4,
+.mw-parser-output h5,
+.mw-parser-output h6 {
+  font-family: var(--font-family-heading);
+  font-weight: var(--font-weight-heading);
+  line-height: 1.25;
+  color: var(--theme-heading-color);
+  /* 自成 BFC。信息框是右浮的，标题若不成 BFC，它那条整幅底线会从框身底下穿过去
+     （2026-09-06 报的「线穿框」就是这个）。用 flow-root 而不是 overflow:hidden，
+     锚点定位不会被裁掉。 */
+  display: flow-root;
+}
+
+.firstHeading,
+.mw-parser-output h1 {
+  font-size: 32px;
+  line-height: 40px;
+  margin: 0 0 0.25em;
+}
+.firstHeading::after,
+.mw-parser-output h1::after,
+.mw-parser-output h2::after {
+  content: "";
+  display: block;
+  height: 0;
+  margin-top: 3px;
+  border-top: 1px solid var(--theme-hr-color-top);
+  border-bottom: 1px solid var(--theme-hr-color-bottom);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.mw-parser-output h2 {
+  font-size: 26px;
+  line-height: 32px;
+  margin: 18px 0 12px;
+}
+.mw-parser-output h3 {
+  font-size: 22px;
+  line-height: 28px;
+  margin: 14px 0 7px;
+}
+.mw-parser-output h4 {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 24px;
+  margin: 14px 0 7px;
+}
+.mw-parser-output h5 {
+  font-size: 16px;
+  font-weight: bold;
+  line-height: 22px;
+  margin: 10px 0 7px;
+}
+.mw-parser-output h6 {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 20px;
+  margin: 7px 0;
+}
+
+/* 标题锚点：MediaWiki 那枚「编辑本节」的位置，换成一支铅笔，悬停才显形 */
+.mw-parser-output .header-anchor {
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 0.35em;
+  vertical-align: middle;
+  background-color: var(--theme-link-color-accent);
+  -webkit-mask: var(--icon-pencil) no-repeat center / contain;
+  mask: var(--icon-pencil) no-repeat center / contain;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.mw-parser-output h1:hover .header-anchor,
+.mw-parser-output h2:hover .header-anchor,
+.mw-parser-output h3:hover .header-anchor,
+.mw-parser-output h4:hover .header-anchor,
+.mw-parser-output h5:hover .header-anchor,
+.mw-parser-output h6:hover .header-anchor,
+.mw-parser-output .header-anchor:focus-visible {
+  opacity: 1;
+}
+
+/* ── 标题下的站点 / 位置提示 ───────────────────────────── */
+#siteSub {
+  margin: 0;
+  font-size: var(--font-size-s);
+  line-height: var(--line-height-s);
+  color: var(--theme-text-color-note);
+}
+#contentSub {
+  margin: 0;
+  font-size: var(--font-size-s);
+  line-height: var(--line-height-s);
+  color: var(--theme-text-color-note);
+}
+#contentSub .subpages a::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin: 0 4px 0 0;
+  border-style: solid;
+  border-width: 0 0 2px 2px;
+  border-color: var(--theme-icon-color);
+  transform: rotate(45deg);
+  vertical-align: middle;
+}
+.mw-content-sub-rule {
+  height: 0;
+  margin: 4px 0 var(--layout-padding-y);
+  border-top: 1px solid var(--theme-hr-color-top);
+  border-bottom: 1px solid var(--theme-hr-color-bottom);
+  overflow: hidden;
+}
+
+/* ── 段落与列表 ────────────────────────────────────────── */
+.mw-parser-output p {
+  margin: 0.5em 0;
+}
+.mw-parser-output > *:first-child {
+  margin-top: 0;
+}
+.mw-parser-output ul,
+.mw-parser-output ol {
+  margin: 2px 0 2px 1.5em;
+}
+.mw-parser-output li {
+  margin: 0 0 2px;
+}
+.mw-parser-output strong,
+.mw-parser-output b {
+  color: var(--theme-text-color-highlight);
+}
+.mw-parser-output hr {
+  display: flow-root;
+  margin: 12px 0;
+}
+.mw-parser-output blockquote {
+  display: flow-root;
+  margin: 1em 0;
+  padding: 8px 24px;
+  border-left: 4px solid var(--theme-box-border-color-light);
+  color: var(--theme-text-color-note);
+}
+.mw-parser-output blockquote > :first-child {
+  margin-top: 0;
+}
+.mw-parser-output blockquote > :last-child {
+  margin-bottom: 0;
+}
+
+/* 正文里的注解色（掉落率、注意事项等） */
+.note-text,
+.mw-parser-output .note {
+  color: var(--theme-text-color-note);
+}
+
+/* ── 条目链接（.i）：小图 + 名字，泰拉瑞亚 Wiki 最认得出来的一个构件 ── */
+.mw-parser-output .i,
+.i {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+.i > img,
+.i > .wiki-icon,
+.i > a > img {
+  display: inline-block;
+  margin: 1px;
+  max-height: 32px;
+  width: auto;
+  vertical-align: middle;
+}
+.i > span {
+  display: inline-block;
+  vertical-align: middle;
+  text-align: left;
+  white-space: normal;
+}
+.i > img + span,
+.i > .wiki-icon + span {
+  margin-left: 3px;
+}
+.i .note {
+  display: block;
+  font-size: var(--font-size-s);
+  color: var(--theme-text-color-note);
+}
+.i .id {
+  display: block;
+  margin-top: 1px;
+  padding: 0 2px;
+  background-color: var(--theme-highlight-background);
+  font-size: var(--font-size-xs);
+  font-weight: bold;
+}
+
+/* 实体链接由 config.mts 的 entityLinkPlugin 生成，class 是 "i brs-eref" */
+.mw-parser-output .brs-eref {
+  gap: 3px;
+}
+.mw-parser-output .brs-eref__icon {
+  max-height: 28px;
+  width: auto;
+  vertical-align: middle;
+}
+/* 名字不再整体加粗——目标站的清单里物品名是常规字重，靠稀有度色区分 */
+.mw-parser-output .brs-eref strong {
+  font-weight: normal;
+  color: inherit;
+}
+
+/* ── 目录框 ────────────────────────────────────────────── */
+.toc {
+  display: table;
+  min-width: 12em;
+  max-width: 100%;
+  margin: var(--layout-gap-l) 0;
+  padding: var(--layout-box-padding);
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-box-background);
+  box-sizing: border-box;
+  clear: left;
+}
+.toc .toctitle {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+}
+.toc .toctitle h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0 8px;
+  border: 0;
+  font-family: var(--font-family);
+  font-size: var(--font-size);
+  font-weight: normal;
+  line-height: 20px;
+}
+.toc .toctitle h2::after {
+  display: none;
+}
+.toc .toctitle h2::before {
+  content: "";
+  display: block;
+  width: 12px;
+  height: 12px;
+  background-color: var(--theme-icon-color);
+  -webkit-mask: var(--icon-list) no-repeat center / contain;
+  mask: var(--icon-list) no-repeat center / contain;
+}
+.toc .toctogglelabel {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  border: 0;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.toc .toctogglelabel::before {
+  content: "";
+  display: block;
+  width: 14px;
+  height: 14px;
+  background-color: var(--theme-icon-color);
+  -webkit-mask: var(--icon-chevron-down) no-repeat center / 100% 100%;
+  mask: var(--icon-chevron-down) no-repeat center / 100% 100%;
+  transform: scaleY(-1);
+}
+.toc.is-collapsed .toctogglelabel::before {
+  transform: none;
+}
+.toc .toctogglelabel:hover::before {
+  background-color: var(--theme-icon-color-hover);
+}
+.toc.is-collapsed > ul {
+  display: none;
+}
+.toc > ul {
+  margin: var(--layout-box-padding) 0 0;
+  padding-top: var(--layout-box-padding);
+  border-top: 1px solid var(--theme-border-color);
+}
+.toc ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.toc ul ul {
+  margin-left: 1.4em;
+}
+.toc li {
+  margin: 0;
+}
+.toc a {
+  display: block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--theme-text-color);
+  transition: background 0.2s;
+}
+.toc a:hover {
+  background: var(--theme-highlight-background);
+  color: var(--theme-text-color);
+  text-decoration: none;
+}
+.toc .tocnumber {
+  color: var(--theme-text-color-note);
+}
+.toc .tocnumber::after {
+  content: ".";
+  margin-right: 0.35em;
+}
+
+/* ── 提示框 ────────────────────────────────────────────── */
+.message-box {
+  display: grid;
+  grid-template-columns: 0fr 0fr 1fr;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1px auto var(--layout-gap);
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-box-background);
+  overflow: hidden;
+}
+.message-box::before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 100%;
+  background-image: linear-gradient(rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.1));
+  background-color: var(--msgbox-color, var(--theme-box-border-color));
+  pointer-events: none;
+}
+.message-box > .icon {
+  grid-column: 2 / 3;
+  display: flex;
+  align-items: center;
+  padding: 6px 0 6px 12px;
+  color: var(--msgbox-color, var(--theme-text-color-note));
+  white-space: nowrap;
+}
+.message-box > .icon .tw-icon {
+  width: 18px;
+  height: 18px;
+}
+.message-box > .msgbox-text {
+  grid-column: 3 / 4;
+  padding: 6px 12px;
+  min-width: 0;
+}
+.message-box > .msgbox-text > :first-child {
+  margin-top: 0;
+}
+.message-box > .msgbox-text > :last-child {
+  margin-bottom: 0;
+}
+.msgbox-color-blue {
+  --msgbox-color: hsl(var(--theme-notice-blue-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-blue-hue) 80% 90% / 0.2);
+}
+.msgbox-color-yellow {
+  --msgbox-color: hsl(var(--theme-notice-yellow-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-yellow-hue) 80% 90% / 0.2);
+}
+.msgbox-color-red {
+  --msgbox-color: hsl(var(--theme-notice-red-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-red-hue) 80% 90% / 0.2);
+}
+.msgbox-color-green {
+  --msgbox-color: hsl(var(--theme-notice-green-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-green-hue) 80% 90% / 0.2);
+}
+.msgbox-color-purple {
+  --msgbox-color: hsl(var(--theme-notice-purple-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-purple-hue) 80% 90% / 0.2);
+}
+.msgbox-color-orange {
+  --msgbox-color: hsl(var(--theme-notice-orange-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-orange-hue) 80% 90% / 0.2);
+}
+.msgbox-color-pink {
+  --msgbox-color: hsl(var(--theme-notice-pink-hue) 60% 72%);
+  background-color: hsl(var(--theme-notice-pink-hue) 80% 90% / 0.2);
+}
+
+/* 提示框整块也要自成 BFC，否则它的边框会横穿右浮的信息框 */
+.mw-parser-output .message-box {
+  display: grid;
+  clear: none;
+}
+
+.hat-note {
+  margin: 8px auto 8px 24px;
+  font-style: italic;
+  color: var(--theme-text-color-note);
+}
+
+/* ── 表格 ──────────────────────────────────────────────── */
+.brs-table-scroll {
+  display: flow-root;
+  overflow-x: auto;
+  margin: var(--layout-gap-l) 0;
+}
+
+table.terraria {
+  position: relative;
+  margin: 0;
+  padding: 3px;
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: 3px;
+  border-spacing: 0;
+  background: var(--theme-background);
+}
+/* 内框：目标站那圈「双线」的来源，靠一层贴边的伪元素画 */
+table.terraria::before {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  bottom: 3px;
+  left: 3px;
+  border: 2px solid var(--theme-background);
+  pointer-events: none;
+}
+table.terraria th,
+table.terraria td {
+  padding: 3px 6px;
+  border: 1px solid var(--theme-background);
+  vertical-align: middle;
+}
+table.terraria th {
+  background: var(--theme-highlight-background);
+  color: var(--theme-text-color-highlight);
+  text-align: center;
+  font-weight: bold;
+}
+table.terraria caption {
+  padding: 4px;
+  font-size: var(--font-size-l);
+  font-weight: bold;
+  color: var(--theme-text-color-highlight);
+}
+table.terraria.lined > tbody > tr > td {
+  border-bottom-color: var(--theme-box-border-color);
+}
+table.terraria.cellborder > tbody > tr > td {
+  border-left-color: var(--theme-box-border-color);
+  border-bottom-color: var(--theme-box-border-color);
+}
+table.terraria.fullwidth,
+.brs-table-scroll > table.terraria {
+  width: 100%;
+}
+
+table.wikitable {
+  border-collapse: collapse;
+  border: 1px solid var(--theme-border-color-accent);
+  background: none;
+}
+table.wikitable > * > tr > th,
+table.wikitable > * > tr > td {
+  padding: 4px 8px;
+  border: 1px solid var(--theme-border-color-accent);
+}
+table.wikitable > * > tr > th {
+  background: var(--theme-highlight-background);
+}
+
+/* ── 配图块 ────────────────────────────────────────────── */
+/* 三个 class 由 sync-content.mjs 写进 .md（产物被 guard 逐字节比对，不能改名），
+   这里给它们套 MediaWiki .thumb 的皮。
+   ⚠ .brs-icon / .brs-figure 的规则块必须顶格单独成块并保留 max-width：
+   WikiSiteThemeWiringGuard 用正则读这两个数，与 build_wiki_images.py 的
+   ICON_MAX / POSTER_MAX 对账，确保产物不小于展示尺寸（小了浏览器会拉大，就是糊）。 */
+.brs-gallery,
+.brs-figure,
+.brs-icon {
+  display: flow-root;
+  clear: both;
+  margin: var(--layout-gap-l) 0;
+}
+
+.brs-gallery {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--layout-gap);
+}
+
+.brs-figure {
+  max-width: 410px;
+}
+
+.brs-icon {
+  max-width: 205px;
+}
+
+.brs-gallery > p,
+.brs-figure > p,
+.brs-icon > p {
+  margin: 0;
+}
+
+.brs-gallery img,
+.brs-figure img,
+.brs-icon img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  padding: var(--layout-box-padding);
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-box-background);
+  box-sizing: border-box;
+}
+
+.brs-gallery em,
+.brs-figure em,
+.brs-icon em {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--font-size-s);
+  line-height: var(--line-height-s);
+  font-style: normal;
+  color: var(--theme-text-color-note);
+}
+
+.brs-gallery > * {
+  flex: 0 1 auto;
+  max-width: 220px;
+}
+
+/* ── 代码 ──────────────────────────────────────────────── */
+.mw-parser-output code {
+  padding: 1px 4px;
+  border: 1px solid var(--theme-box-border-color-light);
+  border-radius: 3px;
+  background: var(--theme-box-background);
+  color: var(--theme-text-color);
+  font-size: 0.92em;
+  word-wrap: break-word;
+}
+.mw-parser-output div[class*="language-"] {
+  position: relative;
+  display: flow-root;
+  margin: var(--layout-gap-l) 0;
+  border: 1px solid var(--theme-box-border-color);
+  border-radius: var(--theme-box-border-radius);
+  background: var(--theme-code-background);
+  overflow: hidden;
+}
+.mw-parser-output div[class*="language-"] pre {
+  margin: 0;
+  padding: 12px 16px;
+  overflow-x: auto;
+  background: none;
+}
+.mw-parser-output div[class*="language-"] code {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--theme-code-color);
+  font-size: 13px;
+  line-height: 1.6;
+}
+/* VitePress 自带的复制按钮与语言角标：这套皮里不要 */
+.mw-parser-output div[class*="language-"] > button.copy,
+.mw-parser-output div[class*="language-"] > span.lang {
+  display: none;
+}
+/* shiki 双主题：浅色主题下换用它的 light 变量 */
+html.theme-Snow .mw-parser-output .shiki,
+html.theme-Snow .mw-parser-output .shiki span {
+  color: var(--shiki-light, inherit) !important;
+  background-color: var(--shiki-light-bg, transparent) !important;
+}
+
+/* ── 引用与其它 MediaWiki 常见小件 ─────────────────────── */
+.reflist {
+  font-size: 90%;
+}
+.history-header {
+  margin: 0.5em 0 0.17em;
+  font-size: 116%;
+  font-weight: bold;
+}
+.history-title {
+  font-weight: bold;
+}
+.mw-parser-output .external::after {
+  content: "";
+  display: inline-block;
+  width: 0.75em;
+  height: 0.75em;
+  margin-left: 3px;
+  vertical-align: baseline;
+  background-color: currentColor;
+  -webkit-mask: var(--icon-external) no-repeat center / contain;
+  mask: var(--icon-external) no-repeat center / contain;
+  opacity: 0.7;
+}

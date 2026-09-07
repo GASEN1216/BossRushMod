@@ -15,13 +15,19 @@
 - [wiki-site/docs/.vitepress/data/infobox.mts](file://wiki-site/docs/.vitepress/data/infobox.mts)
 - [wiki-site/docs/.vitepress/theme/index.ts](file://wiki-site/docs/.vitepress/theme/index.ts)
 - [wiki-site/docs/.vitepress/theme/Layout.vue](file://wiki-site/docs/.vitepress/theme/Layout.vue)
-- [wiki-site/docs/.vitepress/theme/style.css](file://wiki-site/docs/.vitepress/theme/style.css)
-- [wiki-site/docs/.vitepress/theme/extras.css](file://wiki-site/docs/.vitepress/theme/extras.css)
+- [wiki-site/docs/.vitepress/theme/css/tokens.css](file://wiki-site/docs/.vitepress/theme/css/tokens.css)
+- [wiki-site/docs/.vitepress/theme/css/widgets.css](file://wiki-site/docs/.vitepress/theme/css/widgets.css)
 - [WikiContent/catalog.tsv](file://WikiContent/catalog.tsv)
 - [.github/workflows/deploy.yml](file://.github/workflows/deploy.yml)
 </cite>
 
-> 2026-09-05 同步：本文按当前代码重写了「核心组件」「详细组件分析」「性能与 SEO 优化」
+> 2026-09-07 同步：站点做了一次**整站换皮**——不再继承 VitePress 默认主题，版式改为
+> 参照 Official Terraria Wiki（terraria.wiki.gg，MediaWiki Vector-legacy 皮肤）逐值测量后
+> 净室重写的自绘骨架：网络顶栏 + Logo 带 + 左侧门户框 + 标签行 + 内容面板 + 分类栏 + 页脚，
+> 另有 Overworld（深）/ Snow（浅）两套可切换皮肤。样式拆成 `theme/css/` 九层，
+> `style.css` / `extras.css` 已删除。细节以 wiki-site/AGENTS.md §8、§9 为准。
+>
+> 2026-09-05 同步：本文按当时代码重写了「核心组件」「详细组件分析」「性能与 SEO 优化」
 > 三节，并补充了类目主页（hubs/）、速查对比表、中文搜索分词、逐页 SEO 与 RSS。
 > 更细的维护规则以 [wiki-site/AGENTS.md](file://wiki-site/AGENTS.md) 为准。
 
@@ -45,7 +51,7 @@
   - `scripts/entry-map.mjs`：entryId ↔ 站内路径的唯一映射与 catalog.tsv 读取，sync / config / seo 三处共用。
   - `hubs/`：系统、攻略两个类目主页的手写正文（中英各一份），由 sync 复制进 docs/；它们在 WikiContent 里没有对应条目。
   - `docs/.vitepress/data/`：`structure.mts`（导航结构唯一事实源）、`infobox.mts`（速查框数据）、`changelog.data.mts` / `stats.data.mts`（构建期数据加载器）。
-  - `docs/.vitepress/theme/`：`Layout.vue` 通过默认主题插槽注入面包屑、速查对比表、条目宫格、同类导航、版本时间线（速查框改由渲染期插进正文，见下）；`components/WikiSearchBox.vue` 是默认搜索弹层的 fork，`composables/searchIndex.ts` 管索引加载与预热，`components/WikiLightbox.vue` 是正文配图的点开看大图；`style.css` 是「玩法档案」版式语言，`extras.css` 是功能构件样式与打印样式。
+  - `docs/.vitepress/theme/`：`Layout.vue` 是自绘的 Vector-legacy 骨架（网络顶栏 / Logo 带 / 门户框栏 / 标签行 / 内容面板 / 分类栏 / 页脚），不再继承默认主题；`components/` 下是外壳与构件（WikiNetbar / WikiPanel / WikiHead / WikiHeadSearch / WikiFooter / WikiCatlinks / WikiContentSub / WikiToc / WikiInfobox / WikiNavbox / WikiCardGrid / WikiCompare / WikiHome / WikiLightbox / WikiRefPreview / WikiNotFound）；`WikiSearchBox.vue` 仍是 VitePress 本地搜索弹层的 fork，当「完整结果页」用；`composables/` 管结构反查、索引预热、界面词表、换肤与 GitHub 链接；样式在 `css/`（tokens / base / icons / vp-bridge / layout / content / widgets / mainpage / responsive / print 九层）；版式贴图在 `assets/`（天空底图、木纹 / 冰霜、草皮条、站点 Logo），由 `tools/build_wiki_theme_assets.py` 产出、`wiki-site/scripts/wiki-theme-assets.json` 登记。
   - `docs/.vitepress/search.mts` / `seo.mts` / `feed.mts`：中文分词搜索、逐页 SEO 与编辑链接、更新日志 RSS，均在构建期生效。
 - WikiContent：权威内容源，按语言分 zh/en，并通过 catalog.tsv 统一编排条目与顺序。
 - .github/workflows（仓库根目录）：GitHub Actions 工作流，负责构建与发布。`wiki-site/.github/workflows/deploy.yml` 是一份未被 GitHub 读取的历史副本，以根目录那份为准。
@@ -63,14 +69,14 @@ F --> G[".github/workflows/deploy.yml<br/>GitHub Actions 部署"]
 图表来源
 - [wiki-site/scripts/sync-content.mjs:1-259](file://wiki-site/scripts/sync-content.mjs#L1-L259)
 - [wiki-site/docs/.vitepress/config.mts:1-371](file://wiki-site/docs/.vitepress/config.mts#L1-L371)
-- [wiki-site/docs/.vitepress/theme/style.css:1-67](file://wiki-site/docs/.vitepress/theme/style.css#L1-L67)
+- [wiki-site/docs/.vitepress/theme/css/tokens.css](file://wiki-site/docs/.vitepress/theme/css/tokens.css)
 - [wiki-site/.github/workflows/deploy.yml:1-55](file://wiki-site/.github/workflows/deploy.yml#L1-L55)
 
 章节来源
 - [wiki-site/package.json:1-14](file://wiki-site/package.json#L1-L14)
 - [wiki-site/scripts/sync-content.mjs:1-259](file://wiki-site/scripts/sync-content.mjs#L1-L259)
 - [wiki-site/docs/.vitepress/config.mts:1-371](file://wiki-site/docs/.vitepress/config.mts#L1-L371)
-- [wiki-site/docs/.vitepress/theme/style.css:1-67](file://wiki-site/docs/.vitepress/theme/style.css#L1-L67)
+- [wiki-site/docs/.vitepress/theme/css/tokens.css](file://wiki-site/docs/.vitepress/theme/css/tokens.css)
 - [WikiContent/catalog.tsv:1-103](file://WikiContent/catalog.tsv#L1-L103)
 - [wiki-site/.github/workflows/deploy.yml:1-55](file://wiki-site/.github/workflows/deploy.yml#L1-L55)
 
@@ -80,13 +86,13 @@ F --> G[".github/workflows/deploy.yml<br/>GitHub Actions 部署"]
 
 - 内容同步脚本：将 WikiContent 中的 Markdown 转换为 VitePress 文档结构——标题层级提升、Callout 转换、链接清理、按 IMAGE_PLACEMENT 注入配图、按 TABLEIZE 把固定句式列表转成表格（成就大全、模式总览），并把 hubs/ 下的类目主页复制进 docs/。
 - VitePress 配置：站点标题、基础路径、多语言（中文根路径、英文 /en）；导航与侧边栏由 structure.mts 生成；本地搜索接入 search.mts 的中文二元分词；sitemap、逐页 description / Open Graph / canonical / hreflang（seo.mts）、「编辑此页」指向 WikiContent 源文件、更新日志 RSS（feed.mts）、中文 404 文案；markdown-it 层的 entityLinkPlugin 把列表项与表格首列里的实体名换成图标 + 链接。
-- 主题层：Layout.vue 在默认主题的 doc-before / doc-footer-before 插槽注入面包屑、速查对比表（WikiCompare，从 infobox.mts 只读生成、可点表头排序）、条目宫格、同类导航或版本时间线；速查框（WikiInfobox）不走插槽，由 config.mts 的 infoboxSlotPlugin 在渲染期插到正文第一个 h1 之后、组件全局注册——插槽版排在 h1 之前，会让标题的底线整幅穿过右浮动的框身；首页是 layout: page + WikiHome（刊头、搜索框与随机条目、数据速览、三步上手、门户宫格、最近更新）。style.css 是纸张底 + 黄铜强调 + 衬线标题的「玩法档案」版式，extras.css 是功能构件与打印样式。
+- 主题层：Layout.vue 自己搭骨架（`.mw-layout` 是一张具名 CSS 网格），正文用 `<Content class="mw-parser-output" />`，页尾依次是对比表（WikiCompare）、条目清单（WikiCardGrid）、导航盒（WikiNavbox）、分类栏（WikiCatlinks）。三样东西由 config.mts 的 markdown-it 插件在**渲染期**插进正文，因此生成的 .md 一个字节不变：位置提示（contentSubSlotPlugin，h1 之后）、速查框（infoboxSlotPlugin，紧随其后）、目录框（tocSlotPlugin，第一个 h2 之前）；三者的组件都在 theme/index.ts 全局注册。首页是 layout: page + WikiHome（抬头 + 站点数据 + 最新版本 + 一排类目盒）。
 - 自动化部署：GitHub Actions 在推送 main 分支或手动触发时以 fetch-depth: 0 检出（页面「最后更新」与 RSS 日期取 git 时间），安装依赖、执行构建并上传至 GitHub Pages。
 
 章节来源
 - [wiki-site/scripts/sync-content.mjs:1-259](file://wiki-site/scripts/sync-content.mjs#L1-L259)
 - [wiki-site/docs/.vitepress/config.mts:1-371](file://wiki-site/docs/.vitepress/config.mts#L1-L371)
-- [wiki-site/docs/.vitepress/theme/style.css:1-67](file://wiki-site/docs/.vitepress/theme/style.css#L1-L67)
+- [wiki-site/docs/.vitepress/theme/css/tokens.css](file://wiki-site/docs/.vitepress/theme/css/tokens.css)
 - [wiki-site/.github/workflows/deploy.yml:1-55](file://wiki-site/.github/workflows/deploy.yml#L1-L55)
 
 ## 架构总览
@@ -187,9 +193,9 @@ H["head/favicon"] --> I["站点图标"]
 章节来源
 - [wiki-site/docs/.vitepress/config.mts:1-371](file://wiki-site/docs/.vitepress/config.mts#L1-L371)
 
-### 主题定制（theme/index.ts、Layout.vue、components/、style.css、extras.css）
+### 主题定制（theme/index.ts、Layout.vue、components/、css/）
 - 入口
-  - 主题入口扩展默认主题，替换 Layout，并全局注册 WikiHome / WikiCardGrid / WikiIcon；引入 style.css 与 extras.css。
+  - 主题入口**不再** extends 默认主题，只导出 Layout 与 enhanceApp；全局注册 WikiHome / WikiCardGrid / WikiInfobox / WikiContentSub / WikiToc / WikiIcon；按层叠顺序引入 css/ 下九个样式文件。
 - 布局插槽（Layout.vue）
   - doc-before：WikiBreadcrumb（面包屑）、WikiInfobox（速查框，数据来自 infobox.mts）。
   - doc-footer-before：类目主页上依次为 WikiCompare（速查对比表）与 WikiCardGrid（条目宫格）；更新日志页面用 WikiChangelogTimeline（按 major.minor 分行的版本时间线）代替 WikiNavbox（同类导航）。
@@ -199,12 +205,13 @@ H["head/favicon"] --> I["站点图标"]
 - 首页（WikiHome.vue）
   - 刊头、WikiSearchBar（整行搜索框转发给 VitePress 搜索按钮 + 随机条目）、数据速览（模式 / Boss / 装备数来自 structure.mts，成就与地图数由 stats.data.mts 从 WikiContent 正文统计）、三步上手、门户宫格、最近更新（changelog.data.mts 前 6 条）。
 - 样式
-  - style.css：纸张底 + 黄铜强调 + 衬线标题 + 等宽微标签 + 直角硬边的「玩法档案」版式，含深色模式令牌与配图网格。
-  - extras.css：对比表、时间线、搜索框样式与打印样式（隐藏导航、侧栏、页脚与导航构件，速查框取消浮动）。
+  - css/tokens.css：全部 --theme-* / --layout-* 令牌；:root 是默认皮肤 Overworld（深色），html.theme-Snow 是浅色。加皮肤只改这里加 data/themes.mts 加内联脚本三处。
+  - css/layout.css / content.css / widgets.css / mainpage.css / responsive.css / print.css：骨架、正文、构件、首页、七档媒体查询与打印。
+  - css/vp-bridge.css：全站唯一允许给 --vp-* 赋值的地方，只为搜索弹层那个 fork 搭一层桥（改写它的 scoped 样式会让 fork 没法再和上游 diff）。
 
 章节来源
 - [wiki-site/docs/.vitepress/theme/index.ts:1-4](file://wiki-site/docs/.vitepress/theme/index.ts#L1-L4)
-- [wiki-site/docs/.vitepress/theme/style.css:1-67](file://wiki-site/docs/.vitepress/theme/style.css#L1-L67)
+- [wiki-site/docs/.vitepress/theme/css/tokens.css](file://wiki-site/docs/.vitepress/theme/css/tokens.css)
 
 ### 自动化部署（deploy.yml）
 - 触发条件
@@ -271,15 +278,15 @@ Build --> Deploy["deploy.yml"]
 
 ## 性能与 SEO 优化
 - 性能
-  - 使用 VitePress 静态站点生成；Google Fonts 以 media=print + onload 方式加载，不可达时按本地字体栈降级，不阻塞首屏。
+  - 使用 VitePress 静态站点生成；**不加载任何网络字体**——正文 Helvetica、标题 Verdana，中文交给系统字体（与目标站中文版同一口径）。不继承默认主题之后，产物少了 14 个 woff2 与三条第三方外链，样式表从 147 KB 降到 85 KB。界面图标是内联 SVG 的 CSS mask，零请求。版式贴图（天空 / 木纹 / 草皮 / Logo）每套皮肤约 100 KB，且浏览器只会请求当前皮肤用到的那几张——另一套皮肤的 `url()` 写在不匹配的 `html.theme-*` 块里，根本不会发起请求。
   - 本地搜索索引按语言拆分；中文二元分词后的中文索引约 1 MB（gzip 后约 250 KB）。索引与弹层组件在首屏空闲时预热（省流量连接上只预热组件，鼠标移到搜索框上才强制拉索引），同一语言只解析一次。
   - 图标与配图为提交进仓库的 WebP 产物；组件图标与正文 markdown 图片都带 loading=lazy（后者由 config.mts 的渲染规则统一补上）。产物尺寸不得小于正文展示尺寸，否则浏览器会把图拉大、看起来发糊，由 WikiSiteThemeWiringGuard 核对。
 - SEO
   - 逐页 description（正文第一段或 frontmatter）、Open Graph / Twitter 卡片、canonical、zh-CN ⇄ en hreflang 与 x-default，全部由 seo.mts 在构建期注入；sitemap.xml 含 lastmod 与语言对；更新日志另有 feed.xml。
   - 条目页的 og:image 取该条目图标。
 - 用户体验
-  - 深色模式（手动切换时同步 theme-color，手机地址栏跟着变）、首页整行搜索框与随机条目、类目主页的可排序对比表、更新日志时间线、面包屑与同类导航、指向源文件的「编辑此页」、中文 404、打印样式。
-  - 条目页版式：标题整宽 → 速查框（≥1400px 右浮、更窄时通栏卡片）→ 正文绕排。正文里只有 h1 底下保留通栏横线，h2 用定宽黄铜标——通栏线在浮动框旁会随位置变长变短，同一页出现几种长度；带整幅边线或底色的块（分隔线、提示块、引用块）在浮动侧自成 BFC。
+  - 换肤（Overworld 深 / Snow 浅；偏好存 localStorage 的 skin-theme，首帧由 head 里的自包含内联脚本挂类，刷新不闪；切换时同步 theme-color；?skin-theme=Snow 可直接指定）、标签行里的搜索框 + 联想下拉、类目主页的可排序对比表、页尾导航盒与分类栏、指向源文件的「查看源代码 / 查看历史 / 编辑此页」、中文 404、打印样式。
+  - 条目页版式：标题 → 位置提示 → 速查框（≥641px 右浮 300px，更窄时通栏）→ 导语 → 目录框 → 正文。h1 与 h2 底下都有一条「双线」；带整幅边线或底色的块（标题、分隔线、提示块、目录框、引用块）一律 display: flow-root，否则它们的线会从右浮的速查框底下穿过去。
   - 正文配图可点开看大图（WikiLightbox）：同一配图块内左右键翻页，展示尺寸永不超过原始像素。
   - 侧边栏与导航结构由 structure.mts 生成，中英双语一致。
 
@@ -287,7 +294,7 @@ Build --> Deploy["deploy.yml"]
 - [wiki-site/docs/.vitepress/seo.mts](file://wiki-site/docs/.vitepress/seo.mts)
 - [wiki-site/docs/.vitepress/search.mts](file://wiki-site/docs/.vitepress/search.mts)
 - [wiki-site/docs/.vitepress/feed.mts](file://wiki-site/docs/.vitepress/feed.mts)
-- [wiki-site/docs/.vitepress/theme/extras.css](file://wiki-site/docs/.vitepress/theme/extras.css)
+- [wiki-site/docs/.vitepress/theme/css/widgets.css](file://wiki-site/docs/.vitepress/theme/css/widgets.css)
 
 ## 故障排查指南
 - 同步失败或缺失源文件
