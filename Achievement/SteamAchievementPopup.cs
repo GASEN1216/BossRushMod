@@ -21,8 +21,8 @@ namespace BossRush
         #region 常量定义
 
         // ========== 尺寸常量 ==========
-        private const float POPUP_WIDTH = 340f;
-        private const float POPUP_HEIGHT = 80f;
+        private const float POPUP_WIDTH = 400f;
+        private const float POPUP_HEIGHT = 100f;
         private const float ICON_SIZE = 56f;
         private const float FRAME_SIZE = 64f;
         private const float FRAME_BORDER = 4f;
@@ -346,8 +346,8 @@ namespace BossRush
             titleRect.anchorMin = new Vector2(0, 0.5f);
             titleRect.anchorMax = new Vector2(0, 0.5f);
             titleRect.pivot = new Vector2(0, 0.5f);
-            titleRect.anchoredPosition = new Vector2(textStartX, 12f);
-            titleRect.sizeDelta = new Vector2(220f, 24f);
+            titleRect.anchoredPosition = new Vector2(textStartX, 24f);
+            titleRect.sizeDelta = new Vector2(POPUP_WIDTH - textStartX - PADDING_LEFT, 28f);
 
             TMPro.TextMeshProUGUI titleText = titleObj.AddComponent<TMPro.TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(titleText);
@@ -355,7 +355,10 @@ namespace BossRush
             titleText.color = TITLE_COLOR;
             titleText.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
             titleText.enableWordWrapping = false;
-            titleText.overflowMode = TMPro.TextOverflowModes.Overflow;
+            titleText.enableAutoSizing = true;
+            titleText.fontSizeMin = 14f;
+            titleText.fontSizeMax = 16f;
+            titleText.overflowMode = TMPro.TextOverflowModes.Ellipsis;
             titleText.raycastTarget = false;
             titleText.text = isChinese ? achievement.nameCN : achievement.nameEN;
 
@@ -367,16 +370,16 @@ namespace BossRush
             descRect.anchorMin = new Vector2(0, 0.5f);
             descRect.anchorMax = new Vector2(0, 0.5f);
             descRect.pivot = new Vector2(0, 0.5f);
-            descRect.anchoredPosition = new Vector2(textStartX, -12f);
-            descRect.sizeDelta = new Vector2(220f, 20f);
+            descRect.anchoredPosition = new Vector2(textStartX, -13f);
+            descRect.sizeDelta = new Vector2(POPUP_WIDTH - textStartX - PADDING_LEFT, 44f);
 
             TMPro.TextMeshProUGUI descText = descObj.AddComponent<TMPro.TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(descText);
             descText.fontSize = 13;
             descText.color = DESC_COLOR;
             descText.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
-            descText.enableWordWrapping = false;
-            descText.overflowMode = TMPro.TextOverflowModes.Overflow;
+            descText.enableWordWrapping = true;
+            descText.overflowMode = TMPro.TextOverflowModes.Ellipsis;
             descText.raycastTarget = false;
             descText.text = isChinese ? achievement.descCN : achievement.descEN;
         }

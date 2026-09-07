@@ -200,3 +200,7 @@ F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立�
 全录由 `IsFullyUnlocked` 逐一检查每个实际目录 key 的条目存在且 Kills > 0。额外历史条目或重复记录数量不能代替尚未击杀的 Boss；空目录绝不授予全录。保存 key、成就 ID、奖励数值与原击杀过滤不变。
 
 回归：`tests/ContentThirdReviewFixesGuard.py` 与 `tests/fixtures/ContentThirdReviewFixes/run.py`，直接链接实际击杀采集器、目录与成就判定，覆盖冠军即时显示、补齐最后 key 才全录、相同数量但缺 key、重复击杀不重建、面板补判及切槽。Unity 面板和真实成就派奖仍需实机验证。
+
+## 2026-09-07 界面可读性与视觉整理（COMPAT）
+
+图鉴主面板高度改用共享逻辑视口，不再从 Screen.height 物理像素重复缩放。网格、目录缓存与立绘资产不变；实机待验。

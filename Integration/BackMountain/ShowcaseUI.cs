@@ -92,7 +92,7 @@ namespace BossRush
         private static void BuildHeader(Transform parent)
         {
             GameObject header = ZombieModeUIHelper.CreateRect(
-                "Header", parent, new Vector2(0.5f, 1f), new Vector2(1f, 1f),
+                "Header", parent, new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -34f), new Vector2(0f, 68f), new Vector2(0.5f, 0.5f));
             Image headerBg = header.AddComponent<Image>();
             headerBg.color = BossRushUIColors.Header;

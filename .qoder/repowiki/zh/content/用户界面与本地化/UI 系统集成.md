@@ -356,3 +356,28 @@ BossRush 的 UI 系统集成通过扫描与注入机制，实现了在基地入�
 - [UIAndSigns.cs:122-200](file://UIAndSigns/UIAndSigns.cs#L122-L200)
 - [ObjectCache.cs:17-172](file://Common/Infrastructure/ObjectCache.cs#L17-L172)
 - [ReflectionCache.cs:15-87](file://Common/Infrastructure/BossRushEagerReflectionCache.cs#L15-L87)
+
+## 2026-09-07 界面可读性与视觉整理（COMPAT）
+
+共享层 `Common/UI/BossRushUI.cs` / `ZombieMode/ZombieModeUIHelper.cs` 现在统一以下表现约定：
+
+- CanvasScaler 使用 1920×1080 参考尺寸与 Expand；`GetReferenceViewportSize()` 提供同口径逻辑视口，成就/图鉴的尺寸计算不再直接使用物理屏幕像素。
+- 共享按钮的底色只有一个来源：`ColorBlock` 的绝对色，`Graphic` 恒为白。`CreateButton` 与 `ApplyButtonColors` 走同一条路径，三态由 `BossRushUI.GetHoverColor / GetPressedColor / GetDisabledColor` 派生。**不要用大于 1 的中性乘色做悬停**——`CanvasRenderer` 的 tint 存的是 32 位色，超过 1 会被夹回白色，悬停与常态完全一致。要改已有按钮的底色一律走 `ZombieModeUIHelper.SetButtonBaseColor`，直接写 `Image.color` 会与 ColorTint 相乘。`ApplyButtonColors` 会顺带把名为 `Text` 的共享标签刷成对应深浅。
+- 标签内边距只取 `size` 与 `textSize` 的实际差值，不套下限，避免窄按钮的标签反而比调用方要的更窄。
+- 亮底判定阈值是 `BossRushUI.LightBackgroundLuminance`（相对亮度 0.30），只有明确的亮底才用深字，中间带一律回落白字。阈值刻意远离 Warning(≈0.160)、Success(≈0.180)、Accent(≈0.378) 这几个常用 token；`UILayoutReadabilityGuard` 会从源码重算每个 token 的余量并要求 ≥20%，改配色时别把它挤到刀刃上。
+- `Image.Type.Filled` / `Tiled` **必须**赋 sprite（`BossRushUI.GetSolidSprite()`）：`sprite` 为 null 时 `Image.OnPopulateMesh` 直接退回基类整块矩形，`type` 与 `fillAmount` 被完全忽略，进度条会永远满格。注意不能用 `ApplyPanelSkin` 代替，它会把 `type` 改回 `Sliced`。守卫扫描全部生产源码。
+- 遮罩有两个 token：面板级 `Backdrop`(0.62) 与全屏正片用的 `BackdropStrong`(0.90)。根上已经有 Backdrop 时，页面必须用 `CreateModalSurface(..., createBackdrop: false)`，否则两张 0.62 合成 0.856。
+- `SuccessText` / `WarningText` / `DangerText` 是深色面板上的状态文字，原 Success/Warning/Danger 继续作为承托文字的背景色。
+- `MeasureTextHeight` 只用于低频创建的可增长内容：固定字号、测量换行高度，调用方必须把高度计入卡片与 ScrollRect。固定 HUD 仍保留限高/省略，不能随意开放 Overflow。
+- `ConfigureScrollRect` 补齐空白区域滚轮命中、纵向拖动滑块及 Clamped 滚动；已存在的官方滑块继续复用。调用方为右侧滚动条预留 20px。
+- Mode H 的模态页与恢复壳都在根上建 Backdrop，因此两者都传 `createBackdrop: false`；其它调用的默认行为不变。默认程序化皮肤保留实际圆角半径；是否走程序化由 `BossRushUISkin.HasInjectedPanelSprite / HasInjectedButtonSprite` 决定，注入图集后一张程序化贴图都不再生成。
+
+`UILayoutReadabilityGuard` 检查容器边界、内容/动作避让、画布坐标、重复乘色、`Type.Filled` 的 sprite、按钮乘色上限与设计 token 的阈值余量，并含 11 个内存反向检查。它与 Windows 正式编译均不能代替 Unity 内的字体、滚动、悬停、分辨率与过图实测。
+
+`PetNest/PetNestUI.cs` 继续使用唯一输入租约和原有四页入口。标题收回面板左边界；卡片文字从左上统一留白向下排，操作独立右列，长正文以 18 号字测高并撑开卡片。内容区与操作区留 32px 间隔，两个列表均有可拖动滚动条；无底部动作时把空间还给正文。当前页签用亮底/粗体标识，失败和风险用专用亮色文字。切页重建前先停用旧节点，避免帧末销毁前参与布局；刷新后回到列表顶部。资产选择、死亡率提示和动作回调语义保持不变。实机滚动、长名称与中英文换行待验。
+
+`ModeH/ModeHUI.cs` 的三条观战状态按 y=64/0/-64 排入原 560×220 背景，计时文字宽度按 320×96 的计时背景计算。拍铃底色走 `SetButtonBaseColor`，口令窗倒计时条补了纯色 sprite（此前 `fillAmount` 无效、条子恒满）。押品格滚动区也接入了共享滚轮/滑块设置。`ModeHUIPages.cs` 将卡片标题/副标题/正文拆成互不交叠的区段；战报行固定字号测高后滚动，赔率明细与押品选择器各占一列。战报与战痕卡同时出现时使用上下独立阅读区；底部按钮换行后，各阅读区按同一个 `GetActionBandReserve` 让位。滚动容器继续优先复用官方 ScrollRect，并使用共享滚轮/滑块设置。模态页只保留根遮罩一次，拍铃文字按实际底色配深浅。层段、冻结面板尺寸、唯一模态租约及真实押品/恢复命令不变；实机长战报、五席/32席、多行动作和滚轮待验。
+
+`Campaign/CampaignBoardView.cs` 改为 1040×840 公告板：标题和关闭入口固定，六章正文放入带滑块的独立 ScrollRect。每条目标另起一行，18 号正文按实际高度扩展卡片，标题、目标与右侧动作互相让位；不再把整章目标压进固定 40px 高度。公告板和 `Integration/BackMountain/ShowcaseUI.cs` 的标题背景都锚到面板左右两端，修复旧版只占右半边导致的偏移。章节状态、接约/交付/放弃与登记奖励不变；实机操作和双语文本待验。
+
+`Integration/Affinity/AffinityUIManager.cs` 的关系提示采用共享深色皮肤、320×104 留白和 20/16 号文字，原有心形图标保留；名称、等级、进度条分区，装饰与文字均透传点击。`Integration/UI/ImageViewerUI.cs` 的图片通过锚点和 preserveAspect 自动适配画布，上下各留 110px，避免 4K 二次放大；标题/提示绑定游戏字体。资源失败时明确提示“图片暂不可用”，不再创建大渐变占位图或无限显示“加载中”。`Integration/Codex/CodexView.cs` 的高度使用共享逻辑视口。原输入与资源归属流程保持不变；高清屏、长标题、加载失败与重开待实机复测。

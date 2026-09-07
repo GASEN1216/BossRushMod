@@ -113,9 +113,9 @@ namespace BossRush
             statusBackground.raycastTarget = false;
             BossRushUI.ApplyPanelSkin(statusBackground, 10);
 
-            _hudStarter = CreateHudLine(status.transform, "Starter", 0f);
-            _hudRelay = CreateHudLine(status.transform, "Relay", -52f);
-            _hudEnemies = CreateHudLine(status.transform, "Enemies", -104f);
+            _hudStarter = CreateHudLine(status.transform, "Starter", 64f, StatusSize.x - 32f);
+            _hudRelay = CreateHudLine(status.transform, "Relay", 0f, StatusSize.x - 32f);
+            _hudEnemies = CreateHudLine(status.transform, "Enemies", -64f, StatusSize.x - 32f);
 
             // 计时区固定顶部居中 320x96
             GameObject timer = ZombieModeUIHelper.CreateRect(
@@ -127,17 +127,18 @@ namespace BossRush
             timerBackground.color = BossRushUIColors.Surface;
             timerBackground.raycastTarget = false;
             BossRushUI.ApplyPanelSkin(timerBackground, 10);
-            _hudTimer = CreateHudLine(timer.transform, "TimerText", 0f);
+            _hudTimer = CreateHudLine(timer.transform, "TimerText", 0f, TimerSize.x - 32f);
+            _hudTimer.alignment = TextAlignmentOptions.Center;
 
             CreateBellButton(onRingBell);
             BossRushUI.PlayOpenAnimation(_hudRoot);
         }
 
-        private TextMeshProUGUI CreateHudLine(Transform parent, string name, float offsetY)
+        private TextMeshProUGUI CreateHudLine(Transform parent, string name, float offsetY, float width)
         {
             GameObject obj = ZombieModeUIHelper.CreateRect(
                 name, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, offsetY), new Vector2(StatusSize.x - 32f, 44f),
+                new Vector2(0f, offsetY), new Vector2(width, 44f),
                 new Vector2(0.5f, 0.5f));
             TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
                 obj, string.Empty, 26f, TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
@@ -189,6 +190,9 @@ namespace BossRush
             _bellWindowBar = bar.AddComponent<Image>();
             _bellWindowBar.color = BossRushUIColors.Success;
             _bellWindowBar.raycastTarget = false;
+            // Filled 必须有 sprite：sprite 为 null 时 Image.OnPopulateMesh 直接退回整块矩形，
+            // fillAmount 被完全忽略——口令倒计时条会一直满格、fillAmount=0 时也不消失。
+            _bellWindowBar.sprite = BossRushUI.GetSolidSprite();
             _bellWindowBar.type = Image.Type.Filled;
             _bellWindowBar.fillMethod = Image.FillMethod.Horizontal;
             _bellWindowBar.fillAmount = 0f;
@@ -296,8 +300,10 @@ namespace BossRush
         private void SetBellTint(Color color)
         {
             if (_bellButton == null) return;
-            Image image = _bellButton.GetComponent<Image>();
-            if (image != null) image.color = color;
+            // 底色走 ColorBlock：直接写 Image.color 会和 ColorTint 相乘，三态越切越暗。
+            ZombieModeUIHelper.SetButtonBaseColor(_bellButton, color);
+            // 官方 prefab 的标签不叫 "Text"，ApplyButtonColors 够不到，这里显式补一次。
+            if (_bellLabel != null) _bellLabel.color = BossRushUI.GetButtonTextColor(color);
         }
 
         #endregion
@@ -404,7 +410,7 @@ namespace BossRush
 
             Vector2 size = page == ModeHPage.Settlement ? ReportPanelSize : MainPanelSize;
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
-                "ModeH_PageSurface", _modalRoot.transform, size, BossRushUIColors.Accent);
+                "ModeH_PageSurface", _modalRoot.transform, size, BossRushUIColors.Accent, createBackdrop: false);
 
             ModeHUIPages.Build(page, surface.transform, size, content);
             BossRushUI.PlayOpenAnimation(surface);
@@ -502,10 +508,12 @@ namespace BossRush
         internal static TextMeshProUGUI CreateBody(
             Transform parent, string body, Vector2 panelSize, float offsetY)
         {
+            float top = panelSize.y * 0.5f - SafeMargin - 76f;
+            float bottom = -panelSize.y * 0.5f + SafeMargin + 96f;
             GameObject obj = ZombieModeUIHelper.CreateRect(
                 "ModeH_Body", parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, offsetY),
-                new Vector2(panelSize.x - SafeMargin * 2f, panelSize.y - SafeMargin * 4f),
+                new Vector2(0f, (top + bottom) * 0.5f + offsetY),
+                new Vector2(panelSize.x - SafeMargin * 2f, top - bottom),
                 new Vector2(0.5f, 0.5f));
             TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
                 obj, body, 24f, TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);

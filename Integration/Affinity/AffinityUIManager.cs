@@ -35,10 +35,10 @@ namespace BossRush
         private static bool heartSpriteLoaded = false;
         
         // UI配置
-        private const float PANEL_WIDTH = 200f;
-        private const float PANEL_HEIGHT = 60f;
+        private const float PANEL_WIDTH = 320f;
+        private const float PANEL_HEIGHT = 104f;
         private const float CHANGE_POPUP_DURATION = 1.5f;
-        private const float HEART_ICON_SIZE = 24f;
+        private const float HEART_ICON_SIZE = 32f;
         
         /// <summary>
         /// 显示好感度面板
@@ -132,7 +132,8 @@ namespace BossRush
                 text.text = (delta > 0 ? "+" : "") + delta;
                 text.fontSize = 24;
                 text.alignment = TextAlignmentOptions.Center;
-                text.color = delta > 0 ? Color.green : Color.red;
+                text.color = delta > 0 ? BossRushUIColors.SuccessText : BossRushUIColors.DangerText;
+                text.raycastTarget = false;
                 
                 // 设置位置（屏幕中央偏上）
                 RectTransform rect = popup.GetComponent<RectTransform>();
@@ -293,7 +294,9 @@ namespace BossRush
                 
                 // 添加背景
                 Image bg = affinityPanel.AddComponent<Image>();
-                bg.color = new Color(0, 0, 0, 0.7f);
+                bg.color = BossRushUIColors.Surface;
+                bg.raycastTarget = false;
+                BossRushUI.ApplyPanelSkin(bg, 12);
                 
                 // 设置位置和大小
                 RectTransform rect = affinityPanel.GetComponent<RectTransform>();
@@ -309,12 +312,13 @@ namespace BossRush
                     Image heartIcon = heartObj.AddComponent<Image>();
                     heartIcon.sprite = heartSprite;
                     heartIcon.preserveAspect = true;
+                    heartIcon.raycastTarget = false;
                     
                     RectTransform heartRect = heartObj.GetComponent<RectTransform>();
                     heartRect.anchorMin = new Vector2(0, 0.5f);
                     heartRect.anchorMax = new Vector2(0, 0.5f);
                     heartRect.pivot = new Vector2(0, 0.5f);
-                    heartRect.anchoredPosition = new Vector2(8f, 5f);
+                    heartRect.anchoredPosition = new Vector2(16f, 8f);
                     heartRect.sizeDelta = new Vector2(HEART_ICON_SIZE, HEART_ICON_SIZE);
                 }
                 
@@ -323,42 +327,50 @@ namespace BossRush
                 nameObj.transform.SetParent(affinityPanel.transform, false);
                 npcNameText = nameObj.AddComponent<TextMeshProUGUI>();
                 BossRushUI.ApplyGameFont(npcNameText);
-                npcNameText.fontSize = 14;
-                npcNameText.alignment = TextAlignmentOptions.Center;
-                npcNameText.color = Color.white;
+                npcNameText.fontSize = 20;
+                npcNameText.alignment = TextAlignmentOptions.Left;
+                npcNameText.color = BossRushUIColors.TextPrimary;
+                npcNameText.raycastTarget = false;
+                npcNameText.enableWordWrapping = false;
+                npcNameText.overflowMode = TextOverflowModes.Ellipsis;
                 
                 RectTransform nameRect = nameObj.GetComponent<RectTransform>();
-                nameRect.anchorMin = new Vector2(0, 0.6f);
-                nameRect.anchorMax = new Vector2(1, 1);
-                nameRect.offsetMin = Vector2.zero;
-                nameRect.offsetMax = Vector2.zero;
+                nameRect.anchorMin = new Vector2(0, 0.55f);
+                nameRect.anchorMax = new Vector2(1, 0.90f);
+                nameRect.offsetMin = new Vector2(64f, 0f);
+                nameRect.offsetMax = new Vector2(-16f, 0f);
                 
                 // 创建等级文本（红心图标右侧）
                 GameObject levelObj = new GameObject("LevelText");
                 levelObj.transform.SetParent(affinityPanel.transform, false);
                 levelText = levelObj.AddComponent<TextMeshProUGUI>();
                 BossRushUI.ApplyGameFont(levelText);
-                levelText.fontSize = 12;
+                levelText.fontSize = 16;
                 levelText.alignment = TextAlignmentOptions.Left;
-                levelText.color = Color.white;
+                levelText.color = BossRushUIColors.TextSecondary;
+                levelText.raycastTarget = false;
+                levelText.enableWordWrapping = false;
+                levelText.overflowMode = TextOverflowModes.Ellipsis;
                 
                 RectTransform levelRect = levelObj.GetComponent<RectTransform>();
-                levelRect.anchorMin = new Vector2(0, 0.3f);
-                levelRect.anchorMax = new Vector2(1, 0.6f);
+                levelRect.anchorMin = new Vector2(0, 0.28f);
+                levelRect.anchorMax = new Vector2(1, 0.55f);
                 // 如果有红心图标，文本向右偏移
-                float leftOffset = heartSprite != null ? (HEART_ICON_SIZE + 12f) : 10f;
+                float leftOffset = 64f;
                 levelRect.offsetMin = new Vector2(leftOffset, 0);
-                levelRect.offsetMax = new Vector2(-10f, 0);
+                levelRect.offsetMax = new Vector2(-16f, 0);
                 
                 // 创建进度条背景
                 GameObject progressBgObj = new GameObject("ProgressBg");
                 progressBgObj.transform.SetParent(affinityPanel.transform, false);
                 Image progressBg = progressBgObj.AddComponent<Image>();
-                progressBg.color = new Color(0.3f, 0.3f, 0.3f, 1f);
+                progressBg.color = BossRushUIColors.SurfaceRaised;
+                progressBg.raycastTarget = false;
+                BossRushUI.ApplyPanelSkin(progressBg, 3);
                 
                 RectTransform progressBgRect = progressBgObj.GetComponent<RectTransform>();
-                progressBgRect.anchorMin = new Vector2(0.1f, 0.1f);
-                progressBgRect.anchorMax = new Vector2(0.9f, 0.25f);
+                progressBgRect.anchorMin = new Vector2(0.05f, 0.12f);
+                progressBgRect.anchorMax = new Vector2(0.95f, 0.20f);
                 progressBgRect.offsetMin = Vector2.zero;
                 progressBgRect.offsetMax = Vector2.zero;
                 
@@ -367,6 +379,11 @@ namespace BossRush
                 progressObj.transform.SetParent(progressBgObj.transform, false);
                 progressBar = progressObj.AddComponent<Image>();
                 progressBar.color = new Color(1f, 0.4f, 0.5f, 1f);  // 粉红色
+                progressBar.raycastTarget = false;
+                // Filled 必须有 sprite：sprite 为 null 时 Image.OnPopulateMesh 会退回整块矩形，
+                // fillAmount 被完全忽略——好感度条会永远显示满格。
+                // 这里只能赋纯色底图，不能走 ApplyPanelSkin：那会把 type 改回 Sliced。
+                progressBar.sprite = BossRushUI.GetSolidSprite();
                 progressBar.type = Image.Type.Filled;
                 progressBar.fillMethod = Image.FillMethod.Horizontal;
                 

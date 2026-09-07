@@ -4,6 +4,21 @@
 
 ## 最新修复
 
+### 2026-09-07 游戏内 UI 可读性与雾效整理
+
+**分类**：COMPAT（表现/布局），文档 SAFE。**状态**：代码已修，Windows 正式编译通过，555项守卫全部通过，改动范围 `git diff --check` 通过；Unity 实机待验。
+
+全量生产清单检索 UI/特效入口，重点修复遗种巢越界/操作区重叠、Mode H HUD与卡片叠字/重复遮罩、征程和展示柜偏移标题、共享按钮重复乘色、图片查看器4K二次放大及失败时无限“加载中”。正文按内容测高滚动；页签、长文本、关系提示与成就浮窗统一留白/反馈；成就/图鉴采用逻辑视口。共享环形雾采用单次RGB染色、平滑淡入消散和增长曲线，保留发射预算与玩法参数。
+
+同步相关知识卡和主题文档。新增 `UILayoutReadabilityGuard`，含6个内存反向检查；没有新增生产 `.cs`、schema或资产文件。既有编译脚本会自动部署本机 Mod；未提交或发布 Workshop。初始 Wiki 站点工作树改动保持原样。
+
+**复核补修（同日第二轮）**：逐点复核后又修了 11 处。两处是"改了一半"——`ModeHRecoveryPanel` 仍在根 Backdrop 之上叠第二层遮罩、`CreateRealStakeSlots` 是唯一漏接 `ConfigureScrollRect` 的滚动区。三处是 Unity API 静默失效：好感度进度条与 Mode H 口令倒计时条都用 `Image.Type.Filled` 却没赋 sprite（`OnPopulateMesh` 在 `activeSprite == null` 时退回整块矩形，`fillAmount` 被完全忽略，条子永远满格），共享按钮的悬停用大于 1 的中性乘色而 `CanvasRenderer` 的 tint 是 32 位色、>1 会被夹回白色。其余是收紧易碎点：按钮底色改由 ColorBlock 单一承担并新增 `SetButtonBaseColor` 入口（页签/拍铃不再直写 `Image.color`）、亮底阈值从贴着 Warning/Success 的 0.18 提到 0.30、雾效 alpha 不再被平方（常量同步改写为旧值的平方，渲染结果与已发布版本一致）、注入图集后不再生成程序化贴图、窄按钮标签不再被压窄、删掉 Expand 下的死参数 `matchWidthOrHeight`、全屏看图改用新的 `BackdropStrong` token。
+
+`UILayoutReadabilityGuard` 同步扩到 11 个内存反向检查，并新增：全部生产源码的 `Image.Type.Filled` 必须配 sprite、按钮 ColorBlock 不得出现大于 1 的乘色、从源码重算每个设计 token 与亮底阈值的余量（要求 ≥20%）。复核后重编译零错误零警告、555 守卫全绿。
+
+完整证据、静态候选清单、验证结果与双语/多分辨率/特效 smoke 清单：
+[2026-09-07 游戏内 UI 与特效视觉审查](docs/代码审查/2026-09-07-游戏内UI与特效视觉审查.md)。
+
 ### 2026-09-06 在线 Wiki 前端二轮：线条与侧栏观感、搜索遮罩、配图灯箱与图片口径
 
 **状态**：fixed（浏览器实测）。owner 反馈上一轮之后仍有「廉价感」、点搜索是「黑屏再弹框」、

@@ -127,8 +127,9 @@ namespace BossRush
 
         private void CalculatePanelSize()
         {
-            float screenWidth = Screen.width;
-            float screenHeight = Screen.height;
+            Vector2 viewport = ZombieModeUIHelper.GetReferenceViewportSize();
+            float screenWidth = viewport.x;
+            float screenHeight = viewport.y;
             
             calculatedPanelWidth = Mathf.Clamp(screenWidth * PanelWidthRatio, MinPanelWidth, MaxPanelWidth);
             calculatedPanelHeight = Mathf.Clamp(screenHeight * PanelHeightRatio, MinPanelHeight, MaxPanelHeight);

@@ -70,9 +70,11 @@ namespace BossRush
             UnityEngine.Object.DontDestroyOnLoad(_root);
             BossRushUI.CreateBackdrop(_root.transform);
 
+            // 根上已经有一张 Backdrop，这里不能再叠：两张 0.62 合成 0.856，
+            // 恢复壳会暗到看不清后面的场景（与 ModeHUI.OpenPage 同一处理）。
             GameObject surface = ZombieModeUIHelper.CreateModalSurface(
                 "ModeH_RecoverySurface", _root.transform,
-                ModeHUI.RecoverySize, BossRushUIColors.Warning);
+                ModeHUI.RecoverySize, BossRushUIColors.Warning, createBackdrop: false);
 
             ModeHUI.CreateTitle(surface.transform,
                 !string.IsNullOrEmpty(headline)

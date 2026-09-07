@@ -25,7 +25,8 @@ namespace BossRush
         protected override float LocalLifetime => 0.6f;
         protected override float LocalSpeed => 0.15f;
         protected override float LocalSize => 0.9f;
-        protected override float LocalAlpha => 0.45f;
+        // 0.45² —— 基类改为单次施加 alpha 后，按旧的实际生效值重写，霜雾浓度不变。
+        protected override float LocalAlpha => 0.2025f;
         protected override float LocalEmissionRate => 5f;
 
         protected override Color ParticleTint => new Color(0.72f, 0.9f, 1f);

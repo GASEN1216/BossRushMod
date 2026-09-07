@@ -343,7 +343,7 @@ namespace BossRush
                 + GridPadding * 2f;
             _panelWidth = gridWidth + PanelSidePadding * 2f;
 
-            float screenHeight = Screen.height;
+            float screenHeight = ZombieModeUIHelper.GetReferenceViewportSize().y;
             _panelHeight = Mathf.Clamp(screenHeight * PanelHeightRatio, MinPanelHeight, MaxPanelHeight);
         }
 

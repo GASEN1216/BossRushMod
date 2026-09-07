@@ -89,6 +89,8 @@ namespace BossRush
     internal static class BossRushUIColors
     {
         internal static readonly Color Backdrop = new Color(0.015f, 0.02f, 0.025f, 0.62f);
+        /// <summary>全屏看图/看视频用的强遮罩：正片内容需要压住背后的战斗画面，0.62 会透出干扰。</summary>
+        internal static readonly Color BackdropStrong = new Color(0.015f, 0.02f, 0.025f, 0.90f);
         internal static readonly Color Surface = new Color(0.045f, 0.055f, 0.065f, 0.92f);
         internal static readonly Color SurfaceRaised = new Color(0.075f, 0.09f, 0.105f, 0.95f);
         internal static readonly Color Header = new Color(0.09f, 0.115f, 0.13f, 0.96f);
@@ -100,6 +102,11 @@ namespace BossRush
         internal static readonly Color Warning = new Color(0.58f, 0.42f, 0.17f, 1f);
         internal static readonly Color Danger = new Color(0.48f, 0.20f, 0.20f, 1f);
         internal static readonly Color Disabled = new Color(0.16f, 0.17f, 0.17f, 0.82f);
+        // 状态底色用于承托白字；直接写在深色面板上的提示使用这些亮色。
+        internal static readonly Color SuccessText = new Color(0.50f, 0.86f, 0.66f, 1f);
+        internal static readonly Color WarningText = new Color(1f, 0.79f, 0.40f, 1f);
+        internal static readonly Color DangerText = new Color(1f, 0.61f, 0.59f, 1f);
+        internal static readonly Color TextOnAccent = new Color(0.025f, 0.055f, 0.06f, 1f);
 
         /// <summary>稀有度描边，供奖励卡一类需要分级的构件使用。</summary>
         internal static readonly Color RarityCommon = new Color(0.55f, 0.60f, 0.64f, 0.9f);
@@ -129,6 +136,12 @@ namespace BossRush
         {
             injectedButtonSprite = sprite;
         }
+
+        /// <summary>是否已注入面板图集。调用方据此判断能否回落到程序化半径。</summary>
+        internal static bool HasInjectedPanelSprite { get { return injectedPanelSprite != null; } }
+
+        /// <summary>是否已注入按钮图集。</summary>
+        internal static bool HasInjectedButtonSprite { get { return injectedButtonSprite != null; } }
 
         internal static Sprite GetPanelSprite()
         {
@@ -160,6 +173,9 @@ namespace BossRush
         // 这些贴图很小（最大 64x64 的 Alpha8），且下一个界面马上又要用。
         private static readonly Dictionary<int, Sprite> roundedSpriteCache = new Dictionary<int, Sprite>();
 
+        // Image.Type.Filled / Tiled 专用的纯色底图，同样全 Mod 共享。
+        private static Sprite solidSprite;
+
         /// <summary>
         /// 释放程序化生成的 Sprite / Texture 与字体缓存。
         /// 这些对象带 HideFlags.DontSave，切场景不会自动回收，必须显式销毁。
@@ -182,6 +198,17 @@ namespace BossRush
                 }
             }
             roundedSpriteCache.Clear();
+
+            if (solidSprite != null)
+            {
+                Texture2D solidTexture = solidSprite.texture;
+                Object.Destroy(solidSprite);
+                if (solidTexture != null)
+                {
+                    Object.Destroy(solidTexture);
+                }
+                solidSprite = null;
+            }
 
             cachedLegacyFont = null;
             legacyFontResolved = false;
@@ -212,6 +239,38 @@ namespace BossRush
             Sprite sprite = BuildRoundedSprite(radius);
             roundedSpriteCache[radius] = sprite;
             return sprite;
+        }
+
+        /// <summary>
+        /// 纯色九宫格无关底图。`Image.Type.Filled` 与 `Tiled` **必须**有 sprite：
+        /// sprite 为 null 时 Unity 的 `Image.OnPopulateMesh` 会直接退回基类的整块矩形，
+        /// `type` 与 `fillAmount` 被完全忽略——进度条/倒计时条会永远满格。
+        /// </summary>
+        internal static Sprite GetSolidSprite()
+        {
+            if (solidSprite != null)
+            {
+                return solidSprite;
+            }
+
+            Texture2D texture = new Texture2D(4, 4, TextureFormat.ARGB32, false);
+            texture.name = "BossRushUI_Solid";
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            Color32[] solid = new Color32[16];
+            for (int i = 0; i < solid.Length; i++)
+            {
+                solid[i] = new Color32(255, 255, 255, 255);
+            }
+            texture.SetPixels32(solid);
+            texture.Apply(false, false);
+
+            solidSprite = Sprite.Create(
+                texture, new Rect(0f, 0f, 4f, 4f), new Vector2(0.5f, 0.5f), 100f);
+            solidSprite.name = "BossRushUI_Solid";
+            solidSprite.hideFlags = HideFlags.HideAndDontSave;
+            return solidSprite;
         }
 
         private static Sprite BuildRoundedSprite(int radius)
@@ -321,7 +380,14 @@ namespace BossRush
                 return;
             }
 
-            image.sprite = radius >= 12 ? BossRushUISkin.GetPanelSprite() : BossRushUISkin.GetButtonSprite();
+            // 默认皮肤保留调用方的半径：2px 细轨不能误用 8px 按钮圆角。
+            // 注入了图集就一律用图集（换皮的意义就在于统一），此时不生成任何程序化贴图。
+            bool injected = radius >= 12
+                ? BossRushUISkin.HasInjectedPanelSprite
+                : BossRushUISkin.HasInjectedButtonSprite;
+            image.sprite = injected
+                ? (radius >= 12 ? BossRushUISkin.GetPanelSprite() : BossRushUISkin.GetButtonSprite())
+                : GetRoundedSprite(radius);
             if (image.sprite == null)
             {
                 return;
@@ -331,6 +397,119 @@ namespace BossRush
             // 面板通常比九宫格贴图大得多，关掉 fillCenter 之外的自动缩放，
             // 否则小尺寸控件上 Unity 会按 pixelsPerUnit 把边角压扁。
             image.pixelsPerUnitMultiplier = 1f;
+        }
+
+        /// <summary>亮底判定阈值（WCAG 相对亮度）。余量说明见 GetButtonTextColor。</summary>
+        internal const float LightBackgroundLuminance = 0.30f;
+
+        /// <summary>
+        /// WCAG 相对亮度。`Color.linear` 与项目色彩空间无关，恒做 gamma→linear 换算。
+        /// </summary>
+        internal static float RelativeLuminance(Color color)
+        {
+            Color linear = color.linear;
+            return linear.r * 0.2126f + linear.g * 0.7152f + linear.b * 0.0722f;
+        }
+
+        /// <summary>
+        /// 亮底按钮用深字，避免青绿主按钮和纸面按钮的白字低对比。
+        ///
+        /// 阈值取 0.30 而不是贴着中灰：本 Mod 的 Warning(≈0.168)、Success(≈0.179)
+        /// 两个常用底色本来就挤在 0.18 附近，用中灰阈值时任何一次配色微调
+        /// 都会把标签静默从白翻黑，而且没有任何守卫会拦。0.30 距下方最近的
+        /// Success 有 40% 余量、距上方最近的 Accent(≈0.379) 有 26%，两边都不在刀刃上。
+        /// 中间带一律回落白字——深色 UI 的默认。余量由 UILayoutReadabilityGuard 断言。
+        /// </summary>
+        internal static Color GetButtonTextColor(Color background)
+        {
+            return RelativeLuminance(background) > LightBackgroundLuminance
+                ? BossRushUIColors.TextOnAccent
+                : BossRushUIColors.TextPrimary;
+        }
+
+        /// <summary>
+        /// 由底色派生按钮三态。ColorTint 与 Graphic.color 相乘，所以调用方必须把
+        /// Graphic 置白、由 ColorBlock 承担绝对色——**不要**用大于 1 的中性乘色做悬停：
+        /// CanvasRenderer 的 tint 存的是 32 位色，超过 1 会被夹回白色，悬停等于没做。
+        /// </summary>
+        internal static Color GetHoverColor(Color background)
+        {
+            Color hover = Color.Lerp(background, Color.white, 0.22f);
+            hover.a = background.a;
+            return hover;
+        }
+
+        /// <summary>按下色：压暗，与悬停一起构成可分辨的三态梯度。</summary>
+        internal static Color GetPressedColor(Color background)
+        {
+            Color pressed = Color.Lerp(background, Color.black, 0.20f);
+            pressed.a = background.a;
+            return pressed;
+        }
+
+        /// <summary>禁用色：往中性灰收并降透明度，和"可点但未悬停"明确区分。</summary>
+        internal static Color GetDisabledColor(Color background)
+        {
+            Color disabled = Color.Lerp(background, BossRushUIColors.Disabled, 0.55f);
+            disabled.a = background.a * 0.85f;
+            return disabled;
+        }
+
+        /// <summary>
+        /// 低频构建时测量多行文本。由容器提供宽度、让高度容纳正文，避免把长说明缩成小字。
+        /// 调用方必须把返回高度计入卡片/滚动内容；不得给固定 HUD 使用 Overflow。
+        /// </summary>
+        internal static float MeasureTextHeight(TMPro.TextMeshProUGUI text, float width, float minimum)
+        {
+            text.enableAutoSizing = false;
+            text.enableWordWrapping = true;
+            text.overflowMode = TMPro.TextOverflowModes.Overflow;
+            text.margin = Vector4.zero;
+            float height = Mathf.Max(minimum, Mathf.Ceil(text.GetPreferredValues(
+                text.text, Mathf.Max(1f, width), float.PositiveInfinity).y) + 4f);
+            text.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+            text.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+            return height;
+        }
+
+        /// <summary>
+        /// 给已有纵向列表补齐空白区滚轮命中、可拖动滚动条和一致的滚动手感。
+        /// 内容须在右侧预留 20px；官方 ScrollRect 已有滑块时直接沿用。
+        /// </summary>
+        internal static void ConfigureScrollRect(ScrollRect scroll)
+        {
+            if (scroll == null || scroll.viewport == null) return;
+            scroll.horizontal = false;
+            scroll.vertical = true;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 32f;
+            Image hitArea = scroll.viewport.GetComponent<Image>();
+            if (hitArea == null)
+            {
+                hitArea = scroll.viewport.gameObject.AddComponent<Image>();
+                hitArea.color = Color.clear;
+            }
+            hitArea.raycastTarget = true;
+            if (scroll.verticalScrollbar != null) return;
+
+            GameObject track = ZombieModeUIHelper.CreateRect(
+                "Scrollbar", scroll.viewport, new Vector2(1f, 0f), new Vector2(1f, 1f),
+                new Vector2(-8f, 0f), new Vector2(12f, -8f), new Vector2(0.5f, 0.5f));
+            Image trackImage = track.AddComponent<Image>();
+            trackImage.color = BossRushUIColors.Surface;
+            ApplyPanelSkin(trackImage, 4);
+            GameObject handle = ZombieModeUIHelper.CreateRect(
+                "Handle", track.transform, Vector2.zero, Vector2.one,
+                Vector2.zero, Vector2.zero, new Vector2(0.5f, 0.5f));
+            Image handleImage = handle.AddComponent<Image>();
+            handleImage.color = BossRushUIColors.TextSecondary;
+            ApplyPanelSkin(handleImage, 4);
+            Scrollbar scrollbar = track.AddComponent<Scrollbar>();
+            scrollbar.direction = Scrollbar.Direction.BottomToTop;
+            scrollbar.handleRect = handle.GetComponent<RectTransform>();
+            scrollbar.targetGraphic = handleImage;
+            scroll.verticalScrollbar = scrollbar;
+            scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
         }
 
         /// <summary>

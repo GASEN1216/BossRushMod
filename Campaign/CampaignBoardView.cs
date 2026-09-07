@@ -6,7 +6,7 @@
 //   底图走 ApplyPanelSkin、字体走 ApplyGameFont（禁内置 Arial，渲染不了中文）、
 //   CanvasScaler 走 ConfigureCanvasScaler，文本一律 TMP。
 //
-// 面板结构（一屏放下，不做滚动）：
+// 面板结构（正文按实际文字高度滚动，标题和关闭按钮固定）：
 //   标题栏 → 六章列表（每章一张卡：状态点 + 标题 + 目标进度 + 操作按钮）→ 关闭。
 //
 // 【为什么每次打开都重建而不是常驻】
@@ -87,7 +87,7 @@ namespace BossRush
             BossRushUI.CreateBackdrop(_root.transform);
 
             GameObject panel = ZombieModeUIHelper.CreateRect(
-                "Panel", _root.transform, new Vector2(0.5f, 0.5f), new Vector2(880f, 620f));
+                "Panel", _root.transform, new Vector2(0.5f, 0.5f), new Vector2(1040f, 840f));
             Image panelBg = panel.AddComponent<Image>();
             panelBg.color = BossRushUIColors.Surface;
             BossRushUI.ApplyPanelSkin(panelBg, 14);
@@ -102,8 +102,8 @@ namespace BossRush
         private static void BuildHeader(Transform parent)
         {
             GameObject header = ZombieModeUIHelper.CreateRect(
-                "Header", parent, new Vector2(0.5f, 1f), new Vector2(1f, 1f),
-                new Vector2(0f, -34f), new Vector2(0f, 68f), new Vector2(0.5f, 0.5f));
+                "Header", parent, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(0f, -44f), new Vector2(-32f, 88f), new Vector2(0.5f, 0.5f));
             Image headerBg = header.AddComponent<Image>();
             headerBg.color = BossRushUIColors.Header;
             BossRushUI.ApplyPanelSkin(headerBg, 12);
@@ -128,21 +128,31 @@ namespace BossRush
             IList<CampaignChapterDef> chapters = CampaignContentCatalog.Chapters;
             if (chapters == null || chapters.Count == 0) return;
 
-            const float cardHeight = 74f;
-            const float spacing = 8f;
-            float startY = 200f;
+            GameObject viewport = ZombieModeUIHelper.CreateRect(
+                "Chapters", parent, new Vector2(0.5f, 0.5f), new Vector2(960f, 608f));
+            viewport.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, -10f);
+            viewport.AddComponent<RectMask2D>();
+            ScrollRect scroll = viewport.AddComponent<ScrollRect>();
+            GameObject content = ZombieModeUIHelper.CreateRect(
+                "ChapterContent", viewport.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(-10f, 0f), new Vector2(940f, 608f), new Vector2(0.5f, 1f));
+            scroll.viewport = viewport.GetComponent<RectTransform>();
+            scroll.content = content.GetComponent<RectTransform>();
+            BossRushUI.ConfigureScrollRect(scroll);
+            float usedHeight = 8f;
 
             for (int i = 0; i < chapters.Count; i++)
             {
                 CampaignChapterDef def = chapters[i];
                 if (def == null) continue;
 
-                float y = startY - i * (cardHeight + spacing);
-                BuildChapterCard(parent, def, new Vector2(0f, y), new Vector2(800f, cardHeight));
+                usedHeight += BuildChapterCard(content.transform, def,
+                    new Vector2(0f, -usedHeight), new Vector2(924f, 116f)) + 12f;
             }
+            scroll.content.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(608f, usedHeight));
         }
 
-        private static void BuildChapterCard(
+        private static float BuildChapterCard(
             Transform parent, CampaignChapterDef def, Vector2 position, Vector2 size)
         {
             CampaignChapterState state = CampaignProgressService.GetState(def.ChapterId);
@@ -151,6 +161,9 @@ namespace BossRush
             GameObject card = BossRushUI.CreateCard(
                 "Chapter_" + def.ChapterId, parent, position, size,
                 BossRushUIColors.SurfaceRaised, accent, true);
+            RectTransform cardRect = card.GetComponent<RectTransform>();
+            cardRect.anchorMin = cardRect.anchorMax = cardRect.pivot = new Vector2(0.5f, 1f);
+            cardRect.anchoredPosition = position;
 
             // 章节标题（未解锁时不剧透标题，只显示序号）
             string titleText = state == CampaignChapterState.Locked
@@ -159,22 +172,26 @@ namespace BossRush
                          "Chapter " + def.Order + " · " + def.TitleEN);
 
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
-                "Title", card.transform, titleText, 19f,
-                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(20f, 18f), new Vector2(430f, 26f),
+                "Title", card.transform, titleText, 24f,
+                new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(24f, -16f), new Vector2(700f, 36f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
-            title.rectTransform.pivot = new Vector2(0f, 0.5f);
+            title.rectTransform.pivot = new Vector2(0f, 1f);
+            title.margin = Vector4.zero;
             BossRushUI.ApplyGameFont(title);
 
             TextMeshProUGUI detail = ZombieModeUIHelper.CreateText(
-                "Detail", card.transform, BuildDetailText(def, state), 14f,
-                new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                new Vector2(20f, -12f), new Vector2(500f, 40f),
+                "Detail", card.transform, BuildDetailText(def, state), 18f,
+                new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(24f, -58f), new Vector2(700f, 40f),
                 TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
-            detail.rectTransform.pivot = new Vector2(0f, 0.5f);
+            detail.rectTransform.pivot = new Vector2(0f, 1f);
             BossRushUI.ApplyGameFont(detail);
+            float height = Mathf.Max(size.y, 58f + BossRushUI.MeasureTextHeight(detail, 700f, 40f) + 18f);
+            cardRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
 
             BuildChapterAction(card.transform, def, state);
+            return height;
         }
 
         /// <summary>
@@ -247,7 +264,8 @@ namespace BossRush
             {
                 CampaignObjectiveDef objective = def.Objectives[i];
                 if (objective == null) continue;
-                if (i > 0) builder.Append("　·　");
+                if (i > 0) builder.Append('\n');
+                builder.Append("• ");
                 builder.Append(L10n.T(objective.DescCN, objective.DescEN));
 
                 if (progress != null && i < progress.Count && progress[i] != null

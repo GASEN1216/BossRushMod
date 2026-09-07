@@ -139,11 +139,12 @@ namespace BossRush
                     break;
                 case ModeHPage.Brief:
                 case ModeHPage.Settlement:
-                    CreateLineList(surface, panelSize, content, cursorY);
+                    CreateLineList(surface, panelSize, content, cursorY,
+                        content.Cards.Count > 0 ? 224f : float.PositiveInfinity);
                     if (content.Cards.Count > 0)
                     {
                         // 战痕 offer 的二选一卡片挂在正文下方
-                        CreateCardGrid(surface, panelSize, content, cursorY - 320f);
+                        CreateCardGrid(surface, panelSize, content, cursorY - 248f, false);
                     }
                     break;
                 default:
@@ -195,13 +196,13 @@ namespace BossRush
         /// 异常用 Warning/Danger token 区分于普通怪癖，不与普通词条同级展示。
         /// </summary>
         private static void CreateCardGrid(
-            Transform surface, Vector2 panelSize, ModeHPageContent content, float topY)
+            Transform surface, Vector2 panelSize, ModeHPageContent content, float topY, bool showBody = true)
         {
             // 先出正文：入口页的选秀操作说明、名人堂的席位数都写在 page.Body 上，
             // 而这条渲染分支此前从不读它，那些文字对玩家完全不存在。
             // 不能用 ModeHUI.CreateBody——它铺满整个面板高度，会盖在卡片上；
             // 这里按行列表同款写法给一条限高的说明行。
-            if (!string.IsNullOrEmpty(content.Body))
+            if (showBody && !string.IsNullOrEmpty(content.Body))
             {
                 GameObject bodyRow = ZombieModeUIHelper.CreateRect(
                     "ModeH_CardGridBody", surface, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
@@ -218,7 +219,7 @@ namespace BossRush
             int count = content.Cards.Count;
             if (count == 0) return;
 
-            float usableWidth = panelSize.x - ModeHUI.SafeMargin * 2f;
+            float usableWidth = panelSize.x - ModeHUI.SafeMargin * 2f - 20f;
             int columns = count <= 3 ? Math.Max(1, count) : 3;
 
             // 行数必须放得下，否则末行会压到底部动作行上。
@@ -226,7 +227,7 @@ namespace BossRush
             // 5 张选秀卡按 3 列排成两行，第 2 行落在 y∈[-398,-98]，
             // 而动作行在 y∈[-382,-326] —— 第 4、5 张卡直接被画在按钮底下。
             // 放不下就加列（卡片变窄），而不是继续往下堆。
-            float floorY = -panelSize.y * 0.5f + ActionBandReserve;
+            float floorY = -panelSize.y * 0.5f + GetActionBandReserve(panelSize, content);
             float availableHeight = topY - floorY;
             int maxRows = Mathf.Max(1,
                 Mathf.FloorToInt((availableHeight + CardGap) / (CardHeight + CardGap)));
@@ -276,11 +277,11 @@ namespace BossRush
                     BossRushUIColors.SurfaceRaised, accent, true);
 
                 CreateCardText(card.transform, "Title", data.Title, 26f,
-                    BossRushUIColors.TextPrimary, cardWidth, CardHeight * 0.5f - 28f);
+                    BossRushUIColors.TextPrimary, cardWidth, 130f, 34f);
                 CreateCardText(card.transform, "Subtitle", data.Subtitle, 20f,
-                    BossRushUIColors.Accent, cardWidth, CardHeight * 0.5f - 62f);
+                    BossRushUIColors.Accent, cardWidth, 90f, 28f);
                 CreateCardText(card.transform, "Body", data.Body, 18f,
-                    BossRushUIColors.TextSecondary, cardWidth, -10f);
+                    BossRushUIColors.TextSecondary, cardWidth, 52f, 136f);
 
                 if (data.OnClick == null) continue;
                 ZombieModeUIHelper.CreateButton(
@@ -297,12 +298,12 @@ namespace BossRush
 
         private static void CreateCardText(
             Transform parent, string name, string value, float fontSize, Color color,
-            float cardWidth, float offsetY)
+            float cardWidth, float offsetY, float height)
         {
             GameObject obj = ZombieModeUIHelper.CreateRect(
                 name, parent, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, offsetY), new Vector2(cardWidth - 32f, 96f),
-                new Vector2(0.5f, 0.5f));
+                new Vector2(0f, offsetY), new Vector2(cardWidth - 40f, height),
+                new Vector2(0.5f, 1f));
             TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
                 obj, value != null ? value : string.Empty, fontSize,
                 TextAlignmentOptions.TopLeft, color);
@@ -328,7 +329,10 @@ namespace BossRush
                 headline, content.Body, 48f, TextAlignmentOptions.Center, BossRushUIColors.Accent);
             BossRushUI.ApplyGameFont(headlineText);
 
-            CreateLineList(surface, panelSize, content, topY - 120f);
+            // 赔率拆解与押品选择器各占一列，长列表不能画到押品按钮底下。
+            CreateLineList(surface, panelSize, content, topY - 120f, float.PositiveInfinity,
+                panelSize.x - ModeHUI.SafeMargin * 2f - StakeSelectorSize.x - CardGap,
+                -(StakeSelectorSize.x + CardGap) * 0.5f);
 
             // 押品选择器：与虚拟下注并排，禁用时在原位显示具体原因
             GameObject selector = ZombieModeUIHelper.CreateRect(
@@ -407,7 +411,8 @@ namespace BossRush
                 scrollRect.horizontal = false;
                 scrollRect.vertical = true;
                 scrollRect.movementType = ScrollRect.MovementType.Clamped;
-                scrollRect.scrollSensitivity = 24f;
+                // 空白处滚轮 + 可拖动滑块与其它滚动区一致；40 个押品候选靠这条才够得到。
+                BossRushUI.ConfigureScrollRect(scrollRect);
 
                 host = scrollContent.transform;
                 topY = 0f;
@@ -440,37 +445,36 @@ namespace BossRush
         /// 不按内容实时扩容，也不每帧重建布局。
         /// </summary>
         private static void CreateLineList(
-            Transform surface, Vector2 panelSize, ModeHPageContent content, float topY)
+            Transform surface, Vector2 panelSize, ModeHPageContent content, float topY,
+            float maximumHeight = float.PositiveInfinity, float width = 0f, float offsetX = 0f)
         {
-            if (content.Lines.Count == 0)
+            float viewportHeight = Mathf.Min(maximumHeight, Mathf.Max(48f,
+                topY - (-panelSize.y * 0.5f + GetActionBandReserve(panelSize, content))));
+            if (width <= 0f) width = panelSize.x - ModeHUI.SafeMargin * 2f;
+            Vector2 listSize = new Vector2(width + ModeHUI.SafeMargin * 2f, panelSize.y);
+            GameObject host = CreateScrollHost(surface, listSize, topY, viewportHeight, viewportHeight);
+            // 官方 prefab 的 content 可能位于嵌套 viewport 下，用 ScrollRect 根定位。
+            ScrollRect scroll = host.GetComponentInParent<ScrollRect>();
+            if (scroll != null)
             {
-                ModeHUI.CreateBody(surface, content.Body, panelSize, 0f);
-                return;
+                RectTransform scrollRect = scroll.GetComponent<RectTransform>();
+                scrollRect.anchoredPosition += new Vector2(offsetX, 0f);
             }
-
-            float viewportHeight = Mathf.Max(200f, topY - (-panelSize.y * 0.5f + ActionBandReserve));
-            float contentHeight = content.Lines.Count * LineHeight;
-            Transform host = surface;
-
-            if (contentHeight > viewportHeight)
-            {
-                host = CreateScrollHost(
-                    surface, panelSize, topY, viewportHeight, contentHeight).transform;
-                topY = contentHeight * 0.5f;
-            }
-
-            for (int i = 0; i < content.Lines.Count; i++)
+            float used = 8f;
+            int count = content.Lines.Count > 0 ? content.Lines.Count : 1;
+            for (int i = 0; i < count; i++)
             {
                 GameObject row = ZombieModeUIHelper.CreateRect(
-                    "ModeH_Line_" + i, host, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                    new Vector2(0f, topY - LineHeight * (i + 0.5f)),
-                    new Vector2(panelSize.x - ModeHUI.SafeMargin * 2f - 24f, LineHeight - 4f),
-                    new Vector2(0.5f, 0.5f));
+                    "ModeH_Line_" + i, host.transform, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                    new Vector2(0f, -used), new Vector2(width - 40f, LineHeight), new Vector2(0.5f, 1f));
                 TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
-                    row, content.Lines[i], 22f, TextAlignmentOptions.Left,
+                    row, content.Lines.Count > 0 ? content.Lines[i] : content.Body, 22f, TextAlignmentOptions.TopLeft,
                     BossRushUIColors.TextSecondary);
                 BossRushUI.ApplyGameFont(text);
+                used += BossRushUI.MeasureTextHeight(text, width - 40f, LineHeight) + 8f;
             }
+            host.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical, Mathf.Max(viewportHeight, used));
         }
 
         /// <summary>官方 ScrollRect prefab 优先；不可用时回退共享库手搓一个可滚动容器。</summary>
@@ -489,10 +493,13 @@ namespace BossRush
                 rect.anchoredPosition = new Vector2(0f, topY - viewportHeight * 0.5f);
                 if (official.content != null)
                 {
-                    official.content.sizeDelta = new Vector2(rect.sizeDelta.x, contentHeight);
+                    official.content.anchorMin = official.content.anchorMax = official.content.pivot = new Vector2(0.5f, 1f);
+                    official.content.anchoredPosition = new Vector2(-10f, 0f);
+                    official.content.sizeDelta = new Vector2(rect.sizeDelta.x - 20f, contentHeight);
+                    BossRushUI.ConfigureScrollRect(official);
                     return official.content.gameObject;
                 }
-                return official.gameObject;
+                UnityEngine.Object.Destroy(official.gameObject);
             }
 
             GameObject viewport = ZombieModeUIHelper.CreateRect(
@@ -506,11 +513,12 @@ namespace BossRush
 
             GameObject contentRoot = ZombieModeUIHelper.CreateRect(
                 "ModeH_ScrollContent", viewport.transform,
-                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), Vector2.zero,
-                new Vector2(panelSize.x - ModeHUI.SafeMargin * 2f, contentHeight),
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(-10f, 0f),
+                new Vector2(panelSize.x - ModeHUI.SafeMargin * 2f - 20f, contentHeight),
                 new Vector2(0.5f, 1f));
             scroll.content = contentRoot.GetComponent<RectTransform>();
             scroll.viewport = viewport.GetComponent<RectTransform>();
+            BossRushUI.ConfigureScrollRect(scroll);
             return contentRoot;
         }
 
@@ -518,13 +526,13 @@ namespace BossRush
             ModeHPageContent content, float topY)
         {
             const float rowHeight = 48f;
-            float height = topY + panelSize.y * 0.5f - ActionBandReserve;
+            float height = topY + panelSize.y * 0.5f - GetActionBandReserve(panelSize, content);
             GameObject host = CreateScrollHost(surface, panelSize, topY, height,
                 Math.Max(height, content.PreparationOptions.Count * rowHeight));
             RectTransform rect = host.GetComponent<RectTransform>();
             rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 1f);
-            rect.anchoredPosition = Vector2.zero;
-            float width = panelSize.x - ModeHUI.SafeMargin * 2f - 24f;
+            rect.anchoredPosition = new Vector2(-10f, 0f);
+            float width = panelSize.x - ModeHUI.SafeMargin * 2f - 40f;
             for (int i = 0; i < content.PreparationOptions.Count; i++)
             {
                 ModeHActionData option = content.PreparationOptions[i];
@@ -555,6 +563,15 @@ namespace BossRush
         #endregion
 
         #region 动作按钮
+
+        private static float GetActionBandReserve(Vector2 panelSize, ModeHPageContent content)
+        {
+            float width = panelSize.x - ModeHUI.SafeMargin * 2f;
+            int perRow = Mathf.Min(MaxSingleRowActions, Mathf.Max(1,
+                Mathf.FloorToInt((width + CardGap) / (ActionSize.x + CardGap))));
+            int rows = Mathf.Max(1, (content.Actions.Count + perRow - 1) / perRow);
+            return ActionBandReserve + (rows - 1) * (ActionSize.y + CardGap);
+        }
 
         /// <summary>
         /// 底部动作按钮。按钮的可交互性由调用方按当前状态与 owner token 决定。

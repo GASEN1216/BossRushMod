@@ -59,7 +59,6 @@ namespace BossRush
         // 常量
         // ============================================================================
 
-        private const float BACKGROUND_ALPHA = 0.9f;
         private const float IMAGE_MAX_SCALE = 0.85f;  // 图片最大占屏幕比例
         private const int TITLE_FONT_SIZE = 36;
         private const int HINT_FONT_SIZE = 24;
@@ -109,7 +108,8 @@ namespace BossRush
             bgObj.transform.SetParent(uiRoot.transform, false);
 
             backgroundImage = bgObj.AddComponent<Image>();
-            backgroundImage.color = new Color(0, 0, 0, BACKGROUND_ALPHA);
+            // 全屏看图要压住背后的战斗画面，用强遮罩 token，不另起一套魔法数字。
+            backgroundImage.color = BossRushUIColors.BackdropStrong;
             backgroundImage.raycastTarget = true;
 
             RectTransform bgRect = bgObj.GetComponent<RectTransform>();
@@ -134,37 +134,45 @@ namespace BossRush
             mainImage.raycastTarget = false;
 
             RectTransform imgRect = imgObj.GetComponent<RectTransform>();
-            imgRect.anchorMin = new Vector2(0.5f, 0.5f);
-            imgRect.anchorMax = new Vector2(0.5f, 0.5f);
+            // 在 Canvas 逻辑坐标内留出标题/关闭提示区，Image.preserveAspect 负责适配。
+            // 不把 Screen 像素直接写入 sizeDelta，否则 4K 会被 CanvasScaler 再放大一遍。
+            float sideMargin = (1f - IMAGE_MAX_SCALE) * 0.5f;
+            imgRect.anchorMin = new Vector2(sideMargin, 0f);
+            imgRect.anchorMax = new Vector2(1f - sideMargin, 1f);
             imgRect.pivot = new Vector2(0.5f, 0.5f);
-            imgRect.sizeDelta = new Vector2(1600, 900);  // 默认尺寸，会根据图片调整
+            imgRect.offsetMin = new Vector2(0f, 110f);
+            imgRect.offsetMax = new Vector2(0f, -110f);
 
             // 4. 创建标题文本
             GameObject titleObj = new GameObject("Title");
             titleObj.transform.SetParent(uiRoot.transform, false);
 
             titleText = titleObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(titleText);
             titleText.text = "";
             titleText.fontSize = TITLE_FONT_SIZE;
-            titleText.color = Color.white;
+            titleText.color = BossRushUIColors.TextPrimary;
+            titleText.enableWordWrapping = false;
+            titleText.overflowMode = TextOverflowModes.Ellipsis;
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.raycastTarget = false;
 
             RectTransform titleRect = titleObj.GetComponent<RectTransform>();
-            titleRect.anchorMin = new Vector2(0.5f, 1);
-            titleRect.anchorMax = new Vector2(0.5f, 1);
+            titleRect.anchorMin = new Vector2(0.1f, 1);
+            titleRect.anchorMax = new Vector2(0.9f, 1);
             titleRect.pivot = new Vector2(0.5f, 1);
             titleRect.anchoredPosition = new Vector2(0, -30);
-            titleRect.sizeDelta = new Vector2(800, 50);
+            titleRect.sizeDelta = new Vector2(0f, 50f);
 
             // 5. 创建提示文本
             GameObject hintObj = new GameObject("Hint");
             hintObj.transform.SetParent(uiRoot.transform, false);
 
             hintText = hintObj.AddComponent<TextMeshProUGUI>();
+            BossRushUI.ApplyGameFont(hintText);
             hintText.text = L10n.T("点击任意位置关闭", "Click anywhere to close");
             hintText.fontSize = HINT_FONT_SIZE;
-            hintText.color = new Color(0.7f, 0.7f, 0.7f);
+            hintText.color = BossRushUIColors.TextSecondary;
             hintText.alignment = TextAlignmentOptions.Center;
             hintText.raycastTarget = false;
 
@@ -252,19 +260,8 @@ namespace BossRush
 
             // 设置图片
             mainImage.sprite = sprite;
-
-            // 计算图片尺寸（保持宽高比，适应屏幕）
-            float screenWidth = Screen.width * IMAGE_MAX_SCALE;
-            float screenHeight = Screen.height * IMAGE_MAX_SCALE;
-            float imageWidth = sprite.rect.width;
-            float imageHeight = sprite.rect.height;
-
-            float scaleX = screenWidth / imageWidth;
-            float scaleY = screenHeight / imageHeight;
-            float scale = Mathf.Min(scaleX, scaleY);
-
-            RectTransform imgRect = mainImage.GetComponent<RectTransform>();
-            imgRect.sizeDelta = new Vector2(imageWidth * scale, imageHeight * scale);
+            mainImage.enabled = true;
+            hintText.text = L10n.T("点击任意位置关闭", "Click anywhere to close");
 
             // 设置标题
             if (!string.IsNullOrEmpty(title))
@@ -289,35 +286,15 @@ namespace BossRush
 
         private void ShowPlaceholder(string title)
         {
-            // 创建一个占位Sprite（如果没有实际图片）
-            Texture2D tex = new Texture2D(800, 600);
-            Color[] colors = new Color[800 * 600];
-
-            // 填充渐变背景
-            for (int y = 0; y < 600; y++)
-            {
-                for (int x = 0; x < 800; x++)
-                {
-                    float t = (float)y / 600f;
-                    colors[y * 800 + x] = Color.Lerp(new Color(0.2f, 0.3f, 0.4f), new Color(0.4f, 0.5f, 0.6f), t);
-                }
-            }
-            tex.SetPixels(colors);
-            tex.Apply();
-
-            Sprite placeholder = Sprite.Create(tex, new Rect(0, 0, 800, 600), new Vector2(0.5f, 0.5f));
-
-            // 显示占位图并添加提示
-            currentSprite = placeholder;
-            mainImage.sprite = placeholder;
-
-            RectTransform imgRect = mainImage.GetComponent<RectTransform>();
-            imgRect.sizeDelta = new Vector2(800, 600);
-
+            // 加载已失败，不显示永远不会结束的“加载中”，也不再为失败分配一张大纹理。
+            currentSprite = null;
+            mainImage.sprite = null;
+            mainImage.enabled = false;
             string placeholderTitle = string.IsNullOrEmpty(title) ?
-                L10n.T("图片加载中...", "Loading image...") : title;
+                L10n.T("图片暂不可用", "Image unavailable") : title;
             titleText.text = placeholderTitle;
             titleText.gameObject.SetActive(true);
+            hintText.text = L10n.T("图片未能加载 · 点击任意位置关闭", "Image could not be loaded · Click anywhere to close");
 
             uiRoot.SetActive(true);
             isOpen = true;

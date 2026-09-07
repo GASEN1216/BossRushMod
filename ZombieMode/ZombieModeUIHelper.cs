@@ -27,8 +27,8 @@ namespace BossRush
     /// </summary>
     internal static class ZombieModeUIHelper
     {
-        internal static readonly Color ModalBackdropColor = new Color(0.015f, 0.02f, 0.025f, 0.62f);
-        internal static readonly Color ModalSurfaceColor = new Color(0.045f, 0.055f, 0.065f, 0.92f);
+        internal static readonly Color ModalBackdropColor = BossRushUIColors.Backdrop;
+        internal static readonly Color ModalSurfaceColor = BossRushUIColors.Surface;
         internal static readonly Color ModalHeaderColor = new Color(0.09f, 0.115f, 0.13f, 0.16f);
         internal static readonly Color DividerColor = new Color(0.42f, 0.52f, 0.58f, 0.32f);
         internal static readonly Color TextPrimaryColor = new Color(0.94f, 0.96f, 0.97f, 1f);
@@ -342,11 +342,28 @@ namespace BossRush
             RectTransform rect = obj.GetComponent<RectTransform>();
             rect.anchoredPosition = position;
             Image image = obj.AddComponent<Image>();
-            image.color = backgroundColor;
             BossRushUI.ApplyPanelSkin(image, 8);
             Button button = obj.AddComponent<Button>();
             button.interactable = interactable;
-            CreateText("Text", obj.transform, text, fontSize, Vector2.zero, textSize, TextAlignmentOptions.Center, Color.white);
+            // 底色统一由 ColorBlock 的绝对色承担、Graphic 恒为白，与 ApplyButtonColors 同一套路。
+            // 让 Graphic 拿底色、ColorBlock 只做中性乘色的写法有个隐坑：悬停得靠大于 1 的
+            // 乘色提亮，而 CanvasRenderer 的 tint 存的是 32 位色，>1 会被夹回白色，
+            // 悬停与常态完全一致——等于没有悬停反馈。
+            button.targetGraphic = image;
+            ApplyButtonColors(button, backgroundColor,
+                BossRushUI.GetHoverColor(backgroundColor),
+                BossRushUI.GetDisabledColor(backgroundColor));
+            TextMeshProUGUI label = CreateText("Text", obj.transform, text, fontSize, Vector2.zero,
+                textSize, TextAlignmentOptions.Center, BossRushUI.GetButtonTextColor(backgroundColor));
+            // 布局组改变按钮宽度时，标签随点击区拉伸；不能保留创建时的固定宽度。
+            // 内边距只取 size 与 textSize 的实际差值：套 8/4 的下限会让两者相差不足
+            // 16px 的窄按钮（押品格、配装行）标签反而比调用方要的还窄。
+            Vector2 padding = new Vector2(Mathf.Max(0f, (size.x - textSize.x) * 0.5f),
+                Mathf.Max(0f, (size.y - textSize.y) * 0.5f));
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = padding;
+            label.rectTransform.offsetMax = -padding;
             if (interactable && onClick != null)
             {
                 button.onClick.AddListener(onClick);
@@ -359,19 +376,23 @@ namespace BossRush
             string name,
             Transform parent,
             Vector2 size,
-            Color accentColor)
+            Color accentColor,
+            bool createBackdrop = true)
         {
-            GameObject backdrop = CreateRect(
-                name + "_Backdrop",
-                parent,
-                Vector2.zero,
-                Vector2.one,
-                Vector2.zero,
-                Vector2.zero,
-                Vector2.zero);
-            Image backdropImage = backdrop.AddComponent<Image>();
-            backdropImage.color = ModalBackdropColor;
-            backdropImage.raycastTarget = true;
+            if (createBackdrop)
+            {
+                GameObject backdrop = CreateRect(
+                    name + "_Backdrop",
+                    parent,
+                    Vector2.zero,
+                    Vector2.one,
+                    Vector2.zero,
+                    Vector2.zero,
+                    Vector2.zero);
+                Image backdropImage = backdrop.AddComponent<Image>();
+                backdropImage.color = ModalBackdropColor;
+                backdropImage.raycastTarget = true;
+            }
 
             GameObject surface = CreateRect(
                 name,
@@ -423,6 +444,10 @@ namespace BossRush
                 return;
             }
 
+            // ColorTint 与 Graphic.color 相乘；两边都给深色会平方，悬停/禁用几乎看不清。
+            Graphic graphic = button.targetGraphic != null ? button.targetGraphic : button.GetComponent<Graphic>();
+            if (graphic != null) graphic.color = Color.white;
+
             ColorBlock colors = button.colors;
             colors.normalColor = normalColor;
             colors.highlightedColor = highlightedColor;
@@ -433,7 +458,28 @@ namespace BossRush
             colors.fadeDuration = 0.08f;
             button.colors = colors;
             button.transition = Selectable.Transition.ColorTint;
-            button.targetGraphic = button.GetComponent<Graphic>();
+            button.targetGraphic = graphic;
+
+            // 共享按钮的标签跟着底色走，否则改完配色会留下亮底白字。
+            // 只认 CreateButton 建的那个名为 "Text" 的 TMP 子物体，
+            // 不去动官方 prefab 或各界面自绘的标签。
+            Transform labelTransform = button.transform.Find("Text");
+            if (labelTransform != null)
+            {
+                TextMeshProUGUI label = labelTransform.GetComponent<TextMeshProUGUI>();
+                if (label != null) label.color = BossRushUI.GetButtonTextColor(normalColor);
+            }
+        }
+
+        /// <summary>
+        /// 改共享按钮的底色。**不要**直接写 `Image.color`：底色住在 ColorBlock 里，
+        /// 直接改 Graphic 会和 ColorTint 相乘，页签、拍铃这类会变色的按钮越点越暗。
+        /// </summary>
+        internal static void SetButtonBaseColor(Button button, Color baseColor)
+        {
+            ApplyButtonColors(button, baseColor,
+                BossRushUI.GetHoverColor(baseColor),
+                BossRushUI.GetDisabledColor(baseColor));
         }
 
         /// <summary>
@@ -447,8 +493,19 @@ namespace BossRush
             }
 
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1920f, 1080f);
-            scaler.matchWidthOrHeight = 0.5f;
+            scaler.referenceResolution = ReferenceResolution;
+            // 保证参考布局在 4:3、16:10 和超宽屏上完整可见，不沿短边裁掉按钮。
+            // Expand 下 matchWidthOrHeight 不参与运算，留着只会让人以为它还在生效。
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+        }
+
+        internal static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);
+
+        /// <summary>与 Expand 缩放一致的逻辑视口，供 Canvas 创建前的面板尺寸计算。</summary>
+        internal static Vector2 GetReferenceViewportSize()
+        {
+            float scale = Mathf.Min(Screen.width / ReferenceResolution.x, Screen.height / ReferenceResolution.y);
+            return scale > 0f ? new Vector2(Screen.width / scale, Screen.height / scale) : ReferenceResolution;
         }
 
         /// <summary>

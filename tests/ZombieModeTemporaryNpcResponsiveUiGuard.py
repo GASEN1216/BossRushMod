@@ -37,7 +37,10 @@ def main() -> int:
         "tmp.enableAutoSizing = true;",
         "tmp.fontSizeMin = Mathf.Max(10f, fontSize * 0.65f);",
         "scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;",
-        "scaler.referenceResolution = new Vector2(1920f, 1080f);",
+        # 同一参考尺寸也供成就/图鉴的逻辑视口计算使用，锁住常量与绑定两端。
+        "internal static readonly Vector2 ReferenceResolution = new Vector2(1920f, 1080f);",
+        "scaler.referenceResolution = ReferenceResolution;",
+        "scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;",
     ]:
         result = require(helper, snippet, "shared responsive UI helper")
         if result:

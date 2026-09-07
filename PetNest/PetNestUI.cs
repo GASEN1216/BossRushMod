@@ -29,13 +29,14 @@ namespace BossRush
 
         private const string RootName = "BossRush_PetNestPanel";
         private static readonly Vector2 PanelSize = new Vector2(1180f, 760f);
-        private static readonly Vector2 CardSize = new Vector2(1080f, 118f);
+        private static readonly Vector2 CardSize = new Vector2(1080f, 140f);
 
         private static PetNestUI _instance;
 
         private Canvas _canvas;
         private Transform _contentRoot;
         private Transform _actionRoot;
+        private readonly Dictionary<PetNestUIPage, Button> _tabs = new Dictionary<PetNestUIPage, Button>();
         private ZombieModeUIHelper.ModalInputLease _modalLease;
         private PetNestUIPage _page;
         private string _selectedPetId;
@@ -154,9 +155,12 @@ namespace BossRush
             // 碑文都远超一屏。早先按固定 y 预算铺元素会静默截断——第 5 只之后的崽、
             // 第三个远征目的地、整段纪念碑都会在 UI 上凭空消失。
             _contentRoot = CreateScrollList(
-                surface.transform, "Content", new Vector2(0f, -20f), new Vector2(1120f, 520f));
+                surface.transform, "Content", new Vector2(0f, 14f), new Vector2(1120f, 412f));
             _actionRoot = CreateScrollList(
-                surface.transform, "Actions", new Vector2(0f, -308f), new Vector2(1120f, 130f));
+                surface.transform, "Actions", new Vector2(0f, -288f), new Vector2(1120f, 128f));
+            ZombieModeUIHelper.CreateSeparator("ActionDivider", surface.transform,
+                new Vector2(0f, 0.5f), new Vector2(1f, 0.5f),
+                new Vector2(0f, -208f), 1f, BossRushUIColors.Divider);
 
             _modalLease = ZombieModeUIHelper.ClaimModalInput(_canvas.gameObject, "PetNestPanel");
             BossRushUI.PlayOpenAnimation(surface);
@@ -167,7 +171,7 @@ namespace BossRush
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                 "Title", parent,
                 LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + "SystemName"),
-                34f, new Vector2(-420f, 330f), new Vector2(420f, 52f),
+                34f, new Vector2(-60f, 330f), new Vector2(1000f, 52f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
             BossRushUI.ApplyGameFont(title);
 
@@ -190,13 +194,14 @@ namespace BossRush
             for (int i = 0; i < pages.Length; i++)
             {
                 PetNestUIPage page = pages[i];
-                ZombieModeUIHelper.CreateButton(
+                Button tab = ZombieModeUIHelper.CreateButton(
                     "Tab_" + page, parent,
                     LocalizationHelper.GetLocalizedText(PetNestTuning.LocalizationPrefix + keys[i]),
                     new Vector2(0.5f, 0.5f),
                     new Vector2(-420f + i * 200f, 268f), new Vector2(190f, 44f),
                     BossRushUIColors.SurfaceRaised, 20f, new Vector2(180f, 40f),
                     delegate { _page = page; PetNestUIPages.ClearFailure(); Refresh(); }, true);
+                _tabs[page] = tab;
             }
         }
 
@@ -209,6 +214,19 @@ namespace BossRush
             try
             {
                 ClearSpawned();
+                foreach (KeyValuePair<PetNestUIPage, Button> pair in _tabs)
+                {
+                    bool selected = pair.Key == _page;
+                    Color color = selected ? BossRushUIColors.Accent : BossRushUIColors.SurfaceRaised;
+                    // 底色与标签色一起走共享入口；直接写 Image.color 会和 ColorTint 相乘，
+                    // 选中的页签反而比未选中的更暗。
+                    ZombieModeUIHelper.SetButtonBaseColor(pair.Value, color);
+                    TextMeshProUGUI label = pair.Value.GetComponentInChildren<TextMeshProUGUI>();
+                    if (label != null)
+                    {
+                        label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+                    }
+                }
                 PetNestPageContent content = BuildPageContent();
                 if (content == null) return;
 
@@ -216,11 +234,11 @@ namespace BossRush
                 // 在界面上与"点歪了"完全无法区分
                 if (!string.IsNullOrEmpty(PetNestUIPages.LastFailureText))
                 {
-                    SpawnNotice(PetNestUIPages.LastFailureText, BossRushUIColors.Danger);
+                    SpawnNotice(PetNestUIPages.LastFailureText, BossRushUIColors.DangerText);
                 }
                 if (!string.IsNullOrEmpty(content.Notice))
                 {
-                    SpawnNotice(content.Notice, BossRushUIColors.Warning);
+                    SpawnNotice(content.Notice, BossRushUIColors.WarningText);
                 }
                 if (!string.IsNullOrEmpty(content.Body))
                 {
@@ -238,6 +256,16 @@ namespace BossRush
                 }
 
                 SpawnActions(content.Actions);
+                // 没有底部动作时把留白还给正文。切页后从列表顶部开始读。
+                RectTransform viewport = _contentRoot.parent.GetComponent<RectTransform>();
+                bool hasActions = content.Actions.Count > 0;
+                viewport.sizeDelta = new Vector2(1120f, hasActions ? 412f : 572f);
+                viewport.anchoredPosition = new Vector2(0f, hasActions ? 14f : -66f);
+                _actionRoot.parent.gameObject.SetActive(hasActions);
+                _contentRoot.parent.parent.Find("ActionDivider").gameObject.SetActive(hasActions);
+                Canvas.ForceUpdateCanvases();
+                _contentRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+                _actionRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
             }
             catch (Exception e)
             {
@@ -265,7 +293,7 @@ namespace BossRush
             GameObject content = ZombieModeUIHelper.CreateRect(
                 name + "_Content", viewport.transform,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
-                Vector2.zero, new Vector2(0f, 0f), new Vector2(0.5f, 1f));
+                new Vector2(-10f, 0f), new Vector2(-20f, 0f), new Vector2(0.5f, 1f));
 
             VerticalLayoutGroup layout = content.AddComponent<VerticalLayoutGroup>();
             layout.spacing = 10f;
@@ -280,6 +308,7 @@ namespace BossRush
 
             scroll.viewport = viewport.GetComponent<RectTransform>();
             scroll.content = content.GetComponent<RectTransform>();
+            BossRushUI.ConfigureScrollRect(scroll);
             return content.transform;
         }
 
@@ -372,7 +401,11 @@ namespace BossRush
         {
             for (int i = 0; i < _spawned.Count; i++)
             {
-                if (_spawned[i] != null) UnityEngine.Object.Destroy(_spawned[i]);
+                if (_spawned[i] != null)
+                {
+                    _spawned[i].SetActive(false);
+                    UnityEngine.Object.Destroy(_spawned[i]);
+                }
             }
             _spawned.Clear();
         }
@@ -384,6 +417,7 @@ namespace BossRush
             if (element == null) element = go.AddComponent<LayoutElement>();
             element.minHeight = height;
             element.preferredHeight = height;
+            go.GetComponent<RectTransform>().SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
         }
 
         private void SpawnNotice(string text, Color color)
@@ -393,7 +427,7 @@ namespace BossRush
                 Vector2.zero, new Vector2(1080f, 52f),
                 TextAlignmentOptions.Left, color);
             BossRushUI.ApplyGameFont(label);
-            SetLayoutHeight(label.gameObject, 52f);
+            SetLayoutHeight(label.gameObject, BossRushUI.MeasureTextHeight(label, 1080f, 40f));
             _spawned.Add(label.gameObject);
         }
 
@@ -404,7 +438,7 @@ namespace BossRush
                 Vector2.zero, new Vector2(1080f, 34f),
                 TextAlignmentOptions.Left, color);
             BossRushUI.ApplyGameFont(label);
-            SetLayoutHeight(label.gameObject, 34f);
+            SetLayoutHeight(label.gameObject, BossRushUI.MeasureTextHeight(label, 1080f, 30f));
             _spawned.Add(label.gameObject);
         }
 
@@ -427,26 +461,36 @@ namespace BossRush
 
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                 "Title", card.transform, data.Title, 24f,
-                new Vector2(-320f, 36f), new Vector2(680f, 32f),
+                new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(24f, -18f), new Vector2(824f, 34f),
                 TextAlignmentOptions.Left, BossRushUIColors.TextPrimary);
+            title.rectTransform.pivot = new Vector2(0f, 1f);
+            title.margin = Vector4.zero;
             BossRushUI.ApplyGameFont(title);
 
             if (!string.IsNullOrEmpty(data.Subtitle))
             {
                 TextMeshProUGUI subtitle = ZombieModeUIHelper.CreateText(
                     "Subtitle", card.transform, data.Subtitle, 18f,
-                    new Vector2(-320f, 8f), new Vector2(680f, 26f),
+                    new Vector2(0f, 1f), new Vector2(0f, 1f),
+                    new Vector2(24f, -54f), new Vector2(824f, 28f),
                     TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
+                subtitle.rectTransform.pivot = new Vector2(0f, 1f);
+                subtitle.margin = Vector4.zero;
                 BossRushUI.ApplyGameFont(subtitle);
             }
 
             if (!string.IsNullOrEmpty(data.Body))
             {
                 TextMeshProUGUI body = ZombieModeUIHelper.CreateText(
-                    "Body", card.transform, data.Body, 16f,
-                    new Vector2(-320f, -28f), new Vector2(680f, 52f),
+                    "Body", card.transform, data.Body, 18f,
+                    new Vector2(0f, 1f), new Vector2(0f, 1f),
+                    new Vector2(24f, -86f), new Vector2(824f, 52f),
                     TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+                body.rectTransform.pivot = new Vector2(0f, 1f);
                 BossRushUI.ApplyGameFont(body);
+                float bodyHeight = BossRushUI.MeasureTextHeight(body, 824f, 32f);
+                SetLayoutHeight(card, Mathf.Max(CardSize.y, 86f + bodyHeight + 18f));
             }
 
             bool hasSecondary = !string.IsNullOrEmpty(data.SecondaryLabel);
@@ -455,8 +499,8 @@ namespace BossRush
             {
                 ZombieModeUIHelper.CreateButton(
                     "CardAction", card.transform, data.ActionLabel,
-                    new Vector2(0.5f, 0.5f),
-                    new Vector2(430f, hasSecondary ? 26f : 0f),
+                    new Vector2(1f, 0.5f),
+                    new Vector2(-114f, hasSecondary ? 26f : 0f),
                     new Vector2(180f, hasSecondary ? 44f : 48f),
                     data.OnClick != null ? BossRushUIColors.Accent : BossRushUIColors.Disabled,
                     19f, new Vector2(170f, hasSecondary ? 40f : 44f),
@@ -468,7 +512,7 @@ namespace BossRush
             {
                 ZombieModeUIHelper.CreateButton(
                     "CardSecondary", card.transform, data.SecondaryLabel,
-                    new Vector2(0.5f, 0.5f), new Vector2(430f, -26f), new Vector2(180f, 44f),
+                    new Vector2(1f, 0.5f), new Vector2(-114f, -26f), new Vector2(180f, 44f),
                     data.OnSecondary != null ? BossRushUIColors.SurfaceRaised : BossRushUIColors.Disabled,
                     18f, new Vector2(170f, 40f),
                     data.OnSecondary != null ? new UnityEngine.Events.UnityAction(data.OnSecondary) : null,

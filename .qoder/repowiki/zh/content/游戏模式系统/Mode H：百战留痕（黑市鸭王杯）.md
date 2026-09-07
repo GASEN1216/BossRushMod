@@ -570,3 +570,9 @@ abort return，必撞 `journal_illegal_transition`——押品退不回来，非
 验证：`tests/fixtures/ModeHThirdReviewFixes/run.py` 直接编译押品服务、结算页面及状态模型，逐字提取恢复/投影/奖励方法，覆盖 59 条执行断言；`ModeHThirdReviewFixesGuard` 拒绝 13 个回归变异。旧两套恢复夹具分别保留 35 / 33 条通过。Unity、真实库存与磁盘是显式替身，官方 ES3、满仓返还、切槽与六场实机仍待验证。
 
 章节来源：`ModeH/ModeHRealStakeService.cs`、`ModeH/ModeHRuntimeModule_MatchFlow.cs`、`ModeH/ModeHRuntimeModule_SettlementFlow.cs`、`ModeH/ModeHRuntimeModule_CombatFlow.cs`、`ModeH/ModeHRuntimeModule.cs`、`tests/ModeHThirdReviewFixesGuard.py`、`tests/fixtures/ModeHThirdReviewFixes/README.md`。
+
+## 2026-09-07 界面可读性与视觉整理（COMPAT）
+
+`ModeH/ModeHUI.cs` 的三条观战状态按 y=64/0/-64 排入原 560×220 背景，计时文字宽度按 320×96 的计时背景计算。`ModeHUIPages.cs` 将卡片标题/副标题/正文拆成互不交叠的区段；战报行固定字号测高后滚动，赔率明细与押品选择器各占一列。战报与战痕卡同时出现时使用上下独立阅读区；底部按钮换行后，各阅读区按同一个 `GetActionBandReserve` 让位。滚动容器继续优先复用官方 ScrollRect，并使用共享滚轮/滑块设置。模态页只保留根遮罩一次，拍铃文字按实际底色配深浅。层段、冻结面板尺寸、唯一模态租约及真实押品/恢复命令不变；实机长战报、五席/32席、多行动作和滚轮待验。
+
+**复核补修**：恢复壳不再叠第二层遮罩；口令窗倒计时条补 sprite 后 `fillAmount` 才真正生效；拍铃三态底色走 `SetButtonBaseColor`；押品格滚动区接入共享滚轮/滑块设置。

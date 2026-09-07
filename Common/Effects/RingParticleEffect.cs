@@ -77,7 +77,11 @@ namespace BossRush.Common.Effects
         protected virtual float LocalLifetime => 0.3f;
         protected virtual float LocalSpeed => 0.3f;
         protected virtual float LocalSize => 1.2f;
-        protected virtual float LocalAlpha => 0.7f;
+        // alpha 现在只施加一次（见 ConfigureParticleSystem 的梯度注释）。
+        // 数值 = 旧常量的平方，保证观感与已发布版本逐帧一致：
+        // 旧写法 startColor 与 colorOverLifetime 都乘一遍 alpha，实际是 0.7² = 0.49。
+        // 今后调这个值是线性响应，直接按想要的不透明度写即可。
+        protected virtual float LocalAlpha => 0.49f;
         protected virtual float LocalEmissionRate => 15f;
         protected virtual float LocalShapeRadius => 0.1f;
         protected virtual int LocalEmitPerFrame => 1;
@@ -88,7 +92,8 @@ namespace BossRush.Common.Effects
         protected virtual float WorldLifetime => 0.2f;
         protected virtual float WorldSpeed => 0.3f;
         protected virtual float WorldSize => 1.2f;
-        protected virtual float WorldAlpha => 0.35f;
+        // 同上：旧写法实际生效的是 0.35² = 0.1225。
+        protected virtual float WorldAlpha => 0.1225f;
         protected virtual float WorldEmissionRate => 10f;
         protected virtual float WorldShapeRadius => 0.05f;
         protected virtual int WorldEmitPerFrame => 1;
@@ -279,6 +284,8 @@ namespace BossRush.Common.Effects
         /// </summary>
         private void ConfigureParticleSystem(ParticleSystem ps, ParticleSystemSimulationSpace space, bool isLocal)
         {
+            // AddComponent 的默认系统可能已播放；先清掉默认粒子，再设置模块并显式启动。
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             // 获取参数
             int maxParticles = isLocal ? LocalMaxParticles : WorldMaxParticles;
             float lifetime = isLocal ? LocalLifetime : WorldLifetime;
@@ -293,7 +300,9 @@ namespace BossRush.Common.Effects
             if (renderer != null)
             {
                 renderer.renderMode = ParticleSystemRenderMode.Billboard;
-                renderer.material = CreateMaterial();
+                renderer.sharedMaterial = CreateMaterial();
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                renderer.receiveShadows = false;
             }
             
             // 配置主模块
@@ -324,15 +333,24 @@ namespace BossRush.Common.Effects
             colorOverLifetime.enabled = true;
             Gradient g = new Gradient();
             g.SetKeys(
-                new GradientColorKey[] { new GradientColorKey(tint, 0f), new GradientColorKey(tint, 1f) },
-                new GradientAlphaKey[] { new GradientAlphaKey(alpha, 0f), new GradientAlphaKey(0f, 1f) }
+                // 生命周期颜色与 startColor 相乘，白色保持原始霜蓝，避免 RGB 被平方。
+                new GradientColorKey[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
+                // 梯度只描述**形状**，强度由 startColor 的 alpha 一次性给足。
+                // 早先两边都乘 alpha，实际不透明度是 alpha²——常量的含义和注释对不上，
+                // 而且再调 LocalAlpha/WorldAlpha 会得到平方响应。
+                new GradientAlphaKey[] {
+                    new GradientAlphaKey(0f, 0f),
+                    new GradientAlphaKey(1f, 0.18f),
+                    new GradientAlphaKey(0.55f, 0.55f),
+                    new GradientAlphaKey(0f, 1f) }
             );
             colorOverLifetime.color = g;
             
             // 配置尺寸生命周期
             var sizeOverLifetime = ps.sizeOverLifetime;
             sizeOverLifetime.enabled = true;
-            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, 1.3f);
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f,
+                AnimationCurve.EaseInOut(0f, 0.8f, 1f, 1.3f));
             
             // 播放并发射初始粒子
             ps.Play();
@@ -405,6 +423,8 @@ namespace BossRush.Common.Effects
             Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.hideFlags = HideFlags.DontSave; // 防止被意外销毁
             tex.name = "ParticleTexture_Shared";
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
             
             for (int x = 0; x < size; x++)
             {
