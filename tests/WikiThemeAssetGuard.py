@@ -33,10 +33,13 @@
     4. 清单记的 skins 与 tokens.css 里的实际归属一致
        （:root 块 = 默认皮肤，html.theme-<Name> 块 = 那套皮肤，块外 = 所有皮肤）；
     5. 每套皮肤实际会下载的版式贴图总字节 <= 600000，单张天空 <= 200000；
-    6. config.mts 与 theme/** 不含 fonts.googleapis.com / fonts.gstatic.com。
+    6. config.mts 与 theme/** 不含 fonts.googleapis.com / fonts.gstatic.com；
+    7. gen_codex_art.py / gen_wiki_icons.py / build_wiki_theme_assets.py 三者的
+       STYLE 与 DUCK 逐字相同（同一页面上的角色美术不能有两套画风）。
 
 只用标准库、只读文件大小，不需要 Pillow —— CI 上没有 Pillow 也要跑得动。
 """
+import ast
 import json
 import os
 import re
@@ -51,6 +54,19 @@ TOKENS = os.path.join(CSS_DIR, "tokens.css")
 CONFIG = os.path.join(VP, "config.mts")
 THEMES = os.path.join(VP, "data", "themes.mts")
 SIDECAR = os.path.join(REPO_ROOT, "wiki-site", "scripts", "wiki-theme-assets.json")
+
+# 站上的角色美术分三个脚本产出，但读者是在同一个页面上同时看到它们的：
+#   gen_codex_art.py          -> 图鉴立绘（docs/public/images/codex/）
+#   gen_wiki_icons.py         -> 类目与条目图标（docs/public/images/ui/）
+#   build_wiki_theme_assets.py-> 站点 Logo 的徽记（theme/assets/logo.webp）
+# 三者的风格串必须逐字相同，否则画风会打架 —— 2026-09-07 就是徽记改成赛璐璐平涂，
+# 摆在厚涂的图标旁边一眼看出是两个世界，owner 直接打回。
+ART_SCRIPTS = (
+    os.path.join(REPO_ROOT, "tools", "gen_codex_art.py"),
+    os.path.join(REPO_ROOT, "tools", "gen_wiki_icons.py"),
+    os.path.join(REPO_ROOT, "tools", "build_wiki_theme_assets.py"),
+)
+SHARED_ART_CONSTS = ("STYLE", "DUCK")
 
 # 与 tools/build_wiki_theme_assets.py 的同名常量一一对应，改一处必须改两处。
 BUDGET_SKIN_TOTAL = 600000
@@ -116,6 +132,21 @@ def blocks_of(css):
             i += 1
         out.append((matched.group(1), css[start:i - 1]))
     return out
+
+
+def art_constant(src, name):
+    """取 `NAME = ( "..." "..." )` 这种拼接字符串常量的值。
+
+    用 ast 求值而不是正则比字符串：脚本里这些串是折行拼接的，
+    换行位置和缩进随时会变，但**值**不该变，要比的正是值。
+    """
+    matched = re.search(r"^" + name + r"\s*=\s*(\(.*?\))\s*$", src, re.S | re.M)
+    if not matched:
+        return None
+    try:
+        return ast.literal_eval(matched.group(1))
+    except (SyntaxError, ValueError):
+        return None
 
 
 def declarations(body):
@@ -252,8 +283,35 @@ def main():
                             "要自托管字体请放 theme/assets/ 并走 @font-face"
                             % (os.path.relpath(path, REPO_ROOT), host))
 
+    # ── 7. 三个生图脚本的角色风格串逐字相同 ──────────────────
+    #     徽记和类目图标、图鉴立绘会同时出现在一个页面上；风格串一分叉，
+    #     画风就分叉。这条不看产物看源头——产物长什么样 guard 判断不了，
+    #     但「用的是不是同一套串」是判得了的。
+    baseline = {}
+    for path in ART_SCRIPTS:
+        if not os.path.isfile(path):
+            return fail("缺 %s：站点美术的风格串对不起来了"
+                        % os.path.relpath(path, REPO_ROOT))
+        src = read_raw(path)
+        for const in SHARED_ART_CONSTS:
+            value = art_constant(src, const)
+            if value is None:
+                return fail("%s 里找不到 %s 常量（或它不是一个字符串字面量）。"
+                            "三个生图脚本共用同一套角色风格串，本 guard 靠它比对；"
+                            "写法变了要同步改 art_constant()"
+                            % (os.path.relpath(path, REPO_ROOT), const))
+            if const not in baseline:
+                baseline[const] = (value, path)
+                continue
+            if value != baseline[const][0]:
+                return fail("%s 的 %s 与 %s 的不一致。三处产出的角色美术会同时出现在"
+                            "同一个页面上，风格串一分叉画风就打架（2026-09-07 实测："
+                            "徽记改成平涂后摆在厚涂图标旁边一眼看出是两个世界）。"
+                            % (os.path.relpath(path, REPO_ROOT), const,
+                               os.path.relpath(baseline[const][1], REPO_ROOT)))
+
     print("WikiThemeAssetGuard: PASS - %d 张版式贴图在位（%s），"
-          "各皮肤预算 %s，零网络字体"
+          "各皮肤预算 %s，零网络字体，三个生图脚本的风格串一致"
           % (len(entries), ", ".join(sorted(entries)),
              " / ".join("%s %.0fKB" % (s, per_skin[s] / 1024.0) for s in sorted(per_skin))))
     return 0

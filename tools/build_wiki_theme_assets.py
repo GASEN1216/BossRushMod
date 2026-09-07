@@ -24,11 +24,10 @@
     不需要 Pillow，CI 上跑得动。
 
 三类贴图三种做法，不是都靠生图：
-    天空、木纹、冰霜             -> 生图（painterly 风格与图鉴立绘同源）
-    Logo 徽记                    -> 生图，但**不是** painterly 那一套：赛璐璐平涂的动画风
-                                    （粗描边 / 单层阴影 / 无笔触），画的是模组主视觉那只
-                                    龙裔遗族。Logo 只有 421x140 的位子，徽记实际显示约
-                                    122px，平涂比厚涂在这个尺寸上认得清得多
+    天空、木纹、冰霜             -> 生图（matte painting / 材质，各自一套风格串）
+    Logo 徽记                    -> 生图，风格串 STYLE 与 DUCK **逐字复制** gen_codex_art.py。
+                                    徽记和类目图标、图鉴立绘会同时出现在一个页面上，
+                                    换一套画风就会打架（2026-09-07 试过平涂，被打回）
     木纹 / 冰霜的**平铺化**      -> 镜像四拼，接缝天然为零
     木纹 / 冰霜的**透明化**      -> 只保留亮度起伏做成半透明颗粒层，
                                     这样同一张贴图铺在棕色面板上是木头、铺在浅蓝上是冰
@@ -71,6 +70,7 @@ BUDGET_SINGLE_SKY = 200000   # 单张天空底图
 TILE = 256                   # 木纹 / 冰霜的平铺边长
 SKY_W, SKY_H = 1600, 1000    # 天空底图产物尺寸（背景是 cover，不需要 2x）
 LOGO_W, LOGO_H = 842, 280    # Logo 产物尺寸（= 版位 421x140 的 2x）
+OUTER_STROKE = 6             # 字标外轮廓的额外厚度，把外缘补到和字缝一样重（见 build_logo）
 GRASS_W, GRASS_H = 192, 26   # 草皮条画 2x（CSS 里按 96x13 铺），HiDPI 上边缘才不糊
 
 # ── 生图提示词 ──────────────────────────────────────────────────────
@@ -87,19 +87,25 @@ TILE_STYLE = (" Painterly stylized game-art texture, flat even lighting with no 
               "the material fills the entire frame edge to edge with no border and no object. "
               "No text, no watermark, no logo.")
 
-# 徽记单独一套风格：赛璐璐平涂。景与材质那两套是厚涂，缩到 122px 会糊成一团色。
-EMBLEM_STYLE = (" Clean flat cel-shaded anime style: bold even dark outlines, flat color fills "
-                "with only one soft shadow tone, no texture, no gradient, no painterly brush "
-                "strokes, no realistic rendering. Crisp bold silhouette that stays readable when "
-                "scaled down to thumbnail size. Bright saturated palette. "
-                "Create the subject on a perfectly flat solid #ff00ff chroma-key background. "
-                "Do not use #ff00ff anywhere in the subject. No text, no watermark, no logo, "
-                "no border, no frame, no ground, no cast shadow, no background elements.")
+# 徽记与图鉴立绘、类目图标是同一批读者在同一个页面上看到的，所以
+# STYLE 与 DUCK 必须和 tools/gen_codex_art.py **逐字相同**——
+# 2026-09-07 试过给徽记单开一套赛璐璐平涂，摆在厚涂的图标旁边一眼看出是两个世界。
+# tests/WikiThemeAssetGuard.py 的检查 7 守着这两个常量三处一致。
+STYLE = (" Painterly stylized game-art illustration, bold readable silhouette, "
+         "clean shapes that stay legible when scaled down, dramatic rim lighting, "
+         "rich saturated colors. Create the subject on a perfectly flat solid #ff00ff "
+         "chroma-key background. Do not use #ff00ff anywhere in the subject. "
+         "No text, no watermark, no logo, no border, no frame.")
 
-# 生图模型很容易把「拟人鸭」画成人，必须在正面描述里反复点名（2026-08-29 实测）。
-DUCK = ("The subject is an ANTHROPOMORPHIC DUCK - a duck, not a human, not a bird of prey: "
-        "big rounded duck head, wide flat orange duck bill, white feathers, round black eyes, "
-        "short wings used as arms, standing upright on two orange webbed feet. ")
+DUCK = ("The subject is an ANTHROPOMORPHIC DUCK - a duck, not a human: rounded duck head, "
+        "flat orange duck bill, feathered body, standing upright on two legs. ")
+
+# STYLE 末尾那句色键要求会被「往暗里推」的措辞盖过去（实测：写了 gunmetal grey、
+# carving the silhouette out of the dark，网关就直接给黑底）。这句是补钉，
+# 只加在徽记上，不动共享的 STYLE。
+BACKGROUND_PIN = (
+    " The background is a completely flat solid bright magenta #ff00ff filling every pixel "
+    "behind the subject - not black, not dark, no vignette, no gradient, no scenery.")
 
 # key, 生图尺寸, prompt（None = 不生图，程序化产出）
 SOURCES = [
@@ -125,7 +131,18 @@ SOURCES = [
      "A sheet of frosted ice seen from directly above, fine feathery frost ferns and hairline "
      "crystal cracks spreading across pale glassy ice, faint powdered snow." + TILE_STYLE),
 
+    ("emblem", "1024x1024",
+     "Game logo emblem, one single centered character filling the frame, "
+     "front view, symmetrical heroic composition. " + DUCK +
+     "This duck is a battle-worn duck mercenary and boss hunter: scavenged steel pauldrons "
+     "and a chest rig over worn fatigues, a tattered crimson cape, a short sword held "
+     "point-down in one wing and a battered rifle slung across the back, standing braced "
+     "and defiant, brightly lit steel with crimson and brass accents."
+     " Full body, feet included, no ground and no shadow beneath." + STYLE + BACKGROUND_PIN),
 ]
+
+# 只有徽记要抠色键；景与材质是满幅的，本来就没有背景可抠。
+CHROMA_KEYS = {"emblem"}
 
 
 def fail(message):
@@ -172,6 +189,19 @@ def generate_one(key, size, prompt, chroma=False):
     if im.mode == "RGBA" and im.split()[-1].getextrema()[0] < 255:
         im.convert("RGBA").save(dst, "PNG")
         return True
+
+    # 网关也会**无视色键要求直接给黑底**（2026-09-07 实测：prompt 里出现
+    # "gunmetal grey" / "out of the dark" 这类往暗里推的措辞就容易触发）。
+    # 这时候照抠不误，抠出来是一张整体半透明的图——没有任何报错，
+    # 摆进 Logo 才看出不对。所以先验四角：不是洋红就当这张废了，让断点续跑去补。
+    probe = im.convert("RGB")
+    w, h = probe.size
+    corners = [probe.getpixel(p) for p in ((4, 4), (w - 5, 4), (4, h - 5), (w - 5, h - 5))]
+    if not all(c[0] > 180 and c[1] < 90 and c[2] > 180 for c in corners):
+        print("   [SKIP] %s 的背景不是 #ff00ff 色键（四角 %s），这张废了；"
+              "再跑一次本脚本会重出" % (key, corners[0]), flush=True)
+        os.remove(raw)
+        return False
     cut = os.path.join(RAW_DIR, key + "_cut.png")
     subprocess.run(
         [sys.executable, CHROMA, "--input", raw, "--out", cut,
@@ -315,8 +345,11 @@ def build_emblem():
       1. 厚涂的纹章式鸭头徽 —— 缩到 122px 糊成一团；
       2. 从创意工坊预览图 GrabCut 抠出来的角色 —— 边缘干净，但那是厚涂写实风，
          摆在字标旁边显脏；
-      3. 现在这版：同一只龙裔遗族，改用赛璐璐平涂重画。粗描边和单层阴影
-         在小尺寸上不掉细节，这是关键。
+      3. 赛璐璐平涂的龙裔遗族 —— 小尺寸认得清了，但**画风和站上其它图对不上**：
+         类目图标与图鉴立绘都是厚涂 + 轮廓光，平涂摆在旁边像两个世界；
+      4. 现在这版：风格串换成与 gen_codex_art.py 逐字相同的那套（画风因此天然一致），
+         主体改成鸭科夫的雇佣兵——既不撞任何一张 Boss 立绘，
+         又同时带着 Duckov 的战术装和 BossRush 的近战气质。
     """
     from PIL import Image
 
@@ -355,7 +388,7 @@ def _font(candidates, size):
 def build_logo():
     """徽记 + 字标拼成 842x280 的站点 Logo（= 版位 421x140 的 2x）。
 
-    徽记是生图出的龙裔遗族（见 build_emblem），字标是 Pillow 排的
+    徽记是生图出的鸭科夫雇佣兵（见 build_emblem），字标是 Pillow 排的
     ——生图模型写不对字母，这是实测结论。字标做成「深墨描边 + 金色渐变填充 + 落影」，
     深浅两套皮肤的天空底都压得住，不用出两版。
     """
@@ -368,7 +401,7 @@ def build_logo():
     scale = 268.0 / em.size[1]
     em = em.resize((max(1, int(round(em.size[0] * scale))), 268), Image.LANCZOS)
     canvas.alpha_composite(em, (8, LOGO_H - em.size[1] - 6))
-    text_left = 8 + em.size[0] + 14
+    text_left = 8 + em.size[0] + 26
 
     avail = LOGO_W - text_left - 20
     main_font, stroke, main_box = _fit(FONT_MAIN, WORDMARK, avail)
@@ -386,11 +419,18 @@ def build_logo():
     mx = cx - main_w // 2 - main_box[0]
     my = top - main_box[1]
 
-    # 描边层：整块字（含描边）先画成实心墨色，既是轮廓也是落影的形状
+    # 描边层：整块字（含描边）先画成实心墨色，既是轮廓也是落影的形状。
+    #
+    # 画两遍，外面那遍更宽。原因：字与字之间是**两条描边背靠背**，
+    # 量出来 14~19px；而首尾字母的外缘只有一条，7px。一半的厚度差在
+    # 「B」那道长直左竖上尤其明显——看着像被削平了一刀（owner 2026-09-07 报的就是这个）。
+    # 外轮廓这一遍只加厚外缘：字缝里本来就是实心墨色，再宽也不会变。
     ink_layer = Image.new("RGBA", (LOGO_W, LOGO_H), (0, 0, 0, 0))
-    ImageDraw.Draw(ink_layer).text(
-        (mx, my), WORDMARK, font=main_font, fill=INK + (255,),
-        stroke_width=stroke, stroke_fill=INK + (255,))
+    ink_draw = ImageDraw.Draw(ink_layer)
+    ink_draw.text((mx, my), WORDMARK, font=main_font, fill=INK + (255,),
+                  stroke_width=stroke + OUTER_STROKE, stroke_fill=INK + (255,))
+    ink_draw.text((mx, my), WORDMARK, font=main_font, fill=INK + (255,),
+                  stroke_width=stroke, stroke_fill=INK + (255,))
     canvas.alpha_composite(_offset(ink_layer.filter(ImageFilter.GaussianBlur(5)), 0, 6))
     canvas.alpha_composite(ink_layer)
 

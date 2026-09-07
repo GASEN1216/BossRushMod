@@ -410,7 +410,7 @@ DOM 的 id 与 class 一律沿用 MediaWiki 的原名（`#mw-panel` / `#mw-head`
 | `sky-overworld.webp` / `sky-snow.webp` | 各一套 | 生图（1536×1024 → 裁 16:10 → WebP） | `--theme-site-background-image` |
 | `wood.webp` / `frost.webp` | 各一套 | 生图 → 镜像四拼平铺 → 只留亮度起伏的半透明颗粒层 | `--theme-widget-texture` |
 | `grass.png` / `grass-snow.png` | 各一套 | 程序化绘制（192×26，CSS 按 96×13 铺） | `--theme-top-background` |
-| `logo.webp` | 两套共用 | 生图（赛璐璐平涂）出徽记 + Pillow 排字标 | `--theme-site-logo-image` |
+| `logo.webp` | 两套共用 | 生图出徽记（风格串与图鉴立绘同源）+ Pillow 排字标 | `--theme-site-logo-image` |
 
 三件事值得知道：
 
@@ -421,12 +421,21 @@ DOM 的 id 与 class 一律沿用 MediaWiki 的原名（`#mw-panel` / `#mw-head`
   所以图样越「像个东西」（冰花是典型）越要先柔化、再压低不透明度。
 - **草皮条与字标不生图。** 13px 的草皮条：1024 的图缩下去只会糊成一条色带，
   程序化画又小又脆还能保证左右接缝对齐。字标：生图模型写不对字母。
-- **徽记生图，但和景 / 材质不是同一套风格串。** 那两套是厚涂（painterly），
-  徽记在 Logo 里实际只显示约 122px，厚涂缩到这个尺寸会糊成一团色；
-  徽记那套是**赛璐璐平涂**（粗描边 / 单层阴影 / 无笔触），小尺寸不掉细节。
-  画的仍是模组主视觉那只龙裔遗族——读者在创意工坊见过它。
-  另外：拟人鸭必须在正面描述里反复点名 `ANTHROPOMORPHIC DUCK`，
+- **徽记的 `STYLE` 与 `DUCK` 必须和 `tools/gen_codex_art.py` 逐字相同。**
+  徽记、类目图标、图鉴立绘是同一批读者在同一个页面上看到的；风格串一分叉画风就打架
+  （2026-09-07 试过给徽记单开一套赛璐璐平涂，摆在厚涂图标旁边一眼看出是两个世界，
+  被 owner 打回）。`WikiThemeAssetGuard` 的检查 7 守着这两个常量三处一致。
+  景（`SCENE_STYLE`）与材质（`TILE_STYLE`）是另一回事，它们不画角色，各自一套。
+- **拟人鸭要在正面描述里反复点名 `ANTHROPOMORPHIC DUCK`**，
   写在 negative prompt 里挡不住模型把它画成人。
+- **出图后先验背景是不是 `#ff00ff`。** 提示词里出现往暗里推的措辞
+  （`gunmetal grey`、`out of the dark`）会盖过 `STYLE` 末尾那句色键要求，
+  网关直接给黑底；这时候照抠不误，抠出来是一张**整体半透明**的图，
+  没有任何报错，摆进 Logo 才看出不对。`generate_one()` 现在验四角，
+  不是洋红就判这张废、留给断点续跑补。
+- **字标要画两遍描边，外面那遍更宽。** 字与字之间是两条描边背靠背（14~19px），
+  首尾字母的外缘只有一条（7px），一半的厚度差在「B」那道长直左竖上看着像被削平了
+  （owner 报过）。外轮廓那一遍只加厚外缘，字缝里本来就是实心墨色，不受影响。
 
 产物放 `theme/assets/`（**不要**放 `docs/public/images/`——那是 `WikiImageAssetGuard`
 的地盘，没进 `image-manifest.json` 的 WebP 会被判成孤儿）。放这儿还有个好处：
@@ -438,7 +447,7 @@ Vite 会打哈希并自动补 `base` 前缀，根部署和子路径部署都不�
 `tests/WikiThemeAssetGuard.py` 守着在场、归属、字节数与预算四件事，
 归属以 `tokens.css` 里级联解出来的实际值为准，不认清单里手写的。
 
-四张源图（天空 ×2、木纹、冰霜）与徽记都在 `Assets/wiki_theme/`，是 local-only 的
+五张源图（天空 ×2、木纹、冰霜、徽记）都在 `Assets/wiki_theme/`，是 local-only 的
 （`Assets/` 被 `.gitignore` 挡着），重出要走生图网关。
 别人机器上没有源图也能校验，因为 guard 只读产物大小和清单。
 
