@@ -101,30 +101,36 @@ function groupOf(img: HTMLImageElement): HTMLImageElement[] {
 }
 
 /**
- * 切到第 i 张：先把原始尺寸拿准再换。
+ * 切到第 i 张：**先切，再补尺寸**。
  *
- * 已经加载过的图（比如刚点的那张）decode() 立刻就 resolve，看不出等待；
- * 还没懒加载的图会等一次小请求，换来的是「打开即是正确尺寸」，
- * 不会先按错误尺寸铺一帧再跳。token 防抖：连按方向键时只有最后一次算数。
+ * 曾经反过来写（等 decode() 拿到原始尺寸再切），想省掉「先按错误尺寸铺一帧」。
+ * 代价是致命的：`decode()` 作用在一个**没插进文档**的 Image 上时，Chrome 会
+ * 大幅降低它的解码优先级——实测生产构建里 naturalWidth 早就有了、decode() 仍然
+ * 4.7 秒没 resolve。表现是点缩略图后愣好几秒、期间停在上一张，然后才跳过去。
+ * 一帧的尺寸抖动远不如几秒的无响应严重，所以次序反过来。
+ *
+ * 尺寸并不会因此丢：绝大多数图在 shotOf() 里就地取到了 naturalWidth；
+ * 只有没进过视口的懒加载图是 0，它们由下面的探针补，兜底还有 onImgLoad()。
+ * token 防抖：连按方向键时只有最后一次的探测结果算数。
  */
 let showToken = 0
 async function show(i: number) {
   const shot = shots.value[i]
   if (!shot) return
   const token = ++showToken
-  if (!shot.w || !shot.h) {
-    const probe = new Image()
-    probe.src = shot.src
-    try {
-      await probe.decode()
-    } catch {
-      /* 解码失败就按视口上限展示，总比不显示强 */
-    }
-    if (token !== showToken) return
-    shot.w = probe.naturalWidth || 0
-    shot.h = probe.naturalHeight || 0
-  }
   index.value = i
+  if (shot.w && shot.h) return
+
+  const probe = new Image()
+  probe.src = shot.src
+  try {
+    await probe.decode()
+  } catch {
+    /* 解码失败就按视口上限展示，总比不显示强 */
+  }
+  if (token !== showToken || !probe.naturalWidth) return
+  shot.w = probe.naturalWidth
+  shot.h = probe.naturalHeight
 }
 
 /**
