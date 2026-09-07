@@ -120,7 +120,11 @@ const otherLangHref = computed(() =>
     </a>
 
     <!-- 导航 -->
-    <nav id="p-navigation" class="mw-portlet portal vector-menu vector-menu-portal">
+    <nav
+      id="p-navigation"
+      class="mw-portlet portal vector-menu vector-menu-portal"
+      :aria-label="ui.navigation"
+    >
       <button class="vector-menu-heading" type="button" @click="toggle('__nav')">
         <span class="vector-menu-heading-label">{{ ui.navigation }}</span>
       </button>
@@ -146,6 +150,7 @@ const otherLangHref = computed(() =>
       :id="'p-cat-' + p.category.id"
       :key="p.category.id"
       class="mw-portlet portal vector-menu vector-menu-portal"
+      :aria-label="categoryLabel(p.category)"
       :class="{ collapsed: collapsed(p.category.id), 'portal--secondary': p.secondary }"
     >
       <button class="vector-menu-heading" type="button" @click="toggle(p.category.id)">
@@ -171,6 +176,7 @@ const otherLangHref = computed(() =>
     <nav
       id="p-changelog"
       class="mw-portlet portal vector-menu vector-menu-portal"
+      :aria-label="locale === 'en' ? CHANGELOG_CATEGORY.en : CHANGELOG_CATEGORY.zh"
       :class="{ collapsed: !changelogHere }"
     >
       <button class="vector-menu-heading" type="button" @click="toggle('changelog')">
@@ -204,6 +210,7 @@ const otherLangHref = computed(() =>
     <nav
       id="p-more"
       class="mw-portlet portal vector-menu vector-menu-portal portal--barmenu"
+      :aria-label="ui.more"
     >
       <button class="vector-menu-heading" type="button">
         <span class="vector-menu-heading-label">{{ ui.more }}</span>
@@ -218,7 +225,11 @@ const otherLangHref = computed(() =>
     </nav>
 
     <!-- 其他语言 -->
-    <nav id="p-lang" class="mw-portlet portal vector-menu vector-menu-portal">
+    <nav
+      id="p-lang"
+      class="mw-portlet portal vector-menu vector-menu-portal"
+      :aria-label="ui.otherLanguages"
+    >
       <button class="vector-menu-heading" type="button" @click="toggle('__lang')">
         <span class="vector-menu-heading-label">{{ ui.otherLanguages }}</span>
       </button>

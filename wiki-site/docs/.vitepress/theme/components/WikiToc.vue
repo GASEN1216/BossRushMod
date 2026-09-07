@@ -54,7 +54,14 @@ function toggle() {
 </script>
 
 <template>
-  <div v-if="enough" id="toc" class="toc" :class="{ 'is-collapsed': collapsed }" role="navigation">
+  <div
+    v-if="enough"
+    id="toc"
+    class="toc"
+    :class="{ 'is-collapsed': collapsed }"
+    role="navigation"
+    :aria-label="ui.contents"
+  >
     <div class="toctitle">
       <h2 id="mw-toc-heading">{{ ui.contents }}</h2>
       <button

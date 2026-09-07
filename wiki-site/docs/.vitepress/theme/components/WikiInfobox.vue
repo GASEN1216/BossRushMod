@@ -120,7 +120,8 @@ const tag = computed(() => (located.value ? entryTag(located.value.entry) : ''))
         <li v-for="link in links" :key="link.path">
           <!-- data-brs-ref 让这几条也吃到悬停预览：它们和正文里的实体链接是同一类东西 -->
           <a class="i" :href="href(link.path)" :data-brs-ref="link.path">
-            <WikiIcon :icon="link.icon" :label="link.label" :size="20" />
+            <!-- label 传空串：名字就在右边的 <span> 里，图标再报一次等于念两遍 -->
+            <WikiIcon :icon="link.icon" label="" :size="20" />
             <span class="wiki-tier" :data-tier="tierOf(link.path)">{{ link.label }}</span>
           </a>
         </li>

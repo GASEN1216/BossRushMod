@@ -37,7 +37,11 @@
 }
 #box-wikiheader .main-title > .welcome {
   display: block;
+  /* 这行欢迎语现在是本页的 <h1>（首页原本一个 h1 都没有，读屏器跳不到「本页讲什么」）。
+     浏览器默认样式会给 h1 加粗并留上边距，这里显式压回去，视觉和当初的 <span> 一样。 */
+  margin-top: 0;
   margin-bottom: 4px;
+  font-weight: 400;
   font-family: var(--font-family-heading);
   font-size: 24px;
   line-height: 1.2;

@@ -150,7 +150,7 @@ function print() {
         </div>
       </nav>
 
-      <div id="p-search" role="search">
+      <div id="p-search" role="search" :aria-label="ui.search">
         <WikiHeadSearch />
       </div>
     </div>

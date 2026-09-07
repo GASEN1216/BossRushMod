@@ -275,6 +275,11 @@
   flex: 0 0 auto;
   display: flex;
   align-items: center;
+  justify-content: center;
+  /* WCAG 2.2 的最小命中区是 24x24；这枚按钮原本只有 30x14。
+     只撑命中区，::before 那枚 14px 箭头照旧居中，视觉不变。 */
+  min-width: 24px;
+  min-height: 24px;
   padding: 0 8px;
   border: 0;
   background: none;
@@ -383,31 +388,31 @@
 }
 .msgbox-color-blue {
   --msgbox-color: hsl(var(--theme-notice-blue-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-blue-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-blue-hue) 80% 90% / 0.14);
 }
 .msgbox-color-yellow {
   --msgbox-color: hsl(var(--theme-notice-yellow-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-yellow-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-yellow-hue) 80% 90% / 0.14);
 }
 .msgbox-color-red {
   --msgbox-color: hsl(var(--theme-notice-red-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-red-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-red-hue) 80% 90% / 0.14);
 }
 .msgbox-color-green {
   --msgbox-color: hsl(var(--theme-notice-green-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-green-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-green-hue) 80% 90% / 0.14);
 }
 .msgbox-color-purple {
   --msgbox-color: hsl(var(--theme-notice-purple-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-purple-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-purple-hue) 80% 90% / 0.14);
 }
 .msgbox-color-orange {
   --msgbox-color: hsl(var(--theme-notice-orange-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-orange-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-orange-hue) 80% 90% / 0.14);
 }
 .msgbox-color-pink {
   --msgbox-color: hsl(var(--theme-notice-pink-hue) 60% 72%);
-  background-color: hsl(var(--theme-notice-pink-hue) 80% 90% / 0.2);
+  background-color: hsl(var(--theme-notice-pink-hue) 80% 90% / 0.14);
 }
 
 /* 提示框整块也要自成 BFC，否则它的边框会横穿右浮的信息框 */

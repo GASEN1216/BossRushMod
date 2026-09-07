@@ -42,7 +42,8 @@ const entries = computed(() =>
       <ul>
         <li v-for="entry in entries" :key="entry.path">
           <a class="i" :href="href(entry.path)" :data-brs-ref="norm(entry.path)">
-            <WikiIcon :icon="entry.icon" :label="entryLabel(entry)" :size="40" />
+            <!-- 同上：名字在右边的 .mclist__name 里 -->
+            <WikiIcon :icon="entry.icon" label="" :size="40" />
             <span class="mclist__text">
               <span class="mclist__name wiki-tier" :data-tier="tierOf(entry.path)">
                 {{ entryLabel(entry) }}

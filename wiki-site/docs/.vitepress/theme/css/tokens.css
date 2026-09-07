@@ -188,7 +188,8 @@
   --theme-code-color: #f4f4f4;
   /* 稀有度 5–8：按泰拉瑞亚稀有度序的粉 / 紫 / 绿 / 黄 */
   --theme-rarity-5: #ff96ff;
-  --theme-rarity-6: #d2a0ff;
+  /* 原 #d2a0ff 在内容底上是 4.44，差一点点到 AA；提亮到 4.87，色相不动 */
+  --theme-rarity-6: #d8abff;
   --theme-rarity-7: #96ff0a;
   --theme-rarity-8: #ffff0a;
 }
@@ -204,7 +205,8 @@ html.theme-Snow {
 
   --theme-text-color: #080a13;
   --theme-text-color--rgb: 8, 10, 19;
-  --theme-text-color-note: #666;
+  /* #666 在分类栏 / 速查框那种偏灰的底上只有 3.82，够不到 AA 的 4.5 */
+  --theme-text-color-note: #585858;
   --theme-text-color-em: #1d3b28;
   --theme-text-color-highlight: #000;
   --theme-text-color-placeholder: rgba(8, 10, 19, 0.45);
@@ -271,8 +273,9 @@ html.theme-Snow {
   /* 同色相压暗到浅底上对比度 >= 4.5:1 */
   --theme-rarity-5: #a1189f;
   --theme-rarity-6: #6f3bbd;
-  --theme-rarity-7: #3f7a00;
-  --theme-rarity-8: #7a6a00;
+  /* 这两档原本是 4.28 / 4.39，压暗到 5.3 左右；色相不动 */
+  --theme-rarity-7: #376a00;
+  --theme-rarity-8: #6b5d00;
 }
 
 /* 动效偏好：一律关掉，交给读者的系统设置 */

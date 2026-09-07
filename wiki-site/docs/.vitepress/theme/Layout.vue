@@ -88,6 +88,7 @@ onMounted(scheduleWarmup)
 
     <WikiNetbar />
 
+    <!-- 站点的 banner 就是这条 Logo 带；顶上那条是站点工具的导航条（见 WikiNetbar） -->
     <div id="p-logo" role="banner">
       <a class="mw-wiki-logo" :href="site.base" :title="site.title">
         <span class="mw-wiki-logo__wordmark">

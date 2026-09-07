@@ -79,13 +79,14 @@ const rows = computed<Row[]>(() => {
 </script>
 
 <template>
-  <nav v-if="rows.length" class="navbox" :class="{ 'is-collapsed': collapsed }">
+  <nav v-if="rows.length" class="navbox" :class="{ 'is-collapsed': collapsed }" :aria-label="ui.navboxLabel(title)">
     <div class="header">
       <span class="navbox-title"><a :href="titleHref">{{ title }}</a></span>
       <button
         class="navbox-toggle"
         type="button"
         :aria-expanded="!collapsed"
+        :aria-label="ui.toggleNavbox"
         @click="collapsed = !collapsed"
       />
     </div>

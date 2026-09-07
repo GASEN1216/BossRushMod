@@ -42,7 +42,7 @@ const otherLangHref = computed(() =>
 </script>
 
 <template>
-  <header id="wgg-netbar" class="wgg-netbar">
+  <div id="wgg-netbar" class="wgg-netbar" role="navigation" :aria-label="ui.siteTools">
     <div class="wgg-netbar__left">
       <a class="wgg-netbar__logo" :href="withBase('/')">
         <span class="wgg-netbar__mark">BossRush</span>
@@ -109,5 +109,5 @@ const otherLangHref = computed(() =>
         <span class="tw-icon tw-icon--github" aria-hidden="true" />
       </a>
     </nav>
-  </header>
+  </div>
 </template>

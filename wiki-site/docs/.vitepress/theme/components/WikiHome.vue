@@ -45,6 +45,14 @@ const stats = computed(() => {
 
 const latest = computed(() => releases[0] ?? null)
 
+/** 标题和版本号相同的时候不重复显示（多数条目的标题就是 vX.Y.Z）。 */
+const releaseTitle = computed(() => {
+  const r = latest.value
+  if (!r) return ''
+  const title = locale.value === 'en' ? r.en : r.zh
+  return title && title !== 'v' + r.version ? title : ''
+})
+
 /** 每盒最多列 8 条，超出的用「还有 N 条」收口，免得一个长类目把整排撑歪。 */
 const PEEK = 8
 const portals = computed(() =>
@@ -94,9 +102,9 @@ const firstSteps = computed(() => [
     <div id="box-wikiheader" class="terraria">
       <div class="inner">
         <div class="main-title">
-          <span class="welcome">
+          <h1 class="welcome">
             {{ t('欢迎来到 BossRush Wiki', 'Welcome to the BossRush Wiki') }}
-          </span>
+          </h1>
           <div class="tagline">
             {{
               t(
@@ -196,10 +204,13 @@ const firstSteps = computed(() => [
           </span>
         </div>
         <div class="news">
+          <!-- 更新日志的标题往往就是版本号本身，所以 <dd> 不能再放标题（会显示两遍）。
+               术语放「最新版本」、描述放版本链接，语义正好，也满足 dl 的结构要求。 -->
           <dl v-if="latest">
+            <dt>{{ ui.latestVersion }}</dt>
             <dd>
               <a :href="href(latest.path)">
-                v{{ latest.version }} · {{ locale === 'en' ? latest.en : latest.zh }}
+                v{{ latest.version }}<template v-if="releaseTitle">· {{ releaseTitle }}</template>
               </a>
             </dd>
           </dl>

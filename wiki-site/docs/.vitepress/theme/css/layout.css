@@ -586,7 +586,11 @@
 }
 #searchInput {
   width: 100%;
-  padding: 0 26px 0 6px;
+  /* 输入框与它右边那枚放大镜是两个紧挨着的可点目标，WCAG 2.2 的最小命中区
+     （含相邻间距）是 24x24。原来行高 20 + 边框 2 = 26 高、按钮 26x24，
+     Lighthouse 判两者互相挤。行高抬到 26（总高 28）就都过了，
+     在 45px 的标签行里看不出差别。 */
+  padding: 0 28px 0 6px;
   border: 1px solid;
   border-color: var(--theme-search-border-color);
   border-radius: 2px;
@@ -595,7 +599,7 @@
   color: var(--theme-text-color);
   caret-color: var(--theme-text-color);
   font-size: var(--font-size);
-  line-height: 20px;
+  line-height: 26px;
 }
 #searchInput::placeholder {
   color: var(--theme-text-color-placeholder);
@@ -609,7 +613,7 @@
   top: 1px;
   right: 1px;
   bottom: 1px;
-  width: 26px;
+  width: 28px;
   border: 0;
   padding: 0;
   background-color: var(--theme-icon-color);

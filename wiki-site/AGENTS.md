@@ -345,7 +345,8 @@ npm --prefix wiki-site run preview           # 看构建产物（版式改动要
 | `WikiSiteThemeWiringGuard.py` | 速查框 / 位置提示 / 目录框三套渲染期注入的接线、灯箱与悬停预览挂载、zoom-in 光标、`markdown.headers`、正文图片懒加载、配图产物不小于展示尺寸、搜索弹层 fork 的直接 import 与上游版本、`cjkTokenize` 自包含、没有继承默认主题也没有引网络字体 |
 | `WikiThemeTokensGuard.py` | 皮肤令牌的契约：引用的令牌都有定义、浅色皮肤覆盖齐全、`--brs-*` 已退场、`--vp-*` 只在桥接文件里赋值、稀有度规则没被搬进组件、`useWiki.ts` 不 import 组件 |
 | `WikiThemeSwitchGuard.py` | 换肤的三方对齐（内联脚本 / `themes.mts` / `tokens.css`）与页脚的版式归属声明 |
-| `WikiThemeAssetGuard.py` | 版式贴图的在场 / 归属 / 字节数 / 每套皮肤的下载预算，外加「没有网络字体」 |
+| `WikiThemeAssetGuard.py` | 版式贴图的在场 / 归属 / 字节数 / 每套皮肤的下载预算，外加「没有网络字体」，以及三个生图脚本的角色风格串逐字一致 |
+| `WikiA11yLandmarkGuard.py` | 每个 `<nav>` / `role="navigation"` 都有名字、`role="banner"` 唯一、aria 用到的词表键中英两份都在（见 §8.5） |
 | `WikiImageAssetGuard.py` | 图片清单、产物、引用三者对得上 |
 | `WikiCalloutSingleLineGuard.py` | `WikiContent` 的 callout 必须单行 |
 | `ZombieModeMutantWikiGuard.py` | 丧尸模式页与生成产物逐字节一致（**改 `transformContent` 必须同步改它的 Python 镜像**） |
@@ -468,6 +469,38 @@ Vite 会打哈希并自动补 `base` 前缀，根部署和子路径部署都不�
 表现是「类挂上了、菜单没关」。`WikiSiteThemeWiringGuard` 的检查 13 守这一整条链，
 而且是按**解构出来的别名**去核模板接线的——只查「名字出现过」的话，
 文档注释里提一句就能骗过去（反向验证实测）。
+
+### 8.5 无障碍：地标要有名字，颜色要够对比
+
+2026-09-08 用 Lighthouse + axe 扫过一遍，四项都是 100、axe 零违规。
+维持这个状态只要记住四条，它们都**不会**在构建或控制台里报出来：
+
+- **每个 `<nav>` / `role="navigation"` 都要带 `aria-label`。** 左栏十几个门户框、
+  目录框、页尾导航盒全是导航地标；没有名字的话，读屏器的地标列表里它们
+  一律叫「导航」，读者没法挑，这份列表就废了。新增门户框时最容易漏——
+  `tests/WikiA11yLandmarkGuard.py` 守着这条（它当初就抓到了 axe 扫不到的
+  `#p-more`，那枚 `<nav>` 只在 ≤1366 显示）。
+- **`role="banner"` 全站只能有一个**，就是 Logo 带 `#p-logo`。顶上那条
+  `#wgg-netbar` 是站点工具的**导航条**，不是 banner——它曾经写成 `<header>`，
+  于是和 Logo 带凑成两个 banner；把 banner 摘给顶栏又会让 Logo 带变成
+  「不属于任何地标的内容」。两头都错过，现在的分工是对的。
+- **对比度按 4.5 算，且要按「等效底色」算。** 提示框的底是半透明色调罩在内容底上，
+  20% 时黄色只有 4.19；降到 14% 才够。稀有度色同理，改这些值前先算一遍。
+- **可点目标至少 24×24（WCAG 2.2）**，相邻的两个还要留得开——搜索框和它右边
+  那枚放大镜就是这么一对，行高抬到 26（总高 28）才过。
+
+复跑（工具装在临时目录，不进仓库依赖）：
+
+```bash
+mkdir -p /tmp/a11y && cd /tmp/a11y && npm init -y && npm i lighthouse axe-core
+npm --prefix wiki-site run build && npm --prefix wiki-site run preview -- --port 5399
+CHROME_PATH="/path/to/chrome" node /tmp/a11y/node_modules/lighthouse/cli/index.js \
+  http://localhost:5399/BossRushMod/ --preset=desktop --output=json --output-path=lh.json --quiet
+```
+
+axe 直接在页面里跑：把 `axe.min.js` 用 `<script src>` 注进去（跨域脚本不受 CORS 限制），
+然后 `await axe.run(document, { resultTypes: ['violations'] })`。
+**要在 `vitepress preview` 的生产构建上跑**，dev server 的 HMR 中间态会给出假结论。
 
 ## 9. 不再有的东西
 

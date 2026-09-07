@@ -200,7 +200,8 @@ function sortedRows(group: Group): Row[] {
             <tr v-for="row in sortedRows(group)" :key="row.entry.path">
               <th scope="row">
                 <a class="i" :href="href(row.entry.path)">
-                  <WikiIcon :icon="row.entry.icon" :label="entryLabel(row.entry)" :size="26" />
+                  <!-- 名字就在同一格里，图标再报一次等于念两遍 -->
+                  <WikiIcon :icon="row.entry.icon" label="" :size="26" />
                   <span>{{ entryLabel(row.entry) }}</span>
                 </a>
               </th>
