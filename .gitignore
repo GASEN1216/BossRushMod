@@ -47,6 +47,19 @@ BossRush选项修改方案.md
 !/docs/末日丧尸模式/
 /docs/末日丧尸模式/*
 !/docs/末日丧尸模式/末日丧尸模式_goal执行文档.md
+
+# ArtSource/ 是 Unity 作者工程侧的素材归档（AI 原图、渲染预览、第三方模型包），
+# 不进游戏、不参与打包，默认 local-only，别把几十 MB 二进制压进仓库。
+# 例外同 docs/：下面这几份布局与验证 JSON 被 tests/ 的天空岛守卫直接读取
+# （读不到是硬失败，不是 skip），不纳管会让 fresh clone 一跑 guard 就红。
+# 新增此类「guard 依赖的素材数据」时必须同步加到这里；Previews/、ThirdParty/ 仍留在本地。
+/ArtSource/*
+!/ArtSource/SkyIsland/
+/ArtSource/SkyIsland/*
+!/ArtSource/SkyIsland/*.json
+!/ArtSource/SkyIsland/*.md
+!/ArtSource/SkyIsland/image_prompts.txt
+!/ArtSource/SkyIsland/Validation/
 /.sanshu-memory
 /.sanshu-memory
 /.claude

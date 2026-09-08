@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "scenePath": "Assets/SkyIsland/SkyIslandRaid.unity",
+  "sceneId": "BossRush_SkyIsland",
+  "baseSceneRetained": false,
+  "levelConfig": true,
+  "multiSceneCore": true,
+  "locationProvider": true,
+  "officialLevelManagerPrefabAtRuntime": true,
+  "gameSmoke": "not_run_per_user_request"
+}

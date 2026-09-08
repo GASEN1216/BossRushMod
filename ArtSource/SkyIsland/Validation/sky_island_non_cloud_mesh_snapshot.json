@@ -1,0 +1,2334 @@
+{
+  "VIS_A_Brass": {
+    "triangles": 5064,
+    "vertices": 2832
+  },
+  "VIS_A_BrassLight": {
+    "triangles": 192,
+    "vertices": 96
+  },
+  "VIS_A_Chalk": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_A_Cliff_Forest": {
+    "triangles": 704,
+    "vertices": 440
+  },
+  "VIS_A_Cliff_Leaf": {
+    "triangles": 1320,
+    "vertices": 792
+  },
+  "VIS_A_Cliff_Rock": {
+    "triangles": 880,
+    "vertices": 528
+  },
+  "VIS_A_Cliff_RockLight": {
+    "triangles": 1840,
+    "vertices": 1104
+  },
+  "VIS_A_Cloth": {
+    "triangles": 4,
+    "vertices": 8
+  },
+  "VIS_A_Copper": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_A_Coral": {
+    "triangles": 80,
+    "vertices": 50
+  },
+  "VIS_A_CrystalLavender": {
+    "triangles": 633,
+    "vertices": 461
+  },
+  "VIS_A_CrystalTeal": {
+    "triangles": 231,
+    "vertices": 143
+  },
+  "VIS_A_Fern": {
+    "triangles": 812,
+    "vertices": 1612
+  },
+  "VIS_A_Flower": {
+    "triangles": 2299,
+    "vertices": 1519
+  },
+  "VIS_A_Forest": {
+    "triangles": 5520,
+    "vertices": 3312
+  },
+  "VIS_A_Glow": {
+    "triangles": 1244,
+    "vertices": 950
+  },
+  "VIS_A_GrassLight": {
+    "triangles": 6,
+    "vertices": 12
+  },
+  "VIS_A_Ivory": {
+    "triangles": 1568,
+    "vertices": 948
+  },
+  "VIS_A_Lavender": {
+    "triangles": 2712,
+    "vertices": 1524
+  },
+  "VIS_A_Leaf": {
+    "triangles": 8131,
+    "vertices": 4908
+  },
+  "VIS_A_LeafLight": {
+    "triangles": 3520,
+    "vertices": 2582
+  },
+  "VIS_A_Limestone": {
+    "triangles": 928,
+    "vertices": 624
+  },
+  "VIS_A_Paving_Limestone": {
+    "triangles": 126,
+    "vertices": 132
+  },
+  "VIS_A_PearlGlow": {
+    "triangles": 688,
+    "vertices": 468
+  },
+  "VIS_A_Rock": {
+    "triangles": 44,
+    "vertices": 88
+  },
+  "VIS_A_RockDeep": {
+    "triangles": 104,
+    "vertices": 184
+  },
+  "VIS_A_RockLight": {
+    "triangles": 1180,
+    "vertices": 820
+  },
+  "VIS_A_Roof_Teal": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_A_StarGlow": {
+    "triangles": 80,
+    "vertices": 48
+  },
+  "VIS_A_Teal": {
+    "triangles": 28,
+    "vertices": 16
+  },
+  "VIS_A_TealDeep": {
+    "triangles": 120,
+    "vertices": 64
+  },
+  "VIS_A_TealLight": {
+    "triangles": 168,
+    "vertices": 96
+  },
+  "VIS_A_Wood": {
+    "triangles": 3536,
+    "vertices": 2060
+  },
+  "VIS_A_WoodDark": {
+    "triangles": 3332,
+    "vertices": 1928
+  },
+  "VIS_A_WoodLight": {
+    "triangles": 840,
+    "vertices": 448
+  },
+  "VIS_B_Blossom": {
+    "triangles": 11308,
+    "vertices": 7274
+  },
+  "VIS_B_Brass": {
+    "triangles": 10240,
+    "vertices": 5924
+  },
+  "VIS_B_BrassLight": {
+    "triangles": 14368,
+    "vertices": 7736
+  },
+  "VIS_B_Chalk": {
+    "triangles": 984,
+    "vertices": 528
+  },
+  "VIS_B_Cliff_Forest": {
+    "triangles": 1152,
+    "vertices": 720
+  },
+  "VIS_B_Cliff_Leaf": {
+    "triangles": 2160,
+    "vertices": 1296
+  },
+  "VIS_B_Cliff_Rock": {
+    "triangles": 1440,
+    "vertices": 864
+  },
+  "VIS_B_Cliff_RockLight": {
+    "triangles": 3040,
+    "vertices": 1824
+  },
+  "VIS_B_Cloth": {
+    "triangles": 6,
+    "vertices": 12
+  },
+  "VIS_B_Copper": {
+    "triangles": 360,
+    "vertices": 192
+  },
+  "VIS_B_Coral": {
+    "triangles": 3286,
+    "vertices": 2274
+  },
+  "VIS_B_CrystalLavender": {
+    "triangles": 105,
+    "vertices": 65
+  },
+  "VIS_B_CrystalTeal": {
+    "triangles": 231,
+    "vertices": 143
+  },
+  "VIS_B_Fern": {
+    "triangles": 668,
+    "vertices": 1324
+  },
+  "VIS_B_Flower": {
+    "triangles": 3524,
+    "vertices": 2324
+  },
+  "VIS_B_Forest": {
+    "triangles": 5340,
+    "vertices": 3204
+  },
+  "VIS_B_Glow": {
+    "triangles": 3004,
+    "vertices": 2160
+  },
+  "VIS_B_Grass": {
+    "triangles": 30,
+    "vertices": 60
+  },
+  "VIS_B_Ivory": {
+    "triangles": 240,
+    "vertices": 128
+  },
+  "VIS_B_Lavender": {
+    "triangles": 4368,
+    "vertices": 2352
+  },
+  "VIS_B_Leaf": {
+    "triangles": 17676,
+    "vertices": 10368
+  },
+  "VIS_B_LeafLight": {
+    "triangles": 7424,
+    "vertices": 4686
+  },
+  "VIS_B_Life_Brass": {
+    "triangles": 3584,
+    "vertices": 1820
+  },
+  "VIS_B_Life_BrassLight": {
+    "triangles": 1160,
+    "vertices": 720
+  },
+  "VIS_B_Life_Cloth": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_B_Life_Coral": {
+    "triangles": 5912,
+    "vertices": 3888
+  },
+  "VIS_B_Life_Flower": {
+    "triangles": 8208,
+    "vertices": 5472
+  },
+  "VIS_B_Life_Glow": {
+    "triangles": 480,
+    "vertices": 320
+  },
+  "VIS_B_Life_Ivory": {
+    "triangles": 648,
+    "vertices": 372
+  },
+  "VIS_B_Life_Leaf": {
+    "triangles": 4592,
+    "vertices": 2870
+  },
+  "VIS_B_Life_LeafLight": {
+    "triangles": 12544,
+    "vertices": 7840
+  },
+  "VIS_B_Life_Limestone": {
+    "triangles": 660,
+    "vertices": 364
+  },
+  "VIS_B_Life_Teal": {
+    "triangles": 180,
+    "vertices": 90
+  },
+  "VIS_B_Life_Wood": {
+    "triangles": 624,
+    "vertices": 336
+  },
+  "VIS_B_Life_WoodDark": {
+    "triangles": 2088,
+    "vertices": 1104
+  },
+  "VIS_B_Life_WoodLight": {
+    "triangles": 1296,
+    "vertices": 744
+  },
+  "VIS_B_LilyWhite": {
+    "triangles": 4940,
+    "vertices": 3055
+  },
+  "VIS_B_Limestone": {
+    "triangles": 1906,
+    "vertices": 1232
+  },
+  "VIS_B_Mural": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_B_Paving_Limestone": {
+    "triangles": 578,
+    "vertices": 592
+  },
+  "VIS_B_PearlGlow": {
+    "triangles": 688,
+    "vertices": 468
+  },
+  "VIS_B_Rock": {
+    "triangles": 76,
+    "vertices": 152
+  },
+  "VIS_B_RockDeep": {
+    "triangles": 156,
+    "vertices": 288
+  },
+  "VIS_B_RockLight": {
+    "triangles": 1910,
+    "vertices": 1334
+  },
+  "VIS_B_Roof_Teal": {
+    "triangles": 64,
+    "vertices": 40
+  },
+  "VIS_B_Roof_TealDeep": {
+    "triangles": 64,
+    "vertices": 40
+  },
+  "VIS_B_Roof_TealLight": {
+    "triangles": 64,
+    "vertices": 40
+  },
+  "VIS_B_StarGlow": {
+    "triangles": 80,
+    "vertices": 48
+  },
+  "VIS_B_Teal": {
+    "triangles": 8,
+    "vertices": 24
+  },
+  "VIS_B_TealDeep": {
+    "triangles": 720,
+    "vertices": 384
+  },
+  "VIS_B_TealLight": {
+    "triangles": 1008,
+    "vertices": 576
+  },
+  "VIS_B_Wood": {
+    "triangles": 8388,
+    "vertices": 4800
+  },
+  "VIS_B_WoodDark": {
+    "triangles": 4408,
+    "vertices": 2588
+  },
+  "VIS_B_WoodLight": {
+    "triangles": 2012,
+    "vertices": 1072
+  },
+  "VIS_Bridge_AB_Brass": {
+    "triangles": 440,
+    "vertices": 264
+  },
+  "VIS_Bridge_AB_Glow": {
+    "triangles": 384,
+    "vertices": 240
+  },
+  "VIS_Bridge_AB_Limestone": {
+    "triangles": 28,
+    "vertices": 16
+  },
+  "VIS_Bridge_AB_Rock": {
+    "triangles": 20,
+    "vertices": 12
+  },
+  "VIS_Bridge_AB_Wood": {
+    "triangles": 792,
+    "vertices": 480
+  },
+  "VIS_Bridge_AB_WoodDark": {
+    "triangles": 944,
+    "vertices": 552
+  },
+  "VIS_Bridge_AB_WoodLight": {
+    "triangles": 288,
+    "vertices": 192
+  },
+  "VIS_Bridge_BC_Brass": {
+    "triangles": 420,
+    "vertices": 252
+  },
+  "VIS_Bridge_BC_Glow": {
+    "triangles": 384,
+    "vertices": 240
+  },
+  "VIS_Bridge_BC_Limestone": {
+    "triangles": 28,
+    "vertices": 16
+  },
+  "VIS_Bridge_BC_Rock": {
+    "triangles": 20,
+    "vertices": 12
+  },
+  "VIS_Bridge_BC_Wood": {
+    "triangles": 792,
+    "vertices": 480
+  },
+  "VIS_Bridge_BC_WoodDark": {
+    "triangles": 924,
+    "vertices": 540
+  },
+  "VIS_Bridge_BC_WoodLight": {
+    "triangles": 252,
+    "vertices": 168
+  },
+  "VIS_Bridge_BF_Brass": {
+    "triangles": 1200,
+    "vertices": 720
+  },
+  "VIS_Bridge_BF_Glow": {
+    "triangles": 1152,
+    "vertices": 720
+  },
+  "VIS_Bridge_BF_Limestone": {
+    "triangles": 84,
+    "vertices": 48
+  },
+  "VIS_Bridge_BF_Rock": {
+    "triangles": 60,
+    "vertices": 36
+  },
+  "VIS_Bridge_BF_Wood": {
+    "triangles": 2340,
+    "vertices": 1416
+  },
+  "VIS_Bridge_BF_WoodDark": {
+    "triangles": 2712,
+    "vertices": 1584
+  },
+  "VIS_Bridge_BF_WoodLight": {
+    "triangles": 708,
+    "vertices": 472
+  },
+  "VIS_Bridge_CD_Brass": {
+    "triangles": 460,
+    "vertices": 276
+  },
+  "VIS_Bridge_CD_Glow": {
+    "triangles": 512,
+    "vertices": 320
+  },
+  "VIS_Bridge_CD_Limestone": {
+    "triangles": 28,
+    "vertices": 16
+  },
+  "VIS_Bridge_CD_Rock": {
+    "triangles": 20,
+    "vertices": 12
+  },
+  "VIS_Bridge_CD_Wood": {
+    "triangles": 804,
+    "vertices": 488
+  },
+  "VIS_Bridge_CD_WoodDark": {
+    "triangles": 964,
+    "vertices": 564
+  },
+  "VIS_Bridge_CD_WoodLight": {
+    "triangles": 288,
+    "vertices": 192
+  },
+  "VIS_Bridge_CS1_Brass": {
+    "triangles": 840,
+    "vertices": 504
+  },
+  "VIS_Bridge_CS1_Glow": {
+    "triangles": 768,
+    "vertices": 480
+  },
+  "VIS_Bridge_CS1_Limestone": {
+    "triangles": 56,
+    "vertices": 32
+  },
+  "VIS_Bridge_CS1_Rock": {
+    "triangles": 40,
+    "vertices": 24
+  },
+  "VIS_Bridge_CS1_Wood": {
+    "triangles": 1640,
+    "vertices": 992
+  },
+  "VIS_Bridge_CS1_WoodDark": {
+    "triangles": 1904,
+    "vertices": 1112
+  },
+  "VIS_Bridge_CS1_WoodLight": {
+    "triangles": 444,
+    "vertices": 296
+  },
+  "VIS_Bridge_DE_Brass": {
+    "triangles": 720,
+    "vertices": 432
+  },
+  "VIS_Bridge_DE_Glow": {
+    "triangles": 768,
+    "vertices": 480
+  },
+  "VIS_Bridge_DE_Limestone": {
+    "triangles": 56,
+    "vertices": 32
+  },
+  "VIS_Bridge_DE_Rock": {
+    "triangles": 40,
+    "vertices": 24
+  },
+  "VIS_Bridge_DE_Wood": {
+    "triangles": 840,
+    "vertices": 512
+  },
+  "VIS_Bridge_DE_WoodDark": {
+    "triangles": 1224,
+    "vertices": 720
+  },
+  "VIS_Bridge_DE_WoodLight": {
+    "triangles": 480,
+    "vertices": 320
+  },
+  "VIS_Bridge_DS2_Brass": {
+    "triangles": 760,
+    "vertices": 456
+  },
+  "VIS_Bridge_DS2_Glow": {
+    "triangles": 640,
+    "vertices": 400
+  },
+  "VIS_Bridge_DS2_Limestone": {
+    "triangles": 56,
+    "vertices": 32
+  },
+  "VIS_Bridge_DS2_Rock": {
+    "triangles": 40,
+    "vertices": 24
+  },
+  "VIS_Bridge_DS2_Wood": {
+    "triangles": 1628,
+    "vertices": 984
+  },
+  "VIS_Bridge_DS2_WoodDark": {
+    "triangles": 1824,
+    "vertices": 1064
+  },
+  "VIS_Bridge_DS2_WoodLight": {
+    "triangles": 432,
+    "vertices": 288
+  },
+  "VIS_Bridge_EH_Brass": {
+    "triangles": 1720,
+    "vertices": 1032
+  },
+  "VIS_Bridge_EH_Glow": {
+    "triangles": 1536,
+    "vertices": 960
+  },
+  "VIS_Bridge_EH_Limestone": {
+    "triangles": 112,
+    "vertices": 64
+  },
+  "VIS_Bridge_EH_Rock": {
+    "triangles": 80,
+    "vertices": 48
+  },
+  "VIS_Bridge_EH_Wood": {
+    "triangles": 3040,
+    "vertices": 1840
+  },
+  "VIS_Bridge_EH_WoodDark": {
+    "triangles": 3680,
+    "vertices": 2152
+  },
+  "VIS_Bridge_EH_WoodLight": {
+    "triangles": 948,
+    "vertices": 632
+  },
+  "VIS_Bridge_FG_Brass": {
+    "triangles": 940,
+    "vertices": 564
+  },
+  "VIS_Bridge_FG_Glow": {
+    "triangles": 896,
+    "vertices": 560
+  },
+  "VIS_Bridge_FG_Limestone": {
+    "triangles": 56,
+    "vertices": 32
+  },
+  "VIS_Bridge_FG_Rock": {
+    "triangles": 40,
+    "vertices": 24
+  },
+  "VIS_Bridge_FG_Wood": {
+    "triangles": 2144,
+    "vertices": 1296
+  },
+  "VIS_Bridge_FG_WoodDark": {
+    "triangles": 2340,
+    "vertices": 1364
+  },
+  "VIS_Bridge_FG_WoodLight": {
+    "triangles": 564,
+    "vertices": 376
+  },
+  "VIS_Bridge_FS3_Brass": {
+    "triangles": 740,
+    "vertices": 444
+  },
+  "VIS_Bridge_FS3_Glow": {
+    "triangles": 768,
+    "vertices": 480
+  },
+  "VIS_Bridge_FS3_Limestone": {
+    "triangles": 56,
+    "vertices": 32
+  },
+  "VIS_Bridge_FS3_Rock": {
+    "triangles": 40,
+    "vertices": 24
+  },
+  "VIS_Bridge_FS3_Wood": {
+    "triangles": 1560,
+    "vertices": 944
+  },
+  "VIS_Bridge_FS3_WoodDark": {
+    "triangles": 1748,
+    "vertices": 1020
+  },
+  "VIS_Bridge_FS3_WoodLight": {
+    "triangles": 432,
+    "vertices": 288
+  },
+  "VIS_Bridge_GE_Brass": {
+    "triangles": 1260,
+    "vertices": 756
+  },
+  "VIS_Bridge_GE_Glow": {
+    "triangles": 1280,
+    "vertices": 800
+  },
+  "VIS_Bridge_GE_Limestone": {
+    "triangles": 84,
+    "vertices": 48
+  },
+  "VIS_Bridge_GE_Rock": {
+    "triangles": 60,
+    "vertices": 36
+  },
+  "VIS_Bridge_GE_Wood": {
+    "triangles": 2364,
+    "vertices": 1432
+  },
+  "VIS_Bridge_GE_WoodDark": {
+    "triangles": 2772,
+    "vertices": 1620
+  },
+  "VIS_Bridge_GE_WoodLight": {
+    "triangles": 780,
+    "vertices": 520
+  },
+  "VIS_Bridge_GS4_Brass": {
+    "triangles": 760,
+    "vertices": 456
+  },
+  "VIS_Bridge_GS4_Glow": {
+    "triangles": 768,
+    "vertices": 480
+  },
+  "VIS_Bridge_GS4_Limestone": {
+    "triangles": 56,
+    "vertices": 32
+  },
+  "VIS_Bridge_GS4_Rock": {
+    "triangles": 40,
+    "vertices": 24
+  },
+  "VIS_Bridge_GS4_Wood": {
+    "triangles": 1572,
+    "vertices": 952
+  },
+  "VIS_Bridge_GS4_WoodDark": {
+    "triangles": 1768,
+    "vertices": 1032
+  },
+  "VIS_Bridge_GS4_WoodLight": {
+    "triangles": 480,
+    "vertices": 320
+  },
+  "VIS_Bridge_K1_Brass": {
+    "triangles": 1860,
+    "vertices": 1116
+  },
+  "VIS_Bridge_K1_Glow": {
+    "triangles": 1920,
+    "vertices": 1200
+  },
+  "VIS_Bridge_K1_Limestone": {
+    "triangles": 140,
+    "vertices": 80
+  },
+  "VIS_Bridge_K1_Rock": {
+    "triangles": 100,
+    "vertices": 60
+  },
+  "VIS_Bridge_K1_Wood": {
+    "triangles": 2780,
+    "vertices": 1688
+  },
+  "VIS_Bridge_K1_WoodDark": {
+    "triangles": 3596,
+    "vertices": 2108
+  },
+  "VIS_Bridge_K1_WoodLight": {
+    "triangles": 1176,
+    "vertices": 784
+  },
+  "VIS_Bridge_K2_Brass": {
+    "triangles": 2380,
+    "vertices": 1428
+  },
+  "VIS_Bridge_K2_Glow": {
+    "triangles": 2560,
+    "vertices": 1600
+  },
+  "VIS_Bridge_K2_Limestone": {
+    "triangles": 196,
+    "vertices": 112
+  },
+  "VIS_Bridge_K2_Rock": {
+    "triangles": 140,
+    "vertices": 84
+  },
+  "VIS_Bridge_K2_Wood": {
+    "triangles": 2476,
+    "vertices": 1512
+  },
+  "VIS_Bridge_K2_WoodDark": {
+    "triangles": 3836,
+    "vertices": 2260
+  },
+  "VIS_Bridge_K2_WoodLight": {
+    "triangles": 1536,
+    "vertices": 1024
+  },
+  "VIS_Bridge_K3_Brass": {
+    "triangles": 1980,
+    "vertices": 1188
+  },
+  "VIS_Bridge_K3_Glow": {
+    "triangles": 2048,
+    "vertices": 1280
+  },
+  "VIS_Bridge_K3_Limestone": {
+    "triangles": 168,
+    "vertices": 96
+  },
+  "VIS_Bridge_K3_Rock": {
+    "triangles": 120,
+    "vertices": 72
+  },
+  "VIS_Bridge_K3_Wood": {
+    "triangles": 3032,
+    "vertices": 1840
+  },
+  "VIS_Bridge_K3_WoodDark": {
+    "triangles": 3884,
+    "vertices": 2276
+  },
+  "VIS_Bridge_K3_WoodLight": {
+    "triangles": 1236,
+    "vertices": 824
+  },
+  "VIS_C_Blossom": {
+    "triangles": 1610,
+    "vertices": 1058
+  },
+  "VIS_C_Brass": {
+    "triangles": 4348,
+    "vertices": 2572
+  },
+  "VIS_C_BrassLight": {
+    "triangles": 184,
+    "vertices": 276
+  },
+  "VIS_C_Chalk": {
+    "triangles": 120,
+    "vertices": 64
+  },
+  "VIS_C_Cliff_Forest": {
+    "triangles": 1280,
+    "vertices": 800
+  },
+  "VIS_C_Cliff_Leaf": {
+    "triangles": 2400,
+    "vertices": 1440
+  },
+  "VIS_C_Cliff_Rock": {
+    "triangles": 1600,
+    "vertices": 960
+  },
+  "VIS_C_Cliff_RockLight": {
+    "triangles": 2640,
+    "vertices": 1584
+  },
+  "VIS_C_Cloth": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_C_Copper": {
+    "triangles": 120,
+    "vertices": 64
+  },
+  "VIS_C_Coral": {
+    "triangles": 160,
+    "vertices": 100
+  },
+  "VIS_C_CrystalLavender": {
+    "triangles": 63,
+    "vertices": 39
+  },
+  "VIS_C_CrystalTeal": {
+    "triangles": 189,
+    "vertices": 117
+  },
+  "VIS_C_Fern": {
+    "triangles": 735,
+    "vertices": 1461
+  },
+  "VIS_C_Flower": {
+    "triangles": 11232,
+    "vertices": 5088
+  },
+  "VIS_C_Forest": {
+    "triangles": 5460,
+    "vertices": 3276
+  },
+  "VIS_C_Glow": {
+    "triangles": 1512,
+    "vertices": 976
+  },
+  "VIS_C_GrassLight": {
+    "triangles": 10,
+    "vertices": 20
+  },
+  "VIS_C_Ivory": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_C_Lavender": {
+    "triangles": 1008,
+    "vertices": 630
+  },
+  "VIS_C_Leaf": {
+    "triangles": 16194,
+    "vertices": 9768
+  },
+  "VIS_C_LeafGold": {
+    "triangles": 4200,
+    "vertices": 2520
+  },
+  "VIS_C_LeafLight": {
+    "triangles": 7488,
+    "vertices": 4920
+  },
+  "VIS_C_Limestone": {
+    "triangles": 2664,
+    "vertices": 1600
+  },
+  "VIS_C_Paving_Limestone": {
+    "triangles": 212,
+    "vertices": 216
+  },
+  "VIS_C_PearlGlow": {
+    "triangles": 516,
+    "vertices": 351
+  },
+  "VIS_C_Rock": {
+    "triangles": 62,
+    "vertices": 124
+  },
+  "VIS_C_RockDeep": {
+    "triangles": 127,
+    "vertices": 236
+  },
+  "VIS_C_RockLight": {
+    "triangles": 1652,
+    "vertices": 1148
+  },
+  "VIS_C_Roof_Teal": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_C_Roof_TealLight": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_C_Soil": {
+    "triangles": 360,
+    "vertices": 192
+  },
+  "VIS_C_TealDeep": {
+    "triangles": 240,
+    "vertices": 128
+  },
+  "VIS_C_TealLight": {
+    "triangles": 336,
+    "vertices": 192
+  },
+  "VIS_C_Waterfall_Cloud": {
+    "triangles": 400,
+    "vertices": 240
+  },
+  "VIS_C_Waterfall_Water": {
+    "triangles": 16,
+    "vertices": 18
+  },
+  "VIS_C_Wood": {
+    "triangles": 5656,
+    "vertices": 3224
+  },
+  "VIS_C_WoodDark": {
+    "triangles": 3600,
+    "vertices": 2140
+  },
+  "VIS_C_WoodLight": {
+    "triangles": 996,
+    "vertices": 544
+  },
+  "VIS_CloudSea_CloudBackdrop": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_D_Brass": {
+    "triangles": 5605,
+    "vertices": 3135
+  },
+  "VIS_D_BrassLight": {
+    "triangles": 220,
+    "vertices": 112
+  },
+  "VIS_D_Chalk": {
+    "triangles": 7152,
+    "vertices": 4416
+  },
+  "VIS_D_Cliff_Forest": {
+    "triangles": 1088,
+    "vertices": 680
+  },
+  "VIS_D_Cliff_Leaf": {
+    "triangles": 2040,
+    "vertices": 1224
+  },
+  "VIS_D_Cliff_Rock": {
+    "triangles": 1360,
+    "vertices": 816
+  },
+  "VIS_D_Cliff_RockLight": {
+    "triangles": 2640,
+    "vertices": 1584
+  },
+  "VIS_D_Coral": {
+    "triangles": 280,
+    "vertices": 168
+  },
+  "VIS_D_CrystalLavender": {
+    "triangles": 3390,
+    "vertices": 2526
+  },
+  "VIS_D_CrystalTeal": {
+    "triangles": 1382,
+    "vertices": 998
+  },
+  "VIS_D_Fern": {
+    "triangles": 2825,
+    "vertices": 3255
+  },
+  "VIS_D_Flower": {
+    "triangles": 864,
+    "vertices": 576
+  },
+  "VIS_D_Forest": {
+    "triangles": 7680,
+    "vertices": 4608
+  },
+  "VIS_D_Glow": {
+    "triangles": 540,
+    "vertices": 360
+  },
+  "VIS_D_Grass": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_D_Ivory": {
+    "triangles": 2316,
+    "vertices": 1440
+  },
+  "VIS_D_Lavender": {
+    "triangles": 8423,
+    "vertices": 5773
+  },
+  "VIS_D_Leaf": {
+    "triangles": 10068,
+    "vertices": 6412
+  },
+  "VIS_D_LeafLight": {
+    "triangles": 5296,
+    "vertices": 3782
+  },
+  "VIS_D_LilyWhite": {
+    "triangles": 1400,
+    "vertices": 875
+  },
+  "VIS_D_Limestone": {
+    "triangles": 1326,
+    "vertices": 896
+  },
+  "VIS_D_Paving_Limestone": {
+    "triangles": 260,
+    "vertices": 266
+  },
+  "VIS_D_PearlGlow": {
+    "triangles": 4364,
+    "vertices": 2675
+  },
+  "VIS_D_Rock": {
+    "triangles": 66,
+    "vertices": 132
+  },
+  "VIS_D_RockDeep": {
+    "triangles": 149,
+    "vertices": 268
+  },
+  "VIS_D_RockLight": {
+    "triangles": 1802,
+    "vertices": 1250
+  },
+  "VIS_D_StarGlow": {
+    "triangles": 1544,
+    "vertices": 1008
+  },
+  "VIS_D_Waterfall_Cloud": {
+    "triangles": 400,
+    "vertices": 240
+  },
+  "VIS_D_Waterfall_Water": {
+    "triangles": 16,
+    "vertices": 18
+  },
+  "VIS_D_Wood": {
+    "triangles": 3228,
+    "vertices": 1888
+  },
+  "VIS_D_WoodDark": {
+    "triangles": 3376,
+    "vertices": 2020
+  },
+  "VIS_D_WoodLight": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_Distant_0_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_0_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_0_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_0_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_0_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_0_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_10_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_10_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_10_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_10_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_10_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_10_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_11_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_11_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_11_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_11_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_11_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_11_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_1_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_1_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_1_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_1_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_1_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_1_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_2_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_2_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_2_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_2_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_2_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_2_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_3_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_3_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_3_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_3_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_3_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_3_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_4_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_4_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_4_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_4_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_4_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_4_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_5_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_5_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_5_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_5_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_5_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_5_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_6_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_6_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_6_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_6_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_6_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_6_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_7_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_7_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_7_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_7_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_7_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_7_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_8_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_8_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_8_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_8_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_8_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_8_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_9_Forest": {
+    "triangles": 300,
+    "vertices": 180
+  },
+  "VIS_Distant_9_Grass": {
+    "triangles": 32,
+    "vertices": 18
+  },
+  "VIS_Distant_9_Limestone": {
+    "triangles": 198,
+    "vertices": 144
+  },
+  "VIS_Distant_9_Rock": {
+    "triangles": 12,
+    "vertices": 24
+  },
+  "VIS_Distant_9_RockDeep": {
+    "triangles": 24,
+    "vertices": 48
+  },
+  "VIS_Distant_9_RockLight": {
+    "triangles": 66,
+    "vertices": 66
+  },
+  "VIS_Distant_Birds_Ivory": {
+    "triangles": 60,
+    "vertices": 90
+  },
+  "VIS_E_Brass": {
+    "triangles": 7956,
+    "vertices": 4556
+  },
+  "VIS_E_BrassLight": {
+    "triangles": 18408,
+    "vertices": 9888
+  },
+  "VIS_E_Chalk": {
+    "triangles": 624,
+    "vertices": 336
+  },
+  "VIS_E_Cliff_Forest": {
+    "triangles": 1152,
+    "vertices": 720
+  },
+  "VIS_E_Cliff_Leaf": {
+    "triangles": 2160,
+    "vertices": 1296
+  },
+  "VIS_E_Cliff_Rock": {
+    "triangles": 1440,
+    "vertices": 864
+  },
+  "VIS_E_Cliff_RockLight": {
+    "triangles": 2720,
+    "vertices": 1632
+  },
+  "VIS_E_CrystalLavender": {
+    "triangles": 777,
+    "vertices": 569
+  },
+  "VIS_E_CrystalTeal": {
+    "triangles": 231,
+    "vertices": 143
+  },
+  "VIS_E_Fern": {
+    "triangles": 812,
+    "vertices": 1612
+  },
+  "VIS_E_Flower": {
+    "triangles": 2404,
+    "vertices": 1588
+  },
+  "VIS_E_Forest": {
+    "triangles": 5940,
+    "vertices": 3564
+  },
+  "VIS_E_Glow": {
+    "triangles": 1016,
+    "vertices": 824
+  },
+  "VIS_E_Grass": {
+    "triangles": 8,
+    "vertices": 16
+  },
+  "VIS_E_Ivory": {
+    "triangles": 1400,
+    "vertices": 872
+  },
+  "VIS_E_Lavender": {
+    "triangles": 2532,
+    "vertices": 1434
+  },
+  "VIS_E_Leaf": {
+    "triangles": 5452,
+    "vertices": 3293
+  },
+  "VIS_E_LeafLight": {
+    "triangles": 3212,
+    "vertices": 2376
+  },
+  "VIS_E_Limestone": {
+    "triangles": 1300,
+    "vertices": 880
+  },
+  "VIS_E_Paving_Limestone": {
+    "triangles": 256,
+    "vertices": 262
+  },
+  "VIS_E_PearlGlow": {
+    "triangles": 688,
+    "vertices": 468
+  },
+  "VIS_E_Rock": {
+    "triangles": 66,
+    "vertices": 132
+  },
+  "VIS_E_RockDeep": {
+    "triangles": 138,
+    "vertices": 252
+  },
+  "VIS_E_RockLight": {
+    "triangles": 1736,
+    "vertices": 1206
+  },
+  "VIS_E_StarGlow": {
+    "triangles": 416,
+    "vertices": 240
+  },
+  "VIS_E_Wood": {
+    "triangles": 1600,
+    "vertices": 960
+  },
+  "VIS_E_WoodDark": {
+    "triangles": 2968,
+    "vertices": 1772
+  },
+  "VIS_F_Blossom": {
+    "triangles": 12754,
+    "vertices": 7842
+  },
+  "VIS_F_Brass": {
+    "triangles": 6992,
+    "vertices": 3912
+  },
+  "VIS_F_BrassLight": {
+    "triangles": 648,
+    "vertices": 588
+  },
+  "VIS_F_Chalk": {
+    "triangles": 584,
+    "vertices": 320
+  },
+  "VIS_F_Cliff_Forest": {
+    "triangles": 1088,
+    "vertices": 680
+  },
+  "VIS_F_Cliff_Leaf": {
+    "triangles": 2040,
+    "vertices": 1224
+  },
+  "VIS_F_Cliff_Rock": {
+    "triangles": 1360,
+    "vertices": 816
+  },
+  "VIS_F_Cliff_RockLight": {
+    "triangles": 2560,
+    "vertices": 1536
+  },
+  "VIS_F_Cloth": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_F_Copper": {
+    "triangles": 120,
+    "vertices": 64
+  },
+  "VIS_F_Coral": {
+    "triangles": 440,
+    "vertices": 268
+  },
+  "VIS_F_CrystalLavender": {
+    "triangles": 147,
+    "vertices": 91
+  },
+  "VIS_F_CrystalTeal": {
+    "triangles": 273,
+    "vertices": 169
+  },
+  "VIS_F_Fern": {
+    "triangles": 1037,
+    "vertices": 1739
+  },
+  "VIS_F_Flower": {
+    "triangles": 864,
+    "vertices": 576
+  },
+  "VIS_F_Forest": {
+    "triangles": 5995,
+    "vertices": 3619
+  },
+  "VIS_F_Glow": {
+    "triangles": 1340,
+    "vertices": 816
+  },
+  "VIS_F_Grass": {
+    "triangles": 26,
+    "vertices": 52
+  },
+  "VIS_F_Ivory": {
+    "triangles": 1224,
+    "vertices": 624
+  },
+  "VIS_F_Lavender": {
+    "triangles": 8386,
+    "vertices": 5508
+  },
+  "VIS_F_Leaf": {
+    "triangles": 14718,
+    "vertices": 8650
+  },
+  "VIS_F_LeafLight": {
+    "triangles": 5735,
+    "vertices": 3735
+  },
+  "VIS_F_LilyWhite": {
+    "triangles": 5660,
+    "vertices": 3515
+  },
+  "VIS_F_Limestone": {
+    "triangles": 1478,
+    "vertices": 976
+  },
+  "VIS_F_Paving_Limestone": {
+    "triangles": 608,
+    "vertices": 616
+  },
+  "VIS_F_PearlGlow": {
+    "triangles": 1868,
+    "vertices": 1215
+  },
+  "VIS_F_Rock": {
+    "triangles": 64,
+    "vertices": 128
+  },
+  "VIS_F_RockDeep": {
+    "triangles": 143,
+    "vertices": 256
+  },
+  "VIS_F_RockLight": {
+    "triangles": 1734,
+    "vertices": 1202
+  },
+  "VIS_F_Roof_TealDeep": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_F_Roof_TealLight": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_F_StarGlow": {
+    "triangles": 1456,
+    "vertices": 960
+  },
+  "VIS_F_Teal": {
+    "triangles": 96,
+    "vertices": 72
+  },
+  "VIS_F_TealDeep": {
+    "triangles": 240,
+    "vertices": 128
+  },
+  "VIS_F_TealLight": {
+    "triangles": 336,
+    "vertices": 192
+  },
+  "VIS_F_Water": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_F_Waterfall_Cloud": {
+    "triangles": 400,
+    "vertices": 240
+  },
+  "VIS_F_Waterfall_Water": {
+    "triangles": 16,
+    "vertices": 18
+  },
+  "VIS_F_Wood": {
+    "triangles": 5076,
+    "vertices": 2928
+  },
+  "VIS_F_WoodDark": {
+    "triangles": 3780,
+    "vertices": 2248
+  },
+  "VIS_F_WoodLight": {
+    "triangles": 660,
+    "vertices": 352
+  },
+  "VIS_G_Brass": {
+    "triangles": 5560,
+    "vertices": 3096
+  },
+  "VIS_G_BrassLight": {
+    "triangles": 1760,
+    "vertices": 992
+  },
+  "VIS_G_Chalk": {
+    "triangles": 684,
+    "vertices": 368
+  },
+  "VIS_G_Cliff_Forest": {
+    "triangles": 960,
+    "vertices": 600
+  },
+  "VIS_G_Cliff_Leaf": {
+    "triangles": 1800,
+    "vertices": 1080
+  },
+  "VIS_G_Cliff_Rock": {
+    "triangles": 1200,
+    "vertices": 720
+  },
+  "VIS_G_Cliff_RockLight": {
+    "triangles": 2720,
+    "vertices": 1632
+  },
+  "VIS_G_Copper": {
+    "triangles": 924,
+    "vertices": 488
+  },
+  "VIS_G_Coral": {
+    "triangles": 80,
+    "vertices": 50
+  },
+  "VIS_G_CrystalLavender": {
+    "triangles": 873,
+    "vertices": 641
+  },
+  "VIS_G_CrystalTeal": {
+    "triangles": 231,
+    "vertices": 143
+  },
+  "VIS_G_Fern": {
+    "triangles": 668,
+    "vertices": 1324
+  },
+  "VIS_G_Flower": {
+    "triangles": 2229,
+    "vertices": 1473
+  },
+  "VIS_G_Forest": {
+    "triangles": 5160,
+    "vertices": 3096
+  },
+  "VIS_G_Glow": {
+    "triangles": 1260,
+    "vertices": 954
+  },
+  "VIS_G_Grass": {
+    "triangles": 10,
+    "vertices": 20
+  },
+  "VIS_G_Ivory": {
+    "triangles": 1536,
+    "vertices": 960
+  },
+  "VIS_G_Lavender": {
+    "triangles": 2820,
+    "vertices": 1578
+  },
+  "VIS_G_Leaf": {
+    "triangles": 10281,
+    "vertices": 6271
+  },
+  "VIS_G_LeafLight": {
+    "triangles": 4268,
+    "vertices": 2938
+  },
+  "VIS_G_Limestone": {
+    "triangles": 1510,
+    "vertices": 992
+  },
+  "VIS_G_Paving_Limestone": {
+    "triangles": 250,
+    "vertices": 256
+  },
+  "VIS_G_PearlGlow": {
+    "triangles": 688,
+    "vertices": 468
+  },
+  "VIS_G_Rock": {
+    "triangles": 66,
+    "vertices": 132
+  },
+  "VIS_G_RockDeep": {
+    "triangles": 142,
+    "vertices": 260
+  },
+  "VIS_G_RockLight": {
+    "triangles": 1802,
+    "vertices": 1250
+  },
+  "VIS_G_Roof_Teal": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_G_StarGlow": {
+    "triangles": 480,
+    "vertices": 268
+  },
+  "VIS_G_TealDeep": {
+    "triangles": 120,
+    "vertices": 64
+  },
+  "VIS_G_TealLight": {
+    "triangles": 168,
+    "vertices": 96
+  },
+  "VIS_G_Wood": {
+    "triangles": 4820,
+    "vertices": 2792
+  },
+  "VIS_G_WoodDark": {
+    "triangles": 3008,
+    "vertices": 1792
+  },
+  "VIS_G_WoodLight": {
+    "triangles": 360,
+    "vertices": 192
+  },
+  "VIS_H_Brass": {
+    "triangles": 8184,
+    "vertices": 4416
+  },
+  "VIS_H_BrassLight": {
+    "triangles": 2466,
+    "vertices": 1554
+  },
+  "VIS_H_Chalk": {
+    "triangles": 828,
+    "vertices": 456
+  },
+  "VIS_H_Cliff_Forest": {
+    "triangles": 960,
+    "vertices": 600
+  },
+  "VIS_H_Cliff_Leaf": {
+    "triangles": 1800,
+    "vertices": 1080
+  },
+  "VIS_H_Cliff_Rock": {
+    "triangles": 1200,
+    "vertices": 720
+  },
+  "VIS_H_Cliff_RockLight": {
+    "triangles": 2160,
+    "vertices": 1296
+  },
+  "VIS_H_Coral": {
+    "triangles": 280,
+    "vertices": 168
+  },
+  "VIS_H_CrystalLavender": {
+    "triangles": 84,
+    "vertices": 52
+  },
+  "VIS_H_CrystalTeal": {
+    "triangles": 168,
+    "vertices": 104
+  },
+  "VIS_H_Fern": {
+    "triangles": 735,
+    "vertices": 1461
+  },
+  "VIS_H_Flower": {
+    "triangles": 5454,
+    "vertices": 2106
+  },
+  "VIS_H_Forest": {
+    "triangles": 5220,
+    "vertices": 3132
+  },
+  "VIS_H_Glow": {
+    "triangles": 1548,
+    "vertices": 1032
+  },
+  "VIS_H_Grass": {
+    "triangles": 10,
+    "vertices": 20
+  },
+  "VIS_H_Ivory": {
+    "triangles": 404,
+    "vertices": 248
+  },
+  "VIS_H_Lavender": {
+    "triangles": 4925,
+    "vertices": 3133
+  },
+  "VIS_H_Leaf": {
+    "triangles": 10269,
+    "vertices": 6105
+  },
+  "VIS_H_LeafLight": {
+    "triangles": 2944,
+    "vertices": 2148
+  },
+  "VIS_H_Limestone": {
+    "triangles": 1344,
+    "vertices": 880
+  },
+  "VIS_H_Paving_Limestone": {
+    "triangles": 88,
+    "vertices": 90
+  },
+  "VIS_H_PearlGlow": {
+    "triangles": 516,
+    "vertices": 351
+  },
+  "VIS_H_Rock": {
+    "triangles": 50,
+    "vertices": 100
+  },
+  "VIS_H_RockDeep": {
+    "triangles": 107,
+    "vertices": 196
+  },
+  "VIS_H_RockLight": {
+    "triangles": 1348,
+    "vertices": 936
+  },
+  "VIS_H_StarGlow": {
+    "triangles": 1316,
+    "vertices": 780
+  },
+  "VIS_H_Wood": {
+    "triangles": 1320,
+    "vertices": 792
+  },
+  "VIS_H_WoodDark": {
+    "triangles": 2992,
+    "vertices": 1792
+  },
+  "VIS_S1_Blossom": {
+    "triangles": 1428,
+    "vertices": 882
+  },
+  "VIS_S1_Brass": {
+    "triangles": 980,
+    "vertices": 588
+  },
+  "VIS_S1_Cliff_Forest": {
+    "triangles": 576,
+    "vertices": 360
+  },
+  "VIS_S1_Cliff_Leaf": {
+    "triangles": 1080,
+    "vertices": 648
+  },
+  "VIS_S1_Cliff_Rock": {
+    "triangles": 720,
+    "vertices": 432
+  },
+  "VIS_S1_Cliff_RockLight": {
+    "triangles": 1440,
+    "vertices": 864
+  },
+  "VIS_S1_CrystalLavender": {
+    "triangles": 218,
+    "vertices": 158
+  },
+  "VIS_S1_CrystalTeal": {
+    "triangles": 126,
+    "vertices": 78
+  },
+  "VIS_S1_Fern": {
+    "triangles": 718,
+    "vertices": 1238
+  },
+  "VIS_S1_Flower": {
+    "triangles": 884,
+    "vertices": 584
+  },
+  "VIS_S1_Forest": {
+    "triangles": 4233,
+    "vertices": 2553
+  },
+  "VIS_S1_Glow": {
+    "triangles": 544,
+    "vertices": 408
+  },
+  "VIS_S1_GrassLight": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_S1_Ivory": {
+    "triangles": 592,
+    "vertices": 348
+  },
+  "VIS_S1_Lavender": {
+    "triangles": 1392,
+    "vertices": 780
+  },
+  "VIS_S1_Leaf": {
+    "triangles": 2468,
+    "vertices": 1490
+  },
+  "VIS_S1_LeafGold": {
+    "triangles": 2700,
+    "vertices": 1620
+  },
+  "VIS_S1_LeafLight": {
+    "triangles": 2677,
+    "vertices": 1943
+  },
+  "VIS_S1_LilyWhite": {
+    "triangles": 1344,
+    "vertices": 840
+  },
+  "VIS_S1_Limestone": {
+    "triangles": 594,
+    "vertices": 432
+  },
+  "VIS_S1_Paving_Limestone": {
+    "triangles": 48,
+    "vertices": 50
+  },
+  "VIS_S1_PearlGlow": {
+    "triangles": 344,
+    "vertices": 234
+  },
+  "VIS_S1_Rock": {
+    "triangles": 40,
+    "vertices": 80
+  },
+  "VIS_S1_RockDeep": {
+    "triangles": 82,
+    "vertices": 152
+  },
+  "VIS_S1_RockLight": {
+    "triangles": 1494,
+    "vertices": 998
+  },
+  "VIS_S1_Water": {
+    "triangles": 184,
+    "vertices": 96
+  },
+  "VIS_S1_Wood": {
+    "triangles": 2804,
+    "vertices": 1632
+  },
+  "VIS_S1_WoodDark": {
+    "triangles": 980,
+    "vertices": 588
+  },
+  "VIS_S2_Blossom": {
+    "triangles": 4300,
+    "vertices": 2650
+  },
+  "VIS_S2_Brass": {
+    "triangles": 1424,
+    "vertices": 856
+  },
+  "VIS_S2_Chalk": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_S2_Cliff_Forest": {
+    "triangles": 576,
+    "vertices": 360
+  },
+  "VIS_S2_Cliff_Leaf": {
+    "triangles": 1080,
+    "vertices": 648
+  },
+  "VIS_S2_Cliff_Rock": {
+    "triangles": 720,
+    "vertices": 432
+  },
+  "VIS_S2_Cliff_RockLight": {
+    "triangles": 1440,
+    "vertices": 864
+  },
+  "VIS_S2_Copper": {
+    "triangles": 68,
+    "vertices": 40
+  },
+  "VIS_S2_Coral": {
+    "triangles": 80,
+    "vertices": 50
+  },
+  "VIS_S2_CrystalLavender": {
+    "triangles": 346,
+    "vertices": 254
+  },
+  "VIS_S2_CrystalTeal": {
+    "triangles": 126,
+    "vertices": 78
+  },
+  "VIS_S2_Fern": {
+    "triangles": 586,
+    "vertices": 1166
+  },
+  "VIS_S2_Flower": {
+    "triangles": 884,
+    "vertices": 584
+  },
+  "VIS_S2_Forest": {
+    "triangles": 4200,
+    "vertices": 2520
+  },
+  "VIS_S2_Glow": {
+    "triangles": 472,
+    "vertices": 352
+  },
+  "VIS_S2_Grass": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_S2_Ivory": {
+    "triangles": 664,
+    "vertices": 412
+  },
+  "VIS_S2_Lavender": {
+    "triangles": 3376,
+    "vertices": 2056
+  },
+  "VIS_S2_Leaf": {
+    "triangles": 3424,
+    "vertices": 2052
+  },
+  "VIS_S2_LeafLight": {
+    "triangles": 2352,
+    "vertices": 1768
+  },
+  "VIS_S2_LilyWhite": {
+    "triangles": 2460,
+    "vertices": 1525
+  },
+  "VIS_S2_Limestone": {
+    "triangles": 714,
+    "vertices": 496
+  },
+  "VIS_S2_Paving_Limestone": {
+    "triangles": 24,
+    "vertices": 26
+  },
+  "VIS_S2_PearlGlow": {
+    "triangles": 1672,
+    "vertices": 1024
+  },
+  "VIS_S2_Rock": {
+    "triangles": 40,
+    "vertices": 80
+  },
+  "VIS_S2_RockDeep": {
+    "triangles": 82,
+    "vertices": 152
+  },
+  "VIS_S2_RockLight": {
+    "triangles": 1094,
+    "vertices": 758
+  },
+  "VIS_S2_Roof_Teal": {
+    "triangles": 32,
+    "vertices": 20
+  },
+  "VIS_S2_Teal": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_S2_TealDeep": {
+    "triangles": 120,
+    "vertices": 64
+  },
+  "VIS_S2_TealLight": {
+    "triangles": 168,
+    "vertices": 96
+  },
+  "VIS_S2_Wood": {
+    "triangles": 3124,
+    "vertices": 1808
+  },
+  "VIS_S2_WoodDark": {
+    "triangles": 1272,
+    "vertices": 752
+  },
+  "VIS_S2_WoodLight": {
+    "triangles": 300,
+    "vertices": 160
+  },
+  "VIS_S3_Brass": {
+    "triangles": 1800,
+    "vertices": 1020
+  },
+  "VIS_S3_Cliff_Forest": {
+    "triangles": 576,
+    "vertices": 360
+  },
+  "VIS_S3_Cliff_Leaf": {
+    "triangles": 1080,
+    "vertices": 648
+  },
+  "VIS_S3_Cliff_Rock": {
+    "triangles": 720,
+    "vertices": 432
+  },
+  "VIS_S3_Cliff_RockLight": {
+    "triangles": 1440,
+    "vertices": 864
+  },
+  "VIS_S3_CrystalLavender": {
+    "triangles": 42,
+    "vertices": 26
+  },
+  "VIS_S3_CrystalTeal": {
+    "triangles": 430,
+    "vertices": 306
+  },
+  "VIS_S3_Fern": {
+    "triangles": 4026,
+    "vertices": 3286
+  },
+  "VIS_S3_Flower": {
+    "triangles": 709,
+    "vertices": 469
+  },
+  "VIS_S3_Forest": {
+    "triangles": 4200,
+    "vertices": 2520
+  },
+  "VIS_S3_Glow": {
+    "triangles": 224,
+    "vertices": 186
+  },
+  "VIS_S3_Grass": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_S3_Ivory": {
+    "triangles": 664,
+    "vertices": 412
+  },
+  "VIS_S3_Lavender": {
+    "triangles": 3556,
+    "vertices": 2146
+  },
+  "VIS_S3_Leaf": {
+    "triangles": 3625,
+    "vertices": 2217
+  },
+  "VIS_S3_LeafLight": {
+    "triangles": 3280,
+    "vertices": 2374
+  },
+  "VIS_S3_LilyWhite": {
+    "triangles": 560,
+    "vertices": 350
+  },
+  "VIS_S3_Limestone": {
+    "triangles": 594,
+    "vertices": 432
+  },
+  "VIS_S3_Paving_Limestone": {
+    "triangles": 44,
+    "vertices": 46
+  },
+  "VIS_S3_PearlGlow": {
+    "triangles": 1672,
+    "vertices": 1024
+  },
+  "VIS_S3_Rock": {
+    "triangles": 40,
+    "vertices": 80
+  },
+  "VIS_S3_RockDeep": {
+    "triangles": 82,
+    "vertices": 152
+  },
+  "VIS_S3_RockLight": {
+    "triangles": 1654,
+    "vertices": 1094
+  },
+  "VIS_S3_StarGlow": {
+    "triangles": 288,
+    "vertices": 192
+  },
+  "VIS_S3_Wood": {
+    "triangles": 2804,
+    "vertices": 1632
+  },
+  "VIS_S3_WoodDark": {
+    "triangles": 1224,
+    "vertices": 732
+  },
+  "VIS_S4_Brass": {
+    "triangles": 1264,
+    "vertices": 756
+  },
+  "VIS_S4_Chalk": {
+    "triangles": 624,
+    "vertices": 336
+  },
+  "VIS_S4_Cliff_Forest": {
+    "triangles": 576,
+    "vertices": 360
+  },
+  "VIS_S4_Cliff_Leaf": {
+    "triangles": 1080,
+    "vertices": 648
+  },
+  "VIS_S4_Cliff_Rock": {
+    "triangles": 720,
+    "vertices": 432
+  },
+  "VIS_S4_Cliff_RockLight": {
+    "triangles": 1440,
+    "vertices": 864
+  },
+  "VIS_S4_CrystalLavender": {
+    "triangles": 250,
+    "vertices": 182
+  },
+  "VIS_S4_CrystalTeal": {
+    "triangles": 126,
+    "vertices": 78
+  },
+  "VIS_S4_Fern": {
+    "triangles": 586,
+    "vertices": 1166
+  },
+  "VIS_S4_Flower": {
+    "triangles": 1024,
+    "vertices": 676
+  },
+  "VIS_S4_Forest": {
+    "triangles": 4200,
+    "vertices": 2520
+  },
+  "VIS_S4_Glow": {
+    "triangles": 368,
+    "vertices": 312
+  },
+  "VIS_S4_Grass": {
+    "triangles": 2,
+    "vertices": 4
+  },
+  "VIS_S4_Ivory": {
+    "triangles": 416,
+    "vertices": 260
+  },
+  "VIS_S4_Lavender": {
+    "triangles": 1176,
+    "vertices": 672
+  },
+  "VIS_S4_Leaf": {
+    "triangles": 4868,
+    "vertices": 2884
+  },
+  "VIS_S4_LeafLight": {
+    "triangles": 2512,
+    "vertices": 1850
+  },
+  "VIS_S4_Limestone": {
+    "triangles": 750,
+    "vertices": 512
+  },
+  "VIS_S4_Paving_Limestone": {
+    "triangles": 34,
+    "vertices": 36
+  },
+  "VIS_S4_PearlGlow": {
+    "triangles": 344,
+    "vertices": 234
+  },
+  "VIS_S4_Rock": {
+    "triangles": 40,
+    "vertices": 80
+  },
+  "VIS_S4_RockDeep": {
+    "triangles": 82,
+    "vertices": 152
+  },
+  "VIS_S4_RockLight": {
+    "triangles": 1094,
+    "vertices": 758
+  },
+  "VIS_S4_StarGlow": {
+    "triangles": 144,
+    "vertices": 84
+  },
+  "VIS_S4_Teal": {
+    "triangles": 60,
+    "vertices": 32
+  },
+  "VIS_S4_Wood": {
+    "triangles": 2804,
+    "vertices": 1632
+  },
+  "VIS_S4_WoodDark": {
+    "triangles": 1180,
+    "vertices": 708
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "author_bundle": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandExport\\sky_island_world",
+    "bytes": 54310321,
+    "sha256": "ebf6f76758515d03551a058845b13e192c17a29c3aff1cbb9e359a24ab137afc"
+  },
+  "repo_bundle": {
+    "path": "D:\\code\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_world",
+    "bytes": 54310321,
+    "sha256": "ebf6f76758515d03551a058845b13e192c17a29c3aff1cbb9e359a24ab137afc"
+  },
+  "game_bundle": {
+    "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_world",
+    "bytes": 54310321,
+    "sha256": "ebf6f76758515d03551a058845b13e192c17a29c3aff1cbb9e359a24ab137afc"
+  },
+  "built_dll": {
+    "path": "D:\\code\\ykf\\BossRushMod\\Build\\BossRush.dll",
+    "bytes": 5093376,
+    "sha256": "56b3260af4b3ea16cf9a6efc4c17f59298fa5150fc6ca4021fe6f8d419b40224"
+  },
+  "game_dll": {
+    "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\BossRush.dll",
+    "bytes": 5093376,
+    "sha256": "56b3260af4b3ea16cf9a6efc4c17f59298fa5150fc6ca4021fe6f8d419b40224"
+  },
+  "source_fbx": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\SkyIslandWorld.fbx",
+    "bytes": 20897132,
+    "sha256": "4a816d5187db38c9e3b065c9b9d8002e2f47b9c0fa95e9be538cee1254c38e1c"
+  },
+  "source_blend": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ArtSource\\SkyIsland\\SkyIslandWorld.blend",
+    "bytes": 28491356,
+    "sha256": "271400e0a32dbc0d885e0b7d7d5c87ec79085d03ac0efea23d06264ea1f3346d"
+  },
+  "kit_blend": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ArtSource\\SkyIsland\\SkyIsland_ModelKit.blend",
+    "bytes": 14362214,
+    "sha256": "04b5065fe90f96393ea0ffadcb095d6400fcd24f1b5417b7862375eac681ec9d"
+  }
+}

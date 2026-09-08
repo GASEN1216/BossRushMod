@@ -1,3 +1,8 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 *.bat text eol=crlf
+
+# 这份生成脚本的原始字节被 ArtSource/SkyIsland/settlement_layout.json 的 modelSourceSHA256 钉住
+# （tests/SkyIslandSettlementGeometryTest.py 逐字节 sha256 比对）。若让 autocrlf 在 checkout 时
+# 换成 CRLF，fresh clone 一跑就报 Models changed after planning。
+tools/sky_island_life_models.py text eol=lf

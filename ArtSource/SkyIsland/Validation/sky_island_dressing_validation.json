@@ -1,0 +1,462 @@
+{
+  "version": 1,
+  "classification": "COMPAT",
+  "status": "PASS",
+  "validated_at_utc": "2026-09-08T06:40:34.389900+00:00",
+  "scope": "作者离线网格、实际布景重放和二维通路净空；不启动 Blender / Unity，不代表游戏内移动、帧率、光照或寻路验收。",
+  "trigger": "自上次复审后，花丛密度改为每组 12 株、桥头铺装加入 8/16 m 相切控制、晶体发光面从主体移除，并新增月蘑菇。",
+  "inputs": {
+    "source_fbx": {
+      "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/Assets/SkyIsland/SkyIslandWorld.fbx",
+      "bytes": 20897132,
+      "sha256": "4a816d5187db38c9e3b065c9b9d8002e2f47b9c0fa95e9be538cee1254c38e1c"
+    },
+    "generated_dressing_json": {
+      "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland/sky_island_dressing.json",
+      "bytes": 461852,
+      "sha256": "67a9f8d8bacde73ae07022c29fac2e95220505e50a471b65d63a95b72d5d9340"
+    },
+    "generated_geometry_json": {
+      "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland/sky_island_geometry.json",
+      "bytes": 78657,
+      "sha256": "24c9b7acd0b410249c3772c2b9e999c26886c07bedae65937b0bbf732709fa2e"
+    },
+    "layout": {
+      "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/Assets/SkyIsland/sky_island_layout.json",
+      "bytes": 2077715,
+      "sha256": "62a1f04653895ee80ed36d6ebd942ca7f3d4411b9c6e98f11340fc19a941ab32"
+    },
+    "source_code": [
+      {
+        "path": "D:/code/ykf/BossRushMod/tools/generate_sky_island.py",
+        "bytes": 54933,
+        "sha256": "4ef4ef2cc04cf83d7db26d96237d50d21d4ac376b7486c8b1ae3436b1148cef2"
+      },
+      {
+        "path": "D:/code/ykf/BossRushMod/tools/sky_island_dressing.py",
+        "bytes": 15151,
+        "sha256": "0604f0b5fbf9ff34ecadacf1bb521521e0c0761ca08087b73a8febd0eeb29f57"
+      },
+      {
+        "path": "D:/code/ykf/BossRushMod/tools/sky_island_nature_assets.py",
+        "bytes": 7453,
+        "sha256": "8d1f68fce11d94d32370c285807906d7006d3fb4ec61405181079a1ae569205c"
+      }
+    ]
+  },
+  "method": [
+    "运行当前源码 make_paths / smooth_path，Vector 仅用标准算术替身，保留真实样条采样与桥口控制。",
+    "运行当前 meadows 原函数和实际 CC0 OBJ 模型，逐条重放结果与生成 dressing JSON 完全一致，使用未舍入位置和模型真实投影半径。",
+    "独立计算全部铺路段、可达岛边、建筑、标记、桥口和中心空场距离，同时调用生产 PlantingSpace.free 交叉核对。",
+    "运行当前 floating_gardens / moon_mushroom / crystal 与实际几何构造函数，测量月蘑菇完整几何的保守投影圆，检查晶体跨材质重复面。"
+  ],
+  "counts": {
+    "meadow_instances": 2303,
+    "meadow_patches": 194,
+    "meadow_instances_by_island": {
+      "A": 168,
+      "B": 349,
+      "C": 262,
+      "D": 321,
+      "E": 179,
+      "F": 310,
+      "G": 192,
+      "H": 239,
+      "S1": 71,
+      "S2": 71,
+      "S3": 70,
+      "S4": 71
+    },
+    "paving_tracks": 30,
+    "paving_segments": 1264,
+    "bridge_segments": 315,
+    "source_nature_triangles": 159524,
+    "crystals": 160,
+    "moon_mushrooms": 9,
+    "author_visual_meshes": 605,
+    "author_visual_triangles": 999196,
+    "all_dressing_counts": {
+      "meadowPatches": 194,
+      "floatingPollen": 268,
+      "floatingCrystalGardens": 40,
+      "cliffVines": 225,
+      "moonMushrooms": 9,
+      "lotusFlowers": 8,
+      "watersidePlants": 18,
+      "wishLanterns": 28,
+      "archFlowerVines": 9,
+      "constellationSeeds": 16,
+      "distantBirds": 15
+    }
+  },
+  "meadows": {
+    "generated_json_exact_replay_match": true,
+    "target_height_range_m": [
+      0.5001869680164974,
+      1.2996558115863794
+    ],
+    "projected_radius_range_m": [
+      0.2649296244192852,
+      1.1988785291186366
+    ],
+    "checks": {
+      "inside_outline": 2303,
+      "island_edge_after_2m_margin": 2303,
+      "path_after_0_9m_margin": 2303,
+      "visual_path_widest_halfwidth": 2303,
+      "semantic_clearing": 2303,
+      "obstacle_after_1m_margin": 2303,
+      "marker_after_3_8m_margin": 2303,
+      "portal_after_5m_margin": 2303
+    },
+    "minimum_clearance_surplus_m": {
+      "island_edge_after_2m_margin": 0.08437054171336378,
+      "obstacle_after_1m_margin": 0.013822749650494348,
+      "marker_after_3_8m_margin": 0.011373812058515842,
+      "portal_after_5m_margin": 0.07484740353034525,
+      "path_after_0_9m_margin": 0.07310843534093237,
+      "visual_path_widest_halfwidth": 0.7971084353409327,
+      "semantic_clearing": 0.07116115917672161
+    },
+    "violation_count": 0,
+    "ground_alignment_and_target_height": "PASS",
+    "indices_and_finite_vertices": "PASS"
+  },
+  "moon_mushrooms": {
+    "count": 9,
+    "method": "完整实际几何的 XZ 保守圆覆盖，要求圆心位于所有可达岛面外，整圆不接触任意可达岛面边线，且距桥面超过 layout.clearance。",
+    "minimum_island_edge_clearance_m": 4.807320529245596,
+    "minimum_bridge_deck_clearance_m": 4.018501645448168,
+    "required_bridge_clearance_m": 0.7,
+    "placements": [
+      {
+        "island": "D",
+        "base": [
+          -268.6314330335281,
+          19.399101510304227,
+          8.635684501509889
+        ],
+        "source_height": 8.777473172879159,
+        "bounds_min": [
+          -272.58239488823887,
+          19.35601505546213,
+          4.334722646799102
+        ],
+        "bounds_max": [
+          -263.98047117881725,
+          28.527673610098553,
+          12.936646356220677
+        ],
+        "projected_disk_center": [
+          -268.28143303352806,
+          8.635684501509889
+        ],
+        "projected_disk_radius": 4.300961854710806,
+        "island_edge_clearance": 7.841035097672011,
+        "bridge_deck_clearance": 9.980471178817254,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "D",
+        "base": [
+          -191.61055802975574,
+          19.273995575776112,
+          9.81152684196359
+        ],
+        "source_height": 5.844328242488102,
+        "bounds_min": [
+          -194.12427886857492,
+          19.230989366098974,
+          6.94780600314442
+        ],
+        "bounds_max": [
+          -188.39683719093657,
+          25.352096947963737,
+          12.675247680782759
+        ],
+        "projected_disk_center": [
+          -191.26055802975574,
+          9.81152684196359
+        ],
+        "projected_disk_radius": 2.8637208388191766,
+        "island_edge_clearance": 7.324752319217234,
+        "bridge_deck_clearance": 11.230420243417885,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "D",
+        "base": [
+          -176.6208707862997,
+          20.833402126364167,
+          211.75473199295305
+        ],
+        "source_height": 8.192336485712309,
+        "bounds_min": [
+          -180.28511566429873,
+          20.790325150110284,
+          207.74048711495402
+        ],
+        "bounds_max": [
+          -172.25662590830066,
+          29.35343207150497,
+          215.7689768709521
+        ],
+        "projected_disk_center": [
+          -176.2708707862997,
+          211.75473199295305
+        ],
+        "projected_disk_radius": 4.014244877999046,
+        "island_edge_clearance": 8.432567330007833,
+        "bridge_deck_clearance": 95.93995382010627,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "D",
+        "base": [
+          -358.6812548681802,
+          18.827627283649342,
+          181.7862503067496
+        ],
+        "source_height": 9.490292829329906,
+        "bounds_min": [
+          -362.98149835455183,
+          18.784531560204933,
+          177.13600682037793
+        ],
+        "bounds_max": [
+          -353.6810113818085,
+          28.697531826152446,
+          186.43649379312126
+        ],
+        "projected_disk_center": [
+          -358.33125486818017,
+          181.7862503067496
+        ],
+        "projected_disk_radius": 4.650243486371664,
+        "island_edge_clearance": 6.063506206878742,
+        "bridge_deck_clearance": 4.018501645448168,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "D",
+        "base": [
+          -356.27356069581356,
+          17.578272029786934,
+          28.641042051328323
+        ],
+        "source_height": 9.394626711298583,
+        "bounds_min": [
+          -360.5269277843498,
+          17.535177429202356,
+          24.037674962792018
+        ],
+        "bounds_max": [
+          -351.32019360727725,
+          27.34868380953746,
+          33.24440913986463
+        ],
+        "projected_disk_center": [
+          -355.92356069581353,
+          28.641042051328323
+        ],
+        "projected_disk_radius": 4.6033670885363085,
+        "island_edge_clearance": 9.605607665020667,
+        "bridge_deck_clearance": 97.67206901131001,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "S2",
+        "base": [
+          -341.56967710013373,
+          15.425532695673608,
+          258.49658204344155
+        ],
+        "source_height": 9.439880887911858,
+        "bounds_min": [
+          -345.8452187352105,
+          15.382437559683922,
+          253.87104040836473
+        ],
+        "bounds_max": [
+          -336.5941354650569,
+          25.243008819101938,
+          263.12212367851834
+        ],
+        "projected_disk_center": [
+          -341.2196771001337,
+          258.49658204344155
+        ],
+        "projected_disk_radius": 4.62554163507685,
+        "island_edge_clearance": 8.320057425762176,
+        "bridge_deck_clearance": 64.37345716099864,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "S2",
+        "base": [
+          -403.11818095851265,
+          16.608790013291856,
+          184.140338114547
+        ],
+        "source_height": 6.18631264090928,
+        "bounds_min": [
+          -405.79947415255816,
+          16.56576834129011,
+          181.10904492050145
+        ],
+        "bounds_max": [
+          -399.7368877644671,
+          23.042555159837505,
+          187.17163130859257
+        ],
+        "projected_disk_center": [
+          -402.76818095851263,
+          184.140338114547
+        ],
+        "projected_disk_radius": 3.031293194045566,
+        "island_edge_clearance": 9.710776562555548,
+        "bridge_deck_clearance": 26.736887764467063,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "S3",
+        "base": [
+          382.2716394835691,
+          10.44619933399829,
+          -211.49999378309832
+        ],
+        "source_height": 9.777903310513894,
+        "bounds_min": [
+          377.83046686141734,
+          10.403100430528077,
+          -216.29116640525012
+        ],
+        "bounds_max": [
+          387.41281210572095,
+          20.615218776932743,
+          -206.7088211609465
+        ],
+        "projected_disk_center": [
+          382.62163948356914,
+          -211.49999378309832
+        ],
+        "projected_disk_radius": 4.791172622151805,
+        "island_edge_clearance": 4.807320529245596,
+        "bridge_deck_clearance": 71.19587725096889,
+        "inside_reachable_islands": []
+      },
+      {
+        "island": "S3",
+        "base": [
+          316.6372302166978,
+          9.640358852439867,
+          -210.15372129650885
+        ],
+        "source_height": 9.814108723541258,
+        "bounds_min": [
+          312.1783169421626,
+          9.597259568299576,
+          -214.96263457104408
+        ],
+        "bounds_max": [
+          321.796143491233,
+          19.847031924922778,
+          -205.34480802197362
+        ],
+        "projected_disk_center": [
+          316.9872302166978,
+          -210.15372129650885
+        ],
+        "projected_disk_radius": 4.80891327453524,
+        "island_edge_clearance": 8.037858183010098,
+        "bridge_deck_clearance": 74.1882445105314,
+        "inside_reachable_islands": []
+      }
+    ]
+  },
+  "crystal_faces": {
+    "tested_crystals": 160,
+    "polygons_per_crystal": 13,
+    "pearl_faces_per_crystal": 1,
+    "cross_material_duplicate_polygon_count": 0,
+    "scope": "晶体主体与发光面的逐面坐标去重；天然相交晶簇中的不同晶体允许交叠。"
+  },
+  "source_unchanged_during_validation": true,
+  "elapsed_seconds": 4.317,
+  "failures": [],
+  "limits": [
+    "几何检查使用作者输入和生产构造函数，无游戏进程、物理引擎或 GPU 实测。",
+    "草甸、花瓣、浮岛和月蘑菇是无碰撞装饰；玩法岛面与桥路的碰撞和寻路由独立 Unity 验证负责。",
+    "作者三角数包含之后由 Unity 清理的退化面。"
+  ],
+  "provenance_refresh": {
+    "refreshed_at_utc": "2026-09-08T07:03:49.430892+00:00",
+    "reason": "全景检查后，仅 cloud_cluster 增加球冠高度/半径扰动、非均匀缩放和旋转；重生成 FBX 后刷新来源指纹。",
+    "scope": "本次仅核对来源与变化范围，保留前次已实际执行的 2303 草甸净空、9 月蘑菇通路和 160 晶体面检查；未重新运行这些几何检查或 Blender / Unity。",
+    "checks": {
+      "generated_dressing_json_byte_identical": true,
+      "layout_byte_identical": true,
+      "sky_island_dressing.py_byte_identical": true,
+      "sky_island_nature_assets.py_byte_identical": true,
+      "non_cloud_generator_bytes_unchanged": true
+    },
+    "changed_top_level_definitions": [
+      "cloud_cluster"
+    ],
+    "reverse_cloud_patch_reconstructed_previous_source_sha256": "ea74584e97c0635543765349cbf6a582a56dfe169191758b3b2356338bf03ab2",
+    "previous_inputs": {
+      "source_fbx": {
+        "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/Assets/SkyIsland/SkyIslandWorld.fbx",
+        "bytes": 20737404,
+        "sha256": "caee97788b360e027c9a754a7275aa33b15fb033ee3d84a7f982dff4d7dc8db7"
+      },
+      "generated_dressing_json": {
+        "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland/sky_island_dressing.json",
+        "bytes": 461852,
+        "sha256": "67a9f8d8bacde73ae07022c29fac2e95220505e50a471b65d63a95b72d5d9340"
+      },
+      "generated_geometry_json": {
+        "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland/sky_island_geometry.json",
+        "bytes": 78657,
+        "sha256": "13c4d18ba444b05c60f354bfdf75905a980c1e6808d62a3b1fc4d0f9732a5d4d"
+      },
+      "layout": {
+        "path": "D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/Assets/SkyIsland/sky_island_layout.json",
+        "bytes": 2077715,
+        "sha256": "62a1f04653895ee80ed36d6ebd942ca7f3d4411b9c6e98f11340fc19a941ab32"
+      },
+      "source_code": [
+        {
+          "path": "D:/code/ykf/BossRushMod/tools/generate_sky_island.py",
+          "bytes": 54666,
+          "sha256": "ea74584e97c0635543765349cbf6a582a56dfe169191758b3b2356338bf03ab2"
+        },
+        {
+          "path": "D:/code/ykf/BossRushMod/tools/sky_island_dressing.py",
+          "bytes": 15151,
+          "sha256": "0604f0b5fbf9ff34ecadacf1bb521521e0c0761ca08087b73a8febd0eeb29f57"
+        },
+        {
+          "path": "D:/code/ykf/BossRushMod/tools/sky_island_nature_assets.py",
+          "bytes": 7453,
+          "sha256": "8d1f68fce11d94d32370c285807906d7006d3fb4ec61405181079a1ae569205c"
+        }
+      ]
+    },
+    "author_triangles_before": 998344,
+    "author_triangles_after": 999196,
+    "author_triangle_delta": 852,
+    "non_cloud_geometry_evidence": {
+      "conclusion": "非云构造代码、布局、自然素材 helper 和生成布景内容的字节未变；基于相同确定性输入与源码，前次非云检查结论继续适用。",
+      "comparison_limit": "前次逐网格 geometry JSON 未保留完整快照；此项以源代码/输入等价证明，不声称两份 FBX 非云顶点或两份旧新逐网格 JSON 已直接比对。",
+      "current_non_cloud_visual_mesh_count": 583,
+      "current_non_cloud_visual_triangles": 891128,
+      "excluded_modified_region_prefix": "VIS_CloudBank_",
+      "current_non_cloud_visual_metadata_snapshot": "sky_island_non_cloud_mesh_snapshot.json",
+      "current_non_cloud_visual_metadata_canonical_sha256": "de1c79485d3c5b5f346330769eb1648dcf2733aa7a52c8078a11c4216506e670",
+      "current_non_cloud_visual_metadata_snapshot_sha256": "c9de2ad39c29a8045f2a45737b11a2a24e0f62ff0c3438fd4fd299f48bbd3b6b"
+    },
+    "generated_dressing_byte_identical": true,
+    "original_validation_timestamp_retained": true
+  }
+}

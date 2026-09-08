@@ -1,0 +1,305 @@
+{
+  "status": "PASS",
+  "models": [
+    {
+      "name": "SkyIsland_Barrel",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Barrel.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Barrel.prefab",
+      "renderers": 3,
+      "triangles": 332,
+      "boundsMin": [
+        -0.7250001,
+        -5.96046448E-08,
+        -0.724999964
+      ],
+      "boundsMax": [
+        0.7250001,
+        1.72,
+        0.7250002
+      ],
+      "boundsSize": [
+        1.45000017,
+        1.72,
+        1.45000017
+      ],
+      "bottomY": -5.96046448E-08,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "69d0fec2ac4b382e8e6536622b0fe760bcc3a6a8a66b54c32a6202425b1ed79b"
+    },
+    {
+      "name": "SkyIsland_Bench",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Bench.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Bench.prefab",
+      "renderers": 3,
+      "triangles": 240,
+      "boundsMin": [
+        -1.85,
+        -5.96046448E-08,
+        -0.575000048
+      ],
+      "boundsMax": [
+        1.85,
+        1.62499976,
+        0.6100004
+      ],
+      "boundsSize": [
+        3.7,
+        1.62499976,
+        1.18500042
+      ],
+      "bottomY": -5.96046448E-08,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "ef725af56169cc5c231287d9846d3826806a7a7cb1cb9294147ee4d0ba2360a2"
+    },
+    {
+      "name": "SkyIsland_DuckStatue",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_DuckStatue.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_DuckStatue.prefab",
+      "renderers": 5,
+      "triangles": 1104,
+      "boundsMin": [
+        -1.4000001,
+        -2.38418579E-07,
+        -1.4
+      ],
+      "boundsMax": [
+        1.4000001,
+        3.22499967,
+        1.40000021
+      ],
+      "boundsSize": [
+        2.80000019,
+        3.225,
+        2.80000019
+      ],
+      "bottomY": -2.38418579E-07,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "6d8d604880b19f54c0e4f3aa2d72603c74ba857456ad95047b001f07334512d0"
+    },
+    {
+      "name": "SkyIsland_HomecomingBell",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_HomecomingBell.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_HomecomingBell.prefab",
+      "renderers": 6,
+      "triangles": 2900,
+      "boundsMin": [
+        -3.50000024,
+        -2.38418579E-07,
+        -2.3375
+      ],
+      "boundsMax": [
+        3.50000024,
+        7.459999,
+        2.337501
+      ],
+      "boundsSize": [
+        7.00000048,
+        7.459999,
+        4.675001
+      ],
+      "bottomY": -2.38418579E-07,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "471e365443d4779de8fae9316d53bc8fec3675e802240ef1dae0e58a0b579be0"
+    },
+    {
+      "name": "SkyIsland_House",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_House.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_House.prefab",
+      "renderers": 15,
+      "triangles": 2320,
+      "boundsMin": [
+        -7.12000036,
+        9.536743E-07,
+        -6.56271029
+      ],
+      "boundsMax": [
+        7.12000036,
+        12.6749983,
+        5.96000051
+      ],
+      "boundsSize": [
+        14.2400007,
+        12.6749973,
+        12.5227108
+      ],
+      "bottomY": 9.536743E-07,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "7aaf67fdb4c996acc928eaf9a69cc7a2295e76fa8549af62eddad760b109b5e7"
+    },
+    {
+      "name": "SkyIsland_Lantern",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Lantern.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Lantern.prefab",
+      "renderers": 3,
+      "triangles": 308,
+      "boundsMin": [
+        -0.100000024,
+        0.0,
+        -0.394999772
+      ],
+      "boundsMax": [
+        1.04500008,
+        3.39999986,
+        0.395000368
+      ],
+      "boundsSize": [
+        1.1450001,
+        3.39999986,
+        0.790000141
+      ],
+      "bottomY": 0.0,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "ab48b19c8f6136ff644218fe5027e13c595904696c81e95ed2ad9fd6755da00d"
+    },
+    {
+      "name": "SkyIsland_Planter",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Planter.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Planter.prefab",
+      "renderers": 2,
+      "triangles": 280,
+      "boundsMin": [
+        -0.8194543,
+        -5.96046448E-08,
+        -0.678772569
+      ],
+      "boundsMax": [
+        0.820000052,
+        1.5599997,
+        0.6798638
+      ],
+      "boundsSize": [
+        1.63945436,
+        1.5599997,
+        1.35863638
+      ],
+      "bottomY": -5.96046448E-08,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "32cb120d9b8dae5018db90c3dc2b4fed94399855012be4d14c8a9516273d96cf"
+    },
+    {
+      "name": "SkyIsland_TeaHouse",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_TeaHouse.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_TeaHouse.prefab",
+      "renderers": 15,
+      "triangles": 2378,
+      "boundsMin": [
+        -9.440001,
+        4.76837158E-07,
+        -8.999998
+      ],
+      "boundsMax": [
+        9.440001,
+        13.1749992,
+        7.120001
+      ],
+      "boundsSize": [
+        18.8800011,
+        13.1749992,
+        16.1199989
+      ],
+      "bottomY": 4.76837158E-07,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "05ba3b50f01aa2154557bf7ebb3235294a262e969e7a16f019769d549898dc9c"
+    },
+    {
+      "name": "SkyIsland_Tree",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Tree.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Tree.prefab",
+      "renderers": 3,
+      "triangles": 534,
+      "boundsMin": [
+        -5.128417,
+        0.0,
+        -5.456955
+      ],
+      "boundsMax": [
+        6.31890869,
+        12.9465656,
+        5.58276749
+      ],
+      "boundsSize": [
+        11.4473257,
+        12.9465656,
+        11.0397224
+      ],
+      "bottomY": 0.0,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "cdaa77f9bcea087da7f73a32326a7113324f55c5f547faef67bd2f6438b0b924"
+    },
+    {
+      "name": "SkyIsland_WindChime",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_WindChime.fbx",
+      "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_WindChime.prefab",
+      "renderers": 5,
+      "triangles": 11888,
+      "boundsMin": [
+        -2.8,
+        0.0,
+        -0.4500002
+      ],
+      "boundsMax": [
+        2.8,
+        4.85999966,
+        0.450000256
+      ],
+      "boundsSize": [
+        5.6,
+        4.85999966,
+        0.900000453
+      ],
+      "bottomY": 0.0,
+      "rootScale": [
+        1.0,
+        1.0,
+        1.0
+      ],
+      "colliders": 0,
+      "sourceSHA256": "ad946dfae08734aebbe4e44174d5434b9c4444587808f184d123a012278e7f12"
+    }
+  ]
+}

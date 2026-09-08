@@ -1,0 +1,61 @@
+{
+  "repo_bundle": {
+    "bytes": 54310435,
+    "path": "D:\\code\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
+    "sha256": "eaa0bf71b5a28276e01a8509db54838c7dcaca7d8d5df6496c33ed0f45808925"
+  },
+  "author_bundle": {
+    "bytes": 54310435,
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
+    "sha256": "eaa0bf71b5a28276e01a8509db54838c7dcaca7d8d5df6496c33ed0f45808925"
+  },
+  "game_bundle": {
+    "bytes": 54310435,
+    "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
+    "sha256": "eaa0bf71b5a28276e01a8509db54838c7dcaca7d8d5df6496c33ed0f45808925"
+  },
+  "dll": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Build\\BossRush.dll",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\BossRush.dll",
+    "bytes": 4614656,
+    "sha256": "873300ddd838cee0eb5d861ae8291a537e4df29b9ddcf632ab7f0e630c1ee757"
+  },
+  "story_content": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\SkyIsland\\World.json",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\SkyIsland\\World.json",
+    "bytes": 1490,
+    "sha256": "cec25dee8f04271a8c72712a4f8c9ddd836536ee71f17615c0a51033d5ab6b86"
+  },
+  "npc_content": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\DuckNpcs.json",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\DuckNpcs.json",
+    "bytes": 24607,
+    "sha256": "4cdc27f3e0f826fb0b1d0bddd1d887b0efee859b0d9ffc27bd0b548f15b55005"
+  },
+  "sfx_device_awake": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\device_awake.wav",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\device_awake.wav",
+    "bytes": 160044,
+    "sha256": "110e39790860a89237e220f2953dbdd01e13d28545208a21411ebb1911d3d7f1"
+  },
+  "sfx_homecoming_bell": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\homecoming_bell.wav",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\homecoming_bell.wav",
+    "bytes": 448044,
+    "sha256": "114d2e570501b50c16854d2f5d0a76ef8622401cb6b3382d3cdd358145236321"
+  },
+  "sfx_island_wind": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\island_wind.wav",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\island_wind.wav",
+    "bytes": 512044,
+    "sha256": "46740690c92274714fccbdf20b10438e0c40c95eea5d517b072e04a22814736d"
+  },
+  "sfx_wind_chimes": {
+    "source": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\wind_chimes.wav",
+    "deployed": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\wind_chimes.wav",
+    "bytes": 256044,
+    "sha256": "fec39956fd90300e73a3fb32b0ffa56477767812fb60fa3690be1e2c567b27ea"
+  },
+  "build": "Release",
+  "gameSmoke": "not_run_per_user_request"
+}

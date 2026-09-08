@@ -1,0 +1,297 @@
+{
+  "status": "PASS",
+  "navigationVertices": 4037,
+  "navigationTriangles": 4215,
+  "groundVertices": 1386,
+  "groundTriangles": 1564,
+  "navigationConnectedComponents": 1,
+  "navigationAreaXZ": 213823.211,
+  "navigationSurfaceArea": 213933.151,
+  "physicalWalkableAreaXZ": 222265.117,
+  "maximumSlopeDegrees": 16.3139,
+  "clearanceMeters": 0.7,
+  "boundsXYZ": [
+    [
+      -397.5,
+      387.5
+    ],
+    [
+      0,
+      62
+    ],
+    [
+      -350.0,
+      375.0
+    ]
+  ],
+  "islandCount": 12,
+  "bridgeCount": 15,
+  "obstacleCount": 88,
+  "markerCount": 76,
+  "bridgeGeometry": {
+    "AB": {
+      "samples": 10,
+      "lengthMeters": 45.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.7877,
+      "maximumMouthSlopeDegrees": 1.3972
+    },
+    "BC": {
+      "samples": 10,
+      "lengthMeters": 40.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 3.1725,
+      "maximumMouthSlopeDegrees": 1.5911
+    },
+    "CD": {
+      "samples": 10,
+      "lengthMeters": 45.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 4.1682,
+      "maximumMouthSlopeDegrees": 2.0953
+    },
+    "DE": {
+      "samples": 10,
+      "lengthMeters": 75.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.817,
+      "maximumMouthSlopeDegrees": 1.4119
+    },
+    "BF": {
+      "samples": 28,
+      "lengthMeters": 111.89,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 2.3853,
+      "maximumMouthSlopeDegrees": 1.1947
+    },
+    "FG": {
+      "samples": 26,
+      "lengthMeters": 88.154,
+      "maximumTurnDegrees": 9.7115,
+      "maximumGradeChangeDegrees": 3.0543,
+      "maximumMouthSlopeDegrees": 1.5315
+    },
+    "GE": {
+      "samples": 28,
+      "lengthMeters": 126.665,
+      "maximumTurnDegrees": 9.2568,
+      "maximumGradeChangeDegrees": 0.2335,
+      "maximumMouthSlopeDegrees": 0.1168
+    },
+    "EH": {
+      "samples": 36,
+      "lengthMeters": 151.12,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 1.9448,
+      "maximumMouthSlopeDegrees": 0.9735
+    },
+    "CS1": {
+      "samples": 20,
+      "lengthMeters": 71.721,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 0.8459,
+      "maximumMouthSlopeDegrees": 0.423
+    },
+    "DS2": {
+      "samples": 20,
+      "lengthMeters": 69.221,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 0.8783,
+      "maximumMouthSlopeDegrees": 0.4392
+    },
+    "FS3": {
+      "samples": 19,
+      "lengthMeters": 70.601,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 1.7189,
+      "maximumMouthSlopeDegrees": 0.8602
+    },
+    "GS4": {
+      "samples": 19,
+      "lengthMeters": 77.757,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 1.5524,
+      "maximumMouthSlopeDegrees": 0.7768
+    },
+    "K1": {
+      "samples": 32,
+      "lengthMeters": 188.856,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 1.5485,
+      "maximumMouthSlopeDegrees": 0.7748
+    },
+    "K2": {
+      "samples": 27,
+      "lengthMeters": 245.971,
+      "maximumTurnDegrees": 9.7628,
+      "maximumGradeChangeDegrees": 2.1279,
+      "maximumMouthSlopeDegrees": 1.0654
+    },
+    "K3": {
+      "samples": 35,
+      "lengthMeters": 196.503,
+      "maximumTurnDegrees": 10.0,
+      "maximumGradeChangeDegrees": 2.5246,
+      "maximumMouthSlopeDegrees": 1.2647
+    }
+  },
+  "fromSpawnWalkablePathDistancesMeters": {
+    "Region_A": 48.11,
+    "Region_B": 210.7,
+    "Region_C": 440.78,
+    "Region_D": 589.17,
+    "Region_E": 570.04,
+    "Region_F": 448.23,
+    "Region_G": 647.13,
+    "Region_H": 908.45,
+    "Region_S1": 644.34,
+    "Region_S2": 755.63,
+    "Region_S3": 687.79,
+    "Region_S4": 823.42,
+    "PlayerSpawn": 0.0,
+    "MainExtraction": 39.48,
+    "BellExtraction": 930.72,
+    "Exit": 39.48,
+    "EnemySpawn_A": 33.29,
+    "POI_A": 48.25,
+    "Search_A": 49.24,
+    "Search_A_02": 80.64,
+    "Lamp_A": 46.53,
+    "Lamp_A_02": 49.07,
+    "EnemySpawn_B": 197.49,
+    "POI_B": 225.24,
+    "Search_B": 195.5,
+    "Search_B_02": 235.77,
+    "Lamp_B": 221.08,
+    "Lamp_B_02": 188.12,
+    "EnemySpawn_C": 414.75,
+    "POI_C": 447.16,
+    "Search_C": 471.79,
+    "Search_C_02": 383.81,
+    "Lamp_C": 462.1,
+    "Lamp_C_02": 405.44,
+    "EnemySpawn_D": 565.0,
+    "POI_D": 626.62,
+    "Search_D": 600.95,
+    "Search_D_02": 611.09,
+    "Lamp_D": 614.06,
+    "Lamp_D_02": 556.47,
+    "EnemySpawn_E": 584.68,
+    "POI_E": 569.41,
+    "Search_E": 533.1,
+    "Search_E_02": 613.62,
+    "Lamp_E": 553.83,
+    "Lamp_E_02": 589.22,
+    "EnemySpawn_F": 448.77,
+    "POI_F": 449.91,
+    "Search_F": 456.61,
+    "Search_F_02": 527.79,
+    "Lamp_F": 460.57,
+    "Lamp_F_02": 497.81,
+    "EnemySpawn_G": 660.01,
+    "POI_G": 663.61,
+    "Search_G": 609.19,
+    "Search_G_02": 644.07,
+    "Lamp_G": 632.37,
+    "Lamp_G_02": 640.66,
+    "EnemySpawn_H": 882.57,
+    "POI_H": 937.59,
+    "Search_H": 894.97,
+    "Search_H_02": 902.97,
+    "Lamp_H": 957.47,
+    "Lamp_H_02": 872.99,
+    "EnemySpawn_S1": 648.38,
+    "POI_S1": 609.27,
+    "Search_S1": 646.62,
+    "EnemySpawn_S2": 770.69,
+    "POI_S2": 797.04,
+    "Search_S2": 777.32,
+    "EnemySpawn_S3": 707.19,
+    "POI_S3": 671.67,
+    "Search_S3": 687.82,
+    "EnemySpawn_S4": 838.09,
+    "POI_S4": 860.92,
+    "Search_S4": 843.63
+  },
+  "explorationRoute": {
+    "sequence": [
+      "PlayerSpawn",
+      "Region_B",
+      "Region_C",
+      "Region_D",
+      "Region_E",
+      "Region_G",
+      "Region_F",
+      "Region_B",
+      "Region_E",
+      "Region_H",
+      "BellExtraction"
+    ],
+    "legs": [
+      {
+        "from": "PlayerSpawn",
+        "to": "Region_B",
+        "meters": 210.7
+      },
+      {
+        "from": "Region_B",
+        "to": "Region_C",
+        "meters": 281.11
+      },
+      {
+        "from": "Region_C",
+        "to": "Region_D",
+        "meters": 243.08
+      },
+      {
+        "from": "Region_D",
+        "to": "Region_E",
+        "meters": 280.8
+      },
+      {
+        "from": "Region_E",
+        "to": "Region_G",
+        "meters": 300.58
+      },
+      {
+        "from": "Region_G",
+        "to": "Region_F",
+        "meters": 312.52
+      },
+      {
+        "from": "Region_F",
+        "to": "Region_B",
+        "meters": 276.71
+      },
+      {
+        "from": "Region_B",
+        "to": "Region_E",
+        "meters": 365.62
+      },
+      {
+        "from": "Region_E",
+        "to": "Region_H",
+        "meters": 342.71
+      },
+      {
+        "from": "Region_H",
+        "to": "BellExtraction",
+        "meters": 51.59
+      }
+    ],
+    "meters": 2665.42
+  },
+  "distanceMethod": "实体三角面边/面内连接图 Dijkstra；每条线段实际在面内，长度为可行路线的上界，非 A* funnel 最短距离",
+  "verified": [
+    "同源地面覆盖与逐面高程匹配",
+    "全部导航面共边连通",
+    "15 条道路无交叠且两端桥口共边连接",
+    "全部标记落地可达",
+    "桥道单片转向最多10度、坡度变化小于5度、桥口坡度小于3度",
+    "非退化/绕序/流形",
+    "坡度小于18度",
+    "障碍和边界0.7米余量",
+    "A*顶点预算"
+  ],
+  "runtimeVerification": "未运行 Unity / 游戏内行走验证"
+}

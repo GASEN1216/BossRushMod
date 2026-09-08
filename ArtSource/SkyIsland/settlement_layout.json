@@ -1,0 +1,1612 @@
+{
+  "version": 1,
+  "classification": "COMPAT",
+  "source": "tools/sky_island_life_models.py",
+  "modelSourceSHA256": "b862f7fb6c9303e300f6092244cec52337cfd8735f9b6cffa8c9b78aaca47312",
+  "obstacles": [
+    {
+      "id": "A_Life01_floatboat_cargo",
+      "island": "A",
+      "kind": "life_prop",
+      "center": [
+        -31.88404303575711,
+        2.3840000152587892,
+        -336.35395454710095
+      ],
+      "size": [
+        7.231697497242948,
+        4.7680000305175785,
+        6.64002849978101
+      ],
+      "yaw": 0,
+      "bounds": [
+        -35.49989178437858,
+        -339.67396879699146,
+        -28.268194287135636,
+        -333.03394029721045
+      ],
+      "model": "floatboat_cargo",
+      "position": [
+        -32.0,
+        0.0,
+        -336.0
+      ],
+      "modelYaw": -0.20943951023931956,
+      "modelScale": 1.6
+    },
+    {
+      "id": "A_Life02_supply_handcart",
+      "island": "A",
+      "kind": "life_prop",
+      "center": [
+        -18.0676689521542,
+        1.82898,
+        -300.16059374447985
+      ],
+      "size": [
+        5.3321512430065106,
+        3.65796,
+        6.534540957070135
+      ],
+      "yaw": 0,
+      "bounds": [
+        -20.733744573657454,
+        -303.4278642230149,
+        -15.401593330650943,
+        -296.8933232659448
+      ],
+      "model": "supply_handcart",
+      "position": [
+        -17.8547,
+        0.0,
+        -299.3378
+      ],
+      "modelYaw": 0.4188790204786391,
+      "modelScale": 1.35
+    },
+    {
+      "id": "B_Life03_produce_stall",
+      "island": "B",
+      "kind": "life_prop",
+      "center": [
+        -20.126619137492128,
+        10.781440329551696,
+        -153.75702419989682
+      ],
+      "size": [
+        8.637525930146,
+        5.562880659103392,
+        5.006159387794071
+      ],
+      "yaw": 0,
+      "bounds": [
+        -24.445382102565127,
+        -156.26010389379385,
+        -15.807856172419127,
+        -151.25394450599978
+      ],
+      "model": "produce_stall",
+      "position": [
+        -20.0124,
+        8.0,
+        -153.5446
+      ],
+      "modelYaw": -0.13962634015954636,
+      "modelScale": 1.4
+    },
+    {
+      "id": "B_Life04_picnic_table",
+      "island": "B",
+      "kind": "life_prop",
+      "center": [
+        20.668,
+        9.66803,
+        -171.6258
+      ],
+      "size": [
+        6.876613127690064,
+        3.33606,
+        5.57937933525551
+      ],
+      "yaw": 0,
+      "bounds": [
+        17.229693436154967,
+        -174.41548966762775,
+        24.10630656384503,
+        -168.83611033237224
+      ],
+      "model": "picnic_table",
+      "position": [
+        20.668,
+        8.0,
+        -171.6258
+      ],
+      "modelYaw": -0.24434609527920614,
+      "modelScale": 1.3
+    },
+    {
+      "id": "B_Life05_laundry_rack",
+      "island": "B",
+      "kind": "life_prop",
+      "center": [
+        -52.0,
+        9.99547004699707,
+        -87.01525645619562
+      ],
+      "size": [
+        7.18057446340697,
+        3.9909400939941406,
+        3.3164768032300174
+      ],
+      "yaw": 0,
+      "bounds": [
+        -55.590287231703485,
+        -88.67349485781062,
+        -48.409712768296515,
+        -85.3570180545806
+      ],
+      "model": "laundry_rack",
+      "position": [
+        -52,
+        8.0,
+        -87
+      ],
+      "modelYaw": 0.13962634015954636,
+      "modelScale": 1.3
+    },
+    {
+      "id": "B_Life06_duck_mailbox",
+      "island": "B",
+      "kind": "life_prop",
+      "center": [
+        31.16630612302948,
+        9.865999937057495,
+        -83.38132162090409
+      ],
+      "size": [
+        3.3705542582651837,
+        3.7319998741149902,
+        3.10013894970443
+      ],
+      "yaw": 0,
+      "bounds": [
+        29.48102899389689,
+        -84.93139109575631,
+        32.85158325216207,
+        -81.83125214605188
+      ],
+      "model": "duck_mailbox",
+      "position": [
+        31,
+        8.0,
+        -83
+      ],
+      "modelYaw": -0.2617993877991494,
+      "modelScale": 1.2
+    },
+    {
+      "id": "B_Life07_tea_stove",
+      "island": "B",
+      "kind": "life_prop",
+      "center": [
+        -39.85191000763972,
+        10.30625,
+        -100.38254172606506
+      ],
+      "size": [
+        5.529913769876913,
+        4.612500000000001,
+        2.8919863850801875
+      ],
+      "yaw": 0,
+      "bounds": [
+        -42.61686689257817,
+        -101.82853491860514,
+        -37.08695312270126,
+        -98.93654853352496
+      ],
+      "model": "tea_stove",
+      "position": [
+        -40.0296,
+        8.0,
+        -100.2617
+      ],
+      "modelYaw": -0.20943951023931956,
+      "modelScale": 1.25
+    },
+    {
+      "id": "B_Life08_windmill_planter",
+      "island": "B",
+      "kind": "life_prop",
+      "center": [
+        48.05602881316287,
+        10.943571612091983,
+        -123.0
+      ],
+      "size": [
+        5.6594222034132216,
+        5.887143224183966,
+        3.9252477508042887
+      ],
+      "yaw": 0,
+      "bounds": [
+        45.22631771145626,
+        -124.96262387540214,
+        50.88573991486948,
+        -121.03737612459786
+      ],
+      "model": "windmill_planter",
+      "position": [
+        48,
+        8.0,
+        -123
+      ],
+      "modelYaw": 0.20943951023931956,
+      "modelScale": 1.35
+    },
+    {
+      "id": "C_Life09_compost_planter",
+      "island": "C",
+      "kind": "life_prop",
+      "center": [
+        -299.9949986532961,
+        17.833750000000002,
+        -164.96728135630966
+      ],
+      "size": [
+        7.845289994879749,
+        3.6675000000000004,
+        3.8361859810983105
+      ],
+      "yaw": 0,
+      "bounds": [
+        -303.91764365073595,
+        -166.8853743468588,
+        -296.0723536558562,
+        -163.0491883657605
+      ],
+      "model": "compost_planter",
+      "position": [
+        -300,
+        16.0,
+        -165
+      ],
+      "modelYaw": -0.17453292519943295,
+      "modelScale": 1.5
+    },
+    {
+      "id": "C_Life10_supply_handcart",
+      "island": "C",
+      "kind": "life_prop",
+      "center": [
+        -177.30405669112287,
+        17.896720000000002,
+        -82.66476758686795
+      ],
+      "size": [
+        5.529638326080828,
+        3.7934400000000004,
+        6.77656099251719
+      ],
+      "yaw": 0,
+      "bounds": [
+        -180.06887585416328,
+        -86.05304808312655,
+        -174.53923752808245,
+        -79.27648709060936
+      ],
+      "model": "supply_handcart",
+      "position": [
+        -177.0832,
+        16.0,
+        -81.8115
+      ],
+      "modelYaw": 0.4188790204786391,
+      "modelScale": 1.4
+    },
+    {
+      "id": "C_Life11_rain_barrel",
+      "island": "C",
+      "kind": "life_prop",
+      "center": [
+        -284.1170207135795,
+        18.73375,
+        -63.45445762615029
+      ],
+      "size": [
+        4.522983005771039,
+        5.467500000000001,
+        3.89730070669696
+      ],
+      "yaw": 0,
+      "bounds": [
+        -286.378512216465,
+        -65.40310797949877,
+        -281.855529210694,
+        -61.50580727280181
+      ],
+      "model": "rain_barrel",
+      "position": [
+        -284,
+        16.0,
+        -63
+      ],
+      "modelYaw": -0.13962634015954636,
+      "modelScale": 1.35
+    },
+    {
+      "id": "C_Life12_windmill_planter",
+      "island": "C",
+      "kind": "life_prop",
+      "center": [
+        -307.96984297088295,
+        19.270635124546647,
+        -81.0
+      ],
+      "size": [
+        6.288119759092979,
+        6.541270249093294,
+        4.52341093707625
+      ],
+      "yaw": 0,
+      "bounds": [
+        -311.11390285042944,
+        -83.26170546853812,
+        -304.82578309133646,
+        -78.73829453146188
+      ],
+      "model": "windmill_planter",
+      "position": [
+        -308,
+        16.0,
+        -81
+      ],
+      "modelYaw": 0.24434609527920614,
+      "modelScale": 1.5
+    },
+    {
+      "id": "D_Life13_camp_tent",
+      "island": "D",
+      "kind": "life_prop",
+      "center": [
+        -298.0,
+        30.383517682552338,
+        96.0
+      ],
+      "size": [
+        10.385331378688988,
+        4.767035365104675,
+        9.214609650149328
+      ],
+      "yaw": 0,
+      "bounds": [
+        -303.1926656893445,
+        91.39269517492534,
+        -292.8073343106555,
+        100.60730482507466
+      ],
+      "model": "camp_tent",
+      "position": [
+        -298,
+        28.0,
+        96
+      ],
+      "modelYaw": -0.3490658503988659,
+      "modelScale": 1.5
+    },
+    {
+      "id": "D_Life14_firewood_rack",
+      "island": "D",
+      "kind": "life_prop",
+      "center": [
+        -197.7128697261017,
+        29.781904101371765,
+        130.47245846566463
+      ],
+      "size": [
+        6.5747755047894145,
+        3.5638082027435303,
+        4.5576637788585685
+      ],
+      "yaw": 0,
+      "bounds": [
+        -201.00025747849642,
+        128.19362657623535,
+        -194.425481973707,
+        132.75129035509391
+      ],
+      "model": "firewood_rack",
+      "position": [
+        -198.2356,
+        28.0,
+        130.9418
+      ],
+      "modelYaw": 0.13962634015954636,
+      "modelScale": 1.4
+    },
+    {
+      "id": "D_Life15_tea_stove",
+      "island": "D",
+      "kind": "life_prop",
+      "center": [
+        -309.82397327326373,
+        30.30625,
+        153.93609952793935
+      ],
+      "size": [
+        5.536297292268046,
+        4.612499999999997,
+        3.046303208878385
+      ],
+      "yaw": 0,
+      "bounds": [
+        -312.59212191939775,
+        152.41294792350016,
+        -307.0558246271297,
+        155.45925113237854
+      ],
+      "model": "tea_stove",
+      "position": [
+        -310,
+        28.0,
+        154
+      ],
+      "modelYaw": -0.2617993877991494,
+      "modelScale": 1.25
+    },
+    {
+      "id": "E_Life16_wayfinding_sign",
+      "island": "E",
+      "kind": "life_prop",
+      "center": [
+        -41.88757039793253,
+        44.688,
+        148.09560600202383
+      ],
+      "size": [
+        4.799868644943729,
+        5.375999999999998,
+        1.8816986794966795
+      ],
+      "yaw": 0,
+      "bounds": [
+        -44.28750472040439,
+        147.1547566622755,
+        -39.487636075460664,
+        149.03645534177218
+      ],
+      "model": "wayfinding_sign",
+      "position": [
+        -42,
+        42.0,
+        148
+      ],
+      "modelYaw": -0.20943951023931956,
+      "modelScale": 1.4
+    },
+    {
+      "id": "E_Life17_picnic_table",
+      "island": "E",
+      "kind": "life_prop",
+      "center": [
+        50.8695,
+        43.79634,
+        150.2895
+      ],
+      "size": [
+        7.192737541278078,
+        3.5926800000000014,
+        5.636933475765829
+      ],
+      "yaw": 0,
+      "bounds": [
+        47.27313122936096,
+        147.4710332621171,
+        54.46586877063904,
+        153.10796673788292
+      ],
+      "model": "picnic_table",
+      "position": [
+        50.8695,
+        42.0,
+        150.2895
+      ],
+      "modelYaw": 0.17453292519943295,
+      "modelScale": 1.4
+    },
+    {
+      "id": "F_Life18_tea_stove",
+      "island": "F",
+      "kind": "life_prop",
+      "center": [
+        189.2104914628169,
+        28.49075,
+        -80.88822679700833
+      ],
+      "size": [
+        5.969706705292737,
+        4.9815000000000005,
+        3.447651953513116
+      ],
+      "yaw": 0,
+      "bounds": [
+        186.2256381101705,
+        -82.61205277376489,
+        192.19534481546324,
+        -79.16440082025177
+      ],
+      "model": "tea_stove",
+      "position": [
+        189.0227,
+        26.0,
+        -80.8809
+      ],
+      "modelYaw": -0.3141592653589793,
+      "modelScale": 1.35
+    },
+    {
+      "id": "F_Life19_picnic_table",
+      "island": "F",
+      "kind": "life_prop",
+      "center": [
+        310.0,
+        27.79634,
+        -48.0
+      ],
+      "size": [
+        7.4985345575504425,
+        3.5926800000000014,
+        6.183507073197703
+      ],
+      "yaw": 0,
+      "bounds": [
+        306.2507327212248,
+        -51.09175353659885,
+        313.7492672787752,
+        -44.90824646340115
+      ],
+      "model": "picnic_table",
+      "position": [
+        310,
+        26.0,
+        -48
+      ],
+      "modelYaw": 0.2792526803190927,
+      "modelScale": 1.4
+    },
+    {
+      "id": "G_Life20_tool_workbench",
+      "island": "G",
+      "kind": "life_prop",
+      "center": [
+        237.6374552399467,
+        46.58,
+        217.9040761768302
+      ],
+      "size": [
+        6.930589370679002,
+        5.159999999999997,
+        4.171165883236682
+      ],
+      "yaw": 0,
+      "bounds": [
+        234.1721605546072,
+        215.81849323521186,
+        241.1027499252862,
+        219.98965911844854
+      ],
+      "model": "tool_workbench",
+      "position": [
+        238,
+        44.0,
+        218
+      ],
+      "modelYaw": -0.20943951023931956,
+      "modelScale": 1.6
+    },
+    {
+      "id": "G_Life21_floatboat_cargo",
+      "island": "G",
+      "kind": "life_prop",
+      "center": [
+        192.0096473074536,
+        46.08600001335144,
+        208.6733237577293
+      ],
+      "size": [
+        6.179495992694456,
+        4.172000026702882,
+        6.115552029968427
+      ],
+      "yaw": 0,
+      "bounds": [
+        188.91989931110638,
+        205.6155477427451,
+        195.09939530380083,
+        211.73109977271352
+      ],
+      "model": "floatboat_cargo",
+      "position": [
+        192,
+        44.0,
+        209
+      ],
+      "modelYaw": 0.2792526803190927,
+      "modelScale": 1.4
+    },
+    {
+      "id": "G_Life22_firewood_rack",
+      "island": "G",
+      "kind": "life_prop",
+      "center": [
+        309.63511398911146,
+        45.90918296575546,
+        130.00280563442382
+      ],
+      "size": [
+        7.404343568631418,
+        3.8183659315109253,
+        4.374148762465268
+      ],
+      "yaw": 0,
+      "bounds": [
+        305.9329422047957,
+        127.81573125319119,
+        313.33728577342714,
+        132.18988001565646
+      ],
+      "model": "firewood_rack",
+      "position": [
+        309,
+        44.0,
+        130
+      ],
+      "modelYaw": -0.24434609527920614,
+      "modelScale": 1.5
+    },
+    {
+      "id": "H_Life23_wayfinding_sign",
+      "island": "H",
+      "kind": "life_prop",
+      "center": [
+        -59.866593072615856,
+        64.688,
+        283.0442091894006
+      ],
+      "size": [
+        4.644033404886166,
+        5.376000000000005,
+        2.2498203940272674
+      ],
+      "yaw": 0,
+      "bounds": [
+        -62.188609775058936,
+        281.919298992387,
+        -57.54457637017277,
+        284.16911938641425
+      ],
+      "model": "wayfinding_sign",
+      "position": [
+        -60,
+        62.0,
+        283
+      ],
+      "modelYaw": -0.3490658503988659,
+      "modelScale": 1.4
+    },
+    {
+      "id": "H_Life24_picnic_table",
+      "island": "H",
+      "kind": "life_prop",
+      "center": [
+        46.0,
+        63.92465,
+        341.0
+      ],
+      "size": [
+        7.825296017594184,
+        3.8492999999999995,
+        6.242461222716656
+      ],
+      "yaw": 0,
+      "bounds": [
+        42.08735199120291,
+        337.8787693886417,
+        49.91264800879709,
+        344.1212306113583
+      ],
+      "model": "picnic_table",
+      "position": [
+        46,
+        62.0,
+        341
+      ],
+      "modelYaw": 0.20943951023931956,
+      "modelScale": 1.5
+    },
+    {
+      "id": "S1_Life25_windmill_planter",
+      "island": "S1",
+      "kind": "life_prop",
+      "center": [
+        -367.85987199597685,
+        14.398465758000874,
+        -218.48266158466714
+      ],
+      "size": [
+        4.6437084077018085,
+        4.796931516001749,
+        3.377850265608174
+      ],
+      "yaw": 0,
+      "bounds": [
+        -370.1817261998278,
+        -220.17158671747123,
+        -365.53801779212597,
+        -216.79373645186305
+      ],
+      "model": "windmill_planter",
+      "position": [
+        -367.9769,
+        12.0,
+        -218.697
+      ],
+      "modelYaw": -0.13962634015954636,
+      "modelScale": 1.1
+    },
+    {
+      "id": "S2_Life26_duck_mailbox",
+      "island": "S2",
+      "kind": "life_prop",
+      "center": [
+        -353.9075222080305,
+        25.865999937057495,
+        225.60668493273192
+      ],
+      "size": [
+        3.5089211238355347,
+        3.7319998741149902,
+        3.096133438165367
+      ],
+      "yaw": 0,
+      "bounds": [
+        -355.6619827699483,
+        224.05861821364925,
+        -352.15306164611275,
+        227.15475165181462
+      ],
+      "model": "duck_mailbox",
+      "position": [
+        -354,
+        24.0,
+        226
+      ],
+      "modelYaw": 0.24434609527920614,
+      "modelScale": 1.2
+    },
+    {
+      "id": "S3_Life27_camp_tent",
+      "island": "S3",
+      "kind": "life_prop",
+      "center": [
+        371.0,
+        19.747912967205046,
+        -153.0
+      ],
+      "size": [
+        7.5283052077221555,
+        3.495825934410096,
+        6.604573548458859
+      ],
+      "yaw": 0,
+      "bounds": [
+        367.2358473961389,
+        -156.30228677422943,
+        374.7641526038611,
+        -149.69771322577057
+      ],
+      "model": "camp_tent",
+      "position": [
+        371,
+        18.0,
+        -153
+      ],
+      "modelYaw": -0.3141592653589793,
+      "modelScale": 1.1
+    },
+    {
+      "id": "S4_Life28_tool_workbench",
+      "island": "S4",
+      "kind": "life_prop",
+      "center": [
+        367.6489777048081,
+        53.77375,
+        317.8348012259681
+      ],
+      "size": [
+        5.009492252434313,
+        3.5474999999999994,
+        3.0661788359306
+      ],
+      "yaw": 0,
+      "bounds": [
+        365.1442315785909,
+        316.3017118080028,
+        370.1537238310252,
+        319.3678906439334
+      ],
+      "model": "tool_workbench",
+      "position": [
+        368,
+        52.0,
+        318
+      ],
+      "modelYaw": 0.20943951023931956,
+      "modelScale": 1.1
+    }
+  ],
+  "protectedMarkers": [
+    {
+      "id": "Region_A",
+      "kind": "region",
+      "island": "A",
+      "position": [
+        0,
+        0,
+        -300
+      ]
+    },
+    {
+      "id": "Region_B",
+      "kind": "region",
+      "island": "B",
+      "position": [
+        0,
+        8,
+        -130
+      ]
+    },
+    {
+      "id": "Region_C",
+      "kind": "region",
+      "island": "C",
+      "position": [
+        -230,
+        16,
+        -110
+      ]
+    },
+    {
+      "id": "Region_D",
+      "kind": "region",
+      "island": "D",
+      "position": [
+        -250,
+        28,
+        110
+      ]
+    },
+    {
+      "id": "Region_E",
+      "kind": "region",
+      "island": "E",
+      "position": [
+        0,
+        42,
+        110
+      ]
+    },
+    {
+      "id": "Region_F",
+      "kind": "region",
+      "island": "F",
+      "position": [
+        215,
+        26,
+        -65
+      ]
+    },
+    {
+      "id": "Region_G",
+      "kind": "region",
+      "island": "G",
+      "position": [
+        250,
+        44,
+        180
+      ]
+    },
+    {
+      "id": "Region_H",
+      "kind": "region",
+      "island": "H",
+      "position": [
+        0,
+        62,
+        300
+      ]
+    },
+    {
+      "id": "Region_S1",
+      "kind": "region",
+      "island": "S1",
+      "position": [
+        -350,
+        12,
+        -248
+      ]
+    },
+    {
+      "id": "Region_S2",
+      "kind": "region",
+      "island": "S2",
+      "position": [
+        -370,
+        24,
+        202
+      ]
+    },
+    {
+      "id": "Region_S3",
+      "kind": "region",
+      "island": "S3",
+      "position": [
+        337,
+        18,
+        -170
+      ]
+    },
+    {
+      "id": "Region_S4",
+      "kind": "region",
+      "island": "S4",
+      "position": [
+        350,
+        52,
+        292
+      ]
+    },
+    {
+      "id": "PlayerSpawn",
+      "kind": "spawn",
+      "island": "A",
+      "position": [
+        0,
+        0,
+        -326
+      ]
+    },
+    {
+      "id": "MainExtraction",
+      "kind": "extraction",
+      "island": "A",
+      "position": [
+        0,
+        0,
+        -339
+      ]
+    },
+    {
+      "id": "BellExtraction",
+      "kind": "extraction",
+      "island": "H",
+      "position": [
+        0,
+        62,
+        309
+      ]
+    },
+    {
+      "id": "Exit",
+      "kind": "extraction_alias",
+      "island": "A",
+      "position": [
+        0,
+        0,
+        -339
+      ],
+      "aliasOf": "MainExtraction"
+    },
+    {
+      "id": "EnemySpawn_A",
+      "kind": "enemy_spawn",
+      "island": "A",
+      "position": [
+        21,
+        0,
+        -316
+      ]
+    },
+    {
+      "id": "POI_A",
+      "kind": "point_of_interest",
+      "island": "A",
+      "position": [
+        -12,
+        0,
+        -283
+      ]
+    },
+    {
+      "id": "Search_A",
+      "kind": "search",
+      "island": "A",
+      "position": [
+        -30,
+        0,
+        -320
+      ]
+    },
+    {
+      "id": "Search_A_02",
+      "kind": "search",
+      "island": "A",
+      "position": [
+        32,
+        0,
+        -270
+      ]
+    },
+    {
+      "id": "Lamp_A",
+      "kind": "lamp",
+      "island": "A",
+      "position": [
+        -25,
+        0,
+        -292
+      ]
+    },
+    {
+      "id": "Lamp_A_02",
+      "kind": "lamp",
+      "island": "A",
+      "position": [
+        -28,
+        0,
+        -324
+      ]
+    },
+    {
+      "id": "EnemySpawn_B",
+      "kind": "enemy_spawn",
+      "island": "B",
+      "position": [
+        21,
+        8,
+        -146
+      ]
+    },
+    {
+      "id": "POI_B",
+      "kind": "point_of_interest",
+      "island": "B",
+      "position": [
+        -12,
+        8,
+        -113
+      ]
+    },
+    {
+      "id": "Search_B",
+      "kind": "search",
+      "island": "B",
+      "position": [
+        -30,
+        8,
+        -150
+      ]
+    },
+    {
+      "id": "Search_B_02",
+      "kind": "search",
+      "island": "B",
+      "position": [
+        -34,
+        8,
+        -107
+      ]
+    },
+    {
+      "id": "Lamp_B",
+      "kind": "lamp",
+      "island": "B",
+      "position": [
+        -25,
+        8,
+        -122
+      ]
+    },
+    {
+      "id": "Lamp_B_02",
+      "kind": "lamp",
+      "island": "B",
+      "position": [
+        26,
+        8,
+        -154
+      ]
+    },
+    {
+      "id": "EnemySpawn_C",
+      "kind": "enemy_spawn",
+      "island": "C",
+      "position": [
+        -209,
+        16,
+        -126
+      ]
+    },
+    {
+      "id": "POI_C",
+      "kind": "point_of_interest",
+      "island": "C",
+      "position": [
+        -242,
+        16,
+        -93
+      ]
+    },
+    {
+      "id": "Search_C",
+      "kind": "search",
+      "island": "C",
+      "position": [
+        -260,
+        16,
+        -130
+      ]
+    },
+    {
+      "id": "Search_C_02",
+      "kind": "search",
+      "island": "C",
+      "position": [
+        -198,
+        16,
+        -80
+      ]
+    },
+    {
+      "id": "Lamp_C",
+      "kind": "lamp",
+      "island": "C",
+      "position": [
+        -255,
+        16,
+        -102
+      ]
+    },
+    {
+      "id": "Lamp_C_02",
+      "kind": "lamp",
+      "island": "C",
+      "position": [
+        -204,
+        16,
+        -134
+      ]
+    },
+    {
+      "id": "EnemySpawn_D",
+      "kind": "enemy_spawn",
+      "island": "D",
+      "position": [
+        -229,
+        28,
+        94
+      ]
+    },
+    {
+      "id": "POI_D",
+      "kind": "point_of_interest",
+      "island": "D",
+      "position": [
+        -262,
+        28,
+        127
+      ]
+    },
+    {
+      "id": "Search_D",
+      "kind": "search",
+      "island": "D",
+      "position": [
+        -220,
+        28,
+        130
+      ]
+    },
+    {
+      "id": "Search_D_02",
+      "kind": "search",
+      "island": "D",
+      "position": [
+        -218,
+        28,
+        140
+      ]
+    },
+    {
+      "id": "Lamp_D",
+      "kind": "lamp",
+      "island": "D",
+      "position": [
+        -275,
+        28,
+        118
+      ]
+    },
+    {
+      "id": "Lamp_D_02",
+      "kind": "lamp",
+      "island": "D",
+      "position": [
+        -224,
+        28,
+        86
+      ]
+    },
+    {
+      "id": "EnemySpawn_E",
+      "kind": "enemy_spawn",
+      "island": "E",
+      "position": [
+        21,
+        42,
+        94
+      ]
+    },
+    {
+      "id": "POI_E",
+      "kind": "point_of_interest",
+      "island": "E",
+      "position": [
+        -12,
+        42,
+        127
+      ]
+    },
+    {
+      "id": "Search_E",
+      "kind": "search",
+      "island": "E",
+      "position": [
+        -30,
+        42,
+        90
+      ]
+    },
+    {
+      "id": "Search_E_02",
+      "kind": "search",
+      "island": "E",
+      "position": [
+        32,
+        42,
+        140
+      ]
+    },
+    {
+      "id": "Lamp_E",
+      "kind": "lamp",
+      "island": "E",
+      "position": [
+        -25,
+        42,
+        118
+      ]
+    },
+    {
+      "id": "Lamp_E_02",
+      "kind": "lamp",
+      "island": "E",
+      "position": [
+        26,
+        42,
+        86
+      ]
+    },
+    {
+      "id": "EnemySpawn_F",
+      "kind": "enemy_spawn",
+      "island": "F",
+      "position": [
+        183,
+        26,
+        -94
+      ]
+    },
+    {
+      "id": "POI_F",
+      "kind": "point_of_interest",
+      "island": "F",
+      "position": [
+        190,
+        26,
+        -94
+      ]
+    },
+    {
+      "id": "Search_F",
+      "kind": "search",
+      "island": "F",
+      "position": [
+        197,
+        26,
+        -94
+      ]
+    },
+    {
+      "id": "Search_F_02",
+      "kind": "search",
+      "island": "F",
+      "position": [
+        272,
+        26,
+        -10
+      ]
+    },
+    {
+      "id": "Lamp_F",
+      "kind": "lamp",
+      "island": "F",
+      "position": [
+        204,
+        26,
+        -94
+      ]
+    },
+    {
+      "id": "Lamp_F_02",
+      "kind": "lamp",
+      "island": "F",
+      "position": [
+        266,
+        26,
+        -64
+      ]
+    },
+    {
+      "id": "EnemySpawn_G",
+      "kind": "enemy_spawn",
+      "island": "G",
+      "position": [
+        271,
+        44,
+        164
+      ]
+    },
+    {
+      "id": "POI_G",
+      "kind": "point_of_interest",
+      "island": "G",
+      "position": [
+        238,
+        44,
+        197
+      ]
+    },
+    {
+      "id": "Search_G",
+      "kind": "search",
+      "island": "G",
+      "position": [
+        220,
+        44,
+        160
+      ]
+    },
+    {
+      "id": "Search_G_02",
+      "kind": "search",
+      "island": "G",
+      "position": [
+        216,
+        44,
+        203
+      ]
+    },
+    {
+      "id": "Lamp_G",
+      "kind": "lamp",
+      "island": "G",
+      "position": [
+        225,
+        44,
+        188
+      ]
+    },
+    {
+      "id": "Lamp_G_02",
+      "kind": "lamp",
+      "island": "G",
+      "position": [
+        276,
+        44,
+        156
+      ]
+    },
+    {
+      "id": "EnemySpawn_H",
+      "kind": "enemy_spawn",
+      "island": "H",
+      "position": [
+        21,
+        62,
+        284
+      ]
+    },
+    {
+      "id": "POI_H",
+      "kind": "point_of_interest",
+      "island": "H",
+      "position": [
+        -12,
+        62,
+        317
+      ]
+    },
+    {
+      "id": "Search_H",
+      "kind": "search",
+      "island": "H",
+      "position": [
+        30,
+        62,
+        320
+      ]
+    },
+    {
+      "id": "Search_H_02",
+      "kind": "search",
+      "island": "H",
+      "position": [
+        32,
+        62,
+        330
+      ]
+    },
+    {
+      "id": "Lamp_H",
+      "kind": "lamp",
+      "island": "H",
+      "position": [
+        -25,
+        62,
+        308
+      ]
+    },
+    {
+      "id": "Lamp_H_02",
+      "kind": "lamp",
+      "island": "H",
+      "position": [
+        26,
+        62,
+        276
+      ]
+    },
+    {
+      "id": "EnemySpawn_S1",
+      "kind": "enemy_spawn",
+      "island": "S1",
+      "position": [
+        -329,
+        12,
+        -246
+      ]
+    },
+    {
+      "id": "POI_S1",
+      "kind": "point_of_interest",
+      "island": "S1",
+      "position": [
+        -362,
+        12,
+        -213
+      ]
+    },
+    {
+      "id": "Search_S1",
+      "kind": "search",
+      "island": "S1",
+      "position": [
+        -368,
+        12,
+        -245
+      ]
+    },
+    {
+      "id": "EnemySpawn_S2",
+      "kind": "enemy_spawn",
+      "island": "S2",
+      "position": [
+        -349,
+        24,
+        204
+      ]
+    },
+    {
+      "id": "POI_S2",
+      "kind": "point_of_interest",
+      "island": "S2",
+      "position": [
+        -382,
+        24,
+        237
+      ]
+    },
+    {
+      "id": "Search_S2",
+      "kind": "search",
+      "island": "S2",
+      "position": [
+        -382,
+        24,
+        211
+      ]
+    },
+    {
+      "id": "EnemySpawn_S3",
+      "kind": "enemy_spawn",
+      "island": "S3",
+      "position": [
+        376,
+        18,
+        -186
+      ]
+    },
+    {
+      "id": "POI_S3",
+      "kind": "point_of_interest",
+      "island": "S3",
+      "position": [
+        343,
+        18,
+        -153
+      ]
+    },
+    {
+      "id": "Search_S3",
+      "kind": "search",
+      "island": "S3",
+      "position": [
+        343,
+        18,
+        -179
+      ]
+    },
+    {
+      "id": "EnemySpawn_S4",
+      "kind": "enemy_spawn",
+      "island": "S4",
+      "position": [
+        371,
+        52,
+        294
+      ]
+    },
+    {
+      "id": "POI_S4",
+      "kind": "point_of_interest",
+      "island": "S4",
+      "position": [
+        338,
+        52,
+        327
+      ]
+    },
+    {
+      "id": "Search_S4",
+      "kind": "search",
+      "island": "S4",
+      "position": [
+        338,
+        52,
+        301
+      ]
+    }
+  ],
+  "policy": "Actual transformed mesh bounds; retain roads, bridge mouths, gameplay markers and central arenas"
+}

@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "encounters": [
+    { "id": "C", "marker": "EnemySpawn_C", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "C_02", "marker": "Search_C_02", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "D", "marker": "EnemySpawn_D", "count": 2, "manual": false, "tier": "Scav", "lead": "Elite" },
+    { "id": "D_02", "marker": "Search_D_02", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "E", "marker": "EnemySpawn_E", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "E_02", "marker": "Search_E_02", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "G", "marker": "EnemySpawn_G", "count": 2, "manual": false, "tier": "Scav", "lead": "Elite" },
+    { "id": "G_02", "marker": "Search_G_02", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "S1", "marker": "EnemySpawn_S1", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "S2", "marker": "EnemySpawn_S2", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "S3", "marker": "EnemySpawn_S3", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "S4", "marker": "EnemySpawn_S4", "count": 3, "manual": false, "tier": "Scav", "lead": "Elite" },
+    { "id": "F", "marker": "Search_F_02", "count": 2, "manual": false, "tier": "Scav", "lead": "Scav" },
+    { "id": "Zheling", "marker": "EnemySpawn_F", "count": 1, "manual": true, "tier": "Champion", "lead": "Champion" },
+    { "id": "BellKeeper", "marker": "EnemySpawn_H", "count": 3, "manual": true, "tier": "Scav", "lead": "Champion" },
+    { "id": "Storm", "marker": "POI_E", "count": 3, "manual": true, "tier": "Elite", "lead": "Storm" }
+  ],
+  "gates": [
+    { "id": "K1", "requiredFlags": 128, "any": false },
+    { "id": "K2", "requiredFlags": 256, "any": false },
+    { "id": "K3", "requiredFlags": 512, "any": false },
+    { "id": "BellCourt", "requiredFlags": 3, "any": false },
+    { "id": "ZhelingPass", "requiredFlags": 3072, "any": true }
+  ]
+}
