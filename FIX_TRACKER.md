@@ -4,6 +4,111 @@
 
 ## 最新修复
 
+### 2026-09-07 P0 五把新武器开放获取 + 表现层补齐
+
+**分类**：COMPAT（内容扩展，默认行为不变）、OPERATIONAL（构建脚本新增 bundle/音效部署段）。
+**范围**：500048-500052（毒蛇匕首、召唤法杖、能量盾、冰霜长矛、雷电戒指）。不新增 TypeID，不改存档 schema。
+
+**问题**：这五把武器代码早已完整（18 个 .cs、图标、模型、中英描述、动态注册表），
+但**玩家一件都拿不到**——除掉落黑名单、动态注册表与 Mode G 计分矩阵（只登记不产出）外，
+**没有任何商店、掉落或奖励接线**；`WikiContent/zh/equipment/equipment__viper_dagger.md` 自述
+「没有任何获取途径」，五页均挂 `[warn] 开发预览`。同时它们是全 Mod 唯一没有任何视听反馈的自定义武器
+（`Integration/NewWeapons/` 内 `Effect|Particle|Fx|PlaySound|CreateExplosion` 匹配数为 0）。
+
+**已做**：
+
+1. **物品属性**（`NewWeaponItemAttributes`）：品质 / 售价 / 耐久 / 可维修标签收敛为单一写入点，
+   真 bundle 路径与占位符路径共用、幂等。此前 `item.Value` 五把全未设（商店会标价 0 元），
+   `Quality` / `MaxDurability` 只在占位符路径硬编码，两条路径给出的物品不一致。
+   近战 20000 / 图腾 16000，低于品质 6 套装件的 30000。
+2. **获取途径**（照 500053-500056 转正口径）：`NewWeaponBossDropHandler` 五个官方 Boss 一对一 20% 掉落
+   （典狱长 / 大兴兴 / 呆头鹅 / 大冰冰 / 三枪哥），挂 `CharacterMainControl.OnDead` 前缀，原版地图同样生效，
+   defer 协议四处接线齐全；叮当商店好感 5 级、库存 1。掉落黑名单不动。
+3. **表现层**（零新增美术资源）：三把近战挥砍拖尾（`NewWeaponSwingFx`，程序化粒子 + 共享材质）、
+   毒爆发 / 雷电释放 / 灵魂召唤 / 护盾吸收四个触发瞬间的爆发环与电弧（`NewWeaponFx`）、
+   冰霜长矛命中霜环（`FrostSpearRuntime`，纯视觉）。四条程序化音效由 `tools/gen_newweapon_sfx.py` 合成。
+4. **顺带修正两处自建伤害标记**：毒爆发与雷电释放此前只设 `fromWeaponItemID = 0`，未置
+   `isFromBuffOrEffect = true`，与 `ModeGWeaponScoringCompatibilityMatrix` 的登记口径不符，
+   也会被冰葬 / 引雷术等「只认 `!isFromBuffOrEffect` 的直接击杀」的系统当成直接击杀起链。已补。
+   Mode G 计分不受影响（分类器条件 7 要求 `fromWeaponItemID > 0`）。
+5. **构建部署**：`compile_official.bat` 此前只部署 `Assets\Items\*.png` 与两个具名 bundle，
+   五把武器的 `*_item` / `*_melee_model` bundle 从未被部署过（本机可用仅因历史手工拷贝）。
+   已补 bundle 与 `Assets\Sounds\NewWeapons` 两段部署。另把五张图标从 `*_item` bundle 导出为
+   `Assets/Items/*_icon.png`，让占位符路径也能拿到正确图标；`NewWeaponIds.*BundleName`
+   五个常量原本与磁盘不符（`viper_dagger` vs `viperdagger_item`），已改为真名。
+6. **Mode G 计分矩阵**补 `FrostSpear` / `SummonStaff` / `EnergyShield` 三条（此前只登记了两把）。
+
+**守卫**：`ExtraBossDropDeferGuard` 的 `INTEGRATIONS` 扩到六个；`MeleeWeaponFxPolicyUsageGuard` 登记共享文件；
+`ModBehaviourInstanceClassificationGuard` +2 重新基线并同步分类文档。
+**`ModeGWeaponCompatibilityGuard` 的断言本身被换掉**：原实现是
+`re.search(weapon, merged, IGNORECASE)` 在整份文件文本里找名字——把条目改名成 `FrostSpearX` 仍然命中，
+名字只出现在注释里也算通过，等于没有断言。现改为**先剥 C# 注释**再解析
+`new ModeGWeaponScoringEntry("<key>", <typeId>)`，精确比对稳定 key 与期望 TypeID
+（`REQUIRED_ENTRIES` 表），并检查同名 key / 同 TypeID 重复登记。
+剥注释这步是复审补的——第一版没剥，把整个 `Entries` 数组用 `/* */` 包掉仍然全绿。
+
+**验证**：Windows `compile_official.bat` 编译绿并完成部署；`python tools/run_guards.py` **556/556 全绿**；
+反向验证已实测——抽掉无间炼狱世界掉落接线 `ExtraBossDropDeferGuard` 转红，
+矩阵条目改名或换 key `ModeGWeaponCompatibilityGuard` 转红，还原后均恢复 PASS。
+`WikiSiteStructureGuard` 与 `tools/check_wiki_links.py`（229 页 / 0 missing）通过。
+**实机 smoke 待人工**：商店能否买到且价格非 0、五个 Boss 掉落（含原版地图）、
+五个触发瞬间的特效与音效、重启后不退化 `FallbackItem`、维修台可修。
+
+**全面复核（同日，三路并行 + 反向验证）查出并已修的 8 项**：
+
+| # | 问题 | 后果 |
+| --- | --- | --- |
+| 1 | 五把武器**没登记 ItemFactory 配置器**（`ItemContentRegistry`），其 Item prefab 在 `Assets/Items/*_item` 里由 ItemFactory 注册，而 `EquipmentFactory` 那条 TryConfigure 只覆盖 `Assets/Equipment` | 写 Stats / 标签 / Value 的唯一动作退化成延迟 bootstrap 里一次性的 `ConfigureNewWeaponsAfterLoad()`；它比 prefab 注册晚若干帧（窗口内开店读到 bundle 烤进去的旧 Value 8600~12600），一旦抛异常或被跳过则五把连 Stats 与可维修标签都没有。已新增 `NewWeaponItemConfigurators`，宿主只加一行 |
+| 2 | `NewWeaponSfx.BasePath` 在**静态字段初始化器**里用 `Assembly.Location` 拼路径 | 该属性对字节数组加载的程序集返回空串，`Path.GetDirectoryName("")` 抛异常 → `TypeInitializationException` 永久毒化类型；且 `NewWeaponSfx.X` 在**调用方栈帧**求值，异常会跳过紧随其后的 `ShowXxxBubble()`。已改为经 `ModBehaviour.GetModPath()` 惰性解析 |
+| 3 | `EquipmentHelper.AddModifierToItem` 无条件追加，能量盾 / 冰霜长矛的 `ConfigureModifiers` 直接用它 | `TryConfigure` 被重复调用会把 BodyArmor 叠成 +6、ColdProtection 叠成 +2。当前资产布局下是潜在而非现发（每个 Item 只配置一次），但补上 `Assets/Equipment/viper_dagger` 这类完整 bundle 后就会真发生。已新增幂等入口 `EquipmentHelper.EnsureModifierOnItem` |
+| 4 | `FrostSpearRuntime.ResetStaticCaches()` 漏接场景切换钩子（三个兄弟都接了，它自己的头注释也写了「切场景时清空」） | 上一张图敌人的 InstanceID 残留在去重表里 |
+| 5 | 召唤法杖的施法者符文环用 `playerPos` | 那是开唱时的坐标，中间隔了 N 次 `await`，环画在玩家已经离开的位置 |
+| 6 | 每个爆发环都 `AddComponent<Light>()`，而冰霜长矛每 0.35 秒命中就点一次 | 每次命中一盏实时点光。已把光改成可选，冰霜长矛传 `withLight: false` |
+| 7 | 电弧池 `DontDestroyOnLoad` | 与 `SetBonusArcPool`「激活时创建、停用即销毁」的契约不符。已改为跟随场景，`EnsureArcPool` 本就能在 Unity-null 时重建 |
+| 8 | 毒蛇匕首描述「层数越高伤害越猛」/「with increasing damage」**与代码不符** | 1~4 层对伤害零影响，第 5 层触发固定 35 点。已改写；能量盾描述补上单次 25 点上限与 0.5 秒冷却；Wiki 雷电戒指的「近战」限定去掉（代码不限武器类型） |
+
+**Wiki 自相矛盾（已修）**：`equipment__overview.md` 中英第 3 行仍写「已能打到 15 件」、第 5 行仍写「5 把暂无获取途径」，
+与同页 12 行后刚改过的小标题打架；`en/start__overview.md` 整段没跟着中文版改，英文站首页仍在告诉玩家这五把拿不到。
+两处已改并重跑 `wiki-site` 的 `sync-content.mjs`。
+
+**新增守卫 `NewWeaponLifecycleGuard`**：此前运气线与稳定线**一个断言都没有**——把
+`CharacterOnDeadPatch` 里那行 `TryHandleNewWeaponBossDeath` 删掉，五把武器的 Boss 掉落全部静默失效，
+而当时的全量守卫（本守卫加入前）依然全绿。新守卫钉住 OnDead 入口、五个 Boss nameKey、掉率、五条商店上架、`item.Value` 写入、
+配置器登记、四个触发瞬间的特效音效调用、音效路径不得用 `Assembly.Location`、以及清理接线。
+**解析前先剥 C# 注释**，注释掉的接线不算数。五种静默失效已逐条人为破坏并实测转红。
+
+**第二轮全面复核（三路并行：代码正确性 / 守卫对抗测试 / 文档一致性）**
+
+第一轮的 8 项修复经复查**全部正确**，无一引入回归。第二轮另修 7 项：
+
+| # | 问题 | 说明 |
+| --- | --- | --- |
+| 1 | 我给两件**图腾**加了耐久与可维修标签 | 既有图腾（飞行图腾、逆鳞）都不设耐久，定价也不需要——官方 `Item.GetTotalRawValue()` 在 `UseDurability` 为 false 时原样返回 `Value`。已改为只有三把近战写耐久 |
+| 2 | `TryBindLoadedMeleeModel` 重复调用会泄漏隐藏手持体 | `FinalizeCustomMeleeWeapon → CreateMeleeHandheldPrefab` 每次都无条件 `Instantiate` 一个 `DontDestroyOnLoad` 对象再覆盖引用。配置器 + 补配调用对同一个 Item 各跑一次，惰性注册路径下每把近战泄漏一个。已加判重，**顺带堵上霜之哀伤与焚皇断界戟的同一个坑** |
+| 3 | `NewWeaponMeleeFx` 在找不到回退 FX 时每次挥砍重扫 | `Resources.FindObjectsOfTypeAll` 每刀两次；毒蛇匕首攻速 2.1。已加 5 秒重扫节流（不能永久放弃：官方武器可能晚于首刀才加载） |
+| 4 | 守卫的注释剥离用正则，在 char 字面量 `'"'` 与逐字字符串 `@"...\"` 上会与源码失步 | 对抗测试实测出两处**假绿**、一处**假红**。已换成 `tests/cs_source_util.py` 里的小型状态机，并支持剥 `#if false` 区块；15 条边界用例全过 |
+| 5 | 守卫只钉赋值语句、不钉数值 | 把价目表改成 0、把掉率比较改成 `* 0f`、把 `Apply` 调用点注释掉，原来都能全绿。现已逐条钉住 |
+| 6 | `MeleeWeaponFxPolicyUsageGuard` **完全不剥注释**，且 copy-paste 检查绑死形参名 | 注释掉 `ApplyTo` 或把形参改名都能让检查失效。已修，并把 CWD 相对路径锚定到仓库根 |
+| 7 | Mode G 矩阵守卫只查「文件里出现过 revision 这个词」 | 单条写死一个过期 revision 会让正式入口运行时 fail-closed 而守卫无感。现改为逐条断言绑定 `RequiredVerificationRevision` |
+
+**文档修正**：`equipment__overview.md` 中英的「15 件 / 暂无获取途径」与 `en/start__overview.md`
+整段（第一轮漏了英文版）；`Assets/Data/GameplayCoverage.json` 里 **14 处**「开发预览装备仅用 F2 授予测试」
+——其中 9 处挂在噬魂挽歌、龙裔/龙王套装等**从来不是预览**的装备上；`.qoder/repowiki/` 四处陈旧获取说明；
+冰霜长矛中文面板漏的「格挡子弹 0.5」；毒蛇匕首中文 Wiki 用了游戏里不存在的「蛇毒注射 / 蛇毒爆发」
+（实际是「蛇毒注入 / 毒性爆发」）；能量盾英文「被包围时完全失效」的过度断言；
+冰霜长矛中文一条没有实现依据的「配合冰系增益有叠加效果」；台账首行仍写 500001-500061。
+
+**对抗测试的结论要写清楚**：46 种改法里 39 种仍能绕过守卫，其中大部分是
+「保留 token、杀掉执行路径」（`if (false)` 包住、挪进没人调的私有方法、方法体首行 `return;`）。
+这是本仓库守卫模型的**结构性上限**——它们断言文本不变式，不做可达性分析，AGENTS.md §4.10
+本来就是这么定义的。本轮只补了「便宜且真能堵」的那部分，没有假装守卫能防住一切。
+
+**与同日「近两周复核与 F3 验收」条目的关系**：该条目的冻结快照在本轮工作之前，
+其「后续增量边界」一节提到的「共享粒子/武器特效文件、编译清单尚不完整」即本轮内容。
+本轮已把全部新增 `.cs` 登记进 `compile_official.bat`
+（`OfficialCompileListFileExistenceGuard` 双向 PASS；源文件总数随并行会话变动，
+按 AGENTS.md §4.1 不在文档里写死，以 guard 输出为准），该边界已闭合。
+
 ### 2026-09-07 游戏内 UI 可读性与雾效整理
 
 **分类**：COMPAT（表现/布局），文档 SAFE。**状态**：代码已修，Windows 正式编译通过，555项守卫全部通过，改动范围 `git diff --check` 通过；Unity 实机待验。

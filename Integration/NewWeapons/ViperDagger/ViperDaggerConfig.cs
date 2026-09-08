@@ -18,8 +18,8 @@ namespace BossRush
         // ========== 本地化 ==========
         public const string DisplayNameCN = "毒蛇匕首";
         public const string DisplayNameEN = "Viper Dagger";
-        public const string DescriptionCN = "一柄浸泡在蛇毒中的短刃，每次命中都会在敌人体内注入毒素。毒素可叠加至5层，层数越高伤害越猛。\n<color=#7CFC00>【蛇毒注入】</color>命中敌人叠加中毒，最多5层。\n<color=#ADFF2F>【毒性爆发】</color>满层时额外造成一次爆发伤害。";
-        public const string DescriptionEN = "A short blade soaked in serpent venom. Each strike injects toxin into the target. Poison stacks up to 5 layers with increasing damage.\n<color=#7CFC00>[Venom Injection]</color> Hits apply poison, stacking up to 5.\n<color=#ADFF2F>[Toxic Burst]</color> At max stacks, deals bonus burst damage.";
+        public const string DescriptionCN = "一柄浸泡在蛇毒中的短刃，每次命中都会在敌人体内注入毒素。毒素可叠加至5层，满层引爆。\n<color=#7CFC00>【蛇毒注入】</color>命中敌人叠加中毒，最多5层。\n<color=#ADFF2F>【毒性爆发】</color>叠满5层立即引爆，额外造成35点毒属性伤害并清空层数。爆发伤害固定，不吃暴击与武器面板。\n<color=#BBBBBB>来源：典狱长 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public const string DescriptionEN = "A short blade soaked in serpent venom. Each strike injects toxin into the target. Poison stacks up to 5, then detonates.\n<color=#7CFC00>[Venom Injection]</color> Hits apply poison, stacking up to 5.\n<color=#ADFF2F>[Toxic Burst]</color> The 5th stack detonates for a flat 35 poison damage and clears all stacks. Not affected by crit or weapon stats.\n<color=#BBBBBB>Source: 20% drop from Warden / Dingdang's Shop (Affinity 5)</color>";
 
         // ========== 物品属性 ==========
         public const int ItemQuality = 5;

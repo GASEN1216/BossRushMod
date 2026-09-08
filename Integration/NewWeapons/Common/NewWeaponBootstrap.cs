@@ -47,7 +47,9 @@ namespace BossRush
                 // 4. 订阅雷电戒指运行时事件
                 ThunderRingRuntime.Subscribe();
 
-                // 冰霜长矛不需要运行时订阅（纯被动属性，由 ItemSetting_MeleeWeapon 处理）
+                // 5. 订阅冰霜长矛命中表现（减速仍由 ItemSetting_MeleeWeapon 的官方 Cold buff 提供，
+                //    这里只负责在命中处点一圈霜环）
+                FrostSpearRuntime.Subscribe();
 
                 DevLog("[NewWeapons] 系统初始化完成");
             }
@@ -87,6 +89,9 @@ namespace BossRush
 
                 // 重置雷电戒指状态
                 ThunderRingRuntime.ResetStaticCaches();
+
+                // 重置冰霜长矛的命中特效去重表（键是上一张图敌人的 InstanceID，留着没意义）
+                FrostSpearRuntime.ResetStaticCaches();
             }
             catch (Exception e)
             {
@@ -198,6 +203,7 @@ namespace BossRush
                 ViperDaggerRuntime.Unsubscribe();
                 EnergyShieldRuntime.Unsubscribe();
                 ThunderRingRuntime.Unsubscribe();
+                FrostSpearRuntime.Unsubscribe();
 
                 // 清理召唤法杖
                 SummonStaffAction.CleanupAllSummonedAllies();
@@ -207,6 +213,12 @@ namespace BossRush
                 ViperDaggerRuntime.ResetStaticCaches();
                 EnergyShieldRuntime.ResetStaticCaches();
                 ThunderRingRuntime.ResetStaticCaches();
+                FrostSpearRuntime.ResetStaticCaches();
+                // 表现层：销毁电弧池、清空拖尾对象池、释放程序化精灵
+                NewWeaponFx.ResetStaticCaches();
+                NewWeaponMeleeFx.ResetStaticCaches();
+                // Boss 额外掉落的 pending 表
+                NewWeaponBossDropHandler.ResetStaticCaches();
                 ViperDaggerWeaponConfig.ResetStaticCaches();
                 SummonStaffWeaponConfig.ResetStaticCaches();
                 EnergyShieldWeaponConfig.ResetStaticCaches();

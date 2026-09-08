@@ -1,18 +1,16 @@
 ## Summoning Staff
 
-[warn] Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
-
 ### What Is It?
 
 A **summoner melee staff** with modest personal damage but a right-click that pulls 3 soul warriors from the void to fight for you. Play it safe — let the summons draw aggro while you pick your spots.
 
 - **Type**: Melee / **Quality**: 5
-- **Drop**: No standard obtain path in current version
+- **Drop**: 20% from Big Xing (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
 - Won't drop on death
 
 ### Stats
 
-- Dmg 18 / Speed 1.2 / Range 1.8m / Crit 4% / Crit Dmg 1.3x
+- Dmg 18 / Speed 1.2 / Range 1.8m / Crit 4% / Crit Dmg 1.3x / Pierce 1 / Hit Delay 0.1s
 - Block 0.3 / Stamina 6/hit / Bleed 0% / Move Speed 105%
 
 ### Soul Summon (Right Click)
@@ -22,6 +20,10 @@ A **summoner melee staff** with modest personal damage but a right-click that pu
 - Each has **80 HP**, fights on your side, pursues enemies
 - Lasts **15 seconds**, then fades (or dies from damage)
 - Inactive if you already have 3 active summons — wait for them to expire first
+
+### What It Looks Like
+
+Swings leave a **soul-purple trail**. Casting lights a rune ring under the caster, and each of the three soul warriors gets its own small ring at its landing spot, over a summoning tone that resolves into a solid thud when they arrive.
 
 ### Tips
 

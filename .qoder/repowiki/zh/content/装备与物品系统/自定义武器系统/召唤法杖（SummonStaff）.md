@@ -341,7 +341,7 @@ Manager --> WeaponCfg
   - 更换 SummonPresetName 以切换不同兵种外观与基础行为（需确保预设存在）。
   - 微调近战属性（Damage、AttackSpeed、AttackRange 等）以契合不同玩法风格。
 - 获取说明
-  - 当前版本无常规获取途径，仅可通过开发/调试授予；未来更新计划加入获取路径。
+  - 获取途径：大兴兴（`Cname_XING`）额外掉落 20%（原版地图同样生效），或叮当的小店好感 5 级限量购买；未来更新计划加入获取路径。
 
 **章节来源**
 - [summon-staff.md:1-38](file://wiki-site/docs/en/equipment/summon-staff.md#L1-L38)

@@ -54,6 +54,10 @@ INTEGRATIONS = {
         os.path.join(REPO_ROOT, "Integration", "Bonus", "SetBonusBossDropHandler.cs"),
         "SetBonusBossDropHandler",
     ),
+    "NewWeapons": (
+        os.path.join(REPO_ROOT, "Integration", "NewWeapons", "Common", "NewWeaponBossDropHandler.cs"),
+        "NewWeaponBossDropHandler",
+    ),
 }
 
 

@@ -281,6 +281,72 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ## 14. 最后更新
 
+2026-09-07（P0 五把新武器开放获取 + 表现层补齐）：500048-500052 从「开发预览」转为正式内容。
+
+- **「代码写完」不等于「已实装」**：这五把武器有完整的 Config / WeaponConfig / Runtime、
+  图标、模型、中英描述，也进了 `BossRushDynamicItemRegistry`，但全仓除掉落黑名单外零引用——
+  没有任何商店、掉落或奖励接线，Wiki 五页自己写着「没有任何获取途径」。
+  **编译与 guard 都查不出这类缺口**：guard 断言结构不变式，不验证「玩家操作能否走到内容」。
+  盘点自定义内容时，除了「类型存在吗」还要问「谁产出它」。
+- **`item.Value` 不设，NPC 商店会标价 0 元**（StockShop 价格 = Value × 耐久比 × priceFactor）。
+  这五把此前只在**占位符路径**里硬编码 `Quality = 5` / `MaxDurability = 999f`，
+  真 bundle 路径一项都不写，于是「有 bundle 反而没品质没售价」。
+  现已统一到 `NewWeaponItemAttributes.Apply(item, typeId)`，两条路径共用、幂等。
+  有耐久的装备还要 `EquipmentHelper.AddRepairableTag`，否则维修台显示「无法维修」。
+- **AssetBundle 不进 `.gitignore` 之外的部署段就等于没有**：`compile_official.bat` 此前只部署
+  `Assets\Items\*.png` 加两个具名 bundle，五把武器的 `*_item` / `*_melee_model` bundle
+  从来没被部署过——本机能用只因为历史上手工拷过。新增任何 bundle / 音效目录都必须补部署段。
+- **表现层不要往 `ModBehaviour` 上加**：`SetBonusVisuals` 的爆发环、双眼光都是宿主 partial 的私有成员，
+  静态的 `XxxRuntime` 调不到；而 `ModBehaviourPartialBudgetGuard` 的**文件数已顶格 204/204**，
+  一个新的 `partial class ModBehaviour` 都加不了。新表现层一律独立类型：
+  `NewWeaponFx` / `NewWeaponSwingFx` / `NewWeaponMeleeFx` / `Common/Effects/BossRushProceduralSprites.cs`。
+  程序化粒子材质已从 `RingParticleEffect.CreateMaterial` 提取为 `GetSharedParticleMaterial()`，全 Mod 复用。
+- **两处自建伤害漏了 `isFromBuffOrEffect = true`**（毒爆发、雷电释放）。它们只设了
+  `fromWeaponItemID = 0`，与 `ModeGWeaponScoringCompatibilityMatrix` 里「buff/effect 通道」的
+  登记口径不符，也会被「只认 `!isFromBuffOrEffect` 的直接击杀」的系统（冰葬、引雷术）当成直接击杀起链。
+  已补。Mode G 计分本就不受影响——分类器条件 7 要求 `fromWeaponItemID > 0`。
+- **guard 的子串断言等于没断言**：`ModeGWeaponCompatibilityGuard` 原本用
+  `re.search(weapon, merged, IGNORECASE)` 在整份文件文本里找名字，把条目改名成 `FrostSpearX`
+  仍然命中，名字只出现在注释里也算通过。已改为**先剥 C# 注释**再解析
+  `new ModeGWeaponScoringEntry("<key>", <typeId>)`，精确比对稳定 key 与期望 TypeID，
+  并检查重复登记。**剥注释这步必须有**：不剥的话把整个 `Entries` 数组用 `/* */` 包掉
+  （临时禁用最自然的手法）守卫照样全绿——第一版就是这样漏的，复审才补上。
+  四条人为破坏（块注释、TypeID 写错、同名重复、删条目）已实测逐条转红。
+- **「配置器登记」和「TypeID 登记」是两件事**：物品 prefab 在 `Assets/Items/*` 里的，要在
+  `ItemContentRegistry.RegisterItemContentConfigurators()` 登记 `ItemFactory.RegisterConfigurator`，
+  否则 `LoadBundleInternal` 只注册不配置——`EquipmentFactory` 那条 TryConfigure 只覆盖
+  `Assets/Equipment` 下的 Item。漏登记时功能靠延迟 bootstrap 里一次性的补配调用兜着，
+  它比注册晚若干帧，且一旦抛异常整批装备连 Stats 都没有。
+- **静态字段初始化器里不要拼 `Assembly.Location`**：对字节数组加载的程序集它返回空串，
+  `Path.GetDirectoryName("")` 抛异常，在静态初始化器里会变成 `TypeInitializationException`
+  把类型永久毒化；更隐蔽的是 `SomeSfx.X` 是在**调用方栈帧**求值的，异常会跳过调用点之后的代码
+  （气泡提示等）。mod 根目录一律走带兜底的 `ModBehaviour.GetModPath()`。
+- **`EquipmentHelper.AddModifierToItem` 不幂等**（无条件 `Add`）。配置器可能被重复调用
+  （bundle 路径 / 占位符路径 / 补配调用），要「保证存在一条」时用新增的
+  `EquipmentHelper.EnsureModifierOnItem`，否则加成会叠成两份。套装那边早有 `EnsureBaseArmorModifier` 同款写法。
+- **守卫剥注释不能用正则**：正则版在 char 字面量 `'"'`（里面的引号被当成字符串起始）
+  和逐字字符串 `@"...\"`（逐字串里反斜杠不转义，但正则会把 `\"` 当转义对吞掉）上会与源码失步，
+  之后整份文件分类全错——**假绿假红都出现过**。统一走 `tests/cs_source_util.py` 的
+  `clean_source()`（小型状态机 + 剥 `#if false`）。
+- **守卫要钉数值，不能只钉赋值语句**：`item.Value = value;` 在位不代表价目表不是 0，
+  `WeaponDropChance = 0.20f` 在位不代表比较没被改成 `* 0f`。同理只断言方法定义存在，
+  把调用点注释掉照样全绿——调用点要单独断言。
+- **守卫防不住「保留 token、杀掉执行路径」**（`if (false)` 包住、挪进没人调的方法、
+  方法体首行 `return;`）。这是文本不变式守卫的结构性上限，不要在文档里把守卫说成能防住一切。
+- 新文件：`Integration/NewWeapons/Common/`
+  `NewWeaponItemAttributes.cs`、`NewWeaponItemConfigurators.cs`、`NewWeaponFx.cs`、
+  `NewWeaponSwingFx.cs`、`NewWeaponMeleeFx.cs`、`NewWeaponBossDropHandler.cs`；
+  `Integration/NewWeapons/FrostSpear/FrostSpearRuntime.cs`；
+  `Common/Effects/BossRushProceduralSprites.cs`；`tools/gen_newweapon_sfx.py`
+  （音效 `Assets/Sounds/NewWeapons/`，local-only，构建脚本照 SetBonus 块部署）。
+  新增守卫 `tests/NewWeaponLifecycleGuard.py`（钉住两条获取线与表现层接线）与共享的
+  `tests/cs_source_util.py`（真正的 C# 注释剥离器，取代会在 char 字面量 / 逐字字符串上失步的正则）。
+  守卫同步：`ExtraBossDropDeferGuard`（六个 integration）、`ModeGWeaponCompatibilityGuard`（改断言 + 三条武器
+  + 逐条 revision 校验）、`MeleeWeaponFxPolicyUsageGuard`（登记共享文件 + 补剥注释）、
+  `ModBehaviourInstanceClassificationGuard`（Integration +2 重新基线）。
+  编译绿、全量 guard 绿（数量随工作树变化，以 `python tools/run_guards.py` 输出为准）；
+  **实机 smoke 待人工**，明细见 `FIX_TRACKER.md` 同日条目。
+
 2026-09-06（冰霜 / 雷霆套装龙王级重做 + 开放获取）：500053-500056 从「开发预览」转为正式内容。
 
 - **真 bug**：`ThunderSetBonus` 的反击 `CreateExplosion` 漏传第 6 参 `canHurtSelf`，官方默认 `true` 时

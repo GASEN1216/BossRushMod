@@ -68,6 +68,8 @@ namespace BossRush
             // 冰霜/雷霆套装：风暴区 Boss 掉雷霆、「???」Boss 掉冰霜。挂在这里而不是奖励箱协程里，
             // 是为了让原版地图击杀同样能掉——奖励箱协程只覆盖 BossRush 场次。
             SetBonusBossDropHandler.TryHandleSetBonusBossDeath(__instance);
+            // P0 五把新武器：五个官方 Boss 各掉一把，同样挂在 OnDead 前缀上，原版地图击杀也生效。
+            NewWeaponBossDropHandler.TryHandleNewWeaponBossDeath(__instance);
         }
 
         /// <summary>

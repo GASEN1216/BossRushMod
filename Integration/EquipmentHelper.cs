@@ -185,6 +185,59 @@ namespace BossRush
             AddTagToItem(item, "Repairable");
         }
 
+        /// <summary>
+        /// 幂等版 <see cref="AddModifierToItem"/>：同一 statKey 已存在时不再追加。
+        /// AddModifierToItem 是无条件 Add，配置器被重复调用（bundle 路径 + 占位符路径 +
+        /// ConfigureNewWeaponsAfterLoad 可能命中同一个 Item）就会把加成叠成两份。
+        /// 需要「保证存在一条」而不是「再加一条」时一律用本方法。
+        /// </summary>
+        public static void EnsureModifierOnItem(Item item, string statKey, ModifierType modType, float value, bool display)
+        {
+            if (item == null || string.IsNullOrEmpty(statKey))
+            {
+                return;
+            }
+
+            if (HasModifierWithKey(item, statKey))
+            {
+                return;
+            }
+
+            AddModifierToItem(item, statKey, modType, value, display);
+        }
+
+        /// <summary>物品上是否已有指定 statKey 的 ModifierDescription。</summary>
+        public static bool HasModifierWithKey(Item item, string statKey)
+        {
+            if (item == null || string.IsNullOrEmpty(statKey))
+            {
+                return false;
+            }
+
+            try
+            {
+                ModifierDescriptionCollection modifiers = item.Modifiers;
+                if (modifiers == null)
+                {
+                    return false;
+                }
+
+                foreach (ModifierDescription mod in modifiers)
+                {
+                    if (mod != null && mod.Key == statKey)
+                    {
+                        return true;
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[EquipmentHelper] HasModifierWithKey 出错: " + e.Message);
+            }
+
+            return false;
+        }
+
         // ========== 宝石槽位 ==========
 
         private static Tag _cachedGemTag;

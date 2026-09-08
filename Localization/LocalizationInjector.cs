@@ -434,8 +434,9 @@ namespace BossRush
             new string[] { "词条这东西两头下注：'玻璃大炮'伤害翻倍但护甲清零，'嗜血猎犬'让全场敌人死盯着你。左边有常驻小提示，鼠标移上去能翻详情。", "Mutators cut both ways: 'Glass Cannon' doubles your damage but zeroes your armor, 'Bloodhounds' makes every enemy lock onto you. The left-side hint stays up; hover it for details." },
             new string[] { "不喜欢开盲盒？配置里能把变异词条关了，也能调抽几个。不过要我说，有词条那局才有味儿。", "Not a fan of the gamble? You can switch mutators off in the config, or change how many you draw. Though if you ask me, a run's only got flavor with them on." },
 
-            // ============ 新装备预告（P0 五把武器暂未开放；霜雷两套装 2026-09 已批出库） ============
-            new string[] { "仓库那批新货——毒蛇匕首、召唤法杖、能量盾、冰霜长矛、雷电戒指——上头还没批出库，急也没用。倒是两套霜雷的甲批下来了：霜冠、寒冰铠甲、雷神之角、雷霆战甲，我这儿限量卖，好感不够别问。想白拿？冰的去找「???」，雷的去找风暴区那几位。", "Warehouse batch—Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring—upper management still hasn't cleared them. But the two frost-and-thunder sets got approved: Frost Crown, Ice Armor, Thunder Horn, Thunder Armor. I sell them here, limited stock, and don't ask unless we're close. Want them free? Frost drops from \"???\", thunder from the Storm Zone bosses." }
+            // ============ 新装备货源（P0 五把武器 2026-09 已批出库；霜雷两套装同批） ============
+            new string[] { "仓库那批新货全批下来了——毒蛇匕首、召唤法杖、能量盾、冰霜长矛、雷电戒指，都送去叮当那儿了，好感 5 级起卖，一样一件。想白拿也行：典狱长身上出匕首，大兴兴出法杖，呆头鹅出盾，大冰冰出长矛，三枪哥出戒指，两成的数，看你手气。", "The warehouse batch all cleared—Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring. I hauled them over to Dingdang; one of each, from Affinity 5. Want them free? The Warden drops the dagger, Big Xing the staff, Goofy Goose the shield, Big Ice the spear, and Triple-Shot Man the ring—one in five, if luck likes you." },
+            new string[] { "两套霜雷的甲也一并送到叮当那儿了：霜冠、寒冰铠甲、雷神之角、雷霆战甲，限量货，好感不够他不卖。想白拿？冰的去找「???」，雷的去找风暴区那几位。", "The two frost-and-thunder sets went over to Dingdang as well: Frost Crown, Ice Armor, Thunder Horn, Thunder Armor. Limited stock, and he won't sell unless you're close. Want them free? Frost drops from \"???\", thunder from the Storm Zone bosses." }
         };
 
         // ============================================================================

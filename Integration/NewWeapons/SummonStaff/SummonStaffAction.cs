@@ -165,6 +165,9 @@ namespace BossRush
 
                         summonedAllies.Add(ally);
                         successCount++;
+
+                        // 表现层：每只灵魂战士落地一圈紫环（配色取自描述文案的 #BA68C8）
+                        NewWeaponFx.PlayBurst(spawnPos, NewWeaponPalette.SoulCore, 1.4f, 0.4f, 4);
                     }
                     catch (Exception e)
                     {
@@ -179,6 +182,14 @@ namespace BossRush
 
                 if (successCount > 0)
                 {
+                    // 表现层：施法者脚下一圈符文环 + 召唤音效，只在真的召出人时播放。
+                    // 位置重新取一次：playerPos 是开唱那一刻的坐标，中间隔了 N 次 await，
+                    // 拿它画环会画在玩家已经离开的地方（生成点沿用旧坐标是对的，环不是）。
+                    Vector3 ringPos = player != null && player.transform != null
+                        ? player.transform.position
+                        : playerPos;
+                    NewWeaponFx.PlayBurst(ringPos, NewWeaponPalette.SoulCore, 2.6f, 0.5f, 8);
+                    NewWeaponFx.PlaySound(NewWeaponSfx.SoulSummon);
                     ShowSummonBubble(player, successCount);
                 }
             }

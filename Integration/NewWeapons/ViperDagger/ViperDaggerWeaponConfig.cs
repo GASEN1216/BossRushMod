@@ -81,6 +81,9 @@ namespace BossRush
                 // 4. 配置标签
                 ConfigureTags(item);
 
+                // 4.5 品质 / 售价 / 耐久 / 可维修标签（与占位符路径共用同一张表）
+                NewWeaponItemAttributes.Apply(item, NewWeaponIds.ViperDaggerTypeId);
+
                 // 5. 绑定模型
                 if (modelAgent != null)
                 {
@@ -158,7 +161,12 @@ namespace BossRush
                 }
                 modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
                 modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
+                NewWeaponMeleeFx.EnsureMeleeAttackFx(modelMeleeAgent);
             }
+
+            // slashFx / hitFx 回退走共享的 MeleeWeaponFxPolicy（三把新近战共用一处实现，
+            // 不再复制第四份 EnsureMeleeAttackFx 模板）
+            NewWeaponMeleeFx.EnsureMeleeAttackFx(meleeAgent);
         }
 
         private static void ConfigureMeleeSetting(Item item)

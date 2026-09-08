@@ -71,6 +71,8 @@ namespace BossRush
                 ConfigureMeleeSetting(item);
                 ConfigureTags(item);
                 ConfigureModifiers(item);
+                // 品质 / 售价 / 耐久 / 可维修标签（与占位符路径共用同一张表）
+                NewWeaponItemAttributes.Apply(item, NewWeaponIds.FrostSpearTypeId);
 
                 if (modelAgent != null)
                 {
@@ -145,7 +147,12 @@ namespace BossRush
                 }
                 modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
                 modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
+                NewWeaponMeleeFx.EnsureMeleeAttackFx(modelMeleeAgent);
             }
+
+            // slashFx / hitFx 回退走共享的 MeleeWeaponFxPolicy（三把新近战共用一处实现，
+            // 不再复制第四份 EnsureMeleeAttackFx 模板）
+            NewWeaponMeleeFx.EnsureMeleeAttackFx(meleeAgent);
         }
 
         private static void ConfigureMeleeSetting(Item item)
@@ -199,7 +206,7 @@ namespace BossRush
         {
             try
             {
-                EquipmentHelper.AddModifierToItem(item, "ColdProtection", ModifierType.Add, FrostSpearConfig.ColdProtectionBonus, true);
+                EquipmentHelper.EnsureModifierOnItem(item, "ColdProtection", ModifierType.Add, FrostSpearConfig.ColdProtectionBonus, true);
             }
             catch (Exception e)
             {

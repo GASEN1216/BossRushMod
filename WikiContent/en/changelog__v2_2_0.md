@@ -47,7 +47,7 @@ Pool includes: Swift Storm / Iron Fortress / Bullet Rain / Giants / Ratswarm / B
 
 9 new equipment items have been added to the game database. **No standard drop or purchase path existed at the time** — obtain routes were planned for a future update.
 
-[tip] Update: the Frost and Thunder sets below (4 pieces) are **obtainable in a later version** — they drop from the "???" boss and Storm Zone bosses, or can be bought from Dingdang's Shop at affinity level 6. The 5 P0 weapons are still a developer preview.
+[tip] Update: all 9 are **obtainable in later versions**. The Frost and Thunder sets (4 pieces) drop from the "???" boss and Storm Zone bosses, or can be bought from Dingdang's Shop at affinity level 6. The 5 P0 weapons each drop at 20% from one official boss (Warden / Big Xing / Goofy Goose / Big Ice / Triple-Shot Man), or can be bought from Dingdang's Shop at affinity level 5.
 
 **P0 New Weapons (5 items)**
 

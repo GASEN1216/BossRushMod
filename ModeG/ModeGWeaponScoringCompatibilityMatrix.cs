@@ -71,7 +71,7 @@ namespace BossRush
         /// </summary>
         public const string RequiredVerificationRevision = "2026-08-10.v1";
 
-        /// <summary>首发九件武器/能力 key 的冻结条目（只追加，不重排）。</summary>
+        /// <summary>冻结条目（只追加，不重排）。首发九件，2026-09-07 随 P0 新武器开放获取补到 13 件。</summary>
         private static readonly ModeGWeaponScoringEntry[] Entries =
         {
             // 龙息：枪械直射计分；龙焰灼烧 Buff(500006) DoT 为登记被动不计分
@@ -147,6 +147,33 @@ namespace BossRush
                 WeaponFamily.None, false, false, false,
                 false, false,
                 "FrostSet_FrostNova_BuffEffect", RequiredVerificationRevision),
+
+            // 以下三条随 P0 五把新武器开放获取（Boss 掉落 + 叮当商店）补登记：
+            // 它们一旦能被玩家拿到，就会出现在 Mode G 局内，必须声明计分兼容性。
+            // 毒蛇匕首与雷电戒指早已登记在上方，不重排。
+
+            // 冰霜长矛：近战直伤计分；减速走官方 Cold buff，命中霜环是纯视觉，均不产生额外伤害
+            new ModeGWeaponScoringEntry(
+                "FrostSpear", 500051,
+                WeaponFamily.Melee, true, false, true,
+                false, true,
+                "FrostSpear_ColdBuff_OfficialBuffChannel", RequiredVerificationRevision),
+
+            // 召唤法杖：法杖自身近战直伤计分；召唤物是独立角色（SetTeam(playerTeam)），
+            // 其伤害的 fromCharacter 是召唤物而非主玩家，按分类器条件 2 天然不计分
+            new ModeGWeaponScoringEntry(
+                "SummonStaff", 500049,
+                WeaponFamily.Melee, true, false, true,
+                false, true,
+                "SummonStaff_AllyDamage_NotFromMainCharacter", RequiredVerificationRevision),
+
+            // 能量盾：图腾被动，正面受击把部分伤害转成治疗（Health.SetHealth），
+            // 不产生任何 DamageInfo，也没有普通攻击输出
+            new ModeGWeaponScoringEntry(
+                "EnergyShield", 500050,
+                WeaponFamily.None, false, false, false,
+                false, false,
+                "EnergyShield_FrontalHeal_NoDamageInfo", RequiredVerificationRevision),
         };
 
         /// <summary>冻结条目只读访问（索引序即登记序）。</summary>

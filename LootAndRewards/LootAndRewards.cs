@@ -443,6 +443,7 @@ namespace BossRush
             PetNestDropService.CancelPendingBossRushLootboxDrop(character);
             AffixForgeStoneDropService.CancelPendingBossRushLootboxDrop(character);
             SetBonusBossDropHandler.CancelPendingBossRushLootboxDrop(character);
+            NewWeaponBossDropHandler.CancelPendingBossRushLootboxDrop(character);
         }
 
         internal void RefreshBossRushLootboxPathTrackingForTrackedBosses()

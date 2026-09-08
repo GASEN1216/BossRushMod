@@ -40,6 +40,9 @@ namespace BossRush
                 // 1. 配置标签（作为图腾类装备）
                 ConfigureTags(item);
 
+                // 1.5 品质 / 售价 / 耐久 / 可维修标签（与占位符路径共用同一张表）
+                NewWeaponItemAttributes.Apply(item, NewWeaponIds.ThunderRingTypeId);
+
                 // 2. 注入本地化
                 TryBindLoadedModel(item);
                 InjectLocalization(item);

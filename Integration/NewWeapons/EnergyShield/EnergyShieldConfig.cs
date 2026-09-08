@@ -16,8 +16,8 @@ namespace BossRush
         // ========== 本地化 ==========
         public const string DisplayNameCN = "能量盾";
         public const string DisplayNameEN = "Energy Shield";
-        public const string DescriptionCN = "一面由纯能量凝聚的护盾，能够吸收正面来袭的部分伤害并转化为生命值。但它只能防护前方，被包围时几乎无用。\n<color=#64B5F6>【正面吸收】</color>正面受击时回复受到伤害的30%生命值。\n<color=#90CAF9>【弱点】</color>侧面和背面攻击无法触发吸收。";
-        public const string DescriptionEN = "A shield condensed from pure energy that absorbs frontal damage and converts it to health. It only protects the front, making it nearly useless when surrounded.\n<color=#64B5F6>[Frontal Absorption]</color> Recover 30% of frontal damage as HP.\n<color=#90CAF9>[Weakness]</color> Side and rear attacks cannot trigger absorption.";
+        public const string DescriptionCN = "一面由纯能量凝聚的护盾，能够吸收正面来袭的部分伤害并转化为生命值。但它只能防护前方，被包围时几乎无用。\n<color=#64B5F6>【正面吸收】</color>正面受击时回复受到伤害的30%生命值，单次最多25点，每0.5秒最多触发一次。\n<color=#90CAF9>【弱点】</color>侧面和背面攻击无法触发吸收。\n<color=#BBBBBB>来源：呆头鹅 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public const string DescriptionEN = "A shield condensed from pure energy that absorbs frontal damage and converts it to health. It only protects the front, making it nearly useless when surrounded.\n<color=#64B5F6>[Frontal Absorption]</color> Recover 30% of frontal damage as HP, capped at 25 per trigger, at most once every 0.5s.\n<color=#90CAF9>[Weakness]</color> Side and rear attacks cannot trigger absorption.\n<color=#BBBBBB>Source: 20% drop from Goofy Goose / Dingdang's Shop (Affinity 5)</color>";
 
         // ========== 物品属性 ==========
         public const int ItemQuality = 5;

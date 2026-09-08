@@ -341,6 +341,16 @@ namespace BossRush
                 return false;
             }
 
+            // 同一个模型已经绑定过就直接返回：FinalizeCustomMeleeWeapon 内部的
+            // CreateMeleeHandheldPrefab 每次都无条件 Instantiate 一个 DontDestroyOnLoad 的隐藏手持体，
+            // 随后覆盖引用把上一个孤立掉，本场次不会再被回收。配置器与补配调用会对同一个 Item
+            // 各跑一次（霜之哀伤 / 焚皇断界戟 / 三把新近战同款），没有这道判重就是每把泄漏一个。
+            ItemAgent alreadyBound;
+            if (loadedModels.TryGetValue(itemPrefab.TypeID, out alreadyBound) && alreadyBound == modelAgent)
+            {
+                return true;
+            }
+
             loadedModels[itemPrefab.TypeID] = modelAgent;
             InjectItemGraphicForEquipment(itemPrefab, modelAgent, true);
             FinalizeCustomMeleeWeapon(itemPrefab, modelAgent, handheldBaseName);

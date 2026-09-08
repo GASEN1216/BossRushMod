@@ -1,13 +1,11 @@
 ## Thunder Ring
 
-[warn] Developer Preview: This item exists in the game database but has **no obtain path in the current version** (no drop, no shop, no reward). Ask Dingdang and you get the same answer: "Upper management hasn't cleared them for release." An acquisition route is planned for a future update.
-
 ### What Is It?
 
-A **totem-slot charge-up item** — the more hits you take, the harder your next strike. Each hit you receive builds a lightning charge. At 5 charges, your next melee attack releases a 40 lightning-damage burst. High-risk, high-reward.
+A **totem-slot charge-up item** — the more hits you take, the harder your next strike. Each hit you receive builds a lightning charge. At 5 charges, your next hit releases a 40 lightning-damage burst. High-risk, high-reward.
 
 - **Type**: Totem / **Quality**: 5
-- **Drop**: No standard obtain path in current version
+- **Drop**: 20% from Triple-Shot Man (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
 - Won't drop on death
 
 ### Thunder Charge (Passive)
@@ -18,8 +16,13 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 - If you take no hits for **8 seconds**, all charges are lost
 
 **Releasing:**
-- At **5 charges**, your next melee hit deals **+40 lightning damage** and clears all charges
+- At **5 charges**, your next hit deals **+40 lightning damage** and clears all charges
+- **Any weapon works** — gunfire consumes the full charge and triggers the release just like melee does
 - Charging immediately restarts after release
+
+### What It Looks Like
+
+At full charge the release **arcs lightning from your chest to the target**, bursting into a golden flash at the impact point with a short, heavy discharge. No arc means the stacks were not full, or the 8-second timeout already cleared them.
 
 ### Tips
 
@@ -27,6 +30,6 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 - Against slow stationary bosses you reliably build to 5 and repeatedly release
 - Useless in low-density phases where enemies aren't hitting you
 - Totem slot — doesn't replace your melee weapon, stacks on top of it
-- Best combined with high-burst weapons (e.g. Halberd) so the release fires on a strong combo hit
+- Best combined with high-burst weapons (e.g. Skyburner Halberd) so the release fires on a strong combo hit
 
 [tip] Don't hoard the 5th charge — the burst is always 40 damage flat. Release it and start charging again; total output is higher if you cycle faster.

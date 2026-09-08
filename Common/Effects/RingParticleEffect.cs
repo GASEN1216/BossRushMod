@@ -363,6 +363,15 @@ namespace BossRush.Common.Effects
         /// </summary>
         protected virtual Material CreateMaterial()
         {
+            return GetSharedParticleMaterial();
+        }
+
+        /// <summary>
+        /// 共享程序化粒子材质（Alpha Blended + 64x64 径向渐变贴图），全 Mod 复用。
+        /// 环形光环之外的程序化特效（例如新武器挥砍拖尾）也走这里，避免各自再造一份材质与贴图。
+        /// </summary>
+        internal static Material GetSharedParticleMaterial()
+        {
             // 使用静态缓存的材质
             lock (materialLock)
             {

@@ -20,8 +20,8 @@ namespace BossRush
         public override int ItemTypeId => NewWeaponIds.SummonStaffTypeId;
         public override string DisplayNameCN => "召唤法杖";
         public override string DisplayNameEN => "Summoning Staff";
-        public override string DescriptionCN => "一根刻满古老符文的法杖，能够撕裂空间召唤短暂存在的灵魂战士。法杖本身攻击力平庸，但召唤物可以有效分散敌人火力。\n<color=#BA68C8>【灵魂召唤】</color>右键召唤3只灵魂战士，持续15秒后消散。冷却12秒。\n<color=#CE93D8>【代价】</color>自身近战伤害较低。";
-        public override string DescriptionEN => "A staff carved with ancient runes that tears through space to summon ephemeral soul warriors. The staff itself deals modest damage, but summons effectively draw enemy fire.\n<color=#BA68C8>[Soul Summon]</color> Right-click to summon 3 soul warriors lasting 15s. 12s cooldown.\n<color=#CE93D8>[Trade-off]</color> Low personal melee damage.";
+        public override string DescriptionCN => "一根刻满古老符文的法杖，能够撕裂空间召唤短暂存在的灵魂战士。法杖本身攻击力平庸，但召唤物可以有效分散敌人火力。\n<color=#BA68C8>【灵魂召唤】</color>右键召唤3只灵魂战士，持续15秒后消散。冷却12秒。\n<color=#CE93D8>【代价】</color>自身近战伤害较低。\n<color=#BBBBBB>来源：大兴兴 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public override string DescriptionEN => "A staff carved with ancient runes that tears through space to summon ephemeral soul warriors. The staff itself deals modest damage, but summons effectively draw enemy fire.\n<color=#BA68C8>[Soul Summon]</color> Right-click to summon 3 soul warriors lasting 15s. 12s cooldown.\n<color=#CE93D8>[Trade-off]</color> Low personal melee damage.\n<color=#BBBBBB>Source: 20% drop from Big Xing / Dingdang's Shop (Affinity 5)</color>";
         public override int ItemQuality => 5;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special" };
         public override string IconAssetName => NewWeaponIds.SummonStaffIconAssetName;

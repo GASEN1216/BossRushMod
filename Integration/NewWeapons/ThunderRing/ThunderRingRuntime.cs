@@ -177,14 +177,27 @@ namespace BossRush
                 currentCharges = 0;
                 lastChargeTime = 0f;
 
+                Vector3 strikePoint = targetHealth.transform.position;
+
                 DamageInfo thunderDamage = new DamageInfo(player);
                 thunderDamage.damageValue = ThunderRingConfig.ReleaseDamage;
                 thunderDamage.fromWeaponItemID = 0; // 设为0避免释放伤害再次触发蓄雷
+                // 自建伤害必须显式标记为 buff/效果通道（AGENTS.md 4.x 自建伤害约定），
+                // 与 ModeGWeaponScoringCompatibilityMatrix 里 ThunderRing_Release_DamageInfoMain_TypeId0 的登记口径一致。
+                thunderDamage.isFromBuffOrEffect = true;
                 thunderDamage.AddElementFactor(ElementTypes.electricity, 1f);
-                thunderDamage.damagePoint = targetHealth.transform.position;
+                thunderDamage.damagePoint = strikePoint;
                 thunderDamage.damageType = DamageTypes.normal;
 
                 targetHealth.Hurt(thunderDamage);
+
+                // 表现层：从玩家胸口打一道电弧到目标 + 落点雷光 + 音效（配色取自描述文案的 #FFD54F）
+                NewWeaponFx.PlayArc(
+                    player.transform.position + Vector3.up * 1.1f,
+                    strikePoint + Vector3.up * 0.8f,
+                    NewWeaponPalette.ThunderCore, 0.12f, 0.22f);
+                NewWeaponFx.PlayBurst(strikePoint, NewWeaponPalette.ThunderCore, 1.8f, 0.35f, 5);
+                NewWeaponFx.PlaySound(NewWeaponSfx.ThunderRelease);
 
                 // 显示释放气泡
                 ShowReleaseBubble(player);

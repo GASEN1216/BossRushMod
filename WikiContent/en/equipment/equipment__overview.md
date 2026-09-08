@@ -1,8 +1,8 @@
 ## Equipment Overview
 
-**15 pieces** of custom gear are obtainable today (sets counted piece by piece — the roster below is 9 entries covering 11 items, plus the 4 pieces of the Frost and Thunder sets), drawn from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch. Plus Frostmourne from the vanilla "???" Boss.
+All **20 pieces** of custom gear are obtainable (sets counted piece by piece — the roster below is 9 entries covering 11 items, plus the 4 pieces of the Frost and Thunder sets, plus the 5 P0 weapons), drawn from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch. Plus Frostmourne from the vanilla "???" Boss.
 
-The 5 new weapons from v2.2.0 still have **no standard obtain path** — acquisition routes are planned for a future update; the Frost and Thunder sets from the same batch are **obtainable now** (see below). That makes 20 pieces in all.
+The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss — vanilla maps included — or can be bought from Dingdang's Shop at Affinity 5.
 
 ### Full List
 
@@ -18,7 +18,7 @@ The 5 new weapons from v2.2.0 still have **no standard obtain path** — acquisi
 
 ### New Equipment (v2.2.0)
 
-**P0 New Weapons (5) · Developer Preview, No Obtain Path Yet**
+**P0 New Weapons (5) · 20% drop from one official boss each (works on vanilla maps too), or Dingdang's Shop at Affinity 5**
 
 - **Viper Dagger** — Poison dagger; stack 5 poison layers for a burst
 - **Summoning Staff** — Right-click summons 3 soul warriors to soak aggro

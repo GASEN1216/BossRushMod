@@ -807,7 +807,17 @@ namespace BossRush
                 new ShopItemEntry(FrostThunderSetConfig.FROST_HELMET_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
                 new ShopItemEntry(FrostThunderSetConfig.FROST_ARMOR_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
                 new ShopItemEntry(FrostThunderSetConfig.THUNDER_HELMET_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
-                new ShopItemEntry(FrostThunderSetConfig.THUNDER_ARMOR_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK)
+                new ShopItemEntry(FrostThunderSetConfig.THUNDER_ARMOR_ID, FrostThunderSetConfig.SET_PIECE_UNLOCK_LEVEL, FrostThunderSetConfig.SET_PIECE_MAX_STOCK),
+                // P0 五把新武器（500048-500052）：与套装同款「稳定线 + 运气线」两条获取途径。
+                // 运气线是五个官方 Boss 的专属掉落格（NewWeaponBossDropHandler，原版地图亦可）。
+                // 5 级解锁介于冷淬液 4 级与套装件 6 级之间——它们是品质 5，比品质 6 的套装件早一档；
+                // 库存 1 与套装件/钻戒同款（每次开店重置）。
+                // 掉落黑名单保留不动：它只挡随机奖池，NPC 商店不查它。
+                new ShopItemEntry(NewWeaponIds.ViperDaggerTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock),
+                new ShopItemEntry(NewWeaponIds.SummonStaffTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock),
+                new ShopItemEntry(NewWeaponIds.EnergyShieldTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock),
+                new ShopItemEntry(NewWeaponIds.FrostSpearTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock),
+                new ShopItemEntry(NewWeaponIds.ThunderRingTypeId, NewWeaponShopConfig.UnlockLevel, NewWeaponShopConfig.MaxStock)
             };
         }
         

@@ -41,6 +41,9 @@ namespace BossRush
                 // 1. 配置标签（作为图腾类装备）
                 ConfigureTags(item);
 
+                // 1.5 品质 / 售价 / 耐久 / 可维修标签（与占位符路径共用同一张表）
+                NewWeaponItemAttributes.Apply(item, NewWeaponIds.EnergyShieldTypeId);
+
                 // 2. 添加护甲 modifier
                 TryBindLoadedModel(item);
                 ConfigureModifiers(item);
@@ -81,7 +84,7 @@ namespace BossRush
         {
             try
             {
-                EquipmentHelper.AddModifierToItem(item, "BodyArmor", ModifierType.Add, EnergyShieldConfig.BodyArmorBonus, true);
+                EquipmentHelper.EnsureModifierOnItem(item, "BodyArmor", ModifierType.Add, EnergyShieldConfig.BodyArmorBonus, true);
             }
             catch (Exception e)
             {

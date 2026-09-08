@@ -107,12 +107,33 @@ namespace BossRush
                 {
                     player.Health.SetHealth(newHp);
                     lastTriggerTime = Time.time;
+
+                    // 表现层：在玩家正前方亮一层护盾环 + 音效（配色取自描述文案的 #64B5F6）。
+                    // 触发点本身已有 0.5 秒冷却，这里不会连闪。
+                    Vector3 shieldFront = player.transform.position
+                        + Vector3.up * 0.9f
+                        + GetFacing(player) * 0.8f;
+                    NewWeaponFx.PlayBurst(shieldFront, NewWeaponPalette.ShieldCore, 1.5f, 0.3f, 0);
+                    NewWeaponFx.PlaySound(NewWeaponSfx.ShieldAbsorb);
                 }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(EnergyShieldConfig.LogPrefix + " 回复生命值异常: " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 玩家朝向的水平单位向量。朝向退化时回退为 Vector3.forward，只用于摆放护盾特效。
+        /// </summary>
+        private static Vector3 GetFacing(CharacterMainControl player)
+        {
+            if (player == null || player.transform == null) return Vector3.forward;
+
+            Vector3 forward = player.transform.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f) return Vector3.forward;
+            return forward.normalized;
         }
 
         /// <summary>

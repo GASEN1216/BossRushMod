@@ -152,14 +152,24 @@ namespace BossRush
                 if (player == null || targetHealth == null || targetHealth.IsDead) return;
 
                 // 构造爆发伤害信息
+                Vector3 burstPoint = targetHealth.transform.position;
+
                 DamageInfo burstDamage = new DamageInfo(player);
                 burstDamage.damageValue = ViperDaggerConfig.BurstDamageOnMaxStack;
                 burstDamage.fromWeaponItemID = 0; // 设为0避免再次触发叠毒回调
+                // 自建伤害必须显式标记为 buff/效果通道（AGENTS.md 4.x 自建伤害约定）：
+                // 否则毒爆发击杀会被冰葬/引雷术等「只认 !isFromBuffOrEffect 的直接击杀」的系统当成直接击杀起链，
+                // 也与 ModeGWeaponScoringCompatibilityMatrix 里 ViperDagger_PoisonBurst_BuffEffect 的登记口径不符。
+                burstDamage.isFromBuffOrEffect = true;
                 burstDamage.AddElementFactor(ElementTypes.poison, 1f);
-                burstDamage.damagePoint = targetHealth.transform.position;
+                burstDamage.damagePoint = burstPoint;
                 burstDamage.damageType = DamageTypes.normal;
 
                 targetHealth.Hurt(burstDamage);
+
+                // 表现层：毒雾爆环 + 音效（配色取自描述文案的 #7CFC00）
+                NewWeaponFx.PlayBurst(burstPoint, NewWeaponPalette.VenomCore, 2.2f, 0.45f, 6);
+                NewWeaponFx.PlaySound(NewWeaponSfx.VenomBurst);
 
                 // 显示爆发气泡
                 ShowBurstBubble(player);

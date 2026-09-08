@@ -180,13 +180,10 @@ namespace BossRush
                 }
                 catch  { /* best-effort fallback intentionally ignored */ }
 
-                // 基础配置
+                // 基础配置。品质 / 耐久 / 售价 / 可维修标签统一由 NewWeaponItemAttributes 写入，
+                // 与真 bundle 路径（XxxWeaponConfig.TryConfigure）共用同一张表，避免两条路径给出不同物品。
                 clone.DisplayNameRaw = locKey;
-                clone.Quality = 5;
-                clone.MaxDurability = 999f;
-                clone.Durability = 999f;
-                clone.MaxStackCount = 1;
-                if (clone.StackCount <= 0) clone.StackCount = 1;
+                NewWeaponItemAttributes.Apply(clone, typeId);
 
                 // 近战武器：清掉可能从源物品（如船票）继承的非武器组件
                 if (isMelee)
@@ -376,29 +373,34 @@ namespace BossRush
             {
                 bool isChinese = L10n.IsChinese;
 
+                // 文案一律取自各武器自己的 Config 常量，与 XxxWeaponConfig.InjectLocalization 同源。
+                // 此前这里写的是另一套一句话简介，谁后跑谁覆盖——玩家看到的描述取决于调用顺序，
+                // 而且新增的「来源」行只会出现在其中一套里。
+                SummonStaffConfig summonStaffConfig = new SummonStaffConfig();
+
                 InjectSingleLocalization(NewWeaponIds.ViperDaggerTypeId, "BossRush_ViperDagger",
-                    "毒蛇匕首", "Viper Dagger",
-                    "近身叠毒，满5层爆发伤害", "Stacks poison on hit, explodes at 5 stacks",
+                    ViperDaggerConfig.DisplayNameCN, ViperDaggerConfig.DisplayNameEN,
+                    ViperDaggerConfig.DescriptionCN, ViperDaggerConfig.DescriptionEN,
                     isChinese);
 
                 InjectSingleLocalization(NewWeaponIds.SummonStaffTypeId, "BossRush_SummonStaff",
-                    "召唤法杖", "Summoning Staff",
-                    "右键召唤3只灵魂战士（15秒），自身伤害偏弱", "Right-click summons 3 soul warriors (15s), lower self damage",
+                    summonStaffConfig.DisplayNameCN, summonStaffConfig.DisplayNameEN,
+                    summonStaffConfig.DescriptionCN, summonStaffConfig.DescriptionEN,
                     isChinese);
 
                 InjectSingleLocalization(NewWeaponIds.EnergyShieldTypeId, "BossRush_EnergyShield",
-                    "能量盾", "Energy Shield",
-                    "图腾槽位，正面受击回补30%伤害为HP", "Totem slot, frontal hits restore 30% damage as HP",
+                    EnergyShieldConfig.DisplayNameCN, EnergyShieldConfig.DisplayNameEN,
+                    EnergyShieldConfig.DescriptionCN, EnergyShieldConfig.DescriptionEN,
                     isChinese);
 
                 InjectSingleLocalization(NewWeaponIds.FrostSpearTypeId, "BossRush_FrostSpear",
-                    "冰霜长矛", "Frost Spear",
-                    "中距离冰属性近战，100%冰冻减速", "Mid-range ice melee, 100% freeze slow",
+                    FrostSpearConfig.DisplayNameCN, FrostSpearConfig.DisplayNameEN,
+                    FrostSpearConfig.DescriptionCN, FrostSpearConfig.DescriptionEN,
                     isChinese);
 
                 InjectSingleLocalization(NewWeaponIds.ThunderRingTypeId, "BossRush_ThunderRing",
-                    "雷电戒指", "Thunder Ring",
-                    "图腾槽位，受击蓄雷满层后攻击释放雷电伤害", "Totem slot, charges on hit, releases thunder damage when full",
+                    ThunderRingConfig.DisplayNameCN, ThunderRingConfig.DisplayNameEN,
+                    ThunderRingConfig.DescriptionCN, ThunderRingConfig.DescriptionEN,
                     isChinese);
 
                 ModBehaviour.DevLog("[NewWeaponPlaceholder] 本地化注入完成");

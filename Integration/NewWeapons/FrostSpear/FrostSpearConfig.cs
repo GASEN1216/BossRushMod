@@ -16,8 +16,8 @@ namespace BossRush
         // ========== 本地化 ==========
         public const string DisplayNameCN = "冰霜长矛";
         public const string DisplayNameEN = "Frost Spear";
-        public const string DescriptionCN = "一柄凝结着永冻之力的长矛，每次刺击都会在敌人身上留下寒霜印记。虽然爆发力不如其他武器，但稳定的减速效果让你始终掌握安全距离。\n<color=#4FC3F7>【寒霜刺击】</color>攻击100%附带冰冻减速。\n<color=#81D4FA>【安全距离】</color>攻击范围2.4米，中距离控场。\n<color=#B3E5FC>【代价】</color>暴击率和暴击伤害较低。";
-        public const string DescriptionEN = "A spear crystallized with permafrost. Each thrust leaves a frost mark on enemies. While lacking burst damage, the consistent slow keeps you at a safe distance.\n<color=#4FC3F7>[Frost Thrust]</color> 100% chance to apply freeze slow.\n<color=#81D4FA>[Safe Distance]</color> 2.4m attack range for mid-range control.\n<color=#B3E5FC>[Trade-off]</color> Low crit rate and crit damage.";
+        public const string DescriptionCN = "一柄凝结着永冻之力的长矛，每次刺击都会在敌人身上留下寒霜印记。虽然爆发力不如其他武器，但稳定的减速效果让你始终掌握安全距离。\n<color=#4FC3F7>【寒霜刺击】</color>攻击100%附带冰冻减速。\n<color=#81D4FA>【安全距离】</color>攻击范围2.4米，中距离控场。\n<color=#B3E5FC>【代价】</color>暴击率和暴击伤害较低。\n<color=#BBBBBB>来源：大冰冰 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public const string DescriptionEN = "A spear crystallized with permafrost. Each thrust leaves a frost mark on enemies. While lacking burst damage, the consistent slow keeps you at a safe distance.\n<color=#4FC3F7>[Frost Thrust]</color> 100% chance to apply freeze slow.\n<color=#81D4FA>[Safe Distance]</color> 2.4m attack range for mid-range control.\n<color=#B3E5FC>[Trade-off]</color> Low crit rate and crit damage.\n<color=#BBBBBB>Source: 20% drop from Big Ice / Dingdang's Shop (Affinity 5)</color>";
 
         // ========== 物品属性 ==========
         public const int ItemQuality = 5;
