@@ -390,6 +390,7 @@ namespace BossRush
             reason = null;
             if (!ModBehaviour.DevModeEnabled) { reason = "仅 Dev 构建可用"; return false; }
             if (_host == null) { reason = "ModBehaviour 未就绪"; return false; }
+            if (_host.GetComponent<ArenaPrototypeSession>() != null) { reason = "请先退出自建试验场"; return false; }
             if (!IsBaseScene()) { reason = "必须从基地场景启动"; return false; }
             if (!IsDedicatedCurrentSlot()) { reason = "当前槽不是专用测试档，请先点击标记按钮"; return false; }
             if (SavesSystem.IsSaving) { reason = "存档系统正忙"; return false; }

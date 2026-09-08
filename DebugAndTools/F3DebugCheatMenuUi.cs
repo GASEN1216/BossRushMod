@@ -654,6 +654,7 @@ namespace BossRush
 
         private void BuildF3SceneDebugPage()
         {
+            ArenaPrototypeControls.Build(f3DebugCheatContentRoot, this, HideF3DebugCheatMenu, SetF3DebugCheatStatus);
             Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("场景调试", "Scene Diagnostics"), L10n.T("复用现有场景扫描和日志输出能力，用于定位地图、交互点和角色状态。", "Reuse the existing scene scanners and logs to inspect maps, interact points, and characters."), font);
 

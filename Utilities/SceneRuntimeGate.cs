@@ -6,10 +6,20 @@ namespace BossRush
 {
     internal static class SceneRuntimeGate
     {
+        internal const string StoneOutpostResourceScenePath = "Assets/StoneOutpost/StoneOutpost.unity";
         private const string BaseRootSceneName = "Base";
         private const string BaseSceneName = "Base_SceneV2";
         private const string BaseSceneSubName = "Base_SceneV2_Sub_01";
         private const string BaseSewerSceneName = "Level_HiddenWarehouse_CellarUnderGround";
+
+        /// <summary>
+        /// 只承载附加环境资源、不代表角色/关卡服务切换的 Scene；按精确路径识别。
+        /// 天空岛不在此列：它是完整的独立 Raid 关卡（`SkyIslandRaid.unity`），本来就该走正常切图保护。
+        /// </summary>
+        internal static bool IsModResourceScene(UnityEngine.SceneManagement.Scene scene)
+        {
+            return string.Equals(scene.path, StoneOutpostResourceScenePath, StringComparison.OrdinalIgnoreCase);
+        }
 
         internal static bool IsBaseHubSceneName(string sceneName)
         {

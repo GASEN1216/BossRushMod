@@ -13,7 +13,7 @@ SCRIPT_FIXTURES = (
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
     "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
-    "StoneOutpostSceneLease",
+    "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

@@ -79,6 +79,8 @@ echo(/out:"%OUTPUT_DIR%\%MOD_NAME%.dll"
 echo(/lib:"%GAME_PATH%\Duckov_Data\Managed"
 echo(/reference:UnityEngine.dll
 echo(/reference:UnityEngine.CoreModule.dll
+echo(/reference:Unity.RenderPipelines.Core.Runtime.dll
+echo(/reference:Unity.RenderPipelines.Universal.Runtime.dll
 echo(/reference:UnityEngine.PhysicsModule.dll
 echo(/reference:UnityEngine.UI.dll
 echo(/reference:UnityEngine.JSONSerializeModule.dll
@@ -170,6 +172,15 @@ echo(DebugAndTools\DebugAndToolsPlacementAndInspection.cs
 echo(DebugAndTools\DebugAndToolsStaticCacheReset.cs
 echo(DebugAndTools\DebugToolsRuntimeModule.cs
 echo(DebugAndTools\DebugToolsRuntimeHooks.cs
+echo(DebugAndTools\ArenaPrototype\ArenaPrototypeNavigation.cs
+echo(DebugAndTools\ArenaPrototype\ArenaPrototypeControls.cs
+echo(DebugAndTools\ArenaPrototype\ArenaPrototypeSession.cs
+echo(DebugAndTools\ArenaPrototype\ArenaPrototypeLighting.cs
+echo(DebugAndTools\ArenaPrototype\StoneOutpostSceneLease.cs
+echo(DebugAndTools\ArenaPrototype\StoneOutpostSearchPoint.cs
+echo(DebugAndTools\ArenaPrototype\StoneOutpostMap.cs
+echo(DebugAndTools\ArenaPrototype\StoneOutpostMapRaster.cs
+echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
 echo(DebugAndTools\ItemSpawner.cs
@@ -948,6 +959,17 @@ if %BUILD_EXIT_CODE% EQU 0 (
         echo WARNING: Auto deploy failed. Please copy DLL manually.
     ) else (
         echo Deployed to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\%MOD_NAME%.dll
+        REM Optional developer arena prototype bundle
+        if exist "Assets\arenas\stone_outpost" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
+            copy /Y "Assets\arenas\stone_outpost" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\stone_outpost" >nul 2>nul
+            echo Deployed Stone Outpost bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
+        )
+        if exist "Assets\arenas\prototype_arena" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas"
+            copy /Y "Assets\arenas\prototype_arena" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas\prototype_arena" >nul 2>nul
+            echo Deployed arena prototype bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\arenas
+        )
         if exist "Assets\SpawnPoints\*.json" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints"
             xcopy /Y /I "Assets\SpawnPoints\*.json" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\SpawnPoints\" >nul

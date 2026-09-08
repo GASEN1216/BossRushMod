@@ -142,6 +142,7 @@ namespace BossRush.Common.Equipment
         /// </summary>
         protected virtual void OnSceneUnloaded(UnityEngine.SceneManagement.Scene scene)
         {
+            if (SceneRuntimeGate.IsModResourceScene(scene)) return;
             // 场景卸载时设置保护标记，防止误停用能力
             if (abilityActivated)
             {
@@ -155,6 +156,7 @@ namespace BossRush.Common.Equipment
         /// </summary>
         protected virtual void OnSceneLoaded(UnityEngine.SceneManagement.Scene scene, UnityEngine.SceneManagement.LoadSceneMode mode)
         {
+            if (SceneRuntimeGate.IsModResourceScene(scene)) return;
             // 场景加载完成后，清除保护标记并重新检查装备
             sceneTransitionProtection = false;
             

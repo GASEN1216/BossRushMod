@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Common/Equipment/EquipmentEffectManager.cs" Link="Production/EquipmentEffectManager.cs" />
+    <Compile Include="../../../Common/Equipment/EquipmentAbilityManager.cs" Link="Production/EquipmentAbilityManager.cs" />
+    <Compile Include="../../../Common/Equipment/EquipmentAbilityConfig.cs" Link="Production/EquipmentAbilityConfig.cs" />
+    <Compile Include="../../../Integration/FlightTotem/FlightTotemEffectManager.cs" Link="Production/FlightTotemEffectManager.cs" />
+    <Compile Include="../../../Integration/FlightTotem/FlightAbilityManager.cs" Link="Production/FlightAbilityManager.cs" />
+    <Compile Include="../../../Integration/FlightTotem/FlightConfig.cs" Link="Production/FlightConfig.cs" />
+    <Compile Include="../../../Utilities/SceneRuntimeGate.cs" Link="Production/SceneRuntimeGate.cs" />
+    <Compile Include="../SceneRuntimeGateSupport.cs" Link="SceneRuntimeGateSupport.cs" />
+  </ItemGroup>
+</Project>
