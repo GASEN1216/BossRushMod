@@ -72,6 +72,17 @@ def main():
     season_code = check_persistence(SEASON, "Season", errors)
     hall_code = check_persistence(HALL, "HallOfFame", errors)
 
+    runtime = strip_cs_comments(read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule.cs")) or "")
+    awake = re.search(r"public override void OnAwake\(ModBehaviour owner\)[\s\S]+?(?=public override|#endregion)", runtime)
+    if not awake or not re.search(
+            r"InitializeRiskForSlot\([^;]+;\s*"
+            r"ModeHWarehouseStakeJournal\.LoadPersisted\(ModeHStakeJournalPersistence\.LoadCurrent\(\)\);\s*"
+            r"RestoreFromSaveIfPresent\(\);", awake.group(0)):
+        errors.append("[Awake] 晚于选档启动时必须先恢复押品日志，再恢复赛季；不能只依赖 OnSetFile")
+    scene_flow = strip_cs_comments(read_text(os.path.join(MODEH_DIR, "ModeHRuntimeModule_SceneFlow.cs")) or "")
+    if 'TryPersistSeason("f3_validation_finished", true)' not in scene_flow:
+        errors.append("[Validation] 认证结束归档必须要求同步持久化，不能被同帧普通保存节流挡住")
+
     if season_code:
         if not re.search(r"ModeHRuntimeGates\.InitializeRiskForSlot\(_slotGeneration\);", season_code):
             errors.append("[Season] OnSetFile 后必须立即执行 slot 风险扫描")

@@ -219,6 +219,7 @@ namespace BossRush
             if (!_running || string.IsNullOrEmpty(message)
                 || message.StartsWith("[BossRushValidation]", StringComparison.Ordinal)) return;
             bool own = message.IndexOf("BossRush", StringComparison.OrdinalIgnoreCase) >= 0
+                || message.IndexOf("No prefab for building wedding_chapel", StringComparison.OrdinalIgnoreCase) >= 0
                 || (!string.IsNullOrEmpty(trace) && trace.IndexOf("BossRush", StringComparison.OrdinalIgnoreCase) >= 0);
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert)
             {

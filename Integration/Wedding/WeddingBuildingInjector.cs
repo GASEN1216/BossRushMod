@@ -211,8 +211,8 @@ namespace BossRush
                     return;
                 }
 
-                // 检查好感度解锁条件：任意NPC历史上达到过10级（基于持久化标记，不受衰减影响）
-                if (!AffinityManager.HasAnyNPCEverReachedMaxLevel())
+                // 已放置的教堂必须恢复模型；旧档可能缺少好感度历史标记。
+                if (!AffinityManager.HasAnyNPCEverReachedMaxLevel() && !RefreshWeddingBuildingPresence())
                 {
                     DevLog("[WeddingBuilding] 尚未有NPC好感度达到过" + WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL + "级，婚礼建筑暂不解锁");
                     return;
@@ -245,7 +245,7 @@ namespace BossRush
                 {
                     DevLog("[WeddingBuilding] 当前存档未放置婚礼教堂，跳过建筑区重绘");
                 }
-                DevLog("[WeddingBuilding] 婚礼教堂建筑系统初始化完成（好感度条件已满足）");
+                DevLog("[WeddingBuilding] 婚礼教堂建筑系统初始化完成（已解锁或恢复已有建筑）");
             }
             catch (Exception e)
             {
@@ -268,7 +268,7 @@ namespace BossRush
                     return;
                 }
 
-                if (!AffinityManager.HasAnyNPCEverReachedMaxLevel())
+                if (!AffinityManager.HasAnyNPCEverReachedMaxLevel() && !RefreshWeddingBuildingPresence())
                 {
                     return;
                 }

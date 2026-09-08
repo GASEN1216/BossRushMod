@@ -25,6 +25,7 @@ groups = {
         ('ModeH/ModeHRuntimeModule.cs', 'private void RestoreFromSaveIfPresent()'),
         ('ModeH/ModeHRuntimeModule.cs', 'private void RestoreForSlotChange()'),
         ('ModeH/ModeHRuntimeModule.cs', 'internal bool TryTransition('),
+        ('ModeH/ModeHRuntimeModule_SceneFlow.cs', 'internal bool DebugFinishValidationSeason()'),
         ('ModeH/ModeHRuntimeModule_MatchFlow.cs', 'private ModeHLifecycle DeriveResumeFromSeasonProgress()'),
         ('ModeH/ModeHRuntimeModule_MatchFlow.cs', 'private ModeHLifecycle ResolveRecoveryResumeLifecycle()'),
         ('ModeH/ModeHRuntimeModule_MatchFlow.cs', 'private void DriveRecovery()'),

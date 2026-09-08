@@ -33,6 +33,15 @@ def main():
     errors = []
     cp = read(CHILD_PROTECTION, errors)
     contracts = read(CONTRACTS, errors)
+    attack = read(os.path.join(REPO_ROOT, "Integration", "DragonKing",
+                              "DragonKingAbilityController_AttackFlow.cs"), errors)
+    hurt_start = attack.find("private void OnBossHurt(")
+    protection_start = attack.find("if (isInChildProtection", hurt_start)
+    hurt_gate = attack[hurt_start:protection_start] if protection_start > hurt_start >= 0 else ""
+    for token in ("!isActiveAndEnabled", "bossCharacter == null", "bossHealth == null",
+                  "bossHealth.IsDead", "CurrentPhase == DragonKingPhase.Dead", "return;"):
+        if token not in hurt_gate:
+            errors.append("[LateHurt] 已死亡/停用龙王不能因迟到 OnHurt 重启技能或回血: " + token)
 
     if cp:
         checks = [

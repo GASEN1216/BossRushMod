@@ -323,7 +323,8 @@ namespace BossRush
             if (!ModBehaviour.DevModeEnabled || _runState == null) return false;
             if (_runState.Lifecycle != ModeHLifecycle.Drafting) return false;
             if (!TryTransition(ModeHLifecycle.Drafting, ModeHLifecycle.None, "f3_validation")) return false;
-            bool persisted = TryPersistSeason("f3_validation_finished");
+            // 认证缓存可能刚在同帧写盘；归档是退出前的 durable 屏障，不能被普通节流延期。
+            bool persisted = TryPersistSeason("f3_validation_finished", true);
             RequestExit(ModeHExitReason.SeasonComplete, "f3_validation_finished");
             return persisted;
         }

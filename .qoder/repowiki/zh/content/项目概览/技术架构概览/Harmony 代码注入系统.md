@@ -355,3 +355,9 @@ BossRushMod 的 Harmony 注入体系通过清晰的分组管理与精细化的�
 ## 2026-09-07 启动自检报告快照（COMPAT）
 
 `HarmonyBindingSelfCheck` 保留本次启动的完成态、验证/总数/动态跳过数及失败原因，ResetStaticCaches 同步复位；`ValidateStartupSnapshot` 只读这些结果。F3 的 HARMONY_STARTUP_BINDINGS 将早于测试发生的静态绑定缺失带进同一份日志。既有逐类/逐方法身份验证和动态目标明确跳过的口径不变，不重新安装补丁，也不声称验证了所有动态反射或 Unity 行为。
+
+## 2026-09-07 AI、交互体与烟雾兼容补丁（COMPAT、WIRE+）
+
+新增静态目标为搜索完成 `(DamageReceiver, InteractablePickup)`、障碍检查完成 `(bool)`、`InteractableBase.Awake()` 及 `UniTask.WaitForEndOfFrame(MonoBehaviour)`。前两者拒绝无效 agent，第三者仅补 null 交互组，第四者仅取消已销毁 FowSmoke 的新帧末等待。正常回调结果、已有交互组、正常帧时序继续走原方法，未增加全局异常吞噬。
+
+章节来源：`Patches/AI/StaleAITaskCallbackPatch.cs`、`Patches/Compatibility/InteractableAwakeGroupInitializationPatch.cs`、`Patches/Compatibility/FowSmokeDestroyedRunnerPatch.cs`、`compile_official.bat`、`tests/LatestPlayerLogRegressionGuard.py`。原始错误在 2026-09-07 Player.log 与宿主方法/IL 中核对；编译和隔离回归不替代 Unity 挂载验证。

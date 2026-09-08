@@ -8,6 +8,7 @@ namespace BossRush
     public static class L10n { public static string T(string cn, string en) { return cn; } }
     public partial class ModBehaviour
     {
+        public static bool DevModeEnabled = true;
         public bool Conflict;
         public static void DevLog(string text) { }
         public bool HasLegacyModeConflictForModeH(out string id) { id = Conflict ? "conflict" : null; return Conflict; }
@@ -96,6 +97,7 @@ namespace BossRush
         private ModeHArenaIsolationLease _arenaLease;
         private ModeHSpectatorLease _spectatorLease;
         public int Started, MatchResets, Released;
+        public int Exits;
         public string Failure;
         public List<string> _restedProfileIds = new List<string>();
         public ModeHCombatTelemetry _combatTelemetry = new ModeHCombatTelemetry();
@@ -117,6 +119,7 @@ namespace BossRush
         private bool HasPendingScarOffers() { return false; } // 新战痕凭据由 ModeHThirdReviewFixes 覆盖。
         private void RouteUiForLifecycle(ModeHLifecycle lifecycle) { }
         private void RequestTechnicalRetry(string reason) { Failure = reason; }
+        private void RequestExit(ModeHExitReason exit, string reason) { Exits++; }
         private void OpenRecoveryShell(string failure) { Failure = failure; }
         private void ReleaseRuntimeObjects() { Released++; }
         private void FinishSeason(string reason) { TryTransition(_runState.Lifecycle, ModeHLifecycle.SeasonEnded, reason); }

@@ -4,6 +4,28 @@
 
 ## 最新修复
 
+### 2026-09-07 最新 F3 日志：Mode H 锁盘、归档与失效对象回调
+
+**分类**：COMPAT；三个新增兼容补丁文件为 WIRE+；本机编译部署为 OPERATIONAL。对应 CR-2026-09-07-005～011。
+
+**实机输入**：`BossRushValidation_20260907_150312_248.log` 为 141 PASS / 4 FAIL / 1 WARN。H 首次归档被 `flush_deferred_savefile_frame_busy` 拒绝，六场流程随后在 OddsPreview 反复报 `stake_slot_inconsistent`、0 场结算；龙王停用后 OnHurt 重启协程构成 BossRush runtime FAIL。官方 AI 延迟回调、动态交互体 Awake、烟雾切图任务和缺建筑模型另见 Player.log。输入副本保留在 `Build/log-fixes-20260907/input/`。
+
+**修复**：
+
+- Mode H OnAwake 在赛季恢复前读取当前押品 journal，补足错过 OnSetFile 的初始化；仓库未就绪仍 deferred，活动/损坏 journal 仍阻断。没有提前放行零选择或清除旧押品。
+- F3 认证退出归档改要求 durable，允许越过同帧普通节流；真实 I/O 失败仍保持失败。清理报告保留归档错误，H 阶段日志附槽一致性 / deferred / reason。
+- 龙王 OnHurt 首先校验活跃组件与死亡状态，防止迟到事件重新召唤或回血；正常 1HP 护子与转阶段保护不变。
+- 教堂两条初始化入口允许已有放置记录恢复模型；空档保留原好感解锁、费用与数量上限。
+- 新增精确搜索/障碍回调 Prefix，跳过已失效 agent；新增 InteractableBase.Awake 的 null 组列表初始化，保留完整原初始化。
+- 官方烟雾已销毁后申请单参数帧末等待时返回取消任务。仅匹配 `FowSmoke` 的 Unity 假 null，正常烟雾和其他 runner 沿用原等待；未改烟雾生命周期/数值或全局异常处理。
+- F3 将官方输出的 `No prefab for building wedding_chapel` 明确计入 BossRush 错误，不再只因堆栈缺 Mod 名称归给外部。
+
+**验证**：Windows Dev / Release 编译均通过，前/中/后源码哈希一致；557 个 guard、17 组执行回归全部通过，`git diff --check` 通过。`GameplayLogFixes` 的 25 条执行断言通过（首批修复前 2 PASS / 8 FAIL，新增官方空引用另有未打补丁对照）；`ModeHReviewFixes` 增加 4 条真实协调器归档断言。新增补丁目标与私有组字段已对本机游戏 DLL 元数据核对，FowSmoke 的 326 条状态机 IL 确认销毁后等待路径。证据保留于 `Build/log-fixes-20260907/`。
+
+**部署**：最终 Dev 已部署本机游戏目录，Release 仅隔离编译。DLL / GameplayCoverage.json 与仓库输出 SHA-256 一致。DLL MVID `75e4e001-fead-4bd1-a615-0ef2873ce274`，SHA-256 `93472c0a2138e913ccce67ec3458a60eacb60a838ff129c2326e72fc0e003028`；测试包副本为 `Build/log-fixes-20260907/BossRush.F3Validation.dll`。这些结果不等于实机完整六场通过。
+
+**边界**：未启动游戏或改玩家存档，新的 Harmony 挂载、完整 H 六场与切图仍须实机 F3 复测。`casino_building` 在当前生产源码及已安装的 44 个 Mod DLL 中无定义，暂记缺资源，保留存档记录，不伪造 prefab。`.qoder/repowiki/` 的 H、Integration、NPC/龙王、Harmony 和测试文档同步。
+
 ### 2026-09-07 P0 五把新武器开放获取 + 表现层补齐
 
 **分类**：COMPAT（内容扩展，默认行为不变）、OPERATIONAL（构建脚本新增 bundle/音效部署段）。

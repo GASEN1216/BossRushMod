@@ -135,7 +135,8 @@ namespace BossRush
                     + ",intent_cleared=" + intentCleared
                     + ",archived=" + archived + ",exit_reason=" + _host.ModeHRuntime.LastExitReasonId,
                 !intentCleared ? "entry_intent_not_consumed"
-                    : (drafting ? (cacheMatch ? string.Empty : "cache_expectation_mismatch") : "certification_timeout_or_abort"));
+                    : (!archived ? "season_not_archived:" + ModeHSaveFlushCoordinator.LastError
+                    : (drafting ? (cacheMatch ? string.Empty : "cache_expectation_mismatch") : "certification_timeout_or_abort")));
             _host.ValidationSafeCleanup();
             yield return WaitSeconds(0.5f);
         }

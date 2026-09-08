@@ -12,7 +12,7 @@ SCRIPT_FIXTURES = (
     "RuntimeOwnership", "ContentTransactions", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
-    "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines",
+    "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease",
 )
 PROJECT_FIXTURES = {

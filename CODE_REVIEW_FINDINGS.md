@@ -2,6 +2,24 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-07 最新实机日志修复：7 项
+
+输入 `BossRushValidation_20260907_150312_248.log`（141 PASS / 4 FAIL / 1 WARN）及同次 `Player.log`。
+运行 DLL MVID `b1b4746d-aabc-401d-a680-904a1468c306`；日志已执行新版 G 九波 / H 六场入口，属于有效失败证据。
+以下为代码修复状态；隔离回归和 Windows 编译已验证，修复后 Unity 实机仍待复测。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-07-005 | P1 / COMPAT | Mod 晚于选档事件启动时，`ModeHWarehouseStakeJournal` 未 LoadPersisted，一致性与 deferred 均保持默认 false；零押品锁盘也永久报 `stake_slot_inconsistent`，本次六场测试实际 0 场。 | Fixed：OnAwake 风险扫描后、恢复赛季前加载当前押品日志；干净/未就绪/活动/损坏/已返还日志回归通过，保留旧押品安全屏障 |
+| CR-2026-09-07-006 | P2 / COMPAT | 认证候选刚保存后，`DebugFinishValidationSeason` 的普通写入被同帧节流，归档失败，触发首次认证及缓存认证清理 FAIL。 | Fixed：退出归档要求 durable 保存；实际协调器回归验证同帧成功及真实 I/O 失败仍不退出 |
+| CR-2026-09-07-007 | P2 / COMPAT | 官方 Hurt 先派发死亡、Mode G 停用龙王，再派发 OnHurt；迟到回调重触发孩儿护我，向 inactive GameObject 启动协程。 | Fixed：OnBossHurt 首先检查组件/角色/生命/死亡阶段；停用、死亡与正常技能回归通过 |
+| CR-2026-09-07-008 | P2 / COMPAT | `wedding_chapel` 已有放置记录，但缺少好感历史标记时两条初始化入口均拒绝注册 prefab；官方重绘已有建筑报缺模型。 | Fixed：已有教堂可恢复，空档仍遵守好感解锁；重复初始化和早期入口回归通过 |
+| CR-2026-09-07-009 | P2 / COMPAT、WIRE+ | 官方搜索/障碍任务的延迟回调直接访问 `agent.gameObject`，角色销毁后 agent 无效时抛空引用；同次日志反复出现。 | Fixed：两个精确目标 Prefix 在原解引用前检查 Unity 生命周期；原回调错误复现，正常结果与任务完成回归通过 |
+| CR-2026-09-07-010 | P2 / COMPAT、WIRE+ | 官方 `InteractableBase.Awake` 无条件遍历未初始化的交互组，运行时 AddComponent 缺少序列化列表时失败；本次 `MakeTimeQuacker.Bed2Interactable.Awake` 走到该路径。 | Fixed：Awake 前仅补 null 列表，保留已有组与完整原初始化；原方法回归复现失败并验证修复 |
+| CR-2026-09-07-011 | P2 / COMPAT、WIRE+ | 官方 FowSmoke 长计时无销毁取消，切图后继续申请 `WaitForEndOfFrame(this)`，已销毁 runner 触发 StartCoroutine 空引用。 | Fixed：仅该重载中已销毁 FowSmoke 返回取消任务；实际游戏 IL/签名核对及正常/失效/其他 owner 边界回归通过 |
+
+`casino_building` 缺少 prefab 仍为未解决的外部资源线索：当前生产源码与已安装的 44 个 Mod DLL 均无该 ID 定义，不能据此推断其原提供方，也不能删除存档建筑记录来消除报错。验证明细见 `FIX_TRACKER.md` 同日条目。
+
 ## 2026-09-07 近两周复核与 F3：4 项已修复
 
 范围 2026-08-24 起 153 个提交，冻结 HEAD `965f839`，并包含审查期间 Wiki 工作区增量。

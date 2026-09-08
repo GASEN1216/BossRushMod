@@ -22,6 +22,31 @@ def main() -> int:
     if "Patches\\Compatibility\\MagicBlendInitializationOrderPatch.cs" not in read("compile_official.bat"):
         errors.append("MagicBlend 兼容补丁未登记正式编译清单")
 
+    ai = read("Patches/AI/StaleAITaskCallbackPatch.cs")
+    for target in ('typeof(SearchEnemyAround), "OnSearchFinished"', 'typeof(CheckObsticle), "OnCheckFinished"'):
+        if target not in ai:
+            errors.append("迟到 AI 回调补丁缺少精确目标: " + target)
+    if ai.count("__instance.agent != null && __instance.agent.gameObject != null") != 2:
+        errors.append("两条 AI 回调必须先检查 agent 生命周期，再访问 gameObject")
+    group_patch = read("Patches/Compatibility/InteractableAwakeGroupInitializationPatch.cs")
+    if not re.search(r"if \(___otherInterablesInGroup == null\)\s*\{\s*"
+                     r"___otherInterablesInGroup = new List<InteractableBase>\(\);", group_patch):
+        errors.append("动态交互体只能在组列表为 null 时初始化，不能清除已有子交互")
+    wedding = read("Integration/Wedding/WeddingBuildingInjector.cs")
+    if wedding.count("!AffinityManager.HasAnyNPCEverReachedMaxLevel() && !RefreshWeddingBuildingPresence()") != 2:
+        errors.append("教堂普通/早期入口必须兼容恢复已有建筑，不能因缺少好感历史标记拒绝注册")
+    smoke = read("Patches/Compatibility/FowSmokeDestroyedRunnerPatch.cs")
+    for token in ('typeof(UniTask), "WaitForEndOfFrame", new Type[] { typeof(MonoBehaviour) }',
+                  "coroutineRunner is FowSmoke && coroutineRunner == null",
+                  "UniTask.FromCanceled(new CancellationToken(true))"):
+        if token not in smoke:
+            errors.append("烟雾取消必须限定已销毁 FowSmoke 的单参数帧末等待: " + token)
+    for path in ("Patches\\AI\\StaleAITaskCallbackPatch.cs",
+                 "Patches\\Compatibility\\InteractableAwakeGroupInitializationPatch.cs",
+                 "Patches\\Compatibility\\FowSmokeDestroyedRunnerPatch.cs"):
+        if path not in read("compile_official.bat"):
+            errors.append("实机回归补丁未登记编译清单: " + path)
+
     required_group_init = {
         "Campaign/CampaignBoardInteractable.cs": "[CampaignBoard]",
         "Campaign/CampaignFinalBossInteractable.cs": "[CampaignFinalBoss]",

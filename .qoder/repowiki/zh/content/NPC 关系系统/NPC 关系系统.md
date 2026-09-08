@@ -346,3 +346,9 @@ INPCAffinityConfig <.. AffinityManager : "配置注册"
 章节来源
 - [affinity-marriage.md:1-65](file://wiki-site/docs/en/systems/affinity-marriage.md#L1-L65)
 - [index.md:1-30](file://wiki-site/docs/en/npcs/index.md#L1-L30)
+
+## 2026-09-07 已建教堂恢复（COMPAT）
+
+存档中已经放置 `wedding_chapel` 时，模型注册不能再由好感历史标记单独阻断。`InitWeddingBuilding` 与基地早期入口都会检查已有放置记录，恢复已有教堂的 prefab 并请求官方重绘。未放置教堂的空档保留原好感解锁规则；费用、数量上限、关系标记和建筑存档均不改写。
+
+章节来源：`Integration/Wedding/WeddingBuildingInjector.cs`、`Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs`、`tests/LatestPlayerLogRegressionGuard.py`、`tests/fixtures/GameplayLogFixes/README.md`。实际教堂模型和交互恢复需实机复测。

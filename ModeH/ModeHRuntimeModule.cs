@@ -82,6 +82,9 @@ namespace BossRush
                 EnsureLevelReadySubscription();
                 ModeHRuntimeGates.ResetForSlotChange();
                 ModeHRuntimeGates.InitializeRiskForSlot(ModeHRuntimeGates.SlotGeneration);
+                // Mod 可能在选档事件之后才启动；不能只等下一次 OnSetFile 才恢复押品证据。
+                // 仓库尚未就绪时由 journal 登记 deferred，关卡就绪后再补算可用性。
+                ModeHWarehouseStakeJournal.LoadPersisted(ModeHStakeJournalPersistence.LoadCurrent());
                 RestoreFromSaveIfPresent();
             }
             catch (Exception e)

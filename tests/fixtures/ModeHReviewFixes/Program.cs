@@ -38,7 +38,7 @@ internal static class Program
     }
     private static void Main()
     {
-        DurableProgress(); LegacyOccurrences(); Recovery(); Rest();
+        DurableProgress(); ValidationArchive(); LegacyOccurrences(); Recovery(); Rest();
         Console.WriteLine("PASS: " + checks + " assertions; production branches with host boundaries stubbed, no Unity smoke");
     }
     private static void DurableProgress()
@@ -82,6 +82,18 @@ internal static class Program
         item.Tree.RootData.variables.Clear();
         Check(ModeHInventoryPersistenceBridge.CountOccurrences(legacy) == 0, "same TypeID with different content rejected");
         Check(ModeHInventoryPersistenceBridge.CountOccurrences(current) == 0, "current replacement rejected");
+    }
+    private static void ValidationArchive()
+    {
+        Reset(); var run = Runtime(ModeHLifecycle.Drafting, 0);
+        string error;
+        Check(ModeHSaveFlushCoordinator.RequestSeasonWrite(run._season, out error, true), "simulate same-frame certification write");
+        int writes = Saves.SavesSystem.PhysicalWrites;
+        Check(run.DebugFinishValidationSeason(), "F3 archive must complete despite ordinary same-frame throttle");
+        Check(run._runState.Lifecycle == ModeHLifecycle.None && run.Exits == 1
+            && Saves.SavesSystem.PhysicalWrites == writes + 1, "F3 completion includes physical archive before exit");
+        Reset(); run = Runtime(ModeHLifecycle.Drafting, 0); Saves.SavesSystem.FailNext = true;
+        Check(!run.DebugFinishValidationSeason(), "F3 archive must still report an actual write failure");
     }
     private static void Recovery()
     {

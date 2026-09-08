@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\..\..\Build\gameplay-log-fixes\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\..\Build\gameplay-log-fixes\bin\</BaseOutputPath>
+  </PropertyGroup>
+</Project>

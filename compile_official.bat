@@ -232,6 +232,9 @@ echo(Patches\Economy\StockShopGetItemInstanceDirectPatch.cs
 echo(Patches\ItemStatsSystem\ItemAssetsCollectionDynamicRegistrationPatch.cs
 echo(Patches\UI\ItemUIUtilitiesElementFactorFormatPatch.cs
 echo(Patches\Compatibility\MagicBlendInitializationOrderPatch.cs
+echo(Patches\AI\StaleAITaskCallbackPatch.cs
+echo(Patches\Compatibility\InteractableAwakeGroupInitializationPatch.cs
+echo(Patches\Compatibility\FowSmokeDestroyedRunnerPatch.cs
 echo(Integration\BirthdayCakeItem.cs
 echo(Integration\EquipmentFactory.cs
 echo(Integration\EquipmentFactory_ItemProcessing.cs

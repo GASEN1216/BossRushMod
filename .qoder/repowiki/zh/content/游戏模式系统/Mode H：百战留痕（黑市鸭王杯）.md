@@ -582,3 +582,11 @@ abort return，必撞 `journal_illegal_transition`——押品退不回来，非
 `F3GameplayValidationSeasons.RunModeHFullSeason` 接在缓存认证、初始整备和 ERROR 专项之后，仍从 Drafting 开始。通过现有 ModeH_Modal 的 Button 回调签两人、确认/锁盘、处理幕间与 2/4 场转会、名人堂确认，固定零真实押品。
 `ModeHEventRouter.GetParticipantsForValidation` 是 Dev 门控的只读本场注册快照，仅 MatchFighting 且无 diagnostic 时返回；测试只对真实登记敌人调用 Health.Hurt，不扫描全场或写模式状态。末尾要求六场实际战斗、六条唯一已归档战报与奖励操作、基地完整就绪、参赛者/诊断注册归零。
 自动流程使用辅助伤害，不证明自然战斗、拍铃/口令的操作体验、按钮未遮挡或真实押品可恢复。六场新流程未实机，旧 2026-09-02 的认证 PASS 不可替代。
+
+## 2026-09-07 锁盘与验收归档修复（COMPAT）
+
+已选档再加载 Mod 时，运行时会主动读取当前真实押品日志，先初始化槽一致性再恢复赛季；仓库未就绪延后重算。零押品仍检查旧 journal，历史未结资产及损坏记录不会被略过。这修复了日志中 OddsPreview 连续 `stake_slot_inconsistent`、始终无法开战的初始化缺口。
+
+F3 首次认证结束的主动归档使用 durable 保存，不再被同帧候选写入的普通节流挡住；I/O 真失败仍不退出。阶段日志附押品槽状态和阻断原因，便于区分初始化未完成与真实资产欠账。修复后完整六场仍须实机日志验证。
+
+章节来源：`ModeH/ModeHRuntimeModule.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`ModeH/ModeHWarehouseStakeJournal.cs`、`DebugAndTools/F3GameplayValidationModes.cs`、`DebugAndTools/F3GameplayValidationSeasons.cs`。

@@ -421,6 +421,10 @@ namespace BossRush
         /// </summary>
         private void OnBossHurt(DamageInfo damageInfo)
         {
+            // 官方 Hurt 可先触发死亡/Mode G 冻结，再派发 OnHurt；迟到回调不得重启技能或回血。
+            if (!isActiveAndEnabled || bossCharacter == null || bossHealth == null
+                || bossHealth.IsDead || CurrentPhase == DragonKingPhase.Dead) return;
+
             // 孩儿护我阶段无敌（双重保护）
             if (isInChildProtection && bossHealth != null)
             {
