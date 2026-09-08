@@ -2,27 +2,42 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
-## 2026-09-06 全量深度审查：新增 5 P1 / 5 P2，待修复
+## 2026-09-07 近两周复核与 F3：4 项已修复
+
+范围 2026-08-24 起 153 个提交，冻结 HEAD `965f839`，并包含审查期间 Wiki 工作区增量。
+分类均为 COMPAT；源码与隔离回归已验证，新 DLL Unity F3 / 人工验收仍待执行。
+完整范围、触发链与边界见 [近两周审核与 F3 验收](docs/代码审查/2026-09-07-近两周审核与F3验收.md)。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-07-001 | P1 / COMPAT | F3 嵌套协程异常后未 Dispose 暂停父协程，finally 清理不执行；套件外层异常/报告初始化失败还可能留下运行句柄与缺失汇总。 | Fixed：统一协程栈和会话收尾；旧生产方法探针复现，新真实隔离壳/栈 38 条断言通过 |
+| CR-2026-09-07-002 | P2 / COMPAT | G 仅启动、H 仅认证即可报通过，九波/六场未执行；SUMMARY 未把自动覆盖缺项计入结果。 | Fixed：新增完整流程断言与 INCOMPLETE/MVID/报告 I/O 判定；新流程实机待验 |
+| CR-2026-09-07-003 | P2 / COMPAT | 雷霆旧激活协程因过期退出后，finally 清掉重穿后新链的 in-flight 与命中集合。 | Fixed：finally 校验激活代数；完整生产协程回归通过 |
+| CR-2026-09-07-004 | P2 / COMPAT | 冰/雷主角死亡只清冷却，未取消排队冰葬/引雷/反震，死后或复活后仍结算旧伤害。 | Fixed：死亡推进既有代数；两套延时伤害回归通过 |
+
+## 2026-09-06 全量深度审查：5 P1 / 5 P2 已修复（2026-09-07 回填）
 
 范围 `f9b83c0fa21a3ef03e8abc0941fb71beb3201ba2..18c43dacb32749b65057c97fdd454888af5abe57`（131 个提交），加最终 2026-09-06 01:11:56 +08:00 的工作区快照。
-本批 **10 项新 confirmed finding 均 Open**；其中 016 来自审查期间并发新增的套装代码。已有 D-1 / D-5 继续沿用旧设计复审编号，不重复立条；下方历史批次的 Fixed 状态不变。
-完整触发链、建议与证据见 [全量深度审查报告](docs/代码审查/2026-09-06-f9b83c0-全量深度审查.md)。本轮仅审查及登记，没有修改生产代码；文档 `SAFE`，表中分类为建议修复方向。
+本批 **10 项已在后续提交修复，2026-09-07 复核回填 Fixed**；其中 016 来自审查期间并发新增的套装代码。已有 D-1 / D-5 继续沿用旧设计复审编号，不重复立条；下方历史批次的 Fixed 状态不变。
+完整触发链、建议与证据见 [全量深度审查报告](docs/代码审查/2026-09-06-f9b83c0-全量深度审查.md)。原轮仅审查及登记；本次根据当前生产代码与回归补充修复状态，原缺陷锚点保留为历史证据。
 
 | ID | 级别 / 分类 | 已确认缺陷与当前代码锚点 | 状态 |
 | --- | --- | --- | --- |
-| CR-2026-09-06-007 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_MatchFlow.cs:201` 技术重试只恢复虚拟筹码和锁盘快照，旧真实押品 journal 仍 MatchLocked；恢复页面显示零件，空选择绕过一致性检查后继续承担旧押品。 | Open |
-| CR-2026-09-06-008 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_SettlementFlow.cs:204` 持久战痕候选的动作依赖内存 `_pendingScarProfileId`，冷恢复丢接受／拒绝，随后装备选择归档推进，无法补做。 | Open |
-| CR-2026-09-06-009 | P1 / COMPAT | `Integration/DailyReport/DailyReportService.cs:624-638` 已知存档门面单向故障时仍反复补发里程碑，领取标记永远失败；每次开报纸都增加同一件实物。 | Open |
-| CR-2026-09-06-010 | P1 / SCHEMA+ | `Integration/DailyReport/DailyReportService.cs:315-316、538-539` 断签／翻期清空唯一未领奖励载体，第7格／第30格已经赚取但发放失败的奖励永久消失；建议独立持久欠账，保留现有签到规则。 | Open |
-| CR-2026-09-06-011 | P1 / COMPAT | `wiki-site/docs/.vitepress/theme/composables/useWiki.ts:89` 在 withBase 前剥离 `/`，深层中英文页面的共享导航成为相对链接、重复拼接目录；冻结构建有 6,212 处无效引用。 | Open |
-| CR-2026-09-06-012 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcMovement.cs:325` Hold／PauseFor 只 StopMove，未取消在途寻路；晚回调使官方 PathControl 再次移动，聊天暂停失效。 | Open |
-| CR-2026-09-06-013 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcMovement.cs:197-205` Moving 早返挡住后面的0.6秒跟随重规划与40米追赶，必须等旧路径结束或12秒超时。 | Open |
-| CR-2026-09-06-014 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcRuntimeMarker.cs:136-140` 结束聊天无条件 Release，释放婚姻系统原有的教堂 Hold，6秒后配偶重新随机漫步。 | Open |
-| CR-2026-09-06-015 | P2 / COMPAT | `Integration/Codex/CodexKillCollector.cs:339-344` 新增冠军之影等历史 key 后不使目录失效；卡片缺失，解锁数使用新集合、全录分母使用旧集合，可提前授予全谱成就。 | Open |
-| CR-2026-09-06-016 | P2 / COMPAT | `Integration/Bonus/SetBonusVisuals.cs:610` 冰霜／雷霆吸收按减免前元素比划分减免后总伤害，把物理伤害错误算为元素治疗；来自并发工作区增量。 | Open |
+| CR-2026-09-06-007 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_MatchFlow.cs:201` 技术重试只恢复虚拟筹码和锁盘快照，旧真实押品 journal 仍 MatchLocked；恢复页面显示零件，空选择绕过一致性检查后继续承担旧押品。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-008 | P1 / COMPAT | `ModeH/ModeHRuntimeModule_SettlementFlow.cs:204` 持久战痕候选的动作依赖内存 `_pendingScarProfileId`，冷恢复丢接受／拒绝，随后装备选择归档推进，无法补做。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-009 | P1 / COMPAT | `Integration/DailyReport/DailyReportService.cs:624-638` 已知存档门面单向故障时仍反复补发里程碑，领取标记永远失败；每次开报纸都增加同一件实物。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-010 | P1 / SCHEMA+ | `Integration/DailyReport/DailyReportService.cs:315-316、538-539` 断签／翻期清空唯一未领奖励载体，第7格／第30格已经赚取但发放失败的奖励永久消失；建议独立持久欠账，保留现有签到规则。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-011 | P1 / COMPAT | `wiki-site/docs/.vitepress/theme/composables/useWiki.ts:89` 在 withBase 前剥离 `/`，深层中英文页面的共享导航成为相对链接、重复拼接目录；冻结构建有 6,212 处无效引用。 | Fixed：`90378de`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-012 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcMovement.cs:325` Hold／PauseFor 只 StopMove，未取消在途寻路；晚回调使官方 PathControl 再次移动，聊天暂停失效。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-013 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcMovement.cs:197-205` Moving 早返挡住后面的0.6秒跟随重规划与40米追赶，必须等旧路径结束或12秒超时。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-014 | P2 / COMPAT | `Integration/NPCs/DuckNpc/DuckNpcRuntimeMarker.cs:136-140` 结束聊天无条件 Release，释放婚姻系统原有的教堂 Hold，6秒后配偶重新随机漫步。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-015 | P2 / COMPAT | `Integration/Codex/CodexKillCollector.cs:339-344` 新增冠军之影等历史 key 后不使目录失效；卡片缺失，解锁数使用新集合、全录分母使用旧集合，可提前授予全谱成就。 | Fixed：`522274e`，2026-09-07 代码/回归复核；Unity 待验 |
+| CR-2026-09-06-016 | P2 / COMPAT | `Integration/Bonus/SetBonusVisuals.cs:610` 冰霜／雷霆吸收按减免前元素比划分减免后总伤害，把物理伤害错误算为元素治疗；来自并发工作区增量。 | Fixed：`c6a83bc`，2026-09-07 代码/回归复核；Unity 待验 |
 
-验证：冻结的 **793 个生产输入 Windows Release/Dev 真编译通过**；**544 guard 全绿**；10组既有执行回归共 **402 条正确行为断言通过**。
-另新增 **25 条缺陷复现检查**和 Wiki 构建／链接审计证明本批错误仍存在，不计为修复通过。没有 Unity 实机验证、部署或提交；完整输入哈希、执行证据与并发范围见报告。
+原审查基线验证：冻结的 **793 个生产输入 Windows Release/Dev 真编译通过**；**544 guard 全绿**；10组既有执行回归共 **402 条正确行为断言通过**。
+原审查另新增 **25 条缺陷复现检查**和 Wiki 构建／链接审计证明原冻结版本存在本批错误，不计为修复通过。没有 Unity 实机验证、部署或提交；完整输入哈希、执行证据与并发范围见报告。
+
+2026-09-07 回填证据：ModeHThirdReviewFixes、ContentThirdReviewFixes、IntegrationThirdReviewFixes 执行通过；Wiki 构建及 80 个导航目标检查通过。原冻结版本的复现结论与当时验证数字仍保留。
 
 ## 2026-09-06 设计与代码规范复审：D-4 / D-3 / D-2 三项已修复
 

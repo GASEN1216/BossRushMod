@@ -210,6 +210,7 @@ namespace BossRush
             if (target == null) return;
             if (target.IsMainCharacterHealth)
             {
+                BumpSetBonusGeneration(); // 死亡作废仍在等待的连锁与反震，局内复活不继承旧结算。
                 lastThunderTriggerTime = -999f;
                 ResetThunderChainState();
                 return;

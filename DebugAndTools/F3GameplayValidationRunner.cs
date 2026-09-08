@@ -44,6 +44,14 @@ namespace BossRush
             CreateActionButton(row2.transform, font,
                 L10n.T("取消并安全清理", "Cancel and Safe Cleanup"),
                 new Color(0.44f, 0.22f, 0.22f, 1f), CancelFullGameplayValidationFromF3);
+
+            GameObject row3 = CreateF3Row(section.transform);
+            CreateActionButton(row3.transform, font,
+                L10n.T("打开日志文件夹", "Open Report Folder"),
+                BossRushUIColors.SurfaceRaised, F3GameplayValidationRunner.OpenReportFolder);
+            CreateActionButton(row3.transform, font,
+                L10n.T("复制本轮日志路径", "Copy Report Path"),
+                BossRushUIColors.SurfaceRaised, F3GameplayValidationRunner.CopyReportPath);
         }
 
         private void MarkCurrentSlotForGameplayValidation()
@@ -96,6 +104,7 @@ namespace BossRush
 
         internal void ValidationSafeCleanup()
         {
+            if (F3GameplayValidationRunner.HasChangedSessionSlot) return;
             try { PetNestRuntimeModule.CloseAllInteractiveViewsForSceneChange(); }
             catch (Exception e) { DevLog("[Validation] PetNest UI 清理失败: " + e.Message); }
             try { ModeGInteractable.CloseActiveConfirmation(); }
@@ -325,7 +334,7 @@ namespace BossRush
             if (!ModBehaviour.DevModeEnabled) { reason = "仅 Dev 构建可用"; return false; }
             if (!IsBaseScene()) { reason = "只能在基地场景标记测试档"; return false; }
             if (SavesSystem.IsSaving) { reason = "存档系统正忙，请稍后重试"; return false; }
-            if (_instance != null && _instance._routine != null) { reason = "验收正在运行"; return false; }
+            if (_instance != null && _instance._running) { reason = "验收正在运行"; return false; }
             try
             {
                 string marker = BuildDedicatedMarker();
@@ -348,22 +357,25 @@ namespace BossRush
             }
         }
 
+        internal static bool IsRunning { get { return _instance != null && _instance._running; } }
+
         internal static bool TryStart(ModBehaviour host, out string reason)
         {
             reason = null;
             EnsureAttached(host);
             if (_instance == null) { reason = "验收运行器未就绪"; return false; }
-            if (_instance._routine != null) { reason = "已有验收正在运行"; return false; }
+            if (_instance._running) { reason = "已有验收正在运行"; return false; }
             if (!_instance.CheckStartGate(out reason)) return false;
             _instance._cancelRequested = false;
             _instance._fatalAbort = false;
-            _instance._routine = _instance.StartCoroutine(_instance.RunSuite());
+            if (!_instance.BeginSession(out reason)) return false;
+            _instance._routine = _instance.StartCoroutine(_instance.RunSession());
             return true;
         }
 
         internal static bool TryCancel(out string reason)
         {
-            if (_instance == null || _instance._routine == null)
+            if (_instance == null || !_instance._running)
             {
                 reason = "当前没有正在运行的验收";
                 return false;
@@ -371,17 +383,6 @@ namespace BossRush
             _instance._cancelRequested = true;
             reason = "已请求取消；运行器将在当前安全点清理并生成 CANCELLED 报告";
             return true;
-        }
-
-        private void Update()
-        {
-            if (_host == null) _host = ModBehaviour.Instance;
-            if (!_recoveryChecked && _routine == null && _host != null && IsBaseScene()
-                && LevelManager.Instance != null && LevelManager.AfterInit)
-            {
-                _recoveryChecked = true;
-                RecoverInterruptedRunIfNeeded();
-            }
         }
 
         private bool CheckStartGate(out string reason)
@@ -407,103 +408,63 @@ namespace BossRush
 
         private IEnumerator RunSuite()
         {
-            if (_host != null) _host.GameplayValidationSuppressNotifications = true;
-            _runId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
-            _reportPath = Path.Combine(Application.persistentDataPath, "BossRushTestReports",
-                "BossRushValidation_" + _runId + ".log");
-            _lastReportPath = _reportPath;
-            _suiteStartedAt = Time.realtimeSinceStartup;
-            _passed = _failed = _skipped = _warnings = 0;
-            _baselineP95Ms = _finalP95Ms = _peakFrameMs = 0f;
-            _peakStage = string.Empty;
-            _baselineMemory = _finalMemory = 0L;
-            _dirtyStreak = 0;
-            _suiteTimedOut = false;
-            _failedIds.Clear();
-            _skippedIds.Clear();
-            ResetLeakBaselines();
-            Directory.CreateDirectory(Path.GetDirectoryName(_reportPath));
-            WriteRaw("BossRush 完整玩法验收 | runId=" + _runId + " | UTC=" + DateTime.UtcNow.ToString("O"));
-            WriteRaw("BUILD | mvid=" + typeof(ModBehaviour).Module.ModuleVersionId);
-            RunSyncCase("COVERAGE_MANIFEST", InitializeCoverage);
+            SetStage("1/7 基线与数据");
+            yield return SamplePerformance("BASELINE_10S", 10f, true);
+            CaptureLeakBaseline("SUITE");
+            RunSyncCase("HARMONY_STARTUP_BINDINGS", HarmonyBindingSelfCheck.ValidateStartupSnapshot);
+            RunSyncCase("DATA_CAMPAIGN_JSON", ValidateCampaignJson);
+            RunSyncCase("DATA_CODEX_CATALOG", ValidateCodexCatalog);
+            RunSyncCase("DATA_CODEX_FILTER_REFRESH", ValidateCodexFilterRefresh);
+            RunSyncCase("DATA_BACKMOUNTAIN", ValidateBackMountainData);
 
-            if (!WriteRunMarker())
+            SetStage("2/7 基地玩法");
+            RunSyncCase("DAILY_REPORT_ROLLBACK", _host.ValidateDailyReportRollback);
+            RunSyncCase("PETNEST_BUNDLE_V2", ValidatePetNestBundle);
+            RunSyncCase("PETNEST_REWARD_DEBT", ValidatePetNestRewardDebt);
+            RunSyncCase("AFFIX_TEMP_ITEM_LIFECYCLE", ValidateAffixTemporaryItem);
+            RunSyncCase("UI_IDEMPOTENT_CLEANUP", ValidateUiCleanup);
+            yield return RunPublishedItemCases();
+
+            SetStage("3/7 后山与经济");
+            yield return RunBaseEconomyCases();
+
+            SetStage("4/7 竞技场与模式");
+            yield return LoadScene(BossRushArenaSceneIDForValidation(), "SCENE_ENTER_ARENA");
+            if (!_operationSucceeded)
             {
-                Record("RUN_MARKER", "FAIL", 0L, string.Empty, "无法写入运行标记");
-                if (_host != null) _host.GameplayValidationSuppressNotifications = false;
-                Finish(false, false);
-                yield break;
+                // 进不了竞技场时后面所有场内用例都无从谈起：老实记 SKIP，不伪造结论。
+                SkipRemainingArenaCases("arena_scene_load_failed");
             }
-
-            bool cancelled = false;
-            try
+            else
             {
-                SetStage("1/7 基线与数据");
-                yield return SamplePerformance("BASELINE_10S", 10f, true);
-                CaptureLeakBaseline("SUITE");
-                RunSyncCase("DATA_CAMPAIGN_JSON", ValidateCampaignJson);
-                RunSyncCase("DATA_CODEX_CATALOG", ValidateCodexCatalog);
-                RunSyncCase("DATA_CODEX_FILTER_REFRESH", ValidateCodexFilterRefresh);
-                RunSyncCase("DATA_BACKMOUNTAIN", ValidateBackMountainData);
-
-                SetStage("2/7 基地玩法");
-                RunSyncCase("DAILY_REPORT_ROLLBACK", _host.ValidateDailyReportRollback);
-                RunSyncCase("PETNEST_BUNDLE_V2", ValidatePetNestBundle);
-                RunSyncCase("PETNEST_REWARD_DEBT", ValidatePetNestRewardDebt);
-                RunSyncCase("AFFIX_TEMP_ITEM_LIFECYCLE", ValidateAffixTemporaryItem);
-                RunSyncCase("UI_IDEMPOTENT_CLEANUP", ValidateUiCleanup);
-                yield return RunPublishedItemCases();
-
-                SetStage("3/7 后山与经济");
-                yield return RunBaseEconomyCases();
-
-                SetStage("4/7 竞技场与模式");
-                yield return LoadScene(BossRushArenaSceneIDForValidation(), "SCENE_ENTER_ARENA");
-                if (!_operationSucceeded)
-                {
-                    // 进不了竞技场时后面所有场内用例都无从谈起：老实记 SKIP，不伪造结论。
-                    SkipRemainingArenaCases("arena_scene_load_failed");
-                }
-                else
-                {
-                    yield return WaitRuntimeReady("ARENA_READY", SceneTimeoutSeconds);
-                    if (!_operationSucceeded) SkipRemainingArenaCases("arena_runtime_not_ready");
-                    else yield return RunArenaStages();
-                }
-
-                SetStage("7/7 最终清场、泄漏与回读");
-                _host.ValidationSafeCleanup();
-                yield return LoadScene(null, "SCENE_RETURN_BASE", returnToBase: true);
-                if (_operationSucceeded)
-                {
-                    yield return WaitRuntimeReady("BASE_READY_FINAL", SceneTimeoutSeconds,
-                        BaseSceneNameForValidation(), true);
-                }
-                else Record("BASE_READY_FINAL", "SKIP", 0L, string.Empty, "base_scene_load_failed");
-                if (_operationSucceeded)
-                {
-                    yield return SamplePerformance("FINAL_5S", 5f, false);
-                    RunSyncCase("FINAL_CLEAN_STATE", ValidateFinalCleanState);
-                    RunSyncCase("FINAL_LEAK_DELTA", ValidateSuiteLeakDelta);
-                    RunSyncCase("FINAL_SAVE_READBACK", ValidateFinalSaveReadback);
-                }
-                else
-                {
-                    foreach (string id in new[] { "FINAL_5S", "FINAL_CLEAN_STATE", "FINAL_LEAK_DELTA", "FINAL_SAVE_READBACK" })
-                        Record(id, "SKIP", 0L, string.Empty, "base_runtime_not_ready");
-                }
+                yield return WaitRuntimeReady("ARENA_READY", SceneTimeoutSeconds);
+                if (!_operationSucceeded) SkipRemainingArenaCases("arena_runtime_not_ready");
+                else yield return RunArenaStages();
             }
-            finally
+        }
+
+        private IEnumerator RunFinalChecks()
+        {
+            SetStage("7/7 最终清场、泄漏与回读");
+            _host.ValidationSafeCleanup();
+            yield return LoadScene(null, "SCENE_RETURN_BASE", returnToBase: true);
+            if (_operationSucceeded)
             {
-                try { _host?.ValidationSafeCleanup(); }
-                catch (Exception e) { ModBehaviour.DevLog("[Validation] 终态清理失败: " + e.Message); }
-                try { PetNestExpeditionService.ResetValidationRewardBackend(); }
-                catch (Exception e) { ModBehaviour.DevLog("[Validation] 终态奖励后端复位失败: " + e.Message); }
-                try { DailyReportPersistence.SetValidationRejectStore(false); }
-                catch (Exception e) { ModBehaviour.DevLog("[Validation] 终态日报注入复位失败: " + e.Message); }
-                if (_host != null) _host.GameplayValidationSuppressNotifications = false;
-                if (_cancelRequested) cancelled = true;
-                Finish(!cancelled && _failed == 0, cancelled);
+                yield return WaitRuntimeReady("BASE_READY_FINAL", SceneTimeoutSeconds,
+                    BaseSceneNameForValidation(), true);
+            }
+            else Record("BASE_READY_FINAL", "SKIP", 0L, string.Empty, "base_scene_load_failed");
+            if (_operationSucceeded)
+            {
+                yield return SamplePerformance("FINAL_5S", 5f, false);
+                RunSyncCase("FINAL_CLEAN_STATE", ValidateFinalCleanState);
+                RunSyncCase("FINAL_LEAK_DELTA", ValidateSuiteLeakDelta);
+                RunSyncCase("FINAL_SAVE_READBACK", ValidateFinalSaveReadback);
+            }
+            else
+            {
+                foreach (string id in new[] { "FINAL_5S", "FINAL_CLEAN_STATE", "FINAL_LEAK_DELTA", "FINAL_SAVE_READBACK" })
+                    Record(id, "SKIP", 0L, string.Empty, "base_runtime_not_ready");
             }
         }
 
@@ -933,6 +894,9 @@ namespace BossRush
         /// </summary>
         private bool ShouldAbort()
         {
+            if (_running && SavesSystem.CurrentSlot != _sessionSlot) _slotChanged = true;
+            if (_slotChanged || _hostLost) return true;
+            if (_closingSession) return false;
             if (_fatalAbort) return true;
             if (_cancelRequested) return true;
             if (_suiteTimedOut) return true;
@@ -952,7 +916,7 @@ namespace BossRush
                 string coverageState;
                 try { coverageState = FinishCoverage(); }
                 catch (Exception e) { coverageState = "ERROR"; Record("COVERAGE_REPORT", "FAIL", 0L, string.Empty, e.ToString()); }
-                passed = passed && _failed == 0;
+                passed = passed && _failed == 0 && !_reportWriteFailed && _coverage != null;
                 if (_peakFrameMs > 200f)
                 {
                     _warnings++;
@@ -962,10 +926,14 @@ namespace BossRush
                 // 超时与取消必须分开：前者是「测试太长」，后者是「人喊停」，
                 // 混成一个 CANCELLED 会让人分不清这轮结论能不能用。
                 string status;
-                if (cancelled && _cancelRequested) status = "CANCELLED";
+                if (_slotChanged) status = "ABORTED_SLOT_CHANGED";
+                else if (_hostLost) status = "ABORTED_HOST_DESTROYED";
+                else if (cancelled && _cancelRequested) status = "CANCELLED";
                 else if (_fatalAbort) status = "ABORTED_DIRTY";
                 else if (_suiteTimedOut) status = "TIMEOUT";
-                else status = passed ? "PASS" : "FAIL";
+                else if (!passed) status = "FAIL";
+                else if (_coverage.AutomaticNotPassed > 0) status = "INCOMPLETE";
+                else status = "PASS";
 
                 WriteRaw("SUMMARY | " + status + " | pass=" + _passed + " fail=" + _failed
                     + " skip=" + _skipped + " warn=" + _warnings
@@ -977,7 +945,8 @@ namespace BossRush
                     + " | skipped_ids=" + string.Join(",", _skippedIds.ToArray())
                     + " | coverage=" + coverageState
                     + " | report=" + _reportPath);
-                ClearRunMarker();
+                if (!_slotChanged && SavesSystem.CurrentSlot == _sessionSlot) ClearRunMarker();
+                if (_reportWriteFailed) status = "REPORT_ERROR";
                 _status = "验收 " + status + "：PASS=" + _passed + " FAIL=" + _failed
                     + " SKIP=" + _skipped + " WARN=" + _warnings
                     + "\n覆盖=" + coverageState + "；人工待验=" + (_coverage != null ? _coverage.ManualCount.ToString() : "未知")
@@ -988,6 +957,7 @@ namespace BossRush
                 UnityEngine.Debug.LogError("[BossRushValidation] 完成报告失败: " + e);
             }
             _routine = null;
+            _running = false;
             _cancelRequested = false;
             _fatalAbort = false;
         }
@@ -1042,7 +1012,13 @@ namespace BossRush
         private void WriteRaw(string line)
         {
             try { File.AppendAllText(_reportPath, line + Environment.NewLine, System.Text.Encoding.UTF8); }
-            catch (Exception e) { UnityEngine.Debug.LogError("[BossRushValidation] 写报告失败: " + e.Message); }
+            catch (Exception e)
+            {
+                if (!_reportWriteFailed) UnityEngine.Debug.LogError("[BossRushValidation] 写报告失败: " + e);
+                _reportWriteFailed = true;
+            }
+            if (_reportWriteFailed && line.StartsWith("SUMMARY | ", StringComparison.Ordinal))
+                line = "SUMMARY | REPORT_ERROR | rejected_summary=" + line;
             UnityEngine.Debug.Log("[BossRushValidation] " + line);
         }
 

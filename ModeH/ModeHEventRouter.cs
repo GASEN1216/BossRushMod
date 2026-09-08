@@ -101,6 +101,19 @@ namespace BossRush
         /// <summary>当前登记的认证诊断对象数量（正式开战前必须为 0）。</summary>
         public static int DiagnosticCount { get { return _diagnostics.Count; } }
 
+        /// <summary>Dev 验收只读快照：只含当前场已登记参赛者，不扫描场景或改变战斗状态。</summary>
+        internal static CharacterMainControl[] GetParticipantsForValidation(bool enemies)
+        {
+            List<CharacterMainControl> result = new List<CharacterMainControl>();
+            if (!ModBehaviour.DevModeEnabled || _runState == null
+                || _runState.Lifecycle != ModeHLifecycle.MatchFighting || _diagnostics.Count != 0)
+                return result.ToArray();
+            foreach (ModeHParticipantRef participant in _participants.Values)
+                if (participant.IsEnemy == enemies && participant.Character != null)
+                    result.Add(participant.Character);
+            return result.ToArray();
+        }
+
         #endregion
 
         #region 订阅生命周期

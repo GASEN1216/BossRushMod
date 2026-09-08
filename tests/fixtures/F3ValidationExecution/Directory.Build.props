@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../../../Build/f3-validation-execution/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Build/f3-validation-execution/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

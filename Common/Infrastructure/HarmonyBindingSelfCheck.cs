@@ -30,6 +30,9 @@ namespace BossRush
     internal static class HarmonyBindingSelfCheck
     {
         private static bool hasRun = false;
+        private static bool snapshotCompleted;
+        private static int snapshotVerified, snapshotTotal, snapshotSkipped;
+        private static string snapshotFailure;
 
         /// <summary>
         /// 启动期自检：校验所有 [HarmonyPatch] 类的目标方法是否已实际挂载本 Mod 补丁。
@@ -106,6 +109,11 @@ namespace BossRush
                     }
                 }
 
+                snapshotCompleted = true;
+                snapshotVerified = verified;
+                snapshotTotal = total;
+                snapshotSkipped = skipped;
+                snapshotFailure = failures.Count > 0 ? string.Join(" | ", failures.ToArray()) : null;
                 if (failures.Count > 0)
                 {
                     ModBehaviour.CriticalLog("harmony-binding-self-check",
@@ -121,6 +129,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                snapshotFailure = e.ToString();
                 // 自检自身失败不能影响启动，但要有声
                 ModBehaviour.CriticalLog("harmony-binding-self-check-crash",
                     "[BossRush][HarmonySelfCheck] [WARNING] 补丁绑定自检执行异常: "
@@ -131,6 +140,18 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             hasRun = false;
+            snapshotCompleted = false;
+            snapshotVerified = snapshotTotal = snapshotSkipped = 0;
+            snapshotFailure = null;
+        }
+
+        /// <summary>把早于 F3 启动的绑定自检结论带入本轮报告；只读，不补装或重跑补丁。</summary>
+        internal static bool ValidateStartupSnapshot(out string metrics, out string reason)
+        {
+            metrics = "verified=" + snapshotVerified + ",total=" + snapshotTotal
+                + ",dynamic_skipped=" + snapshotSkipped;
+            reason = !snapshotCompleted ? "startup_self_check_not_completed:" + snapshotFailure : snapshotFailure;
+            return snapshotCompleted && snapshotTotal > 0 && snapshotVerified == snapshotTotal && reason == null;
         }
 
         /// <summary>补丁类是否用 TargetMethod/TargetMethods 动态选目标</summary>

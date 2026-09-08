@@ -28,7 +28,7 @@ namespace BossRush
             "MODE_D_LIFECYCLE", "MODE_D_MULTI_WAVE",
             "MODE_E_LIFECYCLE", "MODE_E_EXTRACTION",
             "MODE_F_LIFECYCLE", "MODE_F_BLOODFIRE", "MODE_F_BOUNTY", "MODE_F_EXTRACTION",
-            "MODE_G_LIFECYCLE", "MODE_H_FIRST_CERTIFICATION", "MODE_H_CACHE_HIT", "MODE_H_STARTER_KITS",
+            "MODE_G_LIFECYCLE", "MODE_G_NINE_WAVES", "MODE_H_FULL_SEASON", "MODE_H_FIRST_CERTIFICATION", "MODE_H_CACHE_HIT", "MODE_H_STARTER_KITS",
             "MODE_H_ERROR_SWAP",
             "MODE_ZOMBIE_LIFECYCLE", "MODE_ZOMBIE_EXTRACTION", "BGM_OWNER_LEASES", "CAMPAIGN_FINAL_BOSS",
             "STANDARD_VICTORY_REWARD", "SCENE_CLICK_GATE",
@@ -78,14 +78,8 @@ namespace BossRush
         private IEnumerator RunModeHCached() { return RunModeH(true); }
 
         /// <summary>
-        /// 用例隔离壳。协程内的异常不会自动冒泡到 StartCoroutine 的调用方，
-        /// 所以这里手工 MoveNext 并 catch：单个用例炸掉只记它自己的 FAIL，
-        /// 强制清场后继续下一个。
-        ///
-        /// 注意必须透传 Current——用例内部还会 `yield return WaitSeconds(...)` 这类子协程；
-        /// 丢掉 Current 会让它们永不推进（Mode H 认证就踩过这个坑，
-        /// 见 ModeHCertificationCoroutineDriveGuard）。子 IEnumerator 由本壳自己压栈驱动，
-        /// 这样它们抛出的异常才会落进下面那个 catch（详见循环处的注释）。
+        /// 用例隔离壳。共享执行栈捕获嵌套 MoveNext/Current 异常；
+        /// finally 保证异常、取消、超时和外层 Dispose 都会执行完整清理链。
         /// </summary>
         private IEnumerator RunIsolatedCase(string caseId, Func<IEnumerator> factory)
         {
@@ -129,56 +123,38 @@ namespace BossRush
             }
 
             Stopwatch sw = Stopwatch.StartNew();
-
-            // 自持迭代器栈，**不把子 IEnumerator 交给 Unity**。
-            //
-            // 旧写法是 `yield return inner.Current;`：Current 一旦是 IEnumerator
-            // （用例里遍地都是 `yield return WaitSeconds(...)` / `yield return RunModeHErrorSwap(map)`），
-            // Unity 会自己把它压栈驱动，直到子迭代器结束才回来调 inner.MoveNext。
-            // 也就是说**子协程抛出的异常在物理上不会经过下面这次 MoveNext**，
-            // catch 分支不可能触发：既不记 FAIL 也不强清场，脏状态直接漏进下一个用例。
-            // 自己驱动子迭代器后，整条调用链上的异常都会落到同一个 catch 里。
-            List<IEnumerator> stack = new List<IEnumerator>(8);
-            stack.Add(inner);
-
-            while (stack.Count > 0)
+            float budget = caseId == "MODE_G_LIFECYCLE" ? 600f
+                : (caseId.StartsWith("MODE_H_", StringComparison.Ordinal) ? 900f : 240f);
+            ValidationCoroutineStack stack = new ValidationCoroutineStack(inner);
+            try
             {
-                IEnumerator top = stack[stack.Count - 1];
-                bool moveNext = false;
-                try
+                while (!ShouldAbort())
                 {
-                    moveNext = top.MoveNext();
+                    object current;
+                    Exception error;
+                    bool more = TryStep(stack, out current, out error);
+                    if (error != null || sw.Elapsed.TotalSeconds > budget)
+                    {
+                        Record(caseId + "_UNHANDLED", "FAIL", sw.ElapsedMilliseconds,
+                            "budget_s=" + budget, error != null ? error.ToString() : "case_timeout");
+                        needsReclaim = true;
+                        break;
+                    }
+                    if (!more) break;
+                    yield return current;
                 }
+            }
+            finally
+            {
+                try { stack.Dispose(); }
                 catch (Exception e)
                 {
-                    // 用例自己没记结果就炸了：补一条 FAIL，避免这一项在报告里凭空消失。
-                    Record(caseId + "_UNHANDLED", "FAIL", sw.ElapsedMilliseconds,
-                        string.Empty, "case_threw:" + e);
+                    Record(caseId + "_DISPOSE", "FAIL", sw.ElapsedMilliseconds, string.Empty, e.ToString());
                     needsReclaim = true;
                 }
-
-                if (needsReclaim)
-                {
-                    yield return ForceReclaimArena();
-                    yield break;
-                }
-
-                if (!moveNext)
-                {
-                    stack.RemoveAt(stack.Count - 1);
-                    continue;
-                }
-
-                // 子迭代器压栈自己驱动；其余（null / WaitForSeconds / AsyncOperation…）
-                // 仍旧交给 Unity，语义与原来一致。
-                IEnumerator child = top.Current as IEnumerator;
-                if (child != null)
-                {
-                    stack.Add(child);
-                    continue;
-                }
-                yield return top.Current;
             }
+            // Dispose 先于清场执行：父协程 finally 中的临时 owner 必须先归还。
+            if (needsReclaim && !ShouldAbort()) yield return ForceReclaimArena();
         }
 
         /// <summary>

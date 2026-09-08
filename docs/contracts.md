@@ -39,7 +39,7 @@ Breaking:
 - `enableDeathWraithSystem`
 - `milestoneRestBonusSeconds`
 
-Mode H 的唯一配置 key 是 `modeHEnabled`（默认 false），详见第 6.1 节。
+Mode H 保留唯一配置字段 `modeHEnabled`（当前默认 true，内容恒开策略），详见第 6.1 节。
 **不存在也不得引入** `modeHRealWarehouseStakeEnabled`：真实押品没有开关，进入模式即知情同意（§22.1），`ModeHConfigApiGuard` 断言该符号一律不出现。
 
 Breaking:
@@ -193,9 +193,11 @@ Mode H 已按 `docs/设计提案/2026-08-17_斗蛐蛐新模式创意脑暴.md` �
 本节替换 2026-08-26 的旧稿：**不再存在“先做 H0 技术样机”的阶段划分**，
 也不再存在旧稿列出的真实资产开关与四门口径。
 
-**配置面（COMPAT）。** `ModBehaviour.BossRushConfig` 只新增**一个**字段 `modeHEnabled=false`，
+**配置面（COMPAT，2026-09-07 按当前代码校正）。** `ModBehaviour.BossRushConfig` 保留字段 `modeHEnabled=true`，
 运行时只通过 `ModBehaviour.IsModeHConfiguredEnabled()` 读取。
-ModConfig 镜像键只有 `BossRush_ModeHEnabled`，不存在时保持默认关闭。
+该系统已纳入 `ConfigContentSystemSwitches.ForceContentSystemSwitchesOn` 的内容恒开策略：
+总开关不再注册到 ModConfig UI，不读取旧镜像 `BossRush_ModeHEnabled`；读本地配置后把历史 false 归为 true。
+字段和只读入口保留供兼容，未新增或改名配置键。本节旧“缺省关闭”描述已失效，见 `docs/ai-docs-migration.md`。
 
 **没有真实资产开关。** `modeHRealWarehouseStakeEnabled`、
 `IsModeHRealWarehouseStakeConfiguredEnabled` 与 `ModeHStakeJournal.GatePassed`

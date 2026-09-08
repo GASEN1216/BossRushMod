@@ -178,6 +178,9 @@ echo(DebugAndTools\F3DebugCheatMenuUi.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
 echo(DebugAndTools\F3GameplayValidationRunner.cs
+echo(DebugAndTools\ValidationCoroutineStack.cs
+echo(DebugAndTools\F3GameplayValidationExecution.cs
+echo(DebugAndTools\F3GameplayValidationSeasons.cs
 echo(DebugAndTools\F3GameplayValidationCoverage.cs
 echo(DebugAndTools\F3GameplayValidationItems.cs
 echo(DebugAndTools\F3GameplayValidationZombie.cs

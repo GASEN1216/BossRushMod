@@ -168,6 +168,7 @@ namespace BossRush
 
         private void OnDestroy_F3DebugCheatMenu()
         {
+            F3GameplayValidationRunner.Shutdown(this);
             RemovePlayerCheatRuntimeModifiers();
             f3DebugCheatRuntimeBindings.Clear();
             DestroyF3DebugCheatMenuUI();

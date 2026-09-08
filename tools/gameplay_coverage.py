@@ -19,7 +19,7 @@ def required_automatic_ids():
     result = set(re.findall(r'(?:RunSyncCase(?:Gated)?|RunIsolatedCase|VerifyArenaCleanup|SamplePerformance|WaitRuntimeReady)\("([A-Z0-9_]+)"', code))
     # 固定 Record 同样必须登记，异常/基础设施错误是诊断分支，不要求每轮触发。
     result.update(re.findall(r'Record\("([A-Z0-9_]+)"', code))
-    result.difference_update({'RUN_MARKER', 'COVERAGE_REPORT'})
+    result.difference_update({'RUN_MARKER', 'COVERAGE_REPORT', 'SUITE_EXECUTION', 'RUNTIME_ERRORS', 'EXTERNAL_ERRORS', 'LOG_DIAGNOSTICS'})
     result.discard('RANDOM_EVENT_')
     result.update({'SCENE_ENTER_ARENA', 'SCENE_RETURN_BASE', 'SCENE_CLICK_GATE_ENTER', 'SCENE_CLICK_GATE_READY',
                    'ITEM_FACTORY_*', 'RANDOM_EVENT_*'})
@@ -105,13 +105,96 @@ def expand_case(case):
     return [case]
 
 
+def read_log(log_path):
+    """只读取最后一轮；兼容独立报告与带 Unity 前缀的 Player.log，FAIL 不被重试抹掉。"""
+    raw = log_path.read_text(encoding='utf-8-sig', errors='replace').splitlines()
+    lines = []
+    for line in raw:
+        marker = '[BossRushValidation] '
+        if marker in line:
+            line = line.split(marker, 1)[1]
+        if line.startswith('BossRush 完整玩法验收 | runId='):
+            lines = []
+        lines.append(line)
+    outcomes, failures, runtime_errors, diagnostics = {}, [], [], []
+    summary, mvid, run_id, recovery = None, None, None, False
+    for line in lines:
+        match = re.match(r'^([A-Z0-9_]+) \| (PASS|FAIL|SKIP|WARN) \|', line)
+        if match:
+            case, outcome = match.groups()
+            if outcomes.get(case) != 'FAIL':
+                outcomes[case] = outcome
+            if outcome == 'FAIL':
+                failures.append(line)
+        if line.startswith('SUMMARY | '):
+            summary = line.split(' | ', 2)[1]
+        if line.startswith('BUILD | mvid='):
+            mvid = line.split('=', 1)[1].strip()
+        if line.startswith('BossRush 完整玩法验收 | runId='):
+            run_id = line.split('runId=', 1)[1].split(' | ', 1)[0]
+        if line.startswith('RUNTIME_ERROR | '):
+            runtime_errors.append(line)
+        if line.startswith('RUNTIME_DIAGNOSTIC | '):
+            diagnostics.append(line)
+        if line.startswith('RECOVERY | CANCELLED'):
+            recovery = True
+    return dict(outcomes=outcomes, failures=failures, summary=summary, mvid=mvid,
+                run_id=run_id, runtime_errors=runtime_errors, diagnostics=diagnostics, recovery=recovery)
+
+
+def analyze(data, log_path, expected_mvid=None):
+    parsed = read_log(log_path)
+    outcomes = parsed['outcomes']
+    expected = set()
+    for feature in data['features']:
+        for group in feature['automatic']:
+            if group == 'ITEM_FACTORY_*':
+                # ITEM_FACTORY_ALL 同时断言发布注册表数量；不能拿一个 ID 冒充全表。
+                expected.add('ITEM_FACTORY_ALL')
+                expected.update(k for k in outcomes if k.startswith('ITEM_FACTORY_'))
+            else:
+                expected.update(expand_case(group))
+    not_passed = sorted(case for case in expected if outcomes.get(case) != 'PASS')
+    failed = sorted(case for case, outcome in outcomes.items() if outcome == 'FAIL')
+    reasons = []
+    status = parsed['summary'] or 'INCOMPLETE'
+    if parsed['recovery']:
+        status = 'CANCELLED'
+        reasons.append('上次运行中断后恢复，不能视为完整验收')
+    elif status in {'PASS', 'INCOMPLETE'}:
+        if failed:
+            status = 'FAIL'
+            reasons.append('逐项 FAIL 优先于 SUMMARY PASS')
+        elif not_passed:
+            status = 'INCOMPLETE'
+            reasons.append('当前清单有未通过/未执行自动项，旧日志不能证明新增流程')
+    if not parsed['summary']:
+        reasons.append('缺少 SUMMARY，可能中断或仍在运行')
+    if not parsed['mvid'] or not parsed['run_id']:
+        if status == 'PASS':
+            status = 'INCOMPLETE'
+        reasons.append('缺少本轮 DLL 标识或运行 ID')
+    if expected_mvid and (parsed['mvid'] or '').lower() != expected_mvid.lower():
+        status = 'BUILD_MISMATCH'
+        reasons.append('日志中的 DLL 与待验 DLL 不同，请重启游戏后重跑')
+    if status == 'PASS' and any('source=BossRush' in line for line in parsed['runtime_errors']):
+        status = 'FAIL'
+        reasons.append('记录到 BossRush 运行时异常')
+    return dict(status=status, run_id=parsed['run_id'], mvid=parsed['mvid'],
+                reported_summary=parsed['summary'], failed_ids=failed,
+                auto_not_passed=not_passed,
+                skipped_ids=sorted(k for k, v in outcomes.items() if v == 'SKIP'),
+                warning_ids=sorted(k for k, v in outcomes.items() if v == 'WARN'),
+                runtime_error_samples=len(parsed['runtime_errors']), reasons=reasons,
+                needs_log_review=bool(parsed['runtime_errors'] or parsed['diagnostics']
+                                      or any(v == 'WARN' for v in outcomes.values())),
+                diagnostic_details=parsed['diagnostics'],
+                manual_pending=sum(len(f['manual']) for f in data['features']),
+                failure_details=parsed['failures'])
+
+
 def render(data, log_path=None):
-    outcomes = {}
-    if log_path:
-        for line in log_path.read_text(encoding='utf-8-sig', errors='replace').splitlines():
-            match = re.match(r'^([A-Z0-9_]+) \| (PASS|FAIL|SKIP|WARN) \|', line)
-            if match and outcomes.get(match[1]) != 'FAIL':
-                outcomes[match[1]] = match[2]
+    outcomes = read_log(log_path)['outcomes'] if log_path else {}
     lines = ['# 游戏内全功能验收清单', '',
         '兼容分类：COMPAT（测试与报告扩充）。登记覆盖不等于实机通过；旧日志只证明旧 DLL 实际执行的断言。', '',
         '前提：Dev 构建、基地、明确标记的专用测试档。资产/中断/恢复用可丢弃副本；每条记录 DLL、地图、语言、槽位、结果和日志/截图。', '',
@@ -138,6 +221,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--log', type=Path, help='已有 F3 日志；不修改日志或存档')
     parser.add_argument('--output', type=Path, help='输出 Markdown；省略时仅检查清单')
+    parser.add_argument('--analyze', action='store_true', help='判断最后一轮日志，输出简明 JSON；需要 --log')
+    parser.add_argument('--expected-mvid', help='对照待验 DLL 的 MVID，拒绝旧构建证据')
     args = parser.parse_args()
     data = load_manifest()
     errors = validate(data)
@@ -147,6 +232,12 @@ def main():
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(render(data, args.log), encoding='utf-8')
+    if args.analyze:
+        if not args.log:
+            parser.error('--analyze requires --log')
+        result = analyze(data, args.log, args.expected_mvid)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result['status'] == 'PASS' else 2
     print(f'GameplayCoverage: PASS ({len(data["features"])} domains, {sum(len(f["manual"]) for f in data["features"])} manual cases)')
     return 0
 

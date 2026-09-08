@@ -15,6 +15,8 @@ COMPILE = Path("compile_official.bat")
 # 用例已按主题拆分到多个 partial 文件（主 runner 要守 1200 行预算）。
 # 不变式断言对全套文件的拼接生效，不关心具体某条落在哪个文件里。
 CASE_FILES = (
+    Path("DebugAndTools/F3GameplayValidationExecution.cs"),
+    Path("DebugAndTools/F3GameplayValidationSeasons.cs"),
     Path("DebugAndTools/F3GameplayValidationCoverage.cs"),
     Path("DebugAndTools/F3GameplayValidationItems.cs"),
     Path("DebugAndTools/F3GameplayValidationZombie.cs"),
@@ -136,10 +138,34 @@ def main():
         if "_arenaLease.Dispose()" in reset or "_spectatorLease.Dispose()" in reset:
             errors.append("Mode H 租约只支持 Release(sceneGeneration)，不存在 Dispose API")
 
-        # 隔离壳必须透传子协程；写死 yield return null 会让 WaitSeconds 之类永不推进
-        # （Mode H 认证踩过同款坑，见 ModeHCertificationCoroutineDriveGuard）。
-        if "yield return inner.Current;" not in code:
-            errors.append("RunIsolatedCase 必须 `yield return inner.Current;` 透传子协程")
+        # 实际执行共享栈，不能靠注释中的 Current 关键字骗过守卫；行为由 C# fixture 验证。
+        execution = Path("DebugAndTools/F3GameplayValidationExecution.cs").read_text(encoding="utf-8")
+        stack = Path("DebugAndTools/ValidationCoroutineStack.cs").read_text(encoding="utf-8")
+        for token in ("new ValidationCoroutineStack(inner)", "try { stack.Dispose(); }", "yield return current;", 'caseId + "_DISPOSE"'):
+            if token not in stages:
+                errors.append("用例必须由可 Dispose 的共享栈驱动: " + token)
+        for token in ("top.Current", "_stack.Add(child)", "item.Dispose()", "AggregateException"):
+            if token not in stack:
+                errors.append("共享协程栈缺少嵌套/清理保证: " + token)
+        for token in ("RunSession()", "TryStep(_sessionStack", "DisposeSessionStack();", "CompleteSession();",
+                      "SavesSystem.OnSetFile += OnSessionSetFile", "SavesSystem.OnSetFile -= OnSessionSetFile",
+                      "Application.logMessageReceived += OnSessionLog", "Application.logMessageReceived -= OnSessionLog",
+                      "RestoreProtectedPlayers();", "_sessionCompleted", "HEARTBEAT", "RUNTIME_ERROR"):
+            if token not in execution:
+                errors.append("验收 session 缺少退出/日志契约: " + token)
+        if "_coverage.AutomaticNotPassed > 0" not in runner or 'status = "INCOMPLETE"' not in runner:
+            errors.append("缺少自动覆盖时不能给出总 PASS")
+        seasons = Path("DebugAndTools/F3GameplayValidationSeasons.cs").read_text(encoding="utf-8")
+        for token in ("MODE_G_NINE_WAVES", "state.AreAllSlotsResolved", "ModeGRuntimeGates.GetTrackedBosses()",
+                      "ModeGExitReason.Victory", "MODE_H_FULL_SEASON", "button.onClick.Invoke()",
+                      "GetParticipantsForValidation(true)", "transfers.Contains(2)", "transfers.Contains(4)",
+                      "ModeHMatchReportStatus.Archived", "ModeHSeasonRewardOperationStatus.Archived",
+                      "tokens.Add(report.resultToken)", "IsRuntimeReady(BaseSceneNameForValidation())", "target.Health.Hurt(damage)"):
+            if token not in seasons:
+                errors.append("完整模式流程必须观察生产事实: " + token)
+        for token in ("SetInvincible(false)", "TryLockBattleResult", "TryTransition(", "FindObjectsOfType", "DebugFinishValidationSeason"):
+            if token in seasons:
+                errors.append("完整模式验收不能改状态/清场伪造自然终态: " + token)
 
         # 无 code-drivable 入口的项必须如实记 SKIP，不许伪造 PASS 凑绿。
         for token in ("MODE_E_EXTRACTION", "MODE_F_BOUNTY", '"SKIP"'):

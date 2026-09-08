@@ -56,6 +56,7 @@ def main() -> int:
 
     ui = read("UIAndSigns/UIAndSigns.cs")
     runner = read("DebugAndTools/F3GameplayValidationRunner.cs")
+    runner += read("DebugAndTools/F3GameplayValidationExecution.cs")
     if ui.count("if (GameplayValidationSuppressNotifications) return;") < 2:
         errors.append("完整验收未抑制普通消息与大横幅队列")
     if "GameplayValidationSuppressNotifications = false" not in runner:

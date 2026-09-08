@@ -32,10 +32,10 @@ EXPECTED_COUNTS = {
     "MapSelection": 3,
     "ModeD": 1,
     "ModeH": 1,
-    "DebugAndTools": 2,
+    "DebugAndTools": 1,
 }
 
-EXPECTED_TOTAL = 411
+EXPECTED_TOTAL = 410
 
 
 def fail(message: str) -> int:

@@ -351,3 +351,7 @@ BossRushMod 的 Harmony 注入体系通过清晰的分组管理与精细化的�
   - 在关键路径加入断点或条件日志，逐步缩小问题范围。
 
 [本节为通用指导，无需特定文件来源]
+
+## 2026-09-07 启动自检报告快照（COMPAT）
+
+`HarmonyBindingSelfCheck` 保留本次启动的完成态、验证/总数/动态跳过数及失败原因，ResetStaticCaches 同步复位；`ValidateStartupSnapshot` 只读这些结果。F3 的 HARMONY_STARTUP_BINDINGS 将早于测试发生的静态绑定缺失带进同一份日志。既有逐类/逐方法身份验证和动态目标明确跳过的口径不变，不重新安装补丁，也不声称验证了所有动态反射或 Unity 行为。

@@ -72,21 +72,7 @@ namespace BossRush
             _host.ValidationSafeCleanup();
         }
 
-        private IEnumerator RunModeG()
-        {
-            Stopwatch sw = Stopwatch.StartNew();
-            string reason;
-            bool started = _host.ValidationStartModeG(out reason);
-            yield return WaitSeconds(5f);
-            ModeGInteractable.CloseActiveConfirmation();
-            ModeGInteractable.CloseActiveConfirmation();
-            ModeGAbandonPresenter.CloseIfOpen();
-            ModeGAbandonPresenter.CloseIfOpen();
-            Record("MODE_G_LIFECYCLE", started ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
-                "modal_leases=" + ZombieModeUIHelper.ModalInputLeaseCount, reason);
-            _host.ValidationEndModeG();
-            _host.ValidationSafeCleanup();
-        }
+        private IEnumerator RunModeG() { return RunModeGNineWaves(); }
 
         private IEnumerator RunModeH(bool expectCache)
         {
@@ -132,9 +118,18 @@ namespace BossRush
                 if (drafting) yield return RunModeHErrorSwap(map);
                 else Record("MODE_H_ERROR_SWAP", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
             }
-            bool archived = drafting && _host.ModeHRuntime.DebugFinishValidationSeason();
+            Record(id, drafting && cacheMatch ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
+                "drafting=" + drafting + ",cache=" + _host.ModeHRuntime.LastCertificationUsedCache,
+                drafting ? (cacheMatch ? null : "cache_expectation_mismatch") : "certification_timeout_or_abort");
+            if (expectCache)
+            {
+                if (drafting) yield return RunModeHFullSeason();
+                else Record("MODE_H_FULL_SEASON", "SKIP", 0L, string.Empty, "certified_drafting_not_ready");
+            }
+            bool archived = expectCache ? !_host.ModeHRuntime.HasActiveRun
+                : drafting && _host.ModeHRuntime.DebugFinishValidationSeason();
             bool intentCleared = !BossRushMapSelectionHelper.HasPendingModeHEntryIntent();
-            Record(id, drafting && cacheMatch && archived && intentCleared ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
+            Record(id + "_CLEANUP", drafting && cacheMatch && archived && intentCleared ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                 "drafting=" + drafting + ",cache=" + _host.ModeHRuntime.LastCertificationUsedCache
                     + ",cache_invalidated=" + (!expectCache)
                     + ",intent_cleared=" + intentCleared

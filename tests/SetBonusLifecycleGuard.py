@@ -135,6 +135,7 @@ def main() -> int:
         "StartCoroutine(ThunderChainStep(nextOrigin, nextCorpse, hop + 1, generation));",
         "yield return thunderChainHopWait;",
         "generation != setBonusGeneration",
+        "if (!continued && generation == setBonusGeneration)",
         "thunderChainHits",          # 同一敌人在一条链里只吃一次
         "thunderChainDepth = hop;",
         "thunderChainDepth = 0;",
@@ -144,6 +145,13 @@ def main() -> int:
     ), "thunder storm")
     if rc:
         return rc
+
+    # 主角死亡也必须作废已排队的延时技能；只清冷却会让旧伤害在死后/复活后执行。
+    for name, source in (("Frost", frost), ("Thunder", thunder)):
+        death_body = source.split("private void On" + name + "SetAnyDead(", 1)[1]
+        death_body = death_body.split("return;", 2)[0:2]
+        if "BumpSetBonusGeneration();" not in "return;".join(death_body):
+            return fail(name + " player death must invalidate pending spells")
 
     # 恰好两处启动：OnDead 分派器起第一跳、协程自己接后续一跳。
     # 多出第三处通常意味着又把「每个死亡目标各起一条」写回来了。

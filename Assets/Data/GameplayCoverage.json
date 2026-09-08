@@ -13,7 +13,9 @@
         "MapSelection",
         "Interactables"
       ],
-      "automatic": [],
+      "automatic": [
+        "HARMONY_STARTUP_BINDINGS"
+      ],
       "wiki": [
         "start__how_to_enter",
         "start__first_run",
@@ -179,7 +181,8 @@
         "ModeG"
       ],
       "automatic": [
-        "MODE_G_LIFECYCLE"
+        "MODE_G_LIFECYCLE",
+        "MODE_G_NINE_WAVES"
       ],
       "wiki": [
         "mode__mode_g"
@@ -207,7 +210,8 @@
         "MODE_H_FIRST_CERTIFICATION",
         "MODE_H_CACHE_HIT",
         "MODE_H_STARTER_KITS",
-        "MODE_H_ERROR_SWAP"
+        "MODE_H_ERROR_SWAP",
+        "MODE_H_FULL_SEASON"
       ],
       "wiki": [
         "mode__mode_h"

@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)../../../Build/set-bonus-coroutines/obj/</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)../../../Build/set-bonus-coroutines/bin/</BaseOutputPath>
+  </PropertyGroup>
+</Project>

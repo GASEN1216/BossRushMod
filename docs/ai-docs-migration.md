@@ -134,3 +134,14 @@
 ## 2026-09-04 深度复审更正（SAFE / OPERATIONAL）
 
 旧龙皇掉落顺序 guard 只考虑等待宝箱的标准分支，漏掉无间炼狱同步消费；当前按 CR-2026-09-04-031 改为 pending 生产者先注册。源码 CI 按用户本轮“全部修复”授权明确外部制品 PARTIAL，发布完整验收不降级。info.ini/捏脸制作本地资料仍 local-only，不强制纳管。
+
+## 2026-09-07 近两周审核校正（SAFE）
+
+- `docs/contracts.md` 仍写 Mode H 默认 false、读取 ModConfig 镜像；实际 `Config/Config.cs` 默认 true，
+  `ConfigContentSystemSwitches.ForceContentSystemSwitchesOn` 按已有 owner 决策强制内容开启，并撤下旧开关 UI。
+  本轮只修正第 2 / 6.1 节文字，不改变产品开关或配置数据。
+- `CODE_REVIEW_FINDINGS.md` 的 2026-09-06“全量深度审查”007–016 已被后续提交修复，顶表仍写 Open。
+  本轮按生产代码、执行夹具与 Wiki 导航检查回填 Fixed，保留原审查证据及当时验证数字。
+  同日套装批次另有 007–010 重号；引用必须带批次名，不擅自改写历史 ID。
+- repowiki 的 F3 文档曾写“报告状态四分”却列五项，且“p95 只警告”与 `SamplePerformance` 的阈值判红冲突。
+  本轮按当前实现校正，并新增 9 波 / 6 场流程、会话清理及日志判定边界。2026-09-02 的 138 PASS 保留为旧 DLL 证据。

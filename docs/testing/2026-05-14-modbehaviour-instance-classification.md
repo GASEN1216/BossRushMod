@@ -3,7 +3,7 @@
 ## Baseline
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 411
+- Raw matches: 410
 - Current event-bus pilot: achievement popup notification only.
 - Guard evidence: `BossRushEventBusLifecycleGuard.py` PASS; `LongTermGoalNonGoalGuard.py` still blocks broad `EventBus`, `IGameWorldProbe`, and `IBossRushEventSubscriber` abstractions.
 
@@ -33,7 +33,7 @@
 | `ModeG/` | 4 | gameplay state / Unity owner | Mode G uses the live mod instance for entry, presentation and managed runtime ownership; these calls stay direct to preserve the run transaction boundary. |
 | `ModeH/` | 1 |
 | `RandomEvents/` | 5 | gameplay command / Unity owner | Mode H 场内交互只在一个解析器里取活动 mod 实例，其余路径复用捕获的 host，保持入口事务边界。 |
-| `ModeD`, `DebugAndTools` | 3 | debug/manual or mode command | Retained. |
+| `ModeD`, `DebugAndTools` | 2 | debug/manual or mode command | 2026-09-07：F3 runner 固定绑定启动宿主，并在该宿主销毁时收尾；移除 Update 中重新绑定新宿主的 singleton 回退，防止旧测试随新宿主继续运行。其余两处保留。 |
 
 ## Already Migrated
 

@@ -150,10 +150,9 @@ namespace BossRush
                             }
                             else
                             {
-                                IEnumerator inner = DriveErrorSwapAssertions(
+                                yield return DriveErrorSwapAssertions(
                                     control, profile, playerBody, request.Handle,
                                     beforeTeam, beforePosition, beforeInvincible);
-                                while (inner.MoveNext()) yield return inner.Current;
                                 passed = _errorSwapProbePassed;
                                 reason = _errorSwapProbeReason;
                                 metrics = _errorSwapProbeMetrics;

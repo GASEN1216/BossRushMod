@@ -12,7 +12,8 @@ SCRIPT_FIXTURES = (
     "RuntimeOwnership", "ContentTransactions", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
-    "ContentBuildingOwnership",
+    "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines",
+    "StoneOutpostSceneLease",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

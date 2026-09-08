@@ -189,8 +189,8 @@ namespace BossRush
             }
             finally
             {
-                // 只有真正结束的那一跳才放开「在飞」标志；中途 yield break 也走这里
-                if (!continued)
+                // 旧激活也会经 yield break 进入 finally，不能清掉重穿后新链的 owner 与去重表。
+                if (!continued && generation == setBonusGeneration)
                 {
                     thunderChainInFlight = false;
                     thunderChainHits.Clear();

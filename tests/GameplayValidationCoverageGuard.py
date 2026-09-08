@@ -10,6 +10,7 @@ spec.loader.exec_module(coverage)
 errors = coverage.validate(coverage.load_manifest())
 report = (ROOT / 'DebugAndTools/F3GameplayValidationCoverage.cs').read_text(encoding='utf-8-sig')
 runner = (ROOT / 'DebugAndTools/F3GameplayValidationRunner.cs').read_text(encoding='utf-8-sig')
+runner += (ROOT / 'DebugAndTools/F3GameplayValidationExecution.cs').read_text(encoding='utf-8-sig')
 items = (ROOT / 'DebugAndTools/F3GameplayValidationItems.cs').read_text(encoding='utf-8-sig')
 zombie = (ROOT / 'DebugAndTools/F3GameplayValidationZombie.cs').read_text(encoding='utf-8-sig')
 for token in ['BossRushJsonParser.TryParse', 'NOT_RUN', 'MANUAL_PENDING', 'INCOMPLETE', 'AutomaticNotPassed',
