@@ -1,0 +1,148 @@
+{
+  "status": "PASS",
+  "sceneId": "BossRush_SkyIsland",
+  "texture": "sky_island_minimap.png",
+  "textureSize": 1024,
+  "imageWorldSize": 825.0,
+  "mapWorldCenter": [
+    -5.0,
+    0.0,
+    12.5
+  ],
+  "pixelSize": 0.805664,
+  "sha256": "80a571abec25ca68f93b436ecb79b394c97df245cbcfadd3306c45910de94877",
+  "regionLayers": [
+    {
+      "region": "A",
+      "texture": "sky_island_minimap_A.png",
+      "textureSize": 182,
+      "imageWorldSize": 146.6309,
+      "offset": [
+        4.834,
+        -290.0391
+      ],
+      "sha256": "9c92195a6b7fc834c6078b5cf31b8daabbdb52925915867b42695284a96923f6"
+    },
+    {
+      "region": "B",
+      "texture": "sky_island_minimap_B.png",
+      "textureSize": 524,
+      "imageWorldSize": 422.168,
+      "offset": [
+        2.417,
+        -85.4004
+      ],
+      "sha256": "9f1e3b580c4e0f7f70cdcfae8e882a49bbb043b02e15045add4cbcdffe88c158"
+    },
+    {
+      "region": "C",
+      "texture": "sky_island_minimap_C.png",
+      "textureSize": 321,
+      "imageWorldSize": 258.6182,
+      "offset": [
+        -218.7378,
+        -105.1392
+      ],
+      "sha256": "42f8c7414b4099497c162aea61f5988d6fad332da3c1b1f3864c725115187b79"
+    },
+    {
+      "region": "D",
+      "texture": "sky_island_minimap_D.png",
+      "textureSize": 394,
+      "imageWorldSize": 317.4316,
+      "offset": [
+        -209.4727,
+        60.4248
+      ],
+      "sha256": "a65d78109661ccf2cc56f3a83699fb15bd6b30236415d49a5743a74ad2fdb33f"
+    },
+    {
+      "region": "E",
+      "texture": "sky_island_minimap_E.png",
+      "textureSize": 410,
+      "imageWorldSize": 330.3223,
+      "offset": [
+        10.4736,
+        97.4854
+      ],
+      "sha256": "bfa2d83b173ee1cb9aaffc4c8a68d95e118ff144975559f3315c6e7f4967147d"
+    },
+    {
+      "region": "F",
+      "texture": "sky_island_minimap_F.png",
+      "textureSize": 327,
+      "imageWorldSize": 263.4521,
+      "offset": [
+        231.6284,
+        -28.6011
+      ],
+      "sha256": "2ef2541e233dbe08dea4da6ff98e9dc126527d74d40a7f1f19d1ed3c61e2994a"
+    },
+    {
+      "region": "G",
+      "texture": "sky_island_minimap_G.png",
+      "textureSize": 413,
+      "imageWorldSize": 332.7393,
+      "offset": [
+        207.4585,
+        98.6938
+      ],
+      "sha256": "48596f87982882383a808cf2d3eaa55999dea6fc10e51af1d1c146938d424d35"
+    },
+    {
+      "region": "H",
+      "texture": "sky_island_minimap_H.png",
+      "textureSize": 262,
+      "imageWorldSize": 211.084,
+      "offset": [
+        19.3359,
+        268.2861
+      ],
+      "sha256": "ff51680c701a936d6b24e7dca912143b1455f4a72c0396e1b6d5049d386db7dd"
+    },
+    {
+      "region": "S1",
+      "texture": "sky_island_minimap_S1.png",
+      "textureSize": 137,
+      "imageWorldSize": 110.376,
+      "offset": [
+        -344.4214,
+        -213.9038
+      ],
+      "sha256": "c0036ca3d133078b747ae759d73fb1ffb6698f50eee63a5d888c268bb730a001"
+    },
+    {
+      "region": "S2",
+      "texture": "sky_island_minimap_S2.png",
+      "textureSize": 139,
+      "imageWorldSize": 111.9873,
+      "offset": [
+        -364.563,
+        180.0659
+      ],
+      "sha256": "218515754b949a8b88b287736fa5659ae998a6c2343d83ead4f81ed0c7775312"
+    },
+    {
+      "region": "S3",
+      "texture": "sky_island_minimap_S3.png",
+      "textureSize": 157,
+      "imageWorldSize": 126.4893,
+      "offset": [
+        359.729,
+        -152.6733
+      ],
+      "sha256": "949c818d78e35a8ef153ff5e9eb56c3de327176b3e8f3464ac24cc2374d6ab0f"
+    },
+    {
+      "region": "S4",
+      "texture": "sky_island_minimap_S4.png",
+      "textureSize": 170,
+      "imageWorldSize": 136.9629,
+      "offset": [
+        355.2979,
+        262.6465
+      ],
+      "sha256": "2fcadec6404a96aca67fa213f71e31a156e7de78f6cbdcc98bdf18d9a6617398"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEncounters.cs" Link="Production/SkyIslandEncounters.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
+    <Compile Include="../../../Common/Data/BossRushJsonValue.cs" Link="Production/BossRushJsonValue.cs" />
+    <Compile Include="../../../Common/Data/JsonDataRegistry.cs" Link="Production/JsonDataRegistry.cs" />
+    <Compile Include="../../../Utilities/SimpleJsonHelper.cs" Link="Production/SimpleJsonHelper.cs" />
+  </ItemGroup>
+</Project>

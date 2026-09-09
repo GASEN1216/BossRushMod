@@ -19,10 +19,13 @@ DATA_FILE = ROOT / "Assets" / "Data" / "DuckNpcs.json"
 # 比对是大小写敏感的 Ordinal（DuckNpcBlueprint.AllowsScene）。
 KNOWN_SCENE_NAMES = set(
     ["Base", "Base_SceneV2", "Base_SceneV2_Sub_01",
-     "Level_HiddenWarehouse_CellarUnderGround"]
+     "Level_HiddenWarehouse_CellarUnderGround", "SkyIslandRaid"]
     + [p.stem for p in (ROOT / "Assets" / "SpawnPoints").glob("*.json")]
 )
 COMPILE_LIST = ROOT / "compile_official.bat"
+
+# SkyIslandRaid 是真实 additive 资源 Scene。活跃场景仍为基地，
+# 居民由 SkyIslandResidents 显式生成；SkyIslandResidentsGuard 检查该 owner。
 
 FACTORY = DUCK_DIR / "DuckNpcFactory.cs"
 CATALOG = DUCK_DIR / "DuckNpcFaceCatalog.cs"

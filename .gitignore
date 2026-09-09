@@ -44,6 +44,7 @@ BossRush选项修改方案.md
 !/docs/制作教程/
 /docs/制作教程/*
 !/docs/制作教程/便携安全区装置_Unity资源制作约定.md
+!/docs/制作教程/自定义地图接入官方M键地图.md
 !/docs/末日丧尸模式/
 /docs/末日丧尸模式/*
 !/docs/末日丧尸模式/末日丧尸模式_goal执行文档.md
@@ -60,6 +61,9 @@ BossRush选项修改方案.md
 !/ArtSource/SkyIsland/*.md
 !/ArtSource/SkyIsland/image_prompts.txt
 !/ArtSource/SkyIsland/Validation/
+# 官方小地图的烘焙贴图（底图 + 12 张分区图层，合计约 52 KB）：
+# tests/SkyIslandMiniMapGuard.py 要逐张比 sha256，不纳管一样是 fresh clone 硬红。
+!/ArtSource/SkyIsland/Minimap/
 /.sanshu-memory
 /.sanshu-memory
 /.claude

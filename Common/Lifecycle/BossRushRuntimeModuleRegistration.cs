@@ -7,6 +7,7 @@ namespace BossRush
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
             runtimeModuleHost.Register(new ModeDRuntimeModule());
             runtimeModuleHost.Register(new DebugToolsRuntimeModule());
+            runtimeModuleHost.Register(new SkyIslandRuntimeModule());
             runtimeModuleHost.Register(new AchievementRuntimeModule());
             runtimeModuleHost.Register(new CommonNpcRuntimeModule());
             runtimeModuleHost.Register(new WavesArenaRuntimeModule());

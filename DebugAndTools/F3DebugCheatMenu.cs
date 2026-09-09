@@ -202,6 +202,7 @@ namespace BossRush
                     return;
                 }
 
+                SkyIslandSession.HideMapBeforeF3(this);
                 CaptureF3DebugCheatPresentationState();
                 f3DebugCheatMenuRoot.SetActive(true);
                 f3DebugCheatMenuVisible = true;

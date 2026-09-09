@@ -128,6 +128,9 @@ namespace BossRush
                 return false;
             }
 
+            // 独立天空岛由地图会话按固定地标管理居民，普通地图刷新不能争抢其 registry。
+            if (string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)) return false;
+
             // 竞技场让位：注册中心在竞技场有「随机支援 NPC 三选一」抽签，
             // 参与就会挤掉羽织/叮当的名额。永久 NPC 常驻主城/普通图即可。
             if (IsArenaLikeScene(mod, sceneName))
@@ -323,7 +326,7 @@ namespace BossRush
             }
         }
 
-        private static void AttachPermanentParts(
+        internal static void AttachPermanentParts(
             CharacterMainControl npc, DuckNpcBlueprint blueprint, Vector3 home)
         {
             // 交互：**必须**挂到专用子物体，不能挂角色根节点。

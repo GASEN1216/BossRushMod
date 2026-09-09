@@ -85,124 +85,25 @@ namespace BossRush
 
         private void AddUniqueLootExcludeTag(List<Duckov.Utilities.Tag> excludeTags, Duckov.Utilities.Tag tag)
         {
-            if (excludeTags == null || tag == null || excludeTags.Contains(tag))
-            {
-                return;
-            }
-
-            excludeTags.Add(tag);
+            LootExcludeTagPolicy.AddUnique(excludeTags, tag);
         }
 
         // ============================================================
-        // Quest tag 反射查找缓存（审查 §2.5）
+        // Quest tag 反射查找（唯一实现在 LootExcludeTagPolicy）
         // ============================================================
-        // 之前每次 inventory 转移检查都对 N 件物品做 3 段反射；当前鸭科夫版本
-        // GameplayDataSettings.TagsData 没有 Quest 字段，AllTags 也无同名 Tag，
-        // 反射永远失败。第一次失败后用 sentinel 把后续调用降为 O(1)。
-        private static Duckov.Utilities.Tag s_cachedQuestTag;
-        private static bool s_questTagSearched;
-        private static bool s_questTagPermanentlyMissing;
-
+        // 当前鸭科夫版本 GameplayDataSettings.TagsData 没有 Quest 字段，AllTags 也无同名 Tag，
+        // 反射永远失败。缓存与「永久缺失」日志都收在 LootExcludeTagPolicy 里，
+        // 这里只做转发，保持 ModeD 等既有调用点不变。
         private Duckov.Utilities.Tag TryFindQuestTag(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
         {
-            if (tagsData == null)
-            {
-                return null;
-            }
-
-            if (s_cachedQuestTag != null)
-            {
-                return s_cachedQuestTag;
-            }
-            if (s_questTagPermanentlyMissing)
-            {
-                return null;
-            }
-            if (s_questTagSearched)
-            {
-                return s_cachedQuestTag;
-            }
-
-            s_questTagSearched = true;
-
-            const BindingFlags publicInstanceIgnoreCase =
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase;
-
-            try
-            {
-                FieldInfo questField = tagsData.GetType().GetField("Quest", publicInstanceIgnoreCase);
-                if (questField != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questField.FieldType))
-                {
-                    s_cachedQuestTag = questField.GetValue(tagsData) as Duckov.Utilities.Tag;
-                    if (s_cachedQuestTag != null) return s_cachedQuestTag;
-                }
-            }
-            catch (Exception e)
-            {
-                LogLootWarningLimited("TryFindQuestTag_field", "通过字段读取 Quest 标签失败", e);
-            }
-
-            try
-            {
-                PropertyInfo questProperty = tagsData.GetType().GetProperty("Quest", publicInstanceIgnoreCase);
-                if (questProperty != null && typeof(Duckov.Utilities.Tag).IsAssignableFrom(questProperty.PropertyType))
-                {
-                    s_cachedQuestTag = questProperty.GetValue(tagsData, null) as Duckov.Utilities.Tag;
-                    if (s_cachedQuestTag != null) return s_cachedQuestTag;
-                }
-            }
-            catch (Exception e)
-            {
-                LogLootWarningLimited("TryFindQuestTag_property", "通过属性读取 Quest 标签失败", e);
-            }
-
-            try
-            {
-                if (tagsData.AllTags != null)
-                {
-                    for (int i = 0; i < tagsData.AllTags.Count; i++)
-                    {
-                        Duckov.Utilities.Tag tag = tagsData.AllTags[i];
-                        if (tag != null && string.Equals(tag.name, "Quest", StringComparison.OrdinalIgnoreCase))
-                        {
-                            s_cachedQuestTag = tag;
-                            return tag;
-                        }
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                LogLootWarningLimited("TryFindQuestTag_alltags", "遍历 AllTags 查找 Quest 标签失败", e);
-            }
-
-            // 三段反射全部失败：标记永久缺失，下次直接早返。让维护者从日志看出
-            // "Quest tag 转移阻断永久 disable"是当前鸭科夫版本的事实而非 mod bug。
-            s_questTagPermanentlyMissing = true;
-            ModBehaviour.DevLog("[LootAndRewards] Quest tag lookup failed; transfer-block by Quest tag is permanently disabled in this build");
-            return null;
+            return LootExcludeTagPolicy.TryFindQuestTag(tagsData);
         }
 
-        // Quest items should stay out of generic reward/drop pools even if they match other tags.
+        // 通用随机奖池的排除口径唯一定义在 LootExcludeTagPolicy：
+        // Boss 奖励箱、通关奖励、空投与天空岛搜刮点共用同一份列表，避免各写各的漏排。
         private List<Duckov.Utilities.Tag> BuildGeneralLootExcludeTags(Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)
         {
-            List<Duckov.Utilities.Tag> excludeTags = new List<Duckov.Utilities.Tag>();
-            if (tagsData == null)
-            {
-                return excludeTags;
-            }
-
-            if (includeCharacterTag)
-            {
-                AddUniqueLootExcludeTag(excludeTags, tagsData.Character);
-            }
-
-            AddUniqueLootExcludeTag(excludeTags, tagsData.DestroyOnLootBox);
-            AddUniqueLootExcludeTag(excludeTags, tagsData.DontDropOnDeadInSlot);
-            AddUniqueLootExcludeTag(excludeTags, tagsData.LockInDemoTag);
-            AddUniqueLootExcludeTag(excludeTags, TryFindQuestTag(tagsData));
-
-            return excludeTags;
+            return LootExcludeTagPolicy.BuildExcludeTags(tagsData, includeCharacterTag);
         }
 
         private void MergeGeneralLootExcludeTags(List<Duckov.Utilities.Tag> excludeList, Duckov.Utilities.GameplayDataSettings.TagsData tagsData, bool includeCharacterTag = false)

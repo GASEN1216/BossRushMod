@@ -86,6 +86,15 @@ Mode G 冻结 key：
 
 以上两键于 2026-09-06 补齐登记（D-5，`SAFE`）：只记录既有实际格式，不增加字段或迁移数据。
 
+晴岚群岛冻结 key（2026-09-08，`SCHEMA+`）：
+
+- `BossRush_SkyIsland_Story_v1` — `SkyIslandStoryRules.StorageKey`，独立槽位 JSON 字符串，`schemaVersion = 1`。
+  `flags` 保存两航标、四支线、三捷径与两个角色的互斥结果、终章；`visitedRegions` 的位 0–7 对应 A–H，
+  位 8–11 对应 S1–S4；`clearedEncounters` / `discoveredNotes` 保存稳定内容 ID。枚举位与 ID 不随显示名变化。
+  不保存 Unity 对象，不与 Campaign 或好感字段混用；未知版本、坏字段、矛盾结局经共享 store 建立写屏障。
+  独立出击地图仅在会话确认无战斗时经共享 coordinator 保存；离岛推迟由 `SkyIslandStorySaveRecovery` 保留 owner 重试。
+  入口在同槽恢复 owner 尚未结束时不得创建第二个 store；换槽、同槽删档必须使旧会话失效。
+
 Breaking:
 
 - 改名旧 key 且无迁移。

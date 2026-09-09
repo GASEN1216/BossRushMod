@@ -291,3 +291,14 @@ ECM2 层碰撞矩阵）**且全程无报错**。
 2026-09-06（`COMPAT`）移动回归：`tests/fixtures/IntegrationThirdReviewFixes/run.py` 直接执行生产
 `DuckNpcMovement`、`DuckNpcRuntimeMarker` 与官方 `AI_PathControl`，覆盖晚回调、取消异常、
 停用、对话/驻留交叉释放及跟随重规划。隔离执行不等于 Unity 导航实机验证。
+
+
+## 2026-09-08 天空岛居民（COMPAT / SCHEMA+）
+
+`Assets/Data/DuckNpcs.json` 登记六个稳定身份：`sky_qinghe`（晴禾）、`sky_weibai`（苇白）、`sky_fuzhou`（浮舟）、`sky_miantai`（眠苔）、`sky_zheling`（折翎）、`sky_bellkeeper`（无声钟守）。前两位复用永久 NPC 好感、按日聊天/礼物与婚姻配置；四位剧情角色不写关系存档。外观使用完整固化 `faceJson`，在现有小满数据基线上编辑体色、翼色和体型，经官方基线补几何；不是已经通过 F3 导出的实机审定形象，配色与穿戴效果须游戏确认。
+
+正式地图场景为 `SkyIslandRaid`，独立身份 `BossRush_SkyIsland`，经官方 LevelManager 重建角色；蓝图的 `scenes` 登记此场景，两个通用 DuckNpcModule 显式排除自动刷新，由地图固定落点生成。`DebugAndTools/SkyIsland/SkyIslandResidents.cs` 是显式会话 owner，先检查婚姻与已有 registry，异步生成后再次验证会话和关系，再调用共享 `PermanentDuckNpcModule.AttachPermanentParts` 并登记。既有实例不搬动、不复制；未被保留的迟到对象只销毁自己。Dispose 先关闭许可、再注销引用仍匹配的登记并回收对象，已被婚姻系统接管者交还婚姻 owner。
+
+剧情选项挂角色专用子物体，永久角色通过 `NPCInteractionGroupHelper.AddSubInteractable` 加入原聊天/送礼组。角色根层不改为 Interactable；普通角色子交互胶囊忽略自身碰撞。眠苔可在林缘短距离走动，所有 Seeker 限制到天空岛导航。折翎与无声钟守使用 `SetVisible` 暂藏剧情体，战斗实例独立创建，并通过 `ApplyBattleFace` 使用同一张脸；隐藏不构成击杀。剧情进度、分支、任务补交由天空岛故事服务与会话交互负责，不能把实体存在当作任务事实。
+
+验证边界：`DuckNpcInvariantGuard` 和 `SkyIslandResidentsGuard` 覆盖数据身份、显式 owner、导航与清理接线；独立场景合同及官方 DLL 回归 55 条断言通过；Windows 编译由地图整合批次执行。真实交互组、好感礼物、婚姻离岛、NPC 外观与寻路仍需游戏 smoke。

@@ -84,6 +84,9 @@ namespace BossRush
                 return false;
             }
 
+            // 天空岛剧情角色由地图会话持有，不能再走通用随机刷新。
+            if (string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)) return false;
+
             // 竞技场让位：见文件头第 2 条。
             if (IsArenaLikeScene(mod, sceneName))
             {
@@ -153,6 +156,7 @@ namespace BossRush
                 return;
             }
 
+            if (string.Equals(sceneName, "SkyIslandRaid", StringComparison.Ordinal)) return;
             _spawnInFlight = true;
             SpawnForSceneAsync(sceneName).Forget();
         }

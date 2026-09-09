@@ -2,6 +2,61 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-09 天空岛进出岛流程对照复审：2 P2 / 1 P3
+
+逐环节对照官方 `MapSelectionView.LoadTask` → `SceneLoader.LoadScene` → `LevelManager.InitLevel`、出口预制体 `CountDownArea` + `SceneLoaderProxy.Task`、`CharacterDieTask`（官方源码目录缺 async 正文，用 `.codex_tmp/core_decomp/` 的还原版）。切图骨架一致；入口不走官方地图板/费用/确认是 owner 明确保留的产品决定，不计 finding。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-09-001 | P2 / COMPAT | 撤离圈计时不看官方界面：官方 `CountDownArea.Update` 在 `View.ActiveView != null` 时不推进，天空岛 `Update` 只在自家 F6 地图/剧情面板可见时归零，玩家开着背包站在圈里 3 秒就被送回基地。锚点 `SkyIslandSession.cs` 撤离判定行。 | Fixed（待实机）；判定行加 `View.ActiveView == null` 门。守卫 `SkyIslandPlayerEntryGuard` 钉住该行；去掉门后实测转红。 |
+| CR-2026-09-09-002 | P2 / COMPAT | 返航派发后未封锁输入：官方 `SceneLoaderProxy.LoadScene` 先 `InputManager.DisableInput` 再派发，天空岛 `Close` 直接 `DispatchReturnIfReady`，黑幕淡入那一秒玩家仍可移动/开火/触发交互（`NotifyEvacuated` 此前已存过一次档）。 | Fixed（待实机）；新增 `BlockInputForReturn()`，封锁源为岛场景内临时对象（挂在地形根 `SkyIslandWorld` 下），随场景卸载解封，`Cleanup` 也销毁。**不能挂宿主**：`InputManager.blockInputSources` 只在源销毁/失活时移除，DontDestroyOnLoad 宿主会让回基地后输入永久锁死。守卫钉住调用顺序、场景归属与 Cleanup 销毁；三条破坏逐条转红。 |
+| CR-2026-09-09-003 | P3 / COMPAT | 官方加载器同步拒绝时空等 120 秒：`SceneLoader.LoadScene` 遇 `IsSceneLoading`/`GetSceneInfo` 为空只记 LogError 返回，`BeginLoad` 的 `LoadFinished` 立刻为 true，但 `Build` 等 root 的循环不看它，HUD 挂「正在加载…」两分钟，超时后又按已起航发起一次多余的回基地加载。`CanEnter` 已挡住绝大多数情况，属单帧竞态。 | Fixed（待实机）；循环内 `lease.LoadFinished` 即抛，并置 `loadStarted = false` 走「未起航」清理。守卫钉住；改成 `if (false)` 后转红。 |
+
+Documented（不计缺陷）：服务根/地形根在 `sceneLoaded` 回调里才激活，先于租约订阅的处理器看到的是没有 `LevelManager` 的战斗场景；仓库内处理器无同步依赖。官方倒计时控件 `EvacuationCountdownUI` 未复用。两条已写入 `OFFICIAL_SCENE_CONTRACT.md`。
+
+## 2026-09-08 天空岛全面审计追加：1 P1 / 1 P2
+
+对未提交工作树做的独立全面审核。编译、572 guard、27 条执行回归当时全绿，这两条都是绿灯查不出的类型。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-08-006 | P1 / OPERATIONAL | `SkyIslandSceneLease`（111 行）零实例化：全仓唯一引用是 `ModBehaviour.OnSceneLoaded` 的静态路径判断。正式地图早已换成 `SkyIslandRaidLease` + `SkyIslandRaid.unity`，但构建脚本仍把 **54,310,321 字节的 `Assets/arenas/sky_island_world` 部署给每个玩家**（占部署总量 172 MB 的约三分之一），且 `SkyIslandLifecycleGuard` 与一套 17 断言的执行回归还在为这段死代码站岗。 | Fixed；删除类、编译清单条目、bat 部署块、`SceneRuntimeGate.SkyIslandResourceScenePath`、宿主过滤行、fixture 与守卫断言，本机游戏目录旧副本一并清除。部署量 172 MB → 120 MB。`EquipmentResourceSceneGuard` 反向加断言：天空岛不得再被登记成附加资源 Scene（它是完整独立关卡，本就该走正常切图保护）。 |
+| CR-2026-09-08-007 | P2 / COMPAT | 缺场景包时入口 **fail-late**：`SkyIslandRuntimeModule` 无条件在基地船点挂「前往天空岛」子交互、立世界文字招牌、发一条公告，`CanEnter` 也不查资源；`File.Exists` 只在 `SkyIslandRaidLease.Prepare()` 里，玩家点下去、HUD 建好、剧情 store 订阅完之后才报「缺少天空岛独立出击场景包」。bundle 不入 git，从仓库构建的人必然撞上。 | Fixed；新增 `SkyIslandRaidLease.IsBundleDeployed()`，`CanEnter` 与船点入口都先问一次；缺包时不挂选项、不立招牌、不发公告，只写一条 `CriticalLog`。`SkyIslandPlayerEntryGuard` 断言检查必须早于船点交互查找。 |
+
+同轮修掉的 P3（不单独立 finding）：`compile_official.bat` 的 UTF-8 BOM 与 5 个部署块缺 echo、
+`ArenaPrototypeSession.cs` 的 CRLF/LF 混排、`GameplayCoverage.json` 把「晴禾 / 苇白」写成「青禾 / 未白」、
+每次进岛重复解析 World.json、`SkyIslandRendering.Apply` 的冗余形参、只被守卫读的 `ResidentSceneName` 常量、
+`SkyIslandMapGraphic` 缺 65535 UI 顶点上限的显式失败、门状态按全部 flags 而非门位重扫导航、
+`Summary` 与地图坐标每帧重建字符串。
+
+**审计期同时修正了三个被上一轮改动改崩的 fixture**：`SkyIslandOfficialContract`（27 个编译错误）、
+`SkyIslandStory`（缺 `UnityEngine` 命名空间）、`SkyIslandSceneReferenceBridge`（缺 `LevelManager`，
+且 transpiler 用 `AccessTools.PropertyGetter` 定位 `LevelInited`，替身写成字段会让 Harmony 抛
+`ArgumentNullException`）。同时按报告 `U4` 修正存档替身偏差：官方是
+`SaveFile(bool writeSaveTime)`，**不触发** `OnCollectSaveData`，且方法体无 try/finally——
+物理写异常后 `IsSaving` 会一直停在 true。
+
+## 2026-09-08 天空岛端到端验收：3 P1 / 1 P2
+
+工作树基线 `4b1b5b6` 加当前未提交天空岛实现；完整证据、玩家链路、复现与验证边界见 [天空岛端到端验收与代码审查](docs/代码审查/2026-09-08-天空岛端到端验收与代码审查.md)。审查当轮仅记录、未改代码；四条已于同日修复，状态见下表。**验收结论不改判**：修复只消除了已确认缺陷，实机验收（报告第 6 节 8 项）一条都还没做。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-08-004 | P1 / COMPAT | 普通离岛的 `SkyIslandStorySaveRecovery` 挂在 Mod host 上；host 后续销毁时 `OnDestroy` 调用 `StoryService.Close`，即使保存失败仍退订关闭，没有转交独立 owner，已接受但尚未写入官方缓存的剧情丢失。锚点：`SkyIslandStorySaveRecovery.cs:48`、`SkyIslandStoryService.cs:156`、`SkyIslandSession.cs:585`。 | Fixed（待实机）；`CloseOrRetain` 从第一次移交起就建独立 `DontDestroyOnLoad` owner，不再挂宿主，并对同一 service 去重；`host` 形参随之删除。`SkyIslandStory` fixture 补报告原始复现：IsSaving 阻塞下接受航路图 → 销毁宿主 → 解除忙 → 重读同槽，断言进度未丢。**反向验证已实跑**：把 owner 改回挂宿主后该断言转红。 |
+| CR-2026-09-08-003 | P1 / COMPAT | 一次键写入异常使共享 store 进入单向 StoreFaulted；天空岛补写成功后仍无法完成 `TryClose`，恢复 owner 始终占据同槽，`CanEnter` 永远显示保存中。锚点：`SkyIslandStoryService.cs:169`、`SkyIslandStorySaveRecovery.cs:40`、`SkyIslandSession.cs:58`。 | Fixed（待实机）；`TryRecoverFaultedStore()` 在 `Tick` 与 `TryClose` 两处尝试恢复——不清共享单向故障标记，而是另建 store、重读原 key、把最后已接受快照经 Encode/Decode 往返校验后移交，1 秒节流。fixture 补：首次键写入抛异常 → 恢复存储 → 有界次数内 `TryClose` 成功且事实保留。**反向验证已实跑**：抽掉 `TryClose` 的恢复调用后该断言转红。 |
+| CR-2026-09-08-002 | P1 / COMPAT | 正式 F6 地图的“立即返回基地”直接调用 `Close(true, "map_return")`，经 `ReturnToBase(moved)` 触发官方撤离与角色保存；没有位置、战斗或三秒停留检查，绕过交付规定的撤离圈。锚点：`SkyIslandMap.cs:90`、`SkyIslandSession.cs:391`、`SkyIslandRaidLease.cs:97`。 | Fixed（待实机）；F6 地图的「立即返回基地」已删除，地图改为**撤离点导航**：码头蓝点恒显、归航钟庭绿点在结局后补画、实时显示最近撤离点与直线距离。撤离判定收敛为 `SkyIslandSession.IsInsideExtraction()` 单一事实源（`ExtractionRadius` 2.5m / `ExtractionHold` 3s），Dev 与初始化失败的内部返回入口保留。中英 Wiki 四处同步。`SkyIslandPlayerEntryGuard` 新增反例断言：地图内不得出现 `Close(` 或 `returnToBase`。**2026-09-09 更新**：地图已换成官方 M 键地图，`SkyIslandMap.cs` 删除；同一条不变式改为断言 `SkyIslandSession.OpenMap()` 内不得出现 `Close(` / `returnToBase` / `ReturnToBase`，撤离判定仍唯一留在 `IsInsideExtraction()`。 |
+| CR-2026-09-08-005 | P2 / COMPAT、WIRE+ | 缺少真实 SceneLocationsProvider 等导致官方 InitLevel 在设置 LevelInited 前抛异常，外层加载仍等待；Session 超时返航又要求同一个 LoadFinished，租约 recovery 被 loading 挡住。锚点：`SkyIslandSceneReferenceBridge.cs:218`、`SkyIslandSession.cs:553`、`SkyIslandRaidLease.cs:123`。 | Fixed（待实机）；桥接侧的 `VerifyBeforeActivation` / `Begin|Bind|Abort|EndInitialization` / `SaveBeforeLoadPrefix` / `LoaderInitializationTranspiler` 已全部接线：租约持有初始化令牌，激活官方服务**之前**跑完最小装配合同，失败或超时给官方等待一个 `OperationCanceledException`，释放时归还令牌。`SkyIslandRaidLease` fixture 30 断言、`SkyIslandOfficialContract` 78 断言、`SkyIslandSceneReferenceBridge` 44 断言（真实 Harmony）覆盖缺 provider → 不激活 → 有界返航 → 释放 → 可重入。 |
+
+证据目录：`Build/sky-island-review/`、`Build/sky_story_review_probe/`。本轮 Windows 845 个生产输入真实 DLL Release 编译通过、14 项相关守卫通过、7 套天空岛回归 315 条断言通过；另有故障复现探针。无游戏内验收，不宣称全部内容实际可达、死亡墓碑或性能合格。交互同点竞争、官方墓碑迟到回调及性能缺口在完整报告中单列未验证项。
+
+## 2026-09-08 附加资源 Scene 与装备卸装：1 项
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-08-001 | P1 / COMPAT | `Common/Equipment/EquipmentEffectManager.cs` 的 `OnSceneUnloaded` 对任何 Scene 启用切图保护。天空岛/石堡返基地只卸载附加资源 Scene，不再加载官方关卡，保护因此保持 true；随后卸下飞行图腾时 `CheckAllSlots` 早返，真实 `FlightAbilityManager.UnregisterAbility/RestoreDash` 未执行，飞行能力与 Dash 替换残留。资源 sceneLoaded 反过来也会在真实切图中提前清除保护。 | Fixed：两个装备回调在状态改变前经共享 `SceneRuntimeGate.IsModResourceScene` 排除两个精确路径；旧生产代码夹具 27 断言 / 10 失败，修复后 27 全通过，含真实飞行管理器的 Dash 还原。Windows Dev 编译与相关 guard 通过；游戏 smoke 待人工。 |
+
+路径常量集中在 `SceneRuntimeGate`，天空岛/石堡资源租约复用，不让 Common 装备层反向依赖调试会话。真实关卡切图、临时空槽保护、真实关卡加载后的解除，以及同名/前缀相同的外部 Scene 行为均保留。证据：`Build/equipment_resource_scene_before.log`、`Build/runtime-regressions/EquipmentResourceScene.log`、`Build/equipment_resource_scene_compile.log`。本轮没有游戏内复测或提交。
+
 ## 2026-09-07 最新实机日志修复：7 项
 
 输入 `BossRushValidation_20260907_150312_248.log`（141 PASS / 4 FAIL / 1 WARN）及同次 `Player.log`。

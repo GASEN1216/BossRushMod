@@ -62,6 +62,7 @@ namespace BossRush
             reason = null;
             if (!ModBehaviour.DevModeEnabled || owner == null) { reason = "仅开发版可使用场景实验"; return false; }
             if (owner.GetComponent<ArenaPrototypeSession>() != null) { reason = "试验场已存在或正在回收"; return false; }
+            if (owner.GetComponent<SkyIslandSession>() != null) { reason = "请先退出天空岛并等待回收"; return false; }
             if (F3GameplayValidationRunner.IsRunning) { reason = "请等待完整玩法验收结束"; return false; }
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited)
             { reason = "请等待场景和玩家初始化完成"; return false; }

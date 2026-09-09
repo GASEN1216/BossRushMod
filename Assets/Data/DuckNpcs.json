@@ -160,6 +160,307 @@
           ]
         }
       }
+    },
+    {
+      "id": "sky_qinghe",
+      "isPermanent": true,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.94,\"g\":0.9,\"b\":0.76,\"a\":1.0},\"headScaleOffset\":-0.1,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.51,\"b\":0.22,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.51,\"b\":0.22,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.51,\"b\":0.22,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [
+        1252
+      ],
+      "canWander": false,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "SkyIslandRaid"
+      ],
+      "permanent": {
+        "displayNameCn": "晴禾",
+        "displayNameEn": "Qinghe",
+        "dailyChatAffinity": 30,
+        "positiveTags": [
+          "Consumable",
+          "Food"
+        ],
+        "positiveItemTypeIds": [],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          "这个正合用，谢谢你。",
+          "你还记得我喜欢什么。"
+        ],
+        "negativeBubbles": [
+          "谢谢你的心意，只是我暂时用不上。"
+        ],
+        "normalBubbles": [
+          "我收下了，谢谢。"
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。",
+                "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。"
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                "你回来啦。今天的第一阵风，我替你留在风铃里了。"
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                "走了这么多条航路，最想等到的还是你平安回来。"
+              ]
+            }
+          ],
+          "idle": [
+            "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。",
+            "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。"
+          ],
+          "afterGift": [
+            "我会好好收着的。"
+          ],
+          "levelUp": [
+            "和你说话，让我觉得日子又有盼头了。"
+          ],
+          "farewell": [
+            "路上当心，等你回来。"
+          ],
+          "alreadyGifted": [
+            "今天已经收过你的礼物啦。"
+          ],
+          "alreadyGiftedPositive": [
+            "今天已经送过了，留一些给自己吧。"
+          ],
+          "alreadyGiftedNormal": [
+            "心意收到了，今天就到这里吧。"
+          ],
+          "alreadyGiftedNegative": [
+            "今天就不再麻烦你了。"
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            "回来了？灯还亮着，我也在。"
+          ],
+          "dialogue_idle_married": [
+            "你在的地方，就是我的归航处。"
+          ],
+          "dialogue_farewell_married": [
+            "平安回来，我们还有很多个明天。"
+          ],
+          "dialogue_after_gift_married": [
+            "一家人也会被你的用心打动。"
+          ],
+          "gift_positive_married": [
+            "你总记得我的小习惯。"
+          ],
+          "gift_normal_married": [
+            "放在家里，好好留着。"
+          ]
+        }
+      }
+    },
+    {
+      "id": "sky_weibai",
+      "isPermanent": true,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.44,\"g\":0.57,\"b\":0.65,\"a\":1.0},\"headScaleOffset\":0.03,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.92,\"g\":0.68,\"b\":0.22,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.92,\"g\":0.68,\"b\":0.22,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.92,\"g\":0.68,\"b\":0.22,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [],
+      "canWander": false,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "SkyIslandRaid"
+      ],
+      "permanent": {
+        "displayNameCn": "苇白",
+        "displayNameEn": "Weibai",
+        "dailyChatAffinity": 30,
+        "positiveTags": [
+          "Tools"
+        ],
+        "positiveItemTypeIds": [],
+        "negativeItemTypeIds": [],
+        "positiveBubbles": [
+          "这个正合用，谢谢你。",
+          "你还记得我喜欢什么。"
+        ],
+        "negativeBubbles": [
+          "谢谢你的心意，只是我暂时用不上。"
+        ],
+        "normalBubbles": [
+          "我收下了，谢谢。"
+        ],
+        "dialogues": {
+          "greeting": [
+            {
+              "minLevel": 0,
+              "lines": [
+                "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。",
+                "星灯还没灭，只是很久没人替它擦掉灰尘了。"
+              ]
+            },
+            {
+              "minLevel": 5,
+              "lines": [
+                "灯亮的时候，你的影子总会先到门口。"
+              ]
+            },
+            {
+              "minLevel": 10,
+              "lines": [
+                "走了这么多条航路，最想等到的还是你平安回来。"
+              ]
+            }
+          ],
+          "idle": [
+            "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。",
+            "星灯还没灭，只是很久没人替它擦掉灰尘了。"
+          ],
+          "afterGift": [
+            "我会好好收着的。"
+          ],
+          "levelUp": [
+            "和你说话，让我觉得日子又有盼头了。"
+          ],
+          "farewell": [
+            "路上当心，等你回来。"
+          ],
+          "alreadyGifted": [
+            "今天已经收过你的礼物啦。"
+          ],
+          "alreadyGiftedPositive": [
+            "今天已经送过了，留一些给自己吧。"
+          ],
+          "alreadyGiftedNormal": [
+            "心意收到了，今天就到这里吧。"
+          ],
+          "alreadyGiftedNegative": [
+            "今天就不再麻烦你了。"
+          ]
+        },
+        "marriedDialogues": {
+          "dialogue_greeting_married": [
+            "回来了？灯还亮着，我也在。"
+          ],
+          "dialogue_idle_married": [
+            "你在的地方，就是我的归航处。"
+          ],
+          "dialogue_farewell_married": [
+            "平安回来，我们还有很多个明天。"
+          ],
+          "dialogue_after_gift_married": [
+            "一家人也会被你的用心打动。"
+          ],
+          "gift_positive_married": [
+            "你总记得我的小习惯。"
+          ],
+          "gift_normal_married": [
+            "放在家里，好好留着。"
+          ]
+        }
+      }
+    },
+    {
+      "id": "sky_fuzhou",
+      "isPermanent": false,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.67,\"g\":0.65,\"b\":0.48,\"a\":1.0},\"headScaleOffset\":0.05,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.72,\"g\":0.41,\"b\":0.17,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.72,\"g\":0.41,\"b\":0.17,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.72,\"g\":0.41,\"b\":0.17,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [],
+      "canWander": false,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "SkyIslandRaid"
+      ]
+    },
+    {
+      "id": "sky_miantai",
+      "isPermanent": false,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.54,\"g\":0.65,\"b\":0.39,\"a\":1.0},\"headScaleOffset\":-0.02,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.39,\"b\":0.18,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.39,\"b\":0.18,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.24,\"g\":0.39,\"b\":0.18,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [
+        1252
+      ],
+      "canWander": true,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "SkyIslandRaid"
+      ]
+    },
+    {
+      "id": "sky_zheling",
+      "isPermanent": false,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.19,\"g\":0.27,\"b\":0.42,\"a\":1.0},\"headScaleOffset\":0.08,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.87,\"g\":0.9,\"b\":0.9,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.35,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.87,\"g\":0.9,\"b\":0.9,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.87,\"g\":0.9,\"b\":0.9,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [],
+      "canWander": false,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "SkyIslandRaid"
+      ]
+    },
+    {
+      "id": "sky_bellkeeper",
+      "isPermanent": false,
+      "displayNameKey": "",
+      "faceMode": "json",
+      "faceJson": "{\"savedSetting\":true,\"headSetting\":{\"mainColor\":{\"r\":0.54,\"g\":0.42,\"b\":0.24,\"a\":1.0},\"headScaleOffset\":0.15,\"foreheadHeight\":0.07,\"foreheadRound\":0.86},\"hairID\":7,\"hairInfo\":{\"radius\":0,\"color\":{\"r\":0.29,\"g\":0.26,\"b\":0.19,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"eyeID\":3,\"eyeInfo\":{\"radius\":0.23,\"color\":{\"r\":0.13,\"g\":0.28,\"b\":0.35,\"a\":1.0},\"height\":0.089,\"heightOffset\":0,\"scale\":1.1,\"twist\":0,\"distanceAngle\":49.575,\"leftRightAngle\":0},\"eyebrowID\":2,\"eyebrowInfo\":{\"radius\":0.23,\"color\":{\"r\":0,\"g\":0,\"b\":0,\"a\":1.0},\"height\":0.075,\"heightOffset\":0.089,\"scale\":1,\"twist\":0,\"distanceAngle\":41.184,\"leftRightAngle\":0},\"mouthID\":5,\"mouthInfo\":{\"radius\":0.23,\"color\":{\"r\":1,\"g\":0.534,\"b\":0.401,\"a\":1.0},\"height\":0.037,\"heightOffset\":0,\"scale\":0.82,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"tailID\":2,\"tailInfo\":{\"radius\":0,\"color\":{\"r\":0.29,\"g\":0.26,\"b\":0.19,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"footID\":1,\"footInfo\":{\"radius\":0,\"color\":{\"r\":1,\"g\":0.403,\"b\":0.203,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0},\"wingID\":1,\"wingInfo\":{\"radius\":0,\"color\":{\"r\":0.29,\"g\":0.26,\"b\":0.19,\"a\":1.0},\"height\":0,\"heightOffset\":0,\"scale\":1,\"twist\":0,\"distanceAngle\":0,\"leftRightAngle\":0}}",
+      "baseModel": "",
+      "modelScale": 1.0,
+      "team": "player",
+      "invincible": true,
+      "showHealthBar": false,
+      "pushCharacter": false,
+      "randomEquipment": false,
+      "equipmentTypeIds": [],
+      "canWander": false,
+      "wanderRadius": 2.5,
+      "scenes": [
+        "SkyIslandRaid"
+      ]
     }
   ]
 }

@@ -2,7 +2,7 @@
 
 ## Step 1: Buy a Ticket
 
-Base merchant → **BossRush Ticket**. Required for all modes.
+Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. For an exploration journey, choose **Depart for Sky Islands · Qinglan** at the base boat; that journey does not require a ticket. See the Sky Islands · Qinglan entry.
 
 Also grab:
 - **Achievement Medal** — Free. Right-click to open achievements

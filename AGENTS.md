@@ -281,6 +281,54 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ## 14. 最后更新
 
+2026-09-09（天空岛进出岛流程对照复审）：与原版切图骨架一致，入口不走官方地图板是 owner 决定。补齐三处官方语义：
+撤离圈在任何官方 View 打开时不推进；返航派发前用**岛场景内临时对象**调 `InputManager.DisableInput`
+（`blockInputSources` 只在源销毁/失活时解封，挂 DontDestroyOnLoad 宿主会让回基地后输入永久锁死）；
+`SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等场景根的循环必须看它。
+新增一张官方级 Mod 地图的完整流程见 `docs/制作教程/从零搭建自定义场景_Blender到Unity到Mod完整教程.md` 第 21 节。
+
+2026-09-09（天空岛内容扩充：物资搜集点 + 敌人档次 + Boss「噬风」+ 居民服务）：交付文档此前把
+「独有任务物品、商店售价、可重复领取的经济奖励」明确留作后续定稿，本轮补齐。**没有新增 TypeID，
+也没有重建 54 MB 场景包**——全部内容挂在已有作者标记与官方物品表上。
+
+- **官方 `LootBoxLoader.Awake` 会随机关掉你建的箱子**：它按位置哈希 `Random.Range < activeChance`
+  决定 `SetActive` 并写 `MultiSceneCore.inLevelData`。想复用官方 `InteractableLootbox` 预制体，
+  必须**先在未激活的暂存父节点下 Instantiate**、摘掉 `LootBoxLoader`，再激活；直接 Instantiate
+  会有一部分箱子随机消失，而且这事**不报错**。
+  **摘组件必须用 `DestroyImmediate`**：`Destroy` 帧末才真正移除，而把对象挂到活动父节点会在
+  **本帧**激活它并触发 `Awake`，组件还在，随机关箱照样发生——本轮第一版就是这么写错的，
+  静态检查全绿、反向验证也不会报，只有在实机里表现为「一部分箱子不见了」。
+  对象此刻未激活且不是 prefab 资产，`DestroyImmediate` 在这里安全且确定。
+  **世界坐标要在激活前摆好**：官方多处按 `transform.position` 取 key，激活时读到暂存节点的
+  场景原点会让所有箱子撞同一个 key。
+  官方还按位置哈希**共享 Inventory**，靠得近的两个箱子会串味，
+  必须 `InteractableLootboxInventoryHelper.EnsureLocalInventory`。
+  这些约束现已收在唯一建造点 `SkyIslandRewardCrate`。
+- **`ItemAssetsCollection.Search` 会静默降级品质**：结果为空时它自行下调 `minQuality`/`maxQuality`
+  反复重搜（`DownGradeSearch` 循环），把高档奖池悄悄降成杂物。需要精确品质带时用 `GetAllTypeIds`，
+  池空就如实为空由调用方 fail-open。`GetAllTypeIds` 经过 HashSet，**顺序不稳定**，
+  用固定 seed 抽样前必须 `Sort()`，否则同一 seed 在不同机器上抽到不同物品。
+- **`InstantiateSync` 缺资源返回空壳 `FallbackItem`**（同 TypeID，既不为 null 也不抛）——
+  必须回读 `item.TypeID` 才能确认拿到真物品。这条 2026-09-05 的记录本轮又踩到一次。
+- **敌人体型只缩放 `characterModel`，不动角色 transform**：`CreateCharacterAsync` 返回时角色已初始化，
+  事后改 `transform.localScale` 会让碰撞体与导航半径和官方口径失步；只放大模型则物理/寻路成本零变化。
+  染色仍走 `MaterialPropertyBlock`（碰 `sharedMaterial` 会污染同款所有敌人）。
+  **具名剧情角色只吃数值与 AI**，染色和放大会毁掉辨识度。
+- **独立出击关卡不保证有 `StockShopView`**：它是场景内预制体，官方 `NPCShopSystem.OpenShop` 遇到它缺失
+  只会弹一句「这里不方便做生意」。地图内的商店/服务要么自带 UI，要么必须接受这个失败面。
+- **本轮内容刻意不进存档**：搜刮点内容、委托进度、局内 buff 都按出击刷新。纯消耗性内容不值得扩
+  `BossRush_SkyIsland_Story_v1` 的 schema；只有「击败噬风」这一个持久事实进了存档，
+  走 `SCHEMA+` 新增 flag `StormSlain = 32768`（`KnownFlags` 32767 → 65535，旧档读出为 0 即「尚未挑战」）。
+  **新增 flag 必须同步 `KnownFlags`**，否则 Codec 会拒绝整份存档。
+- 新文件：`DebugAndTools/SkyIsland/` 下 `SkyIslandLootTables.cs`、`SkyIslandLootPools.cs`、
+  `SkyIslandRewardCrate.cs`、`SkyIslandScavenging.cs`、`SkyIslandEnemyTier.cs`、`SkyIslandEnemyTiers.cs`、
+  `SkyIslandStormBoss.cs`、`SkyIslandBounty.cs`、`SkyIslandServices.cs`；
+  守卫 `tests/SkyIslandContentExpansionGuard.py`（含 JSON ↔ 内置表真交叉校验），
+  执行回归 `tests/fixtures/SkyIslandLoot/`。编译绿、575 guard 绿、27 组执行回归 0 失败；
+  新增属性测试 `SkyIslandContentPlacementPropertyTest` 用真实作者几何复算落点，**结构守卫证明不了「玩家走过去有东西」，这类内容必须另做几何可达性验证**；
+  守卫做过 13 条人为破坏反向验证，逐条转红并按字节还原。**实机 smoke 待人工**，
+  逐条步骤在 `Assets/Data/GameplayCoverage.json` 的 `M_SKY_ISLAND_04` / `05` / `06`。
+
 2026-09-07（P0 五把新武器开放获取 + 表现层补齐）：500048-500052 从「开发预览」转为正式内容。
 
 - **「代码写完」不等于「已实装」**：这五把武器有完整的 Config / WeaponConfig / Runtime、

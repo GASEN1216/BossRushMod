@@ -10,7 +10,7 @@
   §2.1  BossSkillState.Tick 抽象化（virtual + 5 子类 override）
   §2.3  ZombieModeStatNames 常量集中
   §2.4  GetZombieModeBossDisplayName 单行拼接
-  §2.5  LootAndRewards.TryFindQuestTag 缓存（s_cachedQuestTag / s_questTagPermanentlyMissing）
+  §2.5  Quest tag 反射缓存（2026-09-09 起唯一实现在 Config/LootExcludeTagPolicy.cs）
   §3.1  OnHurt/OnDead HashSet<int> 早返
   §3.2  Hunter Frenzy / Player Slow / Reward Attribute 改用 PercentageAdd（去除 stat.BaseValue * percent 模式）
   §3.3  共享 disk mesh visual（s_zoneDiskMesh + CreateZombieModeFlatZoneVisual）
@@ -86,6 +86,7 @@ def main() -> int:
     tracker = Path("Common/Stats/RuntimeStatModifierTracker.cs")
     spawn_core = Path("Utilities/EnemySpawnCore.cs")
     loot = Path("LootAndRewards/LootAndRewards.cs")
+    loot_tag_policy = Path("Config/LootExcludeTagPolicy.cs")
 
     # §1.1 — preset 缓存与方法被删；EnsureCharacterPresetsCacheReady 接管
     err = must_not_contain(spawner,
@@ -166,7 +167,12 @@ def main() -> int:
         return fail(err)
 
     # §2.5 — Quest tag 缓存
-    err = must_contain(loot, "s_cachedQuestTag", "s_questTagPermanentlyMissing", "s_questTagSearched")
+    # 实现已收敛到共享排除口径里（Boss 奖池、空投、天空岛搜刮点共用），
+    # 但「反射结果必须缓存」这条不变式照旧：没有 sentinel 就会每件物品重复三段反射。
+    err = must_contain(loot_tag_policy, "cachedQuestTag", "questTagSearched")
+    if err:
+        return fail(err)
+    err = must_contain(loot, "return LootExcludeTagPolicy.TryFindQuestTag(tagsData);")
     if err:
         return fail(err)
 

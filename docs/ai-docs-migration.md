@@ -145,3 +145,22 @@
   同日套装批次另有 007–010 重号；引用必须带批次名，不擅自改写历史 ID。
 - repowiki 的 F3 文档曾写“报告状态四分”却列五项，且“p95 只警告”与 `SamplePerformance` 的阈值判红冲突。
   本轮按当前实现校正，并新增 9 波 / 6 场流程、会话清理及日志判定边界。2026-09-02 的 138 PASS 保留为旧 DLL 证据。
+
+
+## 2026-09-08 天空岛制作方案引用口径（SAFE）
+
+新增[天空岛大地图制作教程](制作教程/天空岛大地图_场景设计与制作教程.md)时复核了已有地图和 NPC 资料。以下只记录旧文本与当前源码/守卫的口径差异，不修改运行时代码、数据表或既有守卫：
+
+- [Hooks 分层约定](架构说明/Hooks分层约定.md)末尾 FAQ 将模块 Hook 描述为独立 `partial class ModBehaviour`，与根 `AGENTS.md` 第 4.15 节的新子系统状态归属要求冲突。天空岛按独立 RuntimeModule/Session 设计，宿主仅保留必要分发；旧示例不作为新增状态型 partial 的依据。
+- [捏脸 NPC 工具](制作教程/捏脸NPC工具.md)前部收益表仍列 `AICharacterController.MoveToPos()`；其后续章节及当前 [DuckNpcMovement](../Integration/NPCs/DuckNpc/DuckNpcMovement.cs)实际使用 `AI_PathControl + Seeker`，不引入战斗行为树。天空岛区分外观/交互实例与带官方 AI 的战斗实例，不把修改阵营当作敌人制作已经完成。
+- [捏脸 NPC 使用手册](制作教程/捏脸NPC使用手册.md)通用字段表允许 `scenes` 留空，仅适用于相应显式召唤场景；当前 [DuckNpcInvariantGuard](../tests/DuckNpcInvariantGuard.py)对永久 NPC 要求非空且已认可的场景名。天空岛永久蓝图须等真实场景接入及守卫同步后登记；不通过虚构 SpawnPoints 文件或放宽守卫绕过可达性要求。
+
+Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异在既有可行性评估中已有记录，本次仍可见。新教程将实际编辑器解析版本/游戏材质兼容核对列为制作前置项，未据此宣称项目故障或执行升级。天空岛本身是未实装设计，不更新玩家 Wiki 或把拟建模块写成 repowiki 的当前实现。
+
+## 2026-09-08 新场景从零制作教程（SAFE）
+
+用户要求把从 Blender 新建模型、Unity 新建 Scene/打包，到 Mod 代码和测试的流程完整写入 docs。新增 `制作教程/从零搭建自定义场景_Blender到Unity到Mod完整教程.md`，包含手工建模和已验证石堡重建两条路线、两个完整编辑器工具示例、运行时源码职责、地图/光照/A*、部署与验收。两张自有预览图保存在 `制作教程/images/`，明确区分作者模型、地图底图和实机画面。
+
+统一 docs/README 和三份旧场景文档的入口；原评估中“尚未进入”的描述明确限定为历史调查，石堡试用按后续成功日志更新。用户对地图版本的正向反馈只记为反馈，不扩大成完整用例验收。两份 repowiki 同步教程入口，不改变运行代码或正式地图身份。
+
+验证：五份文档 76 个本地链接/图片存在；教程 25 个围栏代码块配对，8 段 PowerShell 经原生 Parser 检查，Python 片段语法检查通过；两个完整 Unity Editor 示例以本机 Unity 2022.3.62f3 程序集独立编译通过（C# 7.3）。验证记录位于 `Build/scene-tutorial-validation/`。未重新执行会覆盖作者成果的 Blender 生成、Unity 场景重建、Mod 部署或游戏操作。docs 及图片仍遵守 local-only，不强制 git add。

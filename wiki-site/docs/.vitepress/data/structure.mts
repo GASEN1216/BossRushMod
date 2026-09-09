@@ -530,8 +530,8 @@ export const CATEGORIES: WikiCategory[] = [
     zh: '地图',
     en: 'Maps',
     icon: 'cat-maps',
-    blurbZh: '9 张竞技场地图与各自的地形脾气',
-    blurbEn: 'Nine arena maps and how each one plays',
+    blurbZh: '9 张竞技场地图与天空岛探索旅程',
+    blurbEn: 'Nine arena maps and a journey through the Sky Islands',
     entries: [
       {
         path: '/maps/',
@@ -540,6 +540,14 @@ export const CATEGORIES: WikiCategory[] = [
         icon: 'cat-maps',
         blurbZh: '9 张地图的可用模式与特点',
         blurbEn: 'Which modes each of the nine maps supports',
+      },
+      {
+        path: '/maps/sky-island',
+        zh: '天空岛 · 晴岚群岛',
+        en: 'Sky Islands · Qinglan',
+        icon: 'cat-maps',
+        blurbZh: '修复航标、寻找旧信，让归航钟再次响起',
+        blurbEn: 'Restore the beacons, find the old letter and ring the homecoming bell',
       },
     ],
   },

@@ -10,9 +10,8 @@ namespace BossRush
             _cachedDifficultyRewardLootBoxTemplate = null;
             _cachedVictoryRewardVisualLootBoxTemplate = null;
 
-            s_cachedQuestTag = null;
-            s_questTagSearched = false;
-            s_questTagPermanentlyMissing = false;
+            // Quest tag 的反射缓存已收敛到共享的排除口径里，连同它一起复位。
+            LootExcludeTagPolicy.ResetStaticCaches();
 
             _enemyPresetsInitialized = false;
 
