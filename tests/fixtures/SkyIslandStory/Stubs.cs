@@ -4,8 +4,14 @@ using System.Collections.Generic;
 namespace UnityEngine
 {
     /// <summary>故障恢复节流用的时钟替身；测试显式推进，不依赖真实帧。</summary>
-    public static class Time { public static float unscaledTime; }
-    public static class Debug { public static void LogWarning(string value) { } }
+    public static class Time { public static float unscaledTime; public static float realtimeSinceStartup; }
+    public static class Debug
+    {
+        public static void LogWarning(string value) { }
+        /// <summary>记下最后一行普通日志：分段计时行（SKY_TIMING）要能被断言。</summary>
+        public static string LastLog;
+        public static void Log(string value) { LastLog = value; }
+    }
 
     /// <summary>最小 Unity 对象模型：只为验证「待保存 owner 独立于 Mod 宿主」的销毁语义。</summary>
     public class Object

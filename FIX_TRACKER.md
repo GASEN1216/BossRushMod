@@ -4,6 +4,39 @@
 
 ## 最新修复
 
+### 2026-09-10 天空岛可玩性与时长评估：7 条修复（4 P2 / 3 P3）+ 分段计时日志
+
+**分类**：COMPAT / OPERATIONAL。owner 预期「整座岛约 10 小时体验完」，要求判断、优化局内流程、修 bug，无人值守。结论是不成立
+（布局 v2、中值参数：主线约 21 分钟、全部内容各一次约 1.6 小时、含合理重复约 4.2 小时，全部推算）。时长模型、进度依赖图、流程问题、
+扩充方案与 13 项待拍板在 `docs/天空岛_可玩性与时长评估_2026-09-10.md`（local-only）；逐条 finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-029` 至 `-035`。
+
+**修复**（只动并行会话没在改的文件：`SkyIslandStoryRules` / `SkyIslandStoryService` / `SkyIslandWorldStory` / `SkyIslandServices`）：
+- 战斗了结的剧情回话以前被会话丢弃：文案收成 `SkyIslandStoryRules.CombatOutcome`，`SkyIslandWorldStory.Tick` 按新增旗标读成字幕（CR-029）；
+- 折翎旧腰牌纪念物显示刻字与物证含义（CR-030）；挑战开始 / 风眼张开的回执改走字幕，不再在面板收起后被 `SetBodyText` 吞掉（CR-031）；
+- 8 个 `Search_*_02` 见闻各有专属标题与正文，各指向一处支线或机制（CR-032）；苔药冷却改走游戏时间（CR-033）；
+- 岛上落盘去抖：到访 / 清场 / 见闻攒 30 秒再整档写，剧情动作与欠账重试立刻写，`TryClose` 绕闸全写（CR-034）；
+- 折翎挑战按钮写明「战胜后不能再和解」（CR-035）；
+- 分段计时日志 `[SkyIsland] SKY_TIMING t=… ev=… id=…`（事件上记、不进每帧路径，正式构建保留），实机按待人工清单第 2.9 步回填时长模型。
+
+**同步**：中英 Wiki（噬风说服条件「折翎那一关有个了结」、四项服务、整备只修维修台收的物品、苔药冷却按游戏时间、「巡视群岛区域」走遍后不再派、
+折翎按钮与旧腰牌、战斗结果字幕、见闻提示）；`GameplayCoverage.json` 的 `M_SKY_ISLAND_05 / 06 / 07`；两张天空岛 repowiki 卡追加本轮章节。
+中英 Wiki、覆盖清单与 repowiki 都是并行会话在改的文件，**只暂存本轮的块**（`git hash-object` + `git update-index`，两侧 diff 核对）。
+
+**未修、记在评估报告第六节**：布局 v2 里折翎战斗体刷在对话点 63 m 外（R-1）、K1 几乎不省路（R-2）、「巡视」只数首次到访（R-3）、物资池按品质带内物品种类均匀抽（R-4）、
+晴禾 / 苇白好感台词只有中文（R-6）、开销小项（R-9）等；v2 相关文件在并行会话手里，只读。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 隔离编译：`git worktree` 签出 `HEAD`，只叠加本轮 4 个 `.cs`，`GAME_PATH` 指向临时目录里的 `Managed` 拷贝 | Build succeeded，0 error；游戏目录未被触碰 |
+| 2 | 正式构建（真实工作区，含并行会话未提交的布局 v2 代码）并部署 | `Build/bossrush.rsp` 无 `/define`；`BossRush.dll` 4,786,688 B，SHA-256 `5379c27668a93acd3a217a243846b6bc49a0cc45a527acd0aa2bf2318aa7f22a`，`Build/` 与游戏目录一致；中英 Wiki、`GameplayCoverage.json`、`World.json`、出击包（`ef40465f…`，并行会话 21:15 的包）部署副本逐个一致；游戏目录无 Dev 产物 |
+| 3 | `run_runtime_regressions --filter SkyIsland` | 8 PASS / 0 FAIL（`SkyIslandStory` 168 条断言，含本轮去抖、战斗回话同源、计时格式与去重） |
+| 4 | `python tools/run_guards.py` 全量 | 586 个脚本：586 PASS / 0 NEW-FAIL / 0 KNOWN-RED（含新守卫 `SkyIslandPlaytimeFlowGuard`；在共用工作区跑，输入含并行会话未提交的布局 v2，上一轮归因于它的两个几何红项这次也是绿的） |
+| 5 | 反向验证 | 30 个探针（新守卫 24、执行回归 6）全部转红；执行回归 6 个都红在预期断言上、无编译错误；破坏做在干净签出上，逐字节还原并 sha256 核对，真实工作区前后 sha256 不变 |
+
+**待人工**（未实机）：`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 2.9 步（含分段计时表与冲刺测速）。部署成功不等于已生效。
+
 ### 2026-09-10 石堡前哨撤离读秒对齐官方 CountDownArea：开着暂停菜单 / 拍照模式 / 背包站在蓝环里不再被送回
 
 **分类**：COMPAT（仅开发版 F3 场景实验，`CanEnter` 要求 `DevModeEnabled`）。承接 `CODE_REVIEW_FINDINGS.md` 天空岛全方位审核里「不在本轮范围」那一条；天空岛同款问题是 `CR-2026-09-10-008`，本条照它的写法修。

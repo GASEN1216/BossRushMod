@@ -111,6 +111,52 @@ namespace BossRush
         }
         private static string Mark(bool value) { return value ? " ✓" : " ○"; }
 
+        /// <summary>
+        /// 岛上物理落盘的去抖秒数。官方 `SavesSystem.SaveFile` 是「备份拷贝 + 整档同步写」（反编译源 `Saves/SavesSystem.cs:503`），
+        /// 旧写法每接受一条事实、下一个 45 m 内无敌人的帧就整档写一次：一个新存档从头玩下来，光是首次到访 12 个区域、
+        /// 首次清掉 13 组遭遇、收录 20 处见闻就是四十多次同步写盘，而且恰好落在「刚打完一组」「刚踏上新岛」的帧上。
+        /// 到访、清场、见闻这类丢了也能重做的事实攒到这个秒数再一起写；剧情动作（航标、捷径、支线物证、和解、敲钟、噬风）
+        /// 与已经欠着的重试照旧下一个安全帧就写。离岛、死亡与宿主销毁走 <see cref="TryClose"/> 的绕闸落盘，不受去抖影响。
+        /// </summary>
+        internal const float FlushDebounceSeconds = 30f;
+        /// <summary>最早一条还没落盘的事实被接受的时刻（unscaled，基础设施节流而非玩法计时）；-1 表示没有待写事实。</summary>
+        private float pendingSince = -1f;
+        /// <summary>待写批次里有剧情动作：下一个安全帧就写，不等去抖。</summary>
+        private bool urgentPending;
+
+        /// <summary>分段计时的起点（realtimeSinceStartup，含读条、读剧情与暂停）；-1 表示本服务还没开过。</summary>
+        private float timingOrigin = -1f;
+        /// <summary>本趟已记过的计时事件，避免同一件事每秒重投时刷屏。</summary>
+        private readonly HashSet<string> timingSeen = new HashSet<string>(StringComparer.Ordinal);
+
+        /// <summary>
+        /// 分段计时日志：给 owner 实机回填时长模型（`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 的计时步骤）。
+        /// 只在事件上各记一行 `[SkyIsland] SKY_TIMING t=秒 ev=事件 id=对象`——进岛、落地、剧情动作被接受、首次到访、清场、
+        /// 见闻、委托与服务、挑战开始、离岛——不在任何每帧路径上。时钟用 realtimeSinceStartup：读剧情、开背包与暂停的时间
+        /// 都算进「这一段实际玩了多久」。走 Debug.Log 而不是 DevLog，正式构建里照样有。
+        /// </summary>
+        internal void LogTiming(string ev, string id)
+        {
+            if (timingOrigin < 0f || string.IsNullOrEmpty(ev)) return;
+            double seconds = Math.Round((double)(Time.realtimeSinceStartup - timingOrigin), 1);
+            Debug.Log("[SkyIsland] SKY_TIMING t=" + seconds.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) +
+                " ev=" + ev + (string.IsNullOrEmpty(id) ? string.Empty : " id=" + id));
+        }
+
+        /// <summary>同一件事一趟只记一行（清场会每秒重投、离岛保存可能被推迟重试）。</summary>
+        internal void LogTimingOnce(string ev, string id)
+        {
+            if (timingOrigin < 0f || !timingSeen.Add(ev + ":" + id)) return;
+            LogTiming(ev, id);
+        }
+
+        /// <summary>登记一条刚被 store 接受的事实。urgent = 剧情动作，下一个安全帧就落盘。</summary>
+        private void MarkPending(bool urgent)
+        {
+            if (pendingSince < 0f) pendingSince = Time.unscaledTime;
+            if (urgent) urgentPending = true;
+        }
+
         internal void Open()
         {
             if (opened) return;
@@ -119,6 +165,9 @@ namespace BossRush
             store.LoadOrInit();
             slotChanged = false;
             opened = true;
+            timingOrigin = Time.realtimeSinceStartup;
+            timingSeen.Clear();
+            LogTiming("raid_open", "slot" + entrySlot);
         }
 
         internal bool TryApply(SkyIslandStoryAction action, out string message)
@@ -133,6 +182,8 @@ namespace BossRush
                     "Could not commit the archipelago record. Try again in a moment.");
                 return false;
             }
+            MarkPending(true);
+            LogTiming("story", action.ToString());
             message += L10n.T("\n进度已记录，待安全时机保存。",
                 "\nProgress recorded; it will be written at a safe moment.");
             return true;
@@ -140,13 +191,22 @@ namespace BossRush
 
         internal bool RecordEncounterCleared(string regionId)
         {
-            if (!CanWrite || string.IsNullOrEmpty(regionId) || Current.EncounterCleared(regionId)) return false;
+            if (!CanWrite || string.IsNullOrEmpty(regionId)) return false;
+            if (Current.EncounterCleared(regionId))
+            {
+                // 自动组按出击刷新，老档上每趟都会再清一次：存档不动，计时照记（每趟每组一行）。
+                LogTimingOnce("clear", regionId);
+                return false;
+            }
             // 战斗 owner 只在整个遭遇确认清场后调用；中断不消费永久结果。
             SkyIslandStoryData candidate = Current.Copy();
             var values = new List<string>(candidate.clearedEncounters);
             values.Add(regionId);
             candidate.clearedEncounters = values.ToArray();
-            return store.Store(candidate);
+            if (!store.Store(candidate)) return false;
+            MarkPending(false);
+            LogTimingOnce("clear", regionId);
+            return true;
         }
 
         internal bool RecordSearch(string marker, out string message)
@@ -166,6 +226,8 @@ namespace BossRush
             candidate.discoveredNotes = values.ToArray();
             if (!store.Store(candidate))
             { message = L10n.T("手记提交失败，请稍后重试。", "Could not commit the note. Try again shortly."); return false; }
+            MarkPending(false);
+            LogTiming("note", marker);
             message = L10n.T("群岛见闻已收入本槽手记。", "The note is saved to this slot's archipelago journal.");
             return true;
         }
@@ -201,7 +263,10 @@ namespace BossRush
             if (!CanWrite || bit == 0 || (Current.visitedRegions & bit) != 0) return false;
             SkyIslandStoryData candidate = Current.Copy();
             candidate.visitedRegions |= bit;
-            return store.Store(candidate);
+            if (!store.Store(candidate)) return false;
+            MarkPending(false);
+            LogTiming("region_first", regionId);
+            return true;
         }
 
         internal string DescribeNpc(string id)
@@ -252,8 +317,19 @@ namespace BossRush
             if (!IsCurrentSlot || !safeToFlush) return;
             if (!TryRecoverFaultedStore()) return;
             // 共享引擎 Tick 固定只在基地重试；独立地图使用受战斗门保护的 RequestFlush 接续欠账。
-            if (store.HasPendingWrite || coordinator.HasDeferredFlush) coordinator.RequestFlush(out lastSaveError);
-            if (!store.HasPendingWrite && !coordinator.HasDeferredFlush && !store.IsStoreFaulted) lastSaveError = null;
+            if (store.HasPendingWrite || coordinator.HasDeferredFlush)
+            {
+                // 去抖只挡「丢了也能重做」的事实（见 FlushDebounceSeconds）；剧情动作与已经欠着的重试照旧立刻写。
+                if (pendingSince < 0f) pendingSince = Time.unscaledTime;
+                if (urgentPending || coordinator.HasDeferredFlush || Time.unscaledTime - pendingSince >= FlushDebounceSeconds)
+                    coordinator.RequestFlush(out lastSaveError);
+            }
+            if (!store.HasPendingWrite && !coordinator.HasDeferredFlush && !store.IsStoreFaulted)
+            {
+                lastSaveError = null;
+                pendingSince = -1f;
+                urgentPending = false;
+            }
         }
 
         internal void Close()
@@ -270,6 +346,8 @@ namespace BossRush
         internal bool TryClose()
         {
             if (!opened) return true;
+            // 离岛计时只记第一次尝试：保存被官方推迟时恢复 owner 每秒重试一次，不重复记。
+            LogTimingOnce("raid_close", null);
             if (IsCurrentSlot && (!TryRecoverFaultedStore() || !coordinator.TryFlushOnHostDestroy())) return false;
             store.ShutdownSubscription();
             opened = false;
@@ -302,6 +380,8 @@ namespace BossRush
                 coordinator = replacementCoordinator;
                 adopted = true;
                 lastSaveError = null;
+                // 接回来的快照是恢复出来的欠账，不等去抖。
+                MarkPending(true);
                 return true;
             }
             catch (Exception e)
@@ -318,6 +398,9 @@ namespace BossRush
         private void OnSlotChanged()
         {
             slotChanged = true;
+            // 旧槽的待写批次不会再写（IsCurrentSlot 挡住），去抖状态一并作废。
+            pendingSince = -1f;
+            urgentPending = false;
             if (coordinator != null) coordinator.NotifySlotChanged();
         }
 

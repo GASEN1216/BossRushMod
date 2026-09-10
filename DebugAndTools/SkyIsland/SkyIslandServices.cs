@@ -239,9 +239,11 @@ namespace BossRush
         {
             if (disposed || player == null || player.Health == null)
                 return L10n.T("现在没法处理伤口。", "Wounds cannot be treated right now.");
-            if (Time.unscaledTime < healReadyAt)
+            // 冷却是玩法计时，走游戏时间（AGENTS「玩法计时一律走游戏时间」）：旧写法 unscaledTime 在暂停菜单、
+            // 拍照模式与剧情面板（timeScale 压到 0）背后照走，开着暂停菜单挂 5 分钟就能再敷一副。
+            if (Time.time < healReadyAt)
             {
-                int wait = Mathf.CeilToInt(healReadyAt - Time.unscaledTime);
+                int wait = Mathf.CeilToInt(healReadyAt - Time.time);
                 return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") + wait +
                     (wait == 1
                         ? L10n.T(" 秒后再来。", " second until the next dose.")
@@ -258,7 +260,7 @@ namespace BossRush
                 return L10n.T("眠苔：钱没走通，先歇一会儿。",
                     "Miantai: The payment did not go through. Rest a moment.");
             player.Health.SetHealth(player.Health.MaxHealth);
-            healReadyAt = Time.unscaledTime + HealCooldown;
+            healReadyAt = Time.time + HealCooldown;
             return L10n.T("眠苔：苔药敷上了。云海上摔一跤可不好受。（花费 ",
                 "Miantai: The moss is on. A fall out here is no small thing. (cost ") + price + L10n.T("）", ")");
         }

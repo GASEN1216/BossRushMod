@@ -250,6 +250,69 @@ internal static class Program
         story.Tick(true);
         story.Close();
         Check(SavesSystem.Subscribers == 0, "all recovery sessions released events");
+
+        // ---- 2026-09-10 可玩性评估：岛上落盘去抖 ----
+        // 可重做的事实（到访 / 清场 / 见闻）在安全帧也要攒够 FlushDebounceSeconds 才整档写盘；
+        // 剧情动作照旧下一个安全帧就写（顺带把攒着的事实一起写掉）；离岛绕闸落盘不受去抖影响。
+        story = Open(9);
+        int beforeWrites = SavesSystem.PhysicalWrites;
+        Check(story.RecordRegionVisited("C"), "debounce: region visit accepted into the store");
+        story.Tick(true);
+        Check(SavesSystem.PhysicalWrites == beforeWrites, "debounce: a replayable fact does not trigger an immediate whole-file save");
+        UnityEngine.Time.unscaledTime += SkyIslandStoryService.FlushDebounceSeconds - 1f;
+        story.Tick(true);
+        Check(SavesSystem.PhysicalWrites == beforeWrites, "debounce: still inside the window");
+        UnityEngine.Time.unscaledTime += 2f;
+        story.Tick(false);
+        Check(SavesSystem.PhysicalWrites == beforeWrites, "debounce: an expired window still waits for a combat-safe frame");
+        story.Tick(true);
+        Check(SavesSystem.PhysicalWrites == beforeWrites + 1, "debounce: the batch is written once the window has passed");
+        story.Tick(true);
+        Check(SavesSystem.PhysicalWrites == beforeWrites + 1, "debounce: nothing pending, nothing written");
+        Check(story.RecordEncounterCleared("C_02"), "debounce: clear accepted");
+        Apply(story, SkyIslandStoryAction.FindPlantingRecord);
+        story.Tick(true);
+        Check(SavesSystem.PhysicalWrites == beforeWrites + 2,
+            "a story action flushes on the next safe frame and takes the pending replayable facts with it");
+        Check(story.RecordEncounterCleared("S1"), "close: clear accepted");
+        Check(story.TryClose(), "close: the host-destroy path flushes a debounced fact");
+        Check(SavesSystem.PhysicalWrites == beforeWrites + 3, "close: debounce never holds back the final save");
+        story = Open(9);
+        Check(story.Current.EncounterCleared("S1") && story.Current.EncounterCleared("C_02") && story.HasVisitedRegion("C")
+            && story.Current.Has(SkyIslandStoryFlag.PlantingRecord), "close: every accepted fact survives re-entry");
+        story.Close();
+
+        // ---- 战斗里了结的三件事：场上字幕与 TryApply 的回话是同一份文案 ----
+        foreach (SkyIslandStoryFlag outcome in SkyIslandStoryRules.CombatOutcomeFlags)
+        {
+            SkyIslandStoryAction outcomeAction = outcome == SkyIslandStoryFlag.ZhelingDefeated ? SkyIslandStoryAction.ZhelingDefeated
+                : outcome == SkyIslandStoryFlag.BellKeeperDefeated ? SkyIslandStoryAction.BellKeeperDefeated : SkyIslandStoryAction.StormSlain;
+            SkyIslandStoryData lit = SkyIslandStoryRules.CreateDefault();
+            lit.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp);
+            SkyIslandStoryData outcomeCandidate;
+            string outcomeMessage;
+            Check(SkyIslandStoryRules.TryApply(lit, outcomeAction, out outcomeCandidate, out outcomeMessage), "combat outcome accepted: " + outcomeAction);
+            Check(!string.IsNullOrEmpty(outcomeMessage) && outcomeMessage == SkyIslandStoryRules.CombatOutcome(outcome),
+                "combat outcome caption is the rule's own reply: " + outcomeAction);
+        }
+        Check(SkyIslandStoryRules.CombatOutcomeFlags.Length == 3, "exactly three combat-resolved outcomes are announced");
+        Check(SkyIslandStoryRules.CombatOutcome(SkyIslandStoryFlag.ZhelingReconciled) == null
+            && SkyIslandStoryRules.CombatOutcome(SkyIslandStoryFlag.Ending) == null, "panel actions have no combat caption");
+
+        // ---- 分段计时：进岛从 0 起记、同一次清场重投只记一行、离岛记一行 ----
+        UnityEngine.Time.realtimeSinceStartup = 100f;
+        story = Open(10);
+        Check(UnityEngine.Debug.LastLog != null && UnityEngine.Debug.LastLog.StartsWith("[SkyIsland] SKY_TIMING t=0.0 ev=raid_open", StringComparison.Ordinal),
+            "timing: raid open is logged from zero");
+        UnityEngine.Time.realtimeSinceStartup = 162.34f;
+        Check(story.RecordEncounterCleared("D"), "timing: clear accepted");
+        Check(UnityEngine.Debug.LastLog == "[SkyIsland] SKY_TIMING t=62.3 ev=clear id=D", "timing: clear logged with invariant one-decimal seconds");
+        UnityEngine.Debug.LastLog = null;
+        Check(!story.RecordEncounterCleared("D") && UnityEngine.Debug.LastLog == null, "timing: a repeated clear in the same raid is not logged twice");
+        Check(story.TryClose(), "timing: close succeeds");
+        Check(UnityEngine.Debug.LastLog != null && UnityEngine.Debug.LastLog.Contains(" ev=raid_close"), "timing: raid close is logged");
+        story.Close();
+        Check(SavesSystem.Subscribers == 0, "playtime sessions released events");
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

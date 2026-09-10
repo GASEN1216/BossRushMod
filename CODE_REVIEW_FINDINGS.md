@@ -2,6 +2,24 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-10 天空岛可玩性与时长评估：4 P2 / 3 P3
+
+owner 预期「整座岛约 10 小时体验完」，要求判断这个预期、优化局内流程并修 bug，无人值守。结论是**不成立**（中值：主线约 21 分钟、全部内容各一次约 1.6 小时、含合理重复约 4.2 小时）；
+时长模型、进度依赖图、流程问题、扩充方案与 13 项待拍板在 `docs/天空岛_可玩性与时长评估_2026-09-10.md`（local-only）。行号是修复前 `HEAD`（`977eff9`）的。
+并行会话尚未提交的布局 v2（岛群压缩、航标撤离、官方地图标记）相关问题只记在评估报告第六节 R-1…R-14，不在本表。**全部为 L1 / L2 证据，无实机验证。**
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-10-029 | P2 / COMPAT | 战斗里了结的三件事的剧情回话被整句丢弃：会话在清场或噬风倒下时直接 `story.TryApply` 并扔掉 `message`（`SkyIslandSession.cs:1104-1106`、`:1125`），玩家只看到「航路已清理 · 折翎」。「航路交给你」（`SkyIslandStoryRules.cs:148`）、钟守松口（`:179`）、「噬风散了，钟守少了一个理由」（`:186`，噬风说服路线在场上唯一的提示）从来没有显示过。 | **Fixed（待实机）**；文案收成 `SkyIslandStoryRules.CombatOutcome`，`TryApply` 三个分支取它；`SkyIslandWorldStory.Tick` 按新增旗标经 `session.Announce` 读成字幕，进岛首帧不重播。`SkyIslandPlaytimeFlowGuard` §1、执行回归 `SkyIslandStory`（字幕与规则回话同源） |
+| CR-2026-09-10-030 | P2 / COMPAT | 折翎旧腰牌纪念物读不到刻字：打赢折翎后他的剧情体不再露面，`DescribeNpc("sky_zheling")` 里那句刻字再无入口，纪念物面板只显示旅程摘要（`SkyIslandWorldStory.cs:384`、`:415`）——Wiki 承诺的「旧腰牌写着『航路交给你』，钟守认这份物证」读不到。 | **Fixed（待实机）**；`ZhelingBadgeText`（刻字 + 物证含义 + 摘要），`Beacon` 接受正文参数。守卫 §2 |
+| CR-2026-09-10-031 | P3 / COMPAT | 「挑战旧航路守卫」「挑战守钟装置」「直面云海里的那阵风」三个选项先 `presentation.Dispose()` 再返回回执（`SkyIslandWorldStory.cs:309`、`:334`），按钮回调把回执交给 `SetBodyText`（`SkyIslandStoryPresentation.cs:395`），而它见正文已销毁直接返回（`:442`）——面板一关就没了下文。 | **Fixed（待实机）**；收起后经 `session.Announce` 读成字幕。守卫 §3 并禁止「收起后直接 return 回执」的写法 |
+| CR-2026-09-10-032 | P2 / COMPAT | 8 个 `Search_*_02` 见闻点全部落进 `PointName` / `Lore` 的 default（`SkyIslandWorldStory.cs:42`、`:469-471`）：标题都是「阅读群岛见闻」、正文是同一段木牌文案。20 处见闻只有 13 种，而且没有一处给支线或机制线索（S4 观星镜此前只在钟守的拒绝文案里出现）。 | **Fixed（待实机）**；8 个专属标题与正文，各指向一处支线或机制（种植记录、委托规矩、眠苔、寄给折翎的旧信、噬风风眼躲法、航路图、瞭台守卫与观星镜、钟守要的证据）。守卫 §4（20 个键逐个有专属分支、正文两两不同）；`SkyIslandStoryPanelLayoutPropertyTest` 与 `SkyIslandLocalizationGuard` 复跑绿 |
+| CR-2026-09-10-033 | P3 / COMPAT | 眠苔苔药的 5 分钟冷却走 `Time.unscaledTime`（`SkyIslandServices.cs:242`、`:244`、`:261`）：暂停菜单、拍照模式与剧情面板把 `timeScale` 压到 0 时冷却照走，开着暂停菜单挂 5 分钟就能再敷一副。 | **Fixed（待实机）**；改 `Time.time`。守卫 §5 |
+| CR-2026-09-10-034 | P2 / COMPAT | 岛上每接受一条事实，下一个 45 m 内无敌人的帧就整档同步写盘：`SkyIslandStoryService.Tick`（`:255`）→ `BossRushSaveCoordinatorEngine.cs:269` → 官方 `SavesSystem.SaveFile`（反编译源 `Saves/SavesSystem.cs:503-520`：备份拷贝 + `ES3.StoreCachedFile` 整档写）。新存档从头玩下来，首次到访 12 区、首次清场 13 组、收录 20 处见闻就是四十多次，落在刚清完一组、刚踏上新岛的帧上。 | **Fixed（待实机）**；到访 / 清场 / 见闻去抖 30 秒（`FlushDebounceSeconds`），剧情动作与欠账重试立刻写，离岛、死亡与宿主销毁走 `TryClose` 绕闸全写。守卫 §6；执行回归（去抖窗口、战斗门、剧情动作带走攒着的事实、离岛全写、重入不丢）。帧时间收益未实测 |
+| CR-2026-09-10-035 | P3 / COMPAT | 折翎「挑战旧航路守卫」紧挨「留下来谈」，打赢即永久关闭和解线（`ReconcileZheling` 对已了结的折翎直接拒绝），按钮上不说（`SkyIslandWorldStory.cs:317`）。 | **Fixed（待实机）**；标签写明「（战胜后不能再和解）」。守卫 §8 |
+
+反向验证：30 个探针（守卫 24、执行回归 6）全部转红，执行回归 6 个都红在预期断言上、无编译错误；破坏做在仓库干净签出（`HEAD` + 本轮文件）上，逐字节还原并 sha256 核对，真实工作区前后 sha256 不变。
+
 ## 2026-09-10 天空岛全方位审核：3 P1 / 13 P2 / 5 P3
 
 owner 要求对天空岛（晴岚群岛）做一次全方位审核并按严重度全部修复、无人值守。范围：生命周期与静态缓存、存档安全（含 F3 套件只读）、

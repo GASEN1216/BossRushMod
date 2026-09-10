@@ -145,8 +145,7 @@ namespace BossRush
                     flag = SkyIslandStoryFlag.ZhelingDefeated;
                     if (source.ZhelingResolved)
                         required = L10n.T("折翎的结果已经记下。", "Zheling's outcome is already on record.");
-                    message = L10n.T("折翎停下战斗，将旧腰牌留在路旁：『航路交给你。』镜水寺的路已开放。",
-                        "Zheling breaks off the fight and leaves his old badge by the road: 'The route is yours now.' The Mirrorwater Temple road is open."); break;
+                    message = CombatOutcome(SkyIslandStoryFlag.ZhelingDefeated); break;
                 case SkyIslandStoryAction.ReconcileBellKeeper:
                     flag = SkyIslandStoryFlag.BellKeeperReconciled;
                     if (!source.BothBeacons)
@@ -176,15 +175,13 @@ namespace BossRush
                             "Restore both beacons before facing the Bell Keeper.");
                     else if (source.BellKeeperResolved)
                         required = L10n.T("钟守的结果已经记下。", "The Bell Keeper's outcome is already on record.");
-                    message = L10n.T("失控的守钟装置停下。钟守望向亮着的航标：『那就让钟声，为归来的人响一次。』",
-                        "The runaway bell engine stops. The Bell Keeper looks out at the lit beacons: 'Then let the bell ring once, for the ones coming home.'"); break;
+                    message = CombatOutcome(SkyIslandStoryFlag.BellKeeperDefeated); break;
                 case SkyIslandStoryAction.StormSlain:
                     flag = SkyIslandStoryFlag.StormSlain;
                     if (!source.BothBeacons)
                         required = L10n.T("两端航标都亮起来，它才会循着光过来。",
                             "It only comes for the light once both beacons burn.");
-                    message = L10n.T("噬风散了。折翎说的『封路』和钟守说的『不安全』，从今天起都少了一个理由。",
-                        "The Windeater is gone. Zheling's 'close the lanes' and the Bell Keeper's 'it is not safe' each lost a reason today."); break;
+                    message = CombatOutcome(SkyIslandStoryFlag.StormSlain); break;
                 case SkyIslandStoryAction.RingHomecomingBell:
                     flag = SkyIslandStoryFlag.Ending;
                     if (!source.BothBeacons || !source.BellKeeperResolved)
@@ -201,6 +198,37 @@ namespace BossRush
             candidate.flags |= (int)flag;
             return true;
         }
+
+        /// <summary>
+        /// 在战斗里了结的三件事（战胜折翎、战胜守钟装置、击败噬风）的剧情回话，文案唯一来源；其它旗标返回 null。
+        ///
+        /// 这三个结果不是在面板里点出来的：会话在清场或噬风倒下时直接 TryApply，回话没有面板可写，以前被整句丢掉，
+        /// 玩家只看到一句「航路已清理 · 折翎」。「航路交给你」的旧腰牌、钟守松口的那句，以及「噬风散了、钟守少了一个理由」
+        /// ——噬风这条说服路线在场上唯一的提示——全都没人看得到。现在 TryApply 的对应分支取这里，
+        /// <c>SkyIslandWorldStory.Tick</c> 在这些旗标新增时把它读成字幕。
+        /// </summary>
+        internal static string CombatOutcome(SkyIslandStoryFlag flag)
+        {
+            switch (flag)
+            {
+                case SkyIslandStoryFlag.ZhelingDefeated:
+                    return L10n.T("折翎停下战斗，将旧腰牌留在路旁：『航路交给你。』镜水寺的路已开放。",
+                        "Zheling breaks off the fight and leaves his old badge by the road: 'The route is yours now.' The Mirrorwater Temple road is open.");
+                case SkyIslandStoryFlag.BellKeeperDefeated:
+                    return L10n.T("失控的守钟装置停下。钟守望向亮着的航标：『那就让钟声，为归来的人响一次。』",
+                        "The runaway bell engine stops. The Bell Keeper looks out at the lit beacons: 'Then let the bell ring once, for the ones coming home.'");
+                case SkyIslandStoryFlag.StormSlain:
+                    return L10n.T("噬风散了。折翎说的『封路』和钟守说的『不安全』，从今天起都少了一个理由。",
+                        "The Windeater is gone. Zheling's 'close the lanes' and the Bell Keeper's 'it is not safe' each lost a reason today.");
+                default: return null;
+            }
+        }
+
+        /// <summary>需要在场上读出回话的战斗结果旗标（<see cref="CombatOutcome"/> 有文案的那三个），按这个顺序读。</summary>
+        internal static readonly SkyIslandStoryFlag[] CombatOutcomeFlags =
+        {
+            SkyIslandStoryFlag.ZhelingDefeated, SkyIslandStoryFlag.BellKeeperDefeated, SkyIslandStoryFlag.StormSlain
+        };
 
         /// <summary>
         /// 失败提示的对外文案：中文界面是「前缀 + 异常原文」，英文界面只给前缀并指向日志。

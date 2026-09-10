@@ -56,7 +56,7 @@ Once both beacons burn again, something comes in off the cloud sea. At the twin-
 - Roughly thirteen times a regular enemy's health, visibly larger, storm-coloured.
 - At about **80% / 60% / 40% / 20%** health it enters a new phase — four in all: after a **~1.5 second telegraph** it releases three expanding storm rings and speeds up. A glowing ring is drawn on the ground at its feet, and **that ring is the actual blast radius of the next pulse**; the later two are drawn ahead of time during the gaps. The telegraph is tuned so that a normal run gets you out from dead centre — start moving the moment the ring appears, or you eat all three pulses. **Rock walls and solid terrain block it**: if you cannot clear the ring in time, putting solid geometry between you and the Windeater also spares you.
 - Beating it leaves a Starworks cache where it fell.
-- **It is optional, and worth it**: with the storm gone, the Silent Bell Keeper no longer needs the full set of old letter, route chart, telescope and Zheling's reconciliation — the wind that kept him from ringing simply is not out there any more, and that is reason enough.
+- **It is optional, and worth it**: with the storm gone, the Silent Bell Keeper no longer needs the full set of old letter, route chart, telescope and a settled matter with Zheling — the wind that kept him from ringing simply is not out there any more, and that is reason enough. When it falls, a caption at the bottom of the screen spells out what its defeat changes.
 
 You can finish the story without fighting it. Once beaten, the save slot remembers it permanently and it does not return.
 
@@ -64,10 +64,10 @@ You can finish the story without fighting it. Once beaten, the save slot remembe
 
 Qinghe and Weibai are long-term residents: daily chat, gifts, affinity and marriage all work. After marriage their location follows the usual spouse living and following rules; every required lane action also exists as a standalone device, so a resident being away never blocks the main line.
 
-Each resident offers something useful:
+Four of them offer a practical service; the other two are story branches:
 
-- **Fuzhou (Cloudrise Dock) · Dock refit** — pay cash to repair everything you're carrying. The price follows the same value-based rate as the repair bench, and repairing still shaves a little off the permanent durability ceiling — same rules as the bench, just without the trip home. Paid services on the island settle from **either the cash you carry or your bank account**, exactly as they do back at base. The dock device does the same job when Fuzhou isn't around.
-- **Miantai (Hanging Root Wood) · Moss remedy** — pay to heal to full. **Priced by how much health you are missing**, so a scratch is cheap and a near-death is a serious bill; the five-minute cooldown means one or two uses per raid. It is not a free second life.
+- **Fuzhou (Cloudrise Dock) · Dock refit** — pay to repair the worn gear you're carrying: the same items the repair bench accepts, so medicine and food are not topped up. The price follows the same value-based rate as the repair bench, and repairing still shaves a little off the permanent durability ceiling — same rules as the bench, just without the trip home. Paid services on the island settle from **either the cash you carry or your bank account**, exactly as they do back at base. The dock device does the same job when Fuzhou isn't around.
+- **Miantai (Hanging Root Wood) · Moss remedy** — pay to heal to full. **Priced by how much health you are missing**, so a scratch is cheap and a near-death is a serious bill; the five-minute cooldown runs on game time (it does not tick down while the game is paused) and means one or two uses per raid. It is not a free second life.
 - **Weibai (Windchime Market) · Lane contracts** — see below.
 - **Qinghe (Green Terraces / Windchime Market) · Homecoming meal** — once you've returned her planting record, ask for one free meal per raid: higher maximum health and movement speed for that run. The health the raised cap adds is filled in, but actual wounds still need Miantai. If Qinghe herself is away from the island (after marrying her, for instance), the **terrace garden plot** serves the same meal.
 - **Zheling / the Silent Bell Keeper** — story branches: peace or a fight.
@@ -82,13 +82,13 @@ Take a contract from Weibai herself or from the Windchime Market noticeboard —
 
 Progress counts from **the moment you accept**: earlier work doesn't count, and nothing is deducted. On delivery Weibai leaves a reward crate beside her — each contract lands on a different bearing, so crates never stack and never block her or the noticeboard. Each completed contract raises the next target by one, and **from the third contract onward the reward moves up to Starworks tier**. Three contracts per raid at most. Contracts are per raid and reset when you return to base.
 
-Weibai **only hands out work you can finish this trip**. The further you get, the fewer regions are left unvisited, so “Survey the isles” may stop being offered; “Clear the lanes” and “Recover supplies” are normally available every trip, since both encounters and scavenging points refresh per raid. Changed your mind after accepting? You can drop a contract with her at any time: dropping it doesn't count as a completion and pays nothing, but it frees the slot.
+Weibai **only hands out work you can finish this trip**. “Survey the isles” only counts regions this save slot has never set foot on, so once the whole archipelago is on your map it is no longer offered at all; “Clear the lanes” and “Recover supplies” are normally available every trip, since both encounters and scavenging points refresh per raid. Changed your mind after accepting? You can drop a contract with her at any time: dropping it doesn't count as a completion and pays nothing, but it frees the slot.
 
 ### The Homecoming Bell and the ending
 
 With both beacons restored, talk to the Bell Keeper about the last obstacle. Collecting the old letter and route chart, repairing the telescope and **settling things with Zheling one way or the other** (reconciling and defeating both count) will persuade him — and so will simply having dealt with the Windeater. You may also challenge him and continue after winning.
 
-Challenging Zheling does not lock you out of the peaceful route: the old badge he leaves behind reads "the route is yours now", and the Bell Keeper accepts it as proof.
+Challenging Zheling does not lock you out of the Bell Keeper's peaceful route: the old badge he leaves behind reads "the route is yours now", and the Bell Keeper accepts it as proof — walk up to the badge to read its inscription. Winning that fight does close the door on reconciling with Zheling himself, and the challenge button says so. Outcomes settled in a fight (beating Zheling, the bell engine or the Windeater) are read out as a caption at the bottom of the screen.
 
 
 After the Bell Keeper is resolved you still have to ring the bell yourself before the finale counts. Afterwards you can return to fill in notes and side paths; completed main-line steps never have to be redone.
@@ -102,3 +102,5 @@ Crate contents, contract progress and the homecoming meal are **per raid** and a
 [tip] A region only counts as visited once you actually set foot on that island — eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.
 
 [tip] The objective on the card at the right of the screen changes with your progress. If the next step isn't obvious, open the map first, then follow the physical bridges you have already unlocked. The HUD also tells you how many scavenging points are left this run and whether you're carrying a contract.
+
+[tip] Each of the twenty notes around the isles has its own entry, and several quietly point to a side path or a mechanic — the dock's waiting list, the contract stubs at the market, the notches on the boardwalk rail, the maintenance log at the workshop.
