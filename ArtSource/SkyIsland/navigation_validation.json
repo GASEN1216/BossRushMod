@@ -1,217 +1,222 @@
 {
   "status": "PASS",
-  "navigationVertices": 4037,
-  "navigationTriangles": 4215,
-  "groundVertices": 1386,
-  "groundTriangles": 1564,
+  "navigationVertices": 3870,
+  "navigationTriangles": 4048,
+  "groundVertices": 1270,
+  "groundTriangles": 1448,
   "navigationConnectedComponents": 1,
-  "navigationAreaXZ": 213823.211,
-  "navigationSurfaceArea": 213933.151,
-  "physicalWalkableAreaXZ": 222265.117,
-  "maximumSlopeDegrees": 16.3139,
+  "navigationAreaXZ": 107973.192,
+  "navigationSurfaceArea": 108029.03,
+  "physicalWalkableAreaXZ": 114177.912,
+  "maximumSlopeDegrees": 15.4612,
   "clearanceMeters": 0.7,
   "boundsXYZ": [
     [
-      -397.5,
-      387.5
+      -320.0,
+      335.0
     ],
     [
       0,
-      62
+      26
     ],
     [
-      -350.0,
-      375.0
+      -262.5,
+      277.5
     ]
   ],
   "islandCount": 12,
   "bridgeCount": 15,
   "obstacleCount": 88,
-  "markerCount": 76,
+  "markerCount": 81,
   "bridgeGeometry": {
     "AB": {
       "samples": 10,
-      "lengthMeters": 45.0,
+      "lengthMeters": 30.0,
       "maximumTurnDegrees": 0.0,
-      "maximumGradeChangeDegrees": 2.7877,
-      "maximumMouthSlopeDegrees": 1.3972
+      "maximumGradeChangeDegrees": 2.6464,
+      "maximumMouthSlopeDegrees": 1.3261
     },
     "BC": {
+      "samples": 10,
+      "lengthMeters": 35.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.2698,
+      "maximumMouthSlopeDegrees": 1.1367
+    },
+    "CD": {
+      "samples": 10,
+      "lengthMeters": 37.5,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.541,
+      "maximumMouthSlopeDegrees": 1.273
+    },
+    "DE": {
+      "samples": 31,
+      "lengthMeters": 50.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 1.0606,
+      "maximumMouthSlopeDegrees": 0.5305
+    },
+    "BF": {
+      "samples": 10,
+      "lengthMeters": 45.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 3.4796,
+      "maximumMouthSlopeDegrees": 1.7463
+    },
+    "FG": {
+      "samples": 10,
+      "lengthMeters": 27.5,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 3.4587,
+      "maximumMouthSlopeDegrees": 1.7357
+    },
+    "GE": {
+      "samples": 31,
+      "lengthMeters": 42.5,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.2002,
+      "maximumMouthSlopeDegrees": 1.1017
+    },
+    "EH": {
       "samples": 10,
       "lengthMeters": 40.0,
       "maximumTurnDegrees": 0.0,
       "maximumGradeChangeDegrees": 3.1725,
       "maximumMouthSlopeDegrees": 1.5911
     },
-    "CD": {
-      "samples": 10,
-      "lengthMeters": 45.0,
-      "maximumTurnDegrees": 0.0,
-      "maximumGradeChangeDegrees": 4.1682,
-      "maximumMouthSlopeDegrees": 2.0953
-    },
-    "DE": {
-      "samples": 10,
-      "lengthMeters": 75.0,
-      "maximumTurnDegrees": 0.0,
-      "maximumGradeChangeDegrees": 2.817,
-      "maximumMouthSlopeDegrees": 1.4119
-    },
-    "BF": {
-      "samples": 28,
-      "lengthMeters": 111.89,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 2.3853,
-      "maximumMouthSlopeDegrees": 1.1947
-    },
-    "FG": {
-      "samples": 26,
-      "lengthMeters": 88.154,
-      "maximumTurnDegrees": 9.7115,
-      "maximumGradeChangeDegrees": 3.0543,
-      "maximumMouthSlopeDegrees": 1.5315
-    },
-    "GE": {
-      "samples": 28,
-      "lengthMeters": 126.665,
-      "maximumTurnDegrees": 9.2568,
-      "maximumGradeChangeDegrees": 0.2335,
-      "maximumMouthSlopeDegrees": 0.1168
-    },
-    "EH": {
-      "samples": 36,
-      "lengthMeters": 151.12,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 1.9448,
-      "maximumMouthSlopeDegrees": 0.9735
-    },
     "CS1": {
-      "samples": 20,
-      "lengthMeters": 71.721,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 0.8459,
-      "maximumMouthSlopeDegrees": 0.423
+      "samples": 10,
+      "lengthMeters": 30.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 1.5902,
+      "maximumMouthSlopeDegrees": 0.7957
     },
     "DS2": {
-      "samples": 20,
-      "lengthMeters": 69.221,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 0.8783,
-      "maximumMouthSlopeDegrees": 0.4392
+      "samples": 10,
+      "lengthMeters": 30.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 1.5902,
+      "maximumMouthSlopeDegrees": 0.7957
     },
     "FS3": {
-      "samples": 19,
-      "lengthMeters": 70.601,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 1.7189,
-      "maximumMouthSlopeDegrees": 0.8602
+      "samples": 10,
+      "lengthMeters": 30.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.6464,
+      "maximumMouthSlopeDegrees": 1.3261
     },
     "GS4": {
-      "samples": 19,
-      "lengthMeters": 77.757,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 1.5524,
-      "maximumMouthSlopeDegrees": 0.7768
+      "samples": 10,
+      "lengthMeters": 30.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 2.6464,
+      "maximumMouthSlopeDegrees": 1.3261
     },
     "K1": {
-      "samples": 32,
-      "lengthMeters": 188.856,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 1.5485,
-      "maximumMouthSlopeDegrees": 0.7748
+      "samples": 45,
+      "lengthMeters": 118.491,
+      "maximumTurnDegrees": 9.9573,
+      "maximumGradeChangeDegrees": 1.799,
+      "maximumMouthSlopeDegrees": 0.9004
     },
     "K2": {
-      "samples": 27,
-      "lengthMeters": 245.971,
-      "maximumTurnDegrees": 9.7628,
-      "maximumGradeChangeDegrees": 2.1279,
-      "maximumMouthSlopeDegrees": 1.0654
+      "samples": 51,
+      "lengthMeters": 147.385,
+      "maximumTurnDegrees": 9.968,
+      "maximumGradeChangeDegrees": 1.9667,
+      "maximumMouthSlopeDegrees": 0.9845
     },
     "K3": {
-      "samples": 35,
-      "lengthMeters": 196.503,
-      "maximumTurnDegrees": 10.0,
-      "maximumGradeChangeDegrees": 2.5246,
-      "maximumMouthSlopeDegrees": 1.2647
+      "samples": 31,
+      "lengthMeters": 70.0,
+      "maximumTurnDegrees": 0.0,
+      "maximumGradeChangeDegrees": 3.9416,
+      "maximumMouthSlopeDegrees": 1.9802
     }
   },
   "fromSpawnWalkablePathDistancesMeters": {
-    "Region_A": 48.11,
-    "Region_B": 210.7,
-    "Region_C": 440.78,
-    "Region_D": 589.17,
-    "Region_E": 570.04,
-    "Region_F": 448.23,
-    "Region_G": 647.13,
-    "Region_H": 908.45,
-    "Region_S1": 644.34,
-    "Region_S2": 755.63,
-    "Region_S3": 687.79,
-    "Region_S4": 823.42,
+    "Region_A": 46.72,
+    "Region_B": 168.47,
+    "Region_C": 313.64,
+    "Region_D": 430.34,
+    "Region_E": 374.13,
+    "Region_F": 328.67,
+    "Region_G": 452.88,
+    "Region_H": 520.46,
+    "Region_S1": 438.19,
+    "Region_S2": 578.36,
+    "Region_S3": 447.7,
+    "Region_S4": 556.84,
     "PlayerSpawn": 0.0,
-    "MainExtraction": 39.48,
-    "BellExtraction": 930.72,
-    "Exit": 39.48,
-    "EnemySpawn_A": 33.29,
-    "POI_A": 48.25,
-    "Search_A": 49.24,
-    "Search_A_02": 80.64,
-    "Lamp_A": 46.53,
-    "Lamp_A_02": 49.07,
-    "EnemySpawn_B": 197.49,
-    "POI_B": 225.24,
-    "Search_B": 195.5,
-    "Search_B_02": 235.77,
-    "Lamp_B": 221.08,
-    "Lamp_B_02": 188.12,
-    "EnemySpawn_C": 414.75,
-    "POI_C": 447.16,
-    "Search_C": 471.79,
-    "Search_C_02": 383.81,
-    "Lamp_C": 462.1,
-    "Lamp_C_02": 405.44,
-    "EnemySpawn_D": 565.0,
-    "POI_D": 626.62,
-    "Search_D": 600.95,
-    "Search_D_02": 611.09,
-    "Lamp_D": 614.06,
-    "Lamp_D_02": 556.47,
-    "EnemySpawn_E": 584.68,
-    "POI_E": 569.41,
-    "Search_E": 533.1,
-    "Search_E_02": 613.62,
-    "Lamp_E": 553.83,
-    "Lamp_E_02": 589.22,
-    "EnemySpawn_F": 448.77,
-    "POI_F": 449.91,
-    "Search_F": 456.61,
-    "Search_F_02": 527.79,
-    "Lamp_F": 460.57,
-    "Lamp_F_02": 497.81,
-    "EnemySpawn_G": 660.01,
-    "POI_G": 663.61,
-    "Search_G": 609.19,
-    "Search_G_02": 644.07,
-    "Lamp_G": 632.37,
-    "Lamp_G_02": 640.66,
-    "EnemySpawn_H": 882.57,
-    "POI_H": 937.59,
-    "Search_H": 894.97,
-    "Search_H_02": 902.97,
-    "Lamp_H": 957.47,
-    "Lamp_H_02": 872.99,
-    "EnemySpawn_S1": 648.38,
-    "POI_S1": 609.27,
-    "Search_S1": 646.62,
-    "EnemySpawn_S2": 770.69,
-    "POI_S2": 797.04,
-    "Search_S2": 777.32,
-    "EnemySpawn_S3": 707.19,
-    "POI_S3": 671.67,
-    "Search_S3": 687.82,
-    "EnemySpawn_S4": 838.09,
-    "POI_S4": 860.92,
-    "Search_S4": 843.63
+    "MainExtraction": 11.05,
+    "BellExtraction": 524.56,
+    "Exit": 11.05,
+    "Relay_DE": 414.18,
+    "Relay_GE": 437.65,
+    "Relay_K1": 311.27,
+    "Relay_K2": 296.04,
+    "Relay_K3": 270.4,
+    "EnemySpawn_A": 63.85,
+    "POI_A": 56.35,
+    "Search_A": 31.76,
+    "Search_A_02": 70.32,
+    "Lamp_A": 52.67,
+    "Lamp_A_02": 31.57,
+    "EnemySpawn_B": 158.35,
+    "POI_B": 188.98,
+    "Search_B": 160.44,
+    "Search_B_02": 210.53,
+    "Lamp_B": 179.58,
+    "Lamp_B_02": 138.29,
+    "EnemySpawn_C": 288.07,
+    "POI_C": 334.27,
+    "Search_C": 335.11,
+    "Search_C_02": 304.09,
+    "Lamp_C": 292.59,
+    "Lamp_C_02": 332.64,
+    "EnemySpawn_D": 402.48,
+    "POI_D": 434.74,
+    "Search_D": 441.68,
+    "Search_D_02": 440.7,
+    "Lamp_D": 423.32,
+    "Lamp_D_02": 394.36,
+    "EnemySpawn_E": 360.85,
+    "POI_E": 371.24,
+    "Search_E": 337.67,
+    "Search_E_02": 419.17,
+    "Lamp_E": 365.11,
+    "Lamp_E_02": 357.77,
+    "EnemySpawn_F": 355.23,
+    "POI_F": 289.82,
+    "Search_F": 373.65,
+    "Search_F_02": 314.0,
+    "Lamp_F": 319.03,
+    "Lamp_F_02": 363.16,
+    "EnemySpawn_G": 418.45,
+    "POI_G": 454.61,
+    "Search_G": 412.65,
+    "Search_G_02": 496.05,
+    "Lamp_G": 435.51,
+    "Lamp_G_02": 422.21,
+    "EnemySpawn_H": 531.32,
+    "POI_H": 516.53,
+    "Search_H": 503.19,
+    "Search_H_02": 546.43,
+    "Lamp_H": 525.42,
+    "Lamp_H_02": 497.39,
+    "EnemySpawn_S1": 423.81,
+    "POI_S1": 459.11,
+    "Search_S1": 454.72,
+    "EnemySpawn_S2": 549.26,
+    "POI_S2": 578.41,
+    "Search_S2": 581.71,
+    "EnemySpawn_S3": 500.39,
+    "POI_S3": 475.52,
+    "Search_S3": 464.21,
+    "EnemySpawn_S4": 573.76,
+    "POI_S4": 544.64,
+    "Search_S4": 546.48
   },
   "explorationRoute": {
     "sequence": [
@@ -231,55 +236,55 @@
       {
         "from": "PlayerSpawn",
         "to": "Region_B",
-        "meters": 210.7
+        "meters": 168.47
       },
       {
         "from": "Region_B",
         "to": "Region_C",
-        "meters": 281.11
+        "meters": 179.15
       },
       {
         "from": "Region_C",
         "to": "Region_D",
-        "meters": 243.08
+        "meters": 166.29
       },
       {
         "from": "Region_D",
         "to": "Region_E",
-        "meters": 280.8
+        "meters": 200.81
       },
       {
         "from": "Region_E",
         "to": "Region_G",
-        "meters": 300.58
+        "meters": 203.13
       },
       {
         "from": "Region_G",
         "to": "Region_F",
-        "meters": 312.52
+        "meters": 184.74
       },
       {
         "from": "Region_F",
         "to": "Region_B",
-        "meters": 276.71
+        "meters": 185.4
       },
       {
         "from": "Region_B",
         "to": "Region_E",
-        "meters": 365.62
+        "meters": 207.55
       },
       {
         "from": "Region_E",
         "to": "Region_H",
-        "meters": 342.71
+        "meters": 170.55
       },
       {
         "from": "Region_H",
         "to": "BellExtraction",
-        "meters": 51.59
+        "meters": 37.94
       }
     ],
-    "meters": 2665.42
+    "meters": 1704.03
   },
   "distanceMethod": "实体三角面边/面内连接图 Dijkstra；每条线段实际在面内，长度为可行路线的上界，非 A* funnel 最短距离",
   "verified": [

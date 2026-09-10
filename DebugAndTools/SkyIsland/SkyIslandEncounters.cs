@@ -191,12 +191,20 @@ namespace BossRush
             return Find(id) != null && completed(id);
         }
 
+        /// <summary>
+        /// 自动敌群的触发半径（米）。布局 v2 岛间桥只有 27~53 米，旧值 85 米会让玩家还站在风铃集这类无敌安全枢纽时
+        /// 就把邻岛敌群刷出来；55 米下站在风铃集任何一处都够不到邻岛敌群（最近 68 米），走上桥中段才触发。
+        /// </summary>
+        internal const float AutoSpawnRange = 55f;
+        /// <summary>手动挑战（折翎 / 钟守 / 噬风）的发起距离（米）：要求在同一座岛上，布局 v2 里最远的是折翎 63 米。</summary>
+        internal const float ChallengeRange = 70f;
+
         internal bool BeginChallenge(string id)
         {
             if (closed || !valid()) return false;
             Encounter encounter = Find(id);
             if (encounter == null || !encounter.Manual || encounter.Cleared || completed(id) || encounter.Started ||
-                Time.time < encounter.RetryAt || Vector3.Distance(player.transform.position, encounter.Marker.position) > 90 ||
+                Time.time < encounter.RetryAt || Vector3.Distance(player.transform.position, encounter.Marker.position) > ChallengeRange ||
                 AnySpawning() || CountActiveActors() + encounter.Count > 12) return false;
             Spawn(encounter);
             return true;
@@ -251,7 +259,7 @@ namespace BossRush
                 if ((encounter.Manual && !encounter.Started) || encounter.Cleared || Time.time < encounter.RetryAt) continue;
                 int missing = CountMissing(encounter);
                 if (missing == 0 || active + missing > 12) continue;
-                if ((player.transform.position - encounter.Marker.position).sqrMagnitude > 85 * 85) continue;
+                if ((player.transform.position - encounter.Marker.position).sqrMagnitude > AutoSpawnRange * AutoSpawnRange) continue;
                 Spawn(encounter);
                 break;
             }

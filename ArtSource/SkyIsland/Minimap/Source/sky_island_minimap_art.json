@@ -1,0 +1,34 @@
+{
+  "textureSize": 1024,
+  "imageWorldSize": 695.0,
+  "mapWorldCenter": [
+    7.5,
+    7.5
+  ],
+  "geometrySha256": "0b1fcc5ecfb91cafcc0e66f6e13c9b94e9ff649e094fc384ca9a44bb8eeab6f4",
+  "sha256": "2b6d8a6ee7b6aa8ddf29f21fd52d71b0ebc6503f15a4aad3390fa489dbd2534e",
+  "model": "gpt-image-2",
+  "prompt": "ArtSource/SkyIsland/Minimap/Source/prompt.txt",
+  "rawSha256": "af7a4ee59df14ce05f70a91c2b44e7a4eb28adc2d1c0b059d40bdab280e62c60",
+  "rawSize": [
+    1254,
+    1254
+  ],
+  "grade": "vanilla",
+  "alignmentIoU": [
+    0.9549,
+    0.9566
+  ],
+  "warp": [
+    [
+      1.0006999969482422,
+      0.0009899999713525176,
+      -0.9404399991035461
+    ],
+    [
+      -5.999999848427251e-05,
+      1.0037699937820435,
+      -2.1252400875091553
+    ]
+  ]
+}

@@ -60,11 +60,15 @@ namespace BossRush
             return 1f;
         }
 
+        /// <summary>
+        /// 官方 AI 的强制追踪距离（forceTracePlayerDistance）。布局 v2 把岛距从 40~250 米压到 30~50 米，
+        /// 旧值 100~140 米会让敌人越过整座桥追进风铃集这类安全枢纽；按岛群压缩比例同步收紧，档次顺序不变。
+        /// </summary>
         internal static float TraceDistance(SkyIslandEnemyTier tier)
         {
-            if (tier == SkyIslandEnemyTier.Storm) return 140f;
-            if (tier == SkyIslandEnemyTier.Scav) return 100f;
-            return 120f;
+            if (tier == SkyIslandEnemyTier.Storm) return 100f;
+            if (tier == SkyIslandEnemyTier.Scav) return 70f;
+            return 85f;
         }
 
         internal static Color Tint(SkyIslandEnemyTier tier)

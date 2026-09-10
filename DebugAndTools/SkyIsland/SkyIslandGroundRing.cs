@@ -97,7 +97,8 @@ namespace BossRush
     /// 这里把那两个环真的画出来：
     /// - 半径直接取 <c>SkyIslandSession.ExtractionRadius</c>，圈内即判定内，不做示意放大；
     /// - 落点按地面射线吸附，标记本身可能悬在地面上方；
-    /// - 钟庭环只在敲钟结局后出现，与 <c>SkyIslandSession.BellExitIfUnlocked()</c> 同一事实源；
+    /// - 钟庭环在双航标点亮后出现，与 <c>SkyIslandSession.BellExitIfUnlocked()</c> 同一事实源；
+    /// - 布局 v2 另有悬根林 / 残星工坊两处航标广场环，分别随风标 / 星灯点亮出现（<see cref="AddBeaconRings"/>）；
     /// - 纯表现层：无碰撞体、无每帧工作，<see cref="Apply"/> 只在解锁状态真的翻转时动一次。
     /// </summary>
     internal sealed class SkyIslandExtractionRings : IDisposable
@@ -107,8 +108,8 @@ namespace BossRush
         /// <summary>抬离地面的高度，避免与地面共面产生 z-fighting。</summary>
         internal const float GroundOffset = 0.06f;
 
-        private LineRenderer dockRing, bellRing;
-        private bool bellVisible, disposed;
+        private LineRenderer dockRing, bellRing, windRing, starRing;
+        private bool bellVisible, windVisible, starVisible, disposed;
 
         internal SkyIslandExtractionRings(Transform root, Transform dock, Transform bell, float radius, int groundMask)
         {
@@ -141,12 +142,33 @@ namespace BossRush
             }
         }
 
-        /// <summary>按敲钟结局翻转钟庭环。幂等，状态没变时零开销。</summary>
+        /// <summary>按双航标翻转钟庭环。幂等，状态没变时零开销。</summary>
         internal void Apply(bool bellUnlocked)
         {
             if (disposed || bellRing == null || bellVisible == bellUnlocked) return;
             bellVisible = bellUnlocked;
             bellRing.gameObject.SetActive(bellUnlocked);
+        }
+
+        /// <summary>
+        /// 布局 v2：两处航标广场的撤离环，与钟庭环同色、同样默认隐藏；锚点缺失时就是没有这个环。
+        /// 由会话按 <c>WindExitIfUnlocked()</c> / <c>StarExitIfUnlocked()</c> 经 <see cref="ApplyBeacons"/> 翻转。
+        /// </summary>
+        internal void AddBeaconRings(Transform root, Transform wind, Transform star, float radius, int groundMask)
+        {
+            if (root == null || disposed) return;
+            windRing = Build(root, wind, radius, groundMask, BossRushUIColors.SuccessText);
+            starRing = Build(root, star, radius, groundMask, BossRushUIColors.SuccessText);
+            if (windRing != null) windRing.gameObject.SetActive(false);
+            if (starRing != null) starRing.gameObject.SetActive(false);
+        }
+
+        /// <summary>按风标 / 星灯翻转两处广场环。幂等，状态没变时零开销。</summary>
+        internal void ApplyBeacons(bool windUnlocked, bool starUnlocked)
+        {
+            if (disposed) return;
+            if (windRing != null && windVisible != windUnlocked) { windVisible = windUnlocked; windRing.gameObject.SetActive(windUnlocked); }
+            if (starRing != null && starVisible != starUnlocked) { starVisible = starUnlocked; starRing.gameObject.SetActive(starUnlocked); }
         }
 
         public void Dispose()
@@ -155,8 +177,12 @@ namespace BossRush
             disposed = true;
             if (dockRing != null) UnityEngine.Object.Destroy(dockRing.gameObject);
             if (bellRing != null) UnityEngine.Object.Destroy(bellRing.gameObject);
+            if (windRing != null) UnityEngine.Object.Destroy(windRing.gameObject);
+            if (starRing != null) UnityEngine.Object.Destroy(starRing.gameObject);
             dockRing = null;
             bellRing = null;
+            windRing = null;
+            starRing = null;
         }
     }
 

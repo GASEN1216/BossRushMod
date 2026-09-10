@@ -9,12 +9,14 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import random
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-PLAN_PATH = ROOT / 'ArtSource/SkyIsland/settlement_layout.json'
+# 流水线可用环境变量把规划文件指到别处：先在草稿里把整条链跑通，再整体换进仓库。
+PLAN_PATH = Path(os.environ.get('SKY_ISLAND_SETTLEMENT_PLAN') or ROOT / 'ArtSource/SkyIsland/settlement_layout.json')
 METADATA_VERSION = 2
 
 
@@ -24,6 +26,10 @@ def load_obstacles():
     plan = json.loads(PLAN_PATH.read_text(encoding='utf-8'))
     if plan['version'] != 1:
         raise ValueError('Unsupported settlement plan version')
+    # 岛位换过参照系后，旧规划的摆件坐标全部失效：导航先不带摆件生成，再由本脚本按新岛重排。
+    import sky_island_frame
+    if plan.get('layoutFrame') != sky_island_frame.FRAME_VERSION:
+        return []
     return plan['obstacles']
 
 
@@ -110,15 +116,17 @@ def plan(g, layout):
     import sky_island_life_models as models
     from sky_island_dressing import PlantingSpace
 
+    import sky_island_frame
+    sky_island_frame.bind_layout(layout)
     islands = {island['id']: island for island in layout['islands']}
     layout['obstacles'] = [o for o in layout['obstacles'] if o['kind'] != 'life_prop']
     # Existing cultivated beds are low decoration, but their crops should not grow
     # through the new props. These reservations do not become navigation walls.
-    for side in [-1,1]:
-        for row in range(3):
-            layout['obstacles'].append({'id':'FarmBedReservation','island':'C',
-                'kind':'planting_reservation','center':[-230+side*32,16,-142+row*24],
-                'size':[26,.1,18]})
+    # 与 generate_sky_island.farm_beds() 同一份田块，预留比田块四周各宽 1 米。
+    for cx, cz, bed_w, bed_d in g.farm_beds(islands):
+        layout['obstacles'].append({'id':'FarmBedReservation','island':'C',
+            'kind':'planting_reservation','center':[cx,islands['C']['height'],cz],
+            'size':[bed_w+2,.1,bed_d+2]})
     g.GROUPS.clear()
     g.PAVING_TRACKS.clear()
     g.make_paths(islands, layout['bridges'])
@@ -127,6 +135,8 @@ def plan(g, layout):
     sites = authored_sites()
     records = []
     for ordinal, (sid, key, px, pz, degrees, scale) in enumerate(sites):
+        # 摆件点按旧版岛位手写，先换算到当前岛位，再做就近避让。
+        px, pz = sky_island_frame.relocate(sid, px, pz)
         island = islands[sid]
         parts = models.model_geometry(g, key)
         yaw = math.radians(degrees)
@@ -135,7 +145,8 @@ def plan(g, layout):
                      for z in [local['min'][2], local['max'][2]])
         space = PlantingSpace(g, layout, island)
         candidates = [(px, pz)]
-        for ring in range(1, 12):
+        # 布局 v2 主岛缩小后路网更密，就近空位可能在 22 米外；外扩到 60 米，并记下挪了多远供复核。
+        for ring in range(1, 31):
             for step in range(16):
                 angle = step*math.tau/16 + ordinal*.37
                 candidates.append((px+ring*2*math.cos(angle), pz+ring*2*math.sin(angle)))
@@ -146,13 +157,14 @@ def plan(g, layout):
         actual = bounds_of(parts, position, yaw, scale)
         low, high = actual['min'], actual['max']
         obstacle = {'id': sid+'_Life%02d_' % (ordinal+1)+key, 'island': sid,
-                    'kind': 'life_prop', 'center': [(a+b)/2 for a, b in zip(low, high)],
+                    'kind': 'life_prop', 'siteShiftMeters': round(math.dist(point, (px, pz)), 2),
+                    'center': [(a+b)/2 for a, b in zip(low, high)],
                     'size': [b-a for a, b in zip(low, high)], 'yaw': 0,
                     'bounds': [low[0], low[2], high[0], high[2]],
                     'model': key, 'position': position, 'modelYaw': yaw, 'modelScale': scale}
         records.append(obstacle)
         layout['obstacles'].append(obstacle)
-    return {'version': 1, 'classification': 'COMPAT',
+    return {'version': 1, 'classification': 'COMPAT', 'layoutFrame': sky_island_frame.FRAME_VERSION,
             'source': 'tools/sky_island_life_models.py',
             'modelSourceSHA256': hashlib.sha256((ROOT/'tools/sky_island_life_models.py').read_bytes()).hexdigest(),
             'obstacles': records, 'protectedMarkers': layout['markers'],

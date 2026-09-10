@@ -13,8 +13,12 @@
 
 桥面同时算进**两端**岛屿的图层，任一端去过就会跟着上色，避免出现「两头亮着、中间断开」。
 
+**手绘底图**：`Minimap/Source/sky_island_minimap_art.png` 存在时，形状（alpha）照旧按几何画，颜色改取这张与投影
+逐像素对齐的手绘图（由 `tools/sky_island_minimap_art.py` 生成）；未探索底图取它去色压暗的版本。
+底图的同名 .json 记着投影与几何指纹，布局几何一变就拒绝烘焙——重新生成底图，或加 `--flat` 烘纯色版。
+
 用法：
-    python tools/build_sky_island_minimap.py [--unity-project <路径>]
+    python tools/build_sky_island_minimap.py [--unity-project <路径>] [--flat]
 
 产物：
     ArtSource/SkyIsland/Minimap/sky_island_minimap.png          底图（暗灰）
@@ -26,12 +30,14 @@ import hashlib
 import json
 from pathlib import Path
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageStat
 
 ROOT = Path(__file__).resolve().parent.parent
 LAYOUT = ROOT / 'ArtSource/SkyIsland/layout.json'
 OUT_DIR = ROOT / 'ArtSource/SkyIsland/Minimap'
 OUT_JSON = ROOT / 'ArtSource/SkyIsland/Validation/sky_island_minimap.json'
+# 手绘底图放子目录：部署到作者工程时只复制 Minimap 根目录下的 sky_island_minimap*.png，它不会被当成图层带进包。
+ART_IMAGE = OUT_DIR / 'Source/sky_island_minimap_art.png'
 
 BASE_NAME = 'sky_island_minimap'
 # 纹理边长（像素）与地图覆盖的世界边长（米）。官方 `MiniMapDisplayEntry.Setup` 用
@@ -155,6 +161,55 @@ def square_crop(image):
     return image.crop(crop), ((crop[0] + crop[2]) / 2.0, (crop[1] + crop[3]) / 2.0)
 
 
+def geometry_digest(layout):
+    """地图形状用到的几何（地面三角、区域、岛轮廓、障碍脚印）的指纹。手绘底图按它判断是否过期。"""
+    ground = layout['ground']
+    payload = {
+        'vertices': [[round(v[0], 3), round(v[2], 3)] for v in ground['vertices']],
+        'triangles': ground['triangles'],
+        'regions': ground['triangleRegions'],
+        'outlines': {island['id']: island.get('outline') for island in layout.get('islands', [])},
+        'obstacles': sorted([obstacle.get('island') or '', obstacle['bounds']]
+                            for obstacle in layout.get('obstacles', []) if obstacle.get('bounds')),
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, separators=(',', ':')).encode('utf-8')).hexdigest()
+
+
+def load_art(path, layout, center_x, center_z, size):
+    """读手绘底图并核对它是按当前投影与几何对齐的；对不上就硬失败，不拿旧图凑合。"""
+    record_path = path.with_suffix('.json')
+    if not record_path.is_file():
+        raise SystemExit('手绘底图缺少同名 .json 记录：' + str(record_path))
+    record = json.loads(record_path.read_text(encoding='utf-8'))
+    expected = {'textureSize': TEXTURE_SIZE, 'imageWorldSize': round(size, 4),
+                'mapWorldCenter': [round(center_x, 4), round(center_z, 4)], 'geometrySha256': geometry_digest(layout)}
+    stale = [key for key, value in expected.items() if record.get(key) != value]
+    if stale:
+        raise SystemExit('手绘底图是按另一版布局对齐的（%s 不符）：用 tools/sky_island_minimap_art.py 重新生成，'
+                         '或加 --flat 烘焙纯色版' % '、'.join(stale))
+    image = Image.open(path).convert('RGB')
+    if image.size != (TEXTURE_SIZE, TEXTURE_SIZE):
+        raise SystemExit('手绘底图必须是 %d px 正方形：%s' % (TEXTURE_SIZE, path))
+    return image, record
+
+
+def paint(shape, art):
+    """保留 shape 的形状（alpha 原样），颜色换成手绘底图同位置的像素。
+    透明像素上的颜色无所谓：作者工程导入时 alphaIsTransparency 会把边缘颜色外扩。"""
+    layer = art.convert('RGBA')
+    layer.putalpha(shape.getchannel('A'))
+    return layer
+
+
+def fog(art):
+    """未探索底图：手绘图去色、轻微模糊，再压回原底图的暗灰色调，只剩轮廓和大路的笔触。"""
+    gray = ImageOps.grayscale(art).filter(ImageFilter.GaussianBlur(1.2))
+    mean = ImageStat.Stat(gray).mean[0] / 255.0
+    channels = [gray.point(lambda v, c=c: max(0, min(255, int(c * (0.72 + 0.55 * (v / 255.0 - mean))))))
+                for c in BASE_GROUND[:3]]
+    return Image.merge('RGB', channels)
+
+
 def write(path, image):
     path.parent.mkdir(parents=True, exist_ok=True)
     image.save(path, 'PNG', optimize=True)
@@ -164,25 +219,40 @@ def write(path, image):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--unity-project', default=r'D:/code/ykf/duckov_modding-main/UnityFiles/BossRush')
+    # 默认读写仓库路径；换布局时可先指到草稿目录烘一版，与其它产物一起再换进仓库。
+    parser.add_argument('--layout', default=str(LAYOUT))
+    parser.add_argument('--out-dir', default=str(OUT_DIR))
+    parser.add_argument('--out-json', default=str(OUT_JSON))
+    parser.add_argument('--art', default=str(ART_IMAGE), help='手绘底图；文件不存在时烘焙纯色版')
+    parser.add_argument('--flat', action='store_true', help='不用手绘底图，烘焙纯色版')
     args = parser.parse_args()
+    out_dir, out_json = Path(args.out_dir), Path(args.out_json)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    layout = load_layout()
+    layout = json.loads(Path(args.layout).read_text(encoding='utf-8'))
     center_x, center_z, size = world_bounds(layout)
     project, unproject, scale = make_projector(center_x, center_z, size)
+    art_path = Path(args.art)
+    art, art_record = (None, None) if args.flat or not art_path.is_file() else load_art(art_path, layout, center_x, center_z, size)
 
-    # ---- 底图：全岛暗灰，始终显示，给未探索区域一个轮廓 ----
-    base = draw_layer(layout, project, None, (BASE_GROUND, BASE_BRIDGE, BASE_OUTLINE, False))
-    base_path = OUT_DIR / (BASE_NAME + '.png')
+    # ---- 底图：始终显示，给未探索区域一个轮廓（纯色版暗灰带障碍镂空；手绘版去色压暗、不镂空）----
+    if art is None:
+        base = draw_layer(layout, project, None, (BASE_GROUND, BASE_BRIDGE, BASE_OUTLINE, False))
+    else:
+        base = paint(draw_layer(layout, project, None, (BASE_GROUND, BASE_BRIDGE, BASE_OUTLINE, True)), fog(art))
+    base_path = out_dir / (BASE_NAME + '.png')
     base_sha = write(base_path, base)
 
     layers = []
     for region in ISLAND_IDS:
         coloured = draw_layer(layout, project, region, (GROUND_FILL, BRIDGE_FILL, OUTLINE, True))
+        if art is not None:
+            coloured = paint(coloured, art)
         crop, centre_px = square_crop(coloured)
         if crop is None:
             raise SystemExit('区域没有任何地面三角：' + region)
         world_cx, world_cz = unproject(centre_px[0], centre_px[1])
-        path = OUT_DIR / ('%s_%s.png' % (BASE_NAME, region))
+        path = out_dir / ('%s_%s.png' % (BASE_NAME, region))
         layers.append({
             'region': region,
             'texture': path.name,
@@ -206,14 +276,21 @@ def main():
         'sha256': base_sha,
         'regionLayers': layers,
     }
-    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    OUT_JSON.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    if art is not None:
+        resolved = art_path.resolve()
+        meta['art'] = {
+            'image': resolved.relative_to(ROOT).as_posix() if resolved.is_relative_to(ROOT) else str(resolved),
+            'sha256': hashlib.sha256(art_path.read_bytes()).hexdigest(),
+            'grade': art_record.get('grade'),
+        }
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 
     unity = Path(args.unity_project)
     if unity.is_dir():
         target = unity / 'Assets/SkyIsland/Minimap'
         target.mkdir(parents=True, exist_ok=True)
-        for png in OUT_DIR.glob(BASE_NAME + '*.png'):
+        for png in out_dir.glob(BASE_NAME + '*.png'):
             (target / png.name).write_bytes(png.read_bytes())
         (target / 'sky_island_minimap.json').write_text(
             json.dumps(meta, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

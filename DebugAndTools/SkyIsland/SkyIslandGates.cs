@@ -30,22 +30,26 @@ namespace BossRush
                 if (renderer.sharedMaterial != null && renderer.sharedMaterial.name.IndexOf("wood", StringComparison.OrdinalIgnoreCase) >= 0)
                 { wood = renderer.sharedMaterial; break; }
             if (wood == null) throw new InvalidOperationException("天空岛进度门缺少作者木材质");
-            Add(root, wood, wallLayer, "K1", new Vector3(-209.934f, 27.354f, 12.034f), 175.187f, 7);
-            Add(root, wood, wallLayer, "K2", new Vector3(205, 43.116f, 97.058f), 180, 7);
-            Add(root, wood, wallLayer, "K3", new Vector3(-87.896f, 40.955f, 79.614f), -105, 7);
-            Add(root, wood, wallLayer, "BellCourt", new Vector3(40.618f, 42.809f, 192.889f), 14.754f, 9);
-            Add(root, wood, wallLayer, "ZhelingPass", new Vector3(230.415f, 27.258f, 57.854f), 14.567f, 8);
-            // 实际 layout 桥口向岛内退 5m、向旁边移 8m；落点由几何回归逐个验证。
-            AddSign(root, wood, wallLayer, "K1", new Vector3(-218, 28, 25));
-            AddSign(root, wood, wallLayer, "K1", new Vector3(-52, 8, -60));
-            AddSign(root, wood, wallLayer, "K2", new Vector3(197, 44, 110));
-            AddSign(root, wood, wallLayer, "K2", new Vector3(63, 8, -60));
-            AddSign(root, wood, wallLayer, "K3", new Vector3(-17, 8, -60));
-            AddSign(root, wood, wallLayer, "K3", new Vector3(-75, 42, 88));
-            AddSign(root, wood, wallLayer, "BellCourt", new Vector3(48, 42, 180));
-            AddSign(root, wood, wallLayer, "BellCourt", new Vector3(85, 62, 262));
-            AddSign(root, wood, wallLayer, "ZhelingPass", new Vector3(238, 26, 45));
-            AddSign(root, wood, wallLayer, "ZhelingPass", new Vector3(277, 44, 110));
+            // 布局 v2（2026-09-10）：门在受控端往桥内 8m 的桥中心线上、横跨整个桥面；坐标由 layout.json 离线算出，
+            // 32 种开闭组合与门体横跨桥宽由 tests/SkyIslandGateNavigationPropertyTest.py 逐个验证。
+            // 三条回程捷径的门放在风铃集（B）一侧桥头：中继平台上的搜刮点只能从远端岛走过去，
+            // 不会变成出生点旁不设防的高档箱；从风铃集出发也不用白走一整座锁着的桥。
+            Add(root, wood, wallLayer, "K1", new Vector3(-33f, 5.754f, -34.5f), 180, 7);
+            Add(root, wood, wallLayer, "K2", new Vector3(21.276f, 5.825f, -34.512f), -172.231f, 7);
+            Add(root, wood, wallLayer, "K3", new Vector3(-6f, 6.66f, -34.5f), 0, 7);
+            Add(root, wood, wallLayer, "BellCourt", new Vector3(5f, 19.333f, 140.5f), 0, 9);
+            Add(root, wood, wallLayer, "ZhelingPass", new Vector3(190f, 16.606f, 3f), 0, 8);
+            // 桥口向岛内退 5~8m、沿岸侧移 8~10m，木桩落在入口岛的导航面上；落点由几何回归逐个验证。
+            AddSign(root, wood, wallLayer, "K1", new Vector3(-100f, 16, 42f));
+            AddSign(root, wood, wallLayer, "K1", new Vector3(-25f, 5, -47.5f));
+            AddSign(root, wood, wallLayer, "K2", new Vector3(122.5f, 21, 63f));
+            AddSign(root, wood, wallLayer, "K2", new Vector3(29f, 5, -47.5f));
+            AddSign(root, wood, wallLayer, "K3", new Vector3(2f, 5, -47.5f));
+            AddSign(root, wood, wallLayer, "K3", new Vector3(-14f, 18, 32.5f));
+            AddSign(root, wood, wallLayer, "BellCourt", new Vector3(13f, 18, 127.5f));
+            AddSign(root, wood, wallLayer, "BellCourt", new Vector3(-3f, 26, 177.5f));
+            AddSign(root, wood, wallLayer, "ZhelingPass", new Vector3(198f, 15, -10f));
+            AddSign(root, wood, wallLayer, "ZhelingPass", new Vector3(182f, 21, 27.5f));
         }
         private void Add(GameObject world, Material material, int layer, string id, Vector3 position, float yaw, float width)
         {

@@ -17,6 +17,8 @@ import math
 from pathlib import Path
 import sys
 
+import sky_island_frame as frame
+
 ROOT = Path(__file__).resolve().parents[1]
 LOCAL_DEPS = ROOT / "Build" / "sky-island-python-deps"
 if LOCAL_DEPS.exists():
@@ -33,39 +35,56 @@ CLEARANCE = 0.7
 BRIDGE_MAX_TURN_DEGREES = 10.0
 BRIDGE_ENTRY_EASE_METERS = 4.0
 
+# 2026-09-10 布局 v2：岛群整体挪近、主岛缩小（主线出生→钟庭约 908 → 517 米）。
+# 岛与桥的 ID、两端和 5 道门语义不变；旧版手写坐标（障碍、聚落、地标、铺路）一律经
+# sky_island_frame.relocate() 换算，参照系与旧桥口见该模块。高度整体压低，保证缩短后的桥坡度 < 16°。
 ISLAND_SPECS = [
-    ("A", "登云码头", (0, 0, -300), (130, 100), "dock"),
-    ("B", "风铃集", (0, 8, -130), (190, 150), "village"),
-    ("C", "青穗梯田", (-230, 16, -110), (190, 170), "farm"),
-    ("D", "悬根林", (-250, 28, 110), (190, 180), "forest"),
-    ("E", "鸣风栈道", (0, 42, 110), (160, 150), "crossroads"),
-    ("F", "镜水寺", (240, 26, -40), (190, 180), "temple"),
-    ("G", "残星工坊", (250, 44, 180), (170, 150), "workshop"),
-    ("H", "归航钟庭", (0, 62, 300), (180, 150), "bellcourt"),
-    ("S1", "蛙鸣池", (-350, 12, -230), (60, 50), "pond"),
-    ("S2", "倒挂邮亭", (-370, 24, 220), (55, 55), "post"),
-    ("S3", "听雨洞", (355, 18, -170), (65, 65), "cave"),
-    ("S4", "残星瞭台", (350, 52, 310), (65, 65), "lookout"),
+    ("A", "登云码头", (0, 0, -220), (110, 85), "dock"),
+    ("B", "风铃集", (0, 5, -95), (130, 105), "village"),
+    ("C", "青穗梯田", (-165, 10, -80), (130, 115), "farm"),
+    ("D", "悬根林", (-160, 16, 75), (130, 120), "forest"),
+    ("E", "鸣风栈道", (15, 18, 80), (120, 105), "crossroads"),
+    ("F", "镜水寺", (175, 15, -65), (130, 120), "temple"),
+    ("G", "残星工坊", (175, 21, 75), (115, 105), "workshop"),
+    ("H", "归航钟庭", (5, 26, 225), (125, 105), "bellcourt"),
+    ("S1", "蛙鸣池", (-290, 7, -100), (60, 50), "pond"),
+    ("S2", "倒挂邮亭", (-282.5, 13, 100), (55, 55), "post"),
+    ("S3", "听雨洞", (302.5, 10, -65), (65, 65), "cave"),
+    ("S4", "残星瞭台", (295, 26, 75), (65, 65), "lookout"),
 ]
 
 # 首尾垂直进入岛的直边；中间点是避障控制点，实际桥道用相切圆弧连接。
 BRIDGE_SPECS = [
-    ("AB", "A", "B", 9, [(0, -250), (0, -205)]),
-    ("BC", "B", "C", 9, [(-95, -110), (-135, -110)]),
-    ("CD", "C", "D", 8, [(-250, -25), (-250, 20)]),
-    ("DE", "D", "E", 8, [(-155, 110), (-80, 110)]),
-    ("BF", "B", "F", 9, [(95, -120), (120, -120), (120, -40), (145, -40)]),
-    ("FG", "F", "G", 8, [(230, 50), (230, 70), (285, 82), (285, 105)]),
-    ("GE", "G", "E", 8, [(165, 180), (130, 180), (110, 110), (80, 110)]),
-    ("EH", "E", "H", 9, [(40, 185), (40, 200), (115, 215), (115, 270), (90, 270)]),
-    ("CS1", "C", "S1", 6, [(-325, -150), (-350, -150), (-350, -205)]),
-    ("DS2", "D", "S2", 6, [(-345, 140), (-370, 140), (-370, 192.5)]),
-    ("FS3", "F", "S3", 6, [(335, -80), (355, -80), (355, -137.5)]),
-    ("GS4", "G", "S4", 6, [(335, 210), (350, 210), (350, 277.5)]),
-    ("K1", "D", "B", 7, [(-210, 20), (-210, -5), (-80, -35), (-60, -35), (-60, -55)]),
-    ("K2", "G", "B", 7, [(205, 105), (205, 82), (95, 35), (55, 0), (55, -55)]),
-    ("K3", "B", "E", 7, [(-25, -55), (-25, -20), (-105, 15), (-105, 80), (-80, 80)]),
+    ("AB", "A", "B", 9, [(0, -177.5), (0, -147.5)]),
+    ("BC", "B", "C", 9, [(-65, -100), (-100, -100)]),
+    ("CD", "C", "D", 8, [(-160, -22.5), (-160, 15)]),
+    ("DE", "D", "E", 8, [(-95, 85), (-45, 85)]),
+    ("BF", "B", "F", 9, [(65, -82), (110, -82)]),
+    ("FG", "F", "G", 8, [(190, -5), (190, 22.5)]),
+    ("GE", "G", "E", 8, [(117.5, 90), (75, 90)]),
+    ("EH", "E", "H", 9, [(5, 132.5), (5, 172.5)]),
+    ("CS1", "C", "S1", 6, [(-230, -100), (-260, -100)]),
+    ("DS2", "D", "S2", 6, [(-225, 100), (-255, 100)]),
+    ("FS3", "F", "S3", 6, [(240, -65), (270, -65)]),
+    ("GS4", "G", "S4", 6, [(232.5, 75), (262.5, 75)]),
+    ("K1", "D", "B", 7, [(-95, 50), (-80, 50), (-45, -10), (-33, -25), (-33, -42.5)]),
+    ("K2", "G", "B", 7, [(117.5, 55), (102, 55), (88, 15), (21, -25), (21, -42.5)]),
+    ("K3", "B", "E", 7, [(-6, -42.5), (-6, 27.5)]),
 ]
+
+# 中继平台：长连接中段加宽的水平平台（设计稿 §4 E 区「桥段 + 中继小岛，战斗放在平台」）。
+# 平台是桥的一部分，不是新岛：不新增 Region / RegionBit / COL_Ground_<岛>。
+# 值：(控制段序号, 段内比例, 沿桥长度 米, 平台宽度 米)；平台必须落在平滑后桥道的直线段上。
+BRIDGE_RELAYS = {
+    "K1": (1, 0.5, 22.0, 20.0), "K2": (2, 0.47, 22.0, 20.0), "K3": (0, 0.5, 14.0, 18.0),
+    "DE": (0, 0.5, 14.0, 16.0), "GE": (0, 0.5, 14.0, 16.0),
+}
+RELAY_TAPER_METERS = 3.0
+RELAY_BLEND_METERS = 2.5
+# 缩岛后仍按岛尺寸比例缩放占地的障碍（水面类；建筑保持原尺寸，只换算位置）。
+FOOTPRINT_SCALED_OBSTACLES = {"F_MirrorPool", "S1_FrogPond"}
+
+frame.bind_specs(ISLAND_SPECS, BRIDGE_SPECS)
 
 
 def rounded_outline(center, size):
@@ -127,6 +146,11 @@ def rounded_outline(center, size):
 def make_obstacles(islands):
     result = []
     def add(region, name, kind, x, z, w, d, h):
+        # 下面的坐标按 2026-09-08 版岛位手写，统一换算到当前岛位；建筑保持原尺寸，只有水面按岛比例缩。
+        x, z = (round(v, 3) for v in frame.relocate(region, x, z))
+        if region + "_" + name in FOOTPRINT_SCALED_OBSTACLES:
+            sx, sz = frame.island_scale(region)
+            w, d = round(w*sx, 3), round(d*sz, 3)
         y = islands[region]["height"]
         result.append({"id": region + "_" + name, "island": region, "kind": kind,
                        "center": [x, y+h/2, z], "size": [w, h, d], "yaw": 0,
@@ -243,13 +267,81 @@ def split_path_at_stations(path, requested):
     return result
 
 
+def bridge_profile(total, ease, y0, y1, plateaus):
+    """桥面高程：两端桥口缓入；中继平台处水平，平台前后用二次缓和衔接，全程坡度连续。"""
+    if not plateaus:
+        def rise(s):
+            # 坡度在桥口 4 米内线性缓入；所有可见面/碰撞/导航共用这些高程。
+            if s < ease:
+                return s*s/(2*ease)
+            if s > total-ease:
+                return total-ease-(total-s)**2/(2*ease)
+            return s-ease/2
+        return lambda s: y0+(y1-y0)*rise(s)/(total-ease)
+    # 与上面同一口径：折线在桥口内缩 ease/2 处起坡，每个折点前后各 halves[i] 米做二次缓和。
+    knots, heights, y, previous = [ease/2], [y0], y0, ease/2
+    slope = (y1-y0)/((total-ease)-sum(b-a for a, b in plateaus))
+    for a, b in plateaus:
+        y += slope*(a-previous)
+        knots += [a, b]
+        heights += [y, y]
+        previous = b
+    knots.append(total-ease/2)
+    heights.append(y+slope*(total-ease/2-previous))
+    slopes = [0.0]+[(heights[i+1]-heights[i])/(knots[i+1]-knots[i]) for i in range(len(knots)-1)]+[0.0]
+    halves = [ease/2]+[RELAY_BLEND_METERS]*(len(knots)-2)+[ease/2]
+    def height(s):
+        if s <= knots[0]:
+            value = heights[0]
+        elif s >= knots[-1]:
+            value = heights[-1]
+        else:
+            i = max(j for j in range(len(knots)-1) if knots[j] <= s)
+            value = heights[i]+slopes[i+1]*(s-knots[i])
+        for i, knot in enumerate(knots):
+            e, t = halves[i], s-knot
+            if -e < t < e:
+                value += (slopes[i+1]-slopes[i])*((t+e)**2/(4*e)-max(t, 0.0))
+        return value
+    return height
+
+
 def bridge_geometry(spec, island_by_id):
     bid, first, last, width, control_points = spec
     path2 = smooth_bridge_path(control_points, width)
     total = sum(math.dist(a, b) for a, b in zip(path2, path2[1:]))
     ease = min(BRIDGE_ENTRY_EASE_METERS, total*0.1)
     entry_stations = [ease*step/4 for step in range(1,5)]
-    path2 = split_path_at_stations(path2, entry_stations+[total-s for s in reversed(entry_stations)])
+    requested = entry_stations+[total-s for s in reversed(entry_stations)]
+    relay = None
+    if bid in BRIDGE_RELAYS:
+        segment, fraction, along, relay_width = BRIDGE_RELAYS[bid]
+        a, b = control_points[segment], control_points[segment+1]
+        target = (a[0]+(b[0]-a[0])*fraction, a[1]+(b[1]-a[1])*fraction)
+        best, station = None, 0.0
+        for p, q in zip(path2, path2[1:]):
+            length = math.dist(p, q)
+            u = max(0.0, min(1.0, ((target[0]-p[0])*(q[0]-p[0])+(target[1]-p[1])*(q[1]-p[1]))/(length*length)))
+            gap = math.dist((p[0]+(q[0]-p[0])*u, p[1]+(q[1]-p[1])*u), target)
+            if best is None or gap < best[0]:
+                best = (gap, station+u*length)
+            station += length
+        center = best[1]
+        relay = (center-along/2, center+along/2, center, along, relay_width)
+        requested += [relay[0]-RELAY_TAPER_METERS, relay[0], center, relay[1], relay[1]+RELAY_TAPER_METERS]
+        for knot in (relay[0]-RELAY_BLEND_METERS, relay[1]+RELAY_BLEND_METERS):
+            requested += [knot+offset/2 for offset in range(-5, 6) if offset]
+        # 附加采样与平滑路径已有顶点、彼此之间都不能近到 0.1 米，否则会产生零长或过短桥段。
+        existing, station = [0.0], 0.0
+        for p, q in zip(path2, path2[1:]):
+            station += math.dist(p, q)
+            existing.append(station)
+        accepted = []
+        for s in sorted(requested):
+            if 0.1 < s < total-0.1 and all(abs(s-e) > 0.1 for e in existing+accepted):
+                accepted.append(s)
+        requested = accepted
+    path2 = split_path_at_stations(path2, requested)
     y0, y1 = island_by_id[first]["height"], island_by_id[last]["height"]
     lengths = [math.dist(a,b) for a,b in zip(path2,path2[1:])]
     directions = [((b[0]-a[0])/d,(b[1]-a[1])/d) for a,b,d in zip(path2,path2[1:],lengths)]
@@ -257,34 +349,57 @@ def bridge_geometry(spec, island_by_id):
     stations = [0]
     for length in lengths:
         stations.append(stations[-1]+length)
-    def rise(s):
-        # 坡度在桥口 4 米内线性缓入；所有可见面/碰撞/导航共用这些高程。
-        if s < ease:
-            return s*s/(2*ease)
-        if s > total-ease:
-            return total-ease-(total-s)**2/(2*ease)
-        return s-ease/2
-    path = [[p[0], y0+(y1-y0)*rise(s)/(total-ease), p[1]] for p,s in zip(path2,stations)]
+    height = bridge_profile(total, ease, y0, y1,
+                            [(relay[0]-RELAY_BLEND_METERS, relay[1]+RELAY_BLEND_METERS)] if relay else [])
+    path = [[p[0], height(s), p[1]] for p,s in zip(path2,stations)]
+    def width_at(s):
+        if relay is None:
+            return width
+        start, end, _center, _along, relay_width = relay
+        if start-1e-6 <= s <= end+1e-6:
+            return relay_width
+        if start-RELAY_TAPER_METERS < s < start:
+            return width+(relay_width-width)*(s-start+RELAY_TAPER_METERS)/RELAY_TAPER_METERS
+        if end < s < end+RELAY_TAPER_METERS:
+            return width+(relay_width-width)*(end+RELAY_TAPER_METERS-s)/RELAY_TAPER_METERS
+        return width
+    if relay:
+        span = [i for i, s in enumerate(stations[:-1])
+                if relay[0]-RELAY_TAPER_METERS-RELAY_BLEND_METERS-1e-6 <= s <= relay[1]+RELAY_TAPER_METERS+RELAY_BLEND_METERS]
+        base = directions[span[0]]
+        if any(abs(math.degrees(math.atan2(base[0]*directions[i][1]-base[1]*directions[i][0],
+                                           base[0]*directions[i][0]+base[1]*directions[i][1]))) > 0.05 for i in span):
+            raise ValueError("中继平台不在直线段: "+bid)
     sections = []
     for i,p in enumerate(path2):
+        section_width = width_at(stations[i])
         if i == 0 or i == len(path2)-1:
             dx,dz = directions[0 if i==0 else -1]
-            offset = (-dz*width/2, dx*width/2)
+            offset = (-dz*section_width/2, dx*section_width/2)
         else:
             a,b = directions[i-1],directions[i]
             n1,n2 = (-a[1],a[0]),(-b[1],b[0])
             denom = 1+n1[0]*n2[0]+n1[1]*n2[1]
             if denom <= 0.1:
                 raise ValueError("桥道急折返: "+bid)
-            offset = ((n1[0]+n2[0])*width/2/denom,(n1[1]+n2[1])*width/2/denom)
+            offset = ((n1[0]+n2[0])*section_width/2/denom,(n1[1]+n2[1])*section_width/2/denom)
         sections.append([[p[0]+sign*offset[0],path[i][1],p[1]+sign*offset[1]] for sign in (1,-1)])
     faces = []
     for a,b in zip(sections,sections[1:]):
         faces.extend([(a[0],a[1],b[1]),(a[0],b[1],b[0])])
-    return {"id":bid,"from":first,"to":last,"width":width,"path":path,
-            "length":round(total,3),"surfaceTriangles":faces,"crossSections":sections,
-            "controlPointsXZ":control_points,"entryEaseMeters":ease,
-            "kind":"shortcut" if bid.startswith("K") else ("branch" if "S" in bid else "main")}
+    result = {"id":bid,"from":first,"to":last,"width":width,"path":path,
+              "length":round(total,3),"surfaceTriangles":faces,"crossSections":sections,
+              "controlPointsXZ":control_points,"entryEaseMeters":ease,
+              "kind":"shortcut" if bid.startswith("K") else ("branch" if "S" in bid else "main")}
+    if relay:
+        start, end, center, along, relay_width = relay
+        index = min(range(len(stations)), key=lambda i: abs(stations[i]-center))
+        dx, dz = directions[min(index, len(directions)-1)]
+        result["relays"] = [{"id":"Relay_"+bid,"station":round(center,6),"startStation":round(start,6),
+                             "endStation":round(end,6),"center":[round(v,6) for v in path[index]],
+                             "along":along,"width":relay_width,
+                             "yawDegrees":round(math.degrees(math.atan2(dx,dz)),3)}]
+    return result
 
 
 def insert_portals(outline, points):
@@ -445,12 +560,21 @@ def build_layout():
             local=safe.intersection(island_polys[key]).representative_point()
             point=(local.x,local.y)
         markers.append({"id":"Region_"+key,"kind":"region","island":key,"position":[point[0],y,point[1]]})
+    # 出生、码头撤离、钟庭撤离沿用旧版岛内相对位置，换算到当前岛位。
+    def fixed(region,x,z):
+        px,pz=frame.relocate(region,x,z)
+        return [round(px,3),island_by_id[region]["height"],round(pz,3)]
+    dock_exit=fixed("A",0,-339)
     markers.extend([
-        {"id":"PlayerSpawn","kind":"spawn","island":"A","position":[0,0,-326]},
-        {"id":"MainExtraction","kind":"extraction","island":"A","position":[0,0,-339]},
-        {"id":"BellExtraction","kind":"extraction","island":"H","position":[0,62,309]},
-        {"id":"Exit","kind":"extraction_alias","island":"A","position":[0,0,-339],"aliasOf":"MainExtraction"},
+        {"id":"PlayerSpawn","kind":"spawn","island":"A","position":fixed("A",0,-326)},
+        {"id":"MainExtraction","kind":"extraction","island":"A","position":dock_exit},
+        {"id":"BellExtraction","kind":"extraction","island":"H","position":fixed("H",0,309)},
+        {"id":"Exit","kind":"extraction_alias","island":"A","position":list(dock_exit),"aliasOf":"MainExtraction"},
     ])
+    # 中继平台中心：island 写桥 ID（平台属于桥，不是岛），遭遇与搜刮按名字挂接。
+    for bridge in bridges:
+        for relay in bridge.get("relays",[]):
+            markers.append({"id":relay["id"],"kind":"relay","island":bridge["id"],"position":list(relay["center"])})
     safe_markers=safe.buffer(-1.5,join_style=2)
     def add_safe_marker(region,marker_id,kind,preferred):
         island=island_by_id[region]
@@ -477,7 +601,8 @@ def build_layout():
     layout={"schemaVersion":1,"coordinateSystem":"Unity XYZ metres","name":"晴岚群岛",
             "clearance":CLEARANCE,"islands":list(island_by_id.values()),"bridges":bridges,
             "obstacles":obstacles,"markers":markers,"ground":ground_data,"navigation":navigation.export(),
-            "authoringNotes":["所有桥开放，仅场景资源，无剧情门锁。",
+            "authoringNotes":["布局 v2（2026-09-10）：岛群挪近、主岛缩小；旧版手写坐标经 tools/sky_island_frame.py 换算；K1/K2/K3/DE/GE 中段有水平中继平台（桥的一部分，中心标记 Relay_<桥 ID>）。",
+                              "所有桥开放，仅场景资源，无剧情门锁。",
                               "ground 供可见地面和 MeshCollider，navigation 仅供 A*。",
                               "桥道保留桥口正交直线，圆弧转向每片最多 10 度；桥口 4 米缓坡按 1 米采样。",
                               "桥板、纵梁与桥墩按 path/crossSections 的累计里程放置，不能逐小片重启布局。",

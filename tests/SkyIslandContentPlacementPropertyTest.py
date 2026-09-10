@@ -31,7 +31,7 @@ OBSTACLES = LAYOUT['obstacles']
 
 # 与生产 CollectGameplayMarkers 同一口径
 BLOCKER_PREFIX = ('Search', 'POI_', 'EnemySpawn')
-BLOCKER_EXACT = ('PlayerSpawn', 'Exit', 'BellExtraction')
+BLOCKER_EXACT = ('PlayerSpawn', 'Exit', 'BellExtraction', 'Region_D', 'Region_G')
 BLOCKERS = [pos for mid, pos in MARKERS.items()
             if mid.startswith(BLOCKER_PREFIX) or mid in BLOCKER_EXACT]
 

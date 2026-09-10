@@ -77,7 +77,8 @@ FORBIDDEN_PATTERNS = (
 )
 
 # 观测面允许调用的会话方法：全部是只读的几何与计数。
-READ_ONLY_HELPERS = frozenset(("ExtractionMarkerAt", "BellExitIfUnlocked", "CountWalkableNodes"))
+READ_ONLY_HELPERS = frozenset(("ExtractionMarkerAt", "BellExitIfUnlocked", "WindExitIfUnlocked", "StarExitIfUnlocked",
+                               "CountWalkableNodes"))
 CALL_KEYWORDS = frozenset(("if", "for", "foreach", "while", "switch", "return", "default", "typeof", "nameof",
                            "sizeof", "catch", "using", "lock", "checked", "unchecked", "when", "new"))
 
@@ -411,8 +412,11 @@ def main():
     if inside and "ExtractionMarkerAt(player.transform.position)" not in inside:
         errors.append("玩家撤离判定没有走共用的 ExtractionMarkerAt")
     geometry = need_body(session, "private Transform ExtractionMarkerAt(Vector3 position)", "撤离几何")
-    if geometry and (geometry.count("< ExtractionRadius") != 2 or "BellExitIfUnlocked()" not in geometry):
-        errors.append("撤离几何必须对码头与已解锁的钟庭用同一个 ExtractionRadius 判定")
+    # 布局 v2：码头 + 钟庭 + 两处航标广场，四个圈都用同一个半径、同一个解锁事实源。
+    if geometry and (geometry.count("< ExtractionRadius") != 4 or
+                     any(helper not in geometry for helper in ("BellExitIfUnlocked()", "WindExitIfUnlocked()",
+                                                               "StarExitIfUnlocked()"))):
+        errors.append("撤离几何必须对码头、已解锁的钟庭与两处航标广场用同一个 ExtractionRadius 判定")
     fields = session_fields(session)
     if len(fields) < 20:
         errors.append("解析 SkyIslandSession 字段失败（只解析到 %d 个）：观测面写字段的检查失效" % len(fields))

@@ -15,6 +15,9 @@ import bpy
 import bmesh
 from mathutils import Vector
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import sky_island_frame  # noqa: E402  旧版手写坐标 → 当前岛位（main 里按 layout 绑定）
+
 TAU = math.tau
 RNG = random.Random(20260908)
 GROUPS = {}
@@ -393,42 +396,69 @@ def bell(x,y,z,scale=1):
         sphere((x+1.73*scale*math.cos(an),y+2.4*scale,z+1.73*scale*math.sin(an)),(.17*scale,.45*scale,.17*scale),'BrassLight',8,4)
 
 
+def farm_beds(islands):
+    """青穗梯田 6 块菜田 (中心X, 中心Z, 宽, 深)：中心按岛比例换算，行距不够时收窄田深，互不重叠。"""
+    x,_,z=islands['C']['center']
+    depth=min(16,abs(sky_island_frame.scale_offset('C',0,24)[1])-2)
+    beds=[]
+    for side in [-1,1]:
+        for row in range(3):
+            dx,dz=sky_island_frame.scale_offset('C',side*32,-32+row*24)
+            beds.append((x+dx,z+dz,24,depth))
+    return beds
+
+
+def mural_marker(islands):
+    """风铃集壁画正前方的叙事标记：与壁画同一换算，壁画宽度不缩放、站位离墙 2.92 米。"""
+    x,y,z=islands['B']['center']
+    mx,mz=sky_island_frame.scale_offset('B',-23,32.92)
+    return [x+mx,y+.25,z+mz-2.92]
+
+
 def area_landmarks(islands):
     global CURRENT
+    # 各岛地标按岛心偏移摆放；偏移与导航障碍同一比例缩放（障碍经 sky_island_frame.relocate 换算），尺寸不缩。
     # Village: paved circle, wind chime canopy and framed story mural.
     CURRENT='B'; x,y,z=islands['B']['center']
-    paved_disc(x,y+.05,z,17)
+    S=lambda dx,dz: sky_island_frame.scale_offset('B',dx,dz)
+    paved_disc(x,y+.05,z,sky_island_frame.scale_radius('B',17))
     for dx in [-6,6]:
-        cylinder((x+dx,y+4.6,z+5),.52,9.2,'Wood',12)
-        cylinder((x+dx,y+.3,z+5),1.15,.6,'Limestone',12)
-        sphere((x+dx,y+9.6,z+5),(.65,.85,.65),'Brass',12,6)
-    beam((x-7,y+8.7,z+5),(x+7,y+8.7,z+5),.28,'WoodDark')
+        ox,oz=S(dx,5)
+        cylinder((x+ox,y+4.6,z+oz),.52,9.2,'Wood',12)
+        cylinder((x+ox,y+.3,z+oz),1.15,.6,'Limestone',12)
+        sphere((x+ox,y+9.6,z+oz),(.65,.85,.65),'Brass',12,6)
+    ox,oz=S(7,5)
+    beam((x-ox,y+8.7,z+oz),(x+ox,y+8.7,z+oz),.28,'WoodDark')
     for i in range(7):
-        bx=x-5.4+i*1.8; drop=.7+.4*math.sin(i)
-        beam((bx,y+8.6,z+5),(bx,y+7.2-drop,z+5),.055,'Brass')
-        bell(bx,y+6.4-drop,z+5,.28)
+        bx=x+S(-5.4+i*1.8,0)[0]; drop=.7+.4*math.sin(i)
+        beam((bx,y+8.6,z+oz),(bx,y+7.2-drop,z+oz),.055,'Brass')
+        bell(bx,y+6.4-drop,z+oz,.28)
     # Freestanding mural next to the north edge, accessible on its front side.
-    textured_quad([(x-26.8,y+.35,z+32.92),(x-19.2,y+.35,z+32.92),(x-19.2,y+5.95,z+32.92),(x-26.8,y+5.95,z+32.92)],'Mural')
+    mx,mz=S(-23,32.92)
+    textured_quad([(x+mx-3.8,y+.35,z+mz),(x+mx+3.8,y+.35,z+mz),(x+mx+3.8,y+5.95,z+mz),(x+mx-3.8,y+5.95,z+mz)],'Mural')
     for xx in [-16,17]:
-        cylinder((x+xx,y+.8,z-12),1.6,.16,'WoodLight',20)
-        cylinder((x+xx,y+.38,z-12),.16,.8,'WoodDark',8)
-        for a in [0,2.1,4.2]: cylinder((x+xx+2.2*math.cos(a),y+.5,z-12+2.2*math.sin(a)),.6,.9,'Wood',10)
+        px,pz=S(xx,-12)
+        cylinder((x+px,y+.8,z+pz),1.6,.16,'WoodLight',20)
+        cylinder((x+px,y+.38,z+pz),.16,.8,'WoodDark',8)
+        for a in [0,2.1,4.2]: cylinder((x+px+2.2*math.cos(a),y+.5,z+pz+2.2*math.sin(a)),.6,.9,'Wood',10)
     # Festival bunting strung high above the two village approach paths.
     for zoff in [-24,23]:
         pts=[]
+        span_x,span_z=S(22,zoff)
         for i in range(15):
-            t=i/14; pts.append((x-22+44*t,y+6.2-2*math.sin(math.pi*t),z+zoff))
+            t=i/14; pts.append((x-span_x+2*span_x*t,y+6.2-2*math.sin(math.pi*t),z+span_z))
         ribbon(pts,'Wood',.04)
         for i,p in enumerate(pts[1:-1]):
             addmesh(['Coral','Teal','BrassLight'][i%3],[(p[0]-.5,p[1],p[2]),(p[0]+.5,p[1],p[2]),(p[0],p[1]-1.1,p[2])],[(0,1,2)])
     # Farm fields are arranged around a clear principal walkway.
     CURRENT='C'; x,y,z=islands['C']['center']
+    beds=iter(farm_beds(islands))
     for side in [-1,1]:
         for row in range(3):
-            cx=x+side*32; cz=z-32+row*24
-            box((cx,y+.045,cz),(24,.08,16),'Soil',.01)
-            for dx in [-12,12]: box((cx+dx,y+.08,cz),(.35,.12,17.3),'Limestone',.01)
-            for zz in [-8,8]: box((cx,y+.08,cz+zz),(24,.12,.35),'Limestone',.01)
+            cx,cz,bed_w,bed_d=next(beds)
+            box((cx,y+.045,cz),(bed_w,.08,bed_d),'Soil',.01)
+            for dx in [-12,12]: box((cx+dx,y+.08,cz),(.35,.12,bed_d+1.3),'Limestone',.01)
+            for zz in [-bed_d/2,bed_d/2]: box((cx,y+.08,cz+zz),(bed_w,.12,.35),'Limestone',.01)
             for col in range(6):
                 for rr in range(3):
                     px=cx-9.6+col*3.7; pz=cz-5+rr*4.5
@@ -452,7 +482,9 @@ def area_landmarks(islands):
                             top=y+1.3+(k%3)*.12
                             beam((px+dx,y,pz+dz),(px+dx+.15,top,pz+dz),.026,'LeafGold',5)
                             sphere((px+dx+.15,top,pz+dz),(.12,.27,.1),'Flower',6,3,False)
-    wx,wz=x-50,z+13.8
+    # 水车贴在水磨坊（C_WaterMill）南墙外，随障碍同一换算；磨坊深 12 米不缩。
+    mill_x,mill_z=sky_island_frame.scale_offset('C',-50,20)
+    wx,wz=x+mill_x,z+mill_z-6.2
     torus((wx,y+5,wz),4.8,.5,'Wood',axis='z',segments=24)
     torus((wx,y+5,wz-1.7),4.8,.4,'Wood',axis='z',segments=24)
     for i in range(12):
@@ -462,17 +494,22 @@ def area_landmarks(islands):
     # Suspended root forest and brass directional vane.
     CURRENT='D'; x,y,z=islands['D']['center']
     for angle in [-.5,.6,1.8,2.8,3.8]:
-        tx=x+53*math.cos(angle); tz=z+57*math.sin(angle)
+        ox,oz=sky_island_frame.scale_offset('D',53*math.cos(angle),57*math.sin(angle))
+        tx=x+ox; tz=z+oz
         # A 类漏接：悬根林换 Tripo 橄榄叶树（与 D 岛散布树的月叶口径一致）。
         if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,tx,y,tz,2.2,'moonleaf',
                 TRIPO_PROPS.stable_rng('root_forest',angle).randrange(1<<30)):
             tree(tx,y,tz,2.2)
-    points=[(-285,y,133),(-281,y+16,136),(-270,y+27,140),(-253,y+32,143),
-            (-236,y+29,146),(-222,y+19,148),(-214,y,151)]
+    # 根拱两脚落在 D_GreatRootTree / D_RootTree02 上，与障碍同一换算。
+    points=[]
+    for ax,lift,az in [(-285,0,133),(-281,16,136),(-270,27,140),(-253,32,143),(-236,29,146),(-222,19,148),(-214,0,151)]:
+        px,pz=sky_island_frame.relocate('D',ax,az)
+        points.append((px,y+lift,pz))
     for i,(a,b) in enumerate(zip(points,points[1:])):
         beam(a,b,2.0+.7*abs(i-2.5)/2.5,'Wood',10)
     paved_disc(x,y+.04,z,13)
-    x,z=x-27,z-26
+    ox,oz=sky_island_frame.scale_offset('D',-27,-26)
+    x,z=x+ox,z+oz
     cylinder((x,y+3,z),1.4,6,'Limestone',16)
     torus((x,y+7,z),3.4,.19,'Brass',axis='z')
     beam((x-5,y+7,z),(x+5,y+7,z),.14,'BrassLight')
@@ -480,34 +517,41 @@ def area_landmarks(islands):
     sphere((x,y+7,z),(.7,.7,.7),'StarGlow')
     # Wind causeway reads as its own ritual crossing, with clear space underneath.
     CURRENT='E'; x,y,z=islands['E']['center']
-    paved_disc(x,y+.05,z,24)
-    beam((x-17,y+14,z+26),(x+17,y+14,z+26),.34,'Brass')
+    paved_disc(x,y+.05,z,sky_island_frame.scale_radius('E',24))
+    ex,ez=sky_island_frame.scale_offset('E',17,26)
+    beam((x-ex,y+14,z+ez),(x+ex,y+14,z+ez),.34,'Brass')
     for i in range(9):
-        px=x-13+i*3.25; drop=1.4+1.1*math.sin(i*.8)
-        beam((px,y+14,z+26),(px,y+12-drop,z+26),.05,'Brass')
-        bell(px,y+10.9-drop,z+26,.34)
+        px=x+sky_island_frame.scale_offset('E',-13+i*3.25,0)[0]; drop=1.4+1.1*math.sin(i*.8)
+        beam((px,y+14,z+ez),(px,y+12-drop,z+ez),.05,'Brass')
+        bell(px,y+10.9-drop,z+ez,.34)
     # Mirror temple: shrine pavilions, thin water reflections and stone lanterns.
     CURRENT='F'; x,y,z=islands['F']['center']
+    SF=lambda dx,dz: sky_island_frame.scale_offset('F',dx,dz)
     for sign in [-1,1]:
-        px=x+sign*34
+        # 亭柱与 F_PavilionSupport 障碍一一对应，偏移同比例缩放。
         for dx in [-5,5]:
             for dz in [-5,5]:
-                cylinder((px+dx,y+3.5,z+30+dz),.42,7,'Limestone',12)
-                cylinder((px+dx,y+.25,z+30+dz),.8,.5,'Chalk',12)
-        lathe((px,y+6.9,z+30),[(0,8),(.7,6.8),(3,3.8),(4,.6),(4.5,0)],'Teal',4)
-        torus((px,y+9.8,z+30),1,.13,'Brass')
+                ox,oz=SF(sign*34+dx,30+dz)
+                cylinder((x+ox,y+3.5,z+oz),.42,7,'Limestone',12)
+                cylinder((x+ox,y+.25,z+oz),.8,.5,'Chalk',12)
+        ox,oz=SF(sign*34,30)
+        lathe((x+ox,y+6.9,z+oz),[(0,8),(.7,6.8),(3,3.8),(4,.6),(4.5,0)],'Teal',4)
+        torus((x+ox,y+9.8,z+oz),1,.13,'Brass')
     # Wide rings create graphical ripples on the solid visual pool surface.
     for dx,dz,rad in [(-6,-4,4.5),(8,5,3),(-12,6,1.8)]:
-        torus((x+dx,y+.19,z+dz),rad,.065,'Ivory',segments=36,sides=4)
+        ox,oz=SF(dx,dz)
+        torus((x+ox,y+.19,z+oz),rad,.065,'Ivory',segments=36,sides=4)
     for sign in [-1,1]:
         for dz in [-22,22]:
-            cylinder((x+sign*25,y+.6,z+dz),.8,1.2,'Chalk',8)
-            box((x+sign*25,y+1.65,z+dz),(1.3,1.1,1.3),'Glow')
-            lathe((x+sign*25,y+2.15,z+dz),[(0,1.15),(.65,.1)],'Teal',4)
+            ox,oz=SF(sign*25,dz)
+            cylinder((x+ox,y+.6,z+oz),.8,1.2,'Chalk',8)
+            box((x+ox,y+1.65,z+oz),(1.3,1.1,1.3),'Glow')
+            lathe((x+ox,y+2.15,z+oz),[(0,1.15),(.65,.1)],'Teal',4)
     # Workshop armillary sphere, large brass star machine visible in game view.
     CURRENT='G'; x,y,z=islands['G']['center']
-    paved_disc(x,y+.03,z,15)
-    x,z=x+42,z-25
+    paved_disc(x,y+.03,z,sky_island_frame.scale_radius('G',15))
+    ox,oz=sky_island_frame.scale_offset('G',42,-25)
+    x,z=x+ox,z+oz
     cylinder((x,y+1.3,z),4.5,2.6,'Limestone',24)
     for ang in [0,.65,-.7]: torus((x,y+8,z),6.1,.22,'Brass',axis='z',segments=48,tilt=ang)
     torus((x,y+8,z),6.1,.2,'Copper',axis='y',segments=48)
@@ -517,8 +561,8 @@ def area_landmarks(islands):
         sphere((x+6.1*math.cos(a),y+8+6.1*math.sin(a),z),(.35,.35,.35),'BrassLight')
     # Bell court: rear monumental arcade and hovering fractured orbital halo.
     CURRENT='H'; x,y,z=islands['H']['center']
-    paved_disc(x,y+.04,z,29)
-    bz=z+38
+    paved_disc(x,y+.04,z,sky_island_frame.scale_radius('H',29))
+    bz=z+sky_island_frame.scale_offset('H',0,38)[1]
     for dx in [-12,12]:
         box((x+dx,y+14,bz),(4.8,28,5.5),'Limestone',.65)
         box((x+dx,y+1.1,bz),(8,2.2,8),'Chalk',.4)
@@ -580,7 +624,8 @@ def dock_landmark(islands):
     global CURRENT
     CURRENT='A'; x,y,z=islands['A']['center']
     # A moored sky skiff is an actual sculpted hull, with a full patterned sail.
-    bx,bz=x-72,z-15
+    skiff_x,skiff_z=sky_island_frame.scale_offset('A',-72,-15)
+    bx,bz=x+skiff_x,z+skiff_z
     verts=[]
     for yy,w,l in [(0,2.4,8),(2.2,5.5,12),(3,5.9,12.3)]:
         for i in range(20):
@@ -596,13 +641,15 @@ def dock_landmark(islands):
         ribbon([(bx+sign*4,y+11,bz+7),(bx+sign*4.5,y+3,bz+6)],'Wood',.07)
         torus((bx+sign*4,y+16,bz+7),4.02,.12,'Brass',axis='z')
     for i in range(7):
-        px=x+26+(i%3)*3.1; pz=z-25+(i//3)*4
+        crate_x,crate_z=sky_island_frame.scale_offset('A',26,-25)
+        px=x+crate_x+(i%3)*3.1; pz=z+crate_z+(i//3)*4
         box((px,y+1.1,pz),(2.8,2.2,2.7),'WoodLight')
         for dx in [-1,1]: box((px+dx,y+1.1,pz-1.36),(.12,2.15,.12),'WoodDark')
     # Tall slanted entry arch with tiny welcoming lanterns.
-    for dx in [-7,7]: cylinder((x+dx,y+4,z+15),.55,8,'Limestone',12)
-    beam((x-8,y+8.5,z+15),(x+8,y+8.5,z+15),.32,'Teal')
-    lantern(x-6,y,z+14); lantern(x+6,y,z+14)
+    arch_z=z+sky_island_frame.scale_offset('A',0,15)[1]
+    for dx in [-7,7]: cylinder((x+dx,y+4,arch_z),.55,8,'Limestone',12)
+    beam((x-8,y+8.5,arch_z),(x+8,y+8.5,arch_z),.32,'Teal')
+    lantern(x-6,y,arch_z-1); lantern(x+6,y,arch_z-1)
 
 
 def bridge_details(bridges):
@@ -639,6 +686,26 @@ def bridge_details(bridges):
             left,right=at_distance(distance)
             for p in [left,right]:
                 sphere(tuple(p+Vector((0,1.45,0))),(.18,.23,.18),'Glow',8,4)
+
+
+def relay_platforms(bridges):
+    """中继平台：中央铺一块石面，四角在护栏线上各立一盏灯，远处也认得出这是能停下来打的一段。
+
+    平台本身的桥板、纵梁、护栏都来自 crossSections / 地面边界，这里只加不占可走面的识别物。
+    """
+    global CURRENT
+    for bridge in bridges:
+        for relay in bridge.get('relays',[]):
+            CURRENT='Bridge_'+bridge['id']
+            cx,cy,cz=relay['center']; yaw=math.radians(relay['yawDegrees'])
+            fx,fz=math.sin(yaw),math.cos(yaw); rx,rz=fz,-fx
+            half_along,half_width=relay['along']/2,relay['width']/2
+            paved_disc(cx,cy+.03,cz,min(half_along,half_width)*.7)
+            for along in (-1,1):
+                for side in (-1,1):
+                    px=cx+fx*along*(half_along-.6)+rx*side*(half_width+.15)
+                    pz=cz+fz*along*(half_along-.6)+rz*side*(half_width+.15)
+                    lantern(px,cy,pz,.8)
 
 
 def landscape_scatter(islands,obstacles):
@@ -885,15 +952,38 @@ def make_paths(islands,bridges):
             points=aligned if end==0 else list(reversed(aligned))
         return points
 
+    # 上面的路线按旧版岛位手写：端点是旧桥口的换成同一座桥同一端的新桥口，其余点按岛比例换算。
+    # 布局 v2 里桥口换到另一条岛边的几条（K1@D、K2@G、K3@E、EH@E/H、四座支岛的桥口）旧路线会斜穿岛面，
+    # 这里直接给出当前岛位下的路线（键为 routes 里的序号）。
+    current_routes={
+      'D': {2: [(-139.5,77),(-118,60),(-95,50)]},
+      'E': {1: [(15,80),(8,105),(5,132.5)], 2: [(-6,27.5),(0,55),(15,80)]},
+      'G': {1: [(169.6,72.2),(145,62),(117.5,55)], 2: [(188,62),(212,72),(232.5,75)]},
+      'H': {0: [(5,172.5),(5,200),(5,225),(5,234.8)]},
+      'S1': {0: [(-260,-100),(-280,-103),(-292,-108)]},
+      'S2': {0: [(-255,100),(-275,102),(-285,104)]},
+      'S3': {0: [(270,-65),(290,-68),(300,-74),(305,-80)]},
+      'S4': {0: [(262.5,75),(282,78),(292,84),(298,86)]},
+    }
+
+    def to_current(sid,points):
+        result=[]
+        for px,pz in points:
+            mouth=sky_island_frame.remap_bridge_mouth((px,pz))
+            result.append(mouth if mouth is not None else sky_island_frame.relocate(sid,px,pz))
+        return result
+
     for sid,paths in routes.items():
         CURRENT=sid+'_Paving'
         for index,pts in enumerate(paths):
             # Crossing decorative strips need distinct elevations to avoid coplanar artifacts.
             y=islands[sid]['height']+.028+index*.011
-            smooth_path([(x,y,z) for x,z in align_mouths(sid,pts)],6.4 if len(sid)==1 else 4.2)
+            current=current_routes.get(sid,{}).get(index) or to_current(sid,pts)
+            smooth_path([(x,y,z) for x,z in align_mouths(sid,current)],6.4 if len(sid)==1 else 4.2)
     # A continuous, flush stone promenade surrounds the mirror pool.
     CURRENT='F_Paving'; y=islands['F']['height']+.05
-    smooth_path([(198,y,-66),(198,y,-6),(212,y,-4),(280,y,-4),(283,y,-18),(283,y,-62),(266,y,-66),(198,y,-66)],4.4)
+    promenade=[sky_island_frame.relocate('F',px,pz) for px,pz in [(198,-66),(198,-6),(212,-4),(280,-4),(283,-18),(283,-62),(266,-66),(198,-66)]]
+    smooth_path([(px,y,pz) for px,pz in promenade],4.4)
 
 
 def bench(x,y,z,yaw=0):
@@ -972,15 +1062,18 @@ def village_life(layout,islands):
         beam((x-w*.4,y+4.5,front),(x-w*.4,y+4.5,front-1.8),.08,'WoodDark')
         torus((x-w*.4,y+3.8,front-1.9),.62,.08,'Brass',axis='z',segments=20)
         sphere((x-w*.4,y+3.8,front-1.9),(.42,.46,.09),['Coral','BrassLight','Ivory'][index%3],10,5)
-    duck_statue(18,y,-112,.9)
-    for x,z in [(-16,-149),(20,-151),(-17,-112),(26,-115),(-63,-134),(66,-124),(-40,-69),(45,-65)]:
+    # 下列坐标按旧版岛位手写，统一换算到当前岛位（鸭雕像与 B_DuckStatue 障碍同一换算）。
+    statue_x,statue_z=sky_island_frame.relocate('B',18,-112)
+    duck_statue(statue_x,y,statue_z,.9)
+    for x,z in [sky_island_frame.relocate('B',px,pz) for px,pz in [(-16,-149),(20,-151),(-17,-112),(26,-115),(-63,-134),(66,-124),(-40,-69),(45,-65)]]:
         lantern(x,y,z,1.15)
         garden_clump(x+1.9,y,z+1.3,1.7)
-    for x,z in [(-76,-171),(75,-168),(-79,-80),(78,-81),(-46,-68),(34,-76)]:
+    for x,z in [sky_island_frame.relocate('B',px,pz) for px,pz in [(-76,-171),(75,-168),(-79,-80),(78,-81),(-46,-68),(34,-76)]]:
         garden_clump(x,y,z,6)
     # A village banner hangs well above the northern passage, fully textured.
-    for x in [-6,6]: beam((x,y,-75),(x,y+7.5,-75),.17,'WoodDark')
-    textured_quad([(-6,y+5.2,-75),(6,y+5.2,-75),(6,y+7.2,-75),(-6,y+7.2,-75)],'Cloth')
+    banner_x,banner_z=sky_island_frame.relocate('B',0,-75)
+    for x in [-6,6]: beam((banner_x+x,y,banner_z),(banner_x+x,y+7.5,banner_z),.17,'WoodDark')
+    textured_quad([(banner_x-6,y+5.2,banner_z),(banner_x+6,y+5.2,banner_z),(banner_x+6,y+7.2,banner_z),(banner_x-6,y+7.2,banner_z)],'Cloth')
 
 
 def cliff_dressing(islands):
@@ -1008,7 +1101,9 @@ def cliff_dressing(islands):
                                 ('cliff_vine',),xx+k*.8,y-13-k*2,zz-.6,11+k*2,('cliffvine',sid,i,j,k)):
                             ribbon([(xx+k*.8,y-2,zz),(xx+k*.8-1,y-7,zz-.6),(xx+k*.5+1,y-13-k*2,zz-1)],'Leaf',.13)
     # Decorative cloud-fed waterfalls stay beyond the collision boundary.
-    for sid,xx,zz,w in [('F',336,-23,7),('D',-345,102,5),('C',-293,-194,4)]:
+    # 按旧版岛位手写并换算；F 的瀑布从 z=-23 挪到 z=0，避开布局 v2 里改到同侧岛边的 FS3 桥口。
+    for sid,legacy_x,legacy_z,w in [('F',336,0,7),('D',-345,102,5),('C',-293,-194,4)]:
+        xx,zz=sky_island_frame.relocate(sid,legacy_x,legacy_z)
         CURRENT=sid+'_Waterfall'; y=islands[sid]['height']
         cx,_,cz=islands[sid]['center']
         # 第二轮：成品瀑布，正面(-Z)朝离开岛心的方向，顶端贴在岛沿下 2 米。
@@ -1112,6 +1207,7 @@ def main():
     sky_island_tripo_props.reset()
     sky_island_tripo_props.register(sys.modules[__name__],TRIPO_DIR)
     build_materials(assets)
+    sky_island_frame.bind_layout(layout)
     islands={s['id']:s for s in layout['islands']}
     for sid,isl in islands.items(): CURRENT=sid; island_shell(isl)
     terrain_and_boundary(layout)
@@ -1184,7 +1280,7 @@ def main():
         else:
             box(obs['center'],obs['size'],'Limestone' if index%3 else 'WoodLight',.22)
             if index%3==0: box((x,y,z-d/2-.04),(w*.8,h*.1,.12),'WoodDark')
-    dock_landmark(islands); area_landmarks(islands); bridge_details(layout['bridges'])
+    dock_landmark(islands); area_landmarks(islands); bridge_details(layout['bridges']); relay_platforms(layout['bridges'])
     make_paths(islands,layout['bridges']); village_life(layout,islands); cliff_dressing(islands)
     landscape_scatter(islands,layout['obstacles']); world_clouds()
     # Offline decorative geometry shares the same palette, regional mesh groups and layout.
@@ -1202,7 +1298,7 @@ def main():
         marker(m['id'],m['position'])
         if m['kind'].lower()=='lamp':
             CURRENT=m.get('island','Lamps'); lantern(*m['position'])
-    marker('POI_B_Mural',[-23,8.25,-100])
+    marker('POI_B_Mural',mural_marker(islands))
     stats={}
     for (region,mat),data in GROUPS.items():
         obj=create_object('VIS_'+region+'_'+mat,data['v'],data['f'],mat,data['uv'],data['smooth'])
@@ -1213,7 +1309,7 @@ def main():
     fbx=assets/'SkyIslandWorld.fbx'
     bpy.ops.export_scene.fbx(filepath=str(fbx),use_selection=True,object_types={'MESH','EMPTY'},axis_forward='-Z',axis_up='Y',bake_anim=False,add_leaf_bones=False,path_mode='RELATIVE')
     metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
-              'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':[-23,8.25,-100]}],
+              'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':mural_marker(islands)}],
               'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'collisionBoxes':COLLISIONS,
               'navVertices':len(layout['navigation']['vertices']),'navTriangles':len(layout['navigation']['triangles']),
               'sourceLayout':str(assets/'sky_island_layout.json'),'textures':['Textures/sky_mural.png','Textures/sky_cloth.png']+['Textures/'+n for n in sorted(set(v[0] for v in TILED_TEXTURES.values()))]}
@@ -1227,10 +1323,14 @@ def main():
     scene.render.engine='CYCLES'; scene.cycles.samples=32; scene.cycles.use_denoising=True
     scene.render.resolution_percentage=100; scene.render.image_settings.file_format='PNG'
     scene.view_settings.view_transform='AgX'; scene.render.film_transparent=False
+    def moved(region,point):
+        # 预览机位随所拍岛的岛心平移（布局 v2 岛位变了，机位与岛的相对关系保持不变）。
+        lx,ly,lz,_w,_d=sky_island_frame.LEGACY_ISLANDS[region]; cx,cy,cz=islands[region]['center']
+        return (point[0]+cx-lx,point[1]+cy-ly,point[2]+cz-lz)
     views=[('sky_island_panorama',(870,1050,-1260),(0,3,35),1330,2160,1728),
-           ('sky_island_village',(126,150,-306),(0,16,-134),198,2000,1500),
-           ('sky_island_bell',(108,175,146),(0,91,327),152,1800,1600),
-           ('sky_island_temple',(360,132,-202),(237,32,-40),190,1800,1400)]
+           ('sky_island_village',moved('B',(126,150,-306)),moved('B',(0,16,-134)),198,2000,1500),
+           ('sky_island_bell',moved('H',(108,175,146)),moved('H',(0,91,327)),152,1800,1600),
+           ('sky_island_temple',moved('F',(360,132,-202)),moved('F',(237,32,-40)),190,1800,1400)]
     for name,pos,target,scale,w,h in views:
         camera.location=(pos[0],pos[2],pos[1]); target=Vector((target[0],target[2],target[1])); camera.rotation_euler=(target-camera.location).to_track_quat('-Z','Y').to_euler()
         camera.data.ortho_scale=scale; scene.render.resolution_x=w; scene.render.resolution_y=h; scene.render.filepath=str(source/(name+'.png'))

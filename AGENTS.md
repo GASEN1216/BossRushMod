@@ -285,6 +285,59 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ## 14. 最后更新
 
+2026-09-10（天空岛官方地图换手绘底图）：owner 要地图更好看，拿现有地图当参考图调生图接口重画。重烘 13 张小地图贴图、重打包并部署；**没开游戏**。
+
+- **网关支持参考图**：colorflowai 的 gpt-image-2 走 `images/edits` + `input_fidelity=high` 可用，约 100 秒一张；请求 1024 实际回 1254²。
+- **形状和颜色分开**：分区图层的对齐按 alpha 逐像素复算（`SkyIslandMiniMapLayerAlignmentPropertyTest`），生成图守不住逐像素岛形，
+  所以 alpha 仍按几何烘焙，只把颜色换成对齐后的生成图。
+- **参考图用真实俯视图**：纯色烘焙图不能当参考图，生成器会凭空编房子和路。用 Blender 按地图投影渲染的真实俯视图：生成器把 Unity (x,y,z) 写成 Blender (x,z,y)，
+  相机不旋转即北朝上。云海要裁掉，背景压成纯色 #2E3A44，对齐时按「离背景多远」认陆地，再用 ECC 仿射回投影（本次约 2 px）。
+- **颜色调回原版色带**：生成图草地 H63 S43、铺装 S69，按 VANILLA_GRADE 拉到草地 H73 S26、铺装 H40 S43 L75，owner 选了调色版。
+- **旧底图硬失败**：底图同名 .json 记投影与几何指纹，布局几何一变 `build_sky_island_minimap.py` 直接拒绝。
+  处理办法是重走 `tools/sky_island_minimap_art.py reference / generate / align`，或者加 `--flat`。
+- **文件位置**：底图、记录和提示词在 `Minimap/Source/`（入库，守卫校验底图 sha256）；俯视渲染、参考图、原始生成图在 `ArtSource/SkyIsland/MinimapArt/`（local-only）。
+- **导入压缩改 CompressedHQ**（作者工程 `SkyIslandRaidBuilder.ImportSprite`）：默认 Compressed（DXT5）会把手绘细节压出色块，BC7 同为 8 bpp。
+  块压缩要求边长是 4 的倍数，所以实际只有 1024 底图和 S2（128）是 BC7；另外 11 张分区图层 Unity 存的是未压缩 RGBA32，
+  UnityPy 解码后与 PNG 逐像素一致。出击包 116,702,892 → 118,636,309 字节。
+- **未实机**：地图里的实际观感、缩放清晰度与迷雾切换待人工确认。回退办法是 `--flat` 重烘后重跑 `BuildAndExit`。
+
+2026-09-10（天空岛布局 v2：岛群压缩 + 中继平台 + 航标撤离 + 官方地图指引）：owner 看过布局实测（离玩法点 30 m 外的空转面积 61%、
+桥总长 1.6 km、通关前只有码头能撤）后要求「全面改良」。按 v2 重生成场景、重打包并部署。**没开游戏、没碰玩家存档。**
+
+- **岛位是一份参数，手写坐标是另一份**：`ISLAND_SPECS` 只管岛框与导航，而障碍（60 个）、聚落摆件点（28）、地标偏移、铺路路线、
+  布景、Tripo 锚点、预览机位、`SkyIslandGates.cs` 的门与木牌全是按旧岛位写死的绝对坐标或岛心偏移。只改 `ISLAND_SPECS`
+  会让房子悬空、风标碰撞盒与模型错开十几米。统一经 `tools/sky_island_frame.py` 换算（生成器 `bind_specs`、Blender 侧 `bind_layout`，
+  模块本身不导 shapely）；导航障碍与可见模型走同一个换算才不会分叉。桥口换到另一条岛边的铺路路线要重写，端点按桥 ID 映射而不是按距离吸附。
+- **导航 ↔ 聚落是自举环**：导航读聚落规划的摆件当障碍，聚落读导航生成的布局；岛位一变旧规划全部越界。规划文件加 `layoutFrame`，
+  参照系不符时导航不带摆件，跑「导航 → 聚落 → 导航」到标记不再移动。主岛缩小后原摆件点附近找不到安全位（Blender 报 `No safe authored site`），摆件就近搜索圈 22 → 60 m，
+  并记 `siteShiftMeters`（最大 36 m）。
+- **中继平台是桥的一段，不是新岛**：`BRIDGE_RELAYS` 在平滑后桥道的直线段上加宽横截面、把高程做成水平台阶（二次缓和保持坡度连续），
+  中心标记 `Relay_<桥 ID>`（island 字段写桥 ID）。RegionBit、`COL_Ground_<岛>`、门语义全部不动。
+  `SkyIslandNavigationPropertyTest` 的等宽断言改为按平台里程算名义宽度，补「平台水平」「平台有标记」及两条破坏探针。
+- **Blender 后台遇到 Python 异常仍返回退出码 0**（`No safe authored site` 那次就是 exit=0）：一律在日志里找
+  `SKY_ISLAND_SETTLEMENT_PLAN_PASS` / `SKY_ISLAND_MODEL_OK`，或加 `--python-exit-code 1` 让异常变非零退出。后台跑加 `--factory-startup`，避免加载用户偏好里的插件（含 MCP）。
+- **先在草稿里跑通再整体换进仓库**：`SKY_ISLAND_SETTLEMENT_PLAN` 环境变量覆盖规划路径，小地图脚本加 `--layout/--out-dir/--out-json`。
+  仓库里的布局、规划、小地图、验证台账与 C# 门坐标、遭遇标记互相引用（`SkyIslandContentExpansionGuard` 要求搜刮锚点的标记存在于仓库布局），
+  在共享工作区里分批换会让别的会话看到半红的守卫。
+- **岛距一缩，按旧岛距调的半径全要跟**：自动敌群触发 85 → 55 m（站在风铃集够不到邻岛敌群，最近 68 m）、手动挑战 90 → 70 m
+  （最远折翎 63 m）、强制追踪 100/120/140 → 70/85/100 m。
+- **撤离**：钟庭改为双航标点亮即开；新增悬根林 / 残星工坊航标广场撤离，借区域标记 `Region_D/G`，不新增场景节点。`ExtractionMarkerAt`
+  由 2 个半径判定变 4 个，`SkyIslandValidationSuiteGuard` / `SkyIslandPlayabilityGuard` 同步，F3 撤离环与撤离规则用例覆盖新出口。
+  **官方地图**用 `SimplePointOfInterest` 标撤离点与当前目标（挂世界根；先 AddComponent 改完属性再 `Setup`，Setup 自带先注销再注册），新出口开放时提示一次。
+- **内容挂到平台上**：E / E_02 两组自动敌群 → `Relay_DE` / `Relay_GE`；搜刮锚点 D3/G3/E3 → `Relay_K1/K2/K3`（区域与档次不变，计数守卫不动）。
+- **捷径门挪到风铃集一侧桥头**：K1/K2/K3 的门原先离解锁端（D/G/E）约 8 m。搜刮点挪上平台后，从风铃集沿锁着的捷径走约 60 m
+  就能拿到平台上的箱子（G3 还是星工遗存），不经任何门和战斗——出生点旁多了一个不设防的高档箱。门改到 B 端往桥内 8 m
+  （钟庭、折翎两扇门本来就挡在来路一侧），开门装置仍在远端岛、木牌不动；`SkyIslandGateNavigationPropertyTest` 读生产坐标复算
+  32 组合通过，K1/K2/K3 各封 2/6/2 个导航三角形。**挪内容锚点时要连同门的位置一起看「开门前从哪边够得着」**。
+- **数字**：出生→钟庭撤离 931 → 525 m、示例探索 2,665 → 1,704 m、可走面积 22.2 → 11.4 万 m²、桥总长 1,603 → 763 m、导航 4,037 → 3,870 顶点、
+  Unity 可见三角面 1,817,552 → 1,636,738、出击包 125,375,187 → 116,702,892 字节。岛缩小后 Tripo 装饰大件少放 20 件（钟楼、水晶喷泉、6 棵樱花等），碰撞盒 161 → 146。
+- **Blender MCP 的用法**：Blender 不是事实源，挪岛只改生成器；MCP 用来把布局搭成白盒、按游戏相机（FOV 20°、俯仰 55°、臂长 45 m，一屏约 25–32 × 20 m）
+  在关键点位渲染，判断节奏与遮挡。
+- **验证**：生成器全部校验、导航属性测试 14 条破坏、门 32 组合 + 10 木牌、聚落几何、39 搜刮点 + 16 遭遇落位、77 交互体两两复算、
+  Unity `GEOMETRY_PASS`、判包（仓库 + 游戏各 3/3）、UnityPy 回读对象与标记前缀计数（`Relay_` 5 / `Region_` 12 等）；挪门后重编 Release 并部署，585 guard 全绿、天空岛执行回归 8/8。
+  **上一版出击包（261bc723…）没有留备份**，回退要从 git 旧布局重跑整条链（更早的 `Build/sky_island_raid.fb12e540.bak` 仍在）。
+  作者工程侧改动未提交；实机 smoke 全部待人工（`M_SKY_ISLAND_08` 已按新撤离规则改写）。
+
 2026-09-10（天空岛岛内 F3 验收套件 + U1 离线复算）：把「离线能证的证完、其余变成一张可执行清单」。
 **没开游戏、没做任何游戏内测试、没碰玩家存档**，因此本轮零 L3 结论。
 

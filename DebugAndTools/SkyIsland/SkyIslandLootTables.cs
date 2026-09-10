@@ -173,12 +173,13 @@ namespace BossRush
                 // D 悬根林：西航标所在，两组遭遇，升到航务补给。
                 Anchor("D1", "Lamp_D", 20f, 6f, SkyIslandLootTier.Voyage, "D"),
                 Anchor("D2", "Lamp_D_02", 200f, 6f, SkyIslandLootTier.Voyage, "D"),
-                Anchor("D3", "POI_D", 110f, 7f, SkyIslandLootTier.Voyage, "D"),
+                // 布局 v2：D3 / G3 / E3 挪到回程捷径 K1 / K2 / K3 的中继平台，横向偏 7 米仍在平台上；区域与档次不变。
+                Anchor("D3", "Relay_K1", 30f, 7f, SkyIslandLootTier.Voyage, "D"),
                 Anchor("D4", "Search_D", 250f, 8f, SkyIslandLootTier.Voyage, "D"),
                 // E 鸣风栈道：两线汇合，也是噬风的挑战地点。
                 Anchor("E1", "Lamp_E", 75f, 6f, SkyIslandLootTier.Voyage, "E"),
                 Anchor("E2", "Lamp_E_02", 255f, 6f, SkyIslandLootTier.Voyage, "E"),
-                Anchor("E3", "POI_E", 165f, 7f, SkyIslandLootTier.Voyage, "E"),
+                Anchor("E3", "Relay_K3", 0f, 7f, SkyIslandLootTier.Voyage, "E"),
                 Anchor("E4", "Search_E", 300f, 7f, SkyIslandLootTier.Voyage, "E"),
                 // F 镜水寺：东线第一段。
                 Anchor("F1", "Lamp_F", 45f, 6f, SkyIslandLootTier.Voyage, "F"),
@@ -188,7 +189,7 @@ namespace BossRush
                 // G 残星工坊：东航标所在，全图最深的常规区域。
                 Anchor("G1", "Lamp_G", 30f, 6f, SkyIslandLootTier.Starworks, "G"),
                 Anchor("G2", "Lamp_G_02", 210f, 6f, SkyIslandLootTier.Starworks, "G"),
-                Anchor("G3", "POI_G", 140f, 7f, SkyIslandLootTier.Starworks, "G"),
+                Anchor("G3", "Relay_K2", 301f, 7f, SkyIslandLootTier.Starworks, "G"),
                 Anchor("G4", "Search_G", 250f, 7f, SkyIslandLootTier.Starworks, "G"),
                 // H 归航钟庭：双航标门之后才进得来，回报最高。
                 Anchor("H1", "Lamp_H", 50f, 6f, SkyIslandLootTier.Starworks, "H"),

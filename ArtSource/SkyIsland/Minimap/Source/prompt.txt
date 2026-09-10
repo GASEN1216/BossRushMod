@@ -1,0 +1,9 @@
+Repaint this image as a finished, beautiful top-down world map illustration for a cozy fantasy sky-island level in the game "Escape from Duckov".
+
+LAYOUT LOCK (most important): the input is an exact orthographic top-down render of the real level and will be overlaid on the real map coordinates. Keep the identical framing, scale and position of everything. Every island outline, every bridge and its bends, the octagonal platforms in the middle of bridges, every dirt path, round plaza, building footprint, crop field, pond, stone ring and tree cluster must stay exactly where it is, with the same size and shape. Do not move, resize, add or remove islands, bridges, paths or buildings. No rotation, no crop, no zoom, no perspective, strictly straight-down view.
+
+STYLE: hand-painted stylized game map art, soft gouache texture with clean readable shapes, simplified detail that still reads well when small, gentle light from the top-left, soft short shadows under roofs and tree canopies, a thin darker ink-brown rim along every island edge and bridge edge. Warm amber palette matching the original game: yellow-green meadow grass (#7F9154), light sandstone paths and plazas (#D9C9A2), warm grey-brown stone (#A98A6F), terracotta roofs (#976D49), warm wooden bridge planks, muted teal water. Low saturation, cozy and calm, no neon colors, no photographic realism.
+
+BACKGROUND: everything outside the islands and bridges must stay a perfectly flat, uniform dark slate color (#2E3A44). No clouds, no sea, no texture, no gradient, no vignette, no shadows on the background.
+
+DO NOT add any text, letters, numbers, labels, map pins, icons, legends, frames, borders, paper edges or UI elements. Keep existing ground patterns such as the paved star plaza, but do not add a separate compass rose.

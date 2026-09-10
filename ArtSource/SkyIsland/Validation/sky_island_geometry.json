@@ -440,6 +440,716 @@
       ],
       "texture": null,
       "emission": 0
+    },
+    "Sky_TripoBellArch": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_bell_arch.png",
+      "emission": 0
+    },
+    "Sky_TripoGreatTree": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_great_tree.png",
+      "emission": 0
+    },
+    "Sky_TripoCrystalFountain": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_crystal_fountain.png",
+      "emission": 0
+    },
+    "Sky_TripoBellTower": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_bell_tower.png",
+      "emission": 0
+    },
+    "Sky_TripoCherryPavilion": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cherry_pavilion.png",
+      "emission": 0
+    },
+    "Sky_TripoCottageLarge": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cottage_large.png",
+      "emission": 0
+    },
+    "Sky_TripoFarmBarn": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_farm_barn.png",
+      "emission": 0
+    },
+    "Sky_TripoCottageDormer": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cottage_dormer.png",
+      "emission": 0
+    },
+    "Sky_TripoMarketStall": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_market_stall.png",
+      "emission": 0
+    },
+    "Sky_TripoStonePlatform": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_stone_platform.png",
+      "emission": 0
+    },
+    "Sky_TripoCottageSmall": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cottage_small.png",
+      "emission": 0
+    },
+    "Sky_TripoShopSign": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_shop_sign.png",
+      "emission": 0
+    },
+    "Sky_TripoShrinePavilion": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_shrine_pavilion.png",
+      "emission": 0
+    },
+    "Sky_TripoCherryTree": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cherry_tree.png",
+      "emission": 0
+    },
+    "Sky_TripoPergola": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_pergola.png",
+      "emission": 0
+    },
+    "Sky_TripoRuinedColumn": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_ruined_column.png",
+      "emission": 0
+    },
+    "Sky_TripoRootRock": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_root_rock.png",
+      "emission": 0
+    },
+    "Sky_TripoFarmCart": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_farm_cart.png",
+      "emission": 0
+    },
+    "Sky_TripoCrystalCluster": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_crystal_cluster.png",
+      "emission": 0
+    },
+    "Sky_TripoRuneStone": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_rune_stone.png",
+      "emission": 0
+    },
+    "Sky_TripoStoneStair": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_stone_stair.png",
+      "emission": 0
+    },
+    "Sky_TripoStreetLamp": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_street_lamp.png",
+      "emission": 0
+    },
+    "Sky_TripoStoneBench": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_stone_bench.png",
+      "emission": 0
+    },
+    "Sky_TripoBannerPole": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_banner_pole.png",
+      "emission": 0
+    },
+    "Sky_TripoCrateBarrel": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_crate_barrel.png",
+      "emission": 0
+    },
+    "Sky_TripoPlanter": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_planter.png",
+      "emission": 0
+    },
+    "Sky_TripoTemple": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_temple.png",
+      "emission": 0
+    },
+    "Sky_TripoWorkshopDome": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_workshop_dome.png",
+      "emission": 0
+    },
+    "Sky_TripoMill": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_mill.png",
+      "emission": 0
+    },
+    "Sky_TripoBarn": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_barn.png",
+      "emission": 0
+    },
+    "Sky_TripoWorkshopShed": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_workshop_shed.png",
+      "emission": 0
+    },
+    "Sky_TripoDockHouse": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_dock_house.png",
+      "emission": 0
+    },
+    "Sky_TripoTeaHouse": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_tea_house.png",
+      "emission": 0
+    },
+    "Sky_TripoPavilionHall": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_pavilion_hall.png",
+      "emission": 0
+    },
+    "Sky_TripoPostHouse": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_post_house.png",
+      "emission": 0
+    },
+    "Sky_TripoVillageHouseA": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_village_house_a.png",
+      "emission": 0
+    },
+    "Sky_TripoVillageHouseB": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_village_house_b.png",
+      "emission": 0
+    },
+    "Sky_TripoVillageHouseC": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_village_house_c.png",
+      "emission": 0
+    },
+    "Sky_TripoCoverCrates": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cover_crates.png",
+      "emission": 0
+    },
+    "Sky_TripoCoverStone": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cover_stone.png",
+      "emission": 0
+    },
+    "Sky_TripoWindBeacon": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_wind_beacon.png",
+      "emission": 0
+    },
+    "Sky_TripoAstrolabe": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_astrolabe.png",
+      "emission": 0
+    },
+    "Sky_TripoHomecomingBell": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_homecoming_bell.png",
+      "emission": 0
+    },
+    "Sky_TripoLookoutTower": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_lookout_tower.png",
+      "emission": 0
+    },
+    "Sky_TripoDuckStatue": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_duck_statue.png",
+      "emission": 0
+    },
+    "Sky_TripoCaveRock": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cave_rock.png",
+      "emission": 0
+    },
+    "Sky_TripoWindPillar": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_wind_pillar.png",
+      "emission": 0
+    },
+    "Sky_TripoMemorialStele": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_memorial_stele.png",
+      "emission": 0
+    },
+    "Sky_TripoChimeRack": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_chime_rack.png",
+      "emission": 0
+    },
+    "Sky_TripoPavilionPillar": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_pavilion_pillar.png",
+      "emission": 0
+    },
+    "Sky_TripoTreeGold": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_tree_gold.png",
+      "emission": 0
+    },
+    "Sky_TripoTreeBlossom": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_tree_blossom.png",
+      "emission": 0
+    },
+    "Sky_TripoTreeOlive": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_tree_olive.png",
+      "emission": 0
+    },
+    "Sky_TripoTreeGreen": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_tree_green.png",
+      "emission": 0
+    },
+    "Sky_TripoBushA": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_bush_a.png",
+      "emission": 0
+    },
+    "Sky_TripoBushB": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_bush_b.png",
+      "emission": 0
+    },
+    "Sky_TripoCliffChunkA": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cliff_chunk_a.png",
+      "emission": 0
+    },
+    "Sky_TripoCliffChunkB": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cliff_chunk_b.png",
+      "emission": 0
+    },
+    "Sky_TripoCliffChunkC": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cliff_chunk_c.png",
+      "emission": 0
+    },
+    "Sky_TripoCliffShrubCap": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_cliff_shrub_cap.png",
+      "emission": 0
+    },
+    "Sky_TripoRockB": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_rock_b.png",
+      "emission": 0
+    },
+    "Sky_TripoFernClump": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_fern_clump.png",
+      "emission": 0
+    },
+    "Sky_TripoCoralClump": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_coral_clump.png",
+      "emission": 0
+    },
+    "Sky_TripoDistantIsletA": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_distant_islet_a.png",
+      "emission": 0
+    },
+    "Sky_TripoDistantIsletB": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_distant_islet_b.png",
+      "emission": 0
+    },
+    "Sky_TripoDistantIsletC": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_distant_islet_c.png",
+      "emission": 0
+    },
+    "Sky_TripoMushroomCluster": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_mushroom_cluster.png",
+      "emission": 0
+    },
+    "Sky_TripoGlowCrystal": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_glow_crystal.png",
+      "emission": 0
+    },
+    "Sky_TripoBrassLampPost": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_brass_lamp_post.png",
+      "emission": 0
+    },
+    "Sky_TripoBrassRailingModule": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_brass_railing_module.png",
+      "emission": 0
+    },
+    "Sky_TripoWaterfall": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/tripo_waterfall.png",
+      "emission": 0
     }
   },
   "markers": [
@@ -448,135 +1158,175 @@
       "position": [
         0,
         0,
-        -300
+        -220
       ]
     },
     {
       "name": "Region_B",
       "position": [
         0,
-        8,
-        -130
+        5,
+        -95
       ]
     },
     {
       "name": "Region_C",
       "position": [
-        -230,
-        16,
-        -110
+        -165,
+        10,
+        -80
       ]
     },
     {
       "name": "Region_D",
       "position": [
-        -250,
-        28,
-        110
+        -160,
+        16,
+        75
       ]
     },
     {
       "name": "Region_E",
       "position": [
-        0,
-        42,
-        110
+        15,
+        18,
+        80
       ]
     },
     {
       "name": "Region_F",
       "position": [
-        215,
-        26,
-        -65
+        175,
+        15,
+        -83
       ]
     },
     {
       "name": "Region_G",
       "position": [
-        250,
-        44,
-        180
+        175,
+        21,
+        57
       ]
     },
     {
       "name": "Region_H",
       "position": [
-        0,
-        62,
-        300
+        5,
+        26,
+        225
       ]
     },
     {
       "name": "Region_S1",
       "position": [
-        -350,
-        12,
-        -248
+        -290,
+        7,
+        -118
       ]
     },
     {
       "name": "Region_S2",
       "position": [
-        -370,
-        24,
-        202
+        -282.5,
+        13,
+        82
       ]
     },
     {
       "name": "Region_S3",
       "position": [
-        337,
-        18,
-        -170
+        284.5,
+        10,
+        -65
       ]
     },
     {
       "name": "Region_S4",
       "position": [
-        350,
-        52,
-        292
+        295,
+        26,
+        57
       ]
     },
     {
       "name": "PlayerSpawn",
       "position": [
+        0.0,
         0,
-        0,
-        -326
+        -242.1
       ]
     },
     {
       "name": "MainExtraction",
       "position": [
+        0.0,
         0,
-        0,
-        -339
+        -253.15
       ]
     },
     {
       "name": "BellExtraction",
       "position": [
-        0,
-        62,
-        309
+        5.0,
+        26,
+        231.3
       ]
     },
     {
       "name": "Exit",
       "position": [
+        0.0,
         0,
-        0,
-        -339
+        -253.15
+      ]
+    },
+    {
+      "name": "Relay_DE",
+      "position": [
+        -70.0,
+        17.0,
+        85.0
+      ]
+    },
+    {
+      "name": "Relay_GE",
+      "position": [
+        96.25,
+        19.5,
+        90.0
+      ]
+    },
+    {
+      "name": "Relay_K1",
+      "position": [
+        -62.5,
+        11.954641,
+        20.0
+      ]
+    },
+    {
+      "name": "Relay_K2",
+      "position": [
+        56.51,
+        10.640261,
+        -3.8
+      ]
+    },
+    {
+      "name": "Relay_K3",
+      "position": [
+        -6.0,
+        11.5,
+        -7.5
       ]
     },
     {
       "name": "EnemySpawn_A",
       "position": [
-        21,
+        10,
         0,
-        -316
+        -210
       ]
     },
     {
@@ -584,7 +1334,7 @@
       "position": [
         -12,
         0,
-        -283
+        -203
       ]
     },
     {
@@ -592,7 +1342,7 @@
       "position": [
         -30,
         0,
-        -320
+        -240
       ]
     },
     {
@@ -600,7 +1350,7 @@
       "position": [
         32,
         0,
-        -270
+        -190
       ]
     },
     {
@@ -608,1234 +1358,1094 @@
       "position": [
         -25,
         0,
-        -292
+        -212
       ]
     },
     {
       "name": "Lamp_A_02",
       "position": [
-        -28,
+        26,
         0,
-        -324
+        -244
       ]
     },
     {
       "name": "EnemySpawn_B",
       "position": [
         21,
-        8,
-        -146
+        5,
+        -111
       ]
     },
     {
       "name": "POI_B",
       "position": [
         -12,
-        8,
-        -113
+        5,
+        -78
       ]
     },
     {
       "name": "Search_B",
       "position": [
-        -30,
-        8,
-        -150
+        -12,
+        5,
+        -104
       ]
     },
     {
       "name": "Search_B_02",
       "position": [
-        -34,
-        8,
-        -107
+        32,
+        5,
+        -65
       ]
     },
     {
       "name": "Lamp_B",
       "position": [
         -25,
-        8,
-        -122
+        5,
+        -87
       ]
     },
     {
       "name": "Lamp_B_02",
       "position": [
-        26,
-        8,
-        -154
+        -4,
+        5,
+        -126
       ]
     },
     {
       "name": "EnemySpawn_C",
       "position": [
-        -209,
-        16,
-        -126
+        -144,
+        10,
+        -96
       ]
     },
     {
       "name": "POI_C",
       "position": [
-        -242,
-        16,
-        -93
+        -177,
+        10,
+        -63
       ]
     },
     {
       "name": "Search_C",
       "position": [
-        -260,
-        16,
-        -130
+        -195,
+        10,
+        -100
       ]
     },
     {
       "name": "Search_C_02",
       "position": [
-        -198,
-        16,
-        -80
+        -133,
+        10,
+        -50
       ]
     },
     {
       "name": "Lamp_C",
       "position": [
-        -255,
-        16,
-        -102
+        -140,
+        10,
+        -72
       ]
     },
     {
       "name": "Lamp_C_02",
       "position": [
-        -204,
-        16,
-        -134
+        -193,
+        10,
+        -104
       ]
     },
     {
       "name": "EnemySpawn_D",
       "position": [
-        -229,
-        28,
-        94
+        -139,
+        16,
+        59
       ]
     },
     {
       "name": "POI_D",
       "position": [
-        -262,
-        28,
-        127
+        -148,
+        16,
+        92
       ]
     },
     {
       "name": "Search_D",
       "position": [
-        -220,
-        28,
-        130
+        -190,
+        16,
+        55
       ]
     },
     {
       "name": "Search_D_02",
       "position": [
-        -218,
-        28,
-        140
+        -145,
+        16,
+        106
       ]
     },
     {
       "name": "Lamp_D",
       "position": [
-        -275,
-        28,
-        118
+        -135,
+        16,
+        83
       ]
     },
     {
       "name": "Lamp_D_02",
       "position": [
-        -224,
-        28,
-        86
+        -134,
+        16,
+        51
       ]
     },
     {
       "name": "EnemySpawn_E",
       "position": [
-        21,
-        42,
-        94
+        36,
+        18,
+        64
       ]
     },
     {
       "name": "POI_E",
       "position": [
-        -12,
-        42,
-        127
+        15,
+        18,
+        68
       ]
     },
     {
       "name": "Search_E",
       "position": [
-        -30,
-        42,
-        90
+        -15,
+        18,
+        60
       ]
     },
     {
       "name": "Search_E_02",
       "position": [
-        32,
-        42,
-        140
+        47,
+        18,
+        110
       ]
     },
     {
       "name": "Lamp_E",
       "position": [
-        -25,
-        42,
-        118
+        -10,
+        18,
+        88
       ]
     },
     {
       "name": "Lamp_E_02",
       "position": [
-        26,
-        42,
-        86
+        41,
+        18,
+        56
       ]
     },
     {
       "name": "EnemySpawn_F",
       "position": [
-        183,
-        26,
-        -94
+        196,
+        15,
+        -81
       ]
     },
     {
       "name": "POI_F",
       "position": [
-        190,
-        26,
-        -94
+        136,
+        15,
+        -101
       ]
     },
     {
       "name": "Search_F",
       "position": [
-        197,
-        26,
-        -94
+        205,
+        15,
+        -45
       ]
     },
     {
       "name": "Search_F_02",
       "position": [
-        272,
-        26,
-        -10
+        141,
+        15,
+        -42
       ]
     },
     {
       "name": "Lamp_F",
       "position": [
-        204,
-        26,
-        -94
+        165,
+        15,
+        -83
       ]
     },
     {
       "name": "Lamp_F_02",
       "position": [
-        266,
-        26,
-        -64
+        201,
+        15,
+        -89
       ]
     },
     {
       "name": "EnemySpawn_G",
       "position": [
-        271,
-        44,
-        164
+        154,
+        21,
+        59
       ]
     },
     {
       "name": "POI_G",
       "position": [
-        238,
-        44,
-        197
+        163,
+        21,
+        92
       ]
     },
     {
       "name": "Search_G",
       "position": [
-        220,
-        44,
-        160
+        145,
+        21,
+        55
       ]
     },
     {
       "name": "Search_G_02",
       "position": [
-        216,
-        44,
-        203
+        207,
+        21,
+        105
       ]
     },
     {
       "name": "Lamp_G",
       "position": [
-        225,
-        44,
-        188
+        150,
+        21,
+        83
       ]
     },
     {
       "name": "Lamp_G_02",
       "position": [
-        276,
-        44,
-        156
+        147,
+        21,
+        51
       ]
     },
     {
       "name": "EnemySpawn_H",
       "position": [
-        21,
-        62,
-        284
+        15,
+        26,
+        235
       ]
     },
     {
       "name": "POI_H",
       "position": [
-        -12,
-        62,
-        317
+        5,
+        26,
+        213
       ]
     },
     {
       "name": "Search_H",
       "position": [
-        30,
-        62,
-        320
+        -25,
+        26,
+        205
       ]
     },
     {
       "name": "Search_H_02",
       "position": [
-        32,
-        62,
-        330
+        37,
+        26,
+        255
       ]
     },
     {
       "name": "Lamp_H",
       "position": [
-        -25,
-        62,
-        308
+        -20,
+        26,
+        233
       ]
     },
     {
       "name": "Lamp_H_02",
       "position": [
+        31,
         26,
-        62,
-        276
+        201
       ]
     },
     {
       "name": "EnemySpawn_S1",
       "position": [
-        -329,
-        12,
-        -246
+        -269,
+        7,
+        -116
       ]
     },
     {
       "name": "POI_S1",
       "position": [
-        -362,
-        12,
-        -213
+        -302,
+        7,
+        -83
       ]
     },
     {
       "name": "Search_S1",
       "position": [
-        -368,
-        12,
-        -245
+        -308,
+        7,
+        -115
       ]
     },
     {
       "name": "EnemySpawn_S2",
       "position": [
-        -349,
-        24,
-        204
+        -261.5,
+        13,
+        84
       ]
     },
     {
       "name": "POI_S2",
       "position": [
-        -382,
-        24,
-        237
+        -294.5,
+        13,
+        117
       ]
     },
     {
       "name": "Search_S2",
       "position": [
-        -382,
-        24,
-        211
+        -294.5,
+        13,
+        91
       ]
     },
     {
       "name": "EnemySpawn_S3",
       "position": [
-        376,
-        18,
-        -186
+        323.5,
+        10,
+        -81
       ]
     },
     {
       "name": "POI_S3",
       "position": [
-        343,
-        18,
-        -153
+        290.5,
+        10,
+        -48
       ]
     },
     {
       "name": "Search_S3",
       "position": [
-        343,
-        18,
-        -179
+        290.5,
+        10,
+        -74
       ]
     },
     {
       "name": "EnemySpawn_S4",
       "position": [
-        371,
-        52,
-        294
+        316,
+        26,
+        59
       ]
     },
     {
       "name": "POI_S4",
       "position": [
-        338,
-        52,
-        327
+        283,
+        26,
+        92
       ]
     },
     {
       "name": "Search_S4",
       "position": [
-        338,
-        52,
-        301
+        283,
+        26,
+        66
       ]
     },
     {
       "name": "POI_B_Mural",
       "position": [
-        -23,
-        8.25,
-        -100
+        -15.736842105263158,
+        5.25,
+        -74.876
       ]
     }
   ],
   "visualMeshes": {
     "VIS_A_Limestone": {
-      "vertices": 592,
-      "triangles": 868
+      "vertices": 480,
+      "triangles": 682
     },
     "VIS_A_RockLight": {
-      "vertices": 960,
-      "triangles": 1404
+      "vertices": 408,
+      "triangles": 534
     },
     "VIS_A_RockDeep": {
-      "vertices": 184,
-      "triangles": 104
+      "vertices": 168,
+      "triangles": 96
     },
     "VIS_A_Rock": {
-      "vertices": 88,
-      "triangles": 44
+      "vertices": 80,
+      "triangles": 40
     },
     "VIS_A_Forest": {
-      "vertices": 3452,
-      "triangles": 5744
+      "vertices": 3339,
+      "triangles": 5544
     },
     "VIS_B_Limestone": {
-      "vertices": 1200,
-      "triangles": 1846
+      "vertices": 896,
+      "triangles": 1300
     },
     "VIS_B_RockLight": {
-      "vertices": 2084,
-      "triangles": 3110
+      "vertices": 752,
+      "triangles": 992
     },
     "VIS_B_RockDeep": {
-      "vertices": 332,
-      "triangles": 236
+      "vertices": 316,
+      "triangles": 228
     },
     "VIS_B_Rock": {
-      "vertices": 152,
-      "triangles": 76
+      "vertices": 144,
+      "triangles": 72
     },
     "VIS_B_Forest": {
-      "vertices": 4219,
-      "triangles": 6964
+      "vertices": 3839,
+      "triangles": 6368
     },
     "VIS_C_Limestone": {
-      "vertices": 1536,
-      "triangles": 2544
+      "vertices": 1376,
+      "triangles": 2276
     },
     "VIS_C_RockLight": {
-      "vertices": 1673,
-      "triangles": 2492
+      "vertices": 422,
+      "triangles": 508
     },
     "VIS_C_RockDeep": {
-      "vertices": 398,
-      "triangles": 403
+      "vertices": 386,
+      "triangles": 400
     },
     "VIS_C_Rock": {
+      "vertices": 112,
+      "triangles": 56
+    },
+    "VIS_C_Forest": {
+      "vertices": 3989,
+      "triangles": 6296
+    },
+    "VIS_D_Limestone": {
+      "vertices": 784,
+      "triangles": 1140
+    },
+    "VIS_D_RockLight": {
+      "vertices": 708,
+      "triangles": 948
+    },
+    "VIS_D_RockDeep": {
+      "vertices": 290,
+      "triangles": 223
+    },
+    "VIS_D_Rock": {
       "vertices": 124,
       "triangles": 62
     },
-    "VIS_C_Forest": {
-      "vertices": 4264,
-      "triangles": 6724
-    },
-    "VIS_D_Limestone": {
-      "vertices": 832,
-      "triangles": 1206
-    },
-    "VIS_D_RockLight": {
-      "vertices": 1580,
-      "triangles": 2330
-    },
-    "VIS_D_RockDeep": {
-      "vertices": 322,
-      "triangles": 245
-    },
-    "VIS_D_Rock": {
-      "vertices": 132,
-      "triangles": 66
-    },
     "VIS_D_Forest": {
-      "vertices": 4958,
-      "triangles": 8240
+      "vertices": 4417,
+      "triangles": 7336
     },
     "VIS_E_Limestone": {
-      "vertices": 816,
-      "triangles": 1180
+      "vertices": 720,
+      "triangles": 1036
     },
     "VIS_E_RockLight": {
-      "vertices": 1311,
-      "triangles": 1904
+      "vertices": 440,
+      "triangles": 528
     },
     "VIS_E_RockDeep": {
-      "vertices": 262,
-      "triangles": 154
+      "vertices": 226,
+      "triangles": 130
     },
     "VIS_E_Rock": {
-      "vertices": 132,
-      "triangles": 66
+      "vertices": 120,
+      "triangles": 60
     },
     "VIS_E_Forest": {
-      "vertices": 3844,
-      "triangles": 6388
+      "vertices": 2799,
+      "triangles": 4644
     },
     "VIS_F_Limestone": {
-      "vertices": 944,
-      "triangles": 1418
+      "vertices": 768,
+      "triangles": 1144
     },
     "VIS_F_RockLight": {
-      "vertices": 2192,
-      "triangles": 3318
+      "vertices": 559,
+      "triangles": 736
     },
     "VIS_F_RockDeep": {
-      "vertices": 300,
-      "triangles": 223
+      "vertices": 248,
+      "triangles": 191
     },
     "VIS_F_Rock": {
-      "vertices": 128,
-      "triangles": 64
+      "vertices": 108,
+      "triangles": 54
     },
     "VIS_F_Forest": {
-      "vertices": 4914,
-      "triangles": 8067
+      "vertices": 3496,
+      "triangles": 5755
     },
     "VIS_G_Limestone": {
-      "vertices": 960,
-      "triangles": 1450
+      "vertices": 752,
+      "triangles": 1106
     },
     "VIS_G_RockLight": {
-      "vertices": 1635,
-      "triangles": 2418
+      "vertices": 496,
+      "triangles": 622
     },
     "VIS_G_RockDeep": {
-      "vertices": 354,
-      "triangles": 294
+      "vertices": 314,
+      "triangles": 271
     },
     "VIS_G_Rock": {
-      "vertices": 132,
-      "triangles": 66
+      "vertices": 116,
+      "triangles": 58
     },
     "VIS_G_Forest": {
-      "vertices": 3656,
-      "triangles": 6056
+      "vertices": 3373,
+      "triangles": 5596
     },
     "VIS_H_Limestone": {
-      "vertices": 816,
-      "triangles": 1224
+      "vertices": 720,
+      "triangles": 1080
     },
     "VIS_H_RockLight": {
-      "vertices": 1041,
-      "triangles": 1516
+      "vertices": 220,
+      "triangles": 220
     },
     "VIS_H_RockDeep": {
-      "vertices": 206,
-      "triangles": 123
+      "vertices": 194,
+      "triangles": 120
     },
     "VIS_H_Rock": {
-      "vertices": 100,
-      "triangles": 50
+      "vertices": 88,
+      "triangles": 44
     },
     "VIS_H_Forest": {
-      "vertices": 3167,
-      "triangles": 5276
+      "vertices": 3312,
+      "triangles": 5520
     },
     "VIS_S1_Limestone": {
       "vertices": 432,
       "triangles": 594
     },
     "VIS_S1_RockLight": {
-      "vertices": 1098,
-      "triangles": 1654
+      "vertices": 543,
+      "triangles": 766
     },
     "VIS_S1_RockDeep": {
-      "vertices": 152,
-      "triangles": 82
+      "vertices": 160,
+      "triangles": 89
     },
     "VIS_S1_Rock": {
       "vertices": 80,
       "triangles": 40
     },
     "VIS_S1_Forest": {
-      "vertices": 2623,
-      "triangles": 4345
+      "vertices": 2875,
+      "triangles": 4765
     },
     "VIS_S2_Limestone": {
-      "vertices": 496,
-      "triangles": 714
+      "vertices": 432,
+      "triangles": 594
     },
     "VIS_S2_RockLight": {
-      "vertices": 718,
-      "triangles": 1030
+      "vertices": 233,
+      "triangles": 254
     },
     "VIS_S2_RockDeep": {
-      "vertices": 152,
-      "triangles": 82
+      "vertices": 160,
+      "triangles": 89
     },
     "VIS_S2_Rock": {
       "vertices": 80,
       "triangles": 40
     },
     "VIS_S2_Forest": {
-      "vertices": 2590,
-      "triangles": 4312
+      "vertices": 2772,
+      "triangles": 4620
     },
     "VIS_S3_Limestone": {
       "vertices": 432,
       "triangles": 594
     },
     "VIS_S3_RockLight": {
-      "vertices": 1194,
-      "triangles": 1814
+      "vertices": 604,
+      "triangles": 870
     },
     "VIS_S3_RockDeep": {
-      "vertices": 152,
-      "triangles": 82
+      "vertices": 160,
+      "triangles": 89
     },
     "VIS_S3_Rock": {
       "vertices": 80,
       "triangles": 40
     },
     "VIS_S3_Forest": {
-      "vertices": 2695,
-      "triangles": 4480
+      "vertices": 2807,
+      "triangles": 4676
     },
     "VIS_S4_Limestone": {
       "vertices": 512,
       "triangles": 750
     },
     "VIS_S4_RockLight": {
-      "vertices": 828,
-      "triangles": 1206
+      "vertices": 198,
+      "triangles": 198
     },
     "VIS_S4_RockDeep": {
-      "vertices": 236,
-      "triangles": 218
+      "vertices": 244,
+      "triangles": 225
     },
     "VIS_S4_Rock": {
       "vertices": 80,
       "triangles": 40
     },
     "VIS_S4_Forest": {
-      "vertices": 2625,
-      "triangles": 4368
+      "vertices": 2842,
+      "triangles": 4732
     },
     "VIS_A_Wood": {
-      "vertices": 2520,
-      "triangles": 4376
+      "vertices": 1136,
+      "triangles": 1940
     },
     "VIS_A_WoodDark": {
-      "vertices": 2628,
-      "triangles": 4652
+      "vertices": 1920,
+      "triangles": 3388
     },
     "VIS_A_Brass": {
-      "vertices": 3376,
-      "triangles": 6064
+      "vertices": 2212,
+      "triangles": 3940
     },
     "VIS_B_Wood": {
-      "vertices": 5926,
-      "triangles": 10460
+      "vertices": 2606,
+      "triangles": 4556
     },
     "VIS_B_WoodDark": {
-      "vertices": 3894,
-      "triangles": 6776
+      "vertices": 2490,
+      "triangles": 4300
     },
     "VIS_B_Brass": {
-      "vertices": 6234,
-      "triangles": 10824
+      "vertices": 4206,
+      "triangles": 7340
     },
     "VIS_C_Wood": {
-      "vertices": 4076,
-      "triangles": 7232
+      "vertices": 2092,
+      "triangles": 3732
     },
     "VIS_C_WoodDark": {
-      "vertices": 3064,
-      "triangles": 5340
+      "vertices": 1784,
+      "triangles": 3080
     },
     "VIS_C_Brass": {
-      "vertices": 3306,
-      "triangles": 5696
+      "vertices": 1658,
+      "triangles": 2808
     },
     "VIS_D_Wood": {
-      "vertices": 2972,
-      "triangles": 5260
+      "vertices": 2052,
+      "triangles": 3648
     },
     "VIS_D_WoodDark": {
-      "vertices": 2910,
-      "triangles": 4972
+      "vertices": 1750,
+      "triangles": 2936
     },
     "VIS_D_Brass": {
-      "vertices": 3713,
-      "triangles": 6689
+      "vertices": 2457,
+      "triangles": 4449
     },
     "VIS_E_Wood": {
-      "vertices": 1242,
-      "triangles": 2100
+      "vertices": 1114,
+      "triangles": 1880
     },
     "VIS_E_WoodDark": {
-      "vertices": 2284,
-      "triangles": 3920
+      "vertices": 1524,
+      "triangles": 2584
     },
     "VIS_E_Brass": {
-      "vertices": 4860,
-      "triangles": 8516
+      "vertices": 3412,
+      "triangles": 5796
     },
     "VIS_F_Wood": {
-      "vertices": 3462,
-      "triangles": 6048
+      "vertices": 1294,
+      "triangles": 2232
     },
     "VIS_F_WoodDark": {
-      "vertices": 2862,
-      "triangles": 4888
+      "vertices": 1678,
+      "triangles": 2824
     },
     "VIS_F_Brass": {
-      "vertices": 4134,
-      "triangles": 7456
+      "vertices": 2710,
+      "triangles": 4968
     },
     "VIS_G_Wood": {
-      "vertices": 4100,
-      "triangles": 7264
+      "vertices": 2116,
+      "triangles": 3784
     },
     "VIS_G_WoodDark": {
-      "vertices": 2434,
-      "triangles": 4200
-    },
-    "VIS_G_Brass": {
-      "vertices": 3756,
-      "triangles": 6740
-    },
-    "VIS_H_Wood": {
-      "vertices": 1074,
-      "triangles": 1820
-    },
-    "VIS_H_WoodDark": {
-      "vertices": 2292,
-      "triangles": 3924
-    },
-    "VIS_H_Brass": {
-      "vertices": 4708,
-      "triangles": 8724
-    },
-    "VIS_S1_Wood": {
-      "vertices": 1544,
-      "triangles": 2648
-    },
-    "VIS_S1_WoodDark": {
-      "vertices": 716,
-      "triangles": 1220
-    },
-    "VIS_S1_Brass": {
-      "vertices": 664,
-      "triangles": 1108
-    },
-    "VIS_S2_Wood": {
-      "vertices": 1840,
-      "triangles": 3184
-    },
-    "VIS_S2_WoodDark": {
-      "vertices": 898,
-      "triangles": 1516
-    },
-    "VIS_S2_Brass": {
-      "vertices": 844,
-      "triangles": 1404
-    },
-    "VIS_S3_Wood": {
-      "vertices": 1656,
-      "triangles": 2844
-    },
-    "VIS_S3_WoodDark": {
-      "vertices": 832,
-      "triangles": 1396
-    },
-    "VIS_S3_Brass": {
-      "vertices": 1032,
-      "triangles": 1820
-    },
-    "VIS_S4_Wood": {
-      "vertices": 2032,
-      "triangles": 3548
-    },
-    "VIS_S4_WoodDark": {
-      "vertices": 852,
-      "triangles": 1448
-    },
-    "VIS_S4_Brass": {
-      "vertices": 948,
-      "triangles": 1568
-    },
-    "VIS_Bridge_AB_Wood": {
-      "vertices": 480,
-      "triangles": 792
-    },
-    "VIS_Bridge_AB_WoodDark": {
-      "vertices": 540,
-      "triangles": 924
-    },
-    "VIS_Bridge_AB_Brass": {
-      "vertices": 252,
-      "triangles": 420
-    },
-    "VIS_Bridge_BC_Wood": {
-      "vertices": 480,
-      "triangles": 792
-    },
-    "VIS_Bridge_BC_WoodDark": {
-      "vertices": 540,
-      "triangles": 924
-    },
-    "VIS_Bridge_BC_Brass": {
-      "vertices": 252,
-      "triangles": 420
-    },
-    "VIS_Bridge_CD_Wood": {
-      "vertices": 488,
-      "triangles": 804
-    },
-    "VIS_Bridge_CD_WoodDark": {
-      "vertices": 564,
-      "triangles": 964
-    },
-    "VIS_Bridge_CD_Brass": {
-      "vertices": 276,
-      "triangles": 460
-    },
-    "VIS_Bridge_DE_Wood": {
-      "vertices": 512,
-      "triangles": 840
-    },
-    "VIS_Bridge_DE_WoodDark": {
-      "vertices": 720,
-      "triangles": 1224
-    },
-    "VIS_Bridge_DE_Brass": {
-      "vertices": 432,
-      "triangles": 720
-    },
-    "VIS_Bridge_BF_Wood": {
-      "vertices": 1416,
-      "triangles": 2340
-    },
-    "VIS_Bridge_BF_WoodDark": {
-      "vertices": 1584,
+      "vertices": 1590,
       "triangles": 2712
     },
-    "VIS_Bridge_BF_Brass": {
-      "vertices": 720,
-      "triangles": 1200
+    "VIS_G_Brass": {
+      "vertices": 2648,
+      "triangles": 4776
     },
-    "VIS_Bridge_FG_Wood": {
-      "vertices": 1296,
-      "triangles": 2144
+    "VIS_H_Wood": {
+      "vertices": 946,
+      "triangles": 1600
     },
-    "VIS_Bridge_FG_WoodDark": {
-      "vertices": 1364,
-      "triangles": 2340
+    "VIS_H_WoodDark": {
+      "vertices": 1448,
+      "triangles": 2448
     },
-    "VIS_Bridge_FG_Brass": {
-      "vertices": 564,
-      "triangles": 940
+    "VIS_H_Brass": {
+      "vertices": 3176,
+      "triangles": 5864
     },
-    "VIS_Bridge_GE_Wood": {
-      "vertices": 1432,
-      "triangles": 2364
+    "VIS_S1_Wood": {
+      "vertices": 648,
+      "triangles": 1080
     },
-    "VIS_Bridge_GE_WoodDark": {
-      "vertices": 1608,
-      "triangles": 2752
-    },
-    "VIS_Bridge_GE_Brass": {
-      "vertices": 744,
+    "VIS_S1_WoodDark": {
+      "vertices": 728,
       "triangles": 1240
     },
-    "VIS_Bridge_EH_Wood": {
-      "vertices": 1840,
-      "triangles": 3040
+    "VIS_S1_Brass": {
+      "vertices": 676,
+      "triangles": 1128
     },
-    "VIS_Bridge_EH_WoodDark": {
-      "vertices": 2140,
-      "triangles": 3660
+    "VIS_S2_Wood": {
+      "vertices": 704,
+      "triangles": 1180
     },
-    "VIS_Bridge_EH_Brass": {
-      "vertices": 1020,
-      "triangles": 1700
+    "VIS_S2_WoodDark": {
+      "vertices": 802,
+      "triangles": 1344
     },
-    "VIS_Bridge_CS1_Wood": {
-      "vertices": 992,
-      "triangles": 1640
+    "VIS_S2_Brass": {
+      "vertices": 612,
+      "triangles": 1020
     },
-    "VIS_Bridge_CS1_WoodDark": {
-      "vertices": 1112,
-      "triangles": 1904
+    "VIS_S3_Wood": {
+      "vertices": 648,
+      "triangles": 1080
     },
-    "VIS_Bridge_CS1_Brass": {
-      "vertices": 504,
-      "triangles": 840
+    "VIS_S3_WoodDark": {
+      "vertices": 796,
+      "triangles": 1332
     },
-    "VIS_Bridge_DS2_Wood": {
-      "vertices": 984,
-      "triangles": 1628
+    "VIS_S3_Brass": {
+      "vertices": 708,
+      "triangles": 1180
     },
-    "VIS_Bridge_DS2_WoodDark": {
-      "vertices": 1076,
-      "triangles": 1844
+    "VIS_S4_Wood": {
+      "vertices": 1024,
+      "triangles": 1784
     },
-    "VIS_Bridge_DS2_Brass": {
-      "vertices": 468,
+    "VIS_S4_WoodDark": {
+      "vertices": 840,
+      "triangles": 1428
+    },
+    "VIS_S4_Brass": {
+      "vertices": 936,
+      "triangles": 1548
+    },
+    "VIS_Bridge_AB_Wood": {
+      "vertices": 464,
+      "triangles": 768
+    },
+    "VIS_Bridge_AB_WoodDark": {
+      "vertices": 480,
+      "triangles": 824
+    },
+    "VIS_Bridge_AB_Brass": {
+      "vertices": 192,
+      "triangles": 320
+    },
+    "VIS_Bridge_BC_Wood": {
+      "vertices": 472,
       "triangles": 780
     },
+    "VIS_Bridge_BC_WoodDark": {
+      "vertices": 504,
+      "triangles": 864
+    },
+    "VIS_Bridge_BC_Brass": {
+      "vertices": 216,
+      "triangles": 360
+    },
+    "VIS_Bridge_CD_Wood": {
+      "vertices": 472,
+      "triangles": 780
+    },
+    "VIS_Bridge_CD_WoodDark": {
+      "vertices": 504,
+      "triangles": 864
+    },
+    "VIS_Bridge_CD_Brass": {
+      "vertices": 216,
+      "triangles": 360
+    },
+    "VIS_Bridge_DE_Wood": {
+      "vertices": 1496,
+      "triangles": 2484
+    },
+    "VIS_Bridge_DE_WoodDark": {
+      "vertices": 1332,
+      "triangles": 2300
+    },
+    "VIS_Bridge_DE_Brass": {
+      "vertices": 372,
+      "triangles": 620
+    },
+    "VIS_Bridge_BF_Wood": {
+      "vertices": 480,
+      "triangles": 792
+    },
+    "VIS_Bridge_BF_WoodDark": {
+      "vertices": 576,
+      "triangles": 984
+    },
+    "VIS_Bridge_BF_Brass": {
+      "vertices": 288,
+      "triangles": 480
+    },
+    "VIS_Bridge_FG_Wood": {
+      "vertices": 464,
+      "triangles": 768
+    },
+    "VIS_Bridge_FG_WoodDark": {
+      "vertices": 480,
+      "triangles": 824
+    },
+    "VIS_Bridge_FG_Brass": {
+      "vertices": 192,
+      "triangles": 320
+    },
+    "VIS_Bridge_GE_Wood": {
+      "vertices": 1488,
+      "triangles": 2472
+    },
+    "VIS_Bridge_GE_WoodDark": {
+      "vertices": 1296,
+      "triangles": 2240
+    },
+    "VIS_Bridge_GE_Brass": {
+      "vertices": 336,
+      "triangles": 560
+    },
+    "VIS_Bridge_EH_Wood": {
+      "vertices": 480,
+      "triangles": 792
+    },
+    "VIS_Bridge_EH_WoodDark": {
+      "vertices": 552,
+      "triangles": 944
+    },
+    "VIS_Bridge_EH_Brass": {
+      "vertices": 264,
+      "triangles": 440
+    },
+    "VIS_Bridge_CS1_Wood": {
+      "vertices": 464,
+      "triangles": 768
+    },
+    "VIS_Bridge_CS1_WoodDark": {
+      "vertices": 492,
+      "triangles": 844
+    },
+    "VIS_Bridge_CS1_Brass": {
+      "vertices": 204,
+      "triangles": 340
+    },
+    "VIS_Bridge_DS2_Wood": {
+      "vertices": 464,
+      "triangles": 768
+    },
+    "VIS_Bridge_DS2_WoodDark": {
+      "vertices": 492,
+      "triangles": 844
+    },
+    "VIS_Bridge_DS2_Brass": {
+      "vertices": 204,
+      "triangles": 340
+    },
     "VIS_Bridge_FS3_Wood": {
-      "vertices": 944,
-      "triangles": 1560
+      "vertices": 464,
+      "triangles": 768
     },
     "VIS_Bridge_FS3_WoodDark": {
-      "vertices": 1020,
-      "triangles": 1748
+      "vertices": 504,
+      "triangles": 864
     },
     "VIS_Bridge_FS3_Brass": {
-      "vertices": 444,
-      "triangles": 740
+      "vertices": 216,
+      "triangles": 360
     },
     "VIS_Bridge_GS4_Wood": {
-      "vertices": 952,
-      "triangles": 1572
+      "vertices": 464,
+      "triangles": 768
     },
     "VIS_Bridge_GS4_WoodDark": {
-      "vertices": 1032,
-      "triangles": 1768
+      "vertices": 492,
+      "triangles": 844
     },
     "VIS_Bridge_GS4_Brass": {
-      "vertices": 456,
-      "triangles": 760
+      "vertices": 204,
+      "triangles": 340
     },
     "VIS_Bridge_K1_Wood": {
-      "vertices": 1688,
-      "triangles": 2780
+      "vertices": 2240,
+      "triangles": 3712
     },
     "VIS_Bridge_K1_WoodDark": {
-      "vertices": 2096,
-      "triangles": 3576
+      "vertices": 2224,
+      "triangles": 3824
     },
     "VIS_Bridge_K1_Brass": {
-      "vertices": 1104,
-      "triangles": 1840
+      "vertices": 816,
+      "triangles": 1360
     },
     "VIS_Bridge_K2_Wood": {
-      "vertices": 1512,
-      "triangles": 2476
+      "vertices": 2560,
+      "triangles": 4240
     },
     "VIS_Bridge_K2_WoodDark": {
-      "vertices": 2260,
-      "triangles": 3836
+      "vertices": 2560,
+      "triangles": 4400
     },
     "VIS_Bridge_K2_Brass": {
-      "vertices": 1428,
-      "triangles": 2380
+      "vertices": 960,
+      "triangles": 1600
     },
     "VIS_Bridge_K3_Wood": {
-      "vertices": 1840,
-      "triangles": 3032
+      "vertices": 1520,
+      "triangles": 2520
     },
     "VIS_Bridge_K3_WoodDark": {
-      "vertices": 2288,
-      "triangles": 3904
+      "vertices": 1428,
+      "triangles": 2460
     },
     "VIS_Bridge_K3_Brass": {
-      "vertices": 1200,
-      "triangles": 2000
+      "vertices": 468,
+      "triangles": 780
     },
     "VIS_A_GrassLight": {
       "vertices": 20,
       "triangles": 10
     },
-    "VIS_A_Chalk": {
-      "vertices": 96,
-      "triangles": 180
-    },
-    "VIS_A_Roof_Teal": {
-      "vertices": 20,
-      "triangles": 32
-    },
-    "VIS_A_TealLight": {
-      "vertices": 96,
-      "triangles": 168
-    },
-    "VIS_A_WoodLight": {
-      "vertices": 2440,
-      "triangles": 4524
-    },
-    "VIS_A_TealDeep": {
-      "vertices": 96,
-      "triangles": 180
-    },
-    "VIS_A_Glow": {
-      "vertices": 1328,
-      "triangles": 1736
-    },
-    "VIS_A_Teal": {
-      "vertices": 144,
-      "triangles": 268
-    },
-    "VIS_A_LeafLight": {
-      "vertices": 3582,
-      "triangles": 5296
-    },
-    "VIS_A_Copper": {
-      "vertices": 32,
-      "triangles": 60
-    },
-    "VIS_A_Cloth": {
-      "vertices": 8,
-      "triangles": 4
-    },
-    "VIS_A_Coral": {
-      "vertices": 520,
-      "triangles": 844
-    },
-    "VIS_A_Leaf": {
-      "vertices": 6767,
-      "triangles": 11092
+    "VIS_A_TripoDockHouse": {
+      "vertices": 5693,
+      "triangles": 3000
     },
     "VIS_B_Grass": {
       "vertices": 84,
       "triangles": 42
     },
-    "VIS_B_Ivory": {
-      "vertices": 757,
-      "triangles": 1344
+    "VIS_B_TripoTeaHouse": {
+      "vertices": 5872,
+      "triangles": 2999
     },
-    "VIS_B_Chalk": {
-      "vertices": 1060,
-      "triangles": 1976
+    "VIS_B_TripoVillageHouseA": {
+      "vertices": 12576,
+      "triangles": 6000
     },
-    "VIS_B_Roof_TealDeep": {
-      "vertices": 16,
-      "triangles": 8
+    "VIS_B_TripoVillageHouseB": {
+      "vertices": 12364,
+      "triangles": 6000
     },
-    "VIS_B_WoodLight": {
-      "vertices": 6018,
-      "triangles": 11200
+    "VIS_B_TripoVillageHouseC": {
+      "vertices": 4545,
+      "triangles": 2500
     },
-    "VIS_B_TealDeep": {
-      "vertices": 544,
-      "triangles": 1020
+    "VIS_B_TripoTreeBlossom": {
+      "vertices": 27742,
+      "triangles": 16500
     },
-    "VIS_B_Glow": {
-      "vertices": 3193,
-      "triangles": 4360
+    "VIS_B_TripoChimeRack": {
+      "vertices": 9352,
+      "triangles": 5000
     },
-    "VIS_B_Coral": {
-      "vertices": 5770,
-      "triangles": 8606
-    },
-    "VIS_B_LeafLight": {
-      "vertices": 7884,
-      "triangles": 12756
-    },
-    "VIS_B_Copper": {
-      "vertices": 282,
-      "triangles": 512
-    },
-    "VIS_B_Leaf": {
-      "vertices": 20420,
-      "triangles": 33579
-    },
-    "VIS_B_Roof_TealLight": {
-      "vertices": 40,
-      "triangles": 64
-    },
-    "VIS_B_TealLight": {
-      "vertices": 384,
-      "triangles": 672
-    },
-    "VIS_B_Teal": {
-      "vertices": 536,
-      "triangles": 968
-    },
-    "VIS_B_Cloth": {
-      "vertices": 12,
-      "triangles": 6
-    },
-    "VIS_B_Roof_Teal": {
-      "vertices": 40,
-      "triangles": 64
-    },
-    "VIS_B_LilyWhite": {
-      "vertices": 3055,
-      "triangles": 4940
-    },
-    "VIS_B_Blossom": {
-      "vertices": 7514,
-      "triangles": 11388
+    "VIS_B_TripoDuckStatue": {
+      "vertices": 2108,
+      "triangles": 2499
     },
     "VIS_C_GrassLight": {
       "vertices": 36,
       "triangles": 18
     },
-    "VIS_C_Ivory": {
-      "vertices": 88,
-      "triangles": 160
+    "VIS_C_TripoMill": {
+      "vertices": 8203,
+      "triangles": 4000
     },
-    "VIS_C_Chalk": {
-      "vertices": 242,
-      "triangles": 440
-    },
-    "VIS_C_Roof_TealLight": {
-      "vertices": 20,
-      "triangles": 32
-    },
-    "VIS_C_TealLight": {
-      "vertices": 192,
-      "triangles": 336
-    },
-    "VIS_C_WoodLight": {
-      "vertices": 3036,
-      "triangles": 5632
-    },
-    "VIS_C_TealDeep": {
-      "vertices": 192,
-      "triangles": 360
-    },
-    "VIS_C_Glow": {
-      "vertices": 1360,
-      "triangles": 2088
-    },
-    "VIS_C_Teal": {
-      "vertices": 256,
-      "triangles": 480
-    },
-    "VIS_C_LeafLight": {
-      "vertices": 7546,
-      "triangles": 11580
-    },
-    "VIS_C_Copper": {
-      "vertices": 192,
-      "triangles": 332
-    },
-    "VIS_C_Cloth": {
-      "vertices": 4,
-      "triangles": 2
-    },
-    "VIS_C_Coral": {
-      "vertices": 2564,
-      "triangles": 4064
-    },
-    "VIS_C_Leaf": {
-      "vertices": 18187,
-      "triangles": 29657
-    },
-    "VIS_C_Roof_Teal": {
-      "vertices": 20,
-      "triangles": 32
+    "VIS_C_TripoBarn": {
+      "vertices": 6756,
+      "triangles": 3500
     },
     "VIS_D_Grass": {
       "vertices": 36,
       "triangles": 18
     },
-    "VIS_D_LeafLight": {
-      "vertices": 6164,
-      "triangles": 9556
+    "VIS_D_TripoGreatTree": {
+      "vertices": 66728,
+      "triangles": 35324
     },
-    "VIS_D_Fern": {
-      "vertices": 3255,
-      "triangles": 2825
-    },
-    "VIS_D_Leaf": {
-      "vertices": 10340,
-      "triangles": 16208
+    "VIS_D_TripoWindBeacon": {
+      "vertices": 7237,
+      "triangles": 3500
     },
     "VIS_E_Grass": {
       "vertices": 24,
       "triangles": 12
     },
-    "VIS_E_Ivory": {
-      "vertices": 1544,
-      "triangles": 2488
-    },
-    "VIS_E_StarGlow": {
-      "vertices": 240,
-      "triangles": 416
+    "VIS_E_TripoWindPillar": {
+      "vertices": 9358,
+      "triangles": 5000
     },
     "VIS_F_Grass": {
       "vertices": 60,
@@ -1846,124 +2456,48 @@
       "triangles": 60
     },
     "VIS_F_Ivory": {
-      "vertices": 804,
-      "triangles": 1530
+      "vertices": 734,
+      "triangles": 1408
     },
-    "VIS_F_Chalk": {
-      "vertices": 544,
-      "triangles": 1004
+    "VIS_F_TripoTemple": {
+      "vertices": 11987,
+      "triangles": 6000
     },
-    "VIS_F_Roof_TealDeep": {
-      "vertices": 8,
-      "triangles": 4
+    "VIS_F_TripoPavilionHall": {
+      "vertices": 5930,
+      "triangles": 3000
     },
-    "VIS_F_WoodLight": {
-      "vertices": 2108,
-      "triangles": 3924
-    },
-    "VIS_F_TealDeep": {
-      "vertices": 224,
-      "triangles": 420
-    },
-    "VIS_F_Glow": {
-      "vertices": 915,
-      "triangles": 1516
-    },
-    "VIS_F_Coral": {
-      "vertices": 948,
-      "triangles": 1542
-    },
-    "VIS_F_LeafLight": {
-      "vertices": 4879,
-      "triangles": 7759
-    },
-    "VIS_F_Copper": {
-      "vertices": 64,
-      "triangles": 120
-    },
-    "VIS_F_Cloth": {
-      "vertices": 4,
-      "triangles": 2
-    },
-    "VIS_F_Leaf": {
-      "vertices": 17471,
-      "triangles": 28399
-    },
-    "VIS_F_Roof_TealLight": {
-      "vertices": 20,
-      "triangles": 32
-    },
-    "VIS_F_TealLight": {
-      "vertices": 96,
-      "triangles": 168
-    },
-    "VIS_F_Teal": {
-      "vertices": 200,
-      "triangles": 336
+    "VIS_F_TripoPavilionPillar": {
+      "vertices": 16120,
+      "triangles": 9600
     },
     "VIS_G_Grass": {
       "vertices": 32,
       "triangles": 16
     },
-    "VIS_G_Copper": {
-      "vertices": 488,
-      "triangles": 924
+    "VIS_G_TripoWorkshopDome": {
+      "vertices": 11047,
+      "triangles": 6000
     },
-    "VIS_G_BrassLight": {
-      "vertices": 1092,
-      "triangles": 1936
+    "VIS_G_TripoWorkshopShed": {
+      "vertices": 6013,
+      "triangles": 3000
     },
-    "VIS_G_Chalk": {
-      "vertices": 548,
-      "triangles": 996
-    },
-    "VIS_G_Roof_Teal": {
-      "vertices": 20,
-      "triangles": 32
-    },
-    "VIS_G_TealLight": {
-      "vertices": 96,
-      "triangles": 168
-    },
-    "VIS_G_WoodLight": {
-      "vertices": 2386,
-      "triangles": 4392
-    },
-    "VIS_G_TealDeep": {
-      "vertices": 96,
-      "triangles": 180
-    },
-    "VIS_G_Glow": {
-      "vertices": 1446,
-      "triangles": 1828
-    },
-    "VIS_G_Teal": {
-      "vertices": 128,
-      "triangles": 240
-    },
-    "VIS_G_LeafLight": {
-      "vertices": 4748,
-      "triangles": 7384
-    },
-    "VIS_G_Coral": {
-      "vertices": 848,
-      "triangles": 1316
-    },
-    "VIS_G_Leaf": {
-      "vertices": 10354,
-      "triangles": 16731
+    "VIS_G_TripoAstrolabe": {
+      "vertices": 7027,
+      "triangles": 4000
     },
     "VIS_H_Grass": {
       "vertices": 28,
       "triangles": 14
     },
-    "VIS_H_Ivory": {
-      "vertices": 360,
-      "triangles": 596
+    "VIS_H_TripoHomecomingBell": {
+      "vertices": 7647,
+      "triangles": 4000
     },
-    "VIS_H_StarGlow": {
-      "vertices": 780,
-      "triangles": 1316
+    "VIS_H_TripoMemorialStele": {
+      "vertices": 9624,
+      "triangles": 5000
     },
     "VIS_S1_GrassLight": {
       "vertices": 8,
@@ -1974,108 +2508,128 @@
       "triangles": 184
     },
     "VIS_S1_Ivory": {
-      "vertices": 584,
-      "triangles": 980
+      "vertices": 564,
+      "triangles": 948
     },
     "VIS_S2_Grass": {
       "vertices": 8,
       "triangles": 4
     },
-    "VIS_S2_Chalk": {
-      "vertices": 148,
-      "triangles": 272
-    },
-    "VIS_S2_Roof_Teal": {
-      "vertices": 20,
-      "triangles": 32
-    },
-    "VIS_S2_TealLight": {
-      "vertices": 96,
-      "triangles": 168
-    },
-    "VIS_S2_WoodLight": {
-      "vertices": 728,
-      "triangles": 1360
-    },
-    "VIS_S2_TealDeep": {
-      "vertices": 64,
-      "triangles": 120
-    },
-    "VIS_S2_Glow": {
-      "vertices": 484,
-      "triangles": 640
-    },
-    "VIS_S2_Teal": {
-      "vertices": 160,
-      "triangles": 300
-    },
-    "VIS_S2_LeafLight": {
-      "vertices": 2204,
-      "triangles": 3064
-    },
-    "VIS_S2_Copper": {
-      "vertices": 40,
-      "triangles": 68
-    },
-    "VIS_S2_Coral": {
-      "vertices": 340,
-      "triangles": 540
-    },
-    "VIS_S2_Leaf": {
-      "vertices": 2969,
-      "triangles": 4918
+    "VIS_S2_TripoPostHouse": {
+      "vertices": 4937,
+      "triangles": 2500
     },
     "VIS_S3_Grass": {
       "vertices": 8,
       "triangles": 4
     },
+    "VIS_S3_TripoCaveRock": {
+      "vertices": 6397,
+      "triangles": 3000
+    },
     "VIS_S4_Grass": {
       "vertices": 8,
       "triangles": 4
     },
-    "VIS_D_WoodLight": {
-      "vertices": 796,
-      "triangles": 1440
+    "VIS_S4_TripoLookoutTower": {
+      "vertices": 7282,
+      "triangles": 3500
     },
-    "VIS_D_TealDeep": {
-      "vertices": 32,
-      "triangles": 60
+    "VIS_A_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
     },
-    "VIS_E_TealDeep": {
-      "vertices": 32,
-      "triangles": 60
+    "VIS_A_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
     },
-    "VIS_E_WoodLight": {
-      "vertices": 544,
-      "triangles": 1004
+    "VIS_B_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
     },
-    "VIS_H_TealDeep": {
-      "vertices": 32,
-      "triangles": 60
+    "VIS_B_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
     },
-    "VIS_H_WoodLight": {
-      "vertices": 544,
-      "triangles": 1004
+    "VIS_C_TripoCoverCrates": {
+      "vertices": 2098,
+      "triangles": 1200
+    },
+    "VIS_C_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
+    },
+    "VIS_D_TripoCoverStone": {
+      "vertices": 2434,
+      "triangles": 1200
+    },
+    "VIS_D_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
+    },
+    "VIS_E_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
+    },
+    "VIS_E_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
+    },
+    "VIS_F_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
+    },
+    "VIS_F_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
+    },
+    "VIS_G_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
+    },
+    "VIS_G_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
+    },
+    "VIS_H_TripoCoverCrates": {
+      "vertices": 1049,
+      "triangles": 600
+    },
+    "VIS_H_TripoCoverStone": {
+      "vertices": 1217,
+      "triangles": 600
     },
     "VIS_A_PaintTeal": {
       "vertices": 54,
       "triangles": 104
+    },
+    "VIS_A_WoodLight": {
+      "vertices": 1576,
+      "triangles": 2904
     },
     "VIS_A_PaintTealDeep": {
       "vertices": 428,
       "triangles": 776
     },
     "VIS_A_Flower": {
-      "vertices": 2566,
-      "triangles": 3904
+      "vertices": 2397,
+      "triangles": 3747
     },
     "VIS_A_BrassLight": {
       "vertices": 376,
       "triangles": 704
     },
+    "VIS_A_Coral": {
+      "vertices": 182,
+      "triangles": 332
+    },
     "VIS_A_PaintTealLight": {
       "vertices": 20,
       "triangles": 36
+    },
+    "VIS_B_WoodLight": {
+      "vertices": 1634,
+      "triangles": 3000
     },
     "VIS_B_BrassLight": {
       "vertices": 8320,
@@ -2086,12 +2640,32 @@
       "triangles": 1184
     },
     "VIS_B_Flower": {
-      "vertices": 6238,
-      "triangles": 9479
+      "vertices": 3605,
+      "triangles": 5610
+    },
+    "VIS_B_Ivory": {
+      "vertices": 617,
+      "triangles": 1100
+    },
+    "VIS_B_LeafLight": {
+      "vertices": 2778,
+      "triangles": 4308
     },
     "VIS_B_Fern": {
-      "vertices": 1408,
-      "triangles": 780
+      "vertices": 1552,
+      "triangles": 852
+    },
+    "VIS_B_Leaf": {
+      "vertices": 11106,
+      "triangles": 18518
+    },
+    "VIS_B_Copper": {
+      "vertices": 90,
+      "triangles": 152
+    },
+    "VIS_B_Coral": {
+      "vertices": 3006,
+      "triangles": 4422
     },
     "VIS_B_PaintTealDeep": {
       "vertices": 146,
@@ -2101,29 +2675,57 @@
       "vertices": 146,
       "triangles": 244
     },
+    "VIS_B_Chalk": {
+      "vertices": 484,
+      "triangles": 896
+    },
+    "VIS_B_Glow": {
+      "vertices": 2207,
+      "triangles": 2852
+    },
     "VIS_B_Soil": {
       "vertices": 32,
       "triangles": 60
+    },
+    "VIS_C_WoodLight": {
+      "vertices": 1404,
+      "triangles": 2572
     },
     "VIS_C_Soil": {
       "vertices": 338,
       "triangles": 620
     },
+    "VIS_C_Leaf": {
+      "vertices": 15004,
+      "triangles": 24774
+    },
     "VIS_C_LeafGold": {
-      "vertices": 4332,
-      "triangles": 7096
+      "vertices": 1812,
+      "triangles": 2896
     },
     "VIS_C_BrassLight": {
-      "vertices": 888,
-      "triangles": 988
+      "vertices": 1050,
+      "triangles": 1224
+    },
+    "VIS_C_LeafLight": {
+      "vertices": 4286,
+      "triangles": 6264
     },
     "VIS_C_Fern": {
-      "vertices": 1521,
-      "triangles": 815
+      "vertices": 1672,
+      "triangles": 892
+    },
+    "VIS_C_Copper": {
+      "vertices": 128,
+      "triangles": 212
     },
     "VIS_C_Flower": {
-      "vertices": 10944,
-      "triangles": 21312
+      "vertices": 9486,
+      "triangles": 19032
+    },
+    "VIS_C_Coral": {
+      "vertices": 1672,
+      "triangles": 2716
     },
     "VIS_C_PaintTealDeep": {
       "vertices": 44,
@@ -2141,17 +2743,25 @@
       "vertices": 24,
       "triangles": 44
     },
+    "VIS_C_Chalk": {
+      "vertices": 50,
+      "triangles": 80
+    },
+    "VIS_C_Ivory": {
+      "vertices": 56,
+      "triangles": 100
+    },
     "VIS_D_PaintTealLight": {
       "vertices": 206,
       "triangles": 356
     },
     "VIS_D_Flower": {
-      "vertices": 2052,
-      "triangles": 3096
+      "vertices": 1140,
+      "triangles": 1824
     },
     "VIS_D_BrassLight": {
-      "vertices": 296,
-      "triangles": 564
+      "vertices": 200,
+      "triangles": 372
     },
     "VIS_D_PaintTeal": {
       "vertices": 32,
@@ -2162,20 +2772,24 @@
       "triangles": 180
     },
     "VIS_D_Ivory": {
-      "vertices": 2510,
-      "triangles": 4044
+      "vertices": 2210,
+      "triangles": 3552
     },
     "VIS_D_Coral": {
-      "vertices": 1134,
-      "triangles": 1806
+      "vertices": 486,
+      "triangles": 834
+    },
+    "VIS_D_WoodLight": {
+      "vertices": 508,
+      "triangles": 900
     },
     "VIS_D_Chalk": {
-      "vertices": 7040,
-      "triangles": 11376
+      "vertices": 7400,
+      "triangles": 11952
     },
     "VIS_D_Glow": {
       "vertices": 395,
-      "triangles": 596
+      "triangles": 604
     },
     "VIS_E_Chalk": {
       "vertices": 381,
@@ -2186,20 +2800,28 @@
       "triangles": 412
     },
     "VIS_E_Flower": {
-      "vertices": 2907,
-      "triangles": 4431
+      "vertices": 2312,
+      "triangles": 3632
     },
     "VIS_E_Coral": {
-      "vertices": 534,
-      "triangles": 820
+      "vertices": 102,
+      "triangles": 172
+    },
+    "VIS_E_Ivory": {
+      "vertices": 1412,
+      "triangles": 2272
     },
     "VIS_E_Copper": {
       "vertices": 6,
       "triangles": 8
     },
     "VIS_E_Leaf": {
-      "vertices": 5995,
-      "triangles": 9523
+      "vertices": 4602,
+      "triangles": 7388
+    },
+    "VIS_E_WoodLight": {
+      "vertices": 352,
+      "triangles": 644
     },
     "VIS_E_PaintTeal": {
       "vertices": 72,
@@ -2210,8 +2832,20 @@
       "triangles": 18540
     },
     "VIS_E_LeafLight": {
-      "vertices": 3492,
-      "triangles": 5100
+      "vertices": 1506,
+      "triangles": 2248
+    },
+    "VIS_F_Chalk": {
+      "vertices": 352,
+      "triangles": 644
+    },
+    "VIS_F_Coral": {
+      "vertices": 360,
+      "triangles": 602
+    },
+    "VIS_F_Glow": {
+      "vertices": 723,
+      "triangles": 1164
     },
     "VIS_F_PaintTealLight": {
       "vertices": 316,
@@ -2221,17 +2855,33 @@
       "vertices": 82,
       "triangles": 140
     },
+    "VIS_F_WoodLight": {
+      "vertices": 492,
+      "triangles": 904
+    },
     "VIS_F_Flower": {
-      "vertices": 1356,
-      "triangles": 2040
+      "vertices": 1020,
+      "triangles": 1632
     },
     "VIS_F_BrassLight": {
-      "vertices": 858,
-      "triangles": 888
+      "vertices": 750,
+      "triangles": 560
     },
     "VIS_F_PaintTeal": {
       "vertices": 32,
       "triangles": 60
+    },
+    "VIS_G_WoodLight": {
+      "vertices": 1522,
+      "triangles": 2772
+    },
+    "VIS_G_Chalk": {
+      "vertices": 452,
+      "triangles": 816
+    },
+    "VIS_G_Coral": {
+      "vertices": 150,
+      "triangles": 264
     },
     "VIS_G_PaintTealDeep": {
       "vertices": 498,
@@ -2242,8 +2892,12 @@
       "triangles": 164
     },
     "VIS_G_Flower": {
-      "vertices": 3614,
-      "triangles": 5471
+      "vertices": 2541,
+      "triangles": 3954
+    },
+    "VIS_G_BrassLight": {
+      "vertices": 964,
+      "triangles": 1712
     },
     "VIS_H_Chalk": {
       "vertices": 501,
@@ -2254,32 +2908,40 @@
       "triangles": 412
     },
     "VIS_H_Flower": {
-      "vertices": 3336,
-      "triangles": 7656
+      "vertices": 3306,
+      "triangles": 8382
     },
     "VIS_H_Coral": {
-      "vertices": 702,
-      "triangles": 1100
+      "vertices": 270,
+      "triangles": 452
+    },
+    "VIS_H_Ivory": {
+      "vertices": 328,
+      "triangles": 540
     },
     "VIS_H_Copper": {
       "vertices": 6,
       "triangles": 8
     },
     "VIS_H_Leaf": {
-      "vertices": 8540,
-      "triangles": 14400
+      "vertices": 7626,
+      "triangles": 12880
+    },
+    "VIS_H_WoodLight": {
+      "vertices": 352,
+      "triangles": 644
     },
     "VIS_H_PaintTeal": {
       "vertices": 72,
       "triangles": 136
     },
     "VIS_H_BrassLight": {
-      "vertices": 1760,
-      "triangles": 2682
+      "vertices": 1736,
+      "triangles": 2666
     },
     "VIS_H_LeafLight": {
-      "vertices": 3440,
-      "triangles": 5184
+      "vertices": 1860,
+      "triangles": 2524
     },
     "VIS_S1_WoodLight": {
       "vertices": 216,
@@ -2290,8 +2952,8 @@
       "triangles": 60
     },
     "VIS_S1_Coral": {
-      "vertices": 224,
-      "triangles": 336
+      "vertices": 8,
+      "triangles": 12
     },
     "VIS_S1_PaintTealLight": {
       "vertices": 24,
@@ -2302,28 +2964,36 @@
       "triangles": 64
     },
     "VIS_S1_LeafLight": {
-      "vertices": 2561,
-      "triangles": 3717
+      "vertices": 1369,
+      "triangles": 1681
     },
     "VIS_S1_Fern": {
-      "vertices": 1274,
-      "triangles": 766
+      "vertices": 1425,
+      "triangles": 843
     },
     "VIS_S1_Leaf": {
-      "vertices": 2130,
-      "triangles": 3472
+      "vertices": 1494,
+      "triangles": 2482
     },
     "VIS_S1_Copper": {
       "vertices": 34,
       "triangles": 56
+    },
+    "VIS_S2_Chalk": {
+      "vertices": 52,
+      "triangles": 92
+    },
+    "VIS_S2_WoodLight": {
+      "vertices": 56,
+      "triangles": 100
     },
     "VIS_S2_PaintTealLight": {
       "vertices": 16,
       "triangles": 28
     },
     "VIS_S2_Ivory": {
-      "vertices": 396,
-      "triangles": 640
+      "vertices": 424,
+      "triangles": 680
     },
     "VIS_S2_PaintTeal": {
       "vertices": 90,
@@ -2333,17 +3003,29 @@
       "vertices": 132,
       "triangles": 232
     },
+    "VIS_S2_Coral": {
+      "vertices": 74,
+      "triangles": 136
+    },
     "VIS_S2_Flower": {
-      "vertices": 1217,
-      "triangles": 1850
+      "vertices": 860,
+      "triangles": 1349
+    },
+    "VIS_S2_LeafLight": {
+      "vertices": 946,
+      "triangles": 912
+    },
+    "VIS_S2_Leaf": {
+      "vertices": 1448,
+      "triangles": 2349
     },
     "VIS_S3_PaintTealLight": {
       "vertices": 104,
       "triangles": 188
     },
     "VIS_S3_Flower": {
-      "vertices": 1265,
-      "triangles": 1925
+      "vertices": 1023,
+      "triangles": 1599
     },
     "VIS_S3_BrassLight": {
       "vertices": 184,
@@ -2358,12 +3040,12 @@
       "triangles": 8
     },
     "VIS_S3_Ivory": {
-      "vertices": 590,
-      "triangles": 952
+      "vertices": 398,
+      "triangles": 640
     },
     "VIS_S3_Coral": {
-      "vertices": 364,
-      "triangles": 600
+      "vertices": 148,
+      "triangles": 276
     },
     "VIS_S3_WoodLight": {
       "vertices": 44,
@@ -2378,8 +3060,8 @@
       "triangles": 804
     },
     "VIS_S4_Coral": {
-      "vertices": 240,
-      "triangles": 384
+      "vertices": 96,
+      "triangles": 168
     },
     "VIS_S4_PaintTealDeep": {
       "vertices": 84,
@@ -2389,25 +3071,73 @@
       "vertices": 32,
       "triangles": 60
     },
+    "VIS_A_Cloth": {
+      "vertices": 4,
+      "triangles": 2
+    },
     "VIS_A_Ivory": {
-      "vertices": 1508,
-      "triangles": 2464
+      "vertices": 1408,
+      "triangles": 2304
+    },
+    "VIS_A_Teal": {
+      "vertices": 16,
+      "triangles": 28
+    },
+    "VIS_A_TripoBrassLampPost": {
+      "vertices": 4552,
+      "triangles": 2400
+    },
+    "VIS_A_Glow": {
+      "vertices": 1270,
+      "triangles": 1636
     },
     "VIS_B_Mural": {
       "vertices": 4,
       "triangles": 2
     },
+    "VIS_B_Teal": {
+      "vertices": 24,
+      "triangles": 8
+    },
+    "VIS_D_TripoTreeOlive": {
+      "vertices": 17435,
+      "triangles": 7500
+    },
     "VIS_D_StarGlow": {
-      "vertices": 1584,
-      "triangles": 2408
+      "vertices": 1536,
+      "triangles": 2328
+    },
+    "VIS_F_Teal": {
+      "vertices": 72,
+      "triangles": 96
+    },
+    "VIS_G_Copper": {
+      "vertices": 336,
+      "triangles": 672
     },
     "VIS_G_StarGlow": {
       "vertices": 268,
       "triangles": 480
     },
+    "VIS_H_StarGlow": {
+      "vertices": 588,
+      "triangles": 980
+    },
+    "VIS_S2_Teal": {
+      "vertices": 32,
+      "triangles": 60
+    },
+    "VIS_S2_Copper": {
+      "vertices": 8,
+      "triangles": 8
+    },
+    "VIS_S3_TripoBrassLampPost": {
+      "vertices": 3414,
+      "triangles": 1800
+    },
     "VIS_S3_Glow": {
-      "vertices": 234,
-      "triangles": 256
+      "vertices": 246,
+      "triangles": 276
     },
     "VIS_S4_Teal": {
       "vertices": 32,
@@ -2418,24 +3148,16 @@
       "triangles": 144
     },
     "VIS_Bridge_AB_WoodLight": {
-      "vertices": 192,
-      "triangles": 288
-    },
-    "VIS_Bridge_AB_Limestone": {
-      "vertices": 16,
-      "triangles": 28
-    },
-    "VIS_Bridge_AB_Rock": {
-      "vertices": 12,
-      "triangles": 20
+      "vertices": 128,
+      "triangles": 192
     },
     "VIS_Bridge_AB_Glow": {
-      "vertices": 240,
-      "triangles": 384
+      "vertices": 160,
+      "triangles": 256
     },
     "VIS_Bridge_BC_WoodLight": {
-      "vertices": 168,
-      "triangles": 252
+      "vertices": 144,
+      "triangles": 216
     },
     "VIS_Bridge_BC_Limestone": {
       "vertices": 16,
@@ -2450,8 +3172,8 @@
       "triangles": 384
     },
     "VIS_Bridge_CD_WoodLight": {
-      "vertices": 192,
-      "triangles": 288
+      "vertices": 160,
+      "triangles": 240
     },
     "VIS_Bridge_CD_Limestone": {
       "vertices": 16,
@@ -2462,288 +3184,296 @@
       "triangles": 20
     },
     "VIS_Bridge_CD_Glow": {
-      "vertices": 320,
-      "triangles": 512
+      "vertices": 240,
+      "triangles": 384
     },
     "VIS_Bridge_DE_WoodLight": {
-      "vertices": 320,
-      "triangles": 480
+      "vertices": 208,
+      "triangles": 312
     },
     "VIS_Bridge_DE_Limestone": {
-      "vertices": 32,
-      "triangles": 56
+      "vertices": 96,
+      "triangles": 184
     },
     "VIS_Bridge_DE_Rock": {
-      "vertices": 24,
-      "triangles": 40
+      "vertices": 12,
+      "triangles": 20
     },
     "VIS_Bridge_DE_Glow": {
       "vertices": 480,
       "triangles": 768
     },
     "VIS_Bridge_BF_WoodLight": {
-      "vertices": 472,
-      "triangles": 708
+      "vertices": 192,
+      "triangles": 288
     },
     "VIS_Bridge_BF_Limestone": {
-      "vertices": 48,
-      "triangles": 84
+      "vertices": 16,
+      "triangles": 28
     },
     "VIS_Bridge_BF_Rock": {
-      "vertices": 36,
-      "triangles": 60
+      "vertices": 12,
+      "triangles": 20
     },
     "VIS_Bridge_BF_Glow": {
-      "vertices": 720,
-      "triangles": 1152
+      "vertices": 320,
+      "triangles": 512
     },
     "VIS_Bridge_FG_WoodLight": {
-      "vertices": 376,
-      "triangles": 564
-    },
-    "VIS_Bridge_FG_Limestone": {
-      "vertices": 32,
-      "triangles": 56
-    },
-    "VIS_Bridge_FG_Rock": {
-      "vertices": 24,
-      "triangles": 40
+      "vertices": 120,
+      "triangles": 180
     },
     "VIS_Bridge_FG_Glow": {
-      "vertices": 560,
-      "triangles": 896
+      "vertices": 160,
+      "triangles": 256
     },
     "VIS_Bridge_GE_WoodLight": {
-      "vertices": 520,
-      "triangles": 780
+      "vertices": 176,
+      "triangles": 264
     },
     "VIS_Bridge_GE_Limestone": {
-      "vertices": 48,
-      "triangles": 84
+      "vertices": 96,
+      "triangles": 184
     },
     "VIS_Bridge_GE_Rock": {
-      "vertices": 36,
-      "triangles": 60
+      "vertices": 12,
+      "triangles": 20
     },
     "VIS_Bridge_GE_Glow": {
-      "vertices": 800,
-      "triangles": 1280
-    },
-    "VIS_Bridge_EH_WoodLight": {
-      "vertices": 632,
-      "triangles": 948
-    },
-    "VIS_Bridge_EH_Limestone": {
-      "vertices": 64,
-      "triangles": 112
-    },
-    "VIS_Bridge_EH_Rock": {
-      "vertices": 48,
-      "triangles": 80
-    },
-    "VIS_Bridge_EH_Glow": {
-      "vertices": 960,
-      "triangles": 1536
-    },
-    "VIS_Bridge_CS1_WoodLight": {
-      "vertices": 296,
-      "triangles": 444
-    },
-    "VIS_Bridge_CS1_Limestone": {
-      "vertices": 32,
-      "triangles": 56
-    },
-    "VIS_Bridge_CS1_Rock": {
-      "vertices": 24,
-      "triangles": 40
-    },
-    "VIS_Bridge_CS1_Glow": {
-      "vertices": 480,
-      "triangles": 768
-    },
-    "VIS_Bridge_DS2_WoodLight": {
-      "vertices": 288,
-      "triangles": 432
-    },
-    "VIS_Bridge_DS2_Limestone": {
-      "vertices": 32,
-      "triangles": 56
-    },
-    "VIS_Bridge_DS2_Rock": {
-      "vertices": 24,
-      "triangles": 40
-    },
-    "VIS_Bridge_DS2_Glow": {
       "vertices": 400,
       "triangles": 640
     },
-    "VIS_Bridge_FS3_WoodLight": {
-      "vertices": 288,
-      "triangles": 432
+    "VIS_Bridge_EH_WoodLight": {
+      "vertices": 168,
+      "triangles": 252
     },
-    "VIS_Bridge_FS3_Limestone": {
-      "vertices": 32,
-      "triangles": 56
+    "VIS_Bridge_EH_Limestone": {
+      "vertices": 16,
+      "triangles": 28
     },
-    "VIS_Bridge_FS3_Rock": {
-      "vertices": 24,
-      "triangles": 40
+    "VIS_Bridge_EH_Rock": {
+      "vertices": 12,
+      "triangles": 20
     },
-    "VIS_Bridge_FS3_Glow": {
-      "vertices": 480,
-      "triangles": 768
+    "VIS_Bridge_EH_Glow": {
+      "vertices": 240,
+      "triangles": 384
     },
-    "VIS_Bridge_GS4_WoodLight": {
-      "vertices": 320,
-      "triangles": 480
+    "VIS_Bridge_CS1_WoodLight": {
+      "vertices": 128,
+      "triangles": 192
     },
-    "VIS_Bridge_GS4_Limestone": {
-      "vertices": 32,
-      "triangles": 56
-    },
-    "VIS_Bridge_GS4_Rock": {
-      "vertices": 24,
-      "triangles": 40
-    },
-    "VIS_Bridge_GS4_Glow": {
-      "vertices": 480,
-      "triangles": 768
-    },
-    "VIS_Bridge_K1_WoodLight": {
-      "vertices": 784,
-      "triangles": 1176
-    },
-    "VIS_Bridge_K1_Limestone": {
-      "vertices": 80,
-      "triangles": 140
-    },
-    "VIS_Bridge_K1_Rock": {
-      "vertices": 60,
-      "triangles": 100
-    },
-    "VIS_Bridge_K1_Glow": {
-      "vertices": 1200,
-      "triangles": 1920
-    },
-    "VIS_Bridge_K2_WoodLight": {
-      "vertices": 1024,
-      "triangles": 1536
-    },
-    "VIS_Bridge_K2_Limestone": {
-      "vertices": 112,
-      "triangles": 196
-    },
-    "VIS_Bridge_K2_Rock": {
-      "vertices": 84,
-      "triangles": 140
-    },
-    "VIS_Bridge_K2_Glow": {
-      "vertices": 1600,
-      "triangles": 2560
-    },
-    "VIS_Bridge_K3_WoodLight": {
-      "vertices": 824,
-      "triangles": 1236
-    },
-    "VIS_Bridge_K3_Limestone": {
-      "vertices": 96,
-      "triangles": 168
-    },
-    "VIS_Bridge_K3_Rock": {
-      "vertices": 72,
-      "triangles": 120
-    },
-    "VIS_Bridge_K3_Glow": {
-      "vertices": 1280,
-      "triangles": 2048
-    },
-    "VIS_A_Paving_Limestone": {
-      "vertices": 132,
-      "triangles": 126
-    },
-    "VIS_B_Paving_Limestone": {
-      "vertices": 592,
-      "triangles": 578
-    },
-    "VIS_C_Paving_Limestone": {
-      "vertices": 216,
-      "triangles": 212
-    },
-    "VIS_D_Paving_Limestone": {
-      "vertices": 266,
-      "triangles": 260
-    },
-    "VIS_E_Paving_Limestone": {
-      "vertices": 262,
+    "VIS_Bridge_CS1_Glow": {
+      "vertices": 160,
       "triangles": 256
     },
+    "VIS_Bridge_DS2_WoodLight": {
+      "vertices": 128,
+      "triangles": 192
+    },
+    "VIS_Bridge_DS2_Glow": {
+      "vertices": 160,
+      "triangles": 256
+    },
+    "VIS_Bridge_FS3_WoodLight": {
+      "vertices": 128,
+      "triangles": 192
+    },
+    "VIS_Bridge_FS3_Glow": {
+      "vertices": 160,
+      "triangles": 256
+    },
+    "VIS_Bridge_GS4_WoodLight": {
+      "vertices": 128,
+      "triangles": 192
+    },
+    "VIS_Bridge_GS4_Glow": {
+      "vertices": 160,
+      "triangles": 256
+    },
+    "VIS_Bridge_K1_WoodLight": {
+      "vertices": 488,
+      "triangles": 732
+    },
+    "VIS_Bridge_K1_Limestone": {
+      "vertices": 128,
+      "triangles": 240
+    },
+    "VIS_Bridge_K1_Rock": {
+      "vertices": 36,
+      "triangles": 60
+    },
+    "VIS_Bridge_K1_Glow": {
+      "vertices": 960,
+      "triangles": 1536
+    },
+    "VIS_Bridge_K2_WoodLight": {
+      "vertices": 608,
+      "triangles": 912
+    },
+    "VIS_Bridge_K2_Limestone": {
+      "vertices": 144,
+      "triangles": 268
+    },
+    "VIS_Bridge_K2_Rock": {
+      "vertices": 48,
+      "triangles": 80
+    },
+    "VIS_Bridge_K2_Glow": {
+      "vertices": 1120,
+      "triangles": 1792
+    },
+    "VIS_Bridge_K3_WoodLight": {
+      "vertices": 296,
+      "triangles": 444
+    },
+    "VIS_Bridge_K3_Limestone": {
+      "vertices": 112,
+      "triangles": 212
+    },
+    "VIS_Bridge_K3_Rock": {
+      "vertices": 24,
+      "triangles": 40
+    },
+    "VIS_Bridge_K3_Glow": {
+      "vertices": 640,
+      "triangles": 1024
+    },
+    "VIS_Bridge_DE_Chalk": {
+      "vertices": 336,
+      "triangles": 624
+    },
+    "VIS_Bridge_DE_TripoBrassLampPost": {
+      "vertices": 4552,
+      "triangles": 2400
+    },
+    "VIS_Bridge_GE_Chalk": {
+      "vertices": 336,
+      "triangles": 624
+    },
+    "VIS_Bridge_GE_TripoBrassLampPost": {
+      "vertices": 4552,
+      "triangles": 2400
+    },
+    "VIS_Bridge_K1_Chalk": {
+      "vertices": 336,
+      "triangles": 624
+    },
+    "VIS_Bridge_K1_TripoBrassLampPost": {
+      "vertices": 4552,
+      "triangles": 2400
+    },
+    "VIS_Bridge_K2_Chalk": {
+      "vertices": 336,
+      "triangles": 624
+    },
+    "VIS_Bridge_K2_TripoBrassLampPost": {
+      "vertices": 4552,
+      "triangles": 2400
+    },
+    "VIS_Bridge_K3_Chalk": {
+      "vertices": 336,
+      "triangles": 624
+    },
+    "VIS_Bridge_K3_TripoBrassLampPost": {
+      "vertices": 4552,
+      "triangles": 2400
+    },
+    "VIS_A_Paving_Limestone": {
+      "vertices": 120,
+      "triangles": 114
+    },
+    "VIS_B_Paving_Limestone": {
+      "vertices": 434,
+      "triangles": 420
+    },
+    "VIS_C_Paving_Limestone": {
+      "vertices": 162,
+      "triangles": 158
+    },
+    "VIS_D_Paving_Limestone": {
+      "vertices": 210,
+      "triangles": 204
+    },
+    "VIS_E_Paving_Limestone": {
+      "vertices": 192,
+      "triangles": 186
+    },
     "VIS_F_Paving_Limestone": {
-      "vertices": 616,
-      "triangles": 608
+      "vertices": 468,
+      "triangles": 460
     },
     "VIS_G_Paving_Limestone": {
-      "vertices": 256,
-      "triangles": 250
+      "vertices": 182,
+      "triangles": 176
     },
     "VIS_H_Paving_Limestone": {
-      "vertices": 90,
-      "triangles": 88
-    },
-    "VIS_S1_Paving_Limestone": {
       "vertices": 50,
       "triangles": 48
     },
+    "VIS_S1_Paving_Limestone": {
+      "vertices": 34,
+      "triangles": 32
+    },
     "VIS_S2_Paving_Limestone": {
-      "vertices": 26,
-      "triangles": 24
+      "vertices": 34,
+      "triangles": 32
     },
     "VIS_S3_Paving_Limestone": {
-      "vertices": 46,
-      "triangles": 44
+      "vertices": 42,
+      "triangles": 40
     },
     "VIS_S4_Paving_Limestone": {
-      "vertices": 36,
-      "triangles": 34
+      "vertices": 42,
+      "triangles": 40
     },
     "VIS_B_Life_Limestone": {
       "vertices": 364,
       "triangles": 660
     },
-    "VIS_B_Life_Leaf": {
-      "vertices": 2870,
-      "triangles": 4592
+    "VIS_B_Life_TripoFernClump": {
+      "vertices": 21700,
+      "triangles": 13640
     },
-    "VIS_B_Life_Coral": {
-      "vertices": 3888,
-      "triangles": 5912
+    "VIS_B_Life_TripoBushA": {
+      "vertices": 36223,
+      "triangles": 19580
     },
-    "VIS_B_Life_LeafLight": {
-      "vertices": 7840,
-      "triangles": 12544
+    "VIS_B_Life_TripoCoralClump": {
+      "vertices": 20996,
+      "triangles": 15022
     },
-    "VIS_B_Life_Flower": {
-      "vertices": 5472,
-      "triangles": 8208
+    "VIS_B_Life_TripoBushB": {
+      "vertices": 34091,
+      "triangles": 16060
     },
     "VIS_B_Life_WoodLight": {
       "vertices": 744,
       "triangles": 1296
     },
     "VIS_B_Life_WoodDark": {
-      "vertices": 1104,
-      "triangles": 2088
+      "vertices": 976,
+      "triangles": 1864
     },
     "VIS_B_Life_Wood": {
       "vertices": 336,
       "triangles": 624
     },
+    "VIS_B_Life_Coral": {
+      "vertices": 720,
+      "triangles": 1160
+    },
     "VIS_B_Life_BrassLight": {
       "vertices": 720,
       "triangles": 1160
     },
+    "VIS_B_Life_LeafLight": {
+      "vertices": 600,
+      "triangles": 960
+    },
     "VIS_B_Life_Brass": {
-      "vertices": 1820,
-      "triangles": 3584
+      "vertices": 924,
+      "triangles": 1824
     },
     "VIS_B_Life_Ivory": {
       "vertices": 372,
@@ -2753,937 +3483,969 @@
       "vertices": 90,
       "triangles": 180
     },
+    "VIS_B_Life_TripoBrassLampPost": {
+      "vertices": 9104,
+      "triangles": 4800
+    },
     "VIS_B_Life_Glow": {
       "vertices": 320,
-      "triangles": 480
+      "triangles": 512
     },
     "VIS_B_Life_Cloth": {
       "vertices": 4,
       "triangles": 2
     },
-    "VIS_A_Cliff_Rock": {
-      "vertices": 528,
-      "triangles": 880
+    "VIS_A_Cliff_TripoCliffChunkB": {
+      "vertices": 3731,
+      "triangles": 2080
     },
-    "VIS_A_Cliff_Forest": {
-      "vertices": 440,
-      "triangles": 704
+    "VIS_A_Cliff_TripoCliffShrubCap": {
+      "vertices": 2502,
+      "triangles": 1260
     },
     "VIS_A_Cliff_Leaf": {
+      "vertices": 648,
+      "triangles": 1080
+    },
+    "VIS_A_Cliff_TripoCliffChunkC": {
+      "vertices": 2170,
+      "triangles": 1600
+    },
+    "VIS_A_Cliff_TripoCliffChunkA": {
+      "vertices": 1314,
+      "triangles": 960
+    },
+    "VIS_B_Cliff_TripoCliffChunkC": {
+      "vertices": 3255,
+      "triangles": 2400
+    },
+    "VIS_B_Cliff_TripoCliffShrubCap": {
+      "vertices": 4726,
+      "triangles": 2380
+    },
+    "VIS_B_Cliff_Leaf": {
+      "vertices": 1224,
+      "triangles": 2040
+    },
+    "VIS_B_Cliff_TripoCliffChunkB": {
+      "vertices": 4879,
+      "triangles": 2720
+    },
+    "VIS_B_Cliff_TripoCliffChunkA": {
+      "vertices": 3723,
+      "triangles": 2720
+    },
+    "VIS_C_Cliff_TripoCliffChunkC": {
+      "vertices": 4557,
+      "triangles": 3360
+    },
+    "VIS_C_Cliff_TripoCliffShrubCap": {
+      "vertices": 3614,
+      "triangles": 1820
+    },
+    "VIS_C_Cliff_Leaf": {
+      "vertices": 936,
+      "triangles": 1560
+    },
+    "VIS_C_Cliff_TripoCliffChunkA": {
+      "vertices": 1314,
+      "triangles": 960
+    },
+    "VIS_C_Cliff_TripoCliffChunkB": {
+      "vertices": 3731,
+      "triangles": 2080
+    },
+    "VIS_D_Cliff_TripoCliffChunkB": {
+      "vertices": 5740,
+      "triangles": 3200
+    },
+    "VIS_D_Cliff_TripoCliffShrubCap": {
+      "vertices": 3892,
+      "triangles": 1960
+    },
+    "VIS_D_Cliff_Leaf": {
+      "vertices": 1008,
+      "triangles": 1680
+    },
+    "VIS_D_Cliff_TripoCliffChunkC": {
+      "vertices": 3689,
+      "triangles": 2720
+    },
+    "VIS_D_Cliff_TripoCliffChunkA": {
+      "vertices": 1314,
+      "triangles": 960
+    },
+    "VIS_E_Cliff_TripoCliffChunkA": {
+      "vertices": 2847,
+      "triangles": 2080
+    },
+    "VIS_E_Cliff_TripoCliffShrubCap": {
+      "vertices": 4448,
+      "triangles": 2240
+    },
+    "VIS_E_Cliff_Leaf": {
+      "vertices": 1152,
+      "triangles": 1920
+    },
+    "VIS_E_Cliff_TripoCliffChunkB": {
+      "vertices": 5166,
+      "triangles": 2880
+    },
+    "VIS_E_Cliff_TripoCliffChunkC": {
+      "vertices": 2387,
+      "triangles": 1760
+    },
+    "VIS_F_Cliff_TripoCliffChunkA": {
+      "vertices": 3723,
+      "triangles": 2720
+    },
+    "VIS_F_Cliff_TripoCliffShrubCap": {
+      "vertices": 3614,
+      "triangles": 1820
+    },
+    "VIS_F_Cliff_Leaf": {
+      "vertices": 936,
+      "triangles": 1560
+    },
+    "VIS_F_Cliff_TripoCliffChunkC": {
+      "vertices": 2821,
+      "triangles": 2080
+    },
+    "VIS_F_Cliff_TripoCliffChunkB": {
+      "vertices": 2009,
+      "triangles": 1120
+    },
+    "VIS_G_Cliff_TripoCliffChunkC": {
+      "vertices": 4340,
+      "triangles": 3200
+    },
+    "VIS_G_Cliff_TripoCliffShrubCap": {
+      "vertices": 3892,
+      "triangles": 1960
+    },
+    "VIS_G_Cliff_Leaf": {
+      "vertices": 1008,
+      "triangles": 1680
+    },
+    "VIS_G_Cliff_TripoCliffChunkA": {
+      "vertices": 1752,
+      "triangles": 1280
+    },
+    "VIS_G_Cliff_TripoCliffChunkB": {
+      "vertices": 4018,
+      "triangles": 2240
+    },
+    "VIS_H_Cliff_TripoCliffChunkB": {
+      "vertices": 3157,
+      "triangles": 1760
+    },
+    "VIS_H_Cliff_TripoCliffShrubCap": {
+      "vertices": 3058,
+      "triangles": 1540
+    },
+    "VIS_H_Cliff_Leaf": {
       "vertices": 792,
       "triangles": 1320
     },
-    "VIS_A_Cliff_RockLight": {
-      "vertices": 1104,
-      "triangles": 1840
+    "VIS_H_Cliff_TripoCliffChunkA": {
+      "vertices": 3066,
+      "triangles": 2240
     },
-    "VIS_B_Cliff_Rock": {
-      "vertices": 864,
+    "VIS_H_Cliff_TripoCliffChunkC": {
+      "vertices": 1953,
       "triangles": 1440
     },
-    "VIS_B_Cliff_Forest": {
-      "vertices": 720,
-      "triangles": 1152
-    },
-    "VIS_B_Cliff_Leaf": {
-      "vertices": 1296,
-      "triangles": 2160
-    },
-    "VIS_B_Cliff_RockLight": {
-      "vertices": 1824,
-      "triangles": 3040
-    },
-    "VIS_C_Cliff_Rock": {
-      "vertices": 960,
-      "triangles": 1600
-    },
-    "VIS_C_Cliff_Forest": {
-      "vertices": 800,
+    "VIS_S1_Cliff_TripoCliffChunkA": {
+      "vertices": 1752,
       "triangles": 1280
     },
-    "VIS_C_Cliff_Leaf": {
-      "vertices": 1440,
-      "triangles": 2400
-    },
-    "VIS_C_Cliff_RockLight": {
-      "vertices": 1584,
-      "triangles": 2640
-    },
-    "VIS_D_Cliff_Rock": {
-      "vertices": 816,
-      "triangles": 1360
-    },
-    "VIS_D_Cliff_Forest": {
-      "vertices": 680,
-      "triangles": 1088
-    },
-    "VIS_D_Cliff_Leaf": {
-      "vertices": 1224,
-      "triangles": 2040
-    },
-    "VIS_D_Cliff_RockLight": {
-      "vertices": 1584,
-      "triangles": 2640
-    },
-    "VIS_E_Cliff_Rock": {
-      "vertices": 864,
-      "triangles": 1440
-    },
-    "VIS_E_Cliff_Forest": {
-      "vertices": 720,
-      "triangles": 1152
-    },
-    "VIS_E_Cliff_Leaf": {
-      "vertices": 1296,
-      "triangles": 2160
-    },
-    "VIS_E_Cliff_RockLight": {
-      "vertices": 1632,
-      "triangles": 2720
-    },
-    "VIS_F_Cliff_Rock": {
-      "vertices": 816,
-      "triangles": 1360
-    },
-    "VIS_F_Cliff_Forest": {
-      "vertices": 680,
-      "triangles": 1088
-    },
-    "VIS_F_Cliff_Leaf": {
-      "vertices": 1224,
-      "triangles": 2040
-    },
-    "VIS_F_Cliff_RockLight": {
-      "vertices": 1536,
-      "triangles": 2560
-    },
-    "VIS_G_Cliff_Rock": {
-      "vertices": 720,
-      "triangles": 1200
-    },
-    "VIS_G_Cliff_Forest": {
-      "vertices": 600,
-      "triangles": 960
-    },
-    "VIS_G_Cliff_Leaf": {
-      "vertices": 1080,
-      "triangles": 1800
-    },
-    "VIS_G_Cliff_RockLight": {
-      "vertices": 1632,
-      "triangles": 2720
-    },
-    "VIS_H_Cliff_Rock": {
-      "vertices": 720,
-      "triangles": 1200
-    },
-    "VIS_H_Cliff_Forest": {
-      "vertices": 600,
-      "triangles": 960
-    },
-    "VIS_H_Cliff_Leaf": {
-      "vertices": 1080,
-      "triangles": 1800
-    },
-    "VIS_H_Cliff_RockLight": {
-      "vertices": 1296,
-      "triangles": 2160
-    },
-    "VIS_S1_Cliff_Rock": {
-      "vertices": 432,
-      "triangles": 720
-    },
-    "VIS_S1_Cliff_Forest": {
-      "vertices": 360,
-      "triangles": 576
+    "VIS_S1_Cliff_TripoCliffShrubCap": {
+      "vertices": 2502,
+      "triangles": 1260
     },
     "VIS_S1_Cliff_Leaf": {
       "vertices": 648,
       "triangles": 1080
     },
-    "VIS_S1_Cliff_RockLight": {
-      "vertices": 864,
-      "triangles": 1440
+    "VIS_S1_Cliff_TripoCliffChunkC": {
+      "vertices": 2387,
+      "triangles": 1760
     },
-    "VIS_S2_Cliff_Rock": {
-      "vertices": 432,
-      "triangles": 720
+    "VIS_S1_Cliff_TripoCliffChunkB": {
+      "vertices": 2296,
+      "triangles": 1280
     },
-    "VIS_S2_Cliff_Forest": {
-      "vertices": 360,
-      "triangles": 576
+    "VIS_S2_Cliff_TripoCliffChunkA": {
+      "vertices": 1752,
+      "triangles": 1280
+    },
+    "VIS_S2_Cliff_TripoCliffShrubCap": {
+      "vertices": 2502,
+      "triangles": 1260
     },
     "VIS_S2_Cliff_Leaf": {
       "vertices": 648,
       "triangles": 1080
     },
-    "VIS_S2_Cliff_RockLight": {
-      "vertices": 864,
+    "VIS_S2_Cliff_TripoCliffChunkB": {
+      "vertices": 3444,
+      "triangles": 1920
+    },
+    "VIS_S2_Cliff_TripoCliffChunkC": {
+      "vertices": 1519,
+      "triangles": 1120
+    },
+    "VIS_S3_Cliff_TripoCliffChunkA": {
+      "vertices": 1971,
       "triangles": 1440
     },
-    "VIS_S3_Cliff_Rock": {
-      "vertices": 432,
-      "triangles": 720
-    },
-    "VIS_S3_Cliff_Forest": {
-      "vertices": 360,
-      "triangles": 576
+    "VIS_S3_Cliff_TripoCliffShrubCap": {
+      "vertices": 2502,
+      "triangles": 1260
     },
     "VIS_S3_Cliff_Leaf": {
       "vertices": 648,
       "triangles": 1080
     },
-    "VIS_S3_Cliff_RockLight": {
-      "vertices": 864,
-      "triangles": 1440
+    "VIS_S3_Cliff_TripoCliffChunkC": {
+      "vertices": 1519,
+      "triangles": 1120
     },
-    "VIS_S4_Cliff_Rock": {
-      "vertices": 432,
-      "triangles": 720
+    "VIS_S3_Cliff_TripoCliffChunkB": {
+      "vertices": 3157,
+      "triangles": 1760
     },
-    "VIS_S4_Cliff_Forest": {
-      "vertices": 360,
-      "triangles": 576
+    "VIS_S4_Cliff_TripoCliffChunkC": {
+      "vertices": 2170,
+      "triangles": 1600
+    },
+    "VIS_S4_Cliff_TripoCliffShrubCap": {
+      "vertices": 2502,
+      "triangles": 1260
     },
     "VIS_S4_Cliff_Leaf": {
       "vertices": 648,
       "triangles": 1080
     },
-    "VIS_S4_Cliff_RockLight": {
-      "vertices": 864,
-      "triangles": 1440
+    "VIS_S4_Cliff_TripoCliffChunkB": {
+      "vertices": 3157,
+      "triangles": 1760
     },
-    "VIS_F_Waterfall_Water": {
-      "vertices": 18,
-      "triangles": 16
+    "VIS_S4_Cliff_TripoCliffChunkA": {
+      "vertices": 1314,
+      "triangles": 960
     },
-    "VIS_F_Waterfall_Cloud": {
-      "vertices": 240,
-      "triangles": 400
+    "VIS_F_Waterfall_TripoWaterfall": {
+      "vertices": 5883,
+      "triangles": 3722
     },
-    "VIS_D_Waterfall_Water": {
-      "vertices": 18,
-      "triangles": 16
+    "VIS_D_Waterfall_TripoWaterfall": {
+      "vertices": 5883,
+      "triangles": 3722
     },
-    "VIS_D_Waterfall_Cloud": {
-      "vertices": 240,
-      "triangles": 400
+    "VIS_C_Waterfall_TripoWaterfall": {
+      "vertices": 5883,
+      "triangles": 3722
     },
-    "VIS_C_Waterfall_Water": {
-      "vertices": 18,
-      "triangles": 16
+    "VIS_A_TripoBushA": {
+      "vertices": 7326,
+      "triangles": 3960
     },
-    "VIS_C_Waterfall_Cloud": {
-      "vertices": 240,
-      "triangles": 400
+    "VIS_A_TripoRockB": {
+      "vertices": 4284,
+      "triangles": 2160
     },
-    "VIS_F_LilyWhite": {
-      "vertices": 3515,
-      "triangles": 5660
+    "VIS_A_TripoTreeGreen": {
+      "vertices": 13520,
+      "triangles": 12000
     },
-    "VIS_F_Blossom": {
-      "vertices": 8589,
-      "triangles": 13933
+    "VIS_A_TripoBushB": {
+      "vertices": 4670,
+      "triangles": 2200
     },
-    "VIS_S1_LeafGold": {
-      "vertices": 1440,
-      "triangles": 2400
+    "VIS_B_TripoRockB": {
+      "vertices": 7140,
+      "triangles": 3600
+    },
+    "VIS_B_TripoBushA": {
+      "vertices": 17094,
+      "triangles": 9240
+    },
+    "VIS_B_TripoBushB": {
+      "vertices": 13543,
+      "triangles": 6380
+    },
+    "VIS_B_TripoTreeGreen": {
+      "vertices": 11830,
+      "triangles": 10500
+    },
+    "VIS_C_TripoTreeGold": {
+      "vertices": 41580,
+      "triangles": 18000
+    },
+    "VIS_C_TripoRockB": {
+      "vertices": 6426,
+      "triangles": 3240
+    },
+    "VIS_C_TripoBushA": {
+      "vertices": 12210,
+      "triangles": 6600
+    },
+    "VIS_C_TripoBushB": {
+      "vertices": 12142,
+      "triangles": 5720
+    },
+    "VIS_D_TripoBushB": {
+      "vertices": 13543,
+      "triangles": 6380
+    },
+    "VIS_D_TripoRockB": {
+      "vertices": 7497,
+      "triangles": 3780
+    },
+    "VIS_D_TripoBushA": {
+      "vertices": 13838,
+      "triangles": 7480
+    },
+    "VIS_E_TripoBushB": {
+      "vertices": 14010,
+      "triangles": 6600
+    },
+    "VIS_E_TripoRockB": {
+      "vertices": 7140,
+      "triangles": 3600
+    },
+    "VIS_E_TripoBushA": {
+      "vertices": 11396,
+      "triangles": 6160
+    },
+    "VIS_F_TripoBushB": {
+      "vertices": 6538,
+      "triangles": 3080
+    },
+    "VIS_F_TripoRockB": {
+      "vertices": 4998,
+      "triangles": 2520
+    },
+    "VIS_F_TripoTreeBlossom": {
+      "vertices": 7566,
+      "triangles": 4500
+    },
+    "VIS_F_TripoBushA": {
+      "vertices": 6512,
+      "triangles": 3520
+    },
+    "VIS_F_TripoTreeGreen": {
+      "vertices": 8450,
+      "triangles": 7500
+    },
+    "VIS_G_TripoTreeGreen": {
+      "vertices": 18590,
+      "triangles": 16500
+    },
+    "VIS_G_TripoRockB": {
+      "vertices": 6069,
+      "triangles": 3060
+    },
+    "VIS_G_TripoBushA": {
+      "vertices": 8140,
+      "triangles": 4400
+    },
+    "VIS_G_TripoBushB": {
+      "vertices": 10741,
+      "triangles": 5060
+    },
+    "VIS_H_TripoBushB": {
+      "vertices": 10741,
+      "triangles": 5060
+    },
+    "VIS_H_TripoRockB": {
+      "vertices": 4998,
+      "triangles": 2520
+    },
+    "VIS_H_TripoBushA": {
+      "vertices": 9361,
+      "triangles": 5060
+    },
+    "VIS_S1_TripoTreeGold": {
+      "vertices": 27720,
+      "triangles": 12000
+    },
+    "VIS_S1_TripoRockB": {
+      "vertices": 4641,
+      "triangles": 2340
+    },
+    "VIS_S1_TripoBushA": {
+      "vertices": 6105,
+      "triangles": 3300
+    },
+    "VIS_S1_TripoBushB": {
+      "vertices": 5137,
+      "triangles": 2420
     },
     "VIS_S1_Flower": {
-      "vertices": 1108,
-      "triangles": 1672
+      "vertices": 958,
+      "triangles": 1486
     },
-    "VIS_S2_LilyWhite": {
-      "vertices": 1525,
-      "triangles": 2460
+    "VIS_S2_TripoTreeBlossom": {
+      "vertices": 10088,
+      "triangles": 6000
     },
-    "VIS_S2_Blossom": {
-      "vertices": 2650,
-      "triangles": 4300
+    "VIS_S2_TripoRockB": {
+      "vertices": 4641,
+      "triangles": 2340
     },
-    "VIS_S3_LeafLight": {
-      "vertices": 2908,
-      "triangles": 4196
+    "VIS_S2_TripoBushA": {
+      "vertices": 4884,
+      "triangles": 2640
     },
-    "VIS_S3_Leaf": {
-      "vertices": 3138,
-      "triangles": 5089
+    "VIS_S2_TripoBushB": {
+      "vertices": 3736,
+      "triangles": 1760
     },
-    "VIS_S3_Fern": {
-      "vertices": 3286,
-      "triangles": 4026
+    "VIS_S2_TripoTreeGreen": {
+      "vertices": 6760,
+      "triangles": 6000
     },
-    "VIS_S4_LeafLight": {
-      "vertices": 2042,
-      "triangles": 2784
+    "VIS_S3_TripoTreeGreen": {
+      "vertices": 8450,
+      "triangles": 7500
     },
-    "VIS_S4_Leaf": {
-      "vertices": 3712,
-      "triangles": 6060
+    "VIS_S3_TripoRockB": {
+      "vertices": 4641,
+      "triangles": 2340
+    },
+    "VIS_S3_TripoBushA": {
+      "vertices": 4070,
+      "triangles": 2200
+    },
+    "VIS_S3_TripoTreeOlive": {
+      "vertices": 13948,
+      "triangles": 6000
+    },
+    "VIS_S3_TripoBushB": {
+      "vertices": 7005,
+      "triangles": 3300
+    },
+    "VIS_S4_TripoTreeGreen": {
+      "vertices": 15210,
+      "triangles": 13500
+    },
+    "VIS_S4_TripoRockB": {
+      "vertices": 4998,
+      "triangles": 2520
+    },
+    "VIS_S4_TripoBushB": {
+      "vertices": 6071,
+      "triangles": 2860
+    },
+    "VIS_S4_TripoBushA": {
+      "vertices": 4477,
+      "triangles": 2420
     },
     "VIS_S4_Flower": {
-      "vertices": 872,
-      "triangles": 1316
+      "vertices": 866,
+      "triangles": 1346
     },
     "VIS_CloudSea_CloudBackdrop": {
       "vertices": 4,
       "triangles": 2
     },
     "VIS_CloudBank_0_CloudShade": {
-      "vertices": 1898,
-      "triangles": 3788
+      "vertices": 1314,
+      "triangles": 2612
     },
     "VIS_CloudBank_0_Cloud": {
-      "vertices": 1912,
-      "triangles": 3816
+      "vertices": 1878,
+      "triangles": 3748
     },
     "VIS_CloudBank_1_Cloud": {
-      "vertices": 2942,
-      "triangles": 5872
+      "vertices": 2730,
+      "triangles": 5448
     },
     "VIS_CloudBank_1_CloudShade": {
-      "vertices": 928,
-      "triangles": 1852
+      "vertices": 814,
+      "triangles": 1624
     },
     "VIS_CloudBank_2_Cloud": {
-      "vertices": 2938,
-      "triangles": 5864
+      "vertices": 2978,
+      "triangles": 5944
     },
     "VIS_CloudBank_2_CloudShade": {
-      "vertices": 912,
-      "triangles": 1820
+      "vertices": 1100,
+      "triangles": 2196
     },
     "VIS_CloudBank_3_CloudShade": {
-      "vertices": 1972,
-      "triangles": 3936
+      "vertices": 1874,
+      "triangles": 3740
     },
     "VIS_CloudBank_3_Cloud": {
-      "vertices": 1922,
-      "triangles": 3836
+      "vertices": 1132,
+      "triangles": 2252
     },
     "VIS_CloudBank_4_Cloud": {
-      "vertices": 2876,
-      "triangles": 5740
+      "vertices": 2738,
+      "triangles": 5464
     },
     "VIS_CloudBank_4_CloudShade": {
-      "vertices": 1030,
-      "triangles": 2056
+      "vertices": 838,
+      "triangles": 1672
     },
     "VIS_CloudBank_5_Cloud": {
-      "vertices": 2896,
-      "triangles": 5780
+      "vertices": 2734,
+      "triangles": 5456
     },
     "VIS_CloudBank_5_CloudShade": {
-      "vertices": 952,
-      "triangles": 1900
+      "vertices": 772,
+      "triangles": 1540
     },
     "VIS_CloudBank_6_CloudShade": {
       "vertices": 1884,
       "triangles": 3760
     },
     "VIS_CloudBank_6_Cloud": {
-      "vertices": 1896,
-      "triangles": 3784
+      "vertices": 1598,
+      "triangles": 3188
     },
     "VIS_CloudBank_7_Cloud": {
-      "vertices": 2946,
-      "triangles": 5880
+      "vertices": 2306,
+      "triangles": 4592
     },
     "VIS_CloudBank_7_CloudShade": {
-      "vertices": 930,
-      "triangles": 1856
+      "vertices": 1066,
+      "triangles": 2128
     },
     "VIS_CloudBank_8_Cloud": {
-      "vertices": 982,
-      "triangles": 1960
+      "vertices": 812,
+      "triangles": 1620
     },
     "VIS_CloudBank_8_CloudShade": {
-      "vertices": 2992,
-      "triangles": 5972
+      "vertices": 2162,
+      "triangles": 4312
     },
     "VIS_CloudBank_9_CloudShade": {
-      "vertices": 3980,
-      "triangles": 7944
+      "vertices": 2264,
+      "triangles": 4512
     },
     "VIS_CloudBank_10_CloudShade": {
-      "vertices": 3794,
-      "triangles": 7572
+      "vertices": 2350,
+      "triangles": 4684
     },
     "VIS_CloudBank_11_CloudShade": {
-      "vertices": 1916,
-      "triangles": 3824
+      "vertices": 1080,
+      "triangles": 2152
     },
     "VIS_CloudBank_11_CloudFar": {
-      "vertices": 1958,
-      "triangles": 3908
+      "vertices": 1004,
+      "triangles": 2000
     },
     "VIS_CloudBank_12_CloudFar": {
-      "vertices": 3868,
-      "triangles": 7720
+      "vertices": 1134,
+      "triangles": 2232
     },
     "VIS_CloudBank_13_CloudFar": {
-      "vertices": 3822,
-      "triangles": 7628
-    },
-    "VIS_Distant_0_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_0_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_0_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_0_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_0_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_0_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_1_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_1_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_1_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_1_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_1_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_1_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_2_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_2_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_2_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_2_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_2_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_2_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_3_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_3_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_3_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_3_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_3_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_3_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_4_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_4_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_4_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_4_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_4_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_4_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_5_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_5_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_5_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_5_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_5_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_5_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_6_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_6_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_6_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_6_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_6_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_6_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_7_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_7_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_7_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_7_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_7_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_7_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_8_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_8_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_8_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_8_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_8_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_8_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_9_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_9_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_9_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_9_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_9_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_9_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_10_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_10_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_10_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_10_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_10_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_10_Grass": {
-      "vertices": 18,
-      "triangles": 32
-    },
-    "VIS_Distant_11_Limestone": {
-      "vertices": 144,
-      "triangles": 198
-    },
-    "VIS_Distant_11_RockLight": {
-      "vertices": 66,
-      "triangles": 66
-    },
-    "VIS_Distant_11_RockDeep": {
-      "vertices": 48,
-      "triangles": 24
-    },
-    "VIS_Distant_11_Rock": {
-      "vertices": 24,
-      "triangles": 12
-    },
-    "VIS_Distant_11_Forest": {
-      "vertices": 180,
-      "triangles": 300
-    },
-    "VIS_Distant_11_Grass": {
-      "vertices": 18,
-      "triangles": 32
+      "vertices": 1690,
+      "triangles": 3356
+    },
+    "VIS_Distant_0_TripoDistantIsletA": {
+      "vertices": 1341,
+      "triangles": 1476
+    },
+    "VIS_Distant_1_TripoDistantIsletB": {
+      "vertices": 2315,
+      "triangles": 1298
+    },
+    "VIS_Distant_2_TripoDistantIsletC": {
+      "vertices": 2381,
+      "triangles": 1289
+    },
+    "VIS_Distant_3_TripoDistantIsletA": {
+      "vertices": 1341,
+      "triangles": 1476
+    },
+    "VIS_Distant_4_TripoDistantIsletB": {
+      "vertices": 2315,
+      "triangles": 1298
+    },
+    "VIS_Distant_5_TripoDistantIsletC": {
+      "vertices": 2381,
+      "triangles": 1289
+    },
+    "VIS_Distant_6_TripoDistantIsletA": {
+      "vertices": 1341,
+      "triangles": 1476
+    },
+    "VIS_Distant_7_TripoDistantIsletB": {
+      "vertices": 2315,
+      "triangles": 1298
+    },
+    "VIS_Distant_8_TripoDistantIsletC": {
+      "vertices": 2381,
+      "triangles": 1289
+    },
+    "VIS_Distant_9_TripoDistantIsletA": {
+      "vertices": 1341,
+      "triangles": 1476
+    },
+    "VIS_Distant_10_TripoDistantIsletB": {
+      "vertices": 2315,
+      "triangles": 1298
+    },
+    "VIS_Distant_11_TripoDistantIsletC": {
+      "vertices": 2381,
+      "triangles": 1289
+    },
+    "VIS_A_Leaf": {
+      "vertices": 4512,
+      "triangles": 7439
     },
     "VIS_A_Lavender": {
-      "vertices": 1866,
-      "triangles": 3396
+      "vertices": 1956,
+      "triangles": 3576
     },
     "VIS_A_CrystalLavender": {
-      "vertices": 797,
-      "triangles": 1081
+      "vertices": 672,
+      "triangles": 896
+    },
+    "VIS_A_LeafLight": {
+      "vertices": 1732,
+      "triangles": 2384
     },
     "VIS_B_Lavender": {
-      "vertices": 2928,
-      "triangles": 5520
+      "vertices": 2568,
+      "triangles": 4800
+    },
+    "VIS_B_Blossom": {
+      "vertices": 447,
+      "triangles": 149
     },
     "VIS_C_Blossom": {
-      "vertices": 2093,
-      "triangles": 3185
+      "vertices": 2346,
+      "triangles": 3570
     },
-    "VIS_D_CrystalLavender": {
-      "vertices": 4038,
-      "triangles": 5406
-    },
-    "VIS_D_Lavender": {
-      "vertices": 7015,
-      "triangles": 9955
-    },
-    "VIS_D_CrystalTeal": {
-      "vertices": 1550,
-      "triangles": 2118
-    },
-    "VIS_E_Lavender": {
-      "vertices": 1722,
-      "triangles": 3108
-    },
-    "VIS_E_CrystalLavender": {
-      "vertices": 905,
-      "triangles": 1225
-    },
-    "VIS_E_Glow": {
-      "vertices": 1190,
-      "triangles": 1500
-    },
-    "VIS_F_Lavender": {
-      "vertices": 7393,
-      "triangles": 11141
-    },
-    "VIS_F_StarGlow": {
-      "vertices": 1440,
-      "triangles": 2176
-    },
-    "VIS_G_Lavender": {
-      "vertices": 1992,
-      "triangles": 3648
-    },
-    "VIS_G_Ivory": {
-      "vertices": 1160,
+    "VIS_C_Glow": {
+      "vertices": 1232,
       "triangles": 1856
     },
+    "VIS_D_LeafLight": {
+      "vertices": 2652,
+      "triangles": 3900
+    },
+    "VIS_D_CrystalTeal": {
+      "vertices": 1236,
+      "triangles": 1648
+    },
+    "VIS_D_Leaf": {
+      "vertices": 8414,
+      "triangles": 12984
+    },
+    "VIS_D_CrystalLavender": {
+      "vertices": 4176,
+      "triangles": 5568
+    },
+    "VIS_D_Lavender": {
+      "vertices": 6291,
+      "triangles": 8779
+    },
+    "VIS_E_Glow": {
+      "vertices": 1160,
+      "triangles": 1488
+    },
+    "VIS_E_CrystalLavender": {
+      "vertices": 780,
+      "triangles": 1040
+    },
+    "VIS_E_Lavender": {
+      "vertices": 1428,
+      "triangles": 2688
+    },
+    "VIS_F_LeafLight": {
+      "vertices": 2807,
+      "triangles": 4631
+    },
+    "VIS_F_Leaf": {
+      "vertices": 11828,
+      "triangles": 19865
+    },
+    "VIS_F_Blossom": {
+      "vertices": 4050,
+      "triangles": 6720
+    },
+    "VIS_F_Lavender": {
+      "vertices": 6623,
+      "triangles": 10007
+    },
+    "VIS_F_StarGlow": {
+      "vertices": 1344,
+      "triangles": 2016
+    },
+    "VIS_G_LeafLight": {
+      "vertices": 1660,
+      "triangles": 2348
+    },
+    "VIS_G_Ivory": {
+      "vertices": 1480,
+      "triangles": 2368
+    },
     "VIS_G_CrystalLavender": {
-      "vertices": 761,
-      "triangles": 1033
+      "vertices": 888,
+      "triangles": 1184
+    },
+    "VIS_G_Leaf": {
+      "vertices": 5309,
+      "triangles": 8542
+    },
+    "VIS_G_Lavender": {
+      "vertices": 1692,
+      "triangles": 3132
+    },
+    "VIS_G_Glow": {
+      "vertices": 1340,
+      "triangles": 1688
     },
     "VIS_H_Lavender": {
-      "vertices": 4396,
-      "triangles": 7030
+      "vertices": 4256,
+      "triangles": 6720
     },
     "VIS_H_Glow": {
       "vertices": 1320,
-      "triangles": 1980
+      "triangles": 1988
     },
     "VIS_S1_Glow": {
-      "vertices": 528,
-      "triangles": 704
+      "vertices": 564,
+      "triangles": 728
     },
     "VIS_S1_Lavender": {
-      "vertices": 816,
-      "triangles": 1464
+      "vertices": 918,
+      "triangles": 1584
     },
     "VIS_S1_CrystalLavender": {
-      "vertices": 266,
-      "triangles": 362
-    },
-    "VIS_S2_CrystalLavender": {
-      "vertices": 230,
-      "triangles": 314
+      "vertices": 228,
+      "triangles": 304
     },
     "VIS_S2_Lavender": {
-      "vertices": 2254,
-      "triangles": 3772
+      "vertices": 2286,
+      "triangles": 3816
     },
-    "VIS_S3_CrystalTeal": {
-      "vertices": 366,
-      "triangles": 510
+    "VIS_S2_CrystalLavender": {
+      "vertices": 240,
+      "triangles": 320
+    },
+    "VIS_S2_Glow": {
+      "vertices": 402,
+      "triangles": 508
+    },
+    "VIS_S3_LeafLight": {
+      "vertices": 1000,
+      "triangles": 1028
+    },
+    "VIS_S3_Leaf": {
+      "vertices": 1504,
+      "triangles": 2503
     },
     "VIS_S3_Lavender": {
-      "vertices": 2164,
-      "triangles": 3592
+      "vertices": 2322,
+      "triangles": 3888
+    },
+    "VIS_S3_CrystalTeal": {
+      "vertices": 192,
+      "triangles": 256
     },
     "VIS_S3_StarGlow": {
       "vertices": 288,
       "triangles": 432
     },
-    "VIS_S4_Glow": {
-      "vertices": 384,
-      "triangles": 496
+    "VIS_S4_Leaf": {
+      "vertices": 1633,
+      "triangles": 2686
     },
     "VIS_S4_Ivory": {
-      "vertices": 520,
-      "triangles": 832
+      "vertices": 360,
+      "triangles": 576
     },
     "VIS_S4_CrystalLavender": {
-      "vertices": 338,
-      "triangles": 458
+      "vertices": 216,
+      "triangles": 288
+    },
+    "VIS_S4_Glow": {
+      "vertices": 420,
+      "triangles": 520
+    },
+    "VIS_S4_LeafLight": {
+      "vertices": 978,
+      "triangles": 984
     },
     "VIS_S4_Lavender": {
-      "vertices": 816,
-      "triangles": 1464
+      "vertices": 1044,
+      "triangles": 1836
     },
     "VIS_A_Fern": {
-      "vertices": 1612,
-      "triangles": 812
+      "vertices": 1468,
+      "triangles": 740
     },
-    "VIS_A_CrystalTeal": {
-      "vertices": 143,
-      "triangles": 231
+    "VIS_A_TripoGlowCrystal": {
+      "vertices": 4088,
+      "triangles": 2000
     },
     "VIS_A_PearlGlow": {
-      "vertices": 468,
-      "triangles": 688
+      "vertices": 420,
+      "triangles": 672
     },
     "VIS_A_StarGlow": {
       "vertices": 48,
       "triangles": 80
     },
-    "VIS_B_CrystalTeal": {
-      "vertices": 143,
-      "triangles": 231
+    "VIS_B_TripoGlowCrystal": {
+      "vertices": 4088,
+      "triangles": 2000
     },
     "VIS_B_PearlGlow": {
-      "vertices": 468,
-      "triangles": 688
-    },
-    "VIS_B_CrystalLavender": {
-      "vertices": 65,
-      "triangles": 105
+      "vertices": 420,
+      "triangles": 672
     },
     "VIS_B_StarGlow": {
       "vertices": 48,
       "triangles": 80
     },
-    "VIS_C_CrystalTeal": {
-      "vertices": 117,
-      "triangles": 189
-    },
-    "VIS_C_PearlGlow": {
-      "vertices": 351,
-      "triangles": 516
-    },
-    "VIS_C_CrystalLavender": {
-      "vertices": 39,
-      "triangles": 63
+    "VIS_C_TripoGlowCrystal": {
+      "vertices": 4088,
+      "triangles": 2000
     },
     "VIS_C_Lavender": {
-      "vertices": 630,
-      "triangles": 1008
+      "vertices": 840,
+      "triangles": 1344
+    },
+    "VIS_C_PearlGlow": {
+      "vertices": 420,
+      "triangles": 672
+    },
+    "VIS_C_StarGlow": {
+      "vertices": 48,
+      "triangles": 80
+    },
+    "VIS_D_Fern": {
+      "vertices": 1893,
+      "triangles": 951
+    },
+    "VIS_D_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
+    },
+    "VIS_D_TripoMushroomCluster": {
+      "vertices": 4767,
+      "triangles": 2697
     },
     "VIS_D_PearlGlow": {
-      "vertices": 2675,
-      "triangles": 4364
-    },
-    "VIS_D_LilyWhite": {
-      "vertices": 875,
-      "triangles": 1400
+      "vertices": 2005,
+      "triangles": 3208
     },
     "VIS_E_Fern": {
+      "vertices": 1022,
+      "triangles": 514
+    },
+    "VIS_E_TripoGlowCrystal": {
+      "vertices": 2044,
+      "triangles": 1000
+    },
+    "VIS_E_PearlGlow": {
+      "vertices": 210,
+      "triangles": 336
+    },
+    "VIS_E_StarGlow": {
+      "vertices": 48,
+      "triangles": 80
+    },
+    "VIS_F_Fern": {
+      "vertices": 1437,
+      "triangles": 883
+    },
+    "VIS_F_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
+    },
+    "VIS_F_PearlGlow": {
+      "vertices": 945,
+      "triangles": 1512
+    },
+    "VIS_G_Fern": {
+      "vertices": 1317,
+      "triangles": 663
+    },
+    "VIS_G_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
+    },
+    "VIS_G_PearlGlow": {
+      "vertices": 315,
+      "triangles": 504
+    },
+    "VIS_H_Fern": {
       "vertices": 1612,
       "triangles": 812
     },
-    "VIS_E_CrystalTeal": {
-      "vertices": 143,
-      "triangles": 231
-    },
-    "VIS_E_PearlGlow": {
-      "vertices": 468,
-      "triangles": 688
-    },
-    "VIS_F_Fern": {
-      "vertices": 1739,
-      "triangles": 1037
-    },
-    "VIS_F_CrystalTeal": {
-      "vertices": 169,
-      "triangles": 273
-    },
-    "VIS_F_PearlGlow": {
-      "vertices": 1215,
-      "triangles": 1868
-    },
-    "VIS_F_CrystalLavender": {
-      "vertices": 91,
-      "triangles": 147
-    },
-    "VIS_G_Fern": {
-      "vertices": 1324,
-      "triangles": 668
-    },
-    "VIS_G_CrystalTeal": {
-      "vertices": 143,
-      "triangles": 231
-    },
-    "VIS_G_PearlGlow": {
-      "vertices": 468,
-      "triangles": 688
-    },
-    "VIS_H_Fern": {
-      "vertices": 1461,
-      "triangles": 735
-    },
-    "VIS_H_CrystalTeal": {
-      "vertices": 104,
-      "triangles": 168
+    "VIS_H_TripoGlowCrystal": {
+      "vertices": 4088,
+      "triangles": 2000
     },
     "VIS_H_PearlGlow": {
-      "vertices": 351,
-      "triangles": 516
+      "vertices": 420,
+      "triangles": 672
     },
-    "VIS_H_CrystalLavender": {
-      "vertices": 52,
-      "triangles": 84
-    },
-    "VIS_S1_CrystalTeal": {
-      "vertices": 78,
-      "triangles": 126
+    "VIS_S1_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
     },
     "VIS_S1_PearlGlow": {
-      "vertices": 234,
-      "triangles": 344
+      "vertices": 315,
+      "triangles": 504
     },
     "VIS_S2_Fern": {
-      "vertices": 1166,
-      "triangles": 586
+      "vertices": 1317,
+      "triangles": 663
     },
-    "VIS_S2_CrystalTeal": {
-      "vertices": 78,
-      "triangles": 126
+    "VIS_S2_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
+    },
+    "VIS_S2_TripoMushroomCluster": {
+      "vertices": 4767,
+      "triangles": 2697
     },
     "VIS_S2_PearlGlow": {
-      "vertices": 1024,
-      "triangles": 1672
+      "vertices": 945,
+      "triangles": 1512
+    },
+    "VIS_S3_Fern": {
+      "vertices": 1317,
+      "triangles": 663
+    },
+    "VIS_S3_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
+    },
+    "VIS_S3_TripoMushroomCluster": {
+      "vertices": 4767,
+      "triangles": 2697
     },
     "VIS_S3_PearlGlow": {
-      "vertices": 1024,
-      "triangles": 1672
-    },
-    "VIS_S3_CrystalLavender": {
-      "vertices": 26,
-      "triangles": 42
-    },
-    "VIS_S3_LilyWhite": {
-      "vertices": 350,
-      "triangles": 560
+      "vertices": 945,
+      "triangles": 1512
     },
     "VIS_S4_Fern": {
-      "vertices": 1166,
-      "triangles": 586
+      "vertices": 1317,
+      "triangles": 663
     },
-    "VIS_S4_CrystalTeal": {
-      "vertices": 78,
-      "triangles": 126
+    "VIS_S4_TripoGlowCrystal": {
+      "vertices": 3066,
+      "triangles": 1500
     },
     "VIS_S4_PearlGlow": {
-      "vertices": 234,
-      "triangles": 344
+      "vertices": 315,
+      "triangles": 504
+    },
+    "VIS_F_LilyWhite": {
+      "vertices": 1400,
+      "triangles": 2240
     },
     "VIS_S1_Blossom": {
       "vertices": 882,
@@ -3696,19 +4458,371 @@
     "VIS_Distant_Birds_Ivory": {
       "vertices": 90,
       "triangles": 60
+    },
+    "VIS_A_TripoFernClump": {
+      "vertices": 2450,
+      "triangles": 1540
+    },
+    "VIS_A_TripoCoralClump": {
+      "vertices": 1810,
+      "triangles": 1295
+    },
+    "VIS_B_TripoFernClump": {
+      "vertices": 7000,
+      "triangles": 4400
+    },
+    "VIS_B_TripoCoralClump": {
+      "vertices": 9050,
+      "triangles": 6475
+    },
+    "VIS_C_TripoFernClump": {
+      "vertices": 6300,
+      "triangles": 3960
+    },
+    "VIS_C_TripoCoralClump": {
+      "vertices": 5430,
+      "triangles": 3885
+    },
+    "VIS_D_TripoCoralClump": {
+      "vertices": 4706,
+      "triangles": 3367
+    },
+    "VIS_D_TripoFernClump": {
+      "vertices": 2800,
+      "triangles": 1760
+    },
+    "VIS_E_TripoCoralClump": {
+      "vertices": 3982,
+      "triangles": 2849
+    },
+    "VIS_E_TripoFernClump": {
+      "vertices": 2450,
+      "triangles": 1540
+    },
+    "VIS_F_TripoCoralClump": {
+      "vertices": 2172,
+      "triangles": 1554
+    },
+    "VIS_F_TripoFernClump": {
+      "vertices": 2100,
+      "triangles": 1320
+    },
+    "VIS_G_TripoCoralClump": {
+      "vertices": 4344,
+      "triangles": 3108
+    },
+    "VIS_G_TripoFernClump": {
+      "vertices": 3150,
+      "triangles": 1980
+    },
+    "VIS_H_TripoCoralClump": {
+      "vertices": 3982,
+      "triangles": 2849
+    },
+    "VIS_H_TripoFernClump": {
+      "vertices": 2450,
+      "triangles": 1540
+    },
+    "VIS_S1_TripoFernClump": {
+      "vertices": 1050,
+      "triangles": 660
+    },
+    "VIS_S1_TripoCoralClump": {
+      "vertices": 2172,
+      "triangles": 1554
+    },
+    "VIS_S2_TripoFernClump": {
+      "vertices": 1050,
+      "triangles": 660
+    },
+    "VIS_S3_TripoFernClump": {
+      "vertices": 1750,
+      "triangles": 1100
+    },
+    "VIS_S3_TripoCoralClump": {
+      "vertices": 1448,
+      "triangles": 1036
+    },
+    "VIS_S4_TripoFernClump": {
+      "vertices": 1400,
+      "triangles": 880
+    },
+    "VIS_S4_TripoCoralClump": {
+      "vertices": 724,
+      "triangles": 518
+    },
+    "VIS_H_TripoBellArch": {
+      "vertices": 14159,
+      "triangles": 8885
+    },
+    "VIS_F_TripoCherryPavilion": {
+      "vertices": 9780,
+      "triangles": 5000
+    },
+    "VIS_S1_TripoCherryPavilion": {
+      "vertices": 9780,
+      "triangles": 5000
+    },
+    "VIS_C_TripoCottageLarge": {
+      "vertices": 8030,
+      "triangles": 4000
+    },
+    "VIS_C_TripoFarmBarn": {
+      "vertices": 14760,
+      "triangles": 7000
+    },
+    "VIS_B_TripoCottageDormer": {
+      "vertices": 5793,
+      "triangles": 3000
+    },
+    "VIS_C_TripoCottageDormer": {
+      "vertices": 5793,
+      "triangles": 3000
+    },
+    "VIS_B_TripoMarketStall": {
+      "vertices": 9142,
+      "triangles": 5000
+    },
+    "VIS_A_TripoMarketStall": {
+      "vertices": 4571,
+      "triangles": 2500
+    },
+    "VIS_H_TripoStonePlatform": {
+      "vertices": 5720,
+      "triangles": 2500
+    },
+    "VIS_G_TripoStonePlatform": {
+      "vertices": 5720,
+      "triangles": 2500
+    },
+    "VIS_C_TripoCottageSmall": {
+      "vertices": 3970,
+      "triangles": 2000
+    },
+    "VIS_F_TripoCottageSmall": {
+      "vertices": 3970,
+      "triangles": 2000
+    },
+    "VIS_G_TripoCottageSmall": {
+      "vertices": 3970,
+      "triangles": 2000
+    },
+    "VIS_A_TripoCottageSmall": {
+      "vertices": 3970,
+      "triangles": 2000
+    },
+    "VIS_B_TripoShopSign": {
+      "vertices": 3897,
+      "triangles": 2000
+    },
+    "VIS_F_TripoShrinePavilion": {
+      "vertices": 3855,
+      "triangles": 2000
+    },
+    "VIS_D_TripoShrinePavilion": {
+      "vertices": 3855,
+      "triangles": 2000
+    },
+    "VIS_S3_TripoShrinePavilion": {
+      "vertices": 3855,
+      "triangles": 2000
+    },
+    "VIS_B_TripoCherryTree": {
+      "vertices": 3153,
+      "triangles": 1500
+    },
+    "VIS_F_TripoCherryTree": {
+      "vertices": 3153,
+      "triangles": 1500
+    },
+    "VIS_C_TripoCherryTree": {
+      "vertices": 6306,
+      "triangles": 3000
+    },
+    "VIS_C_TripoPergola": {
+      "vertices": 4322,
+      "triangles": 3000
+    },
+    "VIS_H_TripoRuinedColumn": {
+      "vertices": 9464,
+      "triangles": 4800
+    },
+    "VIS_G_TripoRuinedColumn": {
+      "vertices": 4732,
+      "triangles": 2400
+    },
+    "VIS_D_TripoRootRock": {
+      "vertices": 9100,
+      "triangles": 4800
+    },
+    "VIS_S2_TripoRootRock": {
+      "vertices": 2275,
+      "triangles": 1200
+    },
+    "VIS_E_TripoRootRock": {
+      "vertices": 4550,
+      "triangles": 2400
+    },
+    "VIS_C_TripoFarmCart": {
+      "vertices": 2354,
+      "triangles": 1200
+    },
+    "VIS_A_TripoFarmCart": {
+      "vertices": 2354,
+      "triangles": 1200
+    },
+    "VIS_G_TripoFarmCart": {
+      "vertices": 2354,
+      "triangles": 1200
+    },
+    "VIS_D_TripoCrystalCluster": {
+      "vertices": 6456,
+      "triangles": 3200
+    },
+    "VIS_G_TripoCrystalCluster": {
+      "vertices": 4842,
+      "triangles": 2400
+    },
+    "VIS_S4_TripoCrystalCluster": {
+      "vertices": 4842,
+      "triangles": 2400
+    },
+    "VIS_D_TripoRuneStone": {
+      "vertices": 1512,
+      "triangles": 1600
+    },
+    "VIS_H_TripoRuneStone": {
+      "vertices": 1512,
+      "triangles": 1600
+    },
+    "VIS_S2_TripoRuneStone": {
+      "vertices": 1512,
+      "triangles": 1600
+    },
+    "VIS_H_TripoStoneStair": {
+      "vertices": 3448,
+      "triangles": 1600
+    },
+    "VIS_F_TripoStoneStair": {
+      "vertices": 3448,
+      "triangles": 1600
+    },
+    "VIS_G_TripoStoneStair": {
+      "vertices": 3448,
+      "triangles": 1600
+    },
+    "VIS_B_TripoStreetLamp": {
+      "vertices": 6440,
+      "triangles": 3500
+    },
+    "VIS_A_TripoStreetLamp": {
+      "vertices": 5152,
+      "triangles": 2800
+    },
+    "VIS_F_TripoStreetLamp": {
+      "vertices": 6440,
+      "triangles": 3500
+    },
+    "VIS_B_TripoStoneBench": {
+      "vertices": 3756,
+      "triangles": 2288
+    },
+    "VIS_F_TripoStoneBench": {
+      "vertices": 3756,
+      "triangles": 2288
+    },
+    "VIS_B_TripoBannerPole": {
+      "vertices": 1026,
+      "triangles": 599
+    },
+    "VIS_E_TripoBannerPole": {
+      "vertices": 1026,
+      "triangles": 599
+    },
+    "VIS_H_TripoBannerPole": {
+      "vertices": 1026,
+      "triangles": 599
+    },
+    "VIS_A_TripoCrateBarrel": {
+      "vertices": 763,
+      "triangles": 600
+    },
+    "VIS_B_TripoCrateBarrel": {
+      "vertices": 2289,
+      "triangles": 1800
+    },
+    "VIS_C_TripoCrateBarrel": {
+      "vertices": 2289,
+      "triangles": 1800
+    },
+    "VIS_G_TripoCrateBarrel": {
+      "vertices": 2289,
+      "triangles": 1800
+    },
+    "VIS_F_TripoCrateBarrel": {
+      "vertices": 1526,
+      "triangles": 1200
+    },
+    "VIS_B_TripoPlanter": {
+      "vertices": 2772,
+      "triangles": 1600
+    },
+    "VIS_F_TripoPlanter": {
+      "vertices": 1386,
+      "triangles": 800
+    },
+    "VIS_C_TripoPlanter": {
+      "vertices": 2772,
+      "triangles": 1600
+    },
+    "VIS_A_TripoPlanter": {
+      "vertices": 693,
+      "triangles": 400
+    },
+    "VIS_G_TripoPlanter": {
+      "vertices": 2079,
+      "triangles": 1200
+    },
+    "VIS_B_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
+    },
+    "VIS_C_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
+    },
+    "VIS_D_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
+    },
+    "VIS_E_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
+    },
+    "VIS_F_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
+    },
+    "VIS_G_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
+    },
+    "VIS_H_TripoBrassLampPost": {
+      "vertices": 2276,
+      "triangles": 1200
     }
   },
-  "totalVisualTriangles": 1278747,
+  "totalVisualTriangles": 1672684,
   "collisionBoxes": [
     {
       "name": "A_CargoHouse",
       "center": [
-        -35,
+        -29.615,
         4.0,
-        -311
+        -229.35
       ],
       "size": [
-        18,
+        16.97126597392449,
         8,
         12
       ]
@@ -3716,9 +4830,9 @@
     {
       "name": "B_TeaHouse",
       "center": [
-        -50,
-        13.0,
-        -165
+        -34.211,
+        10.0,
+        -119.5
       ],
       "size": [
         16,
@@ -3729,9 +4843,9 @@
     {
       "name": "B_House02",
       "center": [
-        -22,
-        12.0,
-        -170
+        -15.053,
+        9.0,
+        -123.0
       ],
       "size": [
         12,
@@ -3742,9 +4856,9 @@
     {
       "name": "B_House03",
       "center": [
-        35,
-        12.5,
-        -165
+        23.947,
+        9.5,
+        -119.5
       ],
       "size": [
         14,
@@ -3755,12 +4869,12 @@
     {
       "name": "B_House04",
       "center": [
-        -55,
-        12.0,
-        -103
+        -37.632,
+        9.0,
+        -76.1
       ],
       "size": [
-        16,
+        11.625652901211382,
         8,
         12
       ]
@@ -3768,9 +4882,9 @@
     {
       "name": "B_House05",
       "center": [
-        -23,
-        11.5,
-        -93
+        -15.737,
+        8.5,
+        -69.1
       ],
       "size": [
         10,
@@ -3781,9 +4895,9 @@
     {
       "name": "B_House06",
       "center": [
-        40,
-        12.5,
-        -103
+        27.368,
+        9.5,
+        -76.1
       ],
       "size": [
         14,
@@ -3794,9 +4908,9 @@
     {
       "name": "B_GardenTree01",
       "center": [
-        -68,
-        13.0,
-        -148
+        -46.526,
+        10.0,
+        -107.6
       ],
       "size": [
         6,
@@ -3807,9 +4921,9 @@
     {
       "name": "B_GardenTree02",
       "center": [
-        61,
-        13.0,
-        -153
+        41.737,
+        10.0,
+        -111.1
       ],
       "size": [
         6,
@@ -3820,9 +4934,9 @@
     {
       "name": "B_GardenTree03",
       "center": [
-        -45,
-        13.0,
-        -72
+        -30.789,
+        10.0,
+        -54.4
       ],
       "size": [
         6,
@@ -3833,9 +4947,9 @@
     {
       "name": "B_GardenTree04",
       "center": [
-        50,
-        13.0,
-        -74
+        34.211,
+        10.0,
+        -55.8
       ],
       "size": [
         6,
@@ -3846,9 +4960,9 @@
     {
       "name": "B_ChimeSupport01",
       "center": [
-        -6,
-        12.6,
-        -125
+        -4.105,
+        9.6,
+        -91.5
       ],
       "size": [
         2.4,
@@ -3859,9 +4973,9 @@
     {
       "name": "B_ChimeSupport02",
       "center": [
-        6,
-        12.6,
-        -125
+        4.105,
+        9.6,
+        -91.5
       ],
       "size": [
         2.4,
@@ -3872,25 +4986,25 @@
     {
       "name": "B_DuckStatue",
       "center": [
-        18,
-        9.5,
-        -112
+        12.316,
+        6.5,
+        -82.4
       ],
       "size": [
-        2.8,
+        1.98789019907829,
         3,
-        2.8
+        2.128240076516288
       ]
     },
     {
       "name": "C_WaterMill",
       "center": [
-        -280,
-        22.5,
-        -90
+        -199.211,
+        16.5,
+        -66.471
       ],
       "size": [
-        16,
+        14.481261366658693,
         13,
         12
       ]
@@ -3898,9 +5012,9 @@
     {
       "name": "C_FarmBarn",
       "center": [
-        -180,
-        21.0,
-        -155
+        -130.789,
+        15.0,
+        -110.441
       ],
       "size": [
         20,
@@ -3911,9 +5025,9 @@
     {
       "name": "D_GreatRootTree",
       "center": [
-        -285,
-        46.0,
-        133
+        -183.947,
+        34.0,
+        90.333
       ],
       "size": [
         22,
@@ -3924,9 +5038,9 @@
     {
       "name": "D_RootTree02",
       "center": [
-        -214,
-        41.0,
-        151
+        -135.368,
+        29.0,
+        102.333
       ],
       "size": [
         14,
@@ -3937,64 +5051,64 @@
     {
       "name": "D_WindBeacon",
       "center": [
-        -277,
-        35.5,
-        84
+        -178.474,
+        23.5,
+        57.667
       ],
       "size": [
-        10,
+        3.8767123222351074,
         15,
-        10
+        4.021121263504028
       ]
     },
     {
       "name": "E_WindPillarWest",
       "center": [
-        -16,
-        49.0,
-        136
+        3.0,
+        25.0,
+        98.2
       ],
       "size": [
-        5,
+        1.3362819322689863,
         14,
-        5
+        1.3298291816226786
       ]
     },
     {
       "name": "E_WindPillarEast",
       "center": [
-        16,
-        49.0,
-        136
+        27.0,
+        25.0,
+        98.2
       ],
       "size": [
-        5,
+        1.800298681012336,
         14,
-        5
+        1.799022896807942
       ]
     },
     {
       "name": "F_MirrorPool",
       "center": [
-        240,
-        26.25,
-        -36
+        175.0,
+        15.25,
+        -62.333
       ],
       "size": [
-        70,
+        47.895,
         0.5,
-        45
+        30.0
       ]
     },
     {
       "name": "F_TempleHall",
       "center": [
-        253,
-        32.0,
-        17
+        183.895,
+        21.0,
+        -27.0
       ],
       "size": [
-        43,
+        41.94445028817251,
         12,
         23
       ]
@@ -4002,9 +5116,9 @@
     {
       "name": "F_TemplePavilion",
       "center": [
-        184,
-        30.5,
-        -62
+        136.684,
+        19.5,
+        -79.667
       ],
       "size": [
         14,
@@ -4015,9 +5129,9 @@
     {
       "name": "F_PavilionSupport01",
       "center": [
-        201,
-        29.5,
-        -15
+        148.316,
+        18.5,
+        -48.333
       ],
       "size": [
         1.7,
@@ -4028,9 +5142,9 @@
     {
       "name": "F_PavilionSupport02",
       "center": [
-        201,
-        29.5,
-        -5
+        148.316,
+        18.5,
+        -41.667
       ],
       "size": [
         1.7,
@@ -4041,9 +5155,9 @@
     {
       "name": "F_PavilionSupport03",
       "center": [
-        211,
-        29.5,
-        -15
+        155.158,
+        18.5,
+        -48.333
       ],
       "size": [
         1.7,
@@ -4054,9 +5168,9 @@
     {
       "name": "F_PavilionSupport04",
       "center": [
-        211,
-        29.5,
-        -5
+        155.158,
+        18.5,
+        -41.667
       ],
       "size": [
         1.7,
@@ -4067,9 +5181,9 @@
     {
       "name": "F_PavilionSupport05",
       "center": [
-        269,
-        29.5,
-        -15
+        194.842,
+        18.5,
+        -48.333
       ],
       "size": [
         1.7,
@@ -4080,9 +5194,9 @@
     {
       "name": "F_PavilionSupport06",
       "center": [
-        269,
-        29.5,
-        -5
+        194.842,
+        18.5,
+        -41.667
       ],
       "size": [
         1.7,
@@ -4093,9 +5207,9 @@
     {
       "name": "F_PavilionSupport07",
       "center": [
-        279,
-        29.5,
-        -15
+        201.684,
+        18.5,
+        -48.333
       ],
       "size": [
         1.7,
@@ -4106,9 +5220,9 @@
     {
       "name": "F_PavilionSupport08",
       "center": [
-        279,
-        29.5,
-        -5
+        201.684,
+        18.5,
+        -41.667
       ],
       "size": [
         1.7,
@@ -4119,9 +5233,9 @@
     {
       "name": "G_StarDome",
       "center": [
-        266,
-        53.0,
-        197
+        185.824,
+        30.0,
+        86.9
       ],
       "size": [
         32,
@@ -4132,9 +5246,9 @@
     {
       "name": "G_SideShed",
       "center": [
-        214,
-        48.0,
-        220
+        150.647,
+        25.0,
+        103.0
       ],
       "size": [
         20,
@@ -4145,74 +5259,74 @@
     {
       "name": "G_BrokenAstrolabe",
       "center": [
-        292,
-        49.0,
-        155
+        203.412,
+        26.0,
+        57.5
       ],
       "size": [
-        14,
+        2.356509804725647,
         10,
-        12
+        3.9934338331222534
       ]
     },
     {
       "name": "H_HomecomingBell",
       "center": [
-        0,
-        74.5,
-        338
+        5.0,
+        38.5,
+        251.6
       ],
       "size": [
-        34,
+        4.379647731781006,
         25,
-        26
+        6.009974479675293
       ]
     },
     {
       "name": "H_MemorialWest",
       "center": [
-        -51,
-        66.5,
-        310
+        -30.417,
+        30.5,
+        232.0
       ],
       "size": [
-        8,
+        2.001771563767605,
         9,
-        8
+        1.4195125735389817
       ]
     },
     {
       "name": "H_MemorialEast",
       "center": [
-        51,
-        66.5,
-        310
+        40.417,
+        30.5,
+        232.0
       ],
       "size": [
-        8,
+        2.001771563767605,
         9,
-        8
+        1.4195125735389817
       ]
     },
     {
       "name": "S1_FrogPond",
       "center": [
-        -352,
-        12.2,
-        -236
+        -292.0,
+        7.2,
+        -106.0
       ],
       "size": [
-        18,
+        18.0,
         0.4,
-        12
+        12.0
       ]
     },
     {
       "name": "S2_PostOffice",
       "center": [
-        -375,
-        28.0,
-        227
+        -287.5,
+        17.0,
+        107.0
       ],
       "size": [
         12,
@@ -4223,51 +5337,51 @@
     {
       "name": "S3_RainCave",
       "center": [
-        358,
-        25.0,
-        -180
+        305.5,
+        17.0,
+        -75.0
       ],
       "size": [
-        22,
+        7.744004109210836,
         14,
-        18
+        7.714069914016362
       ]
     },
     {
       "name": "S4_StarLookout",
       "center": [
-        350,
-        60.0,
-        319
+        295.0,
+        34.0,
+        84.0
       ],
       "size": [
+        4.671802043914795,
         16,
-        16,
-        14
+        5.732619047164917
       ]
     },
     {
       "name": "A_Cover01",
       "center": [
-        27,
+        22.846,
         0.6,
-        -323
+        -239.55
       ],
       "size": [
-        5,
+        3.242285334246329,
         1.2,
-        4
+        3.71519001597309
       ]
     },
     {
       "name": "A_Cover02",
       "center": [
-        36,
+        30.462,
         0.6,
-        -281
+        -203.85
       ],
       "size": [
-        6,
+        2.1854770781281134,
         1.2,
         3
       ]
@@ -4275,12 +5389,12 @@
     {
       "name": "B_Cover01",
       "center": [
-        -32,
-        8.6,
-        -137
+        -21.895,
+        5.6,
+        -99.9
       ],
       "size": [
-        4,
+        3.50545305885286,
         1.2,
         3
       ]
@@ -4288,9 +5402,9 @@
     {
       "name": "B_Cover02",
       "center": [
-        30,
-        8.6,
-        -126
+        20.526,
+        5.6,
+        -92.2
       ],
       "size": [
         4,
@@ -4301,103 +5415,103 @@
     {
       "name": "C_Cover01",
       "center": [
-        -264,
-        16.6,
-        -148
+        -188.263,
+        10.6,
+        -105.706
       ],
       "size": [
-        5,
+        3.3679052169689676,
         1.2,
-        4
+        3.6442726358941284
       ]
     },
     {
       "name": "C_Cover02",
       "center": [
-        -220,
-        16.6,
-        -62
+        -158.158,
+        10.6,
+        -47.529
       ],
       "size": [
-        7,
+        4.150260133724389,
         1.2,
-        4
+        3.568102657932875
       ]
     },
     {
       "name": "C_Cover03",
       "center": [
-        -172,
-        16.6,
-        -98
+        -125.316,
+        10.6,
+        -71.882
       ],
       "size": [
-        4,
+        3.690576211927726,
         1.2,
-        5
+        3.2905981041005004
       ]
     },
     {
       "name": "D_Cover01",
       "center": [
-        -306,
-        28.6,
-        73
+        -198.316,
+        16.6,
+        50.333
       ],
       "size": [
-        7,
+        3.3110803026235462,
         1.2,
-        5
+        4.2564737537289306
       ]
     },
     {
       "name": "D_Cover02",
       "center": [
-        -221,
-        28.6,
-        75
+        -140.158,
+        16.6,
+        51.667
       ],
       "size": [
-        6,
+        3.7626169932289315,
         1.2,
-        4
+        3.1275075677439927
       ]
     },
     {
       "name": "D_Cover03",
       "center": [
-        -253,
-        28.6,
-        165
+        -162.053,
+        16.6,
+        111.667
       ],
       "size": [
-        5,
+        3.8032334991960957,
         1.2,
-        5
+        3.9959265753037356
       ]
     },
     {
       "name": "E_Cover01",
       "center": [
-        -43,
-        42.6,
-        94
+        -17.25,
+        18.6,
+        68.8
       ],
       "size": [
-        6,
+        3.8323828516869294,
         1.2,
-        4
+        2.370071856424765
       ]
     },
     {
       "name": "E_Cover02",
       "center": [
-        45,
-        42.6,
-        93
+        48.75,
+        18.6,
+        68.1
       ],
       "size": [
-        5,
+        2.0469956596858916,
         1.2,
         4
       ]
@@ -4405,77 +5519,77 @@
     {
       "name": "F_Cover01",
       "center": [
-        188,
-        26.6,
-        -111
+        139.421,
+        15.6,
+        -112.333
       ],
       "size": [
-        6,
+        3.55244667575411,
         1.2,
-        4
+        3.486324734554885
       ]
     },
     {
       "name": "F_Cover02",
       "center": [
-        296,
-        26.6,
-        -76
+        213.316,
+        15.6,
+        -89.0
       ],
       "size": [
-        5,
+        2.159550816956896,
         1.2,
-        5
+        4.307181976096721
       ]
     },
     {
       "name": "G_Cover01",
       "center": [
-        207,
-        44.6,
-        162
+        145.912,
+        21.6,
+        62.4
       ],
       "size": [
-        5,
+        2.5233848232020795,
         1.2,
-        4
+        3.8429840746621142
       ]
     },
     {
       "name": "G_Cover02",
       "center": [
-        275,
-        44.6,
-        231
+        191.912,
+        21.6,
+        110.7
       ],
       "size": [
-        6,
+        4.3424110549755115,
         1.2,
-        4
+        2.8483768670902
       ]
     },
     {
       "name": "H_Cover01",
       "center": [
-        -32,
-        62.6,
-        278
+        -17.222,
+        26.6,
+        209.6
       ],
       "size": [
-        5,
+        2.418389398590289,
         1.2,
-        4
+        3.8367747793093927
       ]
     },
     {
       "name": "H_Cover02",
       "center": [
-        33,
-        62.6,
-        279
+        27.917,
+        26.6,
+        210.3
       ],
       "size": [
-        5,
+        2.7344695176278355,
         1.2,
         4
       ]
@@ -4483,9 +5597,9 @@
     {
       "name": "A_Life01_floatboat_cargo",
       "center": [
-        -31.88404303575711,
+        -36.80714303575711,
         2.3840000152587892,
-        -336.35395454710095
+        -250.95395454710095
       ],
       "size": [
         7.231697497242948,
@@ -4496,35 +5610,35 @@
     {
       "name": "A_Life02_supply_handcart",
       "center": [
-        -18.0676689521542,
+        -15.099068952154198,
         1.82898,
-        -300.16059374447985
+        -215.12629374447982
       ],
       "size": [
-        5.3321512430065106,
+        5.332151243006509,
         3.65796,
-        6.534540957070135
+        6.534540957070163
       ]
     },
     {
       "name": "B_Life03_produce_stall",
       "center": [
-        -20.126619137492128,
-        10.781440329551696,
-        -153.75702419989682
+        -55.85951913749213,
+        7.781440329551696,
+        -123.56542419989682
       ],
       "size": [
-        8.637525930146,
+        8.637525930145998,
         5.562880659103392,
-        5.006159387794071
+        5.006159387794057
       ]
     },
     {
       "name": "B_Life04_picnic_table",
       "center": [
-        20.668,
-        9.66803,
-        -171.6258
+        35.604,
+        6.66803,
+        -139.4612
       ],
       "size": [
         6.876613127690064,
@@ -4535,12 +5649,12 @@
     {
       "name": "B_Life05_laundry_rack",
       "center": [
-        -52.0,
-        9.99547004699707,
-        -87.01525645619562
+        -20.2128,
+        6.99547004699707,
+        -52.113656456195606
       ],
       "size": [
-        7.18057446340697,
+        7.180574463406963,
         3.9909400939941406,
         3.3164768032300174
       ]
@@ -4548,12 +5662,12 @@
     {
       "name": "B_Life06_duck_mailbox",
       "center": [
-        31.16630612302948,
-        9.865999937057495,
-        -83.38132162090409
+        13.686606123029481,
+        6.865999937057495,
+        -64.68602162090409
       ],
       "size": [
-        3.3705542582651837,
+        3.370554258265182,
         3.7319998741149902,
         3.10013894970443
       ]
@@ -4561,12 +5675,12 @@
     {
       "name": "B_Life07_tea_stove",
       "center": [
-        -39.85191000763972,
-        10.30625,
-        -100.38254172606506
+        -17.703910007639713,
+        7.30625,
+        -110.67384172606504
       ],
       "size": [
-        5.529913769876913,
+        5.529913769876915,
         4.612500000000001,
         2.8919863850801875
       ]
@@ -4574,12 +5688,12 @@
     {
       "name": "B_Life08_windmill_planter",
       "center": [
-        48.05602881316287,
-        10.943571612091983,
-        -123.0
+        32.89812881316287,
+        7.943571612091983,
+        -90.1
       ],
       "size": [
-        5.6594222034132216,
+        5.659422203413225,
         5.887143224183966,
         3.9252477508042887
       ]
@@ -4587,12 +5701,12 @@
     {
       "name": "C_Life09_compost_planter",
       "center": [
-        -299.9949986532961,
-        17.833750000000002,
-        -164.96728135630966
+        -212.88969865329608,
+        11.83375,
+        -117.17318135630966
       ],
       "size": [
-        7.845289994879749,
+        7.845289994879721,
         3.6675000000000004,
         3.8361859810983105
       ]
@@ -4600,9 +5714,9 @@
     {
       "name": "C_Life10_supply_handcart",
       "center": [
-        -177.30405669112287,
-        17.896720000000002,
-        -82.66476758686795
+        -121.87145669112287,
+        11.89672,
+        -59.362667586867964
       ],
       "size": [
         5.529638326080828,
@@ -4613,25 +5727,25 @@
     {
       "name": "C_Life11_rain_barrel",
       "center": [
-        -284.1170207135795,
-        18.73375,
-        -63.45445762615029
+        -202.06442071357952,
+        12.73375,
+        -48.660357626150294
       ],
       "size": [
-        4.522983005771039,
+        4.52298300577101,
         5.467500000000001,
-        3.89730070669696
+        3.897300706696967
       ]
     },
     {
       "name": "C_Life12_windmill_planter",
       "center": [
-        -307.96984297088295,
-        19.270635124546647,
-        -81.0
+        -218.33824297088296,
+        13.270635124546647,
+        -60.3824
       ],
       "size": [
-        6.288119759092979,
+        6.28811975909295,
         6.541270249093294,
         4.52341093707625
       ]
@@ -4639,22 +5753,22 @@
     {
       "name": "D_Life13_camp_tent",
       "center": [
-        -298.0,
-        30.383517682552338,
-        96.0
+        -194.7684,
+        18.383517682552338,
+        66.2047
       ],
       "size": [
         10.385331378688988,
         4.767035365104675,
-        9.214609650149328
+        9.21460965014932
       ]
     },
     {
       "name": "D_Life14_firewood_rack",
       "center": [
-        -197.7128697261017,
-        29.781904101371765,
-        130.47245846566463
+        -120.18806972610172,
+        17.781904101371765,
+        94.04525846566463
       ],
       "size": [
         6.5747755047894145,
@@ -4665,25 +5779,25 @@
     {
       "name": "D_Life15_tea_stove",
       "center": [
-        -309.82397327326373,
-        30.30625,
-        153.93609952793935
+        -200.87657327326374,
+        18.30625,
+        104.26939952793933
       ],
       "size": [
         5.536297292268046,
-        4.612499999999997,
-        3.046303208878385
+        4.612500000000001,
+        3.0463032088783706
       ]
     },
     {
       "name": "E_Life16_wayfinding_sign",
       "center": [
-        -41.88757039793253,
-        44.688,
-        148.09560600202383
+        -16.387570397932528,
+        20.688,
+        106.69560600202384
       ],
       "size": [
-        4.799868644943729,
+        4.7998686449437304,
         5.375999999999998,
         1.8816986794966795
       ]
@@ -4691,9 +5805,9 @@
     {
       "name": "E_Life17_picnic_table",
       "center": [
-        50.8695,
-        43.79634,
-        150.2895
+        57.3586,
+        19.79634,
+        106.5685
       ],
       "size": [
         7.192737541278078,
@@ -4704,12 +5818,12 @@
     {
       "name": "F_Life18_tea_stove",
       "center": [
-        189.2104914628169,
-        28.49075,
-        -80.88822679700833
+        126.2910914628169,
+        17.49075,
+        -100.89702679700834
       ],
       "size": [
-        5.969706705292737,
+        5.969706705292722,
         4.9815000000000005,
         3.447651953513116
       ]
@@ -4717,12 +5831,12 @@
     {
       "name": "F_Life19_picnic_table",
       "center": [
-        310.0,
-        27.79634,
-        -48.0
+        230.8409,
+        16.79634,
+        -51.9796
       ],
       "size": [
-        7.4985345575504425,
+        7.498534557550386,
         3.5926800000000014,
         6.183507073197703
       ]
@@ -4730,87 +5844,87 @@
     {
       "name": "G_Life20_tool_workbench",
       "center": [
-        237.6374552399467,
-        46.58,
-        217.9040761768302
+        169.86405523994668,
+        23.58,
+        108.7714761768302
       ],
       "size": [
         6.930589370679002,
-        5.159999999999997,
-        4.171165883236682
+        5.16,
+        4.171165883236654
       ]
     },
     {
       "name": "G_Life21_floatboat_cargo",
       "center": [
-        192.0096473074536,
-        46.08600001335144,
-        208.6733237577293
+        133.8220473074536,
+        23.08600001335144,
+        100.64682375772931
       ],
       "size": [
         6.179495992694456,
         4.172000026702882,
-        6.115552029968427
+        6.1155520299683985
       ]
     },
     {
       "name": "G_Life22_firewood_rack",
       "center": [
-        309.63511398911146,
-        45.90918296575546,
-        130.00280563442382
+        215.54691398911146,
+        22.909182965755463,
+        40.00280563442384
       ],
       "size": [
         7.404343568631418,
         3.8183659315109253,
-        4.374148762465268
+        4.374148762465275
       ]
     },
     {
       "name": "H_Life23_wayfinding_sign",
       "center": [
-        -59.866593072615856,
-        64.688,
-        283.0442091894006
+        -36.533293072615855,
+        28.688,
+        213.14420918940058
       ],
       "size": [
-        4.644033404886166,
-        5.376000000000005,
+        4.644033404886173,
+        5.375999999999998,
         2.2498203940272674
       ]
     },
     {
       "name": "H_Life24_picnic_table",
       "center": [
-        46.0,
-        63.92465,
-        341.0
+        31.9576,
+        27.92465,
+        245.0322
       ],
       "size": [
         7.825296017594184,
         3.8492999999999995,
-        6.242461222716656
+        6.242461222716713
       ]
     },
     {
       "name": "S1_Life25_windmill_planter",
       "center": [
-        -367.85987199597685,
-        14.398465758000874,
-        -218.48266158466714
+        -307.85987199597685,
+        9.398465758000874,
+        -88.48266158466714
       ],
       "size": [
         4.6437084077018085,
         4.796931516001749,
-        3.377850265608174
+        3.3778502656081884
       ]
     },
     {
       "name": "S2_Life26_duck_mailbox",
       "center": [
-        -353.9075222080305,
-        25.865999937057495,
-        225.60668493273192
+        -264.7689222080305,
+        14.865999937057495,
+        106.75348493273195
       ],
       "size": [
         3.5089211238355347,
@@ -4821,32 +5935,786 @@
     {
       "name": "S3_Life27_camp_tent",
       "center": [
-        371.0,
-        19.747912967205046,
-        -153.0
+        318.5,
+        11.747912967205048,
+        -48.0
       ],
       "size": [
         7.5283052077221555,
         3.495825934410096,
-        6.604573548458859
+        6.604573548458873
       ]
     },
     {
       "name": "S4_Life28_tool_workbench",
       "center": [
-        367.6489777048081,
-        53.77375,
-        317.8348012259681
+        312.6489777048081,
+        27.77375,
+        82.83480122596808
       ],
       "size": [
         5.009492252434313,
         3.5474999999999994,
-        3.0661788359306
+        3.066178835930586
+      ]
+    },
+    {
+      "name": "Tripo_bell_arch_00",
+      "center": [
+        -15.072164130788845,
+        30.25,
+        192.87782266891938
+      ],
+      "size": [
+        6.6025174821842985,
+        8.5,
+        7.925460235715691
+      ]
+    },
+    {
+      "name": "Tripo_great_tree_00",
+      "center": [
+        -201.7453513924711,
+        25.0,
+        33.254648607528935
+      ],
+      "size": [
+        3.6,
+        18.0,
+        3.6
+      ]
+    },
+    {
+      "name": "Tripo_great_tree_01",
+      "center": [
+        -115.90282906645281,
+        25.0,
+        114.70527105065906
+      ],
+      "size": [
+        3.6,
+        18.0,
+        3.6
+      ]
+    },
+    {
+      "name": "Tripo_cherry_pavilion_00",
+      "center": [
+        187.37706371838158,
+        18.5,
+        -114.64169117484317
+      ],
+      "size": [
+        6.523755787408345,
+        7.0,
+        6.590550849648951
+      ]
+    },
+    {
+      "name": "Tripo_cherry_pavilion_01",
+      "center": [
+        -279.6791455867827,
+        10.5,
+        -87.25480623210568
+      ],
+      "size": [
+        7.649182291750166,
+        7.0,
+        7.662738542346003
+      ]
+    },
+    {
+      "name": "Tripo_cottage_large_00",
+      "center": [
+        -156.8359133126935,
+        15.485517024062574,
+        -94.14061293981155
+      ],
+      "size": [
+        13.350723521215073,
+        11.028965951874852,
+        13.236117876493376
+      ]
+    },
+    {
+      "name": "Tripo_farm_barn_00",
+      "center": [
+        -195.79466182966462,
+        14.457548458129168,
+        -123.97933491033297
+      ],
+      "size": [
+        13.229209891001009,
+        9.084903083741665,
+        13.568670200305311
+      ]
+    },
+    {
+      "name": "Tripo_farm_barn_01",
+      "center": [
+        -177.55912977757512,
+        14.457548458129168,
+        -105.7500320298552
+      ],
+      "size": [
+        12.534194685736207,
+        9.084903083741665,
+        13.170639409179474
+      ]
+    },
+    {
+      "name": "Tripo_cottage_dormer_00",
+      "center": [
+        7.555031959040768,
+        8.951773203909397,
+        -56.132729994332756
+      ],
+      "size": [
+        8.341828304105519,
+        8.160395547747612,
+        8.936102632788025
+      ]
+    },
+    {
+      "name": "Tripo_cottage_dormer_01",
+      "center": [
+        -179.0257378125572,
+        13.951773203909397,
+        -118.53539793119178
+      ],
+      "size": [
+        9.24755345595855,
+        8.160395547747612,
+        9.69668502080156
+      ]
+    },
+    {
+      "name": "Tripo_market_stall_00",
+      "center": [
+        -21.705524734916022,
+        7.099999904632568,
+        -137.59949087224805
+      ],
+      "size": [
+        4.212022702509554,
+        4.199999809265137,
+        5.168404629265214
+      ]
+    },
+    {
+      "name": "Tripo_market_stall_01",
+      "center": [
+        -2.9739015143437606,
+        7.099999904632568,
+        -113.7764751906823
+      ],
+      "size": [
+        3.0353560252286154,
+        4.199999809265137,
+        4.8545025522443845
+      ]
+    },
+    {
+      "name": "Tripo_market_stall_02",
+      "center": [
+        -10.63112305708808,
+        2.0999999046325684,
+        -192.3049775785657
+      ],
+      "size": [
+        3.8639842865511085,
+        4.199999809265137,
+        5.122800408213896
+      ]
+    },
+    {
+      "name": "Tripo_stone_platform_00",
+      "center": [
+        31.206983090807,
+        26.813170506153256,
+        234.5385617749714
+      ],
+      "size": [
+        4.697129201889038,
+        1.6392618147656322,
+        4.675396156311035
+      ]
+    },
+    {
+      "name": "Tripo_stone_platform_01",
+      "center": [
+        156.85390885691112,
+        21.813170506153256,
+        47.05747001857128
+      ],
+      "size": [
+        4.697129201889038,
+        1.6392618147656322,
+        4.675396156311035
+      ]
+    },
+    {
+      "name": "Tripo_cottage_small_00",
+      "center": [
+        -171.0499445476508,
+        13.18559667468071,
+        -96.62208603362319
+      ],
+      "size": [
+        7.078928986170317,
+        6.631886065006256,
+        6.95344267994327
+      ]
+    },
+    {
+      "name": "Tripo_cottage_small_01",
+      "center": [
+        129.8454773937122,
+        18.18559667468071,
+        -24.34268522696015
+      ],
+      "size": [
+        7.753684843634885,
+        6.631886065006256,
+        7.769224744359328
+      ]
+    },
+    {
+      "name": "Tripo_cottage_small_02",
+      "center": [
+        137.35164442907947,
+        24.18559667468071,
+        69.03708627376062
+      ],
+      "size": [
+        6.143539836384808,
+        6.631886065006256,
+        6.318068499346779
+      ]
+    },
+    {
+      "name": "Tripo_cottage_small_03",
+      "center": [
+        33.698244497945716,
+        3.18559667468071,
+        -247.28830034113795
+      ],
+      "size": [
+        7.712777197697068,
+        6.631886065006256,
+        7.743814405358235
+      ]
+    },
+    {
+      "name": "Tripo_shop_sign_00",
+      "center": [
+        57.43239376375021,
+        8.5,
+        -117.04623041189605
+      ],
+      "size": [
+        0.7,
+        7.0,
+        0.7
+      ]
+    },
+    {
+      "name": "Tripo_shrine_pavilion_00",
+      "center": [
+        130.8564351949598,
+        17.459883347153664,
+        -14.21863766616844
+      ],
+      "size": [
+        6.24786640045182,
+        5.080233305692673,
+        6.209411420661412
+      ]
+    },
+    {
+      "name": "Tripo_shrine_pavilion_01",
+      "center": [
+        -151.89473684210526,
+        18.459883347153664,
+        60.961272401810156
+      ],
+      "size": [
+        6.092920182280138,
+        5.080233305692673,
+        5.950239788410192
+      ]
+    },
+    {
+      "name": "Tripo_shrine_pavilion_02",
+      "center": [
+        307.1881814241831,
+        12.459883347153664,
+        -51.38453251136984
+      ],
+      "size": [
+        5.703062064622939,
+        5.080233305692673,
+        5.461399138077833
+      ]
+    },
+    {
+      "name": "Tripo_cherry_tree_00",
+      "center": [
+        53.644017959161765,
+        9.548020362854004,
+        -60.163167407696704
+      ],
+      "size": [
+        2.4,
+        9.096040725708008,
+        2.4
+      ]
+    },
+    {
+      "name": "Tripo_cherry_tree_01",
+      "center": [
+        122.02558243603356,
+        19.548020362854004,
+        -41.41426971300974
+      ],
+      "size": [
+        2.4,
+        9.096040725708008,
+        2.4
+      ]
+    },
+    {
+      "name": "Tripo_cherry_tree_02",
+      "center": [
+        -194.45862389026698,
+        14.548020362854004,
+        -116.37837087752618
+      ],
+      "size": [
+        2.4,
+        9.096040725708008,
+        2.4
+      ]
+    },
+    {
+      "name": "Tripo_cherry_tree_03",
+      "center": [
+        -136.83794309704768,
+        14.548020362854004,
+        -59.53906798389821
+      ],
+      "size": [
+        2.4,
+        9.096040725708008,
+        2.4
+      ]
+    },
+    {
+      "name": "Tripo_pergola_00",
+      "center": [
+        -149.09181044271202,
+        11.996274471282959,
+        -70.81540247678018
+      ],
+      "size": [
+        5.5035191896546305,
+        3.992548942565918,
+        5.481505413284951
+      ]
+    },
+    {
+      "name": "Tripo_pergola_01",
+      "center": [
+        -183.0901256983272,
+        11.996274471282959,
+        -76.81022275497736
+      ],
+      "size": [
+        4.636724631358869,
+        3.992548942565918,
+        4.587939259340562
+      ]
+    },
+    {
+      "name": "Tripo_ruined_column_00",
+      "center": [
+        -20.26660216451672,
+        28.486169106326997,
+        259.77649441097867
+      ],
+      "size": [
+        1.8,
+        5.027661787346005,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_ruined_column_01",
+      "center": [
+        -19.08073111125697,
+        28.486169106326997,
+        244.50019156155815
+      ],
+      "size": [
+        1.8,
+        5.027661787346005,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_ruined_column_02",
+      "center": [
+        -4.777025819345708,
+        28.486169106326997,
+        198.13784233192283
+      ],
+      "size": [
+        1.8,
+        5.027661787346005,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_ruined_column_03",
+      "center": [
+        36.752078525976245,
+        28.486169106326997,
+        214.68312429057642
+      ],
+      "size": [
+        1.8,
+        5.027661787346005,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_ruined_column_04",
+      "center": [
+        126.66045622649771,
+        23.486169106326997,
+        72.4666318592754
+      ],
+      "size": [
+        1.8,
+        5.027661787346005,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_ruined_column_05",
+      "center": [
+        162.66161845076994,
+        23.486169106326997,
+        59.76336770861128
+      ],
+      "size": [
+        1.8,
+        5.027661787346005,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_00",
+      "center": [
+        -151.81454417869105,
+        17.686675921082497,
+        110.45510441001854
+      ],
+      "size": [
+        5.011013200949545,
+        3.42664834856987,
+        4.799242504125362
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_01",
+      "center": [
+        -160.0,
+        17.686675921082497,
+        94.58771929824562
+      ],
+      "size": [
+        4.070603104638443,
+        3.42664834856987,
+        4.662441898045717
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_02",
+      "center": [
+        -173.824050853171,
+        17.686675921082497,
+        43.95067341945595
+      ],
+      "size": [
+        4.840784582323971,
+        3.42664834856987,
+        5.016311724408335
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_03",
+      "center": [
+        -150.8641995525007,
+        17.686675921082497,
+        52.3881004169598
+      ],
+      "size": [
+        3.992592891346856,
+        3.42664834856987,
+        4.612534998225142
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_04",
+      "center": [
+        -273.30761184457486,
+        14.686675921082497,
+        109.19238815542512
+      ],
+      "size": [
+        3.2345622613513223,
+        3.42664834856987,
+        4.073123451687898
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_05",
+      "center": [
+        19.11813729218408,
+        19.686675921082497,
+        106.000895566167
+      ],
+      "size": [
+        4.270380020356064,
+        3.42664834856987,
+        3.498820301088563
+      ]
+    },
+    {
+      "name": "Tripo_root_rock_06",
+      "center": [
+        10.881862707815918,
+        19.686675921082497,
+        53.999104433833
+      ],
+      "size": [
+        5.017201514023541,
+        3.42664834856987,
+        4.876462763134451
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_00",
+      "center": [
+        -154.96977870409316,
+        17.58205840922892,
+        96.78828218553089
+      ],
+      "size": [
+        3.352170172634147,
+        3.2358832769095898,
+        3.319295372730726
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_01",
+      "center": [
+        -182.12356490373338,
+        17.58205840922892,
+        45.64103775871759
+      ],
+      "size": [
+        3.4349422231089277,
+        3.2358832769095898,
+        3.434883892760844
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_02",
+      "center": [
+        -149.8894045350219,
+        17.58205840922892,
+        47.22136726273236
+      ],
+      "size": [
+        3.2152904640809954,
+        3.2358832769095898,
+        3.2612723368456127
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_03",
+      "center": [
+        -145.6145404152056,
+        17.58205840922892,
+        64.92719275811584
+      ],
+      "size": [
+        3.401463834719384,
+        3.2358832769095898,
+        3.379361499229425
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_04",
+      "center": [
+        142.52129497679283,
+        22.58205840922892,
+        88.12224861053974
+      ],
+      "size": [
+        3.367169121535894,
+        3.2358832769095898,
+        3.337102184466495
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_05",
+      "center": [
+        160.05296679023317,
+        22.58205840922892,
+        54.427173725394724
+      ],
+      "size": [
+        3.430543251002217,
+        3.2358832769095898,
+        3.4352575141970316
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_06",
+      "center": [
+        181.21121362931777,
+        22.58205840922892,
+        119.1950813973076
+      ],
+      "size": [
+        2.9075863949091314,
+        3.2358832769095898,
+        2.9788098081983585
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_07",
+      "center": [
+        311.2570794876535,
+        27.58205840922892,
+        90.69927917237334
+      ],
+      "size": [
+        3.2248325692190796,
+        3.2358832769095898,
+        3.174680951722236
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_08",
+      "center": [
+        277.001668211395,
+        27.58205840922892,
+        84.17060809473884
+      ],
+      "size": [
+        3.3422064193510543,
+        3.2358832769095898,
+        3.371420683066482
+      ]
+    },
+    {
+      "name": "Tripo_crystal_cluster_09",
+      "center": [
+        300.46743484055247,
+        27.58205840922892,
+        53.071316586162474
+      ],
+      "size": [
+        3.2598573509044324,
+        3.2358832769095898,
+        3.2137051698037684
+      ]
+    },
+    {
+      "name": "Tripo_rune_stone_00",
+      "center": [
+        -139.99491824343824,
+        17.7046560049057,
+        87.02026580794465
+      ],
+      "size": [
+        1.8,
+        3.4093120098114014,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_rune_stone_01",
+      "center": [
+        -179.67584461242072,
+        17.7046560049057,
+        67.83857822703183
+      ],
+      "size": [
+        1.8,
+        3.4093120098114014,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_rune_stone_02",
+      "center": [
+        -20.357077915101502,
+        27.7046560049057,
+        252.19213693381278
+      ],
+      "size": [
+        1.8,
+        3.4093120098114014,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_rune_stone_03",
+      "center": [
+        16.60415329958213,
+        27.7046560049057,
+        194.77014713422813
+      ],
+      "size": [
+        1.8,
+        3.4093120098114014,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_rune_stone_04",
+      "center": [
+        -298.0065046398288,
+        14.7046560049057,
+        105.33931773309737
+      ],
+      "size": [
+        1.8,
+        3.4093120098114014,
+        1.8
+      ]
+    },
+    {
+      "name": "Tripo_rune_stone_05",
+      "center": [
+        -270.37564434701784,
+        14.7046560049057,
+        93.0
+      ],
+      "size": [
+        1.8,
+        3.4093120098114014,
+        1.8
       ]
     }
   ],
-  "navVertices": 4037,
-  "navTriangles": 4215,
+  "navVertices": 3870,
+  "navTriangles": 4048,
   "sourceLayout": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\sky_island_layout.json",
   "textures": [
     "Textures/sky_mural.png",

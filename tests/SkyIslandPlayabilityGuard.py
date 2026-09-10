@@ -152,21 +152,32 @@ def main():
          "internal sealed class SkyIslandExtractionRings",
          "BossRushUIColors.Accent",
          "BossRushUIColors.SuccessText",
-         "internal void Apply(bool bellUnlocked)")
+         "internal void Apply(bool bellUnlocked)",
+         # 布局 v2：两处航标广场撤离环，与钟庭环同一套建造与翻转口径。
+         "internal void AddBeaconRings(Transform root, Transform wind, Transform star, float radius, int groundMask)",
+         "internal void ApplyBeacons(bool windUnlocked, bool starUnlocked)")
     need(session, "撤离环接线",
          "extractionRings = new SkyIslandExtractionRings(root.transform, exitMarker, bellExit,",
-         "ExtractionRadius, groundMask);")
-    # 装配时一次 + 每帧同步一次；两处都必须读同一个解锁事实，写死 true 会提前露出终章撤离点。
+         "ExtractionRadius, groundMask);",
+         "extractionRings.AddBeaconRings(root.transform, windExit, starExit, ExtractionRadius, groundMask);")
+    # 装配时一次 + 每帧同步一次；两处都必须读同一个解锁事实，写死 true 会提前露出还没开放的撤离点。
     if session.count("extractionRings.Apply(BellExitIfUnlocked() != null);") < 2:
         errors.append("撤离环必须在装配与每帧两处都按 BellExitIfUnlocked() 同步解锁状态")
+    if session.count("extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);") < 2:
+        errors.append("航标广场撤离环必须在装配与每帧两处都按 Wind/StarExitIfUnlocked() 同步解锁状态")
     if 'Safe("extraction_rings", delegate { if (extractionRings != null) extractionRings.Dispose(); });' not in session:
         errors.append("撤离环必须在 Cleanup 里销毁")
+    if 'Safe("map_markers", delegate { if (mapMarkers != null) mapMarkers.Dispose(); });' not in session:
+        errors.append("官方地图指引点必须在 Cleanup 里销毁")
     # 圈的半径必须就是判定半径：画一个大小对不上的圈比不画更坏。
     if "SkyIslandGroundRing.SetShape(ring, radius, RingWidth, color)" not in ring:
         errors.append("撤离环必须按传入的判定半径画，不得自带缩放")
-    # 钟庭环与 BellExitIfUnlocked() 同一事实源，不能提前露出终章后才开放的撤离点。
+    # 钟庭环与 BellExitIfUnlocked() 同一事实源，双航标点亮前不能露出。
     if "bellRing.gameObject.SetActive(false)" not in ring:
-        errors.append("钟庭环必须默认隐藏，直到敲钟结局解锁")
+        errors.append("钟庭环必须默认隐藏，直到双航标点亮")
+    for name in ("windRing", "starRing"):
+        if name + ".gameObject.SetActive(false)" not in ring:
+            errors.append("航标广场撤离环必须默认隐藏，直到对应航标点亮：" + name)
 
     # ---- 9. 贴地圆环复用同一建造点，材质必须显式销毁 ----
     # renderer.material 会给每个 LineRenderer 实例化一份副本且需调用方自行销毁；

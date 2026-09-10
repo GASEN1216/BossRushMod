@@ -13,6 +13,8 @@ from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 LAYOUT=ROOT/"ArtSource/SkyIsland/layout.json"
 EPS=0.00006
+# 与 tools/sky_island_navigation.py 的 RELAY_TAPER_METERS 一致：中继平台前后的桥宽线性过渡段。
+RELAY_TAPER=3.0
 
 
 def xz(p):
@@ -82,6 +84,20 @@ def segment_distance(a,b,c,d):
                point_segment_distance(c,a,b),point_segment_distance(d,a,b))
 
 
+def expected_width(bridge,station):
+    """桥面名义宽度：中继平台内为平台宽，平台前后 RELAY_TAPER 米线性过渡，其余为桥宽。"""
+    width=bridge["width"]
+    for relay in bridge.get("relays",[]):
+        start,end,wide=relay["startStation"],relay["endStation"],relay["width"]
+        if start-0.001<=station<=end+0.001:
+            return wide
+        if start-RELAY_TAPER<station<start:
+            return width+(wide-width)*(station-start+RELAY_TAPER)/RELAY_TAPER
+        if end<station<end+RELAY_TAPER:
+            return width+(wide-width)*(end+RELAY_TAPER-station)/RELAY_TAPER
+    return width
+
+
 def check_bridge_continuity(layout):
     """检查发布几何的转角、桥口和拼接，独立于生成器的曲线算法。"""
     ground=layout["ground"]
@@ -110,12 +126,24 @@ def check_bridge_continuity(layout):
         mouth_slope=max(abs(grades[0]),abs(grades[-1]))
         assert mouth_slope<3,"桥口未缓坡: "+bid
         max_mouth_slope=max(max_mouth_slope,mouth_slope)
-        for point,section in zip(path,sections):
+        stations=[0.0]
+        for a,b in zip(path,path[1:]):
+            stations.append(stations[-1]+math.dist(xz(a),xz(b)))
+        for point,section,station in zip(path,sections,stations):
             assert len(section)==2 and all(abs(p[1]-point[1])<EPS for p in section),"桥横截面高程错位: "+bid
             midpoint=[(section[0][i]+section[1][i])/2 for i in range(3)]
             assert math.dist(midpoint,point)<EPS,"桥横截面偏离中心线: "+bid
             width=math.dist(section[0],section[1])
-            assert bridge["width"]-EPS<=width<=bridge["width"]*1.01,"圆弯桥面宽度异常: "+bid
+            nominal=expected_width(bridge,station)
+            assert nominal-EPS<=width<=nominal*1.01+EPS,"圆弯桥面宽度异常: "+bid
+        # 中继平台是桥的一段：平台内必须水平、中心落在桥中心线上，并有同名标记供遭遇/搜刮挂接。
+        for relay in bridge.get("relays",[]):
+            flat=[point[1] for point,station in zip(path,stations)
+                  if relay["startStation"]-0.001<=station<=relay["endStation"]+0.001]
+            assert len(flat)>=2 and max(flat)-min(flat)<EPS,"中继平台不水平: "+bid
+            assert any(math.dist(point,relay["center"])<0.001 for point in path),"中继平台中心不在桥中心线: "+bid
+            assert any(m["id"]==relay["id"] and math.dist(m["position"],relay["center"])<0.001
+                       for m in layout["markers"]),"中继平台缺标记: "+bid
         for endpoint,island_id,direction in [(0,bridge["from"],directions[0]),(-1,bridge["to"],directions[-1])]:
             island=islands[island_id]; section=sections[endpoint]
             assert abs(path[endpoint][1]-island["height"])<EPS,"桥口与岛面高程错位: "+bid
@@ -133,7 +161,8 @@ def check_bridge_continuity(layout):
             assert all(any(math.dist(p,q)<EPS for q in visual) for p in seam),"桥面接缝错位: "+bid
             assert all(any(math.dist(p,q)<EPS for q in physical) for p in seam),"桥面与实体碰撞错位: "+bid
     return {"maxBridgeTurnDegrees":round(max_turn,4),"maxBridgeGradeChangeDegrees":round(max_grade_change,4),
-            "maxBridgeMouthSlopeDegrees":round(max_mouth_slope,4)}
+            "maxBridgeMouthSlopeDegrees":round(max_mouth_slope,4),
+            "relayPlatforms":sum(len(bridge.get("relays",[])) for bridge in layout["bridges"])}
 
 
 def check(layout):
@@ -264,8 +293,31 @@ def main():
                     duplicates[vertex]=len(mesh["vertices"])
                     mesh["vertices"].append(list(mesh["vertices"][vertex]))
                 face[index]=duplicates[vertex]
+    def relay_plateau(data):
+        bridge=next(b for b in data["bridges"] if b.get("relays"))
+        relay=bridge["relays"][0]
+        station=0.0
+        for index,(a,b) in enumerate(zip([None]+bridge["path"],bridge["path"])):
+            if a is not None:
+                station+=math.dist(xz(a),xz(b))
+            if relay["startStation"]+1<station<relay["endStation"]-1:
+                return bridge,index
+        raise AssertionError("找不到中继平台内的采样点")
+    def tilt_relay(data):
+        bridge,index=relay_plateau(data)
+        bridge["path"][index][1]+=0.01
+        for point in bridge["crossSections"][index]:
+            point[1]+=0.01
+    def narrow_relay(data):
+        bridge,index=relay_plateau(data)
+        left,right=bridge["crossSections"][index]
+        for axis in (0,2):
+            shrink=(right[axis]-left[axis])*0.1
+            left[axis]+=shrink; right[axis]-=shrink
     bridge_cases=[
         (hard_turn,"重新引入急转角","桥道突兀转角"),
+        (tilt_relay,"中继平台被抬高一片","中继平台不水平"),
+        (narrow_relay,"中继平台被收窄","圆弯桥面宽度异常"),
         (lambda d:d["bridges"][0]["path"][1].__setitem__(1,2),"桥口突然起坡","桥道坡度突变"),
         (lambda d:d["bridges"][0]["crossSections"][3][0].__setitem__(0,-7),"横截面错开","桥横截面偏离中心线"),
         (lambda d:d["bridges"][0]["surfaceTriangles"][0][0].__setitem__(1,.5),"桥面片接缝抬高","桥面接缝错位"),

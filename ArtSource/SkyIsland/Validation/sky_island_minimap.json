@@ -3,146 +3,151 @@
   "sceneId": "BossRush_SkyIsland",
   "texture": "sky_island_minimap.png",
   "textureSize": 1024,
-  "imageWorldSize": 825.0,
+  "imageWorldSize": 695.0,
   "mapWorldCenter": [
-    -5.0,
+    7.5,
     0.0,
-    12.5
+    7.5
   ],
-  "pixelSize": 0.805664,
-  "sha256": "80a571abec25ca68f93b436ecb79b394c97df245cbcfadd3306c45910de94877",
+  "pixelSize": 0.678711,
+  "sha256": "6a9f11272821808bf5f128fcf4372512db3cc14d8edbebbde9d5e6ebcb0ba223",
   "regionLayers": [
     {
       "region": "A",
       "texture": "sky_island_minimap_A.png",
-      "textureSize": 182,
-      "imageWorldSize": 146.6309,
+      "textureSize": 171,
+      "imageWorldSize": 116.0596,
       "offset": [
-        4.834,
-        -290.0391
+        -7.8052,
+        -212.7759
       ],
-      "sha256": "9c92195a6b7fc834c6078b5cf31b8daabbdb52925915867b42695284a96923f6"
+      "sha256": "def98ed5efcb2ba4b00ac793a407838303cf30fa36ac26cbed818a3f92cf340b"
     },
     {
       "region": "B",
       "texture": "sky_island_minimap_B.png",
-      "textureSize": 524,
-      "imageWorldSize": 422.168,
+      "textureSize": 349,
+      "imageWorldSize": 236.8701,
       "offset": [
-        2.417,
-        -85.4004
+        1.6968,
+        -66.853
       ],
-      "sha256": "9f1e3b580c4e0f7f70cdcfae8e882a49bbb043b02e15045add4cbcdffe88c158"
+      "sha256": "769d242831816bb32df5c5ae9895e06f3fe39b9b6c7972aea7dbbe87cca015da"
     },
     {
       "region": "C",
       "texture": "sky_island_minimap_C.png",
-      "textureSize": 321,
-      "imageWorldSize": 258.6182,
+      "textureSize": 289,
+      "imageWorldSize": 196.1475,
       "offset": [
-        -218.7378,
-        -105.1392
+        -170.0171,
+        -68.8892
       ],
-      "sha256": "42f8c7414b4099497c162aea61f5988d6fad332da3c1b1f3864c725115187b79"
+      "sha256": "25cc76a5df5a743c43fcd3529fa2288f240af9813edd40987da3e86da939954d"
     },
     {
       "region": "D",
       "texture": "sky_island_minimap_D.png",
-      "textureSize": 394,
-      "imageWorldSize": 317.4316,
+      "textureSize": 333,
+      "imageWorldSize": 226.0107,
       "offset": [
-        -209.4727,
-        60.4248
+        -149.6558,
+        39.0259
       ],
-      "sha256": "a65d78109661ccf2cc56f3a83699fb15bd6b30236415d49a5743a74ad2fdb33f"
+      "sha256": "e1dbfefeab709256f7bdb7eb58091b18a32e9e99eca30df614fa6b04871e2a44"
     },
     {
       "region": "E",
       "texture": "sky_island_minimap_E.png",
-      "textureSize": 410,
-      "imageWorldSize": 330.3223,
+      "textureSize": 318,
+      "imageWorldSize": 215.8301,
       "offset": [
-        10.4736,
-        97.4854
+        3.3936,
+        57.6904
       ],
-      "sha256": "bfa2d83b173ee1cb9aaffc4c8a68d95e118ff144975559f3315c6e7f4967147d"
+      "sha256": "6a83f1684e8dabda7c20e906ff048951725150269459684c6d96f6f8a397e05d"
     },
     {
       "region": "F",
       "texture": "sky_island_minimap_F.png",
-      "textureSize": 327,
-      "imageWorldSize": 263.4521,
+      "textureSize": 303,
+      "imageWorldSize": 205.6494,
       "offset": [
-        231.6284,
-        -28.6011
+        159.8364,
+        -59.3872
       ],
-      "sha256": "2ef2541e233dbe08dea4da6ff98e9dc126527d74d40a7f1f19d1ed3c61e2994a"
+      "sha256": "ac144d4c8ae7bd67eb239f6880f3ab8ca2e784c11b98f2cb5686eaf4bb9f30fd"
     },
     {
       "region": "G",
       "texture": "sky_island_minimap_G.png",
-      "textureSize": 413,
-      "imageWorldSize": 332.7393,
+      "textureSize": 362,
+      "imageWorldSize": 245.6934,
       "offset": [
-        207.4585,
-        98.6938
+        132.3486,
+        35.293
       ],
-      "sha256": "48596f87982882383a808cf2d3eaa55999dea6fc10e51af1d1c146938d424d35"
+      "sha256": "a976a6378078a451159b1a8513a097356324503d9e4ae58a9c5fd3fbe5956b43"
     },
     {
       "region": "H",
       "texture": "sky_island_minimap_H.png",
-      "textureSize": 262,
-      "imageWorldSize": 211.084,
+      "textureSize": 215,
+      "imageWorldSize": 145.9229,
       "offset": [
-        19.3359,
-        268.2861
+        -2.3755,
+        197.8442
       ],
-      "sha256": "ff51680c701a936d6b24e7dca912143b1455f4a72c0396e1b6d5049d386db7dd"
+      "sha256": "8668e13ec459a1599c7be7455e8df6f040b29c90b6e8936ed2ddd01cf6adfadc"
     },
     {
       "region": "S1",
       "texture": "sky_island_minimap_S1.png",
-      "textureSize": 137,
-      "imageWorldSize": 110.376,
+      "textureSize": 135,
+      "imageWorldSize": 91.626,
       "offset": [
-        -344.4214,
-        -213.9038
+        -282.6831,
+        -107.5757
       ],
-      "sha256": "c0036ca3d133078b747ae759d73fb1ffb6698f50eee63a5d888c268bb730a001"
+      "sha256": "31e519890fd47277cd08897b996d4bab90bdc22257dd185ac26f7ff0db5b3df9"
     },
     {
       "region": "S2",
       "texture": "sky_island_minimap_S2.png",
-      "textureSize": 139,
-      "imageWorldSize": 111.9873,
+      "textureSize": 128,
+      "imageWorldSize": 86.875,
       "offset": [
-        -364.563,
-        180.0659
+        -275.5566,
+        92.3047
       ],
-      "sha256": "218515754b949a8b88b287736fa5659ae998a6c2343d83ead4f81ed0c7775312"
+      "sha256": "6b6989e8117cf3dbe0bfc51950b1995fd6467afa59723e8331dcb58f038b0570"
     },
     {
       "region": "S3",
       "texture": "sky_island_minimap_S3.png",
-      "textureSize": 157,
-      "imageWorldSize": 126.4893,
+      "textureSize": 142,
+      "imageWorldSize": 96.377,
       "offset": [
-        359.729,
-        -152.6733
+        280.3076,
+        -72.6221
       ],
-      "sha256": "949c818d78e35a8ef153ff5e9eb56c3de327176b3e8f3464ac24cc2374d6ab0f"
+      "sha256": "af9fa8cc2a15d81c391a290b67e7bab68b5b9a19a2f124dda571cefbe84aea19"
     },
     {
       "region": "S4",
       "texture": "sky_island_minimap_S4.png",
-      "textureSize": 170,
-      "imageWorldSize": 136.9629,
+      "textureSize": 142,
+      "imageWorldSize": 96.377,
       "offset": [
-        355.2979,
-        262.6465
+        272.8418,
+        67.1924
       ],
-      "sha256": "2fcadec6404a96aca67fa213f71e31a156e7de78f6cbdcc98bdf18d9a6617398"
+      "sha256": "f93405814795ade1c6919f3bd60cd3254ea5bd31c68dd11b91fc7433cf366ef4"
     }
-  ]
+  ],
+  "art": {
+    "image": "ArtSource/SkyIsland/Minimap/Source/sky_island_minimap_art.png",
+    "sha256": "2b6d8a6ee7b6aa8ddf29f21fd52d71b0ebc6503f15a4aad3390fa489dbd2534e",
+    "grade": "vanilla"
+  }
 }

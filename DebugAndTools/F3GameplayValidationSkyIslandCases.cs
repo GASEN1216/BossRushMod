@@ -660,7 +660,8 @@ namespace BossRush
             SkyIslandSession session = SkyIslandSessionOrNull();
             GameObject root = session == null ? null : session.ValidationWorldRoot;
             if (root == null) { reason = "world_root_missing"; return false; }
-            bool bellUnlocked = session.ValidationBellMarker != null && session.ValidationSnapshot().BellUnlocked;
+            SkyIslandValidationSnapshot snapshot = session.ValidationSnapshot();
+            bool bellUnlocked = session.ValidationBellMarker != null && snapshot.BellUnlocked;
 
             LineRenderer dock = FindExtractionRing(root, "Exit");
             LineRenderer bell = FindExtractionRing(root, "BellExtraction");
@@ -672,17 +673,32 @@ namespace BossRush
                 && dock.GetComponent<Collider>() == null;
             // 钟庭环与 `BellExitIfUnlocked()` 必须同一事实源：地上看得到的圈就是站进去能走的圈。
             bool bellVisible = bell != null && bell.gameObject.activeInHierarchy;
-            bool bellOk = bell == null
-                ? !bellUnlocked
-                : (bellVisible == bellUnlocked && (!bellVisible || Mathf.Abs(bellRadius - expected) < 0.01f)
-                    && bell.GetComponent<Collider>() == null);
+            bool bellOk = RingMatchesUnlock(bell, bellUnlocked, expected);
+            // 布局 v2：两处航标广场环同理（风标 / 星灯点亮才出现）。
+            Transform windMarker = session.ValidationWindMarker, starMarker = session.ValidationStarMarker;
+            LineRenderer wind = windMarker == null ? null : FindExtractionRing(root, windMarker.name);
+            LineRenderer star = starMarker == null ? null : FindExtractionRing(root, starMarker.name);
+            bool beaconsOk = RingMatchesUnlock(wind, windMarker != null && snapshot.WindUnlocked, expected)
+                && RingMatchesUnlock(star, starMarker != null && snapshot.StarUnlocked, expected);
             metrics = "expected_radius=" + expected + ",dock_radius=" + dockRadius.ToString("F2")
                 + ",dock_active=" + (dock != null && dock.gameObject.activeInHierarchy)
                 + ",bell_unlocked=" + bellUnlocked + ",bell_visible=" + bellVisible
-                + ",bell_radius=" + bellRadius.ToString("F2");
+                + ",bell_radius=" + bellRadius.ToString("F2")
+                + ",wind_unlocked=" + snapshot.WindUnlocked + ",wind_visible=" + (wind != null && wind.gameObject.activeInHierarchy)
+                + ",star_unlocked=" + snapshot.StarUnlocked + ",star_visible=" + (star != null && star.gameObject.activeInHierarchy);
             if (!dockOk) reason = "码头青色环缺失、半径与判定不一致或带了碰撞体";
-            else if (!bellOk) reason = "钟庭绿环的显隐与敲钟结局不同源，或半径与判定不一致";
-            return dockOk && bellOk;
+            else if (!bellOk) reason = "钟庭绿环的显隐与双航标解锁不同源，或半径与判定不一致";
+            else if (!beaconsOk) reason = "航标广场绿环的显隐与风标/星灯不同源，或半径与判定不一致";
+            return dockOk && bellOk && beaconsOk;
+        }
+
+        /// <summary>已解锁 ⇔ 环可见，且可见时半径等于判定半径、不带碰撞体；锚点缺失时环也必须缺失。</summary>
+        private static bool RingMatchesUnlock(LineRenderer ring, bool unlocked, float expected)
+        {
+            if (ring == null) return !unlocked;
+            bool visible = ring.gameObject.activeInHierarchy;
+            return visible == unlocked && (!visible || Mathf.Abs(MeasureRingRadius(ring) - expected) < 0.01f)
+                && ring.GetComponent<Collider>() == null;
         }
 
         private static LineRenderer FindExtractionRing(GameObject root, string markerName)
@@ -726,16 +742,25 @@ namespace BossRush
             Transform bell = session.ValidationBellMarker;
             bool bellInside = false;
             if (bell != null) bellInside = session.ValidationIsInsideExtractionAt(bell.position, out marker);
+            Transform wind = session.ValidationWindMarker, star = session.ValidationStarMarker;
+            bool windInside = wind != null && session.ValidationIsInsideExtractionAt(wind.position, out marker);
+            bool starInside = star != null && session.ValidationIsInsideExtractionAt(star.position, out marker);
 
             metrics = "radius=" + radius + ",hold_s=" + SkyIslandSession.ValidationExtractionHold
                 + ",center=" + center + ",inner_90=" + inside + ",outer_+0.5=" + outside
-                + ",bell_unlocked=" + snapshot.BellUnlocked + ",bell_center=" + bellInside;
+                + ",bell_unlocked=" + snapshot.BellUnlocked + ",bell_center=" + bellInside
+                + ",wind_unlocked=" + snapshot.WindUnlocked + ",wind_center=" + windInside
+                + ",star_unlocked=" + snapshot.StarUnlocked + ",star_center=" + starInside;
             bool dockOk = center && inside && !outside;
-            // 钟庭必须与结局 flag 同步：未敲钟就能在钟庭撤离＝跳过终章。
+            // 钟庭必须与双航标同步：航标没亮就能在钟庭撤离＝跳过主线。
             bool bellOk = bell == null || bellInside == snapshot.BellUnlocked;
+            // 布局 v2：两处航标广场与各自航标同步。
+            bool beaconsOk = (wind == null || windInside == snapshot.WindUnlocked)
+                && (star == null || starInside == snapshot.StarUnlocked);
             if (!dockOk) reason = "撤离判定与半径不符（圆心/内侧应判定为内，外侧应判定为外）";
-            else if (!bellOk) reason = "归航钟庭撤离点的开放状态与敲钟结局不一致";
-            return dockOk && bellOk;
+            else if (!bellOk) reason = "归航钟庭撤离点的开放状态与双航标解锁不一致";
+            else if (!beaconsOk) reason = "航标广场撤离点的开放状态与风标/星灯不一致";
+            return dockOk && bellOk && beaconsOk;
         }
 
         /// <summary>

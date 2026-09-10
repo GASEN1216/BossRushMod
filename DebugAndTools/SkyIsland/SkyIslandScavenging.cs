@@ -157,7 +157,9 @@ namespace BossRush
                 if (name.StartsWith("Search", StringComparison.Ordinal) ||
                     name.StartsWith("POI_", StringComparison.Ordinal) ||
                     name.StartsWith("EnemySpawn", StringComparison.Ordinal) ||
-                    name == "PlayerSpawn" || name == "Exit" || name == "BellExtraction") markers.Add(child);
+                    name == "PlayerSpawn" || name == "Exit" || name == "BellExtraction" ||
+                    // 两处航标撤离圈借用岛心标记，搜刮箱同样不许落进圈里。
+                    name == "Region_D" || name == "Region_G") markers.Add(child);
             }
             return markers;
         }

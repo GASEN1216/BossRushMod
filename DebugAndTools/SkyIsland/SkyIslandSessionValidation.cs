@@ -25,6 +25,8 @@ namespace BossRush
         internal Transform ValidationPlayerSpawn { get { return playerSpawn; } }
         internal Transform ValidationExitMarker { get { return exitMarker; } }
         internal Transform ValidationBellMarker { get { return bellExit; } }
+        internal Transform ValidationWindMarker { get { return windExit; } }
+        internal Transform ValidationStarMarker { get { return starExit; } }
         /// <summary>官方撤离读条桥是否可用（F3 只读）。不可用时撤离读秒退回 HUD 文字。</summary>
         internal bool ValidationOfficialCountdownAvailable
         { get { return extractionCountdown != null && extractionCountdown.Available; } }
@@ -99,6 +101,8 @@ namespace BossRush
             snapshot.ResidentsSpawned = residents == null ? 0 : residents.SpawnedCount;
             snapshot.ExtractionRingsBuilt = extractionRings != null;
             snapshot.BellUnlocked = BellExitIfUnlocked() != null;
+            snapshot.WindUnlocked = WindExitIfUnlocked() != null;
+            snapshot.StarUnlocked = StarExitIfUnlocked() != null;
             snapshot.ServicesReady = services != null;
             snapshot.BountyRounds = bounty.CompletedRounds;
             snapshot.BountyActive = bounty.HasActive;
@@ -126,6 +130,7 @@ namespace BossRush
     {
         internal bool Ready, Closed, Returning, DeathPending, NavigationReady, WorldRootActive;
         internal bool StoryCurrentSlot, StoryCanWrite, BellUnlocked, ExtractionRingsBuilt, ServicesReady, BountyActive;
+        internal bool WindUnlocked, StarUnlocked;
         internal int RaidSeed, SearchPoints, Landmarks, EnemyMarkers, NavigationNodes;
         internal int ContentEncounters, ContentGates, EncounterGroups, EncounterRemainingClearable;
         internal int ScavengeAnchors, ScavengePlaced, ScavengeOpened, ScavengeAvailable, ScavengeFailed, ScavengeBuilt;
@@ -147,7 +152,8 @@ namespace BossRush
                 + ",can_write=" + StoryCanWrite + ",bounty=" + BountyRounds + "/" + BountyActive
                 + ",seed=" + RaidSeed
                 // 新字段只追加在末尾：前面的顺序冻结，两次出击的行仍可逐字对照。
-                + ",scav_built=" + ScavengeBuilt + ",ground_regions=" + GroundRegions;
+                + ",scav_built=" + ScavengeBuilt + ",ground_regions=" + GroundRegions
+                + ",wind=" + WindUnlocked + ",star=" + StarUnlocked;
         }
     }
 }

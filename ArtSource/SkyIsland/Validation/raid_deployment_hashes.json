@@ -1,6 +1,6 @@
 {
-  "verifiedAt": "2026-09-10T08:29:55.920418Z",
-  "verifiedBy": "天空岛第二轮 Tripo 散件进包 · 逐个文件实测 SHA-256 + UnityPy 新旧包对照；本会话不开游戏",
+  "verifiedAt": "2026-09-10T13:18:27.587421Z",
+  "verifiedBy": "天空岛官方地图换手绘底图后重打包部署 · 逐个文件实测 SHA-256 + UnityPy 回读小地图贴图 + 判包重跑；本会话不开游戏",
   "build": "Release (compile_official.bat default; BOSSRUSH_DEV not defined)",
   "gameSmoke": {
     "ranAt": "2026-09-10T03:48Z",
@@ -11,96 +11,198 @@
     "caveat": "RENDER_DIAG 的 visible= 在 activated / post_scan 两个采样点不可信（仍在读条幕布后面，相机尚未渲染 raid 场景），成功这局它照样是 False，不要拿它当判据。",
     "stillUnproven": "水面波纹与云层飘动的实际观感、四档光色切换、帧率。",
     "appliesToBundle": "fb12e540a30e5cb32f5c65a852ea6c1b1169c018c2ac4c8c9ea31073b101694c",
-    "currentBundle": "未实机：261bc7235567703f… 只做了离线判包、UnityPy 新旧包对照与聚落几何检查"
+    "currentBundle": "未实机：ef40465f149a09d8… 布局 v2 + 手绘官方地图，只做了离线判包与 UnityPy 回读"
   },
   "raid_bundle": {
     "repo": {
       "path": "Assets\\arenas\\sky_island_raid",
-      "bytes": 125375187,
-      "sha256": "261bc7235567703f61899b8d1af3f6aa2dea08baa8d10a991d8291e13c9542f1",
-      "mtimeUtc": "2026-09-10T07:44:15.660557Z"
+      "bytes": 118636309,
+      "sha256": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
+      "mtimeUtc": "2026-09-10T13:15:45.628691Z"
     },
     "game": {
       "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
-      "bytes": 125375187,
-      "sha256": "261bc7235567703f61899b8d1af3f6aa2dea08baa8d10a991d8291e13c9542f1",
-      "mtimeUtc": "2026-09-10T07:44:15.660557Z"
+      "bytes": 118636309,
+      "sha256": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
+      "mtimeUtc": "2026-09-10T13:15:45.696690Z"
     },
     "author_export": {
       "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
-      "bytes": 125375187,
-      "sha256": "261bc7235567703f61899b8d1af3f6aa2dea08baa8d10a991d8291e13c9542f1",
-      "mtimeUtc": "2026-09-10T07:44:15.660557Z"
+      "bytes": 118636309,
+      "sha256": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
+      "mtimeUtc": "2026-09-10T13:13:50.217725Z"
     },
     "allThreeMatch": true,
-    "previousSha256": "fb12e540a30e5cb32f5c65a852ea6c1b1169c018c2ac4c8c9ea31073b101694c",
-    "previousBytes": 98794570,
-    "note": "2026-09-10 15:44 重打包并部署：第二轮 Tripo 散件进包。owner 交回 17 件，16 件接线（岛缘石块 ×3、岛缘林冠、灌木 ×2、碎石、蕨丛、珊瑚枝丛、远景岛 ×3、蘑菇群、发光水晶、铜灯柱、云瀑），brass_railing_module 已导入未接线（待 owner 定木栏还是铜栏），bush_c / rock_a / flower_patch / lavender_clump / cliff_vine 因素材图主体画成建筑需重新出模，缺件时生成器自动回退（变体分摊或保持程序化）。面数预算先按实测收紧一次再进包：Unity 实测可见三角面 1,515,740 → 1,817,552（+19.9%；未收紧时 1,966,951，+29.8%）。玩法标记、碰撞体、导航网格与上一版逐项一致。包体 98,794,570 → 125,375,187 字节（+26.9%），增量主要是 54 万个新增顶点（网格不压缩、可读）。逐件实例数与面数见 ArtSource/SkyIsland/LOWPOLY_REPLACEMENT_PLAN.md「执行状态」。",
+    "previousSha256": "2d18789caa9434430091e054eca376fd9a74c8db18279b8be29dbf19f739fd8a",
+    "previousBytes": 116702892,
+    "note": "2026-09-10 官方地图换手绘底图后重打包并部署：只换 13 张小地图贴图（形状仍按 layout 几何烘焙；颜色取 gpt-image-2 按 Blender 俯视参考图重绘、ECC 对齐并调回原版色带的底图），导入压缩由 Compressed 改 CompressedHQ；场景其余内容与上一版 2d18789c… 同一份来源。包体 116,702,892 → 118,636,309 字节。上一版出击包没有另存备份：回退用 `python tools/build_sky_island_minimap.py --flat` 重烘后重跑 BuildAndExit。",
     "preDeployBundleAudit": {
-      "method": "UnityPy 直接读已构建的 bundle，与上一版 fb12e540 逐项对照（GameObject 名多重集、Mesh 顶点/索引、Material、Texture2D）",
-      "navigationMeshVertices": 4037,
+      "method": "UnityPy 读已部署的 bundle：对象计数与 SkyIslandWorld 标记前缀计数；Unity 构建日志 GEOMETRY_PASS 补可见三角面",
+      "navigationMeshVertices": 3870,
+      "navigationMeshTriangles": 4048,
       "navigationMeshHardLimit": 4095,
-      "navigationMeshIndexCount": 12645,
-      "navigationMeshReadable": true,
-      "navigationUnchangedFromPreviousBundle": true,
-      "markersIdenticalToPreviousBundle": true,
+      "navigationUnchangedFromPreviousBundle": false,
+      "markersIdenticalToPreviousBundle": false,
       "markerCounts": {
         "Search": 20,
         "POI_": 13,
         "EnemySpawn": 12,
         "Lamp_": 16,
-        "PlayerSpawn": 2,
-        "Exit": 1,
-        "BellExtraction": 1
+        "Region_": 12,
+        "Relay_": 5
       },
       "collisionObjects": {
-        "COL_*": 189,
-        "boxColliders": 161,
-        "meshColliders": 28,
-        "unchangedFromPreviousBundle": true
-      },
-      "gameObjects": 1073,
-      "meshRenderers": 787,
-      "materials": 112,
-      "texture2D": 89,
-      "meshes": 108,
-      "meshVertices": 3023503,
-      "indexTrianglesAllMeshes": 1827499,
-      "previousBundle": {
-        "gameObjects": 1055,
-        "meshRenderers": 769,
-        "materials": 96,
-        "texture2D": 73,
-        "meshes": 100,
-        "meshVertices": 2483437,
-        "indexTrianglesAllMeshes": 1525687,
-        "boxColliders": 161,
+        "boxColliders": 146,
         "meshColliders": 28
       },
-      "addedMaterials": [
-        "Sky_TripoBrassLampPost",
-        "Sky_TripoBushA",
-        "Sky_TripoBushB",
-        "Sky_TripoCliffChunkA",
-        "Sky_TripoCliffChunkB",
-        "Sky_TripoCliffChunkC",
-        "Sky_TripoCliffShrubCap",
-        "Sky_TripoCoralClump",
-        "Sky_TripoDistantIsletA",
-        "Sky_TripoDistantIsletB",
-        "Sky_TripoDistantIsletC",
-        "Sky_TripoFernClump",
-        "Sky_TripoGlowCrystal",
-        "Sky_TripoMushroomCluster",
-        "Sky_TripoRockB",
-        "Sky_TripoWaterfall"
-      ],
-      "removedGameObjects": "只有被替换的程序化网格：各岛 Cliff_Forest / Cliff_Rock / Cliff_RockLight，Distant_0..11 的六层薄片，C/D/F 的 Waterfall_Cloud / Waterfall_Water（及其 DriftBounds 网格），各岛 CrystalTeal / CrystalLavender，部分 LilyWhite 与 B_Life_Flower / B_Life_Leaf",
-      "findings": [
-        "`POI_B_Mural` 是第 13 个 POI_ 前缀节点，**新旧两个包都有**，不是这次美术改动带进来的。它是 root 直子、单位缩放零旋转，因此会被 `SkyIslandSession.PrepareMarkers` 收进 landmarks，地标总数是 13 而不是 12。据此修正了 F3 用例 `SKY_MARKERS` 的判据（改为断言 12 个区域标记各自存在，而不是断言总数等于 12），否则它会在完全正常的包上假红。",
-        "同一节点让 `SkyIslandSession.AvailableBountyProgress(Survey)` 的可完成量永久多算 1（`RegionBit(\"B_Mural\")` 返回 0，那一格永远算未访问）。P3，未改，见交付报告。"
-      ],
-      "notProven": "以上只证明包内对象图与网格数据；新模型的摆放观感（远景岛高度、岛缘石块贴合、瀑布朝向、灯柱发光球位置）与帧率未实机。"
+      "gameObjects": 1053,
+      "meshRenderers": 777,
+      "materials": 110,
+      "texture2D": 87,
+      "meshes": 99,
+      "unityGeometryPass": {
+        "renderers": 777,
+        "visualTriangles": 1636738,
+        "markers": 82,
+        "groundColliders": 27,
+        "wallBoxes": 146
+      },
+      "notProven": "只证明包内对象图、标记与网格数据；游戏内行走、敌人寻路、镜头遮挡、观感与帧率未实机。",
+      "minimapTextures": {
+        "method": "UnityPy 解码包内 sky_island_minimap* Texture2D，与仓库 PNG 比可见像素的平均 RGB 差与 alpha 一致率",
+        "objectCounts": {
+          "GameObject": 1053,
+          "Texture2D": 87,
+          "Sprite": 13,
+          "Material": 110,
+          "Mesh": 99,
+          "MeshRenderer": 777
+        },
+        "textureCount": 13,
+        "textures": {
+          "sky_island_minimap": {
+            "format": "25",
+            "size": [
+              1024,
+              1024
+            ],
+            "meanAbsRgbDiffVisible": 0.2,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_A": {
+            "format": "4",
+            "size": [
+              171,
+              171
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_B": {
+            "format": "4",
+            "size": [
+              349,
+              349
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_C": {
+            "format": "4",
+            "size": [
+              289,
+              289
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_D": {
+            "format": "4",
+            "size": [
+              333,
+              333
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_E": {
+            "format": "4",
+            "size": [
+              318,
+              318
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_F": {
+            "format": "4",
+            "size": [
+              303,
+              303
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_G": {
+            "format": "4",
+            "size": [
+              362,
+              362
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_H": {
+            "format": "4",
+            "size": [
+              215,
+              215
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_S1": {
+            "format": "4",
+            "size": [
+              135,
+              135
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_S2": {
+            "format": "25",
+            "size": [
+              128,
+              128
+            ],
+            "meanAbsRgbDiffVisible": 1.61,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_S3": {
+            "format": "4",
+            "size": [
+              142,
+              142
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          },
+          "sky_island_minimap_S4": {
+            "format": "4",
+            "size": [
+              142,
+              142
+            ],
+            "meanAbsRgbDiffVisible": 0.0,
+            "alphaAgreement": 1.0
+          }
+        },
+        "formatLegend": {
+          "25": "BC7",
+          "4": "RGBA32（边长不是 4 的倍数，块压缩不可用）"
+        }
+      }
     }
   },
   "terrainRootConvergence": {
@@ -113,7 +215,7 @@
   },
   "shaderVerification": {
     "tool": "python tools/verify_sky_island_bundle_shaders.py",
-    "ranAt": "2026-09-10T08:02:50.701541Z",
+    "ranAt": "2026-09-10T13:15:48.464556Z",
     "result": "PASS（仓库副本与游戏副本各 3/3）",
     "passes": {
       "BossRush/SkyIsland/Environment": 4,
@@ -131,10 +233,10 @@
       "Water": "0（UsePass 引用 Environment，属正常）"
     },
     "newGate": "判据新增一条：三个着色器都必须有 UniversalGBuffer（或 UsePass 到它），否则 NO-GBUFFER 判红。用旧包实测形状反向验证过：旧形状红、新形状绿。",
-    "notProven": "仍未实机：新模型在延迟管线下的实际观感与帧率。",
-    "bundle": "261bc7235567703f61899b8d1af3f6aa2dea08baa8d10a991d8291e13c9542f1",
+    "notProven": "仍未实机：布局 v2 在延迟管线下的实际观感与帧率。",
+    "bundle": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
     "materials": {
-      "BossRush/SkyIsland/Environment": 105,
+      "BossRush/SkyIsland/Environment": 103,
       "BossRush/SkyIsland/Water": 2,
       "BossRush/SkyIsland/Cloud": 4
     }
@@ -142,33 +244,33 @@
   "dll": {
     "source": {
       "path": "Build\\BossRush.dll",
-      "bytes": 4758528,
-      "sha256": "1a0c84e15413fa6a20da137b7efc7c265331caa15893c9ba239f69af913df953",
-      "mtimeUtc": "2026-09-10T08:17:13.402750Z"
+      "bytes": 4777472,
+      "sha256": "2a00bd010de5ebe9ce2859c646521c80bad66f3745e4c2a97ad7bd423392134f",
+      "mtimeUtc": "2026-09-10T12:04:22.901563Z"
     },
     "deployed": {
       "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\BossRush.dll",
-      "bytes": 4758528,
-      "sha256": "1a0c84e15413fa6a20da137b7efc7c265331caa15893c9ba239f69af913df953",
-      "mtimeUtc": "2026-09-10T08:17:13.402750Z"
+      "bytes": 4777472,
+      "sha256": "2a00bd010de5ebe9ce2859c646521c80bad66f3745e4c2a97ad7bd423392134f",
+      "mtimeUtc": "2026-09-10T12:04:22.901563Z"
     },
     "match": true,
     "flavor": "Release（compile_official.bat，未定义 BOSSRUSH_DEV）",
-    "previousSha256": "fbaeda41887da84ab6b830d27051e7acf922cdf84267e2104dacdc6ca0fa04f6",
-    "note": "2026-09-10 16:17 提交前复核重编：先带 BOSSRUSH_DEV_BUILD=1 编一次确认 Dev 构建也能通过，再不带变量编 Release 并部署，与此前游戏目录里的 flavor 一致（上一份是同日另一会话 15:42 编的 Release）。源码相对 11:09 那份 DEV 构建多了同日已提交的局内指引/HUD 改动（a613774），天空岛进岛热修与渲染诊断代码不变。运行时回归 27/27 PASS。本会话不开游戏。"
+    "previousSha256": "1a0c84e15413fa6a20da137b7efc7c265331caa15893c9ba239f69af913df953",
+    "note": "2026-09-10 布局 v2：Release 编译并部署（compile_official.bat，未定义 BOSSRUSH_DEV）。改动：五扇门与十块木牌坐标（K1/K2/K3 门移到风铃集一侧桥头）、自动敌群 55 m / 手动挑战 70 m / 强制追踪 70·85·100 m、双航标开钟庭与 D/G 航标广场撤离、官方地图撤离点与当前目标、中继平台遭遇与搜刮锚点。585 guard 全绿；天空岛执行回归 8 PASS / 0 FAIL。源码 = 977eff9（含同日另一会话已提交的石堡前哨读秒改动）+ 本轮未提交的布局 v2 改动。本会话不开游戏。"
   },
   "story_content": {
     "source": {
       "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\SkyIsland\\World.json",
-      "bytes": 2089,
-      "sha256": "aacbad3749021fdddfb8150c7bf72c8a3f5f862d351e1011a6a7d7f4c2f08765",
-      "mtimeUtc": "2026-09-09T00:37:41.121314Z"
+      "bytes": 2082,
+      "sha256": "63afc051b713bf23d2c18222cd329b8ba2e06d09fbf8ebd0276d0edf2f499983",
+      "mtimeUtc": "2026-09-10T11:30:37.627082Z"
     },
     "deployed": {
       "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\SkyIsland\\World.json",
-      "bytes": 2089,
-      "sha256": "aacbad3749021fdddfb8150c7bf72c8a3f5f862d351e1011a6a7d7f4c2f08765",
-      "mtimeUtc": "2026-09-09T00:37:41.121314Z"
+      "bytes": 2082,
+      "sha256": "63afc051b713bf23d2c18222cd329b8ba2e06d09fbf8ebd0276d0edf2f499983",
+      "mtimeUtc": "2026-09-10T11:30:37.627082Z"
     },
     "match": true
   },
@@ -190,15 +292,15 @@
   "gameplay_coverage": {
     "source": {
       "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\GameplayCoverage.json",
-      "bytes": 69765,
-      "sha256": "fc73a7a31cd4dc0d589b148f12cd3b4bc9438c5fe3b6c22da9bc3277e70c03c0",
-      "mtimeUtc": "2026-09-09T17:03:11.276506Z"
+      "bytes": 70803,
+      "sha256": "45f9ca514e530c727498ca2176b748b36e22f1f35fa143f07fe5b2d25206be46",
+      "mtimeUtc": "2026-09-10T11:33:25.751500Z"
     },
     "deployed": {
       "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\GameplayCoverage.json",
-      "bytes": 69765,
-      "sha256": "fc73a7a31cd4dc0d589b148f12cd3b4bc9438c5fe3b6c22da9bc3277e70c03c0",
-      "mtimeUtc": "2026-09-09T17:03:11.276506Z"
+      "bytes": 70803,
+      "sha256": "45f9ca514e530c727498ca2176b748b36e22f1f35fa143f07fe5b2d25206be46",
+      "mtimeUtc": "2026-09-10T11:33:25.751500Z"
     },
     "match": true
   },
@@ -263,34 +365,33 @@
     "match": true
   },
   "collisionCoverage": {
-    "boxes": 161,
-    "obstacleBoxes": 88,
-    "tripoPropBoxes": 73,
+    "boxes": 146,
     "shrunk": "52 个 Tripo 替换件里 31 个的碰撞盒被收敛到模型真实投影",
     "worstAirWallRemoved": "H_HomecomingBell 34.0x26.0 -> 4.4x6.0（单边少挡 14.8 / 10.0 m）",
-    "navigation": "4037 顶点 / 4215 三角，与上一版完全一致——导航是按 layout['obstacles'] 名义尺寸挖的，本轮未动那份数据",
+    "navigation": "布局 v2：3870 顶点 / 4048 三角（上一版 4037 / 4215）；layout obstacles 88 = 60 手写 + 28 聚落摆件",
     "knownTradeoff": "新增的 73 个盒**全部**落在导航网格上（附加件本来就摆在可行走草地上，只避开了路径）。A* 走的是导航网格、不认这些盒，所以敌人有可能贴着新碰撞打滑。实机第一优先观察项。要回退只需清空 sky_island_tripo_props.COLLISION_POLICY 后重打包。",
-    "properFixBlockedBy": "把附加件登记进 layout['obstacles'] 让导航重新挖洞才是正解，但导航顶点 4037/4095 只剩 58 余量，做不了",
-    "verifiedAgainstBundle": "261bc7235567703f…：BoxCollider 161 / MeshCollider 28 / COL_* 189，与上一版一致；第二轮新件一律不补碰撞"
+    "properFixBlockedBy": "把附加件登记进 layout obstacles 让导航挖洞才是正解；导航顶点现为 3870/4095（余量 225），逐件挖洞的顶点开销仍需另行评估",
+    "verifiedAgainstBundle": "2d18789caa943443…：BoxCollider 146 / MeshCollider 28",
+    "boxesSplit": "布局 v2 未逐项拆分障碍盒与 Tripo 附加件盒；岛缩小后锚点类 Tripo 大件少放，碰撞盒 161 → 146"
   },
   "authorWorldBundle": {
     "bundle": {
       "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandExport\\sky_island_world",
-      "bytes": 127340395,
-      "sha256": "5f40529504bf511c73fb61a68d892557b2a47d2b47721e60fad297d410387c5f",
-      "mtimeUtc": "2026-09-10T07:55:03.620507Z"
+      "bytes": 116976864,
+      "sha256": "3ad7925b9aba394b430193dc086ad862cf1db4430fbd8ff814f6fd0ff280af44",
+      "mtimeUtc": "2026-09-10T11:18:14.314593Z"
     },
     "validation": {
       "status": "PASS",
       "target": "StandaloneWindows64",
       "scene": "Assets/SkyIsland/SkyIslandWorld.unity",
-      "bytes": 127340395,
-      "bundleSHA256": "5f40529504bf511c73fb61a68d892557b2a47d2b47721e60fad297d410387c5f",
-      "sourceFbxSHA256": "07bc553c3c896ac68c267cd295fb31caf3378bb24884cf71d8736542ef17bd18"
+      "bytes": 116976864,
+      "bundleSHA256": "3ad7925b9aba394b430193dc086ad862cf1db4430fbd8ff814f6fd0ff280af44",
+      "sourceFbxSHA256": "4c45bbdcd16c89229637314149afd1988cbefcc065763a6193cb552bbfa41509"
     },
     "builtWith": "BossRush.SkyIslandBundleBuilder.BuildResourcesAndExit（退出码 0，无 FAILED）",
     "geometryPassMatchesRaidSource": true,
-    "note": "正式出击包不读这个包；tools/build_sky_island_art_preview.ps1 -Physics 读它。此前三次烘焙都用了 BuildAndExit，作者工程内渲染预览抛 Blank author render，而预览排在 BuildAssetBundles 之前，world 包因此一直停在 09-09 08:15。改用 BuildResourcesAndExit 重建后 GEOMETRY_PASS 与出击包来源那次烘焙逐字段一致（同一 FBX 07bc553c）。见 FIX_TRACKER 同日条目。"
+    "note": "布局 v2 用 BuildResourcesAndExit 重建：GEOMETRY_PASS renderers 777 / visualTriangles 1,636,738 / markers 82 / ground colliders 27 / wall boxes 146。正式出击包不读这个包；tools/build_sky_island_art_preview.ps1 -Physics 读它。"
   },
   "artRound2": {
     "deployedAtLocal": "2026-09-10 15:44",
@@ -338,5 +439,75 @@
     "nextBudgetRisk": "cliff_vine 855 份 × 120 面 ≈ 10 万面，远超被替换的程序化垂藤；回来时要压单件面数或减条数",
     "settlementCheckOnFreshOutputs": "PASS（modelTypes 14 / modelInstances 28 / protectedMarkers 76 / propTriangles 62782）",
     "rollbackBundle": "Build\\sky_island_raid.fb12e540.bak（上一版出击包原样备份，复制回两处部署位置即可回退）"
+  },
+  "layoutV2": {
+    "deployedAtLocal": "2026-09-10 19:34（出击包）；DLL 时间见 dll.source.mtimeUtc",
+    "generator": "tools/sky_island_navigation.py（ISLAND_SPECS / BRIDGE_SPECS / BRIDGE_RELAYS）+ tools/sky_island_frame.py",
+    "current": {
+      "navigationVertices": 3870,
+      "navigationTriangles": 4048,
+      "physicalWalkableAreaXZ": 114177.912,
+      "maximumSlopeDegrees": 15.4612,
+      "spawnToBellExtractionMeters": 524.56,
+      "explorationRouteMeters": 1704.03,
+      "bridgeTotalMeters": 763.4,
+      "markers": 81,
+      "obstacles": 88
+    },
+    "previous": {
+      "navigationVertices": 4037,
+      "physicalWalkableAreaXZ": 222265,
+      "maximumSlopeDegrees": 16.3139,
+      "spawnToBellExtractionMeters": 930.72,
+      "explorationRouteMeters": 2665.42,
+      "bridgeTotalMeters": 1603
+    },
+    "gates": "K1/K2/K3 在风铃集一侧往桥内 8 m，BellCourt / ZhelingPass 在来路一侧 8 m；各封 2/6/2/2/2 个导航三角形（SkyIslandGateNavigationPropertyTest，32 组合）",
+    "tripoHeroInstances": {
+      "previous": 134,
+      "current": 114
+    },
+    "rollback": "仓库侧 git checkout 布局、生成器与 C# 改动；作者工程侧 git checkout 未提交的 SkyIsland 资源后重跑生成链与两次 Unity 构建，再把出击包复制到仓库与游戏目录。"
+  },
+  "minimapArt": {
+    "deployedAtLocal": "2026-09-10 21:18",
+    "source": {
+      "image": "ArtSource/SkyIsland/Minimap/Source/sky_island_minimap_art.png",
+      "sha256": "2b6d8a6ee7b6aa8ddf29f21fd52d71b0ebc6503f15a4aad3390fa489dbd2534e",
+      "grade": "vanilla"
+    },
+    "pipeline": "tools/sky_island_minimap_art.py（reference → generate → align）+ tools/build_sky_island_minimap.py",
+    "model": "gpt-image-2",
+    "rawSize": [
+      1254,
+      1254
+    ],
+    "grade": "vanilla",
+    "alignmentIoU": [
+      0.9549,
+      0.9566
+    ],
+    "warp": [
+      [
+        1.0006999969482422,
+        0.0009899999713525176,
+        -0.9404399991035461
+      ],
+      [
+        -5.999999848427251e-05,
+        1.0037699937820435,
+        -2.1252400875091553
+      ]
+    ],
+    "prompt": "ArtSource/SkyIsland/Minimap/Source/prompt.txt",
+    "baseTexture": {
+      "sha256": "6a9f11272821808bf5f128fcf4372512db3cc14d8edbebbde9d5e6ebcb0ba223",
+      "bytes": 363576
+    },
+    "layerGeometryUnchanged": true,
+    "importCompression": "CompressedHQ（作者工程 Assets/Editor/SkyIslandRaidBuilder.cs 的 ImportSprite）。块压缩要求边长是 4 的倍数：1024 底图与 S2（128）为 BC7，其余 11 张分区图层 Unity 存未压缩 RGBA32",
+    "checks": "SkyIslandMiniMapGuard PASS（新增手绘底图 sha256 校验，两条破坏探针转红）；SkyIslandMiniMapLayerAlignmentPropertyTest PASS 0.000%；12 个图层尺寸与偏移和纯色版一致；烘焙结果与 owner 过目的预览可见像素逐像素一致",
+    "notProven": "游戏内地图的实际观感、缩放清晰度与迷雾切换未实机。",
+    "workDir": "ArtSource/SkyIsland/MinimapArt（俯视渲染、参考图、原始生成图；local-only）"
   }
 }

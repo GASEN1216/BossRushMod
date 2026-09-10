@@ -26,8 +26,9 @@ EXPECTED_ENCOUNTERS = {
     'C_02': ('Search_C_02', 2, False, 'Scav', 'Scav'),
     'D': ('EnemySpawn_D', 2, False, 'Scav', 'Elite'),
     'D_02': ('Search_D_02', 2, False, 'Scav', 'Scav'),
-    'E': ('EnemySpawn_E', 2, False, 'Scav', 'Scav'),
-    'E_02': ('Search_E_02', 2, False, 'Scav', 'Scav'),
+    # 布局 v2：E 的两组自动敌群挪到 DE / GE 桥上的中继平台。
+    'E': ('Relay_DE', 2, False, 'Scav', 'Scav'),
+    'E_02': ('Relay_GE', 2, False, 'Scav', 'Scav'),
     'G': ('EnemySpawn_G', 2, False, 'Scav', 'Elite'),
     'G_02': ('Search_G_02', 2, False, 'Scav', 'Scav'),
     'S1': ('EnemySpawn_S1', 2, False, 'Scav', 'Scav'),

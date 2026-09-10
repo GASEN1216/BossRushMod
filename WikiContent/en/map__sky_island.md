@@ -18,13 +18,15 @@ Departing and returning work exactly like any other map: loading ends on the usu
 - The chart interactions at the dock and in Windchime Market also open it with the interact key, so you do not have to remember the map key. Those same interactions cycle Daylight, Dusk, Starlit Night and Morning.
 - **Only the regions you have set foot on are coloured in**; the rest stay as a dim grey silhouette. Revealed regions are remembered by your save, so they stay lit on later trips.
 - Your current objective is on a small card on the **right** side of the screen (below the game's own controls hint), not inside the map. It fades out together with the game's HUD while your backpack, the map or a dialogue is open.
-- Extraction points are drawn on the ground as a **glowing ring**: teal at the dock, and a green one at the Bell Court once the Homecoming Bell has rung. The ring is exactly the trigger area — stand inside it for **3 seconds** to return, with the same countdown ring as the game's own extraction points. Leaving cancels the countdown; opening an official screen such as your backpack, the pause menu or photo mode **freezes** it rather than resetting it.
-- **Extraction is the only way out**: no screen lets you return on the spot — you have to walk into an extraction ring and hold it for 3 seconds. The rings are not marked on the map: the dock ring is where you landed, and the Bell Court ring only appears after the bell rings.
+- Extraction points are drawn on the ground as a **glowing ring**: teal at the dock, always open; a green ring appears on the Hanging Root Wood plaza once its wind beacon is lit, another on the Fallen Star Workshop plaza once its star lamp is lit, and one at the Bell Court as soon as both beacons are lit (no need to ring the bell first). The ring is exactly the trigger area — stand inside it for **3 seconds** to return, with the same countdown ring as the game's own extraction points. Leaving cancels the countdown; opening an official screen such as your backpack, the pause menu or photo mode **freezes** it rather than resetting it.
+- **Extraction is the only way out**: no screen lets you return on the spot — you have to walk into an extraction ring and hold it for 3 seconds. Open extraction points are marked on the game's own map, a notice pops up once whenever a new one opens, and the map also circles where your current objective is.
 - Leaving with side content unfinished is fine; you can come back later.
 
 ### The first stretch
 
 North of Cloudrise Dock lies Windchime Market. Talk to Weibai the lamp-keeper first, then head west through the Green Terraces and the Hanging Root Wood, or east through the Mirrorwater Temple and the Fallen Star Workshop. The two beacon routes can be done in either order.
+
+Several long bridges widen into relay platforms midway. Expect ambushes on the two bridges that lead from the Hanging Root Wood and the Fallen Star Workshop to Windsong Boardwalk, and a scavenging point on each of the three return-shortcut platforms. The shortcut gates stand at the Windchime Market end, so until a shortcut is open you reach its platform from the far side — Hanging Root Wood, Fallen Star Workshop or Windsong Boardwalk.
 
 ### Scavenging points
 

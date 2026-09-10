@@ -137,7 +137,8 @@ namespace BossRush
                     // 两处航标守卫各带一名断风游猎：主线目标应当比路上的普通遭遇更有分量。
                     Encounter("D", "EnemySpawn_D", 2, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
                     Encounter("D_02", "Search_D_02", 2),
-                    Encounter("E", "EnemySpawn_E", 2), Encounter("E_02", "Search_E_02", 2),
+                    // 布局 v2：鸣风栈道两侧桥上的中继平台（设计稿「战斗放在中继平台，桥面负责移动」）。
+                    Encounter("E", "Relay_DE", 2), Encounter("E_02", "Relay_GE", 2),
                     Encounter("G", "EnemySpawn_G", 2, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
                     Encounter("G_02", "Search_G_02", 2),
                     Encounter("S1", "EnemySpawn_S1", 2), Encounter("S2", "EnemySpawn_S2", 2),

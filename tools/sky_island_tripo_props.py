@@ -13,6 +13,8 @@ import math
 from pathlib import Path
 import random
 
+import sky_island_frame  # 锚点半径随岛同比例缩放（调用方按 layout 绑定）
+
 TAU = math.tau
 
 # name: [(岛 id, 相对岛心的方位角 度, 半径 米, 自转 度), ...]
@@ -432,6 +434,8 @@ def build(g, layout, data_dir, dressing):
             island = islands.get(island_id)
             if island is None:
                 continue
+            # 锚点半径按旧版岛尺寸写，随岛同比例缩放。
+            radius = sky_island_frame.scale_radius(island_id, radius)
             space = spaces[island_id]
             cx, cy, cz = island['center']
             spot = find_spot(space, cx, cz, angle_deg, radius, clearance)

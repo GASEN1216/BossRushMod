@@ -103,6 +103,14 @@ def main():
                     if width != layer.get('textureSize'):
                         errors.append('分区贴图实际宽高与元数据 textureSize 不符：'
                                       + str(layer.get('texture')))
+        # 手绘底图模式：元数据记着底图的 sha256，底图必须在仓库里且逐字节一致，否则这版贴图无法复现。
+        art = meta.get('art')
+        if art is not None:
+            source = ROOT / str(art.get('image', ''))
+            if not source.is_file():
+                errors.append('小地图元数据声明了手绘底图，但文件不存在：' + str(art.get('image')))
+            elif hashlib.sha256(source.read_bytes()).hexdigest() != art.get('sha256'):
+                errors.append('手绘底图与小地图元数据 sha256 不一致，请重新运行烘焙脚本')
         # 覆盖范围必须真的罩住地面网格，否则玩家点位会跑到图外。
         if isinstance(size, (int, float)) and isinstance(center, list) and len(center) == 3:
             verts = json.loads(LAYOUT.read_text(encoding='utf-8'))['ground']['vertices']

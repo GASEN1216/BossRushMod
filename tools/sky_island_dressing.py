@@ -10,6 +10,8 @@ from collections import Counter
 
 from sky_island_nature_assets import load_model, stamp
 
+import sky_island_frame  # 旧版手写坐标 → 当前岛位（调用方按 layout 绑定）
+
 TAU = math.tau
 
 
@@ -56,7 +58,8 @@ class PlantingSpace:
             return False
         # Circular plazas and landmarks are semantic clearings, beyond thin path strips.
         x0, _, z0 = self.island['center']
-        clearing = {'B': 21, 'D': 17, 'E': 28, 'G': 19, 'H': 33, 'S1': 11, 'S4': 14}.get(self.island['id'], 9)
+        clearing = sky_island_frame.scale_radius_for_island(
+            self.island, {'B': 21, 'D': 17, 'E': 28, 'G': 19, 'H': 33, 'S1': 11, 'S4': 14}.get(self.island['id'], 9))
         return math.hypot(x-x0, z-z0) > clearing+radius
 
 
@@ -115,7 +118,11 @@ def moon_mushroom(g,x,y,z,height):
 
 def floating_gardens(g, layout, counts):
     rng = random.Random(420731)
-    bridges = [(a, b, bridge['width']/2+11) for bridge in layout['bridges'] for a, b in zip(bridge['path'], bridge['path'][1:])]
+    # 中继平台处桥面变宽：按每段两端横截面的实际宽度留边，不用桥的名义宽度。
+    bridges = [(a, b, max(math.dist(sa[0], sa[1]), math.dist(sb[0], sb[1]))/2+11)
+               for bridge in layout['bridges']
+               for (a, b), (sa, sb) in zip(zip(bridge['path'], bridge['path'][1:]),
+                                           zip(bridge['crossSections'], bridge['crossSections'][1:]))]
     for island in layout['islands']:
         sid = island['id']; x, y, z = island['center']; outline = island['outline']
         g.CURRENT = sid
@@ -241,13 +248,13 @@ def water_gardens(g,layout,counts):
     for sid, positions in [('F',[(220,-49),(247,-35),(249,-48),(226,-33),(241,-54)]),
                            ('S1',[(-353,-232),(-348,-234),(-346,-228)])]:
         g.CURRENT=sid; y=islands[sid]['height']+.22
-        for i,(x,z) in enumerate(positions):
+        for i,(x,z) in enumerate(sky_island_frame.relocate(sid,px,pz) for px,pz in positions):
             lotus(g,x,y,z,1.2 if sid=='F' else .8)
             counts['lotusFlowers']+=1
     for sid in ['F','S1']:
         g.CURRENT=sid; x,y,z=islands[sid]['center']
         for i in range(9):
-            a=i*TAU/9; r=23 if sid=='F' else 9
+            a=i*TAU/9; r=sky_island_frame.scale_radius(sid,23 if sid=='F' else 9)
             stamp(g,'plant_flatTall',(x+math.cos(a)*r,y+.02,z+math.sin(a)*r),1.1,a)
             counts['watersidePlants']+=1
 
@@ -264,7 +271,7 @@ def sky_festival(g,layout,counts):
     for sid in ['B','D','F','H']:
         g.CURRENT=sid; x,y,z=islands[sid]['center']
         for i in range(7):
-            a=i*2.39996+.7; r=38+i*2.2
+            a=i*2.39996+.7; r=sky_island_frame.scale_radius(sid,38+i*2.2)
             px,pz=x+math.cos(a)*r,z+math.sin(a)*r
             # Floating lanterns stay high enough to preserve the player camera and traversal.
             hanging_lantern(g,px,y+17+math.sin(i*4)*4,pz,.65+(i%3)*.15)
@@ -273,16 +280,17 @@ def sky_festival(g,layout,counts):
     g.CURRENT='D'; y=islands['D']['height']
     for i in range(9):
         t=(i+1)/10
-        vine(g,(-281+t*59,y+17+math.sin(t*math.pi)*15,140+t*8),5+math.sin(i*2)*1.5,i,True)
+        vx,vz=sky_island_frame.relocate('D',-281+t*59,140+t*8)
+        vine(g,(vx,y+17+math.sin(t*math.pi)*15,vz),5+math.sin(i*2)*1.5,i,True)
         counts['archFlowerVines']+=1
     for i in range(16):
-        a=i*TAU/16; x=-251+math.cos(a)*23; z=141+math.sin(a)*8
+        a=i*TAU/16; x,z=sky_island_frame.relocate('D',-251+math.cos(a)*23,141+math.sin(a)*8)
         g.sphere((x,y+37+math.sin(a)*6,z),(.20,.28,.20),'PearlGlow',8,4)
     counts['constellationSeeds']=16
     # A few small bird silhouettes help read the scale of the open sky.
     g.CURRENT='Distant_Birds'
     for i in range(15):
-        x=-35+i*5; y=105+math.sin(i*.8)*6; z=380+i%4*5
+        x,z=sky_island_frame.relocate('H',-35+i*5,380+i%4*5); y=sky_island_frame.relocate_y('H',105+math.sin(i*.8)*6)
         g.addmesh('Ivory',[(x,y,z),(x-2,y+1,z+.5),(x-3,y+.7,z+1.5),
                           (x+2,y+1,z+.5),(x+3,y+.7,z+1.5),(x,y-.3,z+1)],
                   [(0,1,2,5),(0,5,4,3)])

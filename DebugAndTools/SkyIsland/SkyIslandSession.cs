@@ -36,6 +36,7 @@ namespace BossRush
         private SkyIslandScavenging scavenging;
         private SkyIslandServices services;
         private SkyIslandExtractionRings extractionRings;
+        private SkyIslandMapMarkers mapMarkers;
         // 撤离读条的显示桥：优先驱动官方 EvacuationCountdownUI，判定仍只在 Update 的撤离圈里。
         private SkyIslandExtractionCountdown extractionCountdown;
         private readonly SkyIslandBounty bounty = new SkyIslandBounty();
@@ -54,7 +55,7 @@ namespace BossRush
         // 返航期间的输入封锁源：必须是岛场景内的临时对象，随场景卸载自动失效（见 BlockInputForReturn）。
         private GameObject returnInputBlock;
         private SkyIslandHud hud;
-        private Transform playerSpawn, exitMarker, bellExit;
+        private Transform playerSpawn, exitMarker, bellExit, windExit, starExit;
         private CharacterMainControl enemy;
         private CharacterRandomPreset enemyPreset;
         private Seeker probe;
@@ -317,7 +318,11 @@ namespace BossRush
                 extractionRings = new SkyIslandExtractionRings(root.transform, exitMarker, bellExit,
                     ExtractionRadius, groundMask);
                 extractionRings.Apply(BellExitIfUnlocked() != null);
+                extractionRings.AddBeaconRings(root.transform, windExit, starExit, ExtractionRadius, groundMask);
+                extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
             });
+            // 官方地图上的撤离点与当前目标：与撤离圈同一事实源，纯表现层，单独持有 owner。
+            Safe("map_markers", delegate { mapMarkers = new SkyIslandMapMarkers(root.transform, Status); });
             // 撤离读条同样是纯表现层、单独持有 owner：官方控件接不上时退回 HUD 文字读秒，撤离照常。
             Safe("extraction_countdown", delegate
             {
@@ -403,6 +408,9 @@ namespace BossRush
             }
             enemyMarkers.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             landmarks.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
+            // 两处航标撤离借用岛心的 Region_D / Region_G（运行时别处不读它们），不新增场景节点；缺了只是少两个出口。
+            windExit = root.transform.Find("Region_D");
+            starExit = root.transform.Find("Region_G");
             if (playerSpawn == null || exitMarker == null || enemyMarkers.Count == 0 || landmarks.Count == 0 || searchCount == 0)
                 throw new InvalidOperationException("出生/撤离/敌人/探索/地标点位缺失");
         }
@@ -544,13 +552,25 @@ namespace BossRush
             }
         }
 
-        /// <summary>归航钟庭撤离点：只在敲钟结局后开放，未解锁返回 null。地图与撤离判定共用这一个事实源。</summary>
+        /// <summary>归航钟庭撤离点：双航标都点亮后开放（布局 v2 起不再等敲钟结局），未解锁返回 null。地图、地面环与撤离判定共用这一个事实源。</summary>
         internal Transform BellExitIfUnlocked()
         {
-            return bellExit != null && story != null && story.Current.Has(SkyIslandStoryFlag.Ending) ? bellExit : null;
+            return bellExit != null && story != null && story.Current.BothBeacons ? bellExit : null;
         }
 
-        /// <summary>撤离唯一判定：码头恒开、钟庭需结局，两者都必须站进圈内。没有第二条返航入口。</summary>
+        /// <summary>悬根林广场撤离点：风标点亮后开放。与钟庭同一口径，未解锁返回 null。</summary>
+        internal Transform WindExitIfUnlocked()
+        {
+            return windExit != null && story != null && story.Current.Has(SkyIslandStoryFlag.WindBeacon) ? windExit : null;
+        }
+
+        /// <summary>残星工坊广场撤离点：星灯点亮后开放。与钟庭同一口径，未解锁返回 null。</summary>
+        internal Transform StarExitIfUnlocked()
+        {
+            return starExit != null && story != null && story.Current.Has(SkyIslandStoryFlag.StarLamp) ? starExit : null;
+        }
+
+        /// <summary>撤离唯一判定：码头恒开，钟庭与两处航标广场按剧情解锁，都必须站进圈内。没有第二条返航入口。</summary>
         private bool IsInsideExtraction(out Transform marker)
         {
             marker = player == null ? null : ExtractionMarkerAt(player.transform.position);
@@ -558,7 +578,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 撤离判定的几何部分：给定坐标落在哪个**开放**的撤离圈里（码头恒开、钟庭需结局），不在任何圈里返回 null。
+        /// 撤离判定的几何部分：给定坐标落在哪个**开放**的撤离圈里（码头恒开，钟庭与航标广场按剧情解锁），不在任何圈里返回 null。
         /// 玩家判定（<see cref="IsInsideExtraction"/>）与 F3 只读探测（<see cref="ValidationIsInsideExtractionAt"/>）
         /// 共用这一份：以前验收那边是逐字复制的第二份，生产判据改了验收照样绿。
         /// </summary>
@@ -567,6 +587,10 @@ namespace BossRush
             if (exitMarker != null && Vector3.Distance(position, exitMarker.position) < ExtractionRadius) return exitMarker;
             Transform bell = BellExitIfUnlocked();
             if (bell != null && Vector3.Distance(position, bell.position) < ExtractionRadius) return bell;
+            Transform wind = WindExitIfUnlocked();
+            if (wind != null && Vector3.Distance(position, wind.position) < ExtractionRadius) return wind;
+            Transform star = StarExitIfUnlocked();
+            if (star != null && Vector3.Distance(position, star.position) < ExtractionRadius) return star;
             return null;
         }
 
@@ -642,6 +666,8 @@ namespace BossRush
             if (gates != null) gates.Apply(story.Current);
             // 钟庭环与 BellExitIfUnlocked() 同一事实源：地上看得到的圈，就是站进去能走的圈。
             if (extractionRings != null) extractionRings.Apply(BellExitIfUnlocked() != null);
+            if (extractionRings != null) extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
+            if (mapMarkers != null) mapMarkers.Apply(story.Current, exitMarker, BellExitIfUnlocked(), WindExitIfUnlocked(), StarExitIfUnlocked());
             if (lighting != null) lighting.Tick();
             if (ambience != null) { ambience.ApplyStoryFlags(story.Current.flags); ambience.Tick(player.transform.position); }
             Vector3 local = player.transform.position - origin;
@@ -676,7 +702,7 @@ namespace BossRush
                 float remaining = ExtractionHold - extractionHeld;
                 // 冻结期间照样把已停留秒数喂给官方读条：它按 Time.time 自己算进度，不喂就会在背包后面偷偷走完。
                 ShowExtraction(remaining);
-                if (remaining <= 0) Close(true, extraction == bellExit ? "bell_extract" : "dock_extract");
+                if (remaining <= 0) Close(true, extraction == bellExit ? "bell_extract" : extraction == windExit ? "wind_extract" : extraction == starExit ? "star_extract" : "dock_extract");
                 return;
             }
             // 真正离开圈子才归零。HUD 文字读秒的兜底行当场撤掉，不等下一次 0.5 秒刷新。
@@ -964,6 +990,7 @@ namespace BossRush
             // 归航菜的本局属性加成必须在离岛时摘掉，否则会跟着主角带回基地（owner 是 services）。
             Safe("services", delegate { if (services != null) services.Dispose(); });
             Safe("extraction_rings", delegate { if (extractionRings != null) extractionRings.Dispose(); });
+            Safe("map_markers", delegate { if (mapMarkers != null) mapMarkers.Dispose(); });
             Safe("extraction_countdown", delegate { if (extractionCountdown != null) extractionCountdown.Dispose(); });
             Safe("residents", delegate { if (residents != null) residents.Dispose(); });
             Safe("ambience", delegate { if (ambience != null) ambience.Dispose(); });
