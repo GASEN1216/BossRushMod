@@ -330,8 +330,8 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
   §14 旧记录里的「3533，余 13.7%」已过时），`m_IsReadable=True`，
   以及两个根节点的激活状态（`SkyIslandWorld` True / `SkyIslandLevel` False）。
   日志里那行 `Build Finished, Result: Failure` 经与旧包逐项对照确认是噪声。
-- 交付物：`docs/天空岛优化_盘点与分级.md`、`docs/天空岛优化_交付报告.md`、
-  `docs/天空岛_待人工验证清单.md`；`ArtSource/SkyIsland/Validation/raid_deployment_hashes.json`
+- 交付物：`docs/制作教程/天空岛/天空岛优化_盘点与分级.md`、`docs/制作教程/天空岛/天空岛优化_交付报告.md`、
+  `docs/制作教程/天空岛/天空岛_待人工验证清单.md`；`ArtSource/SkyIsland/Validation/raid_deployment_hashes.json`
   按实测重写（含三份哈希故意不一致的说明）。编译绿、**581 guard 全绿**、27 组执行回归 0 失败；
   两个新守卫合计 16 条人为破坏逐条转红并按字节还原。**实机 smoke 全部待人工。**
 
