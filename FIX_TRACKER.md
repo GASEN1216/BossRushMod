@@ -4,6 +4,40 @@
 
 ## 最新修复
 
+### 2026-09-10 天空岛内容批次二：信鸽来信 / 秘境谜题 / 群岛手记 / 归航船名册 / 5 件天空岛物品，顺带修 R-1 R-7 R-8 R-14
+
+**分类**：COMPAT；新增 TypeID 500068–500072（owner 授权）；存档**不加字段、不加旗标位**（来信 / 名册 / 纪念品发放记录复用 `discoveredNotes`，前缀 `Letter_` / `Crew_` / `Keepsake_`）。
+owner 在评估提交后要求「继续丰富内容」，并授权「加些新物品和新道具……允许动 TypeID」。无人值守。时长影响（推算）、兼容口径与 10 项新待拍板在
+`docs/天空岛_可玩性与时长评估_2026-09-10.md` 第十一节（local-only）；四条遗留流程问题见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-036..039`。
+
+**内容**：
+- 纯逻辑（隔离回归直接执行）：`SkyIslandLetters`（12 封，每趟一只、应时的先来）、`SkyIslandPuzzles`（S1–S4 三步谜题，答错先提示再点破）、`SkyIslandCrew`（结局后四页名册随分支变化）、
+  `SkyIslandJournal`（四章见闻 + 来信 + 名册 + 纪念品 + 总览）、`SkyIslandItemRules`（物品名、纪念品台账、岛上特产出现率、罗盘读数）。
+- 接线：`SkyIslandWorldStory`（信鸽落点复用纪念物算法、只在存档可写时放；谜题解开才走原收录；手记挂在苇白与码头装置；名册 `Beacon("Lamp_A_02", …)`；
+  纪念品先 `RecordNote` 再 `TryGive`）；`SkyIslandStoryService.RecordNote` 只收登记过的 id；`DescribeNpc` 随进度与来信变化；`SkyIslandSession.UseCompass`。
+- 物品（`Integration/SkyIsland/`）：克隆兜底注册、配置器、本地化、掉落黑名单（代码 + JSON）、`SkyIslandRuntimeModule` 清缓存；罗盘耐久 999 不消耗，便当 / 药膏复用官方 `FoodDrink` / `Drug`；
+  岛上特产由 `SkyIslandRewardCrate.Fill` 走独立随机流追加，原有件数抽样不变。图标 5 张（`tools/gen_sky_island_item_icons.py`，`Assets/` 不进 git）。
+- 流程：R-1 折翎站位 = 遭遇锚点 `EnemySpawn_F`；R-7 英文补半句；R-8 四处 v2 口径；R-14 `SkyIslandMapMarkers.SideTargets`。
+
+**同步**：中英 Wiki（天空岛新增四节、关键物品与消耗品各两条，改掉「没有天空岛专属物品编号」），`wiki-site` 经 `sync-content.mjs` 重生成 6 个镜像页；
+`GameplayCoverage.json`（`SKY_ISLAND` 登记 `Integration/SkyIsland` 源目录、新增 `M_SKY_ISLAND_10`）；`AGENTS.md` §4.3 与 `docs/contracts.md` §1 台账到 500072；
+两张天空岛 repowiki 卡追加本批章节；执行回归 README 记下「直接 `dotnet run` 会留 `bin/obj` 并让聚合执行器报 CS0579」。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 正式构建并部署 | `Build succeeded!`，`Build/bossrush.rsp` 无 `/define`；`BossRush.dll` 4,847,616 B，SHA-256 `f09b573295518cd7b4d56a159272436922bfa4202f35512edb66ae44784fed53`，`Build/` 与游戏目录一致；5 张图标、`LootBlacklist.json` 部署副本逐个一致；游戏目录无 Dev 产物 |
+| 2 | 全量守卫 | `python tools/run_guards.py`：587 个脚本，587 PASS / 0 NEW-FAIL / 0 KNOWN-RED（含新守卫 `SkyIslandContentPackGuard`） |
+| 3 | 执行回归 | `python tools/run_runtime_regressions.py` 全量：28 PASS / 0 FAIL（`SkyIslandStory` 168 → 418 条断言） |
+| 4 | 属性测试 | 交互竞争 90 个静态交互体（含 12 处信鸽落点、名册纪念物、折翎新站位）零重叠、最紧余量 0.60 m；面板布局纳入批次二文案，15 种组合不溢出 |
+| 5 | 反向验证 | 23 个探针全部转红：`SkyIslandContentPackGuard` 17 处接线、执行回归 7 个（来信英文、谜题答错前进、特产出现率、`RecordNote` 登记表、手记章节、名册分支、应时的信），本地化 / 黑名单 / 交互竞争 / 面板布局 / 流程守卫在各自探针上同样转红；执行回归都红在预期断言上、无编译错误（P17 首轮红在空引用上，回归改成空安全取值后复跑红在断言上）。破坏做在仓库稀疏副本（`HEAD` + 本批 46 个文件）上，逐条逐字节还原并 sha256 核对，真实工作区前后 sha256 不变 |
+
+**过程中抓到并改掉的**：地图标记的调用先落了、`SideTargets` / `SideLabel` 定义没落（第一次正式构建 3 个 CS0103 / CS0117）；新守卫抓到本地化守卫漏登记 `SkyIslandItemRules.cs`；
+`SkyIslandSession.cs` 因罗盘入口超出 1200 行预算（压缩注释回到 1198）；`GameplayValidationCoverageGuard` 要求新目录 `Integration/SkyIsland` 登记功能映射。
+
+**待人工**（未实机）：`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 2.10 步（14 行）。部署成功不等于已生效。未推送。
+
 ### 2026-09-10 天空岛可玩性与时长评估：7 条修复（4 P2 / 3 P3）+ 分段计时日志
 
 **分类**：COMPAT / OPERATIONAL。owner 预期「整座岛约 10 小时体验完」，要求判断、优化局内流程、修 bug，无人值守。结论是不成立

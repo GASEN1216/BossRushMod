@@ -374,6 +374,18 @@ namespace BossRush
                 FallbackLoader = delegate(int typeId) { return CodexBookConfig.EnsureRuntimeFallbackRegistrationShell(); }
             }, BossRushItemIds.CodexBook);
 
+            // 天空岛物品（纪念品、风标罗盘、岛上特产）：同为零新增 bundle 的克隆兜底。
+            // 玩家仓库与背包里存着这些 TypeID，漏登记会让重启后它们退化成官方 FallbackItem（AGENTS 契约第 6 节）。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return SkyIslandItems.EnsureRuntimeRegistration(typeId); }
+            },
+                BossRushItemIds.SkyIslandHomecomingBadge,
+                BossRushItemIds.SkyIslandWindeaterCore,
+                BossRushItemIds.SkyIslandWindVaneCompass,
+                BossRushItemIds.SkyIslandHomecomingBento,
+                BossRushItemIds.SkyIslandStarmossSalve);
+
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);
             Add(plans, NewWeaponPlan("energyshield_totem_model", "energyshield_item"), NewWeaponIds.EnergyShieldTypeId);

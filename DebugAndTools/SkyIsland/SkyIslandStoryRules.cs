@@ -258,8 +258,9 @@ namespace BossRush
         internal static string Objective(SkyIslandStoryData data)
         {
             if (data.Has(SkyIslandStoryFlag.Ending))
-                return L10n.T("归航钟已响 · 自由重访群岛、补齐支线 · 码头或钟庭返航",
-                    "The bell has rung · revisit freely and finish the side paths · extract at the dock or the Bell Court") +
+                // 布局 v2：结局时两端航标必然已亮，四处出口全开（码头、钟庭、两处航标广场）。
+                return L10n.T("归航钟已响 · 自由重访、补齐支线 · 码头、钟庭或航标广场返航",
+                    "The bell has rung · revisit freely and finish the side paths · extract at the dock, Bell Court or a beacon plaza") +
                     (data.StormResolved ? "" : L10n.T(" · 「噬风」仍在鸣风栈道",
                         " · the Windeater is still on Windsong Boardwalk"));
             if (!data.BothBeacons)

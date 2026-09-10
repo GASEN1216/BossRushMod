@@ -49,6 +49,12 @@ FILES = [
     "SkyIslandLighting.cs",
     "SkyIslandStormBoss.cs",
     "SkyIslandEnemyTiers.cs",
+    "SkyIslandMapMarkers.cs",
+    "SkyIslandLetters.cs",
+    "SkyIslandPuzzles.cs",
+    "SkyIslandCrew.cs",
+    "SkyIslandJournal.cs",
+    "SkyIslandItemRules.cs",
 ]
 
 # 严格两个字符串字面量的 L10n.T 调用：中文那一半必须有英文对照。

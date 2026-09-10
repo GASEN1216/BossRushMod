@@ -26,10 +26,11 @@ namespace BossRush
             panel.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             Label(panel.transform, L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan Archipelago"), 24, 34);
             // 撤离点由 SkyIslandExtractionRings 画出贴地圆环，半径等于 SkyIslandSession.ExtractionRadius。
-            // 颜色写实际色：码头用 BossRushUIColors.Accent（青绿），钟庭用 SuccessText（薄荷绿），钟庭那个在敲钟结局后才出现。
+            // 颜色写实际色：码头用 BossRushUIColors.Accent（青绿），其余三处用 SuccessText（薄荷绿）。
+            // 布局 v2：悬根林 / 残星工坊广场随各自航标点亮出现，钟庭在两端航标都亮之后出现（与撤离判定同一事实源 *ExitIfUnlocked）。
             // 以前写的「蓝环」与画出来的颜色对不上，照着找的人会以为环没刷出来。
-            Label(panel.transform, L10n.T("基地船点可正式出发。岛上按地图键查阅全岛；站进码头的青色环停留 3 秒返航，敲响归航钟后钟庭的绿环同样可用。",
-                "Depart from the base boat. Use the map key on the island; stand in the teal ring at the dock for 3 seconds to return. After the Homecoming Bell rings, the green ring at the Homecoming Bell Court works the same way."), 17, 66);
+            Label(panel.transform, L10n.T("基地船点可正式出发。岛上按地图键查阅全岛；站进码头的青色环停留 3 秒返航。修好风标或星灯，悬根林或残星工坊广场会开出绿环；两端航标都亮后，归航钟庭的绿环同样可用。",
+                "Depart from the base boat. Use the map key on the island; stand in the teal ring at the dock for 3 seconds to return. Repairing the wind beacon or the star lamp opens a green ring on the Hanging Root Wood or Fallen Star Workshop plaza; once both beacons burn, the green ring at the Homecoming Bell Court works too."), 17, 66);
             Button(panel.transform, L10n.T("从基地前往天空岛", "Depart base for Sky Islands"), BossRushUIColors.Success, delegate
             {
                 string reason;

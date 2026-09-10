@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using BossRush;
 using Saves;
@@ -22,6 +23,19 @@ internal static class Program
         string message;
         Check(!story.TryApply(action, out message), "reject " + action);
         Check(before == story.Current.flags, "rejection preserves state " + action);
+    }
+    /// <summary>英文界面下的玩家文案不许残留中文（CJK 表意、中文标点、全角形式）。</summary>
+    private static bool ContainsCjk(string text)
+    {
+        foreach (char c in text ?? string.Empty)
+            if ((c >= 0x4E00 && c <= 0x9FFF) || (c >= 0x3000 && c <= 0x303F) || (c >= 0xFF00 && c <= 0xFFEF)) return true;
+        return false;
+    }
+    /// <summary>下一封信的 id；没有信时返回占位串，让「应时的信永远不来」这类破坏红在断言上而不是空引用上。</summary>
+    private static string NextLetterId(SkyIslandStoryData data)
+    {
+        SkyIslandLetter next = SkyIslandLetters.NextFor(data);
+        return next == null ? "(none)" : next.Id;
     }
     private static SkyIslandStoryService Open(int slot)
     {
@@ -313,6 +327,202 @@ internal static class Program
         Check(UnityEngine.Debug.LastLog != null && UnityEngine.Debug.LastLog.Contains(" ev=raid_close"), "timing: raid close is logged");
         story.Close();
         Check(SavesSystem.Subscribers == 0, "playtime sessions released events");
+
+        // ---- 批次二：信鸽来信 ----
+        SkyIslandStoryData fresh = SkyIslandStoryRules.CreateDefault();
+        Check(SkyIslandLetters.Count == 12, "twelve pigeon letters");
+        var letterIds = new HashSet<string>(StringComparer.Ordinal);
+        foreach (SkyIslandLetter letter in SkyIslandLetters.All)
+        {
+            Check(letterIds.Add(letter.Id) && letter.Id.StartsWith(SkyIslandLetters.IdPrefix, StringComparison.Ordinal),
+                "letter id unique and prefixed: " + letter.Id);
+            Check(SkyIslandStoryService.RegionBit(letter.Region) != 0, "letter lands in a real region: " + letter.Id);
+            Check(!string.IsNullOrEmpty(letter.Anchor) && !string.IsNullOrEmpty(letter.TitleCn) && !string.IsNullOrEmpty(letter.TitleEn)
+                && !string.IsNullOrEmpty(letter.BodyCn) && !string.IsNullOrEmpty(letter.BodyEn), "letter text is paired: " + letter.Id);
+            Check(((int)letter.Requires & ~SkyIslandStoryRules.KnownFlags) == 0, "letter prerequisite uses registered flags: " + letter.Id);
+        }
+        Check(NextLetterId(fresh) == "Letter_01", "a new save gets the dock letter first");
+        Check(SkyIslandLetters.NextFor(null) == null && SkyIslandLetters.Find("Letter_99") == null, "no letter for a missing save or an unknown id");
+        SkyIslandStoryData mail = fresh.Copy();
+        var arrival = new List<string>();
+        for (SkyIslandLetter next = SkyIslandLetters.NextFor(mail); next != null && arrival.Count < 20; next = SkyIslandLetters.NextFor(mail))
+        {
+            arrival.Add(next.Id);
+            var received = new List<string>(mail.discoveredNotes);
+            received.Add(next.Id);
+            mail.discoveredNotes = received.ToArray();
+        }
+        Check(arrival.Count == 8 && arrival[0] == "Letter_01" && arrival[7] == "Letter_08",
+            "ungated letters arrive one per raid in order, then wait for their prerequisites");
+        mail.flags |= (int)SkyIslandStoryFlag.StarLamp;
+        Check(NextLetterId(mail) == "Letter_10", "a letter whose prerequisite just came true is delivered next");
+        mail.flags |= (int)SkyIslandStoryFlag.WindBeacon;
+        Check(NextLetterId(mail) == "Letter_09", "unlocked gated letters keep their order");
+        SkyIslandStoryData mailRoundTrip = SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(mail));
+        Check(mailRoundTrip != null && mailRoundTrip.discoveredNotes.Length == 8, "letter ids round trip through the save codec");
+
+        // ---- 批次二：秘境谜题（每一道题的每一种选法都走一遍） ----
+        Check(SkyIslandPuzzles.All.Length == 4, "four hidden-isle puzzles");
+        foreach (SkyIslandPuzzle puzzle in SkyIslandPuzzles.All)
+        {
+            SkyIslandStoryAction evidence;
+            Check(SkyIslandStoryRules.TrySearchAction(puzzle.Key, out evidence), "puzzle sits on a side-evidence point: " + puzzle.Key);
+            SkyIslandStoryData unlocked;
+            string unlockMessage;
+            Check(SkyIslandStoryRules.TryApply(SkyIslandStoryRules.CreateDefault(), evidence, out unlocked, out unlockMessage)
+                && unlocked.flags == (int)puzzle.Flag, "puzzle flag is exactly what its evidence action writes: " + puzzle.Key);
+            Check(SkyIslandPuzzles.For(puzzle.Key) == puzzle && puzzle.Steps.Length == 3, "three steps: " + puzzle.Key);
+            var answers = new HashSet<int>();
+            var state = new SkyIslandPuzzleState();
+            string feedback;
+            for (int s = 0; s < puzzle.Steps.Length; s++)
+            {
+                SkyIslandPuzzleStep step = puzzle.Steps[s];
+                answers.Add(step.Answer);
+                Check(step.Options.Length == 3 && step.Answer >= 0 && step.Answer < 3, "three options and a valid answer: " + puzzle.Key + "#" + s);
+                SkyIslandPuzzleOutcome outcome = state.Choose(puzzle, step.Answer, out feedback);
+                Check(outcome == (s + 1 == puzzle.Steps.Length ? SkyIslandPuzzleOutcome.Solved : SkyIslandPuzzleOutcome.Advanced)
+                    && !string.IsNullOrEmpty(feedback), "the right answer advances: " + puzzle.Key + "#" + s);
+            }
+            Check(state.IsSolved(puzzle) && state.Choose(puzzle, 7, out feedback) == SkyIslandPuzzleOutcome.Invalid,
+                "solved, and an out-of-range option is rejected: " + puzzle.Key);
+            Check(answers.Count > 1, "answers are not all in the same position: " + puzzle.Key);
+            for (int s = 0; s < puzzle.Steps.Length; s++)
+            {
+                SkyIslandPuzzleStep step = puzzle.Steps[s];
+                for (int wrong = 0; wrong < step.Options.Length; wrong++)
+                {
+                    if (wrong == step.Answer) continue;
+                    var retry = new SkyIslandPuzzleState();
+                    for (int done = 0; done < s; done++) retry.Choose(puzzle, puzzle.Steps[done].Answer, out feedback);
+                    Check(retry.Choose(puzzle, wrong, out feedback) == SkyIslandPuzzleOutcome.Hinted && feedback == step.Hint
+                        && retry.CurrentStep(puzzle) == s, "first miss hints and stays: " + puzzle.Key + "#" + s + "/" + wrong);
+                    Check(retry.Choose(puzzle, wrong, out feedback) == SkyIslandPuzzleOutcome.Revealed && feedback == step.Reveal
+                        && retry.CurrentStep(puzzle) == s, "second miss reveals and stays: " + puzzle.Key + "#" + s + "/" + wrong);
+                    SkyIslandPuzzleOutcome recovered = retry.Choose(puzzle, step.Answer, out feedback);
+                    Check(recovered == SkyIslandPuzzleOutcome.Advanced || recovered == SkyIslandPuzzleOutcome.Solved,
+                        "misses never lock the puzzle: " + puzzle.Key + "#" + s + "/" + wrong);
+                }
+            }
+        }
+
+        // ---- 批次二：归航船名册随分支变化 ----
+        SkyIslandStoryData peaceful = SkyIslandStoryRules.CreateDefault();
+        peaceful.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.OldLetter
+            | SkyIslandStoryFlag.RouteChart | SkyIslandStoryFlag.Telescope | SkyIslandStoryFlag.PlantingRecord
+            | SkyIslandStoryFlag.PlantingDelivered | SkyIslandStoryFlag.ZhelingReconciled | SkyIslandStoryFlag.BellKeeperReconciled
+            | SkyIslandStoryFlag.StormSlain | SkyIslandStoryFlag.Ending);
+        SkyIslandStoryData forceful = SkyIslandStoryRules.CreateDefault();
+        forceful.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.ZhelingDefeated
+            | SkyIslandStoryFlag.BellKeeperDefeated | SkyIslandStoryFlag.Ending);
+        Check(SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(peaceful)) != null
+            && SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(forceful)) != null, "both branch saves are valid");
+        for (int page = 0; page < SkyIslandCrew.Count; page++)
+        {
+            Check(SkyIslandCrew.Page(page, peaceful) != SkyIslandCrew.Page(page, forceful), "crew page reacts to this save's choices: " + page);
+            Check(SkyIslandCrew.IndexOf(SkyIslandCrew.NoteId(page)) == page, "crew note id maps back to its page: " + page);
+        }
+        Check(SkyIslandCrew.IndexOf("Crew_5") < 0 && SkyIslandCrew.IndexOf("Letter_01") < 0 && SkyIslandCrew.IndexOf(null) < 0,
+            "only the four roster pages are crew ids");
+
+        // ---- 批次二：群岛手记 ----
+        var journalKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (string[] chapter in SkyIslandJournal.Chapters)
+            foreach (string key in chapter) Check(journalKeys.Add(key), "journal lists each note once: " + key);
+        Check(journalKeys.Count == SkyIslandJournal.NoteCount, "journal chapters cover exactly twenty notes");
+        foreach (string region in new[] { "A", "B", "C", "D", "E", "F", "G", "H" })
+            Check(journalKeys.Contains("Search_" + region) && journalKeys.Contains("Search_" + region + "_02"), "journal covers both notes of region " + region);
+        foreach (string side in new[] { "S1", "S2", "S3", "S4" })
+            Check(journalKeys.Contains("Search_" + side), "journal covers side evidence " + side);
+        SkyIslandStoryData wellRead = SkyIslandStoryRules.CreateDefault();
+        wellRead.discoveredNotes = new List<string>(journalKeys).ToArray();
+        Check(!SkyIslandJournal.Overview(fresh, null).Contains(SkyIslandJournal.Epilogue)
+            && SkyIslandJournal.Overview(wellRead, null).Contains(SkyIslandJournal.Epilogue), "the last page appears only once all twenty notes are in");
+        string unreadChapter = SkyIslandJournal.Chapter(0, fresh, key => "T:" + key, key => "B:" + key);
+        string readChapter = SkyIslandJournal.Chapter(0, wellRead, key => "T:" + key, key => "B:" + key);
+        Check(unreadChapter.Contains("□ T:Search_A") && !unreadChapter.Contains("B:Search_A"), "an unrecorded note shows its title only");
+        Check(readChapter.Contains("■ T:Search_A\nB:Search_A"), "a recorded note shows its title and text");
+        Check(SkyIslandJournal.Chapter(9, fresh, null, null) == string.Empty, "an out-of-range chapter is empty");
+        Check(SkyIslandJournal.Letters(fresh).IndexOf(SkyIslandLetters.All[0].BodyCn, StringComparison.Ordinal) < 0
+            && SkyIslandJournal.Letters(mail).IndexOf(SkyIslandLetters.All[0].BodyCn, StringComparison.Ordinal) >= 0,
+            "letters stay unspoiled until received");
+        Check(SkyIslandJournal.RegionsVisited(new SkyIslandStoryData { visitedRegions = 4095 }) == 12, "all twelve regions counted");
+
+        // ---- 批次二：天空岛物品规则（纪念品台账、岛上特产、罗盘读数） ----
+        Check(SkyIslandItemRules.AllTypeIds.Length == 5 && SkyIslandItemRules.AllTypeIds[0] == 500068
+            && SkyIslandItemRules.AllTypeIds[4] == 500072, "sky island items occupy 500068-500072");
+        foreach (int typeId in SkyIslandItemRules.AllTypeIds)
+            Check(SkyIslandItemRules.NameCn(typeId) != SkyIslandItemRules.NameCn(0) && SkyIslandItemRules.NameEn(typeId) != SkyIslandItemRules.NameEn(0),
+                "item has its own name in both languages: " + typeId);
+        SkyIslandKeepsake compassKeepsake = SkyIslandItemRules.FindKeepsake("Keepsake_Compass");
+        SkyIslandKeepsake badgeKeepsake = SkyIslandItemRules.FindKeepsake("Keepsake_Badge");
+        SkyIslandKeepsake coreKeepsake = SkyIslandItemRules.FindKeepsake("Keepsake_Core");
+        Check(compassKeepsake != null && badgeKeepsake != null && coreKeepsake != null && SkyIslandItemRules.FindKeepsake("Keepsake_X") == null,
+            "three registered keepsakes");
+        Check(!SkyIslandItemRules.Due(fresh, compassKeepsake) && !SkyIslandItemRules.Due(fresh, badgeKeepsake)
+            && !SkyIslandItemRules.Due(fresh, coreKeepsake), "a new save is owed no keepsake");
+        Check(SkyIslandItemRules.Due(mail, compassKeepsake), "the first received letter brings the compass");
+        Check(SkyIslandItemRules.Due(peaceful, badgeKeepsake) && SkyIslandItemRules.Due(peaceful, coreKeepsake)
+            && SkyIslandItemRules.Due(forceful, badgeKeepsake) && !SkyIslandItemRules.Due(forceful, coreKeepsake),
+            "the badge follows the ending and the core follows the Windeater");
+        SkyIslandStoryData grantedSave = peaceful.Copy();
+        grantedSave.discoveredNotes = new[] { "Keepsake_Badge" };
+        Check(!SkyIslandItemRules.Due(grantedSave, badgeKeepsake) && SkyIslandItemRules.GrantedCount(grantedSave) == 1,
+            "a granted keepsake is never owed again");
+        Check(badgeKeepsake.ToStorage && coreKeepsake.ToStorage && !compassKeepsake.ToStorage,
+            "keepsakes are sent to storage; the compass goes to the pack");
+        const int rollGrid = 10000;
+        var extras = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (SkyIslandLootTier tier in new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks })
+        {
+            Check(SkyIslandItemRules.IslandExtraFor(tier, 0.999) == 0, "most crates carry no island extra: " + tier);
+            for (int i = 0; i < rollGrid; i++)
+            {
+                int extra = SkyIslandItemRules.IslandExtraFor(tier, (i + 0.5) / rollGrid);
+                if (extra == 0) continue;
+                string bucket = tier + ":" + extra;
+                int seen;
+                extras.TryGetValue(bucket, out seen);
+                extras[bucket] = seen + 1;
+            }
+        }
+        Check(extras.Count == 6 && extras["Supply:500071"] == 1200 && extras["Voyage:500072"] == 1000 && extras["Voyage:500071"] == 800
+            && extras["Starworks:500072"] == 1800 && extras["Starworks:500071"] == 600 && extras["Starworks:500070"] == 200,
+            "island extra rates per tier are exactly the documented ones");
+        Check(SkyIslandItemRules.Bearing(0, 1) == "北" && SkyIslandItemRules.Bearing(1, 0) == "东" && SkyIslandItemRules.Bearing(0, -1) == "南"
+            && SkyIslandItemRules.Bearing(-1, 0) == "西" && SkyIslandItemRules.Bearing(1, 1) == "东北" && SkyIslandItemRules.Bearing(-1, 1) == "西北"
+            && SkyIslandItemRules.Bearing(-1, -1) == "西南" && SkyIslandItemRules.Bearing(1, -1) == "东南", "eight-way bearing with +z north and +x east");
+        Check(SkyIslandItemRules.CompassReading(true, 0, 125, "信鸽").Contains("约 130 米：信鸽"), "compass distance rounds to the nearest ten metres");
+        Check(SkyIslandItemRules.CompassReading(true, 3, 4, "信鸽").Contains("附近")
+            && SkyIslandItemRules.CompassReading(false, 0, 0, null).Contains("静静"), "near and empty compass readings");
+
+        // ---- 批次二：英文界面没有残留中文 ----
+        L10n.IsChinese = false;
+        string englishBatch = SkyIslandCrew.Page(1, forceful) + SkyIslandCrew.Page(3, peaceful) + SkyIslandCrew.Intro(forceful)
+            + SkyIslandJournal.Overview(wellRead, null) + SkyIslandJournal.Letters(mail) + SkyIslandJournal.Keepsakes(fresh)
+            + SkyIslandItemRules.CompassReading(true, 30, 40, "x") + SkyIslandPuzzles.All[3].Steps[2].Prompt + SkyIslandPuzzles.All[1].Solved;
+        L10n.IsChinese = true;
+        Check(!ContainsCjk(englishBatch), "batch-two text has an English half everywhere");
+
+        // ---- 批次二：来信、名册与纪念品经剧情服务写进本槽手记 ----
+        story = Open(11);
+        string noteMessage;
+        Check(story.RecordNote("Letter_01", out noteMessage) && SkyIslandLetters.Collected(story.Current, "Letter_01"),
+            "a registered letter is written to the journal");
+        Check(!story.RecordNote("Letter_01", out noteMessage), "the same letter is never written twice");
+        Check(!story.RecordNote("Letter_99", out noteMessage) && !story.RecordNote("Search_Z", out noteMessage)
+            && !story.RecordNote(null, out noteMessage) && story.Current.discoveredNotes.Length == 1, "unregistered journal ids never reach the save");
+        Check(story.RecordNote(SkyIslandCrew.NoteId(1), out noteMessage) && story.RecordNote("Keepsake_Compass", out noteMessage),
+            "roster pages and keepsake grants share the journal");
+        Check(NextLetterId(story.Current) == "Letter_02", "the next raid brings the next letter");
+        Check(story.DescribeNpc("sky_fuzhou").Contains("阿潮的缆绳") && !story.DescribeNpc("sky_weibai").Contains("苇生的信"),
+            "residents react only to letters actually received");
+        Check(story.TryClose(), "journal writes flush on close");
+        story = Open(11);
+        Check(SkyIslandCrew.Read(story.Current, 1) && SkyIslandItemRules.Granted(story.Current, "Keepsake_Compass")
+            && SkyIslandLetters.Collected(story.Current, "Letter_01"), "journal entries survive re-entry");
+        story.Close();
+        Check(SavesSystem.Subscribers == 0, "batch-two sessions released events");
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

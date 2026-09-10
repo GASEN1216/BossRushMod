@@ -12,3 +12,11 @@ SavesSystem、基地状态与每帧写盘节流是内存替身，不加载 Unity
 2026-09-10 可玩性评估追加：岛上落盘去抖（到访 / 清场 / 见闻攒满 `FlushDebounceSeconds` 才写、剧情动作立刻写、
 离岛绕闸全部写掉、重入不丢）、三件战斗了结结果的字幕与 `TryApply` 回话同源、`SKY_TIMING` 分段计时行的格式与去重。
 `UnityEngine.Time` 替身多了 `realtimeSinceStartup`（计时时钟，测试显式赋值），`Debug` 替身多了记录最后一行的 `Log`。
+
+2026-09-10 内容批次二追加（链接 `SkyIslandLetters` / `SkyIslandPuzzles` / `SkyIslandCrew` / `SkyIslandJournal` / `SkyIslandItemRules`，
+以及它们引用的 `SkyIslandLootTables` 与 `Config/ConfigItemIds.cs`）：12 封信鸽来信的 id、区域、前置与「每趟一封、应时的先来」的送达顺序；
+四道秘境谜题的每一步、每个错误选项（先提示、再点破、停在原步、之后照样能解开）以及旗标与 `TrySearchAction` → `TryApply` 同一映射；
+归航船名册四页随和解 / 战胜分支变化；手记章节恰好覆盖 20 处见闻、未收录只给标题、收齐才出终页、未收到的信不剧透；
+纪念品台账（罗盘随第一封信、航徽随结局、噬风之核随噬风，发过不再发）；岛上特产按档次的精确出现率；罗盘八方位与 10 米取整；
+英文界面无中文残留；来信 / 名册 / 纪念品经 `RecordNote` 只收登记过的 id、同一条不写两次、离岛落盘后重进仍在。
+**直接 `dotnet run` 会在本目录生成 `bin/`、`obj/`，之后聚合执行器会把其中的 AssemblyInfo 再编一遍而报 CS0579**：请只用上面那条命令跑。

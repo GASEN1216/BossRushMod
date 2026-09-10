@@ -155,8 +155,52 @@ def worst_strings():
     return longest(titles), longest(bodies), labels, len(labels)
 
 
+def batch_two_strings():
+    """内容批次二的面板文案：信的题目与正文、谜题页（见闻 + 场景 + 提问）与三个选项、名册的名字与整页、手记章节名。
+
+    谜题页正文按「最长见闻 + 最长场景 + 最长提问」拼（中英混拼只会更长，偏保守）；名册一页按该页全部句子拼。
+    """
+    arg = r'"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"'
+    puzzles = read('DebugAndTools/SkyIsland/SkyIslandPuzzles.cs')
+    letters = read('DebugAndTools/SkyIsland/SkyIslandLetters.cs')
+    crew = read('DebugAndTools/SkyIsland/SkyIslandCrew.cs')
+    journal = read('DebugAndTools/SkyIsland/SkyIslandJournal.cs')
+    story = read(STORY)
+    options = [s for pair in re.findall(r'Option\(\s*' + arg, puzzles) for s in pair]
+    prompts = [s for pair in re.findall(r'Step\(\s*' + arg, puzzles) for s in pair]
+    intros = [s for m in re.findall(r'Puzzle\("Search_S\d",\s*SkyIslandStoryFlag\.\w+,\s*' + arg + r',\s*' + arg, puzzles)
+              for s in m[2:4]]
+    letter_rows = re.findall(r'Letter\("Letter_\d+",\s*"\w+",\s*"\w+",\s*[^,]+,\s*' + arg + r',\s*' + arg, letters)
+    letter_titles = [s for m in letter_rows for s in m[0:2]]
+    letter_bodies = [s for m in letter_rows for s in m[2:4]]
+    names_block = crew.split('internal static string Name(int index)', 1)[1].split('internal static string Intro', 1)[0]
+    crew_names = [s for pair in re.findall(r'case \d: return L10n\.T\(\s*' + arg, names_block) for s in pair]
+    pages = crew.split('internal static string Page(int index', 1)[1].split('case ')[1:]
+    crew_pages = [''.join(pair[0] for pair in re.findall(PAIR, page)) for page in pages] + \
+                 [''.join(pair[1] for pair in re.findall(PAIR, page)) for page in pages]
+    chapters_block = journal.split('internal static string ChapterName', 1)[1].split('internal static bool Recorded', 1)[0]
+    chapter_names = [s for pair in re.findall(r'case \d: return L10n\.T\(\s*' + arg, chapters_block) for s in pair]
+    lore = [s for pair in re.findall(PAIR, story.split('private static string Lore(', 1)[1]) for s in pair]
+    assert options and prompts and intros and letter_titles and crew_names and chapter_names and crew_pages and lore, \
+        '批次二文案没解析到，正则与源码失步了'
+    longest = lambda xs: max(xs, key=len)
+    puzzle_page = longest(lore) + '\n\n' + longest(intros) + '\n\n' + longest(prompts)
+    kept_letter = longest(letter_bodies) + '\n\n' + longest(
+        [s for pair in re.findall(PAIR, story.split('private void ReadLetter(', 1)[1].split('private void ReleasePigeon', 1)[0])
+         for s in pair])
+    titles = letter_titles
+    bodies = [puzzle_page, kept_letter, longest(crew_pages)]
+    labels = options + crew_names + chapter_names
+    return titles, bodies, labels
+
+
 def main():
     title, body, labels, label_count = worst_strings()
+    extra_titles, extra_bodies, extra_labels = batch_two_strings()
+    title = max([title] + extra_titles, key=len)
+    body = max([body] + extra_bodies, key=len)
+    labels = labels + extra_labels
+    label_count = len(labels)
     longest_label = max(labels, key=len)
     errors = []
 

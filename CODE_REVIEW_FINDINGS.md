@@ -2,6 +2,21 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-10 天空岛内容批次二：评估报告遗留项 1 P2 / 3 P3
+
+随内容批次二（信鸽来信 / 秘境谜题 / 群岛手记 / 归航船名册 / 5 件天空岛物品，见 `FIX_TRACKER.md` 同日条目）一起修掉的评估报告第六节遗留项。
+布局 v2 已由并行会话提交（`f64f4c1`），这些不再是「并行会话在改的文件」。行号是修复前 `HEAD`（`f64f4c1`）的。**全部为 L1 / L2 证据，无实机验证。**
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-10-036 | P2 / COMPAT | 折翎居民站在 `POI_F`（`SkyIslandResidents.cs:27`），他那一战的遭遇锚点却是 `EnemySpawn_F`（`Assets/Data/SkyIsland/World.json:17`），布局 v2 里两点相距 63.2 m（v1 为 7 m）；`SkyIslandEncounters.ChallengeRange = 70`（`:200`）正是为兜住这 63 m 而设。在折翎面前选「挑战」：本人隐藏，战斗体刷在约两屏之外再跑过来。旧腰牌纪念物挂在 `POI_F`，也不在他倒下的那一带。 | **Fixed（待实机）**；站位改为 `EnemySpawn_F`，旧腰牌纪念物跟着挪（不动 `World.json` 与布局）。`SkyIslandContentPackGuard` §1 按 `World.json` 读遭遇锚点、按 `layout.json` 算站位距离 ≤ 10 m，并核对腰牌同点；`SkyIslandPlaytimeFlowGuard` §2 钉新锚点；交互竞争属性测试复算新站位不抢交互。探针 P01 / P19 |
+| CR-2026-09-10-037 | P3 / COMPAT | 航标撤离开放提示的英文漏了「站进绿环即可撤离」半句（`SkyIslandMapMarkers.cs:60`、`:63`）。 | **Fixed**；两条都补上。守卫 §7 数到两处，探针 P08 |
+| CR-2026-09-10-038 | P3 / OPERATIONAL | v1 撤离口径残留：F3 面板说明「敲响归航钟后钟庭的绿环同样可用」（`SkyIslandControls.cs:31-32`，v2 双航标即开且有两处航标广场）、结局目标句「码头或钟庭返航」（`SkyIslandStoryRules.cs:261-262`）、`OFFICIAL_SCENE_CONTRACT.md:32`「钟庭绿环随敲钟结局出现」、爆炸遮挡补丁注释里的岛面高度仍是 v1 的 0 / 8 / … / 62（`SkyIslandExplosionObstaclePatch.cs:21`）。 | **Fixed**；四处改成 v2 口径，注释高度按 `layout.json` 实际值。守卫 §7 从 `layout.json` 计算期望高度行、禁止旧面板说明回潮、要求目标句含航标广场；探针 P07 |
+| CR-2026-09-10-039 | P3 / COMPAT | 官方地图只圈主线目标，结局后什么都不圈（`SkyIslandMapMarkers.ObjectiveTargets`，`:70-80`）；噬风与四件支线物证从来不上地图，结局后「补齐支线」没有任何指引。 | **Fixed（待实机）**；新增 `SideTargets`：双航标且噬风未打时圈 `POI_E`（「可选挑战 · 噬风」），结局后圈未拿的支线物证（种植记录已拿未交时圈留言板），浅色区分；风标罗盘在主线目标为空时也指向这些点。守卫 §7，探针 P20 |
+
+反向验证：本批 23 个探针全部转红（本表四条对应 P01 / P07 / P08 / P19 / P20，其余是批次二内容接线与执行回归的探针），执行回归的 7 个都红在预期断言上、无编译错误；
+破坏做在仓库稀疏副本（`HEAD` + 本批文件）上，逐字节还原并 sha256 核对，真实工作区前后 sha256 不变。
+
 ## 2026-09-10 天空岛可玩性与时长评估：4 P2 / 3 P3
 
 owner 预期「整座岛约 10 小时体验完」，要求判断这个预期、优化局内流程并修 bug，无人值守。结论是**不成立**（中值：主线约 21 分钟、全部内容各一次约 1.6 小时、含合理重复约 4.2 小时）；

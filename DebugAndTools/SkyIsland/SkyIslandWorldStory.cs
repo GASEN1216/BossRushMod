@@ -14,12 +14,22 @@ namespace BossRush
         private readonly List<GameObject> feedback = new List<GameObject>();
         private readonly GameObject root;
         private int displayedFlags = -1;
+        /// <summary>本趟秘境谜题解到哪一步：只活在会话里，解开后的结果仍是既有支线物证旗标。</summary>
+        private readonly SkyIslandPuzzleState puzzles = new SkyIslandPuzzleState();
+        /// <summary>本趟的信鸽（至多一只）与它带的信；收下之后两者都清空。</summary>
+        private GameObject pigeon;
+        private SkyIslandLetter pigeonLetter;
+        private bool pigeonPlaced;
+        private float pigeonCaptionAt = -1f;
+        /// <summary>信鸽落地字幕推迟的游戏秒数：错开落地大标题与目标卡，别在同一秒挤三句话。</summary>
+        internal const float PigeonCaptionDelay = 8f;
         internal bool Visible { get { return presentation.Visible; } }
         internal SkyIslandWorldStory(SkyIslandSession session, SkyIslandStoryService story, GameObject root)
         {
             this.session = session; this.story = story; this.root = root;
             // 会话在就绪那一刻建本对象，也就是「读条结束、人落地」的时间点：分段计时从这里开始算岛上时长。
             if (story != null) story.LogTiming("landed", null);
+            pigeonCaptionAt = Time.time + PigeonCaptionDelay;
         }
 
         internal static string PointName(string key)
@@ -98,12 +108,15 @@ namespace BossRush
             if (BlockedByCombat()) return;
             reopen = delegate { ReadPoint(key, recorded); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
-            choices.Add(new SkyIslandStoryPresentation.Choice(
+            // 四座秘境的物证点先是一段三步小谜题（SkyIslandPuzzles）；解开之后、或物证早已拿到，才是普通的「收录」页。
+            SkyIslandPuzzle puzzle = SkyIslandPuzzles.For(key);
+            bool solving = puzzle != null && !story.Current.Has(puzzle.Flag) && !puzzles.IsSolved(puzzle);
+            if (solving) PuzzleChoices(choices, puzzle, recorded);
+            else choices.Add(new SkyIslandStoryPresentation.Choice(
                 L10n.T("收录见闻 / 物证", "Record the note / evidence"), delegate
             {
-                if (key == "Search_S4" && !session.IsEncounterCleared("S4"))
-                    return L10n.T("先清除瞭台上的守卫，再静下心校准观星镜。",
-                        "Clear the guards on the overlook first, then calibrate the telescope in peace.");
+                string guarded = OverlookGuarded(key);
+                if (guarded != null) return guarded;
                 string message;
                 bool recordedNow = story.RecordSearch(key, out message);
                 if (recordedNow && recorded != null) recorded();
@@ -130,7 +143,9 @@ namespace BossRush
                     // 委托板与苇白本人等价：她婚后离岛或尚未生成时，委托仍然可接可交。
                     BountyChoices(choices, () => BoardPosition("Search_B")); break;
                 case "Search_A": ServiceChoice(choices,
-                    L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair); break;
+                    L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
+                    // 手记与苇白本人等价：码头每趟必经，翻手记不必先去风铃集找到她。
+                    JournalChoice(choices); break;
                 // 菜畦与晴禾本人等价：她是永久 NPC，一旦与玩家结婚就由婚姻系统接管、不再上岛
                 // （`SkyIslandResidents.SpawnOneAsync` 跳过生成，`PermanentDuckNpcModule` 对
                 // SkyIslandRaid 恒返回 false），归航菜此前只挂在她身上，会永久失联。
@@ -141,8 +156,8 @@ namespace BossRush
             }
             // 装置/见闻面板配该区域的横幅插图；SkyIslandUiArt 是 fail-open 的，
             // 缺图就退成无插图布局，绝不因为一张图没出来就打不开挂着 K1/K2/K3 的装置。
-            presentation.Show(PointName(key), Lore(key) + "\n\n" + story.CurrentObjective, choices,
-                null, SkyIslandUiArt.GetScene(key));
+            presentation.Show(PointName(key), solving ? PuzzleBody(puzzle, key) : Lore(key) + "\n\n" + story.CurrentObjective,
+                choices, null, SkyIslandUiArt.GetScene(key));
         }
 
         internal void Talk(string id, Transform speaker)
@@ -162,8 +177,8 @@ namespace BossRush
             else if (id == "sky_weibai")
             {
                 BountyChoices(choices, delegate { return speaker != null ? speaker.position : BoardPosition("Search_B"); });
-                choices.Add(new SkyIslandStoryPresentation.Choice(
-                    L10n.T("查阅航标与支线记录", "Review beacons and side-path records"), () => story.Summary));
+                // 以前这一项只回一段旅程摘要；群岛手记把摘要放进总览，再加上见闻、来信与名册。
+                JournalChoice(choices);
             }
             else if (id == "sky_fuzhou") ServiceChoice(choices,
                 L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
@@ -397,11 +412,13 @@ namespace BossRush
                     return;
                 }
             }
+            TickPigeon();
             if (displayedFlags == story.Current.flags) return;
             // 进岛首帧 displayedFlags 为 -1：存档里早就有的结果只重建世界状态、不重播回话；之后只读真正新增的位。
             int added = displayedFlags < 0 ? 0 : story.Current.flags & ~displayedFlags;
             displayedFlags = story.Current.flags;
             AnnounceCombatOutcomes(added);
+            GrantKeepsakes();
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();
             if (story.Current.Has(SkyIslandStoryFlag.WindBeacon))
@@ -417,9 +434,13 @@ namespace BossRush
             // 折翎被战胜后剧情体不再露面（见 SkyIslandSession 的 SetVisible），原地留下旧腰牌。
             // 走的是同一条「按持久 flag 重建」的路子，跨局重进仍在。
             if (story.Current.Has(SkyIslandStoryFlag.ZhelingDefeated))
-                Beacon("POI_F", L10n.T("折翎的旧腰牌", "Zheling's old badge"), BossRushUIColors.Accent, ZhelingBadgeText);
+                Beacon("EnemySpawn_F", L10n.T("折翎的旧腰牌", "Zheling's old badge"), BossRushUIColors.Accent, ZhelingBadgeText);
             if (story.Current.Has(SkyIslandStoryFlag.Ending))
                 Beacon("Search_H", L10n.T("归航钟声 · 欢迎回家", "The Homecoming Bell · welcome home"), BossRushUIColors.WarningText);
+            // 归航船名册：结局之后系在码头灯旁（Lamp_A_02，离码头撤离环 26 m、不进环）；四页内容随本存档的选择变化。
+            if (story.Current.Has(SkyIslandStoryFlag.Ending))
+                Beacon("Lamp_A_02", L10n.T("归航船 · 船员名册", "Homecoming boat · crew roster"), BossRushUIColors.Accent,
+                    () => SkyIslandCrew.Intro(story.Current), CrewChoices);
         }
         /// <summary>
         /// 折翎旧腰牌（纪念物）的面板正文。Wiki 承诺「他倒下时留下的旧腰牌写着『航路交给你』，钟守认这份物证」，
@@ -446,7 +467,8 @@ namespace BossRush
         }
 
         /// <param name="body">纪念物面板正文；null 时显示旅程摘要。</param>
-        private void Beacon(string marker, string label, Color color, Func<string> body = null)
+        /// <param name="choices">纪念物面板的选项（归航船名册的四页）；null 时没有选项。每次打开现取。</param>
+        private void Beacon(string marker, string label, Color color, Func<string> body = null, Func<List<SkyIslandStoryPresentation.Choice>> choices = null)
         {
             Transform point = root.transform.Find(marker);
             if (point == null) return;
@@ -474,11 +496,235 @@ namespace BossRush
                 {
                     if (BlockedByCombat()) return;
                     presentation.Show(label, body != null ? body() : story.Summary,
-                        new List<SkyIslandStoryPresentation.Choice>(),
+                        choices != null ? choices() : new List<SkyIslandStoryPresentation.Choice>(),
                         null, SkyIslandUiArt.GetScene(marker));
                 }));
         }
         internal void Hide() { presentation.Dispose(); }
+
+        /// <summary>残星瞭台的观星镜要先清掉守卫：普通收录与谜题两条路共用这一句门控。</summary>
+        private string OverlookGuarded(string key)
+        {
+            if (key == "Search_S4" && !session.IsEncounterCleared("S4"))
+                return L10n.T("先清除瞭台上的守卫，再静下心校准观星镜。",
+                    "Clear the guards on the overlook first, then calibrate the telescope in peace.");
+            return null;
+        }
+
+        /// <summary>谜题页正文：本岛见闻 + 谜题场景与线索 + 当前这一步的提问。</summary>
+        private string PuzzleBody(SkyIslandPuzzle puzzle, string key)
+        {
+            int index = puzzles.CurrentStep(puzzle);
+            return Lore(key) + "\n\n" + puzzle.Title + L10n.T("：", ": ") + puzzle.Intro + "\n\n" +
+                L10n.T("第 ", "Step ") + (index + 1) + "/" + puzzle.Steps.Length + L10n.T(" 步 · ", " · ") +
+                puzzle.Steps[index].Prompt;
+        }
+
+        /// <summary>
+        /// 秘境谜题当前这一步的三个选项。答对前进（重开面板换下一步的选项）；最后一步答对才走原来的收录动作
+        /// （`RecordSearch` → Find* / RepairTelescope），写屏障失败时保留「已解开」，下次进来就是普通收录页，不用再解一遍。
+        /// 答错只写提示、再错直接点破，停在原步可以一直重选：没有惩罚，也不存在解不开的情况。
+        /// </summary>
+        private void PuzzleChoices(List<SkyIslandStoryPresentation.Choice> choices, SkyIslandPuzzle puzzle, Action recorded)
+        {
+            string key = puzzle.Key;
+            SkyIslandPuzzleOption[] options = puzzle.Steps[puzzles.CurrentStep(puzzle)].Options;
+            for (int i = 0; i < options.Length; i++)
+            {
+                int option = i;
+                choices.Add(new SkyIslandStoryPresentation.Choice(options[option].Label, delegate
+                {
+                    string guarded = OverlookGuarded(key);
+                    if (guarded != null) return guarded;
+                    string feedback;
+                    SkyIslandPuzzleOutcome outcome = puzzles.Choose(puzzle, option, out feedback);
+                    if (outcome == SkyIslandPuzzleOutcome.Solved)
+                    {
+                        string message;
+                        bool recordedNow = story.RecordSearch(key, out message);
+                        if (recordedNow && recorded != null) recorded();
+                        return Refreshed(recordedNow, feedback + "\n\n" + message);
+                    }
+                    // 前进要换一组选项，只能重开；重开之后回执写进新面板的正文，所以回执里带上下一步的提问。
+                    if (outcome == SkyIslandPuzzleOutcome.Advanced && reopen != null) reopen();
+                    return feedback + "\n\n" + PuzzleBody(puzzle, key);
+                }));
+            }
+        }
+
+        /// <summary>「翻阅群岛手记」：苇白与码头装置各挂一份，打开的是同一本（只读存档，不写任何东西）。</summary>
+        private void JournalChoice(List<SkyIslandStoryPresentation.Choice> choices)
+        {
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("翻阅群岛手记", "Open the archipelago journal"), delegate
+            {
+                OpenJournal();
+                // 回调的返回值会写进（新开的）面板正文：返回总览，与手记面板自己的正文一致。
+                return SkyIslandJournal.Overview(story.Current, story.Summary);
+            }));
+        }
+
+        /// <summary>
+        /// 群岛手记面板：四个见闻章节 + 来信与名册 + 总览，共 6 个选项（面板布局属性测试的最坏情况覆盖到 6 个）。
+        /// 章节正文可能很长，正文区自带滚动；选项只换正文、不重开面板。
+        /// </summary>
+        private void OpenJournal()
+        {
+            if (BlockedByCombat()) return;
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            for (int i = 0; i < SkyIslandJournal.Chapters.Length; i++)
+            {
+                int chapter = i;
+                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandJournal.ChapterName(chapter),
+                    () => SkyIslandJournal.Chapter(chapter, story.Current, PointName, Lore)));
+            }
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("来信 · 名册 · 纪念品", "Letters · crew roster · keepsakes"),
+                () => SkyIslandJournal.Letters(story.Current) + "\n\n" + SkyIslandJournal.Crew(story.Current) + "\n\n" +
+                    SkyIslandJournal.Keepsakes(story.Current)));
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("总览", "Overview"),
+                () => SkyIslandJournal.Overview(story.Current, story.Summary)));
+            presentation.Show(L10n.T("群岛手记", "Archipelago journal"), SkyIslandJournal.Overview(story.Current, story.Summary),
+                choices, null, null);
+        }
+
+        /// <summary>归航船名册的四页：第一次翻到某页才写进手记；读过的页照当前存档重新生成（选择变了，话也跟着变）。</summary>
+        private List<SkyIslandStoryPresentation.Choice> CrewChoices()
+        {
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            for (int i = 0; i < SkyIslandCrew.Count; i++)
+            {
+                int page = i;
+                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandCrew.Name(page), delegate
+                {
+                    string message;
+                    if (!SkyIslandCrew.Read(story.Current, page)) story.RecordNote(SkyIslandCrew.NoteId(page), out message);
+                    return SkyIslandCrew.Page(page, story.Current);
+                }));
+            }
+            return choices;
+        }
+
+        /// <summary>
+        /// 信鸽：每趟至多一只，带 <see cref="SkyIslandLetters.NextFor"/> 选出的那封信（只取决于存档：收下之前每趟都是同一封、落在同一处）。
+        /// 首帧放下，落地字幕推迟 <see cref="PigeonCaptionDelay"/> 游戏秒。存档不可写（写屏障 / 换槽）时这趟不放：收不下的信不该出现。
+        /// </summary>
+        private void TickPigeon()
+        {
+            if (!pigeonPlaced)
+            {
+                pigeonPlaced = true;
+                SkyIslandLetter letter = story.CanWrite ? SkyIslandLetters.NextFor(story.Current) : null;
+                if (letter != null && PlacePigeon(letter)) pigeonLetter = letter;
+            }
+            if (pigeon == null || pigeonCaptionAt < 0f || Time.time < pigeonCaptionAt) return;
+            pigeonCaptionAt = -1f;
+            session.Announce(L10n.T("一只信鸽落在了", "A carrier pigeon has landed on ") + SkyIslandSession.RegionLabel(pigeonLetter.Region) +
+                L10n.T("，脚上绑着一封信。", ", a letter tied to its leg."), false);
+        }
+
+        /// <summary>落点与纪念物同一套算法：锚点外一个交互间距，方位按信的 id 取稳定散列（交互竞争属性测试逐封复算）。找不到净空这趟就不放。</summary>
+        private bool PlacePigeon(SkyIslandLetter letter)
+        {
+            Transform anchor = root.transform.Find(letter.Anchor);
+            Vector3 spot;
+            if (anchor == null || !SkyIslandRewardCrate.TryFindCratePosition(root.transform, anchor.position,
+                SkyIslandLootTables.StableHash(letter.Id) % 360, SkyIslandRewardCrate.InteractableSeparation,
+                GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return false;
+            pigeon = SkyIslandStoryInteractable.Create(root.transform, spot, "SkyIslandPigeon_" + letter.Id,
+                L10n.T("信鸽 · 来信", "Carrier pigeon · a letter"), delegate { ReadLetter(letter); });
+            GameObject glow = new GameObject("PigeonGlow");
+            glow.transform.SetParent(pigeon.transform, false);
+            glow.transform.localPosition = Vector3.up * 2f;
+            Light light = glow.AddComponent<Light>(); light.type = LightType.Point; light.color = BossRushUIColors.TextPrimary;
+            light.intensity = 1.2f; light.range = 9; light.shadows = LightShadows.None;
+            return true;
+        }
+
+        /// <summary>读信：收下才写进手记；信鸽随即飞走（交互体销毁），面板换成没有选项的同一页并附一句回执。</summary>
+        private void ReadLetter(SkyIslandLetter letter)
+        {
+            if (BlockedByCombat()) return;
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("收下这封信", "Keep the letter"), delegate
+            {
+                string message;
+                if (!story.RecordNote(letter.Id, out message)) return letter.Body + "\n\n" + message;
+                ReleasePigeon();
+                // 第一封信送到时浮舟捎来风标罗盘：收信不改剧情旗标，纪念品在这里补查一次。
+                GrantKeepsakes();
+                string kept = letter.Body + "\n\n" + L10n.T("（信收进了群岛手记。信鸽扑了扑翅膀，朝云海飞走了。）",
+                    "(The letter goes into your archipelago journal. The pigeon shakes out its wings and flies off over the cloud sea.)");
+                presentation.Show(letter.Title, kept, new List<SkyIslandStoryPresentation.Choice>(), null,
+                    SkyIslandUiArt.GetScene(letter.Anchor));
+                return kept;
+            }));
+            presentation.Show(letter.Title, letter.Body, choices, null, SkyIslandUiArt.GetScene(letter.Anchor));
+        }
+
+        /// <summary>
+        /// 纪念品（<see cref="SkyIslandItemRules"/>）：条件满足、手记里还没有发放记录就发一件。**先记手记、再发物品**——
+        /// 写屏障下这趟不发，也就不会每趟重发一件能卖钱的东西；发放失败（物品资源缺失）只记日志。
+        /// 旧存档第一次进岛同样补发（航徽、噬风之核按已有旗标，罗盘按已收到的信）。
+        /// </summary>
+        private void GrantKeepsakes()
+        {
+            if (!story.CanWrite) return;
+            SkyIslandKeepsake[] all = SkyIslandItemRules.Keepsakes;
+            for (int i = 0; i < all.Length; i++)
+            {
+                if (!SkyIslandItemRules.Due(story.Current, all[i])) continue;
+                string message;
+                if (!story.RecordNote(all[i].NoteId, out message)) continue;
+                if (SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage)) session.Announce(all[i].Caption, false);
+                else Debug.LogWarning("[SkyIsland] 纪念品发放失败（物品资源缺失）：" + all[i].NoteId);
+            }
+        }
+
+        /// <summary>
+        /// 风标罗盘的读数：先指本趟还没收下的信鸽，再指最近的主线目标，最后指最近的可选目标
+        /// （后两者与官方地图上的圈是同一份清单 <see cref="SkyIslandMapMarkers"/>）；都没有就说没有要找的。
+        /// </summary>
+        internal string CompassReading(Vector3 from)
+        {
+            if (pigeon != null)
+            {
+                Vector3 toPigeon = pigeon.transform.position - from;
+                return SkyIslandItemRules.CompassReading(true, toPigeon.x, toPigeon.z, L10n.T("信鸽落脚的地方", "where the pigeon landed"));
+            }
+            string what = L10n.T("当前目标", "your current objective");
+            Transform target = NearestMarker(SkyIslandMapMarkers.ObjectiveTargets(story.Current), from);
+            if (target == null)
+            {
+                target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);
+                what = L10n.T("还没了结的支线", "an unfinished side path");
+            }
+            if (target == null) return SkyIslandItemRules.CompassReading(false, 0, 0, null);
+            Vector3 delta = target.position - from;
+            return SkyIslandItemRules.CompassReading(true, delta.x, delta.z, what);
+        }
+
+        private Transform NearestMarker(IEnumerable<string> names, Vector3 from)
+        {
+            Transform best = null;
+            float bestDistance = float.MaxValue;
+            foreach (string name in names)
+            {
+                Transform marker = root.transform.Find(name);
+                if (marker == null) continue;
+                Vector3 delta = marker.position - from;
+                delta.y = 0f;
+                float distance = delta.sqrMagnitude;
+                if (distance < bestDistance) { bestDistance = distance; best = marker; }
+            }
+            return best;
+        }
+
+        private void ReleasePigeon()
+        {
+            if (pigeon != null) UnityEngine.Object.Destroy(pigeon);
+            pigeon = null;
+            pigeonLetter = null;
+            pigeonCaptionAt = -1f;
+        }
         public void Dispose()
         {
             // reopen 捕获了 marker key、recorded 回调与说话人 Transform，会话结束后一并放开。
@@ -486,6 +732,8 @@ namespace BossRush
             presentation.Dispose();
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();
+            ReleasePigeon();
+            puzzles.Clear();
         }
         private static string Lore(string key)
         {

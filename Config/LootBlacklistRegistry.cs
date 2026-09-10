@@ -185,6 +185,12 @@ namespace BossRush
                 BossRushItemIds.DragonFruit,
                 BossRushItemIds.EmberChili,
                 BossRushItemIds.PhantomMushroom,
+                // 天空岛物品：纪念品只在剧情节点发一次，特产只从岛上的箱子里出——都不该进许愿台、日报与各类品质池。
+                BossRushItemIds.SkyIslandHomecomingBadge,
+                BossRushItemIds.SkyIslandWindeaterCore,
+                BossRushItemIds.SkyIslandWindVaneCompass,
+                BossRushItemIds.SkyIslandHomecomingBento,
+                BossRushItemIds.SkyIslandStarmossSalve,
             };
         }
     }

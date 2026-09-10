@@ -232,6 +232,21 @@ namespace BossRush
             return true;
         }
 
+        /// <summary>
+        /// 信鸽来信、归航船名册与纪念品发放记录：和见闻一样写进本槽手记（`discoveredNotes`），共用 <see cref="RecordSearch"/> 的
+        /// 去重、去抖与计时口径，不加存档字段。只收已登记的 id（<see cref="SkyIslandLetters.Find"/> / <see cref="SkyIslandCrew.IndexOf"/> /
+        /// <see cref="SkyIslandItemRules.FindKeepsake"/>），不让任意字符串进存档。
+        /// </summary>
+        internal bool RecordNote(string id, out string message)
+        {
+            if (SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null)
+            {
+                message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
+                return false;
+            }
+            return RecordSearch(id, out message);
+        }
+
         internal static int RegionBit(string id)
         {
             switch (id)
@@ -274,34 +289,67 @@ namespace BossRush
             SkyIslandStoryData data = Current;
             switch (id)
             {
+                // 居民台词随进度与收到的信变化：信鸽送来的信大多是写给他们的（SkyIslandLetters），收下之后当面会提一句。
                 case "sky_qinghe":
-                    return data.Has(SkyIslandStoryFlag.PlantingDelivered)
-                        ? L10n.T("晴禾：新风车转起来了。下一船归来时，他们会有热菜吃。",
-                            "Qinghe: The new pinwheel is turning. When the next ship comes home there will be a hot meal waiting.")
+                    return (data.Has(SkyIslandStoryFlag.PlantingDelivered)
+                        ? (data.Has(SkyIslandStoryFlag.Ending)
+                            ? L10n.T("晴禾：归航船上的人都来吃过了。最后一畦我还留着——留给下一位旅人。",
+                                "Qinghe: Everyone off the homecoming boat has been by to eat. I am still keeping the last bed — for the next traveller.")
+                            : L10n.T("晴禾：新风车转起来了。下一船归来时，他们会有热菜吃。",
+                                "Qinghe: The new pinwheel is turning. When the next ship comes home there will be a hot meal waiting."))
                         : L10n.T("晴禾：蛙鸣池那边有我丢下的种植记录。没来得及说出口的事，都写在里面了。",
-                            "Qinghe: My planting record is still out at Frogsong Pool. Everything I never got to say is written in it.");
+                            "Qinghe: My planting record is still out at Frogsong Pool. Everything I never got to say is written in it.")) +
+                        (SkyIslandLetters.Collected(data, "Letter_03")
+                            ? L10n.T("\n……那封没署名的信，我认得那笔字。田埂上那一格，我还替他留着。",
+                                "\n…That unsigned letter — I know that handwriting. I am still keeping that plot on the ridge for him.")
+                            : string.Empty);
                 case "sky_weibai":
-                    return L10n.T("苇白：西边悬根林有风标，东边残星工坊有星灯，先去哪边都行。装置还在，修好它们就能让双航标门重新工作。\n",
-                        "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n") + CurrentObjective;
+                    return (data.Has(SkyIslandStoryFlag.Ending)
+                        ? L10n.T("苇白：钟响那天，东西两头的风铃一起响了——苇生以前说，那是岛在叫大家回家。委托板我还挂着，路过就来揭一张。\n",
+                            "Weibai: The day the bell rang, the chimes at both ends of the market rang together — Weisheng used to say that is the island calling everyone home. The contract board stays up; take a slip whenever you pass.\n")
+                        : data.BothBeacons
+                            ? L10n.T("苇白：两盏灯都亮了，东西两头的风铃在一起响！去鸣风栈道吧，钟庭在等你。\n",
+                                "Weibai: Both lamps are lit and the chimes at either end are ringing together! On to Windsong Boardwalk — the Bell Court is waiting for you.\n")
+                            : L10n.T("苇白：西边悬根林有风标，东边残星工坊有星灯，先去哪边都行。装置还在，修好它们就能让双航标门重新工作。\n",
+                                "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n")) +
+                        (SkyIslandLetters.Collected(data, "Letter_02")
+                            ? L10n.T("苇生的信你替我收下了？……他还是那么爱说大话。\n", "You took in Weisheng's letter for me? …He still loves to talk big.\n")
+                            : string.Empty) + CurrentObjective;
                 case "sky_fuzhou":
-                    return data.Has(SkyIslandStoryFlag.Ending)
-                        ? L10n.T("浮舟：钟声听见了。船一直在这里，下次来时，我们再讲归航的故事。",
-                            "Fuzhou: I heard the bell. The boat has always been here — come back and we will tell the homecoming story again.")
+                    return (data.Has(SkyIslandStoryFlag.Ending)
+                        ? L10n.T("浮舟：钟声听见了。船一直在这里，船头挂着名册，四个归来的人各写了一页，去看看吧。",
+                            "Fuzhou: I heard the bell. The boat has always been here — there is a roster at the bow, and each of the four who came home wrote a page. Go and have a look.")
                         : L10n.T("浮舟：沿桥去风铃集找苇白。走累了随时回来，码头的系泊桩会送你回家，已记录的故事下次继续。",
-                            "Fuzhou: Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.");
+                            "Fuzhou: Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.")) +
+                        (SkyIslandLetters.Collected(data, "Letter_01")
+                            ? L10n.T("\n阿潮的缆绳……我这就挂回最高的那根桩上。", "\nAchao's mooring line… I will hang it back on the tallest post right away.")
+                            : string.Empty);
                 case "sky_miantai":
-                    return L10n.T("眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
-                        "Miantai: The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
+                    return data.Has(SkyIslandStoryFlag.WindBeacon)
+                        ? (data.Has(SkyIslandStoryFlag.OldLetter)
+                            ? L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭那封信你拿到了？那就去镜水寺吧，折翎等它等了很久。",
+                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. You have the letter from the Upturned Post Hut? Then go to Mirrorwater Temple — Zheling has waited a long time for it.")
+                            : L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can."))
+                        : L10n.T("眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                            "Miantai: The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
                 case "sky_zheling":
                     return data.ZhelingResolved
                         ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled)
                             ? L10n.T("折翎：路已修好。这次我守着灯，等大家回来。",
-                                "Zheling: The road is mended. This time I keep the light and wait for them to come home.")
+                                "Zheling: The road is mended. This time I keep the light and wait for them to come home.") +
+                              (SkyIslandLetters.Collected(data, "Letter_06")
+                                ? L10n.T("\n扫地的老人还替我擦着钟……等灯都亮了，我回寺里喝那杯茶。",
+                                    "\nThe old sweeper still polishes the bell for me… Once every light is lit, I will go back to the temple for that cup of tea.")
+                                : string.Empty)
                             : L10n.T("旧腰牌上刻着：『航路交给你。』",
                                 "The old badge is engraved: 'The route is yours now.'"))
                         : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
                             "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
                 case "sky_bellkeeper":
+                    if (data.Has(SkyIslandStoryFlag.Ending))
+                        return L10n.T("钟守：钟声不是命令，是回答。名册上多了一行字，我没有擦掉。",
+                            "The Bell Keeper: A bell is not an order; it is an answer. A new line appeared in the register, and I have not wiped it away.");
                     return data.BellKeeperResolved
                         ? L10n.T("钟守：去吧，敲响归航钟。让他们知道，岛上还有人在等。",
                             "The Bell Keeper: Go on, ring the Homecoming Bell. Let them know someone on the islands is still waiting.")

@@ -59,6 +59,8 @@ namespace BossRush
             BackMountainItems.InjectLocalization();
             // 后山建筑与交互键统一来自 Localization/BackMountainLocalization.cs
             BackMountainLocalization.Inject();
+            // 天空岛物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
+            SkyIslandItems.InjectLocalization();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();

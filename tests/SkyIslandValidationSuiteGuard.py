@@ -46,7 +46,8 @@ EXPECTED_CJK_RANGES = (
 # 会改变玩家这趟出击状态的生产入口（方法名）。岛内验收一条都不许调；
 # 方法组转换（`Action a = session.Close;`）同样算调用。只列**确实会写**的：读属性不在此列。
 MUTATING_MEMBERS = (
-    ("RecordSearch", "收录见闻"), ("RecordEncounterCleared", "记清场"), ("RecordRegionVisited", "点亮区域"),
+    ("RecordSearch", "收录见闻"), ("RecordNote", "收录来信与名册"),
+    ("RecordEncounterCleared", "记清场"), ("RecordRegionVisited", "点亮区域"),
     ("BeginStoryChallenge", "开战"), ("BeginChallenge", "开战"), ("SpawnEnemy", "刷怪"),
     ("VisitNextLandmark", "搬玩家"), ("SetPosition", "搬玩家"), ("Rescue", "搬玩家"),
     ("CycleLighting", "改光色"), ("OpenMap", "打开官方地图"),
@@ -56,7 +57,7 @@ MUTATING_MEMBERS = (
     ("Close", "结束这趟出击"), ("TryClose", "关闭剧情存档"),
     ("Talk", "打开剧情面板"), ("ReadPoint", "打开剧情面板"), ("SetVisible", "改居民可见性"),
     ("Heal", "付费服务"), ("Repair", "付费服务"), ("Meal", "付费服务"),
-    ("Announce", "往玩家屏幕发提示"),
+    ("Announce", "往玩家屏幕发提示"), ("UseCompass", "往玩家屏幕发提示"),
 )
 
 # 不以方法名出现、但同样会改状态的写法。

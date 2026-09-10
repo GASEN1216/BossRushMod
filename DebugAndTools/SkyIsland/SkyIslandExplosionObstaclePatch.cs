@@ -18,7 +18,7 @@ namespace BossRush
     /// </code>
     ///
     /// 这个 0.5 是按原版地面在 y≈0 写死的「齐腰高度的水平视线」。天空岛的 12 个岛按
-    /// `ArtSource/SkyIsland/layout.json` 分布在 y = 0 / 8 / 16 / 18 / 24 / 26 / 28 / 42 / 44 / 52 / 62，
+    /// `ArtSource/SkyIsland/layout.json`（布局 v2）分布在 y = 0 / 5 / 7 / 10 / 13 / 15 / 16 / 18 / 21 / 26，
     /// 除登云码头以外**没有任何一块地面在 0.5 米附近**，射线整条跑在岛体下方的空气里、
     /// 恒定打空、`CheckObsticle` 恒返回 false —— 于是：
     ///

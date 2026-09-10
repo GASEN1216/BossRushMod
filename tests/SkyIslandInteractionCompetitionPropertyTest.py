@@ -94,6 +94,9 @@ RESIDENT_MARKERS = re.findall(r'"(POI_[A-Z0-9]+|EnemySpawn_[A-Z0-9]+)"',
                               .split('};', 1)[0])
 # 交单锚点：装置版用 Search_B 本身（`BoardPosition("Search_B")`）。
 BOUNTY_ANCHOR = 'Search_B'
+# 信鸽：`SkyIslandLetters` 里每封信登记的 (id, 锚点)；落点算法见 `SkyIslandWorldStory.PlacePigeon`。
+LETTERS_SRC = _read('DebugAndTools/SkyIsland/SkyIslandLetters.cs')
+LETTERS = re.findall(r'Letter\("(Letter_\d+)",\s*"([A-Za-z0-9_]+)"', LETTERS_SRC)
 
 
 def stable_hash(value):
@@ -194,6 +197,16 @@ def build_interactables():
             continue
         items.append(('resident:' + marker, spot, RESIDENT_HALF, 'resident:' + marker))
 
+    # 7) 信鸽：每趟至多一只（`SkyIslandWorldStory.PlacePigeon`），落点是信的锚点外一个交互间距、方位按信的 id 取稳定散列。
+    #    12 封信不会同时在场（同组不比），但每一封都必须与其它交互体不抢——下一趟来哪一封只取决于存档。
+    for letter_id, anchor_marker in LETTERS:
+        spot = resolve_crate(MARKERS[anchor_marker], stable_hash(letter_id) % 360, SEPARATION)
+        if spot is None:
+            # 生产找不到净空就这趟不放信鸽（信留到下一趟）：没有交互体就没有竞争。
+            notes.append('信鸽 %s 在 %s 没有净空落点，生产这趟不放信鸽' % (letter_id, anchor_marker))
+            continue
+        items.append(('pigeon:' + letter_id, spot, STORY_HALF, 'pigeon'))
+
     return items, notes
 
 
@@ -236,7 +249,7 @@ def check_own_anchor_clearance(items):
         marker = name.split(':', 1)[1]
         anchor_name = 'search:' + marker
         if anchor_name not in lookup:
-            continue  # POI_F 上没有见闻点
+            continue  # EnemySpawn_F（折翎旧腰牌）与 Lamp_A_02（归航船名册）上没有见闻点
         anchor_pos, anchor_half = lookup[anchor_name]
         distance = horizontal(pos, anchor_pos)
         if distance < half + anchor_half:
@@ -262,6 +275,7 @@ def check_negative_probes():
 
 def main():
     check_negative_probes()
+    assert len(LETTERS) >= 12, '信鸽锚点没解析全：%d 封' % len(LETTERS)
     items, notes = build_interactables()
     assert len(items) >= 60, '静态交互体数量异常偏少：%d' % len(items)
 

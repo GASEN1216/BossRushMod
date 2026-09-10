@@ -102,3 +102,27 @@ Determines your faction in Faction War. Consumed on entry.
 - **Source**: Base merchant / **Stock**: 5 per type
 
 See Faction War for details.
+
+---
+
+## Wind-Vane Compass
+
+Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Sky Islands and it reads out a bearing and a rough distance: first to an uncollected **carrier pigeon**, then to your nearest current objective, and after the ending to an unfinished side path.
+
+- **Source**: arrives with your first kept pigeon letter on the Sky Islands; Starworks crates occasionally hold one
+- **Use**: reusable, never consumed; does not stack
+- Used anywhere else, it only tells you the vane is spinning
+
+See Sky Islands · Qinglan Archipelago.
+
+---
+
+## Qinglan Homecoming Badge / Windeater Core
+
+The Sky Islands' two keepsakes — one of each per save, sent straight to base storage when granted.
+
+- **Qinglan Homecoming Badge**: granted when you ring the Homecoming Bell
+- **Windeater Core**: granted when you defeat the Windeater; sells for more
+- **Use**: collectibles that can also be sold; do not stack
+
+See Sky Islands · Qinglan Archipelago.

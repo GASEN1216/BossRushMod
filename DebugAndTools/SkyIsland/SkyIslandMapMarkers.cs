@@ -55,13 +55,15 @@ namespace BossRush
             Add(star, L10n.T("残星工坊广场撤离点", "Fallen Star Workshop extraction"), BossRushUIColors.SuccessText, 0f);
             foreach (string target in ObjectiveTargets(data))
                 Add(root.Find(target), L10n.T("当前目标", "Current objective"), BossRushUIColors.WarningText, ObjectiveRadius);
+            foreach (string target in SideTargets(data))
+                Add(root.Find(target), SideLabel(target), BossRushUIColors.Accent, ObjectiveRadius);
             if (notify == null) return;
             if ((opened & 2) != 0)
                 notify(L10n.T("风标点亮：悬根林广场开出返航风道，站进绿环即可撤离",
-                    "Wind beacon lit: an extraction ring opened on the Hanging Root Wood plaza"), false);
+                    "Wind beacon lit: an extraction ring opened on the Hanging Root Wood plaza — step into the green ring to extract"), false);
             if ((opened & 4) != 0)
                 notify(L10n.T("星灯点亮：残星工坊广场开出返航风道，站进绿环即可撤离",
-                    "Star lamp lit: an extraction ring opened on the Fallen Star Workshop plaza"), false);
+                    "Star lamp lit: an extraction ring opened on the Fallen Star Workshop plaza — step into the green ring to extract"), false);
             if ((opened & 1) != 0)
                 notify(L10n.T("双航标已亮：归航钟庭的撤离点开放", "Both beacons lit: the Bell Court extraction is open"), false);
         }
@@ -77,6 +79,30 @@ namespace BossRush
                 yield break;
             }
             yield return "Search_H";
+        }
+
+        /// <summary>
+        /// 可选目标（可玩性评估 R-14）：主线目标卡只管航标与钟庭，结局后更是什么都不圈，支线物证与噬风从来不上地图。
+        /// - 两端航标都亮、噬风还没打：圈鸣风栈道上的风眼（`POI_E`，噬风遭遇锚点）；结局之后仍没打同样圈。
+        /// - 结局之后：圈还没拿到的支线物证（S1–S4 的物证点）；种植记录拿到了但还没交，就圈风铃集留言板。
+        /// 与主线目标一样只在剧情旗标变化时重建（见 <see cref="Apply"/>）；风标罗盘在主线目标都没有时指向这里。
+        /// </summary>
+        internal static IEnumerable<string> SideTargets(SkyIslandStoryData data)
+        {
+            if (data.BothBeacons && !data.StormResolved) yield return "POI_E";
+            if (!data.Has(SkyIslandStoryFlag.Ending)) yield break;
+            if (!data.Has(SkyIslandStoryFlag.PlantingRecord)) yield return "Search_S1";
+            else if (!data.Has(SkyIslandStoryFlag.PlantingDelivered)) yield return "Search_B";
+            if (!data.Has(SkyIslandStoryFlag.OldLetter)) yield return "Search_S2";
+            if (!data.Has(SkyIslandStoryFlag.RouteChart)) yield return "Search_S3";
+            if (!data.Has(SkyIslandStoryFlag.Telescope)) yield return "Search_S4";
+        }
+
+        private static string SideLabel(string target)
+        {
+            return target == "POI_E"
+                ? L10n.T("可选挑战 · 噬风", "Optional challenge · the Windeater")
+                : L10n.T("支线目标", "Side objective");
         }
 
         private void Add(Transform anchor, string label, Color color, float areaRadius)

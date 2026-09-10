@@ -150,11 +150,15 @@ namespace BossRush
             if (pool == null || pool.Length == 0) return 0;
             int[] guaranteed = guaranteeTopBand ? SkyIslandLootPools.GetGuaranteeBand(tier) : null;
             System.Random random = SkyIslandLootTables.CreateStream(raidSeed, streamId);
+            // 岛上特产（SkyIslandItemRules.IslandExtraFor）：每箱至多多装一件，走独立随机流——原有 count 件的抽样结果一件不变。
+            int extra = SkyIslandItemRules.IslandExtraFor(tier,
+                SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble());
+            int total = extra != 0 ? count + 1 : count;
             int added = 0;
-            for (int i = 0; i < count; i++)
+            for (int i = 0; i < total; i++)
             {
                 int[] source = (i == 0 && guaranteed != null && guaranteed.Length > 0) ? guaranteed : pool;
-                int typeId = source[random.Next(source.Length)];
+                int typeId = i < count ? source[random.Next(source.Length)] : extra;
                 Item item = null;
                 try
                 {

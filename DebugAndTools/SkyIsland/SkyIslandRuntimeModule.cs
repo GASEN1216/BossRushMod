@@ -216,6 +216,7 @@ namespace BossRush
             SkyIslandLootPools.ResetStaticCaches();
             SkyIslandEnemyTiers.ResetStaticCaches();
             SkyIslandStormBoss.ResetStaticCaches();
+            SkyIslandItems.ResetStaticCaches();
             // 面板插图同样是跨出击复用的静态缓存：运行时 new 出来的 Texture/Sprite
             // 必须显式 Destroy，只置 null 是丢给 UnloadUnusedAssets 碰运气。
             SkyIslandUiArt.ResetStaticCaches();

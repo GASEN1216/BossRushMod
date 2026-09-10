@@ -10,6 +10,13 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandCrew.cs" Link="Production/SkyIslandCrew.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandJournal.cs" Link="Production/SkyIslandJournal.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSaveCoordinatorEngine.cs" Link="Production/BossRushSaveCoordinatorEngine.cs" />
     <Compile Include="../../../Common/Data/BossRushJsonValue.cs" Link="Production/BossRushJsonValue.cs" />

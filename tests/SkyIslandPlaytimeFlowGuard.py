@@ -132,13 +132,17 @@ def main():
             "新增的战斗结果必须经会话唯一提示出口读成字幕")
 
     # ---- 2. 折翎旧腰牌的刻字 ----
-    require(tick, 'Beacon("POI_F", L10n.T("折翎的旧腰牌", "Zheling\'s old badge"), BossRushUIColors.Accent, ZhelingBadgeText);',
-            "折翎纪念物必须带自己的正文（刻字 + 物证含义）")
+    # 腰牌落在他那一战的锚点上：R-1 之后居民站位 = 遭遇锚点 EnemySpawn_F（SkyIslandContentPackGuard 按 World.json 核对三者同点）。
+    require(tick, 'Beacon("EnemySpawn_F", L10n.T("折翎的旧腰牌", "Zheling\'s old badge"), BossRushUIColors.Accent, ZhelingBadgeText);',
+            "折翎纪念物必须带自己的正文（刻字 + 物证含义），并落在他那一战的锚点上")
     badge = need_body(world, "private string ZhelingBadgeText()", "旧腰牌正文")
     require(badge, "『航路交给你。』", "旧腰牌正文缺刻字")
     require(badge, "story.Summary", "旧腰牌正文之后仍要附旅程摘要")
-    beacon = need_body(world, "private void Beacon(string marker, string label, Color color, Func<string> body = null)", "纪念物")
+    beacon = need_body(world, "private void Beacon(string marker, string label, Color color, Func<string> body = null, "
+                              "Func<List<SkyIslandStoryPresentation.Choice>> choices = null)", "纪念物")
     require(beacon, "presentation.Show(label, body != null ? body() : story.Summary,", "纪念物面板必须用传入的正文")
+    require(beacon, "choices != null ? choices() : new List<SkyIslandStoryPresentation.Choice>(),",
+            "纪念物面板的选项每次打开现取（归航船名册读过的页随存档变化）")
 
     # ---- 3. 挑战开始的回执不能在面板收起之后写回正文 ----
     challenge = need_body(world, "private SkyIslandStoryPresentation.Choice Challenge(string label, string id)", "挑战选项")

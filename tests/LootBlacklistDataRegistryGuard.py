@@ -22,6 +22,12 @@ CONSTANT_VALUES = {
     "BossRushItemIds.DragonFruit": 500065,
     "BossRushItemIds.EmberChili": 500066,
     "BossRushItemIds.PhantomMushroom": 500067,
+    # 天空岛物品（纪念品、风标罗盘、岛上特产）：只从剧情节点与岛上箱子里出，不进任何随机奖池。
+    "BossRushItemIds.SkyIslandHomecomingBadge": 500068,
+    "BossRushItemIds.SkyIslandWindeaterCore": 500069,
+    "BossRushItemIds.SkyIslandWindVaneCompass": 500070,
+    "BossRushItemIds.SkyIslandHomecomingBento": 500071,
+    "BossRushItemIds.SkyIslandStarmossSalve": 500072,
     "DragonDescendantConfig.DRAGON_HELM_TYPE_ID": 500003,
     "DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID": 500004,
     "DragonBreathConfig.WEAPON_TYPE_ID": 500005,

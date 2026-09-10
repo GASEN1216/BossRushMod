@@ -1162,6 +1162,14 @@ namespace BossRush
         }
         // F3 天空岛验收的只读观测面（Validation* 成员与 SkyIslandValidationSnapshot）在 SkyIslandSessionValidation.cs。
 
+        /// <summary>风标罗盘（物品 500070）：读数由剧情 owner 给、走本岛唯一提示出口；不在有效出击里返回 false，由物品自己提示。</summary>
+        internal bool UseCompass()
+        {
+            if (!IsSessionValid() || worldStory == null) return false;
+            Status(worldStory.CompassReading(player.transform.position), false);
+            return true;
+        }
+
         /// <summary>剧情 owner 的对外提示通道：与其它天空岛消息共用同一个出口（见 Status），不另开一套。</summary>
         internal void Announce(string message, bool error) { Status(message, error); }
         /// <summary>

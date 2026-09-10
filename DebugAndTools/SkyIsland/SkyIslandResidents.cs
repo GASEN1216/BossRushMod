@@ -24,7 +24,9 @@ namespace BossRush
             "sky_qinghe", "sky_weibai", "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper"
         };
         // 全部锚点已在资源加载时校验地面与胶囊。双居民分占集市两侧现有标记。
-        private static readonly string[] Markers = { "POI_B", "EnemySpawn_B", "POI_A", "POI_D", "POI_F", "POI_H" };
+        // 折翎站在自己那一战的锚点上（`World.json` 里 Zheling 遭遇的 EnemySpawn_F）：布局 v2 把 POI_F 与它拉开到 63 m，
+        // 在他面前选「挑战」时本人消失、战斗体却刷在两屏之外（可玩性评估 R-1）。守卫按 World.json 核对两者同点。
+        private static readonly string[] Markers = { "POI_B", "EnemySpawn_B", "POI_A", "POI_D", "EnemySpawn_F", "POI_H" };
         // 显示名不再在这里写第二份：与剧情面板共用 SkyIslandWorldStory.ResidentName 的中英对照，
         // 否则英文玩家在交互提示与血条上仍会看到中文名。
 

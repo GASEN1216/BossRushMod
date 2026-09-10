@@ -19,7 +19,7 @@ Departing and returning work exactly like any other map: loading ends on the usu
 - **Only the regions you have set foot on are coloured in**; the rest stay as a dim grey silhouette. Revealed regions are remembered by your save, so they stay lit on later trips.
 - Your current objective is on a small card on the **right** side of the screen (below the game's own controls hint), not inside the map. It fades out together with the game's HUD while your backpack, the map or a dialogue is open.
 - Extraction points are drawn on the ground as a **glowing ring**: teal at the dock, always open; a green ring appears on the Hanging Root Wood plaza once its wind beacon is lit, another on the Fallen Star Workshop plaza once its star lamp is lit, and one at the Bell Court as soon as both beacons are lit (no need to ring the bell first). The ring is exactly the trigger area — stand inside it for **3 seconds** to return, with the same countdown ring as the game's own extraction points. Leaving cancels the countdown; opening an official screen such as your backpack, the pause menu or photo mode **freezes** it rather than resetting it.
-- **Extraction is the only way out**: no screen lets you return on the spot — you have to walk into an extraction ring and hold it for 3 seconds. Open extraction points are marked on the game's own map, a notice pops up once whenever a new one opens, and the map also circles where your current objective is.
+- **Extraction is the only way out**: no screen lets you return on the spot — you have to walk into an extraction ring and hold it for 3 seconds. Open extraction points are marked on the game's own map, a notice pops up once whenever a new one opens, and the map also circles where your current objective is. Once both beacons burn and the Windeater is still out there, the eye of the storm on Windsong Boardwalk gets a lighter circle as an optional challenge; after the bell has rung, side-path evidence you have not collected yet is circled the same way.
 - Leaving with side content unfinished is fine; you can come back later.
 
 ### The first stretch
@@ -93,16 +93,56 @@ With both beacons restored, talk to the Bell Keeper about the last obstacle. Col
 Challenging Zheling does not lock you out of the Bell Keeper's peaceful route: the old badge he leaves behind reads "the route is yours now", and the Bell Keeper accepts it as proof — walk up to the badge to read its inscription. Winning that fight does close the door on reconciling with Zheling himself, and the challenge button says so. Outcomes settled in a fight (beating Zheling, the bell engine or the Windeater) are read out as a caption at the bottom of the screen.
 
 
-After the Bell Keeper is resolved you still have to ring the bell yourself before the finale counts. Afterwards you can return to fill in notes and side paths; completed main-line steps never have to be redone.
+After the Bell Keeper is resolved you still have to ring the bell yourself before the finale counts. Afterwards you can return to fill in notes and side paths; completed main-line steps never have to be redone. Once the bell has rung, the homecoming boat ties up beside the dock lamp with a crew roster at the bow, and a Qinglan Homecoming Badge is waiting in your base storage.
+
+### Pigeon letters
+
+Every raid, **one carrier pigeon** lands somewhere on the islands with a letter tied to its leg — a letter that could not be sent the year of the storm and is only arriving now. A few seconds after you land, a caption at the bottom of the screen names the region it came down in. The pigeon is **not marked on the map**: you have to walk over and find it (its name fades in as you approach, with a soft white glow beside it).
+
+- Walk up to the pigeon, read the letter and choose "Keep the letter" to receive it; the pigeon then flies off and the letter goes into your archipelago journal. Leave without keeping it and the same pigeon waits in the same spot next raid.
+- There are **12 letters**. The first eight arrive one per raid, in order; the rest are only sent once the story reaches the right point (both beacons lit, the star lamp lit, the bell rung), and a letter whose condition has just been met is delivered first.
+- Most letters are addressed to someone on the islands. Talk to Fuzhou, Weibai, Qinghe or Zheling after keeping theirs and they will mention it.
+- **With your first letter**, Fuzhou sends along a **Wind-Vane Compass** (see "Sky Islands items" below).
+
+### Hidden-isle puzzles
+
+The evidence on the four hidden isles (Frogsong Pool, the Upturned Post Hut, the Rainlisten Grotto and the Starfall Overlook) is no longer a single button press. Each is a short **three-step puzzle**: fill in the crop names on the planting record, take down the torn strips of the old letter in order, read the streams in the cave, and turn the telescope's three rings.
+
+- The clues are written into the puzzle text itself, and the island's notes and pigeon letters carry hints too.
+- **Wrong answers cost nothing**: the first miss gives a hint, the second spells out the answer, and you can keep choosing on that step — there is no way to get stuck.
+- Only when all three steps line up do you receive the planting record, the old letter, the route chart or the repaired telescope — the same evidence as before. The Starfall Overlook still has to be cleared of guards first.
+- Puzzle progress only lasts for the raid: leave halfway and it starts again from step one next time. Evidence you already hold is unaffected.
+
+### The archipelago journal and the crew roster
+
+Weibai herself, or the "Dock refit" device at Cloudrise Dock, lets you **open the archipelago journal**:
+
+- **Four chapters of notes** (the dock and the market / the west / the east / the boardwalk and the Bell Court): recorded notes show in full, unrecorded ones show only their title marked "not yet recorded", so you can hunt down the rest. Once all twenty are in, a final page appears at the end of the overview.
+- **Letters · crew roster · keepsakes**: every letter you have kept can be reread; letters still to come only show their number, with no spoilers.
+- **Overview**: your collection progress and a summary of the journey.
+
+After you ring the Homecoming Bell, the homecoming boat ties up **beside the dock lamp** with a **crew roster** at the bow: the old helmsman, the post carrier, the workshop apprentice and the ship's doctor have each written a page. Every page reacts to this save's choices — whether you reconciled with or defeated Zheling and the Bell Keeper, whether you beat the Windeater, calibrated the telescope and returned the planting record — so a second save that takes the other road reads different words.
+
+### Sky Islands items
+
+The archipelago has five items of its own (TypeID 500068–500072). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report.
+
+- **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and **sent straight to base storage**. A collector's piece that can be sold.
+- **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. Sells for more.
+- **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path, with a bearing and a rough distance. **Not consumed.**
+- **Homecoming Bento** (food): occasionally found in island crates of every tier. Restores energy and water, and a little health.
+- **Starmoss Salve** (medicine): occasionally found in Voyage Supplies and Starworks Cache crates. Restores health.
+
+Each keepsake is granted once per save, and the grant is recorded with the Sky Islands story save. Saves that had already rung the bell, beaten the Windeater or kept a letter before this update receive theirs on the next trip to the islands. Island goods are packed into crates **on top of** their normal contents: they neither take a slot from the regular item count nor change what else is inside.
 
 ### What the run records
 
 Beacons, side paths, the named opponents' and the Windeater's outcomes, visited regions, notes and the ending are all recorded per save slot. Ordinary encounter clears are recorded too — repairing the beacons and calibrating the telescope read those as prerequisites — but they do **not** stop those encounters from returning next raid. Leaving or dying never clears recorded story facts, and an unfinished fight is never written down as a permanent failure.
 
-Crate contents, contract progress and the homecoming meal are **per raid** and are not saved: every departure starts a fresh round. All loot, boss trophies and contract rewards come from the game's existing items — the map introduces no Sky-Island-only item IDs.
+Crate contents, contract progress and the homecoming meal are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own five items are listed under "Sky Islands items" above. Pigeon letters, roster pages and keepsake grants are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
 
 [tip] A region only counts as visited once you actually set foot on that island — eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.
 
 [tip] The objective on the card at the right of the screen changes with your progress. If the next step isn't obvious, open the map first, then follow the physical bridges you have already unlocked. The HUD also tells you how many scavenging points are left this run and whether you're carrying a contract.
 
-[tip] Each of the twenty notes around the isles has its own entry, and several quietly point to a side path or a mechanic — the dock's waiting list, the contract stubs at the market, the notches on the boardwalk rail, the maintenance log at the workshop.
+[tip] Each of the twenty notes around the isles has its own entry, and several quietly point to a side path or a mechanic — the dock's waiting list, the contract stubs at the market, the notches on the boardwalk rail, the maintenance log at the workshop. Notes you have recorded can be reread at any time in the archipelago journal.
