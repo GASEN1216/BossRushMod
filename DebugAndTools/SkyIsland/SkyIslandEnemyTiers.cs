@@ -20,19 +20,25 @@ namespace BossRush
         private static readonly int BaseColorProperty = Shader.PropertyToID("_BaseColor");
         private static MaterialPropertyBlock colorBlock;
 
+        /// <summary>
+        /// 血量倍率。**必须随档次严格递增**：折翎（Champion，单挑 count=1）曾经是 2.2，
+        /// 比守航标的断风游猎（Elite 2.6，还带一名随从共 3.6）还软，主线高潮反而降级。
+        /// 现在 4.5 让单挑略高于守卫组；钟守是 Champion + 2 名随从，合计 6.5。
+        /// 噬风从 18 降到 13：相位从 2 次加到 4 次后，靠编排而不是血条长度制造压力。
+        /// </summary>
         internal static float HealthMultiplier(SkyIslandEnemyTier tier)
         {
-            if (tier == SkyIslandEnemyTier.Storm) return 18f;
-            if (tier == SkyIslandEnemyTier.Champion) return 2.2f;
+            if (tier == SkyIslandEnemyTier.Storm) return 13f;
+            if (tier == SkyIslandEnemyTier.Champion) return 4.5f;
             if (tier == SkyIslandEnemyTier.Elite) return 2.6f;
             return 1f;
         }
 
-        /// <summary>伤害倍率与官方 Boss 口径一致，封顶 3；这里刻意留在 2 以内，靠血量和相位制造压力。</summary>
+        /// <summary>伤害倍率与官方 Boss 口径一致，封顶 3；同样必须随档次递增，具名对手不得弱于精英。</summary>
         internal static float DamageMultiplier(SkyIslandEnemyTier tier)
         {
             if (tier == SkyIslandEnemyTier.Storm) return 1.8f;
-            if (tier == SkyIslandEnemyTier.Champion) return 1.3f;
+            if (tier == SkyIslandEnemyTier.Champion) return 1.55f;
             if (tier == SkyIslandEnemyTier.Elite) return 1.35f;
             return 1f;
         }
@@ -45,11 +51,11 @@ namespace BossRush
             return 1f;
         }
 
-        /// <summary>反应速度只给精英与 Boss 提升，普通敌人保持官方手感。</summary>
+        /// <summary>反应速度只给精英以上提升，普通敌人保持官方手感；与血量/伤害一样随档次递增。</summary>
         internal static float ReactionSpeedup(SkyIslandEnemyTier tier)
         {
             if (tier == SkyIslandEnemyTier.Storm) return 1.7f;
-            if (tier == SkyIslandEnemyTier.Champion) return 1.25f;
+            if (tier == SkyIslandEnemyTier.Champion) return 1.45f;
             if (tier == SkyIslandEnemyTier.Elite) return 1.3f;
             return 1f;
         }
@@ -94,7 +100,12 @@ namespace BossRush
         {
             if (character == null || !MarkApplied(character)) return;
             bool decorate = tier != SkyIslandEnemyTier.Champion;
-            if (decorate) ApplyName(character, tier, NameKey(tier), NameCn(tier), NameEn(tier));
+            // Scav 刻意**不**改名：它的 `showName` 一直是 false，「云沿拾荒者」这个名字玩家从来看不到，
+            // 改 nameKey 却会把击杀记进 `Count/Kills/BossRush_SkyIsland_Enemy_Scav`，
+            // 于是官方拾荒者击杀数与 `RequireEnemyKilled` 解锁都不推进。自动组改成按出击刷新之后
+            // 这批击杀会反复产生，白打的代价更大。精英以上仍用自己的 key（模组内容本就该独立计数）。
+            if (decorate && tier != SkyIslandEnemyTier.Scav)
+                ApplyName(character, tier, NameKey(tier), NameCn(tier), NameEn(tier));
             if (tier == SkyIslandEnemyTier.Scav) return;
             ApplyStats(character, tier);
             if (!decorate) return;

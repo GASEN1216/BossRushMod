@@ -212,6 +212,8 @@ echo(DebugAndTools\SkyIsland\SkyIslandEnemyTiers.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStormBoss.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBounty.cs
 echo(DebugAndTools\SkyIsland\SkyIslandServices.cs
+echo(DebugAndTools\SkyIsland\SkyIslandExplosionObstaclePatch.cs
+echo(DebugAndTools\SkyIsland\SkyIslandGroundRing.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -241,6 +243,8 @@ echo(DebugAndTools\F3GameplayValidationEconomy.cs
 echo(DebugAndTools\F3GameplayValidationDepth.cs
 echo(DebugAndTools\F3GameplayValidationDeepFlows.cs
 echo(DebugAndTools\F3GameplayValidationLeaks.cs
+echo(DebugAndTools\F3GameplayValidationSkyIsland.cs
+echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs

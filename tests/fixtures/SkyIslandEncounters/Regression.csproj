@@ -8,6 +8,9 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
+    <!-- PresetIndex 用 SkyIslandLootTables.StableHash 取跨机稳定的 preset 下标；
+         该文件只 using System，没有 Unity 依赖，直接链真实生产源码即可，不需要替身。 -->
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Common/Data/BossRushJsonValue.cs" Link="Production/BossRushJsonValue.cs" />
     <Compile Include="../../../Common/Data/JsonDataRegistry.cs" Link="Production/JsonDataRegistry.cs" />
     <Compile Include="../../../Utilities/SimpleJsonHelper.cs" Link="Production/SimpleJsonHelper.cs" />

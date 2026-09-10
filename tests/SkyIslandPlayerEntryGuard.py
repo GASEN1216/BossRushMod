@@ -99,10 +99,27 @@ def main():
             errors.append(f"{label} 仍依赖开发开关")
 
     # ---- 2026-09-09 复审：撤离圈与返航要与官方 CountDownArea / SceneLoaderProxy 同语义 ----
-    # 官方 CountDownArea.Update 在任何 View 打开时不推进倒计时；撤离判定那一行必须带同一个门。
-    extraction_line = next((line for line in update_body.splitlines() if "IsInsideExtraction(out extraction)" in line), "")
-    if "View.ActiveView == null" not in extraction_line:
-        errors.append("撤离计时必须在官方界面打开时暂停（判定行缺 View.ActiveView == null）")
+    # 官方 CountDownArea.Update 在任何 View 打开时不推进倒计时；推进分支必须带同一个门。
+    advance_line = next((line for line in update_body.splitlines()
+                         if "View.ActiveView == null" in line and "insideExtraction" in line), "")
+    if not advance_line:
+        errors.append("撤离计时必须在官方界面打开时暂停（推进分支缺 View.ActiveView == null）")
+    # 官方口径是「不推进」而不是「清零」：人还在圈里、只是开着界面时，读条要冻结在原处。
+    # 旧实现直接落到 extractionStarted = -1，开一下背包就把 3 秒读条清零。
+    # unscaledTime 在 timeScale=0 下照走，所以冻结只能靠顺延起点。
+    #
+    # 必须按**结构**判断：剧情面板那一支也有同一句顺延，只在整段 Update 里找这个 token
+    # 等于没断言——删掉撤离圈这一支，另一处仍然命中。
+    freeze_line = next((line for line in update_body.splitlines()
+                        if "insideExtraction" in line and "extractionStarted >= 0" in line), "")
+    if not freeze_line:
+        errors.append("官方界面打开时撤离读条必须冻结而不是清零（缺 insideExtraction 的顺延分支）")
+    else:
+        freeze_body = update_body.split(freeze_line, 1)[1].split("}", 1)[0]
+        if "extractionStarted += Time.unscaledDeltaTime;" not in freeze_body:
+            errors.append("撤离读条的冻结分支没有顺延起点，读条会在界面打开时自己走完")
+    if "extractionStarted = -1" not in update_body:
+        errors.append("离开撤离圈必须真正清零撤离读条")
     # 官方 SceneLoaderProxy.LoadScene 先 DisableInput 再派发；封锁源必须是岛场景内对象，
     # 挂到 DontDestroyOnLoad 的宿主上会在回基地后永久锁死输入（InputManager 只在源销毁/失活时解封）。
     if "private void BlockInputForReturn()" not in session:

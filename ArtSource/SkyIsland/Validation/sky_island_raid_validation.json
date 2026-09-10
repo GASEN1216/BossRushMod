@@ -7,5 +7,6 @@
   "multiSceneCore": true,
   "locationProvider": true,
   "officialLevelManagerPrefabAtRuntime": true,
-  "gameSmoke": "not_run_per_user_request"
+  "gameSmoke": "not_run_per_user_request",
+  "sourceFbxSHA256": "aaed0c64f2c3877dad29b63a69b88c1d3b343e5bf97a2c4599dffe4ff6d3b417"
 }

@@ -34,12 +34,15 @@ internal static class Program
         GameObject[] roots=SceneManager.Raid.GetRootGameObjects();
         Check(roots[1].activeSelf && roots[1].GetComponent<LevelConfig>().timeOfDayConfig!=null,"lease assembles official services after session owner disappears");
         Check(roots[0].activeSelf,"cancelled load keeps landing geometry active");
+        Check(SkyIslandExplosionObstaclePatch.Armed,"raid scene arms the explosion obstacle patch");
         lease.PumpRelease();Check(SceneLoader.Returns==0,"return waits initial official load");
         SceneLoader.Finish();Check(lease.LoadFinished && !bundle.Unloaded,"finished load still retains active scene assets");
         lease.PumpRelease();Check(SceneLoader.Returns==1 && !SceneLoader.LastEvacuated,"orphaned session initiates ordinary base recovery");
         SceneManager.UnloadRaid();Check(!bundle.Unloaded,"unload event alone does not release during return task");
         SceneLoader.Finish();Check(bundle.Unloaded && callbacks==1,"return completion releases bundle after scene unload");
         Check(SceneManager.Subscribers==0,"successful recovery releases both scene handlers");
+        Check(!SkyIslandExplosionObstaclePatch.Armed && SkyIslandExplosionObstaclePatch.Disarms>0,
+            "leaving the raid disarms the explosion obstacle patch");
 
         lease=New();lease.BeginLoad();SceneManager.LoadRaid();SceneLoader.Finish();bundle=AssetBundle.Last;
         CharacterMainControl.Main.Health.IsDead=true;lease.Release(null);lease.PumpRelease();

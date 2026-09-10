@@ -17,12 +17,22 @@ namespace BossRush
     /// </summary>
     internal sealed class SkyIslandStormBoss : MonoBehaviour
     {
-        /// <summary>相位血线：跨过即触发一次风暴脉冲，且此后攻速提升一档。</summary>
-        internal static readonly float[] PhaseThresholds = { 0.66f, 0.33f };
-        internal const float PulseRadius = 9f;
+        /// <summary>
+        /// 相位血线：跨过即触发一次风暴脉冲，且此后攻速提升一档。
+        /// 原来只有 0.66 / 0.33 两档，配 18 倍血就是「打很久的血包 + 两次特殊时刻」。
+        /// 改成四档后节奏由编排承担，血量倍率同步从 18 降到 13（见 <see cref="SkyIslandEnemyTiers"/>）。
+        /// </summary>
+        internal static readonly float[] PhaseThresholds = { 0.80f, 0.60f, 0.40f, 0.20f };
+        /// <summary>
+        /// 第一波作用半径与预警时长。**这两个数必须一起看**：官方 `ExplosionManager.CreateExplosion`
+        /// 没有距离衰减，圈内一律吃满伤，所以「能不能跑出去」完全由 半径 ÷ 预警秒数 决定。
+        /// 旧值 9 m / 1 s 需要 9 m/s 才逃得掉——贴脸的近战流在数学上必吃满三段 114。
+        /// 现在 7 m / 1.4 s ≈ 5 m/s，正常跑动可达；后两波各多 1.5 m、各有 0.45 s，持续外跑即可拉开。
+        /// </summary>
+        internal const float PulseRadius = 7f;
         internal const float PulseDamage = 38f;
         internal const int PulseWaves = 3;
-        internal const float PulseTelegraph = 1f;
+        internal const float PulseTelegraph = 1.4f;
         private const float TickInterval = 0.25f;
 
         private CharacterMainControl boss;
@@ -33,6 +43,27 @@ namespace BossRush
         private int phase;
         private bool subscribed, pulsing, finished;
         private float nextTick;
+        private AICharacterController brain;
+        private float baseReactionTime, baseCurrentReactionTime, baseShootDelay;
+
+        /// <summary>
+        /// 末相位相对**出场时**的反应速度上限。
+        ///
+        /// 旧写法是每进一档就 `/= 1.25f`，两档时总量 1.56 还算克制；相位加到四档之后它复利成
+        /// 1.25⁴ ≈ 2.44，再叠上档次自带的 1.7 倍，末段反应时间只有官方拾荒者的 1/4.15 ——
+        /// 那已经不是「更凶」而是没有反应窗口。现在按基线算绝对值，四档线性摊到 1.6 封顶，
+        /// 叠档次后总量 2.72，且**重复进入同一档不会再叠加**。
+        /// </summary>
+        internal const float MaxPhaseSpeedup = 1.6f;
+
+        /// <summary>纯逻辑：第 phase 档相对出场基线的提速倍率。隔离回归直接钉住它不会复利。</summary>
+        internal static float PhaseSpeedup(int phase)
+        {
+            if (phase <= 0) return 1f;
+            int total = PhaseThresholds.Length;
+            if (phase >= total) return MaxPhaseSpeedup;
+            return 1f + (MaxPhaseSpeedup - 1f) * phase / total;
+        }
 
         internal void Bind(CharacterMainControl character, Func<bool> isValid,
             Action<string, bool> status, Action onDefeated)
@@ -44,6 +75,16 @@ namespace BossRush
             valid = isValid;
             report = status;
             defeated = onDefeated;
+            // 相位提速改成「按基线算绝对值」，所以必须在这里先记下基线。
+            // 此刻 `SkyIslandEnemyTiers.ApplyAi` 已经跑过（`SkyIslandEncounters.Spawn` 里它排在
+            // `ApplyIdentity` 之前），因此基线是**已含档次 1.7 倍**的值，相位倍率在它之上叠加。
+            brain = character.GetComponentInChildren<AICharacterController>();
+            if (brain != null)
+            {
+                baseReactionTime = brain.baseReactionTime;
+                baseCurrentReactionTime = brain.reactionTime;
+                baseShootDelay = brain.shootDelay;
+            }
             health.OnDeadEvent.AddListener(OnDead);
             subscribed = true;
             Announce("噬风从云海里翻上来了 —— 它循着重新亮起的两盏灯。",
@@ -75,20 +116,30 @@ namespace BossRush
         private void EnterPhase()
         {
             // 相位提速：反应/射击间隔按相位再快一档，不改伤害倍率（已在档次里封顶）。
+            // **按基线算绝对值，不做 `/=` 自乘**——否则相位数一改，提速就会悄悄复利。
             try
             {
-                AICharacterController ai = boss.GetComponentInChildren<AICharacterController>();
-                if (ai != null)
+                if (brain != null)
                 {
-                    ai.baseReactionTime /= 1.25f;
-                    ai.reactionTime /= 1.25f;
-                    ai.shootDelay /= 1.25f;
+                    float speedup = PhaseSpeedup(phase);
+                    brain.baseReactionTime = baseReactionTime / speedup;
+                    brain.reactionTime = baseCurrentReactionTime / speedup;
+                    brain.shootDelay = baseShootDelay / speedup;
                 }
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 相位提速失败：" + e.Message); }
-            Announce(phase == 1 ? "噬风收拢了风眼 —— 离开它脚下的那一圈。" : "云柱塌下来了 —— 最后一段，别站在原地。",
-                phase == 1 ? "The Windeater draws its eye shut. Get out of the ring." :
+            // 四档相位各有台词：首档教学、末档提示收尾，中间两档只作提醒，避免每次都喊「最后一段」。
+            // 三条分支各自成对传中英，不写成两个并列的三目：那样中文与英文各在一棵表达式树里，
+            // 漏译一支时看不出来，本地化守卫也认不出这是配好的对照。
+            if (phase == 1)
+                Announce("噬风收拢了风眼 —— 离开它脚下的那一圈。",
+                    "The Windeater draws its eye shut. Get out of the ring.");
+            else if (phase >= PhaseThresholds.Length)
+                Announce("云柱塌下来了 —— 最后一段，别站在原地。",
                     "The column collapses. Last stretch: keep moving.");
+            else
+                Announce("风眼又张开了 —— 跟着圈往外跑。",
+                    "The eye opens again. Run out with the ring.");
             StartCoroutine(PulseRoutine());
         }
 
@@ -166,33 +217,17 @@ namespace BossRush
             return go;
         }
 
-        private const int RingSegments = 64;
-        private static Material ringMaterial;
-
         /// <summary>
         /// 贴地预警圈。鸭科夫是俯视视角，地面圆环是唯一能让玩家看清 AoE 边界的表现方式。
         ///
-        /// 挂在 Boss 身下并随它移动（风眼跟着本体走，`Detonate` 每波都重新读它的当前位置）。
-        /// 绕 X 轴转 90°，让 LineRenderer 的 `TransformZ` 对齐方式把带子摊平在地面上。
+        /// 建造与形状走共享的 <see cref="SkyIslandGroundRing"/>（撤离点标识同款），
+        /// 这里只保留「随倒计时加粗、提亮」这一层编排。
+        /// 圈挂在 Boss 身下并随它移动（风眼跟着本体走，`Detonate` 每波都重新读它的当前位置）。
         /// </summary>
         private LineRenderer CreateWarningRing()
         {
-            GameObject go = new GameObject("SkyIslandStormWarningRing");
-            go.transform.SetParent(boss.transform, false);
-            go.transform.localPosition = Vector3.up * 0.08f;
-            go.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            LineRenderer line = go.AddComponent<LineRenderer>();
-            line.useWorldSpace = false;
-            line.loop = true;
-            line.positionCount = RingSegments;
-            line.numCapVertices = 2;
-            line.alignment = LineAlignment.TransformZ;
-            line.textureMode = LineTextureMode.Stretch;
-            line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            line.receiveShadows = false;
-            line.sortingOrder = 120;
-            Material material = GetRingMaterial();
-            if (material != null) line.material = material;
+            LineRenderer line = SkyIslandGroundRing.Create(boss.transform, Vector3.up * 0.08f);
+            line.gameObject.name = "SkyIslandStormWarningRing";
             SetRing(line, RadiusForWave(0), 0f);
             return line;
         }
@@ -203,32 +238,12 @@ namespace BossRush
         /// </summary>
         private static void SetRing(LineRenderer line, float radius, float charge)
         {
-            if (line == null) return;
-            for (int i = 0; i < RingSegments; i++)
-            {
-                float angle = i * (2f * Mathf.PI / RingSegments);
-                line.SetPosition(i, new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius);
-            }
-            line.widthMultiplier = Mathf.Lerp(0.18f, 0.55f, charge);
             Color tint = SkyIslandEnemyTiers.Tint(SkyIslandEnemyTier.Storm);
             Color solid = new Color(tint.r, tint.g, tint.b, Mathf.Lerp(0.45f, 1f, charge));
-            line.startColor = solid;
-            line.endColor = solid;
+            SkyIslandGroundRing.SetShape(line, radius, Mathf.Lerp(0.18f, 0.55f, charge), solid);
         }
 
-        private static Material GetRingMaterial()
-        {
-            if (ringMaterial != null) return ringMaterial;
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null) shader = Shader.Find("Unlit/Color");
-            if (shader == null) shader = Shader.Find("Standard");
-            if (shader == null) return null;
-            ringMaterial = new Material(shader);
-            ringMaterial.name = "SkyIslandStormRingMat";
-            return ringMaterial;
-        }
-
-        internal static void ResetStaticCaches() { ringMaterial = null; }
+        internal static void ResetStaticCaches() { SkyIslandGroundRing.ResetStaticCaches(); }
 
         private void Announce(string cn, string en)
         {
@@ -259,6 +274,7 @@ namespace BossRush
             defeated = null;
             boss = null;
             health = null;
+            brain = null;
         }
 
         internal const int TrophyItemCount = 4;

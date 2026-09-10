@@ -2,10 +2,14 @@ using System;
 using System.Collections.Generic;
 using BossRush;
 
+// 生产代码的委托文案走 L10n.T（英文玩家不该看到中文派单）。L10n 依赖官方
+// LocalizationManager，隔离进程里用最小替身顶上：返回中文分支，断言只看布尔与枚举，不看文案。
+namespace BossRush { internal static class L10n { internal static string T(string zh, string en) { return zh; } } }
+
 /// <summary>
 /// 天空岛搜刮点内容表与航务委托的隔离执行回归。
 ///
-/// 这两份都是**无 Unity 依赖的生产代码**，因此直接链接真源文件执行，不用任何替身：
+/// 这两份都是**无 Unity 依赖的生产代码**，因此直接链接真源文件执行，只替身一个 L10n：
 /// 覆盖率断言（每个区域都有产出、深处更值钱）、随机流的确定性，以及委托的基线/升级语义。
 /// </summary>
 internal static class Program
@@ -64,6 +68,13 @@ internal static class Program
                 "min quality escalates at " + order[i]);
             Check(SkyIslandLootTables.MaxQuality(order[i]) > SkyIslandLootTables.MaxQuality(order[i - 1]),
                 "max quality escalates at " + order[i]);
+            // 件数也必须随档次单调不减。旧表里航务补给是 2–4、星工遗存反而只有 2–3：
+            // 中段区域比全图最深处出得还多，与品质带的递增方向相反，玩家的最优解变成「别往深处走」。
+            // 上面那两条只钉品质，钉不住这个，得单独钉。
+            Check(SkyIslandLootTables.MaxCount(order[i]) >= SkyIslandLootTables.MaxCount(order[i - 1]),
+                "max count does not regress at " + order[i]);
+            Check(SkyIslandLootTables.MinCount(order[i]) >= SkyIslandLootTables.MinCount(order[i - 1]),
+                "min count does not regress at " + order[i]);
         }
         // 保底只给「赚来的」奖励用，且必须落在该档自己的品质带内，否则保底带会是空的。
         Check(SkyIslandLootTables.GuaranteeMinQuality(SkyIslandLootTier.Supply) == 0, "supply tier has no guarantee");

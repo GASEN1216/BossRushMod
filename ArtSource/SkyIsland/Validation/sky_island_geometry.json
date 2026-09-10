@@ -3,89 +3,89 @@
   "materials": {
     "Sky_Limestone": {
       "rgba": [
-        0.98,
-        0.97,
-        0.91,
+        1.02,
+        1.01,
+        0.9,
         1
       ],
-      "texture": "Textures/stone_handpainted.png",
+      "texture": "Textures/stone_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_Ivory": {
       "rgba": [
-        1,
-        1,
-        0.98,
+        1.11,
+        1.13,
+        1.04,
         1
       ],
-      "texture": "Textures/stone_handpainted.png",
+      "texture": "Textures/stone_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_Chalk": {
       "rgba": [
-        0.8,
-        0.85,
-        0.83,
+        0.92,
+        0.9,
+        0.81,
         1
       ],
-      "texture": "Textures/stone_handpainted.png",
+      "texture": "Textures/stone_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_Rock": {
       "rgba": [
-        0.44,
-        0.62,
-        0.65,
+        0.8,
+        0.7,
+        0.61,
         1
       ],
-      "texture": "Textures/stone_handpainted.png",
+      "texture": "Textures/stone_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_RockLight": {
       "rgba": [
-        0.64,
-        0.77,
-        0.76,
+        0.91,
+        0.82,
+        0.71,
         1
       ],
-      "texture": "Textures/stone_handpainted.png",
+      "texture": "Textures/stone_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_RockDeep": {
       "rgba": [
-        0.3,
-        0.45,
-        0.53,
+        0.51,
+        0.44,
+        0.37,
         1
       ],
-      "texture": "Textures/stone_handpainted.png",
+      "texture": "Textures/stone_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_Grass": {
       "rgba": [
-        0.61,
-        0.78,
-        0.7,
+        0.84,
+        0.82,
+        0.8,
         1
       ],
-      "texture": "Textures/grass_handpainted.png",
+      "texture": "Textures/grass_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_GrassLight": {
       "rgba": [
-        0.77,
-        0.85,
-        0.69,
+        1.02,
+        0.95,
+        0.89,
         1
       ],
-      "texture": "Textures/grass_handpainted.png",
+      "texture": "Textures/grass_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_Forest": {
       "rgba": [
-        0.2549019607843137,
-        0.43529411764705883,
-        0.38823529411764707,
+        0.30196078431372547,
+        0.3607843137254902,
+        0.2,
         1.0
       ],
       "texture": null,
@@ -93,9 +93,9 @@
     },
     "Sky_Leaf": {
       "rgba": [
-        0.4588235294117647,
-        0.6039215686274509,
-        0.4666666666666667,
+        0.44313725490196076,
+        0.5215686274509804,
+        0.24705882352941178,
         1.0
       ],
       "texture": null,
@@ -103,9 +103,9 @@
     },
     "Sky_LeafLight": {
       "rgba": [
-        0.6352941176470588,
-        0.7215686274509804,
-        0.5137254901960784,
+        0.6392156862745098,
+        0.6784313725490196,
+        0.38823529411764707,
         1.0
       ],
       "texture": null,
@@ -113,9 +113,9 @@
     },
     "Sky_LeafGold": {
       "rgba": [
-        0.788235294117647,
-        0.6980392156862745,
-        0.40784313725490196,
+        0.7764705882352941,
+        0.6627450980392157,
+        0.3686274509803922,
         1.0
       ],
       "texture": null,
@@ -123,29 +123,29 @@
     },
     "Sky_Wood": {
       "rgba": [
+        0.67,
         0.7,
-        0.72,
-        0.66,
+        0.78,
         1
       ],
-      "texture": "Textures/wood_handpainted.png",
+      "texture": "Textures/wood_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_WoodLight": {
       "rgba": [
-        0.94,
-        0.93,
-        0.83,
+        0.92,
+        0.99,
+        1.13,
         1
       ],
-      "texture": "Textures/wood_handpainted.png",
+      "texture": "Textures/wood_handpainted_vanilla.png",
       "emission": 0
     },
     "Sky_WoodDark": {
       "rgba": [
-        0.25882352941176473,
-        0.24313725490196078,
-        0.21176470588235294,
+        0.2901960784313726,
+        0.22745098039215686,
+        0.16862745098039217,
         1.0
       ],
       "texture": null,
@@ -153,32 +153,32 @@
     },
     "Sky_Teal": {
       "rgba": [
+        1.01,
+        0.87,
         0.76,
-        0.91,
-        0.91,
         1
       ],
-      "texture": "Textures/roof_handpainted.png",
+      "texture": "Textures/roof_handpainted_terracotta.png",
       "emission": 0
     },
     "Sky_TealLight": {
       "rgba": [
-        0.91,
-        1,
-        0.95,
+        1.19,
+        1.09,
+        0.94,
         1
       ],
-      "texture": "Textures/roof_handpainted.png",
+      "texture": "Textures/roof_handpainted_terracotta.png",
       "emission": 0
     },
     "Sky_TealDeep": {
       "rgba": [
-        0.5,
-        0.68,
-        0.72,
+        0.67,
+        0.56,
+        0.48,
         1
       ],
-      "texture": "Textures/roof_handpainted.png",
+      "texture": "Textures/roof_handpainted_terracotta.png",
       "emission": 0
     },
     "Sky_Brass": {
@@ -193,9 +193,9 @@
     },
     "Sky_BrassLight": {
       "rgba": [
-        0.8980392156862745,
-        0.7372549019607844,
-        0.40784313725490196,
+        0.8588235294117647,
+        0.6980392156862745,
+        0.403921568627451,
         1.0
       ],
       "texture": null,
@@ -223,9 +223,9 @@
     },
     "Sky_Blue": {
       "rgba": [
-        0.4196078431372549,
-        0.596078431372549,
-        0.6313725490196078,
+        0.49019607843137253,
+        0.5803921568627451,
+        0.6274509803921569,
         1.0
       ],
       "texture": null,
@@ -233,9 +233,9 @@
     },
     "Sky_Water": {
       "rgba": [
-        0.43137254901960786,
-        0.6666666666666666,
-        0.6509803921568628,
+        0.43529411764705883,
+        0.6392156862745098,
+        0.5725490196078431,
         1.0
       ],
       "texture": null,
@@ -263,9 +263,9 @@
     },
     "Sky_Cloud": {
       "rgba": [
-        0.8745098039215686,
-        0.9215686274509803,
-        0.9058823529411765,
+        0.9098039215686274,
+        0.8941176470588236,
+        0.8549019607843137,
         1.0
       ],
       "texture": null,
@@ -273,9 +273,19 @@
     },
     "Sky_CloudShade": {
       "rgba": [
-        0.7098039215686275,
-        0.8,
+        0.803921568627451,
+        0.8235294117647058,
+        0.8235294117647058,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_CloudFar": {
+      "rgba": [
+        0.7607843137254902,
         0.8156862745098039,
+        0.8470588235294118,
         1.0
       ],
       "texture": null,
@@ -283,9 +293,9 @@
     },
     "Sky_CloudBackdrop": {
       "rgba": [
-        0.592156862745098,
-        0.7411764705882353,
-        0.807843137254902,
+        0.6588235294117647,
+        0.7372549019607844,
+        0.7686274509803922,
         1.0
       ],
       "texture": null,
@@ -293,9 +303,9 @@
     },
     "Sky_Soil": {
       "rgba": [
-        0.44313725490196076,
-        0.34509803921568627,
-        0.2784313725490196,
+        0.47843137254901963,
+        0.3607843137254902,
+        0.25098039215686274,
         1.0
       ],
       "texture": null,
@@ -333,9 +343,9 @@
     },
     "Sky_Blossom": {
       "rgba": [
-        0.8941176470588236,
-        0.6588235294117647,
-        0.7764705882352941,
+        0.8509803921568627,
+        0.6392156862745098,
+        0.6509803921568628,
         1.0
       ],
       "texture": null,
@@ -343,9 +353,9 @@
     },
     "Sky_Lavender": {
       "rgba": [
-        0.7098039215686275,
-        0.6431372549019608,
-        0.8470588235294118,
+        0.7019607843137254,
+        0.6509803921568628,
+        0.7686274509803922,
         1.0
       ],
       "texture": null,
@@ -353,9 +363,9 @@
     },
     "Sky_Fern": {
       "rgba": [
-        0.3215686274509804,
-        0.5843137254901961,
-        0.5450980392156862,
+        0.41568627450980394,
+        0.5411764705882353,
+        0.3333333333333333,
         1.0
       ],
       "texture": null,
@@ -363,9 +373,9 @@
     },
     "Sky_LilyWhite": {
       "rgba": [
-        0.9686274509803922,
-        0.9058823529411765,
-        0.9333333333333333,
+        0.9568627450980393,
+        0.9254901960784314,
+        0.8862745098039215,
         1.0
       ],
       "texture": null,
@@ -374,8 +384,8 @@
     "Sky_CrystalLavender": {
       "rgba": [
         0.6588235294117647,
-        0.6,
-        0.8745098039215686,
+        0.6039215686274509,
+        0.8392156862745098,
         1.0
       ],
       "texture": null,
@@ -383,9 +393,9 @@
     },
     "Sky_CrystalTeal": {
       "rgba": [
-        0.43137254901960786,
-        0.7333333333333333,
-        0.7725490196078432,
+        0.4470588235294118,
+        0.7176470588235294,
+        0.7490196078431373,
         1.0
       ],
       "texture": null,
@@ -393,9 +403,9 @@
     },
     "Sky_PearlGlow": {
       "rgba": [
-        0.9568627450980393,
-        0.803921568627451,
-        0.9294117647058824,
+        0.9490196078431372,
+        0.8117647058823529,
+        0.8941176470588236,
         1.0
       ],
       "texture": null,
@@ -1648,8 +1658,8 @@
       "triangles": 268
     },
     "VIS_A_LeafLight": {
-      "vertices": 3022,
-      "triangles": 4400
+      "vertices": 3582,
+      "triangles": 5296
     },
     "VIS_A_Copper": {
       "vertices": 32,
@@ -1660,12 +1670,12 @@
       "triangles": 4
     },
     "VIS_A_Coral": {
-      "vertices": 232,
-      "triangles": 412
+      "vertices": 520,
+      "triangles": 844
     },
     "VIS_A_Leaf": {
-      "vertices": 6487,
-      "triangles": 10644
+      "vertices": 6767,
+      "triangles": 11092
     },
     "VIS_B_Grass": {
       "vertices": 84,
@@ -1696,20 +1706,20 @@
       "triangles": 4360
     },
     "VIS_B_Coral": {
-      "vertices": 4618,
-      "triangles": 6878
+      "vertices": 5770,
+      "triangles": 8606
     },
     "VIS_B_LeafLight": {
-      "vertices": 5644,
-      "triangles": 9172
+      "vertices": 7884,
+      "triangles": 12756
     },
     "VIS_B_Copper": {
       "vertices": 282,
       "triangles": 512
     },
     "VIS_B_Leaf": {
-      "vertices": 19300,
-      "triangles": 31787
+      "vertices": 20420,
+      "triangles": 33579
     },
     "VIS_B_Roof_TealLight": {
       "vertices": 40,
@@ -1776,8 +1786,8 @@
       "triangles": 480
     },
     "VIS_C_LeafLight": {
-      "vertices": 6006,
-      "triangles": 9116
+      "vertices": 7546,
+      "triangles": 11580
     },
     "VIS_C_Copper": {
       "vertices": 192,
@@ -1788,12 +1798,12 @@
       "triangles": 2
     },
     "VIS_C_Coral": {
-      "vertices": 1772,
-      "triangles": 2876
+      "vertices": 2564,
+      "triangles": 4064
     },
     "VIS_C_Leaf": {
-      "vertices": 17417,
-      "triangles": 28425
+      "vertices": 18187,
+      "triangles": 29657
     },
     "VIS_C_Roof_Teal": {
       "vertices": 20,
@@ -1804,16 +1814,16 @@
       "triangles": 18
     },
     "VIS_D_LeafLight": {
-      "vertices": 4904,
-      "triangles": 7540
+      "vertices": 6164,
+      "triangles": 9556
     },
     "VIS_D_Fern": {
       "vertices": 3255,
       "triangles": 2825
     },
     "VIS_D_Leaf": {
-      "vertices": 9710,
-      "triangles": 15200
+      "vertices": 10340,
+      "triangles": 16208
     },
     "VIS_E_Grass": {
       "vertices": 24,
@@ -1860,12 +1870,12 @@
       "triangles": 1516
     },
     "VIS_F_Coral": {
-      "vertices": 588,
-      "triangles": 1002
+      "vertices": 948,
+      "triangles": 1542
     },
     "VIS_F_LeafLight": {
-      "vertices": 4179,
-      "triangles": 6639
+      "vertices": 4879,
+      "triangles": 7759
     },
     "VIS_F_Copper": {
       "vertices": 64,
@@ -1876,8 +1886,8 @@
       "triangles": 2
     },
     "VIS_F_Leaf": {
-      "vertices": 17121,
-      "triangles": 27839
+      "vertices": 17471,
+      "triangles": 28399
     },
     "VIS_F_Roof_TealLight": {
       "vertices": 20,
@@ -1932,16 +1942,16 @@
       "triangles": 240
     },
     "VIS_G_LeafLight": {
-      "vertices": 3488,
-      "triangles": 5368
+      "vertices": 4748,
+      "triangles": 7384
     },
     "VIS_G_Coral": {
-      "vertices": 200,
-      "triangles": 344
+      "vertices": 848,
+      "triangles": 1316
     },
     "VIS_G_Leaf": {
-      "vertices": 9724,
-      "triangles": 15723
+      "vertices": 10354,
+      "triangles": 16731
     },
     "VIS_H_Grass": {
       "vertices": 28,
@@ -2000,20 +2010,20 @@
       "triangles": 300
     },
     "VIS_S2_LeafLight": {
-      "vertices": 1784,
-      "triangles": 2392
+      "vertices": 2204,
+      "triangles": 3064
     },
     "VIS_S2_Copper": {
       "vertices": 40,
       "triangles": 68
     },
     "VIS_S2_Coral": {
-      "vertices": 124,
-      "triangles": 216
+      "vertices": 340,
+      "triangles": 540
     },
     "VIS_S2_Leaf": {
-      "vertices": 2759,
-      "triangles": 4582
+      "vertices": 2969,
+      "triangles": 4918
     },
     "VIS_S3_Grass": {
       "vertices": 8,
@@ -2056,8 +2066,8 @@
       "triangles": 776
     },
     "VIS_A_Flower": {
-      "vertices": 1990,
-      "triangles": 3040
+      "vertices": 2566,
+      "triangles": 3904
     },
     "VIS_A_BrassLight": {
       "vertices": 376,
@@ -2076,8 +2086,8 @@
       "triangles": 1184
     },
     "VIS_B_Flower": {
-      "vertices": 3934,
-      "triangles": 6023
+      "vertices": 6238,
+      "triangles": 9479
     },
     "VIS_B_Fern": {
       "vertices": 1408,
@@ -2112,8 +2122,8 @@
       "triangles": 815
     },
     "VIS_C_Flower": {
-      "vertices": 9360,
-      "triangles": 18936
+      "vertices": 10944,
+      "triangles": 21312
     },
     "VIS_C_PaintTealDeep": {
       "vertices": 44,
@@ -2136,8 +2146,8 @@
       "triangles": 356
     },
     "VIS_D_Flower": {
-      "vertices": 756,
-      "triangles": 1152
+      "vertices": 2052,
+      "triangles": 3096
     },
     "VIS_D_BrassLight": {
       "vertices": 296,
@@ -2156,8 +2166,8 @@
       "triangles": 4044
     },
     "VIS_D_Coral": {
-      "vertices": 486,
-      "triangles": 834
+      "vertices": 1134,
+      "triangles": 1806
     },
     "VIS_D_Chalk": {
       "vertices": 7040,
@@ -2176,20 +2186,20 @@
       "triangles": 412
     },
     "VIS_E_Flower": {
-      "vertices": 2043,
-      "triangles": 3135
+      "vertices": 2907,
+      "triangles": 4431
     },
     "VIS_E_Coral": {
-      "vertices": 102,
-      "triangles": 172
+      "vertices": 534,
+      "triangles": 820
     },
     "VIS_E_Copper": {
       "vertices": 6,
       "triangles": 8
     },
     "VIS_E_Leaf": {
-      "vertices": 5575,
-      "triangles": 8851
+      "vertices": 5995,
+      "triangles": 9523
     },
     "VIS_E_PaintTeal": {
       "vertices": 72,
@@ -2200,8 +2210,8 @@
       "triangles": 18540
     },
     "VIS_E_LeafLight": {
-      "vertices": 2652,
-      "triangles": 3756
+      "vertices": 3492,
+      "triangles": 5100
     },
     "VIS_F_PaintTealLight": {
       "vertices": 316,
@@ -2212,8 +2222,8 @@
       "triangles": 140
     },
     "VIS_F_Flower": {
-      "vertices": 636,
-      "triangles": 960
+      "vertices": 1356,
+      "triangles": 2040
     },
     "VIS_F_BrassLight": {
       "vertices": 858,
@@ -2232,8 +2242,8 @@
       "triangles": 164
     },
     "VIS_G_Flower": {
-      "vertices": 2318,
-      "triangles": 3527
+      "vertices": 3614,
+      "triangles": 5471
     },
     "VIS_H_Chalk": {
       "vertices": 501,
@@ -2244,20 +2254,20 @@
       "triangles": 412
     },
     "VIS_H_Flower": {
-      "vertices": 2472,
-      "triangles": 6360
+      "vertices": 3336,
+      "triangles": 7656
     },
     "VIS_H_Coral": {
-      "vertices": 270,
-      "triangles": 452
+      "vertices": 702,
+      "triangles": 1100
     },
     "VIS_H_Copper": {
       "vertices": 6,
       "triangles": 8
     },
     "VIS_H_Leaf": {
-      "vertices": 8120,
-      "triangles": 13728
+      "vertices": 8540,
+      "triangles": 14400
     },
     "VIS_H_PaintTeal": {
       "vertices": 72,
@@ -2268,8 +2278,8 @@
       "triangles": 2682
     },
     "VIS_H_LeafLight": {
-      "vertices": 2600,
-      "triangles": 3840
+      "vertices": 3440,
+      "triangles": 5184
     },
     "VIS_S1_WoodLight": {
       "vertices": 216,
@@ -2280,8 +2290,8 @@
       "triangles": 60
     },
     "VIS_S1_Coral": {
-      "vertices": 8,
-      "triangles": 12
+      "vertices": 224,
+      "triangles": 336
     },
     "VIS_S1_PaintTealLight": {
       "vertices": 24,
@@ -2292,16 +2302,16 @@
       "triangles": 64
     },
     "VIS_S1_LeafLight": {
-      "vertices": 2141,
-      "triangles": 3045
+      "vertices": 2561,
+      "triangles": 3717
     },
     "VIS_S1_Fern": {
       "vertices": 1274,
       "triangles": 766
     },
     "VIS_S1_Leaf": {
-      "vertices": 1920,
-      "triangles": 3136
+      "vertices": 2130,
+      "triangles": 3472
     },
     "VIS_S1_Copper": {
       "vertices": 34,
@@ -2324,16 +2334,16 @@
       "triangles": 232
     },
     "VIS_S2_Flower": {
-      "vertices": 785,
-      "triangles": 1202
+      "vertices": 1217,
+      "triangles": 1850
     },
     "VIS_S3_PaintTealLight": {
       "vertices": 104,
       "triangles": 188
     },
     "VIS_S3_Flower": {
-      "vertices": 833,
-      "triangles": 1277
+      "vertices": 1265,
+      "triangles": 1925
     },
     "VIS_S3_BrassLight": {
       "vertices": 184,
@@ -2352,8 +2362,8 @@
       "triangles": 952
     },
     "VIS_S3_Coral": {
-      "vertices": 148,
-      "triangles": 276
+      "vertices": 364,
+      "triangles": 600
     },
     "VIS_S3_WoodLight": {
       "vertices": 44,
@@ -2368,8 +2378,8 @@
       "triangles": 804
     },
     "VIS_S4_Coral": {
-      "vertices": 96,
-      "triangles": 168
+      "vertices": 240,
+      "triangles": 384
     },
     "VIS_S4_PaintTealDeep": {
       "vertices": 84,
@@ -2980,8 +2990,8 @@
       "triangles": 2400
     },
     "VIS_S1_Flower": {
-      "vertices": 676,
-      "triangles": 1024
+      "vertices": 1108,
+      "triangles": 1672
     },
     "VIS_S2_LilyWhite": {
       "vertices": 1525,
@@ -2992,64 +3002,72 @@
       "triangles": 4300
     },
     "VIS_S3_LeafLight": {
-      "vertices": 2488,
-      "triangles": 3524
+      "vertices": 2908,
+      "triangles": 4196
     },
     "VIS_S3_Leaf": {
-      "vertices": 2928,
-      "triangles": 4753
+      "vertices": 3138,
+      "triangles": 5089
     },
     "VIS_S3_Fern": {
       "vertices": 3286,
       "triangles": 4026
     },
     "VIS_S4_LeafLight": {
-      "vertices": 1762,
-      "triangles": 2336
+      "vertices": 2042,
+      "triangles": 2784
     },
     "VIS_S4_Leaf": {
-      "vertices": 3572,
-      "triangles": 5836
+      "vertices": 3712,
+      "triangles": 6060
     },
     "VIS_S4_Flower": {
-      "vertices": 584,
-      "triangles": 884
+      "vertices": 872,
+      "triangles": 1316
     },
     "VIS_CloudSea_CloudBackdrop": {
       "vertices": 4,
       "triangles": 2
     },
     "VIS_CloudBank_0_CloudShade": {
-      "vertices": 944,
-      "triangles": 1884
+      "vertices": 1898,
+      "triangles": 3788
     },
     "VIS_CloudBank_0_Cloud": {
-      "vertices": 2866,
-      "triangles": 5720
+      "vertices": 1912,
+      "triangles": 3816
     },
     "VIS_CloudBank_1_Cloud": {
-      "vertices": 2880,
-      "triangles": 5748
+      "vertices": 2942,
+      "triangles": 5872
     },
     "VIS_CloudBank_1_CloudShade": {
-      "vertices": 990,
-      "triangles": 1976
+      "vertices": 928,
+      "triangles": 1852
     },
     "VIS_CloudBank_2_Cloud": {
-      "vertices": 3850,
-      "triangles": 7684
+      "vertices": 2938,
+      "triangles": 5864
     },
-    "VIS_CloudBank_3_Cloud": {
-      "vertices": 2934,
-      "triangles": 5856
+    "VIS_CloudBank_2_CloudShade": {
+      "vertices": 912,
+      "triangles": 1820
     },
     "VIS_CloudBank_3_CloudShade": {
-      "vertices": 960,
-      "triangles": 1916
+      "vertices": 1972,
+      "triangles": 3936
+    },
+    "VIS_CloudBank_3_Cloud": {
+      "vertices": 1922,
+      "triangles": 3836
     },
     "VIS_CloudBank_4_Cloud": {
-      "vertices": 3906,
-      "triangles": 7796
+      "vertices": 2876,
+      "triangles": 5740
+    },
+    "VIS_CloudBank_4_CloudShade": {
+      "vertices": 1030,
+      "triangles": 2056
     },
     "VIS_CloudBank_5_Cloud": {
       "vertices": 2896,
@@ -3059,51 +3077,51 @@
       "vertices": 952,
       "triangles": 1900
     },
-    "VIS_CloudBank_6_Cloud": {
-      "vertices": 3780,
-      "triangles": 7544
+    "VIS_CloudBank_6_CloudShade": {
+      "vertices": 1884,
+      "triangles": 3760
     },
-    "VIS_CloudBank_7_CloudShade": {
-      "vertices": 980,
-      "triangles": 1956
+    "VIS_CloudBank_6_Cloud": {
+      "vertices": 1896,
+      "triangles": 3784
     },
     "VIS_CloudBank_7_Cloud": {
-      "vertices": 2896,
-      "triangles": 5780
+      "vertices": 2946,
+      "triangles": 5880
+    },
+    "VIS_CloudBank_7_CloudShade": {
+      "vertices": 930,
+      "triangles": 1856
     },
     "VIS_CloudBank_8_Cloud": {
-      "vertices": 2990,
-      "triangles": 5968
+      "vertices": 982,
+      "triangles": 1960
     },
     "VIS_CloudBank_8_CloudShade": {
-      "vertices": 984,
-      "triangles": 1964
+      "vertices": 2992,
+      "triangles": 5972
     },
-    "VIS_CloudBank_9_Cloud": {
+    "VIS_CloudBank_9_CloudShade": {
       "vertices": 3980,
       "triangles": 7944
     },
-    "VIS_CloudBank_10_Cloud": {
-      "vertices": 2824,
-      "triangles": 5636
-    },
     "VIS_CloudBank_10_CloudShade": {
-      "vertices": 970,
-      "triangles": 1936
+      "vertices": 3794,
+      "triangles": 7572
     },
-    "VIS_CloudBank_11_Cloud": {
-      "vertices": 3874,
-      "triangles": 7732
+    "VIS_CloudBank_11_CloudShade": {
+      "vertices": 1916,
+      "triangles": 3824
     },
-    "VIS_CloudBank_12_Cloud": {
-      "vertices": 2890,
-      "triangles": 5768
+    "VIS_CloudBank_11_CloudFar": {
+      "vertices": 1958,
+      "triangles": 3908
     },
-    "VIS_CloudBank_12_CloudShade": {
-      "vertices": 978,
-      "triangles": 1952
+    "VIS_CloudBank_12_CloudFar": {
+      "vertices": 3868,
+      "triangles": 7720
     },
-    "VIS_CloudBank_13_Cloud": {
+    "VIS_CloudBank_13_CloudFar": {
       "vertices": 3822,
       "triangles": 7628
     },
@@ -3680,7 +3698,7 @@
       "triangles": 60
     }
   },
-  "totalVisualTriangles": 1227927,
+  "totalVisualTriangles": 1278747,
   "collisionBoxes": [
     {
       "name": "A_CargoHouse",
@@ -4833,9 +4851,9 @@
   "textures": [
     "Textures/sky_mural.png",
     "Textures/sky_cloth.png",
-    "Textures/grass_handpainted.png",
-    "Textures/roof_handpainted.png",
-    "Textures/stone_handpainted.png",
-    "Textures/wood_handpainted.png"
+    "Textures/grass_handpainted_vanilla.png",
+    "Textures/roof_handpainted_terracotta.png",
+    "Textures/stone_handpainted_vanilla.png",
+    "Textures/wood_handpainted_vanilla.png"
   ]
 }

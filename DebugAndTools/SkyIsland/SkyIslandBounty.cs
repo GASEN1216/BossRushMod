@@ -15,7 +15,8 @@ namespace BossRush
     }
 
     /// <summary>
-    /// COMPAT：苇白的「航务委托」——群岛的可重复目标。纯逻辑、无 Unity 依赖，隔离回归可直接执行。
+    /// COMPAT：苇白的「航务委托」——群岛的可重复目标。纯逻辑、无 Unity 依赖（除文案走 `L10n.T`
+    /// 外不碰任何引擎类型），隔离回归直接链接本文件执行，只需一个 `L10n` 替身。
     ///
     /// 口径：
     /// - **按出击计**，不进存档。委托是让单次出击有明确短目标的装置，不是跨局养成；
@@ -89,22 +90,24 @@ namespace BossRush
 
         internal bool TryAccept(SkyIslandBountyKind kind, out string message)
         {
-            if (kind == SkyIslandBountyKind.None) { message = "这不是一份有效的委托。"; return false; }
+            if (kind == SkyIslandBountyKind.None)
+            { message = L10n.T("这不是一份有效的委托。", "That is not a valid contract."); return false; }
             if (HasActive)
             {
-                message = "苇白：手头这一单还没交呢 —— " + Describe();
+                message = L10n.T("苇白：手头这一单还没交呢 —— ", "Weibai: You still owe me on this one — ") + Describe();
                 return false;
             }
             if (!CanAcceptMore)
             {
-                message = "苇白：今天的活都派完啦，剩下的留给下一趟。";
+                message = L10n.T("苇白：今天的活都派完啦，剩下的留给下一趟。",
+                    "Weibai: That is all the work I have today. The rest can wait for your next trip.");
                 return false;
             }
             active = kind;
             target = TargetFor(kind);
             // 基线取当前计数：接单前已经做过的量不计入本单，也不会倒扣。
             baseline = Counter(kind);
-            message = "苇白：那就拜托了 —— " + Describe();
+            message = L10n.T("苇白：那就拜托了 —— ", "Weibai: Much obliged, then — ") + Describe();
             return true;
         }
 
@@ -126,22 +129,29 @@ namespace BossRush
         internal bool TryClaim(Func<SkyIslandLootTier, bool> deliver, out SkyIslandLootTier reward, out string message)
         {
             reward = PendingReward;
-            if (!HasActive) { message = "苇白：现在没有你手上的委托，先挑一单吧。"; return false; }
+            if (!HasActive)
+            {
+                message = L10n.T("苇白：现在没有你手上的委托，先挑一单吧。",
+                    "Weibai: You are not carrying a contract. Pick one up first.");
+                return false;
+            }
             if (!IsComplete)
             {
-                message = "苇白：还差一点 —— " + Describe();
+                message = L10n.T("苇白：还差一点 —— ", "Weibai: Not quite there yet — ") + Describe();
                 return false;
             }
             if (deliver != null && !deliver(reward))
             {
-                message = "苇白：谢礼一时放不下，委托先给你留着，稍后再来。";
+                message = L10n.T("苇白：谢礼一时放不下，委托先给你留着，稍后再来。",
+                    "Weibai: There is nowhere to set the payout down. The contract stays yours; come back in a moment.");
                 return false;
             }
             completedRounds++;
             active = SkyIslandBountyKind.None;
             target = 0;
             baseline = 0;
-            message = "苇白：辛苦了。这些是集市能凑出来的谢礼，收下吧。";
+            message = L10n.T("苇白：辛苦了。这些是集市能凑出来的谢礼，收下吧。",
+                "Weibai: Thank you. This is what the market could put together — take it.");
             return true;
         }
 
@@ -153,8 +163,14 @@ namespace BossRush
         /// </summary>
         internal bool TryAbandon(out string message)
         {
-            if (!HasActive) { message = "苇白：你手上没有委托，不用退。"; return false; }
-            message = "苇白：不勉强。这一单先撤了，想做别的随时来。";
+            if (!HasActive)
+            {
+                message = L10n.T("苇白：你手上没有委托，不用退。",
+                    "Weibai: You are not carrying a contract, so there is nothing to drop.");
+                return false;
+            }
+            message = L10n.T("苇白：不勉强。这一单先撤了，想做别的随时来。",
+                "Weibai: No pressure. I have withdrawn it — come back if you fancy something else.");
             active = SkyIslandBountyKind.None;
             target = 0;
             baseline = 0;
@@ -163,9 +179,15 @@ namespace BossRush
 
         internal string Describe()
         {
-            if (!HasActive) return "当前没有进行中的委托。";
-            return NameCn(active) + " " + Progress + "/" + target;
+            if (!HasActive) return L10n.T("当前没有进行中的委托。", "No contract in progress.");
+            return Name(active) + " " + Progress + "/" + target;
         }
+
+        /// <summary>
+        /// 委托名的**唯一**取用点。此前 `NameEn` 写好了却零调用、调用方一律直接用 `NameCn`，
+        /// 于是英文玩家在派单、进度与 HUD 上看到的全是中文（CR-2026-09-09-011）。
+        /// </summary>
+        internal static string Name(SkyIslandBountyKind kind) { return L10n.T(NameCn(kind), NameEn(kind)); }
 
         internal static string NameCn(SkyIslandBountyKind kind)
         {

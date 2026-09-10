@@ -281,6 +281,56 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ## 14. 最后更新
 
+2026-09-10（天空岛岛内 F3 验收套件 + U1 离线复算）：把「离线能证的证完、其余变成一张可执行清单」。
+**没开游戏、没做任何游戏内测试、没碰玩家存档**，因此本轮零 L3 结论。
+
+- **独立出击关卡不能用主验收套件**：主套件 `RunSuite` 从基地出发、切竞技场、收尾 `RunFinalChecks`
+  又切回基地。天空岛一切图，会话、租约、bundle 和这趟出击的全部内容就都没了，所以
+  `CheckStartGate` 一直显式拒绝它（`"请先退出天空岛"`），代价是 `M_SKY_ISLAND_01..09`
+  长期**零自动覆盖**。给这类独立关卡补验收，正确做法是**另开一条入口**
+  （`TryStartSkyIsland` 反过来要求人已经在岛上、只在岛内跑、收尾不切图），
+  而不是放宽主门。新增 `DebugAndTools/F3GameplayValidationSkyIsland.cs` + `...SkyIslandCases.cs`。
+- **岛内验收必须只读**：它跑在玩家真实的一趟出击上，写剧情/搬玩家/刷怪/开箱都会污染他正在做的事，
+  而且这种污染在报告里看不出来。`tests/SkyIslandValidationSuiteGuard.py` 用禁用清单钉死，
+  并**特别区分 `TryApply` 的两个同名入口**：静态 `SkyIslandStoryRules.TryApply` 是纯函数（允许），
+  实例 `SkyIslandStoryService.TryApply` 会 `store.Store()`（禁止）。整条禁掉会误伤，只钉一半才对。
+- **判据不成立时要记 SKIP，不能记 PASS**：英文完整性用例在中文语境下扫不出中文残留是**恒真**，
+  记 PASS 就是假绿。为此加了 `SkyIslandSkipCase` 异常 + `RunSyncCase` 的 SKIP 通道，
+  这样不用改共享的 `SyncValidation` 委托签名（主套件几十条用例都在用它）。
+- **码位区间断言不要写字面汉字，也不要写 `\u` 转义**：前者在文件被按非 UTF-8 读写时会静默变形，
+  后者在经过会折反斜杠的工具时会失真——而这类断言完全靠区间成立，变形后会**安静地永远为真**。
+  统一写成整数常量（`0x4E00` 等），守卫另钉数值。
+- **`SkyIslandRewardCrate.TryFindCratePosition` 只做地面射线 + 墙体胶囊，不查「与其它交互体净空」**
+  （源码注释自己写明）。三个调用方各自靠固定偏移只躲开**自己那一个锚点**，跨系统的组合
+  （纪念物 ↔ 别人的搜刮箱）从来没人算过。`tests/SkyIslandInteractionCompetitionPropertyTest.py`
+  把 77 个静态交互体两两算完：**2926 对零重叠**，最紧余量 0.60 m。U1 的静态那一半从此是
+  「算过了」而不是「读代码觉得没问题」。它直接 import 落点复算器复用同一份地面/墙体实现，
+  不另写第二份。
+- **`GameplayCoverage.json` 的 `automatic` 是全局口径**：给 `SKY_ISLAND` 登记 26 条自动用例之后，
+  **从基地跑的主套件不会再报 `PASS`，只会报 `INCOMPLETE`**（它跑不到 SKY_*）。这是诚实的信号，
+  但会改变熟悉的读数，登记前要知道。
+- **重打包前先看作者工程的资产改动时间**：本轮为收敛「地形根常开」重跑打包，才发现
+  `SkyIslandWorld.fbx` / prefab / 约 30 张 `tripo_*.png` 在上一次打包**之后**被另一条流水线改过，
+  于是导出同时带上了那批美术，包体 63 MB → 99 MB（+57%）。
+  **重打包不是隔离操作，它会把作者工程当下的全部状态一起发出去。**
+  owner 拍板放行后已部署，三份 SHA-256 一致（`a875f781…`）。
+- **发版前用 UnityPy 读一遍已构建的 bundle，与上一版逐项对照**——这不是走过场：
+  本轮这一步当场挡下了一个会让新 F3 用例首跑就假红的问题。场景包里有 **13 个 `POI_` 前缀节点**
+  而不是 12（多出 `POI_B_Mural`，新旧包都有），它是地形根直子、单位变换，
+  会被 `PrepareMarkers` 照收，于是 `landmarks.Count` 是 13。按总数写断言必假红；
+  正确写法是断言 12 个区域标记**各自存在**。同一节点还让
+  `AvailableBountyProgress(Survey)` 的可完成量永久多算 1（`RegionBit("B_Mural")` 返回 0，
+  那一格恒为「未访问」）——见 CR-2026-09-10-001。
+  可离线读到的硬约束还有：导航网格顶点 **4037 / 4095**（余量 1.4%，
+  超限会让 `VerifyBeforeActivation` 抛异常、玩家根本进不去岛；
+  §14 旧记录里的「3533，余 13.7%」已过时），`m_IsReadable=True`，
+  以及两个根节点的激活状态（`SkyIslandWorld` True / `SkyIslandLevel` False）。
+  日志里那行 `Build Finished, Result: Failure` 经与旧包逐项对照确认是噪声。
+- 交付物：`docs/天空岛优化_盘点与分级.md`、`docs/天空岛优化_交付报告.md`、
+  `docs/天空岛_待人工验证清单.md`；`ArtSource/SkyIsland/Validation/raid_deployment_hashes.json`
+  按实测重写（含三份哈希故意不一致的说明）。编译绿、**581 guard 全绿**、27 组执行回归 0 失败；
+  两个新守卫合计 16 条人为破坏逐条转红并按字节还原。**实机 smoke 全部待人工。**
+
 2026-09-09（天空岛进出岛流程对照复审）：与原版切图骨架一致，入口不走官方地图板是 owner 决定。补齐三处官方语义：
 撤离圈在任何官方 View 打开时不推进；返航派发前用**岛场景内临时对象**调 `InputManager.DisableInput`
 （`blockInputSources` 只在源销毁/失活时解封，挂 DontDestroyOnLoad 宿主会让回基地后输入永久锁死）；

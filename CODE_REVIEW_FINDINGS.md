@@ -2,6 +2,92 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-10 天空岛验收设施轮：0 新 confirmed，3 条既有 finding 补 L2 证据
+
+本轮是**验收设施轮**，不是审查轮：目标是把「离线能证的部分证完，剩下必须人工的变成一张可执行清单」。
+**没有开游戏、没有做任何游戏内测试、没有读写玩家存档**，因此没有一条结论标 L3，
+下面三条既有 finding 的 `Fixed（待实机）` 状态**一概不动**，只是各自多了一层此前没有的离线/岛内证据。
+完整交付说明见 `docs/天空岛优化_交付报告.md`，逐条人工步骤见 `docs/天空岛_待人工验证清单.md`。
+
+| 既有 ID | 本轮补的证据 | 状态 |
+| --- | --- | --- |
+| CR-2026-09-09-004 / -005（同点交互竞争 / U1） | 新增 `tests/SkyIslandInteractionCompetitionPropertyTest.py`：用真实作者几何算出**全部静态交互体**（见闻点 20 / 纪念物 7 / 航路图 2 / 搜刮箱 39 / 谢礼箱 3 / 居民 6 = 77 个）的世界坐标，两两比触发体积共 **2926 对，零重叠**，最紧一对余量 0.60 m（`search:Search_D` ↔ 它自己的纪念物，3.20 m vs 需 2.60 m）。此前只有文本守卫钉住「代码里写了退避」，没人算过跨系统的组合——而 `SkyIslandRewardCrate.TryFindCratePosition` **本来就不做「与其它交互体净空」检查**。另在岛内 F3 套件补 `SKY_INTERACTION_SEPARATION`，按 `Collider.bounds` 实测真实尺寸（离线拿不到官方 `InteractableLootbox` 预制体的 collider）。6 条人为破坏 5 条转红（第 2 条是探针挑错，见交付报告如实记录）。 | **Fixed（待实机）不变** |
+| CR-2026-09-09-006（天空岛爆炸穿墙） | 此前 `armed` / `armedSceneHandle` 是私有字段，**人在岛内也无法确认补丁真的挂上了**。新增只读 `SkyIslandExplosionObstaclePatch.IsArmedFor(scene)`（判据与 `Prefix` 前两行逐字一致）与岛内用例 `SKY_EXPLOSION_PATCH`，同时钉住 `FlattenHeight(0.2, 0.6) == 0.5`（与原版平地逐位一致）。 | **Fixed（待实机）不变** |
+| CR-2026-09-09-007（噬风相位提速复利） | 此前只有 `SkyIslandContentExpansionGuard` 的**文本**断言（禁止 `/=` 自乘形式）。新增岛内用例 `SKY_STORM_TUNING` 做**数值**断言：四档阈值严格递减、`PhaseSpeedup` 单调不减且封顶 `MaxPhaseSpeedup`、末档等于封顶值、`PhaseForFraction` 逐档对齐，并把「逃出第一圈所需速度」= `PulseRadius / PulseTelegraph` 写进 metrics（当前 5.00 m/s）。**跑不跑得掉仍必须实机**。 | **Fixed（待实机）不变** |
+
+新增守卫 `tests/SkyIslandValidationSuiteGuard.py` 钉住验收套件本身的三条纪律
+（能在岛内跑 / 全程只读 / 判据不成立时记 SKIP 不记 PASS），10 条人为破坏逐条转红并按字节还原。
+
+### 本轮新增 confirmed：1 P3
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-10-001 | P3 / COMPAT | 场景包里有 **13 个 `POI_` 前缀节点**而不是 12：多出来的 `POI_B_Mural`（风铃集壁画）是地形根的直接子物体、单位缩放零旋转，因此 `SkyIslandSession.PrepareMarkers` 会把它收进 `landmarks`。后果有二：①`AvailableBountyProgress(SkyIslandBountyKind.Survey)` 遍历 landmarks 取 `name.Substring(4)` 查 `SkyIslandStoryService.RegionBit`，`"B_Mural"` 未登记、返回 0，于是 `HasVisitedRegion` 恒为 false，**「巡视群岛区域」的可完成量永久多算 1**；②`SkyIslandSession.LandmarkLabel("POI_B_Mural")` 按 `name[4]=='B'` 落到「风铃集」，与 `POI_B` 显示同名。用 UnityPy 读**已构建的 bundle** 确认，**新旧两个包都有**该节点，非本轮美术改动引入。 | **Open（P3，有意不修）**；影响有限：`TargetFor(Survey)` 基线为 4，1 < 4，走遍全岛后这类委托只是不再派出，**不会派出做不完的单**；`RecordRegionVisited("B_Mural")` 同样因 bit==0 返回 false，不污染存档。修它要动 `PrepareMarkers` 的收录口径或给 `RegionBit` 加白名单，代价大于收益。**已连带修正**新 F3 用例 `SKY_MARKERS`：原断言 `landmarks == 12` 会在完全健康的包上假红，改为断言 `POI_A..H` / `POI_S1..S4` 十二个区域标记**各自存在**，多余 POI_ 节点只写进 metrics。 |
+
+## 2026-09-09 天空岛全面审核（第三轮）：1 P1 / 2 P2 / 6 P3
+
+范围是天空岛的**本地化覆盖、撤离点可发现性与每帧运行开销**，与同日「内容扩充」「进出岛流程」
+「可玩性复审」三轮不重叠。依据：`DebugAndTools/SkyIsland/` 全部 33 个源文件（6750 行）、
+`Assets/Data/SkyIsland/World.json`、`ArtSource/SkyIsland/layout.json` 的实际坐标、
+`tools/generate_sky_island.py` 的标记生成方式，以及官方 `ItemRepairView` / `ExplosionManager`
+反编译源码。基线三绿（编译 / 15 守卫 / 7 回归）后开审，全部为静态确认，**无实机验证**。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-09-011 | P1 / COMPAT | 天空岛叙事层**整层没有英文**：剧情面板、选项标签、HUD 目标行与物资/委托行、桥口木牌、居民服务回话、委托名与进度——约 250 条玩家可见文案硬编码中文，`SkyIslandWorldStory`（84）/ `StoryRules`（45）/ `StoryService`（27）/ `Services`（25）/ `Gates`（18）/ `Bounty`（15）六个文件零 `L10n.T`。而 `SkyIslandBounty.NameEn` 早已写好却**零调用**，`SkyIslandWorldStory` 也直接用 `TierNameCn` 绕过了 `L10n.T`——英文本就在范围内（全 Mod 约 2700 处 `L10n.T`，Campaign 叙事同样走它；`WikiContent/en/map__sky_island.md` 按英文正文维护），只是接线漏了。 | Fixed（待实机）；**274 条成对文案**全部走 `L10n.T`，地名人名沿用在线 Wiki 已发布的英文；`SkyIslandBounty.Name()` 成为委托名唯一取用点，居民名复用 `SkyIslandWorldStory.ResidentName()`。诊断文本（`Debug.Log*` / `DevLog` / `CriticalLog` / `throw` / `lease.Abort`）按「维护语言中文」保留。新守卫 `tests/SkyIslandLocalizationGuard.py`，4 条人为破坏逐条转红并按字节还原。 |
+| CR-2026-09-09-012 | P2 / COMPAT | 撤离点**没有任何视觉标识**，但三处文案承诺「蓝环 / 绿环」：`Exit` / `BellExtraction` 在作者场景里只是 Blender Empty（`generate_sky_island.py` 的 `marker()`），自绘地图删除后官方小地图也不标撤离点（Wiki 自己写「撤离点不在地图上标注」）。文案是从石堡前哨/竞技场原型抄来的，那两张图的环画在场景包里。码头那个尚可（离 `PlayerSpawn` 13 m），**钟庭那个是终章后才开放、离最近地标 14.4 m、无标识无地图点**。 | Fixed（待实机）；新增 `SkyIslandExtractionRings`（`SkyIslandGroundRing.cs`）真的画出两个圈：半径即 `ExtractionRadius`（圈内即判定内）、按地面射线吸附落点、钟庭环与 `BellExitIfUnlocked()` 同一事实源、无碰撞体、`Apply` 只在解锁翻转时动一次。F3 面板与中英 Wiki 四处文案同步改为「站进撤离环」。 |
+| CR-2026-09-09-014 | P2 / COMPAT | `SkyIslandRuntimeModule.OnUpdate` 每帧调 `SceneManager.GetActiveScene().name`。`Scene.name` 每次调用都新建托管字符串，而该模块在**所有场景**每帧都跑（基地 + 每张官方出击图 + 每场 BossRush），节流判断还排在它后面。项目自己在 `Campaign/CampaignFinalBoss.cs:103` 把同一模式标注成「每帧产生垃圾（AGENTS.md 4.12）」并用场景代数缓存解决过。 | Fixed；改为按 `Scene.handle`（结构体整数，不分配）缓存，并在 `OnStartedLoading` 与 `ScheduleEntry` 两处作废缓存兜住句柄复用。同时把 `SkyIslandEncounters` 每帧路径上的 `Find(e => ...)` / `Exists(e => ...)` 闭包换成显式循环。 |
+| CR-2026-09-09-013 | P3 / COMPAT | 折翎战败后剧情体会**短暂重新现身**：`SetVisible` 由 `!IsBusy && !ZhelingDefeated` 驱动，两个条件延迟不同——最后一名倒下的那一帧 `IsBusy` 即转 false，而持久 flag 要等 `encounters.Tick`（0.25 s 节流）提交并被存档接受。存档有写屏障时 flag 永远落不下来，即**持久可见**——正是 CR-2026-09-09 那轮想消灭的画面在故障路径上的残留。 | Fixed（待实机）；改为单一事实源 `SkyIslandEncounters.HasStarted(id)`（`Started \|\| Cleared`）。钟守不动：他的战斗对象是「失控的守钟装置」，人本就该在战斗后回来。`SkyIslandContentExpansionGuard` 同步改钉新表达式并加反例。 |
+| CR-2026-09-09-015 | P3 / COMPAT | `SkyIslandLighting.Tick()` 每帧重写 6 个 `VolumeParameter.Override`、3 个 `RenderSettings.ambient*Color`（Trilight 下每次赋值让 Unity 重算环境球）与 4 个 `Shader.SetGlobal*`；**锁定预设时这些值恒定却照写**，自动档每帧的增量也远在感知阈之下。 | Fixed；加感知阈以下的变化门（颜色 0.002 ≈ 8 位色 0.5 级、强度 0.002、太阳角 0.05°，实测最快过渡约 0.0044°/帧），切档用 `dirty` 强制落地。**未实测帧率**，只做纸面推算。 |
+| CR-2026-09-09-016 | P3 / COMPAT | `SkyIslandStormBoss` 的预警圈用 `renderer.material`——官方文档明说这种副本要调用方自己销毁，于是**每次脉冲泄漏一份材质**；`ResetStaticCaches` 又只把 `ringMaterial` 置 null 而不 `Destroy`，与同目录 `SkyIslandRendering.Dispose` 的口径不一致。 | Fixed；贴地圆环的建造收敛到共享 `SkyIslandGroundRing`（撤离环与预警圈共用），改用 `sharedMaterial`（颜色走 LineRenderer 顶点色，共用不影响各自上色），`ResetStaticCaches` 真的 `Destroy`。 |
+| CR-2026-09-09-017 | P3 / COMPAT | HUD「物资 已搜/可搜」的分母包含建箱失败的点：`PlacedPoints` 不排除 `Failed`，而同类的 `AvailablePoints` 排除了。玩家搜完全岛仍会看到 37/39，像是漏了两处。 | Fixed；`PlacedPoints` 改为 `Placed && !Failed`，与 `AvailablePoints` 同口径。 |
+| CR-2026-09-09-018 | P3 / OPERATIONAL | 三个成员零调用（生产、守卫、夹具、工具全查过）：`SkyIslandBounty.NameEn`、`SkyIslandContent.TierName`、`SkyIslandMapFog.LayerCount`（注释写「给守卫与验收日志用」，两边都没人读）。 | Fixed；`NameEn` 经 `Name()` 接线（见 011）、`TierName` 删除、`LayerCount` 接进 `ENTER_PASS` 日志。 |
+| CR-2026-09-09-019 | P3 / SAFE | 两处陈旧注释：`SkyIslandServices` 写「眠苔那副 **120** 的苔药」（实际 `HealPriceFull = 480` 且按缺失比例计价）；`SkyIslandSession.Cleanup` 的「本局属性加成必须在离岛时摘掉」挂在 `Safe("map_fog", ...)` 上，实际 owner 是下一行的 `Safe("services", ...)`。 | Fixed；两处改正。 |
+
+**审核中确认无问题的部分**（都实查过，不列为 finding）：TypeID 未新增；事件订阅全部幂等且有退订；
+`Modifier` 非 `[Serializable]`，归航菜加成不会随官方角色保存带回基地；`StableHash` 恒非负，
+`PresetIndex` 不会越界；`KnownFlags = 65535` 已含 `StormSlain`；`RepairPriceFor` 与官方
+`ItemRepairView.CalculateRepairPrice` 逐行一致；爆炸补丁签名与层掩码与官方 `CheckObsticle` 一致；
+三处挑战的 90 m 距离门实算最远 51.2 m；纪念物/航路图 3.2 m 退避实算最近邻 ≥4.70 m；
+委托三类可完成量的单调递减推理成立（`Survey` 第三单会被正确挡住）；
+地图边界 475/425 对实际岛体 ~397/375 留有余量。
+
+验证：Windows Release `compile_official.bat` 绿并部署；全量 **579 个守卫**绿（新增
+`SkyIslandLocalizationGuard.py`，`SkyIslandPlayabilityGuard` 扩到 12 组）；
+`run_runtime_regressions --filter SkyIsland` 7/7 绿；两组守卫共 **11 条人为破坏反向验证**
+逐条转红并按字节还原。**未进游戏 smoke**，逐条实机步骤见 `Assets/Data/GameplayCoverage.json`
+的 `M_SKY_ISLAND_08` / `M_SKY_ISLAND_09`。未提交、未推送、未发布 Workshop。
+
+## 2026-09-09 天空岛可玩性复审（第二轮）：1 P1 / 5 P2 / 2 P3
+
+范围是天空岛的**交互可达性与官方语义**，与同日「内容扩充」「进出岛流程」两轮不重叠。
+依据：`DebugAndTools/SkyIsland/` 全部源码、`Assets/Data/SkyIsland/World.json`、
+`ArtSource/SkyIsland/layout.json` 的实际海拔与坐标，以及官方
+`CA_Interact.SearchInteractableAround` / `ExplosionManager.CreateExplosion` 的反编译源码。
+全部为静态确认，**无实机验证**。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-09-004 | P1 / COMPAT | 完成纪念物与装置**同点**：`SkyIslandWorldStory.Beacon` 把 `*_Completed` 交互体建在 `point.position`，与 `PrepareMarkers` 挂在同一标记上的见闻交互体世界坐标完全相同。官方 `CA_Interact.SearchInteractableAround` 按「玩家到 collider 距离**严格小于**」挑唯一目标，距离相等时由 `OverlapSphereNonAlloc` 返回顺序决定，且两者不在同一交互组、滚轮切不过去。Search_D / Search_G 上挂着 K1 / K2，Search_E 挂着 K3 与噬风，Search_H 挂着敲响归航钟 —— 被只读纪念牌盖住即捷径与终章永久不可达。 | Fixed（待实机）；纪念物退开 `SkyIslandRewardCrate.InteractableSeparation = 3.2f`，落点复用经真实几何回归的 `TryFindCratePosition`，方位角取标记名 `StableHash`；无净空时只留光、不挂交互体。`SkyIslandPlayabilityGuard` 钉住并反向验证转红。 |
+| CR-2026-09-09-005 | P2 / COMPAT | 航路图交互体与见闻点同点：`SkyIslandGuideInteractable.Attach` 用 `localPosition = Vector3.zero` 挂在 `Search_A_02` / `Search_B_02`，而这两个标记本身已有见闻交互体。同 004 机制，手柄玩家的地图与光色入口和见闻点必有一个按不到。 | Fixed（待实机）；改走 `GuideOffset()`，与 004 共用间距常量与放置算法；地面校验失败时退回纯方位角偏移而不是放弃入口。 |
+| CR-2026-09-09-006 | P2 / WIRE+ | 官方爆炸遮挡在天空岛恒失效：`ExplosionManager.CheckObsticle` 把射线起终点 y **硬编码为 0.5**（按原版地面 y≈0 写的齐腰视线）。天空岛 12 个岛在 y = 0/8/16/18/24/26/28/42/44/52/62，除码头外无任何地面在 0.5 附近，射线恒打空、遮挡恒为「无」。叠加官方 `CreateExplosion` 无距离衰减 ⇒ 噬风三段脉冲与双方全部手雷、套装反击爆炸**穿墙打满**。 | Fixed（待实机）；新增 `SkyIslandExplosionObstaclePatch` 前缀，把两点压到 `min(startY,endY)+0.3`（y=0 平地上还原官方 0.5，逐位一致）。**只在天空岛生效**：`SkyIslandRaidLease` 按 raid 场景 `Arm`/`Disarm`，前缀先看 `armed` 再比对活动场景句柄，未武装直接交还原方法。夹具补两条生命周期断言，去掉 `Arm` 实测转红。 |
+| CR-2026-09-09-007 | P2 / COMPAT | 噬风相位提速**复利**：`EnterPhase` 每档 `/= 1.25f`。相位由 2 档增到 4 档后累计 1.25⁴ ≈ 2.44，再叠档次自带 1.7 倍，末段反应时间只有官方拾荒者的 1/4.15 —— 没有反应窗口。 | Fixed（待实机）；`Bind` 记下基线（此刻 `ApplyAi` 已跑过，基线含档次倍率），按 `PhaseSpeedup(phase)` 算绝对值赋回，四档线性摊到 `MaxPhaseSpeedup = 1.6` 封顶，重复进档不再叠加。守卫禁止 `/=` 自乘形式。 |
+| CR-2026-09-09-008 | P2 / COMPAT | 钟守物证路线只认 `ZhelingReconciled`：但同一份内容表里 `ZhelingPass` 门是 `ZhelingReconciled \| ZhelingDefeated` **任一即开**。选择挑战折翎的玩家被永久关在物证路线之外，而失败提示仍要求他去「与折翎和解」—— 一个已不可能达成的条件（`ReconcileZheling` 对已了结的折翎直接拒绝）。 | Fixed（待实机）；改判 `source.ZhelingResolved`，提示同步为「和解或战胜都算」。中英 Wiki 与 repowiki 同步。 |
+| CR-2026-09-09-009 | P2 / COMPAT | 存档落盘门是全图口径：`story.Tick(!encounters.HasLivingEnemies)`。同日自动组改为按出击刷新后，全岛几乎总有活敌，等于把落盘门永久关上——已接受的剧情事实只能等离岛或死亡才写盘，中途崩溃全丢。 | Fixed（待实机）；改为 `HasLivingEnemiesWithin(玩家位置, SaveQuietRadius = 45)`，保留「不在交火帧写盘」本意。守卫禁止全图口径复现。 |
+| CR-2026-09-09-010 | P3 / COMPAT | 遭遇 preset 与身份无关：`sources[i % sources.Count]` 让全岛 13 组的带队者永远是按名字排序的第一个 preset，第二名永远是第二个；`sources` 通常有十几种官方拾荒者。 | Fixed（待实机）；改走 `PresetIndex(id, index)` = `StableHash(id + "#" + index) % sources.Count`。不用 `string.GetHashCode`：Mono 与 .NET Core 口径不同会让不同机器同一处刷出不同敌人。 |
+| CR-2026-09-09-011 | P3 / COMPAT | 剧情面板选项不随状态刷新：`SkyIslandStoryPresentation.Show` 只在打开那一刻烘成按钮。接完委托，三个「接委托」按钮仍在，再点只得到「手头这一单还没交」；交完单，派单选项要退出面板再进才看得到。 | Fixed（待实机）；`SkyIslandWorldStory` 增加 `reopen` + `Refreshed()`，任何成功改变状态的选项都重开当前页，本次返回文案写进新面板正文；`Dispose` 放开 `reopen` 捕获的说话人引用。 |
+
+同轮修正的**文档失配**（不计 finding，随代码一并改）：玩家 Wiki 中英两份写「状态行在屏幕下方」（HUD 实为顶部锚定）、
+「地图标出撤离点位置与直线距离」（改用官方 M 键地图后无任何代码绘制撤离点）、
+「出击途中只能用随身现金结算」（`LevelConfig.accountAvailable` 序列化默认 true，银行存款可用）。
+`wiki-site` 经 `scripts/sync-content.mjs` 重新生成。
+
+验证：Windows Release 编译绿并部署；全量 **578** guard 绿；`run_runtime_regressions --filter SkyIsland` 7/7 绿。
+新增 `tests/SkyIslandPlayabilityGuard.py`，**14 条人为破坏在沙箱副本上逐条转红并按字节还原**
+（沙箱是为了不动到并行会话的工作区），其中一条专门验证注释剥离真的生效。
+**无实机验证**：交互体退开后的实际选中优先级、爆炸遮挡在真实岛体碰撞（尤其斜坡与桥面）上的表现、
+末相位手感、敌人外观区分度，全部仍需游戏内 smoke。
+
 ## 2026-09-09 天空岛进出岛流程对照复审：2 P2 / 1 P3
 
 逐环节对照官方 `MapSelectionView.LoadTask` → `SceneLoader.LoadScene` → `LevelManager.InitLevel`、出口预制体 `CountDownArea` + `SceneLoaderProxy.Task`、`CharacterDieTask`（官方源码目录缺 async 正文，用 `.codex_tmp/core_decomp/` 的还原版）。切图骨架一致；入口不走官方地图板/费用/确认是 owner 明确保留的产品决定，不计 finding。

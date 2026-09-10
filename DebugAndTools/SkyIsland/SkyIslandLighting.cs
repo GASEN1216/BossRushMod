@@ -30,6 +30,22 @@ namespace BossRush
         private LightControl lightControl;
         private int presetIndex = -1;
         private int automaticIndex;
+        // 上一次真正写下去的四个量，见 Tick() 的变化阈值。dirty 保证首次与切档时必写。
+        private bool dirty = true;
+        private Color appliedSun, appliedAmbient;
+        private float appliedIntensity;
+        private Quaternion appliedRotation;
+
+        /// <summary>
+        /// 写入阈值。取值都在感知阈以下：0.002 的颜色分量约合 8 位色的 0.5 级，
+        /// 0.05° 的太阳角在最快的黄昏过渡里也不到一帧的变化量（实测约 0.0044°/帧 @60fps）。
+        /// 目的只是把「锁定预设时结果恒定却每帧照写」和「自动档每帧写入不可见的增量」两种
+        /// 无效写入去掉：`RenderSettings.ambient*Color` 在 Trilight 下每次赋值都会让 Unity
+        /// 重算环境球，属于 AGENTS 4.12 说的每帧重工作。
+        /// </summary>
+        private const float ColorEpsilon = 0.002f;
+        private const float IntensityEpsilon = 0.002f;
+        private const float RotationEpsilonDegrees = 0.05f;
 
         // 与 Unity 作者预览共用的四档调色；只读取官方 GameClock，不改游戏时间。
         // 底色改为原版鸭科夫的暖琥珀后，奇幻感改由这里承担：环境光压暗并推冷、主光提亮并推暖，
@@ -107,6 +123,8 @@ namespace BossRush
                 throw new InvalidOperationException("天空岛光照尚未就绪");
             presetIndex++;
             if (presetIndex >= Presets.Length) presetIndex = -1;
+            // 切档必须落地：新档与当前值可能相差不到阈值（例如自动档正好停在该预设上）。
+            dirty = true;
             Tick();
         }
 
@@ -123,6 +141,15 @@ namespace BossRush
             Color ambient = Color.Lerp(first.AmbientColor, second.AmbientColor, blend);
             float intensity = Mathf.Lerp(first.Intensity, second.Intensity, blend);
             Quaternion rotation = Quaternion.Slerp(Quaternion.Euler(first.Rotation), Quaternion.Euler(second.Rotation), blend);
+            // 值没有可见变化就不写：锁定预设时这四个量恒定，自动档每帧的增量也远在感知阈之下。
+            if (!dirty && Similar(sun, appliedSun) && Similar(ambient, appliedAmbient) &&
+                Mathf.Abs(intensity - appliedIntensity) < IntensityEpsilon &&
+                Quaternion.Angle(rotation, appliedRotation) < RotationEpsilonDegrees) return;
+            dirty = false;
+            appliedSun = sun;
+            appliedAmbient = ambient;
+            appliedIntensity = intensity;
+            appliedRotation = rotation;
             Color sky = ScaleRgb(ambient, 1.25f);
             Color ground = ScaleRgb(ambient, .65f);
             ownSun.color = sun;
@@ -165,6 +192,13 @@ namespace BossRush
         private static Color ScaleRgb(Color color, float scale)
         {
             return new Color(color.r * scale, color.g * scale, color.b * scale, color.a);
+        }
+
+        /// <summary>纯逻辑：两种颜色是否已经没有可见差别。隔离回归可直接钉住阈值语义。</summary>
+        internal static bool Similar(Color a, Color b)
+        {
+            return Mathf.Abs(a.r - b.r) < ColorEpsilon && Mathf.Abs(a.g - b.g) < ColorEpsilon &&
+                Mathf.Abs(a.b - b.b) < ColorEpsilon;
         }
 
         private struct Preset

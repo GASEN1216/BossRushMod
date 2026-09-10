@@ -15,6 +15,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PLAN_PATH = ROOT / 'ArtSource/SkyIsland/settlement_layout.json'
+METADATA_VERSION = 2
 
 
 def load_obstacles():
@@ -35,6 +36,74 @@ def bounds_of(parts, position=(0, 0, 0), yaw=0, scale=1):
         raise ValueError('Invalid settlement model geometry')
     return {'min': [min(p[i] for p in points) for i in range(3)],
             'max': [max(p[i] for p in points) for i in range(3)]}
+
+
+def _mesh_counts(g):
+    return {key: (len(data['v']), len(data['f'])) for key, data in g.GROUPS.items()}
+
+
+def _mesh_delta(g, before, origin):
+    parts = {}
+    meshes = []
+    for (group, material), data in g.GROUPS.items():
+        first_vertex, first_face = before.get((group, material), (0, 0))
+        vertices = data['v'][first_vertex:]
+        faces = data['f'][first_face:]
+        if not vertices and not faces:
+            continue
+        if not vertices or not faces or any(
+                len(face) < 3 or any(i < first_vertex or i >= len(data['v']) for i in face)
+                for face in faces):
+            raise ValueError('Settlement geometry must append self-contained meshes')
+        parts[(group, material)] = {'v': vertices}
+        meshes.append({'name': 'VIS_'+group+'_'+material, 'material': 'Sky_'+material,
+                       'vertices': len(vertices),
+                       'triangles': sum(len(face)-2 for face in faces)})
+    measured = bounds_of(parts)
+    return {'bounds': measured, 'meshContributions': meshes,
+            'vertices': sum(mesh['vertices'] for mesh in meshes),
+            'triangles': sum(mesh['triangles'] for mesh in meshes),
+            'measuredRadius': max(math.hypot(x-origin[0], z-origin[2])
+                                  for data in parts.values() for x, y, z in data['v'])}
+
+
+def _garden_radius(g):
+    saved_groups, saved_current = g.GROUPS, g.CURRENT
+    try:
+        g.GROUPS = {}
+        g.CURRENT = 'SettlementGardenProbe'
+        g.garden_clump(0, 0, 0, 1.0)
+        return _mesh_delta(g, {}, (0, 0, 0))['measuredRadius'] + .05
+    finally:
+        g.GROUPS, g.CURRENT = saved_groups, saved_current
+
+
+def prop_side_candidates(obstacle, radius):
+    """Sample the expanded actual AABB, leaving the model's -Z front open."""
+    low_x, low_z, high_x, high_z = obstacle['bounds']
+    gap = radius + 1.25  # PlantingSpace reserves radius + 1 around each obstacle.
+    yaw = obstacle['modelYaw']
+    front = (-math.sin(yaw), -math.cos(yaw))
+    for fraction in (.25, .75, .5):
+        x = low_x + (high_x-low_x)*fraction
+        z = low_z + (high_z-low_z)*fraction
+        edges = [((x, high_z+gap), (0, 1)), ((low_x-gap, z), (-1, 0)),
+                 ((high_x+gap, z), (1, 0)), ((x, low_z-gap), (0, -1))]
+        for point, normal in edges:
+            if normal[0]*front[0] + normal[1]*front[1] <= .35:
+                yield point
+
+
+def _planting_record(g, before, sid, position, radius, category, kind, shrubs=False, prop_id=None):
+    measured = _mesh_delta(g, before, position)
+    if measured['measuredRadius'] > radius + 1e-6:
+        raise ValueError('Plant geometry exceeds its reserved clearance: '+category+'/'+kind)
+    result = {'island': sid, 'position': list(position), 'radius': radius,
+              'category': category, 'kind': kind, 'hasShrubs': shrubs}
+    result.update(measured)
+    if prop_id is not None:
+        result['propId'] = prop_id
+    return result
 
 
 def plan(g, layout):
@@ -128,14 +197,22 @@ def place_model(g, obstacle):
 
     parts = models.model_geometry(g, obstacle['model'])
     actual = bounds_of(parts, obstacle['position'], obstacle['modelYaw'], obstacle['modelScale'])
-    expected = [obstacle['bounds'][0], obstacle['bounds'][1], obstacle['bounds'][2], obstacle['bounds'][3]]
-    measured = [actual['min'][0], actual['min'][2], actual['max'][0], actual['max'][2]]
-    if max(abs(a-b) for a, b in zip(expected, measured)) > .002:
+    expected = {'min': [c-s/2 for c, s in zip(obstacle['center'], obstacle['size'])],
+                'max': [c+s/2 for c, s in zip(obstacle['center'], obstacle['size'])]}
+    if any(abs(a-b) > .002 for side in ('min', 'max')
+           for a, b in zip(expected[side], actual[side])):
         raise ValueError('Model changed after placement planning: '+obstacle['id'])
+    before = _mesh_counts(g)
     models.stamp(g, obstacle['model'], obstacle['position'], obstacle['modelYaw'], obstacle['modelScale'])
+    emitted = _mesh_delta(g, before, obstacle['position'])
+    if any(abs(a-b) > .002 for side in ('min', 'max')
+           for a, b in zip(actual[side], emitted['bounds'][side])):
+        raise ValueError('Stamped model differs from current local geometry: '+obstacle['id'])
     return {'id': obstacle['id'], 'model': obstacle['model'], 'island': obstacle['island'],
-            'position': obstacle['position'], 'bounds': actual,
-            'triangles': sum(len(face)-2 for data in parts.values() for face in data['f'])}
+            'position': list(obstacle['position']), 'modelYaw': obstacle['modelYaw'],
+            'modelScale': obstacle['modelScale'], 'localBounds': bounds_of(parts),
+            'bounds': emitted['bounds'], 'vertices': emitted['vertices'],
+            'triangles': emitted['triangles'], 'meshContributions': emitted['meshContributions']}
 
 
 def finish_gardens(g, layout, records):
@@ -143,6 +220,16 @@ def finish_gardens(g, layout, records):
     from sky_island_dressing import PlantingSpace
     from sky_island_nature_assets import stamp
 
+    planned = json.loads(PLAN_PATH.read_text(encoding='utf-8'))
+    current = {m['id']: m['position'] for m in layout['markers']}
+    protected = {m['id']: m['position'] for m in planned['protectedMarkers']}
+    if len(current) != len(layout['markers']) or current != protected:
+        raise ValueError('Settlement displaced a gameplay marker')
+    if (len({r['id'] for r in records}) != len(records)
+            or {r['id'] for r in records} != {o['id'] for o in planned['obstacles']}):
+        raise ValueError('Settlement plan was not consumed by navigation/world export')
+    obstacles = {o['id']: o for o in layout['obstacles']}
+    garden_radius = _garden_radius(g)
     rng = random.Random(170921)
     shrubs = 0
     edging = 0
@@ -170,43 +257,59 @@ def finish_gardens(g, layout, records):
                 for side in [-1, 1]:
                     offset = width/2+2.5+rng.random()*.9
                     px, pz = x+nx*side*offset, z+nz*side*offset
-                    if not space.free(px, pz, .9) or any(math.hypot(px-a, pz-b) < 3.5 for a, b in local_occupied):
+                    if not space.free(px, pz, .9) or any(
+                            math.hypot(px-a, pz-b) < max(3.5, .9+r+.25)
+                            for a, b, r in local_occupied):
                         continue
-                    local_occupied.append((px,pz))
-                    planted.append({'island': sid, 'position': [px,y,pz], 'radius': .9})
+                    local_occupied.append((px,pz,.9))
+                    before = _mesh_counts(g)
                     # Ground-level grey pebbles and folded leaves give a broken, soft verge.
                     if (index//3) % 3 == 1:
+                        kind = 'pebble'
                         g.sphere((px,y+.16,pz),(.55,.22,.40),'RockLight',7,4,False)
                         edging += 1
                     else:
+                        kind = 'leaf_clump'
                         stamp(g,'grass_leafs',(px,y+.02,pz),.62,rng.random()*math.tau)
                         tufts += 1
-                    if rng.random() < .4:
+                    has_shrubs = rng.random() < .4
+                    if has_shrubs:
                         for k in range(3):
                             angle=k*2.4
                             g.sphere((px+math.cos(angle)*.3,y+.28,pz+math.sin(angle)*.3),
                                      (.58,.40,.51),'Forest' if k==0 else 'Leaf',7,4,False)
                         shrubs += 1
+                    planted.append(_planting_record(g, before, sid, (px,y,pz), .9,
+                                                     'roadside', kind, has_shrubs))
         # Prop gardens frame small activities without obscuring usable front faces.
         for record in [r for r in records if r['island']==sid]:
-            low, high = record['bounds']['min'], record['bounds']['max']
-            for index, (px,pz) in enumerate([(low[0]-2,high[2]+1),(high[0]+2,high[2]+1),
-                                           (low[0]-1,low[2]-2),(high[0]+1,low[2]-2)]):
-                if not space.free(px,pz,1.2):
+            accepted = 0
+            for px, pz in prop_side_candidates(obstacles[record['id']], garden_radius):
+                if not space.free(px,pz,garden_radius) or any(
+                        math.hypot(px-a,pz-b) < max(3.5, garden_radius+r+.25)
+                        for a, b, r in local_occupied):
                     continue
+                before = _mesh_counts(g)
                 g.garden_clump(px,y,pz,1.0)
-                planted.append({'island':sid,'position':[px,y,pz],'radius':1.2})
-                shrubs += 1
-    # The baseline marker coordinates must survive re-triangulation unchanged.
-    planned = json.loads(PLAN_PATH.read_text(encoding='utf-8'))
-    current = {m['id']:m['position'] for m in layout['markers']}
-    if any(current.get(m['id']) != m['position'] for m in planned['protectedMarkers']):
-        raise ValueError('Settlement displaced a gameplay marker')
-    if len(records) != len(planned['obstacles']):
-        raise ValueError('Settlement plan was not consumed by navigation/world export')
-    return {'models': sorted({r['model'] for r in records}), 'instances':len(records),
+                planted.append(_planting_record(g, before, sid, (px,y,pz), garden_radius,
+                                                'prop_side', 'garden_clump', True, record['id']))
+                local_occupied.append((px,pz,garden_radius))
+                accepted += 1
+                if accepted == 3:
+                    break
+    prop_side = [p for p in planted if p['category']=='prop_side']
+    covered = {p['propId'] for p in prop_side}
+    return {'metadataVersion': METADATA_VERSION,
+            'models': sorted({r['model'] for r in records}), 'instances':len(records),
             'placedModels':records,'roadsideShrubs':shrubs,'roadsidePebbles':edging,
-            'roadsideLeafClumps':tufts,'plantingPlacements':planted,
+            'roadsideLeafClumps':tufts,'roadsidePlantings':edging+tufts,
+            'propSidePlantings':len(prop_side),'propSideShrubs':len(prop_side),
+            'propSideCoveredProps':len(covered),
+            'propsWithoutSidePlanting':sorted(r['id'] for r in records if r['id'] not in covered),
+            'plantingPlacements':planted,
+            'pavingTracks':[{'points':[list(point) for point in points],'width':width}
+                            for points, width in g.PAVING_TRACKS],
+            'evidence':'Generator mesh deltas and authored clearance; not FBX rendering or Unity physics proof',
             'protectedMarkerCount':len(current),'allPlannedModelsPlaced':True,
             'additionalRuntimeComponents':0}
 

@@ -57,10 +57,42 @@ internal static class Program
             Check(world.Saved.Contains("D") && world.Attempts == 2, "completion retries after corpse objects destroyed");
             Check(!world.Encounters.IsCleared("D"), "D aggregate waits second group");
             world.Saved.Add("D_02"); Check(world.Encounters.IsCleared("D"), "D aggregate accepts both groups");
-            world.Tick(); Check(world.Attempts == 2 && CharacterRandomPreset.Created.Count == 2, "accepted clear never respawns or repeats");
+            // 口径限于**同一次出击内**：接受后的清场不重投、不补位重生。
+            // 跨出击的刷新语义另见下面「returning raid」两组。
+            world.Tick(); Check(world.Attempts == 2 && CharacterRandomPreset.Created.Count == 2, "accepted clear never respawns within one raid");
             Check(CharacterRandomPreset.Clones.TrueForAll(p => p.dropBoxOnDead), "official drop path enabled");
             Check(CharacterRandomPreset.Created.TrueForAll(c => c.Team == Teams.wolf), "hostile safety net applied");
             Check(UnityEngine.Object.Delayed.Count == 2, "preset release deferred beyond character destruction");
+        }
+        // ---- returning raid：老档进岛，自动组必须重新生成 ----
+        // 这是「跑通一遍之后全岛零敌人、39 个搜刮点却每趟重刷」那条无风险刷宝路径的堵口。
+        // 新 owner + 已填好的持久清场集合 = 第二次出击。
+        Reset();
+        using (var world = new World("D"))
+        {
+            world.Saved.Add("D"); world.Saved.Add("D_02");
+            Check(world.Encounters.RemainingClearable == 13,
+                "saved clears must not shrink contract availability on a later raid");
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == 2, "auto encounters respawn on a later raid");
+            Check(world.Encounters.HasLivingEnemies, "a returning raid actually has risk again");
+            Check(world.Encounters.HasLivingEnemiesWithin(new Vector3(0, 0, 0), 35f),
+                "nearby combat is detectable for the story-panel gate");
+            Check(!world.Encounters.HasLivingEnemiesWithin(new Vector3(0, 0, 500), 35f),
+                "abandoned distant enemies must not gate the whole island");
+            Kill(CharacterRandomPreset.Created[0]); Kill(CharacterRandomPreset.Created[1]); world.Tick();
+            Check(world.Attempts == 1, "re-clearing a saved group still credits the contract once");
+        }
+        // ---- returning raid：具名剧情对手仍是一次性 ----
+        Reset();
+        using (var world = new World("Zheling"))
+        {
+            world.Saved.Add("Zheling");
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == 0, "a defeated named foe never returns");
+            Check(!world.Encounters.BeginChallenge("Zheling"), "a defeated named foe cannot be re-challenged");
+            Check(world.Encounters.IsCleared("Zheling"), "the saved fact still reads as cleared");
+            Check(world.Attempts == 0, "a suppressed manual group must not re-submit its clear");
         }
         Reset();
         using (var world = new World("C"))

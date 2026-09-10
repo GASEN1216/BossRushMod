@@ -26,8 +26,26 @@ namespace BossRush
         /// 这里只保证跑一趟至少收这么多，避免「只掉了一点耐久」时白使唤人。
         /// </summary>
         internal const int RepairMinimumPrice = 60;
-        internal const int HealPrice = 120;
-        internal const float HealCooldown = 120f;
+        /// <summary>
+        /// 回满一整条命的苔药价。实际报价按缺失血量比例折算（见 <see cref="HealPriceFor"/>）。
+        ///
+        /// 旧口径是「120 定额、全额回满、120 秒冷却」，等于岛上没有血量压力：
+        /// <see cref="AccountAvailable"/> 让银行存款在这张出击图里也能花（场景包没关
+        /// `accountAvailable`），于是只要有钱就能无限满血。按比例计价 + 5 分钟冷却之后，
+        /// 一趟出击基本只够用一到两次，受伤重新变成需要付出代价的事。
+        /// </summary>
+        internal const int HealPriceFull = 480;
+        /// <summary>苔药最低服务费：擦破点皮也不能只收零头。</summary>
+        internal const int HealPriceMinimum = 60;
+        internal const float HealCooldown = 300f;
+        /// <summary>
+        /// 谢礼箱相对交单锚点的方位角起点与每轮步进。三轮各差 120°、距锚点
+        /// <see cref="BountyRewardDistance"/>，彼此至少 5.2 m，不会叠成一摞；
+        /// 3 m 也足以避开搜索点 2.2 m 的触发盒与居民胶囊，不再抢同一次交互选择。
+        /// </summary>
+        internal const float BountyRewardBearing = 30f;
+        internal const float BountyRewardBearingStep = 120f;
+        internal const float BountyRewardDistance = 3f;
         internal const float MealMaxHealthBonus = 0.12f;
         internal const float MealSpeedBonus = 0.08f;
         /// <summary>遍历随身物品的安全上限，避免异常物品树把服务卡住。</summary>
@@ -41,13 +59,15 @@ namespace BossRush
         private readonly CharacterMainControl player;
         private readonly GameObject root;
         private readonly int raidSeed;
+        private readonly int groundMask;
         private float healReadyAt;
         private bool mealUsed, disposed;
 
-        internal SkyIslandServices(CharacterMainControl mainPlayer, GameObject sceneRoot, int seed)
+        internal SkyIslandServices(CharacterMainControl mainPlayer, GameObject sceneRoot, int ground, int seed)
         {
             player = mainPlayer;
             root = sceneRoot;
+            groundMask = ground;
             raidSeed = seed;
         }
 
@@ -129,18 +149,22 @@ namespace BossRush
 
         internal string Repair()
         {
-            if (disposed || player == null) return "现在没法整备。";
+            if (disposed || player == null) return L10n.T("现在没法整备。", "No refit is possible right now.");
             var items = new List<Item>();
             CollectCarried(items);
             var plan = new List<RepairEntry>();
             int quoted = Quote(items, plan);
-            if (plan.Count == 0) return "浮舟：你身上的家伙都还结实，用不着我动手。";
+            if (plan.Count == 0)
+                return L10n.T("浮舟：你身上的家伙都还结实，用不着我动手。",
+                    "Fuzhou: Everything you carry is still sound. Nothing for me to do.");
             int price = quoted < RepairMinimumPrice ? RepairMinimumPrice : quoted;
             bool account = AccountAvailable;
             if (!EconomyManager.IsEnough(new Cost((long)price), account, true))
-                return "浮舟：整备要 " + price + "，这次凑不够就先记着。";
+                return L10n.T("浮舟：整备要 ", "Fuzhou: The refit runs ") + price +
+                    L10n.T("，这次凑不够就先记着。", ". You are short this time — I will note it down.");
             if (!EconomyManager.Pay(new Cost((long)price), account, true))
-                return "浮舟：钱没走通，先别急，回头再来。";
+                return L10n.T("浮舟：钱没走通，先别急，回头再来。",
+                    "Fuzhou: The payment did not go through. No rush — come back later.");
             int repaired = 0;
             for (int i = 0; i < plan.Count; i++)
             {
@@ -154,7 +178,9 @@ namespace BossRush
                 }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandServices] 修复失败：" + e.Message); }
             }
-            return "浮舟：好了，" + repaired + " 件。云海上的东西，钝一点都不行。（花费 " + price + "）";
+            return L10n.T("浮舟：好了，", "Fuzhou: Done — ") + repaired +
+                L10n.T(" 件。云海上的东西，钝一点都不行。（花费 ",
+                    " pieces. Nothing blunt lasts out on the cloud sea. (cost ") + price + L10n.T("）", ")");
         }
 
         /// <summary>有界遍历随身物品树：只收有耐久的物品，节点与深度都有预算。</summary>
@@ -190,21 +216,40 @@ namespace BossRush
 
         #region 眠苔 · 苔药调理
 
+        /// <summary>
+        /// 纯计算：按**缺失血量比例**报价，而不是定额。
+        /// 用比例而不是按血量点数，报价与玩家 `MaxHealth` 的实际量级无关——官方将来调血量、
+        /// 或者玩家自己吃了上限加成，这里都不用重算。
+        /// </summary>
+        internal static int HealPriceFor(float currentHealth, float maxHealth)
+        {
+            if (maxHealth <= 0f) return HealPriceMinimum;
+            float missing = Mathf.Clamp01((maxHealth - currentHealth) / maxHealth);
+            return Mathf.Max(HealPriceMinimum, Mathf.CeilToInt(HealPriceFull * missing));
+        }
+
         internal string Heal()
         {
-            if (disposed || player == null || player.Health == null) return "现在没法处理伤口。";
+            if (disposed || player == null || player.Health == null)
+                return L10n.T("现在没法处理伤口。", "Wounds cannot be treated right now.");
             if (Time.unscaledTime < healReadyAt)
-                return "眠苔：药还在熬，" + Mathf.CeilToInt(healReadyAt - Time.unscaledTime) + " 秒后再来。";
+                return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") +
+                    Mathf.CeilToInt(healReadyAt - Time.unscaledTime) +
+                    L10n.T(" 秒后再来。", " seconds until the next dose.");
             if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f)
-                return "眠苔：你没受伤，省下这笔吧。";
+                return L10n.T("眠苔：你没受伤，省下这笔吧。", "Miantai: You are not hurt. Save your money.");
+            int price = HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth);
             bool account = AccountAvailable;
-            if (!EconomyManager.IsEnough(new Cost((long)HealPrice), account, true))
-                return "眠苔：一副药 " + HealPrice + "，这次不够。";
-            if (!EconomyManager.Pay(new Cost((long)HealPrice), account, true))
-                return "眠苔：钱没走通，先歇一会儿。";
+            if (!EconomyManager.IsEnough(new Cost((long)price), account, true))
+                return L10n.T("眠苔：这副药要 ", "Miantai: This dose costs ") + price +
+                    L10n.T("，这次不够。", ". Not enough this time.");
+            if (!EconomyManager.Pay(new Cost((long)price), account, true))
+                return L10n.T("眠苔：钱没走通，先歇一会儿。",
+                    "Miantai: The payment did not go through. Rest a moment.");
             player.Health.SetHealth(player.Health.MaxHealth);
             healReadyAt = Time.unscaledTime + HealCooldown;
-            return "眠苔：苔药敷上了。云海上摔一跤可不好受。（花费 " + HealPrice + "）";
+            return L10n.T("眠苔：苔药敷上了。云海上摔一跤可不好受。（花费 ",
+                "Miantai: The moss is on. A fall out here is no small thing. (cost ") + price + L10n.T("）", ")");
         }
 
         #endregion
@@ -213,9 +258,13 @@ namespace BossRush
 
         internal string Meal(bool plantingDelivered)
         {
-            if (disposed || player == null) return "现在吃不上饭。";
-            if (!plantingDelivered) return "晴禾：种植记录还没回来，菜畦也就还没重新开张。";
-            if (mealUsed) return "晴禾：这一顿你已经吃过啦，下次出岛再来。";
+            if (disposed || player == null) return L10n.T("现在吃不上饭。", "There is no meal to be had right now.");
+            if (!plantingDelivered)
+                return L10n.T("晴禾：种植记录还没回来，菜畦也就还没重新开张。",
+                    "Qinghe: The planting record is not back yet, so the garden has not reopened.");
+            if (mealUsed)
+                return L10n.T("晴禾：这一顿你已经吃过啦，下次出岛再来。",
+                    "Qinghe: You have already had this one. Come back next trip.");
             float maxHealthBeforeMeal = player.Health != null ? player.Health.MaxHealth : 0f;
             bool any = false;
             any |= RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.MaxHealth,
@@ -225,10 +274,12 @@ namespace BossRush
                 MealSpeedBonus, modifierSource, records, "SkyIslandMeal");
             any |= RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.WalkSpeed,
                 MealSpeedBonus, modifierSource, records, "SkyIslandMeal");
-            if (!any) return "晴禾：这顿饭好像没落到实处，回头我再试试。";
+            if (!any)
+                return L10n.T("晴禾：这顿饭好像没落到实处，回头我再试试。",
+                    "Qinghe: That meal did not seem to take. Let me try again later.");
             mealUsed = true;
             // 只补「上限涨出来的那一截」，不做免费回满：一顿免费饭如果能回满血，
-            // 眠苔那副 120 的苔药就永远没人买了。受伤仍然得花钱治。
+            // 眠苔那副按缺失比例计价（最高 HealPriceFull）的苔药就永远没人买了。受伤仍然得花钱治。
             try
             {
                 // 基准取不到（吃饭前 Health 不可用）时宁可不补：否则 gained 会退化成整条血量上限，
@@ -241,7 +292,8 @@ namespace BossRush
                 }
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandServices] 归航菜补血失败：" + e.Message); }
-            return "晴禾：归航菜，趁热。走远路的人得先吃饱。（本次出击生效）";
+            return L10n.T("晴禾：归航菜，趁热。走远路的人得先吃饱。（本次出击生效）",
+                "Qinghe: Homecoming greens — eat while they are hot. Long roads start on a full stomach. (this raid only)");
         }
 
         #endregion
@@ -249,8 +301,12 @@ namespace BossRush
         #region 苇白 · 委托奖励
 
         /// <summary>
-        /// 交单奖励：在指定位置留一个对应档次的奖励箱，玩家用官方战利品 UI 领取（背包满也不会丢）。
-        /// 落点无效时退回玩家身前，避免奖励箱掉到世界原点或压在玩家身上。
+        /// 交单奖励：在交单锚点**旁边**留一个对应档次的奖励箱，玩家用官方战利品 UI 领取（背包满也不会丢）。
+        ///
+        /// 传进来的 <paramref name="position"/> 是锚点（苇白本人或风铃集留言板），**不能**直接当落点：
+        /// 那会把箱子生成在 NPC / 告示牌身体里，抢同一次交互选择；而且三轮委托的锚点完全相同，
+        /// 箱子会一摞叠在一处，只有最上面那个按得到。这里按轮次分 120° 方位角退开 3 m，
+        /// 再走与搜刮点同一套地面/墙体裁决。落点探测失败才退回锚点本身（fail-open，不能不给奖励）。
         /// </summary>
         internal bool DropBountyReward(Vector3 position, SkyIslandLootTier tier, int round)
         {
@@ -260,7 +316,11 @@ namespace BossRush
                 if (player == null) return false;
                 position = player.transform.position + player.transform.forward * 1.5f;
             }
-            return SkyIslandRewardCrate.Create(root.transform, position, tier,
+            Vector3 drop;
+            if (!SkyIslandRewardCrate.TryFindCratePosition(root.transform, position,
+                BountyRewardBearing + round * BountyRewardBearingStep, BountyRewardDistance, groundMask, out drop))
+                drop = position;
+            return SkyIslandRewardCrate.Create(root.transform, drop, tier,
                 "SkyIslandBountyReward_" + round, "Bounty" + round, raidSeed, BountyRewardItemCount, true);
         }
 

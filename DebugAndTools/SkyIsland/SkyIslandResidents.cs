@@ -25,7 +25,8 @@ namespace BossRush
         };
         // 全部锚点已在资源加载时校验地面与胶囊。双居民分占集市两侧现有标记。
         private static readonly string[] Markers = { "POI_B", "EnemySpawn_B", "POI_A", "POI_D", "POI_F", "POI_H" };
-        private static readonly string[] Names = { "晴禾", "苇白", "浮舟", "眠苔", "折翎", "无声钟守" };
+        // 显示名不再在这里写第二份：与剧情面板共用 SkyIslandWorldStory.ResidentName 的中英对照，
+        // 否则英文玩家在交互提示与血条上仍会看到中文名。
 
         internal void Start(GameObject sceneRoot, ArenaPrototypeNavigation graph,
             Func<bool> isSessionValid, Action<string, Transform> talk)
@@ -48,7 +49,7 @@ namespace BossRush
         {
             for (int i = 0; i < Ids.Length && IsValid(); i++)
             {
-                try { await SpawnOneAsync(Ids[i], Markers[i], Names[i]); }
+                try { await SpawnOneAsync(Ids[i], Markers[i], SkyIslandWorldStory.ResidentName(Ids[i])); }
                 catch (Exception e) { Debug.LogWarning("[SkyIslandResidents] " + Ids[i] + " 生成失败：" + e.Message); }
                 await UniTask.Yield();
             }
@@ -131,6 +132,23 @@ namespace BossRush
                 if (other != capsule) Physics.IgnoreCollision(capsule, other, true);
             child.AddComponent<SkyIslandResidentInteractable>().Bind(id, displayName, npc.transform, onTalk, IsValid);
             child.SetActive(true);
+        }
+
+        /// <summary>本次会话实际持有的居民数。只读，给 F3 验收用。</summary>
+        internal int SpawnedCount { get { return owned.Count; } }
+
+        /// <summary>
+        /// 全部居民身份，含**本会话没有持有**的那些。
+        /// 已婚居民由婚姻系统接管、不再上岛（<see cref="SpawnOneAsync"/> 直接跳过），
+        /// 因此「没生成」不等于「出错」，验收必须能分辨这两种情况。
+        /// </summary>
+        internal static string[] AllIds { get { return (string[])Ids.Clone(); } }
+
+        /// <summary>某位居民本会话是否真的在岛上。只读。</summary>
+        internal bool IsSpawned(string id)
+        {
+            CharacterMainControl npc;
+            return owned.TryGetValue(id, out npc) && npc != null;
         }
 
         /// <summary>剧情体隐藏不会触发死亡；战斗实例必须由遭遇 owner 单独生成。</summary>

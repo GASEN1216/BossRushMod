@@ -20,6 +20,60 @@ namespace BossRush
     {
         internal const int InventoryCapacity = 12;
 
+        /// <summary>落点退避的尝试次数与角度步进：绕锚点转一整圈。</summary>
+        private const int PlacementAttempts = 6;
+        private const float PlacementBearingStep = 60f;
+
+        /// <summary>
+        /// 任何「摆在已有玩法标记旁边」的对象与该标记之间的最小间距。
+        ///
+        /// 官方 `CA_Interact.SearchInteractableAround` 按**玩家到 collider 的距离严格小于**取
+        /// 唯一交互目标，同点的两个交互体距离完全相等，谁赢由 `Physics.OverlapSphereNonAlloc`
+        /// 的返回顺序决定，而且不同组之间滚轮切不过去。3.2 米足以让两边的触发盒分开
+        /// （纪念物半边 1.5 + 见闻点半边 1.1 = 2.6），玩家站在谁跟前就选中谁。
+        ///
+        /// 这个常量与 <see cref="TryFindCratePosition"/> 一起，被谢礼箱、完成纪念物和航路图三处共用。
+        /// </summary>
+        internal const float InteractableSeparation = 3.2f;
+
+        /// <summary>
+        /// 给箱子找一个「站得住、又不挡别人交互」的落点。
+        ///
+        /// 裁决沿用搜刮点 <c>SkyIslandScavenging.TryResolve</c> 的同一套口径——那是全岛唯一被
+        /// 真实几何回归（`tests/SkyIslandContentPlacementPropertyTest.py`）复算过的落点算法：
+        /// 6 次 60° 极坐标退避 → 上方 3 m 向下 7 m 打地面层 → 命中必须属于本图地形 → 胶囊墙检。
+        ///
+        /// 刻意**不**带「与已放置点净空」那一段：它依赖搜刮点自己的点表。委托谢礼靠调用方
+        /// 给每轮不同的方位角来错开，不需要全局点表。
+        ///
+        /// 失败返回 false，调用方 fail-open 退回锚点本身（宁可压在锚点上，也不能不给奖励）。
+        /// </summary>
+        internal static bool TryFindCratePosition(Transform root, Vector3 anchor, float bearing,
+            float distance, int groundMask, out Vector3 result)
+        {
+            result = anchor;
+            if (root == null || distance <= 0f) return false;
+            try
+            {
+                for (int attempt = 0; attempt < PlacementAttempts; attempt++)
+                {
+                    float angle = (bearing + attempt * PlacementBearingStep) * Mathf.Deg2Rad;
+                    Vector3 candidate = anchor +
+                        new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+                    RaycastHit hit;
+                    if (!Physics.Raycast(candidate + Vector3.up * 3f, Vector3.down, out hit, 7f, groundMask,
+                        QueryTriggerInteraction.Ignore) || !hit.transform.IsChildOf(root)) continue;
+                    Vector3 ground = hit.point + Vector3.up * 0.05f;
+                    if (Physics.CheckCapsule(ground + Vector3.up * 0.4f, ground + Vector3.up * 1.2f, 0.45f,
+                        GameplayDataSettings.Layers.wallLayerMask, QueryTriggerInteraction.Ignore)) continue;
+                    result = ground;
+                    return true;
+                }
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandCrate] 落点探测失败：" + e.Message); }
+            return false;
+        }
+
         /// <summary>建一个空箱。失败返回 null 并给出原因，由调用方 fail-open。</summary>
         internal static InteractableLootbox Build(Transform parent, Vector3 position, float yaw,
             string name, out string error)

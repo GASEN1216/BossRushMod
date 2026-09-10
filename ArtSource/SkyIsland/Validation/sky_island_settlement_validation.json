@@ -1,0 +1,8 @@
+{
+  "status": "PASS",
+  "modelTypes": 14,
+  "modelInstances": 28,
+  "protectedMarkers": 76,
+  "propTriangles": 62782,
+  "evidence": "Offline exported metadata comparison; separate Unity physical and visual evidence required"
+}

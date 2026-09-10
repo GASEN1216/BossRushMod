@@ -53,10 +53,17 @@ namespace BossRush
         {
             get
             {
-                if (!IsCurrentSlot) return "存档槽已改变，请重新进入群岛";
-                if (store.HasWriteBarrier) return "群岛记录无法读取，已保护原存档；任务暂不可提交";
-                if (store.IsStoreFaulted || lastSaveError != null) return "群岛进度保存待重试：" + (store.LastError ?? lastSaveError);
-                return store.HasPendingWrite || coordinator.HasDeferredFlush ? "群岛记录待安全时机保存" : "群岛记录已同步";
+                if (!IsCurrentSlot)
+                    return L10n.T("存档槽已改变，请重新进入群岛", "Save slot changed — re-enter the archipelago");
+                if (store.HasWriteBarrier)
+                    return L10n.T("群岛记录无法读取，已保护原存档；任务暂不可提交",
+                        "Archipelago records are unreadable; the original save is protected and progress cannot be submitted");
+                if (store.IsStoreFaulted || lastSaveError != null)
+                    return L10n.T("群岛进度保存待重试：", "Archipelago progress save will retry: ") +
+                        (store.LastError ?? lastSaveError);
+                return store.HasPendingWrite || coordinator.HasDeferredFlush
+                    ? L10n.T("群岛记录待安全时机保存", "Archipelago records will save at a safe moment")
+                    : L10n.T("群岛记录已同步", "Archipelago records are in sync");
             }
         }
         /// <summary>
@@ -73,9 +80,11 @@ namespace BossRush
                     return summaryCache;
                 summaryFlags = data.flags;
                 summaryStatus = status;
-                summaryCache = CurrentObjective + "\n支线：种植记录" + Mark(data.Has(SkyIslandStoryFlag.PlantingRecord)) +
-                    " 旧信" + Mark(data.Has(SkyIslandStoryFlag.OldLetter)) + " 航路图" + Mark(data.Has(SkyIslandStoryFlag.RouteChart)) +
-                    " 观星镜" + Mark(data.Has(SkyIslandStoryFlag.Telescope)) + "\n" + status;
+                summaryCache = CurrentObjective +
+                    L10n.T("\n支线：种植记录", "\nSide paths: planting record") + Mark(data.Has(SkyIslandStoryFlag.PlantingRecord)) +
+                    L10n.T(" 旧信", " · old letter") + Mark(data.Has(SkyIslandStoryFlag.OldLetter)) +
+                    L10n.T(" 航路图", " · route chart") + Mark(data.Has(SkyIslandStoryFlag.RouteChart)) +
+                    L10n.T(" 观星镜", " · telescope") + Mark(data.Has(SkyIslandStoryFlag.Telescope)) + "\n" + status;
                 return summaryCache;
             }
         }
@@ -97,8 +106,14 @@ namespace BossRush
             if (!CanWrite) { message = SaveStatus; return false; }
             SkyIslandStoryData candidate;
             if (!SkyIslandStoryRules.TryApply(Current, action, out candidate, out message)) return false;
-            if (!store.Store(candidate)) { message = "群岛记录提交失败，可稍后再次操作。"; return false; }
-            message += "\n进度已记录，待安全时机保存。";
+            if (!store.Store(candidate))
+            {
+                message = L10n.T("群岛记录提交失败，可稍后再次操作。",
+                    "Could not commit the archipelago record. Try again in a moment.");
+                return false;
+            }
+            message += L10n.T("\n进度已记录，待安全时机保存。",
+                "\nProgress recorded; it will be written at a safe moment.");
             return true;
         }
 
@@ -118,13 +133,19 @@ namespace BossRush
             SkyIslandStoryAction action;
             if (SkyIslandStoryRules.TrySearchAction(marker, out action)) return TryApply(action, out message);
             if (!CanWrite) { message = SaveStatus; return false; }
-            if (Array.IndexOf(Current.discoveredNotes, marker) >= 0) { message = "这页见闻已经收进群岛手记。"; return false; }
+            if (Array.IndexOf(Current.discoveredNotes, marker) >= 0)
+            {
+                message = L10n.T("这页见闻已经收进群岛手记。",
+                    "That page is already in your archipelago notes.");
+                return false;
+            }
             SkyIslandStoryData candidate = Current.Copy();
             var values = new List<string>(candidate.discoveredNotes);
             values.Add(marker);
             candidate.discoveredNotes = values.ToArray();
-            if (!store.Store(candidate)) { message = "手记提交失败，请稍后重试。"; return false; }
-            message = "群岛见闻已收入本槽手记。";
+            if (!store.Store(candidate))
+            { message = L10n.T("手记提交失败，请稍后重试。", "Could not commit the note. Try again shortly."); return false; }
+            message = L10n.T("群岛见闻已收入本槽手记。", "The note is saved to this slot's archipelago journal.");
             return true;
         }
 
@@ -153,12 +174,39 @@ namespace BossRush
             SkyIslandStoryData data = Current;
             switch (id)
             {
-                case "sky_qinghe": return data.Has(SkyIslandStoryFlag.PlantingDelivered) ? "晴禾：新风车转起来了。下一船归来时，他们会有热菜吃。" : "晴禾：蛙鸣池那边有我丢下的种植记录。没来得及说出口的事，都写在里面了。";
-                case "sky_weibai": return "苇白：西边悬根林有风标，东边残星工坊有星灯，先去哪边都行。装置还在，修好它们就能让双航标门重新工作。\n" + CurrentObjective;
-                case "sky_fuzhou": return data.Has(SkyIslandStoryFlag.Ending) ? "浮舟：钟声听见了。船一直在这里，下次来时，我们再讲归航的故事。" : "浮舟：沿桥去风铃集找苇白。走累了随时回来，码头的系泊桩会送你回家，已记录的故事下次继续。";
-                case "sky_miantai": return "眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。";
-                case "sky_zheling": return data.ZhelingResolved ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled) ? "折翎：路已修好。这次我守着灯，等大家回来。" : "旧腰牌上刻着：『航路交给后来的人。』") : "折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。";
-                case "sky_bellkeeper": return data.BellKeeperResolved ? "钟守：去吧，敲响归航钟。让他们知道，岛上还有人在等。" : "无声钟守：钟一响，就会有人再出海。我需要你证明航路安全，否则先停下我的守钟装置。";
+                case "sky_qinghe":
+                    return data.Has(SkyIslandStoryFlag.PlantingDelivered)
+                        ? L10n.T("晴禾：新风车转起来了。下一船归来时，他们会有热菜吃。",
+                            "Qinghe: The new pinwheel is turning. When the next ship comes home there will be a hot meal waiting.")
+                        : L10n.T("晴禾：蛙鸣池那边有我丢下的种植记录。没来得及说出口的事，都写在里面了。",
+                            "Qinghe: My planting record is still out at Frogsong Pool. Everything I never got to say is written in it.");
+                case "sky_weibai":
+                    return L10n.T("苇白：西边悬根林有风标，东边残星工坊有星灯，先去哪边都行。装置还在，修好它们就能让双航标门重新工作。\n",
+                        "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n") + CurrentObjective;
+                case "sky_fuzhou":
+                    return data.Has(SkyIslandStoryFlag.Ending)
+                        ? L10n.T("浮舟：钟声听见了。船一直在这里，下次来时，我们再讲归航的故事。",
+                            "Fuzhou: I heard the bell. The boat has always been here — come back and we will tell the homecoming story again.")
+                        : L10n.T("浮舟：沿桥去风铃集找苇白。走累了随时回来，码头的系泊桩会送你回家，已记录的故事下次继续。",
+                            "Fuzhou: Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.");
+                case "sky_miantai":
+                    return L10n.T("眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                        "Miantai: The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
+                case "sky_zheling":
+                    return data.ZhelingResolved
+                        ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled)
+                            ? L10n.T("折翎：路已修好。这次我守着灯，等大家回来。",
+                                "Zheling: The road is mended. This time I keep the light and wait for them to come home.")
+                            : L10n.T("旧腰牌上刻着：『航路交给后来的人。』",
+                                "The old badge is engraved: 'The route passes to those who come after.'"))
+                        : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
+                            "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
+                case "sky_bellkeeper":
+                    return data.BellKeeperResolved
+                        ? L10n.T("钟守：去吧，敲响归航钟。让他们知道，岛上还有人在等。",
+                            "The Bell Keeper: Go on, ring the Homecoming Bell. Let them know someone on the islands is still waiting.")
+                        : L10n.T("无声钟守：钟一响，就会有人再出海。我需要你证明航路安全，否则先停下我的守钟装置。",
+                            "The Silent Bell Keeper: Ring it and someone puts to sea again. Prove the lanes are safe — or stop my bell engine first.");
                 default: return CurrentObjective;
             }
         }

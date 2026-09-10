@@ -24,8 +24,8 @@ namespace BossRush
             GameObject section = CreateF3Section(
                 L10n.T("完整玩法验收", "Full Gameplay Validation"),
                 L10n.T(
-                    "仅限 Dev 构建、基地和专用测试档。会切图、推进并保存测试档。自动验收同时生成完整人工清单；自动 PASS 不代表所有功能已验收。",
-                    "Dev build, base scene and marked test save required. Changes and saves that slot. Includes a manual checklist; automatic PASS does not mean full coverage."),
+                    "仅限 Dev 构建与专用测试档。完整验收从基地启动，会切图、推进并保存测试档；天空岛是独立出击关卡，切图即结束这趟出击，因此另有一个岛内按钮，只读、不切图。自动验收同时生成完整人工清单；自动 PASS 不代表所有功能已验收。",
+                    "Dev build and a marked test save required. Full validation starts from the base and will change scenes, advance and save that slot. The Sky Islands are a standalone raid — changing scenes ends the run — so they have a separate on-island button that is read-only and never changes scenes. Both produce a manual checklist; automatic PASS does not mean full coverage."),
                 font);
 
             f3GameplayValidationStatusText = CreateLabel(
@@ -44,6 +44,13 @@ namespace BossRush
             CreateActionButton(row2.transform, font,
                 L10n.T("取消并安全清理", "Cancel and Safe Cleanup"),
                 new Color(0.44f, 0.22f, 0.22f, 1f), CancelFullGameplayValidationFromF3);
+
+            // 天空岛是独立出击关卡：一切图这趟出击就没了，所以它不能挂在上面那条「自动验收」上，
+            // 只能给一条岛内专用入口。进岛后按这一个按钮即可跑完 SKY_* 全部自动用例。
+            GameObject rowSky = CreateF3Row(section.transform);
+            CreateActionButton(rowSky.transform, font,
+                L10n.T("天空岛验收（岛内运行）", "Sky Island Validation (run on the island)"),
+                new Color(0.20f, 0.36f, 0.46f, 1f), StartSkyIslandValidationFromF3);
 
             GameObject row3 = CreateF3Row(section.transform);
             CreateActionButton(row3.transform, font,
@@ -66,6 +73,18 @@ namespace BossRush
         {
             string reason;
             if (!F3GameplayValidationRunner.TryStart(this, out reason))
+            {
+                SetF3DebugCheatStatus(reason, true);
+                RefreshF3GameplayValidationStatus();
+                return;
+            }
+            HideF3DebugCheatMenu();
+        }
+
+        private void StartSkyIslandValidationFromF3()
+        {
+            string reason;
+            if (!F3GameplayValidationRunner.TryStartSkyIsland(this, out reason))
             {
                 SetF3DebugCheatStatus(reason, true);
                 RefreshF3GameplayValidationStatus();
@@ -391,7 +410,12 @@ namespace BossRush
             if (!ModBehaviour.DevModeEnabled) { reason = "仅 Dev 构建可用"; return false; }
             if (_host == null) { reason = "ModBehaviour 未就绪"; return false; }
             if (_host.GetComponent<ArenaPrototypeSession>() != null) { reason = "请先退出自建试验场"; return false; }
-            if (_host.GetComponent<SkyIslandSession>() != null) { reason = "请先退出天空岛"; return false; }
+            // 互斥按用例区分，不是一刀切：**主套件**从基地出发、切竞技场、最后又切回基地，
+            // 在岛上跑它等于把玩家连人带这趟出击一起送走，所以这里继续拒绝。
+            // **天空岛自己的用例**走另一条入口 `TryStartSkyIsland`，它反过来要求人已经在岛上，
+            // 只在岛内跑、跑完把人留在岛上（见 F3GameplayValidationSkyIsland.cs）。
+            if (_host.GetComponent<SkyIslandSession>() != null)
+            { reason = "岛内请改用「天空岛验收（岛内）」按钮；完整验收必须先退出天空岛"; return false; }
             if (!IsBaseScene()) { reason = "必须从基地场景启动"; return false; }
             if (!IsDedicatedCurrentSlot()) { reason = "当前槽不是专用测试档，请先点击标记按钮"; return false; }
             if (SavesSystem.IsSaving) { reason = "存档系统正忙"; return false; }
@@ -861,6 +885,12 @@ namespace BossRush
             {
                 bool ok = validation(out metrics, out reason);
                 Record(id, ok ? "PASS" : "FAIL", sw.ElapsedMilliseconds, metrics, reason);
+            }
+            catch (SkyIslandSkipCase skip)
+            {
+                // 「当前条件下这条用例没有判据」——例如中文语境下扫不出中文残留。
+                // 这类情况必须记 SKIP：判据不成立时记 PASS 就是假绿，而记 FAIL 又是冤枉。
+                Record(id, "SKIP", sw.ElapsedMilliseconds, skip.Metrics, skip.Message);
             }
             catch (Exception e)
             {

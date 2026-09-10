@@ -174,4 +174,18 @@ namespace BossRush
             return ActivationAllowed;
         }
     }
+
+    /// <summary>
+    /// 官方爆炸遮挡补丁的替身。真补丁需要 Harmony 与 UnityEngine.Physics，隔离夹具里跑不了，
+    /// 但**它的武装/撤销生命周期是租约的职责**，必须在这里如实记账：
+    /// 漏撤销就意味着回到官方地图后爆炸遮挡仍按天空岛口径算。
+    /// </summary>
+    internal static class SkyIslandExplosionObstaclePatch
+    {
+        internal static int Arms, Disarms;
+        internal static bool Armed;
+        internal static void Arm(UnityEngine.SceneManagement.Scene scene){Arms++;Armed=true;}
+        internal static void Disarm(){Disarms++;Armed=false;}
+        internal static void Reset(){Arms=0;Disarms=0;Armed=false;}
+    }
 }

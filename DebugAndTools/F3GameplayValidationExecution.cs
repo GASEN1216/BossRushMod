@@ -80,11 +80,14 @@ namespace BossRush
             yield return null;
             try
             {
-                yield return DriveSessionPhase(RunSuite(), false);
+                // 天空岛跑的是自己的编排：它只在岛内跑，收尾也不切图（主套件的 RunFinalChecks
+                // 会 LoadScene 回基地，在岛上那等于把玩家连这趟出击一起送走）。
+                yield return DriveSessionPhase(_skyIslandMode ? RunSkyIslandSuite() : RunSuite(), false);
                 if (!_slotChanged && !_hostLost && _host != null)
                 {
                     _closingSession = true;
-                    yield return DriveSessionPhase(RunFinalChecks(), true);
+                    yield return DriveSessionPhase(
+                        _skyIslandMode ? RunSkyIslandFinalChecks() : RunFinalChecks(), true);
                 }
             }
             finally { CompleteSession(); }
@@ -144,6 +147,9 @@ namespace BossRush
         {
             if (_sessionCompleted) return;
             _sessionCompleted = true;
+            // 中途异常/取消时 RunSkyIslandFinalChecks 可能没跑到，标志必须在这条唯一收尾路径上复位，
+            // 否则下一次从基地启动完整验收会错走天空岛编排。
+            _skyIslandMode = false;
             DisposeSessionStack();
             if (_sessionSubscribed)
             {

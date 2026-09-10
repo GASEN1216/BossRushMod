@@ -45,16 +45,38 @@ namespace BossRush
         private float nextTick;
         private int openedCount;
 
+        /// <summary>
+        /// 本局实际能搜到的点数，也是 HUD「物资 已搜/可搜」的分母。
+        ///
+        /// **必须排除建箱失败的点**：`Failed` 的点永远开不了，把它算进分母会让计数器
+        /// 永远够不到分母（玩家搜完全岛还显示 37/39，看上去像漏了两处）。
+        /// 与 <see cref="AvailablePoints"/> 同一口径，只是不再扣掉已开过的。
+        /// </summary>
         internal int PlacedPoints
         {
             get
             {
                 int count = 0;
-                for (int i = 0; i < points.Count; i++) if (points[i].Placed) count++;
+                for (int i = 0; i < points.Count; i++) if (points[i].Placed && !points[i].Failed) count++;
                 return count;
             }
         }
         internal int OpenedPoints { get { return openedCount; } }
+
+        /// <summary>
+        /// 已尝试建箱但失败的点数。只读，给 F3 验收用：
+        /// `Failed` 的点是 fail-open 静默跳过的，日志里各自有一行 WARNING，但没有汇总口径，
+        /// 玩家看到的分母（<see cref="PlacedPoints"/>）已经把它们扣掉了，缺口反而不可见。
+        /// </summary>
+        internal int FailedPoints
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < points.Count; i++) if (points[i].Failed) count++;
+                return count;
+            }
+        }
 
         /// <summary>本局还能被搜刮记账的点数：落好位、没建箱失败、也还没开过的。</summary>
         internal int AvailablePoints
@@ -221,7 +243,8 @@ namespace BossRush
             if (added == 0 && !poolWarned && report != null)
             {
                 poolWarned = true;
-                report("群岛物资表暂时为空，本次搜刮点没有产出", true);
+                report(L10n.T("群岛物资表暂时为空，本次搜刮点没有产出",
+                    "The archipelago loot table is empty right now; this cache produced nothing"), true);
             }
             // 牌子先建后隐；下一次 Tick 的距离门控会按需打开。
             point.Label = AttachLabel(box.transform, point.Anchor.Tier);

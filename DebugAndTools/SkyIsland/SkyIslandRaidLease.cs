@@ -79,6 +79,9 @@ namespace BossRush
         private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
             if (!IsRaidScene(scene)) return;
+            // 官方爆炸的遮挡射线写死在 y=0.5，天空岛的岛面在 0–62 米，不改就等于全岛爆炸穿墙。
+            // 补丁只认这一个场景句柄，登记与撤销都跟着 raid 场景的实际生命周期走。
+            SkyIslandExplosionObstaclePatch.Arm(scene);
             try
             {
                 GameObject services = null, world = null;
@@ -185,7 +188,12 @@ namespace BossRush
                 recovery.Bind(this);
             }
         }
-        private void OnSceneUnloaded(Scene scene) { if (IsRaidScene(scene)) TryRelease(); }
+        private void OnSceneUnloaded(Scene scene)
+        {
+            if (!IsRaidScene(scene)) return;
+            SkyIslandExplosionObstaclePatch.Disarm();
+            TryRelease();
+        }
         internal static bool IsRaidScene(Scene scene)
         { return string.Equals(scene.path, SkyIslandSceneReferenceBridge.ScenePath, StringComparison.OrdinalIgnoreCase); }
 
@@ -216,6 +224,9 @@ namespace BossRush
                 SceneManager.sceneUnloaded -= OnSceneUnloaded;
                 subscribed = false;
             }
+            // 场景已确认不在（上面的 isLoaded 早返），这里是撤销遮挡补丁的兜底路径：
+            // 正常走 OnSceneUnloaded，异常退出走这里，两处都是幂等的 bool 写。
+            SkyIslandExplosionObstaclePatch.Disarm();
             if (bundle != null) bundle.Unload(true);
             bundle = null;
             if (recovery != null) { UnityEngine.Object.Destroy(recovery.gameObject); recovery = null; }

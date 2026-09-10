@@ -40,7 +40,7 @@ namespace BossRush
                     if (body != null) body.text = result;
                 });
             }
-            Button(panel, "继续旅程 · ESC", new Vector2(0, -282), Dispose);
+            Button(panel, L10n.T("继续旅程 · ESC", "Continue · ESC"), new Vector2(0, -282), Dispose);
             input = ZombieModeUIHelper.ClaimModalInput(canvas.gameObject, "SkyIslandStory");
         }
         internal void Tick()
@@ -93,7 +93,7 @@ namespace BossRush
             get
             {
                 string key = "BossRush_SkyIsland_Story_" + name;
-                LocalizationHelper.InjectLocalization(key, label ?? "群岛记事");
+                LocalizationHelper.InjectLocalization(key, label ?? L10n.T("群岛记事", "Archipelago record"));
                 return key;
             }
         }

@@ -110,22 +110,42 @@ namespace BossRush
             switch (id)
             {
                 case "K1":
-                    title = "悬根林 / 风铃集 · K1";
-                    condition = story.Has(SkyIslandStoryFlag.WindBeacon) ? "风标已修复\n请到风标旁系牢回程绳桥" : "请先修复悬根林风标\n再到风标旁系牢回程绳桥"; break;
+                    title = L10n.T("悬根林 / 风铃集 · K1", "Hanging Root Wood / Windchime Market · K1");
+                    condition = story.Has(SkyIslandStoryFlag.WindBeacon)
+                        ? L10n.T("风标已修复\n请到风标旁系牢回程绳桥",
+                            "Wind beacon repaired\nLash the rope bridge at the beacon")
+                        : L10n.T("请先修复悬根林风标\n再到风标旁系牢回程绳桥",
+                            "Repair the Hanging Root Wood beacon first\nthen lash the rope bridge at the beacon"); break;
                 case "K2":
-                    title = "残星工坊 / 风铃集 · K2";
-                    condition = story.Has(SkyIslandStoryFlag.StarLamp) ? "星灯已修复\n请到星灯旁打开检修廊" : "请先修复残星工坊星灯\n再到星灯旁打开检修廊"; break;
+                    title = L10n.T("残星工坊 / 风铃集 · K2", "Fallen Star Workshop / Windchime Market · K2");
+                    condition = story.Has(SkyIslandStoryFlag.StarLamp)
+                        ? L10n.T("星灯已修复\n请到星灯旁打开检修廊",
+                            "Star lamp repaired\nOpen the maintenance walk at the lamp")
+                        : L10n.T("请先修复残星工坊星灯\n再到星灯旁打开检修廊",
+                            "Repair the Fallen Star Workshop lamp first\nthen open the maintenance walk at the lamp"); break;
                 case "K3":
-                    title = "鸣风栈道 / 风铃集 · K3";
-                    condition = story.BothBeacons ? "双航标已恢复\n请到鸣风栈道开启旧桥" : "请先恢复风标与星灯\n再到鸣风栈道开启旧桥"; break;
+                    title = L10n.T("鸣风栈道 / 风铃集 · K3", "Windsong Boardwalk / Windchime Market · K3");
+                    condition = story.BothBeacons
+                        ? L10n.T("双航标已恢复\n请到鸣风栈道开启旧桥",
+                            "Both beacons restored\nOpen the old bridge on Windsong Boardwalk")
+                        : L10n.T("请先恢复风标与星灯\n再到鸣风栈道开启旧桥",
+                            "Restore the wind beacon and the star lamp first\nthen open the old bridge on Windsong Boardwalk"); break;
                 case "BellCourt":
-                    title = "鸣风栈道 / 归航钟庭";
-                    condition = "请先恢复悬根林风标\n以及残星工坊星灯"; break;
+                    title = L10n.T("鸣风栈道 / 归航钟庭", "Windsong Boardwalk / Homecoming Bell Court");
+                    condition = L10n.T("请先恢复悬根林风标\n以及残星工坊星灯",
+                        "Restore the Hanging Root Wood beacon\nand the Fallen Star Workshop lamp"); break;
                 default:
-                    title = "镜水寺 / 残星工坊";
-                    condition = "请与镜水寺的折翎和解\n或明确挑战并战胜折翎"; break;
+                    // ZhelingPass 只挡 FG 这一段。按 ArtSource/SkyIsland/layout.json，
+                    // A→B→C→D→E→G 全程无门，残星工坊、星灯、S4 观星镜与 K2 都能绕到，
+                    // 折翎并非必经。牌子必须如实说是近路，不能写成硬性前置误导玩家。
+                    title = L10n.T("镜水寺 / 残星工坊 · 近路",
+                        "Mirrorwater Temple / Fallen Star Workshop · shortcut");
+                    condition = L10n.T("与折翎和解或战胜他即可开启\n也可经悬根林绕行鸣风栈道抵达",
+                        "Opens once you reconcile with or defeat Zheling\nor go around via Hanging Root Wood and Windsong Boardwalk"); break;
             }
-            return title + (open ? "\n已通行" : "\n尚未通行\n" + condition);
+            return title + (open
+                ? L10n.T("\n已通行", "\nOpen")
+                : L10n.T("\n尚未通行\n", "\nClosed\n") + condition);
         }
         /// <summary>只有门条件涉及的位才需要重扫导航；旧信、见闻等无关事实变化不应触发 3655 面的重算。</summary>
         private int GateMask()

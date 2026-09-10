@@ -108,6 +108,35 @@ def check_loot_anchors():
     for tier_name, floor in guarantees.items():
         assert bands['MinQuality'][tier_name] <= int(floor) <= bands['MaxQuality'][tier_name], \
             'Guarantee floor for %s falls outside its own quality band' % tier_name
+    # 件数同样必须随档次单调不减。历史教训：航务补给曾经是 2–4、星工遗存只有 2–3，
+    # 中段区域比全图最深处出得还多，与品质带的递增方向相反，而件数一个数字都没被钉。
+    counts = {}
+    for accessor in ('MinCount', 'MaxCount'):
+        marker = 'internal static int %s(SkyIslandLootTier tier)' % accessor
+        assert marker in tables, 'Item count accessor missing: ' + accessor
+        body = tables.split(marker, 1)[1].split('\n        }', 1)[0]
+        values = dict(re.findall(r'if \(tier == SkyIslandLootTier\.(\w+)\) return (\d+);', body))
+        ternary = re.search(r'return tier == SkyIslandLootTier\.(\w+) \? (\d+) : (\d+);', body)
+        if ternary:
+            assert ternary.group(2) != ternary.group(3), 'Degenerate ternary: both branches return the same count'
+            values[ternary.group(1)] = ternary.group(2)
+            values['Voyage'] = values['Starworks'] = ternary.group(3)
+        else:
+            default = re.search(r'\n\s*return (\d+);', body)
+            assert default, 'Item count %s has no default branch' % accessor
+            values['Supply'] = default.group(1)
+        counts[accessor] = {k: int(v) for k, v in values.items()}
+    assert counts['MinCount'] == {'Supply': 1, 'Voyage': 2, 'Starworks': 2}, \
+        'Loot minimum counts changed: %r' % counts['MinCount']
+    assert counts['MaxCount'] == {'Supply': 2, 'Voyage': 3, 'Starworks': 4}, \
+        'Loot maximum counts changed: %r' % counts['MaxCount']
+    for accessor, table in counts.items():
+        ordered = [table['Supply'], table['Voyage'], table['Starworks']]
+        assert ordered == sorted(ordered), \
+            '%s must not invert against the quality bands: %r' % (accessor, ordered)
+    for tier_name in ('Supply', 'Voyage', 'Starworks'):
+        assert 1 <= counts['MinCount'][tier_name] <= counts['MaxCount'][tier_name] <= 4, \
+            'Crate budget broken for ' + tier_name
     assert 'MarkerClearance = 4.5f' in tables, 'Marker clearance must stay >= interaction pick radius'
     assert 'ActivationRange = 72f' in tables, 'Scavenging activation gate changed'
     # Mono 与 .NET Core 的 string.GetHashCode 口径不同，抽样必须用自带稳定散列。
@@ -210,6 +239,30 @@ def check_enemy_tiers():
     assert re.search(r'character\.transform\.localScale\s*=', tiers) is None, 'Never scale the character transform'
     assert 'Mathf.Min(DamageMultiplier(tier), 3f)' in tiers, 'Damage multiplier must stay capped at 3'
     assert 'character.Health.SetHealth(character.Health.MaxHealth)' in tiers, 'Health must be synced after raising the cap'
+    # 三张倍率表必须**随档次严格递增**。历史教训：Champion（折翎、钟守）曾经是 2.2/1.3/1.25，
+    # 比守航标的 Elite（2.6/1.35/1.3）还软——单挑的主线对手比路上的杂兵小队更弱，
+    # 而当时守卫只钉了「伤害封顶 3」这条赋值语句在位，一个数字都没钉，于是倒挂无人察觉。
+    # 这里解析方法体取出实际数字，口径同上面的品质带解析。
+    multipliers = {}
+    for accessor in ('HealthMultiplier', 'DamageMultiplier', 'ReactionSpeedup'):
+        marker = 'internal static float %s(SkyIslandEnemyTier tier)' % accessor
+        assert marker in tiers, 'Tier multiplier accessor missing: ' + accessor
+        body = tiers.split(marker, 1)[1].split('\n        }', 1)[0]
+        values = dict(re.findall(r'if \(tier == SkyIslandEnemyTier\.(\w+)\) return ([\d.]+)f;', body))
+        default = re.search(r'\n\s*return ([\d.]+)f;', body)
+        assert default, 'Tier multiplier %s has no default branch' % accessor
+        values['Scav'] = default.group(1)
+        multipliers[accessor] = {k: float(v) for k, v in values.items()}
+    assert multipliers['HealthMultiplier'] == {'Scav': 1.0, 'Elite': 2.6, 'Champion': 4.5, 'Storm': 13.0}, \
+        'Enemy health multipliers changed: %r' % multipliers['HealthMultiplier']
+    assert multipliers['DamageMultiplier'] == {'Scav': 1.0, 'Elite': 1.35, 'Champion': 1.55, 'Storm': 1.8}, \
+        'Enemy damage multipliers changed: %r' % multipliers['DamageMultiplier']
+    assert multipliers['ReactionSpeedup'] == {'Scav': 1.0, 'Elite': 1.3, 'Champion': 1.45, 'Storm': 1.7}, \
+        'Enemy reaction speedups changed: %r' % multipliers['ReactionSpeedup']
+    for accessor, table in multipliers.items():
+        ordered = [table['Scav'], table['Elite'], table['Champion'], table['Storm']]
+        assert ordered == sorted(ordered) and len(set(ordered)) == len(ordered), \
+            '%s must increase strictly with tier: %r' % (accessor, ordered)
     # Champion 保留自己的脸与名字，染色/放大会毁掉具名角色的辨识度。
     champion = tiers.split('internal static void Apply(', 1)[1].split('\n        }', 1)[0]
     assert 'decorate = tier != SkyIslandEnemyTier.Champion' in champion, 'Champions must skip appearance decoration'
@@ -218,6 +271,11 @@ def check_enemy_tiers():
     # 只改 nameKey 血条上根本不显示。精英与 Boss 必须显式打开，Scav 保持匿名。
     assert 'if (tier != SkyIslandEnemyTier.Scav) character.characterPreset.showName = true;' in tiers, \
         'Renaming a tier without enabling showName leaves the health bar unchanged'
+    # Scav 必须**不**改名：它的 showName 恒为 false，自定义名玩家根本看不到，
+    # 但改 nameKey 会把击杀记到 Count/Kills/BossRush_SkyIsland_Enemy_Scav 下，
+    # 官方拾荒者击杀数与 RequireEnemyKilled 解锁都不再推进。自动组按出击刷新之后这批击杀会反复产生。
+    assert 'if (decorate && tier != SkyIslandEnemyTier.Scav)' in champion, \
+        'Plain scavengers must keep the official name key so official kill counters still advance'
     # 数值层是乘法（血量 *=、反应时间 /=），重复施加会复利：18 倍血跑两遍就是 324 倍。
     # 这两条必须按**方法体**判断：只在整份源码里找 token，删掉一处另一处还在，子串仍会命中。
     assert 'MarkApplied(character)' in champion, 'Tier application must be idempotent'
@@ -236,9 +294,21 @@ def check_enemy_tiers():
 
 def check_storm_boss():
     boss = source('SkyIslandStormBoss.cs')
-    assert 'PhaseThresholds = { 0.66f, 0.33f }' in boss, 'Storm boss phase thresholds changed'
-    assert 'PulseDamage = 38f' in boss and 'PulseRadius = 9f' in boss, 'Storm pulse tuning changed'
-    assert 'PulseTelegraph = 1f' in boss, 'Storm pulse must stay telegraphed'
+    assert 'PhaseThresholds = { 0.80f, 0.60f, 0.40f, 0.20f }' in boss, 'Storm boss phase thresholds changed'
+    assert 'PulseDamage = 38f' in boss and 'PulseRadius = 7f' in boss, 'Storm pulse tuning changed'
+    assert 'PulseTelegraph = 1.4f' in boss, 'Storm pulse must stay telegraphed'
+    # 相位数是这场 Boss 战的**唯一**节奏来源：只有两档就是「打很久的血包 + 两次特殊时刻」。
+    thresholds = re.search(r'PhaseThresholds = \{([^}]*)\}', boss)
+    assert thresholds, 'Phase threshold table must stay parseable'
+    phases = [float(v.strip().rstrip('f')) for v in thresholds.group(1).split(',') if v.strip()]
+    assert len(phases) >= 4, 'The storm needs at least four telegraphed moments, not a long health bar'
+    assert phases == sorted(phases, reverse=True), 'Phase thresholds must be listed high to low'
+    # 官方 ExplosionManager.CreateExplosion 没有距离衰减，圈内一律吃满伤：
+    # 能不能逃掉完全由 半径 ÷ 预警秒数 决定。旧值 9m/1s 需要 9 m/s，贴脸的近战流数学上逃不掉。
+    radius = float(re.search(r'PulseRadius = ([\d.]+)f', boss).group(1))
+    telegraph = float(re.search(r'PulseTelegraph = ([\d.]+)f', boss).group(1))
+    assert radius / telegraph <= 5.5, \
+        'First pulse must be escapable at a normal run speed: %.2f m/s required' % (radius / telegraph)
     # 俯视视角下一盏点光源读不出 AoE 边界，而三波 38 伤害站在中心必死：预警必须是贴地圆环。
     assert 'CreateWarningRing' in boss and 'LineRenderer' in boss, 'Storm pulse needs a ground-projected ring'
     assert 'internal static float RadiusForWave(int wave)' in boss, \
@@ -340,10 +410,33 @@ def check_services_and_bounty():
     assert 'LevelConfig.SaveCharacter' not in services, \
         'SaveCharacter is not an account gate; it is true on raid maps'
     assert services.count('bool account = AccountAvailable;') >= 2, 'Every paid island service needs the same gate'
+    # 苔药必须按缺失血量比例计价，不能是定额。定额 120 + 全额回满 + 120 秒冷却，加上
+    # accountAvailable 让银行存款在出击图里也能花，等于岛上根本没有血量压力。
+    # 用比例而不是按血量点数，报价与玩家 MaxHealth 的实际量级无关。
+    assert 'HealPrice = ' not in services, 'Flat heal pricing removes all attrition pressure from the raid'
+    assert 'HealPriceFull = 480' in services, 'Full-restore heal price changed'
+    assert 'HealPriceMinimum = 60' in services, 'Heal service floor changed'
+    assert 'HealCooldown = 300f' in services, 'Heal cooldown changed'
+    heal_price = services.split('internal static int HealPriceFor(float currentHealth, float maxHealth)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    assert '(maxHealth - currentHealth) / maxHealth' in heal_price, \
+        'Heal price must scale with the missing health fraction, not with absolute points'
+    assert 'HealPriceFull * missing' in heal_price, 'Heal price must be derived from the full-restore price'
+    heal = services.split('internal string Heal()', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth)' in heal, \
+        'The heal service must quote through the shared pricing helper'
     # 免费的归航菜如果能回满血，眠苔那副付费苔药就永远没人买。
     meal = services.split('internal string Meal(bool plantingDelivered)', 1)[1].split(chr(10) + '        }', 1)[0]
     assert 'player.Health.SetHealth(player.Health.MaxHealth)' not in meal, \
         'The free meal must top up only the gained cap, not fully heal'
+    # 晴禾是永久 NPC：与玩家结婚后由婚姻系统接管、不再上岛（SkyIslandResidents 跳过生成，
+    # PermanentDuckNpcModule 对 SkyIslandRaid 恒返回 false）。归航菜若只挂在她身上就会永久失联。
+    # 苇白的委托早有留言板兜底，这条纪律必须对称。
+    world_story = source('SkyIslandWorldStory.cs')
+    read_point = world_story.split('internal void ReadPoint(string key, Action recorded)', 1)[1] \
+        .split('internal void Talk(', 1)[0]
+    assert 'case "Search_C":' in read_point and 'Meal)' in read_point, \
+        'The homecoming meal needs a world-device fallback for when Qinghe has married and left the island'
     assert 'RuntimeStatModifierTracker.TryAdd' in services, 'Buffs must be tracked'
     disposal = services.split('public void Dispose()', 1)[1]
     assert 'RuntimeStatModifierTracker.RemoveAll(records' in disposal, 'Raid buffs must be removed on session exit'
@@ -373,6 +466,16 @@ def check_services_and_bounty():
     story = source('SkyIslandWorldStory.cs')
     assert 'contract.TryClaim(reward => session.DropBountyReward(position, reward, round)' in story, \
         'The claim UI must pass the delivery callback, not consume then drop'
+    # 谢礼箱不能落在交单锚点上：锚点是苇白本人或风铃集留言板，直接生成会把箱子塞进 NPC/告示牌里
+    # 抢同一次交互选择；而且三轮委托的锚点完全相同，箱子会一摞叠在一处，只有最上面那个按得到。
+    assert 'BountyRewardBearingStep = 120f' in services, 'Bounty crates must fan out per round'
+    assert 'BountyRewardDistance = 3f' in services, 'Bounty crates must stand clear of the hand-in anchor'
+    drop = services.split('internal bool DropBountyReward(Vector3 position, SkyIslandLootTier tier, int round)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    assert 'BountyRewardBearing + round * BountyRewardBearingStep' in drop, \
+        'Each contract round must use its own bearing so crates never stack'
+    assert 'SkyIslandRewardCrate.TryFindCratePosition' in drop, \
+        'Bounty crates must reuse the shared standable-placement probe'
     # 只派做得完的单：Threats/Survey 的计数源是持久存档事实，老档上可能一件都不剩。
     assert 'session.AvailableBountyProgress(kind) < target' in story, \
         'Contracts must be gated on how much progress this raid can still produce'
@@ -388,9 +491,43 @@ def check_services_and_bounty():
     assert 'story.HasVisitedRegion(' in available, 'Survey availability must exclude already-visited regions'
     encounters_src = source('SkyIslandEncounters.cs')
     remaining = encounters_src.split('internal int RemainingClearable', 1)[1].split(chr(10) + '        }', 1)[0]
-    # 已存档清场的组在 Tick 里被短路成 Cleared，cleared() 回调根本不会触发，必须排除。
-    assert '!completed(encounter.Id)' in remaining, 'Saved-cleared encounters can never credit a contract again'
+    # 自动组按出击刷新（短路只留给手动组），所以**不能**再用存档事实过滤可完成量：
+    # 沿用旧的 !completed(id) 会让第二次进岛起可完成量恒为 0，「清理航路威胁」永远派不出来。
+    assert 'completed(' not in remaining, \
+        'Auto encounters respawn each raid; filtering by saved clears zeroes contract availability on revisits'
     assert '!encounter.Manual' in remaining, 'Manual encounters need story prerequisites; do not over-count them'
+
+
+def check_encounter_refresh():
+    """自动组按出击刷新、手动组一次性——这张图能不能算出击图，全押在这一条上。
+
+    历史：所有遭遇（含 13 组自动组）都靠存档 `clearedEncounters` 永久抑制生成，而 39 个
+    搜刮点每趟重刷。于是第二次进岛起全岛零敌人、约百件产出（含 ~25 件品质 4–8）无限重复，
+    这张 raid 图退化成无风险刷宝台。编译和当时的守卫都查不出来。
+    """
+    encounters = source('SkyIslandEncounters.cs')
+    tick = encounters.split('internal void Tick()', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'if (!encounter.Started && encounter.Manual && completed(encounter.Id))' in tick, \
+        'Saved clears may only suppress manual (named story) encounters; auto groups must respawn each raid'
+    # 反例：没有 encounter.Manual 这一项就等于全组永久静音。
+    assert 'if (!encounter.Started && completed(encounter.Id)) {' not in tick, \
+        'The unconditional short-circuit is what emptied the island on every revisit'
+    # 具名剧情对手仍必须是一次性的：折翎/钟守/噬风打完就不该再出现。
+    session = source('SkyIslandSession.cs')
+    assert 'id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)' in session, \
+        'The storm must stay one-shot'
+    begin = encounters.split('internal bool BeginChallenge(string id)', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'completed(id)' in begin, 'Manual challenges must still be blocked by the saved fact'
+    # 剧情装置的前置读的仍是同一份持久事实，重刷的敌群不会把已完成的装置重新锁上。
+    rules = source('SkyIslandStoryRules.cs')
+    for region in ('D', 'G'):
+        assert 'source.EncounterCleared("' + region + '")' in rules, \
+            'Beacon prerequisites must keep reading the persistent clear fact: ' + region
+    # 战斗探测按半径，不是全图。
+    within = encounters.split('internal bool HasLivingEnemiesWithin(Vector3 point, float radius)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    assert 'actor.Life.transform.position' in within, 'Proximity must use the live actor position'
+    assert 'sqrMagnitude <= squared' in within, 'Proximity must compare squared distances, not call Distance per actor'
 
 
 def check_session_ownership():
@@ -409,6 +546,52 @@ def check_session_ownership():
     visit_branch = visit_branch.split(chr(10) + '                }', 1)[0]
     assert 'bounty.ReportRegionVisited();' in visit_branch, \
         'Region credit must only fire on a newly recorded region'
+    # 到访半径必须小于「主岛桥头到对岸支路地标」的最短距离。按 ArtSource/SkyIsland/layout.json，
+    # CS1/DS2/FS3/GS4 四条支路的主岛侧桥头到对岸 POI 分别是 73.2 / 103.9 / 73.9 / 117.3 米：
+    # 旧的 120 米让玩家站在主岛边缘就能点亮 S1–S4 的迷雾并刷完「巡视群岛区域」，根本不用过桥。
+    # 下界由主岛正常路线决定（B→C→D 直线穿越对 POI_C 最近约 50 米）。
+    radius = re.search(r'sqrMagnitude < (\d+) \* \d+ &&\s*\n\s*story\.RecordRegionVisited', session)
+    assert radius, 'Region visit radius must stay parseable'
+    assert 50 < int(radius.group(1)) < 73, \
+        'Region visit radius %s m leaks side branches across their bridges' % radius.group(1)
+    # 折翎的战斗实例用的就是他自己的脸和名字：战败后把剧情体放回原地，玩家会看到
+    # 刚打死的人站在自己的尸体和掉落箱旁边，头顶还挂着「聊聊航路」。
+    #
+    # 判据必须是「本局是否打响过」这一个事实源。用 `!IsBusy && !ZhelingDefeated` 不行：
+    # 两个条件延迟不同——最后一名倒下的那一帧 IsBusy 就转 false，而持久 flag 要等
+    # encounters.Tick（0.25 s 节流）提交并被存档接受；存档有写屏障时 flag 永远落不下来，
+    # 那就是持久可见（CR-2026-09-09-013）。
+    assert 'residents.SetVisible("sky_zheling", !ZhelingDefeated && !HasStoryChallengeStarted("Zheling"));' in session, \
+        'A defeated Zheling must not walk back as a talkable resident'
+    assert 'IsStoryChallengeActive("Zheling")' not in session.split('residents.SetVisible("sky_zheling"', 1)[1].split(';', 1)[0], \
+        'Zheling visibility must not depend on the frame-latency IsBusy query'
+    enc_src = source('SkyIslandEncounters.cs')
+    assert 'internal bool HasStarted(string id)' in enc_src, \
+        'The one-shot "was this group ever fought" fact must live in the encounter owner'
+    assert 'encounter.Started || encounter.Cleared' in enc_src, \
+        'HasStarted must also cover the save-driven one-shot close, not just this run'
+    # 每帧路径不得用闭包 Find：IsBusy/HasStarted 每帧各问两次，闭包捕获等于每帧产生垃圾。
+    assert 'encounters.Find(e =>' not in enc_src and 'encounters.Exists(e =>' not in enc_src, \
+        'Per-frame encounter lookups must not allocate a closure (AGENTS 4.12)'
+    # 面板会把 timeScale 压到 0，而这个暂停是可靠的（ModBehaviour.LateUpdate 排在官方
+    # TimeScaleManager.Update 之后）。没有战斗门，搜索点/居民/纪念物就都是战斗中的暂停键，
+    # 而且面板里还挂着苔药与整备，等于可以定格战斗再花钱回满血。
+    assert 'internal bool CanOpenStoryPanel(out string reason)' in session, \
+        'Story panels need a combat gate; the modal pause is reliable and would otherwise be a free pause button'
+    gate = session.split('internal bool CanOpenStoryPanel(out string reason)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    assert 'encounters.HasLivingEnemiesWithin(' in gate, 'The combat gate must ask the encounter owner'
+    assert 'StoryPanelQuietRadius' in gate, 'The quiet radius must be a named constant, not a literal'
+    # 按半径而不是全图：把一组敌人丢在岛的另一头不该让全岛剧情交互永久失效。
+    assert 'HasLivingEnemies)' not in gate, 'A whole-island check would deadlock the story on abandoned enemies'
+    story_src = source('SkyIslandWorldStory.cs')
+    assert 'private bool BlockedByCombat()' in story_src, 'The gate must have one shared entry point'
+    for entry in ('internal void ReadPoint(string key, Action recorded)', 'internal void Talk(string id, Transform speaker)'):
+        body = story_src.split(entry, 1)[1].split(chr(10) + '        }', 1)[0]
+        assert 'if (BlockedByCombat()) return;' in body, 'Story entry point missing the combat gate: ' + entry
+    tick = story_src.split('internal void Tick()', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'presentation.Dispose();' in tick, \
+        'An open panel must close itself when combat starts (async spawns finish at timeScale 0)'
     module = source('SkyIslandRuntimeModule.cs')
     for reset in ('SkyIslandLootPools.ResetStaticCaches()', 'SkyIslandEnemyTiers.ResetStaticCaches()',
                   'SkyIslandStormBoss.ResetStaticCaches()'):
@@ -437,6 +620,7 @@ def main():
     check_content_table()
     check_story_contract()
     check_services_and_bounty()
+    check_encounter_refresh()
     check_session_ownership()
     check_registration()
     print('PASS SkyIslandContentExpansionGuard')

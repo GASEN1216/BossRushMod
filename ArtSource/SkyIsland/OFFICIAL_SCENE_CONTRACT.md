@@ -28,7 +28,8 @@
 | --- | --- | --- |
 | 出击读条 | `MapSelectionView.LoadTask` → `LoadScene(..., clickToConinue: true)`，读条完停在「点击继续」 | 同（`SkyIslandRaidLease.BeginLoad`） |
 | 撤离切图 | `SceneLoaderProxy.Task`：`NotifyEvacuated` → `ClosureView.ShowAndReturnTask(1f)` → 幕布换成 `EvacuateScreenScene` → `LoadScene(..., clickToConinue: false)` | 同（`SkyIslandRaidLease.ReturnToBase`，结算画面 fail-open） |
-| 撤离圈计时 | 官方出口预制体 `CountDownArea`：触发器计时，**任何官方 View 打开时不推进**，死亡中止 | Session 自算距离/停留（`ExtractionRadius` 2.5 m / `ExtractionHold` 3 s，HUD 文本倒计时）；判定行带 `View.ActiveView == null` 门（2026-09-09 补）。**未复用官方倒计时控件** `EvacuationCountdownUI`，观感仍与原版有差异，属已知项 |
+| 撤离圈计时 | 官方出口预制体 `CountDownArea`：触发器计时，**任何官方 View 打开时不推进**，死亡中止 | Session 自算距离/停留（`ExtractionRadius` 2.5 m / `ExtractionHold` 3 s，HUD 文本倒计时）；推进分支带 `View.ActiveView == null` 门（2026-09-09 补），且官方界面打开时**冻结**读条而不是清零（顺延 `extractionStarted`，与官方「不推进」同语义；旧实现开一下背包就把 3 秒清零）；自绘剧情面板打开时同样冻结（它把 `timeScale` 压到 0，但 `unscaledTime` 照走）。**未复用官方倒计时控件** `EvacuationCountdownUI`，观感仍与原版有差异，属已知项 |
+| 撤离点标识 | 官方出口预制体自带可见的撤离区域 | `SkyIslandExtractionRings` 在 `Exit` / `BellExtraction` 脚下画贴地圆环（共享 `SkyIslandGroundRing`，与噬风预警圈同一建造点）：码头蓝环恒亮、钟庭绿环随敲钟结局出现，半径即 `ExtractionRadius`。**作者场景不提供任何撤离视觉**——`tools/generate_sky_island.py` 的 `marker()` 建的是 Blender Empty，官方小地图也不标撤离点，所以这一层必须由代码补（CR-2026-09-09-012）|
 | 返航前封锁输入 | `SceneLoaderProxy.LoadScene` 先 `InputManager.DisableInput(gameObject)` 再派发，黑幕淡入期间不能再移动/开火/交互 | `Close` 派发返航前 `BlockInputForReturn()`（2026-09-09 补）：封锁源是**岛场景内的临时对象**，随场景卸载解封；`Cleanup` 也销毁它。**不能挂在 DontDestroyOnLoad 的 Mod 宿主上**，`InputManager` 只在源对象销毁/失活时解封，否则回基地后输入永久锁死 |
 | 加载被拒 | `SceneLoader.LoadScene` 遇到 `IsSceneLoading` 或身份未登记时只记一条 LogError 就同步返回 | `Build` 等 root 的循环观察 `lease.LoadFinished`（2026-09-09 补）：立刻按「未起航」清理（`loadStarted = false`），不空等 120 秒，也不发起多余的回基地加载 |
 | 死亡 | 官方 `CharacterDieTask` 全权处理，内含 `ClosureView` 与 `LoadBaseScene` | 不接管，交给官方 |

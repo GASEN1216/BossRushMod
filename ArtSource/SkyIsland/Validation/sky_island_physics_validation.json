@@ -2,10 +2,10 @@
   "status": "PASS",
   "verification": "Built AssetBundle additive scene in Unity 2022.3.62f3 PlayMode: PhysX Collider.Raycast + capsule overlap",
   "groundColliders": 27,
-  "wallColliders": 61,
+  "wallColliders": 89,
   "safeGameplayMarkers": 49,
-  "navigationTriangleGroundHits": 3655,
+  "navigationTriangleGroundHits": 4215,
   "duckovGameSmoke": "Not performed by this authoring test",
-  "sourceFbxSHA256": "4a816d5187db38c9e3b065c9b9d8002e2f47b9c0fa95e9be538cee1254c38e1c",
-  "bundleSHA256": "ebf6f76758515d03551a058845b13e192c17a29c3aff1cbb9e359a24ab137afc"
+  "sourceFbxSHA256": "aaed0c64f2c3877dad29b63a69b88c1d3b343e5bf97a2c4599dffe4ff6d3b417",
+  "bundleSHA256": "ef46c9e181dc1f8d81710b201af78c7021630fb30cd33ac0614580eeb33efaf9"
 }

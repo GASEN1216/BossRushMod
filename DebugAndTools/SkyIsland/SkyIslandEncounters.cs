@@ -6,7 +6,15 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>COMPAT：区域接近生成，沿用官方装备、伤害、经验；地图拥有角色、preset 与战利品。</summary>
+    /// <summary>
+    /// COMPAT：区域接近生成，沿用官方装备、伤害、经验；地图拥有角色、preset 与战利品。
+    ///
+    /// 刷新口径（2026-09-09 可玩性复审后定）：
+    /// - **自动组按出击刷新**：每次进岛都会重新生成，出击图应当每趟都有风险。
+    /// - **手动组一次性**：折翎 / 钟守 / 噬风是具名剧情对手，存档事实一旦记下就不再出现。
+    /// - 两者共用同一份持久 `clearedEncounters`；它对自动组只作为**剧情装置的前置证据**
+    ///   （修风标 / 修星灯 / 校准观星镜），不再用于抑制生成。
+    /// </summary>
     internal sealed class SkyIslandEncounters : IDisposable
     {
         private sealed class Encounter
@@ -73,10 +81,43 @@ namespace BossRush
                 Manual = definition.Manual, Definition = definition, Actors = actors });
         }
 
+        /// <summary>
+        /// 按 id 取遭遇。刻意不用 `List.Find(e => e.Id == id)`：闭包捕获了 <paramref name="id"/>，
+        /// 每次调用都要新建闭包对象与委托，而 <see cref="IsBusy"/> / <see cref="HasStarted"/>
+        /// 是每帧路径（会话 Update 对折翎与钟守各问一次），等于每帧产生垃圾（AGENTS 4.12）。
+        /// </summary>
+        private Encounter Find(string id)
+        {
+            for (int i = 0; i < encounters.Count; i++)
+                if (encounters[i].Id == id) return encounters[i];
+            return null;
+        }
+
+        private bool AnySpawning()
+        {
+            for (int i = 0; i < encounters.Count; i++)
+                if (encounters[i].Spawning) return true;
+            return false;
+        }
+
         internal bool IsBusy(string id)
         {
-            Encounter encounter = encounters.Find(e => e.Id == id);
+            Encounter encounter = Find(id);
             return encounter != null && encounter.Started && !encounter.Cleared && !encounter.AllDead;
+        }
+
+        /// <summary>
+        /// 本局是否已经打响过这一组（含正在打、已打完、以及存档事实带来的一次性关闭）。
+        ///
+        /// 具名剧情对手的「剧情体该不该露面」必须用它，不能用 <see cref="IsBusy"/> 加持久 flag：
+        /// 那是两个**延迟不同**的派生条件——最后一名倒下的那一帧 `IsBusy` 就转 false，
+        /// 而持久 flag 要等下一次 <see cref="Tick"/>（0.25 s 节流）跑完 `cleared()` 并被存档接受；
+        /// 中间这段窗口刚打死的人会站回自己的尸体旁，写屏障期间更是永远回不去。
+        /// </summary>
+        internal bool HasStarted(string id)
+        {
+            Encounter encounter = Find(id);
+            return encounter != null && (encounter.Started || encounter.Cleared);
         }
 
         /// <summary>
@@ -85,8 +126,9 @@ namespace BossRush
         /// 只数**自动**组：手动组（折翎 / 钟守 / 噬风）要额外的剧情前置，本局未必开得了，
         /// 算进去会高估。宁可低估——低估只是少派一单，高估会派出做不完的委托。
         ///
-        /// 已存档清场的组在 `Tick` 里被直接短路成 `Cleared`，`cleared()` 回调根本不会触发，
-        /// 所以它们对委托进度是彻底不可用的，必须排除在可完成量之外。
+        /// 这里**不能**再排除「存档里已清过」的组：自动组按出击刷新（见 <see cref="Tick"/> 的
+        /// 短路条件只留给手动组），老档上照样会重新生成、照样能再记一次账。若沿用旧的
+        /// `!completed(id)` 过滤，第二次进岛起可完成量恒为 0，「清理航路威胁」永远派不出来。
         /// </summary>
         internal int RemainingClearable
         {
@@ -94,10 +136,39 @@ namespace BossRush
             {
                 int count = 0;
                 foreach (Encounter encounter in encounters)
-                    if (!encounter.Manual && !encounter.Cleared && !completed(encounter.Id)) count++;
+                    if (!encounter.Manual && !encounter.Cleared) count++;
                 return count;
             }
         }
+
+        /// <summary>
+        /// 指定点周围是否还有活着的敌人。给「战斗中不许开剧情面板」的门用。
+        ///
+        /// 刻意**不**复用 <see cref="HasLivingEnemies"/>：那是全图口径，玩家把一组敌人丢在
+        /// 岛的另一头就会让全岛剧情交互永久不可用。按半径判定既能挡住「开面板当暂停键」，
+        /// 又不会因为远处的残敌把主线卡死。活体上限 12，每次遍历开销可忽略。
+        /// </summary>
+        internal bool HasLivingEnemiesWithin(Vector3 point, float radius)
+        {
+            if (closed) return false;
+            float squared = radius * radius;
+            foreach (Encounter encounter in encounters)
+            {
+                if (encounter.Cleared) continue;
+                foreach (SkyIslandEnemyRecord actor in encounter.Actors)
+                {
+                    if (actor.Died || actor.Life == null) continue;
+                    if ((actor.Life.transform.position - point).sqrMagnitude <= squared) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>本局装配出的遭遇组数。只读，给 F3 验收核对「内容表全量落地」。</summary>
+        internal int GroupCount { get { return encounters.Count; } }
+
+        /// <summary>当前活着的敌人数。只读，给 F3 验收记录 12 活体上限的实际水位。</summary>
+        internal int LivingEnemyCount { get { return CountActiveActors(); } }
 
         internal bool HasLivingEnemies
         {
@@ -113,16 +184,16 @@ namespace BossRush
         internal bool IsCleared(string id)
         {
             if (id == "D" || id == "G") return completed(id) && completed(id + "_02");
-            return encounters.Exists(e => e.Id == id) && completed(id);
+            return Find(id) != null && completed(id);
         }
 
         internal bool BeginChallenge(string id)
         {
             if (closed || !valid()) return false;
-            Encounter encounter = encounters.Find(e => e.Id == id && e.Manual);
-            if (encounter == null || encounter.Cleared || completed(id) || encounter.Started ||
+            Encounter encounter = Find(id);
+            if (encounter == null || !encounter.Manual || encounter.Cleared || completed(id) || encounter.Started ||
                 Time.time < encounter.RetryAt || Vector3.Distance(player.transform.position, encounter.Marker.position) > 90 ||
-                encounters.Exists(e => e.Spawning) || CountActiveActors() + encounter.Count > 12) return false;
+                AnySpawning() || CountActiveActors() + encounter.Count > 12) return false;
             Spawn(encounter);
             return true;
         }
@@ -135,7 +206,12 @@ namespace BossRush
             foreach (Encounter encounter in encounters)
             {
                 if (encounter.Cleared) continue;
-                if (!encounter.Started && completed(encounter.Id)) { encounter.Cleared = true; continue; }
+                // 存档事实只用来一次性关掉**手动**组（折翎 / 钟守 / 噬风）：它们是具名剧情对手，
+                // 打过一次就不该再出现。自动组按出击刷新——不这么做，跑通一遍之后全岛零敌人，
+                // 而 39 个搜刮点每趟重刷，这张图就退化成无风险刷宝台。
+                // 剧情前置（D/D_02 修风标、G/G_02 修星灯、S4 校准观星镜）读的仍是同一份持久事实，
+                // 一次达成永久有效，重刷的敌群不会把已完成的装置重新锁上。
+                if (!encounter.Started && encounter.Manual && completed(encounter.Id)) { encounter.Cleared = true; continue; }
                 if (!encounter.Started) continue;
                 foreach (SkyIslandEnemyRecord actor in encounter.Actors)
                 {
@@ -151,15 +227,17 @@ namespace BossRush
                         if (completed(encounter.Id))
                         {
                             encounter.Cleared = true;
-                            report("航路已清理 · " + encounter.Id, false);
+                            report(L10n.T("航路已清理 · ", "Lane cleared · ") + encounter.Id, false);
                         }
                     }
-                    catch (Exception e) { report("清场记录提交失败，将重试：" + e.Message, true); }
+                    catch (Exception e)
+                    { report(L10n.T("清场记录提交失败，将重试：",
+                        "Could not record the clear; retrying: ") + e.Message, true); }
                     encounter.RetryAt = Time.time + 1f;
                 }
             }
             // 同时最多 12 名活跃敌人，一次只启动一组异步生成。既有遭遇只补失去 owner 的未死槽。
-            if (encounters.Exists(e => e.Spawning)) return;
+            if (AnySpawning()) return;
             foreach (Encounter encounter in encounters)
             {
                 if ((encounter.Manual && !encounter.Started) || encounter.Cleared || Time.time < encounter.RetryAt) continue;
@@ -182,7 +260,7 @@ namespace BossRush
                     SkyIslandEnemyRecord actor = encounter.Actors[i];
                     if (actor.Died || actor.Life != null) continue;
                     Vector3 point = FindGround(encounter.Marker, i);
-                    CharacterRandomPreset clone = UnityEngine.Object.Instantiate(sources[i % sources.Count]);
+                    CharacterRandomPreset clone = UnityEngine.Object.Instantiate(sources[PresetIndex(encounter.Id, i)]);
                     clone.name = "BossRush_SkyIsland_" + encounter.Id;
                     // 正式独立出击沿用官方 CharacterMainControl.OnDead 箱子、经验与魂语义。
                     clone.dropBoxOnDead = true;
@@ -222,7 +300,8 @@ namespace BossRush
             catch (Exception e)
             {
                 encounter.RetryAt = Time.time + 10;
-                if (!closed) report("天空岛遭遇准备失败，10 秒后可重试：" + e.Message, true);
+                if (!closed) report(L10n.T("天空岛遭遇准备失败，10 秒后可重试：",
+                    "Encounter setup failed; retrying in 10 seconds: ") + e.Message, true);
             }
             finally { encounter.Spawning = false; }
         }
@@ -253,6 +332,23 @@ namespace BossRush
                 if (closed || stormDefeated == null || bossTransform == null) return;
                 stormDefeated(bossTransform.position);
             });
+        }
+
+        /// <summary>
+        /// 这一组第 index 名用哪个官方 preset。
+        ///
+        /// 旧写法 `sources[i % sources.Count]` 与遭遇身份无关：全岛 13 组的**带队者永远是同一个**
+        /// preset（按名字排序的第一个），第二名永远是第二个。一整张图打下来只见得到两三种敌人，
+        /// 而 `sources` 里通常有十几种官方拾荒者。
+        ///
+        /// 改成按「遭遇 id + 位次」取稳定散列：不同区域拿到不同 preset，同一个位置每次进岛
+        /// 仍是同一个（自动组现在按出击刷新，位置稳定比每趟随机更容易建立预期）。
+        /// 用 `StableHash` 而不是 `string.GetHashCode`：后者在 Mono 与 .NET Core 上口径不同，
+        /// 会让不同机器的同一处刷出不同敌人。`sources` 已按名字排序，下标同样跨机稳定。
+        /// </summary>
+        private int PresetIndex(string encounterId, int index)
+        {
+            return SkyIslandLootTables.StableHash(encounterId + "#" + index) % sources.Count;
         }
 
         private static int CountMissing(Encounter encounter)

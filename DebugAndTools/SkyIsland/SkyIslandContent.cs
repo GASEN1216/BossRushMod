@@ -117,14 +117,6 @@ namespace BossRush
             return false;
         }
 
-        internal static string TierName(SkyIslandEnemyTier tier)
-        {
-            if (tier == SkyIslandEnemyTier.Elite) return "Elite";
-            if (tier == SkyIslandEnemyTier.Champion) return "Champion";
-            if (tier == SkyIslandEnemyTier.Storm) return "Storm";
-            return "Scav";
-        }
-
         private static bool Fields(BossRushJsonValue value, params string[] names)
         {
             if (value == null || value.Kind != BossRushJsonKind.Object || value.Properties == null || value.Properties.Count != names.Length) return false;

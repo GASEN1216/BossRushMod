@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Duckov.Utilities;
 using UnityEngine;
 
 namespace BossRush
@@ -21,47 +22,107 @@ namespace BossRush
         {
             switch (key)
             {
-                case "Search_A": return "登云码头 · 渡口整备";
-                case "Search_D": return "校准风标 · 开启林边回程路";
-                case "Search_G": return "修复星灯 · 开启检修廊";
-                case "Search_E": return "双航标门 · 中轴旧桥与风眼";
-                case "Search_H": return "归航钟 · 钟守留言";
-                case "Search_B": return "风铃集留言板 · 种植记录与航务委托";
-                case "Search_F": return "旧航路守卫 · 折翎";
-                case "Search_S1": return "晴禾的种植记录";
-                case "Search_S2": return "风没有送到的信";
-                case "Search_S3": return "听雨洞的旧航路图";
-                case "Search_S4": return "修复观星镜";
-                default: return "阅读群岛见闻";
+                case "Search_A": return L10n.T("登云码头 · 渡口整备", "Cloudrise Dock · dock refit");
+                case "Search_D": return L10n.T("校准风标 · 开启林边回程路",
+                    "Calibrate the wind beacon · open the woodland way home");
+                case "Search_G": return L10n.T("修复星灯 · 开启检修廊",
+                    "Repair the star lamp · open the maintenance walk");
+                case "Search_E": return L10n.T("双航标门 · 中轴旧桥与风眼",
+                    "Twin-beacon gate · the old centre bridge and the storm's eye");
+                case "Search_H": return L10n.T("归航钟 · 钟守留言",
+                    "Homecoming Bell · the Bell Keeper's message");
+                case "Search_B": return L10n.T("风铃集留言板 · 种植记录与航务委托",
+                    "Windchime Market noticeboard · planting record and lane contracts");
+                case "Search_C": return L10n.T("青穗梯田 · 归航菜畦", "Green Terraces · the homecoming garden");
+                case "Search_F": return L10n.T("旧航路守卫 · 折翎", "Keeper of the old route · Zheling");
+                case "Search_S1": return L10n.T("晴禾的种植记录", "Qinghe's planting record");
+                case "Search_S2": return L10n.T("风没有送到的信", "The letter the wind never delivered");
+                case "Search_S3": return L10n.T("听雨洞的旧航路图", "The old route chart in the Rainlisten Grotto");
+                case "Search_S4": return L10n.T("修复观星镜", "Repair the telescope");
+                default: return L10n.T("阅读群岛见闻", "Read the archipelago notes");
             }
+        }
+
+        /// <summary>
+        /// 战斗静默门。面板会把时间压到 0（这个暂停是可靠的，见
+        /// <see cref="SkyIslandSession.CanOpenStoryPanel"/>），所以打开时机必须挡住，
+        /// 否则搜索点、居民和完成纪念物都是战斗中随手可用的暂停键。
+        ///
+        /// 门收在这一处而不是四个交互体类里：交互提示照常出现，按下去才告诉玩家原因，
+        /// 不会因为门控疏漏把交互体永久禁用，也不需要给每个交互体再传一个谓词。
+        /// </summary>
+        private bool BlockedByCombat()
+        {
+            string reason;
+            if (session.CanOpenStoryPanel(out reason)) return false;
+            session.Announce(reason, true);
+            return true;
+        }
+
+        /// <summary>
+        /// 重新打开当前这一页面板。
+        ///
+        /// `SkyIslandStoryPresentation.Show` 只在打开那一刻把选项烘成按钮，之后按钮不再变化：
+        /// 接完委托，「接委托 · 清理航路威胁 ×3」三个按钮还挂在那儿，再点一次只会得到
+        /// 「手头这一单还没交」；交完单，本该重新出现的派单选项要退出面板再进来才看得到。
+        /// 每次成功改变状态后重开一次，选项就永远与实际状态一致。
+        ///
+        /// 重开走的是 `Show`（内部先 Dispose 再重建）。调用点在按钮回调里，回调结束后外层会把
+        /// 本次操作的返回文案写进**新**面板的正文，所以玩家看到的是「新选项 + 刚才那句回话」。
+        /// </summary>
+        private Action reopen;
+
+        /// <summary>成功就重开面板；失败保持原样。返回原样的提示文案，供按钮回调写回正文。</summary>
+        private string Refreshed(bool changed, string message)
+        {
+            if (changed && reopen != null) reopen();
+            return message;
         }
 
         internal void ReadPoint(string key, Action recorded)
         {
+            if (BlockedByCombat()) return;
+            reopen = delegate { ReadPoint(key, recorded); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
-            choices.Add(new SkyIslandStoryPresentation.Choice("收录见闻 / 物证", delegate
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("收录见闻 / 物证", "Record the note / evidence"), delegate
             {
                 if (key == "Search_S4" && !session.IsEncounterCleared("S4"))
-                    return "先清除瞭台上的守卫，再静下心校准观星镜。";
+                    return L10n.T("先清除瞭台上的守卫，再静下心校准观星镜。",
+                        "Clear the guards on the overlook first, then calibrate the telescope in peace.");
                 string message;
-                if (story.RecordSearch(key, out message) && recorded != null) recorded();
-                return message;
+                bool recordedNow = story.RecordSearch(key, out message);
+                if (recordedNow && recorded != null) recorded();
+                return Refreshed(recordedNow, message);
             }));
             switch (key)
             {
-                case "Search_D": Add(choices, "校准西侧风标", SkyIslandStoryAction.RepairWindBeacon);
-                    Add(choices, "系牢林边旧运菜道 K1", SkyIslandStoryAction.OpenShortcutK1); break;
-                case "Search_G": Add(choices, "修复东侧星灯", SkyIslandStoryAction.RepairStarLamp);
-                    Add(choices, "打开工坊检修廊 K2", SkyIslandStoryAction.OpenShortcutK2); break;
+                case "Search_D": Add(choices, L10n.T("校准西侧风标", "Calibrate the west wind beacon"),
+                        SkyIslandStoryAction.RepairWindBeacon);
+                    Add(choices, L10n.T("系牢林边旧运菜道 K1", "Lash the old produce path K1"),
+                        SkyIslandStoryAction.OpenShortcutK1); break;
+                case "Search_G": Add(choices, L10n.T("修复东侧星灯", "Repair the east star lamp"),
+                        SkyIslandStoryAction.RepairStarLamp);
+                    Add(choices, L10n.T("打开工坊检修廊 K2", "Open the workshop maintenance walk K2"),
+                        SkyIslandStoryAction.OpenShortcutK2); break;
                 case "Search_E":
-                    Add(choices, "开启中轴旧桥 K3", SkyIslandStoryAction.OpenShortcutK3);
+                    Add(choices, L10n.T("开启中轴旧桥 K3", "Open the old centre bridge K3"),
+                        SkyIslandStoryAction.OpenShortcutK3);
                     StormChoice(choices); break;
                 case "Search_H": BellChoices(choices); break;
                 case "Search_B":
-                    Add(choices, "把种植记录留给晴禾", SkyIslandStoryAction.DeliverPlantingRecord);
+                    Add(choices, L10n.T("把种植记录留给晴禾", "Leave the planting record for Qinghe"),
+                        SkyIslandStoryAction.DeliverPlantingRecord);
                     // 委托板与苇白本人等价：她婚后离岛或尚未生成时，委托仍然可接可交。
                     BountyChoices(choices, () => BoardPosition("Search_B")); break;
-                case "Search_A": ServiceChoice(choices, "渡口整备 · 修补随身装备", Repair); break;
+                case "Search_A": ServiceChoice(choices,
+                    L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair); break;
+                // 菜畦与晴禾本人等价：她是永久 NPC，一旦与玩家结婚就由婚姻系统接管、不再上岛
+                // （`SkyIslandResidents.SpawnOneAsync` 跳过生成，`PermanentDuckNpcModule` 对
+                // SkyIslandRaid 恒返回 false），归航菜此前只挂在她身上，会永久失联。
+                // 苇白的委托早有留言板兜底，这里给晴禾补上同一条纪律。`mealUsed` 是单次布尔，不会双领。
+                case "Search_C": ServiceChoice(choices,
+                    L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal); break;
                 case "Search_F": ZhelingChoices(choices); break;
             }
             presentation.Show(PointName(key), Lore(key) + "\n\n" + story.CurrentObjective, choices);
@@ -69,32 +130,43 @@ namespace BossRush
 
         internal void Talk(string id, Transform speaker)
         {
+            if (BlockedByCombat()) return;
+            reopen = delegate { Talk(id, speaker); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             if (id == "sky_qinghe")
             {
-                Add(choices, "交还种植记录", SkyIslandStoryAction.DeliverPlantingRecord);
-                ServiceChoice(choices, "讨一份归航菜（本次出击生效）", Meal);
+                Add(choices, L10n.T("交还种植记录", "Return the planting record"),
+                    SkyIslandStoryAction.DeliverPlantingRecord);
+                ServiceChoice(choices,
+                    L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
             }
             else if (id == "sky_zheling") ZhelingChoices(choices);
             else if (id == "sky_bellkeeper") BellChoices(choices);
             else if (id == "sky_weibai")
             {
                 BountyChoices(choices, delegate { return speaker != null ? speaker.position : BoardPosition("Search_B"); });
-                choices.Add(new SkyIslandStoryPresentation.Choice("查阅航标与支线记录", () => story.Summary));
+                choices.Add(new SkyIslandStoryPresentation.Choice(
+                    L10n.T("查阅航标与支线记录", "Review beacons and side-path records"), () => story.Summary));
             }
-            else if (id == "sky_fuzhou") ServiceChoice(choices, "渡口整备 · 修补随身装备", Repair);
-            else if (id == "sky_miantai") ServiceChoice(choices, "请眠苔敷一副苔药", Heal);
-            presentation.Show("晴岚群岛 · " + ResidentName(id), story.DescribeNpc(id), choices);
+            else if (id == "sky_fuzhou") ServiceChoice(choices,
+                L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
+            else if (id == "sky_miantai") ServiceChoice(choices,
+                L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
+            presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id), story.DescribeNpc(id), choices);
         }
 
-        private static string ResidentName(string id)
+        /// <summary>居民显示名的唯一来源：交互提示、血条名与剧情面板标题共用同一份中英对照。</summary>
+        internal static string ResidentName(string id)
         {
             switch (id)
             {
-                case "sky_qinghe": return "晴禾"; case "sky_weibai": return "苇白";
-                case "sky_fuzhou": return "浮舟"; case "sky_miantai": return "眠苔";
-                case "sky_zheling": return "折翎"; case "sky_bellkeeper": return "无声钟守";
-                default: return "群岛居民";
+                case "sky_qinghe": return L10n.T("晴禾", "Qinghe");
+                case "sky_weibai": return L10n.T("苇白", "Weibai");
+                case "sky_fuzhou": return L10n.T("浮舟", "Fuzhou");
+                case "sky_miantai": return L10n.T("眠苔", "Miantai");
+                case "sky_zheling": return L10n.T("折翎", "Zheling");
+                case "sky_bellkeeper": return L10n.T("无声钟守", "the Silent Bell Keeper");
+                default: return L10n.T("群岛居民", "an islander");
             }
         }
         /// <summary>服务类选项统一在这里做会话有效性检查，服务 owner 自己负责价格、冷却与失败原因。</summary>
@@ -102,7 +174,7 @@ namespace BossRush
         {
             choices.Add(new SkyIslandStoryPresentation.Choice(label, delegate
             {
-                if (!session.IsReady) return "请等待群岛就绪。";
+                if (!session.IsReady) return L10n.T("请等待群岛就绪。", "Wait for the archipelago to finish loading.");
                 return action();
             }));
         }
@@ -110,19 +182,21 @@ namespace BossRush
         private string Repair()
         {
             SkyIslandServices services = session.Services;
-            return services == null ? "渡口暂时没人。" : services.Repair();
+            return services == null ? L10n.T("渡口暂时没人。", "Nobody is at the dock right now.") : services.Repair();
         }
 
         private string Heal()
         {
             SkyIslandServices services = session.Services;
-            return services == null ? "眠苔不在。" : services.Heal();
+            return services == null ? L10n.T("眠苔不在。", "Miantai is not here.") : services.Heal();
         }
 
         private string Meal()
         {
             SkyIslandServices services = session.Services;
-            return services == null ? "菜畦还没开张。" : services.Meal(session.HasPlantingDelivered);
+            return services == null
+                ? L10n.T("菜畦还没开张。", "The garden is not open yet.")
+                : services.Meal(session.HasPlantingDelivered);
         }
 
         /// <summary>
@@ -143,10 +217,11 @@ namespace BossRush
                 if (!contract.CanAcceptMore)
                 {
                     choices.Add(new SkyIslandStoryPresentation.Choice(
-                        "航务委托 · 今日已派完", delegate
+                        L10n.T("航务委托 · 今日已派完", "Lane contracts · all handed out"), delegate
                         {
-                            return "苇白：今天的活都派完啦（" + contract.CompletedRounds + "/" +
-                                SkyIslandBounty.MaxRounds + "），剩下的留给下一趟。";
+                            return L10n.T("苇白：今天的活都派完啦（", "Weibai: That is all the work for today (") +
+                                contract.CompletedRounds + "/" + SkyIslandBounty.MaxRounds +
+                                L10n.T("），剩下的留给下一趟。", "). The rest can wait for your next trip.");
                         }));
                     return;
                 }
@@ -160,23 +235,25 @@ namespace BossRush
                     if (session.AvailableBountyProgress(kind) < target) continue;
                     offered++;
                     choices.Add(new SkyIslandStoryPresentation.Choice(
-                        "接委托 · " + SkyIslandBounty.NameCn(kind) + " ×" + target, delegate
+                        L10n.T("接委托 · ", "Take contract · ") + SkyIslandBounty.Name(kind) + " ×" + target, delegate
                         {
                             string message;
-                            contract.TryAccept(kind, out message);
-                            return message;
+                            // 接单成功后必须重开：另外两个「接委托」按钮已经不该再挂着，
+                            // 该出现的是「交付委托」和「退掉这一单」。
+                            return Refreshed(contract.TryAccept(kind, out message), message);
                         }));
                 }
                 if (offered == 0)
                     choices.Add(new SkyIslandStoryPresentation.Choice(
-                        "航务委托 · 暂时没有能接的活", delegate
+                        L10n.T("航务委托 · 暂时没有能接的活", "Lane contracts · nothing to hand out"), delegate
                         {
-                            return "苇白：航路这阵子清得差不多了，物资点也翻遍了。" +
-                                "下次出岛再来看看吧。";
+                            return L10n.T("苇白：航路这阵子清得差不多了，物资点也翻遍了。下次出岛再来看看吧。",
+                                "Weibai: The lanes are mostly clear and the caches are picked over. Come and see me again next trip.");
                         }));
                 return;
             }
-            choices.Add(new SkyIslandStoryPresentation.Choice("交付委托 · " + contract.Describe(), delegate
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("交付委托 · ", "Deliver contract · ") + contract.Describe(), delegate
             {
                 SkyIslandLootTier tier;
                 string message;
@@ -185,13 +262,16 @@ namespace BossRush
                 // 先送达再消费：谢礼放不下时委托原样保留，不会出现「单没了、谢礼也没有」。
                 if (!contract.TryClaim(reward => session.DropBountyReward(position, reward, round), out tier, out message))
                     return message;
-                return message + "（" + SkyIslandLootTables.TierNameCn(tier) + " 已放在脚边）";
+                // 交单后重开：委托槽空了，下一单的派单选项应当立刻可见。
+                return Refreshed(true, message + L10n.T("（", " (") +
+                    L10n.T(SkyIslandLootTables.TierNameCn(tier), SkyIslandLootTables.TierNameEn(tier)) +
+                    L10n.T(" 已放在脚边）", " left at her feet)"));
             }));
-            choices.Add(new SkyIslandStoryPresentation.Choice("退掉这一单 · " + contract.Describe(), delegate
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("退掉这一单 · ", "Drop this contract · ") + contract.Describe(), delegate
             {
                 string message;
-                contract.TryAbandon(out message);
-                return message;
+                return Refreshed(contract.TryAbandon(out message), message);
             }));
         }
 
@@ -205,36 +285,47 @@ namespace BossRush
         /// <summary>噬风：双航标点亮后才会到场；已解决则给出结果说明而不是再打一次。</summary>
         private void StormChoice(List<SkyIslandStoryPresentation.Choice> choices)
         {
-            choices.Add(new SkyIslandStoryPresentation.Choice("直面云海里的那阵风 · 噬风", delegate
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("直面云海里的那阵风 · 噬风", "Face the wind out on the cloud sea · the Windeater"), delegate
             {
-                if (session.StormResolved) return "栈道上的风已经散了。剩下的只是普通的云海。";
-                if (!session.BothBeaconsLit) return "两端航标都亮起来，它才会循着光过来。";
-                if (session.IsStoryChallengeActive("Storm")) return "它已经在栈道上了 —— 别停下。";
+                if (session.StormResolved)
+                    return L10n.T("栈道上的风已经散了。剩下的只是普通的云海。",
+                        "The wind on the boardwalk has broken up. What is left is ordinary cloud sea.");
+                if (!session.BothBeaconsLit)
+                    return L10n.T("两端航标都亮起来，它才会循着光过来。",
+                        "It only comes for the light once both beacons burn.");
+                if (session.IsStoryChallengeActive("Storm"))
+                    return L10n.T("它已经在栈道上了 —— 别停下。", "It is already on the boardwalk — keep moving.");
                 if (!session.BeginStoryChallenge("Storm"))
-                    return "当前无法开始：请站到鸣风栈道上，并等待上一场战斗结束。";
+                    return L10n.T("当前无法开始：请站到鸣风栈道上，并等待上一场战斗结束。",
+                        "Cannot start now: stand on Windsong Boardwalk and wait for the previous fight to end.");
                 presentation.Dispose();
-                return "风眼张开了";
+                return L10n.T("风眼张开了", "The eye of the storm opens");
             }));
         }
 
         private void ZhelingChoices(List<SkyIslandStoryPresentation.Choice> choices)
         {
-            Add(choices, "留下来谈 · 出示旧信与航路图", SkyIslandStoryAction.ReconcileZheling);
-            choices.Add(Challenge("挑战旧航路守卫", "Zheling"));
+            Add(choices, L10n.T("留下来谈 · 出示旧信与航路图",
+                "Stay and talk · show the old letter and the route chart"), SkyIslandStoryAction.ReconcileZheling);
+            choices.Add(Challenge(L10n.T("挑战旧航路守卫", "Challenge the keeper of the old route"), "Zheling"));
         }
         private void BellChoices(List<SkyIslandStoryPresentation.Choice> choices)
         {
-            Add(choices, "证明航路安全 · 与钟守和解", SkyIslandStoryAction.ReconcileBellKeeper);
-            choices.Add(Challenge("挑战守钟装置", "BellKeeper"));
-            Add(choices, "敲响归航钟", SkyIslandStoryAction.RingHomecomingBell);
+            Add(choices, L10n.T("证明航路安全 · 与钟守和解",
+                "Prove the lanes are safe · reconcile with the Bell Keeper"), SkyIslandStoryAction.ReconcileBellKeeper);
+            choices.Add(Challenge(L10n.T("挑战守钟装置", "Challenge the bell engine"), "BellKeeper"));
+            Add(choices, L10n.T("敲响归航钟", "Ring the Homecoming Bell"), SkyIslandStoryAction.RingHomecomingBell);
         }
         private SkyIslandStoryPresentation.Choice Challenge(string label, string id)
         {
             return new SkyIslandStoryPresentation.Choice(label, delegate
             {
-                if (!session.BeginStoryChallenge(id)) return "当前无法开始：请靠近挑战地点，确认前置目标已完成或等待上次战斗结束。";
+                if (!session.BeginStoryChallenge(id))
+                    return L10n.T("当前无法开始：请靠近挑战地点，确认前置目标已完成或等待上次战斗结束。",
+                        "Cannot start now: move closer to the site, make sure the prerequisites are done, and wait for the previous fight to end.");
                 presentation.Dispose();
-                return "挑战开始";
+                return L10n.T("挑战开始", "The challenge begins");
             });
         }
         private void Add(List<SkyIslandStoryPresentation.Choice> choices, string label, SkyIslandStoryAction action)
@@ -243,24 +334,50 @@ namespace BossRush
             {
                 if ((action == SkyIslandStoryAction.ReconcileZheling && session.IsStoryChallengeActive("Zheling")) ||
                     (action == SkyIslandStoryAction.ReconcileBellKeeper && session.IsStoryChallengeActive("BellKeeper")))
-                    return "请先结束当前战斗，或者返航后重新来谈。";
-                string message; story.TryApply(action, out message); return message;
+                    return L10n.T("请先结束当前战斗，或者返航后重新来谈。",
+                        "Finish the current fight first, or come back to talk after you return.");
+                string message;
+                // 成功后重开：修好风标，同一页上的 K1 立刻从「请先修复…」变成可用；
+                // 交还种植记录后，这一项也不该再挂在选项里。
+                return Refreshed(story.TryApply(action, out message), message);
             }));
         }
 
         internal void Tick()
         {
             presentation.Tick();
+            // 面板开着时战斗才打起来（在途 async 生成会在 timeScale=0 下继续完成）就立刻收起来，
+            // 否则暂停键依然成立，只是换了个打开时机。
+            if (presentation.Visible)
+            {
+                string reason;
+                if (!session.CanOpenStoryPanel(out reason))
+                {
+                    presentation.Dispose();
+                    session.Announce(reason, true);
+                    return;
+                }
+            }
             if (displayedFlags == story.Current.flags) return;
             displayedFlags = story.Current.flags;
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();
-            if (story.Current.Has(SkyIslandStoryFlag.WindBeacon)) Beacon("Search_D", "风标已校准", BossRushUIColors.Success);
-            if (story.Current.Has(SkyIslandStoryFlag.StarLamp)) Beacon("Search_G", "星灯已点亮", BossRushUIColors.WarningText);
-            if (story.Current.Has(SkyIslandStoryFlag.Telescope)) Beacon("Search_S4", "星图重新连接", BossRushUIColors.Accent);
-            if (story.Current.Has(SkyIslandStoryFlag.PlantingDelivered)) Beacon("Search_C", "晴禾的归航菜畦", BossRushUIColors.Success);
-            if (story.Current.Has(SkyIslandStoryFlag.StormSlain)) Beacon("Search_E", "风眼已散 · 航路重开", BossRushUIColors.Accent);
-            if (story.Current.Has(SkyIslandStoryFlag.Ending)) Beacon("Search_H", "归航钟声 · 欢迎回家", BossRushUIColors.WarningText);
+            if (story.Current.Has(SkyIslandStoryFlag.WindBeacon))
+                Beacon("Search_D", L10n.T("风标已校准", "Wind beacon calibrated"), BossRushUIColors.Success);
+            if (story.Current.Has(SkyIslandStoryFlag.StarLamp))
+                Beacon("Search_G", L10n.T("星灯已点亮", "Star lamp lit"), BossRushUIColors.WarningText);
+            if (story.Current.Has(SkyIslandStoryFlag.Telescope))
+                Beacon("Search_S4", L10n.T("星图重新连接", "Star chart reconnected"), BossRushUIColors.Accent);
+            if (story.Current.Has(SkyIslandStoryFlag.PlantingDelivered))
+                Beacon("Search_C", L10n.T("晴禾的归航菜畦", "Qinghe's homecoming garden"), BossRushUIColors.Success);
+            if (story.Current.Has(SkyIslandStoryFlag.StormSlain))
+                Beacon("Search_E", L10n.T("风眼已散 · 航路重开", "The eye is gone · the lanes reopen"), BossRushUIColors.Accent);
+            // 折翎被战胜后剧情体不再露面（见 SkyIslandSession 的 SetVisible），原地留下旧腰牌。
+            // 走的是同一条「按持久 flag 重建」的路子，跨局重进仍在。
+            if (story.Current.Has(SkyIslandStoryFlag.ZhelingDefeated))
+                Beacon("POI_F", L10n.T("折翎的旧腰牌", "Zheling's old badge"), BossRushUIColors.Accent);
+            if (story.Current.Has(SkyIslandStoryFlag.Ending))
+                Beacon("Search_H", L10n.T("归航钟声 · 欢迎回家", "The Homecoming Bell · welcome home"), BossRushUIColors.WarningText);
         }
         private void Beacon(string marker, string label, Color color)
         {
@@ -271,13 +388,32 @@ namespace BossRush
             Light light = go.AddComponent<Light>(); light.type = LightType.Point; light.color = color;
             light.intensity = 1.6f; light.range = 14; light.shadows = LightShadows.None;
             feedback.Add(go);
+            // 纪念物**不能**摆在装置自己的位置上。官方 `CA_Interact.SearchInteractableAround`
+            // 按「玩家到 collider 的距离严格小于」取唯一交互目标：两者同点时距离完全相等，
+            // 谁赢由 `Physics.OverlapSphereNonAlloc` 的返回顺序决定，而且它们不在同一交互组、
+            // 滚轮也切不过去。而 Search_D / Search_G 上挂着 K1 / K2 捷径、Search_E 挂着 K3 与噬风、
+            // Search_H 挂着敲响归航钟——被一块只读的纪念牌盖住，就等于捷径与终章永久点不到。
+            //
+            // 落点复用全岛唯一经过真实几何回归的放置算法（`SkyIslandContentPlacementPropertyTest`
+            // 复算的就是它），方位角按标记名取稳定散列，同一块地形每次进岛都落在同一处。
+            // 找不到净空就**只留光、不挂交互体**：纪念物是纯装饰，装置不是，绝不退回原点。
+            Vector3 spot;
+            if (!SkyIslandRewardCrate.TryFindCratePosition(root.transform, point.position,
+                SkyIslandLootTables.StableHash(marker) % 360, SkyIslandRewardCrate.InteractableSeparation,
+                GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return;
             // 完成状态重入时重建，不能只在首次提交事件中点亮。
-            feedback.Add(SkyIslandStoryInteractable.Create(root.transform, point.position, marker + "_Completed", label,
-                delegate { presentation.Show(label, story.Summary, new List<SkyIslandStoryPresentation.Choice>()); }));
+            feedback.Add(SkyIslandStoryInteractable.Create(root.transform, spot, marker + "_Completed", label,
+                delegate
+                {
+                    if (BlockedByCombat()) return;
+                    presentation.Show(label, story.Summary, new List<SkyIslandStoryPresentation.Choice>());
+                }));
         }
         internal void Hide() { presentation.Dispose(); }
         public void Dispose()
         {
+            // reopen 捕获了 marker key、recorded 回调与说话人 Transform，会话结束后一并放开。
+            reopen = null;
             presentation.Dispose();
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();
@@ -286,19 +422,45 @@ namespace BossRush
         {
             switch (key)
             {
-                case "Search_A": return "浮舟的渡船日志：风灾之后，码头仍每天留着一条返航的缆绳。沿北面的桥去风铃集，苇白正在等能修灯的人。渡口的工具还在，钝了的家伙可以在这里回一回火。";
-                case "Search_B": return "留言板上钉着三张纸：苇白在找修复两端航标的帮手，晴禾在找落在蛙鸣池的种植记录，还有一张空白的委托单，谁都可以揭。即使主人离岛，留言也能送到。";
-                case "Search_C": return "晴禾把菜畦一层层种向云海。田埂上的空格属于尚未归来的船员。";
-                case "Search_D": return "风标卡在巨根之间。清掉附近的威胁后，校准指针，让西侧的航路重新有方向。";
-                case "Search_E": return "双航标门需要风标与星灯同时回应。门后是归航钟庭；桥边的绞盘控制回村的中轴旧桥。栏杆上有一行后来刻的字：灯亮之后，别一个人站在桥心 —— 有东西会循着光过来。";
-                case "Search_F": return "折翎留下的告示：风灾并未夺走全部航路。旧信与听雨洞的图纸或许能让他改变决定。";
-                case "Search_G": return "工坊的铜环仍然完整。星灯只等一次重新校准，便能把东侧的光送回村庄。";
-                case "Search_H": return "归航钟不再催促出航。两端的航标、归来的信件与守钟人的选择，将决定它为什么再次响起。";
-                case "Search_S1": return "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。";
-                case "Search_S2": return "没有寄出的旧信压在倒挂邮亭里。字迹歪斜，却还清楚地写着：请别让岛上的灯熄灭。";
-                case "Search_S3": return "三道水声从洞壁传来；旧航路图把它们标成避风口。沿图上的虚线，船其实可以平安绕过风灾。";
-                case "Search_S4": return "观星镜被守卫占据。清除威胁、校准镜片，无论白天黑夜都能找回群岛的星图。";
-                default: return "旧木牌上记录着岛民的一天：有人等信，有人修灯，有人把空船再系紧一点。你走过的地方，正在重新连接。";
+                case "Search_A": return L10n.T(
+                    "浮舟的渡船日志：风灾之后，码头仍每天留着一条返航的缆绳。沿北面的桥去风铃集，苇白正在等能修灯的人。渡口的工具还在，钝了的家伙可以在这里回一回火。",
+                    "Fuzhou's ferry log: since the storm, the dock still keeps one mooring line free every day. Take the north bridge to Windchime Market — Weibai is waiting for someone who can mend the lamps. The dock tools are still here, so anything gone blunt can be brought back to an edge.");
+                case "Search_B": return L10n.T(
+                    "留言板上钉着三张纸：苇白在找修复两端航标的帮手，晴禾在找落在蛙鸣池的种植记录，还有一张空白的委托单，谁都可以揭。即使主人离岛，留言也能送到。",
+                    "Three sheets are pinned to the board: Weibai wants help restoring both beacons, Qinghe is looking for the planting record she left at Frogsong Pool, and one blank contract slip anyone may take. Messages get through even when their owners are away from the island.");
+                case "Search_C": return L10n.T(
+                    "晴禾把菜畦一层层种向云海。田埂上的空格属于尚未归来的船员。灶还温着——种植记录回来之后，谁路过都能讨一碗归航菜。",
+                    "Qinghe planted the beds in terraces stepping down toward the cloud sea. The gaps along the ridge belong to crew who have not come back. The stove is still warm — once the planting record returns, anyone passing may ask for a bowl of homecoming greens.");
+                case "Search_D": return L10n.T(
+                    "风标卡在巨根之间。清掉附近的威胁后，校准指针，让西侧的航路重新有方向。",
+                    "The wind beacon is jammed among the great roots. Clear the threats nearby, then calibrate the needle and give the western lane its bearing back.");
+                case "Search_E": return L10n.T(
+                    "双航标门需要风标与星灯同时回应。门后是归航钟庭；桥边的绞盘控制回村的中轴旧桥。栏杆上有一行后来刻的字：灯亮之后，别一个人站在桥心 —— 有东西会循着光过来。",
+                    "The twin-beacon gate needs the wind beacon and the star lamp answering together. Beyond it lies the Homecoming Bell Court; the winch by the bridge works the old centre span back to the village. A later hand cut a line into the rail: once the lights are up, do not stand alone at mid-span — something comes for the light.");
+                case "Search_F": return L10n.T(
+                    "折翎留下的告示：风灾并未夺走全部航路。旧信与听雨洞的图纸或许能让他改变决定。",
+                    "A notice left by Zheling: the storm did not take every lane. The old letter and the chart from the Rainlisten Grotto might change his mind.");
+                case "Search_G": return L10n.T(
+                    "工坊的铜环仍然完整。星灯只等一次重新校准，便能把东侧的光送回村庄。",
+                    "The workshop's brass rings are still intact. The star lamp needs only one recalibration to send the eastern light back to the village.");
+                case "Search_H": return L10n.T(
+                    "归航钟不再催促出航。两端的航标、归来的信件与守钟人的选择，将决定它为什么再次响起。",
+                    "The Homecoming Bell no longer urges anyone to sea. The two beacons, the letter that came home and the keeper's own choice will decide why it rings again.");
+                case "Search_S1": return L10n.T(
+                    "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。",
+                    "The damp pages by the pool list seed, dates, and the name of every person expected home.");
+                case "Search_S2": return L10n.T(
+                    "没有寄出的旧信压在倒挂邮亭里。字迹歪斜，却还清楚地写着：请别让岛上的灯熄灭。",
+                    "An unsent letter is wedged inside the Upturned Post Hut. The hand is crooked but still plain: please do not let the island's lights go out.");
+                case "Search_S3": return L10n.T(
+                    "三道水声从洞壁传来；旧航路图把它们标成避风口。沿图上的虚线，船其实可以平安绕过风灾。",
+                    "Three streams sound through the cave wall; the old route chart marks them as shelter. Follow the dotted line and a ship can in fact pass the storm safely.");
+                case "Search_S4": return L10n.T(
+                    "观星镜被守卫占据。清除威胁、校准镜片，无论白天黑夜都能找回群岛的星图。",
+                    "Guards have taken the telescope. Clear them out and align the lens, and the archipelago's star chart comes back day or night.");
+                default: return L10n.T(
+                    "旧木牌上记录着岛民的一天：有人等信，有人修灯，有人把空船再系紧一点。你走过的地方，正在重新连接。",
+                    "An old board records a day on the islands: someone waiting for a letter, someone mending a lamp, someone tying an empty boat a little tighter. The places you walk are joining back up.");
             }
         }
     }

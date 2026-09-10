@@ -19,6 +19,9 @@ namespace BossRush
         private bool bundleWarned;
         private int attempts;
         private float nextAttempt;
+        // 基地判定的场景缓存，见 InBaseHubScene()。0 不是合法的 Scene.handle，可直接当「未缓存」。
+        private int cachedSceneHandle;
+        private bool cachedBaseHub;
 
         public override string ModuleName { get { return "SkyIsland"; } }
 
@@ -49,12 +52,36 @@ namespace BossRush
             ClearEntry();
             announced = false;
             attempts = 0;
+            cachedSceneHandle = 0;
         }
 
         private void ScheduleEntry()
         {
             attempts = 12;
             nextAttempt = Time.unscaledTime + 0.5f;
+            cachedSceneHandle = 0;
+        }
+
+        /// <summary>
+        /// 当前活动场景是不是基地。
+        ///
+        /// `Scene.name` **每次调用都会新建一个托管字符串**，而这里是每帧路径（模块 OnUpdate 在
+        /// 所有场景都跑），直接调等于每帧产生垃圾（AGENTS 4.12；口径同
+        /// `CampaignFinalBoss.IsCampaignArenaSceneCached` 的场景代数缓存）。
+        ///
+        /// 缓存键用 `Scene.handle`（结构体里的整数，不分配）。句柄在场景卸载后可能被复用，
+        /// 因此 `ScheduleEntry`（切图完成 / 关卡就绪）与 `OnStartedLoading`（开始切图）
+        /// 两处都会把缓存作废，句柄比较只负责兜住「没有任何回调却换了活动场景」的情形。
+        /// </summary>
+        private bool InBaseHubScene()
+        {
+            Scene active = SceneManager.GetActiveScene();
+            if (active.handle != cachedSceneHandle)
+            {
+                cachedSceneHandle = active.handle;
+                cachedBaseHub = SceneRuntimeGate.IsBaseHubSceneName(active.name);
+            }
+            return cachedBaseHub;
         }
 
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
@@ -64,7 +91,7 @@ namespace BossRush
             // 官方地图由玩家自己绑定的地图键开合（`CharacterInputControl.OnUIMapInput`）。
             if (owner.GetComponent<SkyIslandSession>() != null) return;
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
-            if (!SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name))
+            if (!InBaseHubScene())
             {
                 ClearEntry();
                 announced = false;

@@ -64,13 +64,22 @@ namespace BossRush
             return 3;
         }
 
-        /// <summary>件数下限/上限。上限压在 4 件，配合 12 敌上限控制单区峰值。</summary>
-        internal static int MinCount(SkyIslandLootTier tier) { return tier == SkyIslandLootTier.Supply ? 2 : 2; }
+        /// <summary>
+        /// 件数下限/上限。上限压在 4 件，配合 12 敌上限控制单区峰值。
+        ///
+        /// **必须随档次单调不减**：旧表里航务补给是 2–4、星工遗存反而只有 2–3，
+        /// 中段区域比全图最深处出得还多，与品质带的递增方向相反。
+        /// 生活物资同时下调到 1–2：码头与集市本来就是安全区，不该在最安全的地方给最多的量。
+        /// </summary>
+        internal static int MinCount(SkyIslandLootTier tier)
+        {
+            return tier == SkyIslandLootTier.Supply ? 1 : 2;
+        }
         internal static int MaxCount(SkyIslandLootTier tier)
         {
-            if (tier == SkyIslandLootTier.Starworks) return 3;
-            if (tier == SkyIslandLootTier.Voyage) return 4;
-            return 3;
+            if (tier == SkyIslandLootTier.Starworks) return 4;
+            if (tier == SkyIslandLootTier.Voyage) return 3;
+            return 2;
         }
 
         /// <summary>

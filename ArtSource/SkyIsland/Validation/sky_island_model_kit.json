@@ -1,0 +1,2929 @@
+{
+  "schemaVersion": 1,
+  "classification": [
+    "COMPAT",
+    "OPERATIONAL"
+  ],
+  "coordinateSystem": "Unity XYZ metres; FBX axis_forward=-Z, axis_up=Y",
+  "sourceScript": "D:\\code\\ykf\\BossRushMod\\tools\\generate_sky_island_kit.py",
+  "geometryLibrary": "tools/generate_sky_island.py",
+  "materialRoot": "Assets/SkyIsland",
+  "materials": {
+    "Sky_Limestone": {
+      "rgba": [
+        1.02,
+        1.01,
+        0.9,
+        1
+      ],
+      "texture": "Textures/stone_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_Ivory": {
+      "rgba": [
+        1.11,
+        1.13,
+        1.04,
+        1
+      ],
+      "texture": "Textures/stone_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_Chalk": {
+      "rgba": [
+        0.92,
+        0.9,
+        0.81,
+        1
+      ],
+      "texture": "Textures/stone_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_Rock": {
+      "rgba": [
+        0.8,
+        0.7,
+        0.61,
+        1
+      ],
+      "texture": "Textures/stone_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_RockLight": {
+      "rgba": [
+        0.91,
+        0.82,
+        0.71,
+        1
+      ],
+      "texture": "Textures/stone_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_RockDeep": {
+      "rgba": [
+        0.51,
+        0.44,
+        0.37,
+        1
+      ],
+      "texture": "Textures/stone_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_Grass": {
+      "rgba": [
+        0.84,
+        0.82,
+        0.8,
+        1
+      ],
+      "texture": "Textures/grass_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_GrassLight": {
+      "rgba": [
+        1.02,
+        0.95,
+        0.89,
+        1
+      ],
+      "texture": "Textures/grass_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_Forest": {
+      "rgba": [
+        0.30196078431372547,
+        0.3607843137254902,
+        0.2,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Leaf": {
+      "rgba": [
+        0.44313725490196076,
+        0.5215686274509804,
+        0.24705882352941178,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_LeafLight": {
+      "rgba": [
+        0.6392156862745098,
+        0.6784313725490196,
+        0.38823529411764707,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_LeafGold": {
+      "rgba": [
+        0.7764705882352941,
+        0.6627450980392157,
+        0.3686274509803922,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Wood": {
+      "rgba": [
+        0.67,
+        0.7,
+        0.78,
+        1
+      ],
+      "texture": "Textures/wood_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_WoodLight": {
+      "rgba": [
+        0.92,
+        0.99,
+        1.13,
+        1
+      ],
+      "texture": "Textures/wood_handpainted_vanilla.png",
+      "emission": 0
+    },
+    "Sky_WoodDark": {
+      "rgba": [
+        0.2901960784313726,
+        0.22745098039215686,
+        0.16862745098039217,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Teal": {
+      "rgba": [
+        1.01,
+        0.87,
+        0.76,
+        1
+      ],
+      "texture": "Textures/roof_handpainted_terracotta.png",
+      "emission": 0
+    },
+    "Sky_TealLight": {
+      "rgba": [
+        1.19,
+        1.09,
+        0.94,
+        1
+      ],
+      "texture": "Textures/roof_handpainted_terracotta.png",
+      "emission": 0
+    },
+    "Sky_TealDeep": {
+      "rgba": [
+        0.67,
+        0.56,
+        0.48,
+        1
+      ],
+      "texture": "Textures/roof_handpainted_terracotta.png",
+      "emission": 0
+    },
+    "Sky_Brass": {
+      "rgba": [
+        0.7411764705882353,
+        0.5686274509803921,
+        0.30196078431372547,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_BrassLight": {
+      "rgba": [
+        0.8588235294117647,
+        0.6980392156862745,
+        0.403921568627451,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Copper": {
+      "rgba": [
+        0.7058823529411765,
+        0.49411764705882355,
+        0.3215686274509804,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Coral": {
+      "rgba": [
+        0.7450980392156863,
+        0.4549019607843137,
+        0.3764705882352941,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Blue": {
+      "rgba": [
+        0.49019607843137253,
+        0.5803921568627451,
+        0.6274509803921569,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Water": {
+      "rgba": [
+        0.43529411764705883,
+        0.6392156862745098,
+        0.5725490196078431,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Glow": {
+      "rgba": [
+        1.0,
+        0.8901960784313725,
+        0.6274509803921569,
+        1.0
+      ],
+      "texture": null,
+      "emission": 1.2
+    },
+    "Sky_StarGlow": {
+      "rgba": [
+        0.6588235294117647,
+        0.9294117647058824,
+        0.9411764705882353,
+        1.0
+      ],
+      "texture": null,
+      "emission": 1.2
+    },
+    "Sky_Cloud": {
+      "rgba": [
+        0.9098039215686274,
+        0.8941176470588236,
+        0.8549019607843137,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_CloudShade": {
+      "rgba": [
+        0.803921568627451,
+        0.8235294117647058,
+        0.8235294117647058,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_CloudFar": {
+      "rgba": [
+        0.7607843137254902,
+        0.8156862745098039,
+        0.8470588235294118,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_CloudBackdrop": {
+      "rgba": [
+        0.6588235294117647,
+        0.7372549019607844,
+        0.7686274509803922,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Soil": {
+      "rgba": [
+        0.47843137254901963,
+        0.3607843137254902,
+        0.25098039215686274,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Flower": {
+      "rgba": [
+        0.8745098039215686,
+        0.792156862745098,
+        0.6313725490196078,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Mural": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/sky_mural.png",
+      "emission": 0
+    },
+    "Sky_Cloth": {
+      "rgba": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "texture": "Textures/sky_cloth.png",
+      "emission": 0
+    },
+    "Sky_Blossom": {
+      "rgba": [
+        0.8509803921568627,
+        0.6392156862745098,
+        0.6509803921568628,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Lavender": {
+      "rgba": [
+        0.7019607843137254,
+        0.6509803921568628,
+        0.7686274509803922,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_Fern": {
+      "rgba": [
+        0.41568627450980394,
+        0.5411764705882353,
+        0.3333333333333333,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_LilyWhite": {
+      "rgba": [
+        0.9568627450980393,
+        0.9254901960784314,
+        0.8862745098039215,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_CrystalLavender": {
+      "rgba": [
+        0.6588235294117647,
+        0.6039215686274509,
+        0.8392156862745098,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_CrystalTeal": {
+      "rgba": [
+        0.4470588235294118,
+        0.7176470588235294,
+        0.7490196078431373,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_PearlGlow": {
+      "rgba": [
+        0.9490196078431372,
+        0.8117647058823529,
+        0.8941176470588236,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_PaintTeal": {
+      "rgba": [
+        0.2823529411764706,
+        0.4980392156862745,
+        0.47058823529411764,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_PaintTealLight": {
+      "rgba": [
+        0.5058823529411764,
+        0.6705882352941176,
+        0.6313725490196078,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    },
+    "Sky_PaintTealDeep": {
+      "rgba": [
+        0.21176470588235294,
+        0.36470588235294116,
+        0.34901960784313724,
+        1.0
+      ],
+      "texture": null,
+      "emission": 0
+    }
+  },
+  "blend": "ArtSource/SkyIsland/SkyIsland_ModelKit.blend",
+  "preview": "Assets/SkyIsland/Models/SkyIsland_ModelKit_Preview.png",
+  "models": [
+    {
+      "name": "SkyIsland_TeaHouse",
+      "label": "风铃茶铺",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_TeaHouse.fbx",
+      "bounds": {
+        "min": [
+          -9.4399995803833,
+          0.0,
+          -9.0
+        ],
+        "max": [
+          9.4399995803833,
+          13.175,
+          7.119999885559082
+        ],
+        "size": [
+          18.8799991607666,
+          13.175,
+          16.119999885559082
+        ]
+      },
+      "triangles": 3874,
+      "vertices": 2178,
+      "meshCount": 16,
+      "materials": [
+        "Sky_Brass",
+        "Sky_Chalk",
+        "Sky_Cloth",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Glow",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_Limestone",
+        "Sky_Teal",
+        "Sky_TealDeep",
+        "Sky_TealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "house(obs, 0)",
+      "groundShiftApplied": 0.09999999999999987,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        0,
+        0,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Limestone",
+          "vertices": 64,
+          "triangles": 120,
+          "material": "Sky_Limestone"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Chalk",
+          "vertices": 96,
+          "triangles": 180,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Roof_Teal",
+          "vertices": 20,
+          "triangles": 32,
+          "material": "Sky_Teal"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Brass",
+          "vertices": 232,
+          "triangles": 384,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_WoodDark",
+          "vertices": 96,
+          "triangles": 172,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_TealLight",
+          "vertices": 96,
+          "triangles": 168,
+          "material": "Sky_TealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_WoodLight",
+          "vertices": 672,
+          "triangles": 1260,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_TealDeep",
+          "vertices": 64,
+          "triangles": 120,
+          "material": "Sky_TealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Glow",
+          "vertices": 64,
+          "triangles": 120,
+          "material": "Sky_Glow"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Wood",
+          "vertices": 160,
+          "triangles": 296,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Teal",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_Teal"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_LeafLight",
+          "vertices": 240,
+          "triangles": 384,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Copper",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Copper"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Cloth",
+          "vertices": 4,
+          "triangles": 2,
+          "material": "Sky_Cloth"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Coral",
+          "vertices": 50,
+          "triangles": 80,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_TeaHouse_Leaf",
+          "vertices": 160,
+          "triangles": 256,
+          "material": "Sky_Leaf"
+        }
+      ],
+      "bytes": 123852
+    },
+    {
+      "name": "SkyIsland_House",
+      "label": "群岛小屋",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_House.fbx",
+      "bounds": {
+        "min": [
+          -7.259999752044678,
+          0.0,
+          -6.562711308568843
+        ],
+        "max": [
+          7.259999752044678,
+          12.675,
+          6.300000190734863
+        ],
+        "size": [
+          14.519999504089355,
+          12.675,
+          12.862711499303707
+        ]
+      },
+      "triangles": 3626,
+      "vertices": 2024,
+      "meshCount": 14,
+      "materials": [
+        "Sky_Brass",
+        "Sky_Chalk",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Glow",
+        "Sky_Ivory",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_Limestone",
+        "Sky_TealDeep",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "house(obs, 1)",
+      "groundShiftApplied": 0.09999999999999987,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        30,
+        0,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_House_Ivory",
+          "vertices": 38,
+          "triangles": 62,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Chalk",
+          "vertices": 96,
+          "triangles": 180,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Roof_TealDeep",
+          "vertices": 8,
+          "triangles": 4,
+          "material": "Sky_TealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_House_WoodDark",
+          "vertices": 64,
+          "triangles": 116,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_House_WoodLight",
+          "vertices": 752,
+          "triangles": 1400,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_House_TealDeep",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_TealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Glow",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_Glow"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Brass",
+          "vertices": 40,
+          "triangles": 64,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Wood",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Coral",
+          "vertices": 178,
+          "triangles": 320,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_House_LeafLight",
+          "vertices": 240,
+          "triangles": 384,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Limestone",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Limestone"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Copper",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Copper"
+        },
+        {
+          "name": "VIS_SkyIsland_House_Leaf",
+          "vertices": 160,
+          "triangles": 256,
+          "material": "Sky_Leaf"
+        }
+      ],
+      "bytes": 109676
+    },
+    {
+      "name": "SkyIsland_Lantern",
+      "label": "黄铜路灯",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Lantern.fbx",
+      "bounds": {
+        "min": [
+          -0.1,
+          0.0,
+          -0.395
+        ],
+        "max": [
+          1.045,
+          3.4,
+          0.395
+        ],
+        "size": [
+          1.145,
+          3.4,
+          0.79
+        ]
+      },
+      "triangles": 308,
+      "vertices": 168,
+      "meshCount": 3,
+      "materials": [
+        "Sky_Brass",
+        "Sky_Glow",
+        "Sky_WoodDark"
+      ],
+      "sourceFunction": "lantern(0, 0, 0)",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        60,
+        0,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_Lantern_WoodDark",
+          "vertices": 16,
+          "triangles": 28,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_Lantern_Brass",
+          "vertices": 112,
+          "triangles": 220,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_Lantern_Glow",
+          "vertices": 40,
+          "triangles": 60,
+          "material": "Sky_Glow"
+        }
+      ],
+      "bytes": 27292
+    },
+    {
+      "name": "SkyIsland_Planter",
+      "label": "陶盆绿植",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Planter.fbx",
+      "bounds": {
+        "min": [
+          -0.819454328254321,
+          0,
+          -0.678772674827469
+        ],
+        "max": [
+          0.8200000000000001,
+          1.56,
+          0.6798635529732816
+        ],
+        "size": [
+          1.639454328254321,
+          1.56,
+          1.3586362278007504
+        ]
+      },
+      "triangles": 336,
+      "vertices": 210,
+      "meshCount": 2,
+      "materials": [
+        "Sky_Coral",
+        "Sky_Leaf"
+      ],
+      "sourceFunction": "pot(0, 0, 0)",
+      "groundShiftApplied": 0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        90,
+        0,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_Planter_Coral",
+          "vertices": 50,
+          "triangles": 80,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_Planter_Leaf",
+          "vertices": 160,
+          "triangles": 256,
+          "material": "Sky_Leaf"
+        }
+      ],
+      "bytes": 24060
+    },
+    {
+      "name": "SkyIsland_Bench",
+      "label": "木制长椅",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Bench.fbx",
+      "bounds": {
+        "min": [
+          -1.85,
+          0.0,
+          -0.575
+        ],
+        "max": [
+          1.85,
+          1.625,
+          0.61
+        ],
+        "size": [
+          3.7,
+          1.625,
+          1.185
+        ]
+      },
+      "triangles": 240,
+      "vertices": 128,
+      "meshCount": 3,
+      "materials": [
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "bench(0, 0, 0)",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        120,
+        0,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_Bench_WoodLight",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_Bench_WoodDark",
+          "vertices": 64,
+          "triangles": 120,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_Bench_Wood",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Wood"
+        }
+      ],
+      "bytes": 25900
+    },
+    {
+      "name": "SkyIsland_Barrel",
+      "label": "箍带木桶",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Barrel.fbx",
+      "bounds": {
+        "min": [
+          -0.725,
+          0,
+          -0.725
+        ],
+        "max": [
+          0.725,
+          1.72,
+          0.725
+        ],
+        "size": [
+          1.45,
+          1.72,
+          1.45
+        ]
+      },
+      "triangles": 332,
+      "vertices": 180,
+      "meshCount": 3,
+      "materials": [
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "barrel(0, 0, 0)",
+      "groundShiftApplied": 0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        0,
+        30,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_Barrel_WoodLight",
+          "vertices": 60,
+          "triangles": 96,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_Barrel_WoodDark",
+          "vertices": 96,
+          "triangles": 192,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_Barrel_Wood",
+          "vertices": 24,
+          "triangles": 44,
+          "material": "Sky_Wood"
+        }
+      ],
+      "bytes": 27500
+    },
+    {
+      "name": "SkyIsland_WindChime",
+      "label": "风铃架",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_WindChime.fbx",
+      "bounds": {
+        "min": [
+          -2.8000000000000003,
+          0.0,
+          -0.45
+        ],
+        "max": [
+          2.8000000000000003,
+          4.86,
+          0.45
+        ],
+        "size": [
+          5.6000000000000005,
+          4.86,
+          0.9
+        ]
+      },
+      "triangles": 12676,
+      "vertices": 6928,
+      "meshCount": 5,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Limestone",
+        "Sky_Wood",
+        "Sky_WoodDark"
+      ],
+      "sourceFunction": "make_chime → cylinder / beam / bell",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        30,
+        30,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_WindChime_Wood",
+          "vertices": 40,
+          "triangles": 72,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_WindChime_Limestone",
+          "vertices": 48,
+          "triangles": 88,
+          "material": "Sky_Limestone"
+        },
+        {
+          "name": "VIS_SkyIsland_WindChime_Brass",
+          "vertices": 1300,
+          "triangles": 2220,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_WindChime_WoodDark",
+          "vertices": 100,
+          "triangles": 176,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_WindChime_BrassLight",
+          "vertices": 5440,
+          "triangles": 10120,
+          "material": "Sky_BrassLight"
+        }
+      ],
+      "bytes": 226172
+    },
+    {
+      "name": "SkyIsland_HomecomingBell",
+      "label": "小归航钟",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_HomecomingBell.fbx",
+      "bounds": {
+        "min": [
+          -3.5,
+          0.0,
+          -2.3375
+        ],
+        "max": [
+          3.5,
+          7.46,
+          2.3375
+        ],
+        "size": [
+          7.0,
+          7.46,
+          4.675
+        ]
+      },
+      "triangles": 3064,
+      "vertices": 1680,
+      "meshCount": 6,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Chalk",
+        "Sky_Limestone",
+        "Sky_Wood",
+        "Sky_WoodDark"
+      ],
+      "sourceFunction": "make_bell → box / cylinder / beam / bell",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        60,
+        30,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_HomecomingBell_Chalk",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_HomecomingBell_Wood",
+          "vertices": 48,
+          "triangles": 88,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_HomecomingBell_Limestone",
+          "vertices": 64,
+          "triangles": 120,
+          "material": "Sky_Limestone"
+        },
+        {
+          "name": "VIS_SkyIsland_HomecomingBell_Brass",
+          "vertices": 408,
+          "triangles": 700,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_HomecomingBell_WoodDark",
+          "vertices": 40,
+          "triangles": 72,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_HomecomingBell_BrassLight",
+          "vertices": 1088,
+          "triangles": 2024,
+          "material": "Sky_BrassLight"
+        }
+      ],
+      "bytes": 78748
+    },
+    {
+      "name": "SkyIsland_DuckStatue",
+      "label": "鸭子雕像",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_DuckStatue.fbx",
+      "bounds": {
+        "min": [
+          -1.4,
+          0.0,
+          -1.4
+        ],
+        "max": [
+          1.4,
+          3.225,
+          1.4
+        ],
+        "size": [
+          2.8,
+          3.225,
+          2.8
+        ]
+      },
+      "triangles": 1200,
+      "vertices": 678,
+      "meshCount": 5,
+      "materials": [
+        "Sky_Brass",
+        "Sky_Ivory",
+        "Sky_Limestone",
+        "Sky_Teal",
+        "Sky_WoodDark"
+      ],
+      "sourceFunction": "duck_statue(0, 0, 0)",
+      "groundShiftApplied": -0.0050000000000000044,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        90,
+        30,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_DuckStatue_Limestone",
+          "vertices": 172,
+          "triangles": 300,
+          "material": "Sky_Limestone"
+        },
+        {
+          "name": "VIS_SkyIsland_DuckStatue_Ivory",
+          "vertices": 252,
+          "triangles": 448,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_DuckStatue_Brass",
+          "vertices": 84,
+          "triangles": 144,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_DuckStatue_WoodDark",
+          "vertices": 80,
+          "triangles": 128,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_DuckStatue_Teal",
+          "vertices": 90,
+          "triangles": 180,
+          "material": "Sky_Teal"
+        }
+      ],
+      "bytes": 50396
+    },
+    {
+      "name": "SkyIsland_Tree",
+      "label": "群岛阔叶树",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_Tree.fbx",
+      "bounds": {
+        "min": [
+          -5.318627463844253,
+          0.0,
+          -5.276053951699012
+        ],
+        "max": [
+          6.5091204135510985,
+          12.646563308686018,
+          5.40186426733551
+        ],
+        "size": [
+          11.827747877395351,
+          12.646563308686018,
+          10.677918219034522
+        ]
+      },
+      "triangles": 596,
+      "vertices": 352,
+      "meshCount": 3,
+      "materials": [
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_Wood"
+      ],
+      "sourceFunction": "tree(0, 0, 0)",
+      "groundShiftApplied": 0.04656330868601799,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        120,
+        30,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_Tree_Wood",
+          "vertices": 112,
+          "triangles": 196,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_Tree_LeafLight",
+          "vertices": 60,
+          "triangles": 100,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_Tree_Leaf",
+          "vertices": 180,
+          "triangles": 300,
+          "material": "Sky_Leaf"
+        }
+      ],
+      "bytes": 33340
+    },
+    {
+      "name": "SkyIsland_produce_stall",
+      "label": "双色篷布菜摊",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_produce_stall.fbx",
+      "bounds": {
+        "min": [
+          -3.244193954171138,
+          0.0,
+          -1.889933171681013
+        ],
+        "max": [
+          2.8210344314575195,
+          3.9734861850738525,
+          1.2593711614608765
+        ],
+        "size": [
+          6.065228385628657,
+          3.9734861850738525,
+          3.1493043331418895
+        ]
+      },
+      "triangles": 5188,
+      "vertices": 2977,
+      "meshCount": 14,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Fern",
+        "Sky_Flower",
+        "Sky_Ivory",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_PaintTealDeep",
+        "Sky_PaintTealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: produce_stall",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        0,
+        60,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_produce_stall_WoodDark",
+          "vertices": 274,
+          "triangles": 512,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Wood",
+          "vertices": 368,
+          "triangles": 680,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_WoodLight",
+          "vertices": 540,
+          "triangles": 1000,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_BrassLight",
+          "vertices": 188,
+          "triangles": 368,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_PaintTealLight",
+          "vertices": 176,
+          "triangles": 320,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Flower",
+          "vertices": 340,
+          "triangles": 544,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Ivory",
+          "vertices": 291,
+          "triangles": 528,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Brass",
+          "vertices": 168,
+          "triangles": 252,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_LeafLight",
+          "vertices": 208,
+          "triangles": 320,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Fern",
+          "vertices": 48,
+          "triangles": 64,
+          "material": "Sky_Fern"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Leaf",
+          "vertices": 96,
+          "triangles": 128,
+          "material": "Sky_Leaf"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Copper",
+          "vertices": 56,
+          "triangles": 96,
+          "material": "Sky_Copper"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_Coral",
+          "vertices": 192,
+          "triangles": 316,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_produce_stall_PaintTealDeep",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_PaintTealDeep"
+        }
+      ],
+      "bytes": 139404
+    },
+    {
+      "name": "SkyIsland_supply_handcart",
+      "label": "双轮补给手推车",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_supply_handcart.fbx",
+      "bounds": {
+        "min": [
+          -1.6399999856948853,
+          0.0,
+          -2.843233823776245
+        ],
+        "max": [
+          1.6399999856948853,
+          2.7096,
+          1.4300000667572021
+        ],
+        "size": [
+          3.2799999713897705,
+          2.7096,
+          4.273233890533447
+        ]
+      },
+      "triangles": 3172,
+      "vertices": 1727,
+      "meshCount": 9,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_PaintTealDeep",
+        "Sky_PaintTealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: supply_handcart",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        30,
+        60,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_supply_handcart_WoodDark",
+          "vertices": 330,
+          "triangles": 628,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_WoodLight",
+          "vertices": 632,
+          "triangles": 1164,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_Brass",
+          "vertices": 64,
+          "triangles": 104,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_Wood",
+          "vertices": 264,
+          "triangles": 480,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_PaintTealDeep",
+          "vertices": 32,
+          "triangles": 56,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_Flower",
+          "vertices": 63,
+          "triangles": 108,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_BrassLight",
+          "vertices": 180,
+          "triangles": 336,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_Coral",
+          "vertices": 142,
+          "triangles": 260,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_supply_handcart_PaintTealLight",
+          "vertices": 20,
+          "triangles": 36,
+          "material": "Sky_PaintTealLight"
+        }
+      ],
+      "bytes": 93228
+    },
+    {
+      "name": "SkyIsland_camp_tent",
+      "label": "野营 A 字帐篷",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_camp_tent.fbx",
+      "bounds": {
+        "min": [
+          -2.8834292888641357,
+          0.0,
+          -2.236280679702759
+        ],
+        "max": [
+          2.8834292888641357,
+          3.17802357673645,
+          2.236280679702759
+        ],
+        "size": [
+          5.7668585777282715,
+          3.17802357673645,
+          4.472561359405518
+        ]
+      },
+      "triangles": 1564,
+      "vertices": 888,
+      "meshCount": 10,
+      "materials": [
+        "Sky_BrassLight",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_Ivory",
+        "Sky_PaintTeal",
+        "Sky_PaintTealDeep",
+        "Sky_PaintTealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: camp_tent",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        60,
+        60,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_camp_tent_WoodDark",
+          "vertices": 88,
+          "triangles": 152,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_PaintTealLight",
+          "vertices": 104,
+          "triangles": 188,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_Flower",
+          "vertices": 180,
+          "triangles": 288,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_Wood",
+          "vertices": 24,
+          "triangles": 40,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_BrassLight",
+          "vertices": 184,
+          "triangles": 344,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_PaintTeal",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_PaintTeal"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_PaintTealDeep",
+          "vertices": 6,
+          "triangles": 8,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_Ivory",
+          "vertices": 78,
+          "triangles": 128,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_Coral",
+          "vertices": 148,
+          "triangles": 276,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_camp_tent_WoodLight",
+          "vertices": 44,
+          "triangles": 80,
+          "material": "Sky_WoodLight"
+        }
+      ],
+      "bytes": 71564
+    },
+    {
+      "name": "SkyIsland_tool_workbench",
+      "label": "工具钳台工作台",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_tool_workbench.fbx",
+      "bounds": {
+        "min": [
+          -2.5500000000000003,
+          0.0,
+          -1.340658740328479
+        ],
+        "max": [
+          1.82,
+          3.225,
+          0.91
+        ],
+        "size": [
+          4.37,
+          3.225,
+          2.250658740328479
+        ]
+      },
+      "triangles": 2984,
+      "vertices": 1660,
+      "meshCount": 9,
+      "materials": [
+        "Sky_Brass",
+        "Sky_Chalk",
+        "Sky_Coral",
+        "Sky_PaintTeal",
+        "Sky_PaintTealDeep",
+        "Sky_RockDeep",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: tool_workbench",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        90,
+        60,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_tool_workbench_Wood",
+          "vertices": 400,
+          "triangles": 744,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_WoodLight",
+          "vertices": 520,
+          "triangles": 968,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_WoodDark",
+          "vertices": 144,
+          "triangles": 268,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_Brass",
+          "vertices": 192,
+          "triangles": 304,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_RockDeep",
+          "vertices": 84,
+          "triangles": 136,
+          "material": "Sky_RockDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_Chalk",
+          "vertices": 108,
+          "triangles": 180,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_Coral",
+          "vertices": 96,
+          "triangles": 168,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_PaintTealDeep",
+          "vertices": 84,
+          "triangles": 156,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_tool_workbench_PaintTeal",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_PaintTeal"
+        }
+      ],
+      "bytes": 93708
+    },
+    {
+      "name": "SkyIsland_rain_barrel",
+      "label": "圆肚雨水桶架",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_rain_barrel.fbx",
+      "bounds": {
+        "min": [
+          -1.7595,
+          0.0,
+          -1.7784648671698677
+        ],
+        "max": [
+          1.6800000000000002,
+          4.05,
+          1.0470995903015137
+        ],
+        "size": [
+          3.4395000000000002,
+          4.05,
+          2.8255644574713816
+        ]
+      },
+      "triangles": 2008,
+      "vertices": 1150,
+      "meshCount": 14,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Chalk",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_PaintTeal",
+        "Sky_PaintTealDeep",
+        "Sky_PaintTealLight",
+        "Sky_RockDeep",
+        "Sky_Water",
+        "Sky_Wood",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: rain_barrel",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        120,
+        60,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Wood",
+          "vertices": 160,
+          "triangles": 300,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_WoodLight",
+          "vertices": 56,
+          "triangles": 100,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_PaintTealLight",
+          "vertices": 108,
+          "triangles": 192,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Brass",
+          "vertices": 200,
+          "triangles": 380,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_PaintTeal",
+          "vertices": 240,
+          "triangles": 384,
+          "material": "Sky_PaintTeal"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Water",
+          "vertices": 24,
+          "triangles": 44,
+          "material": "Sky_Water"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Copper",
+          "vertices": 80,
+          "triangles": 132,
+          "material": "Sky_Copper"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_BrassLight",
+          "vertices": 32,
+          "triangles": 64,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_PaintTealDeep",
+          "vertices": 12,
+          "triangles": 20,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Chalk",
+          "vertices": 50,
+          "triangles": 80,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_RockDeep",
+          "vertices": 120,
+          "triangles": 208,
+          "material": "Sky_RockDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Coral",
+          "vertices": 50,
+          "triangles": 80,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_LeafLight",
+          "vertices": 12,
+          "triangles": 16,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_rain_barrel_Leaf",
+          "vertices": 6,
+          "triangles": 8,
+          "material": "Sky_Leaf"
+        }
+      ],
+      "bytes": 93372
+    },
+    {
+      "name": "SkyIsland_windmill_planter",
+      "label": "小风车菜圃",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_windmill_planter.fbx",
+      "bounds": {
+        "min": [
+          -1.875,
+          0.0,
+          -1.095
+        ],
+        "max": [
+          2.2108468327288637,
+          4.360846832728863,
+          1.5800000429153442
+        ],
+        "size": [
+          4.085846832728864,
+          4.360846832728863,
+          2.675000042915344
+        ]
+      },
+      "triangles": 1476,
+      "vertices": 866,
+      "meshCount": 13,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Fern",
+        "Sky_Ivory",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_PaintTealLight",
+        "Sky_Soil",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: windmill_planter",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        0,
+        90,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_windmill_planter_WoodDark",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_WoodLight",
+          "vertices": 216,
+          "triangles": 400,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Soil",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Soil"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Wood",
+          "vertices": 24,
+          "triangles": 40,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Brass",
+          "vertices": 76,
+          "triangles": 128,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Coral",
+          "vertices": 8,
+          "triangles": 12,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_PaintTealLight",
+          "vertices": 24,
+          "triangles": 40,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_BrassLight",
+          "vertices": 40,
+          "triangles": 64,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Ivory",
+          "vertices": 56,
+          "triangles": 100,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_LeafLight",
+          "vertices": 144,
+          "triangles": 224,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Fern",
+          "vertices": 36,
+          "triangles": 48,
+          "material": "Sky_Fern"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Leaf",
+          "vertices": 48,
+          "triangles": 64,
+          "material": "Sky_Leaf"
+        },
+        {
+          "name": "VIS_SkyIsland_windmill_planter_Copper",
+          "vertices": 34,
+          "triangles": 56,
+          "material": "Sky_Copper"
+        }
+      ],
+      "bytes": 80508
+    },
+    {
+      "name": "SkyIsland_floatboat_cargo",
+      "label": "浮舟物资箱组",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_floatboat_cargo.fbx",
+      "bounds": {
+        "min": [
+          -2.045,
+          0.0,
+          -2.3429324626922607
+        ],
+        "max": [
+          2.045,
+          2.9800000190734863,
+          1.6845860481262207
+        ],
+        "size": [
+          4.09,
+          2.9800000190734863,
+          4.0275185108184814
+        ]
+      },
+      "triangles": 3308,
+      "vertices": 1811,
+      "meshCount": 9,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_PaintTeal",
+        "Sky_PaintTealDeep",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: floatboat_cargo",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        30,
+        90,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_PaintTeal",
+          "vertices": 54,
+          "triangles": 104,
+          "material": "Sky_PaintTeal"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_WoodLight",
+          "vertices": 688,
+          "triangles": 1260,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_PaintTealDeep",
+          "vertices": 396,
+          "triangles": 720,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_Brass",
+          "vertices": 224,
+          "triangles": 416,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_Wood",
+          "vertices": 164,
+          "triangles": 300,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_WoodDark",
+          "vertices": 82,
+          "triangles": 152,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_Flower",
+          "vertices": 63,
+          "triangles": 108,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_BrassLight",
+          "vertices": 100,
+          "triangles": 176,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_floatboat_cargo_Coral",
+          "vertices": 40,
+          "triangles": 72,
+          "material": "Sky_Coral"
+        }
+      ],
+      "bytes": 93916
+    },
+    {
+      "name": "SkyIsland_firewood_rack",
+      "label": "木柴与劈柴架",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_firewood_rack.fbx",
+      "bounds": {
+        "min": [
+          -1.847999930381775,
+          0.0,
+          -1.703517198562622
+        ],
+        "max": [
+          2.7984819412231445,
+          2.54557728767395,
+          1.049165964126587
+        ],
+        "size": [
+          4.646481871604919,
+          2.54557728767395,
+          2.752683162689209
+        ]
+      },
+      "triangles": 2220,
+      "vertices": 1216,
+      "meshCount": 7,
+      "materials": [
+        "Sky_Chalk",
+        "Sky_Coral",
+        "Sky_PaintTealDeep",
+        "Sky_RockDeep",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: firewood_rack",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        60,
+        90,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_firewood_rack_Wood",
+          "vertices": 712,
+          "triangles": 1340,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_firewood_rack_WoodLight",
+          "vertices": 314,
+          "triangles": 544,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_firewood_rack_WoodDark",
+          "vertices": 140,
+          "triangles": 252,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_firewood_rack_PaintTealDeep",
+          "vertices": 18,
+          "triangles": 32,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_firewood_rack_RockDeep",
+          "vertices": 10,
+          "triangles": 16,
+          "material": "Sky_RockDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_firewood_rack_Chalk",
+          "vertices": 8,
+          "triangles": 12,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_firewood_rack_Coral",
+          "vertices": 14,
+          "triangles": 24,
+          "material": "Sky_Coral"
+        }
+      ],
+      "bytes": 81164
+    },
+    {
+      "name": "SkyIsland_duck_mailbox",
+      "label": "鸭嘴邮筒",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_duck_mailbox.fbx",
+      "bounds": {
+        "min": [
+          -1.3425810238930627,
+          0.0,
+          -1.61
+        ],
+        "max": [
+          1.58,
+          3.109999895095825,
+          0.7699999999999999
+        ],
+        "size": [
+          2.9225810238930627,
+          3.109999895095825,
+          2.38
+        ]
+      },
+      "triangles": 1268,
+      "vertices": 739,
+      "meshCount": 13,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Chalk",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_Ivory",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_PaintTeal",
+        "Sky_PaintTealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: duck_mailbox",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        90,
+        90,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Chalk",
+          "vertices": 52,
+          "triangles": 92,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Wood",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_WoodLight",
+          "vertices": 56,
+          "triangles": 100,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_PaintTealLight",
+          "vertices": 16,
+          "triangles": 28,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Ivory",
+          "vertices": 24,
+          "triangles": 40,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_WoodDark",
+          "vertices": 170,
+          "triangles": 284,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_PaintTeal",
+          "vertices": 90,
+          "triangles": 144,
+          "material": "Sky_PaintTeal"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_BrassLight",
+          "vertices": 132,
+          "triangles": 232,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Coral",
+          "vertices": 74,
+          "triangles": 136,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Brass",
+          "vertices": 12,
+          "triangles": 20,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Flower",
+          "vertices": 63,
+          "triangles": 108,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_LeafLight",
+          "vertices": 12,
+          "triangles": 16,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_duck_mailbox_Leaf",
+          "vertices": 6,
+          "triangles": 8,
+          "material": "Sky_Leaf"
+        }
+      ],
+      "bytes": 78060
+    },
+    {
+      "name": "SkyIsland_laundry_rack",
+      "label": "晾晒架",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_laundry_rack.fbx",
+      "bounds": {
+        "min": [
+          -2.665,
+          0.0,
+          -1.5010955314563388
+        ],
+        "max": [
+          2.665,
+          3.0699539184570312,
+          0.905
+        ],
+        "size": [
+          5.33,
+          3.0699539184570312,
+          2.406095531456339
+        ]
+      },
+      "triangles": 1912,
+      "vertices": 1048,
+      "meshCount": 10,
+      "materials": [
+        "Sky_BrassLight",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_Ivory",
+        "Sky_PaintTeal",
+        "Sky_PaintTealDeep",
+        "Sky_PaintTealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: laundry_rack",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        120,
+        90,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_laundry_rack_WoodDark",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_Wood",
+          "vertices": 168,
+          "triangles": 320,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_WoodLight",
+          "vertices": 250,
+          "triangles": 444,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_BrassLight",
+          "vertices": 164,
+          "triangles": 288,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_Coral",
+          "vertices": 62,
+          "triangles": 116,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_Flower",
+          "vertices": 20,
+          "triangles": 36,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_Ivory",
+          "vertices": 72,
+          "triangles": 128,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_PaintTealLight",
+          "vertices": 128,
+          "triangles": 240,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_PaintTealDeep",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_laundry_rack_PaintTeal",
+          "vertices": 24,
+          "triangles": 40,
+          "material": "Sky_PaintTeal"
+        }
+      ],
+      "bytes": 77804
+    },
+    {
+      "name": "SkyIsland_compost_planter",
+      "label": "堆肥种植箱",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_compost_planter.fbx",
+      "bounds": {
+        "min": [
+          -2.645,
+          0.0,
+          -0.9299999999999999
+        ],
+        "max": [
+          2.6888,
+          2.445,
+          1.34
+        ],
+        "size": [
+          5.3338,
+          2.445,
+          2.27
+        ]
+      },
+      "triangles": 2184,
+      "vertices": 1233,
+      "meshCount": 14,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Fern",
+        "Sky_Flower",
+        "Sky_Leaf",
+        "Sky_LeafGold",
+        "Sky_LeafLight",
+        "Sky_RockDeep",
+        "Sky_Soil",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: compost_planter",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        0,
+        120,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_compost_planter_Wood",
+          "vertices": 372,
+          "triangles": 696,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_WoodLight",
+          "vertices": 308,
+          "triangles": 572,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Soil",
+          "vertices": 114,
+          "triangles": 200,
+          "material": "Sky_Soil"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Leaf",
+          "vertices": 42,
+          "triangles": 56,
+          "material": "Sky_Leaf"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_LeafGold",
+          "vertices": 12,
+          "triangles": 16,
+          "material": "Sky_LeafGold"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_BrassLight",
+          "vertices": 90,
+          "triangles": 160,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_LeafLight",
+          "vertices": 92,
+          "triangles": 144,
+          "material": "Sky_LeafLight"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Fern",
+          "vertices": 24,
+          "triangles": 32,
+          "material": "Sky_Fern"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Copper",
+          "vertices": 14,
+          "triangles": 24,
+          "material": "Sky_Copper"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Brass",
+          "vertices": 10,
+          "triangles": 16,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_RockDeep",
+          "vertices": 42,
+          "triangles": 68,
+          "material": "Sky_RockDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Flower",
+          "vertices": 63,
+          "triangles": 108,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_WoodDark",
+          "vertices": 18,
+          "triangles": 32,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_compost_planter_Coral",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Coral"
+        }
+      ],
+      "bytes": 97644
+    },
+    {
+      "name": "SkyIsland_picnic_table",
+      "label": "野餐桌凳组合",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_picnic_table.fbx",
+      "bounds": {
+        "min": [
+          -2.325,
+          0.0,
+          -1.6400000000000001
+        ],
+        "max": [
+          2.325,
+          2.5662000000000003,
+          1.6400000000000001
+        ],
+        "size": [
+          4.65,
+          2.5662000000000003,
+          3.2800000000000002
+        ]
+      },
+      "triangles": 2228,
+      "vertices": 1244,
+      "meshCount": 9,
+      "materials": [
+        "Sky_BrassLight",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_Ivory",
+        "Sky_PaintTeal",
+        "Sky_PaintTealLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: picnic_table",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        30,
+        120,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_picnic_table_WoodDark",
+          "vertices": 180,
+          "triangles": 332,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_Wood",
+          "vertices": 218,
+          "triangles": 380,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_WoodLight",
+          "vertices": 342,
+          "triangles": 628,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_Coral",
+          "vertices": 36,
+          "triangles": 68,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_Flower",
+          "vertices": 60,
+          "triangles": 96,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_PaintTealLight",
+          "vertices": 214,
+          "triangles": 388,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_Ivory",
+          "vertices": 102,
+          "triangles": 176,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_BrassLight",
+          "vertices": 60,
+          "triangles": 100,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_picnic_table_PaintTeal",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_PaintTeal"
+        }
+      ],
+      "bytes": 79420
+    },
+    {
+      "name": "SkyIsland_wayfinding_sign",
+      "label": "生活区路牌",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_wayfinding_sign.fbx",
+      "bounds": {
+        "min": [
+          -1.68,
+          0.0,
+          -0.5810365742772028
+        ],
+        "max": [
+          1.79,
+          3.84,
+          0.5810365742772027
+        ],
+        "size": [
+          3.4699999999999998,
+          3.84,
+          1.1620731485544056
+        ]
+      },
+      "triangles": 704,
+      "vertices": 415,
+      "meshCount": 14,
+      "materials": [
+        "Sky_Brass",
+        "Sky_BrassLight",
+        "Sky_Chalk",
+        "Sky_Copper",
+        "Sky_Coral",
+        "Sky_Flower",
+        "Sky_Ivory",
+        "Sky_Leaf",
+        "Sky_LeafLight",
+        "Sky_PaintTeal",
+        "Sky_PaintTealLight",
+        "Sky_RockDeep",
+        "Sky_Wood",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: wayfinding_sign",
+      "groundShiftApplied": -0.0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        60,
+        120,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Chalk",
+          "vertices": 45,
+          "triangles": 72,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Wood",
+          "vertices": 32,
+          "triangles": 60,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_PaintTealLight",
+          "vertices": 16,
+          "triangles": 24,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Brass",
+          "vertices": 36,
+          "triangles": 60,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Flower",
+          "vertices": 96,
+          "triangles": 180,
+          "material": "Sky_Flower"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Coral",
+          "vertices": 66,
+          "triangles": 104,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Ivory",
+          "vertices": 10,
+          "triangles": 16,
+          "material": "Sky_Ivory"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Copper",
+          "vertices": 6,
+          "triangles": 8,
+          "material": "Sky_Copper"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_Leaf",
+          "vertices": 16,
+          "triangles": 24,
+          "material": "Sky_Leaf"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_WoodLight",
+          "vertices": 10,
+          "triangles": 16,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_RockDeep",
+          "vertices": 10,
+          "triangles": 16,
+          "material": "Sky_RockDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_PaintTeal",
+          "vertices": 40,
+          "triangles": 76,
+          "material": "Sky_PaintTeal"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_BrassLight",
+          "vertices": 20,
+          "triangles": 32,
+          "material": "Sky_BrassLight"
+        },
+        {
+          "name": "VIS_SkyIsland_wayfinding_sign_LeafLight",
+          "vertices": 12,
+          "triangles": 16,
+          "material": "Sky_LeafLight"
+        }
+      ],
+      "bytes": 71276
+    },
+    {
+      "name": "SkyIsland_tea_stove",
+      "label": "茶水灶",
+      "fbx": "Assets/SkyIsland/Models/SkyIsland_tea_stove.fbx",
+      "bounds": {
+        "min": [
+          -2.0498716831207275,
+          0,
+          -1.1806914806365967
+        ],
+        "max": [
+          2.285,
+          3.69,
+          0.94
+        ],
+        "size": [
+          4.334871683120728,
+          3.69,
+          2.1206914806365966
+        ]
+      },
+      "triangles": 2570,
+      "vertices": 1455,
+      "meshCount": 12,
+      "materials": [
+        "Sky_Brass",
+        "Sky_Chalk",
+        "Sky_Coral",
+        "Sky_Glow",
+        "Sky_Ivory",
+        "Sky_PaintTealDeep",
+        "Sky_PaintTealLight",
+        "Sky_RockDeep",
+        "Sky_RockLight",
+        "Sky_Wood",
+        "Sky_WoodDark",
+        "Sky_WoodLight"
+      ],
+      "sourceFunction": "sky_island_life_models.build_model: tea_stove",
+      "groundShiftApplied": 0,
+      "origin": "Construction origin on ground, local minimum Y = 0",
+      "kitLocationBlenderXYZ": [
+        90,
+        120,
+        0
+      ],
+      "colliders": [],
+      "meshes": [
+        {
+          "name": "VIS_SkyIsland_tea_stove_RockLight",
+          "vertices": 50,
+          "triangles": 80,
+          "material": "Sky_RockLight"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_RockDeep",
+          "vertices": 44,
+          "triangles": 80,
+          "material": "Sky_RockDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_WoodDark",
+          "vertices": 202,
+          "triangles": 332,
+          "material": "Sky_WoodDark"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_Chalk",
+          "vertices": 96,
+          "triangles": 180,
+          "material": "Sky_Chalk"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_Coral",
+          "vertices": 156,
+          "triangles": 254,
+          "material": "Sky_Coral"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_Glow",
+          "vertices": 35,
+          "triangles": 56,
+          "material": "Sky_Glow"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_PaintTealLight",
+          "vertices": 102,
+          "triangles": 168,
+          "material": "Sky_PaintTealLight"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_Brass",
+          "vertices": 182,
+          "triangles": 344,
+          "material": "Sky_Brass"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_PaintTealDeep",
+          "vertices": 82,
+          "triangles": 140,
+          "material": "Sky_PaintTealDeep"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_Wood",
+          "vertices": 284,
+          "triangles": 532,
+          "material": "Sky_Wood"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_WoodLight",
+          "vertices": 150,
+          "triangles": 276,
+          "material": "Sky_WoodLight"
+        },
+        {
+          "name": "VIS_SkyIsland_tea_stove_Ivory",
+          "vertices": 72,
+          "triangles": 128,
+          "material": "Sky_Ivory"
+        }
+      ],
+      "bytes": 99228
+    }
+  ],
+  "modelCount": 24,
+  "totalTriangles": 59038,
+  "packedImages": [
+    "grass_handpainted_vanilla.png",
+    "roof_handpainted_terracotta.png",
+    "sky_cloth.png",
+    "sky_mural.png",
+    "stone_handpainted_vanilla.png",
+    "wood_handpainted_vanilla.png"
+  ],
+  "usage": "纯视觉模块。Unity材质复用同名Sky_*与此manifest真实贴图；不从树冠/风铃自动推断整盒碰撞。",
+  "validation": {
+    "finiteGeometry": true,
+    "groundOrigins": true,
+    "texturedUVs": true,
+    "nonEmptyIndependentFbx": true,
+    "packedEditableTextures": true,
+    "unityImport": "Pending independent importer verification"
+  }
+}

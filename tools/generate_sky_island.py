@@ -25,37 +25,52 @@ ANIMATED = []
 PAVING_TRACKS = []
 EMISSION = {'Glow': 1.2, 'StarGlow': 1.2, 'CrystalLavender': .18,
             'CrystalTeal': .22, 'PearlGlow': .55}
+# 调色板对齐原版鸭科夫：从游戏 `resources.assets` 采样 154 张 `_C` 反照率贴图，色相集中在
+# H18-40 的暖琥珀（石/木/墙/屋顶），草地在 H78-89，冷色只出现在工业和实验室材质上。天空岛
+# 原来的青蓝岩体(H189)、纯绿草地(H100)与青瓦(H180)是与原版差距最大的三处，这里按实测值归位。
+# 奇幻感不再由高饱和底色承担，改由光照、发光件和夜间材质表达。键名是贯穿 FBX 材质槽、
+# `Sky_*.mat` 与 geometry.json 的稳定标识，只改颜色不改名；因此 `Teal*` 现在装的是赤陶屋顶色。
 PALETTE = {
-    'Limestone': '#ded8b9', 'Ivory': '#f1e7c8', 'Chalk': '#bcbca3',
-    'Rock': '#607e83', 'RockLight': '#8fa19b', 'RockDeep': '#3e5966',
-    'Grass': '#8fac80', 'GrassLight': '#b0bd7f', 'Forest': '#416f63',
-    'Leaf': '#759a77', 'LeafLight': '#a2b883', 'LeafGold': '#c9b268',
-    'Wood': '#755942', 'WoodLight': '#ac8960', 'WoodDark': '#423e36',
-    'Teal': '#357e7e', 'TealLight': '#64a39a', 'TealDeep': '#245558',
-    'Brass': '#bd914d', 'BrassLight': '#e5bc68', 'Copper': '#b47e52',
-    'Coral': '#be7460', 'Blue': '#6b98a1', 'Water': '#6eaaa6',
-    'Glow': '#ffe3a0', 'StarGlow': '#a8edf0', 'Cloud': '#dfebe7',
-    'CloudShade': '#b5ccd0', 'CloudBackdrop': '#97bdce', 'Soil': '#715847', 'Flower': '#dfcaa1',
+    'Limestone': '#d9c9a4', 'Ivory': '#ece0bd', 'Chalk': '#c3b394',
+    'Rock': '#a98a6f', 'RockLight': '#c0a381', 'RockDeep': '#6d5844',
+    'Grass': '#7f9154', 'GrassLight': '#9aa85e', 'Forest': '#4d5c33',
+    'Leaf': '#71853f', 'LeafLight': '#a3ad63', 'LeafGold': '#c6a95e',
+    'Wood': '#8a6845', 'WoodLight': '#bf9364', 'WoodDark': '#4a3a2b',
+    'Teal': '#a4653f', 'TealLight': '#c17f4e', 'TealDeep': '#6d4128',
+    'Brass': '#bd914d', 'BrassLight': '#dbb267', 'Copper': '#b47e52',
+    'Coral': '#be7460', 'Blue': '#7d94a0', 'Water': '#6fa392',
+    'Glow': '#ffe3a0', 'StarGlow': '#a8edf0', 'Cloud': '#e8e4da',
+    'CloudShade': '#cdd2d2', 'CloudFar': '#c2d0d8', 'CloudBackdrop': '#a8bcc4', 'Soil': '#7a5c40', 'Flower': '#dfcaa1',
     'Mural': '#ffffff', 'Cloth': '#ffffff',
-    'Blossom': '#e4a8c6', 'Lavender': '#b5a4d8', 'Fern': '#52958b',
-    'LilyWhite': '#f7e7ee', 'CrystalLavender': '#a899df',
-    'CrystalTeal': '#6ebbc5', 'PearlGlow': '#f4cded',
+    'Blossom': '#d9a3a6', 'Lavender': '#b3a6c4', 'Fern': '#6a8a55',
+    'LilyWhite': '#f4ece2', 'CrystalLavender': '#a89ad6',
+    'CrystalTeal': '#72b7bf', 'PearlGlow': '#f2cfe4',
     'PaintTeal': '#487f78', 'PaintTealLight': '#81aba1', 'PaintTealDeep': '#365d59',
 }
+# 图集贴图通道：有贴图但**不平铺**，且必须保留调用方传入的 UV。
+# 不能塞进 TILED_TEXTURES —— create_object 对那里的材质会丢弃传入 UV 改用世界坐标平面投影，
+# 会把 Tripo3D 的图集 UV 彻底打乱。Mural/Cloth 用的就是这条通道，这里沿用同一模式。
+# 由 sky_island_tripo_props.register() 在 build_materials 之前填充。
+MODEL_TEXTURES = {}
+# 由 main() 在注册材质时填入。散布函数是模块级的，看不到 main() 里 import 的局部名，
+# 因此把模块与目录都挂到模块全局上。
+TRIPO_DIR = None
+TRIPO_PROPS = None
+
 TILED_TEXTURES = {
-    'Limestone': ('stone_handpainted.png', 8, [.98,.97,.91,1]),
-    'Ivory': ('stone_handpainted.png', 6, [1,1,.98,1]),
-    'Chalk': ('stone_handpainted.png', 8, [.80,.85,.83,1]),
-    'Rock': ('stone_handpainted.png', 14, [.44,.62,.65,1]),
-    'RockLight': ('stone_handpainted.png', 14, [.64,.77,.76,1]),
-    'RockDeep': ('stone_handpainted.png', 16, [.30,.45,.53,1]),
-    'Grass': ('grass_handpainted.png', 17, [.61,.78,.70,1]),
-    'GrassLight': ('grass_handpainted.png', 17, [.77,.85,.69,1]),
-    'Wood': ('wood_handpainted.png', 5, [.70,.72,.66,1]),
-    'WoodLight': ('wood_handpainted.png', 5, [.94,.93,.83,1]),
-    'Teal': ('roof_handpainted.png', 4.4, [.76,.91,.91,1]),
-    'TealLight': ('roof_handpainted.png', 4.4, [.91,1,.95,1]),
-    'TealDeep': ('roof_handpainted.png', 4.4, [.50,.68,.72,1]),
+    'Limestone': ('stone_handpainted_vanilla.png', 8, [1.02,1.01,.90,1]),   # #d9c9a4 砖墙暖白
+    'Ivory': ('stone_handpainted_vanilla.png', 6, [1.11,1.13,1.04,1]),   # #ece0bd 亮面石材
+    'Chalk': ('stone_handpainted_vanilla.png', 8, [.92,.90,.81,1]),   # #c3b394 灰泥
+    'Rock': ('stone_handpainted_vanilla.png', 14, [.80,.70,.61,1]),   # #a98a6f 原版 T_Tile_Stones_C
+    'RockLight': ('stone_handpainted_vanilla.png', 14, [.91,.82,.71,1]),   # #c0a381 受光岩面
+    'RockDeep': ('stone_handpainted_vanilla.png', 16, [.51,.44,.37,1]),   # #6d5844 岛底背光岩
+    'Grass': ('grass_handpainted_vanilla.png', 17, [.84,.82,.80,1]),   # #7f9154 原版 T_Tile_Grass_01_C
+    'GrassLight': ('grass_handpainted_vanilla.png', 17, [1.02,.95,.89,1]),   # #9aa85e 受光草坡
+    'Wood': ('wood_handpainted_vanilla.png', 5, [.67,.70,.78,1]),   # #8a6845 旧木
+    'WoodLight': ('wood_handpainted_vanilla.png', 5, [.92,.99,1.13,1]),   # #bf9364 原版 WallWoodBlank01
+    'Teal': ('roof_handpainted_terracotta.png', 4.4, [1.01,.87,.76,1]),   # #a4653f 赤陶瓦
+    'TealLight': ('roof_handpainted_terracotta.png', 4.4, [1.19,1.09,.94,1]),   # #c17f4e 受光瓦脊
+    'TealDeep': ('roof_handpainted_terracotta.png', 4.4, [.67,.56,.48,1]),   # #6d4128 檐下暗瓦
 }
 
 
@@ -626,15 +641,33 @@ def landscape_scatter(islands,obstacles):
             xx=x+(px-x)*.89; zz=z+(pz-z)*.89
             if any(abs(xx-o['center'][0])<o['size'][0]/2+7 and abs(zz-o['center'][2])<o['size'][2]/2+7 for o in obstacles if o.get('island')==sid): continue
             if i%3==0 and sid not in ['E','H','D']:
-                tree(xx,y,zz,.8+RNG.random()*.45,gold=sid in ['C','S1'])
+                tscale=.8+RNG.random()*.45
+                # 变体判定与 tree() 内部的分支保持一致，换模型不换区域叶色规律。
+                base=sid.split('_')[0]
+                variant=('gold' if base in ['C','S1'] else
+                         'blossom' if base in ['B','F','S2'] and math.sin(xx*.137+zz*.073)>-.2 else
+                         'moonleaf' if base in ['D','S3'] and math.cos(xx*.07-zz*.09)>.2 else 'plain')
+                if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,
+                                                           xx,y,zz,tscale,variant,hash((sid,i))&0xffffffff):
+                    tree(xx,y,zz,tscale,gold=sid in ['C','S1'])
             else:
-                sphere((xx,y+.7,zz),(2.2,1.2,2.0),'Leaf' if i%2 else 'LeafLight',8,4,False)
+                # 灌木原为 8 段 4 环不平滑的正椭球，读成硬边低模球。改平滑并提高分段，
+                # 同时按实例扰动三轴比例——完美椭球本身就假，只改着色不够。
+                # 用独立 RNG 取扰动，避免改动全局 RNG 序列而扰乱后续所有摆放。
+                jitter=random.Random(hash((sid,i,'bush'))&0xffffffff)
+                sphere((xx,y+.7,zz),(2.2*jitter.uniform(.78,1.28),1.2*jitter.uniform(.82,1.35),
+                                     2.0*jitter.uniform(.78,1.28)),
+                       'Leaf' if i%2 else 'LeafLight',12,6,True)
             if i%2==0:
-                sphere((xx+2,y+.6,zz-1),(1.7,1.0,1.4),'RockLight',8,4,False)
+                # 石块保留硬边（岩石本就有棱），但提高分段并打散比例，不再是一排同样的圆球。
+                jitter=random.Random(hash((sid,i,'rock'))&0xffffffff)
+                sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
+                                         1.4*jitter.uniform(.65,1.4)),
+                       'RockLight' if i%3 else 'Rock',10,5,False)
         for i in range(8 if len(sid)==1 else 3):
             a=i*TAU/8+.4; rad=min(island['size'])*.3
             xx=x+rad*math.cos(a); zz=z+rad*math.sin(a)
-            for k in range(3): sphere((xx+k*.43,y+.23,zz+.2*math.sin(k)),(.25,.38,.25),'Flower',6,3,False)
+            for k in range(3): sphere((xx+k*.43,y+.23,zz+.2*math.sin(k)),(.25,.38,.25),'Flower',8,4,True)
 
 
 def world_clouds():
@@ -652,7 +685,7 @@ def world_clouds():
         else:
             r=1350+(i-46)*85; y=-40+cloud_rng.random()*80; base=105+cloud_rng.random()*90
         CURRENT='CloudBank_'+str(i//4)
-        cloud_cluster((r*math.cos(a),y,r*math.sin(a)),base,i)
+        cloud_cluster((r*math.cos(a),y,r*math.sin(a)),base,i,'near' if i<34 else 'mid' if i<46 else 'far')
     # Very distant fragment silhouettes are visual geometry without navigation/collision.
     for i in range(12):
         CURRENT='Distant_'+str(i)
@@ -662,39 +695,89 @@ def world_clouds():
         cylinder((x,y,z),13,.5,'Grass',9)
 
 
-def cloud_cluster(center,base,seed):
+# 近景塔状积云最出体积，中远景用云筏铺底，碎云打散节奏；权重按距离环切换。
+CLOUD_SHAPE_WEIGHTS={'near':(('tower',.60),('raft',.25),('wisp',.15)),
+                     'mid':(('tower',.35),('raft',.45),('wisp',.20)),
+                     'far':(('tower',.15),('raft',.55),('wisp',.30))}
+
+
+def cloud_shape(rng,tier):
+    roll=rng.random(); total=0
+    for name,weight in CLOUD_SHAPE_WEIGHTS[tier]:
+        total+=weight
+        if roll<total: return name
+    return 'raft'
+
+
+def cloud_lobes(rng,base,shape):
+    """云的融球布瓣。返回 (x, 高度, z, 半径)，高度以云底为 0。
+
+    真实积云是平底加花椰菜状的层叠冠部。旧版把主瓣摆成一圈再整体压扁，上下都成椭球，
+    56 朵云因此读成同一颗棉花球。这里按云型分别布瓣、主瓣坐在同一高度，配合调用处的
+    平底裁剪形成凝结高度那条平边，冠部则用逐层递减的小瓣堆出起伏。
+    """
+    lobes=[]
+    if shape=='tower':
+        for i in range(3):                                   # 底盘三大瓣
+            a=i*TAU/3+rng.uniform(0,.6)
+            lobes.append((math.cos(a)*base*.52,base*.60,math.sin(a)*base*.40,base*.80))
+        for i in range(4):                                   # 中层冠
+            a=i*TAU/4+rng.uniform(0,.8)
+            lobes.append((math.cos(a)*base*.36,base*1.12,math.sin(a)*base*.28,base*.56))
+        for i in range(3):                                   # 顶冠，最小
+            a=i*TAU/3+rng.uniform(0,1.0)
+            lobes.append((math.cos(a)*base*.20,base*1.55,math.sin(a)*base*.15,base*.40))
+    elif shape=='raft':
+        for i in range(5):                                   # 横向铺开的筏体
+            a=i*TAU/5+rng.uniform(0,.5)
+            lobes.append((math.cos(a)*base*.95,base*.55,math.sin(a)*base*.62,base*.72))
+        lobes.append((0,base*.62,0,base*.95))
+        for i in range(4):                                   # 低缓起伏，不起塔
+            a=i*TAU/4+rng.uniform(0,.9)
+            lobes.append((math.cos(a)*base*.52,base*.98,math.sin(a)*base*.34,base*.44))
+    else:
+        for i in range(4):                                   # 碎云：瓣少半径杂，无冠部
+            a=i*TAU/4+rng.uniform(0,1.2)
+            lobes.append((math.cos(a)*base*rng.uniform(.5,1.0),base*rng.uniform(.5,.8),
+                          math.sin(a)*base*rng.uniform(.35,.75),base*rng.uniform(.42,.70)))
+    return lobes
+
+
+def cloud_cluster(center,base,seed,tier='near'):
     """Offline metaball fusion removes the intersecting-egg seams of primitive clouds.
 
     Only the resulting smooth mesh is exported. There is no metaball evaluation in Unity.
     """
     rng=random.Random(seed+9120)
-    data=bpy.data.metaballs.new('AuthorCloudFusion'); data.resolution=base*.135
-    data.render_resolution=data.resolution; data.threshold=.88
+    shape=cloud_shape(rng,tier)
+    # 近景给最细的体素，远景放粗省三角面；旧版三档同精度，近处不够细远处又浪费。
+    detail=.112 if tier=='near' else .135 if tier=='mid' else .165
+    data=bpy.data.metaballs.new('AuthorCloudFusion'); data.resolution=base*detail
+    data.render_resolution=data.resolution
+    # 阈值从 .88 提到 .96：旧值把瓣融成一坨土豆，提高后各瓣仍相连但保留花椰菜起伏。
+    data.threshold=.96
     obj=bpy.data.objects.new('AuthorCloudFusion',data); bpy.context.scene.collection.objects.link(obj)
-    # Offset the large crowns far enough to keep recognisable lobes after fusion.
-    # A centred giant ball swallows all satellites and makes a featureless oval.
-    lobes=[(-base*1.08,-base*.12,0,base*.88),
-           (-base*.40,base*.15,base*.07,base*1.02),
-           (base*.40,base*.51,0,base*1.10),
-           (base*1.12,base*.02,base*.02,base*.82),
-           (base*.35,-base*.12,base*.32,base*.9)]
-    for i in range(4):
-        a=i*TAU/4+.4
-        lobes.append((math.cos(a)*base*.82,base*(-.04+rng.random()*.23),math.sin(a)*base*.62,base*(.50+rng.random()*.13)))
-    for x,y,z,r in lobes:
-        element=data.elements.new(); element.co=(x,z,y*rng.uniform(.72,1.22))
-        element.radius=r*rng.uniform(.91,1.12); element.stiffness=2
+    for x,y,z,r in cloud_lobes(rng,base,shape):
+        element=data.elements.new(); element.co=(x,z,y)
+        element.radius=r*rng.uniform(.93,1.10); element.stiffness=2
     bpy.context.view_layer.update()
     mesh=bpy.data.meshes.new_from_object(obj.evaluated_get(bpy.context.evaluated_depsgraph_get()))
     try:
         x,y,z=center; yaw=rng.random()*TAU
-        sx,sy,sz=rng.uniform(.88,1.2),rng.uniform(.63,.87),rng.uniform(.73,1.04)
+        # 纵向比例按云型给：塔状要蓬起来，云筏要压扁，旧版一律 .63-.87 全成了扁豆。
+        sy=rng.uniform(.92,1.15) if shape=='tower' else rng.uniform(.52,.70) if shape=='raft' else rng.uniform(.60,.85)
+        sx,sz=rng.uniform(.88,1.2),rng.uniform(.73,1.04)
+        floor=base*.42                                       # 凝结高度：以下削平成云底
         cosine,sine=math.cos(yaw),math.sin(yaw)
-        vertices=[(x+v.co.x*sx*cosine+v.co.y*sz*sine,y+v.co.z*sy,
+        vertices=[(x+v.co.x*sx*cosine+v.co.y*sz*sine,y+max(v.co.z,floor)*sy,
                    z-v.co.x*sx*sine+v.co.y*sz*cosine) for v in mesh.vertices]
         faces=[tuple(reversed(p.vertices)) for p in mesh.polygons]
         if not faces: raise RuntimeError('Empty fused cloud mesh')
-        addmesh('CloudShade' if seed%7==0 else 'Cloud',vertices,faces,smooth=True)
+        # 空气透视：近景云偏暖白，中景转中性灰，远景压向天色，靠材质分层拉开纵深。
+        # 旧写法 7 朵里只有 1 朵换色，整片云海因此读成均匀的白色圆点。
+        material='Cloud' if tier=='near' else 'CloudShade' if tier=='mid' else 'CloudFar'
+        if tier=='near' and seed%3==0: material='CloudShade'
+        addmesh(material,vertices,faces,smooth=True)
     finally:
         bpy.data.meshes.remove(mesh)
         bpy.data.objects.remove(obj,do_unlink=True)
@@ -944,7 +1027,11 @@ def build_materials(assets):
         if name=='Water': bsdf.inputs['Roughness'].default_value=.21; bsdf.inputs['Metallic'].default_value=.25
         if name in EMISSION:
             bsdf.inputs['Emission Color'].default_value=rgba(color); bsdf.inputs['Emission Strength'].default_value=EMISSION[name]
-        if name in ['Mural','Cloth']:
+        if name in MODEL_TEXTURES:
+            img=bpy.data.images.load(str(assets/MODEL_TEXTURES[name]),check_existing=True); img.pack()
+            node=mat.node_tree.nodes.new('ShaderNodeTexImage'); node.image=img
+            mat.node_tree.links.new(node.outputs['Color'],bsdf.inputs['Base Color'])
+        elif name in ['Mural','Cloth']:
             img=bpy.data.images.load(str(assets/'Textures'/('sky_mural.png' if name=='Mural' else 'sky_cloth.png')))
             img.pack(); node=mat.node_tree.nodes.new('ShaderNodeTexImage'); node.image=img
             mat.node_tree.links.new(node.outputs['Color'],bsdf.inputs['Base Color'])
@@ -967,6 +1054,13 @@ def main():
     assets.mkdir(parents=True,exist_ok=True); source.mkdir(parents=True,exist_ok=True)
     layout=json.loads((assets/'sky_island_layout.json').read_text(encoding='utf-8-sig'))
     for obj in list(bpy.data.objects): bpy.data.objects.remove(obj,do_unlink=True)
+    # Tripo3D 件的材质必须在 build_materials 之前登记，否则 MATERIALS 里没有对应条目。
+    sys.path.insert(0,str(Path(__file__).resolve().parent))
+    import sky_island_tripo_props
+    global TRIPO_DIR,TRIPO_PROPS
+    TRIPO_DIR=source/'tripo'; TRIPO_PROPS=sky_island_tripo_props
+    sky_island_tripo_props.reset()
+    sky_island_tripo_props.register(sys.modules[__name__],TRIPO_DIR)
     build_materials(assets)
     islands={s['id']:s for s in layout['islands']}
     for sid,isl in islands.items(): CURRENT=sid; island_shell(isl)
@@ -984,6 +1078,12 @@ def main():
                 [(x-w/2,floor,z-d/2),(x-w/2,floor,z+d/2),(x+w/2,floor,z+d/2),(x+w/2,floor,z-d/2)],[(0,1,2,3)])
         if kind == 'life_prop':
             settlement_records.append(sky_island_settlement.place_model(sys.modules[__name__],obs))
+            continue
+        # 有 Tripo 替换件就用它取代下面的程序化外观。碰撞盒已在上面登记，不受影响。
+        # 传入所属岛的中心，替换件据此把正面转向广场方向。
+        _isl=next((i for i in layout['islands'] if i['id']==obs.get('island')),None)
+        if sky_island_tripo_props.replace_obstacle(sys.modules[__name__],obs,source/'tripo',
+                                                   (_isl['center'][0],_isl['center'][2]) if _isl else None):
             continue
         if kind in ['wind_beacon','astrolabe','bell','lookout','cave_rock','chime_support','duck_statue','pavilion_support']:
             # Bespoke landmark geometry is built below at these exact registered footprints.
@@ -1028,6 +1128,11 @@ def main():
     dressing=sky_island_dressing.build(sys.modules[__name__],layout)
     dressing['settlement']=sky_island_settlement.finish_gardens(sys.modules[__name__],layout,settlement_records)
     (source/'sky_island_dressing.json').write_text(json.dumps(dressing,indent=2,ensure_ascii=False)+'\n',encoding='utf-8')
+    # Tripo3D 英雄道具：纯装饰，避让复用 dressing 的 PlantingSpace，不加导航顶点。
+    # tripo 目录为空时整段静默跳过，因此没有模型也不影响世界生成。
+    import sky_island_tripo_props
+    tripo=sky_island_tripo_props.build(sys.modules[__name__],layout,source/'tripo',sky_island_dressing)
+    (source/'sky_island_tripo.json').write_text(json.dumps(tripo,indent=2,ensure_ascii=False),encoding='utf-8')
     for m in layout['markers']:
         marker(m['id'],m['position'])
         if m['kind'].lower()=='lamp':
@@ -1042,7 +1147,7 @@ def main():
     for obj in scene.objects: obj.select_set(obj.type in {'MESH','EMPTY'})
     fbx=assets/'SkyIslandWorld.fbx'
     bpy.ops.export_scene.fbx(filepath=str(fbx),use_selection=True,object_types={'MESH','EMPTY'},axis_forward='-Z',axis_up='Y',bake_anim=False,add_leaf_bones=False,path_mode='RELATIVE')
-    metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':('Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
+    metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
               'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':[-23,8.25,-100]}],
               'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'collisionBoxes':COLLISIONS,
               'navVertices':len(layout['navigation']['vertices']),'navTriangles':len(layout['navigation']['triangles']),
