@@ -4,6 +4,33 @@
 
 ## 最新修复
 
+### 2026-09-10 石堡前哨撤离读秒对齐官方 CountDownArea：开着暂停菜单 / 拍照模式 / 背包站在蓝环里不再被送回
+
+**分类**：COMPAT（仅开发版 F3 场景实验，`CanEnter` 要求 `DevModeEnabled`）。承接 `CODE_REVIEW_FINDINGS.md` 天空岛全方位审核里「不在本轮范围」那一条；天空岛同款问题是 `CR-2026-09-10-008`，本条照它的写法修。
+
+**成因**（静态核对源码，未实机复现）：`ArenaPrototypeSession.Update` 的前哨读秒用 `Time.unscaledTime` 记起点、算剩余秒数，且不看官方界面（修复前 `b2f5c1e` 的 `ArenaPrototypeSession.cs:389–390`）。官方 `CountDownArea` 按 `Time.time` 计时、`View.ActiveView != null` 时不推进（`鸭科夫源码/TeamSoda.Duckov.Core/CountDownArea.cs:27`、`:183`）；`TimeScaleManager.Update` 在 `GameManager.Paused` 与 `CameraMode.Active` 时把 `timeScale` 压到 0（`TimeScaleManager.cs:23–31`），而 `GameManager.Paused` 读的是 `pauseMenu.Shown`，`PauseMenu` 是 `UIPanel` 不是 `View`（`GameManager.cs:65`、`PauseMenu.cs:4`）——游戏时间与 View 门缺一不可。旧实现两道都没有：开着暂停菜单、拍照模式、背包或地图站在东南蓝环里 3 秒就会被送回。
+
+**修复**（`DebugAndTools/ArenaPrototype/ArenaPrototypeSession.cs`，+11 / −5）：照 `SkyIslandSession.Update` 改为停留秒数累加器——进圈 `extractionHeld` 置 0，`if (View.ActiveView == null) extractionHeld += Time.deltaTime;`，`remaining = ExtractionHold - extractionHeld`（新常量 `ExtractionHold = 3f`，数值不变）；界面打开时冻结而不清零，真正离开圆环才回 -1。`enteredAt` 的 1 秒进场宽限保持 unscaled（与天空岛一致）。补 `using Duckov.UI;`；HUD 文案与「撤离已中止」提示不变。
+
+**核对过、不改**：
+- 本文件**没有**腾空 / 坠落救援计时：出界是 `local.y < -5` 与水平范围的逐帧位置判断，命中直接 `Close(true, "bounds_return")`。`Build` 里三处 `realtimeSinceStartup` 是场景加载、导航扫描、寻路探针的看门狗超时，不是玩法计时。
+- 试验场平台（非前哨）的蓝环是零时长的「走进即返回」，没有读秒。官方 `View.OnOpen` 调 `InputManager.DisableInput`（`View.cs:86`），`InputManager.InputActived` 在暂停、拍照或有封锁源时为 false，此时 `SetMoveInput` 把角色移动输入清零（`InputManager.cs:128`、`:562–565`）——开着这些界面走不进圈。唯一窗口是 unscaled 的 1 秒进场宽限：按生成器坐标出生点到出口 18 m（`tools/generate_arena_prototype.py:117`；前哨 73 m），圆环半径 1.3 m，1 秒内要移动 ≥ 16.7 m（未实测跑速，按常识到不了），故未改。
+
+**守卫**：`tests/StoneOutpostSceneOwnershipGuard.py`（+83 / −2）去掉 `extractionStarted = -1` 子串断言，改为 `clean_source` 剥注释后切出 `Update` 里出口圆环分支的块体逐行判断：`ExtractionHold = 3f` 钉数值、`extractionHeld = -1` 初值；全文件只有一处累加、只有一个 `"outpost_extract"` 完成点；圆环分支必须含整行 View 门 + `Time.deltaTime` 累加与 `remaining = ExtractionHold - extractionHeld`，进圈置 0 排在累加之前；分支内除这两行外不得写 `extractionHeld`（冻结不清零）、不得出现 unscaled / realtime；分支内的 `Close` 只许是 `!outpost` 直返或 `remaining <= 0` 撤离；紧随的离圈分支必须 `extractionHeld = -1`。
+
+**验证**（全部离线，未开游戏、未碰存档）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | `compile_official.bat` 正式构建（`Build/bossrush.rsp` 无 `/define`） | 工作区构建 `Build succeeded!` 并部署（`95c58b81…`，DLL 晚于源码且已不含 `extractionStarted`）；提交前又在**提交内容本身**的干净签出（`git worktree`）上重编一次：`Build succeeded!`，`GAME_PATH` 指向临时目录，游戏目录里的 DLL 前后哈希不变 |
+| 2 | 反向验证 20 条人为破坏：去 View 门 / 门写反 / 改回 unscaled / 注释掉累加 / 开界面时清零 / 改写成 `Time.time` 起点 / 常量改 0 / 初值改 0 / 离圈不归零 / 提前 0.5 秒完成 / 去掉 `!outpost` 门 / 圆环外再加一处累加 / 另开完成点 / 圆环挂错标记 / 判定先赋给局部变量再 if 等 | 20/20 转红并报出各自针对的断言；在仓库稀疏副本上破坏，逐条按字节还原并核对 sha256（`ce5cf780…`），真实工作区该文件前后哈希不变；提交前复跑同样 20/20 |
+| 3 | 读该文件的 5 个守卫（`StoneOutpostSceneOwnershipGuard` / `ArenaPrototypeLifecycleGuard` / `StoneOutpostMapOwnershipGuard` / `SkyIslandLifecycleGuard` / `SkyIslandPlayerEntryGuard`） | 全绿 |
+| 4 | `python tools/run_guards.py` 全量，提交内容与 `b2f5c1e` 各自的干净签出上对照跑 | 各 585 个，都是 582 PASS / 3 FAIL，失败集合完全相同（`ModeGPresentationAssetGuard` / `ModeHPresentationAssetGuard` / `PortableSafeZoneDeviceBundleGuard`，缺 local-only 的 AssetBundle，签出里本来就没有）：本条**零新增失败**。共用工作区里跑的那次另有 2 个天空岛几何属性测试红，输入是并行会话未提交的布局改动，与本条无关 |
+
+**repowiki**：`.qoder/repowiki/zh/content/工具与调试/调试工具.md` 与 `knowledge/zh/.../BossRush 调试工具与作弊菜单模块/架构设计.md` 的石堡前哨段补读秒口径（两份文件原有的 CRLF/LF 混排按字节保留）。
+
+**待人工**（未实机）：前哨东南蓝环里分别开暂停菜单、拍照模式、背包、地图各停 5 秒，都不应返回；关掉后读秒从冻结处继续；走出圆环提示「撤离已中止」，再进圈从 3 秒重新计。未推送。
+
 ### 2026-09-10 天空岛全方位审核：21 条 finding 全修（3 P1 / 13 P2 / 5 P3），F3 岛内套件改为真正只读
 
 **分类**：COMPAT / SAFE / OPERATIONAL。owner 要求对天空岛做全方位审核并按严重度全部修复、无人值守。逐条 finding 见

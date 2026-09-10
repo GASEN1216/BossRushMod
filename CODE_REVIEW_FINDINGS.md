@@ -40,7 +40,7 @@ UI/UX 与指引（与官方 HUD 的遮挡按 UnityPy 读官方预制体实测）
 （UnityPy 读 `Base.unity` 与 16 张 `*_Main` 场景：子树只有 `TimeOfDayConfig` + 5 个 `TimeOfDayEntry`，无 Volume / Light / Update 逻辑，
 `lookDevVolume` 指向子树外且只在编辑器读；租约注释已据此更正）。
 
-**不在本轮范围**：试验场 / 石堡前哨 `ArenaPrototypeSession` 的撤离读秒同样走 `unscaledTime` 且不看官方界面（`ArenaPrototypeSession.cs:389`，已交接为独立任务）。
+**不在本轮范围**：试验场 / 石堡前哨 `ArenaPrototypeSession` 的撤离读秒同样走 `unscaledTime` 且不看官方界面（`ArenaPrototypeSession.cs:389`；已单独修复，见 `FIX_TRACKER.md`「2026-09-10 石堡前哨撤离读秒对齐官方 CountDownArea」）。
 
 验证：正式构建（`Build/bossrush.rsp` 无 `/define`）绿并部署，SHA-256 源与游戏目录一致；全量守卫 585 个中本轮改动相关的全绿
 （另 2 个红项来自并行会话未提交的布局改动，换回 `HEAD` 版本复跑均绿；并行改动落地前全量 584 / 0）；

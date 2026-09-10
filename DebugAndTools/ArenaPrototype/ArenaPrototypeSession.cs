@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Duckov.UI;
 using Duckov.Utilities;
 using Pathfinding;
 using TMPro;
@@ -18,12 +19,14 @@ namespace BossRush
     {
         internal const string BundleRelativePath = "Assets/arenas/prototype_arena";
         private const float PlatformHeight = 80f;
+        private const float ExtractionHold = 3f;
         private bool outpost;
         private StoneOutpostSceneLease sceneLease;
         private ArenaPrototypeLighting lighting;
         private StoneOutpostMap map;
         private int searchedPoints;
-        private float extractionStarted = -1;
+        // 前哨撤离圈里已停留的游戏时间秒数，-1 表示不在圈里。
+        private float extractionHeld = -1;
         private readonly List<CharacterMainControl> enemies = new List<CharacterMainControl>();
         private readonly List<CharacterRandomPreset> enemyPresets = new List<CharacterRandomPreset>();
         private readonly List<Transform> enemyMarkers = new List<Transform>();
@@ -386,14 +389,17 @@ namespace BossRush
             if (Time.unscaledTime > enteredAt + 1 && Vector3.Distance(player.transform.position, exitMarker.position) < 1.3f)
             {
                 if (!outpost) { Close(true, "exit_marker"); return; }
-                if (extractionStarted < 0) extractionStarted = Time.unscaledTime;
-                float remaining = 3 - (Time.unscaledTime - extractionStarted);
+                if (extractionHeld < 0) extractionHeld = 0f;
+                // 与官方 CountDownArea 同口径：背包、地图等官方界面打开时读秒冻结而不是清零；
+                // 走游戏时间，暂停菜单（PauseMenu 不是 View）与拍照模式把 timeScale 压到 0 时同样冻结。
+                if (View.ActiveView == null) extractionHeld += Time.deltaTime;
+                float remaining = ExtractionHold - extractionHeld;
                 if (hud != null) hud.text = "正在撤离 · " + Mathf.CeilToInt(Mathf.Max(0, remaining)) + " 秒 · 搜索记录 " + searchedPoints + "/3";
                 if (remaining <= 0) { Debug.Log("[StoneOutpost] EXTRACT records=" + searchedPoints); Close(true, "outpost_extract"); return; }
             }
-            else if (outpost && extractionStarted >= 0)
+            else if (outpost && extractionHeld >= 0)
             {
-                extractionStarted = -1;
+                extractionHeld = -1;
                 Status("撤离已中止 · 搜索记录 " + searchedPoints + "/3 · 回到蓝环可再次撤离", false);
             }
             if (!outpost && enemy != null && enemy.Health != null && enemy.Health.IsDead && !enemyDeathReported)
