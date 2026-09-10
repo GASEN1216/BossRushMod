@@ -311,6 +311,48 @@ namespace BossRush
             return null;
         }
 
+        /// <summary>
+        /// 面板插图有没有真的部署到位。
+        ///
+        /// 判据是「**要么全有、要么全无**」，不是「必须有」：`SkyIslandUiArt` 是 fail-open 的，
+        /// 完全没出美术时面板退成无插图布局，那是合法状态，报红等于逼着美术未就绪就不能上线。
+        /// 真正说明部署坏了的是**部分命中**——`Assets/ui/SkyIsland` 只拷进去一半，
+        /// 于是有的区域有图、有的没有，玩家看到的是「时有时无」，而这在日志里一声不吭。
+        ///
+        /// 副作用只有缓存预热：这里会把 18 张图读进 `SkyIslandUiArt` 的静态缓存（满载约 20 MB），
+        /// 与玩家逛遍全岛后的常驻量一致，不改变任何玩法状态。
+        /// </summary>
+        private bool ValidateSkyIslandPanelArt(out string metrics, out string reason)
+        {
+            reason = null;
+            string[] regions = { "A", "B", "C", "D", "E", "F", "G", "H", "S1", "S2", "S3", "S4" };
+            string[] residents = SkyIslandResidents.AllIds;
+            List<string> missing = new List<string>();
+            int scenes = 0, portraits = 0;
+            for (int i = 0; i < regions.Length; i++)
+            {
+                if (SkyIslandUiArt.GetScene("POI_" + regions[i]) != null) scenes++;
+                else missing.Add("scene:" + regions[i]);
+            }
+            for (int i = 0; i < residents.Length; i++)
+            {
+                if (SkyIslandUiArt.GetPortrait(residents[i]) != null) portraits++;
+                else missing.Add("portrait:" + residents[i]);
+            }
+            int found = scenes + portraits;
+            int total = regions.Length + residents.Length;
+            metrics = "scenes=" + scenes + "/" + regions.Length
+                + ",portraits=" + portraits + "/" + residents.Length
+                + ",missing=" + (missing.Count == 0 ? "none" : string.Join(",", missing.ToArray()));
+            if (found != 0 && found != total)
+            {
+                reason = "面板插图只部署了一部分，玩家会看到有的区域有图有的没有：" +
+                    string.Join(",", missing.ToArray());
+                return false;
+            }
+            return true;
+        }
+
         private bool ValidateSkyIslandLootBands(out string metrics, out string reason)
         {
             reason = null;

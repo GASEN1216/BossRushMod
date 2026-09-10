@@ -70,6 +70,15 @@ namespace BossRush
             rect.sizeDelta = new Vector2(920, 90);
             rect.anchoredPosition = new Vector2(0, -72);
             text.alignment = TextAlignmentOptions.Top;
+            // 90 px 只够 3 行。天空岛的 HUD 实测中文要 4 行（100 px）、英文要 6 行（150 px），
+            // 而 TMP 默认的 overflowMode 是 Overflow —— 超出的行既不裁剪也不省略，直接画到框外。
+            // pivot 在顶边，所以让 ContentSizeFitter 按内容往下长即可：调用方只管赋 text，
+            // 不必再关心行数。`BossRushUI.MeasureTextHeight` 的注释也明说固定 HUD 不该用 Overflow。
+            text.enableWordWrapping = true;
+            ContentSizeFitter fitter = text.gameObject.GetComponent<ContentSizeFitter>();
+            if (fitter == null) fitter = text.gameObject.AddComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             return text;
         }
 

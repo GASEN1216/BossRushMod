@@ -51,7 +51,8 @@ namespace BossRush
         {
             "SKY_SESSION_READY", "SKY_OFFICIAL_CONTRACT", "SKY_SCENE_IDENTITY", "SKY_NAV_GRAPH",
             "SKY_EXPLOSION_PATCH", "SKY_MARKERS", "SKY_CONTENT_TABLE", "SKY_SCAVENGE_PLACEMENT",
-            "SKY_INTERACTION_SEPARATION", "SKY_LOOT_BANDS", "SKY_GATE_STATE", "SKY_GATE_REACHABILITY",
+            "SKY_INTERACTION_SEPARATION", "SKY_LOOT_BANDS", "SKY_PANEL_ART",
+            "SKY_GATE_STATE", "SKY_GATE_REACHABILITY",
             "SKY_STORY_OBJECTIVE", "SKY_STORY_CODEC", "SKY_STORY_SAVE_STATE", "SKY_SERVICE_PRICING",
             "SKY_BOUNTY_GATING", "SKY_RESIDENTS", "SKY_EXTRACTION_RINGS", "SKY_EXTRACTION_RULE",
             "SKY_STORM_TUNING", "SKY_LOCALIZATION_EN", "SKY_SCENE_BASELINE",
@@ -140,6 +141,7 @@ namespace BossRush
             RunSyncCase("SKY_SCAVENGE_PLACEMENT", ValidateSkyIslandScavengePlacement);
             RunSyncCase("SKY_INTERACTION_SEPARATION", ValidateSkyIslandInteractionSeparation);
             RunSyncCase("SKY_LOOT_BANDS", ValidateSkyIslandLootBands);
+            RunSyncCase("SKY_PANEL_ART", ValidateSkyIslandPanelArt);
 
             SetStage("3/5 门控与导航");
             RunSyncCase("SKY_GATE_STATE", ValidateSkyIslandGateState);

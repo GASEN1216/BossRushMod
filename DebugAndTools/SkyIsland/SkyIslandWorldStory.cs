@@ -125,7 +125,10 @@ namespace BossRush
                     L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal); break;
                 case "Search_F": ZhelingChoices(choices); break;
             }
-            presentation.Show(PointName(key), Lore(key) + "\n\n" + story.CurrentObjective, choices);
+            // 装置/见闻面板配该区域的横幅插图；SkyIslandUiArt 是 fail-open 的，
+            // 缺图就退成无插图布局，绝不因为一张图没出来就打不开挂着 K1/K2/K3 的装置。
+            presentation.Show(PointName(key), Lore(key) + "\n\n" + story.CurrentObjective, choices,
+                null, SkyIslandUiArt.GetScene(key));
         }
 
         internal void Talk(string id, Transform speaker)
@@ -152,7 +155,8 @@ namespace BossRush
                 L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
             else if (id == "sky_miantai") ServiceChoice(choices,
                 L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
-            presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id), story.DescribeNpc(id), choices);
+            presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id),
+                story.DescribeNpc(id), choices, SkyIslandUiArt.GetPortrait(id), null);
         }
 
         /// <summary>居民显示名的唯一来源：交互提示、血条名与剧情面板标题共用同一份中英对照。</summary>
@@ -406,7 +410,9 @@ namespace BossRush
                 delegate
                 {
                     if (BlockedByCombat()) return;
-                    presentation.Show(label, story.Summary, new List<SkyIslandStoryPresentation.Choice>());
+                    presentation.Show(label, story.Summary,
+                        new List<SkyIslandStoryPresentation.Choice>(),
+                        null, SkyIslandUiArt.GetScene(marker));
                 }));
         }
         internal void Hide() { presentation.Dispose(); }

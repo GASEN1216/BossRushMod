@@ -214,6 +214,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandBounty.cs
 echo(DebugAndTools\SkyIsland\SkyIslandServices.cs
 echo(DebugAndTools\SkyIsland\SkyIslandExplosionObstaclePatch.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGroundRing.cs
+echo(DebugAndTools\SkyIsland\SkyIslandUiArt.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -1210,6 +1211,15 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: Campaign raw PNG deploy failed.
             ) else (
                 echo Deployed Campaign raw PNG to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\Campaign
+            )
+        )
+        if exist "Assets\ui\SkyIsland\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\SkyIsland" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\SkyIsland"
+            xcopy /Y /I "Assets\ui\SkyIsland\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\SkyIsland\" >nul
+            if errorlevel 1 (
+                echo WARNING: Sky Island panel art deploy failed.
+            ) else (
+                echo Deployed Sky Island panel art to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\SkyIsland
             )
         )
         if exist "Assets\ui\AffixForge\*.png" (
