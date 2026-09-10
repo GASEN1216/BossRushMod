@@ -87,6 +87,104 @@ namespace BossRush
             return null;
         }
 
+        /// <summary>
+        /// 面板插图底部的竖向渐隐条，用来把插图和正文接起来。
+        ///
+        /// 必须是**真渐变**：早先那版用的是一条 55% 不透明的纯色横条，上下两条硬边一眼看得出来，
+        /// 正是「廉价感」的典型来源。这里生成 1×64 的 alpha 渐变纹理，上端全透、下端接近面板底色。
+        /// 与插图共用同一套 owned 释放，`ResetStaticCaches` 一并销毁。
+        /// </summary>
+        internal static Sprite GetBannerFade()
+        {
+            Sprite cached;
+            if (sprites.TryGetValue(FadeAssetName, out cached)) return cached;
+            Sprite result = null;
+            try
+            {
+                const int height = 64;
+                Texture2D texture = new Texture2D(1, height, TextureFormat.RGBA32, false, false);
+                texture.name = FadeAssetName;
+                texture.wrapMode = TextureWrapMode.Clamp;
+                Color surface = BossRushUIColors.Surface;
+                for (int y = 0; y < height; y++)
+                {
+                    // y=0 是纹理底部：底部最不透明，往上淡出。用平方曲线让过渡更贴近视觉线性。
+                    float t = 1f - (y / (float)(height - 1));
+                    texture.SetPixel(0, y, new Color(surface.r, surface.g, surface.b, t * t));
+                }
+                texture.Apply(false, true);
+                owned.Add(texture);
+                result = Sprite.Create(texture, new Rect(0f, 0f, 1f, height), new Vector2(0.5f, 0.5f),
+                    100f, 0u, SpriteMeshType.FullRect);
+                result.name = FadeAssetName;
+                owned.Add(result);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(LogPrefix + "渐隐条生成失败，横幅将直接接正文：" + e.Message);
+            }
+            sprites[FadeAssetName] = result;
+            return result;
+        }
+
+        private const string FadeAssetName = "__skyisland_banner_fade";
+        private const string ScrimAssetName = "__skyisland_title_scrim";
+
+        /// <summary>
+        /// 区域大标题背后的压暗底。**必须有**：岛上抬头就是一片高亮的云海，
+        /// 浅色文字直接压在云上几乎读不出来（离线预览里一眼可见）。
+        /// 主流游戏的区域名底下也都垫一层柔和压暗，这不是装饰而是可读性。
+        ///
+        /// 形状是**二维**柔边：竖向是 0→1→0 的余弦钟形，横向是两侧各 30% 的 smoothstep 淡出、
+        /// 中间留一段平台罩住文字。早先那版只做了竖向渐变、横向拉伸成矩形，
+        /// 左右两侧是两条笔直的硬边——正是要消灭的「贴了一块板」。
+        /// </summary>
+        internal static Sprite GetTitleScrim()
+        {
+            Sprite cached;
+            if (sprites.TryGetValue(ScrimAssetName, out cached)) return cached;
+            Sprite result = null;
+            try
+            {
+                const int width = 64;
+                const int height = 48;
+                const float peak = 0.60f;
+                const float edge = 0.30f;
+                Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false, false);
+                texture.name = ScrimAssetName;
+                texture.wrapMode = TextureWrapMode.Clamp;
+                // 双线性采样会把这张小图平滑拉到 1180×200，所以 64×48 足够，不必出大图。
+                texture.filterMode = FilterMode.Bilinear;
+                for (int x = 0; x < width; x++)
+                {
+                    float u = x / (float)(width - 1);
+                    float sideIn = Mathf.Clamp01(u / edge);
+                    float sideOut = Mathf.Clamp01((1f - u) / edge);
+                    // smoothstep：两侧从 0 平滑爬到 1，中间是平台。
+                    float horizontal = sideIn * sideIn * (3f - 2f * sideIn)
+                        * sideOut * sideOut * (3f - 2f * sideOut);
+                    for (int y = 0; y < height; y++)
+                    {
+                        float v = y / (float)(height - 1);
+                        float vertical = 0.5f - 0.5f * Mathf.Cos(v * Mathf.PI * 2f);
+                        texture.SetPixel(x, y, new Color(0.02f, 0.03f, 0.04f, horizontal * vertical * peak));
+                    }
+                }
+                texture.Apply(false, true);
+                owned.Add(texture);
+                result = Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f),
+                    100f, 0u, SpriteMeshType.FullRect);
+                result.name = ScrimAssetName;
+                owned.Add(result);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(LogPrefix + "标题压暗底生成失败：" + e.Message);
+            }
+            sprites[ScrimAssetName] = result;
+            return result;
+        }
+
         private static Sprite Get(string assetName)
         {
             Sprite cached;
@@ -130,7 +228,9 @@ namespace BossRush
             if (!File.Exists(path)) return null;
             // mipmap 关掉：UI 图不缩小采样，开了只是白占显存。
             Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
-            if (!texture.LoadImage(File.ReadAllBytes(path)))
+            // markNonReadable: true —— 上传 GPU 之后丢掉 CPU 端那份拷贝。我们从不读像素，
+            // 留着等于把这批图的常驻内存整整翻一倍（满载 20 MB → 10 MB）。
+            if (!texture.LoadImage(File.ReadAllBytes(path), true))
             {
                 UnityEngine.Object.Destroy(texture);
                 return null;

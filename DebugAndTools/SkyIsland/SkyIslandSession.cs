@@ -48,10 +48,10 @@ namespace BossRush
         private SkyIslandLighting lighting;
         private ArenaPrototypeNavigation navigation;
         private IEnumerator<Progress> scan;
-        private GameObject root, hudRoot;
+        private GameObject root;
         // 返航期间的输入封锁源：必须是岛场景内的临时对象，随场景卸载自动失效（见 BlockInputForReturn）。
         private GameObject returnInputBlock;
-        private TextMeshProUGUI hud;
+        private SkyIslandHud hud;
         private Transform playerSpawn, exitMarker, bellExit;
         private CharacterMainControl enemy;
         private CharacterRandomPreset enemyPreset;
@@ -163,9 +163,12 @@ namespace BossRush
 
         private IEnumerator Build()
         {
-            hud = ArenaPrototypeControls.CreateHud(out hudRoot);
-            hudRoot.name = "SkyIslandHud";
-            hudRoot.transform.SetParent(host.transform, false);
+            // 不再复用试验场那块「屏幕正上方的裸文字」：那是原型期的调试文本，
+            // 常驻四行长句会一直抢视线焦点，而且 90 px 的框实测装不下（中文 4 行 / 英文 6 行）。
+            // 天空岛自己的 HUD 把常驻部分收成右侧一张小卡，区域名改成进出时的一次性大标题。
+            hud = new SkyIslandHud(host.transform);
+            hud.SetLandingHint(L10n.T("地图键查阅全岛 · 站进撤离环停留 3 秒返航",
+                "Map key views the isles · hold 3s inside an extraction ring to return"));
             Status(L10n.T("正在加载晴岚群岛…", "Loading the Qinglan Archipelago…"), false);
             timeOfDayTemplate = LevelConfig.Instance.timeOfDayConfig;
             if (timeOfDayTemplate == null) throw new InvalidOperationException("官方天气配置缺失，无法创建完整关卡");
@@ -513,6 +516,9 @@ namespace BossRush
             if (returnRequested) { DispatchReturnIfReady(); return; }
             if (!ready) return;
             if (worldStory != null) worldStory.Tick();
+            // HUD 的淡入淡出与过期只吃 unscaled 时间：剧情面板把 timeScale 压到 0 时
+            // 区域大标题仍应正常淡出，公告也仍应正常过期。
+            if (hud != null) hud.Tick(Time.unscaledDeltaTime);
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
             { Close(false, "owner_lost"); return; }
             if (story != null && !story.IsCurrentSlot) { Close(true, "save_slot_changed"); return; }
@@ -575,9 +581,8 @@ namespace BossRush
             {
                 if (extractionStarted < 0) extractionStarted = Time.unscaledTime;
                 float remaining = ExtractionHold - (Time.unscaledTime - extractionStarted);
-                if (hud != null) hud.text = L10n.T("返回基地 · ", "Returning to base · ") +
-                    Mathf.CeilToInt(Mathf.Max(0, remaining)) +
-                    L10n.T(" 秒 · 群岛见闻 ", "s · notes ") + searched.Count + "/" + searchCount;
+                if (hud != null) hud.SetExtraction(L10n.T("返回基地 · ", "Returning to base · ") +
+                    Mathf.CeilToInt(Mathf.Max(0, remaining)) + L10n.T(" 秒", "s"));
                 if (remaining <= 0) Close(true, extraction == bellExit ? "bell_extract" : "dock_extract");
                 return;
             }
@@ -605,12 +610,17 @@ namespace BossRush
                     // 刚踏足的区域立刻在官方地图上点亮。
                     mapFog.Apply(story.Current.visitedRegions);
                 }
-                if (hud != null) hud.text = L10n.T("晴岚群岛 · ", "Qinglan · ") +
-                    (nearest == null ? "" : LandmarkLabel(nearest.name)) +
-                    "\n" + story.CurrentObjective + "\n" + FieldStatus() +
-                    // 撤离说明跟着 SkyIslandExtractionRings 走：地上现在真有圈，就照实说「站进环里」。
-                    L10n.T("\n地图键查阅全岛 · 站进撤离环停留 3 秒返航 · ",
-                        "\nMap key views the isles · hold 3s inside an extraction ring to return · ") + story.SaveStatus;
+                if (hud != null)
+                {
+                    // 不在圈里就把读秒整行撤掉，卡片不留空位。
+                    hud.SetExtraction(null);
+                    hud.SetRegion(nearest == null ? string.Empty : LandmarkLabel(nearest.name));
+                    hud.SetObjective(story.CurrentObjective);
+                    hud.SetChips(FieldStatus());
+                    // 存档状态**正常时一个字都不说**：只有真出问题（写屏障 / 单向故障 / 换槽）
+                    // 才值得占玩家一行。旧版把「群岛记录已同步」也常驻着，等于每帧都在报平安。
+                    if (story != null && !story.CanWrite) hud.Announce(story.SaveStatus);
+                }
             }
         }
 
@@ -776,7 +786,8 @@ namespace BossRush
             navigation = null;
             Safe("lighting", delegate { if (lighting != null) lighting.Dispose(); });
             Safe("materials", delegate { if (rendering != null) rendering.Dispose(); });
-            if (hudRoot != null) Destroy(hudRoot);
+            if (hud != null) hud.Dispose();
+            hud = null;
             if (returnInputBlock != null) Destroy(returnInputBlock);
             Debug.Log("[SkyIsland] CLEANUP reason=" + reason + " searches=" + searched.Count +
                 " looted=" + (scavenging == null ? 0 : scavenging.OpenedPoints) +
@@ -1010,7 +1021,7 @@ namespace BossRush
         internal void Announce(string message, bool error) { Status(message, error); }
         private void Status(string message, bool error)
         {
-            if (hud != null) hud.text = message;
+            if (hud != null) hud.Announce(message);
             if (report != null) report(message, error);
             if (error) Debug.LogWarning("[SkyIsland] " + message); else Debug.Log("[SkyIsland] " + message);
         }

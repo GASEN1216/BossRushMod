@@ -75,6 +75,11 @@ namespace BossRush
             // pivot 在顶边，所以让 ContentSizeFitter 按内容往下长即可：调用方只管赋 text，
             // 不必再关心行数。`BossRushUI.MeasureTextHeight` 的注释也明说固定 HUD 不该用 Overflow。
             text.enableWordWrapping = true;
+            // `Label()` 给每个文本都挂了 LayoutElement 并写死 preferredHeight。
+            // LayoutElement 的 layoutPriority 高于 TextMeshProUGUI，ContentSizeFitter 取的是
+            // 优先级最高的那个 —— 不把它关掉，fitter 会一直拿到写死的 90，等于这个修复是空的。
+            LayoutElement element = text.gameObject.GetComponent<LayoutElement>();
+            if (element != null) element.preferredHeight = -1f;
             ContentSizeFitter fitter = text.gameObject.GetComponent<ContentSizeFitter>();
             if (fitter == null) fitter = text.gameObject.AddComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;

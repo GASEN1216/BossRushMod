@@ -190,7 +190,94 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
     return img
 
 
+HUD_CS = ROOT / 'DebugAndTools/SkyIsland/SkyIslandHud.cs'
+HUD_OUT = ROOT / 'output/sky_island_hud_preview.png'
+
+
+def hud_const(name):
+    src = clean_source(HUD_CS.read_text(encoding='utf-8-sig'))
+    m = re.search(r'\b' + name + r'\s*=\s*(-?[0-9.]+)f', src)
+    if not m:
+        raise AssertionError('读不到 HUD 常量 ' + name)
+    return float(m.group(1))
+
+
+def render_hud():
+    """1920x1080 参考分辨率下的 HUD 占位示意，铺一张真实岛景当底，好判断对比度与遮挡。"""
+    H = {n: hud_const(n) for n in ('CardWidth', 'CardRight', 'CardTop', 'CardPadX', 'CardPadY',
+                                   'AccentBarWidth', 'TitleFont', 'BodyFont', 'ChipFont')}
+    W, Ht = 1920, 1080
+    backdrop = Image.open(ART / 'skyisland_scene_E.png').convert('RGBA')
+    scale = max(W / backdrop.width, Ht / backdrop.height)
+    backdrop = backdrop.resize((int(backdrop.width * scale), int(backdrop.height * scale)), Image.LANCZOS)
+    img = Image.new('RGBA', (W, Ht), (12, 14, 18, 255))
+    img.alpha_composite(backdrop, ((W - backdrop.width) // 2, (Ht - backdrop.height) // 2))
+    draw = ImageDraw.Draw(img)
+
+    f_title, f_body, f_chip = font(int(H['TitleFont']), True), font(int(H['BodyFont'])), font(int(H['ChipFont']))
+    rows = [('晴岚群岛 · 鸣风栈道', f_title, COL['Accent'], H['TitleFont']),
+            ('修复悬根林风标与残星工坊星灯，让双航标门重新工作。', f_body, COL['TextSecondary'], H['BodyFont']),
+            ('物资 27/39 · 委托 清理航路威胁 2/3', f_chip, COL['TextSecondary'], H['ChipFont'])]
+    inner = H['CardWidth'] - H['CardPadX'] * 2 - H['AccentBarWidth'] - 6
+    laid, y = [], H['CardPadY']
+    for text, fnt, col, size in rows:
+        lines = wrap(draw, text, fnt, inner)
+        h = max(size * 1.3, len(lines) * size * 1.3 + 2)
+        laid.append((lines, fnt, col, size, y))
+        y += h + 4
+    card_h = y + H['CardPadY']
+    x0 = W + H['CardRight'] - H['CardWidth']
+    y0 = -H['CardTop']
+    rounded(img, (x0, y0, x0 + H['CardWidth'], y0 + card_h), 10, COL['Surface'][:3] + (240,))
+    draw = ImageDraw.Draw(img)
+    bx = x0 + H['CardPadX']
+    draw.rounded_rectangle((bx, y0 + 8, bx + H['AccentBarWidth'], y0 + card_h - 8), radius=2,
+                           fill=COL['Accent'])
+    for lines, fnt, col, size, top in laid:
+        ty = y0 + top
+        for line in lines:
+            draw.text((x0 + H['CardPadX'] + H['AccentBarWidth'] + 6, ty), line, font=fnt, fill=col)
+            ty += size * 1.3
+
+    # 区域大标题：中线偏下的一次性淡入淡出（这里画的是它完全显形的那一瞬）。
+    # Unity 的 anchoredPosition y 向上为正，PIL 的 y 向下为正 —— 必须减不能加，
+    # 早先写成加号，把「中线偏下」画成了中线偏上（预览工具自己的 bug）。
+    ay = Ht / 2 - hud_const('AreaTitleY')
+    # 压暗底：与生产同一条上下对称渐变，否则预览会高估浅色字在云海上的可读性。
+    # 与生产同一条二维柔边：竖向余弦钟形 × 横向两侧 30% smoothstep。
+    # 只做竖向的话左右两侧是笔直硬边（上一版预览里 x≈370 / x≈1550 那两条竖线就是它）。
+    import math as _m
+    scrim = Image.new('RGBA', (1180, 200), (0, 0, 0, 0))
+    px_ = scrim.load()
+    for xx in range(1180):
+        u = xx / 1179.0
+        a = min(1.0, u / 0.30)
+        b = min(1.0, (1.0 - u) / 0.30)
+        horizontal = (a * a * (3 - 2 * a)) * (b * b * (3 - 2 * b))
+        for yy in range(200):
+            vertical = 0.5 - 0.5 * _m.cos(yy / 199.0 * _m.pi * 2)
+            px_[xx, yy] = (5, 8, 10, int(horizontal * vertical * 0.60 * 255))
+    img.alpha_composite(scrim, (int((W - 1180) / 2), int(ay - 100)))
+    draw = ImageDraw.Draw(img)
+    # 偏移照生产的锚点：标题中心在压暗核心上方 26、横线 -10、提示 -28，
+    # 三者都落在 scrim alpha >= 0.45 的中心带里。早先预览把提示画到 +52，
+    # 那已经出了压暗核心，于是「看不清」是预览自己造出来的假象。
+    f_area, f_hint = font(44, True), font(15)
+    area = '鸣风栈道'
+    w = draw.textlength(area, font=f_area)
+    draw.text(((W - w) / 2, ay - 26 - 22), area, font=f_area, fill=COL['TextPrimary'])
+    draw.rectangle(((W - 120) / 2, ay + 10, (W + 120) / 2, ay + 11), fill=COL['Divider'])
+    hint = '地图键查阅全岛 · 站进撤离环停留 3 秒返航'
+    w = draw.textlength(hint, font=f_hint)
+    draw.text(((W - w) / 2, ay + 28 - 8), hint, font=f_hint, fill=COL['TextSecondary'])
+
+    HUD_OUT.parent.mkdir(parents=True, exist_ok=True)
+    img.convert('RGB').save(HUD_OUT, quality=95)
+    print('hud preview -> %s (%dx%d)' % (HUD_OUT, W, Ht))
+
+
 def main():
+    render_hud()
     device = render(
         '风铃集留言板 · 种植记录与航务委托',
         '留言板上钉着三张纸：苇白在找修复两端航标的帮手，晴禾在找落在蛙鸣池的种植记录，'

@@ -139,7 +139,11 @@ namespace BossRush
                 float h = Mathf.Max(ChoiceMinHeight,
                     BossRushUI.MeasureTextHeight(probe, ContentWidth - ChoicePadX * 2f, 26f)
                     + ChoicePadY * 2f);
-                UnityEngine.Object.Destroy(probe.gameObject);
+                // **必须 DestroyImmediate**：`Destroy` 要等到帧末才真正移除，而量高用的探针
+                // 此刻是 canvas 的子物体、带着选项文字挂在屏幕正中 —— 用延迟销毁的话，
+                // 这一帧会把所有选项文字重叠着闪一下再消失。对象是运行时创建、非 prefab 资产，
+                // 这里 DestroyImmediate 安全且确定（口径同 SkyIslandRewardCrate 摘 LootBoxLoader）。
+                UnityEngine.Object.DestroyImmediate(probe.gameObject);
                 choiceHeights.Add(h);
                 choicesHeight += h + (i > 0 ? Gap * 0.5f : 0f);
             }
@@ -226,12 +230,15 @@ namespace BossRush
             // 而面板底色和插图色调不一致，看着像图没铺满。
             image.preserveAspect = false;
             image.raycastTarget = false;
-            // 底部压一层与面板同色的渐隐条，让插图和正文之间不是硬切。
+            // 底部压一层竖向渐隐，让插图和正文之间不是硬切。
+            // **必须是真渐变**：纯色半透明横条会有上下两条硬边，比不加还难看。
+            Sprite gradient = SkyIslandUiArt.GetBannerFade();
+            if (gradient == null) return;
             RectTransform fade = MakeRect(frame, "Fade",
-                new Vector2(0f, -height * 0.5f + 14f), new Vector2(ContentWidth, 28f));
+                new Vector2(0f, -height * 0.5f + 22f), new Vector2(ContentWidth, 44f));
             Image fadeImage = fade.gameObject.AddComponent<Image>();
-            Color surface = BossRushUIColors.Surface;
-            fadeImage.color = new Color(surface.r, surface.g, surface.b, 0.55f);
+            fadeImage.sprite = gradient;
+            fadeImage.type = Image.Type.Simple;
             fadeImage.raycastTarget = false;
         }
 
