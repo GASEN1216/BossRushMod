@@ -28,7 +28,7 @@
 
 ## 制作入口
 
-作者工程位于 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush`。`Assets/SkyIsland/SkyIslandAuthoring.unity` 是可见编辑场景，`ArtSource/SkyIsland/SkyIslandWorld.blend` 是可编辑 Blender 源文件，`Assets/SkyIsland/SkyIslandWorld.fbx` 是导出模型。
+作者工程位于 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush`。`Assets/SkyIsland/SkyIslandAuthoring.unity` 是可见编辑场景，`ArtSource/SkyIsland/SkyIslandWorld.blend` 是生成器每次从零重建的 Blender 中间文件（手改会被覆盖，不入作者仓库），`Assets/SkyIsland/SkyIslandWorld.fbx` 是导出模型。
 
 先运行仓库 `tools/sky_island_navigation.py` 更新共同几何，再用 Blender 后台运行 `tools/generate_sky_island.py -- --project <作者工程> --skip-render`，最后在 Unity 调用 `BossRush.SkyIslandBundleBuilder.BuildResourcesAndExit`（`BuildAndExit` 附带作者预览，在作者工程内会失败并跳过 world 包）。真实包验证入口为 `BossRush.SkyIslandBundleBuilder.ValidatePhysicsAndExit`。菜单 **Build → Sky Island → Open Authoring Preview** 可直接打开当前作者场景。
 

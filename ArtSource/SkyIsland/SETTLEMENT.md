@@ -43,7 +43,7 @@ A 为登云码头，B 为风铃集，C 为青穗梯田，D 为悬根林，E 为�
 
 作者工程仍为 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush`，Unity 版本为 `2022.3.62f3`。工程内路径如下：
 
-- 整图源文件：`ArtSource/SkyIsland/SkyIslandWorld.blend`；模型库：`ArtSource/SkyIsland/SkyIsland_ModelKit.blend`。
+- 整图 Blender 文件：`ArtSource/SkyIsland/SkyIslandWorld.blend`，是 `tools/generate_sky_island.py` 每次从零重建的中间产物（手改会被覆盖，不入作者仓库）；模型库：`ArtSource/SkyIsland/SkyIsland_ModelKit.blend`。
 - 整图 FBX 与 prefab：`Assets/SkyIsland/SkyIslandWorld.fbx`、`Assets/SkyIsland/SkyIslandWorld.prefab`。
 - 作者预览场景：`Assets/SkyIsland/SkyIslandAuthoring.unity`；正式出击场景：`Assets/SkyIsland/SkyIslandRaid.unity`。
 - 模型库：`Assets/SkyIsland/Models/`，清单为 `sky_island_model_kit.json`，Unity 单体 prefab 在其 `Prefabs/` 子目录。

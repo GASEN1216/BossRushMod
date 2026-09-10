@@ -6,7 +6,7 @@
 
 分类：COMPAT（新增独立场景资源）；OPERATIONAL（新增本地资源构建入口）。
 
-可编辑 Blender、FBX、Unity 场景位于作者工程 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland` 与 `Assets/SkyIsland`。本目录保留可重复生成的数据、报告与制作记录，生成器为 `tools/generate_sky_island.py`，布景与免费素材适配分别为 `tools/sky_island_dressing.py` / `tools/sky_island_nature_assets.py`。完整交付说明见 [实际交付与验收](../../docs/制作教程/天空岛/天空岛_实际交付与验收.md)。
+可编辑 Blender、FBX、Unity 场景位于作者工程 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland` 与 `Assets/SkyIsland`。**作者工程自 2026-09-10 起是独立的 git 仓库**（入库范围与提交时机见其根目录 `README.md`）：改了自研着色器、URP 工程设置、构建器，或重新导入 Tripo 模型、重新生成天空岛之后，要在作者工程那边单独提交，本仓库的提交不包含这些文件。本目录保留可重复生成的数据、报告与制作记录，生成器为 `tools/generate_sky_island.py`，布景与免费素材适配分别为 `tools/sky_island_dressing.py` / `tools/sky_island_nature_assets.py`。完整交付说明见 [实际交付与验收](../../docs/制作教程/天空岛/天空岛_实际交付与验收.md)。
 
 贴图由内置 imagegen 工具生成并复制到作者工程 `Assets/SkyIsland/Textures/`，不引用用户目录里的生成缓存。六张图为归航壁画、风纹织物、石面、草地、木板与鱼鳞瓦，均用于实际模型 UV 材质。完整提示词见 [image_prompts.txt](image_prompts.txt)。
 
