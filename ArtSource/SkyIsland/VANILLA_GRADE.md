@@ -59,12 +59,12 @@
 ```
 python tools/sky_island_texture_grade.py --project <作者工程>
 blender -b --python tools/generate_sky_island.py -- --project <作者工程> --skip-render
-Unity -executeMethod BossRush.SkyIslandBundleBuilder.BuildAndExit      # 材质/预制体/预览包
+Unity -executeMethod BossRush.SkyIslandBundleBuilder.BuildResourcesAndExit  # 材质/预制体/作者 world 包（不渲预览）
 Unity -executeMethod BossRush.SkyIslandRaidBuilder.BuildAndExit        # 玩家实际进的 sky_island_raid
 tools/build_sky_island_art_preview.ps1                                  # 预览图（作者工程内渲染会因 Umbra 类型缺失失败）
 ```
 
-`SkyIslandBundleBuilder.BuildAndExit` 在作者工程内跑到渲染步骤会抛 `TypeLoadException: Umbra.UmbraSoftShadows`，材质与预制体在此之前已写盘，属已知现象；预览必须走独立宿主工程。
+不要用 `SkyIslandBundleBuilder.BuildAndExit` 重建：它在资源构建中途渲染作者预览，作者工程内会因 `TypeLoadException: Umbra.UmbraSoftShadows` 得到空白图并抛 `Blank author render`。此时材质与预制体已写盘，但 `SkyIslandExport/sky_island_world` 与 `sky_island_bundle_validation.json` 被跳过、进程退出码为 1——**不是无害的已知现象**（`-Physics` 物理验证复制的就是这个 world 包）。重建一律用 `BuildResourcesAndExit`，预览走独立宿主工程。
 
 ## 验证
 

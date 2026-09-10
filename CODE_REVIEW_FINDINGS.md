@@ -2,6 +2,16 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-10 碰撞排障：1 P1（替换件是空气墙、附加件能穿过去）
+
+owner 首次进岛看得见地形之后反馈「有些模型玩家可以穿过去，有些则有空气墙」。
+离线把作者 FBX 里的 `COL_*` 碰撞盒与 Tripo 模型的真实包围盒逐个对照（必须用节点的完整 TRS：
+FBX 导出带 scale 100 与绕 X −90°，只看局部尺寸会得到退化盒），两种现象各有一个成因。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-10-007 | P1 / COMPAT | ①**空气墙**：Tripo 替换件沿用 layout 登记的**名义尺寸**出碰撞盒，而模型被 `FOOTPRINT` 归一化后往往远小于名义尺寸——单边空隙中位 1.80 m，最严重的 `H_HomecomingBell` 盒 34×26 m、模型只有 4.4×6.0 m，玩家离钟十几米就被挡住。②**穿模**：`ANCHORS` 附加件是新增几何，layout 里没有对应障碍，**一个碰撞盒都没有**，建筑、树干、石柱都能直接穿过去。编译、guard 与判包都只看得到「盒存在」，看不到盒与模型对不上。 | **Fixed（待实机）**；`tools/sky_island_tripo_props.py` 新增 `collision_fit()`：替换件的盒收敛到模型绕 Y 旋转后的真实 XZ 投影，**只缩不放**（52 个替换件里 31 个被收敛）；新增 `COLLISION_POLICY` 给附加件按件补盒——实体件（建筑、亭子、平台、大石）按真实投影再内收 `COLLISION_INSET` 0.15 m，树与柱只挡干心（`('trunk', r)`，树冠不挡），可以走上去的石阶与贴路/墙角的语义分支小件（路灯、长椅、旗杆、花箱、桶箱、板车）一律不补。碰撞盒 88 → 161，**美术零改动**（MeshRenderer 769 / Material 96 / Texture2D 73 / MeshCollider 28 与上一版一致），导航 4037 顶点未变（导航按 `layout['obstacles']` 的名义尺寸挖洞，本修复不动那份数据）。**已知取舍**：新增的 73 个盒全部落在导航网格上，A* 不认这些盒，敌人可能贴着新碰撞打滑——实机第一优先观察项；正解是把附加件登记进 layout 让导航重新挖洞，但导航 4037/4095 只剩 58 顶点余量，做不了。回退：清空 `COLLISION_POLICY` 后重打包。 |
+
 ## 2026-09-10 地形全黑排障：1 P0（鸭科夫跑在 URP Deferred，自研着色器没有 GBuffer pass）
 
 owner 首次成功进岛（`Player.log` 10:38 那次全程无报错：`RENDER_READY materials=0 textured=420

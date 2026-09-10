@@ -80,6 +80,13 @@ def crystal(g, x, y, z, height, radius, material, yaw=0, lean=.15):
 
 def vine(g, position, length, phase, bloom=False):
     x, y, z = position
+    # 第二轮：有 cliff_vine 就摆成品垂藤，顶端挂在 position、向下长 length。
+    # length 由调用方从 rng 取好传进来，这里不再取随机数，后续摆放序列不受影响。
+    props = getattr(g, 'TRIPO_PROPS', None)
+    if props is not None and props.stamp_variant(g, getattr(g, 'TRIPO_DIR', None), ('cliff_vine',),
+                                                 x, y-length, z, length,
+                                                 ('vine', round(x, 2), round(y, 2), round(z, 2), phase)):
+        return
     points = [(x+math.sin(t*2.6+phase)*.65, y-length*t, z+.4*math.sin(t*4.5+phase))
               for t in [i/7 for i in range(8)]]
     g.ribbon(points, 'Forest', .065)
@@ -125,12 +132,23 @@ def floating_gardens(g, layout, counts):
             vertices.append((cx+1.5, cy-9-rng.random()*6, cz))
             g.addmesh('RockDeep', vertices, [(k, (k+1)%7, 7) for k in range(7)])
             g.addmesh('Fern', vertices[:7], [tuple(range(7))])
-            for j in range(4):
-                a = j*2.4; h = (6.8 if j == 0 else 2.7+rng.random()*2)*radius/5
-                crystal(g, cx+math.cos(a)*j*.55, cy, cz+math.sin(a)*j*.55, h, h*.22,
-                        'CrystalTeal' if (i+j)%3 else 'CrystalLavender', a, .12 if j%2 else -.17)
+            # 高度先照原样从 rng 取完再决定摆哪种：换成成品模型时若少取这几次随机数，
+            # 后面每个花园的高度、半径、藤长都会跟着错位，整张岛的装饰都会挪位置。
+            heights = [(6.8 if j == 0 else 2.7+rng.random()*2)*radius/5 for j in range(4)]
+            props = getattr(g, 'TRIPO_PROPS', None)
+            tripo_dir = getattr(g, 'TRIPO_DIR', None)
+            # 第二轮：有 glow_crystal 就用一件成品水晶簇取代四根六棱柱。
+            if props is None or not props.stamp_variant(g, tripo_dir, ('glow_crystal',), cx, cy, cz,
+                                                        heights[0]*1.05, ('crystal', sid, i)):
+                for j, h in enumerate(heights):
+                    a = j*2.4
+                    crystal(g, cx+math.cos(a)*j*.55, cy, cz+math.sin(a)*j*.55, h, h*.22,
+                            'CrystalTeal' if (i+j)%3 else 'CrystalLavender', a, .12 if j%2 else -.17)
             if sid in ['D','S2','S3']:
-                moon_mushroom(g,cx-radius*.48,cy,cz+radius*.27,radius*1.6)
+                if props is None or not props.stamp_variant(g, tripo_dir, ('mushroom_cluster',),
+                                                            cx-radius*.48, cy, cz+radius*.27, radius*1.1,
+                                                            ('mushroom', sid, i)):
+                    moon_mushroom(g,cx-radius*.48,cy,cz+radius*.27,radius*1.6)
                 counts['moonMushrooms']+=1
             for k in range(3):
                 a = k*TAU/3

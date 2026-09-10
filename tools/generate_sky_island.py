@@ -257,6 +257,12 @@ def tree(x,y,z,scale=1,gold=False):
 
 
 def lantern(x,y,z,scale=1):
+    # 第二轮：有 brass_lamp_post 就摆成品铜灯柱，高度与原程序化灯杆一致。
+    # 成品贴图不带自发光，灯罩里补一颗 Glow 小灯芯，星夜档里灯仍然是亮的。
+    if TRIPO_PROPS is not None and TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+            ('brass_lamp_post',),x,y,z,3.6*scale,('lamp',round(x,2),round(y,2),round(z,2))):
+        sphere((x,y+3.25*scale,z),(.16*scale,.2*scale,.16*scale),'Glow',8,4)
+        return
     cylinder((x,y+1.7*scale,z),.1*scale,3.4*scale,'WoodDark',8)
     beam((x,y+3.3*scale,z),(x+.7*scale,y+3.3*scale,z),.09*scale,'Brass')
     lathe((x+.65*scale,y+2.4*scale,z),[(0,.22*scale),(.1*scale,.32*scale),(.62*scale,.32*scale),(.76*scale,.12*scale)],'Glow',10)
@@ -457,7 +463,10 @@ def area_landmarks(islands):
     CURRENT='D'; x,y,z=islands['D']['center']
     for angle in [-.5,.6,1.8,2.8,3.8]:
         tx=x+53*math.cos(angle); tz=z+57*math.sin(angle)
-        tree(tx,y,tz,2.2)
+        # A 类漏接：悬根林换 Tripo 橄榄叶树（与 D 岛散布树的月叶口径一致）。
+        if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,tx,y,tz,2.2,'moonleaf',
+                TRIPO_PROPS.stable_rng('root_forest',angle).randrange(1<<30)):
+            tree(tx,y,tz,2.2)
     points=[(-285,y,133),(-281,y+16,136),(-270,y+27,140),(-253,y+32,143),
             (-236,y+29,146),(-222,y+19,148),(-214,y,151)]
     for i,(a,b) in enumerate(zip(points,points[1:])):
@@ -655,19 +664,26 @@ def landscape_scatter(islands,obstacles):
                 # 同时按实例扰动三轴比例——完美椭球本身就假，只改着色不够。
                 # 用独立 RNG 取扰动，避免改动全局 RNG 序列而扰乱后续所有摆放。
                 jitter=random.Random(hash((sid,i,'bush'))&0xffffffff)
-                sphere((xx,y+.7,zz),(2.2*jitter.uniform(.78,1.28),1.2*jitter.uniform(.82,1.35),
-                                     2.0*jitter.uniform(.78,1.28)),
-                       'Leaf' if i%2 else 'LeafLight',12,6,True)
+                # 第二轮：有 Tripo 灌木就摆成品，一件都没导入时才退回程序化椭球（见 stamp_variant）。
+                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                        ('bush_a','bush_b','bush_c'),xx,y,zz,2.1*jitter.uniform(.8,1.25),('bush',sid,i)):
+                    sphere((xx,y+.7,zz),(2.2*jitter.uniform(.78,1.28),1.2*jitter.uniform(.82,1.35),
+                                         2.0*jitter.uniform(.78,1.28)),
+                           'Leaf' if i%2 else 'LeafLight',12,6,True)
             if i%2==0:
                 # 石块保留硬边（岩石本就有棱），但提高分段并打散比例，不再是一排同样的圆球。
                 jitter=random.Random(hash((sid,i,'rock'))&0xffffffff)
-                sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
-                                         1.4*jitter.uniform(.65,1.4)),
-                       'RockLight' if i%3 else 'Rock',10,5,False)
+                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                        ('rock_a','rock_b'),xx+2,y-.25,zz-1,1.7*jitter.uniform(.7,1.35),('rock',sid,i)):
+                    sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
+                                             1.4*jitter.uniform(.65,1.4)),
+                           'RockLight' if i%3 else 'Rock',10,5,False)
         for i in range(8 if len(sid)==1 else 3):
             a=i*TAU/8+.4; rad=min(island['size'])*.3
             xx=x+rad*math.cos(a); zz=z+rad*math.sin(a)
-            for k in range(3): sphere((xx+k*.43,y+.23,zz+.2*math.sin(k)),(.25,.38,.25),'Flower',8,4,True)
+            if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                    ('flower_patch','lavender_clump'),xx+.43,y,zz,.85,('flowers',sid,i)):
+                for k in range(3): sphere((xx+k*.43,y+.23,zz+.2*math.sin(k)),(.25,.38,.25),'Flower',8,4,True)
 
 
 def world_clouds():
@@ -690,6 +706,14 @@ def world_clouds():
     for i in range(12):
         CURRENT='Distant_'+str(i)
         a=i*TAU/12; x=710*math.cos(a); z=650*math.sin(a); y=60+math.sin(i*2)*55
+        # 第二轮：远景岛换成品。原壳体从岛面往下约 39 米、外径约 40 米；成品按 44 米高摆，
+        # 草皮顶面大致落在原来的 y，树冠高出一截。三个变体按序号轮换保证环上分布均匀，
+        # 轮到的变体没导入时再从已导入的里挑，都没有才退回程序化壳体。
+        names=('distant_islet_a','distant_islet_b','distant_islet_c')
+        if TRIPO_PROPS is not None and (
+                TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,(names[i%3],),x,y-30,z,44,('distant',i))
+                or TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,names,x,y-30,z,44,('distant',i))):
+            continue
         outline=[(x+(18+4*math.sin(k*5+i))*math.cos(k*TAU/9),z+(15+4*math.sin(k*6+i))*math.sin(k*TAU/9)) for k in range(9)]
         island_shell({'id':'far','center':[x,y,z],'outline':outline})
         cylinder((x,y,z),13,.5,'Grass',9)
@@ -901,9 +925,17 @@ def garden_clump(x,y,z,radius=4):
     for i in range(count):
         a=i*2.39996; r=radius*math.sqrt((i+.5)/count)
         px=x+r*math.cos(a); pz=z+r*math.sin(a)
-        leaf='LeafLight' if i%3 else 'Leaf'
-        sphere((px,y+.28,pz),(.6,.38,.55),leaf,7,4,False)
-        if i%2==0:
+        key=('garden',round(x,2),round(z,2),i)
+        # 第二轮：奇数位摆一件小灌木，偶数位摆一件花草（花丛/珊瑚枝/蕨）——每位只摆一件成品，
+        # 不再是「一个叶球 + 三个花球」，面数与原来持平。候选一件都没导入时退回程序化。
+        if i%2:
+            if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                    ('bush_a','bush_b','bush_c'),px,y,pz,.8,key):
+                sphere((px,y+.28,pz),(.6,.38,.55),'LeafLight' if i%3 else 'Leaf',7,4,False)
+            continue
+        if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                ('flower_patch','coral_clump','fern_clump'),px,y,pz,.75,key):
+            sphere((px,y+.28,pz),(.6,.38,.55),'LeafLight' if i%3 else 'Leaf',7,4,False)
             for j in range(3):
                 sphere((px+.16*j,y+.65+.09*j,pz+.2*math.sin(j)),(.20,.12,.20),'Flower' if i%3 else 'Coral',6,3,False)
 
@@ -921,7 +953,10 @@ def village_life(layout,islands):
         for side in [-1,1]:
             for i in range(4):
                 px=x+side*(w*.5+.5); pz=front+1.5+i*2.1
-                sphere((px,y+.45,pz),(.64,.5,.65),'LeafLight',8,4,False)
+                # 第二轮：房侧绿篱改摆成品灌木，一件都没导入时退回程序化叶球。
+                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                        ('bush_b','bush_a','bush_c'),px,y,pz,1.0,('hedge',index,side,i)):
+                    sphere((px,y+.45,pz),(.64,.5,.65),'LeafLight',8,4,False)
         barrel(x+w*.45,y,front-.7,.75)
         if index%2:
             bench(x-w*.2,y,front-2.7)
@@ -957,15 +992,30 @@ def cliff_dressing(islands):
             length=math.dist(a,b)
             for j in range(max(1,int(length/17))):
                 t=(j+.45)/max(1,int(length/17)); xx=a[0]+(b[0]-a[0])*t; zz=a[1]+(b[1]-a[1])*t
+                # RNG 必须照原样取完两次：少取会让后面所有岛的石块尺寸跟着错位。
                 rx=4+RNG.random()*4; ry=5+RNG.random()*9
-                sphere((xx,y-ry-1,zz),(rx,ry,rx*.8),'RockLight' if (i+j)%3 else 'Rock',8,5,False)
+                # 第二轮：悬挂石块换成品，顶端贴在岛面下 1 米、按原椭球的竖直直径缩放。
+                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                        ('cliff_chunk_a','cliff_chunk_b','cliff_chunk_c'),xx,y-1-2*ry,zz,2*ry,('cliff',sid,i,j)):
+                    sphere((xx,y-ry-1,zz),(rx,ry,rx*.8),'RockLight' if (i+j)%3 else 'Rock',8,5,False)
                 if (i+j)%3==0:
-                    sphere((xx,y-2,zz),(rx*.8,2,rx*.65),'Forest',8,4,False)
+                    # 林冠压在石块顶上、不高过岛面，否则会像一丛灌木浮在路边。
+                    if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                            ('cliff_shrub_cap',),xx,y-3.2,zz,3.0,('cap',sid,i,j)):
+                        sphere((xx,y-2,zz),(rx*.8,2,rx*.65),'Forest',8,4,False)
                     for k in range(3):
-                        ribbon([(xx+k*.8,y-2,zz),(xx+k*.8-1,y-7,zz-.6),(xx+k*.5+1,y-13-k*2,zz-1)],'Leaf',.13)
+                        if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                                ('cliff_vine',),xx+k*.8,y-13-k*2,zz-.6,11+k*2,('cliffvine',sid,i,j,k)):
+                            ribbon([(xx+k*.8,y-2,zz),(xx+k*.8-1,y-7,zz-.6),(xx+k*.5+1,y-13-k*2,zz-1)],'Leaf',.13)
     # Decorative cloud-fed waterfalls stay beyond the collision boundary.
     for sid,xx,zz,w in [('F',336,-23,7),('D',-345,102,5),('C',-293,-194,4)]:
         CURRENT=sid+'_Waterfall'; y=islands[sid]['height']
+        cx,_,cz=islands[sid]['center']
+        # 第二轮：成品瀑布，正面(-Z)朝离开岛心的方向，顶端贴在岛沿下 2 米。
+        if TRIPO_PROPS is not None and TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
+                ('waterfall',),xx,y-36,zz,34,('waterfall',sid),
+                yaw=TRIPO_PROPS.facing_yaw(xx,zz,2*xx-cx,2*zz-cz)):
+            continue
         verts=[]
         for row in range(9):
             t=row/8
@@ -1070,7 +1120,13 @@ def main():
     settlement_records=[]
     for index,obs in enumerate(layout['obstacles']):
         CURRENT=obs.get('island','Props'); x,y,z=obs['center']; w,h,d=obs['size']; kind=obs['kind'].lower()
-        collision_box(obs['id'],obs['center'],obs['size'])
+        # CR-2026-09-10-007：碰撞盒收敛到 Tripo 替换件的真实投影（只缩不放）。
+        # layout 登记的是名义尺寸，模型被 FOOTPRINT 归一化后往往小得多——归航钟单边差 14.8 m，
+        # 玩家离得老远就被看不见的墙挡住。导航是按 obs['size'] 挖的，这里不动那份数据。
+        _isl=next((i for i in layout['islands'] if i['id']==obs.get('island')),None)
+        _centre=(_isl['center'][0],_isl['center'][2]) if _isl else None
+        collision_box(obs['id'],obs['center'],
+                      sky_island_tripo_props.collision_fit(obs,source/'tripo',_centre) or obs['size'])
         # The navigation/collision surface excludes obstacles; the visible soil must still
         # continue beneath narrow trunks, posts and round pedestals instead of exposing void.
         floor=y-h/2-.001
@@ -1079,11 +1135,9 @@ def main():
         if kind == 'life_prop':
             settlement_records.append(sky_island_settlement.place_model(sys.modules[__name__],obs))
             continue
-        # 有 Tripo 替换件就用它取代下面的程序化外观。碰撞盒已在上面登记，不受影响。
-        # 传入所属岛的中心，替换件据此把正面转向广场方向。
-        _isl=next((i for i in layout['islands'] if i['id']==obs.get('island')),None)
-        if sky_island_tripo_props.replace_obstacle(sys.modules[__name__],obs,source/'tripo',
-                                                   (_isl['center'][0],_isl['center'][2]) if _isl else None):
+        # 有 Tripo 替换件就用它取代下面的程序化外观。碰撞盒已在上面按同一个模型收敛过。
+        # 传入所属岛的中心，替换件据此把正面转向广场方向（与 collision_fit 用的是同一个 yaw）。
+        if sky_island_tripo_props.replace_obstacle(sys.modules[__name__],obs,source/'tripo',_centre):
             continue
         if kind in ['wind_beacon','astrolabe','bell','lookout','cave_rock','chime_support','duck_statue','pavilion_support']:
             # Bespoke landmark geometry is built below at these exact registered footprints.
@@ -1094,7 +1148,18 @@ def main():
             for sign in [-1,1]:
                 box((x+sign*w/2,y-h/2+.12,z),(.55,.35,d+.55),'Ivory')
                 box((x,y-h/2+.12,z+sign*d/2),(w+.55,.35,.55),'Ivory')
-        elif 'tree' in kind: tree(x,y-h/2,z,max(1,w/6))
+        elif 'tree' in kind:
+            # A 类漏接：花园树换 Tripo 花树/常绿树，悬根巨树与根树换 great_tree（按登记高度）。
+            base=y-h/2; done=False
+            if TRIPO_PROPS is not None:
+                if kind=='garden_tree':
+                    done=TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,x,base,z,max(1,w/6),
+                            'blossom' if obs.get('island')=='B' else 'plain',
+                            TRIPO_PROPS.stable_rng('obstacle_tree',obs['id']).randrange(1<<30))
+                else:
+                    done=TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,('great_tree',),
+                            x,base,z,h*.9,('obstacle_tree',obs['id']))
+            if not done: tree(x,base,z,max(1,w/6))
         elif 'dome' in kind:
             cylinder((x,y-h/2+h*.35,z),w*.45,h*.7,'Limestone',24)
             lathe((x,y-h/2+h*.7,z),[(0,w*.52),(h*.18,w*.48),(h*.36,w*.36),(h*.46,w*.12),(h*.49,0)],'Copper',24)

@@ -128,8 +128,125 @@ ITEMS = [
 ]
 
 
-def build_prompt(warm, subject):
-    return STYLE + (WARM if warm else '') + subject + '.'
+# ── 第二轮：程序化几何替换件（2026-09-10）──────────────────────────────
+#
+# 与第一轮（26 件地标/建筑）不同，这一批全是**高复用散件**：一件要摆几百份。
+# 因此面数按**实例数**倒推，单件预算比第一轮小一个量级，见
+# ArtSource/SkyIsland/LOWPOLY_REPLACEMENT_PLAN.md 的「第二轮清单」。
+#
+# 元组多一个 face_limit（Tripo quad 模式，1 quad ≈ 2 三角面）。出图按它分文件夹，
+# 导入 Tripo 时一个文件夹一个批次，face_limit 在界面上只需设一次。
+ITEMS_ROUND2 = [
+    # ── 500：高复用小散件（一件摆几百份，单件三角面必须压到 ~500 以内）──
+    # 自然件一律用 'nature' 配色（原因见 NATURE 常量上方）。标 ★ 的五件第一次出成了建筑，
+    # 主体描述改成「具体名词 + 数量 + nothing else」，并由 NATURE_NEGATIVE 点名禁止建筑。
+    ('cliff_chunk_a', 500, 'nature', '岛缘石块 A · 宽扁',
+     'a single chunky floating rock boulder, wide and flat, warm tan sandstone with '
+     'weathered flat facets and rounded worn edges, a little dry moss on top'),
+    ('cliff_chunk_b', 500, 'nature', '岛缘石块 B · 细长柱',
+     'a single tall narrow hanging rock column tapering to a blunt point at the bottom, '
+     'warm tan sandstone, horizontal strata lines, chipped edges'),
+    ('cliff_chunk_c', 500, 'nature', '岛缘石块 C · 锥形',
+     'a single cone shaped hanging rock stalactite, broad at the top and pointed below, '
+     'warm tan sandstone with layered strata and small cracks'),
+    ('cliff_shrub_cap', 500, 'nature', '岛缘林冠 · 压在石块顶上的矮树丛',
+     'a low wide cushion of dense yellow-green shrubbery sitting on a thin slab of warm tan '
+     'rock, flat underside, rounded leafy top'),
+    ('cliff_vine', 500, 'nature', '岛缘垂藤 ★',
+     'a single long hanging ivy vine seen on its own, one thin twisting warm brown stem about '
+     'ten times longer than it is wide, small yellow-green leaves along its whole length, '
+     'hanging straight down from a fist-sized chunk of tan rock at the top, nothing else'),
+    ('bush_a', 500, 'nature', '灌木丛 A · 圆润',
+     'a single rounded garden shrub, dense yellow-green foliage in soft clumped masses, '
+     'short warm brown stems visible at the base'),
+    ('bush_b', 500, 'nature', '灌木丛 B · 扁平铺开',
+     'a single low spreading shrub, wider than it is tall, layered yellow-green foliage '
+     'clumps, a few thin warm brown twigs'),
+    ('bush_c', 500, 'nature', '灌木丛 C · 带小花 ★',
+     'a single rounded wild shrub growing directly from bare soil, dense yellow-green leaf '
+     'clumps dotted with about a dozen tiny cream and dusty-rose flowers, short warm brown '
+     'stems at the base, nothing else'),
+    ('rock_a', 500, 'nature', '散落岩石 A ★',
+     'a single weathered natural boulder lying on bare ground, rounded warm tan sandstone with '
+     'a few flat facets and cracks, a patch of yellow-green moss on one side, nothing else'),
+    ('rock_b', 500, 'nature', '散落岩石 B · 碎石堆',
+     'a small pile of three or four angular warm tan stones resting together on the ground, '
+     'gravel around the base'),
+    ('flower_patch', 500, 'nature', '地被花丛 ★',
+     'a single small clump of wild meadow flowers growing from a flat patch of grass turf, '
+     'about ten slender yellow-green stems with small cream and dusty-rose daisy-like blooms, '
+     'a few broad leaves at the base, nothing else'),
+    ('lavender_clump', 500, 'nature', '薰衣草丛 ★',
+     'a single wild lavender bush growing from a small mound of soil, about twenty upright '
+     'slender stalks topped with muted dusty lavender flower spikes, narrow grey-green leaves '
+     'at the base, nothing else'),
+    ('fern_clump', 500, 'nature', '蕨类丛',
+     'a small clump of arching fern fronds, deep yellow-green feathered leaves radiating '
+     'from a single base, no flowers'),
+    ('coral_clump', 500, True, '珊瑚状枝丛',
+     'a small branching coral-like ornamental plant, chunky terracotta-orange branches '
+     'radiating upward from a warm tan rock base'),
+
+    # ── 1500：中等件（数量几十以内，可以给更多细节）──
+    # 远景岛的三条提示词必须**明确禁止建筑**。第一次跑 a 和 c 时网关自作主张加了整栋房子、
+    # 旗幡和石墙——它们是 600 米外的背景剪影（现状仅 632 面），加建筑既超预算又莫名其妙。
+    # b 那条没跑偏，因为它本来就写死了「one small tree and a boulder」这种具体到数量的约束。
+    ('distant_islet_a', 1500, True, '远景悬浮岛 A · 宽缓',
+     'a small uninhabited floating sky island seen as a complete object, flat grassy top with '
+     'yellow-green turf, warm tan rock underside tapering to a blunt point, '
+     'exactly two small trees and one boulder on top and nothing else. '
+     'Bare wild nature only: NO buildings, NO house, NO tower, NO walls, NO fence, NO path, '
+     'NO banner, NO man-made structure of any kind'),
+    ('distant_islet_b', 1500, True, '远景悬浮岛 B · 高瘦',
+     'a small floating sky island, narrow and tall, grassy cap on top and a long tapering '
+     'warm tan rock spire below, one small tree and a boulder on the cap'),
+    ('distant_islet_c', 1500, True, '远景悬浮岛 C · 断裂双块',
+     'a small uninhabited floating sky island split into two rock masses of different sizes '
+     'floating close together, grassy tops with yellow-green turf, warm tan layered rock '
+     'undersides tapering downward, one small tree on the larger mass and nothing else. '
+     'Bare wild nature only: NO buildings, NO house, NO tower, NO walls, NO fence, NO bridge, '
+     'NO path, NO banner, NO man-made structure of any kind'),
+    ('mushroom_cluster', 1500, True, '蘑菇群',
+     'a cluster of five stylized mushrooms of different heights, cream stems and rounded '
+     'terracotta caps with pale spots, growing from a small mossy warm tan base'),
+    ('glow_crystal', 1500, False, '发光水晶（保留冷色）',
+     'a small cluster of translucent pale cyan crystal shards rising from a warm tan rock '
+     'base, faint inner glow, clean faceted geometry'),
+    ('brass_lamp_post', 1500, True, '铜灯柱',
+     'a single ornate street lamp post, slender weathered brass column with a decorative ring, '
+     'a glass lantern head with warm cream glow, small square stone footing'),
+    ('brass_railing_module', 1500, True, '铜栏杆模块 · 可平铺一段',
+     'a single straight section of ornate railing fence, weathered brass posts and a top rail '
+     'with simple scroll ornament between them, flat ends so sections can repeat'),
+
+    # ── 4000：少量大件 ──
+    ('waterfall', 4000, False, '云瀑（保留冷色）',
+     'a tall narrow waterfall falling from a rock lip into a puff of white cloud at the '
+     'bottom, pale blue-green water, warm tan rock at the top, spray and mist'),
+]
+
+
+# 第二轮自然散件的配色约束。**不能沿用 WARM**：WARM 点名的 terracotta clay / cream plaster /
+# weathered warm wood 恰好是「地中海小屋」的全部建材。第一次跑时 flower_patch 出成了石屋、
+# lavender_clump 与 rock_a 出成了水井、cliff_vine 出成了石拱门、bush_c 出成了带招牌的民居——
+# 全是主体描述短而抽象（花丛、藤蔓、小石块）的件被配色词带跑；有具体名词的蕨类、珊瑚、
+# 锥形石柱都没跑偏。所以自然件只给自然材质的色值，并在负面词里点名禁止建筑。
+NATURE = ('Natural materials only. Colors limited to warm tan sandstone (hex A98A6F), '
+          'yellow-green foliage (hex 7F9154), deep olive green (hex 5E6E3A), warm brown bark '
+          '(hex 7A5C40), and small accents of cream, dusty rose and muted lavender (hex B3A6C4) '
+          'petals. Absolutely no teal, no turquoise, no pastel candy colors. ')
+NATURE_NEGATIVE = (', building, house, cottage, hut, tower, well, arch, ruin, roof, roof tiles, '
+                   'wall, brick, plaster, door, window, fence, sign, banner, pot, man-made structure')
+
+
+def build_prompt(palette, subject):
+    """palette：True=WARM（第一轮建筑/地标与铜件），'nature'=NATURE（第二轮自然散件），False=不加。"""
+    extra = WARM if palette is True else NATURE if palette == 'nature' else ''
+    return STYLE + extra + subject + '.'
+
+
+def negative_for(palette):
+    return NEGATIVE + (NATURE_NEGATIVE if palette == 'nature' else '')
 
 
 def main():
@@ -140,14 +257,30 @@ def main():
     parser.add_argument('--gap', type=float, default=22.0, help='两张之间的间隔秒数，网关限流要求 >=20')
     parser.add_argument('--retries', type=int, default=3)
     parser.add_argument('--list', action='store_true', help='只打印清单不生成')
+    parser.add_argument('--set', dest='item_set', default='round2',
+                        choices=['round1', 'round2', 'all'],
+                        help='round1=第一轮 26 件地标/建筑（已完成）；round2=第二轮程序化替换件')
     args = parser.parse_args()
 
+    # 第一轮没有分档字段，统一按 500 归档（它们本来就是逐件在 TRIPO_SETTINGS.md 里单独列 face_limit 的）。
+    pool = []
+    if args.item_set in ('round1', 'all'):
+        pool += [(n, 0, w, l, s) for n, w, l, s in ITEMS]
+    if args.item_set in ('round2', 'all'):
+        pool += ITEMS_ROUND2
+
     wanted = set(args.only.split(',')) if args.only else None
-    items = [i for i in ITEMS if wanted is None or i[0] in wanted]
+    items = [i for i in pool if wanted is None or i[0] in wanted]
     if args.list:
-        for name, warm, label, _s in items:
-            print('%-18s %-22s %s' % (name, label, '暖色' if warm else '保留冷色'))
-        print('共 %d 件' % len(items))
+        tiers = {}
+        for name, tier, warm, label, _s in items:
+            tiers.setdefault(tier, []).append((name, label, warm))
+        for tier in sorted(tiers):
+            head = ('face_%d' % tier) if tier else '第一轮（face_limit 见 TRIPO_SETTINGS.md）'
+            print('== %s  共 %d 件' % (head, len(tiers[tier])))
+            for name, label, warm in tiers[tier]:
+                print('   %-22s %-26s %s' % (name, label, '暖色' if warm else '保留冷色'))
+        print('合计 %d 件' % len(items))
         return
 
     if not os.environ.get('OPENAI_API_KEY'):
@@ -155,8 +288,12 @@ def main():
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
 
     done = failed = skipped = 0
-    for index, (name, warm, label, subject) in enumerate(items, 1):
-        target = out / (name + '.png')
+    for index, (name, tier, warm, label, subject) in enumerate(items, 1):
+        # 按 face_limit 分文件夹：Tripo 的批量导入是一批一个 face_limit，
+        # 分好档就能一个文件夹拖一次、参数只设一次，不用逐件调。
+        folder = out / ('face_%d' % tier) if tier else out
+        folder.mkdir(parents=True, exist_ok=True)
+        target = folder / (name + '.png')
         if target.exists():
             print('[%d/%d] %-18s 已存在，跳过' % (index, len(items), name), flush=True)
             skipped += 1
@@ -169,7 +306,7 @@ def main():
             result = subprocess.run(
                 [sys.executable, IMAGEGEN, 'generate', '--model', 'gpt-image-2',
                  '--size', args.size, '--n', '1', '--no-augment', '--out', str(target),
-                 '--prompt', prompt, '--negative', NEGATIVE],
+                 '--prompt', prompt, '--negative', negative_for(warm)],
                 capture_output=True, text=True, timeout=600)
             if result.returncode == 0 and target.exists():
                 ok = True

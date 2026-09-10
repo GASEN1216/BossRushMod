@@ -4,6 +4,65 @@
 
 ## 最新修复
 
+### 2026-09-10 天空岛第二轮 Tripo 散件进包；顺带修正作者 world 包一直没更新（文档写错构建入口）
+
+**分类**：OPERATIONAL。owner 交回第二轮 Tripo 模型（「全部模型我都放进去了」），接线进包时发现构建入口文档有误。
+
+**美术批次**：回来的 17 件里 16 件接线进包；`brass_railing_module` 已导入未接线，等 owner 定木栏还是铜栏；
+5 件（`bush_c` / `rock_a` / `flower_patch` / `lavender_clump` / `cliff_vine`）素材图主体画成了建筑，需重新出模，
+缺件时生成器自动回退，不影响进包。逐件实例数、面数与新旧对比见 `ArtSource/SkyIsland/LOWPOLY_REPLACEMENT_PLAN.md`「执行状态」，
+部署哈希见 `ArtSource/SkyIsland/Validation/raid_deployment_hashes.json`（`261bc723…`，作者导出/仓库/游戏三处一致）。
+Unity 实测可见三角面 1,515,740 → 1,817,552（+19.9%）；进包前已按实测收紧过一次预算（未收紧时 +29.8%）。
+
+**文档错误**：Tripo 教程第 4 步、`VANILLA_GRADE.md`、`ENHANCEMENT.md` 都让人用 `SkyIslandBundleBuilder.BuildAndExit` 重建，
+并把它在作者工程里抛的 `Blank author render` 记成「材质与预制体已写盘，属已知现象」。实际上 `BuildAndExit` = `BuildResources(true)`，
+预览排在 `BuildPipeline.BuildAssetBundles` **之前**：异常一抛，`SkyIslandExport/sky_island_world` 与
+`sky_island_bundle_validation.json` 都被跳过，进程退出码 1。2026-09-10 三次烘焙都踩到，world 包一直停在 09-09 08:15。
+
+**影响面**：正式出击包由 `SkyIslandRaidBuilder` 读预制体构建，**不受影响**（UnityPy 对照确认新内容都在包里）。
+受影响的是 `tools/build_sky_island_art_preview.ps1 -Physics`：它复制这个 world 包做 PlayMode 物理验证，会拿旧几何出结论。
+
+**修复**：三处文档改用 `BuildResourcesAndExit`（`BuildResources(false)`，不渲预览），并改正「无害」的说法。
+用它重跑一次：退出码 0、无 FAILED，world 包 15:55 重建（`5f405295…`，127,340,395 字节），
+`GEOMETRY_PASS` 与出击包来源那次烘焙逐字段一致（同一 FBX `07bc553c…`）。
+
+**验证**：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | `python tools/verify_sky_island_bundle_shaders.py` | PASS，仓库副本与游戏副本各 3/3 |
+| 2 | UnityPy 新旧包对照 | 玩法标记、189 个碰撞体、`SkyIslandNavigation`（4037 顶点 / 12645 索引）全部一致；新增 16 材质 16 贴图；删掉的只有被替换的程序化网格 |
+| 3 | 聚落几何检查（`SkyIslandSettlementGeometryTests.check()`）喂**本轮**生成器输出 | PASS。直接跑那个 guard 读的是仓库 `Validation/` 下 09-09 的快照，证明不了本轮 |
+
+**待人工**（未实机）：远景岛高度、岛缘石块是否贴合岛底、瀑布朝向、灯柱发光球位置、帧率。
+回退：把 `Build/sky_island_raid.fb12e540.bak` 复制回仓库与游戏目录的 `Assets/arenas/sky_island_raid`。
+
+### 2026-09-10 天空岛碰撞（1 个 P1）：替换件是空气墙、附加件能穿过去
+
+**分类**：COMPAT。owner 首次进岛看得见地形后反馈「有些模型玩家可以穿过去，有些则有空气墙」，要求全面修复。
+finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-007`。
+
+**成因**：①替换件的碰撞盒沿用 layout 名义尺寸，模型归一化后远小于盒（单边空隙中位 1.80 m，归航钟最大 14.8 m）；
+②`ANCHORS` 附加件在 layout 里没有障碍登记，完全没有碰撞。
+
+**修复**（只动离线工具链，零 C# 改动）：
+- `tools/sky_island_tripo_props.py`：`collision_fit()` 把替换件的盒收敛到模型真实投影，只缩不放；
+  `COLLISION_POLICY` / `COLLISION_INSET` / `emit_collision()` 给附加件按件补盒
+  （实体件按投影内收 0.15 m、树与柱只挡干心、石阶与语义分支小件不补）。
+- `tools/generate_sky_island.py`：障碍循环改用 `collision_fit()` 的尺寸，没有替换件时仍用名义尺寸。
+
+**验证**：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 碰撞盒数量 | 88 → 161（88 障碍 + 73 附加件），52 个替换件里 31 个被收敛 |
+| 2 | 美术与导航 | MeshRenderer 769 / Material 96 / Texture2D 73 / MeshCollider 28 与上一版一致；导航 4037 顶点未变 |
+| 3 | 部署 | 包 98,794,570 字节（`fb12e540…`），作者导出/仓库/游戏三处一致；之后被第二轮美术包 `261bc723…` 取代，碰撞体数量不变 |
+
+**已知取舍与回退**：新增 73 个盒都落在导航网格上，敌人可能贴着新碰撞打滑（实机第一优先观察项）；
+回退只需清空 `COLLISION_POLICY` 后重打包。**待人工**：空气墙是否消失、建筑与树干是否挡得住、敌人是否打滑，
+步骤见 `docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 1 步。
+
 ### 2026-09-10 进岛后地形全黑（1 个 P0）：鸭科夫跑在 URP Deferred，自研着色器缺 GBuffer pass
 
 **分类**：COMPAT。owner 首次成功进岛后报「没有光照并且周围场景都没有渲染出来」，附截图。

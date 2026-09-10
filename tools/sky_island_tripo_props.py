@@ -151,6 +151,43 @@ def replace_tree(g, data_dir, x, y, z, scale, variant, seed):
     return True
 
 
+# ── 第二轮：程序化散件替换（2026-09-10）──────────────────────────────
+#
+# 与第一轮的「替换障碍物 / 散布树」不同，这一批是高复用散件：灌木、岛缘石块、垂藤、远景岛……
+# 一个调用点要摆几十上百份。统一走 stamp_variant()：
+#   * 从候选变体里只挑**已经导入**的；一个都没有就返回 False，调用方退回原来的程序化绘制。
+#     素材分批回来时每回来一件就少一类程序化几何，中间任何时刻重建都不会出现空洞。
+#   * 按目标**高度**缩放（与 replace_tree 同口径）。
+#   * 变体与偏航用 stable_rng：内置 hash() 对字符串按进程随机化，Blender 里同一份 layout
+#     两次重建会摆出不同的朝向和变体，打包前后对比就失去意义。
+ROUND2_MODELS = (
+    'bush_a', 'bush_b', 'bush_c', 'cliff_chunk_a', 'cliff_chunk_b', 'cliff_chunk_c',
+    'cliff_shrub_cap', 'cliff_vine', 'rock_a', 'rock_b', 'flower_patch', 'lavender_clump',
+    'fern_clump', 'coral_clump', 'distant_islet_a', 'distant_islet_b', 'distant_islet_c',
+    'mushroom_cluster', 'glow_crystal', 'brass_lamp_post', 'brass_railing_module', 'waterfall',
+)
+
+
+def stable_rng(*key):
+    import zlib
+    return random.Random(zlib.crc32(repr(key).encode('utf-8')))
+
+
+def stamp_variant(g, data_dir, names, x, base_y, z, height, key, yaw=None):
+    """从 names 里挑一个已导入的变体，底面放在 base_y、按目标高度等比缩放。返回是否摆了。"""
+    if data_dir is None:
+        return False
+    available = [name for name in names if _model(g, data_dir, name) is not None]
+    if not available:
+        return False
+    rng = stable_rng('variant', key)
+    entry = _model(g, data_dir, available[rng.randrange(len(available))])
+    bounds = entry[0]['meta']['bounds']
+    model_height = max(bounds['max'][1] - bounds['min'][1], 1e-3)
+    _stamp(g, entry, x, base_y, z, rng.uniform(0, 360) if yaw is None else yaw, height / model_height)
+    return True
+
+
 # 有正面的件要朝向岛心（广场方向），其余用确定性随机偏航打散。
 # 约定与 sky_island_life_models 一致：模型的正面朝 -Z。
 FACE_CENTRE = {
@@ -193,6 +230,88 @@ def material_name(name):
     return 'Tripo' + ''.join(part.capitalize() for part in name.split('_'))
 
 
+# ── 碰撞（CR-2026-09-10-007）────────────────────────────────────────────
+#
+# 2026-09-10 实机反馈「有些模型能穿过去，有些则有空气墙」，实测两个成因：
+#
+# ① **空气墙**：替换件的碰撞盒来自 layout 里登记的**名义尺寸**，而模型被 `FOOTPRINT`
+#    归一化后往往远小于那个盒。实测单边空隙中位 1.80 m，最狠的归航钟是 **14.8 m**
+#    （盒 34×26，模型只有 4.4×6.0）——玩家离钟十几米就被挡住。
+#    修法是 `collision_fit()`：把盒收敛到模型旋转后的真实投影，**只缩不放**。
+#    导航是按 `layout['obstacles']` 的名义尺寸挖的，这里不动那份数据，所以导航零影响。
+#
+# ② **穿模**：ANCHORS 附加件是**新增**几何，layout 里没有对应障碍，因此一个碰撞盒都没有。
+#    下面按件给策略补上。**只给锚点分支**（`free()` 严格避让、离路远），语义分支
+#    （路缘 / 墙角的路灯、长椅、旗杆、花箱、桶箱、板车）一律不出碰撞——那些正好贴着
+#    敌人要走的路，而导航网格已经 4037/4095 顶点、没有余量重新挖洞。
+#
+# 策略取值：
+#   'footprint'   —— 按模型真实投影出盒（建筑、亭子、平台、大石这类实体）
+#   ('trunk', r)  —— 只挡树干/柱心，半径 r 米。树冠**不能**挡，否则整片树荫都是空气墙
+#   不登记        —— 不出碰撞（可以走上去的石阶、贴地装饰、语义分支的小件）
+COLLISION_POLICY = {
+    'bell_arch': 'footprint', 'crystal_fountain': 'footprint', 'bell_tower': 'footprint',
+    'cherry_pavilion': 'footprint', 'shrine_pavilion': 'footprint', 'pergola': 'footprint',
+    'cottage_large': 'footprint', 'cottage_dormer': 'footprint', 'cottage_small': 'footprint',
+    'farm_barn': 'footprint', 'market_stall': 'footprint', 'stone_platform': 'footprint',
+    'root_rock': 'footprint', 'crystal_cluster': 'footprint',
+    'great_tree': ('trunk', 1.8), 'cherry_tree': ('trunk', 1.2),
+    'ruined_column': ('trunk', 0.9), 'rune_stone': ('trunk', 0.9), 'shop_sign': ('trunk', 0.35),
+    # 'stone_stair' 故意不登记：台阶要能走上去。
+}
+
+# 盒子往内收一点，宁可留一条能贴着走的缝，也不要在模型外面再造一圈看不见的墙。
+COLLISION_INSET = 0.15
+
+
+def rotated_extent(bounds, yaw_deg):
+    """模型 XZ 投影绕 Y 轴转 yaw 之后的轴对齐半宽。"""
+    half_x = (bounds['max'][0] - bounds['min'][0]) / 2.0
+    half_z = (bounds['max'][2] - bounds['min'][2]) / 2.0
+    cosine = abs(math.cos(math.radians(yaw_deg)))
+    sine = abs(math.sin(math.radians(yaw_deg)))
+    return half_x * cosine + half_z * sine, half_x * sine + half_z * cosine
+
+
+def collision_fit(obs, data_dir, island_centre=None):
+    """替换件的碰撞盒尺寸：收敛到模型真实投影，**只缩不放**。没有替换件返回 None。
+
+    这里的 `_KIND_SEEN` 只**读不写**——真正推进计数的是随后的 `replace_obstacle`，
+    两者在生成器的同一次循环里成对调用，索引因此一致。
+    """
+    names = OBSTACLE_REPLACEMENT.get(obs['kind'])
+    if not names:
+        return None
+    name = names[_KIND_SEEN.get(obs['kind'], 0) % len(names)]
+    payload = load(data_dir, name)
+    if payload is None:
+        return None
+    x, y, z = obs['center']
+    centre = island_centre or (x, z)
+    yaw = resolve_yaw(name, x, z, centre[0], centre[1], hash((obs['id'],)) & 0xffffffff)
+    extent_x, extent_z = rotated_extent(payload['meta']['bounds'], yaw)
+    width, height, depth = obs['size']
+    return [min(width, extent_x * 2), height, min(depth, extent_z * 2)]
+
+
+def emit_collision(g, name, index, x, base_y, z, yaw_deg, bounds):
+    """按 COLLISION_POLICY 给附加件补一个碰撞盒；不登记的件什么都不做。"""
+    policy = COLLISION_POLICY.get(name)
+    if not policy:
+        return False
+    low, high = base_y + bounds['min'][1], base_y + bounds['max'][1]
+    if isinstance(policy, tuple):
+        extent_x = extent_z = policy[1]
+    else:
+        extent_x, extent_z = rotated_extent(bounds, yaw_deg)
+        extent_x = max(extent_x - COLLISION_INSET, 0.25)
+        extent_z = max(extent_z - COLLISION_INSET, 0.25)
+    g.collision_box('Tripo_%s_%02d' % (name, index),
+                    (x, (low + high) / 2.0, z),
+                    (extent_x * 2, max(high - low, 0.6), extent_z * 2))
+    return True
+
+
 def register(g, data_dir):
     """把已备好的 Tripo 件登记成非平铺贴图材质，必须在 build_materials 之前调用。
 
@@ -210,6 +329,8 @@ def register(g, data_dir):
     for variants in OBSTACLE_REPLACEMENT.values():
         names.extend(variants)
     names.extend(TREE_VARIANTS.values())
+    # 第二轮散件同理：漏登记就是「几何进了、贴图丢了」，几百份灌木会整片退回调色板纯色。
+    names.extend(ROUND2_MODELS)
     for name in dict.fromkeys(names):
         payload = load(directory, name)
         if payload is None:
@@ -325,10 +446,14 @@ def build(g, layout, data_dir, dressing):
                         for vx, vy, vz in mesh['v']]
             g.addmesh(material, vertices, mesh['f'], mesh['uv'], mesh.get('smooth', True))
             triangles += len(mesh['f'])
+            # 只有锚点分支补碰撞：这一支走 `free()` 严格避让，离敌人要走的路最远。
+            # 语义分支（路缘 / 墙角）不补，理由见 COLLISION_POLICY 上方的注释。
+            solid = emit_collision(g, name, placed, x, cy, z, yaw_deg, bounds)
             placed += 1
             placements.append({'model': name, 'island': island_id,
                                'position': [round(x, 2), round(cy, 2), round(z, 2)],
-                               'yaw': round(yaw_deg, 1), 'material': material})
+                               'yaw': round(yaw_deg, 1), 'material': material,
+                               'collision': bool(solid)})
         if placed:
             counts[name] = placed
 

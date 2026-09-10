@@ -91,6 +91,39 @@ ITEMS = {
     'tree_olive':          (  8.5,   1500, 16, '橄榄叶树'),
     'cover_crates':        (  1.3,    600,  9, '货箱掩体'),
     'cover_stone':         (  1.2,    600,  9, '石垒掩体'),
+
+    # ── 第二轮：程序化散件替换（2026-09-10）─────────────────────────
+    # 数量取自 ArtSource/SkyIsland/LOWPOLY_REPLACEMENT_PLAN.md 的实测统计。
+    # 这一批复用极高（几百份），单件预算必须比上面小一个量级：
+    # 摆 504 个灌木就是 504 份完整三角面，主世界没有实例化。
+    # face_limit 分档见 tools/sky_island_asset_images.py 的 ITEMS_ROUND2。
+    #
+    # 预算按 2026-09-10 首次接线后的**实测**收紧：17 件接进去之后全岛从 1,604,946 涨到 2,007,987 面
+    # （+25%），高于第一轮认可的 +19%，而且还有 5 件没回来。收紧的全是「数量大、屏幕占比小」的件：
+    # 岛缘石块挂在岛底（多数时候在视野外）、灌木与碎石每件只占几十像素、发光水晶只在悬空花园里。
+    # 远景岛与瀑布数量个位数、画面体量大，不收。实例数为接线后的实测值。
+    'cliff_chunk_a':       (  9.0,    160, 142, '岛缘石块A 宽扁'),
+    'cliff_chunk_b':       ( 12.0,    160, 177, '岛缘石块B 细长柱'),
+    'cliff_chunk_c':       ( 10.0,    160, 174, '岛缘石块C 锥形'),
+    'cliff_shrub_cap':     (  2.5,    140, 167, '岛缘林冠'),
+    'cliff_vine':          (  9.0,    120, 855, '岛缘垂藤（岛缘 501 + 悬空花园/崖面/拱门约 354）'),
+    'bush_a':              (  1.6,    220, 239, '灌木丛A 圆润（三个变体合计实测 717：散布+花园+房侧绿篱）'),
+    'bush_b':              (  1.2,    220, 239, '灌木丛B 扁平'),
+    'bush_c':              (  1.6,    220, 239, '灌木丛C 带花'),
+    'rock_a':              (  1.4,    180, 110, '散落岩石A（两个变体合计实测 219）'),
+    'rock_b':              (  1.1,    180, 109, '散落岩石B 碎石堆'),
+    'flower_patch':        (  0.6,    260, 180, '地被花丛（与珊瑚/蕨轮换花园偶数位，加散布花丛约 76）'),
+    'lavender_clump':      (  1.0,    260,  40, '薰衣草丛'),
+    'fern_clump':          (  0.9,    220, 168, '蕨类丛'),
+    'coral_clump':         (  1.2,    260, 180, '珊瑚状枝丛'),
+    'distant_islet_a':     ( 26.0,   1500,   4, '远景悬浮岛A 宽缓'),
+    'distant_islet_b':     ( 34.0,   1500,   4, '远景悬浮岛B 高瘦'),
+    'distant_islet_c':     ( 30.0,   1500,   4, '远景悬浮岛C 断裂双块'),
+    'mushroom_cluster':    (  1.6,    900,   9, '蘑菇群'),
+    'glow_crystal':        (  2.2,    500,  40, '发光水晶'),
+    'brass_lamp_post':     (  5.0,    600,  29, '铜灯柱'),
+    'brass_railing_module':(  1.4,    800,   0, '铜栏杆模块（暂未接线：环岛护栏是木栏，换铜栏杆属于改画风，待 owner 定）'),
+    'waterfall':           ( 48.0,   6000,   3, '云瀑'),
 }
 
 # 替换批次：按 layout 登记的 **XZ 占地** 缩放，而不是按高度。
@@ -153,6 +186,14 @@ TEXTURE_SIZE = {
     'cave_rock': 512, 'wind_pillar': 256, 'memorial_stele': 256, 'chime_rack': 256,
     'pavilion_pillar': 256, 'tree_green': 512, 'tree_gold': 512, 'tree_blossom': 512,
     'tree_olive': 512, 'cover_crates': 256, 'cover_stone': 256,
+    # 第二轮：高复用散件一律 256——单件屏幕占比极小，几百份共用一张图，给大了纯占包体。
+    # 悬挂大石块、远景岛、瀑布在镜头里体量大，给 512。
+    'bush_a': 256, 'bush_b': 256, 'bush_c': 256, 'cliff_shrub_cap': 256, 'cliff_vine': 256,
+    'rock_a': 256, 'rock_b': 256, 'flower_patch': 256, 'lavender_clump': 256, 'fern_clump': 256,
+    'coral_clump': 256, 'mushroom_cluster': 256, 'glow_crystal': 256, 'brass_lamp_post': 256,
+    'brass_railing_module': 256,
+    'cliff_chunk_a': 512, 'cliff_chunk_b': 512, 'cliff_chunk_c': 512,
+    'distant_islet_a': 512, 'distant_islet_b': 512, 'distant_islet_c': 512, 'waterfall': 512,
 }
 DEFAULT_TEXTURE_SIZE = 512
 
@@ -342,8 +383,13 @@ def main():
     for name, (height, budget, instances, label) in ITEMS.items():
         if wanted is not None and name not in wanted:
             continue
-        candidates = [glb_dir / (name + ext) for ext in ('.glb', '.fbx', '.GLB', '.FBX')]
-        source = next((c for c in candidates if c.is_file()), None)
+        # 先按平铺找（第一轮的目录形状），再递归找 face_<档>/ 子目录（第二轮起按
+        # face_limit 分档存放，见 docs/制作教程/天空岛_Tripo3D建模接入与画风对齐教程.md §3.5）。
+        # 同名文件只认第一个，档位不同的重名件属于清单写错，不在这里兜底。
+        exts = ('.glb', '.fbx', '.GLB', '.FBX')
+        source = next((c for c in (glb_dir / (name + ext) for ext in exts) if c.is_file()), None)
+        if source is None:
+            source = next((c for ext in exts for c in sorted(glb_dir.rglob(name + ext)) if c.is_file()), None)
         if source is None:
             print('%-18s 缺少 GLB/FBX，跳过' % name)
             continue
@@ -375,11 +421,19 @@ def main():
                  texture['size'] if texture else '无(用 ' + record['material'] + ' 兜底)',
                  '  UV已展开' if unwrapped else ''))
 
-    (data_dir / 'manifest.json').write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False), encoding='utf-8')
-    print('SKY_ISLAND_TRIPO_IMPORT_OK %d 件  单件合计 %d 面  按实例数入场景合计 %d 面'
+    # 按件名合并进已有清单，不整份覆盖：第二轮只导回一部分件时，整份重写会把之前各轮的记录冲掉。
+    manifest_path = data_dir / 'manifest.json'
+    merged = {}
+    if manifest_path.is_file():
+        try:
+            merged = {m['name']: m for m in json.loads(manifest_path.read_text(encoding='utf-8'))}
+        except (ValueError, KeyError, TypeError):
+            merged = {}
+    merged.update({m['name']: m for m in manifest})
+    manifest_path.write_text(json.dumps(list(merged.values()), indent=2, ensure_ascii=False), encoding='utf-8')
+    print('SKY_ISLAND_TRIPO_IMPORT_OK 本次 %d 件  单件合计 %d 面  按实例数入场景合计 %d 面  清单共 %d 件'
           % (len(manifest), sum(m['triangles'] for m in manifest),
-             sum(m['sceneTriangles'] for m in manifest)))
+             sum(m['sceneTriangles'] for m in manifest), len(merged)))
 
 
 if __name__ == '__main__':
