@@ -55,7 +55,7 @@ namespace BossRush
             "SKY_GATE_STATE", "SKY_GATE_REACHABILITY",
             "SKY_STORY_OBJECTIVE", "SKY_STORY_CODEC", "SKY_STORY_SAVE_STATE", "SKY_SERVICE_PRICING",
             "SKY_BOUNTY_GATING", "SKY_RESIDENTS", "SKY_EXTRACTION_RINGS", "SKY_EXTRACTION_RULE",
-            "SKY_STORM_TUNING", "SKY_LOCALIZATION_EN", "SKY_SCENE_BASELINE",
+            "SKY_EXTRACTION_OFFICIAL_UI", "SKY_STORM_TUNING", "SKY_LOCALIZATION_EN", "SKY_SCENE_BASELINE",
         };
 
         // ====================================================================
@@ -158,6 +158,7 @@ namespace BossRush
             SetStage("5/5 撤离、表现与本地化");
             RunSyncCase("SKY_EXTRACTION_RINGS", ValidateSkyIslandExtractionRings);
             RunSyncCase("SKY_EXTRACTION_RULE", ValidateSkyIslandExtractionRule);
+            RunSyncCase("SKY_EXTRACTION_OFFICIAL_UI", ValidateSkyIslandOfficialCountdown);
             RunSyncCase("SKY_STORM_TUNING", ValidateSkyIslandStormTuning);
             RunSyncCase("SKY_LOCALIZATION_EN", ValidateSkyIslandEnglishText);
             RunSyncCase("SKY_SCENE_BASELINE", ValidateSkyIslandSceneBaseline);

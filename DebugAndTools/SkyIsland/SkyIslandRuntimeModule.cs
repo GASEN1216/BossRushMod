@@ -149,11 +149,17 @@ namespace BossRush
             text.rectTransform.anchorMin = Vector2.zero;
             text.rectTransform.anchorMax = Vector2.one;
             text.rectTransform.offsetMin = text.rectTransform.offsetMax = Vector2.zero;
-            text.text = L10n.T("天空岛 · 晴岚群岛\n与船点互动即可出发", "Sky Islands · Qinglan\nInteract with the boat to depart");
+            // 招牌不再是一块远远就亮着的黄字：主标题用正文色、副标题降一级，走近船点才浮现
+            // （SkyIslandProximityLabel）。远处靠官方交互标记与首次到基地时那条公告指路就够了，
+            // 常驻的浮空字正是网游式头顶标语的来源。
+            text.text = L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan") + "\n<size=62%><color=#" +
+                ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">" +
+                L10n.T("与船点互动即可出发", "Interact with the boat to depart") + "</color></size>";
             text.fontSize = 34;
             text.alignment = TextAlignmentOptions.Center;
-            text.color = BossRushUIColors.WarningText;
+            text.color = BossRushUIColors.TextPrimary;
             text.raycastTarget = false;
+            SkyIslandProximityLabel.Attach(sign.gameObject, 9f, 16f);
         }
 
         public override void OnLateUpdate()

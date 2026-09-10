@@ -28,8 +28,9 @@ namespace BossRush
     /// 天空岛面板插图缓存。全静态，每 runtime 至多 LoadFromFile 一次。
     ///
     /// 【常驻内存代价，以及为什么仍按模块 owner 释放】
-    ///   全部读满是 12 张横幅（1024×288×4B ≈ 1.2 MB）+ 6 张立绘（512×512×4B ≈ 1 MB）
-    ///   ≈ **20 MB**。按需加载，所以只有玩家真的开过那个区域的面板才会占；
+    ///   全部读满是 12 张横幅（1024×288×4B ≈ 1.13 MiB）+ 6 张立绘（512×512×4B = 1 MiB）
+    ///   ≈ **19.5 MiB，约 20 MB**。这是 GPU 上的那一份；CPU 端拷贝读图时已经丢掉（见 FromRawPng）。
+    ///   按需加载，所以只有玩家真的开过那个区域的面板才会占；
     ///   但一旦读进来就活到模块销毁，回基地也不释放。
     ///
     ///   之所以不改成随出击结束释放：子系统静态缓存的唯一清理 owner 是
@@ -229,7 +230,7 @@ namespace BossRush
             // mipmap 关掉：UI 图不缩小采样，开了只是白占显存。
             Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
             // markNonReadable: true —— 上传 GPU 之后丢掉 CPU 端那份拷贝。我们从不读像素，
-            // 留着等于把这批图的常驻内存整整翻一倍（满载 20 MB → 10 MB）。
+            // 留着等于把这批图的常驻内存整整翻一倍（满载约 40 MB → 约 20 MB）。
             if (!texture.LoadImage(File.ReadAllBytes(path), true))
             {
                 UnityEngine.Object.Destroy(texture);

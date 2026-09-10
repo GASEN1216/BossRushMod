@@ -69,9 +69,9 @@ def color(name):
 C = {n: const(n) for n in ('PanelWidth', 'Pad', 'Gap', 'BannerMaxHeight', 'BannerMinHeight',
                            'PortraitSize', 'TitleMinHeight', 'BodyMinHeight', 'BodyPreferredMax',
                            'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'FooterHeight',
-                           'ScrollbarGutter')}
+                           'ScrollbarGutter', 'KeyHintWidth', 'KeyCapSize')}
 COL = {n: color(n) for n in ('Surface', 'SurfaceRaised', 'Divider', 'TextPrimary',
-                             'TextSecondary', 'Accent', 'TextOnAccent', 'Backdrop')}
+                             'TextSecondary', 'Accent', 'TextOnAccent', 'Backdrop', 'WarningText')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
 
 
@@ -115,7 +115,7 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
 
     choice_lines, choice_hs = [], []
     for label in choices:
-        ls = wrap(d0, label, f_choice, CONTENT_W - C['ChoicePadX'] * 2)
+        ls = wrap(d0, label, f_choice, CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth'])
         choice_lines.append(ls)
         choice_hs.append(max(C['ChoiceMinHeight'], len(ls) * 21 * 1.25 + 4 + C['ChoicePadY'] * 2))
     choices_h = sum(choice_hs) + max(0, len(choice_hs) - 1) * C['Gap'] * 0.5
@@ -168,13 +168,25 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
         by += 20 * 1.25
     y += body_h + C['Gap']
 
-    for ls, h in zip(choice_lines, choice_hs):
+    f_cap = font(13, True)
+    for index, (ls, h) in enumerate(zip(choice_lines, choice_hs)):
         rounded(img, (px + C['Pad'], y, px + C['Pad'] + CONTENT_W, y + h), 10,
                 COL['SurfaceRaised'][:3] + (250,))
+        # 数字键帽：与生产同一个位置（左内边距处，KeyCapSize 见方），文字整体右移 KeyHintWidth。
+        kx = px + C['Pad'] + C['ChoicePadX']
+        ky = y + (h - C['KeyCapSize']) / 2
+        if index < 9:
+            rounded(img, (kx, ky, kx + C['KeyCapSize'], ky + C['KeyCapSize']), 6,
+                    COL['Surface'][:3] + (255,))
         draw = ImageDraw.Draw(img)
+        if index < 9:
+            digit = str(index + 1)
+            w = draw.textlength(digit, font=f_cap)
+            draw.text((kx + (C['KeyCapSize'] - w) / 2, ky + 3), digit, font=f_cap,
+                      fill=COL['TextSecondary'])
         cy = y + (h - len(ls) * 21 * 1.25) / 2
         for line in ls:
-            draw.text((px + C['Pad'] + C['ChoicePadX'], cy), line, font=f_choice,
+            draw.text((kx + C['KeyHintWidth'], cy), line, font=f_choice,
                       fill=COL['TextPrimary'])
             cy += 21 * 1.25
         y += h + C['Gap'] * 0.5
@@ -182,11 +194,18 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
     fy = py + panel_h - C['Pad'] - C['FooterHeight']
     rounded(img, (px + C['Pad'], fy, px + C['Pad'] + CONTENT_W, fy + C['FooterHeight']), 10,
             COL['Accent'][:3] + (255,))
+    # 键位提示是右侧的小键帽，不再拼进按钮文字（与生产 BuildFooter 同一个位置与尺寸）。
+    ex = px + C['Pad'] + CONTENT_W - C['ChoicePadX'] - 44
+    ey = fy + (C['FooterHeight'] - C['KeyCapSize']) / 2
+    rounded(img, (ex, ey, ex + 44, ey + C['KeyCapSize']), 6, COL['Surface'][:3] + (255,))
     draw = ImageDraw.Draw(img)
-    label = '继续旅程 · ESC'
+    label = '继续旅程'
     w = draw.textlength(label, font=f_choice)
     draw.text((px + C['Pad'] + (CONTENT_W - w) / 2, fy + (C['FooterHeight'] - 21 * 1.25) / 2),
               label, font=f_choice, fill=COL['TextOnAccent'])
+    f_cap = font(13, True)
+    w = draw.textlength('ESC', font=f_cap)
+    draw.text((ex + (44 - w) / 2, ey + 3), 'ESC', font=f_cap, fill=COL['TextSecondary'])
     return img
 
 
@@ -202,10 +221,45 @@ def hud_const(name):
     return float(m.group(1))
 
 
+def spaced(draw, center_x, top, text, fnt, fill, spacing):
+    """按 TMP characterSpacing（1/100 em）拉开字距，水平居中绘制。"""
+    extra = fnt.size * spacing / 100.0
+    widths = [draw.textlength(ch, font=fnt) for ch in text]
+    x = center_x - (sum(widths) + extra * max(0, len(text) - 1)) / 2
+    for ch, w in zip(text, widths):
+        draw.text((x, top), ch, font=fnt, fill=fill)
+        x += w + extra
+
+
+def soft_scrim(w, h):
+    """与生产 SkyIslandUiArt.GetTitleScrim 同一条二维柔边：竖向余弦钟形 × 横向两侧 30% smoothstep。
+    只做竖向的话左右两侧是笔直硬边（更早一版预览里 x≈370 / x≈1550 那两条竖线就是它）。"""
+    import math as _m
+    w, h = int(w), int(h)
+    scrim = Image.new('RGBA', (w, h), (0, 0, 0, 0))
+    px_ = scrim.load()
+    for xx in range(w):
+        u = xx / float(w - 1)
+        a = min(1.0, u / 0.30)
+        b = min(1.0, (1.0 - u) / 0.30)
+        horizontal = (a * a * (3 - 2 * a)) * (b * b * (3 - 2 * b))
+        for yy in range(h):
+            vertical = 0.5 - 0.5 * _m.cos(yy / float(h - 1) * _m.pi * 2)
+            px_[xx, yy] = (5, 8, 10, int(horizontal * vertical * 0.60 * 255))
+    return scrim
+
+
 def render_hud():
-    """1920x1080 参考分辨率下的 HUD 占位示意，铺一张真实岛景当底，好判断对比度与遮挡。"""
+    """1920x1080 参考分辨率下的 HUD 占位示意，铺一张真实岛景当底，好判断对比度与遮挡。
+
+    画的是三层**同时**出现的最拥挤时刻：右侧卡片（目标刚更新）、落地那一次区域大标题（带提示）、
+    中下方警示字幕。底部那条虚线是官方快捷栏顶边的大致位置（按实机截图估的，不是读出来的），
+    只用来看字幕有没有压到它。撤离读条是官方 EvacuationCountdownUI，这里不画，不替官方控件编样子。
+    """
     H = {n: hud_const(n) for n in ('CardWidth', 'CardRight', 'CardTop', 'CardPadX', 'CardPadY',
-                                   'AccentBarWidth', 'TitleFont', 'BodyFont', 'ChipFont')}
+                                   'AccentBarWidth', 'TitleFont', 'BodyFont', 'ChipFont',
+                                   'AreaTitleY', 'AreaTitleFont', 'AreaOverlineFont', 'AreaTitleSpacing',
+                                   'AreaOverlineSpacing', 'CaptionY', 'CaptionWidth', 'CaptionFont')}
     W, Ht = 1920, 1080
     backdrop = Image.open(ART / 'skyisland_scene_E.png').convert('RGBA')
     scale = max(W / backdrop.width, Ht / backdrop.height)
@@ -214,16 +268,19 @@ def render_hud():
     img.alpha_composite(backdrop, ((W - backdrop.width) // 2, (Ht - backdrop.height) // 2))
     draw = ImageDraw.Draw(img)
 
+    # ---- 右侧卡片：目标刚更新，目标行上方挂着「目标更新」眉题 ----
     f_title, f_body, f_chip = font(int(H['TitleFont']), True), font(int(H['BodyFont'])), font(int(H['ChipFont']))
-    rows = [('晴岚群岛 · 鸣风栈道', f_title, COL['Accent'], H['TitleFont']),
-            ('修复悬根林风标与残星工坊星灯，让双航标门重新工作。', f_body, COL['TextSecondary'], H['BodyFont']),
-            ('物资 27/39 · 委托 清理航路威胁 2/3', f_chip, COL['TextSecondary'], H['ChipFont'])]
+    f_over = font(max(9, int(round(H['BodyFont'] * 0.85))), True)
+    rows = [('鸣风栈道', f_title, COL['Accent'], H['TitleFont'], None),
+            ('双航标已亮 · 经鸣风栈道前往归航钟庭 · 和解或战胜钟守 · 栈道上可挑战「噬风」',
+             f_body, COL['TextSecondary'], H['BodyFont'], '目标更新'),
+            ('物资 27/39 · 委托 清理航路威胁 2/3', f_chip, COL['TextSecondary'], H['ChipFont'], None)]
     inner = H['CardWidth'] - H['CardPadX'] * 2 - H['AccentBarWidth'] - 6
     laid, y = [], H['CardPadY']
-    for text, fnt, col, size in rows:
+    for text, fnt, col, size, overline in rows:
         lines = wrap(draw, text, fnt, inner)
-        h = max(size * 1.3, len(lines) * size * 1.3 + 2)
-        laid.append((lines, fnt, col, size, y))
+        h = max(size * 1.3, len(lines) * size * 1.3 + 2) + (size * 1.3 if overline else 0)
+        laid.append((lines, fnt, col, size, y, overline))
         y += h + 4
     card_h = y + H['CardPadY']
     x0 = W + H['CardRight'] - H['CardWidth']
@@ -233,43 +290,53 @@ def render_hud():
     bx = x0 + H['CardPadX']
     draw.rounded_rectangle((bx, y0 + 8, bx + H['AccentBarWidth'], y0 + card_h - 8), radius=2,
                            fill=COL['Accent'])
-    for lines, fnt, col, size, top in laid:
+    text_x = x0 + H['CardPadX'] + H['AccentBarWidth'] + 6
+    for lines, fnt, col, size, top, overline in laid:
         ty = y0 + top
+        if overline:
+            draw.text((text_x, ty), overline, font=f_over, fill=COL['Accent'])
+            ty += size * 1.3
         for line in lines:
-            draw.text((x0 + H['CardPadX'] + H['AccentBarWidth'] + 6, ty), line, font=fnt, fill=col)
+            draw.text((text_x, ty), line, font=fnt, fill=col)
             ty += size * 1.3
 
-    # 区域大标题：中线偏下的一次性淡入淡出（这里画的是它完全显形的那一瞬）。
+    # ---- 区域大标题（落地那一次）----
     # Unity 的 anchoredPosition y 向上为正，PIL 的 y 向下为正 —— 必须减不能加，
     # 早先写成加号，把「中线偏下」画成了中线偏上（预览工具自己的 bug）。
-    ay = Ht / 2 - hud_const('AreaTitleY')
-    # 压暗底：与生产同一条上下对称渐变，否则预览会高估浅色字在云海上的可读性。
-    # 与生产同一条二维柔边：竖向余弦钟形 × 横向两侧 30% smoothstep。
-    # 只做竖向的话左右两侧是笔直硬边（上一版预览里 x≈370 / x≈1550 那两条竖线就是它）。
-    import math as _m
-    scrim = Image.new('RGBA', (1180, 200), (0, 0, 0, 0))
-    px_ = scrim.load()
-    for xx in range(1180):
-        u = xx / 1179.0
-        a = min(1.0, u / 0.30)
-        b = min(1.0, (1.0 - u) / 0.30)
-        horizontal = (a * a * (3 - 2 * a)) * (b * b * (3 - 2 * b))
-        for yy in range(200):
-            vertical = 0.5 - 0.5 * _m.cos(yy / 199.0 * _m.pi * 2)
-            px_[xx, yy] = (5, 8, 10, int(horizontal * vertical * 0.60 * 255))
-    img.alpha_composite(scrim, (int((W - 1180) / 2), int(ay - 100)))
+    ay = Ht / 2 - H['AreaTitleY']
+    img.alpha_composite(soft_scrim(1180, 230), (int((W - 1180) / 2), int(ay - 115)))
     draw = ImageDraw.Draw(img)
-    # 偏移照生产的锚点：标题中心在压暗核心上方 26、横线 -10、提示 -28，
-    # 三者都落在 scrim alpha >= 0.45 的中心带里。早先预览把提示画到 +52，
-    # 那已经出了压暗核心，于是「看不清」是预览自己造出来的假象。
-    f_area, f_hint = font(44, True), font(15)
-    area = '鸣风栈道'
-    w = draw.textlength(area, font=f_area)
-    draw.text(((W - w) / 2, ay - 26 - 22), area, font=f_area, fill=COL['TextPrimary'])
-    draw.rectangle(((W - 120) / 2, ay + 10, (W + 120) / 2, ay + 11), fill=COL['Divider'])
+    # 偏移照生产 BuildBanner 的 CenteredText：眉题 +44、标题 +10、细线 -24、提示 -42（相对标题根节点中心）。
+    f_line, f_area, f_hint = font(int(H['AreaOverlineFont'])), font(int(H['AreaTitleFont']), True), font(15)
+    spaced(draw, W / 2, ay - 44 - H['AreaOverlineFont'] * 0.7, '晴岚群岛', f_line, COL['TextSecondary'],
+           H['AreaOverlineSpacing'])
+    spaced(draw, W / 2, ay - 10 - H['AreaTitleFont'] * 0.7, '鸣风栈道', f_area, COL['TextPrimary'],
+           H['AreaTitleSpacing'])
+    draw.rectangle(((W - 120) / 2, ay + 24, (W + 120) / 2, ay + 25), fill=COL['Divider'])
     hint = '地图键查阅全岛 · 站进撤离环停留 3 秒返航'
     w = draw.textlength(hint, font=f_hint)
-    draw.text(((W - w) / 2, ay + 28 - 8), hint, font=f_hint, fill=COL['TextSecondary'])
+    draw.text(((W - w) / 2, ay + 42 - 10), hint, font=f_hint, fill=COL['TextSecondary'])
+
+    # ---- 中下方字幕（警示色那一类：战斗门控原因）----
+    cy = Ht / 2 - H['CaptionY']
+    caption = '附近还有威胁 —— 先把这一段航路清干净，再静下心来。'
+    f_cap = font(int(H['CaptionFont']))
+    cap_lines = wrap(draw, caption, f_cap, H['CaptionWidth'])
+    line_h = H['CaptionFont'] * 1.3
+    cap_h = max(H['CaptionFont'] * 1.6, len(cap_lines) * line_h + 8)
+    shade_w, shade_h = H['CaptionWidth'] + 180, cap_h + 60
+    img.alpha_composite(soft_scrim(shade_w, shade_h), (int((W - shade_w) / 2), int(cy - shade_h / 2)))
+    draw = ImageDraw.Draw(img)
+    ty = cy - len(cap_lines) * line_h / 2 - 2
+    for line in cap_lines:
+        w = draw.textlength(line, font=f_cap)
+        draw.text(((W - w) / 2, ty), line, font=f_cap, fill=COL['WarningText'])
+        ty += line_h
+
+    # ---- 官方快捷栏顶边的大致位置（虚线，按实机截图估：武器名标签离底边约 144 px）----
+    for x in range(324, 1540, 18):
+        draw.line((x, 936, x + 9, 936), fill=(170, 176, 182, 255))
+    draw.text((324, 942), '官方快捷栏顶边（按实机截图估）', font=font(12), fill=(170, 176, 182, 255))
 
     HUD_OUT.parent.mkdir(parents=True, exist_ok=True)
     img.convert('RGB').save(HUD_OUT, quality=95)

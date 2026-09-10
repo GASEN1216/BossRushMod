@@ -683,6 +683,27 @@ namespace BossRush
             return dockOk && bellOk;
         }
 
+        /// <summary>
+        /// 撤离读条复用官方 EvacuationCountdownUI（2026-09-10 指引重做）。
+        ///
+        /// 这一条只有岛上能证：官方控件是不是真的挂在这张独立关卡里、CountDownArea 的私有字段名
+        /// 在当前游戏版本里是否还对得上，离线都证明不了。不可用时撤离本身照常（会话退回 HUD 卡片里的
+        /// 文字读秒），但观感回到了自绘文字，所以按 FAIL 报出来，而不是悄悄降级。
+        /// 只读：不 Request、不写任何字段。
+        /// </summary>
+        private bool ValidateSkyIslandOfficialCountdown(out string metrics, out string reason)
+        {
+            reason = null;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            bool instance = EvacuationCountdownUI.Instance != null;
+            bool bridge = session != null && session.ValidationOfficialCountdownAvailable;
+            metrics = "official_ui_instance=" + instance + ",bridge_available=" + bridge;
+            if (session == null) { reason = "session_missing"; return false; }
+            if (!instance) reason = "本关卡里没有官方 EvacuationCountdownUI 实例：撤离读秒已退回 HUD 文字";
+            else if (!bridge) reason = "官方撤离读条桥不可用（CountDownArea 私有字段对不上或接入失败）：撤离读秒已退回 HUD 文字";
+            return instance && bridge;
+        }
+
         private bool ValidateSkyIslandStormTuning(out string metrics, out string reason)
         {
             reason = null;

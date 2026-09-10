@@ -36,6 +36,8 @@ namespace BossRush
         private SkyIslandScavenging scavenging;
         private SkyIslandServices services;
         private SkyIslandExtractionRings extractionRings;
+        // 撤离读条的显示桥：优先驱动官方 EvacuationCountdownUI，判定仍只在 Update 的撤离圈里。
+        private SkyIslandExtractionCountdown extractionCountdown;
         private readonly SkyIslandBounty bounty = new SkyIslandBounty();
         private readonly SkyIslandMapFog mapFog = new SkyIslandMapFog();
         // 已给委托记过账的遭遇 id：清场回调会重投，记账只能算一次。
@@ -71,6 +73,8 @@ namespace BossRush
         private int groundMask, searchCount, nextLandmark;
         private bool subscribed, closed, ready, moved, spawning, pathCompleted, pathValid;
         private float enteredAt, extractionStarted = -1, nextGroundCheck, airborneSince = -1, nextHud;
+        // HUD 文字读秒上一次写入的整秒数：整秒没变就不重建字符串（站在圈里每帧都会走到这里）。
+        private int shownExtractionSeconds = -1;
 
         /// <summary>三处「还没就绪」提示共用同一句文案，避免中英两份各写三遍再各漂一遍。</summary>
         private static string WaitForReady
@@ -280,7 +284,7 @@ namespace BossRush
             ambience = new SkyIslandAmbience(root);
             ambience.ApplyStoryFlags(story.Current.flags);
             encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsSessionValid,
-                EncounterWasSaved, OnEncounterCleared, Status, OnStormDefeated);
+                EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated);
             raidSeed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
             services = new SkyIslandServices(player, root, groundMask, raidSeed);
             // 撤离点的地面标识。半径就是 ExtractionRadius，圈内即判定内。
@@ -291,6 +295,11 @@ namespace BossRush
                     ExtractionRadius, groundMask);
                 extractionRings.Apply(BellExitIfUnlocked() != null);
             });
+            // 撤离读条同样是纯表现层、单独持有 owner：官方控件接不上时退回 HUD 文字读秒，撤离照常。
+            Safe("extraction_countdown", delegate
+            {
+                extractionCountdown = new SkyIslandExtractionCountdown(root.transform, ExtractionHold);
+            });
             // 搜刮点单独持有 owner：装配失败不拖垮旅程，玩家仍可正常走主线。
             Safe("scavenging", delegate
             {
@@ -300,8 +309,8 @@ namespace BossRush
             residents = new SkyIslandResidents();
             residents.Start(root, navigation, IsSessionValid, worldStory.Talk);
             SkyIslandGuideInteractable.Attach(root, this);
-            Status(L10n.T("晴岚群岛已就绪 · 地图键查阅全岛 · ",
-                "Qinglan Archipelago ready · press your map key to view the isles · ") + story.CurrentObjective, false);
+            // 就绪不再另发一条「已就绪 · 地图键查阅全岛 · 当前目标」：落地大标题（带一次性操作提示）
+            // 与右侧目标卡已经把这两件事说完了，再补一条等于同一句话在同一秒出现三遍。
             Debug.Log("[SkyIsland] ENTER_PASS scene=" + entryScene.path + " nodes=" + nodes +
                 " enemyPoints=" + enemyMarkers.Count + " searches=" + searchCount + " landmarks=" + landmarks.Count +
                 " lootPoints=" + (scavenging == null ? 0 : scavenging.PlacedPoints) +
@@ -513,12 +522,13 @@ namespace BossRush
         private void Update()
         {
             if (closed) return;
+            // HUD 必须赶在下面几处提前 return 之前驱动：装配中、返航派发中、死亡后都要把它收起来，
+            // 否则右侧卡片、区域大标题与字幕会浮在官方读条黑幕和撤离结算画面上面。
+            // 淡入淡出只吃 unscaled 时间：剧情面板把 timeScale 压到 0 时显隐过渡照常走完。
+            if (hud != null) hud.Tick(Time.unscaledDeltaTime, HudSuppressed());
             if (returnRequested) { DispatchReturnIfReady(); return; }
             if (!ready) return;
             if (worldStory != null) worldStory.Tick();
-            // HUD 的淡入淡出与过期只吃 unscaled 时间：剧情面板把 timeScale 压到 0 时
-            // 区域大标题仍应正常淡出，公告也仍应正常过期。
-            if (hud != null) hud.Tick(Time.unscaledDeltaTime);
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
             { Close(false, "owner_lost"); return; }
             if (story != null && !story.IsCurrentSlot) { Close(true, "save_slot_changed"); return; }
@@ -581,8 +591,7 @@ namespace BossRush
             {
                 if (extractionStarted < 0) extractionStarted = Time.unscaledTime;
                 float remaining = ExtractionHold - (Time.unscaledTime - extractionStarted);
-                if (hud != null) hud.SetExtraction(L10n.T("返回基地 · ", "Returning to base · ") +
-                    Mathf.CeilToInt(Mathf.Max(0, remaining)) + L10n.T(" 秒", "s"));
+                ShowExtraction(remaining);
                 if (remaining <= 0) Close(true, extraction == bellExit ? "bell_extract" : "dock_extract");
                 return;
             }
@@ -591,9 +600,13 @@ namespace BossRush
             if (insideExtraction && extractionStarted >= 0)
             {
                 extractionStarted += Time.unscaledDeltaTime;
+                // 冻结期间照样把起点喂给官方读条：它按 Time.time 自己算进度，不喂就会在背包后面偷偷走完。
+                ShowExtraction(ExtractionHold - (Time.unscaledTime - extractionStarted));
                 return;
             }
             extractionStarted = -1;
+            shownExtractionSeconds = -1;
+            if (extractionCountdown != null) extractionCountdown.Hide();
             if (Time.unscaledTime >= nextHud)
             {
                 nextHud = Time.unscaledTime + 0.5f;
@@ -614,14 +627,47 @@ namespace BossRush
                 {
                     // 不在圈里就把读秒整行撤掉，卡片不留空位。
                     hud.SetExtraction(null);
-                    hud.SetRegion(nearest == null ? string.Empty : LandmarkLabel(nearest.name));
+                    // 区域名与到访记账同一个 60 米口径：只有真正走进某个地标的范围才切换，
+                    // 走在两个地标之间的桥上保持上一个。旧写法取「谁更近」，站在两个地标的中垂线附近
+                    // 每半秒翻一次，区域大标题就跟着连弹。
+                    if (nearest != null && (nearest.position - player.transform.position).sqrMagnitude < 60 * 60)
+                        hud.SetRegion(LandmarkLabel(nearest.name));
                     hud.SetObjective(story.CurrentObjective);
                     hud.SetChips(FieldStatus());
                     // 存档状态**正常时一个字都不说**：只有真出问题（写屏障 / 单向故障 / 换槽）
                     // 才值得占玩家一行。旧版把「群岛记录已同步」也常驻着，等于每帧都在报平安。
-                    if (story != null && !story.CanWrite) hud.Announce(story.SaveStatus);
+                    // 走卡片里的常驻状态行而不是字幕：问题解决前一直成立，每半秒重播一次字幕
+                    // 会把同一时间里的 Boss 机制提示与战斗门控原因全部挤掉。
+                    hud.SetStatus(story != null && !story.CanWrite ? story.SaveStatus : null);
                 }
             }
+        }
+
+        /// <summary>
+        /// 会话侧的 HUD 隐藏条件。官方界面、对话、拍照模式那一组由 HUD 自己照抄官方 HUDManager 判断；
+        /// 这里只补会话才知道的：还没就绪、已经在返航、主角死亡、剧情面板开着（面板有自己的整屏遮罩）。
+        /// </summary>
+        private bool HudSuppressed()
+        {
+            return !ready || returnRequested || deathPending || (worldStory != null && worldStory.Visible);
+        }
+
+        /// <summary>
+        /// 撤离读条的显示。优先交给官方 EvacuationCountdownUI——与原版出口同一个圆环读条、同一个位置；
+        /// 官方控件不在场或反射字段对不上时，才退回 HUD 卡片里的文字读秒。
+        /// 这里只负责「给玩家看」，判定仍唯一留在 Update 的撤离圈里（CR-2026-09-08-002）。
+        /// </summary>
+        private void ShowExtraction(float remaining)
+        {
+            if (extractionCountdown != null && extractionCountdown.Show(ExtractionHold - remaining))
+            {
+                if (hud != null) hud.SetExtraction(null);
+                return;
+            }
+            int seconds = Mathf.CeilToInt(Mathf.Max(0f, remaining));
+            if (hud == null || seconds == shownExtractionSeconds) return;
+            shownExtractionSeconds = seconds;
+            hud.SetExtraction(L10n.T("返回基地 · ", "Returning to base · ") + seconds + L10n.T(" 秒", "s"));
         }
 
         /// <summary>HUD 第三行：搜刮进度与在手委托，让「这趟出击还能做什么」一眼可见。</summary>
@@ -671,6 +717,20 @@ namespace BossRush
             if (name == "POI_S4") return L10n.T("残星瞭台", "Starfall Overlook");
             return name.Replace("POI_", "").Replace('_', ' ');
         }
+        /// <summary>
+        /// 遭遇 id → 玩家看得懂的名字。id 是 World.json 里的内部键（`C_02` / `S1` / `Zheling`），
+        /// 直接拼进「航路已清理 · C_02」等于把调试键名念给玩家听。
+        /// 区域遭遇取所在地标名，具名对手取角色名；解析不出来时落到 LandmarkLabel 的兜底写法。
+        /// </summary>
+        internal static string EncounterLabel(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return string.Empty;
+            if (id == "Zheling") return SkyIslandWorldStory.ResidentName("sky_zheling");
+            if (id == "BellKeeper") return L10n.T("守钟装置", "the bell engine");
+            if (id == "Storm") return L10n.T("噬风", "the Windeater");
+            int underscore = id.IndexOf('_');
+            return LandmarkLabel("POI_" + (underscore < 0 ? id : id.Substring(0, underscore)));
+        }
         private void OnStartedLoading(SceneLoadingContext context)
         {
             if (context.sceneName == SkyIslandSceneReferenceBridge.SceneName && !moved) return;
@@ -709,6 +769,8 @@ namespace BossRush
             {
                 returnRequested = returning = true;
                 if (worldStory != null) worldStory.Hide();
+                // 与官方撤离成功同口径：读条控件随成功一起收掉，不停在 00:00 一直挂到黑幕落下。
+                if (extractionCountdown != null) extractionCountdown.Hide();
                     Status(L10n.T("正在返回基地，已完成的群岛故事会保留…",
                         "Returning to base — everything you finished on the isles is kept…"), false);
                 BlockInputForReturn();
@@ -772,6 +834,7 @@ namespace BossRush
             // 归航菜的本局属性加成必须在离岛时摘掉，否则会跟着主角带回基地（owner 是 services）。
             Safe("services", delegate { if (services != null) services.Dispose(); });
             Safe("extraction_rings", delegate { if (extractionRings != null) extractionRings.Dispose(); });
+            Safe("extraction_countdown", delegate { if (extractionCountdown != null) extractionCountdown.Dispose(); });
             Safe("residents", delegate { if (residents != null) residents.Dispose(); });
             Safe("ambience", delegate { if (ambience != null) ambience.Dispose(); });
             Safe("story_ui", delegate { if (worldStory != null) worldStory.Dispose(); });
@@ -948,6 +1011,9 @@ namespace BossRush
         internal Transform ValidationPlayerSpawn { get { return playerSpawn; } }
         internal Transform ValidationExitMarker { get { return exitMarker; } }
         internal Transform ValidationBellMarker { get { return bellExit; } }
+        /// <summary>官方撤离读条桥是否可用（F3 只读）。不可用时撤离读秒退回 HUD 文字。</summary>
+        internal bool ValidationOfficialCountdownAvailable
+        { get { return extractionCountdown != null && extractionCountdown.Available; } }
         internal GraphMask ValidationNavigationMask
         { get { return navigation == null ? default(GraphMask) : navigation.Mask; } }
         internal static float ValidationExtractionRadius { get { return ExtractionRadius; } }
@@ -1017,12 +1083,19 @@ namespace BossRush
             return snapshot;
         }
 
-        /// <summary>剧情 owner 的对外提示通道：与其它天空岛消息共用 HUD + 官方 toast，不另开一套。</summary>
+        /// <summary>剧情 owner 的对外提示通道：与其它天空岛消息共用同一个出口（见 Status），不另开一套。</summary>
         internal void Announce(string message, bool error) { Status(message, error); }
+        /// <summary>
+        /// 天空岛的对外提示只走**一个**出口，不再同时发两处：
+        /// - 岛上就绪后 → 本 HUD 的中下方字幕（按字数停留、排队不吞）。官方 NotificationText 只停 1.2 秒，
+        ///   岛上的长句（Boss 机制提示、战斗门控原因）根本读不完；两处同时出现又是同一句话说两遍。
+        /// - 装配中 / 返航中 / 死亡或失败清理 → 交给调用方的 report（正式入口就是官方 NotificationText）：
+        ///   这时 HUD 要么还没内容、要么已被收起、要么马上随会话销毁，字幕来不及播。
+        /// </summary>
         private void Status(string message, bool error)
         {
-            if (hud != null) hud.Announce(message);
-            if (report != null) report(message, error);
+            if (hud != null && ready && !returnRequested) hud.Caption(message, error);
+            else if (report != null) report(message, error);
             if (error) Debug.LogWarning("[SkyIsland] " + message); else Debug.Log("[SkyIsland] " + message);
         }
         private static int FirstLayer(int mask)

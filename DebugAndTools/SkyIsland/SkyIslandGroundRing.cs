@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using UnityEngine;
 
 namespace BossRush
@@ -156,6 +157,103 @@ namespace BossRush
             if (bellRing != null) UnityEngine.Object.Destroy(bellRing.gameObject);
             dockRing = null;
             bellRing = null;
+        }
+    }
+
+    /// <summary>
+    /// COMPAT：撤离读条复用官方 <c>EvacuationCountdownUI</c>（原版出口那枚圆环读条与 00:02.345 数字）。
+    ///
+    /// 岛上的撤离**判定**刻意不交给官方 <c>CountDownArea</c>：判定唯一留在会话 Update 的撤离圈里
+    /// （距离 + 停留，CR-2026-09-08-002）。官方组件是触发器口径、按 Time.time 自己计时，
+    /// 两套一起跑就会出现「圆环读满了人却没走」或反过来。所以这里只借它的**显示**：
+    /// 官方控件每帧读 <c>target.Progress</c> / <c>target.RemainingTime</c>，这两者只取决于
+    /// <c>requiredExtrationTime</c> 与 <c>timeWhenCountDownBegan</c>。挂一个**禁用**的 CountDownArea
+    /// （禁用后它的 Update 与触发器回调全部短路，既不会自己读条也不会自己判成功），
+    /// 每帧把起点写成 <c>Time.time - 会话已停留秒数</c>，官方读条就与会话判定逐帧一致。
+    /// 这与丧尸模式守卫禁止的「改写真实撤离点的私有计时去驱动判定」不是一回事：这个组件从不参与判定。
+    ///
+    /// fail-open：官方控件不在场、或游戏更新改了字段名，<see cref="Show"/> 返回 false，
+    /// 会话退回 HUD 卡片里的文字读秒；撤离本身不受影响。
+    /// 每帧一次 FieldInfo.SetValue 有一次装箱，但只发生在站进撤离圈的那 3 秒里。
+    /// </summary>
+    internal sealed class SkyIslandExtractionCountdown : IDisposable
+    {
+        private static readonly FieldInfo RequiredField = BossRush.Common.Utils.ReflectionCache.GetField(
+            typeof(CountDownArea), "requiredExtrationTime", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+        private static readonly FieldInfo BeganField = BossRush.Common.Utils.ReflectionCache.GetField(
+            typeof(CountDownArea), "timeWhenCountDownBegan", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+        private GameObject host;
+        private CountDownArea area;
+        private bool requested, broken;
+
+        /// <summary>官方控件是否可用。只读，给 F3 验收与日志用。</summary>
+        internal bool Available
+        {
+            get { return !broken && area != null && EvacuationCountdownUI.Instance != null; }
+        }
+
+        internal SkyIslandExtractionCountdown(Transform parent, float holdSeconds)
+        {
+            if (parent == null || RequiredField == null || BeganField == null)
+            {
+                broken = true;
+                Debug.LogWarning("[SkyIsland] 官方撤离读条字段缺失，撤离读秒改用 HUD 文字");
+                return;
+            }
+            try
+            {
+                host = new GameObject("SkyIslandExtractionCountdown");
+                host.transform.SetParent(parent, false);
+                area = host.AddComponent<CountDownArea>();
+                area.enabled = false;
+                RequiredField.SetValue(area, holdSeconds);
+            }
+            catch (Exception e)
+            {
+                broken = true;
+                Debug.LogWarning("[SkyIsland] 官方撤离读条接入失败，撤离读秒改用 HUD 文字：" + e.Message);
+            }
+        }
+
+        /// <param name="heldSeconds">按会话判定已经在圈里停留的秒数。</param>
+        /// <returns>官方控件是否接管了这一帧的显示。</returns>
+        internal bool Show(float heldSeconds)
+        {
+            if (broken || area == null || EvacuationCountdownUI.Instance == null) return false;
+            try
+            {
+                BeganField.SetValue(area, Time.time - Mathf.Max(0f, heldSeconds));
+                if (!requested)
+                {
+                    EvacuationCountdownUI.Request(area);
+                    requested = true;
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                broken = true;
+                Debug.LogWarning("[SkyIsland] 官方撤离读条驱动失败，撤离读秒改用 HUD 文字：" + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>离开撤离圈或撤离成功时收起官方读条。幂等，没显示过时零开销。</summary>
+        internal void Hide()
+        {
+            if (!requested) return;
+            requested = false;
+            try { EvacuationCountdownUI.Release(area); }
+            catch (Exception e) { Debug.LogWarning("[SkyIsland] 官方撤离读条收起失败：" + e.Message); }
+        }
+
+        public void Dispose()
+        {
+            Hide();
+            if (host != null) UnityEngine.Object.Destroy(host);
+            host = null;
+            area = null;
         }
     }
 }

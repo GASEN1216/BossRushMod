@@ -18,6 +18,13 @@
 //   正文收缩到下限后套 ScrollRect（共享 `ConfigureScrollRect`），滚动而不是溢出。
 //   这样「文字超出 UI」不再是调参问题，而是结构上不可能发生。
 //
+// 【操作与官方界面对齐】
+//   - 鼠标、数字键 1–9（选项左侧有键帽）、ESC 关闭；
+//   - 手柄走官方 `UIInputManager`：方向键移动当前项、确认执行、取消关闭。
+//     旧版只认鼠标，手柄玩家能用交互键打开面板，却既选不了选项、也关不掉它；
+//   - 面板开着时官方 HUD 一起淡出（`HUDManager` 隐藏令牌），与官方对话界面同口径；
+//   - 首次打开有一次共享的淡入微放大；选项回执引起的重开不重播，免得每点一次都弹一下。
+//
 // 【插图 fail-open】
 //   插图由 `SkyIslandUiArt` 提供，没有就退成无插图布局。装置面板上挂着
 //   K1/K2/K3 与敲响归航钟，绝不能因为一张图没出来就打不开。
@@ -70,6 +77,13 @@ namespace BossRush
         private const float ChoicePadX = 18f;
         private const float FooterHeight = 48f;
 
+        /// <summary>
+        /// 选项左侧数字键帽占掉的宽度（键帽 24 + 间距 12）。量高与摆放必须扣同一个数，
+        /// 否则量出来的折行与实际摆出来的折行对不上；布局属性测试读的也是这个常量。
+        /// </summary>
+        private const float KeyHintWidth = 36f;
+        private const float KeyCapSize = 24f;
+
         /// <summary>正文右侧给滚动条留的空。<see cref="BossRushUI.ConfigureScrollRect"/> 要求 20px。</summary>
         private const float ScrollbarGutter = 20f;
 
@@ -80,6 +94,16 @@ namespace BossRush
         private RectTransform bodyViewport;
         private ScrollRect bodyScroll;
         private ZombieModeUIHelper.ModalInputLease input;
+        /// <summary>注册给官方 HUDManager 的隐藏令牌，即当前面板的 canvas 根。</summary>
+        private GameObject hideToken;
+        private bool inputSubscribed;
+
+        /// <summary>可操作项：选项按顺序在前，页脚「继续旅程」在最后。键盘/手柄的当前项按这个顺序走。</summary>
+        private readonly List<Button> buttons = new List<Button>();
+        private readonly List<Image> buttonImages = new List<Image>();
+        private readonly List<Color> buttonColors = new List<Color>();
+        private int choiceCount;
+        private int selected = -1;
 
         internal bool Visible { get { return canvas != null; } }
 
@@ -95,6 +119,12 @@ namespace BossRush
         internal void Show(string title, string text, IList<Choice> choices,
             Sprite portrait, Sprite banner)
         {
+            // 选项回执会重开面板（SkyIslandWorldStory.Refreshed）。重开时：
+            // 1. 先挂新令牌再摘旧令牌，官方 HUD 全程保持隐藏，不会在两次之间闪回来一下；
+            // 2. 不重播打开动画，否则每点一个选项面板都要「弹」一下。
+            bool reopening = canvas != null;
+            GameObject previousHideToken = hideToken;
+            hideToken = null;
             Dispose();
             if (choices == null) choices = new List<Choice>();
 
@@ -137,8 +167,7 @@ namespace BossRush
                 TextMeshProUGUI probe = MakeText(canvas.transform, choices[i].Label, 21f,
                     BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
                 float h = Mathf.Max(ChoiceMinHeight,
-                    BossRushUI.MeasureTextHeight(probe, ContentWidth - ChoicePadX * 2f, 26f)
-                    + ChoicePadY * 2f);
+                    BossRushUI.MeasureTextHeight(probe, ChoiceLabelWidth, 26f) + ChoicePadY * 2f);
                 // **必须 DestroyImmediate**：`Destroy` 要等到帧末才真正移除，而量高用的探针
                 // 此刻是 canvas 的子物体、带着选项文字挂在屏幕正中 —— 用延迟销毁的话，
                 // 这一帧会把所有选项文字重叠着闪一下再消失。对象是运行时创建、非 prefab 资产，
@@ -208,13 +237,40 @@ namespace BossRush
             for (int i = 0; i < choices.Count; i++)
             {
                 float h = choiceHeights[i];
-                BuildChoice(panel, choices[i], h, cursor);
+                BuildChoice(panel, choices[i], i, h, cursor);
                 cursor -= h + Gap * 0.5f;
             }
+            choiceCount = choices.Count;
 
             BuildFooter(panel, panelHeight);
 
+            if (!reopening) BossRushUI.PlayOpenAnimation(panel.gameObject);
             input = ZombieModeUIHelper.ClaimModalInput(canvas.gameObject, "SkyIslandStory");
+
+            // 与官方对话界面同口径：剧情面板开着时官方 HUD（血条、快捷栏）一起淡出。
+            // 令牌必须在 Dispose 里成对注销——官方只在事件发生时重算显隐，
+            // 令牌对象被销毁并不会让 HUD 自己回来。
+            try
+            {
+                global::HUDManager.RegisterHideToken(canvas.gameObject);
+                hideToken = canvas.gameObject;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] 剧情面板隐藏官方 HUD 失败：" + e.Message);
+            }
+            if (previousHideToken != null)
+            {
+                try { global::HUDManager.UnregisterHideToken(previousHideToken); }
+                catch (Exception e) { Debug.LogWarning("[SkyIsland] 注销旧的 HUD 隐藏令牌失败：" + e.Message); }
+            }
+            SubscribeInput();
+        }
+
+        /// <summary>选项文字的可用宽度：扣掉左右内边距与左侧键帽。量高与摆放共用。</summary>
+        private static float ChoiceLabelWidth
+        {
+            get { return ContentWidth - ChoicePadX * 2f - KeyHintWidth; }
         }
 
         #region 分块构建
@@ -297,7 +353,7 @@ namespace BossRush
             BossRushUI.ConfigureScrollRect(bodyScroll);
         }
 
-        private void BuildChoice(RectTransform panel, Choice choice, float height, float top)
+        private void BuildChoice(RectTransform panel, Choice choice, int index, float height, float top)
         {
             RectTransform rect = MakeRect(panel, "Choice",
                 new Vector2(0f, top - height * 0.5f), new Vector2(ContentWidth, height));
@@ -314,17 +370,22 @@ namespace BossRush
             colors.disabledColor = BossRushUI.GetDisabledColor(BossRushUIColors.SurfaceRaised);
             button.colors = colors;
 
+            // 数字键帽：把「按几」直接画在选项旁边，而不是让玩家去猜有没有快捷键。只给 1–9。
+            if (index < 9)
+                KeyCap(rect, (index + 1).ToString(), KeyCapSize,
+                    new Vector2(-ContentWidth * 0.5f + ChoicePadX + KeyCapSize * 0.5f, 0f));
+
             TextMeshProUGUI label = MakeText(rect, choice.Label, 21f,
                 BossRushUI.GetButtonTextColor(BossRushUIColors.SurfaceRaised),
                 TextAlignmentOptions.Left);
-            label.rectTransform.sizeDelta = new Vector2(ContentWidth - ChoicePadX * 2f,
-                height - ChoicePadY * 2f);
-            label.rectTransform.anchoredPosition = Vector2.zero;
+            label.rectTransform.sizeDelta = new Vector2(ChoiceLabelWidth, height - ChoicePadY * 2f);
+            label.rectTransform.anchoredPosition = new Vector2(KeyHintWidth * 0.5f, 0f);
             label.enableWordWrapping = true;
             label.overflowMode = TextOverflowModes.Ellipsis;
 
             Func<string> select = choice.Select;
             button.onClick.AddListener(delegate { SetBodyText(select()); });
+            Register(button, image, BossRushUIColors.SurfaceRaised);
         }
 
         private void BuildFooter(RectTransform panel, float panelHeight)
@@ -341,10 +402,26 @@ namespace BossRush
             colors.highlightedColor = BossRushUI.GetHoverColor(BossRushUIColors.Accent);
             colors.pressedColor = BossRushUI.GetPressedColor(BossRushUIColors.Accent);
             button.colors = colors;
-            TextMeshProUGUI label = MakeText(rect, L10n.T("继续旅程 · ESC", "Continue · ESC"), 21f,
+            TextMeshProUGUI label = MakeText(rect, L10n.T("继续旅程", "Continue"), 21f,
                 BossRushUI.GetButtonTextColor(BossRushUIColors.Accent), TextAlignmentOptions.Center);
-            label.rectTransform.sizeDelta = new Vector2(ContentWidth - ChoicePadX * 2f, FooterHeight);
+            label.rectTransform.sizeDelta = new Vector2(ContentWidth - ChoicePadX * 2f - 96f, FooterHeight);
+            // 键位提示做成右侧的小键帽，而不是把「· ESC」拼进按钮文字里。
+            KeyCap(rect, "ESC", 44f, new Vector2(ContentWidth * 0.5f - ChoicePadX - 22f, 0f));
             button.onClick.AddListener(delegate { Dispose(); });
+            Register(button, image, BossRushUIColors.Accent);
+        }
+
+        private static void KeyCap(RectTransform parent, string key, float width, Vector2 position)
+        {
+            RectTransform cap = MakeRect(parent, "KeyCap", position, new Vector2(width, KeyCapSize));
+            Image capImage = cap.gameObject.AddComponent<Image>();
+            capImage.color = BossRushUIColors.Surface;
+            BossRushUI.ApplyPanelSkin(capImage, 6);
+            capImage.raycastTarget = false;
+            TextMeshProUGUI glyph = MakeText(cap, key, 13f, BossRushUIColors.TextSecondary,
+                TextAlignmentOptions.Center);
+            glyph.rectTransform.sizeDelta = new Vector2(width, KeyCapSize);
+            glyph.enableWordWrapping = false;
         }
 
         /// <summary>
@@ -377,22 +454,137 @@ namespace BossRush
 
         #endregion
 
+        #region 键盘与手柄
+
+        private void Register(Button button, Image image, Color color)
+        {
+            buttons.Add(button);
+            buttonImages.Add(image);
+            buttonColors.Add(color);
+        }
+
+        /// <summary>
+        /// 键盘方向键/手柄的当前项。只改当前项的底色，不去动 EventSystem 的选中态：
+        /// 那个选中态在鼠标点过之后会一直挂着高亮，鼠标玩家看着像按钮卡住了。
+        /// </summary>
+        private void Select(int index)
+        {
+            if (buttons.Count == 0) return;
+            index = Mathf.Clamp(index, 0, buttons.Count - 1);
+            if (selected >= 0 && selected < buttonImages.Count && buttonImages[selected] != null)
+                buttonImages[selected].color = buttonColors[selected];
+            selected = index;
+            if (buttonImages[index] != null)
+                buttonImages[index].color = BossRushUI.GetHoverColor(buttonColors[index]);
+        }
+
+        /// <summary>执行第 index 项。回调可能重开或关掉面板，调用方执行完必须立刻返回。</summary>
+        private void Press(int index)
+        {
+            if (index < 0 || index >= buttons.Count) return;
+            Button button = buttons[index];
+            if (button == null || !button.interactable) return;
+            button.onClick.Invoke();
+        }
+
+        private void SubscribeInput()
+        {
+            if (inputSubscribed) return;
+            try
+            {
+                global::UIInputManager.OnNavigate += OnNavigate;
+                global::UIInputManager.OnConfirm += OnConfirm;
+                global::UIInputManager.OnCancel += OnCancel;
+                inputSubscribed = true;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] 剧情面板订阅官方 UI 输入失败，手柄将无法操作面板：" + e.Message);
+            }
+        }
+
+        private void UnsubscribeInput()
+        {
+            if (!inputSubscribed) return;
+            inputSubscribed = false;
+            try
+            {
+                global::UIInputManager.OnNavigate -= OnNavigate;
+                global::UIInputManager.OnConfirm -= OnConfirm;
+                global::UIInputManager.OnCancel -= OnCancel;
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] 剧情面板退订官方 UI 输入失败：" + e.Message);
+            }
+        }
+
+        private void OnNavigate(global::UIInputEventData data)
+        {
+            if (!Visible || data == null || buttons.Count == 0) return;
+            int step = data.vector.y > 0.5f ? -1 : (data.vector.y < -0.5f ? 1 : 0);
+            if (step == 0) return;
+            Select(selected < 0 ? (step > 0 ? 0 : buttons.Count - 1) : selected + step);
+            data.Use();
+        }
+
+        private void OnConfirm(global::UIInputEventData data)
+        {
+            if (!Visible || data == null) return;
+            // 还没有当前项时，第一次确认只把焦点放到第一项：先让玩家看清自己选中了什么，
+            // 也免得打开面板的那一下交互键被同时当成「确认」，直接替玩家点掉第一个选项。
+            if (selected < 0) Select(0);
+            else Press(selected);
+            data.Use();
+        }
+
+        private void OnCancel(global::UIInputEventData data)
+        {
+            if (!Visible) return;
+            Dispose();
+            if (data != null) data.Use();
+        }
+
         internal void Tick()
         {
             if (!Visible) return;
             if (Input.GetKeyDown(KeyCode.Escape)) { Dispose(); return; }
+            // 数字键直选：主流 PC 对话界面的通用写法，手不必离开键盘去找鼠标。
+            int keyed = Mathf.Min(choiceCount, 9);
+            for (int i = 0; i < keyed; i++)
+            {
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i))
+                {
+                    Press(i);
+                    return;
+                }
+            }
             ZombieModeUIHelper.EnforceModalInputPause();
         }
 
+        #endregion
+
         public void Dispose()
         {
+            UnsubscribeInput();
             if (input != null) input.Release();
             input = null;
+            if (hideToken != null)
+            {
+                try { global::HUDManager.UnregisterHideToken(hideToken); }
+                catch (Exception e) { Debug.LogWarning("[SkyIsland] 注销 HUD 隐藏令牌失败：" + e.Message); }
+                hideToken = null;
+            }
             if (canvas != null) UnityEngine.Object.Destroy(canvas.gameObject);
             canvas = null;
             body = null;
             bodyViewport = null;
             bodyScroll = null;
+            buttons.Clear();
+            buttonImages.Clear();
+            buttonColors.Clear();
+            choiceCount = 0;
+            selected = -1;
         }
 
         #region 基础构件
@@ -457,8 +649,11 @@ namespace BossRush
             sign.transform.rotation = Quaternion.Euler(60, 0, 0);
             TextMeshPro text = sign.GetComponent<TextMeshPro>(); text.font = ZombieModeUIHelper.GetGameFont();
             text.text = title; text.fontSize = 3; text.alignment = TextAlignmentOptions.Center;
-            text.color = BossRushUIColors.WarningText;
+            // 纪念物上方的字不再是远远就亮着的黄字：点位上的光已经把「那里有东西」说清楚了，
+            // 字只在走近时浮现，用正文色而不是警示色（它不是警告）。
+            text.color = BossRushUIColors.TextPrimary;
             text.rectTransform.sizeDelta = new Vector2(18, 5);
+            SkyIslandProximityLabel.Attach(sign, 6f, 11f);
             return go;
         }
     }

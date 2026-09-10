@@ -46,6 +46,8 @@ namespace BossRush
         private readonly Func<string, bool> completed;
         private readonly Action<string> cleared;
         private readonly Action<string, bool> report;
+        /// <summary>遭遇 id → 玩家看得懂的名字（地标名或对手名）。由会话注入：本类不认识地标，也不反向依赖会话。</summary>
+        private readonly Func<string, string> describe;
         private readonly Action<Vector3> stormDefeated;
         private bool closed;
         private float nextTick;
@@ -54,11 +56,13 @@ namespace BossRush
         /// <summary>内容表由会话加载一次后传入；同一次进岛不重复解析 World.json。</summary>
         internal SkyIslandEncounters(GameObject root, CharacterMainControl player, GraphMask mask, int groundMask,
             SkyIslandContentData content, Func<bool> valid, Func<string, bool> completed, Action<string> cleared,
-            Action<string, bool> report, Action<Vector3> onStormDefeated)
+            Action<string, bool> report, Func<string, string> describe, Action<Vector3> onStormDefeated)
         {
             if (content == null) throw new ArgumentNullException("content");
+            if (describe == null) throw new ArgumentNullException("describe");
             this.root = root; this.player = player; this.mask = mask; this.groundMask = groundMask;
             this.valid = valid; this.completed = completed; this.cleared = cleared; this.report = report;
+            this.describe = describe;
             this.stormDefeated = onStormDefeated;
             // 一次加载时缓存，不在每帧/每次遭遇扫描全局资源。
             foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
@@ -227,7 +231,7 @@ namespace BossRush
                         if (completed(encounter.Id))
                         {
                             encounter.Cleared = true;
-                            report(L10n.T("航路已清理 · ", "Lane cleared · ") + encounter.Id, false);
+                            report(L10n.T("航路已清理 · ", "Lane cleared · ") + describe(encounter.Id), false);
                         }
                     }
                     catch (Exception e)

@@ -27,7 +27,7 @@ internal static class Program
             Physics.Ground = Root.transform;
             // 内容表由会话加载一次后传入；夹具走与生产同一条 Load 路径，保证 ContentSource 仍是真实结果。
             Encounters = new SkyIslandEncounters(Root, Player, new Pathfinding.GraphMask(), 1, SkyIslandContent.Load(), () => Valid,
-                id => Saved.Contains(id), id => { Attempts++; if (Accept) Saved.Add(id); }, (message, error) => { },
+                id => Saved.Contains(id), id => { Attempts++; if (Accept) Saved.Add(id); }, (message, error) => { }, id => id,
                 position => { StormTrophies++; });
         }
         internal void Tick(float seconds = 1) { Time.time += seconds; Encounters.Tick(); }

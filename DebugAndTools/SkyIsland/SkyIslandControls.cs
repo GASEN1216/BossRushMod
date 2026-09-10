@@ -88,7 +88,9 @@ namespace BossRush
             text.fontSize = size;
             text.color = BossRushUIColors.TextPrimary;
             text.raycastTarget = false;
-            child.GetComponent<LayoutElement>().preferredHeight = height;
+            // 只给下限、不钉死高度：LayoutElement 的布局优先级高于 TMP，钉死 preferredHeight 会让
+            // 纵向布局永远取这个数，长说明（尤其英文）折行后多出来的行直接画到下面的按钮上。
+            child.GetComponent<LayoutElement>().minHeight = height;
             return text;
         }
 

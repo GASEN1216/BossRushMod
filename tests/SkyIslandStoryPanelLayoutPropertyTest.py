@@ -47,7 +47,7 @@ PANEL_SRC = read(PANEL)
 C = {n: const(PANEL_SRC, n) for n in (
     'PanelWidth', 'Pad', 'Gap', 'BannerMaxHeight', 'BannerMinHeight', 'PortraitSize',
     'TitleMinHeight', 'TitleFontMin', 'TitleFontMax', 'BodyMinHeight', 'BodyPreferredMax',
-    'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'FooterHeight', 'ScrollbarGutter')}
+    'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'FooterHeight', 'ScrollbarGutter', 'KeyHintWidth')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
 
 # 参考分辨率 1920×1080、Expand 缩放，逻辑视口高度至少 1080。
@@ -83,8 +83,10 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
     choice_hs = []
     choices_h = 0.0
     for i, label in enumerate(choices):
+        # 选项左侧有数字键帽，文字可用宽度要再扣 KeyHintWidth（与生产 ChoiceLabelWidth 同一个算式）。
         h = max(C['ChoiceMinHeight'],
-                text_height(label, CONTENT_W - C['ChoicePadX'] * 2, 21.0) + C['ChoicePadY'] * 2)
+                text_height(label, CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth'], 21.0)
+                + C['ChoicePadY'] * 2)
         choice_hs.append(h)
         choices_h += h + (C['Gap'] * 0.5 if i > 0 else 0.0)
 
