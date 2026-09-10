@@ -97,6 +97,13 @@ BOUNTY_ANCHOR = 'Search_B'
 # 信鸽：`SkyIslandLetters` 里每封信登记的 (id, 锚点)；落点算法见 `SkyIslandWorldStory.PlacePigeon`。
 LETTERS_SRC = _read('DebugAndTools/SkyIsland/SkyIslandLetters.cs')
 LETTERS = re.findall(r'Letter\("(Letter_\d+)",\s*"([A-Za-z0-9_]+)"', LETTERS_SRC)
+# 采集点（内容批次三）：`SkyIslandFieldcraftRules.Nodes` 里每处的 (id, 锚点, 方位, 距离)；落点算法见 `SkyIslandGathering` 构造函数。
+FIELDCRAFT_SRC = _read('DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs')
+GATHER_NODES = [(node_id, marker, float(bearing), float(distance)) for node_id, marker, bearing, distance in re.findall(
+    r'Node\("([A-Za-z0-9]+)",\s*"([A-Za-z0-9_]+)",\s*([0-9.]+)f,\s*([0-9.]+)f,', FIELDCRAFT_SRC)]
+GATHER_HALF = _const(FIELDCRAFT_SRC, r'NodeTriggerSize\s*=\s*([0-9.]+)f', 'NodeTriggerSize') / 2.0
+# 撤离圈：采集读条要站着不动几秒，落在圈里会被顺手送回基地。码头 / 钟庭 / 两处航标广场（借 Region_D / Region_G）。
+EXTRACTION_MARKERS = ('MainExtraction', 'BellExtraction', 'Region_D', 'Region_G')
 
 
 def stable_hash(value):
@@ -207,7 +214,29 @@ def build_interactables():
             continue
         items.append(('pigeon:' + letter_id, spot, STORY_HALF, 'pigeon'))
 
+    # 8) 采集点（内容批次三）：每趟 30 处同时在场，落点只做地面 + 墙体两项裁决（与纪念物、信鸽同一个算法）。
+    for node_id, marker, bearing, distance in GATHER_NODES:
+        spot = resolve_crate(MARKERS[marker], bearing, distance)
+        if spot is None:
+            # 生产找不到站得住的地方就这趟不放这一处：没有交互体就没有竞争。
+            notes.append('采集点 %s 在 %s 没有站得住的落点，生产这趟不放这一处' % (node_id, marker))
+            continue
+        items.append(('gather:' + node_id, spot, GATHER_HALF, 'gather:' + node_id))
+
     return items, notes
+
+
+def check_gather_extraction_clearance(items):
+    """采集点不得压进撤离圈：站着读条的几秒里撤离读秒会同时走完。"""
+    errors = []
+    for name, pos, half, _ in items:
+        if not name.startswith('gather:'):
+            continue
+        for marker in EXTRACTION_MARKERS:
+            distance = horizontal(pos, MARKERS[marker])
+            if distance < EXTRACTION_RADIUS + half + 0.5:
+                errors.append('%s 离撤离圈 %s 只有 %.2f m（需 ≥ %.2f m）' % (name, marker, distance, EXTRACTION_RADIUS + half + 0.5))
+    return errors
 
 
 def horizontal(a, b):
@@ -276,10 +305,13 @@ def check_negative_probes():
 def main():
     check_negative_probes()
     assert len(LETTERS) >= 12, '信鸽锚点没解析全：%d 封' % len(LETTERS)
+    assert len(GATHER_NODES) == 30 and GATHER_HALF > 0, '采集点没解析全：%d 处' % len(GATHER_NODES)
     items, notes = build_interactables()
     assert len(items) >= 60, '静态交互体数量异常偏少：%d' % len(items)
+    placed_gather = sum(1 for name, _pos, _half, _group in items if name.startswith('gather:'))
+    assert placed_gather == len(GATHER_NODES), '有采集点在真实几何上落不了位：%d / %d' % (placed_gather, len(GATHER_NODES))
 
-    anchor_errors = check_own_anchor_clearance(items)
+    anchor_errors = check_own_anchor_clearance(items) + check_gather_extraction_clearance(items)
     overlaps, tight, closest = check_pairs(items)
 
     for note in notes:

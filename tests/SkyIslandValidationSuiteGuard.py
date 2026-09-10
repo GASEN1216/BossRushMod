@@ -58,6 +58,9 @@ MUTATING_MEMBERS = (
     ("Talk", "打开剧情面板"), ("ReadPoint", "打开剧情面板"), ("SetVisible", "改居民可见性"),
     ("Heal", "付费服务"), ("Repair", "付费服务"), ("Meal", "付费服务"),
     ("Announce", "往玩家屏幕发提示"), ("UseCompass", "往玩家屏幕发提示"),
+    # 内容批次三：采集会发物品、合成会扣材料、耗材会挂增益，打开合成台会弹面板。
+    ("Harvest", "采集发物品"), ("Craft", "合成扣材料"), ("UseConsumable", "用耗材挂增益"),
+    ("OpenCrafting", "打开合成面板"), ("CraftChoice", "打开合成面板"),
 )
 
 # 不以方法名出现、但同样会改状态的写法。

@@ -125,21 +125,53 @@ After you ring the Homecoming Bell, the homecoming boat ties up **beside the doc
 
 ### Sky Islands items
 
-The archipelago has five items of its own (TypeID 500068–500072). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report.
+The archipelago has five items of its own (TypeID 500068–500072), plus ten gathered materials and in-raid consumables (500073–500082, see "Gathering, crafting and the night wind" below). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report.
 
 - **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and **sent straight to base storage**. A collector's piece that can be sold.
 - **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. Sells for more.
-- **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path, with a bearing and a rough distance. **Not consumed.**
-- **Homecoming Bento** (food): occasionally found in island crates of every tier. Restores energy and water, and a little health.
-- **Starmoss Salve** (medicine): occasionally found in Voyage Supplies and Starworks Cache crates. Restores health.
+- **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too, and Fuzhou's dock workbench can make a replacement. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path, with a bearing and a rough distance. **Not consumed.**
+- **Homecoming Bento** (food): occasionally found in island crates of every tier, or cooked at Qinghe's stove. Restores energy and water, and a little health.
+- **Starmoss Salve** (medicine): occasionally found in Voyage Supplies and Starworks Cache crates, or ground at Miantai's mortar. Restores health.
 
 Each keepsake is granted once per save, and the grant is recorded with the Sky Islands story save. Saves that had already rung the bell, beaten the Windeater or kept a letter before this update receive theirs on the next trip to the islands. Island goods are packed into crates **on top of** their normal contents: they neither take a slot from the regular item count nor change what else is inside.
+
+### Gathering, crafting and the night wind
+
+There are **30 gathering spots** beside the islands' lamps, landmarks and relay platforms. You can see a faint glow from a distance; the name appears as you get close. Stand next to one and hold interact for 1.5–3.5 seconds to gather. Each spot can be gathered once per raid and grows back on your next departure. The deeper the island, the more it yields:
+
+| Spot | Yields | Notes |
+| --- | --- | --- |
+| Greenear tuft | Greenear Sheaf | 2–3 at Windchime Market and the Green Terraces; 3–4 at Mirrorwater Temple and Frogsong Pool |
+| Stranded driftwood | Driftwood | 1–2 at the dock and the market; 2–3 in Hanging Root Wood, on the boardwalk, at the Upturned Post Hut and on the woodland relay platform |
+| Cloudmoss patch | Cloudmoss Fiber | 1–2 on the terraces; 2–3 in Hanging Root Wood, at Mirrorwater Temple and on the hidden isles |
+| Brass vein | Brass Scrap | 2–3 in Rainlisten Grotto (15% chance of a windcrystal shard); 2–4 at the workshop, the Bell Court, the overlook and the maintenance-walk platform (30%) |
+| Wind crystal cluster | Windcrystal Shard | 1–2 on the boardwalk, in Rainlisten Grotto and on the centre-bridge platform (15% chance of stardust); 2–3 at the workshop, the Bell Court and the overlook (35%); **at night (21:00–05:00) the stardust chance rises by another 15%** |
+
+Whatever you gather goes into your pack, and **if your pack is full it drops at your feet** — gathered goods ride along with this raid's pack like any other loot and are never sent back to base storage.
+
+There are three **crafting stations**. Each one can be opened through its resident or through the device beside it, so the recipes stay available if the resident has married and left or is not there:
+
+- **Fuzhou · dock workbench** (Fuzhou / the dock device): Wind Lantern (Driftwood ×2 + Cloudmoss Fiber ×1), Qinglan Windcrystal (Windcrystal Shard ×5 — fusing shards into a whole), Qinglan Charm (Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1), Wind-Vane Compass (Brass Scrap ×4 + Windcrystal Shard ×2).
+- **Qinghe · garden stove** (Qinghe / the terrace garden): Homecoming Bento (Greenear Sheaf ×4 + Driftwood ×1), Windward Incense (Cloudmoss Fiber ×2 + Greenear Sheaf ×2).
+- **Miantai · moss mortar** (Miantai / the Hanging Root Wood note "a mailbag in the roots"): Starmoss Salve (Cloudmoss Fiber ×4 + Windcrystal Shard ×1), Windward Incense (as above).
+
+Each recipe button shows how many of each material you have against how many it needs, **counting your pack only, not base storage**. If you are short, the station tells you what is missing and takes nothing. Like every other island panel, a station will not open with enemies nearby.
+
+**The night wind**: at night (game time 21:00 to 05:00), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there, the wind on Windsong Boardwalk and the bridges is especially strong. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster — **no health loss and no slower running**. Stand by a campfire (the dock workbench, the terrace stove, or beside Miantai), light a wind lantern or burn windward incense and the chill fades. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day the islands themselves are calm.
+
+**In-raid consumables** only work on the Qinglan isles — away from them the use button is greyed out, so none are wasted — and their effects end when you leave. Their timers run on game time, so they do not burn down behind the pause menu:
+
+- **Wind Lantern**: a warm light follows you overhead for about 4 minutes; the chill does not build while it burns.
+- **Windward Incense**: about 5 minutes immune to wind chill, with +15% stamina recovery.
+- **Qinglan Charm**: +10% max health for this raid (only the newly added portion is topped up — no free full heal) and +10% stamina recovery; one charm per raid.
+
+[tip] Materials stack and can be sold, but they are cheap: gathering all 30 spots in one raid is worth roughly 14,000 by item value (a little more at night, from the extra stardust). Crafting only adds a small premium; the real point is carrying a lantern through the night and wearing a charm into the Windeater fight.
 
 ### What the run records
 
 Beacons, side paths, the named opponents' and the Windeater's outcomes, visited regions, notes and the ending are all recorded per save slot. Ordinary encounter clears are recorded too — repairing the beacons and calibrating the telescope read those as prerequisites — but they do **not** stop those encounters from returning next raid. Leaving or dying never clears recorded story facts, and an unfinished fight is never written down as a permanent failure.
 
-Crate contents, contract progress and the homecoming meal are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own five items are listed under "Sky Islands items" above. Pigeon letters, roster pages and keepsake grants are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
+Crate contents, contract progress, the homecoming meal, gathering spots, consumable effects and chill are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own items are listed under "Sky Islands items" and "Gathering, crafting and the night wind" above. Pigeon letters, roster pages and keepsake grants are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
 
 [tip] A region only counts as visited once you actually set foot on that island — eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.
 

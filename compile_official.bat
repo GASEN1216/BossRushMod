@@ -224,6 +224,9 @@ echo(DebugAndTools\SkyIsland\SkyIslandPuzzles.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs
 echo(DebugAndTools\SkyIsland\SkyIslandJournal.cs
 echo(DebugAndTools\SkyIsland\SkyIslandItemRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandGathering.cs
+echo(DebugAndTools\SkyIsland\SkyIslandFieldcraft.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs
@@ -989,6 +992,7 @@ echo(Localization\BackMountainLocalization.cs
 echo(Integration\BackMountain\BackMountainRuntimeModule.cs
 echo(Integration\SkyIsland\SkyIslandItems.cs
 echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
+echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
 
 dotnet "%DOTNET_SDK%\Roslyn\bincore\csc.dll" @"%OUTPUT_DIR%\bossrush.rsp"

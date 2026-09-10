@@ -4,6 +4,42 @@
 
 ## 最新修复
 
+### 2026-09-11 天空岛内容批次三：采集点 / 群岛材料 / 合成台 / 局内耗材 / 夜风（新增 TypeID 500073–500082）
+
+**分类**：COMPAT；新增 TypeID 500073–500082（owner 授权新增 TypeID）；存档**不加字段、不加旗标位**（采集点、增益与寒意按出击刷新）；
+字符串反射写官方私有序列化字段 `InteractableBase.interactTime`（WIRE+，写入后读回公开的 `InteractTime` 核对）。无人值守。
+设计小结、循环图、材料 / 配方 / 产物表、每趟期望产出与经济对比、14 项待拍板在 `docs/天空岛_内容批次三_2026-09-11.md`（local-only）；
+做经济对比时顺带确认的**既有**风险（官方皇冠落在星工遗存池）登记为 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-11-001`（Open，本批不改行为）。
+
+**内容**：
+- 纯规则 `SkyIslandFieldcraftRules`（只依赖 `System`，隔离回归直接执行）：30 处采集点表、产出与附带、8 条配方与经济倍率、夜风（风力 / 寒意 / 滞回）、耗材与提示文案。
+- 接线：`SkyIslandFieldcraft`（owner：采集 `SkyIslandGathering`、合成、耗材、夜风、营火）挂在 `SkyIslandWorldStory`（`TickFieldcraft` / `CraftChoice` / `OpenCrafting` / `Dispose`），
+  **`SkyIslandSession.cs` 一行不动**；浮舟 / 晴禾 / 眠苔与 `Search_A` / `Search_C` / `Search_D_02` 各挂一份合成台。产出与成品进背包、放不下落在脚边，不寄仓库。
+- 物品：`SkyIslandItems` 定义表加 7 件材料与 3 件耗材（`SkyIslandFieldcraftUsage`，离岛 `CanBeUsed` 为 false），价值统一取 `SkyIslandItemRules.ValueOf`；克隆注册、掉落黑名单（代码 + JSON）、
+  `ZombieModeStatNames` 加 `StaminaRecoverRate` / `EnergyCost`、`SkyIslandRuntimeModule` 清静态引用；图标 10 张（`tools/gen_sky_island_item_icons.py` 扩清单，`Assets/` 不进 git）。
+- 官方没有食物新鲜度机制（反编译源零命中），不做，写进待拍板。
+
+**同步**：中英 Wiki（天空岛新增「采集、合成与夜风」一节、消耗品三条、关键物品「群岛材料 / 晴岚风晶」一条、批次二物品的新去向），`wiki-site` 经 `sync-content.mjs` 重生成 6 个镜像页；
+`GameplayCoverage.json` 新增 `M_SKY_ISLAND_11`；待人工验证清单第 2.11 步（15 行，local-only）；`AGENTS.md` §4.3、`docs/contracts.md` §1 与 ID 表台账到 500082（下一可用 500083）；
+两张天空岛 repowiki 卡追加本批章节。守卫同步：`SkyIslandContentPackGuard`（图标 5 → 15）、`SkyIslandLocalizationGuard.FILES`、`SkyIslandValidationSuiteGuard` 写入口名单、
+`LootBlacklistDataRegistryGuard` 常量映射、交互竞争与面板布局两个属性测试。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 正式构建并部署 | 两次 `Build succeeded!`（零编译错误），`Build/bossrush.rsp` 无 `/define`；`BossRush.dll` 4,890,112 B，SHA-256 `aeddd7024c37028fa52a9b513ae3de48d8ecd37616df65bdecf95cf92746f266`，`Build/` 与游戏目录一致；10 张新图标与 `LootBlacklist.json` 部署副本逐个一致；游戏目录无 Dev 产物 |
+| 2 | 全量守卫 | `python tools/run_guards.py`：588 个脚本，588 PASS / 0 NEW-FAIL / 0 KNOWN-RED（含新守卫 `SkyIslandFieldcraftGuard`） |
+| 3 | 执行回归 | `python tools/run_runtime_regressions.py` 全量：28 PASS / 0 FAIL（`SkyIslandStory` 418 → 686 条断言） |
+| 4 | 属性测试 | 交互竞争 120 个静态交互体零重叠（新增 30 处采集点，另断言采集点离撤离圈足够远）；面板布局纳入合成台最坏文案，15 种组合不溢出 |
+| 5 | 反向验证 | 38 个探针全部转红、都红在预期断言上：`SkyIslandFieldcraftGuard` 21 处，本地化 / F3 只读 / 黑名单 / 交互竞争 ×2 / 面板布局各 1，执行回归 11 个（无编译错误）。破坏做在仓库稀疏副本（`HEAD` + 本批文件）上，逐字节还原并 sha256 核对，真实工作区前后 sha256 不变 |
+| 6 | 图标 | 10 张 512×512 RGBA，alpha 0–255、四角透明、零洋红与半透明洋红残边 |
+
+**过程中抓到并改掉的**：新守卫首版三处自身解析错误（克隆注册表按兜底委托里的 `);` 截断、价值正则误伤材料 / 耗材行、战斗门判断没去前导空白），首跑即红、改正后绿；
+反向验证又抓到一处：「不寄仓库」禁令只规范了源码一侧的空白、从不命中（P02 首轮只靠顺序断言转红），改成两侧规范后复跑红在禁令本身。另有两个探针自身的问题（锚点重复、只打到解析）已改后复跑转红。
+
+**待人工**（未实机）：`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 2.11 步与 `M_SKY_ISLAND_11`。部署成功不等于已生效。未推送。
+
 ### 2026-09-10 天空岛内容批次二：信鸽来信 / 秘境谜题 / 群岛手记 / 归航船名册 / 5 件天空岛物品，顺带修 R-1 R-7 R-8 R-14
 
 **分类**：COMPAT；新增 TypeID 500068–500072（owner 授权）；存档**不加字段、不加旗标位**（来信 / 名册 / 纪念品发放记录复用 `discoveredNotes`，前缀 `Letter_` / `Crew_` / `Keepsake_`）。

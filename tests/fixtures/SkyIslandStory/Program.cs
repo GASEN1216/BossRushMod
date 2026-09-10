@@ -449,8 +449,10 @@ internal static class Program
         Check(SkyIslandJournal.RegionsVisited(new SkyIslandStoryData { visitedRegions = 4095 }) == 12, "all twelve regions counted");
 
         // ---- 批次二：天空岛物品规则（纪念品台账、岛上特产、罗盘读数） ----
-        Check(SkyIslandItemRules.AllTypeIds.Length == 5 && SkyIslandItemRules.AllTypeIds[0] == 500068
-            && SkyIslandItemRules.AllTypeIds[4] == 500072, "sky island items occupy 500068-500072");
+        Check(SkyIslandItemRules.AllTypeIds.Length == 15 && SkyIslandItemRules.AllTypeIds[0] == 500068
+            && SkyIslandItemRules.AllTypeIds[14] == 500082, "sky island items occupy 500068-500082 (batch two + batch three)");
+        for (int i = 1; i < SkyIslandItemRules.AllTypeIds.Length; i++)
+            Check(SkyIslandItemRules.AllTypeIds[i] == SkyIslandItemRules.AllTypeIds[i - 1] + 1, "sky island item ids are contiguous: " + i);
         foreach (int typeId in SkyIslandItemRules.AllTypeIds)
             Check(SkyIslandItemRules.NameCn(typeId) != SkyIslandItemRules.NameCn(0) && SkyIslandItemRules.NameEn(typeId) != SkyIslandItemRules.NameEn(0),
                 "item has its own name in both languages: " + typeId);
@@ -523,6 +525,185 @@ internal static class Program
             && SkyIslandLetters.Collected(story.Current, "Letter_01"), "journal entries survive re-entry");
         story.Close();
         Check(SavesSystem.Subscribers == 0, "batch-two sessions released events");
+
+        // ---- 批次三：采集点表 ----
+        SkyIslandGatherNode[] gatherNodes = SkyIslandFieldcraftRules.Nodes;
+        Check(gatherNodes.Length == 30, "thirty gathering spots");
+        var gatherIds = new HashSet<string>(StringComparer.Ordinal);
+        var kindsPlaced = new HashSet<SkyIslandGatherKind>();
+        foreach (SkyIslandGatherNode node in gatherNodes)
+        {
+            Check(gatherIds.Add(node.Id) && SkyIslandFieldcraftRules.FindNode(node.Id) == node, "gathering spot id unique: " + node.Id);
+            Check(SkyIslandStoryService.RegionBit(node.Region) != 0, "gathering spot sits in a real region: " + node.Id);
+            Check(node.Distance >= 6f && node.Distance <= 12f && node.Bearing >= 0f && node.Bearing < 360f, "gathering offset sane: " + node.Id);
+            kindsPlaced.Add(node.Kind);
+        }
+        Check(kindsPlaced.Count == 5 && SkyIslandFieldcraftRules.FindNode("Z9") == null, "all five gathering kinds are placed, unknown ids are not");
+        var gatherKinds = new[] { SkyIslandGatherKind.Grass, SkyIslandGatherKind.Driftwood, SkyIslandGatherKind.Moss, SkyIslandGatherKind.Ore, SkyIslandGatherKind.Crystal };
+        var tiers = new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks };
+        foreach (SkyIslandGatherKind kind in gatherKinds)
+        {
+            int previousMin = 0, previousMax = 0;
+            double previousExtra = 0.0;
+            foreach (SkyIslandLootTier tier in tiers)
+            {
+                int min, max;
+                SkyIslandFieldcraftRules.CountRange(kind, tier, out min, out max);
+                Check(min >= 1 && min <= max && max <= 5, "count range sane: " + kind + "/" + tier);
+                Check(min >= previousMin && max >= previousMax, "yield never shrinks as the isles get more dangerous: " + kind + "/" + tier);
+                double extra = SkyIslandFieldcraftRules.ExtraChance(kind, tier, false);
+                Check(extra >= previousExtra && SkyIslandFieldcraftRules.ExtraChance(kind, tier, true) >= extra,
+                    "extras never shrink with danger, and night never lowers them: " + kind + "/" + tier);
+                Check(SkyIslandFieldcraftRules.InteractSeconds(kind) >= 1f && SkyIslandFieldcraftRules.InteractSeconds(kind) <= 4f, "gathering read time is short: " + kind);
+                previousMin = min; previousMax = max; previousExtra = extra;
+            }
+        }
+        Check(SkyIslandFieldcraftRules.ExtraChance(SkyIslandGatherKind.Crystal, SkyIslandLootTier.Supply, true) == 0.0
+            && SkyIslandFieldcraftRules.ExtraChance(SkyIslandGatherKind.Grass, SkyIslandLootTier.Starworks, true) == 0.0,
+            "safe zones and plain spots never roll extras");
+
+        // ---- 批次三：同一趟同一处的产出确定；昼夜只改附带、不改主产出件数 ----
+        SkyIslandGatherNode deepCrystal = SkyIslandFieldcraftRules.FindNode("G3");
+        Check(deepCrystal != null && deepCrystal.Kind == SkyIslandGatherKind.Crystal && deepCrystal.Tier == SkyIslandLootTier.Starworks,
+            "G3 is a deep wind crystal cluster");
+        SkyIslandYield[] firstRoll = SkyIslandFieldcraftRules.Roll(deepCrystal, SkyIslandLootTables.CreateStream(42, "gather:G3"), false);
+        SkyIslandYield[] secondRoll = SkyIslandFieldcraftRules.Roll(deepCrystal, SkyIslandLootTables.CreateStream(42, "gather:G3"), false);
+        Check(firstRoll.Length == secondRoll.Length && firstRoll[0].Count == secondRoll[0].Count, "the same raid seed and spot give the same yield");
+        Check(SkyIslandFieldcraftRules.Roll(null, SkyIslandLootTables.CreateStream(1, "x"), false).Length == 0, "no spot, no yield");
+        const int gatherSamples = 4000;
+        int dayExtras = 0, nightExtras = 0;
+        bool primaryStable = true, extraKept = true;
+        for (int seed = 0; seed < gatherSamples; seed++)
+        {
+            SkyIslandYield[] day = SkyIslandFieldcraftRules.Roll(deepCrystal, SkyIslandLootTables.CreateStream(seed, "gather:G3"), false);
+            SkyIslandYield[] night = SkyIslandFieldcraftRules.Roll(deepCrystal, SkyIslandLootTables.CreateStream(seed, "gather:G3"), true);
+            primaryStable &= day[0].TypeId == BossRushItemIds.SkyIslandWindcrystalShard && day[0].Count >= 2 && day[0].Count <= 3
+                && night[0].TypeId == day[0].TypeId && night[0].Count == day[0].Count;
+            if (day.Length > 1)
+            {
+                dayExtras++;
+                extraKept &= day[1].TypeId == BossRushItemIds.SkyIslandStardust && day[1].Count == 1 && night.Length > 1;
+            }
+            if (night.Length > 1) nightExtras++;
+        }
+        Check(primaryStable, "night only changes the extra, never the primary item or its count");
+        Check(extraKept, "an extra rolled by day is still there by night");
+        Check(Math.Abs(dayExtras / (double)gatherSamples - 0.35) < 0.03 && Math.Abs(nightExtras / (double)gatherSamples - 0.50) < 0.03,
+            "deep cluster stardust is about 35% by day and 50% by night");
+
+        // ---- 批次三：一趟采完的期望产出与价值（钉住表的形状；报告里的经济估算就是这组数） ----
+        Dictionary<int, double> dayYield = SkyIslandFieldcraftRules.ExpectedRaidYield(false);
+        Dictionary<int, double> nightYield = SkyIslandFieldcraftRules.ExpectedRaidYield(true);
+        Check(dayYield.Count == 6 && Math.Abs(dayYield[BossRushItemIds.SkyIslandGreenearSheaf] - 14.5) < 1e-9
+            && Math.Abs(dayYield[BossRushItemIds.SkyIslandDriftwood] - 14.5) < 1e-9 && Math.Abs(dayYield[BossRushItemIds.SkyIslandCloudmossFiber] - 14.0) < 1e-9
+            && Math.Abs(dayYield[BossRushItemIds.SkyIslandBrassScrap] - 17.5) < 1e-9 && Math.Abs(dayYield[BossRushItemIds.SkyIslandWindcrystalShard] - 13.65) < 1e-9
+            && Math.Abs(dayYield[BossRushItemIds.SkyIslandStardust] - 1.5) < 1e-9, "expected raid yield by day");
+        Check(Math.Abs(nightYield[BossRushItemIds.SkyIslandStardust] - 2.4) < 1e-9
+            && Math.Abs(nightYield[BossRushItemIds.SkyIslandWindcrystalShard] - 13.65) < 1e-9, "night adds stardust only");
+        Check(Math.Abs(SkyIslandFieldcraftRules.ExpectedRaidValue(false) - 13932.5) < 1e-6
+            && Math.Abs(SkyIslandFieldcraftRules.ExpectedRaidValue(true) - 14742.5) < 1e-6, "expected gathering value per raid");
+        foreach (int typeId in SkyIslandItemRules.AllTypeIds)
+            Check(SkyIslandItemRules.ValueOf(typeId) > 0, "every sky island item has a value: " + typeId);
+
+        // ---- 批次三：配方 ----
+        Check(SkyIslandFieldcraftRules.Recipes.Length == 8, "eight recipes");
+        var recipeIds = new HashSet<string>(StringComparer.Ordinal);
+        var skyItems = new HashSet<int>(SkyIslandItemRules.AllTypeIds);
+        foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
+        {
+            Check(recipeIds.Add(recipe.Id) && SkyIslandFieldcraftRules.FindRecipe(recipe.Id) == recipe, "recipe id unique: " + recipe.Id);
+            Check(skyItems.Contains(recipe.OutputTypeId) && recipe.OutputCount >= 1 && recipe.Inputs.Length >= 1, "recipe makes a registered sky island item: " + recipe.Id);
+            foreach (SkyIslandIngredient input in recipe.Inputs)
+                Check(Array.IndexOf(SkyIslandFieldcraftRules.MaterialTypeIds, input.TypeId) >= 0 && input.Count >= 1 && input.TypeId != recipe.OutputTypeId,
+                    "recipe inputs are island materials: " + recipe.Id);
+            double ratio = SkyIslandFieldcraftRules.OutputValue(recipe) / (double)SkyIslandFieldcraftRules.InputValue(recipe);
+            Check(ratio >= 0.9 && ratio <= 2.0, "crafting is a small premium, not a money printer: " + recipe.Id + " x" + ratio.ToString("0.00"));
+        }
+        foreach (SkyIslandCraftStation station in new[] { SkyIslandCraftStation.Dock, SkyIslandCraftStation.Stove, SkyIslandCraftStation.Mortar })
+        {
+            int stationRecipes = SkyIslandFieldcraftRules.RecipesFor(station).Count;
+            Check(stationRecipes >= 2 && stationRecipes <= 4, "each station fits in one panel page: " + station);
+        }
+        // 每件批次三物品都拿得到：从采集点能出的出发，按配方做不动点闭包。
+        var obtainable = new HashSet<int>();
+        foreach (SkyIslandGatherNode node in gatherNodes)
+        {
+            obtainable.Add(SkyIslandFieldcraftRules.PrimaryTypeId(node.Kind));
+            if (SkyIslandFieldcraftRules.ExtraTypeId(node.Kind) != 0 && SkyIslandFieldcraftRules.ExtraChance(node.Kind, node.Tier, false) > 0.0)
+                obtainable.Add(SkyIslandFieldcraftRules.ExtraTypeId(node.Kind));
+        }
+        for (bool grew = true; grew;)
+        {
+            grew = false;
+            foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
+            {
+                bool ready = true;
+                foreach (SkyIslandIngredient input in recipe.Inputs) ready &= obtainable.Contains(input.TypeId);
+                if (ready && obtainable.Add(recipe.OutputTypeId)) grew = true;
+            }
+        }
+        for (int typeId = BossRushItemIds.SkyIslandCloudmossFiber; typeId <= BossRushItemIds.SkyIslandQinglanCharm; typeId++)
+            Check(obtainable.Contains(typeId), "every batch-three item has a way to get it: " + typeId);
+        SkyIslandRecipe lanternRecipe = SkyIslandFieldcraftRules.FindRecipe("Lantern");
+        var pack = new Dictionary<int, int> { { BossRushItemIds.SkyIslandDriftwood, 1 }, { BossRushItemIds.SkyIslandCloudmossFiber, 5 } };
+        Func<int, int> countInPack = id => { int have; return pack.TryGetValue(id, out have) ? have : 0; };
+        List<SkyIslandIngredient> shortBy = SkyIslandFieldcraftRules.Missing(lanternRecipe, countInPack);
+        Check(shortBy.Count == 1 && shortBy[0].TypeId == BossRushItemIds.SkyIslandDriftwood && shortBy[0].Count == 1
+            && !SkyIslandFieldcraftRules.CanCraft(lanternRecipe, countInPack), "one driftwood short of a lantern");
+        Check(SkyIslandFieldcraftRules.MissingMessage(shortBy) == "材料还差：浮木 ×1。", "missing materials are spelled out");
+        pack[BossRushItemIds.SkyIslandDriftwood] = 2;
+        Check(SkyIslandFieldcraftRules.CanCraft(lanternRecipe, countInPack) && SkyIslandFieldcraftRules.Missing(lanternRecipe, countInPack).Count == 0,
+            "two driftwood and a fibre make a lantern");
+        Check(SkyIslandFieldcraftRules.RecipeLabel(lanternRecipe, countInPack) == "制作 风灯（浮木 2/2 · 云苔纤维 1/1）",
+            "recipe button shows have/need, capped at need");
+        Check(!SkyIslandFieldcraftRules.CanCraft(null, countInPack) && SkyIslandFieldcraftRules.PackSummary(null).Contains("采集点"),
+            "no recipe cannot be crafted; an empty pack points at the gathering spots");
+
+        // ---- 批次三：耗材与夜风 ----
+        Check(SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandWindLantern) == SkyIslandFieldBuff.Lantern
+            && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandWindwardIncense) == SkyIslandFieldBuff.Incense
+            && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandQinglanCharm) == SkyIslandFieldBuff.Charm
+            && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossFiber) == SkyIslandFieldBuff.None, "consumables map to their effects");
+        Check(SkyIslandFieldcraftRules.IsNight(21) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
+            && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(20.99)
+            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 21:00 to 05:00");
+        Check(SkyIslandFieldcraftRules.WindLevel(false, false, false, false) == 0 && SkyIslandFieldcraftRules.WindLevel(true, false, false, false) == 1
+            && SkyIslandFieldcraftRules.WindLevel(false, true, false, false) == 1 && SkyIslandFieldcraftRules.WindLevel(true, true, false, false) == 2
+            && SkyIslandFieldcraftRules.WindLevel(false, false, true, false) == 0 && SkyIslandFieldcraftRules.WindLevel(false, false, true, true) == 1
+            && SkyIslandFieldcraftRules.WindLevel(true, true, true, true) == 2, "wind level: night +1, bridge +1, storm pending on boardwalk or bridge +1, capped at 2");
+        float exposure = 0f;
+        int breezeSeconds = 0;
+        while (!SkyIslandFieldcraftRules.NextChilled(false, exposure) && breezeSeconds < 1000)
+        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 1, false, 1f); breezeSeconds++; }
+        exposure = 0f;
+        int galeSeconds = 0;
+        while (!SkyIslandFieldcraftRules.NextChilled(false, exposure) && galeSeconds < 1000)
+        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 2, false, 1f); galeSeconds++; }
+        Check(breezeSeconds == 143 && galeSeconds == 67, "a breeze chills in about 143 game seconds, a gale in about 67");
+        Check(SkyIslandFieldcraftRules.StepExposure(100f, 2, true, 1f) == 96f && SkyIslandFieldcraftRules.StepExposure(10f, 0, false, 10f) == 0f
+            && SkyIslandFieldcraftRules.StepExposure(99f, 2, false, 5f) == 100f && SkyIslandFieldcraftRules.StepExposure(50f, 2, false, 0f) == 50f,
+            "warmth beats any wind, calm recovers, exposure is clamped and paused time adds nothing");
+        Check(SkyIslandFieldcraftRules.NextChilled(true, 41f) && !SkyIslandFieldcraftRules.NextChilled(true, 40f)
+            && !SkyIslandFieldcraftRules.NextChilled(false, 99.9f) && SkyIslandFieldcraftRules.NextChilled(false, 100f), "wind chill hysteresis");
+        Check(SkyIslandFieldcraftRules.ChillStaminaRecover < 0f && SkyIslandFieldcraftRules.ChillStaminaRecover >= -0.3f
+            && SkyIslandFieldcraftRules.ChillEnergyCost > 0f && SkyIslandFieldcraftRules.ChillEnergyCost <= 0.3f, "wind chill stays a mild penalty");
+
+        // ---- 批次三：英文界面没有残留中文 ----
+        L10n.IsChinese = false;
+        string englishThree = SkyIslandFieldcraftRules.PackSummary(countInPack) + SkyIslandFieldcraftRules.PackSummary(null)
+            + SkyIslandFieldcraftRules.MissingMessage(shortBy) + SkyIslandFieldcraftRules.CraftedMessage(lanternRecipe)
+            + SkyIslandFieldcraftRules.HarvestCaption(firstRoll) + SkyIslandFieldcraftRules.HarvestCaption(null)
+            + SkyIslandFieldcraftRules.CharmAlreadyWorn + SkyIslandFieldcraftRules.OffIsland + SkyIslandFieldcraftRules.WindExplain(true)
+            + SkyIslandFieldcraftRules.ExposureWarning + SkyIslandFieldcraftRules.ChillStarted + SkyIslandFieldcraftRules.ChillEnded;
+        foreach (SkyIslandCraftStation station in new[] { SkyIslandCraftStation.Dock, SkyIslandCraftStation.Stove, SkyIslandCraftStation.Mortar })
+            englishThree += SkyIslandFieldcraftRules.StationName(station) + SkyIslandFieldcraftRules.StationChoice(station) + SkyIslandFieldcraftRules.StationIntro(station);
+        foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes) englishThree += SkyIslandFieldcraftRules.RecipeLabel(recipe, countInPack);
+        foreach (SkyIslandGatherKind kind in gatherKinds) englishThree += SkyIslandFieldcraftRules.GatherLabel(kind);
+        foreach (SkyIslandFieldBuff buff in new[] { SkyIslandFieldBuff.Lantern, SkyIslandFieldBuff.Incense, SkyIslandFieldBuff.Charm })
+            englishThree += SkyIslandFieldcraftRules.UsageText(buff) + SkyIslandFieldcraftRules.BuffStarted(buff) + SkyIslandFieldcraftRules.BuffLow(buff) + SkyIslandFieldcraftRules.BuffEnded(buff);
+        foreach (int typeId in SkyIslandItemRules.AllTypeIds) englishThree += SkyIslandItemRules.Name(typeId);
+        L10n.IsChinese = true;
+        Check(!ContainsCjk(englishThree), "batch-three text has an English half everywhere");
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

@@ -40,5 +40,28 @@ namespace BossRush
         public const int SkyIslandHomecomingBento = 500071;
         /// <summary>星苔药膏：岛上特产药品（回复生命）。</summary>
         public const int SkyIslandStarmossSalve = 500072;
+
+        // 天空岛内容批次三 500073-500082：采集材料、碎片凑整与局内耗材
+        // （配方与产出规则在 DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs，同样由隔离回归直接链接）。
+        /// <summary>云苔纤维：云苔处采集的材料。</summary>
+        public const int SkyIslandCloudmossFiber = 500073;
+        /// <summary>青穗草：青穗草丛采集的材料。</summary>
+        public const int SkyIslandGreenearSheaf = 500074;
+        /// <summary>浮木：搁浅的浮木处采集的材料。</summary>
+        public const int SkyIslandDriftwood = 500075;
+        /// <summary>残铜片：残铜矿脉采集的材料。</summary>
+        public const int SkyIslandBrassScrap = 500076;
+        /// <summary>风晶碎片：风晶簇采集的碎片，五片凑成一块晴岚风晶。</summary>
+        public const int SkyIslandWindcrystalShard = 500077;
+        /// <summary>星屑：深处风晶簇（夜里更多）带出的稀有材料。</summary>
+        public const int SkyIslandStardust = 500078;
+        /// <summary>晴岚风晶：风晶碎片在渡口工台凑整成的完整物品。</summary>
+        public const int SkyIslandQinglanWindcrystal = 500079;
+        /// <summary>风灯：局内照明耗材，燃着时抵御夜风寒意。</summary>
+        public const int SkyIslandWindLantern = 500080;
+        /// <summary>驱风香：局内耗材，一段时间不受风寒、耐力恢复加快。</summary>
+        public const int SkyIslandWindwardIncense = 500081;
+        /// <summary>晴岚护符：局内耗材，本趟出击生命上限与耐力恢复小幅提升。</summary>
+        public const int SkyIslandQinglanCharm = 500082;
     }
 }

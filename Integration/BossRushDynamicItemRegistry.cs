@@ -384,7 +384,18 @@ namespace BossRush
                 BossRushItemIds.SkyIslandWindeaterCore,
                 BossRushItemIds.SkyIslandWindVaneCompass,
                 BossRushItemIds.SkyIslandHomecomingBento,
-                BossRushItemIds.SkyIslandStarmossSalve);
+                BossRushItemIds.SkyIslandStarmossSalve,
+                // 内容批次三：采集材料、碎片凑整与局内耗材（同一套克隆兜底）。
+                BossRushItemIds.SkyIslandCloudmossFiber,
+                BossRushItemIds.SkyIslandGreenearSheaf,
+                BossRushItemIds.SkyIslandDriftwood,
+                BossRushItemIds.SkyIslandBrassScrap,
+                BossRushItemIds.SkyIslandWindcrystalShard,
+                BossRushItemIds.SkyIslandStardust,
+                BossRushItemIds.SkyIslandQinglanWindcrystal,
+                BossRushItemIds.SkyIslandWindLantern,
+                BossRushItemIds.SkyIslandWindwardIncense,
+                BossRushItemIds.SkyIslandQinglanCharm);
 
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);

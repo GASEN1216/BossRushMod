@@ -26,6 +26,10 @@ namespace BossRush
         public const string ReloadSpeedGain = "ReloadSpeedGain";
         public const string DashSpeed = "DashSpeed";
         public const string ElementFactorPhysics = "ElementFactor_Physics";
+
+        // 耐力与饥饿（天空岛夜风、驱风香与晴岚护符用；官方 CharacterMainControl 的 staminaRecoverRateHash / energyCostPerMinHash）。
+        public const string StaminaRecoverRate = "StaminaRecoverRate";
+        public const string EnergyCost = "EnergyCost";
     }
 
     /// <summary>

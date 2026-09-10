@@ -21,6 +21,9 @@ namespace BossRush
         private SkyIslandLetter pigeonLetter;
         private bool pigeonPlaced;
         private float pigeonCaptionAt = -1f;
+        /// <summary>内容批次三：采集点、合成台、局内耗材与夜风的本趟 owner（会话就绪后第一次推进时创建，随本对象销毁）。</summary>
+        private SkyIslandFieldcraft fieldcraft;
+        private bool fieldcraftFailed;
         /// <summary>信鸽落地字幕推迟的游戏秒数：错开落地大标题与目标卡，别在同一秒挤三句话。</summary>
         internal const float PigeonCaptionDelay = 8f;
         internal bool Visible { get { return presentation.Visible; } }
@@ -144,6 +147,8 @@ namespace BossRush
                     BountyChoices(choices, () => BoardPosition("Search_B")); break;
                 case "Search_A": ServiceChoice(choices,
                     L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
+                    // 渡口工台与浮舟本人等价：他不在时码头装置照样能做东西。
+                    CraftChoice(choices, SkyIslandCraftStation.Dock);
                     // 手记与苇白本人等价：码头每趟必经，翻手记不必先去风铃集找到她。
                     JournalChoice(choices); break;
                 // 菜畦与晴禾本人等价：她是永久 NPC，一旦与玩家结婚就由婚姻系统接管、不再上岛
@@ -151,7 +156,10 @@ namespace BossRush
                 // SkyIslandRaid 恒返回 false），归航菜此前只挂在她身上，会永久失联。
                 // 苇白的委托早有留言板兜底，这里给晴禾补上同一条纪律。`mealUsed` 是单次布尔，不会双领。
                 case "Search_C": ServiceChoice(choices,
-                    L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal); break;
+                    L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
+                    CraftChoice(choices, SkyIslandCraftStation.Stove); break;
+                // 眠苔的药臼：她不是永久居民，但生成可能失败；悬根林的见闻点就在她站位旁 14 米，给药臼一个兜底。
+                case "Search_D_02": CraftChoice(choices, SkyIslandCraftStation.Mortar); break;
                 case "Search_F": ZhelingChoices(choices); break;
             }
             // 装置/见闻面板配该区域的横幅插图；SkyIslandUiArt 是 fail-open 的，
@@ -171,6 +179,7 @@ namespace BossRush
                     SkyIslandStoryAction.DeliverPlantingRecord);
                 ServiceChoice(choices,
                     L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
+                CraftChoice(choices, SkyIslandCraftStation.Stove);
             }
             else if (id == "sky_zheling") ZhelingChoices(choices);
             else if (id == "sky_bellkeeper") BellChoices(choices);
@@ -180,10 +189,16 @@ namespace BossRush
                 // 以前这一项只回一段旅程摘要；群岛手记把摘要放进总览，再加上见闻、来信与名册。
                 JournalChoice(choices);
             }
-            else if (id == "sky_fuzhou") ServiceChoice(choices,
-                L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
-            else if (id == "sky_miantai") ServiceChoice(choices,
-                L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
+            else if (id == "sky_fuzhou")
+            {
+                ServiceChoice(choices, L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
+                CraftChoice(choices, SkyIslandCraftStation.Dock);
+            }
+            else if (id == "sky_miantai")
+            {
+                ServiceChoice(choices, L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
+                CraftChoice(choices, SkyIslandCraftStation.Mortar);
+            }
             presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id),
                 story.DescribeNpc(id), choices, SkyIslandUiArt.GetPortrait(id), null);
         }
@@ -413,6 +428,7 @@ namespace BossRush
                 }
             }
             TickPigeon();
+            TickFieldcraft();
             if (displayedFlags == story.Current.flags) return;
             // 进岛首帧 displayedFlags 为 -1：存档里早就有的结果只重建世界状态、不重播回话；之后只读真正新增的位。
             int added = displayedFlags < 0 ? 0 : story.Current.flags & ~displayedFlags;
@@ -586,6 +602,82 @@ namespace BossRush
                 choices, null, null);
         }
 
+        /// <summary>
+        /// 内容批次三的推进入口。会话在装配末尾才建服务与搜刮点，本对象比它们早建，所以 owner 在第一次就绪的推进里才创建；
+        /// 创建失败只记一次日志并放弃——采集与合成是附加内容，不能拖垮剧情与撤离。
+        /// </summary>
+        private void TickFieldcraft()
+        {
+            if (fieldcraft == null)
+            {
+                if (fieldcraftFailed || !session.IsReady) return;
+                try { fieldcraft = new SkyIslandFieldcraft(session, story, root.transform); }
+                catch (Exception e)
+                {
+                    fieldcraftFailed = true;
+                    Debug.LogWarning("[SkyIsland] 采集与合成装配失败：" + e.Message);
+                    return;
+                }
+            }
+            fieldcraft.Tick();
+        }
+
+        /// <summary>
+        /// 「打开合成台」。居民与兜底装置各挂一份：渡口工台 = 浮舟 / 码头装置，灶台 = 晴禾 / 菜畦，药臼 = 眠苔 / 悬根林见闻点。
+        /// 居民婚后离岛（晴禾）或生成失败时，配方照样可用。
+        /// </summary>
+        private void CraftChoice(List<SkyIslandStoryPresentation.Choice> choices, SkyIslandCraftStation station)
+        {
+            choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.StationChoice(station), delegate
+            {
+                if (fieldcraft == null)
+                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
+                OpenCrafting(station);
+                // 回调的返回值会写进（新开的）合成面板正文：返回同一份正文。
+                return CraftingBody(station);
+            }));
+        }
+
+        /// <summary>
+        /// 合成面板：本站的配方（每站至多 4 条；面板布局属性测试按最坏 6 条复算），按钮上写着「背包里有几件 / 要几件」。
+        /// 做成了就重开面板刷新件数；材料不够只回话、不重开。面板同样过战斗门。
+        /// </summary>
+        private void OpenCrafting(SkyIslandCraftStation station)
+        {
+            if (BlockedByCombat() || fieldcraft == null) return;
+            reopen = delegate { OpenCrafting(station); };
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            List<SkyIslandRecipe> recipes = SkyIslandFieldcraftRules.RecipesFor(station);
+            for (int i = 0; i < recipes.Count; i++)
+            {
+                SkyIslandRecipe recipe = recipes[i];
+                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(recipe, fieldcraft.CountInPack), delegate
+                {
+                    if (fieldcraft == null) return L10n.T("现在没法做东西。", "Nothing can be made right now.");
+                    string message;
+                    bool crafted = fieldcraft.Craft(recipe, out message);
+                    if (crafted) story.LogTiming("craft", recipe.Id);
+                    return Refreshed(crafted, message);
+                }));
+            }
+            presentation.Show(SkyIslandFieldcraftRules.StationName(station), CraftingBody(station), choices, null,
+                SkyIslandUiArt.GetScene(StationScene(station)));
+        }
+
+        private string CraftingBody(SkyIslandCraftStation station)
+        {
+            Func<int, int> count = null;
+            if (fieldcraft != null) count = fieldcraft.CountInPack;
+            return SkyIslandFieldcraftRules.StationIntro(station) + "\n\n" + SkyIslandFieldcraftRules.PackSummary(count);
+        }
+
+        /// <summary>合成面板的横幅插图借所在装置的那一张（缺图时 SkyIslandUiArt 退成无插图布局）。</summary>
+        private static string StationScene(SkyIslandCraftStation station)
+        {
+            if (station == SkyIslandCraftStation.Dock) return "Search_A";
+            return station == SkyIslandCraftStation.Stove ? "Search_C" : "Search_D";
+        }
+
         /// <summary>归航船名册的四页：第一次翻到某页才写进手记；读过的页照当前存档重新生成（选择变了，话也跟着变）。</summary>
         private List<SkyIslandStoryPresentation.Choice> CrewChoices()
         {
@@ -732,6 +824,9 @@ namespace BossRush
             presentation.Dispose();
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();
+            // 本趟的增益 Modifier、风灯、营火与采集点都在这里摘掉（离岛失效）。
+            if (fieldcraft != null) fieldcraft.Dispose();
+            fieldcraft = null;
             ReleasePigeon();
             puzzles.Clear();
         }

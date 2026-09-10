@@ -29,12 +29,17 @@ namespace BossRush
         /// <summary>罗盘离目标这么近（米）就不再报方位，只说「就在附近」。</summary>
         internal const double NearDistance = 8.0;
 
-        /// <summary>全部天空岛物品，按 TypeID 递增。</summary>
+        /// <summary>全部天空岛物品，按 TypeID 递增（批次二 500068–500072，批次三 500073–500082）。</summary>
         internal static readonly int[] AllTypeIds =
         {
             BossRushItemIds.SkyIslandHomecomingBadge, BossRushItemIds.SkyIslandWindeaterCore,
             BossRushItemIds.SkyIslandWindVaneCompass, BossRushItemIds.SkyIslandHomecomingBento,
-            BossRushItemIds.SkyIslandStarmossSalve
+            BossRushItemIds.SkyIslandStarmossSalve,
+            BossRushItemIds.SkyIslandCloudmossFiber, BossRushItemIds.SkyIslandGreenearSheaf,
+            BossRushItemIds.SkyIslandDriftwood, BossRushItemIds.SkyIslandBrassScrap,
+            BossRushItemIds.SkyIslandWindcrystalShard, BossRushItemIds.SkyIslandStardust,
+            BossRushItemIds.SkyIslandQinglanWindcrystal, BossRushItemIds.SkyIslandWindLantern,
+            BossRushItemIds.SkyIslandWindwardIncense, BossRushItemIds.SkyIslandQinglanCharm
         };
 
         private static readonly SkyIslandKeepsake[] keepsakes =
@@ -65,6 +70,16 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandWindVaneCompass: return "风标罗盘";
                 case BossRushItemIds.SkyIslandHomecomingBento: return "归航菜便当";
                 case BossRushItemIds.SkyIslandStarmossSalve: return "星苔药膏";
+                case BossRushItemIds.SkyIslandCloudmossFiber: return "云苔纤维";
+                case BossRushItemIds.SkyIslandGreenearSheaf: return "青穗草";
+                case BossRushItemIds.SkyIslandDriftwood: return "浮木";
+                case BossRushItemIds.SkyIslandBrassScrap: return "残铜片";
+                case BossRushItemIds.SkyIslandWindcrystalShard: return "风晶碎片";
+                case BossRushItemIds.SkyIslandStardust: return "星屑";
+                case BossRushItemIds.SkyIslandQinglanWindcrystal: return "晴岚风晶";
+                case BossRushItemIds.SkyIslandWindLantern: return "风灯";
+                case BossRushItemIds.SkyIslandWindwardIncense: return "驱风香";
+                case BossRushItemIds.SkyIslandQinglanCharm: return "晴岚护符";
                 default: return "天空岛物品";
             }
         }
@@ -79,11 +94,49 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandWindVaneCompass: return "Wind-Vane Compass";
                 case BossRushItemIds.SkyIslandHomecomingBento: return "Homecoming Bento";
                 case BossRushItemIds.SkyIslandStarmossSalve: return "Starmoss Salve";
+                case BossRushItemIds.SkyIslandCloudmossFiber: return "Cloudmoss Fiber";
+                case BossRushItemIds.SkyIslandGreenearSheaf: return "Greenear Sheaf";
+                case BossRushItemIds.SkyIslandDriftwood: return "Driftwood";
+                case BossRushItemIds.SkyIslandBrassScrap: return "Brass Scrap";
+                case BossRushItemIds.SkyIslandWindcrystalShard: return "Windcrystal Shard";
+                case BossRushItemIds.SkyIslandStardust: return "Stardust";
+                case BossRushItemIds.SkyIslandQinglanWindcrystal: return "Qinglan Windcrystal";
+                case BossRushItemIds.SkyIslandWindLantern: return "Wind Lantern";
+                case BossRushItemIds.SkyIslandWindwardIncense: return "Windward Incense";
+                case BossRushItemIds.SkyIslandQinglanCharm: return "Qinglan Charm";
                 default: return "Sky Islands item";
             }
         }
 
         internal static string Name(int typeId) { return L10n.T(NameCn(typeId), NameEn(typeId)); }
+
+        /// <summary>
+        /// 物品价值（官方 `Item.Value`，商店售价 = Value × 耐久比 × priceFactor）。物品配置、配方经济与报告共用这一份，
+        /// 不在 `SkyIslandItems` 定义表里另写一份数字。批次三的口径：材料按「采一处约一两件」定低价；
+        /// 凑整与合成只给小幅溢价（晴岚风晶 +16%、便当 +88%、药膏 +48%，护符与罗盘基本持平），不当换钱的路子。
+        /// </summary>
+        internal static int ValueOf(int typeId)
+        {
+            switch (typeId)
+            {
+                case BossRushItemIds.SkyIslandHomecomingBadge: return 5000;
+                case BossRushItemIds.SkyIslandWindeaterCore: return 12000;
+                case BossRushItemIds.SkyIslandWindVaneCompass: return 1500;
+                case BossRushItemIds.SkyIslandHomecomingBento: return 600;
+                case BossRushItemIds.SkyIslandStarmossSalve: return 1200;
+                case BossRushItemIds.SkyIslandCloudmossFiber: return 90;
+                case BossRushItemIds.SkyIslandGreenearSheaf: return 60;
+                case BossRushItemIds.SkyIslandDriftwood: return 80;
+                case BossRushItemIds.SkyIslandBrassScrap: return 180;
+                case BossRushItemIds.SkyIslandWindcrystalShard: return 450;
+                case BossRushItemIds.SkyIslandStardust: return 900;
+                case BossRushItemIds.SkyIslandQinglanWindcrystal: return 2600;
+                case BossRushItemIds.SkyIslandWindLantern: return 320;
+                case BossRushItemIds.SkyIslandWindwardIncense: return 360;
+                case BossRushItemIds.SkyIslandQinglanCharm: return 2400;
+                default: return 0;
+            }
+        }
 
         internal static SkyIslandKeepsake FindKeepsake(string noteId)
         {

@@ -47,6 +47,38 @@ ICONS = [
     ("sky_island_starmoss_salve",
      "a small round clay jar with a cork lid tied with twine, filled with soft green moss salve dotted with tiny "
      "pale-gold star-shaped sparkles, a sprig of moss leaning against the jar."),
+    # ---- 内容批次三：群岛材料 ----
+    ("sky_island_cloudmoss_fiber",
+     "a small skein of soft pale-teal moss fibres twisted loosely and tied with a thin cream cord, a few wispy "
+     "strands curling out, tiny dew beads on the fibres."),
+    ("sky_island_greenear_sheaf",
+     "a small sheaf of fresh green grass stalks with plump pale-gold grain ears, tied around the middle with a "
+     "twist of straw."),
+    ("sky_island_driftwood",
+     "a short weathered piece of silvery-tan driftwood, smooth and knotted, with pale sun-bleached grain and a "
+     "small wisp of white cloud clinging to one end."),
+    ("sky_island_brass_scrap",
+     "a small stack of three bent brass metal scraps with toothed gear-like edges, warm golden sheen with a few "
+     "teal verdigris spots."),
+    ("sky_island_windcrystal_shard",
+     "a single jagged pale sky-blue crystal shard, translucent, with a faint swirl of white wind inside and warm "
+     "light catching its facets."),
+    ("sky_island_stardust",
+     "a tiny round glass vial with a cork stopper, filled with glittering pale-gold star-shaped dust, a few "
+     "sparkles spilled beside it."),
+    ("sky_island_qinglan_windcrystal",
+     "a polished fist-sized sky-blue crystal with smooth fused facets and a small swirling white wind trapped in "
+     "its heart, resting on a thin brass ring stand."),
+    # ---- 内容批次三：局内耗材 ----
+    ("sky_island_wind_lantern",
+     "a small handheld paper lantern with a driftwood frame and a cream paper shade glowing warm amber from a "
+     "candle wick inside, a short rope handle on top."),
+    ("sky_island_windward_incense",
+     "a small round cake of dark green incense on a tiny clay dish, a gentle curl of pale golden-white smoke "
+     "rising from it (the smoke is warm white and gold only, never pink or lavender), a sprig of grass beside the dish."),
+    ("sky_island_qinglan_charm",
+     "a small round brass charm with a cloud-shaped cutout, a pale-blue crystal shard set in the centre and tiny "
+     "gold star specks, hanging from a short teal cord with a knot."),
 ]
 
 SPECS = [("Assets/Items/%s.png" % name, 512, icon(desc)) for name, desc in ICONS]

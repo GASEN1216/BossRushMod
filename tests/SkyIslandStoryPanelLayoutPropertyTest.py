@@ -197,9 +197,10 @@ def batch_two_strings():
 def main():
     title, body, labels, label_count = worst_strings()
     extra_titles, extra_bodies, extra_labels = batch_two_strings()
-    title = max([title] + extra_titles, key=len)
-    body = max([body] + extra_bodies, key=len)
-    labels = labels + extra_labels
+    three_titles, three_bodies, three_labels = batch_three_strings()
+    title = max([title] + extra_titles + three_titles, key=len)
+    body = max([body] + extra_bodies + three_bodies, key=len)
+    labels = labels + extra_labels + three_labels
     label_count = len(labels)
     longest_label = max(labels, key=len)
     errors = []
@@ -229,6 +230,42 @@ def main():
           '(最长标题 %d 字 / 最长正文 %d 字 / %d 条选项文案；5 选项+横幅时面板 %.0f/%.0f px，'
           '15 种组合全部不溢出，破坏探针被拒)'
           % (len(title), len(body), label_count, sample['panel'], MAX_PANEL))
+
+
+def batch_three_strings():
+    """内容批次三的面板文案：合成台标题、正文（开场白 + 七种材料都在背包里时最长的摘要）、配方按钮与「打开合成台」一项。
+
+    配方按钮与背包摘要由 `SkyIslandFieldcraftRules.RecipeLabel` / `PackSummary` 在运行时拼，这里照同一个格式把最坏情况拼出来：
+    件数按两位数算，物品名取 `SkyIslandItemRules.NameCn` / `NameEn`。每站至多 4 条配方，面板按最坏 6 条选项复算。
+    """
+    rules = read('DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs')
+    items = read('DebugAndTools/SkyIsland/SkyIslandItemRules.cs')
+    name_row = r'case BossRushItemIds\.(\w+): return "([^"]+)";'
+    cn = dict(re.findall(name_row, items.split('internal static string NameCn(', 1)[1].split('internal static string NameEn(', 1)[0]))
+    en = dict(re.findall(name_row, items.split('internal static string NameEn(', 1)[1].split('internal static string Name(', 1)[0]))
+
+    def block(start, end):
+        return rules.split(start, 1)[1].split(end, 1)[0]
+
+    titles = [s for pair in re.findall(PAIR, block('internal static string StationName(', 'internal static string StationChoice(')) for s in pair]
+    choices = [s for pair in re.findall(PAIR, block('internal static string StationChoice(', 'internal static string StationIntro(')) for s in pair]
+    intros = [s for pair in re.findall(PAIR, block('internal static string StationIntro(', 'internal static string PackSummary(')) for s in pair]
+    pack = re.findall(PAIR, block('internal static string PackSummary(', 'internal static string RecipeLabel('))
+    materials = re.findall(r'BossRushItemIds\.(\w+)', block('internal static readonly int[] MaterialTypeIds', '};'))
+    recipes = re.findall(r'Recipe\("\w+",\s*SkyIslandCraftStation\.\w+,\s*BossRushItemIds\.(\w+),\s*(\d+),'
+                         r'((?:\s*In\(BossRushItemIds\.\w+,\s*\d+\),?)+)\)', rules)
+    assert titles and choices and len(intros) == 6 and len(pack) >= 2 and len(materials) == 7 and len(recipes) == 8, \
+        '批次三文案没解析到，正则与源码失步了'
+    bodies = []
+    labels = list(choices)
+    for lang, names, opening, closing, verb in ((0, cn, '（', '）', '制作 '), (1, en, ' (', ')', 'Make ')):
+        summary = pack[1][lang] + ' · '.join(names[m] + ' 30' for m in materials)
+        for intro in intros[lang::2]:
+            bodies.append(intro + '\n\n' + max(summary, pack[0][lang], key=len))
+        for output, count, inputs in recipes:
+            parts = [names[t] + ' %s/%s' % (n, n) for t, n in re.findall(r'In\(BossRushItemIds\.(\w+),\s*(\d+)\)', inputs)]
+            labels.append(verb + names[output] + (' ×' + count if int(count) > 1 else '') + opening + ' · '.join(parts) + closing)
+    return titles, bodies, labels
 
 
 if __name__ == '__main__':

@@ -191,6 +191,17 @@ namespace BossRush
                 BossRushItemIds.SkyIslandWindVaneCompass,
                 BossRushItemIds.SkyIslandHomecomingBento,
                 BossRushItemIds.SkyIslandStarmossSalve,
+                // 天空岛批次三：材料只从岛上的采集点出，风晶与耗材只在岛上的合成台做——同样不进任何随机奖池。
+                BossRushItemIds.SkyIslandCloudmossFiber,
+                BossRushItemIds.SkyIslandGreenearSheaf,
+                BossRushItemIds.SkyIslandDriftwood,
+                BossRushItemIds.SkyIslandBrassScrap,
+                BossRushItemIds.SkyIslandWindcrystalShard,
+                BossRushItemIds.SkyIslandStardust,
+                BossRushItemIds.SkyIslandQinglanWindcrystal,
+                BossRushItemIds.SkyIslandWindLantern,
+                BossRushItemIds.SkyIslandWindwardIncense,
+                BossRushItemIds.SkyIslandQinglanCharm,
             };
         }
     }
