@@ -25,10 +25,11 @@ namespace BossRush
             layout.childForceExpandHeight = false;
             panel.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             Label(panel.transform, L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan Archipelago"), 24, 34);
-            // 「蓝环 / 绿环」现在是真的：撤离点由 SkyIslandExtractionRings 画出贴地圆环，
-            // 半径等于 SkyIslandSession.ExtractionRadius，钟庭那个在敲钟结局后才出现。
-            Label(panel.transform, L10n.T("基地船点可正式出发。岛上按地图键查阅全岛；站进码头的蓝环停留 3 秒返航，敲响归航钟后钟庭的绿环同样可用。",
-                "Depart from the base boat. Use the map key on the island; stand in the blue ring at the dock for 3 seconds to return. After the Homecoming Bell rings, the green ring at the Bell Court works the same way."), 17, 66);
+            // 撤离点由 SkyIslandExtractionRings 画出贴地圆环，半径等于 SkyIslandSession.ExtractionRadius。
+            // 颜色写实际色：码头用 BossRushUIColors.Accent（青绿），钟庭用 SuccessText（薄荷绿），钟庭那个在敲钟结局后才出现。
+            // 以前写的「蓝环」与画出来的颜色对不上，照着找的人会以为环没刷出来。
+            Label(panel.transform, L10n.T("基地船点可正式出发。岛上按地图键查阅全岛；站进码头的青色环停留 3 秒返航，敲响归航钟后钟庭的绿环同样可用。",
+                "Depart from the base boat. Use the map key on the island; stand in the teal ring at the dock for 3 seconds to return. After the Homecoming Bell rings, the green ring at the Homecoming Bell Court works the same way."), 17, 66);
             Button(panel.transform, L10n.T("从基地前往天空岛", "Depart base for Sky Islands"), BossRushUIColors.Success, delegate
             {
                 string reason;
@@ -36,7 +37,7 @@ namespace BossRush
                 closeMenu();
                 SkyIslandSession.Enter(host, report);
             });
-            Button(panel.transform, L10n.T("打开天空岛地图", "Open the Sky Island map"), BossRushUIColors.Accent, delegate
+            Button(panel.transform, L10n.T("打开天空岛地图", "Open the Sky Islands map"), BossRushUIColors.Accent, delegate
             {
                 SkyIslandSession session = host.GetComponent<SkyIslandSession>();
                 if (session == null) { report(EnterFirst, true); return; }
@@ -73,7 +74,7 @@ namespace BossRush
             {
                 SkyIslandSession session = host.GetComponent<SkyIslandSession>();
                 if (session == null)
-                { report(L10n.T("当前没有天空岛会话", "There is no Sky Island session right now"), false); return; }
+                { report(L10n.T("当前没有天空岛会话", "There is no Sky Islands session right now"), false); return; }
                 closeMenu(); session.Close(true, "manual_return");
             });
         }

@@ -162,7 +162,7 @@ namespace BossRush
     internal static class SpawnedEnemyActivationHelper { internal static void ReleaseFromPlayerDistanceSleep(CharacterMainControl character) { } }
     // 清场播报走 L10n.T（英文玩家不该看到中文提示）。L10n 依赖官方 LocalizationManager，
     // 隔离进程里返回中文分支即可：断言只看清场记账与生成顺序，不看文案。
-    internal static class L10n { internal static string T(string zh, string en) { return zh; } }
+    internal static class L10n { internal static bool IsChinese = true; internal static string T(string zh, string en) { return IsChinese ? zh : en; } }
 
     /// 档次装饰的替身：只记录「谁被判成了哪一档」，让夹具能断言逐位分配。
     internal static class SkyIslandEnemyTiers

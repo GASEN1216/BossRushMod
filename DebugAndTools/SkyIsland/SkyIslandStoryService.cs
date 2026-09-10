@@ -48,7 +48,28 @@ namespace BossRush
         }
         internal SkyIslandStoryData Current { get { return store.Current; } }
         internal bool CanWrite { get { return IsCurrentSlot && !store.HasWriteBarrier && !store.IsStoreFaulted; } }
-        internal string CurrentObjective { get { return SkyIslandStoryRules.Objective(Current); } }
+        /// <summary>
+        /// 当前目标。HUD 每 0.5 秒读一次，而 `SkyIslandStoryRules.Objective` 每次都重新拼接字符串；
+        /// 目标文本只取决于剧情位与界面语言，两者都没变就复用上一次的结果（口径同 <see cref="Summary"/>）。
+        /// </summary>
+        internal string CurrentObjective
+        {
+            get
+            {
+                SkyIslandStoryData data = Current;
+                bool chinese = L10n.IsChinese;
+                if (objectiveCache == null || objectiveFlags != data.flags || objectiveChinese != chinese)
+                {
+                    objectiveCache = SkyIslandStoryRules.Objective(data);
+                    objectiveFlags = data.flags;
+                    objectiveChinese = chinese;
+                }
+                return objectiveCache;
+            }
+        }
+        private string objectiveCache;
+        private int objectiveFlags;
+        private bool objectiveChinese;
         internal string SaveStatus
         {
             get
@@ -159,6 +180,20 @@ namespace BossRush
                 default: return 0;
             }
         }
+        /// <summary>
+        /// 地面碰撞体名 → 区域 id。生成器把地面按区域切成 `COL_Ground_{区域}`（12 个岛 + 15 座桥，
+        /// 见 tools/generate_sky_island.py）；岛（A–H、S1–S4）返回 id，桥（AB、CS1、K1…）与其它名字返回 null。
+        /// 纯函数：会话据此建「脚下是哪个区域」的表，隔离回归直接执行它。
+        /// </summary>
+        internal static string GroundRegionOf(string colliderName)
+        {
+            const string prefix = "COL_Ground_";
+            if (colliderName == null || colliderName.Length <= prefix.Length ||
+                !colliderName.StartsWith(prefix, StringComparison.Ordinal)) return null;
+            string id = colliderName.Substring(prefix.Length);
+            return RegionBit(id) == 0 ? null : id;
+        }
+
         internal bool HasVisitedRegion(string id) { return (Current.visitedRegions & RegionBit(id)) != 0; }
         internal bool RecordRegionVisited(string regionId)
         {
@@ -197,8 +232,8 @@ namespace BossRush
                         ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled)
                             ? L10n.T("折翎：路已修好。这次我守着灯，等大家回来。",
                                 "Zheling: The road is mended. This time I keep the light and wait for them to come home.")
-                            : L10n.T("旧腰牌上刻着：『航路交给后来的人。』",
-                                "The old badge is engraved: 'The route passes to those who come after.'"))
+                            : L10n.T("旧腰牌上刻着：『航路交给你。』",
+                                "The old badge is engraved: 'The route is yours now.'"))
                         : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
                             "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
                 case "sky_bellkeeper":

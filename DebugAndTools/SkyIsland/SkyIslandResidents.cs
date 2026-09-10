@@ -151,6 +151,32 @@ namespace BossRush
             return owned.TryGetValue(id, out npc) && npc != null;
         }
 
+        /// <summary>
+        /// 某位在岛居民身上有没有「聊聊航路」交互体（含被剧情隐藏的）。只读，给 F3 验收按人逐个核对。
+        /// 居民由官方 CharacterCreator 生成、不挂在地形根下，按根节点扫交互体一个都扫不到。
+        /// </summary>
+        internal bool HasTalkInteraction(string id)
+        {
+            CharacterMainControl npc;
+            return owned.TryGetValue(id, out npc) && npc != null
+                && npc.GetComponentInChildren<SkyIslandResidentInteractable>(true) != null;
+        }
+
+        /// <summary>某位居民此刻是否被剧情隐藏（折翎战败后不再露面）。只读。</summary>
+        internal bool IsHidden(string id) { return hidden.Contains(id); }
+
+        /// <summary>把在岛且未隐藏的居民身上的交互体追加进 <paramref name="into"/>。只读，给 F3 交互竞争用例补上居民。</summary>
+        internal void CollectActiveInteractables(List<InteractableBase> into)
+        {
+            if (into == null) return;
+            foreach (KeyValuePair<string, CharacterMainControl> pair in owned)
+            {
+                if (pair.Value == null || !pair.Value.gameObject.activeInHierarchy) continue;
+                foreach (InteractableBase interactable in pair.Value.GetComponentsInChildren<InteractableBase>(false))
+                    if (interactable != null && interactable.isActiveAndEnabled) into.Add(interactable);
+            }
+        }
+
         /// <summary>剧情体隐藏不会触发死亡；战斗实例必须由遭遇 owner 单独生成。</summary>
         internal void SetVisible(string id, bool visible)
         {

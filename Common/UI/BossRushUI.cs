@@ -212,6 +212,11 @@ namespace BossRush
 
             cachedLegacyFont = null;
             legacyFontResolved = false;
+
+            // 官方右上角提示栈的实例缓存（GetTopRightHudTop）：随场景销毁后 Unity 判空会自己重找，
+            // 这里显式放掉，模块销毁后不再握着已销毁对象的托管壳。
+            officialIndicator = null;
+            nextIndicatorSearch = 0f;
         }
 
         /// <summary>
@@ -453,6 +458,88 @@ namespace BossRush
             Color disabled = Color.Lerp(background, BossRushUIColors.Disabled, 0.55f);
             disabled.a = background.a * 0.85f;
             return disabled;
+        }
+
+        /// <summary>
+        /// 官方 HUD 此刻是否让位。逐条照抄官方 `HUDManager.ShouldDisplay` 除隐藏令牌之外的四条公开条件：
+        /// 任何官方 View 打开（背包、地图等）、对话界面、捏脸界面、拍照模式。
+        ///
+        /// 自绘常驻 HUD 必须跟它一起让位：官方 View 与对话画在 sortingOrder 100 的画布上
+        /// （`LevelManager/GameplayUICanvas`、`DialogueInteractiveCanvas`，UnityPy 读游戏资源确认），
+        /// 本库的 HUD 层是 <see cref="BossRushUILayers.HudOverlay"/>（1200），不跟随就会浮在背包与地图**上面**。
+        /// 隐藏令牌是私有静态列表读不到，也不需要读：本 Mod 注册令牌的界面自带整屏遮罩。
+        /// 每帧调用：四次静态读取，无分配。
+        /// </summary>
+        internal static bool IsOfficialHudHidden()
+        {
+            try
+            {
+                return global::Duckov.UI.View.ActiveView != null || global::Dialogues.DialogueUI.Active
+                    || global::CustomFaceUI.ActiveView != null || global::CameraMode.Active;
+            }
+            catch (System.Exception)
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 官方暂停菜单是否开着（`GameManager.Paused` = pauseMenu.Shown；`TimeScaleManager` 同时把 timeScale 压到 0）。
+        /// 暂停菜单不是 View，官方 HUD 不因它隐藏，但它的画布 sortingOrder 是 10000，整个盖在 HUD 上面。
+        /// 每帧调用：一次静态读取，无分配。
+        /// </summary>
+        internal static bool IsGamePaused()
+        {
+            try { return global::GameManager.Paused; }
+            catch (System.Exception) { return false; }
+        }
+
+        /// <summary>右上角常驻卡片（CampaignHud / SkyIslandHud）顶边距屏幕顶边的最小值，本库画布单位。</summary>
+        internal const float TopRightHudTopMin = 110f;
+        /// <summary>卡片与官方右上角提示栈之间留的间隙，本库画布单位。</summary>
+        internal const float TopRightHudGap = 12f;
+
+        private static global::IndicatorHUD officialIndicator;
+        private static float nextIndicatorSearch;
+        private static readonly Vector3[] indicatorCorners = new Vector3[4];
+
+        /// <summary>
+        /// 右上角常驻卡片的顶边（距屏幕顶边，<paramref name="canvas"/> 的画布单位）：
+        /// 不低于 <see cref="TopRightHudTopMin"/>，并排在官方「操作说明」提示栈的**实际**下沿之下。
+        ///
+        /// 官方提示栈是 `LevelManager/HUDCanvas/SimpleIndicators`（组件 IndicatorHUD，UnityPy 读 resources.assets 确认）：
+        /// 钉在右上角 (-25,-100)（2560×1440 参考）并随 ContentSizeFitter 向下长。默认只显示一行「操作说明」开关，
+        /// 玩家按键展开后是 11 行按键提示，一路长到屏幕中部——写死的 y 必然被它盖住。
+        /// 总览画布下 `GetWorldCorners` 就是屏幕像素，除以本画布的缩放系数即得本库单位。
+        /// 调用方自己节流（0.25 秒一次足够）；实例丢了每 2 秒重找一次，找到之后每次只做判空。
+        /// 找不到官方提示栈（例如某张图没有官方 HUD）时退回最小值，不影响卡片显示。
+        /// </summary>
+        internal static float GetTopRightHudTop(Canvas canvas)
+        {
+            float top = TopRightHudTopMin;
+            if (canvas == null) return top;
+            try
+            {
+                if (officialIndicator == null)
+                {
+                    if (Time.unscaledTime < nextIndicatorSearch) return top;
+                    nextIndicatorSearch = Time.unscaledTime + 2f;
+                    officialIndicator = UnityEngine.Object.FindObjectOfType<global::IndicatorHUD>();
+                    if (officialIndicator == null) return top;
+                }
+                if (!officialIndicator.isActiveAndEnabled) return top;
+                RectTransform rect = officialIndicator.transform as RectTransform;
+                if (rect == null) return top;
+                rect.GetWorldCorners(indicatorCorners);
+                float bottom = Mathf.Min(indicatorCorners[0].y, indicatorCorners[3].y);
+                float scale = canvas.scaleFactor > 0f ? canvas.scaleFactor : 1f;
+                return Mathf.Max(top, (Screen.height - bottom) / scale + TopRightHudGap);
+            }
+            catch (System.Exception)
+            {
+                officialIndicator = null;
+                return top;
+            }
         }
 
         /// <summary>

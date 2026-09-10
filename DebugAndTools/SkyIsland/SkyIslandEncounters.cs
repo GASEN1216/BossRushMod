@@ -235,8 +235,12 @@ namespace BossRush
                         }
                     }
                     catch (Exception e)
-                    { report(L10n.T("清场记录提交失败，将重试：",
-                        "Could not record the clear; retrying: ") + e.Message, true); }
+                    {
+                        // 异常原文进日志；提示条经 WithDetail，英文界面不拼中文原文。
+                        Debug.LogWarning("[SkyIsland] clear record failed: " + e);
+                        report(SkyIslandStoryRules.WithDetail(L10n.T("清场记录提交失败，将重试：",
+                            "Could not record the clear; retrying"), e.Message), true);
+                    }
                     encounter.RetryAt = Time.time + 1f;
                 }
             }
@@ -304,8 +308,9 @@ namespace BossRush
             catch (Exception e)
             {
                 encounter.RetryAt = Time.time + 10;
-                if (!closed) report(L10n.T("天空岛遭遇准备失败，10 秒后可重试：",
-                    "Encounter setup failed; retrying in 10 seconds: ") + e.Message, true);
+                Debug.LogWarning("[SkyIsland] encounter setup failed: " + e);
+                if (!closed) report(SkyIslandStoryRules.WithDetail(L10n.T("天空岛遭遇准备失败，10 秒后可重试：",
+                    "Encounter setup failed; retrying in 10 seconds"), e.Message), true);
             }
             finally { encounter.Spawning = false; }
         }

@@ -49,7 +49,7 @@ namespace BossRush
             // 只能给一条岛内专用入口。进岛后按这一个按钮即可跑完 SKY_* 全部自动用例。
             GameObject rowSky = CreateF3Row(section.transform);
             CreateActionButton(rowSky.transform, font,
-                L10n.T("天空岛验收（岛内运行）", "Sky Island Validation (run on the island)"),
+                L10n.T("天空岛验收（岛内运行）", "Sky Islands Validation (run on the island)"),
                 new Color(0.20f, 0.36f, 0.46f, 1f), StartSkyIslandValidationFromF3);
 
             GameObject row3 = CreateF3Row(section.transform);
@@ -977,7 +977,9 @@ namespace BossRush
                     + " | skipped_ids=" + string.Join(",", _skippedIds.ToArray())
                     + " | coverage=" + coverageState
                     + " | report=" + _reportPath);
-                if (!_slotChanged && SavesSystem.CurrentSlot == _sessionSlot) ClearRunMarker();
+                // 只清自己写过的标记：岛内套件从不写，收尾也就不该为了清它再写一次盘。
+                if (_runMarkerWritten && !_slotChanged && SavesSystem.CurrentSlot == _sessionSlot) ClearRunMarker();
+                _runMarkerWritten = false;
                 if (_reportWriteFailed) status = "REPORT_ERROR";
                 _status = "验收 " + status + "：PASS=" + _passed + " FAIL=" + _failed
                     + " SKIP=" + _skipped + " WARN=" + _warnings

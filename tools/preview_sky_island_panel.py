@@ -253,13 +253,16 @@ def render_hud():
     """1920x1080 参考分辨率下的 HUD 占位示意，铺一张真实岛景当底，好判断对比度与遮挡。
 
     画的是三层**同时**出现的最拥挤时刻：右侧卡片（目标刚更新）、落地那一次区域大标题（带提示）、
-    中下方警示字幕。底部那条虚线是官方快捷栏顶边的大致位置（按实机截图估的，不是读出来的），
+    中下方警示字幕（两行，最坏情况）。底部那条虚线是官方底部 HUD 堆叠的最高点——交互读条
+    ActionProgress_Slider 的顶边，由 HUD 常量 OfficialBottomStackTop 给出（UnityPy 读官方预制体换算），
     只用来看字幕有没有压到它。撤离读条是官方 EvacuationCountdownUI，这里不画，不替官方控件编样子。
     """
     H = {n: hud_const(n) for n in ('CardWidth', 'CardRight', 'CardTop', 'CardPadX', 'CardPadY',
                                    'AccentBarWidth', 'TitleFont', 'BodyFont', 'ChipFont',
                                    'AreaTitleY', 'AreaTitleFont', 'AreaOverlineFont', 'AreaTitleSpacing',
-                                   'AreaOverlineSpacing', 'CaptionY', 'CaptionWidth', 'CaptionFont')}
+                                   'AreaOverlineSpacing', 'CaptionY', 'CaptionWidth', 'CaptionFont',
+                                   'CaptionMaxHeight', 'CaptionScrimPadding', 'OfficialBottomStackTop',
+                                   'BannerHintY')}
     W, Ht = 1920, 1080
     backdrop = Image.open(ART / 'skyisland_scene_E.png').convert('RGBA')
     scale = max(W / backdrop.width, Ht / backdrop.height)
@@ -315,16 +318,18 @@ def render_hud():
     draw.rectangle(((W - 120) / 2, ay + 24, (W + 120) / 2, ay + 25), fill=COL['Divider'])
     hint = '地图键查阅全岛 · 站进撤离环停留 3 秒返航'
     w = draw.textlength(hint, font=f_hint)
-    draw.text(((W - w) / 2, ay + 42 - 10), hint, font=f_hint, fill=COL['TextSecondary'])
+    draw.text(((W - w) / 2, ay - H['BannerHintY'] - 10), hint, font=f_hint, fill=COL['TextSecondary'])
 
-    # ---- 中下方字幕（警示色那一类：战斗门控原因）----
-    cy = Ht / 2 - H['CaptionY']
-    caption = '附近还有威胁 —— 先把这一段航路清干净，再静下心来。'
+    # ---- 中下方字幕（警示色那一类：Boss 机制提示，最坏情况两行）----
+    # 生产里字幕根的轴心在**底边**（CaptionY 是底边相对屏幕中心的 y），文字向上长，封顶 CaptionMaxHeight。
+    cap_bottom = Ht / 2 - H['CaptionY']
+    caption = '噬风收拢了风眼 —— 离开它脚下的那一圈。附近还有威胁 —— 先把这一段航路清干净，再静下心来。'
     f_cap = font(int(H['CaptionFont']))
-    cap_lines = wrap(draw, caption, f_cap, H['CaptionWidth'])
+    cap_lines = wrap(draw, caption, f_cap, H['CaptionWidth'])[:2]
     line_h = H['CaptionFont'] * 1.3
-    cap_h = max(H['CaptionFont'] * 1.6, len(cap_lines) * line_h + 8)
-    shade_w, shade_h = H['CaptionWidth'] + 180, cap_h + 60
+    cap_h = min(H['CaptionMaxHeight'], max(H['CaptionFont'] * 1.6, len(cap_lines) * line_h + 8))
+    cy = cap_bottom - cap_h / 2
+    shade_w, shade_h = H['CaptionWidth'] + 180, cap_h + H['CaptionScrimPadding']
     img.alpha_composite(soft_scrim(shade_w, shade_h), (int((W - shade_w) / 2), int(cy - shade_h / 2)))
     draw = ImageDraw.Draw(img)
     ty = cy - len(cap_lines) * line_h / 2 - 2
@@ -333,10 +338,11 @@ def render_hud():
         draw.text(((W - w) / 2, ty), line, font=f_cap, fill=COL['WarningText'])
         ty += line_h
 
-    # ---- 官方快捷栏顶边的大致位置（虚线，按实机截图估：武器名标签离底边约 144 px）----
+    # ---- 官方底部 HUD 堆叠的最高点（交互读条顶边，OfficialBottomStackTop，UnityPy 读预制体换算）----
+    stack_y = Ht - H['OfficialBottomStackTop']
     for x in range(324, 1540, 18):
-        draw.line((x, 936, x + 9, 936), fill=(170, 176, 182, 255))
-    draw.text((324, 942), '官方快捷栏顶边（按实机截图估）', font=font(12), fill=(170, 176, 182, 255))
+        draw.line((x, stack_y, x + 9, stack_y), fill=(170, 176, 182, 255))
+    draw.text((324, stack_y + 6), '官方底部 HUD 最高点（交互读条顶边）', font=font(12), fill=(170, 176, 182, 255))
 
     HUD_OUT.parent.mkdir(parents=True, exist_ok=True)
     img.convert('RGB').save(HUD_OUT, quality=95)

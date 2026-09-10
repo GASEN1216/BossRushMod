@@ -64,6 +64,21 @@ namespace BossRush
         internal int OpenedPoints { get { return openedCount; } }
 
         /// <summary>
+        /// 已经走近并真正尝试过建箱的点数（含建箱失败的）。只读，给 F3 验收用：
+        /// 箱子是玩家进入激活半径才建的，没走到的点从来没建过，`FailedPoints == 0` 在那些点上恒真。
+        /// 报告里要写出「建了几个」，一个都没建时那条判据只能记 SKIP。
+        /// </summary>
+        internal int BuiltPoints
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < points.Count; i++) if (points[i].Built) count++;
+                return count;
+            }
+        }
+
+        /// <summary>
         /// 已尝试建箱但失败的点数。只读，给 F3 验收用：
         /// `Failed` 的点是 fail-open 静默跳过的，日志里各自有一行 WARNING，但没有汇总口径，
         /// 玩家看到的分母（<see cref="PlacedPoints"/>）已经把它们扣掉了，缺口反而不可见。

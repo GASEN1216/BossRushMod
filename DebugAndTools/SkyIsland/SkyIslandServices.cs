@@ -179,8 +179,11 @@ namespace BossRush
                 catch (Exception e) { Debug.LogWarning("[SkyIslandServices] 修复失败：" + e.Message); }
             }
             return L10n.T("浮舟：好了，", "Fuzhou: Done — ") + repaired +
-                L10n.T(" 件。云海上的东西，钝一点都不行。（花费 ",
-                    " pieces. Nothing blunt lasts out on the cloud sea. (cost ") + price + L10n.T("）", ")");
+                (repaired == 1
+                    ? L10n.T(" 件。云海上的东西，钝一点都不行。（花费 ",
+                        " piece. Nothing blunt lasts out on the cloud sea. (cost ")
+                    : L10n.T(" 件。云海上的东西，钝一点都不行。（花费 ",
+                        " pieces. Nothing blunt lasts out on the cloud sea. (cost ")) + price + L10n.T("）", ")");
         }
 
         /// <summary>有界遍历随身物品树：只收有耐久的物品，节点与深度都有预算。</summary>
@@ -197,7 +200,11 @@ namespace BossRush
                 Item item = entry.Key;
                 int depth = entry.Value;
                 if (item == null || depth > WalkDepthBudget) continue;
-                if (item != character && item.UseDurability && item.MaxDurability > 0f) result.Add(item);
+                // 入列门与官方维修台 `ItemRepairView.CanRepair` 一致：带 Repairable 标签（`Item.Repairable`
+                // = UseDurability 且含该标签）、剩余上限不低于 1。只看 UseDurability 会把药品、食物、钥匙这类
+                // 「用耐久记剩余次数」的物品也收进来（Drug / FoodDrink 用完扣 Durability），按维修价把次数补满，
+                // 官方维修台对它们显示「无法维修」。已经修到上限不足 1 的「损坏」装备官方同样拒修。
+                if (item != character && item.Repairable && item.MaxDurabilityWithLoss >= 1f) result.Add(item);
                 try
                 {
                     if (item.Slots != null)
@@ -233,9 +240,13 @@ namespace BossRush
             if (disposed || player == null || player.Health == null)
                 return L10n.T("现在没法处理伤口。", "Wounds cannot be treated right now.");
             if (Time.unscaledTime < healReadyAt)
-                return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") +
-                    Mathf.CeilToInt(healReadyAt - Time.unscaledTime) +
-                    L10n.T(" 秒后再来。", " seconds until the next dose.");
+            {
+                int wait = Mathf.CeilToInt(healReadyAt - Time.unscaledTime);
+                return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") + wait +
+                    (wait == 1
+                        ? L10n.T(" 秒后再来。", " second until the next dose.")
+                        : L10n.T(" 秒后再来。", " seconds until the next dose."));
+            }
             if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f)
                 return L10n.T("眠苔：你没受伤，省下这笔吧。", "Miantai: You are not hurt. Save your money.");
             int price = HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth);
@@ -293,7 +304,7 @@ namespace BossRush
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandServices] 归航菜补血失败：" + e.Message); }
             return L10n.T("晴禾：归航菜，趁热。走远路的人得先吃饱。（本次出击生效）",
-                "Qinghe: Homecoming greens — eat while they are hot. Long roads start on a full stomach. (this raid only)");
+                "Qinghe: A homecoming meal — eat it while it is hot. Long roads start on a full stomach. (this raid only)");
         }
 
         #endregion

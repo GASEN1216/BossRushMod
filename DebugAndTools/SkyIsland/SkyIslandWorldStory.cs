@@ -99,7 +99,7 @@ namespace BossRush
             {
                 case "Search_D": Add(choices, L10n.T("校准西侧风标", "Calibrate the west wind beacon"),
                         SkyIslandStoryAction.RepairWindBeacon);
-                    Add(choices, L10n.T("系牢林边旧运菜道 K1", "Lash the old produce path K1"),
+                    Add(choices, L10n.T("系牢林边旧运菜道 K1", "Secure the old produce path K1"),
                         SkyIslandStoryAction.OpenShortcutK1); break;
                 case "Search_G": Add(choices, L10n.T("修复东侧星灯", "Repair the east star lamp"),
                         SkyIslandStoryAction.RepairStarLamp);
@@ -169,8 +169,9 @@ namespace BossRush
                 case "sky_fuzhou": return L10n.T("浮舟", "Fuzhou");
                 case "sky_miantai": return L10n.T("眠苔", "Miantai");
                 case "sky_zheling": return L10n.T("折翎", "Zheling");
-                case "sky_bellkeeper": return L10n.T("无声钟守", "the Silent Bell Keeper");
-                default: return L10n.T("群岛居民", "an islander");
+                // 名字会直接当面板标题、交互名与血条名用，英文不带小写冠词（其他居民都是 "Zheling" 这种写法）。
+                case "sky_bellkeeper": return L10n.T("无声钟守", "Silent Bell Keeper");
+                default: return L10n.T("群岛居民", "Islander");
             }
         }
         /// <summary>服务类选项统一在这里做会话有效性检查，服务 owner 自己负责价格、冷却与失败原因。</summary>
@@ -269,7 +270,8 @@ namespace BossRush
                 // 交单后重开：委托槽空了，下一单的派单选项应当立刻可见。
                 return Refreshed(true, message + L10n.T("（", " (") +
                     L10n.T(SkyIslandLootTables.TierNameCn(tier), SkyIslandLootTables.TierNameEn(tier)) +
-                    L10n.T(" 已放在脚边）", " left at her feet)"));
+                    // 谢礼可能落在苇白身旁，也可能落在留言板旁（她不在时），不写「她脚边」。
+                    L10n.T(" 已放在一旁）", " set down nearby)"));
             }));
             choices.Add(new SkyIslandStoryPresentation.Choice(
                 L10n.T("退掉这一单 · ", "Drop this contract · ") + contract.Describe(), delegate
@@ -454,7 +456,7 @@ namespace BossRush
                     "The Homecoming Bell no longer urges anyone to sea. The two beacons, the letter that came home and the keeper's own choice will decide why it rings again.");
                 case "Search_S1": return L10n.T(
                     "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。",
-                    "The damp pages by the pool list seed, dates, and the name of every person expected home.");
+                    "The damp pages by the pool list seeds, dates, and the name of every person expected home.");
                 case "Search_S2": return L10n.T(
                     "没有寄出的旧信压在倒挂邮亭里。字迹歪斜，却还清楚地写着：请别让岛上的灯熄灭。",
                     "An unsent letter is wedged inside the Upturned Post Hut. The hand is crooked but still plain: please do not let the island's lights go out.");

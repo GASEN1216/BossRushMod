@@ -153,6 +153,14 @@ def check_pools():
     assert 'internal static int[] GetGuaranteeBand(SkyIslandLootTier tier)' in pools, 'Guarantee band query missing'
     assert 'int key = minQuality * 100 + maxQuality' in pools, 'Pools must cache per quality band, not per tier'
     assert 'ResetStaticCaches' in pools, 'Pool cache needs a lifecycle reset'
+    # 只缓存完整跑完的查询：标签表还没就绪、或查询中途抛异常时得到的空池若也进缓存，缓存要到模块销毁才清，
+    # 本进程之后每一趟出击的箱子都是空的（2026-09-10 全方位审核）。
+    query = pools.split('int key = minQuality * 100 + maxQuality', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'if (complete) cache[key] = cached;' in query, 'Only a fully completed pool query may be cached'
+    assert re.search(r'(?<!if \(complete\) )cache\[key\] = cached;', query) is None, \
+        'An unconditional cache write would pin a failed (empty) pool for the whole process'
+    assert query.index('result.AddRange(unique);') < query.index('complete = true;'), \
+        'complete must be set only after the pool was actually built'
     # 排除口径必须走共享策略：只给 excludeTags 会漏掉 DestroyOnLootBox / DontDropOnDeadInSlot /
     # LockInDemoTag 这三类「设计上不该进箱子」的物品（既有 Boss 奖池一直在排它们）。
     assert 'LootExcludeTagPolicy.BuildExcludeTags(' in pools, \
@@ -188,8 +196,25 @@ def check_crate():
     assert build.index('box.transform.position = position') < build.index('SetParent(parent, true)'), \
         'World position must be final before activation; official code keys off transform.position'
     assert 'InteractableLootboxInventoryHelper.EnsureLocalInventory' in crate, 'Crates need independent local inventories'
-    # InstantiateSync 缺资源时返回同 TypeID 的空壳 FallbackItem，既不为 null 也不抛。
-    assert 'item.TypeID != typeId' in crate, 'Crate fill must read TypeID back to reject FallbackItem shells'
+    # InstantiateSync 缺资源时返回空壳 FallbackItem，既不为 null 也不抛；而官方 InstantiateFallbackItem
+    # 把**同一个 TypeID** 写回去，回读 TypeID 分辨不出它（2026-09-10 全方位审核核对反编译源）。
+    # 必须在实例化之前问 GetPrefab；TypeID 回读只留作第二道防线。
+    fill = crate.split('internal static int Fill(', 1)[1].split('\n        }', 1)[0]
+    assert 'ItemAssetsCollection.GetPrefab(typeId) == null' in fill, \
+        'Crate fill must check the prefab before InstantiateSync; a FallbackItem shell carries the same TypeID'
+    assert fill.index('ItemAssetsCollection.GetPrefab(typeId)') < fill.index('ItemAssetsCollection.InstantiateSync(typeId)'), \
+        'The prefab check must run before instantiation'
+    assert 'item.TypeID != typeId' in fill, 'Keep the null/TypeID read-back as a second line of defence'
+    # 一件都没装进去的箱子必须收回并报失败：委托谢礼「先送达再消费」全靠 Create 的返回值，
+    # 把空箱也算建成，玩家交了单拿到空箱，委托却已经被消耗。
+    create = crate.split('internal static bool Create(', 1)[1].split('\n        }', 1)[0]
+    empty = create.split('if (added == 0)', 1)
+    assert len(empty) == 2, 'A crate that received no item must be withdrawn, not reported as built'
+    empty_branch = empty[1].split('}', 1)[0]
+    assert 'Destroy(box.gameObject)' in empty_branch and 'return false;' in empty_branch, \
+        'An empty crate must be destroyed and reported as a failure so bounty rewards are not consumed'
+    assert create.index('if (added == 0)') < create.index('return true;'), \
+        'The empty-crate check must run before the crate is reported as built'
     assert 'item.DestroyTree()' in crate, 'Failed item must not leak as a free-floating object'
     # 官方 CreateLocalInventory() 只 AddComponent<Inventory>()，NeedInspection 字段默认 false、
     # 容量是默认 64。不补就得到「开箱即全明牌」的箱子，与本 Mod 其余三条建箱路径和原版都不一致。
@@ -336,6 +361,14 @@ def check_storm_boss():
         'Storm flag must be written when the boss itself dies, not only when the whole group is cleared'
     assert defeated.index('StormSlain') < defeated.index('DropTrophy'), \
         'Record the permanent fact before handing out the trophy'
+    # 奖励箱不得与噬风自己的尸体箱同点（官方 OnDead 把尸体箱放在倒下位置 +0.1 m）：官方 CA_Interact
+    # 按到交互体轴心的距离严格小于取唯一目标，两个箱子几乎重合时总有一个整局选不中（2026-09-10 全方位审核）。
+    assert 'SkyIslandRewardCrate.TryFindCratePosition(' in defeated, \
+        'The trophy must step away from the boss corpse lootbox'
+    assert defeated.index('TryFindCratePosition(') < defeated.index('DropTrophy('), \
+        'Placement must be resolved before the trophy is dropped'
+    assert 'SkyIslandStormBoss.DropTrophy(root.transform, drop, raidSeed)' in defeated, \
+        'The trophy must use the resolved position, not the raw death position'
     # CS1631：catch 子句体内不能 yield return。
     for block in re.findall(r'catch\s*\([^)]*\)\s*\{[^}]*\}', boss):
         assert 'yield return' not in block, 'yield return inside catch is CS1631'
@@ -400,6 +433,13 @@ def check_services_and_bounty():
     assert 'item.GetRepairLossRatio()' in services, 'Repair must read the official repair-loss ratio'
     assert 'entry.Item.DurabilityLoss += entry.LostPercentage;' in services, \
         'Repairing must accrue permanent durability loss exactly like the official bench'
+    # 入列门与官方维修台 ItemRepairView.CanRepair 一致：Repairable（UseDurability 且带 Repairable 标签）、
+    # 剩余上限不低于 1。只看 UseDurability 会把药品、食物这类「用耐久记剩余次数」的物品按维修价补满次数，
+    # 官方维修台对它们显示「无法维修」（2026-09-10 全方位审核）。
+    assert 'item.Repairable && item.MaxDurabilityWithLoss >= 1f' in services, \
+        'Repair eligibility must match the official bench (Repairable tag and at least 1 durability cap left)'
+    assert 'item.UseDurability && item.MaxDurability > 0f' not in services, \
+        'UseDurability alone admits consumables that count uses through durability'
     # 账户门控读 LevelConfig.accountAvailable，**不是** SaveCharacter：
     # 后者是「是否把主角写回存档」，raid 图里同样为 true（天空岛的官方合同还硬性要求 true），
     # 拿它当账户门控恒真、等于没门控。accountAvailable 才是官方表达「账户在本图可用」的字段。
@@ -489,6 +529,11 @@ def check_services_and_bounty():
     assert 'scavenging.AvailablePoints' in available, 'Salvage availability must come from the scavenging owner'
     assert 'encounters.RemainingClearable' in available, 'Threat availability must exclude already-saved clears'
     assert 'story.HasVisitedRegion(' in available, 'Survey availability must exclude already-visited regions'
+    # 数区域不数 POI 节点：场景包里还有装饰节点 POI_B_Mural，按节点数会把它算成永远去不了的第 13 个区域，
+    # 剩 3 个真区域时可完成量算成 4，恰好派得出一张做不完的「巡视群岛区域 ×4」（2026-09-10 全方位审核）。
+    survey = available.split('SkyIslandBountyKind.Survey', 1)[1]
+    assert 'regionIds' in survey and 'landmarks' not in survey, \
+        'Survey availability must count ground regions, not POI nodes (POI_B_Mural is not a region)'
     encounters_src = source('SkyIslandEncounters.cs')
     remaining = encounters_src.split('internal int RemainingClearable', 1)[1].split(chr(10) + '        }', 1)[0]
     # 自动组按出击刷新（短路只留给手动组），所以**不能**再用存档事实过滤可完成量：
@@ -539,21 +584,34 @@ def check_session_ownership():
     # 否则一次延迟保存就把一单委托刷完。区域记账靠 RecordRegionVisited 的新位语义天然幂等。
     assert 'if (bountyCredited.Add(id)) bounty.ReportEncounterCleared();' in session, \
         'Encounter credit must be idempotent against the clear-callback retry loop'
+    # 到访记账与区域名共用「脚下那块地」这一个事实源（2026-09-10 全方位审核）。
+    # 旧口径「离最近地标 60 米」按作者布局的导航网格复算：主岛上只罩住 30–53% 的可走面积，
+    # CS1 / FS3 两座桥的大半段与 C / F 两岛边缘却能提前点亮 S1 / S3 的迷雾并推进「巡视群岛区域」。
+    # 几何本身由 tests/SkyIslandRegionResolutionPropertyTest.py 复算并反向验证；这里钉接线。
+    assert (ROOT / 'tests/SkyIslandRegionResolutionPropertyTest.py').exists(), \
+        'The ground-region geometry property test is missing'
     # 按结构判断而不是钉一行字面量：记账必须落在「这次才第一次记下这个区域」的分支里。
-    assert 'story.RecordRegionVisited(nearest.name.Substring(4))' in session, \
-        'Region visit must go through the story service'
-    visit_branch = session.split('story.RecordRegionVisited(nearest.name.Substring(4))', 1)[1]
+    assert 'story.RecordRegionVisited(standingRegion)' in session, \
+        'Region visit must go through the story service with the ground region the player stands on'
+    visit_branch = session.split('story.RecordRegionVisited(standingRegion)', 1)[1]
     visit_branch = visit_branch.split(chr(10) + '                }', 1)[0]
     assert 'bounty.ReportRegionVisited();' in visit_branch, \
         'Region credit must only fire on a newly recorded region'
-    # 到访半径必须小于「主岛桥头到对岸支路地标」的最短距离。按 ArtSource/SkyIsland/layout.json，
-    # CS1/DS2/FS3/GS4 四条支路的主岛侧桥头到对岸 POI 分别是 73.2 / 103.9 / 73.9 / 117.3 米：
-    # 旧的 120 米让玩家站在主岛边缘就能点亮 S1–S4 的迷雾并刷完「巡视群岛区域」，根本不用过桥。
-    # 下界由主岛正常路线决定（B→C→D 直线穿越对 POI_C 最近约 50 米）。
-    radius = re.search(r'sqrMagnitude < (\d+) \* \d+ &&\s*\n\s*story\.RecordRegionVisited', session)
-    assert radius, 'Region visit radius must stay parseable'
-    assert 50 < int(radius.group(1)) < 73, \
-        'Region visit radius %s m leaks side branches across their bridges' % radius.group(1)
+    assert session.count('RecordRegionVisited(') == 1, 'There must be exactly one region-visit credit point'
+    update = session.split('private void Update()', 1)[1].split('private bool HudSuppressed()', 1)[0]
+    assert 'Nearest(landmarks' not in update, 'Region resolution must not fall back to the nearest landmark'
+    index = session.split('private void IndexGroundRegions()', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'SkyIslandStoryService.GroundRegionOf(collider.name)' in index, \
+        'Ground regions must be derived from the generator collider naming (COL_Ground_<region>)'
+    assert 'groundRegions[collider] = id;' in index and 'regionIds.Add(id)' in index, \
+        'The region index must record both the collider map and the region list'
+    build = session.split('PrepareMarkers();', 1)[1].split('root.SetActive(true);', 1)[0]
+    assert 'IndexGroundRegions();' in build, 'Ground regions must be indexed while the world is assembled'
+    story_service = source('SkyIslandStoryService.cs')
+    region_of = story_service.split('internal static string GroundRegionOf(string colliderName)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    assert 'const string prefix = "COL_Ground_";' in region_of and 'RegionBit(id) == 0 ? null : id' in region_of, \
+        'Only colliders named after a real region (A-H, S1-S4) may count; bridges must resolve to null'
     # 折翎的战斗实例用的就是他自己的脸和名字：战败后把剧情体放回原地，玩家会看到
     # 刚打死的人站在自己的尸体和掉落箱旁边，头顶还挂着「聊聊航路」。
     #

@@ -20,8 +20,9 @@
 //
 // 【操作与官方界面对齐】
 //   - 鼠标、数字键 1–9（选项左侧有键帽）、ESC 关闭；
-//   - 手柄走官方 `UIInputManager`：方向键移动当前项、确认执行、取消关闭。
-//     旧版只认鼠标，手柄玩家能用交互键打开面板，却既选不了选项、也关不掉它；
+//   - 键盘导航走官方 `UIInputManager`：W / S 移动当前项、Enter 确认、Esc 取消。
+//     注意官方输入资产「Duckov Controls」只有键鼠方案、**没有任何手柄绑定**（UnityPy 读 globalgamemanagers.assets 确认），
+//     手柄只有经 Steam Input 之类映射到这几个键时才走得到这里——别再把它写成「原生手柄支持」；
 //   - 面板开着时官方 HUD 一起淡出（`HUDManager` 隐藏令牌），与官方对话界面同口径；
 //   - 首次打开有一次共享的淡入微放大；选项回执引起的重开不重播，免得每点一次都弹一下。
 //
@@ -104,6 +105,8 @@ namespace BossRush
         private readonly List<Color> buttonColors = new List<Color>();
         private int choiceCount;
         private int selected = -1;
+        /// <summary>导航键当前按住的方向（-1 上 / 1 下 / 0 中位）。按边沿走一步，见 <see cref="OnNavigate"/>。</summary>
+        private int navigateHeld;
 
         internal bool Visible { get { return canvas != null; } }
 
@@ -123,6 +126,9 @@ namespace BossRush
             // 1. 先挂新令牌再摘旧令牌，官方 HUD 全程保持隐藏，不会在两次之间闪回来一下；
             // 2. 不重播打开动画，否则每点一个选项面板都要「弹」一下。
             bool reopening = canvas != null;
+            // 3. 保留键盘的当前项：玩家正用 W/S + Enter 连着操作（接委托 → 交付），
+            //    旧版每重开一次都丢焦点，下一次 Enter 只会「重新高亮第一项」，白白多按一下还跳回了顶上。
+            int previousSelected = reopening ? selected : -1;
             GameObject previousHideToken = hideToken;
             hideToken = null;
             Dispose();
@@ -243,6 +249,7 @@ namespace BossRush
             choiceCount = choices.Count;
 
             BuildFooter(panel, panelHeight);
+            if (previousSelected >= 0) Select(previousSelected);
 
             if (!reopening) BossRushUI.PlayOpenAnimation(panel.gameObject);
             input = ZombieModeUIHelper.ClaimModalInput(canvas.gameObject, "SkyIslandStory");
@@ -259,7 +266,8 @@ namespace BossRush
             {
                 Debug.LogWarning("[SkyIsland] 剧情面板隐藏官方 HUD 失败：" + e.Message);
             }
-            if (previousHideToken != null)
+            // 引用判空，理由同 Dispose：旧画布若已被外部销毁，Unity 的 != null 会让它漏注销。
+            if (!ReferenceEquals(previousHideToken, null))
             {
                 try { global::HUDManager.UnregisterHideToken(previousHideToken); }
                 catch (Exception e) { Debug.LogWarning("[SkyIsland] 注销旧的 HUD 隐藏令牌失败：" + e.Message); }
@@ -519,20 +527,30 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 导航**按边沿走一步**。官方 `UIInputManager.Bind` 把 UI_Navigate 的 started / performed / canceled
+        /// 三个阶段全订上了，`OnInputActionNavigate` 又不看阶段、每次新建一个事件对象（Use 去不了重）；
+        /// 而 UI_Navigate 是 Value 型 Vector2（W/S 组合键），Input System 在同一次处理里先 Started 再 Performed。
+        /// 于是按一下 W/S 会收到两条同向事件——逐条走一步就是一按跳两格。回到中位（|y| ≤ 0.5）才重新武装。
+        /// </summary>
         private void OnNavigate(global::UIInputEventData data)
         {
             if (!Visible || data == null || buttons.Count == 0) return;
             int step = data.vector.y > 0.5f ? -1 : (data.vector.y < -0.5f ? 1 : 0);
-            if (step == 0) return;
-            Select(selected < 0 ? (step > 0 ? 0 : buttons.Count - 1) : selected + step);
+            if (step == 0) { navigateHeld = 0; return; }
             data.Use();
+            if (navigateHeld == step) return;
+            navigateHeld = step;
+            Select(selected < 0 ? (step > 0 ? 0 : buttons.Count - 1) : selected + step);
         }
 
         private void OnConfirm(global::UIInputEventData data)
         {
             if (!Visible || data == null) return;
-            // 还没有当前项时，第一次确认只把焦点放到第一项：先让玩家看清自己选中了什么，
-            // 也免得打开面板的那一下交互键被同时当成「确认」，直接替玩家点掉第一个选项。
+            // 还没有当前项时，第一次确认只把焦点放到第一项：先让玩家看清自己选中了什么。
+            // 默认键位下交互（F）与确认（Enter）不是同一个键，而且交互完成（InteractableBase.OnTimeOut）
+            // 发生在 CA_Interact 的 Update 里、晚于同一次按键的输入派发，同帧误触发本来就不会出现；
+            // 这一步留作玩家改键把两者绑到同一个键时的保险。
             if (selected < 0) Select(0);
             else Press(selected);
             data.Use();
@@ -569,7 +587,10 @@ namespace BossRush
             UnsubscribeInput();
             if (input != null) input.Release();
             input = null;
-            if (hideToken != null)
+            // 用**引用**判空，不用 Unity 的 `!= null`：画布若已随场景卸载被销毁，Unity 判它为空，旧写法就会跳过注销，
+            // 而官方 `HUDManager.hideTokens` 是静态列表，死条目会一直留在里面（官方显隐判定虽然跳过已销毁条目，
+            // 但列表只增不减，也少了一次 onHideTokensChanged 让官方 HUD 立刻重算）。
+            if (!ReferenceEquals(hideToken, null))
             {
                 try { global::HUDManager.UnregisterHideToken(hideToken); }
                 catch (Exception e) { Debug.LogWarning("[SkyIsland] 注销 HUD 隐藏令牌失败：" + e.Message); }
@@ -585,6 +606,7 @@ namespace BossRush
             buttonColors.Clear();
             choiceCount = 0;
             selected = -1;
+            navigateHeld = 0;
         }
 
         #region 基础构件

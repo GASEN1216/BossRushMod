@@ -64,6 +64,26 @@ internal static class Program
         Check(story.RecordRegionVisited("S4") && story.HasVisitedRegion("S4"), "side island exploration recorded");
         Check(!story.HasVisitedRegion("H"), "unvisited region stays hidden");
         Check(!story.RecordRegionVisited("bogus"), "unknown region rejected");
+        // 区域判定改为「脚下是哪块地」：生成器按区域切出 COL_Ground_{区域}，岛返回 id，桥与其它名字一律 null。
+        Check(SkyIslandStoryService.GroundRegionOf("COL_Ground_B") == "B", "island ground resolves to its region");
+        Check(SkyIslandStoryService.GroundRegionOf("COL_Ground_S3") == "S3", "side island ground resolves to its region");
+        foreach (string notRegion in new[] { "COL_Ground_AB", "COL_Ground_CS1", "COL_Ground_K1", "COL_Ground_",
+            "COL_Ground_B_Mural", "COL_Wall_A", "VIS_Ground_B", "", null })
+            Check(SkyIslandStoryService.GroundRegionOf(notRegion) == null, "bridge or foreign collider never resolves: " + notRegion);
+        // 失败提示：中文界面保留异常原文，英文界面绝不把中文原文拼进提示条。
+        Check(SkyIslandStoryRules.WithDetail("创建失败：", "官方加载器拒绝") == "创建失败：官方加载器拒绝", "chinese failure keeps detail");
+        L10n.IsChinese = false;
+        string english = SkyIslandStoryRules.WithDetail("Sky Islands setup failed", "官方加载器拒绝");
+        Check(english.IndexOf("官方", StringComparison.Ordinal) < 0 && english.StartsWith("Sky Islands setup failed", StringComparison.Ordinal),
+            "english failure never embeds chinese detail");
+        L10n.IsChinese = true;
+        // 目标文本缓存：同一剧情位与语言复用，换语言立刻重建。
+        string objectiveZh = story.CurrentObjective;
+        Check(ReferenceEquals(objectiveZh, story.CurrentObjective), "objective text reused while flags and language are unchanged");
+        L10n.IsChinese = false;
+        Check(story.CurrentObjective == SkyIslandStoryRules.Objective(story.Current) && !ReferenceEquals(objectiveZh, story.CurrentObjective),
+            "objective text rebuilds when the language changes");
+        L10n.IsChinese = true;
         int writes = SavesSystem.PhysicalWrites;
         LevelManager.Instance.IsBaseLevel = false;
         story.Tick(false); Check(SavesSystem.PhysicalWrites == writes, "combat on independent raid cannot write disk");

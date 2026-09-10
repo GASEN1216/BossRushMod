@@ -69,7 +69,7 @@ namespace BossRush
     internal static class BossRushSaveFileThrottle { internal static bool TryBeginSaveFile(bool bypass) { return true; } }
     // 剧情文案走 L10n.T（英文玩家不该看到中文主线）。L10n 依赖官方 LocalizationManager，
     // 隔离进程里返回中文分支即可：断言只看状态位与接受/拒绝，不看文案本身。
-    internal static class L10n { internal static string T(string zh, string en) { return zh; } }
+    internal static class L10n { internal static bool IsChinese = true; internal static string T(string zh, string en) { return IsChinese ? zh : en; } }
 }
 internal sealed class LevelManager
 {

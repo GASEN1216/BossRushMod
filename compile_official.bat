@@ -216,6 +216,8 @@ echo(DebugAndTools\SkyIsland\SkyIslandExplosionObstaclePatch.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGroundRing.cs
 echo(DebugAndTools\SkyIsland\SkyIslandUiArt.cs
 echo(DebugAndTools\SkyIsland\SkyIslandHud.cs
+echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs

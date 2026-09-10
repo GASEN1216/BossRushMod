@@ -13,8 +13,9 @@ namespace BossRush
     ///    `SetActive` 并写 `MultiSceneCore.inLevelData`；本图的箱子不走那条随机通道，
     ///    因此必须在 Awake 之前把它摘掉。
     /// 2. 必须建**独立本地 Inventory**：官方按位置哈希共享库存，靠得近的两个箱子会串味。
-    /// 3. `InstantiateSync` 缺资源时返回同 TypeID 的空壳 FallbackItem，既不为 null 也不抛，
-    ///    必须回读 `TypeID` 才能确认拿到的是真物品。
+    /// 3. `InstantiateSync` 缺资源时返回空壳 FallbackItem（官方 `InstantiateFallbackItem` 把**同一个 TypeID**
+    ///    写回去），既不为 null 也不抛——回读 `TypeID` 分辨不出它。必须在实例化**之前**用
+    ///    `ItemAssetsCollection.GetPrefab` 确认 prefab 在（它同时覆盖官方静态条目与 Mod 动态条目）。
     /// </summary>
     internal static class SkyIslandRewardCrate
     {
@@ -157,6 +158,8 @@ namespace BossRush
                 Item item = null;
                 try
                 {
+                    // 先问 prefab：缺资源时 InstantiateSync 给的空壳带着同一个 TypeID，下面那道回读拦不住它。
+                    if (ItemAssetsCollection.GetPrefab(typeId) == null) throw new InvalidOperationException("物品资源缺失");
                     item = ItemAssetsCollection.InstantiateSync(typeId);
                     if (item == null || item.TypeID != typeId) throw new InvalidOperationException("物品实例无效");
                     item.Inspected = false;
@@ -173,7 +176,12 @@ namespace BossRush
             return added;
         }
 
-        /// <summary>一步建箱并装填。返回是否成功建出箱体（装填件数为 0 仍算建成，玩家会看到空箱）。</summary>
+        /// <summary>
+        /// 一步建箱并装填。返回是否建出了**至少装进一件**的箱子。
+        ///
+        /// 一件都没装进去的箱子直接收掉并返回 false：委托谢礼「先送达再消费」全靠这个返回值，
+        /// 旧写法把空箱也算建成，物资池暂时查不出东西时玩家交了单、拿到的是个空箱，委托却已经被消耗。
+        /// </summary>
         internal static bool Create(Transform parent, Vector3 position, SkyIslandLootTier tier,
             string name, string streamId, int raidSeed, int count, bool guaranteeTopBand = false)
         {
@@ -185,6 +193,13 @@ namespace BossRush
                 return false;
             }
             int added = Fill(box, tier, raidSeed, streamId, count, guaranteeTopBand);
+            if (added == 0)
+            {
+                box.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(box.gameObject);
+                Debug.LogWarning("[SkyIslandCrate] " + name + " 一件物品都没装进去，已收回空箱 tier=" + tier);
+                return false;
+            }
             Debug.Log("[SkyIslandCrate] CRATE_READY name=" + name + " tier=" + tier + " items=" + added);
             return true;
         }

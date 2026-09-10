@@ -28,8 +28,8 @@ def main():
         # CR-2026-09-08-002：撤离只能走撤离圈。地图负责指路，判定唯一留在 Session。
         (session, "撤离唯一判定", ["private const float ExtractionRadius = 2.5f", "private const float ExtractionHold = 3f",
             "private bool IsInsideExtraction(out Transform marker)", "internal Transform BellExitIfUnlocked()",
-            "IsInsideExtraction(out extraction)", "extractionStarted = Time.unscaledTime",
-            "ExtractionHold - (Time.unscaledTime - extractionStarted)", "extractionStarted = -1"]),
+            "IsInsideExtraction(out extraction)", "if (View.ActiveView == null) extractionHeld += Time.deltaTime;",
+            "float remaining = ExtractionHold - extractionHeld;", "extractionHeld = -1;"]),
     ):
         for token in tokens:
             if token not in source:
@@ -115,28 +115,39 @@ def main():
         if "DevModeEnabled" in source or "ArenaPrototypeSession.CanEnter(" in source:
             errors.append(f"{label} 仍依赖开发开关")
 
-    # ---- 2026-09-09 复审：撤离圈与返航要与官方 CountDownArea / SceneLoaderProxy 同语义 ----
-    # 官方 CountDownArea.Update 在任何 View 打开时不推进倒计时；推进分支必须带同一个门。
-    advance_line = next((line for line in update_body.splitlines()
-                         if "View.ActiveView == null" in line and "insideExtraction" in line), "")
+    # ---- 2026-09-09 复审 + 2026-09-10 全方位审核：撤离圈要与官方 CountDownArea 同语义 ----
+    # 1) 官方 CountDownArea.Update 在任何 View 打开时不推进；累加语句必须在同一行带这个门。
+    # 2) 官方计时走 Time.time（CountDownArea.TimeSinceCountDownBegan）：暂停菜单（GameManager.Paused）与
+    #    拍照模式（CameraMode.Active）都会让 TimeScaleManager 把 timeScale 压到 0，读条自然冻结。
+    #    旧实现走 unscaledTime，还自以为「剧情面板那一支顺延起点」就够了——开着暂停菜单站在圈里
+    #    3 秒照样被送回基地，拍照模式同理。所以累加必须是 Time.deltaTime，撤离相关语句一律不得出现 unscaled。
+    # 3) 「不推进」而不是「清零」：人还在圈里、只是开着界面时读条冻结在原处，真正离开圈子才归零。
+    # 按**行**判断而不是整段找 token：同一段 Update 里别处也有 unscaled（地面检测节流、HUD 刷新节流）。
+    advance_line = next((line for line in update_body.splitlines() if "extractionHeld +=" in line), "")
     if not advance_line:
-        errors.append("撤离计时必须在官方界面打开时暂停（推进分支缺 View.ActiveView == null）")
-    # 官方口径是「不推进」而不是「清零」：人还在圈里、只是开着界面时，读条要冻结在原处。
-    # 旧实现直接落到 extractionStarted = -1，开一下背包就把 3 秒读条清零。
-    # unscaledTime 在 timeScale=0 下照走，所以冻结只能靠顺延起点。
-    #
-    # 必须按**结构**判断：剧情面板那一支也有同一句顺延，只在整段 Update 里找这个 token
-    # 等于没断言——删掉撤离圈这一支，另一处仍然命中。
-    freeze_line = next((line for line in update_body.splitlines()
-                        if "insideExtraction" in line and "extractionStarted >= 0" in line), "")
-    if not freeze_line:
-        errors.append("官方界面打开时撤离读条必须冻结而不是清零（缺 insideExtraction 的顺延分支）")
+        errors.append("撤离读条必须按游戏时间累加停留秒数（缺 extractionHeld += ...）")
     else:
-        freeze_body = update_body.split(freeze_line, 1)[1].split("}", 1)[0]
-        if "extractionStarted += Time.unscaledDeltaTime;" not in freeze_body:
-            errors.append("撤离读条的冻结分支没有顺延起点，读条会在界面打开时自己走完")
-    if "extractionStarted = -1" not in update_body:
+        if "View.ActiveView == null" not in advance_line:
+            errors.append("撤离计时必须在官方界面打开时暂停（累加语句同一行缺 View.ActiveView == null）")
+        if "Time.deltaTime" not in advance_line or "unscaled" in advance_line:
+            errors.append("撤离计时必须用 Time.deltaTime：暂停菜单 / 拍照模式 / 剧情面板把 timeScale 压到 0 时才会冻结")
+    for line in update_body.splitlines():
+        lowered = line.lower()
+        if "extraction" in lowered and "unscaled" in lowered and "enteredat" not in lowered:
+            errors.append("撤离读条相关语句不得使用 unscaled 时间：" + line.strip())
+            break
+    complete_line = next((line for line in update_body.splitlines()
+                          if "Close(true, extraction == bellExit" in line), "")
+    if "remaining <= 0" not in complete_line:
+        errors.append("撤离完成必须由按游戏时间算出的 remaining <= 0 触发")
+    if "extractionHeld = -1" not in update_body:
         errors.append("离开撤离圈必须真正清零撤离读条")
+    # 剧情面板那一支不得再顺延或清零读条：timeScale=0 时游戏时间本来就不走，再顺延就是双重冻结。
+    panel_branch = update_body.split("worldStory.Visible)", 1)
+    if len(panel_branch) == 2:
+        panel_body = panel_branch[1].split("return;", 1)[0]
+        if "extractionHeld" in panel_body or "extractionStarted" in panel_body:
+            errors.append("剧情面板开着时不得改动撤离读条（游戏时间已冻结，不需要也不能顺延）")
     # 官方 SceneLoaderProxy.LoadScene 先 DisableInput 再派发；封锁源必须是岛场景内对象，
     # 挂到 DontDestroyOnLoad 的宿主上会在回基地后永久锁死输入（InputManager 只在源销毁/失活时解封）。
     if "private void BlockInputForReturn()" not in session:

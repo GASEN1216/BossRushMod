@@ -22,8 +22,10 @@ def main():
                     'navigation.BeginScan(filter.sharedMesh, origin)', 'probe.StartPath(',
                     'seeker.graphMask = navigation.Mask', 'clone.dropBoxOnDead = false', 'clone.exp = 0',
                     'clone.hasSoul = false', 'clone.setActiveByPlayerDistance = false', 'created.SetTeam(Teams.wolf)',
-                    'this == null || closed', 'player.SetPosition(safePosition)', 'Time.unscaledTime - airborneSince > 2.5f',
-                    'searchCount++', 'searched.Add(key)', 'extractionStarted = -1', 'lease.Release(',
+                    # 腾空救援与撤离读条都走游戏时间（2026-09-10 全方位审核）：暂停菜单 / 拍照模式把 timeScale 压到 0，
+                    # unscaled 计时会在暂停时照走——站在圈里开暂停菜单 3 秒被送回基地、腾空时开暂停菜单被「救」回落脚点。
+                    'this == null || closed', 'player.SetPosition(safePosition)', 'Time.time - airborneSince > 2.5f',
+                    'searchCount++', 'searched.Add(key)', 'extractionHeld = -1', 'lease.Release(',
                     'lease.ReturnToBase(moved)', 'if (returnRequested) { DispatchReturnIfReady(); return; }',
                     'SkyIslandStorySaveRecovery.CloseOrRetain(story)', 'navigation.Dispose()', 'lighting.Dispose()'],
         'RaidLease': ['Assets/arenas/sky_island_raid', 'SkyIslandSceneReferenceBridge.EnsureRegistered()',
@@ -67,6 +69,17 @@ def main():
     session = sources['Session']
     if session.index('while ((SceneManager.GetActiveScene().handle != entryScene.handle') > session.index('lighting.Apply(root)'):
         errors.append('必须等待官方活动场景与相机就绪后才创建天空岛光照')
+    # 腾空救援同样走游戏时间（2026-09-10 全方位审核）：起点与比较必须是同一个时基。
+    # 只钉比较那一句的话，把起点改回 unscaledTime 照样绿，而两种时基相减会让救援在暂停之后立刻触发或迟迟不触发。
+    update = session.split('private void Update()', 1)[1].split('private bool HudSuppressed()', 1)[0]
+    for line in update.splitlines():
+        if 'airborneSince' in line and 'unscaled' in line.lower():
+            errors.append('腾空计时不得混用 unscaled 时间：' + line.strip())
+    if 'else if (airborneSince < 0) airborneSince = Time.time;' not in update:
+        errors.append('腾空计时的起点必须是 Time.time（与救援判定同一时基）')
+    rescue = session.split('private void Rescue()', 1)[1].split('\n        }', 1)[0]
+    if 'extractionHeld = -1;' not in rescue:
+        errors.append('坠落救援必须清零撤离读条：被拉回落脚点的人已经不在撤离圈里')
     for event, callback in [('SceneLoader.onStartedLoadingScene', 'OnStartedLoading'),
                             ('SceneManager.sceneLoaded', 'OnSceneLoaded'), ('SceneManager.sceneUnloaded', 'OnSceneUnloaded')]:
         for operator in ('+=', '-='):

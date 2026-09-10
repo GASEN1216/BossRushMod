@@ -13,8 +13,9 @@
 //      目标真的变了才在目标上方挂一行「目标更新」眉题，几秒后自己收掉。
 //   2. **区域名做成本趟第一次走进时的一次性大标题**（小字群岛名 + 大字地名 + 细线），
 //      同一个区域一趟只出一次，两次之间还要隔几秒。给足仪式感，然后**消失**，不会每过一座桥念一遍。
-//   3. **临场提示走中下方字幕**（Boss 机制、战斗门控、清场）：按字数停留，排队不吞。
-//      塞进角落小卡里的「离开它脚下的那一圈」等于没说。
+//   3. **临场提示走中下方字幕**（Boss 机制、战斗门控、清场）：按字数停留，排队不吞；
+//      警示（Boss 机制、门控原因）插队并打断正在播的普通字幕（规则见 SkyIslandCaptionQueue）。
+//      塞进角落小卡里的「离开它脚下的那一圈」等于没说，排在「航路已清理」后面读到时第一波已经炸完。
 //   4. **其余全部按需出现**：撤离读条交给官方 `EvacuationCountdownUI`（见 SkyIslandExtractionCountdown），
 //      存档状态**正常时完全不显示**——只有出问题才在卡片里常驻一行。静默是高级感的一部分。
 //
@@ -23,11 +24,15 @@
 //   本 HUD 逐条照抄同一组条件一起让位，外加会话侧的「装配中 / 返航中 / 死亡 / 剧情面板打开」。
 //   否则右侧卡片和区域大标题会浮在官方地图、背包与撤离结算画面上面。
 //
-// 【避让】
-//   左上角是随机事件徽章与波次提示（见 `CampaignHud` 的同款注释），所以走右边缘。
-//   右上角 y=-110 是 `CampaignHud` 的位置，而契约**可能**在岛上仍处于武装状态，
-//   因此本卡片按 `CampaignObjectiveTracker.IsArmed` 动态下移一档，不与它叠。
-//   字幕放在官方快捷栏之上，大标题放在字幕之上，三者纵向错开。
+// 【避让】位置全部对照官方 HUD 预制体实测（UnityPy 读 resources.assets 的 LevelManager/HUDCanvas）。
+//   官方 HUD 画布是 2560×1440 参考、按短边缩放；本库画布是 1920×1080 Expand。两者都取 min(宽比, 高比)，
+//   所以本库 1 单位恒等于官方 4/3 单位，下面的换算与屏幕比例无关。
+//   - 右上角：官方「操作说明」提示栈（SimpleIndicators / IndicatorHUD）钉在那里，默认一行开关，
+//     玩家展开后是 11 行、一路长到屏幕中部。卡片每 0.25 秒读一次它的实际下沿，排在它下面
+//     （`BossRushUI.GetTopRightHudTop`，CampaignHud 同口径）；契约在岛上仍武装时本卡再下移一档。
+//   - 左上角是官方时间显示与随机事件徽章，所以卡片不走左边。
+//   - 底部：快捷栏、血条、子弹类型之上还有**交互读条**（ActionProgress_Slider，搜箱开门时出现），
+//     顶边在本库单位 243。字幕以底边钉在它上方、最多两行；区域大标题再排在字幕上方，三者纵向错开。
 //
 // UI 硬约束（AGENTS 4.14）：Canvas 走 `BossRushUI.CreateCanvasRoot(..., interactive:false)`，
 // sortingOrder 用常量，颜色只用 token，文本一律 TMP + 共享字体，所有 Graphic 的
@@ -50,9 +55,14 @@ namespace BossRush
 
         private const float CardWidth = 320f;
         private const float CardRight = -24f;
-        /// <summary>与 `CampaignHud` 同一个起始 y；契约在武装时本卡下移 CardStackOffset。</summary>
+        /// <summary>
+        /// 建出来时的顶边 y（与 `CampaignHud` 同一个起点、同 `BossRushUI.TopRightHudTopMin`）。
+        /// 运行时由 <see cref="ApplyCardAnchor"/> 按官方提示栈的实际下沿改写；契约在武装时本卡再下移 CardStackOffset。
+        /// </summary>
         private const float CardTop = -110f;
         private const float CardStackOffset = -112f;
+        /// <summary>重新量一次官方提示栈下沿的间隔（秒）。</summary>
+        private const float CardLayoutInterval = 0.25f;
         private const float CardPadX = 14f;
         private const float CardPadY = 12f;
         private const float AccentBarWidth = 3f;
@@ -64,9 +74,14 @@ namespace BossRush
         /// <summary>
         /// 区域大标题相对屏幕中心的 y。**负数 = 中线偏下**，这是刻意的：
         /// 屏幕中上方是视线焦点，往那儿贴字正是要甩掉的网游味。
+        /// 取 -150 而不是更低：下面要给字幕（底边钉在官方交互读条之上、最多两行）让出位置——
+        /// 1080 高的画布里，标题下沿那行操作提示连同上浮动画都必须高于字幕上沿（守卫按常量复算）。
         /// 离线预览（tools/preview_sky_island_panel.py）读的就是这个常量，别改成字面量。
         /// </summary>
-        private const float AreaTitleY = -196f;
+        private const float AreaTitleY = -150f;
+        /// <summary>大标题里操作提示行相对标题中心的 y 与行高。守卫用它复算「提示行不压字幕」。</summary>
+        private const float BannerHintY = -42f;
+        private const float BannerHintHeight = 26f;
         private const float AreaTitleFont = 44f;
         private const float AreaOverlineFont = 14f;
         /// <summary>
@@ -86,14 +101,28 @@ namespace BossRush
         private const float BannerMinGap = 8f;
 
         /// <summary>
-        /// 字幕中心相对屏幕中心的 y：中线下方、官方快捷栏之上（快捷栏连同武器名占底部约 140 px）。
+        /// 官方底部 HUD 堆叠的最高点：本库 1080 高画布里距底边的单位数。
+        /// 实测（UnityPy 读 LevelManager/HUDCanvas，官方 2560×1440 参考 × 0.75 换算）：快捷栏顶 112、
+        /// 子弹类型 187、**交互读条 ActionProgress_Slider 顶 243**——搜箱、开门、交互读秒时它就在屏幕中下方。
+        /// 旧注释以为「快捷栏连同武器名约占底部 140 px」，字幕中心放在 -330（距底 210），两行字幕会整段压住读条。
+        /// </summary>
+        private const float OfficialBottomStackTop = 244f;
+        /// <summary>
+        /// 字幕**底边**相对屏幕中心的 y（字幕根的轴心在底边，文字向上长）。1080 高时底边距底 254，
+        /// 在官方底部堆叠之上 10 个单位；更高的屏幕比例下画布更高，这段距离只会更大。
         /// 这是主流游戏放旁白与临场提示的位置，视线稍一下移就能读到，又不压正前方的战斗视野。
         /// </summary>
-        private const float CaptionY = -330f;
+        private const float CaptionY = -286f;
         private const float CaptionWidth = 1000f;
         private const float CaptionFont = 20f;
+        /// <summary>字幕最多两行的高度，再长就省略号收尾：字幕是临场提示，不是段落。</summary>
+        private const float CaptionMaxHeight = 60f;
+        /// <summary>字幕压暗底比文字高出的量（上下各一半）。压暗是柔边，下沿淡尾允许轻轻搭到读条上。</summary>
+        private const float CaptionScrimPadding = 40f;
         private const float CaptionFadeIn = 0.25f;
         private const float CaptionFadeOut = 0.5f;
+        /// <summary>被警示打断时当前这条字幕的淡出秒数：要快，噬风的预警窗口只有 1.4 秒。</summary>
+        private const float CaptionPreemptFade = 0.15f;
         /// <summary>停留时长按字数估：保底 2.6 秒、封顶 5.2 秒。</summary>
         private const float CaptionHoldMin = 2.6f;
         private const float CaptionHoldMax = 5.2f;
@@ -109,12 +138,6 @@ namespace BossRush
         private const float HideFade = 0.15f;
 
         #endregion
-
-        private struct PendingCaption
-        {
-            internal string Text;
-            internal bool Warning;
-        }
 
         private Canvas canvas;
         private CanvasGroup rootGroup;
@@ -134,11 +157,15 @@ namespace BossRush
         private string extraction, status, landingHint, pendingTitle, captionShowing;
         private float bannerAge = -1f, sinceBanner = BannerMinGap, captionAge = -1f, captionHold;
         private float objectiveUpdatedAge = -1f, visibility = 1f;
-        private bool stacked;
+        private bool stacked, captionWarning;
+        /// <summary>被警示打断的时刻（captionAge 读数）与当时的不透明度；captionCutAge 为 -1 表示没被打断。</summary>
+        private float captionCutAge = -1f, captionCutAlpha, captionAlpha;
+        /// <summary>卡片顶边避让官方右上角提示栈：节流计时与上一次写下的顶边。</summary>
+        private float layoutTimer, appliedCardTop = -1f;
 
         /// <summary>本趟已经出过大标题的区域。同一个区域一趟只出一次。</summary>
         private readonly HashSet<string> titled = new HashSet<string>(StringComparer.Ordinal);
-        private readonly Queue<PendingCaption> captions = new Queue<PendingCaption>();
+        private readonly SkyIslandCaptionQueue captions = new SkyIslandCaptionQueue(CaptionQueueLimit);
 
         internal SkyIslandHud(Transform owner)
         {
@@ -223,28 +250,31 @@ namespace BossRush
             ruleImage.color = BossRushUIColors.Divider;
             ruleImage.raycastTarget = false;
 
-            bannerHint = CenteredText("Hint", root.transform, 15f, BossRushUIColors.TextSecondary, -42f, 26f);
+            bannerHint = CenteredText("Hint", root.transform, 15f, BossRushUIColors.TextSecondary, BannerHintY, BannerHintHeight);
         }
 
         private void BuildCaption()
         {
+            // 轴心在**底边**：字幕向上长，底边始终钉在官方底部堆叠之上，两行也不会往下压住交互读条。
             GameObject root = ZombieModeUIHelper.CreateRect("SkyIslandCaption", canvas.transform,
                 new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, CaptionY), new Vector2(CaptionWidth, 40f), new Vector2(0.5f, 0.5f));
+                new Vector2(0f, CaptionY), new Vector2(CaptionWidth, 40f), new Vector2(0.5f, 0f));
             captionRect = root.GetComponent<RectTransform>();
             captionGroup = root.AddComponent<CanvasGroup>();
             captionGroup.alpha = 0f;
             captionGroup.blocksRaycasts = false;
             captionGroup.interactable = false;
             // 与区域大标题同一张二维柔边压暗：字幕同样压在高亮云海上。
-            captionShade = AddScrim(root.transform, new Vector2(CaptionWidth + 180f, 100f));
+            captionShade = AddScrim(root.transform, new Vector2(CaptionWidth + 180f, 40f + CaptionScrimPadding));
             captionText = ZombieModeUIHelper.CreateText("Text", root.transform, string.Empty, CaptionFont,
                 new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero,
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             captionText.raycastTarget = false;
-            // 字幕字号固定：长句折行，而不是缩成小字。高度由 StartCaption 实测。
+            // 字幕字号固定：长句折行，而不是缩成小字。高度由 StartCaption 实测，封顶两行、再长省略号收尾。
             captionText.enableAutoSizing = false;
             captionText.fontSize = CaptionFont;
+            captionText.enableWordWrapping = true;
+            captionText.overflowMode = TextOverflowModes.Ellipsis;
             BossRushUI.ApplyGameFont(captionText);
         }
 
@@ -315,6 +345,9 @@ namespace BossRush
             Apply();
         }
 
+        /// <summary>卡片此刻登记的目标文本（不含「目标更新」眉题）。只读，给 F3 验收比对「显示的」。</summary>
+        internal string ObjectiveText { get { return objective; } }
+
         internal void SetChips(string value)
         {
             value = value ?? string.Empty;
@@ -344,20 +377,27 @@ namespace BossRush
             Apply();
         }
 
-        /// <summary>一次性字幕：排队播放，停留时长按字数估，播完淡出。<paramref name="warning"/> 用警示色。</summary>
+        /// <summary>
+        /// 一次性字幕：排队播放，停留时长按字数估，播完淡出。<paramref name="warning"/> 用警示色并且**插队**：
+        /// 排在全部普通字幕之前、队满时不先丢它，正在播的普通字幕快速淡出让位（规则见 SkyIslandCaptionQueue）。
+        /// </summary>
         internal void Caption(string value, bool warning)
         {
-            if (string.IsNullOrEmpty(value)) return;
+            bool preempt;
+            SkyIslandCaptionQueue.Admission admission = captions.Admit(value, warning,
+                captionAge >= 0f ? captionShowing : null, captionWarning, out preempt);
             // 同一句正在播：把停留重新拉满而不是再排一遍（战斗门控提示会被玩家连按触发）。
-            if (captionAge >= 0f && string.Equals(captionShowing, value, StringComparison.Ordinal))
+            // 已经在被打断淡出的那条不再拉回来。
+            if (admission == SkyIslandCaptionQueue.Admission.RefreshShowing)
             {
-                if (captionAge > CaptionFadeIn) captionAge = CaptionFadeIn;
+                if (captionCutAge < 0f && captionAge > CaptionFadeIn) captionAge = CaptionFadeIn;
                 return;
             }
-            foreach (PendingCaption queued in captions)
-                if (string.Equals(queued.Text, value, StringComparison.Ordinal)) return;
-            if (captions.Count >= CaptionQueueLimit) captions.Dequeue();
-            captions.Enqueue(new PendingCaption { Text = value, Warning = warning });
+            if (preempt && captionCutAge < 0f)
+            {
+                captionCutAge = captionAge;
+                captionCutAlpha = captionAlpha;
+            }
         }
 
         /// <summary>
@@ -380,7 +420,7 @@ namespace BossRush
         internal void Tick(float unscaledDelta, bool suppressed)
         {
             if (canvas == null) return;
-            bool hidden = suppressed || OfficialHudHidden();
+            bool hidden = suppressed || BossRushUI.IsOfficialHudHidden();
             float target = hidden ? 0f : 1f;
             if (visibility != target)
             {
@@ -388,7 +428,16 @@ namespace BossRush
                 if (rootGroup != null) rootGroup.alpha = visibility;
             }
             // 隐藏期间不推进大标题与字幕：玩家开着地图的那几秒，不该把它们在背后悄悄播完。
-            if (hidden) return;
+            // 暂停菜单同理：它不隐藏官方 HUD（PauseMenu 是 UIPanel 不是 View），但画布 sortingOrder 10000
+            // 整个盖在上面；本 HUD 的淡变走 unscaled 时间，不停下来的话一条 Boss 机制提示会在暂停菜单背后播完。
+            if (hidden || BossRushUI.IsGamePaused()) return;
+
+            layoutTimer -= unscaledDelta;
+            if (layoutTimer <= 0f)
+            {
+                layoutTimer = CardLayoutInterval;
+                ApplyCardAnchor();
+            }
 
             sinceBanner += unscaledDelta;
             TickBanner(unscaledDelta);
@@ -410,28 +459,23 @@ namespace BossRush
             if (campaignArmed != stacked)
             {
                 stacked = campaignArmed;
-                if (cardRect != null)
-                    cardRect.anchoredPosition = new Vector2(CardRight,
-                        CardTop + (stacked ? CardStackOffset : 0f));
+                ApplyCardAnchor();
             }
         }
 
         /// <summary>
-        /// 官方 `HUDManager.ShouldDisplay` 的公开条件，逐条照抄。
-        /// 它的隐藏令牌是私有列表读不到，也不需要读：本 Mod 唯一注册令牌的是剧情面板，
-        /// 已经由会话传进来的 suppressed 覆盖。
+        /// 卡片顶边：排在官方右上角「操作说明」提示栈的实际下沿之下（与 CampaignHud 共用 BossRushUI 的同一个口径），
+        /// 契约武装时再下移一档让出契约追踪条。位置真的变了才写 RectTransform。
+        /// 官方 HUD 显隐条件（`HUDManager.ShouldDisplay` 的公开部分）同样收在 BossRushUI.IsOfficialHudHidden，
+        /// 隐藏令牌读不到也不需要读：本 Mod 唯一注册令牌的是剧情面板，已由会话传进来的 suppressed 覆盖。
         /// </summary>
-        private static bool OfficialHudHidden()
+        private void ApplyCardAnchor()
         {
-            try
-            {
-                return View.ActiveView != null || Dialogues.DialogueUI.Active
-                    || global::CustomFaceUI.ActiveView != null || global::CameraMode.Active;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            if (cardRect == null) return;
+            float top = BossRushUI.GetTopRightHudTop(canvas) + (stacked ? -CardStackOffset : 0f);
+            if (Mathf.Abs(top - appliedCardTop) < 0.5f) return;
+            appliedCardTop = top;
+            cardRect.anchoredPosition = new Vector2(CardRight, -top);
         }
 
         private void TickBanner(float delta)
@@ -490,46 +534,65 @@ namespace BossRush
         {
             if (captionAge < 0f)
             {
-                if (captions.Count == 0) return;
-                PendingCaption next = captions.Dequeue();
+                SkyIslandCaptionQueue.Entry next;
+                if (!captions.TryDequeue(out next)) return;
                 StartCaption(next.Text, next.Warning);
             }
 
             captionAge += delta;
-            // 后面还排着的时候缩短当前这条，别让一串公告拖成十几秒。
-            float hold = captions.Count > 0 ? Mathf.Min(captionHold, CaptionHoldIfPending) : captionHold;
-            float total = CaptionFadeIn + hold + CaptionFadeOut;
-            if (captionAge >= total)
+            float alpha;
+            if (captionCutAge >= 0f)
             {
-                captionAge = -1f;
-                captionShowing = null;
-                if (captionGroup != null) captionGroup.alpha = 0f;
-                return;
+                // 被警示打断：从打断那一刻的不透明度快速淡出，给排在队首的警示让位。
+                float cut = (captionAge - captionCutAge) / CaptionPreemptFade;
+                if (cut >= 1f) { EndCaption(); return; }
+                alpha = captionCutAlpha * (1f - cut);
             }
-            float alpha = captionAge < CaptionFadeIn
-                ? Smooth(captionAge / CaptionFadeIn)
-                : (captionAge < CaptionFadeIn + hold
-                    ? 1f
-                    : 1f - Smooth((captionAge - CaptionFadeIn - hold) / CaptionFadeOut));
+            else
+            {
+                // 后面还排着的时候缩短当前这条，别让一串公告拖成十几秒。
+                float hold = captions.Count > 0 ? Mathf.Min(captionHold, CaptionHoldIfPending) : captionHold;
+                float total = CaptionFadeIn + hold + CaptionFadeOut;
+                if (captionAge >= total) { EndCaption(); return; }
+                alpha = captionAge < CaptionFadeIn
+                    ? Smooth(captionAge / CaptionFadeIn)
+                    : (captionAge < CaptionFadeIn + hold
+                        ? 1f
+                        : 1f - Smooth((captionAge - CaptionFadeIn - hold) / CaptionFadeOut));
+            }
+            captionAlpha = alpha;
             if (captionGroup != null) captionGroup.alpha = alpha;
+        }
+
+        private void EndCaption()
+        {
+            captionAge = -1f;
+            captionShowing = null;
+            captionWarning = false;
+            captionCutAge = -1f;
+            captionAlpha = 0f;
+            if (captionGroup != null) captionGroup.alpha = 0f;
         }
 
         private void StartCaption(string text, bool warning)
         {
             captionShowing = text;
+            captionWarning = warning;
+            captionCutAge = -1f;
             captionAge = 0f;
+            captionAlpha = 0f;
             captionHold = Mathf.Clamp(text.Length * CaptionHoldPerChar + CaptionHoldMin * 0.5f,
                 CaptionHoldMin, CaptionHoldMax);
             if (captionGroup != null) captionGroup.alpha = 0f;
             if (captionText == null) return;
             captionText.color = warning ? BossRushUIColors.WarningText : BossRushUIColors.TextPrimary;
             captionText.text = text;
-            // 先量后排：一行就是一行高，两行就给两行，压暗底跟着文字高度走。
+            // 先量后排：一行就是一行高，两行就给两行，压暗底跟着文字高度走；再长封顶两行、省略号收尾。
             float height = Mathf.Clamp(
                 Mathf.Ceil(captionText.GetPreferredValues(text, CaptionWidth, float.PositiveInfinity).y) + 8f,
-                CaptionFont * 1.6f, CaptionFont * 4.8f);
+                CaptionFont * 1.6f, CaptionMaxHeight);
             if (captionRect != null) captionRect.sizeDelta = new Vector2(CaptionWidth, height);
-            if (captionShade != null) captionShade.sizeDelta = new Vector2(CaptionWidth + 180f, height + 60f);
+            if (captionShade != null) captionShade.sizeDelta = new Vector2(CaptionWidth + 180f, height + CaptionScrimPadding);
         }
 
         private static float Smooth(float t)
@@ -630,12 +693,21 @@ namespace BossRush
     /// </summary>
     internal sealed class SkyIslandProximityLabel : MonoBehaviour
     {
+        /// <summary>
+        /// 透明度量化步长。TMP 的 alpha 每改一次都要重建整块文字网格（顶点色跟着重算），
+        /// 旧写法按 1% 阈值更新，玩家走过一次 5 米的淡变带要重建上百次；按 5% 一档最多 20 次，肉眼看不出台阶。
+        /// </summary>
+        private const float AlphaStep = 0.05f;
+        /// <summary>估算玩家接近速度的上限（米/秒）：离得远时据此推迟下一次距离检查。</summary>
+        private const float ApproachSpeed = 8f;
+        private const float MaxRecheckSeconds = 1f;
+
         private float near, far;
         private TMP_Text text;
         private Renderer textRenderer;
         private Canvas worldCanvas;
         private CanvasGroup group;
-        private float applied = -1f;
+        private float applied = -1f, nextCheck;
 
         /// <param name="near">这个距离以内完全显形。</param>
         /// <param name="far">这个距离以外完全消失。</param>
@@ -665,16 +737,25 @@ namespace BossRush
 
         private void LateUpdate()
         {
+            // 完全隐形且离得远时不必每帧量距离：按「以最快接近速度走到淡变带外沿还要多久」推迟下一次检查，
+            // 最多隔 1 秒。纪念物与船点招牌大部分时间离玩家很远，这里通常只是一次时间比较。
+            if (applied <= 0f && Time.unscaledTime < nextCheck) return;
             float alpha = 0f;
             CharacterMainControl main = CharacterMainControl.Main;
             if (main != null)
             {
                 float distance = Vector3.Distance(main.transform.position, transform.position);
                 float t = Mathf.Clamp01((far - distance) / (far - near));
-                alpha = t * t * (3f - 2f * t);
+                alpha = Mathf.Round(t * t * (3f - 2f * t) / AlphaStep) * AlphaStep;
+                if (alpha <= 0f)
+                    nextCheck = Time.unscaledTime + Mathf.Min(MaxRecheckSeconds, (distance - far) / ApproachSpeed);
             }
-            // 变化小于 1% 不重写顶点色；但「归零」必须真的写下去，否则 Renderer 会以 0.5% 的 alpha 一直开着。
-            if (Mathf.Abs(alpha - applied) < 0.01f && (alpha > 0f || applied <= 0f)) return;
+            else
+            {
+                nextCheck = Time.unscaledTime + MaxRecheckSeconds;
+            }
+            // 量化后同一档不重写；「归零」这一档照样要写下去，否则 Renderer 会以最低一档的 alpha 一直开着。
+            if (Mathf.Abs(alpha - applied) < AlphaStep * 0.5f) return;
             ApplyAlpha(alpha);
         }
 

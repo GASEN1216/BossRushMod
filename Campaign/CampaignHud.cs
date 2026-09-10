@@ -48,6 +48,9 @@ namespace BossRush
 
         private static bool _buildFailed;
 
+        /// <summary>下一次重新量官方右上角提示栈下沿的时刻（unscaled）。</summary>
+        private static float _nextAnchorCheck;
+
         /// <summary>正文拼装缓冲。复用同一个 builder，避免每帧新建。</summary>
         private static readonly StringBuilder _builder = new StringBuilder(160);
 
@@ -77,6 +80,23 @@ namespace BossRush
                 if (_panel == null) return;
 
                 if (!_panel.activeSelf) _panel.SetActive(true);
+
+                // 跟随官方 HUD 显隐：背包、地图与对话画在 sortingOrder 100 的官方画布上，本 HUD 在
+                // HudOverlay（1200），不让位就会压在它们上面（口径同 SkyIslandHud，判定共用 BossRushUI）。
+                // 只开关画布、不走 HideImmediate：后者会作废进度快照，关掉背包那一帧还要重拼一次正文。
+                bool visible = !BossRushUI.IsOfficialHudHidden();
+                if (_canvas != null && _canvas.enabled != visible) _canvas.enabled = visible;
+
+                // 顶边排在官方右上角「操作说明」提示栈下面：它展开后会一路长到屏幕中部，写死的 y=-110 会被盖住。
+                // 0.25 秒量一次，位置真的变了才写。
+                if (visible && Time.unscaledTime >= _nextAnchorCheck)
+                {
+                    _nextAnchorCheck = Time.unscaledTime + 0.25f;
+                    RectTransform rect = _panel.transform as RectTransform;
+                    float top = BossRushUI.GetTopRightHudTop(_canvas);
+                    if (rect != null && Mathf.Abs(rect.anchoredPosition.y + top) >= 0.5f)
+                        rect.anchoredPosition = new Vector2(-24f, -top);
+                }
 
                 // 脏检查放在**构建之前**：拼字符串本身就是分配，
                 // 先拼再比等于每帧都付了代价（本文件早先的写法正是如此）。
@@ -261,6 +281,7 @@ namespace BossRush
             _shownCurrent.Clear();
             _shownFailed.Clear();
             _buildFailed = false;
+            _nextAnchorCheck = 0f;
         }
 
         #endregion

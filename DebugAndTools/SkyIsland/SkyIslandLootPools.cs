@@ -48,6 +48,9 @@ namespace BossRush
             int[] cached;
             if (cache.TryGetValue(key, out cached)) return cached;
             var result = new List<int>();
+            // 只有完整跑完的查询才进缓存。标签表还没就绪、或查询中途抛异常时得到的空池若也缓存，
+            // 缓存要到模块销毁才清，于是本进程之后每一趟出击的箱子都是空的。
+            bool complete = false;
             try
             {
                 GameplayDataSettings.TagsData tags = GameplayDataSettings.Tags;
@@ -71,16 +74,18 @@ namespace BossRush
                             if (ids[i] > 0 && !LootBlacklistRegistry.Contains(ids[i])) unique.Add(ids[i]);
                     }
                     result.AddRange(unique);
+                    complete = true;
                 }
                 // 排序让同一 seed 在不同机器上抽到同一件：HashSet 的枚举顺序不稳定。
                 result.Sort();
             }
             catch (Exception e)
             {
+                complete = false;
                 Debug.LogWarning("[SkyIslandLoot] 物资池查询失败 band=" + minQuality + "-" + maxQuality + "：" + e.Message);
             }
             cached = result.ToArray();
-            cache[key] = cached;
+            if (complete) cache[key] = cached;
             Debug.Log("[SkyIslandLoot] POOL band=" + minQuality + "-" + maxQuality + " size=" + cached.Length);
             return cached;
         }

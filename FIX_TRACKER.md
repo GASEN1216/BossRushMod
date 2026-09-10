@@ -4,6 +4,50 @@
 
 ## 最新修复
 
+### 2026-09-10 天空岛全方位审核：21 条 finding 全修（3 P1 / 13 P2 / 5 P3），F3 岛内套件改为真正只读
+
+**分类**：COMPAT / SAFE / OPERATIONAL。owner 要求对天空岛做全方位审核并按严重度全部修复、无人值守。逐条 finding 见
+`CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-008` 至 `-028`；完整记录（修复前 `HEAD` 锚点、触发条件与后果、修法、证据级别、待拍板）在
+`docs/天空岛_全方位审核_2026-09-10.md`（local-only）。
+
+**P1**：
+- 撤离读秒与腾空救援改走游戏时间（`extractionHeld += Time.deltaTime`，带 `View.ActiveView` 门；腾空 `Time.time`）。暂停菜单与拍照模式把
+  `timeScale` 压到 0，旧的 unscaled 计时让人开着暂停菜单站在撤离圈里 3 秒就被送回基地。
+- 噬风战利品箱退开它自己的尸体箱一个交互间距（`TryFindCratePosition`）：同点时官方交互选择总有一个箱子选不中。
+- F3 岛内套件不再写运行标记（`SavesSystem.SaveFile`）、不给无敌与回血、不抑制提示条、收尾不跑全宿主清理；`SESSION` 行报 `read_only=true`。
+
+**P2**：区域判定改为脚下地面碰撞体 `COL_Ground_{区域}`（「最近地标 60 m」在码头以外的主岛只罩住 30–53% 的可走面，CS1 / FS3 桥面隔岸点亮支路）；
+巡岛可完成量数区域表（装饰节点 `POI_B_Mural` 让它派得出做不完的单）；字幕分级 `SkyIslandCaptionQueue`（Boss 机制提示插队、队满先丢普通字幕）；
+`CampaignHud` 跟随官方 HUD 显隐（判定收成 `BossRushUI.IsOfficialHudHidden`）；剧情面板导航按边沿走一步、重开保留当前项；
+字幕底边钉在官方交互读条之上、右上卡片排在官方「操作说明」提示栈的实际下沿之下（`BossRushUI.GetTopRightHudTop`）；
+整备入列门照官方 `Repairable` + 上限 ≥ 1；F3 用例判据（居民必然假红、恒真比对、该 SKIP 却 PASS、读条实例所属场景）与副作用
+（插图同步解码并永久缓存 null、会话结束后的红项归因）；桥口木牌英文自动缩放；失败提示在英文界面不拼中文原文（`WithDetail`）；
+文档（蓝环 → 青色环、「未复用官方倒计时控件」、手柄、状态行位置、F6、用例计数）；`SkyIslandValidationSuiteGuard` 按结构重写。
+
+**P3**：隐藏令牌按引用注销、倒下与开始切图时收起官方读条、离圈立刻撤文字读秒、暂停菜单开着时 HUD 停推进；
+浮空字按接近速度推迟距离检查并按 5% 量化 alpha，`LandmarkLabel` / `FieldStatus` / `CurrentObjective` 复用字符串，
+`SkyIslandSceneReferenceBridge.IsScene` 先比 `buildIndex` 与句柄；建箱前 `GetPrefab`（FallbackItem 带同一个 TypeID，`AGENTS.md` 旧记录已更正）、
+物资池只缓存完整查询、空箱收回；F3 杂项；英文术语与语法。
+
+**结构**：`SkyIslandSession.cs` 修后 1281 行，超出新文件 1200 行硬预算；F3 只读观测面拆到 `SkyIslandSessionValidation.cs`（partial，语义不变）。
+新增 `SkyIslandCaptionQueue.cs`、执行回归 `tests/fixtures/SkyIslandHudPolicy`、离线几何属性测试 `tests/SkyIslandRegionResolutionPropertyTest.py`、
+守卫 `tests/SkyIslandFullAuditGuard.py`（其它天空岛守卫覆盖不到的 F3 用例判据、木牌、失败提示出口、热路径、英文术语与文档一致）。
+
+**核实后不是缺陷**：岛上官方 `EvacuationCountdownUI` 实例存在；撤离环画得出来；落地点在 `POI_A` 60 m 内；默认键位下交互键与确认键不会同帧撞车；
+隐藏令牌泄漏不会让官方 HUD 永久隐藏；CR-2026-09-10-003 的 `TimeOfDayConfig` 常驻副本无全局副作用（UnityPy 读 `Base.unity` 与 16 张 `*_Main`，租约注释据此更正）。
+**交接**：`ArenaPrototypeSession` 的撤离读秒同样走 unscaled（试验场 / 石堡前哨，不在天空岛范围）。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | `compile_official.bat`（`Build/bossrush.rsp` 无 `/define`） | Build succeeded，0 error；`BossRush.dll` 4,770,816 B，SHA-256 `c7b3a33d48206d37c6b586a184b55b9dc75f635f31f9332f743168dd78438456` 源与游戏目录一致（这次构建同时带上了并行会话对 `ArenaPrototypeSession.cs` 的改动）；WikiContent 两份与 `GameplayCoverage.json` 部署副本逐个一致；游戏目录无 Dev 产物 |
+| 2 | `python tools/run_guards.py` | 585 个脚本：583 PASS / 2 NEW-FAIL / 0 KNOWN-RED。两个红项 `SkyIslandNavigationPropertyTest`、`SkyIslandSettlementGeometryTests` 来自并行会话尚未提交的 `tools/sky_island_*` 布局改动：把那几份文件换回 `HEAD` 版本、其余保持本轮代码复跑，两者均 PASS；并行改动落地前同一套代码全量为 584 PASS / 0 NEW-FAIL |
+| 3 | `run_runtime_regressions --filter SkyIsland` | 8 PASS / 0 FAIL（新增 `SkyIslandHudPolicy`） |
+| 4 | 反向验证 | 142 个变异探针（HUD 40 / F3 套件 40 / 审核回归 34 / 内容 11 / 入口 6 / 生命周期 3 / 几何 1 / 执行回归 7）全部转红；破坏做在仓库稀疏副本上，副本逐字节还原并 sha256 核对，真实工作区前后 sha256 不变 |
+
+**待人工**（未实机）：`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 2.8 步。部署成功不等于已生效。
+
 ### 2026-09-10 天空岛第二轮 Tripo 散件进包；顺带修正作者 world 包一直没更新（文档写错构建入口）
 
 **分类**：OPERATIONAL。owner 交回第二轮 Tripo 模型（「全部模型我都放进去了」），接线进包时发现构建入口文档有误。

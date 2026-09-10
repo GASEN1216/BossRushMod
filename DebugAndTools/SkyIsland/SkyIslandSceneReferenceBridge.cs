@@ -45,10 +45,25 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 这个场景是不是天空岛。**热路径**：它挂在 `MultiSceneCore.ActiveSubSceneID` 等全局前缀补丁上，
+        /// 官方地图、迷雾与各类 HUD 在任何地图都会每帧问这个 getter；而 `Scene.path` 每读一次都新建一个托管字符串。
+        ///
+        /// 两级短路，先比整数：官方场景全在 Build Settings 里（buildIndex ≥ 0），天空岛来自 AssetBundle（恒为 -1，
+        /// 见类注释），官方地图因此一个字符串都不读；岛上认出过一次就记住句柄，之后只比句柄。
+        /// 句柄缓存在每次新的初始化开始时（<see cref="BeginInitialization"/>）与关闭时作废。
+        /// </summary>
         internal static bool IsScene(Scene scene)
         {
-            return scene.IsValid() && string.Equals(scene.path, ScenePath, StringComparison.OrdinalIgnoreCase);
+            if (!scene.IsValid() || scene.buildIndex >= 0) return false;
+            if (knownSceneHandle != 0 && scene.handle == knownSceneHandle) return true;
+            if (!string.Equals(scene.path, ScenePath, StringComparison.OrdinalIgnoreCase)) return false;
+            knownSceneHandle = scene.handle;
+            return true;
         }
+
+        /// <summary>最近一次认出的天空岛场景句柄；0 表示未知。</summary>
+        private static int knownSceneHandle;
 
         internal static bool IsActiveScene
         {
@@ -164,6 +179,8 @@ namespace BossRush
             initializationOwner = owner;
             initializationSceneHandle = 0;
             initializationFailure = null;
+            // 新的一趟出击会加载一个新的场景实例：旧句柄即使被复用也不能再当作天空岛。
+            knownSceneHandle = 0;
         }
 
         internal static void BindInitializationScene(object owner, Scene scene)
@@ -431,6 +448,8 @@ namespace BossRush
 
         private static void OnSceneUnloaded(Scene scene)
         {
+            // 卸载后的句柄不能再代表天空岛（见 IsScene 的句柄缓存）。
+            if (knownSceneHandle != 0 && scene.handle == knownSceneHandle) knownSceneHandle = 0;
             if (shutdownRequested) Shutdown();
         }
 
@@ -438,6 +457,7 @@ namespace BossRush
         {
             registered = false;
             shutdownRequested = false;
+            knownSceneHandle = 0;
             if (subscribed)
             {
                 SceneLoader.onFinishedLoadingScene -= OnSceneLoadFinished;

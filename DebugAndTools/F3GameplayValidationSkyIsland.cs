@@ -40,8 +40,11 @@ namespace BossRush
         /// <summary>本轮会话跑的是天空岛套件而不是主套件。由 <see cref="TryStartSkyIsland"/> 置位。</summary>
         private bool _skyIslandMode;
 
-        /// <summary>岛内单条协程用例的时间预算。这里没有刷怪与切图，30 秒足够导航探路跑完。</summary>
+        /// <summary>岛内单条协程用例的时间预算。这里没有刷怪与切图，60 秒足够导航探路跑完。</summary>
         private const float SkyIslandCaseTimeoutSeconds = 60f;
+
+        /// <summary>开跑那一刻的天空岛场景实例句柄与模态输入租约数：用例据此判断「这趟出击还在不在」「是不是自己漏了租约」。</summary>
+        private int _skyIslandSceneHandle, _skyIslandBaselineLeases;
 
         /// <summary>
         /// 岛内套件里全部用例的 ID。装配失败时用来批量记 SKIP，报告里不留空白，
@@ -87,9 +90,40 @@ namespace BossRush
             if (CharacterMainControl.Main == null || CharacterMainControl.Main.CharacterItem == null)
             { reason = "玩家或资源未就绪"; return false; }
             if (SceneLoader.IsSceneLoading) { reason = "正在切图"; return false; }
+            // 与主门同口径：开着剧情面板、背包或地图时不开跑。否则收尾那条「套件没漏模态租约」
+            // 会把玩家自己开着的面板算成验收的锅。
+            if (ZombieModeUIHelper.ModalInputLeaseCount > 0) { reason = "请先关闭剧情面板等模态界面"; return false; }
+            if (View.ActiveView != null) { reason = "请先关闭背包、地图等官方界面"; return false; }
             string mode;
             if (_host.ValidationHasActiveMode(out mode)) { reason = "检测到活动玩法: " + mode; return false; }
             return true;
+        }
+
+        /// <summary>
+        /// 这趟出击是否还在：会话存在、已就绪（未返航、未死亡），而且还是开跑时那个场景实例。
+        /// 验收途中玩家站进撤离圈返航、倒下或换槽都会让它不成立——那之后的用例在已经没有岛的环境里跑只会红一片，
+        /// 而那不是产品缺陷；旧编排把这些红项连同「套件不应结束这趟出击」一起算在套件头上。
+        /// </summary>
+        private bool SkyIslandSessionStillValid(out string reason)
+        {
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            if (session == null) { reason = "island_session_closed"; return false; }
+            if (!session.IsReady) { reason = "island_session_not_ready"; return false; }
+            if (session.ValidationScene.handle != _skyIslandSceneHandle) { reason = "island_scene_changed"; return false; }
+            reason = null;
+            return true;
+        }
+
+        /// <summary>岛内同步用例的外壳：这趟出击已经不在了就记 SKIP（附原因），否则照常交给 RunSyncCase。</summary>
+        private void RunSkyIslandSync(string id, SyncValidation validation)
+        {
+            string reason;
+            if (!SkyIslandSessionStillValid(out reason))
+            {
+                Record(id, "SKIP", 0L, string.Empty, reason);
+                return;
+            }
+            RunSyncCase(id, validation);
         }
 
         internal static bool TryStartSkyIsland(ModBehaviour host, out string reason)
@@ -102,6 +136,9 @@ namespace BossRush
             _instance._cancelRequested = false;
             _instance._fatalAbort = false;
             _instance._skyIslandMode = true;
+            SkyIslandSession started = _instance.SkyIslandSessionOrNull();
+            _instance._skyIslandSceneHandle = started == null ? 0 : started.ValidationScene.handle;
+            _instance._skyIslandBaselineLeases = ZombieModeUIHelper.ModalInputLeaseCount;
             if (!_instance.BeginSession(out reason)) { _instance._skyIslandMode = false; return false; }
             _instance.WriteRaw("SUITE | SKY_ISLAND | scene=" + SceneManager.GetActiveScene().path);
             _instance._routine = _instance.StartCoroutine(_instance.RunSession());
@@ -129,39 +166,39 @@ namespace BossRush
 
             SetStage("1/5 场景装配与官方合同");
             yield return SamplePerformance("SKY_PERF_BASELINE_5S", 5f, true);
-            RunSyncCase("SKY_SESSION_READY", ValidateSkyIslandSessionReady);
-            RunSyncCase("SKY_OFFICIAL_CONTRACT", ValidateSkyIslandOfficialContract);
-            RunSyncCase("SKY_SCENE_IDENTITY", ValidateSkyIslandSceneIdentity);
-            RunSyncCase("SKY_NAV_GRAPH", ValidateSkyIslandNavigationGraph);
-            RunSyncCase("SKY_EXPLOSION_PATCH", ValidateSkyIslandExplosionPatch);
+            RunSkyIslandSync("SKY_SESSION_READY", ValidateSkyIslandSessionReady);
+            RunSkyIslandSync("SKY_OFFICIAL_CONTRACT", ValidateSkyIslandOfficialContract);
+            RunSkyIslandSync("SKY_SCENE_IDENTITY", ValidateSkyIslandSceneIdentity);
+            RunSkyIslandSync("SKY_NAV_GRAPH", ValidateSkyIslandNavigationGraph);
+            RunSkyIslandSync("SKY_EXPLOSION_PATCH", ValidateSkyIslandExplosionPatch);
 
             SetStage("2/5 内容装配与落位");
-            RunSyncCase("SKY_MARKERS", ValidateSkyIslandMarkers);
-            RunSyncCase("SKY_CONTENT_TABLE", ValidateSkyIslandContentTable);
-            RunSyncCase("SKY_SCAVENGE_PLACEMENT", ValidateSkyIslandScavengePlacement);
-            RunSyncCase("SKY_INTERACTION_SEPARATION", ValidateSkyIslandInteractionSeparation);
-            RunSyncCase("SKY_LOOT_BANDS", ValidateSkyIslandLootBands);
-            RunSyncCase("SKY_PANEL_ART", ValidateSkyIslandPanelArt);
+            RunSkyIslandSync("SKY_MARKERS", ValidateSkyIslandMarkers);
+            RunSkyIslandSync("SKY_CONTENT_TABLE", ValidateSkyIslandContentTable);
+            RunSkyIslandSync("SKY_SCAVENGE_PLACEMENT", ValidateSkyIslandScavengePlacement);
+            RunSkyIslandSync("SKY_INTERACTION_SEPARATION", ValidateSkyIslandInteractionSeparation);
+            RunSkyIslandSync("SKY_LOOT_BANDS", ValidateSkyIslandLootBands);
+            RunSkyIslandSync("SKY_PANEL_ART", ValidateSkyIslandPanelArt);
 
             SetStage("3/5 门控与导航");
-            RunSyncCase("SKY_GATE_STATE", ValidateSkyIslandGateState);
+            RunSkyIslandSync("SKY_GATE_STATE", ValidateSkyIslandGateState);
             yield return RunSkyIslandCase("SKY_GATE_REACHABILITY", RunSkyIslandReachability);
-            RunSyncCase("SKY_STORY_OBJECTIVE", ValidateSkyIslandObjective);
+            RunSkyIslandSync("SKY_STORY_OBJECTIVE", ValidateSkyIslandObjective);
 
             SetStage("4/5 存档、服务与居民");
-            RunSyncCase("SKY_STORY_CODEC", ValidateSkyIslandStoryCodec);
-            RunSyncCase("SKY_STORY_SAVE_STATE", ValidateSkyIslandSaveState);
-            RunSyncCase("SKY_SERVICE_PRICING", ValidateSkyIslandServicePricing);
-            RunSyncCase("SKY_BOUNTY_GATING", ValidateSkyIslandBountyGating);
-            RunSyncCase("SKY_RESIDENTS", ValidateSkyIslandResidents);
+            RunSkyIslandSync("SKY_STORY_CODEC", ValidateSkyIslandStoryCodec);
+            RunSkyIslandSync("SKY_STORY_SAVE_STATE", ValidateSkyIslandSaveState);
+            RunSkyIslandSync("SKY_SERVICE_PRICING", ValidateSkyIslandServicePricing);
+            RunSkyIslandSync("SKY_BOUNTY_GATING", ValidateSkyIslandBountyGating);
+            RunSkyIslandSync("SKY_RESIDENTS", ValidateSkyIslandResidents);
 
             SetStage("5/5 撤离、表现与本地化");
-            RunSyncCase("SKY_EXTRACTION_RINGS", ValidateSkyIslandExtractionRings);
-            RunSyncCase("SKY_EXTRACTION_RULE", ValidateSkyIslandExtractionRule);
-            RunSyncCase("SKY_EXTRACTION_OFFICIAL_UI", ValidateSkyIslandOfficialCountdown);
-            RunSyncCase("SKY_STORM_TUNING", ValidateSkyIslandStormTuning);
-            RunSyncCase("SKY_LOCALIZATION_EN", ValidateSkyIslandEnglishText);
-            RunSyncCase("SKY_SCENE_BASELINE", ValidateSkyIslandSceneBaseline);
+            RunSkyIslandSync("SKY_EXTRACTION_RINGS", ValidateSkyIslandExtractionRings);
+            RunSkyIslandSync("SKY_EXTRACTION_RULE", ValidateSkyIslandExtractionRule);
+            RunSkyIslandSync("SKY_EXTRACTION_OFFICIAL_UI", ValidateSkyIslandOfficialCountdown);
+            RunSkyIslandSync("SKY_STORM_TUNING", ValidateSkyIslandStormTuning);
+            RunSkyIslandSync("SKY_LOCALIZATION_EN", ValidateSkyIslandEnglishText);
+            RunSkyIslandSync("SKY_SCENE_BASELINE", ValidateSkyIslandSceneBaseline);
         }
 
         /// <summary>
@@ -172,7 +209,7 @@ namespace BossRush
         {
             SetStage("收尾 · 岛内快照");
             yield return SamplePerformance("SKY_PERF_FINAL_5S", 5f, false);
-            RunSyncCase("SKY_FINAL_SESSION_INTACT", ValidateSkyIslandSessionIntact);
+            RunSkyIslandSync("SKY_FINAL_SESSION_INTACT", ValidateSkyIslandSessionIntact);
             // `_skyIslandMode` 的复位在 CompleteSession 里做，那是唯一一条无论取消/异常都会走到的收尾路径。
         }
 
@@ -185,6 +222,12 @@ namespace BossRush
             if (ShouldAbort())
             {
                 Record(caseId, "SKIP", 0L, string.Empty, DescribeAbortReason());
+                yield break;
+            }
+            string gone;
+            if (!SkyIslandSessionStillValid(out gone))
+            {
+                Record(caseId, "SKIP", 0L, string.Empty, gone);
                 yield break;
             }
             IEnumerator inner = null;
@@ -235,8 +278,8 @@ namespace BossRush
         /// 2. **所有自动遭遇点必须可达**——离线的门/导航属性测试已经证明五门全关时
         ///    13 组自动遭遇都在出生点的可达分量里，运行时对不上就说明门 AABB 或导航重扫出了问题。
         ///
-        /// 12 个地标的可达性只记进 metrics 不做判据：支路与钟庭本来就该被门挡着，
-        /// 把它们写成硬断言会随剧情进度自己变红。
+        /// 地标（地形根下全部 POI_ 节点，含装饰节点 POI_B_Mural，共 13 个）的可达性只记进 metrics 不做判据：
+        /// 支路与钟庭本来就该被门挡着，把它们写成硬断言会随剧情进度自己变红。
         /// </summary>
         private IEnumerator RunSkyIslandReachability()
         {
@@ -252,19 +295,22 @@ namespace BossRush
 
             List<Transform> required = new List<Transform>();
             List<Transform> informational = new List<Transform>();
+            List<string> unreachable = new List<string>();
             if (session.ValidationExitMarker != null) required.Add(session.ValidationExitMarker);
+            else unreachable.Add("Exit:marker_missing");
             SkyIslandContentData content = SkyIslandContent.CreateFallback();
             for (int i = 0; i < content.Encounters.Length; i++)
             {
                 if (content.Encounters[i].Manual) continue;
                 Transform marker = root.transform.Find(content.Encounters[i].Marker);
                 if (marker != null) required.Add(marker);
+                // 必到点连标记都找不到不能静默跳过：少探一个点，PASS 就少证明一件事。按不可达记进同一条用例。
+                else unreachable.Add(content.Encounters[i].Marker + ":marker_missing");
             }
             foreach (Transform child in root.transform)
                 if (child.name.StartsWith("POI_", StringComparison.Ordinal)) informational.Add(child);
 
             GameObject probeHost = null;
-            List<string> unreachable = new List<string>();
             List<string> reachableLandmarks = new List<string>();
             List<string> blockedLandmarks = new List<string>();
             int probed = 0;
@@ -307,17 +353,19 @@ namespace BossRush
         {
             _probePathDone = false;
             _probePathValid = false;
+            // 名字先取出来：等待探路的这几帧里场景可能被卸载，之后再读 target.name 会对已销毁对象再抛一次。
+            string targetName = target == null ? "missing_target" : target.name;
             try { seeker.StartPath(origin, target.position, OnValidationProbePath, mask); }
             catch (Exception e)
             {
-                failures.Add(target.name + ":" + e.GetType().Name);
+                failures.Add(targetName + ":" + e.GetType().Name);
                 yield break;
             }
             float deadline = Time.realtimeSinceStartup + 8f;
             while (!_probePathDone && Time.realtimeSinceStartup < deadline && !ShouldAbort()) yield return null;
-            if (!_probePathDone) failures.Add(target.name + ":timeout");
-            else if (!_probePathValid) failures.Add(target.name);
-            else if (successes != null) successes.Add(target.name);
+            if (!_probePathDone) failures.Add(targetName + ":timeout");
+            else if (!_probePathValid) failures.Add(targetName);
+            else if (successes != null) successes.Add(targetName);
         }
 
         private bool _probePathDone, _probePathValid;

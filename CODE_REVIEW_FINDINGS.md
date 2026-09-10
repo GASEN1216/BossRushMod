@@ -2,6 +2,51 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-10 天空岛全方位审核：3 P1 / 13 P2 / 5 P3
+
+owner 要求对天空岛（晴岚群岛）做一次全方位审核并按严重度全部修复、无人值守。范围：生命周期与静态缓存、存档安全（含 F3 套件只读）、
+原版契约（`HUDManager` 显隐、`EvacuationCountdownUI` / `CountDownArea` 时基、`UIInputManager`、`TimeScaleManager`）、每帧开销、
+UI/UX 与指引（与官方 HUD 的遮挡按 UnityPy 读官方预制体实测）、本地化、守卫质量与文档一致性。行号是修复前 `HEAD`（`23cd133`）的。
+完整记录（触发条件与后果、修法、证据级别、待拍板）在 `docs/天空岛_全方位审核_2026-09-10.md`（local-only）。
+**全部为 L1 / L2 证据，无实机验证。**
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-10-008 | **P1** / COMPAT | 撤离读秒与腾空救援走 `unscaledTime`（`SkyIslandSession.cs` HEAD:562、603–604、611、619）。官方 `TimeScaleManager` 在暂停菜单与拍照模式时把 `timeScale` 压到 0、`CountDownArea` 按 `Time.time` 计时（`CountDownArea.cs:27`）；本岛只加了 `View.ActiveView` 门，而 `PauseMenu` 是 `UIPanel` 不是 `View`——**开着暂停菜单或拍照模式站在撤离圈里 3 秒就被送回基地**，腾空时开暂停菜单会被「救」回落脚点。 | **Fixed（待实机）**；停留秒数 `extractionHeld` 按 `Time.deltaTime` 累加（带 View 门），腾空计时改 `Time.time`，剧情面板那一支不再顺延。`SkyIslandPlayerEntryGuard` / `SkyIslandLifecycleGuard` 按行钉时基，9 个变异探针转红。 |
+| CR-2026-09-10-009 | **P1** / COMPAT | 噬风战利品箱与它自己的尸体箱同点：官方 `CharacterMainControl.OnDead` 在倒下位置生成尸体箱（`CharacterMainControl.cs:1304`），会话在同一坐标 `DropTrophy`（HEAD:1017）。`CA_Interact` 按到交互体轴心的距离**严格小于**取唯一目标（`CA_Interact.cs:78`），两箱几乎重合时其中一个整局选不中——保底星工遗存箱可能拿不到。 | **Fixed（待实机）**；落点走 `SkyIslandRewardCrate.TryFindCratePosition` 退开一个交互间距，退不开才落原点。内容守卫钉住。 |
+| CR-2026-09-10-010 | **P1** / SAFE | F3 岛内套件**并非只读**：会话外壳沿用主套件——开场 `WriteRunMarker`（内部 `SavesSystem.SaveFile`，出击途中绕过战斗落盘门写盘，`F3GameplayValidationExecution.cs` HEAD:32）、每帧 `ProtectCurrentPlayer` 给玩家无敌并回满血（HEAD:41、187，紧接着要人工验的噬风伤害与苔药计价全被污染）、抑制 Mod 提示条（HEAD:56）、收尾跑全宿主 `ValidationSafeCleanup`（HEAD:163）。 | **Fixed（待实机）**；岛内模式四处全部门控，`SESSION` 行改报 `read_only=true`，收尾只清自己写过的标记。`SkyIslandValidationSuiteGuard` 重写，对应探针全部转红。 |
+| CR-2026-09-10-011 | P2 / COMPAT | 区域判定取「最近地标 60 m」（HEAD:632–653）：按作者布局导航网格复算，码头以外七个主岛只有 30–53% 的可走面判到本岛，其余地方卡片停在上一个岛；CS1 桥 71%、FS3 桥 61% 的桥面隔岸点亮 S1 / S3 迷雾并推进「巡视群岛区域」。注释里的「(50, 73.2) 可用区间」只量了桥头到对岸地标，`SkyIslandContentExpansionGuard`（HEAD:553–556）又把这份错误几何钉成了断言。 | **Fixed（待实机）**；改为脚下地面碰撞体 `COL_Ground_{区域}` 判定（每 0.2 s 本就打的地面射线顺手查表），区域名与到访记账同源，桥上保持上一个。新增 `tests/SkyIslandRegionResolutionPropertyTest.py`：12 区域 100% 解析到本岛、桥面零泄漏，内置 3 条反向探针。 |
+| CR-2026-09-10-012 | P2 / COMPAT | 巡岛可完成量按 `POI_` 节点计（HEAD:912），装饰节点 `POI_B_Mural` 恒为「未访问」：还剩 3 个真区域时可完成量算成 4，**恰好派得出一张做不完的「巡视群岛区域 ×4」**。CR-2026-09-10-001「不会派出做不完的单」的论证只算了走遍全岛。 | **Fixed（待实机）**；改数地面切分出的区域表；F3 `SKY_BOUNTY_GATING` 加「可完成量 ≤ 区域数」。 |
+| CR-2026-09-10-013 | P2 / COMPAT | 字幕不分级（`SkyIslandHud.cs` HEAD:359）：噬风相位台词（说完 1.4 s 后圈内吃满伤害）按普通字幕排队，要等上一条停满再淡出；队满丢最旧，三条普通字幕就能把它挤掉。 | **Fixed（待实机）**；排队规则抽成纯逻辑 `SkyIslandCaptionQueue`（警示插队、打断普通字幕、队满先丢普通字幕），相位台词走警示通道；新增执行回归 `SkyIslandHudPolicy`。 |
+| CR-2026-09-10-014 | P2 / COMPAT | `CampaignHud` 不跟随官方 HUD 显隐（HEAD:79）：它在 `HudOverlay`（1200），官方背包、地图、对话画在 sortingOrder 100（UnityPy 读 `resources.assets`），契约追踪条压在它们上面，天空岛出击里同样出现。 | **Fixed（待实机）**；判定收成 `BossRushUI.IsOfficialHudHidden()`，天空岛 HUD 与契约追踪条共用一份。 |
+| CR-2026-09-10-015 | P2 / COMPAT | 剧情面板键盘导航一按跳两格（`SkyIslandStoryPresentation.cs` HEAD:527）：官方 `UIInputManager` 把 UI_Navigate 的 started / performed / canceled 全订上且不看阶段（`UIInputManager.cs:461–463`），W/S 一按两条同向事件。注释与文档还宣称「手柄支持」，而官方输入资产 `Duckov Controls` 没有任何手柄绑定。 | **Fixed（待实机）**；按边沿走一步、回中位重新武装；选项回执重开保留当前项；注释、Wiki、清单改为键盘口径。 |
+| CR-2026-09-10-016 | P2 / COMPAT | HUD 与官方 HUD 遮挡（UnityPy 读官方预制体，本库 1 单位 = 官方 4/3 单位）：字幕中心 y=-330、中心轴心、最高 96（HEAD:92、233），两行时整段压住搜箱开门时的交互读条 `ActionProgress_Slider`（顶边 243）；右上卡片顶边写死 110（HEAD:54，`CampaignHud` 同），玩家展开官方「操作说明」提示栈（11 行）后被整块盖住。 | **Fixed（待实机）**；字幕底边钉在距底 254、封顶两行，大标题上移到 -150；卡片每 0.25 s 按 `IndicatorHUD` 实际下沿重排（`BossRushUI.GetTopRightHudTop`）。`SkyIslandHudGuard` 按常量复算纵向避让。 |
+| CR-2026-09-10-017 | P2 / COMPAT | 渡口整备入列门只看 `UseDurability`（`SkyIslandServices.cs` HEAD:200）：药品、食物这类用耐久记剩余次数的物品也被按维修价补满次数，官方维修台对它们显示「无法维修」（`ItemRepairView.cs:65–74`）。 | **Fixed（待实机）**；门改为 `item.Repairable && item.MaxDurabilityWithLoss >= 1f`，与官方一致。 |
+| CR-2026-09-10-018 | P2 / OPERATIONAL | F3 岛内用例判据缺陷：`SKY_RESIDENTS` 按地形根扫交互体（HEAD:567），居民不挂在地形根下，**只要有居民在岛就必然假红**；`SKY_INTERACTION_SEPARATION` 漏了居民、又把子物体碰撞体并进包围盒（HEAD:271）；`SKY_STORY_OBJECTIVE` 拿缓存与规则比（恒等，HEAD:434）；`SKY_STORY_CODEC` 往返只比数组长度（HEAD:460）；`SKY_SCAVENGE_PLACEMENT` 一个箱都没建、`SKY_PANEL_ART` 一张图都没部署时记 PASS；`SKY_EXTRACTION_OFFICIAL_UI` 不查实例所属场景（官方静态实例从不清空）。 | **Fixed**（判据；待实机跑）；逐条改正，判据不成立时记 SKIP；`SkyIslandFullAuditGuard` 钉住。 |
+| CR-2026-09-10-019 | P2 / SAFE | F3 岛内用例的副作用与错误归因：`SKY_PANEL_ART` 在玩家帧上同步解码约 20 MB 插图、并把查不到的 null 永久缓存（此后整局面板无图）；会话途中结束（撤离、倒下、换槽）后剩余用例在没有岛的环境里红一片，`SKY_FINAL_SESSION_INTACT` 还记成「套件结束了这趟出击」；开跑时玩家自己开着的面板被算成套件漏租约。 | **Fixed**；`SkyIslandUiArt.HasArt` 只读探测；`RunSkyIslandSync` / `RunSkyIslandCase` 会话门记 SKIP；启动门拒绝开着模态面板或官方界面；租约按开跑基线比。 |
+| CR-2026-09-10-020 | P2 / COMPAT | 桥口木牌英文关闭态 6–7 行、约 3.3–3.9 单位高，木板只有 2.8（`SkyIslandGates.cs` HEAD:99 固定 4.4 号、关自动缩放），英文整段溢出木板。 | **Fixed（待实机）**；自动缩放 2.4–4.4 + 省略号兜底，中文观感不变；`SkyIslandFullAuditGuard` 钉住。 |
+| CR-2026-09-10-021 | P2 / COMPAT | 失败提示把异常原文拼给玩家（`SkyIslandSession.cs` HEAD:173、360，`SkyIslandEncounters.cs` HEAD:239、308）：异常原文按维护语言是中文，英文玩家看到半句读不懂的中文——与 CR-2026-09-09-011 同类，F3 英文用例扫不到这条路径。 | **Fixed**；`SkyIslandStoryRules.WithDetail`：英文界面只给前缀并指向 Player.log，原文进日志；执行回归钉住出口，`SkyIslandFullAuditGuard` 钉住调用点（审核后又补修同类 4 处：生成敌人、前往下一个地标、切换光色、打开地图失败）。 |
+| CR-2026-09-10-022 | P2 / OPERATIONAL | 文档与实现不一致：撤离环实为青色（`BossRushUIColors.Accent`）而 F3 面板、中英 Wiki、覆盖清单写「蓝环」；`OFFICIAL_SCENE_CONTRACT.md:31`、本文件、repowiki 两处仍写「未复用官方倒计时控件」（`a613774` 已复用）；Wiki 写目标在屏幕上方状态行（实为右侧卡片）、`M_SKY_ISLAND_01` 仍写 F6 旅程图；人工清单写 F3 自动断言 26 / 27 条（实为 28）。 | **Fixed**；逐处改正，`SkyIslandFullAuditGuard` 钉住旧说法不回潮。 |
+| CR-2026-09-10-023 | P2 / OPERATIONAL | `SkyIslandValidationSuiteGuard` 挡不住它声称要挡的破坏：在审核开始时的代码副本上跑 22 个变异探针，除 3 个对照探针正常转红外，**其余 19 个破坏全部让它保持全绿**——调用前加空格绕过禁用清单、`&& false` 废掉专用测试档门、`if (false)` 包住用例仍算已执行、恒真 lambda 换掉判据、同名局部变量冒充静态类、`0x4E001` 以 `0x4E00` 开头骗过子串比对、观测面方法里顺手写字段。 | **Fixed**；重写为结构判断（规范空白、切方法体、完整语句匹配、字段写入与调用白名单），重做的 40 个探针全部转红。 |
+| CR-2026-09-10-024 | P3 / COMPAT | 表现层生命周期：剧情面板用 Unity 的 `!= null` 判隐藏令牌（HEAD:262、572），画布先被销毁时漏注销；选项回执重开面板丢键盘当前项；玩家倒下或开始切图时不收官方读条（ready 落下后停在屏幕上读到 00:00）；离圈后文字读秒最多残留 0.5 s；暂停菜单开着时 HUD 的字幕与大标题照常在背后播完。 | **Fixed（待实机）**。 |
+| CR-2026-09-10-025 | P3 / COMPAT | 开销：浮空提示字每帧量距离并按 1% 阈值重写 TMP 顶点色（走过一次淡变带重建上百次）；`LandmarkLabel` 每 0.5 s new 两个八元素数组、`FieldStatus` 与 `CurrentObjective` 每 0.5 s 重拼字符串；`SkyIslandSceneReferenceBridge.IsScene` 挂在全局补丁热路径上，每次读 `scene.path` 新建托管字符串（任何地图都在跑）。 | **Fixed**；距离检查按接近速度推迟、alpha 按 5% 量化；输入不变复用字符串；`IsScene` 先比 `buildIndex` 再比句柄缓存；`SkyIslandHudGuard` / `SkyIslandFullAuditGuard` 钉住。 |
+| CR-2026-09-10-026 | P3 / COMPAT | 奖励箱：`InstantiateSync` 缺资源时的 `FallbackItem` 带着**同一个 TypeID**（`ItemStatsSystem/ItemAssetsCollection.cs`），`TypeID` 回读挡不住（`AGENTS.md` 旧记录有误）；物资池查询失败的空结果被永久缓存（本进程之后每趟出击的箱子都是空的）；一件都没装进去的箱子仍报「建成」，委托谢礼被消耗。 | **Fixed**；实例化前 `GetPrefab`；只缓存完整查询；空箱收回并返回 false。 |
+| CR-2026-09-10-027 | P3 / OPERATIONAL | F3 杂项：必到遭遇点标记缺失时静默跳过（少证一件事仍 PASS）；探路等待期间场景卸载后再读 `target.name` 二次抛；英文用例手写 13 个见闻点，漏掉全部 `_02` 点位；注释与实现不符（「30 秒」实为 60、「12 个地标」实为 13、「码位写反斜杠转义」实为整数常量）。 | **Fixed**；`SkyIslandFullAuditGuard` 钉住。 |
+| CR-2026-09-10-028 | P3 / COMPAT | 英文术语与语法：Sky Island / Sky Islands 混用；钟庭名 Bell Court 与 Homecoming Bell Court 混用；「1 pieces」「1 seconds」；「the Silent Bell Keeper」带小写冠词直接当面板标题与血条名；留言板交单时仍写「left at her feet」；`Island story ·` 交互名；腰牌文字与 Wiki「the route is yours now」不一致。 | **Fixed**；`SkyIslandFullAuditGuard` 钉住。 |
+
+**核实后不是缺陷**（依据见审核文档）：岛上官方 `EvacuationCountdownUI` 实例存在（LevelManager 预制体随 `LevelConfig.Awake` 实例化）；
+撤离环画得出来（`Sprites/Default` 恒在包内）；落地点在 `POI_A` 60 m 内（44.6 m）；默认键位下交互键与确认键不会同帧撞车；
+隐藏令牌泄漏不会让官方 HUD 永久隐藏（`ShouldDisplay` 只数未销毁的令牌）；CR-2026-09-10-003 的 `TimeOfDayConfig` 常驻副本没有全局副作用
+（UnityPy 读 `Base.unity` 与 16 张 `*_Main` 场景：子树只有 `TimeOfDayConfig` + 5 个 `TimeOfDayEntry`，无 Volume / Light / Update 逻辑，
+`lookDevVolume` 指向子树外且只在编辑器读；租约注释已据此更正）。
+
+**不在本轮范围**：试验场 / 石堡前哨 `ArenaPrototypeSession` 的撤离读秒同样走 `unscaledTime` 且不看官方界面（`ArenaPrototypeSession.cs:389`，已交接为独立任务）。
+
+验证：正式构建（`Build/bossrush.rsp` 无 `/define`）绿并部署，SHA-256 源与游戏目录一致；全量守卫 585 个中本轮改动相关的全绿
+（另 2 个红项来自并行会话未提交的布局改动，换回 `HEAD` 版本复跑均绿；并行改动落地前全量 584 / 0）；
+`run_runtime_regressions --filter SkyIsland` 8/8；142 个变异探针（含新增守卫 `tests/SkyIslandFullAuditGuard.py` 的 34 个）在仓库稀疏副本上逐条转红、逐字节还原并 sha256 核对，真实工作区前后不变。
+未进游戏、未读写存档。
+
 ## 2026-09-10 碰撞排障：1 P1（替换件是空气墙、附加件能穿过去）
 
 owner 首次进岛看得见地形之后反馈「有些模型玩家可以穿过去，有些则有空气墙」。
@@ -135,7 +180,7 @@ Unity 那条「已销毁对象 `== null`」的重载，也没有任何一步模�
 
 | ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
 | --- | --- | --- | --- |
-| CR-2026-09-10-001 | P3 / COMPAT | 场景包里有 **13 个 `POI_` 前缀节点**而不是 12：多出来的 `POI_B_Mural`（风铃集壁画）是地形根的直接子物体、单位缩放零旋转，因此 `SkyIslandSession.PrepareMarkers` 会把它收进 `landmarks`。后果有二：①`AvailableBountyProgress(SkyIslandBountyKind.Survey)` 遍历 landmarks 取 `name.Substring(4)` 查 `SkyIslandStoryService.RegionBit`，`"B_Mural"` 未登记、返回 0，于是 `HasVisitedRegion` 恒为 false，**「巡视群岛区域」的可完成量永久多算 1**；②`SkyIslandSession.LandmarkLabel("POI_B_Mural")` 按 `name[4]=='B'` 落到「风铃集」，与 `POI_B` 显示同名。用 UnityPy 读**已构建的 bundle** 确认，**新旧两个包都有**该节点，非本轮美术改动引入。 | **Open（P3，有意不修）**；影响有限：`TargetFor(Survey)` 基线为 4，1 < 4，走遍全岛后这类委托只是不再派出，**不会派出做不完的单**；`RecordRegionVisited("B_Mural")` 同样因 bit==0 返回 false，不污染存档。修它要动 `PrepareMarkers` 的收录口径或给 `RegionBit` 加白名单，代价大于收益。**已连带修正**新 F3 用例 `SKY_MARKERS`：原断言 `landmarks == 12` 会在完全健康的包上假红，改为断言 `POI_A..H` / `POI_S1..S4` 十二个区域标记**各自存在**，多余 POI_ 节点只写进 metrics。 |
+| CR-2026-09-10-001 | P3 / COMPAT | 场景包里有 **13 个 `POI_` 前缀节点**而不是 12：多出来的 `POI_B_Mural`（风铃集壁画）是地形根的直接子物体、单位缩放零旋转，因此 `SkyIslandSession.PrepareMarkers` 会把它收进 `landmarks`。后果有二：①`AvailableBountyProgress(SkyIslandBountyKind.Survey)` 遍历 landmarks 取 `name.Substring(4)` 查 `SkyIslandStoryService.RegionBit`，`"B_Mural"` 未登记、返回 0，于是 `HasVisitedRegion` 恒为 false，**「巡视群岛区域」的可完成量永久多算 1**；②`SkyIslandSession.LandmarkLabel("POI_B_Mural")` 按 `name[4]=='B'` 落到「风铃集」，与 `POI_B` 显示同名。用 UnityPy 读**已构建的 bundle** 确认，**新旧两个包都有**该节点，非本轮美术改动引入。 | **Fixed**（2026-09-10 全方位审核，见 CR-2026-09-10-012：下面「不会派出做不完的单」的论证只算了走遍全岛——还剩 3 个真区域时可完成量算成 4，恰好派得出一张 ×4；巡岛可完成量已改为数地面切分出的区域）。原状态：Open（P3，有意不修）；影响有限：`TargetFor(Survey)` 基线为 4，1 < 4，走遍全岛后这类委托只是不再派出，**不会派出做不完的单**；`RecordRegionVisited("B_Mural")` 同样因 bit==0 返回 false，不污染存档。修它要动 `PrepareMarkers` 的收录口径或给 `RegionBit` 加白名单，代价大于收益。**已连带修正**新 F3 用例 `SKY_MARKERS`：原断言 `landmarks == 12` 会在完全健康的包上假红，改为断言 `POI_A..H` / `POI_S1..S4` 十二个区域标记**各自存在**，多余 POI_ 节点只写进 metrics。 |
 
 ## 2026-09-09 天空岛全面审核（第三轮）：1 P1 / 2 P2 / 6 P3
 
@@ -211,7 +256,7 @@ Unity 那条「已销毁对象 `== null`」的重载，也没有任何一步模�
 | CR-2026-09-09-002 | P2 / COMPAT | 返航派发后未封锁输入：官方 `SceneLoaderProxy.LoadScene` 先 `InputManager.DisableInput` 再派发，天空岛 `Close` 直接 `DispatchReturnIfReady`，黑幕淡入那一秒玩家仍可移动/开火/触发交互（`NotifyEvacuated` 此前已存过一次档）。 | Fixed（待实机）；新增 `BlockInputForReturn()`，封锁源为岛场景内临时对象（挂在地形根 `SkyIslandWorld` 下），随场景卸载解封，`Cleanup` 也销毁。**不能挂宿主**：`InputManager.blockInputSources` 只在源销毁/失活时移除，DontDestroyOnLoad 宿主会让回基地后输入永久锁死。守卫钉住调用顺序、场景归属与 Cleanup 销毁；三条破坏逐条转红。 |
 | CR-2026-09-09-003 | P3 / COMPAT | 官方加载器同步拒绝时空等 120 秒：`SceneLoader.LoadScene` 遇 `IsSceneLoading`/`GetSceneInfo` 为空只记 LogError 返回，`BeginLoad` 的 `LoadFinished` 立刻为 true，但 `Build` 等 root 的循环不看它，HUD 挂「正在加载…」两分钟，超时后又按已起航发起一次多余的回基地加载。`CanEnter` 已挡住绝大多数情况，属单帧竞态。 | Fixed（待实机）；循环内 `lease.LoadFinished` 即抛，并置 `loadStarted = false` 走「未起航」清理。守卫钉住；改成 `if (false)` 后转红。 |
 
-Documented（不计缺陷）：服务根/地形根在 `sceneLoaded` 回调里才激活，先于租约订阅的处理器看到的是没有 `LevelManager` 的战斗场景；仓库内处理器无同步依赖。官方倒计时控件 `EvacuationCountdownUI` 未复用。两条已写入 `OFFICIAL_SCENE_CONTRACT.md`。
+Documented（不计缺陷）：服务根/地形根在 `sceneLoaded` 回调里才激活，先于租约订阅的处理器看到的是没有 `LevelManager` 的战斗场景；仓库内处理器无同步依赖。官方倒计时控件 `EvacuationCountdownUI` 未复用（**2026-09-10 更正**：`a613774` 起读条显示已复用官方控件，计时也在全方位审核中改走游戏时间，见 `OFFICIAL_SCENE_CONTRACT.md` 与 CR-2026-09-10-008）。两条已写入 `OFFICIAL_SCENE_CONTRACT.md`。
 
 ## 2026-09-08 天空岛全面审计追加：1 P1 / 1 P2
 

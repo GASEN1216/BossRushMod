@@ -195,11 +195,24 @@ namespace BossRush
                 default: message = L10n.T("未知的群岛操作。", "Unknown archipelago action."); return false;
             }
             if (source.Has(flag))
-            { message = L10n.T("这段群岛见闻已经完成。", "That part of the archipelago is already done."); return false; }
+            { message = L10n.T("这段群岛见闻已经完成。", "That part of the archipelago story is already complete."); return false; }
             if (required != null) { message = required; return false; }
             candidate = source.Copy();
             candidate.flags |= (int)flag;
             return true;
+        }
+
+        /// <summary>
+        /// 失败提示的对外文案：中文界面是「前缀 + 异常原文」，英文界面只给前缀并指向日志。
+        ///
+        /// 异常原文按「维护语言中文」写给维护者（部署损坏、官方契约变更、加载超时才会出现），
+        /// 旧写法把它直接拼进提示条，英文玩家看到的是一句读不懂的中文——与 CR-2026-09-09-011 同一类缺口，
+        /// 而 F3 的英文完整性用例只扫正常文案、扫不到这条路径。调用方负责把原文写进日志。
+        /// </summary>
+        internal static string WithDetail(string prefix, string detail)
+        {
+            if (L10n.IsChinese) return prefix + detail;
+            return prefix + " (details in Player.log)";
         }
 
         internal static bool TrySearchAction(string marker, out SkyIslandStoryAction action)

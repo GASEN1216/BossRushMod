@@ -12,6 +12,8 @@ namespace BossRush
         private bool _running, _closingSession, _slotChanged, _hostLost, _reportWriteFailed;
         private bool _sessionSubscribed;
         private bool _sessionCompleted;
+        /// <summary>本轮是否真的写过运行标记。只有写过才在收尾时清：岛内套件从不写（见 BeginSession）。</summary>
+        private bool _runMarkerWritten;
         private int _sessionSlot, _runtimeErrors, _externalErrors, _errorSamples, _textDiagnostics;
         private float _nextHeartbeat;
         private ValidationCoroutineStack _sessionStack;
@@ -29,7 +31,17 @@ namespace BossRush
             {
                 InitializeSessionReport();
                 if (_reportWriteFailed) throw new IOException("report_not_writable");
-                if (!WriteRunMarker()) throw new IOException("run_marker_not_writable");
+                // 岛内套件跑在玩家真实的一趟出击上，必须只读（F3GameplayValidationSkyIsland.cs 头注释第 1 条）：
+                // - 不写运行标记。那是主套件「切图 + 强清」之后的崩溃恢复凭据，写它要 SavesSystem.SaveFile，
+                //   等于在玩家出击途中绕过会话的战斗落盘门写两次盘；岛内套件什么都不改，没有需要恢复的东西。
+                // - 不接管无敌与血量。主套件每帧给玩家无敌并回满血，搬到岛上就是整段验收期间的免费满血按钮，
+                //   紧接着要人工验的「噬风脉冲伤害」「苔药按缺血计价」全被污染。
+                _runMarkerWritten = false;
+                if (!_skyIslandMode)
+                {
+                    if (!WriteRunMarker()) throw new IOException("run_marker_not_writable");
+                    _runMarkerWritten = true;
+                }
                 _running = true;
                 _nextHeartbeat = Time.realtimeSinceStartup + 10f;
                 if (!_sessionSubscribed)
@@ -38,8 +50,10 @@ namespace BossRush
                     Application.logMessageReceived += OnSessionLog;
                     _sessionSubscribed = true;
                 }
-                ProtectCurrentPlayer();
-                WriteRaw("SESSION | slot=" + _sessionSlot + " | assisted=true | player_invincible=true | player_health_refill=true | combat_balance=MANUAL_PENDING");
+                if (!_skyIslandMode) ProtectCurrentPlayer();
+                WriteRaw(_skyIslandMode
+                    ? "SESSION | slot=" + _sessionSlot + " | assisted=false | read_only=true | player_invincible=false | player_health_refill=false | run_marker=false"
+                    : "SESSION | slot=" + _sessionSlot + " | assisted=true | player_invincible=true | player_health_refill=true | combat_balance=MANUAL_PENDING");
                 return true;
             }
             catch (Exception e)
@@ -53,7 +67,9 @@ namespace BossRush
 
         private void InitializeSessionReport()
         {
-            if (_host != null) _host.GameplayValidationSuppressNotifications = true;
+            // 主套件抑制 Mod 提示条是为了不让几百条用例刷屏；岛内套件只读，玩家这趟出击里的正常提示（如装配失败、
+            // 返航说明）照常出，不能被验收吞掉。
+            if (_host != null && !_skyIslandMode) _host.GameplayValidationSuppressNotifications = true;
             _runId = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss_fff");
             _reportPath = Path.Combine(Application.persistentDataPath, "BossRushTestReports",
                 "BossRushValidation_" + _runId + ".log");
@@ -148,7 +164,8 @@ namespace BossRush
             if (_sessionCompleted) return;
             _sessionCompleted = true;
             // 中途异常/取消时 RunSkyIslandFinalChecks 可能没跑到，标志必须在这条唯一收尾路径上复位，
-            // 否则下一次从基地启动完整验收会错走天空岛编排。
+            // 否则下一次从基地启动完整验收会错走天空岛编排。复位前先记下本轮是不是岛内套件。
+            bool skyIsland = _skyIslandMode;
             _skyIslandMode = false;
             DisposeSessionStack();
             if (_sessionSubscribed)
@@ -158,7 +175,8 @@ namespace BossRush
                 _sessionSubscribed = false;
             }
             // 换槽后不调用会保存/归还资产的旧模式清理，也不清除新槽的运行标记。
-            if (!_slotChanged && SavesSystem.CurrentSlot == _sessionSlot)
+            // 岛内套件同样不调：那是面向主套件的全宿主清理（模式、竞技场、随从…），岛上什么都不该被它碰。
+            if (!skyIsland && !_slotChanged && SavesSystem.CurrentSlot == _sessionSlot)
             {
                 try { if (_host != null) _host.ValidationSafeCleanup(); }
                 catch (Exception e) { Record("SUITE_EXECUTION", "FAIL", 0L, "final_cleanup=true", e.ToString()); }
@@ -184,7 +202,7 @@ namespace BossRush
             {
                 if (SavesSystem.CurrentSlot != _sessionSlot) _slotChanged = true;
                 if (_slotChanged) return;
-                ProtectCurrentPlayer();
+                if (!_skyIslandMode) ProtectCurrentPlayer();
                 if (Time.realtimeSinceStartup >= _nextHeartbeat)
                 {
                     _nextHeartbeat = Time.realtimeSinceStartup + 10f;

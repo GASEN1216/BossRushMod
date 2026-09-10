@@ -136,20 +136,25 @@ namespace BossRush
             List<string> missing = new List<string>();
             for (int i = 0; i < required.Length; i++)
                 if (root.transform.Find(required[i]) == null) missing.Add(required[i]);
-            // 多出来的 POI_ 节点只报数不判红：它们是装饰，但**会**让「巡视群岛区域」委托的
-            // 可完成量永久多算（`RegionBit` 对未登记名字返回 0，那一格永远算作未访问）。
+            // 多出来的 POI_ 节点（装饰）只报数不判红。巡岛委托的可完成量已改为按「地面碰撞体切出来的区域」计数
+            // （SkyIslandSession.IndexGroundRegions），不再受它影响；真正要钉住的是 12 个区域都索引到了——
+            // 少一个，那个岛上卡片不显示地名、迷雾不亮、巡岛进度不涨，而且全程不报错。
             int extras = snapshot.Landmarks - required.Length;
+            int groundRegions = session.ValidationGroundRegionCount;
 
             metrics = "player_spawn=" + spawn + ",exit=" + exit + ",bell_marker=" + bellMarker
                 + ",searches=" + snapshot.SearchPoints + ",region_landmarks=" + (required.Length - missing.Count)
                 + "/" + required.Length + ",extra_poi_nodes=" + extras
-                + ",landmarks_total=" + snapshot.Landmarks + ",enemy_markers=" + snapshot.EnemyMarkers;
+                + ",landmarks_total=" + snapshot.Landmarks + ",enemy_markers=" + snapshot.EnemyMarkers
+                + ",ground_regions=" + groundRegions + "/" + required.Length;
             bool ok = spawn && exit && bellMarker && missing.Count == 0
-                && snapshot.SearchPoints > 0 && snapshot.EnemyMarkers > 0;
+                && snapshot.SearchPoints > 0 && snapshot.EnemyMarkers > 0 && groundRegions == required.Length;
             if (!ok)
                 reason = missing.Count > 0
                     ? "缺少区域地标：" + string.Join(",", missing.ToArray())
-                    : "出生 / 撤离 / 归航钟庭 / 搜索点 / 敌人点位不完整";
+                    : (groundRegions != required.Length
+                        ? "按地面碰撞体只索引到 " + groundRegions + "/" + required.Length + " 个区域（COL_Ground_{区域} 缺失或改名）"
+                        : "出生 / 撤离 / 归航钟庭 / 搜索点 / 敌人点位不完整");
             return ok;
         }
 
@@ -181,7 +186,8 @@ namespace BossRush
             SkyIslandSession session = SkyIslandSessionOrNull();
             if (session == null) { reason = "session_missing"; return false; }
             SkyIslandValidationSnapshot snapshot = session.ValidationSnapshot();
-            metrics = "placed=" + snapshot.ScavengePlaced + ",failed=" + snapshot.ScavengeFailed
+            metrics = "placed=" + snapshot.ScavengePlaced + ",built=" + snapshot.ScavengeBuilt
+                + ",failed=" + snapshot.ScavengeFailed
                 + ",anchors=" + snapshot.ScavengeAnchors + ",opened=" + snapshot.ScavengeOpened
                 + ",available=" + snapshot.ScavengeAvailable + ",seed=" + snapshot.RaidSeed;
             // `PlacedPoints` 已经扣掉 Failed，所以「落位 + 建箱失败 == 锚点总数」才说明
@@ -190,9 +196,11 @@ namespace BossRush
             // 建箱失败是 fail-open，但离线几何回归（SkyIslandContentPlacementPropertyTest）
             // 已经证明 39 个锚点在真实几何上全部落得下来，所以运行时失败一定是真缺陷。
             bool built = snapshot.ScavengeFailed == 0;
-            if (!resolved) reason = "有搜刮锚点没有解析出落点（运行时静默跳过）";
-            else if (!built) reason = "有搜刮点建箱失败；离线几何已证明全部锚点可落位，这是真缺陷";
-            return resolved && built;
+            if (!resolved) { reason = "有搜刮锚点没有解析出落点（运行时静默跳过）"; return false; }
+            // 箱子是玩家走进激活半径才建的：一个都还没建时「建箱没失败」恒真，只能记 SKIP，不能记 PASS。
+            if (snapshot.ScavengeBuilt == 0) throw new SkyIslandSkipCase("no_cache_built_yet", metrics);
+            if (!built) reason = "有搜刮点建箱失败；离线几何已证明全部锚点可落位，这是真缺陷";
+            return built;
         }
 
         /// <summary>
@@ -220,8 +228,12 @@ namespace BossRush
             List<InteractableBase> all = new List<InteractableBase>();
             foreach (InteractableBase candidate in root.GetComponentsInChildren<InteractableBase>(true))
                 if (candidate != null && candidate.isActiveAndEnabled) all.Add(candidate);
+            // 居民由官方 CharacterCreator 生成、不挂在地形根下：不补进来，「居民 vs 纪念物 / 见闻点」这类竞争一对都算不到。
+            SkyIslandResidents residentsOwner = session.ValidationResidents;
+            if (residentsOwner != null) residentsOwner.CollectActiveInteractables(all);
 
             List<string> overlaps = new List<string>();
+            List<string> nearPairs = new List<string>();
             float closest = float.MaxValue;
             string closestPair = "none";
             for (int i = 0; i < all.Count; i++)
@@ -247,10 +259,16 @@ namespace BossRush
                     if (margin < 0f)
                         overlaps.Add(all[i].name + "|" + all[j].name + "=" + distance.ToString("F2")
                             + "<" + (extentA + extentB).ToString("F2"));
+                    // 官方探测球直径 0.6 m（CA_Interact：OverlapSphere 半径 0.3）：间隙比它小时两者可能同时被罩住，
+                    // 谁赢看轴心远近。站到各自那一侧仍选得中，所以只进 metrics 供人工复核，不判红。
+                    else if (margin < InteractProbeDiameter)
+                        nearPairs.Add(all[i].name + "|" + all[j].name + "@" + margin.ToString("F2"));
                 }
             }
 
             metrics = "interactables=" + all.Count + ",overlapping_pairs=" + overlaps.Count
+                + ",near_pairs_under_0.6m=" + nearPairs.Count
+                + (nearPairs.Count > 0 ? "(" + string.Join(";", nearPairs.ToArray()) + ")" : string.Empty)
                 + ",closest_margin_m=" + (closest == float.MaxValue ? "n/a" : closest.ToString("F2"))
                 + ",closest_pair=" + closestPair;
             if (overlaps.Count > 0)
@@ -262,13 +280,20 @@ namespace BossRush
             return true;
         }
 
-        /// <summary>取交互体的触发体中心与水平半径。没有 collider 的（例如纯表现层）返回 false。</summary>
+        /// <summary>官方交互探测球的直径：CA_Interact.SearchInteractableAround 的 OverlapSphere 半径 0.3。</summary>
+        private const float InteractProbeDiameter = 0.6f;
+
+        /// <summary>
+        /// 取交互体的触发体中心与水平半径。没有 collider 的（例如纯表现层、分组里的子选项）返回 false。
+        /// 只看交互体**自己那个 GameObject** 上的碰撞体：官方按 `collider.GetComponent&lt;InteractableBase&gt;()` 认目标，
+        /// 子物体上的物理体、角色胶囊不参与交互选择，旧写法把它们合进包围盒只会把半径撑大、误报重叠。
+        /// </summary>
         private static bool TryDescribeInteractable(InteractableBase interactable, out Vector3 center, out float extent)
         {
             center = Vector3.zero;
             extent = 0f;
             if (interactable == null) return false;
-            Collider[] colliders = interactable.GetComponentsInChildren<Collider>(false);
+            Collider[] colliders = interactable.GetComponents<Collider>();
             bool any = false;
             Bounds bounds = default(Bounds);
             for (int i = 0; i < colliders.Length; i++)
@@ -319,8 +344,8 @@ namespace BossRush
         /// 真正说明部署坏了的是**部分命中**——`Assets/ui/SkyIsland` 只拷进去一半，
         /// 于是有的区域有图、有的没有，玩家看到的是「时有时无」，而这在日志里一声不吭。
         ///
-        /// 副作用只有缓存预热：这里会把 18 张图读进 `SkyIslandUiArt` 的静态缓存（满载约 20 MB），
-        /// 与玩家逛遍全岛后的常驻量一致，不改变任何玩法状态。
+        /// 只读：走 `SkyIslandUiArt.HasArt` 探测，不解码贴图、不写缓存（旧写法在玩家帧上同步解码约 20 MB，
+        /// 还会把查不到的 null 永久缓存）。一张都没有时「部分部署」这条判据不适用，记 SKIP 并写明原因。
         /// </summary>
         private bool ValidateSkyIslandPanelArt(out string metrics, out string reason)
         {
@@ -331,12 +356,12 @@ namespace BossRush
             int scenes = 0, portraits = 0;
             for (int i = 0; i < regions.Length; i++)
             {
-                if (SkyIslandUiArt.GetScene("POI_" + regions[i]) != null) scenes++;
+                if (SkyIslandUiArt.HasArt(SkyIslandUiArt.SceneAssetName("POI_" + regions[i]))) scenes++;
                 else missing.Add("scene:" + regions[i]);
             }
             for (int i = 0; i < residents.Length; i++)
             {
-                if (SkyIslandUiArt.GetPortrait(residents[i]) != null) portraits++;
+                if (SkyIslandUiArt.HasArt(SkyIslandUiArt.PortraitAssetName(residents[i]))) portraits++;
                 else missing.Add("portrait:" + residents[i]);
             }
             int found = scenes + portraits;
@@ -344,7 +369,8 @@ namespace BossRush
             metrics = "scenes=" + scenes + "/" + regions.Length
                 + ",portraits=" + portraits + "/" + residents.Length
                 + ",missing=" + (missing.Count == 0 ? "none" : string.Join(",", missing.ToArray()));
-            if (found != 0 && found != total)
+            if (found == 0) throw new SkyIslandSkipCase("art_not_deployed", metrics);
+            if (found != total)
             {
                 reason = "面板插图只部署了一部分，玩家会看到有的区域有图有的没有：" +
                     string.Join(",", missing.ToArray());
@@ -431,12 +457,13 @@ namespace BossRush
             SkyIslandSession session = SkyIslandSessionOrNull();
             SkyIslandStoryService story = session == null ? null : session.ValidationStory;
             if (story == null) { reason = "story_service_missing"; return false; }
-            string objective = story.CurrentObjective;
+            // 比对 HUD 卡片**实际登记**的目标行，而不是 `story.CurrentObjective`：后者就是
+            // `SkyIslandStoryRules.Objective(Current)` 的缓存，拿它和规则比恒等，等于没验。
+            string shown = session.ValidationHudObjective;
             string expected = SkyIslandStoryRules.Objective(story.Current);
-            metrics = "objective=" + objective;
-            bool ok = !string.IsNullOrEmpty(objective)
-                && string.Equals(objective, expected, StringComparison.Ordinal);
-            if (!ok) reason = "HUD 目标行与剧情规则算出的目标不一致，或为空";
+            metrics = "hud_objective=" + shown + ",rules_objective=" + expected;
+            bool ok = !string.IsNullOrEmpty(shown) && string.Equals(shown, expected, StringComparison.Ordinal);
+            if (!ok) reason = "HUD 目标行没有显示剧情规则算出的当前目标，或为空（刚推进过剧情时 HUD 每 0.5 秒才刷新，可重跑确认）";
             return ok;
         }
 
@@ -454,12 +481,17 @@ namespace BossRush
             SkyIslandStoryData current = story.Current.Copy();
             string encoded = SkyIslandStoryCodec.Encode(current);
             SkyIslandStoryData decoded = SkyIslandStoryCodec.Decode(encoded);
-            bool known = (current.flags & ~SkyIslandStoryRules.KnownFlags) == 0;
+            // 掩码判据不依赖存档里恰好有哪些位：枚举里全部 flag 或起来必须正好等于 KnownFlags，
+            // 新增 flag 忘了同步掩码时在任何存档上都当场红（旧判据只在「这份存档恰好带着新位」时才红）。
+            int declared = 0;
+            foreach (SkyIslandStoryFlag flag in Enum.GetValues(typeof(SkyIslandStoryFlag))) declared |= (int)flag;
+            bool known = (current.flags & ~SkyIslandStoryRules.KnownFlags) == 0
+                && declared == SkyIslandStoryRules.KnownFlags;
             bool roundTrip = decoded != null && decoded.flags == current.flags
                 && decoded.visitedRegions == current.visitedRegions
-                && decoded.clearedEncounters.Length == current.clearedEncounters.Length
-                && decoded.discoveredNotes.Length == current.discoveredNotes.Length;
-            metrics = "flags=" + current.flags + ",known_mask=" + SkyIslandStoryRules.KnownFlags
+                && SameStrings(decoded.clearedEncounters, current.clearedEncounters)
+                && SameStrings(decoded.discoveredNotes, current.discoveredNotes);
+            metrics = "flags=" + current.flags + ",declared_mask=" + declared + ",known_mask=" + SkyIslandStoryRules.KnownFlags
                 + ",regions=" + current.visitedRegions + ",cleared=" + current.clearedEncounters.Length
                 + ",notes=" + current.discoveredNotes.Length + ",json_bytes=" + (encoded == null ? 0 : encoded.Length);
             bool ok = known && roundTrip;
@@ -467,6 +499,16 @@ namespace BossRush
                 ? "当前快照过一次 Encode/Decode 就变了形（Codec 会拒绝整份存档）"
                 : "剧情位超出 KnownFlags 掩码：新增 flag 没有同步掩码，Codec 会拒绝整份存档";
             return ok;
+        }
+
+        /// <summary>逐项比对两组字符串（顺序敏感）。往返只比长度的话，内容被改写也照样绿。</summary>
+        private static bool SameStrings(string[] a, string[] b)
+        {
+            if (a == null || b == null) return a == b;
+            if (a.Length != b.Length) return false;
+            for (int i = 0; i < a.Length; i++)
+                if (!string.Equals(a[i], b[i], StringComparison.Ordinal)) return false;
+            return true;
         }
 
         private bool ValidateSkyIslandSaveState(out string metrics, out string reason)
@@ -545,7 +587,12 @@ namespace BossRush
             if (bounty.HasActive && session.AvailableBountyProgress(bounty.Active) + bounty.Progress < bounty.Target)
                 errors.Add("active_contract_unfinishable");
             if (bounty.CompletedRounds > SkyIslandBounty.MaxRounds) errors.Add("rounds_over_max");
-            metrics = "rounds=" + bounty.CompletedRounds + "/" + SkyIslandBounty.MaxRounds
+            // 巡岛可完成量不得超过本局真正索引到的区域数。旧口径按 POI_ 节点计数，装饰节点 POI_B_Mural 让它
+            // 永久多算 1——剩 3 个真区域时算成 4，正好派得出一张做不完的「巡视群岛区域 ×4」。
+            int regions = session.ValidationGroundRegionCount;
+            if (session.AvailableBountyProgress(SkyIslandBountyKind.Survey) > regions)
+                errors.Add("survey_available_exceeds_regions");
+            metrics = "ground_regions=" + regions + ",rounds=" + bounty.CompletedRounds + "/" + SkyIslandBounty.MaxRounds
                 + ",active=" + bounty.Active + ",progress=" + bounty.Progress + "/" + bounty.Target
                 + " | " + string.Join(" ", parts.ToArray());
             if (errors.Count > 0) reason = "委托门控不合格：" + string.Join(",", errors.ToArray());
@@ -561,12 +608,10 @@ namespace BossRush
             SkyIslandResidents residents = session == null ? null : session.ValidationResidents;
             if (root == null || residents == null) { reason = "world_root_or_residents_owner_missing"; return false; }
 
-            // 岛上实际挂着的剧情交互体总数。少于在岛居民数就说明有人生成了却按不了「聊聊航路」。
+            // 按人逐个核对「聊聊航路」交互体（含被剧情隐藏的折翎）。旧写法按地形根扫全场景：
+            // 居民由官方 CharacterCreator 生成、不挂在地形根下，一个都扫不到，只要有居民在岛就必然误报；
+            // 折翎战败后被隐藏，`FindObjectsOfType` 又不返回未激活对象，同样必然误报。
             int talkers = 0;
-            foreach (SkyIslandResidentInteractable talk in
-                UnityEngine.Object.FindObjectsOfType<SkyIslandResidentInteractable>())
-                if (talk != null && talk.transform.IsChildOf(root.transform)) talkers++;
-
             string[] ids = SkyIslandResidents.AllIds;
             List<string> parts = new List<string>();
             List<string> errors = new List<string>();
@@ -577,14 +622,24 @@ namespace BossRush
                 try { isMarried = AffinityManager.IsMarriedToPlayer(ids[i]); }
                 catch (Exception) { /* 关系系统不可用时按未婚处理，下面的 spawned 判据会兜住 */ }
                 bool spawned = residents.IsSpawned(ids[i]);
+                // 永久 NPC 已由别处登记实例时 `SpawnOneAsync` 同样跳过生成（既定行为，与婚后离岛同理）。
+                bool elsewhere = false;
+                if (!spawned)
+                {
+                    try { elsewhere = PermanentDuckNpcRegistry.GetInstance(ids[i]) != null; }
+                    catch (Exception) { /* 登记表不可用时按不在别处处理 */ }
+                }
+                bool talk = spawned && residents.HasTalkInteraction(ids[i]);
                 if (isMarried) married++;
                 if (spawned) present++;
-                parts.Add(ids[i] + "=" + (spawned ? "on_island" : (isMarried ? "married_off_island" : "absent")));
+                if (talk) talkers++;
+                parts.Add(ids[i] + "=" + (spawned ? (residents.IsHidden(ids[i]) ? "on_island_hidden" : "on_island")
+                    : (isMarried ? "married_off_island" : (elsewhere ? "instance_elsewhere" : "absent"))));
                 // 婚后离岛是既定行为（婚姻系统接管，`SpawnOneAsync` 直接跳过生成）；
                 // 既没结婚又不在岛上才是缺陷——那位居民的服务与委托入口这一趟就失联了。
-                if (!spawned && !isMarried) errors.Add(ids[i] + ":missing");
+                if (!spawned && !isMarried && !elsewhere) errors.Add(ids[i] + ":missing");
+                if (spawned && !talk) errors.Add(ids[i] + ":no_talk_interaction");
             }
-            if (talkers < present) errors.Add("talk_interactables=" + talkers + "<on_island=" + present);
             metrics = "ids=" + ids.Length + ",on_island=" + present + ",married=" + married
                 + ",owned=" + residents.SpawnedCount + ",talk_interactables=" + talkers
                 + " | " + string.Join(" ", parts.ToArray());
@@ -625,7 +680,7 @@ namespace BossRush
                 + ",dock_active=" + (dock != null && dock.gameObject.activeInHierarchy)
                 + ",bell_unlocked=" + bellUnlocked + ",bell_visible=" + bellVisible
                 + ",bell_radius=" + bellRadius.ToString("F2");
-            if (!dockOk) reason = "码头蓝环缺失、半径与判定不一致或带了碰撞体";
+            if (!dockOk) reason = "码头青色环缺失、半径与判定不一致或带了碰撞体";
             else if (!bellOk) reason = "钟庭绿环的显隐与敲钟结局不同源，或半径与判定不一致";
             return dockOk && bellOk;
         }
@@ -695,13 +750,21 @@ namespace BossRush
         {
             reason = null;
             SkyIslandSession session = SkyIslandSessionOrNull();
-            bool instance = EvacuationCountdownUI.Instance != null;
+            EvacuationCountdownUI ui = EvacuationCountdownUI.Instance;
+            bool instance = ui != null;
+            // 官方静态 `_instance` 只在 Awake 里赋值、从不在 OnDestroy 里清空，`!= null` 只排除得了已销毁的；
+            // 要证明「挂在这张独立关卡里」，还得核对它属于本岛场景实例（LevelConfig.Awake 实例化的 LevelManager 预制体）并已启用。
+            bool inIsland = instance && session != null && ui.gameObject.scene.handle == session.ValidationScene.handle;
+            bool enabled = instance && ui.isActiveAndEnabled;
             bool bridge = session != null && session.ValidationOfficialCountdownAvailable;
-            metrics = "official_ui_instance=" + instance + ",bridge_available=" + bridge;
+            metrics = "official_ui_instance=" + instance + ",in_island_scene=" + inIsland + ",enabled=" + enabled
+                + ",bridge_available=" + bridge;
             if (session == null) { reason = "session_missing"; return false; }
             if (!instance) reason = "本关卡里没有官方 EvacuationCountdownUI 实例：撤离读秒已退回 HUD 文字";
+            else if (!inIsland) reason = "官方 EvacuationCountdownUI 实例不属于本岛场景（静态实例指向了别处）";
+            else if (!enabled) reason = "官方 EvacuationCountdownUI 未启用";
             else if (!bridge) reason = "官方撤离读条桥不可用（CountDownArea 私有字段对不上或接入失败）：撤离读秒已退回 HUD 文字";
-            return instance && bridge;
+            return instance && inIsland && enabled && bridge;
         }
 
         private bool ValidateSkyIslandStormTuning(out string metrics, out string reason)
@@ -761,11 +824,8 @@ namespace BossRush
             List<string> offenders = new List<string>();
             int checkedStrings = 0;
 
-            string[] pointKeys =
-            {
-                "Search_A", "Search_B", "Search_C", "Search_D", "Search_E", "Search_F", "Search_G", "Search_H",
-                "Search_S1", "Search_S2", "Search_S3", "Search_S4", "Search_A_02"
-            };
+            // 遍历本局真实的见闻点（含全部 _02 点位），而不是手写一份会漏点的清单。
+            string[] pointKeys = session != null ? session.ValidationSearchMarkerNames() : new string[0];
             for (int i = 0; i < pointKeys.Length; i++)
                 Inspect("PointName:" + pointKeys[i], SkyIslandWorldStory.PointName(pointKeys[i]), offenders, ref checkedStrings);
 
@@ -782,6 +842,10 @@ namespace BossRush
             for (int i = 0; i < landmarkNames.Length; i++)
                 Inspect("Landmark:" + landmarkNames[i], SkyIslandSession.LandmarkLabel(landmarkNames[i]),
                     offenders, ref checkedStrings);
+            // HUD 卡片与区域大标题实际用的是按区域 id 取名（脚下地面判定），与地标名是两条入口。
+            string[] regionIds = { "A", "B", "C", "D", "E", "F", "G", "H", "S1", "S2", "S3", "S4" };
+            for (int i = 0; i < regionIds.Length; i++)
+                Inspect("Region:" + regionIds[i], SkyIslandSession.RegionLabel(regionIds[i]), offenders, ref checkedStrings);
 
             SkyIslandLootTier[] tiers =
             {
@@ -833,9 +897,8 @@ namespace BossRush
         /// <summary>
         /// CJK 统一表意文字（含扩展 A）与 CJK 标点、全角形式。
         ///
-        /// 码位一律写 `\u` 转义**而不是**字面汉字：这个文件将来若被某个工具按非 UTF-8 读写，
-        /// 字面量会静默变形成别的字符，而这条断言恰恰是靠码位区间成立的，
-        /// 变形之后它会安静地永远为真——那就是最糟的假绿。
+        /// 码位区间写成下方的整数常量：既不写字面汉字（文件被按非 UTF-8 读写时会静默变形），
+        /// 也不写反斜杠转义（跨工具复制时反斜杠会被折掉）——两种变形都会让这条断言安静地永远为真。
         /// 诊断类文本（部署损坏、契约变更时才出现）按既定口径保留中文，不在这里取样。
         /// </summary>
         private static void Inspect(string label, string value, List<string> offenders, ref int counter)
@@ -912,13 +975,16 @@ namespace BossRush
             reason = null;
             metrics = string.Empty;
             SkyIslandSession session = SkyIslandSessionOrNull();
-            if (session == null) { reason = "验收结束时天空岛会话已经不在了（套件不应结束这趟出击）"; return false; }
+            if (session == null) { reason = "验收结束时天空岛会话已经不在了"; return false; }
             SkyIslandValidationSnapshot snapshot = session.ValidationSnapshot();
-            metrics = snapshot.Describe() + ",modal_leases=" + ZombieModeUIHelper.ModalInputLeaseCount
-                + ",active_view=" + (View.ActiveView != null);
-            bool ok = session.IsReady && !snapshot.Closed && !snapshot.Returning
-                && ZombieModeUIHelper.ModalInputLeaseCount == 0;
-            if (!ok) reason = "验收自己改变了会话状态或漏了模态输入租约（套件必须只读）";
+            // 租约与开跑时的基线比，而不是与 0 比；玩家自己在验收途中打开的剧情面板也扣掉。
+            // 会话在途中结束（返航、倒下、换槽）由 RunSkyIslandSync 记 SKIP，走不到这里。
+            int leases = ZombieModeUIHelper.ModalInputLeaseCount;
+            int expectedLeases = _skyIslandBaselineLeases + (session.ValidationStoryPanelVisible ? 1 : 0);
+            metrics = snapshot.Describe() + ",modal_leases=" + leases + ",baseline_leases=" + _skyIslandBaselineLeases
+                + ",story_panel=" + session.ValidationStoryPanelVisible + ",active_view=" + (View.ActiveView != null);
+            bool ok = session.IsReady && !snapshot.Closed && !snapshot.Returning && leases <= expectedLeases;
+            if (!ok) reason = "验收之后会话状态变了，或模态输入租约比开跑时多（套件必须只读）";
             return ok;
         }
     }

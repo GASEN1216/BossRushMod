@@ -12,7 +12,8 @@ using UnityEngine.SceneManagement;
 namespace BossRush
 {
     /// <summary>COMPAT / WIRE+ / SCHEMA+：官方独立出击关卡的天空岛旅程 owner。</summary>
-    internal sealed class SkyIslandSession : MonoBehaviour, IInitializedQueryHandler
+    /// <remarks>F3 岛内验收的只读观测面在 SkyIslandSessionValidation.cs（同一个 partial 类）。</remarks>
+    internal sealed partial class SkyIslandSession : MonoBehaviour, IInitializedQueryHandler
     {
         private readonly Vector3 origin = Vector3.zero;
         private readonly List<Transform> enemyMarkers = new List<Transform>();
@@ -100,7 +101,7 @@ namespace BossRush
             if (!SkyIslandRaidLease.IsBundleDeployed())
             {
                 reason = L10n.T("缺少天空岛独立出击场景包，请更新 Mod 资源",
-                    "The Sky Island raid scene bundle is missing — update the mod's assets");
+                    "The Sky Islands raid scene bundle is missing — update the mod's assets");
                 return false;
             }
             if (owner.GetComponent<SkyIslandSession>() != null || owner.GetComponent<ArenaPrototypeSession>() != null)
@@ -170,7 +171,9 @@ namespace BossRush
                 catch (Exception e)
                 {
                     CancelPendingInitialization();
-                    Status(L10n.T("天空岛创建失败：", "Sky Island setup failed: ") + e.Message, true);
+                    // 异常原文是给维护者的中文诊断：完整异常进日志，提示条经 WithDetail，英文界面只给双语前缀。
+                    Debug.LogWarning("[SkyIsland] setup failed: " + e);
+                    Status(SkyIslandStoryRules.WithDetail(L10n.T("天空岛创建失败：", "Sky Islands setup failed"), e.Message), true);
                     Close(true, "build_failed"); yield break;
                 }
                 if (!more) yield break;
@@ -229,6 +232,7 @@ namespace BossRush
             rendering = new SkyIslandRendering();
             rendering.Apply(root, groundLayer, wallLayer);
             PrepareMarkers();
+            IndexGroundRegions();
             lighting = new SkyIslandLighting();
             lighting.Apply(root);
             root.SetActive(true);
@@ -357,7 +361,8 @@ namespace BossRush
             {
                 navigationReady = true;
                 assemblyError = e.Message;
-                Status(L10n.T("独立关卡装配失败：", "Standalone level assembly failed: ") + e.Message, true);
+                Debug.LogWarning("[SkyIsland] standalone level assembly failed: " + e);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("独立关卡装配失败：", "Standalone level assembly failed"), e.Message), true);
             }
         }
 
@@ -400,6 +405,32 @@ namespace BossRush
             landmarks.Sort((a, b) => string.CompareOrdinal(a.name, b.name));
             if (playerSpawn == null || exitMarker == null || enemyMarkers.Count == 0 || landmarks.Count == 0 || searchCount == 0)
                 throw new InvalidOperationException("出生/撤离/敌人/探索/地标点位缺失");
+        }
+
+        /// <summary>
+        /// 区域判定的事实源是**脚下那块地**，不是「离哪个地标最近」。
+        ///
+        /// 生成器按区域把地面碰撞体切成 `COL_Ground_{区域}`（12 个岛 + 15 座桥，见
+        /// tools/generate_sky_island.py），会话每 0.2 秒本来就朝脚下打一次地面射线找安全落脚点，
+        /// 顺手查一下命中的是哪块地即可，不多打一条射线。
+        ///
+        /// 旧口径「离最近地标 60 米」按 ArtSource/SkyIsland/layout.json 的导航网格复算：主岛上只罩住
+        /// 30–53% 的可走面积，其余地方卡片停在上一个岛；CS1 / FS3 两座桥的大半段与 C / F 两岛边缘
+        /// 却能提前点亮 S1 / S3 的迷雾并推进「巡视群岛区域」（tests/SkyIslandRegionResolutionPropertyTest.py）。
+        /// </summary>
+        private void IndexGroundRegions()
+        {
+            foreach (Collider collider in root.GetComponentsInChildren<Collider>(true))
+            {
+                // 桥（AB、CS1、K1…）不是区域：GroundRegionOf 返回 null，走在桥上保持上一个区域，不点亮、不记账。
+                string id = SkyIslandStoryService.GroundRegionOf(collider.name);
+                if (id == null) continue;
+                groundRegions[collider] = id;
+                if (!regionIds.Contains(id)) regionIds.Add(id);
+            }
+            // 缺切分只影响区域名与到访记账，不拖垮旅程：卡片不显示区域行，巡岛委托因可完成量为 0 不会派出。
+            if (regionIds.Count == 0)
+                Debug.LogWarning("[SkyIsland] 场景包里没有按区域切分的地面碰撞体，区域名与到访记录不可用");
         }
 
         private void VerifyGround(Transform marker)
@@ -465,7 +496,12 @@ namespace BossRush
                     "Test enemy spawned (no loot, no XP) · ") + spawn.name, false);
                 Debug.Log("[SkyIsland] ENEMY_READY preset=" + source.name + " point=" + spawn.name);
             }
-            catch (Exception e) { if (created != null) Destroy(created.gameObject); if (this != null && !closed) Status(L10n.T("生成敌人失败：", "Enemy spawn failed: ") + e.Message, true); }
+            catch (Exception e)
+            {
+                if (created != null) Destroy(created.gameObject);
+                Debug.LogWarning("[SkyIsland] spawn enemy failed: " + e);
+                if (this != null && !closed) Status(SkyIslandStoryRules.WithDetail(L10n.T("生成敌人失败：", "Enemy spawn failed"), e.Message), true);
+            }
             finally { if (clone != null) Destroy(clone, created != null ? 0.1f : 0f); if (this != null) spawning = false; }
         }
 
@@ -475,7 +511,12 @@ namespace BossRush
             { Status(WaitForReady, true); return; }
             Transform landmark = landmarks[nextLandmark++ % landmarks.Count];
             try { VerifyGround(landmark); }
-            catch (Exception e) { Status(e.Message, true); return; }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] visit landmark failed: " + e);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("前往下一个地标失败：", "Could not move to the next landmark"), e.Message), true);
+                return;
+            }
             safePosition = landmark.position + Vector3.up * 0.15f;
             player.SetPosition(safePosition);
             airborneSince = -1;
@@ -494,9 +535,13 @@ namespace BossRush
             try
             {
                 lighting.CyclePreset();
-                Status(L10n.T("天空岛光色 · ", "Sky Island lighting · ") + lighting.PresetName, false);
+                Status(L10n.T("天空岛光色 · ", "Sky Islands lighting · ") + lighting.PresetName, false);
             }
-            catch (Exception e) { Status(L10n.T("天空岛光色切换失败：", "Lighting switch failed: ") + e.Message, true); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] lighting switch failed: " + e);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("天空岛光色切换失败：", "Lighting switch failed"), e.Message), true);
+            }
         }
 
         /// <summary>归航钟庭撤离点：只在敲钟结局后开放，未解锁返回 null。地图与撤离判定共用这一个事实源。</summary>
@@ -508,15 +553,21 @@ namespace BossRush
         /// <summary>撤离唯一判定：码头恒开、钟庭需结局，两者都必须站进圈内。没有第二条返航入口。</summary>
         private bool IsInsideExtraction(out Transform marker)
         {
-            marker = null;
-            if (player == null) return false;
-            Vector3 position = player.transform.position;
-            if (exitMarker != null && Vector3.Distance(position, exitMarker.position) < ExtractionRadius)
-            { marker = exitMarker; return true; }
+            marker = player == null ? null : ExtractionMarkerAt(player.transform.position);
+            return marker != null;
+        }
+
+        /// <summary>
+        /// 撤离判定的几何部分：给定坐标落在哪个**开放**的撤离圈里（码头恒开、钟庭需结局），不在任何圈里返回 null。
+        /// 玩家判定（<see cref="IsInsideExtraction"/>）与 F3 只读探测（<see cref="ValidationIsInsideExtractionAt"/>）
+        /// 共用这一份：以前验收那边是逐字复制的第二份，生产判据改了验收照样绿。
+        /// </summary>
+        private Transform ExtractionMarkerAt(Vector3 position)
+        {
+            if (exitMarker != null && Vector3.Distance(position, exitMarker.position) < ExtractionRadius) return exitMarker;
             Transform bell = BellExitIfUnlocked();
-            if (bell != null && Vector3.Distance(position, bell.position) < ExtractionRadius)
-            { marker = bell; return true; }
-            return false;
+            if (bell != null && Vector3.Distance(position, bell.position) < ExtractionRadius) return bell;
+            return null;
         }
 
         /// <summary>
@@ -529,7 +580,11 @@ namespace BossRush
             if (closed || !ready) { Status(WaitForReady, true); return; }
             if (worldStory != null) worldStory.Hide();
             try { MiniMapView.Show(); }
-            catch (Exception e) { Status(L10n.T("官方地图打开失败：", "Could not open the game map: ") + e.Message, true); }
+            catch (Exception e)
+            {
+                Debug.LogWarning("[SkyIsland] open map failed: " + e);
+                Status(SkyIslandStoryRules.WithDetail(L10n.T("官方地图打开失败：", "Could not open the game map"), e.Message), true);
+            }
         }
 
         internal static void HideMapBeforeF3(ModBehaviour owner)
@@ -558,8 +613,7 @@ namespace BossRush
             {
                 airborneSince = -1;
                 // 与官方界面同口径：剧情面板开着时撤离读条冻结而不是清零。
-                // 面板把 timeScale 压到 0，但 unscaledTime 照走，不顺延起点读条会自己走完。
-                if (extractionStarted >= 0) extractionStarted += Time.unscaledDeltaTime;
+                // 读条走游戏时间，面板把 timeScale 压到 0，这里既不推进也不清零 extractionHeld。
                 return;
             }
             if (encounters != null) encounters.Tick();
@@ -599,44 +653,44 @@ namespace BossRush
                 RaycastHit hit;
                 if (Physics.Raycast(player.transform.position + Vector3.up * 0.25f, Vector3.down, out hit, 1.4f,
                     groundMask, QueryTriggerInteraction.Ignore) && hit.transform.IsChildOf(root.transform))
-                { safePosition = hit.point + Vector3.up * 0.35f; airborneSince = -1; }
-                else if (airborneSince < 0) airborneSince = Time.unscaledTime;
-                else if (Time.unscaledTime - airborneSince > 2.5f) { Rescue(); return; }
+                {
+                    safePosition = hit.point + Vector3.up * 0.35f;
+                    airborneSince = -1;
+                    // 同一条射线顺手认出脚下是哪个区域；桥不在表里，走在桥上保持上一个。
+                    string region;
+                    if (groundRegions.TryGetValue(hit.collider, out region)) standingRegion = region;
+                }
+                // 腾空计时同样走游戏时间：开着暂停菜单或拍照模式时，不该把人「救」回落脚点。
+                else if (airborneSince < 0) airborneSince = Time.time;
+                else if (Time.time - airborneSince > 2.5f) { Rescue(); return; }
             }
             Transform extraction;
             bool insideExtraction = IsInsideExtraction(out extraction);
-            // 与官方 CountDownArea 一致：打开任何官方界面（背包、地图等）时撤离计时不推进，免得开着背包被送回基地。
-            if (Time.unscaledTime > enteredAt + 1 && View.ActiveView == null && insideExtraction)
+            if (Time.unscaledTime > enteredAt + 1 && insideExtraction)
             {
-                if (extractionStarted < 0) extractionStarted = Time.unscaledTime;
-                float remaining = ExtractionHold - (Time.unscaledTime - extractionStarted);
+                if (extractionHeld < 0) extractionHeld = 0f;
+                // 与官方 CountDownArea 同口径的两道门：
+                // 1. 打开任何官方界面（背包、地图等）时不推进，冻结在原处而不是清零，免得开着背包被送回基地；
+                // 2. 时基是游戏时间：暂停菜单、拍照模式、剧情面板把 timeScale 压到 0 时 Time.deltaTime 为 0，读条同样冻结。
+                if (View.ActiveView == null) extractionHeld += Time.deltaTime;
+                float remaining = ExtractionHold - extractionHeld;
+                // 冻结期间照样把已停留秒数喂给官方读条：它按 Time.time 自己算进度，不喂就会在背包后面偷偷走完。
                 ShowExtraction(remaining);
                 if (remaining <= 0) Close(true, extraction == bellExit ? "bell_extract" : "dock_extract");
                 return;
             }
-            // 官方 CountDownArea 的口径是「不推进」而不是「清零」：人还在圈里、只是开着背包时，
-            // 把起点顺延同样的时长，读条冻结在原处。真正离开圈子才归零。
-            if (insideExtraction && extractionStarted >= 0)
-            {
-                extractionStarted += Time.unscaledDeltaTime;
-                // 冻结期间照样把起点喂给官方读条：它按 Time.time 自己算进度，不喂就会在背包后面偷偷走完。
-                ShowExtraction(ExtractionHold - (Time.unscaledTime - extractionStarted));
-                return;
-            }
-            extractionStarted = -1;
+            // 真正离开圈子才归零。HUD 文字读秒的兜底行当场撤掉，不等下一次 0.5 秒刷新。
+            if (extractionHeld >= 0 && hud != null) hud.SetExtraction(null);
+            extractionHeld = -1;
             shownExtractionSeconds = -1;
             if (extractionCountdown != null) extractionCountdown.Hide();
             if (Time.unscaledTime >= nextHud)
             {
                 nextHud = Time.unscaledTime + 0.5f;
-                Transform nearest = Nearest(landmarks, player.transform.position);
-                // 60 米，不是 120。按 ArtSource/SkyIsland/layout.json 的实际坐标，四条支路的
-                // 主岛侧桥头到对岸地标只有 73.2 / 103.9 / 73.9 / 117.3 米，旧阈值下站在主岛边缘
-                // 就能点亮 S1–S4 的地图迷雾并刷完「巡视群岛区域」，根本不用过桥。
-                // 下界由主岛正常路线决定：B→C→D 直线穿越对 POI_C 的最近距离约 50 米。
-                // 可用区间 (50, 73.2)，取 60 两头留余量。
-                if (nearest != null && (nearest.position - player.transform.position).sqrMagnitude < 60 * 60 &&
-                    story.RecordRegionVisited(nearest.name.Substring(4)))
+                // 到访记账与区域名共用「脚下那块地」这一个事实源（见 IndexGroundRegions）：
+                // 真正踏上某个岛才算到访，走在桥上保持上一个区域——既不会隔着桥提前点亮支路，
+                // 也不会像更早的「谁更近」写法那样站在两个地标之间来回翻、让区域大标题连弹。
+                if (standingRegion != null && story.RecordRegionVisited(standingRegion))
                 {
                     bounty.ReportRegionVisited();
                     // 刚踏足的区域立刻在官方地图上点亮。
@@ -646,11 +700,7 @@ namespace BossRush
                 {
                     // 不在圈里就把读秒整行撤掉，卡片不留空位。
                     hud.SetExtraction(null);
-                    // 区域名与到访记账同一个 60 米口径：只有真正走进某个地标的范围才切换，
-                    // 走在两个地标之间的桥上保持上一个。旧写法取「谁更近」，站在两个地标的中垂线附近
-                    // 每半秒翻一次，区域大标题就跟着连弹。
-                    if (nearest != null && (nearest.position - player.transform.position).sqrMagnitude < 60 * 60)
-                        hud.SetRegion(LandmarkLabel(nearest.name));
+                    if (standingRegion != null) hud.SetRegion(RegionLabel(standingRegion));
                     hud.SetObjective(story.CurrentObjective);
                     hud.SetChips(FieldStatus());
                     // 存档状态**正常时一个字都不说**：只有真出问题（写屏障 / 单向故障 / 换槽）
@@ -690,24 +740,35 @@ namespace BossRush
         }
 
         /// <summary>HUD 第三行：搜刮进度与在手委托，让「这趟出击还能做什么」一眼可见。</summary>
+        /// <remarks>每 0.5 秒调用一次。输入计数都没变就复用上一次的字符串：拼一次要新建六七个小字符串。</remarks>
         private string FieldStatus()
         {
+            int opened = scavenging == null ? -1 : scavenging.OpenedPoints;
+            int placed = scavenging == null ? -1 : scavenging.PlacedPoints;
+            int active = (int)bounty.Active, progress = bounty.Progress, target = bounty.Target, rounds = bounty.CompletedRounds;
+            bool chinese = L10n.IsChinese;
+            if (chipsText != null && opened == chipsOpened && placed == chipsPlaced && active == chipsActive &&
+                progress == chipsProgress && target == chipsTarget && rounds == chipsRounds && chinese == chipsChinese)
+                return chipsText;
+            chipsOpened = opened; chipsPlaced = placed; chipsActive = active;
+            chipsProgress = progress; chipsTarget = target; chipsRounds = rounds; chipsChinese = chinese;
             string loot = scavenging == null
-                ? L10n.T("物资点 --", "caches --")
-                : L10n.T("物资 ", "caches ") + scavenging.OpenedPoints + "/" + scavenging.PlacedPoints;
+                ? L10n.T("物资点 --", "Caches --")
+                : L10n.T("物资 ", "Caches ") + opened + "/" + placed;
             string contract = bounty.HasActive
-                ? L10n.T(" · 委托 ", " · contract ") + bounty.Describe()
-                : (bounty.CompletedRounds > 0
-                    ? L10n.T(" · 已交委托 ", " · contracts delivered ") + bounty.CompletedRounds
-                    : L10n.T(" · 风铃集可接委托", " · contracts at Windchime Market"));
-            return loot + contract;
+                ? L10n.T(" · 委托 ", " · Contract: ") + bounty.Describe()
+                : (rounds > 0
+                    ? L10n.T(" · 已交委托 ", " · Contracts delivered: ") + rounds
+                    : L10n.T(" · 风铃集可接委托", " · Contracts at Windchime Market"));
+            chipsText = loot + contract;
+            return chipsText;
         }
 
         private void Rescue()
         {
             player.SetPosition(safePosition);
             airborneSince = -1;
-            extractionStarted = -1;
+            extractionHeld = -1;
             Status(L10n.T("已返回最近安全落脚点", "Returned to the nearest safe footing"), false);
             Debug.Log("[SkyIsland] FALL_RESCUE position=" + safePosition);
         }
@@ -725,16 +786,62 @@ namespace BossRush
         }
         internal static string LandmarkLabel(string name)
         {
-            string[] names = L10n.IsChinese
-                ? new[] { "登云码头", "风铃集", "青穗梯田", "悬根林", "鸣风栈道", "镜水寺", "残星工坊", "归航钟庭" }
-                : new[] { "Cloudrise Dock", "Windchime Market", "Green Terraces", "Hanging Root Wood",
-                    "Windsong Boardwalk", "Mirrorwater Temple", "Fallen Star Workshop", "Bell Court" };
-            if (name.Length > 4 && name[4] >= 'A' && name[4] <= 'H') return names[name[4] - 'A'];
-            if (name == "POI_S1") return L10n.T("蛙鸣池", "Frogsong Pool");
-            if (name == "POI_S2") return L10n.T("倒挂邮亭", "Upturned Post Hut");
-            if (name == "POI_S3") return L10n.T("听雨洞", "Rainlisten Grotto");
-            if (name == "POI_S4") return L10n.T("残星瞭台", "Starfall Overlook");
+            if (name.Length > 4 && name[4] >= 'A' && name[4] <= 'H') return MainRegionLabel(name[4]);
+            if (name == "POI_S1") return RegionLabel("S1");
+            if (name == "POI_S2") return RegionLabel("S2");
+            if (name == "POI_S3") return RegionLabel("S3");
+            if (name == "POI_S4") return RegionLabel("S4");
             return name.Replace("POI_", "").Replace('_', ' ');
+        }
+
+        /// <summary>
+        /// 区域 id（A–H / S1–S4）→ 玩家看得懂的地名。每 0.5 秒的 HUD 刷新都会走到这里，
+        /// 所以不再像旧写法那样每次 new 两个八元素数组，全部是直接返回字面量的分支。
+        /// </summary>
+        internal static string RegionLabel(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return string.Empty;
+            if (id.Length == 1 && id[0] >= 'A' && id[0] <= 'H') return MainRegionLabel(id[0]);
+            switch (id)
+            {
+                case "S1": return L10n.T("蛙鸣池", "Frogsong Pool");
+                case "S2": return L10n.T("倒挂邮亭", "Upturned Post Hut");
+                case "S3": return L10n.T("听雨洞", "Rainlisten Grotto");
+                case "S4": return L10n.T("残星瞭台", "Starfall Overlook");
+                default: return id.Replace('_', ' ');
+            }
+        }
+
+        private static string MainRegionLabel(char region) { return L10n.T(MainRegionCn(region), MainRegionEn(region)); }
+
+        private static string MainRegionCn(char region)
+        {
+            switch (region)
+            {
+                case 'A': return "登云码头";
+                case 'B': return "风铃集";
+                case 'C': return "青穗梯田";
+                case 'D': return "悬根林";
+                case 'E': return "鸣风栈道";
+                case 'F': return "镜水寺";
+                case 'G': return "残星工坊";
+                default: return "归航钟庭";
+            }
+        }
+
+        private static string MainRegionEn(char region)
+        {
+            switch (region)
+            {
+                case 'A': return "Cloudrise Dock";
+                case 'B': return "Windchime Market";
+                case 'C': return "Green Terraces";
+                case 'D': return "Hanging Root Wood";
+                case 'E': return "Windsong Boardwalk";
+                case 'F': return "Mirrorwater Temple";
+                case 'G': return "Fallen Star Workshop";
+                default: return "Homecoming Bell Court";
+            }
         }
         /// <summary>
         /// 遭遇 id → 玩家看得懂的名字。id 是 World.json 里的内部键（`C_02` / `S1` / `Zheling`），
@@ -759,6 +866,7 @@ namespace BossRush
             CancelPendingInitialization();
             StopAllCoroutines();
             Safe("ambience_stop", delegate { if (ambience != null) ambience.Dispose(); });
+            Safe("extraction_countdown_hide", delegate { if (extractionCountdown != null) extractionCountdown.Hide(); });
             if (worldStory != null) worldStory.Hide();
         }
         private void OnSceneUnloaded(Scene scene)
@@ -770,6 +878,9 @@ namespace BossRush
             // 官方 CharacterDieTask 保存墓碑、处理损失与返回基地；不移动尸体或抢先卸载场景。
             deathPending = true; ready = false;
             Safe("ambience_stop", delegate { if (ambience != null) ambience.Dispose(); });
+            // 原版 CountDownArea 在圈里的人全部倒下时立刻中止读条（UpdateCountDown → AbortCountDown → Release）。
+            // ready 一落 Update 就不再走撤离分支，不主动收起的话官方读条会留在屏幕上自己读到 00:00。
+            Safe("extraction_countdown_hide", delegate { if (extractionCountdown != null) extractionCountdown.Hide(); });
             if (worldStory != null) worldStory.Hide();
             if (story != null) story.Tick(true);
         }
@@ -904,13 +1015,12 @@ namespace BossRush
             if (kind == SkyIslandBountyKind.Survey)
             {
                 if (story == null) return 0;
+                // 数的是**区域**（脚下地面切分出来的 A–H / S1–S4），不是 POI_ 节点：场景包里还有一个
+                // POI_B_Mural（风铃集壁画），按节点数会把它当成永远去不了的第 13 个区域——
+                // 剩 3 个真区域时可完成量算成 4，恰好派得出一张做不完的「巡视群岛区域 ×4」。
                 int count = 0;
-                for (int i = 0; i < landmarks.Count; i++)
-                {
-                    Transform landmark = landmarks[i];
-                    if (landmark == null || landmark.name.Length <= 4) continue;
-                    if (!story.HasVisitedRegion(landmark.name.Substring(4))) count++;
-                }
+                for (int i = 0; i < regionIds.Count; i++)
+                    if (!story.HasVisitedRegion(regionIds[i])) count++;
                 return count;
             }
             return 0;
@@ -1014,93 +1124,16 @@ namespace BossRush
                 string message;
                 story.TryApply(SkyIslandStoryAction.StormSlain, out message);
             }
-            SkyIslandStormBoss.DropTrophy(root.transform, position, raidSeed);
+            // 噬风自己的尸体箱（官方 CharacterMainControl.OnDead → InteractableLootbox.CreateFromItem）落在
+            // 它倒下的位置 +0.1 m。奖励箱照原坐标放会与它几乎同点：官方 CA_Interact 按到交互体轴心的距离
+            // 严格小于取唯一目标，两个箱子里总有一个整局都选不中。退开一个交互间距，退不开才落回原点。
+            Vector3 drop;
+            if (!SkyIslandRewardCrate.TryFindCratePosition(root.transform, position,
+                SkyIslandLootTables.StableHash("StormTrophy") % 360, SkyIslandRewardCrate.InteractableSeparation,
+                groundMask, out drop)) drop = position;
+            SkyIslandStormBoss.DropTrophy(root.transform, drop, raidSeed);
         }
-        // ====================================================================
-        // F3 天空岛验收的只读观测面（F3GameplayValidationSkyIsland 独占消费）
-        // ====================================================================
-        // 纪律：这一段**只读**。不得在这里推进剧情、移动玩家、生成敌人或写存档——
-        // 岛内验收跑在玩家的真实旅程上，任何副作用都会污染他正在做的这一趟。
-        // 需要「做点什么才能验」的用例一律进人工清单，不许在这里偷偷改状态。
-
-        internal GameObject ValidationWorldRoot { get { return root; } }
-        internal Scene ValidationScene { get { return entryScene; } }
-        internal SkyIslandStoryService ValidationStory { get { return story; } }
-        internal SkyIslandResidents ValidationResidents { get { return residents; } }
-        internal Transform ValidationPlayerSpawn { get { return playerSpawn; } }
-        internal Transform ValidationExitMarker { get { return exitMarker; } }
-        internal Transform ValidationBellMarker { get { return bellExit; } }
-        /// <summary>官方撤离读条桥是否可用（F3 只读）。不可用时撤离读秒退回 HUD 文字。</summary>
-        internal bool ValidationOfficialCountdownAvailable
-        { get { return extractionCountdown != null && extractionCountdown.Available; } }
-        internal GraphMask ValidationNavigationMask
-        { get { return navigation == null ? default(GraphMask) : navigation.Mask; } }
-        internal static float ValidationExtractionRadius { get { return ExtractionRadius; } }
-        internal static float ValidationExtractionHold { get { return ExtractionHold; } }
-        internal static float ValidationStoryPanelQuietRadius { get { return StoryPanelQuietRadius; } }
-        internal static float ValidationSaveQuietRadius { get { return SaveQuietRadius; } }
-
-        /// <summary>
-        /// 只读几何探测：给定世界坐标**是否**落在某个撤离圈内。
-        ///
-        /// 与 <see cref="IsInsideExtraction"/> 共用同一条距离判据，但不读玩家位置、不改任何状态，
-        /// 因此可以在验收里对「圆心 / 半径内侧 / 半径外侧」三点取样，证明画出来的圈与判定一致
-        /// （`M_SKY_ISLAND_08`），而不必真的把玩家搬过去。
-        /// </summary>
-        internal bool ValidationIsInsideExtractionAt(Vector3 position, out string markerName)
-        {
-            markerName = null;
-            if (exitMarker != null && Vector3.Distance(position, exitMarker.position) < ExtractionRadius)
-            { markerName = exitMarker.name; return true; }
-            Transform bell = BellExitIfUnlocked();
-            if (bell != null && Vector3.Distance(position, bell.position) < ExtractionRadius)
-            { markerName = bell.name; return true; }
-            return false;
-        }
-
-        /// <summary>会话与内容装配的一次性快照。字段全部来自已有 owner，不触发任何重算。</summary>
-        internal SkyIslandValidationSnapshot ValidationSnapshot()
-        {
-            var snapshot = new SkyIslandValidationSnapshot();
-            snapshot.Ready = ready;
-            snapshot.Closed = closed;
-            snapshot.Returning = returning;
-            snapshot.DeathPending = deathPending;
-            snapshot.NavigationReady = navigationReady;
-            snapshot.RaidSeed = raidSeed;
-            snapshot.SearchPoints = searchCount;
-            snapshot.Landmarks = landmarks.Count;
-            snapshot.EnemyMarkers = enemyMarkers.Count;
-            snapshot.WorldRootActive = root != null && root.activeInHierarchy;
-            snapshot.NavigationNodes = navigation == null ? 0 : navigation.CountWalkableNodes();
-            snapshot.ContentSource = content == null ? "None" : content.Source;
-            snapshot.ContentEncounters = content == null || content.Encounters == null ? 0 : content.Encounters.Length;
-            snapshot.ContentGates = content == null || content.Gates == null ? 0 : content.Gates.Length;
-            snapshot.EncounterGroups = encounters == null ? 0 : encounters.GroupCount;
-            snapshot.EncounterRemainingClearable = encounters == null ? 0 : encounters.RemainingClearable;
-            snapshot.ScavengeAnchors = SkyIslandLootTables.Anchors.Length;
-            snapshot.ScavengePlaced = scavenging == null ? 0 : scavenging.PlacedPoints;
-            snapshot.ScavengeOpened = scavenging == null ? 0 : scavenging.OpenedPoints;
-            snapshot.ScavengeAvailable = scavenging == null ? 0 : scavenging.AvailablePoints;
-            snapshot.ScavengeFailed = scavenging == null ? 0 : scavenging.FailedPoints;
-            snapshot.ResidentsSpawned = residents == null ? 0 : residents.SpawnedCount;
-            snapshot.ExtractionRingsBuilt = extractionRings != null;
-            snapshot.BellUnlocked = BellExitIfUnlocked() != null;
-            snapshot.ServicesReady = services != null;
-            snapshot.BountyRounds = bounty.CompletedRounds;
-            snapshot.BountyActive = bounty.HasActive;
-            if (story != null)
-            {
-                snapshot.StoryFlags = story.Current.flags;
-                snapshot.VisitedRegions = story.Current.visitedRegions;
-                snapshot.StoryCurrentSlot = story.IsCurrentSlot;
-                snapshot.StoryCanWrite = story.CanWrite;
-                snapshot.Objective = story.CurrentObjective;
-                snapshot.SaveStatus = story.SaveStatus;
-                snapshot.Summary = story.Summary;
-            }
-            return snapshot;
-        }
+        // F3 天空岛验收的只读观测面（Validation* 成员与 SkyIslandValidationSnapshot）在 SkyIslandSessionValidation.cs。
 
         /// <summary>剧情 owner 的对外提示通道：与其它天空岛消息共用同一个出口（见 Status），不另开一套。</summary>
         internal void Announce(string message, bool error) { Status(message, error); }
@@ -1125,38 +1158,6 @@ namespace BossRush
         private static void Safe(string step, Action action)
         {
             try { action(); } catch (Exception e) { Debug.LogWarning("[SkyIsland] cleanup " + step + ": " + e.Message); }
-        }
-    }
-
-    /// <summary>
-    /// 会话与内容装配的只读快照，由 <see cref="SkyIslandSession.ValidationSnapshot"/> 填充。
-    ///
-    /// 刻意是**纯数据**且不引用任何 Unity 对象：F3 验收把它整份写进报告的 metrics 行，
-    /// 往返两次的差值就是 `M_SKY_ISLAND_01` 要的「重复进入无残留」基线。
-    /// </summary>
-    internal sealed class SkyIslandValidationSnapshot
-    {
-        internal bool Ready, Closed, Returning, DeathPending, NavigationReady, WorldRootActive;
-        internal bool StoryCurrentSlot, StoryCanWrite, BellUnlocked, ExtractionRingsBuilt, ServicesReady, BountyActive;
-        internal int RaidSeed, SearchPoints, Landmarks, EnemyMarkers, NavigationNodes;
-        internal int ContentEncounters, ContentGates, EncounterGroups, EncounterRemainingClearable;
-        internal int ScavengeAnchors, ScavengePlaced, ScavengeOpened, ScavengeAvailable, ScavengeFailed;
-        internal int ResidentsSpawned, StoryFlags, VisitedRegions, BountyRounds;
-        internal string ContentSource, Objective, SaveStatus, Summary;
-
-        /// <summary>报告用的一行式描述。字段顺序冻结，方便两次出击的行做逐字对照。</summary>
-        internal string Describe()
-        {
-            return "ready=" + Ready + ",world_active=" + WorldRootActive + ",nav_nodes=" + NavigationNodes
-                + ",searches=" + SearchPoints + ",landmarks=" + Landmarks + ",enemy_markers=" + EnemyMarkers
-                + ",content=" + ContentSource + "/" + ContentEncounters + "e" + ContentGates + "g"
-                + ",encounters=" + EncounterGroups + ",clearable=" + EncounterRemainingClearable
-                + ",scav=" + ScavengePlaced + "/" + ScavengeAnchors + "(open=" + ScavengeOpened
-                + ",avail=" + ScavengeAvailable + ",failed=" + ScavengeFailed + ")"
-                + ",residents=" + ResidentsSpawned + ",rings=" + ExtractionRingsBuilt + ",bell=" + BellUnlocked
-                + ",flags=" + StoryFlags + ",regions=" + VisitedRegions + ",slot=" + StoryCurrentSlot
-                + ",can_write=" + StoryCanWrite + ",bounty=" + BountyRounds + "/" + BountyActive
-                + ",seed=" + RaidSeed;
         }
     }
 }

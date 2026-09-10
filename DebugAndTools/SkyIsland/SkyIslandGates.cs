@@ -95,8 +95,13 @@ namespace BossRush
             TMP_FontAsset font = ZombieModeUIHelper.GetGameFont();
             if (font == null) throw new InvalidOperationException("桥口木牌缺少游戏中文字体");
             text.font = font;
+            // 英文关闭态有 6–7 行、约 3.3–3.9 单位高，木板却只有 2.8（文本框 2.5）：固定 4.4 号会整段溢出木板。
+            // 开自动缩放、下限 2.4，仍放不下才省略号收尾；中文 4 行在 4.4 号本来就放得下，观感不变。
+            text.enableAutoSizing = true;
+            text.fontSizeMin = 2.4f;
+            text.fontSizeMax = 4.4f;
             text.fontSize = 4.4f;
-            text.enableAutoSizing = false;
+            text.overflowMode = TextOverflowModes.Ellipsis;
             text.alignment = TextAlignmentOptions.Center;
             text.rectTransform.sizeDelta = new Vector2(7.1f, 2.5f);
             text.sortingOrder = BossRushUILayers.WorldOverlay;

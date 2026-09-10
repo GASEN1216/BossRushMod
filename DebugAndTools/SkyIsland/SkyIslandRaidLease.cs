@@ -44,7 +44,10 @@ namespace BossRush
             // 直接把基地那一份带到岛上，基地场景一卸载它就被销毁，注入进去的是已销毁引用，
             // Unity 的 `== null` 判它为空——合同会说「天气未注入」，玩家永远进不去岛（CR-2026-09-10-003）。
             // 所以趁人还在基地克隆整棵子树并转 DontDestroyOnLoad：子物体之间的引用由 Instantiate
-            // 负责重映射，跨出子树的只剩 VolumeProfile 这类真资产，本来就是共享的。
+            // 负责重映射，跨出子树的是 VolumeProfile 这类真资产（本来就是共享的），外加一个编辑器专用的
+            // `lookDevVolume`（指向兄弟节点 LevelConfig/LookDevVolume，只在 !Application.isPlaying 时读）。
+            // 子树本身只有 TimeOfDayConfig + 5 个 TimeOfDayEntry，没有 Volume / Light / Update 逻辑，
+            // 常驻副本不产生全局副作用（2026-09-10 UnityPy 读 Base.unity 与 16 张 *_Main 场景确认）。
             // 副本的销毁在 TryRelease（所有退出路径的唯一收口）。
             timeOfDay = UnityEngine.Object.Instantiate(template);
             timeOfDay.gameObject.name = "BossRush_SkyIslandTimeOfDay";

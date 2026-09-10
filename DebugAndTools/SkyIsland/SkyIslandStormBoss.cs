@@ -88,7 +88,7 @@ namespace BossRush
             health.OnDeadEvent.AddListener(OnDead);
             subscribed = true;
             Announce("噬风从云海里翻上来了 —— 它循着重新亮起的两盏灯。",
-                "The Windeater rises from the sea of cloud, drawn by the two relit beacons.");
+                "The Windeater rises from the sea of cloud, drawn by the two relit beacons.", false);
         }
 
         /// <summary>纯逻辑：给定血量比例返回应处的相位序号，供隔离回归直接验证阈值不漂移。</summary>
@@ -131,15 +131,16 @@ namespace BossRush
             // 四档相位各有台词：首档教学、末档提示收尾，中间两档只作提醒，避免每次都喊「最后一段」。
             // 三条分支各自成对传中英，不写成两个并列的三目：那样中文与英文各在一棵表达式树里，
             // 漏译一支时看不出来，本地化守卫也认不出这是配好的对照。
+            // 相位台词是**机制提示**（1.4 秒后圈内吃伤害），走警示通道：抢在普通字幕前面播、不会被队列挤掉。
             if (phase == 1)
                 Announce("噬风收拢了风眼 —— 离开它脚下的那一圈。",
-                    "The Windeater draws its eye shut. Get out of the ring.");
+                    "The Windeater draws its eye shut. Get out of the ring.", true);
             else if (phase >= PhaseThresholds.Length)
                 Announce("云柱塌下来了 —— 最后一段，别站在原地。",
-                    "The column collapses. Last stretch: keep moving.");
+                    "The column collapses. Last stretch: keep moving.", true);
             else
                 Announce("风眼又张开了 —— 跟着圈往外跑。",
-                    "The eye opens again. Run out with the ring.");
+                    "The eye opens again. Run out with the ring.", true);
             StartCoroutine(PulseRoutine());
         }
 
@@ -245,9 +246,13 @@ namespace BossRush
 
         internal static void ResetStaticCaches() { SkyIslandGroundRing.ResetStaticCaches(); }
 
-        private void Announce(string cn, string en)
+        /// <param name="urgent">
+        /// 机制提示走警示通道（`SkyIslandHud.Caption` 的 warning）：打断正在播的普通字幕、排在队首、队满时不先丢它。
+        /// 旧版一律按普通字幕排队——上一条要先停满 1.6 秒再淡出，玩家读到「离开那一圈」时第一波已经炸完了。
+        /// </param>
+        private void Announce(string cn, string en, bool urgent)
         {
-            if (report != null) report(L10n.T(cn, en), false);
+            if (report != null) report(L10n.T(cn, en), urgent);
         }
 
         private void OnDead(DamageInfo damage)
@@ -255,7 +260,7 @@ namespace BossRush
             if (finished) return;
             finished = true;
             Announce("噬风散成一阵普通的风。云海重新安静下来。",
-                "The Windeater breaks apart into ordinary wind. The cloud sea goes quiet.");
+                "The Windeater breaks apart into ordinary wind. The cloud sea goes quiet.", false);
             Action callback = defeated;
             defeated = null;
             if (callback != null)

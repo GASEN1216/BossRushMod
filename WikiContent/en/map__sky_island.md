@@ -15,10 +15,10 @@ Departing and returning work exactly like any other map: loading ends on the usu
 ### Map and getting home
 
 - The archipelago uses **the game's own map**: press your usual map key. Zoom, panning, manual markers and the compass all behave exactly as they do on any other map.
-- The chart interactions at the dock and in Windchime Market also open it, so controller players can reach it. Those same interactions cycle Daylight, Dusk, Starlit Night and Morning.
+- The chart interactions at the dock and in Windchime Market also open it with the interact key, so you do not have to remember the map key. Those same interactions cycle Daylight, Dusk, Starlit Night and Morning.
 - **Only the regions you have set foot on are coloured in**; the rest stay as a dim grey silhouette. Revealed regions are remembered by your save, so they stay lit on later trips.
-- Your current objective is on the status line at the **top** of the screen, not inside the map.
-- Extraction points are drawn on the ground as a **glowing ring**: blue at the dock, and a green one at the Bell Court once the Homecoming Bell has rung. The ring is exactly the trigger area — stand inside it for **3 seconds** to return. Leaving cancels the countdown, and opening an official screen such as your backpack **freezes** it rather than resetting it.
+- Your current objective is on a small card on the **right** side of the screen (below the game's own controls hint), not inside the map. It fades out together with the game's HUD while your backpack, the map or a dialogue is open.
+- Extraction points are drawn on the ground as a **glowing ring**: teal at the dock, and a green one at the Bell Court once the Homecoming Bell has rung. The ring is exactly the trigger area — stand inside it for **3 seconds** to return, with the same countdown ring as the game's own extraction points. Leaving cancels the countdown; opening an official screen such as your backpack, the pause menu or photo mode **freezes** it rather than resetting it.
 - **Extraction is the only way out**: no screen lets you return on the spot — you have to walk into an extraction ring and hold it for 3 seconds. The rings are not marked on the map: the dock ring is where you landed, and the Bell Court ring only appears after the bell rings.
 - Leaving with side content unfinished is fine; you can come back later.
 
@@ -99,6 +99,6 @@ Beacons, side paths, the named opponents' and the Windeater's outcomes, visited 
 
 Crate contents, contract progress and the homecoming meal are **per raid** and are not saved: every departure starts a fresh round. All loot, boss trophies and contract rewards come from the game's existing items — the map introduces no Sky-Island-only item IDs.
 
-[tip] A region only counts as visited once you actually walk into it — eyeing it from the far bridgehead does not light it up on the map.
+[tip] A region only counts as visited once you actually set foot on that island — eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.
 
-[tip] The objective on the status line at the top of the screen changes with your progress. If the next step isn't obvious, open the map first, then follow the physical bridges you have already unlocked. The HUD also tells you how many scavenging points are left this run and whether you're carrying a contract.
+[tip] The objective on the card at the right of the screen changes with your progress. If the next step isn't obvious, open the map first, then follow the physical bridges you have already unlocked. The HUD also tells you how many scavenging points are left this run and whether you're carrying a contract.

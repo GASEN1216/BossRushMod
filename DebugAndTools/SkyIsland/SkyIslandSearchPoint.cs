@@ -13,7 +13,7 @@ namespace BossRush
             get
             {
                 string key = "BossRush_SkyIsland_Search_" + name;
-                LocalizationHelper.InjectLocalization(key, title ?? L10n.T("查看群岛见闻", "Read island notes"));
+                LocalizationHelper.InjectLocalization(key, title ?? L10n.T("查看群岛见闻", "Read the archipelago notes"));
                 return key;
             }
         }

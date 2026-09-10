@@ -335,6 +335,39 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
   按实测重写（含三份哈希故意不一致的说明）。编译绿、**581 guard 全绿**、27 组执行回归 0 失败；
   两个新守卫合计 16 条人为破坏逐条转红并按字节还原。**实机 smoke 全部待人工。**
 
+2026-09-10（天空岛全方位审核）：审核与修复记录在 `docs/天空岛_全方位审核_2026-09-10.md`（local-only），
+逐条 finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-008` 起。会反复踩的几条：
+
+- **玩法计时一律走游戏时间**：官方 `TimeScaleManager` 在暂停菜单（`GameManager.Paused`，它是 `UIPanel` 不是 `View`）
+  与拍照模式（`CameraMode.Active`）时把 `timeScale` 压到 0，`CountDownArea` 也按 `Time.time` 计时。
+  撤离读秒、腾空救援写成 `unscaledTime`，开着暂停菜单站在圈里 3 秒就被送回基地——只加 `View.ActiveView == null` 门挡不住它。
+  表现层淡变可以走 unscaled，但暂停时要停推进（`BossRushUI.IsGamePaused()`）。
+- **自绘常驻 HUD 必须跟随官方 HUD 显隐**：判定收在 `BossRushUI.IsOfficialHudHidden()`。本库 `HudOverlay` 是 1200，
+  官方背包 / 地图 / 对话画在 sortingOrder 100（UnityPy 读 `resources.assets`），不跟随就压在它们上面（`CampaignHud` 此前就是）。
+- **避让官方 HUD 按预制体实测，不按截图估**：官方 HUD 画布 2560×1440 按短边缩放，本库 1920×1080 Expand，
+  1 本库单位恒等于 4/3 官方单位、与屏幕比例无关。底部最高的是交互读条 `ActionProgress_Slider`（顶边 ≈ 本库 243），
+  右上角是会展开到 11 行的「操作说明」提示栈 `IndicatorHUD`——右上角常驻卡片用 `BossRushUI.GetTopRightHudTop` 排在它的实际下沿之下。
+- **官方输入资产没有手柄绑定**（`Duckov Controls` 只有键鼠方案）；`UIInputManager.OnNavigate` 绑在 started / performed / canceled
+  上且不看阶段，按一下 W/S 收到两条同向事件——自绘面板导航必须按边沿走一步。别在文档里写「原生手柄支持」。
+- **「当前在哪个区域」按脚下地面判定，不按离地标的距离**：生成器把地面切成 `COL_Ground_{区域}`（12 岛 + 15 桥），
+  会话本就每 0.2 s 朝脚下打地面射线，顺手查命中的碰撞体即可。旧的「最近地标 60 m」口径在码头以外的七个主岛上只罩住 30–53% 的可走面，
+  CS1 / FS3 桥面却能隔岸点亮支路；当年「(50, 73) 可用区间」的论证只量了桥头到对岸地标、没量岛边缘与桥身，
+  而守卫把这份错误几何钉成了断言。离线复算见 `tests/SkyIslandRegionResolutionPropertyTest.py`。
+- **POI 节点不等于区域**：场景包有 13 个 `POI_` 节点（多一个装饰 `POI_B_Mural`），按节点计数的可完成量会派出做不完的委托；
+  区域数一律取地面切分出的区域表。
+- **岛内 F3 套件的「只读」包括会话外壳**：主套件开场写运行标记（`SavesSystem.SaveFile`）、每帧给玩家无敌并回满血、
+  抑制 Mod 提示条、收尾跑全宿主 `ValidationSafeCleanup`——岛内模式一样都不能沾。会话中途结束（撤离、倒下、换槽）后的用例记 SKIP 附原因。
+- **别在角色倒下的位置再放一个箱子**：官方 `OnDead` 在倒下位置 +0.1 m 生成尸体箱，`CA_Interact` 按到交互体轴心的距离
+  严格小于取唯一目标，同点的奖励箱总有一个整局选不中。退开一个交互间距（`TryFindCratePosition`）。
+- **服务要照官方门槛**：维修入列门 = `ItemRepairView.CanRepair`（`Repairable` 标签 + `MaxDurabilityWithLoss ≥ 1`），
+  只看 `UseDurability` 会把药品、食物的剩余次数按维修价补满。
+- **反向验证可以不碰工作区**：本轮 142 个变异探针全部跑在仓库的稀疏副本上（真实工作区只读、开跑前后 sha256 核对），
+  不会在并行会话编译时留下半截破坏。上一版 F3 套件守卫对 19 个破坏探针全部保持全绿（另 3 个对照探针正常转红）——调用前加空格、`&& false`、
+  `if (false)` 包住用例、同名局部变量冒充静态类、十六进制常量多写一位；结构判断要先规范空白、切出方法体、按完整语句匹配，
+  同一句在两处出现时要钉住具体那一处。
+- 基线：正式构建绿、守卫 585 个（本轮新增 `SkyIslandRegionResolutionPropertyTest` 与 `SkyIslandFullAuditGuard`）、天空岛执行回归 8 组 0 失败、
+  F3 岛内自动用例 28 条。**本轮全部是 L1 / L2 证据，没有一条实机结论。**
+
 2026-09-09（天空岛进出岛流程对照复审）：与原版切图骨架一致，入口不走官方地图板是 owner 决定。补齐三处官方语义：
 撤离圈在任何官方 View 打开时不推进；返航派发前用**岛场景内临时对象**调 `InputManager.DisableInput`
 （`blockInputSources` 只在源销毁/失活时解封，挂 DontDestroyOnLoad 宿主会让回基地后输入永久锁死）；
@@ -362,8 +395,10 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
   反复重搜（`DownGradeSearch` 循环），把高档奖池悄悄降成杂物。需要精确品质带时用 `GetAllTypeIds`，
   池空就如实为空由调用方 fail-open。`GetAllTypeIds` 经过 HashSet，**顺序不稳定**，
   用固定 seed 抽样前必须 `Sort()`，否则同一 seed 在不同机器上抽到不同物品。
-- **`InstantiateSync` 缺资源返回空壳 `FallbackItem`**（同 TypeID，既不为 null 也不抛）——
-  必须回读 `item.TypeID` 才能确认拿到真物品。这条 2026-09-05 的记录本轮又踩到一次。
+- **`InstantiateSync` 缺资源返回空壳 `FallbackItem`**（既不为 null 也不抛）——而且官方 `InstantiateFallbackItem`
+  会把**同一个 TypeID** 写回空壳，**回读 `item.TypeID` 分辨不出它**（2026-09-10 核对反编译源更正：此处旧写法
+  「必须回读 `item.TypeID` 才能确认」是错的）。必须在实例化**之前**问 `ItemAssetsCollection.GetPrefab(typeId)`，
+  TypeID 回读只留作第二道防线。这条 2026-09-05 的记录此后又踩到过两次。
 - **敌人体型只缩放 `characterModel`，不动角色 transform**：`CreateCharacterAsync` 返回时角色已初始化，
   事后改 `transform.localScale` 会让碰撞体与导航半径和官方口径失步；只放大模型则物理/寻路成本零变化。
   染色仍走 `MaterialPropertyBlock`（碰 `sharedMaterial` 会污染同款所有敌人）。

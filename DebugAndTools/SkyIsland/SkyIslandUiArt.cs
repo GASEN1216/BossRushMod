@@ -58,7 +58,45 @@ namespace BossRush
         /// <summary>居民立绘。没有就返回 null，面板会退成无头像布局。</summary>
         internal static Sprite GetPortrait(string npcId)
         {
-            return string.IsNullOrEmpty(npcId) ? null : Get("skyisland_portrait_" + npcId);
+            string asset = PortraitAssetName(npcId);
+            return asset == null ? null : Get(asset);
+        }
+
+        internal static string PortraitAssetName(string npcId)
+        {
+            return string.IsNullOrEmpty(npcId) ? null : "skyisland_portrait_" + npcId;
+        }
+
+        internal static string SceneAssetName(string marker)
+        {
+            string region = RegionOf(marker);
+            return region == null ? null : "skyisland_scene_" + region;
+        }
+
+        /// <summary>
+        /// 只读探测：这张插图部署了没有。**不解码贴图、不创建 Sprite、不写缓存**，给 F3 验收用。
+        ///
+        /// 旧用例直接调 <see cref="GetScene"/> / <see cref="GetPortrait"/>：在玩家真实的出击上一帧内同步解码约 20 MB 贴图
+        /// （这次卡顿还不进性能采样），而且查不到的结果（null）也被永久缓存——验收时美术若还没拷完，
+        /// 面板从此到进程结束都没有插图。这里只问：已缓存的真图？bundle 目录里有没有这个名字（`Contains`
+        /// 只读目录不加载资源）？散图文件在不在？首次调用会像打开面板一样加载 bundle 本身（目录与头信息）。
+        /// </summary>
+        internal static bool HasArt(string assetName)
+        {
+            if (string.IsNullOrEmpty(assetName)) return false;
+            Sprite cached;
+            if (sprites.TryGetValue(assetName, out cached) && cached != null) return true;
+            try
+            {
+                EnsureBundleLoadAttempted();
+                if (bundle != null && bundle.Contains(assetName)) return true;
+                return File.Exists(Path.Combine(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir),
+                    assetName + ".png"));
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -67,8 +105,8 @@ namespace BossRush
         /// </summary>
         internal static Sprite GetScene(string marker)
         {
-            string region = RegionOf(marker);
-            return region == null ? null : Get("skyisland_scene_" + region);
+            string asset = SceneAssetName(marker);
+            return asset == null ? null : Get(asset);
         }
 
         /// <summary>
@@ -206,20 +244,23 @@ namespace BossRush
 
         private static Sprite FromBundle(string assetName)
         {
-            if (!bundleLoadAttempted)
-            {
-                bundleLoadAttempted = true;
-                try
-                {
-                    string path = Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath);
-                    if (File.Exists(path)) bundle = AssetBundle.LoadFromFile(path);
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning(LogPrefix + "插图 bundle 加载失败，退回散图：" + e.Message);
-                }
-            }
+            EnsureBundleLoadAttempted();
             return bundle == null ? null : bundle.LoadAsset<Sprite>(assetName);
+        }
+
+        private static void EnsureBundleLoadAttempted()
+        {
+            if (bundleLoadAttempted) return;
+            bundleLoadAttempted = true;
+            try
+            {
+                string path = Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath);
+                if (File.Exists(path)) bundle = AssetBundle.LoadFromFile(path);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning(LogPrefix + "插图 bundle 加载失败，退回散图：" + e.Message);
+            }
         }
 
         private static Sprite FromRawPng(string assetName)

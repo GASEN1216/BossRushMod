@@ -18,7 +18,7 @@ namespace BossRush
             {
                 string key = "BossRush_SkyIsland_Talk_" + (npcId ?? "Resident");
                 LocalizationHelper.InjectLocalization(key,
-                    L10n.T("聊聊航路 · ", "Island story · ") + (displayName ?? ""));
+                    L10n.T("聊聊航路 · ", "Talk about the lanes · ") + (displayName ?? ""));
                 return key;
             }
         }
