@@ -182,6 +182,10 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 - AssetBundle 文件名、Prefab base name、EquipmentFactory/ItemFactory 命名规则。
 - Harmony 目标、`AccessTools` 字段、字符串反射绑定。补丁类与动态绑定数量随代码变化，以当前源码及逐类安装日志为准；官方更新后需按 `docs/架构说明/Harmony补丁契约稳定性.md` 复查。
 - 地图 `sceneName` / `sceneID`、场景传送坐标、NPC/建筑字符串 ID。
+- 官方渲染路径：鸭科夫跑在 **URP Deferred** 下，自研着色器必须带 `UniversalGBuffer` pass，
+  前向那条只能写 `UniversalForward`。缺了它编译/guard/判包全绿而**玩家进游戏后看不见**，
+  作者工程（Forward 预览）也试不出来。写法与排查顺序见
+  `docs/架构说明/自研着色器与官方渲染管线约定.md`，闸门是 `tools/verify_sky_island_bundle_shaders.py`。
 - Python guard 断言的结构约束。
 
 ## 6. 兼容性分类

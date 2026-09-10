@@ -94,6 +94,23 @@ def main():
     entry_guard = runtime.split("if (departure != null || attempts <= 0", 1)[1].split("foreach (InteractableBase", 1)[0]
     if "IsBundleDeployed()" not in entry_guard:
         errors.append("缺包检查必须早于船点交互查找，否则招牌与公告仍会出现")
+    # CR-2026-09-10-005：官方出击船点是 Base_SceneV2_Sub_01 的
+    # Envir/Prfb_BoatBetweenBaseAndFarm/Interact，那是一张按需加载的子场景——
+    # 玩家站在 Base_SceneV2 主城区时它本来就不在场，重试窗口跑空是**正常状态**。
+    # 所以跑空必须分两种情况：没见过船点只发 DevLog，见过却挂不上才发 CRITICAL。
+    # 必须按**结构**判断：只找 boatSeen 这个 token，会被「声明了但从不赋值」骗过
+    # （那样 CRITICAL 变成死代码，真故障反而永远不报）。
+    scan_tail = runtime.split("foreach (InteractableBase", 1)[1]
+    if "if (attempts != 0) return;" not in scan_tail:
+        errors.append("船点重试窗口跑空的分支结构已变，CR-2026-09-10-005 的判据失效")
+    else:
+        loop_body, tail = scan_tail.split("if (attempts != 0) return;", 1)
+        if "boatSeen = true;" not in loop_body:
+            errors.append("船点扫描未在命中时记录 boatSeen，跑空时无法区分「子场景没加载」与「注入失败」")
+        early = tail.find("if (!boatSeen)")
+        critical = tail.find('CriticalLog("sky-island-entry-missing"')
+        if early < 0 or critical < 0 or early > critical:
+            errors.append("没见到船点时不得发 CRITICAL：sky-island-entry-missing 必须排在 if (!boatSeen) 提前返回之后")
     for label, source in (("正式入口", runtime), ("会话", session)):
         if "DevModeEnabled" in source or "ArenaPrototypeSession.CanEnter(" in source:
             errors.append(f"{label} 仍依赖开发开关")

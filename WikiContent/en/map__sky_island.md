@@ -6,6 +6,8 @@ The Qinglan Archipelago is a standalone raid you launch from the base dock. Cros
 
 Return to base, wait for your character and the level to finish loading, then pick "Depart for Sky Islands · Qinglan" at the existing dock. The normal build is enough — no developer mode, and no BossRush ticket is spent. End any other active mode first.
 
+"The existing dock" is the boat you already use to head out — the same interaction menu that holds the vanilla challenge maps. **You have to walk over to the boat before the option appears**: that part of the base streams in separately, so while you are standing in the main base area the boat does not exist yet and not seeing "Depart for Sky Islands" is expected.
+
 There is combat on the islands, so prepare weapons, ammo and supplies at base. You bring your own gear and backpack.
 
 Departing and returning work exactly like any other map: loading ends on the usual "click to continue" prompt before you actually land, and extracting shows the familiar evacuation summary before you get back to base.

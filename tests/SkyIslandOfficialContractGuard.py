@@ -27,6 +27,11 @@ for token in ['VerifyBeforeActivation(scene, services, world, out contractError)
 if 'VerifyBeforeActivation' in LEASE and 'services.SetActive(true)' in LEASE:
     if LEASE.index('VerifyBeforeActivation') > LEASE.index('services.SetActive(true)'):
         errors.append('激活前合同必须早于 services.SetActive(true)')
+# CR-2026-09-10-002：合同要求 timeOfDayConfig / startBuffPrefabs 非空，而这两项包里没有、
+# 只能由租约注入。注入排到验证之后 = 每次进岛都被自己的合同判死，且日志看不出是代码顺序问题。
+if 'VerifyBeforeActivation' in LEASE and 'config.timeOfDayConfig = timeOfDay' in LEASE:
+    if LEASE.index('config.timeOfDayConfig = timeOfDay') > LEASE.index('VerifyBeforeActivation'):
+        errors.append('官方天气与起始 Buff 必须在激活前合同之前注入，否则合同的 null 判据必红')
 if 'internal static bool VerifyBeforeActivation(' not in SOURCE:
     errors.append('缺少激活前合同实现')
 for token in ['providers.Length != 1', 'entry.cachedLocations', 'vertexCount > 4095']:

@@ -8,9 +8,9 @@
 
 | 对象/组件 | 必需装配 |
 | --- | --- |
-| `LevelConfig` | `isBaseLevel=false`、`isRaidMap=true`、`spawnTomb=true`、`saveCharacter=true`、`savePet=true`；`startBuffPrefabs` 显式空列表；`minExitCount/maxExitCount=0` 使用天空岛自己的撤离交互 |
+| `LevelConfig` | `isBaseLevel=false`、`isRaidMap=true`、`spawnTomb=true`、`saveCharacter=true`、`savePet=true`；`minExitCount/maxExitCount=0` 使用天空岛自己的撤离交互。**`startBuffPrefabs` 不在包里**：UnityPy 读回当前包的 `LevelConfig`，该字段整个缺席（作者工程的组件没有它），由 `SkyIslandRaidLease.OnSceneLoaded` 注入空列表 |
 | `LevelConfig.accountAvailable` | 决定岛上付费服务能否动银行账户（官方 `ContextualMoneyAndCash` 也用它决定是否显示账户余额）。**序列化默认 true，目前场景包没有显式关掉**，因此渡口整备与苔药现在可以花存款。若要改成只收随身现金，把它设为 `false` 并重打包即可，代码侧 `SkyIslandServices.AccountAvailable` 会自动跟随。注意 `saveCharacter` **不是**账户门控——它只管「是否把主角写回存档」，raid 图里同样为 true |
-| `LevelConfig.timeOfDayConfig` | 完整有效的官方 `TimeOfDayConfig` 资产或完整副本；所有可遇到天气必须有时段 entries，不能 new 空配置。官方时间组件 Start 和 Update 均直接解引用 |
+| `LevelConfig.timeOfDayConfig` | 必须是完整有效的官方 `TimeOfDayConfig`：所有可遇到天气都要有时段 entries，不能 new 空配置，官方时间组件 Start 和 Update 均直接解引用。**但它不来自场景包**——官方资产不在作者工程里，包内该字段是空引用（`{FileID 0, PathID 0}`），运行时由 `SkyIslandRaidLease` 注入。注意 `TimeOfDayConfig` 与它的 5 个 `TimeOfDayEntry` **都是场景 MonoBehaviour**（官方层级 `LevelConfig/TimeOfDayConfig/TimeOfDay_*`，Base 与各出击图一致），**不能把基地那份直接带过图**——基地场景一卸载它就被销毁，注入进去的是已销毁引用，Unity 的 `== null` 判它为空（CR-2026-09-10-003）。租约的做法是在基地里 `Instantiate` 整棵子树并转 `DontDestroyOnLoad`（子树内引用由 Instantiate 重映射，只有 `VolumeProfile` 这类真资产是共享的），返航时在 `TryRelease` 里销毁。另：**注入必须排在 `SkyIslandOfficialContract.VerifyBeforeActivation` 之前**，反过来排序会让合同拿空值把自己判死（CR-2026-09-10-002）|
 | `MultiSceneCore` | `subScenes` 非空列表，单项 `sceneID=BossRush_SkyIsland`；`cachedLocations` 至少含 `StartPoints/PlayerSpawn` 及真实世界坐标；`cachedTeleporters` 空列表；`playStinger` 可空，`levelStateName` 使用有效音频状态 |
 | `SceneLocationsProvider` | 子物体层次真实存在 `StartPoints/PlayerSpawn`，世界坐标与 cachedLocations 一致。该组件以自身为根解析路径 |
 | 地形/模型 | 正常地面/墙体碰撞层、可用导航、天空岛独立材质和光照；加载时必须已经有可站立出生点 |

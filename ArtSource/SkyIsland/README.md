@@ -24,6 +24,19 @@ bundle 不入 git（`.gitignore` 的 `/Assets/*`）。重建入口见 `tools/gen
 
 作者构建入口是 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/Assets/Editor/SkyIslandRaidBuilder.cs` 的 `BossRush.SkyIslandRaidBuilder.BuildAndExit`；输出目录为作者工程 `SkyIslandRaidExport`。作者工程的旧游戏 DLL 缺失字段由运行时激活前补全，必需官方组件仍严格验证；装配细节见 [独立官方场景合同](OFFICIAL_SCENE_CONTRACT.md)。
 
+**打包前提：作者工程必须处于 URP 之下**（CR-2026-09-10-004）。`ProjectSettings/GraphicsSettings.asset` 的
+`m_CustomRenderPipeline` 必须指向一个真实存在的 `UniversalRenderPipelineAsset`
+（当前指向工程内的 `Assets/SkyIsland/SkyIslandPreviewPipeline.asset`），并且
+`Assets/UniversalRenderPipelineGlobalSettings.asset` 的 `m_StripUnusedVariants` 为 0。
+否则 URP 的变体剥离会把 `BossRush/SkyIsland/{Environment,Water,Cloud}` 的变体**全部删光**：
+包照常构建成功、能加载、能读回场景路径，但玩家一进岛就是
+`Shader.isSupported == false`，`SkyIslandRendering.Apply` 当场抛错。
+**每次重打包后、部署前必须跑**：
+
+```
+python tools/verify_sky_island_bundle_shaders.py
+```
+
 - [Unity 晴昼预览](Previews/SkyIsland_Unity_Village.webp)
 - [Unity 晨光预览](Previews/SkyIsland_Unity_Village_Morning.webp)
 - [Unity 暮色预览](Previews/SkyIsland_Unity_Village_Dusk.webp)

@@ -4,6 +4,261 @@
 
 ## 最新修复
 
+### 2026-09-10 进岛后地形全黑（1 个 P0）：鸭科夫跑在 URP Deferred，自研着色器缺 GBuffer pass
+
+**分类**：COMPAT。owner 首次成功进岛后报「没有光照并且周围场景都没有渲染出来」，附截图。
+finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-006`。
+
+**现象**：`Player.log`（10:38）**全程无报错**——`RENDER_READY materials=0 textured=420 ground=27
+walls=89`、`ENTER_PASS nodes=4215 searches=20 landmarks=13 lootPoints=39`、`SEARCH_COMPLETE`、
+`POINT_OPENED` 全部正常，人能走能搜能开箱，地图未探索灰度也对。就是地形看不见。
+
+**根因**：鸭科夫跑在 **URP Deferred** 下，而三个自研着色器只声明了 `UniversalForwardOnly`。
+两条独立证据：
+
+1. 官方 `SodaCraft/SodaLit`、`SodaLit_EdgeLight`、`SodaLit_Mask2`、`SodaLit_Blend2`、
+   `SodaLit_EdgeLight_Mask` 这一整套**世界**着色器的 pass 只有
+   `ShadowCaster / DepthOnly / DepthNormals / UniversalGBuffer`，**一条前向 pass 都没有**——
+   前向模式下它们会全部画不出来，所以官方不可能跑 Forward。
+2. `globalgamemanagers` 的 always-included 里有 `Hidden/Universal Render Pipeline/StencilDeferred`，
+   那是 Deferred 专属着色器。
+
+角色用的 `SodaCraft/SodaCharacter` 同时有 `UniversalForward` **和** `UniversalGBuffer`，
+所以敌人、战利品箱这些官方预制体照常可见——这正是「只有地形黑」的形状。
+
+**决定性 A/B**：同一套 `SkyIslandRendering.Apply` 代码路径下，石堡前哨原型
+（`Build/arena_prototype_ingame.png`，材质全部转成官方 `SodaCraft/SodaCharacter`）**渲染完好**；
+天空岛 90/96 个材质用自研着色器、`materials=0` 一个没转，没转的那批全部不可见。
+
+**离线先排除掉的**（每条都是 UnityPy 直读，不是推测）：变体没被剥（三个着色器都有 d3d11 程序）、
+材质 `_BaseColor` 非黑且贴图挂着、769 个 `MeshRenderer` 全部 `m_Enabled=1`、合批网格 71 张
+与子网格数自洽、根节点在 (0,0,0) 单位变换（静态合批不会错位）、相机 `cullingMask` 含
+Ground(7)/Wall(6)、官方 layer 7 上本来就有 50 个可见渲染器（所以层不是原因）、
+`EPOURP.dll` 只是 Easy Performant Outline 的 RendererFeature 不是管线替换。
+
+**修法**：给 Environment / Cloud 各加一条 `UniversalGBuffer` pass，Water 的 `UsePass` 同步加一条。
+口径抄官方 URP `Terrain/Details`（同样是「自己算完光照再进 GBuffer」）：
+
+- SubShader 标签加 `UniversalMaterialType="Unlit"` —— 官方 `GBufferPass` 按这个标签把像素模板位
+  标成 unlit，延迟光照阶段就跳过它们，自研光照的画风原样保留。
+- GBuffer 片元把自算颜色当 `globalIllumination` 写进 GBuffer3（那张就是光照阶段的渲染目标），
+  `albedo` 置 0、`kLightingInvalid`，即便模板没拦住也不会被叠第二遍灯。
+- 前向那条从 `UniversalForwardOnly` 改成 `UniversalForward`：前者在**延迟下也会被画**，
+  与 GBuffer 撞成双绘，URP `UniversalRenderer.cs` 的注释把这个明确列为 ERROR。
+- 前向与 GBuffer 共用同一个 `SkyShade()` / `CloudShade()`，两条路不会画风漂移。
+
+**验证方法**：
+1. 打包: `Unity.exe -batchmode -nographics -projectPath <作者工程> -executeMethod
+   BossRush.SkyIslandRaidBuilder.BuildAndExit`（先 `Get-Process Unity` 确认没实例）→
+   `[SkyIslandRaidBuilder] PASS`，日志里三个着色器的 `GBuffer` pass 都编译过、
+   Environment `d3d11 total internal programs: 20 → 38`。
+   **注意 PowerShell 包装层会在 Unity detach 后立刻返回**，别把那个 exit=0 当构建完成，
+   要 `Wait-Process` 等真进程退出。
+2. 判包: `python tools/verify_sky_island_bundle_shaders.py` → 仓库与游戏副本各 3/3 PASS，
+   `lightModes` 里都能看到 `UniversalGBuffer`。
+3. **美术零改动核对**: UnityPy 逐项对比 —— GameObject 982 / MeshRenderer 769 / Material 96 /
+   Texture2D 73 / MeshCollider 28 / BoxCollider 88 / 网格顶点 2,483,428，与上一版**完全一致**，
+   唯一差异是着色器 pass 3/2/2 → 4/3/3。包体 97,957,124 → 98,294,384 字节，
+   sha256 `3dd926be…`，作者导出 / 仓库源 / 游戏副本三份一致。
+4. Guard: `python tools/run_guards.py` → 581 PASS / 0 NEW-FAIL / 0 KNOWN-RED。
+5. 反向验证: 把旧包实测形状（三个着色器只有 `UniversalForwardOnly`）喂给新判据 →
+   **3/3 判红**；换成新包形状 → 3/3 判绿。
+
+**新闸门**：`tools/verify_sky_island_bundle_shaders.py` 除了「pass 数 > 0」再加一条
+「必须有 `UniversalGBuffer`（或 `UsePass` 到它）」。**任何自研世界着色器都必须带 GBuffer pass**，
+这是鸭科夫跑 Deferred 的硬约束，作者工程里预览正常**证明不了**它。
+
+**兜底诊断**：新增 `SkyIslandRendering.LogDiagnostics`（`[SkyIsland] RENDER_DIAG/...`，
+激活后与导航扫描后各打一次，用 `Debug.Log` 所以正式构建也有）。万一还黑，一行日志就能分辨：
+`visible=False` = 被剔除（层 / 包围盒 / opaqueLayerMask）；`visible=True` = 画了但是黑的
+（光照全局量或 pass 没被管线取用）。同时打出相机 `cullingMask`、四个光照全局量、
+每个 pass 的 `LightMode`。
+
+**实机结果（owner 2026-09-10 11:48 跑的那局，`Player.log`）**：**成功**。owner 确认地形正常显示。
+日志全程零 `[SkyIsland]` 报错，`晴岚群岛已就绪` → `ENTER_PASS nodes=4215 enemyPoints=12 searches=20
+landmarks=13 lootPoints=39` → `SEARCH_COMPLETE point=Search_A` → `CLEANUP reason=raid_unloaded`
+一条链完整；`RENDER_DIAG` 打出
+`passes=UniversalForward|UniversalGBuffer|SHADOWCASTER|DepthOnly`（GBuffer pass 确实被取用）、
+`pipeline=UniversalRenderPipelineAsset`、`camera=Main Camera mask=0xcfffdf clear=SolidColor far=300`、
+`lightingEnabled=1 sun=(1.00, 0.82, 0.62) ambient=(0.26, 0.33, 0.45) ambientMode=Trilight fog=False`。
+
+> **诊断字段的一个坑**：`visible=` 在 `activated` 与 `post_scan` 两个采样点**不可信**。
+> 这两处都还在读条幕布后面，相机尚未渲染过 raid 场景，所以**成功这一局它照样全是 `False`**。
+> 判可见性得等玩家真正落地后再采样；这两处只看 `passes` / `pipeline` / `layer` / `bounds` /
+> `lightingEnabled` 这些静态字段。
+
+**仍未验证**：水面波纹与云层飘动的实际观感、四档光色切换、帧率。
+
+#### 待人工验证清单（地形可见性）
+
+| # | 步骤 | 合格 | 不合格时把这行日志发回来 |
+| --- | --- | --- | --- |
+| 1 | ~~进岛落地后环视~~ | ✅ **2026-09-10 11:48 已确认** | —— |
+| 2 | 看水面（镜水寺）与云层 | 水面有波纹、云层半透明飘动 | 同上 + 具体材质名 |
+| 3 | 切光色（导览牌/F3 面板四档） | 晴昼/暮色/星夜/晨光四档明显不同 | `RENDER_DIAG` 里的 `sun=` / `ambient=` |
+| 4 | 帧率 | 与石堡前哨原型量级相当 | —— |
+
+### 2026-09-10 船点入口 CRITICAL 误报（1 个 P2）：官方出击船点在按需加载的子场景里
+
+**分类**：OPERATIONAL。owner 追问「进不去天空岛」时顺带排掉的第二条。
+finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-005`。
+**owner 明确要求不做着色器降级**，因此 `SkyIslandRendering` 的 `isSupported` 判据保持硬失败，未动。
+
+**现象**：`Player.log` 里每次进/回基地都有一条
+`[BossRush][CRITICAL] [SkyIsland] 基地船点入口未找到，请检查基地船点初始化`。
+上一轮台账把它挂起为「等进岛跑通后确认是不是失败返航的连带影响」——已证实无关。
+
+**根因**：官方出击船点不在主城区。用 UnityPy 直读游戏自带场景（build index 取自
+`globalgamemanagers` 场景表，逐个 `levelN` 回读根节点核对）：
+
+| build index | 场景 | 与船点的关系 |
+| --- | --- | --- |
+| 3 | `Base.unity` | 主场景，挂 `LevelConfig` / `MultiSceneCore` / `AStar` |
+| 5 | `Base_SceneV2` | 主城区。**没有任何含 `Boat` 的节点**；`Ship/Ship*/Interact` 全是造船台 |
+| 6 | `Base_SceneV2_Sub_01` | `Envir/Prfb_BoatBetweenBaseAndFarm/Interact` ← 真正的出击船点，同层挂着官方自己的 `Interact_Challenge` / `Interact_SnowChallenge` |
+
+子场景按需加载，玩家站在主城区时它根本不在场，12 次 × 1 s 的重试窗口跑空是**正常状态**。
+三份 Player.log（2026-08-29、2026-09-10 两次）里 `Base_SceneV2_Sub_01` 从未出现过，
+印证「玩家没走到码头」而不是「船点坏了」。
+
+**功能本身没坏**：`ModBehaviour.OnSceneLoaded` 订阅的是 `SceneManager.sceneLoaded`
+（`Integration/BossRushIntegration_StartAndScene.cs:95`），对**任何**场景加载都会转发给
+RuntimeModule，玩家走到码头触发子场景加载时 `ScheduleEntry` 重新武装，那一轮才会挂上入口。
+
+**修法**：扫描命中 `IsBaseHubBoatInteractable` 时记 `boatSeen`，跑空后分两路——
+没见过船点只发 `DevLog`（`[Conditional("BOSSRUSH_DEV")]`，正式构建整句编译掉），
+见过船点却注入失败才发 CRITICAL，口径改成「已找到基地船点但航路子交互注入失败」。
+
+**为什么值得修**：本次排障就被它带偏过——一度据此判定「正式构建里玩家看不到航路入口」。
+真故障与正常状态在日志里同形，等于这条 CRITICAL 没有信息量。
+
+**验证方法**：
+1. 编译: `& D:\code\ykf\BossRushMod\compile_official.bat` → 正式构建 `Build succeeded!`，
+   DLL 4,731,904 字节 / sha256 `53c42539…`；随后按 owner 本轮的调试流程换回 Dev 构建
+   （`$env:BOSSRUSH_DEV_BUILD="1"` + 同一个 bat）。**最终部署的是 Dev 这份**：
+   5,298,176 字节 / sha256 `5a3f7c8f…`，`Build/bossrush.rsp` 有 `/define:BOSSRUSH_DEV`，
+   仓库与游戏目录两份一致，`raid_deployment_hashes.json` 已同步。
+   注意 **`compile_dev.bat` 在本沙箱下不能直接调**：它内部 `call compile_official.bat` 用相对路径，
+   会报 `'compile_official.bat' is not recognized`；改用上面的环境变量写法。
+2. Guard: `python tools/run_guards.py` → **581 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（42.1s）。
+3. 回归: `python tools/run_runtime_regressions.py --filter SkyIsland` → **7/7 PASS**。
+4. 判包: 仓库副本与游戏副本 sha256 均为 `8a826f0a…`（97,957,124 字节），与部署台账一致；
+   `tools/verify_sky_island_bundle_shaders.py` 两份各 3/3 PASS。
+5. 反向验证（`tests/SkyIslandPlayerEntryGuard.py` 新增 3 条结构断言，逐条破坏、**3/3 转红**、
+   字节还原后 sha256 `d8dd6780…` 与破坏前一致）:
+   - 删掉 `boatSeen = true;` → 「未在命中时记录 boatSeen」转红。
+   - 把 CRITICAL 提到 `if (!boatSeen)` 之前 → 「必须排在 `if (!boatSeen)` 提前返回之后」转红。
+   - 把 `if (attempts != 0) return;` 改成 `> 0` → 「跑空分支结构已变」转红。
+
+**顺带更正一条既有担心**：上一轮提过「包里只有 d3d11 变体，玩家 `-force-vulkan` 会重现
+`isSupported == false`」。UnityPy 读游戏自带 `globalgamemanagers.assets`，**官方 43 个着色器的
+`platforms` 全是 `(4,)`（D3D11）**——游戏本体就是 D3D11-only，强制别的 API 会先把原版打死。
+天空岛包的变体集与游戏完全一致，这条风险不成立，无需为它加变体。
+
+**未验证/需人工**：**全部实机项**。本轮没有开游戏、没有做任何游戏内测试、没有读写玩家存档，
+因此**没有一条结论标 L3**。待人工清单见本节末尾的《本轮待人工验证清单》。
+
+#### 本轮待人工验证清单
+
+| # | 步骤 | 合格 | 不合格 |
+| --- | --- | --- | --- |
+| 1 | ~~启动游戏进基地，看 `Player.log`~~ | ✅ **2026-09-10 11:48 已确认**：CRITICAL 消失，改为 `基地船点所在子场景尚未加载，暂不挂航路入口；走到码头会自动重试。` | —— |
+| 2 | 走到码头（`Base_SceneV2_Sub_01` 加载）靠近船点 | 交互菜单里出现「前往天空岛 · 晴岚群岛」，船上方立起招牌，并弹一次「天空岛航路已开放」 | 没出现 → 看日志是否变成「已找到基地船点但航路子交互注入失败」，那是真故障 |
+| 3 | ~~选「前往天空岛」，读条完点击继续~~ | ✅ **已确认**：进图，日志零报错 | —— |
+| 4 | 落地后环视地形、水面、云层 | ✅ 地形已确认可见（见 CR-2026-09-10-006）；水面/云层观感仍待看 | 全白/洋红 → 回报具体材质名 |
+| 5 | 站进码头蓝环停 3 秒 | 返航到基地，故事进度保留 | 卡住/无反应 → 记 `[SkyIsland]` 段日志 |
+
+### 2026-09-10 天空岛进不去（3 个 P0 热修）：合同早于注入、天气随场景销毁、着色器变体被剥空
+
+**分类**：COMPAT。触发方式是 owner 报「我们进不去天空岛」并指向
+`%LocalLow%/TeamSoda/Duckov/Player.log`。finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-002`、`-003`、`-004`：
+**三个独立成因，一层套一层，修好上一个才露出下一个**。
+
+**现象**：进岛读条走完，场景 `SkyIslandRaid` 也确实加载了，随即
+`RAID_ASSEMBLY_FAILED ... 独立关卡配置、天气或 MultiSceneCore 缺失/禁用`，
+自动返回基地。2026-09-09 与 2026-09-10 两份日志同一条错，必现。
+
+**根因**：`SkyIslandRaidLease.OnSceneLoaded` 的语句顺序是「先跑激活前合同，再注入天气与起始
+Buff」，而合同里就有 `config.timeOfDayConfig == null || config.startBuffPrefabs == null` 这条判据。
+这两项**不可能来自场景包**——官方 `TimeOfDayConfig` 是场景组件（见第二发），作者工程造不出；
+`startBuffPrefabs` 连字段都没序列化进包。所以合同永远拿着空值判自己死。
+
+**排除法**（先证包是好的，再看代码）：UnityPy 1.25.3 直读已部署的
+`Assets/arenas/sky_island_raid`，`SkyIslandLevel` 上 `LevelConfig` / `MultiSceneCore` 都在且
+`m_Enabled=1`、`subScenes` 唯一且 `sceneID=BossRush_SkyIsland`、出生点与 `cachedLocations`
+坐标一致、`Exit` / `Navigation` 齐备。包内 `timeOfDayConfig = {FileID 0, PathID 0}`，
+`startBuffPrefabs` 字段整个缺席——正好就是运行时要注入的那两项。
+
+**修法**：注入提到合同之前（合同仍严格早于 `services.SetActive(true)`，语义没变，
+只是那两条 null 判据现在真正校验的是「注入落地了没有」）；把合并成一句的四种成因拆成
+「配置或 MultiSceneCore 缺失/禁用」与「天气或起始 Buff 未注入」两条，
+否则「包坏了」和「代码顺序反了」在日志里长得一模一样。
+
+**同步**：`ArtSource/SkyIsland/OFFICIAL_SCENE_CONTRACT.md` 原本写「作者场景必须带完整
+`TimeOfDayConfig`、`startBuffPrefabs` 显式空列表」——与实际包不符，且正是这条描述让合同判据
+看起来合理。已按实测改写并写明注入顺序要求；`.qoder/repowiki/` 对应段落同步。
+
+**第二发（同日 09:00 日志）**：顺序修好后再进一次，报错变成新拆出来的
+`独立关卡天气或起始 Buff 未注入`——`startBuffPrefabs` 是当场 new 的不可能为空，所以是
+`timeOfDayConfig` 注进去就是空。查官方源码：`TimeOfDayConfig` 与它引用的 5 个 `TimeOfDayEntry`
+**都是 `MonoBehaviour`**（不是 ScriptableObject 资产），UnityPy 读官方 `level3`(Base) 与
+`level13`(GroundZero) 层级一致：`LevelConfig/TimeOfDayConfig/TimeOfDay_*`——天气是每张地图
+**自己场景里的对象**。会话在基地取到它交给租约长期持有，而官方 SceneLoader 先卸基地再加载天空岛，
+注入时那个组件早已销毁，Unity 的 `==` 判它为 null。改为在基地里 `Object.Instantiate(template)`
+克隆整棵子树并 `DontDestroyOnLoad`（子树内引用由 Instantiate 重映射，跨出子树的只剩
+`VolumeProfile` 资产），在唯一收口 `TryRelease` 销毁；`SkyIslandSession` 不再把基地组件存成字段。
+详见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-10-003`。
+
+**夹具补强**：`tests/fixtures/SkyIslandRaidLease` 的 `UnityEngine.Object` 替身此前没有模拟
+Unity「已销毁对象 `== null`」的重载，也没有任何一步模拟基地卸载——两发 P0 它都看不见。
+现在替身补了 `==`/`!=` 重载与「销毁 GameObject 连带销毁其组件」，`New()` 在 `Prepare` 之后
+**必定**销毁模板。反向验证：改回原样持有基地实例，
+`lease assembles official services after session owner disappears` 当场转红。
+`SkyIslandLifecycleGuard` 另加 3 个 token（克隆 / 常驻 / 回收），逐条破坏 3/3 转红并按字节还原。
+
+**第三发（同日 09:24 日志）**：天气修好后合同全过、场景激活、官方关卡开始初始化，
+死在更后面的材质装配：`天空岛专用着色器不受当前显卡支持：BossRush/SkyIsland/Environment`。
+显卡是 Intel Iris Xe（D3D11 11.1），跑得动原版全图，不可能不支持一个 `#pragma target 3.5` 的 URP 着色器。
+真因在**作者工程**：`GraphicsSettings.m_CustomRenderPipeline = 0`，当前画质档的 URP 资产也是 0，
+其余档指向的 GUID 在作者工程里根本不存在（从游戏工程抄来的 QualitySettings 残留）。
+URP 的 `ShaderScriptableStripper` 因此拿不到任何 URP 资产，`supportedFeaturesList` 为空、
+`CanRemoveVariant` 恒返回 true，**三个自研着色器的变体被全部剥离**。
+包照常构建成功、能加载、能读回场景路径——玩家一进岛才炸。修法是
+`m_CustomRenderPipeline` 指向工程内已有的 `Assets/SkyIsland/SkyIslandPreviewPipeline.asset`
+＋ URP 全局设置 `m_StripUnusedVariants: 0`，**两者缺一不可**（只改后者重打包，日志仍是
+`After scriptable stripping: 0`，这一步是实测出来的）。重打包后 `Environment` 20 个 d3d11 程序 / 3 pass、
+`Cloud` 8 个 / 2 pass、`Water` 2 pass（`UsePass` 型，本就没有自身产物）。
+
+**这次重打包没动美术**：UnityPy 逐项对比新旧包，GameObject 982 / MeshRenderer 769 / Material 96 /
+Texture2D 73 / MeshCollider 28 / BoxCollider 88 / 全部标记数 / 网格总顶点 2,483,428 **完全一致**，
+唯一差异就是着色器 pass 从 0 变成有。包体 99,089,252 → 97,957,124 字节，
+sha256 `8a826f0a…`，作者导出 / 仓库源 / 游戏副本三份一致。
+
+**新闸门**：`tools/verify_sky_island_bundle_shaders.py`——重打包后、部署前必须跑，
+判据是三个着色器各自 pass 数 > 0。它的红态本轮实测过（同一脚本读旧包时 Environment/Cloud 都是 0）。
+`ArtSource/SkyIsland/README.md` 与 Tripo3D 教程的「必须设闸门的地方」同步加了这一条。
+
+**验证方法**:
+1. 编译: `& D:\code\ykf\BossRushMod\compile_official.bat` → 新 DLL
+   `53c42539190a79484b0564b7b91e5fa6f7f1a701c3b80a2d8734a4f2a2e56d0a`，已随 bat 部署到游戏目录，
+   `ArtSource/SkyIsland/Validation/raid_deployment_hashes.json` 同步。
+2. Guard: `python tools/run_guards.py` → 581 PASS / 0 NEW-FAIL / 0 KNOWN-RED。
+2.5 判包: `python tools/verify_sky_island_bundle_shaders.py` → 仓库副本与游戏副本各 3/3 PASS。
+3. 回归: `python tools/run_runtime_regressions.py --filter SkyIsland` → 7/7 PASS。
+4. 反向验证（两发各一组，全部按字节还原）:
+   - 把注入改回合同之后 → `SkyIslandOfficialContractGuard` 与 `tests/fixtures/SkyIslandRaidLease` 双双转红。
+   - 把克隆改回 `timeOfDay = template` → 夹具 `lease assembles official services...` 转红。
+   - `SkyIslandLifecycleGuard` 的 3 个新 token（克隆 / 常驻 / 回收）逐条破坏 **3/3 转红**。
+
+**未验证/需人工**: 实机进岛。本轮只证明「合同不再拿空值判死、天气副本能活过切图、着色器带编译产物」，
+合同之后的官方关卡初始化（主角重建、相机、墓碑、`SkyIslandOfficialContract.Verify`）
+在这次日志里从未被执行过，后面还有没有别的坎只能靠实机。另：同一份日志里
+`[SkyIsland] 基地船点入口未找到` 出现在**失败返航之后**的基地里（12 次 × 1 s 的重试窗口内没找到船点），
+本轮未动，等进岛跑通后复现确认是不是失败返航的连带影响。
+> **2026-09-10 后续更正**：与失败返航**无关**，是假警报。官方出击船点在按需加载的子场景
+> `Base_SceneV2_Sub_01`（`Envir/Prfb_BoatBetweenBaseAndFarm/Interact`），玩家站在主城区
+> `Base_SceneV2` 时它本来就不在场。详见 CR-2026-09-10-005，已修。
+
 ### 2026-09-09 天空岛全面审核（第三轮）：英文本地化、撤离环与每帧开销
 
 **分类**：COMPAT / OPERATIONAL / SAFE。owner 要求「全面审核天空岛相关代码」，随后要求「全部修复」。

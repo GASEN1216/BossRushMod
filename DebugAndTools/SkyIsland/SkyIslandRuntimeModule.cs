@@ -112,9 +112,11 @@ namespace BossRush
             }
             nextAttempt = Time.unscaledTime + 1;
             attempts--;
+            bool boatSeen = false;
             foreach (InteractableBase candidate in UnityEngine.Object.FindObjectsOfType<InteractableBase>(true))
             {
                 if (!owner.IsBaseHubBoatInteractable(candidate)) continue;
+                boatSeen = true;
                 boatGroup = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(candidate, "[SkyIsland]");
                 departure = NPCInteractionGroupHelper.AddSubInteractable<SkyIslandDepartureInteractable>(
                     candidate.transform, "BossRush_SkyIsland_Departure", boatGroup, value => value.Bind(owner));
@@ -128,8 +130,23 @@ namespace BossRush
                 }
                 return;
             }
-            if (attempts == 0)
-                ModBehaviour.CriticalLog("sky-island-entry-missing", "[SkyIsland] 基地船点入口未找到，请检查基地船点初始化。回到基地后会重试。");
+            if (attempts != 0) return;
+            // 「没找到船点」绝大多数时候**不是故障**：官方出击船点是
+            // `Base_SceneV2_Sub_01` 的 `Envir/Prfb_BoatBetweenBaseAndFarm/Interact`
+            // （同层还有官方自己的 `Interact_Challenge` / `Interact_SnowChallenge`），
+            // 而那是一张按需加载的子场景——玩家站在 `Base_SceneV2` 主城区时它根本没加载，
+            // 12 次重试自然全空。旧代码在这里发 CRITICAL，等于每次回基地都误报一次
+            // （CR-2026-09-10-005：2026-09-10 的三份 Player.log 里都有，实际功能没坏）。
+            // 走到码头时子场景加载会触发 `OnSceneLoaded` → `ScheduleEntry` 重新武装，
+            // 那一轮才是真正该出结论的时机。
+            if (!boatSeen)
+            {
+                ModBehaviour.DevLog("[SkyIsland] 基地船点所在子场景尚未加载，暂不挂航路入口；走到码头会自动重试。");
+                return;
+            }
+            // 找到了船点却挂不上去才是真故障：分组准备或子交互创建失败。
+            ModBehaviour.CriticalLog("sky-island-entry-missing",
+                "[SkyIsland] 已找到基地船点但航路子交互注入失败，请检查交互分组注入。回到基地后会重试。");
         }
 
         private void CreateSign(Transform boat)

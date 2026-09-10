@@ -4,11 +4,39 @@ using System.Threading.Tasks;
 namespace Cysharp.Threading.Tasks { }
 namespace UnityEngine
 {
+    /// <summary>
+    /// 官方 `UnityEngine.Object` 的替身。**必须模拟「已销毁对象 == null」**：Unity 重载了 `==`，
+    /// 而天空岛 2026-09-10 那次进不去正是踩在这上面——把基地场景里的 `TimeOfDayConfig`
+    /// 带过图，基地一卸载它就成了已销毁引用，注入进去等于注入 null（CR-2026-09-10-003）。
+    /// 替身若只当它是普通托管对象，夹具永远红不了。
+    /// </summary>
     public class Object
     {
         internal bool Destroyed;
         public static void DontDestroyOnLoad(Object value) { }
-        public static void Destroy(Object value) { if (value != null) value.Destroyed=true; }
+        public static void Destroy(Object value)
+        {
+            if (ReferenceEquals(value,null)) return;
+            value.Destroyed=true;
+            // 官方销毁 GameObject 会连同其组件一起销毁；持有组件引用的一方同样会看到 == null。
+            GameObject go=value as GameObject;
+            if (!ReferenceEquals(go,null)) foreach (var part in go.Parts) part.Destroyed=true;
+        }
+        /// <summary>官方 Instantiate 克隆整棵子树并重映射内部引用，副本与原件生命周期自此独立。</summary>
+        public static T Instantiate<T>(T original) where T:Component,new()
+        {
+            return new GameObject(original.gameObject.name+"(Clone)").AddComponent<T>();
+        }
+        public static bool operator ==(Object left, Object right)
+        {
+            bool leftNull=ReferenceEquals(left,null)||left.Destroyed;
+            bool rightNull=ReferenceEquals(right,null)||right.Destroyed;
+            return leftNull||rightNull ? leftNull&&rightNull : ReferenceEquals(left,right);
+        }
+        public static bool operator !=(Object left, Object right) { return !(left==right); }
+        public override bool Equals(object other) { return ReferenceEquals(this,other); }
+        public override int GetHashCode()
+        { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
     }
     public class Component : Object { public GameObject gameObject; }
     public class MonoBehaviour : Component { }
@@ -110,7 +138,7 @@ public class LevelManager
 }
 namespace Duckov.Buffs {public class Buff {}}
 public class AstarPath:UnityEngine.Component {public static AstarPath active;}
-public class TimeOfDayConfig:UnityEngine.Object {}
+public class TimeOfDayConfig:UnityEngine.MonoBehaviour {}
 public class LevelConfig:UnityEngine.Component {public TimeOfDayConfig timeOfDayConfig;public List<Duckov.Buffs.Buff> startBuffPrefabs;}
 public class Health {public bool IsDead;}
 public class CharacterMainControl {public static CharacterMainControl Main;public Health Health=new Health();}
@@ -166,10 +194,16 @@ namespace BossRush
     {
         internal static bool ActivationAllowed=true;
         internal static int Calls;
+        internal static bool ConfiguredAtCall;
         internal static bool VerifyBeforeActivation(UnityEngine.SceneManagement.Scene scene,
             UnityEngine.GameObject services,UnityEngine.GameObject world,out string reason)
         {
             Calls++;
+            // 真合同要求 timeOfDayConfig / startBuffPrefabs 非空，而这两项是租约注入的，
+            // 包里本来就是空的。如实记下调用当刻的装配状态：租约把注入排到验证之后，
+            // 真游戏里就是 100% 进不去岛（CR-2026-09-10-002），这里必须能红。
+            LevelConfig config=services==null?null:services.GetComponent<LevelConfig>();
+            ConfiguredAtCall=config!=null && config.timeOfDayConfig!=null && config.startBuffPrefabs!=null;
             reason=ActivationAllowed?null:"天空岛必须包含唯一且启用的真实 SceneLocationsProvider";
             return ActivationAllowed;
         }

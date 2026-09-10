@@ -19,9 +19,12 @@ namespace BossRush
                     return Fail("独立关卡必须包含尚未激活的关卡根节点与本场景地形", out reason);
                 LevelConfig config = services.GetComponent<LevelConfig>();
                 MultiSceneCore core = services.GetComponent<MultiSceneCore>();
-                if (config == null || !config.enabled || core == null || !core.enabled ||
-                    config.timeOfDayConfig == null || config.startBuffPrefabs == null)
-                    return Fail("独立关卡配置、天气或 MultiSceneCore 缺失/禁用", out reason);
+                if (config == null || !config.enabled || core == null || !core.enabled)
+                    return Fail("独立关卡配置或 MultiSceneCore 缺失/禁用", out reason);
+                // 这两项由租约在激活前注入（`SkyIslandRaidLease.OnSceneLoaded`），作者场景里本来就是空的。
+                // 与「包坏了」合并成一条口径，会让两种完全不同的故障在日志里长得一模一样。
+                if (config.timeOfDayConfig == null || config.startBuffPrefabs == null)
+                    return Fail("独立关卡天气或起始 Buff 未注入", out reason);
                 if (core.SubScenes == null || core.SubScenes.Count != 1 || core.SubScenes[0] == null ||
                     core.SubScenes[0].sceneID != SkyIslandSceneReferenceBridge.SceneId)
                     return Fail("天空岛必须声明唯一的自身子场景", out reason);

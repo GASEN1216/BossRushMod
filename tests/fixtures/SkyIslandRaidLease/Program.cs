@@ -8,13 +8,21 @@ internal static class Program
 {
     private static int checks;
     private static string modPath;
+    private static TimeOfDayConfig template;
     private static void Check(bool value,string name){checks++;if(!value)throw new Exception("FAIL "+name);}
     private static SkyIslandRaidLease New()
     {
         SceneManager.Reset();SceneLoader.Loads=SceneLoader.Returns=0;SceneLoader.IsSceneLoading=false;Time.unscaledTime=0;
         CharacterMainControl.Main=new CharacterMainControl();AssetBundle.ScenePath=SkyIslandSceneReferenceBridge.ScenePath;
         SkyIslandSceneReferenceBridge.Reset();SkyIslandOfficialContract.ActivationAllowed=true;SkyIslandOfficialContract.Calls=0;
-        var lease=new SkyIslandRaidLease();lease.Prepare(modPath,new TimeOfDayConfig());return lease;
+        SkyIslandOfficialContract.ConfiguredAtCall=false;
+        // 官方层级：LevelConfig/TimeOfDayConfig/TimeOfDay_*，全是基地场景里的 MonoBehaviour。
+        template=new GameObject("TimeOfDayConfig").AddComponent<TimeOfDayConfig>();
+        var lease=new SkyIslandRaidLease();lease.Prepare(modPath,template);
+        // Prepare 之后基地场景必然卸载（官方 SceneLoader 独占关卡转换），模板随之销毁。
+        // 租约若把模板原样带过图，注入到岛上的就是已销毁引用 —— 这一步让夹具与实机同构。
+        UnityEngine.Object.Destroy(template.gameObject);
+        return lease;
     }
     private static void Main()
     {
@@ -32,7 +40,11 @@ internal static class Program
         Check(!bundle.Unloaded && callbacks==0,"host exit while loading retains bundle");
         SceneManager.LoadRaid();
         GameObject[] roots=SceneManager.Raid.GetRootGameObjects();
-        Check(roots[1].activeSelf && roots[1].GetComponent<LevelConfig>().timeOfDayConfig!=null,"lease assembles official services after session owner disappears");
+        TimeOfDayConfig injected=roots[1].GetComponent<LevelConfig>().timeOfDayConfig;
+        Check(roots[1].activeSelf && injected!=null,"lease assembles official services after session owner disappears");
+        Check(SkyIslandOfficialContract.ConfiguredAtCall,"official contract judges the scene after the weather and start buffs are injected");
+        // CR-2026-09-10-003：注入的必须是租约自己的常驻副本，基地那份已随场景卸载销毁。
+        Check(!ReferenceEquals(injected,template),"injected weather is the lease's persistent copy, not the base scene instance");
         Check(roots[0].activeSelf,"cancelled load keeps landing geometry active");
         Check(SkyIslandExplosionObstaclePatch.Armed,"raid scene arms the explosion obstacle patch");
         lease.PumpRelease();Check(SceneLoader.Returns==0,"return waits initial official load");
@@ -40,6 +52,7 @@ internal static class Program
         lease.PumpRelease();Check(SceneLoader.Returns==1 && !SceneLoader.LastEvacuated,"orphaned session initiates ordinary base recovery");
         SceneManager.UnloadRaid();Check(!bundle.Unloaded,"unload event alone does not release during return task");
         SceneLoader.Finish();Check(bundle.Unloaded && callbacks==1,"return completion releases bundle after scene unload");
+        Check(injected==null,"release destroys the persistent weather copy instead of leaking a DontDestroyOnLoad object");
         Check(SceneManager.Subscribers==0,"successful recovery releases both scene handlers");
         Check(!SkyIslandExplosionObstaclePatch.Armed && SkyIslandExplosionObstaclePatch.Disarms>0,
             "leaving the raid disarms the explosion obstacle patch");

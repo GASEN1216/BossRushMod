@@ -39,7 +39,16 @@ namespace BossRush
         {
             if (bundle != null || loading || releaseRequested) throw new InvalidOperationException("独立场景租约不可重复使用");
             if (template == null) throw new InvalidOperationException("天空岛官方天气配置缺失");
-            timeOfDay = template;
+            // 官方 `TimeOfDayConfig` 与它的 5 个 `TimeOfDayEntry` 都是**场景 MonoBehaviour**，不是资产：
+            // 官方每张图（Base 与各出击图一致）的层级都是 `LevelConfig/TimeOfDayConfig/TimeOfDay_*`。
+            // 直接把基地那一份带到岛上，基地场景一卸载它就被销毁，注入进去的是已销毁引用，
+            // Unity 的 `== null` 判它为空——合同会说「天气未注入」，玩家永远进不去岛（CR-2026-09-10-003）。
+            // 所以趁人还在基地克隆整棵子树并转 DontDestroyOnLoad：子物体之间的引用由 Instantiate
+            // 负责重映射，跨出子树的只剩 VolumeProfile 这类真资产，本来就是共享的。
+            // 副本的销毁在 TryRelease（所有退出路径的唯一收口）。
+            timeOfDay = UnityEngine.Object.Instantiate(template);
+            timeOfDay.gameObject.name = "BossRush_SkyIslandTimeOfDay";
+            UnityEngine.Object.DontDestroyOnLoad(timeOfDay.gameObject);
             if (!SkyIslandSceneReferenceBridge.EnsureRegistered())
                 throw new InvalidOperationException("天空岛官方场景引用桥接尚未就绪");
             string path = Path.Combine(modDirectory, BundleRelativePath);
@@ -92,14 +101,19 @@ namespace BossRush
                 }
                 if (services == null || world == null) throw new InvalidOperationException("独立场景缺少地形或关卡根节点");
                 SkyIslandSceneReferenceBridge.BindInitializationScene(this, scene);
-                // 官方服务一旦激活就会开始重建主角；最小装配的完整性必须在激活之前定论。
-                string contractError;
-                if (!SkyIslandOfficialContract.VerifyBeforeActivation(scene, services, world, out contractError))
-                    throw new InvalidOperationException(contractError);
+                // 注入必须排在合同验证之前。官方 TimeOfDayConfig 是场景组件（见 Prepare 的注释），作者工程造不出；
+                // startBuffPrefabs 更是连字段都没进包（UnityPy 读回包内 LevelConfig：
+                // timeOfDayConfig = {FileID 0, PathID 0}，startBuffPrefabs 整个字段缺席）。
+                // 这两项只能由租约在这里补齐，反过来排序合同的两条 null 判据就当场判死，
+                // 玩家看到的是「天空岛创建失败：…」而包本身完全正常（CR-2026-09-10-002）。
                 LevelConfig config = services.GetComponent<LevelConfig>();
                 if (config == null || services.activeSelf) throw new InvalidOperationException("独立关卡必须在配置完成后激活");
                 config.timeOfDayConfig = timeOfDay;
                 config.startBuffPrefabs = new List<Duckov.Buffs.Buff>();
+                // 官方服务一旦激活就会开始重建主角；最小装配的完整性必须在激活之前定论。
+                string contractError;
+                if (!SkyIslandOfficialContract.VerifyBeforeActivation(scene, services, world, out contractError))
+                    throw new InvalidOperationException(contractError);
                 if (global::AstarPath.active == null) services.AddComponent<global::AstarPath>();
                 // 这个最小官方服务装配不能依赖已被销毁的 Session，否则加载取消后永远无法完成官方初始化。
                 if (releaseRequested) world.SetActive(true);
@@ -229,6 +243,10 @@ namespace BossRush
             SkyIslandExplosionObstaclePatch.Disarm();
             if (bundle != null) bundle.Unload(true);
             bundle = null;
+            // 天气副本是 DontDestroyOnLoad 的，不会随任何场景卸载消失，必须自己收；
+            // Unity 的 != null 对已销毁对象为 false，重复释放天然幂等。
+            if (timeOfDay != null) UnityEngine.Object.Destroy(timeOfDay.gameObject);
+            timeOfDay = null;
             if (recovery != null) { UnityEngine.Object.Destroy(recovery.gameObject); recovery = null; }
             Action callback = completed; completed = null;
             if (callback != null) callback();

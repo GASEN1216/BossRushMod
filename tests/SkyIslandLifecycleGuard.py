@@ -37,6 +37,11 @@ def main():
                       'notifyEvacuation: evacuated, saveToFile: true', 'LoadFinished = true',
                       'if (releaseRequested) world.SetActive(true)', 'services.SetActive(true)',
                       'config.timeOfDayConfig = timeOfDay', 'config.startBuffPrefabs = new List<Duckov.Buffs.Buff>()',
+                      # CR-2026-09-10-003：官方 TimeOfDayConfig 与 TimeOfDayEntry 都是场景 MonoBehaviour，
+                      # 基地那份出图即销毁。必须克隆成常驻副本，并在唯一收口 TryRelease 里销毁。
+                      'timeOfDay = UnityEngine.Object.Instantiate(template)',
+                      'UnityEngine.Object.DontDestroyOnLoad(timeOfDay.gameObject)',
+                      'if (timeOfDay != null) UnityEngine.Object.Destroy(timeOfDay.gameObject)',
                       'Time.unscaledTime < retryAt', 'retryAt = Time.unscaledTime + 2f',
                       'if (!releaseRequested || loading || returning) return',
                       'if (scene.IsValid() && scene.isLoaded) return', 'bundle.Unload(true)',

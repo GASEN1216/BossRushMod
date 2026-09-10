@@ -25,7 +25,6 @@ namespace BossRush
         private Scene entryScene;
         private Vector3 safePosition;
         private SkyIslandRaidLease lease;
-        private TimeOfDayConfig timeOfDayTemplate;
         private SkyIslandStoryService story;
         private SkyIslandWorldStory worldStory;
         private SkyIslandResidents residents;
@@ -72,9 +71,23 @@ namespace BossRush
         private const float SaveQuietRadius = 45f;
         private int groundMask, searchCount, nextLandmark;
         private bool subscribed, closed, ready, moved, spawning, pathCompleted, pathValid;
-        private float enteredAt, extractionStarted = -1, nextGroundCheck, airborneSince = -1, nextHud;
+        private float enteredAt, nextGroundCheck, airborneSince = -1, nextHud;
+        // 撤离圈里已停留的**游戏时间**秒数，-1 表示不在圈里。时基与官方 CountDownArea 一致（Time.time）：
+        // 暂停菜单（GameManager.Paused）、拍照模式（CameraMode.Active）与剧情面板都会把 timeScale 压到 0，
+        // Time.deltaTime 为 0，读条自然冻结；旧版用 unscaledTime，开着暂停菜单也会被送回基地。
+        private float extractionHeld = -1;
         // HUD 文字读秒上一次写入的整秒数：整秒没变就不重建字符串（站在圈里每帧都会走到这里）。
         private int shownExtractionSeconds = -1;
+        // 脚下地面碰撞体 → 区域 id（A–H / S1–S4）。生成器按区域把地面切成 COL_Ground_<区域>，
+        // 桥（AB、CS1、K1…）不登记。装配时建一次表，之后每次地面射线只查表、不拼字符串。
+        private readonly Dictionary<Collider, string> groundRegions = new Dictionary<Collider, string>();
+        private readonly List<string> regionIds = new List<string>();
+        // 玩家此刻站着的区域；走在桥上或腾空时保持上一个。null 表示还没踩到任何区域的地面。
+        private string standingRegion;
+        // FieldStatus 的脏检查输入：这些计数没变就复用上一次拼好的字符串（每 0.5 秒调用一次）。
+        private int chipsOpened = int.MinValue, chipsPlaced, chipsActive, chipsProgress, chipsTarget, chipsRounds;
+        private bool chipsChinese;
+        private string chipsText;
 
         /// <summary>三处「还没就绪」提示共用同一句文案，避免中英两份各写三遍再各漂一遍。</summary>
         private static string WaitForReady
@@ -174,7 +187,8 @@ namespace BossRush
             hud.SetLandingHint(L10n.T("地图键查阅全岛 · 站进撤离环停留 3 秒返航",
                 "Map key views the isles · hold 3s inside an extraction ring to return"));
             Status(L10n.T("正在加载晴岚群岛…", "Loading the Qinglan Archipelago…"), false);
-            timeOfDayTemplate = LevelConfig.Instance.timeOfDayConfig;
+            // 基地场景的组件不留成字段：出图即成已销毁引用。取到就交给租约克隆（CR-2026-09-10-003）。
+            TimeOfDayConfig timeOfDayTemplate = LevelConfig.Instance.timeOfDayConfig;
             if (timeOfDayTemplate == null) throw new InvalidOperationException("官方天气配置缺失，无法创建完整关卡");
             content = SkyIslandContent.Load();
             story = new SkyIslandStoryService(); story.Open();
@@ -219,6 +233,9 @@ namespace BossRush
             lighting.Apply(root);
             root.SetActive(true);
             Physics.SyncTransforms();
+            // CR-2026-09-10-006：地形不可见的现场取证。激活当帧 `isVisible` 还没被剔除结果更新过，
+            // 所以两处都打：这里是「装配完成」的静态事实，导航扫描之后那次才有真实的可见性。
+            SkyIslandRendering.LogDiagnostics(root, groundLayer, wallLayer, "activated");
             VerifyGround(playerSpawn);
             VerifyGround(exitMarker);
             foreach (Transform marker in enemyMarkers) VerifyGround(marker);
@@ -239,6 +256,8 @@ namespace BossRush
             }
             scan.Dispose();
             scan = null;
+            // 导航扫描跨了很多帧，相机已经剔除过若干次：这一次的 `visible` 才是可信的。
+            SkyIslandRendering.LogDiagnostics(root, groundLayer, wallLayer, "post_scan");
             int nodes = navigation.CountWalkableNodes();
             if (nodes == 0) throw new InvalidOperationException("天空岛导航没有可走节点");
             probe = root.AddComponent<Seeker>();
