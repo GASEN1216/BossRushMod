@@ -39,6 +39,10 @@ CONSTANT_VALUES = {
     "BossRushItemIds.SkyIslandWindLantern": 500080,
     "BossRushItemIds.SkyIslandWindwardIncense": 500081,
     "BossRushItemIds.SkyIslandQinglanCharm": 500082,
+    # 天空岛批次四（云蚋的对策）：只在岛上的合成台做。
+    "BossRushItemIds.SkyIslandCloudmossVeil": 500083,
+    "BossRushItemIds.SkyIslandGnatZapper": 500084,
+    "BossRushItemIds.SkyIslandSmokeFan": 500085,
     "DragonDescendantConfig.DRAGON_HELM_TYPE_ID": 500003,
     "DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID": 500004,
     "DragonBreathConfig.WEAPON_TYPE_ID": 500005,

@@ -42,7 +42,13 @@ namespace BossRush
         /// <summary>归航菜便当：菜畦重新开张之后在岛上吃，算作晴禾的归航菜（与她那一顿共用本趟一次）。</summary>
         Meal = 3,
         /// <summary>晴岚航徽：在岛上拉一下缆绳回到登云码头（每趟一次，不消耗）。</summary>
-        Recall = 4
+        Recall = 4,
+        /// <summary>风晶灭蚊灯（内容批次四）：放在地上，把附近的云蚋引过去电落。</summary>
+        Zapper = 5,
+        /// <summary>药烟蒲扇（内容批次四）：扇落贴脸的云蚋（使用不消耗）。</summary>
+        Fan = 6,
+        /// <summary>星苔药膏顺带止痒（内容批次四）：挂在药膏的官方回血行为旁边。</summary>
+        Soothe = 7
     }
 
     /// <summary>此刻挡着风的东西：决定寒意是积还是退。</summary>
@@ -96,12 +102,17 @@ namespace BossRush
         internal SkyIslandStoryFlag RequiresFlag;
         /// <summary>要先记进本槽手记的条目；null 表示不需要。</summary>
         internal string RequiresNote;
+        /// <summary>岛上要先点亮几盏风晶灯（<see cref="SkyIslandLights.LampsLit"/>，不含灶火）；0 表示不需要。</summary>
+        internal int RequiresLamps;
 
         /// <summary>这条配方要等剧情走到 <paramref name="flag"/> 才会做（配方表里链式写在 Recipe(...) 之后）。</summary>
         internal SkyIslandRecipe After(SkyIslandStoryFlag flag) { RequiresFlag = flag; return this; }
 
         /// <summary>这条配方要等手记里有 <paramref name="noteId"/> 才会做。</summary>
         internal SkyIslandRecipe AfterNote(string noteId) { RequiresNote = noteId; return this; }
+
+        /// <summary>这条配方要等岛上点亮 <paramref name="lamps"/> 盏风晶灯才会做（内容批次四：苇白得先听清灯芯的调子）。</summary>
+        internal SkyIslandRecipe AfterLamps(int lamps) { RequiresLamps = lamps; return this; }
     }
 
     /// <summary>
@@ -482,17 +493,26 @@ namespace BossRush
             Recipe("Compass", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandWindVaneCompass, 1,
                 In(BossRushItemIds.SkyIslandBrassScrap, 4), In(BossRushItemIds.SkyIslandWindcrystalShard, 2))
                 .AfterNote(SkyIslandItemRules.CompassKeepsake),
+            // 内容批次四：苇白听清了风晶灯芯的嗡声调子，才能把灯芯调成引蚋的陷阱——岛上先要亮起两盏风晶灯。一次做两盏，给过剩的残铜片一个去处。
+            Recipe("Zapper", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandGnatZapper, 2,
+                In(BossRushItemIds.SkyIslandQinglanWindcrystal, 1), In(BossRushItemIds.SkyIslandBrassScrap, 3)).AfterLamps(2),
             // 晴禾 · 灶台：浮木当柴。归航菜的做法写在种植记录里，记录交还晴禾之后才会做便当。
             Recipe("Bento", SkyIslandCraftStation.Stove, BossRushItemIds.SkyIslandHomecomingBento, 1,
                 In(BossRushItemIds.SkyIslandGreenearSheaf, 4), In(BossRushItemIds.SkyIslandDriftwood, 1))
                 .After(SkyIslandStoryFlag.PlantingDelivered),
             Recipe("IncenseStove", SkyIslandCraftStation.Stove, BossRushItemIds.SkyIslandWindwardIncense, 1,
                 In(BossRushItemIds.SkyIslandCloudmossFiber, 2), In(BossRushItemIds.SkyIslandGreenearSheaf, 2)),
+            // 内容批次四：梯田水车边蚋最多，晴禾下地戴的纱笠——云苔纤维里撒一撮星屑（星屑多了一个去处）。
+            Recipe("Veil", SkyIslandCraftStation.Stove, BossRushItemIds.SkyIslandCloudmossVeil, 1,
+                In(BossRushItemIds.SkyIslandCloudmossFiber, 3), In(BossRushItemIds.SkyIslandStardust, 1)),
             // 眠苔 · 药臼：驱风香两处都能做，任一居民不在（婚后离岛、生成失败）另一处照样有。
             Recipe("Salve", SkyIslandCraftStation.Mortar, BossRushItemIds.SkyIslandStarmossSalve, 1,
                 In(BossRushItemIds.SkyIslandCloudmossFiber, 4), In(BossRushItemIds.SkyIslandWindcrystalShard, 1)),
             Recipe("IncenseMortar", SkyIslandCraftStation.Mortar, BossRushItemIds.SkyIslandWindwardIncense, 1,
-                In(BossRushItemIds.SkyIslandCloudmossFiber, 2), In(BossRushItemIds.SkyIslandGreenearSheaf, 2))
+                In(BossRushItemIds.SkyIslandCloudmossFiber, 2), In(BossRushItemIds.SkyIslandGreenearSheaf, 2)),
+            // 内容批次四：眠苔扇药炉的蒲扇，扇面浸透苔药的烟——扇一下贴脸的云蚋就落。
+            Recipe("Fan", SkyIslandCraftStation.Mortar, BossRushItemIds.SkyIslandSmokeFan, 1,
+                In(BossRushItemIds.SkyIslandGreenearSheaf, 3), In(BossRushItemIds.SkyIslandDriftwood, 1))
         };
 
         internal static SkyIslandRecipe[] Recipes { get { return recipes; } }
@@ -535,9 +555,10 @@ namespace BossRush
         internal static bool Unlocked(SkyIslandRecipe recipe, SkyIslandStoryData data)
         {
             if (recipe == null) return false;
-            if (recipe.RequiresFlag == SkyIslandStoryFlag.None && recipe.RequiresNote == null) return true;
+            if (recipe.RequiresFlag == SkyIslandStoryFlag.None && recipe.RequiresNote == null && recipe.RequiresLamps <= 0) return true;
             if (data == null) return false;
             if (recipe.RequiresFlag != SkyIslandStoryFlag.None && !data.Has(recipe.RequiresFlag)) return false;
+            if (recipe.RequiresLamps > 0 && SkyIslandLights.LampsLit(data) < recipe.RequiresLamps) return false;
             return recipe.RequiresNote == null ||
                 (data.discoveredNotes != null && Array.IndexOf(data.discoveredNotes, recipe.RequiresNote) >= 0);
         }
@@ -546,6 +567,8 @@ namespace BossRush
         internal static string UnlockHint(SkyIslandRecipe recipe)
         {
             if (recipe == null) return string.Empty;
+            if (recipe.RequiresLamps > 0)
+                return string.Format(L10n.T("岛上点亮 {0} 盏风晶灯之后", "once {0} windcrystal lamps are lit on the isles"), recipe.RequiresLamps);
             if (recipe.RequiresNote != null)
                 return L10n.T("收到浮舟托信鸽捎来的罗盘之后", "once Fuzhou's compass has come with a pigeon");
             switch (recipe.RequiresFlag)
@@ -576,6 +599,8 @@ namespace BossRush
                     "Fuzhou: Shards have to go into the crystal furnace at the Fallen Star Workshop, and that furnace will not burn until the star lamp is lit.");
                 case "Compass": return L10n.T("浮舟：罗盘我还没捎给你呢。等第一只信鸽落了、你手里有过一只，我才照着样子重做。",
                     "Fuzhou: I have not even sent you the compass yet. Once the first pigeon has come and you have held one, I can make another to match.");
+                case "Zapper": return L10n.T("浮舟：苇白说风晶灯芯的嗡声调低半个音就能引蚋，可她得先在岛上听够两盏灯的调子。灯亮了，我给它打铜罩。",
+                    "Fuzhou: Weibai says a windcrystal wick tuned half a note lower draws the gnats, but she has to hear two lamps burning on the isles before she can find that note. Light them and I will beat the brass cage.");
                 default: return L10n.T("还不会做：", "Not yet: ") + UnlockHint(recipe) + L10n.T("。", ".");
             }
         }
@@ -630,11 +655,11 @@ namespace BossRush
                     "浮舟把工台上的刨花扫到一边：『浮木作骨、云苔糊罩，就是一盏夜里用的风灯；铜片打底、嵌上风晶和星屑，就是护符——噬风那阵风碰上它会让开几分。碎晶攒够五片，等工坊的星灯亮了，我拿去熔成一整块：岛上还有七处缺一盏风晶灯。』",
                     "Fuzhou sweeps the shavings off the workbench: 'Driftwood for the frame and a cloudmoss shade make a wind lantern for the nights. A brass backing set with crystal and stardust makes a charm — the Windeater's gusts give way around it. Bring five shards once the workshop's star lamp is lit and I will fuse them whole: seven places on the isles still want a windcrystal lamp.'");
                 case SkyIslandCraftStation.Stove: return L10n.T(
-                    "晴禾往灶里添了块浮木：『驱风香的烟压得住大风，过桥、上栈道都靠它。等种植记录回来，我照着上面的做法给你装归航菜便当——在岛上吃，就算吃过我这一顿。』",
-                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense smoke holds off even a gale — you want it on the bridges and the boardwalk. Once my planting record is back I can pack homecoming bentos from the recipe in it; eat one on the isles and it counts as my meal.'");
+                    "晴禾往灶里添了块浮木：『驱风香的烟压得住大风，过桥、上栈道都靠它。等种植记录回来，我照着上面的做法给你装归航菜便当——在岛上吃，就算吃过我这一顿。夜里水车边蚋多，云苔纤维里撒一撮星屑织成纱笠，带着它们就难贴脸。』",
+                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense smoke holds off even a gale — you want it on the bridges and the boardwalk. Once my planting record is back I can pack homecoming bentos from the recipe in it; eat one on the isles and it counts as my meal. At night the gnats swarm by the water wheel — cloudmoss woven with a pinch of stardust makes a veil that keeps them off your face.'");
                 default: return L10n.T(
-                    "眠苔把药臼推过来：『云苔纤维磨得越细，药膏越凉；加一片风晶，伤口好得快——省下来的钱，留着付给真正要命的伤。驱风香也是这么捣出来的。』",
-                    "Miantai slides the mortar over: 'The finer the cloudmoss is ground, the cooler the salve; a shard of wind crystal closes wounds faster — save your coin for the wounds that really need me. Windward incense is pounded the same way.'");
+                    "眠苔把药臼推过来：『云苔纤维磨得越细，药膏越凉；加一片风晶，伤口好得快——省下来的钱，留着付给真正要命的伤。驱风香也是这么捣出来的。扇药炉的蒲扇也归我，浸过药烟，扇一下贴脸的蚋就落。』",
+                    "Miantai slides the mortar over: 'The finer the cloudmoss is ground, the cooler the salve; a shard of wind crystal closes wounds faster — save your coin for the wounds that really need me. Windward incense is pounded the same way. The fan for my remedy fire is mine too — soaked in that smoke, one sweep and the gnats on your face drop.'");
             }
         }
 
@@ -719,6 +744,8 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandQinglanCharm: return SkyIslandFieldBuff.Charm;
                 case BossRushItemIds.SkyIslandHomecomingBento: return SkyIslandFieldBuff.Meal;
                 case BossRushItemIds.SkyIslandHomecomingBadge: return SkyIslandFieldBuff.Recall;
+                case BossRushItemIds.SkyIslandGnatZapper: return SkyIslandFieldBuff.Zapper;
+                case BossRushItemIds.SkyIslandSmokeFan: return SkyIslandFieldBuff.Fan;
                 default: return SkyIslandFieldBuff.None;
             }
         }
@@ -738,6 +765,12 @@ namespace BossRush
                     "Eat on the Qinglan isles: once the garden has reopened, it counts as Qinghe's homecoming meal (once per raid)");
                 case SkyIslandFieldBuff.Recall: return L10n.T("使用：在晴岚群岛上拉一下缆绳，回到登云码头（每趟一次，附近有敌人时不行；不消耗）",
                     "Use: on the Qinglan isles, pull the line back to Cloudrise Dock (once per raid, not with enemies nearby; not consumed)");
+                case SkyIslandFieldBuff.Zapper: return L10n.T("使用：在晴岚群岛上放在地上约 5 分钟，把 12 米内的云蚋引过去电落（同时至多两盏；离岛无效）",
+                    "Use: on the Qinglan isles, set it down for about 5 minutes to draw cloud gnats in from 12 m and zap them (up to two at once; no effect elsewhere)");
+                case SkyIslandFieldBuff.Fan: return L10n.T("使用：在晴岚群岛上扇一下，扑落面前三米多贴脸的云蚋、扇退远一点的（不消耗；离岛无效）",
+                    "Use: on the Qinglan isles, sweep once to knock down gnats within about 3 m in front and blow back those further off (not consumed; no effect elsewhere)");
+                case SkyIslandFieldBuff.Soothe: return L10n.T("在晴岚群岛上被云蚋叮痒时：止痒，约 90 秒内再被叮也不痒",
+                    "When cloud gnats have you itching on the Qinglan isles: stops the itch, and bites will not itch for about 90 seconds");
                 default: return string.Empty;
             }
         }
@@ -802,12 +835,13 @@ namespace BossRush
         internal static string OffIsland
         { get { return L10n.T("它只认得晴岚群岛的风——到了岛上才有用。", "It only answers to the winds of the Qinglan isles — use it there."); } }
 
-        /// <summary>夜里：21 点到次日 5 点（与 <c>SkyIslandLighting.ResolveTimeBlend</c> 的「星夜」整档一致）。</summary>
+        /// <summary>
+        /// 夜里：转给唯一口径 <see cref="SkyIslandNight.IsNight"/>（21 点到次日 5 点，光照的星夜整档、夜风与云蚋共用）。
+        /// 这里不再另写一份小时数；保留这个入口只为已有调用点与回归不改签名。
+        /// </summary>
         internal static bool IsNight(double hours)
         {
-            if (double.IsNaN(hours) || double.IsInfinity(hours)) return false;
-            hours = (hours % 24 + 24) % 24;
-            return hours >= 21 || hours < 5;
+            return SkyIslandNight.IsNight(hours);
         }
 
         /// <summary>

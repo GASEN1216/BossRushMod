@@ -47,7 +47,7 @@ See Sky Islands · Qinglan Archipelago.
 A salve Miantai boils down from star moss; it goes on cool.
 
 - **Source**: occasionally found in Sky Islands Voyage Supplies and Starworks Cache crates; also ground at Miantai's mortar from Cloudmoss Fiber ×4 + Windcrystal Shard ×1
-- **Effect**: restores 40 health (cannot be used at full health); no payment to Miantai and no waiting on her cooldown
+- **Effect**: restores 40 health; no payment to Miantai and no waiting on her cooldown. When cloud gnats have you itching, a dab **stops the itch** and new bites will not itch for about 90 seconds (cannot be used at full health unless you are itching)
 - Stack 10 / Use time 3s
 
 See Sky Islands · Qinglan Archipelago.
@@ -87,4 +87,15 @@ A small charm on a brass backing, set with a windcrystal shard and a pinch of st
 - **Limits**: usable on the Sky Islands only; one per raid (the second one's use button is greyed out); ends when you leave
 - Stack 3 / Use time 1.5s
 
-See "Gathering, crafting, the isles' lights and the night wind" on Sky Islands · Qinglan Archipelago.
+---
+
+## Windcrystal Gnat Zapper
+
+A windcrystal wick Weibai tuned half a note lower, caged in brass by Fuzhou.
+
+- **Source**: made at Fuzhou's dock workbench on the Sky Islands (or the dock device) from Qinglan Windcrystal ×1 + Brass Scrap ×3, two per batch; **only once two windcrystal lamps are lit on the isles**
+- **Effect**: on the Qinglan isles, set it at your feet for about 5 minutes of game time: its hum draws cloud gnats in from 12 m and zaps one within 3.2 m about every 0.7 s (you can see the arc); up to two at once. **Use it to hold an area** — for the swarm on your face, use the Remedy-Smoke Fan
+- **Limits**: usable on the Sky Islands only; with two already burning the use button is greyed out, so none are wasted; goes out when you leave
+- Stack 4 / Use time 1.2s
+
+See "Gathering, crafting, the isles' lights and the night wind" and "Cloud gnats at night" on Sky Islands · Qinglan Archipelago.

@@ -39,7 +39,7 @@ namespace BossRush
         /// <summary>风标罗盘的耐久：使用后不消耗（官方 CA_UseItem 对不可堆叠又没有耐久的物品用完即销毁）。</summary>
         private const float NonConsumableDurability = 999f;
 
-        private enum Kind { Keepsake, Compass, Food, Medicine, Material, Consumable }
+        private enum Kind { Keepsake, Compass, Food, Medicine, Material, Consumable, Gear, Tool }
 
         private sealed class Definition
         {
@@ -92,8 +92,8 @@ namespace BossRush
                     "A lunch box packed by Qinghe: rice topped with homecoming greens and a little paper pinwheel. Restores energy and water, and a little health. Once the garden has reopened (Qinghe has her planting record back), eating it on the Qinglan isles counts as her homecoming meal: a little more max health and running speed for this raid, shared with her own meal. From then on it can also be cooked at Qinghe's stove from greenear and driftwood; Sky Islands crates sometimes hold one.",
                     "sky_island_homecoming_bento", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandHomecomingBento), 3, 10, 2.5f, 35f, 20f, 15),
                 Make(BossRushItemIds.SkyIslandStarmossSalve, Kind.Medicine, "BossRush_SkyIsland_StarmossSalve",
-                    "眠苔用星苔熬的药膏，抹上去凉丝丝的，伤口很快就不疼了。回复生命——不用付眠苔苔药的钱，也不用等她下一副药熬好。在眠苔的药臼用云苔纤维和一片风晶碎片配；天空岛的箱子里偶尔能找到。",
-                    "A salve Miantai boils down from star moss. It goes on cool and the wound stops hurting almost at once. Restores health — without paying for Miantai's moss remedy or waiting for her next dose. Ground at Miantai's mortar from cloudmoss fiber and a windcrystal shard; Sky Islands crates sometimes hold one.",
+                    "眠苔用星苔熬的药膏，抹上去凉丝丝的，伤口很快就不疼了。回复生命——不用付眠苔苔药的钱，也不用等她下一副药熬好。被云蚋叮痒了抹一点就止痒，这一阵再被叮也不痒（眠苔的苔药管伤，药膏管痒）。在眠苔的药臼用云苔纤维和一片风晶碎片配；天空岛的箱子里偶尔能找到。",
+                    "A salve Miantai boils down from star moss. It goes on cool and the wound stops hurting almost at once. Restores health — without paying for Miantai's moss remedy or waiting for her next dose. A dab stops cloud-gnat itching, and new bites will not itch for a while (Miantai's remedy is for wounds, the salve for itching). Ground at Miantai's mortar from cloudmoss fiber and a windcrystal shard; Sky Islands crates sometimes hold one.",
                     "sky_island_starmoss_salve", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandStarmossSalve), 4, 10, 3f, 0f, 0f, 40),
 
                 // ---- 内容批次三：群岛材料（只从岛上的采集点出；晴岚风晶由风晶碎片凑整）----
@@ -138,8 +138,38 @@ namespace BossRush
                 Consumable(BossRushItemIds.SkyIslandQinglanCharm, SkyIslandFieldBuff.Charm, "BossRush_SkyIsland_QinglanCharm",
                     "残铜作底、嵌一片风晶和一撮星屑的小护符，噬风那阵风碰上它会让开几分。本趟出击：噬风的风暴伤害 −35%，生命上限与耐力恢复小幅提升；离岛失效、不叠加。在浮舟的渡口工台制作。",
                     "A small charm on a brass backing, set with a windcrystal shard and a pinch of stardust; the Windeater's gusts give way around it. For this raid: 35% less damage from the Windeater's storm, and a little more max health and stamina recovery; it ends when you leave the isles and does not stack. Made at Fuzhou's dock workbench.",
-                    "sky_island_qinglan_charm", 4, 3, 1.5f)
+                    "sky_island_qinglan_charm", 4, 3, 1.5f),
+
+                // ---- 内容批次四：云蚋的对策（夜里的蚊群，SkyIslandGnats）----
+                Gear(BossRushItemIds.SkyIslandCloudmossVeil, "BossRush_SkyIsland_CloudmossVeil",
+                    "晴禾用云苔纤维织的纱笠，纱里撒了一撮星屑，夜里微微发亮。放在背包里上岛就管用：云蚋只能在一米外打转，难得扑上来叮一口（叮咬慢约三倍）。晴禾说梯田的水车边蚋最多，她下地都戴着。在晴禾的灶台用云苔纤维和星屑织。",
+                    "A veil Qinghe weaves from cloudmoss fibre with a pinch of stardust worked in; it glimmers faintly at night. Keep it in your pack on the isles: cloud gnats can only circle a metre off and rarely manage to dive in for a bite (about three times fewer bites). Qinghe says the gnats are thickest by the terrace water wheel, so she never works the beds without one. Woven at Qinghe's stove from cloudmoss fibre and stardust.",
+                    "sky_island_cloudmoss_veil", 4),
+                Consumable(BossRushItemIds.SkyIslandGnatZapper, SkyIslandFieldBuff.Zapper, "BossRush_SkyIsland_GnatZapper",
+                    "苇白把风晶灯芯的嗡声调低了半个音，浮舟给它打了一圈残铜罩。在晴岚群岛上放在地上约 5 分钟：12 米内的云蚋会被嗡声引过去，挨近就被电落；同时至多两盏。守一片地方用它——贴脸的那一群要用蒲扇。岛上点亮两盏风晶灯之后，在浮舟的渡口工台用晴岚风晶和残铜片做（一次两盏）。",
+                    "Weibai tuned a windcrystal wick half a note lower and Fuzhou beat a brass cage around it. Set it down on the Qinglan isles and for about 5 minutes its hum draws cloud gnats in from 12 m and shocks any that come close; up to two at once. Use it to hold an area — the swarm on your face wants the fan. Once two windcrystal lamps are lit on the isles, Fuzhou's dock workbench makes them from a Qinglan Windcrystal and brass scrap (two per batch).",
+                    "sky_island_gnat_zapper", 4, 4, 1.2f),
+                Tool(BossRushItemIds.SkyIslandSmokeFan, SkyIslandFieldBuff.Fan, "BossRush_SkyIsland_SmokeFan",
+                    "眠苔扇药炉用的蒲扇，扇面浸透了苔药的烟。在晴岚群岛上扇一下：面前三米多贴脸的云蚋被扑落，再远一点的被扇退、晕一会儿；扇完缓一口气再扇。使用不消耗。它管贴脸的那一群——守一片地方要用灭蚊灯。在眠苔的药臼用青穗草和浮木做。",
+                    "The cattail fan Miantai uses on her remedy fire, its blade soaked through with moss smoke. Sweep it on the Qinglan isles: gnats within about 3 m in front of you are knocked down, and those a little further off are blown back and dazed; wait a breath between sweeps. Not consumed. It deals with the swarm on your face — to hold an area, set down a zapper. Made at Miantai's mortar from greenear and driftwood.",
+                    "sky_island_smoke_fan", 3, 0.3f)
             };
+        }
+
+        /// <summary>随身装备（内容批次四：云苔纱笠）：不可使用、不可堆叠，放在背包顶层上岛就生效（效果在岛上的蚊群 owner 里数背包）。</summary>
+        private static Definition Gear(int typeId, string locKey, string descCN, string descEN, string iconName, int quality)
+        {
+            return Make(typeId, Kind.Gear, locKey, descCN, descEN, iconName, SkyIslandItemRules.ValueOf(typeId), quality, 1, 0f, 0f, 0f, 0);
+        }
+
+        /// <summary>岛上的工具（内容批次四：药烟蒲扇）：使用不消耗（耐久同罗盘），效果由岛上的局内 owner 转给蚊群 owner。</summary>
+        private static Definition Tool(int typeId, SkyIslandFieldBuff buff, string locKey, string descCN, string descEN, string iconName,
+            int quality, float useTime)
+        {
+            Definition definition = Make(typeId, Kind.Tool, locKey, descCN, descEN, iconName, SkyIslandItemRules.ValueOf(typeId),
+                quality, 1, useTime, 0f, 0f, 0);
+            definition.Buff = buff;
+            return definition;
         }
 
         /// <summary>给纪念品挂上岛上的使用效果（晴岚航徽：拉缆绳回码头）。噬风之核不挂，只看带没带在身上。</summary>
@@ -257,7 +287,10 @@ namespace BossRush
                     case Kind.Medicine:
                         Drug drug = Component<Drug>(item);
                         drug.healValue = def.Heal;
-                        AttachUsage(item, def.UseTime, drug);
+                        // 内容批次四：星苔药膏顺带止痒（被云蚋叮痒时能用，这一阵再被叮也不痒）。满血又不痒时两项都不可用、按钮置灰。
+                        SkyIslandFieldcraftUsage soothe = Component<SkyIslandFieldcraftUsage>(item);
+                        soothe.buff = (int)SkyIslandFieldBuff.Soothe;
+                        AttachUsage(item, def.UseTime, drug, soothe);
                         break;
                     case Kind.Consumable:
                         // 离岛时 CanBeUsed 返回 false（按钮置灰），不会白吃掉一件；效果与计时在 SkyIslandFieldcraft。
@@ -265,7 +298,15 @@ namespace BossRush
                         fieldUse.buff = (int)def.Buff;
                         AttachUsage(item, def.UseTime, fieldUse);
                         break;
-                    // Kind.Material：没有使用行为（克隆源带过来的已被 ClearInheritedUsage 清掉）。
+                    case Kind.Tool:
+                        // 药烟蒲扇：扇一下不消耗（耐久同罗盘）；离岛或刚扇过时按钮置灰。
+                        item.MaxDurability = NonConsumableDurability;
+                        item.Durability = NonConsumableDurability;
+                        SkyIslandFieldcraftUsage swing = Component<SkyIslandFieldcraftUsage>(item);
+                        swing.buff = (int)def.Buff;
+                        AttachUsage(item, def.UseTime, swing);
+                        break;
+                    // Kind.Material 与 Kind.Gear（云苔纱笠）：没有使用行为（克隆源带过来的已被 ClearInheritedUsage 清掉）。
                 }
             }
             catch (Exception e)

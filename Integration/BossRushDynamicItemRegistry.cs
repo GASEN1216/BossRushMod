@@ -395,7 +395,11 @@ namespace BossRush
                 BossRushItemIds.SkyIslandQinglanWindcrystal,
                 BossRushItemIds.SkyIslandWindLantern,
                 BossRushItemIds.SkyIslandWindwardIncense,
-                BossRushItemIds.SkyIslandQinglanCharm);
+                BossRushItemIds.SkyIslandQinglanCharm,
+                // 内容批次四：云蚋的对策（云苔纱笠、风晶灭蚊灯、药烟蒲扇），同一套克隆兜底。
+                BossRushItemIds.SkyIslandCloudmossVeil,
+                BossRushItemIds.SkyIslandGnatZapper,
+                BossRushItemIds.SkyIslandSmokeFan);
 
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);

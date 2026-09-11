@@ -199,9 +199,10 @@ def main():
     extra_titles, extra_bodies, extra_labels = batch_two_strings()
     three_titles, three_bodies, three_labels = batch_three_strings()
     weave_bodies, weave_labels = weave_strings()
+    gnat_labels = gnat_strings()
     title = max([title] + extra_titles + three_titles, key=len)
     body = max([body] + extra_bodies + three_bodies + weave_bodies, key=len)
-    labels = labels + extra_labels + three_labels + weave_labels
+    labels = labels + extra_labels + three_labels + weave_labels + gnat_labels
     label_count = len(labels)
     longest_label = max(labels, key=len)
     errors = []
@@ -255,8 +256,9 @@ def batch_three_strings():
     materials = re.findall(r'BossRushItemIds\.(\w+)', block('internal static readonly int[] MaterialTypeIds', '};'))
     recipes = re.findall(r'Recipe\("\w+",\s*SkyIslandCraftStation\.\w+,\s*BossRushItemIds\.(\w+),\s*(\d+),'
                          r'((?:\s*In\(BossRushItemIds\.\w+,\s*\d+\),?)+)\)', rules)
-    assert titles and choices and len(intros) == 6 and len(pack) >= 2 and len(materials) == 7 and len(recipes) == 8, \
-        '批次三文案没解析到，正则与源码失步了'
+    # 批次三 8 条 + 内容批次四 3 条（纱笠、灭蚊灯、蒲扇）；渡口工台因此有 5 条，面板仍按最坏 6 条选项复算。
+    assert titles and choices and len(intros) == 6 and len(pack) >= 2 and len(materials) == 7 and len(recipes) == 11, \
+        '批次三 / 四配方文案没解析到，正则与源码失步了'
     bodies = []
     labels = list(choices)
     for lang, names, opening, closing, verb in ((0, cn, '（', '）', '制作 '), (1, en, ' (', ')', 'Make ')):
@@ -308,6 +310,27 @@ def weave_strings():
                 labels.append(locked[0][lang] + names[output] + locked[1][lang] + hint[lang] + locked[2][lang])
         bodies.append('\n'.join(pair[lang] for pair in chapter) + '\n\n' + '\n'.join(pair[lang] for pair in uses))
     return bodies, labels
+
+
+def gnat_strings():
+    """内容批次四的面板按钮：镜水寺池边「捧一团蛙卵」（夜里 / 白天两种写法）与蛙鸣池边「把蛙卵放回去」。
+
+    照 `SkyIslandMosquitoRules.SpawnChoice` / `ReleaseChoice` 的拼法拼最坏情况：件数与进度都按两位数算。
+    """
+    rules = read('DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs')
+
+    def block(start, end):
+        return rules.split(start, 1)[1].split(end, 1)[0]
+
+    spawn = re.findall(PAIR, block('internal static string SpawnChoice(', 'internal static string SpawnNeedsNight'))
+    release = re.findall(PAIR, block('internal static string ReleaseChoice(', 'internal static string Released('))
+    assert len(spawn) == 5 and len(release) == 2, '批次四蛙卵按钮文案没解析到，正则与源码失步了'
+    labels = []
+    for lang in (0, 1):
+        labels.append(spawn[0][lang] + '99/99' + spawn[1][lang])
+        labels.append(spawn[2][lang] + '99' + spawn[3][lang] + '99/99' + spawn[4][lang])
+        labels.append(release[0][lang] + '99/99' + release[1][lang])
+    return labels
 
 
 if __name__ == '__main__':

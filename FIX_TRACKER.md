@@ -4,6 +4,40 @@
 
 ## 最新修复
 
+### 2026-09-11 天空岛内容批次四「云蚋」：夜里的蚊群、躲子弹、七种对策与蛙鸣池的青蛙（新增 TypeID 500083–500085，修 CR-2026-09-11-002 / 003）
+
+**分类**：COMPAT；新增 TypeID 500083–500085；存档**不加字段**（放回的蛙卵复用 `discoveredNotes`，前缀 `Frog_`，至多 3 条）；Harmony 后缀 `Projectile.Init(ProjectileContext)`（`WIRE+`，只读弹道上下文）。无人值守，**没开游戏**。
+内容图（每件东西从哪来、解决什么、接在哪）、蚊群参数、对策分工、弱链补丁、经济与待拍板 #48–#62 在 `docs/天空岛_内容批次四_夜蚊_2026-09-11.md`（local-only）。
+
+**内容**：
+- 纯逻辑（只依赖 `System`，隔离回归直接执行）：`SkyIslandNight`（唯一判夜）；`SkyIslandMosquitoRules` + `SkyIslandGnatMotor`（刷新权重、叮咬与痒、躲闪状态机、蒲扇 / 灭蚊灯判定、蛙卵手记 id、从作者布局推导的静水表与岛框表）。
+- owner `SkyIslandGnats` 挂在 `SkyIslandFieldcraft`：逐帧 `Frame`（冲刺按帧推进）、随夜风 `Sample`；可被打中的轻量目标（先失活建好伤害接收体层非触发球 + 运动学刚体 + `DamageReceiver` + `HealthSimpleBase`，阵营 wolf，再激活）；
+  叮咬 `DamageInfo(null)` 1 点真伤、`ignoreDifficulty`、35% 以下只绕不叮；痒 −12% 耐力恢复；灭蚊灯、蒲扇、药膏止痒、纱笠、蛙卵；16×16 精灵表（确定性生成、1 px 深色描边）与循环嗡声（全场一个发声体、15 m 内）。
+- `SkyIslandGnatProjectilePatch`（只登记主角直线弹，起点对齐官方首帧扫掠）；`SkyIslandHearthFx`（灶火的火苗与烟）。**`SkyIslandSession.cs` 一行不动（1197 / 1200 行）。**
+- 物品：云苔纱笠（`Kind.Gear`，带在背包生效）/ 风晶灭蚊灯（耗材，点亮 2 盏风晶灯后一次做两盏）/ 药烟蒲扇（`Kind.Tool`，耐久 999 不消耗）；配方 3 条；克隆注册、配置器、本地化、掉落黑名单（代码 + JSON + 守卫映射）、图标 3 张；三份台账到 500085（下一可用 500086）。
+- 串联：苇白（两盏灯后提灭蚊灯）、晴禾（纱笠）、折翎（蛙卵与蛙叫）、钟守与名册念安页（放满之后）、第 4 封信批注、手记总览进度、捧着蛙卵时罗盘指蛙鸣池；驱风香 / 灶火的烟驱蚋、风灯与风晶灯招蚋。委托没接（待拍板 #48）。
+
+**修复**：
+- `CR-2026-09-11-002`（P2）：判夜两份口径，且没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00、不抛异常，光照整趟星夜、夜风整趟起风 → 收成 `SkyIslandNight` + `SkyIslandLighting.ClockHours()`（没有实例 → NaN → 不是夜里）；不用官方 `TimeOfDayController.AtNight`（19–5 点）。Dev 构建另有 F3「强制夜里」（只改本 Mod 读数）。
+- `CR-2026-09-11-003`（P3）：`SkyIslandFieldcraft.AddFire` 锚点缺失静默返回 → 打警告；灶火经 `SkyIslandHearthFx` 在装置旁生火与烟、点光挪过去，灶火与风晶灯分表判烟 / 判灯。
+- 结局后「噬风将至」的大风（`BothBeaconsLit && !StormResolved`）**未改**，写进待拍板 #49。
+
+**同步**：中英 Wiki（天空岛页新增「夜里的云蚋」一节、三处合成台配方、物品与单次出击 / 存档口径；消耗品页星苔药膏止痒、新增风晶灭蚊灯；关键物品页新增「云苔纱笠 / 药烟蒲扇」、群岛材料去处），`wiki-site` 经 `sync-content.mjs` 重生成 6 个镜像页；
+`GameplayCoverage.json` 新增 `M_SKY_ISLAND_13`（第一项：夜里看不看得见云蚋）；待人工验证清单第 2.13 步（20 行，local-only）；`CODE_REVIEW_FINDINGS.md` 新增 `CR-2026-09-11-002` / `003`（Fixed）；`AGENTS.md` §4.3 与 §14、`docs/contracts.md` §1、ID 表（local-only）；
+两张天空岛 repowiki 卡追加本批章节（内容卡只暂存本批一节，并行会话改的那一处留在工作区）。
+守卫同步：新增 `SkyIslandMosquitoGuard`；`SkyIslandContentWeaveGuard` 认 `Gear` / `Tool`（18 件）；`SkyIslandFieldcraftGuard` 配方 11 条，台账检查从钉死 500082 / 500083 改成与它的 AGENTS 检查同一口径（覆盖批次三、上限一致、下一可用紧接上限）；
+`SkyIslandContentPackGuard` 图标 18；`SkyIslandLocalizationGuard` 加 5 个新文件并扫到 `Integration/SkyIsland`；`SkyIslandValidationSuiteGuard` 写入口名单加 11 个；`LootBlacklistDataRegistryGuard` 映射；面板布局属性测试纳入 11 条配方与蛙卵按钮。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 正式构建并部署 | 两次 `Build succeeded!`，`Build/bossrush.rsp` 无 `/define`；`BossRush.dll` 4,988,928 B，SHA-256 `7d4144c406c1cc9298812a9bca2770b9ec95436e7b7e5b5b120cb689ed294ccb`，`Build/` 与游戏目录一致；精灵表、嗡声、3 张图标、`LootBlacklist.json`、`GameplayCoverage.json`、6 个 Wiki 页的部署副本逐个 sha256 一致；游戏目录无 Dev 产物 |
+| 2 | 全量守卫 | `python tools/run_guards.py`：590 个脚本，590 PASS / 0 NEW-FAIL / 0 KNOWN-RED（途中转红的两处已按源码修：本地化守卫抓到中文诊断步骤名；批次三守卫把台账钉死在 500082） |
+| 3 | 执行回归 | `python tools/run_runtime_regressions.py` 全量：28 PASS / 0 FAIL；`SkyIslandStory` 966 → 1934 条（含躲闪模拟），`SkyIslandLighting` 183 条 |
+| 4 | 躲闪模拟 | 跑生产代码 `SkyIslandGnatMotor`，人类射手 × 3 种弹速 × 站定 / 横移；5 / 10 / 20 m 单发首发 0%、前三发 ≤3%、连射第一秒 ≤11%、霰弹首发 ≤1%（阈值 10 / 20 / 30 / 20%）；不是无敌：理想射手 5 m 连射 3 秒内命中 100%、1.5 m 首发 100%、风灯照着 5 m 首发 97%、爆炸不预测；14,490 次冲刺 0 次每帧超速 / 超 3 m / 前摇不可见，每帧检查 ≤146 |
+| 5 | 反向验证 | 51 个探针，47 个转红、都红在预期或同类断言上：新守卫 22、其它守卫 7（串联、本地化、批次三、TypeID 台账、黑名单、内容包、F3 只读）、面板布局 1、执行回归 17（全是运行期断言）。首轮 4 个没打到判据：G25 不是最长选项；R02 / R03 去掉 NaN 判断是等价变异（NaN 取模与比较本来就为假）；R05 躲闪预算 ×100 仍不免疫（冷却与前摇才是约束）——已如实记录并换成 G25b / R02b / R03b / R05b 复跑转红。破坏做在稀疏签出副本（`git clone --shared` + 非 cone 稀疏检出，`MSYS_NO_PATHCONV=1`，`HEAD` + 本批 48 个文件）上，逐字节还原并 sha256 核对；真实工作区前后 sha256 不变 |
+
 ### 2026-09-11 天空岛拍板：晴岚航徽拉缆绳回码头、巡视委托按本趟计、物资池单件价值上限（修 CR-2026-09-11-001）
 
 **分类**：COMPAT + owner decision（owner 授权代理拍板：「你自己根据情况拍板吧好玩就行」）；**不新增 TypeID**；存档**不加字段**（「这趟拉过缆绳」与「这趟到过的区域」只在会话里，按出击复位）。无人值守。

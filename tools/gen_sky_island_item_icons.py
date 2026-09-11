@@ -79,6 +79,16 @@ ICONS = [
     ("sky_island_qinglan_charm",
      "a small round brass charm with a cloud-shaped cutout, a pale-blue crystal shard set in the centre and tiny "
      "gold star specks, hanging from a short teal cord with a knot."),
+    # ---- 内容批次四：云蚋的对策 ----
+    ("sky_island_cloudmoss_veil",
+     "a wide woven sun hat of pale-teal moss fibres with a sheer cream mesh veil hanging from its brim, a few tiny "
+     "pale-gold glitter specks woven into the veil."),
+    ("sky_island_gnat_zapper",
+     "a small lantern-shaped device with a brass wire cage around a glowing pale sky-blue crystal wick, a faint crackle "
+     "of white-blue light around the cage, standing on three short brass feet."),
+    ("sky_island_smoke_fan",
+     "a round hand fan woven from pale green grass stalks with a short driftwood handle, a thin curl of warm white "
+     "smoke drifting off its edge (the smoke is warm white only, never pink or lavender)."),
 ]
 
 SPECS = [("Assets/Items/%s.png" % name, 512, icon(desc)) for name, desc in ICONS]

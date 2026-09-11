@@ -129,17 +129,29 @@ See Sky Islands · Qinglan Archipelago.
 
 ---
 
+## Cloudmoss Veil / Remedy-Smoke Fan
+
+Two things for the night's cloud gnats; neither is used up.
+
+- **Cloudmoss Veil**: a veil Qinghe weaves from cloudmoss with a pinch of stardust. Woven at Qinghe's stove from Cloudmoss Fiber ×3 + Stardust ×1. **Works from your pack on the islands**: gnats can only circle about 1 m off and bite about three times less often. No use button; does not stack
+- **Remedy-Smoke Fan**: the cattail fan Miantai uses on her remedy fire, soaked through with moss smoke. Made at Miantai's mortar from Greenear Sheaf ×3 + Driftwood ×1. Use it on the Qinglan isles (0.3 s): gnats in a cone within about 3.4 m in front of you are knocked down, and those within 6 m are blown back 2.5 m and dazed for 1.2 s; wait a second between sweeps. **Not consumed**; greyed out away from the isles
+- Both can be sold, but then that use is gone
+
+See "Cloud gnats at night" on Sky Islands · Qinglan Archipelago.
+
+---
+
 ## Island materials / Qinglan Windcrystal
 
 Materials for the Sky Islands' gathering spots, crafting stations and windcrystal lamps. All of them stack and can be sold; none can be used directly. Each one has somewhere to go on the islands:
 
-- **Cloudmoss Fiber**: wind lanterns, windward incense, starmoss salve; the boardwalk and post hut lamps. Hanging Root Wood patches yield 1 more once the wind beacon is calibrated
-- **Greenear Sheaf**: homecoming bentos, windward incense. Terrace tufts yield 1 more once Qinghe has her planting record back
-- **Driftwood**: wind lanterns, bento firewood; the boardwalk, temple, post hut and grotto lamps
-- **Brass Scrap**: Qinglan charms, wind-vane compasses; the workshop, Bell Court and grotto lamps. Workshop veins yield 1 more once the star lamp is repaired
+- **Cloudmoss Fiber**: wind lanterns, windward incense, starmoss salve, cloudmoss veils; the boardwalk and post hut lamps; wrapping a clutch of frogspawn at Mirrorwater Temple by night. Hanging Root Wood patches yield 1 more once the wind beacon is calibrated
+- **Greenear Sheaf**: homecoming bentos, windward incense, remedy-smoke fans. Terrace tufts yield 1 more once Qinghe has her planting record back
+- **Driftwood**: wind lanterns, bento firewood, the fan's handle; the boardwalk, temple, post hut and grotto lamps
+- **Brass Scrap**: Qinglan charms, wind-vane compasses, the gnat zapper's cage; the workshop, Bell Court and grotto lamps. Workshop veins yield 1 more once the star lamp is repaired
 - **Windcrystal Shard**: gathered from wind crystal clusters, and now and then from the deeper brass veins; charms, salves and compasses need them; five fuse into a whole **Qinglan Windcrystal** at Fuzhou's dock workbench once the Fallen Star Workshop's star lamp is lit. Boardwalk clusters yield 1 more once the Windeater is gone
-- **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (21:00–05:00) and at the overlook once the telescope is calibrated; Qinglan charms and the Starfall Overlook lamp need it
-- **Qinglan Windcrystal**: **the wick of the seven windcrystal lamps**. Seven devices are each missing one, and each lamp is something a letter asked for; once lit, the night wind cannot reach you beside it and it burns on every later trip; with ten lights on the isles (the three hearths count as three) the nights stop blowing
+- **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (21:00–05:00) and at the overlook once the telescope is calibrated; Qinglan charms, cloudmoss veils and the Starfall Overlook lamp need it
+- **Qinglan Windcrystal**: **the wick of the seven windcrystal lamps**. Seven devices are each missing one, and each lamp is something a letter asked for; once lit, the night wind cannot reach you beside it and it burns on every later trip; with ten lights on the isles (the three hearths count as three) the nights stop blowing. Once two lamps are lit, the dock workbench also turns one into a pair of gnat zappers
 - Gathered materials go into your pack and drop at your feet if it is full — never to base storage; crafting and lighting lamps count only what is in your pack
 
 See "Gathering, crafting, the isles' lights and the night wind" on Sky Islands · Qinglan Archipelago.

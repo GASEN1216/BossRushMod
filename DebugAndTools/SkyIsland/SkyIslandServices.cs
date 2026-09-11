@@ -273,6 +273,8 @@ namespace BossRush
                 return L10n.T("眠苔：钱没走通，先歇一会儿。",
                     "Miantai: The payment did not go through. Rest a moment.");
             player.Health.SetHealth(player.Health.MaxHealth);
+            // 内容批次四：苔药敷上顺手止了云蚋的痒（药膏另管「这一阵叮上也不痒」，两者分工见 SkyIslandGnats.Soothe）。
+            SkyIslandGnats.RemedyClearsItch();
             healReadyAt = Time.time + HealCooldown;
             return L10n.T("眠苔：苔药敷上了。云海上摔一跤可不好受。（花费 ",
                 "Miantai: The moss is on. A fall out here is no small thing. (cost ") + price + L10n.T("）", ")") +

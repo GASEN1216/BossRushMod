@@ -219,6 +219,9 @@ namespace BossRush
             SkyIslandItems.ResetStaticCaches();
             // 群岛耗材找 owner 用的静态引用：会话销毁时 owner 自己会清，模块销毁再兜一次。
             SkyIslandFieldcraft.ResetStaticCaches();
+            // 内容批次四：云蚋的精灵表、材质与开枪补丁找 owner 用的静态引用；Dev 构建「强制夜里」的开关。
+            SkyIslandGnats.ResetStaticCaches();
+            SkyIslandNight.ResetStaticCaches();
             // 面板插图同样是跨出击复用的静态缓存：运行时 new 出来的 Texture/Sprite
             // 必须显式 Destroy，只置 null 是丢给 UnloadUnusedAssets 碰运气。
             SkyIslandUiArt.ResetStaticCaches();

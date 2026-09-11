@@ -143,6 +143,13 @@ namespace BossRush
                         text.Append(L10n.T("晴禾端来的归航菜还温着，船上的人都吃了两碗。",
                             "The homecoming greens Qinghe brought were still warm; everyone on the boat had two bowls."));
                     }
+                    // 内容批次四：三团蛙卵都放回了蛙鸣池，夜里的云蚋少了（SkyIslandMosquitoRules.FrogsComplete）。
+                    if (SkyIslandMosquitoRules.FrogsComplete(data))
+                    {
+                        text.Append("\n\n");
+                        text.Append(L10n.T("蛙鸣池又有蛙叫了。夜里船上没人再喊痒，我那点药膏总算省下来了。",
+                            "Frogsong Pool is croaking again. Nobody on the boat complains of itching at night any more, so I can finally save my salve."));
+                    }
                     break;
                 default:
                     text.Append(L10n.T("这一页还是空的。", "This page is still blank."));

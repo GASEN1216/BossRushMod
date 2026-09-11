@@ -126,13 +126,13 @@ After you ring the Homecoming Bell, the homecoming boat ties up **beside the doc
 
 ### Sky Islands items
 
-The archipelago has five items of its own (TypeID 500068–500072), plus ten gathered materials and in-raid consumables (500073–500082, see "Gathering, crafting, the isles' lights and the night wind" below). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report. **Every one of them has a use on the islands — none exist just to be sold**:
+The archipelago has five items of its own (TypeID 500068–500072), plus ten gathered materials and in-raid consumables (500073–500082, see "Gathering, crafting, the isles' lights and the night wind" below) and three things for the night's cloud gnats (500083–500085, see "Cloud gnats at night"). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report. **Every one of them has a use on the islands — none exist just to be sold**:
 
 - **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and sent straight to base storage. **Use it on the islands** to pull the line on the badge and find yourself back on Cloudrise Dock (once per raid; it will not pull with enemies within 35 m; not consumed). **Carry it in your pack on the islands** and the islanders know you: Fuzhou's dock refit and Miantai's moss remedy cost **half**. If you fall on the islands, it stays behind with the rest of your pack.
 - **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. **Carry it in your pack on the islands** and the whirl inside eats into the wind around you: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**.
 - **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too, and Fuzhou's dock workbench can make a replacement once you have had the first one. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path; after that, to a place still missing its windcrystal lamp if you carry a Qinglan Windcrystal, or else to a wind crystal cluster you have not gathered this trip. **Not consumed.**
 - **Homecoming Bento** (food): restores energy and water, and a little health. **Once Qinghe has her planting record back**, eating one on the islands counts as her homecoming meal (a little more max health and running speed for the raid, shared with her own meal) — so you can pack one ahead and eat it before a hard fight; from then on her stove cooks them too. Occasionally found in island crates of every tier.
-- **Starmoss Salve** (medicine): restores health — without paying for Miantai's remedy or waiting out her cooldown. Ground at Miantai's mortar; occasionally found in Voyage Supplies and Starworks Cache crates.
+- **Starmoss Salve** (medicine): restores health — without paying for Miantai's remedy or waiting out her cooldown. A dab stops cloud-gnat itching, and new bites will not itch for about a minute and a half. Ground at Miantai's mortar; occasionally found in Voyage Supplies and Starworks Cache crates.
 
 Each keepsake is granted once per save, and the grant is recorded with the Sky Islands story save. Saves that had already rung the bell, beaten the Windeater or kept a letter before this update receive theirs on the next trip to the islands. Island goods are packed into crates **on top of** their normal contents: they neither take a slot from the regular item count nor change what else is inside.
 
@@ -158,11 +158,11 @@ There are **30 gathering spots** beside the islands' lamps, landmarks and relay 
 
 Whatever you gather goes into your pack, and **if your pack is full it drops at your feet** — gathered goods ride along with this raid's pack like any other loot and are never sent back to base storage.
 
-There are three **crafting stations**. Each one can be opened through its resident or through the device beside it, so the recipes stay available if the resident has married and left or is not there. Three recipes wait for the story to reach the right place; the panel lists them as "Not yet" together with what they are waiting for:
+There are three **crafting stations**. Each one can be opened through its resident or through the device beside it, so the recipes stay available if the resident has married and left or is not there. Four recipes wait for the story or the isles' lights to reach the right place; the panel lists them as "Not yet" together with what they are waiting for:
 
-- **Fuzhou · dock workbench** (Fuzhou / the dock device): Wind Lantern (Driftwood ×2 + Cloudmoss Fiber ×1), Qinglan Charm (Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1), Qinglan Windcrystal (Windcrystal Shard ×5, **once the Fallen Star Workshop's star lamp is lit** — shards have to go into the workshop's crystal furnace), Wind-Vane Compass (Brass Scrap ×4 + Windcrystal Shard ×2, **once Fuzhou has sent you the first one**).
-- **Qinghe · garden stove** (Qinghe / the terrace garden): Windward Incense (Cloudmoss Fiber ×2 + Greenear Sheaf ×2), Homecoming Bento (Greenear Sheaf ×4 + Driftwood ×1, **once Qinghe has her planting record back** — the recipe is written in it).
-- **Miantai · moss mortar** (Miantai / the Hanging Root Wood note "a mailbag in the roots"): Starmoss Salve (Cloudmoss Fiber ×4 + Windcrystal Shard ×1), Windward Incense (as above).
+- **Fuzhou · dock workbench** (Fuzhou / the dock device): Wind Lantern (Driftwood ×2 + Cloudmoss Fiber ×1), Qinglan Charm (Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1), Qinglan Windcrystal (Windcrystal Shard ×5, **once the Fallen Star Workshop's star lamp is lit** — shards have to go into the workshop's crystal furnace), Wind-Vane Compass (Brass Scrap ×4 + Windcrystal Shard ×2, **once Fuzhou has sent you the first one**), Windcrystal Gnat Zapper (Qinglan Windcrystal ×1 + Brass Scrap ×3, two per batch, **once two windcrystal lamps are lit on the isles** — Weibai tuned the wick half a note lower).
+- **Qinghe · garden stove** (Qinghe / the terrace garden): Windward Incense (Cloudmoss Fiber ×2 + Greenear Sheaf ×2), Homecoming Bento (Greenear Sheaf ×4 + Driftwood ×1, **once Qinghe has her planting record back** — the recipe is written in it), Cloudmoss Veil (Cloudmoss Fiber ×3 + Stardust ×1).
+- **Miantai · moss mortar** (Miantai / the Hanging Root Wood note "a mailbag in the roots"): Starmoss Salve (Cloudmoss Fiber ×4 + Windcrystal Shard ×1), Windward Incense (as above), Remedy-Smoke Fan (Greenear Sheaf ×3 + Driftwood ×1).
 
 Each recipe button shows how many of each material you have against how many it needs, **counting your pack only, not base storage**. If you are short, the station tells you what is missing and takes nothing. Like every other island panel, a station will not open with enemies nearby.
 
@@ -192,11 +192,36 @@ Each recipe button shows how many of each material you have against how many it 
 
 [tip] A common path: burn incense and paper lanterns from greenear and cloudmoss so you can cross to the deeper isles at night; once the star lamp is repaired, fuse windcrystal shards and light the isles' lamps one by one; tie on a charm and eat a homecoming bento before the Windeater; after it falls, carry its core and the night bridges are only a breeze. Materials sell, but cheaply — gathering all 30 spots in one raid is worth roughly 14,000 (about 2,000 more once the isles are mended); their real value is on the islands.
 
+### Cloud gnats at night
+
+At night (game time 21:00 to 05:00) swarms of **cloud gnats** come out on the isles: 2–4 at a time, flying in from the edge of the screen 8–14 m away, never more than 6 at once. They are thickest **by still water** (within 20 m of Frogsong Pool, the Mirrorwater Temple pool, and the terrace water wheel and rain barrel), a little thicker in the open middle of an island, and half as many in a breeze; **light draws them** — more come near a lit windcrystal lamp or while your wind lantern burns. They do not come by day, **in hearth smoke** (about 9 m around the three hearths), **while windward incense burns**, **in a gale** (night bridges, the boardwalk before the storm) or **with enemies nearby**, and any already circling you scatter.
+
+- **Bites**: when its moment comes, a gnat dives at your neck for **1 health** (difficulty does not scale it), roughly one bite every 1.5–2.5 seconds each, and several never bite in the same instant. **Below about 35% health they only circle** — cloud gnats cannot kill you.
+- **Itching**: about six bites in quick succession start an itch (−12% stamina recovery) that fades once the biting stops; captions mark when it starts and ends.
+- **Dodging bullets**: they watch your muzzle. At a distance a gnat flashes (the wind-up) and darts up to 3 m aside, so **long-range shots rarely land**; but a few dodges in a row wear it out, and **point-blank shots, shotguns and explosions all hit**. One to three hits kill one, leaving a small splat — **they drop nothing**. The ones your wind lantern lights up are dazzled and do not dodge.
+- The buzzing only plays while a gnat is within 15 m.
+
+**Counters** each have their own job:
+
+| What | Where | What it does |
+| --- | --- | --- |
+| Hearth smoke / Windward Incense | the three hearths; stove or mortar | stand in the smoke or burn incense: no gnats come, and those around you scatter |
+| Wind Lantern | dock workbench | **draws gnats**: more come while it burns, but those within 6 m in its light do not dodge — easy targets |
+| Cloudmoss Veil | Qinghe · garden stove | works from your pack: gnats can only circle about 1 m off and bite about three times less often |
+| Remedy-Smoke Fan | Miantai · moss mortar | the swarm on your face: knocks down gnats in a cone within about 3.4 m in front of you and blows those within 6 m back 2.5 m, dazed for 1.2 s; wait a second between sweeps; **not consumed** |
+| Windcrystal Gnat Zapper | Fuzhou · dock workbench (once two windcrystal lamps are lit on the isles; two per batch) | holds an area: set on the ground for about 5 minutes, its hum draws gnats in from 12 m and zaps one within 3.2 m about every 0.7 s; up to two at once |
+| Starmoss Salve | Miantai · moss mortar | stops the itch, and new bites will not itch for about 90 seconds |
+| Miantai's moss remedy | Miantai | clears the current itch along with your wounds; new bites itch as usual |
+
+**The frogs of Frogsong Pool**: in the letter to the frogs of Frogsong Pool, a child asks the frogs to count the lights for them, but the pool went quiet long ago. At night, go to **Mirrorwater Temple · a rubbing in the pool** and wrap a clutch of frogspawn in a handful of Cloudmoss Fiber (by day the spawn stays deep and cannot be reached), then carry it to **the note by Frogsong Pool ("Qinghe's planting record")** and release it. While you carry it, the Wind-Vane Compass points to Frogsong Pool; **if you fall or leave the isles, the spawn in your hands is lost**, but every clutch already released is saved. Each clutch released means **fewer gnats by the water**; once all three are back, Frogsong Pool croaks again at night, the water draws no more gnats than anywhere else, and the roster, that letter and several residents take note. Progress is shown on the journal's Overview page.
+
+[tip] Heading out at night, burn incense or wait by a hearth until a swarm scatters; for work by the water, carry the veil and set down a zapper. The lantern cuts both ways: it draws more gnats, but the lit ones cannot dodge — finish them up close with the fan or a shotgun.
+
 ### What the run records
 
 Beacons, side paths, the named opponents' and the Windeater's outcomes, visited regions, notes and the ending are all recorded per save slot. Ordinary encounter clears are recorded too — repairing the beacons and calibrating the telescope read those as prerequisites — but they do **not** stop those encounters from returning next raid. Leaving or dying never clears recorded story facts, and an unfinished fight is never written down as a permanent failure.
 
-Crate contents, contract progress, the homecoming meal, gathering spots, consumable effects and chill are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own items are listed under "Sky Islands items" and "Gathering, crafting, the isles' lights and the night wind" above. Pigeon letters, roster pages, keepsake grants and lit windcrystal lamps are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
+Crate contents, contract progress, the homecoming meal, gathering spots, consumable effects and chill, cloud gnats, itching and frogspawn in your hands are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own items are listed under "Sky Islands items", "Gathering, crafting, the isles' lights and the night wind" and "Cloud gnats at night" above. Pigeon letters, roster pages, keepsake grants, lit windcrystal lamps and frogspawn released into Frogsong Pool are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
 
 [tip] A region only counts as visited once you actually set foot on that island — eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.
 

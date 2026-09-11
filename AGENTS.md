@@ -80,9 +80,9 @@ cmd.exe /c "cd /d D:\...\BossRushMod && compile_official.bat"
 
 自定义物品/装备 TypeID 使用 5000xx 区间，严格递增，不回填已删 ID。TypeID 会进入存档键、掉落表、Wiki、调试流程，复用属于存档兼容风险。
 
-- 当前登记范围：`500001-500082`（`500073-500082` 为天空岛内容批次三的群岛材料、晴岚风晶与局内耗材）。
+- 当前登记范围：`500001-500085`（`500073-500082` 为天空岛内容批次三的群岛材料、晴岚风晶与局内耗材；`500083-500085` 为天空岛内容批次四「云蚋」的云苔纱笠、风晶灭蚊灯、药烟蒲扇）。
 - 已知空缺：`500009`、`500047` 仍视为保留空洞，不回填。
-- 下一可用：`500083`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
+- 下一可用：`500086`，以 `docs/Bossrush使用物品ID表.md` 实际末尾为准。
 - Boss/NPC/建筑字符串 ID 不占此序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -284,6 +284,15 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 根级 `CODE_REVIEW.md`、`CODE_REVIEW_FINDINGS.md`、`FIX_TRACKER.md` 是当前 AI 协作流程入口；旧 `docs/` 路径保留转发，避免老工具失联。
 
 ## 14. 最后更新
+
+2026-09-11（天空岛内容批次四「云蚋」）：夜里的蚊群、会躲子弹的轻量目标、七种对策与蛙鸣池的青蛙；新增 TypeID 500083–500085，**不加存档字段**（放回的蛙卵复用 `discoveredNotes`，前缀 `Frog_`）；**没开游戏**。
+
+- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00、不抛异常，照读会整趟判成夜里（`CR-2026-09-11-002`）；也不要用官方 `TimeOfDayController.AtNight`（19–5 点）。新代码判夜一律走它，`SkyIslandMosquitoGuard` 会拦。
+- **可被打中的轻量目标**（不克隆角色）：先失活，建好伤害接收体层非触发球 + 运动学刚体 + `DamageReceiver`（`useSimpleHealth`）+ `HealthSimpleBase`（阵营 wolf；`middle` 会被 `canHurtSelf:false` 的爆炸跳过）再激活；死亡看 `activeSelf`，不复用；挪完 `Physics.SyncTransforms()`。
+- **躲子弹**在 `Projectile.Init(ProjectileContext)` 后缀里拿弹道，起点用 `firstFrameCheckStartPoint`（官方首帧扫掠从那里开始）；瞄准辅助会吸附伤害接收体，所以瞄准线扫过时也要预闪。躲闪状态机放在纯规则里，离线模拟跑同一份代码。
+- 伤害只在 `SkyIslandGnats`：叮咬 `DamageInfo(null)` 真伤、`ignoreDifficulty`、先判血量下限；局内 owner `SkyIslandFieldcraft` 仍不出现伤害。灶火有看得见的火与烟（`SkyIslandHearthFx`），锚点缺失打警告（`CR-2026-09-11-003`）。
+- 反向探针在稀疏签出副本上跑执行回归要设 `GAME_PATH`（副本没有 `Build/bossrush.rsp`，夹具找不到官方 DLL，只读引用、不写游戏目录）；设计探针要避开等价变异——`IsNight` 去掉 NaN 判断仍然全绿，因为 NaN 取模与比较本来就为假。
+- 详情：`FIX_TRACKER.md` 同日条目、`docs/天空岛_内容批次四_夜蚊_2026-09-11.md`（local-only）、待人工验证清单第 2.13 步。
 
 2026-09-10（天空岛官方地图换手绘底图）：owner 要地图更好看，拿现有地图当参考图调生图接口重画。重烘 13 张小地图贴图、重打包并部署；**没开游戏**。
 

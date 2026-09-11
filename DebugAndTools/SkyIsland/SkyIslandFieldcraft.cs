@@ -20,6 +20,8 @@ namespace BossRush
     /// 3. **出击里得到的东西承担出击风险**：产出与成品放进背包、放不下落在脚边，绝不寄回基地仓库。
     /// 4. **每件东西都有岛上的用处**：采集产出读剧情进度（修好的地方长得更旺）、配方随剧情解锁、风晶灯是持久的（写进手记，
     ///    先记后扣），护符替玩家挡噬风的风暴、便当算作晴禾的归航菜、带在身上的噬风之核让大风只算微风。
+    /// 5. **内容批次四**：夜里的云蚋由 <see cref="SkyIslandGnats"/> 持有（伤害代码只在那里，本文件不出现），这里把夜风的那次采样、
+    ///    灶火的烟与风晶灯的光、驱风香与风灯喂给它；灭蚊灯、蒲扇与药膏止痒经耗材入口转交。
     /// </summary>
     internal sealed class SkyIslandFieldcraft : IDisposable
     {
@@ -47,7 +49,12 @@ namespace BossRush
         private readonly List<ZombieModeAttributeModifierRecord> charmRecords = new List<ZombieModeAttributeModifierRecord>();
         /// <summary>岛上亮着的灯：三处灶火 + 本存档点起来的风晶灯（<see cref="SkyIslandLights"/>）。只是光，灯旁暖和。</summary>
         private readonly List<Light> fires = new List<Light>();
+        /// <summary>同一批灯按来历分开：灶火有烟（云蚋躲开），风晶灯只有光（云蚋循光而来）。</summary>
+        private readonly List<Light> hearthFires = new List<Light>();
+        private readonly List<Light> lampFires = new List<Light>();
         private readonly HashSet<string> fireMarkers = new HashSet<string>(StringComparer.Ordinal);
+        /// <summary>内容批次四：夜里的云蚋（装配失败时为 null，采集、合成与夜风照常）。</summary>
+        private readonly SkyIslandGnats gnats;
         private GameObject lanternLight;
         private float nextTick = -1f, lastTick = -1f, lanternUntil = -1f, incenseUntil = -1f, exposure, nextCarryCheck = -1f;
         private int fireNight = -1, lightsLit;
@@ -66,9 +73,17 @@ namespace BossRush
             gathering = new SkyIslandGathering(root, groundMask, Harvest);
             lightsLit = story != null ? SkyIslandLights.LitCount(story.Current) : SkyIslandLights.HearthMarkers.Length;
             PlaceFires();
+            // 内容批次四：夜里的云蚋。装配失败只放弃蚊群，不拖垮采集、合成与夜风。
+            try { gnats = new SkyIslandGnats(owner, this, story, root, groundMask); }
+            catch (Exception e)
+            {
+                gnats = null;
+                Debug.LogWarning("[SkyIslandFieldcraft] 云蚋装配失败：" + e.Message);
+            }
             Current = this;
         }
 
+        internal SkyIslandGnats Gnats { get { return gnats; } }
         internal int GatherPlaced { get { return gathering.PlacedCount; } }
         internal int GatherHarvested { get { return gathering.HarvestedCount; } }
         internal float Exposure { get { return exposure; } }
@@ -96,6 +111,8 @@ namespace BossRush
         {
             if (disposed || !session.IsReady) return;
             float now = Time.time;
+            // 云蚋每帧都要动（躲闪冲刺按帧推进），不走下面的 0.5 秒节流；夜里没有蚊子时几乎是空转。
+            if (gnats != null) gnats.Frame(now, Time.deltaTime, CharacterMainControl.Main);
             if (now < nextTick) return;
             nextTick = now + SkyIslandFieldcraftRules.TickInterval;
             // 两次推进之间最多按 1 秒记：切出切回、长时间卡顿之后不一口气灌满寒意。
@@ -110,9 +127,13 @@ namespace BossRush
             TickWind(player, night, elapsed);
         }
 
+        /// <summary>
+        /// 夜里：光照、夜风、云蚋同一个判断（<see cref="SkyIslandNight"/>，钟点只从 <see cref="SkyIslandLighting.ClockHours"/> 读）。
+        /// 官方时钟没有实例时 `TimeOfDay` 恒为 00:00，以前这里照读，整趟都被判成夜里。
+        /// </summary>
         private static bool IsNight()
         {
-            try { return SkyIslandFieldcraftRules.IsNight(GameClock.TimeOfDay.TotalHours); }
+            try { return SkyIslandNight.IsNight(SkyIslandLighting.ClockHours()); }
             catch (Exception)
             {
                 // 取不到官方时钟就按白天算：宁可这趟没有夜风，也不凭空起风。
@@ -264,6 +285,12 @@ namespace BossRush
             return remaining == 0;
         }
 
+        /// <summary>从背包顶层扣一件（云蚋那边包蛙卵用一把云苔纤维）。口径同 <see cref="ConsumeFromPack"/>。</summary>
+        internal bool ConsumeOne(int typeId)
+        {
+            return !disposed && ConsumeFromPack(typeId, 1);
+        }
+
         #endregion
 
         #region 岛上的灯
@@ -333,6 +360,10 @@ namespace BossRush
                 return session.HasPlantingDelivered && session.Services != null && !session.Services.MealEaten;
             // 晴岚航徽：这一趟还没拉过缆绳才亮；附近有没有敌人在按下时判断，给出原因。
             if (buff == SkyIslandFieldBuff.Recall) return session.RecallAvailable;
+            // 内容批次四：灭蚊灯同时至多两盏、蒲扇扇过要缓一口气、药膏止痒要真的在痒；都问蚊群 owner。不成立时按钮置灰，不白吃一件。
+            if (buff == SkyIslandFieldBuff.Zapper) return gnats != null && gnats.CanDeployZapper;
+            if (buff == SkyIslandFieldBuff.Fan) return gnats != null && gnats.FanReady;
+            if (buff == SkyIslandFieldBuff.Soothe) return gnats != null && gnats.Itching;
             // 护符不叠加：已经系着一枚时按钮置灰，不吃掉第二枚。
             return buff != SkyIslandFieldBuff.Charm || !charmWorn;
         }
@@ -385,10 +416,28 @@ namespace BossRush
                 case SkyIslandFieldBuff.Charm:
                     WearCharm(player);
                     break;
+                // 内容批次四：伤害与判定都在蚊群 owner 里（本文件不出现伤害），这里只转交并读出它的回话。
+                case SkyIslandFieldBuff.Zapper:
+                case SkyIslandFieldBuff.Fan:
+                case SkyIslandFieldBuff.Soothe:
+                    string said = UseAgainstGnats(buff, player);
+                    if (!string.IsNullOrEmpty(said)) session.Announce(said, false);
+                    if (story != null) story.LogTiming("consumable", buff.ToString());
+                    return true;
             }
             session.Announce(SkyIslandFieldcraftRules.BuffStarted(buff), false);
             if (story != null) story.LogTiming("consumable", buff.ToString());
             return true;
+        }
+
+        /// <summary>灭蚊灯放下、蒲扇扇一下、药膏止痒：交给蚊群 owner，返回要读给玩家的那一句。</summary>
+        private string UseAgainstGnats(SkyIslandFieldBuff buff, CharacterMainControl player)
+        {
+            string said;
+            if (buff == SkyIslandFieldBuff.Zapper) gnats.DeployZapper(player, out said);
+            else if (buff == SkyIslandFieldBuff.Fan) gnats.SwingFan(player, out said);
+            else said = gnats.Soothe();
+            return said;
         }
 
         private void WearCharm(CharacterMainControl player)
@@ -473,12 +522,13 @@ namespace BossRush
         private void TickWind(CharacterMainControl player, bool night, float elapsed)
         {
             bool onBridge = false, onBoardwalk = false;
+            string region = null;
             RaycastHit hit;
             if (Physics.Raycast(player.transform.position + Vector3.up * 0.25f, Vector3.down, out hit, 1.4f, groundMask,
                 QueryTriggerInteraction.Ignore) && hit.collider != null && hit.transform.IsChildOf(root))
             {
                 string colliderName = hit.collider.name;
-                string region = SkyIslandStoryService.GroundRegionOf(colliderName);
+                region = SkyIslandStoryService.GroundRegionOf(colliderName);
                 // 生成器把桥与中继平台切成 COL_Ground_<桥 ID>，解析不出区域的地面就是桥。
                 onBridge = region == null && colliderName.StartsWith("COL_Ground_", StringComparison.Ordinal);
                 onBoardwalk = region == "E";
@@ -489,6 +539,10 @@ namespace BossRush
             int level = SkyIslandFieldcraftRules.CoreEased(gale, CarriesCore());
             // 灶火与风晶灯旁、驱风香什么风都挡；只有风灯时大风里只挡一半。
             SkyIslandWarmth warmth = SkyIslandFieldcraftRules.Warmth(NearFire(player.transform.position), incenseUntil > 0f, lanternUntil > 0f);
+            // 内容批次四：云蚋读同一次采样——环境风（噬风之核只改你身上的寒意、不改空气）、灶火的烟、点起来的风晶灯、驱风香与风灯。
+            if (gnats != null)
+                gnats.Sample(night, gale, region, player, incenseUntil > 0f, lanternUntil > 0f, NearHearth(player.transform.position),
+                    NearLamp(player.transform.position), elapsed);
             if (level > 0 && warmth == SkyIslandWarmth.None && !windExplained)
             {
                 windExplained = true;
@@ -542,10 +596,27 @@ namespace BossRush
         {
             if (!fireMarkers.Add(markerName)) return;
             Transform marker = root.Find(markerName);
-            if (marker == null) return;
+            if (marker == null)
+            {
+                // 锚点不在场景里（布局改名或场景包不对）就少一处火：说出来，别让「这里该有灶火」静默消失。
+                Debug.LogWarning("[SkyIslandFieldcraft] 灯的锚点不在场景里：" + markerName);
+                return;
+            }
+            bool hearth = Array.IndexOf(SkyIslandLights.HearthMarkers, markerName) >= 0;
             GameObject go = new GameObject("SkyIslandFire_" + markerName);
             go.transform.SetParent(root, false);
             go.transform.position = marker.position + Vector3.up * 1.2f;
+            if (hearth)
+            {
+                // 灶火看得见：火苗与烟生在装置旁的地面上，点光、取暖与驱蚋的判定一起挪过去（SkyIslandHearthFx）。风晶灯仍只是光。
+                try
+                {
+                    Vector3 spot = SkyIslandHearthFx.FindSpot(root, marker, groundMask);
+                    go.transform.position = spot + Vector3.up * 1.2f;
+                    SkyIslandHearthFx.Build(go.transform, spot);
+                }
+                catch (Exception e) { Debug.LogWarning("[SkyIslandFieldcraft] 灶火的火与烟没建起来：" + markerName + " " + e.Message); }
+            }
             Light light = go.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = color;
@@ -553,6 +624,8 @@ namespace BossRush
             light.intensity = fireNight == 1 ? 2.4f : 1f;
             light.shadows = LightShadows.None;
             fires.Add(light);
+            if (hearth) hearthFires.Add(light);
+            else lampFires.Add(light);
         }
 
         /// <summary>灯夜里更亮：只在昼夜切换时写一次光强（半路点起的灯按当时的昼夜建）。</summary>
@@ -567,11 +640,27 @@ namespace BossRush
 
         private bool NearFire(Vector3 position)
         {
-            float radius = SkyIslandFieldcraftRules.CampfireRadius;
-            for (int i = 0; i < fires.Count; i++)
+            return NearAny(fires, position, SkyIslandFieldcraftRules.CampfireRadius);
+        }
+
+        /// <summary>站在灶火的烟里（比取暖半径大一圈）：云蚋不刷、不近身。</summary>
+        private bool NearHearth(Vector3 position)
+        {
+            return NearAny(hearthFires, position, SkyIslandMosquitoRules.SmokeRadius);
+        }
+
+        /// <summary>点起来的风晶灯附近：光招云蚋。</summary>
+        private bool NearLamp(Vector3 position)
+        {
+            return NearAny(lampFires, position, SkyIslandMosquitoRules.LampRadius);
+        }
+
+        private static bool NearAny(List<Light> lights, Vector3 position, float radius)
+        {
+            for (int i = 0; i < lights.Count; i++)
             {
-                if (fires[i] == null) continue;
-                Vector3 delta = fires[i].transform.position - position;
+                if (lights[i] == null) continue;
+                Vector3 delta = lights[i].transform.position - position;
                 delta.y = 0f;
                 if (delta.sqrMagnitude <= radius * radius) return true;
             }
@@ -607,9 +696,13 @@ namespace BossRush
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandFieldcraft] 摘除本趟增益失败：" + e.Message); }
             DestroyLantern();
+            // 蚊群先收：它的痒 Modifier、灭蚊灯与嗡声都是本趟的。
+            if (gnats != null) gnats.Dispose();
             for (int i = 0; i < fires.Count; i++)
                 if (fires[i] != null) UnityEngine.Object.Destroy(fires[i].gameObject);
             fires.Clear();
+            hearthFires.Clear();
+            lampFires.Clear();
             fireMarkers.Clear();
             Debug.Log("[SkyIslandFieldcraft] CLOSE gathered=" + gathering.HarvestedCount + "/" + gathering.PlacedCount);
             gathering.Dispose();

@@ -63,5 +63,11 @@ namespace BossRush
         public const int SkyIslandWindwardIncense = 500081;
         /// <summary>晴岚护符：局内耗材，本趟出击生命上限与耐力恢复小幅提升。</summary>
         public const int SkyIslandQinglanCharm = 500082;
+        /// <summary>云苔纱笠：内容批次四，放在背包里上岛，夜里的云蚋难贴身。</summary>
+        public const int SkyIslandCloudmossVeil = 500083;
+        /// <summary>风晶灭蚊灯：内容批次四，局内耗材，放下后把附近的云蚋引过去电落。</summary>
+        public const int SkyIslandGnatZapper = 500084;
+        /// <summary>药烟蒲扇：内容批次四，岛上的工具，扇落贴脸的云蚋（使用不消耗）。</summary>
+        public const int SkyIslandSmokeFan = 500085;
     }
 }

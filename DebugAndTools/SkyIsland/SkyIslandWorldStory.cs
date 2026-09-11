@@ -161,6 +161,9 @@ namespace BossRush
                 // 眠苔的药臼：她不是永久居民，但生成可能失败；悬根林的见闻点就在她站位旁 14 米，给药臼一个兜底。
                 case "Search_D_02": CraftChoice(choices, SkyIslandCraftStation.Mortar); break;
                 case "Search_F": ZhelingChoices(choices); break;
+                // 内容批次四：镜水寺池边夜里捧蛙卵，这一趟里带回蛙鸣池放生（SkyIslandGnats；放生写进本槽手记）。
+                case "Search_F_02": SpawnChoice(choices); break;
+                case "Search_S1": ReleaseChoice(choices); break;
             }
             // 七处装置各缺一盏风晶灯（信里的请求）：亮了就不再挂这一项。
             LightChoice(choices, key);
@@ -667,6 +670,38 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 内容批次四「蛙鸣池复蛙」：镜水寺池边（见闻 F_02）夜里捧一团蛙卵（用掉一把云苔纤维），这一趟里带回蛙鸣池（S1）放生。
+        /// 每放一团写进本槽手记（`Frog_n`），近水的云蚋永久少一档；放满三团之后来信、名册与居民台词都有回音。白天也挂着，按钮写明要等夜里。
+        /// </summary>
+        private void SpawnChoice(List<SkyIslandStoryPresentation.Choice> choices)
+        {
+            SkyIslandGnats swarm = fieldcraft != null ? fieldcraft.Gnats : null;
+            if (swarm == null || !swarm.Usable || swarm.CarryingSpawn || SkyIslandMosquitoRules.FrogsComplete(story.Current)) return;
+            int fiber = fieldcraft.CountInPack(BossRushItemIds.SkyIslandCloudmossFiber);
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                SkyIslandMosquitoRules.SpawnChoice(swarm.NightNow, fiber, SkyIslandMosquitoRules.FrogsReleased(story.Current)), delegate
+                {
+                    string message;
+                    bool taken = swarm.TakeSpawn(out message);
+                    return Refreshed(taken, message);
+                }));
+        }
+
+        /// <summary>蛙鸣池边「把蛙卵放回去」：只在这一趟捧着蛙卵时挂出；先记手记再放下（写屏障下这趟放不下，蛙卵还捧在手里）。</summary>
+        private void ReleaseChoice(List<SkyIslandStoryPresentation.Choice> choices)
+        {
+            SkyIslandGnats swarm = fieldcraft != null ? fieldcraft.Gnats : null;
+            if (swarm == null || !swarm.CarryingSpawn) return;
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                SkyIslandMosquitoRules.ReleaseChoice(SkyIslandMosquitoRules.FrogsReleased(story.Current)), delegate
+                {
+                    string message;
+                    bool released = swarm.ReleaseSpawn(out message);
+                    return Refreshed(released, message);
+                }));
+        }
+
+        /// <summary>
         /// 合成面板：本站的配方（每站至多 4 条；面板布局属性测试按最坏 6 条复算），按钮上写着「背包里有几件 / 要几件」。
         /// 做成了就重开面板刷新件数；材料不够只回话、不重开。面板同样过战斗门。
         /// </summary>
@@ -818,6 +853,14 @@ namespace BossRush
                 Vector3 toPigeon = pigeon.transform.position - from;
                 return SkyIslandItemRules.CompassReading(true, toPigeon.x, toPigeon.z, L10n.T("信鸽落脚的地方", "where the pigeon landed"));
             }
+            // 内容批次四：捧着蛙卵时先指蛙鸣池——这一趟里送到才算数。
+            SkyIslandGnats swarm = fieldcraft != null ? fieldcraft.Gnats : null;
+            Transform pool = swarm != null && swarm.CarryingSpawn ? root.transform.Find("Search_S1") : null;
+            if (pool != null)
+            {
+                Vector3 toPool = pool.position - from;
+                return SkyIslandItemRules.CompassReading(true, toPool.x, toPool.z, L10n.T("蛙鸣池（把蛙卵放回去）", "Frogsong Pool (release the frogspawn)"));
+            }
             string what = L10n.T("当前目标", "your current objective");
             Transform target = NearestMarker(SkyIslandMapMarkers.ObjectiveTargets(story.Current), from);
             if (target == null)
@@ -936,8 +979,8 @@ namespace BossRush
                     "栏杆上新刻了一排记号，像是有人在数日子：『两盏灯都亮的那一夜，风从云海底下翻了上来。它收拢风眼之前，脚下先亮一圈光——看见光就往圈外跑，跑不出去就躲到石头后面。』",
                     "A fresh row of notches runs along the rail, as if someone were counting the days: 'The night both lamps were lit, the wind climbed up out of the cloud sea. Before it draws its eye shut, a ring of light shows at its feet. See the light, run out of the ring — or get behind solid rock.'");
                 case "Search_F_02": return L10n.T(
-                    "池底压着一张被水泡软的拓本，只看得清半条航线，终点圈着「听雨洞」。另一半在折翎手里——他说旧信和航路图都齐了，才肯坐下来谈。",
-                    "A water-softened rubbing is weighted down at the bottom of the pool. Only half a route is legible, ending in a circle marked 'Rainlisten Grotto'. Zheling holds the other half; he will only sit down and talk once the old letter and the route chart are both on the table.");
+                    "池底压着一张被水泡软的拓本，只看得清半条航线，终点圈着「听雨洞」。另一半在折翎手里——他说旧信和航路图都齐了，才肯坐下来谈。池边的石缝里挂着一团团蛙卵：风灾那年，蛙鸣池的青蛙逃到了这里。",
+                    "A water-softened rubbing is weighted down at the bottom of the pool. Only half a route is legible, ending in a circle marked 'Rainlisten Grotto'. Zheling holds the other half; he will only sit down and talk once the old letter and the route chart are both on the table. Clumps of frogspawn cling between the stones at the edge: the year of the storm, the frogs of Frogsong Pool fled here.");
                 case "Search_G_02": return L10n.T(
                     "检修日志的最后一页：『观星镜的镜片偏了三格，残星瞭台上来了一伙人，谁也上不去。等把他们清走，照着星灯的方向校准就行。』",
                     "The last page of the maintenance log: 'The telescope lens has drifted three notches, and a gang has taken over the Starfall Overlook, so nobody can get up there. Once they are cleared out, align it with the star lamp.'");

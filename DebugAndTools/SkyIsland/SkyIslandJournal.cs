@@ -77,42 +77,44 @@ namespace BossRush
             text.Append(RegionsVisited(data)).Append("/12");
             text.Append(L10n.T(" · 岛上的灯 ", " · lights on the isles "));
             text.Append(SkyIslandLights.LitCount(data)).Append('/').Append(SkyIslandLights.Target);
+            // 内容批次四：放回蛙鸣池的蛙卵（写在本槽手记里的 Frog_1..3）。
+            text.Append(SkyIslandMosquitoRules.FrogProgress(data));
             if (!string.IsNullOrEmpty(summary)) text.Append("\n\n").Append(summary);
             if (NotesComplete(data)) text.Append("\n\n").Append(Epilogue);
             return text.ToString();
         }
 
         /// <summary>
-        /// 「群岛之物」：十五件天空岛物品在岛上各拿来做什么。采集、合成、剧情、风晶灯与夜风怎么串在一起，就看这一页；
+        /// 「群岛之物」：十八件天空岛物品在岛上各拿来做什么。采集、合成、剧情、风晶灯、夜风与云蚋怎么串在一起，就看这一页；
         /// 会影响选择的两个数（护符减伤、航徽折扣）取规则常量，不另写一份。
         /// </summary>
         internal static string Uses()
         {
             var text = new StringBuilder(L10n.T("群岛之物 · 用处", "What things on the isles are for"));
-            Use(text, BossRushItemIds.SkyIslandGreenearSheaf, L10n.T("归航菜便当、驱风香", "homecoming bentos, windward incense"));
-            Use(text, BossRushItemIds.SkyIslandDriftwood, L10n.T("风灯、便当的柴；栈道、镜水寺、邮亭与听雨洞的风晶灯",
-                "wind lanterns, bento firewood; the windcrystal lamps on the boardwalk, at the temple, in the post hut and at the grotto"));
-            Use(text, BossRushItemIds.SkyIslandCloudmossFiber, L10n.T("风灯、驱风香、星苔药膏；栈道与邮亭的风晶灯",
-                "wind lanterns, windward incense, starmoss salve; the boardwalk and post hut lamps"));
-            Use(text, BossRushItemIds.SkyIslandBrassScrap, L10n.T("晴岚护符、风标罗盘；工坊、钟庭与听雨洞的风晶灯",
-                "Qinglan charms, wind-vane compasses; the workshop, Bell Court and grotto lamps"));
+            Use(text, BossRushItemIds.SkyIslandGreenearSheaf, L10n.T("归航菜便当、驱风香、药烟蒲扇", "homecoming bentos, windward incense, the remedy-smoke fan"));
+            Use(text, BossRushItemIds.SkyIslandDriftwood, L10n.T("风灯、便当的柴、蒲扇的柄；栈道、镜水寺、邮亭与听雨洞的风晶灯",
+                "wind lanterns, bento firewood, the fan's handle; the windcrystal lamps on the boardwalk, at the temple, in the post hut and at the grotto"));
+            Use(text, BossRushItemIds.SkyIslandCloudmossFiber, L10n.T("风灯、驱风香、星苔药膏、云苔纱笠，夜里包蛙卵；栈道与邮亭的风晶灯",
+                "wind lanterns, windward incense, starmoss salve, the cloudmoss veil, wrapping frogspawn at night; the boardwalk and post hut lamps"));
+            Use(text, BossRushItemIds.SkyIslandBrassScrap, L10n.T("晴岚护符、风标罗盘、风晶灭蚊灯的罩；工坊、钟庭与听雨洞的风晶灯",
+                "Qinglan charms, wind-vane compasses, the gnat zapper's cage; the workshop, Bell Court and grotto lamps"));
             Use(text, BossRushItemIds.SkyIslandWindcrystalShard, L10n.T("五片熔成晴岚风晶（星灯亮起之后）；护符、药膏、罗盘也要",
                 "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too"));
-            Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、残星瞭台的风晶灯；夜里风晶簇更容易出",
-                "Qinglan charms and the Starfall Overlook lamp; clusters yield more at night"));
-            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("七盏风晶灯的灯芯：灯旁暖和，岛上的灯凑满十盏之后夜里不再起风",
-                "the wick of the seven windcrystal lamps: warm beside them, and with ten lights on the isles the nights stop blowing"));
-            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风里挡一半、夜里照明；钟庭的风晶灯要挂一盏",
-                "holds off a breeze and half of a gale, lights the night; the Bell Court lamp hangs one"));
-            Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("什么风都挡得住、耐力恢复加快；镜水寺的风晶灯要焚一炷",
-                "holds off any wind and speeds stamina; the Mirrorwater Temple lamp burns one"));
+            Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、云苔纱笠、残星瞭台的风晶灯；夜里风晶簇更容易出",
+                "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night"));
+            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("七盏风晶灯与灭蚊灯的灯芯：灯旁暖和，岛上的灯凑满十盏之后夜里不再起风",
+                "the wick of the seven windcrystal lamps and of the gnat zapper: warm beside them, and with ten lights on the isles the nights stop blowing"));
+            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风里挡一半、夜里照明——光招云蚋，可灯下它们晃了眼、躲不开枪口；钟庭的风晶灯要挂一盏",
+                "holds off a breeze and half of a gale, lights the night — its light draws cloud gnats, but dazzled they cannot dodge your aim; the Bell Court lamp hangs one"));
+            Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("什么风都挡得住、耐力恢复加快，烟能赶开云蚋；镜水寺的风晶灯要焚一炷",
+                "holds off any wind and speeds stamina, and its smoke drives off cloud gnats; the Mirrorwater Temple lamp burns one"));
             Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风的风暴伤害 −{0}%，生命上限与耐力恢复小幅提升",
                 "{0}% less damage from the Windeater's storm this raid, a little more max health and stamina recovery"),
                 Percent(SkyIslandFieldcraftRules.CharmStormWard)));
             Use(text, BossRushItemIds.SkyIslandHomecomingBento, L10n.T("菜畦重新开张之后在岛上吃，算作晴禾的归航菜",
                 "once the garden has reopened, eaten on the isles it counts as Qinghe's homecoming meal"));
-            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血",
-                "heals without paying Miantai or waiting on her remedy"));
+            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血；止云蚋的痒，这一阵叮上也不痒（苔药管伤，药膏管痒）",
+                "heals without paying Miantai or waiting on her remedy; stops gnat itching, and new bites will not itch for a while (the remedy is for wounds, the salve for itching)"));
             Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("指信鸽、目标、支线；都没有了就指还缺灯的地方或风晶簇",
                 "points to pigeons, objectives and side paths; after that, to a place missing its lamp or a wind crystal cluster"));
             Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",
@@ -120,6 +122,12 @@ namespace BossRush
                 Percent(SkyIslandItemRules.BadgeServiceRate)));
             Use(text, BossRushItemIds.SkyIslandWindeaterCore, L10n.T("带在身上：大风对你只算微风",
                 "carried: a gale only counts as a breeze for you"));
+            Use(text, BossRushItemIds.SkyIslandCloudmossVeil, L10n.T("带在身上：云蚋只能在一米外打转，叮咬慢约三倍",
+                "carried: cloud gnats can only circle a metre off, and bite about three times less often"));
+            Use(text, BossRushItemIds.SkyIslandGnatZapper, L10n.T("放在地上约 5 分钟：把附近的云蚋引过去电落（守一片地方）",
+                "set down for about 5 minutes: draws nearby cloud gnats in and zaps them (holds an area)"));
+            Use(text, BossRushItemIds.SkyIslandSmokeFan, L10n.T("扇一下：扑落面前贴脸的云蚋、扇退远一点的（近身、瞬时，不消耗）",
+                "one sweep: knocks down the gnats on your face and blows back the ones further off (close and instant, not consumed)"));
             return text.ToString();
         }
 
@@ -167,7 +175,13 @@ namespace BossRush
             {
                 if (i > 0) text.Append("\n\n");
                 if (SkyIslandLetters.Collected(data, all[i].Id))
+                {
                     text.Append("■ ").Append(all[i].Title).Append('\n').Append(all[i].Body);
+                    // 内容批次四：三团蛙卵都放回了蛙鸣池，那封写给池子里青蛙的信有了回音。
+                    if (all[i].Id == "Letter_04" && SkyIslandMosquitoRules.FrogsComplete(data))
+                        text.Append(L10n.T("\n（蛙鸣池又有蛙叫了。池子里的青蛙会替那个孩子数灯。）",
+                            "\n(Frogsong Pool croaks again. The frogs in the pool will count the lights for that child.)"));
+                }
                 else
                     text.Append("□ ").Append(L10n.T("第 ", "Letter ")).Append(i + 1)
                         .Append(L10n.T(" 封（尚未收到）", " (not yet received)"));

@@ -449,8 +449,8 @@ internal static class Program
         Check(SkyIslandJournal.RegionsVisited(new SkyIslandStoryData { visitedRegions = 4095 }) == 12, "all twelve regions counted");
 
         // ---- 批次二：天空岛物品规则（纪念品台账、岛上特产、罗盘读数） ----
-        Check(SkyIslandItemRules.AllTypeIds.Length == 15 && SkyIslandItemRules.AllTypeIds[0] == 500068
-            && SkyIslandItemRules.AllTypeIds[14] == 500082, "sky island items occupy 500068-500082 (batch two + batch three)");
+        Check(SkyIslandItemRules.AllTypeIds.Length == 18 && SkyIslandItemRules.AllTypeIds[0] == 500068
+            && SkyIslandItemRules.AllTypeIds[17] == 500085, "sky island items occupy 500068-500085 (batches two, three and four)");
         for (int i = 1; i < SkyIslandItemRules.AllTypeIds.Length; i++)
             Check(SkyIslandItemRules.AllTypeIds[i] == SkyIslandItemRules.AllTypeIds[i - 1] + 1, "sky island item ids are contiguous: " + i);
         foreach (int typeId in SkyIslandItemRules.AllTypeIds)
@@ -606,7 +606,7 @@ internal static class Program
             Check(SkyIslandItemRules.ValueOf(typeId) > 0, "every sky island item has a value: " + typeId);
 
         // ---- 批次三：配方 ----
-        Check(SkyIslandFieldcraftRules.Recipes.Length == 8, "eight recipes");
+        Check(SkyIslandFieldcraftRules.Recipes.Length == 11, "eleven recipes (batch three's eight plus the veil, the zapper and the fan)");
         var recipeIds = new HashSet<string>(StringComparer.Ordinal);
         var skyItems = new HashSet<int>(SkyIslandItemRules.AllTypeIds);
         foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
@@ -622,7 +622,8 @@ internal static class Program
         foreach (SkyIslandCraftStation station in new[] { SkyIslandCraftStation.Dock, SkyIslandCraftStation.Stove, SkyIslandCraftStation.Mortar })
         {
             int stationRecipes = SkyIslandFieldcraftRules.RecipesFor(station).Count;
-            Check(stationRecipes >= 2 && stationRecipes <= 4, "each station fits in one panel page: " + station);
+            // 批次四给渡口工台加了灭蚊灯（5 条）。合成面板上只有配方按钮，面板布局属性测试按最坏 6 个选项复算。
+            Check(stationRecipes >= 2 && stationRecipes <= 5, "each station fits in one panel page: " + station);
         }
         // 每件批次三物品都拿得到：从采集点能出的出发，按配方做不动点闭包。
         var obtainable = new HashSet<int>();
@@ -644,6 +645,8 @@ internal static class Program
         }
         for (int typeId = BossRushItemIds.SkyIslandCloudmossFiber; typeId <= BossRushItemIds.SkyIslandQinglanCharm; typeId++)
             Check(obtainable.Contains(typeId), "every batch-three item has a way to get it: " + typeId);
+        for (int typeId = BossRushItemIds.SkyIslandCloudmossVeil; typeId <= BossRushItemIds.SkyIslandSmokeFan; typeId++)
+            Check(obtainable.Contains(typeId), "every batch-four gnat counter has a way to get it: " + typeId);
         SkyIslandRecipe lanternRecipe = SkyIslandFieldcraftRules.FindRecipe("Lantern");
         var pack = new Dictionary<int, int> { { BossRushItemIds.SkyIslandDriftwood, 1 }, { BossRushItemIds.SkyIslandCloudmossFiber, 5 } };
         Func<int, int> countInPack = id => { int have; return pack.TryGetValue(id, out have) ? have : 0; };
@@ -665,9 +668,16 @@ internal static class Program
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandQinglanCharm) == SkyIslandFieldBuff.Charm
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandHomecomingBento) == SkyIslandFieldBuff.Meal
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossFiber) == SkyIslandFieldBuff.None, "consumables map to their effects");
+        Check(SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandGnatZapper) == SkyIslandFieldBuff.Zapper
+            && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandSmokeFan) == SkyIslandFieldBuff.Fan
+            && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossVeil) == SkyIslandFieldBuff.None
+            && SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Soothe).Length > 0, "the zapper and the fan are used on the isles; the veil only has to be carried");
         Check(SkyIslandFieldcraftRules.IsNight(21) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
             && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(20.99)
             && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 21:00 to 05:00");
+        // 内容批次四：判夜收成一个口径（SkyIslandNight），夜风的入口只是转交，逐点一致。
+        for (double hour = -3; hour <= 27; hour += 0.125)
+            Check(SkyIslandFieldcraftRules.IsNight(hour) == SkyIslandNight.IsNight(hour), "wind night follows the one night rule: " + hour);
         Check(SkyIslandFieldcraftRules.WindLevel(false, false, false, false) == 0 && SkyIslandFieldcraftRules.WindLevel(true, false, false, false) == 1
             && SkyIslandFieldcraftRules.WindLevel(false, true, false, false) == 1 && SkyIslandFieldcraftRules.WindLevel(true, true, false, false) == 2
             && SkyIslandFieldcraftRules.WindLevel(false, false, true, false) == 0 && SkyIslandFieldcraftRules.WindLevel(false, false, true, true) == 1
@@ -737,18 +747,19 @@ internal static class Program
         int gatedRecipes = 0;
         foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
         {
-            bool gated = recipe.RequiresFlag != SkyIslandStoryFlag.None || recipe.RequiresNote != null;
+            bool gated = recipe.RequiresFlag != SkyIslandStoryFlag.None || recipe.RequiresNote != null || recipe.RequiresLamps > 0;
             if (gated) gatedRecipes++;
             Check(SkyIslandFieldcraftRules.Unlocked(recipe, fresh) == !gated && SkyIslandFieldcraftRules.Unlocked(recipe, null) == !gated,
                 "a new save knows exactly the ungated recipes: " + recipe.Id);
             Check(((int)recipe.RequiresFlag & ~SkyIslandStoryRules.KnownFlags) == 0
-                && (recipe.RequiresNote == null || SkyIslandItemRules.FindKeepsake(recipe.RequiresNote) != null),
-                "every recipe gate is a real story flag or a registered keepsake: " + recipe.Id);
+                && (recipe.RequiresNote == null || SkyIslandItemRules.FindKeepsake(recipe.RequiresNote) != null)
+                && recipe.RequiresLamps >= 0 && recipe.RequiresLamps <= SkyIslandLights.All.Length,
+                "every recipe gate is a real story flag, a registered keepsake or a reachable lamp count: " + recipe.Id);
             Check(SkyIslandFieldcraftRules.LockedLabel(recipe).Contains(SkyIslandItemRules.NameCn(recipe.OutputTypeId))
                 && SkyIslandFieldcraftRules.UnlockHint(recipe).Length > 0 && SkyIslandFieldcraftRules.LockedMessage(recipe).Length > 0,
                 "a locked recipe names its item and says when: " + recipe.Id);
         }
-        Check(gatedRecipes == 3 && bentoRecipe.RequiresFlag == SkyIslandStoryFlag.PlantingDelivered
+        Check(gatedRecipes == 4 && bentoRecipe.RequiresFlag == SkyIslandStoryFlag.PlantingDelivered
             && fuseRecipe.RequiresFlag == SkyIslandStoryFlag.StarLamp && compassRecipe.RequiresNote == SkyIslandItemRules.CompassKeepsake,
             "the bento waits for the planting record, the windcrystal for the star lamp, the compass for the first one");
         SkyIslandStoryData planted = fresh.Copy();
@@ -761,6 +772,21 @@ internal static class Program
             && SkyIslandFieldcraftRules.Unlocked(fuseRecipe, lampLit) && !SkyIslandFieldcraftRules.Unlocked(bentoRecipe, lampLit)
             && SkyIslandFieldcraftRules.Unlocked(compassRecipe, compassHeld) && !SkyIslandFieldcraftRules.Unlocked(compassRecipe, peaceful),
             "each gate opens its own recipe only");
+        // 内容批次四：灭蚊灯要等岛上亮起两盏风晶灯（苇白要听清灯芯的调子）；纱笠与蒲扇是早期对策，一开始就会。
+        SkyIslandRecipe zapperRecipe = SkyIslandFieldcraftRules.FindRecipe("Zapper");
+        SkyIslandRecipe veilRecipe = SkyIslandFieldcraftRules.FindRecipe("Veil");
+        SkyIslandRecipe fanRecipe = SkyIslandFieldcraftRules.FindRecipe("Fan");
+        SkyIslandStoryData oneLamp = fresh.Copy();
+        oneLamp.discoveredNotes = new[] { "Light_E" };
+        SkyIslandStoryData twoLamps = fresh.Copy();
+        twoLamps.discoveredNotes = new[] { "Light_E", "Light_G" };
+        Check(zapperRecipe != null && zapperRecipe.Station == SkyIslandCraftStation.Dock && zapperRecipe.RequiresLamps == 2 && zapperRecipe.OutputCount == 2
+            && !SkyIslandFieldcraftRules.Unlocked(zapperRecipe, fresh) && !SkyIslandFieldcraftRules.Unlocked(zapperRecipe, oneLamp)
+            && SkyIslandFieldcraftRules.Unlocked(zapperRecipe, twoLamps) && SkyIslandFieldcraftRules.UnlockHint(zapperRecipe).Contains("2"),
+            "the gnat zapper waits for two lit windcrystal lamps and says so");
+        Check(veilRecipe != null && veilRecipe.Station == SkyIslandCraftStation.Stove && fanRecipe != null && fanRecipe.Station == SkyIslandCraftStation.Mortar
+            && SkyIslandFieldcraftRules.Unlocked(veilRecipe, fresh) && SkyIslandFieldcraftRules.Unlocked(fanRecipe, fresh),
+            "the veil is Qinghe's and the fan is Miantai's, both known from the start");
 
         // ---- 串联：三层风，三件耗材各挡一层 ----
         Check(SkyIslandFieldcraftRules.Warmth(true, false, false) == SkyIslandWarmth.Shelter && SkyIslandFieldcraftRules.Warmth(false, true, true) == SkyIslandWarmth.Shelter
@@ -882,7 +908,8 @@ internal static class Program
         Check(consumedBySomething.Contains(BossRushItemIds.SkyIslandWindLantern) && consumedBySomething.Contains(BossRushItemIds.SkyIslandWindwardIncense),
             "crafted lanterns and incense also feed the lamps");
         foreach (int typeId in new[] { BossRushItemIds.SkyIslandWindLantern, BossRushItemIds.SkyIslandWindwardIncense,
-            BossRushItemIds.SkyIslandQinglanCharm, BossRushItemIds.SkyIslandHomecomingBento })
+            BossRushItemIds.SkyIslandQinglanCharm, BossRushItemIds.SkyIslandHomecomingBento, BossRushItemIds.SkyIslandGnatZapper,
+            BossRushItemIds.SkyIslandSmokeFan })
             Check(SkyIslandFieldcraftRules.BuffFor(typeId) != SkyIslandFieldBuff.None, "island consumables do something on the isles: " + typeId);
         var sources = new HashSet<int>(obtainable);
         foreach (SkyIslandKeepsake keepsake in SkyIslandItemRules.Keepsakes) sources.Add(keepsake.TypeId);
@@ -912,6 +939,47 @@ internal static class Program
         story.Close();
         Check(SavesSystem.Subscribers == 0, "lamp sessions released events");
 
+        // ---- 内容批次四：云蚋——放生的蛙卵经剧情服务写进本槽手记，居民、名册与手记都有回音 ----
+        story = Open(13);
+        Check(story.DescribeNpc("sky_qinghe").Contains("纱笠") && !story.DescribeNpc("sky_qinghe").Contains("蛙叫"),
+            "Qinghe talks about her veil before any frogs are back");
+        Check(!story.RecordNote("Frog_4", out noteMessage) && story.RecordNote("Frog_1", out noteMessage)
+            && SkyIslandMosquitoRules.FrogsReleased(story.Current) == 1, "frogspawn notes are registered journal ids; unknown ones never reach the save");
+        Check(story.DescribeNpc("sky_qinghe").Contains("蛙卵"), "Qinghe hears that someone brought frogspawn back");
+        Check(story.RecordNote("Frog_2", out noteMessage) && story.RecordNote("Frog_3", out noteMessage) && SkyIslandMosquitoRules.FrogsComplete(story.Current)
+            && !story.RecordNote("Frog_3", out noteMessage), "three clutches fill the pool, each recorded once");
+        Check(story.DescribeNpc("sky_qinghe").Contains("蛙叫") && SkyIslandJournal.Overview(story.Current, null).Contains("蛙鸣池的蛙 3/3"),
+            "the garden and the journal notice the frogs");
+        Check(story.DescribeNpc("sky_weibai").IndexOf("灭蚊灯", StringComparison.Ordinal) < 0, "Weibai says nothing about zappers before any lamp is lit");
+        Check(story.RecordNote("Light_E", out noteMessage) && story.DescribeNpc("sky_weibai").Contains("再亮一盏"), "one lamp and Weibai is listening for the tune");
+        Check(story.RecordNote("Light_G", out noteMessage) && story.DescribeNpc("sky_weibai").Contains("灭蚊灯的调子"), "two lamps and she hands the zapper to Fuzhou");
+        Check(story.TryClose(), "frog and lamp writes flush on close");
+        story = Open(13);
+        Check(SkyIslandMosquitoRules.FrogsComplete(story.Current) && SkyIslandLights.LampsLit(story.Current) == 2
+            && SkyIslandLetters.CollectedCount(story.Current) == 0 && SkyIslandCrew.ReadCount(story.Current) == 0,
+            "frogs survive re-entry and are not mistaken for lamps, letters or crew pages");
+        story.Close();
+        story = Open(14);
+        Apply(story, SkyIslandStoryAction.FindOldLetter);
+        Apply(story, SkyIslandStoryAction.FindRouteChart);
+        Apply(story, SkyIslandStoryAction.ReconcileZheling);
+        Check(story.DescribeNpc("sky_zheling").Contains("捧一团蛙卵"), "reconciled Zheling points you to the frogspawn in the temple pool");
+        Check(story.RecordNote("Frog_1", out noteMessage) && story.RecordNote("Frog_2", out noteMessage) && story.RecordNote("Frog_3", out noteMessage)
+            && story.DescribeNpc("sky_zheling").Contains("回蛙鸣池去了"), "and notices when they have all gone home");
+        story.Close();
+        Check(SavesSystem.Subscribers == 0, "frog sessions released events");
+        SkyIslandStoryData frogsHome = crewAllLit.Copy();
+        var frogNotes = new List<string>(frogsHome.discoveredNotes) { "Frog_1", "Frog_2", "Frog_3" };
+        if (!frogNotes.Contains("Letter_04")) frogNotes.Add("Letter_04");
+        frogsHome.discoveredNotes = frogNotes.ToArray();
+        Check(SkyIslandCrew.Page(3, frogsHome).Contains("蛙鸣池又有蛙叫") && !SkyIslandCrew.Page(3, crewAllLit).Contains("蛙鸣池又有蛙叫"),
+            "the ship's doctor notices the frogs are back");
+        Check(SkyIslandJournal.Letters(frogsHome).Contains("池子里的青蛙会替那个孩子数灯") && !SkyIslandJournal.Letters(mail).Contains("池子里的青蛙会替那个孩子数灯"),
+            "the letter to the frogs in the pool gets its answer only once the pool is full");
+        Check(SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(frogsHome)) != null
+            && SkyIslandJournal.NoteCount + SkyIslandLetters.Count + SkyIslandCrew.Count + SkyIslandItemRules.Keepsakes.Length + lamps.Length
+               + SkyIslandMosquitoRules.FrogTarget <= 256, "frog notes fit the journal codec");
+
         // ---- 批次三：英文界面没有残留中文 ----
         L10n.IsChinese = false;
         string englishThree = SkyIslandFieldcraftRules.PackSummary(countInPack) + SkyIslandFieldcraftRules.PackSummary(null)
@@ -933,7 +1001,11 @@ internal static class Program
             + SkyIslandCrew.Page(0, crewAllLit) + SkyIslandCrew.Page(1, workshopLit) + SkyIslandCrew.Page(2, workshopLit) + SkyIslandCrew.Page(3, workshopLit)
             + SkyIslandItemRules.BadgeDiscountNote + SkyIslandJournal.Overview(allLit, null)
             + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Recall) + SkyIslandFieldcraftRules.RecallArrived + SkyIslandFieldcraftRules.RecallSpent
-            + SkyIslandFieldcraftRules.RecallNotReady + SkyIslandFieldcraftRules.RecallFailed;
+            + SkyIslandFieldcraftRules.RecallNotReady + SkyIslandFieldcraftRules.RecallFailed
+            // 内容批次四：三件对策的使用说明、船医与信的回音。
+            + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Zapper) + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Fan)
+            + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Soothe) + SkyIslandCrew.Page(3, frogsHome) + SkyIslandJournal.Letters(frogsHome)
+            + SkyIslandJournal.Overview(frogsHome, null);
         foreach (SkyIslandLight light in lamps) englishThree += light.LitLine;
         for (int i = 0; i < SkyIslandLights.HearthMarkers.Length; i++) englishThree += SkyIslandLights.HearthName(i);
         foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
@@ -942,6 +1014,10 @@ internal static class Program
         englishThree += SkyIslandFieldcraftRules.HarvestCaption(firstRoll, SkyIslandFieldcraftRules.StoryBonusReason(SkyIslandFieldcraftRules.FindNode("E1"), restored));
         L10n.IsChinese = true;
         Check(!ContainsCjk(englishThree), "batch-three text has an English half everywhere");
+
+        // ---- 内容批次四：云蚋的纯规则与躲闪离线模拟（生产 SkyIslandMosquitoRules / SkyIslandGnatMotor 原样执行） ----
+        SkyIslandMosquitoRegression.Run(Check);
+        SkyIslandGnatDodgeSimulation.Run(Check);
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

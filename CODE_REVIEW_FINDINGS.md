@@ -2,6 +2,16 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-11 天空岛内容批次四「云蚋」：接判夜与灶火时确认并修掉的既有缺陷 1 P2 + 1 P3（Fixed）
+
+随内容批次四（夜里的蚊群「云蚋」，见 `FIX_TRACKER.md` 同日条目）把判夜收成一处、给灶火做看得见的火与烟时确认的**既有**问题（批次三 2026-09-11 引入）。
+证据 L1（读代码与反编译源）+ L2（守卫与执行回归），**无实机**。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-11-002 | P2 / COMPAT（玩法） | **判夜两份口径，且没有官方时钟实例时整趟判成夜里**。光照 `SkyIslandLighting.Tick` 把 `GameClock.TimeOfDay.TotalHours` 直接交给 `ResolveTimeBlend`（`hours < 5 \|\| hours >= 21` 走星夜整档），夜风 `SkyIslandFieldcraft.IsNight` 另读一次交给 `SkyIslandFieldcraftRules.IsNight`（又写一份 21 / 5）。反编译源 `GameClock.cs` 的 `TimeOfDay` 由 `SecondsOfDay` 算出，**没有实例时恒为 00:00 而不抛异常**：两处都判成夜里——光照整趟星夜、夜风整趟起风，`IsNight` 外面那层 `try/catch`（注释写着「取不到官方时钟就按白天算」）兜不住。两份 21–5 各自维护，云蚋再抄第三份就会出现「天黑了、风没起、蚊子却来了」。 | **Fixed（待实机）**。新纯逻辑 `DebugAndTools/SkyIsland/SkyIslandNight.cs`：`IsNight(hours)`（非有限值不算夜里）与 `EffectiveHours(clockAvailable, clockHours)`（没有实例 → NaN）；运行时读钟只剩 `SkyIslandLighting.ClockHours()` 一处，光照、夜风、云蚋与蛙卵都经它判夜；Dev 构建另有 F3「强制夜里」（`#if BOSSRUSH_DEV`，只改本 Mod 读数，模块销毁复位）。不用官方 `TimeOfDayController.AtNight`（19–5 点，与岛上的光和风差两小时）。守卫 `SkyIslandMosquitoGuard` §1 钉住唯一读钟点、NaN 判定、全岛源码不出现 `AtNight`、开关只在 Dev 区块里写；执行回归 `SkyIslandLighting`（逐小时光照档与判夜一致、没有时钟回退晴昼、强制夜里与复位）与 `SkyIslandStory`（非有限值不算夜里）；反向探针见 `FIX_TRACKER.md` 同日条目。**实机没确认天空岛场景里到底有没有 `GameClock` 实例**：有实例时，除两份口径合一外行为与原来相同 |
+| CR-2026-09-11-003 | P3 / COMPAT（表现） | **灶火锚点缺失时静默少一处火，而且灶火本身看不出是火**。`SkyIslandFieldcraft.AddFire` 找不到标记（布局改名或场景包不对）直接 `return`，那处的光与取暖一起消失、日志里没有一行；找得到时也只有一盏点光，走近看不出「这里生着火」——内容批次四要拿灶火的烟当云蚋的安全区，玩家得看得出烟在哪。 | **Fixed（待实机）**。锚点缺失打 `LogWarning`；三处灶火经新 `SkyIslandHearthFx` 在装置旁 2.4 m 生火苗与烟（落点复用经过几何回归的 `SkyIslandRewardCrate.TryFindCratePosition`，共享程序化粒子材质，不带碰撞体、不新增交互体），点光、取暖与驱蚋判定一并挪到火上；灶火与风晶灯分表（`hearthFires` 判烟 / `lampFires` 判招蚋）。守卫 `SkyIslandMosquitoGuard` §6 钉住警告、建火顺序与分表。火堆落点与烟的观感列在待人工验证清单 2.13.9 |
+
 ## 2026-09-11 天空岛内容批次三：顺带确认的既有经济风险 1 P1（Fixed，同日 owner 授权拍板后修）
 
 随内容批次三（采集点 / 群岛材料 / 合成台 / 局内耗材 / 夜风，见 `FIX_TRACKER.md` 同日条目）做「每趟期望产出与经济对比」时，用离线解码的官方物品表复算搜刮池确认的**既有**问题（批次一 2026-09-09 物资搜集点引入）。

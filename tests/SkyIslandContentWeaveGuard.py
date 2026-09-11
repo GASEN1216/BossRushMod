@@ -98,6 +98,7 @@ def main():
     item_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandItemRules.cs"))
     letters = clean_source(read("DebugAndTools/SkyIsland/SkyIslandLetters.cs"))
     items = clean_source(read("Integration/SkyIsland/SkyIslandItems.cs"))
+    gnats = clean_source(read("DebugAndTools/SkyIsland/SkyIslandGnats.cs"))
     layout = json.loads(read("ArtSource/SkyIsland/layout.json"))
     author_markers = {m["id"] for m in layout["markers"]}
 
@@ -125,7 +126,13 @@ def main():
     buffs = dict(re.findall(r"Consumable\(BossRushItemIds\.(\w+),\s*SkyIslandFieldBuff\.(\w+),", items))
     for name in buffs:
         kinds[name] = "Consumable"
-    if len(all_names) != 15 or set(all_names) != set(kinds):
+    # 内容批次四：随身装备（云苔纱笠，带在背包里生效）与岛上的工具（药烟蒲扇，使用不消耗）。
+    for name in re.findall(r"Gear\(BossRushItemIds\.(\w+),", items):
+        kinds[name] = "Gear"
+    tools = dict(re.findall(r"Tool\(BossRushItemIds\.(\w+),\s*SkyIslandFieldBuff\.(\w+),", items))
+    for name in tools:
+        kinds[name] = "Tool"
+    if len(all_names) != 18 or set(all_names) != set(kinds):
         errors.append("物品形态表没解析全：AllTypeIds %d 件，定义表 %d 件（正则与源码失步）" % (len(all_names), len(kinds)))
     recipes_block = rules.split("private static readonly SkyIslandRecipe[] recipes", 1)[1] \
         .split("internal static SkyIslandRecipe[] Recipes", 1)[0] if "private static readonly SkyIslandRecipe[] recipes" in rules else ""
@@ -167,6 +174,16 @@ def main():
                 require(food, token, "归航菜便当要挂归航菜行为（菜畦开张后在岛上吃算作晴禾那一顿）")
         elif kind == "Medicine":
             require(case_body("Medicine"), "drug.healValue = def.Heal;", "星苔药膏要真的回血")
+        elif kind == "Gear":
+            if not re.search(r"(?:GetItemCountInInventory|CountInPack)\(BossRushItemIds\.%s\)" % name, squash(gnats)):
+                errors.append("随身装备 %s 没有「带在身上」的效果接线（云蚋 owner 里数背包）：只能卖钱" % name)
+        elif kind == "Tool":
+            buff = tools.get(name, "None")
+            if squash("case SkyIslandFieldBuff.%s:" % buff) not in use_consumable:
+                errors.append("工具 %s 的效果 %s 在局内 owner 的 UseConsumable 里没有分支：用了没用" % (name, buff))
+            for token in ("item.MaxDurability = NonConsumableDurability;", "Component<SkyIslandFieldcraftUsage>(item)",
+                          "swing.buff = (int)def.Buff;", "AttachUsage(item, def.UseTime, swing);"):
+                require(case_body("Tool"), token, "岛上的工具要挂使用行为、且不消耗（耐久同罗盘）")
         else:
             errors.append("物品 %s 的形态 %s 不认识：新形态要在这里说清楚它在岛上拿来做什么" % (name, kind))
     if squash("if (buff == SkyIslandFieldBuff.Meal)") not in use_consumable or "session.Services.PackedMeal()" not in use_consumable:
@@ -327,7 +344,7 @@ def main():
             "更新前发出的航徽没有耐久记录：使用前补满，免得官方 CA_UseItem 用完就把它销毁")
 
     print("SkyIslandContentWeaveGuard: " + ("FAIL\n  - " + "\n  - ".join(errors) if errors else
-                                             "PASS (15 件物品各有用处 / 风晶灯 7 + 灶火 3 / 剧情门槛 3 / 风三档 / 航徽与便当接线 / 拉缆绳回码头)"))
+                                             "PASS (18 件物品各有用处 / 风晶灯 7 + 灶火 3 / 剧情门槛 3 / 风三档 / 航徽与便当接线 / 拉缆绳回码头)"))
     return 1 if errors else 0
 
 

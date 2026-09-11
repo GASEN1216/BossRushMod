@@ -63,7 +63,17 @@ FILES = [
     "SkyIslandLights.cs",
     # 拍板：晴岚航徽拉缆绳回码头（回话文案在 SkyIslandFieldcraftRules，这里只有诊断日志）。
     "SkyIslandSessionRecall.cs",
+    # 内容批次四：云蚋（判夜唯一口径、纯规则与字幕、局内 owner、开枪补丁、灶火的火与烟）。
+    "SkyIslandNight.cs",
+    "SkyIslandMosquitoRules.cs",
+    "SkyIslandGnats.cs",
+    "SkyIslandGnatProjectilePatch.cs",
+    "SkyIslandHearthFx.cs",
 ]
+
+# 内容批次四起一并扫描 Integration/SkyIsland：物品描述、使用说明与耗材回话同样是玩家可见文案。
+# 整个目录都扫（不是名单），新加的物品文件不会漏登记。
+INTEGRATION = ROOT / "Integration" / "SkyIsland"
 
 # 严格两个字符串字面量的 L10n.T 调用：中文那一半必须有英文对照。
 L10N_PAIR = re.compile(r'L10n\.T\(\s*"(?:[^"\\]|\\.)*"\s*,\s*"(?:[^"\\]|\\.)*"\s*\)', re.S)
@@ -120,8 +130,12 @@ def main():
     errors = []
     localized_total = 0
 
-    for name in FILES:
-        path = SKY / name
+    integration_files = sorted(INTEGRATION.glob("*.cs"))
+    if len(integration_files) < 3:
+        errors.append("Integration/SkyIsland 下只找到 %d 个 .cs：扫描范围失效" % len(integration_files))
+    targets = [SKY / name for name in FILES] + integration_files
+    for path in targets:
+        name = path.name
         if not path.exists():
             errors.append("%s 不存在：文件清单与磁盘不一致" % name)
             continue

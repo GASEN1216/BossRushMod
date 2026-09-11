@@ -155,8 +155,9 @@ def main():
                          r'((?:\s*In\(BossRushItemIds\.\w+,\s*\d+\),?)+)\)', rules)
     all_names = set(re.findall(r"BossRushItemIds\.(\w+)", item_rules.split("internal static readonly int[] AllTypeIds", 1)[1]
                                .split("};", 1)[0]))
-    if len(recipes) != 8:
-        errors.append("配方必须是 8 条，实际 %d" % len(recipes))
+    # 批次三 8 条 + 内容批次四 3 条（云苔纱笠、风晶灭蚊灯、药烟蒲扇，逐条接线另见 SkyIslandMosquitoGuard）。
+    if len(recipes) != 11:
+        errors.append("配方必须是 11 条（批次三 8 + 批次四 3），实际 %d" % len(recipes))
     for recipe_id, station, output, _count, inputs in recipes:
         if output not in all_names:
             errors.append("配方 %s 的成品 %s 不是登记过的天空岛物品" % (recipe_id, output))
@@ -165,8 +166,9 @@ def main():
                 errors.append("配方 %s 的材料 %s 不是群岛材料" % (recipe_id, input_name))
     for station in ("Dock", "Stove", "Mortar"):
         count = sum(1 for r in recipes if r[1] == station)
-        if not 2 <= count <= 4:
-            errors.append("合成台 %s 的配方数 %d 不在 2–4（面板按最坏 6 条选项复算）" % (station, count))
+        # 批次四给渡口工台加了灭蚊灯（5 条）。合成面板上只有配方按钮，面板布局属性测试按最坏 6 条选项复算。
+        if not 2 <= count <= 5:
+            errors.append("合成台 %s 的配方数 %d 不在 2–5（面板按最坏 6 条选项复算）" % (station, count))
 
     # ---- 2. TypeID 与台账 ----
     ids_src = clean_source(read("Config/ConfigItemIds.cs"))
@@ -199,15 +201,23 @@ def main():
         if not re.search(r"case BossRushItemIds\.%s: return [1-9]\d*;" % name, value_of):
             errors.append("SkyIslandItemRules.ValueOf 缺 %s 的正价值（NPC 商店会标价 0）" % name)
     agents = read("AGENTS.md")
-    if "500001-500082" not in agents or "下一可用：`500083`" not in agents:
-        errors.append("AGENTS.md §4.3 的 TypeID 台账没有更新到 500082 / 下一可用 500083")
-    for rel, tokens in (("docs/contracts.md", ("500001-500082",)), ("docs/Bossrush使用物品ID表.md", ("500073-500082", "500083"))):
-        path = ROOT / rel
-        if path.exists():  # docs/ 是 local-only：干净签出上没有就不查
-            text = path.read_text(encoding="utf-8-sig")
-            for token in tokens:
-                if token not in text:
-                    errors.append("%s 的 TypeID 台账缺 %s" % (rel, token))
+    # 台账要覆盖批次三的全部 TypeID，且「下一可用」紧接登记上限（后续批次往后接，这里不钉死上限）。
+    ledger = re.search(r"当前登记范围：`500001-(\d+)`", agents)
+    upcoming = re.search(r"下一可用：`(\d+)`", agents)
+    if not ledger or not upcoming or int(ledger.group(1)) < max(NEW_IDS.values()) or int(upcoming.group(1)) != int(ledger.group(1)) + 1:
+        errors.append("AGENTS.md §4.3 的 TypeID 台账没有覆盖到 500082，或「下一可用」没有紧接登记上限")
+    # 另两份台账与 AGENTS 同一口径：覆盖批次三、登记上限一致、「下一可用」紧接上限（内容批次四起往后接，不钉死 500082 / 500083）。
+    contracts = ROOT / "docs/contracts.md"
+    if contracts.exists():  # docs/ 是 local-only：干净签出上没有就不查
+        registered = re.search(r"已登记范围：`500001-(\d+)`", contracts.read_text(encoding="utf-8-sig"))
+        if not registered or int(registered.group(1)) < max(NEW_IDS.values()) or (ledger and registered.group(1) != ledger.group(1)):
+            errors.append("docs/contracts.md 的 TypeID 台账没有覆盖到 500082，或与 AGENTS.md §4.3 的登记上限不一致")
+    id_table = ROOT / "docs/Bossrush使用物品ID表.md"
+    if id_table.exists():
+        table_text = id_table.read_text(encoding="utf-8-sig")
+        next_free = re.search(r"下一可用 ID：\*\*(\d+)\*\*", table_text)
+        if "500073-500082" not in table_text or not next_free or not ledger or int(next_free.group(1)) != int(ledger.group(1)) + 1:
+            errors.append("docs/Bossrush使用物品ID表.md 缺批次三那一段（500073-500082），或「下一可用 ID」没有紧接登记上限")
 
     # ---- 3. 物品配置 ----
     for name in MATERIALS:
@@ -237,7 +247,7 @@ def main():
         errors.append("材料不应有使用行为分支（克隆源的用法已被 ClearInheritedUsage 清掉）")
     icon_names = set(re.findall(r'"(sky_island_[a-z_]+)"', items))
     generator = set(re.findall(r'\("(sky_island_[a-z_]+)",', read("tools/gen_sky_island_item_icons.py")))
-    if len(icon_names) != 15 or icon_names != generator:
+    if len(icon_names) != 18 or icon_names != generator:
         errors.append("物品图标名与生图脚本清单不一致：%r / %r" % (sorted(icon_names - generator), sorted(generator - icon_names)))
     can_use = need_body(usage, "public override bool CanBeUsed(Item item, object user)", "耗材 CanBeUsed")
     require(can_use, "SkyIslandFieldcraft.Current", "耗材要看本趟 owner：离岛时按钮置灰，不白吃一件")

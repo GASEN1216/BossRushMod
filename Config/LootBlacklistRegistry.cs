@@ -202,6 +202,10 @@ namespace BossRush
                 BossRushItemIds.SkyIslandWindLantern,
                 BossRushItemIds.SkyIslandWindwardIncense,
                 BossRushItemIds.SkyIslandQinglanCharm,
+                // 天空岛批次四：云蚋的对策只在岛上的合成台做——同样不进任何随机奖池。
+                BossRushItemIds.SkyIslandCloudmossVeil,
+                BossRushItemIds.SkyIslandGnatZapper,
+                BossRushItemIds.SkyIslandSmokeFan,
             };
         }
     }

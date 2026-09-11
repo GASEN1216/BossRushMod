@@ -249,8 +249,8 @@ def main():
         require(configure, token, "物品配置：清克隆源用法、罗盘不消耗、特产复用官方行为、专属图标")
     icon_names = set(re.findall(r'"(sky_island_[a-z_]+)"', items))
     generator = set(re.findall(r'\("(sky_island_[a-z_]+)",', read("tools/gen_sky_island_item_icons.py")))
-    # 批次二 5 件 + 批次三 10 件（批次三的逐件接线由 SkyIslandFieldcraftGuard 另钉）。
-    if len(icon_names) != 15 or icon_names != generator:
+    # 批次二 5 件 + 批次三 10 件 + 批次四 3 件（批次三、四的逐件接线由 SkyIslandFieldcraftGuard / SkyIslandMosquitoGuard 另钉）。
+    if len(icon_names) != 18 or icon_names != generator:
         errors.append("物品图标名与生图脚本清单不一致：%r / %r" % (sorted(icon_names), sorted(generator)))
     fill = need_body(crate, "internal static int Fill(", "装箱")
     ordered(fill, ['SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble()',

@@ -14,7 +14,19 @@ from pathlib import Path
 RATE = 32000
 OUT = Path(__file__).resolve().parents[1] / "Assets/Sounds/SkyIsland"
 DURATIONS = {"island_wind.wav": 8.0, "wind_chimes.wav": 4.0,
-             "homecoming_bell.wav": 7.0, "device_awake.wav": 2.5}
+             "homecoming_bell.wav": 7.0, "device_awake.wav": 2.5, "gnat_buzz.wav": 1.0}
+# 无缝循环：不做首尾淡出，校验「接缝处的跳变不大于文件内部最大的相邻采样跳变」。
+# 云蚋的嗡声全场只有一个共享发声体循环播放（SkyIslandGnats），接缝处一顿就是每秒一次的咔哒。
+LOOPS = {"gnat_buzz.wav"}
+
+
+def gnat_buzz(t):
+    # 整数赫兹 + 整秒时长：每个分量在循环边界上回到同一相位，t=0 处全部分量为 0。
+    # 410 Hz 的锯齿味谐波叠一条 423 Hz 的副声（13 Hz 拍频，听起来是一群而不是一只），再按 23 Hz 振翅起伏。
+    wing = .78 + .22 * math.sin(math.tau * 23 * t)
+    tone = sum(a * math.sin(math.tau * f * t) for f, a in ((410, 1.0), (820, .5), (1230, .3), (1640, .16), (2050, .09)))
+    swarm = .45 * math.sin(math.tau * 423 * t) + .2 * math.sin(math.tau * 846 * t)
+    return (tone + swarm) * wing
 
 
 def bell(t, frequency, decay):
@@ -41,13 +53,15 @@ def generate(name, seconds):
                         ((0, 1046.5), (.35, 1318.5), (.82, 1568), (1.8, 1174.7)))
         elif name == "homecoming_bell.wav":
             value = bell(t, 220, .53) * .22 + bell(t - 1.8, 329.63, .65) * .12
+        elif name == "gnat_buzz.wav":
+            value = gnat_buzz(t)
         else:
             value = sum(bell(t - delay, freq, 2.0) * .12 for delay, freq in
                         ((0, 523.25), (.22, 659.25), (.44, 783.99), (.66, 1046.5)))
-        values.append(value * min(1, max(0, seconds - t) / .12))
+        values.append(value if name in LOOPS else value * min(1, max(0, seconds - t) / .12))
     peak = max(abs(v) for v in values)
-    # 环境风比提示音轻，峰值有明确上限，循环边界归零。
-    target = .09 if name == "island_wind.wav" else .32
+    # 环境风比提示音轻，峰值有明确上限，循环边界归零。嗡声介于风与提示音之间：听得见、盖不过枪声。
+    target = .09 if name == "island_wind.wav" else .12 if name == "gnat_buzz.wav" else .32
     scale = target / max(peak, .001)
     with wave.open(str(OUT / name), "wb") as wav:
         wav.setparams((1, 2, RATE, 0, "NONE", "not compressed"))
@@ -62,7 +76,11 @@ def check():
             raw = wav.readframes(wav.getnframes())
         samples = struct.unpack("<" + "h" * (len(raw) // 2), raw)
         assert 500 < max(abs(v) for v in samples) < 15000, name
-        assert abs(samples[0]) < 50 and abs(samples[-1]) < 50, name
+        if name in LOOPS:
+            largest_step = max(abs(samples[i + 1] - samples[i]) for i in range(len(samples) - 1))
+            assert abs(samples[0]) < 50 and abs(samples[-1] - samples[0]) <= largest_step, name + " 循环接缝不连续"
+        else:
+            assert abs(samples[0]) < 50 and abs(samples[-1]) < 50, name
         print("PASS", name, len(samples), "samples")
 
 

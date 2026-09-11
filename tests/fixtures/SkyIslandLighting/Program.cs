@@ -34,6 +34,20 @@ internal static class Program
             double[] before = Weights(boundary - .0001), after = Weights(boundary + .0001);
             for (int i = 0; i < 4; i++) Check(Math.Abs(before[i] - after[i]) < .00001, "时段边界必须连续 " + boundary);
         }
+        // 内容批次四：判夜收成一个口径（SkyIslandNight），光照的星夜整档、夜风与云蚋逐点一致。
+        for (double hour = -2; hour <= 26; hour += 0.25)
+        {
+            int first, second; float blend;
+            SkyIslandLighting.ResolveTimeBlend(hour, out first, out second, out blend);
+            Check(SkyIslandNight.IsNight(hour) == (first == 2 && second == 2), "星夜整档与判夜唯一口径一致 " + hour);
+        }
+        // 官方 GameClock 没有实例时 TimeOfDay 恒为 00:00：读数改成 NaN 之后光照回退晴昼，不再整趟星夜。
+        Check(Weights(SkyIslandNight.EffectiveHours(false, 0))[0] == 1 && !SkyIslandNight.IsNight(SkyIslandNight.EffectiveHours(false, 0)),
+            "没有时钟实例时不算夜里、光照回退晴昼");
+        SkyIslandNight.DevForceNight = true;
+        Check(Weights(SkyIslandNight.EffectiveHours(true, 12))[2] == 1, "开发构建强制夜里时光照走星夜");
+        SkyIslandNight.ResetStaticCaches();
+        Check(Weights(SkyIslandNight.EffectiveHours(true, 12))[0] == 1, "模块销毁复位强制夜里");
         Console.WriteLine("SkyIslandLighting production-linked PASS assertions=" + count);
     }
 }

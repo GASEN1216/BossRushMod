@@ -55,6 +55,17 @@ namespace BossRush
                 closeMenu(); session.CycleLighting();
             });
             lightButton.interactable = currentSession != null && currentSession.CanChangeLighting;
+#if BOSSRUSH_DEV
+            // 开发构建：强制夜里，验收云蚋与夜风用。只改本 Mod 读到的钟点（SkyIslandLighting.ClockHours），不拨官方时钟——时钟随存档保存。
+            Button(panel.transform, L10n.T("强制夜里：", "Force night: ") + (SkyIslandNight.DevForceNight ? L10n.T("开", "on") : L10n.T("关", "off")) +
+                L10n.T(" · 点击切换", " · toggle"), BossRushUIColors.Warning, delegate
+            {
+                SkyIslandNight.DevForceNight = !SkyIslandNight.DevForceNight;
+                report(SkyIslandNight.DevForceNight ? L10n.T("已强制夜里（只改本 Mod 读数）", "Night forced (mod reading only)")
+                    : L10n.T("已恢复官方时钟", "Back to the official clock"), false);
+                closeMenu();
+            });
+#endif
             GameObject row = new GameObject("Actions", typeof(RectTransform), typeof(HorizontalLayoutGroup));
             row.transform.SetParent(panel.transform, false);
             row.GetComponent<HorizontalLayoutGroup>().spacing = 8;

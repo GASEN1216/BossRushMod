@@ -229,6 +229,11 @@ echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLights.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGathering.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraft.cs
+echo(DebugAndTools\SkyIsland\SkyIslandNight.cs
+echo(DebugAndTools\SkyIsland\SkyIslandMosquitoRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandGnats.cs
+echo(DebugAndTools\SkyIsland\SkyIslandGnatProjectilePatch.cs
+echo(DebugAndTools\SkyIsland\SkyIslandHearthFx.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
 echo(DebugAndTools\MarriageTestDebugUI.cs
 echo(DebugAndTools\PermanentDuckNpcDebug.cs

@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="Program.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLighting.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNight.cs" />
     <Reference Include="UnityEngine.CoreModule"><HintPath>$(GameManagedPath)/UnityEngine.CoreModule.dll</HintPath></Reference>
     <Reference Include="Unity.RenderPipelines.Core.Runtime"><HintPath>$(GameManagedPath)/Unity.RenderPipelines.Core.Runtime.dll</HintPath></Reference>
     <Reference Include="Unity.RenderPipelines.Universal.Runtime"><HintPath>$(GameManagedPath)/Unity.RenderPipelines.Universal.Runtime.dll</HintPath></Reference>

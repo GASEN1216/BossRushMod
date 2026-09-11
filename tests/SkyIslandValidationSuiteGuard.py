@@ -64,6 +64,10 @@ MUTATING_MEMBERS = (
     # 串联：点风晶灯会写手记并扣材料，便当那一顿会挂加成。
     ("LightLamp", "点灯写手记扣材料"), ("LightChoice", "打开点灯选项"), ("PackedMeal", "吃便当挂加成"),
     ("TryRecallToDock", "搬玩家"),
+    # 内容批次四（云蚋）：捧蛙卵扣材料、放生写手记、放灭蚊灯、扇蚊子、止痒会改这趟出击；推进蚊群会刷怪、叮人。
+    ("TakeSpawn", "捧蛙卵扣材料"), ("ReleaseSpawn", "放生写手记"), ("SpawnChoice", "打开蛙卵选项"), ("ReleaseChoice", "打开放生选项"),
+    ("DeployZapper", "放灭蚊灯"), ("SwingFan", "扇云蚋"), ("Soothe", "止痒"), ("RemedyClearsItch", "止痒"),
+    ("OnProjectile", "登记弹道让云蚋躲闪"), ("Sample", "推进云蚋刷新与痒"), ("Frame", "推进云蚋飞行与叮咬"),
 )
 
 # 不以方法名出现、但同样会改状态的写法。

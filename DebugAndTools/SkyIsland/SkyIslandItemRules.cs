@@ -35,7 +35,7 @@ namespace BossRush
         /// <summary>晴岚航徽在背包里时，渡口整备与眠苔苔药按这个比例收钱：码头的人都认得它。</summary>
         internal const double BadgeServiceRate = 0.5;
 
-        /// <summary>全部天空岛物品，按 TypeID 递增（批次二 500068–500072，批次三 500073–500082）。</summary>
+        /// <summary>全部天空岛物品，按 TypeID 递增（批次二 500068–500072，批次三 500073–500082，批次四 500083–500085）。</summary>
         internal static readonly int[] AllTypeIds =
         {
             BossRushItemIds.SkyIslandHomecomingBadge, BossRushItemIds.SkyIslandWindeaterCore,
@@ -45,7 +45,9 @@ namespace BossRush
             BossRushItemIds.SkyIslandDriftwood, BossRushItemIds.SkyIslandBrassScrap,
             BossRushItemIds.SkyIslandWindcrystalShard, BossRushItemIds.SkyIslandStardust,
             BossRushItemIds.SkyIslandQinglanWindcrystal, BossRushItemIds.SkyIslandWindLantern,
-            BossRushItemIds.SkyIslandWindwardIncense, BossRushItemIds.SkyIslandQinglanCharm
+            BossRushItemIds.SkyIslandWindwardIncense, BossRushItemIds.SkyIslandQinglanCharm,
+            BossRushItemIds.SkyIslandCloudmossVeil, BossRushItemIds.SkyIslandGnatZapper,
+            BossRushItemIds.SkyIslandSmokeFan
         };
 
         private static readonly SkyIslandKeepsake[] keepsakes =
@@ -86,6 +88,9 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandWindLantern: return "风灯";
                 case BossRushItemIds.SkyIslandWindwardIncense: return "驱风香";
                 case BossRushItemIds.SkyIslandQinglanCharm: return "晴岚护符";
+                case BossRushItemIds.SkyIslandCloudmossVeil: return "云苔纱笠";
+                case BossRushItemIds.SkyIslandGnatZapper: return "风晶灭蚊灯";
+                case BossRushItemIds.SkyIslandSmokeFan: return "药烟蒲扇";
                 default: return "天空岛物品";
             }
         }
@@ -110,6 +115,9 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandWindLantern: return "Wind Lantern";
                 case BossRushItemIds.SkyIslandWindwardIncense: return "Windward Incense";
                 case BossRushItemIds.SkyIslandQinglanCharm: return "Qinglan Charm";
+                case BossRushItemIds.SkyIslandCloudmossVeil: return "Cloudmoss Veil";
+                case BossRushItemIds.SkyIslandGnatZapper: return "Windcrystal Gnat Zapper";
+                case BossRushItemIds.SkyIslandSmokeFan: return "Remedy-Smoke Fan";
                 default: return "Sky Islands item";
             }
         }
@@ -120,11 +128,15 @@ namespace BossRush
         /// 物品价值（官方 `Item.Value`，商店售价 = Value × 耐久比 × priceFactor）。物品配置、配方经济与报告共用这一份，
         /// 不在 `SkyIslandItems` 定义表里另写一份数字。批次三的口径：材料按「采一处约一两件」定低价；
         /// 凑整与合成只给小幅溢价（晴岚风晶 +16%、便当 +88%、药膏 +48%，护符与罗盘基本持平），不当换钱的路子。
+        /// 批次四（云蚋的对策）同一口径：纱笠 +20%、蒲扇 +62%、灭蚊灯一次两盏基本持平（+2%）。
         /// </summary>
         internal static int ValueOf(int typeId)
         {
             switch (typeId)
             {
+                case BossRushItemIds.SkyIslandCloudmossVeil: return 1400;
+                case BossRushItemIds.SkyIslandGnatZapper: return 1600;
+                case BossRushItemIds.SkyIslandSmokeFan: return 420;
                 case BossRushItemIds.SkyIslandHomecomingBadge: return 5000;
                 case BossRushItemIds.SkyIslandWindeaterCore: return 12000;
                 case BossRushItemIds.SkyIslandWindVaneCompass: return 1500;

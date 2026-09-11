@@ -239,8 +239,9 @@ namespace BossRush
         /// </summary>
         internal bool RecordNote(string id, out string message)
         {
+            // 内容批次四：放回蛙鸣池的蛙卵（Frog_1..3，SkyIslandMosquitoRules.IsFrogNote）同样只收登记过的 id。
             if (SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null &&
-                SkyIslandLights.Find(id) == null)
+                SkyIslandLights.Find(id) == null && !SkyIslandMosquitoRules.IsFrogNote(id))
             {
                 message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
                 return false;
@@ -303,7 +304,7 @@ namespace BossRush
                         (SkyIslandLetters.Collected(data, "Letter_03")
                             ? L10n.T("\n……那封没署名的信，我认得那笔字。田埂上那一格，我还替他留着。",
                                 "\n…That unsigned letter — I know that handwriting. I am still keeping that plot on the ridge for him.")
-                            : string.Empty);
+                            : string.Empty) + QingheGnatLine(data);
                 case "sky_weibai":
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("苇白：钟响那天，东西两头的风铃一起响了——苇生以前说，那是岛在叫大家回家。委托板我还挂着，路过就来揭一张。\n",
@@ -315,7 +316,7 @@ namespace BossRush
                                 "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n")) +
                         (SkyIslandLetters.Collected(data, "Letter_02")
                             ? L10n.T("苇生的信你替我收下了？……他还是那么爱说大话。\n", "You took in Weisheng's letter for me? …He still loves to talk big.\n")
-                            : string.Empty) + CurrentObjective;
+                            : string.Empty) + WeibaiZapperLine(data) + CurrentObjective;
                 case "sky_fuzhou":
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("浮舟：钟声听见了。船一直在这里，船头挂着名册，四个归来的人各写了一页，去看看吧。",
@@ -326,31 +327,16 @@ namespace BossRush
                             ? L10n.T("\n阿潮的缆绳……我这就挂回最高的那根桩上。", "\nAchao's mooring line… I will hang it back on the tallest post right away.")
                             : string.Empty) + FuzhouLampLine(data);
                 case "sky_miantai":
-                    return data.Has(SkyIslandStoryFlag.WindBeacon)
-                        ? (data.Has(SkyIslandStoryFlag.OldLetter)
-                            ? L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭那封信你拿到了？那就去镜水寺吧，折翎等它等了很久。",
-                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. You have the letter from the Upturned Post Hut? Then go to Mirrorwater Temple — Zheling has waited a long time for it.")
-                            : L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
-                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can."))
-                        : L10n.T("眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
-                            "Miantai: The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
+                    return MiantaiLine(data) + MiantaiItchLine;
                 case "sky_zheling":
-                    return data.ZhelingResolved
-                        ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled)
-                            ? L10n.T("折翎：路已修好。这次我守着灯，等大家回来。",
-                                "Zheling: The road is mended. This time I keep the light and wait for them to come home.") +
-                              (SkyIslandLetters.Collected(data, "Letter_06")
-                                ? L10n.T("\n扫地的老人还替我擦着钟……等灯都亮了，我回寺里喝那杯茶。",
-                                    "\nThe old sweeper still polishes the bell for me… Once every light is lit, I will go back to the temple for that cup of tea.")
-                                : string.Empty)
-                            : L10n.T("旧腰牌上刻着：『航路交给你。』",
-                                "The old badge is engraved: 'The route is yours now.'"))
-                        : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
-                            "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
+                    return ZhelingLine(data);
                 case "sky_bellkeeper":
                     if (data.Has(SkyIslandStoryFlag.Ending))
                         return L10n.T("钟守：钟声不是命令，是回答。名册上多了一行字，我没有擦掉。",
-                            "The Bell Keeper: A bell is not an order; it is an answer. A new line appeared in the register, and I have not wiped it away.");
+                            "The Bell Keeper: A bell is not an order; it is an answer. A new line appeared in the register, and I have not wiped it away.") +
+                            (SkyIslandMosquitoRules.FrogsComplete(data)
+                                ? L10n.T("\n夜里敲钟的时候，蛙鸣池那边有蛙应声。", "\nWhen the bell rings at night now, the frogs at Frogsong Pool answer.")
+                                : string.Empty);
                     return data.BellKeeperResolved
                         ? L10n.T("钟守：去吧，敲响归航钟。让他们知道，岛上还有人在等。",
                             "The Bell Keeper: Go on, ring the Homecoming Bell. Let them know someone on the islands is still waiting.")
@@ -358,6 +344,79 @@ namespace BossRush
                             "The Silent Bell Keeper: Ring it and someone puts to sea again. Prove the lanes are safe — or stop my bell engine first.");
                 default: return CurrentObjective;
             }
+        }
+
+        private static string MiantaiLine(SkyIslandStoryData data)
+        {
+            return data.Has(SkyIslandStoryFlag.WindBeacon)
+                        ? (data.Has(SkyIslandStoryFlag.OldLetter)
+                            ? L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭那封信你拿到了？那就去镜水寺吧，折翎等它等了很久。",
+                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. You have the letter from the Upturned Post Hut? Then go to Mirrorwater Temple — Zheling has waited a long time for it.")
+                            : L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can."))
+                        : L10n.T("眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                            "Miantai: The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
+        }
+
+        private static string ZhelingLine(SkyIslandStoryData data)
+        {
+            return data.ZhelingResolved
+                ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled)
+                    ? L10n.T("折翎：路已修好。这次我守着灯，等大家回来。",
+                        "Zheling: The road is mended. This time I keep the light and wait for them to come home.") +
+                      (SkyIslandLetters.Collected(data, "Letter_06")
+                        ? L10n.T("\n扫地的老人还替我擦着钟……等灯都亮了，我回寺里喝那杯茶。",
+                            "\nThe old sweeper still polishes the bell for me… Once every light is lit, I will go back to the temple for that cup of tea.")
+                        : string.Empty) + ZhelingFrogLine(data)
+                    : L10n.T("旧腰牌上刻着：『航路交给你。』",
+                        "The old badge is engraved: 'The route is yours now.'"))
+                : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
+                    "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
+        }
+
+        /// <summary>内容批次四：眠苔说苔药与药膏怎么分工——苔药管伤、顺手止痒；药膏管痒、抹上一阵都不怕叮。</summary>
+        private static string MiantaiItchLine
+        {
+            get
+            {
+                return L10n.T("\n被云蚋叮痒了别抓：我的苔药管伤，顺手把痒也止了；药膏更凉，抹上一阵再被叮都不痒。",
+                    "\nIf the cloud gnats have you itching, do not scratch: my remedy is for wounds and stops the itch on the way; the salve is cooler, and for a while after it new bites will not itch.");
+            }
+        }
+
+        /// <summary>内容批次四：晴禾说起梯田水车边的云蚋、她的纱笠与蛙鸣池的青蛙（<see cref="SkyIslandMosquitoRules"/>）。</summary>
+        private static string QingheGnatLine(SkyIslandStoryData data)
+        {
+            if (SkyIslandMosquitoRules.FrogsComplete(data))
+                return L10n.T("\n蛙鸣池又有蛙叫了，梯田水车边的蚋也少了。我那顶纱笠总算能歇一歇。",
+                    "\nFrogsong Pool is croaking again, and there are fewer gnats by the terrace water wheel. My veil can finally have a rest.");
+            if (SkyIslandMosquitoRules.FrogsReleased(data) > 0)
+                return L10n.T("\n听说有人往蛙鸣池放了蛙卵？好——青蛙回来了，云蚋就少了。",
+                    "\nI hear someone has been putting frogspawn back in Frogsong Pool? Good — when the frogs come back, the gnats thin out.");
+            return L10n.T("\n夜里水车边蚋多，我拿云苔纤维撒一撮星屑织了顶纱笠。夜里要下地，就来灶台找我织一顶。",
+                "\nAt night the gnats swarm by the water wheel, so I wove a veil of cloudmoss with a pinch of stardust. If you go out at night, come to the stove and I will weave you one.");
+        }
+
+        /// <summary>内容批次四：苇白是修灯的人——点亮的风晶灯够了，她就把灯芯调成引蚋的陷阱（灭蚊灯配方的门槛读同一个数）。</summary>
+        private static string WeibaiZapperLine(SkyIslandStoryData data)
+        {
+            int lamps = SkyIslandLights.LampsLit(data);
+            if (lamps <= 0) return string.Empty;
+            SkyIslandRecipe zapper = SkyIslandFieldcraftRules.FindRecipe("Zapper");
+            if (zapper != null && lamps < zapper.RequiresLamps)
+                return L10n.T("苇白：风晶灯的芯会嗡嗡地唱，云蚋就是循着那点声音和光来的。再亮一盏，我就听得清那个调子，能把灯芯调成陷阱。\n",
+                    "Weibai: A windcrystal wick hums, and the cloud gnats come for that hum and the light. Light one more and I will hear the tune clearly enough to turn a wick into a trap.\n");
+            return L10n.T("苇白：灭蚊灯的调子我交给浮舟了——晴岚风晶作芯、残铜片打罩，去他的渡口工台做。\n",
+                "Weibai: I gave Fuzhou the tune for the gnat zapper — a Qinglan Windcrystal for the wick and brass scrap for the cage. Make it at his dock workbench.\n");
+        }
+
+        /// <summary>内容批次四：和解之后的折翎说起寺里池子的青蛙——蛙卵从这里捧回蛙鸣池。</summary>
+        private static string ZhelingFrogLine(SkyIslandStoryData data)
+        {
+            if (SkyIslandMosquitoRules.FrogsComplete(data))
+                return L10n.T("\n寺里池子的青蛙回蛙鸣池去了，池边清静了。", "\nThe frogs from the temple pool have gone home to Frogsong Pool; it is quiet by the water now.");
+            return L10n.T("\n风灾那年，蛙鸣池的青蛙都逃进了寺里的池子。夜里去池边捧一团蛙卵，替它们回家吧。",
+                "\nThe year of the storm, the frogs of Frogsong Pool all fled into the temple pool. Scoop up some frogspawn from its edge one night and take them home.");
         }
 
         /// <summary>

@@ -133,7 +133,7 @@ namespace BossRush
             if (!acquired || ownSun == null || lightControl == null || !scene.isLoaded ||
                 SceneManager.GetActiveScene().handle != scene.handle || Shader.GetGlobalFloat(Owner) != ownerId) return;
             int from, to; float blend;
-            ResolveTimeBlend(GameClock.TimeOfDay.TotalHours, out from, out to, out blend);
+            ResolveTimeBlend(ClockHours(), out from, out to, out blend);
             automaticIndex = blend < .5f ? from : to;
             if (presetIndex >= 0) { from = to = presetIndex; blend = 0; }
             Preset first = Presets[from], second = Presets[to];
@@ -172,19 +172,30 @@ namespace BossRush
             Shader.SetGlobalVector(Ambient, ambient);
         }
 
-        // 0–5 星夜；5–7 晨光；7–10 晴昼；16–19 暮色；19–21 星夜。
+        /// <summary>
+        /// 本 Mod 读到的钟点，光照、夜风、云蚋共用（判夜的唯一口径在 <see cref="SkyIslandNight"/>）。官方 `GameClock` 没有实例时
+        /// `TimeOfDay` 恒为 00:00（反编译源 `GameClock.cs` 的 `SecondsOfDay`），照读会把整趟判成夜里：这里返回 NaN——不算夜里、光照回退晴昼。
+        /// Dev 构建的「强制夜里」也只改这里读出来的数，不拨官方时钟（时钟随存档保存）。
+        /// </summary>
+        internal static double ClockHours()
+        {
+            bool available = GameClock.Instance != null;
+            return SkyIslandNight.EffectiveHours(available, available ? GameClock.TimeOfDay.TotalHours : double.NaN);
+        }
+
+        // 0–5 星夜；5–7 晨光；7–10 晴昼；16–19 暮色；19–21 星夜。星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份）。
         // 以连续小时和 SmoothStep 插值，午夜仍在同一星夜档，不产生跳变。
         internal static void ResolveTimeBlend(double hours, out int from, out int to, out float blend)
         {
             if (double.IsNaN(hours) || double.IsInfinity(hours)) hours = 12;
             hours = (hours % 24 + 24) % 24;
             double start, end;
-            if (hours < 5 || hours >= 21) { from = to = 2; start = 0; end = 24; }
-            else if (hours < 7) { from = 2; to = 3; start = 5; end = 7; }
+            if (SkyIslandNight.IsNight(hours)) { from = to = 2; start = 0; end = 24; }
+            else if (hours < 7) { from = 2; to = 3; start = SkyIslandNight.EndHour; end = 7; }
             else if (hours < 10) { from = 3; to = 0; start = 7; end = 10; }
             else if (hours < 16) { from = to = 0; start = 10; end = 16; }
             else if (hours < 19) { from = 0; to = 1; start = 16; end = 19; }
-            else { from = 1; to = 2; start = 19; end = 21; }
+            else { from = 1; to = 2; start = 19; end = SkyIslandNight.StartHour; }
             float t = (float)((hours - start) / (end - start));
             blend = from == to ? 0 : t * t * (3 - 2 * t);
         }
