@@ -162,6 +162,8 @@ namespace BossRush
                 case "Search_D_02": CraftChoice(choices, SkyIslandCraftStation.Mortar); break;
                 case "Search_F": ZhelingChoices(choices); break;
             }
+            // 七处装置各缺一盏风晶灯（信里的请求）：亮了就不再挂这一项。
+            LightChoice(choices, key);
             // 装置/见闻面板配该区域的横幅插图；SkyIslandUiArt 是 fail-open 的，
             // 缺图就退成无插图布局，绝不因为一张图没出来就打不开挂着 K1/K2/K3 的装置。
             presentation.Show(PointName(key), solving ? PuzzleBody(puzzle, key) : Lore(key) + "\n\n" + story.CurrentObjective,
@@ -580,7 +582,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 群岛手记面板：四个见闻章节 + 来信与名册 + 总览，共 6 个选项（面板布局属性测试的最坏情况覆盖到 6 个）。
+        /// 群岛手记面板：四个见闻章节 + 来信与名册 + 「总览 · 岛上的灯 · 群岛之物」，共 6 个选项（面板布局属性测试的最坏情况覆盖到 6 个）。
         /// 章节正文可能很长，正文区自带滚动；选项只换正文、不重开面板。
         /// </summary>
         private void OpenJournal()
@@ -596,8 +598,10 @@ namespace BossRush
             choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("来信 · 名册 · 纪念品", "Letters · crew roster · keepsakes"),
                 () => SkyIslandJournal.Letters(story.Current) + "\n\n" + SkyIslandJournal.Crew(story.Current) + "\n\n" +
                     SkyIslandJournal.Keepsakes(story.Current)));
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("总览", "Overview"),
-                () => SkyIslandJournal.Overview(story.Current, story.Summary)));
+            // 总览与「岛上的灯 · 群岛之物」同一页：面板按最坏 6 个选项排，放不下第七个。灯与物品用处是把群岛串起来的那张图。
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("总览 · 岛上的灯 · 群岛之物", "Overview · lights · what things are for"),
+                () => SkyIslandJournal.Overview(story.Current, story.Summary) + "\n\n" +
+                    SkyIslandLights.Chapter(story.Current, SkyIslandSession.RegionLabel) + "\n\n" + SkyIslandJournal.Uses()));
             presentation.Show(L10n.T("群岛手记", "Archipelago journal"), SkyIslandJournal.Overview(story.Current, story.Summary),
                 choices, null, null);
         }
@@ -639,6 +643,30 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 「点起风晶灯」（<see cref="SkyIslandLights"/>）：七处装置各缺一盏，每一盏都是一封信里的请求；亮了就不再挂这一项。
+        /// 灯是本存档的持久事实（写进手记），灯旁暖和、夜风吹不透；十盏凑满之后岛上的夜里不再起风。
+        /// 按钮上写着「背包里有几件 / 要几件」；残星瞭台那盏同样要先清掉瞭台上的守卫。
+        /// </summary>
+        private void LightChoice(List<SkyIslandStoryPresentation.Choice> choices, string key)
+        {
+            SkyIslandLight light = SkyIslandLights.ForMarker(key);
+            if (light == null || SkyIslandLights.Lit(story.Current, light.Id)) return;
+            Func<int, int> count = null;
+            if (fieldcraft != null) count = fieldcraft.CountInPack;
+            choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandLights.ChoiceLabel(light, count), delegate
+            {
+                if (fieldcraft == null)
+                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
+                string guarded = OverlookGuarded(key);
+                if (guarded != null) return guarded;
+                string message;
+                bool lit = fieldcraft.LightLamp(light, out message);
+                if (lit) story.LogTiming("light", light.Id);
+                return Refreshed(lit, message);
+            }));
+        }
+
+        /// <summary>
         /// 合成面板：本站的配方（每站至多 4 条；面板布局属性测试按最坏 6 条复算），按钮上写着「背包里有几件 / 要几件」。
         /// 做成了就重开面板刷新件数；材料不够只回话、不重开。面板同样过战斗门。
         /// </summary>
@@ -651,6 +679,13 @@ namespace BossRush
             for (int i = 0; i < recipes.Count; i++)
             {
                 SkyIslandRecipe recipe = recipes[i];
+                // 配方随剧情解锁：还不会做的也挂出来，按钮上写着要等到什么时候，点了是居民说为什么。
+                if (!SkyIslandFieldcraftRules.Unlocked(recipe, story.Current))
+                {
+                    choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.LockedLabel(recipe),
+                        () => SkyIslandFieldcraftRules.LockedMessage(recipe)));
+                    continue;
+                }
                 choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(recipe, fieldcraft.CountInPack), delegate
                 {
                     if (fieldcraft == null) return L10n.T("现在没法做东西。", "Nothing can be made right now.");
@@ -772,8 +807,9 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 风标罗盘的读数：先指本趟还没收下的信鸽，再指最近的主线目标，最后指最近的可选目标
-        /// （后两者与官方地图上的圈是同一份清单 <see cref="SkyIslandMapMarkers"/>）；都没有就说没有要找的。
+        /// 风标罗盘的读数：先指本趟还没收下的信鸽，再指最近的主线目标，再指最近的可选目标
+        /// （后两者与官方地图上的圈是同一份清单 <see cref="SkyIslandMapMarkers"/>）；都没有了，带着晴岚风晶时指还缺风晶灯的地方，
+        /// 否则指这一趟还没采的风晶簇；连风晶簇都采完了才说没有要找的。
         /// </summary>
         internal string CompassReading(Vector3 from)
         {
@@ -788,6 +824,19 @@ namespace BossRush
             {
                 target = NearestMarker(SkyIslandMapMarkers.SideTargets(story.Current), from);
                 what = L10n.T("还没了结的支线", "an unfinished side path");
+            }
+            // 主线支线都没了：带着晴岚风晶就指还缺风晶灯的地方；否则指这一趟还没采的风晶簇（碎晶是点灯的料）。
+            if (target == null && fieldcraft != null && fieldcraft.CountInPack(BossRushItemIds.SkyIslandQinglanWindcrystal) > 0)
+            {
+                target = NearestMarker(SkyIslandLights.UnlitMarkers(story.Current), from);
+                what = L10n.T("还缺一盏风晶灯的地方", "a place still missing its windcrystal lamp");
+            }
+            Vector3 cluster;
+            if (target == null && fieldcraft != null && fieldcraft.TryNearestUnharvested(SkyIslandGatherKind.Crystal, from, out cluster))
+            {
+                Vector3 toCluster = cluster - from;
+                return SkyIslandItemRules.CompassReading(true, toCluster.x, toCluster.z,
+                    L10n.T("这一趟还没采的风晶簇", "a wind crystal cluster you have not gathered this trip"));
             }
             if (target == null) return SkyIslandItemRules.CompassReading(false, 0, 0, null);
             Vector3 delta = target.position - from;

@@ -233,13 +233,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 信鸽来信、归航船名册与纪念品发放记录：和见闻一样写进本槽手记（`discoveredNotes`），共用 <see cref="RecordSearch"/> 的
+        /// 信鸽来信、归航船名册、纪念品发放记录与点起来的风晶灯：和见闻一样写进本槽手记（`discoveredNotes`），共用 <see cref="RecordSearch"/> 的
         /// 去重、去抖与计时口径，不加存档字段。只收已登记的 id（<see cref="SkyIslandLetters.Find"/> / <see cref="SkyIslandCrew.IndexOf"/> /
-        /// <see cref="SkyIslandItemRules.FindKeepsake"/>），不让任意字符串进存档。
+        /// <see cref="SkyIslandItemRules.FindKeepsake"/> / <see cref="SkyIslandLights.Find"/>），不让任意字符串进存档。
         /// </summary>
         internal bool RecordNote(string id, out string message)
         {
-            if (SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null)
+            if (SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null &&
+                SkyIslandLights.Find(id) == null)
             {
                 message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
                 return false;
@@ -323,7 +324,7 @@ namespace BossRush
                             "Fuzhou: Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.")) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳……我这就挂回最高的那根桩上。", "\nAchao's mooring line… I will hang it back on the tallest post right away.")
-                            : string.Empty);
+                            : string.Empty) + FuzhouLampLine(data);
                 case "sky_miantai":
                     return data.Has(SkyIslandStoryFlag.WindBeacon)
                         ? (data.Has(SkyIslandStoryFlag.OldLetter)
@@ -357,6 +358,20 @@ namespace BossRush
                             "The Silent Bell Keeper: Ring it and someone puts to sea again. Prove the lanes are safe — or stop my bell engine first.");
                 default: return CurrentObjective;
             }
+        }
+
+        /// <summary>
+        /// 浮舟说起风晶灯（<see cref="SkyIslandLights"/>）：星灯亮起之前不提（碎晶要进工坊的熔晶炉，炉子还烧不起来），
+        /// 之后告诉玩家碎晶攒够五片来找他；十盏都亮了换一句。这是玩家头一回听说「岛上的灯」的地方。
+        /// </summary>
+        private static string FuzhouLampLine(SkyIslandStoryData data)
+        {
+            if (!data.Has(SkyIslandStoryFlag.StarLamp)) return string.Empty;
+            if (SkyIslandLights.AllLit(data))
+                return L10n.T("\n十盏灯都亮着。夜里从码头往外看，像一条回家的路。",
+                    "\nAll ten lights are burning. At night, looking out from the dock, they read like a road home.");
+            return L10n.T("\n星灯亮了，工坊的熔晶炉又烧得起来了。攒够五片风晶碎片来找我，熔成一整块，拿去把岛上缺的灯点起来——灯旁暖和，夜风吹不透。",
+                "\nThe star lamp is lit, so the workshop's crystal furnace can burn again. Bring me five windcrystal shards and I will fuse them whole — take it and light the lamps the isles are missing. It is warm beside a lamp, and the night wind cannot get through.");
         }
 
         internal void Tick(bool safeToFlush)

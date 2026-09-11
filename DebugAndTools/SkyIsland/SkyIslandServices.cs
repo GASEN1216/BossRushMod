@@ -14,7 +14,9 @@ namespace BossRush
     /// （`StockShopView` 是场景内预制体，独立出击关卡不保证存在）：
     /// - 浮舟 · 渡口整备：按**官方维修口径**（价值计价 + 永久磨损）修复随身耐久装备。
     /// - 眠苔 · 苔药调理：现金回满生命，带冷却（`Health.SetHealth`）。
-    /// - 晴禾 · 归航菜：交还种植记录后，每次出击免费一份本局属性加成（`RuntimeStatModifierTracker`）。
+    /// - 晴禾 · 归航菜：交还种植记录后，每次出击免费一份本局属性加成（`RuntimeStatModifierTracker`）；
+    ///   在岛上吃一份归航菜便当算同一顿（<see cref="PackedMeal"/>，共用本趟一次）。
+    /// - 带着晴岚航徽（背包顶层）：整备与苔药按 <see cref="SkyIslandItemRules.ServicePrice"/> 半价。
     /// - 苇白 · 航务委托：交单后在她脚边留一个奖励箱（与搜刮点同一条建箱路径）。
     ///
     /// 本类持有本局挂上的 Modifier 记录，会话销毁时统一摘除；不往 `ModBehaviour` 加 partial。
@@ -157,7 +159,9 @@ namespace BossRush
             if (plan.Count == 0)
                 return L10n.T("浮舟：你身上的家伙都还结实，用不着我动手。",
                     "Fuzhou: Everything you carry is still sound. Nothing for me to do.");
-            int price = quoted < RepairMinimumPrice ? RepairMinimumPrice : quoted;
+            // 带着晴岚航徽：码头的人都认得它。服务费下限之后再打折。
+            bool badge = CarriesBadge();
+            int price = SkyIslandItemRules.ServicePrice(quoted < RepairMinimumPrice ? RepairMinimumPrice : quoted, badge);
             bool account = AccountAvailable;
             if (!EconomyManager.IsEnough(new Cost((long)price), account, true))
                 return L10n.T("浮舟：整备要 ", "Fuzhou: The refit runs ") + price +
@@ -183,7 +187,15 @@ namespace BossRush
                     ? L10n.T(" 件。云海上的东西，钝一点都不行。（花费 ",
                         " piece. Nothing blunt lasts out on the cloud sea. (cost ")
                     : L10n.T(" 件。云海上的东西，钝一点都不行。（花费 ",
-                        " pieces. Nothing blunt lasts out on the cloud sea. (cost ")) + price + L10n.T("）", ")");
+                        " pieces. Nothing blunt lasts out on the cloud sea. (cost ")) + price + L10n.T("）", ")") +
+                (badge ? SkyIslandItemRules.BadgeDiscountNote : string.Empty);
+        }
+
+        /// <summary>晴岚航徽在不在背包顶层（与合成台数材料同一口径，不数基地仓库与背包里的容器）：只在按下服务时数一次。</summary>
+        private static bool CarriesBadge()
+        {
+            try { return ItemFactory.GetItemCountInInventory(BossRushItemIds.SkyIslandHomecomingBadge) > 0; }
+            catch (Exception) { return false; }
         }
 
         /// <summary>有界遍历随身物品树：只收有耐久的物品，节点与深度都有预算。</summary>
@@ -251,7 +263,8 @@ namespace BossRush
             }
             if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f)
                 return L10n.T("眠苔：你没受伤，省下这笔吧。", "Miantai: You are not hurt. Save your money.");
-            int price = HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth);
+            bool badge = CarriesBadge();
+            int price = SkyIslandItemRules.ServicePrice(HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth), badge);
             bool account = AccountAvailable;
             if (!EconomyManager.IsEnough(new Cost((long)price), account, true))
                 return L10n.T("眠苔：这副药要 ", "Miantai: This dose costs ") + price +
@@ -262,12 +275,16 @@ namespace BossRush
             player.Health.SetHealth(player.Health.MaxHealth);
             healReadyAt = Time.time + HealCooldown;
             return L10n.T("眠苔：苔药敷上了。云海上摔一跤可不好受。（花费 ",
-                "Miantai: The moss is on. A fall out here is no small thing. (cost ") + price + L10n.T("）", ")");
+                "Miantai: The moss is on. A fall out here is no small thing. (cost ") + price + L10n.T("）", ")") +
+                (badge ? SkyIslandItemRules.BadgeDiscountNote : string.Empty);
         }
 
         #endregion
 
         #region 晴禾 · 归航菜
+
+        /// <summary>本趟吃没吃过归航菜：晴禾那一顿与一份归航菜便当共用一次。</summary>
+        internal bool MealEaten { get { return mealUsed; } }
 
         internal string Meal(bool plantingDelivered)
         {
@@ -278,6 +295,31 @@ namespace BossRush
             if (mealUsed)
                 return L10n.T("晴禾：这一顿你已经吃过啦，下次出岛再来。",
                     "Qinghe: You have already had this one. Come back next trip.");
+            if (!ApplyMeal())
+                return L10n.T("晴禾：这顿饭好像没落到实处，回头我再试试。",
+                    "Qinghe: That meal did not seem to take. Let me try again later.");
+            return L10n.T("晴禾：归航菜，趁热。走远路的人得先吃饱。（本次出击生效）",
+                "Qinghe: A homecoming meal — eat it while it is hot. Long roads start on a full stomach. (this raid only)");
+        }
+
+        /// <summary>
+        /// 在岛上吃一份归航菜便当（物品的使用行为经 <see cref="SkyIslandFieldcraft"/> 调进来）：与晴禾那一顿同一份加成、共用本趟一次。
+        /// 菜畦有没有重新开张由调用方在「能不能用」那一步判断——没开张时便当只当饭吃，走不到这里。
+        /// </summary>
+        internal string PackedMeal()
+        {
+            if (disposed || player == null) return L10n.T("现在吃不上饭。", "There is no meal to be had right now.");
+            if (mealUsed)
+                return L10n.T("这一趟已经吃过归航菜了，便当只当一顿饭。", "You have already had a homecoming meal this raid; the bento is just lunch.");
+            if (!ApplyMeal())
+                return L10n.T("便当没吃出归航菜的滋味，回头再试试。", "The bento did not bring back the homecoming taste. Try again later.");
+            return L10n.T("归航菜便当还温着：本次出击生命上限与跑速小幅提升。",
+                "The homecoming bento is still warm: max health and running speed rise a little for this raid.");
+        }
+
+        /// <summary>挂上归航菜的加成、只补涨出来的那截血；至少挂上一项才算吃过（晴禾那一顿与便当共用）。</summary>
+        private bool ApplyMeal()
+        {
             float maxHealthBeforeMeal = player.Health != null ? player.Health.MaxHealth : 0f;
             bool any = false;
             any |= RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.MaxHealth,
@@ -287,9 +329,7 @@ namespace BossRush
                 MealSpeedBonus, modifierSource, records, "SkyIslandMeal");
             any |= RuntimeStatModifierTracker.TryAdd(player, ZombieModeStatNames.WalkSpeed,
                 MealSpeedBonus, modifierSource, records, "SkyIslandMeal");
-            if (!any)
-                return L10n.T("晴禾：这顿饭好像没落到实处，回头我再试试。",
-                    "Qinghe: That meal did not seem to take. Let me try again later.");
+            if (!any) return false;
             mealUsed = true;
             // 只补「上限涨出来的那一截」，不做免费回满：一顿免费饭如果能回满血，
             // 眠苔那副按缺失比例计价（最高 HealPriceFull）的苔药就永远没人买了。受伤仍然得花钱治。
@@ -305,8 +345,7 @@ namespace BossRush
                 }
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandServices] 归航菜补血失败：" + e.Message); }
-            return L10n.T("晴禾：归航菜，趁热。走远路的人得先吃饱。（本次出击生效）",
-                "Qinghe: A homecoming meal — eat it while it is hot. Long roads start on a full stomach. (this raid only)");
+            return true;
         }
 
         #endregion

@@ -663,6 +663,7 @@ internal static class Program
         Check(SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandWindLantern) == SkyIslandFieldBuff.Lantern
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandWindwardIncense) == SkyIslandFieldBuff.Incense
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandQinglanCharm) == SkyIslandFieldBuff.Charm
+            && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandHomecomingBento) == SkyIslandFieldBuff.Meal
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossFiber) == SkyIslandFieldBuff.None, "consumables map to their effects");
         Check(SkyIslandFieldcraftRules.IsNight(21) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
             && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(20.99)
@@ -674,19 +675,230 @@ internal static class Program
         float exposure = 0f;
         int breezeSeconds = 0;
         while (!SkyIslandFieldcraftRules.NextChilled(false, exposure) && breezeSeconds < 1000)
-        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 1, false, 1f); breezeSeconds++; }
+        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 1, SkyIslandWarmth.None, 1f); breezeSeconds++; }
         exposure = 0f;
         int galeSeconds = 0;
         while (!SkyIslandFieldcraftRules.NextChilled(false, exposure) && galeSeconds < 1000)
-        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 2, false, 1f); galeSeconds++; }
+        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 2, SkyIslandWarmth.None, 1f); galeSeconds++; }
         Check(breezeSeconds == 143 && galeSeconds == 67, "a breeze chills in about 143 game seconds, a gale in about 67");
-        Check(SkyIslandFieldcraftRules.StepExposure(100f, 2, true, 1f) == 96f && SkyIslandFieldcraftRules.StepExposure(10f, 0, false, 10f) == 0f
-            && SkyIslandFieldcraftRules.StepExposure(99f, 2, false, 5f) == 100f && SkyIslandFieldcraftRules.StepExposure(50f, 2, false, 0f) == 50f,
-            "warmth beats any wind, calm recovers, exposure is clamped and paused time adds nothing");
+        Check(SkyIslandFieldcraftRules.StepExposure(100f, 2, SkyIslandWarmth.Shelter, 1f) == 96f
+            && SkyIslandFieldcraftRules.StepExposure(10f, 0, SkyIslandWarmth.None, 10f) == 0f
+            && SkyIslandFieldcraftRules.StepExposure(99f, 2, SkyIslandWarmth.None, 5f) == 100f
+            && SkyIslandFieldcraftRules.StepExposure(50f, 2, SkyIslandWarmth.None, 0f) == 50f,
+            "shelter beats any wind, calm recovers, exposure is clamped and paused time adds nothing");
         Check(SkyIslandFieldcraftRules.NextChilled(true, 41f) && !SkyIslandFieldcraftRules.NextChilled(true, 40f)
             && !SkyIslandFieldcraftRules.NextChilled(false, 99.9f) && SkyIslandFieldcraftRules.NextChilled(false, 100f), "wind chill hysteresis");
         Check(SkyIslandFieldcraftRules.ChillStaminaRecover < 0f && SkyIslandFieldcraftRules.ChillStaminaRecover >= -0.3f
             && SkyIslandFieldcraftRules.ChillEnergyCost > 0f && SkyIslandFieldcraftRules.ChillEnergyCost <= 0.3f, "wind chill stays a mild penalty");
+
+        // ---- 串联：剧情让群岛长回来（加成只加在已抽出的数上，不多抽随机数） ----
+        SkyIslandStoryData restored = SkyIslandStoryRules.CreateDefault();
+        restored.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.PlantingRecord
+            | SkyIslandStoryFlag.PlantingDelivered | SkyIslandStoryFlag.Telescope | SkyIslandStoryFlag.StormSlain);
+        Check(SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(restored)) != null, "a restored-isles save is valid");
+        int bonusSpots = 0;
+        double bonusChanceTotal = 0.0;
+        foreach (SkyIslandGatherNode node in gatherNodes)
+        {
+            bool expectsCount = (node.Region == "C" && node.Kind == SkyIslandGatherKind.Grass) || (node.Region == "D" && node.Kind == SkyIslandGatherKind.Moss)
+                || (node.Region == "G" && node.Kind == SkyIslandGatherKind.Ore) || (node.Region == "E" && node.Kind == SkyIslandGatherKind.Crystal);
+            int bonus = SkyIslandFieldcraftRules.StoryBonusCount(node, restored);
+            double bonusChance = SkyIslandFieldcraftRules.StoryBonusChance(node, restored);
+            Check(bonus == (expectsCount ? 1 : 0), "only restored places grow back: " + node.Id);
+            Check(SkyIslandFieldcraftRules.StoryBonusCount(node, fresh) == 0 && SkyIslandFieldcraftRules.StoryBonusCount(node, null) == 0
+                && SkyIslandFieldcraftRules.StoryBonusChance(node, fresh) == 0.0 && SkyIslandFieldcraftRules.StoryBonusReason(node, fresh) == null,
+                "nothing grows back before the story gets there: " + node.Id);
+            Check((bonus > 0 || bonusChance > 0.0) == (SkyIslandFieldcraftRules.StoryBonusReason(node, restored) != null),
+                "a grown-back spot always says why: " + node.Id);
+            bonusSpots += bonus;
+            bonusChanceTotal += bonusChance;
+            bool sameDraws = true;
+            for (int seed = 0; seed < 64; seed++)
+            {
+                SkyIslandYield[] plain = SkyIslandFieldcraftRules.Roll(node, SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), seed % 2 == 0);
+                SkyIslandYield[] none = SkyIslandFieldcraftRules.Roll(node, SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), seed % 2 == 0, null);
+                SkyIslandYield[] grown = SkyIslandFieldcraftRules.Roll(node, SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), seed % 2 == 0, restored);
+                sameDraws &= plain.Length == none.Length && plain[0].Count == none[0].Count && grown[0].TypeId == plain[0].TypeId
+                    && grown[0].Count == plain[0].Count + bonus && grown.Length >= plain.Length;
+            }
+            Check(sameDraws, "story growth adds to the same draws and never takes an extra away: " + node.Id);
+        }
+        Check(bonusSpots == 9 && Math.Abs(bonusChanceTotal - SkyIslandFieldcraftRules.TelescopeStardustBonus) < 1e-9,
+            "nine spots grow one more and the overlook cluster sheds more stardust");
+        Check(Math.Abs(SkyIslandFieldcraftRules.ExpectedRaidValue(false, null) - 13932.5) < 1e-6
+            && Math.Abs(SkyIslandFieldcraftRules.ExpectedRaidValue(false, restored) - 15852.5) < 1e-6
+            && Math.Abs(SkyIslandFieldcraftRules.ExpectedRaidValue(true, restored) - 16662.5) < 1e-6,
+            "restoring the isles adds about 1.9k of materials per raid");
+
+        // ---- 串联：配方随剧情解锁 ----
+        SkyIslandRecipe bentoRecipe = SkyIslandFieldcraftRules.FindRecipe("Bento");
+        SkyIslandRecipe fuseRecipe = SkyIslandFieldcraftRules.FindRecipe("Windcrystal");
+        SkyIslandRecipe compassRecipe = SkyIslandFieldcraftRules.FindRecipe("Compass");
+        int gatedRecipes = 0;
+        foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
+        {
+            bool gated = recipe.RequiresFlag != SkyIslandStoryFlag.None || recipe.RequiresNote != null;
+            if (gated) gatedRecipes++;
+            Check(SkyIslandFieldcraftRules.Unlocked(recipe, fresh) == !gated && SkyIslandFieldcraftRules.Unlocked(recipe, null) == !gated,
+                "a new save knows exactly the ungated recipes: " + recipe.Id);
+            Check(((int)recipe.RequiresFlag & ~SkyIslandStoryRules.KnownFlags) == 0
+                && (recipe.RequiresNote == null || SkyIslandItemRules.FindKeepsake(recipe.RequiresNote) != null),
+                "every recipe gate is a real story flag or a registered keepsake: " + recipe.Id);
+            Check(SkyIslandFieldcraftRules.LockedLabel(recipe).Contains(SkyIslandItemRules.NameCn(recipe.OutputTypeId))
+                && SkyIslandFieldcraftRules.UnlockHint(recipe).Length > 0 && SkyIslandFieldcraftRules.LockedMessage(recipe).Length > 0,
+                "a locked recipe names its item and says when: " + recipe.Id);
+        }
+        Check(gatedRecipes == 3 && bentoRecipe.RequiresFlag == SkyIslandStoryFlag.PlantingDelivered
+            && fuseRecipe.RequiresFlag == SkyIslandStoryFlag.StarLamp && compassRecipe.RequiresNote == SkyIslandItemRules.CompassKeepsake,
+            "the bento waits for the planting record, the windcrystal for the star lamp, the compass for the first one");
+        SkyIslandStoryData planted = fresh.Copy();
+        planted.flags = (int)(SkyIslandStoryFlag.PlantingRecord | SkyIslandStoryFlag.PlantingDelivered);
+        SkyIslandStoryData lampLit = fresh.Copy();
+        lampLit.flags = (int)SkyIslandStoryFlag.StarLamp;
+        SkyIslandStoryData compassHeld = fresh.Copy();
+        compassHeld.discoveredNotes = new[] { SkyIslandItemRules.CompassKeepsake };
+        Check(SkyIslandFieldcraftRules.Unlocked(bentoRecipe, planted) && !SkyIslandFieldcraftRules.Unlocked(fuseRecipe, planted)
+            && SkyIslandFieldcraftRules.Unlocked(fuseRecipe, lampLit) && !SkyIslandFieldcraftRules.Unlocked(bentoRecipe, lampLit)
+            && SkyIslandFieldcraftRules.Unlocked(compassRecipe, compassHeld) && !SkyIslandFieldcraftRules.Unlocked(compassRecipe, peaceful),
+            "each gate opens its own recipe only");
+
+        // ---- 串联：三层风，三件耗材各挡一层 ----
+        Check(SkyIslandFieldcraftRules.Warmth(true, false, false) == SkyIslandWarmth.Shelter && SkyIslandFieldcraftRules.Warmth(false, true, true) == SkyIslandWarmth.Shelter
+            && SkyIslandFieldcraftRules.Warmth(false, false, true) == SkyIslandWarmth.Lantern && SkyIslandFieldcraftRules.Warmth(false, false, false) == SkyIslandWarmth.None,
+            "hearths, lamps and incense shelter; a lantern alone half-shelters");
+        Check(SkyIslandFieldcraftRules.StepExposure(50f, 1, SkyIslandWarmth.Lantern, 1f) == 46f && SkyIslandFieldcraftRules.StepExposure(50f, 2, SkyIslandWarmth.Shelter, 1f) == 46f
+            && SkyIslandFieldcraftRules.StepExposure(50f, 2, SkyIslandWarmth.Lantern, 1f) > 50f, "a lantern beats a breeze but not a gale");
+        exposure = 0f;
+        int lanternGaleSeconds = 0;
+        while (!SkyIslandFieldcraftRules.NextChilled(false, exposure) && lanternGaleSeconds < 1000)
+        { exposure = SkyIslandFieldcraftRules.StepExposure(exposure, 2, SkyIslandWarmth.Lantern, 1f); lanternGaleSeconds++; }
+        Check(lanternGaleSeconds == 134, "a lantern in a gale only halves the chill: about 134 game seconds instead of 67");
+        Check(SkyIslandFieldcraftRules.NightWind(true, SkyIslandLights.Target - 1) && !SkyIslandFieldcraftRules.NightWind(true, SkyIslandLights.Target)
+            && !SkyIslandFieldcraftRules.NightWind(false, 0), "ten lights still the nights");
+        Check(SkyIslandFieldcraftRules.WindLevel(SkyIslandFieldcraftRules.NightWind(true, SkyIslandLights.Target), false, false, false) == 0
+            && SkyIslandFieldcraftRules.WindLevel(SkyIslandFieldcraftRules.NightWind(true, SkyIslandLights.Target), true, false, false) == 1,
+            "after the tenth light the islands are calm at night and the bridges keep a breeze");
+        Check(SkyIslandFieldcraftRules.CoreEased(2, true) == 1 && SkyIslandFieldcraftRules.CoreEased(1, true) == 1 && SkyIslandFieldcraftRules.CoreEased(0, true) == 0
+            && SkyIslandFieldcraftRules.CoreEased(2, false) == 2, "the Windeater Core turns a gale into a breeze and nothing else");
+        Check(Math.Abs(SkyIslandFieldcraftRules.StormPulseDamage(38f, true) - 38f * (1f - SkyIslandFieldcraftRules.CharmStormWard)) < 1e-4
+            && SkyIslandFieldcraftRules.StormPulseDamage(38f, false) == 38f && SkyIslandFieldcraftRules.CharmStormWard > 0f && SkyIslandFieldcraftRules.CharmStormWard <= 0.5f,
+            "the charm softens the Windeater's storm without making it harmless");
+        string wardPercent = ((int)Math.Round(SkyIslandFieldcraftRules.CharmStormWard * 100.0)).ToString() + "%";
+        Check(SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Charm).Contains(wardPercent) && SkyIslandJournal.Uses().Contains(wardPercent),
+            "the charm's storm ward shown to players matches the rule");
+        Check(SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Meal).Length > 0 && SkyIslandFieldcraftRules.BuffStarted(SkyIslandFieldBuff.Meal).Length == 0,
+            "the bento explains its meal; the meal service speaks for itself");
+
+        // ---- 串联：岛上的灯 ----
+        SkyIslandLight[] lamps = SkyIslandLights.All;
+        Check(lamps.Length == 7 && SkyIslandLights.HearthMarkers.Length == 3 && SkyIslandLights.Target == SkyIslandLights.HearthMarkers.Length + lamps.Length,
+            "three hearths and seven windcrystal lamps make the ten lights");
+        var lampIds = new HashSet<string>(StringComparer.Ordinal);
+        var lampLetters = new HashSet<string>(StringComparer.Ordinal);
+        var skyItemSet = new HashSet<int>(SkyIslandItemRules.AllTypeIds);
+        foreach (SkyIslandLight light in lamps)
+        {
+            Check(light.Id.StartsWith(SkyIslandLights.IdPrefix, StringComparison.Ordinal) && lampIds.Add(light.Id)
+                && SkyIslandLights.Find(light.Id) == light && SkyIslandLights.ForMarker(light.Marker) == light, "lamp id and marker are unique: " + light.Id);
+            Check(journalKeys.Contains(light.Marker) && SkyIslandStoryService.RegionBit(light.Region) != 0,
+                "a lamp hangs at a real device with a panel: " + light.Id);
+            Check(SkyIslandLetters.Find(light.LetterId) != null && lampLetters.Add(light.LetterId), "each lamp answers its own letter: " + light.Id);
+            int crystals = 0;
+            foreach (SkyIslandIngredient input in light.Inputs)
+            {
+                Check(skyItemSet.Contains(input.TypeId) && input.Count >= 1, "a lamp is lit with sky island things: " + light.Id);
+                if (input.TypeId == BossRushItemIds.SkyIslandQinglanWindcrystal) crystals += input.Count;
+            }
+            Check(crystals == 1 && light.Inputs.Length >= 2, "every lamp burns exactly one windcrystal plus something from its place: " + light.Id);
+            Check(light.LitCn.Length > 0 && light.LitEn.Length > 0 && !ContainsCjk(light.LitEn), "a lamp says what its letter wished for: " + light.Id);
+        }
+        Check(Array.IndexOf(SkyIslandLights.HearthMarkers, "Search_A") >= 0 && Array.IndexOf(SkyIslandLights.HearthMarkers, "Search_C") >= 0
+            && Array.IndexOf(SkyIslandLights.HearthMarkers, "POI_D") >= 0, "the hearths are Fuzhou's, Qinghe's and Miantai's fires");
+        Check(SkyIslandLights.LitCount(fresh) == 3 && SkyIslandLights.LampsLit(fresh) == 0 && !SkyIslandLights.AllLit(fresh)
+            && new List<string>(SkyIslandLights.UnlitMarkers(fresh)).Count == 7 && SkyIslandLights.LitCount(null) == 3, "a new save has only the three hearths");
+        SkyIslandStoryData allLit = mail.Copy();
+        var allNotes = new List<string>(allLit.discoveredNotes);
+        foreach (SkyIslandLight light in lamps) allNotes.Add(light.Id);
+        allNotes.AddRange(new[] { "Letter_09", "Letter_10", "Letter_11" });
+        allLit.discoveredNotes = allNotes.ToArray();
+        Check(SkyIslandLights.LitCount(allLit) == SkyIslandLights.Target && SkyIslandLights.AllLit(allLit)
+            && new List<string>(SkyIslandLights.UnlitMarkers(allLit)).Count == 0, "seven lamps make ten lights");
+        Check(SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(allLit)) != null
+            && SkyIslandJournal.NoteCount + SkyIslandLetters.Count + SkyIslandCrew.Count + SkyIslandItemRules.Keepsakes.Length + lamps.Length <= 256,
+            "lamp notes fit the journal codec");
+        SkyIslandLight boardwalkLamp = SkyIslandLights.Find("Light_E");
+        var lampPack = new Dictionary<int, int> { { BossRushItemIds.SkyIslandQinglanWindcrystal, 1 }, { BossRushItemIds.SkyIslandDriftwood, 5 } };
+        Func<int, int> lampCount = id => { int have; return lampPack.TryGetValue(id, out have) ? have : 0; };
+        Check(SkyIslandLights.ChoiceLabel(boardwalkLamp, lampCount) == "点起风晶灯（晴岚风晶 1/1 · 浮木 3/3 · 云苔纤维 0/2）",
+            "the lamp button shows have/need");
+        List<SkyIslandIngredient> lampShort = SkyIslandFieldcraftRules.Missing(boardwalkLamp.Inputs, lampCount);
+        Check(lampShort.Count == 1 && lampShort[0].TypeId == BossRushItemIds.SkyIslandCloudmossFiber && lampShort[0].Count == 2, "a lamp missing two fibres says so");
+        Check(SkyIslandLights.LitCaption(boardwalkLamp, 4).EndsWith("（岛上的灯 4/10）", StringComparison.Ordinal), "a lit lamp counts the lights");
+        string unlitChapter = SkyIslandLights.Chapter(fresh, id => "R:" + id);
+        string litChapter = SkyIslandLights.Chapter(allLit, id => "R:" + id);
+        Check(unlitChapter.StartsWith("岛上的灯 3/10", StringComparison.Ordinal) && unlitChapter.Contains("□ R:E") && unlitChapter.Contains("有一封信在盼着它")
+            && !unlitChapter.Contains(SkyIslandLights.Capstone), "the journal lists the missing lamps and their costs");
+        Check(litChapter.Contains("■ R:E") && litChapter.Contains("《" + SkyIslandLetters.Find("Letter_09").TitleCn + "》") && litChapter.Contains(SkyIslandLights.Capstone)
+            && !litChapter.Contains("□ "), "a fully lit journal page names the letters and closes the child's count");
+        Check(SkyIslandJournal.Overview(fresh, null).Contains("岛上的灯 3/10") && SkyIslandJournal.Overview(allLit, null).Contains("岛上的灯 10/10"),
+            "the journal overview counts the lights");
+        SkyIslandStoryData workshopLit = peaceful.Copy();
+        workshopLit.discoveredNotes = new[] { "Light_G", "Light_S2", "Light_H" };
+        for (int page = 1; page < SkyIslandCrew.Count; page++)
+            Check(SkyIslandCrew.Page(page, workshopLit) != SkyIslandCrew.Page(page, peaceful), "the crew notice the lamp tied to their page: " + page);
+        SkyIslandStoryData crewAllLit = peaceful.Copy();
+        crewAllLit.discoveredNotes = allLit.discoveredNotes;
+        Check(SkyIslandCrew.Page(0, crewAllLit).Contains("十盏灯") && !SkyIslandCrew.Page(0, peaceful).Contains("十盏灯"),
+            "the helmsman counts ten lights only when they burn");
+
+        // ---- 串联：航徽半价 ----
+        Check(SkyIslandItemRules.ServicePrice(480, false) == 480 && SkyIslandItemRules.ServicePrice(480, true) == 240
+            && SkyIslandItemRules.ServicePrice(61, true) == 31 && SkyIslandItemRules.ServicePrice(0, true) == 0 && SkyIslandItemRules.BadgeServiceRate == 0.5,
+            "the badge halves island services, rounding up, and the text says half price");
+
+        // ---- 串联：没有只为卖钱的东西（每件都有来路，也都有岛上的用处） ----
+        string uses = SkyIslandJournal.Uses();
+        foreach (int typeId in SkyIslandItemRules.AllTypeIds)
+            Check(uses.Contains("· " + SkyIslandItemRules.NameCn(typeId) + " → "), "every sky island item has a line saying what it is for: " + typeId);
+        var consumedBySomething = new HashSet<int>();
+        foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
+            foreach (SkyIslandIngredient input in recipe.Inputs) consumedBySomething.Add(input.TypeId);
+        foreach (SkyIslandLight light in lamps)
+            foreach (SkyIslandIngredient input in light.Inputs) consumedBySomething.Add(input.TypeId);
+        foreach (int material in SkyIslandFieldcraftRules.MaterialTypeIds)
+            Check(consumedBySomething.Contains(material), "no island material is a dead end: " + material);
+        Check(consumedBySomething.Contains(BossRushItemIds.SkyIslandWindLantern) && consumedBySomething.Contains(BossRushItemIds.SkyIslandWindwardIncense),
+            "crafted lanterns and incense also feed the lamps");
+        foreach (int typeId in new[] { BossRushItemIds.SkyIslandWindLantern, BossRushItemIds.SkyIslandWindwardIncense,
+            BossRushItemIds.SkyIslandQinglanCharm, BossRushItemIds.SkyIslandHomecomingBento })
+            Check(SkyIslandFieldcraftRules.BuffFor(typeId) != SkyIslandFieldBuff.None, "island consumables do something on the isles: " + typeId);
+        var sources = new HashSet<int>(obtainable);
+        foreach (SkyIslandKeepsake keepsake in SkyIslandItemRules.Keepsakes) sources.Add(keepsake.TypeId);
+        foreach (SkyIslandLootTier tier in tiers)
+            for (int i = 0; i < 100; i++)
+            {
+                int crateExtra = SkyIslandItemRules.IslandExtraFor(tier, (i + 0.5) / 100);
+                if (crateExtra != 0) sources.Add(crateExtra);
+            }
+        foreach (int typeId in SkyIslandItemRules.AllTypeIds)
+            Check(sources.Contains(typeId), "every sky island item has a way to get it: " + typeId);
+
+        // ---- 串联：点起来的灯经剧情服务写进本槽手记，离岛重进还亮着 ----
+        story = Open(12);
+        Check(story.RecordNote("Light_S3", out noteMessage) && SkyIslandLights.Lit(story.Current, "Light_S3")
+            && SkyIslandLights.LitCount(story.Current) == 4, "a lit lamp is written to the journal");
+        Check(!story.RecordNote("Light_S3", out noteMessage) && !story.RecordNote("Light_Z", out noteMessage),
+            "a lamp is lit once; unknown lamps never reach the save");
+        Check(story.DescribeNpc("sky_fuzhou").IndexOf("熔晶炉", StringComparison.Ordinal) < 0, "Fuzhou keeps quiet about the furnace before the star lamp");
+        story.RecordEncounterCleared("G"); story.RecordEncounterCleared("G_02"); Apply(story, SkyIslandStoryAction.RepairStarLamp);
+        Check(story.DescribeNpc("sky_fuzhou").Contains("熔晶炉"), "once the star lamp is lit Fuzhou tells you about the windcrystal lamps");
+        Check(story.TryClose(), "lamp writes flush on close");
+        story = Open(12);
+        Check(SkyIslandLights.Lit(story.Current, "Light_S3") && SkyIslandLetters.CollectedCount(story.Current) == 0
+            && SkyIslandCrew.ReadCount(story.Current) == 0 && SkyIslandItemRules.GrantedCount(story.Current) == 0,
+            "lamps survive re-entry and are not mistaken for other journal entries");
+        story.Close();
+        Check(SavesSystem.Subscribers == 0, "lamp sessions released events");
 
         // ---- 批次三：英文界面没有残留中文 ----
         L10n.IsChinese = false;
@@ -702,6 +914,18 @@ internal static class Program
         foreach (SkyIslandFieldBuff buff in new[] { SkyIslandFieldBuff.Lantern, SkyIslandFieldBuff.Incense, SkyIslandFieldBuff.Charm })
             englishThree += SkyIslandFieldcraftRules.UsageText(buff) + SkyIslandFieldcraftRules.BuffStarted(buff) + SkyIslandFieldcraftRules.BuffLow(buff) + SkyIslandFieldcraftRules.BuffEnded(buff);
         foreach (int typeId in SkyIslandItemRules.AllTypeIds) englishThree += SkyIslandItemRules.Name(typeId);
+        // 串联新增的文案：灯、手记页、锁住的配方、剧情加成的原因、便当与噬风之核。
+        englishThree += SkyIslandJournal.Uses() + SkyIslandLights.Chapter(allLit, id => "E") + SkyIslandLights.Chapter(fresh, null)
+            + SkyIslandLights.LitCaption(boardwalkLamp, 5) + SkyIslandLights.ChoiceLabel(boardwalkLamp, lampCount) + SkyIslandLights.AlreadyLit
+            + SkyIslandFieldcraftRules.CoreEasesGale + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Meal)
+            + SkyIslandCrew.Page(0, crewAllLit) + SkyIslandCrew.Page(1, workshopLit) + SkyIslandCrew.Page(2, workshopLit) + SkyIslandCrew.Page(3, workshopLit)
+            + SkyIslandItemRules.BadgeDiscountNote + SkyIslandJournal.Overview(allLit, null);
+        foreach (SkyIslandLight light in lamps) englishThree += light.LitLine;
+        for (int i = 0; i < SkyIslandLights.HearthMarkers.Length; i++) englishThree += SkyIslandLights.HearthName(i);
+        foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)
+            englishThree += SkyIslandFieldcraftRules.LockedLabel(recipe) + SkyIslandFieldcraftRules.LockedMessage(recipe);
+        foreach (SkyIslandGatherNode node in gatherNodes) englishThree += SkyIslandFieldcraftRules.StoryBonusReason(node, restored) ?? string.Empty;
+        englishThree += SkyIslandFieldcraftRules.HarvestCaption(firstRoll, SkyIslandFieldcraftRules.StoryBonusReason(SkyIslandFieldcraftRules.FindNode("E1"), restored));
         L10n.IsChinese = true;
         Check(!ContainsCjk(englishThree), "batch-three text has an English half everywhere");
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");

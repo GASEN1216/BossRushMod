@@ -225,6 +225,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs
 echo(DebugAndTools\SkyIsland\SkyIslandJournal.cs
 echo(DebugAndTools\SkyIsland\SkyIslandItemRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandLights.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGathering.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraft.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs

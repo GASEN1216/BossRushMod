@@ -74,6 +74,13 @@ namespace BossRush
                             "When that wind broke up I felt it even from under the clouds — the hull went light all at once. Thank you.")
                         : L10n.T("可云海上那阵风还没散。下次去栈道，别一个人站在桥心。",
                             "But the wind out on the cloud sea has not broken up yet. Next time you are on the boardwalk, do not stand alone at mid-span."));
+                    // 岛上的灯（SkyIslandLights）：十盏都亮了，老舵手在船头数得出来。
+                    if (SkyIslandLights.AllLit(data))
+                    {
+                        text.Append("\n\n");
+                        text.Append(L10n.T("回来那一夜，我在船头数过：岛上十盏灯，一盏不少。",
+                            "The night we came home I counted from the bow: ten lights on the isles, not one missing."));
+                    }
                     break;
                 case 1:
                     text.Append(L10n.T("青鸾：我替岛上送了二十年的信。风灾之后，信都寄不出去，只好倒挂在邮亭里等风。",
@@ -88,6 +95,12 @@ namespace BossRush
                     else
                         text.Append(L10n.T("镜水寺那条路还封着吗？写给折翎的那封信，我一直没敢送。",
                             "Is the Mirrorwater Temple road still closed? The letter addressed to Zheling — I never dared deliver it."));
+                    if (SkyIslandLights.Lit(data, "Light_S2"))
+                    {
+                        text.Append("\n\n");
+                        text.Append(L10n.T("邮亭里亮了灯，倒挂的信我一封封取下来了——都还朝着家。",
+                            "There is a lamp in the post hut now. I took the upside-down letters down one by one — every one still pointing home."));
+                    }
                     break;
                 case 2:
                     text.Append(L10n.T("小铆：我是工坊的学徒！师傅总说星灯亮了钟庭会回应，我一直不信。",
@@ -98,6 +111,12 @@ namespace BossRush
                             "But the telescope really is aligned — I heard the Bell Court answer from the boat! Master was not lying.")
                         : L10n.T("星灯是亮了，可瞭台上的观星镜还偏着。你要是有空，替我去校准一下吧？",
                             "The star lamp is lit, but the telescope on the overlook is still off. If you have the time, would you calibrate it for me?"));
+                    if (SkyIslandLights.Lit(data, "Light_G"))
+                    {
+                        text.Append("\n\n");
+                        text.Append(L10n.T("工坊的灯是你点的吧？铜环在灯下亮得跟我擦过的一样！",
+                            "You lit the workshop lamp, didn't you? The brass rings shine under it just like when I polished them!"));
+                    }
                     break;
                 case 3:
                     text.Append(L10n.T("念安：我是船医。归航的人身上都有旧伤，最难治的是等人等出来的那种。",
@@ -112,6 +131,12 @@ namespace BossRush
                     else
                         text.Append(L10n.T("钟守那边还没松口吗？他不是坏人，只是怕钟一响，又有人回不来。",
                             "Has the Bell Keeper still not given way? He is not a bad man — he is only afraid that if the bell rings, someone else will not come back."));
+                    if (SkyIslandLights.Lit(data, "Light_H"))
+                    {
+                        text.Append("\n\n");
+                        text.Append(L10n.T("钟架下那盏灯，守夜的人总算有地方暖手了。",
+                            "That lamp under the bell frame — at last the night watch has somewhere to warm their hands."));
+                    }
                     if (data.Has(SkyIslandStoryFlag.PlantingDelivered))
                     {
                         text.Append("\n\n");

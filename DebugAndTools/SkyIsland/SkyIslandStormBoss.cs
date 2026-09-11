@@ -193,7 +193,8 @@ namespace BossRush
         {
             if (LevelManager.Instance == null || LevelManager.Instance.ExplosionManager == null) return;
             DamageInfo damage = new DamageInfo(boss);
-            damage.damageValue = PulseDamage;
+            // 系着晴岚护符的这一趟，风暴伤不到那么深（护符由岛上的局内 owner 持有，每一波读一次，不在每帧路径上）。
+            damage.damageValue = SkyIslandFieldcraftRules.StormPulseDamage(PulseDamage, SkyIslandFieldcraft.StormWarded);
             damage.isExplosion = true;
             // buff/effect 通道：不计入武器击杀口径，也不会被「只认直接击杀」的系统当成起链。
             damage.isFromBuffOrEffect = true;

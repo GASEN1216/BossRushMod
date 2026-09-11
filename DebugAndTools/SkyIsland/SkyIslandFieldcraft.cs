@@ -18,6 +18,8 @@ namespace BossRush
     /// 2. **玩法计时走游戏时间**（`Time.time`）：暂停菜单、拍照模式与剧情面板把 timeScale 压到 0 时，
     ///    耗材不会在背后燃尽，寒意也不会在背后积满。
     /// 3. **出击里得到的东西承担出击风险**：产出与成品放进背包、放不下落在脚边，绝不寄回基地仓库。
+    /// 4. **每件东西都有岛上的用处**：采集产出读剧情进度（修好的地方长得更旺）、配方随剧情解锁、风晶灯是持久的（写进手记，
+    ///    先记后扣），护符替玩家挡噬风的风暴、便当算作晴禾的归航菜、带在身上的噬风之核让大风只算微风。
     /// </summary>
     internal sealed class SkyIslandFieldcraft : IDisposable
     {
@@ -28,9 +30,9 @@ namespace BossRush
         internal static SkyIslandFieldcraft Current { get; private set; }
 
         private const string ModifierContext = "SkyIslandFieldcraft";
-        /// <summary>三处营火：渡口工台（码头装置）、晴禾的灶台（菜畦）、眠苔的药臼（她的站位）。只是光，没有碰撞体，不参与交互竞争。</summary>
-        private static readonly string[] CampfireMarkers = { "Search_A", "Search_C", "POI_D" };
-        private static readonly Color CampfireColor = new Color(1f, 0.64f, 0.32f);
+        private static readonly Color HearthColor = new Color(1f, 0.64f, 0.32f);
+        /// <summary>风晶灯的光：比灶火淡一点、偏金白，远远看得出是点起来的那种灯。</summary>
+        private static readonly Color LampColor = new Color(1f, 0.9f, 0.68f);
         private static readonly Color LanternColor = new Color(1f, 0.8f, 0.52f);
 
         private readonly SkyIslandSession session;
@@ -43,11 +45,13 @@ namespace BossRush
         private readonly List<ZombieModeAttributeModifierRecord> chillRecords = new List<ZombieModeAttributeModifierRecord>();
         private readonly List<ZombieModeAttributeModifierRecord> incenseRecords = new List<ZombieModeAttributeModifierRecord>();
         private readonly List<ZombieModeAttributeModifierRecord> charmRecords = new List<ZombieModeAttributeModifierRecord>();
-        private readonly List<Light> campfires = new List<Light>();
+        /// <summary>岛上亮着的灯：三处灶火 + 本存档点起来的风晶灯（<see cref="SkyIslandLights"/>）。只是光，灯旁暖和。</summary>
+        private readonly List<Light> fires = new List<Light>();
+        private readonly HashSet<string> fireMarkers = new HashSet<string>(StringComparer.Ordinal);
         private GameObject lanternLight;
-        private float nextTick = -1f, lastTick = -1f, lanternUntil = -1f, incenseUntil = -1f, exposure;
-        private int campfireNight = -1;
-        private bool lanternLowWarned, incenseLowWarned, charmWorn, chilled, exposureWarned, windExplained, disposed;
+        private float nextTick = -1f, lastTick = -1f, lanternUntil = -1f, incenseUntil = -1f, exposure, nextCarryCheck = -1f;
+        private int fireNight = -1, lightsLit;
+        private bool lanternLowWarned, incenseLowWarned, charmWorn, chilled, exposureWarned, windExplained, coreCarried, coreExplained, disposed;
 
         internal SkyIslandFieldcraft(SkyIslandSession owner, SkyIslandStoryService storyService, Transform worldRoot)
         {
@@ -60,7 +64,8 @@ namespace BossRush
             // 本趟自己的种子：采集点每趟每处只采一次，产出只需要「这一趟之内确定」，不必借会话的搜刮种子。
             seed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f) ^ 0x2F6B3D);
             gathering = new SkyIslandGathering(root, groundMask, Harvest);
-            PlaceCampfires();
+            lightsLit = story != null ? SkyIslandLights.LitCount(story.Current) : SkyIslandLights.HearthMarkers.Length;
+            PlaceFires();
             Current = this;
         }
 
@@ -68,6 +73,20 @@ namespace BossRush
         internal int GatherHarvested { get { return gathering.HarvestedCount; } }
         internal float Exposure { get { return exposure; } }
         internal bool Chilled { get { return chilled; } }
+        internal int LightsLit { get { return lightsLit; } }
+
+        /// <summary>
+        /// 本趟系着晴岚护符：噬风的风暴脉冲按 <see cref="SkyIslandFieldcraftRules.CharmStormWard"/> 减伤。
+        /// 噬风每一波风暴读一次（<see cref="SkyIslandStormBoss"/>），不在每帧路径上；离岛时 owner 为 null，自然不减。
+        /// </summary>
+        internal static bool StormWarded
+        {
+            get
+            {
+                SkyIslandFieldcraft current = Current;
+                return current != null && !current.disposed && current.charmWorn;
+            }
+        }
 
         /// <summary>
         /// 由 <see cref="SkyIslandWorldStory.Tick"/> 每帧调用，内部按 <see cref="SkyIslandFieldcraftRules.TickInterval"/> 游戏秒节流。
@@ -86,7 +105,7 @@ namespace BossRush
             if (player == null) return;
             bool night = IsNight();
             gathering.Tick(player.transform.position, night);
-            UpdateCampfires(night);
+            UpdateFires(night);
             TickBuffs(now);
             TickWind(player, night, elapsed);
         }
@@ -106,8 +125,10 @@ namespace BossRush
         private bool Harvest(SkyIslandGatherNode node)
         {
             if (disposed || node == null || !session.IsReady) return false;
+            // 修好的地方长得更旺（菜畦、根环、铜脉、风眼、观星镜）：加成读这份存档，只加件数与附带门槛，不多抽随机数。
+            SkyIslandStoryData data = story != null ? story.Current : null;
             SkyIslandYield[] yields = SkyIslandFieldcraftRules.Roll(node,
-                SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), IsNight());
+                SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), IsNight(), data);
             var given = new List<SkyIslandYield>(yields.Length);
             for (int i = 0; i < yields.Length; i++)
             {
@@ -115,7 +136,7 @@ namespace BossRush
                 if (sent > 0) given.Add(new SkyIslandYield(yields[i].TypeId, sent));
             }
             // 物品资源缺失（部署损坏）时这一处照样收掉：玩家反复读条也拿不到东西，那不是重试能好的状态。
-            session.Announce(SkyIslandFieldcraftRules.HarvestCaption(given.ToArray()), false);
+            session.Announce(SkyIslandFieldcraftRules.HarvestCaption(given.ToArray(), SkyIslandFieldcraftRules.StoryBonusReason(node, data)), false);
             if (story != null) story.LogTiming("gather", node.Id);
             return true;
         }
@@ -175,6 +196,12 @@ namespace BossRush
             if (disposed || recipe == null || !session.IsReady)
             {
                 message = L10n.T("现在没法做东西。", "Nothing can be made right now.");
+                return false;
+            }
+            // 配方随剧情解锁：还不会做时居民说为什么，不点材料、不扣东西。
+            if (!SkyIslandFieldcraftRules.Unlocked(recipe, story != null ? story.Current : null))
+            {
+                message = SkyIslandFieldcraftRules.LockedMessage(recipe);
                 return false;
             }
             List<SkyIslandIngredient> missing = SkyIslandFieldcraftRules.Missing(recipe, CountInPack);
@@ -239,11 +266,71 @@ namespace BossRush
 
         #endregion
 
+        #region 岛上的灯
+
+        /// <summary>
+        /// 在这处装置旁点起风晶灯（<see cref="SkyIslandLights"/>）。先点清材料，**先记手记、再扣材料**：
+        /// 写屏障或换槽时这盏灯这趟点不起来，但一块风晶都不白扣。点亮之后立刻补建那盏灯的光（灯旁暖和）；
+        /// 第十盏亮起时念一句收尾，此后夜里不再起风。
+        /// </summary>
+        internal bool LightLamp(SkyIslandLight light, out string message)
+        {
+            if (disposed || light == null || story == null || !session.IsReady)
+            {
+                message = L10n.T("现在没法点灯。", "No lamp can be lit right now.");
+                return false;
+            }
+            if (SkyIslandLights.Lit(story.Current, light.Id))
+            {
+                message = SkyIslandLights.AlreadyLit;
+                return false;
+            }
+            if (!story.CanWrite)
+            {
+                message = story.SaveStatus;
+                return false;
+            }
+            List<SkyIslandIngredient> lampMissing = SkyIslandFieldcraftRules.Missing(light.Inputs, CountInPack);
+            if (lampMissing.Count > 0)
+            {
+                message = SkyIslandFieldcraftRules.MissingMessage(lampMissing);
+                return false;
+            }
+            string note;
+            if (!story.RecordNote(light.Id, out note))
+            {
+                message = note;
+                return false;
+            }
+            for (int i = 0; i < light.Inputs.Length; i++)
+                if (!ConsumeFromPack(light.Inputs[i].TypeId, light.Inputs[i].Count))
+                    Debug.LogWarning("[SkyIslandLights] 灯 " + light.Id + " 已记进手记，但扣材料失败：" + light.Inputs[i].TypeId);
+            AddFire(light.Marker, LampColor);
+            int before = lightsLit;
+            lightsLit = SkyIslandLights.LitCount(story.Current);
+            message = SkyIslandLights.LitCaption(light, lightsLit);
+            if (before < SkyIslandLights.Target && lightsLit >= SkyIslandLights.Target) session.Announce(SkyIslandLights.Capstone, false);
+            Debug.Log("[SkyIslandLights] LIT id=" + light.Id + " total=" + lightsLit);
+            return true;
+        }
+
+        /// <summary>离 <paramref name="from"/> 最近、这一趟还没采的某种采集点（罗盘用，只在按下时调一次）。</summary>
+        internal bool TryNearestUnharvested(SkyIslandGatherKind kind, Vector3 from, out Vector3 position)
+        {
+            position = Vector3.zero;
+            return !disposed && gathering.TryNearestUnharvested(kind, from, out position);
+        }
+
+        #endregion
+
         #region 耗材
 
         internal bool CanUse(SkyIslandFieldBuff buff)
         {
             if (disposed || buff == SkyIslandFieldBuff.None || !session.IsReady) return false;
+            // 归航菜便当：菜畦重新开张之后才算归航菜，与晴禾那一顿共用本趟一次。不成立时官方只跳过这一项，便当照样当饭吃。
+            if (buff == SkyIslandFieldBuff.Meal)
+                return session.HasPlantingDelivered && session.Services != null && !session.Services.MealEaten;
             // 护符不叠加：已经系着一枚时按钮置灰，不吃掉第二枚。
             return buff != SkyIslandFieldBuff.Charm || !charmWorn;
         }
@@ -259,6 +346,13 @@ namespace BossRush
                     return true;
                 }
                 return false;
+            }
+            if (buff == SkyIslandFieldBuff.Meal)
+            {
+                // 便当那一顿与晴禾的归航菜同一份加成、共用本趟一次：加成与补血都在服务 owner 里，这里不碰 stat。
+                session.Announce(session.Services.PackedMeal(), false);
+                if (story != null) story.LogTiming("consumable", buff.ToString());
+                return true;
             }
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null) return false;
@@ -380,14 +474,22 @@ namespace BossRush
                 onBoardwalk = region == "E";
             }
             bool stormPending = session.BothBeaconsLit && !session.StormResolved;
-            int level = SkyIslandFieldcraftRules.WindLevel(night, onBridge, onBoardwalk, stormPending);
-            bool warm = lanternUntil > 0f || incenseUntil > 0f || NearCampfire(player.transform.position);
-            if (level > 0 && !warm && !windExplained)
+            // 岛上的灯凑满十盏之后夜里不再起风；带着噬风之核时大风只算微风。
+            int gale = SkyIslandFieldcraftRules.WindLevel(SkyIslandFieldcraftRules.NightWind(night, lightsLit), onBridge, onBoardwalk, stormPending);
+            int level = SkyIslandFieldcraftRules.CoreEased(gale, CarriesCore());
+            // 灶火与风晶灯旁、驱风香什么风都挡；只有风灯时大风里只挡一半。
+            SkyIslandWarmth warmth = SkyIslandFieldcraftRules.Warmth(NearFire(player.transform.position), incenseUntil > 0f, lanternUntil > 0f);
+            if (level > 0 && warmth == SkyIslandWarmth.None && !windExplained)
             {
                 windExplained = true;
                 session.Announce(SkyIslandFieldcraftRules.WindExplain(stormPending), false);
             }
-            exposure = SkyIslandFieldcraftRules.StepExposure(exposure, level, warm, elapsed);
+            if (level < gale && !coreExplained)
+            {
+                coreExplained = true;
+                session.Announce(SkyIslandFieldcraftRules.CoreEasesGale, false);
+            }
+            exposure = SkyIslandFieldcraftRules.StepExposure(exposure, level, warmth, elapsed);
             if (exposure <= SkyIslandFieldcraftRules.ExposureClear) exposureWarned = false;
             else if (!chilled && !exposureWarned && exposure >= SkyIslandFieldcraftRules.ExposureWarn)
             {
@@ -413,45 +515,71 @@ namespace BossRush
             }
         }
 
-        private void PlaceCampfires()
+        /// <summary>
+        /// 岛上的灯（<see cref="SkyIslandLights"/>）：三处居民的灶火一直亮着，其余是本存档点起来的风晶灯。只是光、没有碰撞体，
+        /// 不参与交互竞争；灶火与风晶灯旁一样暖和。进岛时建一次，点起一盏新灯时补建那一盏。
+        /// </summary>
+        private void PlaceFires()
         {
-            for (int i = 0; i < CampfireMarkers.Length; i++)
-            {
-                Transform marker = root.Find(CampfireMarkers[i]);
-                if (marker == null) continue;
-                GameObject go = new GameObject("SkyIslandCampfire_" + CampfireMarkers[i]);
-                go.transform.SetParent(root, false);
-                go.transform.position = marker.position + Vector3.up * 1.2f;
-                Light light = go.AddComponent<Light>();
-                light.type = LightType.Point;
-                light.color = CampfireColor;
-                light.range = 9f;
-                light.shadows = LightShadows.None;
-                campfires.Add(light);
-            }
+            for (int i = 0; i < SkyIslandLights.HearthMarkers.Length; i++) AddFire(SkyIslandLights.HearthMarkers[i], HearthColor);
+            if (story == null) return;
+            SkyIslandLight[] lamps = SkyIslandLights.All;
+            for (int i = 0; i < lamps.Length; i++)
+                if (SkyIslandLights.Lit(story.Current, lamps[i].Id)) AddFire(lamps[i].Marker, LampColor);
         }
 
-        /// <summary>营火夜里更旺：只在昼夜切换时写一次光强。</summary>
-        private void UpdateCampfires(bool night)
+        private void AddFire(string markerName, Color color)
+        {
+            if (!fireMarkers.Add(markerName)) return;
+            Transform marker = root.Find(markerName);
+            if (marker == null) return;
+            GameObject go = new GameObject("SkyIslandFire_" + markerName);
+            go.transform.SetParent(root, false);
+            go.transform.position = marker.position + Vector3.up * 1.2f;
+            Light light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.color = color;
+            light.range = 9f;
+            light.intensity = fireNight == 1 ? 2.4f : 1f;
+            light.shadows = LightShadows.None;
+            fires.Add(light);
+        }
+
+        /// <summary>灯夜里更亮：只在昼夜切换时写一次光强（半路点起的灯按当时的昼夜建）。</summary>
+        private void UpdateFires(bool night)
         {
             int state = night ? 1 : 0;
-            if (state == campfireNight) return;
-            campfireNight = state;
-            for (int i = 0; i < campfires.Count; i++)
-                if (campfires[i] != null) campfires[i].intensity = night ? 2.4f : 1f;
+            if (state == fireNight) return;
+            fireNight = state;
+            for (int i = 0; i < fires.Count; i++)
+                if (fires[i] != null) fires[i].intensity = night ? 2.4f : 1f;
         }
 
-        private bool NearCampfire(Vector3 position)
+        private bool NearFire(Vector3 position)
         {
             float radius = SkyIslandFieldcraftRules.CampfireRadius;
-            for (int i = 0; i < campfires.Count; i++)
+            for (int i = 0; i < fires.Count; i++)
             {
-                if (campfires[i] == null) continue;
-                Vector3 delta = campfires[i].transform.position - position;
+                if (fires[i] == null) continue;
+                Vector3 delta = fires[i].transform.position - position;
                 delta.y = 0f;
                 if (delta.sqrMagnitude <= radius * radius) return true;
             }
             return false;
+        }
+
+        /// <summary>
+        /// 背包顶层有没有噬风之核（与合成台数材料同一口径）。按 <see cref="SkyIslandFieldcraftRules.CarryCheckInterval"/> 游戏秒数一次，
+        /// 夜风推进本来就 0.5 秒才走一趟，不在每帧路径上。
+        /// </summary>
+        private bool CarriesCore()
+        {
+            float now = Time.time;
+            if (now < nextCarryCheck) return coreCarried;
+            nextCarryCheck = now + SkyIslandFieldcraftRules.CarryCheckInterval;
+            try { coreCarried = CountInPack(BossRushItemIds.SkyIslandWindeaterCore) > 0; }
+            catch (Exception) { coreCarried = false; }
+            return coreCarried;
         }
 
         #endregion
@@ -469,9 +597,10 @@ namespace BossRush
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandFieldcraft] 摘除本趟增益失败：" + e.Message); }
             DestroyLantern();
-            for (int i = 0; i < campfires.Count; i++)
-                if (campfires[i] != null) UnityEngine.Object.Destroy(campfires[i].gameObject);
-            campfires.Clear();
+            for (int i = 0; i < fires.Count; i++)
+                if (fires[i] != null) UnityEngine.Object.Destroy(fires[i].gameObject);
+            fires.Clear();
+            fireMarkers.Clear();
             Debug.Log("[SkyIslandFieldcraft] CLOSE gathered=" + gathering.HarvestedCount + "/" + gathering.PlacedCount);
             gathering.Dispose();
         }

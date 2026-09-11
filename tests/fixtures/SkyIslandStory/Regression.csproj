@@ -16,6 +16,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandJournal.cs" Link="Production/SkyIslandJournal.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs" Link="Production/SkyIslandFieldcraftRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLights.cs" Link="Production/SkyIslandLights.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />

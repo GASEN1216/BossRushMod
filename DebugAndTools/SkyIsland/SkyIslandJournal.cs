@@ -75,10 +75,59 @@ namespace BossRush
             text.Append(SkyIslandItemRules.GrantedCount(data)).Append('/').Append(SkyIslandItemRules.Keepsakes.Length);
             text.Append(L10n.T(" · 到访区域 ", " · regions visited "));
             text.Append(RegionsVisited(data)).Append("/12");
+            text.Append(L10n.T(" · 岛上的灯 ", " · lights on the isles "));
+            text.Append(SkyIslandLights.LitCount(data)).Append('/').Append(SkyIslandLights.Target);
             if (!string.IsNullOrEmpty(summary)) text.Append("\n\n").Append(summary);
             if (NotesComplete(data)) text.Append("\n\n").Append(Epilogue);
             return text.ToString();
         }
+
+        /// <summary>
+        /// 「群岛之物」：十五件天空岛物品在岛上各拿来做什么。采集、合成、剧情、风晶灯与夜风怎么串在一起，就看这一页；
+        /// 会影响选择的两个数（护符减伤、航徽折扣）取规则常量，不另写一份。
+        /// </summary>
+        internal static string Uses()
+        {
+            var text = new StringBuilder(L10n.T("群岛之物 · 用处", "What things on the isles are for"));
+            Use(text, BossRushItemIds.SkyIslandGreenearSheaf, L10n.T("归航菜便当、驱风香", "homecoming bentos, windward incense"));
+            Use(text, BossRushItemIds.SkyIslandDriftwood, L10n.T("风灯、便当的柴；栈道、镜水寺、邮亭与听雨洞的风晶灯",
+                "wind lanterns, bento firewood; the windcrystal lamps on the boardwalk, at the temple, in the post hut and at the grotto"));
+            Use(text, BossRushItemIds.SkyIslandCloudmossFiber, L10n.T("风灯、驱风香、星苔药膏；栈道与邮亭的风晶灯",
+                "wind lanterns, windward incense, starmoss salve; the boardwalk and post hut lamps"));
+            Use(text, BossRushItemIds.SkyIslandBrassScrap, L10n.T("晴岚护符、风标罗盘；工坊、钟庭与听雨洞的风晶灯",
+                "Qinglan charms, wind-vane compasses; the workshop, Bell Court and grotto lamps"));
+            Use(text, BossRushItemIds.SkyIslandWindcrystalShard, L10n.T("五片熔成晴岚风晶（星灯亮起之后）；护符、药膏、罗盘也要",
+                "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too"));
+            Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、残星瞭台的风晶灯；夜里风晶簇更容易出",
+                "Qinglan charms and the Starfall Overlook lamp; clusters yield more at night"));
+            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("七盏风晶灯的灯芯：灯旁暖和，岛上的灯凑满十盏之后夜里不再起风",
+                "the wick of the seven windcrystal lamps: warm beside them, and with ten lights on the isles the nights stop blowing"));
+            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风里挡一半、夜里照明；钟庭的风晶灯要挂一盏",
+                "holds off a breeze and half of a gale, lights the night; the Bell Court lamp hangs one"));
+            Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("什么风都挡得住、耐力恢复加快；镜水寺的风晶灯要焚一炷",
+                "holds off any wind and speeds stamina; the Mirrorwater Temple lamp burns one"));
+            Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风的风暴伤害 −{0}%，生命上限与耐力恢复小幅提升",
+                "{0}% less damage from the Windeater's storm this raid, a little more max health and stamina recovery"),
+                Percent(SkyIslandFieldcraftRules.CharmStormWard)));
+            Use(text, BossRushItemIds.SkyIslandHomecomingBento, L10n.T("菜畦重新开张之后在岛上吃，算作晴禾的归航菜",
+                "once the garden has reopened, eaten on the isles it counts as Qinghe's homecoming meal"));
+            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血",
+                "heals without paying Miantai or waiting on her remedy"));
+            Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("指信鸽、目标、支线；都没有了就指还缺灯的地方或风晶簇",
+                "points to pigeons, objectives and side paths; after that, to a place missing its lamp or a wind crystal cluster"));
+            Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%",
+                "carried: the dock refit and Miantai's remedy cost {0}%"), Percent(SkyIslandItemRules.BadgeServiceRate)));
+            Use(text, BossRushItemIds.SkyIslandWindeaterCore, L10n.T("带在身上：大风对你只算微风",
+                "carried: a gale only counts as a breeze for you"));
+            return text.ToString();
+        }
+
+        private static void Use(StringBuilder text, int typeId, string use)
+        {
+            text.Append("\n· ").Append(SkyIslandItemRules.Name(typeId)).Append(" → ").Append(use);
+        }
+
+        private static int Percent(double rate) { return (int)Math.Round(rate * 100.0); }
 
         /// <summary>收齐 20 处见闻后总览末尾的终页。</summary>
         internal static string Epilogue

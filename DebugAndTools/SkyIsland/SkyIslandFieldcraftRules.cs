@@ -37,8 +37,21 @@ namespace BossRush
         Lantern = 0,
         /// <summary>驱风香：不受风寒，耐力恢复加快。</summary>
         Incense = 1,
-        /// <summary>晴岚护符：本趟出击生命上限与耐力恢复小幅提升，不叠加。</summary>
-        Charm = 2
+        /// <summary>晴岚护符：本趟出击噬风的风暴伤害降低，生命上限与耐力恢复小幅提升，不叠加。</summary>
+        Charm = 2,
+        /// <summary>归航菜便当：菜畦重新开张之后在岛上吃，算作晴禾的归航菜（与她那一顿共用本趟一次）。</summary>
+        Meal = 3
+    }
+
+    /// <summary>此刻挡着风的东西：决定寒意是积还是退。</summary>
+    internal enum SkyIslandWarmth
+    {
+        /// <summary>什么都没有。</summary>
+        None = 0,
+        /// <summary>只有风灯：微风里暖和；大风里火苗被压低，寒意按大风的一半速率积。</summary>
+        Lantern = 1,
+        /// <summary>灶火或风晶灯旁、或焚着驱风香：什么风都挡得住。</summary>
+        Shelter = 2
     }
 
     /// <summary>一个采集点的稳定身份：锚点标记 + 极坐标偏移 + 外观 + 档次。落点由运行时地面与墙体检查最终决定。</summary>
@@ -77,6 +90,16 @@ namespace BossRush
         internal int OutputTypeId;
         internal int OutputCount;
         internal SkyIslandIngredient[] Inputs;
+        /// <summary>要先达成的剧情旗标；None 表示一开始就会做。</summary>
+        internal SkyIslandStoryFlag RequiresFlag;
+        /// <summary>要先记进本槽手记的条目；null 表示不需要。</summary>
+        internal string RequiresNote;
+
+        /// <summary>这条配方要等剧情走到 <paramref name="flag"/> 才会做（配方表里链式写在 Recipe(...) 之后）。</summary>
+        internal SkyIslandRecipe After(SkyIslandStoryFlag flag) { RequiresFlag = flag; return this; }
+
+        /// <summary>这条配方要等手记里有 <paramref name="noteId"/> 才会做。</summary>
+        internal SkyIslandRecipe AfterNote(string noteId) { RequiresNote = noteId; return this; }
     }
 
     /// <summary>
@@ -89,6 +112,10 @@ namespace BossRush
     ///   与全岛其它静态交互体的净空由 `tests/SkyIslandInteractionCompetitionPropertyTest.py` 按真实几何复算。
     /// - 产出随区域危险度递增（与搜刮点共用 <see cref="SkyIslandLootTier"/>）；配方只读这张表，面板与回归共用。
     /// - 夜风只动耐力恢复与饥饿速度，**不掉血、不减跑速**：噬风的第一圈要求约 5 m/s 净逃离速度，减跑速会把那一关变成数值墙。
+    /// - **串联**：每件东西都要有岛上的用处，不做只为卖钱的物品——剧情让群岛长回来（<see cref="StoryBonusCount"/>）、
+    ///   配方随剧情解锁（<see cref="Unlocked"/>）、三件耗材各挡一层风（风灯挡微风、驱风香挡大风、护符挡噬风的风暴，
+    ///   <see cref="StepExposure"/> / <see cref="StormPulseDamage"/>）、晴岚风晶是七盏风晶灯的灯芯（<see cref="SkyIslandLights"/>），
+    ///   灯凑满十盏之后夜里不再起风（<see cref="NightWind"/>），带在身上的噬风之核让大风只算微风（<see cref="CoreEased"/>）。
     /// 纯逻辑、无 Unity 依赖，隔离回归（`tests/fixtures/SkyIslandStory`）直接执行。
     /// </summary>
     internal static class SkyIslandFieldcraftRules
@@ -134,6 +161,14 @@ namespace BossRush
         /// <summary>晴岚护符：生命上限 +10%、耐力恢复 +10%（本趟出击，不叠加）。</summary>
         internal const float CharmMaxHealth = 0.10f;
         internal const float CharmStaminaRecover = 0.10f;
+        /// <summary>晴岚护符：本趟噬风风暴脉冲的伤害降低比例（噬风每一波读一次）。</summary>
+        internal const float CharmStormWard = 0.35f;
+        /// <summary>风灯在大风里只挡一半：火苗被压低，寒意按大风速率的这个比例积。</summary>
+        internal const float LanternGaleFactor = 0.5f;
+        /// <summary>多久数一次背包里有没有噬风之核（游戏秒）：放进拿出晚两秒生效无所谓，不必每次推进都数背包。</summary>
+        internal const float CarryCheckInterval = 2f;
+        /// <summary>观星镜校准之后，残星瞭台的风晶簇多出星屑的概率。</summary>
+        internal const double TelescopeStardustBonus = 0.20;
 
         /// <summary>夜里（21 点到次日 5 点，与光照的「星夜」整档一致）风晶簇多出星屑的概率。</summary>
         internal const double NightStardustBonus = 0.15;
@@ -258,30 +293,46 @@ namespace BossRush
         /// <summary>
         /// 一次采集的产出。随机流由调用方按「本趟种子 + 采集点 id」给（<see cref="SkyIslandLootTables.CreateStream"/>）；
         /// 抽样顺序固定为「件数 → 附带」，昼夜只改附带的门槛、不改抽了几次，同一种子白天黑夜的主产出件数一致。
+        /// 不带存档的这个重载就是没有任何剧情加成时的产出。
         /// </summary>
         internal static SkyIslandYield[] Roll(SkyIslandGatherNode node, Random random, bool night)
+        {
+            return Roll(node, random, night, null);
+        }
+
+        /// <summary>
+        /// 带剧情进度的一次采集：修好的地方长得更旺（<see cref="StoryBonusCount"/> / <see cref="StoryBonusChance"/>）。
+        /// 加成只加在已经抽出的件数与附带门槛上，**不多抽一次随机数**：同一种子有没有加成，抽到的底数与附带判定用的同一个数。
+        /// </summary>
+        internal static SkyIslandYield[] Roll(SkyIslandGatherNode node, Random random, bool night, SkyIslandStoryData data)
         {
             if (node == null || random == null) return new SkyIslandYield[0];
             int min, max;
             CountRange(node.Kind, node.Tier, out min, out max);
-            int count = min + random.Next(max - min + 1);
+            int count = min + random.Next(max - min + 1) + StoryBonusCount(node, data);
             double roll = random.NextDouble();
             int extra = ExtraTypeId(node.Kind);
-            if (extra != 0 && roll < ExtraChance(node.Kind, node.Tier, night))
+            if (extra != 0 && roll < ExtraChance(node.Kind, node.Tier, night) + StoryBonusChance(node, data))
                 return new[] { new SkyIslandYield(PrimaryTypeId(node.Kind), count), new SkyIslandYield(extra, 1) };
             return new[] { new SkyIslandYield(PrimaryTypeId(node.Kind), count) };
         }
 
-        /// <summary>一个采集点的期望产出（件）：主产出取件数均值，附带取概率。经济估算与报告共用。</summary>
+        /// <summary>一个采集点的期望产出（件），没有剧情加成。</summary>
         internal static Dictionary<int, double> ExpectedYield(SkyIslandGatherNode node, bool night)
+        {
+            return ExpectedYield(node, night, null);
+        }
+
+        /// <summary>一个采集点的期望产出（件）：主产出取件数均值、附带取概率，都含剧情加成。经济估算与报告共用。</summary>
+        internal static Dictionary<int, double> ExpectedYield(SkyIslandGatherNode node, bool night, SkyIslandStoryData data)
         {
             var result = new Dictionary<int, double>();
             if (node == null) return result;
             int min, max;
             CountRange(node.Kind, node.Tier, out min, out max);
-            result[PrimaryTypeId(node.Kind)] = (min + max) / 2.0;
+            result[PrimaryTypeId(node.Kind)] = (min + max) / 2.0 + StoryBonusCount(node, data);
             int extra = ExtraTypeId(node.Kind);
-            double chance = ExtraChance(node.Kind, node.Tier, night);
+            double chance = ExtraChance(node.Kind, node.Tier, night) + StoryBonusChance(node, data);
             if (extra != 0 && chance > 0.0)
             {
                 double existing;
@@ -291,12 +342,18 @@ namespace BossRush
             return result;
         }
 
-        /// <summary>全岛采集点一趟采完的期望产出（件）。</summary>
+        /// <summary>全岛采集点一趟采完的期望产出（件），没有剧情加成。</summary>
         internal static Dictionary<int, double> ExpectedRaidYield(bool night)
+        {
+            return ExpectedRaidYield(night, null);
+        }
+
+        /// <summary>全岛采集点一趟采完的期望产出（件），含这份存档的剧情加成。</summary>
+        internal static Dictionary<int, double> ExpectedRaidYield(bool night, SkyIslandStoryData data)
         {
             var total = new Dictionary<int, double>();
             for (int i = 0; i < nodes.Length; i++)
-                foreach (KeyValuePair<int, double> entry in ExpectedYield(nodes[i], night))
+                foreach (KeyValuePair<int, double> entry in ExpectedYield(nodes[i], night, data))
                 {
                     double existing;
                     total.TryGetValue(entry.Key, out existing);
@@ -305,13 +362,63 @@ namespace BossRush
             return total;
         }
 
-        /// <summary>全岛采集点一趟采完的期望价值（按物品 Value 计）。</summary>
+        /// <summary>全岛采集点一趟采完的期望价值（按物品 Value 计），没有剧情加成。</summary>
         internal static double ExpectedRaidValue(bool night)
         {
+            return ExpectedRaidValue(night, null);
+        }
+
+        /// <summary>全岛采集点一趟采完的期望价值（按物品 Value 计），含这份存档的剧情加成。</summary>
+        internal static double ExpectedRaidValue(bool night, SkyIslandStoryData data)
+        {
             double value = 0.0;
-            foreach (KeyValuePair<int, double> entry in ExpectedRaidYield(night))
+            foreach (KeyValuePair<int, double> entry in ExpectedRaidYield(night, data))
                 value += entry.Value * SkyIslandItemRules.ValueOf(entry.Key);
             return value;
+        }
+
+        /// <summary>
+        /// 剧情进度对采集的回应：修好的地方长得更旺，每处多一件主产出。
+        /// 菜畦重新开张 → 青穗梯田的青穗草；风标转回来 → 悬根林的云苔；星灯亮起 → 残星工坊的残铜矿脉；
+        /// 噬风散去 → 鸣风栈道的风晶簇（风凝成了晶）。没有存档（<paramref name="data"/> 为 null）时一律为 0。
+        /// </summary>
+        internal static int StoryBonusCount(SkyIslandGatherNode node, SkyIslandStoryData data)
+        {
+            if (node == null || data == null) return 0;
+            switch (node.Kind)
+            {
+                case SkyIslandGatherKind.Grass: return node.Region == "C" && data.Has(SkyIslandStoryFlag.PlantingDelivered) ? 1 : 0;
+                case SkyIslandGatherKind.Moss: return node.Region == "D" && data.Has(SkyIslandStoryFlag.WindBeacon) ? 1 : 0;
+                case SkyIslandGatherKind.Ore: return node.Region == "G" && data.Has(SkyIslandStoryFlag.StarLamp) ? 1 : 0;
+                case SkyIslandGatherKind.Crystal: return node.Region == "E" && data.StormResolved ? 1 : 0;
+                default: return 0;
+            }
+        }
+
+        /// <summary>观星镜校准之后，残星瞭台的风晶簇多出星屑的概率加成；其余为 0。</summary>
+        internal static double StoryBonusChance(SkyIslandGatherNode node, SkyIslandStoryData data)
+        {
+            return node != null && data != null && node.Kind == SkyIslandGatherKind.Crystal && node.Region == "S4" &&
+                data.Has(SkyIslandStoryFlag.Telescope) ? TelescopeStardustBonus : 0.0;
+        }
+
+        /// <summary>这一处为什么长得更旺（采到时字幕末尾附一句）；没有加成返回 null。</summary>
+        internal static string StoryBonusReason(SkyIslandGatherNode node, SkyIslandStoryData data)
+        {
+            if (StoryBonusCount(node, data) == 0 && StoryBonusChance(node, data) <= 0.0) return null;
+            switch (node.Kind)
+            {
+                case SkyIslandGatherKind.Grass:
+                    return L10n.T("晴禾的菜畦重新种下去了，青穗长得更旺", "Qinghe's beds are planted again, and the greenear grows thicker");
+                case SkyIslandGatherKind.Moss:
+                    return L10n.T("风标转回来之后，根环里的云苔长回来了", "Since the wind beacon turned back, the cloudmoss has grown back in the root ring");
+                case SkyIslandGatherKind.Ore:
+                    return L10n.T("星灯照亮了工坊的铜脉", "The star lamp lights up the workshop's brass veins");
+                default:
+                    return node.Region == "E"
+                        ? L10n.T("噬风散去的地方，风凝成了晶", "Where the Windeater broke apart, the wind has set into crystal")
+                        : L10n.T("观星镜对准之后，星屑常落在镜筒边", "Since the telescope was aligned, stardust keeps settling beside it");
+            }
         }
 
         internal static string KindName(SkyIslandGatherKind kind)
@@ -330,6 +437,14 @@ namespace BossRush
         internal static string GatherLabel(SkyIslandGatherKind kind)
         {
             return KindName(kind) + L10n.T(" · 采集", " · gather");
+        }
+
+        /// <summary>采到东西之后的字幕，末尾附上这一处为什么长得更旺；没有原因时与不带原因的那一句相同。</summary>
+        internal static string HarvestCaption(SkyIslandYield[] yields, string reason)
+        {
+            string caption = HarvestCaption(yields);
+            if (string.IsNullOrEmpty(reason) || yields == null || yields.Length == 0) return caption;
+            return caption + L10n.T("（", " (") + reason + L10n.T("）", ")");
         }
 
         /// <summary>采到东西之后的字幕：「采到：云苔纤维 ×3、风晶碎片 ×1」。</summary>
@@ -355,17 +470,20 @@ namespace BossRush
             // 浮舟 · 渡口工台：工具、护符与「碎片凑整」。
             Recipe("Lantern", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandWindLantern, 1,
                 In(BossRushItemIds.SkyIslandDriftwood, 2), In(BossRushItemIds.SkyIslandCloudmossFiber, 1)),
+            // 晴岚风晶是风晶灯的灯芯；碎晶要送进残星工坊的熔晶炉，星灯不亮炉子烧不起来。
             Recipe("Windcrystal", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandQinglanWindcrystal, 1,
-                In(BossRushItemIds.SkyIslandWindcrystalShard, 5)),
+                In(BossRushItemIds.SkyIslandWindcrystalShard, 5)).After(SkyIslandStoryFlag.StarLamp),
             Recipe("Charm", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandQinglanCharm, 1,
                 In(BossRushItemIds.SkyIslandBrassScrap, 3), In(BossRushItemIds.SkyIslandWindcrystalShard, 2),
                 In(BossRushItemIds.SkyIslandStardust, 1)),
-            // 风标罗盘丢了（死在岛上进了墓碑）可以重做一只：材料价值略高于罗盘，不是换钱的路子。
+            // 风标罗盘丢了（死在岛上进了墓碑）可以重做一只：得先收到过浮舟捎来的那一只。材料价值略高于罗盘，不是换钱的路子。
             Recipe("Compass", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandWindVaneCompass, 1,
-                In(BossRushItemIds.SkyIslandBrassScrap, 4), In(BossRushItemIds.SkyIslandWindcrystalShard, 2)),
-            // 晴禾 · 灶台：浮木当柴。
+                In(BossRushItemIds.SkyIslandBrassScrap, 4), In(BossRushItemIds.SkyIslandWindcrystalShard, 2))
+                .AfterNote(SkyIslandItemRules.CompassKeepsake),
+            // 晴禾 · 灶台：浮木当柴。归航菜的做法写在种植记录里，记录交还晴禾之后才会做便当。
             Recipe("Bento", SkyIslandCraftStation.Stove, BossRushItemIds.SkyIslandHomecomingBento, 1,
-                In(BossRushItemIds.SkyIslandGreenearSheaf, 4), In(BossRushItemIds.SkyIslandDriftwood, 1)),
+                In(BossRushItemIds.SkyIslandGreenearSheaf, 4), In(BossRushItemIds.SkyIslandDriftwood, 1))
+                .After(SkyIslandStoryFlag.PlantingDelivered),
             Recipe("IncenseStove", SkyIslandCraftStation.Stove, BossRushItemIds.SkyIslandWindwardIncense, 1,
                 In(BossRushItemIds.SkyIslandCloudmossFiber, 2), In(BossRushItemIds.SkyIslandGreenearSheaf, 2)),
             // 眠苔 · 药臼：驱风香两处都能做，任一居民不在（婚后离岛、生成失败）另一处照样有。
@@ -394,15 +512,70 @@ namespace BossRush
         /// <summary>还差哪些材料（数量不足的那几种，缺多少）。<paramref name="countInPack"/> 给出背包里某件物品的件数。</summary>
         internal static List<SkyIslandIngredient> Missing(SkyIslandRecipe recipe, Func<int, int> countInPack)
         {
+            return Missing(recipe == null ? null : recipe.Inputs, countInPack);
+        }
+
+        /// <summary>一组材料还差哪些（配方与点灯共用）。</summary>
+        internal static List<SkyIslandIngredient> Missing(SkyIslandIngredient[] inputs, Func<int, int> countInPack)
+        {
             var missing = new List<SkyIslandIngredient>();
-            if (recipe == null || recipe.Inputs == null) return missing;
-            for (int i = 0; i < recipe.Inputs.Length; i++)
+            if (inputs == null) return missing;
+            for (int i = 0; i < inputs.Length; i++)
             {
-                SkyIslandIngredient input = recipe.Inputs[i];
+                SkyIslandIngredient input = inputs[i];
                 int have = countInPack == null ? 0 : Math.Max(0, countInPack(input.TypeId));
                 if (have < input.Count) missing.Add(new SkyIslandIngredient(input.TypeId, input.Count - have));
             }
             return missing;
+        }
+
+        /// <summary>这份存档会不会做这条配方（剧情旗标与手记条目都满足）。没有存档时只有不设门槛的配方算会。</summary>
+        internal static bool Unlocked(SkyIslandRecipe recipe, SkyIslandStoryData data)
+        {
+            if (recipe == null) return false;
+            if (recipe.RequiresFlag == SkyIslandStoryFlag.None && recipe.RequiresNote == null) return true;
+            if (data == null) return false;
+            if (recipe.RequiresFlag != SkyIslandStoryFlag.None && !data.Has(recipe.RequiresFlag)) return false;
+            return recipe.RequiresNote == null ||
+                (data.discoveredNotes != null && Array.IndexOf(data.discoveredNotes, recipe.RequiresNote) >= 0);
+        }
+
+        /// <summary>还不会做时，要等到什么时候（按钮与手记共用）。</summary>
+        internal static string UnlockHint(SkyIslandRecipe recipe)
+        {
+            if (recipe == null) return string.Empty;
+            if (recipe.RequiresNote != null)
+                return L10n.T("收到浮舟托信鸽捎来的罗盘之后", "once Fuzhou's compass has come with a pigeon");
+            switch (recipe.RequiresFlag)
+            {
+                case SkyIslandStoryFlag.PlantingDelivered: return L10n.T("种植记录交还晴禾之后", "once Qinghe has her planting record back");
+                case SkyIslandStoryFlag.StarLamp: return L10n.T("残星工坊的星灯亮起之后", "once the Fallen Star Workshop's star lamp is lit");
+                default: return L10n.T("旅程再往前走一段之后", "further along the journey");
+            }
+        }
+
+        /// <summary>还不会做的配方按钮：「还不会做 归航菜便当（种植记录交还晴禾之后）」。</summary>
+        internal static string LockedLabel(SkyIslandRecipe recipe)
+        {
+            if (recipe == null) return string.Empty;
+            return L10n.T("还不会做 ", "Not yet: ") + SkyIslandItemRules.Name(recipe.OutputTypeId) +
+                L10n.T("（", " (") + UnlockHint(recipe) + L10n.T("）", ")");
+        }
+
+        /// <summary>点了还不会做的配方时，居民说为什么。</summary>
+        internal static string LockedMessage(SkyIslandRecipe recipe)
+        {
+            if (recipe == null) return string.Empty;
+            switch (recipe.Id)
+            {
+                case "Bento": return L10n.T("晴禾：归航菜的做法写在种植记录里。记录还泡在蛙鸣池边，我凑不齐那几样。",
+                    "Qinghe: The homecoming recipe is written in my planting record, and that is still soaking by Frogsong Pool. I cannot put it together without it.");
+                case "Windcrystal": return L10n.T("浮舟：碎晶得送进残星工坊的熔晶炉。星灯不亮，炉子就烧不起来。",
+                    "Fuzhou: Shards have to go into the crystal furnace at the Fallen Star Workshop, and that furnace will not burn until the star lamp is lit.");
+                case "Compass": return L10n.T("浮舟：罗盘我还没捎给你呢。等第一只信鸽落了、你手里有过一只，我才照着样子重做。",
+                    "Fuzhou: I have not even sent you the compass yet. Once the first pigeon has come and you have held one, I can make another to match.");
+                default: return L10n.T("还不会做：", "Not yet: ") + UnlockHint(recipe) + L10n.T("。", ".");
+            }
         }
 
         internal static bool CanCraft(SkyIslandRecipe recipe, Func<int, int> countInPack)
@@ -452,14 +625,14 @@ namespace BossRush
             switch (station)
             {
                 case SkyIslandCraftStation.Dock: return L10n.T(
-                    "浮舟把工台上的刨花扫到一边：『浮木、铜片、风晶——群岛上捡来的东西，在我这儿都能拼成点用得上的。碎晶攒够五片，我给你熔成一整块。』",
-                    "Fuzhou sweeps the shavings off the workbench: 'Driftwood, brass, wind crystal — whatever you pick up on the isles, I can put together into something useful. Bring five shards and I will fuse them into a whole crystal.'");
+                    "浮舟把工台上的刨花扫到一边：『浮木作骨、云苔糊罩，就是一盏夜里用的风灯；铜片打底、嵌上风晶和星屑，就是护符——噬风那阵风碰上它会让开几分。碎晶攒够五片，等工坊的星灯亮了，我拿去熔成一整块：岛上还有七处缺一盏风晶灯。』",
+                    "Fuzhou sweeps the shavings off the workbench: 'Driftwood for the frame and a cloudmoss shade make a wind lantern for the nights. A brass backing set with crystal and stardust makes a charm — the Windeater's gusts give way around it. Bring five shards once the workshop's star lamp is lit and I will fuse them whole: seven places on the isles still want a windcrystal lamp.'");
                 case SkyIslandCraftStation.Stove: return L10n.T(
-                    "晴禾往灶里添了块浮木：『四把青穗草配一块柴，就是一份归航菜便当。夜里风大，驱风香也能在这儿熏。』",
-                    "Qinghe feeds a piece of driftwood into the stove: 'Four handfuls of greenear and one stick of firewood make a homecoming bento. The nights get windy — you can smoke windward incense here too.'");
+                    "晴禾往灶里添了块浮木：『驱风香的烟压得住大风，过桥、上栈道都靠它。等种植记录回来，我照着上面的做法给你装归航菜便当——在岛上吃，就算吃过我这一顿。』",
+                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense smoke holds off even a gale — you want it on the bridges and the boardwalk. Once my planting record is back I can pack homecoming bentos from the recipe in it; eat one on the isles and it counts as my meal.'");
                 default: return L10n.T(
-                    "眠苔把药臼推过来：『云苔纤维磨得越细，药膏越凉；加一片风晶，伤口好得快。驱风香也是这么捣出来的。』",
-                    "Miantai slides the mortar over: 'The finer the cloudmoss is ground, the cooler the salve; a shard of wind crystal makes wounds close faster. Windward incense is pounded the same way.'");
+                    "眠苔把药臼推过来：『云苔纤维磨得越细，药膏越凉；加一片风晶，伤口好得快——省下来的钱，留着付给真正要命的伤。驱风香也是这么捣出来的。』",
+                    "Miantai slides the mortar over: 'The finer the cloudmoss is ground, the cooler the salve; a shard of wind crystal closes wounds faster — save your coin for the wounds that really need me. Windward incense is pounded the same way.'");
             }
         }
 
@@ -484,17 +657,24 @@ namespace BossRush
         internal static string RecipeLabel(SkyIslandRecipe recipe, Func<int, int> countInPack)
         {
             if (recipe == null) return string.Empty;
-            string inputs = string.Empty;
-            for (int i = 0; i < recipe.Inputs.Length; i++)
-            {
-                SkyIslandIngredient input = recipe.Inputs[i];
-                int have = countInPack == null ? 0 : Math.Max(0, countInPack(input.TypeId));
-                if (i > 0) inputs += " · ";
-                inputs += SkyIslandItemRules.Name(input.TypeId) + " " + Math.Min(have, input.Count) + "/" + input.Count;
-            }
             return L10n.T("制作 ", "Make ") + SkyIslandItemRules.Name(recipe.OutputTypeId) +
                 (recipe.OutputCount > 1 ? " ×" + recipe.OutputCount : string.Empty) +
-                L10n.T("（", " (") + inputs + L10n.T("）", ")");
+                L10n.T("（", " (") + HaveNeedList(recipe.Inputs, countInPack) + L10n.T("）", ")");
+        }
+
+        /// <summary>「浮木 2/2 · 云苔纤维 1/1」：配方按钮与点灯按钮共用，有几件按需要的封顶。</summary>
+        internal static string HaveNeedList(SkyIslandIngredient[] inputs, Func<int, int> countInPack)
+        {
+            string list = string.Empty;
+            if (inputs == null) return list;
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                SkyIslandIngredient input = inputs[i];
+                int have = countInPack == null ? 0 : Math.Max(0, countInPack(input.TypeId));
+                if (i > 0) list += " · ";
+                list += SkyIslandItemRules.Name(input.TypeId) + " " + Math.Min(have, input.Count) + "/" + input.Count;
+            }
+            return list;
         }
 
         /// <summary>材料不够时的回话：「材料还差：浮木 ×1 · 云苔纤维 ×1。」</summary>
@@ -535,6 +715,7 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandWindLantern: return SkyIslandFieldBuff.Lantern;
                 case BossRushItemIds.SkyIslandWindwardIncense: return SkyIslandFieldBuff.Incense;
                 case BossRushItemIds.SkyIslandQinglanCharm: return SkyIslandFieldBuff.Charm;
+                case BossRushItemIds.SkyIslandHomecomingBento: return SkyIslandFieldBuff.Meal;
                 default: return SkyIslandFieldBuff.None;
             }
         }
@@ -544,27 +725,29 @@ namespace BossRush
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("使用：在晴岚群岛上点亮约 4 分钟，燃着时夜风吹不透（离岛无效）",
-                    "Use: on the Qinglan isles, burns about 4 minutes and keeps the night chill off (no effect elsewhere)");
-                case SkyIslandFieldBuff.Incense: return L10n.T("使用：在晴岚群岛上约 5 分钟不受风寒、耐力恢复加快（离岛无效）",
-                    "Use: on the Qinglan isles, about 5 minutes immune to wind chill with faster stamina recovery (no effect elsewhere)");
-                case SkyIslandFieldBuff.Charm: return L10n.T("使用：本趟出击生命上限 +10%、耐力恢复 +10%（只在晴岚群岛上能用，离岛失效，不叠加）",
-                    "Use: this raid, +10% max health and +10% stamina recovery (Qinglan isles only; ends when you leave; does not stack)");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("使用：在晴岚群岛上点亮约 4 分钟：微风里不积寒意，大风里只挡一半；照亮身边（离岛无效）",
+                    "Use: on the Qinglan isles, burns about 4 minutes: no chill in a breeze, half protection in a gale; lights your way (no effect elsewhere)");
+                case SkyIslandFieldBuff.Incense: return L10n.T("使用：在晴岚群岛上约 5 分钟什么风都挡得住（大风也一样），耐力恢复加快（离岛无效）",
+                    "Use: on the Qinglan isles, about 5 minutes safe from any wind (gales too) with faster stamina recovery (no effect elsewhere)");
+                case SkyIslandFieldBuff.Charm: return L10n.T("使用：本趟出击噬风的风暴伤害 −35%、生命上限 +10%、耐力恢复 +10%（只在晴岚群岛上能用，离岛失效，不叠加）",
+                    "Use: this raid, 35% less damage from the Windeater's storm, +10% max health and +10% stamina recovery (Qinglan isles only; ends when you leave; does not stack)");
+                case SkyIslandFieldBuff.Meal: return L10n.T("在晴岚群岛上吃：菜畦重新开张之后，算作晴禾的归航菜（本趟一次）",
+                    "Eat on the Qinglan isles: once the garden has reopened, it counts as Qinghe's homecoming meal (once per raid)");
                 default: return string.Empty;
             }
         }
 
-        /// <summary>耗材生效时的字幕。</summary>
+        /// <summary>耗材生效时的字幕（便当的回话由归航菜服务给，这里没有）。</summary>
         internal static string BuffStarted(SkyIslandFieldBuff buff)
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内寒意不会加重，还会慢慢退去。",
-                    "The wind lantern is lit: for about 4 minutes the chill will not build, and what you have fades.");
-                case SkyIslandFieldBuff.Incense: return L10n.T("驱风香点上了：约 5 分钟内不受风寒侵扰，耐力恢复加快。",
-                    "Windward incense is burning: for about 5 minutes the wind cannot chill you, and stamina recovers faster.");
-                case SkyIslandFieldBuff.Charm: return L10n.T("晴岚护符系上了：本趟出击生命上限与耐力恢复小幅提升（离岛失效）。",
-                    "The Qinglan charm is tied on: max health and stamina recovery rise a little for this raid (ends when you leave the isles).");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内微风吹不透，大风里也能挡掉一半。",
+                    "The wind lantern is lit: for about 4 minutes a breeze cannot chill you, and it holds off half of a gale.");
+                case SkyIslandFieldBuff.Incense: return L10n.T("驱风香点上了：约 5 分钟内什么风都侵不了身，耐力恢复加快。",
+                    "Windward incense is burning: for about 5 minutes no wind can chill you, and stamina recovers faster.");
+                case SkyIslandFieldBuff.Charm: return L10n.T("晴岚护符系上了：本趟噬风的风暴伤不到你那么深，生命上限与耐力恢复也小幅提升（离岛失效）。",
+                    "The Qinglan charm is tied on: the Windeater's storm will not cut as deep this raid, and max health and stamina recovery rise a little (ends when you leave the isles).");
                 default: return string.Empty;
             }
         }
@@ -609,16 +792,57 @@ namespace BossRush
             return level > 2 ? 2 : level;
         }
 
-        /// <summary>推进一段游戏时间后的寒意。暖和时（营火、风灯、驱风香）无论风多大都在退。</summary>
-        internal static float StepExposure(float exposure, int windLevel, bool warm, float seconds)
+        /// <summary>夜里算不算起风：岛上的灯凑满 <see cref="SkyIslandLights.Target"/> 盏之后，夜里不再起风（桥上本来就有的风照旧）。</summary>
+        internal static bool NightWind(bool night, int lightsLit)
+        {
+            return night && lightsLit < SkyIslandLights.Target;
+        }
+
+        /// <summary>带着噬风之核：核里那团风把身边的风吃掉一截，大风对你只算微风。</summary>
+        internal static int CoreEased(int windLevel, bool coreCarried)
+        {
+            return coreCarried && windLevel >= 2 ? 1 : windLevel;
+        }
+
+        /// <summary>此刻挡着风的是什么：灶火 / 风晶灯旁或焚着驱风香什么风都挡得住，只有风灯时算半挡。</summary>
+        internal static SkyIslandWarmth Warmth(bool nearFire, bool incenseBurning, bool lanternLit)
+        {
+            if (nearFire || incenseBurning) return SkyIslandWarmth.Shelter;
+            return lanternLit ? SkyIslandWarmth.Lantern : SkyIslandWarmth.None;
+        }
+
+        /// <summary>
+        /// 推进一段游戏时间后的寒意。灶火、风晶灯、驱风香什么风都挡得住，一直在退；
+        /// 风灯挡得住微风，大风里火苗被压低，寒意按大风速率的 <see cref="LanternGaleFactor"/> 积。
+        /// </summary>
+        internal static float StepExposure(float exposure, int windLevel, SkyIslandWarmth warmth, float seconds)
         {
             if (float.IsNaN(exposure)) exposure = 0f;
             if (seconds > 0f && !float.IsNaN(seconds) && !float.IsInfinity(seconds))
             {
-                float rate = warm ? -WarmRecovery : windLevel >= 2 ? GaleRate : windLevel == 1 ? BreezeRate : -CalmRecovery;
+                float rate;
+                if (warmth == SkyIslandWarmth.Shelter) rate = -WarmRecovery;
+                else if (warmth == SkyIslandWarmth.Lantern) rate = windLevel >= 2 ? GaleRate * LanternGaleFactor : -WarmRecovery;
+                else rate = windLevel >= 2 ? GaleRate : windLevel == 1 ? BreezeRate : -CalmRecovery;
                 exposure += rate * seconds;
             }
             return exposure < 0f ? 0f : exposure > ExposureMax ? ExposureMax : exposure;
+        }
+
+        /// <summary>噬风一波风暴脉冲对玩家的伤害：系着晴岚护符时按 <see cref="CharmStormWard"/> 减。</summary>
+        internal static float StormPulseDamage(float baseDamage, bool warded)
+        {
+            return warded ? baseDamage * (1f - CharmStormWard) : baseDamage;
+        }
+
+        /// <summary>本趟第一次靠噬风之核把大风压成微风时的字幕。</summary>
+        internal static string CoreEasesGale
+        {
+            get
+            {
+                return L10n.T("噬风之核在背包里轻轻打转：大风绕开了你，只剩一点微风。",
+                    "The Windeater Core turns softly in your pack: the gale parts around you, leaving only a breeze.");
+            }
         }
 
         /// <summary>风寒的滞回：积满才上身，退到 <see cref="ExposureClear"/> 以下才解除。</summary>
@@ -631,16 +855,22 @@ namespace BossRush
         internal static string WindExplain(bool stormPending)
         {
             string text = L10n.T(
-                "起风了：夜里和桥上会慢慢积累寒意，积满后耐力恢复变慢、饿得更快（不掉血）。靠近营火、点一盏风灯或焚一炷驱风香就能暖和过来。",
-                "The wind is picking up: at night and on bridges you slowly get chilled. A full chill slows stamina recovery and makes you hungry faster (no health loss). Stand by a campfire, light a wind lantern or burn windward incense to warm up.");
+                "起风了：夜里和桥上会慢慢积累寒意，积满后耐力恢复变慢、饿得更快（不掉血）。灶火与风晶灯旁、焚着驱风香时什么风都挡得住；风灯挡得住微风，大风里只挡一半。",
+                "The wind is picking up: at night and on bridges you slowly get chilled. A full chill slows stamina recovery and makes you hungry faster (no health loss). By a hearth or a windcrystal lamp, or with windward incense burning, no wind gets through; a wind lantern holds off a breeze but only half of a gale.");
             if (stormPending)
-                text += L10n.T("两盏航标都亮了、噬风还没散：鸣风栈道和桥上的风格外大。",
-                    " Both beacons are lit and the Windeater is still out there: the wind is especially strong on Windsong Boardwalk and the bridges.");
+                text += L10n.T("两盏航标都亮了、噬风还没散：鸣风栈道和桥上是大风。",
+                    " Both beacons are lit and the Windeater is still out there: Windsong Boardwalk and the bridges are in a gale.");
             return text;
         }
 
         internal static string ExposureWarning
-        { get { return L10n.T("寒意渐重——找处营火，或者点上风灯。", "The chill is setting in — find a campfire or light a wind lantern."); } }
+        {
+            get
+            {
+                return L10n.T("寒意渐重——找处灶火或风晶灯，或者焚一炷驱风香、点上风灯。",
+                    "The chill is setting in — find a hearth or a windcrystal lamp, or burn windward incense or light a wind lantern.");
+            }
+        }
 
         internal static string ChillStarted
         { get { return L10n.T("风寒：耐力恢复变慢、饿得更快。暖和过来就会消失。", "Wind chill: stamina recovers slower and you get hungry faster. It goes away once you warm up."); } }

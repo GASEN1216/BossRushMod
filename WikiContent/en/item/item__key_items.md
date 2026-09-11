@@ -105,9 +105,9 @@ See Faction War for details.
 
 ### Wind-Vane Compass
 
-Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Sky Islands and it reads out a bearing and a rough distance: first to an uncollected **carrier pigeon**, then to your nearest current objective, and after the ending to an unfinished side path.
+Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Sky Islands and it reads out a bearing and a rough distance: first to an uncollected **carrier pigeon**, then to your nearest current objective, and after the ending to an unfinished side path; when there is nothing left, to **a place still missing its windcrystal lamp** if you carry a Qinglan Windcrystal, or else to **a wind crystal cluster you have not gathered this trip**.
 
-- **Source**: arrives with your first kept pigeon letter on the Sky Islands; Starworks crates occasionally hold one; if you lose it, Fuzhou's dock workbench can make another from Brass Scrap ×4 + Windcrystal Shard ×2
+- **Source**: arrives with your first kept pigeon letter on the Sky Islands; Starworks crates occasionally hold one; if you lose it, Fuzhou's dock workbench can make another from Brass Scrap ×4 + Windcrystal Shard ×2 (once you have had the first one)
 - **Use**: reusable, never consumed; does not stack
 - Used anywhere else, it only tells you the vane is spinning
 
@@ -117,11 +117,11 @@ See Sky Islands · Qinglan Archipelago.
 
 ### Qinglan Homecoming Badge / Windeater Core
 
-The Sky Islands' two keepsakes — one of each per save, sent straight to base storage when granted.
+The Sky Islands' two keepsakes — one of each per save, sent straight to base storage when granted. **They only do something when carried in your pack on the islands**, and if you fall there they stay behind with the rest of your pack.
 
-- **Qinglan Homecoming Badge**: granted when you ring the Homecoming Bell
-- **Windeater Core**: granted when you defeat the Windeater; sells for more
-- **Use**: collectibles that can also be sold; do not stack
+- **Qinglan Homecoming Badge**: granted when you ring the Homecoming Bell. Carried: Fuzhou's dock refit and Miantai's moss remedy cost **half** (the islanders know it)
+- **Windeater Core**: granted when you defeat the Windeater. Carried: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**
+- **Other**: do not stack; they can be sold, but then that use is gone
 
 See Sky Islands · Qinglan Archipelago.
 
@@ -129,12 +129,15 @@ See Sky Islands · Qinglan Archipelago.
 
 ### Island materials / Qinglan Windcrystal
 
-Materials for the Sky Islands' gathering spots and crafting stations. All of them stack and can be sold; none can be used directly.
+Materials for the Sky Islands' gathering spots, crafting stations and windcrystal lamps. All of them stack and can be sold; none can be used directly. Each one has somewhere to go on the islands:
 
-- **Cloudmoss Fiber / Greenear Sheaf / Driftwood / Brass Scrap**: gathered from cloudmoss patches, greenear tufts, stranded driftwood and brass veins on the isles; the deeper the island, the more you get
-- **Windcrystal Shard**: gathered from wind crystal clusters, and now and then from the deeper brass veins; five shards fuse into a whole **Qinglan Windcrystal** (a collector's and trade item) at Fuzhou's dock workbench
-- **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (21:00–05:00); a Qinglan Charm needs it
-- **Use**: turned into wind lanterns, windward incense, Qinglan charms, homecoming bentos, starmoss salve and wind-vane compasses at the dock workbench, Qinghe's stove and Miantai's mortar
-- Gathered materials go into your pack and drop at your feet if it is full — never to base storage; crafting counts only what is in your pack
+- **Cloudmoss Fiber**: wind lanterns, windward incense, starmoss salve; the boardwalk and post hut lamps. Hanging Root Wood patches yield 1 more once the wind beacon is calibrated
+- **Greenear Sheaf**: homecoming bentos, windward incense. Terrace tufts yield 1 more once Qinghe has her planting record back
+- **Driftwood**: wind lanterns, bento firewood; the boardwalk, temple, post hut and grotto lamps
+- **Brass Scrap**: Qinglan charms, wind-vane compasses; the workshop, Bell Court and grotto lamps. Workshop veins yield 1 more once the star lamp is repaired
+- **Windcrystal Shard**: gathered from wind crystal clusters, and now and then from the deeper brass veins; charms, salves and compasses need them; five fuse into a whole **Qinglan Windcrystal** at Fuzhou's dock workbench once the Fallen Star Workshop's star lamp is lit. Boardwalk clusters yield 1 more once the Windeater is gone
+- **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (21:00–05:00) and at the overlook once the telescope is calibrated; Qinglan charms and the Starfall Overlook lamp need it
+- **Qinglan Windcrystal**: **the wick of the seven windcrystal lamps**. Seven devices are each missing one, and each lamp is something a letter asked for; once lit, the night wind cannot reach you beside it and it burns on every later trip; with ten lights on the isles (the three hearths count as three) the nights stop blowing
+- Gathered materials go into your pack and drop at your feet if it is full — never to base storage; crafting and lighting lamps count only what is in your pack
 
-See "Gathering, crafting and the night wind" on Sky Islands · Qinglan Archipelago.
+See "Gathering, crafting, the isles' lights and the night wind" on Sky Islands · Qinglan Archipelago.

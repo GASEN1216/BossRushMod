@@ -198,9 +198,10 @@ def main():
     title, body, labels, label_count = worst_strings()
     extra_titles, extra_bodies, extra_labels = batch_two_strings()
     three_titles, three_bodies, three_labels = batch_three_strings()
+    weave_bodies, weave_labels = weave_strings()
     title = max([title] + extra_titles + three_titles, key=len)
-    body = max([body] + extra_bodies + three_bodies, key=len)
-    labels = labels + extra_labels + three_labels
+    body = max([body] + extra_bodies + three_bodies + weave_bodies, key=len)
+    labels = labels + extra_labels + three_labels + weave_labels
     label_count = len(labels)
     longest_label = max(labels, key=len)
     errors = []
@@ -266,6 +267,47 @@ def batch_three_strings():
             parts = [names[t] + ' %s/%s' % (n, n) for t, n in re.findall(r'In\(BossRushItemIds\.(\w+),\s*(\d+)\)', inputs)]
             labels.append(verb + names[output] + (' ×' + count if int(count) > 1 else '') + opening + ' · '.join(parts) + closing)
     return titles, bodies, labels
+
+
+def weave_strings():
+    """内容串联的面板文案：七处装置上的「点起风晶灯」按钮、还不会做的配方按钮、手记「总览 · 岛上的灯 · 群岛之物」一页的正文。
+
+    按钮照 `SkyIslandLights.ChoiceLabel` / `SkyIslandFieldcraftRules.LockedLabel` 的格式拼最坏情况：件数按两位数算，
+    还不会做的配方按「每件成品 × 每句门槛提示」全拼（比实际只多不少）；手记那一页把灯的一页与群岛之物的全部句子拼上。
+    """
+    lights = read('DebugAndTools/SkyIsland/SkyIslandLights.cs')
+    rules = read('DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs')
+    journal = read('DebugAndTools/SkyIsland/SkyIslandJournal.cs')
+    items = read('DebugAndTools/SkyIsland/SkyIslandItemRules.cs')
+    name_row = r'case BossRushItemIds\.(\w+): return "([^"]+)";'
+    cn = dict(re.findall(name_row, items.split('internal static string NameCn(', 1)[1].split('internal static string NameEn(', 1)[0]))
+    en = dict(re.findall(name_row, items.split('internal static string NameEn(', 1)[1].split('internal static string Name(', 1)[0]))
+    crystal = re.search(r'int crystal = BossRushItemIds\.(\w+);', lights).group(1)
+
+    def block(source, start, end):
+        return source.split(start, 1)[1].split(end, 1)[0]
+
+    lamp_inputs = re.findall(r'Lamp\("Light_\w+",\s*"\w+",\s*"\w+",\s*"Letter_\d+",\s*"(?:[^"\\]|\\.)*",\s*"(?:[^"\\]|\\.)*",\s*'
+                             r'((?:In\([^)]*\),?\s*)+)\)', lights)
+    choice = re.findall(PAIR, block(lights, 'internal static string ChoiceLabel(', 'internal static string CostList('))
+    locked = re.findall(PAIR, block(rules, 'internal static string LockedLabel(', 'internal static string LockedMessage('))
+    hints = re.findall(PAIR, block(rules, 'internal static string UnlockHint(', 'internal static string LockedLabel('))
+    outputs = re.findall(r'Recipe\("\w+",\s*SkyIslandCraftStation\.\w+,\s*BossRushItemIds\.(\w+),', rules)
+    chapter = re.findall(PAIR, block(lights, 'internal static string Chapter(', 'private static SkyIslandLight[] Build('))
+    uses = re.findall(PAIR, block(journal, 'internal static string Uses()', 'private static void Use('))
+    assert len(lamp_inputs) == 7 and len(choice) == 2 and len(locked) == 3 and hints and outputs and chapter and uses, \
+        '串联文案没解析到，正则与源码失步了'
+    labels, bodies = [], []
+    for lang, names in ((0, cn), (1, en)):
+        for inputs in lamp_inputs:
+            parts = [names[crystal if token == 'crystal' else token.split('.')[-1]] + ' 99/99'
+                     for token, _ in re.findall(r'In\((\w+(?:\.\w+)?),\s*(\d+)\)', inputs)]
+            labels.append(choice[0][lang] + ' · '.join(parts) + choice[1][lang])
+        for output in outputs:
+            for hint in hints:
+                labels.append(locked[0][lang] + names[output] + locked[1][lang] + hint[lang] + locked[2][lang])
+        bodies.append('\n'.join(pair[lang] for pair in chapter) + '\n\n' + '\n'.join(pair[lang] for pair in uses))
+    return bodies, labels
 
 
 if __name__ == '__main__':

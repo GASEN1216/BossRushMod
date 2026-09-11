@@ -59,6 +59,8 @@ FILES = [
     "SkyIslandFieldcraftRules.cs",
     "SkyIslandGathering.cs",
     "SkyIslandFieldcraft.cs",
+    # 串联：岛上的灯（七盏风晶灯与三处灶火）。
+    "SkyIslandLights.cs",
 ]
 
 # 严格两个字符串字面量的 L10n.T 调用：中文那一半必须有英文对照。

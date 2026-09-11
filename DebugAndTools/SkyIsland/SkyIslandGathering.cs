@@ -77,6 +77,25 @@ namespace BossRush
             }
         }
 
+        /// <summary>离 <paramref name="from"/> 最近、这一趟还没采的某种采集点（罗盘在没有别的要找时指向它）。只在按下罗盘时调一次。</summary>
+        internal bool TryNearestUnharvested(SkyIslandGatherKind kind, Vector3 from, out Vector3 position)
+        {
+            position = Vector3.zero;
+            if (disposed) return false;
+            float best = float.MaxValue;
+            bool found = false;
+            for (int i = 0; i < spots.Count; i++)
+            {
+                Spot spot = spots[i];
+                if (!spot.Placed || spot.Harvested || spot.Node.Kind != kind) continue;
+                Vector3 delta = spot.Position - from;
+                delta.y = 0f;
+                float distance = delta.sqrMagnitude;
+                if (distance < best) { best = distance; position = spot.Position; found = true; }
+            }
+            return found;
+        }
+
         /// <summary>由 <see cref="SkyIslandFieldcraft"/> 按推进间隔调用：建最近的一个未建采集点；昼夜切换时改一次光强。</summary>
         internal void Tick(Vector3 origin, bool night)
         {

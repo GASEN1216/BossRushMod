@@ -29,6 +29,12 @@ namespace BossRush
         /// <summary>罗盘离目标这么近（米）就不再报方位，只说「就在附近」。</summary>
         internal const double NearDistance = 8.0;
 
+        /// <summary>第一封信捎来的风标罗盘在手记里的 id：纪念品台账与「重做一只罗盘」的配方门槛共用。</summary>
+        internal const string CompassKeepsake = "Keepsake_Compass";
+
+        /// <summary>晴岚航徽在背包里时，渡口整备与眠苔苔药按这个比例收钱：码头的人都认得它。</summary>
+        internal const double BadgeServiceRate = 0.5;
+
         /// <summary>全部天空岛物品，按 TypeID 递增（批次二 500068–500072，批次三 500073–500082）。</summary>
         internal static readonly int[] AllTypeIds =
         {
@@ -44,18 +50,18 @@ namespace BossRush
 
         private static readonly SkyIslandKeepsake[] keepsakes =
         {
-            Keepsake("Keepsake_Compass", BossRushItemIds.SkyIslandWindVaneCompass, false,
+            Keepsake(CompassKeepsake, BossRushItemIds.SkyIslandWindVaneCompass, false,
                 "收下第一封信鸽来信", "keep your first pigeon letter",
                 "浮舟托信鸽捎来一只风标罗盘（已放进背包，放不下就寄回基地仓库）：在群岛上使用，它会指向信鸽或下一个目标。",
                 "Fuzhou sent a wind-vane compass along with the pigeon (in your pack, or in base storage if it was full). Use it on the isles and it points to the pigeon or your next objective."),
             Keepsake("Keepsake_Badge", BossRushItemIds.SkyIslandHomecomingBadge, true,
                 "敲响归航钟", "ring the Homecoming Bell",
-                "归航钟的回声还没散：一枚晴岚航徽已寄回基地仓库。",
-                "The bell is still echoing: a Qinglan Homecoming Badge has been sent to your base storage."),
+                "归航钟的回声还没散：一枚晴岚航徽已寄回基地仓库。带着它上岛，码头的人都认得你：渡口整备与眠苔的苔药半价。",
+                "The bell is still echoing: a Qinglan Homecoming Badge has been sent to your base storage. Carry it on the isles and the islanders know you: the dock refit and Miantai's moss remedy cost half."),
             Keepsake("Keepsake_Core", BossRushItemIds.SkyIslandWindeaterCore, true,
                 "击败鸣风栈道上的噬风", "defeat the Windeater on Windsong Boardwalk",
-                "噬风散去的地方留下一枚噬风之核，已寄回基地仓库。",
-                "Where the Windeater broke apart it left a Windeater Core behind; it has been sent to your base storage.")
+                "噬风散去的地方留下一枚噬风之核，已寄回基地仓库。带着它上岛，核里那团风会吃掉身边的风：大风对你只算微风。",
+                "Where the Windeater broke apart it left a Windeater Core behind; it has been sent to your base storage. Carry it on the isles and the whirl inside eats into the wind around you: a gale only counts as a breeze.")
         };
 
         internal static SkyIslandKeepsake[] Keepsakes { get { return keepsakes; } }
@@ -138,6 +144,17 @@ namespace BossRush
             }
         }
 
+        /// <summary>服务的实际收费：带着晴岚航徽按 <see cref="BadgeServiceRate"/> 收（服务费下限之后再打折，向上取整）。</summary>
+        internal static int ServicePrice(int price, bool badgeCarried)
+        {
+            if (price <= 0 || !badgeCarried) return price;
+            return (int)Math.Ceiling(price * BadgeServiceRate);
+        }
+
+        /// <summary>带着航徽时服务回话末尾的那一句。</summary>
+        internal static string BadgeDiscountNote
+        { get { return L10n.T("（带着晴岚航徽：半价）", " (Homecoming Badge: half price)"); } }
+
         internal static SkyIslandKeepsake FindKeepsake(string noteId)
         {
             for (int i = 0; i < keepsakes.Length; i++)
@@ -164,7 +181,7 @@ namespace BossRush
             switch (keepsake.NoteId)
             {
                 // 第一封信送到时一起捎来：之后的信都不上地图，罗盘就是找它们的办法。
-                case "Keepsake_Compass": return SkyIslandLetters.CollectedCount(data) > 0;
+                case CompassKeepsake: return SkyIslandLetters.CollectedCount(data) > 0;
                 case "Keepsake_Badge": return data.Has(SkyIslandStoryFlag.Ending);
                 case "Keepsake_Core": return data.StormResolved;
                 default: return false;

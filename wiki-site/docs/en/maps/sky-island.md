@@ -119,25 +119,25 @@ Weibai herself, or the "Dock refit" device at Cloudrise Dock, lets you **open th
 
 - **Four chapters of notes** (the dock and the market / the west / the east / the boardwalk and the Bell Court): recorded notes show in full, unrecorded ones show only their title marked "not yet recorded", so you can hunt down the rest. Once all twenty are in, a final page appears at the end of the overview.
 - **Letters · crew roster · keepsakes**: every letter you have kept can be reread; letters still to come only show their number, with no spoilers.
-- **Overview**: your collection progress and a summary of the journey.
+- **Overview · lights · what things are for**: your collection progress and a summary of the journey; which lights on the isles are burning and what each missing lamp still needs; and what each of the fifteen Sky Islands items is for, all on one page.
 
 After you ring the Homecoming Bell, the homecoming boat ties up **beside the dock lamp** with a **crew roster** at the bow: the old helmsman, the post carrier, the workshop apprentice and the ship's doctor have each written a page. Every page reacts to this save's choices — whether you reconciled with or defeated Zheling and the Bell Keeper, whether you beat the Windeater, calibrated the telescope and returned the planting record — so a second save that takes the other road reads different words.
 
 ## Sky Islands items
 
-The archipelago has five items of its own (TypeID 500068–500072), plus ten gathered materials and in-raid consumables (500073–500082, see "Gathering, crafting and the night wind" below). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report.
+The archipelago has five items of its own (TypeID 500068–500072), plus ten gathered materials and in-raid consumables (500073–500082, see "Gathering, crafting, the isles' lights and the night wind" below). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report. **Every one of them has a use on the islands — none exist just to be sold**:
 
-- **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and **sent straight to base storage**. A collector's piece that can be sold.
-- **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. Sells for more.
-- **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too, and Fuzhou's dock workbench can make a replacement. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path, with a bearing and a rough distance. **Not consumed.**
-- **Homecoming Bento** (food): occasionally found in island crates of every tier, or cooked at Qinghe's stove. Restores energy and water, and a little health.
-- **Starmoss Salve** (medicine): occasionally found in Voyage Supplies and Starworks Cache crates, or ground at Miantai's mortar. Restores health.
+- **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and sent straight to base storage. **Carry it in your pack on the islands** and the islanders know you: Fuzhou's dock refit and Miantai's moss remedy cost **half**. If you fall on the islands, it stays behind with the rest of your pack.
+- **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. **Carry it in your pack on the islands** and the whirl inside eats into the wind around you: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**.
+- **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too, and Fuzhou's dock workbench can make a replacement once you have had the first one. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path; after that, to a place still missing its windcrystal lamp if you carry a Qinglan Windcrystal, or else to a wind crystal cluster you have not gathered this trip. **Not consumed.**
+- **Homecoming Bento** (food): restores energy and water, and a little health. **Once Qinghe has her planting record back**, eating one on the islands counts as her homecoming meal (a little more max health and running speed for the raid, shared with her own meal) — so you can pack one ahead and eat it before a hard fight; from then on her stove cooks them too. Occasionally found in island crates of every tier.
+- **Starmoss Salve** (medicine): restores health — without paying for Miantai's remedy or waiting out her cooldown. Ground at Miantai's mortar; occasionally found in Voyage Supplies and Starworks Cache crates.
 
 Each keepsake is granted once per save, and the grant is recorded with the Sky Islands story save. Saves that had already rung the bell, beaten the Windeater or kept a letter before this update receive theirs on the next trip to the islands. Island goods are packed into crates **on top of** their normal contents: they neither take a slot from the regular item count nor change what else is inside.
 
-## Gathering, crafting and the night wind
+## Gathering, crafting, the isles' lights and the night wind
 
-There are **30 gathering spots** beside the islands' lamps, landmarks and relay platforms. You can see a faint glow from a distance; the name appears as you get close. Stand next to one and hold interact for 1.5–3.5 seconds to gather. Each spot can be gathered once per raid and grows back on your next departure. The deeper the island, the more it yields:
+There are **30 gathering spots** beside the islands' lamps, landmarks and relay platforms. You can see a faint glow from a distance; the name appears as you get close. Stand next to one and hold interact for 1.5–3.5 seconds to gather. Each spot can be gathered once per raid and grows back on your next departure. The deeper the island, the more it yields — and **places you have mended grow back thicker** (the caption says why):
 
 | Spot | Yields | Notes |
 | --- | --- | --- |
@@ -147,33 +147,57 @@ There are **30 gathering spots** beside the islands' lamps, landmarks and relay 
 | Brass vein | Brass Scrap | 2–3 in Rainlisten Grotto (15% chance of a windcrystal shard); 2–4 at the workshop, the Bell Court, the overlook and the maintenance-walk platform (30%) |
 | Wind crystal cluster | Windcrystal Shard | 1–2 on the boardwalk, in Rainlisten Grotto and on the centre-bridge platform (15% chance of stardust); 2–3 at the workshop, the Bell Court and the overlook (35%); **at night (21:00–05:00) the stardust chance rises by another 15%** |
 
+| Story progress | What grows back thicker |
+| --- | --- |
+| Planting record returned to Qinghe | Each greenear tuft on the Green Terraces yields 1 more |
+| Wind beacon calibrated | Each cloudmoss patch in Hanging Root Wood yields 1 more |
+| Star lamp repaired | Each brass vein at the Fallen Star Workshop (and its maintenance-walk platform) yields 1 more |
+| Windeater defeated | Each wind crystal cluster on Windsong Boardwalk (and the centre-bridge platform) yields 1 more shard — the wind has set into crystal |
+| Telescope calibrated | The Starfall Overlook cluster gets a +20% chance of stardust |
+
 Whatever you gather goes into your pack, and **if your pack is full it drops at your feet** — gathered goods ride along with this raid's pack like any other loot and are never sent back to base storage.
 
-There are three **crafting stations**. Each one can be opened through its resident or through the device beside it, so the recipes stay available if the resident has married and left or is not there:
+There are three **crafting stations**. Each one can be opened through its resident or through the device beside it, so the recipes stay available if the resident has married and left or is not there. Three recipes wait for the story to reach the right place; the panel lists them as "Not yet" together with what they are waiting for:
 
-- **Fuzhou · dock workbench** (Fuzhou / the dock device): Wind Lantern (Driftwood ×2 + Cloudmoss Fiber ×1), Qinglan Windcrystal (Windcrystal Shard ×5 — fusing shards into a whole), Qinglan Charm (Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1), Wind-Vane Compass (Brass Scrap ×4 + Windcrystal Shard ×2).
-- **Qinghe · garden stove** (Qinghe / the terrace garden): Homecoming Bento (Greenear Sheaf ×4 + Driftwood ×1), Windward Incense (Cloudmoss Fiber ×2 + Greenear Sheaf ×2).
+- **Fuzhou · dock workbench** (Fuzhou / the dock device): Wind Lantern (Driftwood ×2 + Cloudmoss Fiber ×1), Qinglan Charm (Brass Scrap ×3 + Windcrystal Shard ×2 + Stardust ×1), Qinglan Windcrystal (Windcrystal Shard ×5, **once the Fallen Star Workshop's star lamp is lit** — shards have to go into the workshop's crystal furnace), Wind-Vane Compass (Brass Scrap ×4 + Windcrystal Shard ×2, **once Fuzhou has sent you the first one**).
+- **Qinghe · garden stove** (Qinghe / the terrace garden): Windward Incense (Cloudmoss Fiber ×2 + Greenear Sheaf ×2), Homecoming Bento (Greenear Sheaf ×4 + Driftwood ×1, **once Qinghe has her planting record back** — the recipe is written in it).
 - **Miantai · moss mortar** (Miantai / the Hanging Root Wood note "a mailbag in the roots"): Starmoss Salve (Cloudmoss Fiber ×4 + Windcrystal Shard ×1), Windward Incense (as above).
 
 Each recipe button shows how many of each material you have against how many it needs, **counting your pack only, not base storage**. If you are short, the station tells you what is missing and takes nothing. Like every other island panel, a station will not open with enemies nearby.
 
-**The night wind**: at night (game time 21:00 to 05:00), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there, the wind on Windsong Boardwalk and the bridges is especially strong. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster — **no health loss and no slower running**. Stand by a campfire (the dock workbench, the terrace stove, or beside Miantai), light a wind lantern or burn windward incense and the chill fades. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day the islands themselves are calm.
+**The isles' lights**: the old letter in the Upturned Post Hut asks only one thing — "please do not let the island's lights go out" — and the child writing to the frogs in Frogsong Pool says it will be time to come home once they have counted ten lights. The three residents' hearths (Fuzhou's dock, Qinghe's garden, beside Miantai) are always lit and count as the first three; **seven devices on the isles are each missing a windcrystal lamp**, and each lamp is something a letter asked for. At the device, the panel offers "Light a windcrystal lamp", showing what it needs and how much you carry:
 
-**In-raid consumables** only work on the Qinglan isles — away from them the use button is greyed out, so none are wasted — and their effects end when you leave. Their timers run on game time, so they do not burn down behind the pause menu:
+| Place | The letter that asks for it | To light it |
+| --- | --- | --- |
+| Windsong Boardwalk · twin-beacon gate | From the boardwalk watch | Qinglan Windcrystal ×1, Driftwood ×3, Cloudmoss Fiber ×2 |
+| Mirrorwater Temple | From the one who sweeps the temple | Qinglan Windcrystal ×1, Windward Incense ×1, Driftwood ×2 |
+| Fallen Star Workshop | The apprentice's work order | Qinglan Windcrystal ×1, Brass Scrap ×4 |
+| Homecoming Bell Court | A loose page from the register | Qinglan Windcrystal ×1, Wind Lantern ×1, Brass Scrap ×2 |
+| Upturned Post Hut | The post hut log | Qinglan Windcrystal ×1, Cloudmoss Fiber ×3, Driftwood ×1 |
+| Rainlisten Grotto | A note pinned to the chart | Qinglan Windcrystal ×1, Driftwood ×2, Brass Scrap ×2 |
+| Starfall Overlook | The overlook stargazing log | Qinglan Windcrystal ×1, Stardust ×2 (clear the overlook guards first) |
 
-- **Wind Lantern**: a warm light follows you overhead for about 4 minutes; the chill does not build while it burns.
-- **Windward Incense**: about 5 minutes immune to wind chill, with +15% stamina recovery.
-- **Qinglan Charm**: +10% max health for this raid (only the newly added portion is topped up — no free full heal) and +10% stamina recovery; one charm per raid.
+- A lit lamp is **saved with your story** and burns every time you return; beside a lamp, as beside a hearth, **no wind gets through**.
+- **Once all ten lights are burning, the islands' nights stop blowing** (the bridges keep a little wind).
+- The journal's "Overview · lights · what things are for" page lists every lamp and what it still needs, and the crew on the homecoming boat notice the lamp at their own place. A lamp is recorded before its materials are taken, so a save that cannot be written right now never costs you anything.
+
+**The night wind**: at night (game time 21:00 to 05:00), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there, Windsong Boardwalk and the bridges are in a **gale**. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster — **no health loss and no slower running**. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day the islands themselves are calm.
+
+**In-raid consumables** each hold off one layer of wind. They only work on the Qinglan isles — away from them the use button is greyed out, so none are wasted — and their effects end when you leave. Their timers run on game time, so they do not burn down behind the pause menu:
+
+- **Wind Lantern** (the night breeze): a warm light follows you overhead for about 4 minutes; no chill builds in a breeze, but **in a gale the flame gutters and holds off only half**.
+- **Windward Incense** (the gale): about 5 minutes safe from any wind — night bridges and the boardwalk before the storm included — with +15% stamina recovery.
+- **Qinglan Charm** (the Windeater's storm): for this raid, **35% less damage from the Windeater's storm pulses**, +10% max health (only the newly added portion is topped up — no free full heal) and +10% stamina recovery; one charm per raid.
 
 ::: tip
-Materials stack and can be sold, but they are cheap: gathering all 30 spots in one raid is worth roughly 14,000 by item value (a little more at night, from the extra stardust). Crafting only adds a small premium; the real point is carrying a lantern through the night and wearing a charm into the Windeater fight.
+A common path: burn incense and paper lanterns from greenear and cloudmoss so you can cross to the deeper isles at night; once the star lamp is repaired, fuse windcrystal shards and light the isles' lamps one by one; tie on a charm and eat a homecoming bento before the Windeater; after it falls, carry its core and the night bridges are only a breeze. Materials sell, but cheaply — gathering all 30 spots in one raid is worth roughly 14,000 (about 2,000 more once the isles are mended); their real value is on the islands.
 :::
 
 ## What the run records
 
 Beacons, side paths, the named opponents' and the Windeater's outcomes, visited regions, notes and the ending are all recorded per save slot. Ordinary encounter clears are recorded too — repairing the beacons and calibrating the telescope read those as prerequisites — but they do **not** stop those encounters from returning next raid. Leaving or dying never clears recorded story facts, and an unfinished fight is never written down as a permanent failure.
 
-Crate contents, contract progress, the homecoming meal, gathering spots, consumable effects and chill are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own items are listed under "Sky Islands items" and "Gathering, crafting and the night wind" above. Pigeon letters, roster pages and keepsake grants are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
+Crate contents, contract progress, the homecoming meal, gathering spots, consumable effects and chill are **per raid** and are not saved: every departure starts a fresh round. Loot, boss trophies and contract rewards are still mostly the game's existing items; the archipelago's own items are listed under "Sky Islands items" and "Gathering, crafting, the isles' lights and the night wind" above. Pigeon letters, roster pages, keepsake grants and lit windcrystal lamps are saved per slot as well; a puzzle left half-solved starts again from step one next raid.
 
 ::: tip
 A region only counts as visited once you actually set foot on that island — eyeing it from the far bridgehead, or walking along the bridge, does not light it up on the map.

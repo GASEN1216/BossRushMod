@@ -4,6 +4,36 @@
 
 ## 最新修复
 
+### 2026-09-11 天空岛内容串联：十五件物品各有岛上的用处（不加 TypeID、不加存档字段）
+
+**分类**：COMPAT；**不新增 TypeID**；存档**不加字段、不加旗标位**（点亮的风晶灯复用 `discoveredNotes`，前缀 `Light_`，至多 7 条）；三条配方新增剧情门槛（便当 / 晴岚风晶 / 罗盘，待拍板 #38）。无人值守。
+起因：owner 看完批次三后说「我不想这些物品或者说全部的新增内容是为了新增而新增的，请你真的给他们都有意义并且能够串联起来」。
+盘点、串联图、每件物品的来路与用处、取舍与待拍板 #38–#47 在 `docs/天空岛_内容串联_2026-09-11.md`（local-only）。
+
+**盘点出的「为新增而新增」**：航徽、噬风之核、晴岚风晶只能卖钱；星屑与残铜片去处单一（残铜一趟 17.5 片，护符一趟只能用一枚）；风灯与驱风香做同一件事；护符是通用数值；夜风只为耗材存在、与剧情无关；
+便当、药膏与晴禾、眠苔的服务互不相干；采集与剧情进度无关；七封信里的请求永远无法兑现；手记不告诉你东西拿来干什么。
+
+**内容**：
+- 新纯规则 `SkyIslandLights`：三处灶火 + 七处装置（`Search_E/F/G/H/S2/S3/S4`）各缺一盏风晶灯，每盏对应一封信，烧一块晴岚风晶加这处地方的东西；点亮持久、灯旁挡风，十盏后岛上夜里不起风。
+  点灯 `SkyIslandFieldcraft.LightLamp`（已亮 → 写屏障 → 点清材料 → 先记手记再扣材料 → 补建灯光），入口 `SkyIslandWorldStory.LightChoice`。
+- `SkyIslandFieldcraftRules`：剧情加成 `StoryBonusCount` / `StoryBonusChance`（只加数、不多抽随机数）；配方门槛 `After` / `AfterNote` 与锁住时的按钮和回话；暖和三档 `SkyIslandWarmth`（风灯大风里只挡一半）；`NightWind` / `CoreEased` / `StormPulseDamage`。
+- 接线：`SkyIslandStormBoss.Detonate` 读护符减伤；`SkyIslandServices` 航徽半价（`ServicePrice`，报价之后、验钱之前）与便当那一顿（`PackedMeal`，与晴禾那一顿共用 `mealUsed`）；`SkyIslandItems` 便当挂 `SkyIslandFieldcraftUsage(Meal)`，十五件描述写明用处；
+  罗盘兜底指缺灯处与没采的风晶簇；手记「总览 · 岛上的灯 · 群岛之物」（`SkyIslandJournal.Uses`）；名册四页与浮舟台词随灯变化；`RecordNote` 登记 `Light_*`。**`SkyIslandSession.cs` 一行不动。**
+
+**同步**：中英 Wiki（天空岛「天空岛物品」与改名后的「采集、合成、岛上的灯与夜风」、消耗品五条、关键物品三条），`wiki-site` 经 `sync-content.mjs` 重生成 6 个镜像页；`GameplayCoverage.json` 新增 `M_SKY_ISLAND_12`；
+待人工验证清单第 2.12 步（15 行，local-only）；两张天空岛 repowiki 卡追加本次章节（内容卡只暂存本次追加的一节，并行会话改的那一处留在工作区）。守卫同步：`SkyIslandLocalizationGuard.FILES`、
+`SkyIslandValidationSuiteGuard` 写入口名单（`LightLamp` / `LightChoice` / `PackedMeal`）、面板布局属性测试。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 正式构建并部署 | 两次构建都编译通过、零错误（第一次输出 `Build succeeded!`，第二次部署 Wiki 与覆盖清单），`Build/bossrush.rsp` 无 `/define`；`BossRush.dll` 4,923,904 B，SHA-256 `71c41d7cd38081a65710506a9dc45d43e89a69a3a74a28ccb313e4dbc8b31ad2`，`Build/` 与游戏目录一致；6 个 Wiki 页与 `GameplayCoverage.json` 部署副本逐个一致；游戏目录无 Dev 产物 |
+| 2 | 全量守卫 | `python tools/run_guards.py`：589 个脚本，589 PASS / 0 NEW-FAIL / 0 KNOWN-RED（含新守卫 `SkyIslandContentWeaveGuard`：十五件物品按形态逐件核对岛上的用处） |
+| 3 | 执行回归 | `python tools/run_runtime_regressions.py` 全量：28 PASS / 0 FAIL（`SkyIslandStory` 686 → 964 条断言） |
+| 4 | 属性测试 | 面板布局纳入七处点灯按钮、还不会做的配方按钮与手记那一页，15 种组合不溢出（232 条选项文案）；交互竞争不受影响（灯只是光，不新增交互体） |
+| 5 | 反向验证 | 44 个探针全部转红、都红在预期断言上：新守卫 25 处，本地化 / F3 只读 / 面板布局各 1，执行回归 16 个（无编译错误）。破坏做在 `git clone --shared` 的临时签出（`HEAD` + 本次文件）上，逐字节还原并 sha256 核对，真实工作区前后 sha256 不变 |
+
 ### 2026-09-11 天空岛内容批次三：采集点 / 群岛材料 / 合成台 / 局内耗材 / 夜风（新增 TypeID 500073–500082）
 
 **分类**：COMPAT；新增 TypeID 500073–500082（owner 授权新增 TypeID）；存档**不加字段、不加旗标位**（采集点、增益与寒意按出击刷新）；
