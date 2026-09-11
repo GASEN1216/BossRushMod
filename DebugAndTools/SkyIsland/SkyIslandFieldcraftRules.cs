@@ -40,7 +40,9 @@ namespace BossRush
         /// <summary>晴岚护符：本趟出击噬风的风暴伤害降低，生命上限与耐力恢复小幅提升，不叠加。</summary>
         Charm = 2,
         /// <summary>归航菜便当：菜畦重新开张之后在岛上吃，算作晴禾的归航菜（与她那一顿共用本趟一次）。</summary>
-        Meal = 3
+        Meal = 3,
+        /// <summary>晴岚航徽：在岛上拉一下缆绳回到登云码头（每趟一次，不消耗）。</summary>
+        Recall = 4
     }
 
     /// <summary>此刻挡着风的东西：决定寒意是积还是退。</summary>
@@ -716,6 +718,7 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandWindwardIncense: return SkyIslandFieldBuff.Incense;
                 case BossRushItemIds.SkyIslandQinglanCharm: return SkyIslandFieldBuff.Charm;
                 case BossRushItemIds.SkyIslandHomecomingBento: return SkyIslandFieldBuff.Meal;
+                case BossRushItemIds.SkyIslandHomecomingBadge: return SkyIslandFieldBuff.Recall;
                 default: return SkyIslandFieldBuff.None;
             }
         }
@@ -733,9 +736,36 @@ namespace BossRush
                     "Use: this raid, 35% less damage from the Windeater's storm, +10% max health and +10% stamina recovery (Qinglan isles only; ends when you leave; does not stack)");
                 case SkyIslandFieldBuff.Meal: return L10n.T("在晴岚群岛上吃：菜畦重新开张之后，算作晴禾的归航菜（本趟一次）",
                     "Eat on the Qinglan isles: once the garden has reopened, it counts as Qinghe's homecoming meal (once per raid)");
+                case SkyIslandFieldBuff.Recall: return L10n.T("使用：在晴岚群岛上拉一下缆绳，回到登云码头（每趟一次，附近有敌人时不行；不消耗）",
+                    "Use: on the Qinglan isles, pull the line back to Cloudrise Dock (once per raid, not with enemies nearby; not consumed)");
                 default: return string.Empty;
             }
         }
+
+        /// <summary>拉缆绳回到码头之后的字幕。</summary>
+        internal static string RecallArrived
+        {
+            get
+            {
+                return L10n.T("你拉了拉航徽上的缆绳——云海那头有人把它收紧了。回过神来，你已经站在登云码头上。（这一趟的缆绳用掉了）",
+                    "You tug the line on the badge — someone across the cloud sea hauls it in. The next moment you are standing on Cloudrise Dock. (That was this trip's line.)");
+            }
+        }
+
+        internal static string RecallSpent
+        {
+            get
+            {
+                return L10n.T("这一趟的缆绳已经拉过了，下次出击码头会再系一条。",
+                    "You have already used this trip's line; the dock will tie another for your next raid.");
+            }
+        }
+
+        internal static string RecallNotReady
+        { get { return L10n.T("群岛还没就绪，缆绳拉不动。", "The isles are not ready yet; the line will not pull."); } }
+
+        internal static string RecallFailed
+        { get { return L10n.T("缆绳没拉动——码头那头找不到落脚的地方。", "The line will not pull — there is no footing at the dock end."); } }
 
         /// <summary>耗材生效时的字幕（便当的回话由归航菜服务给，这里没有）。</summary>
         internal static string BuffStarted(SkyIslandFieldBuff buff)

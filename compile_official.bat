@@ -219,6 +219,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandUiArt.cs
 echo(DebugAndTools\SkyIsland\SkyIslandHud.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionRecall.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLetters.cs
 echo(DebugAndTools\SkyIsland\SkyIslandPuzzles.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs

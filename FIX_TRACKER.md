@@ -4,6 +4,42 @@
 
 ## 最新修复
 
+### 2026-09-11 天空岛拍板：晴岚航徽拉缆绳回码头、巡视委托按本趟计、物资池单件价值上限（修 CR-2026-09-11-001）
+
+**分类**：COMPAT + owner decision（owner 授权代理拍板：「你自己根据情况拍板吧好玩就行」）；**不新增 TypeID**；存档**不加字段**（「这趟拉过缆绳」与「这趟到过的区域」只在会话里，按出击复位）。无人值守。
+逐条取舍、理由与回退办法在 `docs/天空岛_内容串联_2026-09-11.md` 第九节（local-only）。
+
+**拍板结果**：
+- #42 晴岚航徽：半价保留，另加**在岛上使用 = 拉缆绳回登云码头**（每趟一次、附近有敌人拉不动、不消耗）。描述里「码头永远留着一条缆绳给你」从此是真的。
+- #24 / `CR-2026-09-11-001`：天空岛物资池**单件价值上限 100,000** → Fixed。
+- 可玩性评估待拍板 #4（R-3）：「巡视群岛区域」委托**按本趟到过的区域计**，走遍全岛之后照样每趟能接。
+- #43 噬风之核：保留「大风算微风」；可重复的噬风回响要改会话主文件与遭遇「具名组一次性」口径、Boss 生成离线证不了，留给下一批。
+- #38–#41、#44–#47 与更早的待拍板维持当前处理。
+
+**修复**：
+- 物资池：`SkyIslandLootTables.MaxPoolItemValue = 100000` / `AllowedInPool`（纯规则）；`SkyIslandLootPools.GetBand` 在并集建好之后、标记完成并缓存之前 `RemoveAll(!WithinValueCap)`，读官方 prefab 的 `Value`（查不到 prefab 原样放行，装箱时本来就会跳过）。
+  离线官方物品表里超过 10 万的池内物品只在 [4,8] 带：皇冠 1254（21,593,218）、神秘钥匙 O 828（253,228）、神秘钥匙 X 827（151,675）；铜钱剑蓝图 66,666、纯金徽章 55,898 留在池里。
+  该带均值（黑名单口径）去掉皇冠后 7,196 → 再去两把钥匙约 5,096；原来每趟约 14.7% 概率从星工遗存箱出一顶皇冠。只影响天空岛的箱子、谢礼与战利品，全局黑名单与许愿台、日报等随机池不变。
+- 巡视委托：`SkyIslandSession.raidRegions`（本趟踏足过的区域，`HashSet`）同时驱动记账 `ReportRegionVisited` 与可完成量 `AvailableBountyProgress(Survey)`；`story.RecordRegionVisited` 仍只负责存档首次到访与点亮官方地图。原来按存档首次到访计，走遍一次后这类委托永久不派。
+- 航徽回码头：新 partial `DebugAndTools/SkyIsland/SkyIslandSessionRecall.cs`：`RecallAvailable`（会话有效、这趟没拉过）→ `CanOpenStoryPanel` 战斗门 → `VerifyGround(playerSpawn)` → `SetPosition`，腾空计时与撤离读条清零 → 记这趟已用。
+  落点是出生点，离码头撤离圈中心 11 m（撤离半径 2.5 m），落地不会自己开始撤离读条。
+  物品侧：`SkyIslandFieldBuff.Recall` 与四条中英文案；`SkyIslandFieldcraft.CanUse` 读 `RecallAvailable`、`UseConsumable` 转给会话；`SkyIslandItems.WithUse` 给航徽挂使用（2 秒读条），`Kind.Keepsake` 带使用效果时挂 `SkyIslandFieldcraftUsage`、耐久 999（官方 `CA_UseItem` 按耐久决定不销毁）；
+  `SkyIslandFieldcraftUsage.OnUse` 先给更新前发出、没有耐久记录的航徽补满。`SkyIslandSession.cs` 1197 / 1200 行（只改巡视那几行）。
+
+**同步**：中英 Wiki（天空岛页：航徽回码头、巡视按本趟、物资池上限；关键物品页：航徽），`wiki-site` 经 `sync-content.mjs` 重生成 4 个镜像页；`CODE_REVIEW_FINDINGS.md` `CR-2026-09-11-001` → Fixed；
+`GameplayCoverage.json` 的 `M_SKY_ISLAND_12` 补三项步骤与预期；待人工验证清单 2.12.16–2.12.18 与批次三报告 #24（local-only）；两张天空岛 repowiki 卡追加本节（内容卡只暂存本节，并行会话改的那一处留在工作区）。
+守卫同步：`SkyIslandContentWeaveGuard` 新增拉缆绳一节（顺序、每趟一次、不消耗与补耐久、编译清单、F3 写入口名单）；`SkyIslandContentExpansionGuard` 钉价值上限（在建池之后、缓存之前）与巡视按本趟——
+原来钉「只在首次记下区域时记账」的断言按新语义改写为「每趟每区一次、只有一个记账点、首次到访仍点亮地图」，另加「可完成量不得读存档首次到访」；`SkyIslandValidationSuiteGuard` 写入口名单加 `TryRecallToDock`；`SkyIslandLocalizationGuard.FILES` 加新 partial。
+
+**验证**（L1 静态 / L2 离线；**无 L3**）：
+
+| # | 检查 | 结果 |
+| --- | --- | --- |
+| 1 | 正式构建并部署 | `& "D:\code\ykf\BossRushMod\compile_official.bat"` 编译通过并部署，`Build/bossrush.rsp` 无 `/define`、编译清单含 `SkyIslandSessionRecall.cs`；`BossRush.dll` 4,928,000 B，SHA-256 `bfd8c54689836a55ef6d3ee1f90c56999b308cda7e5c5048a02513b86f6aa3ba`，`Build/` 与游戏目录一致；4 个 Wiki 页与 `GameplayCoverage.json` 部署副本逐个一致；游戏目录无 Dev 产物 |
+| 2 | 全量守卫 | `python tools/run_guards.py`：589 个脚本，589 PASS / 0 NEW-FAIL / 0 KNOWN-RED |
+| 3 | 执行回归 | `python tools/run_runtime_regressions.py` 全量：28 PASS / 0 FAIL（`SkyIslandStory` 964 → 966 条断言：航徽回码头的规则与文案、价值上限边界——皇冠与两把钥匙出池、蓝图与纯金徽章留下） |
+| 4 | 反向验证 | 18 个探针全部转红、都红在预期断言上：扩展守卫 5 处（删 `RemoveAll`、改上限、不读 prefab 价值、可完成量读回存档、记账回到首次到访），串联守卫 8 处（战斗门、记已用、每趟一次、编译清单、航徽没挂使用、不补耐久、使用按钮不看这趟、F3 名单），F3 只读 1、本地化 1，执行回归 3 个（上限放开、航徽不映射 `Recall`、英文带中文；都是运行期断言，不是编译错误）。破坏做在 `git clone --shared` 的临时签出（`HEAD` + 本次文件）上，逐字节还原并 sha256 核对，真实工作区前后 sha256 不变 |
+
 ### 2026-09-11 天空岛内容串联：十五件物品各有岛上的用处（不加 TypeID、不加存档字段）
 
 **分类**：COMPAT；**不新增 TypeID**；存档**不加字段、不加旗标位**（点亮的风晶灯复用 `discoveredNotes`，前缀 `Light_`，至多 7 条）；三条配方新增剧情门槛（便当 / 晴岚风晶 / 罗盘，待拍板 #38）。无人值守。

@@ -162,6 +162,15 @@ def check_pools():
         'An unconditional cache write would pin a failed (empty) pool for the whole process'
     assert query.index('result.AddRange(unique);') < query.index('complete = true;'), \
         'complete must be set only after the pool was actually built'
+    # 单件价值上限（CR-2026-09-11-001）：品质带内按种类均匀抽，皇冠（21,593,218）与两把神秘钥匙（15–25 万）会把整张图的经济抹平。
+    assert 'result.RemoveAll(id => !WithinValueCap(id));' in query, 'Island pools must drop collectibles above the value cap'
+    assert query.index('result.AddRange(unique);') < query.index('result.RemoveAll(id => !WithinValueCap(id));') \
+        < query.index('complete = true;'), 'The value cap must filter the built pool before it is marked complete and cached'
+    value_cap = pools.split('private static bool WithinValueCap(int typeId)', 1)[1].split(chr(10) + '        }', 1)[0]
+    assert 'SkyIslandLootTables.AllowedInPool(prefab.Value)' in value_cap, \
+        'The value cap must read the official prefab value through the shared pure rule'
+    assert 'internal const int MaxPoolItemValue = 100000;' in source('SkyIslandLootTables.cs'), \
+        'Island pool value cap changed: the crown (21.6M) and the mysterious keys (150-250k) must stay out'
     # 排除口径必须走共享策略：只给 excludeTags 会漏掉 DestroyOnLootBox / DontDropOnDeadInSlot /
     # LockInDemoTag 这三类「设计上不该进箱子」的物品（既有 Boss 奖池一直在排它们）。
     assert 'LootExcludeTagPolicy.BuildExcludeTags(' in pools, \
@@ -529,7 +538,10 @@ def check_services_and_bounty():
         .split(chr(10) + '        }' + chr(10), 1)[0]
     assert 'scavenging.AvailablePoints' in available, 'Salvage availability must come from the scavenging owner'
     assert 'encounters.RemainingClearable' in available, 'Threat availability must exclude already-saved clears'
-    assert 'story.HasVisitedRegion(' in available, 'Survey availability must exclude already-visited regions'
+    # 巡岛按本趟计（2026-09-11 拍板）：按存档首次到访计的话，走遍全岛之后「巡视群岛区域」永久不派。
+    assert 'raidRegions.Contains(' in available, 'Survey availability must count regions not yet visited this raid'
+    assert 'story.HasVisitedRegion(' not in available, \
+        'Survey availability must not read the save-first visit, or the contract dies once the map is explored'
     # 数区域不数 POI 节点：场景包里还有装饰节点 POI_B_Mural，按节点数会把它算成永远去不了的第 13 个区域，
     # 剩 3 个真区域时可完成量算成 4，恰好派得出一张做不完的「巡视群岛区域 ×4」（2026-09-10 全方位审核）。
     survey = available.split('SkyIslandBountyKind.Survey', 1)[1]
@@ -591,14 +603,16 @@ def check_session_ownership():
     # 几何本身由 tests/SkyIslandRegionResolutionPropertyTest.py 复算并反向验证；这里钉接线。
     assert (ROOT / 'tests/SkyIslandRegionResolutionPropertyTest.py').exists(), \
         'The ground-region geometry property test is missing'
-    # 按结构判断而不是钉一行字面量：记账必须落在「这次才第一次记下这个区域」的分支里。
+    # 巡岛记账按本趟：同一区域一趟只记一次（HashSet.Add 天然幂等），存档里的首次到访只管点亮地图。
     assert 'story.RecordRegionVisited(standingRegion)' in session, \
         'Region visit must go through the story service with the ground region the player stands on'
-    visit_branch = session.split('story.RecordRegionVisited(standingRegion)', 1)[1]
-    visit_branch = visit_branch.split(chr(10) + '                }', 1)[0]
-    assert 'bounty.ReportRegionVisited();' in visit_branch, \
-        'Region credit must only fire on a newly recorded region'
-    assert session.count('RecordRegionVisited(') == 1, 'There must be exactly one region-visit credit point'
+    assert 'if (standingRegion != null && raidRegions.Add(standingRegion)) bounty.ReportRegionVisited();' in session, \
+        'Survey credit must fire once per region per raid, not only on the first visit ever'
+    assert session.count('bounty.ReportRegionVisited()') == 1, 'There must be exactly one survey credit point'
+    visit_branch = session.split('story.RecordRegionVisited(standingRegion)', 1)[1].split(chr(10) + '                if (hud', 1)[0]
+    assert 'mapFog.Apply(story.Current.visitedRegions);' in visit_branch, \
+        'A newly recorded region must light up on the official map'
+    assert session.count('RecordRegionVisited(') == 1, 'There must be exactly one region-visit record point'
     update = session.split('private void Update()', 1)[1].split('private bool HudSuppressed()', 1)[0]
     assert 'Nearest(landmarks' not in update, 'Region resolution must not fall back to the nearest landmark'
     index = session.split('private void IndexGroundRegions()', 1)[1].split(chr(10) + '        }', 1)[0]

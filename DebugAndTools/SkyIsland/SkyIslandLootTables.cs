@@ -38,6 +38,16 @@ namespace BossRush
         internal const float MarkerClearance = 4.5f;
         /// <summary>玩家进入这个距离才真正建箱（4.12 门控：不在整图预生成）。</summary>
         internal const float ActivationRange = 72f;
+
+        /// <summary>
+        /// 岛上物资池里单件物品的价值上限（CR-2026-09-11-001）。品质带内按物品**种类**均匀抽（原版按 RandomContainer 权重），
+        /// 带里混进官方「皇冠」（21,593,218）这种收藏品时，一趟约 30 次星工抽取就有约 15% 抽到一顶，一件把整张图的经济抹平；
+        /// 两把「神秘钥匙」（15–25 万）同理。上限 10 万约为星工遗存均值的十几倍：蓝图、纯金徽章这类稀有大货仍在池里，照样有惊喜。
+        /// </summary>
+        internal const int MaxPoolItemValue = 100000;
+
+        /// <summary>这件物品的官方价值能不能进岛上的物资池。</summary>
+        internal static bool AllowedInPool(int value) { return value <= MaxPoolItemValue; }
         /// <summary>单次 Tick 最多建一个箱子，避免入区瞬间集中开销。</summary>
         internal const float TickInterval = 0.5f;
 

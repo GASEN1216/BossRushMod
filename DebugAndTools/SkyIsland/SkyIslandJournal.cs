@@ -115,8 +115,9 @@ namespace BossRush
                 "heals without paying Miantai or waiting on her remedy"));
             Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("指信鸽、目标、支线；都没有了就指还缺灯的地方或风晶簇",
                 "points to pigeons, objectives and side paths; after that, to a place missing its lamp or a wind crystal cluster"));
-            Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%",
-                "carried: the dock refit and Miantai's remedy cost {0}%"), Percent(SkyIslandItemRules.BadgeServiceRate)));
+            Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",
+                "carried: the dock refit and Miantai's remedy cost {0}%; used on the isles: pull the line back to Cloudrise Dock (once per raid)"),
+                Percent(SkyIslandItemRules.BadgeServiceRate)));
             Use(text, BossRushItemIds.SkyIslandWindeaterCore, L10n.T("带在身上：大风对你只算微风",
                 "carried: a gale only counts as a breeze for you"));
             return text.ToString();

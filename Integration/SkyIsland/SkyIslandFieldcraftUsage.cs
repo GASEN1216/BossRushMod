@@ -1,5 +1,5 @@
 // ============================================================================
-// SkyIslandFieldcraftUsage.cs - 天空岛局内耗材（风灯 / 驱风香 / 晴岚护符）的「用」
+// SkyIslandFieldcraftUsage.cs - 天空岛局内耗材（风灯 / 驱风香 / 晴岚护符）、归航菜便当那一顿与晴岚航徽拉缆绳的「用」
 // ============================================================================
 // 形态照 SkyIslandCompassUsage。效果由天空岛会话里的 SkyIslandFieldcraft 执行（它持有本趟的增益记录与夜风状态），
 // 这里只在玩家按下使用时找一次 owner，不在任何每帧路径上。
@@ -43,6 +43,8 @@ namespace BossRush
         {
             try
             {
+                // 不消耗的物品（晴岚航徽）：官方 CA_UseItem 用完后按耐久决定要不要销毁。更新前发出的航徽可能没有耐久记录，先补满，免得用一次就没了。
+                if (item != null && !item.Stackable && item.MaxDurability > 0f && item.Durability < 1f) item.Durability = item.MaxDurability;
                 SkyIslandFieldcraft owner = SkyIslandFieldcraft.Current;
                 if (owner != null && owner.UseConsumable(Buff)) return;
                 Duckov.UI.NotificationText.Push(SkyIslandFieldcraftRules.OffIsland);

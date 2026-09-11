@@ -11,7 +11,8 @@
 // 【三种形态】
 //   - 纪念品（晴岚航徽、噬风之核）：不可使用、不可堆叠，只在剧情节点发一次
 //     （发放台账在 DebugAndTools/SkyIsland/SkyIslandItemRules.cs，发放记录写进本槽群岛手记）；
-//     带在背包里上岛才有用：航徽让整备与苔药半价（SkyIslandServices），噬风之核让大风只算微风（SkyIslandFieldcraft）。
+//     带在背包里上岛才有用：航徽让整备与苔药半价（SkyIslandServices），在岛上使用还能拉缆绳回码头（每趟一次，SkyIslandSessionRecall）；
+//     噬风之核让大风只算微风（SkyIslandFieldcraft）。
 //   - 道具（风标罗盘）：使用不消耗（耐久 999，形态照鸭皇图鉴），在岛上指向信鸽或下一个目标。
 //   - 岛上特产（归航菜便当、星苔药膏）：可堆叠消耗品，复用官方 FoodDrink / Drug 使用行为；
 //     便当另挂一项 SkyIslandFieldcraftUsage（Meal）：菜畦重新开张之后在岛上吃，算作晴禾的归航菜。
@@ -73,10 +74,11 @@ namespace BossRush
         {
             return new[]
             {
-                Make(BossRushItemIds.SkyIslandHomecomingBadge, Kind.Keepsake, "BossRush_SkyIsland_HomecomingBadge",
-                    "晴岚群岛的纪念航徽：铜铃形的徽面上是一朵云和一只小帆船，只有敲响归航钟的人才拿得到。浮舟说，戴着它回来，码头永远留着一条缆绳给你——带在背包里上岛，渡口整备与眠苔的苔药都只收半价。死在岛上时它和背包里的东西一起留在原地。",
-                    "A keepsake badge of the Qinglan isles: a bell-shaped face with a cloud and a little sailboat, given only to those who rang the Homecoming Bell. Fuzhou says that if you come back wearing it, the dock will always keep a mooring line for you — carry it in your pack on the isles and the dock refit and Miantai's moss remedy cost half. If you fall on the isles, it stays behind with the rest of your pack.",
-                    "sky_island_homecoming_badge", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandHomecomingBadge), 5, 1, 0f, 0f, 0f, 0),
+                WithUse(Make(BossRushItemIds.SkyIslandHomecomingBadge, Kind.Keepsake, "BossRush_SkyIsland_HomecomingBadge",
+                    "晴岚群岛的纪念航徽：铜铃形的徽面上是一朵云和一只小帆船，只有敲响归航钟的人才拿得到。浮舟说，戴着它回来，码头永远留着一条缆绳给你——在晴岚群岛上使用，拉一下那条缆绳就回到登云码头（每趟一次，附近有敌人时拉不动；不消耗）；带在背包里上岛，渡口整备与眠苔的苔药都只收半价。死在岛上时它和背包里的东西一起留在原地。",
+                    "A keepsake badge of the Qinglan isles: a bell-shaped face with a cloud and a little sailboat, given only to those who rang the Homecoming Bell. Fuzhou says that if you come back wearing it, the dock will always keep a mooring line for you — use it on the Qinglan isles to pull that line and find yourself back on Cloudrise Dock (once per raid, not with enemies nearby; not consumed), and carry it in your pack on the isles and the dock refit and Miantai's moss remedy cost half. If you fall on the isles, it stays behind with the rest of your pack.",
+                    "sky_island_homecoming_badge", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandHomecomingBadge), 5, 1, 2f, 0f, 0f, 0),
+                    SkyIslandFieldBuff.Recall),
                 Make(BossRushItemIds.SkyIslandWindeaterCore, Kind.Keepsake, "BossRush_SkyIsland_WindeaterCore",
                     "噬风散去时留下的核心，玻璃般的球壳里还锁着一小团打转的风，握在手里能感觉到它轻轻推着掌心。带在背包里上岛，那团风会把你身边的风吃掉一截：夜里的桥上、噬风将至时的栈道，大风对你只算微风。死在岛上时它和背包里的东西一起留在原地。",
                     "The heart the Windeater left behind when it broke apart. A small whirl of wind still turns inside its glassy shell, nudging your palm. Carry it in your pack on the isles and that whirl eats into the wind around you: on night bridges and on the boardwalk before the storm, a gale only counts as a breeze for you. If you fall on the isles, it stays behind with the rest of your pack.",
@@ -138,6 +140,13 @@ namespace BossRush
                     "A small charm on a brass backing, set with a windcrystal shard and a pinch of stardust; the Windeater's gusts give way around it. For this raid: 35% less damage from the Windeater's storm, and a little more max health and stamina recovery; it ends when you leave the isles and does not stack. Made at Fuzhou's dock workbench.",
                     "sky_island_qinglan_charm", 4, 3, 1.5f)
             };
+        }
+
+        /// <summary>给纪念品挂上岛上的使用效果（晴岚航徽：拉缆绳回码头）。噬风之核不挂，只看带没带在身上。</summary>
+        private static Definition WithUse(Definition definition, SkyIslandFieldBuff buff)
+        {
+            definition.Buff = buff;
+            return definition;
         }
 
         /// <summary>群岛材料：可堆叠、不可使用。</summary>
@@ -216,6 +225,17 @@ namespace BossRush
                 EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
                 switch (def.Kind)
                 {
+                    case Kind.Keepsake:
+                        // 晴岚航徽能在岛上拉缆绳回码头：不消耗（耐久同罗盘），效果由岛上的局内 owner 转给会话；噬风之核没有使用行为。
+                        if (def.Buff != SkyIslandFieldBuff.None)
+                        {
+                            item.MaxDurability = NonConsumableDurability;
+                            item.Durability = NonConsumableDurability;
+                            SkyIslandFieldcraftUsage recall = Component<SkyIslandFieldcraftUsage>(item);
+                            recall.buff = (int)def.Buff;
+                            AttachUsage(item, def.UseTime, recall);
+                        }
+                        break;
                     case Kind.Compass:
                         item.MaxDurability = NonConsumableDurability;
                         item.Durability = NonConsumableDurability;

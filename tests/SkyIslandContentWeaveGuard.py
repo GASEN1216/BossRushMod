@@ -302,8 +302,32 @@ def main():
         if token not in descriptions:
             errors.append(why + "（缺「%s」）" % token)
 
+    # ---- 8. 晴岚航徽：拉缆绳回码头（2026-09-11 拍板） ----
+    if "echo(DebugAndTools\\SkyIsland\\SkyIslandSessionRecall.cs" not in read("compile_official.bat"):
+        errors.append("编译清单缺 SkyIslandSessionRecall.cs")
+    if '("TryRecallToDock",' not in suite_guard:
+        errors.append("F3 只读守卫的写入口名单缺 TryRecallToDock（它会搬动玩家）")
+    recall = clean_source(read("DebugAndTools/SkyIsland/SkyIslandSessionRecall.cs"))
+    require(need_body(recall, "internal bool RecallAvailable", "拉缆绳可用性"), "!recallUsed", "航徽的缆绳每趟只能拉一次")
+    ordered(need_body(recall, "internal bool TryRecallToDock(out string message)", "拉缆绳回码头"),
+            ["if (!RecallAvailable)", "if (!CanOpenStoryPanel(out reason))", "VerifyGround(playerSpawn);",
+             "player.SetPosition(safePosition);", "recallUsed = true;"],
+            "拉缆绳：这趟没拉过、附近没敌人（与剧情面板同一道战斗门，不是逃生键）、先核码头落点的地面，再搬人并记下这趟已用")
+    if not re.search(r"WithUse\(Make\(BossRushItemIds\.SkyIslandHomecomingBadge,.*?\),SkyIslandFieldBuff\.Recall\)", squash(items)):
+        errors.append("晴岚航徽的定义要挂上「拉缆绳回码头」的使用效果（WithUse(..., SkyIslandFieldBuff.Recall)）")
+    keepsake = case_body("Keepsake")
+    for token in ("item.MaxDurability = NonConsumableDurability;", "Component<SkyIslandFieldcraftUsage>(item)",
+                  "recall.buff = (int)def.Buff;", "AttachUsage(item, def.UseTime, recall);"):
+        require(keepsake, token, "带使用效果的纪念品要挂使用行为、且不消耗（耐久同罗盘）")
+    require(need_body(fieldcraft, "internal bool CanUse(SkyIslandFieldBuff buff)", "耗材可用性"),
+            "if (buff == SkyIslandFieldBuff.Recall) return session.RecallAvailable;", "航徽的使用按钮只在这趟还没拉过缆绳时亮")
+    require(use_consumable, "session.TryRecallToDock(out pulled)", "航徽的使用交给会话拉缆绳")
+    require(need_body(clean_source(read("Integration/SkyIsland/SkyIslandFieldcraftUsage.cs")), "protected override void OnUse(Item item, object user)",
+                      "群岛物品使用"), "item.Durability = item.MaxDurability;",
+            "更新前发出的航徽没有耐久记录：使用前补满，免得官方 CA_UseItem 用完就把它销毁")
+
     print("SkyIslandContentWeaveGuard: " + ("FAIL\n  - " + "\n  - ".join(errors) if errors else
-                                             "PASS (15 件物品各有用处 / 风晶灯 7 + 灶火 3 / 剧情门槛 3 / 风三档 / 航徽与便当接线)"))
+                                             "PASS (15 件物品各有用处 / 风晶灯 7 + 灶火 3 / 剧情门槛 3 / 风三档 / 航徽与便当接线 / 拉缆绳回码头)"))
     return 1 if errors else 0
 
 

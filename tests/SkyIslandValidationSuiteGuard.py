@@ -63,6 +63,7 @@ MUTATING_MEMBERS = (
     ("OpenCrafting", "打开合成面板"), ("CraftChoice", "打开合成面板"),
     # 串联：点风晶灯会写手记并扣材料，便当那一顿会挂加成。
     ("LightLamp", "点灯写手记扣材料"), ("LightChoice", "打开点灯选项"), ("PackedMeal", "吃便当挂加成"),
+    ("TryRecallToDock", "搬玩家"),
 )
 
 # 不以方法名出现、但同样会改状态的写法。

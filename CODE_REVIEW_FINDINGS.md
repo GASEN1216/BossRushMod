@@ -2,14 +2,14 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
-## 2026-09-11 天空岛内容批次三：顺带确认的既有经济风险 1 P1（Open）
+## 2026-09-11 天空岛内容批次三：顺带确认的既有经济风险 1 P1（Fixed，同日 owner 授权拍板后修）
 
 随内容批次三（采集点 / 群岛材料 / 合成台 / 局内耗材 / 夜风，见 `FIX_TRACKER.md` 同日条目）做「每趟期望产出与经济对比」时，用离线解码的官方物品表复算搜刮池确认的**既有**问题（批次一 2026-09-09 物资搜集点引入）。
 批次三没有修改箱子与物品池；**是否改、怎么改是经济决策（AGENTS §10），本条只登记，不改行为**。证据 L2（离线数据复算），无实机统计。
 
 | ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
 | --- | --- | --- | --- |
-| CR-2026-09-11-001 | P1 / COMPAT（经济） | 星工遗存搜刮池与保底带里有官方「皇冠」（id 1254，Value 21,593,218，品质 7，标签 `Luxury` / `Helmat` / `DecorateEquipment` / `ShowCase`）：它不带 `LootExcludeTagPolicy` 的任何排除标签，也不在 `Assets/Data/LootBlacklist.json`，于是进了 `SkyIslandLootPools.GetBand`（`DebugAndTools/SkyIsland/SkyIslandLootPools.cs:44-91`）。岛上是**品质带内按物品种类均匀抽**（`SkyIslandRewardCrate.Fill`，`:160-161`），原版则按 `RandomContainer` 的品质权重抽。星工遗存带（4–8）共 189 种，每次抽取 1/189；一趟约 30 次 → 至少一顶皇冠约 **14.7%**（期望 0.16 顶 ≈ 342 万，按均值把一趟搜刮价值从约 32.5 万抬到约 375 万）；委托第三单与噬风战利品的保底带（6–8，40 种）每次 2.5%。 | **Open（Needs owner confirmation）**。候选修法：`GetBand` 加单件价值上限；或把 1254 登记进掉落黑名单（会同时影响许愿台、日报等随机池，需一并评估）；或按原版 `RandomContainer` 权重抽（评估报告待拍板 #5）。见 `docs/天空岛_内容批次三_2026-09-11.md` 4.3 与待拍板 #24。数据：只读代理离线解码 `Duckov_Data/resources.assets` 的官方物品表（1,569 件，与各自预制体逐件一致）；官方 `ItemFilter` 的过滤函数不在反编译源里，「品质闭区间、requireTags 全含、excludeTags 全不含」是假设 |
+| CR-2026-09-11-001 | P1 / COMPAT（经济） | 星工遗存搜刮池与保底带里有官方「皇冠」（id 1254，Value 21,593,218，品质 7，标签 `Luxury` / `Helmat` / `DecorateEquipment` / `ShowCase`）：它不带 `LootExcludeTagPolicy` 的任何排除标签，也不在 `Assets/Data/LootBlacklist.json`，于是进了 `SkyIslandLootPools.GetBand`（`DebugAndTools/SkyIsland/SkyIslandLootPools.cs:44-91`）。岛上是**品质带内按物品种类均匀抽**（`SkyIslandRewardCrate.Fill`，`:160-161`），原版则按 `RandomContainer` 的品质权重抽。星工遗存带（4–8）共 189 种，每次抽取 1/189；一趟约 30 次 → 至少一顶皇冠约 **14.7%**（期望 0.16 顶 ≈ 342 万，按均值把一趟搜刮价值从约 32.5 万抬到约 375 万）；委托第三单与噬风战利品的保底带（6–8，40 种）每次 2.5%。 | **Fixed（待实机）**。owner 授权自行拍板（「好玩就行」）后选了「`GetBand` 加单件价值上限」：`SkyIslandLootTables.MaxPoolItemValue = 100000`，`SkyIslandLootPools.GetBand` 建池后 `RemoveAll` 掉官方价值超过上限的物品——皇冠 21,593,218、神秘钥匙 O 253,228 / X 151,675 出池，铜钱剑蓝图 66,666、纯金徽章 55,898 这类稀有大货保留。只影响天空岛的搜刮箱、委托谢礼与噬风战利品，不动全局掉落黑名单（许愿台、日报不受影响）。离线复算：星工遗存带均值不含皇冠约 7,196 → 约 5,100。守卫 `SkyIslandContentExpansionGuard` 钉住上限常量、读官方 prefab 价值与建池顺序，执行回归钉住 `AllowedInPool` 边界，反向探针见 `FIX_TRACKER.md` 同日「拍板」条目。原候选修法：`GetBand` 加单件价值上限；或把 1254 登记进掉落黑名单（会同时影响许愿台、日报等随机池，需一并评估）；或按原版 `RandomContainer` 权重抽（评估报告待拍板 #5）。见 `docs/天空岛_内容批次三_2026-09-11.md` 4.3 与待拍板 #24。数据：只读代理离线解码 `Duckov_Data/resources.assets` 的官方物品表（1,569 件，与各自预制体逐件一致）；官方 `ItemFilter` 的过滤函数不在反编译源里，「品质闭区间、requireTags 全含、excludeTags 全不含」是假设 |
 
 ## 2026-09-10 天空岛内容批次二：评估报告遗留项 1 P2 / 3 P3
 

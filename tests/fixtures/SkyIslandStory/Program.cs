@@ -855,6 +855,18 @@ internal static class Program
         Check(SkyIslandItemRules.ServicePrice(480, false) == 480 && SkyIslandItemRules.ServicePrice(480, true) == 240
             && SkyIslandItemRules.ServicePrice(61, true) == 31 && SkyIslandItemRules.ServicePrice(0, true) == 0 && SkyIslandItemRules.BadgeServiceRate == 0.5,
             "the badge halves island services, rounding up, and the text says half price");
+        // 拍板：航徽在岛上使用还能拉缆绳回码头（每趟一次，搬人由会话执行）。
+        Check(SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandHomecomingBadge) == SkyIslandFieldBuff.Recall
+            && SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Recall).Contains("每趟一次")
+            && SkyIslandFieldcraftRules.BuffStarted(SkyIslandFieldBuff.Recall).Length == 0
+            && SkyIslandJournal.Uses().Contains("拉缆绳回登云码头") && SkyIslandFieldcraftRules.RecallArrived.Contains("登云码头"),
+            "the badge pulls you back to the dock once per raid, and the item, caption and journal all say so");
+
+        // ---- 拍板：岛上物资池的单件价值上限（皇冠与神秘钥匙出池，CR-2026-09-11-001） ----
+        Check(!SkyIslandLootTables.AllowedInPool(21593218) && !SkyIslandLootTables.AllowedInPool(253228) && !SkyIslandLootTables.AllowedInPool(151675)
+            && SkyIslandLootTables.AllowedInPool(66666) && SkyIslandLootTables.AllowedInPool(55898) && SkyIslandLootTables.AllowedInPool(7196)
+            && SkyIslandLootTables.AllowedInPool(0) && SkyIslandLootTables.MaxPoolItemValue >= 60000 && SkyIslandLootTables.MaxPoolItemValue < 150000,
+            "the crown and the mysterious keys stay out of island pools; blueprints and gold badges stay in");
 
         // ---- 串联：没有只为卖钱的东西（每件都有来路，也都有岛上的用处） ----
         string uses = SkyIslandJournal.Uses();
@@ -919,7 +931,9 @@ internal static class Program
             + SkyIslandLights.LitCaption(boardwalkLamp, 5) + SkyIslandLights.ChoiceLabel(boardwalkLamp, lampCount) + SkyIslandLights.AlreadyLit
             + SkyIslandFieldcraftRules.CoreEasesGale + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Meal)
             + SkyIslandCrew.Page(0, crewAllLit) + SkyIslandCrew.Page(1, workshopLit) + SkyIslandCrew.Page(2, workshopLit) + SkyIslandCrew.Page(3, workshopLit)
-            + SkyIslandItemRules.BadgeDiscountNote + SkyIslandJournal.Overview(allLit, null);
+            + SkyIslandItemRules.BadgeDiscountNote + SkyIslandJournal.Overview(allLit, null)
+            + SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Recall) + SkyIslandFieldcraftRules.RecallArrived + SkyIslandFieldcraftRules.RecallSpent
+            + SkyIslandFieldcraftRules.RecallNotReady + SkyIslandFieldcraftRules.RecallFailed;
         foreach (SkyIslandLight light in lamps) englishThree += light.LitLine;
         for (int i = 0; i < SkyIslandLights.HearthMarkers.Length; i++) englishThree += SkyIslandLights.HearthName(i);
         foreach (SkyIslandRecipe recipe in SkyIslandFieldcraftRules.Recipes)

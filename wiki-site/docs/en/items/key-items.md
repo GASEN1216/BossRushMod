@@ -121,7 +121,7 @@ See Sky Islands · Qinglan Archipelago.
 
 The Sky Islands' two keepsakes — one of each per save, sent straight to base storage when granted. **They only do something when carried in your pack on the islands**, and if you fall there they stay behind with the rest of your pack.
 
-- **Qinglan Homecoming Badge**: granted when you ring the Homecoming Bell. Carried: Fuzhou's dock refit and Miantai's moss remedy cost **half** (the islanders know it)
+- **Qinglan Homecoming Badge**: granted when you ring the Homecoming Bell. Carried: Fuzhou's dock refit and Miantai's moss remedy cost **half** (the islanders know it); used on the islands: **pull the line back to Cloudrise Dock** (once per raid, not with enemies nearby, not consumed)
 - **Windeater Core**: granted when you defeat the Windeater. Carried: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**
 - **Other**: do not stack; they can be sold, but then that use is gone
 

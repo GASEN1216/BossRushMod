@@ -61,6 +61,8 @@ FILES = [
     "SkyIslandFieldcraft.cs",
     # 串联：岛上的灯（七盏风晶灯与三处灶火）。
     "SkyIslandLights.cs",
+    # 拍板：晴岚航徽拉缆绳回码头（回话文案在 SkyIslandFieldcraftRules，这里只有诊断日志）。
+    "SkyIslandSessionRecall.cs",
 ]
 
 # 严格两个字符串字面量的 L10n.T 调用：中文那一半必须有英文对照。

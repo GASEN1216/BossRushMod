@@ -84,6 +84,7 @@ namespace BossRush
         // 桥（AB、CS1、K1…）不登记。装配时建一次表，之后每次地面射线只查表、不拼字符串。
         private readonly Dictionary<Collider, string> groundRegions = new Dictionary<Collider, string>();
         private readonly List<string> regionIds = new List<string>();
+        private readonly HashSet<string> raidRegions = new HashSet<string>(StringComparer.Ordinal); // 本趟踏足过的区域：巡视委托按本趟计
         // 玩家此刻站着的区域；走在桥上或腾空时保持上一个。null 表示还没踩到任何区域的地面。
         private string standingRegion;
         // FieldStatus 的脏检查输入：这些计数没变就复用上一次拼好的字符串（每 0.5 秒调用一次）。
@@ -716,12 +717,10 @@ namespace BossRush
                 // 到访记账与区域名共用「脚下那块地」这一个事实源（见 IndexGroundRegions）：
                 // 真正踏上某个岛才算到访，走在桥上保持上一个区域——既不会隔着桥提前点亮支路，
                 // 也不会像更早的「谁更近」写法那样站在两个地标之间来回翻、让区域大标题连弹。
+                // 巡视委托按本趟踏足计（走遍全岛之后每趟照样能接）；存档只记首次到访，刚踏足的区域立刻在官方地图上点亮。
+                if (standingRegion != null && raidRegions.Add(standingRegion)) bounty.ReportRegionVisited();
                 if (standingRegion != null && story.RecordRegionVisited(standingRegion))
-                {
-                    bounty.ReportRegionVisited();
-                    // 刚踏足的区域立刻在官方地图上点亮。
                     mapFog.Apply(story.Current.visitedRegions);
-                }
                 if (hud != null)
                 {
                     // 不在圈里就把读秒整行撤掉，卡片不留空位。
@@ -1027,10 +1026,10 @@ namespace BossRush
         /// - <see cref="SkyIslandBountyKind.Salvage"/> 的搜刮点按出击重刷，本局有多少就是多少；
         /// - <see cref="SkyIslandBountyKind.Threats"/> 的清场是**持久存档事实**，
         ///   已清过的组这局根本不会再触发回调（`Tick` 直接短路成 Cleared）；
-        /// - <see cref="SkyIslandBountyKind.Survey"/> 的区域访问同样持久
-        ///   （`RecordRegionVisited` 对已访问区域返回 false），走遍一次就再也不涨。
+        /// - <see cref="SkyIslandBountyKind.Survey"/> 数的是**本趟**还没踏足的区域（`raidRegions`），
+        ///   走遍全岛之后下一趟照样能派；存档里的首次到访只管点亮地图。
         ///
-        /// 于是老档上后两类的可完成量可能是 0。这些量只会随进度单调递减
+        /// 可完成量不足时就不派这一类。这些量只会随本趟进度单调递减
         /// （每推进 1 点，剩余量减 1），所以接单时 available ≥ target 就保证这一单做得完。
         /// </summary>
         internal int AvailableBountyProgress(SkyIslandBountyKind kind)
@@ -1047,7 +1046,7 @@ namespace BossRush
                 // 剩 3 个真区域时可完成量算成 4，恰好派得出一张做不完的「巡视群岛区域 ×4」。
                 int count = 0;
                 for (int i = 0; i < regionIds.Count; i++)
-                    if (!story.HasVisitedRegion(regionIds[i])) count++;
+                    if (!raidRegions.Contains(regionIds[i])) count++;
                 return count;
             }
             return 0;

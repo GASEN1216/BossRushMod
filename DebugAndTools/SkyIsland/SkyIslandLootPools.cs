@@ -74,6 +74,8 @@ namespace BossRush
                             if (ids[i] > 0 && !LootBlacklistRegistry.Contains(ids[i])) unique.Add(ids[i]);
                     }
                     result.AddRange(unique);
+                    // 单件价值上限：皇冠、神秘钥匙这类收藏品不进岛上的池（CR-2026-09-11-001）。每个品质带每个进程只算一次。
+                    result.RemoveAll(id => !WithinValueCap(id));
                     complete = true;
                 }
                 // 排序让同一 seed 在不同机器上抽到同一件：HashSet 的枚举顺序不稳定。
@@ -88,6 +90,23 @@ namespace BossRush
             if (complete) cache[key] = cached;
             Debug.Log("[SkyIslandLoot] POOL band=" + minQuality + "-" + maxQuality + " size=" + cached.Length);
             return cached;
+        }
+
+        /// <summary>
+        /// 官方价值不超过 <see cref="SkyIslandLootTables.MaxPoolItemValue"/> 才进池。查不到 prefab 的原样放行：
+        /// 装箱那一步本来就会先问 prefab，缺资源的物品在那里被跳过，这里不重复判断。
+        /// </summary>
+        private static bool WithinValueCap(int typeId)
+        {
+            try
+            {
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                return prefab == null || SkyIslandLootTables.AllowedInPool(prefab.Value);
+            }
+            catch (Exception)
+            {
+                return true;
+            }
         }
 
         internal static void ResetStaticCaches() { cache.Clear(); }

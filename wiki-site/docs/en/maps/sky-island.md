@@ -42,6 +42,7 @@ There are **39 scavenging points** across the map — 3–4 in each of the eight
 - **Contents are fixed for the run**: walk away and come back and it is the same crate; what you took does not restock. **Only a fresh raid re-rolls them.**
 - Scavenging points are deliberately **not** marked on the map — the valuable finds have to be walked to.
 - Loot you *find* is fully random; only loot you *earn* — the Windeater trophy and contract payouts — guarantees one item from the top of its band.
+- Island loot pools **leave out collectibles worth more than 100,000 each** (such as the Crown and the mysterious keys): rare finds like blueprints and the solid gold badge still turn up, but no single crate pays for the whole map.
 
 ## Who you'll fight
 
@@ -84,7 +85,7 @@ Take a contract from Weibai herself or from the Windchime Market noticeboard —
 
 Progress counts from **the moment you accept**: earlier work doesn't count, and nothing is deducted. On delivery Weibai leaves a reward crate beside her — each contract lands on a different bearing, so crates never stack and never block her or the noticeboard. Each completed contract raises the next target by one, and **from the third contract onward the reward moves up to Starworks tier**. Three contracts per raid at most. Contracts are per raid and reset when you return to base.
 
-Weibai **only hands out work you can finish this trip**. “Survey the isles” only counts regions this save slot has never set foot on, so once the whole archipelago is on your map it is no longer offered at all; “Clear the lanes” and “Recover supplies” are normally available every trip, since both encounters and scavenging points refresh per raid. Changed your mind after accepting? You can drop a contract with her at any time: dropping it doesn't count as a completion and pays nothing, but it frees the slot.
+Weibai **only hands out work you can finish this trip**. All three count progress **within this raid**: “Survey the isles” counts regions you have not set foot on this trip, so it stays on offer even after the whole archipelago is on your map; “Clear the lanes” and “Recover supplies” are normally available every trip too, since encounters and scavenging points refresh per raid. Changed your mind after accepting? You can drop a contract with her at any time: dropping it doesn't count as a completion and pays nothing, but it frees the slot.
 
 ## The Homecoming Bell and the ending
 
@@ -127,7 +128,7 @@ After you ring the Homecoming Bell, the homecoming boat ties up **beside the doc
 
 The archipelago has five items of its own (TypeID 500068–500072), plus ten gathered materials and in-raid consumables (500073–500082, see "Gathering, crafting, the isles' lights and the night wind" below). All of them are on the loot blacklist, so they never show up in random reward pools such as the wish fountain or the daily report. **Every one of them has a use on the islands — none exist just to be sold**:
 
-- **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and sent straight to base storage. **Carry it in your pack on the islands** and the islanders know you: Fuzhou's dock refit and Miantai's moss remedy cost **half**. If you fall on the islands, it stays behind with the rest of your pack.
+- **Qinglan Homecoming Badge** (keepsake): granted once when you ring the Homecoming Bell and sent straight to base storage. **Use it on the islands** to pull the line on the badge and find yourself back on Cloudrise Dock (once per raid; it will not pull with enemies within 35 m; not consumed). **Carry it in your pack on the islands** and the islanders know you: Fuzhou's dock refit and Miantai's moss remedy cost **half**. If you fall on the islands, it stays behind with the rest of your pack.
 - **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. **Carry it in your pack on the islands** and the whirl inside eats into the wind around you: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**.
 - **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too, and Fuzhou's dock workbench can make a replacement once you have had the first one. Use it on the islands: it points to an uncollected pigeon first, then to your nearest current objective or unfinished side path; after that, to a place still missing its windcrystal lamp if you carry a Qinglan Windcrystal, or else to a wind crystal cluster you have not gathered this trip. **Not consumed.**
 - **Homecoming Bento** (food): restores energy and water, and a little health. **Once Qinghe has her planting record back**, eating one on the islands counts as her homecoming meal (a little more max health and running speed for the raid, shared with her own meal) — so you can pack one ahead and eat it before a hard fight; from then on her stove cooks them too. Occasionally found in island crates of every tier.

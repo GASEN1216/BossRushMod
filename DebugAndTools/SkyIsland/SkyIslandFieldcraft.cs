@@ -331,6 +331,8 @@ namespace BossRush
             // 归航菜便当：菜畦重新开张之后才算归航菜，与晴禾那一顿共用本趟一次。不成立时官方只跳过这一项，便当照样当饭吃。
             if (buff == SkyIslandFieldBuff.Meal)
                 return session.HasPlantingDelivered && session.Services != null && !session.Services.MealEaten;
+            // 晴岚航徽：这一趟还没拉过缆绳才亮；附近有没有敌人在按下时判断，给出原因。
+            if (buff == SkyIslandFieldBuff.Recall) return session.RecallAvailable;
             // 护符不叠加：已经系着一枚时按钮置灰，不吃掉第二枚。
             return buff != SkyIslandFieldBuff.Charm || !charmWorn;
         }
@@ -352,6 +354,14 @@ namespace BossRush
                 // 便当那一顿与晴禾的归航菜同一份加成、共用本趟一次：加成与补血都在服务 owner 里，这里不碰 stat。
                 session.Announce(session.Services.PackedMeal(), false);
                 if (story != null) story.LogTiming("consumable", buff.ToString());
+                return true;
+            }
+            if (buff == SkyIslandFieldBuff.Recall)
+            {
+                // 航徽不消耗：战斗门、落点地面核对与每趟一次都在会话那边，这里只把回话读出来（拉不动时走警示）。
+                string pulled;
+                bool moved = session.TryRecallToDock(out pulled);
+                session.Announce(pulled, !moved);
                 return true;
             }
             CharacterMainControl player = CharacterMainControl.Main;
