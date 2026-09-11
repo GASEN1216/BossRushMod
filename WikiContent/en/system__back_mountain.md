@@ -39,13 +39,16 @@ moment you deliver that chapter's contract — no need to leave and re-enter the
 ### Trophy Showcase
 
 - Build a `Trophy Showcase` from the base's construction menu: `800` money, 2×1 footprint, one only.
-- Walk up and interact with it to open the panel: eight slots, your current bonus, and two record buttons.
+- Walk up and interact with it to open the panel: eight slots, your current bonus, and record, replace,
+  and remove actions.
 
 **The key point: recording does not take your gear away.**
 
 - Just **hold** the trophy in your hands or **wear** it, press the button, and the cabinet remembers it.
 - The item stays yours — keep using it, sell it, whatever. The bonus comes from the fact that you
   actually earned it, so there's never a "keep the gear or take the stat" trade-off.
+- Once the cabinet is full, you can still replace a slot. The panel checks the held trophy first,
+  then the first eligible worn trophy. Removing a record only frees the slot; it never consumes your item.
 
 **How the bonus works**
 
@@ -102,8 +105,8 @@ Two more that catch people out:
   the item never leaves your hands.
 - **Can I record the same item twice?** No. One kind of trophy takes one slot; a repeat just tells
   you it's already recorded.
-- **Can I undo a record I regret?** No, there's no take-back button. But recording is pure upside
-  with no cost, so a "wrong" record loses you nothing except a slot.
+- **Can I undo a record I regret?** Yes. Remove that row to free the slot, or replace it directly with
+  another eligible trophy even when the cabinet is full. If saving fails, the original record remains.
 - **What if the Showcase fills up?** Eight slots is the cap, and filling it is exactly what earns
   the extra `+5%`.
 - **Can I eat a raid meal during a run?** No, only in the base.

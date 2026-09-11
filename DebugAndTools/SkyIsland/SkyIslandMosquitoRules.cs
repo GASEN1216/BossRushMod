@@ -133,7 +133,9 @@ namespace BossRush
         internal float LastDashSeconds { get; private set; }
         internal SkyIslandGnatVec DashDirection { get { return dashDirection; } }
         internal bool Busy { get { return Phase == SkyIslandGnatPhase.Windup || Phase == SkyIslandGnatPhase.Dash; } }
-        private bool Ready { get { return !Busy && StunnedFor <= 0f && !Dazzled && Budget >= 1f && Cooldown <= 0f; } }
+        /// <summary>能主动巡飞、叮咬或开始下一次躲闪：冲刺后要喘息，被蒲扇扇晕后要等眩晕结束。被风吹散的离场移动不受此门限制。</summary>
+        internal bool CanAct { get { return Phase == SkyIslandGnatPhase.Idle && StunnedFor <= 0f; } }
+        private bool Ready { get { return CanAct && !Dazzled && Budget >= 1f && Cooldown <= 0f; } }
 
         /// <summary>按游戏时间恢复预算、走冷却与眩晕。</summary>
         internal void Tick(float seconds)
@@ -882,7 +884,7 @@ namespace BossRush
         internal static string SpawnChoice(bool night, int fiberInPack, int released)
         {
             if (!night)
-                return L10n.T("池边的蛙卵只在夜里浮上水面（蛙鸣池 ", "Frogspawn only rises in the pool at night (Frogsong Pool ") +
+                return L10n.T("夜里浅水边才有新产的蛙卵（蛙鸣池 ", "Fresh frogspawn appears in the shallows at night (Frogsong Pool ") +
                     released + "/" + FrogTarget + L10n.T("）", ")");
             return L10n.T("捧一团蛙卵，用云苔纤维包好（云苔纤维 ", "Scoop up frogspawn wrapped in cloudmoss (Cloudmoss Fiber ") +
                 Math.Min(Math.Max(0, fiberInPack), 1) + L10n.T("/1 · 蛙鸣池 ", "/1 · Frogsong Pool ") + released + "/" + FrogTarget +
@@ -890,7 +892,7 @@ namespace BossRush
         }
 
         internal static string SpawnNeedsNight
-        { get { return L10n.T("白天池面太亮，青蛙都沉在底下。夜里再来。", "The pool is too bright by day; the frogs stay deep. Come back at night."); } }
+        { get { return L10n.T("青蛙夜里才到浅水边繁育。等天黑了，再来找新产的蛙卵。", "The frogs gather in the shallows to breed at night. Return after dark for fresh spawn."); } }
 
         internal static string SpawnNeedsFiber
         { get { return L10n.T("得有一把云苔纤维才包得住蛙卵。", "You need a strand of cloudmoss fibre to wrap the spawn."); } }
@@ -916,9 +918,10 @@ namespace BossRush
         internal static string Released(int released)
         {
             if (released >= FrogTarget)
-                return L10n.T("三团蛙卵都放回去了。夜里蛙鸣池又有了蛙叫——那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
-                    "All three clutches are back in the pool. Frogsong Pool croaks again at night — someone is counting the lights for that child at last.");
-            return L10n.T("蛙卵沉进了蛙鸣池。等青蛙长起来，近水的云蚋会少一些。（蛙鸣池 ", "The frogspawn sinks into Frogsong Pool. Once the frogs grow, there will be fewer gnats by the water. (Frogsong Pool ") +
+                return L10n.T("三处繁育水边都护好了，成蛙也回来了。夜里的蛙鸣池又有了蛙叫——那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
+                    "All three breeding spots are restored, and the adult frogs have returned. Frogsong Pool croaks again at night — someone is counting the lights for that child at last.");
+            return L10n.T("你把蛙卵安置进云苔间，护好了一处繁育水边。成蛙有了落脚处，近水处会少招些云蚋。（蛙鸣池 ",
+                "You settle the spawn into cloudmoss, restoring a breeding spot. With shelter for adult frogs, the waterside will attract fewer gnats. (Frogsong Pool ") +
                 released + "/" + FrogTarget + L10n.T("）", ")");
         }
 

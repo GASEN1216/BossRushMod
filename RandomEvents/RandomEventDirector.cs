@@ -50,6 +50,7 @@ namespace BossRush
 
         private RandomEventBase _activeEvent;
         private RandomEventContext _activeContext;
+        private bool _activeEventCounted;
 
         /// <summary>上一次成功触发的事件 id，用于避免连刷同一个。</summary>
         private RandomEventId _lastTriggeredId;
@@ -275,6 +276,16 @@ namespace BossRush
                 }
             }
 
+            if (evt.HasFailedToStart)
+            {
+                // OnTrigger 接受异步请求后才得知全部失败：退还自然调度的名额，
+                // 清理后走正常冷却，不让空播报占满整个事件时长。F3 从未计数，不退款。
+                if (_activeEventCounted && _eventsFiredThisRun > 0) _eventsFiredThisRun--;
+                EndActiveEvent(RandomEventEndReason.TriggerFailed);
+                EnterCooldown();
+                return;
+            }
+
             if (ctx.ElapsedSeconds >= ctx.DurationSeconds)
             {
                 EndActiveEvent(RandomEventEndReason.Expired);
@@ -415,6 +426,7 @@ namespace BossRush
                 _phase = RandomEventPhase.EventActive;
                 _lastTriggeredId = evt.Id;
                 _eventsFiredThisRun++;
+                _activeEventCounted = true;
 
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "事件触发: " + evt.Id
                     + "，时长 " + ctx.DurationSeconds + "s（本局 "
@@ -566,6 +578,7 @@ namespace BossRush
             _activeEvent = null;
             _activeContext = null;
             _activeTickFaulted = false;
+            _activeEventCounted = false;
 
             if (evt == null && ctx == null) return;
 
@@ -682,6 +695,7 @@ namespace BossRush
                 _activeTickFaulted = false;
                 _phase = RandomEventPhase.EventActive;
                 _lastTriggeredId = evt.Id;
+                _activeEventCounted = false;
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[调试] 强制触发事件: " + evt.Id);
                 return true;
             }

@@ -43,6 +43,7 @@ namespace BossRush
         private readonly int groundMask;
         private readonly int seed;
         private readonly SkyIslandGathering gathering;
+        private readonly Dictionary<string, SkyIslandYield[]> pendingHarvest = new Dictionary<string, SkyIslandYield[]>(StringComparer.Ordinal);
         private readonly object modifierSource = new object();
         private readonly List<ZombieModeAttributeModifierRecord> chillRecords = new List<ZombieModeAttributeModifierRecord>();
         private readonly List<ZombieModeAttributeModifierRecord> incenseRecords = new List<ZombieModeAttributeModifierRecord>();
@@ -58,7 +59,7 @@ namespace BossRush
         private GameObject lanternLight;
         private float nextTick = -1f, lastTick = -1f, lanternUntil = -1f, incenseUntil = -1f, exposure, nextCarryCheck = -1f;
         private int fireNight = -1, lightsLit;
-        private bool lanternLowWarned, incenseLowWarned, charmWorn, chilled, exposureWarned, windExplained, coreCarried, coreExplained, disposed;
+        private bool lanternLowWarned, incenseLowWarned, charmWorn, chilled, exposureWarned, windExplained, coreCarried, coreExplained, disposed, inventoryBusy;
 
         internal SkyIslandFieldcraft(SkyIslandSession owner, SkyIslandStoryService storyService, Transform worldRoot)
         {
@@ -145,21 +146,41 @@ namespace BossRush
 
         private bool Harvest(SkyIslandGatherNode node)
         {
-            if (disposed || node == null || !session.IsReady) return false;
+            if (disposed || inventoryBusy || node == null || !session.IsReady) return false;
             // 修好的地方长得更旺（菜畦、根环、铜脉、风眼、观星镜）：加成读这份存档，只加件数与附带门槛，不多抽随机数。
             SkyIslandStoryData data = story != null ? story.Current : null;
-            SkyIslandYield[] yields = SkyIslandFieldcraftRules.Roll(node,
-                SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), IsNight(), data);
-            var given = new List<SkyIslandYield>(yields.Length);
-            for (int i = 0; i < yields.Length; i++)
+            SkyIslandYield[] yields;
+            if (!pendingHarvest.TryGetValue(node.Id, out yields))
             {
-                int sent = Give(yields[i].TypeId, yields[i].Count);
-                if (sent > 0) given.Add(new SkyIslandYield(yields[i].TypeId, sent));
+                yields = SkyIslandFieldcraftRules.Roll(node,
+                    SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), IsNight(), data);
+                pendingHarvest.Add(node.Id, yields);
             }
-            // 物品资源缺失（部署损坏）时这一处照样收掉：玩家反复读条也拿不到东西，那不是重试能好的状态。
-            session.Announce(SkyIslandFieldcraftRules.HarvestCaption(given.ToArray(), SkyIslandFieldcraftRules.StoryBonusReason(node, data)), false);
-            if (story != null) story.LogTiming("gather", node.Id);
-            return true;
+            var given = new List<SkyIslandYield>(yields.Length);
+            bool complete = true;
+            inventoryBusy = true;
+            try
+            {
+                for (int i = 0; i < yields.Length; i++)
+                {
+                    int sent = Give(yields[i].TypeId, yields[i].Count);
+                    if (sent > 0) given.Add(new SkyIslandYield(yields[i].TypeId, sent));
+                    yields[i] = new SkyIslandYield(yields[i].TypeId, yields[i].Count - sent);
+                    if (yields[i].Count > 0) complete = false;
+                }
+            }
+            finally { inventoryBusy = false; }
+            // 按已送达数量续发，不重抽昼夜/剧情奖励，也不因资源暂不可用把采集点吃掉。
+            if (given.Count > 0)
+                session.Announce(SkyIslandFieldcraftRules.HarvestCaption(given.ToArray(), SkyIslandFieldcraftRules.StoryBonusReason(node, data)), false);
+            if (!complete)
+                session.Announce(L10n.T("还有材料没能装好，采集点保留着，稍后可再取。", "Some materials could not be packed. This gathering spot remains available; try again later."), true);
+            if (complete)
+            {
+                pendingHarvest.Remove(node.Id);
+                if (story != null) story.LogTiming("gather", node.Id);
+            }
+            return complete;
         }
 
         /// <summary>
@@ -184,13 +205,14 @@ namespace BossRush
                         stack = Mathf.Clamp(count - sent, 1, Mathf.Max(1, item.MaxStackCount));
                         item.StackCount = stack;
                     }
-                    ItemUtilities.SendToPlayer(item, false, false);
+                    if (!SkyIslandInventoryTransaction.TryDeliver(item, CharacterMainControl.Main))
+                        throw new InvalidOperationException("产出未送达");
                     item = null;
                     sent += stack;
                 }
                 catch (Exception e)
                 {
-                    if (item != null) { try { item.DestroyTree(); } catch { /* 清理失败不影响其余产出 */ } }
+                    SkyIslandInventoryTransaction.DestroyUnowned(item);
                     Debug.LogWarning("[SkyIslandGather] 物品 " + typeId + " 发放失败：" + e.Message);
                     break;
                 }
@@ -214,7 +236,7 @@ namespace BossRush
         /// </summary>
         internal bool Craft(SkyIslandRecipe recipe, out string message)
         {
-            if (disposed || recipe == null || !session.IsReady)
+            if (disposed || inventoryBusy || recipe == null || !session.IsReady)
             {
                 message = L10n.T("现在没法做东西。", "Nothing can be made right now.");
                 return false;
@@ -232,27 +254,37 @@ namespace BossRush
                 return false;
             }
             Item output = null;
+            SkyIslandInventoryTransaction materials = null;
+            inventoryBusy = true;
             try
             {
                 if (ItemAssetsCollection.GetPrefab(recipe.OutputTypeId) == null) throw new InvalidOperationException("成品资源缺失");
                 output = ItemAssetsCollection.InstantiateSync(recipe.OutputTypeId);
                 if (output == null || output.TypeID != recipe.OutputTypeId) throw new InvalidOperationException("成品实例无效");
                 if (output.Stackable) output.StackCount = Mathf.Clamp(recipe.OutputCount, 1, Mathf.Max(1, output.MaxStackCount));
-                for (int i = 0; i < recipe.Inputs.Length; i++)
-                    if (!ConsumeFromPack(recipe.Inputs[i].TypeId, recipe.Inputs[i].Count))
-                        throw new InvalidOperationException("扣除材料失败：" + recipe.Inputs[i].TypeId);
-                ItemUtilities.SendToPlayer(output, false, false);
+                if (!SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main, recipe.Inputs, out materials))
+                    throw new InvalidOperationException("预留材料失败");
+                // 预留时触发的外部回调可能已经结束本趟，未发成品前仍能完整归还原件。
+                if (disposed || !session.IsReady) throw new InvalidOperationException("本趟已经结束");
+                if (!SkyIslandInventoryTransaction.TryDeliver(output, CharacterMainControl.Main))
+                    throw new InvalidOperationException("成品未送达");
                 output = null;
+                materials.Commit();
                 message = SkyIslandFieldcraftRules.CraftedMessage(recipe);
                 Debug.Log("[SkyIslandCraft] CRAFTED recipe=" + recipe.Id);
                 return true;
             }
             catch (Exception e)
             {
-                if (output != null) { try { output.DestroyTree(); } catch { /* 成品清理失败不影响回话 */ } }
+                SkyIslandInventoryTransaction.DestroyUnowned(output);
                 Debug.LogWarning("[SkyIslandCraft] 配方 " + recipe.Id + " 失败：" + e.Message);
                 message = L10n.T("没做成——材料好像没对上，再看一眼背包。", "It did not come together — check your pack again.");
                 return false;
+            }
+            finally
+            {
+                try { if (materials != null) materials.Dispose(); }
+                finally { inventoryBusy = false; }
             }
         }
 
@@ -288,7 +320,7 @@ namespace BossRush
         /// <summary>从背包顶层扣一件（云蚋那边包蛙卵用一把云苔纤维）。口径同 <see cref="ConsumeFromPack"/>。</summary>
         internal bool ConsumeOne(int typeId)
         {
-            return !disposed && ConsumeFromPack(typeId, 1);
+            return !disposed && !inventoryBusy && ConsumeFromPack(typeId, 1);
         }
 
         #endregion
@@ -296,13 +328,13 @@ namespace BossRush
         #region 岛上的灯
 
         /// <summary>
-        /// 在这处装置旁点起风晶灯（<see cref="SkyIslandLights"/>）。先点清材料，**先记手记、再扣材料**：
-        /// 写屏障或换槽时这盏灯这趟点不起来，但一块风晶都不白扣。点亮之后立刻补建那盏灯的光（灯旁暖和）；
+        /// 在这处装置旁点起风晶灯（<see cref="SkyIslandLights"/>）。先预留整份材料，记手记成功才提交扣料：
+        /// 写屏障、换槽或扣料异常时不点灯，未提交的材料由事务归还。点亮之后立刻补建那盏灯的光（灯旁暖和）；
         /// 第十盏亮起时念一句收尾，此后夜里不再起风。
         /// </summary>
         internal bool LightLamp(SkyIslandLight light, out string message)
         {
-            if (disposed || light == null || story == null || !session.IsReady)
+            if (disposed || inventoryBusy || light == null || story == null || !session.IsReady)
             {
                 message = L10n.T("现在没法点灯。", "No lamp can be lit right now.");
                 return false;
@@ -323,22 +355,42 @@ namespace BossRush
                 message = SkyIslandFieldcraftRules.MissingMessage(lampMissing);
                 return false;
             }
-            string note;
-            if (!story.RecordNote(light.Id, out note))
+            SkyIslandInventoryTransaction materials = null;
+            inventoryBusy = true;
+            try
             {
-                message = note;
-                return false;
+                // 库存事件会同步调用外部代码。先完整预留再写手记，写入失败则归还原件，
+                // 不允许灯已永久点亮之后才发现材料扣不下来。
+                if (!SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main, light.Inputs, out materials))
+                {
+                    message = L10n.T("材料在操作时发生变化，请再试一次。", "The materials changed while lighting the lamp. Try again.");
+                    return false;
+                }
+                if (disposed || !session.IsReady)
+                {
+                    message = L10n.T("现在没法点灯。", "No lamp can be lit right now.");
+                    return false;
+                }
+                string note;
+                if (!story.RecordNote(light.Id, out note))
+                {
+                    message = note;
+                    return false;
+                }
+                materials.Commit();
+                AddFire(light.Marker, LampColor);
+                int before = lightsLit;
+                lightsLit = SkyIslandLights.LitCount(story.Current);
+                message = SkyIslandLights.LitCaption(light, lightsLit);
+                if (before < SkyIslandLights.Target && lightsLit >= SkyIslandLights.Target) session.Announce(SkyIslandLights.Capstone, false);
+                Debug.Log("[SkyIslandLights] LIT id=" + light.Id + " total=" + lightsLit);
+                return true;
             }
-            for (int i = 0; i < light.Inputs.Length; i++)
-                if (!ConsumeFromPack(light.Inputs[i].TypeId, light.Inputs[i].Count))
-                    Debug.LogWarning("[SkyIslandLights] 灯 " + light.Id + " 已记进手记，但扣材料失败：" + light.Inputs[i].TypeId);
-            AddFire(light.Marker, LampColor);
-            int before = lightsLit;
-            lightsLit = SkyIslandLights.LitCount(story.Current);
-            message = SkyIslandLights.LitCaption(light, lightsLit);
-            if (before < SkyIslandLights.Target && lightsLit >= SkyIslandLights.Target) session.Announce(SkyIslandLights.Capstone, false);
-            Debug.Log("[SkyIslandLights] LIT id=" + light.Id + " total=" + lightsLit);
-            return true;
+            finally
+            {
+                try { if (materials != null) materials.Dispose(); }
+                finally { inventoryBusy = false; }
+            }
         }
 
         /// <summary>离 <paramref name="from"/> 最近、这一趟还没采的某种采集点（罗盘用，只在按下时调一次）。</summary>
@@ -376,8 +428,8 @@ namespace BossRush
                 if (buff == SkyIslandFieldBuff.Charm && charmWorn && !disposed)
                 {
                     session.Announce(SkyIslandFieldcraftRules.CharmAlreadyWorn, true);
-                    return true;
                 }
+                else session.Announce(SkyIslandFieldcraftRules.OffIsland, true);
                 return false;
             }
             if (buff == SkyIslandFieldBuff.Meal)
@@ -420,24 +472,33 @@ namespace BossRush
                 case SkyIslandFieldBuff.Zapper:
                 case SkyIslandFieldBuff.Fan:
                 case SkyIslandFieldBuff.Soothe:
-                    string said = UseAgainstGnats(buff, player);
-                    if (!string.IsNullOrEmpty(said)) session.Announce(said, false);
-                    if (story != null) story.LogTiming("consumable", buff.ToString());
-                    return true;
+                    string said;
+                    bool applied = UseAgainstGnats(buff, player, out said);
+                    ReportConsumable(buff, said, applied);
+                    return applied;
             }
-            session.Announce(SkyIslandFieldcraftRules.BuffStarted(buff), false);
-            if (story != null) story.LogTiming("consumable", buff.ToString());
+            ReportConsumable(buff, SkyIslandFieldcraftRules.BuffStarted(buff), true);
             return true;
         }
 
-        /// <summary>灭蚊灯放下、蒲扇扇一下、药膏止痒：交给蚊群 owner，返回要读给玩家的那一句。</summary>
-        private string UseAgainstGnats(SkyIslandFieldBuff buff, CharacterMainControl player)
+        private void ReportConsumable(SkyIslandFieldBuff buff, string message, bool applied)
         {
-            string said;
-            if (buff == SkyIslandFieldBuff.Zapper) gnats.DeployZapper(player, out said);
-            else if (buff == SkyIslandFieldBuff.Fan) gnats.SwingFan(player, out said);
-            else said = gnats.Soothe();
-            return said;
+            // 效果已经提交，字幕或统计失败不能把成功变成退款。
+            try
+            {
+                if (!string.IsNullOrEmpty(message)) session.Announce(message, !applied);
+                if (applied && story != null) story.LogTiming("consumable", buff.ToString());
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandFieldcraft] 耗材提示失败：" + e.Message); }
+        }
+
+        /// <summary>灭蚊灯放下、蒲扇扇一下、药膏止痒：交给蚊群 owner，返回要读给玩家的那一句。</summary>
+        private bool UseAgainstGnats(SkyIslandFieldBuff buff, CharacterMainControl player, out string said)
+        {
+            if (buff == SkyIslandFieldBuff.Zapper) return gnats.DeployZapper(player, out said);
+            if (buff == SkyIslandFieldBuff.Fan) return gnats.SwingFan(player, out said);
+            said = gnats.Soothe();
+            return true;
         }
 
         private void WearCharm(CharacterMainControl player)
@@ -704,6 +765,7 @@ namespace BossRush
             hearthFires.Clear();
             lampFires.Clear();
             fireMarkers.Clear();
+            pendingHarvest.Clear();
             Debug.Log("[SkyIslandFieldcraft] CLOSE gathered=" + gathering.HarvestedCount + "/" + gathering.PlacedCount);
             gathering.Dispose();
         }

@@ -9,7 +9,7 @@ namespace UnityEngine
 {
     static class Time { public static int frameCount; }
     static class Random { public static float value = 0; public static int Range(int min, int max) { return min; } }
-    static class Mathf { public static int Min(int a, int b) { return Math.Min(a, b); } }
+    static class Mathf { public static int Min(int a, int b) { return Math.Min(a, b); } public static float Clamp01(float v) { return Math.Max(0, Math.Min(1, v)); } }
     static class JsonUtility
     {
         static readonly JsonSerializerOptions Options = new JsonSerializerOptions { IncludeFields = true };
@@ -23,18 +23,24 @@ namespace Saves
     {
         public static bool IsSaving, StickSavingOnFailure;
         public static int CurrentSlot = 0, Writes, FailPhysical;
-        public static string FailKey;
+        public static string FailKey, FailReadAfterSaveKey;
+        static string pendingReadFailure;
         public static Dictionary<string, object> Cache = new Dictionary<string, object>();
         public static Dictionary<string, object> Disk = new Dictionary<string, object>();
         public static List<Dictionary<string, object>> History = new List<Dictionary<string, object>>();
         public static event Action OnCollectSaveData, OnSetFile, OnSaveDeleted;
         public static void Collect() { OnCollectSaveData?.Invoke(); }
         public static bool KeyExisits(string key) { return Cache.ContainsKey(key); }
-        public static T Load<T>(string key) { return Cache.ContainsKey(key) ? (T)Cache[key] : default(T); }
+        public static T Load<T>(string key)
+        {
+            if (pendingReadFailure == key) { pendingReadFailure = null; throw new InvalidOperationException("injected readback failure"); }
+            return Cache.ContainsKey(key) ? (T)Cache[key] : default(T);
+        }
         public static void Save<T>(string key, T value)
         {
             if (key == FailKey) { FailKey = null; throw new InvalidOperationException("injected key failure"); }
             Cache[key] = value;
+            if (FailReadAfterSaveKey == key) { pendingReadFailure = key; FailReadAfterSaveKey = null; }
         }
         // Matches official SaveFile: persist cached keys; it does not collect live data.
         public static void SaveFile(bool writeSaveTime)
@@ -53,6 +59,7 @@ namespace Saves
         {
             IsSaving = StickSavingOnFailure = false; CurrentSlot = 0; Writes = 0; FailPhysical = 0; FailKey = null;
             Cache.Clear(); Disk.Clear(); History.Clear();
+            FailReadAfterSaveKey = pendingReadFailure = null;
         }
     }
 }
@@ -73,8 +80,15 @@ namespace Duckov.Economy
     }
 }
 namespace Duckov.UI { static class NotificationText { public static void Push(string value) { } } }
-class LevelManager { public static LevelManager Instance = new LevelManager(); public bool IsBaseLevel = true; }
-class CharacterMainControl { public static CharacterMainControl Main; public Item CharacterItem; }
+enum ElementTypes { electricity, poison, ice }
+class LevelManager { public static LevelManager Instance = new LevelManager(); public static bool AfterInit = true; public bool IsBaseLevel = true; }
+static class ItemUtilities
+{
+    public static List<Item> Delivered = new List<Item>();
+    public static void SendToPlayer(Item item) { Delivered.Add(item); }
+}
+class Health { public float CurrentHealth = 100, MaxHealth = 100; public void SetHealth(float health) { CurrentHealth = health; } }
+class CharacterMainControl { public static CharacterMainControl Main; public Item CharacterItem; public Health Health = new Health(); }
 class PlayerStorage
 {
     public static PlayerStorage Instance = new PlayerStorage(); public static bool Loading;
@@ -87,10 +101,18 @@ class PlayerStorageBuffer
 }
 namespace ItemStatsSystem
 {
+    static class ItemAssetsCollection
+    {
+        public static object Instance = new object();
+        public static bool FailInstantiate;
+        public static Item InstantiateSync(int id) { return FailInstantiate ? null : new Item { TypeID = id, Lineage = null }; }
+        public static ItemMetaData GetMetaData(int id) { return new ItemMetaData { id = id, quality = id >= 200 ? 8 : 5 }; }
+    }
+    struct ItemMetaData { public int id, quality; }
     public class Slot { public Item Content; }
     public class Item
     {
-        public int TypeID = 500059, MaxStackCount = 20;
+        public int TypeID = 500059, MaxStackCount = 20, Quality;
         public string Lineage = "test";
         public bool Destroyed, FailSaveOnce, Stackable = true;
         public Inventory InInventory, Inventory;
@@ -138,6 +160,7 @@ namespace BossRush
 {
     class ModBehaviour
     {
+        public static bool DevModeEnabled = true;
         public static ModBehaviour Instance = new ModBehaviour();
         public static void DevLog(string text) { }
         public static void CriticalLog(string text) { throw new Exception(text); }
@@ -194,13 +217,23 @@ namespace BossRush
         public static bool FlushPending() { SavesSystem.Save("BountyClaimed", Current.BountyRewardClaimed); HasPendingWrite = false; return true; }
         public static void Collect() { HandleCollectSaveData(); }
     }
-    class PetNestLineageInfo { public string DisplayName = "test"; }
+    class PetNestLineageInfo { public string DisplayName = "test"; public ElementTypes Element = ElementTypes.electricity; }
     static class PetNestLineageCatalog
     {
         public static bool TryGet(string key, out PetNestLineageInfo info) { info = key == "test" ? new PetNestLineageInfo() : null; return info != null; }
         public static bool IsKnownLineage(string key) { return key == "test"; }
+        public static ElementTypes GetDestinationElement(string id) { return ElementTypes.electricity; }
     }
-    static class RelicEggConfig { public const int TYPE_ID = 500059; public static string ReadLineage(Item item) { return item.Lineage; } }
+    static class RelicEggConfig
+    {
+        public const int TYPE_ID = 500059;
+        public static bool FailStamp;
+        public static string ReadLineage(Item item) { return item.Lineage; }
+        public static bool TryStampLineage(Item item, string lineage) { if (FailStamp) return false; item.Lineage = lineage; return true; }
+    }
+    static class BossRushDynamicItemRegistry { public static void EnsureRegistered(int id) { } }
+    static class PetNestProgressionService { public static void AddExp(PetNestPetRecord pet, int exp) { pet.exp += exp; } }
+    static class PetNestDownedHandler { public static void AppendScar(PetNestPetRecord pet, string id, string reason) { } }
     static class BossRushAchievementManager
     {
         public static HashSet<string> Unlocked = new HashSet<string>();
@@ -211,7 +244,20 @@ namespace BossRush
         public class Definition { public bool IsSeed; public string NameCN = "餐", NameEN = "meal"; }
         public static Definition GetDefinition(int id) { return id == 500065 ? new Definition() : null; }
     }
-    static class BackMountainConfig { public const string LogPrefix = "BackMountain"; }
+    enum BackMountainFacility { Showcase }
+    static class BackMountainUnlocks { public static bool IsFacilityUnlocked(BackMountainFacility facility) { return true; } }
+    class ZombieModeAttributeModifierRecord { }
+    static class ZombieModeStatNames { public const string MaxHealth = "MaxHealth"; }
+    static class RuntimeStatModifierTracker
+    {
+        public static void RemoveAll(List<ZombieModeAttributeModifierRecord> records, string label) { records.Clear(); }
+        public static void TryAdd(CharacterMainControl main, string stat, float amount, object source, List<ZombieModeAttributeModifierRecord> records, string label) { records.Add(new ZombieModeAttributeModifierRecord()); }
+    }
+    static class BackMountainConfig
+    {
+        public const string LogPrefix = "BackMountain", ShowcaseSaveKey = "BossRush_BackMountain_Showcase_v1";
+        public const int ShowcaseSlotCount = 8;
+    }
     static class RaidMealService
     {
         public static bool Reject, Throw; public static int Registered;

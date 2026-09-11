@@ -42,7 +42,7 @@ def main() -> int:
         return fail("missing EnergyShield OnHurt body")
 
     energy_required = [
-        "if (targetHealth == null || !targetHealth.IsMainCharacterHealth) return;",
+        "if (targetHealth == null || targetHealth.IsDead || !targetHealth.IsMainCharacterHealth) return;",
         "CharacterMainControl player = CharacterMainControl.Main;",
         "if (player == null || player.Health != targetHealth) return;",
     ]

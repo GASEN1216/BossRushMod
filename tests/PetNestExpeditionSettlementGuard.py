@@ -74,6 +74,8 @@ def main():
             errors.append("[明示] 死亡率必须随出发记录固化")
         if "r.successRate = ComputeSuccessRate(pet, destinationId, tier);" not in body:
             errors.append("[明示] 成功率必须随出发记录固化")
+        if "r.petLineageKey = pet.lineageKey;" not in body:
+            errors.append("[奖励身份] 出发必须固化血脉，不能让后续放生/阵亡抹掉待发遗种蛋身份")
         if "pet.state = (int)PetNestPetState.OnExpedition;" not in body:
             errors.append("[锁定] 派出期间必须锁定崽")
         if "PetNestPersistenceAccess.BeginTransaction" not in body:
@@ -206,8 +208,7 @@ def main():
         if "unit < record.grantedLootUnits" not in body:
             errors.append("[发奖记账] 补发必须跳过游标之前已投出去的件数")
 
-    # 9c. 单件投递必须区分「可重试失败」与「确定性废件」：
-    # 废件当作失败会让记录永远发不全，可重试失败当作成功则静默吞奖
+    # 9c. 只有实际送达才可消费欠奖，身份缺失/盖章失败必须保留欠账。
     one = re.search(
         r"private static bool GrantOneItem\(int typeId, PetNestExpeditionRecord record\)"
         r"[\s\S]{0,2400}?\n        \}", code)
@@ -217,6 +218,23 @@ def main():
         body = one.group(0)
         if "return false;" not in body:
             errors.append("[发奖记账] 可重试失败（实例化失败 / 异常）必须返回 false 保留欠账")
+        if "string lineageKey = record.petLineageKey;" not in body:
+            errors.append("[奖励身份] 遗种蛋须优先读取远征记录血脉，不能只查仍在巢中的崽")
+        failed_stamp = re.search(
+            r"if \(string\.IsNullOrEmpty\(lineageKey\) \|\| !RelicEggConfig\.TryStampLineage\(item, lineageKey\)\)"
+            r"\s*\{([^{}]*)\}", body)
+        if failed_stamp is None or "return false;" not in failed_stamp.group(1) or "return true;" in failed_stamp.group(1):
+            errors.append("[奖励身份] 血脉缺失/盖章失败不能当作已发奖，必须保留原游标")
+
+    models = strip_cs_comments(read_petnest("PetNestModels.cs") or "")
+    codec = strip_cs_comments(read_petnest("PetNestPersistenceCodec.cs") or "")
+    for token in ("public string petLineageKey;", "!string.IsNullOrEmpty(record.petLineageKey)",
+                  "string.Equals(pet.id, record.petId, StringComparison.Ordinal)",
+                  "record.petLineageKey = pet.lineageKey;"):
+        if token not in models:
+            errors.append("[旧档奖励身份] Bundle 规范化必须仅按原 petId 补齐缺失血脉: " + token)
+    if '.Str("petLineageKey", r.petLineageKey)' not in codec or 'n.GetString("petLineageKey", null)' not in codec:
+        errors.append("[旧档奖励身份] 可选 petLineageKey 必须完整往返，旧档缺字段回落 null")
 
     # 9d. 孤儿远征锁自愈：崽标记 OnExpedition 但远征表无匹配记录 = 永久锁死
     orphan = re.search(

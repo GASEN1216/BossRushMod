@@ -307,7 +307,7 @@ namespace BossRush
             enteredAt = Time.unscaledTime;
             worldStory = new SkyIslandWorldStory(this, story, root);
             ambience = new SkyIslandAmbience(root);
-            ambience.ApplyStoryFlags(story.Current.flags);
+            ambience.ApplyStory(story.Current);
             encounters = new SkyIslandEncounters(root, player, navigation.Mask, groundMask, content, IsSessionValid,
                 EncounterWasSaved, OnEncounterCleared, Status, EncounterLabel, OnStormDefeated);
             raidSeed = unchecked(Environment.TickCount ^ (int)(Time.realtimeSinceStartup * 1000f));
@@ -670,7 +670,7 @@ namespace BossRush
             if (extractionRings != null) extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
             if (mapMarkers != null) mapMarkers.Apply(story.Current, exitMarker, BellExitIfUnlocked(), WindExitIfUnlocked(), StarExitIfUnlocked());
             if (lighting != null) lighting.Tick();
-            if (ambience != null) { ambience.ApplyStoryFlags(story.Current.flags); ambience.Tick(player.transform.position); }
+            if (ambience != null) { ambience.ApplyStory(story.Current); ambience.Tick(player.transform.position); }
             Vector3 local = player.transform.position - origin;
             if (local.y < -8 || Mathf.Abs(local.x) > 475 || Mathf.Abs(local.z) > 425)
             { Rescue(); return; }

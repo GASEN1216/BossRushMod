@@ -124,6 +124,7 @@ namespace BossRush
             {
                 SkyIslandGatherNode node = spot.Node;
                 GameObject go = new GameObject("SkyIslandGather_" + node.Id);
+                spot.Root = go;
                 go.transform.SetParent(root, false);
                 go.transform.position = spot.Position;
                 go.layer = LayerMask.NameToLayer("Interactable");
@@ -165,6 +166,9 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                if (spot.Root != null) UnityEngine.Object.Destroy(spot.Root);
+                spot.Root = null;
+                spot.Glow = null;
                 Debug.LogWarning("[SkyIslandGather] 采集点 " + spot.Node.Id + " 准备失败：" + e.Message);
             }
         }

@@ -275,7 +275,7 @@ namespace BossRush
             try
             {
                 // 只处理主角受击
-                if (!frostSetActive || health == null || !health.IsMainCharacterHealth) return;
+                if (!frostSetActive || health == null || health.IsDead || !health.IsMainCharacterHealth) return;
 
                 // 1) 冰伤转治疗（OnHurt 在扣血之后派发，只做回补，下一帧生效）
                 float iceDamage = GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.ice);

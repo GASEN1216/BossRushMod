@@ -278,8 +278,8 @@ def main():
         errors.append("采集点必须走官方交互组（InteractionGroupLabel）")
     give = need_body(fieldcraft, "private static int Give(int typeId, int count)", "产出发放")
     ordered(give, ["ItemAssetsCollection.GetPrefab(typeId) == null", "ItemAssetsCollection.InstantiateSync(typeId);",
-                   "item.TypeID != typeId", "ItemUtilities.SendToPlayer(item, false, false);"],
-            "产出先问 prefab，再放进背包、放不下落在脚边")
+                   "item.TypeID != typeId", "SkyIslandInventoryTransaction.TryDeliver(item, CharacterMainControl.Main)"],
+            "产出先问 prefab，再经事务进入背包或落地")
     flat_fieldcraft = squash(fieldcraft)
     for token in ("SendToPlayerStorage", "SendToPlayer(item)", "SendToPlayer(output)", "SendToPlayer(item, false, true)",
                   "SendToPlayer(output, false, true)"):
@@ -292,9 +292,9 @@ def main():
     # ---- 5. 合成 ----
     craft = need_body(fieldcraft, "internal bool Craft(SkyIslandRecipe recipe, out string message)", "合成")
     ordered(craft, ["SkyIslandFieldcraftRules.Missing(recipe, CountInPack);", "if (missing.Count > 0)",
-                    "ItemAssetsCollection.GetPrefab(recipe.OutputTypeId) == null", "ConsumeFromPack(",
-                    "ItemUtilities.SendToPlayer(output, false, false);"],
-            "合成：先点清材料、先造出成品、再扣材料、最后放进背包")
+                    "ItemAssetsCollection.GetPrefab(recipe.OutputTypeId) == null", "SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main, recipe.Inputs, out materials)",
+                    "SkyIslandInventoryTransaction.TryDeliver(output, CharacterMainControl.Main)", "materials.Commit();"],
+            "合成：先点清材料、先造出成品、独占预留、交付成功后提交扣料")
     ordered(need_body(fieldcraft, "private static bool ConsumeFromPack(int typeId, int count)", "扣材料"),
             ["inventory.RemoveItem(item);", "item.DestroyTree();"], "整堆扣掉的材料要 DestroyTree，不留孤儿物品")
     require(need_body(fieldcraft, "internal int CountInPack(int typeId)", "背包计数"), "ItemFactory.GetItemCountInInventory(typeId)",

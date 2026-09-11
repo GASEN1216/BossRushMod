@@ -115,8 +115,8 @@ namespace BossRush
                 "once the garden has reopened, eaten on the isles it counts as Qinghe's homecoming meal"));
             Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血；止云蚋的痒，这一阵叮上也不痒（苔药管伤，药膏管痒）",
                 "heals without paying Miantai or waiting on her remedy; stops gnat itching, and new bites will not itch for a while (the remedy is for wounds, the salve for itching)"));
-            Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("指信鸽、目标、支线；都没有了就指还缺灯的地方或风晶簇",
-                "points to pigeons, objectives and side paths; after that, to a place missing its lamp or a wind crystal cluster"));
+            Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("捧着蛙卵时先指蛙鸣池；平时指信鸽、目标、支线，最后指缺灯处或风晶簇",
+                "while carrying frogspawn, points to Frogsong Pool first; otherwise to pigeons, objectives, side paths, then missing lamps or wind crystal clusters"));
             Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",
                 "carried: the dock refit and Miantai's remedy cost {0}%; used on the isles: pull the line back to Cloudrise Dock (once per raid)"),
                 Percent(SkyIslandItemRules.BadgeServiceRate)));
@@ -179,8 +179,8 @@ namespace BossRush
                     text.Append("■ ").Append(all[i].Title).Append('\n').Append(all[i].Body);
                     // 内容批次四：三团蛙卵都放回了蛙鸣池，那封写给池子里青蛙的信有了回音。
                     if (all[i].Id == "Letter_04" && SkyIslandMosquitoRules.FrogsComplete(data))
-                        text.Append(L10n.T("\n（蛙鸣池又有蛙叫了。池子里的青蛙会替那个孩子数灯。）",
-                            "\n(Frogsong Pool croaks again. The frogs in the pool will count the lights for that child.)"));
+                        text.Append(L10n.T("\n（蛙鸣池的繁育水边有人照看，又有青蛙回来了。池子里的青蛙会替那个孩子数灯。）",
+                            "\n(Someone is tending Frogsong Pool's breeding shallows, and frogs are returning. The frogs in the pool will count the lights for that child.)"));
                 }
                 else
                     text.Append("□ ").Append(L10n.T("第 ", "Letter ")).Append(i + 1)

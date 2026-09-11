@@ -15,7 +15,7 @@ namespace BossRush
             internal Transform Rotor;
             internal Light Light;
             internal int Flag;
-            internal bool Near, Looping;
+            internal bool Near, Looping, FrogChorus;
             internal string Ambient;
             internal float NextSound, Phase;
             internal float Speed;
@@ -26,6 +26,8 @@ namespace BossRush
         private readonly MethodInfo postSound, stopAll;
         private readonly object stopImmediately;
         private int flags = -1;
+        private SkyIslandStoryData appliedStory;
+        private bool frogsHome;
         private float nextDistanceCheck;
         private bool disposed, audioWarning;
         private Vector3 playerPosition;
@@ -45,6 +47,34 @@ namespace BossRush
             Add(root, "Search_S4", (int)SkyIslandStoryFlag.Telescope, new Color(.80f, .68f, 1f), null, 9f);
             Add(root, "Search_C", (int)SkyIslandStoryFlag.PlantingDelivered, new Color(.98f, .70f, .52f), null, 65f);
             Add(root, "Search_H", (int)SkyIslandStoryFlag.Ending, new Color(1f, .88f, .57f), null, 6f);
+            AddFrogPool(root);
+        }
+
+        /// <summary>只有一个无灯、无碰撞的池边发声体；夜里修复繁育水域后，近处才会发声。</summary>
+        private void AddFrogPool(GameObject map)
+        {
+            Transform anchor = map.transform.Find("Search_S1");
+            if (anchor == null)
+            {
+                Debug.LogWarning("[SkyIsland] 蛙鸣池标记缺失，蛙声无法定位");
+                return;
+            }
+            var owned = new GameObject("SkyIslandFrogChorus");
+            owned.transform.SetParent(map.transform, false);
+            owned.transform.position = anchor.position + Vector3.up * .4f;
+            owned.SetActive(false);
+            devices.Add(new Device { Root = owned, FrogChorus = true, Ambient = "frog_chorus.wav",
+                NextSound = Time.time + 2f, Phase = 5f });
+        }
+
+        internal void ApplyStory(SkyIslandStoryData data)
+        {
+            if (disposed || data == null || ReferenceEquals(appliedStory, data)) return;
+            appliedStory = data;
+            frogsHome = SkyIslandMosquitoRules.FrogsComplete(data);
+            ApplyStoryFlags(data.flags);
+            // 蛙卵写在 discoveredNotes，不翻剧情 flags；下一次距离采样仍须更新声场。
+            nextDistanceCheck = 0f;
         }
 
         private void Add(GameObject map, string marker, int required, Color color, string ambient, float speed)
@@ -131,8 +161,10 @@ namespace BossRush
                 if (device.Root == null) continue;
                 if (checkDistance) UpdateDistance(device);
                 if (!device.Near) continue;
-                device.Rotor.localRotation = Quaternion.Euler(0, Time.time * device.Speed, Mathf.Sin(Time.time * .7f + device.Phase) * 6f);
-                device.Light.intensity = 1.2f + Mathf.Sin(Time.time * 1.5f + device.Phase) * .18f;
+                if (device.Rotor != null)
+                    device.Rotor.localRotation = Quaternion.Euler(0, Time.time * device.Speed, Mathf.Sin(Time.time * .7f + device.Phase) * 6f);
+                if (device.Light != null)
+                    device.Light.intensity = 1.2f + Mathf.Sin(Time.time * 1.5f + device.Phase) * .18f;
                 if (device.Ambient == null || Time.time < device.NextSound || device.Looping) continue;
                 bool loop = device.Ambient == "island_wind.wav";
                 device.Looping = Play(device, device.Ambient, loop) && loop;
@@ -143,7 +175,9 @@ namespace BossRush
         private void UpdateDistance(Device device)
         {
             if (device.Root == null) return;
-            bool enabled = device.Flag == 0 || (flags >= 0 && (flags & device.Flag) != 0);
+            bool enabled = device.FrogChorus
+                ? frogsHome && SkyIslandNight.IsNight(SkyIslandLighting.ClockHours())
+                : device.Flag == 0 || (flags >= 0 && (flags & device.Flag) != 0);
             // 进入 38m、离开 44m 的滞回防止区域边沿反复启停；只影响本类装饰对象。
             float radius = device.Near ? 44f : 38f;
             bool near = enabled && (device.Root.transform.position - playerPosition).sqrMagnitude <= radius * radius;
@@ -191,6 +225,7 @@ namespace BossRush
                 if (device.Root != null) UnityEngine.Object.Destroy(device.Root);
             }
             devices.Clear();
+            appliedStory = null;
         }
     }
 }

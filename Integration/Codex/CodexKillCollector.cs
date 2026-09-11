@@ -96,7 +96,12 @@ namespace BossRush
                 if (target.IsMainCharacterHealth) return;
 
                 // 4) 只记主角亲手击杀：随从、雇佣兵、环境伤害都不算
-                if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
+                if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter)
+                {
+                    // 玩家先打过、最后由随从/环境补刀时仍要结束计时，只是不计个人击杀。
+                    lock (_lock) { _fightStart.Remove(target.GetInstanceID()); }
+                    return;
+                }
 
                 // 5) 排遗种巢随从（自家崽被误伤致死不该进图鉴）
                 if (PetNestCompanionAgent.IsCompanionHealth(target)) return;
@@ -136,7 +141,11 @@ namespace BossRush
                     {
                         _fightStart.Remove(healthId);
                         float elapsed = Time.time - start;
-                        if (elapsed > 0f) seconds = elapsed;
+                        // 同帧多次命中可以有真实起点却算出 0；持久字段的 0 是未知，
+                        // 所以只对有起点的非负测量值使用最小正单位。未命中不猜一击。
+                        if (elapsed >= 0f)
+                            seconds = elapsed < CodexTuning.MinimumFightSeconds
+                                ? CodexTuning.MinimumFightSeconds : elapsed;
                     }
                 }
 
@@ -166,6 +175,14 @@ namespace BossRush
                 if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
                 if (target.IsMainCharacterHealth) return;
                 if (info.finalDamage <= 0f) return;
+                if (PetNestCompanionAgent.IsCompanionHealth(target) || IsBaseLevelSafe()) return;
+
+                // 只给同一条死亡采集链会接收的 Boss 开表。杂兵的死亡会在
+                // ResolveBossKey 处早返，原先它们的起点只进不出，长局凑满容量后
+                // 会把仍在交战中的 Boss 起点整表冲掉。
+                CharacterMainControl victim = target.TryGetCharacter();
+                if (victim == null || victim.Team == Teams.player) return;
+                if (string.IsNullOrEmpty(ResolveBossKey(victim))) return;
 
                 int id = target.GetInstanceID();
                 lock (_lock)

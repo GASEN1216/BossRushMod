@@ -483,7 +483,7 @@ namespace BossRush
             // 浮舟 · 渡口工台：工具、护符与「碎片凑整」。
             Recipe("Lantern", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandWindLantern, 1,
                 In(BossRushItemIds.SkyIslandDriftwood, 2), In(BossRushItemIds.SkyIslandCloudmossFiber, 1)),
-            // 晴岚风晶是风晶灯的灯芯；碎晶要送进残星工坊的熔晶炉，星灯不亮炉子烧不起来。
+            // 晴岚风晶是风晶灯的灯芯；星灯恢复后，由浮舟在渡口工台代办工坊熔晶。
             Recipe("Windcrystal", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandQinglanWindcrystal, 1,
                 In(BossRushItemIds.SkyIslandWindcrystalShard, 5)).After(SkyIslandStoryFlag.StarLamp),
             Recipe("Charm", SkyIslandCraftStation.Dock, BossRushItemIds.SkyIslandQinglanCharm, 1,
@@ -595,8 +595,8 @@ namespace BossRush
             {
                 case "Bento": return L10n.T("晴禾：归航菜的做法写在种植记录里。记录还泡在蛙鸣池边，我凑不齐那几样。",
                     "Qinghe: The homecoming recipe is written in my planting record, and that is still soaking by Frogsong Pool. I cannot put it together without it.");
-                case "Windcrystal": return L10n.T("浮舟：碎晶得送进残星工坊的熔晶炉。星灯不亮，炉子就烧不起来。",
-                    "Fuzhou: Shards have to go into the crystal furnace at the Fallen Star Workshop, and that furnace will not burn until the star lamp is lit.");
+                case "Windcrystal": return L10n.T("浮舟：星灯不亮，工坊的熔晶炉就烧不起来。先把星灯修好，再把碎晶交给我，渡口工台能代你熔成整块。",
+                    "Fuzhou: The workshop's crystal furnace will not burn until the star lamp is lit. Repair the lamp, then bring the shards to my dock workbench; I will have them fused for you.");
                 case "Compass": return L10n.T("浮舟：罗盘我还没捎给你呢。等第一只信鸽落了、你手里有过一只，我才照着样子重做。",
                     "Fuzhou: I have not even sent you the compass yet. Once the first pigeon has come and you have held one, I can make another to match.");
                 case "Zapper": return L10n.T("浮舟：苇白说风晶灯芯的嗡声调低半个音就能引蚋，可她得先在岛上听够两盏灯的调子。灯亮了，我给它打铜罩。",

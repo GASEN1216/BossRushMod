@@ -18,19 +18,20 @@ namespace UnityEngine
     }
     public class Transform { public Vector3 position, right; }
     public static class Time { public static float time = 10f; }
-    public static class Random { public static float Range(float min, float max) { return min; } }
+public static class Random { public static float Range(float min, float max) { return min; } }
     public static class Mathf { public static float Pow(float a, float b) { return (float)Math.Pow(a, b); } }
 }
 public enum DamageTypes { normal }
 public enum ElementTypes { electricity, ice }
 public struct DamageInfo
 {
+    public CharacterMainControl fromCharacter;
     public float damageValue;
     public bool isFromBuffOrEffect;
     public int fromWeaponItemID;
     public Vector3 damagePoint;
     public DamageTypes damageType;
-    public DamageInfo(CharacterMainControl player) { this = default(DamageInfo); }
+    public DamageInfo(CharacterMainControl player) { this = default(DamageInfo); fromCharacter = player; }
     public void AddElementFactor(ElementTypes type, float amount) { }
 }
 public sealed class CharacterMainControl
@@ -54,6 +55,8 @@ namespace BossRush
         private int setBonusGeneration;
         private float lastThunderTriggerTime, lastFrostTriggerTime;
         private const int THUNDER_SET_ARC_COLOR = 0, THUNDER_SET_BURST_COLOR = 0, FROST_SET_BURST_COLOR = 0;
+        private const float FROST_SET_ICE_HEAL_RATIO = 0.5f, FROST_SET_COOLDOWN = 5f, FROST_SET_CLOSE_RANGE = 5f, FROST_SET_FREEZE_CHANCE = 1f;
+        private const float THUNDER_SET_ELEC_HEAL_RATIO = 0.5f, THUNDER_SET_COOLDOWN = 3f, THUNDER_SET_CLOSE_RANGE = 6f, THUNDER_SET_COUNTER_CHANCE = 1f;
         private readonly Health[] setBonusScanResults = new Health[1];
         internal readonly Queue<IEnumerator> Scheduled = new Queue<IEnumerator>();
         internal Health Target = new Health();
@@ -62,6 +65,8 @@ namespace BossRush
         internal int HitHistory { get { return thunderChainHits.Count; } }
         internal void RememberTarget() { thunderChainHits.Add(Target); }
         internal void Reactivate() { BumpSetBonusGeneration(); ResetThunderChainState(); ResetFrostNovaState(); }
+        private static float GetSetBonusElementDamagePortion(Health h, DamageInfo i, ElementTypes t) { return 0f; }
+        private IEnumerator DelayedHeal(Health h, float amount) { yield return null; }
         internal void Kill(bool frost)
         {
             if (frost) TryScheduleFrostNova(Target, new DamageInfo());
@@ -90,7 +95,7 @@ namespace BossRush
         private bool TryApplyFrostFreeze(CharacterMainControl target) { return true; }
         private void StopAndClearFrostFallbackSlowCoroutines() { }
     }
-    internal static class SetBonusSfx { internal const string ThunderChain = "thunder", FrostNova = "frost"; }
+internal static class SetBonusSfx { internal const string ThunderChain = "thunder", FrostNova = "frost", FrostCounter = "frost_counter", ThunderCounter = "thunder_counter"; }
 }
 internal static class Program
 {
@@ -103,6 +108,21 @@ internal static class Program
     }
     private static int Main()
     {
+        foreach (bool energy in new[] { true, false })
+        {
+            if (energy)
+            {
+                BossRush.EnergyShieldDeathProbe.SetState();
+                BossRush.EnergyShieldDeathProbe.InvokeDead(new Health { IsMainCharacterHealth = true });
+                Check(BossRush.EnergyShieldDeathProbe.IsReset(), "energy shield lethal OnDead resets state");
+            }
+            else
+            {
+                BossRush.ThunderRingDeathProbe.SetState();
+                BossRush.ThunderRingDeathProbe.InvokeDead(new Health { IsMainCharacterHealth = true });
+                Check(BossRush.ThunderRingDeathProbe.IsReset(), "thunder ring lethal OnDead resets charges and clocks");
+            }
+        }
         BossRush.ModBehaviour host = new BossRush.ModBehaviour();
         host.Kill(false);
         IEnumerator old = host.Scheduled.Dequeue();

@@ -40,7 +40,7 @@ def main() -> int:
         return fail("CompleteZombieModeExtractionSuccess not found")
 
     required = [
-        "SettleZombieModeExtractionCashShell();",
+        "SettleZombieModeExtractionCashShell()",
         "TryDispatchZombieModeExtractionSuccess(zombieModeRunState.ActiveExtractionArea)",
         "CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);",
     ]

@@ -176,6 +176,10 @@ def main():
         return fail(
             "OnGlobalHurt 必须早返已死目标：官方致命一击先派发 OnDead 再派发 OnHurt "
             "且 isDead 已置位，不挡住就会给死人重新开计时，造成计时表泄漏")
+    if "ResolveBossKey(victim)" not in hurt_body or "victim.Team == Teams.player" not in hurt_body:
+        return fail("OnGlobalHurt 只能给可计入图鉴的敌方 Boss 开表，杂兵与友军不得挤掉 Boss 起点")
+    if hurt_body.index("ResolveBossKey(victim)") > hurt_body.index("_fightStart[id] = Time.time"):
+        return fail("Boss 身份过滤必须早于写入计时表")
 
     # ---- 6) 丧尸 marker 的 GetComponent 必须被模式门控 ----
     resolve_body = extract_method_body(collector, "ResolveBossKey")

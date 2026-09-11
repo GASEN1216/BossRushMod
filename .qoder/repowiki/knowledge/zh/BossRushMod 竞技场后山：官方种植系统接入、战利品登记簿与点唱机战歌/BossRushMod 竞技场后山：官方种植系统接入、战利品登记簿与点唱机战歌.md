@@ -246,3 +246,19 @@ source_files:
 官方建筑反射绑定共用 `Common/Buildings/BuildingInjectionHelper.cs`，包括查询失败结果的一次解析缓存。模型包围盒、shader 与碰撞体工具共用 `Common/Buildings/BuildingModelHelper.cs`；报箱经 owner 的只读模型属性借许愿台现有缓存，加载/卸载仍归许愿台。基地重绘保留唯一 ModBehaviour 协程，由模块显式请求。没有更改建筑 ID、prefab 名、造价、建造条件或官方存档格式。
 
 验证：`tests/ContentBuildingOwnershipGuard.py` 与 `tests/fixtures/ContentBuildingOwnership/run.py`。实际共享反射工具和宿主桥的执行回归覆盖反射契约、容器赋值、调用顺序与 owner 隔离；不替代 Unity 旧档建筑恢复和建造交互 smoke。实现总述见 `.qoder/repowiki/zh/content/架构设计/内容建筑模块归属.md`。
+
+
+## 2026-09-11 收藏升级入口与失败恢复（COMPAT）
+
+展示柜的八格生命加成按品质计算，旧 UI 只有登记入口，先填满八件 Q5 后即使获得 Q8 也无法升级。
+每个已登记行现在提供「替换」「撤销」按钮；替换优先使用当前手持战利品，否则使用第一件符合要求的穿戴物。
+底部明确说明选择次序及物品不消耗。长名称单行省略，品质与两个动作独立排列。
+
+`ShowcaseService.CanReplaceRecord` 复用统一物品校验，只略过空位要求；自产种子/餐、低于 Q5、
+已在柜中的同 TypeID 仍拒绝。`TryReplaceRecord` 在同一格原位变更后只写一次，失败恢复原 TypeID；
+Store 在 Save 已改官方缓存但回读失败时恢复此前 JSON，避免向玩家报告失败后又在下次保存时写入新记录。
+现有最大生命公式、八格容量、物品与存档 key/schema 均保持原值。
+
+验证：`BackMountainStructureGuard` 验证可见按钮到服务的接线；`tests/fixtures/ContentTransactions/run.py`
+直接执行完整服务，覆盖满柜升级、拒绝非法替代品、写失败/回读失败/重新加载与撤销。未运行游戏，实际中英文
+布局、鼠标交互与加成更新仍需实机确认。

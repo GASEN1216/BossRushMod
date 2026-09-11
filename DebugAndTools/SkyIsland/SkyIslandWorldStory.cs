@@ -702,7 +702,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 合成面板：本站的配方（每站至多 4 条；面板布局属性测试按最坏 6 条复算），按钮上写着「背包里有几件 / 要几件」。
+        /// 合成面板：本站的配方（渡口工台最多 5 条；面板布局属性测试按最坏 6 条复算），按钮上写着「背包里有几件 / 要几件」。
         /// 做成了就重开面板刷新件数；材料不够只回话、不重开。面板同样过战斗门。
         /// </summary>
         private void OpenCrafting(SkyIslandCraftStation station)
@@ -823,8 +823,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 纪念品（<see cref="SkyIslandItemRules"/>）：条件满足、手记里还没有发放记录就发一件。**先记手记、再发物品**——
-        /// 写屏障下这趟不发，也就不会每趟重发一件能卖钱的东西；发放失败（物品资源缺失）只记日志。
+        /// 纪念品（<see cref="SkyIslandItemRules"/>）：条件满足、手记里还没有发放记录就发一件。
+        /// 先准备物品实例，再记手记，最后转移物品；资源缺失不耗掉领取资格，写屏障下也不会发出可重复卖钱的东西。
         /// 旧存档第一次进岛同样补发（航徽、噬风之核按已有旗标，罗盘按已收到的信）。
         /// </summary>
         private void GrantKeepsakes()
@@ -834,25 +834,27 @@ namespace BossRush
             for (int i = 0; i < all.Length; i++)
             {
                 if (!SkyIslandItemRules.Due(story.Current, all[i])) continue;
+                string snapshotError;
+                if (!story.RequireAssetSnapshot(out snapshotError))
+                {
+                    Debug.LogWarning("[SkyIsland] 纪念品发放前无法建立实物快照：" + (snapshotError ?? "unknown"));
+                    continue;
+                }
                 string message;
-                if (!story.RecordNote(all[i].NoteId, out message)) continue;
-                if (SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage)) session.Announce(all[i].Caption, false);
-                else Debug.LogWarning("[SkyIsland] 纪念品发放失败（物品资源缺失）：" + all[i].NoteId);
+                if (SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage,
+                    delegate { return story.RecordNote(all[i].NoteId, out message); },
+                    delegate { return story.RemoveNote(all[i].NoteId); })) session.Announce(all[i].Caption, false);
+                else Debug.LogWarning("[SkyIsland] 纪念品发放未完成，请检查物品资源与群岛记录：" + all[i].NoteId);
             }
         }
 
         /// <summary>
-        /// 风标罗盘的读数：先指本趟还没收下的信鸽，再指最近的主线目标，再指最近的可选目标
+        /// 风标罗盘的读数：捧着蛙卵时优先指蛙鸣池；其余时候先指本趟还没收下的信鸽，再指最近的主线目标，再指最近的可选目标
         /// （后两者与官方地图上的圈是同一份清单 <see cref="SkyIslandMapMarkers"/>）；都没有了，带着晴岚风晶时指还缺风晶灯的地方，
         /// 否则指这一趟还没采的风晶簇；连风晶簇都采完了才说没有要找的。
         /// </summary>
         internal string CompassReading(Vector3 from)
         {
-            if (pigeon != null)
-            {
-                Vector3 toPigeon = pigeon.transform.position - from;
-                return SkyIslandItemRules.CompassReading(true, toPigeon.x, toPigeon.z, L10n.T("信鸽落脚的地方", "where the pigeon landed"));
-            }
             // 内容批次四：捧着蛙卵时先指蛙鸣池——这一趟里送到才算数。
             SkyIslandGnats swarm = fieldcraft != null ? fieldcraft.Gnats : null;
             Transform pool = swarm != null && swarm.CarryingSpawn ? root.transform.Find("Search_S1") : null;
@@ -860,6 +862,11 @@ namespace BossRush
             {
                 Vector3 toPool = pool.position - from;
                 return SkyIslandItemRules.CompassReading(true, toPool.x, toPool.z, L10n.T("蛙鸣池（把蛙卵放回去）", "Frogsong Pool (release the frogspawn)"));
+            }
+            if (pigeon != null)
+            {
+                Vector3 toPigeon = pigeon.transform.position - from;
+                return SkyIslandItemRules.CompassReading(true, toPigeon.x, toPigeon.z, L10n.T("信鸽落脚的地方", "where the pigeon landed"));
             }
             string what = L10n.T("当前目标", "your current objective");
             Transform target = NearestMarker(SkyIslandMapMarkers.ObjectiveTargets(story.Current), from);
@@ -933,8 +940,8 @@ namespace BossRush
                     "留言板上钉着三张纸：苇白在找修复两端航标的帮手，晴禾在找落在蛙鸣池的种植记录，还有一张空白的委托单，谁都可以揭。即使主人离岛，留言也能送到。",
                     "Three sheets are pinned to the board: Weibai wants help restoring both beacons, Qinghe is looking for the planting record she left at Frogsong Pool, and one blank contract slip anyone may take. Messages get through even when their owners are away from the island.");
                 case "Search_C": return L10n.T(
-                    "晴禾把菜畦一层层种向云海。田埂上的空格属于尚未归来的船员。灶还温着——种植记录回来之后，谁路过都能讨一碗归航菜。",
-                    "Qinghe planted the beds in terraces stepping down toward the cloud sea. The gaps along the ridge belong to crew who have not come back. The stove is still warm — once the planting record returns, anyone passing may ask for a bowl of homecoming greens.");
+                    "晴禾把菜畦一层层种向云海。田埂上的空格属于尚未归来的船员。灶还温着——种植记录回来之后，谁路过都能讨一碗归航菜。夜里下地前，可以在这口灶上做驱风香或云苔纱笠；灶火的烟也能赶开云蚋。",
+                    "Qinghe planted the beds in terraces stepping down toward the cloud sea. The gaps along the ridge belong to crew who have not come back. The stove is still warm — once the planting record returns, anyone passing may ask for a bowl of homecoming greens. Before working at night, make incense or a cloudmoss veil here; the hearth smoke drives cloud gnats away too.");
                 case "Search_D": return L10n.T(
                     "风标卡在巨根之间。清掉附近的威胁后，校准指针，让西侧的航路重新有方向。",
                     "The wind beacon is jammed among the great roots. Clear the threats nearby, then calibrate the needle and give the western lane its bearing back.");
@@ -951,8 +958,8 @@ namespace BossRush
                     "归航钟不再催促出航。两端的航标、归来的信件与守钟人的选择，将决定它为什么再次响起。",
                     "The Homecoming Bell no longer urges anyone to sea. The two beacons, the letter that came home and the keeper's own choice will decide why it rings again.");
                 case "Search_S1": return L10n.T(
-                    "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。",
-                    "The damp pages by the pool list seeds, dates, and the name of every person expected home.");
+                    "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。晴禾在页角留了话：镜水寺的青蛙还在繁育，夜里可用云苔纤维包一团蛙卵带回来，白天也能放。放回的会一直记着，顺路送一团就好，不用一趟来回跑齐。",
+                    "The damp pages by the pool list seeds, dates, and the name of every person expected home. Qinghe added a note in the margin: the temple frogs still breed. Wrap a clutch of spawn in cloudmoss one night and bring it here; daylight is fine for release. Each clutch is remembered — bring one when passing, without making every trip in one raid.");
                 case "Search_S2": return L10n.T(
                     "没有寄出的旧信压在倒挂邮亭里。字迹歪斜，却还清楚地写着：请别让岛上的灯熄灭。",
                     "An unsent letter is wedged inside the Upturned Post Hut. The hand is crooked but still plain: please do not let the island's lights go out.");
@@ -973,8 +980,8 @@ namespace BossRush
                     "田埂的木桩上刻着箭头，一路指向悬根林：『风标卡住那天，林里的人都搬到根环后面去了。受了伤就去找眠苔，她的苔药按伤势收钱。』",
                     "Arrows are cut into the ridge posts, all pointing at the Hanging Root Wood: 'The day the wind beacon jammed, the wood folk moved in behind the root ring. If you are hurt, find Miantai — her moss remedy is priced by how badly you are hurt.'");
                 case "Search_D_02": return L10n.T(
-                    "巨根上挂着一只空邮袋，标签写着「倒挂邮亭」。袋底粘着一张回执：寄往镜水寺，收信人折翎。那封信，一直没有送到。",
-                    "An empty mailbag hangs in the great roots, tagged 'Upturned Post Hut'. A receipt is still stuck to the bottom: to Mirrorwater Temple, for Zheling. That letter never arrived.");
+                    "巨根上挂着一只空邮袋，标签写着「倒挂邮亭」。袋底粘着一张回执：寄往镜水寺，收信人折翎。那封信，一直没有送到。根下留着眠苔的药臼，能配驱风香、星苔药膏，也能做一把可反复用的药烟蒲扇，赶开贴脸的云蚋。",
+                    "An empty mailbag hangs in the great roots, tagged 'Upturned Post Hut'. A receipt is still stuck to the bottom: to Mirrorwater Temple, for Zheling. That letter never arrived. Miantai left her mortar below the roots: mix incense or salve, or make a reusable remedy-smoke fan for the cloud gnats around your face.");
                 case "Search_E_02": return L10n.T(
                     "栏杆上新刻了一排记号，像是有人在数日子：『两盏灯都亮的那一夜，风从云海底下翻了上来。它收拢风眼之前，脚下先亮一圈光——看见光就往圈外跑，跑不出去就躲到石头后面。』",
                     "A fresh row of notches runs along the rail, as if someone were counting the days: 'The night both lamps were lit, the wind climbed up out of the cloud sea. Before it draws its eye shut, a ring of light shows at its feet. See the light, run out of the ring — or get behind solid rock.'");

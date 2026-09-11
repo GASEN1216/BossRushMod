@@ -296,6 +296,40 @@ internal static class SkyIslandMosquitoRegression
         }
         check(Math.Abs(knocked - SkyIslandMosquitoRules.MaxDash) < 1e-3f, "knockback travels its capped distance");
         check(!stunned.OnShot(V(0f, 1.2f, 0f), Incoming(V(0f, 1.2f, 0f)), 99, null), "a stunned gnat cannot dodge");
+        // 按运行时相同顺序走完蒲扇的击退与 1.2 秒眩晕：仅仅不许躲闪不够，必须同时停住巡飞与叮咬。
+        foreach (float dt in new[] { 1f / 144f, 1f / 60f, 1f / 30f })
+        {
+            var fanStunned = new SkyIslandGnatMotor(false);
+            fanStunned.Knockback(V(1f, 0f, 0f), SkyIslandMosquitoRules.FanKnockDistance, SkyIslandMosquitoRules.FanStunSeconds);
+            float elapsed = 0f;
+            int idleStunFrames = 0;
+            for (int frame = 0; frame < 240 && elapsed + dt < SkyIslandMosquitoRules.FanStunSeconds - 1e-4f; frame++)
+            {
+                fanStunned.Tick(dt);
+                SkyIslandGnatVec step = fanStunned.Step(dt);
+                elapsed += dt;
+                check(!fanStunned.CanAct, "the fan stops chasing and biting for the full stun (dt=" + dt + ", t=" + elapsed + ")");
+                if (fanStunned.Phase == SkyIslandGnatPhase.Idle)
+                {
+                    idleStunFrames++;
+                    check(step.SqrLength == 0f, "a finished knockback stays still while the stun remains");
+                }
+            }
+            check(idleStunFrames > 0, "the regression exercises idle-phase stun after knockback has finished");
+            fanStunned.Tick(SkyIslandMosquitoRules.FanStunSeconds - elapsed + dt);
+            fanStunned.Step(dt);
+            check(fanStunned.CanAct, "chasing and biting resume after the complete fan stun");
+        }
+        var recovering = new SkyIslandGnatMotor(false);
+        recovering.Knockback(V(1f, 0f, 0f), 0.1f, 0f);
+        recovering.Step(1f / 60f);
+        check(recovering.Phase == SkyIslandGnatPhase.Recover && !recovering.CanAct,
+            "the recovery after a dash cannot leak cruising or biting");
+        recovering.Tick(1f);
+        check(!recovering.OnShot(V(0f, 1.2f, 0f), Incoming(V(0f, 1.2f, 0f)), 1, null),
+            "a recovered dodge budget cannot skip the recovery phase");
+        recovering.Step(SkyIslandMosquitoRules.RecoverSeconds + 0.01f);
+        check(recovering.CanAct, "actions resume when recovery has actually finished");
         var dazzled = new SkyIslandGnatMotor(false) { Dazzled = true };
         check(!dazzled.OnShot(V(0f, 1.2f, 0f), Incoming(V(0f, 1.2f, 0f)), 1, null), "a gnat dazzled by lantern light cannot dodge a bullet");
         check(!dazzled.OnAim(V(0f, 1.2f, 5f), V(0f, 1.2f, 0f), V(0f, 0.5f, 10f), 1, null), "nor flinch from your aim");

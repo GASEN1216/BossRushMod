@@ -165,6 +165,11 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 异步请求已全部失败、玩法尚未生效。运行期零分配信号；已有部分成功不退回配额。
+        /// </summary>
+        internal virtual bool HasFailedToStart { get { return false; } }
+
+        /// <summary>
         /// Dev 验收探针。同步事件在 OnTrigger 成功后即可视为完成；有异步生成物的事件
         /// 必须覆写并等到生成回调收敛，避免“调度成功、实际空转”被误报为 PASS。
         /// </summary>

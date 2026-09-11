@@ -158,14 +158,14 @@ namespace BossRush
         /// </summary>
         internal void Frame(float now, float dt, CharacterMainControl player)
         {
-            if (!Usable || player == null) return;
+            if (!Usable || player == null || !HasFrameWork()) return;
             try
             {
                 int frame = Time.frameCount;
                 Quaternion view = ViewRotation();
                 Vector3 playerPosition = player.transform.position;
-                Vector3 muzzle, aim;
-                ReadAim(player, out muzzle, out aim);
+                Vector3 muzzle = Vector3.zero, aim = Vector3.zero;
+                if (alive > 0) ReadAim(player, out muzzle, out aim);
                 SkyIslandGnatVec muzzleVec = ToVec(muzzle), aimVec = ToVec(aim);
                 bool moved = false;
                 Gnat nearest = null;
@@ -181,8 +181,7 @@ namespace BossRush
                     }
                     if (dt > 0f)
                     {
-                        Steer(gnat, player, playerPosition, muzzleVec, aimVec, now, dt, frame);
-                        moved = true;
+                        moved |= Steer(gnat, player, playerPosition, muzzleVec, aimVec, now, dt, frame);
                     }
                     if (gnat.Leaving && now >= gnat.LeaveUntil)
                     {
@@ -210,7 +209,18 @@ namespace BossRush
             }
         }
 
-        private void Steer(Gnat gnat, CharacterMainControl player, Vector3 playerPosition, SkyIslandGnatVec muzzle, SkyIslandGnatVec aim,
+        /// <summary>没有蚊群、燃着的灯或未结束的表现时，不读取相机、主角瞄准与枪口，也不进入逐帧推进。</summary>
+        private bool HasFrameWork()
+        {
+            if (alive > 0 || buzzing || (fanArc != null && fanArc.enabled)) return true;
+            for (int i = 0; i < zappers.Length; i++)
+                if (zappers[i] != null) return true;
+            for (int i = 0; i < splats.Length; i++)
+                if (splats[i] != null && splats[i].Root != null && splats[i].Root.activeSelf) return true;
+            return false;
+        }
+
+        private bool Steer(Gnat gnat, CharacterMainControl player, Vector3 playerPosition, SkyIslandGnatVec muzzle, SkyIslandGnatVec aim,
             float now, float dt, int frame)
         {
             SkyIslandGnatMotor motor = gnat.Motor;
@@ -219,13 +229,15 @@ namespace BossRush
             motor.Tick(dt);
             if (!gnat.Leaving) motor.OnAim(ToVec(gnat.Position), muzzle, aim, frame, this);
             Vector3 step = ToVector(motor.Step(dt));
-            if (step.sqrMagnitude <= 0f && !motor.Busy) step = Cruise(gnat, playerPosition, now, dt);
+            if (step.sqrMagnitude <= 0f && (gnat.Leaving || motor.CanAct)) step = Cruise(gnat, playerPosition, now, dt);
             float cap = SkyIslandMosquitoRules.DashSpeed * dt;
             if (step.sqrMagnitude > cap * cap) step = step.normalized * cap;
             gnat.Position += step;
             gnat.LastStep = step;
-            gnat.Root.transform.position = gnat.Position;
-            if (!gnat.Leaving && motor.Phase == SkyIslandGnatPhase.Idle) TryBite(gnat, player, playerPosition, now);
+            bool moved = step.sqrMagnitude > 0f;
+            if (moved) gnat.Root.transform.position = gnat.Position;
+            if (!gnat.Leaving && motor.CanAct) TryBite(gnat, player, playerPosition, now);
+            return moved;
         }
 
         /// <summary>不冲刺时怎么飞：散开时往外飞；有灭蚊灯在嗡就被引过去；否则围着玩家的脖子打转，到点就扑上去。</summary>
@@ -627,34 +639,49 @@ namespace BossRush
             if (!CanDeployZapper || player == null) return false;
             int slot = -1;
             for (int i = 0; i < zappers.Length && slot < 0; i++) if (zappers[i] == null) slot = i;
-            float now = Time.time;
-            Vector3 at = player.transform.position;
-            RaycastHit hit;
-            Vector3 probe = at + player.transform.forward * 0.8f + Vector3.up * 1.5f;
-            if (Physics.Raycast(probe, Vector3.down, out hit, 4f, groundMask, QueryTriggerInteraction.Ignore)) at = hit.point;
-            GameObject go = new GameObject("SkyIslandGnatZapper");
-            go.transform.SetParent(root, true);
-            go.transform.position = at;
-            Light glow = go.AddComponent<Light>();
-            glow.type = LightType.Point;
-            glow.color = new Color(0.62f, 0.86f, 1f);
-            glow.range = 6f;
-            glow.intensity = 1.5f;
-            glow.shadows = LightShadows.None;
-            LineRenderer cage = Line(go.transform, "Cage", 13, 0.04f, new Color(0.7f, 0.9f, 1f, 0.9f));
-            cage.loop = true;
-            for (int i = 0; i < 13; i++)
+            GameObject go = null;
+            try
             {
-                float angle = i * Mathf.PI * 2f / 13f;
-                cage.SetPosition(i, new Vector3(Mathf.Cos(angle) * 0.22f, 0.55f + (i % 2) * 0.08f, Mathf.Sin(angle) * 0.22f));
+                float now = Time.time;
+                Vector3 probe = player.transform.position + player.transform.forward * 0.8f + Vector3.up * 1.5f;
+                RaycastHit hit;
+                if (!Physics.Raycast(probe, Vector3.down, out hit, 4f, groundMask, QueryTriggerInteraction.Ignore))
+                {
+                    message = SkyIslandMosquitoRules.ZapperNoGround;
+                    return false;
+                }
+                go = new GameObject("SkyIslandGnatZapper");
+                go.transform.SetParent(root, true);
+                go.transform.position = hit.point;
+                Light glow = go.AddComponent<Light>();
+                glow.type = LightType.Point;
+                glow.color = new Color(0.62f, 0.86f, 1f);
+                glow.range = 6f;
+                glow.intensity = 1.5f;
+                glow.shadows = LightShadows.None;
+                LineRenderer cage = Line(go.transform, "Cage", 13, 0.04f, new Color(0.7f, 0.9f, 1f, 0.9f));
+                cage.loop = true;
+                for (int i = 0; i < 13; i++)
+                {
+                    float angle = i * Mathf.PI * 2f / 13f;
+                    cage.SetPosition(i, new Vector3(Mathf.Cos(angle) * 0.22f, 0.55f + (i % 2) * 0.08f, Mathf.Sin(angle) * 0.22f));
+                }
+                LineRenderer arc = Line(go.transform, "Arc", 6, 0.05f, new Color(0.8f, 0.95f, 1f, 1f));
+                arc.useWorldSpace = true;
+                arc.enabled = false;
+                zappers[slot] = new Zapper { Root = go, Glow = glow, Arc = arc, Until = now + SkyIslandMosquitoRules.ZapperBurnSeconds, NextPulse = now + 0.3f };
+                message = SkyIslandMosquitoRules.ZapperLit;
+                if (story != null) story.LogTiming("zapper", slot.ToString());
+                return true;
             }
-            LineRenderer arc = Line(go.transform, "Arc", 6, 0.05f, new Color(0.8f, 0.95f, 1f, 1f));
-            arc.useWorldSpace = true;
-            arc.enabled = false;
-            zappers[slot] = new Zapper { Root = go, Glow = glow, Arc = arc, Until = now + SkyIslandMosquitoRules.ZapperBurnSeconds, NextPulse = now + 0.3f };
-            message = SkyIslandMosquitoRules.ZapperLit;
-            if (story != null) story.LogTiming("zapper", slot.ToString());
-            return true;
+            catch (Exception e)
+            {
+                zappers[slot] = null;
+                if (go != null) UnityEngine.Object.Destroy(go);
+                message = SkyIslandMosquitoRules.ZapperNoGround;
+                Fail("zapper", e);
+                return false;
+            }
         }
 
         private void TickZappers(float now, CharacterMainControl player)
@@ -750,6 +777,8 @@ namespace BossRush
             if (SkyIslandMosquitoRules.FrogsComplete(story.Current)) { message = SkyIslandMosquitoRules.FrogsAlreadyHome; return false; }
             if (carryingSpawn) { message = SkyIslandMosquitoRules.SpawnAlreadyCarried; return false; }
             if (!NightNow) { message = SkyIslandMosquitoRules.SpawnNeedsNight; return false; }
+            // 当前记录已只读时，这趟不可能完成放生；在扣纤维之前说明原因，避免接下一份注定交不掉的差事。
+            if (!story.CanWrite) { message = story.SaveStatus; return false; }
             if (owner.CountInPack(BossRushItemIds.SkyIslandCloudmossFiber) < 1 || !owner.ConsumeOne(BossRushItemIds.SkyIslandCloudmossFiber))
             {
                 message = SkyIslandMosquitoRules.SpawnNeedsFiber;

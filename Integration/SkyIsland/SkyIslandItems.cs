@@ -84,8 +84,8 @@ namespace BossRush
                     "The heart the Windeater left behind when it broke apart. A small whirl of wind still turns inside its glassy shell, nudging your palm. Carry it in your pack on the isles and that whirl eats into the wind around you: on night bridges and on the boardwalk before the storm, a gale only counts as a breeze for you. If you fall on the isles, it stays behind with the rest of your pack.",
                     "sky_island_windeater_core", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandWindeaterCore), 6, 1, 0f, 0f, 0f, 0),
                 Make(BossRushItemIds.SkyIslandWindVaneCompass, Kind.Compass, "BossRush_SkyIsland_WindVaneCompass",
-                    "浮舟的旧罗盘，指针换成了一枚小风标。在晴岚群岛上使用：先指向还没收下的信鸽，再指向当前目标或还没了结的支线；都没有了，带着晴岚风晶时指向还缺一盏风晶灯的地方，否则指向这一趟还没采的风晶簇，并报出大致距离。使用不消耗；离开群岛它只会乱转。丢了可以在浮舟的渡口工台用残铜片和风晶碎片重做一只。",
-                    "Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Qinglan isles: it points to an uncollected carrier pigeon first, then to your current objective or an unfinished side path; when there is nothing left, to a place still missing its windcrystal lamp if you carry a Qinglan Windcrystal, or else to a wind crystal cluster you have not gathered this trip, with a rough distance. Not consumed on use; away from the isles it just spins. Lost it? Fuzhou's dock workbench can make another from brass scrap and windcrystal shards.",
+                    "浮舟的旧罗盘，指针换成了一枚小风标。在晴岚群岛上使用：捧着蛙卵时先指向蛙鸣池；平时先指向还没收下的信鸽，再指向当前目标或还没了结的支线；都没有了，带着晴岚风晶时指向还缺一盏风晶灯的地方，否则指向这一趟还没采的风晶簇，并报出大致距离。使用不消耗；离开群岛它只会乱转。丢了可以在浮舟的渡口工台用残铜片和风晶碎片重做一只。",
+                    "Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Qinglan isles: while carrying frogspawn it points to Frogsong Pool first; otherwise to an uncollected carrier pigeon, then your current objective or an unfinished side path; when there is nothing left, to a place still missing its windcrystal lamp if you carry a Qinglan Windcrystal, or else to a wind crystal cluster you have not gathered this trip, with a rough distance. Not consumed on use; away from the isles it just spins. Lost it? Fuzhou's dock workbench can make another from brass scrap and windcrystal shards.",
                     "sky_island_wind_vane_compass", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandWindVaneCompass), 4, 1, 0.6f, 0f, 0f, 0),
                 Make(BossRushItemIds.SkyIslandHomecomingBento, Kind.Food, "BossRush_SkyIsland_HomecomingBento",
                     "晴禾装的便当：米饭上铺着归航菜，插着一只纸风车。回复饱食与水分，还能回一点生命。菜畦重新开张之后（种植记录交还晴禾），在晴岚群岛上吃它就算吃过晴禾的归航菜：本次出击生命上限与跑速小幅提升，与她那一顿共用一次。那时起也能在晴禾的灶台用青穗草和浮木做；天空岛的箱子里偶尔也有。",
@@ -433,15 +433,22 @@ namespace BossRush
         /// <summary>
         /// 把一件天空岛物品发给玩家：<paramref name="toStorage"/> 直接寄回基地仓库，否则先放背包、放不下再寄回（官方 SendToPlayer）。
         /// 实例化之前先问 prefab：缺资源时官方给的空壳带着同一个 TypeID，回读分辨不出来（与天空岛箱子同一条纪律）。
+        /// 实例准备成功之后才调用 <paramref name="recordGrant"/> 记发放台账，记成功后才转移物品。
+        /// 缺资源或实例化失败不会烧掉永久领取资格；台账拒绝时清掉临时实例，不发物品。
         /// </summary>
-        internal static bool TryGive(int typeId, bool toStorage)
+        internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant = null)
         {
             Item item = null;
+            bool transferStarted = false;
+            int instanceId = 0;
             try
             {
                 if (GetDefinition(typeId) == null || ItemAssetsCollection.GetPrefab(typeId) == null) return false;
                 item = ItemAssetsCollection.InstantiateSync(typeId);
                 if (item == null || item.TypeID != typeId) return false;
+                instanceId = item.GetInstanceID();
+                if (recordGrant == null || !recordGrant()) return false;
+                transferStarted = true;
                 if (toStorage) ItemUtilities.SendToPlayerStorage(item);
                 else ItemUtilities.SendToPlayer(item);
                 item = null;
@@ -450,18 +457,30 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(LogPrefix + "发放物品失败 " + typeId + ": " + e.Message);
-                return false;
+                // 官方先放进背包/仓库，再通知；仓库缓冲成功时会销毁原实例。
+                // 通知异常不能把已交付的纪念品删掉，也不应该再发第二份。
+                bool owned = transferStarted && item != null
+                    && (item.IsBeingDestroyed || SkyIslandInventoryTransaction.HasOwner(item));
+                if (transferStarted && !owned && SkyIslandInventoryTransaction.HasBufferReceipt(instanceId, typeId))
+                    owned = true;
+                if (transferStarted && !owned && rollbackGrant != null)
+                {
+                    try
+                    {
+                        if (rollbackGrant())
+                            return false;
+                    }
+                    catch (Exception rollbackError)
+                    {
+                        ModBehaviour.DevLog(LogPrefix + "发放台账回滚失败 " + typeId + ": " + rollbackError.Message);
+                    }
+                    ModBehaviour.DevLog(LogPrefix + "发放台账无法回滚，保留现有记录等待人工补偿 " + typeId);
+                }
+                return owned;
             }
             finally
             {
-                if (item != null)
-                {
-                    try { item.DestroyTree(); }
-                    catch (Exception)
-                    {
-                        // 没送出去的实例清理失败不影响返回值
-                    }
-                }
+                SkyIslandInventoryTransaction.DestroyUnowned(item);
             }
         }
 

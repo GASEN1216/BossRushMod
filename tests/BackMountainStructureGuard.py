@@ -183,6 +183,14 @@ def main():
         return fail("展示柜登记必须回读核对，写失败时撤销刚加入的 TypeID")
     if "ResolveEquippedTrophy" not in showcase_ui or "ResolveHeldItem" not in showcase_ui:
         return fail("展示柜必须同时支持手持与穿戴战利品登记")
+    if "OnRemoveRecord(recordTypeId)" not in showcase_ui or "ShowcaseService.TryRemoveRecord(typeId)" not in showcase_ui:
+        return fail("展示柜已登记条目必须有可见撤销入口，否则先登记低品质后无法升级")
+    if "OnReplaceRecord(recordTypeId)" not in showcase_ui or "ShowcaseService.TryReplaceRecord(oldTypeId, replacement, out reason)" not in showcase_ui:
+        return fail("展示柜必须从可见行按钮接通原位替换，满柜仍能升级且失败保留旧记录")
+    if "_displayed[index] = oldTypeId;" not in showcase or "return ValidateTrophy(item, false, out reason);" not in showcase:
+        return fail("展示柜替换必须绕过空位要求并在写入失败时恢复原登记")
+    if "SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, previousJson)" not in showcase:
+        return fail("展示柜 Save 后回读失败必须还原官方缓存，不能只还原内存列表")
     if "def == null || def.IsSeed" not in raid_use:
         return fail("出击餐 CanBeUsed 必须拒绝陌生物品和种子")
     if "SavesSystem.IsSaving" in raid_use:

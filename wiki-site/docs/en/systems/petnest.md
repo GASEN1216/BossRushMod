@@ -80,7 +80,7 @@ This is the **only** place in the system where a cub can truly die.
 - **Acid Rain Ruins**: the disaster is acid rain, matching the **Poison** element
 - **Frozen Waste**: the disaster is a blizzard, matching the **Ice** element
 
-When a cub's bloodline element matches the destination, its success rate goes up — so collecting different bloodlines has a mechanical payoff, not just an index number.
+Matching the cub's bloodline element to the destination adds `12` percentage points to its loot-success chance. It does not reduce the death rate.
 
 ### Three risk tiers
 The tier sets the payout, the risk and the wait all at once (the wait is real time):
@@ -90,8 +90,12 @@ The tier sets the payout, the risk and the wait all at once (the wait is real ti
 - **Desperate**: **8 hours**, high reward, about **12%** death rate — you are betting a life on rare output. +60 experience on return
 
 ::: tip
-Desperate isn't just "higher reward" - it's four times the experience of Safe. If you want a cub at level 10 quickly, that seven-in-eight survival rate is a number you have to weigh yourself.
+All three tiers award 7.5 experience per hour waited if the cub survives. Desperate does not level it faster and carries a risk of permanent death. Choose Safe for steady growth; Desperate offers more loot and a chance at a Relic Egg.
 :::
+
+Successful Safe / Rough / Desperate trips bring back `400–1200 / 1200–3600 / 4000–12000` money and `15 / 40 / 90` souls of the cub's bloodline.
+After a Desperate trip survives and succeeds, it has a further `20%` chance to award a Relic Egg of that bloodline. This is not the overall egg chance per departure.
+Returning empty-handed still awards survival experience; dying awards neither experience nor loot.
 
 **The death rate is written on the button before you commit**, and it is frozen into that departure — later balance changes never alter a trip already under way.
 

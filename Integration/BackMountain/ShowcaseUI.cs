@@ -9,25 +9,20 @@
 //   玩家可登记当前手持物，也可从装备槽登记第一件合格战利品；东西照样归自己（见 ShowcaseService
 //   头注释里「为什么是登记簿而不是储物柜」）。因此也不需要「取回」按钮。
 // ============================================================================
-
 using System;
 using System.Collections.Generic;
 using ItemStatsSystem;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-
 namespace BossRush
 {
     /// <summary>展示柜面板。全静态：同时只允许存在一个。</summary>
     internal static class ShowcaseUI
     {
         private static GameObject _root;
-
         internal static bool IsOpen { get { return _root != null; } }
-
         #region 开关
-
         /// <summary>打开面板（幂等：已开时先关再开，保证内容最新）。</summary>
         internal static void Open()
         {
@@ -42,7 +37,6 @@ namespace BossRush
                 Close();
             }
         }
-
         internal static void Close()
         {
             try
@@ -145,10 +139,12 @@ namespace BossRush
                 TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
                     "Name", row.transform, label, 16f,
                     new Vector2(0f, 0.5f), new Vector2(0f, 0.5f),
-                    new Vector2(20f, 0f), new Vector2(440f, 26f),
+                    new Vector2(20f, 0f), new Vector2(340f, 26f),
                     TextAlignmentOptions.Left,
                     filled ? BossRushUIColors.TextPrimary : BossRushUIColors.TextSecondary);
                 text.rectTransform.pivot = new Vector2(0f, 0.5f);
+                text.enableWordWrapping = false;
+                text.overflowMode = TextOverflowModes.Ellipsis;
                 BossRushUI.ApplyGameFont(text);
 
                 if (!filled) continue;
@@ -167,10 +163,24 @@ namespace BossRush
                 TextMeshProUGUI qualityText = ZombieModeUIHelper.CreateText(
                     "Quality", row.transform, quality > 0 ? "Q" + quality : string.Empty, 15f,
                     new Vector2(1f, 0.5f), new Vector2(1f, 0.5f),
-                    new Vector2(-20f, 0f), new Vector2(80f, 26f),
+                    new Vector2(-266f, 0f), new Vector2(50f, 26f),
                     TextAlignmentOptions.Right, BossRushUIColors.RarityLegendary);
                 qualityText.rectTransform.pivot = new Vector2(1f, 0.5f);
                 BossRushUI.ApplyGameFont(qualityText);
+
+                int recordTypeId = typeId;
+                ZombieModeUIHelper.CreateButton(
+                    "ReplaceRecord", row.transform,
+                    L10n.T("替换", "Replace"),
+                    new Vector2(1f, 0.5f), new Vector2(-181f, 0f), new Vector2(126f, 32f),
+                    BossRushUIColors.Accent, 14f, new Vector2(116f, 26f),
+                    delegate { OnReplaceRecord(recordTypeId); }, true);
+                ZombieModeUIHelper.CreateButton(
+                    "RemoveRecord", row.transform,
+                    L10n.T("撤销", "Remove"),
+                    new Vector2(1f, 0.5f), new Vector2(-64f, 0f), new Vector2(96f, 32f),
+                    BossRushUIColors.Surface, 14f, new Vector2(86f, 26f),
+                    delegate { OnRemoveRecord(recordTypeId); }, true);
             }
         }
 
@@ -190,6 +200,14 @@ namespace BossRush
 
         private static void BuildFooter(Transform parent)
         {
+            TextMeshProUGUI hint = ZombieModeUIHelper.CreateText(
+                "ReplaceHint", parent,
+                L10n.T("替换优先使用手持战利品，其次使用首件合格穿戴。登记与撤销均不消耗物品。",
+                    "Replace uses your held trophy, then eligible worn gear. Recording or removing never consumes items."),
+                12f, new Vector2(0f, -214f), new Vector2(680f, 22f),
+                TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
+            BossRushUI.ApplyGameFont(hint);
+
             ZombieModeUIHelper.CreateButton(
                 "Display", parent, L10n.T("登记手持战利品", "Record held trophy"),
                 new Vector2(0.5f, 0f), new Vector2(-190f, 40f), new Vector2(190f, 42f),
@@ -244,6 +262,50 @@ namespace BossRush
             }
         }
 
+        private static void OnRemoveRecord(int typeId)
+        {
+            try
+            {
+                if (!ShowcaseService.TryRemoveRecord(typeId))
+                {
+                    ModBehaviour.Instance?.ShowMessage(
+                        L10n.T("撤销登记失败，原记录仍在。", "Could not remove the record; it is still registered."));
+                    return;
+                }
+
+                ModBehaviour.Instance?.ShowMessage(
+                    L10n.T("已撤销登记，物品仍归你所有。", "Record removed; the item is still yours."));
+                Open();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 撤销登记操作失败: " + e.Message);
+            }
+        }
+
+        private static void OnReplaceRecord(int oldTypeId)
+        {
+            try
+            {
+                string reason;
+                Item replacement = ResolveHeldItem();
+                if (!ShowcaseService.CanReplaceRecord(oldTypeId, replacement, out reason))
+                    replacement = ResolveEquippedTrophy(oldTypeId);
+                if (!ShowcaseService.TryReplaceRecord(oldTypeId, replacement, out reason))
+                {
+                    ModBehaviour.Instance?.ShowMessage(reason);
+                    return;
+                }
+                ModBehaviour.Instance?.ShowMessage(
+                    L10n.T("已替换登记：", "Record replaced: ") + ResolveItemName(replacement.TypeID));
+                Open();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 替换登记操作失败: " + e.Message);
+            }
+        }
+
         private static void TryDisplayItem(Item item)
         {
             string reason;
@@ -287,7 +349,7 @@ namespace BossRush
         }
 
         /// <summary>按装备槽顺序找第一件符合登记条件的穿戴战利品。</summary>
-        private static Item ResolveEquippedTrophy()
+        private static Item ResolveEquippedTrophy(int replacementTypeId = 0)
         {
             try
             {
@@ -307,7 +369,10 @@ namespace BossRush
                         var slot = characterItem.Slots.GetSlot(preferredSlots[i]);
                         Item candidate = slot != null ? slot.Content : null;
                         string ignored;
-                        if (ShowcaseService.CanDisplay(candidate, out ignored)) return candidate;
+                        bool allowed = replacementTypeId > 0
+                            ? ShowcaseService.CanReplaceRecord(replacementTypeId, candidate, out ignored)
+                            : ShowcaseService.CanDisplay(candidate, out ignored);
+                        if (allowed) return candidate;
                     }
                     catch (Exception e)
                     {

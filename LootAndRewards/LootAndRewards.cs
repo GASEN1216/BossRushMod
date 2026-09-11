@@ -91,8 +91,8 @@ namespace BossRush
         // ============================================================
         // Quest tag 反射查找（唯一实现在 LootExcludeTagPolicy）
         // ============================================================
-        // 当前鸭科夫版本 GameplayDataSettings.TagsData 没有 Quest 字段，AllTags 也无同名 Tag，
-        // 反射永远失败。缓存与「永久缺失」日志都收在 LootExcludeTagPolicy 里，
+        // GameplayDataSettings.TagsData 没有 Quest 字段，但 AllTags 里有名为 Quest 的 Tag（2026-09-11 离线官方物品表 69 件带它），
+        // 按名字查找。查找、缓存与「查不到」日志都收在 LootExcludeTagPolicy 里，
         // 这里只做转发，保持 ModeD 等既有调用点不变。
         private Duckov.Utilities.Tag TryFindQuestTag(Duckov.Utilities.GameplayDataSettings.TagsData tagsData)
         {

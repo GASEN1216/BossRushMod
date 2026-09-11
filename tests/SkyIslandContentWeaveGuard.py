@@ -3,7 +3,7 @@
 owner 的要求是「不要为了新增而新增」。这份守卫把它变成机器可查的不变式，期望值尽量从数据源推导：
 
 0. 登记：编译清单、本地化守卫、隔离回归链接、F3 只读守卫的写入口名单；岛上的灯是纯规则（只依赖 System）。
-1. **没有只为卖钱的物品**：十五件天空岛物品按形态逐件找「岛上的用处」——
+1. **没有只为卖钱的物品**：十八件天空岛物品按形态逐件找「岛上的用处」——
    材料必须被某条配方或某盏风晶灯吃掉；耗材的效果必须在局内 owner 里真的有分支；纪念品必须有「带在身上」的效果接线；
    罗盘挂罗盘行为、便当挂归航菜行为、药膏真的回血；群岛手记「群岛之物」一页逐件写了用处。
 2. 岛上的灯：七盏风晶灯各挂在一处有面板的装置旁、各对应一封不同的信、各烧恰好一块晴岚风晶；三处灶火 + 七盏 = 十盏。
@@ -225,9 +225,13 @@ def main():
     require(record_note, "SkyIslandLights.Find(id) == null", "手记只收登记过的灯 id")
     light_lamp = need_body(fieldcraft, "internal bool LightLamp(SkyIslandLight light, out string message)", "点灯")
     ordered(light_lamp, ["if (SkyIslandLights.Lit(story.Current, light.Id))", "if (!story.CanWrite)",
-                         "SkyIslandFieldcraftRules.Missing(light.Inputs, CountInPack);", "story.RecordNote(light.Id, out note)",
-                         "ConsumeFromPack(", "AddFire(light.Marker, LampColor);", "lightsLit = SkyIslandLights.LitCount(story.Current);"],
-            "点灯：已亮不重点、写屏障先挡、先点清材料、先记手记再扣材料、再补建灯光与计数")
+                         "SkyIslandFieldcraftRules.Missing(light.Inputs, CountInPack);", "inventoryBusy = true;",
+                         "SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main, light.Inputs, out materials)",
+                         "if (disposed || !session.IsReady)", "story.RecordNote(light.Id, out note)", "materials.Commit();",
+                         "AddFire(light.Marker, LampColor);", "lightsLit = SkyIslandLights.LitCount(story.Current);"],
+            "点灯：先挡已亮/只读、点清材料、独占预留、复查会话、记手记后提交扣料，再补建灯光与计数")
+    ordered(light_lamp, ["finally", "materials.Dispose();", "inventoryBusy = false;"],
+            "点灯在所有退出路径归还未提交材料后释放忙标志")
     for token in ("SendToPlayerStorage", "SendToPlayer("):
         forbid(light_lamp, token, "点灯不发物品")
     read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "ReadPoint")
@@ -350,3 +354,4 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

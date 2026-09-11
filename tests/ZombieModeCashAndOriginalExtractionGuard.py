@@ -9,6 +9,7 @@ MAP_SELECTION = Path("ZombieMode/ZombieModeMapSelectionHelper.cs")
 MAP_ISOLATION = Path("ZombieMode/ZombieModeMapIsolation.cs")
 EXTRACTION_HELPER = Path("Utilities/OriginalExtractionPointIsolationHelper.cs")
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
+EXTRACTION = Path("ZombieMode/ZombieModeExtractionController.cs")
 
 
 def fail(message: str) -> int:
@@ -52,6 +53,21 @@ def main() -> int:
     map_isolation = MAP_ISOLATION.read_text(encoding="utf-8")
     extraction_helper = EXTRACTION_HELPER.read_text(encoding="utf-8")
     models = MODELS.read_text(encoding="utf-8")
+    extraction = EXTRACTION.read_text(encoding="utf-8")
+
+    for snippet in [
+        "private bool SettleZombieModeExtractionCashShell()",
+        "if (!SettleZombieModeExtractionCashShell())",
+        "TryReleaseZombieModeExtractionCountdownUi();",
+        "奖励已保留",
+        "zombieModeRunState.PurificationPoints = 0;",
+    ]:
+        result = require(extraction, snippet, "extraction cash failure retention")
+        if result:
+            return result
+
+    if "EconomyManager.Add(cashGain)" not in extraction or "if (EconomyManager.Add(cashGain))" not in extraction:
+        return fail("ZombieModeCashAndOriginalExtractionGuard: extraction cash must check EconomyManager.Add result")
 
     result = require(compile_text, "ZombieMode\\ZombieModeCashInvestmentView.cs", "official compile list")
     if result:

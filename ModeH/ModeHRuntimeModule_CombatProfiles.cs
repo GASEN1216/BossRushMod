@@ -38,6 +38,118 @@ namespace BossRush
             return null;
         }
 
+        private List<string> BuildLiveArchetypeIds()
+        {
+            return BuildLiveArchetypeIds(_season != null ? _season.contract : null);
+        }
+
+        private List<string> BuildLiveArchetypeIds(ModeHContractDto contract)
+        {
+            List<string> result = new List<string>();
+            if (contract == null) return result;
+            List<string> ids = new List<string>();
+            ids.Add(contract.contractMainProfileId);
+            ids.Add(contract.contractSubProfileId);
+            foreach (string id in ids)
+            {
+                ModeHProfileDto profile = FindSeasonProfile(id);
+                if (profile != null && !string.IsNullOrEmpty(profile.archetypeId)
+                    && ModeHStateModel.IsLiveContractStatus(ModeHStateModel.ToParticipantStatus(profile.status)))
+                    result.Add(profile.archetypeId);
+            }
+            return result;
+        }
+
+        private List<string> BuildPlanEnemyPool()
+        {
+            return BuildPlanEnemyPool(_season != null ? _season.contract : null);
+        }
+
+        private List<string> BuildPlanEnemyPool(ModeHContractDto contract)
+        {
+            HashSet<string> excluded = new HashSet<string>(StringComparer.Ordinal);
+            List<string> ids = new List<string>();
+            if (contract != null)
+            {
+                ids.Add(contract.contractMainProfileId);
+                ids.Add(contract.contractSubProfileId);
+            }
+            if (_season != null && _season.draftCandidateProfileIds != null)
+                ids.AddRange(_season.draftCandidateProfileIds);
+            foreach (string id in ids)
+            {
+                ModeHProfileDto profile = FindSeasonProfile(id);
+                if (profile != null) excluded.Add(profile.stableKey);
+            }
+            List<string> result = new List<string>();
+            IList<string> production = ModeHPresetRegistry.ProductionKeys;
+            for (int i = 0; production != null && i < production.Count; i++)
+                if (!excluded.Contains(production[i])) result.Add(production[i]);
+            return result;
+        }
+
+        private bool CanConstructFullSeason(ModeHContractDto contract,
+            IList<ModeHEchoAssignmentDto> assignments, out string failureReasonId)
+        {
+            return CanConstructRemainingSeason(contract, assignments,
+                ModeHConfig.FirstMatchIndex, out failureReasonId);
+        }
+
+        private bool CanConstructRemainingSeason(ModeHContractDto contract,
+            IList<ModeHEchoAssignmentDto> assignments, int firstMatchIndex, out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (_runState == null || contract == null)
+            {
+                failureReasonId = "season_viability_input_missing";
+                return false;
+            }
+            List<string> enemyPool = BuildPlanEnemyPool(contract);
+            List<string> archetypes = BuildLiveArchetypeIds(contract);
+            string echoKey = ResolveEchoReturnStableKey(assignments);
+            for (int match = Math.Max(ModeHConfig.FirstMatchIndex, firstMatchIndex);
+                match <= ModeHConfig.SeasonMatchCount; match++)
+            {
+                bool built = false;
+                string reason = null;
+                for (int retry = 0; retry <= ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch && !built; retry++)
+                {
+                    ModeHMatchPlanDto plan;
+                    int candidate;
+                    built = ModeHEncounterPlanner.TryBuildPlan(
+                        _runState.RunSeed, match, retry, enemyPool,
+                        match == ModeHConfig.EchoReturnMatchIndex ? echoKey : null,
+                        archetypes, out plan, out candidate, out reason);
+                }
+                if (!built)
+                {
+                    failureReasonId = "season_viability_match_" + match + ":"
+                        + (reason != null ? reason : "plan_failed");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private string ResolveEchoReturnStableKey(IList<ModeHEchoAssignmentDto> assignments)
+        {
+            if (assignments == null || _season == null || _season.profiles == null) return null;
+            for (int i = 0; i < assignments.Count; i++)
+            {
+                ModeHEchoAssignmentDto assignment = assignments[i];
+                if (assignment == null || assignment.resolved
+                    || !string.Equals(assignment.destinationId, ModeHStableIds.EchoDestinationReturnEnemy,
+                        StringComparison.Ordinal)) continue;
+                for (int j = 0; j < _season.profiles.Count; j++)
+                {
+                    ModeHProfileDto profile = _season.profiles[j];
+                    if (profile != null && string.Equals(profile.profileId, assignment.profileId,
+                        StringComparison.Ordinal)) return profile.stableKey;
+                }
+            }
+            return null;
+        }
+
         private static ModeHProfileDto CloneProfile(ModeHProfileDto source)
         {
             if (source == null) return null;

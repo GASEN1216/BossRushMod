@@ -77,10 +77,35 @@ namespace BossRush
     // 隔离进程里返回中文分支即可：断言只看状态位与接受/拒绝，不看文案本身。
     internal static class L10n { internal static bool IsChinese = true; internal static string T(string zh, string en) { return IsChinese ? zh : en; } }
 }
+namespace ItemStatsSystem
+{
+    internal sealed class Inventory { internal void Save(string key) { } }
+    internal sealed class Item { internal Inventory Inventory = new Inventory(); internal void Save(string key) { } }
+}
+internal sealed class CharacterMainControl
+{
+    internal static CharacterMainControl Main = new CharacterMainControl();
+    internal ItemStatsSystem.Item CharacterItem = new ItemStatsSystem.Item();
+    internal Health Health = new Health();
+}
+internal sealed class Health { internal float CurrentHealth = 100f; }
+internal sealed class PlayerStorage
+{
+    internal static PlayerStorage Instance = new PlayerStorage();
+    internal static ItemStatsSystem.Inventory Inventory = new ItemStatsSystem.Inventory();
+    internal static bool Loading;
+    internal bool HasInitialized() { return true; }
+}
+internal sealed class PlayerStorageBuffer
+{
+    internal static PlayerStorageBuffer Instance = new PlayerStorageBuffer();
+    internal static void SaveBuffer() { }
+}
 internal sealed class LevelManager
 {
     internal static LevelManager Instance = new LevelManager();
     internal bool IsBaseLevel = true;
+    internal void SaveMainCharacter() { }
 }
 namespace Saves
 {
@@ -101,7 +126,7 @@ namespace Saves
         {
             // 键写入异常是 CR-2026-09-08-003 的起点：它会让共享 store 进入单向 StoreFaulted。
             if (FailKeyWrite && key != "SaveTime") throw new InvalidOperationException("key write unavailable");
-            Data[key] = (string)(object)value;
+            Data[key] = value is string ? (string)(object)value : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
         }
         /// <summary>
         /// 按当前游戏 DLL 的真实语义建模（U4 替身偏差修正）：

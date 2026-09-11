@@ -35,24 +35,59 @@ namespace BossRush
 
         public override bool CanBeUsed(Item item, object user)
         {
+            CharacterMainControl player = user as CharacterMainControl;
+            if (item == null || player == null || player != CharacterMainControl.Main) return false;
             SkyIslandFieldcraft owner = SkyIslandFieldcraft.Current;
-            return item != null && user is CharacterMainControl && owner != null && owner.CanUse(Buff);
+            // CA_UseItem 完成读条时会再问一次，之后无条件扣量。已开始的单效果耗材必须走进
+            // OnUse 才能在离岛、失效或部署失败时补偿；普通可用性查询仍按 owner 门控。
+            return (owner != null && owner.CanUse(Buff)) || (SingleConsumable && IsFinishingUse(item, player));
         }
 
         protected override void OnUse(Item item, object user)
         {
+            bool applied = false;
             try
             {
                 // 不消耗的物品（晴岚航徽）：官方 CA_UseItem 用完后按耐久决定要不要销毁。更新前发出的航徽可能没有耐久记录，先补满，免得用一次就没了。
                 if (item != null && !item.Stackable && item.MaxDurability > 0f && item.Durability < 1f) item.Durability = item.MaxDurability;
                 SkyIslandFieldcraft owner = SkyIslandFieldcraft.Current;
-                if (owner != null && owner.UseConsumable(Buff)) return;
+                if (owner != null)
+                {
+                    applied = owner.UseConsumable(Buff);
+                    if (applied) return;
+                    // owner 已经给出具体失败原因（例如没有落灯地面），不要覆盖成“离岛”。
+                    return;
+                }
                 Duckov.UI.NotificationText.Push(SkyIslandFieldcraftRules.OffIsland);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[SkyIslandItems] 群岛耗材使用失败: " + e.Message);
             }
+            finally
+            {
+                // 与 RaidMealUsageBehavior 同口径：官方下一句同步 StackCount--，用 Count KV
+                // 预补一件可同时保住最后一件与满堆。饭/药还有官方效果，不能整件退款。
+                if (!applied && SingleConsumable && item != null && item.Stackable
+                    && IsFinishingUse(item, user as CharacterMainControl))
+                    item.SetInt("Count", item.StackCount + 1, true);
+            }
+        }
+
+        private bool SingleConsumable
+        {
+            get
+            {
+                return Buff == SkyIslandFieldBuff.Lantern || Buff == SkyIslandFieldBuff.Incense
+                    || Buff == SkyIslandFieldBuff.Charm || Buff == SkyIslandFieldBuff.Zapper;
+            }
+        }
+
+        private static bool IsFinishingUse(Item item, CharacterMainControl player)
+        {
+            return player != null && player == CharacterMainControl.Main && player.CurrentAction is CA_UseItem
+                && player.CurrentAction.Running && player.CurrentHoldItemAgent != null
+                && player.CurrentHoldItemAgent.Item == item;
         }
     }
 }

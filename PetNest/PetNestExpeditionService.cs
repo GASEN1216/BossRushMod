@@ -251,6 +251,7 @@ namespace BossRush
                 r.id = "exp_" + data.idSerial.ToString();
                 r.petId = pet.id;
                 r.petDisplayName = PetNestService.GetPetDisplayName(pet);
+                r.petLineageKey = pet.lineageKey;
                 r.destinationId = destinationId;
                 r.riskTier = (int)tier;
                 r.departTicks = now;
@@ -823,8 +824,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 投递一件战利品。返回 true 表示这一件已经了结（成功送达，或确定性废件不必再试）；
-        /// 返回 false 表示可重试的失败，调用方保留欠账下次再发。
+        /// 投递一件战利品。只有成功送达才返回 true；身份缺失、实例化或盖章失败
+        /// 都保留欠账，不能把缺少血脉的蛋伪装成已投递。
         /// </summary>
         private static bool GrantOneItem(int typeId, PetNestExpeditionRecord record)
         {
@@ -842,15 +843,18 @@ namespace BossRush
 
                 if (typeId == RelicEggConfig.TYPE_ID)
                 {
-                    PetNestPetRecord pet = PetNestService.TryGetPet(record.petId);
-                    string lineageKey = pet != null ? pet.lineageKey : null;
+                    string lineageKey = record.petLineageKey;
+                    if (string.IsNullOrEmpty(lineageKey))
+                    {
+                        // 兼容尚未规范化的旧记录，只能回查原 petId；有快照时绝不覆盖。
+                        PetNestPetRecord pet = PetNestService.TryGetPet(record.petId);
+                        lineageKey = pet != null ? pet.lineageKey : null;
+                        if (!string.IsNullOrEmpty(lineageKey)) record.petLineageKey = lineageKey;
+                    }
                     if (string.IsNullOrEmpty(lineageKey) || !RelicEggConfig.TryStampLineage(item, lineageKey))
                     {
-                        // 血脉写不进去的蛋是废蛋，不如不发。这是**确定性**结果
-                        //（崽已阵亡时血脉永远查不回来），重试无意义，记为已了结，
-                        // 否则这条记录会永远发不全、把翻牌卡在 rewards_pending
-                        ModBehaviour.DevLog("[PetNest] 远征遗种蛋无血脉可写，跳过该件: " + record.id);
-                        return true;
+                        ModBehaviour.DevLog("[PetNest] 远征遗种蛋血脉缺失或盖章失败，保留欠账: " + record.id);
+                        return false;
                     }
                 }
 

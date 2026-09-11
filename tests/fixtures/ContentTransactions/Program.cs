@@ -39,6 +39,10 @@ class Program
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new Item { Inventory = new Inventory() } };
         PlayerStorage.Inventory = new Inventory(); PlayerStorage.Loading = false;
         BossRushAchievementManager.Unlocked.Clear();
+        PetNestExpeditionService.ResetValidationRewardBackend();
+        ShowcaseService.ResetStaticCaches();
+        ItemUtilities.Delivered.Clear(); RelicEggConfig.FailStamp = false;
+        ItemAssetsCollection.FailInstantiate = false; UnityEngine.Random.value = 0;
         RaidMealService.Reject = RaidMealService.Throw = false; RaidMealService.Registered = 0;
         DailyReportPersistence.Current = new DailyReportData { BountyCompleted = true, BountyKindId = "bounty", BountyDayIndex = 1 };
         DailyReportPersistence.ResetStaticCaches();
@@ -289,9 +293,108 @@ class Program
         LevelManager.Instance.IsBaseLevel = false;
         Check(!behavior.CanBeUsed(failed, null), "non-base meal remains unavailable at action start");
     }
+    static PetNestExpeditionRecord PendingEgg(string id, string petId)
+    {
+        return new PetNestExpeditionRecord
+        {
+            id = id, petId = petId, settled = true, cashGranted = true,
+            outcomeLootTypeIds = new System.Collections.Generic.List<int> { RelicEggConfig.TYPE_ID },
+            outcomeLootCounts = new System.Collections.Generic.List<int> { 1 }
+        };
+    }
+    static void PrepareExpeditionDebt(bool legacy, bool withPet)
+    {
+        PrepareNest();
+        var bundle = PetNestPersistence.Bundle.Current;
+        if (withPet) bundle.nest.pets.Add(new PetNestPetRecord { id = "original", lineageKey = "test", state = (int)PetNestPetState.InNest });
+        var record = PendingEgg("debt", "original");
+        if (!legacy) record.petLineageKey = "test";
+        bundle.expedition.records.Add(record);
+    }
+    static void ExpeditionEggIdentity()
+    {
+        string error;
+        Reset(); PrepareExpeditionDebt(true, true);
+        Check(PetNestService.TryReleasePet("original", out error), "legacy cub can be released while reward is pending");
+        var record = PetNestExpeditionService.Records[0];
+        Check(record.petLineageKey == "test" && PetNestService.TryGetPet("original") == null,
+            "release candidate freezes legacy reward lineage before removing original cub");
+        var reloaded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(reloaded.expedition.records[0].petLineageKey == "test", "reward identity survives full bundle codec round trip");
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 1
+            && ItemUtilities.Delivered.Count == 1 && ItemUtilities.Delivered[0].Lineage == "test",
+            "released cub pending egg still delivers original lineage");
+
+        Reset(); PrepareExpeditionDebt(true, true);
+        PetNestExpeditionRecord next;
+        Check(PetNestExpeditionService.TryDepart("original", PetNestTuning.DestinationStormSea,
+            PetNestRiskTier.Desperate, out next, out error) && next.petLineageKey == "test",
+            "new expedition freezes lineage at departure");
+        next.returnTicks = 0; next.deathRate = 1;
+        Check(PetNestExpeditionService.TrySettle(next, out error)
+            && PetNestService.TryGetPet("original") == null, "later expedition can kill original cub");
+        PetNestExpeditionService.TryGrantPendingRewards();
+        Check(ItemUtilities.Delivered.Count == 1 && ItemUtilities.Delivered[0].Lineage == "test",
+            "earlier reward survives original cub death on later expedition");
+
+        Reset(); PrepareExpeditionDebt(true, false);
+        PetNestPersistence.Bundle.Current.nest.pets.Add(new PetNestPetRecord { id = "other", lineageKey = "test" });
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && ItemUtilities.Delivered.Count == 0,
+            "unknown original lineage never guesses another cub identity");
+        record = PetNestExpeditionService.Records[0];
+        Check(!record.rewardsGranted && record.grantedLootUnits == 0 && record.rewardGrantAttempts == 1,
+            "missing legacy identity retains reward debt and cursor");
+
+        Reset(); PrepareExpeditionDebt(false, false); RelicEggConfig.FailStamp = true;
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && ItemUtilities.Delivered.Count == 0,
+            "temporary lineage stamp failure retains unpaid egg");
+        RelicEggConfig.FailStamp = false; PetNestExpeditionService.ResetValidationRewardBackend();
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 1 && ItemUtilities.Delivered.Count == 1,
+            "stamp recovery delivers pending egg exactly once");
+        PetNestExpeditionService.ResetValidationRewardBackend(); PetNestExpeditionService.TryGrantPendingRewards();
+        Check(ItemUtilities.Delivered.Count == 1, "reward cursor prevents repeated delivery after recovery");
+    }
+    static void PrepareShowcase()
+    {
+        SavesSystem.Save(BackMountainConfig.ShowcaseSaveKey, UnityEngine.JsonUtility.ToJson(
+            new ShowcaseSaveData { schemaVersion = 1, displayedTypeIds = new[] { 100, 101, 102, 103, 104, 105, 106, 107 } }));
+    }
+    static void ShowcaseReplacement()
+    {
+        string error;
+        Reset(); PrepareShowcase();
+        var replacement = new Item { TypeID = 200, Quality = 8 };
+        Check(!ShowcaseService.CanDisplay(replacement, out error)
+            && ShowcaseService.CanReplaceRecord(100, replacement, out error), "full showcase permits replacing existing slot without requiring empty slot");
+        Check(ShowcaseService.TryReplaceRecord(100, replacement, out error)
+            && ShowcaseService.DisplayedCount == 8 && ShowcaseService.GetDisplayed()[0] == 200
+            && Math.Abs(ShowcaseService.CalculateBonus() - .105f) < .0001f,
+            "Q5 trophy upgrades to Q8 in same slot using unchanged health formula");
+        Check(!ShowcaseService.TryReplaceRecord(101, replacement, out error)
+            && !ShowcaseService.TryReplaceRecord(101, new Item { TypeID = 500065, Quality = 8 }, out error)
+            && !ShowcaseService.TryReplaceRecord(101, new Item { TypeID = 201, Quality = 4 }, out error),
+            "replacement still rejects duplicate trophies, homegrown items and low quality");
+        Reset(); PrepareShowcase(); SavesSystem.FailKey = BackMountainConfig.ShowcaseSaveKey;
+        Check(!ShowcaseService.TryReplaceRecord(100, replacement, out error)
+            && ShowcaseService.GetDisplayed()[0] == 100 && ShowcaseService.DisplayedCount == 8,
+            "replacement save failure preserves original record and position");
+        ShowcaseService.NotifySlotChanged();
+        Check(ShowcaseService.GetDisplayed()[0] == 100, "failed replacement reload keeps original persisted record");
+        SavesSystem.FailReadAfterSaveKey = BackMountainConfig.ShowcaseSaveKey;
+        Check(!ShowcaseService.TryReplaceRecord(100, replacement, out error)
+            && ShowcaseService.GetDisplayed()[0] == 100, "replacement readback failure restores in-memory original");
+        ShowcaseService.NotifySlotChanged();
+        Check(ShowcaseService.GetDisplayed()[0] == 100, "replacement readback failure restores official save cache before reload");
+        SavesSystem.IsSaving = true;
+        Check(!ShowcaseService.TryRemoveRecord(100) && ShowcaseService.GetDisplayed()[0] == 100,
+            "remove refusal while saving also preserves old record");
+        SavesSystem.IsSaving = false;
+        Check(ShowcaseService.TryRemoveRecord(100) && ShowcaseService.DisplayedCount == 7,
+            "explicit remove frees slot for later recording");
+    }
     static void Main()
     {
-        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); Meals();
+        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); Meals(); ExpeditionEggIdentity(); ShowcaseReplacement();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
     }
 }

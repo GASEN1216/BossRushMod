@@ -103,6 +103,20 @@ namespace BossRush
             try
             {
                 string failureReasonId;
+                ModeHContractDto proposed = new ModeHContractDto();
+                proposed.contractMainProfileId = _season.contract != null
+                    ? _season.contract.contractMainProfileId : null;
+                proposed.contractSubProfileId = offer.profileId;
+                if (!CanConstructRemainingSeason(proposed, _season.echoAssignments,
+                        _runState.MatchIndex + 1, out failureReasonId))
+                {
+                    if (_owner != null) _owner.ShowMessage(L10n.T(
+                        "签入这名选手后无法生成剩余赛程，请保留当前阵容。",
+                        "The remaining schedule cannot be generated after this transfer. Keep the current roster."));
+                    ModBehaviour.DevLog("[ModeH] 转会组合可行性检查失败: "
+                        + (failureReasonId != null ? failureReasonId : "unknown"));
+                    return;
+                }
                 if (!ModeHTransferMarket.TryAcceptOffer(_season, offer.offerId, out failureReasonId))
                 {
                     ModBehaviour.DevLog("[ModeH] 接受 offer 失败: "

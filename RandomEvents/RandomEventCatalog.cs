@@ -637,6 +637,7 @@ namespace BossRush
         private int _pendingSpawns;
         private int _spawnSuccesses;
         private int _spawnFailures;
+        private RandomEventContext _spawnContext;
 
         internal override RandomEventId Id { get { return RandomEventId.BossIntrusion; } }
 
@@ -685,6 +686,7 @@ namespace BossRush
                 _watchers.Clear();
                 _pruneTimer = 0f;
                 _cleanedUp = false;
+                _spawnContext = ctx;
                 _sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
 
                 int count = Mathf.Max(1, RandomEventsTuning.BossIntrusionCount);
@@ -696,9 +698,9 @@ namespace BossRush
                     owner.SpawnRandomEventIntruderBoss(
                         preset,
                         pos,
-                        IsSpawnStillValid,
-                        HandleIntruderSpawned,
-                        HandleIntruderSpawnFailed);
+                        () => IsSpawnStillValid(ctx),
+                        boss => HandleIntruderSpawned(ctx, boss),
+                        () => HandleIntruderSpawnFailed(ctx));
                 }
 
                 string label = string.IsNullOrEmpty(preset.displayName) ? DisplayName : preset.displayName;
@@ -718,11 +720,12 @@ namespace BossRush
         }
 
         /// <summary>异步生成续作的有效性闸。命名方法，供桥以方法组形式引用。</summary>
-        private bool IsSpawnStillValid()
+        private bool IsSpawnStillValid(RandomEventContext ctx)
         {
             try
             {
-                return !_cleanedUp && SceneManager.GetActiveScene().buildIndex == _sceneBuildIndex;
+                return !_cleanedUp && ReferenceEquals(_spawnContext, ctx)
+                    && SceneManager.GetActiveScene().buildIndex == _sceneBuildIndex;
             }
             catch (Exception)
             {
@@ -730,21 +733,11 @@ namespace BossRush
             }
         }
 
-        private void HandleIntruderSpawned(CharacterMainControl boss)
+        private void HandleIntruderSpawned(RandomEventContext ctx, CharacterMainControl boss)
         {
-            if (_pendingSpawns > 0) _pendingSpawns--;
-            if (boss == null)
-            {
-                _spawnFailures++;
-                return;
-            }
-
-            _spawnSuccesses++;
-
             ModBehaviour owner = ModBehaviour.Instance;
-
-            // 生成完成时事件可能已经收尾，直接回收，绝不留活口
-            if (_cleanedUp)
+            // 同类事件可能已经开始下一轮；旧回调不可修改新一轮的计数或名单。
+            if (!IsSpawnStillValid(ctx))
             {
                 if (owner != null)
                 {
@@ -752,6 +745,14 @@ namespace BossRush
                 }
                 return;
             }
+
+            if (_pendingSpawns > 0) _pendingSpawns--;
+            if (boss == null)
+            {
+                _spawnFailures++;
+                return;
+            }
+            _spawnSuccesses++;
 
             _intruders.Add(boss);
 
@@ -769,12 +770,17 @@ namespace BossRush
             }
         }
 
-        private void HandleIntruderSpawnFailed()
+        private void HandleIntruderSpawnFailed(RandomEventContext ctx)
         {
+            if (!IsSpawnStillValid(ctx)) return;
             if (_pendingSpawns > 0) _pendingSpawns--;
             _spawnFailures++;
-            // 已播报的横幅不撤：玩家看到「乱入」但没找到人，比横幅闪烁体验更好
-            ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "乱入 Boss 生成失败，本次事件空转");
+            ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "乱入 Boss 生成失败");
+        }
+
+        internal override bool HasFailedToStart
+        {
+            get { return _pendingSpawns == 0 && _spawnSuccesses == 0 && _spawnFailures > 0; }
         }
 
         internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
@@ -842,6 +848,7 @@ namespace BossRush
         {
             // 幂等闸：置位后所有异步续作自行作废
             _cleanedUp = true;
+            _spawnContext = null;
 
             ModBehaviour owner = RandomEventEffectHelpers.ResolveOwner(ctx);
 
@@ -1009,6 +1016,7 @@ namespace BossRush
         private int _sceneBuildIndex;
         private bool _spawnCompleted;
         private bool _spawnFailed;
+        private RandomEventContext _spawnContext;
 
         internal override RandomEventId Id { get { return RandomEventId.WanderingMerchant; } }
 
@@ -1052,15 +1060,16 @@ namespace BossRush
                 _merchant = null;
                 _shop = null;
                 _cleanedUp = false;
+                _spawnContext = ctx;
                 _spawnCompleted = false;
                 _spawnFailed = false;
                 _sceneBuildIndex = SceneManager.GetActiveScene().buildIndex;
 
                 owner.SpawnRandomEventMerchant(
                     pos,
-                    IsSpawnStillValid,
-                    HandleMerchantSpawned,
-                    HandleMerchantSpawnFailed);
+                    () => IsSpawnStillValid(ctx),
+                    (merchant, shop) => HandleMerchantSpawned(ctx, merchant, shop),
+                    () => HandleMerchantSpawnFailed(ctx));
 
                 ctx.AnchorPosition = pos;
                 owner.ShowRandomEventDirectionalBanner(DisplayName, pos);
@@ -1075,11 +1084,12 @@ namespace BossRush
             }
         }
 
-        private bool IsSpawnStillValid()
+        private bool IsSpawnStillValid(RandomEventContext ctx)
         {
             try
             {
-                return !_cleanedUp && SceneManager.GetActiveScene().buildIndex == _sceneBuildIndex;
+                return !_cleanedUp && ReferenceEquals(_spawnContext, ctx)
+                    && SceneManager.GetActiveScene().buildIndex == _sceneBuildIndex;
             }
             catch (Exception)
             {
@@ -1087,12 +1097,11 @@ namespace BossRush
             }
         }
 
-        private void HandleMerchantSpawned(CharacterMainControl merchant, StockShop shop)
+        private void HandleMerchantSpawned(RandomEventContext ctx, CharacterMainControl merchant, StockShop shop)
         {
-            _spawnCompleted = true;
             ModBehaviour owner = ModBehaviour.Instance;
 
-            if (_cleanedUp)
+            if (!IsSpawnStillValid(ctx))
             {
                 if (owner != null)
                 {
@@ -1101,17 +1110,21 @@ namespace BossRush
                 return;
             }
 
+            _spawnCompleted = true;
             _merchant = merchant;
             _shop = shop;
             _spawnFailed = merchant == null || shop == null || shop.entries == null || shop.entries.Count == 0;
         }
 
-        private void HandleMerchantSpawnFailed()
+        private void HandleMerchantSpawnFailed(RandomEventContext ctx)
         {
+            if (!IsSpawnStillValid(ctx)) return;
             _spawnCompleted = true;
             _spawnFailed = true;
-            ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "神秘商人生成失败，本次事件空转");
+            ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "神秘商人生成失败");
         }
+
+        internal override bool HasFailedToStart { get { return _spawnCompleted && _spawnFailed; } }
 
         internal override RandomEventValidationOutcome GetValidationOutcome(out string metrics)
         {
@@ -1128,6 +1141,7 @@ namespace BossRush
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)
         {
             _cleanedUp = true;
+            _spawnContext = null;
 
             try
             {

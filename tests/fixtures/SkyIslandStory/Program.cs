@@ -965,7 +965,7 @@ internal static class Program
         Apply(story, SkyIslandStoryAction.ReconcileZheling);
         Check(story.DescribeNpc("sky_zheling").Contains("捧一团蛙卵"), "reconciled Zheling points you to the frogspawn in the temple pool");
         Check(story.RecordNote("Frog_1", out noteMessage) && story.RecordNote("Frog_2", out noteMessage) && story.RecordNote("Frog_3", out noteMessage)
-            && story.DescribeNpc("sky_zheling").Contains("回蛙鸣池去了"), "and notices when they have all gone home");
+            && story.DescribeNpc("sky_zheling").Contains("新的繁育处"), "and notices restored breeding shallows without claiming all temple frogs have left");
         story.Close();
         Check(SavesSystem.Subscribers == 0, "frog sessions released events");
         SkyIslandStoryData frogsHome = crewAllLit.Copy();

@@ -84,8 +84,22 @@ namespace BossRush
                 failureReasonId = "market_profile_removed";
                 return null;
             }
+            if (season.contract != null
+                && (string.Equals(season.contract.contractMainProfileId, profileId, StringComparison.Ordinal)
+                    || string.Equals(season.contract.contractSubProfileId, profileId, StringComparison.Ordinal)))
+            {
+                failureReasonId = "market_profile_already_contracted";
+                return null;
+            }
+            // 第 4 场的敌军不一定来自最初五席。先按已审计模板形成档案，报价卡才能展示它。
+            EnsureProfilePresent(season, profileId);
             // 已释放的旧合同选手本季不可再次签回
             ModeHProfileDto candidate = FindProfile(season, profileId);
+            if (candidate == null)
+            {
+                failureReasonId = "market_profile_missing";
+                return null;
+            }
             if (candidate != null && candidate.status == (int)ModeHParticipantStatus.Released)
             {
                 failureReasonId = "market_profile_released";
@@ -126,6 +140,12 @@ namespace BossRush
                 failureReasonId = "market_no_settled_report";
                 return false;
             }
+            if (report.matchIndex != ModeHConfig.SecondTransferWindowMatchIndex
+                || report.winner != (int)ModeHMatchOutcome.PlayerVictory)
+            {
+                failureReasonId = "market_special_enemy_not_defeated";
+                return false;
+            }
             if (!report.specialEnemyEligible)
             {
                 failureReasonId = "market_special_enemy_not_eligible";
@@ -141,7 +161,9 @@ namespace BossRush
             // 同一安全审计：来源模板必须仍在当前认证通过的生产池内
             ModeHProfileTemplate template =
                 ModeHProfileRegistry.GetByTemplateId(report.specialEnemySourceTag);
-            if (template == null || !ModeHPresetRegistry.IsProductionKey(template.StableKey))
+            if (template == null || !ModeHPresetRegistry.IsProductionKey(template.StableKey)
+                || !string.Equals(template.ProfileTemplateId, report.finalDefeatedProfileSnapshot,
+                    StringComparison.Ordinal))
             {
                 failureReasonId = "market_special_enemy_audit_failed";
                 return false;
@@ -198,6 +220,17 @@ namespace BossRush
                 return false;
             }
 
+            ModeHProfileDto incoming = FindProfile(season, offer.profileId);
+            if (incoming == null || !ModeHPresetRegistry.IsProductionKey(incoming.stableKey)
+                || !ModeHStateModel.IsLiveContractStatus(ModeHStateModel.ToParticipantStatus(incoming.status))
+                || ModeHDraftController.IsRemovedProfile(season.echoAssignments, offer.profileId)
+                || string.Equals(season.contract.contractMainProfileId, offer.profileId, StringComparison.Ordinal)
+                || string.Equals(season.contract.contractSubProfileId, offer.profileId, StringComparison.Ordinal))
+            {
+                failureReasonId = "market_profile_no_longer_eligible";
+                return false;
+            }
+
             string previousSubId = season.contract.contractSubProfileId;
             if (!string.IsNullOrEmpty(previousSubId))
             {
@@ -210,7 +243,6 @@ namespace BossRush
             }
 
             season.contract.contractSubProfileId = offer.profileId;
-            EnsureProfilePresent(season, offer.profileId);
             offer.status = (int)ModeHOfferStatus.Accepted;
             return true;
         }

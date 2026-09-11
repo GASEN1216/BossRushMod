@@ -298,7 +298,7 @@ internal static class SkyIslandGnatDodgeSimulation
                     }
                 }
                 if (moved > 0f) home = (gnat + move - player).Flat;
-                else if (motor.Phase == SkyIslandGnatPhase.Idle)
+                else if (motor.CanAct)
                 {
                     jitterTimer -= dt;
                     if (jitterTimer <= 0f)

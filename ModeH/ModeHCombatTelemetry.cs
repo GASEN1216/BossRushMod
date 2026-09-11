@@ -62,6 +62,7 @@ namespace BossRush
         private string _lastSpecialKillProfileId;
         private bool _highThreatCoreKilled;
         private string _highThreatCoreStableKey;
+        private string _lastDefeatedEnemyStableKey;
 
         /// <summary>本场登场选手是否吃过远程伤害（longshot_memory 战痕的触发信号）。</summary>
         private bool _activeFighterTookRangedDamage;
@@ -163,6 +164,7 @@ namespace BossRush
             _lastSpecialKillProfileId = null;
             _highThreatCoreKilled = false;
             _highThreatCoreStableKey = highThreatCoreStableKey;
+            _lastDefeatedEnemyStableKey = null;
             _activeFighterTookRangedDamage = false;
         }
 
@@ -239,7 +241,9 @@ namespace BossRush
 
             if (target.IsEnemy)
             {
-                _liveEnemies.Remove(target);
+                // 只记录本场已登记敌军的第一次死亡；晚到/重复事件不能改写转会来源。
+                if (HasResult || !_liveEnemies.Remove(target)) return;
+                _lastDefeatedEnemyStableKey = target.StableKey;
                 if (!string.IsNullOrEmpty(_highThreatCoreStableKey)
                     && string.Equals(target.StableKey, _highThreatCoreStableKey, StringComparison.Ordinal))
                 {
@@ -513,6 +517,25 @@ namespace BossRush
             report.consumedCommandId = consumedCommandId != null ? consumedCommandId : string.Empty;
             report.bellConsumed = bellConsumed;
             report.elapsedSeconds = _result.ElapsedSeconds;
+            WriteTransferEligibility(report);
+        }
+
+        private void WriteTransferEligibility(ModeHMatchReportDto report)
+        {
+            report.finalDefeatedProfileSnapshot = string.Empty;
+            report.specialEnemySourceTag = string.Empty;
+            report.specialEnemyEligible = false;
+            if (_matchIndex != ModeHConfig.SecondTransferWindowMatchIndex
+                || _result.Outcome != ModeHMatchOutcome.PlayerVictory
+                || string.IsNullOrEmpty(_lastDefeatedEnemyStableKey)) return;
+
+            // 第 4 场没有高威胁核心骨架。资格来自真实击败的最后一名认证敌军，
+            // 不能拿计划里的 HasHighThreatCore 代替击败事实，也不能凭空补造选手。
+            ModeHProfileTemplate template = ModeHProfileRegistry.GetByStableKey(_lastDefeatedEnemyStableKey);
+            if (template == null || !ModeHPresetRegistry.IsProductionKey(template.StableKey)) return;
+            report.finalDefeatedProfileSnapshot = template.ProfileTemplateId;
+            report.specialEnemySourceTag = template.ProfileTemplateId;
+            report.specialEnemyEligible = true;
         }
 
         /// <summary>本场使用的 seed 域序号（战痕/奖励派生共用）。</summary>

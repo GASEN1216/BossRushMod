@@ -103,6 +103,11 @@ namespace BossRush
         /// <summary>该物品能否放进展示柜。</summary>
         internal static bool CanDisplay(Item item, out string reason)
         {
+            return ValidateTrophy(item, true, out reason);
+        }
+
+        private static bool ValidateTrophy(Item item, bool requireEmptySlot, out string reason)
+        {
             reason = null;
             try
             {
@@ -125,7 +130,7 @@ namespace BossRush
                         "Garden seeds and raid meals are not trophies");
                     return false;
                 }
-                if (_displayed.Count >= BackMountainConfig.ShowcaseSlotCount)
+                if (requireEmptySlot && _displayed.Count >= BackMountainConfig.ShowcaseSlotCount)
                 {
                     reason = L10n.T("展示柜已满", "The showcase is full");
                     return false;
@@ -176,8 +181,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 撤销一条登记。玩家用不到（登记是纯收益、没有代价），
-        /// 保留它只为调试与将来可能的「重置收藏」需求。
+        /// 撤销一条登记。物品仍归玩家，空出的格子可重新登记；失败恢复原位置。
         /// </summary>
         internal static bool TryRemoveRecord(int typeId)
         {
@@ -199,6 +203,44 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 撤销登记失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>满柜也可替换已有格子；品质、自产物排除与重复登记仍按同一规则校验。</summary>
+        internal static bool CanReplaceRecord(int oldTypeId, Item item, out string reason)
+        {
+            EnsureLoaded();
+            if (!_displayed.Contains(oldTypeId))
+            {
+                reason = L10n.T("原登记已经不在展示柜中", "The original record is no longer in the showcase");
+                return false;
+            }
+            return ValidateTrophy(item, false, out reason);
+        }
+
+        /// <summary>同一次保存直接换格，失败保留原条目；不先移除再登记，避免中途丢失收藏。</summary>
+        internal static bool TryReplaceRecord(int oldTypeId, Item item, out string reason)
+        {
+            reason = null;
+            try
+            {
+                if (!CanReplaceRecord(oldTypeId, item, out reason)) return false;
+                int index = _displayed.IndexOf(oldTypeId);
+                _displayed[index] = item.TypeID;
+                if (!Store())
+                {
+                    _displayed[index] = oldTypeId;
+                    reason = L10n.T("替换登记无法保存，原记录仍在", "Replacement could not be saved; the original record remains");
+                    return false;
+                }
+                ReapplyBonuses();
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 替换登记失败: " + e.Message);
+                reason = L10n.T("替换登记失败", "Could not replace the record");
                 return false;
             }
         }
@@ -378,16 +420,27 @@ namespace BossRush
 
         private static bool Store()
         {
+            string previousJson = null;
+            bool writeAttempted = false;
             try
             {
                 if (_writeBarrier || _loadedSlot != ReadCurrentSlotSafe()) return false;
                 if (SavesSystem.IsSaving) return false;
+
+                previousJson = SavesSystem.KeyExisits(BackMountainConfig.ShowcaseSaveKey)
+                    ? SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey)
+                    : JsonUtility.ToJson(new ShowcaseSaveData
+                    {
+                        schemaVersion = CurrentSchemaVersion,
+                        displayedTypeIds = new int[0]
+                    });
 
                 ShowcaseSaveData data = new ShowcaseSaveData();
                 data.schemaVersion = CurrentSchemaVersion;
                 data.displayedTypeIds = _displayed.ToArray();
 
                 string json = JsonUtility.ToJson(data);
+                writeAttempted = true;
                 SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, json);
                 string readback = SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey);
                 if (!string.Equals(readback, json, StringComparison.Ordinal))
@@ -398,6 +451,17 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                if (writeAttempted)
+                {
+                    // Save 可已改内存缓存而回读失败。调用方会恢复列表，这里同步还原
+                    // 官方缓存，避免下一次官方存档把已向玩家报告失败的新登记写到磁盘。
+                    try { SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, previousJson); }
+                    catch (Exception rollbackError)
+                    {
+                        ModBehaviour.DevLog(BackMountainConfig.LogPrefix
+                            + "[ERROR] 展示柜存档缓存回滚失败: " + rollbackError.Message);
+                    }
+                }
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 展示柜落档失败: " + e.Message);
                 return false;
             }

@@ -140,7 +140,9 @@ namespace BossRush
             if (!TrySelectUnits(stream, enemyStableKeyPool, requiredCoreKey, unitCount, corridor, out units,
                     out failureReasonId))
             {
-                return null;
+                if (!TryFindLegalRosterSelection(unitCount, enemyStableKeyPool, requiredCoreKey,
+                        corridor, condition, liveArchetypeIds, out units)) return null;
+                failureReasonId = null;
             }
 
             List<int> batchIndices;
@@ -153,17 +155,24 @@ namespace BossRush
             // 全局能力矩阵审计：不得同时封死五种首发原型
             List<string> enemyCapabilities = CollectCapabilityTags(units, condition);
             List<string> lockedArchetypes = CollectLockedArchetypes(enemyCapabilities);
-            if (lockedArchetypes.Count >= ModeHStableIds.AllArchetypes.Length)
+            if (lockedArchetypes.Count >= ModeHStableIds.AllArchetypes.Length
+                || !HasLegalArrangement(liveArchetypeIds, lockedArchetypes))
             {
-                failureReasonId = "plan_locks_all_archetypes";
-                return null;
-            }
-
-            // roster-level veto：只读存活合同选手的公开原型，至少保留一种合法排列
-            if (!HasLegalArrangement(liveArchetypeIds, lockedArchetypes))
-            {
-                failureReasonId = "plan_roster_no_legal_arrangement";
-                return null;
+                // 随机抽样可能在候选预算内反复撞上同一类克制组合，但同一
+                // 走廊与人数常常仍存在合法组合。当前候选做有界确定性组合
+                // 修复，避免把“可实现”误报成技术中止；仍严格复用威胁预算、
+                // 必选回响核心和能力矩阵，不改变数值或重试上限。
+                List<string> repaired;
+                if (!TryFindLegalRosterSelection(unitCount, enemyStableKeyPool, requiredCoreKey,
+                        corridor, condition, liveArchetypeIds, out repaired))
+                {
+                    failureReasonId = "plan_roster_no_legal_arrangement";
+                    return null;
+                }
+                units = repaired;
+                batchIndices = null;
+                if (!TryAssignBatches(units, entryScript, corridor.SimultaneousCap, PickCoreIndex(units),
+                        out batchIndices, out failureReasonId)) return null;
             }
 
             ModeHMatchPlanDto plan = new ModeHMatchPlanDto();
@@ -199,6 +208,60 @@ namespace BossRush
         }
 
         #endregion
+
+        /// <summary>
+        /// 在单次候选内按 stable key 序枚举组合，最多扫描 2^MaxProductionCandidateCount。
+        /// 只在威胁修复或 roster veto 失败的整备阶段调用，不进入战斗帧。
+        /// </summary>
+        private static bool TryFindLegalRosterSelection(
+            int count, IList<string> pool, string requiredCoreKey,
+            ModeHMatchCorridor corridor, ModeHArenaConditionSpec condition,
+            IList<string> liveArchetypeIds, out List<string> result)
+        {
+            result = null;
+            if (pool == null || count <= 0 || count > ModeHConfig.MaxProductionCandidateCount) return false;
+            List<string> available = new List<string>();
+            for (int i = 0; i < pool.Count; i++)
+            {
+                string key = pool[i];
+                if (!string.IsNullOrEmpty(key) && ModeHProfileRegistry.GetByStableKey(key) != null
+                    && !available.Contains(key)) available.Add(key);
+            }
+            if (!string.IsNullOrEmpty(requiredCoreKey)
+                && ModeHProfileRegistry.GetByStableKey(requiredCoreKey) != null
+                && !available.Contains(requiredCoreKey)) available.Add(requiredCoreKey);
+            if (available.Count > ModeHConfig.MaxProductionCandidateCount || available.Count < count) return false;
+            available.Sort(StringComparer.Ordinal);
+            int maxMask = 1 << available.Count;
+            int budgetPremiumMilli = 1000
+                + (int)(ModeHConfig.ThreatActionCountCoefficient * 1000f) * (count - 1);
+            long scaledBudget = (long)corridor.ThreatBudget * budgetPremiumMilli / 1000L;
+            int lowerBound = (int)(scaledBudget * corridor.MinFillPercent / 100L);
+            int upperBound = (int)(scaledBudget
+                * (100 + (int)(ModeHConfig.ThreatBudgetTolerance * 100f)) / 100L);
+            for (int mask = 0; mask < maxMask; mask++)
+            {
+                int bits = 0; for (int b = mask; b != 0; b >>= 1) bits += b & 1;
+                if (bits != count) continue;
+                List<string> candidate = new List<string>(count);
+                for (int i = 0; i < available.Count; i++) if ((mask & (1 << i)) != 0) candidate.Add(available[i]);
+                if (!string.IsNullOrEmpty(requiredCoreKey) && !candidate.Contains(requiredCoreKey)) continue;
+                if (!string.IsNullOrEmpty(requiredCoreKey))
+                {
+                    candidate.Remove(requiredCoreKey);
+                    candidate.Insert(0, requiredCoreKey);
+                }
+                int effective = ComputeEffectiveThreat(candidate);
+                if (effective < lowerBound || effective > upperBound) continue;
+                List<string> tags = CollectCapabilityTags(candidate, condition);
+                if (HasLegalArrangement(liveArchetypeIds, CollectLockedArchetypes(tags)))
+                {
+                    result = candidate;
+                    return true;
+                }
+            }
+            return false;
+        }
 
         #region 三层剧本取值
 
@@ -640,10 +703,11 @@ namespace BossRush
             IList<string> liveArchetypeIds, IList<string> lockedArchetypes)
         {
             if (liveArchetypeIds == null || liveArchetypeIds.Count == 0) return false;
-            if (lockedArchetypes == null) return true;
             for (int i = 0; i < liveArchetypeIds.Count; i++)
             {
-                if (!lockedArchetypes.Contains(liveArchetypeIds[i])) return true;
+                string archetypeId = liveArchetypeIds[i];
+                if (Array.IndexOf(ModeHStableIds.AllArchetypes, archetypeId) >= 0
+                    && (lockedArchetypes == null || !lockedArchetypes.Contains(archetypeId))) return true;
             }
             return false;
         }

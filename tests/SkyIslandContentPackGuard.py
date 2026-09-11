@@ -209,8 +209,10 @@ def main():
     ordered(tick, ["AnnounceCombatOutcomes(added);", "GrantKeepsakes();"], "旗标变化后补查纪念品（旧存档第一次进岛同样补发）")
     grant = need_body(world, "private void GrantKeepsakes()", "纪念品发放")
     ordered(grant, ["if (!story.CanWrite) return;", "SkyIslandItemRules.Due(story.Current, all[i])",
-                    "story.RecordNote(all[i].NoteId, out message)", "SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage)"],
-            "纪念品必须先记手记再发物品：写屏障下每趟重发一件能卖钱的东西是经济漏洞")
+                    "story.RequireAssetSnapshot(out snapshotError)",
+                    "SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage,",
+                    "delegate { return story.RecordNote(all[i].NoteId, out message); }"],
+            "纪念品把记账交给发放入口：实例准备好才记手记，记成功才转移，缺资源不得永久烧掉领取资格")
     record_note = need_body(service, "internal bool RecordNote(string id, out string message)", "RecordNote")
     ordered(record_note, ["SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null",
                           "return RecordSearch(id, out message);"],
@@ -240,9 +242,12 @@ def main():
         errors.append("物品名没有注入本地化（游戏里会显示 *BossRush_SkyIsland_...*）")
     if "SkyIslandItems.ResetStaticCaches();" not in read("DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs"):
         errors.append("SkyIslandItems 的静态缓存没有生命周期 owner")
-    give = need_body(items, "internal static bool TryGive(int typeId, bool toStorage)", "物品发放")
+    give = need_body(items, "internal static bool TryGive(int typeId, bool toStorage, Func<bool> recordGrant, Func<bool> rollbackGrant = null)", "物品发放")
     ordered(give, ["ItemAssetsCollection.GetPrefab(typeId) == null", "ItemAssetsCollection.InstantiateSync(typeId);",
-                   "item.TypeID != typeId"], "发放物品必须先问 prefab：缺资源时的空壳带着同一个 TypeID")
+                   "item.TypeID != typeId", "if (recordGrant == null || !recordGrant()) return false;",
+                   "ItemUtilities.SendToPlayerStorage(item)", "ItemUtilities.SendToPlayer(item)"],
+            "纪念品必须先准备真实实例、后提交领取台账、最后转移：缺资源保留资格，写屏障下不发物品")
+    ordered(give, ["finally", "SkyIslandInventoryTransaction.DestroyUnowned(item);"], "未转移的纪念品实例必须回收")
     configure = need_body(items, "private static void ConfigureItem(int typeId, Item item)", "物品配置")
     for token in ("ModeFItemConfigHelper.ClearInheritedUsage(item);", "item.MaxDurability = NonConsumableDurability;",
                   "Component<FoodDrink>(item)", "Component<Drug>(item)", "EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);"):
@@ -286,6 +291,26 @@ def main():
     expected_line = "y = " + " / ".join(str(h) for h in heights)
     if expected_line not in read("DebugAndTools/SkyIsland/SkyIslandExplosionObstaclePatch.cs"):
         errors.append("爆炸遮挡补丁注释里的岛面高度与布局表不一致，应为「%s」（R-8）" % expected_line)
+
+    # ---- 8. 蛙鸣池完成的声场回馈：文案所说的蛙声必须有真实入口，且只在已修复的近域夜间播放。 ----
+    ambience = clean_source(read("DebugAndTools/SkyIsland/SkyIslandAmbience.cs"))
+    build_ambience = need_body(ambience, "internal SkyIslandAmbience(GameObject root)", "环境 owner 装配")
+    require(build_ambience, "AddFrogPool(root);", "蛙声方法存在但没有从环境 owner 创建，玩家永远听不到")
+    frog_pool = need_body(ambience, "private void AddFrogPool(GameObject map)", "蛙鸣池发声体")
+    require(frog_pool, 'map.transform.Find("Search_S1")', "蛙声必须定位真实蛙鸣池标记")
+    require(frog_pool, 'FrogChorus = true, Ambient = "frog_chorus.wav"', "完成回馈缺少真实蛙声音效")
+    if frog_pool.count("new GameObject(") != 1 or "AddComponent<Light>" in frog_pool:
+        errors.append("蛙鸣池只需一个无灯的发声体，不为声音增加模型、灯或碰撞")
+    apply_story = need_body(ambience, "internal void ApplyStory(SkyIslandStoryData data)", "环境事实同步")
+    ordered(apply_story, ["ReferenceEquals(appliedStory, data)", "SkyIslandMosquitoRules.FrogsComplete(data)", "nextDistanceCheck = 0f;"],
+            "蛙卵记录不翻 flags，环境必须按故事快照变化更新并缓存")
+    distance = need_body(ambience, "private void UpdateDistance(Device device)", "声场距离门")
+    require(distance, "frogsHome && SkyIslandNight.IsNight(SkyIslandLighting.ClockHours())", "蛙声只在放满三团后的夜里播放")
+    ordered(distance, ["float radius = device.Near ? 44f : 38f;", "if (!near) Stop(device);", "device.Root.SetActive(near);"],
+            "蛙鸣沿用近域滞回，离开或天亮先停音再隐藏")
+    require(session, "ambience.ApplyStory(story.Current)", "环境回馈必须收到包含 Frog_n 笔记的完整剧情快照")
+    # WAV 与既有环境音同为 local-only；实际交付另跑生成器 --check，不让干净签出因没有二进制误报。
+    require(squash(read("tools/gen_sky_island_sfx.py")), '"frog_chorus.wav": 5.0', "蛙声必须登记可复现生成与音频校验")
 
     print("SkyIslandContentPackGuard: " + ("FAIL\n  - " + "\n  - ".join(errors) if errors else
                                              "PASS (信鸽 12 / 谜题 4 / 手记 20 / 纪念品 3 / 物品 5 与 R-1 R-7 R-8 R-14 接线)"))

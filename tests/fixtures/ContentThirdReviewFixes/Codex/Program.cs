@@ -79,6 +79,71 @@ class Program
         Check(!CodexBossCatalog.TryGet(champion, out info) && CodexBossCatalog.Count == initial,
             "slot change removes previous slot historical membership");
         Check(!CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current), "empty new slot cannot be all-collected");
+        CheckBossTimerIsolation();
         Console.WriteLine("Codex regression checks=" + checks);
+    }
+
+    static void CheckBossTimerIsolation()
+    {
+        CodexKillCollector.ResetStaticCaches();
+        var player = new CharacterMainControl { IsMainCharacter = true };
+        var info = new DamageInfo { fromCharacter = player, finalDamage = 10 };
+        var boss = new Health { Character = new CharacterMainControl
+        {
+            isBossCharacter = true, Team = Teams.wolf,
+            characterPreset = new CharacterRandomPreset { nameKey = "timer_boss" }
+        } };
+        UnityEngine.Time.time = 100;
+        CodexKillCollector.OnGlobalHurt(boss, info);
+        for (int i = 0; i < CodexTuning.MaxFightStartTracked + 10; i++)
+        {
+            var trash = new Health { Character = new CharacterMainControl
+            {
+                isBossCharacter = false, Team = Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = "trash" }
+            } };
+            CodexKillCollector.OnGlobalHurt(trash, info);
+            trash.IsDead = true;
+            CodexKillCollector.OnGlobalDead(trash, info);
+        }
+        Check(CodexKillCollector.TrackedFightCount == 1, "long run trash kills do not fill or evict boss fight timer");
+        UnityEngine.Time.time = 109;
+        boss.IsDead = true;
+        CodexKillCollector.OnGlobalDead(boss, info);
+        CodexKillCollector.OnGlobalHurt(boss, info);
+        Check(CodexKillCollector.TrackedFightCount == 0
+            && Math.Abs(CodexPersistence.Current.Find("timer_boss").FastestKillSeconds - 9f) < .001f,
+            "boss retains nine-second timing and lethal OnHurt does not reopen dead timer");
+        Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementFastKill),
+            "ten-second achievement remains attainable after long trash fight");
+        var assistedBoss = new Health { Character = new CharacterMainControl
+        {
+            isBossCharacter = true, Team = Teams.wolf,
+            characterPreset = new CharacterRandomPreset { nameKey = "assisted_boss" }
+        } };
+        CodexKillCollector.OnGlobalHurt(assistedBoss, info);
+        assistedBoss.IsDead = true;
+        CodexKillCollector.OnGlobalDead(assistedBoss, new DamageInfo { finalDamage = 10 });
+        Check(CodexKillCollector.TrackedFightCount == 0 && CodexPersistence.Current.Find("assisted_boss") == null,
+            "environment or companion final blow closes timer without counting personal kill");
+
+        BossRushAchievementManager.Unlocked.Clear();
+        var instantBoss = new Health { Character = new CharacterMainControl
+        {
+            isBossCharacter = true, Team = Teams.wolf,
+            characterPreset = new CharacterRandomPreset { nameKey = "same_frame_boss" }
+        } };
+        CodexKillCollector.OnGlobalHurt(instantBoss, info);
+        instantBoss.IsDead = true;
+        CodexKillCollector.OnGlobalDead(instantBoss, info);
+        Check(Math.Abs(CodexPersistence.Current.Find("same_frame_boss").FastestKillSeconds - 0.001f) < .00001f,
+            "same-frame observed first hit and final blow retain a positive measured-time bucket");
+        Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementFastKill),
+            "same-frame kill with a real first-hit observation qualifies for ten-second achievement");
+        BossRushAchievementManager.Unlocked.Clear();
+        Kill("unknown_start_boss");
+        Check(CodexPersistence.Current.Find("unknown_start_boss").FastestKillSeconds == 0f
+            && !BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementFastKill),
+            "missing timer remains unknown rather than inventing a one-hit duration");
     }
 }

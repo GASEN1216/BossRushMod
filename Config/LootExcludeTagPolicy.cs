@@ -19,8 +19,8 @@ namespace BossRush
 {
     internal static class LootExcludeTagPolicy
     {
-        // 官方 TagsData 在当前版本没有 Quest 字段（AllTags 里也没有同名 Tag），
-        // 反射永远失败；第一次失败后用 sentinel 把后续调用降为 O(1)。
+        // 官方 TagsData 没有 Quest 字段/属性，但 AllTags 里有名为 Quest 的 Tag（2026-09-11 离线官方物品表 69 件带它），
+        // TryFindQuestTag 按名字遍历 AllTags 查到后缓存；questTagSearched 是只查一次的 sentinel，查不到时后续调用降为 O(1)。
         private static Tag cachedQuestTag;
         private static bool questTagSearched;
 
@@ -31,7 +31,7 @@ namespace BossRush
         ///   等于明说这类物品不该出现在箱子里。
         /// - <c>DontDropOnDeadInSlot</c>：设计上不参与掉落。
         /// - <c>LockInDemoTag</c>：演示版锁定内容。
-        /// - <c>Quest</c>：本版本不存在，保留反射以便官方将来补上时自动生效。
+        /// - <c>Quest</c>：TagsData 没有对应字段，由 <c>TryFindQuestTag</c> 按名字从 <c>AllTags</c> 查到（2026-09-11 离线表 69 件带它）。
         ///
         /// <paramref name="includeCharacterTag"/> 控制是否连角色物品一起排除；
         /// <paramref name="includeSpecialTag"/> 控制是否排除 <c>Special</c>。
@@ -120,10 +120,10 @@ namespace BossRush
                 ModBehaviour.DevLog("[LootExcludeTagPolicy] 遍历 AllTags 查找 Quest 标签失败: " + e.Message);
             }
 
-            // 三段反射全部失败：让维护者从日志看出「Quest tag 阻断永久 disable」
-            // 是当前鸭科夫版本的事实而非 mod bug。questTagSearched 已置位，只会打一次。
+            // 三段查找都没命中。当前官方数据的 AllTags 里有 Quest（2026-09-11 离线核对），走到这里说明官方改名或删了它，
+            // 或遍历 AllTags 时抛了异常（上面另有日志），需要排查。questTagSearched 已置位，ResetStaticCaches 之前只打这一次。
             ModBehaviour.DevLog("[LootExcludeTagPolicy] Quest tag lookup failed; " +
-                "exclusion by Quest tag is permanently disabled in this build");
+                "exclusion by Quest tag is disabled until static caches are reset");
             return null;
         }
 

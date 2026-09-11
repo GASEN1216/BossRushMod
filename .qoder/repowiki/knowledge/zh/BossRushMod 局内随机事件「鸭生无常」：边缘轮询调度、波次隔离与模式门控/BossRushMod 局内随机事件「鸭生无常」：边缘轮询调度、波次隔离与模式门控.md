@@ -222,3 +222,7 @@ Boss（龙裔 / 龙王 / 女巫）。抽中时 SpawnCore 会路由到它们的�
 ## 2026-09-05：空投池按实际消费路径过滤
 
 `COMPAT`，CR-2026-09-05-017。`RandomEventEffectsBridge_Loot` 将规范化的品质上下限传给实际 randomPool 构建，以元数据有效 ID/品质和统一黑名单过滤候选。不能只写 `loader.qualities`：官方 randomFromPool 为 true 时不会读这个容器。三模式既定区间保持普通 Q4–Q7、Mode D Q4–Q5、无间炼狱 Q4–Q8；每个非空品质总权重为 1，品质内物品等权。先清模板池，候选为空或字段绑定不可用就不启动填充，避免继承模板奖励或对空池启动。验证入口为 `tests/fixtures/AirdropSecondReview/run.py`，结构约束为 `tests/RandomEventAirdropQualityGuard.py`；没有以隔离执行替代实机抽箱。
+
+### 2026-09-11 异步失败与旧回调隔离
+
+Boss 乱入和神秘商人的异步请求全部失败时，`HasFailedToStart` 在调度 Tick 发出终止信号：清理后进入冷却，并仅退还自然调度名额。已有部分成功不回收名额。每次请求绑定其 `RandomEventContext`，清理后回调只回收孤儿，不可污染新一轮计数。

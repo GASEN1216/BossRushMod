@@ -342,6 +342,19 @@ namespace BossRush
             }
 
             page.Body = L10n.T(ModeHConfig.LocalizationKeyPrefix + "Summary_Draft");
+            if (!string.IsNullOrEmpty(_pendingContractMainId))
+            {
+                page.Actions.Add(new ModeHActionData
+                {
+                    Label = L10n.T("重新选择主将", "Choose a different starter"),
+                    OnClick = delegate
+                    {
+                        if (_runState == null || _runState.Lifecycle != ModeHLifecycle.Drafting) return;
+                        _pendingContractMainId = null;
+                        RouteUiForLifecycle(_runState.Lifecycle);
+                    },
+                });
+            }
             return page;
         }
 
@@ -491,6 +504,19 @@ namespace BossRush
                         out assignments, out failureReasonId))
                 {
                     ModBehaviour.DevLog("[ModeH] 落选分流失败: "
+                        + (failureReasonId != null ? failureReasonId : "unknown"));
+                    return;
+                }
+
+                if (!CanConstructFullSeason(contract, assignments, out failureReasonId))
+                {
+                    if (_owner != null)
+                    {
+                        _owner.ShowMessage(L10n.T(
+                            "当前认证池无法为这组合同生成完整六场赛季，请更换替补。",
+                            "This roster cannot produce all six matches with the certified pool. Choose another relay."));
+                    }
+                    ModBehaviour.DevLog("[ModeH] 签约组合六场可行性检查失败: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));
                     return;
                 }
@@ -697,6 +723,11 @@ namespace BossRush
 
             try
             {
+                // EncounterPlanner 的 roster veto 按公开 archetypeId 判断；调用方之前把
+                // profileId 直接传入，导致克制标签永远匹配不上。敌军池也必须排除本季
+                // 五席候选，否则撕票/回场签规则会被绕开。
+                List<string> liveArchetypeIds = BuildLiveArchetypeIds();
+                List<string> enemyPool = BuildPlanEnemyPool();
                 ModeHMatchPlanDto plan;
                 int usedCandidateIndex;
                 string failureReasonId;
@@ -704,9 +735,9 @@ namespace BossRush
                         _runState.RunSeed,
                         _runState.MatchIndex,
                         _runState.TechnicalRetrySequence,
-                        ModeHPresetRegistry.ProductionKeys,
+                        enemyPool,
                         ResolveEchoReturnStableKey(),
-                        ModeHTransferMarket.GetLiveContractProfileIds(_season),
+                        liveArchetypeIds,
                         out plan, out usedCandidateIndex, out failureReasonId))
                 {
                     ModBehaviour.DevLog("[ModeH] 敌军计划生成失败: "
@@ -732,30 +763,9 @@ namespace BossRush
         /// </summary>
         private string ResolveEchoReturnStableKey()
         {
-            if (_season == null || _runState == null) return null;
-            if (_runState.MatchIndex != ModeHConfig.EchoReturnMatchIndex) return null;
-
-            List<ModeHEchoAssignmentDto> assignments = _season.echoAssignments;
-            List<ModeHProfileDto> profiles = _season.profiles;
-            if (assignments == null || profiles == null) return null;
-
-            for (int i = 0; i < assignments.Count; i++)
-            {
-                ModeHEchoAssignmentDto a = assignments[i];
-                if (a == null || a.resolved) continue;
-                if (!string.Equals(a.destinationId, "return_enemy", StringComparison.Ordinal)) continue;
-
-                for (int j = 0; j < profiles.Count; j++)
-                {
-                    ModeHProfileDto p = profiles[j];
-                    if (p == null) continue;
-                    if (string.Equals(p.profileId, a.profileId, StringComparison.Ordinal))
-                    {
-                        return p.stableKey;
-                    }
-                }
-            }
-            return null;
+            if (_season == null || _runState == null
+                || _runState.MatchIndex != ModeHConfig.EchoReturnMatchIndex) return null;
+            return ResolveEchoReturnStableKey(_season.echoAssignments);
         }
 
         private void EnterLoadoutEditing()

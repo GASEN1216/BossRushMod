@@ -52,6 +52,9 @@ namespace BossRush
         /// </summary>
         internal const int MaxFightStartTracked = 64;
 
+        /// <summary>同帧内已观测到首击和击杀时的最小正计时单位；0 仍表示未知。</summary>
+        internal const float MinimumFightSeconds = 0.001f;
+
         /// <summary>丧尸 Boss 合成 key 前缀。存档兼容面，冻结。</summary>
         internal const string ZombieBossKeyPrefix = "zombie_boss_";
 

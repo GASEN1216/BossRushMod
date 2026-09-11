@@ -196,6 +196,11 @@ namespace BossRush
         /// 老档缺失时回落 petId。
         /// </summary>
         public string petDisplayName;
+        /// <summary>
+        /// 出发时固化的血脉，供延迟投递的遗种蛋盖章。崽在结算后可放生或再次远征，
+        /// 奖励身份不能继续依赖仍在巢中的 PetRecord。老档缺失时由 Bundle 按同一 petId 补齐。
+        /// </summary>
+        public string petLineageKey;
         /// <summary>目的地 id。</summary>
         public string destinationId;
         /// <summary>风险档位（PetNestRiskTier 的 int）。</summary>
@@ -358,6 +363,21 @@ namespace BossRush
             nest.Normalize();
             expedition.Normalize();
             museum.Normalize();
+            // v2 旧记录可能仍有未发出的蛋。候选包在删除/放生/再次远征之前都会规范化，
+            // 此时从相同 id 的原崽补记血脉；找不到就保留空值，绝不猜成另一只崽的血脉。
+            for (int i = 0; i < expedition.records.Count; i++)
+            {
+                PetNestExpeditionRecord record = expedition.records[i];
+                if (record == null || !string.IsNullOrEmpty(record.petLineageKey)) continue;
+                for (int j = 0; j < nest.pets.Count; j++)
+                {
+                    PetNestPetRecord pet = nest.pets[j];
+                    if (pet == null || string.IsNullOrEmpty(record.petId)
+                        || !string.Equals(pet.id, record.petId, StringComparison.Ordinal)) continue;
+                    record.petLineageKey = pet.lineageKey;
+                    break;
+                }
+            }
         }
     }
 }

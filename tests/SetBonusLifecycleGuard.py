@@ -79,6 +79,7 @@ def main() -> int:
         "ResetFrostNovaState();",
         "private bool TryApplyFrostFreeze(CharacterMainControl target)",
         "GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.ice)",
+        "if (!frostSetActive || health == null || health.IsDead || !health.IsMainCharacterHealth) return;",
     ), "frost bonus")
     if rc:
         return rc
@@ -113,6 +114,7 @@ def main() -> int:
         "DestroySetArcPool();",
         "ResetThunderChainState();",
         "GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.electricity)",
+        "if (!thunderSetActive || health == null || health.IsDead || !health.IsMainCharacterHealth) return;",
     ), "thunder bonus")
     if rc:
         return rc

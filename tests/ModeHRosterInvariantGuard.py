@@ -78,20 +78,28 @@ def check_draft(errors):
         errors.append("[Draft] 候选必须来自 productionCandidate=true 的签名目录")
 
 
-def check_planner(errors):
-    """\u00a717.5 计划候选重试与 roster-level veto。"""
-    source = read_text(PLANNER)
-    if source is None:
-        errors.append("[File] 缺少 ModeH/ModeHEncounterPlanner.cs")
-        return
-    code = strip_cs_comments(source)
+def method_body(code, signature):
+    """对去注释后的当前方法按花括号截取，避免被其他方法的同名约束替代。"""
+    start = code.find(signature)
+    if start < 0:
+        return ""
+    opening = code.find("{", start)
+    depth = 1
+    end = opening + 1
+    while end < len(code) and depth:
+        depth += (code[end] == "{") - (code[end] == "}")
+        end += 1
+    return code[start:end] if depth == 0 else ""
+
+
+def check_planner_code(code, errors):
+    """§17.5：主候选和确定性组合修复都必须通过相同的约束。"""
 
     checks = [
         (r"public static bool TryBuildPlan\(", "计划生成入口"),
         (r"candidateIndex < ModeHConfig\.MaxPlanCandidateAttempts", "候选重试上限来自冻结常量"),
         (r"public static bool HasLegalArrangement\(", "roster-level veto 入口"),
         (r'failureReasonId = "plan_roster_no_legal_arrangement";', "无合法排列才换候选"),
-        (r'failureReasonId = "plan_locks_all_archetypes";', "封死五原型才换候选"),
         (r"public static List<string> CollectLockedArchetypes\(", "硬封锁集合派生"),
         (r"ModeHSeedStream\.Domains\.EncounterPlan", "计划种子域固定"),
         (r"technicalRetrySequence", "重试序号进入种子派生"),
@@ -106,6 +114,67 @@ def check_planner(errors):
         if not re.search(pattern, code):
             errors.append("[Planner] 不满足: " + desc)
 
+    candidate = method_body(code, "private static ModeHMatchPlanDto BuildCandidate(")
+    repair = method_body(code, "private static bool TryFindLegalRosterSelection(")
+    select = method_body(code, "private static bool TrySelectUnits(")
+    veto_body = method_body(code, "public static bool HasLegalArrangement(")
+    matrix = method_body(code, "public static List<string> CollectLockedArchetypes(")
+
+    def need(body, pattern, description):
+        if not re.search(pattern, body, re.S):
+            errors.append("[Planner] 不满足: " + description)
+
+    # 原来的两个独立拒绝原因合并为一次修复入口；修复失败仍拒绝候选。
+    need(candidate,
+         r"if \(lockedArchetypes.Count >= ModeHStableIds.AllArchetypes.Length\s*"
+         r"\|\| !HasLegalArrangement\(liveArchetypeIds, lockedArchetypes\)\)\s*\{",
+         "封死五原型或当前合同无合法排列时必须进入修复/拒绝分支")
+    need(candidate,
+         r"if \(!TryFindLegalRosterSelection\(unitCount, enemyStableKeyPool, requiredCoreKey,\s*"
+         r"corridor, condition, liveArchetypeIds, out repaired\)\)\s*\{\s*"
+         r'failureReasonId = "plan_roster_no_legal_arrangement";\s*return null;\s*\}',
+         "矩阵拒绝后的修复必须使用同一人数/池/核心/走廊/条件/合同，失败拒绝")
+    need(candidate,
+         r"units = repaired;\s*batchIndices = null;\s*"
+         r"if \(!TryAssignBatches\(units, entryScript, corridor.SimultaneousCap, PickCoreIndex\(units\),\s*"
+         r"out batchIndices, out failureReasonId\)\) return null;",
+         "修复替换后必须重新校验同屏上限与分批")
+    need(repair,
+         r"available.Count > ModeHConfig.MaxProductionCandidateCount \|\| available.Count < count",
+         "组合枚举必须限制认证池规模并拒绝人数不足")
+    need(repair, r"if \(bits != count\) continue;", "组合修复保持骨架要求人数")
+    need(repair,
+         r"if \(!string.IsNullOrEmpty\(requiredCoreKey\) && !candidate.Contains\(requiredCoreKey\)\) continue;",
+         "组合修复不得丢弃回响核心")
+    for body, name in ((repair, "组合修复"), (select, "抽样选择")):
+        need(body,
+             r"int budgetPremiumMilli = 1000\s*\+ \(int\)\(ModeHConfig.ThreatActionCountCoefficient \* 1000f\) \* \(count - 1\);",
+             name + "与有效威胁使用同一人数溢价")
+        need(body,
+             r"long scaledBudget = \(long\)corridor.ThreatBudget \* budgetPremiumMilli / 1000L;\s*"
+             r"int lowerBound = \(int\)\(scaledBudget \* corridor.MinFillPercent / 100L\);\s*"
+             r"int upperBound = \(int\)\(scaledBudget\s*"
+             r"\* \(100 \+ \(int\)\(ModeHConfig.ThreatBudgetTolerance \* 100f\)\) / 100L\);",
+             name + "必须保留同一威胁走廊上下界")
+    need(repair,
+         r"int effective = ComputeEffectiveThreat\(candidate\);\s*"
+         r"if \(effective < lowerBound \|\| effective > upperBound\) continue;",
+         "组合修复实际威胁必须在上下界内")
+    need(repair,
+         r"List<string> tags = CollectCapabilityTags\(candidate, condition\);\s*"
+         r"if \(HasLegalArrangement\(liveArchetypeIds, CollectLockedArchetypes\(tags\)\)\)\s*\{\s*"
+         r"result = candidate;\s*return true;\s*\}",
+         "修复成功必须再次按候选和擂台条件通过合同原型矩阵")
+    # 合同原型只能来自五原型集合；五种均封锁时此谓词必然为 false。
+    need(veto_body,
+         r"Array.IndexOf\(ModeHStableIds.AllArchetypes, archetypeId\) >= 0\s*"
+         r"&& \(lockedArchetypes == null \|\| !lockedArchetypes.Contains\(archetypeId\)\)\) return true;",
+         "合法排列必须是未封锁的已知原型，五原型全封锁不得通过修复")
+    need(matrix,
+         r"if \(!enemyCapabilityTags.Contains\(entry.HardLockedBy\[j\]\)\) continue;\s*"
+         r"if \(!locked.Contains\(entry.ArchetypeId\)\) locked.Add\(entry.ArchetypeId\);",
+         "硬封锁矩阵必须按任一命中标签累积被封原型")
+
     # veto 只读公开原型，不得读虚拟 kit / 口令 / 本场顺序
     veto = re.search(r"public static bool HasLegalArrangement\([\s\S]*?\n        \}", code)
     if veto:
@@ -117,6 +186,40 @@ def check_planner(errors):
     # 计划不得反向读赔率
     if re.search(r"\bModeHOddsController\b", code):
         errors.append("[Planner] 计划不得反向读取赔率服务")
+
+
+def check_planner(errors):
+    source = read_text(PLANNER)
+    if source is None:
+        errors.append("[File] 缺少 ModeH/ModeHEncounterPlanner.cs")
+        return
+    code = strip_cs_comments(source)
+    check_planner_code(code, errors)
+    mutations = [
+        ("lockedArchetypes.Count >= ModeHStableIds.AllArchetypes.Length", "false"),
+        ("|| !HasLegalArrangement(liveArchetypeIds, lockedArchetypes)", "&& !HasLegalArrangement(liveArchetypeIds, lockedArchetypes)"),
+        ('failureReasonId = "plan_roster_no_legal_arrangement";', 'failureReasonId = "ignored";'),
+        ("available.Count > ModeHConfig.MaxProductionCandidateCount || available.Count < count", "available.Count < count"),
+        ("if (bits != count) continue;", ""),
+        ("if (!string.IsNullOrEmpty(requiredCoreKey) && !candidate.Contains(requiredCoreKey)) continue;", ""),
+        ("if (effective < lowerBound || effective > upperBound) continue;", "if (effective > upperBound) continue;"),
+        ("if (effective < lowerBound || effective > upperBound) continue;", "if (effective < lowerBound) continue;"),
+        ("CollectCapabilityTags(candidate, condition)", "CollectCapabilityTags(candidate, null)"),
+        ("HasLegalArrangement(liveArchetypeIds, CollectLockedArchetypes(tags))", "true"),
+        ("Array.IndexOf(ModeHStableIds.AllArchetypes, archetypeId) >= 0", "true"),
+        ("!lockedArchetypes.Contains(archetypeId)", "true"),
+        ("locked.Add(entry.ArchetypeId);", "locked.Clear();"),
+        ("scaledBudget * corridor.MinFillPercent / 100L", "0"),
+        ("ModeHConfig.ThreatBudgetTolerance * 100f", "999f"),
+    ]
+    for before, after in mutations:
+        if before not in code:
+            errors.append("[Planner probe] 缺少变异目标: " + before)
+            continue
+        rejected = []
+        check_planner_code(code.replace(before, after, 1), rejected)
+        if not rejected:
+            errors.append("[Planner probe] 放宽约束的变异漏检: " + before)
 
 
 def main():
@@ -199,7 +302,7 @@ def main():
             print("  - " + e)
         return 1
 
-    print("ModeHRosterInvariantGuard: PASS")
+    print("ModeHRosterInvariantGuard: PASS (15 rejected planner regression mutations)")
     return 0
 
 

@@ -229,6 +229,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLights.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGathering.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraft.cs
+echo(DebugAndTools\SkyIsland\SkyIslandInventoryTransaction.cs
 echo(DebugAndTools\SkyIsland\SkyIslandNight.cs
 echo(DebugAndTools\SkyIsland\SkyIslandMosquitoRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGnats.cs

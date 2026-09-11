@@ -2,6 +2,29 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-11 本轮全面生产审核新增确认项
+
+以下条目由本轮代码链路审核确认，证据为 L1/L2；“待实机”不等于已达到运行时生产标准。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态 |
+| --- | --- | --- | --- |
+| CR-2026-09-11-004 | P1 / COMPAT | 天空岛纪念品先记 `Keepsake_*` 再实例化物品；资源暂缺会永久记账但玩家未收到，后续也不会补发。 | Fixed（夹具/守卫通过，待编译与实机） |
+| CR-2026-09-11-005 | P2 / COMPAT | 只读或写屏障失败时仍扣蛙卵材料，终点交付必失败且资源无效消耗。 | Fixed（夹具/守卫通过，待编译与实机） |
+| CR-2026-09-11-006 | P1 / COMPAT | Mode H 第 4 场转会读取真实击败战报，但生产链路从未写入，市场报价永久为空。 | Fixed（17 条新夹具通过，待编译与实机） |
+| CR-2026-09-11-007 | P1 / COMPAT | Mode H 将 profileId 当 archetypeId 传入阵容禁用判定，且敌军池未扣除五席，导致克制门与“撕票绝不返场/第 5 场回场签”契约失效。 | Fixed（夹具与相关守卫通过，待编译与实机） |
+| CR-2026-09-11-008 | P1 / COMPAT | 遗种巢远征欠奖先删除/放生崽后再补发时无法取得血脉，发放函数仍推进游标并返回成功，遗种蛋永久丢失。 | Fixed（82 条事务断言与守卫通过，待编译与实机） |
+| CR-2026-09-11-009 | P2 / OPERATIONAL | `run_guards.py --changed-only` 在 Windows 默认 GBK 下读取 Git 中文路径可能漏选改动。 | Fixed（87 条受影响守卫与专门回归通过） |
+| CR-2026-09-11-010 | P2 / COMPAT | 展示柜只有登记入口，满 8 格后无法撤销/替换低品质收藏，早期选择会永久锁死后续升级。 | Fixed（82 条事务断言与可见替换/撤销入口通过，待实机） |
+| CR-2026-09-11-011 | P2 / COMPAT | 鸭皇图鉴对所有受伤敌人开速杀计时，非 Boss 和长局容量处理不完整，可能清空仍在计时的 Boss。 | Fixed（仅 Boss 开表、死亡/补刀清理与容量回归通过；待编译与实机） |
+| CR-2026-09-11-012 | P1 / COMPAT | Mode H 认证池在排除本季席位、保留回场签后，部分阵容无法构造完整六场；原流程仍可锁盘，后续才技术中止。 | Fixed（锁定前及转会接受前预构造剩余赛程；20 条市场断言、600/600 计划组合通过，待编译与实机） |
+| CR-2026-09-11-013 | P1 / COMPAT | 随机事件的 Boss / 商人异步生成全部失败时仍占用一次自然事件名额并继续空转；旧回调还可能污染下一轮同类事件。 | Fixed（失败退款、冷却、上下文隔离夹具 4 场通过，待编译与实机） |
+| CR-2026-09-11-014 | P2 / COMPAT | 图鉴的受伤与死亡入口对直接致死、死亡同帧回调和非主角补刀缺少一致的结束语义，可能漏记速杀或残留计时。 | Fixed（生产入口 guards 通过，带真实官方 Health 顺序的完整回归与实机待完成） |
+| CR-2026-09-11-015 | P2 / SAFE | PetNest 中英文玩家 Wiki 把亡命档写成更快练级；按当前生产时长与经验折算，三档存活经验每小时相同，文案会诱导玩家承担无额外练级收益的死亡风险。 | Fixed（WikiContent 与在线站同步，静态链接待构建） |
+| CR-2026-09-11-016 | P1 / COMPAT | 天空岛点亮风晶灯先记剧情和永久计数，再逐项扣材料；扣料或写屏障失败时会出现“灯已点亮但材料未完整消耗”的半提交。 | Fixed（全量材料预留→记录→提交事务，SkyIslandLoot 1817、SkyIslandStory 2444 与相关 guards 通过，待编译与实机） |
+| CR-2026-09-11-017 | P1 / COMPAT | 天空岛纪念品的剧情手记与官方背包/仓库/待领取缓冲不是同一事务；交付在获得归属前抛错时可能烧掉补发资格，进程中断也可能留下“已记账、物品未持久化”。 | Partially fixed / Deferred（未归属实例可精确回滚 Keepsake；已归属或状态不明保留记录防重复。新增 `SkyIslandDelivery` 逐字生产夹具 10 条断言覆盖归属/缓冲回执、回滚与回滚失败；官方 API 无交付回执，跨系统原子提交仍需 owner 决策与实机故障注入） |
+| CR-2026-09-11-018 | P1 / COMPAT | ZombieMode 撤离现金结算忽略 `EconomyManager.Add` 失败返回值，仍清零本局净化点并继续清理场景；经济实例暂不可用时玩家已赚奖励永久丢失。 | Fixed（`SettleZombieModeExtractionCashShell` 仅成功清零；失败保留净化点并回到撤离机会；`ZombieModeCashAndOriginalExtractionGuard` / `ZombieModeExtractionCleanupGuard` 通过，待编译与实机） |
+| CR-2026-09-11-019 | P1 / COMPAT | ZombieMode 入场现金退款同样忽略 `EconomyManager.Add` 失败，并在 `finally` 清除 `CashTemporarilyHeld` / `CashWithheldAmount`；切图或初始化失败时经济实例暂不可用会永久丢失已扣入场费。 | Open（L1 已确认；需要可持久化退款欠账或成功后再清理事务状态，不能仅靠当前对象重试；待 owner 决策与故障注入） |
+
 ## 2026-09-11 天空岛内容批次四「云蚋」：接判夜与灶火时确认并修掉的既有缺陷 1 P2 + 1 P3（Fixed）
 
 随内容批次四（夜里的蚊群「云蚋」，见 `FIX_TRACKER.md` 同日条目）把判夜收成一处、给灶火做看得见的火与烟时确认的**既有**问题（批次三 2026-09-11 引入）。
@@ -3318,20 +3341,21 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 
 ### CR-2026-09-04-036：孵化资产延期成功后不再补记孵化统计
 
-**严重级**：P2；**兼容分类**：`COMPAT`；**状态**：Open；**来源**：修复差异、完整调用链与隔离故障注入。
+**严重级**：P2；**兼容分类**：`COMPAT`；**状态**：Fixed（隔离回归通过；实机故障注入待完成）；**来源**：修复差异、完整调用链与隔离故障注入。
 
-`PetNest/PetNestHatchService.cs:138` 在新崽已接管、蛋已销毁后，资产采集或写盘失败会直接返回，
-跳过 140 行唯一 `RecordHatch`。协调器后续只重试候选与资产落盘，不会重放统计；因此崽最终存在，
-但孵化数、异色数与首次血脉解锁永久漏记。隔离用例以首次资产序列化失败、下一 Tick 成功复现。
-应把统计纳入可重放候选，或让 durable 完成回调按 pet ID 幂等补记。未实机故障注入。
+`PetNest/PetNestHatchService.cs` 现把孵化统计（含异色计数与血脉首次解锁）写入与新崽相同的 Bundle 候选，
+再由 `PetNestSaveCoordinator` 以实物快照义务重试物理落盘；统计不会依赖揭晓演出或后续单独回调。
+`tests/fixtures/ContentTransactions/Program.cs` 的实体蛋路径注入资产序列化失败后，验证候选 Bundle 已包含统计、
+下一 Tick 重试后孵化数与异色数只增加一次，并在物理写失败及官方采集回调路径复跑通过。完整夹具运行结果为
+`ContentTransactions: 82 assertions passed`（2026-09-11）。仍未进行 Unity 实机故障注入，因此保留该验证缺口。
 
 ## UNVERIFIED / Seeded Leads
 
 > 这里的内容不是 bug。升格前必须读代码或运行验证。
 
 - **遗种巢 跨档写污染组合链**（016 的延伸，逐环节已静态核过、多步组合需实机）：关开关后已挂 handler 触发 `AddSouls` 会从当前槽重建缓存 → 主菜单切档（无人清缓存）→ 重开开关（EnsureBootstrapped 不重置缓存）→ 下次 Commit 把 A 档巢数据写进 B 档。与 017 的日报跨档渗漏同构。
-- **遗种巢 远征奖励非崩溃失败被吞**：`PetNestExpeditionService.cs:420-447` 注释宣称可补发，但 `GrantRewards`（:560-631）内部吞异常正常返回、:432 无条件置 `rewardsGranted=true`——蛋实例化失败/EconomyManager 异常 = 一次性丢失。修复需按条目粒度记账（现金已发、物品失败的部分重发问题）。
-- **遗种巢 OnExpedition 孤儿锁无自愈**：Nest key flush 成功、Expedition key flush 异常进 StoreFaulted 后（`PetNestSaveCoordinator.cs:141-144` 逐 key 独立失败），官方存盘可落「崽=OnExpedition」而远征记录缺失；无 reconcile 路径，该崽永久锁死。建议 Normalize 处加「OnExpedition 且远征表无匹配 → 复位 InNest」自愈。
+- **遗种巢 远征奖励非崩溃失败被吞（已复核关闭）**：该历史线索已由 `PetNestExpeditionService.TryGrantPendingRewards` 的按条目游标与 `rewardsGranted` 门控修复；`GrantRewards` 任一物品或现金失败都会保留欠账和游标，下一次运行时重试。`ContentTransactions` 82 条断言含盖章失败后恢复且只投递一次；仍需 Unity 实机资源故障注入。
+- **遗种巢 OnExpedition 孤儿锁无自愈（已实现，待专门验证）**：`PetNestExpeditionService.ReconcileOrphanedExpeditionLocks` 在可写事务内检查远征记录，确认无匹配后才复位 `OnExpedition` / `lockedByExpeditionId`，并在写屏障或存档故障时保持不动，避免误解锁。当前尚无专门夹具覆盖该入口，保留验证缺口，不再视为未修复代码问题。
 - **遗种巢 P3 一组**：基地闲逛崽实为跟随玩家（含 >40m 传送，观感是仪仗队）；场景切换只停两个演出层、主面板 modal lease 极端时序可带进战斗图；天赋/战痕/蛋 KV 展示裸英文 key。
 - **模式H 关停竞态孤儿**：StopCoroutine 打断 `CreateCharacterAsync` await 期间，`CreateIsolatedAsync`（SpawnBridge:58-176）async 延续仍会完成并登记抑制表+生成隔离角色，RollbackAll 只回收已入列 handle（窗口数帧）。
 - **模式G 弃局确认页开在 Spawning 相位且时停拖住工厂 >15s 是否误报 TechnicalIntegrityLoss**：取决于官方 `CreateCharacterAsync` 是否受 timeScale 影响，静态无法判定。

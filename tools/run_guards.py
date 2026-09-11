@@ -95,17 +95,17 @@ def collect_scripts(filter_text, changed_only):
 def changed_paths():
     """当前工作区相对 HEAD 的改动文件（含未跟踪）。"""
     paths = set()
-    for cmd in (["git", "diff", "--name-only", "HEAD"],
-                ["git", "ls-files", "--others", "--exclude-standard"]):
+    for cmd in (["git", "diff", "--name-only", "-z", "HEAD"],
+                ["git", "ls-files", "--others", "--exclude-standard", "-z"]):
         try:
-            out = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True, timeout=60)
+            # Git 的 -z 输出原始 UTF-8 路径；不让 Windows 默认 GBK 解码器处理
+            # stderr，也不把中文路径的 core.quotePath 转义当作真实文件名。
+            out = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, timeout=60)
+            if out.returncode != 0:
+                return set()  # 变更集合不完整时回退全量，不能只跑另一条命令的子集。
+            paths.update(path for path in out.stdout.decode("utf-8").split("\0") if path)
         except Exception:
-            continue
-        if out.returncode == 0:
-            for line in out.stdout.splitlines():
-                line = line.strip()
-                if line:
-                    paths.add(line)
+            return set()
     return paths
 
 

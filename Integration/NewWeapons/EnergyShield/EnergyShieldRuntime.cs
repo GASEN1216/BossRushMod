@@ -76,7 +76,9 @@ namespace BossRush
         private static void OnHurt(Health targetHealth, DamageInfo damageInfo)
         {
             // 早期退出：只关心玩家受击
-            if (targetHealth == null || !targetHealth.IsMainCharacterHealth) return;
+            // 官方 Health.Hurt 在致死流程里先发 OnDead、再发 OnHurt；不挡住这里会在死后回补生命，
+            // 复活型模式可能因此带着一份「死后写入」的残余血量，且错误触发护盾表现。
+            if (targetHealth == null || targetHealth.IsDead || !targetHealth.IsMainCharacterHealth) return;
 
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || player.Health != targetHealth) return;

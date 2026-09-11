@@ -147,8 +147,8 @@ namespace BossRush
                     if (SkyIslandMosquitoRules.FrogsComplete(data))
                     {
                         text.Append("\n\n");
-                        text.Append(L10n.T("蛙鸣池又有蛙叫了。夜里船上没人再喊痒，我那点药膏总算省下来了。",
-                            "Frogsong Pool is croaking again. Nobody on the boat complains of itching at night any more, so I can finally save my salve."));
+                        text.Append(L10n.T("蛙鸣池又有蛙叫了。护好繁育的水边，青蛙也愿意回来。夜里喊痒的人少了些，我还给守灯的人留着药膏。",
+                            "Frogsong Pool is croaking again. With its breeding shallows tended, the frogs are returning. Fewer people complain of itching at night; I still keep salve for the lamp watch."));
                     }
                     break;
                 default:

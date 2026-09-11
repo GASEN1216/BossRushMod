@@ -347,6 +347,7 @@ namespace BossRush
                       .Str("id", r.id)
                       .Str("petId", r.petId)
                       .Str("petDisplayName", r.petDisplayName)
+                      .Str("petLineageKey", r.petLineageKey)
                       .Str("destinationId", r.destinationId)
                       .Int("riskTier", r.riskTier)
                       .Long("departTicks", r.departTicks)
@@ -413,6 +414,7 @@ namespace BossRush
                 r.id = id;
                 r.petId = n.GetString("petId", null);
                 r.petDisplayName = n.GetString("petDisplayName", null);
+                r.petLineageKey = n.GetString("petLineageKey", null);
                 r.destinationId = n.GetString("destinationId", null);
                 r.riskTier = n.GetInt("riskTier", (int)PetNestRiskTier.Safe);
                 r.departTicks = n.GetLong("departTicks", 0L);

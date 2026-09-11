@@ -48,7 +48,7 @@ WEAK_LINK_MATERIALS = ("SkyIslandBrassScrap", "SkyIslandStardust", "SkyIslandQin
 # 蛙卵两处：（面板装置，对应的水面，面板上挂的选项）。水面必须在静水表里，装置与水面同岛且离水面框不超过 FROG_SITE_REACH 米。
 FROG_SITES = (("Search_F_02", "F_MirrorPool", "SpawnChoice"), ("Search_S1", "S1_FrogPond", "ReleaseChoice"))
 FROG_SITE_REACH = 15.0
-HOT_PATH = ("internal void Frame(", "private void Steer(", "private Vector3 Cruise(", "private void TryBite(", "private void Animate(",
+HOT_PATH = ("internal void Frame(", "private bool HasFrameWork(", "private bool Steer(", "private Vector3 Cruise(", "private void TryBite(", "private void Animate(",
             "private void TickZappers(", "private void TickSplats(", "private void TickBuzz(", "internal void Sample(",
             "private void Scatter(", "internal void OnProjectile(")
 HOT_PATH_FORBIDDEN = ("FindObjectsOfType", "FindObjectOfType", "GetComponentsInChildren", "=>", "delegate", "new List<", ".ToArray()")
@@ -302,7 +302,15 @@ def main():
     for name, buff in re.findall(r"Tool\(BossRushItemIds\.(\w+),\s*SkyIslandFieldBuff\.(\w+),", items):
         kinds[name] = ("Tool", buff)
     use_consumable = need_body(fieldcraft, "internal bool UseConsumable(SkyIslandFieldBuff buff)", "耗材效果")
-    use_against = need_body(fieldcraft, "private string UseAgainstGnats(SkyIslandFieldBuff buff, CharacterMainControl player)", "转交蚊群 owner")
+    use_against = need_body(fieldcraft, "private bool UseAgainstGnats(SkyIslandFieldBuff buff, CharacterMainControl player, out string said)", "转交蚊群 owner")
+    for token in ("return gnats.DeployZapper(player, out said);", "return gnats.SwingFan(player, out said);"):
+        require(use_against, token, "转交蚊群效果必须保留成功/失败结果")
+    ordered(use_consumable, ("bool applied = UseAgainstGnats(buff, player, out said);", "ReportConsumable(buff, said, applied);", "return applied;"),
+            "放灯/挥扇失败必须警示、返回失败并且不记录成功使用")
+    report_consumable = need_body(fieldcraft, "private void ReportConsumable(SkyIslandFieldBuff buff, string message, bool applied)", "耗材结果提示")
+    ordered(report_consumable, ("session.Announce(message, !applied);",
+                                'if (applied && story != null) story.LogTiming("consumable", buff.ToString());'),
+            "耗材结果统一提示，失败警示且不记录成功使用")
     can_use = need_body(fieldcraft, "internal bool CanUse(SkyIslandFieldBuff buff)", "耗材可用")
     for _value, name in batch_four:
         if not any(output == name for _rid, _st, output, _c, _in, _g in recipes):
@@ -320,7 +328,7 @@ def main():
         elif kind in ("Consumable", "Tool"):
             if squash("case SkyIslandFieldBuff.%s:" % buff) not in use_consumable:
                 errors.append("%s 的效果 %s 在 UseConsumable 里没有分支：用了没用" % (name, buff))
-            if not re.search(r"SkyIslandFieldBuff\.%s\)gnats\.\w+\(" % buff, use_against):
+            if not re.search(r"SkyIslandFieldBuff\.%s\)return gnats\.\w+\(" % buff, use_against):
                 errors.append("%s 的效果 %s 没有转给蚊群 owner" % (name, buff))
             if not re.search(r"SkyIslandFieldBuff\.%s\)return gnats != null && gnats\.\w+;" % buff, can_use):
                 errors.append("%s 的效果 %s 在 CanUse 里没问蚊群 owner（不成立时会白吃一件）" % (name, buff))
@@ -357,7 +365,17 @@ def main():
         require(spawn_weight, token, "刷新权重漏了一项现场条件")
     require(need_body(gnats, "private void Scatter(", "散开"), "bool leave = !night || windLevel >= 2 || enemiesNear || inSmoke || incense;",
             "天亮、二级风、敌人、烟、驱风香都要让已有的蚊群散开")
-    require(need_body(gnats, "private void Steer(", "逐只推进"), "motor.Dazzled = lantern &&", "风灯照着的云蚋要晃眼（风灯的另一半用处）")
+    steer = need_body(gnats, "private bool Steer(", "逐只推进")
+    require(steer, "motor.Dazzled = lantern &&", "风灯照着的云蚋要晃眼（风灯的另一半用处）")
+    require(steer, "if (step.sqrMagnitude <= 0f && (gnat.Leaving || motor.CanAct)) step = Cruise(",
+            "巡飞必须等眩晕与喘息结束；散场仍能飞走")
+    require(steer, "if (!gnat.Leaving && motor.CanAct) TryBite(", "眩晕与喘息期间不许叮咬")
+    require(steer, "if (moved) gnat.Root.transform.position = gnat.Position;", "没移动不写物理目标变换")
+    require(squash(rules), "internal bool CanAct { get { return Phase == SkyIslandGnatPhase.Idle && StunnedFor <= 0f; } }",
+            "主动行为门必须同时检查阶段与眩晕")
+    require(squash(rules), "return CanAct && !Dazzled && Budget >= 1f && Cooldown <= 0f;", "躲闪也要遵循主动行为门")
+    require(squash(clean_source(read("tests/fixtures/SkyIslandStory/SkyIslandGnatDodgeSimulation.cs"))), "else if (motor.CanAct)",
+            "离线模拟与运行时必须共用主动巡飞门")
     for name in ("LanternFactor", "LampFactor", "ZapperFactor"):
         if not number(rules, name) > 1:
             errors.append("%s 必须大于 1：风灯 / 风晶灯 / 灭蚊灯是招蚋的" % name)
@@ -396,9 +414,9 @@ def main():
         if marker["island"] != water["island"] or gap > FROG_SITE_REACH:
             errors.append("蛙卵面板 %s 不在 %s 边上（岛 %s / %s，离水面框 %.1f m > %.0f m）"
                           % (marker_id, water_id, marker["island"], water["island"], gap, FROG_SITE_REACH))
-    ordered(take_spawn, ("SkyIslandMosquitoRules.FrogsComplete(story.Current)", "if (carryingSpawn)", "if (!NightNow)",
+    ordered(take_spawn, ("SkyIslandMosquitoRules.FrogsComplete(story.Current)", "if (carryingSpawn)", "if (!NightNow)", "if (!story.CanWrite)",
                          "owner.ConsumeOne(BossRushItemIds.SkyIslandCloudmossFiber)", "carryingSpawn = true;"),
-            "捧蛙卵：放满了不捧、已经捧着不捧、白天不捧、先扣一把云苔纤维再捧起")
+            "捧蛙卵：放满/已捧/白天/记录只读都先拒绝，再扣纤维；不得让玩家支付注定无法交付的委托")
     release = need_body(gnats, "internal bool ReleaseSpawn(out string message)", "放回蛙卵")
     ordered(release, ("SkyIslandMosquitoRules.NextFrogNote(story.Current)", "if (!story.CanWrite)", "story.RecordNote(note, out recorded)",
                       "carryingSpawn = false;"), "放回蛙卵必须写屏障先挡、先记手记再放下")
@@ -411,6 +429,11 @@ def main():
     forbid(is_frog, "StartsWith(", "手记白名单不许按前缀放行")
     if not re.search(r'CarryingSpawn\s*\?\s*root\.transform\.Find\("Search_S1"\)', world):
         errors.append("捧着蛙卵时罗盘要指向蛙鸣池（Search_S1）")
+    # 携带中的局内交付物优先于另一个收集目标：不能让未收的信鸽截走蛙卵返程指引。
+    compass = need_body(world, "internal string CompassReading(Vector3 from)", "罗盘交付指引")
+    ordered(compass, ('swarm.CarryingSpawn ? root.transform.Find("Search_S1")', "if (pool != null)",
+                      "toPool.x, toPool.z", "if (pigeon != null)", "SkyIslandMapMarkers.ObjectiveTargets(story.Current)"),
+            "罗盘必须先处理正在送回的蛙卵，再指信鸽与常规目标")
     for label, text in (("名册", crew), ("手记", journal), ("居民台词", service)):
         if "SkyIslandMosquitoRules.FrogsComplete(data)" not in text:
             errors.append("三团蛙卵放满之后%s没有回应" % label)
@@ -453,7 +476,20 @@ def main():
              "health.team = Teams.wolf;", "health.maxHealthValue = SkyIslandMosquitoRules.GnatHealth;", "receiver.simpleHealth = health;",
              "go.SetActive(true);"),
             "云蚋必须先建成失活、配齐可被打中的组件再激活（HealthSimpleBase.Awake 立刻取接收体）")
-    require(need_body(gnats, "internal void Frame(", "逐帧"), "if (moved) Physics.SyncTransforms();", "挪完蚊群要同步物理变换，否则子弹扫不到新位置")
+    frame = need_body(gnats, "internal void Frame(", "逐帧")
+    require(frame, "if (moved) Physics.SyncTransforms();", "挪完蚊群要同步物理变换，否则子弹扫不到新位置")
+    ordered(frame, ("!HasFrameWork()) return;", "Quaternion view = ViewRotation();", "if (alive > 0) ReadAim(player, out muzzle, out aim);"),
+            "空闲帧必须先退出，只有活着的蚊群才读准星与枪口")
+    require(frame, "moved |= Steer(", "只有蚊群确实移动才同步物理变换")
+    idle = need_body(gnats, "private bool HasFrameWork()", "空闲帧门")
+    for token in ("alive > 0", "buzzing", "fanArc.enabled", "zappers[i] != null", "splats[i].Root.activeSelf"):
+        require(idle, token, "空闲帧门必须保留仍在播放或需要收尾的表现")
+    deploy = need_body(gnats, "internal bool DeployZapper(", "放置灭蚊灯")
+    ordered(deploy, ("if (!Physics.Raycast(", "message = SkyIslandMosquitoRules.ZapperNoGround;", "return false;",
+                     'go = new GameObject("SkyIslandGnatZapper");', "go.transform.position = hit.point;", "zappers[slot] = new Zapper"),
+            "无地面不能放灯：必须在创建与占槽前返回失败，由耗材调用方保留物品")
+    ordered(deploy, ("catch (Exception e)", "zappers[slot] = null;", "UnityEngine.Object.Destroy(go);", 'Fail("zapper", e);', "return false;"),
+            "灭蚊灯创建失败要清理占槽与半成品并返回失败")
     ordered(need_body(gnats, "internal void OnProjectile(", "弹道预测"),
             ("if (!Usable || alive == 0 || projectile == null) return;",
              "SkyIslandMosquitoRules.ShouldTrackProjectile(mine, context.gravity, context.explosionRange)",

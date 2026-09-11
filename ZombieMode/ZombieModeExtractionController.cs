@@ -219,11 +219,23 @@ namespace BossRush
                 return;
             }
 
+            if (!SettleZombieModeExtractionCashShell())
+            {
+                zombieModeRunState.ExtractionChanneling = false;
+                zombieModeRunState.BeaconChanneling = false;
+                zombieModeRunState.CombatPhase = ZombieModeCombatPhase.ExtractionOpportunity;
+                TryReleaseZombieModeExtractionCountdownUi();
+                NotificationText.Push(L10n.T(
+                    "净化点结算失败，奖励已保留；请稍后重新撤离。",
+                    "Purification payout failed; your reward was preserved. Try extracting again later."));
+                ShowZombieModeExtractionOpportunityUi(runId);
+                return;
+            }
+
             zombieModeRunState.ExtractionSuccessHandled = true;
             zombieModeRunState.CombatPhase = ZombieModeCombatPhase.SuccessExit;
             zombieModeRunState.ExtractionChanneling = false;
             zombieModeRunState.BeaconChanneling = false;
-            SettleZombieModeExtractionCashShell();
             ShowBigBanner(L10n.T("BossRush_ZombieMode_Settle_SuccessTitle"));
 
             // 通知战役契约（未启用时零成本早返）。必须早于场景切换：
@@ -241,19 +253,31 @@ namespace BossRush
             CleanupZombieModeForSceneChange(ZombieModeFailureReason.SuccessfulExtraction);
         }
 
-        private void SettleZombieModeExtractionCashShell()
+        private bool SettleZombieModeExtractionCashShell()
         {
             if (zombieModeRunState.PurificationPoints <= 0)
             {
-                return;
+                return true;
             }
 
             long cashGain = zombieModeRunState.PurificationPoints;
-            if (EconomyManager.Add(cashGain))
+            try
             {
-                NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_ExtractionCash"), cashGain.ToString("N0")));
+                if (EconomyManager.Add(cashGain))
+                {
+                    NotificationText.Push(string.Format(L10n.T("BossRush_ZombieMode_Notify_ExtractionCash"), cashGain.ToString("N0")));
+                    zombieModeRunState.PurificationPoints = 0;
+                    return true;
+                }
             }
-            zombieModeRunState.PurificationPoints = 0;
+            catch (System.Exception e)
+            {
+                DevLog("[ZombieMode] 净化点现金结算异常，保留欠账: " + e.Message);
+                return false;
+            }
+
+            DevLog("[ZombieMode] 净化点现金结算失败，保留欠账: " + cashGain);
+            return false;
         }
 
         private IEnumerator ZombieModeExtractionCountdownCoroutine(int runId)

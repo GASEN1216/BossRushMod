@@ -157,6 +157,7 @@ def main():
     require(read(SHIELD_RUNTIME), (
         "NewWeaponFx.PlayBurst(",
         "NewWeaponFx.PlaySound(NewWeaponSfx.ShieldAbsorb);",
+        "if (targetHealth == null || targetHealth.IsDead || !targetHealth.IsMainCharacterHealth) return;",
     ), "Fx:EnergyShield")
     require(read(SPEAR_RUNTIME), (
         # 每次命中都会跑，必须保留去重与「不点实时光」两个约束
@@ -166,6 +167,9 @@ def main():
     require(read(STAFF_ACTION), (
         "NewWeaponFx.PlaySound(NewWeaponSfx.SoulSummon);",
     ), "Fx:SummonStaff")
+    require(read(THUNDER_RUNTIME), (
+        "if (isPlayerHurt && targetHealth.IsDead) return;",
+    ), "Runtime:DeadHurtGate")
     require(read(MELEE_FX), (
         '[HarmonyPatch(typeof(CA_Attack), "OnStart")]',
         "NewWeaponSwingFx.PlayAt(",

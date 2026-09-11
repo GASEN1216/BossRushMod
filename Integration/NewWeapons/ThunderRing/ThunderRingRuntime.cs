@@ -89,6 +89,9 @@ namespace BossRush
             if (targetHealth == null) return;
 
             bool isPlayerHurt = targetHealth.IsMainCharacterHealth;
+            // 官方 Health.Hurt 在致死流程里先发 OnDead、再发 OnHurt；主角死后不再蓄雷。
+            // 避免重置电能后又被本次致死受击写回一层，局内复活继承上一条命的电能。
+            if (isPlayerHurt && targetHealth.IsDead) return;
             bool hasAttacker = damageInfo.fromCharacter != null;
             if (!isPlayerHurt && !hasAttacker) return;
 

@@ -14,13 +14,14 @@ namespace BossRush
         private int entrySlot;
         private string lastSaveError;
         private float nextRecoveryAt;
+        private bool assetSnapshotRequired;
         private string summaryCache, summaryStatus;
         private int summaryFlags;
 
         internal SkyIslandStoryService()
         {
             store = CreateStore();
-            coordinator = new BossRushSaveCoordinatorEngine(new SaveSource(store), false);
+            coordinator = new BossRushSaveCoordinatorEngine(new SaveSource(this, store), false);
         }
 
         private BossRushSlotJsonStore<SkyIslandStoryData> CreateStore()
@@ -48,6 +49,18 @@ namespace BossRush
         }
         internal SkyIslandStoryData Current { get { return store.Current; } }
         internal bool CanWrite { get { return IsCurrentSlot && !store.HasWriteBarrier && !store.IsStoreFaulted; } }
+
+        internal bool RequireAssetSnapshot(out string error)
+        {
+            error = null;
+            if (!CanWrite || SavesSystem.IsSaving || CharacterMainControl.Main == null ||
+                CharacterMainControl.Main.CharacterItem == null || PlayerStorage.Instance == null ||
+                !PlayerStorage.Instance.HasInitialized() || PlayerStorage.Loading ||
+                PlayerStorage.Inventory == null || PlayerStorageBuffer.Instance == null)
+            { error = "asset_save_not_ready"; return false; }
+            assetSnapshotRequired = true;
+            return true;
+        }
         /// <summary>
         /// 当前目标。HUD 每 0.5 秒读一次，而 `SkyIslandStoryRules.Objective` 每次都重新拼接字符串；
         /// 目标文本只取决于剧情位与界面语言，两者都没变就复用上一次的结果（口径同 <see cref="Summary"/>）。
@@ -249,6 +262,26 @@ namespace BossRush
             return RecordSearch(id, out message);
         }
 
+        /// <summary>
+        /// 仅供「已写入纪念品台账、但官方物品交付在真正接管实例前抛异常」的补偿路径使用。
+        /// 只删除当前槽中仍存在的精确 id；写屏障、槽位变化或编码失败时拒绝修改，避免把别的槽/别的事实一起回滚。
+        /// </summary>
+        internal bool RemoveNote(string id)
+        {
+            if (!CanWrite || string.IsNullOrEmpty(id)) return false;
+            SkyIslandStoryData current = Current;
+            if (current == null || current.discoveredNotes == null) return false;
+            var values = new List<string>(current.discoveredNotes);
+            int index = values.IndexOf(id);
+            if (index < 0) return false;
+            values.RemoveAt(index);
+            SkyIslandStoryData candidate = current.Copy();
+            candidate.discoveredNotes = values.ToArray();
+            if (!store.Store(candidate)) return false;
+            MarkPending(true);
+            return true;
+        }
+
         internal static int RegionBit(string id)
         {
             switch (id)
@@ -388,8 +421,8 @@ namespace BossRush
         private static string QingheGnatLine(SkyIslandStoryData data)
         {
             if (SkyIslandMosquitoRules.FrogsComplete(data))
-                return L10n.T("\n蛙鸣池又有蛙叫了，梯田水车边的蚋也少了。我那顶纱笠总算能歇一歇。",
-                    "\nFrogsong Pool is croaking again, and there are fewer gnats by the terrace water wheel. My veil can finally have a rest.");
+                return L10n.T("\n蛙鸣池又有蛙叫了。繁育的水边护好了，青蛙也愿意回来，水车边的蚋少了些。夜里下地我还是带着纱笠。",
+                    "\nFrogsong Pool is croaking again. With its breeding shallows tended, the frogs are returning and there are fewer gnats by the water wheel. I still bring my veil to work at night.");
             if (SkyIslandMosquitoRules.FrogsReleased(data) > 0)
                 return L10n.T("\n听说有人往蛙鸣池放了蛙卵？好——青蛙回来了，云蚋就少了。",
                     "\nI hear someone has been putting frogspawn back in Frogsong Pool? Good — when the frogs come back, the gnats thin out.");
@@ -414,7 +447,8 @@ namespace BossRush
         private static string ZhelingFrogLine(SkyIslandStoryData data)
         {
             if (SkyIslandMosquitoRules.FrogsComplete(data))
-                return L10n.T("\n寺里池子的青蛙回蛙鸣池去了，池边清静了。", "\nThe frogs from the temple pool have gone home to Frogsong Pool; it is quiet by the water now.");
+                return L10n.T("\n寺里的青蛙还在，蛙鸣池也有了新的繁育处。你送回去的蛙卵，让那片水边重新有人照看。",
+                    "\nThe temple frogs are still here, and Frogsong Pool has a breeding place again. The spawn you carried home means someone is tending those shallows once more.");
             return L10n.T("\n风灾那年，蛙鸣池的青蛙都逃进了寺里的池子。夜里去池边捧一团蛙卵，替它们回家吧。",
                 "\nThe year of the storm, the frogs of Frogsong Pool all fled into the temple pool. Scoop up some frogspawn from its edge one night and take them home.");
         }
@@ -429,8 +463,8 @@ namespace BossRush
             if (SkyIslandLights.AllLit(data))
                 return L10n.T("\n十盏灯都亮着。夜里从码头往外看，像一条回家的路。",
                     "\nAll ten lights are burning. At night, looking out from the dock, they read like a road home.");
-            return L10n.T("\n星灯亮了，工坊的熔晶炉又烧得起来了。攒够五片风晶碎片来找我，熔成一整块，拿去把岛上缺的灯点起来——灯旁暖和，夜风吹不透。",
-                "\nThe star lamp is lit, so the workshop's crystal furnace can burn again. Bring me five windcrystal shards and I will fuse them whole — take it and light the lamps the isles are missing. It is warm beside a lamp, and the night wind cannot get through.");
+            return L10n.T("\n星灯亮了，工坊的熔晶炉又烧得起来了。攒够五片风晶碎片，在我的渡口工台交给我熔成整块，拿去把岛上缺的灯点起来——灯旁暖和，夜风吹不透。",
+                "\nThe star lamp is lit, so the workshop's crystal furnace can burn again. Bring five windcrystal shards to my dock workbench and I will have them fused — take the crystal and light the lamps the isles are missing. It is warm beside a lamp, and the night wind cannot get through.");
         }
 
         internal void Tick(bool safeToFlush)
@@ -496,7 +530,7 @@ namespace BossRush
                 { lastSaveError = replacement.LastError ?? "recovery_read_barrier"; return false; }
                 if (!replacement.Store(accepted))
                 { lastSaveError = replacement.LastError ?? "recovery_store_failed"; return false; }
-                var replacementCoordinator = new BossRushSaveCoordinatorEngine(new SaveSource(replacement), false);
+                var replacementCoordinator = new BossRushSaveCoordinatorEngine(new SaveSource(this, replacement), false);
                 store.ShutdownSubscription();
                 store = replacement;
                 coordinator = replacementCoordinator;
@@ -524,20 +558,38 @@ namespace BossRush
             pendingSince = -1f;
             urgentPending = false;
             if (coordinator != null) coordinator.NotifySlotChanged();
+            assetSnapshotRequired = false;
         }
 
         private sealed class SaveSource : IBossRushSaveBatchSource
         {
+            private readonly SkyIslandStoryService owner;
             private readonly BossRushSlotJsonStore<SkyIslandStoryData> store;
-            internal SaveSource(BossRushSlotJsonStore<SkyIslandStoryData> value) { store = value; }
+            internal SaveSource(SkyIslandStoryService ownerValue, BossRushSlotJsonStore<SkyIslandStoryData> value)
+            { owner = ownerValue; store = value; }
             public string LogPrefix { get { return "[SkyIsland] "; } }
             public bool HasPendingWrite { get { return store.HasPendingWrite; } }
             public bool IsStoreFaulted { get { return store.IsStoreFaulted; } }
-            public bool HasSnapshotObligation { get { return false; } }
+            public bool HasSnapshotObligation { get { return owner.assetSnapshotRequired; } }
             public string LastError { get { return store.LastError; } }
-            public bool CollectSnapshot(out string error) { error = null; return true; }
+            public bool CollectSnapshot(out string error)
+            {
+                error = null;
+                if (!owner.assetSnapshotRequired) return true;
+                try
+                {
+                    // LevelManager.SaveMainCharacter 是官方程序集的 internal 成员，生产编译不可直接绑定；
+                    // 与 PetNest 的资产屏障一致，直接保存主角物品快照。
+                    CharacterMainControl.Main.CharacterItem.Save("MainCharacterItemData");
+                    SavesSystem.Save<float>("MainCharacterHealth", CharacterMainControl.Main.Health.CurrentHealth);
+                    PlayerStorage.Inventory.Save("PlayerStorage");
+                    PlayerStorageBuffer.SaveBuffer();
+                    return true;
+                }
+                catch (Exception e) { error = "asset_collect_failed:" + e.GetType().Name; return false; }
+            }
             public bool FlushPending() { return store.FlushPending(); }
-            public void OnPhysicalSaveSucceeded() { }
+            public void OnPhysicalSaveSucceeded() { owner.assetSnapshotRequired = false; }
         }
     }
 }

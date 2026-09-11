@@ -43,6 +43,7 @@ def main():
         "Campaign/CampaignPersistence.cs", "Campaign/CampaignSaveCoordinator.cs",
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
         "Integration/BackMountain/RaidMealUsageBehavior.cs",
+        "Integration/BackMountain/ShowcaseService.cs",
         "Common/Lifecycle/BossRushSaveFileThrottle.cs",
         "Common/Lifecycle/BossRushSaveCoordinatorEngine.cs",
         "Common/Lifecycle/BossRushSlotJsonStore.cs",
@@ -50,7 +51,8 @@ def main():
         "Utilities/SimpleJsonHelper.cs",
     ] + ["PetNest/" + name + ".cs" for name in (
         "PetNestService", "PetNestModels", "PetNestTuning", "PetNestPersistenceCodec",
-        "PetNestPersistence", "PetNestSaveCoordinator", "PetNestHatchService", "PetNestMuseumStats")]
+        "PetNestPersistence", "PetNestSaveCoordinator", "PetNestHatchService", "PetNestMuseumStats",
+        "PetNestExpeditionService")]
     paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", OUT / "Extracted.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)
