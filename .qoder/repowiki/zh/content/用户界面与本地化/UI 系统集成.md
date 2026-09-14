@@ -381,3 +381,148 @@ BossRush 的 UI 系统集成通过扫描与注入机制，实现了在基地入�
 `Campaign/CampaignBoardView.cs` 改为 1040×840 公告板：标题和关闭入口固定，六章正文放入带滑块的独立 ScrollRect。每条目标另起一行，18 号正文按实际高度扩展卡片，标题、目标与右侧动作互相让位；不再把整章目标压进固定 40px 高度。公告板和 `Integration/BackMountain/ShowcaseUI.cs` 的标题背景都锚到面板左右两端，修复旧版只占右半边导致的偏移。章节状态、接约/交付/放弃与登记奖励不变；实机操作和双语文本待验。
 
 `Integration/Affinity/AffinityUIManager.cs` 的关系提示采用共享深色皮肤、320×104 留白和 20/16 号文字，原有心形图标保留；名称、等级、进度条分区，装饰与文字均透传点击。`Integration/UI/ImageViewerUI.cs` 的图片通过锚点和 preserveAspect 自动适配画布，上下各留 110px，避免 4K 二次放大；标题/提示绑定游戏字体。资源失败时明确提示“图片暂不可用”，不再创建大渐变占位图或无限显示“加载中”。`Integration/Codex/CodexView.cs` 的高度使用共享逻辑视口。原输入与资源归属流程保持不变；高清屏、长标题、加载失败与重开待实机复测。
+
+
+## 附录二：共享 UI 库的皮肤分档与描边（2026-09-13）
+
+`Common/UI/BossRushUI.cs` 这一轮加了两件全 Mod 共享的东西，新建界面时直接用，不要各写各的。
+
+### 皮肤分档 `BossRushUISkinPart`
+
+`Assets/ui/bossrush_ui_skin` 里有六张九宫格图，但同一个 `radius` 对应的不是同一张：
+
+| 分档 | Auto 触发 | 注入后用哪张 |
+| --- | --- | --- |
+| `Hairline` | `radius <= 3` | **一律程序化** |
+| `Rule` | 显式传 | `divider`（横向分隔线） |
+| `Button` | `4 <= radius <= 11` | `button_normal` |
+| `Card` | 显式传 | `panel_raised`（卡片、列表行） |
+| `Panel` | `radius >= 12` | `panel_surface` |
+| `ScrollHandle` | 显式传 | `scroll_handle` |
+
+```csharp
+BossRushUI.ApplyPanelSkin(image, 10);                                   // Auto -> Button
+BossRushUI.ApplyPanelSkin(image, 10, BossRushUISkinPart.Card);          // 卡片 / 列表行
+BossRushUI.ApplyPanelSkin(rule, 2, BossRushUISkinPart.Rule);            // 分隔线，rect 高度必须 >= 5
+```
+
+两条会咬人的细节：
+
+- **3px 上任何图都会糊。** Unity 的 `Image.GetAdjustedBorders` 在 rect 小于 border 之和时会把 border
+  等比压下去并把中心区压到 0。3px 宽的强调竖条穿 32×32 / border 10 的按钮图，画出来是按钮圆角的
+  一道糊痕，**比程序化半径还差**——所以 `Hairline` 一律走程序化。
+- **`divider` 的亮带在可拉伸的中心区。** rect 高度 1 时上下 border 各分到 0.5px、中心区归零，
+  整条线画不出来。生产里用 8。
+
+### 描边 `ApplyPanelStroke`
+
+**深色 UI 上，图集里烤进去的描边会被 `Image.color` 乘没。** 实算：`panel_surface` 的描边像素与
+填充像素灰度差 49/255，乘上 `BossRushUIColors.Surface(0.045,0.055,0.065)` 之后，屏幕上只剩
+**2.9/255** 的通道差（`SurfaceRaised` 上 4.9/255），是 8bit 量化底噪级别。
+亮底（`Accent`）上还剩 35.3/255——所以「图集有描边」这件事只在亮底上成立。
+
+要让深色面板有边，描边必须是**独立 Image + 独立亮色 token**：
+
+```csharp
+BossRushUI.ApplyPanelSkin(surface, 18, BossRushUISkinPart.Panel);
+BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUIColors.Stroke);
+```
+
+`ApplyPanelStroke` 生成一张「只有环、中心透明」的圆角九宫格，**圆角按图集实际的 border 取**
+（`GetSkinCornerRadius`：注入图集后面板的圆角是 16，不是你传的 18；按传入值画会露出一道错位的弧）。
+描边 `raycastTarget=false`，不吃点击。
+
+`BossRushUIColors.Stroke` = `Divider` 同色相、alpha 0.78。为什么不直接用 `Divider`：它自带 0.32，
+铺成描边对面板底只有 **1.54:1**，低于 WCAG 1.4.11 对非文本的 3:1，画了等于没画。
+0.78 在亮云海到暗地形的整个区间里都稳在 3.1:1 以上。
+
+**列表行尤其不能省**：`SurfaceRaised` 对 `Surface` 只有 **1.03:1**，不画边的话玩家看到的
+不是「一个可点的区域」，只是几行浮着的字。
+
+### 缓动
+
+`BossRushUI.EaseOut`（二次 ease-out）与 `BossRushUI.SmoothStep` 是全 Mod 仅有的两条曲线。
+**位移用 EaseOut**（元素飞进屏幕时模拟自然停稳），**原地淡入用 SmoothStep**（两头都收）。
+退场不套曲线，线性即可。子元素错峰入场用 `BossRushUIEntranceAnimation.Play(go, delay, duration, rise)`，
+它只改 CanvasGroup.alpha 与 anchoredPosition，**不碰 `interactable`**——动效绝不能变成输入延迟。
+两者都走 unscaled 时间，所以都自带 `BossRushUI.IsGamePaused()` 门。
+
+**不引入 DOTween / PrimeTween**：Mod 每多一个依赖就多一个分发与版本面，而这两条曲线各一行。
+
+
+### 面板底铺图的两条坑（2026-09-13）
+
+天空岛剧情面板把整块面板底换成了区域插图。两条踩过的坑，别的界面要铺图时直接抄：
+
+1. **横图不能直接 cover 到竖面板上。** 面板 880 × 约 940（0.94:1），横幅 1024×288（3.56:1），
+   cover 要放大 **3.26 倍**、只看得见原图中间 26% 的宽度，平滑渐变会出现带状阶梯。
+   正解是出一张**为模糊而生**的小图（220×236 + 高斯模糊），模糊之后分辨率就不重要了。
+   派生脚本：`tools/gen_sky_island_panel_backgrounds.py`（纯 Pillow，不调生图 API）。
+
+2. **压暗 / 渐隐要放到文字所在的位置，不是放到好看的位置。**
+   `SkyIslandUiArt.GetBannerFade()` 是 `alpha = t²`，不透明度全堆在底边；
+   标题上沿离底边 123 px、渐隐 153 px 时那里 alpha 只有 0.19，等于没压。
+   正解是「实底带罩住文字 + 带子上方再淡出到全透」——带子按**文字的实际上沿**算高度，
+   渐变整体乘上和带子相同的 alpha，接缝处才不露亮缝。
+   （区域大标题的压暗底是同一类 bug 的另一个实例，见 `SkyIslandUiArt.GetTitleScrim`。）
+
+另外，**圆角面板铺图必须用 `Mask`**（模板取面板同一张九宫格、`showMaskGraphic=false`），
+并把容器内缩 1px：模板是二值的，切出来是硬边，留 1px 让面板自己那圈带抗锯齿的圆角露在外面。
+
+## 附录三：官方界面能用就别自绘；选项先判断再挂（2026-09-13 第三轮）
+
+### 先问一句「官方有没有，我们自己是不是已经封装过」
+
+天空岛做到第三轮才发现：**官方对话与官方图鉴我们自己早就封装好了，天空岛两处都零调用**。
+
+| 能力 | 官方 | 我们的封装 | 谁在用 |
+| --- | --- | --- | --- |
+| 剧情对话 | `Dialogues.DialogueUI` + NodeCanvas `DialogueTree` | `Integration/Dialogue/DialogueManager` + `DialogueActorFactory` | 征程、快递员 |
+| 图鉴条目 | `Duckov.NoteIndexs.NoteIndex` | 范例 `Campaign/CampaignNoteBridge.cs` | 征程 |
+
+自绘了一套之后的代价是具体的：长台词只能一次糊在正文位（最长一段 156 个中文字符），
+自建图鉴一趟结束就翻不到，还多出 20 行 `□ …（尚未收录）` 的空占位。
+
+**新增子系统的界面，先照这张表过一遍。** 口径进了 `AGENTS.md` §4.14，
+由 `tests/SkyIslandOfficialApiReuseGuard.py` 守卫。
+
+### 自绘面板什么时候才该保留——理由必须写进文件头
+
+官方 `DialogueUI` 只给「台词 + 纯文本选项」，**给不了 `timeScale = 0` 的模态**。
+天空岛面板里挂着回血（苔药）与整备，没有模态门它就是战斗中的免费暂停 + 回血站——
+**这就是保留它的唯一理由**，现在写在 `SkyIslandStoryPresentation.cs` 的文件头。
+
+这条此前只存在于本 wiki，代码里一个字没有，所以 owner 直接问了出来「有没有用原版的 api」。
+**凡是「官方有但我们不用」的地方，理由都要写在代码里，并且配一条断言它还在的守卫。**
+
+### 混合架构的接法
+
+叙事走官方、功能留自绘时，有三个坑：
+
+1. **fail-open 必须覆盖每一条失败路径**（拿不到 actor、抛异常、玩家中途退出）。
+   跟 NPC 说不上话不能变成「接不了委托」。天空岛的实现里 `openPanel()` 出现在 4 个分支上。
+2. **面板的「重开」不能指回对话入口**。指回去的话，每点一个功能项都要把整段台词重听一遍。
+3. **官方对话不压 `timeScale`**。要么接受对话中受击（与快递员同口径），
+   要么自己在会话侧挡（天空岛用 `BlockedByCombat()` 挡住战斗中开口）。
+
+### 选项：先判断再挂，不要挂灰项
+
+旧写法是选项一律先挂上、前置判断全丢进 `Select` 回调，于是玩家看到的是**一屏点不动的按钮**。
+正确的形状：
+
+- 「能不能挂」与「点了会不会被拒」**共用同一份判据**（天空岛是 `SkyIslandStoryRules.Describe`），
+  否则迟早分叉。
+- 做不了就**整条不挂**——**不要挂灰掉的占位项**，灰项和挂满一样吵，玩家还是会去点。
+- 前置没满足时把「还差什么」收进正文当引导；**已经做完则什么都不留**
+  （「这段已经完成」不是引导，是噪声）。
+- 同一页超过 3–4 项就分二级子菜单。**不需要新建框架**：每个开面板的方法把「重开」指向自己，
+  「进子页」就是调另一个开面板的方法，「返回」就是子页里的一个选项。
+
+由 `tests/SkyIslandChoiceGateGuard.py` 守卫（11 个反向检查）。
+
+### 抠图立绘不要再套底板
+
+`SkyIslandUiArt` 的六张居民立绘是 512×512 RGBA **真抠图**（四角 alpha=0、透明像素占 35–50%），
+此前却被「圆角底板 + 描边 + 内缩 5px」三层装回了框里。抠图就该直接站在插图上；
+边缘会糊的问题用**脚下落影**解决（一张程序化径向柔光，`SkyIslandUiArt.GetRadialGlow()`），
+不是用一块黑底板解决。

@@ -2,7 +2,7 @@
 // BossRushUISkinLoader.cs - UI 图集换皮加载器
 // ============================================================================
 // 规格见 docs/制作教程/BossRushUI_图集规格.md。做的事只有一件：
-// 把 AssetBundle 里的九宫格底图喂给 BossRushUISkin 的注入点，全 Mod 面板即刻换皮，
+// 把 AssetBundle 里的**五张**九宫格底图喂给 BossRushUISkin 的注入点，全 Mod 面板即刻换皮，
 // **调用方代码零改动**（ApplyPanelSkin 每次调用都现查皮肤，不缓存 Sprite 引用）。
 //
 // 【fail-open，与 Mode G 的 fail-closed 相反】
@@ -37,8 +37,21 @@ namespace BossRush
         /// <summary>面板底图资源名（48×48，border 16）。</summary>
         private const string PanelAssetName = "panel_surface";
 
+        /// <summary>卡片 / 列表行底图资源名（48×48，border 16）。</summary>
+        private const string RaisedAssetName = "panel_raised";
+
         /// <summary>按钮底图资源名（32×32，border 10）。</summary>
         private const string ButtonAssetName = "button_normal";
+
+        /// <summary>横向分隔线资源名（8×8，border 2）。亮带在可拉伸中心区，rect 高度必须 ≥5。</summary>
+        private const string RuleAssetName = "divider";
+
+        /// <summary>滚动条滑块资源名（24×24，border 8）。</summary>
+        private const string HandleAssetName = "scroll_handle";
+
+        // bundle 里还有一张 button_hover（32×32 / border 10）**刻意不加载**：
+        // 按钮三态走 BossRushUI.GetHoverColor + ColorBlock 的绝对色，再换一张底图会和乘色打架。
+        // 图集规格 §2 本来就把它写成可选项（「留空则用 color tint」）。
 
         private const string LogPrefix = "[BossRushUISkin] ";
 
@@ -71,21 +84,28 @@ namespace BossRush
                 if (!EnsureBundleLoaded()) return;
 
                 Sprite panel = LoadBundleSprite(PanelAssetName);
+                Sprite raised = LoadBundleSprite(RaisedAssetName);
                 Sprite button = LoadBundleSprite(ButtonAssetName);
+                Sprite rule = LoadBundleSprite(RuleAssetName);
+                Sprite handle = LoadBundleSprite(HandleAssetName);
 
-                if (panel == null && button == null)
+                if (panel == null && raised == null && button == null && rule == null && handle == null)
                 {
                     ModBehaviour.DevLog(LogPrefix + "bundle 里没有可用底图，保持程序化皮肤");
                     return;
                 }
 
-                // 允许只有其中一张：另一张继续用程序化，注入 null 就是「保持默认」
+                // 允许只有其中几张：缺的那几档继续用程序化，注入 null 就是「保持默认」
                 if (panel != null) BossRushUISkin.InjectPanelSprite(panel);
+                if (raised != null) BossRushUISkin.InjectRaisedSprite(raised);
                 if (button != null) BossRushUISkin.InjectButtonSprite(button);
+                if (rule != null) BossRushUISkin.InjectRuleSprite(rule);
+                if (handle != null) BossRushUISkin.InjectScrollHandleSprite(handle);
 
                 _injected = true;
                 ModBehaviour.DevLog(LogPrefix + "美术皮肤已注入 panel=" + (panel != null)
-                    + " button=" + (button != null));
+                    + " raised=" + (raised != null) + " button=" + (button != null)
+                    + " rule=" + (rule != null) + " handle=" + (handle != null));
             }
             catch (Exception e)
             {
@@ -173,7 +193,10 @@ namespace BossRush
             try
             {
                 BossRushUISkin.InjectPanelSprite(null);
+                BossRushUISkin.InjectRaisedSprite(null);
                 BossRushUISkin.InjectButtonSprite(null);
+                BossRushUISkin.InjectRuleSprite(null);
+                BossRushUISkin.InjectScrollHandleSprite(null);
             }
             catch (Exception e)
             {

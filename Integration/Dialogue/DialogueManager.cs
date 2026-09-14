@@ -19,6 +19,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading;
 using UnityEngine;
 using Cysharp.Threading.Tasks;
 using Dialogues;
@@ -291,7 +292,13 @@ namespace BossRush
         /// <param name="dialogues">对话数组，每项为 [中文, 英文]</param>
         /// <param name="keyPrefix">本地化键前缀</param>
         /// <returns>对话序列完成后返回</returns>
-        public static async UniTask ShowDialogueSequenceBilingual(IDialogueActor actor, string[][] dialogues, string keyPrefix = "BossRush_Dialogue")
+        public static UniTask ShowDialogueSequenceBilingual(IDialogueActor actor, string[][] dialogues, string keyPrefix = "BossRush_Dialogue")
+        {
+            return ShowDialogueSequenceBilingual(actor, dialogues, keyPrefix, CancellationToken.None);
+        }
+
+        /// <summary>带会话取消的重载；取消必须传到实际等待，不能只隐藏 UI。</summary>
+        public static async UniTask ShowDialogueSequenceBilingual(IDialogueActor actor, string[][] dialogues, string keyPrefix, CancellationToken cancellationToken)
         {
             if (actor == null || dialogues == null || dialogues.Length == 0)
             {
@@ -299,6 +306,7 @@ namespace BossRush
                 return;
             }
             
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 // 开始对话序列
@@ -306,6 +314,7 @@ namespace BossRush
                 
                 for (int i = 0; i < dialogues.Length; i++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     if (dialogues[i] == null || dialogues[i].Length < 2) continue;
                     
                     string textCN = dialogues[i][0];
@@ -319,11 +328,16 @@ namespace BossRush
                     ModBehaviour.DevLog(LOG_TAG + " 显示对话 " + (i + 1) + "/" + dialogues.Length + ": " + localizedText);
                     
                     LocalizedStatement statement = new LocalizedStatement(key);
-                    await ShowDialogueInternal(actor, statement, skipInputManagement: true);
+                    await ShowDialogueInternal(actor, statement, skipInputManagement: true, cancellationToken: cancellationToken);
                 }
                 
                 // 结束对话序列
                 EndDialogueSession();
+            }
+            catch (OperationCanceledException)
+            {
+                EndDialogueSession();
+                throw;
             }
             catch (Exception e)
             {
@@ -378,7 +392,13 @@ namespace BossRush
         /// <param name="timeout">超时时间（秒），0表示无限等待</param>
         /// <param name="keyPrefix">本地化键前缀</param>
         /// <returns>玩家选择的索引（从0开始），超时返回-1</returns>
-        public static async UniTask<int> ShowMultipleChoiceBilingual(IDialogueActor actor, string[][] choices, float timeout = 0f, string keyPrefix = "BossRush_Choice")
+        public static UniTask<int> ShowMultipleChoiceBilingual(IDialogueActor actor, string[][] choices, float timeout = 0f, string keyPrefix = "BossRush_Choice")
+        {
+            return ShowMultipleChoiceBilingual(actor, choices, timeout, keyPrefix, CancellationToken.None);
+        }
+
+        /// <summary>带会话取消的重载；保留原四参签名供既有调用方使用。</summary>
+        public static async UniTask<int> ShowMultipleChoiceBilingual(IDialogueActor actor, string[][] choices, float timeout, string keyPrefix, CancellationToken cancellationToken)
         {
             if (actor == null || choices == null || choices.Length == 0)
             {
@@ -386,6 +406,7 @@ namespace BossRush
                 return -1;
             }
             
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 // 构建选项字典
@@ -402,8 +423,9 @@ namespace BossRush
                     options[statement] = i;
                 }
                 
-                return await ShowMultipleChoiceInternal(actor, options, timeout);
+                return await ShowMultipleChoiceInternal(actor, options, timeout, cancellationToken);
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(LOG_TAG + " [ERROR] ShowMultipleChoiceBilingual 出错: " + e.Message);
@@ -416,16 +438,15 @@ namespace BossRush
         // 内部实现
         // ============================================================================
         
-        // 对话完成标志（用于等待回调）
-        private static bool dialogueCompleted = false;
         
         /// <summary>
         /// 显示单条对话的内部实现
         /// 使用 DialogueTree.RequestSubtitles() 触发事件，由 DialogueUI 处理显示
         /// 需要先手动显示 mainFadeGroup，因为 OnDialogueStarted 不会被触发
         /// </summary>
-        private static async UniTask ShowDialogueInternal(IDialogueActor actor, LocalizedStatement statement, bool skipInputManagement = false)
+        private static async UniTask ShowDialogueInternal(IDialogueActor actor, LocalizedStatement statement, bool skipInputManagement = false, CancellationToken cancellationToken = default(CancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // 检查 DialogueUI 是否可用
             if (DialogueUI.instance == null)
             {
@@ -442,7 +463,7 @@ namespace BossRush
             try
             {
                 // 重置完成标志
-                dialogueCompleted = false;
+                bool dialogueCompleted = false; // 请求独占，迟到回调不能推进下一段。
                 
                 // 创建对话请求信息，带完成回调
                 SubtitlesRequestInfo info = new SubtitlesRequestInfo(
@@ -461,8 +482,9 @@ namespace BossRush
                 
                 // 等待对话完成回调（玩家点击继续）
                 // 使用 UniTask.WaitUntil 等待标志变为 true
-                await UniTask.WaitUntil(() => dialogueCompleted);
+                await UniTask.WaitUntil(() => dialogueCompleted, cancellationToken: cancellationToken);
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(LOG_TAG + " [ERROR] ShowDialogueInternal 出错: " + e.Message + "\n" + e.StackTrace);
@@ -477,16 +499,14 @@ namespace BossRush
             }
         }
         
-        // 多选对话结果（用于等待回调）
-        private static int multipleChoiceResult = -1;
-        private static bool multipleChoiceCompleted = false;
         
         /// <summary>
         /// 显示多选对话的内部实现
         /// 注意：直接调用 DialogueUI 的方法而不是通过 DialogueTree 事件
         /// </summary>
-        private static async UniTask<int> ShowMultipleChoiceInternal(IDialogueActor actor, Dictionary<IStatement, int> options, float timeout)
+        private static async UniTask<int> ShowMultipleChoiceInternal(IDialogueActor actor, Dictionary<IStatement, int> options, float timeout, CancellationToken cancellationToken = default(CancellationToken))
         {
+            cancellationToken.ThrowIfCancellationRequested();
             // 检查 DialogueUI 是否可用
             if (DialogueUI.instance == null)
             {
@@ -500,8 +520,8 @@ namespace BossRush
             try
             {
                 // 重置完成标志
-                multipleChoiceCompleted = false;
-                multipleChoiceResult = -1;
+                bool multipleChoiceCompleted = false;
+                int multipleChoiceResult = -1;
                 
                 // 创建多选请求信息
                 MultipleChoiceRequestInfo info = new MultipleChoiceRequestInfo(
@@ -519,7 +539,7 @@ namespace BossRush
                 DialogueTree.RequestMultipleChoices(info);
                 
                 // 等待玩家选择
-                await UniTask.WaitUntil(() => multipleChoiceCompleted);
+                await UniTask.WaitUntil(() => multipleChoiceCompleted, cancellationToken: cancellationToken);
                 
                 ModBehaviour.DevLog(LOG_TAG + " 玩家选择了选项: " + multipleChoiceResult);
                 return multipleChoiceResult;
