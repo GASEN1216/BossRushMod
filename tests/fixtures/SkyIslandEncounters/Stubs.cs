@@ -179,8 +179,10 @@ namespace BossRush
 
     internal sealed class SkyIslandStormBoss : UnityEngine.MonoBehaviour
     {
-        internal static int Bound;
+        internal static int Bound, EchoBound;
+        internal static Action LastDefeated;
         internal void Bind(CharacterMainControl character, Func<bool> valid,
-            Action<string, bool> report, Action defeated) { Bound++; }
+            Action<string, bool> report, Action defeated, bool echo)
+        { Bound++; if (echo) EchoBound++; LastDefeated = defeated; }
     }
 }

@@ -55,6 +55,10 @@ namespace BossRush
         /// <summary>信鸽的一次性落点闩（SKY_LETTER_PIGEON）：为真表示这一趟已经放过（或放不下而放弃），等收信后重新武装。</summary>
         internal bool ValidationPigeonPlaced { get { return worldStory != null && worldStory.PigeonPlaced; } }
         internal bool ValidationPigeonPresent { get { return worldStory != null && worldStory.PigeonPresent; } }
+        /// <summary>这一趟引过几次风（SKY_STORM_ECHO）。按本趟计，不进存档。</summary>
+        internal int ValidationStormEchoStarts { get { return stormEchoStarts; } }
+        /// <summary>这一趟的噬风·回响清场了没有（SKY_STORM_ECHO）。</summary>
+        internal bool ValidationStormEchoCleared { get { return stormEchoCleared; } }
         /// <summary>本趟手记首页实际挂出的项数（SKY_CHOICE_GATES）；本趟没打开过手记时为 -1。</summary>
         internal int ValidationJournalHomeChoices { get { return worldStory == null ? -1 : worldStory.JournalHomeChoices; } }
         /// <summary>本局全部见闻点标记名（含 _02 点位）。F3 英文完整性用例遍历真实点位，不再手写一份清单。</summary>

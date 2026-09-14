@@ -262,6 +262,9 @@ namespace BossRush
             }
             scan.Dispose();
             scan = null;
+            // 物资池趁读条预热，每个品质带占一帧（CR-2026-09-14-014）：懒建时第一次走近远航 / 星工档箱子会卡一下。
+            IEnumerator warm = SkyIslandLootPools.Prewarm();
+            while (warm.MoveNext()) yield return warm.Current;
             // 导航扫描跨了很多帧，相机已经剔除过若干次：这一次的 `visible` 才是可信的。
             SkyIslandRendering.LogDiagnostics(root, groundLayer, wallLayer, "post_scan");
             int nodes = navigation.CountWalkableNodes();
@@ -621,13 +624,17 @@ namespace BossRush
         private void Update()
         {
             if (closed) return;
+            // Dev 构建的帧时间分项计时（SkyIslandFrameProfile）：每处 Mark 记「上一处到这里」这一段；正式构建里这些调用整条不存在。
+            SkyIslandFrameProfile.Start();
             // HUD 必须赶在下面几处提前 return 之前驱动：装配中、返航派发中、死亡后都要把它收起来，
             // 否则右侧卡片、区域大标题与字幕会浮在官方读条黑幕和撤离结算画面上面。
             // 淡入淡出只吃 unscaled 时间：剧情面板把 timeScale 压到 0 时显隐过渡照常走完。
             if (hud != null) hud.Tick(Time.unscaledDeltaTime, HudSuppressed());
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Hud);
             if (returnRequested) { DispatchReturnIfReady(); return; }
             if (!ready) return;
             if (worldStory != null) worldStory.Tick();
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StoryRest);
             if (player == null || player != CharacterMainControl.Main || root == null || !entryScene.isLoaded)
             { Close(false, "owner_lost"); return; }
             if (story != null && !story.IsCurrentSlot) { Close(true, "save_slot_changed"); return; }
@@ -642,7 +649,9 @@ namespace BossRush
                 return;
             }
             if (encounters != null) encounters.Tick();
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Encounters);
             if (scavenging != null) scavenging.Tick();
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Scavenging);
             if (residents != null)
             {
                 // 折翎被战胜后不再露面：战斗实例用的就是他自己的脸和名字，若照旧放回剧情体，
@@ -657,6 +666,7 @@ namespace BossRush
                 residents.SetVisible("sky_zheling", !ZhelingDefeated && !HasStoryChallengeStarted("Zheling"));
                 residents.SetVisible("sky_bellkeeper", !IsStoryChallengeActive("BellKeeper"));
             }
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Residents);
             // 落盘门按半径而不是全图。自动组改成按出击刷新之后，全岛几乎总有活着的敌人，
             // 用 `HasLivingEnemies` 等于把这道门永久关上：已接受的剧情事实只能等离岛或死亡才写盘，
             // 中途崩溃或强退就全丢。半径口径既保留「不在交火帧写盘」的本意，又让玩家清完手边这一段
@@ -664,13 +674,17 @@ namespace BossRush
             if (story != null)
                 story.Tick(encounters == null ||
                     !encounters.HasLivingEnemiesWithin(player.transform.position, SaveQuietRadius));
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StorySave);
             if (gates != null) gates.Apply(story.Current);
             // 钟庭环与 BellExitIfUnlocked() 同一事实源：地上看得到的圈，就是站进去能走的圈。
             if (extractionRings != null) extractionRings.Apply(BellExitIfUnlocked() != null);
             if (extractionRings != null) extractionRings.ApplyBeacons(WindExitIfUnlocked() != null, StarExitIfUnlocked() != null);
             if (mapMarkers != null) mapMarkers.Apply(story.Current, exitMarker, BellExitIfUnlocked(), WindExitIfUnlocked(), StarExitIfUnlocked());
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.GatesAndMarkers);
             if (lighting != null) lighting.Tick();
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Lighting);
             if (ambience != null) { ambience.ApplyStory(story.Current); ambience.Tick(player.transform.position); }
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Ambience);
             Vector3 local = player.transform.position - origin;
             if (local.y < -8 || Mathf.Abs(local.x) > 475 || Mathf.Abs(local.z) > 425)
             { Rescue(); return; }
@@ -691,6 +705,7 @@ namespace BossRush
                 else if (airborneSince < 0) airborneSince = Time.time;
                 else if (Time.time - airborneSince > 2.5f) { Rescue(); return; }
             }
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.GroundProbe);
             Transform extraction;
             bool insideExtraction = IsInsideExtraction(out extraction);
             if (Time.unscaledTime > enteredAt + 1 && insideExtraction)
@@ -735,6 +750,7 @@ namespace BossRush
                     hud.SetStatus(story != null && !story.CanWrite ? story.SaveStatus : null);
                 }
             }
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.HudRefresh);
         }
 
         /// <summary>
@@ -809,79 +825,7 @@ namespace BossRush
             }
             return result;
         }
-        internal static string LandmarkLabel(string name)
-        {
-            if (name.Length > 4 && name[4] >= 'A' && name[4] <= 'H') return MainRegionLabel(name[4]);
-            if (name == "POI_S1") return RegionLabel("S1");
-            if (name == "POI_S2") return RegionLabel("S2");
-            if (name == "POI_S3") return RegionLabel("S3");
-            if (name == "POI_S4") return RegionLabel("S4");
-            return name.Replace("POI_", "").Replace('_', ' ');
-        }
-
-        /// <summary>
-        /// 区域 id（A–H / S1–S4）→ 玩家看得懂的地名。每 0.5 秒的 HUD 刷新都会走到这里，
-        /// 所以不再像旧写法那样每次 new 两个八元素数组，全部是直接返回字面量的分支。
-        /// </summary>
-        internal static string RegionLabel(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return string.Empty;
-            if (id.Length == 1 && id[0] >= 'A' && id[0] <= 'H') return MainRegionLabel(id[0]);
-            switch (id)
-            {
-                case "S1": return L10n.T("蛙鸣池", "Frogsong Pool");
-                case "S2": return L10n.T("倒挂邮亭", "Upturned Post Hut");
-                case "S3": return L10n.T("听雨洞", "Rainlisten Grotto");
-                case "S4": return L10n.T("残星瞭台", "Starfall Overlook");
-                default: return id.Replace('_', ' ');
-            }
-        }
-
-        private static string MainRegionLabel(char region) { return L10n.T(MainRegionCn(region), MainRegionEn(region)); }
-
-        private static string MainRegionCn(char region)
-        {
-            switch (region)
-            {
-                case 'A': return "登云码头";
-                case 'B': return "风铃集";
-                case 'C': return "青穗梯田";
-                case 'D': return "悬根林";
-                case 'E': return "鸣风栈道";
-                case 'F': return "镜水寺";
-                case 'G': return "残星工坊";
-                default: return "归航钟庭";
-            }
-        }
-
-        private static string MainRegionEn(char region)
-        {
-            switch (region)
-            {
-                case 'A': return "Cloudrise Dock";
-                case 'B': return "Windchime Market";
-                case 'C': return "Green Terraces";
-                case 'D': return "Hanging Root Wood";
-                case 'E': return "Windsong Boardwalk";
-                case 'F': return "Mirrorwater Temple";
-                case 'G': return "Fallen Star Workshop";
-                default: return "Homecoming Bell Court";
-            }
-        }
-        /// <summary>
-        /// 遭遇 id → 玩家看得懂的名字。id 是 World.json 里的内部键（`C_02` / `S1` / `Zheling`），
-        /// 直接拼进「航路已清理 · C_02」等于把调试键名念给玩家听。
-        /// 区域遭遇取所在地标名，具名对手取角色名；解析不出来时落到 LandmarkLabel 的兜底写法。
-        /// </summary>
-        internal static string EncounterLabel(string id)
-        {
-            if (string.IsNullOrEmpty(id)) return string.Empty;
-            if (id == "Zheling") return SkyIslandWorldStory.ResidentName("sky_zheling");
-            if (id == "BellKeeper") return L10n.T("守钟装置", "the bell engine");
-            if (id == "Storm") return L10n.T("噬风", "the Windeater");
-            int underscore = id.IndexOf('_');
-            return LandmarkLabel("POI_" + (underscore < 0 ? id : id.Substring(0, underscore)));
-        }
+        // 地名与对手名（LandmarkLabel / RegionLabel / EncounterLabel）原样挪进了 SkyIslandSessionLabels.cs。
         private void OnStartedLoading(SceneLoadingContext context)
         {
             if (context.sceneName == SkyIslandSceneReferenceBridge.SceneName && !moved) return;
@@ -1117,6 +1061,8 @@ namespace BossRush
             if (id == "BellKeeper" && (!story.Current.BothBeacons || story.Current.BellKeeperResolved)) return false;
             // 噬风循着重新亮起的两盏灯而来：双航标是它到场的唯一前置，击败后不再出现。
             if (id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)) return false;
+            // 噬风·回响只走引风（SkyIslandSessionEcho.TryBeginStormEcho）：那一条要先判五项、再烧风晶。
+            if (SkyIslandStormEchoRules.IsEcho(id)) return false;
             return encounters.BeginChallenge(id);
         }
         private bool EncounterWasSaved(string id)
@@ -1125,6 +1071,7 @@ namespace BossRush
             if (id == "Zheling") return story.Current.ZhelingResolved;
             if (id == "BellKeeper") return story.Current.BellKeeperResolved;
             if (id == "Storm") return story.Current.StormResolved;
+            if (SkyIslandStormEchoRules.IsEcho(id)) return stormEchoCleared;
             return story.Current.EncounterCleared(id);
         }
         private void OnEncounterCleared(string id)
@@ -1133,7 +1080,7 @@ namespace BossRush
             if (id == "Zheling") story.TryApply(SkyIslandStoryAction.ZhelingDefeated, out message);
             else if (id == "BellKeeper") story.TryApply(SkyIslandStoryAction.BellKeeperDefeated, out message);
             else if (id == "Storm") story.TryApply(SkyIslandStoryAction.StormSlain, out message);
-            else story.RecordEncounterCleared(id);
+            else if (!RecordStormEchoCleared(id)) story.RecordEncounterCleared(id);
             // 遭遇 owner 在存档接受之前会每秒重投同一个 id（写屏障/暂时失败），
             // 委托记账必须按 id 幂等，否则一次延迟保存会把「清理航路威胁」刷成好几单。
             if (bountyCredited.Add(id)) bounty.ReportEncounterCleared();
@@ -1145,9 +1092,11 @@ namespace BossRush
         /// 下次进来还能再挑战一次，等于无限刷星工遗存箱。随从仍需清完才算清场，
         /// `OnEncounterCleared` 里的同一条 TryApply 保留为写屏障失败时的重试兜底。
         /// </summary>
-        private void OnStormDefeated(Vector3 position)
+        private void OnStormDefeated(string id, Vector3 position)
         {
             if (closed || root == null) return;
+            // 噬风·回响倒下只发回响遗存，不碰剧情旗标（SkyIslandSessionEcho）。
+            if (SkyIslandStormEchoRules.IsEcho(id)) { OnStormEchoDefeated(position); return; }
             if (story != null)
             {
                 string message;

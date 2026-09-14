@@ -120,6 +120,7 @@ namespace BossRush
             float now = Time.time;
             // 云蚋每帧都要动（躲闪冲刺按帧推进），不走下面的 0.5 秒节流；夜里没有蚊子时几乎是空转。
             if (gnats != null) gnats.Frame(now, Time.deltaTime, CharacterMainControl.Main);
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Gnats);
             if (now < nextTick) return;
             nextTick = now + SkyIslandFieldcraftRules.TickInterval;
             // 两次推进之间最多按 1 秒记：切出切回、长时间卡顿之后不一口气灌满寒意。
@@ -129,9 +130,12 @@ namespace BossRush
             if (player == null) return;
             bool night = IsNight();
             gathering.Tick(player.transform.position, night);
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Gathering);
             UpdateFires(night);
             TickBuffs(now);
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.FiresAndBuffs);
             TickWind(player, night, elapsed);
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.WindAndSwarm);
         }
 
         /// <summary>
@@ -603,7 +607,8 @@ namespace BossRush
                 onBridge = region == null && colliderName.StartsWith("COL_Ground_", StringComparison.Ordinal);
                 onBoardwalk = region == "E";
             }
-            bool stormPending = session.BothBeaconsLit && !session.StormResolved;
+            // 噬风将至（双航标亮着、噬风未散），或者噬风·回响正在栈道上：栈道与桥上是大风（口径在会话的 StormWindPending）。
+            bool stormPending = session.StormWindPending;
             // 岛上的灯凑满十盏之后夜里不再起风；带着噬风之核时大风只算微风。
             // 用**真的建起来的**盏数：锚点缺失的那几盏不亮不暖（见 AddFire），不能替玩家把夜风关掉。
             int gale = SkyIslandFieldcraftRules.WindLevel(

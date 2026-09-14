@@ -517,6 +517,7 @@ namespace BossRush
             Stopwatch sw = Stopwatch.StartNew();
             List<float> frames = new List<float>(2048);
             long memoryStart = GC.GetTotalMemory(false);
+            BeginSkyIslandFrameProfile();
             float until = Time.realtimeSinceStartup + seconds;
             while (Time.realtimeSinceStartup < until && !ShouldAbort())
             {
@@ -543,10 +544,11 @@ namespace BossRush
             }
             string metrics = "samples=" + frames.Count + ",p95_ms=" + p95.ToString("F2")
                 + ",memory=" + GC.GetTotalMemory(false);
-            if (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f))
+            string profileReason = AppendSkyIslandFrameProfile(ref metrics);
+            if (profileReason == null && (baseline || p95 <= Mathf.Max(50f, _baselineP95Ms * 1.75f)))
                 Record(caseId, "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
             else
-                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, "超过性能阈值");
+                Record(caseId, "FAIL", sw.ElapsedMilliseconds, metrics, profileReason ?? "超过性能阈值");
         }
 
         private IEnumerator WaitSeconds(float seconds)

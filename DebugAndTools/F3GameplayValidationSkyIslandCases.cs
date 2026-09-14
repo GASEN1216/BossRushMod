@@ -419,6 +419,15 @@ namespace BossRush
         private bool ValidateSkyIslandLootBands(out string metrics, out string reason)
         {
             reason = null;
+            // 预热半边（CR-2026-09-14-014）必须排在下面第一次 Get 之前：Get 会顺手把没建的带建起来，读晚了判据恒真。
+            int[][] prewarmBands = SkyIslandLootTables.PrewarmBands();
+            bool[] cachedBefore = new bool[prewarmBands.Length];
+            for (int i = 0; i < prewarmBands.Length; i++)
+                cachedBefore[i] = SkyIslandLootPools.IsCached(prewarmBands[i][0], prewarmBands[i][1]);
+            SkyIslandLootPrewarmStats prewarm = SkyIslandLootPools.LastPrewarm;
+            string prewarmMetrics, prewarmReason;
+            bool prewarmOk = JudgeLootPrewarm(prewarmBands, cachedBefore, prewarm.Ran, prewarm.Built, prewarm.CacheHits, prewarm.Frames,
+                prewarm.TotalMs, prewarm.MaxBandMs, out prewarmMetrics, out prewarmReason);
             SkyIslandLootTier[] tiers =
             {
                 SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks
@@ -446,9 +455,11 @@ namespace BossRush
             }
             // 顶档必须够得到官方第 8 档，否则最深处的箱子永远刷不出顶级物品。
             if (SkyIslandLootTables.MaxQuality(SkyIslandLootTier.Starworks) != 8) errors.Add("starworks_max_quality!=8");
-            metrics = string.Join(" | ", parts.ToArray());
-            if (errors.Count > 0) reason = "品质带/件数/池子不合格：" + string.Join(",", errors.ToArray());
-            return errors.Count == 0;
+            metrics = string.Join(" | ", parts.ToArray()) + " | " + prewarmMetrics;
+            if (errors.Count > 0 || !prewarmOk)
+                reason = (prewarmReason ?? string.Empty)
+                    + (errors.Count > 0 ? "品质带/件数/池子不合格：" + string.Join(",", errors.ToArray()) : string.Empty);
+            return errors.Count == 0 && prewarmOk;
         }
 
         // ====================================================================
@@ -838,11 +849,19 @@ namespace BossRush
             // 所以这个比值就是这场战斗可不可打的**数值**判据；真跑得掉与否必须实机（见人工清单）。
             float escapeSpeed = SkyIslandStormBoss.PulseRadius / SkyIslandStormBoss.PulseTelegraph;
             if (escapeSpeed > 5.5f) errors.Add("escape_speed_too_high");
+            // 噬风·回响（R-12）：风眼钉在预警开始的位置，逃圈只看「半径 ÷ 到那一波的时间」；回响那一声半径同最后一波、时间更晚，
+            // 所以它要的逃圈速度不高于第一波。首战的圈每波重读本体位置，本体追人时还要再加上它的速度（离线复算见
+            // tests/SkyIslandStormEchoEscapePropertyTest.py）。
+            float echoWaveAt = SkyIslandStormBoss.PulseTelegraph + SkyIslandStormBoss.PulseWaves * SkyIslandStormBoss.WaveGap;
+            float echoWaveSpeed = SkyIslandStormBoss.RadiusForWave(SkyIslandStormBoss.PulseWaves - 1) / echoWaveAt;
+            if (echoWaveSpeed > escapeSpeed) errors.Add("echo_wave_needs_faster_escape_than_first_wave");
             metrics = "phases=" + thresholds.Length + ",cap=" + SkyIslandStormBoss.MaxPhaseSpeedup
                 + ",speedup_last=" + SkyIslandStormBoss.PhaseSpeedup(thresholds.Length).ToString("F3")
                 + ",pulse_radius=" + SkyIslandStormBoss.PulseRadius + ",telegraph_s=" + SkyIslandStormBoss.PulseTelegraph
                 + ",required_escape_speed=" + escapeSpeed.ToString("F2") + "m/s"
-                + ",waves=" + SkyIslandStormBoss.PulseWaves + ",damage=" + SkyIslandStormBoss.PulseDamage;
+                + ",waves=" + SkyIslandStormBoss.PulseWaves + ",damage=" + SkyIslandStormBoss.PulseDamage
+                + ",wave_gap_s=" + SkyIslandStormBoss.WaveGap + ",echo_eye=anchored,echo_wave_at_s=" + echoWaveAt.ToString("F2")
+                + ",echo_wave_required_speed=" + echoWaveSpeed.ToString("F2") + "m/s";
             if (errors.Count > 0) reason = "噬风相位编排不合格：" + string.Join(",", errors.ToArray());
             return errors.Count == 0;
         }
@@ -913,6 +932,24 @@ namespace BossRush
                 SkyIslandStoryRules.TryApply(probe, action, out candidate, out message);
                 Inspect("Action:" + action, message, offenders, ref checkedStrings);
             }
+            // 噬风·回响（2026-09-14 B 轮）：「还差什么」的三种说法、结局后的目标句、选项与回话。全是纯函数，不碰存档。
+            SkyIslandStoryData echoProbe = SkyIslandStoryRules.CreateDefault();
+            echoProbe.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.StormSlain);
+            string echoBlocker;
+            SkyIslandStoryRules.CanSummonStormEcho(echoProbe, false, true, 1, out echoBlocker);
+            Inspect("Echo:needs_ending", echoBlocker, offenders, ref checkedStrings);
+            echoProbe.flags |= (int)SkyIslandStoryFlag.Ending;
+            SkyIslandStoryRules.CanSummonStormEcho(echoProbe, false, false, 1, out echoBlocker);
+            Inspect("Echo:needs_core", echoBlocker, offenders, ref checkedStrings);
+            SkyIslandStoryRules.CanSummonStormEcho(echoProbe, false, true, 0, out echoBlocker);
+            Inspect("Echo:needs_windcrystal", echoBlocker, offenders, ref checkedStrings);
+            Inspect("Objective:echo", SkyIslandStoryRules.Objective(echoProbe), offenders, ref checkedStrings);
+            Inspect("Echo:choice", SkyIslandStormEchoRules.ChoiceLabel, offenders, ref checkedStrings);
+            Inspect("Echo:opened", SkyIslandStormEchoRules.Opened, offenders, ref checkedStrings);
+            Inspect("Echo:spent", SkyIslandStormEchoRules.SpentThisRaid, offenders, ref checkedStrings);
+            Inspect("Echo:not_ready", SkyIslandStormEchoRules.NotReady, offenders, ref checkedStrings);
+            Inspect("Echo:reserve_failed", SkyIslandStormEchoRules.ReserveFailed, offenders, ref checkedStrings);
+            Inspect("Echo:start_failed", SkyIslandStormEchoRules.StartFailed, offenders, ref checkedStrings);
             if (session != null && session.ValidationStory != null)
             {
                 for (int i = 0; i < residentIds.Length; i++)

@@ -80,8 +80,8 @@ namespace BossRush
                     "sky_island_homecoming_badge", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandHomecomingBadge), 5, 1, 2f, 0f, 0f, 0),
                     SkyIslandFieldBuff.Recall),
                 Make(BossRushItemIds.SkyIslandWindeaterCore, Kind.Keepsake, "BossRush_SkyIsland_WindeaterCore",
-                    "噬风散去时留下的核心，玻璃般的球壳里还锁着一小团打转的风，握在手里能感觉到它轻轻推着掌心。带在背包里上岛，那团风会把你身边的风吃掉一截：夜里的桥上、噬风将至时的栈道，大风对你只算微风。死在岛上时它和背包里的东西一起留在原地。",
-                    "The heart the Windeater left behind when it broke apart. A small whirl of wind still turns inside its glassy shell, nudging your palm. Carry it in your pack on the isles and that whirl eats into the wind around you: on night bridges and on the boardwalk before the storm, a gale only counts as a breeze for you. If you fall on the isles, it stays behind with the rest of your pack.",
+                    "噬风散去时留下的核心，玻璃般的球壳里还锁着一小团打转的风，握在手里能感觉到它轻轻推着掌心。带在背包里上岛，那团风会把你身边的风吃掉一截：夜里的桥上、噬风将至时的栈道，大风对你只算微风。敲响归航钟之后，它还是鸣风栈道「引风」的钥匙：带着它在双航标门装置上烧一块晴岚风晶，噬风的回响就会回来（每趟一次，核不会用掉）。死在岛上时它和背包里的东西一起留在原地。",
+                    "The heart the Windeater left behind when it broke apart. A small whirl of wind still turns inside its glassy shell, nudging your palm. Carry it in your pack on the isles and that whirl eats into the wind around you: on night bridges and on the boardwalk before the storm, a gale only counts as a breeze for you. After the Homecoming Bell has rung it is also the key for calling the wind on Windsong Boardwalk: carry it, burn a Qinglan Windcrystal at the twin-beacon gate, and the Windeater's echo comes back (once per raid; the core is not used up). If you fall on the isles, it stays behind with the rest of your pack.",
                     "sky_island_windeater_core", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandWindeaterCore), 6, 1, 0f, 0f, 0f, 0),
                 Make(BossRushItemIds.SkyIslandWindVaneCompass, Kind.Compass, "BossRush_SkyIsland_WindVaneCompass",
                     "浮舟的旧罗盘，指针换成了一枚小风标。在晴岚群岛上使用：捧着蛙卵时先指向蛙鸣池；平时先指向还没收下的信鸽，再指向当前目标或还没了结的支线；都没有了，带着晴岚风晶时指向还缺一盏风晶灯的地方，否则指向这一趟还没采的风晶簇，并报出大致距离。使用不消耗；离开群岛它只会乱转。丢了可以在浮舟的渡口工台用残铜片和风晶碎片重做一只。",
@@ -122,8 +122,8 @@ namespace BossRush
                     "Fine glittering dust that collects in the cracks of wind crystal clusters, most of all at night. A Qinglan charm cannot be made without it, and the windcrystal lamp beside the Starfall Overlook telescope takes two pinches. Gathered from wind crystal clusters on Windsong Boardwalk, in the Rainlisten Grotto and deeper in, more often at night; once the telescope is calibrated, the overlook cluster yields it more often.",
                     "sky_island_stardust", 4, 10),
                 Material(BossRushItemIds.SkyIslandQinglanWindcrystal, "BossRush_SkyIsland_QinglanWindcrystal",
-                    "五片风晶碎片熔成的一整块风晶，里面锁着一缕停不下来的风——拿它当灯芯，风只会喂火、吹不灭它。群岛上七处装置旁各缺一盏风晶灯，每一盏都是一封信里的请求：灯旁暖和、夜风吹不透；岛上的灯凑满十盏（三处灶火算三盏）之后，夜里不再起风。残星工坊的星灯亮起之后，在浮舟的渡口工台用风晶碎片凑整。",
-                    "A whole wind crystal fused from five shards, with a wisp of restless wind locked inside — as a wick, the wind only feeds the flame and cannot put it out. Seven devices on the isles are each missing a windcrystal lamp, and each lamp is something a letter asked for: beside a lamp it is warm and the night wind cannot get through, and once the isles have ten lights (the three hearths count as three) the nights stop blowing. Fused from windcrystal shards at Fuzhou's dock workbench once the Fallen Star Workshop's star lamp is lit.",
+                    "五片风晶碎片熔成的一整块风晶，里面锁着一缕停不下来的风——拿它当灯芯，风只会喂火、吹不灭它。群岛上七处装置旁各缺一盏风晶灯，每一盏都是一封信里的请求：灯旁暖和、夜风吹不透；岛上的灯凑满十盏（三处灶火算三盏）之后，夜里不再起风。敲响归航钟、打过噬风之后，带着噬风之核在鸣风栈道烧一块，能引回噬风的回响（每趟一次）。残星工坊的星灯亮起之后，在浮舟的渡口工台用风晶碎片凑整。",
+                    "A whole wind crystal fused from five shards, with a wisp of restless wind locked inside — as a wick, the wind only feeds the flame and cannot put it out. Seven devices on the isles are each missing a windcrystal lamp, and each lamp is something a letter asked for: beside a lamp it is warm and the night wind cannot get through, and once the isles have ten lights (the three hearths count as three) the nights stop blowing. Once the Homecoming Bell has rung and the Windeater is beaten, burning one on Windsong Boardwalk with the Windeater Core in your pack calls back the Windeater's echo (once per raid). Fused from windcrystal shards at Fuzhou's dock workbench once the Fallen Star Workshop's star lamp is lit.",
                     "sky_island_qinglan_windcrystal", 5, 5),
 
                 // ---- 内容批次三：局内耗材（只在岛上的合成台做；效果只在晴岚群岛上生效，离岛失效）----
@@ -136,8 +136,8 @@ namespace BossRush
                     "A cake of pounded cloudmoss and greenear whose smoke is warm. On the Qinglan isles it burns for about 5 minutes: no wind can chill you — not on night bridges, not on the boardwalk before the storm — and stamina recovers faster. The windcrystal lamp at Mirrorwater Temple burns one in its censer. Made at Qinghe's stove or Miantai's mortar.",
                     "sky_island_windward_incense", 3, 5, 2f),
                 Consumable(BossRushItemIds.SkyIslandQinglanCharm, SkyIslandFieldBuff.Charm, "BossRush_SkyIsland_QinglanCharm",
-                    "残铜作底、嵌一片风晶和一撮星屑的小护符，噬风那阵风碰上它会让开几分。本趟出击：噬风的风暴伤害 −35%，生命上限与耐力恢复小幅提升；离岛失效、不叠加。在浮舟的渡口工台制作。",
-                    "A small charm on a brass backing, set with a windcrystal shard and a pinch of stardust; the Windeater's gusts give way around it. For this raid: 35% less damage from the Windeater's storm, and a little more max health and stamina recovery; it ends when you leave the isles and does not stack. Made at Fuzhou's dock workbench.",
+                    "残铜作底、嵌一片风晶和一撮星屑的小护符，噬风那阵风碰上它会让开几分。本趟出击：噬风的风暴伤害 −35%（它的回响也一样），生命上限与耐力恢复小幅提升；离岛失效、不叠加。在浮舟的渡口工台制作；回响遗存里偶尔也有一枚。",
+                    "A small charm on a brass backing, set with a windcrystal shard and a pinch of stardust; the Windeater's gusts give way around it. For this raid: 35% less damage from the Windeater's storm (its echo included), and a little more max health and stamina recovery; it ends when you leave the isles and does not stack. Made at Fuzhou's dock workbench; the echo's cache sometimes holds one.",
                     "sky_island_qinglan_charm", 4, 3, 1.5f),
 
                 // ---- 内容批次四：云蚋的对策（夜里的蚊群，SkyIslandGnats）----

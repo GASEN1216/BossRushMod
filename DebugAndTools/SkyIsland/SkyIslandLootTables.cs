@@ -149,6 +149,31 @@ namespace BossRush
             return 0;
         }
 
+        /// <summary>
+        /// 进岛装配时要预热的品质带（CR-2026-09-14-014）：每一档的常规带，加上有保底的档次的保底带——
+        /// 正好是 <c>SkyIslandLootPools.Get</c> / <c>Pick</c> / <c>GetGuaranteeBand</c> 会去查的全部带。去重，按档次顺序。
+        /// 纯算术，隔离回归逐项核对。
+        /// </summary>
+        internal static int[][] PrewarmBands()
+        {
+            var bands = new System.Collections.Generic.List<int[]>(6);
+            SkyIslandLootTier[] tiers = { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage, SkyIslandLootTier.Starworks };
+            for (int i = 0; i < tiers.Length; i++)
+            {
+                AddBand(bands, MinQuality(tiers[i]), MaxQuality(tiers[i]));
+                int guarantee = GuaranteeMinQuality(tiers[i]);
+                if (guarantee > 0) AddBand(bands, guarantee, MaxQuality(tiers[i]));
+            }
+            return bands.ToArray();
+        }
+
+        private static void AddBand(System.Collections.Generic.List<int[]> bands, int min, int max)
+        {
+            for (int i = 0; i < bands.Count; i++)
+                if (bands[i][0] == min && bands[i][1] == max) return;
+            bands.Add(new[] { min, max });
+        }
+
         internal static string TierNameCn(SkyIslandLootTier tier)
         {
             if (tier == SkyIslandLootTier.Starworks) return "星工遗存";

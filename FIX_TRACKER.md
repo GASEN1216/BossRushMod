@@ -2,6 +2,41 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-14（三）天空岛 B 轮「噬风·回响」+ 物资池预热 + 帧时间分项计时（新内容 + 1 P3 已修）
+
+**来源**：owner 任务书（无人值守，「好玩优先，其次离线可证、改动小、可回退」直接拍板）。基线 `502dd91`。交付报告 `docs/天空岛_B轮_噬风回响_2026-09-14.md`（local-only）。
+**分类**：`COMPAT`（噬风·回响）+ `SAFE`（F3 用例、守卫、Dev 分项计时）。**不加 TypeID、不加存档字段、不重打包。本轮没有开游戏，没有读写存档目录。** 没有 L3，不写「已生效」。
+
+- **噬风·回响**（`COMPAT`）：敲过钟、打过噬风之后，鸣风栈道双航标门装置（`Search_E`）挂「引风」——噬风之核在背包里（不消耗）+ 烧 1 块晴岚风晶，每趟一次、按本趟计。
+  判据五项只在 `SkyIslandStoryRules.CanSummonStormEcho`，挂选项与点下去共用；开战走预留 → 开战 → 提交；遭遇 id `StormEcho`（首战 `Storm` 的一次性口径、`StormResolved` / `StormSlain` 一字不动）；
+  编排复用 `SkyIslandStormBoss` 的相位 / 脉冲 / 预警常量，唯一差异是风眼钉在预警开始处、三波后原地再响一声（R-12：回响逃圈恒 5.0 m/s，首战为「追人速度 + 5.0」）；
+  回响在场时栈道与桥上重新起大风；回响遗存只装碎片 ×3、星屑 ×2 + 护符 / 便当 / 驱风香 ×2 之一（期望 4,416 对代价 2,600）。
+  串联：核、风晶、护符、驱风香 / 风灯、便当、钟守官方对话、名册第一页、手记「群岛之物」、目标卡、中英 Wiki。内容表四处同步到 22 组 / 64 敌。
+  新文件 `SkyIslandStormEchoRules.cs`、`SkyIslandStormEchoReward.cs`、`SkyIslandSessionEcho.cs`、`SkyIslandWorldStoryEcho.cs`、`SkyIslandSessionLabels.cs`（会话标签原样提取，腾行数预算）。
+- `CR-2026-09-14-014` / `SAFE` / P3：**物资池懒建**——第一次走近远航 / 星工档箱子那一帧建池（首轮 `SKY_LOOT_BANDS` 单步 639 ms）。会话 `Build()` 在读条画面下按品质带分帧预热，缓存口径不变；F3 `SKY_LOOT_BANDS` 先读缓存再 `Get`（纯判据 `JudgeLootPrewarm`）。守卫 `SkyIslandLootPrewarmGuard`。**预热耗时未实机。**
+- **帧时间分项计时**（`SAFE`，只诊断）：`SkyIslandFrameProfile` 17 段，`[Conditional("BOSSRUSH_DEV")]` + `#if BOSSRUSH_DEV`；`SKY_PERF_BASELINE_5S` / `SKY_PERF_FINAL_5S` 追加各段 p95 / 最大值、最慢三段、活动灯、开阴影灯与可见 renderer 数（纯判据 `JudgeFrameProfile`，不设阈值）。守卫 `SkyIslandFrameProfileGuard`。帧时间线索本身仍 UNVERIFIED。
+- F3 岛内只读新用例 `SKY_STORM_ECHO`（纯判据 `JudgeStormEcho`，未解锁记 SKIP）；`GameplayCoverage.json` + `M_SKY_ISLAND_14`；清单第 2.17 步。`DebugAndTools/SkyIsland/AGENTS.md` §5 加一句指向根 §4.17 演练规则（上一轮待拍板 #14）。
+
+**验证**（本机 Windows，全部实跑）：
+- Dev 构建两次、正式构建一次，均 `Build succeeded`；正式构建已部署，`Build/BossRush.dll` 与 D 盘游戏目录同为 `C058C9F3…C68A4926`（17:01:56），游戏没开，目录里不是 Dev 构建（部署的 DLL 里没有整文件 `#if BOSSRUSH_DEV` 的演练用例标识）。
+- `python tools/run_guards.py` → **609 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（+4：`SkyIslandStormEchoGuard`、`SkyIslandLootPrewarmGuard`、`SkyIslandFrameProfileGuard`、`SkyIslandStormEchoEscapePropertyTest`）。
+  提交树（索引全量 `checkout-index` 到副本，`GAME_PATH` 指向 scratchpad 里的 Managed 拷贝，不碰游戏目录）单独做 Dev 与正式构建，各 `Build succeeded`。
+  文档改完后又跑一次全量是 607 PASS / 2 NEW-FAIL：`LargeFileBudgetGuard`（`Common/UI/BossRushUI.cs` 1205 > 1200）与 `SkyIslandUiContrastGuard`（锚点失效），两条都来自另一会话 17:11 正在改的 `Common/UI/BossRushUI.cs`（不在本提交）；在 HEAD + 本轮文件的副本上这两条 PASS。
+- `python tools/run_runtime_regressions.py`（三个 D 盘环境变量）→ **35 PASS / 0 FAIL**；`SkyIslandStory` 12,590 条断言，`SkyIslandValidationJudges` 92 → 139 条，`SkyIslandEncounters` 44 条。
+- `ModBehaviourPartialBudgetGuard`：分项计时的模式门写在 SkyIsland partial，宿主 partial 只多两行调用（105,107 / 105,108），没抬预算。
+- 磁盘级反向探针 14 条（HEAD 共享副本叠加本轮 56 个文件，基线 9 条先全绿）：逐条人为破坏 → 对应守卫、属性测试或执行回归转红 → 逐字节还原、sha256 一致 → 复绿（清单见报告 §8）。
+- `npm --prefix wiki-site run build` → build complete（`sync-content.mjs` 重生成 4 个镜像页）；`SkyIslandWikiParityGuard` 中英 17 章逐条对齐。
+
+**待拍板**（已按「好玩优先」定下，理由与回退见报告 §6）：
+B-1 引风代价（核不消耗 + 1 块风晶、每趟一次、不进存档；回退 `MaxPerRaid = 0` 即整体关闭）；B-2 回响遗存数值（改 `SkyIslandStormEchoReward` 常量）；
+B-3 唯一差异 = 风眼钉住 + 原地第四声（回退：`Detonate` 圆心改回本体、删回响一声）；B-4 回响在场时起大风（回退 `StormWindPending`）；B-5 不抽官方物资池、不再发核；
+B-6 回响不上地图圈；B-7 结局后目标卡提示引风；B-8 钟守与名册各一句、首次回响不记手记；B-9 不做 Dev 演练；B-10 预热每带一帧、最大一带仍单帧；
+B-11 分项计时只诊断，Dev 构建里录不到时 PERF 用例记 FAIL。
+
+**状态**：代码、守卫、回归与文档已改，路径限定本地提交（未推送）。**未实机**：清单第 2.17 步（A 段读 D6 分项计时与预热，B 段回响 13 格）。
+
+---
+
 ## 2026-09-14（二）天空岛首轮岛内 F3 实机日志复核：可达性假红与探路判据、对话演练崩溃、夜里指标、退游戏返航（1 P2 + 3 P3，全部已修）
 
 **来源**：owner 13:34–13:35 在岛上跑了岛内只读验收与 Dev 演练（`Player.log`、`BossRushTestReports/BossRushValidation_20260914_053459_241` 与 `_053527_989`，构建 MVID `801bcff5`，即 `599bc6b` 的 Dev 构建；主套件没跑）。

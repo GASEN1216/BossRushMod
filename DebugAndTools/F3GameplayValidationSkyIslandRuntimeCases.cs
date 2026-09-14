@@ -30,8 +30,8 @@ namespace BossRush
     {
         #region 纯判据（隔离回归逐字抽出执行：这一区不许引用 Unity）
 
-        internal const int ExpectedEncounterGroups = 21;
-        internal const int ExpectedEncounterEnemies = 61;
+        internal const int ExpectedEncounterGroups = 22;
+        internal const int ExpectedEncounterEnemies = 64;
         /// <summary>活体上限。生产里是 SkyIslandEncounters 两处内联的 12（BeginChallenge / Tick），没有常量可引。</summary>
         internal const int LivingEnemyCap = 12;
         /// <summary>活敌达到这个数才算「密集段」，帧时间才有判据。</summary>
@@ -472,6 +472,167 @@ namespace BossRush
             return errors.Count == 0;
         }
 
+        /// <summary>
+        /// SKY_STORM_ECHO 的判据（2026-09-14 B 轮）。噬风·回响按本趟计、不进存档，所以这里核的是「本趟状态与规则一致、而且没漏进存档」：
+        /// ① 本趟引风次数在 [0, MaxPerRaid] 里；引过就一定已经敲钟、打过噬风；回响组「打响过」⇔ 本趟引过；清场了就一定打响过；
+        /// ② 会话此刻给出的「能不能引 / 还差什么」与纯规则 <c>SkyIslandStoryRules.CanSummonStormEcho</c> 按同一组输入复算逐字一致
+        ///    （装置面板挂不挂与点下去成不成走的都是会话那一处）；
+        /// ③ 回响的遭遇 id 从不出现在存档的清场表里（进了就会被遭遇 owner 当成永久已清）。
+        /// 这份存档还没解锁（没敲钟或没打噬风）而且本趟没引过时，开启状态没有判据：先核完 ①③，再记 SKIP。
+        /// </summary>
+        internal static bool JudgeStormEcho(SkyIslandStoryData data, int starts, bool groupStarted, bool groupCleared, bool coreCarried,
+            int windcrystals, bool canSummonNow, string blockerNow, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            string ruleBlocker;
+            bool rule = SkyIslandStoryRules.CanSummonStormEcho(data, starts >= SkyIslandStormEchoRules.MaxPerRaid, coreCarried,
+                windcrystals, out ruleBlocker);
+            bool unlocked = SkyIslandStormEchoRules.UnlockedBySave(data);
+            if (data == null) errors.Add("story_data_missing");
+            if (starts < 0 || starts > SkyIslandStormEchoRules.MaxPerRaid)
+                errors.Add("starts_this_raid=" + starts + "/" + SkyIslandStormEchoRules.MaxPerRaid);
+            if (starts > 0 && !unlocked) errors.Add("started_without_ending_and_storm");
+            if (groupStarted != (starts > 0)) errors.Add("group_started=" + groupStarted + "/starts=" + starts);
+            if (groupCleared && !groupStarted) errors.Add("cleared_without_start");
+            if (canSummonNow != rule) errors.Add("can_summon_now=" + canSummonNow + "/rule=" + rule);
+            if (!string.Equals(blockerNow, ruleBlocker, StringComparison.Ordinal)) errors.Add("blocker_differs_from_rule");
+            if (data != null && data.EncounterCleared(SkyIslandStormEchoRules.EncounterId)) errors.Add("echo_clear_written_to_save");
+            metrics = "unlocked=" + unlocked + ",ending=" + (data != null && data.Has(SkyIslandStoryFlag.Ending))
+                + ",storm_resolved=" + (data != null && data.StormResolved) + ",starts=" + starts + "/" + SkyIslandStormEchoRules.MaxPerRaid
+                + ",group_started=" + groupStarted + ",group_cleared=" + groupCleared + ",core=" + coreCarried
+                + ",windcrystals=" + windcrystals + ",can_summon_now=" + canSummonNow + ",blocker=" + (ruleBlocker == null ? "none" : "shown");
+            if (errors.Count > 0)
+            {
+                reason = "噬风·回响不合格：" + string.Join(",", errors.ToArray());
+                return false;
+            }
+            if (!unlocked && starts == 0) throw new SkyIslandSkipCase("echo_locked_by_story", metrics);
+            return true;
+        }
+
+        /// <summary>
+        /// SKY_LOOT_BANDS 的预热半边（CR-2026-09-14-014）。物资池应当在进岛装配时（读条画面下）就建好：
+        /// 用例在第一次调用 Get 之前先读缓存，每个预热带都必须已经在缓存里；这一趟的预热必须真的跑过，
+        /// 新建的带数 + 命中缓存的带数 = 预热带数，而且新建了几个带就至少分了几帧。
+        /// </summary>
+        internal static bool JudgeLootPrewarm(int[][] bands, bool[] cachedBeforeCase, bool ran, int built, int cacheHits, int frames,
+            double totalMs, double maxBandMs, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            int count = bands == null ? 0 : bands.Length;
+            List<string> missing = new List<string>();
+            int cached = 0;
+            for (int i = 0; i < count; i++)
+            {
+                bool hit = cachedBeforeCase != null && i < cachedBeforeCase.Length && cachedBeforeCase[i];
+                if (hit) cached++;
+                else missing.Add(bands[i][0] + "-" + bands[i][1]);
+            }
+            if (count == 0) errors.Add("no_prewarm_bands");
+            if (!ran) errors.Add("prewarm_never_ran");
+            else
+            {
+                if (built + cacheHits != count) errors.Add("prewarm_bands=" + (built + cacheHits) + "/" + count);
+                if (frames < built) errors.Add("prewarm_frames=" + frames + "<built=" + built);
+            }
+            if (missing.Count > 0) errors.Add("not_cached_before_case:" + string.Join("+", missing.ToArray()));
+            metrics = "prewarm_ran=" + ran + ",prewarm_bands=" + count + ",built=" + built + ",cache_hits=" + cacheHits
+                + ",frames=" + frames + ",total_ms=" + totalMs.ToString("F0") + ",max_band_ms=" + maxBandMs.ToString("F0")
+                + ",cached_before_case=" + cached + "/" + count;
+            if (errors.Count > 0) reason = "物资池预热不合格：" + string.Join(",", errors.ToArray()) + "；";
+            return errors.Count == 0;
+        }
+
+        /// <summary>分项计时报告里列出 p95 最高的前几段。</summary>
+        internal const int FrameProfileTopSegments = 3;
+
+        /// <summary>
+        /// SKY_PERF_BASELINE_5S / SKY_PERF_FINAL_5S 的分项计时半边（Dev 构建，<c>SkyIslandFrameProfile</c>）。只诊断，不另设帧时间阈值：
+        /// ① 录到了帧（会话在跑而一帧都没录到，说明 Start / Mark 没接上或录制没开）；② 每帧的段数与段名表一致、没有负数；
+        /// ③ 各段 p95 与最大值、各段合计、p95 最高的前三段，连同活动灯数、开阴影的灯数与可见 renderer 数写进 metrics。
+        /// </summary>
+        internal static bool JudgeFrameProfile(string[] segments, IList<float[]> frames, int lightsActive, int lightsShadowed,
+            int renderersVisible, int renderersTotal, out string metrics, out string reason)
+        {
+            reason = null;
+            string scene = ",lights_active=" + lightsActive + ",lights_shadowed=" + lightsShadowed
+                + ",renderers_visible=" + renderersVisible + "/" + renderersTotal;
+            int width = segments == null ? 0 : segments.Length;
+            if (frames == null)
+            {
+                metrics = "profile=unavailable" + scene;
+                reason = "分项计时不可用：不是 Dev 构建，或录制没有交出来";
+                return false;
+            }
+            List<string> errors = new List<string>();
+            if (width == 0) errors.Add("segment_table_empty");
+            List<float>[] columns = new List<float>[width];
+            for (int s = 0; s < width; s++) columns[s] = new List<float>(frames.Count);
+            List<float> totals = new List<float>(frames.Count);
+            int badShape = 0, negative = 0;
+            for (int f = 0; f < frames.Count; f++)
+            {
+                float[] row = frames[f];
+                if (row == null || row.Length != width)
+                {
+                    badShape++;
+                    continue;
+                }
+                float total = 0f;
+                for (int s = 0; s < width; s++)
+                {
+                    float value = row[s];
+                    if (value < 0f || float.IsNaN(value) || float.IsInfinity(value))
+                    {
+                        negative++;
+                        value = 0f;
+                    }
+                    columns[s].Add(value);
+                    total += value;
+                }
+                totals.Add(total);
+            }
+            if (frames.Count == 0) errors.Add("profile_no_frames");
+            if (badShape > 0) errors.Add("frame_shape_mismatch=" + badShape);
+            if (negative > 0) errors.Add("negative_or_nan_segment=" + negative);
+            float[] p95 = new float[width];
+            List<string> parts = new List<string>(width);
+            for (int s = 0; s < width; s++)
+            {
+                float max;
+                p95[s] = FrameP95(columns[s], out max);
+                parts.Add(segments[s] + "=" + p95[s].ToString("F2") + "/" + max.ToString("F2"));
+            }
+            float totalMax;
+            float totalP95 = FrameP95(totals, out totalMax);
+            int[] order = new int[width];
+            for (int s = 0; s < width; s++) order[s] = s;
+            Array.Sort(order, (a, b) => p95[b].CompareTo(p95[a]));
+            List<string> top = new List<string>();
+            for (int i = 0; i < width && i < FrameProfileTopSegments; i++) top.Add(segments[order[i]] + ":" + p95[order[i]].ToString("F2"));
+            metrics = "profile_frames=" + totals.Count + ",instrumented_p95_ms=" + totalP95.ToString("F2")
+                + ",instrumented_max_ms=" + totalMax.ToString("F2") + ",top_p95=" + string.Join("+", top.ToArray())
+                + ",seg_p95_max_ms(" + string.Join(";", parts.ToArray()) + ")" + scene;
+            if (errors.Count > 0) reason = "分项计时不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>与 SamplePerformance 同一个 p95 口径（升序第 ceil(n×0.95) 个），顺带给出最大值。空列表返回 0。</summary>
+        internal static float FrameP95(List<float> values, out float max)
+        {
+            max = 0f;
+            if (values == null || values.Count == 0) return 0f;
+            List<float> sorted = new List<float>(values);
+            sorted.Sort();
+            max = sorted[sorted.Count - 1];
+            int index = (int)Math.Ceiling(sorted.Count * 0.95) - 1;
+            if (index < 0) index = 0;
+            if (index > sorted.Count - 1) index = sorted.Count - 1;
+            return sorted[index];
+        }
+
         private static string JoinList(IList<string> values)
         {
             string[] array = new string[values.Count];
@@ -794,6 +955,79 @@ namespace BossRush
             if (!colliderFound) { reason = "取不到主角的移动碰撞体：接触屏蔽无从核对"; return false; }
             if (notIgnored > 0) { reason = "有云蚋与主角的接触没有屏蔽：会把主角顶开或卡住"; return false; }
             return true;
+        }
+
+        /// <summary>
+        /// 噬风·回响的开启状态与本趟计数。取数全部只读：会话的「能不能引」（数背包，不预留、不开战）、观测面上的本趟计数与清场、
+        /// 遭遇 owner 的「打响过没有」，外加背包顶层的噬风之核与晴岚风晶件数（与会话同一口径）。
+        /// </summary>
+        private bool ValidateSkyIslandStormEcho(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            SkyIslandStoryService story = session == null ? null : session.ValidationStory;
+            if (story == null) { reason = "story_service_missing"; return false; }
+            string blocker;
+            bool canSummon = session.CanSummonStormEcho(out blocker);
+            bool core = ItemFactory.GetItemCountInInventory(BossRushItemIds.SkyIslandWindeaterCore) > 0;
+            int crystals = ItemFactory.GetItemCountInInventory(BossRushItemIds.SkyIslandQinglanWindcrystal);
+            return JudgeStormEcho(story.Current, session.ValidationStormEchoStarts,
+                session.HasStoryChallengeStarted(SkyIslandStormEchoRules.EncounterId), session.ValidationStormEchoCleared,
+                core, crystals, canSummon, blocker, out metrics, out reason);
+        }
+
+        /// <summary>
+        /// SKY_PERF_* 开窗（SamplePerformance 在采样循环之前调用）：岛内套件开始录分项计时，主套件什么都不做——
+        /// 主套件没人打分段标记，开了录制会被记成 profile_no_frames。正式构建里 BeginRecording 这句调用不存在。
+        /// 岛内模式门写在这里而不在宿主 partial 里：F3GameplayValidationRunner.cs 计入 ModBehaviourPartialBudgetGuard 的行数预算。
+        /// </summary>
+        private void BeginSkyIslandFrameProfile()
+        {
+            if (!_skyIslandMode) return;
+            SkyIslandFrameProfile.BeginRecording();
+        }
+
+        /// <summary>SKY_PERF_* 关窗（采样循环之后）：岛内套件把分项计时拼到 metrics 末尾并返回不合格原因；主套件原样返回 null。</summary>
+        private string AppendSkyIslandFrameProfile(ref string metrics)
+        {
+            if (!_skyIslandMode) return null;
+            string reason;
+            metrics += SkyIslandFrameProfileMetrics(out reason);
+            return reason;
+        }
+
+        /// <summary>
+        /// SKY_PERF_* 关窗：交出分项计时，再在采样窗口之外只读地数一次场景里的灯与岛上的 renderer（不算进采样帧）。
+        /// 返回拼到 metrics 末尾的一段；分项计时本身不合格时给出 reason。
+        /// </summary>
+        private string SkyIslandFrameProfileMetrics(out string reason)
+        {
+            List<float[]> frames;
+            bool recorded = SkyIslandFrameProfile.TryTakeRecording(out frames);
+            int lightsActive = 0, lightsShadowed = 0;
+            foreach (Light light in UnityEngine.Object.FindObjectsOfType<Light>())
+            {
+                if (light == null || !light.enabled) continue;
+                lightsActive++;
+                if (light.shadows != LightShadows.None) lightsShadowed++;
+            }
+            int visible = 0, total = 0;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            GameObject root = session == null ? null : session.ValidationWorldRoot;
+            if (root != null)
+            {
+                foreach (Renderer renderer in root.GetComponentsInChildren<Renderer>(false))
+                {
+                    if (renderer == null) continue;
+                    total++;
+                    if (renderer.isVisible) visible++;
+                }
+            }
+            string metrics;
+            JudgeFrameProfile(SkyIslandFrameProfile.SegmentNames, recorded ? frames : null, lightsActive, lightsShadowed,
+                visible, total, out metrics, out reason);
+            return "," + metrics;
         }
 
         /// <summary>开枪补丁是否真的挂在官方 Projectile.Init(ProjectileContext) 的后缀上。只读 Harmony 的补丁表。</summary>

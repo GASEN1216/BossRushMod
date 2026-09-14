@@ -2,6 +2,16 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-14（三）天空岛 B 轮「噬风·回响」：1 P3（已修）+ 两条帧时间线索的处置
+
+本轮主体是新增内容（噬风·回响，不是缺陷，见 `FIX_TRACKER.md` 同日（三）一节）。下面只记从上一节 UNVERIFIED 线索里核实出来的一条，以及另一条线索换成了什么工具。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-14-014 | P3 / PERF（首用卡顿） | 物资池懒建：`SkyIslandLootPools.GetBand` 首次用到才建池。搜刮箱要等玩家走进 72 m 才由 `SkyIslandScavenging.Build → SkyIslandRewardCrate.Fill → SkyIslandLootPools.Get` 去建、去填，所以第一次走近远航档或星工档箱子的那一帧要扫全部官方标签。静态读链确认；首轮实机 `SKY_LOOT_BANDS` 单步 639 ms 是同一段代码的耗时（游玩中那一帧没有单独测）。 | **Fixed（L2）**。会话 `Build()` 在读条画面下调 `SkyIslandLootPools.Prewarm()`，按品质带逐带建、每建一个让出一帧，缓存口径不变；F3 `SKY_LOOT_BANDS` 先读缓存状态再 `Get`，交给纯判据 `JudgeLootPrewarm`。守卫 `SkyIslandLootPrewarmGuard`（7 个反向检查）、执行回归 `SkyIslandStory`（带表）与 `SkyIslandValidationJudges`（判据）。**预热耗时未实机** |
+
+- **天空岛帧时间（上一节 UNVERIFIED 第一条）**：仍是 UNVERIFIED，没有猜修。本轮加了 Dev 构建的分项计时（`SkyIslandFrameProfile`，17 段，`[Conditional("BOSSRUSH_DEV")]`），`SKY_PERF_BASELINE_5S` / `SKY_PERF_FINAL_5S` 的 metrics 追加各段 p95 / 最大值、最慢三段、活动灯数、开阴影的灯数与可见 renderer 数。拿到一份实机报告才能定位，读法见清单第 2.17 步 A 段。
+
 ## 2026-09-14（二）天空岛首轮岛内 F3 实机日志复核：1 P2 + 3 P3（均已修）+ 线索
 
 来源是 owner 13:34–13:35 在岛上跑的岛内只读验收与 Dev 演练（`599bc6b` 的 Dev 构建，MVID `801bcff5`）。每条都对照 `Player.log` 原文与源码核实；修复本身是 L1 / L2，未实机复测。

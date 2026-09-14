@@ -74,6 +74,10 @@ namespace BossRush
                             "When that wind broke up I felt it even from under the clouds — the hull went light all at once. Thank you.")
                         : L10n.T("可云海上那阵风还没散。下次去栈道，别一个人站在桥心。",
                             "But the wind out on the cloud sea has not broken up yet. Next time you are on the boardwalk, do not stand alone at mid-span."));
+                    // 噬风·回响：栈道那头的装置还记着那阵风（与引风同一个解锁口径 SkyIslandStormEchoRules.UnlockedBySave）。
+                    if (SkyIslandStormEchoRules.UnlockedBySave(data))
+                        text.Append(L10n.T("可栈道那头的装置还记着那阵风：带着它的核、烧一块风晶，它会回来——就当给还在云底下的人练练手。",
+                            " The device at the boardwalk still remembers that wind, though: carry its core, burn a windcrystal, and it comes back — call it practice for the ones still under the clouds."));
                     // 岛上的灯（SkyIslandLights）：十盏都亮了，老舵手在船头数得出来。
                     if (SkyIslandLights.AllLit(data))
                     {

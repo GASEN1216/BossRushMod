@@ -403,7 +403,7 @@ namespace BossRush
                             "The Bell Keeper: A bell is not an order; it is an answer. A new line appeared in the register, and I have not wiped it away.") +
                             (SkyIslandMosquitoRules.FrogsComplete(data)
                                 ? L10n.T("\n夜里敲钟的时候，蛙鸣池那边有蛙应声。", "\nWhen the bell rings at night now, the frogs at Frogsong Pool answer.")
-                                : string.Empty);
+                                : string.Empty) + BellKeeperEchoLine(data);
                     return data.BellKeeperResolved
                         ? L10n.T("钟守：去吧，敲响归航钟。让他们知道，岛上还有人在等。",
                             "The Bell Keeper: Go on, ring the Homecoming Bell. Let them know someone on the islands is still waiting.")
@@ -439,6 +439,17 @@ namespace BossRush
                         "The old badge is engraved: 'The route is yours now.'"))
                 : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
                     "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
+        }
+
+        /// <summary>
+        /// 噬风·回响：结局后钟守提一句栈道那阵风还会回来。解锁口径与引风同一个 <see cref="SkyIslandStormEchoRules.UnlockedBySave"/>，
+        /// 没打过噬风的结局存档不说这句。
+        /// </summary>
+        private static string BellKeeperEchoLine(SkyIslandStoryData data)
+        {
+            if (!SkyIslandStormEchoRules.UnlockedBySave(data)) return string.Empty;
+            return L10n.T("\n栈道上那阵风散了，可云海还记得它。带着它的核、在双航标门装置上烧一块晴岚风晶，它会回来找你——一趟就一次，别让它成了习惯。",
+                "\nThe wind on the boardwalk is gone, but the cloud sea still remembers it. Carry its core and burn a Qinglan Windcrystal at the twin-beacon gate, and it will come looking for you — once a trip, and do not make a habit of it.");
         }
 
         /// <summary>内容批次四：眠苔说苔药与药膏怎么分工——苔药管伤、顺手止痒；药膏管痒、抹上一阵都不怕叮。</summary>

@@ -82,13 +82,16 @@ MUTATING_MEMBERS = (
     ("ForceEndDialogue", "结束别人的对话"), ("SetHealth", "改主角血量"), ("AddListener", "订阅事件"),
     ("DevSpawnAround", "Dev 演练：刷云蚋"), ("DevSyntheticShot", "Dev 演练：登记合成弹道"),
     ("DevKillOne", "Dev 演练：打死云蚋"), ("DevMotorStats", "Dev 演练入口"),
+    # 2026-09-14 B 轮：噬风·回响。引风会预留并烧掉风晶、让遭遇 owner 开战；回响倒下会发箱子、记本趟清场。
+    ("TryBeginStormEcho", "引风：烧风晶并开战"), ("StormEchoChoice", "打开引风选项"),
+    ("OnStormEchoDefeated", "发回响遗存"), ("RecordStormEchoCleared", "记回响清场"), ("CreateWithGoods", "建回响遗存箱"),
 )
 
 # 不以方法名出现、但同样会改状态的写法。
 FORBIDDEN_PATTERNS = (
     (r"\bSavesSystem\.(?:Save|SaveFile|SaveGlobal|SetFile|DeleteCurrentSave|RestoreIndexedBackup|CollectSaveData)\b",
      "直接写档或换槽"),
-    (r"\bSkyIslandRewardCrate\.(?:Create|Build|Fill)\b", "建箱"),
+    (r"\bSkyIslandRewardCrate\.(?:Create|Build|Fill|CreateWithGoods)\b", "建箱"),
     (r"\btimeScale\s*=(?![=>])", "改时间流速"),
     (r"\.(?:position|localPosition|rotation)\s*=(?![=>])", "搬动场景对象"),
     (r"\.(?:Invoke|SetValue)\(", "用反射或委托调用绕过上面的名单"),

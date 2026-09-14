@@ -211,5 +211,68 @@ namespace BossRush
             Debug.Log("[SkyIslandCrate] CRATE_READY name=" + name + " tier=" + tier + " items=" + added);
             return true;
         }
+
+        /// <summary>
+        /// 一步建一个只装岛上东西的箱子（噬风·回响的回响遗存，<see cref="SkyIslandStormEchoReward"/>）：不抽官方物资池，
+        /// 物品全是登记过的天空岛物品。实例化前先问 prefab、回读 TypeID，与 <see cref="Fill"/> 同一条防线；
+        /// 一件都没装进去就收回空箱并返回 false（口径同 <see cref="Create"/>）。
+        /// </summary>
+        internal static bool CreateWithGoods(Transform parent, Vector3 position, string name, SkyIslandYield[] goods)
+        {
+            if (goods == null || goods.Length == 0) return false;
+            string error;
+            InteractableLootbox box = Build(parent, position, 0f, name, out error);
+            if (box == null)
+            {
+                Debug.LogWarning("[SkyIslandCrate] " + name + " 创建失败：" + error);
+                return false;
+            }
+            int added = 0;
+            for (int i = 0; i < goods.Length; i++) added += AddGoods(box, goods[i].TypeId, goods[i].Count);
+            if (added == 0)
+            {
+                box.gameObject.SetActive(false);
+                UnityEngine.Object.Destroy(box.gameObject);
+                Debug.LogWarning("[SkyIslandCrate] " + name + " 一件东西都没装进去，已收回空箱");
+                return false;
+            }
+            Debug.Log("[SkyIslandCrate] CRATE_READY name=" + name + " goods=" + added);
+            return true;
+        }
+
+        /// <summary>把 <paramref name="count"/> 件同一种岛上物品装进箱子（可堆叠的按堆装）。返回实际装进去的件数。</summary>
+        private static int AddGoods(InteractableLootbox box, int typeId, int count)
+        {
+            if (box == null || box.Inventory == null || count <= 0) return 0;
+            int added = 0;
+            while (added < count)
+            {
+                Item item = null;
+                try
+                {
+                    // 先问 prefab：缺资源时 InstantiateSync 给的空壳带着同一个 TypeID，回读拦不住它。
+                    if (ItemAssetsCollection.GetPrefab(typeId) == null) throw new InvalidOperationException("物品资源缺失");
+                    item = ItemAssetsCollection.InstantiateSync(typeId);
+                    if (item == null || item.TypeID != typeId) throw new InvalidOperationException("物品实例无效");
+                    int stack = 1;
+                    if (item.Stackable)
+                    {
+                        stack = Mathf.Clamp(count - added, 1, Mathf.Max(1, item.MaxStackCount));
+                        item.StackCount = stack;
+                    }
+                    item.Inspected = false;
+                    if (!box.Inventory.AddItem(item)) throw new InvalidOperationException("装箱失败");
+                    item = null;
+                    added += stack;
+                }
+                catch (Exception e)
+                {
+                    if (item != null) { try { item.DestroyTree(); } catch { /* 单件清理失败不影响其余物品 */ } }
+                    Debug.LogWarning("[SkyIslandCrate] 物品 " + typeId + " 装箱失败：" + e.Message);
+                    break;
+                }
+            }
+            return added;
+        }
     }
 }

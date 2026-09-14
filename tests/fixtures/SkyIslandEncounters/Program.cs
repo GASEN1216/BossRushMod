@@ -17,6 +17,7 @@ internal static class Program
         internal bool Valid = true, Accept = true;
         internal int Attempts;
         internal int StormTrophies;
+        internal readonly List<string> DefeatedIds = new List<string>();
         internal World(string nearby)
         {
             foreach (SkyIslandEncounterDefinition definition in SkyIslandContent.CreateFallback().Encounters)
@@ -28,7 +29,7 @@ internal static class Program
             // 内容表由会话加载一次后传入；夹具走与生产同一条 Load 路径，保证 ContentSource 仍是真实结果。
             Encounters = new SkyIslandEncounters(Root, Player, new Pathfinding.GraphMask(), 1, SkyIslandContent.Load(), () => Valid,
                 id => Saved.Contains(id), id => { Attempts++; if (Accept) Saved.Add(id); }, (message, error) => { }, id => id,
-                position => { StormTrophies++; });
+                (id, position) => { StormTrophies++; DefeatedIds.Add(id); });
         }
         internal void Tick(float seconds = 1) { Time.time += seconds; Encounters.Tick(); }
         public void Dispose() { Valid = false; Encounters.Dispose(); }
@@ -154,6 +155,24 @@ internal static class Program
             Check(SkyIslandResidents.Faces.Contains("sky_zheling"), "combat uses same story face");
             Check(!world.Encounters.BeginChallenge("Zheling"), "double challenge rejected");
             Kill(CharacterRandomPreset.Created[0]); world.Tick(); Check(world.Saved.Contains("Zheling"), "challenge submits actual death");
+        }
+        // ---- 2026-09-14 噬风·回响：同一处风眼、独立的遭遇 id；本体倒下的回调带上 id，编排以回响模式绑定 ----
+        Reset();
+        using (var world = new World("Storm"))
+        {
+            world.Saved.Add("Storm");
+            world.Tick();
+            Check(!world.Encounters.BeginChallenge("Storm"), "the first Windeater fight stays one-shot once its fact is saved");
+            int bound = SkyIslandStormBoss.Bound, echoBound = SkyIslandStormBoss.EchoBound;
+            Check(world.Encounters.BeginChallenge(SkyIslandStormEchoRules.EncounterId),
+                "the echo is its own manual group, so a saved first fight does not read it as cleared");
+            Check(SkyIslandStormBoss.Bound == bound + 1 && SkyIslandStormBoss.EchoBound == echoBound + 1,
+                "the echo lead binds the shared storm choreography in echo mode (and only the lead)");
+            Check(!world.Encounters.BeginChallenge(SkyIslandStormEchoRules.EncounterId), "the echo cannot be started twice in one raid");
+            SkyIslandStormBoss.LastDefeated();
+            Check(world.DefeatedIds.Count == 1 && world.DefeatedIds[0] == SkyIslandStormEchoRules.EncounterId,
+                "the defeat callback carries the echo id so the session can route its cache");
+            Check(world.Encounters.IsBusy(SkyIslandStormEchoRules.EncounterId), "a live echo group counts as busy (it drives the returning gale)");
         }
         Console.WriteLine("PASS SkyIslandEncounters: " + checks + " assertions (production owner with Unity / async substitutes)");
     }

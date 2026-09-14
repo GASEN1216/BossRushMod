@@ -157,7 +157,10 @@ namespace BossRush
                     Encounter("Zheling", "EnemySpawn_F", 1, true, SkyIslandEnemyTier.Champion, SkyIslandEnemyTier.Champion),
                     Encounter("BellKeeper", "EnemySpawn_H", 3, true, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Champion),
                     // 噬风：全图唯一 Boss，双航标点亮后在鸣风栈道可挑战；一次生成 Boss + 两名精英。
-                    Encounter("Storm", "POI_E", 3, true, SkyIslandEnemyTier.Elite, SkyIslandEnemyTier.Storm)
+                    Encounter("Storm", "POI_E", 3, true, SkyIslandEnemyTier.Elite, SkyIslandEnemyTier.Storm),
+                    // 噬风·回响：结局后每趟可在同一处风眼引一次（SkyIslandStormEchoRules）。编成与首战相同；
+                    // 按本趟计——清场只记在会话里，从不写进存档的清场表。
+                    Encounter("StormEcho", "POI_E", 3, true, SkyIslandEnemyTier.Elite, SkyIslandEnemyTier.Storm)
                 },
                 Gates = new[]
                 {

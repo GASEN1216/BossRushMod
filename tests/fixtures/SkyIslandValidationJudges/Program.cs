@@ -32,6 +32,9 @@ internal static class Program
         GatherNodes();
         LetterPigeon();
         ReachabilityGates();
+        StormEcho();
+        LootPrewarm();
+        FrameProfile();
         Console.WriteLine("PASS: " + assertions + " assertions; F3 Sky Island runtime-case judges (pure half only, no Unity)");
     }
 
@@ -73,6 +76,127 @@ internal static class Program
             "reach: 8 m short (the nearest a point behind any gate can be) is not reached");
         Check(!F3GameplayValidationRunner.ProbeReachedTarget(0f, 23f, 0f, 0f, 26f, 0f, out gap),
             "reach: right below the target but 3 m lower (another floor) is not reached");
+    }
+
+    // ---------------------------------------------------------------- 噬风·回响（2026-09-14 B 轮）
+    private static void StormEcho()
+    {
+        string metrics, reason;
+        SkyIslandStoryData locked = SkyIslandStoryRules.CreateDefault();
+        locked.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp);
+        bool skipped = false;
+        try { F3GameplayValidationRunner.JudgeStormEcho(locked, 0, false, false, true, 1, false, null, out metrics, out reason); }
+        catch (SkyIslandSkipCase skip) { skipped = skip.Message == "echo_locked_by_story" && skip.Metrics.Contains("unlocked=False"); }
+        Check(skipped, "echo: a save that has not rung the bell and beaten the Windeater has no open-state criterion -> SKIP");
+
+        SkyIslandStoryData open = SkyIslandStoryRules.CreateDefault();
+        open.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.StormSlain
+            | SkyIslandStoryFlag.BellKeeperReconciled | SkyIslandStoryFlag.Ending);
+        Check(F3GameplayValidationRunner.JudgeStormEcho(open, 0, false, false, true, 1, true, null, out metrics, out reason)
+            && metrics.Contains("can_summon_now=True"), "echo: unlocked, nothing started, session agrees with the rule -> PASS: " + reason);
+        Check(F3GameplayValidationRunner.JudgeStormEcho(open, 1, true, false, true, 0, false, null, out metrics, out reason),
+            "echo: called once this raid (the windcrystal is spent, no hint because the raid is spent) -> PASS: " + reason);
+        Check(F3GameplayValidationRunner.JudgeStormEcho(open, 1, true, true, true, 0, false, null, out metrics, out reason),
+            "echo: called and cleared -> PASS");
+        string coreHint;
+        SkyIslandStoryRules.CanSummonStormEcho(open, false, false, 1, out coreHint);
+        Check(F3GameplayValidationRunner.JudgeStormEcho(open, 0, false, false, false, 1, false, coreHint, out metrics, out reason)
+            && metrics.Contains("blocker=shown"), "echo: no core, the session shows exactly the rule's hint -> PASS");
+
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(open, 2, true, false, true, 0, false, null, out metrics, out reason)
+            && reason.Contains("starts_this_raid=2"), "echo: called twice in one raid -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(locked, 1, true, false, true, 0, false, null, out metrics, out reason)
+            && reason.Contains("started_without_ending_and_storm"), "echo: called on a save that never unlocked it -> FAIL (not swallowed by the locked SKIP)");
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(open, 0, true, false, true, 1, true, null, out metrics, out reason)
+            && reason.Contains("group_started"), "echo: the echo group is fighting but the raid never counted a call -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(open, 1, false, true, true, 0, false, null, out metrics, out reason)
+            && reason.Contains("cleared_without_start"), "echo: cleared without ever starting -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(open, 0, false, false, true, 1, false, null, out metrics, out reason)
+            && reason.Contains("can_summon_now=False/rule=True"), "echo: the device refuses while the rule allows it -> FAIL");
+        string crystalHint;
+        SkyIslandStoryRules.CanSummonStormEcho(open, false, true, 0, out crystalHint);
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(open, 0, false, false, false, 1, false, crystalHint, out metrics, out reason)
+            && reason.Contains("blocker_differs_from_rule"), "echo: the panel hint is not the rule's hint -> FAIL");
+        SkyIslandStoryData polluted = open.Copy();
+        polluted.clearedEncounters = new[] { SkyIslandStormEchoRules.EncounterId };
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(polluted, 0, false, false, true, 1, true, null, out metrics, out reason)
+            && reason.Contains("echo_clear_written_to_save"), "echo: its clear leaked into the save's clear list -> FAIL");
+        SkyIslandStoryData pollutedLocked = locked.Copy();
+        pollutedLocked.clearedEncounters = new[] { SkyIslandStormEchoRules.EncounterId };
+        Check(!F3GameplayValidationRunner.JudgeStormEcho(pollutedLocked, 0, false, false, true, 1, false, null, out metrics, out reason)
+            && reason.Contains("echo_clear_written_to_save"), "echo: a polluted locked save is still a FAIL, never a SKIP");
+    }
+
+    // ---------------------------------------------------------------- 物资池预热（CR-2026-09-14-014）
+    private static void LootPrewarm()
+    {
+        string metrics, reason;
+        int[][] bands = SkyIslandLootTables.PrewarmBands();
+        bool[] all = new bool[bands.Length];
+        for (int i = 0; i < all.Length; i++) all[i] = true;
+        Check(F3GameplayValidationRunner.JudgeLootPrewarm(bands, all, true, bands.Length, 0, bands.Length, 639.0, 210.0, out metrics, out reason)
+            && metrics.Contains("cached_before_case=" + bands.Length + "/" + bands.Length), "prewarm: every band built on its own frame and cached before the case -> PASS: " + reason);
+        Check(F3GameplayValidationRunner.JudgeLootPrewarm(bands, all, true, 0, bands.Length, 0, 0.0, 0.0, out metrics, out reason),
+            "prewarm: a later raid in the same process hits the cache for every band -> PASS");
+        Check(!F3GameplayValidationRunner.JudgeLootPrewarm(bands, all, false, 0, 0, 0, 0.0, 0.0, out metrics, out reason)
+            && reason.Contains("prewarm_never_ran"), "prewarm: the assembly path never called it -> FAIL");
+        bool[] oneMissing = (bool[])all.Clone();
+        oneMissing[bands.Length - 1] = false;
+        Check(!F3GameplayValidationRunner.JudgeLootPrewarm(bands, oneMissing, true, bands.Length, 0, bands.Length, 1.0, 1.0, out metrics, out reason)
+            && reason.Contains("not_cached_before_case:" + bands[bands.Length - 1][0] + "-" + bands[bands.Length - 1][1]),
+            "prewarm: a band still missing from the cache when the case starts (it would be built lazily near a crate) -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeLootPrewarm(bands, all, true, bands.Length, 0, 1, 1.0, 1.0, out metrics, out reason)
+            && reason.Contains("prewarm_frames="), "prewarm: every band built in a single frame (not spread) -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeLootPrewarm(bands, all, true, 2, 0, 2, 1.0, 1.0, out metrics, out reason)
+            && reason.Contains("prewarm_bands=2/"), "prewarm: stopped short of the band list -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeLootPrewarm(null, null, true, 0, 0, 0, 0.0, 0.0, out metrics, out reason)
+            && reason.Contains("no_prewarm_bands"), "prewarm: no band list -> FAIL");
+    }
+
+    // ---------------------------------------------------------------- 帧时间分项计时（Dev 构建）
+    private static void FrameProfile()
+    {
+        string metrics, reason;
+        string[] names = SkyIslandFrameProfile.SegmentNames;
+        Check(names.Length == Enum.GetValues(typeof(SkyIslandFrameSegment)).Length, "profile: one report name per segment");
+        Check(new HashSet<string>(names).Count == names.Length, "profile: segment names are unique");
+        foreach (SkyIslandFrameSegment segment in Enum.GetValues(typeof(SkyIslandFrameSegment)))
+            Check((int)segment >= 0 && (int)segment < names.Length, "profile: segment ordinal indexes the name table: " + segment);
+        List<float[]> taken;
+        Check(!SkyIslandFrameProfile.TryTakeRecording(out taken) && taken == null,
+            "profile: compiled without BOSSRUSH_DEV (as the release build is) there is nothing to hand over");
+
+        int gnats = (int)SkyIslandFrameSegment.Gnats, hud = (int)SkyIslandFrameSegment.Hud;
+        var frames = new List<float[]>();
+        for (int f = 0; f < 20; f++)
+        {
+            float[] row = new float[names.Length];
+            row[gnats] = f + 1;
+            row[hud] = 0.5f;
+            frames.Add(row);
+        }
+        Check(F3GameplayValidationRunner.JudgeFrameProfile(names, frames, 13, 2, 400, 1272, out metrics, out reason)
+            && metrics.Contains("profile_frames=20") && metrics.Contains("top_p95=gnats:19.00") && metrics.Contains("gnats=19.00/20.00")
+            && metrics.Contains("lights_active=13,lights_shadowed=2,renderers_visible=400/1272"),
+            "profile: per-segment p95/max, the top segment and the scene counts land in metrics -> PASS: " + reason);
+        float max;
+        Check(F3GameplayValidationRunner.FrameP95(new List<float> { 3f, 1f, 2f }, out max) == 3f && max == 3f
+            && F3GameplayValidationRunner.FrameP95(new List<float>(), out max) == 0f, "profile: p95 uses the SamplePerformance index (ceil(n*0.95))");
+
+        Check(!F3GameplayValidationRunner.JudgeFrameProfile(names, new List<float[]>(), 0, 0, 0, 0, out metrics, out reason)
+            && reason.Contains("profile_no_frames"), "profile: the session ran but nothing was recorded (marks not wired) -> FAIL");
+        var shape = new List<float[]>(frames) { new float[names.Length - 1] };
+        Check(!F3GameplayValidationRunner.JudgeFrameProfile(names, shape, 0, 0, 0, 0, out metrics, out reason)
+            && reason.Contains("frame_shape_mismatch=1"), "profile: a frame row that does not match the segment table -> FAIL");
+        var negative = new List<float[]>(frames);
+        float[] bad = new float[names.Length];
+        bad[hud] = -1f;
+        negative.Add(bad);
+        Check(!F3GameplayValidationRunner.JudgeFrameProfile(names, negative, 0, 0, 0, 0, out metrics, out reason)
+            && reason.Contains("negative_or_nan_segment=1"), "profile: a negative segment time -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeFrameProfile(names, null, 5, 1, 10, 20, out metrics, out reason)
+            && metrics.StartsWith("profile=unavailable", StringComparison.Ordinal) && metrics.Contains("lights_active=5"),
+            "profile: no recording handed over (release build) -> FAIL, scene counts still reported");
     }
 
     private static bool Run(Func<Tuple<bool, string, string>> judge, out string metrics, out string reason)
@@ -167,12 +291,15 @@ internal static class Program
     private static void EncounterTable()
     {
         string metrics, reason;
+        int groups = F3GameplayValidationRunner.ExpectedEncounterGroups, enemies = F3GameplayValidationRunner.ExpectedEncounterEnemies;
+        Check(groups == 22 && enemies == 64, "encounters: 21 groups / 61 enemies plus the 2026-09-14 Windeater's echo (one manual group of 3)");
         Check(F3GameplayValidationRunner.JudgeEncounterTable(SkyIslandContent.CreateFallback(), out metrics, out reason)
-            && metrics.Contains("table_groups=21") && metrics.Contains("table_enemies=61"), "encounters: the production table has 21 groups / 61 enemies -> PASS: " + reason);
+            && metrics.Contains("table_groups=" + groups) && metrics.Contains("table_enemies=" + enemies),
+            "encounters: the production table matches the expected groups / enemies -> PASS: " + reason);
 
         SkyIslandContentData dropped = CloneFallback();
         Array.Resize(ref dropped.Encounters, dropped.Encounters.Length - 1);
-        Check(!F3GameplayValidationRunner.JudgeEncounterTable(dropped, out metrics, out reason) && reason.Contains("groups=20"), "encounters: one group missing -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeEncounterTable(dropped, out metrics, out reason) && reason.Contains("groups=" + (groups - 1)), "encounters: one group missing -> FAIL");
 
         SkyIslandContentData manual = CloneFallback();
         foreach (SkyIslandEncounterDefinition e in manual.Encounters) if (e.Id == "E_03") e.Manual = true;
@@ -190,7 +317,7 @@ internal static class Program
 
         SkyIslandContentData thin = CloneFallback();
         thin.Encounters[2].Count = 2;
-        Check(!F3GameplayValidationRunner.JudgeEncounterTable(thin, out metrics, out reason) && reason.Contains("enemies=60"), "encounters: 60 enemies -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeEncounterTable(thin, out metrics, out reason) && reason.Contains("enemies=" + (enemies - 1)), "encounters: one enemy short -> FAIL");
         Check(!F3GameplayValidationRunner.JudgeEncounterTable(null, out metrics, out reason), "encounters: no table -> FAIL");
         Check(F3GameplayValidationRunner.RegionToken("Relay_K1", true) == "K1" && F3GameplayValidationRunner.RegionToken("C_02", false) == "C",
             "encounters: region token parsing");
@@ -199,14 +326,15 @@ internal static class Program
     private static void EncounterRuntime()
     {
         string metrics, reason;
-        Check(F3GameplayValidationRunner.JudgeEncounterRuntime(21, 3, 12, 200, 20f, 40f, 50f, out metrics, out reason), "encounter runtime: 12 alive at the cap -> PASS");
-        Check(!F3GameplayValidationRunner.JudgeEncounterRuntime(21, 3, 13, 200, 20f, 40f, 50f, out metrics, out reason) && reason.Contains("living_peak=13"),
+        int groups = F3GameplayValidationRunner.ExpectedEncounterGroups;
+        Check(F3GameplayValidationRunner.JudgeEncounterRuntime(groups, 3, 12, 200, 20f, 40f, 50f, out metrics, out reason), "encounter runtime: 12 alive at the cap -> PASS");
+        Check(!F3GameplayValidationRunner.JudgeEncounterRuntime(groups, 3, 13, 200, 20f, 40f, 50f, out metrics, out reason) && reason.Contains("living_peak=13"),
             "encounter runtime: 13 alive -> FAIL");
         Check(!F3GameplayValidationRunner.JudgeEncounterRuntime(16, 0, 0, 200, 10f, 12f, 50f, out metrics, out reason) && reason.Contains("groups_built=16"),
             "encounter runtime: only 16 groups built -> FAIL");
-        Check(!F3GameplayValidationRunner.JudgeEncounterRuntime(21, 8, 8, 200, 61f, 90f, 50f, out metrics, out reason) && reason.Contains("dense_p95_ms"),
+        Check(!F3GameplayValidationRunner.JudgeEncounterRuntime(groups, 8, 8, 200, 61f, 90f, 50f, out metrics, out reason) && reason.Contains("dense_p95_ms"),
             "encounter runtime: dense segment over the frame threshold -> FAIL");
-        Check(F3GameplayValidationRunner.JudgeEncounterRuntime(21, 2, 2, 200, 61f, 90f, 50f, out metrics, out reason) && metrics.Contains("dense=False"),
+        Check(F3GameplayValidationRunner.JudgeEncounterRuntime(groups, 2, 2, 200, 61f, 90f, 50f, out metrics, out reason) && metrics.Contains("dense=False"),
             "encounter runtime: a slow frame outside a dense segment is only recorded");
     }
 

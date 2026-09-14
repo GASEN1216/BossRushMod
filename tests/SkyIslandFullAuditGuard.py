@@ -204,7 +204,8 @@ def main():
                       "private static void CleanupRegistration()"):
         body = need_body(bridge, signature, "场景句柄缓存作废点")
         require(body, "knownSceneHandle = 0;", "天空岛场景句柄缓存必须在 " + signature + " 里作废")
-    session = read(SKY + "SkyIslandSession.cs")
+    # 2026-09-14 B 轮：地名与对手名原样挪进了同一个 partial 的 SkyIslandSessionLabels.cs（会话主文件卡在 1200 行预算上），两份合起来看。
+    session = read(SKY + "SkyIslandSession.cs") + "\n" + read(SKY + "SkyIslandSessionLabels.cs")
     for signature in ("internal static string LandmarkLabel(string name)", "internal static string RegionLabel(string id)",
                       "private static string MainRegionCn(char region)", "private static string MainRegionEn(char region)"):
         body = need_body(session, signature, "地名取用")

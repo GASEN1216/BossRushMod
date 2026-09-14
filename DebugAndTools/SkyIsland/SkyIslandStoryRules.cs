@@ -107,6 +107,44 @@ namespace BossRush
             return true;
         }
 
+        /// <summary>引风（噬风·回响）烧掉几块晴岚风晶。回响的奖励表与会话的预留读的都是它。</summary>
+        internal const int StormEchoWindcrystalCost = 1;
+
+        /// <summary>
+        /// 噬风·回响**此刻能不能引**。「装置上挂不挂『引风』」与「点下去会不会被拒」只认这一份（口径同 <see cref="CanApply"/>）。
+        /// 五项全要：敲过钟、打过噬风、这一趟还没引过、噬风之核在背包里、晴岚风晶够烧。
+        /// 回响按本趟计、不写存档，所以不进 <see cref="Describe"/> 的旗标表。纯函数，隔离回归逐项翻转核对。
+        /// </summary>
+        /// <param name="blocker">
+        /// 前置没满足时「还差什么」。还没打过噬风（首战那一项还挂着）与这一趟已经引过时是 null——那不是引导，是噪声。
+        /// </param>
+        internal static bool CanSummonStormEcho(SkyIslandStoryData data, bool usedThisRaid, bool coreCarried, int windcrystals,
+            out string blocker)
+        {
+            blocker = null;
+            if (data == null || !data.StormResolved) return false;
+            if (!data.Has(SkyIslandStoryFlag.Ending))
+            {
+                blocker = L10n.T("栈道上那阵风散了。等归航钟响过，带着噬风之核、烧一块晴岚风晶，还能在这里把它的回响引回来。",
+                    "The wind on the boardwalk is gone. Once the Homecoming Bell has rung, bring the Windeater Core and burn a Qinglan Windcrystal here to call its echo back.");
+                return false;
+            }
+            if (usedThisRaid) return false;
+            if (!coreCarried)
+            {
+                blocker = L10n.T("引风要把噬风之核带在背包里（不会用掉）。它若还在基地仓库，下次上岛带上。",
+                    "Calling the wind needs the Windeater Core in your pack (it is not used up). If it is still in base storage, bring it next trip.");
+                return false;
+            }
+            if (windcrystals < StormEchoWindcrystalCost)
+            {
+                blocker = L10n.T("引风要烧一块晴岚风晶：五片风晶碎片在浮舟的渡口工台熔成一块。",
+                    "Calling the wind burns a Qinglan Windcrystal: five windcrystal shards fuse into one at Fuzhou's dock workbench.");
+                return false;
+            }
+            return true;
+        }
+
         /// <summary>
         /// 一个剧情动作的三件事：写哪个标志位、此刻缺什么前置（<paramref name="required"/>，
         /// null = 不缺）、做成了回什么话。**<see cref="TryApply"/> 与 <see cref="CanApply"/>
@@ -302,8 +340,9 @@ namespace BossRush
                 // 布局 v2：结局时两端航标必然已亮，四处出口全开（码头、钟庭、两处航标广场）。
                 return L10n.T("归航钟已响 · 自由重访、补齐支线 · 码头、钟庭或航标广场返航",
                     "The bell has rung · revisit freely and finish the side paths · extract at the dock, Bell Court or a beacon plaza") +
-                    (data.StormResolved ? "" : L10n.T(" · 「噬风」仍在鸣风栈道",
-                        " · the Windeater is still on Windsong Boardwalk"));
+                    (data.StormResolved
+                        ? L10n.T(" · 栈道可引风：噬风·回响（每趟一次）", " · call the Windeater's echo on the boardwalk (once per raid)")
+                        : L10n.T(" · 「噬风」仍在鸣风栈道", " · the Windeater is still on Windsong Boardwalk"));
             if (!data.BothBeacons)
                 return L10n.T("恢复两端航标：", "Restore both beacons: ") +
                     (data.Has(SkyIslandStoryFlag.WindBeacon)

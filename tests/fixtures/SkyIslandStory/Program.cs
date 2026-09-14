@@ -1016,6 +1016,120 @@ internal static class Program
             && SkyIslandJournal.NoteCount + SkyIslandLetters.Count + SkyIslandCrew.Count + SkyIslandItemRules.Keepsakes.Length + lamps.Length
                + SkyIslandMosquitoRules.FrogTarget <= 256, "frog notes fit the journal codec");
 
+        // ---- B 轮（2026-09-14）：噬风·回响——五项判据、本趟一次、烧掉什么、回响遗存进哪条消耗链、谁提起它 ----
+        SkyIslandStoryData echoLocked = SkyIslandStoryRules.CreateDefault();
+        echoLocked.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp);
+        SkyIslandStoryData echoNoEnding = echoLocked.Copy();
+        echoNoEnding.flags |= (int)SkyIslandStoryFlag.StormSlain;
+        SkyIslandStoryData echoOpen = echoNoEnding.Copy();
+        echoOpen.flags |= (int)(SkyIslandStoryFlag.BellKeeperReconciled | SkyIslandStoryFlag.Ending);
+        SkyIslandStoryData echoNoStorm = echoLocked.Copy();
+        echoNoStorm.flags |= (int)(SkyIslandStoryFlag.BellKeeperDefeated | SkyIslandStoryFlag.Ending);
+        string echoBlocker;
+        Check(SkyIslandStoryRules.CanSummonStormEcho(echoOpen, false, true, 1, out echoBlocker) && echoBlocker == null,
+            "echo: bell rung + Windeater beaten + not yet this raid + core carried + one windcrystal opens it");
+        Check(!SkyIslandStoryRules.CanSummonStormEcho(echoNoStorm, false, true, 1, out echoBlocker) && echoBlocker == null,
+            "echo: without beating the Windeater there is no echo and no hint (the first fight is what the device offers)");
+        Check(!SkyIslandStoryRules.CanSummonStormEcho(echoNoEnding, false, true, 1, out echoBlocker) && echoBlocker != null && echoBlocker.Contains("归航钟"),
+            "echo: beaten but the bell has not rung yet -> the hint says to ring it first");
+        Check(!SkyIslandStoryRules.CanSummonStormEcho(echoOpen, true, true, 1, out echoBlocker) && echoBlocker == null,
+            "echo: once per raid, and a spent raid leaves no hint behind");
+        Check(!SkyIslandStoryRules.CanSummonStormEcho(echoOpen, false, false, 1, out echoBlocker) && echoBlocker != null && echoBlocker.Contains("噬风之核"),
+            "echo: the Windeater Core must be in the pack");
+        Check(!SkyIslandStoryRules.CanSummonStormEcho(echoOpen, false, true, SkyIslandStoryRules.StormEchoWindcrystalCost - 1, out echoBlocker)
+            && echoBlocker != null && echoBlocker.Contains("晴岚风晶"), "echo: it needs a windcrystal to burn");
+        Check(SkyIslandStoryRules.CanSummonStormEcho(echoOpen, false, true, 9, out echoBlocker)
+            && !SkyIslandStoryRules.CanSummonStormEcho(null, false, true, 1, out echoBlocker) && echoBlocker == null,
+            "echo: spare windcrystals are fine; no save means closed");
+        int echoOpenings = 0;
+        for (int mask = 0; mask < 32; mask++)
+        {
+            SkyIslandStoryData sample = echoLocked.Copy();
+            if ((mask & 1) != 0) sample.flags |= (int)(SkyIslandStoryFlag.BellKeeperReconciled | SkyIslandStoryFlag.Ending);
+            if ((mask & 2) != 0) sample.flags |= (int)SkyIslandStoryFlag.StormSlain;
+            bool opens = SkyIslandStoryRules.CanSummonStormEcho(sample, (mask & 4) == 0, (mask & 8) != 0, (mask & 16) != 0 ? 1 : 0, out echoBlocker);
+            Check(opens == (mask == 31), "echo: all five conditions are required, mask " + mask);
+            if (opens) echoOpenings++;
+        }
+        Check(echoOpenings == 1, "echo: exactly one of the 32 condition combinations opens it");
+        Check(SkyIslandStormEchoRules.UnlockedBySave(echoOpen) && !SkyIslandStormEchoRules.UnlockedBySave(echoNoEnding)
+            && !SkyIslandStormEchoRules.UnlockedBySave(echoNoStorm) && !SkyIslandStormEchoRules.UnlockedBySave(null),
+            "echo: unlocked-by-save means the bell has rung AND the Windeater is beaten");
+        Check(SkyIslandStormEchoRules.IsEcho("StormEcho") && !SkyIslandStormEchoRules.IsEcho("Storm") && !SkyIslandStormEchoRules.IsEcho(null)
+            && SkyIslandStormEchoRules.MaxPerRaid == 1, "echo: its own encounter id, once per raid");
+        SkyIslandEncounterDefinition echoGroup = Array.Find(SkyIslandContent.CreateFallback().Encounters, e => e.Id == SkyIslandStormEchoRules.EncounterId);
+        SkyIslandEncounterDefinition firstStorm = Array.Find(SkyIslandContent.CreateFallback().Encounters, e => e.Id == "Storm");
+        Check(echoGroup != null && firstStorm != null && echoGroup.Manual && echoGroup.Marker == firstStorm.Marker && echoGroup.Count == firstStorm.Count
+            && echoGroup.Lead == SkyIslandEnemyTier.Storm && echoGroup.Tier == firstStorm.Tier,
+            "echo: a manual group at the same eye with the first fight's line-up (no extra health, no extra bodies)");
+        SkyIslandIngredient[] echoCost = SkyIslandStormEchoReward.Cost;
+        Check(echoCost.Length == 1 && echoCost[0].TypeId == BossRushItemIds.SkyIslandQinglanWindcrystal && echoCost[0].Count == SkyIslandStoryRules.StormEchoWindcrystalCost,
+            "echo: burns exactly the windcrystals the rule counts");
+        int shardsPerCrystal = SkyIslandStormEchoReward.ShardsPerWindcrystal();
+        Check(shardsPerCrystal == 5, "echo: one windcrystal is five shards (read from the recipe)");
+        var islandIds = new HashSet<int>(SkyIslandItemRules.AllTypeIds);
+        var echoKits = new HashSet<int>();
+        double echoSampled = 0.0;
+        const int echoSamples = 1000;
+        for (int i = 0; i < echoSamples; i++)
+        {
+            SkyIslandYield[] goods = SkyIslandStormEchoReward.For((i + 0.5) / echoSamples);
+            int shardsBack = 0;
+            foreach (SkyIslandYield good in goods)
+            {
+                int value = SkyIslandItemRules.ValueOf(good.TypeId);
+                Check(islandIds.Contains(good.TypeId) && good.Count > 0, "echo cache: only registered island items (no new TypeID): " + good.TypeId);
+                Check(value > 0 && SkyIslandLootTables.AllowedInPool(value), "echo cache: priced and under the island pool value cap: " + good.TypeId);
+                Check(consumedBySomething.Contains(good.TypeId) || SkyIslandFieldcraftRules.BuffFor(good.TypeId) != SkyIslandFieldBuff.None,
+                    "echo cache: every good feeds a recipe, a lamp or an on-island effect (nothing only to sell): " + good.TypeId);
+                if (good.TypeId == BossRushItemIds.SkyIslandWindcrystalShard) shardsBack += good.Count;
+                echoSampled += good.Count * value;
+            }
+            Check(goods.Length == 3 && shardsBack < shardsPerCrystal * SkyIslandStoryRules.StormEchoWindcrystalCost,
+                "echo cache: never hands back a whole windcrystal's worth of shards (the echo cannot feed itself)");
+            echoKits.Add(goods[2].TypeId);
+        }
+        Check(echoKits.SetEquals(new[] { BossRushItemIds.SkyIslandQinglanCharm, BossRushItemIds.SkyIslandHomecomingBento, BossRushItemIds.SkyIslandWindwardIncense }),
+            "echo cache: the third slot rolls a charm, a bento or incense");
+        Check(Math.Abs(echoSampled / echoSamples - SkyIslandStormEchoReward.ExpectedValue()) < 5.0
+            && Math.Abs(SkyIslandStormEchoReward.ExpectedValue() - 4416.0) < 0.5 && SkyIslandStormEchoReward.CostValue() == 2600,
+            "echo economy: a cache is worth 4,416 on average against the 2,600 windcrystal it burns (the numbers in the report)");
+        Check(SkyIslandStoryRules.Objective(echoOpen).Contains("噬风·回响") && SkyIslandStoryRules.Objective(echoNoStorm).Contains("仍在鸣风栈道")
+            && !SkyIslandStoryRules.Objective(echoNoStorm).Contains("回响"), "echo: after the ending the objective points at the echo once the Windeater is beaten");
+        Check(SkyIslandJournal.Uses().Contains("引风") && SkyIslandJournal.Uses().Contains("回响遗存"), "echo: the journal's uses page records the call and the cache");
+        Check(SkyIslandCrew.Page(0, peaceful).Contains("还记着那阵风") && !SkyIslandCrew.Page(0, forceful).Contains("还记着那阵风"),
+            "echo: the helmsman's page mentions calling the wind back only on a save that beat the Windeater");
+        story = Open(37);
+        foreach (string clear in new[] { "D", "D_02", "G", "G_02" }) story.RecordEncounterCleared(clear);
+        Apply(story, SkyIslandStoryAction.RepairWindBeacon);
+        Apply(story, SkyIslandStoryAction.RepairStarLamp);
+        Apply(story, SkyIslandStoryAction.StormSlain);
+        Apply(story, SkyIslandStoryAction.ReconcileBellKeeper);
+        Check(story.DescribeNpc("sky_bellkeeper").IndexOf("回来找你", StringComparison.Ordinal) < 0, "echo: the bell keeper keeps quiet about the echo before the bell rings");
+        Apply(story, SkyIslandStoryAction.RingHomecomingBell);
+        Check(story.DescribeNpc("sky_bellkeeper").Contains("回来找你"), "echo: once the bell has rung and the Windeater is gone, the bell keeper says the wind can be called back");
+        L10n.IsChinese = false;
+        Check(!ContainsCjk(story.DescribeNpc("sky_bellkeeper")), "echo: the bell keeper's line has an English half");
+        L10n.IsChinese = true;
+        Check(!story.Current.EncounterCleared(SkyIslandStormEchoRules.EncounterId), "echo: nothing about the echo is written to the save");
+        story.Close();
+        Check(SavesSystem.Subscribers == 0, "echo sessions released events");
+
+        // ---- B 轮：物资池预热的品质带（CR-2026-09-14-014） ----
+        int[][] warmBands = SkyIslandLootTables.PrewarmBands();
+        var expectedBands = new HashSet<string>(StringComparer.Ordinal);
+        foreach (SkyIslandLootTier tier in tiers)
+        {
+            expectedBands.Add(SkyIslandLootTables.MinQuality(tier) + "-" + SkyIslandLootTables.MaxQuality(tier));
+            if (SkyIslandLootTables.GuaranteeMinQuality(tier) > 0)
+                expectedBands.Add(SkyIslandLootTables.GuaranteeMinQuality(tier) + "-" + SkyIslandLootTables.MaxQuality(tier));
+        }
+        var warmSeen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (int[] band in warmBands)
+            Check(band.Length == 2 && band[0] <= band[1] && warmSeen.Add(band[0] + "-" + band[1]), "prewarm bands are well formed and unique");
+        Check(warmSeen.SetEquals(expectedBands) && warmBands.Length == 5,
+            "prewarm covers exactly the regular and guarantee bands a crate can ask for (5 queries)");
+
         // ---- 批次三：英文界面没有残留中文 ----
         L10n.IsChinese = false;
         string englishThree = SkyIslandFieldcraftRules.PackSummary(countInPack) + SkyIslandFieldcraftRules.PackSummary(null)
@@ -1048,6 +1162,15 @@ internal static class Program
             englishThree += SkyIslandFieldcraftRules.LockedLabel(recipe) + SkyIslandFieldcraftRules.LockedMessage(recipe);
         foreach (SkyIslandGatherNode node in gatherNodes) englishThree += SkyIslandFieldcraftRules.StoryBonusReason(node, restored) ?? string.Empty;
         englishThree += SkyIslandFieldcraftRules.HarvestCaption(firstRoll, SkyIslandFieldcraftRules.StoryBonusReason(SkyIslandFieldcraftRules.FindNode("E1"), restored));
+        // B 轮：噬风·回响的选项、回话、三种「还差什么」、目标句与名册那一页。
+        foreach (bool[] inputs in new[] { new[] { true, true }, new[] { false, true }, new[] { true, false } })
+        {
+            SkyIslandStoryRules.CanSummonStormEcho(inputs[0] && inputs[1] ? echoNoEnding : echoOpen, false, inputs[0], inputs[1] ? 1 : 0, out echoBlocker);
+            englishThree += echoBlocker ?? string.Empty;
+        }
+        englishThree += SkyIslandStormEchoRules.ChoiceLabel + SkyIslandStormEchoRules.Opened + SkyIslandStormEchoRules.SpentThisRaid
+            + SkyIslandStormEchoRules.NotReady + SkyIslandStormEchoRules.ReserveFailed + SkyIslandStormEchoRules.StartFailed
+            + SkyIslandStoryRules.Objective(echoOpen) + SkyIslandCrew.Page(0, peaceful);
         L10n.IsChinese = true;
         Check(!ContainsCjk(englishThree), "batch-three text has an English half everywhere");
 

@@ -247,6 +247,8 @@ namespace BossRush
             // 必须显式 Destroy，只置 null 是丢给 UnloadUnusedAssets 碰运气。
             SkyIslandUiArt.ResetStaticCaches();
             SkyIslandNoteBridge.ResetStaticCaches();
+            // Dev 构建的帧时间分项计时：丢掉没交出去的录制（正式构建里是空方法）。
+            SkyIslandFrameProfile.ResetStaticCaches();
         }
     }
 

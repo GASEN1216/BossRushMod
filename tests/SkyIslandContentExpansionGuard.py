@@ -46,6 +46,8 @@ EXPECTED_ENCOUNTERS = {
     'K3_Relay': ('Relay_K3', 3, False, 'Scav', 'Scav'),
     'E_03': ('EnemySpawn_E', 3, False, 'Scav', 'Elite'),
     'H_02': ('Search_H_02', 3, False, 'Scav', 'Elite'),
+    # 2026-09-14 B 轮：噬风·回响。同一处风眼、首战的编成，独立 id（沿用 "Storm" 会被一次性判定当成已清场）。
+    'StormEcho': ('POI_E', 3, True, 'Elite', 'Storm'),
 }
 
 
@@ -437,7 +439,8 @@ def check_storm_boss():
     assert 'BountyRewardItemCount, true)' in services, 'Bounty reward must request the guaranteed top band'
     # 剧情事实挂在本体死亡上：否则杀了 Boss 留着随从离岛，下次还能再刷一次战利品。
     session = source('SkyIslandSession.cs')
-    defeated = session.split('private void OnStormDefeated(Vector3 position)', 1)[1].split('\n        }', 1)[0]
+    # 2026-09-14 B 轮：回调带上遭遇 id（噬风·回响在方法开头分流到回响遗存），首战的判据不变。
+    defeated = session.split('private void OnStormDefeated(string id, Vector3 position)', 1)[1].split('\n        }', 1)[0]
     assert 'SkyIslandStoryAction.StormSlain' in defeated, \
         'Storm flag must be written when the boss itself dies, not only when the whole group is cleared'
     assert defeated.index('StormSlain') < defeated.index('DropTrophy'), \

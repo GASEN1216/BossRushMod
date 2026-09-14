@@ -36,7 +36,10 @@ from cs_source_util import clean_source
 SKY = "DebugAndTools/SkyIsland/"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 RULES = SKY + "SkyIslandStoryRules.cs"
-PATHS = [WORLD, RULES]
+# 2026-09-14 B 轮：噬风·回响的「引风」选项与它点下去那一次（选项接线与会话接线各在一个 partial 文件里）。
+WORLD_ECHO = SKY + "SkyIslandWorldStoryEcho.cs"
+SESSION_ECHO = SKY + "SkyIslandSessionEcho.cs"
+PATHS = [WORLD, RULES, WORLD_ECHO, SESSION_ECHO]
 
 # 裸 `Add(choices, ...)`：前面不能是 `f`（AddIf）也不能是 `.`（choices.Add）。
 RAW_ADD = re.compile(r"(?<![A-Za-z0-9_.])Add\(choices")
@@ -151,6 +154,36 @@ def check(sources):
         body = body_of(world, sub, "}") or ""
         require("BackToJournal()" in body,
                 WORLD + " 的 " + sub + " 没有「返回手记」：二级子菜单必须能回上一层")
+
+    # ---- 9) 噬风·回响：「引风」先判断再挂，挂与点共用同一份判据（五项全在规则里） ----
+    world_echo = clean_source(sources[WORLD_ECHO])
+    session_echo = clean_source(sources[SESSION_ECHO])
+    echo_choice = body_of(world_echo, "private void StormEchoChoice(", "}") or ""
+    gate_at = echo_choice.find("if (!session.CanSummonStormEcho(out blocker))")
+    add_at = echo_choice.find("choices.Add(")
+    require(0 <= gate_at < add_at,
+            WORLD_ECHO + " 的引风选项没有先问 session.CanSummonStormEcho 再挂：退回了「先挂上再在回调里拒绝」")
+    require("Hint(blocker);" in echo_choice[gate_at:add_at] if gate_at >= 0 and add_at > gate_at else False,
+            WORLD_ECHO + " 的引风选项挂不出来时没有 Hint(blocker)：「还差什么」要进正文")
+    require("session.TryBeginStormEcho(out message)" in echo_choice,
+            WORLD_ECHO + " 的引风选项点下去没有交给会话的 TryBeginStormEcho")
+    for token in ("interactable", "enabled = false", "Disabled", "grey", "gray"):
+        require(token not in echo_choice, WORLD_ECHO + " 的引风选项出现了 " + token + "：挂不出来就整条不挂")
+    search_e = world.split('case "Search_E":', 1)[1].split("case ", 1)[0] if 'case "Search_E":' in world else ""
+    require("StormEchoChoice(choices);" in search_e,
+            WORLD + " 的鸣风栈道装置（Search_E）没有挂引风选项")
+    can = body_of(session_echo, "internal bool CanSummonStormEcho(out string blocker)", "}") or ""
+    require("SkyIslandStoryRules.CanSummonStormEcho(" in can,
+            SESSION_ECHO + " 的 CanSummonStormEcho 没有走 SkyIslandStoryRules.CanSummonStormEcho：挂与点会分叉")
+    begin = body_of(session_echo, "internal bool TryBeginStormEcho(out string message)", "}") or ""
+    judged = begin.find("if (!CanSummonStormEcho(out blocker))")
+    reserved = begin.find("TryReserve(")
+    require(0 <= judged < reserved,
+            SESSION_ECHO + " 的 TryBeginStormEcho 没有先过同一份判据再预留风晶")
+    rule = body_of(rules, "internal static bool CanSummonStormEcho(", "}") or ""
+    for token in ("data.StormResolved", "data.Has(SkyIslandStoryFlag.Ending)", "if (usedThisRaid) return false;",
+                  "coreCarried", "windcrystals < StormEchoWindcrystalCost"):
+        require(token in rule, RULES + " 的 CanSummonStormEcho 缺一项判据：" + token)
     return errors
 
 
@@ -191,6 +224,13 @@ def main():
         # CanApply 另立判据，不走 Describe
         (RULES, "if (!Describe(source, action, out flag, out required, out message)) return false;\n            if (source.Has(flag)) return false;",
                 "if (source.Has(flag)) return false;"),
+        # 噬风·回响：引风选项不判就挂 / 挂不出来不留「还差什么」/ 会话另立判据 / 点下去不先判 / 规则漏掉「本趟一次」
+        (WORLD_ECHO, "if (!session.CanSummonStormEcho(out blocker))", "if (false)"),
+        (WORLD_ECHO, "                Hint(blocker);\n", ""),
+        (SESSION_ECHO, "return SkyIslandStoryRules.CanSummonStormEcho(", "return true || SkyIslandStoryRules.CanSummonStormEchoX("),
+        (SESSION_ECHO, "if (!CanSummonStormEcho(out blocker))", "if (false)"),
+        (RULES, "if (usedThisRaid) return false;", ""),
+        (WORLD, "StormEchoChoice(choices); break;", "break;"),
     ]
     for path, before, after in probes:
         if before not in sources[path]:

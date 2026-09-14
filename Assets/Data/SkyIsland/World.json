@@ -168,6 +168,14 @@
       "manual": false,
       "tier": "Scav",
       "lead": "Elite"
+    },
+    {
+      "id": "StormEcho",
+      "marker": "POI_E",
+      "count": 3,
+      "manual": true,
+      "tier": "Elite",
+      "lead": "Storm"
     }
   ],
   "gates": [

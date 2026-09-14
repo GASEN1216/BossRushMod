@@ -53,6 +53,7 @@
 - **只读**：不写剧情、不搬玩家、不刷怪、不开箱、不写运行标记、不给无敌、不跑全宿主清理。`SkyIslandValidationSuiteGuard` 用禁用清单钉死，并区分纯函数 `SkyIslandStoryRules.TryApply`（允许）与会落盘的 `SkyIslandStoryService.TryApply`（禁止）。
 - 判据不成立时抛 `SkyIslandSkipCase` 记 SKIP，不记 PASS；会话中途结束后的用例记 SKIP 并附原因。
 - F3 只存在于 Dev 构建（编译命令见根 `AGENTS.md` §2），验收完换回正式构建再部署。
+- 会改状态的检查（刷怪、强制夜里、弹对话）不进只读套件，进 Dev 演练套件；演练的隔离、还原与不落盘规则见根 `AGENTS.md` §4.17。
 
 ## 6. 场景、布局与打包
 

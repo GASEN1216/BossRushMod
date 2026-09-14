@@ -48,7 +48,8 @@ namespace BossRush
         private readonly Action<string, bool> report;
         /// <summary>遭遇 id → 玩家看得懂的名字（地标名或对手名）。由会话注入：本类不认识地标，也不反向依赖会话。</summary>
         private readonly Func<string, string> describe;
-        private readonly Action<Vector3> stormDefeated;
+        /// <summary>噬风（或它的回响）本体倒下：带上遭遇 id，由会话分流战利品。</summary>
+        private readonly Action<string, Vector3> stormDefeated;
         private bool closed;
         private float nextTick;
         internal string ContentSource { get; private set; }
@@ -56,7 +57,7 @@ namespace BossRush
         /// <summary>内容表由会话加载一次后传入；同一次进岛不重复解析 World.json。</summary>
         internal SkyIslandEncounters(GameObject root, CharacterMainControl player, GraphMask mask, int groundMask,
             SkyIslandContentData content, Func<bool> valid, Func<string, bool> completed, Action<string> cleared,
-            Action<string, bool> report, Func<string, string> describe, Action<Vector3> onStormDefeated)
+            Action<string, bool> report, Func<string, string> describe, Action<string, Vector3> onStormDefeated)
         {
             if (content == null) throw new ArgumentNullException("content");
             if (describe == null) throw new ArgumentNullException("describe");
@@ -347,11 +348,13 @@ namespace BossRush
             SkyIslandEnemyTiers.Apply(created, tier);
             if (tier != SkyIslandEnemyTier.Storm) return;
             Transform bossTransform = created.transform;
+            string encounterId = encounter.Id;
+            // 首战与噬风·回响共用同一套相位编排，回响只多一个模式位（风眼钉在原地、每档多响一声）；倒下时带上 id，由会话分流奖励。
             created.gameObject.AddComponent<SkyIslandStormBoss>().Bind(created, valid, report, delegate
             {
                 if (closed || stormDefeated == null || bossTransform == null) return;
-                stormDefeated(bossTransform.position);
-            });
+                stormDefeated(encounterId, bossTransform.position);
+            }, SkyIslandStormEchoRules.IsEcho(encounterId));
         }
 
         /// <summary>

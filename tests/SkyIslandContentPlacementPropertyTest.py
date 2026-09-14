@@ -36,7 +36,8 @@ BLOCKERS = [pos for mid, pos in MARKERS.items()
             if mid.startswith(BLOCKER_PREFIX) or mid in BLOCKER_EXACT]
 
 EXPECTED_ANCHORS = 39
-EXPECTED_ENCOUNTERS = 21
+# 2026-09-14 B 轮：+1 组噬风·回响（与首战同一个 POI_E 标记、同样 3 人）。
+EXPECTED_ENCOUNTERS = 22
 
 
 def _tri_height(px, pz, tri):

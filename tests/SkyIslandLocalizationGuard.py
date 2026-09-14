@@ -80,6 +80,13 @@ FILES = [
     "SkyIslandHud.cs",
     "SkyIslandCaptionQueue.cs",
     "SkyIslandLootTables.cs",
+    # 2026-09-14 B 轮：噬风·回响（规则与回话、回响遗存、会话与选项接线）、原样拆出的地名表、Dev 构建的帧时间分项计时。
+    "SkyIslandStormEchoRules.cs",
+    "SkyIslandStormEchoReward.cs",
+    "SkyIslandSessionEcho.cs",
+    "SkyIslandWorldStoryEcho.cs",
+    "SkyIslandSessionLabels.cs",
+    "SkyIslandFrameProfile.cs",
 ]
 
 # 内容批次四起一并扫描 Integration/SkyIsland：物品描述、使用说明与耗材回话同样是玩家可见文案。

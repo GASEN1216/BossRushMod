@@ -221,6 +221,12 @@ echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionRecall.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionGnatBounty.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionLabels.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionEcho.cs
+echo(DebugAndTools\SkyIsland\SkyIslandStormEchoRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandStormEchoReward.cs
+echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryEcho.cs
+echo(DebugAndTools\SkyIsland\SkyIslandFrameProfile.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLetters.cs
 echo(DebugAndTools\SkyIsland\SkyIslandPuzzles.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs

@@ -27,6 +27,10 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNight.cs" Link="Production/SkyIslandNight.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs" Link="Production/SkyIslandMosquitoRules.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBounty.cs" Link="Production/SkyIslandBounty.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs" Link="Production/SkyIslandStormEchoRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
+    <!-- 帧时间分项计时：夹具不定义 BOSSRUSH_DEV（与正式构建同口径），只剩段名表与恒返回 false 的交出接口。 -->
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandFrameProfile.cs" Link="Production/SkyIslandFrameProfile.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />

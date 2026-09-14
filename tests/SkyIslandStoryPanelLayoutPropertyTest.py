@@ -327,9 +327,10 @@ def main():
     three_titles, three_bodies, three_labels = batch_three_strings()
     weave_bodies, weave_labels = weave_strings()
     gnat_labels = gnat_strings()
+    echo_bodies, echo_labels = echo_strings()
     title = max([title] + extra_titles + three_titles, key=len)
-    body = max([body] + extra_bodies + three_bodies + weave_bodies, key=len)
-    labels = labels + extra_labels + three_labels + weave_labels + gnat_labels
+    body = max([body] + extra_bodies + three_bodies + weave_bodies + echo_bodies, key=len)
+    labels = labels + extra_labels + three_labels + weave_labels + gnat_labels + echo_labels
     label_count = len(labels)
     longest_label = max(labels, key=len)
     errors = []
@@ -467,6 +468,22 @@ def weave_strings():
                 labels.append(locked[0][lang] + names[output] + locked[1][lang] + hint[lang] + locked[2][lang])
         bodies.append('\n'.join(pair[lang] for pair in chapter) + '\n\n' + '\n'.join(pair[lang] for pair in uses))
     return bodies, labels
+
+
+def echo_strings():
+    """2026-09-14 B 轮：鸣风栈道装置上的「引风」按钮，以及挂不出来时收进正文的三种「还差什么」（接在最长的见闻导语后面拼）。"""
+    rules = read('DebugAndTools/SkyIsland/SkyIslandStoryRules.cs')
+    echo = read('DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs')
+    point = read(POINT_TEXT)
+    choice = re.findall(PAIR, echo.split('internal static string ChoiceLabel', 1)[1].split('internal static string Opened', 1)[0])
+    hints = re.findall(PAIR, rules.split('internal static bool CanSummonStormEcho(', 1)[1].split('internal static bool TryApply', 1)[0]
+                       if 'internal static bool TryApply' in rules.split('internal static bool CanSummonStormEcho(', 1)[1]
+                       else rules.split('internal static bool CanSummonStormEcho(', 1)[1].split('private static bool Describe(', 1)[0])
+    briefs = re.findall(PAIR, point.split('internal static string Brief(', 1)[1].split('internal static string Lore(', 1)[0])
+    assert len(choice) == 1 and len(hints) == 3 and briefs, '噬风·回响的面板文案没解析到，正则与源码失步了'
+    longest = lambda xs: max(xs, key=len)
+    bodies = [longest([b[lang] for b in briefs]) + '\n\n' + hint[lang] for hint in hints for lang in (0, 1)]
+    return bodies, [choice[0][0], choice[0][1]]
 
 
 def gnat_strings():

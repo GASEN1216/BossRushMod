@@ -6,7 +6,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>装置、居民对白和实体剧情反馈；必要动作在独立装置上始终可达。</summary>
-    internal sealed class SkyIslandWorldStory : IDisposable
+    internal sealed partial class SkyIslandWorldStory : IDisposable
     {
         private readonly SkyIslandSession session;
         private readonly SkyIslandStoryService story;
@@ -122,7 +122,9 @@ namespace BossRush
                 case "Search_E":
                     AddIf(choices, L10n.T("开启中轴旧桥 K3", "Open the old centre bridge K3"),
                         SkyIslandStoryAction.OpenShortcutK3);
-                    StormChoice(choices); break;
+                    StormChoice(choices);
+                    // 结局后的噬风·回响（SkyIslandWorldStoryEcho.cs）：打过噬风才会挂出，与首战那一项互斥。
+                    StormEchoChoice(choices); break;
                 case "Search_H": BellChoices(choices); break;
                 case "Search_B":
                     AddIf(choices, L10n.T("把种植记录留给晴禾", "Leave the planting record for Qinghe"),
@@ -543,7 +545,9 @@ namespace BossRush
                     return;
                 }
             }
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.StoryUi);
             TickPigeon();
+            SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Pigeon);
             TickFieldcraft();
             if (displayedFlags == story.Current.flags) return;
             // 进岛首帧 displayedFlags 为 -1：存档里早就有的结果只重建世界状态、不重播回话；之后只读真正新增的位。

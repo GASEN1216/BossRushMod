@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using Duckov.Utilities;
 using ItemStatsSystem;
@@ -186,6 +187,65 @@ namespace BossRush
             return cumulative;
         }
 
-        internal static void ResetStaticCaches() { cache.Clear(); weights.Clear(); }
+        /// <summary>最近一次预热的结果（F3 SKY_LOOT_BANDS 只读）。模块销毁时随缓存一起复位。</summary>
+        internal static SkyIslandLootPrewarmStats LastPrewarm { get; private set; }
+
+        /// <summary>这个品质带已经完整查过、进了缓存。只读。</summary>
+        internal static bool IsCached(int minQuality, int maxQuality)
+        {
+            return cache.ContainsKey(minQuality * 100 + maxQuality);
+        }
+
+        /// <summary>
+        /// 进岛装配时（读条画面下）把物资池预热好（CR-2026-09-14-014）。
+        ///
+        /// 【为什么】池子首次用到才建：搜刮箱要等玩家走进 <see cref="SkyIslandLootTables.ActivationRange"/> 才由
+        /// `SkyIslandScavenging.Build` → `SkyIslandRewardCrate.Fill` → <see cref="Get"/> 去建，第一次走近远航档或星工档箱子的那一帧
+        /// 就要把全部官方标签 × `GetAllTypeIds` 查一遍、再逐件读 prefab（首轮实机 `SKY_LOOT_BANDS` 这一步 639 ms）。
+        ///
+        /// 【怎么分摊】每个品质带占一帧（<see cref="SkyIslandLootTables.PrewarmBands"/>，共 5 个），已缓存的直接跳过（同一进程第二趟起全是命中）。
+        /// 查询本身与缓存口径一字不动：只有完整跑完的查询才进缓存，缓存只在模块销毁时复位。
+        /// 只许在会话装配路径上调用，不许进每帧路径（`tests/SkyIslandLootPrewarmGuard.py`）。
+        /// </summary>
+        internal static IEnumerator Prewarm()
+        {
+            int[][] bands = SkyIslandLootTables.PrewarmBands();
+            SkyIslandLootPrewarmStats stats = new SkyIslandLootPrewarmStats { Ran = true, Bands = bands.Length };
+            for (int i = 0; i < bands.Length; i++)
+            {
+                if (IsCached(bands[i][0], bands[i][1]))
+                {
+                    stats.CacheHits++;
+                    continue;
+                }
+                long started = System.Diagnostics.Stopwatch.GetTimestamp();
+                GetBand(bands[i][0], bands[i][1]);
+                double ms = (System.Diagnostics.Stopwatch.GetTimestamp() - started) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+                stats.Built++;
+                stats.TotalMs += ms;
+                if (ms > stats.MaxBandMs) stats.MaxBandMs = ms;
+                stats.Frames++;
+                LastPrewarm = stats;
+                yield return null;
+            }
+            LastPrewarm = stats;
+            Debug.Log("[SkyIslandLoot] PREWARM bands=" + stats.Bands + " built=" + stats.Built + " cached=" + stats.CacheHits
+                + " frames=" + stats.Frames + " total_ms=" + stats.TotalMs.ToString("F0") + " max_band_ms=" + stats.MaxBandMs.ToString("F0"));
+        }
+
+        internal static void ResetStaticCaches()
+        {
+            cache.Clear();
+            weights.Clear();
+            LastPrewarm = default(SkyIslandLootPrewarmStats);
+        }
+    }
+
+    /// <summary>一次物资池预热的结果：跑没跑、几个带、新建几个 / 命中缓存几个、分了几帧、用了多少毫秒。只给 F3 读。</summary>
+    internal struct SkyIslandLootPrewarmStats
+    {
+        internal bool Ran;
+        internal int Bands, Built, CacheHits, Frames;
+        internal double TotalMs, MaxBandMs;
     }
 }
