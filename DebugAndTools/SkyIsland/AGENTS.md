@@ -60,6 +60,7 @@
 - 判据不成立时抛 `SkyIslandSkipCase` 记 SKIP，不记 PASS；会话中途结束后的用例记 SKIP 并附原因。
 - F3 只存在于 Dev 构建（编译命令见根 `AGENTS.md` §2），验收完换回正式构建再部署。
 - 会改状态的检查（刷怪、强制夜里、弹对话）不进只读套件，进 Dev 演练套件；演练的隔离、还原与不落盘规则见根 `AGENTS.md` §4.17。
+- 全自动实机回归（根 `AGENTS.md` §4.17 第三档）在岛上只经两个 Dev 入口文件动会话与存档：`SkyIslandSessionAutotest.cs`（先核地面再瞬移、兜底返航）与 `SkyIslandStoryServiceAutotest.cs`（整份清空 / 还原剧情，只走共享 store 与协调器）。两者整份 `#if BOSSRUSH_DEV`、写入口第一句过 `AutotestWriteAllowed`；剧情阶段推进只走生产入口（`TryApply`、`RecordEncounterCleared`、`RecordNote`、`SkyIslandFieldcraft.LightLamp`）。步骤表里写的标记、居民站位、采集点、面板与字幕文字要对得上生产代码（`SkyIslandAutotestTableGuard`）：改了这些名字或文案，同步 `Assets/Data/SkyIslandAutotest.json`。
 
 ## 6. 场景、布局与打包
 

@@ -28,7 +28,7 @@
 - Windows Dev 构建 Build succeeded（临时 GAME_PATH，未部署）；`tools/check_dll_identifiers.py --expect present` PASS（11 个标识，证明探针有效）。
 - 守卫：全量 612 个脚本 611 PASS / 1 NEW-FAIL（`SkyIslandFrameProfileGuard`，修后单跑 PASS）；`F3AutotestOrchestratorGuard` 20 条、`SkyIslandAutotestTableGuard` 21 条进程内反向检查全部转红；`AutotestReviewToolPropertyTest` PASS，副本上两处语义破坏转红、按字节还原 sha256 一致。
 - 执行回归：`F3AutotestJudges` PASS 290 条；反向验证 8 处（建夹具时 4 处、收尾时对四处约定再做 4 处）全部转红、按字节还原 sha256 一致。`SkyIsland*` 在工作区 10 PASS / 1 FAIL（`SkyIslandEncounters` 编不过：另一会话未提交的头目 R1 代码引用 `SkyIslandBossContext`，非本轮）。
-- 干净签出：在 `45bd39e` 的临时 worktree 上（Managed 拷贝，不部署）Dev 构建 `D4CE6E1D…`、正式构建 `FB14EEA5…` 均 Build succeeded；Dev DLL `check_dll_identifiers --expect present` PASS，正式 DLL `--expect absent` PASS；编排、步骤表、覆盖、编译清单、帧计时、岛内套件、演练隔离、文件预算等 9 个守卫 PASS（步骤表守卫在签出里记 PARTIAL：清单是 local-only）。
+- 干净签出：在 `45bd39e` 的临时 worktree 上（Managed 拷贝，不部署）Dev 构建 `D4CE6E1D…`、正式构建 `FB14EEA5…` 均 Build succeeded；Dev DLL `check_dll_identifiers --expect present` PASS，正式 DLL `--expect absent` PASS；编排、步骤表、覆盖、编译清单、帧计时、岛内套件、演练隔离、文件预算等 9 个守卫 PASS（步骤表守卫在签出里记 PARTIAL：清单是 local-only）；执行回归 `SkyIsland*` 11 PASS / 0 FAIL（含 `SkyIslandEncounters`）、`F3AutotestJudges` PASS。
 - 部署：从干净签出编的正式构建 DLL 复制到 `D:\software\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush\BossRush.dll`，按 D 盘路径复核 SHA-256 `FB14EEA51E0E4F1ADEC64A615B003A83D2B653C81DAFC4A569F8B0E352DC9360` 一致，部署后的 DLL `--expect absent` PASS；部署前是 `4C75B098…`（同为正式构建）。只换 DLL、bundle 没动，游戏目录没有 Dev 产物。
 
 **未做 / 待拍板**：见交付报告第十节。第一次实机就是 owner 在基地用专用测试档按一次按钮、AI 读结果目录；阈值（对比度 4.5 / 3、可见度 Weber）是第一版经验值，按实测调。

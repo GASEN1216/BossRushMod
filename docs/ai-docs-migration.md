@@ -191,3 +191,11 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
 1. `skills/`、`codex-skills/` 是删除、移出仓库目录，还是保留归档。
 2. `docs/架构说明/` 是否纳入 git（根规则引用了它，fresh clone 看不到）。
 3. 根目录 2026-09-13 的五份 WSL 审查报告（未入库、内容不可靠）是否删除。
+
+## 2026-09-14 全自动实机验收：F3 第三档（SAFE / OPERATIONAL）
+
+- 根 `AGENTS.md` §4.17 新增「全自动实机回归是第三档」：入口只有「自动验收 + 完整待测清单」按钮；Dev 构建 + 专用测试档；可以写该槽的天空岛剧情与背包，但必须先快照、写入过 `AutotestWriteAllowed`、两道还原并复位环境；只读套件与演练不得引用；守卫 `F3AutotestOrchestratorGuard`、`SkyIslandAutotestTableGuard`，正式构建后 `tools/check_dll_identifiers.py --expect absent`。
+- `DebugAndTools/SkyIsland/AGENTS.md` §5：两个 Dev 入口文件（`SkyIslandSessionAutotest.cs`、`SkyIslandStoryServiceAutotest.cs`）的纪律，以及「改标记、居民站位、采集点、面板与字幕文案时同步步骤表」。
+- 天空岛人工清单（local-only）顶部改为「按按钮 + AI 审阅」，列出仍需人手的 6 行与两处照原步骤手测的范围；原步骤保留作判据出处。
+- repowiki「调试工具」新增「全自动实机验收」一节。
+- 冲突记录：旧口径「天空岛是独立出击，只能岛内按钮跑、不能挂在自动验收上」（F3 页面文案、Runner 注释）已按新实现改写——自动验收会自己出发、跑完回基地；两个岛内按钮保留为局部重跑。
