@@ -219,8 +219,8 @@ namespace BossRush
             }
             MarkPending(true);
             LogTiming("story", action.ToString());
-            message += L10n.T("\n进度已记录，待安全时机保存。",
-                "\nProgress recorded; it will be written at a safe moment.");
+            // 不再在回话末尾追加「进度已记录，待安全时机保存」：存档一切正常时那是状态转储、不是剧情（2026-09-14 审核 F-24 ①）；
+            // 存档出了问题才需要玩家知道，那一句由 Summary 里的 SaveProblem 给。
             return true;
         }
 

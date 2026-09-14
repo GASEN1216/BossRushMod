@@ -212,7 +212,7 @@ namespace BossRush
                 Image background = _panel.AddComponent<Image>();
                 background.color = BossRushUIColors.Surface;
                 background.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(background, 10);
+                BossRushUI.ApplyFramedPanelSkin(background, 10, BossRushUISkinPart.Card);
 
                 _titleText = ZombieModeUIHelper.CreateText(
                     "Title", _panel.transform, string.Empty, 15f,

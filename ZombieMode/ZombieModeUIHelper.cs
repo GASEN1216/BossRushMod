@@ -27,20 +27,24 @@ namespace BossRush
     /// </summary>
     internal static class ZombieModeUIHelper
     {
+        // 与 BossRushUIColors 同名的颜色一律引用 token，不留字面量副本：2026-09-13 把 Success / Warning 压暗约 7%
+        // （白字过 4.5:1）时这里的旧值没跟着改，Mode G 开局确认页与丧尸撤离页的绿、橙按钮白字仍只有 4.15:1；
+        // 旧的 SuccessHoverColor 亮度 0.30，悬停时白字只剩 2.70:1（2026-09-14 审核 F-07）。
+        // 悬停色由共享 GetHoverColor 派生，它对白字按钮封顶了提亮幅度。DangerHoverColor 是手调的同色相提亮，不是副本。
         internal static readonly Color ModalBackdropColor = BossRushUIColors.Backdrop;
         internal static readonly Color ModalSurfaceColor = BossRushUIColors.Surface;
         internal static readonly Color ModalHeaderColor = new Color(0.09f, 0.115f, 0.13f, 0.16f);
-        internal static readonly Color DividerColor = new Color(0.42f, 0.52f, 0.58f, 0.32f);
-        internal static readonly Color TextPrimaryColor = new Color(0.94f, 0.96f, 0.97f, 1f);
-        internal static readonly Color TextSecondaryColor = new Color(0.67f, 0.72f, 0.75f, 1f);
-        internal static readonly Color AccentColor = new Color(0.20f, 0.72f, 0.67f, 1f);
-        internal static readonly Color SuccessColor = new Color(0.18f, 0.52f, 0.36f, 1f);
-        internal static readonly Color SuccessHoverColor = new Color(0.24f, 0.66f, 0.45f, 1f);
-        internal static readonly Color WarningColor = new Color(0.58f, 0.42f, 0.17f, 1f);
-        internal static readonly Color WarningHoverColor = new Color(0.70f, 0.52f, 0.23f, 1f);
-        internal static readonly Color DangerColor = new Color(0.48f, 0.20f, 0.20f, 1f);
+        internal static readonly Color DividerColor = BossRushUIColors.Divider;
+        internal static readonly Color TextPrimaryColor = BossRushUIColors.TextPrimary;
+        internal static readonly Color TextSecondaryColor = BossRushUIColors.TextSecondary;
+        internal static readonly Color AccentColor = BossRushUIColors.Accent;
+        internal static readonly Color SuccessColor = BossRushUIColors.Success;
+        internal static readonly Color SuccessHoverColor = BossRushUI.GetHoverColor(BossRushUIColors.Success);
+        internal static readonly Color WarningColor = BossRushUIColors.Warning;
+        internal static readonly Color WarningHoverColor = BossRushUI.GetHoverColor(BossRushUIColors.Warning);
+        internal static readonly Color DangerColor = BossRushUIColors.Danger;
         internal static readonly Color DangerHoverColor = new Color(0.62f, 0.27f, 0.26f, 1f);
-        internal static readonly Color DisabledColor = new Color(0.16f, 0.17f, 0.17f, 0.82f);
+        internal static readonly Color DisabledColor = BossRushUIColors.Disabled;
 
         private static TMP_FontAsset _cachedFont;
         private static int _modalInputLeaseCount;
@@ -404,7 +408,7 @@ namespace BossRush
                 new Vector2(0.5f, 0.5f));
             Image surfaceImage = surface.AddComponent<Image>();
             surfaceImage.color = ModalSurfaceColor;
-            BossRushUI.ApplyPanelSkin(surfaceImage, 14);
+            BossRushUI.ApplyFramedPanelSkin(surfaceImage, 14, BossRushUISkinPart.Panel);
 
             GameObject accent = CreateRect(
                 name + "_AccentRail",
@@ -416,7 +420,7 @@ namespace BossRush
                 new Vector2(0f, 0.5f));
             Image accentImage = accent.AddComponent<Image>();
             accentImage.color = accentColor;
-            BossRushUI.ApplyPanelSkin(accentImage, 2);
+            BossRushUI.ApplyPanelSkin(accentImage, 2, BossRushUISkinPart.Hairline);
             accentImage.raycastTarget = false;
 
             GameObject topTrace = CreateRect(
@@ -430,6 +434,8 @@ namespace BossRush
             Image topTraceImage = topTrace.AddComponent<Image>();
             topTraceImage.color = new Color(accentColor.r, accentColor.g, accentColor.b, accentColor.a * 0.45f);
             topTraceImage.raycastTarget = false;
+            // 2px 的顶边细条走细条档（程序化圆角）：没有 sprite 的裸 quad 在非整数画布缩放下会被采样吃掉、时有时无。
+            BossRushUI.ApplyPanelSkin(topTraceImage, 1, BossRushUISkinPart.Hairline);
             return surface;
         }
 
@@ -508,6 +514,9 @@ namespace BossRush
             return scale > 0f ? new Vector2(Screen.width / scale, Screen.height / scale) : ReferenceResolution;
         }
 
+        /// <summary>分隔线 rect 的最小高度：分隔线档的亮带落在可拉伸中心区，低于 5 就一个像素都画不出来；取 8，与天空岛同口径。</summary>
+        private const float SeparatorMinHeight = 8f;
+
         /// <summary>
         /// 创建水平分隔线
         /// </summary>
@@ -520,10 +529,15 @@ namespace BossRush
             float height,
             Color color)
         {
-            GameObject obj = CreateRect(name, parent, anchorMin, anchorMax, anchoredPosition, new Vector2(0f, height), new Vector2(0.5f, 0.5f));
+            // 分隔线走分隔线档（图集 divider，或同形的程序化兜底）：亮带落在可拉伸的中心区，rect 至少 8 高才画得出来，
+            // 所以按「中心不动、上下各让几个像素」撑高——线的位置与调用方给的一致，看到的仍是一条 1–2px 的细线。
+            // 旧写法是没有 sprite 的裸 quad：1px 在非整数画布缩放下会被采样吃掉、时有时无（AGENTS §4.14）。
+            GameObject obj = CreateRect(name, parent, anchorMin, anchorMax, anchoredPosition,
+                new Vector2(0f, Mathf.Max(height, SeparatorMinHeight)), new Vector2(0.5f, 0.5f));
             Image img = obj.AddComponent<Image>();
             img.color = color;
             img.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(img, 2, BossRushUISkinPart.Rule);
             return obj;
         }
 

@@ -646,20 +646,23 @@ namespace BossRush
             }
         }
 
-        /// <summary>合成面板正文的开头：谁在这儿、能做什么。</summary>
+        /// <summary>
+        /// 合成面板正文的开头：一句开场白，谁在这儿、做些什么。各样东西怎么用写在手记「群岛之物 · 用处」里，
+        /// 还不会做的配方在正文末尾各占一行——这里不再写一整段（旧版 92–108 字，2026-09-14 审核 F-24 ③）。
+        /// </summary>
         internal static string StationIntro(SkyIslandCraftStation station)
         {
             switch (station)
             {
                 case SkyIslandCraftStation.Dock: return L10n.T(
-                    "浮舟把工台上的刨花扫到一边：『浮木作骨、云苔糊罩，就是一盏夜里用的风灯；铜片打底、嵌上风晶和星屑，就是护符——噬风那阵风碰上它会让开几分。碎晶攒够五片，等工坊的星灯亮了，我拿去熔成一整块：岛上还有七处缺一盏风晶灯。』",
-                    "Fuzhou sweeps the shavings off the workbench: 'Driftwood for the frame and a cloudmoss shade make a wind lantern for the nights. A brass backing set with crystal and stardust makes a charm — the Windeater's gusts give way around it. Bring five shards once the workshop's star lamp is lit and I will fuse them whole: seven places on the isles still want a windcrystal lamp.'");
+                    "浮舟把刨花扫到一边：『风灯、护符、罗盘都在这张工台上做；碎晶攒够五片，我替你熔成整块。』",
+                    "Fuzhou sweeps the shavings aside: 'Lanterns, charms and compasses are all made on this bench. Bring five shards and I will fuse them whole.'");
                 case SkyIslandCraftStation.Stove: return L10n.T(
-                    "晴禾往灶里添了块浮木：『驱风香的烟压得住大风，过桥、上栈道都靠它。等种植记录回来，我照着上面的做法给你装归航菜便当——在岛上吃，就算吃过我这一顿。夜里水车边蚋多，云苔纤维里撒一撮星屑织成纱笠，带着它们就难贴脸。』",
-                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense smoke holds off even a gale — you want it on the bridges and the boardwalk. Once my planting record is back I can pack homecoming bentos from the recipe in it; eat one on the isles and it counts as my meal. At night the gnats swarm by the water wheel — cloudmoss woven with a pinch of stardust makes a veil that keeps them off your face.'");
+                    "晴禾往灶里添了块浮木：『驱风香、归航菜便当、云苔纱笠，灶上都做得出来。』",
+                    "Qinghe feeds a piece of driftwood into the stove: 'Windward incense, homecoming bentos, cloudmoss veils — the stove makes them all.'");
                 default: return L10n.T(
-                    "眠苔把药臼推过来：『云苔纤维磨得越细，药膏越凉；加一片风晶，伤口好得快——省下来的钱，留着付给真正要命的伤。驱风香也是这么捣出来的。扇药炉的蒲扇也归我，浸过药烟，扇一下贴脸的蚋就落。』",
-                    "Miantai slides the mortar over: 'The finer the cloudmoss is ground, the cooler the salve; a shard of wind crystal closes wounds faster — save your coin for the wounds that really need me. Windward incense is pounded the same way. The fan for my remedy fire is mine too — soaked in that smoke, one sweep and the gnats on your face drop.'");
+                    "眠苔把药臼推过来：『星苔药膏、驱风香、药烟蒲扇，都从这口臼里出来。』",
+                    "Miantai slides the mortar over: 'Starmoss salve, windward incense, the remedy-smoke fan — all of it comes out of this mortar.'");
             }
         }
 

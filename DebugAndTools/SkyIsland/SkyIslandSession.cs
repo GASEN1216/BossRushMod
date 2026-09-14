@@ -1056,14 +1056,43 @@ namespace BossRush
         internal bool HasStoryChallengeStarted(string id) { return encounters != null && encounters.HasStarted(id); }
         internal bool BeginStoryChallenge(string id)
         {
+            string reason;
+            if (!CanBeginStoryChallenge(id, out reason)) return false;
+            return encounters.BeginChallenge(id);
+        }
+
+        /// <summary>
+        /// 具名对手（折翎 / 钟守 / 噬风）的挑战此刻能不能发起。剧情前置问战败动作的 <see cref="SkyIslandStoryRules.CanApply"/>
+        /// （与存档门同一份 Describe：钟守与噬风要双航标、已了结的不再打），现场条件（距离、交战中、同时存活上限）问
+        /// <see cref="SkyIslandEncounters.CanBeginChallenge"/>。面板挂不挂挑战项与点下去会不会被拒只认这一份（2026-09-14 审核 F-28 ②）。
+        /// </summary>
+        internal bool CanBeginStoryChallenge(string id, out string reason)
+        {
+            reason = null;
             if (!IsSessionValid() || story == null || !story.CanWrite || encounters == null) return false;
+            // 「还差什么」的文案只取战败动作的 Describe（CanApply 的 blocker）：已经能打或已了结时为 null。下面三条门照旧逐条写明。
+            SkyIslandStoryAction outcome;
+            if (TryChallengeOutcome(id, out outcome)) SkyIslandStoryRules.CanApply(story.Current, outcome, out reason);
             if (id == "Zheling" && story.Current.ZhelingResolved) return false;
             if (id == "BellKeeper" && (!story.Current.BothBeacons || story.Current.BellKeeperResolved)) return false;
             // 噬风循着重新亮起的两盏灯而来：双航标是它到场的唯一前置，击败后不再出现。
             if (id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)) return false;
             // 噬风·回响只走引风（SkyIslandSessionEcho.TryBeginStormEcho）：那一条要先判五项、再烧风晶。
             if (SkyIslandStormEchoRules.IsEcho(id)) return false;
-            return encounters.BeginChallenge(id);
+            reason = null;
+            return encounters.CanBeginChallenge(id, out reason);
+        }
+
+        /// <summary>具名挑战打赢之后提交的剧情动作（口径同 <see cref="OnEncounterCleared"/>）。</summary>
+        private static bool TryChallengeOutcome(string id, out SkyIslandStoryAction outcome)
+        {
+            switch (id)
+            {
+                case "Zheling": outcome = SkyIslandStoryAction.ZhelingDefeated; return true;
+                case "BellKeeper": outcome = SkyIslandStoryAction.BellKeeperDefeated; return true;
+                case "Storm": outcome = SkyIslandStoryAction.StormSlain; return true;
+                default: outcome = default(SkyIslandStoryAction); return false;
+            }
         }
         private bool EncounterWasSaved(string id)
         {

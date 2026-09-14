@@ -50,10 +50,13 @@ internal static class SkyIslandAuditRegression
 
         SavesSystem.Switch(100104);
         var data = SkyIslandStoryRules.CreateDefault();
-        data.discoveredNotes = new[] { "Search_A", "Search_S1" };
+        // 秘境物证 S1 走生产路径：解开谜题只写剧情旗标，不进 discoveredNotes（2026-09-14 审核 F-03，旧夹具直接塞进 discoveredNotes 掩盖了它）。
+        data.discoveredNotes = new[] { "Search_A" };
         data.flags = (int)SkyIslandStoryFlag.PlantingRecord;
         SavesSystem.Save(SkyIslandStoryRules.StorageKey, SkyIslandStoryCodec.Encode(data));
         NoteIndex.Instance = new NoteIndex();
+        // 官方那边残留的点亮（换槽、存档回滚、旧版本误点亮）：我们的存档里没有这一条。
+        NoteIndex.SetNoteUnlocked(SkyIslandNoteBridge.BuildNoteKey("Search_B"));
         int subscribers = SavesSystem.Subscribers;
         SkyIslandNoteBridge.EnsureRuntime();
         SkyIslandNoteBridge.EnsureRuntime();
@@ -62,6 +65,10 @@ internal static class SkyIslandAuditRegression
         check(NoteIndex.Instance.Notes.Count == 20 && NoteIndex.GetNoteUnlocked(SkyIslandNoteBridge.BuildNoteKey("Search_A")),
             "cold start at base restores note list and saved discovery without entering the island");
         check(NoteIndex.GetNoteUnlocked(SkyIslandNoteBridge.BuildNoteKey("Search_S1")), "saved puzzle evidence restores its corresponding official note");
+        check(SkyIslandJournal.Recorded(data, "Search_S1") && SkyIslandJournal.NotesRecorded(data) == 2,
+            "puzzle evidence recorded only as a story flag counts in the journal");
+        check(!NoteIndex.GetNoteUnlocked(SkyIslandNoteBridge.BuildNoteKey("Search_B")),
+            "official unlock missing from our save is taken back (our save is the authority)");
         SkyIslandNoteBridge.RequestSync(); SkyIslandNoteBridge.Tick();
         check(NoteIndex.Instance.Notes.Count == 20, "repeated base refresh never duplicates notes");
         SavesSystem.Switch(100105);

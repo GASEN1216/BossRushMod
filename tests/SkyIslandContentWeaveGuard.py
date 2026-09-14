@@ -321,10 +321,13 @@ def main():
     require(need_body(fieldcraft, "internal static bool StormWarded", "护符挡风暴"), "current.charmWorn", "挡风暴读本趟是否系着护符")
 
     # ---- 6. 航徽与归航菜 ----
-    for signature, label in (("internal string Repair()", "整备"), ("internal string Heal()", "苔药")):
-        body = need_body(services, signature, label)
-        ordered(body, ["bool badge = CarriesBadge();", "SkyIslandItemRules.ServicePrice(", "EconomyManager.IsEnough(", "EconomyManager.Pay("],
-                label + "：带着航徽的折扣要在报价之后、验钱付款之前")
+    # 报价与验钱收在 Evaluate*（剧情面板的按钮状态与点下去共用，2026-09-14 审核 F-06），付款在入口里、先过同一份报价。
+    for evaluate, entry, label in (("private SkyIslandServiceReadiness EvaluateRepair(", "internal string Repair()", "整备"),
+                                   ("private SkyIslandServiceReadiness EvaluateHeal(", "internal string Heal()", "苔药")):
+        ordered(need_body(services, evaluate, label), ["badge = CarriesBadge();", "SkyIslandItemRules.ServicePrice(", "EconomyManager.IsEnough("],
+                label + "：带着航徽的折扣要在报价之后、验钱之前")
+        ordered(need_body(services, entry, label), [evaluate.split(" ")[-1], "EconomyManager.Pay("],
+                label + "：付款之前要先过同一份报价与验钱")
     require(need_body(services, "private static bool CarriesBadge()", "航徽"),
             "ItemFactory.GetItemCountInInventory(BossRushItemIds.SkyIslandHomecomingBadge)", "航徽按背包顶层数（与合成台同一口径）")
     for signature in ("internal string Meal(bool plantingDelivered)", "internal string PackedMeal()"):

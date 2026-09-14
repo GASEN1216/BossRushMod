@@ -176,7 +176,7 @@ namespace BossRush
                 panelRoot = new GameObject("Panel");
                 panelRoot.transform.SetParent(canvasRoot.transform, false);
                 Image panelImage = panelRoot.AddComponent<Image>();
-                BossRushUI.ApplyPanelSkin(panelImage, 14);
+                BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
                 panelImage.color = new Color(0.12f, 0.12f, 0.12f, 0.94f);
                 RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);

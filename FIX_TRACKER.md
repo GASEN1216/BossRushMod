@@ -2,6 +2,66 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-14（四）UI 优化对照审核：全部修复（6 P2 + 18 P3 已修；5 条 PLAUSIBLE 中 4 条防御性修复、1 条 Deferred）
+
+**来源**：`docs/代码审查/2026-09-14-UI优化对照审核.md`（F-01…F-29，local-only，末尾有逐条修复状态）。owner：「直接全部修复，需要我拍板都由你自己按照主流游戏的设置去拍板。」finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-14-015` … `-038`。
+**分类**：`COMPAT`（选项分层、服务按钮状态、委托子页、文案精简、全 Mod 卡片 / 面板分档与描边、白字底悬停改压暗）+ `SAFE`（守卫、夹具、注释、文档）+ `WIRE+`（`IsOfficialHudHidden` 反射读官方 `HUDManager.hideTokens`；图鉴镜像经公开属性 `NoteIndex.UnlockedNotes` 收回点亮）。
+**不加 TypeID、不改我们的存档字段、不重打包。** 官方存档键 `NoteIndexData` 的镜像按 O-1 拍板接受。本轮没有开游戏，没有读写存档目录。没有 L3，不写「已生效」。
+
+**改了什么**（逐条对应见审核报告「修复状态」）：
+- **对比度**（F-01 / F-02 / F-04 / F-19 / F-25）：`SkyIslandUiContrastGuard` 重写为线性光合成 + 描边真实覆盖率 + 字幕行首行尾，模型钉在报告复算值（2.13 / 3.95）上。`StrokeThickness` 1.5；落地提示改 TextPrimary；字幕压暗底 `FitCaptionScrim` 按实测宽度反算、横向淡出 0.15；压暗底贴图兜底不打折。
+- **选项分层**（F-06 / F-28 / O-3）：
+  - `RecordChoice`：收过不挂，前置没满足不挂。
+  - 付费服务：`SkyIslandServices.EvaluateRepair` / `EvaluateHeal` 供按钮状态与点下去共用，`RepairChoice` / `HealChoice` / `MealChoice` + `ServiceTag`。
+  - 航务委托：入口 `ContractsChoice` + 委托页 `OpenContracts`（新 partial `SkyIslandWorldStoryServices.cs`，已登记编译清单）。`BountyChoices` 的占位项改进正文，交付只在做完时挂。
+  - 还不会做的配方进合成面板正文。
+  - 挑战：`SkyIslandEncounters.CanBeginChallenge` + `SkyIslandSession.CanBeginStoryChallenge`，挂与点共用。
+  - `SkyIslandStoryRules.Foreclosed`：互斥分支了结后不给伪「下一步」。
+  - 手记来信 / 名册没收到的合成一句。
+  - 选项回调返回 null 表示「正文不动」（跳子页、返回用）。
+- **文案**（F-24）：剧情回执去掉「进度已记录，待安全时机保存」；谜题页只留场景（第一步）+ 提问；合成台开场白一句；钟守「下一步」78 → 47 字；`SkyIslandPlaytimeFlowGuard` 加英文导语上限（BriefMaxChars × 3）。
+- **图鉴与对话**（F-03 / F-10 / F-13 / F-22 / F-23 / F-29）：`SkyIslandJournal.Recorded` 认秘境物证旗标；`SkyIslandNoteBridge.Relock` 收回官方残留的点亮；`DialogueManager` 会话归属，取消后经官方 `Confirm` / `confirmedChoice` 推完；台词按句切；已有 actor 按当前语言刷新名字。
+- **共享 UI**（F-09 / F-14–F-17 / F-20 / F-21 / F-27 / 杂项）：
+  - 图集弧半径常量、描边 `ignoreLayout`、Rule 缺包兜底、`CreateCard` 走 Card 档并描边。
+  - 读官方隐藏令牌；`CrossFadeColor` 立即落常态色；`RetargetCard`；竖条 ease-out。
+  - 拆出 `Common/UI/BossRushUIAnimation.cs`（已登记编译清单）；新增 `ApplyFramedPanelSkin`。
+  - 白字底悬停改压暗：`HoverDarken` 0.10、`WhiteLabelMaxLuminance` 0.162。
+- **面板版式**（F-11 / F-12 / F-18）：`FitTitleFont` 保一行；立绘时主视觉地板加 ESC 键帽那一截；布局属性测试按生产算式求值、加「立绘 + 横幅」；列表页不带立绘由结构断言钉住。
+- **常驻 HUD 守卫**（F-08）：语义判据 + 全层级归类（模态清单 27 个）+ 字面量层级与 `OnGUI` 扫描。
+- **附录 A**：
+  - 共享构件：`CreateModalSurface` / `CreateSeparator` / `_TopTrace` 迁到分档。
+  - 34 处存量调用点迁到分档，其中 30 处由子代理逐处核对（深色面板才加边、查子物体依赖、行数不变）：
+    - 24 处加边；
+    - 5 处只给档、不加边：成就条目外框与内卡、词条浮层淡底行、Mode H 红底警示条、丧尸 HUD 半透字底；
+    - 5 处细轨 / 小胶囊走 ScrollHandle。
+  - `PetNestUI.cs` 保留 `PetNestUILayerGuard` 钉住的 `ApplyPanelSkin(` 字面，另加一行描边。
+- **文档**：
+  - AGENTS §4.14 / §4.17 / §10、`docs/contracts.md` §7.1（线性色彩空间、`NoteIndexData`）、图集规格 §1 / §2 / §2.5 / §3。
+  - 人工清单：更正 2.14.5 / 2.14.6 / 2.14.18 / 2.14.26 / 2.15.7a / 2.15.8 / 2.15.21 / 2.16.11，新增第 2.18 步。
+  - 实机前减负报告第六节与待拍板 #1 / #2 的回退写法；repowiki「UI 系统集成」附录二；`CODE_REVIEW_FINDINGS.md` 里「NoteIndex 没有任何一条问题」那句更正。
+
+**拍板**（按「主流游戏口径 → 离线可证 → 改动小、可回退」）：
+
+| # | 决定 | 理由 | 回退 |
+| --- | --- | --- | --- |
+| O-1 | 接受图鉴镜像写官方存档键 `NoteIndexData` 为例外；镜像改双向 | 官方图鉴自带解锁状态与现成 UI，回基地翻得到；卸载后只剩带本 Mod 前缀的孤儿 key，读档不报错，最坏是「已解锁数」虚高；官方代码里没有按 `UnlockedNotes` 取条目的地方 | 删 `Relock` 分支恢复单向；AGENTS §4.14 / §10 与 contracts 同步撤回 |
+| O-2 | 调常量 + 小字改 TextPrimary + Accent 焦点环，不给小字加 TMP 描边；截图取色定为观感修复的验收门 | 焦点靠行边是 WCAG 1.4.11 对焦点指示物的口径；整行填色拉到 3:1 时白字标签会跌破 4.5:1 | 常量改回旧值，同步对比度守卫 |
+| O-3 | 付费服务：没有要做的不挂；钱不够、冷却中照挂并写价钱 / 秒数。剧情前置没到、已完成、占位项不挂。列表页（合成、委托）上限 6 项且不带立绘 | 主流游戏的商店口径：玩家马上能改变的状态照挂写原因，改变不了的不挂；列表页加立绘时 6 条长选项放不下 | `RepairChoice` / `HealChoice` 不判 `NothingToDo`、`ServiceTag` 返回空串；委托入口改回平铺 `BountyChoices` |
+| O-4 | Mode H 诊断页跟随官方界面（前一轮已落地） | —— | —— |
+| 附加 1 | 白字底按钮（Success / Warning）悬停改为压暗 0.10 | 向白提亮会把白字压到 3.4:1；按上限封顶只能提到 0.162，几乎看不出悬停；Bootstrap 一类 UI 库的实心按钮悬停也是压暗 | 删掉 `GetHoverColor` 的压暗分支（对比度守卫会红） |
+| 附加 2 | 附录 A 里 5 处只给档、不加边（见上） | 已有状态边框的再加边成双层边；淡底行、红底警示条、半透 HUD 字底加冷灰描边太重 | 改成 `ApplyFramedPanelSkin` |
+
+**验证**（本机 Windows，全部实跑）：
+- 正式构建两次均 `Build succeeded`。最终构建 `Build/BossRush.dll` 与 D 盘游戏目录同为 `4C75B098…A39AB0`（19:00:54）；游戏没开；编译输出没有 `[DEV] BOSSRUSH_DEV enabled`，不是 Dev 构建。
+- `python tools/run_guards.py` → **606 PASS / 3 NEW-FAIL**。三条是 `OfficialCompileListFileExistenceGuard`、`GameplayCoverageCaseRunnerGuard`、`GameplayValidationCoverageGuard`，全部来自另一会话正在新建、尚未登记的 `DebugAndTools/F3GameplayValidationAutotest*.cs` 与 `SkyIsland*Autotest.cs`，不在本轮。
+- `python tools/run_runtime_regressions.py`（三个 D 盘环境变量）→ **35 PASS / 0 FAIL**。`SkyIslandStory` 12,592 条断言、`SkyIslandDialogue` 18 条（+2，替身补了 `NextFrame` / `Time` / `Confirm`）、`SkyIslandValidationJudges` 139 条、`SkyIslandEncounters` 44 条、`SkyIslandHudPolicy` 41,999 条。
+- 内存反向检查：对比度守卫 25 个、常驻 HUD 守卫 41 个（含审核的 7 个语义变异）、选项门守卫 27 个、皮肤加载守卫 14 个、面板布局属性测试 3 个破坏探针。
+- **磁盘级反向探针 13 条（R1–R13）**：逐条人为破坏 → 对应守卫或执行回归转红 → 按字节还原、sha256 一致 → 守卫复绿（三条执行回归靠还原后的全量回归复绿）。
+- 行数预算：`BossRushUI.cs` 1121、`SkyIslandWorldStory.cs` 1173；`ModBehaviourPartialBudgetGuard` 105,107 / 105,108（`ZombieModeHudController.cs` 净增 0 行）。
+
+**待实机**：清单第 2.18 步，A 段截图取色优先。F-26（Mask 圆角锯齿）Deferred。
+**并行会话**：跑完验证之后，另一会话把 `SkyIslandStoryService.cs` 改成了 partial，并在新建 Autotest 文件。本轮验证不含它们；提交时按文件分开暂存。
+
 ## 2026-09-14（三）天空岛 B 轮「噬风·回响」+ 物资池预热 + 帧时间分项计时（新内容 + 1 P3 已修）
 
 **来源**：owner 任务书（无人值守，「好玩优先，其次离线可证、改动小、可回退」直接拍板）。基线 `502dd91`。交付报告 `docs/天空岛_B轮_噬风回响_2026-09-14.md`（local-only）。

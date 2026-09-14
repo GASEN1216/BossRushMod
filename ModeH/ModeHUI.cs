@@ -111,7 +111,7 @@ namespace BossRush
             Image statusBackground = status.AddComponent<Image>();
             statusBackground.color = BossRushUIColors.Surface;
             statusBackground.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(statusBackground, 10);
+            BossRushUI.ApplyFramedPanelSkin(statusBackground, 10, BossRushUISkinPart.Card);
 
             _hudStarter = CreateHudLine(status.transform, "Starter", 64f, StatusSize.x - 32f);
             _hudRelay = CreateHudLine(status.transform, "Relay", 0f, StatusSize.x - 32f);
@@ -126,7 +126,7 @@ namespace BossRush
             Image timerBackground = timer.AddComponent<Image>();
             timerBackground.color = BossRushUIColors.Surface;
             timerBackground.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(timerBackground, 10);
+            BossRushUI.ApplyFramedPanelSkin(timerBackground, 10, BossRushUISkinPart.Card);
             _hudTimer = CreateHudLine(timer.transform, "TimerText", 0f, TimerSize.x - 32f);
             _hudTimer.alignment = TextAlignmentOptions.Center;
 
@@ -205,9 +205,12 @@ namespace BossRush
         /// </summary>
         public void ApplyHudVisibility()
         {
-            if (_hudCanvas == null) return;
+            if (_hudCanvas == null && _diagnosticsCanvas == null) return;
             bool visible = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
-            if (_hudCanvas.enabled != visible) _hudCanvas.enabled = visible;
+            if (_hudCanvas != null && _hudCanvas.enabled != visible) _hudCanvas.enabled = visible;
+            // 认证期的诊断页同一口径（2026-09-14 拍板，原待拍板 #10）：它自动挂出、不占模态输入、不停时间，
+            // 「取消并退款」按钮是可选的——性质是常驻进度页，不是玩家打开的模态；不跟随的话 970 层会压在背包与地图上面。
+            if (_diagnosticsCanvas != null && _diagnosticsCanvas.enabled != visible) _diagnosticsCanvas.enabled = visible;
         }
 
         /// <summary>

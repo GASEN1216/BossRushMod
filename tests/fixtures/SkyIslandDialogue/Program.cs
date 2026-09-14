@@ -23,6 +23,8 @@ internal static class Program
         first.Dispose(); first.Dispose(); UniTask.Pump();
         Check(!first.Active && !InputManager.Disabled && UniTask.Pending == 0, "subtitle cancellation releases wait and input");
         Check(DialogueTree.Lines.Count == lines && DialogueTree.Choices.Count == choices && opened == 0, "cancelled subtitle never advances or opens fallback");
+        // 2026-09-14 审核 F-13：取消只停了我们的等待，官方字幕协程还挂着；要替玩家经官方 Confirm 推完，下一段才发得出去。
+        Check(Dialogues.DialogueUI.ConfirmCalls == 1, "cancelled subtitle is drained through the official confirm path");
 
         var second = Start("new");
         lateLine(); UniTask.Pump();
@@ -32,6 +34,7 @@ internal static class Program
         var lateChoice = DialogueTree.Choices[DialogueTree.Choices.Count - 1];
         second.Dispose(); UniTask.Pump();
         Check(!second.Active && !InputManager.Disabled && opened == 0 && UniTask.Pending == 0, "choice cancellation does not open stale panel");
+        Check(Dialogues.DialogueUI.instance.ConfirmedChoiceForTest == 0, "cancelled choice is pushed out through the official confirmed choice");
 
         var third = Start("");
         lateChoice(0); UniTask.Pump();

@@ -106,7 +106,8 @@ def check(sources):
     panel = strip_comments(sources[PANEL])
 
     # ---- 1) 注入点仍然存在且 ApplyPanelSkin 每次现查（调用方零改动的前提）----
-    for token in ("InjectPanelSprite", "InjectButtonSprite", "GetPanelSprite", "GetButtonSprite"):
+    for token in ("InjectPanelSprite", "InjectButtonSprite", "InjectRaisedSprite", "InjectRuleSprite",
+                  "InjectScrollHandleSprite", "internal static Sprite GetInjected("):
         require(token in skin, SKIN + " 缺少皮肤注入点 " + token)
 
     overloads = extract_all(skin, "internal static void ApplyPanelSkin(")
@@ -228,14 +229,36 @@ def check(sources):
     apply_stroke = extract_method(skin, "internal static Image ApplyPanelStroke(")
     if apply_stroke:
         require("GetSkinCornerRadius(" in apply_stroke,
-                SKIN + " 描边没有按图集实际的 border 取圆角："
-                       "注入图集后圆角由图的 border 决定（面板图 16），"
-                       "按调用方传的 radius 画会和底图差出两像素、露出一道错位的弧")
+                SKIN + " 描边没有按图集实际画出来的弧取圆角："
+                       "注入图集后圆角由图决定，按调用方传的 radius 画会和底图错位、露出一道弧")
         require("raycastTarget = false" in apply_stroke,
                 SKIN + " 描边会吃点击，盖住底图上的按钮")
     reset = extract_method(skin, "public static void ResetStaticCaches()")
     require(bool(reset) and "strokeSpriteCache.Clear();" in reset,
             SKIN + " 描边环缓存没有在 ResetStaticCaches 里销毁：贴图带 HideFlags.DontSave，切场景不回收")
+
+    # ---- 8) 2026-09-14 UI 优化对照审核 F-14 / F-15 / F-16 / F-17 ----
+    require(bool(apply_stroke) and "ignoreLayout = true" in apply_stroke,
+            SKIN + " 描边没有 ignoreLayout：宿主带 LayoutGroup 时描边会被当成第一行子项排进去，"
+                   "面板外沿没边、顶上多一个空框（F-16）")
+    first_skin = overloads[0] if overloads else ""
+    require("part == BossRushUISkinPart.Rule ? GetRuleSprite() : GetRoundedSprite(radius)" in first_skin,
+            SKIN + " 分隔线档没注入图集时没有退到程序化 divider 条：8 高的分隔线会画成一整条实心粗条（F-17）")
+    rule = extract_method(skin, "internal static Sprite GetRuleSprite()")
+    require(bool(rule) and "new Vector4(2f, 2f, 2f, 2f)" in rule,
+            SKIN + " 程序化分隔线条缺失或 border 不是 2（与图集 divider 同形）")
+    require(bool(reset) and "ruleSprite = null;" in reset,
+            SKIN + " 程序化分隔线贴图没有在 ResetStaticCaches 里销毁")
+    corner = extract_method(skin, "internal static int GetSkinCornerRadius(")
+    require(bool(corner) and "Mathf.Min(Mathf.RoundToInt(injected.border.x), arc)" in corner
+            and "InjectedButtonArcRadius" in corner and "InjectedPanelArcRadius" in corner,
+            SKIN + " 描边圆角又直接按图集 border 取：border 是九宫格切线，比画出来的弧大一圈，四角错开约 0.8 单位（F-14）")
+    card = extract_method(skin, "internal static GameObject CreateCard(")
+    for token in ("ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);",
+                  "ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);",
+                  "ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);"):
+        require(bool(card) and token in card,
+                SKIN + " 共享 CreateCard 缺 " + token + "：卡片落进按钮档、没有边，征程板 / 展柜 / 遗种巢一起受影响（F-15）")
     return errors
 
 
@@ -266,6 +289,14 @@ def main():
                 ""),                                                          # 选项行又变回没有边
         (HUD, "BossRushUI.ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);",
               ""),                                                            # 卡片又变回没有边
+        (SKIN, "obj.AddComponent<LayoutElement>().ignoreLayout = true;", ""),  # 描边又被 LayoutGroup 排进去（F-16）
+        (SKIN, "(part == BossRushUISkinPart.Rule ? GetRuleSprite() : GetRoundedSprite(radius))",
+               "GetRoundedSprite(radius)"),                                    # 缺包时分隔线又画成粗条（F-17）
+        (SKIN, "Mathf.Min(Mathf.RoundToInt(injected.border.x), arc)",
+               "Mathf.RoundToInt(injected.border.x)"),                         # 描边圆角又按 border 取（F-14）
+        (SKIN, "ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);",
+               "ApplyPanelSkin(background, 10);"),                             # 共享卡片又走 Auto（F-15）
+        (SKIN, "ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);", ""),
     ]
     for path, before, after in probes:
         if before not in sources[path]:

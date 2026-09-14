@@ -241,17 +241,20 @@ def main():
     # 而星苔药膏恰恰要在她的药臼上做，等于把「回血」整条线掐断。
     world_story = read(SKY + "SkyIslandWorldStory.cs")
     read_point = need_body(world_story, "internal void ReadPoint(string key, Action recorded)", "装置面板")
-    talk = need_body(world_story, "internal void Talk(string id, Transform speaker)", "居民对话面板")
-    for service, resident_label, device_label in (
-            ("Repair", "浮舟", "码头装置 Search_A"),
-            ("Heal", "眠苔", "悬根林见闻点 Search_D_02"),
-            ("Meal", "晴禾", "青穗梯田菜畦 Search_C")):
-        token = "ServiceChoice(choices, L10n.T("
-        in_talk = talk and token in talk and (", " + service + ")") in talk
-        in_device = read_point and (", " + service + ")") in read_point
-        if in_talk and not in_device:
+    # 居民的服务挂在功能面板上（叙事走官方对话，说完才开 OpenResidentPanel）；服务按钮统一经 *Choice 助手挂（2026-09-14 审核 F-06）。
+    # 旧写法按 Talk 的方法体找服务，服务搬走之后这条判断恒为假、等于没查。
+    resident = need_body(world_story, "private void OpenResidentPanel(string id, Transform speaker)", "居民功能面板")
+    for helper, resident_label, device_label in (
+            ("RepairChoice(choices);", "浮舟", "码头装置 Search_A"),
+            ("HealChoice(choices);", "眠苔", "悬根林见闻点 Search_D_02"),
+            ("MealChoice(choices);", "晴禾", "青穗梯田菜畦 Search_C")):
+        in_resident = bool(resident) and helper in resident
+        in_device = bool(read_point) and helper in read_point
+        if not in_resident:
+            errors.append("%s 的居民功能面板上找不到服务入口 %s" % (resident_label, helper))
+        elif not in_device:
             errors.append("%s 的服务 %s 只挂在本人身上，没有装置兜底（%s）：她/他不在的那一趟这项服务整条失联"
-                          % (resident_label, service, device_label))
+                          % (resident_label, helper, device_label))
     # 合成台同样三处都要有兜底（这条早就成立，一并钉住，免得将来单独退化）。
     for station in ("SkyIslandCraftStation.Dock", "SkyIslandCraftStation.Stove", "SkyIslandCraftStation.Mortar"):
         require(read_point, "CraftChoice(choices, " + station + ")",

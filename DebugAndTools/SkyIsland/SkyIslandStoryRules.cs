@@ -103,8 +103,35 @@ namespace BossRush
             string required, message;
             if (!Describe(source, action, out flag, out required, out message)) return false;
             if (source.Has(flag)) return false;
+            // 走了互斥分支（战胜折翎 / 钟守之后的和解）：这一步永远不会再有，同样不给 blocker——
+            // 否则「钟守已经放下了阻拦」会作为「下一步」永久挂在正文里（2026-09-14 审核 F-28）。
+            if (Foreclosed(source, action)) return false;
             if (required != null) { blocker = required; return false; }
             return true;
+        }
+
+        /// <summary>具名对手已经了结（和解或战胜）之后，另一条互斥分支上的动作永久关闭。</summary>
+        private static bool Foreclosed(SkyIslandStoryData source, SkyIslandStoryAction action)
+        {
+            // 写成 if 而不是 switch：守卫按 `case SkyIslandStoryAction.X:` 在 Describe 里切分支，这里不能再出现同样的记号。
+            if (action == SkyIslandStoryAction.ReconcileZheling || action == SkyIslandStoryAction.ZhelingDefeated)
+                return source.ZhelingResolved;
+            if (action == SkyIslandStoryAction.ReconcileBellKeeper || action == SkyIslandStoryAction.BellKeeperDefeated)
+                return source.BellKeeperResolved;
+            return false;
+        }
+
+        /// <summary>
+        /// 秘境物证点（S1–S4）收录时写哪个剧情旗标。它们走剧情动作（<see cref="TrySearchAction"/>）、不进 `discoveredNotes`，
+        /// 手记与官方图鉴镜像据此判「已收录」。旗标取自同一份 <see cref="Describe"/>，不另写一张对应表。
+        /// </summary>
+        internal static bool TrySearchEvidenceFlag(string marker, out SkyIslandStoryFlag flag)
+        {
+            flag = SkyIslandStoryFlag.None;
+            SkyIslandStoryAction action;
+            if (!TrySearchAction(marker, out action)) return false;
+            string required, message;
+            return Describe(CreateDefault(), action, out flag, out required, out message) && flag != SkyIslandStoryFlag.None;
         }
 
         /// <summary>引风（噬风·回响）烧掉几块晴岚风晶。回响的奖励表与会话的预留读的都是它。</summary>
@@ -248,8 +275,8 @@ namespace BossRush
                     // 他留下的旧腰牌写着『航路交给你』，作为「航路已经通了」的物证成立。
                     else if (!(source.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart | SkyIslandStoryFlag.Telescope)
                         && source.ZhelingResolved) && !source.StormResolved)
-                        required = L10n.T("钟守仍不相信航路安全：需要旧信、航路图、修复的观星镜，以及折翎那一关有个了结（和解或战胜都算）；或者，去把鸣风栈道上那阵风解决掉。也可以挑战失控的守钟装置。",
-                            "The Bell Keeper still does not believe the lanes are safe. Bring the old letter, the route chart and a repaired telescope, and settle Zheling one way or the other (reconciling and defeating both count) — or simply deal with the wind out on Windsong Boardwalk. Challenging the runaway bell engine is also an option.");
+                        required = L10n.T("钟守不信航路安全：带齐旧信、航路图、观星镜并了结折翎（和解或战胜都算），或者解决栈道上那阵风。",
+                            "The Bell Keeper doubts the lanes are safe. Bring the old letter, the route chart and a repaired telescope and settle Zheling (reconciling or defeating both count) — or deal with the wind on the boardwalk.");
                     message = L10n.T("钟守：『这一次，钟声不是催他们出航，是告诉他们有人等着归来。』守钟装置停了。",
                         "The Bell Keeper: 'This time the bell is not sending them out. It is telling them someone is waiting for them to come home.' The bell engine falls still."); break;
                 case SkyIslandStoryAction.BellKeeperDefeated:

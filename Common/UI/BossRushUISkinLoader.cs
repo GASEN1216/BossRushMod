@@ -151,7 +151,9 @@ namespace BossRush
                 _bundle = AssetBundle.LoadFromFile(bundlePath);
                 if (_bundle == null)
                 {
-                    ModBehaviour.DevLog(LogPrefix + "[WARNING] 皮肤 bundle 加载失败: " + bundlePath);
+                    // 文件在却加载不了是真问题（包损坏、Unity 版本不符），与「素材还没做」不同：
+                    // 正式构建里 DevLog 整条不存在，这里必须留一条 LogWarning，否则缺皮肤时日志零痕迹（2026-09-14 审核 D12）。
+                    Debug.LogWarning(LogPrefix + "皮肤 bundle 加载失败，使用程序化皮肤: " + bundlePath);
                     return false;
                 }
 
@@ -159,7 +161,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(LogPrefix + "[WARNING] 皮肤 bundle 加载异常: " + e.Message);
+                Debug.LogWarning(LogPrefix + "皮肤 bundle 加载异常，使用程序化皮肤: " + e.Message);
                 return false;
             }
         }
@@ -173,7 +175,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(LogPrefix + "[WARNING] 资源加载失败 " + assetName + ": " + e.Message);
+                Debug.LogWarning(LogPrefix + "皮肤资源加载失败，这一档用程序化皮肤 " + assetName + ": " + e.Message);
                 return null;
             }
         }

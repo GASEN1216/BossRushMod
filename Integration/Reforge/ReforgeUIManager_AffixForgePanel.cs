@@ -68,7 +68,7 @@ namespace BossRush
             Image background = panel.AddComponent<Image>();
             background.color = BossRushUIColors.Surface;
             background.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(background, AFFIX_PANEL_CORNER_RADIUS);
+            BossRushUI.ApplyFramedPanelSkin(background, AFFIX_PANEL_CORNER_RADIUS, BossRushUISkinPart.Card);
 
             VerticalLayoutGroup layout = panel.AddComponent<VerticalLayoutGroup>();
             layout.spacing = AFFIX_PANEL_SPACING;
@@ -188,7 +188,7 @@ namespace BossRush
             Image rowBackground = row.AddComponent<Image>();
             rowBackground.color = BossRushUIColors.SurfaceRaised;
             rowBackground.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(rowBackground, AFFIX_PANEL_CORNER_RADIUS);
+            BossRushUI.ApplyFramedPanelSkin(rowBackground, AFFIX_PANEL_CORNER_RADIUS, BossRushUISkinPart.Card);
 
             HorizontalLayoutGroup layout = row.AddComponent<HorizontalLayoutGroup>();
             layout.spacing = AFFIX_PANEL_SPACING;

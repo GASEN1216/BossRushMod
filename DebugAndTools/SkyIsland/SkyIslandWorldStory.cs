@@ -95,20 +95,11 @@ namespace BossRush
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             // 四座秘境的物证点先是一段三步小谜题（SkyIslandPuzzles）；解开之后、或物证早已拿到，才是普通的「收录」页。
             SkyIslandPuzzle puzzle = SkyIslandPuzzles.For(key);
-            bool solving = puzzle != null && !story.Current.Has(puzzle.Flag) && !puzzles.IsSolved(puzzle);
+            // 残星瞭台的守卫没清时不出谜题：三个选项点了都只会回「先清守卫」，那句话由 RecordChoice 收进正文。
+            bool solving = puzzle != null && !story.Current.Has(puzzle.Flag) && !puzzles.IsSolved(puzzle)
+                && OverlookGuarded(key) == null;
             if (solving) PuzzleChoices(choices, puzzle, recorded);
-            else choices.Add(new SkyIslandStoryPresentation.Choice(
-                L10n.T("收录见闻 / 物证", "Record the note / evidence"), delegate
-            {
-                string guarded = OverlookGuarded(key);
-                if (guarded != null) return guarded;
-                string message;
-                bool recordedNow = story.RecordSearch(key, out message);
-                if (recordedNow && recorded != null) recorded();
-                // 权威副本已经写进我们自己的存档；这里把官方笔记图鉴那一条也点亮（镜像，fail-open）。
-                if (recordedNow) SkyIslandNoteBridge.Unlock(key);
-                return Refreshed(recordedNow, message);
-            }));
+            else RecordChoice(choices, key, recorded);
             switch (key)
             {
                 case "Search_D": AddIf(choices, L10n.T("校准西侧风标", "Calibrate the west wind beacon"),
@@ -129,10 +120,10 @@ namespace BossRush
                 case "Search_B":
                     AddIf(choices, L10n.T("把种植记录留给晴禾", "Leave the planting record for Qinghe"),
                         SkyIslandStoryAction.DeliverPlantingRecord);
-                    // 委托板与苇白本人等价：她婚后离岛或尚未生成时，委托仍然可接可交。
-                    BountyChoices(choices, () => BoardPosition("Search_B")); break;
-                case "Search_A": ServiceChoice(choices,
-                    L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
+                    // 委托板与苇白本人等价：她婚后离岛或尚未生成时，委托仍然可接可交。委托单独一页，见 ContractsChoice。
+                    ContractsChoice(choices, () => BoardPosition("Search_B"), delegate { ReadPoint(key, recorded); });
+                    break;
+                case "Search_A": RepairChoice(choices);
                     // 渡口工台与浮舟本人等价：他不在时码头装置照样能做东西。
                     CraftChoice(choices, SkyIslandCraftStation.Dock);
                     // 手记与苇白本人等价：码头每趟必经，翻手记不必先去风铃集找到她。
@@ -141,8 +132,7 @@ namespace BossRush
                 // （`SkyIslandResidents.SpawnOneAsync` 跳过生成，`PermanentDuckNpcModule` 对
                 // SkyIslandRaid 恒返回 false），归航菜此前只挂在她身上，会永久失联。
                 // 苇白的委托早有留言板兜底，这里给晴禾补上同一条纪律。`mealUsed` 是单次布尔，不会双领。
-                case "Search_C": ServiceChoice(choices,
-                    L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
+                case "Search_C": MealChoice(choices);
                     CraftChoice(choices, SkyIslandCraftStation.Stove); break;
                 // 眠苔的药臼与苔药：她不是永久居民，但生成可能失败；悬根林的见闻点就在她站位旁 14 米，两样一起兜底。
                 // **服务和合成台必须成对兜底**：只兜药臼的话，眠苔没生成出来的那一趟玩家连唯一的付费回血都没有，
@@ -150,7 +140,7 @@ namespace BossRush
                 // 晴禾（菜畦）都是服务 + 合成台一起兜的，这里补齐同一条纪律。
                 // `healReadyAt` 与 `mealUsed` 一样是 SkyIslandServices 的单例字段，两个入口共用同一次冷却，不会双领。
                 case "Search_D_02":
-                    ServiceChoice(choices, L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
+                    HealChoice(choices);
                     CraftChoice(choices, SkyIslandCraftStation.Mortar); break;
                 case "Search_F": ZhelingChoices(choices); break;
                 // 内容批次四：镜水寺池边夜里捧蛙卵，这一趟里带回蛙鸣池放生（SkyIslandGnats；放生写进本槽手记）。
@@ -164,7 +154,7 @@ namespace BossRush
             // 正文只放一句导语 +（被隐藏选项留下的）下一步。
             // 长文去了官方笔记图鉴，目标卡常驻右上角 HUD——两处都不必在这里再说一遍。
             presentation.Show(SkyIslandPointText.Name(key),
-                solving ? PuzzleBody(puzzle, key) : WithNextStep(SkyIslandPointText.Brief(key)),
+                solving ? PuzzleBody(puzzle) : WithNextStep(SkyIslandPointText.Brief(key)),
                 choices, null, SkyIslandUiArt.GetScene(key));
         }
 
@@ -195,26 +185,26 @@ namespace BossRush
                 // 正是 Add 上那条注释说了三个月的事。
                 AddIf(choices, L10n.T("交还种植记录", "Return the planting record"),
                     SkyIslandStoryAction.DeliverPlantingRecord);
-                ServiceChoice(choices,
-                    L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
+                MealChoice(choices);
                 CraftChoice(choices, SkyIslandCraftStation.Stove);
             }
             else if (id == "sky_zheling") ZhelingChoices(choices);
             else if (id == "sky_bellkeeper") BellChoices(choices);
             else if (id == "sky_weibai")
             {
-                BountyChoices(choices, delegate { return speaker != null ? speaker.position : BoardPosition("Search_B"); });
+                ContractsChoice(choices, delegate { return speaker != null ? speaker.position : BoardPosition("Search_B"); },
+                    delegate { OpenResidentPanel(id, speaker); });
                 // 以前这一项只回一段旅程摘要；群岛手记把摘要放进总览，再加上见闻、来信与名册。
                 JournalChoice(choices);
             }
             else if (id == "sky_fuzhou")
             {
-                ServiceChoice(choices, L10n.T("渡口整备 · 修补随身装备", "Dock refit · repair what you carry"), Repair);
+                RepairChoice(choices);
                 CraftChoice(choices, SkyIslandCraftStation.Dock);
             }
             else if (id == "sky_miantai")
             {
-                ServiceChoice(choices, L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
+                HealChoice(choices);
                 CraftChoice(choices, SkyIslandCraftStation.Mortar);
             }
             // 主视觉给「他家那一区」的插图：居民站在自己的地标上，立绘就压在那张图上。
@@ -289,15 +279,12 @@ namespace BossRush
             if (contract == null) return;
             if (!contract.HasActive)
             {
+                // 派完了、暂时没有能接的活：都不挂占位项（点了只回一句话），那句话进正文（2026-09-14 审核 F-06）。
                 if (!contract.CanAcceptMore)
                 {
-                    choices.Add(new SkyIslandStoryPresentation.Choice(
-                        L10n.T("航务委托 · 今日已派完", "Lane contracts · all handed out"), delegate
-                        {
-                            return L10n.T("苇白：今天的活都派完啦（", "Weibai: That is all the work for today (") +
-                                contract.CompletedRounds + "/" + SkyIslandBounty.MaxRounds +
-                                L10n.T("），剩下的留给下一趟。", "). The rest can wait for your next trip.");
-                        }));
+                    Hint(L10n.T("苇白：今天的活都派完啦（", "Weibai: That is all the work for today (") +
+                        contract.CompletedRounds + "/" + SkyIslandBounty.MaxRounds +
+                        L10n.T("），剩下的留给下一趟。", "). The rest can wait for your next trip."));
                     return;
                 }
                 SkyIslandBountyKind[] kinds = SkyIslandBounty.AllKinds;
@@ -321,24 +308,21 @@ namespace BossRush
                             return reply;
                         }));
                 }
+                // 驱蚋单是四类里唯一「白天永远挂不出来」的方向。这句不提它，
+                // 玩家在游戏里第一次该遇到它的地方就完全不知道它存在。
+                // 只在这一趟真会起蚋时才承诺（精灵表缺失的那趟整夜没有蚋）。
                 if (offered == 0)
-                    choices.Add(new SkyIslandStoryPresentation.Choice(
-                        L10n.T("航务委托 · 暂时没有能接的活", "Lane contracts · nothing to hand out"), delegate
-                        {
-                            // 驱蚋单是四类里唯一「白天永远挂不出来」的方向。这句不提它，
-                            // 玩家在游戏里第一次该遇到它的地方就完全不知道它存在。
-                            // 只在这一趟真会起蚋时才承诺（精灵表缺失的那趟整夜没有蚋）。
-                            return L10n.T("苇白：航路这阵子清得差不多了，物资点也翻遍了。",
-                                    "Weibai: The lanes are mostly clear and the caches are picked over.")
-                                + (session.HasGnatBountyThisRaid && !session.IsNightNow
-                                    ? L10n.T("天黑以后再来一趟——起蚋的夜里我这儿还有一张驱蚋的单子。",
-                                        " Come back after dark — on gnat nights I still have a culling contract for you.")
-                                    : L10n.T("下次出岛再来看看吧。",
-                                        " Come and see me again next trip."));
-                        }));
+                    Hint(L10n.T("苇白：航路这阵子清得差不多了，物资点也翻遍了。",
+                            "Weibai: The lanes are mostly clear and the caches are picked over.")
+                        + (session.HasGnatBountyThisRaid && !session.IsNightNow
+                            ? L10n.T("天黑以后再来一趟——起蚋的夜里我这儿还有一张驱蚋的单子。",
+                                " Come back after dark — on gnat nights I still have a culling contract for you.")
+                            : L10n.T("下次出岛再来看看吧。",
+                                " Come and see me again next trip.")));
                 return;
             }
-            choices.Add(new SkyIslandStoryPresentation.Choice(
+            // 交付只在做完之后挂：没做完时点了只回「还差一点」，进度已经写在委托页正文里（ContractsBrief）。
+            if (contract.IsComplete) choices.Add(new SkyIslandStoryPresentation.Choice(
                 L10n.T("交付委托 · ", "Deliver contract · ") + contract.Describe(), delegate
             {
                 SkyIslandLootTier tier;
@@ -382,6 +366,13 @@ namespace BossRush
             {
                 Hint(L10n.T("两端航标都亮起来，栈道上那阵风才会循着光过来。",
                     "The wind out on the boardwalk only comes for the light once both beacons burn."));
+                return;
+            }
+            // 现场条件（站在栈道上、附近没在交战）与点下去的拒绝是同一份判据：挂不出来就把原因写进正文（2026-09-14 审核 F-28 ②）。
+            string reason;
+            if (!session.CanBeginStoryChallenge("Storm", out reason))
+            {
+                Hint(reason);
                 return;
             }
             choices.Add(new SkyIslandStoryPresentation.Choice(
@@ -494,17 +485,21 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 具名对手已经了结（和解**或**战胜）之后就不再挂挑战项：点了只会回一句拒绝。
-        /// 与 <see cref="SkyIslandStoryData.ZhelingResolved"/> / <c>BellKeeperResolved</c> 同一个事实，
-        /// 不另立判据。
+        /// 挑战项挂不挂。具名对手已经了结（和解**或**战胜）之后不再挂：点了只会回一句拒绝——
+        /// 与 <see cref="SkyIslandStoryData.ZhelingResolved"/> / <c>BellKeeperResolved</c> 同一个事实，不另立判据。
+        /// 其余剧情前置与现场条件（钟守要双航标、要走近、附近不能还在交战）问会话的 <c>CanBeginStoryChallenge</c>，
+        /// 和点下去之后的拒绝是同一份判据；挂不出来时「还差什么」进正文（2026-09-14 审核 F-28 ②）。
         /// </summary>
         private bool ChallengeAvailable(string id)
         {
             SkyIslandStoryData data = story.Current;
             if (data == null) return false;
-            if (string.Equals(id, "Zheling", StringComparison.Ordinal)) return !data.ZhelingResolved;
-            if (string.Equals(id, "BellKeeper", StringComparison.Ordinal)) return !data.BellKeeperResolved;
-            return true;
+            if (string.Equals(id, "Zheling", StringComparison.Ordinal) && data.ZhelingResolved) return false;
+            if (string.Equals(id, "BellKeeper", StringComparison.Ordinal) && data.BellKeeperResolved) return false;
+            string reason;
+            if (session.CanBeginStoryChallenge(id, out reason)) return true;
+            Hint(reason);
+            return false;
         }
 
         private void Add(List<SkyIslandStoryPresentation.Choice> choices, string label, SkyIslandStoryAction action)
@@ -642,7 +637,38 @@ namespace BossRush
             presentation.Dispose();
         }
 
-        /// <summary>残星瞭台的观星镜要先清掉守卫：普通收录与谜题两条路共用这一句门控。</summary>
+        /// <summary>
+        /// 「收录见闻 / 物证」。收过就不挂——点了只会回「已经收进手记」（2026-09-14 审核 F-06）；判据与手记、官方图鉴镜像是同一个
+        /// <see cref="SkyIslandJournal.Recorded"/>。前置没满足（残星瞭台的守卫没清、秘境物证的剧情门没开）同样不挂，「还差什么」进正文。
+        /// </summary>
+        private void RecordChoice(List<SkyIslandStoryPresentation.Choice> choices, string key, Action recorded)
+        {
+            if (SkyIslandJournal.Recorded(story.Current, key)) return;
+            string overlook = OverlookGuarded(key);
+            if (overlook != null) { Hint(overlook); return; }
+            SkyIslandStoryAction evidence;
+            string blocker;
+            if (SkyIslandStoryRules.TrySearchAction(key, out evidence)
+                && !SkyIslandStoryRules.CanApply(story.Current, evidence, out blocker))
+            {
+                Hint(blocker);
+                return;
+            }
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("收录见闻 / 物证", "Record the note / evidence"), delegate
+            {
+                string guarded = OverlookGuarded(key);
+                if (guarded != null) return guarded;
+                string message;
+                bool recordedNow = story.RecordSearch(key, out message);
+                if (recordedNow && recorded != null) recorded();
+                // 权威副本已经写进我们自己的存档；这里把官方笔记图鉴那一条也点亮（镜像，fail-open）。
+                if (recordedNow) SkyIslandNoteBridge.Unlock(key);
+                return Refreshed(recordedNow, message);
+            }));
+        }
+
+        /// <summary>残星瞭台的观星镜要先清掉守卫：普通收录、谜题与风晶灯三条路共用这一句门控。</summary>
         private string OverlookGuarded(string key)
         {
             if (key == "Search_S4" && !session.IsEncounterCleared("S4"))
@@ -651,13 +677,16 @@ namespace BossRush
             return null;
         }
 
-        /// <summary>谜题页正文：本岛见闻 + 谜题场景与线索 + 当前这一步的提问。</summary>
-        private string PuzzleBody(SkyIslandPuzzle puzzle, string key)
+        /// <summary>
+        /// 谜题页正文：谜题场景（只在第一步给）+ 当前这一步的提问。见闻全文不放这里：解开收录之后在官方笔记图鉴里读，
+        /// 旧写法把见闻、场景、提问三段拼在一起，一页 80–170 字（2026-09-14 审核 F-24 ②）。
+        /// </summary>
+        private string PuzzleBody(SkyIslandPuzzle puzzle)
         {
             int index = puzzles.CurrentStep(puzzle);
-            return SkyIslandPointText.Lore(key) + "\n\n" + puzzle.Title + L10n.T("：", ": ") + puzzle.Intro + "\n\n" +
-                L10n.T("第 ", "Step ") + (index + 1) + "/" + puzzle.Steps.Length + L10n.T(" 步 · ", " · ") +
+            string step = L10n.T("第 ", "Step ") + (index + 1) + "/" + puzzle.Steps.Length + L10n.T(" 步 · ", " · ") +
                 puzzle.Steps[index].Prompt;
+            return index == 0 ? puzzle.Intro + "\n\n" + step : step;
         }
 
         /// <summary>
@@ -688,7 +717,7 @@ namespace BossRush
                     }
                     // 前进要换一组选项，只能重开；重开之后回执写进新面板的正文，所以回执里带上下一步的提问。
                     if (outcome == SkyIslandPuzzleOutcome.Advanced && reopen != null) reopen();
-                    return feedback + "\n\n" + PuzzleBody(puzzle, key);
+                    return feedback + "\n\n" + PuzzleBody(puzzle);
                 }));
             }
         }
@@ -819,8 +848,8 @@ namespace BossRush
                 if (fieldcraft == null)
                     return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
                 OpenCrafting(station);
-                // 回调的返回值会写进（新开的）合成面板正文：返回同一份正文。
-                return CraftingBody(station);
+                // 返回 null：新开的合成面板自己的正文保持不动（见 SkyIslandStoryPresentation.BuildChoice）。
+                return null;
             }));
         }
 
@@ -833,6 +862,9 @@ namespace BossRush
         {
             SkyIslandLight light = SkyIslandLights.ForMarker(key);
             if (light == null || SkyIslandLights.Lit(story.Current, light.Id)) return;
+            // 残星瞭台那盏同样要先清守卫：没清时不挂，原因进正文（与收录同一句，Hint 自己去重）。
+            string overlook = OverlookGuarded(key);
+            if (overlook != null) { Hint(overlook); return; }
             Func<int, int> count = null;
             if (fieldcraft != null) count = fieldcraft.CountInPack;
             choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandLights.ChoiceLabel(light, count), delegate
@@ -881,7 +913,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 合成面板：本站的配方（渡口工台最多 5 条；面板布局属性测试按最坏 6 条复算），按钮上写着「背包里有几件 / 要几件」。
+        /// 合成面板：本站**已经会做**的配方（渡口工台最多 5 条；它是列表页，AGENTS §4.14 允许到 6 项，面板布局属性测试按最坏 6 条复算），
+        /// 按钮上写着「背包里有几件 / 要几件」；还不会做的不挂按钮，在正文末尾各占一行。
         /// 做成了就重开面板刷新件数；材料不够只回话、不重开。面板同样过战斗门。
         /// </summary>
         private void OpenCrafting(SkyIslandCraftStation station)
@@ -889,15 +922,15 @@ namespace BossRush
             if (BlockedByCombat() || fieldcraft == null) return;
             reopen = delegate { OpenCrafting(station); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
+            var locked = new List<string>();
             List<SkyIslandRecipe> recipes = SkyIslandFieldcraftRules.RecipesFor(station);
             for (int i = 0; i < recipes.Count; i++)
             {
                 SkyIslandRecipe recipe = recipes[i];
-                // 配方随剧情解锁：还不会做的也挂出来，按钮上写着要等到什么时候，点了是居民说为什么。
+                // 配方随剧情解锁：还不会做的不挂按钮（点了必拒，2026-09-14 审核 F-06），写进正文，告诉玩家要等到什么时候。
                 if (!SkyIslandFieldcraftRules.Unlocked(recipe, story.Current))
                 {
-                    choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.LockedLabel(recipe),
-                        () => SkyIslandFieldcraftRules.LockedMessage(recipe)));
+                    locked.Add(SkyIslandFieldcraftRules.LockedLabel(recipe));
                     continue;
                 }
                 choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(recipe, fieldcraft.CountInPack), delegate
@@ -909,15 +942,18 @@ namespace BossRush
                     return Refreshed(crafted, message);
                 }));
             }
-            presentation.Show(SkyIslandFieldcraftRules.StationName(station), CraftingBody(station), choices, null,
+            presentation.Show(SkyIslandFieldcraftRules.StationName(station), CraftingBody(station, locked), choices, null,
                 SkyIslandUiArt.GetScene(StationScene(station)));
         }
 
-        private string CraftingBody(SkyIslandCraftStation station)
+        /// <summary>合成面板正文：一句开场白 + 背包里的群岛材料 + 还不会做的配方各一行（要等到什么时候）。</summary>
+        private string CraftingBody(SkyIslandCraftStation station, List<string> locked)
         {
             Func<int, int> count = null;
             if (fieldcraft != null) count = fieldcraft.CountInPack;
-            return SkyIslandFieldcraftRules.StationIntro(station) + "\n\n" + SkyIslandFieldcraftRules.PackSummary(count);
+            string body = SkyIslandFieldcraftRules.StationIntro(station) + "\n\n" + SkyIslandFieldcraftRules.PackSummary(count);
+            for (int i = 0; locked != null && i < locked.Count; i++) body += "\n" + locked[i];
+            return body;
         }
 
         /// <summary>合成面板的横幅插图借所在装置的那一张（缺图时 SkyIslandUiArt 退成无插图布局）。</summary>

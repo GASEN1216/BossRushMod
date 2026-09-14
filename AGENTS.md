@@ -147,13 +147,14 @@ python tools/run_guards.py --filter OfficialCompileList
 ### 4.14 UI 走共享库与官方界面
 
 - Canvas `sortingOrder` 用 `BossRushUILayers` 常量；颜色用 `BossRushUIColors` token，遮罩用 `Backdrop`。
-- 面板、按钮、卡片底图走 `BossRushUI.ApplyPanelSkin`：卡片、分隔线、滚动滑块显式传 `BossRushUISkinPart`，`radius <= 3` 的细条程序化绘制（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。深色面板要有边就调 `BossRushUI.ApplyPanelStroke`（描边色 `BossRushUIColors.Stroke`）——图集里烤进去的内描边会被深色 token 乘到看不见。
-- 按钮字色用 `BossRushUI.GetButtonTextColor(背景色)`，不写死；对比度按实际合成后的底色算，正文至少 4.5:1。
+- 面板、按钮、卡片底图走 `BossRushUI.ApplyPanelSkin`：卡片、分隔线、滚动滑块与细轨显式传 `BossRushUISkinPart`，`radius <= 3` 的细条程序化绘制（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。深色面板要有边就调 `BossRushUI.ApplyPanelStroke`（描边色 `BossRushUIColors.Stroke`），或用 `ApplyFramedPanelSkin` 一次套上底图与描边——图集里烤进去的内描边会被深色 token 乘到看不见。
+- 按钮字色用 `BossRushUI.GetButtonTextColor(背景色)`，不写死；对比度按实际合成后的底色算，正文至少 4.5:1。游戏是 Linear 色彩空间，半透明在线性光里混合，复算按线性模型（`docs/contracts.md` §7.1），观感修复以实机截图取色为准。
 - 缓动只用 `BossRushUI.EaseOut`（位移）与 `BossRushUI.SmoothStep`（原地淡变），子元素错峰入场用 `BossRushUIEntranceAnimation`，不引入 DOTween 一类第三方依赖。走 unscaled 时间的表现层自带 `BossRushUI.IsGamePaused()` 门；常驻 HUD 跟随 `BossRushUI.IsOfficialHudHidden()`。
 - 字体用 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，新文本用 TMP（内置 Arial 渲染不了中文）；`CanvasScaler` 调 `ZombieModeUIHelper.ConfigureCanvasScaler`。
 - 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。
-- 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。
-- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做镜像）。自绘面板只在官方给不了的能力上保留，理由写进文件头。官方任务系统 `Duckov.Quests` 刻意不接（§10）。
+- 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。列表页（合成配方、航务委托）例外：上限 6 项，且不带立绘。
+  付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
+- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。官方任务系统 `Duckov.Quests` 刻意不接（§10）。
 
 守卫：`BossRushUISharedLibraryGuard`、`BossRushUISkinLoaderGuard`、`SkyIslandUiContrastGuard`、`SkyIslandOfficialApiReuseGuard`、`SkyIslandChoiceGateGuard`。
 
@@ -182,7 +183,7 @@ F3 玩法验收只在 Dev 构建里存在（`BOSSRUSH_DEV_BUILD=1`），目标�
 - **只读套件就是只读**：不写剧情与存档、不注册或写官方图鉴、不刷怪、不改强制夜里、不打补丁（`SkyIslandValidationSuiteGuard` 的禁用清单）。会改状态的检查进 Dev 演练套件：整文件 `#if BOSSRUSH_DEV`、独立按钮、复用专用测试档的开跑门、报告头 `read_only=false`、`finally` 还原、不写存档不收录；只读套件不得引用演练代码（`SkyIslandReadOnlySuiteDrillIsolationGuard`、`SkyIslandDrillNoPersistenceGuard`）。
 - **SKIP 不能吞缺陷**：先查「缺了会让这条用例永远 SKIP」的前提（资源在不在、补丁装没装、皮肤注入没有），再按场景条件（白天、场上没有目标）记 SKIP。
 - **用例 id 写字面量交给外壳**：`RunSyncCase` / `RunSkyIslandSync` / `RunSkyIslandCase` 一类外壳的第一个参数写字面量；新增外壳登记进 `tools/gameplay_coverage.py` 的 `CASE_RUNNERS`，用例登记进 `Assets/Data/GameplayCoverage.json`（`GameplayCoverageCaseRunnerGuard`）。要在基地看的（官方图鉴镜像、出击残留）挂主套件 `RunSuite`，不塞进岛内套件。
-- **常驻 HUD**（进局就一直在、不是玩家主动打开的）每帧入口同时经过 `BossRushUI.IsOfficialHudHidden()` 与 `BossRushUI.IsGamePaused()`，并登记进 `tests/PersistentHudVisibilityGuard.py`。引用 HUD 层级常量的文件都要在那里归类；模态面板与玩家主动打开的面板写明理由排除。
+- **常驻 HUD**（进局就一直在、不是玩家主动打开的）每帧入口同时经过 `BossRushUI.IsOfficialHudHidden()` 与 `BossRushUI.IsGamePaused()`，并登记进 `tests/PersistentHudVisibilityGuard.py`（它按语义核对判定与宿主驱动，不只查子串）。引用任何 UI 层级常量的文件都要在那里归类（常驻 / 排除 / 模态，写明理由）；画布层级不写字面量；`OnGUI` 同样登记。
 
 ## 5. 不可破坏的契约
 
@@ -261,7 +262,7 @@ F3 玩法验收只在 Dev 构建里存在（`BOSSRUSH_DEV_BUILD=1`），目标�
 
 - 删除、迁移、批量重写玩家数据或存档；存档与配置 schema 的破坏性变更（`SCHEMA-`、`BREAKING`）。
 - TypeID 复用、删除、回填；改已发布内容的 TypeID、存档 key、本地化 key。
-- 写入官方存档键（例如接入 `Duckov.Quests`：卸载 Mod 后官方会对缺失的 id 报错）。
+- 写入官方存档键（例如接入 `Duckov.Quests`：卸载 Mod 后官方会对缺失的 id 报错）。官方图鉴 `NoteIndex` 的镜像已拍板为例外（§4.14）。
 - 公开 API、跨模块契约、外部协议的破坏性变更（`WIRE-`）；密钥、飞书与生图网关等外部服务配置。
 - `git push`、建 PR、创意工坊发布、改部署流水线或全局改造构建脚本。
 - 启动游戏做测试、读写玩家存档目录（实机由 owner 自己做）。

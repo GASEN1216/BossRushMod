@@ -392,7 +392,7 @@ namespace BossRush
             panelFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
 
             Image panelImage = panel.GetComponent<Image>();
-            BossRushUI.ApplyPanelSkin(panelImage, 14);
+            BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
             panelImage.color = new Color(0.07f, 0.1f, 0.17f, 0.98f);
 
             Shadow panelShadow = panel.GetComponent<Shadow>();
@@ -435,7 +435,7 @@ namespace BossRush
             GameObject contentCard = CreateUIObject("ContentCard", panelRect, typeof(Image), typeof(VerticalLayoutGroup));
             RectTransform contentCardRect = contentCard.GetComponent<RectTransform>();
             Image contentCardImage = contentCard.GetComponent<Image>();
-            BossRushUI.ApplyPanelSkin(contentCardImage, 10);
+            BossRushUI.ApplyFramedPanelSkin(contentCardImage, 10, BossRushUISkinPart.Card);
             contentCardImage.color = new Color(0.09f, 0.13f, 0.22f, 0.98f);
             VerticalLayoutGroup contentCardLayout = contentCard.GetComponent<VerticalLayoutGroup>();
             contentCardLayout.padding = new RectOffset(20, 20, 16, 16);

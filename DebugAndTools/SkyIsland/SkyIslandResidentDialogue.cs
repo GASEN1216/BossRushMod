@@ -75,11 +75,16 @@ namespace BossRush
         {
             if (speaker == null || string.IsNullOrEmpty(npcId)) return null;
             GameObject host = speaker.gameObject;
-            DuckovDialogueActor existing = DialogueActorFactory.Get(host);
-            if (existing != null) return existing;
             // ResidentName 内部已经取过 L10n.T，两个语位填同一个值就是那个名字本身
-            // （口径同 Split 里的台词）。
+            // （口径同 Split 里的台词）。每次开口都按当前语言取一次。
             string name = SkyIslandWorldStory.ResidentName(npcId);
+            DuckovDialogueActor existing = DialogueActorFactory.Get(host);
+            if (existing != null)
+            {
+                // actor 按 NPC 缓存、名字只在创建时注入：本趟切过语言的话，官方对话框里的名字要跟着换（2026-09-14 审核 F-29）。
+                DialogueActorFactory.RefreshBilingualName(npcId, name, name);
+                return existing;
+            }
             return DialogueActorFactory.CreateBilingual(host, npcId, name, name,
                 new Vector3(0f, 2f, 0f), SkyIslandUiArt.GetPortrait(npcId));
         }
@@ -128,25 +133,80 @@ namespace BossRush
         /// <summary>中英对照的一条选项。</summary>
         private static string[] Pair(string cn, string en) { return new[] { L10n.T(cn, en), L10n.T(cn, en) }; }
 
+        /// <summary>短于这个可见字数的半句（像「嗯。」「Hm.」）并进同一段里的下一句，免得一屏只有一个字。</summary>
+        internal const int MinSentenceChars = 8;
+
         /// <summary>
-        /// 台词按换行拆成一句一屏。
+        /// 台词拆成**一句一屏**：先按换行分段，再在句末标点处断句——中文 。！？；…，英文 . ! ? 后面跟空格或段尾。
+        /// 句末标点后紧跟的右引号、右括号属于这一句；太短的半句并进下一句；段落结束一定断开。
+        /// 旧写法只按换行拆，居民台词 50 段里 15 段 ≥40 字、最长一屏 66 字三句话
+        /// （2026-09-14 审核 F-10，AGENTS §4.14「长文案一句一屏」）。
         ///
         /// `DescribeNpc` 返回的是**已经按当前语言解析过**的字符串（`L10n.T` 在它内部就取过了），
         /// 所以这里两个语位填同一个值——双语接口拿到相同的中英文，结果就是那句话本身。
         /// 空行丢掉：拼接处常留下多余的 "\n"。
         /// </summary>
-        private static string[][] Split(string body)
+        internal static string[][] Split(string body)
         {
             var lines = new List<string[]>();
             if (string.IsNullOrEmpty(body)) return lines.ToArray();
-            string[] parts = body.Split('\n');
-            for (int i = 0; i < parts.Length; i++)
+            string[] paragraphs = body.Split('\n');
+            var sentence = new System.Text.StringBuilder();
+            for (int p = 0; p < paragraphs.Length; p++)
             {
-                string line = parts[i].Trim();
-                if (line.Length == 0) continue;
-                lines.Add(new[] { line, line });
+                string paragraph = paragraphs[p].Trim();
+                for (int i = 0; i < paragraph.Length; i++)
+                {
+                    sentence.Append(paragraph[i]);
+                    if (!EndsSentence(paragraph, i)) continue;
+                    while (i + 1 < paragraph.Length && IsClosingMark(paragraph[i + 1]))
+                        sentence.Append(paragraph[++i]);
+                    if (VisibleLength(sentence) >= MinSentenceChars) Flush(sentence, lines);
+                }
+                Flush(sentence, lines);
             }
             return lines.ToArray();
+        }
+
+        private static bool IsTerminal(char c)
+        {
+            return c == '。' || c == '！' || c == '？' || c == '；' || c == '…' || c == '!' || c == '?' || c == '.';
+        }
+
+        private static bool IsClosingMark(char c)
+        {
+            return c == '」' || c == '』' || c == '”' || c == '’' || c == '）' || c == ')' || c == '"' || c == '】' || c == '》';
+        }
+
+        /// <summary>第 index 个字符是不是一句的结尾。连续的「？！」「……」「...」只在最后一个处断；英文小数点不断。</summary>
+        private static bool EndsSentence(string text, int index)
+        {
+            char c = text[index];
+            if (!IsTerminal(c)) return false;
+            bool last = index + 1 >= text.Length;
+            if (!last && IsTerminal(text[index + 1])) return false;
+            if (c == '.' || c == '!' || c == '?')
+            {
+                if (last) return true;
+                char next = text[index + 1];
+                return next == ' ' || IsClosingMark(next);
+            }
+            return true;
+        }
+
+        private static int VisibleLength(System.Text.StringBuilder text)
+        {
+            int count = 0;
+            for (int i = 0; i < text.Length; i++)
+                if (!char.IsWhiteSpace(text[i])) count++;
+            return count;
+        }
+
+        private static void Flush(System.Text.StringBuilder sentence, List<string[]> lines)
+        {
+            string line = sentence.ToString().Trim();
+            sentence.Length = 0;
+            if (line.Length > 0) lines.Add(new[] { line, line });
         }
     }
 }

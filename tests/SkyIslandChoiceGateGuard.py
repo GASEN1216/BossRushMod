@@ -39,7 +39,9 @@ RULES = SKY + "SkyIslandStoryRules.cs"
 # 2026-09-14 B 轮：噬风·回响的「引风」选项与它点下去那一次（选项接线与会话接线各在一个 partial 文件里）。
 WORLD_ECHO = SKY + "SkyIslandWorldStoryEcho.cs"
 SESSION_ECHO = SKY + "SkyIslandSessionEcho.cs"
-PATHS = [WORLD, RULES, WORLD_ECHO, SESSION_ECHO]
+# 2026-09-14 UI 优化对照审核 F-06：居民服务按钮与「航务委托」子页（从主文件拆出的 partial）。
+WORLD_SERVICES = SKY + "SkyIslandWorldStoryServices.cs"
+PATHS = [WORLD, RULES, WORLD_ECHO, SESSION_ECHO, WORLD_SERVICES]
 
 # 裸 `Add(choices, ...)`：前面不能是 `f`（AddIf）也不能是 `.`（choices.Add）。
 RAW_ADD = re.compile(r"(?<![A-Za-z0-9_.])Add\(choices")
@@ -184,6 +186,53 @@ def check(sources):
     for token in ("data.StormResolved", "data.Has(SkyIslandStoryFlag.Ending)", "if (usedThisRaid) return false;",
                   "coreCarried", "windcrystals < StormEchoWindcrystalCost"):
         require(token in rule, RULES + " 的 CanSummonStormEcho 缺一项判据：" + token)
+
+    # ---- 10) 2026-09-14 审核 F-06 / F-28 ②：收录、服务、委托、配方、挑战也先判断再挂 ----
+    # 旧版这份守卫只管剧情动作与手记首页；收过的「收录」、没做完的「交付委托」、「今日已派完」这类占位项、
+    # 还不会做的配方、走不到的挑战都还挂着，点了才回一句拒绝。
+    services = clean_source(sources[WORLD_SERVICES])
+    record = body_of(world, "private void RecordChoice(", "}") or ""
+    recorded_at = record.find("if (SkyIslandJournal.Recorded(story.Current, key)) return;")
+    require(0 <= recorded_at < record.find("choices.Add("),
+            WORLD + " 的 RecordChoice 没有在挂「收录」之前判「已经收过」：点了只会回「已经收进手记」")
+    require("SkyIslandStoryRules.CanApply(story.Current, evidence, out blocker)" in record and "Hint(blocker);" in record,
+            WORLD + " 的 RecordChoice 没有让秘境物证走 CanApply，前置没满足时也没有把「还差什么」写进正文")
+    read_point = body_of(world, "internal void ReadPoint(", "}") or ""
+    require("else RecordChoice(choices, key, recorded);" in read_point,
+            WORLD + " 的 ReadPoint 没有经 RecordChoice 挂收录项")
+    bounty = body_of(world, "private void BountyChoices(", "}") or ""
+    for label in ("今日已派完", "暂时没有能接的活"):
+        require(label not in bounty,
+                WORLD + " 的 BountyChoices 又挂回占位项「" + label + "」：点了只回一句话，那句话要进正文（Hint）")
+    require(bounty.count("Hint(") >= 2, WORLD + " 的 BountyChoices 派完 / 没活可派时没有把原因写进正文")
+    require("if (contract.IsComplete) choices.Add(" in bounty,
+            WORLD + " 的「交付委托」没做完也挂：点了只回「还差一点」")
+    require(not re.findall(r"(?<!void )BountyChoices\(", world),
+            WORLD + " 里有页面直接平铺派单选项：委托要经 ContractsChoice 进单独一页，不和居民、留言板的其它事挤在一起")
+    contracts = body_of(services, "private void ContractsChoice(", "}") or ""
+    require("BountyChoices(page, rewardPosition);" in contracts and "if (page.Count == 0) return;" in contracts,
+            WORLD_SERVICES + " 的委托入口没有按委托页自己的判据试建：一项都挂不出来时还挂着一个空入口")
+    open_contracts = body_of(services, "private void OpenContracts(", "}") or ""
+    require("BountyChoices(choices, rewardPosition);" in open_contracts and 'L10n.T("返回", "Back")' in open_contracts,
+            WORLD_SERVICES + " 的委托页没有派单选项或没有「返回」")
+    for helper in ("private void RepairChoice(", "private void HealChoice("):
+        body = body_of(services, helper, "}") or ""
+        nothing_at = body.find("if (state == SkyIslandServiceReadiness.NothingToDo) return;")
+        require(0 <= nothing_at < body.find("ServiceChoice(choices, label,"),
+                WORLD_SERVICES + " 的 " + helper + " 没有在「没有要做的」时不挂：点了只回「用不着我动手」")
+    meal = body_of(services, "private void MealChoice(", "}") or ""
+    require("if (!session.HasPlantingDelivered)" in meal and "Hint(" in meal
+            and "if (services != null && services.MealEaten) return;" in meal,
+            WORLD_SERVICES + " 的归航菜：剧情前置没到要写进正文且不挂、这一趟吃过了也不挂")
+    require("ServiceChoice(choices, L10n.T(" not in world,
+            WORLD + " 里又有服务按钮绕过 RepairChoice / HealChoice / MealChoice 直接挂")
+    crafting = body_of(world, "private void OpenCrafting(", "}") or ""
+    require("LockedMessage(" not in crafting and "locked.Add(SkyIslandFieldcraftRules.LockedLabel(recipe));" in crafting,
+            WORLD + " 的合成面板又把还不会做的配方挂成按钮（点了必拒）：要写进正文")
+    require("session.CanBeginStoryChallenge(id, out reason)" in avail and "Hint(reason);" in avail,
+            WORLD + " 的 ChallengeAvailable 没有问会话的挑战判据（双航标、距离、附近交战）：挂着的挑战项点了只回「当前无法开始」")
+    require('session.CanBeginStoryChallenge("Storm", out reason)' in storm,
+            WORLD + " 的 StormChoice 没有先问挑战判据")
     return errors
 
 
@@ -207,8 +256,7 @@ def main():
         (WORLD, 'AddIf(choices, L10n.T("交还种植记录"', 'Add(choices, L10n.T("交还种植记录"'),
         # 挑战项不再判「已了结」
         (WORLD, 'if (ChallengeAvailable("Zheling"))', "if (true)"),
-        (WORLD, "if (string.Equals(id, \"Zheling\", StringComparison.Ordinal)) return !data.ZhelingResolved;",
-                "if (string.Equals(id, \"Zheling\", StringComparison.Ordinal)) return true;"),
+        (WORLD, "if (string.Equals(id, \"Zheling\", StringComparison.Ordinal) && data.ZhelingResolved) return false;", ""),
         # 噬风打完还挂
         (WORLD, "if (session.StormResolved) return;", ""),
         # 手记首页退回平铺（多挂一项就该红）
@@ -231,6 +279,22 @@ def main():
         (SESSION_ECHO, "if (!CanSummonStormEcho(out blocker))", "if (false)"),
         (RULES, "if (usedThisRaid) return false;", ""),
         (WORLD, "StormEchoChoice(choices); break;", "break;"),
+        # 2026-09-14 审核 F-06 / F-28 ②：收过还挂「收录」/ 收录绕开 RecordChoice / 没做完就挂交付 / 占位项回来 /
+        # 页面又平铺派单 / 委托入口不试建 / 没有要做的服务照挂 / 吃过的归航菜照挂 / 锁住的配方挂成按钮 / 挑战不问现场判据
+        (WORLD, "if (SkyIslandJournal.Recorded(story.Current, key)) return;", ""),
+        (WORLD, "else RecordChoice(choices, key, recorded);", "else { }"),
+        (WORLD, "if (contract.IsComplete) choices.Add(", "choices.Add("),
+        (WORLD, 'Hint(L10n.T("苇白：今天的活都派完啦（"',
+                'choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("航务委托 · 今日已派完", "x"), () => L10n.T("苇白：今天的活都派完啦（"'),
+        (WORLD, 'ContractsChoice(choices, () => BoardPosition("Search_B"), delegate { ReadPoint(key, recorded); });',
+                'BountyChoices(choices, () => BoardPosition("Search_B"));'),
+        (WORLD_SERVICES, "if (page.Count == 0) return;", ""),
+        (WORLD_SERVICES, "                if (state == SkyIslandServiceReadiness.NothingToDo) return;\n                label += ServiceTag(state, price, 0);",
+                         "                label += ServiceTag(state, price, 0);"),
+        (WORLD_SERVICES, "if (services != null && services.MealEaten) return;", ""),
+        (WORLD, "locked.Add(SkyIslandFieldcraftRules.LockedLabel(recipe));",
+                "choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.LockedLabel(recipe), () => SkyIslandFieldcraftRules.LockedMessage(recipe)));"),
+        (WORLD, "if (session.CanBeginStoryChallenge(id, out reason)) return true;", "return true;"),
     ]
     for path, before, after in probes:
         if before not in sources[path]:

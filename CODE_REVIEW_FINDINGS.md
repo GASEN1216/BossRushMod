@@ -2,6 +2,45 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-14（四）UI 优化对照审核：6 P2 + 18 P3（均已修）+ 5 条 PLAUSIBLE
+
+来源：对照图集规格、实机前减负报告、人工清单 §2.14–2.16、AGENTS §4.14 / §4.17，审核 `c00617f` / `00c8624` / `599bc6b`（报告 `docs/代码审查/2026-09-14-UI优化对照审核.md`，local-only，编号 F-01…F-29）。owner 随后要求全部修复、需要拍板的自行按主流游戏口径定。流水与拍板见 `FIX_TRACKER.md` 同日（四）一节。**修复全部是 L1 / L2，没有实机**（清单第 2.18 步）。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-14-015 | **P2** / TEST（合成模型错） | F-01：`SkyIslandUiContrastGuard` 在 sRGB 数值上做 alpha 混合，又把相对亮度统计值当 sRGB 灰度代入；游戏是 Linear 色彩空间。按线性复算：大标题眉题 2.13、字幕 3.95 / 警示 2.86、右上卡片边 2.16、焦点行对常态行 2.13，守卫却全绿 | **Fixed（L2，观感待 L3）**。守卫改线性光合成，模型钉在复算值上；常量按线性模型重定，焦点改 Accent 行边。`SkyIslandUiContrastGuard` 25 个反向检查 |
+| CR-2026-09-14-016 | **P2** / UX | F-02：描边环厚度 1.25 时直边上没有满覆盖纹素（最亮 0.75），「≥3.1:1」按满覆盖算，实际 2.3–2.4:1 | **Fixed**。`StrokeThickness = 1.5`；守卫照生产距离场算覆盖率 |
+| CR-2026-09-14-017 | **P2** / COMPAT（判据错位） | F-03：秘境物证 S1–S4 走剧情动作只写旗标、不进 `discoveredNotes`，手记最多 16/20、官方图鉴镜像与 F3 `SKY_OFFICIAL_NOTES` 必然 `unlock_vs_save`；夹具直接写 `discoveredNotes` 掩盖了它 | **Fixed**。`SkyIslandJournal.Recorded` 认 `TrySearchEvidenceFlag`（取自 `Describe`）；夹具改走生产路径 +2 条断言；磁盘探针 R11 |
+| CR-2026-09-14-018 | **P2** / UX | F-04：字幕压暗底宽度写死 1180，平台只剩中间 472 px，800 px 的一行字幕行尾压暗只有 0.40 | **Fixed**。`FitCaptionScrim` 按实测文字宽反算；守卫按行首行尾复算 |
+| CR-2026-09-14-019 | **P2** / UX | F-05：采集光斑 `localScale = 1.8` 作用在 0.64 m 的贴图上，实际直径 1.15 m | **Fixed（L1）**。缩放按贴图 bounds 反算 |
+| CR-2026-09-14-020 | **P2** / UX（规则只落一半） | F-06：「先判断再挂 / 超过 4 项分二级」只覆盖剧情动作：收过的「收录」、没做完的「交付委托」、「今日已派完」一类占位、锁住的配方、冷却与满血时的服务都照挂；留言板最多 6 项平铺 | **Fixed**。见 FIX_TRACKER（O-3 口径）；`SkyIslandChoiceGateGuard` +11 个反向检查 |
+| CR-2026-09-14-021 | P3 / UX | F-07：`ZombieModeUIHelper` 的 Success / Warning 仍是压暗前的旧值，Mode G / 丧尸同色按钮白字 4.15:1 | **Fixed**。改引 token |
+| CR-2026-09-14-022 | P3 / TEST（守卫盲区） | F-08：`PersistentHudVisibilityGuard` 只做子串断言，7 个语义变异全部 PASS；字面量层级与 `OnGUI` 不在扫描范围 | **Fixed**。语义判据 + 全层级归类 + 字面量 / OnGUI 扫描；41 个反向检查（含全部 7 个变异） |
+| CR-2026-09-14-023 | P3 / UX | F-09：「目标更新」竖条 0.5 s 硬切，`ObjectiveFlashRise` 无引用，注释写 ease-out | **Fixed**。0.15 s ease-out 提亮，按档量化写色 |
+| CR-2026-09-14-024 | P3 / UX | F-10：居民台词按 `\n` 切、不按句，最长一屏 66 字 | **Fixed**。按句切、过短合并；`SkyIslandDialogue` |
+| CR-2026-09-14-025 | P3 / TEST（复写） | F-12：面板布局属性测试只读两个赋值式、其余复写；标题按 24pt 估，最坏组合缺「立绘 + 横幅」 | **Fixed**。按生产 `Show` 求值标题宽 / 字号 / 地板；列表页不带立绘由结构断言钉住；磁盘探针 R10 |
+| CR-2026-09-14-026 | P3 / COMPAT（竞态） | F-13：取消只停我们的 `WaitUntil`，官方 `DoSubtitle` / `DoMultipleChoice` 协程还挂着，紧接着开下一段可能吞掉第一句 | **Fixed**。取消后经官方 `Confirm()` / `confirmedChoice` 推完，推完才放掉请求计数；`SkyIslandDialogue` +2 条断言、磁盘探针 R13 |
+| CR-2026-09-14-027 | P3 / UX | F-14：描边圆角按 border 16 取，`panel_surface` 实际弧半径约 14 | **Fixed**。按弧半径（面板 14 / 按钮 9，与 border 取小）；`BossRushUISkinLoaderGuard` |
+| CR-2026-09-14-028 | P3 / UX | F-15：共享 `CreateCard` 走两参 Auto 落进 Button 档、没有描边（5 个调用方） | **Fixed**。Card 档 + 描边 |
+| CR-2026-09-14-029 | P3 / UX | F-16：描边子物体没设 `ignoreLayout`，带 LayoutGroup 的宿主（F3 天空岛面板）把它排成第一行 | **Fixed**。`LayoutElement.ignoreLayout = true` |
+| CR-2026-09-14-030 | P3 / UX（缺包时） | F-17：Rule 档未注入时退到调用方半径的实心圆角条，8 px 高的分隔线变粗条 | **Fixed**。退到 divider 同形程序化条 |
+| CR-2026-09-14-031 | P3 / UX | F-18：ESC 键帽压住晴禾立绘顶部约 6.5 px | **Fixed**。有立绘时主视觉地板加键帽那一截 |
+| CR-2026-09-14-032 | P3 / COMPAT（重入） | F-22：`DialogueManager` 没有会话归属，后一段顶掉前一段的选项、一次点击答复两段；7 处序列调用不判 `IsDialogueActive` | **Fixed**。会话归属 + 排队；`SkyIslandDialogue` |
+| CR-2026-09-14-033 | P3 / COMPAT | F-23：图鉴镜像只增不减，存档里没有、官方已点亮的条目永远不收回 | **Fixed**。双向镜像（`UnlockedNotes` 收回 + `onNoteStatusChanged`）；`SkyIslandStory` +1 条断言、磁盘探针 R12 |
+| CR-2026-09-14-034 | P3 / UX（文案分层残留） | F-24：剧情回执追加「进度已记录，待安全时机保存」；谜题页 80–170 字；合成台开场白 92–108 字；钟守「下一步」78 字；英文导语没有长度把关 | **Fixed**。五处都改；`SkyIslandPlaytimeFlowGuard` 加英文导语上限、磁盘探针 R4 |
+| CR-2026-09-14-035 | P3 / UX（fail-open 缺口） | F-25：压暗底生成失败时大标题静默直接压在云上 | **Fixed**。退纯色、峰值不打折、打 LogWarning |
+| CR-2026-09-14-036 | P3 / UX | F-27：卡片淡入途中被收回（或反过来）时显示量在 EaseOut 值与线性值之间跳一帧 | **Fixed**。`RetargetCard` 换算进度 |
+| CR-2026-09-14-037 | P3 / UX | F-28：① 互斥分支了结后正文永久挂伪「下一步」；② 挑战的距离 / 交战中 / 存活上限不在 `Describe`，挂着的挑战项点了才拒；③ 新档手记子页十几行「尚未收到」 | **Fixed**。`Foreclosed`；`CanBeginChallenge` / `CanBeginStoryChallenge` 挂与点共用；来信 / 名册合成一句。ChoiceGate / ContentExpansion / StormEcho 守卫同步，磁盘探针 R5 / R9 |
+| CR-2026-09-14-038 | P3 / L10N | F-29：actor 名字创建时按当时语言注入并缓存，本趟切语言后对话框里名字停在旧语言 | **Fixed**。已有 actor 重进时按当前语言刷新 |
+
+### UNVERIFIED（PLAUSIBLE，取决于 Unity 运行时）
+
+- **F-11** 最长英文点名在 34pt 下折两行、实底带占主视觉 52–58%：已按防御性修复处理（标题先缩字号保一行），布局属性测试逐个点名复算 ≤50%；实际排版待 L3。
+- **F-19** ESC 键帽 13px `TextSecondary` 在最亮横幅上约 3.99:1：已改 TextPrimary；读数待截图取色。
+- **F-20** 判定不读官方隐藏令牌，玩官方游戏机时常驻 HUD 不收：已读令牌；实机待清单 2.18.24。
+- **F-21** 回执重开面板时整排选项发白约 5 帧：已立即落到常态色；实机待看。
+- **F-26** 剧情面板 `Mask` 模板二值裁切，圆角锯齿可能只是挪了位置：**Deferred**，只能实机看（清单 2.18.26）。
+
 ## 2026-09-14（三）天空岛 B 轮「噬风·回响」：1 P3（已修）+ 两条帧时间线索的处置
 
 本轮主体是新增内容（噬风·回响，不是缺陷，见 `FIX_TRACKER.md` 同日（三）一节）。下面只记从上一节 UNVERIFIED 线索里核实出来的一条，以及另一条线索换成了什么工具。
@@ -89,7 +128,9 @@ owner 提了六件事。逐条查证下来**三件是真问题、一件比反馈
 4. **语义也对不上。** 岛上委托是**按出击计、不进存档**的；官方 Quest 是跨局持久任务。
 
 **与之相反的另一条则该接、已经接了**：官方图鉴 `NoteIndex`（见 CR-2026-09-13-009）——
-它没有上面任何一条问题，而且同一仓库里征程早有范例。
+它没有第 1、2、4 条问题，而且同一仓库里征程早有范例。第 3 条部分成立（2026-09-14 UI 优化对照审核 O-1 更正）：
+官方 `NoteIndex.Save` 会把解锁状态写进官方存档键 `NoteIndexData`，卸载 Mod 后只剩带本 Mod 前缀的孤儿 key（读档不报错，
+图鉴已解锁数可能虚高）。同日拍板接受为例外，镜像改为双向同步，见 `docs/contracts.md` §7.1。
 
 这四条写在这里是为了**避免以后每轮重查一遍**。同样的理由另有两处副本：
 `tests/SkyIslandOfficialApiReuseGuard.py` 的文件头（守卫会断言这些关键词在本文件里还在），

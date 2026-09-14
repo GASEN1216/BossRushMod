@@ -197,7 +197,7 @@ namespace BossRush
                     new Vector2(0f, 1f));
                 Image panelImage = _panelRoot.AddComponent<Image>();
                 panelImage.color = ColorPanel;
-                BossRushUI.ApplyPanelSkin(panelImage, 10);
+                BossRushUI.ApplyFramedPanelSkin(panelImage, 10, BossRushUISkinPart.Card);
 
                 BuildHeader();
                 BuildRows();
@@ -258,7 +258,7 @@ namespace BossRush
                     new Vector2(0f, 1f));
                 Image rowImage = row.AddComponent<Image>();
                 rowImage.color = ColorRow;
-                BossRushUI.ApplyPanelSkin(rowImage, 4);
+                BossRushUI.ApplyPanelSkin(rowImage, 4, BossRushUISkinPart.Card);   // 浮层里的淡底行（a=0.10）靠悬停提亮区分，不叠描边：每行加框会变成一格一格的表
                 _rowBackgrounds.Add(rowImage);
 
                 // 分类色竖条：沿用奖励卡/模态标题的 accent rail 视觉语言。
@@ -346,7 +346,7 @@ namespace BossRush
             Image detailImage = _detailRoot.AddComponent<Image>();
             detailImage.color = BossRushUIColors.Surface;
             detailImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(detailImage, 10);
+            BossRushUI.ApplyFramedPanelSkin(detailImage, 10, BossRushUISkinPart.Card);
 
             _detailTitleText = ZombieModeUIHelper.CreateText(
                 "DetailTitle",

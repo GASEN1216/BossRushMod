@@ -620,11 +620,17 @@ Breaking/Operational:
 - 官方 HUD 画布是 2560×1440 按短边缩放，本库是 1920×1080 Expand，1 本库单位恒等于 4/3 官方单位。避让官方 HUD 按预制体实测，不按截图估。
 - 输入资产 `Duckov Controls` 只有键鼠方案，没有手柄绑定；`UIInputManager.OnNavigate` 在 started / performed / canceled 各发一次，自绘面板导航按边沿走一步。
 - `NoteIndex.SetNoteDynamic` 只写查询字典、不写 `notes` 列表，两边都写界面才看得到；`titleKey` / `contentKey` 是只读派生属性，文案走 `LocalizationHelper.InjectLocalizations`。
+- `NoteIndex` 的解锁状态随官方存档写进 `NoteIndexData`（`Save()` 挂在 `OnCollectSaveData` 上，`unlockedNotes` 与 `readNotes` 两份列表都从 `unlockedNotes` 拷）。所以镜像我们自己的图鉴条目**就是在写官方存档键**：卸载 Mod 后只剩带本 Mod 前缀的孤儿 key，官方读档不报错，图鉴「已解锁数」可能虚高。
+  2026-09-14 拍板接受为例外（天空岛见闻、征程线索）。我们的存档仍是权威，镜像双向同步：官方点亮而我们存档里没有的，经公开属性 `UnlockedNotes`（返回的就是解锁集合本身）收回并照官方写法调 `onNoteStatusChanged`。
 - 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
 - `Duckov.Quests`（`QuestManager` / `Quest` / `Task`）刻意不接：它会把 mod 任务写进官方存档键，卸载后官方报错（`AGENTS.md` §10）。
 
 **渲染与程序集**
+
+- 项目色彩空间是 **Linear**（`ProjectSettings` 的 `m_ActiveColorSpace=1`）：uGUI 的半透明在线性光里混合，屏幕上的相对亮度 `Y = Y(前景)·α + Y(背景)·(1-α)`。
+  在 sRGB 数值上做 alpha 混合算出来的对比度严重偏高——深色半透明压暗底上的小字，sRGB 口径 5.95:1，线性实际 2.13:1。
+  对比度复算一律按线性模型（`tests/SkyIslandUiContrastGuard.py`，模型钉在审核报告的复算值上），观感修复以实机截图取色为准。
 
 - 游戏跑在 URP Deferred：自研世界着色器必须带 `UniversalGBuffer` pass，缺了进得去、走得动，但画面全黑（`docs/架构说明/自研着色器与官方渲染管线约定.md`，闸门 `tools/verify_sky_island_bundle_shaders.py`）。
 - 对字节数组加载的程序集，`Assembly.Location` 返回空串；在静态字段初始化器里拼它会抛 `TypeInitializationException`，把类型永久毒化。Mod 根目录一律走 `ModBehaviour.GetModPath()`。

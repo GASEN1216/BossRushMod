@@ -202,12 +202,39 @@ namespace BossRush
 
         internal bool BeginChallenge(string id)
         {
+            string reason;
+            if (!CanBeginChallenge(id, out reason)) return false;
+            Spawn(Find(id));
+            return true;
+        }
+
+        /// <summary>
+        /// 手动挑战此刻能不能发起，以及不能时「差什么」。<see cref="BeginChallenge"/> 与剧情面板挂不挂挑战项共用这一份
+        /// （AGENTS §4.14「能不能挂」与「点了会不会被拒」共用同一份判据；2026-09-14 审核 F-28 ②：距离、交战中、同时存活上限
+        /// 以前只在点下去之后判，面板上挂着的挑战项点了回一句笼统的「当前无法开始」）。
+        /// 这一组已经清掉、根本不是手动组时 <paramref name="reason"/> 为 null——那不是引导。
+        /// </summary>
+        internal bool CanBeginChallenge(string id, out string reason)
+        {
+            reason = null;
             if (closed || !valid()) return false;
             Encounter encounter = Find(id);
-            if (encounter == null || !encounter.Manual || encounter.Cleared || completed(id) || encounter.Started ||
-                Time.time < encounter.RetryAt || Vector3.Distance(player.transform.position, encounter.Marker.position) > ChallengeRange ||
-                AnySpawning() || CountActiveActors() + encounter.Count > 12) return false;
-            Spawn(encounter);
+            if (encounter == null || !encounter.Manual || encounter.Cleared || completed(id)) return false;
+            if (encounter.Started)
+            {
+                reason = L10n.T("这一场已经打起来了。", "This fight has already begun.");
+                return false;
+            }
+            if (Vector3.Distance(player.transform.position, encounter.Marker.position) > ChallengeRange)
+            {
+                reason = L10n.T("挑战地点就在这座岛上：走近一些再来。", "The challenge site is on this isle — come closer first.");
+                return false;
+            }
+            if (Time.time < encounter.RetryAt || AnySpawning() || CountActiveActors() + encounter.Count > 12)
+            {
+                reason = L10n.T("附近还在交战：等这一阵打完再来挑战。", "There is still fighting nearby — finish it before you start a challenge.");
+                return false;
+            }
             return true;
         }
 

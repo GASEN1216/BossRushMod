@@ -174,7 +174,7 @@ namespace BossRush
             Image background = notice.AddComponent<Image>();
             background.color = BossRushUIColors.Danger;
             background.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(background, 8);
+            BossRushUI.ApplyPanelSkin(background, 8, BossRushUISkinPart.Card);   // Danger 红底警示条不是深色面板，不叠描边
 
             GameObject textObj = ZombieModeUIHelper.CreateRect(
                 "Text", notice.transform, new Vector2(0.5f, 0.5f),

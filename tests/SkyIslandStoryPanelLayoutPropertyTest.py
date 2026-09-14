@@ -28,6 +28,8 @@ from cs_source_util import clean_source
 
 PANEL = 'DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs'
 STORY = 'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs'
+# 居民服务按钮与「航务委托」子页（2026-09-14 从主文件拆出的 partial）。
+SERVICES = 'DebugAndTools/SkyIsland/SkyIslandWorldStoryServices.cs'
 POINT_TEXT = 'DebugAndTools/SkyIsland/SkyIslandPointText.cs'
 PAIR = r'L10n\.T\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)'
 
@@ -49,7 +51,7 @@ C = {n: const(PANEL_SRC, n) for n in (
     'PanelWidth', 'Pad', 'Gap', 'HeroMaxHeight', 'HeroMinHeight', 'HeroInset', 'PortraitSize',
     'TitleMinHeight', 'TitleFontMin', 'TitleFontMax', 'BodyMinHeight', 'BodyPreferredMax',
     'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'ScrollbarGutter', 'KeyHintWidth',
-    'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction')}
+    'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction', 'KeyCapSize')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
 
 
@@ -86,6 +88,44 @@ def method_body(src, signature):
             if depth == 0:
                 return src[brace + 1:i]
     raise AssertionError('方法体没有闭合：' + signature)
+
+
+def show_assign(body, lhs):
+    """Show 里 `<lhs> = …;` 的右边。找不到就抛：宁可红，也不许静默算成别的数。"""
+    m = re.search(re.escape(lhs) + r'\s*=(?!=)\s*([^;]+);', body)
+    if not m:
+        raise AssertionError('Show 里找不到算式：' + lhs)
+    return m.group(1)
+
+
+def text_width(s, font):
+    """一行文字的保守估宽：CJK/全角 1.0em、其余 0.5em（与 text_height 同一个模型）。"""
+    w = 0.0
+    for ch in s:
+        o = ord(ch)
+        wide = (0x2E80 <= o <= 0x9FFF) or (0xFF00 <= o <= 0xFFEF) or (0x3000 <= o <= 0x303F)
+        w += (1.0 if wide else 0.5)
+    return w * font
+
+
+def fit_title_font(title, width):
+    """照生产 FitTitleFont：TitleFontMax 一行放得下就用它；放不下按宽度等比缩，最小 TitleFontMin。
+
+    2026-09-14 审核 F-12：旧版一律按 TitleFontMin 量标题，而生产按 TitleFontMax 量，长英文标题在 34pt 折成两行时
+    实底带占主视觉 52–58%（F-11），这份测试却按 24pt 算出一行、全绿。
+    """
+    body = method_body(PANEL_SRC, 'private static float FitTitleFont(')
+    for token in ('if (oneLine <= width) return TitleFontMax;',
+                  'return Mathf.Max(TitleFontMin, Mathf.Floor(TitleFontMax * width / oneLine));'):
+        if token not in body:
+            raise AssertionError('FitTitleFont 的算式变了（缺 ' + token + '）：这份测试复算的字号对不上生产')
+    show = method_body(PANEL_SRC, 'internal void Show(string title, string text, IList<Choice> choices,')
+    if 'titleText.fontSize = FitTitleFont(titleText, title, titleWidth);' not in show:
+        raise AssertionError('Show 不再按 FitTitleFont 定标题字号：这份测试复算的字号对不上生产')
+    one_line = text_width(title, C['TitleFontMax'])
+    if one_line <= width:
+        return C['TitleFontMax']
+    return max(C['TitleFontMin'], float(int(C['TitleFontMax'] * width / one_line)))
 
 
 HERO_ASSIGN = re.compile(r'(?:\bfloat\s+)?\b(titleHeight|titleBlock|bandHeight)\s*=(?!=)\s*([^;]+);')
@@ -128,6 +168,11 @@ def hero_geometry(src, title_block, hero_h, has_portrait):
 # 一行标题的居民面板里，实底带最多占主视觉的一半（旧 bug 是 169 / 247 = 68%）。
 BAND_MAX_SHARE = 0.5
 
+# 带立绘的只有居民功能面板：今天最多 3 项（晴禾：交还记录 / 归航菜 / 灶台），预警跑到 5 项。
+# 列表页（合成台、航务委托）不带立绘——立绘在主视觉里要占一截高度，还要给右上角 ESC 键帽让位（2026-09-14 审核 F-18），
+# 6 条两行长选项加立绘会越过面板下内边距。「列表页不带立绘」由 main 里的结构断言钉住。
+PORTRAIT_PAGE_MAX_CHOICES = 5
+
 # 参考分辨率 1920×1080、Expand 缩放，逻辑视口高度至少 1080。
 # 生产里是 Clamp(viewport.y - 140, 520, 980)，最坏情况取下界。
 MAX_PANEL = min(980.0, 1080.0 - 140.0)
@@ -155,19 +200,22 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
     `src` 缺省为生产源码；破坏探针传入改过的源码，按同一套求值走一遍。
     """
     src = PANEL_SRC if src is None else src
-    hero_content_w = C['PanelWidth'] - C['HeroInset'] * 2
-    # 立绘贴主视觉右下角、不留 inset，标题让到左边：可用宽度 = 面板宽 − 左 inset − 立绘 − 间距。
-    title_w = (C['PanelWidth'] - C['HeroInset'] - C['PortraitSize'] - C['Gap']
-               if has_portrait else hero_content_w)
-    # 标题开了自动缩放，最坏情况按下限字号量（缩到下限还超就是省略号，不会溢出）
-    title_h = max(C['TitleMinHeight'], text_height(title, title_w, C['TitleFontMin']))
-    # 标题块按生产 Show 的算式求值（不在这里写第二份）；BuildHero 自己用的那一份在收缩之后按真实分支再算。
+    show = method_body(src, 'internal void Show(string title, string text, IList<Choice> choices,')
+    env = dict(C)
+    # 标题可用宽度、字号与主视觉地板都按生产 Show 的算式求值，不在这里写第二份
+    # （2026-09-14 审核 F-12：旧版只读两个赋值式，其余是复写——立绘时的地板少算了 ESC 键帽那一截）。
+    env['heroContentWidth'] = cs_eval(show_assign(show, 'float heroContentWidth'), env, has_portrait)
+    title_w = cs_eval(show_assign(show, 'float titleWidth'), env, has_portrait)
+    title_h = max(C['TitleMinHeight'], text_height(title, title_w, fit_title_font(title, title_w)))
+    # 标题块按生产 Show 的算式求值；BuildHero 自己用的那一份在收缩之后按真实分支再算。
     title_block = show_title_block(src, title_h, has_portrait)
 
-    # hero 不会被整条撤掉（标题在它上面），只能压到这个地板；带立绘时还要装得下立绘。
-    hero_floor = max(C['HeroMinHeight'], title_block + C['HeroInset'] * 2)
+    # hero 不会被整条撤掉（标题在它上面），只能压到这个地板；带立绘时还要装得下立绘与它头顶的 ESC 键帽。
+    env['titleBlock'] = title_block
+    hero_floor = cs_eval(show_assign(show, 'float heroFloor'), env, has_portrait)
     if has_portrait:
-        hero_floor = max(hero_floor, C['PortraitSize'])
+        env['heroFloor'] = hero_floor
+        hero_floor = cs_eval(show_assign(show, 'if (portrait != null) heroFloor'), env, has_portrait)
     hero_art = 0.0
     if has_banner:
         # 全出血：按 PanelWidth 算，不是 CONTENT_W。
@@ -267,7 +315,7 @@ def check(name, lay):
 
 
 def worst_strings():
-    src = read(STORY)
+    src = read(STORY) + read(SERVICES)
     point_src = read(POINT_TEXT)
     point = point_src.split('internal static string Name(', 1)[1].split('internal static string Brief(', 1)[0]
     titles = [s for pair in re.findall(PAIR, point) for s in pair]
@@ -275,10 +323,15 @@ def worst_strings():
     bodies = [s for pair in re.findall(PAIR, lore) for s in pair]
     labels = [s for pair in re.findall(
         r'(?:choices\.Add\(new SkyIslandStoryPresentation\.Choice\(|Add\(choices,\s*|Challenge\(|'
-        r'ServiceChoice\(choices,\s*)\s*' + PAIR, src) for s in pair]
-    assert titles and bodies and labels, '文案没解析到，正则与源码失步了'
+        r'ServiceChoice\(choices,\s*|string label = )\s*' + PAIR, src) for s in pair]
+    # 付费服务按钮带状态尾巴（2026-09-14 拍板 O-3）：按最长的服务标签 + 「（要 99999 · 钱不够）」拼最坏情况。
+    tags = re.findall(PAIR, src.split('private static string ServiceTag(', 1)[1].split('private void ContractsChoice(', 1)[0])
+    service_labels = re.findall(r'string label = ' + PAIR, src)
+    assert titles and bodies and labels and len(tags) == 6 and service_labels, '文案没解析到，正则与源码失步了'
+    for lang in (0, 1):
+        labels.append(max((pair[lang] for pair in service_labels), key=len) + tags[2][lang] + '99999' + tags[3][lang])
     longest = lambda xs: max(xs, key=len)
-    return longest(titles), longest(bodies), labels, len(labels)
+    return longest(titles), longest(bodies), labels, len(labels), titles
 
 
 def batch_two_strings():
@@ -311,7 +364,8 @@ def batch_two_strings():
     assert options and prompts and intros and letter_titles and crew_names and chapter_names and crew_pages and lore, \
         '批次二文案没解析到，正则与源码失步了'
     longest = lambda xs: max(xs, key=len)
-    puzzle_page = longest(lore) + '\n\n' + longest(intros) + '\n\n' + longest(prompts)
+    # 2026-09-14 审核 F-24 ②：谜题页不再带见闻全文，只有场景（第一步才给）+ 当前这一步的提问。
+    puzzle_page = longest(intros) + '\n\n' + '第 1/3 步 · ' + longest(prompts)
     kept_letter = longest(letter_bodies) + '\n\n' + longest(
         [s for pair in re.findall(PAIR, story.split('private void ReadLetter(', 1)[1].split('private void ReleasePigeon', 1)[0])
          for s in pair])
@@ -322,27 +376,44 @@ def batch_two_strings():
 
 
 def main():
-    title, body, labels, label_count = worst_strings()
+    title, body, labels, label_count, point_titles = worst_strings()
     extra_titles, extra_bodies, extra_labels = batch_two_strings()
     three_titles, three_bodies, three_labels = batch_three_strings()
-    weave_bodies, weave_labels = weave_strings()
+    weave_bodies, weave_labels, locked_blocks = weave_strings()
     gnat_labels = gnat_strings()
     echo_bodies, echo_labels = echo_strings()
     title = max([title] + extra_titles + three_titles, key=len)
-    body = max([body] + extra_bodies + three_bodies + weave_bodies + echo_bodies, key=len)
+    # 合成面板正文 = 开场白 + 背包摘要 + 还不会做的配方各一行。
+    craft_bodies = [b + '\n' + max(locked_blocks, key=len) for b in three_bodies]
+    body = max([body] + extra_bodies + craft_bodies + weave_bodies + echo_bodies, key=len)
     labels = labels + extra_labels + three_labels + weave_labels + gnat_labels + echo_labels
     label_count = len(labels)
     longest_label = max(labels, key=len)
     errors = []
 
-    # 最坏情况组合：最长标题 + 最长正文 + N 条最长选项，横幅与立绘两种形态各跑一遍。
-    # 6 条：今天实际最多 5 条（风铃集留言板），多跑一条是给内容扩张留的预警。
+    # 最坏情况组合：最长标题 + 最长正文 + N 条最长选项，横幅 / 立绘 / 立绘加横幅 / 无插图四种形态各跑一遍。
+    # 6 条：列表页（渡口工台合成、航务委托页）今天最多 5 条，多跑一条是给内容扩张留的预警。
+    # 立绘加横幅是居民功能面板的真实形态（2026-09-14 审核 F-12：旧版最坏组合里没有它）。
     for count in (0, 1, 3, 5, 6):
         for has_portrait, has_banner, shape in ((False, True, '装置面板/横幅'),
                                                 (True, False, '居民面板/立绘'),
+                                                (True, True, '居民面板/立绘+横幅'),
                                                 (False, False, '无插图')):
+            if has_portrait and count > PORTRAIT_PAGE_MAX_CHOICES:
+                continue
             lay = layout(title, body, [longest_label] * count, has_portrait, has_banner)
             errors += check('%s %d 选项' % (shape, count), lay)
+
+    # 列表页不带立绘（PORTRAIT_PAGE_MAX_CHOICES 的前提）：合成台与航务委托页的 Show 第四个参数必须是 null。
+    story_src = read(STORY) + read(SERVICES)
+    for signature in ('private void OpenCrafting(', 'private void OpenContracts('):
+        page = ' '.join(method_body(story_src, signature).split())
+        if 'presentation.Show(' not in page or 'choices, null,' not in page:
+            errors.append(signature + ' 给列表页传了立绘：6 条长选项加立绘会越过面板下内边距')
+    probe_page = ' '.join(method_body(story_src.replace('choices, null,', 'choices, portrait,'),
+                                      'private void OpenContracts(').split())
+    if 'choices, null,' in probe_page:
+        errors.append('破坏探针失效：列表页传立绘时「列表页不带立绘」判据没有红')
 
     # 首次打开长正文时，滚动内容必须保留全部自然高度，而非 300px 的视口上限。
     long_body = body * 12
@@ -363,6 +434,13 @@ def main():
     resident = layout('晴禾的菜畦', '一句导语。', ['接一单委托'] * 3, True, True)
     errors += check('居民面板/一行标题', resident)
     errors += resident_band_errors('居民面板/一行标题', resident)
+
+    # 每一个见闻点名（中英）压在装置面板主视觉上：实底带同样不许盖掉大半张插图（2026-09-14 审核 F-11，
+    # 旧版按 34pt 量长英文标题会折两行、实底带占到 52–58%；标题现在先缩字号保一行）。
+    for point_title in point_titles:
+        lay = layout(point_title, '一句导语。', ['收录见闻 / 物证'], False, True)
+        errors += check('装置面板/' + point_title[:16], lay)
+        errors += resident_band_errors('装置面板/' + point_title[:16], lay)
 
     # 破坏探针二：BuildHero 退回 2026-09-13 的写法（有立绘时另算 max(PortraitSize, titleHeight)）。
     # 「同一口径」与「实底带不许盖掉大半张插图」两条都必须红，否则这份测试又一次看不出这个缺陷。
@@ -457,17 +535,18 @@ def weave_strings():
     uses = re.findall(PAIR, block(journal, 'internal static string Uses()', 'private static void Use('))
     assert len(lamp_inputs) == 7 and len(choice) == 2 and len(locked) == 3 and hints and outputs and chapter and uses, \
         '串联文案没解析到，正则与源码失步了'
-    labels, bodies = [], []
+    labels, bodies, locked_blocks = [], [], []
     for lang, names in ((0, cn), (1, en)):
         for inputs in lamp_inputs:
             parts = [names[crystal if token == 'crystal' else token.split('.')[-1]] + ' 99/99'
                      for token, _ in re.findall(r'In\((\w+(?:\.\w+)?),\s*(\d+)\)', inputs)]
             labels.append(choice[0][lang] + ' · '.join(parts) + choice[1][lang])
-        for output in outputs:
-            for hint in hints:
-                labels.append(locked[0][lang] + names[output] + locked[1][lang] + hint[lang] + locked[2][lang])
+        # 还不会做的配方不再是按钮（2026-09-14 审核 F-06），在合成面板正文末尾各占一行：按「每件成品 × 最长门槛提示」全拼。
+        longest_hint = max((hint[lang] for hint in hints), key=len)
+        locked_blocks.append('\n'.join(locked[0][lang] + names[output] + locked[1][lang] + longest_hint + locked[2][lang]
+                                       for output in outputs))
         bodies.append('\n'.join(pair[lang] for pair in chapter) + '\n\n' + '\n'.join(pair[lang] for pair in uses))
-    return bodies, labels
+    return bodies, labels, locked_blocks
 
 
 def echo_strings():

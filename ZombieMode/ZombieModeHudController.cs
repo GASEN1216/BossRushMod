@@ -396,7 +396,7 @@ namespace BossRush
             panelBackground.color = stagePanel
                 ? new Color(0.02f, 0.025f, 0.03f, 0.42f)
                 : new Color(0.02f, 0.025f, 0.03f, 0.55f);
-            BossRushUI.ApplyPanelSkin(panelBackground, 8);
+            BossRushUI.ApplyPanelSkin(panelBackground, 8, BossRushUISkinPart.Card);
             panelBackground.raycastTarget = false;
 
             GameObject textObject = ZombieModeUIHelper.CreateRect(
@@ -427,9 +427,9 @@ namespace BossRush
                 return;
             }
 
-            // 暂停菜单之外，官方界面（背包 / 地图 / 对话 / 捏脸 / 拍照模式）开着时也收起：本画布在 ZombieHud（28000），
-            // 压在一切官方界面之上（常驻 HUD 口径，2026-09-14）。
-            bool hidden = inst.IsZombieModeGamePaused() || BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused();
+            // 暂停菜单之外，官方界面（背包 / 地图 / 对话 / 捏脸 / 拍照模式）开着、切图黑幕与加载界面（9000 / 10000）盖着时也收起：
+            // 本画布在 ZombieHud（28000），压在这些之上（常驻 HUD 口径，2026-09-14）。
+            bool hidden = inst.IsZombieModeGamePaused() || BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused() || global::SceneLoader.IsSceneLoading;
             SetPauseMenuHidden(hidden);
             if (hidden)
             {

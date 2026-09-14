@@ -141,6 +141,7 @@ echo(Common\Events\BossRushEventBus.cs
 echo(Common\Infrastructure\BossRushEagerReflectionCache.cs
 echo(Common\UI\BossRushUI.cs
 echo(Common\Infrastructure\ObjectCache.cs
+echo(Common\UI\BossRushUIAnimation.cs
 echo(Common\Infrastructure\IHarmonyPatchGroup.cs
 echo(Common\Infrastructure\HarmonyPatchGroupRegistrar.cs
 echo(Common\Infrastructure\HarmonyBindingSelfCheck.cs
@@ -229,6 +230,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryEcho.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFrameProfile.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLetters.cs
 echo(DebugAndTools\SkyIsland\SkyIslandPuzzles.cs
+echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryServices.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs
 echo(DebugAndTools\SkyIsland\SkyIslandJournal.cs ^
     DebugAndTools\SkyIsland\SkyIslandNoteBridge.cs ^

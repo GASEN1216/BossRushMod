@@ -160,6 +160,8 @@ namespace Duckov.NoteIndexs
         internal static NoteIndex Instance;
         internal readonly List<Note> Notes = new List<Note>();
         private readonly HashSet<string> unlocked = new HashSet<string>();
+        internal HashSet<string> UnlockedNotes { get { return unlocked; } }
+        internal static System.Action<string> onNoteStatusChanged;
         internal static bool SetNoteDynamic(Note note) { return true; }
         internal static bool GetNoteUnlocked(string key) { return Instance != null && Instance.unlocked.Contains(key); }
         internal static void SetNoteUnlocked(string key) { Instance.unlocked.Add(key); }

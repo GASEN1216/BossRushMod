@@ -157,9 +157,15 @@ def check(sources):
     session = squash(src[SESSION])
     require(session, 'if (id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)) return false;',
             "首战的「双航标 + 打过就不再来」一字不动")
+    # 2026-09-14 审核 F-28 ②：判据收进 CanBeginStoryChallenge（剧情面板挂不挂挑战项与点下去共用），入口先过它再开战。
+    can_begin = need_body(SESSION, "internal bool CanBeginStoryChallenge(string id, out string reason)", "剧情挑战判据")
+    ordered(can_begin, ['if (id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)) return false;',
+                        "if (SkyIslandStormEchoRules.IsEcho(id)) return false;",
+                        "return encounters.CanBeginChallenge(id, out reason);"],
+            "剧情挑战判据必须拒绝回响：回响只能经引风（先判五项、再烧风晶）开战")
     begin_story = need_body(SESSION, "internal bool BeginStoryChallenge(string id)", "剧情挑战入口")
-    ordered(begin_story, ["if (SkyIslandStormEchoRules.IsEcho(id)) return false;", "return encounters.BeginChallenge(id);"],
-            "剧情挑战入口必须拒绝回响：回响只能经引风（先判五项、再烧风晶）开战")
+    ordered(begin_story, ["if (!CanBeginStoryChallenge(id, out reason)) return false;", "return encounters.BeginChallenge(id);"],
+            "剧情挑战入口必须先过同一份判据（含拒绝回响）再开战")
     saved = need_body(SESSION, "private bool EncounterWasSaved(string id)", "遭遇已记下")
     ordered(saved, ['if (id == "Storm") return story.Current.StormResolved;',
                     "if (SkyIslandStormEchoRules.IsEcho(id)) return stormEchoCleared;",

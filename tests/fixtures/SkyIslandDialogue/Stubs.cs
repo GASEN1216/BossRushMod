@@ -26,6 +26,12 @@ namespace Cysharp.Threading.Tasks
             waiters.Add(waiter);
             return new UniTask { task = waiter.completion.Task };
         }
+        /// <summary>下一帧：替身里立刻完成，并把 UnityEngine.Time.realtimeSinceStartup 推进一帧（1/60 秒），有时限的轮询才停得下来。</summary>
+        public static UniTask NextFrame()
+        {
+            UnityEngine.Time.realtimeSinceStartup += 1f / 60f;
+            return new UniTask { task = Task.CompletedTask };
+        }
         public static void Pump()
         {
             foreach (var waiter in waiters.ToArray())
@@ -93,6 +99,7 @@ namespace UnityEngine
     public class GameObject : Object { public GameObject(string name) { } }
     public class Transform { public GameObject gameObject = new GameObject("resident"); }
     public struct Vector3 { public Vector3(float x, float y, float z) { } }
+    public static class Time { public static float realtimeSinceStartup; }
 }
 namespace Duckov.UI.Animations
 {
@@ -133,6 +140,17 @@ namespace Dialogues
         private Duckov.UI.Animations.FadeGroup textAreaFadeGroup = new Duckov.UI.Animations.FadeGroup();
         public static event Action OnDialogueStatusChanged;
         public static void HideTextFadeGroup() { }
+        // 官方 WaitForChoice 读的私有字段（生产按名字反射）；取消多选时生产会把它置 0 推出选项。
+        private int confirmedChoice = -1;
+        public int ConfirmedChoiceForTest { get { return confirmedChoice; } }
+        public static int ConfirmCalls;
+        // 官方 Confirm 推进正在显示的字幕：替身按「最后一条字幕请求」的完成回调来推。
+        public void Confirm()
+        {
+            ConfirmCalls++;
+            var lines = NodeCanvas.DialogueTrees.DialogueTree.Lines;
+            if (lines.Count > 0) lines[lines.Count - 1]();
+        }
     }
 }
 public static class InputManager
@@ -151,6 +169,7 @@ namespace BossRush
     {
         public static bool Fail;
         public static DuckovDialogueActor Get(UnityEngine.GameObject host) { return null; }
+        public static void RefreshBilingualName(string id, string cn, string en) { }
         public static DuckovDialogueActor CreateBilingual(UnityEngine.GameObject host, string id, string cn, string en, UnityEngine.Vector3 offset, object portrait)
         { if (Fail) throw new InvalidOperationException("actor failure"); return new DuckovDialogueActor(); }
     }

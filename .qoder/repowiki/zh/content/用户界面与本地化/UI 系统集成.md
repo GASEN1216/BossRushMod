@@ -428,13 +428,15 @@ BossRushUI.ApplyPanelSkin(surface, 18, BossRushUISkinPart.Panel);
 BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUIColors.Stroke);
 ```
 
-`ApplyPanelStroke` 生成一张「只有环、中心透明」的圆角九宫格，**圆角按图集实际的 border 取**
-（`GetSkinCornerRadius`：注入图集后面板的圆角是 16，不是你传的 18；按传入值画会露出一道错位的弧）。
-描边 `raycastTarget=false`，不吃点击。
+`ApplyPanelStroke` 生成一张「只有环、中心透明」的圆角九宫格，**圆角按图集里画出来的弧取**
+（`GetSkinCornerRadius`：注入图集后面板 / 卡片的弧半径约 14、按钮 / 滑块约 9，比 border 小一圈；按传入值或 border 画会露出一道错位的弧）。
+描边是底图的子物体，`raycastTarget=false` 不吃点击，`LayoutElement.ignoreLayout=true` 不被宿主的 LayoutGroup 排进去。
+存量界面迁移时用 `BossRushUI.ApplyFramedPanelSkin(image, radius, part)` 一次套上底图与描边（2026-09-14）。
 
-`BossRushUIColors.Stroke` = `Divider` 同色相、alpha 0.78。为什么不直接用 `Divider`：它自带 0.32，
+`BossRushUIColors.Stroke` = `Divider` 同色相、alpha 0.78，环厚 `StrokeThickness = 1.5`（直边上有一个满覆盖纹素）。为什么不直接用 `Divider`：它自带 0.32，
 铺成描边对面板底只有 **1.54:1**，低于 WCAG 1.4.11 对非文本的 3:1，画了等于没画。
-0.78 在亮云海到暗地形的整个区间里都稳在 3.1:1 以上。
+按游戏的**线性色彩空间**、描边真实覆盖率复算（2026-09-14），面板外框、右上卡片、选项行边在亮云海到暗地形之间最差 3.17:1；
+旧文的「3.1:1 以上」是 sRGB 合成 + 满覆盖口径，旧厚度 1.25 下实际只有 2.3–2.4:1。
 
 **列表行尤其不能省**：`SurfaceRaised` 对 `Surface` 只有 **1.03:1**，不画边的话玩家看到的
 不是「一个可点的区域」，只是几行浮着的字。

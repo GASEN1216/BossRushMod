@@ -123,7 +123,7 @@ namespace BossRush
                 "Surface", _canvas.transform, new Vector2(0.5f, 0.5f), PanelSize);
             Image surfaceImage = surface.AddComponent<Image>();
             surfaceImage.color = BossRushUIColors.Surface;
-            BossRushUI.ApplyPanelSkin(surfaceImage, 14);
+            BossRushUI.ApplyFramedPanelSkin(surfaceImage, 14, BossRushUISkinPart.Panel);
 
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                 "Title", surface.transform,

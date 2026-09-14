@@ -17,13 +17,13 @@ namespace BossRush
     /// - 按出击刷新、不进存档：每趟每处只采一次，采完即收掉交互体。
     /// - 视觉只用程序化贴地光斑 + 点光与走近才浮现的浮空字（不重打包、不引入新模型）；风晶簇夜里更亮。
     ///
-    /// 【贴地光斑为什么是必需的，不是装饰（CR-2026-09-13-002）】
+    /// 【贴地光斑为什么是必需的，不是装饰（CR-2026-09-13-005）】
     ///   设计口径写的是「远处有光、走近浮名字」，但改之前「远处有光」这一半在代码里不存在：
     ///   唯一的远景载体是一盏 <c>range=6m / intensity 0.8（白天）</c> 的**点光源**——
-    ///   白天打在被日光照亮的砂岩地面上，60 m 外没有任何可见信号；而浮空字 10 m 才开始浮现、5 m 全显
-    ///   （<see cref="SkyIslandProximityLabel"/> 的 near/far）。玩家走过去看不到「那边有东西」，
-    ///   实机一趟真人出击 <c>gathered=1/30</c> 是这个结构的必然结果，不是玩家不想采。
-    ///   贴地光斑是固定俯视视角下唯一能在 60 m 外读出来的载体，且**零每帧开销**：
+    ///   白天打在被日光照亮的砂岩地面上几乎看不出来；而浮空字 10 m 才开始浮现、5 m 全显
+    ///   （<see cref="SkyIslandProximityLabel"/> 的 near/far）。实机一趟真人出击 <c>gathered=1/30</c>。
+    ///   默认相机（FOV 20°、俯仰 55°、臂长 45 m）一屏约 28×20 m 地面，所以光斑管的是**屏幕边缘那十几米**：
+    ///   字还没浮出来时，靠它先让人看见「那边有东西」。**零每帧开销**：
     ///   躺在地面上不需要 billboard，昼夜只在 <see cref="Tick"/> 的夜晚翻转那一次改颜色。
     /// </summary>
     internal sealed class SkyIslandGathering : IDisposable
@@ -38,7 +38,11 @@ namespace BossRush
             internal SpriteRenderer GlowDisc;
         }
 
-        /// <summary>贴地光斑的直径（米）。1.8 在 60 m 外还认得出是一个点，又不至于糊住脚下的地面。</summary>
+        /// <summary>
+        /// 贴地光斑的直径（米）：够在屏幕边缘认出是一个点，又不至于糊住脚下的地面。
+        /// SpriteRenderer 不会把精灵拉到给定尺寸——共享径向图 64 px / PPU 100 原生只有 0.64 m，
+        /// 缩放必须按「目标直径 ÷ 精灵原生宽度」算。旧写法直接乘 1.8，实际直径只有 1.15 m（2026-09-14 审核 F-05）。
+        /// </summary>
         private const float GlowDiscSize = 1.8f;
 
 
@@ -174,7 +178,8 @@ namespace BossRush
                     discObject.transform.localPosition = Vector3.up * 0.05f;   // 抬离地面，避免 z-fighting
                     // 与 SkyIslandGroundRing 同一个摊平姿态；精灵材质 Cull Off，正反面都画得出来。
                     discObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-                    discObject.transform.localScale = Vector3.one * GlowDiscSize;
+                    // 精灵原生宽度 = 64 px / PPU 100 = 0.64 m，按目标直径反算缩放（见 GlowDiscSize）。
+                    discObject.transform.localScale = Vector3.one * (GlowDiscSize / Mathf.Max(0.01f, disc.bounds.size.x));
                     SpriteRenderer renderer = discObject.AddComponent<SpriteRenderer>();
                     renderer.sprite = disc;
                     renderer.color = GlowDiscColor(node.Kind, night);

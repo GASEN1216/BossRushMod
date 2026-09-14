@@ -546,7 +546,8 @@ def check_services_and_bounty():
     assert '(maxHealth - currentHealth) / maxHealth' in heal_price, \
         'Heal price must scale with the missing health fraction, not with absolute points'
     assert 'HealPriceFull * missing' in heal_price, 'Heal price must be derived from the full-restore price'
-    heal = services.split('internal string Heal()', 1)[1].split(chr(10) + '        }', 1)[0]
+    # 报价收在 EvaluateHeal（面板按钮状态与点下去共用，2026-09-14 审核 F-06）。
+    heal = services.split('private SkyIslandServiceReadiness EvaluateHeal(', 1)[1].split(chr(10) + '        }', 1)[0]
     assert 'HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth)' in heal, \
         'The heal service must quote through the shared pricing helper'
     # 免费的归航菜如果能回满血，眠苔那副付费苔药就永远没人买。
@@ -559,7 +560,7 @@ def check_services_and_bounty():
     world_story = source('SkyIslandWorldStory.cs')
     read_point = world_story.split('internal void ReadPoint(string key, Action recorded)', 1)[1] \
         .split('internal void Talk(', 1)[0]
-    assert 'case "Search_C":' in read_point and 'Meal)' in read_point, \
+    assert 'case "Search_C":' in read_point and 'MealChoice(choices);' in read_point, \
         'The homecoming meal needs a world-device fallback for when Qinghe has married and left the island'
     assert 'RuntimeStatModifierTracker.TryAdd' in services, 'Buffs must be tracked'
     disposal = services.split('public void Dispose()', 1)[1]
@@ -649,7 +650,12 @@ def check_encounter_refresh():
     assert 'id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)' in session, \
         'The storm must stay one-shot'
     begin = encounters.split('internal bool BeginChallenge(string id)', 1)[1].split(chr(10) + '        }', 1)[0]
-    assert 'completed(id)' in begin, 'Manual challenges must still be blocked by the saved fact'
+    assert 'if (!CanBeginChallenge(id, out reason)) return false;' in begin, \
+        'Starting a manual challenge must go through the shared gate'
+    gate = encounters.split('internal bool CanBeginChallenge(string id, out string reason)', 1)[1] \
+        .split(chr(10) + '        }', 1)[0]
+    assert 'completed(id)' in gate, 'Manual challenges must still be blocked by the saved fact'
+    # 判据收在 CanBeginChallenge（剧情面板挂不挂挑战项与点下去共用，2026-09-14 审核 F-28 ②），入口先过它再刷怪。
     # 剧情装置的前置读的仍是同一份持久事实，重刷的敌群不会把已完成的装置重新锁上。
     rules = source('SkyIslandStoryRules.cs')
     for region in ('D', 'G'):

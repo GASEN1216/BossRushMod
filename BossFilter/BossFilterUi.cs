@@ -42,7 +42,7 @@ namespace BossRush
                 bossPoolPanel = new GameObject("Panel");
                 bossPoolPanel.transform.SetParent(bossPoolCanvas.transform, false);
                 Image panelImage = bossPoolPanel.AddComponent<Image>();
-                BossRushUI.ApplyPanelSkin(panelImage, 14);
+                BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
                 panelImage.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
                 RectTransform panelRect = bossPoolPanel.GetComponent<RectTransform>();
                 panelRect.anchorMin = new Vector2(0.5f, 0.5f);

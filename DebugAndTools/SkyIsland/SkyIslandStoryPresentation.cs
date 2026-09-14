@@ -104,7 +104,7 @@ namespace BossRush
         /// **把不透明度放到了文字不在的地方**。
         ///
         /// 所以改成「实底带罩住标题 + 带子上方再淡出到透明」。0.82 是按最坏情况定的：
-        /// 即使底下是纯白（亮度 1.0），标题也有 10.7:1；插图最亮那张的 p99（0.747）下是 12.7:1。
+        /// 即使底下是纯白（亮度 1.0），按游戏的线性色彩空间混合，标题（最小 24px，WCAG 大字 3:1）仍有 4.09:1。
         /// 带子留 18% 透光，插图的颜色仍然透得出来，不是一条纯色横杠。
         /// </summary>
         private const float HeroTitleBandAlpha = 0.82f;
@@ -115,39 +115,37 @@ namespace BossRush
         /// 必须跟着 <see cref="BossRushUIColors.Surface"/> 走（口径同 BossRushUI_图集规格.md
         /// 里「描边不要烤进九宫格」那条）。
         ///
-        /// 0.72 是按**实测**最坏情况定的：13 张模糊底图里最亮那张（skyisland_bg_S2）的 p99 亮度是
-        /// 0.747，压完之后正文 TextSecondary 仍有约 5.0:1，过 4.5:1。
-        /// 中位亮度只有 0.098–0.397，所以绝大多数区域实际余量大得多。
-        /// 再往下压就守不住了；再往上压图就看不见了——那正是这一轮要消灭的「纯色板」。
+        /// 0.82 按**实测**最坏情况、按游戏的线性色彩空间定：13 张模糊底图里最亮那张（skyisland_bg_S2）的
+        /// p99 相对亮度是 0.747，压完之后正文 TextPrimary 5.07:1，过 4.5:1。
+        /// 旧值 0.72 是按 sRGB 口径算的（还把相对亮度当 sRGB 灰度代入），线性复算正文只有 3.64:1（2026-09-14 审核 F-01）。
+        /// 中位亮度只有 0.098–0.397，所以绝大多数区域余量大得多，区域底图的色调仍透得出来。
         /// </summary>
-        private const float BackgroundTintAlpha = 0.72f;
+        private const float BackgroundTintAlpha = 0.82f;
 
         /// <summary>
         /// 选项行底的不透明度。**刻意不满**：让区域底图从行底透出来，行才像「浮在这张图上」，
         /// 而不是一排糊在图上的黑块。
         ///
-        /// 0.78 是下界不是随手取的：再透一点，描边对行底的对比度就跌破 WCAG 1.4.11 的 3:1
-        /// （实算 0.78 → 3.09:1、0.65 → 2.96:1），而那圈边是「这一行是可点控件」的唯一证据。
-        /// 标签文字这边余量很大（13:1 以上），瓶颈自始至终是边。
+        /// 瓶颈是行边：描边对行底要过 WCAG 1.4.11 的 3:1，那圈边是「这一行是可点控件」的唯一证据。
+        /// 配合 0.82 的底图压暗与满覆盖描边，线性复算最亮底图上最差 3.20:1；标签文字余量很大（10:1 以上）。
         /// </summary>
         private const float ChoiceRowAlpha = 0.78f;
 
         /// <summary>
-        /// 选项的**焦点色**：鼠标悬停与键盘当前项共用这一种（<see cref="FocusColor"/>）。
+        /// 选项的**焦点**：鼠标悬停与键盘方向键是同一个「当前项」（悬停即选中，见 BuildChoice 里订的 PointerEnter），
+        /// 表现是**强调色的行边 + 行底轻提亮**（<see cref="FocusColor"/>、<see cref="SetFocused"/>）。
         ///
-        /// 旧写法有两套、而且方向相反：行底 <c>image.color</c> 是 SurfaceRaised×0.78，Button 的 highlightedColor
-        /// 又给了绝对色 <c>GetHoverColor(SurfaceRaised)</c>，ColorTint 把两者**相乘**，鼠标移上去反而变暗
-        /// （最亮底图上合成亮度 0.0140 → 0.0076）；键盘 <c>Select()</c> 却把底色换成更亮的颜色。
-        /// 现在照 <c>ZombieModeUIHelper.ApplyButtonColors</c> 的口径：Graphic 置白、底色住在 ColorBlock 里。
+        /// 【为什么焦点靠行边、不靠整行变亮（2026-09-14 审核 F-01）】游戏是 Linear 色彩空间，亮底图会从半透明行底透出来。
+        /// 旧写法让焦点行整行向白 0.39，线性复算焦点行对常态行最差只有 2.13:1；要靠整行填色拉到 3:1，
+        /// 白字标签在焦点行上又会跌破 4.5:1——两条要求在亮底图上没有交集。主流做法（也是 WCAG 1.4.11 对焦点指示物的口径）
+        /// 是让**指示物**对相邻颜色够 3:1：焦点行的边换成 Accent，对焦点行底最差 4.40:1；
+        /// 行底只轻提 0.12 当悬停手感，标签在焦点行上最差 9.8:1。
         ///
-        /// 两个数由 WCAG 1.4.11 非文本 3:1 实算定死（<c>tests/SkyIslandUiContrastGuard.py</c> 复算）：
-        /// 底图亮度 0–0.747（最亮那张底图的 p99）上，焦点行对常态行最差 3.13:1，
-        /// 标签 TextPrimary 压在焦点行上最差 4.76:1（23 号字按正文要 4.5:1）。
-        /// 只抬亮度、不透明度仍用 0.78 的话，两条要求之间只剩 0.43–0.44 一道缝（3.01/4.67 · 3.10/4.55）；
-        /// 抬到 0.90 让底图少透一点，两边才都有余量。共享的 GetHoverColor（向白 0.22）在这里只有 1.66:1，不够用。
+        /// 行底色仍然住在 ColorBlock 里、Graphic 置白（<c>ZombieModeUIHelper.ApplyButtonColors</c> 的口径）：
+        /// 行底写进 <c>image.color</c> 会和 ColorTint 相乘，悬停反而变暗（2026-09-14 修过的就是这个）。
         /// </summary>
-        private const float ChoiceFocusLift = 0.39f;
-        private const float ChoiceFocusAlpha = 0.90f;
+        private const float ChoiceFocusLift = 0.12f;
+        private const float ChoiceFocusAlpha = 0.86f;
 
         /// <summary>
         /// 立绘在主视觉里的边长。
@@ -239,6 +237,8 @@ namespace BossRush
         private readonly List<Button> buttons = new List<Button>();
         /// <summary>每个选项的常态行底色。它住在 ColorBlock.normalColor 里，焦点移走时换回它。</summary>
         private readonly List<Color> buttonColors = new List<Color>();
+        /// <summary>每个选项行的描边：焦点指示物，当前项换成 Accent、移走时换回 Stroke（见 SetFocused）。</summary>
+        private readonly List<Image> buttonStrokes = new List<Image>();
         private int choiceCount;
         private int selected = -1;
         /// <summary>导航键当前按住的方向（-1 上 / 1 下 / 0 中位）。按边沿走一步，见 <see cref="OnNavigate"/>。</summary>
@@ -284,16 +284,14 @@ namespace BossRush
                 : heroContentWidth;
             TextMeshProUGUI titleText = MakeText(canvas.transform, title, TitleFontMax,
                 BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
-            titleText.enableAutoSizing = true;
-            titleText.fontSizeMin = TitleFontMin;
-            titleText.fontSizeMax = TitleFontMax;
-            // 自动缩到下限还放不下就省略号，绝不让它画到框外。
-            titleText.overflowMode = TextOverflowModes.Ellipsis;
+            // 标题**先缩字号保一行**，缩到 TitleFontMin 还放不下才折行（海报式主视觉标题的通用写法）。
+            // 旧写法开 TMP 自动缩放、却按 TitleFontMax 量高：长英文标题在 34pt 折成两行，
+            // 实底带随之占到主视觉的 52–58%，超过「≤ 一半」（2026-09-14 审核 F-11）。
+            titleText.enableAutoSizing = false;
+            titleText.fontSize = FitTitleFont(titleText, title, titleWidth);
             float titleHeight = Mathf.Max(TitleMinHeight,
                 BossRushUI.MeasureTextHeight(titleText, titleWidth, TitleMinHeight));
-            titleText.enableAutoSizing = true;   // MeasureTextHeight 会关掉，这里恢复
-            titleText.fontSizeMin = TitleFontMin;
-            titleText.fontSizeMax = TitleFontMax;
+            // MeasureTextHeight 把溢出改成了 Overflow；折到两行还放不下就省略号，绝不让它画到框外。
             titleText.overflowMode = TextOverflowModes.Ellipsis;
 
             // ---- 主视觉：标题（与立绘）压在插图上，插图全出血 ----
@@ -302,8 +300,9 @@ namespace BossRush
             // 立绘不再和标题抢同一块高度（它在右边、贴底），所以标题块就是标题本身。
             float titleBlock = titleHeight;
             float heroFloor = Mathf.Max(HeroMinHeight, titleBlock + HeroInset * 2f);
-            // 但 hero 至少要装得下立绘：立绘贴底，高度就是它的边长。
-            if (portrait != null) heroFloor = Mathf.Max(heroFloor, PortraitSize);
+            // 但 hero 至少要装得下立绘，而且立绘头顶要给右上角的 ESC 键帽留出位置：立绘贴底、高度是它的边长，
+            // 键帽在右上角 HeroInset 处。只按立绘边长算的话，247 高的主视觉里键帽压住晴禾头顶 6.5 px（2026-09-14 审核 F-18）。
+            if (portrait != null) heroFloor = Mathf.Max(heroFloor, PortraitSize + HeroInset + KeyCapSize + 4f);
             float heroArtHeight = 0f;
             if (banner != null && banner.rect.height > 0f)
             {
@@ -392,7 +391,8 @@ namespace BossRush
             dividerImage.color = BossRushUIColors.Divider;
             dividerImage.raycastTarget = false;
             // 旧写法是 ContentWidth×1 的裸 Image（没有 sprite）：1px 的纯色四边形在非整数画布
-            // 缩放下会被采样吃掉，时有时无。divider 图自带 1px 高光 + 1px 暗边，接缝也柔。
+            // 缩放下会被采样吃掉，时有时无。divider 图（8×8、border 2）中间两行实、上下各一行半透明柔边，
+            // 线头两列半透明；没注入图集时 ApplyPanelSkin 的 Rule 档画同形的程序化条。
             BossRushUI.ApplyPanelSkin(dividerImage, 2, BossRushUISkinPart.Rule);
             cursor -= dividerBlock;
 
@@ -436,6 +436,19 @@ namespace BossRush
         private static float ChoiceLabelWidth
         {
             get { return ContentWidth - ChoicePadX * 2f - KeyHintWidth; }
+        }
+
+        /// <summary>
+        /// 标题字号：<see cref="TitleFontMax"/> 一行放得下就用它；放不下按宽度等比缩，最小 <see cref="TitleFontMin"/>。
+        /// 缩到最小还放不下的，由调用方按这个字号折行量高。
+        /// </summary>
+        private static float FitTitleFont(TextMeshProUGUI text, string title, float width)
+        {
+            if (string.IsNullOrEmpty(title) || width <= 1f) return TitleFontMax;
+            text.fontSize = TitleFontMax;
+            float oneLine = text.GetPreferredValues(title, float.PositiveInfinity, float.PositiveInfinity).x;
+            if (oneLine <= width) return TitleFontMax;
+            return Mathf.Max(TitleFontMin, Mathf.Floor(TitleFontMax * width / oneLine));
         }
 
         #region 分块构建
@@ -533,8 +546,8 @@ namespace BossRush
                 Image art = Stretched(hero, "Art");
                 art.sprite = banner;
                 art.type = Image.Type.Simple;
-                // 按「填满并裁剪」而不是留黑边：preserveAspect 会在两侧留出背景色，
-                // 而面板底色和插图色调不一致，看着像图没铺满。
+                // 直接拉伸铺满（不裁剪）而不是留边：preserveAspect 会在两侧留出背景色，
+                // 而面板底色和插图色调不一致，看着像图没铺满。hero 高度随面板变，插图会有轻微的纵向拉伸。
                 art.preserveAspect = false;
             }
 
@@ -629,13 +642,13 @@ namespace BossRush
             // 它不进 buttons：键盘与手柄照旧走 Esc / OnCancel，数字键与 W/S 的项数不变。
             Image escCap = KeyCap(hero, "ESC", 44f, new Vector2(
                 PanelWidth * 0.5f - HeroInset - 22f,
-                height * 0.5f - HeroInset - KeyCapSize * 0.5f));
+                height * 0.5f - HeroInset - KeyCapSize * 0.5f), BossRushUIColors.TextPrimary);
             escCap.raycastTarget = true;
             Button closeButton = escCap.gameObject.AddComponent<Button>();
             closeButton.targetGraphic = escCap;
             closeButton.navigation = new Navigation { mode = Navigation.Mode.None };
             // 三态照 ZombieModeUIHelper.ApplyButtonColors 的口径（Graphic 置白、绝对色进 ColorBlock），
-            // 但不直接调它：它会把名为 Text 的子物体改成按钮字色，键帽上的字应保持次级色。
+            // 但不直接调它：它会把名为 Text 的子物体改成按钮字色，键帽上的字色由 KeyCap 定。
             escCap.color = Color.white;
             ColorBlock escColors = closeButton.colors;
             escColors.normalColor = BossRushUIColors.Surface;
@@ -645,6 +658,9 @@ namespace BossRush
             escColors.colorMultiplier = 1f;
             escColors.fadeDuration = 0.08f;
             closeButton.colors = escColors;
+            // 刚挂上的 Button 已把渲染色置白，赋完 colors 会从白渐变到常态色（0.08 秒）。回执重开面板不播入场动画，
+            // 这几帧白底会直接露出来——立即落到常态色（2026-09-14 审核 F-21，选项行同理）。
+            escCap.CrossFadeColor(escColors.normalColor * escColors.colorMultiplier, 0f, true, true);
             if (close != null) closeButton.onClick.AddListener(close);
         }
 
@@ -684,10 +700,10 @@ namespace BossRush
             rowColor.a = ChoiceRowAlpha;
             // 卡片档（panel_raised），不是按钮档：选项是列表行。
             BossRushUI.ApplyPanelSkin(image, 10, BossRushUISkinPart.Card);
-            // 描边是这一行「是一个独立可点区域」的唯一视觉证据：
-            // SurfaceRaised 对面板底 Surface 实算只有 1.03:1（亮云海）/ 1.07:1（暗地形），
-            // 远低于非文本 3:1——不画边的话玩家看到的只是五行浮着的字。
-            BossRushUI.ApplyPanelStroke(image, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
+            // 描边是这一行「是一个独立可点区域」的视觉证据，也是焦点指示物：当前项的边换成 Accent（见 SetFocused）。
+            // SurfaceRaised 对面板底 Surface 实算只有 1.03:1（亮云海）/ 1.07:1（暗地形）——不画边的话玩家看到的只是几行浮着的字。
+            Image stroke = BossRushUI.ApplyPanelStroke(image, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
+            buttonStrokes.Add(stroke);
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             // 常态 / 悬停 / 按下住在 ColorBlock 里、Graphic 置白（ZombieModeUIHelper.ApplyButtonColors 同一个口径）。
@@ -695,9 +711,20 @@ namespace BossRush
             // 鼠标移上去反而变暗；键盘 Select() 却换成更亮的底色。现在两边都是 FocusColor。
             ZombieModeUIHelper.ApplyButtonColors(button, rowColor, FocusColor(rowColor),
                 BossRushUI.GetDisabledColor(rowColor));
-            // 不进 EventSystem 的选中态：键盘当前项由 Select() 画；鼠标点过之后 EventSystem 的 selected
-            // 会一直挂在那一行上，和键盘当前项变成两处高亮（导航本来就走官方 UIInputManager，不走 Selectable）。
+            // 不进 EventSystem 的选中态：当前项由 Select() 画；鼠标点过之后 EventSystem 的 selected
+            // 会一直挂在那一行上，和当前项变成两处高亮（导航本来就走官方 UIInputManager，不走 Selectable）。
             button.navigation = new Navigation { mode = Navigation.Mode.None };
+            // 刚挂上的 Button 已把渲染色置白，ApplyButtonColors 赋完 colors 会从白渐变到行底色（0.08 秒）；
+            // 回执重开面板不播错峰入场，这几帧整排白底会直接露出来——立即落到常态色（2026-09-14 审核 F-21）。
+            image.CrossFadeColor(rowColor, 0f, true, true);
+            // 悬停即选中：鼠标停在哪一行，键盘的当前项就跟到哪一行，两者永远是同一个（主流 PC 菜单的写法）。
+            // 用内置 EventTrigger 只订 PointerEnter；点击仍由 Button 自己处理（ExecuteEvents 对同一物体上的每个处理器都派发）。
+            int row = index;
+            UnityEngine.EventSystems.EventTrigger hover = rect.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
+            UnityEngine.EventSystems.EventTrigger.Entry enter = new UnityEngine.EventSystems.EventTrigger.Entry();
+            enter.eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter;
+            enter.callback.AddListener(delegate { if (Visible && row < buttons.Count) Select(row); });
+            hover.triggers.Add(enter);
 
             // 数字键帽：把「按几」直接画在选项旁边，而不是让玩家去猜有没有快捷键。只给 1–9。
             if (index < 9)
@@ -713,7 +740,8 @@ namespace BossRush
             label.overflowMode = TextOverflowModes.Ellipsis;
 
             Func<string> select = choice.Select;
-            button.onClick.AddListener(delegate { SetBodyText(select()); });
+            // 回调返回 null 表示「正文不动」：跳到子页、返回上一页时，新开面板自己的正文就是对的，不能被覆盖成空。
+            button.onClick.AddListener(delegate { string reply = select(); if (reply != null) SetBodyText(reply); });
             Register(button, rowColor);
             if (animate)
                 BossRushUIEntranceAnimation.Play(rect.gameObject, index * ChoiceStagger,
@@ -725,18 +753,27 @@ namespace BossRush
         /// 键帽底板 + 字。默认**不吃点击**：数字键帽画在选项行里，点击要归整行。
         /// 右上角 ESC 键帽由 BuildHero 拿返回值另接成可点的关闭按钮。
         /// </summary>
-        private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position)
+        private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position, Color glyphColor)
         {
             RectTransform cap = MakeRect(parent, "KeyCap", position, new Vector2(width, KeyCapSize));
             Image capImage = cap.gameObject.AddComponent<Image>();
             capImage.color = BossRushUIColors.Surface;
             BossRushUI.ApplyPanelSkin(capImage, 6);
             capImage.raycastTarget = false;
-            TextMeshProUGUI glyph = MakeText(cap, key, 13f, BossRushUIColors.TextSecondary,
-                TextAlignmentOptions.Center);
+            TextMeshProUGUI glyph = MakeText(cap, key, 13f, glyphColor, TextAlignmentOptions.Center);
             glyph.rectTransform.sizeDelta = new Vector2(width, KeyCapSize);
             glyph.enableWordWrapping = false;
             return capImage;
+        }
+
+        /// <summary>
+        /// 数字键帽：坐在压暗过的选项行里，次级字色余量足够。右上角 ESC 键帽压在**没模糊过的插图**上
+        /// （最亮处接近纯白），13px 的 TextSecondary 按线性色彩空间只有 3.9:1、悬停 3.3:1，
+        /// 那一个由 BuildHero 传 TextPrimary（2026-09-14 审核 F-19）。
+        /// </summary>
+        private static Image KeyCap(RectTransform parent, string key, float width, Vector2 position)
+        {
+            return KeyCap(parent, key, width, position, BossRushUIColors.TextSecondary);
         }
 
         /// <summary>
@@ -799,6 +836,9 @@ namespace BossRush
             ColorBlock colors = button.colors;
             colors.normalColor = focused ? FocusColor(buttonColors[index]) : buttonColors[index];
             button.colors = colors;
+            // 焦点指示物是行边（见 ChoiceFocusLift）：当前项 Accent，移走换回 Stroke。
+            Image stroke = index < buttonStrokes.Count ? buttonStrokes[index] : null;
+            if (stroke != null) stroke.color = focused ? BossRushUIColors.Accent : BossRushUIColors.Stroke;
         }
 
         /// <summary>焦点色：鼠标悬停与键盘当前项共用这一个。系数与 WCAG 实算见 <see cref="ChoiceFocusLift"/>。</summary>
@@ -926,6 +966,7 @@ namespace BossRush
             bodyScroll = null;
             buttons.Clear();
             buttonColors.Clear();
+            buttonStrokes.Clear();
             choiceCount = 0;
             selected = -1;
             navigateHeld = 0;

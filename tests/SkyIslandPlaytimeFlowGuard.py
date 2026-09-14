@@ -193,11 +193,30 @@ def main():
         if text in seen:
             errors.append("见闻 " + key + " 与 " + seen[text] + " 正文完全相同")
         seen[text] = key
+    # 英文导语同样要短（2026-09-14 UI 优化对照审核 F-24 ⑤）：F3 的 SKY_CHOICE_GATES 只在中文界面判 BriefMaxChars，
+    # 英文界面从来没人把关。正文 24px、宽约 800：中文 40 字约 1.2 行，英文按两行（约 BriefMaxChars × 3 个字符）封顶。
+    # 读原文而不是 squash 过的方法体：squash 会吃掉英文逗号后的空格，字数就对不上了。
+    f3_cases = (ROOT / "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs").read_text(encoding="utf-8-sig")
+    brief_max = re.search(r"internal const int BriefMaxChars = (\d+);", f3_cases)
+    point_raw = (ROOT / SKY / "SkyIslandPointText.cs").read_text(encoding="utf-8-sig")
+    brief_raw = point_raw.split("internal static string Brief(", 1)[-1].split("internal static string Lore(", 1)[0]
+    english_briefs = re.findall(r'case "(Search_\w+)":\s*return L10n\.T\(\s*"(?:[^"\\]|\\.)*"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)',
+                                brief_raw)
+    if brief_max is None or len(english_briefs) != len(keys):
+        errors.append("英文导语长度检查读不到 BriefMaxChars 或 20 条导语（实际 %d 条）" % len(english_briefs))
+    else:
+        limit = int(brief_max.group(1)) * 3
+        for key, english in english_briefs:
+            if len(english) > limit:
+                errors.append("见闻 %s 的英文导语 %d 个字符，超过 %d（两行）：长文去官方笔记图鉴" % (key, len(english), limit))
 
     # ---- 5. 苔药冷却走游戏时间 ----
+    # 判断收在 EvaluateHeal（剧情面板的按钮状态与点下去共用，2026-09-14 审核 F-06），起点在 Heal 付款成功之后。
+    heal_state = need_body(services, "private SkyIslandServiceReadiness EvaluateHeal(", "苔药状态")
     heal = need_body(services, "internal string Heal()", "苔药")
-    require(heal, "if (Time.time < healReadyAt)", "苔药冷却判断必须走游戏时间")
+    require(heal_state, "if (Time.time < healReadyAt)", "苔药冷却判断必须走游戏时间")
     require(heal, "healReadyAt = Time.time + HealCooldown;", "苔药冷却起点必须走游戏时间")
+    forbid(heal_state, "unscaledTime", "苔药冷却又用回 unscaledTime：暂停菜单背后冷却照走")
     forbid(heal, "unscaledTime", "苔药冷却又用回 unscaledTime：暂停菜单背后冷却照走")
 
     # ---- 6. 岛上落盘去抖 ----

@@ -28,8 +28,8 @@ namespace BossRush
     /// 天空岛面板插图缓存。全静态，每 runtime 至多 LoadFromFile 一次。
     ///
     /// 【常驻内存代价，以及为什么仍按模块 owner 释放】
-    ///   全部读满是 12 张横幅（1024×288×4B ≈ 1.13 MiB）+ 6 张立绘（512×512×4B = 1 MiB）
-    ///   ≈ **19.5 MiB，约 20 MB**。这是 GPU 上的那一份；CPU 端拷贝读图时已经丢掉（见 FromRawPng）。
+    ///   全部读满是 13 张横幅（含手记，1024×288×4B ≈ 1.13 MiB）+ 6 张立绘（512×512×4B = 1 MiB）
+    ///   + 13 张面板底图（220×236×4B ≈ 0.2 MiB）≈ **23 MiB**。这是 GPU 上的那一份；CPU 端拷贝读图时已经丢掉（见 FromRawPng）。
     ///   按需加载，所以只有玩家真的开过那个区域的面板才会占；
     ///   但一旦读进来就活到模块销毁，回基地也不释放。
     ///
@@ -215,9 +215,23 @@ namespace BossRush
 
         private const string FadeAssetName = "__skyisland_banner_fade";
         private const string ScrimAssetName = "__skyisland_title_scrim";
+        private const string CaptionScrimAssetName = "__skyisland_caption_scrim";
 
-        /// <summary>压暗底的最大不透明度。</summary>
-        internal const float ScrimPeak = 0.72f;
+        /// <summary>
+        /// 区域大标题压暗底的最大不透明度：压暗底 Image 的 alpha。贴图本身只存形状（峰值恒为 1），
+        /// 颜色与峰值都由调用方施加，见 <see cref="GetScrim"/>。
+        ///
+        /// 【数值按游戏的线性色彩空间定（2026-09-14 审核 F-01）】鸭科夫是 Linear 色彩空间，UI 半透明在线性光里混合：
+        /// 近黑色 α=0.72 只把背后的亮度乘 0.28。旧口径在 sRGB 值上混合、还把相对亮度当 sRGB 灰度代入，
+        /// 算出眉题 5.70:1，线性复算实际只有 2.13:1。现值 0.84 配合眉题与提示行改用 TextPrimary，
+        /// 云海高光（相对亮度 p99=0.839）下两行小字 5.14:1（守卫按线性混合复算）。
+        /// </summary>
+        internal const float ScrimPeak = 0.84f;
+        /// <summary>
+        /// 底部字幕压暗底的最大不透明度。比大标题高一档：字幕里有警示色（WarningText 相对亮度 0.64），
+        /// 云海高光下要到 0.90 才过 4.5:1。主流游戏的字幕底框不透明度也在 75%–90% 之间。
+        /// </summary>
+        internal const float CaptionScrimPeak = 0.90f;
         /// <summary>
         /// 压暗底**竖向**两端各占多少比例做 smoothstep 淡出；中间 <c>1-2×</c> 是平台。
         ///
@@ -229,11 +243,18 @@ namespace BossRush
         /// </summary>
         internal const float ScrimEdge = 0.28f;
         /// <summary>
-        /// 压暗底**横向**两侧各占多少比例做 smoothstep 淡出；中间 <c>1-2×</c> 是平台。
-        /// 调用方要保证文字整行落在平台里——<c>SkyIslandHud.StartBanner</c> 按实测文字宽度
+        /// 区域大标题压暗底**横向**两侧各占多少比例做 smoothstep 淡出；中间 <c>1-2×</c> 是平台。
+        /// 调用方要保证文字整行落在平台里——<c>SkyIslandHud.FitBannerScrim</c> 按实测文字宽度
         /// 反算压暗底宽度（<c>宽度 ≥ 文字宽 / (1-2×edge)</c>），英文长句不会跑到淡出区里去。
         /// </summary>
         internal const float ScrimHorizontalEdge = 0.30f;
+        /// <summary>
+        /// 底部字幕压暗底横向两侧的淡出比例。比大标题窄：字幕框宽 1000，平台若只占 40%，
+        /// 整行坐进平台要 2500 宽的压暗底、出屏；0.15 时平台占 70%，最宽一行配 1429 宽就够
+        /// （<c>SkyIslandHud.FitCaptionScrim</c>）。旧写法宽度写死 1180，平台只剩中间 472 px，
+        /// 800 px 宽的一行行尾压暗只剩 0.40（2026-09-14 审核 F-04）。
+        /// </summary>
+        internal const float CaptionScrimHorizontalEdge = 0.15f;
 
         /// <summary>
         /// 「两端 smoothstep 淡出 + 中间平台」的一维窗函数。<paramref name="t"/> 取 0..1，
@@ -272,44 +293,60 @@ namespace BossRush
         ///   云海高光（p99=0.839）下更是 1.66 / 1.75——离线预览里一眼可见糊在云里。
         ///   改成上下各 <see cref="ScrimEdge"/> 的 smoothstep、中间平台之后，三行全部坐在平台上。
         ///
-        /// 注意：压暗底只是第一层保险。第二层是文字自己的描边（SkyIslandHud 的 TMP outline），
-        /// 它与背景亮度**脱钩**，云海高光那一档靠的是它。两层缺一不可。
+        /// 压暗底之外没有第二层保险（文字不带描边），云海高光那一档全靠这里的峰值与文字色撑住，
+        /// 数值见 <see cref="ScrimPeak"/>。
         /// </summary>
         internal static Sprite GetTitleScrim()
         {
+            return GetScrim(ScrimAssetName, ScrimHorizontalEdge);
+        }
+
+        /// <summary>底部字幕的压暗底：竖向形状同大标题，横向淡出更窄（见 <see cref="CaptionScrimHorizontalEdge"/>）。</summary>
+        internal static Sprite GetCaptionScrim()
+        {
+            return GetScrim(CaptionScrimAssetName, CaptionScrimHorizontalEdge);
+        }
+
+        /// <summary>
+        /// 压暗底贴图：**纯白 + 形状 alpha，峰值恒为 1**。颜色（<see cref="BossRushUIColors.Backdrop"/>）与峰值不透明度
+        /// （<see cref="ScrimPeak"/> / <see cref="CaptionScrimPeak"/>）由调用方的 <c>Image.color</c> 施加：
+        /// 大标题与字幕共用形状、各用各的峰值，也不再在 SetPixel 里写死一份遮罩色。
+        /// </summary>
+        private static Sprite GetScrim(string assetName, float horizontalEdge)
+        {
             Sprite cached;
-            if (sprites.TryGetValue(ScrimAssetName, out cached)) return cached;
+            if (sprites.TryGetValue(assetName, out cached)) return cached;
             Sprite result = null;
             try
             {
                 const int width = 64;
                 const int height = 48;
                 Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false, false);
-                texture.name = ScrimAssetName;
+                texture.name = assetName;
                 texture.wrapMode = TextureWrapMode.Clamp;
-                // 双线性采样会把这张小图平滑拉到 1180×230，所以 64×48 足够，不必出大图。
+                // 双线性采样会把这张小图平滑拉到上千像素宽（大标题最宽 1700×340），所以 64×48 足够，不必出大图。
                 texture.filterMode = FilterMode.Bilinear;
                 for (int x = 0; x < width; x++)
                 {
-                    float horizontal = Plateau(x / (float)(width - 1), ScrimHorizontalEdge);
+                    float horizontal = Plateau(x / (float)(width - 1), horizontalEdge);
                     for (int y = 0; y < height; y++)
                     {
                         float vertical = Plateau(y / (float)(height - 1), ScrimEdge);
-                        texture.SetPixel(x, y, new Color(0.02f, 0.03f, 0.04f, horizontal * vertical * ScrimPeak));
+                        texture.SetPixel(x, y, new Color(1f, 1f, 1f, horizontal * vertical));
                     }
                 }
                 texture.Apply(false, true);
                 owned.Add(texture);
                 result = Sprite.Create(texture, new Rect(0f, 0f, width, height), new Vector2(0.5f, 0.5f),
                     100f, 0u, SpriteMeshType.FullRect);
-                result.name = ScrimAssetName;
+                result.name = assetName;
                 owned.Add(result);
             }
             catch (Exception e)
             {
-                Debug.LogWarning(LogPrefix + "标题压暗底生成失败：" + e.Message);
+                Debug.LogWarning(LogPrefix + "压暗底生成失败：" + e.Message);
             }
-            sprites[ScrimAssetName] = result;
+            sprites[assetName] = result;
             return result;
         }
 
@@ -322,7 +359,8 @@ namespace BossRush
         /// 两处在用，是**同一张**图不是两份：
         /// - 剧情面板主视觉里立绘脚下的落影（抠图直接压在插图上，没有影子会「浮」着）；
         /// - 采集点的贴地光斑（<see cref="SkyIslandGathering"/>，按资源种类 tint）。
-        /// UI 与世界空间共用没有问题：<c>pixelsPerUnit</c> 只影响 native size，而两边都显式给了尺寸。
+        /// UI 一侧由 RectTransform 显式给尺寸，<c>pixelsPerUnit</c> 不起作用；**世界空间的 SpriteRenderer 不会拉伸精灵**，
+        /// 原生尺寸就是 64 px / PPU 100 = 0.64 m，要多大得按比例缩放（见 <c>SkyIslandGathering.GlowDiscSize</c>）。
         /// </summary>
         internal static Sprite GetRadialGlow()
         {

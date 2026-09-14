@@ -159,7 +159,11 @@ def main():
     # ---- 4. 区域大标题必须垫二维柔边压暗底 ----
     if "SkyIslandUiArt.GetTitleScrim()" not in hud:
         errors.append("区域大标题没有垫压暗底：岛上抬头是高亮云海，浅色字直接压上去读不出来")
-    scrim = body_of(art, "internal static Sprite GetTitleScrim()")
+    # 大标题与字幕的压暗底共用一个生成函数 GetScrim（2026-09-14：字幕另有一张横向淡出更窄的，审核 F-04）。
+    title_scrim = body_of(art, "internal static Sprite GetTitleScrim()")
+    if title_scrim is None or "GetScrim(" not in title_scrim:
+        errors.append("大标题压暗底没有走共用的 GetScrim 生成函数")
+    scrim = body_of(art, "private static Sprite GetScrim(string assetName, float horizontalEdge)")
     if scrim is None:
         errors.append("找不到压暗底生成函数")
     else:

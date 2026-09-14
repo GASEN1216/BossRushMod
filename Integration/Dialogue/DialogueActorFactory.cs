@@ -157,7 +157,7 @@ namespace BossRush
             Sprite portrait = null)
         {
             // 生成本地化键
-            string nameKey = "BossRush_Actor_" + actorId + "_Name";
+            string nameKey = BilingualNameKey(actorId);
 
             // 注入本地化
             string localizedName = L10n.T(nameCN, nameEN);
@@ -165,6 +165,22 @@ namespace BossRush
 
             // 创建 Actor
             return Create(gameObject, actorId, nameKey, offset, portrait);
+        }
+
+        /// <summary>双语角色名的本地化键。<see cref="CreateBilingual"/> 与 <see cref="RefreshBilingualName"/> 共用。</summary>
+        private static string BilingualNameKey(string actorId)
+        {
+            return "BossRush_Actor_" + actorId + "_Name";
+        }
+
+        /// <summary>
+        /// 重新注入双语角色名。actor 按 GameObject 缓存、名字只在创建时注入一次；
+        /// 本趟里切换语言之后，复用旧 actor 的调用方要在开口前调它，官方对话框里的名字才跟着换（2026-09-14 审核 F-29）。
+        /// </summary>
+        public static void RefreshBilingualName(string actorId, string nameCN, string nameEN)
+        {
+            if (string.IsNullOrEmpty(actorId)) return;
+            LocalizationHelper.InjectLocalization(BilingualNameKey(actorId), L10n.T(nameCN, nameEN));
         }
 
         /// <summary>

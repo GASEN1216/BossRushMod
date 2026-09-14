@@ -37,9 +37,18 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 这一页见闻算不算已收录。四座秘境的物证点（S1–S4）走剧情动作，收录时只写剧情旗标、不进 `discoveredNotes`，
+        /// 所以对应的旗标也算（<see cref="SkyIslandStoryRules.TrySearchEvidenceFlag"/>）。
+        /// 旧写法只看 `discoveredNotes`：秘境物证在手记里永远「尚未收录」（最多 16/20、终页到不了），
+        /// 官方图鉴镜像与 F3 判据也跟着错位（2026-09-14 审核 F-03）。
+        /// </summary>
         internal static bool Recorded(SkyIslandStoryData data, string id)
         {
-            return data != null && data.discoveredNotes != null && Array.IndexOf(data.discoveredNotes, id) >= 0;
+            if (data == null || string.IsNullOrEmpty(id)) return false;
+            if (data.discoveredNotes != null && Array.IndexOf(data.discoveredNotes, id) >= 0) return true;
+            SkyIslandStoryFlag evidence;
+            return SkyIslandStoryRules.TrySearchEvidenceFlag(id, out evidence) && data.Has(evidence);
         }
 
         internal static int NotesRecorded(SkyIslandStoryData data)
@@ -206,27 +215,32 @@ namespace BossRush
             return text.ToString();
         }
 
-        /// <summary>信鸽来信：收到的写题目与正文，没收到的只写第几封（不剧透落点与内容）。</summary>
+        /// <summary>
+        /// 信鸽来信：只列收到的（题目与正文），没收到的合成一句——不再逐封写「第 N 封（尚未收到）」：
+        /// 新档点进来就是十二行空占位（2026-09-14 审核 F-28 ③）。同样不剧透落点与内容。
+        /// </summary>
         internal static string Letters(SkyIslandStoryData data)
         {
             var text = new StringBuilder();
             SkyIslandLetter[] all = SkyIslandLetters.All;
+            int waiting = 0;
             for (int i = 0; i < all.Length; i++)
             {
-                if (i > 0) text.Append("\n\n");
-                if (SkyIslandLetters.Collected(data, all[i].Id))
-                {
-                    text.Append("■ ").Append(all[i].Title).Append('\n').Append(all[i].Body);
-                    // 内容批次四：三团蛙卵都放回了蛙鸣池，那封写给池子里青蛙的信有了回音。
-                    if (all[i].Id == "Letter_04" && SkyIslandMosquitoRules.FrogsComplete(data))
-                        text.Append(L10n.T("\n（三团蛙卵都回了蛙鸣池，长成的蛙夜里散到岛上各处的水边。池子里的青蛙会替那个孩子数灯。）",
-                            "\n(All three clutches are back in Frogsong Pool, and the frogs that grew there spread along the isles' waterline at night. The frogs in the pool will count the lights for that child.)"));
-                }
-                else
-                    text.Append("□ ").Append(L10n.T("第 ", "Letter ")).Append(i + 1)
-                        .Append(L10n.T(" 封（尚未收到）", " (not yet received)"));
+                if (!SkyIslandLetters.Collected(data, all[i].Id)) { waiting++; continue; }
+                if (text.Length > 0) text.Append("\n\n");
+                text.Append("■ ").Append(all[i].Title).Append('\n').Append(all[i].Body);
+                // 内容批次四：三团蛙卵都放回了蛙鸣池，那封写给池子里青蛙的信有了回音。
+                if (all[i].Id == "Letter_04" && SkyIslandMosquitoRules.FrogsComplete(data))
+                    text.Append(L10n.T("\n（三团蛙卵都回了蛙鸣池，长成的蛙夜里散到岛上各处的水边。池子里的青蛙会替那个孩子数灯。）",
+                        "\n(All three clutches are back in Frogsong Pool, and the frogs that grew there spread along the isles' waterline at night. The frogs in the pool will count the lights for that child.)"));
             }
-            return text.ToString();
+            if (waiting == 0) return text.ToString();
+            if (text.Length == 0)
+                return L10n.T("还没有信鸽落过。每趟至多来一只，落地时会有字幕提醒。",
+                    "No pigeon has landed yet. At most one comes each trip, and a caption tells you when it does.");
+            return text.Append("\n\n").Append(waiting == 1
+                ? L10n.T("还有 1 封信在路上。", "One more letter is on its way.")
+                : string.Format(L10n.T("还有 {0} 封信在路上。", "{0} more letters are on their way."), waiting)).ToString();
         }
 
         /// <summary>纪念品：发过的写名字；没发过的写名字与怎么得到（纪念品本来就是明着给的目标）。</summary>
@@ -244,19 +258,28 @@ namespace BossRush
             return text.ToString();
         }
 
-        /// <summary>船员名册：读过的页照当前存档重新生成（选择变了，话也跟着变），没读过的只写名字。</summary>
+        /// <summary>
+        /// 船员名册：读过的页照当前存档重新生成（选择变了，话也跟着变）；没读过的合成一句，
+        /// 不逐页写「（尚未读过）」——结局之前名册根本不存在，那是四行空占位（2026-09-14 审核 F-28 ③）。
+        /// </summary>
         internal static string Crew(SkyIslandStoryData data)
         {
             var text = new StringBuilder();
+            int unread = 0;
             for (int i = 0; i < SkyIslandCrew.Count; i++)
             {
-                if (i > 0) text.Append("\n\n");
-                if (SkyIslandCrew.Read(data, i))
-                    text.Append("■ ").Append(SkyIslandCrew.Name(i)).Append('\n').Append(SkyIslandCrew.Page(i, data));
-                else
-                    text.Append("□ ").Append(SkyIslandCrew.Name(i)).Append(L10n.T("（尚未读过）", " (not yet read)"));
+                if (!SkyIslandCrew.Read(data, i)) { unread++; continue; }
+                if (text.Length > 0) text.Append("\n\n");
+                text.Append("■ ").Append(SkyIslandCrew.Name(i)).Append('\n').Append(SkyIslandCrew.Page(i, data));
             }
-            return text.ToString();
+            if (unread == 0) return text.ToString();
+            if (text.Length == 0)
+                return L10n.T("归航钟响过之后，归航船会系在码头灯旁，船头挂着这本名册。",
+                    "Once the Homecoming Bell has rung, the homecoming boat ties up by the dock lamp with this roster at its bow.");
+            return text.Append("\n\n").Append(unread == 1
+                ? L10n.T("还有 1 页没翻过：名册挂在码头灯旁的归航船上。", "One page is still unread: the roster hangs on the homecoming boat by the dock lamp.")
+                : string.Format(L10n.T("还有 {0} 页没翻过：名册挂在码头灯旁的归航船上。",
+                    "{0} pages are still unread: the roster hangs on the homecoming boat by the dock lamp."), unread)).ToString();
         }
     }
 }

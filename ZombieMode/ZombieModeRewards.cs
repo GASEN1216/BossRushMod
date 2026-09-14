@@ -335,7 +335,7 @@ namespace BossRush
                 position, size, new Vector2(0.5f, 0.5f));
             Image cardImage = card.AddComponent<Image>();
             cardImage.color = RewardCardColor;
-            BossRushUI.ApplyPanelSkin(cardImage, 10);
+            BossRushUI.ApplyFramedPanelSkin(cardImage, 10, BossRushUISkinPart.Card);
 
             // ── 左侧类别强调条 ──
             // 颜色按奖励类别分级，让玩家一眼分清属性 / 装备 / 带代价的契约。

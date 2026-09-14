@@ -142,7 +142,7 @@ namespace BossRush
 
             Image background = card.AddComponent<Image>();
             background.color = locked ? BossRushUIColors.Surface : BossRushUIColors.SurfaceRaised;
-            BossRushUI.ApplyPanelSkin(background, 10);
+            BossRushUI.ApplyFramedPanelSkin(background, 10, BossRushUISkinPart.Card);
 
             Button button = card.AddComponent<Button>();
             button.targetGraphic = background;
@@ -322,7 +322,7 @@ namespace BossRush
 
                 Image surfaceImage = surface.AddComponent<Image>();
                 surfaceImage.color = BossRushUIColors.Surface;
-                BossRushUI.ApplyPanelSkin(surfaceImage, 14);
+                BossRushUI.ApplyFramedPanelSkin(surfaceImage, 14, BossRushUISkinPart.Panel);
 
                 Button surfaceButton = surface.AddComponent<Button>();
                 surfaceButton.transition = Selectable.Transition.None;

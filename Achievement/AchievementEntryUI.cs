@@ -122,7 +122,7 @@ namespace BossRush
 
             // 背景图片
             Image bgImage = entryObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(bgImage, 10);
+            BossRushUI.ApplyPanelSkin(bgImage, 10, BossRushUISkinPart.Card);   // 外层是 2px 状态边框，待领取时变绿，不叠描边
             bgImage.color = BgColor;
 
             // 内边距容器
@@ -136,7 +136,7 @@ namespace BossRush
             innerRect.offsetMax = new Vector2(-2f, -2f);
 
             Image innerBg = innerObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(innerBg, 8);
+            BossRushUI.ApplyPanelSkin(innerBg, 8, BossRushUISkinPart.Card);   // 外层 bgImage 已是 2px 状态边框，内卡再叠描边会变成双层边
             innerBg.color = BgColorLocked;
 
             AchievementEntryUI entry = entryObj.AddComponent<AchievementEntryUI>();

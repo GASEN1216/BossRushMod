@@ -74,7 +74,7 @@ namespace BossRush
                 "Panel", _root.transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 580f));
             Image panelBg = panel.AddComponent<Image>();
             panelBg.color = BossRushUIColors.Surface;
-            BossRushUI.ApplyPanelSkin(panelBg, 14);
+            BossRushUI.ApplyFramedPanelSkin(panelBg, 14, BossRushUISkinPart.Panel);
 
             BuildHeader(panel.transform);
             BuildSlots(panel.transform);

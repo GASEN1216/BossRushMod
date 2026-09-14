@@ -169,9 +169,13 @@ def main():
     # ---- 3. 秘境谜题 ----
     read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "ReadPoint")
     require(read_point, "SkyIslandPuzzle puzzle = SkyIslandPuzzles.For(key);", "物证点先查有没有谜题")
-    require(read_point, "bool solving = puzzle != null && !story.Current.Has(puzzle.Flag) && !puzzles.IsSolved(puzzle);",
+    require(read_point, "bool solving = puzzle != null && !story.Current.Has(puzzle.Flag) && !puzzles.IsSolved(puzzle)",
             "只有物证还没拿到、谜题也没解开时才出谜题")
-    require(read_point, "string guarded = OverlookGuarded(key);", "普通收录仍要过残星瞭台的守卫门")
+    # 2026-09-14 审核 F-06：瞭台守卫没清时不出谜题（点了只会回「先清守卫」），普通收录挪进 RecordChoice、收过就不挂。
+    require(read_point, "OverlookGuarded(key) == null;", "残星瞭台的守卫没清时不出谜题")
+    require(read_point, "else RecordChoice(choices, key, recorded);", "不出谜题时走普通收录")
+    record_choice = need_body(world, "private void RecordChoice(", "普通收录")
+    require(record_choice, "string guarded = OverlookGuarded(key);", "普通收录仍要过残星瞭台的守卫门")
     puzzle_choices = need_body(world, "private void PuzzleChoices(", "谜题选项")
     ordered(puzzle_choices, ["string guarded = OverlookGuarded(key);", "puzzles.Choose(puzzle, option, out feedback);",
                              "if (outcome == SkyIslandPuzzleOutcome.Solved)", "story.RecordSearch(key, out message);"],

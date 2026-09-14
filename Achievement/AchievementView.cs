@@ -209,7 +209,7 @@ namespace BossRush
             panelRect.sizeDelta = new Vector2(calculatedPanelWidth, calculatedPanelHeight);
 
             Image panelImage = panelRoot.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(panelImage, 14);
+            BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
             panelImage.color = PanelBgColor;
 
             Button panelButton = panelRoot.AddComponent<Button>();
@@ -378,7 +378,7 @@ namespace BossRush
             progressBgRect.offsetMax = Vector2.zero;
 
             Image progressBgImage = progressBgObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(progressBgImage, 4);
+            BossRushUI.ApplyPanelSkin(progressBgImage, 4, BossRushUISkinPart.ScrollHandle);
             progressBgImage.color = ProgressBarBgColor;
 
             // 进度条填充
@@ -393,7 +393,7 @@ namespace BossRush
             progressFillRect.offsetMax = Vector2.zero;
 
             progressBarFill = progressFillObj.AddComponent<Image>();
-            BossRushUI.ApplyPanelSkin(progressBarFill, 4);
+            BossRushUI.ApplyPanelSkin(progressBarFill, 4, BossRushUISkinPart.ScrollHandle);
             progressBarFill.color = ProgressBarFillColor;
         }
 

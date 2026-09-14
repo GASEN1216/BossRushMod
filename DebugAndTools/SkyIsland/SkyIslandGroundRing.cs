@@ -203,7 +203,8 @@ namespace BossRush
     /// - 落点按地面射线吸附，标记本身可能悬在地面上方；
     /// - 钟庭环在双航标点亮后出现，与 <c>SkyIslandSession.BellExitIfUnlocked()</c> 同一事实源；
     /// - 布局 v2 另有悬根林 / 残星工坊两处航标广场环，分别随风标 / 星灯点亮出现（<see cref="AddBeaconRings"/>）；
-    /// - 纯表现层：无碰撞体、无每帧工作，<see cref="Apply"/> 只在解锁状态真的翻转时动一次。
+    /// - 纯表现层：无碰撞体；<see cref="Apply"/> 只在解锁状态真的翻转时动一次。
+    ///   撤离环上挂的 <see cref="SkyIslandGroundRingPulse"/> 另有每帧的呼吸（只写带宽与顶点色，量级很小）。
     /// </summary>
     internal sealed class SkyIslandExtractionRings : IDisposable
     {

@@ -296,7 +296,7 @@ namespace BossRush
                 Image bg = affinityPanel.AddComponent<Image>();
                 bg.color = BossRushUIColors.Surface;
                 bg.raycastTarget = false;
-                BossRushUI.ApplyPanelSkin(bg, 12);
+                BossRushUI.ApplyFramedPanelSkin(bg, 12, BossRushUISkinPart.Card);
                 
                 // 设置位置和大小
                 RectTransform rect = affinityPanel.GetComponent<RectTransform>();

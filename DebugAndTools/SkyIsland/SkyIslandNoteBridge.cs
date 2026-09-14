@@ -185,8 +185,14 @@ namespace BossRush
                         NoteIndex.SetNoteDynamic(note);
                         registered.Add(key);
 
-                        if (SkyIslandJournal.Recorded(data, id) && !NoteIndex.GetNoteUnlocked(key))
+                        bool ours = SkyIslandJournal.Recorded(data, id);
+                        bool theirs = NoteIndex.GetNoteUnlocked(key);
+                        if (ours && !theirs)
                             NoteIndex.SetNoteUnlocked(key);
+                        // 反方向也镜像：我们的存档里没有、官方却点亮着（换槽、存档回滚、旧版本误点亮）就收回。
+                        // 否则「我们的存档是唯一权威」只成立一半（2026-09-14 审核 F-23）。
+                        else if (!ours && theirs)
+                            Relock(index, key);
                     }
                 }
                 mirroredIndex = index;
@@ -221,6 +227,19 @@ namespace BossRush
                 RequestSync();
                 ModBehaviour.DevLog(LogPrefix + "[WARNING] 见闻解锁镜像失败 " + searchId + ": " + e.Message);
             }
+        }
+
+        /// <summary>
+        /// 收回官方图鉴里一条「我们的存档里没有」的点亮。官方没有上锁方法，但公开属性 `NoteIndex.UnlockedNotes`
+        /// 返回的就是解锁集合本身（`Duckov/NoteIndexs/NoteIndex.cs`）；官方存档 `NoteIndexData` 的两份列表都从它拷，
+        /// 所以删掉这一项、下次官方存档时就不再持久化。删完照官方 SetNoteUnlocked 的写法通知图鉴界面刷新。
+        /// </summary>
+        private static void Relock(NoteIndex index, string key)
+        {
+            HashSet<string> unlocked = index.UnlockedNotes;
+            if (unlocked == null || !unlocked.Remove(key)) return;
+            Action<string> changed = NoteIndex.onNoteStatusChanged;
+            if (changed != null) changed(key);
         }
 
         internal static void ResetStaticCaches()

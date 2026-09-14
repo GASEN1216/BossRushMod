@@ -8,6 +8,23 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
+    /// 付费服务此刻的状态。剧情面板挂不挂、按钮上写什么，与点下去时的判断共用
+    /// <see cref="SkyIslandServices"/> 的同一份 Evaluate*（2026-09-14 审核 F-06 / 拍板 O-3）。
+    /// </summary>
+    internal enum SkyIslandServiceReadiness
+    {
+        /// <summary>服务 owner 已销毁或玩家不在。</summary>
+        Unavailable,
+        /// <summary>没有要做的：随身装备都结实、没受伤。面板上不挂。</summary>
+        NothingToDo,
+        /// <summary>苔药还在熬。面板上照挂，按钮写还要等几秒。</summary>
+        CoolingDown,
+        /// <summary>钱不够。面板上照挂，按钮写要多少钱。</summary>
+        ShortOfMoney,
+        Ready
+    }
+
+    /// <summary>
     /// COMPAT：天空岛居民提供的实用服务 owner。
     ///
     /// 四项服务都刻意只用**已有系统**，不引入新 TypeID、不接官方商店 UI
@@ -149,23 +166,49 @@ namespace BossRush
             return total;
         }
 
-        internal string Repair()
+        /// <summary>渡口整备此刻的报价与状态（只读、不扣钱）。面板按它挂按钮，<see cref="Repair"/> 走同一份 EvaluateRepair。</summary>
+        internal SkyIslandServiceReadiness RepairReadiness(out int price)
         {
-            if (disposed || player == null) return L10n.T("现在没法整备。", "No refit is possible right now.");
+            List<RepairEntry> plan;
+            bool badge;
+            return EvaluateRepair(out plan, out price, out badge);
+        }
+
+        private SkyIslandServiceReadiness EvaluateRepair(out List<RepairEntry> plan, out int price, out bool badge)
+        {
+            plan = new List<RepairEntry>();
+            price = 0;
+            badge = false;
+            if (disposed || player == null) return SkyIslandServiceReadiness.Unavailable;
             var items = new List<Item>();
             CollectCarried(items);
-            var plan = new List<RepairEntry>();
             int quoted = Quote(items, plan);
-            if (plan.Count == 0)
-                return L10n.T("浮舟：你身上的家伙都还结实，用不着我动手。",
-                    "Fuzhou: Everything you carry is still sound. Nothing for me to do.");
+            if (plan.Count == 0) return SkyIslandServiceReadiness.NothingToDo;
             // 带着晴岚航徽：码头的人都认得它。服务费下限之后再打折。
-            bool badge = CarriesBadge();
-            int price = SkyIslandItemRules.ServicePrice(quoted < RepairMinimumPrice ? RepairMinimumPrice : quoted, badge);
+            badge = CarriesBadge();
+            price = SkyIslandItemRules.ServicePrice(quoted < RepairMinimumPrice ? RepairMinimumPrice : quoted, badge);
+            return EconomyManager.IsEnough(new Cost((long)price), AccountAvailable, true)
+                ? SkyIslandServiceReadiness.Ready
+                : SkyIslandServiceReadiness.ShortOfMoney;
+        }
+
+        internal string Repair()
+        {
+            List<RepairEntry> plan;
+            int price;
+            bool badge;
+            switch (EvaluateRepair(out plan, out price, out badge))
+            {
+                case SkyIslandServiceReadiness.Unavailable:
+                    return L10n.T("现在没法整备。", "No refit is possible right now.");
+                case SkyIslandServiceReadiness.NothingToDo:
+                    return L10n.T("浮舟：你身上的家伙都还结实，用不着我动手。",
+                        "Fuzhou: Everything you carry is still sound. Nothing for me to do.");
+                case SkyIslandServiceReadiness.ShortOfMoney:
+                    return L10n.T("浮舟：整备要 ", "Fuzhou: The refit runs ") + price +
+                        L10n.T("，这次凑不够就先记着。", ". You are short this time — I will note it down.");
+            }
             bool account = AccountAvailable;
-            if (!EconomyManager.IsEnough(new Cost((long)price), account, true))
-                return L10n.T("浮舟：整备要 ", "Fuzhou: The refit runs ") + price +
-                    L10n.T("，这次凑不够就先记着。", ". You are short this time — I will note it down.");
             if (!EconomyManager.Pay(new Cost((long)price), account, true))
                 return L10n.T("浮舟：钱没走通，先别急，回头再来。",
                     "Fuzhou: The payment did not go through. No rush — come back later.");
@@ -247,28 +290,54 @@ namespace BossRush
             return Mathf.Max(HealPriceMinimum, Mathf.CeilToInt(HealPriceFull * missing));
         }
 
-        internal string Heal()
+        /// <summary>苔药此刻的报价、还要等几秒与状态（只读、不扣钱）。面板按它挂按钮，<see cref="Heal"/> 走同一份 EvaluateHeal。</summary>
+        internal SkyIslandServiceReadiness HealReadiness(out int price, out int waitSeconds)
         {
-            if (disposed || player == null || player.Health == null)
-                return L10n.T("现在没法处理伤口。", "Wounds cannot be treated right now.");
+            bool badge;
+            return EvaluateHeal(out price, out waitSeconds, out badge);
+        }
+
+        private SkyIslandServiceReadiness EvaluateHeal(out int price, out int waitSeconds, out bool badge)
+        {
+            price = 0;
+            waitSeconds = 0;
+            badge = false;
+            if (disposed || player == null || player.Health == null) return SkyIslandServiceReadiness.Unavailable;
             // 冷却是玩法计时，走游戏时间（AGENTS「玩法计时一律走游戏时间」）：旧写法 unscaledTime 在暂停菜单、
             // 拍照模式与剧情面板（timeScale 压到 0）背后照走，开着暂停菜单挂 5 分钟就能再敷一副。
             if (Time.time < healReadyAt)
             {
-                int wait = Mathf.CeilToInt(healReadyAt - Time.time);
-                return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") + wait +
-                    (wait == 1
-                        ? L10n.T(" 秒后再来。", " second until the next dose.")
-                        : L10n.T(" 秒后再来。", " seconds until the next dose."));
+                waitSeconds = Mathf.CeilToInt(healReadyAt - Time.time);
+                return SkyIslandServiceReadiness.CoolingDown;
             }
-            if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f)
-                return L10n.T("眠苔：你没受伤，省下这笔吧。", "Miantai: You are not hurt. Save your money.");
-            bool badge = CarriesBadge();
-            int price = SkyIslandItemRules.ServicePrice(HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth), badge);
+            if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f) return SkyIslandServiceReadiness.NothingToDo;
+            badge = CarriesBadge();
+            price = SkyIslandItemRules.ServicePrice(HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth), badge);
+            return EconomyManager.IsEnough(new Cost((long)price), AccountAvailable, true)
+                ? SkyIslandServiceReadiness.Ready
+                : SkyIslandServiceReadiness.ShortOfMoney;
+        }
+
+        internal string Heal()
+        {
+            int price, wait;
+            bool badge;
+            switch (EvaluateHeal(out price, out wait, out badge))
+            {
+                case SkyIslandServiceReadiness.Unavailable:
+                    return L10n.T("现在没法处理伤口。", "Wounds cannot be treated right now.");
+                case SkyIslandServiceReadiness.CoolingDown:
+                    return L10n.T("眠苔：药还在熬，", "Miantai: The remedy is still steeping — ") + wait +
+                        (wait == 1
+                            ? L10n.T(" 秒后再来。", " second until the next dose.")
+                            : L10n.T(" 秒后再来。", " seconds until the next dose."));
+                case SkyIslandServiceReadiness.NothingToDo:
+                    return L10n.T("眠苔：你没受伤，省下这笔吧。", "Miantai: You are not hurt. Save your money.");
+                case SkyIslandServiceReadiness.ShortOfMoney:
+                    return L10n.T("眠苔：这副药要 ", "Miantai: This dose costs ") + price +
+                        L10n.T("，这次不够。", ". Not enough this time.");
+            }
             bool account = AccountAvailable;
-            if (!EconomyManager.IsEnough(new Cost((long)price), account, true))
-                return L10n.T("眠苔：这副药要 ", "Miantai: This dose costs ") + price +
-                    L10n.T("，这次不够。", ". Not enough this time.");
             if (!EconomyManager.Pay(new Cost((long)price), account, true))
                 return L10n.T("眠苔：钱没走通，先歇一会儿。",
                     "Miantai: The payment did not go through. Rest a moment.");

@@ -599,7 +599,7 @@ namespace BossRush
 
             Image distanceBackground = distanceObject.GetComponent<Image>();
             // 距离底板从 2x2 纯白硬边换成共享圆角九宫格，和其余界面同一套观感。
-            BossRushUI.ApplyPanelSkin(distanceBackground, 6);
+            BossRushUI.ApplyPanelSkin(distanceBackground, 6, BossRushUISkinPart.ScrollHandle);
             distanceBackground.color = ModeFBountyRadarDistancePanelColor;
             distanceBackground.raycastTarget = false;
 

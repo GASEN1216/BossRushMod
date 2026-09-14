@@ -378,7 +378,7 @@ namespace BossRush
 
             Image panelImage = _panelRoot.AddComponent<Image>();
             panelImage.color = BossRushUIColors.Surface;
-            BossRushUI.ApplyPanelSkin(panelImage, 14);
+            BossRushUI.ApplyFramedPanelSkin(panelImage, 14, BossRushUISkinPart.Panel);
 
             // 吃掉穿透到 backdrop 的点击，否则点面板本体会把面板关掉
             Button panelButton = _panelRoot.AddComponent<Button>();
@@ -477,7 +477,7 @@ namespace BossRush
 
             Image trackImage = track.AddComponent<Image>();
             trackImage.color = BossRushUIColors.Disabled;
-            BossRushUI.ApplyPanelSkin(trackImage, 4);
+            BossRushUI.ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
             trackImage.raycastTarget = false;
 
             GameObject fill = ZombieModeUIHelper.CreateRect(
@@ -490,7 +490,7 @@ namespace BossRush
                 new Vector2(0f, 0.5f));
             _progressFill = fill.AddComponent<Image>();
             _progressFill.color = BossRushUIColors.Accent;
-            BossRushUI.ApplyPanelSkin(_progressFill, 4);
+            BossRushUI.ApplyPanelSkin(_progressFill, 4, BossRushUISkinPart.ScrollHandle);
             _progressFill.raycastTarget = false;
         }
 

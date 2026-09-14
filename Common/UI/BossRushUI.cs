@@ -96,15 +96,20 @@ namespace BossRush
         internal static readonly Color Header = new Color(0.09f, 0.115f, 0.13f, 0.96f);
         internal static readonly Color Divider = new Color(0.42f, 0.52f, 0.58f, 0.32f);
         /// <summary>
-        /// 面板 / 卡片 / 列表行的 1px 描边色。与 <see cref="Divider"/> 同色相、只是更实。
+        /// 面板 / 卡片 / 列表行的描边色。与 <see cref="Divider"/> 同一系蓝灰、更亮也更实。
         ///
         /// 【为什么不能直接用 Divider】Divider 自带 0.32 的 alpha，铺成一圈描边后对面板底
         /// 只有 **1.54:1**——低于 WCAG 1.4.11 对非文本的 3:1，画了等于没画。
-        /// 0.78 在亮云海（12 张场景横幅实测 p99=0.839）到暗地形的整个区间里都稳在 3.1:1 以上。
-        /// 选项行尤其不能省：它是可点控件的边界，3:1 是硬要求，而 SurfaceRaised 对面板底
-        /// 本身只有 1.03:1——不画边，玩家看到的只是几行浮着的字。
+        /// 选项行尤其不能省：它是可点控件的边界，而 SurfaceRaised 对面板底本身只有 1.03:1——
+        /// 不画边，玩家看到的只是几行浮着的字。
+        ///
+        /// 【数值按游戏的线性色彩空间定（2026-09-14）】鸭科夫是 Linear 色彩空间，UI 半透明在线性光里混合，
+        /// 深色半透明底对亮场景的压暗远比 sRGB 口径算出来的弱。旧值 (0.42,0.52,0.58) 按线性复算，
+        /// 右上卡片的边在亮云海上只有 2.16:1。现值配 <see cref="BossRushUI.StrokeThickness"/> 的满覆盖纹素，
+        /// 卡片边、面板外框、选项行边在亮云海（相对亮度 p99=0.839）到暗地形之间最差 3.17:1
+        /// （<c>tests/SkyIslandUiContrastGuard.py</c> 按线性混合复算）。
         /// </summary>
-        internal static readonly Color Stroke = new Color(0.42f, 0.52f, 0.58f, 0.78f);
+        internal static readonly Color Stroke = new Color(0.50f, 0.58f, 0.62f, 0.78f);
         internal static readonly Color TextPrimary = new Color(0.94f, 0.96f, 0.97f, 1f);
         internal static readonly Color TextSecondary = new Color(0.67f, 0.72f, 0.75f, 1f);
         internal static readonly Color Accent = new Color(0.20f, 0.72f, 0.67f, 1f);
@@ -186,32 +191,6 @@ namespace BossRush
             injectedButtonSprite = sprite;
         }
 
-        /// <summary>是否已注入面板图集。调用方据此判断能否回落到程序化半径。</summary>
-        internal static bool HasInjectedPanelSprite { get { return injectedPanelSprite != null; } }
-
-        /// <summary>是否已注入按钮图集。</summary>
-        internal static bool HasInjectedButtonSprite { get { return injectedButtonSprite != null; } }
-
-        internal static Sprite GetPanelSprite()
-        {
-            if (injectedPanelSprite != null)
-            {
-                return injectedPanelSprite;
-            }
-
-            return BossRushUI.GetRoundedSprite(12);
-        }
-
-        internal static Sprite GetButtonSprite()
-        {
-            if (injectedButtonSprite != null)
-            {
-                return injectedButtonSprite;
-            }
-
-            return BossRushUI.GetRoundedSprite(8);
-        }
-
         /// <summary>注入卡片 / 列表行底图。传 null 恢复程序化默认皮肤。</summary>
         internal static void InjectRaisedSprite(Sprite sprite)
         {
@@ -230,27 +209,10 @@ namespace BossRush
             injectedHandleSprite = sprite;
         }
 
-        /// <summary>卡片底图。没单独出图时退到面板图（而不是按钮图）：卡片是面板的小号，不是按钮。</summary>
-        internal static Sprite GetRaisedSprite()
-        {
-            return injectedRaisedSprite != null ? injectedRaisedSprite : GetPanelSprite();
-        }
-
-        /// <summary>分隔线底图。没出图时退到程序化 2px 圆角，仍比 1px 裸 quad 稳。</summary>
-        internal static Sprite GetRuleSprite()
-        {
-            return injectedRuleSprite != null ? injectedRuleSprite : BossRushUI.GetRoundedSprite(2);
-        }
-
-        /// <summary>滚动滑块底图。没出图时退到按钮图。</summary>
-        internal static Sprite GetScrollHandleSprite()
-        {
-            return injectedHandleSprite != null ? injectedHandleSprite : GetButtonSprite();
-        }
-
         /// <summary>
-        /// 某一档当前实际拿到的图；没注入过返回 null。
-        /// <see cref="BossRushUI.GetSkinCornerRadius"/> 靠它读图集的 border 反推真实圆角。
+        /// 某一档当前实际拿到的图；没注入过返回 null（程序化兜底由 <see cref="BossRushUI.ApplyPanelSkin(Image,int,BossRushUISkinPart)"/> 决定）。
+        /// 卡片没单独出图时退到面板图、滚动滑块退到按钮图。这是全库唯一的取图入口：
+        /// 旧的 GetPanelSprite / GetRaisedSprite 一类取图函数没有调用方、兜底口径还与 ApplyPanelSkin 不一致，已删。
         /// </summary>
         internal static Sprite GetInjected(BossRushUISkinPart part)
         {
@@ -272,8 +234,11 @@ namespace BossRush
     internal static class BossRushUI
     {
         // 半径 -> 九宫格 Sprite。全 Mod 共享，不随界面销毁而释放：
-        // 这些贴图很小（最大 64x64 的 Alpha8），且下一个界面马上又要用。
+        // 这些贴图很小（ARGB32，最大 66×66），且下一个界面马上又要用。
         private static readonly Dictionary<int, Sprite> roundedSpriteCache = new Dictionary<int, Sprite>();
+
+        // 分隔线档（Rule）没注入图集时的程序化兜底，形状照图集 divider，见 GetRuleSprite。
+        private static Sprite ruleSprite;
 
         // 半径 -> 圆角「描边环」Sprite（中心透明）。与上面一张是两件事，不能合并：
         // 底图被调用方的深色 token 乘过之后，图集里烤进去的那圈内描边只剩 2.9/255 的通道差
@@ -335,8 +300,21 @@ namespace BossRush
                 solidSprite = null;
             }
 
+            if (ruleSprite != null)
+            {
+                Texture2D ruleTexture = ruleSprite.texture;
+                Object.Destroy(ruleSprite);
+                if (ruleTexture != null)
+                {
+                    Object.Destroy(ruleTexture);
+                }
+                ruleSprite = null;
+            }
+
             cachedLegacyFont = null;
             legacyFontResolved = false;
+            hideTokensField = null;
+            hideTokensResolved = false;
 
             // 官方右上角提示栈的实例缓存（GetTopRightHudTop）：随场景销毁后 Unity 判空会自己重找，
             // 这里显式放掉，模块销毁后不再握着已销毁对象的托管壳。
@@ -403,6 +381,50 @@ namespace BossRush
             return solidSprite;
         }
 
+        /// <summary>
+        /// 分隔线档（Rule）没注入图集时的程序化兜底：8×8、border 2，与图集 `divider` 同形——
+        /// 中间两行实、上下各一行半透明柔边、再往外全透明，线头两列半透明。
+        /// 旧兜底是调用方半径的实心圆角条，铺分隔线的 rect 是 8 高，缺包时就画成一整条 8px 的实心粗条（2026-09-14 审核 F-17）。
+        /// </summary>
+        internal static Sprite GetRuleSprite()
+        {
+            if (ruleSprite != null)
+            {
+                return ruleSprite;
+            }
+
+            const int size = 8;
+            float[] band = { 0f, 0f, 0.35f, 1f, 1f, 0.35f, 0f, 0f };
+            Texture2D texture = new Texture2D(size, size, TextureFormat.ARGB32, false);
+            texture.name = "BossRushUI_Rule";
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            texture.hideFlags = HideFlags.HideAndDontSave;
+            Color32[] pixels = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float ends = x == 0 || x == size - 1 ? 0.5f : 1f;
+                    pixels[y * size + x] = new Color32(255, 255, 255, (byte)Mathf.RoundToInt(band[y] * ends * 255f));
+                }
+            }
+            texture.SetPixels32(pixels);
+            texture.Apply(false, false);
+
+            ruleSprite = Sprite.Create(
+                texture,
+                new Rect(0f, 0f, size, size),
+                new Vector2(0.5f, 0.5f),
+                100f,
+                0,
+                SpriteMeshType.FullRect,
+                new Vector4(2f, 2f, 2f, 2f));
+            ruleSprite.name = "BossRushUI_Rule";
+            ruleSprite.hideFlags = HideFlags.HideAndDontSave;
+            return ruleSprite;
+        }
+
         private static Sprite BuildRoundedSprite(int radius)
         {
             int size = radius * 2 + 2;
@@ -445,10 +467,14 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 描边环的厚度（本库画布单位）。1.25 在 1080p 上画出一条实心 1px、外沿带半像素柔化的线；
-        /// 4K 下画布缩放系数是 2，自然变成 2px，不需要另配一套。
+        /// 描边环的厚度（本库画布单位）。1.5 在直边上画出**一个满覆盖的纹素 + 外侧一个半覆盖的纹素**：
+        /// 1080p 下是一条实心 1px 加半像素柔边；4K 下画布缩放系数是 2，自然变成 2px，不需要另配一套。
+        ///
+        /// 【为什么不是 1.25（2026-09-14 审核 F-02）】距离场按纹素算，1.25 在直边上只剩覆盖率 0.50 与 0.75 两个纹素、
+        /// 一个满覆盖的都没有：乘上 Stroke 的 alpha 之后描边实际不透明度最多 0.585，
+        /// 按满覆盖算出来的「≥3.1:1」实际只有 2.3–2.4:1。守卫 SkyIslandUiContrastGuard 按这里的算式复算覆盖率。
         /// </summary>
-        internal const float StrokeThickness = 1.25f;
+        internal const float StrokeThickness = 1.5f;
 
         /// <summary>
         /// 圆角「描边环」九宫格：只有沿边的一圈，中心完全透明。
@@ -531,17 +557,17 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 给一块底图铺一圈描边。描边是 <paramref name="surface"/> 的**兄弟子物体**，
-        /// 整块拉满父矩形，永不接收点击。
+        /// 给一块底图铺一圈描边。描边是 <paramref name="surface"/> 的**子物体**，
+        /// 整块拉满父矩形，永不接收点击，也不参与父物体的布局。
         ///
         /// 调用顺序必须在 <see cref="ApplyPanelSkin(Image,int,BossRushUISkinPart)"/> 之后：
-        /// 圆角要按图集实际的 border 取（<see cref="GetSkinCornerRadius"/>），而那要先知道分档。
+        /// 圆角要按图集实际画出来的弧取（<see cref="GetSkinCornerRadius"/>），而那要先知道分档。
         /// </summary>
         /// <param name="surface">已经套好底图的那个 Image，描边会挂到它的 GameObject 下。</param>
         /// <param name="radius">调用方声明的圆角半径（与 ApplyPanelSkin 传的同一个）。</param>
         /// <param name="part">分档，与 ApplyPanelSkin 传的同一个。</param>
-        /// <param name="color">描边色。深色面板上用 <c>BossRushUIColors.Divider</c> 系，
-        /// 不要用面板自己的 Surface——那等于没画。</param>
+        /// <param name="color">描边色。深色面板上用 <see cref="BossRushUIColors.Stroke"/>——
+        /// 不要用面板自己的 Surface（那等于没画），也不要用 Divider（a=0.32，只有 1.54:1）。</param>
         internal static Image ApplyPanelStroke(Image surface, int radius, BossRushUISkinPart part, Color color)
         {
             if (surface == null)
@@ -556,6 +582,9 @@ namespace BossRush
             rect.anchorMax = Vector2.one;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+            // 描边只是底图上的一层皮：宿主带 LayoutGroup 时（F3 天空岛面板），不忽略布局的话它会被当成第一行子项排进去——
+            // 面板外沿没边、顶上多出一个空框（2026-09-14 审核 F-16）。
+            obj.AddComponent<LayoutElement>().ignoreLayout = true;
 
             Image stroke = obj.AddComponent<Image>();
             stroke.raycastTarget = false;   // 描边永远不吃点击，否则会盖住底图上的按钮
@@ -568,6 +597,17 @@ namespace BossRush
                 stroke.pixelsPerUnitMultiplier = 1f;
             }
             return stroke;
+        }
+
+        /// <summary>
+        /// 深色面板 / 卡片的底图与描边一次套上：<see cref="ApplyPanelSkin(Image,int,BossRushUISkinPart)"/> 之后接
+        /// <see cref="ApplyPanelStroke"/>（描边色 <see cref="BossRushUIColors.Stroke"/>），返回描边。
+        /// 存量界面迁到分档 + 描边时用它（2026-09-14 审核附录 A），调用点行数不变。
+        /// </summary>
+        internal static Image ApplyFramedPanelSkin(Image image, int radius, BossRushUISkinPart part)
+        {
+            ApplyPanelSkin(image, radius, part);
+            return ApplyPanelStroke(image, radius, part, BossRushUIColors.Stroke);
         }
 
         /// <summary>
@@ -644,8 +684,11 @@ namespace BossRush
             part = ResolvePart(radius, part);
             Sprite injected = BossRushUISkin.GetInjected(part);
             // 注入了这一档就用这一档的图；没注入（或本档一律程序化）时保留调用方的半径——
-            // 2px 细轨不能误用 8px 按钮圆角。
-            image.sprite = injected != null ? injected : GetRoundedSprite(radius);
+            // 2px 细轨不能误用 8px 按钮圆角。分隔线档例外：退到与图集 divider 同形的程序化条，
+            // 调用方半径的实心圆角条铺在 8 高的 rect 上会画成一整条粗条（2026-09-14 审核 F-17）。
+            image.sprite = injected != null
+                ? injected
+                : (part == BossRushUISkinPart.Rule ? GetRuleSprite() : GetRoundedSprite(radius));
             if (image.sprite == null)
             {
                 return;
@@ -684,24 +727,32 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 这一档画出来的**实际**圆角半径（本库画布单位）。
+        /// 这一档画出来的**实际**圆角弧半径（本库画布单位）。描边环按它生成，四角才和底图的弧对得上。
         ///
-        /// 注入图集之后圆角由图的 border 决定，不再是调用方传的 radius：
-        /// 面板图 border 16，调用方传 18 也画成 16。描边环必须按这个数生成，
-        /// 否则四角会和底图差出两像素、露出一道错位的弧。
-        /// 图集 sprite 的 <c>pixelsPerUnit</c> 与画布 <c>referencePixelsPerUnit</c> 同为 100，
-        /// 所以 border 的像素数就是画布单位数（bundle 实测 m_PixelsToUnits=100）。
+        /// 没注入图集时就是调用方的半径（程序化圆角的 border 等于弧半径）。注入之后不能直接用 border：
+        /// border 是九宫格的切线位置，比图里画出来的弧大一圈——<c>panel_surface</c> border 16、弧半径约 14，
+        /// <c>button_normal</c> border 10、弧约 9（2026-09-14 审核 F-14 读图集像素）；按 border 画，45° 方向错开约 0.8 单位。
+        /// 图集 sprite 的 <c>pixelsPerUnit</c> 与画布 <c>referencePixelsPerUnit</c> 同为 100，像素数就是画布单位数。
         /// </summary>
         internal static int GetSkinCornerRadius(int radius, BossRushUISkinPart part)
         {
-            Sprite injected = BossRushUISkin.GetInjected(ResolvePart(radius, part));
+            BossRushUISkinPart resolved = ResolvePart(radius, part);
+            Sprite injected = BossRushUISkin.GetInjected(resolved);
             if (injected != null && injected.border.x > 0.5f)
             {
-                return Mathf.Clamp(Mathf.RoundToInt(injected.border.x), 1, 32);
+                int arc = resolved == BossRushUISkinPart.Button || resolved == BossRushUISkinPart.ScrollHandle
+                    ? InjectedButtonArcRadius
+                    : InjectedPanelArcRadius;
+                return Mathf.Clamp(Mathf.Min(Mathf.RoundToInt(injected.border.x), arc), 1, 32);
             }
 
             return Mathf.Clamp(radius, 1, 32);
         }
+
+        /// <summary>图集面板 / 卡片图里画出来的弧半径（像素），比 border 16 小一圈。重打图集时按像素复核。</summary>
+        private const int InjectedPanelArcRadius = 14;
+        /// <summary>图集按钮 / 滑块图里画出来的弧半径（像素），比 border 10 小一圈。</summary>
+        private const int InjectedButtonArcRadius = 9;
 
         /// <summary>
         /// 二次 ease-out：<c>1-(1-t)²</c>。**元素飞进屏幕时几乎总是对的**——它模拟物体自然停稳的方式：
@@ -740,10 +791,10 @@ namespace BossRush
         /// <summary>
         /// 亮底按钮用深字，避免青绿主按钮和纸面按钮的白字低对比。
         ///
-        /// 阈值取 0.30 而不是贴着中灰：本 Mod 的 Warning(≈0.168)、Success(≈0.179)
-        /// 两个常用底色本来就挤在 0.18 附近，用中灰阈值时任何一次配色微调
-        /// 都会把标签静默从白翻黑，而且没有任何守卫会拦。0.30 距下方最近的
-        /// Success 有 40% 余量、距上方最近的 Accent(≈0.379) 有 26%，两边都不在刀刃上。
+        /// 阈值取 0.30 而不是贴着中灰：本 Mod 的 Warning(≈0.145)、Success(≈0.154)
+        /// 两个常用底色挤在 0.15 附近，用中灰阈值时任何一次配色微调
+        /// 都会把标签静默从白翻黑，而且没有任何守卫会拦。0.30 距下方的 Warning / Success
+        /// 有 51.6% / 48.6% 余量、距上方最近的 Accent(≈0.378) 有 25.8%，两边都不在刀刃上。
         /// 中间带一律回落白字——深色 UI 的默认。余量由 UILayoutReadabilityGuard 断言。
         /// </summary>
         internal static Color GetButtonTextColor(Color background)
@@ -753,14 +804,35 @@ namespace BossRush
                 : BossRushUIColors.TextPrimary;
         }
 
+        /// <summary>悬停向白提亮的比例。</summary>
+        private const float HoverLift = 0.22f;
+        /// <summary>白字底提亮会让标签跌破 4.5:1 时，悬停改为压暗的比例。要浅于按下的 0.20，三态梯度才分得开。</summary>
+        private const float HoverDarken = 0.10f;
+
+        /// <summary>
+        /// 白字标签（TextPrimary，相对亮度 ≈0.906）在 4.5:1 下允许的底色相对亮度上限：(0.906+0.05)/4.5−0.05 ≈ 0.162。
+        /// </summary>
+        internal const float WhiteLabelMaxLuminance = 0.162f;
+
         /// <summary>
         /// 由底色派生按钮三态。ColorTint 与 Graphic.color 相乘，所以调用方必须把
         /// Graphic 置白、由 ColorBlock 承担绝对色——**不要**用大于 1 的中性乘色做悬停：
         /// CanvasRenderer 的 tint 存的是 32 位色，超过 1 会被夹回白色，悬停等于没做。
+        ///
+        /// 【白字底的悬停改压暗（2026-09-14 审核附带项）】Success(0.154)、Warning(0.145) 向白提 0.22 会冲到 0.26 / 0.25，
+        /// 白字标签只剩 3.4:1——鼠标一移上去就不合格；按上限封顶的话只能提到 0.162，悬停几乎看不出来。
+        /// 这种底色改成浅压暗 <see cref="HoverDarken"/>：主流 UI 库（Bootstrap 一类）实心彩色按钮的悬停本来就是压暗，
+        /// 按下压得更深（0.20），三态梯度仍在。暗底（Danger、Surface 一类）提亮不越线，照旧向白提亮。
+        /// 只在建按钮时调，不是每帧路径。
         /// </summary>
         internal static Color GetHoverColor(Color background)
         {
-            Color hover = Color.Lerp(background, Color.white, 0.22f);
+            Color hover = Color.Lerp(background, Color.white, HoverLift);
+            if (RelativeLuminance(background) <= WhiteLabelMaxLuminance
+                && RelativeLuminance(hover) > WhiteLabelMaxLuminance)
+            {
+                hover = Color.Lerp(background, Color.black, HoverDarken);
+            }
             hover.a = background.a;
             return hover;
         }
@@ -782,26 +854,56 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 官方 HUD 此刻是否让位。逐条照抄官方 `HUDManager.ShouldDisplay` 除隐藏令牌之外的四条公开条件：
-        /// 任何官方 View 打开（背包、地图等）、对话界面、捏脸界面、拍照模式。
+        /// 官方 HUD 此刻是否让位。逐条照抄官方 `HUDManager.ShouldDisplay` 的五条条件：
+        /// 任何官方 View 打开（背包、地图等）、对话界面、捏脸界面、拍照模式，以及存活的隐藏令牌。
         ///
         /// 自绘常驻 HUD 必须跟它一起让位：官方 View 与对话画在 sortingOrder 100 的画布上
         /// （`LevelManager/GameplayUICanvas`、`DialogueInteractiveCanvas`，UnityPy 读游戏资源确认），
         /// 本库的 HUD 层是 <see cref="BossRushUILayers.HudOverlay"/>（1200），不跟随就会浮在背包与地图**上面**。
-        /// 隐藏令牌是私有静态列表读不到，也不需要读：本 Mod 注册令牌的界面自带整屏遮罩。
-        /// 每帧调用：四次静态读取，无分配。
+        ///
+        /// 【隐藏令牌为什么也要读（2026-09-14 审核 F-20）】官方游戏机 `GamingConsole` 打开时注册令牌、官方 HUD 淡出，
+        /// 本 Mod 的常驻 HUD 不跟就留在屏幕上。令牌表是私有静态 List，FieldInfo 取一次缓存。
+        /// 每帧调用：四次静态读取 + 一次引用读取与一次遍历（通常 0–1 个元素），无分配。
         /// </summary>
         internal static bool IsOfficialHudHidden()
         {
             try
             {
                 return global::Duckov.UI.View.ActiveView != null || global::Dialogues.DialogueUI.Active
-                    || global::CustomFaceUI.ActiveView != null || global::CameraMode.Active;
+                    || global::CustomFaceUI.ActiveView != null || global::CameraMode.Active
+                    || AnyOfficialHideToken();
             }
             catch (System.Exception)
             {
                 return false;
             }
+        }
+
+        private static System.Reflection.FieldInfo hideTokensField;
+        private static bool hideTokensResolved;
+
+        /// <summary>官方 `HUDManager.hideTokens` 里有没有未销毁的令牌，口径同 ShouldDisplay 的 `Any(e => e != null)`。</summary>
+        private static bool AnyOfficialHideToken()
+        {
+            if (!hideTokensResolved)
+            {
+                hideTokensResolved = true;
+                hideTokensField = typeof(global::HUDManager).GetField("hideTokens",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+            }
+            List<Object> tokens = hideTokensField != null ? hideTokensField.GetValue(null) as List<Object> : null;
+            if (tokens == null)
+            {
+                return false;
+            }
+            for (int i = 0; i < tokens.Count; i++)
+            {
+                if (tokens[i] != null)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
@@ -905,9 +1007,9 @@ namespace BossRush
                 new Vector2(-8f, 0f), new Vector2(12f, -8f), new Vector2(0.5f, 0.5f));
             Image trackImage = track.AddComponent<Image>();
             trackImage.color = BossRushUIColors.Surface;
-            // 轨道与滑块都用 scroll_handle（24×24 / border 8）：12px 宽的轨道上它会被压成胶囊，
-            // 正是滚动条该有的形状。旧写法走按钮图（32×32 / border 10），10+10 压进 12px，
-            // 中心区只剩 2px，画出来是按钮圆角而不是一条轨。
+            // 轨道与滑块都用 scroll_handle（24×24 / border 8）：8+8 放不进 12px 宽，Unity 按比例把左右 border
+            // 压成 6+6、中心区 0，两端的弧正好拼成胶囊——滚动条该有的形状。旧写法走按钮图（32×32 / border 10），
+            // 同样压成 6+6，但按钮图的弧只占 border 的一部分，画出来是两个方角夹一段直边，不像一条轨。
             ApplyPanelSkin(trackImage, 4, BossRushUISkinPart.ScrollHandle);
             GameObject handle = ZombieModeUIHelper.CreateRect(
                 "Handle", track.transform, Vector2.zero, Vector2.one,
@@ -963,6 +1065,9 @@ namespace BossRush
         /// <summary>
         /// 圆角卡片。左侧 accent 竖条是本 Mod 已有的视觉语言（奖励卡、服务按钮、
         /// 模态标题都在用），这里收成一份。
+        ///
+        /// 卡片走 Card 档并描边（AGENTS §4.14）：旧写法两参 Auto，radius 10 落进按钮档、也没有边，
+        /// 深色卡底对面板底只有 1.0x:1，征程板、展柜、Mode H 押品、遗种巢、随机事件的卡片都靠文字撑轮廓（审核 F-15）。
         /// </summary>
         internal static GameObject CreateCard(
             string name,
@@ -979,7 +1084,8 @@ namespace BossRush
 
             Image background = card.AddComponent<Image>();
             background.color = surfaceColor;
-            ApplyPanelSkin(background, 10);
+            ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);
+            ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
 
             if (showAccentRail)
             {
@@ -993,7 +1099,7 @@ namespace BossRush
                     new Vector2(0f, 0.5f));
                 Image railImage = rail.AddComponent<Image>();
                 railImage.color = accentColor;
-                ApplyPanelSkin(railImage, 2);
+                ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
                 railImage.raycastTarget = false;
             }
 
@@ -1021,180 +1127,6 @@ namespace BossRush
                 animation = panel.AddComponent<BossRushUIOpenAnimation>();
             }
             animation.Restart();
-        }
-    }
-
-    /// <summary>
-    /// 子元素错峰入场：延迟 <c>delay</c> 秒后，用 ease-out 在 <c>duration</c> 秒内
-    /// 淡入并从下方 <c>rise</c> 像素升到位。
-    ///
-    /// 【为什么按钮从第一帧就是可点的】只改 CanvasGroup 的 alpha 与 anchoredPosition，
-    /// 不动 <c>interactable</c> / <c>blocksRaycasts</c>。玩家要是第一帧就按数字键，
-    /// 照常生效——动效绝不能变成输入延迟。
-    ///
-    /// 【暂停时停推进】走 unscaled 时间，所以必须自己看 <see cref="BossRushUI.IsGamePaused"/>。
-    /// </summary>
-    internal sealed class BossRushUIEntranceAnimation : MonoBehaviour
-    {
-        private CanvasGroup canvasGroup;
-        private RectTransform rect;
-        private Vector2 target;
-        private float delay, duration, rise, elapsed;
-        private bool playing;
-
-        /// <summary>挂上并立刻起播。重复调用会重置。</summary>
-        internal static void Play(GameObject go, float delay, float duration, float rise)
-        {
-            if (go == null)
-            {
-                return;
-            }
-
-            BossRushUIEntranceAnimation animation = go.GetComponent<BossRushUIEntranceAnimation>();
-            if (animation == null)
-            {
-                animation = go.AddComponent<BossRushUIEntranceAnimation>();
-            }
-            animation.Restart(delay, duration, rise);
-        }
-
-        private void Restart(float delaySeconds, float durationSeconds, float riseUnits)
-        {
-            if (canvasGroup == null)
-            {
-                canvasGroup = gameObject.GetComponent<CanvasGroup>();
-                if (canvasGroup == null)
-                {
-                    canvasGroup = gameObject.AddComponent<CanvasGroup>();
-                }
-            }
-            rect = transform as RectTransform;
-            // 目标位置必须在第一帧之前记下来：之后每帧都是「目标 - 余下的位移」，
-            // 不是「当前位置 + 增量」，否则被打断一次就再也回不到正确位置。
-            target = rect != null ? rect.anchoredPosition : Vector2.zero;
-            delay = Mathf.Max(0f, delaySeconds);
-            duration = Mathf.Max(0.01f, durationSeconds);
-            rise = riseUnits;
-            elapsed = 0f;
-            playing = true;
-            canvasGroup.alpha = 0f;
-            if (rect != null)
-            {
-                rect.anchoredPosition = new Vector2(target.x, target.y - rise);
-            }
-        }
-
-        private void Update()
-        {
-            if (!playing || BossRushUI.IsGamePaused())
-            {
-                return;
-            }
-
-            elapsed += Time.unscaledDeltaTime;
-            if (elapsed < delay)
-            {
-                return;
-            }
-
-            float t = Mathf.Clamp01((elapsed - delay) / duration);
-            float eased = BossRushUI.EaseOut(t);
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = eased;
-            }
-            if (rect != null)
-            {
-                rect.anchoredPosition = new Vector2(target.x, Mathf.Lerp(target.y - rise, target.y, eased));
-            }
-
-            if (t < 1f)
-            {
-                return;
-            }
-
-            playing = false;
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = 1f;
-            }
-            if (rect != null)
-            {
-                rect.anchoredPosition = target;
-            }
-        }
-    }
-
-    /// <summary>
-    /// 面板打开动画：0.18 秒淡入并从 0.96 放大到 1。
-    /// 用 unscaledDeltaTime，模态会把 timeScale 置 0。
-    ///
-    /// 【为什么是 0.18 不是 0.12】0.12 秒在 60fps 下只有 7 帧，玩家看到的基本是「面板直接出现」，
-    /// 等于白做。0.18 秒（约 11 帧）是仍然不拖沓、但看得出「它是长出来的」的下限。
-    ///
-    /// 【为什么 SmoothStep 而不是纯 ease-out】纯 ease-out 起手最快，适合「元素飞进屏幕」；
-    /// 面板是原地长出来的，两头都收一点（SmoothStep ≈ ease-in-out）才不显得从天上砸下来。
-    /// 子元素的**入场**（列表行、卡片滑入）才用 ease-out——它们真的在移动。
-    /// </summary>
-    internal sealed class BossRushUIOpenAnimation : MonoBehaviour
-    {
-        private const float DurationSeconds = 0.18f;
-        private const float StartScale = 0.96f;
-
-        private CanvasGroup canvasGroup;
-        private float elapsed;
-        private bool playing;
-
-        internal void Restart()
-        {
-            if (canvasGroup == null)
-            {
-                canvasGroup = gameObject.GetComponent<CanvasGroup>();
-                if (canvasGroup == null)
-                {
-                    canvasGroup = gameObject.AddComponent<CanvasGroup>();
-                }
-            }
-
-            elapsed = 0f;
-            playing = true;
-            canvasGroup.alpha = 0f;
-            transform.localScale = Vector3.one * StartScale;
-        }
-
-        private void Update()
-        {
-            if (!playing)
-            {
-                return;
-            }
-
-            // 暂停菜单开着时停推进：本动画走 unscaled 时间，不停下来的话它会在
-            // sortingOrder 10000 的暂停菜单背后悄悄播完，玩家回来只看到一个已经就位的面板。
-            if (BossRushUI.IsGamePaused())
-            {
-                return;
-            }
-
-            elapsed += Time.unscaledDeltaTime;
-            float t = Mathf.Clamp01(elapsed / DurationSeconds);
-            // SmoothStep 收尾，避免线性淡入显得生硬。
-            float eased = t * t * (3f - 2f * t);
-            if (canvasGroup != null)
-            {
-                canvasGroup.alpha = eased;
-            }
-            transform.localScale = Vector3.one * Mathf.Lerp(StartScale, 1f, eased);
-
-            if (t >= 1f)
-            {
-                playing = false;
-                transform.localScale = Vector3.one;
-                if (canvasGroup != null)
-                {
-                    canvasGroup.alpha = 1f;
-                }
-            }
         }
     }
 }
