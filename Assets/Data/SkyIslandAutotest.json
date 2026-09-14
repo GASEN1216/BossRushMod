@@ -1,0 +1,519 @@
+{
+  "version": 1,
+  "scope": "全自动实机验收（F3「自动验收 + 完整待测清单」的天空岛后半程，只在 Dev 构建里跑）。stages 决定编排顺序，steps 由 DebugAndTools/F3GameplayValidationAutotestActions.cs 逐条执行，coverage 把天空岛人工清单 2.10–2.17 与 M_SKY_ISLAND_01–14 逐行归成自动断言 / 截图待 AI 看 / 只能人工。动作与断言名单只在 F3AutotestJudges 一处；tests/SkyIslandAutotestTableGuard.py 核对清单编号、证据与每步至少一条断言或一张截图。",
+  "stages": [
+    { "id": "base_before", "title": "基地 · 出发前", "when": "base_before" },
+    { "id": "landing", "title": "落地", "when": "landing" },
+    { "id": "real", "title": "测试档真实状态", "when": "real" },
+    { "id": "new_save", "title": "新档", "when": "story", "apply": ["reset"] },
+    { "id": "both_beacons", "title": "双航标", "when": "story", "apply": ["clear:D", "clear:D_02", "clear:G", "clear:G_02", "story:RepairWindBeacon", "story:RepairStarLamp"] },
+    { "id": "storm_slain", "title": "打过噬风、未敲钟", "when": "story", "apply": ["story:StormSlain"] },
+    { "id": "bell_ready", "title": "钟守已放行、未敲钟", "when": "story", "apply": ["story:ReconcileBellKeeper"] },
+    { "id": "ending", "title": "结局档", "when": "story", "apply": ["story:RingHomecomingBell"] },
+    { "id": "ending_lamps", "title": "结局档 + 七盏风晶灯", "when": "story", "apply": ["lamp:Light_E", "lamp:Light_F", "lamp:Light_G", "lamp:Light_H", "lamp:Light_S2", "lamp:Light_S3", "lamp:Light_S4"] },
+    { "id": "alt_language", "title": "换语言复拍", "when": "alt_language" },
+    { "id": "base_after", "title": "回基地之后", "when": "base_after" }
+  ],
+  "steps": [
+    {
+      "id": "SKY_AUTO_BASE_PREV_QUIT_LOG", "title": "上一局在岛上直接退游戏：Player-prev.log 里是 application_quit 清理，没有销毁途中激活物体的报错",
+      "stage": "base_before", "location": "Base", "class": "auto", "checklist": ["2.16.D5"], "budget": 10,
+      "actions": ["assert:prev_log_quit"]
+    },
+    {
+      "id": "SKY_AUTO_BASE_MODEG_BUTTON", "title": "UI 审核第八节 5：Mode G「立即迎战」绿按钮取的是压暗后的 token（F-07）",
+      "stage": "base_before", "location": "Base", "class": "shot", "checklist": ["2.14.14"], "budget": 20,
+      "actions": ["assert:color_equals:ZombieModeUIHelper.SuccessColor:BossRushUIColors.Success", "open_modeg_confirm", "shot:modeg_confirm:ui:ModeG", "close_modeg_confirm"]
+    },
+    {
+      "id": "SKY_AUTO_LAND_BANNER", "title": "UI 审核第八节 1：落地区域大标题三行取色（线性色彩空间）",
+      "stage": "landing", "location": "PlayerSpawn", "class": "auto", "checklist": ["2.14.1", "2.14.2"], "budget": 25,
+      "actions": ["wait_alpha:SkyIslandAreaTitle:0.9:10", "shot:landing_banner:ui:SkyIslandHud", "assert:contrast_min:SkyIslandAreaTitle/Overline:4.5", "assert:contrast_min:SkyIslandAreaTitle/Title:3", "assert:contrast_min:SkyIslandAreaTitle/Hint:4.5", "assert:overflow_none"]
+    },
+    {
+      "id": "SKY_AUTO_LAND_HUD_CARD", "title": "右上目标卡：取色、不出框、显示的目标与规则一致；物资池已在读条画面预热",
+      "stage": "landing", "location": "PlayerSpawn", "class": "auto", "checklist": ["2.14.4", "2.17.4", "M_SKY_ISLAND_01"], "budget": 20,
+      "actions": ["wait_alpha:SkyIslandTracker:0.9:8", "shot:hud_card:ui:SkyIslandHud", "assert:contrast_min:SkyIslandTracker/Objective:4.5", "assert:contrast_min:SkyIslandTracker/Region:3", "assert:overflow_none", "assert:case:SKY_STORY_OBJECTIVE", "assert:log_contains:[SkyIslandLoot] PREWARM"]
+    },
+    {
+      "id": "SKY_AUTO_LAND_DOCK_WORLD", "title": "码头世界截图：撤离环与采集光斑在屏幕上的可见度",
+      "stage": "landing", "location": "PlayerSpawn", "class": "shot", "checklist": ["2.11.1", "2.14.15", "2.14.18"], "budget": 20,
+      "actions": ["wait_real:1", "shot:dock_world:world", "assert:visible_min:ground_ring:0.15", "assert:visible_min:gather_glow:0.1", "assert:case:SKY_EXTRACTION_RINGS"]
+    },
+    {
+      "id": "SKY_AUTO_LAND_PIGEON", "title": "落地约 8 秒信鸽字幕；带的信是不是 NextFor",
+      "stage": "landing", "location": "PlayerSpawn", "class": "auto", "checklist": ["2.10.1"], "budget": 25,
+      "actions": ["wait_caption:信鸽落在|carrier pigeon has landed:14:optional", "shot:pigeon_caption:ui:SkyIslandHud", "assert:case:SKY_LETTER_PIGEON"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BRIGHT_BANNER", "title": "UI 审核第八节 1：云海最亮处（镜水寺）第一次触发大标题的取色",
+      "stage": "real", "location": "POI_F", "class": "auto", "checklist": ["2.14.3"], "budget": 40,
+      "actions": ["invincible:on", "teleport:POI_F:0:0", "wait_alpha:SkyIslandAreaTitle:0.9:10", "shot:bright_banner:ui:SkyIslandHud", "assert:contrast_min:SkyIslandAreaTitle/Overline:4.5", "assert:contrast_min:SkyIslandAreaTitle/Title:3"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_PIGEON_LETTER", "title": "读信、收下；零选项面板点 ESC 键帽关闭；信鸽飞走",
+      "stage": "real", "location": "SkyIslandPigeon_*", "class": "auto", "checklist": ["2.10.2", "2.15.36", "2.16.14"], "budget": 45,
+      "actions": ["interact:pigeon", "wait_panel:4", "shot:pigeon_letter:ui", "assert:overflow_none", "choose_label:收下这封信|Keep the letter", "shot:pigeon_kept_zero_choice:ui", "assert:choice_count_le:0", "click_close", "assert:panel_closed", "wait_real:1", "assert:object_absent:SkyIslandPigeon_"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_COMPASS", "title": "风标罗盘读数字幕与官方地图对照截图",
+      "stage": "real", "location": "PlayerSpawn", "class": "shot", "checklist": ["2.10.3"], "budget": 30,
+      "actions": ["teleport:PlayerSpawn:0:0", "use_compass", "wait_caption::4:optional", "shot:compass_caption:ui:SkyIslandHud", "open_map", "shot:compass_map:ui:Map", "close_view"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_DOCK_PANEL", "title": "码头装置面板与群岛手记：开合动效、底图、标题带、滚动、ESC 键帽、不出框、正文不印存档状态",
+      "stage": "real", "location": "Search_A", "class": "shot", "checklist": ["2.10.5", "2.14.7", "2.14.9", "2.14.10", "2.14.22", "2.14.23", "2.14.27", "2.14.28", "2.15.13", "2.15.14", "2.15.17", "2.15.19", "2.15.35", "2.15.37"], "budget": 90,
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "burst:dock_panel_open:ui:3:0.06", "shot:dock_panel:ui", "assert:overflow_none", "assert:body_absent:群岛记录已同步|records are in sync", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "shot:journal_home:ui", "assert:choice_count_le:4", "assert:case:SKY_CHOICE_GATES", "choose:1", "wait_panel:3", "shot:journal_isles:ui", "choose_label:这一趟|This run", "shot:journal_progress:ui", "assert:overflow_none", "choose_label:返回手记|Back to the journal", "shot:journal_back_home:ui", "click_close", "assert:panel_closed"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_RESIDENT_TALK", "title": "居民叙事走官方对话、一句一屏、最后多选；选「我想办点事」开功能面板；对话时常驻 HUD 收起",
+      "stage": "real", "location": "EnemySpawn_B", "class": "auto", "checklist": ["2.15.1", "2.15.2", "2.15.3", "2.15.6", "2.15.33", "2.14.26", "2.14.30", "2.16.1", "2.16.11"], "budget": 80,
+      "actions": ["teleport:EnemySpawn_B:2.5:0", "interact:resident:sky_weibai", "wait_dialogue:5", "wait_real:0.8", "assert:alpha_le:SkyIslandHud:0.05", "shot:dialogue_first_line:ui:Dialogue", "dialogue_advance:30", "assert:dialogue_active", "shot:dialogue_choice:ui:Dialogue", "dialogue_choose:0", "wait_panel:5", "assert:panel_open", "shot:resident_panel:ui", "assert:overflow_none", "choose_label:航务委托|Lane contracts", "wait_panel:3", "shot:resident_contracts:ui", "assert:overflow_none"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_RESIDENT_DECLINE", "title": "选「先这样」不开面板；说完话再跟同一个人说一次还说得上",
+      "stage": "real", "location": "EnemySpawn_B", "class": "auto", "checklist": ["2.15.4", "2.15.7d"], "budget": 60,
+      "actions": ["interact:resident:sky_weibai", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:1", "wait_real:1.5", "assert:panel_closed", "assert:dialogue_inactive", "interact:resident:sky_weibai", "wait_dialogue:5", "assert:dialogue_active", "shot:talk_again:ui:Dialogue"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_GATHER_DOCK", "title": "码头浮木：近处光斑、交互读条、产出进背包、采过即消失",
+      "stage": "real", "location": "Lamp_A", "class": "auto", "checklist": ["2.11.2", "2.14.19", "2.14.21"], "budget": 40,
+      "actions": ["teleport:Lamp_A:3:0", "shot:gather_near:world", "assert:visible_min:gather_glow:0.1", "interact:gather:A1", "wait_real:1", "assert:pack_delta_ge:500075:1", "assert:object_absent:SkyIslandGather_A1", "assert:case:SKY_GATHER_NODES"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_GATHER_KINDS", "title": "青穗草丛 / 云苔 / 风晶簇 / 残铜矿脉各采一处：产出物品对、件数进背包",
+      "stage": "real", "location": "Lamp_B, Lamp_C_02, Lamp_E, Lamp_G", "class": "auto", "checklist": ["2.11.3", "2.12.2"], "budget": 160,
+      "actions": ["invincible:on", "teleport:Lamp_B:2:0", "interact:gather:B1", "assert:pack_delta_ge:500074:1", "teleport:Lamp_C_02:2:0", "clear_nearby:45:15", "interact:gather:C3", "assert:pack_delta_ge:500073:1", "teleport:Lamp_E:2:0", "clear_nearby:45:15", "interact:gather:E1", "assert:pack_delta_ge:500077:1", "teleport:Lamp_G:2:0", "clear_nearby:45:15", "interact:gather:G1", "assert:pack_delta_ge:500076:1", "assert:case:SKY_GATHER_NODES"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_MAP", "title": "官方地图：常驻 HUD 收起、撤离点与目标圈（真实存档状态）",
+      "stage": "real", "location": "PlayerSpawn", "class": "shot", "checklist": ["M_SKY_ISLAND_01", "M_SKY_ISLAND_08"], "budget": 25,
+      "actions": ["open_map", "assert:view_open", "wait_real:0.8", "assert:alpha_le:SkyIslandHud:0.05", "shot:official_map_real:ui:Map", "close_view", "wait_real:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_COMBAT_GATE", "title": "交火中面板打不开并出字幕；清完立刻能开",
+      "stage": "real", "location": "Search_C_02", "class": "auto", "checklist": ["2.11.8", "M_SKY_ISLAND_07"], "budget": 60,
+      "actions": ["invincible:on", "teleport:Search_C_02:3:0", "wait_real:4", "interact:Search_C_02", "wait_real:1", "assert:panel_closed", "assert:caption_contains:附近还有威胁|threats nearby", "shot:combat_gate_caption:ui:SkyIslandHud", "clear_nearby:45:25", "interact:Search_C_02", "wait_panel:4", "assert:panel_open", "shot:after_clear_panel:ui"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_RELAY_DENSE", "title": "D6：中继平台身边活敌多时的活敌峰值、帧时间与分项计时",
+      "stage": "real", "location": "Relay_K3", "class": "auto", "checklist": ["2.16.D6", "2.17.3", "2.15.25", "2.15.29", "2.15.30"], "budget": 90,
+      "actions": ["invincible:on", "teleport:Relay_K3:0:0", "wait_real:6", "encounter_cap", "frame:5", "assert:profile_ok", "shot:relay_dense:world", "kill_nearby:70", "assert:killed_ge:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_NIGHT_GNATS", "title": "夜里云蚋看不看得见：刷一群、帧时间、截图与可见度、连拍动作",
+      "stage": "real", "location": "PlayerSpawn", "class": "shot", "checklist": ["2.13.1", "2.14.20", "2.17.3", "M_SKY_ISLAND_13"], "budget": 70,
+      "actions": ["teleport:PlayerSpawn:0:0", "night:on:3", "spawn_gnats:6:2.5", "assert:gnats_alive_ge:1", "frame:5", "shot:gnats_night:world", "assert:visible_min:gnat:0.2", "burst:gnats_motion:world:4:0.25", "assert:case:SKY_GNAT_RUNTIME", "night:restore:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_FIRE_SMOKE", "title": "夜里码头灶火与烟的截图",
+      "stage": "real", "location": "Search_A", "class": "shot", "checklist": ["2.13.9"], "budget": 30,
+      "actions": ["teleport:Search_A:3:3", "night:on:2", "shot:dock_fire_night:world", "assert:visible_min:SkyIslandFire_Search_A:0.1", "night:restore:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_NIGHT_WIND", "title": "夜里站在桥上：寒意与风寒字幕、风寒上身；回到营火旁 30 秒退去",
+      "stage": "real", "location": "Relay_DE → Search_A", "class": "auto", "checklist": ["2.11.9", "2.11.10", "2.12.6"], "budget": 180,
+      "actions": ["invincible:on", "teleport:Relay_DE:0:0", "clear_nearby:60:20", "night:on:2", "wait_caption:寒意渐重|chill is setting in:60:optional", "wait_caption:风寒|Wind chill:45", "assert:chilled:true", "shot:wind_chill_caption:ui:SkyIslandHud", "teleport:Search_A:2.5:0", "wait_real:32", "assert:chilled:false", "night:restore:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_LANTERN", "title": "风灯：头顶一盏跟着人走的暖灯",
+      "stage": "real", "location": "Search_A", "class": "auto", "checklist": ["2.11.11", "2.13.10"], "budget": 30,
+      "actions": ["use_buff:Lantern", "wait_real:1", "assert:object_present:SkyIslandLanternLight", "shot:lantern_light:world"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_CHARM", "title": "晴岚护符：第一枚生效，第二枚被拒（不叠加）",
+      "stage": "real", "location": "Search_A", "class": "auto", "checklist": ["2.11.12"], "budget": 20,
+      "actions": ["use_buff:Charm", "use_buff:Charm:false"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_CONSUMABLES", "title": "便当与药膏：满血时各自哪些使用行为可用；受伤后便当回血",
+      "stage": "real", "location": "Search_A", "class": "auto", "checklist": ["2.10.12"], "budget": 30,
+      "actions": ["give:500071:2", "give:500072:1", "use_item:500071", "use_item:500072", "set_health:0.6", "use_item:500071:heal"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_STAGE", "title": "新档：剧情数据到位、编解码往返、目标卡写「恢复两端航标」并出现「目标更新」",
+      "stage": "new_save", "location": "PlayerSpawn", "class": "shot", "checklist": ["M_SKY_ISLAND_02", "2.14.5"], "budget": 30,
+      "actions": ["assert:stage_data", "assert:case:SKY_STORY_CODEC", "assert:case:SKY_STORY_SAVE_STATE", "burst:objective_update:ui:4:0.12", "wait_real:1", "assert:objective_contains:恢复两端航标|Restore both beacons", "shot:hud_new_save:ui:SkyIslandHud", "assert:case:SKY_STORY_OBJECTIVE"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_REACH", "title": "D1：新档站在码头，撤离点与不在锁门岛上的遭遇点走得到，钟庭 H_02 走不到",
+      "stage": "new_save", "location": "PlayerSpawn", "class": "auto", "checklist": ["2.16.D1"], "budget": 90,
+      "actions": ["teleport:PlayerSpawn:0:0", "wait_real:1", "reachability"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_EXITS", "title": "新档：钟庭与两处航标广场都不开撤离，门的实体状态与内容表一致",
+      "stage": "new_save", "location": "Region_D", "class": "auto", "checklist": ["M_SKY_ISLAND_08"], "budget": 40,
+      "actions": ["assert:case:SKY_GATE_STATE", "assert:case:SKY_EXTRACTION_RULE", "assert:extraction_open:bell:false", "assert:extraction_open:wind:false", "assert:extraction_open:star:false", "invincible:on", "teleport:Region_D:3:0", "shot:wind_plaza_locked:world"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_BELL_HIDDEN", "title": "新档：归航钟庭面板不挂「敲响归航钟」",
+      "stage": "new_save", "location": "Search_H", "class": "auto", "checklist": ["2.15.8"], "budget": 60,
+      "actions": ["invincible:on", "teleport:Search_H:2:0", "clear_nearby:45:20", "interact:Search_H", "wait_panel:4", "assert:choice_absent:敲响归航钟|Ring the Homecoming Bell", "shot:bell_court_new_save:ui"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_S1_PUZZLE", "title": "UI 审核第八节 3：新档解开蛙鸣池谜题（先错两次），随即核对官方图鉴镜像（F-03）",
+      "stage": "new_save", "location": "Search_S1", "class": "auto", "checklist": ["2.10.6", "2.15.21", "M_SKY_ISLAND_10"], "budget": 90,
+      "actions": ["invincible:on", "teleport:Search_S1:2:0", "clear_nearby:45:20", "interact:Search_S1", "wait_panel:4", "shot:s1_puzzle_start:ui", "puzzle_solve:Search_S1:1", "shot:s1_puzzle_solved:ui", "assert:flag:PlantingRecord", "close_panel", "wait_real:1.5", "assert:case:SKY_OFFICIAL_NOTES"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_S2_FOCUS", "title": "UI 审核第八节 2：底图最亮的倒挂邮亭面板，悬停行对相邻常态行的取色与正文取色",
+      "stage": "new_save", "location": "Search_S2", "class": "auto", "checklist": ["2.14.24", "2.14.25", "2.16.12", "2.16.13"], "budget": 60,
+      "actions": ["invincible:on", "teleport:Search_S2:2:0", "clear_nearby:45:20", "interact:Search_S2", "wait_panel:4", "hover:0", "shot:s2_focus_row0:ui", "assert:row_contrast_min:0:1:3", "assert:contrast_min:Body:4.5", "assert:overflow_none", "hover:1", "shot:s2_focus_row1:ui", "assert:row_contrast_min:1:0:3"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_S4_GUARD", "title": "残星瞭台：守卫没清时解不开（截图里看回话是不是「先清守卫」）；清完解谜、观星镜旗标写入",
+      "stage": "new_save", "location": "Search_S4", "class": "auto", "checklist": ["2.10.7", "2.12.7"], "budget": 70,
+      "actions": ["invincible:on", "teleport:Search_S4:2:0", "wait_real:0.3", "interact:Search_S4", "wait_real:1.5", "choose_label:收录见闻|Record the note:0.7:soft", "shot:s4_before_clear:ui", "assert:no_flag:Telescope", "clear_nearby:50:20", "interact:Search_S4", "wait_panel:4", "shot:s4_puzzle:ui", "puzzle_solve:Search_S4:0", "assert:flag:Telescope"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_CRAFT_LOCKED", "title": "新档渡口工台：晴岚风晶挂成「还不会做」、点了浮舟说为什么；材料不够的配方点了只说缺什么、一件不做",
+      "stage": "new_save", "location": "Search_A", "class": "auto", "checklist": ["2.11.5", "2.12.1"], "budget": 50,
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:渡口工台|Dock workbench", "wait_panel:3", "shot:dock_craft_new_save:ui", "assert:overflow_none", "assert:choice_absent:制作 晴岚风晶|Make Qinglan Windcrystal", "assert:choice_present:还不会做 晴岚风晶|Qinglan Windcrystal (once", "choose_label:还不会做 晴岚风晶|Qinglan Windcrystal (once", "assert:body_contains:星灯不亮|star lamp is lit", "choose_label:制作 晴岚护符|Make Qinglan Charm", "assert:body_contains:材料还差|Still short", "assert:pack_delta:500082:0"]
+    },
+    {
+      "id": "SKY_AUTO_NEW_CRAFT_MAKE", "title": "材料够了做风灯；灶台与药臼在兜底装置上也打得开",
+      "stage": "new_save", "location": "Search_A, Search_C, Search_D_02", "class": "auto", "checklist": ["2.11.6", "2.11.7"], "budget": 90,
+      "actions": ["give:500075:2", "give:500073:1", "teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:渡口工台|Dock workbench", "wait_panel:3", "choose_label:制作 风灯|Make Wind Lantern", "wait_real:0.8", "assert:pack_delta_ge:500080:1", "shot:dock_craft_made:ui", "close_panel", "invincible:on", "teleport:Search_C:2:0", "clear_nearby:45:15", "interact:Search_C", "wait_panel:4", "assert:choice_present:灶台|Garden stove", "teleport:Search_D_02:2:0", "clear_nearby:45:15", "interact:Search_D_02", "wait_panel:4", "assert:choice_present:药臼|Moss mortar", "shot:mortar_fallback:ui"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_STAGE", "title": "双航标：剧情数据到位，目标卡指向鸣风栈道",
+      "stage": "both_beacons", "location": "PlayerSpawn", "class": "auto", "checklist": ["M_SKY_ISLAND_02"], "budget": 20,
+      "actions": ["assert:stage_data", "wait_real:1", "assert:objective_contains:鸣风栈道|Windsong Boardwalk", "shot:hud_beacons:ui:SkyIslandHud"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_REACH", "title": "D2：双航标之后钟庭开门，锁门岛不再锁",
+      "stage": "both_beacons", "location": "PlayerSpawn", "class": "auto", "checklist": ["2.16.D2"], "budget": 90,
+      "actions": ["teleport:PlayerSpawn:0:0", "wait_real:1", "reachability"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_EXITS", "title": "双航标：钟庭与两处广场撤离开放，绿环看得见",
+      "stage": "both_beacons", "location": "Region_D, BellExtraction", "class": "shot", "checklist": ["M_SKY_ISLAND_08", "2.14.16"], "budget": 60,
+      "actions": ["assert:extraction_open:bell:true", "assert:extraction_open:wind:true", "assert:extraction_open:star:true", "assert:case:SKY_EXTRACTION_RINGS", "invincible:on", "teleport:Region_D:3:0", "shot:wind_plaza_ring:world", "assert:visible_min:ground_ring:0.15", "teleport:BellExtraction:3:0", "shot:bell_ring:world", "assert:visible_min:ground_ring:0.15"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_MAP", "title": "双航标后官方地图上的噬风风眼浅色圈",
+      "stage": "both_beacons", "location": "PlayerSpawn", "class": "shot", "checklist": ["2.10.8"], "budget": 25,
+      "actions": ["open_map", "shot:map_beacons:ui:Map", "close_view"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_BOARDWALK", "title": "双航标、噬风未打：栈道起「噬风将至」的大风，装置上挂「直面云海里的那阵风」",
+      "stage": "both_beacons", "location": "Search_E", "class": "auto", "checklist": ["2.11.13", "M_SKY_ISLAND_05"], "budget": 60,
+      "actions": ["invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:20", "wait_real:2", "assert:wind_gale:true", "wait_caption:两盏航标都亮了|Both beacons are lit:8:optional", "interact:Search_E", "wait_panel:4", "assert:choice_present:直面云海里的那阵风|Face the wind", "shot:boardwalk_storm_choice:ui"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_QINGHE", "title": "交还种植记录之后再跟晴禾说话，那一项不再挂",
+      "stage": "both_beacons", "location": "POI_B", "class": "auto", "checklist": ["2.15.10"], "budget": 100,
+      "actions": ["teleport:POI_B:2.5:0", "interact:resident:sky_qinghe", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "choose_label:交还种植记录|Return the planting record", "wait_real:1", "assert:flag:PlantingDelivered", "close_panel", "interact:resident:sky_qinghe", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "assert:choice_absent:交还种植记录|Return the planting record", "shot:qinghe_after_delivery:ui"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_FUZHOU", "title": "星灯修好之后浮舟提起熔晶炉与岛上的灯",
+      "stage": "both_beacons", "location": "POI_A", "class": "shot", "checklist": ["2.12.3", "2.15.34"], "budget": 60,
+      "actions": ["teleport:POI_A:2.5:0", "interact:resident:sky_fuzhou", "wait_dialogue:5", "shot:fuzhou_first_line:ui:Dialogue", "dialogue_advance:30", "shot:fuzhou_last_line:ui:Dialogue"]
+    },
+    {
+      "id": "SKY_AUTO_BEACONS_ZHELING", "title": "折翎挑战：战斗体在他站立处出现、打赢写旗标、原地留下旧腰牌、挑战项不再挂",
+      "stage": "both_beacons", "location": "EnemySpawn_F", "class": "auto", "checklist": ["2.10.9", "2.15.11"], "budget": 120,
+      "actions": ["invincible:on", "teleport:EnemySpawn_F:3:0", "clear_nearby:45:20", "interact:resident:sky_zheling", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "shot:zheling_panel:ui", "choose_label:挑战旧航路守卫|Challenge the keeper of the old route", "wait_real:4", "kill_nearby:25", "wait_real:3", "kill_nearby:25", "wait_real:3", "assert:flag:ZhelingDefeated", "assert:object_present:EnemySpawn_F_Completed", "shot:zheling_badge:world"]
+    },
+    {
+      "id": "SKY_AUTO_STORM_ECHO_LOCKED", "title": "打过噬风、未敲钟：没有「引风」也不再挂首战项，正文说等归航钟响过",
+      "stage": "storm_slain", "location": "Search_E", "class": "auto", "checklist": ["2.17.5", "2.15.12"], "budget": 70,
+      "actions": ["invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:20", "interact:Search_E", "wait_panel:4", "assert:choice_absent:直面云海里的那阵风|Face the wind", "assert:choice_absent:引风|Call the wind", "assert:body_contains:等归航钟响过|Once the Homecoming Bell", "shot:echo_locked_panel:ui", "close_panel", "assert:case:SKY_STORM_ECHO"]
+    },
+    {
+      "id": "SKY_AUTO_STORM_KEEPSAKES", "title": "打过噬风：噬风之核只有一枚、图标不是克隆源",
+      "stage": "storm_slain", "location": "Search_E", "class": "auto", "checklist": ["2.10.11"], "budget": 20,
+      "actions": ["wait_real:2", "assert:case:SKY_KEEPSAKE_ITEMS"]
+    },
+    {
+      "id": "SKY_AUTO_BELL_OFFERED", "title": "双航标、钟守已放行：钟庭面板这时才挂「敲响归航钟」",
+      "stage": "bell_ready", "location": "Search_H", "class": "auto", "checklist": ["2.15.9"], "budget": 60,
+      "actions": ["invincible:on", "teleport:Search_H:2:0", "clear_nearby:45:20", "interact:Search_H", "wait_panel:4", "assert:choice_present:敲响归航钟|Ring the Homecoming Bell", "shot:bell_offered:ui"]
+    },
+    {
+      "id": "SKY_AUTO_END_STAGE", "title": "结局档：剧情数据到位，目标卡写归航钟已响",
+      "stage": "ending", "location": "PlayerSpawn", "class": "auto", "checklist": ["M_SKY_ISLAND_02"], "budget": 20,
+      "actions": ["assert:stage_data", "wait_real:1", "assert:objective_contains:归航钟已响|The bell has rung", "shot:hud_ending:ui:SkyIslandHud"]
+    },
+    {
+      "id": "SKY_AUTO_END_ROSTER", "title": "结局后码头灯旁的归航船名册：开页、翻一页、不出框",
+      "stage": "ending", "location": "Lamp_A_02", "class": "auto", "checklist": ["2.10.10", "2.15.34"], "budget": 60,
+      "actions": ["teleport:Lamp_A_02:2.5:0", "wait_real:1", "interact:completed:Lamp_A_02", "wait_panel:4", "shot:roster_intro:ui", "assert:overflow_none", "choose:0", "wait_real:0.6", "shot:roster_page:ui", "assert:overflow_none"]
+    },
+    {
+      "id": "SKY_AUTO_END_ECHO_BLOCKERS", "title": "结局档、没带晴岚风晶：不挂「引风」，正文末尾写缺什么",
+      "stage": "ending", "location": "Search_E", "class": "auto", "checklist": ["2.17.6"], "budget": 60,
+      "actions": ["invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:20", "interact:Search_E", "wait_panel:4", "assert:choice_absent:引风|Call the wind", "assert:body_contains:引风要|Calling the wind", "shot:echo_blockers:ui"]
+    },
+    {
+      "id": "SKY_AUTO_END_ECHO_SUMMON", "title": "核 + 一块风晶：挂出「引风」，按下后面板收起、风晶少一块、核还在、本趟计数 1",
+      "stage": "ending", "location": "Search_E", "class": "auto", "checklist": ["2.17.6", "2.17.7", "M_SKY_ISLAND_14"], "budget": 70,
+      "actions": ["give_if_missing:500069:1", "give:500079:1", "invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:15", "interact:Search_E", "wait_panel:4", "assert:choice_present:引风|Call the wind", "shot:echo_offered:ui", "choose_label:引风|Call the wind", "wait_real:1", "assert:panel_closed", "assert:echo_starts:1", "assert:pack_delta:500079:0", "assert:pack_count_ge:500069:1", "wait_caption:风晶在装置里烧化|windcrystal burns away:5:optional", "shot:echo_open_caption:ui:SkyIslandHud"]
+    },
+    {
+      "id": "SKY_AUTO_END_ECHO_RING", "title": "回响第一次相位：预警圈画在风眼、不跟着本体走；栈道起大风；三波与原地那一声连拍",
+      "stage": "ending", "location": "Search_E", "class": "auto", "checklist": ["2.17.8", "2.17.9", "2.17.11", "2.14.17"], "budget": 80,
+      "actions": ["invincible:on", "wait_real:3", "echo_hurt:0.75:15", "wait_object:SkyIslandStormWarningRing:5", "shot:echo_warning_ring:world", "assert:visible_min:echo_ring:0.2", "wait_real:0.8", "assert:object_static:SkyIslandStormWarningRing:0.3", "assert:wind_gale:true", "burst:echo_waves:world:5:0.3", "wait_caption:风眼在原地又响了一声|The eye echoes:6:optional"]
+    },
+    {
+      "id": "SKY_AUTO_END_ECHO_CLEAR", "title": "击杀回响：遗存箱内容、风停、同一趟不能再引、SKY_STORM_ECHO 通过",
+      "stage": "ending", "location": "Search_E", "class": "auto", "checklist": ["2.17.11", "2.17.12", "2.17.13"], "budget": 90,
+      "actions": ["kill_nearby:45", "wait_real:3", "kill_nearby:45", "wait_real:2", "loot:SkyIslandStormEchoTrophy:10", "assert:crate_has:500077:3", "assert:crate_has:500078:2", "assert:crate_has_any:500082+500071+500081", "wait_real:2", "assert:wind_gale:false", "shot:echo_trophy:world", "teleport:Search_E:2:0", "clear_nearby:50:10", "interact:Search_E", "wait_panel:4", "assert:choice_absent:引风|Call the wind", "shot:echo_spent_panel:ui", "close_panel", "assert:case:SKY_STORM_ECHO"]
+    },
+    {
+      "id": "SKY_AUTO_END_BELLKEEPER", "title": "结局后钟守台词末尾提到回响",
+      "stage": "ending", "location": "POI_H", "class": "shot", "checklist": ["2.17.15", "2.15.34"], "budget": 60,
+      "actions": ["teleport:POI_H:2.5:0", "interact:resident:sky_bellkeeper", "wait_dialogue:5", "dialogue_advance:40", "shot:bellkeeper_echo_line:ui:Dialogue"]
+    },
+    {
+      "id": "SKY_AUTO_END_JOURNAL", "title": "结局后手记「群岛之物」与「岛上的灯」页",
+      "stage": "ending", "location": "Search_A", "class": "shot", "checklist": ["2.17.15", "2.12.5", "2.14.11"], "budget": 60,
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "choose:1", "wait_panel:3", "choose_label:群岛之物|What things are for", "wait_real:0.6", "shot:journal_things:ui", "assert:overflow_none", "choose_label:返回手记|Back to the journal", "choose:1", "choose_label:岛上的灯|Lights on the isles", "shot:journal_lights:ui"]
+    },
+    {
+      "id": "SKY_AUTO_END_RECALL", "title": "结局档用晴岚航徽拉缆绳：人回到码头出生点，这一趟第二次被拒",
+      "stage": "ending", "location": "POI_G → PlayerSpawn", "class": "auto", "checklist": ["2.12.16"], "budget": 45,
+      "actions": ["invincible:on", "teleport:POI_G:0:0", "clear_nearby:40:15", "use_buff:Recall", "wait_real:3", "assert:near:PlayerSpawn:6", "shot:recall_arrived:world", "use_buff:Recall:false"]
+    },
+    {
+      "id": "SKY_AUTO_LAMPS_STAGE", "title": "七盏风晶灯点亮：存档与场景里的灯一致，栈道装置上方亮起灯",
+      "stage": "ending_lamps", "location": "Search_E", "class": "auto", "checklist": ["2.12.4", "2.12.5", "2.12.14"], "budget": 40,
+      "actions": ["assert:stage_data", "assert:case:SKY_LAMPS_WIND", "invincible:on", "teleport:Search_E:3:3", "shot:lamp_boardwalk:world", "assert:object_present:SkyIslandFire_Search_E"]
+    },
+    {
+      "id": "SKY_AUTO_LAMPS_ISLE_WIND", "title": "十盏灯都亮之后，夜里站在岛上不积寒意",
+      "stage": "ending_lamps", "location": "POI_C", "class": "auto", "checklist": ["2.12.14"], "budget": 90,
+      "actions": ["invincible:on", "teleport:POI_C:0:0", "clear_nearby:45:15", "night:on:2", "wait_real:45", "assert:chilled:false", "assert:case:SKY_LAMPS_WIND", "night:restore:1"]
+    },
+    {
+      "id": "SKY_AUTO_LAMPS_ZAPPER", "title": "点亮两盏以上之后渡口工台做灭蚊灯，一次两盏",
+      "stage": "ending_lamps", "location": "Search_A", "class": "auto", "checklist": ["2.13.15"], "budget": 60,
+      "actions": ["give:500079:1", "give:500076:3", "teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:渡口工台|Dock workbench", "wait_panel:3", "choose_label:制作 风晶灭蚊灯|Make Windcrystal Gnat Zapper", "wait_real:0.8", "assert:pack_delta_ge:500084:2", "shot:zapper_made:ui"]
+    },
+    {
+      "id": "SKY_AUTO_ALT_CAPTION", "title": "UI 审核第八节 4：换语言后的长字幕，行首与行尾各自取色",
+      "stage": "alt_language", "location": "PlayerSpawn", "class": "auto", "checklist": ["2.14.12", "M_SKY_ISLAND_09"], "budget": 40,
+      "actions": ["teleport:PlayerSpawn:0:0", "caption:storm_outcome", "wait_caption::4", "shot:caption_alt_language:ui:SkyIslandHud", "assert:contrast_min:SkyIslandCaption/Text#first:4.5", "assert:contrast_min:SkyIslandCaption/Text#last:4.5", "assert:overflow_none"]
+    },
+    {
+      "id": "SKY_AUTO_ALT_LOCALE", "title": "英文完整性扫描（复拍语言是英文时才有判据）",
+      "stage": "alt_language", "location": "PlayerSpawn", "class": "auto", "checklist": ["M_SKY_ISLAND_09"], "budget": 20,
+      "actions": ["assert:case:SKY_LOCALIZATION_EN"]
+    },
+    {
+      "id": "SKY_AUTO_ALT_BOARD", "title": "换语言重看留言板、委托页与栈道装置面板：不出框",
+      "stage": "alt_language", "location": "Search_B, Search_E", "class": "shot", "checklist": ["2.10.14", "2.11.15", "2.12.15", "2.13.20", "2.15.20", "2.17.16", "M_SKY_ISLAND_09"], "budget": 80,
+      "actions": ["teleport:Search_B:1.6:0", "interact:Search_B", "wait_panel:4", "shot:board_alt:ui", "assert:overflow_none", "choose_label:航务委托|Lane contracts", "wait_panel:3", "shot:contracts_alt:ui", "assert:overflow_none", "close_panel", "invincible:on", "teleport:Search_E:2:0", "clear_nearby:50:10", "interact:Search_E", "wait_panel:4", "shot:boardwalk_alt:ui", "assert:overflow_none"]
+    },
+    {
+      "id": "SKY_AUTO_ALT_JOURNAL", "title": "换语言重看群岛手记：长标题折行、正文滚动、不出框",
+      "stage": "alt_language", "location": "Search_A", "class": "shot", "checklist": ["2.14.29", "2.10.14"], "budget": 60,
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "shot:journal_alt:ui", "assert:overflow_none", "choose:1", "wait_panel:3", "choose_label:群岛之物|What things are for", "shot:journal_things_alt:ui", "assert:overflow_none"]
+    },
+    {
+      "id": "SKY_AUTO_ALT_RESIDENT", "title": "换语言跟苇白说话：官方对话框里的名字与台词换了语言",
+      "stage": "alt_language", "location": "EnemySpawn_B", "class": "shot", "checklist": ["M_SKY_ISLAND_09"], "budget": 60,
+      "actions": ["teleport:EnemySpawn_B:2.5:0", "interact:resident:sky_weibai", "wait_dialogue:5", "shot:dialogue_alt:ui:Dialogue", "dialogue_advance:30", "shot:dialogue_alt_choice:ui:Dialogue"]
+    },
+    {
+      "id": "SKY_AUTO_BASE_AFTER_RESIDUE", "title": "回基地：纪念品件数回到开跑前、岛上 owner 与头顶风灯没跟回来",
+      "stage": "base_after", "location": "Base", "class": "auto", "checklist": ["2.11.14", "M_SKY_ISLAND_01"], "budget": 20,
+      "actions": ["assert:case:SKY_KEEPSAKE_ITEMS_BASE", "assert:object_absent:SkyIslandLanternLight", "shot:base_after_return:world"]
+    }
+  ],
+  "coverage": [
+    { "checklist": "2.10.1", "class": "auto", "evidence": ["SKY_AUTO_LAND_PIGEON", "SKY_LETTER_PIGEON"] },
+    { "checklist": "2.10.2", "class": "auto", "evidence": ["SKY_AUTO_REAL_PIGEON_LETTER"] },
+    { "checklist": "2.10.3", "class": "shot", "evidence": ["SKY_AUTO_REAL_COMPASS"], "reason": "方位是否与官方地图一致由 AI 对照读数字幕与地图截图" },
+    { "checklist": "2.10.4", "class": "auto", "evidence": ["SKY_LETTER_PIGEON", "offline:tests/fixtures/SkyIslandStory"], "reason": "连续三趟出击进程内造不出来：每趟 NextFor 与没收下仍在原处由执行回归证明，本趟实际带的信由 SKY_LETTER_PIGEON 读回" },
+    { "checklist": "2.10.5", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.10.6", "class": "auto", "evidence": ["SKY_AUTO_NEW_S1_PUZZLE"] },
+    { "checklist": "2.10.7", "class": "auto", "evidence": ["SKY_AUTO_NEW_S4_GUARD", "SKY_AUTO_NEW_S2_FOCUS"] },
+    { "checklist": "2.10.8", "class": "shot", "evidence": ["SKY_AUTO_BEACONS_MAP"] },
+    { "checklist": "2.10.9", "class": "auto", "evidence": ["SKY_AUTO_BEACONS_ZHELING"] },
+    { "checklist": "2.10.10", "class": "auto", "evidence": ["SKY_AUTO_END_ROSTER", "SKY_KEEPSAKE_ITEMS_BASE"] },
+    { "checklist": "2.10.11", "class": "auto", "evidence": ["SKY_AUTO_STORM_KEEPSAKES", "SKY_KEEPSAKE_ITEMS_BASE"] },
+    { "checklist": "2.10.12", "class": "auto", "evidence": ["SKY_AUTO_REAL_CONSUMABLES"] },
+    { "checklist": "2.10.13", "class": "auto", "evidence": ["SKY_KEEPSAKE_ITEMS", "offline:tests/fixtures/SkyIslandStory"], "reason": "「老存档第二趟不再发」要两趟出击；本趟件数由 SKY_KEEPSAKE_ITEMS 读回，只发一次由执行回归证明" },
+    { "checklist": "2.10.14", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD", "SKY_AUTO_ALT_JOURNAL"] },
+    { "checklist": "2.11.1", "class": "shot", "evidence": ["SKY_AUTO_LAND_DOCK_WORLD", "SKY_AUTO_REAL_GATHER_DOCK"] },
+    { "checklist": "2.11.2", "class": "auto", "evidence": ["SKY_AUTO_REAL_GATHER_DOCK", "SKY_GATHER_NODES"] },
+    { "checklist": "2.11.3", "class": "auto", "evidence": ["SKY_AUTO_REAL_GATHER_KINDS"] },
+    { "checklist": "2.11.4", "class": "auto", "evidence": ["offline:tests/SkyIslandFieldcraftGuard.py"], "reason": "塞满背包会动测试档的整包物品，快照只收回岛上物品；满包落脚边由守卫钉住 TryDeliver 路径（结构证据）" },
+    { "checklist": "2.11.5", "class": "auto", "evidence": ["SKY_AUTO_NEW_CRAFT_LOCKED"] },
+    { "checklist": "2.11.6", "class": "auto", "evidence": ["SKY_AUTO_NEW_CRAFT_MAKE"] },
+    { "checklist": "2.11.7", "class": "auto", "evidence": ["SKY_AUTO_NEW_CRAFT_MAKE"] },
+    { "checklist": "2.11.8", "class": "auto", "evidence": ["SKY_AUTO_REAL_COMBAT_GATE"] },
+    { "checklist": "2.11.9", "class": "auto", "evidence": ["SKY_AUTO_REAL_NIGHT_WIND"] },
+    { "checklist": "2.11.10", "class": "auto", "evidence": ["SKY_AUTO_REAL_NIGHT_WIND"] },
+    { "checklist": "2.11.11", "class": "auto", "evidence": ["SKY_AUTO_REAL_LANTERN", "offline:tests/SkyIslandFieldcraftGuard.py"], "reason": "暂停菜单挂 60 秒进程内开不出官方暂停；计时走游戏时间由守卫钉住" },
+    { "checklist": "2.11.12", "class": "auto", "evidence": ["SKY_AUTO_REAL_CHARM"] },
+    { "checklist": "2.11.13", "class": "auto", "evidence": ["SKY_AUTO_BEACONS_BOARDWALK"] },
+    { "checklist": "2.11.14", "class": "auto", "evidence": ["SKY_AUTO_BASE_AFTER_RESIDUE", "SKY_KEEPSAKE_ITEMS_BASE"] },
+    { "checklist": "2.11.15", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD"] },
+    { "checklist": "2.12.1", "class": "auto", "evidence": ["SKY_AUTO_NEW_CRAFT_LOCKED"] },
+    { "checklist": "2.12.2", "class": "auto", "evidence": ["SKY_AUTO_REAL_GATHER_KINDS", "offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.12.3", "class": "shot", "evidence": ["SKY_AUTO_BEACONS_FUZHOU"] },
+    { "checklist": "2.12.4", "class": "auto", "evidence": ["SKY_AUTO_LAMPS_STAGE"] },
+    { "checklist": "2.12.5", "class": "auto", "evidence": ["SKY_AUTO_LAMPS_STAGE", "SKY_LAMPS_WIND"] },
+    { "checklist": "2.12.6", "class": "auto", "evidence": ["SKY_AUTO_REAL_NIGHT_WIND", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机测营火旁；风晶灯旁与营火同一份 Warmth 判据由执行回归证明" },
+    { "checklist": "2.12.7", "class": "auto", "evidence": ["SKY_AUTO_NEW_S4_GUARD"] },
+    { "checklist": "2.12.8", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "风灯在大风里减半、驱风香挡大风是纯规则（Warmth / WindLevel），执行回归逐档核对" },
+    { "checklist": "2.12.9", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory", "SKY_LAMPS_WIND"], "reason": "噬风之核把大风压成微风是纯规则 CoreEased；本趟风级读回由 SKY_LAMPS_WIND 复算" },
+    { "checklist": "2.12.10", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory", "SKY_SERVICE_PRICING"] },
+    { "checklist": "2.12.11", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory", "SKY_AUTO_BEACONS_QINGHE"] },
+    { "checklist": "2.12.12", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory", "SKY_STORM_TUNING"] },
+    { "checklist": "2.12.13", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory", "SKY_AUTO_REAL_COMPASS"] },
+    { "checklist": "2.12.14", "class": "auto", "evidence": ["SKY_AUTO_LAMPS_ISLE_WIND", "SKY_AUTO_LAMPS_STAGE"] },
+    { "checklist": "2.12.15", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD"] },
+    { "checklist": "2.12.16", "class": "auto", "evidence": ["SKY_AUTO_END_RECALL"] },
+    { "checklist": "2.12.17", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "航徽的战斗门与剧情面板同一道 CanOpenStoryPanel，执行回归覆盖；实机只测了无敌时的正常拉回" },
+    { "checklist": "2.12.18", "class": "auto", "evidence": ["SKY_BOUNTY_GATING", "offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.13.1", "class": "shot", "evidence": ["SKY_AUTO_REAL_NIGHT_GNATS"] },
+    { "checklist": "2.13.2", "class": "manual", "reason": "声音：嗡声只在附近响、走远即停、循环接缝不咔哒，截图与日志都证不了" },
+    { "checklist": "2.13.3", "class": "auto", "evidence": ["SKY_GNAT_RUNTIME", "offline:tests/fixtures/SkyIslandLighting"] },
+    { "checklist": "2.13.4", "class": "manual", "reason": "手感：前摇发亮与侧闪看不看得清、连射一阵后开始打中；冲刺 ≤3 m 与预算上限已由演练 SKY_DRILL_GNAT_SWARM 自动判" },
+    { "checklist": "2.13.5", "class": "auto", "evidence": ["SKY_DRILL_GNAT_SWARM"] },
+    { "checklist": "2.13.6", "class": "manual", "reason": "手感：边横移边打与站定时是否相近" },
+    { "checklist": "2.13.7", "class": "manual", "reason": "手感：约两秒一口、几只不同时下嘴的叮咬节奏；不叮穿下限已由演练自动判" },
+    { "checklist": "2.13.8", "class": "auto", "evidence": ["SKY_DRILL_GNAT_SWARM"] },
+    { "checklist": "2.13.9", "class": "shot", "evidence": ["SKY_AUTO_REAL_FIRE_SMOKE"] },
+    { "checklist": "2.13.10", "class": "auto", "evidence": ["SKY_AUTO_REAL_LANTERN", "offline:tests/fixtures/SkyIslandStory"], "reason": "风灯招蚋是刷新规则里的系数，执行回归核对；实机截风灯本身" },
+    { "checklist": "2.13.11", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "大风与敌人在附近时不刷、已有的散开是纯规则，执行回归逐项核对" },
+    { "checklist": "2.13.12", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.13.13", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.13.14", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.13.15", "class": "auto", "evidence": ["SKY_AUTO_LAMPS_ZAPPER"] },
+    { "checklist": "2.13.16", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.13.17", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "倒下 / 离岛要结束这趟出击；放回计数与不丢由执行回归证明" },
+    { "checklist": "2.13.18", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"] },
+    { "checklist": "2.13.19", "class": "auto", "evidence": ["offline:tests/SkyIslandMosquitoGuard.py"], "reason": "暂停菜单进程内开不出；云蚋与灭蚊灯走游戏时间由守卫钉住" },
+    { "checklist": "2.13.20", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD"] },
+    { "checklist": "2.14.1", "class": "auto", "evidence": ["SKY_AUTO_LAND_BANNER"] },
+    { "checklist": "2.14.2", "class": "shot", "evidence": ["SKY_AUTO_LAND_BANNER"] },
+    { "checklist": "2.14.3", "class": "auto", "evidence": ["SKY_AUTO_REAL_BRIGHT_BANNER"] },
+    { "checklist": "2.14.4", "class": "auto", "evidence": ["SKY_AUTO_LAND_HUD_CARD"] },
+    { "checklist": "2.14.5", "class": "shot", "evidence": ["SKY_AUTO_NEW_STAGE"] },
+    { "checklist": "2.14.6", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandHudPolicy"], "reason": "UI 审核：CardFadeOut 局内触发不到，只能由 HUD 策略执行回归证" },
+    { "checklist": "2.14.7", "class": "auto", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.8", "class": "manual", "reason": "手感：入场动效会不会变成输入延迟（第一帧按数字键是否照常生效）；动效本身由 SKY_AUTO_REAL_DOCK_PANEL 连拍" },
+    { "checklist": "2.14.9", "class": "auto", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.10", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.11", "class": "shot", "evidence": ["SKY_AUTO_END_JOURNAL"] },
+    { "checklist": "2.14.12", "class": "auto", "evidence": ["SKY_AUTO_ALT_CAPTION"] },
+    { "checklist": "2.14.13", "class": "auto", "evidence": ["offline:tests/SkyIslandUiContrastGuard.py"], "reason": "F3 面板是验收自己的浮层，截图前必须隐藏；按钮标签对比度由守卫从生产常量复算" },
+    { "checklist": "2.14.14", "class": "auto", "evidence": ["SKY_AUTO_BASE_MODEG_BUTTON"] },
+    { "checklist": "2.14.15", "class": "shot", "evidence": ["SKY_AUTO_LAND_DOCK_WORLD"] },
+    { "checklist": "2.14.16", "class": "shot", "evidence": ["SKY_AUTO_BEACONS_EXITS"] },
+    { "checklist": "2.14.17", "class": "shot", "evidence": ["SKY_AUTO_END_ECHO_RING"] },
+    { "checklist": "2.14.18", "class": "shot", "evidence": ["SKY_AUTO_LAND_DOCK_WORLD"] },
+    { "checklist": "2.14.19", "class": "shot", "evidence": ["SKY_AUTO_REAL_GATHER_DOCK"] },
+    { "checklist": "2.14.20", "class": "shot", "evidence": ["SKY_AUTO_REAL_NIGHT_GNATS"] },
+    { "checklist": "2.14.21", "class": "auto", "evidence": ["SKY_GATHER_NODES"] },
+    { "checklist": "2.14.22", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.23", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.24", "class": "auto", "evidence": ["SKY_AUTO_NEW_S2_FOCUS"] },
+    { "checklist": "2.14.25", "class": "auto", "evidence": ["SKY_AUTO_NEW_S2_FOCUS"] },
+    { "checklist": "2.14.26", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.14.27", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.28", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.14.29", "class": "shot", "evidence": ["SKY_AUTO_ALT_JOURNAL"] },
+    { "checklist": "2.14.30", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.15.1", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.15.2", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.15.3", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.15.4", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_DECLINE"] },
+    { "checklist": "2.15.5", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandDialogue"], "reason": "对话中被打要让敌人真的打人；不卡死、能中断由对话执行回归证明" },
+    { "checklist": "2.15.6", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.15.7", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandDialogue"] },
+    { "checklist": "2.15.7a", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandDialogue"] },
+    { "checklist": "2.15.7b", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandDialogue"] },
+    { "checklist": "2.15.7c", "class": "auto", "evidence": ["SKY_DRILL_OFFICIAL_DIALOGUE"] },
+    { "checklist": "2.15.7d", "class": "auto", "evidence": ["SKY_AUTO_REAL_RESIDENT_DECLINE"] },
+    { "checklist": "2.15.8", "class": "auto", "evidence": ["SKY_AUTO_NEW_BELL_HIDDEN"] },
+    { "checklist": "2.15.9", "class": "auto", "evidence": ["SKY_AUTO_BELL_OFFERED"] },
+    { "checklist": "2.15.10", "class": "auto", "evidence": ["SKY_AUTO_BEACONS_QINGHE"] },
+    { "checklist": "2.15.11", "class": "auto", "evidence": ["SKY_AUTO_BEACONS_ZHELING"] },
+    { "checklist": "2.15.12", "class": "auto", "evidence": ["SKY_AUTO_STORM_ECHO_LOCKED"] },
+    { "checklist": "2.15.13", "class": "auto", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL", "SKY_CHOICE_GATES"] },
+    { "checklist": "2.15.14", "class": "auto", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.15.15", "class": "auto", "evidence": ["SKY_CHOICE_GATES"] },
+    { "checklist": "2.15.16", "class": "auto", "evidence": ["SKY_CHOICE_GATES"] },
+    { "checklist": "2.15.17", "class": "auto", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.15.18", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "故意弄坏存档不在专用测试档上做；SaveProblem 只在出问题时回话由执行回归证明" },
+    { "checklist": "2.15.19", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.15.20", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD"] },
+    { "checklist": "2.15.21", "class": "auto", "evidence": ["SKY_AUTO_NEW_S1_PUZZLE", "SKY_OFFICIAL_NOTES"] },
+    { "checklist": "2.15.22", "class": "auto", "evidence": ["AUTOTEST_BASE_OFFICIAL_NOTES", "SKY_OFFICIAL_NOTES_BASE"] },
+    { "checklist": "2.15.23", "class": "auto", "evidence": ["offline:tests/SkyIslandOfficialApiReuseGuard.py"], "reason": "官方笔记图鉴界面进程内没有公开的打开入口；条目不带图由守卫钉住" },
+    { "checklist": "2.15.24", "class": "auto", "evidence": ["SKY_OFFICIAL_NOTES"] },
+    { "checklist": "2.15.25", "class": "auto", "evidence": ["SKY_AUTO_REAL_RELAY_DENSE", "SKY_ENCOUNTER_CAP"] },
+    { "checklist": "2.15.26", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandEncounters"], "reason": "自动组按出击刷新，同一趟打完不再刷；重进后重刷由遭遇执行回归证明" },
+    { "checklist": "2.15.27", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandEncounters"], "reason": "同上：敲钟之后钟庭自动组照常按出击刷新" },
+    { "checklist": "2.15.28", "class": "auto", "evidence": ["SKY_ENCOUNTER_CAP"] },
+    { "checklist": "2.15.29", "class": "auto", "evidence": ["SKY_AUTO_REAL_RELAY_DENSE"] },
+    { "checklist": "2.15.30", "class": "auto", "evidence": ["SKY_ENCOUNTER_CAP", "SKY_AUTO_REAL_RELAY_DENSE"] },
+    { "checklist": "2.15.31", "class": "manual", "reason": "好不好玩：尸体箱跟着敌人涨之后产出多不多是平衡取舍，不是缺陷判据" },
+    { "checklist": "2.15.32", "class": "auto", "evidence": ["SKY_BOUNTY_GATING"] },
+    { "checklist": "2.15.33", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.15.34", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK", "SKY_AUTO_BEACONS_FUZHOU", "SKY_AUTO_END_BELLKEEPER", "SKY_AUTO_END_ROSTER"] },
+    { "checklist": "2.15.35", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.15.36", "class": "shot", "evidence": ["SKY_AUTO_REAL_PIGEON_LETTER"] },
+    { "checklist": "2.15.37", "class": "shot", "evidence": ["SKY_AUTO_REAL_DOCK_PANEL"] },
+    { "checklist": "2.16.1", "class": "auto", "evidence": ["SKY_AUTO_REAL_MAP", "SKY_AUTO_REAL_RESIDENT_TALK", "offline:tests/PersistentHudVisibilityGuard.py"], "reason": "地图与对话实机判常驻 HUD 收起；暂停菜单与拍照模式进程内开不出，靠守卫（UI 审核 F-08：语义变异挡不住，证据弱）" },
+    { "checklist": "2.16.2", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "不在天空岛上；征程追踪条跟随官方界面只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.3", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "随机事件徽章，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.4", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "血月红罩，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.5", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "伴宠状态条，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.6", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "Mode H 观战 HUD，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.7", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "Mode G 状态文本，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.8", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "Mode F 赏金雷达，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.9", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "词条浮层，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.10", "class": "auto", "evidence": ["offline:tests/PersistentHudVisibilityGuard.py"], "reason": "丧尸 HUD，不在天空岛上；只有结构守卫（F-08 证据弱）" },
+    { "checklist": "2.16.11", "class": "shot", "evidence": ["SKY_AUTO_REAL_RESIDENT_TALK"] },
+    { "checklist": "2.16.12", "class": "auto", "evidence": ["SKY_AUTO_NEW_S2_FOCUS"] },
+    { "checklist": "2.16.13", "class": "auto", "evidence": ["SKY_AUTO_NEW_S2_FOCUS"] },
+    { "checklist": "2.16.14", "class": "shot", "evidence": ["SKY_AUTO_REAL_PIGEON_LETTER"] },
+    { "checklist": "2.16.15", "class": "auto", "evidence": ["SKY_CHOICE_GATES", "SKY_GNAT_RUNTIME"] },
+    { "checklist": "2.16.16", "class": "auto", "evidence": ["SKY_OFFICIAL_NOTES_BASE", "SKY_KEEPSAKE_ITEMS_BASE"] },
+    { "checklist": "2.16.17", "class": "auto", "evidence": ["SKY_DRILL_GNAT_SWARM", "SKY_DRILL_OFFICIAL_DIALOGUE"] },
+    { "checklist": "2.16.18", "class": "auto", "evidence": ["offline:tools/check_dll_identifiers.py"], "reason": "换回正式构建是 AI 读完结果目录之后的操作；游戏目录里的 DLL 不含全自动验收标识由脚本实查" },
+    { "checklist": "2.16.D1", "class": "auto", "evidence": ["SKY_AUTO_NEW_REACH"] },
+    { "checklist": "2.16.D2", "class": "auto", "evidence": ["SKY_AUTO_BEACONS_REACH"] },
+    { "checklist": "2.16.D3", "class": "auto", "evidence": ["SKY_DRILL_OFFICIAL_DIALOGUE"] },
+    { "checklist": "2.16.D4", "class": "auto", "evidence": ["SKY_DRILL_GNAT_SWARM"] },
+    { "checklist": "2.16.D5", "class": "auto", "evidence": ["SKY_AUTO_BASE_PREV_QUIT_LOG"], "reason": "按按钮之前那一局要在岛上直接退游戏，这一步读 Player-prev.log；上一局不是这样退的记 SKIP" },
+    { "checklist": "2.16.D6", "class": "auto", "evidence": ["SKY_AUTO_REAL_RELAY_DENSE"] },
+    { "checklist": "2.17.1", "class": "auto", "evidence": ["SKY_PERF_BASELINE_5S", "SKY_PERF_FINAL_5S"] },
+    { "checklist": "2.17.2", "class": "auto", "evidence": ["SKY_PERF_BASELINE_5S", "SKY_PERF_FINAL_5S"] },
+    { "checklist": "2.17.3", "class": "auto", "evidence": ["SKY_AUTO_REAL_RELAY_DENSE", "SKY_AUTO_REAL_NIGHT_GNATS"] },
+    { "checklist": "2.17.4", "class": "auto", "evidence": ["SKY_LOOT_BANDS", "SKY_AUTO_LAND_HUD_CARD"] },
+    { "checklist": "2.17.5", "class": "auto", "evidence": ["SKY_AUTO_STORM_ECHO_LOCKED"] },
+    { "checklist": "2.17.6", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_BLOCKERS", "SKY_AUTO_END_ECHO_SUMMON"] },
+    { "checklist": "2.17.7", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_SUMMON"] },
+    { "checklist": "2.17.8", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_RING"] },
+    { "checklist": "2.17.9", "class": "shot", "evidence": ["SKY_AUTO_END_ECHO_RING"], "reason": "走回圈里挨那一声要关掉无敌赌时机；那一声的圆心与半径由 SkyIslandStormEchoEscapePropertyTest 离线证，这里连拍给 AI 看" },
+    { "checklist": "2.17.10", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "护符减伤是 StormPulseDamage 纯规则，执行回归核对" },
+    { "checklist": "2.17.11", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_RING", "SKY_AUTO_END_ECHO_CLEAR"] },
+    { "checklist": "2.17.12", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_CLEAR"] },
+    { "checklist": "2.17.13", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_CLEAR", "SKY_STORM_ECHO"] },
+    { "checklist": "2.17.14", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "「离岛再出击又能引」要第二趟出击；按本趟计数由执行回归证明" },
+    { "checklist": "2.17.15", "class": "shot", "evidence": ["SKY_AUTO_END_BELLKEEPER", "SKY_AUTO_END_JOURNAL"] },
+    { "checklist": "2.17.16", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD"] },
+    { "checklist": "2.17.17", "class": "auto", "evidence": ["offline:tools/check_dll_identifiers.py"], "reason": "换回正式构建由 AI 在读完结果目录后执行并实查 DLL" },
+    { "checklist": "M_SKY_ISLAND_01", "class": "auto", "evidence": ["SKY_AUTO_LAND_HUD_CARD", "SKY_AUTO_REAL_MAP", "SKY_AUTO_BASE_AFTER_RESIDUE", "SKY_SCENE_BASELINE", "AUTOTEST_RETURN_BASE"] },
+    { "checklist": "M_SKY_ISLAND_02", "class": "auto", "evidence": ["SKY_AUTO_NEW_STAGE", "SKY_AUTO_BEACONS_STAGE", "SKY_AUTO_END_STAGE"] },
+    { "checklist": "M_SKY_ISLAND_03", "class": "auto", "evidence": ["offline:tests/SkyIslandLifecycleGuard.py"], "reason": "刻意不自动化：在岛上死亡会让测试档真实掉装备，快照还原不了背包与墓碑；死亡、墓碑与加载取消只有结构守卫，证据弱（见待拍板）" },
+    { "checklist": "M_SKY_ISLAND_04", "class": "auto", "evidence": ["SKY_SCAVENGE_PLACEMENT", "SKY_LOOT_BANDS", "SKY_INTERACTION_SEPARATION"] },
+    { "checklist": "M_SKY_ISLAND_05", "class": "auto", "evidence": ["SKY_STORM_TUNING", "SKY_AUTO_BEACONS_BOARDWALK", "offline:tests/SkyIslandStormEchoEscapePropertyTest.py"] },
+    { "checklist": "M_SKY_ISLAND_06", "class": "auto", "evidence": ["SKY_SERVICE_PRICING", "SKY_BOUNTY_GATING"] },
+    { "checklist": "M_SKY_ISLAND_07", "class": "auto", "evidence": ["SKY_AUTO_REAL_COMBAT_GATE", "SKY_ENCOUNTER_CAP", "SKY_AUTO_STORM_ECHO_LOCKED"] },
+    { "checklist": "M_SKY_ISLAND_08", "class": "auto", "evidence": ["SKY_AUTO_NEW_EXITS", "SKY_AUTO_BEACONS_EXITS", "SKY_EXTRACTION_RULE"] },
+    { "checklist": "M_SKY_ISLAND_09", "class": "shot", "evidence": ["SKY_AUTO_ALT_BOARD", "SKY_AUTO_ALT_RESIDENT", "SKY_AUTO_ALT_LOCALE"] },
+    { "checklist": "M_SKY_ISLAND_10", "class": "auto", "evidence": ["SKY_AUTO_NEW_S1_PUZZLE", "SKY_AUTO_END_ROSTER", "SKY_KEEPSAKE_ITEMS"] },
+    { "checklist": "M_SKY_ISLAND_11", "class": "auto", "evidence": ["SKY_AUTO_REAL_GATHER_KINDS", "SKY_AUTO_NEW_CRAFT_MAKE", "SKY_AUTO_REAL_NIGHT_WIND"] },
+    { "checklist": "M_SKY_ISLAND_12", "class": "auto", "evidence": ["SKY_AUTO_LAMPS_STAGE", "SKY_AUTO_END_RECALL"] },
+    { "checklist": "M_SKY_ISLAND_13", "class": "auto", "evidence": ["SKY_AUTO_REAL_NIGHT_GNATS", "SKY_DRILL_GNAT_SWARM"] },
+    { "checklist": "M_SKY_ISLAND_14", "class": "auto", "evidence": ["SKY_AUTO_END_ECHO_SUMMON", "SKY_AUTO_END_ECHO_CLEAR", "SKY_STORM_ECHO"] }
+  ]
+}
