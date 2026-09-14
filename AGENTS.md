@@ -152,12 +152,45 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 - Canvas 的 `sortingOrder` 一律引用 `BossRushUILayers` 常量，不写魔法数字。历史上这些值分成 10~1001 与 28000~32000 两个孤岛，跨模式叠加时谁压谁靠运气。
 - 颜色用 `BossRushUIColors` 的设计 token，尤其遮罩必须用 `Backdrop`，不要再引入第二套 `(0,0,0,0.7)`。
-- 面板/按钮/卡片底图走 `BossRushUI.ApplyPanelSkin`，当前是运行时程序化圆角九宫格，将来换美术图集时通过 `BossRushUISkin` 注入，调用方零改动（规格见 `docs/制作教程/BossRushUI_图集规格.md`）。
+- 面板/按钮/卡片底图走 `BossRushUI.ApplyPanelSkin`。图集 `Assets/ui/bossrush_ui_skin` **已经在跑**，
+  但同一个 `radius` 对应的不是同一张图：卡片、分隔线、滚动滑块要显式传 `BossRushUISkinPart`
+  （`Card` / `Rule` / `ScrollHandle`），`radius <= 3` 的细条一律程序化（3px 上任何图的 border 都会被
+  Unity 压到中心区归零）。规格与分档表见 `docs/制作教程/BossRushUI_图集规格.md`。
+- **深色面板要有边，就必须调 `BossRushUI.ApplyPanelStroke`，不能指望图集里烤进去的内描边**：
+  它会被 `Image.color` 的深色 token 乘到 2.9/255（实算），肉眼不可见。描边色用
+  `BossRushUIColors.Stroke`，不要用 `Divider`（a=0.32，只有 1.54:1）。由
+  `tests/SkyIslandUiContrastGuard.py` 按 WCAG 复算。
+- 按钮标签字色一律 `BossRushUI.GetButtonTextColor(背景色)`，**不要写死 `TextPrimary`**：
+  白字压在 `Accent` 上只有 2.23:1。
+- 缓动只有两条：位移用 `BossRushUI.EaseOut`，原地淡变用 `BossRushUI.SmoothStep`；
+  子元素错峰入场用 `BossRushUIEntranceAnimation`。**不引入 DOTween / PrimeTween 一类第三方依赖。**
+  走 unscaled 时间的表现层必须自带 `BossRushUI.IsGamePaused()` 门。
 - 字体一律 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，**不要用 `Resources.GetBuiltinResource<Font>("Arial.ttf")`**——内置 Arial 渲染不了中文。新建文本用 TMP，不要用 legacy `UI.Text`。
 - `CanvasScaler` 必须调 `ZombieModeUIHelper.ConfigureCanvasScaler`；只 `AddComponent` 不配置会退化成 `ConstantPixelSize`，高分屏上面板会缩成一小块。
 - 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）的地方优先复用官方，不要用共享库重造。
+- **选项先判断再挂，不要先挂上再在回调里拒绝**，也**不要挂灰掉的占位项**（灰项和挂满一样吵，
+  玩家还是会去点）。做不了就整条不挂，「还差什么」收进正文当引导。
+  「能不能挂」与「点了会不会被拒」必须共用同一份判据（天空岛是 `SkyIslandStoryRules.Describe`，
+  `TryApply` 与 `CanApply` 都从它走），否则迟早分叉成「看得见点不动的一屏按钮」。
+  同一页超过 3–4 项就该分二级子菜单——复用既有的「重开」机制即可，不要新建框架。
+  由 `tests/SkyIslandChoiceGateGuard.py` 守卫。
+- **叙事一律走官方对话，图鉴一律走官方 `NoteIndex`。** 两者我们都已经封装好了，不要再画第二套：
+  - 台词：`Integration/Dialogue/DialogueManager.ShowDialogueSequenceBilingual` /
+    `ShowMultipleChoiceBilingual`，actor 走 `DialogueActorFactory.CreateBilingual`（自带立绘位）。
+    长文案**一句一屏**交给它，不要糊在自绘面板的正文位上。
+  - 条目：`Duckov.NoteIndexs.NoteIndex`，范例 `Campaign/CampaignNoteBridge.cs` 与
+    `DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs`。口径是**我们的存档是唯一权威、官方图鉴只做镜像**；
+    反过来读官方图鉴当事实源不行——那是官方存档，我们不拥有它。
+    两个坑：`SetNoteDynamic` 只写查询字典**不写 `notes` 列表**（必须两边都写，否则界面一条也看不见）；
+    `titleKey` / `contentKey` 是只读派生属性，文案必须走 `LocalizationHelper.InjectLocalizations`。
+  - **自绘面板只在官方给不了的能力上保留**，而且理由要写进文件头。天空岛保留它的唯一理由是
+    `timeScale = 0` 的模态（面板里挂着回血与整备，没有模态门就是战斗中的免费回血站）。
+  - **官方任务系统 `Duckov.Quests` 刻意不接**：`Quest`/`Task` 是 prefab、`QuestGiverID` 是写死的 enum、
+    `QuestManager` 会把 mod 任务写进官方存档键（卸载后官方报错，属 §10 需 owner 签字）。
+    完整理由归档在 `CODE_REVIEW_FINDINGS.md`，**不要每轮重查一遍**。
+  由 `tests/SkyIslandOfficialApiReuseGuard.py` 守卫。
 
-由 `tests/BossRushUISharedLibraryGuard.py` 守卫。
+由 `tests/BossRushUISharedLibraryGuard.py`、`tests/BossRushUISkinLoaderGuard.py`、`tests/SkyIslandUiContrastGuard.py`、`tests/SkyIslandOfficialApiReuseGuard.py`、`tests/SkyIslandChoiceGateGuard.py` 守卫。
 
 ### 4.15 新子系统的状态归属与宿主 partial 预算
 
@@ -285,6 +318,51 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
 
 ## 14. 最后更新
 
+2026-09-12（owner 授权后把待拍板项全部定案）：`CR-2026-09-12-018` … `-020`，1 P1 + 2 P2；**没开游戏**。
+
+- **Mode H 生产目录下限 8 → 9**。旧值的理由「5 席 + 3 备选」算术不成立：对手池 = 认证池 − 五席，
+  8 人只剩 3 人，**52.9% 的合法抽签建不出六场且没有出路**。不放宽走廊（改平衡数值），
+  也**不让落选三席回对手池**——那与已公布设计冲突：落选三人各翻一张去向牌，其中「撕票」明写
+  *本季永久移除，谁也签不到*。停在 9 不是 10：认证失败是每台机器的事，10 会把只认证过 9 个的玩家挡在模式外；
+  9 人残余 2.5% **有出路**（退出赛季重进即重抽）。撞门槛走既有的退票离场，发生在选秀与下注**之前**。
+- **岛上物资抽样改成按品质加权**（每升一档 ×0.6，相对本带下界算）。教训是：
+  **「在按品质带筛出来的清单上均匀抽」不等于「像原版那样随机」**——一档被抽中的概率会正比于
+  *这一档有多少种物品*。实机反解出的表是 `q1=77 · q2–3=277 · q4–5=174 · q6–8=204`，
+  星工带高半段的种类比低半段还多，于是均匀抽比原版更肥。写这类池子时先问一句「带内构成是什么形状」。
+- **应时的信同趟连送**：12 封信一趟一封是这张图**唯一严格线性、不可压缩**的时长乘数
+  （把约 3 h 的内容拉成约 8 h 的完成路径）。前 8 封维持按趟，后 4 封条件满足时连送。
+  做收集品的节奏门之前，先算一下它把完成路径拉长多少、拉长的那部分有没有新内容。
+- 基线：编译绿、守卫 **596 PASS / 0 NEW-FAIL / 0 KNOWN-RED**、执行回归 **33 PASS / 0 FAIL**。
+  `docs/天空岛_可玩性与时长评估_2026-09-10.md` 的 R-1…R-14 与待拍板清单**至此全部关闭**。
+
+2026-09-12（天空岛玩家链路审核 + 全面修复）：以「一个真人从头玩到尾」为主线复审，3 P2 + 4 P3 全部修完
+（`CR-2026-09-12-011` … `-017`），含待拍板项 R-6 落地；**没开游戏**。
+
+- **中英 Wiki 此前零守卫**：`WikiContent/en/map__sky_island.md` 的「The first stretch」自首版起就整段缺了
+  中文版的四条路线要点（先清威胁再操作风标台 / 星灯台、捷径怎么开、双航标后去钟庭）——而那四条是**唯一**
+  告诉玩家「航标台要先清守卫」的地方。新守卫 `SkyIslandWikiParityGuard` 按章节形状 + 语义锚点对齐两版与两份镜像，
+  **只钉天空岛地图页**：全仓另 33 对页面的形状差异多是**刻意**的排版约定（`item__consumables.md` 英文把
+  「堆叠/使用时间」合成一行，内容是全的），一刀切会把约定当缺陷、写成假不变式。
+- **永久捏脸 NPC 的台词可以写中英对照了（`SCHEMA+`）**：`dialogues` / `marriedDialogues` / 三组气泡里的每一句
+  既可以是裸字符串（老写法），也可以是 `{"cn": …, "en": …}`，两种能混排；缺 `en` 时 `L10n.T` 回落中文，
+  老蓝图一个字不用改。两条 load-bearing：**语言在取用时解析**（玩家能在游戏里切语言，解析时定死会停在旧语言）；
+  **档位判据必须看 `lines` 这个键**而不是只看 `Kind`——台词的对照形态本身也是对象，只看 `Kind` 会把
+  `[{cn,en}]` 单档误判成 `{minLevel, lines}` 档位数组，于是**整组台词静默丢失**（不报错、不抛异常，
+  只表现为「这个 NPC 突然不说话了」）。晴禾 / 苇白 46 条已补译；新增执行回归
+  `tests/fixtures/PermanentDuckNpcDialogue`（162 条断言）——**结构守卫证明不了「解析真的把两种形态都读出来了」**。
+- **注释可以把人推向已知回归**：`AvailableBountyProgress` 一度声称「清场已记进存档的组这局不会再触发回调」，
+  而 `Tick` 的短路只关**手动**组；照它过滤正是 `RemainingClearable` 注释里警告的那条回归
+  （第二趟起可完成量恒为 0、「清理航路威胁」永远派不出来）。守卫现在把行为与注释一起钉住。
+- **导航顶点数有两个口径**：闸门比的是运行时 `mesh.vertexCount` = **3870 / 4095（余量 5.5%）**；
+  离线 UnityPy 读到的 4037 是顶点缓冲未合并前的计数，**不要拿它算余量**（§14 旧记录已改）。
+- **降级面要对称**：四项居民服务里只有苔药没有装置兜底（药臼有、苔药没有），眠苔生成失败的那一趟
+  「回血」整条线掐断。守卫新增「每项服务都要有装置兜底」的结构断言。
+- **`GameClock.clockTimeScale = 60`**：一个昼夜 ≈ 24 现实分钟、**夜里只有 ≈8 分钟**，
+  整个批次四（云蚋 / 七种对策 / 蛙卵 / 驱蚋委托）与夜风都挤在这个窗口里。写夜里内容时先按它算。
+- 基线：编译绿、守卫 **596 PASS / 0 NEW-FAIL / 0 KNOWN-RED**、执行回归 **33 PASS / 0 FAIL**、
+  12 条破坏探针逐条转红并按字节还原。**未擅自定案**：R-4 的品质带抽样口径（经济数值，§10）、
+  R-2（K1 捷径）、信鸽「一趟一封」的时长口径均留给 owner。
+
 2026-09-11（天空岛内容批次四「云蚋」）：夜里的蚊群、会躲子弹的轻量目标、七种对策与蛙鸣池的青蛙；新增 TypeID 500083–500085，**不加存档字段**（放回的蛙卵复用 `discoveredNotes`，前缀 `Frog_`）；**没开游戏**。
 
 - **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00、不抛异常，照读会整趟判成夜里（`CR-2026-09-11-002`）；也不要用官方 `TimeOfDayController.AtNight`（19–5 点）。新代码判夜一律走它，`SkyIslandMosquitoGuard` 会拦。
@@ -387,9 +465,12 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
   正确写法是断言 12 个区域标记**各自存在**。同一节点还让
   `AvailableBountyProgress(Survey)` 的可完成量永久多算 1（`RegionBit("B_Mural")` 返回 0，
   那一格恒为「未访问」）——见 CR-2026-09-10-001。
-  可离线读到的硬约束还有：导航网格顶点 **4037 / 4095**（余量 1.4%，
-  超限会让 `VerifyBeforeActivation` 抛异常、玩家根本进不去岛；
-  §14 旧记录里的「3533，余 13.7%」已过时），`m_IsReadable=True`，
+  可离线读到的硬约束还有：导航网格顶点上限 4095，超限会让 `VerifyBeforeActivation` 抛异常、玩家根本进不去岛。
+  **顶点数有两个口径，以运行时为准**：闸门比的是 `ArenaPrototypeNavigation.cs` 里的 `mesh.vertexCount`，
+  实机读数 **3870 / 4095（余量 5.5%）**（`BossRushValidation_20260912_073636_324` 的 `SKY_NAV_GRAPH`，
+  由 `F3GameplayValidationSkyIslandCases.ValidateSkyIslandNavigationGraph` 直接取该字段）；
+  离线 UnityPy 读同一个包得到 4037（顶点缓冲未合并前的计数），**不要拿它算余量**。
+  §14 旧记录里的「3533，余 13.7%」已过时。`m_IsReadable=True`，
   以及两个根节点的激活状态（`SkyIslandWorld` True / `SkyIslandLevel` False）。
   日志里那行 `Build Finished, Result: Failure` 经与旧包逐项对照确认是噪声。
 - 交付物：`docs/制作教程/天空岛/天空岛优化_盘点与分级.md`、`docs/制作教程/天空岛/天空岛优化_交付报告.md`、

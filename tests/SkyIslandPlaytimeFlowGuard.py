@@ -96,15 +96,26 @@ def main():
     for flag in ("ZhelingDefeated", "BellKeeperDefeated", "StormSlain"):
         require(outcome, "case SkyIslandStoryFlag." + flag + ":return L10n.T(", "CombatOutcome 缺 " + flag + " 的回话")
     require(outcome, "default:return null;", "CombatOutcome 对其它旗标必须返回 null（面板动作不读战斗回话）")
+    # 2026-09-13：每个动作的「写哪个旗标 / 缺什么前置 / 成了回什么话」抽进了 Describe，
+    # 由 TryApply（真的执行）与 CanApply（选项挂不挂得出来）**共用同一份**——
+    # 这正是「选项一律先挂上、门全在回调里」那个病的修法。分支断言跟着挪到 Describe。
     apply_body = need_body(rules, "internal static bool TryApply(SkyIslandStoryData source, SkyIslandStoryAction action,", "剧情规则")
+    describe = need_body(rules, "private static bool Describe(SkyIslandStoryData source, SkyIslandStoryAction action,", "剧情动作口径表")
     for action in ("ZhelingDefeated", "BellKeeperDefeated", "StormSlain"):
-        block = apply_body.split("case SkyIslandStoryAction." + action + ":", 1)
+        block = describe.split("case SkyIslandStoryAction." + action + ":", 1)
         if len(block) < 2:
-            errors.append("TryApply 缺 " + action + " 分支")
+            errors.append("Describe 缺 " + action + " 分支")
             continue
         block = block[1].split("case SkyIslandStoryAction.", 1)[0]
         require(block, "message = CombatOutcome(SkyIslandStoryFlag." + action + "); break;",
-                "TryApply 的 " + action + " 分支必须取 CombatOutcome，文案不能再写第二份")
+                "Describe 的 " + action + " 分支必须取 CombatOutcome，文案不能再写第二份")
+    # TryApply 与 CanApply 都必须经 Describe：任何一边自己抄一份前置判断，
+    # 「挂不挂得出来」和「点了会不会被拒」立刻分叉。
+    require(apply_body, "Describe(source, action, out flag, out required, out message)",
+            "TryApply 必须经 Describe 取口径，不得自己再写一份 switch")
+    can_apply = need_body(rules, "internal static bool CanApply(SkyIslandStoryData source, SkyIslandStoryAction action,", "选项可用性")
+    require(can_apply, "Describe(source, action, out flag, out required, out message)",
+            "CanApply 必须经 Describe 取口径——它和 TryApply 分叉就等于选项挂了却点不动")
     # 文案只出现一次（剥注释之后数原文里的字面量；注释里可以提）。
     for phrase in ("『航路交给你。』镜水寺的路已开放", "那就让钟声，为归来的人响一次", "从今天起都少了一个理由"):
         literal_count = len(re.findall(r'"[^"\n]*' + re.escape(phrase), clean_source(rules_raw)))
@@ -158,8 +169,13 @@ def main():
 
     # ---- 4. 20 处见闻各有自己的标题与正文 ----
     keys = ["Search_" + c for c in "ABCDEFGH"] + ["Search_%s_02" % c for c in "ABCDEFGH"] + ["Search_S%d" % i for i in range(1, 5)]
-    point_name = need_body(world, "internal static string PointName(string key)", "见闻标题")
-    lore = need_body(world, "private static string Lore(string key)", "见闻正文")
+    # 2026-09-13：三张文案表（Name / Brief / Lore）拆进 SkyIslandPointText.cs——
+    # 它们是纯静态查表，而 SkyIslandWorldStory 卡在 1200 行预算上。
+    point_text = read(SKY + "SkyIslandPointText.cs")
+    point_name = need_body(point_text, "internal static string Name(string key)", "见闻标题")
+    lore = need_body(point_text, "internal static string Lore(string key)", "见闻正文")
+    # 导语是面板正文的唯一来源，20 处见闻点一处都不能落进 default 的通用句。
+    brief = need_body(point_text, "internal static string Brief(string key)", "见闻导语")
     lore_texts = {}
     for key in keys:
         if point_name and 'case "%s":return L10n.T(' % key not in point_name:
@@ -167,6 +183,9 @@ def main():
         match = re.search(r'case "%s":return L10n\.T\("([^"]*)"' % re.escape(key), lore) if lore else None
         if match is None:
             errors.append("Lore 缺 " + key + " 的专属正文（会落进 default 那一段通用文案）")
+        # need_body 走的是 squash（冒号两侧空白去掉），所以这里也不能带空格。
+        if brief and ('case "%s":return L10n.T(' % key) not in brief:
+            errors.append("Brief 缺 " + key + " 的专属导语（面板正文会落进 default 的通用句）")
         else:
             lore_texts[key] = match.group(1)
     seen = {}

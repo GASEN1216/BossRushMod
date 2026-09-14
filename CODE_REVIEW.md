@@ -60,6 +60,18 @@ CR-YYYY-MM-DD-NNN
 - Config/Hooks：归位符合 `docs/架构说明/Config归位约定.md`、`docs/架构说明/Hooks分层约定.md`。
 - ZombieMode：不接共享 mutator roll，不按性能档改变玩法，不破坏 run-only cleanup。
 - 防御式 catch：不批量删除；关键路径新增日志要低噪声。
+- **UI 观感类改动**（2026-09-13 起）：
+  - 底图分档传对了没有？细条（`radius <= 3`）不许穿图集里的任何一张（Unity 会把 border 压到中心区归零）；
+    卡片走 `Card`、分隔线走 `Rule`（rect 高度必须 ≥5）、滚动条走 `ScrollHandle`。
+  - 深色面板要有边就调 `BossRushUI.ApplyPanelStroke`，**不要指望图集里烤进去的内描边**——
+    它会被深色 token 乘到约 3/255，肉眼不可见。
+  - 按钮标签字色一律 `GetButtonTextColor(背景色)`，不写死 `TextPrimary`。
+  - **对比度要算不要目测**：正文 ≥4.5:1、大字 ≥3:1、可点控件的边界 ≥3:1，
+    背景要按**实际合成**算（token 的 alpha + 背后的场景亮度），不是拿两个 token 直接比。
+    `tests/SkyIslandUiContrastGuard.py` 是现成的算法与探针模板。
+  - 走 unscaled 时间的表现层必须带 `BossRushUI.IsGamePaused()` 门；缓动只用
+    `EaseOut`（位移）/ `SmoothStep`（原地淡变），不引入第三方缓动库。
+  - 每帧路径：值没变就不要写 RectTransform / CanvasGroup / Image.color。
 
 ## 7. 输出格式
 

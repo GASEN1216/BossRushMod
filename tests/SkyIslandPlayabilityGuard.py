@@ -128,7 +128,7 @@ def main():
          "private Action reopen;",
          "private string Refreshed(bool changed, string message)",
          "reopen = delegate { ReadPoint(key, recorded); };",
-         "reopen = delegate { Talk(id, speaker); };",
+         "reopen = delegate { OpenResidentPanel(id, speaker); };",
          "Refreshed(contract.TryAccept(kind, out message), message)",
          "Refreshed(contract.TryAbandon(out message), message)",
          "Refreshed(story.TryApply(action, out message), message)")

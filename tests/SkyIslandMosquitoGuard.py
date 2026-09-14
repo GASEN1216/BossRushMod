@@ -374,6 +374,22 @@ def main():
     require(squash(rules), "internal bool CanAct { get { return Phase == SkyIslandGnatPhase.Idle && StunnedFor <= 0f; } }",
             "主动行为门必须同时检查阶段与眩晕")
     require(squash(rules), "return CanAct && !Dazzled && Budget >= 1f && Cooldown <= 0f;", "躲闪也要遵循主动行为门")
+    # 风灯的取舍要两头都成立：招来更多（LanternFactor > 1）且灯下那几只不咬人，否则风灯只是「多一群麻烦」，被驱风香完全压死。
+    require(squash(rules), "return !dazzled && now >= gnatReadyAt && now - lastBiteAt >= GlobalBiteGapFor(veil);",
+            "灯下晃了眼的云蚋不许下嘴（风灯与驱风香的分工）")
+    require(need_body(gnats, "private Vector3 Cruise(", "巡飞"),
+            "bool dazzled = gnat.Motor.Dazzled;", "巡飞要认出被风灯晃着的那几只")
+    require(need_body(gnats, "private Vector3 Cruise(", "巡飞"),
+            "playerPosition + Vector3.up * SkyIslandMosquitoRules.LanternHaloHeight", "晃了眼的云蚋要绕着头顶那盏灯转，不绕脖子")
+    require(fieldcraft_s, "new Vector3(0f, SkyIslandMosquitoRules.LanternHaloHeight, 0.4f)",
+            "风灯的点光高度必须读云蚋那边的同一个常量：看见的火光就是它们绕的那一处")
+    if not number(rules, "LanternHaloHeight") - number(rules, "HoverHeight") > number(rules, "BiteReach"):
+        errors.append("风灯的光晕要高出脖子一个叮咬距离以上，几何上也够不着")
+    # 药膏的防痒要赶在被叮之前抹得上：只在痒的时候才给，等于把「这一阵不痒」写成了事后药。
+    forbid(fieldcraft_s, "if (buff == SkyIslandFieldBuff.Soothe) return gnats != null && gnats.Itching;",
+           "星苔药膏不许只在正在痒时才抹得上（防痒是出门前用的）")
+    require(fieldcraft_s, "if (buff == SkyIslandFieldBuff.Soothe) return gnats != null && gnats.Usable;",
+            "星苔药膏的防痒要能在出门前抹上（蚊群 owner 活着即可）")
     require(squash(clean_source(read("tests/fixtures/SkyIslandStory/SkyIslandGnatDodgeSimulation.cs"))), "else if (motor.CanAct)",
             "离线模拟与运行时必须共用主动巡飞门")
     for name in ("LanternFactor", "LampFactor", "ZapperFactor"):
@@ -445,7 +461,7 @@ def main():
     if sorted(re.findall(r"new DamageInfo\((\w*)\)", gnats)) != ["null", "player"]:
         errors.append("伤害来源必须只有叮咬的 DamageInfo(null) 与打蚊子的 DamageInfo(player)")
     ordered(need_body(gnats, "private void TryBite(", "叮咬"),
-            ("SkyIslandMosquitoRules.BiteReady(now, gnat.BiteReadyAt, lastBiteAt, veilCarried)",
+            ("SkyIslandMosquitoRules.BiteReady(now, gnat.BiteReadyAt, lastBiteAt, veilCarried, gnat.Motor.Dazzled)",
              "gnat.BiteReadyAt = now + SkyIslandMosquitoRules.BiteDelay(",
              "if (!SkyIslandMosquitoRules.HealthAllowsBite(health.CurrentHealth, health.MaxHealth)) return;", "lastBiteAt = now;",
              "DamageInfo bite = new DamageInfo(null);", "bite.damageValue = SkyIslandMosquitoRules.BiteDamage;",
@@ -474,8 +490,13 @@ def main():
             ('go = new GameObject("SkyIslandGnat");', "go.SetActive(false);", "if (receiverLayer >= 0) go.layer = receiverLayer;",
              "go.AddComponent<SphereCollider>()", "collider.isTrigger = false;", "body.isKinematic = true;", "receiver.useSimpleHealth = true;",
              "health.team = Teams.wolf;", "health.maxHealthValue = SkyIslandMosquitoRules.GnatHealth;", "receiver.simpleHealth = health;",
-             "go.SetActive(true);"),
-            "云蚋必须先建成失活、配齐可被打中的组件再激活（HealthSimpleBase.Awake 立刻取接收体）")
+             "go.SetActive(true);",
+             # 非触发碰撞体 + 绕脖子飞 = 球心落在主角胶囊里。接触必须逐对屏蔽，且只能在 SetActive 之后调用
+             # （碰撞体一禁用再启用，IgnoreCollision 的逐对状态就会被清掉）。
+             "Collider carrier = PlayerCollider();", "Physics.IgnoreCollision(collider, carrier, true);"),
+            "云蚋必须先建成失活、配齐可被打中的组件再激活，激活后屏蔽与主角的接触（HealthSimpleBase.Awake 立刻取接收体）")
+    require(need_body(gnats, "private Collider PlayerCollider()", "主角碰撞体"), "main.GetComponent<Collider>()",
+            "主角移动碰撞体的取法要与 BossRushAudioHooks / 官方 SpawnEgg 一致")
     frame = need_body(gnats, "internal void Frame(", "逐帧")
     require(frame, "if (moved) Physics.SyncTransforms();", "挪完蚊群要同步物理变换，否则子弹扫不到新位置")
     ordered(frame, ("!HasFrameWork()) return;", "Quaternion view = ViewRotation();", "if (alive > 0) ReadAim(player, out muzzle, out aim);"),
@@ -599,6 +620,44 @@ def main():
         if abs(float(x) - island["center"][0]) > 0.01 or abs(float(z) - island["center"][2]) > 0.01 or \
                 abs(float(half) - min(island["size"]) / 2) > 0.01:
             errors.append("岛框 %s 与布局对不上：表 (%s, %s, %s) / 布局 %r %r" % (region, x, z, half, island["center"], island["size"]))
+
+    # ---- 8b. 行为级接线：人为破坏后其余检查全绿的四处（2026-09-12 补） ----
+    # 这四条此前只有「文案非空 / 常量存在」级别的守卫，改坏了照样全绿：
+    #   ① 药膏那两句靠 wasItching 分辨，捕获挪到 ClearItch 之后就永远只剩「出门前」那句；
+    #   ② 风灯晃眼的半径只钉了高度，Cruise 里换回绕脖子的半径不会被任何断言抓到；
+    #   ③ 三团蛙卵「都进蛙鸣池」是复审改写的文案，放生点不唯一时那句就变成假的；
+    #   ④ CullableBeforeDawn 的保守下界必须是「一次掷骰 + 最长冷却」，调大冷却只有回归会红。
+    soothe = need_body(gnats, "internal string Soothe()", "Soothe")
+    ordered(soothe, ["bool wasItching = Itching;", "ClearItch();",
+                     "return SkyIslandMosquitoRules.Soothed(wasItching);"],
+            "药膏：必须先捕获「刚才痒不痒」再止痒，否则两句回话永远只剩一句")
+    soothed = need_body(rules, "internal static string Soothed(", "Soothed")
+    require(soothed, "wasItching", "Soothed 必须按「刚才痒不痒」分两句（出门前抹 / 抹完不痒了）")
+
+    cruise = need_body(gnats, "private Vector3 Cruise(", "Cruise")
+    if not cruise:
+        cruise = gnats
+    require(cruise, "SkyIslandMosquitoRules.LanternHaloHeight",
+            "被风灯晃着的蚋要绕头顶那盏灯（高度）")
+    require(cruise, "float radius = dazzled ? SkyIslandMosquitoRules.LanternHaloRadius",
+            "被风灯晃着的蚋要用灯罩半径绕，不能退回绕脖子的半径")
+    require(rules, "LanternHaloRadius", "SkyIslandMosquitoRules 必须保留灯罩半径常量")
+
+    # 三团蛙卵只有一个放生点：面板 case 里 ReleaseChoice 只挂在 Search_S1，罗盘也只指这一处。
+    release_cases = re.findall(r'case (%s):ReleaseChoice\(choices\);' % STRING, squash(world))
+    if release_cases != ['"Search_S1"']:
+        errors.append("蛙卵放生点必须唯一且是蛙鸣池 Search_S1（实际 %r）——三团都进同一处是复审定下的文案"
+                      % (release_cases,))
+    require(squash(world), 'root.transform.Find("Search_S1")',
+            "捧着蛙卵时罗盘必须指向同一处放生点（蛙鸣池）")
+
+    cullable = need_body(rules, "internal static int CullableBeforeDawn(", "CullableBeforeDawn")
+    require(cullable, "double perSwarm = SpawnCheckSeconds + SpawnCooldownMax;",
+            "可完成量的保守下界必须按「一次掷骰 + 最长冷却」折算，改成别的常量就不再是下界")
+    require(cullable, "swarms * GroupMin", "每群只按最少只数折算（保守下界）")
+    partial_bounty = clean_source(read(SKY + "SkyIslandSessionGnatBounty.cs"))
+    require(squash(partial_bounty), "SkyIslandMosquitoRules.CullableBeforeDawn(",
+            "驱蚋委托的可完成量必须走同一条保守下界，不许另算一套")
 
     # ---- 9. 会话主文件与手工验收 ----
     session_raw = read(SKY + "SkyIslandSession.cs")

@@ -48,6 +48,51 @@ namespace BossRush
 
         /// <summary>这件物品的官方价值能不能进岛上的物资池。</summary>
         internal static bool AllowedInPool(int value) { return value <= MaxPoolItemValue; }
+
+        /// <summary>
+        /// 品质带内每升一档，被抽中的机会乘上这个系数（`CR-2026-09-12-019`）。
+        ///
+        /// **为什么需要它**：池子是「按品质带筛出来的 TypeID 清单」，旧写法在清单上**均匀抽**，
+        /// 于是一档被抽中的概率正比于**这一档有多少种物品**，而不是它该有多稀有。
+        /// 2026-09-12 从实机 `SKY_LOOT_BANDS` 的池子大小反解出这张表（算术自洽、可交叉验证）：
+        ///
+        /// <code>
+        ///   q1 = 77 · q2–3 = 277 · q4–5 = 174 · q6–8 = 204
+        /// </code>
+        ///
+        /// 也就是说**星工遗存带里高半段（q6–8，204 种）的物品种类比低半段（q4–5，174 种）还多**——
+        /// 均匀抽不是「像原版那样随机」，而是**明显比原版更肥**：一趟满搜期望约 91 件、
+        /// 其中约 16 件落在 q6–8，还没算三个委托谢礼箱与噬风战利品。
+        /// 这与设计自己写下的顾虑正好相反（<see cref="GuaranteeMinQuality"/> 的注释：
+        /// 「地上捡到的搜刮箱保持全随机——否则十个星工遗存箱每个保底一件高品质，一趟就发烂了」）。
+        ///
+        /// 0.6 的口径：每升一档机会约降四成，八档跨度合计约 36 倍。按同一份反解估算，
+        /// 星工带里 q6–8 的占比从约 54% 降到约 26%，一趟满搜的 q6–8 期望从约 16 件降到约 8 件。
+        /// **回退办法**：把 <see cref="QualityWeight"/> 改成恒返回 <see cref="QualityWeightScale"/>
+        /// 即退回旧的均匀抽，池子构成与其它一切不变。
+        /// </summary>
+        internal const double QualityFalloffPerStep = 0.6;
+
+        /// <summary>权重基数。用整数权重是为了让抽样在不同机器上逐位一致（浮点累加不保证）。</summary>
+        internal const int QualityWeightScale = 10000;
+
+        /// <summary>
+        /// 一件 <paramref name="quality"/> 档物品在**以 <paramref name="minQuality"/> 为下界的品质带里**的抽样权重。
+        ///
+        /// 相对本带下界算，而不是相对绝对品质 1：保底带（星工 q6–8）也该在自己的带里递减，
+        /// 而不是因为整体档位高就被压成一条平线。
+        /// 权重恒为正（八档跨度下最小仍有 280），所以**不会有任何一档被彻底抽空**。
+        /// 纯算术、无 Unity 依赖，隔离回归直接执行。
+        /// </summary>
+        internal static int QualityWeight(int quality, int minQuality)
+        {
+            int step = quality - minQuality;
+            if (step <= 0) return QualityWeightScale;
+            double weight = QualityWeightScale;
+            for (int i = 0; i < step; i++) weight *= QualityFalloffPerStep;
+            int rounded = (int)(weight + 0.5);
+            return rounded < 1 ? 1 : rounded;
+        }
         /// <summary>单次 Tick 最多建一个箱子，避免入区瞬间集中开销。</summary>
         internal const float TickInterval = 0.5f;
 

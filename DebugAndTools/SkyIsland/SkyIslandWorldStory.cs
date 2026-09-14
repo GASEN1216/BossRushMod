@@ -14,6 +14,8 @@ namespace BossRush
         private readonly List<GameObject> feedback = new List<GameObject>();
         private readonly GameObject root;
         private int displayedFlags = -1;
+        private SkyIslandResidentDialogue dialogue;
+        private bool disposed;
         /// <summary>本趟秘境谜题解到哪一步：只活在会话里，解开后的结果仍是既有支线物证旗标。</summary>
         private readonly SkyIslandPuzzleState puzzles = new SkyIslandPuzzleState();
         /// <summary>本趟的信鸽（至多一只）与它带的信；收下之后两者都清空。</summary>
@@ -32,43 +34,14 @@ namespace BossRush
             this.session = session; this.story = story; this.root = root;
             // 会话在就绪那一刻建本对象，也就是「读条结束、人落地」的时间点：分段计时从这里开始算岛上时长。
             if (story != null) story.LogTiming("landed", null);
+            // 见闻镜像进官方笔记图鉴：注册 20 条条目 + 把存档里已收录的点亮。幂等、fail-open。
+            // 老存档靠这一步补齐（收录时的 Unlock 只覆盖本趟新收的）。
+            // 放这里而不是 SkyIslandSession：剧情侧的事归剧情 owner（AGENTS 4.15），
+            // 而且 Session 卡在 1200 行预算上。
+            if (story != null) SkyIslandNoteBridge.EnsureRegistered(story.Current);
             pigeonCaptionAt = Time.time + PigeonCaptionDelay;
         }
 
-        internal static string PointName(string key)
-        {
-            switch (key)
-            {
-                case "Search_A": return L10n.T("登云码头 · 渡口整备", "Cloudrise Dock · dock refit");
-                case "Search_D": return L10n.T("校准风标 · 开启林边回程路",
-                    "Calibrate the wind beacon · open the woodland way home");
-                case "Search_G": return L10n.T("修复星灯 · 开启检修廊",
-                    "Repair the star lamp · open the maintenance walk");
-                case "Search_E": return L10n.T("双航标门 · 中轴旧桥与风眼",
-                    "Twin-beacon gate · the old centre bridge and the storm's eye");
-                case "Search_H": return L10n.T("归航钟 · 钟守留言",
-                    "Homecoming Bell · the Bell Keeper's message");
-                case "Search_B": return L10n.T("风铃集留言板 · 种植记录与航务委托",
-                    "Windchime Market noticeboard · planting record and lane contracts");
-                case "Search_C": return L10n.T("青穗梯田 · 归航菜畦", "Green Terraces · the homecoming garden");
-                case "Search_F": return L10n.T("旧航路守卫 · 折翎", "Keeper of the old route · Zheling");
-                case "Search_S1": return L10n.T("晴禾的种植记录", "Qinghe's planting record");
-                case "Search_S2": return L10n.T("风没有送到的信", "The letter the wind never delivered");
-                case "Search_S3": return L10n.T("听雨洞的旧航路图", "The old route chart in the Rainlisten Grotto");
-                case "Search_S4": return L10n.T("修复观星镜", "Repair the telescope");
-                // 8 个 _02 见闻点各有自己的标题与正文（以前全部落进 default，20 处见闻里 8 处是同一句话）。
-                // 正文各指向一处支线或机制，见 Lore：种植记录、委托规矩、眠苔、旧信、噬风的风眼、航路图、观星镜、钟守要的证据。
-                case "Search_A_02": return L10n.T("登云码头 · 渡船的等候名单", "Cloudrise Dock · the ferry waiting list");
-                case "Search_B_02": return L10n.T("风铃集 · 委托单存根", "Windchime Market · contract stubs");
-                case "Search_C_02": return L10n.T("青穗梯田 · 田埂上的记号", "Green Terraces · marks on the ridge");
-                case "Search_D_02": return L10n.T("悬根林 · 吊在根上的邮袋", "Hanging Root Wood · a mailbag in the roots");
-                case "Search_E_02": return L10n.T("鸣风栈道 · 栏杆上的刻痕", "Windsong Boardwalk · notches on the rail");
-                case "Search_F_02": return L10n.T("镜水寺 · 池底的航路图拓本", "Mirrorwater Temple · a rubbing in the pool");
-                case "Search_G_02": return L10n.T("残星工坊 · 瞭台检修日志", "Fallen Star Workshop · the overlook log");
-                case "Search_H_02": return L10n.T("归航钟庭 · 钟架下的签名", "Homecoming Bell Court · names under the bell frame");
-                default: return L10n.T("阅读群岛见闻", "Read the archipelago notes");
-            }
-        }
 
         /// <summary>
         /// 战斗静默门。面板会把时间压到 0（这个暂停是可靠的，见
@@ -110,6 +83,7 @@ namespace BossRush
         {
             if (BlockedByCombat()) return;
             reopen = delegate { ReadPoint(key, recorded); };
+            hiddenHints.Clear();
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             // 四座秘境的物证点先是一段三步小谜题（SkyIslandPuzzles）；解开之后、或物证早已拿到，才是普通的「收录」页。
             SkyIslandPuzzle puzzle = SkyIslandPuzzles.For(key);
@@ -123,25 +97,27 @@ namespace BossRush
                 string message;
                 bool recordedNow = story.RecordSearch(key, out message);
                 if (recordedNow && recorded != null) recorded();
+                // 权威副本已经写进我们自己的存档；这里把官方笔记图鉴那一条也点亮（镜像，fail-open）。
+                if (recordedNow) SkyIslandNoteBridge.Unlock(key);
                 return Refreshed(recordedNow, message);
             }));
             switch (key)
             {
-                case "Search_D": Add(choices, L10n.T("校准西侧风标", "Calibrate the west wind beacon"),
+                case "Search_D": AddIf(choices, L10n.T("校准西侧风标", "Calibrate the west wind beacon"),
                         SkyIslandStoryAction.RepairWindBeacon);
-                    Add(choices, L10n.T("系牢林边旧运菜道 K1", "Secure the old produce path K1"),
+                    AddIf(choices, L10n.T("系牢林边旧运菜道 K1", "Secure the old produce path K1"),
                         SkyIslandStoryAction.OpenShortcutK1); break;
-                case "Search_G": Add(choices, L10n.T("修复东侧星灯", "Repair the east star lamp"),
+                case "Search_G": AddIf(choices, L10n.T("修复东侧星灯", "Repair the east star lamp"),
                         SkyIslandStoryAction.RepairStarLamp);
-                    Add(choices, L10n.T("打开工坊检修廊 K2", "Open the workshop maintenance walk K2"),
+                    AddIf(choices, L10n.T("打开工坊检修廊 K2", "Open the workshop maintenance walk K2"),
                         SkyIslandStoryAction.OpenShortcutK2); break;
                 case "Search_E":
-                    Add(choices, L10n.T("开启中轴旧桥 K3", "Open the old centre bridge K3"),
+                    AddIf(choices, L10n.T("开启中轴旧桥 K3", "Open the old centre bridge K3"),
                         SkyIslandStoryAction.OpenShortcutK3);
                     StormChoice(choices); break;
                 case "Search_H": BellChoices(choices); break;
                 case "Search_B":
-                    Add(choices, L10n.T("把种植记录留给晴禾", "Leave the planting record for Qinghe"),
+                    AddIf(choices, L10n.T("把种植记录留给晴禾", "Leave the planting record for Qinghe"),
                         SkyIslandStoryAction.DeliverPlantingRecord);
                     // 委托板与苇白本人等价：她婚后离岛或尚未生成时，委托仍然可接可交。
                     BountyChoices(choices, () => BoardPosition("Search_B")); break;
@@ -158,8 +134,14 @@ namespace BossRush
                 case "Search_C": ServiceChoice(choices,
                     L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
                     CraftChoice(choices, SkyIslandCraftStation.Stove); break;
-                // 眠苔的药臼：她不是永久居民，但生成可能失败；悬根林的见闻点就在她站位旁 14 米，给药臼一个兜底。
-                case "Search_D_02": CraftChoice(choices, SkyIslandCraftStation.Mortar); break;
+                // 眠苔的药臼与苔药：她不是永久居民，但生成可能失败；悬根林的见闻点就在她站位旁 14 米，两样一起兜底。
+                // **服务和合成台必须成对兜底**：只兜药臼的话，眠苔没生成出来的那一趟玩家连唯一的付费回血都没有，
+                // 而星苔药膏恰恰要在她的药臼上做——等于把"回血"这条线整条掐断。浮舟（码头装置）、
+                // 晴禾（菜畦）都是服务 + 合成台一起兜的，这里补齐同一条纪律。
+                // `healReadyAt` 与 `mealUsed` 一样是 SkyIslandServices 的单例字段，两个入口共用同一次冷却，不会双领。
+                case "Search_D_02":
+                    ServiceChoice(choices, L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
+                    CraftChoice(choices, SkyIslandCraftStation.Mortar); break;
                 case "Search_F": ZhelingChoices(choices); break;
                 // 内容批次四：镜水寺池边夜里捧蛙卵，这一趟里带回蛙鸣池放生（SkyIslandGnats；放生写进本槽手记）。
                 case "Search_F_02": SpawnChoice(choices); break;
@@ -169,18 +151,39 @@ namespace BossRush
             LightChoice(choices, key);
             // 装置/见闻面板配该区域的横幅插图；SkyIslandUiArt 是 fail-open 的，
             // 缺图就退成无插图布局，绝不因为一张图没出来就打不开挂着 K1/K2/K3 的装置。
-            presentation.Show(PointName(key), solving ? PuzzleBody(puzzle, key) : Lore(key) + "\n\n" + story.CurrentObjective,
+            // 正文只放一句导语 +（被隐藏选项留下的）下一步。
+            // 长文去了官方笔记图鉴，目标卡常驻右上角 HUD——两处都不必在这里再说一遍。
+            presentation.Show(SkyIslandPointText.Name(key),
+                solving ? PuzzleBody(puzzle, key) : WithNextStep(SkyIslandPointText.Brief(key)),
                 choices, null, SkyIslandUiArt.GetScene(key));
         }
 
+        /// <summary>
+        /// 跟居民说话的入口：**叙事走官方对话**（自带立绘位、逐句推进），说完再问一句要不要办事。
+        ///
+        /// 面板的 <see cref="reopen"/> 指向 <see cref="OpenResidentPanel"/> 而不是本方法——
+        /// 否则每点一个选项（接一单委托、买一副苔药）都要把整段台词从头再听一遍。
+        /// </summary>
         internal void Talk(string id, Transform speaker)
         {
+            if (disposed || (dialogue != null && dialogue.Active) || DialogueManager.IsDialogueActive) return;
             if (BlockedByCombat()) return;
-            reopen = delegate { Talk(id, speaker); };
+            dialogue = SkyIslandResidentDialogue.Run(id, speaker, story.DescribeNpc(id),
+                delegate { OpenResidentPanel(id, speaker); }, CanContinueDialogue);
+        }
+
+        /// <summary>居民的功能面板：接委托 / 苔药 / 整备 / 合成 / 手记。叙事不在这里，见 <see cref="Talk"/>。</summary>
+        private void OpenResidentPanel(string id, Transform speaker)
+        {
+            if (BlockedByCombat()) return;
+            reopen = delegate { OpenResidentPanel(id, speaker); };
+            hiddenHints.Clear();
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             if (id == "sky_qinghe")
             {
-                Add(choices, L10n.T("交还种植记录", "Return the planting record"),
+                // 走 AddIf：没捡到记录时这一项不挂（「还差什么」进正文），交还之后也不再挂——
+                // 正是 Add 上那条注释说了三个月的事。
+                AddIf(choices, L10n.T("交还种植记录", "Return the planting record"),
                     SkyIslandStoryAction.DeliverPlantingRecord);
                 ServiceChoice(choices,
                     L10n.T("讨一份归航菜（本次出击生效）", "Ask for a homecoming meal (this raid only)"), Meal);
@@ -204,8 +207,12 @@ namespace BossRush
                 ServiceChoice(choices, L10n.T("请眠苔敷一副苔药", "Ask Miantai for a moss remedy"), Heal);
                 CraftChoice(choices, SkyIslandCraftStation.Mortar);
             }
+            // 主视觉给「他家那一区」的插图：居民站在自己的地标上，立绘就压在那张图上。
+            // 正文**不再重复台词**——那段话官方对话刚刚一句一屏地说完了，
+            // 这里只留「被隐藏的选项还差什么」，没有就空着。
             presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id),
-                story.DescribeNpc(id), choices, SkyIslandUiArt.GetPortrait(id), null);
+                WithNextStep(string.Empty), choices, SkyIslandUiArt.GetPortrait(id),
+                SkyIslandUiArt.GetScene(SkyIslandResidents.MarkerOf(id)));
         }
 
         /// <summary>居民显示名的唯一来源：交互提示、血条名与剧情面板标题共用同一份中英对照。</summary>
@@ -261,6 +268,8 @@ namespace BossRush
         /// 两条硬规则：
         /// 1. **只派做得完的单**。清场数本趟还没清的自动组、巡岛数本趟还没踏足的区域，一趟里做掉多少就少多少；
         ///    用 `session.AvailableBountyProgress` 与本轮目标比对后再决定是否挂出来。
+        ///    驱蚋单是这条规则里唯一的**软门**（供给是概率事件、还能被玩家自己的驱风香与灶火烟压没，
+        ///    口径见 `SkyIslandSession.AvailableBountyProgress`），所以第 2 条对它不是冗余而是兜底。
         /// 2. **永远给退单出口**。哪怕门控有疏漏（比如接单后搜刮点建箱失败），
         ///    玩家也能自己退掉，不会被一张做不完的单把本局委托槽卡死。
         /// </summary>
@@ -287,7 +296,7 @@ namespace BossRush
                 {
                     SkyIslandBountyKind kind = kinds[i];
                     int target = contract.TargetFor(kind);
-                    // 可完成量随进度单调递减，接单时够就一定做得完。
+                    // 前三类的可完成量随进度单调递减，接单时够就一定做得完；驱蚋单是软门，靠退单兜底。
                     if (session.AvailableBountyProgress(kind) < target) continue;
                     offered++;
                     choices.Add(new SkyIslandStoryPresentation.Choice(
@@ -306,8 +315,16 @@ namespace BossRush
                     choices.Add(new SkyIslandStoryPresentation.Choice(
                         L10n.T("航务委托 · 暂时没有能接的活", "Lane contracts · nothing to hand out"), delegate
                         {
-                            return L10n.T("苇白：航路这阵子清得差不多了，物资点也翻遍了。下次出岛再来看看吧。",
-                                "Weibai: The lanes are mostly clear and the caches are picked over. Come and see me again next trip.");
+                            // 驱蚋单是四类里唯一「白天永远挂不出来」的方向。这句不提它，
+                            // 玩家在游戏里第一次该遇到它的地方就完全不知道它存在。
+                            // 只在这一趟真会起蚋时才承诺（精灵表缺失的那趟整夜没有蚋）。
+                            return L10n.T("苇白：航路这阵子清得差不多了，物资点也翻遍了。",
+                                    "Weibai: The lanes are mostly clear and the caches are picked over.")
+                                + (session.HasGnatBountyThisRaid && !session.IsNightNow
+                                    ? L10n.T("天黑以后再来一趟——起蚋的夜里我这儿还有一张驱蚋的单子。",
+                                        " Come back after dark — on gnat nights I still have a culling contract for you.")
+                                    : L10n.T("下次出岛再来看看吧。",
+                                        " Come and see me again next trip."));
                         }));
                 return;
             }
@@ -348,6 +365,15 @@ namespace BossRush
         /// <summary>噬风：双航标点亮后才会到场；已解决则给出结果说明而不是再打一次。</summary>
         private void StormChoice(List<SkyIslandStoryPresentation.Choice> choices)
         {
+            // 打完就不再挂：点了只会回一句「风已经散了」。
+            if (session.StormResolved) return;
+            // 双航标没亮时同样不挂死按钮——把「还差什么」交给正文。
+            if (!session.BothBeaconsLit)
+            {
+                Hint(L10n.T("两端航标都亮起来，栈道上那阵风才会循着光过来。",
+                    "The wind out on the boardwalk only comes for the light once both beacons burn."));
+                return;
+            }
             choices.Add(new SkyIslandStoryPresentation.Choice(
                 L10n.T("直面云海里的那阵风 · 噬风", "Face the wind out on the cloud sea · the Windeater"), delegate
             {
@@ -373,19 +399,22 @@ namespace BossRush
 
         private void ZhelingChoices(List<SkyIslandStoryPresentation.Choice> choices)
         {
-            Add(choices, L10n.T("留下来谈 · 出示旧信与航路图",
+            AddIf(choices, L10n.T("留下来谈 · 出示旧信与航路图",
                 "Stay and talk · show the old letter and the route chart"), SkyIslandStoryAction.ReconcileZheling);
             // 两条结局互斥：战胜折翎之后「留下来谈」永久关闭（ReconcileZheling 对已了结的折翎直接拒绝）。
             // 这一项就挨在「留下来谈」下面，按钮上说清楚，免得想走和平线的人手一滑打赢了才发现回不去。
-            choices.Add(Challenge(L10n.T("挑战旧航路守卫（战胜后不能再和解）",
-                "Challenge the keeper of the old route (no reconciling once you win)"), "Zheling"));
+            // 折翎已了结（和解或战胜）之后两项一起收掉。
+            if (ChallengeAvailable("Zheling"))
+                choices.Add(Challenge(L10n.T("挑战旧航路守卫（战胜后不能再和解）",
+                    "Challenge the keeper of the old route (no reconciling once you win)"), "Zheling"));
         }
         private void BellChoices(List<SkyIslandStoryPresentation.Choice> choices)
         {
-            Add(choices, L10n.T("证明航路安全 · 与钟守和解",
+            AddIf(choices, L10n.T("证明航路安全 · 与钟守和解",
                 "Prove the lanes are safe · reconcile with the Bell Keeper"), SkyIslandStoryAction.ReconcileBellKeeper);
-            choices.Add(Challenge(L10n.T("挑战守钟装置", "Challenge the bell engine"), "BellKeeper"));
-            Add(choices, L10n.T("敲响归航钟", "Ring the Homecoming Bell"), SkyIslandStoryAction.RingHomecomingBell);
+            if (ChallengeAvailable("BellKeeper"))
+                choices.Add(Challenge(L10n.T("挑战守钟装置", "Challenge the bell engine"), "BellKeeper"));
+            AddIf(choices, L10n.T("敲响归航钟", "Ring the Homecoming Bell"), SkyIslandStoryAction.RingHomecomingBell);
         }
         private SkyIslandStoryPresentation.Choice Challenge(string label, string id)
         {
@@ -402,6 +431,72 @@ namespace BossRush
                 return started;
             });
         }
+        /// <summary>
+        /// 本次面板里**被隐藏的选项**留下的「下一步」。正文取第一条。
+        /// 每次开面板前清空——它是一次构建的临时产物，不是状态。
+        /// </summary>
+        private readonly List<string> hiddenHints = new List<string>();
+
+        /// <summary>
+        /// 正文末尾接上「下一步」——也就是**被隐藏的那些选项**留下的前置说明。
+        /// 选项藏起来了，但「还差什么」不能跟着一起消失，否则玩家站在装置前不知道该干嘛。
+        /// </summary>
+        private string WithNextStep(string body)
+        {
+            string next = NextStep();
+            if (string.IsNullOrEmpty(next)) return body;
+            return string.IsNullOrEmpty(body) ? next : body + "\n\n" + next;
+        }
+
+        private void Hint(string text)
+        {
+            if (string.IsNullOrEmpty(text) || hiddenHints.Contains(text)) return;
+            hiddenHints.Add(text);
+        }
+
+        /// <summary>被隐藏的选项里的第一条「还差什么」；没有就返回 null。</summary>
+        private string NextStep()
+        {
+            return hiddenHints.Count > 0 ? hiddenHints[0] : null;
+        }
+
+        /// <summary>
+        /// 只在这一步**真的能做**时才挂选项。判据走 <see cref="SkyIslandStoryRules.CanApply"/>，
+        /// 与 <c>TryApply</c> 共用同一个 <c>Describe</c>，所以「挂不挂得出来」和「点了会不会被拒」
+        /// 不可能分叉。
+        ///
+        /// 做不了分两种，处理也不同：
+        /// - **已经做完** → 什么都不留。「这段群岛见闻已经完成」不是引导，是噪声。
+        /// - **前置没满足** → 把「还差什么」收进正文（<see cref="NextStep"/>），那句话本身就是引导。
+        ///
+        /// **不挂灰掉的占位项**：灰项和挂满一样吵，而且玩家还是会去点它。
+        /// </summary>
+        private void AddIf(List<SkyIslandStoryPresentation.Choice> choices, string label,
+            SkyIslandStoryAction action)
+        {
+            string blocker;
+            if (SkyIslandStoryRules.CanApply(story.Current, action, out blocker))
+            {
+                Add(choices, label, action);
+                return;
+            }
+            Hint(blocker);
+        }
+
+        /// <summary>
+        /// 具名对手已经了结（和解**或**战胜）之后就不再挂挑战项：点了只会回一句拒绝。
+        /// 与 <see cref="SkyIslandStoryData.ZhelingResolved"/> / <c>BellKeeperResolved</c> 同一个事实，
+        /// 不另立判据。
+        /// </summary>
+        private bool ChallengeAvailable(string id)
+        {
+            SkyIslandStoryData data = story.Current;
+            if (data == null) return false;
+            if (string.Equals(id, "Zheling", StringComparison.Ordinal)) return !data.ZhelingResolved;
+            if (string.Equals(id, "BellKeeper", StringComparison.Ordinal)) return !data.BellKeeperResolved;
+            return true;
+        }
+
         private void Add(List<SkyIslandStoryPresentation.Choice> choices, string label, SkyIslandStoryAction action)
         {
             choices.Add(new SkyIslandStoryPresentation.Choice(label, delegate
@@ -417,8 +512,16 @@ namespace BossRush
             }));
         }
 
+        private bool CanContinueDialogue()
+        {
+            string reason;
+            return !disposed && session.CanOpenStoryPanel(out reason);
+        }
+
         internal void Tick()
         {
+            if (dialogue != null && dialogue.Active && !dialogue.CanContinue()) dialogue.Dispose();
+            SkyIslandNoteBridge.Tick(story.Current);
             presentation.Tick();
             // 面板开着时战斗才打起来（在途 async 生成会在 timeScale=0 下继续完成）就立刻收起来，
             // 否则暂停键依然成立，只是换了个打开时机。
@@ -521,7 +624,11 @@ namespace BossRush
                         null, SkyIslandUiArt.GetScene(marker));
                 }));
         }
-        internal void Hide() { presentation.Dispose(); }
+        internal void Hide()
+        {
+            if (dialogue != null) dialogue.Dispose();
+            presentation.Dispose();
+        }
 
         /// <summary>残星瞭台的观星镜要先清掉守卫：普通收录与谜题两条路共用这一句门控。</summary>
         private string OverlookGuarded(string key)
@@ -536,7 +643,7 @@ namespace BossRush
         private string PuzzleBody(SkyIslandPuzzle puzzle, string key)
         {
             int index = puzzles.CurrentStep(puzzle);
-            return Lore(key) + "\n\n" + puzzle.Title + L10n.T("：", ": ") + puzzle.Intro + "\n\n" +
+            return SkyIslandPointText.Lore(key) + "\n\n" + puzzle.Title + L10n.T("：", ": ") + puzzle.Intro + "\n\n" +
                 L10n.T("第 ", "Step ") + (index + 1) + "/" + puzzle.Steps.Length + L10n.T(" 步 · ", " · ") +
                 puzzle.Steps[index].Prompt;
         }
@@ -564,6 +671,7 @@ namespace BossRush
                         string message;
                         bool recordedNow = story.RecordSearch(key, out message);
                         if (recordedNow && recorded != null) recorded();
+                        if (recordedNow) SkyIslandNoteBridge.Unlock(key);
                         return Refreshed(recordedNow, feedback + "\n\n" + message);
                     }
                     // 前进要换一组选项，只能重开；重开之后回执写进新面板的正文，所以回执里带上下一步的提问。
@@ -579,34 +687,92 @@ namespace BossRush
             choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("翻阅群岛手记", "Open the archipelago journal"), delegate
             {
                 OpenJournal();
-                // 回调的返回值会写进（新开的）面板正文：返回总览，与手记面板自己的正文一致。
-                return SkyIslandJournal.Overview(story.Current, story.Summary);
+                // 回调的返回值会写进（新开的）面板正文：返回导语，与手记首页自己的正文一致。
+                return SkyIslandJournal.Brief(story.Current);
             }));
         }
 
         /// <summary>
-        /// 群岛手记面板：四个见闻章节 + 来信与名册 + 「总览 · 岛上的灯 · 群岛之物」，共 6 个选项（面板布局属性测试的最坏情况覆盖到 6 个）。
-        /// 章节正文可能很长，正文区自带滚动；选项只换正文、不重开面板。
+        /// 群岛手记（首页）。
+        ///
+        /// 【为什么从 6 项收成 2 项】旧版一打开就是 4 个见闻章节 + 2 项平铺，而且**全部无条件**：
+        /// 新档点进去看到的是 20 行 `□ …（尚未收录）` 加 12 行 `□ 第 N 封（尚未收到）` 的空占位。
+        /// 现在分两层：
+        /// - **20 处见闻整块搬进了官方笔记图鉴**（`SkyIslandNoteBridge`）——回基地也翻得到，
+        ///   自带解锁状态与现成 UI，不必在这里再列一遍；
+        /// - 剩下的按「来信与人」「岛上的事」两组收进子页。
+        ///
+        /// 【子菜单怎么做到的】复用既有的 <see cref="reopen"/> 机制：每个开面板的方法都把
+        /// `reopen` 指向自己，所以「进子页」就是调另一个开面板的方法，「返回」就是调回父页。
+        /// 选项回调的返回值会写进**新开**那个面板的正文，所以每个跳转都要返回目标页自己的导语。
         /// </summary>
         private void OpenJournal()
         {
             if (BlockedByCombat()) return;
+            reopen = delegate { OpenJournal(); };
             var choices = new List<SkyIslandStoryPresentation.Choice>();
-            for (int i = 0; i < SkyIslandJournal.Chapters.Length; i++)
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("来信与人", "Letters and people"), delegate
             {
-                int chapter = i;
-                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandJournal.ChapterName(chapter),
-                    () => SkyIslandJournal.Chapter(chapter, story.Current, PointName, Lore)));
-            }
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("来信 · 名册 · 纪念品", "Letters · crew roster · keepsakes"),
-                () => SkyIslandJournal.Letters(story.Current) + "\n\n" + SkyIslandJournal.Crew(story.Current) + "\n\n" +
-                    SkyIslandJournal.Keepsakes(story.Current)));
-            // 总览与「岛上的灯 · 群岛之物」同一页：面板按最坏 6 个选项排，放不下第七个。灯与物品用处是把群岛串起来的那张图。
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("总览 · 岛上的灯 · 群岛之物", "Overview · lights · what things are for"),
-                () => SkyIslandJournal.Overview(story.Current, story.Summary) + "\n\n" +
-                    SkyIslandLights.Chapter(story.Current, SkyIslandSession.RegionLabel) + "\n\n" + SkyIslandJournal.Uses()));
-            presentation.Show(L10n.T("群岛手记", "Archipelago journal"), SkyIslandJournal.Overview(story.Current, story.Summary),
-                choices, null, null);
+                OpenJournalPeople();
+                return SkyIslandJournal.PeopleBrief(story.Current);
+            }));
+            choices.Add(new SkyIslandStoryPresentation.Choice(
+                L10n.T("岛上的事", "About the isles"), delegate
+            {
+                OpenJournalIsles();
+                return SkyIslandJournal.IslesBrief(story.Current);
+            }));
+            presentation.Show(L10n.T("群岛手记", "Archipelago journal"),
+                SkyIslandJournal.Brief(story.Current), choices, null,
+                SkyIslandUiArt.GetJournalBanner());
+        }
+
+        /// <summary>手记子页：来信 / 名册 / 纪念品。</summary>
+        private void OpenJournalPeople()
+        {
+            if (BlockedByCombat()) return;
+            reopen = delegate { OpenJournalPeople(); };
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("信鸽来信", "Pigeon letters"),
+                () => SkyIslandJournal.Letters(story.Current)));
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("船员名册", "Crew roster"),
+                () => SkyIslandJournal.Crew(story.Current)));
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("带在身上的纪念品", "Keepsakes you carry"),
+                () => SkyIslandJournal.Keepsakes(story.Current)));
+            choices.Add(BackToJournal());
+            presentation.Show(L10n.T("群岛手记 · 来信与人", "Journal · letters and people"),
+                SkyIslandJournal.PeopleBrief(story.Current), choices, null,
+                SkyIslandUiArt.GetJournalBanner());
+        }
+
+        /// <summary>手记子页：岛上的灯 / 群岛之物 / 这一趟。</summary>
+        private void OpenJournalIsles()
+        {
+            if (BlockedByCombat()) return;
+            reopen = delegate { OpenJournalIsles(); };
+            var choices = new List<SkyIslandStoryPresentation.Choice>();
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("岛上的灯", "Lights on the isles"),
+                () => SkyIslandLights.Chapter(story.Current, SkyIslandSession.RegionLabel)));
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("群岛之物 · 用处", "What things are for"),
+                () => SkyIslandJournal.Uses()));
+            // 进度表退到这里：它是一张表，不该占着首页第一眼。
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("这一趟 · 旅程进度", "This run · journey progress"),
+                () => SkyIslandJournal.Overview(story.Current, story.Summary)));
+            choices.Add(BackToJournal());
+            presentation.Show(L10n.T("群岛手记 · 岛上的事", "Journal · about the isles"),
+                SkyIslandJournal.IslesBrief(story.Current), choices, null,
+                SkyIslandUiArt.GetJournalBanner());
+        }
+
+        /// <summary>子页回到手记首页。回调必须返回首页自己的导语——它会被写进新开的那个面板。</summary>
+        private SkyIslandStoryPresentation.Choice BackToJournal()
+        {
+            return new SkyIslandStoryPresentation.Choice(L10n.T("返回手记", "Back to the journal"), delegate
+            {
+                OpenJournal();
+                return SkyIslandJournal.Brief(story.Current);
+            });
         }
 
         /// <summary>
@@ -771,6 +937,9 @@ namespace BossRush
         /// </summary>
         private void TickPigeon()
         {
+            // 收信之后才修好航标/敲钟，也要在本趟送来应时的信；未收的信不被替换。
+            if (pigeon == null && displayedFlags >= 0 && displayedFlags != story.Current.flags)
+                RearmPigeonIfStoryLetterWaiting();
             if (!pigeonPlaced)
             {
                 pigeonPlaced = true;
@@ -811,6 +980,9 @@ namespace BossRush
                 string message;
                 if (!story.RecordNote(letter.Id, out message)) return letter.Body + "\n\n" + message;
                 ReleasePigeon();
+                // 应时的信同趟连送（CR-2026-09-12-020）：只有「有前置且前置已满足」的信才会紧接着再来一只，
+                // 无前置的前 8 封仍是一趟一封。规则收在 SkyIslandLetters.NextSameRaidFor 一处。
+                RearmPigeonIfStoryLetterWaiting();
                 // 第一封信送到时浮舟捎来风标罗盘：收信不改剧情旗标，纪念品在这里补查一次。
                 GrantKeepsakes();
                 string kept = letter.Body + "\n\n" + L10n.T("（信收进了群岛手记。信鸽扑了扑翅膀，朝云海飞走了。）",
@@ -909,6 +1081,22 @@ namespace BossRush
             return best;
         }
 
+        /// <summary>
+        /// 收下一封之后，如果**这一趟**还有一封应时的信（前置已满足），就重新武装信鸽落点。
+        ///
+        /// 落点与字幕走与首封完全相同的那一条路径（<see cref="TickPigeon"/> → <see cref="PlacePigeon"/>），
+        /// 只是把一次性闩 <c>pigeonPlaced</c> 重新打开；字幕同样延后 <see cref="PigeonCaptionDelay"/>，
+        /// 免得「信收进了群岛手记」的回执和「又一只信鸽落在…」挤在同一秒。
+        /// 存档写不进去时 <c>NextFor</c> 那一层本来就不给信，这里不必再判一次。
+        /// </summary>
+        private void RearmPigeonIfStoryLetterWaiting()
+        {
+            if (story == null || !story.CanWrite) return;
+            if (SkyIslandLetters.NextSameRaidFor(story.Current) == null) return;
+            pigeonPlaced = false;
+            pigeonCaptionAt = Time.time + PigeonCaptionDelay;
+        }
+
         private void ReleasePigeon()
         {
             if (pigeon != null) UnityEngine.Object.Destroy(pigeon);
@@ -918,6 +1106,8 @@ namespace BossRush
         }
         public void Dispose()
         {
+            disposed = true;
+            Hide();
             // reopen 捕获了 marker key、recorded 回调与说话人 Transform，会话结束后一并放开。
             reopen = null;
             presentation.Dispose();
@@ -929,75 +1119,6 @@ namespace BossRush
             ReleasePigeon();
             puzzles.Clear();
         }
-        private static string Lore(string key)
-        {
-            switch (key)
-            {
-                case "Search_A": return L10n.T(
-                    "浮舟的渡船日志：风灾之后，码头仍每天留着一条返航的缆绳。沿北面的桥去风铃集，苇白正在等能修灯的人。渡口的工具还在，钝了的家伙可以在这里回一回火。",
-                    "Fuzhou's ferry log: since the storm, the dock still keeps one mooring line free every day. Take the north bridge to Windchime Market — Weibai is waiting for someone who can mend the lamps. The dock tools are still here, so anything gone blunt can be brought back to an edge.");
-                case "Search_B": return L10n.T(
-                    "留言板上钉着三张纸：苇白在找修复两端航标的帮手，晴禾在找落在蛙鸣池的种植记录，还有一张空白的委托单，谁都可以揭。即使主人离岛，留言也能送到。",
-                    "Three sheets are pinned to the board: Weibai wants help restoring both beacons, Qinghe is looking for the planting record she left at Frogsong Pool, and one blank contract slip anyone may take. Messages get through even when their owners are away from the island.");
-                case "Search_C": return L10n.T(
-                    "晴禾把菜畦一层层种向云海。田埂上的空格属于尚未归来的船员。灶还温着——种植记录回来之后，谁路过都能讨一碗归航菜。夜里下地前，可以在这口灶上做驱风香或云苔纱笠；灶火的烟也能赶开云蚋。",
-                    "Qinghe planted the beds in terraces stepping down toward the cloud sea. The gaps along the ridge belong to crew who have not come back. The stove is still warm — once the planting record returns, anyone passing may ask for a bowl of homecoming greens. Before working at night, make incense or a cloudmoss veil here; the hearth smoke drives cloud gnats away too.");
-                case "Search_D": return L10n.T(
-                    "风标卡在巨根之间。清掉附近的威胁后，校准指针，让西侧的航路重新有方向。",
-                    "The wind beacon is jammed among the great roots. Clear the threats nearby, then calibrate the needle and give the western lane its bearing back.");
-                case "Search_E": return L10n.T(
-                    "双航标门需要风标与星灯同时回应。门后是归航钟庭；桥边的绞盘控制回村的中轴旧桥。栏杆上有一行后来刻的字：灯亮之后，别一个人站在桥心 —— 有东西会循着光过来。",
-                    "The twin-beacon gate needs the wind beacon and the star lamp answering together. Beyond it lies the Homecoming Bell Court; the winch by the bridge works the old centre span back to the village. A later hand cut a line into the rail: once the lights are up, do not stand alone at mid-span — something comes for the light.");
-                case "Search_F": return L10n.T(
-                    "折翎留下的告示：风灾并未夺走全部航路。旧信与听雨洞的图纸或许能让他改变决定。",
-                    "A notice left by Zheling: the storm did not take every lane. The old letter and the chart from the Rainlisten Grotto might change his mind.");
-                case "Search_G": return L10n.T(
-                    "工坊的铜环仍然完整。星灯只等一次重新校准，便能把东侧的光送回村庄。",
-                    "The workshop's brass rings are still intact. The star lamp needs only one recalibration to send the eastern light back to the village.");
-                case "Search_H": return L10n.T(
-                    "归航钟不再催促出航。两端的航标、归来的信件与守钟人的选择，将决定它为什么再次响起。",
-                    "The Homecoming Bell no longer urges anyone to sea. The two beacons, the letter that came home and the keeper's own choice will decide why it rings again.");
-                case "Search_S1": return L10n.T(
-                    "池边潮湿的纸页上记着菜种、日期，以及每一个归航人的名字。晴禾在页角留了话：镜水寺的青蛙还在繁育，夜里可用云苔纤维包一团蛙卵带回来，白天也能放。放回的会一直记着，顺路送一团就好，不用一趟来回跑齐。",
-                    "The damp pages by the pool list seeds, dates, and the name of every person expected home. Qinghe added a note in the margin: the temple frogs still breed. Wrap a clutch of spawn in cloudmoss one night and bring it here; daylight is fine for release. Each clutch is remembered — bring one when passing, without making every trip in one raid.");
-                case "Search_S2": return L10n.T(
-                    "没有寄出的旧信压在倒挂邮亭里。字迹歪斜，却还清楚地写着：请别让岛上的灯熄灭。",
-                    "An unsent letter is wedged inside the Upturned Post Hut. The hand is crooked but still plain: please do not let the island's lights go out.");
-                case "Search_S3": return L10n.T(
-                    "三道水声从洞壁传来；旧航路图把它们标成避风口。沿图上的虚线，船其实可以平安绕过风灾。",
-                    "Three streams sound through the cave wall; the old route chart marks them as shelter. Follow the dotted line and a ship can in fact pass the storm safely.");
-                case "Search_S4": return L10n.T(
-                    "观星镜被守卫占据。清除威胁、校准镜片，无论白天黑夜都能找回群岛的星图。",
-                    "Guards have taken the telescope. Clear them out and align the lens, and the archipelago's star chart comes back day or night.");
-                // _02 见闻：每处一段自己的记录，各自给一条去处或机制的线索（主线目标卡只管航标与钟庭，支线全靠这些被发现）。
-                case "Search_A_02": return L10n.T(
-                    "码头的等候名单上划掉了大半的名字。最后一行是浮舟的字：『梯田那头的蛙鸣池有人捎信回来——晴禾的种植记录还泡在水边。』",
-                    "Most of the names on the dock's waiting list are crossed out. The last line is in Fuzhou's hand: 'Word came back from Frogsong Pool, past the terraces — Qinghe's planting record is still lying by the water.'");
-                case "Search_B_02": return L10n.T(
-                    "一摞交过的委托单存根：清理航路、回收补给、巡视群岛。苇白在最底下记着规矩：『一趟最多派三单，一单比一单重；第三单的谢礼从工坊的旧货里出。』",
-                    "A stack of stubs from finished contracts: clearing lanes, recovering supplies, surveying the isles. At the bottom Weibai has written down her rule: 'Three contracts a trip at most, each a little heavier than the last. The third payout comes out of the workshop's old stock.'");
-                case "Search_C_02": return L10n.T(
-                    "田埂的木桩上刻着箭头，一路指向悬根林：『风标卡住那天，林里的人都搬到根环后面去了。受了伤就去找眠苔，她的苔药按伤势收钱。』",
-                    "Arrows are cut into the ridge posts, all pointing at the Hanging Root Wood: 'The day the wind beacon jammed, the wood folk moved in behind the root ring. If you are hurt, find Miantai — her moss remedy is priced by how badly you are hurt.'");
-                case "Search_D_02": return L10n.T(
-                    "巨根上挂着一只空邮袋，标签写着「倒挂邮亭」。袋底粘着一张回执：寄往镜水寺，收信人折翎。那封信，一直没有送到。根下留着眠苔的药臼，能配驱风香、星苔药膏，也能做一把可反复用的药烟蒲扇，赶开贴脸的云蚋。",
-                    "An empty mailbag hangs in the great roots, tagged 'Upturned Post Hut'. A receipt is still stuck to the bottom: to Mirrorwater Temple, for Zheling. That letter never arrived. Miantai left her mortar below the roots: mix incense or salve, or make a reusable remedy-smoke fan for the cloud gnats around your face.");
-                case "Search_E_02": return L10n.T(
-                    "栏杆上新刻了一排记号，像是有人在数日子：『两盏灯都亮的那一夜，风从云海底下翻了上来。它收拢风眼之前，脚下先亮一圈光——看见光就往圈外跑，跑不出去就躲到石头后面。』",
-                    "A fresh row of notches runs along the rail, as if someone were counting the days: 'The night both lamps were lit, the wind climbed up out of the cloud sea. Before it draws its eye shut, a ring of light shows at its feet. See the light, run out of the ring — or get behind solid rock.'");
-                case "Search_F_02": return L10n.T(
-                    "池底压着一张被水泡软的拓本，只看得清半条航线，终点圈着「听雨洞」。另一半在折翎手里——他说旧信和航路图都齐了，才肯坐下来谈。池边的石缝里挂着一团团蛙卵：风灾那年，蛙鸣池的青蛙逃到了这里。",
-                    "A water-softened rubbing is weighted down at the bottom of the pool. Only half a route is legible, ending in a circle marked 'Rainlisten Grotto'. Zheling holds the other half; he will only sit down and talk once the old letter and the route chart are both on the table. Clumps of frogspawn cling between the stones at the edge: the year of the storm, the frogs of Frogsong Pool fled here.");
-                case "Search_G_02": return L10n.T(
-                    "检修日志的最后一页：『观星镜的镜片偏了三格，残星瞭台上来了一伙人，谁也上不去。等把他们清走，照着星灯的方向校准就行。』",
-                    "The last page of the maintenance log: 'The telescope lens has drifted three notches, and a gang has taken over the Starfall Overlook, so nobody can get up there. Once they are cleared out, align it with the star lamp.'");
-                case "Search_H_02": return L10n.T(
-                    "钟架横梁下签满了名字，每个名字旁都记着一件东西：一封信，一张图，一面镜片。有一行只写了开头：『等那阵风散了……』钟守说，这些都是航路安全的证据。",
-                    "The beam under the bell frame is covered in signatures, and beside each one something is noted: a letter, a chart, a lens. One line has only its opening: 'Once that wind is gone…' The Bell Keeper calls all of these proof that the lanes are safe.");
-                default: return L10n.T(
-                    "旧木牌上记录着岛民的一天：有人等信，有人修灯，有人把空船再系紧一点。你走过的地方，正在重新连接。",
-                    "An old board records a day on the islands: someone waiting for a letter, someone mending a lamp, someone tying an empty boat a little tighter. The places you walk are joining back up.");
-            }
-        }
+
     }
 }

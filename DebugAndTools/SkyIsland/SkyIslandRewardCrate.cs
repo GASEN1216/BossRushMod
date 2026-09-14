@@ -148,7 +148,6 @@ namespace BossRush
             if (box == null || box.Inventory == null || count <= 0) return 0;
             int[] pool = SkyIslandLootPools.Get(tier);
             if (pool == null || pool.Length == 0) return 0;
-            int[] guaranteed = guaranteeTopBand ? SkyIslandLootPools.GetGuaranteeBand(tier) : null;
             System.Random random = SkyIslandLootTables.CreateStream(raidSeed, streamId);
             // 岛上特产（SkyIslandItemRules.IslandExtraFor）：每箱至多多装一件，走独立随机流——原有 count 件的抽样结果一件不变。
             int extra = SkyIslandItemRules.IslandExtraFor(tier,
@@ -157,8 +156,13 @@ namespace BossRush
             int added = 0;
             for (int i = 0; i < total; i++)
             {
-                int[] source = (i == 0 && guaranteed != null && guaranteed.Length > 0) ? guaranteed : pool;
-                int typeId = i < count ? source[random.Next(source.Length)] : extra;
+                // 抽样按品质加权（CR-2026-09-12-019）：旧写法在 TypeID 清单上均匀抽，
+                // 于是一档被抽中的概率正比于「这一档有多少种物品」——而星工带里高半段的种类比低半段还多。
+                // `Pick` 内部处理保底带与「保底带为空退回常规带」的降级，口径与旧写法一致。
+                int typeId = i < count
+                    ? SkyIslandLootPools.Pick(tier, i == 0 && guaranteeTopBand, random)
+                    : extra;
+                if (typeId == 0) continue;
                 Item item = null;
                 try
                 {

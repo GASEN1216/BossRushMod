@@ -210,16 +210,68 @@ internal static class Program
         rebase.TryAccept(SkyIslandBountyKind.Survey, out message);
         Check(rebase.Progress == 0, "re-accepting the same kind rebaselines progress");
 
-        // 三类委托各自记账，不会互相顶替。
+        // 四类委托各自记账，不会互相顶替（驱蚋是内容批次四接进来的第四类）。
         var isolated = new SkyIslandBounty();
         isolated.TryAccept(SkyIslandBountyKind.Threats, out message);
         isolated.ReportScavenged();
         isolated.ReportRegionVisited();
+        isolated.ReportGnatCulled();
         Check(isolated.Progress == 0, "unrelated actions do not advance a contract");
         isolated.ReportEncounterCleared();
         Check(isolated.Progress == 1, "matching action advances the contract");
         Check(!isolated.TryAccept(SkyIslandBountyKind.None, out message), "the empty kind is not a contract");
-        Check(SkyIslandBounty.AllKinds.Length == 3, "three contract kinds are offered");
+        Check(SkyIslandBounty.AllKinds.Length == 4, "four contract kinds are offered");
+        // 每一类都要有正的目标数，否则派单面板会挂出一张 ×0 的单。
+        for (int i = 0; i < SkyIslandBounty.AllKinds.Length; i++)
+            Check(isolated.TargetFor(SkyIslandBounty.AllKinds[i]) > 0,
+                "every contract kind has a positive target: " + SkyIslandBounty.AllKinds[i]);
+    }
+
+    /// <summary>
+    /// 品质加权抽样（`CR-2026-09-12-019`）。池子是「按品质带筛出来的 TypeID 清单」，旧写法在清单上
+    /// **均匀抽**，于是一档被抽中的概率正比于这一档有多少种物品——而实机反解出来的表里
+    /// （q1=77 · q2–3=277 · q4–5=174 · q6–8=204）**星工带高半段的种类比低半段还多**，
+    /// 均匀抽比原版更肥。这里钉住权重函数本身的性质，不依赖官方物品表。
+    /// </summary>
+    private static void QualityWeights()
+    {
+        int scale = SkyIslandLootTables.QualityWeightScale;
+        Check(scale > 0, "weight scale is positive");
+        Check(SkyIslandLootTables.QualityFalloffPerStep > 0
+              && SkyIslandLootTables.QualityFalloffPerStep < 1,
+              "falloff must be a real decay: 0 < r < 1");
+
+        foreach (SkyIslandLootTier tier in new[] { SkyIslandLootTier.Supply, SkyIslandLootTier.Voyage,
+                                                   SkyIslandLootTier.Starworks })
+        {
+            int min = SkyIslandLootTables.MinQuality(tier);
+            int max = SkyIslandLootTables.MaxQuality(tier);
+            Check(SkyIslandLootTables.QualityWeight(min, min) == scale, "band floor carries the full weight: " + tier);
+            for (int q = min; q < max; q++)
+            {
+                int here = SkyIslandLootTables.QualityWeight(q, min);
+                int next = SkyIslandLootTables.QualityWeight(q + 1, min);
+                // 严格递减：这是「加权比均匀更接近原版稀有度」的唯一必要条件，
+                // 而且与官方物品表无关——不管每一档有多少种物品，高档的单件机会一定比低档小。
+                Check(next < here, "weight strictly decreases with quality in " + tier + ": q" + (q + 1));
+                // 但永远不为零：任何一档都不能被彻底抽空，否则顶档物品在天空岛永远刷不出来。
+                Check(next > 0, "no quality is ever weighted to zero: " + tier + " q" + (q + 1));
+            }
+            // 保底带在**自己的**带里重新递减，而不是因为整体档位高就被压成一条平线。
+            int guaranteeMin = SkyIslandLootTables.GuaranteeMinQuality(tier);
+            if (guaranteeMin > 0)
+                Check(SkyIslandLootTables.QualityWeight(guaranteeMin, guaranteeMin) == scale,
+                      "guarantee band restarts the falloff at its own floor: " + tier);
+        }
+
+        // 低于本带下界的品质不该出现；真出现时按满权重处理，不能返回 0 或负数。
+        Check(SkyIslandLootTables.QualityWeight(1, 4) == scale, "below-floor quality clamps to full weight");
+
+        // 逐档复算一次具体数值，防止 0.6 被悄悄改掉而上面的单调断言仍然成立。
+        int[] expected = { 10000, 6000, 3600, 2160, 1296 };
+        for (int i = 0; i < expected.Length; i++)
+            Check(SkyIslandLootTables.QualityWeight(4 + i, 4) == expected[i],
+                  "starworks weight table is frozen at q" + (4 + i));
     }
 
     private static int Main()
@@ -228,6 +280,7 @@ internal static class Program
         {
             AnchorCoverage();
             QualityBands();
+            QualityWeights();
             SeededStreams();
             BountyFlow();
         }

@@ -183,6 +183,19 @@ namespace BossRush
             return SkyIslandNight.EffectiveHours(available, available ? GameClock.TimeOfDay.TotalHours : double.NaN);
         }
 
+        /// <summary>
+        /// 官方时钟的倍速（<c>GameClock.clockTimeScale</c>，默认 60：一现实秒走 60 游戏秒）。和 <see cref="ClockHours"/> 并排放，
+        /// 让「读官方时钟」仍然只有这一个文件。没有实例或读出非正数时回落 <see cref="SkyIslandNight.DefaultClockScale"/>。
+        /// 只有「今晚还剩多久」（<see cref="SkyIslandNight.RealSecondsUntilDawn"/>）用得到它——判夜本身不看倍速。
+        /// </summary>
+        internal static double ClockScale()
+        {
+            GameClock clock = GameClock.Instance;
+            if (clock == null) return SkyIslandNight.DefaultClockScale;
+            double scale = clock.clockTimeScale;
+            return scale > 0.0 && !double.IsNaN(scale) && !double.IsInfinity(scale) ? scale : SkyIslandNight.DefaultClockScale;
+        }
+
         // 0–5 星夜；5–7 晨光；7–10 晴昼；16–19 暮色；19–21 星夜。星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份）。
         // 以连续小时和 SmoothStep 插值，午夜仍在同一星夜档，不产生跳变。
         internal static void ResolveTimeBlend(double hours, out int from, out int to, out float blend)

@@ -4,6 +4,8 @@
     <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPointText.cs" Link="Production/SkyIslandPointText.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
@@ -19,6 +21,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLights.cs" Link="Production/SkyIslandLights.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNight.cs" Link="Production/SkyIslandNight.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs" Link="Production/SkyIslandMosquitoRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBounty.cs" Link="Production/SkyIslandBounty.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />

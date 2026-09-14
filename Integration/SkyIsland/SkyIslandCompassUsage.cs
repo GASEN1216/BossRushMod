@@ -21,8 +21,13 @@ namespace BossRush
                 return new DisplaySettingsData
                 {
                     display = true,
-                    description = L10n.T("使用：在晴岚群岛上指向信鸽或下一个目标（不消耗）",
-                        "Use: on the Qinglan isles, points to a pigeon or your next objective (not consumed)")
+                    // 与实际读数（SkyIslandWorldStory.CompassReading）和物品描述同一份口径：
+                    // 蛙卵 → 信鸽 → 当前目标 / 支线 → 缺灯处（带着晴岚风晶时）→ 还没采的风晶簇。
+                    // 按住物品看到的这句是玩家最先读到的说明，落后于行为就是在骗人。
+                    description = L10n.T(
+                        "使用：在晴岚群岛上依次指向蛙鸣池、信鸽、当前目标或支线、还缺风晶灯的地方、这一趟没采的风晶簇（不消耗）",
+                        "Use: on the Qinglan isles, points in turn to Frogsong Pool, a pigeon, your objective or an "
+                            + "unfinished side path, a place missing its windcrystal lamp, or an ungathered crystal cluster (not consumed)")
                 };
             }
         }

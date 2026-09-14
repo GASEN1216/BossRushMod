@@ -54,6 +54,9 @@ FILES = [
     "SkyIslandPuzzles.cs",
     "SkyIslandCrew.cs",
     "SkyIslandJournal.cs",
+    "SkyIslandNoteBridge.cs",
+    "SkyIslandResidentDialogue.cs",
+    "SkyIslandPointText.cs",
     "SkyIslandItemRules.cs",
     # 内容批次三：采集点、合成台、局内耗材与夜风。
     "SkyIslandFieldcraftRules.cs",
@@ -69,6 +72,14 @@ FILES = [
     "SkyIslandGnats.cs",
     "SkyIslandGnatProjectilePatch.cs",
     "SkyIslandHearthFx.cs",
+    # 2026-09-12 审核补齐：这三个文件确实有玩家可见文案，却一直在名单外，
+    # 于是「HUD 里加一句裸中文」这类回归静态全绿（SkyIslandHudGuard 也不查裸中文）。
+    # SkyIslandHud：区域横幅与「目标更新」眉题；SkyIslandCaptionQueue：字幕策略（今天无文案，
+    # 但它是 HUD 文案最可能落脚的第二处）；SkyIslandLootTables：档次牌面的 TierNameCn / TierNameEn
+    # 是配对访问器，走本守卫已有的 paired_accessor_spans 豁免，不会误红。
+    "SkyIslandHud.cs",
+    "SkyIslandCaptionQueue.cs",
+    "SkyIslandLootTables.cs",
 ]
 
 # 内容批次四起一并扫描 Integration/SkyIsland：物品描述、使用说明与耗材回话同样是玩家可见文案。

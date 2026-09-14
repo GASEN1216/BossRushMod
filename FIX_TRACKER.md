@@ -2,10 +2,420 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-13 天空岛第三轮：官方 API 复用 / 选项分层 / 文案分层 / 敌怪补洞 / 立绘抠图（4 P2 + 2 P3 + 1 documented）
+
+**授权**：owner 六条试用反馈 +「请你做个完整的计划去实现」，方案逐条拍板后执行
+（对话架构选「混合：叙事走官方，功能留面板」、手记选「见闻搬进官方图鉴」、
+选项分层选「二级子菜单」、文案选「分层 + 改坑句，导语一句话 ≤40 字」、
+敌怪选「补洞 + 加到规格中值」）。
+**分类**：`COMPAT` / `SAFE`——没有改存档 schema、没有新增 TypeID、没有改玩法数值公式。
+⚠️ **有一处经济口径变化**：敌人 34 → 61，每敌一个尸体箱，产出与时长跟着涨（已登记，见下）。
+
+**六条反馈的处置**
+
+| owner 的话 | 结论 | 处置 |
+| --- | --- | --- |
+| 「继续旅程可以去掉多余了」 | 属实（`onClick` 就是 `Dispose()`，与 ESC 等价，且无守卫断言它存在） | 删页脚，补 ESC 键帽（`CR-2026-09-13-012`）|
+| 「选项太多太杂」 | **比反馈说的更糟**：六个构造器一律无条件挂 | `AddIf` + 二级子菜单（`CR-2026-09-13-008`）|
+| 「小灰字太长太小读不懂」 | **部分属实**：579 条里只有 25 条 ≥60 字，真正的坑是状态转储 | 分层不删字（`CR-2026-09-13-011`）|
+| 「NPC 有没有用原版 api」 | **没有，一行都没调**，而且我们自己早就封装好了 | 叙事改走官方对话（`CR-2026-09-13-009`）|
+| 「玩家任务原版也有」 | **有，但刻意不接**，四条理由 | documented，理由归档防止重查 |
+| 「敌怪太少」 | 属实，**且不是设计如此**（低 9.4 倍、通关后 39.2% 死区）| 补洞 + 加到规格中值（`CR-2026-09-13-010`）|
+| 「人物黑色背景长方形框」 | 属实（六张 PNG 本来就是真抠图，底板纯属多余）| 抠图 + 落影（`CR-2026-09-13-013`）|
+
+**新增文件**
+
+- `DebugAndTools/SkyIsland/SkyIslandResidentDialogue.cs` —— 居民叙事的官方对话层，全静态、fail-open。
+- `DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs` —— 20 处见闻 → 官方 `NoteIndex` 镜像。
+- `DebugAndTools/SkyIsland/SkyIslandPointText.cs` —— 三张纯文案表（`Name`/`Brief`/`Lore`）
+  从 `SkyIslandWorldStory` 拆出来：它们无状态，而 WorldStory 撑到 1295 行、超了 1200 预算
+  （AGENTS §4.15）。**没有放宽预算**。
+- `tests/SkyIslandChoiceGateGuard.py`、`tests/SkyIslandOfficialApiReuseGuard.py` —— 两个新守卫。
+
+**内容表改动（四处必须同步，一处不改守卫就红）**
+
+`Assets/Data/SkyIsland/World.json` + `SkyIslandContent.CreateFallback()` +
+`SkyIslandContentExpansionGuard` + `SkyIslandContentPlacementPropertyTest`：
+遭遇组 16 → 21（新增 `Relay_K1/K2/K3`、`EnemySpawn_E`、`Search_H_02`），自动组人数 2 → 3，
+自动组 13 → 18、敌人 34 → **61**。全部用 `layout.json` 里**已存在但空着**的 marker，**没有重打包**。
+
+**过程中查出并修掉的、不在原计划里的两处**
+
+1. **晴禾的「交还种植记录」还在走裸 `Add`**——是新守卫的「裸 `Add` 只许一个调用点」断言抓出来的。
+   这正是 `SkyIslandWorldStory.Add` 上那条写了三个月、一直没有对应代码的注释说的事。
+2. `SkyIslandStoryPresentation.cs` 文件头**没有**写「为什么保留自绘面板」——
+   `SkyIslandResidentDialogue.cs` 里写着「现在写进 `SkyIslandStoryPresentation` 的文件头」，
+   但实际上没写。同样是新守卫抓出来的。
+
+**⚠️ 本轮有并发改动（不是我做的，已跟上）**
+
+写文档期间（22:01 与 22:06 两次）有人在同一棵树上把对话层加固了。改动是**好的**，已接受并钉住：
+
+- `SkyIslandResidentDialogue` 从静态类改成 `IDisposable` 实例，带 `CancellationTokenSource`
+  与 `Func<bool> valid` 有效性谓词；`DialogueManager.IsDialogueActive` 挡重入；
+  `catch (OperationCanceledException)` 与真失败**分开接**——取消不再去开面板
+  （否则玩家一走开就会被塞一个 `timeScale = 0` 的模态）。
+- `SkyIslandWorldStory` 在 `Tick` 里「不能继续就取消」、在 `Hide` 里取消在途对话。
+- 新增执行回归夹具 `tests/fixtures/SkyIslandDialogue/`（回归数 33 → 34）。
+
+我这边的处置：`SkyIslandOfficialApiReuseGuard` 的 fail-open 断言**从旧形状改钉新形状并加强**
+（取消必须与真失败分开接、`finally` 必须交还取消源、会话侧必须真的去取消），反向检查 9 → 15。
+
+`SkyIslandContentExpansionGuard` 的战斗门断言因此红过一次：它要求字面量
+`if (BlockedByCombat()) return;`，而 `Talk` 的门一度被并进复合条件。**没有放宽强度**——
+新的 `combat_gate_first()` 仍要求战斗门是方法开头那串早退卫句里的一条，且必须是纯 `||` 链上的一项；
+`&&` 收窄、取反、挪到正事后面一律照红。10 条辅助函数自检 + **4 个磁盘破坏探针**
+（全部转红，逐字节还原后 sha256 `8ddd56c9…e3d27f` 与原始一致）。
+
+**守卫纪律**
+
+- `SkyIslandPlaytimeFlowGuard` 因 `Describe` 抽取而红过一次。**没有放宽**：retarget 到 `Describe`
+  并**新增**一条更强的断言（`TryApply` 与 `CanApply` 必须都经过 `Describe`），
+  配真实破坏探针——改坏转红、逐字节还原后 sha256 一致、复绿。
+- `BossRushUISkinLoaderGuard` 因 3 参重载而红过一次。**没有放宽**：调整了生产代码的方法顺序
+  （真实实现排在转发器之前，守卫的 `extract_method` 取第一个同名方法），并在代码里写明原因。
+- 两个新守卫共 **20 个反向检查**，每条断言都验证过「恢复旧写法必转红」。
+
+**验证**（本机 Windows，全部实跑）：`compile_official.bat` → **Build succeeded** 并部署；
+`python tools/run_guards.py` → **599 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（+2 个新守卫）；
+`python tools/run_runtime_regressions.py` → **34 PASS / 0 FAIL**（含协作者新增的 `SkyIslandDialogue` 夹具）；
+`python tools/preview_sky_island_panel.py --sheet` 逐张看过。
+
+⚠️ **未启动游戏**。官方对话弹不弹得出来、对话中受击、61 敌的帧时间与 12 活体上限、
+官方图鉴条目回基地还在不在、抠图立绘的观感——**离线一条都证明不了**，
+全部写进 `docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 2.15 步（37 条）。
+**未修改玩家存档。**
+
+---
+
+## 2026-09-13 天空岛 UI 美术化（1 P1 + 4 P2 + 2 P3，全部已实现）
+
+**授权**：owner 先看方案、确认「可以全部执行，最终我要看到天空岛生产级别的 UI 交互」。
+**分类**：`COMPAT` / `SAFE`——没有改存档 schema、TypeID、玩法数值、数据表结构。
+
+**先纠正一个前提**：任务书写的「`bossrush_ui_skin` 现在根本不存在」是错的。
+它早就存在且完全合规（六张图尺寸/Border/灰度/PPU 逐项核对过），加载器也早就接线。
+所以本轮**没有重打 bundle**（作者工程 `D:\code\ykf\duckov_modding-main\UnityFiles\BossRush`
+在这台机器上不存在，depth≤4 全盘搜索零命中），方案刻意设计成完全不需要 Unity。
+
+**验证**（本机 Windows，全部实跑）：`compile_official.bat` **Build succeeded** 并部署；
+`python tools/run_guards.py` → **597 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（新增 1 个守卫）；面板版式重排后再跑一遍仍 597 PASS；
+`python tools/run_runtime_regressions.py` → **33 PASS / 0 FAIL**；
+`python tools/preview_sky_island_panel.py --sheet` 产出 HUD / 面板 / 手记 / 英文最坏情况 /
+19 张美术逐张目检联络表，逐张看过。**未启动游戏、未修改玩家存档。**
+
+- `CR-2026-09-13-001` / `COMPAT` / **P1**：**描边改成独立 Image + 独立亮色 token**
+  （`Common/UI/BossRushUI.cs`：`ApplyPanelStroke` / `GetStrokeSprite` / `BossRushUIColors.Stroke`）。
+  - 根因：图集里烤进去的内描边（图内灰度差 49/255）被 `Image.color` 的深色 token 乘到 **2.9/255**，
+    肉眼不可见。规格 §2 的「描边画进图里」与「颜色由 Image.color 施加」互相抵消，该条已作废改写。
+  - 效果：面板 / 卡片 / 选项行的边在 p90 / p99 / 暗地形三档下全部 **≥3.1:1**（WCAG 1.4.11 非文本 3:1）。
+  - **回退**：`ApplyPanelStroke` 的色参传 alpha=0，或整条不调用，即回到没有描边的旧观感。
+- `CR-2026-09-13-002` / `COMPAT` / P2：**图集分档扩到六档，另外三张闲置图接上**
+  （`BossRushUISkinPart`、`BossRushUISkinLoader.cs`、天空岛四处调用点）。
+  - `radius <= 3` 一律程序化（3px 上任何图的 border 都会被 Unity 压到中心区归零）。
+  - `divider` 的亮带在可拉伸中心区，铺它的 rect 高度必须 ≥5；两处 1px 裸 `Image` 改成高度 8。
+  - **回退**：调用点去掉第三个参数即回到 Auto 两档行为。
+- `CR-2026-09-13-003` / `COMPAT` / P2：**区域大标题压暗底改平台曲线并按文字宽度反算**
+  （`SkyIslandUiArt.Plateau` / `ScrimAlphaAt`、`SkyIslandHud.FitBannerScrim` / `ScrimHeightFor`）。
+  - 眉题 2.42 → 5.70:1、落地提示 2.54 → 5.70:1（p90）；p99 下 1.66 / 1.75 → 4.67 / 4.67。
+  - **回退**：`ScrimPeak` / `ScrimEdge` / `BannerScrimHeight` 三个常量改回 0.60 / 余弦 / 230。
+- `CR-2026-09-13-004` / `SAFE` / P2：**`Success` / `Warning` 压暗约 7%；F3 面板改调 `GetButtonTextColor`**。
+  - ⚠️ **全 Mod 级 token 改动**：ModeH / PetNest / ZombieMode 的同色按钮一并变暗 7%。色相未动。
+  - 白字在 Success / Warning 上从 4.15 / 4.34 变成 4.67 / 4.89:1；F3 的 Accent 按钮从 2.23 → 7.93:1。
+  - **回退**：两个 token 改回旧值（守卫会转红，需同时调整守卫）。
+- `CR-2026-09-13-005` / `COMPAT` / P2：**采集点补贴地光斑**（`SkyIslandGathering.cs`）。
+  - 「远处有光」此前在代码里不存在：唯一的远景载体是 `range=6m` 的点光源，白天 60 m 外没有信号。
+  - 零每帧开销（躺平、不需要 billboard），贴图经 `SkyIslandGathering.ResetStaticCaches` 显式销毁。
+  - **采集率是否真的上去只能 L3。** **回退**：`GlowDiscSprite()` 返回 null 即整条消失。
+- `CR-2026-09-13-006` / `SAFE` / P3：**群岛手记补横幅 + 六处动效**。
+  - 新增 `Assets/ui/SkyIsland/skyisland_scene_journal.png`；动效全部 `EaseOut` / `SmoothStep`，
+    走 unscaled 时间且都带 `IsGamePaused()` 门；选项错峰入场不碰 `interactable`。
+  - **回退**：各动效时长常量设 0 即回到硬开关。
+
+- `CR-2026-09-13-007` / `COMPAT` / P2：**面板底从纯色板换成整屏区域底图，标题压在全出血的主视觉上**
+  （`SkyIslandStoryPresentation.cs` 版式重排、`SkyIslandUiArt.GetPanelBackground`、
+  `SkyIslandResidents.MarkerOf`、新工具 `tools/gen_sky_island_panel_backgrounds.py`）。
+  - owner 看过第一轮成果后指出「背景是黑色的程序化的东西……弄成图片然后在上面写字那种才好看」，
+    并点名字偏小、选项多时整屏都是框。
+  - 13 张 `skyisland_bg_*.png` 由既有横幅**派生**（纯 Pillow，不调生图 API，499 KB）：
+    面板是竖的、横幅是 3.56:1，直接 cover 要放大 3.26 倍且只看得见中间 26%；模糊小图才是对的解。
+  - 顺带查出并修掉一条新坑：`GetBannerFade()` 是 `alpha = t²`，不透明度全堆在底边，
+    标题上沿那里只有 **0.19**——改成「实底带罩住标题 + 带子上方淡出」。
+  - 字号整体 +2（正文 22 / 选项 23 / 标题 24–34）；选项行底半透明 0.78（下界由非文本 3:1 定死）。
+  - 居民面板终于也有主视觉：拿他家那一区的插图，立绘压在上面。
+  - **回退**：`GetPanelBackground` 返回 null → 面板退回纯色底；`BuildHero` 里不传 banner → 退回无插图表头。
+    两条都是 fail-open 路径，本来就走得通。
+
+**新增 / 改写的守卫**：
+- 新增 `tests/SkyIslandUiContrastGuard.py`（大标题三行 + 字幕两态 × 两档场景亮度 + F3 按钮五色 +
+  三处描边分层，8 个破坏探针）。场景亮度 p90=0.679 / p99=0.839 是 12 张场景横幅的相对亮度统计，
+  **代理值不是实机读数**。
+- `tests/BossRushUISkinLoaderGuard.py` 重写为 check + 探针结构（原有断言一条未删），9 个破坏探针。
+- `tests/SkyIslandStoryPanelLayoutPropertyTest.py` 改读生产的 `DividerHeight`，中英双语仍全绿。
+
+**仍需实机（L3）**：所有观感与动效手感；地面圆环在官方 URP Deferred 下的实际可见度
+（`Sprites/Default` 的行为本轮**未验证**，若实机整圈不可见，第一嫌疑是渲染管线而非本轮改动，
+归 AGENTS §5「自研着色器与官方渲染管线约定」）；采集率是否真的从 1/30 上去。
+
+## 2026-09-12（第五轮）owner 授权后把待拍板项全部定案并实现（1 P1 + 2 P2）
+
+**授权**：owner 指示「全部需要我决策的都你自己定吧，尽快全部都实现完要上线」。
+据此把前四轮挂着的待拍板项逐条定案。取舍标准：**可回退 + 离线可证 + 不与已公布设计冲突**。
+**分类**：`COMPAT`（门槛、抽样权重、信鸽节奏、文案），**没有改任何存档 schema、TypeID、数据表结构**。
+
+**验证**（本机 Windows，全部实跑）：`compile_official.bat` **Build succeeded** 并部署；
+`python tools/run_guards.py` → **596 PASS / 0 NEW-FAIL / 0 KNOWN-RED**；
+`python tools/run_runtime_regressions.py` → **33 PASS / 0 FAIL**。
+**未启动游戏、未修改玩家存档**。
+
+- `CR-2026-09-12-018` / `COMPAT` / **P1**：**Mode H 生产目录下限 8 → 9**（`ModeH/ModeHConfig.cs`）。
+  - 8 人时 52.9% 的合法抽签建不出六场且**没有出路**（重进过半照样撞墙）；9 人 2.5% **有出路**
+    （判死提示本来就是「退出本赛季重新进入，候选名单会重抽」）；≥10 为 0。
+  - **不取放宽走廊**（改平衡数值、离线证不了手感）；**不取让落选三席回对手池**——与已公布设计冲突：
+    落选三人各翻一张去向牌，其中「撕票」明写**本季永久移除，谁也签不到**。
+  - **不抬到 10**：认证失败是每台机器的事，10 会把只认证过 9 个预设的玩家整个挡在模式之外。
+  - 撞门槛走**既有**的 `AbortSetup` → `Abort_Certification` + `AbortAndRefund`：在选秀、下注、押注**之前**退票离场。
+  - 守卫：`ModeHSeasonViabilityGuard` 枚举起点抬到 9、`KNOWN_DEAD_SCENARIOS` 收成 `{9: 62}`；
+    `ModeHPresetEligibilityGuard` / `ModeHStructureGuard` 冻结常量同步；
+    执行回归 `ModeHMarketAudit` 正向钉住「8 人在门口被 `draft_pool_too_small` 挡下」，原 8 人审计整体改到 9 人档。
+    一条破坏探针（改回 8）转红。
+- `CR-2026-09-12-019` / `COMPAT` / P2：**岛上物资抽样按品质加权**（R-4 落地）。
+  - 实机反解出的直方图 `q1=77 · q2–3=277 · q4–5=174 · q6–8=204` 说明**星工带高半段的种类比低半段还多**，
+    「按种类均匀抽」比原版更肥（一趟满搜约 91 件、其中约 16 件 q6–8），与设计自己写下的顾虑相反。
+  - 新增纯算术 `SkyIslandLootTables.QualityWeight`（每升一档 ×0.6，相对**本带下界**算，权重恒为正）；
+    `SkyIslandLootPools` 并排缓存累积权重表并提供 `Pick`，抽样一次 `Next` + 一次二分。
+  - **池子构成、品质带、件数、保底口径、10 万价值上限一律不动。** 估算效果：星工带 q6–8 占比 54% → 25.6%。
+  - **回退**：`QualityWeight` 改成恒返回 `QualityWeightScale` 即退回均匀抽。
+  - 执行回归 `SkyIslandLoot` 新增权重性质断言（严格递减 / 恒为正 / 保底带自带下界 / 0.6 逐档数值冻结）；
+    `SkyIslandContentExpansionGuard` 钉住接线与常量；中英 Wiki 改口径。
+- `CR-2026-09-12-020` / `COMPAT` / P2：**应时的信同趟连送**（信鸽节奏落地）。
+  - 12 封信一趟一封是全图**唯一严格线性、不可压缩**的时长乘数，把约 3 h 的内容拉成约 8 h 的完成路径。
+  - 前 8 封维持一趟一封；后 4 封（双航标 / 星灯 / 敲钟解锁）条件满足时同趟连送。收齐 ≥12 趟 → ≥8 趟。
+  - 规则收在纯逻辑 `SkyIslandLetters.NextSameRaidFor` 一处；`RearmPigeonIfStoryLetterWaiting` 只是把
+    一次性闩重新打开，落点与字幕走与首封完全相同的路径。
+  - 执行回归 `SkyIslandStory` 新增四组断言；`SkyIslandContentPackGuard` 钉住规则唯一性与三处接线。
+
+**同时定案、不算缺陷**：
+K1 捷径（R-2）**接受现状 + 改说法**——中英 Wiki 改成逐条如实（K3 最值得开、K2 次之、K1 几乎不省路）；
+守钟装置用钟守的脸（R-11）**保留并写成设定**——归航钟留言与中英 Wiki 各补一段「钟庭的敲钟机械照着当值守钟人的样子铸」；
+K 码与 Bell Court / 残星 译法**维持现状、关闭议题**（四处逐项核对未发现漂移）。
+
+**至此 `docs/天空岛_可玩性与时长评估_2026-09-10.md` 第六节 R-1…R-14 与第八节待拍板清单全部关闭。**
+
+## 2026-09-12（第四轮）玩家链路审核与修复（3 P2 + 4 P3 已修，含 R-6 落地）
+
+**输入**：`BossRushValidation_20260912_073636_324`（天空岛套件 28 PASS / 0 FAIL / 1 SKIP）、
+同场 `Player.log` 里**一趟真人打完的 338 秒出击**（`SKY_TIMING` 全链）、`鸭科夫源码/` 反编译对照。
+本轮问的是「一个真人从头玩到尾走不走得通」，不是「承诺兑现了没有」。
+**分类**：`SAFE`（英文 Wiki 补内容、两处注释、AGENTS 数字、每帧早退）+ `COMPAT`（苔药兜底、公告频次）
++ `SCHEMA+`（NPC 台词中英对照，可选字段、老数据行为不变）。**没有改任何数据表、TypeID、存档 schema 或数值。**
+
+**验证**（本机 Windows，全部实跑）：`compile_official.bat` **Build succeeded** 并部署；
+`python tools/run_guards.py` → **596 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（新增 `SkyIslandWikiParityGuard.py`）；
+`python tools/run_runtime_regressions.py` → **33 PASS / 0 FAIL**（新增 `PermanentDuckNpcDialogue`，162 条断言）。
+**12 条破坏探针逐条转红并按字节还原**（每条改动前后 sha256 核对一致）。
+**未启动游戏、未修改玩家存档**：本轮没有一条 L3 结论。
+
+- `CR-2026-09-12-011` / `SAFE` / **P2**：**英文 Wiki 补回四条路线要点**
+  （`WikiContent/en/map__sky_island.md`，两份 `wiki-site` 镜像经 `sync-content.mjs` 重生成）。
+  - 缺陷本体：「The first stretch」自 2026-09-09 首版起就整段缺了中文版的四条要点
+    （先清威胁再操作风标台 / 星灯台、捷径怎么开、双航标后去归航钟庭）。这四条是**唯一**告诉玩家
+    「航标台要先清守卫」的地方——目标卡不说，要到装置面板才知道。
+  - 成因：仓库里**没有任何守卫比对中英 Wiki 的正文**。
+  - 顺带把英文版原先散文写的「中继平台」一段改成第五条，使两版逐章节 1:1。
+  - 新守卫 `tests/SkyIslandWikiParityGuard.py`：章节形状全等 + 五条要点按语义锚点存在 + 两份镜像同源。
+    **只钉天空岛地图页**——全仓 112 对里另有 33 对形状不一致，但抽样确认多为**刻意**的排版约定
+    （`item__consumables.md` 英文把「堆叠/使用时间」合成一行，内容是全的），一刀切会写成假不变式。
+- `CR-2026-09-12-012` / `SAFE` / **P2**：`SkyIslandSession.AvailableBountyProgress` 的 Threats 注释改为如实口径。
+  旧注释声称「已清过的组这局根本不会再触发回调（`Tick` 直接短路成 Cleared）」——那只对**手动**组成立
+  （短路条件带 `encounter.Manual`），对 Threats 数的自动组是反的，而照它过滤正是 `RemainingClearable`
+  注释里警告的已知回归（第二趟起可完成量恒为 0）。为守住 1200 行预算，细节留在 `RemainingClearable`，
+  主文件只留一句指路。`SkyIslandGnatBountyGuard` 新增第 6 节钉住行为与注释（三条探针全红）。
+- `CR-2026-09-12-013` / `SAFE` / P3（R-9 分项）：`SkyIslandResidents.SetVisible` 加「值没变就整条早退」。
+  会话 `Update` 每帧对折翎与钟守各调一次，旧写法每帧做 HashSet 增删 + Dictionary 查再无条件 `SetActive`。
+  `hidden` 是唯一事实源，按它早退不会漏掉「先 SetVisible、后生成」那条时序。**帧时间收益未实测**。
+  R-9 剩余的「物品池首查落玩法帧」**仍未动**：要改装配期分帧预热，而实机 p95 只有 11.4 ms，
+  没有数据支持现在动它。
+- `CR-2026-09-12-014` / `COMPAT` / P3：悬根林见闻点 `Search_D_02` 补上苔药服务。
+  四项服务里只有苔药没有装置兜底——眠苔生成失败的那一趟，唯一的付费回血整条失联，
+  而星苔药膏恰恰要在她的药臼上做。`healReadyAt` 是单例字段，两个入口共用冷却。中英 Wiki 同步。
+  `SkyIslandFullAuditGuard` 新增「每项服务都要有装置兜底」的结构断言并一并钉住三处合成台。
+- `CR-2026-09-12-015` / `COMPAT` / P3：「天空岛航路已开放」改成**每进程一次**。
+  它以前跟着切图与「离开基地」两处复位，收齐十二封信要十二趟就念十二遍。
+  **入口本身仍每次回基地重新挂**，只有这句话不再重播。`SkyIslandPlayerEntryGuard` 新增断言。
+- `CR-2026-09-12-016` / `SCHEMA+` / **P2（R-6 落地）**：晴禾与苇白的 **46 条**好感 / 婚姻台词补齐英文。
+  - 缺陷本体：整份 `DuckNpcs.json` schema 里唯一的英文字段是 `displayNameEn`，英文玩家和她们
+    聊天、送礼、婚后对白全是中文。
+  - schema：每一句既可以是裸字符串（老写法），也可以是 `{"cn": …, "en": …}`，两种形态可混排；
+    缺 `en` 时 `L10n.T` 自动回落中文，**`duck_npc_xiaoman` 一个字未改、行为不变**。
+  - 两条 load-bearing 细节：① 语言在**取用时**解析（玩家能在游戏里切语言；气泡的 `string[]` 视图
+    按语言缓存并在切换时重建）；② 档位判据 `IsTierObject` 必须看 `lines` 这个键而不是只看 `Kind`
+    ——台词的对照形态本身也是对象，只看 `Kind` 会把 `[{cn,en}]` 单档误判成档位数组而**整组静默丢失**。
+  - 译文术语与英文 Wiki 对齐（Frogsong Pool / planting record / Hanging Root Wood / wind beacon /
+    Fallen Star Workshop / star lamp）。
+  - 验证：`DuckNpcInvariantGuard` 新增 schema 与数据两侧断言；**新增执行回归
+    `tests/fixtures/PermanentDuckNpcDialogue`（162 条断言）**——结构守卫证明不了「解析真的把两种形态
+    都读出来了」，而那正是最容易静默坏掉的一层。四条探针全红。
+  - `M_SKY_ISLAND_09` 的人工步骤已追加「找晴禾 / 苇白聊天、送礼、婚后对白」。
+- `CR-2026-09-12-017` / `SAFE` / P3：`AGENTS.md:390` 的导航顶点数改为以运行时为准
+  ——**3870 / 4095（余量 5.5%）**，来源 runId `20260912_073636_324`；离线 UnityPy 的 4037 是另一种口径。
+  闸门是 `ArenaPrototypeNavigation.cs` 的 `mesh.vertexCount`。旧数字会让人以为只剩 1.4% 余量，
+  可玩性评估第七节把 E9「云底渡口」标成「余量已不多」正是照它写的。
+
+**登记为 UNVERIFIED、本轮不做**：全仓另 33 对中英 Wiki 形状不一致（多为刻意排版约定，要逐页人工判）；
+`duck_npc_xiaoman` 的 34 条台词仍只有中文（不在天空岛审核范围，schema 已支持，补译只需填 JSON）。
+
+**仍待 owner 拍板**（本轮按 AGENTS §7 / §10 **未擅自定案**）：
+R-4（岛上物资按品质带内种类均匀抽 —— 本轮首次拿到直方图：q1=77 / q2–3=277 / q4–5=174 / q6–8=204，
+即星工带高半段种类比低半段还多，一趟满搜期望约 91 件、其中约 16 件 q6–8；属经济数值，见 §10）、
+R-2（K1 捷径几乎不省路，建议接受并改木牌措辞）、
+信鸽「一趟一封」是否保留为时长主力（建议前 8 封维持按序、后 4 封条件满足时允许同趟连送）、
+Mode H 认证池 8–9 人的缺口（第三轮已登记）。
+
+## 2026-09-12（第三轮）F3 实机报告驱动的审核与修复（1 P1 + 2 P2 + 4 P3 已修）
+
+**输入**：`BossRushValidation_20260912_072302_209`（全量，`pass=156 fail=5 skip=2`）、
+`BossRushValidation_20260912_073636_324`（天空岛，`pass=28 fail=0 skip=1`，`SKY_LOCALIZATION_EN` 因语言=zh 跳过）、
+同场 `Player.log`、`鸭科夫源码/` 反编译对照，以及一份外部审查报告。
+**分类**：`COMPAT`（计划器抽签口径、两处玩家文案、夜风计数）+ `SAFE`（注释、节流顺序）。**没有改任何数据表、TypeID、存档 schema 或走廊数值。**
+
+**验证**（本机 Windows，全部实跑）：`compile_official.bat` Build succeeded 并部署；
+`python tools/run_guards.py` → **595 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（新增 `ModeHSeasonViabilityGuard.py`）；
+`python tools/run_runtime_regressions.py` → **32 PASS / 0 FAIL**（`ModeHMarketAudit` 新增 500 组签约组合审计）。
+**未启动游戏、未改玩家存档**；F3 需要 owner 复跑一次才能把 P1 标为实机已证。
+
+- `CR-2026-09-12-003` / `COMPAT` / **P1**：**Mode H 选秀死局已修**（`ModeH/ModeHEncounterPlanner.cs`、`ModeH/ModeHRuntimeModule_MatchFlow.cs`）。
+  - 实机症状：`MODE_H_FULL_SEASON` 点了 388 次「签约」、lifecycle 100 秒不动，`season_viability_match_6:plan_threat_out_of_corridor` 刷 194 遍；
+    `MODE_H_CACHE_HIT_CLEANUP` 连带红。
+  - 根因一：走廊下界按「基础威胁和」编制（`threatBudget × minFillPercent`），单体分只有 38..62，于是人数少的骨架**结构上永远够不着自己的下界**——
+    第 6 场 `champion_beast`（1–2 人）两档全死、第 3 场 `relay_squad` 的 n=4 全死、第 1 场 `single_beast` 的 n=1 只有 62 分那位能满足。
+    空抽白吃 8 候选 × 3 重试的预算。
+  - 根因二：`BuildPlanEnemyPool` 排除**全部五席**，对手池与签下哪两位无关，所以第 6 场一判死，20 种签约顺序全死；
+    选秀页又没有「取消已选主将」和退出口。
+  - 修法：`BuildCandidate` 先抽擂台条件，再用与威胁修复**同一条枚举**（`TryFindLegalRosterSelection`）筛出本池真组得出来的 (骨架, 人数)，只从中抽；
+    筛不出来时回落原路径并照旧报原因（池大于 `MaxProductionCandidateCount` 时枚举整体早退，兜底必须留）。
+    新增 `CollectBuildableDraws`。`OnDraftPick` 支持「再点一次已选主将 = 取消」，失败提示改为如实说明「对手池对五名候选一视同仁，换替补不会变」。
+  - 效果（复现玩家那台机器的 10 人认证池，25 种子 × 20 签约组合）：**120/500 → 418/500 可建；连一种可签组合都没有的种子 10/25 → 0/25。**
+  - 验证：新守卫 `tests/ModeHSeasonViabilityGuard.py`（7 条破坏探针 + 数据层重算走廊算术）；
+    执行回归 `tests/fixtures/ModeHMarketAudit` 新增 `TenCertifiedViabilityAudit`（走真实 `CanConstructFullSeason`）。
+  - **仍开着的口子**：认证池 8 人时 52.9%、9 人时 2.5% 的抽签仍有一场建不出（≥10 人为 0）。已冻成守卫上界，
+    三条互斥的出路需要 owner 拍板，见 `CODE_REVIEW_FINDINGS.md` 同日 UNVERIFIED 区。
+
+- `CR-2026-09-12-004` / `SAFE`：`AvailableBountyProgress` 的「单调递减」硬不变式注释与驱蚋分支矛盾，三处注释改为如实口径
+  （前三类硬门 / 驱蚋软门 + 退单兜底）。细节写在 `SkyIslandSessionGnatBounty.AvailableGnatCull`，主文件只留指路一句，
+  `SkyIslandSession.cs` 仍 = 1200 行（预算内）。
+- `CR-2026-09-12-005` / `COMPAT`：苇白「暂时没有能接的活」现在会在**这一趟真会起蚋且此刻不是夜里**时补一句「天黑以后再来」。
+  新增只读属性 `HasGnatBountyThisRaid` / `IsNightNow`，读钟仍只经 `SkyIslandLighting`。
+- `CR-2026-09-12-006` / `COMPAT`：风标罗盘的面板「使用」说明补齐五级优先，与读数和物品描述同源。
+- `CR-2026-09-12-007` / `COMPAT`：灯的锚点缺失时不再替玩家关夜风（新增 `missingFireAnchors`，
+  `NightWind(night, lightsLit - missingFireAnchors)`）；手记与面板仍显示存档记录的盏数。`SkyIslandContentWeaveGuard` 同步。
+- `CR-2026-09-12-008` / `SAFE`：`SkyIslandGnats.Remove` 的 XML doc 从 `PlayerCollider()` 的注释块里移回它自己头上。
+- `CR-2026-09-12-009` / `SAFE`：`SkyIslandEncounters.Tick` / `SkyIslandScavenging.Tick` 的节流判断提到委托调用之前（R-9 分项）。帧时间收益未实测。
+- `CR-2026-09-12-010` / `SAFE`：`SkyIslandSceneReferenceBridge.CoreActiveIdPrefix` 读 `activeSubScene` 改走
+  `AccessTools.FieldRefAccess`，去掉每帧一次的 `Scene` 装箱（R-9 分项）。Harmony 绑定目标与 `RequireField` 契约检查不变；
+  执行回归 `SkyIslandSceneReferenceBridge`（真 Harmony，47 条断言）通过。帧时间收益未实测。
+  R-9 剩余两项（物品池首查落玩法帧、剧情体显隐每帧两次无变化检查）本轮**未动**：前者要改装配期分帧预热，
+  后者要动剧情体显隐口径，都该在拿到实机帧时间之后再做。
+
+**补齐的行为级守卫缺口**（外部报告第四节，原先人为破坏后全部检查仍绿）：`tests/SkyIslandMosquitoGuard.py` 新增第 8b 节，
+四条各配了一次真实破坏探针并确认转红——① 药膏必须先捕获 `wasItching` 再 `ClearItch`；② 风灯晃眼要用 `LanternHaloRadius` 而不是绕脖子的半径；
+③ 蛙卵放生点唯一且是 `Search_S1`（罗盘同指一处）；④ `CullableBeforeDawn` 的保守下界必须是 `SpawnCheckSeconds + SpawnCooldownMax`
+且驱蚋委托只经这一条。
+
+**复核后不成立 / 不改**：外部报告 P3-4（「数灯的孩子」伏笔没有落点）——`SkyIslandLights.Capstone` 原文就点了名，无需改动；
+P3-3（罗盘用 `FindObjectOfType`）——报告自己写明无性能问题，按「不做与任务无关的重构」保留。
+
+**未定位**：Mode F 撤离后返回基地卡在 `LoadingScreen_Black` 约 290 秒（连累两个下游用例 `previous_scene_load_timeout`）。
+日志里没有异常，同一次运行的 `SCENE_RETURN_BASE` 走同一个 `LoadBaseScene` 只用 10.5 秒。本机同时装着 5 个第三方 Mod，
+官方 `SceneLoader` 的 async 状态机在反编译源码里没有方法体。**不猜修**，需要一次带 `IsSceneLoading` / `OnEvacuated` 计时的复跑
+（最好只装本 Mod）。详见 `CODE_REVIEW_FINDINGS.md` 同日 UNVERIFIED 区。
+
+**仍待 owner 拍板**（本轮未动）：R-6（晴禾 / 苇白 46 条好感与婚姻台词只有中文，需 `DuckNpcs.json` 加可选英文字段 + 补译）、
+R-4（岛上物资按品质带内种类均匀抽，与原版按品质加权不同；建议先实机统计三档直方图）、Mode H 认证池 8–9 人的缺口（见上）。
+
+## 2026-09-12（第二轮）关闭历史 Open 项（1 P1 + 1 孪生缺陷已修）
+
+**分类**：`COMPAT` + `SCHEMA+`（两个新存档 key，老档缺键即 0）+ `SAFE`（台账文档）。无人值守，**没开游戏**。
+
+- `CR-2026-09-11-019` / `COMPAT` + `SCHEMA+`：**已修**。新增 `ZombieMode/ZombieModeEntryDebt.cs` —— 入场回滚的可持久化欠账账本。
+  - 缺陷本体：入场先扣邀请函再扣现金，回滚发生在**切图途中**，`EconomyManager.Instance` 已随场景销毁（官方 `Add` 直接 `return false`），
+    `ItemAssetsCollection.InstantiateSync` 也可能因资源未就绪返回 null；两处都丢掉返回值、还在 `finally` 里无条件清事务状态。
+    **邀请函那一半是本轮复查时新确认的孪生缺陷**，同一条纪律一并修。
+  - 账本：`BossRush_ZombieMode_RefundDebt_Cash`（long）/ `_Invitations`（int），`SavesSystem` 天然按槽位隔离；**不缓存**（只在两个低频点读写，
+    因此没有跨槽串台问题）；写入后**回读核对**（官方 `Save` 在没有当前存档文件时只打日志就返回）。
+  - 返回语义：`RefundCash` / `RefundInvitation` 返回「这笔账了结了没有」——退成功、或退不出去但已记进账本，都算了结（宿主清事务状态，
+    留着会和账本重复退款）；**连账都记不下才返回 false**，宿主保留事务状态等下一次清理路径重试。两层兜底，不只靠当前对象。
+  - 结账：**先到账再销账**（`Add` 成功才写 0；销账失败只会在极端情况下重发一次，绝不吞玩家的钱），邀请函**逐张推进**，
+    中途资源掉线时剩余张数留在账上。结账点 = 官方 `EconomyManager.OnEconomyManagerLoaded`（命名方法、幂等订阅，随 `ZombieModeRuntimeModule` 销毁退订）
+    + 每次入场扣款之前。
+  - 宿主 partial 只剩两行转发（AGENTS 4.15）：`ZombieModeEntry.cs` 1279 → 1202 行，`LargeFileBudgetGuard` 与 `ModBehaviourPartialBudgetGuard` 回绿；
+    退款文案随之移到模块自有类型，同步把新文件加进 `tests/ZombieModeLocalizationGuard.py` 的扫描清单（不是放宽守卫）。
+  - 验证：新守卫 `tests/ZombieModeEntryDebtGuard.py`（10 条破坏探针：改 key、写入不回读、付不出去就丢、先销账后到账、订阅改 lambda、
+    宿主无条件清状态、扣款前不结旧账、模块不退订、编译清单漏登记、回归清单漏登记——全部转红后逐字节还原）；
+    执行回归 `tests/fixtures/ZombieModeEntryDebt` 58 条断言（逐字链接生产文件，替身复现「经济暂不可用」「资源未就绪」「没有当前存档文件」「存档抛异常」）；
+    契约登记 `docs/contracts.md` §3；repowiki 已同步。
+
+- `CR-2026-09-11-017` / `COMPAT`：**Partially fixed / Deferred → Fixed（待实机故障注入）**。跨重启窗口经复查是**结构性关闭**的：
+  `GrantKeepsakes` 在发放前调 `RequireAssetSnapshot`、失败即跳过；共享落盘引擎的顺序是
+  「`CollectSnapshot`（主角物品 / 生命 / `PlayerStorage` / `PlayerStorageBuffer` 进 ES3 缓存）→ `FlushPending`（手记进缓存）→ `SaveFile(false)`」，
+  任一步失败即 `Defer` 且不落盘，`assetSnapshotRequired` 只在 `OnPhysicalSaveSucceeded` 清除；`TryGive` 内部同步、不让出主线程，
+  因此不存在「手记落盘、物品没落盘」的交错。原判低估了这条资产屏障。
+  **但这条屏障此前没有守卫**（`AssetSnapshotBoundaryGuard` 只盖 Mode H 与 PetNest），可以静默回退——本轮把天空岛补进去，
+  钉住「负判 + 失败跳过 + 之后才发放」、四样资产快照、义务清除点、`TryGive` 的记账/回滚顺序与引擎三段顺序，5 条破坏探针全红
+  （其中第一条一开始是绿的：只核对顺序不够，据此把判据改成要求快照检查是**承重**的，再探针才转红）。
+
+- `CR-2026-08-31-009` / `CR-2026-09-01-010`：**保持 Open**。两条都标着「修复与静态验证已完成，等下一份完整 F3 报告确认」，
+  代码侧没有待办；本轮无法启动游戏，不能在没有新报告的情况下改判 Fixed。
+
+- Mode H `woundedUnits` / 底色 / 怪癖倍率：**refuted（不是缺陷）**。逐条反查接线：
+  `ThreatPlans.json.woundedUnits` → `ModeHContentCatalogParsers` → `publicSummary.visibleWoundedEnemyCount` →
+  `ModeHOddsController.ComputeEnemyStatusScore`，权重在 `Assets/Data/ModeH/OddsWeights.json` 的 `enemyWeights` 里有实值，
+  并由「该 stable key 是否有实测通过的伤病行为」门控。原记录说的是没有擅自再补新数值，不是没接线。
+
+- 文档 / `SAFE`：`docs/Bossrush使用物品ID表.md` 清掉两处**空表**（一个无标题无数据的表头、一节写「占位 ID（1 个）」却零行），
+  改成如实登记的「保留空洞（2 个，不回填、不复用）」并写明 `500009` / `500047` 的来历。`TypeIdLedgerGuard` 通过。
+
+**验证**：全量守卫 **594 PASS / 0 NEW-FAIL / 0 KNOWN-RED**；执行回归 **32 个夹具全 PASS**；
+Windows `compile_official.bat` 0 error 并部署本机 Mod 目录。**未启动游戏、未改玩家存档**；
+入场回滚的真实切图时序、ES3 落盘与官方送达仍需实机 smoke（`ZombieMode/AGENTS.md` 的入场/失败回滚一项）。
+
+## 2026-09-12 近两月新增内容的可玩性审核（2 P2 已修）
+
+**分类**：COMPAT ×2。**不新增 TypeID、不动存档 schema、不动任何经济数值**。无人值守，**没开游戏**。
+
+- `CR-2026-09-12-001` / `COMPAT`：随机事件「鸭生无常」的两个纯演出事件（鸭王的烟花、鸭群巡游，合计占池约 13.5%）不再消耗玩家的单局事件配额。
+  新增虚属性 `RandomEventBase.ConsumesRunBudget`（默认 `true`，新事件默认占配额），`TryStartRandomEvent` 按它决定是否推进 `_eventsFiredThisRun`，
+  `TickEventActive` 的异步全失败退款仍按 `_activeEventCounted` 走。并发恒 1、45–75 秒冷却与 90 秒开局静默不变；配额用尽后纯演出也不再触发。
+  低频档（一局 2 次）此前至少一次事件落空的概率约 25%。新守卫 `tests/RandomEventFlavorBudgetGuard.py`，5 条破坏探针（基类默认、无条件计数、取消声明、偷偷给奖励、退款不看计数）全部转红后逐字节还原。
+  中英文游戏内 Wiki 与在线站的「频率」一节改口径为「最多几次**有玩法的**事件」，两个事件条目各加一句「不占额度」。
+
+- `CR-2026-09-12-002` / `COMPAT`：天空岛新增第四类航务委托「夜里驱蚋」（`SkyIslandBountyKind.Gnats`，一单 12 只，每交一单 +1，谢礼走同一档位阶梯），
+  让内容批次四里「把云蚋打下来」这条路第一次有回报——此前云蚋不掉东西也无人统计，驱风香（材料价值 300、整群不来、还挡风加耐力）
+  把风晶灭蚊灯（材料价值 2790、要先点两盏灯、还把刷新权重 ×1.5 招蚋）完全压住。
+  - 计数：只由 `SkyIslandGnats.Remove(killed: true)` 一处上报（枪 / 灭蚊灯 / 蒲扇同一出口）；`Dispose` 直接清数组、不经过 `Remove`，离岛清场不算击杀。
+  - 门控：`SkyIslandSession.AvailableBountyProgress` 的 `Gnats` 分支转发到新 partial `DebugAndTools/SkyIsland/SkyIslandSessionGnatBounty.cs`
+    （会话主文件保持 1197 / 1200 行不变，写法同 `SkyIslandSessionRecall`）；没有蚊群 owner、精灵表缺失或不是夜里一律返回 0，
+    夜里按 `SkyIslandMosquitoRules.CullableBeforeDawn(SkyIslandNight.RealSecondsUntilDawn(hours, SkyIslandLighting.ClockScale()), alive)` 取保守下界
+    （每群按最坏 `SpawnCheckSeconds + SpawnCooldownMax`、只按 `GroupMin` 折算），沿用「只派做得完的单」与退单出口。
+  - 读钟仍只有 `SkyIslandLighting` 一处：新增 `ClockScale()`（`GameClock.clockTimeScale`，默认 60，读不到回落 `SkyIslandNight.DefaultClockScale`）
+    与 `SkyIslandNight.RealSecondsUntilDawn`；判夜本身不看倍速，`SkyIslandNight.IsNight` 仍是唯一口径。
+  - 面板：苇白与留言板最坏仍是 5 条选项（`Search_B` 不是点灯处），布局属性测试按 6 条复算仍通过。
+  - 新守卫 `tests/SkyIslandGnatBountyGuard.py`，8 条破坏探针（不挂进派单列表、散开算击杀、白天也派单、可完成量不保守、基数调成刷子级、
+    英文名漏掉、`Dispose` 走 `Remove`、编译清单漏登记）全部转红后逐字节还原。
+  - 执行回归 `SkyIslandStory` 2444 → 2486 条（剩余夜长折算与边界、可完成量的保守与单调、接单基线 / 未完成不付 / 谢礼放不下保留委托 / 交付后 +1 / 退单 / 四类计数互不串台、英文名无中文）。
+
+**本轮登记在案、不改行为**：鸭皇图鉴「全收集」里程碑跟随 Boss 筛选器（改成按未过滤池计会让永久禁用某 Boss 的玩家永远拿不到，可达性优先）；
+结局后未打噬风时栈道与桥恒大风（复核确认噬风在结局后仍可挑战，是玩家能自己解除的压力而非死锁，观感待实机）。两条都写进 `CODE_REVIEW_FINDINGS.md` 同日条目。
+
+**验证**：全量守卫 593 PASS / 0 NEW-FAIL / 0 KNOWN-RED（含两个新守卫）；执行回归 31 个夹具全 PASS
+（`HarmonyBindingSecondReview` 与 `IntegrationThirdReviewFixes` 需先设 `BOSSRUSH_HARMONY_DLL` / `BOSSRUSH_GAME_MANAGED`）；
+Windows `compile_official.bat` 通过并部署本机 Mod 目录。**未启动游戏、未改玩家存档**；手感（一单 12 只是不是「一分半到两分钟」、
+纯演出事件不占额之后一局的节奏）只能实机确认。
+
 ## 2026-09-11 全面生产审核（进行中）
 
 - `CR-2026-09-11-018` / `COMPAT`：丧尸模式撤离结算在 `EconomyManager.Add` 返回 false 时保留净化点、回到 `ExtractionOpportunity` 并允许重新撤离；现金到账后才清零并进入成功清理。此前失败仍继续清理整局，会永久丢失本局奖励。两条撤离现金/清理守卫通过，官方 Windows 编译与实机故障注入待完成。
-- `CR-2026-09-11-019` / `COMPAT`：复核入场失败路径发现 `RefundZombieModeCashIfNeeded` 忽略 `EconomyManager.Add` 返回值，并在 `finally` 清除暂扣现金状态；退款失败后随后的清理会丢失欠账。当前保持 Open，需 owner 选择可持久化退款欠账方案并补故障注入回归。
+- `CR-2026-09-11-019` / `COMPAT`：~~当前保持 Open~~ → **2026-09-12 已修**（owner 批准「可持久化退款欠账」方案，见本文件同日第二轮条目；邀请函返还的孪生缺陷一并修）。
 - `CR-2026-09-11-004` / `005` / `008`：天空岛关键物品交付、蛙卵材料写屏障、遗种巢远征欠奖血脉均已落实兼容修复；定向守卫与执行夹具通过，待稳定工作区编译及游戏内 smoke。
 - `CR-2026-09-11-006` / `007`：Mode H 第 4 场战报→转会市场、计划输入/敌军池过滤已修复；新增 `ModeHMarketAudit` 17 条生产源码接线断言通过。woundedUnits、底色/怪癖倍率没有擅自补数值，列为 owner 决策项。
 - `CR-2026-09-11-009`：定向守卫改用 Git `-z` UTF-8 路径并在查询失败时回退全量；专门回归通过。
@@ -16,7 +426,7 @@
 - `CR-2026-09-11-014`：图鉴仅为可归属 Boss 开速杀计时；直接致死、死亡后补刀和同帧回调语义已收口，最小实测单位 0.001 秒。生产入口 guards 与 18 条夹具断言通过，完整官方 API 顺序仍待实机。
 - `CR-2026-09-11-015`：校准 PetNest 中英文远征说明，删除“亡命更快练级”误导，补充时长、经验、现金、遗魂和遗种蛋条件；Wiki 已同步，待站点构建复核。
 - `CR-2026-09-11-016`：天空岛点灯改为全材料预留→记录→提交事务，写屏障、缺料和同步回调重入均回滚；SkyIslandLoot 1817、SkyIslandStory 2444 及相关 guards 通过。
-- `CR-2026-09-11-017`：TryGive 增加未归属实例的精确 `RemoveNote` 回滚；已归属或状态不明保留台账防重复。官方 `SendToPlayer*` 无返回值，剧情手记与仓库/待领取缓冲没有跨系统原子提交，岛内崩溃窗口仍 Deferred / Needs owner confirmation；需实机故障注入或 owner 批准 pending receipt 方案。
+- `CR-2026-09-11-017`：TryGive 增加未归属实例的精确 `RemoveNote` 回滚；已归属或状态不明保留台账防重复。~~岛内崩溃窗口仍 Deferred~~ → **2026-09-12 转 Fixed**：复查确认「资产屏障 → typed pending → SaveFile」的顺序已使跨重启窗口结构性关闭，本轮把这条屏障补进 `AssetSnapshotBoundaryGuard`（此前只盖 Mode H / PetNest）。剩余 L3 只有实机故障注入。
 - `CR-2026-09-04-036`：复核当前孵化链后转为 Fixed（隔离回归通过；实机故障注入待完成）。实体蛋路径的统计已在 `PetNestService.TryCommitHatch` 同一 Bundle 候选内提交，资产采集或物理写失败时由 `PetNestSaveCoordinator` 保留义务并重试；`ContentTransactions` 夹具现有 82 条断言覆盖资产序列化失败、物理写失败与官方采集回调，确认孵化数、异色数和首次血脉解锁不会漏记或重复。详见 `CODE_REVIEW_FINDINGS.md` 条目正文。
 - 历史状态复核：`CR-2026-08-31-009` 与 `CR-2026-09-01-010` 继续保持 Open。当前可找到的最新完整 F3 报告为 `Build/log-fixes-20260907/input/BossRushValidation_20260907_150312_248.log`：随机事件、Mode D、Mode E/F 生命周期已通过，但 Mode H 首次认证清理、完整赛季、缓存命中清理及运行时错误仍使 SUMMARY 为 FAIL；在新的完整 F3 报告前不能转 Fixed。
 

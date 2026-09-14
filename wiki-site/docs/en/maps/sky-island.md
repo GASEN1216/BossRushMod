@@ -26,7 +26,11 @@ Departing and returning work exactly like any other map: loading ends on the usu
 
 North of Cloudrise Dock lies Windchime Market. Talk to Weibai the lamp-keeper first, then head west through the Green Terraces and the Hanging Root Wood, or east through the Mirrorwater Temple and the Fallen Star Workshop. The two beacon routes can be done in either order.
 
-Several long bridges widen into relay platforms midway. Expect ambushes on the two bridges that lead from the Hanging Root Wood and the Fallen Star Workshop to Windsong Boardwalk, and a scavenging point on each of the three return-shortcut platforms. The shortcut gates stand at the Windchime Market end, so until a shortcut is open you reach its platform from the far side — Hanging Root Wood, Fallen Star Workshop or Windsong Boardwalk.
+- **Hanging Root Wood**: clear the threats around the wind beacon, then work the beacon console to restore the western beacon.
+- **Fallen Star Workshop**: clear the threats around the star lamp, then work the lamp console to restore the eastern beacon.
+- **Return shortcuts**: once the matching repair is done, work the rope bridge or the gate. **How much they actually save varies a lot**: K3 on Windsong Boardwalk is the one worth opening (it nearly halves the walk from the dock to the storm’s eye later on), K2 at the Fallen Star Workshop is next; K1 in the Hanging Root Wood saves almost nothing — the moment its beacon is lit the plaza opens its own extraction, so that rope bridge is there for the view.
+- **Windsong Boardwalk**: with both beacons lit, carry on to the Homecoming Bell Court.
+- **Relay platforms**: several long bridges widen into platforms midway. Expect ambushes on the two bridges that lead from the Hanging Root Wood and the Fallen Star Workshop to Windsong Boardwalk, and a scavenging point on each of the three return-shortcut platforms. The shortcut gates stand at the Windchime Market end, so until a shortcut is open you reach its platform from the far side — Hanging Root Wood, Fallen Star Workshop or Windsong Boardwalk.
 
 ## Scavenging points
 
@@ -41,7 +45,7 @@ There are **39 scavenging points** across the map — 3–4 in each of the eight
 - Crates are only placed as you approach, so the whole map is never spawned at once. The HUD shows "looted / available".
 - **Contents are fixed for the run**: walk away and come back and it is the same crate; what you took does not restock. **Only a fresh raid re-rolls them.**
 - Scavenging points are deliberately **not** marked on the map — the valuable finds have to be walked to.
-- Loot you *find* is fully random; only loot you *earn* — the Windeater trophy and contract payouts — guarantees one item from the top of its band.
+- Loot you *find* is random within its band, but **the higher the quality the rarer it is** (each step up is roughly 40% less likely) — top-tier items still turn up, just not one per crate. Only loot you *earn* — the Windeater trophy and contract payouts — guarantees one item from the top of its band.
 - Island loot pools **leave out collectibles worth more than 100,000 each** (such as the Crown and the mysterious keys): rare finds like blueprints and the solid gold badge still turn up, but no single crate pays for the whole map.
 
 ## Who you'll fight
@@ -50,7 +54,7 @@ There are **39 scavenging points** across the map — 3–4 in each of the eight
 
 - **Cloudedge Scavengers** — the baseline density across the map, fighting like the game's ordinary scavengers. Different regions field different official scavenger builds.
 - **Galebreaker Rangers** — they lead the two beacon guard groups and the Starfall Overlook guards. Tougher, faster to react, and recognisable at a glance by their size and colour, so the main-line objectives are no longer just another sweep.
-- **Zheling / the Silent Bell Keeper** — named story opponents. Both outclass a Galebreaker Ranger in health and reaction (Zheling fights alone, but is tuned to weigh as much as a whole guard group), and both still have a peaceful resolution.
+- **Zheling / the Silent Bell Keeper** — named story opponents. Both outclass a Galebreaker Ranger in health and reaction (Zheling fights alone, but is tuned to weigh as much as a whole guard group), and both still have a peaceful resolution. What you fight at the Bell Court is the **runaway bell engine**, not the keeper himself — by the Court’s custom every ringing machine is cast in the likeness of the keeper on duty, which is why it wears his face; the Homecoming Bell’s own message explains it.
 
 ## The Windeater
 
@@ -70,7 +74,7 @@ Qinghe and Weibai are long-term residents: daily chat, gifts, affinity and marri
 Four of them offer a practical service; the other two are story branches:
 
 - **Fuzhou (Cloudrise Dock) · Dock refit** — pay to repair the worn gear you're carrying: the same items the repair bench accepts, so medicine and food are not topped up. The price follows the same value-based rate as the repair bench, and repairing still shaves a little off the permanent durability ceiling — same rules as the bench, just without the trip home. Paid services on the island settle from **either the cash you carry or your bank account**, exactly as they do back at base. The dock device does the same job when Fuzhou isn't around.
-- **Miantai (Hanging Root Wood) · Moss remedy** — pay to heal to full. **Priced by how much health you are missing**, so a scratch is cheap and a near-death is a serious bill; the five-minute cooldown runs on game time (it does not tick down while the game is paused) and means one or two uses per raid. It is not a free second life.
+- **Miantai (Hanging Root Wood) · Moss remedy** — pay to heal to full. **Priced by how much health you are missing**, so a scratch is cheap and a near-death is a serious bill; the five-minute cooldown runs on game time (it does not tick down while the game is paused) and means one or two uses per raid. It is not a free second life. If she is not around, her mortar beside the Hanging Root Wood note "a mailbag in the roots" applies the same remedy.
 - **Weibai (Windchime Market) · Lane contracts** — see below.
 - **Qinghe (Green Terraces / Windchime Market) · Homecoming meal** — once you've returned her planting record, ask for one free meal per raid: higher maximum health and movement speed for that run. The health the raised cap adds is filled in, but actual wounds still need Miantai. If Qinghe herself is away from the island (after marrying her, for instance), the **terrace garden plot** serves the same meal.
 - **Zheling / the Silent Bell Keeper** — story branches: peace or a fight.
@@ -82,10 +86,15 @@ Take a contract from Weibai herself or from the Windchime Market noticeboard —
 - **Clear the lanes** — finish a number of encounter groups.
 - **Recover supplies** — loot a number of scavenging points.
 - **Survey the isles** — set foot in a number of regions.
+- **Thin the gnats** (offered at night only) — bring down `12` cloud gnats. Guns, windcrystal gnat zappers and the remedy-smoke fan all count.
 
 Progress counts from **the moment you accept**: earlier work doesn't count, and nothing is deducted. On delivery Weibai leaves a reward crate beside her — each contract lands on a different bearing, so crates never stack and never block her or the noticeboard. Each completed contract raises the next target by one, and **from the third contract onward the reward moves up to Starworks tier**. Three contracts per raid at most. Contracts are per raid and reset when you return to base.
 
-Weibai **only hands out work you can finish this trip**. All three count progress **within this raid**: “Survey the isles” counts regions you have not set foot on this trip, so it stays on offer even after the whole archipelago is on your map; “Clear the lanes” and “Recover supplies” are normally available every trip too, since encounters and scavenging points refresh per raid. Changed your mind after accepting? You can drop a contract with her at any time: dropping it doesn't count as a completion and pays nothing, but it frees the slot.
+Weibai **only hands out work you can finish this trip**. All four count progress **within this raid**: “Survey the isles” counts regions you have not set foot on this trip, so it stays on offer even after the whole archipelago is on your map; “Clear the lanes” and “Recover supplies” are normally available every trip too, since encounters and scavenging points refresh per raid. “Thin the gnats” is only offered while there is still enough night left to finish it, and never during the day. Changed your mind after accepting? You can drop a contract with her at any time: dropping it doesn't count as a completion and pays nothing, but it frees the slot (that is also your way out if dawn arrives mid-cull).
+
+::: tip
+The cull is the one contract you can advance while standing still: set a windcrystal gnat zapper down by still water such as the Frogsong Pool, light a wind lantern to draw them in, and twelve gnats take about a minute and a half. Both the zapper and the lantern raise how fast gnats arrive - which is exactly what makes them worth carrying. Burn windward incense for a quiet night, or do the opposite and call the swarm in for the pay.
+:::
 
 ## The Homecoming Bell and the ending
 
@@ -101,7 +110,7 @@ After the Bell Keeper is resolved you still have to ring the bell yourself befor
 Every raid, **one carrier pigeon** lands somewhere on the islands with a letter tied to its leg — a letter that could not be sent the year of the storm and is only arriving now. A few seconds after you land, a caption at the bottom of the screen names the region it came down in. The pigeon is **not marked on the map**: you have to walk over and find it (its name fades in as you approach, with a soft white glow beside it).
 
 - Walk up to the pigeon, read the letter and choose "Keep the letter" to receive it; the pigeon then flies off and the letter goes into your archipelago journal. Leave without keeping it and the same pigeon waits in the same spot next raid.
-- There are **12 letters**. The first eight arrive one per raid, in order; the rest are only sent once the story reaches the right point (both beacons lit, the star lamp lit, the bell rung), and a letter whose condition has just been met is delivered first.
+- There are **12 letters**. The first eight arrive one per raid, in order; the other four are only sent once the story reaches the right point (both beacons lit, the star lamp lit, the bell rung). Those are delivered first when their condition is met, and **several can arrive in the same raid** — the run where you ring the bell often brings two.
 - Most letters are addressed to someone on the islands. Talk to Fuzhou, Weibai, Qinghe or Zheling after keeping theirs and they will mention it.
 - **With your first letter**, Fuzhou sends along a **Wind-Vane Compass** (see "Sky Islands items" below).
 
@@ -132,7 +141,7 @@ The archipelago has five items of its own (TypeID 500068–500072), plus ten gat
 - **Windeater Core** (keepsake): granted once when you defeat the Windeater, sent to base storage. **Carry it in your pack on the islands** and the whirl inside eats into the wind around you: on night bridges and on the boardwalk before the storm, **a gale only counts as a breeze for you**.
 - **Wind-Vane Compass** (tool): arrives with your first pigeon letter (in your pack, or in base storage if it is full); Starworks crates occasionally hold one too, and Fuzhou's dock workbench can make a replacement once you have had the first one. Use it on the islands: **while carrying frogspawn, it points to Frogsong Pool first**; otherwise to an uncollected pigeon, then your nearest current objective or unfinished side path; after that, to a place still missing its windcrystal lamp if you carry a Qinglan Windcrystal, or else to a wind crystal cluster you have not gathered this trip. **Not consumed.**
 - **Homecoming Bento** (food): restores energy and water, and a little health. **Once Qinghe has her planting record back**, eating one on the islands counts as her homecoming meal (a little more max health and running speed for the raid, shared with her own meal) — so you can pack one ahead and eat it before a hard fight; from then on her stove cooks them too. Occasionally found in island crates of every tier.
-- **Starmoss Salve** (medicine): restores health — without paying for Miantai's remedy or waiting out her cooldown. A dab stops cloud-gnat itching, and new bites will not itch for about a minute and a half. Ground at Miantai's mortar; occasionally found in Voyage Supplies and Starworks Cache crates.
+- **Starmoss Salve** (medicine): restores health — without paying for Miantai's remedy or waiting out her cooldown. Rubbed on anywhere on the isles it stops cloud-gnat itching, and **for about a minute and a half afterwards new bites will not itch** — **you do not have to wait until you itch; applying it before you head out at night counts just the same**. Ground at Miantai's mortar; occasionally found in Voyage Supplies and Starworks Cache crates.
 
 Each keepsake is granted once per save, and the grant is recorded with the Sky Islands story save. Saves that had already rung the bell, beaten the Windeater or kept a letter before this update receive theirs on the next trip to the islands. Island goods are packed into crates **on top of** their normal contents: they neither take a slot from the regular item count nor change what else is inside.
 
@@ -186,7 +195,7 @@ Each recipe button shows how many of each material you have against how many it 
 
 **In-raid consumables** each hold off one layer of wind. They only work on the Qinglan isles — away from them the use button is greyed out, so none are wasted — and their effects end when you leave. Their timers run on game time, so they do not burn down behind the pause menu:
 
-- **Wind Lantern** (the night breeze): a warm light follows you overhead for about 4 minutes; no chill builds in a breeze, but **in a gale the flame gutters and holds off only half**.
+- **Wind Lantern** (the night breeze): a warm light follows you overhead for about 4 minutes; no chill builds in a breeze, but **in a gale the flame gutters and holds off only half**. At night it also gathers cloud gnats onto its shade: **the ones in its light only circle the flame — they will not bite, and they cannot dodge a bullet** — so clear them before it burns out.
 - **Windward Incense** (the gale): about 5 minutes safe from any wind — night bridges and the boardwalk before the storm included — with +15% stamina recovery.
 - **Qinglan Charm** (the Windeater's storm): for this raid, **35% less damage from the Windeater's storm pulses**, +10% max health (only the newly added portion is topped up — no free full heal) and +10% stamina recovery; one charm per raid.
 
@@ -200,7 +209,7 @@ At night (game time 21:00 to 05:00) swarms of **cloud gnats** come out on the is
 
 - **Bites**: when its moment comes, a gnat dives at your neck for **1 health** (difficulty does not scale it), roughly one bite every 1.5–2.5 seconds each, and several never bite in the same instant. **Below about 35% health they only circle** — cloud gnats cannot kill you.
 - **Itching**: about six bites in quick succession start an itch (−12% stamina recovery) that fades once the biting stops; captions mark when it starts and ends.
-- **Dodging bullets**: they watch your muzzle. At a distance a gnat flashes (the wind-up) and darts up to 3 m aside, so **long-range shots rarely land**; but a few dodges in a row wear it out, and **point-blank shots, shotguns and explosions all hit**. One to three hits kill one, leaving a small splat — **they drop nothing**. The ones your wind lantern lights up are dazzled and do not dodge.
+- **Dodging bullets**: they watch your muzzle. At a distance a gnat flashes (the wind-up) and darts up to 3 m aside, so **long-range shots rarely land**; but a few dodges in a row wear it out, and **point-blank shots, shotguns and explosions all hit**. One to three hits kill one, leaving a small splat — **they drop nothing**. The ones your wind lantern lights up are dazzled: they neither dodge nor bite.
 - The buzzing only plays while a gnat is within 15 m.
 
 **Counters** each have their own job:
@@ -208,17 +217,18 @@ At night (game time 21:00 to 05:00) swarms of **cloud gnats** come out on the is
 | What | Where | What it does |
 | --- | --- | --- |
 | Hearth smoke / Windward Incense | the three hearths; stove or mortar | stand in the smoke or burn incense: no gnats come, and those around you scatter |
-| Wind Lantern | dock workbench | **draws gnats**: more come while it burns, but those within 6 m in its light do not dodge — easy targets |
+| Wind Lantern | dock workbench | **trades a crowd for quiet**: more come while it burns, but those within 6 m in its light only circle the flame — they neither bite nor dodge; the moment it goes out they are back on your neck (with 20 s left you are told how many are still circling) |
 | Cloudmoss Veil | Qinghe · garden stove | works from your pack: gnats can only circle about 1 m off and bite about three times less often |
 | Remedy-Smoke Fan | Miantai · moss mortar | the swarm on your face: knocks down gnats in a cone within about 3.4 m in front of you and blows those within 6 m back 2.5 m, dazed for 1.2 s; wait a second between sweeps; **not consumed** |
 | Windcrystal Gnat Zapper | Fuzhou · dock workbench (once two windcrystal lamps are lit on the isles; two per batch) | holds an area: set on the ground for about 5 minutes, its hum draws gnats in from 12 m and zaps one within 3.2 m about every 0.7 s; up to two at once |
-| Starmoss Salve | Miantai · moss mortar | stops the itch, and new bites will not itch for about 90 seconds |
+| Weibai's “Thin the gnats” contract | Weibai / the Windchime Market noticeboard (at night) | turns killing them into income: `12` per contract, paid at the same tier as the other three |
+| Starmoss Salve | Miantai · moss mortar | stops the itch, and for about 90 seconds after it goes on new bites will not itch; **applying it before you set out counts** |
 | Miantai's moss remedy | Miantai | clears the current itch along with your wounds; new bites itch as usual |
 
-**The frogs of Frogsong Pool**: in the letter to the frogs of Frogsong Pool, a child asks the frogs to count the lights for them, but the pool went quiet long ago. At night, go to **Mirrorwater Temple · a rubbing in the pool** and wrap a clutch of frogspawn in a handful of Cloudmoss Fiber (the frogs gather in the shallows to breed at night), then carry it during that raid to **the note by Frogsong Pool ("Qinghe's planting record")** and release it; **release still works after dawn**. While you carry it, the Wind-Vane Compass points to Frogsong Pool before other targets. **If you fall or leave the isles, the spawn in your hands is lost**, but every clutch already released is saved: deliver the three clutches on separate trips as you pass, without repeating the route in one raid. Each clutch lowers **the chance of gnats spawning near water**; after all three, frogs can be heard near the pool at night and water's extra attraction is gone, but **lamps and sheltered ground can still draw gnats**. The roster, that letter and several residents mention restored breeding shallows and returning adult frogs. Progress is shown on the journal's Overview page.
+**The frogs of Frogsong Pool**: in the letter to the frogs of Frogsong Pool, a child asks the frogs to count the lights for them, but the pool went quiet long ago. At night, go to **Mirrorwater Temple · a rubbing in the pool** and wrap a clutch of frogspawn in a handful of Cloudmoss Fiber (the frogs gather in the shallows to breed at night), then carry it during that raid to **the note by Frogsong Pool ("Qinghe's planting record")** and release it; **release still works after dawn**. While you carry it, the Wind-Vane Compass points to Frogsong Pool before other targets. **If you fall or leave the isles, the spawn in your hands is lost**, but every clutch already released is saved: deliver the three clutches on separate trips as you pass, without repeating the route in one raid. Each clutch lowers **the chance of gnats spawning near water**; after all three, frogs can be heard near the pool at night and water's extra attraction is gone, but **lamps and sheltered ground can still draw gnats**. The roster, that letter and several residents mention Frogsong Pool croaking again and the frogs that grew there spreading along the waterline. Progress is shown on the journal's Overview page.
 
 ::: tip
-Heading out at night, burn incense or wait by a hearth until a swarm scatters; for work by the water, carry the veil and set down a zapper. The lantern cuts both ways: it draws more gnats, but the lit ones cannot dodge — finish them up close with the fan or a shotgun.
+Heading out at night, burn incense or wait by a hearth until a swarm scatters; for work by the water, carry the veil and set down a zapper; rub on starmoss salve before you leave and bites will not itch for a while. Incense means "none come"; the lantern means "the ones that come stay on the lamp" — for its four minutes they only circle the flame, biting nothing and dodging nothing, so clear them with the fan or a shotgun while it burns. Remember it too late and the whole ring drops onto you at once.
 :::
 
 ## What the run records

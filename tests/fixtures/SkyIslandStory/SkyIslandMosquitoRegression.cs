@@ -4,7 +4,8 @@ using BossRush;
 
 /// <summary>
 /// 内容批次四「云蚋」纯规则的执行回归：判夜唯一口径与无时钟、刷新权重（烟 / 光 / 风 / 静水 / 青蛙 / 岛心 / 敌人）、叮咬速率封顶与叮不死、
-/// 痒的叠加与滞回、蒲扇与灭蚊灯的判定、青蛙手记、冲刺运动学（单步位移上限、冲刺长度上限、前摇与可见帧数、预算与冷却）、英文无中文。
+/// 痒的叠加与滞回、蒲扇与灭蚊灯的判定、青蛙手记、驱蚋委托（离天亮还剩多久、可完成量与四类委托同一套接单/交单）、
+/// 冲刺运动学（单步位移上限、冲刺长度上限、前摇与可见帧数、预算与冷却）、英文无中文。
 /// 生产文件原样链接执行；躲子弹的整体手感另见 <see cref="SkyIslandGnatDodgeSimulation"/>。
 /// </summary>
 internal static class SkyIslandMosquitoRegression
@@ -17,6 +18,7 @@ internal static class SkyIslandMosquitoRegression
         Itch(check);
         FanAndZapper(check);
         Frogs(check);
+        CullBounty(check);
         Kinematics(check);
         English(check);
     }
@@ -147,7 +149,7 @@ internal static class SkyIslandMosquitoRegression
                 float now = frame * dt;
                 for (int g = 0; g < ready.Length; g++)
                 {
-                    if (!SkyIslandMosquitoRules.BiteReady(now, ready[g], lastBite, veil)) continue;
+                    if (!SkyIslandMosquitoRules.BiteReady(now, ready[g], lastBite, veil, false)) continue;
                     bites++;
                     lastBite = now;
                     ready[g] = now + SkyIslandMosquitoRules.BiteDelay(random.NextDouble(), veil);
@@ -157,6 +159,14 @@ internal static class SkyIslandMosquitoRegression
             check(bites <= cap, "six gnats together stay under the bite-rate cap (" + bites + " <= " + cap + ", veil=" + veil + ")");
             check(bites >= (veil ? 10 : 60), "the cap still lets a swarm bite (" + bites + ", veil=" + veil + ")");
         }
+        // 风灯：灯下那几只盯着火转、一口不咬，可叮咬计时不因此重置——灯一灭就都到点了（风灯与驱风香的分工）。
+        check(!SkyIslandMosquitoRules.BiteReady(100f, 0f, -100f, false, true), "a gnat circling the lantern flame does not bite");
+        check(SkyIslandMosquitoRules.BiteReady(100f, 0f, -100f, false, false), "the same gnat bites the moment the lantern goes out");
+        check(SkyIslandMosquitoRules.LanternHaloHeight > SkyIslandMosquitoRules.HoverHeight &&
+              SkyIslandMosquitoRules.LanternHaloRadius > SkyIslandMosquitoRules.OrbitRadiusFor(false),
+            "the lantern halo sits above and wider than the neck the swarm would otherwise circle");
+        check(SkyIslandMosquitoRules.LanternHaloHeight - SkyIslandMosquitoRules.HoverHeight > SkyIslandMosquitoRules.BiteReach,
+            "even geometry alone keeps the dazzled swarm out of biting reach");
         check(SkyIslandMosquitoRules.OrbitRadiusFor(true) > SkyIslandMosquitoRules.BiteReach &&
               SkyIslandMosquitoRules.OrbitRadiusFor(false) < SkyIslandMosquitoRules.BiteReach,
             "with the veil the swarm circles outside biting reach and has to dive in");
@@ -284,6 +294,24 @@ internal static class SkyIslandMosquitoRegression
         }
         check(dodged >= 2 && dodged <= (int)SkyIslandMosquitoRules.DodgeBudgetMax,
             "a second of point-blank-aimed bullets buys only the dodge budget (" + dodged + ")");
+        // 霰弹一帧多丸：后续弹丸仍威胁落点时要重新规划，但**重新规划不再扣预算、不重新起前摇**，
+        // 否则一次扣扳机就能把一只蚊子的五次躲闪全耗光，「躲得开第一枪」会变成「霰弹永远打得中」。
+        var volley = new SkyIslandGnatMotor(false);
+        SkyIslandGnatVec pelletAt = V(0f, 1.2f, 0f);
+        check(volley.OnShot(pelletAt, Incoming(pelletAt), 7, null), "the first pellet of a volley starts a dodge");
+        float budgetAfterFirst = volley.Budget;
+        int replansBefore = volley.Replans;
+        // 第二丸打在第一丸算出的落点上——霰弹的散布正是这样把「躲到哪」也一并覆盖掉的。
+        SkyIslandGnatVec landing = pelletAt + volley.DashDirection * volley.LastDashLength;
+        volley.OnShot(pelletAt, new SkyIslandGnatShot(landing + V(0f, 0f, -30f), V(0f, 0f, 1f), 60f, 60f, 0.08f), 7, null);
+        check(volley.Replans > replansBefore, "a pellet covering the planned landing spot forces a replan");
+        check(Math.Abs(volley.Budget - budgetAfterFirst) < 1e-6f && volley.DodgesStarted == 1,
+            "replanning inside one volley spends no extra dodge budget (" + volley.Replans + " replans)");
+        check(volley.LastDashLength <= SkyIslandMosquitoRules.MaxDash, "a replanned dash still obeys the 3 m cap");
+        for (int frame = 0; frame < 400 && volley.Phase != SkyIslandGnatPhase.Recover; frame++) volley.Step(1f / 60f);
+        check(volley.Phase == SkyIslandGnatPhase.Recover &&
+              Math.Abs(volley.LastDashSeconds - SkyIslandMosquitoRules.TravelTime(volley.LastDashLength)) < 1e-3f,
+            "the recorded dash time matches the distance actually planned");
         var stunned = new SkyIslandGnatMotor(false);
         stunned.Knockback(V(1f, 0f, 0f), 10f, SkyIslandMosquitoRules.FanStunSeconds);
         check(stunned.LastDashLength <= SkyIslandMosquitoRules.MaxDash && stunned.StunnedFor > 0f, "fan knockback obeys the 3 m cap and stuns");
@@ -354,13 +382,15 @@ internal static class SkyIslandMosquitoRegression
             {
                 SkyIslandMosquitoRules.SwarmArrives, SkyIslandMosquitoRules.LanternDraws, SkyIslandMosquitoRules.GaleScatters,
                 SkyIslandMosquitoRules.SmokeScatters, SkyIslandMosquitoRules.ItchStarted, SkyIslandMosquitoRules.ItchEnded,
-                SkyIslandMosquitoRules.Soothed, SkyIslandMosquitoRules.FanSwept(0, 0), SkyIslandMosquitoRules.FanSwept(2, 1),
+                SkyIslandMosquitoRules.Soothed(true), SkyIslandMosquitoRules.Soothed(false),
+                SkyIslandMosquitoRules.FanSwept(0, 0), SkyIslandMosquitoRules.FanSwept(2, 1),
                 SkyIslandMosquitoRules.FanResting, SkyIslandMosquitoRules.ZapperLit, SkyIslandMosquitoRules.ZapperOut,
                 SkyIslandMosquitoRules.ZapperLimit, SkyIslandMosquitoRules.ZapperNoGround, SkyIslandMosquitoRules.SpawnChoice(true, 3, 1),
                 SkyIslandMosquitoRules.SpawnChoice(false, 0, 2), SkyIslandMosquitoRules.SpawnNeedsNight, SkyIslandMosquitoRules.SpawnNeedsFiber,
                 SkyIslandMosquitoRules.SpawnAlreadyCarried, SkyIslandMosquitoRules.SpawnTaken, SkyIslandMosquitoRules.ReleaseChoice(0),
                 SkyIslandMosquitoRules.Released(1), SkyIslandMosquitoRules.Released(3), SkyIslandMosquitoRules.FrogsAlreadyHome,
-                SkyIslandMosquitoRules.FrogProgress(new SkyIslandStoryData())
+                SkyIslandMosquitoRules.FrogProgress(new SkyIslandStoryData()),
+                SkyIslandBounty.Name(SkyIslandBountyKind.Gnats)
             };
             foreach (string text in texts)
                 check(!string.IsNullOrEmpty(text) && !Cjk(text), "English gnat text has no Chinese: " + text);
@@ -369,6 +399,74 @@ internal static class SkyIslandMosquitoRegression
         {
             L10n.IsChinese = true;
         }
+    }
+
+    /// <summary>
+    /// 苇白的「夜里驱蚋」委托：距天亮的现实秒折算、可完成量的保守下界，以及和另外三类走同一套接单 / 计数 / 交单。
+    /// 云蚋只在夜里刷，所以这一单的门控口径是「天亮之前保守还能打下几只 ≥ 本轮目标」。
+    /// </summary>
+    private static void CullBounty(Action<bool, string> check)
+    {
+        // ---- 距天亮还有多少现实秒 ----
+        const double scale = SkyIslandNight.DefaultClockScale; // 官方默认 60：一现实秒走 60 游戏秒
+        check(SkyIslandNight.RealSecondsUntilDawn(21, scale) == 8 * 3600.0 / scale, "a full night is eight game hours of real seconds");
+        check(Math.Abs(SkyIslandNight.RealSecondsUntilDawn(23, scale) - 6 * 60.0) < 1e-6, "23:00 leaves six game hours to dawn");
+        check(Math.Abs(SkyIslandNight.RealSecondsUntilDawn(1, scale) - 4 * 60.0) < 1e-6, "past midnight counts straight to 05:00");
+        check(SkyIslandNight.RealSecondsUntilDawn(12, scale) == 0.0 && SkyIslandNight.RealSecondsUntilDawn(5, scale) == 0.0,
+            "daytime has no night left");
+        check(SkyIslandNight.RealSecondsUntilDawn(double.NaN, scale) == 0.0, "a missing clock leaves no night");
+        check(SkyIslandNight.RealSecondsUntilDawn(23, 0) == 0.0 && SkyIslandNight.RealSecondsUntilDawn(23, double.NaN) == 0.0,
+            "a non-positive or non-finite clock scale leaves no night");
+        // 倍速越快，同样的钟点剩下的现实时间越短。
+        check(SkyIslandNight.RealSecondsUntilDawn(23, 120) < SkyIslandNight.RealSecondsUntilDawn(23, 60),
+            "a faster clock burns the night in less real time");
+
+        // ---- 可完成量：保守、单调、不是夜里就只剩场上那几只 ----
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(0, 0) == 0, "daytime offers nothing to cull");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(0, 3) == 3, "daytime still counts the gnats already in the air");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(double.NaN, 2) == 2, "a non-finite night length degrades to what is standing");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(-5, 2) == 2, "a negative night length never goes below what is standing");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(1000, 99) == SkyIslandMosquitoRules.CullableBeforeDawn(1000, SkyIslandMosquitoRules.MaxAlive),
+            "standing gnats are clamped to the live cap");
+        double perSwarm = SkyIslandMosquitoRules.SpawnCheckSeconds + SkyIslandMosquitoRules.SpawnCooldownMax;
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(perSwarm - 0.001, 0) == 0, "less than one worst-case swarm window counts no swarm");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(perSwarm, 0) == SkyIslandMosquitoRules.GroupMin, "one window counts one smallest swarm");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(perSwarm * 5, 0) == SkyIslandMosquitoRules.GroupMin * 5, "windows accumulate linearly");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(1000, 0) >= SkyIslandMosquitoRules.CullableBeforeDawn(500, 0),
+            "a longer night never offers less");
+        check(SkyIslandMosquitoRules.CullableBeforeDawn(double.PositiveInfinity, 0) == 0,
+            "an infinite night length degrades instead of overflowing");
+        // 一整夜的保守下界要够接第一单，否则这一单永远派不出来。
+        int fullNight = SkyIslandMosquitoRules.CullableBeforeDawn(SkyIslandNight.RealSecondsUntilDawn(21, scale), 0);
+        check(fullNight >= SkyIslandBounty.BaseGnatTarget + SkyIslandBounty.MaxRounds,
+            "a full night conservatively covers every round of the cull contract: " + fullNight);
+
+        // ---- 和另外三类同一套接单 / 计数 / 交单 ----
+        check(Array.IndexOf(SkyIslandBounty.AllKinds, SkyIslandBountyKind.Gnats) >= 0, "the cull contract is in the offer list");
+        var bounty = new SkyIslandBounty();
+        string message;
+        check(bounty.TargetFor(SkyIslandBountyKind.Gnats) == SkyIslandBounty.BaseGnatTarget, "round one asks for the base count");
+        bounty.ReportGnatCulled();
+        check(bounty.TryAccept(SkyIslandBountyKind.Gnats, out message), "the cull contract can be taken: " + message);
+        check(bounty.Progress == 0, "gnats killed before taking the contract do not count toward it");
+        for (int i = 0; i < SkyIslandBounty.BaseGnatTarget - 1; i++) bounty.ReportGnatCulled();
+        check(!bounty.IsComplete && bounty.Progress == SkyIslandBounty.BaseGnatTarget - 1, "one short is not complete");
+        SkyIslandLootTier tier;
+        check(!bounty.TryClaim(t => true, out tier, out message), "an unfinished cull contract pays nothing");
+        bounty.ReportGnatCulled();
+        check(bounty.IsComplete, "the last gnat completes the contract");
+        // 先送达再消费：谢礼放不下时委托原样保留（与另外三类同一条纪律）。
+        check(!bounty.TryClaim(t => false, out tier, out message) && bounty.HasActive, "a failed payout keeps the contract");
+        check(bounty.TryClaim(t => true, out tier, out message), "a delivered payout closes the contract: " + message);
+        check(bounty.CompletedRounds == 1 && !bounty.HasActive, "the contract slot frees up after delivery");
+        check(bounty.TargetFor(SkyIslandBountyKind.Gnats) == SkyIslandBounty.BaseGnatTarget + 1, "the next round asks for one more");
+        // 退单是「接了才发现做不完」（天亮了）的唯一出口。
+        check(bounty.TryAccept(SkyIslandBountyKind.Gnats, out message) && bounty.TryAbandon(out message) && !bounty.HasActive,
+            "a cull contract can be dropped when dawn arrives");
+        // 四类委托各记各的账：打蚊子不会推进清场 / 搜刮 / 巡岛。
+        check(bounty.Counter(SkyIslandBountyKind.Threats) == 0 && bounty.Counter(SkyIslandBountyKind.Salvage) == 0 &&
+            bounty.Counter(SkyIslandBountyKind.Survey) == 0 && bounty.Counter(SkyIslandBountyKind.Gnats) > 0,
+            "culling gnats only advances the cull counter");
     }
 
     private static bool Cjk(string text)

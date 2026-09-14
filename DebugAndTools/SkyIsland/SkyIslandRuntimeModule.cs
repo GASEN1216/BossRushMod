@@ -15,6 +15,14 @@ namespace BossRush
         private List<InteractableBase> boatGroup;
         private Canvas sign;
         private bool subscribed;
+        /// <summary>
+        /// 「天空岛航路已开放」那条提示条**每进程只发一次**。
+        ///
+        /// 它以前跟着 <see cref="OnStartedLoading"/> 与「离开基地」两处复位，于是每撤离一次、
+        /// 走回码头就再念一遍；收齐十二封信要十二趟，这句话就念十二遍。招牌本身已经刻意收成
+        /// 「走近才浮现」（<see cref="SkyIslandProximityLabel"/>，见 CreateSign 的注释），
+        /// 常驻提示与那条取向相反。入口本身仍每次回基地重新挂（船点子场景会卸载），只有这句话不再重播。
+        /// </summary>
         private bool announced;
         private bool bundleWarned;
         private int attempts;
@@ -28,6 +36,7 @@ namespace BossRush
         public override void OnAwake(ModBehaviour host)
         {
             owner = host;
+            SkyIslandNoteBridge.EnsureRuntime();
             SkyIslandSceneReferenceBridge.EnsureRegistered();
             if (!subscribed)
             {
@@ -50,13 +59,13 @@ namespace BossRush
         private void OnStartedLoading(SceneLoadingContext context)
         {
             ClearEntry();
-            announced = false;
             attempts = 0;
             cachedSceneHandle = 0;
         }
 
         private void ScheduleEntry()
         {
+            SkyIslandNoteBridge.RequestSync();
             attempts = 12;
             nextAttempt = Time.unscaledTime + 0.5f;
             cachedSceneHandle = 0;
@@ -91,10 +100,10 @@ namespace BossRush
             // 官方地图由玩家自己绑定的地图键开合（`CharacterInputControl.OnUIMapInput`）。
             if (owner.GetComponent<SkyIslandSession>() != null) return;
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
+            SkyIslandNoteBridge.Tick();
             if (!InBaseHubScene())
             {
                 ClearEntry();
-                announced = false;
                 return;
             }
             if (departure != null || attempts <= 0 || Time.unscaledTime < nextAttempt) return;
@@ -225,6 +234,7 @@ namespace BossRush
             // 面板插图同样是跨出击复用的静态缓存：运行时 new 出来的 Texture/Sprite
             // 必须显式 Destroy，只置 null 是丢给 UnloadUnusedAssets 碰运气。
             SkyIslandUiArt.ResetStaticCaches();
+            SkyIslandNoteBridge.ResetStaticCaches();
         }
     }
 

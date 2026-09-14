@@ -92,6 +92,7 @@ namespace BossRush
         private readonly object stopImmediately;
         private readonly bool usable;
         private GameObject buzzEmitter;
+        private Collider playerCollider;
         private LineRenderer fanArc;
         private float nextSpawnCheck, spawnCooldownUntil, itch, sootheUntil = -1f, lastBiteAt = -100f, fanReadyAt, nextVeilCheck, fanArcUntil,
             nextBuzzAttempt;
@@ -258,12 +259,16 @@ namespace BossRush
                 if (lure != null) target = lure.Root.transform.position + Vector3.up * 1.1f;
                 else
                 {
-                    Vector3 neck = playerPosition + Vector3.up * (SkyIslandMosquitoRules.HoverHeight + SkyIslandMosquitoRules.HoverBob *
-                        Mathf.Sin(now * 6f + gnat.Phase));
-                    // 到点了就扑向脖子；没到点就在外面打转（带着云苔纱笠时只能在一米外转）。
-                    float radius = now >= gnat.BiteReadyAt ? 0.2f : SkyIslandMosquitoRules.OrbitRadiusFor(veilCarried);
+                    // 被风灯晃着的盯着头顶那盏灯转（不咬人）；否则围着脖子转，到点就扑上去（纱笠让它只能在一米外转）。
+                    bool dazzled = gnat.Motor.Dazzled;
+                    Vector3 center = dazzled
+                        ? playerPosition + Vector3.up * SkyIslandMosquitoRules.LanternHaloHeight
+                        : playerPosition + Vector3.up * (SkyIslandMosquitoRules.HoverHeight + SkyIslandMosquitoRules.HoverBob *
+                            Mathf.Sin(now * 6f + gnat.Phase));
+                    float radius = dazzled ? SkyIslandMosquitoRules.LanternHaloRadius
+                        : now >= gnat.BiteReadyAt ? 0.2f : SkyIslandMosquitoRules.OrbitRadiusFor(veilCarried);
                     gnat.OrbitAngle += dt * (2.6f + gnat.Phase * 0.3f);
-                    target = neck + new Vector3(Mathf.Cos(gnat.OrbitAngle), 0f, Mathf.Sin(gnat.OrbitAngle)) * radius;
+                    target = center + new Vector3(Mathf.Cos(gnat.OrbitAngle), 0f, Mathf.Sin(gnat.OrbitAngle)) * radius;
                 }
                 Vector3 toward = target - gnat.Position;
                 float distance = toward.magnitude;
@@ -281,7 +286,8 @@ namespace BossRush
             Vector3 neck = playerPosition + Vector3.up * SkyIslandMosquitoRules.HoverHeight;
             float reach = SkyIslandMosquitoRules.BiteReach;
             if ((gnat.Position - neck).sqrMagnitude > reach * reach) return;
-            if (!SkyIslandMosquitoRules.BiteReady(now, gnat.BiteReadyAt, lastBiteAt, veilCarried)) return;
+            // 风灯晃着的那几只盯着灯打转，不下嘴；计时不重置，灯一灭它们就都到点了。
+            if (!SkyIslandMosquitoRules.BiteReady(now, gnat.BiteReadyAt, lastBiteAt, veilCarried, gnat.Motor.Dazzled)) return;
             Health health = player.Health;
             if (health == null) return;
             gnat.BiteReadyAt = now + SkyIslandMosquitoRules.BiteDelay(random.NextDouble(), veilCarried);
@@ -480,6 +486,12 @@ namespace BossRush
                 trail.sortingOrder = SortingOrder - 1;
                 trail.emitting = false;
                 go.SetActive(true);
+                // 云蚋绕脖子飞（悬停 1.25 m、绕圈半径 0.45 m）时球心就在主角胶囊里面：碰撞体是非触发的，
+                // 官方弹道扫掠要靠它，可它不该把人顶开或卡住。按官方 SpawnEgg 的同一手法逐对屏蔽接触
+                // （IgnoreCollision 只关掉接触生成，射线与扫掠照样打得到），必须在 SetActive 之后调用——
+                // 碰撞体一禁用再启用，这个逐对状态就会被清掉。
+                Collider carrier = PlayerCollider();
+                if (carrier != null) Physics.IgnoreCollision(collider, carrier, true);
                 gnats[slot] = new Gnat
                 {
                     Root = go, Visual = visual.transform, Sprite = sprite, Trail = trail, Receiver = receiver,
@@ -498,6 +510,25 @@ namespace BossRush
             }
         }
 
+        /// <summary>主角的移动碰撞体（只在刷新时取一次并缓存；口径同 `BossRushAudioHooks` 与官方 `SpawnEgg`）。取不到就不屏蔽，行为与从前一致。</summary>
+        private Collider PlayerCollider()
+        {
+            if (playerCollider != null) return playerCollider;
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                playerCollider = main == null ? null : main.GetComponent<Collider>();
+            }
+            catch (Exception) { playerCollider = null; }
+            return playerCollider;
+        }
+
+        /// <summary>
+        /// 收掉一只。<paramref name="killed"/> 为真表示是被打下来的（官方 <c>HealthSimpleBase</c> 把它停用了），
+        /// 枪、灭蚊灯、蒲扇三条路都汇到这里：留一摊印子，并给苇白的驱蚋委托记一只。
+        /// 散开（跑远了、起大风、进了烟）走 <paramref name="killed"/> = false，不记数。
+        /// 销毁走 <see cref="Dispose"/> 直接清数组，不经过这里，所以退出局不会被算成击杀。
+        /// </summary>
         private void Remove(int index, bool killed, float now, Quaternion view)
         {
             Gnat gnat = gnats[index];
@@ -505,7 +536,9 @@ namespace BossRush
             if (gnat == null) return;
             alive = Math.Max(0, alive - 1);
             if (gnat.Root != null) UnityEngine.Object.Destroy(gnat.Root);
-            if (killed) ShowSplat(gnat.Position, now, view);
+            if (!killed) return;
+            ShowSplat(gnat.Position, now, view);
+            if (session != null && session.Bounty != null) session.Bounty.ReportGnatCulled();
         }
 
         #endregion
@@ -540,13 +573,17 @@ namespace BossRush
             }
         }
 
-        /// <summary>星苔药膏：止痒，而且这一阵再被叮也不会痒（药膏管痒，眠苔的苔药管伤）。返回要读给玩家的那一句。</summary>
+        /// <summary>
+        /// 星苔药膏：止痒，而且这一阵再被叮也不会痒（药膏管痒，眠苔的苔药管伤）。返回要读给玩家的那一句。
+        /// **不要求正在痒**：防痒本来就该在出门前抹上，只在痒的时候才抹得上等于把它写成事后药。
+        /// </summary>
         internal string Soothe()
         {
             if (disposed) return null;
+            bool wasItching = Itching;
             ClearItch();
             sootheUntil = Time.time + SkyIslandMosquitoRules.SalveSootheSeconds;
-            return SkyIslandMosquitoRules.Soothed;
+            return SkyIslandMosquitoRules.Soothed(wasItching);
         }
 
         /// <summary>眠苔的苔药敷上了：顺手把痒也止了（不附带药膏那一阵的防叮）。没有蚊群 owner 时什么也不做。</summary>
@@ -1038,6 +1075,7 @@ namespace BossRush
             fanArc = null;
             if (buzzEmitter != null) UnityEngine.Object.Destroy(buzzEmitter);
             buzzEmitter = null;
+            playerCollider = null;
             alive = 0;
             carryingSpawn = false;
         }

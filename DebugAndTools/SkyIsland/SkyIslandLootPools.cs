@@ -25,10 +25,58 @@ namespace BossRush
     {
         // 按品质带缓存（key = min * 100 + max），常规带与保底带共用同一条查询与同一份缓存。
         private static readonly Dictionary<int, int[]> cache = new Dictionary<int, int[]>();
+        // 与 cache 同键的**累积权重**（前缀和）：抽样按品质加权，不再按种类均匀（CR-2026-09-12-019）。
+        // 与池子在同一次查询里一起算好——那一趟本来就要对每个 id 问一次 prefab（价值上限），品质顺手读。
+        private static readonly Dictionary<int, int[]> weights = new Dictionary<int, int[]>();
 
         internal static int[] Get(SkyIslandLootTier tier)
         {
             return GetBand(SkyIslandLootTables.MinQuality(tier), SkyIslandLootTables.MaxQuality(tier));
+        }
+
+        /// <summary>
+        /// 从某一档里抽一件的 TypeID，**按品质加权**（见 <see cref="SkyIslandLootTables.QualityWeight"/>）。
+        /// 池空返回 0。
+        ///
+        /// <paramref name="preferGuaranteeBand"/> 为 true 时先取该档的保底带（「赚来的」奖励的第 1 件）；
+        /// 保底带为空就静默退回常规带——与旧写法同一条降级口径。
+        ///
+        /// 每次抽样是一次 `random.Next` + 一次二分查找，和旧的 `pool[random.Next(pool.Length)]`
+        /// 同一量级；权重表按品质带缓存，整进程只算一次。
+        /// </summary>
+        internal static int Pick(SkyIslandLootTier tier, bool preferGuaranteeBand, System.Random random)
+        {
+            int min = SkyIslandLootTables.MinQuality(tier);
+            if (preferGuaranteeBand)
+            {
+                int guaranteeMin = SkyIslandLootTables.GuaranteeMinQuality(tier);
+                if (guaranteeMin > 0)
+                {
+                    int[] band = GetBand(guaranteeMin, SkyIslandLootTables.MaxQuality(tier));
+                    if (band != null && band.Length > 0) { min = guaranteeMin; return PickFrom(band, min, tier, random); }
+                }
+            }
+            int[] pool = GetBand(min, SkyIslandLootTables.MaxQuality(tier));
+            if (pool == null || pool.Length == 0) return 0;
+            return PickFrom(pool, min, tier, random);
+        }
+
+        private static int PickFrom(int[] band, int minQuality, SkyIslandLootTier tier, System.Random random)
+        {
+            int[] cumulative;
+            if (!weights.TryGetValue(minQuality * 100 + SkyIslandLootTables.MaxQuality(tier), out cumulative)
+                || cumulative == null || cumulative.Length != band.Length)
+                return band[random.Next(band.Length)];   // 权重表缺失时退回均匀抽，绝不因此抽不出东西
+            int total = cumulative[cumulative.Length - 1];
+            if (total <= 0) return band[random.Next(band.Length)];
+            int roll = random.Next(total);
+            int low = 0, high = cumulative.Length - 1;
+            while (low < high)
+            {
+                int mid = (low + high) / 2;
+                if (roll < cumulative[mid]) high = mid; else low = mid + 1;
+            }
+            return band[low];
         }
 
         /// <summary>档次保底带；该档没有保底时返回空数组，由调用方退回常规带。</summary>
@@ -87,7 +135,12 @@ namespace BossRush
                 Debug.LogWarning("[SkyIslandLoot] 物资池查询失败 band=" + minQuality + "-" + maxQuality + "：" + e.Message);
             }
             cached = result.ToArray();
-            if (complete) cache[key] = cached;
+            int[] cumulative = BuildCumulativeWeights(cached, minQuality);
+            if (complete)
+            {
+                cache[key] = cached;
+                weights[key] = cumulative;
+            }
             Debug.Log("[SkyIslandLoot] POOL band=" + minQuality + "-" + maxQuality + " size=" + cached.Length);
             return cached;
         }
@@ -109,6 +162,30 @@ namespace BossRush
             }
         }
 
-        internal static void ResetStaticCaches() { cache.Clear(); }
+        /// <summary>
+        /// 按品质算这一档的累积权重（前缀和）。读不到 prefab 的按本带下界（权重最高）算——
+        /// 与 <see cref="WithinValueCap"/> 的「查不到就放行」同一条 fail-open 口径。
+        /// </summary>
+        private static int[] BuildCumulativeWeights(int[] band, int minQuality)
+        {
+            if (band == null || band.Length == 0) return null;
+            int[] cumulative = new int[band.Length];
+            int running = 0;
+            for (int i = 0; i < band.Length; i++)
+            {
+                int quality = minQuality;
+                try
+                {
+                    Item prefab = ItemAssetsCollection.GetPrefab(band[i]);
+                    if (prefab != null && prefab.Quality > 0) quality = prefab.Quality;
+                }
+                catch (Exception) { /* 读不到品质按本带下界算，不因此丢掉这件物品 */ }
+                running += SkyIslandLootTables.QualityWeight(quality, minQuality);
+                cumulative[i] = running;
+            }
+            return cumulative;
+        }
+
+        internal static void ResetStaticCaches() { cache.Clear(); weights.Clear(); }
     }
 }

@@ -133,18 +133,26 @@ namespace BossRush
                 Source = "Fallback",
                 Encounters = new[]
                 {
-                    Encounter("C", "EnemySpawn_C", 2), Encounter("C_02", "Search_C_02", 2),
+                    Encounter("C", "EnemySpawn_C", 3), Encounter("C_02", "Search_C_02", 3),
                     // 两处航标守卫各带一名断风游猎：主线目标应当比路上的普通遭遇更有分量。
-                    Encounter("D", "EnemySpawn_D", 2, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
-                    Encounter("D_02", "Search_D_02", 2),
+                    Encounter("D", "EnemySpawn_D", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
+                    Encounter("D_02", "Search_D_02", 3),
                     // 布局 v2：鸣风栈道两侧桥上的中继平台（设计稿「战斗放在中继平台，桥面负责移动」）。
-                    Encounter("E", "Relay_DE", 2), Encounter("E_02", "Relay_GE", 2),
-                    Encounter("G", "EnemySpawn_G", 2, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
-                    Encounter("G_02", "Search_G_02", 2),
-                    Encounter("S1", "EnemySpawn_S1", 2), Encounter("S2", "EnemySpawn_S2", 2),
-                    Encounter("S3", "EnemySpawn_S3", 2),
+                    Encounter("E", "Relay_DE", 3), Encounter("E_02", "Relay_GE", 3),
+                    Encounter("G", "EnemySpawn_G", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
+                    Encounter("G_02", "Search_G_02", 3),
+                    Encounter("S1", "EnemySpawn_S1", 3), Encounter("S2", "EnemySpawn_S2", 3),
+                    Encounter("S3", "EnemySpawn_S3", 3),
                     Encounter("S4", "EnemySpawn_S4", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
-                    Encounter("F", "Search_F_02", 2),
+                    Encounter("F", "Search_F_02", 3),
+                    // 三条回程捷径的中继平台（设计稿「战斗只放在中继岛平台，桥面负责移动与观察」）：
+                    // 5 个 Relay_* 此前只用了 2 个，K1/K2/K3 上只有一个箱子，回程白走。
+                    Encounter("K1_Relay", "Relay_K1", 3), Encounter("K2_Relay", "Relay_K2", 3),
+                    Encounter("K3_Relay", "Relay_K3", 3),
+                    // E 鸣风栈道与 H 归航钟庭此前只有手动组（噬风 / 钟守），而手动组打过一次永不再现——
+                    // 通关后这两岛（全图 20.9% 面积）永久零敌人。各补一组自动的，带队给断风游猎。
+                    Encounter("E_03", "EnemySpawn_E", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
+                    Encounter("H_02", "Search_H_02", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
                     // 具名剧情对手保留自己的脸与名字，只吃数值与 AI。
                     Encounter("Zheling", "EnemySpawn_F", 1, true, SkyIslandEnemyTier.Champion, SkyIslandEnemyTier.Champion),
                     Encounter("BellKeeper", "EnemySpawn_H", 3, true, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Champion),

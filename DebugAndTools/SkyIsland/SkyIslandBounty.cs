@@ -2,7 +2,7 @@ using System;
 
 namespace BossRush
 {
-    /// <summary>航务委托的三个方向：打、搜、走。覆盖玩家在群岛上会做的全部基础动作。</summary>
+    /// <summary>航务委托的四个方向：打、搜、走，以及夜里的驱蚋。覆盖玩家在群岛上会做的全部基础动作。</summary>
     internal enum SkyIslandBountyKind
     {
         None = 0,
@@ -11,7 +11,11 @@ namespace BossRush
         /// <summary>补给回收：搜刮 N 处物资点。</summary>
         Salvage = 2,
         /// <summary>巡岛：踏足 N 个区域。</summary>
-        Survey = 3
+        Survey = 3,
+        /// <summary>
+        /// 驱蚋：夜里打下 N 只云蚋（内容批次四）。SCHEMA+：委托不进存档，加一个方向不影响任何存档面。
+        /// </summary>
+        Gnats = 4
     }
 
     /// <summary>
@@ -36,12 +40,19 @@ namespace BossRush
         internal const int BaseThreatTarget = 3;
         internal const int BaseSalvageTarget = 4;
         internal const int BaseSurveyTarget = 4;
+        /// <summary>
+        /// 驱蚋一单的基础只数。一群 2–4 只、两群之间最坏 22 秒；在蛙鸣池这样的水边刷得最勤，
+        /// 约一分半到两分钟能凑齐 12 只，与「清 3 组遭遇 / 搜 4 处物资 / 走 4 个区域」是同一量级。
+        /// 挑得动的人可以用风灯或灭蚊灯把蚋引过来（两者都把刷新权重 ×1.5）压缩这段时间——
+        /// 这一单存在的意义正是让那两件东西有用武之地。和另外三类一样每交一单 +1。
+        /// </summary>
+        internal const int BaseGnatTarget = 12;
         /// <summary>第几单起奖励升档。</summary>
         internal const int StarworksFromRound = 3;
         /// <summary>单次出击可完成的委托上限。</summary>
         internal const int MaxRounds = 3;
 
-        private int clearedTotal, salvagedTotal, surveyedTotal;
+        private int clearedTotal, salvagedTotal, surveyedTotal, culledTotal;
         private int baseline;
         private SkyIslandBountyKind active;
         private int target;
@@ -55,12 +66,15 @@ namespace BossRush
         internal void ReportEncounterCleared() { clearedTotal++; }
         internal void ReportScavenged() { salvagedTotal++; }
         internal void ReportRegionVisited() { surveyedTotal++; }
+        /// <summary>打下一只云蚋。三条路（枪、灭蚊灯、蒲扇）都汇到 <c>SkyIslandGnats.Remove(killed: true)</c> 一处上报。</summary>
+        internal void ReportGnatCulled() { culledTotal++; }
 
         internal int Counter(SkyIslandBountyKind kind)
         {
             if (kind == SkyIslandBountyKind.Threats) return clearedTotal;
             if (kind == SkyIslandBountyKind.Salvage) return salvagedTotal;
             if (kind == SkyIslandBountyKind.Survey) return surveyedTotal;
+            if (kind == SkyIslandBountyKind.Gnats) return culledTotal;
             return 0;
         }
 
@@ -70,6 +84,7 @@ namespace BossRush
             if (kind == SkyIslandBountyKind.Threats) return BaseThreatTarget + completedRounds;
             if (kind == SkyIslandBountyKind.Salvage) return BaseSalvageTarget + completedRounds;
             if (kind == SkyIslandBountyKind.Survey) return BaseSurveyTarget + completedRounds;
+            if (kind == SkyIslandBountyKind.Gnats) return BaseGnatTarget + completedRounds;
             return 0;
         }
 
@@ -194,6 +209,7 @@ namespace BossRush
             if (kind == SkyIslandBountyKind.Threats) return "清理航路威胁";
             if (kind == SkyIslandBountyKind.Salvage) return "回收沿线补给";
             if (kind == SkyIslandBountyKind.Survey) return "巡视群岛区域";
+            if (kind == SkyIslandBountyKind.Gnats) return "夜里驱蚋";
             return "无委托";
         }
 
@@ -202,6 +218,7 @@ namespace BossRush
             if (kind == SkyIslandBountyKind.Threats) return "Clear the lanes";
             if (kind == SkyIslandBountyKind.Salvage) return "Recover supplies";
             if (kind == SkyIslandBountyKind.Survey) return "Survey the isles";
+            if (kind == SkyIslandBountyKind.Gnats) return "Thin the gnats";
             return "No contract";
         }
 
@@ -211,7 +228,8 @@ namespace BossRush
             {
                 return new[]
                 {
-                    SkyIslandBountyKind.Threats, SkyIslandBountyKind.Salvage, SkyIslandBountyKind.Survey
+                    SkyIslandBountyKind.Threats, SkyIslandBountyKind.Salvage, SkyIslandBountyKind.Survey,
+                    SkyIslandBountyKind.Gnats
                 };
             }
         }

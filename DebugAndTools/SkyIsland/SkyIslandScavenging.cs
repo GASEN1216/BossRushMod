@@ -203,7 +203,9 @@ namespace BossRush
 
         internal void Tick()
         {
-            if (closed || valid == null || !valid() || Time.time < nextTick) return;
+            // 节流排在委托之前（同 SkyIslandEncounters.Tick，R-9「节流判断提前」）：
+            // valid() 是纯查询，先判两个字段能让绝大多数帧不进委托。
+            if (closed || Time.time < nextTick || valid == null || !valid()) return;
             nextTick = Time.time + SkyIslandLootTables.TickInterval;
             Vector3 origin = player.transform.position;
             float range = SkyIslandLootTables.ActivationRange;

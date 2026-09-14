@@ -80,7 +80,7 @@ namespace BossRush
 namespace ItemStatsSystem
 {
     internal sealed class Inventory { internal void Save(string key) { } }
-    internal sealed class Item { internal Inventory Inventory = new Inventory(); internal void Save(string key) { } }
+    internal sealed class Item { internal Inventory Inventory = new Inventory(); internal int SaveCalls; internal void Save(string key) { SaveCalls++; } }
 }
 internal sealed class CharacterMainControl
 {
@@ -148,5 +148,27 @@ namespace Saves
         internal static void Switch(int slot) { CurrentSlot = slot; if (OnSetFile != null) OnSetFile(); }
         internal static void DeleteCurrent() { Data.Clear(); if (OnSaveDeleted != null) OnSaveDeleted(); }
         internal static int Subscribers { get { return (OnSetFile == null ? 0 : OnSetFile.GetInvocationList().Length); } }
+    }
+}
+
+// 只模拟官方图鉴的列表/字典/解锁状态，持久化仍由链接的生产 StoryService/Codec 负责。
+namespace Duckov.NoteIndexs
+{
+    internal sealed class Note { internal string key; internal object image; internal bool hide; }
+    internal sealed class NoteIndex
+    {
+        internal static NoteIndex Instance;
+        internal readonly List<Note> Notes = new List<Note>();
+        private readonly HashSet<string> unlocked = new HashSet<string>();
+        internal static bool SetNoteDynamic(Note note) { return true; }
+        internal static bool GetNoteUnlocked(string key) { return Instance != null && Instance.unlocked.Contains(key); }
+        internal static void SetNoteUnlocked(string key) { Instance.unlocked.Add(key); }
+    }
+}
+namespace BossRush
+{
+    internal static class LocalizationHelper
+    {
+        internal static void InjectLocalizations(Dictionary<string, string> entries) { }
     }
 }

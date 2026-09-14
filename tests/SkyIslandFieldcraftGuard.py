@@ -305,7 +305,7 @@ def main():
     for token in ("reopen = delegate { OpenCrafting(station); };", "fieldcraft.Craft(recipe, out message)", "Refreshed(crafted, message)"):
         require(open_crafting, token, "做成才重开面板刷新件数")
     read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "ReadPoint")
-    talk = need_body(world, "internal void Talk(string id, Transform speaker)", "Talk")
+    talk = need_body(world, "private void OpenResidentPanel(string id, Transform speaker)", "Talk")
 
     def case_slice(text, label):
         marker = squash('case "%s":' % label)

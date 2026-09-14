@@ -44,6 +44,7 @@ internal static class Program
     }
     private static void Main()
     {
+        SkyIslandAuditRegression.Run(Check);
         var story = Open(1);
         story.Open(); Check(SavesSystem.Subscribers == 1, "Open subscription idempotent");
         Reject(story, SkyIslandStoryAction.RepairWindBeacon);
@@ -200,7 +201,8 @@ internal static class Program
         string world = File.ReadAllText(SkyIslandContent.RelativePath);
         SkyIslandContentData content; string contentError;
         Check(SkyIslandContent.TryParse(world, out content, out contentError) && content.Source == "Json", "formal world table parsed");
-        Check(content.Encounters.Length == 16 && content.Gates.Length == 5, "complete encounter and gate set");
+        Check(content.Encounters.Length == SkyIslandContent.CreateFallback().Encounters.Length
+            && content.Gates.Length == 5, "complete encounter and gate set");
         SkyIslandEncounterDefinition storm = Array.Find(content.Encounters, e => e.Id == "Storm");
         Check(storm != null && storm.Manual && storm.Count == 3 && storm.Marker == "POI_E", "storm boss encounter present");
         Check(storm.TierFor(0) == SkyIslandEnemyTier.Storm && storm.TierFor(1) == SkyIslandEnemyTier.Elite,
@@ -221,7 +223,9 @@ internal static class Program
         data.flags = (int)SkyIslandStoryFlag.ZhelingReconciled;
         Check(content.IsGateOpen("ZhelingPass", data), "peace resolution opens guard route");
         Check(!SkyIslandContent.TryParse(world.Replace("EnemySpawn_D", "EnemySpawn_Missing"), out content, out contentError), "wrong author marker rejected");
-        Check(!SkyIslandContent.TryParse(world.Replace("\"count\": 2", "\"count\": 0"), out content, out contentError), "zero enemies rejected");
+        // 人数从内容表读：写死 "count": 2 的话，生产表一改人数这条就悄悄变成空替换、断言永远为真。
+        string countToken = "\"count\": " + SkyIslandContent.CreateFallback().Encounters[0].Count;
+        Check(!SkyIslandContent.TryParse(world.Replace(countToken, "\"count\": 0"), out content, out contentError), "zero enemies rejected");
         Check(!SkyIslandContent.TryParse(world.Replace("\"requiredFlags\": 3,", "\"requiredFlags\": 0,"), out content, out contentError), "gate bypass rejected");
         Check(!SkyIslandContent.TryParse(world.Replace("\"version\": 1", "\"version\": 1, \"version\": 1"), out content, out contentError), "duplicate JSON property rejected");
         Check(!SkyIslandContent.TryParse(world.Replace("\"id\": \"D\"", "\"id\": \"C\""), out content, out contentError), "duplicate encounter ID rejected");
@@ -358,6 +362,38 @@ internal static class Program
         Check(NextLetterId(mail) == "Letter_10", "a letter whose prerequisite just came true is delivered next");
         mail.flags |= (int)SkyIslandStoryFlag.WindBeacon;
         Check(NextLetterId(mail) == "Letter_09", "unlocked gated letters keep their order");
+        // CR-2026-09-12-020：应时的信可以同一趟连着来，无前置的前 8 封仍是一趟一封。
+        SkyIslandStoryData paced = fresh.Copy();
+        Check(SkyIslandLetters.NextSameRaidFor(paced) == null,
+            "an ungated letter never triggers a second pigeon in the same raid");
+        var pacedNotes = new List<string>();
+        for (int i = 1; i <= 8; i++)
+        {
+            pacedNotes.Add("Letter_0" + i);
+            paced.discoveredNotes = pacedNotes.ToArray();
+            Check(SkyIslandLetters.NextSameRaidFor(paced) == null,
+                "still one letter per raid while the ungated eight are arriving: after Letter_0" + i);
+        }
+        paced.flags |= (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp);
+        SkyIslandLetter sameRaid = SkyIslandLetters.NextSameRaidFor(paced);
+        Check(sameRaid != null && sameRaid.Id == "Letter_09",
+            "a gated letter whose prerequisite is already met arrives in the same raid");
+        // 敲钟那一趟：11 与 12 都解锁，应当连着来两封而不是分两趟。
+        paced.flags |= (int)SkyIslandStoryFlag.Ending;
+        var chain = new List<string>();
+        for (SkyIslandLetter next = SkyIslandLetters.NextSameRaidFor(paced);
+             next != null && chain.Count < 8;
+             next = SkyIslandLetters.NextSameRaidFor(paced))
+        {
+            chain.Add(next.Id);
+            var got = new List<string>(paced.discoveredNotes);
+            got.Add(next.Id);
+            paced.discoveredNotes = got.ToArray();
+        }
+        Check(chain.Count == 4, "the four gated letters chain within one raid once their conditions are met");
+        Check(SkyIslandLetters.NextSameRaidFor(paced) == null && SkyIslandLetters.NextFor(paced) == null,
+            "the chain stops when every letter is collected");
+
         SkyIslandStoryData mailRoundTrip = SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(mail));
         Check(mailRoundTrip != null && mailRoundTrip.discoveredNotes.Length == 8, "letter ids round trip through the save codec");
 

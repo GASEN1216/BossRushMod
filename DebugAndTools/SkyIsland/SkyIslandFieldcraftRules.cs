@@ -755,8 +755,8 @@ namespace BossRush
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("使用：在晴岚群岛上点亮约 4 分钟：微风里不积寒意，大风里只挡一半；照亮身边（离岛无效）",
-                    "Use: on the Qinglan isles, burns about 4 minutes: no chill in a breeze, half protection in a gale; lights your way (no effect elsewhere)");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("使用：在晴岚群岛上点亮约 4 分钟：微风里不积寒意，大风里只挡一半；照亮身边。夜里招来更多云蚋，但灯下的只绕着灯转、不叮人也不躲子弹——灯灭前记得扇掉或打掉（离岛无效）",
+                    "Use: on the Qinglan isles, burns about 4 minutes: no chill in a breeze, half protection in a gale; lights your way. At night it draws more cloud gnats, but the ones in its light only circle the flame — they will not bite and cannot dodge bullets; clear them before it goes out (no effect elsewhere)");
                 case SkyIslandFieldBuff.Incense: return L10n.T("使用：在晴岚群岛上约 5 分钟什么风都挡得住（大风也一样），耐力恢复加快（离岛无效）",
                     "Use: on the Qinglan isles, about 5 minutes safe from any wind (gales too) with faster stamina recovery (no effect elsewhere)");
                 case SkyIslandFieldBuff.Charm: return L10n.T("使用：本趟出击噬风的风暴伤害 −35%、生命上限 +10%、耐力恢复 +10%（只在晴岚群岛上能用，离岛失效，不叠加）",
@@ -769,8 +769,8 @@ namespace BossRush
                     "Use: on the Qinglan isles, set it down for about 5 minutes to draw cloud gnats in from 12 m and zap them (up to two at once; no effect elsewhere)");
                 case SkyIslandFieldBuff.Fan: return L10n.T("使用：在晴岚群岛上扇一下，扑落面前三米多贴脸的云蚋、扇退远一点的（不消耗；离岛无效）",
                     "Use: on the Qinglan isles, sweep once to knock down gnats within about 3 m in front and blow back those further off (not consumed; no effect elsewhere)");
-                case SkyIslandFieldBuff.Soothe: return L10n.T("在晴岚群岛上被云蚋叮痒时：止痒，约 90 秒内再被叮也不痒",
-                    "When cloud gnats have you itching on the Qinglan isles: stops the itch, and bites will not itch for about 90 seconds");
+                case SkyIslandFieldBuff.Soothe: return L10n.T("在晴岚群岛上抹一层：止住云蚋的痒；抹上之后约 90 秒内再被叮也不痒（出门前先抹也算）",
+                    "Rub it on while on the Qinglan isles: stops cloud gnat itching, and for about 90 seconds afterwards new bites will not itch (worth applying before you set out)");
                 default: return string.Empty;
             }
         }
@@ -805,8 +805,8 @@ namespace BossRush
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内微风吹不透，大风里也能挡掉一半。",
-                    "The wind lantern is lit: for about 4 minutes a breeze cannot chill you, and it holds off half of a gale.");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯点亮了：约 4 分钟内微风吹不透，大风里也能挡掉一半。夜里云蚋会循着光聚到灯罩上——它们只盯着火，不咬人，也躲不开子弹。",
+                    "The wind lantern is lit: for about 4 minutes a breeze cannot chill you, and it holds off half of a gale. At night cloud gnats gather on its shade — fixed on the flame, they will not bite, and they cannot dodge a bullet.");
                 case SkyIslandFieldBuff.Incense: return L10n.T("驱风香点上了：约 5 分钟内什么风都侵不了身，耐力恢复加快。",
                     "Windward incense is burning: for about 5 minutes no wind can chill you, and stamina recovers faster.");
                 case SkyIslandFieldBuff.Charm: return L10n.T("晴岚护符系上了：本趟噬风的风暴伤不到你那么深，生命上限与耐力恢复也小幅提升（离岛失效）。",
@@ -820,6 +820,17 @@ namespace BossRush
             return buff == SkyIslandFieldBuff.Lantern
                 ? L10n.T("风灯快燃尽了。", "The wind lantern is burning low.")
                 : L10n.T("驱风香快燃尽了。", "The windward incense is almost gone.");
+        }
+
+        /// <summary>
+        /// 风灯快燃尽：灯下聚着的云蚋会在火一灭的那一刻回到脖子上（<see cref="SkyIslandMosquitoRules.LanternHaloHeight"/>），
+        /// 所以提醒里带上还有几只——趁灯还亮着，扇掉、打掉或走开都来得及。
+        /// </summary>
+        internal static string LanternLow(int gnatsInLight)
+        {
+            if (gnatsInLight <= 0) return BuffLow(SkyIslandFieldBuff.Lantern);
+            return L10n.T("风灯快燃尽了——灯罩上还绕着 ", "The wind lantern is burning low — ") + gnatsInLight +
+                L10n.T(" 只云蚋，火一灭它们就下嘴。", " cloud gnats are still circling the shade, and they will bite the moment it goes out.");
         }
 
         internal static string BuffEnded(SkyIslandFieldBuff buff)

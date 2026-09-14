@@ -391,8 +391,8 @@ namespace BossRush
         internal const float ZapperFactor = 1.5f;
         /// <summary>灶火的烟：比取暖半径（7 m）大一圈，蚊子在烟边上就掉头。</summary>
         internal const float SmokeRadius = 9f;
-        /// <summary>驱风香燃着时，身边这么近的云蚋散开。</summary>
-        internal const float IncenseRepelRadius = 6f;
+        // 驱风香没有半径：它是随身的烟，燃着时整群都不来、已经围上来的也全散开（见 SpawnWeight 与 SkyIslandGnats.Scatter）。
+        // 这里曾有一个 IncenseRepelRadius 常量，从未被任何代码读过，却在注释里承诺了一个并不存在的 6 m 范围——按「文档即事实」删掉。
 
         #endregion
 
@@ -426,6 +426,14 @@ namespace BossRush
         internal const float SalveSootheSeconds = 90f;
         /// <summary>风灯光里的云蚋晃了眼、躲不开：离玩家这么近。</summary>
         internal const float LanternDazzleRadius = 6f;
+        /// <summary>
+        /// 风灯挂在头顶的高度（与 <c>SkyIslandFieldcraft.EnsureLanternLight</c> 那盏点光同高，由它引用本常量）：
+        /// 晃了眼的云蚋盯着火光打转，**不下嘴**——这是风灯与驱风香的分工，香是「不来」，灯是「来了都在灯上」。
+        /// 灯一灭，聚过来的那一群立刻回到脖子上（叮咬计时在晃眼期间不推进），所以灯下要么扇掉、要么打掉、要么走开。
+        /// </summary>
+        internal const float LanternHaloHeight = 2.2f;
+        /// <summary>晃了眼的云蚋绕着灯罩打转的半径。</summary>
+        internal const float LanternHaloRadius = 0.75f;
 
         #endregion
 
@@ -575,6 +583,29 @@ namespace BossRush
             return Math.Max(0, Math.Min(group, room));
         }
 
+        /// <summary>
+        /// 天亮之前这一趟还能打下多少只云蚋——苇白的驱蚋委托靠它做「只派做得完的单」的门控。
+        ///
+        /// 取**保守下界**：每一群按最坏节奏算（一次掷骰 <see cref="SpawnCheckSeconds"/> + 最长冷却
+        /// <see cref="SpawnCooldownMax"/>），每群只按最少的 <see cref="GroupMin"/> 只，
+        /// 掷骰还可能不中也不计。实际能打到的只会比这个数多，不会更少。
+        ///
+        /// <paramref name="realSecondsUntilDawn"/> 见 <see cref="SkyIslandNight.RealSecondsUntilDawn"/>；
+        /// 不是夜里时它为 0，于是只剩此刻还在场的那几只（天亮之后它们自己会散，所以那时返回 0 才对——
+        /// 由调用方用 <c>night</c> 一并判，本函数只管算术）。
+        /// </summary>
+        internal static int CullableBeforeDawn(double realSecondsUntilDawn, int alive)
+        {
+            int standing = alive < 0 ? 0 : alive > MaxAlive ? MaxAlive : alive;
+            if (double.IsNaN(realSecondsUntilDawn) || double.IsInfinity(realSecondsUntilDawn) || realSecondsUntilDawn <= 0.0)
+                return standing;
+            double perSwarm = SpawnCheckSeconds + SpawnCooldownMax;
+            double swarms = Math.Floor(realSecondsUntilDawn / perSwarm);
+            if (swarms < 0.0) swarms = 0.0;
+            double total = swarms * GroupMin + standing;
+            return total >= int.MaxValue ? int.MaxValue : (int)total;
+        }
+
         internal static float SpawnCooldown(double roll) { return SpawnCooldownMin + (float)(Clamp01(roll) * (SpawnCooldownMax - SpawnCooldownMin)); }
 
         internal static float SpawnDistance(double roll) { return SpawnMinDistance + (float)(Clamp01(roll) * (SpawnMaxDistance - SpawnMinDistance)); }
@@ -628,10 +659,13 @@ namespace BossRush
 
         internal static float OrbitRadiusFor(bool veil) { return veil ? VeilOrbitRadius : OrbitRadius; }
 
-        /// <summary>这一只到点了、离上一口（任何一只）也够久了。</summary>
-        internal static bool BiteReady(float now, float gnatReadyAt, float lastBiteAt, bool veil)
+        /// <summary>
+        /// 这一只到点了、离上一口（任何一只）也够久了。<paramref name="dazzled"/>：被风灯的火光晃着的那几只盯着灯打转，
+        /// 一口都不咬（见 <see cref="LanternHaloHeight"/>）；它们的叮咬计时也不因此重置，灯一灭就都到点了。
+        /// </summary>
+        internal static bool BiteReady(float now, float gnatReadyAt, float lastBiteAt, bool veil, bool dazzled)
         {
-            return now >= gnatReadyAt && now - lastBiteAt >= GlobalBiteGapFor(veil);
+            return !dazzled && now >= gnatReadyAt && now - lastBiteAt >= GlobalBiteGapFor(veil);
         }
 
         /// <summary>生命在下限之上才叮：云蚋叮不死人。</summary>
@@ -843,13 +877,17 @@ namespace BossRush
         internal static string ItchEnded
         { get { return L10n.T("不痒了。", "The itching has faded."); } }
 
-        internal static string Soothed
+        /// <summary>
+        /// 抹上星苔药膏之后那一句。<paramref name="wasItching"/> 为假时是**出门前先抹上**——药膏的那一阵防痒本来就该赶在被叮之前用，
+        /// 只有在痒的时候才抹得上，等于把它写成了「事后药」。
+        /// </summary>
+        internal static string Soothed(bool wasItching)
         {
-            get
-            {
+            if (wasItching)
                 return L10n.T("星苔药膏凉丝丝的，痒退了；这一阵再被叮也不会痒。",
                     "The starmoss salve is cool: the itch is gone, and new bites will not itch for a while.");
-            }
+            return L10n.T("星苔药膏抹在脖子和手腕上，凉意压着皮肤；这一阵被云蚋叮上也不会痒。",
+                "You work the starmoss salve into your neck and wrists, cool against the skin: gnat bites will not itch for a while.");
         }
 
         internal static string FanSwept(int downed, int pushed)
@@ -915,13 +953,17 @@ namespace BossRush
                 L10n.T(" 团）", ")");
         }
 
+        /// <summary>
+        /// 放下一团之后的那一句。三团都放在**同一处**——蛙鸣池；岛上其它静水（镜水寺的池、梯田的水车与雨水桶）
+        /// 的云蚋也跟着少，是因为在池里长成的蛙夜里会顺着水边散到全岛，不是又去护了别的水边（世界里只有这一处放生点）。
+        /// </summary>
         internal static string Released(int released)
         {
             if (released >= FrogTarget)
-                return L10n.T("三处繁育水边都护好了，成蛙也回来了。夜里的蛙鸣池又有了蛙叫——那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
-                    "All three breeding spots are restored, and the adult frogs have returned. Frogsong Pool croaks again at night — someone is counting the lights for that child at last.");
-            return L10n.T("你把蛙卵安置进云苔间，护好了一处繁育水边。成蛙有了落脚处，近水处会少招些云蚋。（蛙鸣池 ",
-                "You settle the spawn into cloudmoss, restoring a breeding spot. With shelter for adult frogs, the waterside will attract fewer gnats. (Frogsong Pool ") +
+                return L10n.T("三团蛙卵都在蛙鸣池里了。长成的蛙夜里会顺着水边散到岛上各处，替所有静水守着。那封写给池子里青蛙的信，总算有谁在替那个孩子数灯了。",
+                    "All three clutches are in Frogsong Pool now. The frogs that grow there will spread along the waterline across the isles at night, keeping watch over every pool. Someone is counting the lights for that child at last.");
+            return L10n.T("蛙卵沉进了蛙鸣池的浅水。等它们长起来，会顺着水边散开——岛上近水的地方都会少些云蚋。（蛙鸣池 ",
+                "The frogspawn sinks into the shallows of Frogsong Pool. Once they grow, they will spread along the waterline — there will be fewer gnats near standing water across the isles. (Frogsong Pool ") +
                 released + "/" + FrogTarget + L10n.T("）", ")");
         }
 

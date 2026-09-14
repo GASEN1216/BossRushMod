@@ -196,6 +196,45 @@ def main():
         if cached < 0 or first_text < 0 or cached > first_text:
             errors.append("FieldStatus 必须在拼字符串之前按输入计数复用上一次的结果")
 
+    # ---- CR-2026-09-12-013：剧情体显隐是每帧两次的路径，值没变就必须整条早退（R-9 分项）----
+    # 会话 Update 每帧对折翎与钟守各调一次 SetVisible，而这两个目标状态整趟只翻转个位数次。
+    # 没有早退的话，每帧要做 HashSet 增删 + Dictionary 查（各一次字符串散列）再无条件 SetActive。
+    # `hidden` 是唯一事实源（异步生成落地时由 SpawnOneAsync 照它补一次 SetActive），按它早退安全。
+    resident_source = read(SKY + "SkyIslandResidents.cs")
+    set_visible = need_body(resident_source, "internal void SetVisible(string id, bool visible)", "剧情体显隐")
+    if set_visible:
+        early = set_visible.find("if (hidden.Contains(id) != visible) return;")
+        mutate = set_visible.find("hidden.Remove(id)")
+        if early < 0:
+            errors.append("SetVisible 缺少「已经是目标状态就整条早退」：它是每帧两次的路径（R-9 分项）")
+        elif not (0 <= early < mutate):
+            errors.append("SetVisible 的早退必须排在 HashSet 增删与 SetActive 之前，否则省不掉任何工作")
+    require(resident_source, "if (hidden.Contains(id)) npc.gameObject.SetActive(false);",
+            "异步生成落地时必须照 hidden 补一次显隐，否则「先 SetVisible、后生成」那条时序会漏")
+
+    # ---- CR-2026-09-12-014：每一项居民服务都要有装置兜底 ----
+    # 居民可能不在岛上：晴禾 / 苇白婚后由婚姻系统接管（PermanentDuckNpcModule 对 SkyIslandRaid 恒返回 false），
+    # 眠苔与浮舟的异步生成也可能失败。合成台早就各有兜底装置，**服务**必须按同一条纪律配齐——
+    # 只兜药臼不兜苔药的话，眠苔没生成出来的那一趟玩家连唯一的付费回血都没有，
+    # 而星苔药膏恰恰要在她的药臼上做，等于把「回血」整条线掐断。
+    world_story = read(SKY + "SkyIslandWorldStory.cs")
+    read_point = need_body(world_story, "internal void ReadPoint(string key, Action recorded)", "装置面板")
+    talk = need_body(world_story, "internal void Talk(string id, Transform speaker)", "居民对话面板")
+    for service, resident_label, device_label in (
+            ("Repair", "浮舟", "码头装置 Search_A"),
+            ("Heal", "眠苔", "悬根林见闻点 Search_D_02"),
+            ("Meal", "晴禾", "青穗梯田菜畦 Search_C")):
+        token = "ServiceChoice(choices, L10n.T("
+        in_talk = talk and token in talk and (", " + service + ")") in talk
+        in_device = read_point and (", " + service + ")") in read_point
+        if in_talk and not in_device:
+            errors.append("%s 的服务 %s 只挂在本人身上，没有装置兜底（%s）：她/他不在的那一趟这项服务整条失联"
+                          % (resident_label, service, device_label))
+    # 合成台同样三处都要有兜底（这条早就成立，一并钉住，免得将来单独退化）。
+    for station in ("SkyIslandCraftStation.Dock", "SkyIslandCraftStation.Stove", "SkyIslandCraftStation.Mortar"):
+        require(read_point, "CraftChoice(choices, " + station + ")",
+                "合成台 " + station + " 缺少装置兜底入口")
+
     # ---- CR-2026-09-10-028：英文术语与语法 ----
     literal = re.compile(r'"(?:\\.|[^"\\\n])*"')
     sources = sorted((ROOT / "DebugAndTools/SkyIsland").glob("*.cs")) + [
@@ -242,7 +281,8 @@ def main():
             print("  - " + error)
         print("SkyIslandFullAuditGuard: FAIL")
         raise SystemExit(1)
-    print("SkyIslandFullAuditGuard: PASS (F3 用例判据 / 桥口木牌 / 失败提示本地化 / 热路径分配 / 英文术语 / 文档一致)")
+    print("SkyIslandFullAuditGuard: PASS (F3 用例判据 / 桥口木牌 / 失败提示本地化 / 热路径分配 / "
+          "剧情体显隐早退 / 服务与合成台的装置兜底 / 英文术语 / 文档一致)")
 
 
 if __name__ == "__main__":

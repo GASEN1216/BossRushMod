@@ -71,7 +71,53 @@ namespace BossRush
             if (source == null)
             { message = L10n.T("群岛记录尚未载入。", "The archipelago record has not loaded yet."); return false; }
             SkyIslandStoryFlag flag;
-            string required = null;
+            string required;
+            if (!Describe(source, action, out flag, out required, out message)) return false;
+            if (source.Has(flag))
+            { message = L10n.T("这段群岛见闻已经完成。", "That part of the archipelago story is already complete."); return false; }
+            if (required != null) { message = required; return false; }
+            candidate = source.Copy();
+            candidate.flags |= (int)flag;
+            return true;
+        }
+
+        /// <summary>
+        /// 这一步**此刻能不能做**。判据与 <see cref="TryApply"/> 共用同一个 <see cref="Describe"/>，
+        /// 所以「选项挂不挂得出来」与「点了会不会被拒」永远不会分叉。
+        ///
+        /// 【为什么需要它】旧写法是选项一律先挂上、前置判断全丢进回调，于是新档走进归航钟庭
+        /// 就看得见「敲响归航钟」，点一下回一句「先恢复两端航标，并解决钟守的阻拦」；
+        /// 交还种植记录之后「把种植记录留给晴禾」还挂在那儿，点了回「这段群岛见闻已经完成」。
+        /// 玩家看到的是一屏点不动的按钮。
+        /// </summary>
+        /// <param name="blocker">
+        /// 前置没满足时给出「还差什么」；**已经做完时是 null**——那不是引导，是噪声。
+        /// 调用方（<c>SkyIslandWorldStory.AddIf</c>）把它收进正文，而不是留一个点不动的按钮。
+        /// </param>
+        internal static bool CanApply(SkyIslandStoryData source, SkyIslandStoryAction action,
+            out string blocker)
+        {
+            blocker = null;
+            if (source == null) return false;
+            SkyIslandStoryFlag flag;
+            string required, message;
+            if (!Describe(source, action, out flag, out required, out message)) return false;
+            if (source.Has(flag)) return false;
+            if (required != null) { blocker = required; return false; }
+            return true;
+        }
+
+        /// <summary>
+        /// 一个剧情动作的三件事：写哪个标志位、此刻缺什么前置（<paramref name="required"/>，
+        /// null = 不缺）、做成了回什么话。**<see cref="TryApply"/> 与 <see cref="CanApply"/>
+        /// 都只认这一份**——这是「门」的单一事实来源。
+        /// 返回 false 表示这个 action 根本不认识。
+        /// </summary>
+        private static bool Describe(SkyIslandStoryData source, SkyIslandStoryAction action,
+            out SkyIslandStoryFlag flag, out string required, out string message)
+        {
+            flag = 0;
+            required = null;
             switch (action)
             {
                 case SkyIslandStoryAction.RepairWindBeacon:
@@ -191,11 +237,6 @@ namespace BossRush
                         "The Homecoming Bell rings. The lights of Windchime Market come up one by one along the cloud sea, and Fuzhou ties the empty boat at the dock for the next traveller. Qinglan will always welcome you back."); break;
                 default: message = L10n.T("未知的群岛操作。", "Unknown archipelago action."); return false;
             }
-            if (source.Has(flag))
-            { message = L10n.T("这段群岛见闻已经完成。", "That part of the archipelago story is already complete."); return false; }
-            if (required != null) { message = required; return false; }
-            candidate = source.Copy();
-            candidate.flags |= (int)flag;
             return true;
         }
 

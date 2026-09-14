@@ -15,7 +15,7 @@ SCRIPT_FIXTURES = (
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
     "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
-    "SkyIslandHudPolicy", "ZombieModeEntryDebt", "PermanentDuckNpcDialogue",
+    "SkyIslandHudPolicy", "SkyIslandDialogue", "ZombieModeEntryDebt", "PermanentDuckNpcDialogue",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

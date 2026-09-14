@@ -36,7 +36,7 @@ BLOCKERS = [pos for mid, pos in MARKERS.items()
             if mid.startswith(BLOCKER_PREFIX) or mid in BLOCKER_EXACT]
 
 EXPECTED_ANCHORS = 39
-EXPECTED_ENCOUNTERS = 16
+EXPECTED_ENCOUNTERS = 21
 
 
 def _tri_height(px, pz, tri):

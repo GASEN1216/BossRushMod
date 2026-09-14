@@ -17,6 +17,7 @@ namespace BossRush
         private bool assetSnapshotRequired;
         private string summaryCache, summaryStatus;
         private int summaryFlags;
+        private bool summaryChinese;
 
         internal SkyIslandStoryService()
         {
@@ -101,6 +102,24 @@ namespace BossRush
             }
         }
         /// <summary>
+        /// **有问题才回话**；一切正常时返回 null。
+        ///
+        /// 「群岛记录已同步」是存档系统的内部状态，不该印给玩家看——它此前被
+        /// <see cref="Summary"/> 无条件拼在旅程进度末尾。HUD 那边本来就只在出问题时才显示
+        /// （`SkyIslandSession` 的 `!story.CanWrite ? story.SaveStatus : null`），这里跟上同一条口径。
+        /// <see cref="SaveStatus"/> 本身不动：F3 验收面板要读到「正常」那一支。
+        /// </summary>
+        internal string SaveProblem
+        {
+            get
+            {
+                if (!IsCurrentSlot || store.HasWriteBarrier || store.IsStoreFaulted || lastSaveError != null)
+                    return SaveStatus;
+                return null;
+            }
+        }
+
+        /// <summary>
         /// F6 地图每帧读一次摘要，逐帧重建这串文本会持续产生小额分配（实测 264–320 B/次）。
         /// 只在剧情位或保存状态真的改变时重建。
         /// </summary>
@@ -109,16 +128,19 @@ namespace BossRush
             get
             {
                 SkyIslandStoryData data = Current;
-                string status = SaveStatus;
-                if (summaryCache != null && summaryFlags == data.flags && string.Equals(summaryStatus, status, StringComparison.Ordinal))
+                string status = SaveProblem;
+                if (summaryCache != null && summaryFlags == data.flags && summaryChinese == L10n.IsChinese
+                    && string.Equals(summaryStatus, status, StringComparison.Ordinal))
                     return summaryCache;
                 summaryFlags = data.flags;
+                summaryChinese = L10n.IsChinese;
                 summaryStatus = status;
                 summaryCache = CurrentObjective +
                     L10n.T("\n支线：种植记录", "\nSide paths: planting record") + Mark(data.Has(SkyIslandStoryFlag.PlantingRecord)) +
                     L10n.T(" 旧信", " · old letter") + Mark(data.Has(SkyIslandStoryFlag.OldLetter)) +
                     L10n.T(" 航路图", " · route chart") + Mark(data.Has(SkyIslandStoryFlag.RouteChart)) +
-                    L10n.T(" 观星镜", " · telescope") + Mark(data.Has(SkyIslandStoryFlag.Telescope)) + "\n" + status;
+                    L10n.T(" 观星镜", " · telescope") + Mark(data.Has(SkyIslandStoryFlag.Telescope))
+                    + (string.IsNullOrEmpty(status) ? string.Empty : "\n" + status);
                 return summaryCache;
             }
         }
@@ -259,6 +281,18 @@ namespace BossRush
                 message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
                 return false;
             }
+            // 永久成本记录必须与已扣除材料的背包快照一起落盘；SaveFile 本身不会采集角色。
+            // 放在提交入口，点灯、放生及后续调用方都不能漏掉这项义务。
+            if (SkyIslandLights.Find(id) != null || SkyIslandMosquitoRules.IsFrogNote(id))
+            {
+                if (!CanWrite) { message = SaveStatus; return false; }
+                string error;
+                if (Array.IndexOf(Current.discoveredNotes, id) < 0 && !RequireAssetSnapshot(out error))
+                {
+                    message = L10n.T("物品存档尚未就绪，请稍后再试。", "Item saving is not ready. Please try again shortly.");
+                    return false;
+                }
+            }
             return RecordSearch(id, out message);
         }
 
@@ -349,7 +383,7 @@ namespace BossRush
                                 "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n")) +
                         (SkyIslandLetters.Collected(data, "Letter_02")
                             ? L10n.T("苇生的信你替我收下了？……他还是那么爱说大话。\n", "You took in Weisheng's letter for me? …He still loves to talk big.\n")
-                            : string.Empty) + WeibaiZapperLine(data) + CurrentObjective;
+                            : string.Empty) + WeibaiZapperLine(data);
                 case "sky_fuzhou":
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("浮舟：钟声听见了。船一直在这里，船头挂着名册，四个归来的人各写了一页，去看看吧。",
@@ -412,8 +446,8 @@ namespace BossRush
         {
             get
             {
-                return L10n.T("\n被云蚋叮痒了别抓：我的苔药管伤，顺手把痒也止了；药膏更凉，抹上一阵再被叮都不痒。",
-                    "\nIf the cloud gnats have you itching, do not scratch: my remedy is for wounds and stops the itch on the way; the salve is cooler, and for a while after it new bites will not itch.");
+                return L10n.T("\n被云蚋叮痒了别抓：我的苔药管伤，顺手把痒也止了；药膏更凉，夜里出门前先抹一层，之后被叮一阵都不痒。",
+                    "\nIf the cloud gnats have you itching, do not scratch: my remedy is for wounds and stops the itch on the way. The salve is cooler — rub it on before you go out at night and bites will not itch for a good while after.");
             }
         }
 
@@ -421,8 +455,8 @@ namespace BossRush
         private static string QingheGnatLine(SkyIslandStoryData data)
         {
             if (SkyIslandMosquitoRules.FrogsComplete(data))
-                return L10n.T("\n蛙鸣池又有蛙叫了。繁育的水边护好了，青蛙也愿意回来，水车边的蚋少了些。夜里下地我还是带着纱笠。",
-                    "\nFrogsong Pool is croaking again. With its breeding shallows tended, the frogs are returning and there are fewer gnats by the water wheel. I still bring my veil to work at night.");
+                return L10n.T("\n蛙鸣池又有蛙叫了。池里长起来的蛙一路散到我这边，水车边的蚋少了不少。夜里下地我还是带着纱笠。",
+                    "\nFrogsong Pool is croaking again. The frogs that grew there have worked their way over to me, and the gnats by the water wheel have thinned right out. I still bring my veil to work at night.");
             if (SkyIslandMosquitoRules.FrogsReleased(data) > 0)
                 return L10n.T("\n听说有人往蛙鸣池放了蛙卵？好——青蛙回来了，云蚋就少了。",
                     "\nI hear someone has been putting frogspawn back in Frogsong Pool? Good — when the frogs come back, the gnats thin out.");

@@ -17,7 +17,8 @@ namespace BossRush
             panel.transform.SetParent(parent, false);
             Image background = panel.GetComponent<Image>();
             background.color = BossRushUIColors.SurfaceRaised;
-            BossRushUI.ApplyPanelSkin(background, 10);
+            BossRushUI.ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);
+            BossRushUI.ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
             VerticalLayoutGroup layout = panel.AddComponent<VerticalLayoutGroup>();
             layout.padding = new RectOffset(14, 14, 12, 12);
             layout.spacing = 8;
@@ -119,6 +120,11 @@ namespace BossRush
             child.GetComponent<Button>().targetGraphic = image;
             child.GetComponent<Button>().onClick.AddListener(() => action());
             TextMeshProUGUI text = Label(child.transform, label, 18, 44);
+            // 按钮标签必须按底色挑字色，不能一律白字。实算：白字压在 Accent(0.20,0.72,0.67) 上
+            // 只有 **2.23:1**、Success 4.15:1、Warning 4.34:1，三个都过不了正文 4.5:1；
+            // 而 GetButtonTextColor 正是为此写的（亮底给深字 TextOnAccent，Accent 上是 7.93:1）。
+            // 这里绕开它是本文件独有的疏漏，共享库里的 CreateButton 一直走的是它。
+            text.color = BossRushUI.GetButtonTextColor(color);
             text.alignment = TextAlignmentOptions.Center;
             text.rectTransform.anchorMin = Vector2.zero;
             text.rectTransform.anchorMax = Vector2.one;

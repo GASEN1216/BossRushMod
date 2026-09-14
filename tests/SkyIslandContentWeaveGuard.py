@@ -193,15 +193,18 @@ def main():
         errors.append("群岛手记「群岛之物」一页必须逐件写用处：缺 %r / 多 %r" % (sorted(set(all_names) - use_rows), sorted(use_rows - set(all_names))))
 
     # ---- 2. 岛上的灯 ----
-    point_keys = set(re.findall(r'case "(Search_[A-Z0-9_]+)": return', world.split("internal static string PointName(", 1)[1]
-                                .split("private bool BlockedByCombat", 1)[0])) if "internal static string PointName(" in world else set()
+    # 三张文案表已拆进 SkyIslandPointText.cs（纯静态查表，WorldStory 卡在 1200 行预算上）。
+    point_text = clean_source(read("DebugAndTools/SkyIsland/SkyIslandPointText.cs"))
+    point_keys = set(re.findall(r'case "(Search_[A-Z0-9_]+)": return',
+                                point_text.split("internal static string Name(", 1)[1]
+                                .split("internal static string Brief(", 1)[0]))
     letter_ids = set(re.findall(r'Letter\("(Letter_\d+)",', letters))
     if len(lamp_rows) != 7 or len({row[0] for row in lamp_rows}) != 7:
         errors.append("风晶灯必须是 7 盏、id 不重复，实际 %d" % len(lamp_rows))
     seen_letters = set()
     for lamp_id, marker, region, letter, inputs in lamp_rows:
         if marker not in point_keys or marker not in author_markers:
-            errors.append("风晶灯 %s 挂的 %s 不是有面板的装置（PointName / 作者布局里找不到）" % (lamp_id, marker))
+            errors.append("风晶灯 %s 挂的 %s 不是有面板的装置（SkyIslandPointText.Name / 作者布局里找不到）" % (lamp_id, marker))
         if marker != "Search_" + region or lamp_id != "Light_" + region:
             errors.append("风晶灯 %s 的 id、装置与区域对不上：%s / %s" % (lamp_id, marker, region))
         if letter not in letter_ids or letter in seen_letters:
@@ -235,7 +238,7 @@ def main():
     for token in ("SendToPlayerStorage", "SendToPlayer("):
         forbid(light_lamp, token, "点灯不发物品")
     read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "ReadPoint")
-    ordered(read_point, ["LightChoice(choices, key);", "presentation.Show(PointName(key)"], "装置面板在显示之前挂上点灯选项")
+    ordered(read_point, ["LightChoice(choices, key);", "presentation.Show(SkyIslandPointText.Name(key)"], "装置面板在显示之前挂上点灯选项")
     light_choice = need_body(world, "private void LightChoice(List<SkyIslandStoryPresentation.Choice> choices, string key)", "点灯选项")
     ordered(light_choice, ["SkyIslandLights.ForMarker(key)", "SkyIslandLights.Lit(story.Current, light.Id)) return;",
                            "string guarded = OverlookGuarded(key);", "fieldcraft.LightLamp(light, out message)", "Refreshed(lit, message)"],
@@ -247,11 +250,33 @@ def main():
     place = need_body(fieldcraft, "private void PlaceFires()", "灯光")
     require(place, "SkyIslandLights.HearthMarkers", "灶火从灯表里取，不另写一份")
     require(place, "SkyIslandLights.Lit(story.Current, lamps[i].Id)) AddFire(lamps[i].Marker, LampColor);", "点过的风晶灯进岛就亮")
+    # 2026-09-13：手记改成两层。首页只留两个入口，20 处见闻整块搬进官方笔记图鉴
+    # （SkyIslandNoteBridge），不在这里再列一遍 `□ …（尚未收录）`。
     journal_panel = need_body(world, "private void OpenJournal()", "群岛手记面板")
-    if journal_panel.count("choices.Add(") != 3 or "for(int i = 0;i < SkyIslandJournal.Chapters.Length;i++)" not in journal_panel:
-        errors.append("群岛手记面板必须是 4 个见闻章节 + 2 项，共 6 个选项（面板布局按最坏 6 个选项复算）")
-    require(journal_panel, "SkyIslandLights.Chapter(story.Current, SkyIslandSession.RegionLabel)", "手记要有「岛上的灯」一页（地名唯一来源是会话）")
-    require(journal_panel, "SkyIslandJournal.Uses()", "手记要有「群岛之物」一页")
+    if journal_panel.count("choices.Add(") != 2:
+        errors.append("群岛手记首页必须只有两个入口（来信与人 / 岛上的事）——"
+                      "旧版 4 章节 + 2 项平铺，新档点进去是 20 行空占位")
+    require(journal_panel, "SkyIslandJournal.Brief(story.Current)",
+            "手记首页正文必须是一句话导语，不能再放七组分数串成的总览")
+    require(journal_panel, "reopen = delegate { OpenJournal(); };",
+            "手记首页必须把 reopen 指向自己，否则子页回来/选项回执会跳错面板")
+    people = need_body(world, "private void OpenJournalPeople()", "手记子页 · 来信与人")
+    isles = need_body(world, "private void OpenJournalIsles()", "手记子页 · 岛上的事")
+    require(isles, "SkyIslandLights.Chapter(story.Current, SkyIslandSession.RegionLabel)", "手记要有「岛上的灯」一页（地名唯一来源是会话）")
+    require(isles, "SkyIslandJournal.Uses()", "手记要有「群岛之物」一页")
+    require(isles, "SkyIslandJournal.Overview(story.Current, story.Summary)", "进度总览要有去处（「这一趟」子页）")
+    for body, label in ((people, "来信与人"), (isles, "岛上的事")):
+        require(body, "BackToJournal()", "手记子页「" + label + "」没有返回项，进去就出不来（页脚已删，只剩 ESC 整个关掉）")
+    # 20 处见闻必须真的接进官方图鉴，不能只是从手记里删掉了事。
+    bridge = read("DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs")
+    for token, why in (
+        ("NoteIndex.SetNoteDynamic(note)", "官方按 key 查条目靠字典"),
+        ("notes.Add(note)", "图鉴界面列条目走 notes 列表，只 SetNoteDynamic 的话一条也看不见"),
+        ("NoteIndex.SetNoteUnlocked(key)", "已收录的见闻要在官方图鉴里点亮"),
+        ("SkyIslandPointText.Lore(id)", "图鉴正文必须取岛上同一份文案，不许另写"),
+    ):
+        require(bridge, token, "见闻图鉴桥缺 " + token + "：" + why)
+    require(world, "SkyIslandNoteBridge.Unlock(key)", "收录见闻时没有镜像到官方图鉴")
 
     # ---- 4. 剧情 ⇄ 采集 / 合成 ----
     harvest = need_body(fieldcraft, "private bool Harvest(SkyIslandGatherNode node)", "采集产出")
@@ -275,10 +300,16 @@ def main():
 
     # ---- 5. 风 ----
     wind = need_body(fieldcraft, "private void TickWind(CharacterMainControl player, bool night, float elapsed)", "夜风")
-    ordered(wind, ["SkyIslandFieldcraftRules.NightWind(night, lightsLit)", "SkyIslandFieldcraftRules.CoreEased(", "CarriesCore()",
+    # 十盏免风必须按**真的建起来的**盏数算：锚点缺失的那几盏不亮不暖（AddFire 里只打警告就返回），
+    # 拿存档记录的盏数去关夜风，降级方向就和玩家看到的相反（数得上、看不见、烤不着）。
+    ordered(wind, ["SkyIslandFieldcraftRules.NightWind(night, lightsLit - missingFireAnchors)",
+                   "SkyIslandFieldcraftRules.CoreEased(", "CarriesCore()",
                    "SkyIslandFieldcraftRules.Warmth(NearFire(player.transform.position), incenseUntil > 0f, lanternUntil > 0f)",
                    "SkyIslandFieldcraftRules.StepExposure(exposure, level, warmth, elapsed)"],
-            "夜风读岛上的灯与噬风之核，暖和分灶火灯香 / 风灯两档")
+            "夜风读真的建起来的灯与噬风之核，暖和分灶火灯香 / 风灯两档")
+    add_fire = need_body(fieldcraft, "private void AddFire(string markerName, Color color)", "建灯")
+    ordered(add_fire, ["if (marker == null)", "missingFireAnchors++;", "Debug.LogWarning(", "return;"],
+            "锚点缺失的灯必须记账（从十盏免风里扣掉）并打警告，不能静默少一处火")
     carries = need_body(fieldcraft, "private bool CarriesCore()", "噬风之核")
     ordered(carries, ["if (now < nextCarryCheck) return coreCarried;", "CountInPack(BossRushItemIds.SkyIslandWindeaterCore)"],
             "数背包里的噬风之核要节流")

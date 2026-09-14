@@ -15,7 +15,16 @@ namespace BossRush
     /// - 按 AGENTS 4.12 门控：进图时只做 30 次落点射线；交互体在玩家进入 <see cref="SkyIslandFieldcraftRules.ActivationRange"/>
     ///   时才建，一次推进最多建一个，不在进图时预生成整图。
     /// - 按出击刷新、不进存档：每趟每处只采一次，采完即收掉交互体。
-    /// - 视觉只用程序化点光与走近才浮现的浮空字（不重打包、不引入新模型）；风晶簇夜里更亮。
+    /// - 视觉只用程序化贴地光斑 + 点光与走近才浮现的浮空字（不重打包、不引入新模型）；风晶簇夜里更亮。
+    ///
+    /// 【贴地光斑为什么是必需的，不是装饰（CR-2026-09-13-002）】
+    ///   设计口径写的是「远处有光、走近浮名字」，但改之前「远处有光」这一半在代码里不存在：
+    ///   唯一的远景载体是一盏 <c>range=6m / intensity 0.8（白天）</c> 的**点光源**——
+    ///   白天打在被日光照亮的砂岩地面上，60 m 外没有任何可见信号；而浮空字 10 m 才开始浮现、5 m 全显
+    ///   （<see cref="SkyIslandProximityLabel"/> 的 near/far）。玩家走过去看不到「那边有东西」，
+    ///   实机一趟真人出击 <c>gathered=1/30</c> 是这个结构的必然结果，不是玩家不想采。
+    ///   贴地光斑是固定俯视视角下唯一能在 60 m 外读出来的载体，且**零每帧开销**：
+    ///   躺在地面上不需要 billboard，昼夜只在 <see cref="Tick"/> 的夜晚翻转那一次改颜色。
     /// </summary>
     internal sealed class SkyIslandGathering : IDisposable
     {
@@ -26,7 +35,13 @@ namespace BossRush
             internal bool Placed, Built, Harvested;
             internal GameObject Root;
             internal Light Glow;
+            internal SpriteRenderer GlowDisc;
         }
+
+        /// <summary>贴地光斑的直径（米）。1.8 在 60 m 外还认得出是一个点，又不至于糊住脚下的地面。</summary>
+        private const float GlowDiscSize = 1.8f;
+
+
 
         private readonly List<Spot> spots = new List<Spot>();
         private readonly Transform root;
@@ -114,7 +129,10 @@ namespace BossRush
             if (night == glowNight) return;
             glowNight = night;
             for (int i = 0; i < spots.Count; i++)
+            {
                 if (spots[i].Glow != null) spots[i].Glow.intensity = GlowIntensity(spots[i].Node.Kind, night);
+                if (spots[i].GlowDisc != null) spots[i].GlowDisc.color = GlowDiscColor(spots[i].Node.Kind, night);
+            }
         }
 
         private void Build(Spot spot, bool night)
@@ -146,6 +164,26 @@ namespace BossRush
                 light.range = 6f;
                 light.shadows = LightShadows.None;
 
+                // 贴地光斑：固定俯视视角下，这是 60 m 外唯一读得出来的「那边有东西」。
+                // 躺平在地面上，所以不需要 billboard，也就没有任何每帧工作。
+                Sprite disc = SkyIslandUiArt.GetRadialGlow();
+                if (disc != null)
+                {
+                    GameObject discObject = new GameObject("GatherGlowDisc");
+                    discObject.transform.SetParent(go.transform, false);
+                    discObject.transform.localPosition = Vector3.up * 0.05f;   // 抬离地面，避免 z-fighting
+                    // 与 SkyIslandGroundRing 同一个摊平姿态；精灵材质 Cull Off，正反面都画得出来。
+                    discObject.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+                    discObject.transform.localScale = Vector3.one * GlowDiscSize;
+                    SpriteRenderer renderer = discObject.AddComponent<SpriteRenderer>();
+                    renderer.sprite = disc;
+                    renderer.color = GlowDiscColor(node.Kind, night);
+                    renderer.sortingOrder = SkyIslandGroundRing.SortingOrder;
+                    renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    renderer.receiveShadows = false;
+                    spot.GlowDisc = renderer;
+                }
+
                 GameObject sign = new GameObject("Label", typeof(TextMeshPro));
                 sign.transform.SetParent(go.transform, false);
                 sign.transform.localPosition = Vector3.up * 2.1f;
@@ -162,7 +200,7 @@ namespace BossRush
 
                 spot.Root = go;
                 spot.Glow = light;
-                glowNight = night;
+                // 全局昼夜标记只由 Tick 在全部已建点刷新后维护。
             }
             catch (Exception e)
             {
@@ -184,6 +222,14 @@ namespace BossRush
             spot.Root = null;
             spot.Glow = null;
             Debug.Log("[SkyIslandGather] HARVESTED id=" + spot.Node.Id + " total=" + HarvestedCount);
+        }
+
+        /// <summary>光斑颜色 = 该资源的光色 + 按昼夜定的不透明度。白天要压住，不然满岛都是亮点。</summary>
+        private static Color GlowDiscColor(SkyIslandGatherKind kind, bool night)
+        {
+            Color color = GlowColor(kind);
+            color.a = Mathf.Clamp01(GlowIntensity(kind, night) * 0.45f);
+            return color;
         }
 
         private static Color GlowColor(SkyIslandGatherKind kind)

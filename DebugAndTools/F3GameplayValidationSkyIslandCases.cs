@@ -852,7 +852,7 @@ namespace BossRush
             // 遍历本局真实的见闻点（含全部 _02 点位），而不是手写一份会漏点的清单。
             string[] pointKeys = session != null ? session.ValidationSearchMarkerNames() : new string[0];
             for (int i = 0; i < pointKeys.Length; i++)
-                Inspect("PointName:" + pointKeys[i], SkyIslandWorldStory.PointName(pointKeys[i]), offenders, ref checkedStrings);
+                Inspect("PointName:" + pointKeys[i], SkyIslandPointText.Name(pointKeys[i]), offenders, ref checkedStrings);
 
             string[] residentIds = SkyIslandResidents.AllIds;
             for (int i = 0; i < residentIds.Length; i++)

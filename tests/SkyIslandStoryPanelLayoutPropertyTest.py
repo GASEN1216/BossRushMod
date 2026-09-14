@@ -28,6 +28,7 @@ from cs_source_util import clean_source
 
 PANEL = 'DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs'
 STORY = 'DebugAndTools/SkyIsland/SkyIslandWorldStory.cs'
+POINT_TEXT = 'DebugAndTools/SkyIsland/SkyIslandPointText.cs'
 PAIR = r'L10n\.T\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*\)'
 
 
@@ -45,9 +46,10 @@ def const(src, name):
 
 PANEL_SRC = read(PANEL)
 C = {n: const(PANEL_SRC, n) for n in (
-    'PanelWidth', 'Pad', 'Gap', 'BannerMaxHeight', 'BannerMinHeight', 'PortraitSize',
+    'PanelWidth', 'Pad', 'Gap', 'HeroMaxHeight', 'HeroMinHeight', 'HeroInset', 'PortraitSize',
     'TitleMinHeight', 'TitleFontMin', 'TitleFontMax', 'BodyMinHeight', 'BodyPreferredMax',
-    'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'FooterHeight', 'ScrollbarGutter', 'KeyHintWidth')}
+    'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'ScrollbarGutter', 'KeyHintWidth',
+    'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
 
 # 参考分辨率 1920×1080、Expand 缩放，逻辑视口高度至少 1080。
@@ -70,48 +72,67 @@ def text_height(s, width, font):
 
 
 def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 / 288.0):
-    """逐字重放 SkyIslandStoryPresentation.Show 的算术。返回各块的高度与面板高。"""
-    title_w = CONTENT_W - C['PortraitSize'] - C['Gap'] if has_portrait else CONTENT_W
+    """逐字重放 SkyIslandStoryPresentation.Show 的算术。返回各块的高度与面板高。
+
+    2026-09-13 版式：标题（与立绘）压在**全出血**的主视觉上，插图不再单占一块。
+    从上往下是 hero（无上 Pad）→ Gap → 分隔线 → Gap → 正文 → Gap → 选项 → Gap → 页脚 → 下 Pad。
+    """
+    hero_content_w = C['PanelWidth'] - C['HeroInset'] * 2
+    # 立绘贴主视觉右下角、不留 inset，标题让到左边：可用宽度 = 面板宽 − 左 inset − 立绘 − 间距。
+    title_w = (C['PanelWidth'] - C['HeroInset'] - C['PortraitSize'] - C['Gap']
+               if has_portrait else hero_content_w)
     # 标题开了自动缩放，最坏情况按下限字号量（缩到下限还超就是省略号，不会溢出）
     title_h = max(C['TitleMinHeight'], text_height(title, title_w, C['TitleFontMin']))
-    header_h = max(C['PortraitSize'], title_h) if has_portrait else title_h
+    # 立绘不再和标题抢同一块高度（旧写法 max(PortraitSize, title_h) 会被 160 的立绘顶出
+    # 一条 204 的实底带，把 247 高的插图盖掉 83%）。
+    title_block = title_h
 
-    banner_h = 0.0
+    # hero 不会被整条撤掉（标题在它上面），只能压到这个地板；带立绘时还要装得下立绘。
+    hero_floor = max(C['HeroMinHeight'], title_block + C['HeroInset'] * 2)
+    if has_portrait:
+        hero_floor = max(hero_floor, C['PortraitSize'])
+    hero_art = 0.0
     if has_banner:
-        banner_h = min(max(CONTENT_W / banner_aspect, C['BannerMinHeight']), C['BannerMaxHeight'])
+        # 全出血：按 PanelWidth 算，不是 CONTENT_W。
+        hero_art = min(C['PanelWidth'] / banner_aspect, C['HeroMaxHeight'])
+    hero_h = max(hero_floor, hero_art)
 
     choice_hs = []
     choices_h = 0.0
     for i, label in enumerate(choices):
         # 选项左侧有数字键帽，文字可用宽度要再扣 KeyHintWidth（与生产 ChoiceLabelWidth 同一个算式）。
         h = max(C['ChoiceMinHeight'],
-                text_height(label, CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth'], 21.0)
+                text_height(label, CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth'], C['ChoiceFont'])
                 + C['ChoicePadY'] * 2)
         choice_hs.append(h)
         choices_h += h + (C['Gap'] * 0.5 if i > 0 else 0.0)
 
-    body_natural = min(C['BodyPreferredMax'],
-                       max(text_height(body, CONTENT_W - C['ScrollbarGutter'], 20.0), C['BodyMinHeight']))
+    body_natural = max(text_height(body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont']),
+                       C['BodyMinHeight'])
 
-    divider_block = 1.0 + C['Gap']
-    chrome = C['Pad'] * 2 + header_h + divider_block + choices_h + C['FooterHeight'] + C['Gap'] * 3
-    body_h = body_natural
-    panel_h = chrome + banner_h + (C['Gap'] if banner_h > 0 else 0.0) + body_h
+    # 分隔线不再是 1px 裸 quad：它现在铺图集的 divider（8×8 / border 2），亮带在可拉伸中心区，
+    # rect 高 1 时中心区归零、整条线画不出来。高度读生产常量，这里不写第二份。
+    divider_block = C['DividerHeight'] + C['Gap']
+    # 页脚「继续旅程」已删（2026-09-13）：它与 ESC 完全等价，纯冗余。
+    # 现在是 hero → Gap → 分隔线 → Gap → 正文 → Gap → 选项 → 下 Pad，三个 Gap 里一个在 dividerBlock。
+    chrome = C['Pad'] + hero_h + divider_block + choices_h + C['Gap'] * 2
+    body_h = min(C['BodyPreferredMax'], body_natural)
+    panel_h = chrome + body_h
     if panel_h > MAX_PANEL:
         excess = panel_h - MAX_PANEL
         give = min(excess, max(0.0, body_h - C['BodyMinHeight']))
         body_h -= give
         excess -= give
-        if excess > 0 and banner_h > 0:
-            give = min(excess, max(0.0, banner_h - C['BannerMinHeight']))
-            banner_h -= give
-            excess -= give
-            if excess > 0:
-                excess -= banner_h + C['Gap']
-                banner_h = 0.0
-        panel_h = min(MAX_PANEL,
-                      chrome + banner_h + (C['Gap'] if banner_h > 0 else 0.0) + body_h)
-    return dict(panel=panel_h, banner=banner_h, header=header_h, body=body_h,
+        if excess > 0:
+            give = min(excess, max(0.0, hero_h - hero_floor))
+            hero_h -= give
+            chrome -= give
+        panel_h = min(MAX_PANEL, chrome + body_h)
+    # 标题在 title_block 里垂直居中，所以它的上沿在 inset + title_block/2 + title_h/2，
+    # 再加一个 inset 就是渐隐至少要有的高度（与生产 BuildHero 同一条算式）。
+    title_top = C['HeroInset'] * 2 + title_block * 0.5 + title_h * 0.5
+    return dict(panel=panel_h, hero=hero_h, hero_floor=hero_floor, title=title_block,
+                title_top=title_top, body=body_h, body_natural=body_natural,
                 choices=choice_hs, choices_total=choices_h, divider=divider_block)
 
 
@@ -122,20 +143,29 @@ def check(name, lay):
     if panel > MAX_PANEL + 0.5:
         errors.append('%s: 面板 %.0f 超出可用高度 %.0f' % (name, panel, MAX_PANEL))
 
-    top = panel * 0.5 - C['Pad']
-    if lay['banner'] > 0:
-        top -= lay['banner'] + C['Gap']
-    top -= lay['header'] + C['Gap']
+    # hero 全出血：顶上没有 Pad。
+    top = panel * 0.5
+    # 标题块必须整个落在 hero 里（它压在 hero 的渐隐上，掉出去就骑到亮插图上了）。
+    if lay['title'] + C['HeroInset'] * 2 > lay['hero'] + 0.5:
+        errors.append('%s: 标题块 %.1f + 上下 inset 装不进主视觉 %.1f'
+                      % (name, lay['title'], lay['hero']))
+    # 而且标题的**上沿**必须落在渐隐里，否则最上面那行会骑到亮插图上。
+    fade = min(lay['hero'], max(lay['hero'] * C['HeroFadeFraction'], lay['title_top']))
+    if lay['title_top'] > fade + 0.5:
+        errors.append('%s: 标题上沿 %.1f 高过渐隐 %.1f，会骑到亮插图上'
+                      % (name, lay['title_top'], fade))
+    top -= lay['hero'] + C['Gap']
     top -= lay['divider']
     top -= lay['body'] + C['Gap']
     for i, h in enumerate(lay['choices']):
         bottom = top - h
         top = bottom - C['Gap'] * 0.5
         if i == len(lay['choices']) - 1:
-            footer_top = -panel * 0.5 + C['Pad'] + C['FooterHeight']
-            if bottom < footer_top - 0.5:
-                errors.append('%s: 第 %d 个选项底边 %.1f 压到页脚顶边 %.1f'
-                              % (name, i + 1, bottom, footer_top))
+            # 页脚删掉之后，最后一项的下界判据变成面板自己的下 Pad。
+            floor = -panel * 0.5 + C['Pad']
+            if bottom < floor - 0.5:
+                errors.append('%s: 第 %d 个选项底边 %.1f 越过面板下内边距 %.1f'
+                              % (name, i + 1, bottom, floor))
         if bottom < -panel * 0.5:
             errors.append('%s: 第 %d 个选项掉出面板底边' % (name, i + 1))
     return errors
@@ -143,9 +173,10 @@ def check(name, lay):
 
 def worst_strings():
     src = read(STORY)
-    point = src.split('internal static string PointName(', 1)[1].split('private bool BlockedByCombat', 1)[0]
+    point_src = read(POINT_TEXT)
+    point = point_src.split('internal static string Name(', 1)[1].split('internal static string Brief(', 1)[0]
     titles = [s for pair in re.findall(PAIR, point) for s in pair]
-    lore = src.split('private static string Lore(', 1)[1]
+    lore = point_src.split('internal static string Lore(', 1)[1]
     bodies = [s for pair in re.findall(PAIR, lore) for s in pair]
     labels = [s for pair in re.findall(
         r'(?:choices\.Add\(new SkyIslandStoryPresentation\.Choice\(|Add\(choices,\s*|Challenge\(|'
@@ -180,7 +211,8 @@ def batch_two_strings():
                  [''.join(pair[1] for pair in re.findall(PAIR, page)) for page in pages]
     chapters_block = journal.split('internal static string ChapterName', 1)[1].split('internal static bool Recorded', 1)[0]
     chapter_names = [s for pair in re.findall(r'case \d: return L10n\.T\(\s*' + arg, chapters_block) for s in pair]
-    lore = [s for pair in re.findall(PAIR, story.split('private static string Lore(', 1)[1]) for s in pair]
+    lore = [s for pair in re.findall(PAIR, read(POINT_TEXT).split('internal static string Lore(', 1)[1])
+            for s in pair]
     assert options and prompts and intros and letter_titles and crew_names and chapter_names and crew_pages and lore, \
         '批次二文案没解析到，正则与源码失步了'
     longest = lambda xs: max(xs, key=len)
@@ -215,6 +247,16 @@ def main():
                                                 (False, False, '无插图')):
             lay = layout(title, body, [longest_label] * count, has_portrait, has_banner)
             errors += check('%s %d 选项' % (shape, count), lay)
+
+    # 首次打开长正文时，滚动内容必须保留全部自然高度，而非 300px 的视口上限。
+    long_body = body * 12
+    scroll = layout(title, long_body, [], False, False)
+    expected = text_height(long_body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont'])
+    assert scroll['body_natural'] >= expected > scroll['body']
+    presentation = read(PANEL)
+    natural = presentation.split('float bodyNatural =', 1)[1].split(';', 1)[0]
+    assert 'BodyPreferredMax' not in natural, '自然高度不能截为视口上限，否则末段不可滚动到达'
+    assert 'BuildBody(panel, bodyText, bodyHeight, bodyNatural, cursor)' in presentation
 
     # 破坏探针：判据本身必须会红，否则上面的全绿只是恒真。
     huge = layout(title, body, [longest_label] * 40, False, True)

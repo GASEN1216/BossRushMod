@@ -212,7 +212,10 @@ namespace BossRush
 
         internal void Tick()
         {
-            if (closed || !valid() || Time.time < nextTick) return;
+            // 节流排在委托之前：这一路每帧都进，而 0.25 秒的门 60 帧里挡掉 14/15，
+            // 先判两个字段就不用每帧再走一次 IsSessionValid 委托（R-9「节流判断提前」）。
+            // 顺序可换是因为 valid() 是纯查询（SkyIslandSession.IsSessionValid 只读状态）。
+            if (closed || Time.time < nextTick || !valid()) return;
             nextTick = Time.time + 0.25f;
             int active = 0;
             foreach (Encounter encounter in encounters)

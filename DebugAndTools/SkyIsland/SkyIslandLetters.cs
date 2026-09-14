@@ -81,6 +81,27 @@ namespace BossRush
             return null;
         }
 
+        /// <summary>
+        /// 收下一封之后，**这一趟**还该不该再来一只信鸽（`CR-2026-09-12-020`）。
+        ///
+        /// 口径：只有「有前置、且前置已经满足」的信才连送，无前置的前 8 封仍是**一趟一封、按顺序来**。
+        ///
+        /// 为什么要这条：12 封信 × 一趟一封 = 收齐至少 12 趟，而这是全图**唯一严格线性、不可压缩**的
+        /// 时长乘数——把约 3 小时的内容拉成约 8 小时的完成路径，多出来的部分没有新内容，只是重复出击。
+        /// 前 8 封是教学与伏笔，按趟送有节奏上的道理；后 4 封本来就按剧情节点解锁
+        /// （双航标 / 星灯 / 敲钟），条件往往在同一趟里一起满足，硬拆成四趟只是把人留在岛上跑空趟。
+        /// 放开之后收齐从 ≥12 趟压到 ≥8 趟，砍掉的正是最没内容的那几趟。
+        ///
+        /// 注意它只看**下一封是不是有前置的**，不看已经收了几封：这样「敲钟那一趟一次收到 11 和 12」成立，
+        /// 而「第 3 封收完立刻再来第 4 封」不成立。
+        /// 纯逻辑、无 Unity 依赖，隔离回归直接执行。
+        /// </summary>
+        internal static SkyIslandLetter NextSameRaidFor(SkyIslandStoryData data)
+        {
+            SkyIslandLetter next = NextFor(data);
+            return next != null && next.Requires != SkyIslandStoryFlag.None ? next : null;
+        }
+
         private static SkyIslandLetter[] Build()
         {
             return new[]

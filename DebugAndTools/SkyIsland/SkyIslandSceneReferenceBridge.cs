@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -31,6 +31,7 @@ namespace BossRush
         private static SceneInfoEntry sceneInfo;
         private static Harmony harmony;
         private static FieldInfo activeSubSceneField, cachedEntryField, loadingField, activeObjectsField, loadedEventField;
+        private static AccessTools.FieldRef<MultiSceneCore, Scene> activeSubSceneRef;
         private static MethodInfo localLoadedMethod;
         private static object initializationOwner;
         private static int initializationSceneHandle;
@@ -91,6 +92,10 @@ namespace BossRush
                 name.SetValue(sceneInfo, "BossRush_SkyIsland_SceneName");
                 LocalizationHelper.InjectLocalization("BossRush_SkyIsland_SceneName", L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan"));
                 activeSubSceneField = RequireField(typeof(MultiSceneCore), "activeSubScene");
+                // 同一个字段的**读**走 FieldRef：`ActiveSubSceneID` 的 getter 是官方地图 / 迷雾 / HUD 每帧都问的热路径，
+                // `FieldInfo.GetValue` 每次都把 Scene 这个 struct 装箱一次（R-9 分项）。绑定目标不变，
+                // 契约检查仍由上面这行 RequireField 负责——官方改名时先在那里炸，错误信息不变。
+                activeSubSceneRef = AccessTools.FieldRefAccess<MultiSceneCore, Scene>(activeSubSceneField);
                 cachedEntryField = RequireField(typeof(MultiSceneCore), "cachedSubsceneEntry");
                 loadingField = RequireField(typeof(MultiSceneCore), "isLoading");
                 activeObjectsField = RequireField(typeof(MultiSceneCore), "setActiveWithSceneObjects");
@@ -313,7 +318,7 @@ namespace BossRush
         {
             MultiSceneCore core = MultiSceneCore.Instance;
             if (!OwnsCore(core)) return true;
-            Scene active = (Scene)activeSubSceneField.GetValue(core);
+            Scene active = activeSubSceneRef(core);
             __result = !core.IsLoading && IsScene(active) && active.isLoaded ? SceneId : null;
             return false;
         }

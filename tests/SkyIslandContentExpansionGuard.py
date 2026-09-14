@@ -22,24 +22,32 @@ EXPECTED_TOTAL = 39
 
 # 遭遇表的稳定身份：(marker, count, manual, tier, lead)
 EXPECTED_ENCOUNTERS = {
-    'C': ('EnemySpawn_C', 2, False, 'Scav', 'Scav'),
-    'C_02': ('Search_C_02', 2, False, 'Scav', 'Scav'),
-    'D': ('EnemySpawn_D', 2, False, 'Scav', 'Elite'),
-    'D_02': ('Search_D_02', 2, False, 'Scav', 'Scav'),
-    # 布局 v2：E 的两组自动敌群挪到 DE / GE 桥上的中继平台。
-    'E': ('Relay_DE', 2, False, 'Scav', 'Scav'),
-    'E_02': ('Relay_GE', 2, False, 'Scav', 'Scav'),
-    'G': ('EnemySpawn_G', 2, False, 'Scav', 'Elite'),
-    'G_02': ('Search_G_02', 2, False, 'Scav', 'Scav'),
-    'S1': ('EnemySpawn_S1', 2, False, 'Scav', 'Scav'),
-    'S2': ('EnemySpawn_S2', 2, False, 'Scav', 'Scav'),
-    'S3': ('EnemySpawn_S3', 2, False, 'Scav', 'Scav'),
+    # 2026-09-13：自动组人数 2 -> 3（设计规格是「每点 2–4 敌」，现状原本取下限），
+    # 并补 5 组：3 个空着的捷径中继平台 + E/H 两岛（此前只有手动组，通关后永久零敌）。
+    # 全部复用 layout.json 里已存在的 marker，不重烘导航、不重打包。
+    'C': ('EnemySpawn_C', 3, False, 'Scav', 'Scav'),
+    'C_02': ('Search_C_02', 3, False, 'Scav', 'Scav'),
+    'D': ('EnemySpawn_D', 3, False, 'Scav', 'Elite'),
+    'D_02': ('Search_D_02', 3, False, 'Scav', 'Scav'),
+    'E': ('Relay_DE', 3, False, 'Scav', 'Scav'),
+    'E_02': ('Relay_GE', 3, False, 'Scav', 'Scav'),
+    'G': ('EnemySpawn_G', 3, False, 'Scav', 'Elite'),
+    'G_02': ('Search_G_02', 3, False, 'Scav', 'Scav'),
+    'S1': ('EnemySpawn_S1', 3, False, 'Scav', 'Scav'),
+    'S2': ('EnemySpawn_S2', 3, False, 'Scav', 'Scav'),
+    'S3': ('EnemySpawn_S3', 3, False, 'Scav', 'Scav'),
     'S4': ('EnemySpawn_S4', 3, False, 'Scav', 'Elite'),
-    'F': ('Search_F_02', 2, False, 'Scav', 'Scav'),
+    'F': ('Search_F_02', 3, False, 'Scav', 'Scav'),
     'Zheling': ('EnemySpawn_F', 1, True, 'Champion', 'Champion'),
     'BellKeeper': ('EnemySpawn_H', 3, True, 'Scav', 'Champion'),
     'Storm': ('POI_E', 3, True, 'Elite', 'Storm'),
+    'K1_Relay': ('Relay_K1', 3, False, 'Scav', 'Scav'),
+    'K2_Relay': ('Relay_K2', 3, False, 'Scav', 'Scav'),
+    'K3_Relay': ('Relay_K3', 3, False, 'Scav', 'Scav'),
+    'E_03': ('EnemySpawn_E', 3, False, 'Scav', 'Elite'),
+    'H_02': ('Search_H_02', 3, False, 'Scav', 'Elite'),
 }
+
 
 NEW_SOURCES = (
     'SkyIslandLootTables.cs', 'SkyIslandLootPools.cs', 'SkyIslandRewardCrate.cs',
@@ -57,6 +65,52 @@ AUTHOR_MARKERS = {
 
 def source(name):
     return clean_source((SKY / name).read_text(encoding='utf-8'))
+
+
+def or_terms(condition):
+    """顶层按 `||` 拆条件（括号内的 || 不算，`(a || b) && c` 不该被拆开）。"""
+    parts, depth, start, i = [], 0, 0, 0
+    while i < len(condition):
+        ch = condition[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+        elif depth == 0 and condition.startswith('||', i):
+            parts.append(condition[start:i])
+            start = i + 2
+            i += 1
+        i += 1
+    parts.append(condition[start:])
+    return [p.strip() for p in parts]
+
+
+def combat_gate_first(body):
+    """战斗门必须是方法**开头那串早退卫句**里的一条，而且真的拦得住。
+
+    接受（强度相同，都是「战斗时一定 return」）：
+        if (BlockedByCombat()) return;
+        if (disposed || 别的 || BlockedByCombat()) return;    纯 || 链，任一项为真即拦
+        if (disposed) return;  if (BlockedByCombat()) return; 拆成两条卫句
+    拒绝（都拦不住）：
+        if (A && BlockedByCombat()) return;    A 为假就漏过去
+        if (!BlockedByCombat()) return;        正好反了
+        干了正事之后才判                        前面那段已经在战斗中跑过了
+        整条没了
+    """
+    # 只扫方法开头连续的 `if (...) return;`；遇到第一条别的语句就停——
+    # 门挪到正事后面就等于没门。
+    for m in re.finditer(r'(?:^|;|\{|\})\s*if \((.+?)\) return;', body, re.S):
+        prefix = body[:m.start()]
+        # 前面只允许有空白与 `{`：一旦出现真正的语句，后面的判断就不算卫句了。
+        if prefix.strip(' \t\r\n{'):
+            break
+        if 'BlockedByCombat()' in m.group(1):
+            return 'BlockedByCombat()' in or_terms(m.group(1))
+        # 这条卫句不是战斗门，继续往下看下一条卫句。
+        body = body[m.end():]
+        return combat_gate_first(body)
+    return False
 
 
 def check_loot_anchors():
@@ -157,9 +211,14 @@ def check_pools():
     # 只缓存完整跑完的查询：标签表还没就绪、或查询中途抛异常时得到的空池若也进缓存，缓存要到模块销毁才清，
     # 本进程之后每一趟出击的箱子都是空的（2026-09-10 全方位审核）。
     query = pools.split('int key = minQuality * 100 + maxQuality', 1)[1].split(chr(10) + '        }', 1)[0]
-    assert 'if (complete) cache[key] = cached;' in query, 'Only a fully completed pool query may be cached'
-    assert re.search(r'(?<!if \(complete\) )cache\[key\] = cached;', query) is None, \
-        'An unconditional cache write would pin a failed (empty) pool for the whole process'
+    # 2026-09-12：缓存从一行变成一个块（池子 + 权重表一起进缓存），判据改为「写缓存必须在 complete 门内」。
+    assert 'if (complete)' in query, 'Only a fully completed pool query may be cached'
+    guarded = query.split('if (complete)', 1)[1]
+    for token in ('cache[key] = cached;', 'weights[key] = cumulative;'):
+        assert token in guarded, '未完整跑完的查询不得进缓存：' + token + ' 必须在 complete 门内'
+    assert query.split('if (complete)', 1)[0].count('cache[key]') == 0,         '写池子缓存不得排在 complete 门之前'
+    # 上面的「必须在 complete 门内 + 门之前不得出现」两条合起来已经等价于原来那条负向正则，
+    # 且对「一行」与「一个块」两种写法都成立（2026-09-12 缓存改成块之后，原正则恒假红）。
     assert query.index('result.AddRange(unique);') < query.index('complete = true;'), \
         'complete must be set only after the pool was actually built'
     # 单件价值上限（CR-2026-09-11-001）：品质带内按种类均匀抽，皇冠（21,593,218）与两把神秘钥匙（15–25 万）会把整张图的经济抹平。
@@ -169,6 +228,18 @@ def check_pools():
     value_cap = pools.split('private static bool WithinValueCap(int typeId)', 1)[1].split(chr(10) + '        }', 1)[0]
     assert 'SkyIslandLootTables.AllowedInPool(prefab.Value)' in value_cap, \
         'The value cap must read the official prefab value through the shared pure rule'
+    # CR-2026-09-12-019：抽样必须按品质加权，不能回到「在 TypeID 清单上均匀抽」。
+    crate = source('SkyIslandRewardCrate.cs')
+    assert 'SkyIslandLootPools.Pick(tier, i == 0 && guaranteeTopBand, random)' in crate,         '装箱必须走按品质加权的 Pick；均匀抽会让高品质按"种类多少"决定概率'
+    assert 'random.Next(source.Length)' not in crate,         '装箱不得退回在 TypeID 清单上均匀抽'
+    pools = source('SkyIslandLootPools.cs')
+    for token, why in (
+            ('SkyIslandLootTables.QualityWeight(quality, minQuality)', '权重必须相对本带下界算'),
+            ('prefab.Quality', '权重要读官方品质，不能凭 TypeID 猜'),
+            ('weights.Clear()', '权重表必须与池子一起在模块销毁时释放')):
+        assert token in pools, '按品质加权的接线缺失：' + why + '（缺 ' + token + '）'
+    tables_src = source('SkyIslandLootTables.cs')
+    assert 'internal const double QualityFalloffPerStep = 0.6;' in tables_src,         '品质衰减系数被改动：这是经济口径，改它要同步 Wiki 与 CODE_REVIEW_FINDINGS'
     assert 'internal const int MaxPoolItemValue = 100000;' in source('SkyIslandLootTables.cs'), \
         'Island pool value cap changed: the crown (21.6M) and the mysterious keys (150-250k) must stay out'
     # 排除口径必须走共享策略：只给 excludeTags 会漏掉 DestroyOnLootBox / DontDropOnDeadInSlot /
@@ -649,6 +720,11 @@ def check_session_ownership():
     # 面板会把 timeScale 压到 0，而这个暂停是可靠的（ModBehaviour.LateUpdate 排在官方
     # TimeScaleManager.Update 之后）。没有战斗门，搜索点/居民/纪念物就都是战斗中的暂停键，
     # 而且面板里还挂着苔药与整备，等于可以定格战斗再花钱回满血。
+    #
+    # 2026-09-13：`Talk` 的门从单句变成了复合条件（叠上重入与销毁判断）。断言跟着放宽形状、
+    # **但不放宽强度**：仍要求战斗门出现在方法体的**第一条** `if (...) return;` 里，且它必须是
+    # 一条纯 `||` 链上的一项——`A || B || BlockedByCombat()` 与原来的单句等价地拦得住，
+    # 而 `A && BlockedByCombat()`、`!BlockedByCombat()` 或挪到后面去都拦不住，照样红。
     assert 'internal bool CanOpenStoryPanel(out string reason)' in session, \
         'Story panels need a combat gate; the modal pause is reliable and would otherwise be a free pause button'
     gate = session.split('internal bool CanOpenStoryPanel(out string reason)', 1)[1] \
@@ -661,7 +737,7 @@ def check_session_ownership():
     assert 'private bool BlockedByCombat()' in story_src, 'The gate must have one shared entry point'
     for entry in ('internal void ReadPoint(string key, Action recorded)', 'internal void Talk(string id, Transform speaker)'):
         body = story_src.split(entry, 1)[1].split(chr(10) + '        }', 1)[0]
-        assert 'if (BlockedByCombat()) return;' in body, 'Story entry point missing the combat gate: ' + entry
+        assert combat_gate_first(body), 'Story entry point missing the combat gate: ' + entry
     tick = story_src.split('internal void Tick()', 1)[1].split(chr(10) + '        }', 1)[0]
     assert 'presentation.Dispose();' in tick, \
         'An open panel must close itself when combat starts (async spawns finish at timeScale 0)'

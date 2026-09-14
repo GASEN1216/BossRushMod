@@ -100,6 +100,53 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 群岛手记的横幅资源名。手记不挂在任何一处区域上，所以不走 <see cref="GetScene"/> 的区域解析。
+        /// </summary>
+        internal const string JournalSceneAsset = "skyisland_scene_journal";
+
+        /// <summary>面板整屏底图的资源名前缀。由 `tools/gen_sky_island_panel_backgrounds.py` 派生。</summary>
+        private const string BackgroundPrefix = "skyisland_bg_";
+
+        /// <summary>
+        /// 面板整屏底图：那一区的场景横幅经模糊、降饱和派生出来的 220×236 小图。
+        ///
+        /// 【为什么不直接把横幅铺满面板】面板是竖的（880 × 约 940），横幅是 3.56:1；
+        /// cover 上去要放大 **3.26 倍**、只看得见原图中间 26% 的宽度，云海的平滑渐变在这个
+        /// 倍率下会出现带状阶梯。底图是**为模糊而生**的，所以小图反而正确。
+        ///
+        /// 【区域从哪来】<paramref name="banner"/> 的 <c>Sprite.name</c> 就是资源名
+        /// （bundle 与散图两条路径都显式赋过），形如 <c>skyisland_scene_B</c>，取后缀即可——
+        /// 不必给 <c>Show</c> 加一个新参数、也就不用动任何调用点。
+        /// 没有横幅（居民面板只有立绘）时退到群岛总览那张，它是中性的全群岛远景。
+        /// 一张都没有时返回 null，面板退回纯色底（fail-open）。
+        /// </summary>
+        internal static Sprite GetPanelBackground(Sprite banner)
+        {
+            string region = null;
+            if (banner != null && !string.IsNullOrEmpty(banner.name)
+                && banner.name.StartsWith("skyisland_scene_", StringComparison.Ordinal))
+            {
+                region = banner.name.Substring("skyisland_scene_".Length);
+            }
+            if (string.IsNullOrEmpty(region)) region = "journal";
+            Sprite background = Get(BackgroundPrefix + region);
+            // 区域底图缺失时退到总览那张，而不是直接没有底图：换皮降级要一档一档退。
+            if (background == null && !string.Equals(region, "journal", StringComparison.Ordinal))
+                background = Get(BackgroundPrefix + "journal");
+            return background;
+        }
+
+        /// <summary>
+        /// 群岛手记的横幅。手记是全链条里文本最长的一页（总览 + 岛上的灯 + 群岛之物），
+        /// 却是唯一一页既没有立绘也没有插图的——十二张区域横幅都在，独它裸着。
+        /// 缺图时照旧退成无插图布局（fail-open）。
+        /// </summary>
+        internal static Sprite GetJournalBanner()
+        {
+            return Get(JournalSceneAsset);
+        }
+
+        /// <summary>
         /// 区域横幅。<paramref name="marker"/> 是见闻点或地标名（`Search_D` / `POI_S1` / `Search_H_02`），
         /// 这里只取区域字母，让同一区域的多个点共用一张图。
         /// </summary>
@@ -169,14 +216,64 @@ namespace BossRush
         private const string FadeAssetName = "__skyisland_banner_fade";
         private const string ScrimAssetName = "__skyisland_title_scrim";
 
+        /// <summary>压暗底的最大不透明度。</summary>
+        internal const float ScrimPeak = 0.72f;
+        /// <summary>
+        /// 压暗底**竖向**两端各占多少比例做 smoothstep 淡出；中间 <c>1-2×</c> 是平台。
+        ///
+        /// 平台必须罩住每一行文字（否则小字又掉进淡出区），但淡出区也必须够长——
+        /// 0.20 那一版在 230 高上只有 46px 的过渡，整块压暗底在云海上看着就是**一块深色板**，
+        /// 上下两条边清清楚楚，正是这个文件一开始就想消灭的东西。0.28 配上加高到 340 的
+        /// 压暗底是 95px 的过渡，读作一团柔光晕；三行文字仍整个落在平台里
+        /// （守卫 SkyIslandUiContrastGuard 按文字框的上下两端复算，不是只算中心）。
+        /// </summary>
+        internal const float ScrimEdge = 0.28f;
+        /// <summary>
+        /// 压暗底**横向**两侧各占多少比例做 smoothstep 淡出；中间 <c>1-2×</c> 是平台。
+        /// 调用方要保证文字整行落在平台里——<c>SkyIslandHud.StartBanner</c> 按实测文字宽度
+        /// 反算压暗底宽度（<c>宽度 ≥ 文字宽 / (1-2×edge)</c>），英文长句不会跑到淡出区里去。
+        /// </summary>
+        internal const float ScrimHorizontalEdge = 0.30f;
+
+        /// <summary>
+        /// 「两端 smoothstep 淡出 + 中间平台」的一维窗函数。<paramref name="t"/> 取 0..1，
+        /// <paramref name="edge"/> 是单侧淡出占的比例（0.18 = 两端各 18%、中间 64% 平台）。
+        /// </summary>
+        private static float Plateau(float t, float edge)
+        {
+            if (edge <= 0f) return 1f;
+            float head = Mathf.Clamp01(t / edge);
+            float tail = Mathf.Clamp01((1f - t) / edge);
+            return head * head * (3f - 2f * head) * tail * tail * (3f - 2f * tail);
+        }
+
+        /// <summary>
+        /// 压暗底在**相对高度** <paramref name="v"/>（0=底边，1=顶边）处的不透明度。
+        /// 守卫与离线预览按这个函数复算三行文字各自坐在多厚的底上，**不要在别处再写一份**。
+        /// </summary>
+        internal static float ScrimAlphaAt(float v)
+        {
+            return Plateau(Mathf.Clamp01(v), ScrimEdge) * ScrimPeak;
+        }
+
         /// <summary>
         /// 区域大标题背后的压暗底。**必须有**：岛上抬头就是一片高亮的云海，
         /// 浅色文字直接压在云上几乎读不出来（离线预览里一眼可见）。
         /// 主流游戏的区域名底下也都垫一层柔和压暗，这不是装饰而是可读性。
         ///
-        /// 形状是**二维**柔边：竖向是 0→1→0 的余弦钟形，横向是两侧各 30% 的 smoothstep 淡出、
-        /// 中间留一段平台罩住文字。早先那版只做了竖向渐变、横向拉伸成矩形，
-        /// 左右两侧是两条笔直的硬边——正是要消灭的「贴了一块板」。
+        /// 形状是**二维**柔边：两个方向都是「两侧 smoothstep 淡出 + 中间一段平台」。
+        /// 早先那版只做了竖向渐变、横向拉伸成矩形，左右两侧是两条笔直的硬边——那是第一版的病。
+        ///
+        /// 【竖向为什么从余弦钟形改成平台（CR-2026-09-13-001）】
+        ///   钟形 <c>0.5-0.5·cos(2πv)</c> 的峰值在正中，而正中坐的是 44px 的大地名——
+        ///   它按 WCAG 只需要 3:1。真正需要 4.5:1 的两行小字（眉题 y=+44、落地提示 y=-42）
+        ///   被甩到钟形的腰上：在 230 高的压暗底里 v=0.691 / 0.317，α 只有 0.405 / 0.423。
+        ///   实算（场景亮度取 12 张场景横幅实测 p90=0.679）：眉题 **2.42:1**、提示行 **2.54:1**，
+        ///   云海高光（p99=0.839）下更是 1.66 / 1.75——离线预览里一眼可见糊在云里。
+        ///   改成上下各 <see cref="ScrimEdge"/> 的 smoothstep、中间平台之后，三行全部坐在平台上。
+        ///
+        /// 注意：压暗底只是第一层保险。第二层是文字自己的描边（SkyIslandHud 的 TMP outline），
+        /// 它与背景亮度**脱钩**，云海高光那一档靠的是它。两层缺一不可。
         /// </summary>
         internal static Sprite GetTitleScrim()
         {
@@ -187,26 +284,18 @@ namespace BossRush
             {
                 const int width = 64;
                 const int height = 48;
-                const float peak = 0.60f;
-                const float edge = 0.30f;
                 Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false, false);
                 texture.name = ScrimAssetName;
                 texture.wrapMode = TextureWrapMode.Clamp;
-                // 双线性采样会把这张小图平滑拉到 1180×200，所以 64×48 足够，不必出大图。
+                // 双线性采样会把这张小图平滑拉到 1180×230，所以 64×48 足够，不必出大图。
                 texture.filterMode = FilterMode.Bilinear;
                 for (int x = 0; x < width; x++)
                 {
-                    float u = x / (float)(width - 1);
-                    float sideIn = Mathf.Clamp01(u / edge);
-                    float sideOut = Mathf.Clamp01((1f - u) / edge);
-                    // smoothstep：两侧从 0 平滑爬到 1，中间是平台。
-                    float horizontal = sideIn * sideIn * (3f - 2f * sideIn)
-                        * sideOut * sideOut * (3f - 2f * sideOut);
+                    float horizontal = Plateau(x / (float)(width - 1), ScrimHorizontalEdge);
                     for (int y = 0; y < height; y++)
                     {
-                        float v = y / (float)(height - 1);
-                        float vertical = 0.5f - 0.5f * Mathf.Cos(v * Mathf.PI * 2f);
-                        texture.SetPixel(x, y, new Color(0.02f, 0.03f, 0.04f, horizontal * vertical * peak));
+                        float vertical = Plateau(y / (float)(height - 1), ScrimEdge);
+                        texture.SetPixel(x, y, new Color(0.02f, 0.03f, 0.04f, horizontal * vertical * ScrimPeak));
                     }
                 }
                 texture.Apply(false, true);
@@ -221,6 +310,59 @@ namespace BossRush
                 Debug.LogWarning(LogPrefix + "标题压暗底生成失败：" + e.Message);
             }
             sprites[ScrimAssetName] = result;
+            return result;
+        }
+
+        private const string GlowAssetName = "__skyisland_radial_glow";
+
+        /// <summary>
+        /// 径向柔光：中心实、往外 smoothstep 淡到 0，四角（d>1）直接为 0 所以不出方边。
+        /// 纯白 + alpha，颜色由调用方的 <c>Image.color</c> / <c>SpriteRenderer.color</c> 施加。
+        ///
+        /// 两处在用，是**同一张**图不是两份：
+        /// - 剧情面板主视觉里立绘脚下的落影（抠图直接压在插图上，没有影子会「浮」着）；
+        /// - 采集点的贴地光斑（<see cref="SkyIslandGathering"/>，按资源种类 tint）。
+        /// UI 与世界空间共用没有问题：<c>pixelsPerUnit</c> 只影响 native size，而两边都显式给了尺寸。
+        /// </summary>
+        internal static Sprite GetRadialGlow()
+        {
+            Sprite cached;
+            if (sprites.TryGetValue(GlowAssetName, out cached)) return cached;
+            Sprite result = null;
+            try
+            {
+                const int size = 64;
+                Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false, false);
+                texture.name = GlowAssetName;
+                texture.wrapMode = TextureWrapMode.Clamp;
+                texture.filterMode = FilterMode.Bilinear;
+                Color32[] pixels = new Color32[size * size];
+                float center = (size - 1) * 0.5f;
+                for (int y = 0; y < size; y++)
+                {
+                    for (int x = 0; x < size; x++)
+                    {
+                        float dx = (x - center) / center;
+                        float dy = (y - center) / center;
+                        float t = Mathf.Clamp01(1f - Mathf.Sqrt(dx * dx + dy * dy));
+                        pixels[y * size + x] = new Color32(255, 255, 255,
+                            (byte)Mathf.RoundToInt(t * t * (3f - 2f * t) * 255f));
+                    }
+                }
+                texture.SetPixels32(pixels);
+                texture.Apply(false, true);
+                owned.Add(texture);
+                result = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f),
+                    100f, 0u, SpriteMeshType.FullRect);
+                result.name = GlowAssetName;
+                owned.Add(result);
+            }
+            catch (Exception e)
+            {
+                // 纯观感层：落影/光斑出不来不影响任何交互。
+                Debug.LogWarning(LogPrefix + "径向柔光生成失败：" + e.Message);
+            }
+            sprites[GlowAssetName] = result;
             return result;
         }
 

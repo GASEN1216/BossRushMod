@@ -403,7 +403,7 @@ namespace BossRush
                     {
                         if (closed || worldStory == null) return;
                         worldStory.ReadPoint(key, delegate { searched.Add(key); });
-                    }, SkyIslandWorldStory.PointName(key));
+                    }, SkyIslandPointText.Name(key));
                     searchCount++;
                 }
             }
@@ -1024,13 +1024,16 @@ namespace BossRush
         ///
         /// 三个计数器的信号源不同「寿命」，这正是必须有这个查询的原因：
         /// - <see cref="SkyIslandBountyKind.Salvage"/> 的搜刮点按出击重刷，本局有多少就是多少；
-        /// - <see cref="SkyIslandBountyKind.Threats"/> 的清场是**持久存档事实**，
-        ///   已清过的组这局根本不会再触发回调（`Tick` 直接短路成 Cleared）；
+        /// - <see cref="SkyIslandBountyKind.Threats"/> 数的是**本趟**还没清的自动组；存档已清事实只关手动组
+        ///   （`Tick` 的短路带着 `encounter.Manual`），照它过滤会让第二趟起恒为 0，详见 `RemainingClearable`；
         /// - <see cref="SkyIslandBountyKind.Survey"/> 数的是**本趟**还没踏足的区域（`raidRegions`），
         ///   走遍全岛之后下一趟照样能派；存档里的首次到访只管点亮地图。
         ///
-        /// 可完成量不足时就不派这一类。这些量只会随本趟进度单调递减
+        /// 可完成量不足时就不派这一类。上面三类是**硬门**：它们的量只随本趟进度单调递减
         /// （每推进 1 点，剩余量减 1），所以接单时 available ≥ target 就保证这一单做得完。
+        ///
+        /// <see cref="SkyIslandBountyKind.Gnats"/> **不**满足这条不变式，别照着上面那句读：它是软门，
+        /// 出口是「退掉这一单」。为什么不单调、玩家怎么把它压没，见 <see cref="AvailableGnatCull"/> 的注释。
         /// </summary>
         internal int AvailableBountyProgress(SkyIslandBountyKind kind)
         {
@@ -1049,7 +1052,7 @@ namespace BossRush
                     if (!raidRegions.Contains(regionIds[i])) count++;
                 return count;
             }
-            return 0;
+            return kind == SkyIslandBountyKind.Gnats ? AvailableGnatCull() : 0;
         }
         internal bool HasPlantingDelivered
         { get { return story != null && story.Current.Has(SkyIslandStoryFlag.PlantingDelivered); } }

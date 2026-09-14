@@ -48,6 +48,29 @@ namespace BossRush
             return clockAvailable ? clockHours : double.NaN;
         }
 
+        /// <summary>
+        /// 官方时钟的默认倍率（反编译源 <c>GameClock.clockTimeScale = 60f</c>）：一现实秒走 60 游戏秒，
+        /// 于是一整夜（21–5 点，8 游戏小时）约合 8 现实分钟。读不到实例时按它折算。
+        /// </summary>
+        internal const double DefaultClockScale = 60.0;
+
+        /// <summary>
+        /// 距天亮还有多少**现实秒**。云蚋、夜风与光照都按现实秒推进（<c>Time.time</c>），而钟点按
+        /// <paramref name="clockScale"/> 倍速走，所以「今晚还剩多久」必须折算过来才能和刷新间隔比。
+        ///
+        /// 不是夜里、读不到时钟（NaN）或倍率非正时返回 0——调用方据此判定「这一趟不派驱蚋委托」。
+        /// 纯算术，隔离回归直接执行。
+        /// </summary>
+        internal static double RealSecondsUntilDawn(double hours, double clockScale)
+        {
+            if (!IsNight(hours)) return 0.0;
+            if (double.IsNaN(clockScale) || double.IsInfinity(clockScale) || clockScale <= 0.0) return 0.0;
+            hours = (hours % 24 + 24) % 24;
+            // 21 点之后要先走到午夜再走到 5 点；午夜之后直接走到 5 点。
+            double remainingHours = hours >= StartHour ? 24.0 - hours + EndHour : EndHour - hours;
+            return remainingHours * 3600.0 / clockScale;
+        }
+
         /// <summary>由 <c>SkyIslandRuntimeModule.OnDestroy</c> 调用：开发开关不跨进程残留。</summary>
         internal static void ResetStaticCaches()
         {

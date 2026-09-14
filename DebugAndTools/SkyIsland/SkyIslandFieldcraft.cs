@@ -58,7 +58,7 @@ namespace BossRush
         private readonly SkyIslandGnats gnats;
         private GameObject lanternLight;
         private float nextTick = -1f, lastTick = -1f, lanternUntil = -1f, incenseUntil = -1f, exposure, nextCarryCheck = -1f;
-        private int fireNight = -1, lightsLit;
+        private int fireNight = -1, lightsLit, missingFireAnchors;
         private bool lanternLowWarned, incenseLowWarned, charmWorn, chilled, exposureWarned, windExplained, coreCarried, coreExplained, disposed, inventoryBusy;
 
         internal SkyIslandFieldcraft(SkyIslandSession owner, SkyIslandStoryService storyService, Transform worldRoot)
@@ -412,10 +412,11 @@ namespace BossRush
                 return session.HasPlantingDelivered && session.Services != null && !session.Services.MealEaten;
             // 晴岚航徽：这一趟还没拉过缆绳才亮；附近有没有敌人在按下时判断，给出原因。
             if (buff == SkyIslandFieldBuff.Recall) return session.RecallAvailable;
-            // 内容批次四：灭蚊灯同时至多两盏、蒲扇扇过要缓一口气、药膏止痒要真的在痒；都问蚊群 owner。不成立时按钮置灰，不白吃一件。
+            // 内容批次四：灭蚊灯同时至多两盏、蒲扇扇过要缓一口气；都问蚊群 owner。不成立时按钮置灰，不白吃一件。
             if (buff == SkyIslandFieldBuff.Zapper) return gnats != null && gnats.CanDeployZapper;
             if (buff == SkyIslandFieldBuff.Fan) return gnats != null && gnats.FanReady;
-            if (buff == SkyIslandFieldBuff.Soothe) return gnats != null && gnats.Itching;
+            // 药膏的防痒要赶在被叮之前抹上才有意义：只要蚊群 owner 活着就能抹（药膏本身还是回血药，不会白吃）。
+            if (buff == SkyIslandFieldBuff.Soothe) return gnats != null && gnats.Usable;
             // 护符不叠加：已经系着一枚时按钮置灰，不吃掉第二枚。
             return buff != SkyIslandFieldBuff.Charm || !charmWorn;
         }
@@ -527,7 +528,8 @@ namespace BossRush
             if (lanternLight != null) return;
             lanternLight = new GameObject("SkyIslandLanternLight");
             lanternLight.transform.SetParent(player.transform, false);
-            lanternLight.transform.localPosition = new Vector3(0f, 2.2f, 0.4f);
+            // 高度读云蚋那边的同一个常量：看见的火光就是云蚋绕着打转的那一处（SkyIslandMosquitoRules.LanternHaloHeight）。
+            lanternLight.transform.localPosition = new Vector3(0f, SkyIslandMosquitoRules.LanternHaloHeight, 0.4f);
             Light light = lanternLight.AddComponent<Light>();
             light.type = LightType.Point;
             light.color = LanternColor;
@@ -556,7 +558,8 @@ namespace BossRush
                 else if (left <= SkyIslandFieldcraftRules.BuffLowSeconds && !lanternLowWarned)
                 {
                     lanternLowWarned = true;
-                    session.Announce(SkyIslandFieldcraftRules.BuffLow(SkyIslandFieldBuff.Lantern), false);
+                    // 灯下聚着的那一群会在灯灭的一瞬间回到脖子上：提醒里带上还剩几只，玩家才来得及扇掉或走开。
+                    session.Announce(SkyIslandFieldcraftRules.LanternLow(gnats != null ? gnats.Alive : 0), false);
                 }
             }
             if (incenseUntil > 0f)
@@ -596,7 +599,9 @@ namespace BossRush
             }
             bool stormPending = session.BothBeaconsLit && !session.StormResolved;
             // 岛上的灯凑满十盏之后夜里不再起风；带着噬风之核时大风只算微风。
-            int gale = SkyIslandFieldcraftRules.WindLevel(SkyIslandFieldcraftRules.NightWind(night, lightsLit), onBridge, onBoardwalk, stormPending);
+            // 用**真的建起来的**盏数：锚点缺失的那几盏不亮不暖（见 AddFire），不能替玩家把夜风关掉。
+            int gale = SkyIslandFieldcraftRules.WindLevel(
+                SkyIslandFieldcraftRules.NightWind(night, lightsLit - missingFireAnchors), onBridge, onBoardwalk, stormPending);
             int level = SkyIslandFieldcraftRules.CoreEased(gale, CarriesCore());
             // 灶火与风晶灯旁、驱风香什么风都挡；只有风灯时大风里只挡一半。
             SkyIslandWarmth warmth = SkyIslandFieldcraftRules.Warmth(NearFire(player.transform.position), incenseUntil > 0f, lanternUntil > 0f);
@@ -660,7 +665,10 @@ namespace BossRush
             if (marker == null)
             {
                 // 锚点不在场景里（布局改名或场景包不对）就少一处火：说出来，别让「这里该有灶火」静默消失。
-                Debug.LogWarning("[SkyIslandFieldcraft] 灯的锚点不在场景里：" + markerName);
+                // 并且从「十盏免风」的计数里扣掉它：这盏灯既不亮也不暖，还替玩家把夜风关了，
+                // 降级方向就和玩家看到的完全相反（数得上、看不见、烤不着）。手记与面板照旧显示存档记录的盏数。
+                missingFireAnchors++;
+                Debug.LogWarning("[SkyIslandFieldcraft] 灯的锚点不在场景里，这一盏不计入十盏免风：" + markerName);
                 return;
             }
             bool hearth = Array.IndexOf(SkyIslandLights.HearthMarkers, markerName) >= 0;
@@ -774,6 +782,8 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             Current = null;
+            // 采集点光斑现在用 SkyIslandUiArt.GetRadialGlow() 那张共享图（面板立绘落影也用同一张），
+            // 销毁归 SkyIslandUiArt.ResetStaticCaches 管，这里不再重复持有。
         }
     }
 }

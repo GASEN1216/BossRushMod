@@ -92,8 +92,8 @@ namespace BossRush
                     "A lunch box packed by Qinghe: rice topped with homecoming greens and a little paper pinwheel. Restores energy and water, and a little health. Once the garden has reopened (Qinghe has her planting record back), eating it on the Qinglan isles counts as her homecoming meal: a little more max health and running speed for this raid, shared with her own meal. From then on it can also be cooked at Qinghe's stove from greenear and driftwood; Sky Islands crates sometimes hold one.",
                     "sky_island_homecoming_bento", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandHomecomingBento), 3, 10, 2.5f, 35f, 20f, 15),
                 Make(BossRushItemIds.SkyIslandStarmossSalve, Kind.Medicine, "BossRush_SkyIsland_StarmossSalve",
-                    "眠苔用星苔熬的药膏，抹上去凉丝丝的，伤口很快就不疼了。回复生命——不用付眠苔苔药的钱，也不用等她下一副药熬好。被云蚋叮痒了抹一点就止痒，这一阵再被叮也不痒（眠苔的苔药管伤，药膏管痒）。在眠苔的药臼用云苔纤维和一片风晶碎片配；天空岛的箱子里偶尔能找到。",
-                    "A salve Miantai boils down from star moss. It goes on cool and the wound stops hurting almost at once. Restores health — without paying for Miantai's moss remedy or waiting for her next dose. A dab stops cloud-gnat itching, and new bites will not itch for a while (Miantai's remedy is for wounds, the salve for itching). Ground at Miantai's mortar from cloudmoss fiber and a windcrystal shard; Sky Islands crates sometimes hold one.",
+                    "眠苔用星苔熬的药膏，抹上去凉丝丝的，伤口很快就不疼了。回复生命——不用付眠苔苔药的钱，也不用等她下一副药熬好。在岛上抹一层就止住云蚋的痒，这一阵再被叮也不痒；夜里出门前先抹上同样管用（眠苔的苔药管伤，药膏管痒）。在眠苔的药臼用云苔纤维和一片风晶碎片配；天空岛的箱子里偶尔能找到。",
+                    "A salve Miantai boils down from star moss. It goes on cool and the wound stops hurting almost at once. Restores health — without paying for Miantai's moss remedy or waiting for her next dose. Rubbed on anywhere on the isles it stops cloud-gnat itching, and new bites will not itch for a while; applying it before you head out at night works just as well (Miantai's remedy is for wounds, the salve for itching). Ground at Miantai's mortar from cloudmoss fiber and a windcrystal shard; Sky Islands crates sometimes hold one.",
                     "sky_island_starmoss_salve", SkyIslandItemRules.ValueOf(BossRushItemIds.SkyIslandStarmossSalve), 4, 10, 3f, 0f, 0f, 40),
 
                 // ---- 内容批次三：群岛材料（只从岛上的采集点出；晴岚风晶由风晶碎片凑整）----
@@ -128,8 +128,8 @@ namespace BossRush
 
                 // ---- 内容批次三：局内耗材（只在岛上的合成台做；效果只在晴岚群岛上生效，离岛失效）----
                 Consumable(BossRushItemIds.SkyIslandWindLantern, SkyIslandFieldBuff.Lantern, "BossRush_SkyIsland_WindLantern",
-                    "浮木作骨、云苔纤维糊罩，里面一截慢慢烧的芯。在晴岚群岛上点亮约 4 分钟：微风里不积寒意，大风里火苗压低、只挡得住一半；夜里照亮身边。归航钟庭那盏风晶灯要挂一盏风灯。在浮舟的渡口工台制作。",
-                    "A driftwood frame, a cloudmoss paper shade and a slow wick. On the Qinglan isles it burns for about 4 minutes: no chill builds in a breeze, and in a gale the flame gutters and holds off only half; at night it lights your way. The windcrystal lamp at the Homecoming Bell Court hangs one. Made at Fuzhou's dock workbench.",
+                    "浮木作骨、云苔纤维糊罩，里面一截慢慢烧的芯。在晴岚群岛上点亮约 4 分钟：微风里不积寒意，大风里火苗压低、只挡得住一半；夜里照亮身边。夜里的云蚋循着光聚到灯罩上——盯着火的那几只不咬人，也躲不开子弹；灯一灭它们就都落到你身上，趁亮着扇掉或打掉。归航钟庭那盏风晶灯要挂一盏风灯。在浮舟的渡口工台制作。",
+                    "A driftwood frame, a cloudmoss paper shade and a slow wick. On the Qinglan isles it burns for about 4 minutes: no chill builds in a breeze, and in a gale the flame gutters and holds off only half; at night it lights your way. Cloud gnats come to the shade for the light — fixed on the flame they will not bite, and they cannot dodge a bullet; the moment it goes out they all drop onto you, so clear them while it burns. The windcrystal lamp at the Homecoming Bell Court hangs one. Made at Fuzhou's dock workbench.",
                     "sky_island_wind_lantern", 2, 5, 1.2f),
                 Consumable(BossRushItemIds.SkyIslandWindwardIncense, SkyIslandFieldBuff.Incense, "BossRush_SkyIsland_WindwardIncense",
                     "云苔与青穗草捣成的香饼，烟是暖的。在晴岚群岛上焚起约 5 分钟：什么风都侵不了身——夜里的桥上、噬风将至时的栈道也一样——耐力恢复加快。镜水寺那盏风晶灯要在香炉里焚一炷。在晴禾的灶台或眠苔的药臼制作。",
@@ -287,7 +287,8 @@ namespace BossRush
                     case Kind.Medicine:
                         Drug drug = Component<Drug>(item);
                         drug.healValue = def.Heal;
-                        // 内容批次四：星苔药膏顺带止痒（被云蚋叮痒时能用，这一阵再被叮也不痒）。满血又不痒时两项都不可用、按钮置灰。
+                        // 内容批次四：星苔药膏顺带止痒（在岛上随时能抹，之后这一阵再被叮也不痒——防痒本来就该在出门前用）。
+                        // 满血又离岛时两项都不可用、按钮置灰。
                         SkyIslandFieldcraftUsage soothe = Component<SkyIslandFieldcraftUsage>(item);
                         soothe.buff = (int)SkyIslandFieldBuff.Soothe;
                         AttachUsage(item, def.UseTime, drug, soothe);

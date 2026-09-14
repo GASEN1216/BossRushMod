@@ -1,6 +1,23 @@
 // ============================================================================
 // SkyIslandStoryPresentation.cs - 天空岛剧情/装置面板
 // ============================================================================
+// 【为什么这块面板还在，而不是全走官方对话】
+//   叙事已经搬去官方对话了（`SkyIslandResidentDialogue`，官方 `Dialogues.DialogueUI` +
+//   我们自己封装的 `DialogueManager`）。这块自绘面板保留下来只为一件事：**模态**。
+//   官方 `DialogueUI` 只给「台词 + 纯文本选项」，**给不了 `timeScale = 0`**，
+//   而面板里挂着眠苔的苔药、浮舟的整备与三处合成台——
+//   没有模态门，它就是战斗中的免费暂停 + 回血站。
+//   模态由共享租约压 `Time.timeScale`（口径见 `SkyIslandSession` 的面板门一节），
+//   蚊群、灶火计时、撤离读条都跟着冻结，这是**被依赖的行为**，不是副作用。
+//   分工因此固定下来：**说话走官方，办事留这里**。要动这条先读
+//   `SkyIslandResidentDialogue.cs` 的文件头。
+//
+//   顺带记下**官方任务系统 `Duckov.Quests` 刻意不接**：`Quest`/`Task` 是 MonoBehaviour prefab、
+//   `QuestGiverID` 是写死的 enum（没有 mod 的位置）、`QuestManager` 会把 mod 任务序列化进
+//   官方存档键（卸载 mod 后官方对缺失 id 打 LogError，属 AGENTS §10 需 owner 签字），
+//   而岛上委托是按出击计、不进存档的。完整理由归档在
+//   `tests/SkyIslandOfficialApiReuseGuard.py` 的文件头与 `CODE_REVIEW_FINDINGS.md`。
+//
 // 【为什么重写布局】
 //   旧版把每个元素钉在写死的 anchoredPosition 上（标题 y=275、正文 y=139、
 //   第 i 个选项 y=5-i*52、「继续」y=-282），字号也写死、`overflowMode` 用 TMP 默认的
@@ -55,19 +72,98 @@ namespace BossRush
         private const float Gap = 14f;
         private const float ContentWidth = PanelWidth - Pad * 2f;
 
-        /// <summary>插图横幅的最大高度。容不下时它第一个被压缩，因为它只是观感。</summary>
-        private const float BannerMaxHeight = 232f;
-        private const float BannerMinHeight = 96f;
+        /// <summary>
+        /// 主视觉（hero）的高度上下限。**它是全出血的**：左右顶到面板边、上边就是面板顶边，
+        /// 圆角由背景层的 Mask 切。容不下时它在正文之后第二个被压缩，但**不会被整条撤掉**——
+        /// 标题现在压在它上面。
+        ///
+        /// 上限 264：横幅 1024×288 铺满 880 宽正好 247，留一点余量给将来换比例的图。
+        /// 下限 172：没有横幅（居民面板只有立绘）时 hero 退化成一条纯底图的表头，
+        /// 仍然要装得下标题；真正的地板是 <c>max(HeroMinHeight, 内容高 + 上下 inset)</c>。
+        /// </summary>
+        private const float HeroMaxHeight = 264f;
+        private const float HeroMinHeight = 172f;
+
+        /// <summary>主视觉里内容（立绘 / 标题）距 hero 边缘的内边距。</summary>
+        private const float HeroInset = 22f;
 
         /// <summary>
-        /// 头像边长。立绘源图是 512×512，132 会把细节丢掉一大半，且居民面板的表头会显得空。
-        /// 160 是离线预览（tools/preview_sky_island_panel.py）比出来的：既用上了立绘，
-        /// 又不会把只有一两个选项的居民面板撑得过高。
+        /// 主视觉底部压暗占 hero 高度的比例（实底带 + 上方淡出的总高）。
         /// </summary>
-        private const float PortraitSize = 160f;
+        private const float HeroFadeFraction = 0.62f;
+
+        /// <summary>
+        /// 标题实底带的不透明度，以及带子上方淡出段的最小高度。
+        ///
+        /// 【为什么不能只用一条渐变（CR-2026-09-13-007）】<see cref="SkyIslandUiArt.GetBannerFade"/>
+        /// 是 <c>alpha = t²</c>，不透明度全堆在底边。标题上沿离 hero 底边 123 px、渐隐总高 153 px 时，
+        /// 那里的 t=0.44、alpha 只有 **0.19**——标题最上面那行等于直接压在没处理过的插图上，
+        /// 亮云那一块就读不出来了。这和区域大标题压暗底那条 bug 是同一类：
+        /// **把不透明度放到了文字不在的地方**。
+        ///
+        /// 所以改成「实底带罩住标题 + 带子上方再淡出到透明」。0.82 是按最坏情况定的：
+        /// 即使底下是纯白（亮度 1.0），标题也有 10.7:1；插图最亮那张的 p99（0.747）下是 12.7:1。
+        /// 带子留 18% 透光，插图的颜色仍然透得出来，不是一条纯色横杠。
+        /// </summary>
+        private const float HeroTitleBandAlpha = 0.82f;
+        private const float HeroFadeMin = 56f;
+
+        /// <summary>
+        /// 整屏底图的压暗量。**不烤进图里**，因为压暗量是跟正文对比度绑定的，
+        /// 必须跟着 <see cref="BossRushUIColors.Surface"/> 走（口径同 BossRushUI_图集规格.md
+        /// 里「描边不要烤进九宫格」那条）。
+        ///
+        /// 0.72 是按**实测**最坏情况定的：13 张模糊底图里最亮那张（skyisland_bg_S2）的 p99 亮度是
+        /// 0.747，压完之后正文 TextSecondary 仍有约 5.0:1，过 4.5:1。
+        /// 中位亮度只有 0.098–0.397，所以绝大多数区域实际余量大得多。
+        /// 再往下压就守不住了；再往上压图就看不见了——那正是这一轮要消灭的「纯色板」。
+        /// </summary>
+        private const float BackgroundTintAlpha = 0.72f;
+
+        /// <summary>
+        /// 选项行底的不透明度。**刻意不满**：让区域底图从行底透出来，行才像「浮在这张图上」，
+        /// 而不是一排糊在图上的黑块。
+        ///
+        /// 0.78 是下界不是随手取的：再透一点，描边对行底的对比度就跌破 WCAG 1.4.11 的 3:1
+        /// （实算 0.78 → 3.09:1、0.65 → 2.96:1），而那圈边是「这一行是可点控件」的唯一证据。
+        /// 标签文字这边余量很大（13:1 以上），瓶颈自始至终是边。
+        /// </summary>
+        private const float ChoiceRowAlpha = 0.78f;
+
+        /// <summary>
+        /// 立绘在主视觉里的边长。
+        ///
+        /// 208 而不是原来的 160：去掉圆角底板之后立绘直接站在插图上，160 的半身像放在 880 宽的
+        /// 面板里像一张贴纸。六张源图实测 alpha **竖向铺满**（内容高 100%、只有左右留白 77–97%），
+        /// 所以按边长放大不会出现「人缩在角落」——`preserveAspect` 会把整幅高度用满。
+        ///
+        /// 立绘现在贴**主视觉右下角**、不留 inset：它被面板的圆角一起切，像人站在画面里，
+        /// 而不是浮在一个方框里。标题因此让到左边，两者不再争同一块高度
+        /// （旧写法 `titleBlock = max(PortraitSize, titleHeight)` 会被 160 的立绘顶出一条
+        /// 204 的实底带，把 247 高的插图盖掉 83%）。
+        /// </summary>
+        private const float PortraitSize = 208f;
+
+        /// <summary>
+        /// 立绘脚下落影的尺寸（相对 <see cref="PortraitSize"/>）。
+        /// 抠图直接压在插图上时边缘会和背景糊在一起、人像「浮」着；脚下垫一团横向柔光就钉住了。
+        /// 用的是 <see cref="SkyIslandUiArt.GetRadialGlow"/> 那张共享径向图，非等比拉成扁椭圆。
+        /// </summary>
+        private const float PortraitShadowWidth = 1.10f;
+        private const float PortraitShadowHeight = 0.34f;
         private const float TitleMinHeight = 42f;
-        private const float TitleFontMin = 22f;
-        private const float TitleFontMax = 31f;
+        // 字号整体上调一档（2026-09-13）：1920×1080 参考画布上 20/21/31 偏小，
+        // 玩家反馈「字比较小」。正文与选项各 +2，标题上限 +3、下限 +2。
+        private const float TitleFontMin = 24f;
+        private const float TitleFontMax = 34f;
+
+        /// <summary>
+        /// 正文与选项字号。量高的探针与实际摆放必须用同一个值，所以收成常量。
+        /// 正文 24：正文现在只剩一句导语（长文去了官方笔记图鉴与官方对话），
+        /// 它是面板里**第一眼要读的主信息**，不该再是一行小灰字。
+        /// </summary>
+        private const float BodyFont = 24f;
+        private const float ChoiceFont = 23f;
 
         /// <summary>正文压到这个高度还放不下就上滚动条，不再继续压。</summary>
         private const float BodyMinHeight = 76f;
@@ -76,7 +172,6 @@ namespace BossRush
         private const float ChoiceMinHeight = 48f;
         private const float ChoicePadY = 11f;
         private const float ChoicePadX = 18f;
-        private const float FooterHeight = 48f;
 
         /// <summary>
         /// 选项左侧数字键帽占掉的宽度（键帽 24 + 间距 12）。量高与摆放必须扣同一个数，
@@ -87,6 +182,24 @@ namespace BossRush
 
         /// <summary>正文右侧给滚动条留的空。<see cref="BossRushUI.ConfigureScrollRect"/> 要求 20px。</summary>
         private const float ScrollbarGutter = 20f;
+
+        /// <summary>
+        /// 标题下分隔线的高度。**不能是 1**：图集里的 <c>divider</c>（8×8 / border 2）亮带落在
+        /// 可拉伸中心区，rect 高 1 时上下 border 各分到 0.5px、中心区归零，线整条画不出来。
+        /// 版式算术（<c>dividerBlock</c>）与布局属性测试都读这一个常量，不要在别处写第二份。
+        /// </summary>
+        private const float DividerHeight = 8f;
+
+        /// <summary>
+        /// 选项错峰入场：第 i 行延迟 <c>i×ChoiceStagger</c> 秒，各自 <c>ChoiceEntrance</c> 秒
+        /// ease-out 淡入并上浮 <c>ChoiceEntranceRise</c> 像素。最多 6 个选项，尾巴收在约 0.29 秒。
+        ///
+        /// 只改 CanvasGroup.alpha 与 anchoredPosition，**不碰 interactable**：玩家第一帧就按数字键
+        /// 照常生效。动效绝不能变成输入延迟。重开面板（选项回执）不重播，与打开动画同一条口径。
+        /// </summary>
+        private const float ChoiceStagger = 0.025f;
+        private const float ChoiceEntrance = 0.16f;
+        private const float ChoiceEntranceRise = 6f;
 
         #endregion
 
@@ -141,7 +254,11 @@ namespace BossRush
                 ZombieModeUIHelper.GetReferenceViewportSize().y - 140f, 520f, 980f);
 
             // ---- 1. 先把每块的自然高度量出来（此时还没决定面板多高）----
-            float titleWidth = portrait != null ? ContentWidth - PortraitSize - Gap : ContentWidth;
+            // 标题压在主视觉上、靠左；立绘贴右下角，所以标题的可用宽度是「面板宽 − 左 inset − 立绘 − 间距」。
+            float heroContentWidth = PanelWidth - HeroInset * 2f;
+            float titleWidth = portrait != null
+                ? PanelWidth - HeroInset - PortraitSize - Gap
+                : heroContentWidth;
             TextMeshProUGUI titleText = MakeText(canvas.transform, title, TitleFontMax,
                 BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
             titleText.enableAutoSizing = true;
@@ -156,21 +273,28 @@ namespace BossRush
             titleText.fontSizeMax = TitleFontMax;
             titleText.overflowMode = TextOverflowModes.Ellipsis;
 
-            float headerHeight = portrait != null ? Mathf.Max(PortraitSize, titleHeight) : titleHeight;
-
-            float bannerHeight = 0f;
+            // ---- 主视觉：标题（与立绘）压在插图上，插图全出血 ----
+            // 旧版是「插图一条 + 表头一条」两块各占高度，插图只铺 ContentWidth、
+            // 剩下大半个面板是一块纯色板。现在合成一块：插图铺满面板宽、标题压在它的渐隐上。
+            // 立绘不再和标题抢同一块高度（它在右边、贴底），所以标题块就是标题本身。
+            float titleBlock = titleHeight;
+            float heroFloor = Mathf.Max(HeroMinHeight, titleBlock + HeroInset * 2f);
+            // 但 hero 至少要装得下立绘：立绘贴底，高度就是它的边长。
+            if (portrait != null) heroFloor = Mathf.Max(heroFloor, PortraitSize);
+            float heroArtHeight = 0f;
             if (banner != null && banner.rect.height > 0f)
             {
                 float aspect = banner.rect.width / banner.rect.height;
-                bannerHeight = Mathf.Clamp(ContentWidth / Mathf.Max(0.01f, aspect),
-                    BannerMinHeight, BannerMaxHeight);
+                // **按 PanelWidth 算，不是 ContentWidth**：全出血。
+                heroArtHeight = Mathf.Min(PanelWidth / Mathf.Max(0.01f, aspect), HeroMaxHeight);
             }
+            float heroHeight = Mathf.Max(heroFloor, heroArtHeight);
 
             var choiceHeights = new List<float>(choices.Count);
             float choicesHeight = 0f;
             for (int i = 0; i < choices.Count; i++)
             {
-                TextMeshProUGUI probe = MakeText(canvas.transform, choices[i].Label, 21f,
+                TextMeshProUGUI probe = MakeText(canvas.transform, choices[i].Label, ChoiceFont,
                     BossRushUIColors.TextPrimary, TextAlignmentOptions.Left);
                 float h = Mathf.Max(ChoiceMinHeight,
                     BossRushUI.MeasureTextHeight(probe, ChoiceLabelWidth, 26f) + ChoicePadY * 2f);
@@ -183,33 +307,38 @@ namespace BossRush
                 choicesHeight += h + (i > 0 ? Gap * 0.5f : 0f);
             }
 
-            TextMeshProUGUI bodyText = MakeText(canvas.transform, text, 20f,
-                BossRushUIColors.TextSecondary, TextAlignmentOptions.TopLeft);
-            float bodyNatural = Mathf.Min(BodyPreferredMax,
-                BossRushUI.MeasureTextHeight(bodyText, ContentWidth - ScrollbarGutter, BodyMinHeight));
+            // 正文用 TextPrimary 不是 TextSecondary：它是主信息不是注脚。
+            TextMeshProUGUI bodyText = MakeText(canvas.transform, text, BodyFont,
+                BossRushUIColors.TextPrimary, TextAlignmentOptions.TopLeft);
+            float bodyNatural = BossRushUI.MeasureTextHeight(bodyText,
+                ContentWidth - ScrollbarGutter, BodyMinHeight);
 
-            // ---- 2. 按优先级挤：页脚 > 选项 > 标题 > 正文 > 插图 ----
-            float dividerBlock = 1f + Gap;
-            float chrome = Pad * 2f + headerHeight + dividerBlock + choicesHeight
-                + FooterHeight + Gap * 3f;
-            float bodyHeight = bodyNatural;
-            float panelHeight = chrome + bannerHeight + (bannerHeight > 0f ? Gap : 0f) + bodyHeight;
+            // ---- 2. 按优先级挤：页脚 > 选项 > 正文 > 主视觉 ----
+            // 主视觉**不再能被整条撤掉**（标题在它上面），只能压到 heroFloor；
+            // 从上往下依次是：hero（无上 Pad，全出血）→ Gap → 分隔线 → Gap → 正文
+            // → Gap → 选项 → 下 Pad。三个 Gap 里有一个算在 dividerBlock 里。
+            //
+            // 页脚「继续旅程」已删（2026-09-13）：它的 onClick 就是 Dispose()，与 ESC 完全等价
+            // （OnCancel 与 Tick 里的 Escape 分支），纯冗余还占掉 48 + 14 px。
+            // 关闭提示改成主视觉右上角的 ESC 键帽。
+            float dividerBlock = DividerHeight + Gap;
+            float chrome = Pad + heroHeight + dividerBlock + choicesHeight + Gap * 2f;
+            // 限制的是视口，不能截断自然高度，否则长正文不会建立完整的滚动内容。
+            float bodyHeight = Mathf.Min(BodyPreferredMax, bodyNatural);
+            float panelHeight = chrome + bodyHeight;
             if (panelHeight > maxPanelHeight)
             {
                 float excess = panelHeight - maxPanelHeight;
                 float bodyGive = Mathf.Min(excess, Mathf.Max(0f, bodyHeight - BodyMinHeight));
                 bodyHeight -= bodyGive;
                 excess -= bodyGive;
-                if (excess > 0f && bannerHeight > 0f)
+                if (excess > 0f)
                 {
-                    float bannerGive = Mathf.Min(excess, Mathf.Max(0f, bannerHeight - BannerMinHeight));
-                    bannerHeight -= bannerGive;
-                    excess -= bannerGive;
-                    // 压到下限还不够就整条撤掉插图：观感让位给「按钮必须点得到」。
-                    if (excess > 0f) { excess -= bannerHeight + Gap; bannerHeight = 0f; }
+                    float heroGive = Mathf.Min(excess, Mathf.Max(0f, heroHeight - heroFloor));
+                    heroHeight -= heroGive;
+                    chrome -= heroGive;
                 }
-                panelHeight = Mathf.Min(maxPanelHeight,
-                    chrome + bannerHeight + (bannerHeight > 0f ? Gap : 0f) + bodyHeight);
+                panelHeight = Mathf.Min(maxPanelHeight, chrome + bodyHeight);
             }
 
             // ---- 3. 从上往下摆 ----
@@ -217,24 +346,31 @@ namespace BossRush
                 new Vector2(PanelWidth, panelHeight));
             Image surface = panel.gameObject.AddComponent<Image>();
             surface.color = BossRushUIColors.Surface;
-            BossRushUI.ApplyPanelSkin(surface, 18);
+            BossRushUI.ApplyPanelSkin(surface, 18, BossRushUISkinPart.Panel);
 
-            float cursor = panelHeight * 0.5f - Pad;   // 面板局部坐标，从顶边往下走
+            float cursor = panelHeight * 0.5f;   // 面板局部坐标；hero 全出血，顶上没有 Pad
 
-            if (bannerHeight > 0f)
-            {
-                BuildBanner(panel, banner, bannerHeight, cursor);
-                cursor -= bannerHeight + Gap;
-            }
+            // 背景层必须是**第一个**子物体：它在面板底图之上、在所有内容之下。
+            // 主视觉也建在里面，这样一个 Mask 同时把整屏底图与插图切成面板的圆角。
+            RectTransform background = BuildBackground(panel,
+                SkyIslandUiArt.GetPanelBackground(banner));
+            BuildHero(background, titleText, portrait, banner, heroHeight, titleWidth, cursor);
+            cursor -= heroHeight + Gap;
 
-            BuildHeader(panel, titleText, portrait, headerHeight, titleWidth, cursor);
-            cursor -= headerHeight + Gap;
+            // 描边在背景层**之后**加，否则会被整屏底图盖住。
+            // 走独立 Image + Stroke token：图集里烤进 panel_surface 的那圈内描边，
+            // 被 BossRushUIColors.Surface(0.045,0.055,0.065) 乘完之后屏幕上只剩 2.9/255 的通道差
+            // （实算），等于没有。面板要有边，边就必须自己有颜色。
+            BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUIColors.Stroke);
 
             RectTransform divider = MakeRect(panel, "Divider",
-                new Vector2(0f, cursor - 0.5f), new Vector2(ContentWidth, 1f));
+                new Vector2(0f, cursor - DividerHeight * 0.5f), new Vector2(ContentWidth, DividerHeight));
             Image dividerImage = divider.gameObject.AddComponent<Image>();
             dividerImage.color = BossRushUIColors.Divider;
             dividerImage.raycastTarget = false;
+            // 旧写法是 ContentWidth×1 的裸 Image（没有 sprite）：1px 的纯色四边形在非整数画布
+            // 缩放下会被采样吃掉，时有时无。divider 图自带 1px 高光 + 1px 暗边，接缝也柔。
+            BossRushUI.ApplyPanelSkin(dividerImage, 2, BossRushUISkinPart.Rule);
             cursor -= dividerBlock;
 
             BuildBody(panel, bodyText, bodyHeight, bodyNatural, cursor);
@@ -243,12 +379,10 @@ namespace BossRush
             for (int i = 0; i < choices.Count; i++)
             {
                 float h = choiceHeights[i];
-                BuildChoice(panel, choices[i], i, h, cursor);
+                BuildChoice(panel, choices[i], i, h, cursor, !reopening);
                 cursor -= h + Gap * 0.5f;
             }
             choiceCount = choices.Count;
-
-            BuildFooter(panel, panelHeight);
             if (previousSelected >= 0) Select(previousSelected);
 
             if (!reopening) BossRushUI.PlayOpenAnimation(panel.gameObject);
@@ -283,58 +417,190 @@ namespace BossRush
 
         #region 分块构建
 
-        private static void BuildBanner(RectTransform panel, Sprite banner, float height, float top)
+        /// <summary>
+        /// 整屏底图层。返回的容器同时承载**底图**与**主视觉**，两者共用一个 Mask 切圆角。
+        ///
+        /// 【为什么面板底要是一张图】改之前面板只有顶上一条 ContentWidth 宽的插图，
+        /// 剩下大半屏是 <c>BossRushUIColors.Surface</c> 的纯色板——玩家一眼看出「这是代码画的方框」。
+        /// 现在整块面板底铺的是那一区场景横幅派生出来的模糊底图
+        /// （<c>tools/gen_sky_island_panel_backgrounds.py</c>，220×236，为模糊而生所以小图足够），
+        /// 每个区域有自己的色调：钟庭偏暖、听雨洞偏青。
+        ///
+        /// 【为什么要 Mask】底图是一张矩形贴图，直接铺上去四角会戳出面板的圆角。
+        /// Mask 以面板同一张九宫格底图当模板（<c>showMaskGraphic=false</c>，模板本身不画、只写模板缓冲）。
+        /// 容器向内缩 1px：模板是二值的，被切出来的边是硬边；留 1px 让面板自己那圈带抗锯齿的
+        /// 圆角露在外面，接缝就看不出来了（描边也正好压在这一圈上）。
+        ///
+        /// fail-open：底图缺失时什么都不铺，面板退回纯色底，照常能开。
+        /// </summary>
+        private static RectTransform BuildBackground(RectTransform panel, Sprite background)
         {
-            RectTransform frame = MakeRect(panel, "Banner",
-                new Vector2(0f, top - height * 0.5f), new Vector2(ContentWidth, height));
-            Image image = frame.gameObject.AddComponent<Image>();
-            image.sprite = banner;
-            image.type = Image.Type.Simple;
-            // 横幅按「填满并裁剪」而不是留黑边：preserveAspect 会在两侧留出背景色，
-            // 而面板底色和插图色调不一致，看着像图没铺满。
-            image.preserveAspect = false;
-            image.raycastTarget = false;
-            // 底部压一层竖向渐隐，让插图和正文之间不是硬切。
-            // **必须是真渐变**：纯色半透明横条会有上下两条硬边，比不加还难看。
-            Sprite gradient = SkyIslandUiArt.GetBannerFade();
-            if (gradient == null) return;
-            RectTransform fade = MakeRect(frame, "Fade",
-                new Vector2(0f, -height * 0.5f + 22f), new Vector2(ContentWidth, 44f));
-            Image fadeImage = fade.gameObject.AddComponent<Image>();
-            fadeImage.sprite = gradient;
-            fadeImage.type = Image.Type.Simple;
-            fadeImage.raycastTarget = false;
+            RectTransform clip = MakeRect(panel, "Background", Vector2.zero, Vector2.zero);
+            clip.anchorMin = Vector2.zero;
+            clip.anchorMax = Vector2.one;
+            clip.offsetMin = new Vector2(1f, 1f);
+            clip.offsetMax = new Vector2(-1f, -1f);
+
+            Image stencil = clip.gameObject.AddComponent<Image>();
+            stencil.color = Color.white;
+            stencil.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(stencil, 18, BossRushUISkinPart.Panel);
+            Mask mask = clip.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+
+            if (background != null)
+            {
+                Image art = Stretched(clip, "Art");
+                art.sprite = background;
+                art.type = Image.Type.Simple;
+                // 底图已经模糊过，非等比拉伸看不出来；preserveAspect 反而会在两侧留出空档。
+                art.preserveAspect = false;
+
+                // 压暗层：压暗量跟正文对比度绑定，所以归代码管、不烤进图里
+                // （同 BossRushUI_图集规格.md 里「描边不要烤进九宫格」那条）。
+                Image tint = Stretched(clip, "Tint");
+                Color tinted = BossRushUIColors.Surface;
+                tinted.a = BackgroundTintAlpha;
+                tint.color = tinted;
+            }
+            return clip;
         }
 
-        private static void BuildHeader(RectTransform panel, TextMeshProUGUI title, Sprite portrait,
-            float height, float titleWidth, float top)
+        /// <summary>拉满父矩形、不吃点击的 Image。</summary>
+        private static Image Stretched(RectTransform parent, string name)
         {
-            RectTransform header = MakeRect(panel, "Header",
-                new Vector2(0f, top - height * 0.5f), new Vector2(ContentWidth, height));
-            float titleX = 0f;
+            RectTransform rect = MakeRect(parent, name, Vector2.zero, Vector2.zero);
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+            Image image = rect.gameObject.AddComponent<Image>();
+            image.raycastTarget = false;
+            return image;
+        }
+
+        /// <summary>
+        /// 主视觉：**全出血**的区域插图 + 压在它下部的标题（与立绘）。
+        ///
+        /// 建在背景层里，所以顶上两个角跟着面板一起被切圆。<paramref name="top"/> 是面板顶边
+        /// （不是 <c>顶边 - Pad</c>）：插图左右顶到面板边、上边顶到面板顶边，这就是「出血」。
+        ///
+        /// 【标题为什么能压在图上还读得清】底部渐隐的高度取
+        /// <c>max(hero 高 × HeroFadeFraction, 标题块 + 上下 inset)</c>——
+        /// 后面那一半是兜底：两行的长标题不会有一行骑到亮云上。渐隐本身是
+        /// <see cref="SkyIslandUiArt.GetBannerFade"/> 的真渐变（下端接近面板底色、上端全透），
+        /// 不是一条半透明横条（那会有上下两条硬边）。
+        ///
+        /// 没有插图时（居民面板只有立绘）hero 退化成一条只有底图的表头，标题照常压在渐隐上。
+        /// </summary>
+        private static void BuildHero(RectTransform background, TextMeshProUGUI title, Sprite portrait,
+            Sprite banner, float height, float titleWidth, float top)
+        {
+            RectTransform hero = MakeRect(background, "Hero",
+                new Vector2(0f, top - height * 0.5f), new Vector2(PanelWidth, height));
+
+            if (banner != null)
+            {
+                Image art = Stretched(hero, "Art");
+                art.sprite = banner;
+                art.type = Image.Type.Simple;
+                // 按「填满并裁剪」而不是留黑边：preserveAspect 会在两侧留出背景色，
+                // 而面板底色和插图色调不一致，看着像图没铺满。
+                art.preserveAspect = false;
+            }
+
+            float titleHeight = title.rectTransform.sizeDelta.y;
+            float titleBlock = portrait != null ? Mathf.Max(PortraitSize, titleHeight) : titleHeight;
+            // 标题在 titleBlock 里垂直居中，所以它的上沿离 hero 底边 inset + titleBlock/2 + titleHeight/2；
+            // 再加一个 inset 当余量，就是实底带要有的高度。
+            // 立绘不算进来——它是一块自带描边的不透明底板，不需要垫暗；
+            // 按 titleBlock 算的话居民面板会被 160 的立绘顶出一条 204 的带子，把插图盖掉 83%。
+            float bandHeight = Mathf.Min(height,
+                HeroInset * 2f + titleBlock * 0.5f + titleHeight * 0.5f);
+
+            RectTransform band = MakeRect(hero, "TitleBand",
+                new Vector2(0f, -height * 0.5f + bandHeight * 0.5f),
+                new Vector2(PanelWidth, bandHeight));
+            Image bandImage = band.gameObject.AddComponent<Image>();
+            Color banded = BossRushUIColors.Surface;
+            banded.a = HeroTitleBandAlpha;
+            bandImage.color = banded;
+            bandImage.raycastTarget = false;
+
+            // 带子上方再淡出到全透，免得带子的上沿是一条硬边。
+            Sprite gradient = SkyIslandUiArt.GetBannerFade();
+            float falloff = Mathf.Min(height - bandHeight,
+                Mathf.Max(HeroFadeMin, height * HeroFadeFraction - bandHeight));
+            if (gradient != null && falloff > 1f)
+            {
+                RectTransform fade = MakeRect(hero, "Fade",
+                    new Vector2(0f, -height * 0.5f + bandHeight + falloff * 0.5f),
+                    new Vector2(PanelWidth, falloff));
+                Image fadeImage = fade.gameObject.AddComponent<Image>();
+                fadeImage.sprite = gradient;
+                fadeImage.type = Image.Type.Simple;
+                fadeImage.raycastTarget = false;
+                // 渐变图的下端是**全不透明**的面板底色，而带子只有 0.82；直接接会有一条亮缝。
+                // 让渐变整体乘上同一个 alpha，两者在接缝处就完全一致。
+                Color faded = Color.white;
+                faded.a = HeroTitleBandAlpha;
+                fadeImage.color = faded;
+            }
+
+            // 立绘与标题都建在渐隐**之后**，所以画在它上面。
+            float left = -PanelWidth * 0.5f + HeroInset;
+            float bottom = -height * 0.5f + HeroInset;
+
             if (portrait != null)
             {
-                RectTransform avatar = MakeRect(header,
-                    "Portrait", new Vector2(-(ContentWidth - PortraitSize) * 0.5f, 0f),
-                    new Vector2(PortraitSize, PortraitSize));
-                Image plate = avatar.gameObject.AddComponent<Image>();
-                plate.color = BossRushUIColors.SurfaceRaised;
-                BossRushUI.ApplyPanelSkin(plate, 12);
-                plate.raycastTarget = false;
-                RectTransform face = MakeRect(avatar, "Face", Vector2.zero,
-                    new Vector2(PortraitSize - 10f, PortraitSize - 10f));
+                // 【为什么没有底板了】立绘源图就是 512×512 的**抠图**（#ff00ff 色键 + soft matte，
+                // 见 tools/gen_sky_island_ui_art.py；实测四角 alpha=0、透明像素占 35–50%）。
+                // 旧写法在它底下垫了一块 SurfaceRaised 圆角板 + 描边，于是玩家看到的是
+                // 「一个黑方块里贴了张小图」而不是「一个人站在那里」。板子纯属多余。
+                //
+                // 现在贴主视觉的**右下角、不留 inset**：立绘被面板的圆角一起切（背景层的 Mask），
+                // 像人站在画面里。标题因此让到左边，两者不再争同一块高度。
+                float portraitX = PanelWidth * 0.5f - PortraitSize * 0.5f;
+                float portraitY = -height * 0.5f + PortraitSize * 0.5f;
+
+                // 落影先建、画在立绘下面：抠图直接压在插图上，边缘会和背景糊在一起、人像「浮」着。
+                // 脚下垫一团横向柔光就钉住了。非等比拉成扁椭圆，共享 SkyIslandUiArt 那张径向图。
+                Sprite glow = SkyIslandUiArt.GetRadialGlow();
+                if (glow != null)
+                {
+                    RectTransform shadow = MakeRect(hero, "PortraitShadow",
+                        new Vector2(portraitX, -height * 0.5f),
+                        new Vector2(PortraitSize * PortraitShadowWidth,
+                                    PortraitSize * PortraitShadowHeight));
+                    Image shadowImage = shadow.gameObject.AddComponent<Image>();
+                    shadowImage.sprite = glow;
+                    shadowImage.color = BossRushUIColors.Backdrop;
+                    shadowImage.raycastTarget = false;
+                }
+
+                RectTransform face = MakeRect(hero, "Portrait",
+                    new Vector2(portraitX, portraitY), new Vector2(PortraitSize, PortraitSize));
                 Image faceImage = face.gameObject.AddComponent<Image>();
                 faceImage.sprite = portrait;
                 faceImage.preserveAspect = true;   // 立绘不能拉变形
                 faceImage.raycastTarget = false;
-                titleX = (PortraitSize + Gap) * 0.5f;
             }
-            title.rectTransform.SetParent(header, false);
+
+            title.rectTransform.SetParent(hero, false);
             title.rectTransform.anchorMin = title.rectTransform.anchorMax =
                 title.rectTransform.pivot = new Vector2(0.5f, 0.5f);
-            title.rectTransform.sizeDelta = new Vector2(titleWidth, height);
-            title.rectTransform.anchoredPosition = new Vector2(titleX, 0f);
-            title.alignment = portrait != null ? TextAlignmentOptions.Left : TextAlignmentOptions.Center;
+            title.rectTransform.sizeDelta = new Vector2(titleWidth, titleHeight);
+            title.rectTransform.anchoredPosition =
+                new Vector2(left + titleWidth * 0.5f, bottom + titleBlock * 0.5f);
+            // 压在图上的标题一律左对齐：这是海报式主视觉的通用写法，居中会把画面挤没。
+            title.alignment = TextAlignmentOptions.Left;
+
+            // 关闭提示。页脚「继续旅程」删掉之后 ESC 是唯一出口，必须有个看得见的说明——
+            // 尤其零选项的面板（收下信之后、纪念物）连一个可导航项都没有，只剩 ESC 能关。
+            // 放主视觉右上角，不占任何版式高度；建在最后所以画在立绘之上。
+            KeyCap(hero, "ESC", 44f, new Vector2(
+                PanelWidth * 0.5f - HeroInset - 22f,
+                height * 0.5f - HeroInset - KeyCapSize * 0.5f));
         }
 
         private void BuildBody(RectTransform panel, TextMeshProUGUI text, float height,
@@ -361,13 +627,22 @@ namespace BossRush
             BossRushUI.ConfigureScrollRect(bodyScroll);
         }
 
-        private void BuildChoice(RectTransform panel, Choice choice, int index, float height, float top)
+        private void BuildChoice(RectTransform panel, Choice choice, int index, float height, float top,
+            bool animate)
         {
             RectTransform rect = MakeRect(panel, "Choice",
                 new Vector2(0f, top - height * 0.5f), new Vector2(ContentWidth, height));
             Image image = rect.gameObject.AddComponent<Image>();
-            image.color = BossRushUIColors.SurfaceRaised;
-            BossRushUI.ApplyPanelSkin(image, 10);
+            // 行底不铺满：让区域底图透出来，行才像浮在这张图上。alpha 的下界见 ChoiceRowAlpha。
+            Color rowColor = BossRushUIColors.SurfaceRaised;
+            rowColor.a = ChoiceRowAlpha;
+            image.color = rowColor;
+            // 卡片档（panel_raised），不是按钮档：选项是列表行。
+            BossRushUI.ApplyPanelSkin(image, 10, BossRushUISkinPart.Card);
+            // 描边是这一行「是一个独立可点区域」的唯一视觉证据：
+            // SurfaceRaised 对面板底 Surface 实算只有 1.03:1（亮云海）/ 1.07:1（暗地形），
+            // 远低于非文本 3:1——不画边的话玩家看到的只是五行浮着的字。
+            BossRushUI.ApplyPanelStroke(image, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
             Button button = rect.gameObject.AddComponent<Button>();
             button.targetGraphic = image;
             // 悬停/按下态走共享色板：旧版没配，鼠标移上去毫无反馈。
@@ -383,7 +658,7 @@ namespace BossRush
                 KeyCap(rect, (index + 1).ToString(), KeyCapSize,
                     new Vector2(-ContentWidth * 0.5f + ChoicePadX + KeyCapSize * 0.5f, 0f));
 
-            TextMeshProUGUI label = MakeText(rect, choice.Label, 21f,
+            TextMeshProUGUI label = MakeText(rect, choice.Label, ChoiceFont,
                 BossRushUI.GetButtonTextColor(BossRushUIColors.SurfaceRaised),
                 TextAlignmentOptions.Left);
             label.rectTransform.sizeDelta = new Vector2(ChoiceLabelWidth, height - ChoicePadY * 2f);
@@ -393,32 +668,14 @@ namespace BossRush
 
             Func<string> select = choice.Select;
             button.onClick.AddListener(delegate { SetBodyText(select()); });
-            Register(button, image, BossRushUIColors.SurfaceRaised);
+            Register(button, image, rowColor);
+            if (animate)
+                BossRushUIEntranceAnimation.Play(rect.gameObject, index * ChoiceStagger,
+                    ChoiceEntrance, ChoiceEntranceRise);
         }
 
-        private void BuildFooter(RectTransform panel, float panelHeight)
-        {
-            RectTransform rect = MakeRect(panel, "Continue",
-                new Vector2(0f, -panelHeight * 0.5f + Pad + FooterHeight * 0.5f),
-                new Vector2(ContentWidth, FooterHeight));
-            Image image = rect.gameObject.AddComponent<Image>();
-            image.color = BossRushUIColors.Accent;
-            BossRushUI.ApplyPanelSkin(image, 10);
-            Button button = rect.gameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            ColorBlock colors = button.colors;
-            colors.highlightedColor = BossRushUI.GetHoverColor(BossRushUIColors.Accent);
-            colors.pressedColor = BossRushUI.GetPressedColor(BossRushUIColors.Accent);
-            button.colors = colors;
-            TextMeshProUGUI label = MakeText(rect, L10n.T("继续旅程", "Continue"), 21f,
-                BossRushUI.GetButtonTextColor(BossRushUIColors.Accent), TextAlignmentOptions.Center);
-            label.rectTransform.sizeDelta = new Vector2(ContentWidth - ChoicePadX * 2f - 96f, FooterHeight);
-            // 键位提示做成右侧的小键帽，而不是把「· ESC」拼进按钮文字里。
-            KeyCap(rect, "ESC", 44f, new Vector2(ContentWidth * 0.5f - ChoicePadX - 22f, 0f));
-            button.onClick.AddListener(delegate { Dispose(); });
-            Register(button, image, BossRushUIColors.Accent);
-        }
 
+        /// <param name="entranceDelay">错峰入场的延迟秒数；负数表示这次不播（重开面板）。</param>
         private static void KeyCap(RectTransform parent, string key, float width, Vector2 position)
         {
             RectTransform cap = MakeRect(parent, "KeyCap", position, new Vector2(width, KeyCapSize));

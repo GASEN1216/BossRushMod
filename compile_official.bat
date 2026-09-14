@@ -220,10 +220,14 @@ echo(DebugAndTools\SkyIsland\SkyIslandHud.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionRecall.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionGnatBounty.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLetters.cs
 echo(DebugAndTools\SkyIsland\SkyIslandPuzzles.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs
-echo(DebugAndTools\SkyIsland\SkyIslandJournal.cs
+echo(DebugAndTools\SkyIsland\SkyIslandJournal.cs ^
+    DebugAndTools\SkyIsland\SkyIslandNoteBridge.cs ^
+    DebugAndTools\SkyIsland\SkyIslandResidentDialogue.cs ^
+    DebugAndTools\SkyIsland\SkyIslandPointText.cs
 echo(DebugAndTools\SkyIsland\SkyIslandItemRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLights.cs

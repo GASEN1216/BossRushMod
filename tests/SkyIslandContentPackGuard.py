@@ -7,7 +7,7 @@
 1. 折翎站位与他那一战的遭遇锚点、旧腰牌纪念物三者同点——期望值读 `Assets/Data/SkyIsland/World.json`（R-1）。
 2. 信鸽只在存档可写时放、先记手记再放飞、会话结束收回；12 封信的锚点都真实存在于作者布局。
 3. 谜题只挂在支线物证点上，解开之后才走原收录动作，旗标与 `TrySearchAction` → `TryApply` 同一映射；残星瞭台仍先清守卫。
-4. 手记章节恰好覆盖 `PointName` 里的 20 处见闻；手记入口挂在苇白与码头装置上。
+4. 手记章节恰好覆盖 `SkyIslandPointText.Name` 里的 20 处见闻；手记入口挂在苇白与码头装置上。
 5. 纪念品先记手记再发物品、写屏障下不发；物品 TypeID 登记在克隆注册表、配置器、本地化与掉落黑名单（代码与 JSON）。
 6. 岛上特产走独立随机流，不改变箱子原有件数的抽样；物品发放先问 prefab。
 7. 爆炸遮挡补丁注释里的岛面高度与布局表一致（R-8，从 layout.json 算，不写死）。
@@ -189,12 +189,13 @@ def main():
             errors.append("谜题 %s 的旗标 %s 与它解开后的收录动作写下的 %s 不一致" % (key, flag, expected))
 
     # ---- 4. 群岛手记 ----
-    point_keys = set(re.findall(r'case "(Search_[A-Z0-9_]+)": return', world.split("internal static string PointName(", 1)[1]
+    point_text = clean_source(read("DebugAndTools/SkyIsland/SkyIslandPointText.cs"))
+    point_keys = set(re.findall(r'case "(Search_[A-Z0-9_]+)": return', point_text.split("internal static string Name(", 1)[1]
                                 .split("private bool BlockedByCombat", 1)[0]))
     chapter_keys = re.findall(r'"(Search_[A-Z0-9_]+)"', journal.split("internal static readonly string[][] Chapters", 1)[1]
                               .split("};", 1)[0])
     if len(point_keys) != 20 or sorted(chapter_keys) != sorted(point_keys):
-        errors.append("手记章节必须恰好覆盖 PointName 里的 20 处见闻：章节 %d 条，见闻 %d 处" % (len(chapter_keys), len(point_keys)))
+        errors.append("手记章节必须恰好覆盖 SkyIslandPointText.Name 里的 20 处见闻：章节 %d 条，见闻 %d 处" % (len(chapter_keys), len(point_keys)))
     talk = need_body(world, "internal void Talk(string id, Transform speaker)", "Talk")
     weibai = talk.split('else if(id == "sky_weibai")', 1)[1].split("else if", 1)[0] if 'else if(id == "sky_weibai")' in talk else ""
     require(weibai, "JournalChoice(choices);", "苇白要能翻群岛手记")
@@ -260,7 +261,7 @@ def main():
     fill = need_body(crate, "internal static int Fill(", "装箱")
     ordered(fill, ['SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble()',
                    "int total = extra != 0 ? count + 1 : count;",
-                   "int typeId = i < count ? source[random.Next(source.Length)] : extra;"],
+                   "SkyIslandLootPools.Pick(tier, i == 0 && guaranteeTopBand, random)"],
             "岛上特产必须走独立随机流、只追加一件，原有 count 件的抽样一件不变")
     use_compass = need_body(session, "internal bool UseCompass()", "罗盘读数")
     require(use_compass, "Status(worldStory.CompassReading(player.transform.position), false);", "罗盘读数走本岛唯一的提示出口")
@@ -311,6 +312,19 @@ def main():
     require(session, "ambience.ApplyStory(story.Current)", "环境回馈必须收到包含 Frog_n 笔记的完整剧情快照")
     # WAV 与既有环境音同为 local-only；实际交付另跑生成器 --check，不让干净签出因没有二进制误报。
     require(squash(read("tools/gen_sky_island_sfx.py")), '"frog_chorus.wav": 5.0', "蛙声必须登记可复现生成与音频校验")
+
+    # CR-2026-09-12-020：应时的信同趟连送——规则只有一处，且只对「有前置」的信成立。
+    letters_src = squash(clean_source(read("DebugAndTools/SkyIsland/SkyIslandLetters.cs")))
+    require(letters_src, "internal static SkyIslandLetter NextSameRaidFor(SkyIslandStoryData data)",
+            "同趟连送的规则必须收在 SkyIslandLetters 里（纯逻辑，隔离回归能执行）")
+    require(letters_src, "next.Requires != SkyIslandStoryFlag.None ? next : null",
+            "只有有前置的信才同趟连送：无前置的前 8 封仍是一趟一封")
+    rearm = need_body(world, "private void RearmPigeonIfStoryLetterWaiting()", "同趟连送的重新武装")
+    for token, why in (
+            ("SkyIslandLetters.NextSameRaidFor(story.Current) == null", "判据必须走同一条规则，不得另写一份"),
+            ("pigeonPlaced = false;", "重新武装要走与首封相同的放置路径"),
+            ("pigeonCaptionAt = Time.time + PigeonCaptionDelay;", "字幕要同样延后，别和收信回执挤在同一秒")):
+        require(rearm, token, "同趟连送接线缺失：" + why)
 
     print("SkyIslandContentPackGuard: " + ("FAIL\n  - " + "\n  - ".join(errors) if errors else
                                              "PASS (信鸽 12 / 谜题 4 / 手记 20 / 纪念品 3 / 物品 5 与 R-1 R-7 R-8 R-14 接线)"))

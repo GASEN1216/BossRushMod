@@ -27,6 +27,19 @@ namespace BossRush
         // 折翎站在自己那一战的锚点上（`World.json` 里 Zheling 遭遇的 EnemySpawn_F）：布局 v2 把 POI_F 与它拉开到 63 m，
         // 在他面前选「挑战」时本人消失、战斗体却刷在两屏之外（可玩性评估 R-1）。守卫按 World.json 核对两者同点。
         private static readonly string[] Markers = { "POI_B", "EnemySpawn_B", "POI_A", "POI_D", "EnemySpawn_F", "POI_H" };
+
+        /// <summary>
+        /// 这位居民站在哪个地标。剧情面板拿它去取「他家那一区」的插图当主视觉——
+        /// 居民面板此前只有立绘、没有插图，主视觉退化成一条空带。
+        /// 表外的 id 返回 null，面板退回无插图布局（fail-open）。
+        /// </summary>
+        internal static string MarkerOf(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+            for (int i = 0; i < Ids.Length && i < Markers.Length; i++)
+                if (string.Equals(Ids[i], id, System.StringComparison.Ordinal)) return Markers[i];
+            return null;
+        }
         // 显示名不再在这里写第二份：与剧情面板共用 SkyIslandWorldStory.ResidentName 的中英对照，
         // 否则英文玩家在交互提示与血条上仍会看到中文名。
 
@@ -179,9 +192,21 @@ namespace BossRush
             }
         }
 
-        /// <summary>剧情体隐藏不会触发死亡；战斗实例必须由遭遇 owner 单独生成。</summary>
+        /// <summary>
+        /// 剧情体隐藏不会触发死亡；战斗实例必须由遭遇 owner 单独生成。
+        ///
+        /// **值没变就整条早退**（可玩性评估 R-9 的「剧情体显隐每帧两次无变化检查」）：会话 `Update`
+        /// 每帧对折翎与钟守各调一次，而这两个目标状态在整趟出击里只会翻转个位数次。旧写法每帧都要做
+        /// HashSet 增删 + Dictionary 查（各一次字符串散列）再无条件 `SetActive`，即使状态一个字没变。
+        /// <see cref="hidden"/> 是**唯一事实源**（异步生成落地时由 <c>SpawnOneAsync</c> 照它补一次
+        /// `SetActive`），所以按它早退不会漏掉「先 SetVisible、后生成」那条时序。
+        /// 口径同 <see cref="SkyIslandLighting"/> 的写入阈值与 <see cref="SkyIslandMapMarkers.Apply"/>
+        /// 的早退（AGENTS 4.12：不做每帧无效重工作）。
+        /// </summary>
         internal void SetVisible(string id, bool visible)
         {
+            // hidden 里 == 不可见。两者不等即「已经是目标状态」，什么都不用做。
+            if (hidden.Contains(id) != visible) return;
             if (visible) hidden.Remove(id); else hidden.Add(id);
             CharacterMainControl npc;
             if (owned.TryGetValue(id, out npc) && npc != null) npc.gameObject.SetActive(visible);

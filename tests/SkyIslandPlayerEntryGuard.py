@@ -171,6 +171,16 @@ def main():
     root_wait = session.split("lease.BeginLoad();", 1)[1].split("if (assemblyError != null)", 1)[0]
     if "lease.LoadFinished" not in root_wait or "loadStarted = false;" not in root_wait:
         errors.append("等待场景根的循环必须在官方加载器拒绝时立即失败并按未起航清理")
+    # CR-2026-09-12-015：「天空岛航路已开放」是**每进程一次**的公告，不是每趟一次。
+    # 它以前跟着 OnStartedLoading 与「离开基地」两处复位，于是每撤离一次、走回码头就再念一遍；
+    # 收齐十二封信要十二趟，这句话就念十二遍。招牌本身已经刻意收成「走近才浮现」，常驻提示与那条取向相反。
+    # 入口本身仍每次回基地重新挂（船点子场景会卸载），只有这句话不再重播。
+    if "announced = false" in runtime:
+        errors.append("「航路已开放」的公告标记又被复位了：它必须每进程只发一次，"
+                      "不能每次回基地重播（入口本身照常重挂，不受这条影响）")
+    if runtime.count("announced = true;") != 1:
+        errors.append("「航路已开放」的公告必须只有一个置位点")
+
     for path in ("WikiContent/zh/map__sky_island.md", "WikiContent/en/map__sky_island.md"):
         if not (ROOT / path).exists():
             errors.append("缺少玩家操作说明：" + path)

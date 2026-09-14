@@ -61,6 +61,9 @@ namespace BossRush
             BackMountainLocalization.Inject();
             // 天空岛物品的 DisplayNameRaw 注入（AGENTS.md 4.4）
             SkyIslandItems.InjectLocalization();
+            // 20 处见闻在官方笔记图鉴里的标题与正文（官方查 Note_{key}_Title / _Content）。
+            // 文案不在那边另写一份，取的就是 SkyIslandPointText.Name / Lore。
+            SkyIslandNoteBridge.InjectNoteKeys();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();

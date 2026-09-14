@@ -67,6 +67,23 @@ namespace BossRush
         private const float CardPadY = 12f;
         private const float AccentBarWidth = 3f;
 
+        /// <summary>
+        /// 卡片入场 / 退场秒数与从右侧滑入的距离。
+        /// 入场走 ease-out（元素真的在位移，ease-out 模拟自然停稳）；退场线性——没人在看它离开。
+        /// 旧写法是 <c>SetActive</c> 硬开关：卡片「啪」地弹出，与同文件里刻意做成连续淡变的
+        /// <see cref="SkyIslandProximityLabel"/> 自相矛盾。
+        /// </summary>
+        private const float CardFadeIn = 0.22f;
+        private const float CardFadeOut = 0.18f;
+        private const float CardSlideIn = 8f;
+
+        /// <summary>
+        /// 「目标更新」时左侧强调竖条闪一下的总时长与上升段（秒）。
+        /// 眉题本身挂 6 秒，但静止的一行字很容易整条错过；闪一下是「卡片变了」的唯一动作提示。
+        /// </summary>
+        private const float ObjectiveFlash = 0.5f;
+        private const float ObjectiveFlashRise = 0.15f;
+
         private const float TitleFont = 15f;
         private const float BodyFont = 13f;
         private const float ChipFont = 12f;
@@ -82,8 +99,19 @@ namespace BossRush
         /// <summary>大标题里操作提示行相对标题中心的 y 与行高。守卫用它复算「提示行不压字幕」。</summary>
         private const float BannerHintY = -42f;
         private const float BannerHintHeight = 26f;
+        /// <summary>
+        /// 眉题与地名相对标题根中心的 y 与行高。
+        /// 从字面量提成常量是为了让 <c>tests/SkyIslandUiContrastGuard.py</c> 能复算每一行
+        /// 到底坐在多厚的压暗底上——三行里有两行是 4.5:1 门槛的小字，位置错一档就不达标。
+        /// </summary>
+        private const float BannerOverlineY = 44f;
+        private const float BannerOverlineHeight = 22f;
+        private const float BannerTitleY = 10f;
+        private const float BannerTitleHeight = 60f;
         private const float AreaTitleFont = 44f;
         private const float AreaOverlineFont = 14f;
+        /// <summary>落地操作提示行的字号。与眉题同属 4.5:1 门槛的小字。</summary>
+        private const float BannerHintFont = 15f;
         /// <summary>
         /// 字距，TMP 的单位是 1/100 em。地名这类仪式感文字拉开一点字距才有「题字」的味道，
         /// 挤在一起就只是个标签；眉题是小字，要拉得更开才压得住。
@@ -92,6 +120,25 @@ namespace BossRush
         private const float AreaOverlineSpacing = 28f;
         /// <summary>淡入时从下方升起的像素数。只升 10 px：有「浮上来」的动势，又不至于晃眼。</summary>
         private const float AreaTitleRise = 10f;
+
+        /// <summary>
+        /// 大标题下那道短横线的最终宽度与高度。
+        /// **高度不能是 1**：图集里的 <c>divider</c>（8×8 / border 2）亮带落在可拉伸的中心区，
+        /// rect 高 1 时上下 border 各分到 0.5px、中心区归零，整条线一个像素都画不出来。
+        /// 8 高时中心区剩 4px，亮带画成约 2px 实线外加上下柔边。
+        /// </summary>
+        private const float BannerRuleWidth = 120f;
+        private const float BannerRuleHeight = 8f;
+
+        /// <summary>
+        /// 区域大标题压暗底的基准尺寸，以及英文长句时允许扩到多宽。
+        /// 压暗底两侧各有 <see cref="SkyIslandUiArt.ScrimHorizontalEdge"/> 的淡出区，
+        /// 文字必须整行落在中间的平台上，否则行尾会滑进淡出区、背景又变回亮云海。
+        /// <see cref="StartBanner"/> 按实测文字宽度反算宽度，见那里的注释。
+        /// </summary>
+        private const float BannerScrimWidth = 1180f;
+        private const float BannerScrimHeight = 340f;
+        private const float BannerScrimMaxWidth = 1700f;
 
         /// <summary>区域大标题的淡入 / 停留 / 淡出秒数。</summary>
         private const float BannerFadeIn = 0.45f;
@@ -117,10 +164,19 @@ namespace BossRush
         private const float CaptionFont = 20f;
         /// <summary>字幕最多两行的高度，再长就省略号收尾：字幕是临场提示，不是段落。</summary>
         private const float CaptionMaxHeight = 60f;
-        /// <summary>字幕压暗底比文字高出的量（上下各一半）。压暗是柔边，下沿淡尾允许轻轻搭到读条上。</summary>
+        /// <summary>
+        /// 字幕压暗底比文字**高**多少：高度 = 文字高 ÷ 平台占比，与
+        /// <see cref="FitBannerScrim"/> 反算宽度是同一条算式。
+        ///
+        /// 旧写法是「文字高 + 40」的定值，两行字幕时文字会顶进上下淡出区里：
+        /// 88 高的压暗底上，两行文字占 v∈[0.227, 0.773]，而平台只有 [0.28, 0.72]。
+        /// 按比例给之后，一行两行都整个坐在平台上。压暗是柔边，下沿淡尾允许轻轻搭到官方读条上。
+        /// </summary>
         private const float CaptionScrimPadding = 40f;
         private const float CaptionFadeIn = 0.25f;
         private const float CaptionFadeOut = 0.5f;
+        /// <summary>字幕淡入时从下方升起的像素数。与大标题同一套动势语言，只是幅度更小。</summary>
+        private const float CaptionRise = 6f;
         /// <summary>被警示打断时当前这条字幕的淡出秒数：要快，噬风的预警窗口只有 1.4 秒。</summary>
         private const float CaptionPreemptFade = 0.15f;
         /// <summary>停留时长按字数估：保底 2.6 秒、封顶 5.2 秒。</summary>
@@ -143,9 +199,11 @@ namespace BossRush
         private CanvasGroup rootGroup;
         private GameObject card;
         private RectTransform cardRect;
+        private CanvasGroup cardGroup;
+        private Image cardAccentBar;
         private TextMeshProUGUI regionText, objectiveText, chipText, extractionText, statusText;
 
-        private RectTransform bannerRect;
+        private RectTransform bannerRect, bannerScrim, bannerRule;
         private CanvasGroup bannerGroup;
         private TextMeshProUGUI bannerOverline, bannerTitle, bannerHint;
 
@@ -157,11 +215,16 @@ namespace BossRush
         private string extraction, status, landingHint, pendingTitle, captionShowing;
         private float bannerAge = -1f, sinceBanner = BannerMinGap, captionAge = -1f, captionHold;
         private float objectiveUpdatedAge = -1f, visibility = 1f;
+        /// <summary>卡片显隐：当前不透明度、目标不透明度、当前滑入偏移。</summary>
+        private float cardVisible, cardTarget, cardSlide = CardSlideIn;
+        /// <summary>强调竖条上一次写下的颜色是不是「闪亮」态。值没变就不重写 Image.color。</summary>
+        private bool cardAccentLit;
         private bool stacked, captionWarning;
         /// <summary>被警示打断的时刻（captionAge 读数）与当时的不透明度；captionCutAge 为 -1 表示没被打断。</summary>
         private float captionCutAge = -1f, captionCutAlpha, captionAlpha;
         /// <summary>卡片顶边避让官方右上角提示栈：节流计时与上一次写下的顶边。</summary>
-        private float layoutTimer, appliedCardTop = -1f;
+        /// <summary>初值等于建造时写下的顶边，这样第一次 WriteCardTransform 不会把卡片甩到屏幕顶上。</summary>
+        private float layoutTimer, appliedCardTop = -CardTop;
 
         /// <summary>本趟已经出过大标题的区域。同一个区域一趟只出一次。</summary>
         private readonly HashSet<string> titled = new HashSet<string>(StringComparer.Ordinal);
@@ -188,10 +251,19 @@ namespace BossRush
                 new Vector2(1f, 1f), new Vector2(1f, 1f),
                 new Vector2(CardRight, CardTop), new Vector2(CardWidth, 96f), new Vector2(1f, 1f));
             cardRect = card.GetComponent<RectTransform>();
+            cardGroup = card.AddComponent<CanvasGroup>();
+            cardGroup.alpha = 0f;
+            cardGroup.blocksRaycasts = false;
+            cardGroup.interactable = false;
             Image background = card.AddComponent<Image>();
             background.color = BossRushUIColors.Surface;
             background.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(background, 10);
+            // 卡片档（panel_raised），不是按钮档：它是一块常驻信息板，不是一个可点的按钮。
+            BossRushUI.ApplyPanelSkin(background, 10, BossRushUISkinPart.Card);
+            // 描边必须是独立 Image：图集里烤进 panel_raised 的那圈内描边被 Surface 乘完只剩
+            // 2.9/255 的通道差（实算），看不见。而这张卡没有 Backdrop 垫底，直接压在场景上——
+            // 暗地形下卡底对背景只有 1.50:1，没有边就等于没有轮廓。
+            BossRushUI.ApplyPanelStroke(background, 10, BossRushUISkinPart.Card, BossRushUIColors.Stroke);
 
             // 左侧的一条 accent 竖线：只有 3 px，但它把「这是一块有主的信息」说清楚了。
             GameObject bar = ZombieModeUIHelper.CreateRect("AccentBar", card.transform,
@@ -201,7 +273,12 @@ namespace BossRush
             Image barImage = bar.AddComponent<Image>();
             barImage.color = BossRushUIColors.Accent;
             barImage.raycastTarget = false;
-            BossRushUI.ApplyPanelSkin(barImage, 2);
+            // 细条档：3px 宽的竖条一律走程序化半径。注入图集后若按旧的两档落进按钮图
+            // （32×32 / border 10），Unity 会把 10+10 等比压进 3px 并把中心区归零，
+            // 画出来是按钮圆角的一道糊痕——比程序化还差。
+            BossRushUI.ApplyPanelSkin(barImage, 2, BossRushUISkinPart.Hairline);
+            cardAccentBar = barImage;
+            card.SetActive(false);
 
             regionText = Text("Region", card.transform, TitleFont, BossRushUIColors.Accent,
                 TextAlignmentOptions.Left);
@@ -231,26 +308,32 @@ namespace BossRush
 
             // 压暗底垫在文字下面。岛上抬头是一片高亮云海，浅色字直接压上去几乎读不出来。
             // 二维柔边，没有硬边，看不出贴了块板。
-            AddScrim(root.transform, new Vector2(1180f, 230f));
+            bannerScrim = AddScrim(root.transform, new Vector2(BannerScrimWidth, BannerScrimHeight));
 
             // 「小字所属 + 大字地名」是区域标题的通用层级：地点挂在上一级地域之下，一眼读出从属。
             bannerOverline = CenteredText("Overline", root.transform, AreaOverlineFont,
-                BossRushUIColors.TextSecondary, 44f, 22f);
+                BossRushUIColors.TextSecondary, BannerOverlineY, BannerOverlineHeight);
             bannerOverline.characterSpacing = AreaOverlineSpacing;
 
             bannerTitle = CenteredText("Title", root.transform, AreaTitleFont,
-                BossRushUIColors.TextPrimary, 10f, 60f);
+                BossRushUIColors.TextPrimary, BannerTitleY, BannerTitleHeight);
             bannerTitle.characterSpacing = AreaTitleSpacing;
 
             // 细分隔线：大标题下方一道短横，是「区域名」这类仪式感元素的通用写法。
+            // 旧写法是 120×1 的裸 Image（没有 sprite）：1px 的纯色四边形在非整数画布缩放下
+            // 会被采样吃掉，时有时无。改走图集的 divider（自带 1px 高光 + 1px 暗边），高度 8。
             GameObject rule = ZombieModeUIHelper.CreateRect("Rule", root.transform,
                 new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                new Vector2(0f, -24f), new Vector2(120f, 1f), new Vector2(0.5f, 0.5f));
+                new Vector2(0f, -24f), new Vector2(BannerRuleWidth, BannerRuleHeight),
+                new Vector2(0.5f, 0.5f));
             Image ruleImage = rule.AddComponent<Image>();
             ruleImage.color = BossRushUIColors.Divider;
             ruleImage.raycastTarget = false;
+            BossRushUI.ApplyPanelSkin(ruleImage, 2, BossRushUISkinPart.Rule);
+            bannerRule = rule.GetComponent<RectTransform>();
 
-            bannerHint = CenteredText("Hint", root.transform, 15f, BossRushUIColors.TextSecondary, BannerHintY, BannerHintHeight);
+            bannerHint = CenteredText("Hint", root.transform, BannerHintFont,
+                BossRushUIColors.TextSecondary, BannerHintY, BannerHintHeight);
         }
 
         private void BuildCaption()
@@ -265,7 +348,7 @@ namespace BossRush
             captionGroup.blocksRaycasts = false;
             captionGroup.interactable = false;
             // 与区域大标题同一张二维柔边压暗：字幕同样压在高亮云海上。
-            captionShade = AddScrim(root.transform, new Vector2(CaptionWidth + 180f, 40f + CaptionScrimPadding));
+            captionShade = AddScrim(root.transform, new Vector2(CaptionWidth + 180f, ScrimHeightFor(40f)));
             captionText = ZombieModeUIHelper.CreateText("Text", root.transform, string.Empty, CaptionFont,
                 new Vector2(0f, 0f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero,
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
@@ -439,15 +522,18 @@ namespace BossRush
                 ApplyCardAnchor();
             }
 
+            TickCard(unscaledDelta);
             sinceBanner += unscaledDelta;
             TickBanner(unscaledDelta);
             TickCaption(unscaledDelta);
             if (objectiveUpdatedAge >= 0f)
             {
                 objectiveUpdatedAge += unscaledDelta;
+                TickAccentFlash();
                 if (objectiveUpdatedAge >= ObjectiveUpdatedHold)
                 {
                     objectiveUpdatedAge = -1f;
+                    TickAccentFlash();
                     Apply();
                 }
             }
@@ -475,7 +561,52 @@ namespace BossRush
             float top = BossRushUI.GetTopRightHudTop(canvas) + (stacked ? -CardStackOffset : 0f);
             if (Mathf.Abs(top - appliedCardTop) < 0.5f) return;
             appliedCardTop = top;
-            cardRect.anchoredPosition = new Vector2(CardRight, -top);
+            // 位置由 WriteCardTransform 统一落笔：顶边与入场滑入偏移是同一个 anchoredPosition 的两半，
+            // 各写各的会互相覆盖（滑入时被定时重排拽回去，重排时被滑入拽回去）。
+            WriteCardTransform();
+        }
+
+        /// <summary>
+        /// 卡片淡入淡出。**到位之后每帧只有一次浮点比较**，不写 CanvasGroup、不写 RectTransform
+        /// （口径同 <see cref="ApplyCardAnchor"/> 的「值没变就不写」与 SkyIslandMapMarkers.Apply 的早退）。
+        /// </summary>
+        private void TickCard(float delta)
+        {
+            if (card == null || cardVisible == cardTarget) return;
+            cardVisible = cardTarget > cardVisible
+                ? Mathf.MoveTowards(cardVisible, 1f, delta / CardFadeIn)
+                : Mathf.MoveTowards(cardVisible, 0f, delta / CardFadeOut);
+            // 入场 ease-out：卡片真的从右侧滑进来，ease-out 才像自然停稳。
+            // 退场不套曲线——线性就够，而且更快离场。
+            float shown = cardTarget > 0f ? BossRushUI.EaseOut(cardVisible) : cardVisible;
+            if (cardGroup != null) cardGroup.alpha = shown;
+            cardSlide = (1f - shown) * CardSlideIn;
+            WriteCardTransform();
+            if (cardVisible <= 0f && card.activeSelf) card.SetActive(false);
+        }
+
+        /// <summary>
+        /// 「目标更新」时左侧强调竖条闪一下：0.15 秒 ease-out 提亮，其余时间落回。
+        /// 只在跨过「亮 / 不亮」那一档时写 <c>Image.color</c>，不是每帧写。
+        /// </summary>
+        private void TickAccentFlash()
+        {
+            if (cardAccentBar == null) return;
+            bool lit = objectiveUpdatedAge >= 0f && objectiveUpdatedAge < ObjectiveFlash;
+            if (lit == cardAccentLit) return;
+            cardAccentLit = lit;
+            cardAccentBar.color = lit
+                ? BossRushUI.GetHoverColor(BossRushUIColors.Accent)
+                : BossRushUIColors.Accent;
+        }
+
+        /// <summary>卡片的最终位置 = 避让官方提示栈算出来的顶边 + 入场滑入偏移。值没变就不写。</summary>
+        private void WriteCardTransform()
+        {
+            if (cardRect == null) return;
+            Vector2 target = new Vector2(CardRight + cardSlide, -appliedCardTop);
+            if ((cardRect.anchoredPosition - target).sqrMagnitude < 0.01f) return;
+            cardRect.anchoredPosition = target;
         }
 
         private void TickBanner(float delta)
@@ -506,10 +637,17 @@ namespace BossRush
             {
                 alpha = Smooth(bannerAge / BannerFadeIn);
                 rise = (1f - alpha) * AreaTitleRise;
+                // 细横线在同一段时间里从中心向两端展开。ease-out：线是在「划出去」，
+                // 和大标题整块原地淡入（SmoothStep）是两种动作，用两条曲线。
+                if (bannerRule != null)
+                    bannerRule.sizeDelta = new Vector2(
+                        BossRushUI.EaseOut(bannerAge / BannerFadeIn) * BannerRuleWidth, BannerRuleHeight);
             }
             else if (bannerAge < BannerFadeIn + BannerHold)
             {
                 alpha = 1f;
+                if (bannerRule != null && bannerRule.sizeDelta.x < BannerRuleWidth)
+                    bannerRule.sizeDelta = new Vector2(BannerRuleWidth, BannerRuleHeight);
             }
             else
             {
@@ -525,9 +663,52 @@ namespace BossRush
             if (bannerTitle != null) bannerTitle.text = title;
             if (bannerHint != null) bannerHint.text = landingHint ?? string.Empty;
             landingHint = null;
+            FitBannerScrim();
             bannerAge = 0f;
             if (bannerGroup != null) bannerGroup.alpha = 0f;
             if (bannerRect != null) bannerRect.anchoredPosition = new Vector2(0f, AreaTitleY - AreaTitleRise);
+            // 细横线从 0 宽度揭示，和淡入同步收尾。
+            if (bannerRule != null) bannerRule.sizeDelta = new Vector2(0f, BannerRuleHeight);
+        }
+
+        /// <summary>
+        /// 按本次三行文字的**实测**宽度反算压暗底该多宽。
+        ///
+        /// 压暗底两侧各有 <see cref="SkyIslandUiArt.ScrimHorizontalEdge"/> 的淡出区，中间
+        /// <c>1-2×edge</c> 才是罩得住文字的平台。文字半宽必须落在平台半宽里，于是
+        /// <c>宽度 ≥ 文字宽 / (1-2×edge)</c>。不这么算的话，英文长句（落地提示行整句能到 700 px）
+        /// 的行首行尾会滑进淡出区、背后又变回亮云海——正是这一行此前 2.54:1 的成因之一。
+        /// 每次出大标题算一次（一趟出击几次），不是每帧路径。
+        /// </summary>
+        private void FitBannerScrim()
+        {
+            if (bannerScrim == null) return;
+            float widest = 0f;
+            widest = Mathf.Max(widest, MeasuredWidth(bannerOverline));
+            widest = Mathf.Max(widest, MeasuredWidth(bannerTitle));
+            widest = Mathf.Max(widest, MeasuredWidth(bannerHint));
+            float plateau = Mathf.Max(0.05f, 1f - 2f * SkyIslandUiArt.ScrimHorizontalEdge);
+            float width = Mathf.Clamp(widest / plateau, BannerScrimWidth, BannerScrimMaxWidth);
+            Vector2 size = new Vector2(width, BannerScrimHeight);
+            if ((bannerScrim.sizeDelta - size).sqrMagnitude < 0.01f) return;
+            bannerScrim.sizeDelta = size;
+        }
+
+        /// <summary>
+        /// 罩住 <paramref name="textHeight"/> 那么高的文字需要多高的压暗底：
+        /// 文字必须整个落在平台上，而平台只占 <c>1-2×ScrimEdge</c>，所以高度要除以它。
+        /// 再兜一个下限，免得一行短字幕的压暗底缩得比 CaptionScrimPadding 还小。
+        /// </summary>
+        private static float ScrimHeightFor(float textHeight)
+        {
+            float plateau = Mathf.Max(0.05f, 1f - 2f * SkyIslandUiArt.ScrimEdge);
+            return Mathf.Max(textHeight + CaptionScrimPadding, textHeight / plateau);
+        }
+
+        private static float MeasuredWidth(TextMeshProUGUI text)
+        {
+            if (text == null || string.IsNullOrEmpty(text.text)) return 0f;
+            return text.GetPreferredValues(text.text, float.PositiveInfinity, float.PositiveInfinity).x;
         }
 
         private void TickCaption(float delta)
@@ -562,6 +743,13 @@ namespace BossRush
             }
             captionAlpha = alpha;
             if (captionGroup != null) captionGroup.alpha = alpha;
+            // 淡入期间从下方升起，与区域大标题同一套动势语言（幅度更小：字幕是提示不是仪式）。
+            // 轴心在底边，所以这里改的是根的 y；淡出不再动位置——退场不需要动势。
+            if (captionRect != null && captionCutAge < 0f && captionAge < CaptionFadeIn)
+            {
+                float rise = (1f - BossRushUI.EaseOut(captionAge / CaptionFadeIn)) * CaptionRise;
+                captionRect.anchoredPosition = new Vector2(0f, CaptionY - rise);
+            }
         }
 
         private void EndCaption()
@@ -572,6 +760,7 @@ namespace BossRush
             captionCutAge = -1f;
             captionAlpha = 0f;
             if (captionGroup != null) captionGroup.alpha = 0f;
+            if (captionRect != null) captionRect.anchoredPosition = new Vector2(0f, CaptionY);
         }
 
         private void StartCaption(string text, bool warning)
@@ -584,6 +773,7 @@ namespace BossRush
             captionHold = Mathf.Clamp(text.Length * CaptionHoldPerChar + CaptionHoldMin * 0.5f,
                 CaptionHoldMin, CaptionHoldMax);
             if (captionGroup != null) captionGroup.alpha = 0f;
+            if (captionRect != null) captionRect.anchoredPosition = new Vector2(0f, CaptionY - CaptionRise);
             if (captionText == null) return;
             captionText.color = warning ? BossRushUIColors.WarningText : BossRushUIColors.TextPrimary;
             captionText.text = text;
@@ -592,7 +782,7 @@ namespace BossRush
                 Mathf.Ceil(captionText.GetPreferredValues(text, CaptionWidth, float.PositiveInfinity).y) + 8f,
                 CaptionFont * 1.6f, CaptionMaxHeight);
             if (captionRect != null) captionRect.sizeDelta = new Vector2(CaptionWidth, height);
-            if (captionShade != null) captionShade.sizeDelta = new Vector2(CaptionWidth + 180f, height + CaptionScrimPadding);
+            if (captionShade != null) captionShade.sizeDelta = new Vector2(CaptionWidth + 180f, ScrimHeightFor(height));
         }
 
         private static float Smooth(float t)
@@ -624,9 +814,18 @@ namespace BossRush
 
             // 一行都没有就整张卡片收掉。装配期间（还没就绪、什么都没得说）留一块空底板在那儿，
             // 恰恰是「廉价感」的来源之一：没内容就不该有框。
+            // 收与放都走 TickCard 的淡变，不再 SetActive 硬开关；真正关掉对象是淡完之后的事。
             bool anything = region.Length > 0 || objective.Length > 0 || chips.Length > 0
                 || !string.IsNullOrEmpty(extraction) || !string.IsNullOrEmpty(status);
-            if (card.activeSelf != anything) card.SetActive(anything);
+            cardTarget = anything ? 1f : 0f;
+            if (anything && !card.activeSelf)
+            {
+                card.SetActive(true);
+                cardVisible = 0f;
+                cardSlide = CardSlideIn;
+                if (cardGroup != null) cardGroup.alpha = 0f;
+                WriteCardTransform();
+            }
             cardRect.sizeDelta = new Vector2(CardWidth, Mathf.Max(48f, -y + CardPadY));
         }
 
@@ -670,8 +869,10 @@ namespace BossRush
             rootGroup = null;
             card = null;
             cardRect = null;
+            cardGroup = null;
+            cardAccentBar = null;
             regionText = objectiveText = chipText = extractionText = statusText = null;
-            bannerRect = null;
+            bannerRect = bannerScrim = bannerRule = null;
             bannerGroup = null;
             bannerOverline = bannerTitle = bannerHint = null;
             captionRect = captionShade = null;

@@ -9,7 +9,7 @@ namespace BossRush
     /// 以前 `discoveredNotes` 只记录不展示：20 处见闻收进去就再也看不到，也不知道还差哪几处。
     /// 手记分四个见闻章节（码头与风铃集 / 西线 / 东线 / 栈道与钟庭）+ 信鸽来信 + 船员名册：
     /// 收过的写标题与正文，没收过的只写标题并标「尚未收录」，当作找齐的线索；20 处见闻收齐后总览末尾出现终页。
-    /// 只读存档，不写任何东西。标题与正文由调用方传入（见闻文案唯一来源仍是 `SkyIslandWorldStory.PointName / Lore`）。
+    /// 只读存档，不写任何东西。标题与正文由调用方传入（见闻文案唯一来源仍是 `SkyIslandPointText.Name / Lore`）。
     /// 纯逻辑、无 Unity 依赖，隔离回归直接执行。
     /// </summary>
     internal static class SkyIslandJournal
@@ -61,7 +61,47 @@ namespace BossRush
             return count;
         }
 
-        /// <summary>总览：各类收录进度 + 旅程摘要（调用方传 `SkyIslandStoryService.Summary`）+ 收齐后的终页。</summary>
+        /// <summary>
+        /// 手记首页的**导语**：一句话，回答「这本手记现在什么样」。
+        ///
+        /// 【为什么单开这一条】旧版首页正文是 <see cref="Overview"/>——七组分数串成的一行，
+        /// 新档实际输出「群岛手记 · 见闻 0/20 · 信鸽来信 0/12 · 船员名册 0/4 · 纪念品 0/3 ·
+        /// 到访区域 0/12 · 岛上的灯 3/10 · 蛙鸣池的蛙 0/3」，中文 141 字。
+        /// 那是**状态转储不是人话**，而且玩家一打开面板第一眼就撞上它。
+        /// 数字没有丢：它们仍在 <see cref="Overview"/> 里，只是退到「这一趟」子页去了。
+        /// </summary>
+        internal static string Brief(SkyIslandStoryData data)
+        {
+            int notes = NotesRecorded(data);
+            if (notes <= 0)
+                return L10n.T("手记还空着。走到哪儿，就记到哪儿。",
+                    "The journal is still blank. Whatever you walk past goes in here.");
+            if (notes >= NoteCount)
+                return L10n.T("二十页见闻都记满了，这本手记可以留给下一位旅人。",
+                    "All twenty notes are in. This journal is ready for the next traveller.");
+            return L10n.T("手记记了 ", "The journal holds ") + notes
+                + L10n.T(" 页，还空着 ", " pages; ") + (NoteCount - notes)
+                + L10n.T(" 页。", " are still blank.");
+        }
+
+        /// <summary>「来信与人」子页的导语。</summary>
+        internal static string PeopleBrief(SkyIslandStoryData data)
+        {
+            return L10n.T("信、名册和带在身上的纪念品都收在这里。",
+                "Letters, the crew roster and the keepsakes you carry are kept here.");
+        }
+
+        /// <summary>「岛上的事」子页的导语。</summary>
+        internal static string IslesBrief(SkyIslandStoryData data)
+        {
+            return L10n.T("岛上点了几盏灯、手里的东西各有什么用，都在这一页。",
+                "How many lights are up, and what everything you carry is good for.");
+        }
+
+        /// <summary>
+        /// 总览：各类收录进度 + 旅程摘要（调用方传 `SkyIslandStoryService.Summary`）+ 收齐后的终页。
+        /// **不再放在手记首页**——它是一张进度表，退到「这一趟」子页里。首页用 <see cref="Brief"/>。
+        /// </summary>
         internal static string Overview(SkyIslandStoryData data, string summary)
         {
             var text = new StringBuilder();
@@ -104,8 +144,8 @@ namespace BossRush
                 "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night"));
             Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("七盏风晶灯与灭蚊灯的灯芯：灯旁暖和，岛上的灯凑满十盏之后夜里不再起风",
                 "the wick of the seven windcrystal lamps and of the gnat zapper: warm beside them, and with ten lights on the isles the nights stop blowing"));
-            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风里挡一半、夜里照明——光招云蚋，可灯下它们晃了眼、躲不开枪口；钟庭的风晶灯要挂一盏",
-                "holds off a breeze and half of a gale, lights the night — its light draws cloud gnats, but dazzled they cannot dodge your aim; the Bell Court lamp hangs one"));
+            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风里挡一半、夜里照明——光招来更多云蚋，可灯下的只绕着灯转：不叮人、也躲不开枪口，灯灭前扇掉或打掉；钟庭的风晶灯要挂一盏",
+                "holds off a breeze and half of a gale, lights the night — its light draws more cloud gnats, but the ones in it only circle the flame: they will not bite and cannot dodge your aim, so clear them before it burns out; the Bell Court lamp hangs one"));
             Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("什么风都挡得住、耐力恢复加快，烟能赶开云蚋；镜水寺的风晶灯要焚一炷",
                 "holds off any wind and speeds stamina, and its smoke drives off cloud gnats; the Mirrorwater Temple lamp burns one"));
             Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风的风暴伤害 −{0}%，生命上限与耐力恢复小幅提升",
@@ -113,8 +153,8 @@ namespace BossRush
                 Percent(SkyIslandFieldcraftRules.CharmStormWard)));
             Use(text, BossRushItemIds.SkyIslandHomecomingBento, L10n.T("菜畦重新开张之后在岛上吃，算作晴禾的归航菜",
                 "once the garden has reopened, eaten on the isles it counts as Qinghe's homecoming meal"));
-            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血；止云蚋的痒，这一阵叮上也不痒（苔药管伤，药膏管痒）",
-                "heals without paying Miantai or waiting on her remedy; stops gnat itching, and new bites will not itch for a while (the remedy is for wounds, the salve for itching)"));
+            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血；止云蚋的痒，抹上之后这一阵叮上也不痒（出门前先抹也算；苔药管伤，药膏管痒）",
+                "heals without paying Miantai or waiting on her remedy; stops gnat itching, and for a while after it goes on new bites will not itch (applying it before you set out counts; the remedy is for wounds, the salve for itching)"));
             Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("捧着蛙卵时先指蛙鸣池；平时指信鸽、目标、支线，最后指缺灯处或风晶簇",
                 "while carrying frogspawn, points to Frogsong Pool first; otherwise to pigeons, objectives, side paths, then missing lamps or wind crystal clusters"));
             Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",
@@ -179,8 +219,8 @@ namespace BossRush
                     text.Append("■ ").Append(all[i].Title).Append('\n').Append(all[i].Body);
                     // 内容批次四：三团蛙卵都放回了蛙鸣池，那封写给池子里青蛙的信有了回音。
                     if (all[i].Id == "Letter_04" && SkyIslandMosquitoRules.FrogsComplete(data))
-                        text.Append(L10n.T("\n（蛙鸣池的繁育水边有人照看，又有青蛙回来了。池子里的青蛙会替那个孩子数灯。）",
-                            "\n(Someone is tending Frogsong Pool's breeding shallows, and frogs are returning. The frogs in the pool will count the lights for that child.)"));
+                        text.Append(L10n.T("\n（三团蛙卵都回了蛙鸣池，长成的蛙夜里散到岛上各处的水边。池子里的青蛙会替那个孩子数灯。）",
+                            "\n(All three clutches are back in Frogsong Pool, and the frogs that grew there spread along the isles' waterline at night. The frogs in the pool will count the lights for that child.)"));
                 }
                 else
                     text.Append("□ ").Append(L10n.T("第 ", "Letter ")).Append(i + 1)

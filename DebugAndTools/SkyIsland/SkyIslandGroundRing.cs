@@ -24,6 +24,7 @@ namespace BossRush
         internal const int SortingOrder = 120;
 
         private static Material shared;
+        private static Texture2D bandTexture;
 
         internal static LineRenderer Create(Transform parent, Vector3 localPosition)
         {
@@ -69,7 +70,54 @@ namespace BossRush
             if (shader == null) return null;
             shared = new Material(shader);
             shared.name = "SkyIslandGroundRingMat";
+            // 没有贴图时 LineRenderer 画的是一条硬边平色带——两条笔直的边缘线，
+            // 在俯视视角的地面上一眼就是「程序化画的方框」。挂一张横跨带宽的柔边即可，
+            // 几何、半径、判定一字不动。
+            Texture2D band = BandTexture();
+            if (band != null) shared.mainTexture = band;
             return shared;
+        }
+
+        /// <summary>
+        /// 横跨带宽的柔边。<see cref="LineTextureMode.Stretch"/> 下 U 沿线长、V 跨带宽，
+        /// 所以只需要 2 列；V 方向两端 alpha→0、中间是平台。
+        ///
+        /// 颜色全白：上色走 LineRenderer 的顶点色（startColor/endColor），
+        /// 图里带死颜色会让撤离环的青 / 绿与噬风的预警色全部失效。
+        /// </summary>
+        private static Texture2D BandTexture()
+        {
+            if (bandTexture != null) return bandTexture;
+            try
+            {
+                const int width = 2;
+                const int height = 32;
+                const float edge = 0.28f;
+                Texture2D texture = new Texture2D(width, height, TextureFormat.RGBA32, false, false);
+                texture.name = "SkyIslandGroundRingBand";
+                texture.wrapMode = TextureWrapMode.Clamp;
+                texture.filterMode = FilterMode.Bilinear;
+                texture.hideFlags = HideFlags.HideAndDontSave;
+                Color32[] pixels = new Color32[width * height];
+                for (int y = 0; y < height; y++)
+                {
+                    float v = y / (float)(height - 1);
+                    float head = Mathf.Clamp01(v / edge);
+                    float tail = Mathf.Clamp01((1f - v) / edge);
+                    float alpha = head * head * (3f - 2f * head) * tail * tail * (3f - 2f * tail);
+                    byte a = (byte)Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f);
+                    for (int x = 0; x < width; x++) pixels[y * width + x] = new Color32(255, 255, 255, a);
+                }
+                texture.SetPixels32(pixels);
+                texture.Apply(false, false);
+                bandTexture = texture;
+            }
+            catch (Exception e)
+            {
+                // 纯观感层：贴图生成失败就退回硬边平带，圈照样画得出来。
+                Debug.LogWarning("[SkyIsland] 圆环柔边贴图生成失败，退回硬边：" + e.Message);
+            }
+            return bandTexture;
         }
 
         /// <summary>
@@ -82,6 +130,62 @@ namespace BossRush
         {
             if (shared != null) UnityEngine.Object.Destroy(shared);
             shared = null;
+            // 贴图带 HideFlags.DontSave，切场景不会自动回收，必须和材质一起显式销毁。
+            if (bandTexture != null) UnityEngine.Object.Destroy(bandTexture);
+            bandTexture = null;
+        }
+    }
+
+    /// <summary>
+    /// 撤离环的开环与常态呼吸。**只动带宽与不透明度，半径一帧都不动**——
+    /// 半径等于 <c>SkyIslandSession.ExtractionRadius</c> 是 COMPAT 契约（圈内即判定内），
+    /// 让它呼吸等于画一个大小对不上的圈，比不画更坏。
+    ///
+    /// 【为什么要开环动画】风标 / 星灯点亮时新的撤离环靠 <c>SetActive(true)</c> 凭空出现。
+    /// 玩家正在别处打怪，回头看到一个已经在那儿的圈，不会意识到「刚刚发生了一件事」。
+    /// 0.35 秒 ease-out 把带子展开，这一下就是那件事的视觉回执。
+    ///
+    /// 挂在环自己身上，所以不需要会话每帧驱动；<c>SetActive</c> 一开就重播（OnEnable 复位）。
+    /// 噬风的预警圈**不挂**这个：那条是计时器，读数必须线性且完全由 SetShape 说了算。
+    /// </summary>
+    internal sealed class SkyIslandGroundRingPulse : MonoBehaviour
+    {
+        private const float OpenSeconds = 0.35f;
+        private const float BreathSeconds = 1.6f;
+        private const float BreathWidth = 0.15f;
+        private const float BreathAlpha = 0.14f;
+
+        private LineRenderer line;
+        private float baseWidth, age;
+        private Color baseColor;
+
+        internal static void Attach(LineRenderer target, float width, Color color)
+        {
+            if (target == null) return;
+            SkyIslandGroundRingPulse pulse = target.gameObject.GetComponent<SkyIslandGroundRingPulse>();
+            if (pulse == null) pulse = target.gameObject.AddComponent<SkyIslandGroundRingPulse>();
+            pulse.line = target;
+            pulse.baseWidth = width;
+            pulse.baseColor = color;
+            pulse.age = 0f;
+        }
+
+        private void OnEnable() { age = 0f; }
+
+        private void LateUpdate()
+        {
+            // 表现层淡变走 unscaled 时间，所以必须自己看暂停：暂停菜单开着时环不该继续呼吸。
+            if (line == null || BossRushUI.IsGamePaused()) return;
+            age += Time.unscaledDeltaTime;
+            float open = age < OpenSeconds ? BossRushUI.EaseOut(age / OpenSeconds) : 1f;
+            float breath = Mathf.Sin(age * (2f * Mathf.PI / BreathSeconds));
+            line.widthMultiplier = baseWidth * open * (1f + breath * BreathWidth);
+            Color color = baseColor;
+            // 不透明度只往下呼吸（区间 [1-BreathAlpha, 1]）：顶点色超过 1 会被 Color32 夹回，
+            // 往上摆等于半个周期没有动静。
+            color.a = baseColor.a * open * (1f - BreathAlpha * (0.5f - breath * 0.5f));
+            line.startColor = color;
+            line.endColor = color;
         }
     }
 
@@ -132,6 +236,8 @@ namespace BossRush
                 LineRenderer ring = SkyIslandGroundRing.Create(root, position + Vector3.up * GroundOffset);
                 ring.gameObject.name = "SkyIslandExtractionRing_" + anchor.name;
                 SkyIslandGroundRing.SetShape(ring, radius, RingWidth, color);
+                // 开环与呼吸挂在环自己身上：半径不动，只有带宽与不透明度在动。
+                SkyIslandGroundRingPulse.Attach(ring, RingWidth, color);
                 return ring;
             }
             catch (Exception e)
