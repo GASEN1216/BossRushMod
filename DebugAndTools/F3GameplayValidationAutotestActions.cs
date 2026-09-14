@@ -247,7 +247,9 @@ namespace BossRush
                 case "click_close": AutotestClickClose(record); return WaitAutotestReal(0.5f);
                 case "set_health": AutotestSetHealth(record, args); return null;
                 case "spawn_gnats": AutotestSpawnGnats(record, args); return WaitAutotestReal(ArgFloat(args, 1, 2f));
-                case "echo_hurt": return AutotestEchoHurt(record, args);
+                case "echo_hurt": return AutotestBossHurt(record, "storm", ArgFloat(args, 0, 0.75f), ArgFloat(args, 1, 15f));
+                case "boss_hurt": return AutotestBossHurt(record, Arg(args, 0), ArgFloat(args, 1, 0.65f), ArgFloat(args, 2, 15f));
+                case "wait_boss": return AutotestWaitBoss(record, args);
                 case "wait_object": return AutotestWaitObject(record, args);
                 case "wait_alpha": return AutotestWaitAlpha(record, args);
                 case "caption": AutotestCaption(record, args); return WaitAutotestReal(0.3f);
@@ -354,15 +356,10 @@ namespace BossRush
             if (session == null || string.IsNullOrEmpty(target)) return null;
             if (target.StartsWith("resident:", StringComparison.Ordinal))
             {
-                string display = SkyIslandWorldStory.ResidentName(target.Substring("resident:".Length));
+                // 按居民 id 找：交互名在居民生成时按当时的语言写死，换语言复拍后按名字匹配找不到人。
+                string npcId = target.Substring("resident:".Length);
                 foreach (SkyIslandResidentInteractable candidate in UnityEngine.Object.FindObjectsOfType<SkyIslandResidentInteractable>())
-                {
-                    if (candidate == null || !candidate.isActiveAndEnabled) continue;
-                    string label;
-                    try { label = candidate.InteractName; }
-                    catch (Exception) { label = null; }
-                    if (label != null && label.IndexOf(display, StringComparison.Ordinal) >= 0) return candidate;
-                }
+                    if (candidate != null && candidate.isActiveAndEnabled && candidate.NpcId == npcId) return candidate;
                 return null;
             }
             Transform point;
@@ -555,7 +552,9 @@ namespace BossRush
         private void AutotestNight(F3AutotestStepRecord record, string[] args)
         {
             bool original = _autotest.Snapshot != null && _autotest.Snapshot.ForceNight;
-            SkyIslandNight.DevForceNight = Arg(args, 0) == "on" || (Arg(args, 0) != "restore" && original);
+            // on 强制夜里、off 关掉、restore 回到开跑前的值（快照里记着）。
+            string mode = Arg(args, 0);
+            SkyIslandNight.DevForceNight = mode == "on" || (mode == "restore" && original);
             record.Notes.Add("force_night=" + SkyIslandNight.DevForceNight);
         }
 
@@ -673,21 +672,22 @@ namespace BossRush
             record.Notes.Add("gnats_spawned=" + placed + ",alive=" + swarm.Alive);
         }
 
-        private IEnumerator AutotestEchoHurt(F3AutotestStepRecord record, string[] args)
+        /// <summary>
+        /// <c>boss_hurt:种类:血线:秒数</c>（<c>echo_hurt:血线:秒数</c> 是噬风的旧写法）：以玩家为伤害来源把最近的这类 Boss 压到血线以下，
+        /// 让相位机制（噬风预警圈、残星匠首供能桩）按真实判定触发，之后再截图、击杀。
+        /// </summary>
+        private IEnumerator AutotestBossHurt(F3AutotestStepRecord record, string kind, float requestedFraction, float seconds)
         {
-            float fraction = Mathf.Clamp(ArgFloat(args, 0, 0.75f), 0.05f, 0.99f);
+            float fraction = Mathf.Clamp(requestedFraction, 0.05f, 0.99f);
+            string label = "action:boss_hurt:" + kind;
             CharacterMainControl boss = null;
-            float until = Time.realtimeSinceStartup + ArgFloat(args, 1, 15f);
+            float until = Time.realtimeSinceStartup + seconds;
             while (boss == null && Time.realtimeSinceStartup < until && !ShouldAbort())
             {
-                foreach (SkyIslandStormBoss candidate in UnityEngine.Object.FindObjectsOfType<SkyIslandStormBoss>())
-                {
-                    CharacterMainControl character = candidate == null ? null : candidate.GetComponent<CharacterMainControl>();
-                    if (character != null && character.Health != null && !character.Health.IsDead) boss = character;
-                }
+                boss = FindAutotestBoss(kind, AutotestBossSearchRadius);
                 if (boss == null) yield return WaitAutotestReal(0.3f);
             }
-            if (boss == null) { AutotestFail(record, "action:echo_hurt", "storm_boss_not_found", null, true); yield break; }
+            if (boss == null) { AutotestFail(record, label, "boss_not_found:" + kind, null, true); yield break; }
             CharacterMainControl player = CharacterMainControl.Main;
             for (int attempt = 0; attempt < 5 && boss != null && boss.Health != null && !boss.Health.IsDead; attempt++)
             {
@@ -708,7 +708,8 @@ namespace BossRush
             float after = boss == null || boss.Health == null ? -1f : boss.Health.CurrentHealth / Mathf.Max(1f, boss.Health.MaxHealth);
             record.Notes.Add("storm_health_fraction=" + after.ToString("F2", CultureInfo.InvariantCulture));
             if (after < 0f || after > fraction + 0.02f)
-                AutotestFail(record, "action:echo_hurt", "fraction_not_reached", "fraction=" + after.ToString("F2", CultureInfo.InvariantCulture), true);
+                // 不致命：没压到血线时相位机制不会触发，后面的断言照样记红，但击杀与截图还要跑，metrics 里的护盾与血量才看得到。
+                AutotestFail(record, label, "fraction_not_reached", "fraction=" + after.ToString("F2", CultureInfo.InvariantCulture), false);
         }
 
         private IEnumerator AutotestWaitObject(F3AutotestStepRecord record, string[] args)
@@ -900,7 +901,8 @@ namespace BossRush
                         yield return WaitAutotestReal(0.6f);
                         string body = AutotestPanelBody();
                         string expected = miss == 0 ? step.Hint : step.Reveal;
-                        bool shown = body != null && expected != null && body.IndexOf(AutotestShort(expected, 10), StringComparison.Ordinal) >= 0;
+                        // 取提示原文的前 10 个字比对；AutotestShort 截断时会补「…」，原文里没有，拿它比永远找不到。
+                        bool shown = body != null && expected != null && body.IndexOf(expected.Substring(0, Math.Min(10, expected.Length)), StringComparison.Ordinal) >= 0;
                         record.Assertions.Add(AutotestAssertion("puzzle_wrong_" + (miss + 1), AutotestPanelOpen() && shown ? "PASS" : "FAIL",
                             AutotestPanelOpen() && shown ? null : "feedback_missing_or_panel_closed", "body=" + AutotestShort(body, 80)));
                     }

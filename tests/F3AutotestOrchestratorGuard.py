@@ -36,6 +36,7 @@ AUTOTEST_FILES = (
     AUTOTEST,
     ACTIONS,
     "DebugAndTools/F3GameplayValidationAutotestAsserts.cs",
+    "DebugAndTools/F3GameplayValidationAutotestBosses.cs",
     CAPTURE,
     STORY,
     "DebugAndTools/F3GameplayValidationAutotestReport.cs",

@@ -373,7 +373,8 @@ namespace BossRush
             switch (target)
             {
                 case "gnat": return "SkyIslandGnat";
-                case "ground_ring": return "SkyIslandGroundRing";
+                // 撤离环建好后改名为 SkyIslandExtractionRing_<标记>（SkyIslandGroundRing.cs），按前缀取离玩家最近的那一个。
+                case "ground_ring": exact = false; return "SkyIslandExtractionRing_";
                 case "gather_glow": return "GatherGlowDisc";
                 case "echo_ring": return "SkyIslandStormWarningRing";
                 default:

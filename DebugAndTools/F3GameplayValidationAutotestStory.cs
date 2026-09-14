@@ -564,6 +564,13 @@ namespace BossRush
             return removed;
         }
 
+        /// <summary>金钱账面有没有变（没取快照时算没变）。</summary>
+        private bool AutotestMoneyUnchanged()
+        {
+            AutotestSnapshot snapshot = _autotest == null ? null : _autotest.Snapshot;
+            return snapshot == null || EconomyManager.Money == snapshot.Money;
+        }
+
         private string AutotestMoneyLedger()
         {
             AutotestSnapshot snapshot = _autotest == null ? null : _autotest.Snapshot;

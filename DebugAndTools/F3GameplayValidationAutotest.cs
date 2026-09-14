@@ -157,12 +157,28 @@ namespace BossRush
             _skyIslandMode = true;
             _skyIslandSceneHandle = session.ValidationScene.handle;
             _skyIslandBaselineLeases = ZombieModeUIHelper.ModalInputLeaseCount;
+            // 读条期间主套件的 Update 已经给岛上新主角上了无敌（ProtectCurrentPlayer 按 !_skyIslandMode 门控）：切到岛内口径后撤掉，
+            // 否则演练里跟叮咬、掉血有关的判据全部空转。回基地之后 Update 会重新接管，CompleteSession 统一还原。
+            RestoreProtectedPlayers();
             _autotest.IslandReached = true;
             yield return RunAutotestStages("landing");
 
             SetStage("9/10 全自动 · 岛内只读套件与演练");
-            yield return RunSkyIslandSuite();
-            yield return RunSkyIslandFinalChecks();
+            // 岛内套件的 SKY_PERF_* 会改写主套件 SUMMARY 用的性能基线与收尾数字：跑完（含中途打断）写回，SUMMARY 仍是主套件的数。
+            float mainBaselineP95 = _baselineP95Ms, mainFinalP95 = _finalP95Ms;
+            long mainBaselineMemory = _baselineMemory, mainFinalMemory = _finalMemory;
+            try
+            {
+                yield return RunSkyIslandSuite();
+                yield return RunSkyIslandFinalChecks();
+            }
+            finally
+            {
+                _baselineP95Ms = mainBaselineP95;
+                _finalP95Ms = mainFinalP95;
+                _baselineMemory = mainBaselineMemory;
+                _finalMemory = mainFinalMemory;
+            }
             yield return RunSkyIslandDrillSuite();
             WriteAutotestReport();
             yield return RunAutotestStages("real");
@@ -260,7 +276,10 @@ namespace BossRush
                 _autotest.Info.ItemLedger = ReclaimAutotestItems(_autotest.Snapshot);
                 Record("AUTOTEST_ITEMS_RECLAIM", "PASS", 0L, _autotest.Info.ItemLedger, string.Empty);
                 _autotest.Info.MoneyLedger = AutotestMoneyLedger();
-                Record("AUTOTEST_MONEY_LEDGER", "PASS", 0L, _autotest.Info.MoneyLedger, string.Empty);
+                // 金钱只记账不还原（2026-09-14 拍板）：验收步骤不买服务，账面变了就记 WARN，AI 对着步骤日志查是哪一步花的。
+                bool moneyUnchanged = AutotestMoneyUnchanged();
+                Record("AUTOTEST_MONEY_LEDGER", moneyUnchanged ? "PASS" : "WARN", 0L, _autotest.Info.MoneyLedger,
+                    moneyUnchanged ? string.Empty : "money_changed_during_autotest_not_restored");
                 // 基地侧检查放在还原与收回之后：纪念品件数回到开跑前、官方图鉴镜像与还原后的存档对照。
                 RunSyncCase("SKY_KEEPSAKE_ITEMS_BASE", ValidateSkyIslandKeepsakesAtBase);
                 string notesMetrics, notesReason;
@@ -301,7 +320,12 @@ namespace BossRush
                     bool final = ok && !onIsland;
                     _autotest.Info.RestoreStory = final ? "PASS" : "PENDING_RECOVERY";
                     _autotest.Info.RestoreDetail = "sync_fallback:" + detail + (final ? string.Empty : ";snapshot_key_kept_for_next_base_arrival");
-                    if (final && _autotest.SnapshotPersisted) ClearAutotestSnapshotKey();
+                    if (final)
+                    {
+                        // 清快照键之前先收回发出去的岛上物品：键一清，唯一会收物品的崩溃恢复就再也走不到了。
+                        _autotest.Info.ItemLedger = "sync_fallback:" + ReclaimAutotestItems(_autotest.Snapshot);
+                        if (_autotest.SnapshotPersisted) ClearAutotestSnapshotKey();
+                    }
                     if (!final) _autotestRecoveryCheckedSlot = int.MinValue;
                 }
                 else _autotest.Info.RestoreStory = "NOT_NEEDED";
@@ -452,34 +476,52 @@ namespace BossRush
                 }
             }
 
-            bool realEntry = false;
+            bool realEntry = false, boatTried = false;
+            // 放行窗口一定要关：中途取消、换槽、阶段截止时栈被 Dispose，finally 照样执行（CompleteSession 里还有一道复位）。
             _autotestDepartureOpen = true;
-            if (departure != null && !ShouldAbort())
+            try
             {
-                bool interacted = false;
-                try
+                if (departure != null && !ShouldAbort())
                 {
-                    CharacterMainControl.Main.Interact(departure);
-                    interacted = true;
+                    bool interacted = false, started = false;
+                    try
+                    {
+                        CharacterMainControl.Main.Interact(departure);
+                        interacted = true;
+                    }
+                    catch (Exception e) { notes.Add("interact_threw:" + e.GetType().Name); }
+                    // 官方 Interact 在已有动作、搬着东西或拿不到交互目标（离得不够近）时静默不做：读条真的开始了才算交互发出去了。
+                    float startBy = Time.realtimeSinceStartup + 1.5f;
+                    while (interacted && departure != null && !started && SkyIslandSessionOrNull() == null && Time.realtimeSinceStartup < startBy && !ShouldAbort())
+                    {
+                        started = departure.Interacting;
+                        if (!started) yield return null;
+                    }
+                    float until = Time.realtimeSinceStartup + Mathf.Max(1f, departure == null ? 1f : departure.InteractTime) + 8f;
+                    while (started && SkyIslandSessionOrNull() == null && Time.realtimeSinceStartup < until && !ShouldAbort()) yield return null;
+                    realEntry = SkyIslandSessionOrNull() != null;
+                    boatTried = started || realEntry;
+                    CharacterMainControl main = CharacterMainControl.Main;
+                    float distance = main == null || departure == null ? -1f : Vector3.Distance(main.transform.position, departure.transform.position);
+                    notes.Add("boat_interact=" + interacted + ",interact_started=" + started + ",session_created=" + realEntry
+                        + ",distance_m=" + distance.ToString("F1", System.Globalization.CultureInfo.InvariantCulture));
                 }
-                catch (Exception e) { notes.Add("interact_threw:" + e.GetType().Name); }
-                float until = Time.realtimeSinceStartup + Mathf.Max(1f, departure.InteractTime) + 8f;
-                while (interacted && SkyIslandSessionOrNull() == null && Time.realtimeSinceStartup < until && !ShouldAbort()) yield return null;
-                realEntry = SkyIslandSessionOrNull() != null;
-                notes.Add("boat_interact=" + interacted + ",session_created=" + realEntry);
+                if (!realEntry && !ShouldAbort())
+                {
+                    string enterMessage = null;
+                    try { SkyIslandSession.Enter(_host, delegate (string message, bool error) { if (error) enterMessage = message; }); }
+                    catch (Exception e) { enterMessage = e.GetType().Name; }
+                    notes.Add("fallback_production_enter=" + (SkyIslandSessionOrNull() != null)
+                        + (enterMessage == null ? string.Empty : "(" + enterMessage + ")"));
+                }
             }
-            if (!realEntry && !ShouldAbort())
-            {
-                string enterMessage = null;
-                try { SkyIslandSession.Enter(_host, delegate (string message, bool error) { if (error) enterMessage = message; }); }
-                catch (Exception e) { enterMessage = e.GetType().Name; }
-                notes.Add("fallback_production_enter=" + (SkyIslandSessionOrNull() != null)
-                    + (enterMessage == null ? string.Empty : "(" + enterMessage + ")"));
-            }
-            _autotestDepartureOpen = false;
-            Record("AUTOTEST_DEPART_BOAT", realEntry ? "PASS" : "SKIP", sw.ElapsedMilliseconds, string.Join(",", notes.ToArray()),
-                realEntry ? string.Empty : "boat_entry_not_reached_used_production_enter");
-            AutotestLog("AUTOTEST_DEPART_BOAT", "end", realEntry ? "PASS" : "SKIP");
+            finally { _autotestDepartureOpen = false; }
+            // 船点交互的读条开始了却没进岛：那是缺陷，记 FAIL（后面照样经生产入口进岛，把岛上检查跑完）；
+            // 船点没加载出来、或读条根本没开始（离得不够近、身上有别的动作）才记 SKIP，notes 里有距离可查。
+            string departResult = realEntry ? "PASS" : boatTried ? "FAIL" : "SKIP";
+            Record("AUTOTEST_DEPART_BOAT", departResult, sw.ElapsedMilliseconds, string.Join(",", notes.ToArray()),
+                realEntry ? string.Empty : boatTried ? "boat_interaction_started_but_did_not_enter_island" : "boat_interaction_not_started_used_production_enter");
+            AutotestLog("AUTOTEST_DEPART_BOAT", "end", departResult);
 
             AutotestLog("AUTOTEST_ISLAND_READY", "begin", null);
             sw = Stopwatch.StartNew();

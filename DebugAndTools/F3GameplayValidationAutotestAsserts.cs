@@ -226,7 +226,8 @@ namespace BossRush
                     case "view_open": return AutotestBool(label, View.ActiveView != null, "no_official_view", null);
                     case "log_contains":
                     {
-                        string log = ReadAutotestSharedText(Application.consoleLogPath);
+                        // 只读末尾一段：主套件跑完 Player.log 可能很大，岛上要找的行都在最后。
+                        string log = ReadAutotestSharedTail(Application.consoleLogPath, 8 * 1024 * 1024);
                         string want = string.Join(":", args, 1, Math.Max(0, args.Length - 1));
                         return AutotestBool(label, log != null && log.IndexOf(want, StringComparison.Ordinal) >= 0, "log_text_missing", "log=" + Application.consoleLogPath);
                     }
@@ -239,6 +240,13 @@ namespace BossRush
                             return AutotestAssertion(label, "SKIP", "object_not_tracked_or_gone", null);
                         float drift = Vector3.Distance(first, now.transform.position);
                         return AutotestBool(label, drift <= ArgFloat(args, 2, 0.3f), "object_moved", "drift_m=" + drift.ToString("F2", CultureInfo.InvariantCulture));
+                    }
+                    case "boss_alive":
+                    {
+                        // boss_alive:种类:半径[:false]：附近有没有活着的这类 Boss；第三个参数 false 表示期望已经没有了（击杀之后）。
+                        CharacterMainControl boss = FindAutotestBoss(Arg(args, 1), ArgFloat(args, 2, 60f));
+                        bool expectAlive = Arg(args, 3) != "false";
+                        return AutotestBool(label, (boss != null) == expectAlive, expectAlive ? "boss_not_alive_nearby" : "boss_still_alive", DescribeAutotestBoss(boss));
                     }
                     default:
                         return AutotestAssertion(label, "FAIL", "assert_not_implemented", null);
@@ -328,6 +336,20 @@ namespace BossRush
             if (quitClean && !destroyed) return AutotestAssertion(label, "PASS", null, "previous_log=" + path);
             if (onIsland && destroyed && !quitClean) return AutotestAssertion(label, "FAIL", "quit_from_island_still_raises_destroyed_object_error", "previous_log=" + path);
             return AutotestAssertion(label, "SKIP", "previous_session_did_not_quit_on_the_island", "on_island=" + onIsland + ",quit_clean=" + quitClean + ",destroyed_error=" + destroyed);
+        }
+
+        private static string ReadAutotestSharedTail(string path, int maxBytes)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(path) || !File.Exists(path)) return null;
+                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    stream.Seek(Math.Max(0L, stream.Length - maxBytes), SeekOrigin.Begin);
+                    using (var reader = new StreamReader(stream, Encoding.UTF8)) return reader.ReadToEnd();
+                }
+            }
+            catch (Exception) { return null; }
         }
 
         private static string ReadAutotestSharedText(string path)

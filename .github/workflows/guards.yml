@@ -27,6 +27,10 @@ jobs:
         with:
           python-version: '3.12'
 
+      # 图像类属性测试（小地图对齐、全自动实机验收审阅工具）要 Pillow；没装时它们按约定报非零，不假绿。
+      - name: Install Pillow for image property tests
+        run: python -m pip install --disable-pip-version-check Pillow
+
       - name: Run source guards (external artifacts reported separately)
         env:
           # guard 输出中文；不固定 UTF-8 会在部分 runner 上乱码

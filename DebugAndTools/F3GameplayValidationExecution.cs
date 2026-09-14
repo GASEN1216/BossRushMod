@@ -180,6 +180,8 @@ namespace BossRush
             DisposeSessionStack();
 #if BOSSRUSH_DEV
             // 全自动实机验收收尾阶段没跑到时（宿主销毁、阶段超时、异常）的同步兜底：语言、强制夜里、无敌、时间流速与剧情快照。
+            // 出发时的进岛放行窗口也在这里再关一次（出发协程被 Dispose 时 finally 已关，这里防万一）。
+            _autotestDepartureOpen = false;
             FinishAutotestRestoreSynchronously();
 #endif
             if (_sessionSubscribed)

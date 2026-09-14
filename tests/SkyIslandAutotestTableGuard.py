@@ -7,8 +7,8 @@
 1. 结构（与 ValidateTable 同口径）：阶段、步骤 id、预算、动词与断言名只认 F3AutotestJudges 的名单；每步至少一条断言或一张截图
    （AssertingVerbs 里自带判定的动作算断言），class=shot 的步骤必须有截图；第一个 story 阶段以 reset 开头。
 2. 名单与实现一致：名单里的每个动词在 RunAutotestVerb 有分派，每个断言名在 EvaluateAutotestAssert 有 case。
-3. 清单编号：天空岛人工清单 2.10–2.17（含 2.16 的 D1–D6）每一行都在覆盖表里，引用的编号都真实存在；M_SKY_ISLAND_01–14 都有归类，
-   GameplayCoverage.json 里新出现的 M_SKY_ISLAND_* 记 WARN（提醒补一行，不挡别的会话提交）。清单文档是 local-only，不在本机时记 PARTIAL。
+3. 清单编号：天空岛人工清单 2.10–2.19（含 2.16 的 D1–D6）每一行都在覆盖表里，引用的编号都真实存在；GameplayCoverage.json 里
+   全部 M_SKY_ISLAND_* 都有归类（新增人工用例就在覆盖表里补一行）。清单文档是 local-only，不在本机时记 PARTIAL。
    「只能人工」理由必须写明手感 / 声音 / 好不好玩。
 4. 证据：assert:case 只认 AutotestCaseDelegate 映射到的用例；覆盖表证据认 GameplayCoverage.json 已登记的自动项；
    offline: 证据的路径真实存在，且只挂在自动断言行上。
@@ -37,7 +37,7 @@ GEOMETRY = "ArtSource/SkyIsland/Validation/sky_island_geometry.json"
 WORLD = "Assets/Data/SkyIsland/World.json"
 SKY_DIR = "DebugAndTools/SkyIsland"
 
-REQUIRED_M = tuple("M_SKY_ISLAND_%02d" % n for n in range(1, 15))
+BOSS_KINDS = ("storm", "foreman", "stargazer")
 WORLD_ALIASES = {"gnat", "ground_ring", "gather_glow", "echo_ring"}
 DYNAMIC_PREFIXES = ("制作 ", "Make ", "还不会做 ", "Not yet: ")
 LABEL_ASSERTS = {"choice_present", "choice_absent", "body_contains", "body_absent", "caption_contains", "objective_contains"}
@@ -50,6 +50,7 @@ VERB_ARGS = {
     "night": [("on", "off", "restore"), NUM], "set_health": [NUM], "spawn_gnats": [INT, NUM], "echo_hurt": [NUM, NUM],
     "frame": [NUM], "use_compass": [], "click_close": [], "close_panel": [], "open_map": [], "close_view": [],
     "open_modeg_confirm": [], "close_modeg_confirm": [], "reachability": [], "encounter_cap": [],
+    "wait_boss": [BOSS_KINDS, NUM, ("optional",)], "boss_hurt": [BOSS_KINDS, NUM, NUM],
 }
 
 
@@ -159,7 +160,7 @@ def load_context():
         ctx["doc_ids"] = None
     else:
         # 行首编号后面可能跟着「🤖（部分）」一类标注，编号本身到空白或竖线为止。
-        ids = set(re.findall(r"^\|\s*(2\.1[0-7]\.\d+[a-z]?)(?=[\s|])[^|\n]*\|", doc, re.M))
+        ids = set(re.findall(r"^\|\s*(2\.1[0-9]\.\d+[a-z]?)(?=[\s|])[^|\n]*\|", doc, re.M))
         ids.update("2.16." + d for d in re.findall(r"^\|\s*(D[1-9])(?=[\s|])[^|\n]*\|", doc, re.M))
         ctx["doc_ids"] = ids
     return ctx
@@ -346,6 +347,8 @@ class Checker:
             self.positional(where, rest, [INT])
         elif name == "health_ge":
             self.positional(where, rest, [NUM])
+        elif name == "boss_alive":
+            self.positional(where, rest, [BOSS_KINDS, NUM, ("true", "false")])
 
     def run(self):
         ctx, table = self.ctx, self.table
@@ -496,11 +499,8 @@ class Checker:
         if doc_ids is not None:
             for cid in sorted(doc_ids - set(covered)):
                 self.err("天空岛人工清单 %s 没有归类（自动断言 / 截图给 AI 看 / 只能人工）" % cid)
-        for cid in REQUIRED_M:
-            if cid in ctx["manual_m"] and cid not in covered:
-                self.err("人工用例 %s 没有归类" % cid)
-        for cid in sorted(ctx["manual_m"] - set(covered) - set(REQUIRED_M)):
-            self.warnings.append("GameplayCoverage.json 新出现的人工用例 %s 还没在步骤表覆盖表里归类" % cid)
+        for cid in sorted(ctx["manual_m"] - set(covered)):
+            self.err("GameplayCoverage.json 的人工用例 %s 没有在步骤表覆盖表里归类（自动断言 / 截图给 AI 看 / 只能人工）" % cid)
         return self.errors, self.warnings
 
 
@@ -571,6 +571,8 @@ PROBES = (
     ("步骤引用的清单编号没有覆盖行", drop_row("2.14.1")),
     ("箱子备选 TypeID 写错", replace_action("SKY_AUTO_END_ECHO_CLEAR", "assert:crate_has_any:500082+500071+500081", "assert:crate_has_any:500082+500071+500999")),
     ("物体名写错", replace_action("SKY_AUTO_REAL_LANTERN", "assert:object_present:SkyIslandLanternLight", "assert:object_present:SkyIslandLanternLite")),
+    ("人工用例没有归类", drop_row("M_SKY_ISLAND_15")),
+    ("Boss 种类写错", replace_action("SKY_AUTO_REAL_BOSS_FOREMAN", "wait_boss:foreman:30", "wait_boss:formean:30")),
 )
 
 

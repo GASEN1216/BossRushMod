@@ -296,6 +296,7 @@ echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs
 echo(DebugAndTools\F3GameplayValidationAutotest.cs
 echo(DebugAndTools\F3GameplayValidationAutotestActions.cs
 echo(DebugAndTools\F3GameplayValidationAutotestAsserts.cs
+echo(DebugAndTools\F3GameplayValidationAutotestBosses.cs
 echo(DebugAndTools\F3GameplayValidationAutotestCapture.cs
 echo(DebugAndTools\F3GameplayValidationAutotestStory.cs
 echo(DebugAndTools\F3GameplayValidationAutotestReport.cs

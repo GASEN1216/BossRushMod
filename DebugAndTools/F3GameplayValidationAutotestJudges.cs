@@ -140,7 +140,8 @@ namespace BossRush
             "choose", "choose_label", "hover", "close_panel", "clear_nearby", "kill_nearby", "wait_quiet", "invincible",
             "night", "give", "give_if_missing", "use_buff", "use_item", "use_compass", "set_health", "spawn_gnats", "echo_hurt",
             "wait_object", "wait_alpha", "caption", "wait_caption", "frame", "loot", "puzzle_solve", "open_map", "close_view",
-            "click_close", "open_modeg_confirm", "close_modeg_confirm", "reachability", "encounter_cap", "shot", "burst", "assert",
+            "click_close", "open_modeg_confirm", "close_modeg_confirm", "reachability", "encounter_cap", "wait_boss", "boss_hurt",
+            "shot", "burst", "assert",
         };
 
         /// <summary>
@@ -150,7 +151,7 @@ namespace BossRush
         internal static readonly string[] AssertingVerbs =
         {
             "use_buff", "use_item", "use_compass", "wait_caption", "frame", "loot", "puzzle_solve", "reachability", "encounter_cap",
-            "open_modeg_confirm",
+            "open_modeg_confirm", "wait_boss",
         };
 
         /// <summary>断言名。<c>assert:名字[:参数…]</c>。</summary>
@@ -162,7 +163,7 @@ namespace BossRush
             "alpha_le", "killed_ge", "near",
             "stage_data", "contrast_min", "row_contrast_min", "overflow_none", "visible_min", "profile_ok", "quiet",
             "health_ge", "color_equals", "chilled", "wind_gale", "extraction_open", "echo_starts", "gnats_alive_ge",
-            "language_is", "view_open", "log_contains", "prev_log_quit", "object_static",
+            "language_is", "view_open", "log_contains", "prev_log_quit", "object_static", "boss_alive",
         };
 
         /// <summary>
@@ -533,13 +534,13 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 手记收得下的 id：与 SkyIslandStoryService.RecordNote 的登记表同口径（信鸽来信、船员名册、纪念品、风晶灯、蛙卵）。
-        /// 头目 / 岛主首杀记录由另一会话在建，登记表合入之后再同步到这里。
+        /// 手记收得下的 id：与 SkyIslandStoryService.RecordNote 的登记表同口径（信鸽来信、船员名册、纪念品、风晶灯、蛙卵、头目 / 岛主首杀）。
         /// </summary>
         internal static bool IsRecordableNote(string id)
         {
             return !string.IsNullOrEmpty(id) && (SkyIslandLetters.Find(id) != null || SkyIslandCrew.IndexOf(id) >= 0
-                || SkyIslandItemRules.FindKeepsake(id) != null || SkyIslandLights.Find(id) != null || SkyIslandMosquitoRules.IsFrogNote(id));
+                || SkyIslandItemRules.FindKeepsake(id) != null || SkyIslandLights.Find(id) != null || SkyIslandMosquitoRules.IsFrogNote(id)
+                || SkyIslandBossRules.IsBossNote(id));
         }
 
         internal static bool CodecRoundTrip(SkyIslandStoryData data, out string reason)

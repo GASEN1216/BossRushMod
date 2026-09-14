@@ -12,6 +12,9 @@ namespace BossRush
         private Action<string, Transform> callback;
         private Func<bool> valid;
 
+        /// <summary>居民 id（sky_*）。交互名按生成时的语言写死，按 id 找人不受换语言影响（Dev 自动验收用）。</summary>
+        internal string NpcId { get { return npcId; } }
+
         protected override string InteractNameKey
         {
             get
