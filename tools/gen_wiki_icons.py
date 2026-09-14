@@ -34,6 +34,7 @@ import os
 import subprocess
 import sys
 import time
+from imagegen_model import IMAGE_MODEL
 
 try:
     from PIL import Image
@@ -313,7 +314,7 @@ def generate_one(key, prompt):
         last_err = ""
         for attempt in range(1, 4):
             r = subprocess.run(
-                [sys.executable, IMAGEGEN, "generate", "--model", "gpt-image-2",
+                [sys.executable, IMAGEGEN, "generate", "--model", IMAGE_MODEL,
                  "--size", "1024x1024", "--n", "1", "--no-augment",
                  "--out", raw, "--prompt", prompt],
                 capture_output=True, text=True, timeout=300)

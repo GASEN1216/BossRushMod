@@ -4,7 +4,8 @@
 设计要点：
   - 可断点续跑：目标文件已存在就跳过，网关抽风或中途中断都能重跑补齐。
   - 全部走色键出图（#ff00ff）+ remove_chroma_key 抠图 + 正方形归一，
-    因为网关的 gpt-image-2 不接受 background=transparent，且返回尺寸不受控。
+    因为网关的 GPT Image 系列不接受 background=transparent，且返回尺寸不受控
+    （2.5-flare 实测：请求 1024x1024 实回 1536x1024）。模型名见 tools/imagegen_model.py。
   - 所有主体都必须反复点名 anthropomorphic DUCK：negative prompt 挡不住「鸭变人」，
     这是 2026-08-29 实测结论，见 docs/制作教程/AI图片生成与Unity自动打包流程.md。
 
@@ -18,6 +19,7 @@ import sys
 import time
 
 from PIL import Image
+from imagegen_model import IMAGE_MODEL
 
 HOME = os.path.expanduser("~")
 IMAGEGEN = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "image_gen.py")
@@ -158,7 +160,7 @@ def main():
                 # 因此带指数退避重试；仍然失败就跳过，靠断点续跑在收尾轮补齐。
                 last_err = ""
                 for attempt in range(1, 4):
-                    r = subprocess.run([sys.executable, IMAGEGEN, "generate", "--model", "gpt-image-2",
+                    r = subprocess.run([sys.executable, IMAGEGEN, "generate", "--model", IMAGE_MODEL,
                                         "--size", "1024x1024", "--n", "1", "--no-augment",
                                         "--out", raw, "--prompt", prompt],
                                        capture_output=True, text=True, timeout=300)

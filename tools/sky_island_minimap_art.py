@@ -30,6 +30,7 @@ from PIL import Image, ImageDraw
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / 'tools'))
 import build_sky_island_minimap as baker  # noqa: E402
+from imagegen_model import IMAGE_MODEL
 
 WORK = ROOT / 'ArtSource/SkyIsland/MinimapArt'
 SOURCE = baker.ART_IMAGE.parent
@@ -200,13 +201,13 @@ def main():
     generate = commands.add_parser('generate')
     generate.add_argument('--reference', default=str(WORK / 'reference_1024.png'))
     generate.add_argument('--out', default=str(WORK / 'generated.png'))
-    generate.add_argument('--model', default='gpt-image-2')
+    generate.add_argument('--model', default=IMAGE_MODEL)
     generate.set_defaults(func=cmd_generate)
     align = commands.add_parser('align')
     align.add_argument('--raw', default=str(WORK / 'generated.png'))
     align.add_argument('--grade', choices=('vanilla', 'none'), default='vanilla')
     align.add_argument('--min-iou', type=float, default=0.93)
-    align.add_argument('--model', default='gpt-image-2')
+    align.add_argument('--model', default=IMAGE_MODEL)
     align.set_defaults(func=cmd_align)
     args = parser.parse_args()
     args.func(args)

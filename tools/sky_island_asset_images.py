@@ -23,6 +23,7 @@ from pathlib import Path
 import subprocess
 import sys
 import time
+from imagegen_model import IMAGE_MODEL
 
 IMAGEGEN = os.path.join(os.path.expanduser('~'), '.codex', 'skills', '.system',
                         'imagegen', 'scripts', 'image_gen.py')
@@ -304,7 +305,7 @@ def main():
         for attempt in range(1, args.retries + 1):
             # 网关会间歇抛 APIConnectionError，单次失败不代表这张出不来，指数退避重试。
             result = subprocess.run(
-                [sys.executable, IMAGEGEN, 'generate', '--model', 'gpt-image-2',
+                [sys.executable, IMAGEGEN, 'generate', '--model', IMAGE_MODEL,
                  '--size', args.size, '--n', '1', '--no-augment', '--out', str(target),
                  '--prompt', prompt, '--negative', negative_for(warm)],
                 capture_output=True, text=True, timeout=600)

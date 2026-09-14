@@ -21,6 +21,7 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from sky_island_asset_images import IMAGEGEN, STYLE, WARM, NEGATIVE   # noqa: E402
+from imagegen_model import IMAGE_MODEL
 
 # name: (face_limit, 单件面数预算, 实例数, 中文说明, 主体描述)
 # face_limit 约为单件预算的 2 倍，留给 Blender 最后一道精确减面。
@@ -158,7 +159,7 @@ def main():
         ok = False
         for attempt in range(1, args.retries + 1):
             result = subprocess.run(
-                [sys.executable, IMAGEGEN, 'generate', '--model', 'gpt-image-2',
+                [sys.executable, IMAGEGEN, 'generate', '--model', IMAGE_MODEL,
                  '--size', args.size, '--n', '1', '--no-augment', '--out', str(target),
                  '--prompt', prompt, '--negative', NEGATIVE],
                 capture_output=True, text=True, timeout=600)

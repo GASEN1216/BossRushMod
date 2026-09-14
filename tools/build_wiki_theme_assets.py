@@ -52,6 +52,7 @@ import os
 import subprocess
 import sys
 import time
+from imagegen_model import IMAGE_MODEL
 
 HOME = os.path.expanduser("~")
 IMAGEGEN = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "image_gen.py")
@@ -168,7 +169,7 @@ def generate_one(key, size, prompt, chroma=False):
         last_err = ""
         for attempt in range(1, 4):
             r = subprocess.run(
-                [sys.executable, IMAGEGEN, "generate", "--model", "gpt-image-2",
+                [sys.executable, IMAGEGEN, "generate", "--model", IMAGE_MODEL,
                  "--size", size, "--n", "1", "--no-augment", "--out", raw, "--prompt", prompt],
                 capture_output=True, text=True, timeout=600)
             if r.returncode == 0 and os.path.exists(raw):

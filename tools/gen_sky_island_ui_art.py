@@ -24,6 +24,7 @@ import sys
 import time
 
 from PIL import Image
+from imagegen_model import IMAGE_MODEL
 
 HOME = os.path.expanduser("~")
 IMAGEGEN = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "image_gen.py")
@@ -104,6 +105,14 @@ SCENES = {
           "the entrance, old charts pinned to the wet rock.",
     "S4": "Starfall Overlook - a bare stone observation platform at the archipelago's highest point, "
           "a large brass telescope on a swivel mount.",
+    # 群岛手记：唯一一张不挂区域的横幅。手记页是全链条里文本最长、却唯一既无立绘也无插图的一页，
+    # 所以给它一张「把整条群岛一眼看完」的总览图，近景压一本摊开的手绘航图点题。
+    # 取用点是 SkyIslandUiArt.GetJournalBanner()（常量 JournalSceneAsset），不走区域解析。
+    "journal": "Archipelago Overview - a high vantage looking out over the whole chain of floating "
+               "islands, the bronze bell tower, the green terraces and the domed workshop all visible "
+               "far off across the cloud sea; in the near foreground a weathered timber rail with an "
+               "open hand-drawn chart of the islands pinned down under a brass paperweight beside a "
+               "stack of field notebooks and a few pressed leaves.",
 }
 
 
@@ -154,7 +163,7 @@ def generate_one(index, total, dst, width, height, cut_out, prompt):
     if not os.path.exists(raw):
         last_err = ""
         for attempt in range(1, 4):
-            r = subprocess.run([sys.executable, IMAGEGEN, "generate", "--model", "gpt-image-2",
+            r = subprocess.run([sys.executable, IMAGEGEN, "generate", "--model", IMAGE_MODEL,
                                 "--size", "1024x1024", "--n", "1", "--no-augment",
                                 "--out", raw, "--prompt", prompt],
                                capture_output=True, text=True, timeout=600)
