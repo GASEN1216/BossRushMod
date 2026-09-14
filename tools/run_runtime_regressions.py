@@ -15,7 +15,7 @@ SCRIPT_FIXTURES = (
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
     "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",
     "StoneOutpostSceneLease", "StoneOutpostMap", "EquipmentResourceScene", "SkyIslandStory", "SkyIslandDelivery", "SkyIslandOfficialContract", "SkyIslandEncounters", "SkyIslandLighting", "SkyIslandRaidLease", "SkyIslandLoot",
-    "SkyIslandHudPolicy",
+    "SkyIslandHudPolicy", "ZombieModeEntryDebt",
 )
 PROJECT_FIXTURES = {
     "ReviewSeptember": "ReviewSeptember.csproj",

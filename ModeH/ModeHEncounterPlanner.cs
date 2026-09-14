@@ -103,11 +103,49 @@ namespace BossRush
             ulong derived = ModeHSeedStream.DeriveSeed(runSeed, ModeHSeedStream.Domains.EncounterPlan, sequence);
             ModeHSeedStream stream = ModeHSeedStream.Create(runSeed, ModeHSeedStream.Domains.EncounterPlan, sequence);
 
-            ModeHSkeletonSpec skeleton = PickSkeleton(stream, corridor);
-            if (skeleton == null)
+            // 擂台条件先抽：骨架与人数要按「这套条件下本池到底组不组得出来」筛选，
+            // 而合法性判定（TryFindLegalRosterSelection）需要这套条件才能算能力矩阵。
+            ModeHArenaConditionSpec condition = PickArenaCondition(stream);
+            if (condition == null)
             {
-                failureReasonId = "plan_skeleton_missing";
+                failureReasonId = "plan_condition_missing";
                 return null;
+            }
+
+            // 骨架 × 人数里有一部分是**结构上永远组不出来**的：走廊下界 minFillPercent
+            // 是按「基础威胁和」定的，而单体分只有 38..62，人数少时怎么凑都够不着。
+            // 例：第 6 场 champion_beast 只许 1–2 人，n=1 上界 62 < 下界 136、
+            // n=2 上界 120×1.2=144 < 下界 164，两档都恒不可行；第 3 场 relay_squad 的
+            // n=4 与第 1 场 single_beast 的 n=1（除非池里有 62 分那位）同理。
+            // 这些空抽会白白吃掉候选预算，8 个候选全撞上时整季被判「组不出六场」，
+            // 玩家在选秀页反复点「签约」也永远签不下去（没有退出口）——
+            // 2026-09-12 的 F3 实机跑就卡在这里：388 次点击、第 6 场恒
+            // plan_threat_out_of_corridor。修法是只从**本池真组得出来**的
+            // (骨架, 人数) 里抽，数据表与走廊数值一字不动。
+            List<ModeHSkeletonSpec> buildableSkeletons = new List<ModeHSkeletonSpec>();
+            List<int> buildableCounts = new List<int>();
+            CollectBuildableDraws(corridor, enemyStableKeyPool, echoReturnStableKey, condition,
+                liveArchetypeIds, buildableSkeletons, buildableCounts);
+
+            ModeHSkeletonSpec skeleton;
+            int unitCount;
+            if (buildableSkeletons.Count > 0)
+            {
+                int draw = stream.NextInt(buildableSkeletons.Count);
+                skeleton = buildableSkeletons[draw];
+                unitCount = buildableCounts[draw];
+            }
+            else
+            {
+                // 一个都筛不出来时保持原路径：照旧抽、照旧走威胁修复，失败时报出原来的拒绝原因，
+                // 不把「本池确实组不出来」伪装成别的问题。
+                skeleton = PickSkeleton(stream, corridor);
+                if (skeleton == null)
+                {
+                    failureReasonId = "plan_skeleton_missing";
+                    return null;
+                }
+                unitCount = stream.NextIntInclusive(skeleton.MinUnits, skeleton.MaxUnits);
             }
 
             // 回场签骨架必须真的拿到回场核心，否则换候选
@@ -128,14 +166,6 @@ namespace BossRush
                 failureReasonId = "plan_entry_script_missing";
                 return null;
             }
-            ModeHArenaConditionSpec condition = PickArenaCondition(stream);
-            if (condition == null)
-            {
-                failureReasonId = "plan_condition_missing";
-                return null;
-            }
-
-            int unitCount = stream.NextIntInclusive(skeleton.MinUnits, skeleton.MaxUnits);
             List<string> units;
             if (!TrySelectUnits(stream, enemyStableKeyPool, requiredCoreKey, unitCount, corridor, out units,
                     out failureReasonId))
@@ -279,6 +309,56 @@ namespace BossRush
                 if (corridors[i] != null && corridors[i].MatchIndex == matchIndex) return corridors[i];
             }
             return null;
+        }
+
+        /// <summary>
+        /// 收集本场「真组得出来」的 (骨架, 人数) 组合：对走廊允许的每套骨架、每个合法人数，
+        /// 用与修复同一条枚举（<see cref="TryFindLegalRosterSelection"/>：同走廊、同必选回响核心、
+        /// 同擂台条件、同合同原型矩阵）确认至少存在一组解。
+        ///
+        /// 只做只读判定，不消耗随机流——调用方拿到列表后才抽一次，抽出的组合保证下游能落地。
+        /// 池上限 <see cref="ModeHConfig.MaxProductionCandidateCount"/> 是 12，而选秀固定占掉 5 席，
+        /// 实际枚举规模 ≤ 2^7；本方法只在整备阶段（派单前的可行性检查与建计划）调用，不进战斗帧。
+        /// </summary>
+        private static void CollectBuildableDraws(
+            ModeHMatchCorridor corridor,
+            IList<string> enemyStableKeyPool,
+            string echoReturnStableKey,
+            ModeHArenaConditionSpec condition,
+            IList<string> liveArchetypeIds,
+            List<ModeHSkeletonSpec> skeletons,
+            List<int> unitCounts)
+        {
+            List<ModeHSkeletonSpec> all = ModeHContentCatalog.Skeletons;
+            if (corridor == null || corridor.SkeletonIds == null || all == null) return;
+            for (int i = 0; i < corridor.SkeletonIds.Count; i++)
+            {
+                ModeHSkeletonSpec skeleton = null;
+                for (int j = 0; j < all.Count; j++)
+                {
+                    if (all[j] != null && string.Equals(all[j].SkeletonId, corridor.SkeletonIds[i], StringComparison.Ordinal))
+                    {
+                        skeleton = all[j];
+                        break;
+                    }
+                }
+                if (skeleton == null) continue;
+                string requiredCoreKey = null;
+                if (skeleton.RequiresEchoReturn)
+                {
+                    // 回场签骨架拿不到回场核心就不是「组得出来」的一档，留给兜底路径去报原因。
+                    if (string.IsNullOrEmpty(echoReturnStableKey)) continue;
+                    requiredCoreKey = echoReturnStableKey;
+                }
+                for (int count = skeleton.MinUnits; count <= skeleton.MaxUnits; count++)
+                {
+                    List<string> probe;
+                    if (!TryFindLegalRosterSelection(count, enemyStableKeyPool, requiredCoreKey,
+                            corridor, condition, liveArchetypeIds, out probe)) continue;
+                    skeletons.Add(skeleton);
+                    unitCounts.Add(count);
+                }
+            }
         }
 
         private static ModeHSkeletonSpec PickSkeleton(ModeHSeedStream stream, ModeHMatchCorridor corridor)

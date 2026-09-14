@@ -91,6 +91,7 @@ namespace BossRush {
    }
    Console.WriteLine("Plan audit: "+success+" / 600 constructible within production retry budget; failures="+failed+" "+string.Join(", ",reasons.Select(x=>x.Key+":"+x.Value)));
    Check(failed==0,"all sampled six-match seasons must be constructible");
+   TenCertifiedViabilityAudit(templates);
    TransferViabilityAudit(templates,true);
    List<ModeHProfileDto> tooSmallDraft;string boundaryReason;
    Check(!ModeHDraftController.TryBuildDraft(1,templates.Take(5).ToList(),out tooSmallDraft,out boundaryReason)
@@ -106,26 +107,76 @@ namespace BossRush {
     }
    }
    Console.WriteLine("Single-archetype audit: "+singleOk+" constructible, "+singleRejected+" rejected within one candidate round");
+   // CR-2026-09-12-018：认证池 8 人时 52.9% 的合法抽签建不出六场，而且没有出路（重进过半照样撞墙）。
+   // 门槛因此由 8 抬到 9：**8 人现在在选秀门口就被挡下**，走既有的 AbortSetup → 退票离场，
+   // 而不是让玩家抽完五席再死在第 6 场。这一条是本次拍板买到的性质，正向钉住。
    var eight=new[]{0,2,5,6,8,9,10,11}.Select(i=>templates[i]).ToList();
+   List<ModeHProfileDto> belowFloorDraft;
+   Check(!ModeHDraftController.TryBuildDraft(1,eight,out belowFloorDraft,out boundaryReason)
+       &&boundaryReason=="draft_pool_too_small","eight certified candidates are turned away at the draft door");
+   // 新门槛那一档（9 人）仍要能开局：抬门槛是为了堵死局，不是为了把人挡在外面。
+   var nine=new[]{0,2,5,6,8,9,10,11,1}.Select(i=>templates[i]).ToList();
    var allKeys=ModeHPresetRegistry.ProductionKeys;
-   foreach(string key in allKeys)if(eight.All(x=>x.StableKey!=key))ModeHPresetRegistry.Rejected.Add(key);
-   List<ModeHProfileDto> smallDraft;Check(ModeHDraftController.TryBuildDraft(1,eight,out smallDraft,out boundaryReason),"eight audited candidates can draft");
+   foreach(string key in allKeys)if(nine.All(x=>x.StableKey!=key))ModeHPresetRegistry.Rejected.Add(key);
+   List<ModeHProfileDto> smallDraft;Check(ModeHDraftController.TryBuildDraft(1,nine,out smallDraft,out boundaryReason),"nine certified candidates can draft");
    ModeHContractDto smallContract;ModeHDraftController.TrySignContracts(smallDraft,smallDraft[0].profileId,smallDraft[1].profileId,out smallContract,out boundaryReason);
    var smallInputs=new PlanInputs{_season=new ModeHSeasonDto{profiles=smallDraft,draftCandidateProfileIds=smallDraft.Select(x=>x.profileId).ToList(),contract=smallContract}};
    int smallOk=0;
    for(int match=1;match<=6;match++){
     ModeHMatchPlanDto p;int c;bool ok=false;
     for(int retry=0;retry<=ModeHConfig.MaxAutomaticTechnicalRetriesPerMatch&&!ok;retry++)ok=ModeHEncounterPlanner.TryBuildPlan(1,match,retry,smallInputs.Enemies(),smallDraft[2].stableKey,smallInputs.Archetypes(),out p,out c,out boundaryReason);
-    if(ok)smallOk++;else Console.WriteLine("EIGHT_POOL_REJECT match="+match+" reason="+boundaryReason);
+    if(ok)smallOk++;else Console.WriteLine("NINE_POOL_REJECT match="+match+" reason="+boundaryReason);
    }
-   Console.WriteLine("Eight-certified candidate audit: "+smallOk+" / 6 constructible");
-   Console.WriteLine("Eight-certified remainder: "+string.Join(",",smallInputs.Enemies().Select(k=>ModeHProfileRegistry.GetByStableKey(k).ProfileTemplateId))+"; roster="+string.Join(",",smallInputs.Archetypes()));
+   Console.WriteLine("Nine-certified candidate audit: "+smallOk+" / 6 constructible");
+   Console.WriteLine("Nine-certified remainder: "+string.Join(",",smallInputs.Enemies().Select(k=>ModeHProfileRegistry.GetByStableKey(k).ProfileTemplateId))+"; roster="+string.Join(",",smallInputs.Archetypes()));
    List<ModeHEchoAssignmentDto> smallEchoes;ModeHDraftController.TryAssignEchoDestinations(1,smallDraft,smallContract,out smallEchoes,out boundaryReason);
    Check(!smallInputs.Viable(smallContract,smallEchoes,out boundaryReason)
        &&boundaryReason.StartsWith("season_viability_match_"),"unconstructible eight-certified roster is rejected before signing");
    Check(ReferenceEquals(smallInputs._season.contract,smallContract),"viability check does not mutate contract");
    Console.WriteLine("Signing viability gate: PASS (complete season accepted; known incomplete pool rejected without contract mutation)");
-   TransferViabilityAudit(eight,false);
+   TransferViabilityAudit(nine,false);
+  }
+  // 2026-09-12 的 F3 实机跑（BossRushValidation_20260912_072302_209）：玩家这台机器上 12 个预设有 2 个
+  // certification_preset_unavailable，认证池只剩 10 人。选秀页连点 388 次「签约」都签不下去，
+  // 每次都是 season_viability_match_6:plan_threat_out_of_corridor——而对手池 =「认证池 − 五席」
+  // 对**所有**签约组合完全一样，所以换替补也换不出来，玩家被永久关在选秀页里。
+  // 这里把那次的池子原样复现：10 人认证池 × 每个种子的**全部 20 种签约顺序**都必须能建出六场。
+  static void TenCertifiedViabilityAudit(List<ModeHProfileTemplate> templates){
+   string[] unavailable={"Cname_Boss_Sniper","Cname_Prison_Boss"};
+   ModeHPresetRegistry.Rejected.Clear();foreach(string key in unavailable)ModeHPresetRegistry.Rejected.Add(key);
+   var ten=templates.Where(t=>!unavailable.Contains(t.StableKey)).ToList();
+   Check(ten.Count==10,"ten-certified audit needs exactly ten templates");
+   int checked_=0,rejected=0;var reasons=new Dictionary<string,int>();var deadMains=new List<string>();
+   for(long seed=1;seed<=25;seed++){
+    List<ModeHProfileDto> draft;string reason;
+    Check(ModeHDraftController.TryBuildDraft(seed,ten,out draft,out reason),"ten-certified draft "+seed+" "+reason);
+    for(int main=0;main<draft.Count;main++){
+     int workableSubs=0;
+     for(int sub=0;sub<draft.Count;sub++){
+      if(main==sub)continue;
+      ModeHContractDto contract;
+      Check(ModeHDraftController.TrySignContracts(draft,draft[main].profileId,draft[sub].profileId,out contract,out reason),"ten-certified sign "+reason);
+      List<ModeHEchoAssignmentDto> echoes;
+      Check(ModeHDraftController.TryAssignEchoDestinations(seed,draft,contract,out echoes,out reason),"ten-certified echo "+reason);
+      var input=new PlanInputs{_season=new ModeHSeasonDto{profiles=draft,draftCandidateProfileIds=draft.Select(x=>x.profileId).ToList(),contract=contract,echoAssignments=echoes}};
+      checked_++;
+      if(input.Viable(contract,echoes,out reason))workableSubs++;
+      else{
+       rejected++;
+       string tail=reason==null?"unknown":reason.Substring(reason.IndexOf(':')+1);
+       int n;reasons.TryGetValue(tail,out n);reasons[tail]=n+1;
+      }
+     }
+     if(workableSubs==0)deadMains.Add("seed="+seed+" main="+main);
+    }
+   }
+   ModeHPresetRegistry.Rejected.Clear();
+   Console.WriteLine("Ten-certified viability audit: "+(checked_-rejected)+" / "+checked_+" signing combinations constructible; rejects="+string.Join(", ",reasons.Select(x=>x.Key+":"+x.Value)));
+   // 被拒绝的组合都**依赖签约组合**（roster veto 读的是这两位的公开原型；走廊那一档由
+   // tests/ModeHSeasonViabilityGuard.py 在数据层穷举），换一个替补就能换掉。
+   // 所以这里守的是玩家能不能自己走出去：**每个主将都至少有一个可签的替补**，
+   // 加上「再点一次已选主将 = 取消」，选秀页就不再是死局。
+   Check(deadMains.Count==0,"every draft main must keep at least one signable relay: "+string.Join(" / ",deadMains));
   }
   static void TransferViabilityAudit(List<ModeHProfileTemplate> templates,bool expectedAccepted){
    List<ModeHProfileDto> draft;string reason;

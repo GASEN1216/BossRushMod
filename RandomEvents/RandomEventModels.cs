@@ -146,6 +146,19 @@ namespace BossRush
         internal abstract float Weight { get; }
 
         /// <summary>
+        /// 这个事件算不算玩家的「一次事件」。
+        ///
+        /// 频率档（低 2 / 中 3 / 高 5，见 <see cref="RandomEventsTuning.MaxEventsPerRunByFrequency"/>）是玩家
+        /// 花在**有玩法的事件**上的配额：空投要不要抢、血月要不要硬吃、乱入的 Boss 打不打。
+        /// 纯演出的事件（烟花、巡游）既不给奖励也不改战场，把它们记进配额等于用掉一次「会发生点什么」的机会——
+        /// 低频档一局只有两次，抽中一次纯演出就是四分之一的对局白等一场。
+        ///
+        /// 所以：纯演出事件覆写为 false，播报照播、并发照旧只有一个、冷却照走，但不占配额。
+        /// 由 <c>tests/RandomEventFlavorBudgetGuard.py</c> 守卫「有奖励/有战斗影响的事件必须占配额」。
+        /// </summary>
+        internal virtual bool ConsumesRunBudget { get { return true; } }
+
+        /// <summary>
         /// 额外可触发条件（例如 E4 需要商人预设可解析）。默认恒 true。no-throw。
         /// </summary>
         internal virtual bool CanTrigger(RandomEventContext ctx)

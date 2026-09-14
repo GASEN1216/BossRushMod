@@ -159,7 +159,8 @@ CONFIG_CONSTANTS = [
     (r'public const string DataSubDirectoryName = "ModeH";', "数据子目录冻结"),
     (r"public const int SeasonMatchCount = 6;", "三幕六战"),
     (r"public const float MatchDurationSeconds = 180f;", "单场 180 秒"),
-    (r"public const int MinProductionCandidateCount = 8;", "生产目录下限 8"),
+    # 2026-09-12（CR-2026-09-12-018）：8 → 9，理由见 ModeHConfig 的注释与 ModeHSeasonViabilityGuard。
+    (r"public const int MinProductionCandidateCount = 9;", "生产目录下限 9"),
     (r"public const int MaxProductionCandidateCount = 12;", "生产目录上限 12"),
     (r"public const float CommandWindowSeconds = 6f;", "口令窗口 6 秒"),
     (r"public const float CommandReassertIntervalSeconds = 0\.1f;", "口令重申 0.1 秒"),

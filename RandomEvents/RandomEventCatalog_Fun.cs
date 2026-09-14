@@ -167,6 +167,9 @@ namespace BossRush
 
         internal override float Weight { get { return RandomEventsTuning.WeightFireworks; } }
 
+        /// <summary>纯演出（零伤害、零影响、零奖励），不占玩家的单局事件配额。见 <see cref="RandomEventBase.ConsumesRunBudget"/>。</summary>
+        internal override bool ConsumesRunBudget { get { return false; } }
+
         internal override bool OnTrigger(RandomEventContext ctx)
         {
             try
@@ -384,6 +387,9 @@ namespace BossRush
         internal override float DurationSeconds { get { return RandomEventsTuning.DuckParadeDurationSeconds; } }
 
         internal override float Weight { get { return RandomEventsTuning.WeightDuckParade; } }
+
+        /// <summary>纯演出（鸭群不打人、不掉东西、到时清场），不占玩家的单局事件配额。见 <see cref="RandomEventBase.ConsumesRunBudget"/>。</summary>
+        internal override bool ConsumesRunBudget { get { return false; } }
 
         internal override bool OnTrigger(RandomEventContext ctx)
         {

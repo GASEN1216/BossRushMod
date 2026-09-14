@@ -485,7 +485,14 @@ namespace BossRush
                     RouteUiForLifecycle(_runState.Lifecycle);
                     return;
                 }
-                if (string.Equals(_pendingContractMainId, profileId, StringComparison.Ordinal)) return;
+                // 再点一次已选中的主将 = 取消这次选择。没有这一手时，玩家点错主将就再也换不回来：
+                // 选秀页没有取消键，后续每次点击都只会被当成「选替补」。
+                if (string.Equals(_pendingContractMainId, profileId, StringComparison.Ordinal))
+                {
+                    _pendingContractMainId = null;
+                    RouteUiForLifecycle(_runState.Lifecycle);
+                    return;
+                }
 
                 ModeHContractDto contract;
                 string failureReasonId;
@@ -512,9 +519,11 @@ namespace BossRush
                 {
                     if (_owner != null)
                     {
+                        // 对手池是「认证池减去这五名候选」，与签下的是哪两位无关：
+                        // 换替补不会改变可行性，让玩家一直换是把他关在选秀页里。
                         _owner.ShowMessage(L10n.T(
-                            "当前认证池无法为这组合同生成完整六场赛季，请更换替补。",
-                            "This roster cannot produce all six matches with the certified pool. Choose another relay."));
+                            "当前认证池凑不出完整六场赛季。对手池对五名候选一视同仁，换替补也不会变——请退出本赛季重新进入，候选名单会重抽。",
+                            "The certified pool cannot fill all six matches. The opponent pool is the same whichever two you sign, so swapping the relay will not help — leave this season and re-enter for a fresh candidate list."));
                     }
                     ModBehaviour.DevLog("[ModeH] 签约组合六场可行性检查失败: "
                         + (failureReasonId != null ? failureReasonId : "unknown"));

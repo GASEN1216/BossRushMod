@@ -425,12 +425,15 @@ namespace BossRush
                 _activeTickFaulted = false;
                 _phase = RandomEventPhase.EventActive;
                 _lastTriggeredId = evt.Id;
-                _eventsFiredThisRun++;
-                _activeEventCounted = true;
+                // 纯演出事件（烟花、巡游）不占配额：播报照播、并发照旧只有一个、冷却照走，
+                // 但玩家的「低 2 / 中 3 / 高 5」留给真会发生点什么的事件。
+                _activeEventCounted = evt.ConsumesRunBudget;
+                if (_activeEventCounted) _eventsFiredThisRun++;
 
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "事件触发: " + evt.Id
                     + "，时长 " + ctx.DurationSeconds + "s（本局 "
-                    + _eventsFiredThisRun + "/" + _maxEventsThisRun + "）");
+                    + _eventsFiredThisRun + "/" + _maxEventsThisRun
+                    + (_activeEventCounted ? "" : "，纯演出不占配额") + "）");
                 return true;
             }
             catch (Exception e)

@@ -191,6 +191,10 @@ namespace BossRush
         {
             reason = ZombieModeFailureReason.None;
 
+            // 再扣之前先把上一次入场失败欠下的现金/邀请函还清：这里经济一定可用（正准备扣款），
+            // 是除官方「经济加载完成」之外最自然的一个结账点（CR-2026-09-11-019）。
+            ZombieModeEntryDebt.TrySettleAll();
+
             try
             {
                 Duckov.Economy.Cost invitationCost = ZombieModeMapSelectionHelper.CreateZombieModeCost();
@@ -249,32 +253,18 @@ namespace BossRush
             return true;
         }
 
+        /// <summary>
+        /// 入场回滚时退还已扣的入场现金。真正的退款与欠账落在 <see cref="ZombieModeEntryDebt.RefundCash"/>；
+        /// 它返回 false 表示钱既没退出去、账也没记下，此时**保留事务状态**等下一次清理路径重试
+        /// （修复前无条件 `finally` 清状态，玩家已扣的入场费会永久蒸发，CR-2026-09-11-019）。
+        /// </summary>
         private void RefundZombieModeCashIfNeeded()
         {
-            if (!ShouldRollbackZombieModeEntryResources() || !zombieModeEntryTransaction.CashTemporarilyHeld)
-            {
-                return;
-            }
-
-            try
-            {
-                long amount = zombieModeEntryTransaction.CashWithheldAmount;
-                if (amount > 0L)
-                {
-                    Duckov.Economy.EconomyManager.Add(amount);
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_RefundedCash"));
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 退还现金失败: " + e.Message);
-            }
-            finally
-            {
-                zombieModeEntryTransaction.CashTemporarilyHeld = false;
-                zombieModeEntryTransaction.CashWithheldAmount = 0L;
-                zombieModeRunState.ConfirmedCashInvested = 0L;
-            }
+            if (!ShouldRollbackZombieModeEntryResources() || !zombieModeEntryTransaction.CashTemporarilyHeld) return;
+            if (!ZombieModeEntryDebt.RefundCash(zombieModeEntryTransaction.CashWithheldAmount)) return;
+            zombieModeEntryTransaction.CashTemporarilyHeld = false;
+            zombieModeEntryTransaction.CashWithheldAmount = 0L;
+            zombieModeRunState.ConfirmedCashInvested = 0L;
         }
 
         public void CancelZombieModeMapSelectionPhase1()
@@ -679,31 +669,15 @@ namespace BossRush
             zombieModeEntryTransaction.InvitationTemporarilyHeld = false;
         }
 
+        /// <summary>
+        /// 入场回滚时返还已扣的尸潮邀请函。实例化与欠账落在 <see cref="ZombieModeEntryDebt.RefundInvitation"/>；
+        /// 它返回 false 表示实例造不出来、账也没记下，此时保留事务状态等下一次清理路径重试。
+        /// </summary>
         private void RefundZombieModeInvitationIfNeeded()
         {
-            if (!ShouldRollbackZombieModeEntryResources() || !zombieModeEntryTransaction.InvitationTemporarilyHeld)
-            {
-                return;
-            }
-
-            try
-            {
-                ZombieTideInvitationConfig.EnsureRuntimeFallbackRegistrationShell();
-                Item refund = ItemAssetsCollection.InstantiateSync(BossRushItemIds.ZombieTideInvitation);
-                if (refund != null)
-                {
-                    ItemUtilities.SendToPlayer(refund, true, PlayerStorage.Inventory != null);
-                    NotificationText.Push(L10n.T("BossRush_ZombieMode_Notify_RefundedInvitation"));
-                }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] 返还尸潮邀请函失败: " + e.Message);
-            }
-            finally
-            {
-                zombieModeEntryTransaction.InvitationTemporarilyHeld = false;
-            }
+            if (!ShouldRollbackZombieModeEntryResources() || !zombieModeEntryTransaction.InvitationTemporarilyHeld) return;
+            if (!ZombieModeEntryDebt.RefundInvitation()) return;
+            zombieModeEntryTransaction.InvitationTemporarilyHeld = false;
         }
 
         private void FailZombieModeBeforeActive(ZombieModeFailureReason reason)

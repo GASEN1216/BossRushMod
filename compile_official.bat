@@ -531,6 +531,7 @@ echo(ZombieMode\ZombieModeTuning.cs
 echo(ZombieMode\ZombieModeRuntimeModule.cs
 echo(ZombieMode\ZombieModeRuntimeHooks.cs
 echo(ZombieMode\ZombieModeEntry.cs
+echo(ZombieMode\ZombieModeEntryDebt.cs
 echo(ZombieMode\ZombieModeEntry_StarterLoadout.cs
 echo(ZombieMode\ZombieModeMapSelection.cs
 echo(ZombieMode\ZombieModeMapSelectionHelper.cs

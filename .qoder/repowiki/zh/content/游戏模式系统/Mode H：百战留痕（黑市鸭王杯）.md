@@ -115,6 +115,27 @@ E2 --> E3["结算 → 战痕 offer → 幕间"]
 （存活合同选手中至少一名原型未被硬封锁）；连续 8 个候选都失败才以 `TechnicalAbort`
 进入 `Recovering`——**始终至少保留一种合法排列**。
 
+**抽签只从「本池真组得出来」的 (骨架, 人数) 里取**（2026-09-12，`CR-2026-09-12-003`）。
+走廊下界是 `threatBudget × minFillPercent`，按**基础威胁和**编制，而单体威胁分只有 38..62，
+于是一部分骨架档位在任何池子上都够不着自己的下界——第 6 场「冠军独兽」只许 1–2 人（上界 62 / 144
+都低于下界 136 / 164）、第 3 场「接力队」的 4 人档、第 1 场「独兽」的 1 人档（除非池里有 62 分那位）
+全属此类。这些空抽会吃光候选预算，并因为**对手池 =「认证池 − 本季五席」与签下哪两位无关**，
+让整季被判「组不出六场」而玩家在选秀页怎么点都签不下去。
+
+因此 `BuildCandidate` 的取值顺序是 **擂台条件 → 可行 (骨架, 人数) → 进场剧本**：
+中间那步用与威胁修复同一条枚举（`TryFindLegalRosterSelection`，同走廊、同必选回响核心、
+同擂台条件、同合同原型矩阵）逐档确认至少存在一组解，只从这些档位里抽；一档都筛不出来时
+回落原抽签路径并照旧报原来的拒绝原因（对手池大于 `MaxProductionCandidateCount` 时枚举会整体早退，
+兜底必须保留）。**数据表、走廊数值与 `ModeHConfig` 常量未变。**
+
+选秀页同时补了一个出口：**再点一次已选中的主将 = 取消选择**（此前点错主将只能在四名替补里打转）。
+
+守卫与回归：`tests/ModeHSeasonViabilityGuard.py`（结构断言 + 破坏探针，并在数据层重算走廊算术：
+每场至少一档可行；认证池 ≥ 10 人时任何合法五席都建得出六场）、
+`tests/fixtures/ModeHMarketAudit` 的 `TenCertifiedViabilityAudit`（500 组签约组合走真实 `CanConstructFullSeason`）。
+**已知口子**：认证池只有 8–9 人（预设在玩家机器上不可用）时对手池只剩 3–4 人，第 4 / 第 6 场仍可能无解，
+数量已冻成守卫上界，出路待 owner 拍板。
+
 赔率是公开分差，`ModeHOddsController` 只读公开摘要与玩家当前公开整备：
 
 ```text
@@ -590,3 +611,34 @@ abort return，必撞 `journal_illegal_transition`——押品退不回来，非
 F3 首次认证结束的主动归档使用 durable 保存，不再被同帧候选写入的普通节流挡住；I/O 真失败仍不退出。阶段日志附押品槽状态和阻断原因，便于区分初始化未完成与真实资产欠账。修复后完整六场仍须实机日志验证。
 
 章节来源：`ModeH/ModeHRuntimeModule.cs`、`ModeH/ModeHRuntimeModule_SceneFlow.cs`、`ModeH/ModeHWarehouseStakeJournal.cs`、`DebugAndTools/F3GameplayValidationModes.cs`、`DebugAndTools/F3GameplayValidationSeasons.cs`。
+
+## 2026-09-12 生产目录下限 8 → 9（`CR-2026-09-12-018`）
+
+`ModeHConfig.MinProductionCandidateCount` 由 8 抬到 9。旧值的理由写的是「5 个候选席 + 至少 3 个敌军/回响备选」，
+但那句算术不成立：**对手池 = 认证池 − 本季五席**，8 人只剩 3 人，而第 4 / 第 6 场的走廊在 3 人池上常常一档都建不出来。
+用冻结数据穷举（`tests/ModeHSeasonViabilityGuard.py` 每次重算）：
+
+| 认证池 | 建不出六场的合法抽签 |
+| --- | --- |
+| 8 人 | **52.9%** |
+| 9 人 | 2.5%（全在第 4 场） |
+| ≥10 人 | 0 |
+
+三条互斥出路的取舍：
+
+- **不放宽第 4 / 第 6 场走廊**——那是改平衡数值，而且离线证不了打起来是什么样。
+- **不让落选三席回到对手池**——与已公布设计直接冲突：落选三人各翻一张**去向牌**
+  （回场签第 5 场回来打你 / 候签进转会窗口 / **撕票「本季永久移除，谁也签不到」**，见玩家 Wiki）。
+  无差别丢回对手池等于让「撕票」那位照样出现在场上。
+- **停在 9 而不是 10**：认证失败是**每台机器**的事（12 个预设里可能有几个不可用），
+  10 会把只认证过 9 个的玩家整个挡在模式之外；而 9 人的 2.5% **有出路**——
+  判死时的提示本来就是「退出本赛季重新进入，候选名单会重抽」，重进即重抽，下一次仍有 97.5%。
+  8 人的 52.9% 没有出路：过半的重进照样撞墙。
+
+撞门槛走的是**既有**路径：`EvaluateThreshold` → `certification_passed_below_min` → `AbortSetup`
+→ `Abort_Certification` 文案 + `AbortAndRefund`，**发生在玩家选秀、下注、押注之前**，
+比让他抽完五席再死在第 6 场好得多。
+
+守卫：`ModeHSeasonViabilityGuard` 枚举起点抬到 9、`KNOWN_DEAD_SCENARIOS` 由 `{8: 1332, 9: 62}` 收成 `{9: 62}`；
+`ModeHPresetEligibilityGuard` / `ModeHStructureGuard` 的冻结常量同步；执行回归 `ModeHMarketAudit`
+把「8 人在选秀门口被 `draft_pool_too_small` 挡下」正向钉住，原来的 8 人可建性审计整体改到 9 人那一档。

@@ -67,8 +67,23 @@ namespace BossRush
 
         #region 生产目录与认证（§17.2）
 
-        /// <summary>签名生产目录下限：5 个候选席 + 至少 3 个敌军/回响备选。</summary>
-        public const int MinProductionCandidateCount = 8;
+        /// <summary>
+        /// 签名生产目录下限。
+        ///
+        /// **2026-09-12 由 8 抬到 9**（`CR-2026-09-12-018`）。旧值 8 的理由写的是「5 个候选席 +
+        /// 至少 3 个敌军/回响备选」，但那句算术不成立：对手池 = 认证池 − 本季五席，8 人只剩 3 人，
+        /// 而第 4 / 第 6 场的走廊在 3 人池上常常一档都建不出来。用冻结数据穷举（`ModeHSeasonViabilityGuard`
+        /// 每次重算）：**8 人时 52.9% 的合法抽签会在某一场建不出六场**，9 人时降到 2.5%，≥10 人为 0。
+        ///
+        /// 为什么停在 9 而不是 10：认证失败是**每台机器**的事（12 个预设里可能有几个不可用），
+        /// 抬到 10 会把「只认证过 9 个」的玩家整个挡在 Mode H 之外。而 9 人那 2.5% 是**有出路的**
+        /// ——`CanConstructFullSeason` 判死时的提示就是「退出本赛季重新进入，候选名单会重抽」，
+        /// 重进即重抽，下一次仍有 97.5%。8 人那 52.9% 没有出路：过半的重进照样撞墙。
+        ///
+        /// 门槛撞不过时走的是既有的 `AbortSetup` → `Abort_Certification` 文案 + `AbortAndRefund`：
+        /// **在玩家选秀、下注、押注之前**就说清楚并退票离场，比让他抽完五席再死在第 6 场好得多。
+        /// </summary>
+        public const int MinProductionCandidateCount = 9;
 
         /// <summary>签名生产目录上限：把首次正式自检限制在 180 秒内。</summary>
         public const int MaxProductionCandidateCount = 12;

@@ -104,6 +104,8 @@ Those twelve seconds are free downtime: reload, heal, reposition. Don't chase th
 One burst every `0.55` seconds, `15` in total, `6` metres up along a `12` metre ring.
 
 **Zero damage, zero effect, zero reward.** It just looks good. The screen shakes a little.
+Because nothing happens, it does **not** spend the event budget set by your frequency tier
+(see "Frequency" below).
 
 ### Duck Parade (about 6%, 22 seconds)
 
@@ -111,6 +113,7 @@ One burst every `0.55` seconds, `15` in total, `6` metres up along a `12` metre 
 and leave.
 
 They won't bother you. Don't bother them. That's the whole event.
+Like the fireworks, it does **not** spend your event budget.
 
 ## Which modes trigger events
 
@@ -123,12 +126,18 @@ events in would only fight with them.
 ## Frequency
 
 Random events are on by default. What you can adjust is the **frequency tier**: pick
-low / mid / high in the Mod settings screen (ModConfig). It only sets **how many events can
-fire in a single run** - `2` on low, `3` on mid, `5` on high. Mid is the default.
+low / mid / high in the Mod settings screen (ModConfig). It sets **how many events with actual
+gameplay can fire in a single run** - `2` on low, `3` on mid, `5` on high. Mid is the default.
 
-- The gap between events is not affected by the tier: it is always a random `45-75` seconds.
+- **The two pure-spectacle events do not spend that budget.** The Duck King's Fireworks and the
+  Duck Parade give no reward and change nothing on the battlefield; they are just passing through.
+  The `2` you picked on low is two events where something actually happens - a firework will not
+  eat one of them.
+- The gap between events is not affected by the tier: it is always a random `45-75` seconds, and
+  the two spectacle events wait out that same gap.
 - Neither is the `90` second opening quiet period.
 - Whichever tier you pick, only one event is ever active at a time.
+- Once the budget is spent the run goes quiet for good - not even fireworks.
 
 ::: tip
 Turn it up if you want a run with more going on; turn it down to fight Bosses in peace. Even on low you'll still see a couple.

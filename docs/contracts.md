@@ -95,6 +95,20 @@ Mode G 冻结 key：
   独立出击地图仅在会话确认无战斗时经共享 coordinator 保存；离岛推迟由 `SkyIslandStorySaveRecovery` 保留 owner 重试。
   入口在同槽恢复 owner 尚未结束时不得创建第二个 store；换槽、同槽删档必须使旧会话失效。
 
+末日丧尸模式入场欠账冻结 key（2026-09-12，`SCHEMA+`，修 `CR-2026-09-11-019`）：
+
+- `BossRush_ZombieMode_RefundDebt_Cash` — `long`，入场回滚时退不出去的现金总额。
+- `BossRush_ZombieMode_RefundDebt_Invitations` — `int`，退不出去的尸潮邀请函张数。
+
+两个 key 由 `ZombieMode/ZombieModeEntryDebt.cs` 独占读写，**老档缺键即为 0（不欠）**，
+因此是纯扩展、不需要迁移。之所以必须落存档：入场回滚发生在切图途中，官方
+`EconomyManager.Instance` 已随场景销毁（`Add` 返回 false）、`ItemAssetsCollection.InstantiateSync`
+可能因资源未就绪返回 null，只靠当前对象重试会随对象一起消失。
+纪律：写入后回读核对；结账**先到账再销账**（销账失败只会重发，绝不吞玩家的钱物）；
+邀请函逐张推进，中途资源掉线时剩余张数留在账上。结账点是官方
+`EconomyManager.OnEconomyManagerLoaded`（命名方法、幂等订阅、随模块销毁退订）与每次入场扣款之前。
+由 `tests/ZombieModeEntryDebtGuard.py` 与执行回归 `tests/fixtures/ZombieModeEntryDebt` 守卫。
+
 Breaking:
 
 - 改名旧 key 且无迁移。

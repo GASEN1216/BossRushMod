@@ -178,8 +178,12 @@ def main():
 
     config = read_text(CONFIG)
     if config:
-        if not re.search(r"public const int MinProductionCandidateCount = 8;", config):
-            errors.append("[Config] 生产目录下限未冻结为 8")
+        # 2026-09-12（CR-2026-09-12-018）：由 8 抬到 9。旧值 8 的理由「5 席 + 3 备选」算术不成立——
+        # 对手池只剩 3 人时 52.9% 的合法抽签建不出六场（ModeHSeasonViabilityGuard 每次重算）。
+        # 停在 9 而不是 10：9 人的残余缺口是 2.5% 且**有出路**（退出赛季重进即重抽），
+        # 10 会把只认证过 9 个预设的玩家整个挡在模式之外。
+        if not re.search(r"public const int MinProductionCandidateCount = 9;", config):
+            errors.append("[Config] 生产目录下限未冻结为 9")
         if not re.search(r"public const int MaxProductionCandidateCount = 12;", config):
             errors.append("[Config] 生产目录上限未冻结为 12")
         if not re.search(r"public const float CertificationPerKeyTimeoutSeconds = 15f;", config):
