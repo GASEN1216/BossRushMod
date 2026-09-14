@@ -109,6 +109,10 @@ namespace BossRush
                     _closingSession = true;
                     yield return DriveSessionPhase(
                         _skyIslandMode ? RunSkyIslandFinalChecks() : RunFinalChecks(), true);
+#if BOSSRUSH_DEV
+                    // 全自动实机验收（F3GameplayValidationAutotest.cs）：主套件回到基地之后接着经船点去天空岛，跑完还原并写结果目录。
+                    if (!_skyIslandMode) yield return RunSkyIslandAutotestLeg();
+#endif
                 }
             }
             finally { CompleteSession(); }
@@ -174,6 +178,10 @@ namespace BossRush
             _skyIslandMode = false;
             _skyIslandDrill = false;
             DisposeSessionStack();
+#if BOSSRUSH_DEV
+            // 全自动实机验收收尾阶段没跑到时（宿主销毁、阶段超时、异常）的同步兜底：语言、强制夜里、无敌、时间流速与剧情快照。
+            FinishAutotestRestoreSynchronously();
+#endif
             if (_sessionSubscribed)
             {
                 SavesSystem.OnSetFile -= OnSessionSetFile;
@@ -222,6 +230,23 @@ namespace BossRush
                 _recoveryChecked = true;
                 RecoverInterruptedRunIfNeeded();
             }
+#if BOSSRUSH_DEV
+            // 上一轮全自动验收在还原之前中断：回到基地、没有验收在跑时每个槽检查一次存档里的快照键。
+            if (!_running && _host != null) RecoverInterruptedAutotestIfNeeded();
+#endif
+        }
+
+        /// <summary>
+        /// 验收运行中天空岛入口一律拒绝（SkyIslandSession.CanEnter 读 IsRunning），只有全自动验收自己发起的那一次出发放行。
+        /// 正式构建里恒为 false。
+        /// </summary>
+        private bool AllowsSkyIslandEntry()
+        {
+#if BOSSRUSH_DEV
+            return _autotestDepartureOpen;
+#else
+            return false;
+#endif
         }
 
         private void OnSessionSetFile() { _slotChanged = true; }

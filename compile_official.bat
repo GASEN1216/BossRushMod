@@ -95,6 +95,7 @@ echo(/reference:UnityEngine.UIModule.dll
 echo(/reference:UnityEngine.InputLegacyModule.dll
 echo(/reference:UnityEngine.IMGUIModule.dll
 echo(/reference:UnityEngine.ImageConversionModule.dll
+echo(/reference:UnityEngine.ScreenCaptureModule.dll
 echo(/reference:UnityEngine.TextRenderingModule.dll
 echo(/reference:UnityEngine.AssetBundleModule.dll
 echo(/reference:UnityEngine.AnimationModule.dll
@@ -200,6 +201,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandStoryPresentation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStorySaveRecovery.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryService.cs
+echo(DebugAndTools\SkyIsland\SkyIslandStoryServiceAutotest.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWorldStory.cs
 echo(DebugAndTools\SkyIsland\SkyIslandAmbience.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGates.cs
@@ -220,6 +222,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandUiArt.cs
 echo(DebugAndTools\SkyIsland\SkyIslandHud.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionAutotest.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionRecall.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionGnatBounty.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionLabels.cs
@@ -281,6 +284,13 @@ echo(DebugAndTools\F3GameplayValidationSkyIsland.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandRuntimeCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandDrill.cs
+echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs
+echo(DebugAndTools\F3GameplayValidationAutotest.cs
+echo(DebugAndTools\F3GameplayValidationAutotestActions.cs
+echo(DebugAndTools\F3GameplayValidationAutotestAsserts.cs
+echo(DebugAndTools\F3GameplayValidationAutotestCapture.cs
+echo(DebugAndTools\F3GameplayValidationAutotestStory.cs
+echo(DebugAndTools\F3GameplayValidationAutotestReport.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs

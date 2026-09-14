@@ -31,6 +31,10 @@ namespace BossRush
                 foreach (RandomEventId id in Enum.GetValues(typeof(RandomEventId)))
                     if (id != RandomEventId.None) events.Add("RANDOM_EVENT_" + id.ToString().ToUpperInvariant());
                 _coverage.Expand("RANDOM_EVENT_*", events);
+#if BOSSRUSH_DEV
+                // 全自动实机验收的步骤表：每一步都进 SKY_ISLAND 的自动项；读不到表时保留 SKY_AUTOTEST_* 占位，覆盖报告照实记未跑。
+                ExpandAutotestCoverage();
+#endif
                 // 在任何切图之前落盘；强退导致没有 SUMMARY 时仍然有完整待测清单。
                 WriteCoverageSnapshot();
                 metrics = "features=" + _coverage.FeatureCount + ",manual=" + _coverage.ManualCount;

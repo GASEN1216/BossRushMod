@@ -6,7 +6,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>会话持有的独立槽位剧情门面。共享 store / coordinator 分别拥有存档订阅与唯一物理写盘。</summary>
-    internal sealed class SkyIslandStoryService
+    internal sealed partial class SkyIslandStoryService
     {
         private BossRushSlotJsonStore<SkyIslandStoryData> store;
         private BossRushSaveCoordinatorEngine coordinator;

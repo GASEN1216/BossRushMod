@@ -120,6 +120,13 @@ def expand_case(case):
     if case == 'ITEM_FACTORY_*':
         # 离线报告不能猜测本轮 DLL 的运行时注册表；在清单中保留逐 ID 审核要求。
         return [case]
+    if case == 'SKY_AUTOTEST_*':
+        # 全自动实机验收的步骤 id 是数据（步骤表），游戏侧 ExpandAutotestCoverage 读的是同一份表。
+        path = ROOT / 'Assets/Data/SkyIslandAutotest.json'
+        if not path.is_file():
+            return [case]
+        table = json.loads(path.read_text(encoding='utf-8-sig'))
+        return [step['id'] for step in table.get('steps', [])]
     return [case]
 
 

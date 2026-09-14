@@ -24,8 +24,8 @@ namespace BossRush
             GameObject section = CreateF3Section(
                 L10n.T("完整玩法验收", "Full Gameplay Validation"),
                 L10n.T(
-                    "仅限 Dev 构建与专用测试档。完整验收从基地启动，会切图、推进并保存测试档；天空岛是独立出击关卡，切图即结束这趟出击，因此另有一个岛内按钮，只读、不切图。自动验收同时生成完整人工清单；自动 PASS 不代表所有功能已验收。",
-                    "Dev build and a marked test save required. Full validation starts from the base and will change scenes, advance and save that slot. The Sky Islands are a standalone raid — changing scenes ends the run — so they have a separate on-island button that is read-only and never changes scenes. Both produce a manual checklist; automatic PASS does not mean full coverage."),
+                    "仅限 Dev 构建与专用测试档，在基地按一次「自动验收」：先跑主套件，再经船点出发去天空岛跑岛内套件、演练与剧情阶段场景（会写该档的天空岛剧情与背包：开跑前快照、跑完还原），截图与报告写进 BossRushTestReports/<runId>/ 由 AI 审阅。下面两个岛内按钮只用于人已在岛上时局部重跑。",
+                    "Dev build and a marked test save required. Press Auto Validation once at the base: the main suite runs, then it departs from the boat and runs the Sky Islands suite, drill and story-stage scenes (it writes that slot's Sky Islands story and pack: snapshot first, restored afterwards); shots and reports go to BossRushTestReports/<runId>/ for AI review. The two on-island buttons below are only for partial re-runs."),
                 font);
 
             f3GameplayValidationStatusText = CreateLabel(
@@ -45,11 +45,11 @@ namespace BossRush
                 L10n.T("取消并安全清理", "Cancel and Safe Cleanup"),
                 new Color(0.44f, 0.22f, 0.22f, 1f), CancelFullGameplayValidationFromF3);
 
-            // 天空岛是独立出击关卡：一切图这趟出击就没了，所以它不能挂在上面那条「自动验收」上，
-            // 只能给一条岛内专用入口。进岛后按这一个按钮即可跑完 SKY_* 全部自动用例。
+            // 「自动验收」在 Dev 构建里会自己经船点出发、跑完岛上全部检查再回基地（F3GameplayValidationAutotest.cs）；
+            // 下面两个岛内按钮只用于局部重跑：人已经在岛上时跑只读验收或演练，收尾都不切图。
             GameObject rowSky = CreateF3Row(section.transform);
             CreateActionButton(rowSky.transform, font,
-                L10n.T("天空岛验收（岛内运行）", "Sky Islands Validation (run on the island)"),
+                L10n.T("天空岛只读验收（岛内局部重跑）", "Sky Islands read-only (re-run on the island)"),
                 new Color(0.20f, 0.36f, 0.46f, 1f), StartSkyIslandValidationFromF3);
 #if BOSSRUSH_DEV
             // 演练会改这趟出击的状态（强制夜里、刷云蚋、压血量、弹对话），独立按钮、只在 Dev 构建里有；仍不写存档。
@@ -391,7 +391,7 @@ namespace BossRush
             }
         }
 
-        internal static bool IsRunning { get { return _instance != null && _instance._running; } }
+        internal static bool IsRunning { get { return _instance != null && _instance._running && !_instance.AllowsSkyIslandEntry(); } }
 
         internal static bool TryStart(ModBehaviour host, out string reason)
         {
