@@ -248,6 +248,27 @@ Rigidbody（kinematic / detectCollisions）、根 `CapsuleCollider`（enabled、
 **故意不实现 `INPCShopConfig`** —— 不实现时商店选项自动隐藏，
 正好满足"专属服务留接口但先不显示"。
 
+**台词可以写成中英对照（`SCHEMA+`，2026-09-12 / `CR-2026-09-12-016`）**：
+`dialogues`、`marriedDialogues` 与三组气泡里的**每一句**既可以是裸字符串（只有中文，老写法），
+也可以是 `{"cn": "...", "en": "..."}`，两种形态能混在同一个数组里：
+
+```json
+"lines": ["只有中文的一句", { "cn": "中文", "en": "English" }]
+```
+
+老蓝图（`duck_npc_xiaoman`）一个字不用改、行为完全不变——缺 `en` 时 `L10n.T` 自动回落中文。
+两条 load-bearing 细节：
+
+- **语言在取用时解析**（`PermanentDuckNpcLine.Text` → `L10n.T(cn, en)`），不是解析时定死：
+  蓝图只在载入时解析一次，而玩家可以在游戏里切语言；气泡那份 `string[]` 视图按语言缓存并在切换时重建。
+- **档位判据必须看 `lines` 这个键**（`IsTierObject`），不能只看 `Kind`：台词的对照形态本身也是对象，
+  只看 `Kind` 会把 `[{"cn":…,"en":…}]` 这样的单档误判成 `{minLevel, lines}` 档位数组，
+  于是**整组台词静默丢失**——不编译报错、不抛异常，只表现为「这个 NPC 突然不说话了」。
+
+天空岛的晴禾与苇白（46 条好感 / 婚姻台词）已按这套补齐英文；
+结构由 `tests/DuckNpcInvariantGuard.py` 守卫，解析行为由执行回归
+`tests/fixtures/PermanentDuckNpcDialogue`（162 条断言）覆盖。
+
 ### 两条硬约束
 
 **交互必须挂专用子物体。** 官方 `InteractableBase.Awake` 会征用同 GameObject 上的

@@ -41,6 +41,7 @@ OUTFITTER = DUCK_DIR / "DuckNpcOutfitter.cs"
 PERM_DIR = DUCK_DIR / "Permanent"
 PERM_REGISTRY = PERM_DIR / "PermanentDuckNpcRegistry.cs"
 PERM_CONFIG = PERM_DIR / "PermanentDuckNpcAffinityConfig.cs"
+PERM_DATA = PERM_DIR / "PermanentDuckNpcData.cs"
 PERM_INTERACT = PERM_DIR / "PermanentDuckNpcInteractable.cs"
 PERM_MODULE = PERM_DIR / "PermanentDuckNpcModule.cs"
 
@@ -356,6 +357,75 @@ def main() -> int:
                                 "永久 NPC " + npc_id + " 的 scenes 含未知场景名 "
                                 + str(scene_name) + "（比对是大小写敏感的 Ordinal）")
 
+    # ---- CR-2026-09-12-016：永久捏脸 NPC 的台词必须能中英对照，天空岛两位必须真的译了 ----
+    # R-6：晴禾与苇白的 46 条好感 / 婚姻台词此前只有中文，而整份 schema 里唯一的英文字段是
+    # displayNameEn——英文玩家和她们聊天、送礼、婚后对白全是看不懂的中文。
+    # 修法是 SCHEMA+：每一句既可以是裸字符串（老写法，行为不变），也可以是 {cn, en}。
+    perm_data = read(PERM_DATA)
+    perm_data_code = code_only(perm_data)
+    for token, why in (
+        ("internal sealed class PermanentDuckNpcLine",
+         "缺少台词的中英对照类型"),
+        ("internal string Text { get { return L10n.T(cn, en); } }",
+         "台词必须在**取用时**按当前语言解析：游戏里可以切语言，解析时定死会让台词停在旧语言"),
+        ("private static PermanentDuckNpcLine ReadLine(BossRushJsonValue item)",
+         "缺少「裸字符串或 {cn, en}」的读取口径"),
+        ("if (item.Kind == BossRushJsonKind.String)",
+         "必须继续接受裸字符串：老蓝图（含 duck_npc_xiaoman）一个字都没改，不能因此整组丢台词"),
+        ("private static bool IsTierObject(BossRushJsonValue item)",
+         "缺少「档位对象 vs 台词对象」的判据"),
+        ('item.GetProperty("lines") != null',
+         "档位判据必须按 lines 这个键区分：只看 Kind 的话，写成 [{cn,en}] 的单档会被当成档位数组而整组丢失"),
+        ("_bubbleChinese",
+         "气泡的 string[] 视图必须按语言缓存并在切换时重建，否则切语言后气泡还是旧语言"),
+    ):
+        if token not in perm_data_code:
+            errors.append("PermanentDuckNpcData " + why + "（缺 " + token + "）")
+    perm_config_code = code_only(read(PERM_CONFIG))
+    for token in ("_data.PositiveBubbles", "_data.NegativeBubbles", "_data.NormalBubbles"):
+        if token not in perm_config_code:
+            errors.append("气泡必须取数据层的按语言视图（缺 " + token + "）")
+
+    # 数据侧：天空岛两位居民的每一句都必须是 {cn, en} 且英文非空。
+    localization_table = {}
+    if DATA_FILE.exists():
+        try:
+            localization_table = json.loads(read(DATA_FILE))
+        except Exception as exc:  # 解析失败上面已经报过，这里不重复
+            localization_table = {}
+            del exc
+    for row in localization_table.get("npcs", []):
+        npc_id = row.get("id", "")
+        if not npc_id.startswith("sky_"):
+            continue
+        permanent = row.get("permanent")
+        if not isinstance(permanent, dict):
+            continue
+        bare, unpaired = [], []
+
+        def scan(node):
+            if isinstance(node, str):
+                if any("一" <= ch <= "鿿" for ch in node):
+                    bare.append(node)
+            elif isinstance(node, list):
+                for item in node:
+                    scan(item)
+            elif isinstance(node, dict):
+                if set(node.keys()) == {"cn", "en"}:
+                    if not node.get("en"):
+                        unpaired.append(node.get("cn", ""))
+                    return
+                for key, value in node.items():
+                    if key == "displayNameCn":
+                        continue
+                    scan(value)
+
+        scan(permanent)
+        for line in bare:
+            errors.append("天空岛居民 " + npc_id + " 还有只有中文的台词（R-6）：" + line[:24])
+        for line in unpaired:
+            errors.append("天空岛居民 " + npc_id + " 有一句 {cn, en} 的英文是空的：" + line[:24])
+
     compile_text = read(COMPILE_LIST)
     for path in sorted(DUCK_DIR.glob("*.cs")) + sorted(PERM_DIR.glob("*.cs")):
         rel = path.relative_to(ROOT)
@@ -368,7 +438,7 @@ def main() -> int:
             print("DuckNpcInvariantGuard: FAIL " + e)
         return 1
 
-    print("DuckNpcInvariantGuard: PASS")
+    print("DuckNpcInvariantGuard: PASS（含台词中英对照 schema 与天空岛两位居民的英文完整性）")
     return 0
 
 

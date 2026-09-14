@@ -193,81 +193,81 @@
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
         "positiveBubbles": [
-          "这个正合用，谢谢你。",
-          "你还记得我喜欢什么。"
+          { "cn": "这个正合用，谢谢你。", "en": "This is just what I needed. Thank you." },
+          { "cn": "你还记得我喜欢什么。", "en": "You remembered what I like." }
         ],
         "negativeBubbles": [
-          "谢谢你的心意，只是我暂时用不上。"
+          { "cn": "谢谢你的心意，只是我暂时用不上。", "en": "That is kind of you, but I have no use for it just now." }
         ],
         "normalBubbles": [
-          "我收下了，谢谢。"
+          { "cn": "我收下了，谢谢。", "en": "I'll take it. Thank you." }
         ],
         "dialogues": {
           "greeting": [
             {
               "minLevel": 0,
               "lines": [
-                "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。",
-                "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。"
+                { "cn": "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。", "en": "If you pass Frogsong Pool, southwest of the terraces, keep an eye out for a planting record. It was my family's last bed of greens." },
+                { "cn": "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。", "en": "The seedlings have no idea how long the lanes have been closed. Water them each day and each day they grow." }
               ]
             },
             {
               "minLevel": 5,
               "lines": [
-                "你回来啦。今天的第一阵风，我替你留在风铃里了。"
+                { "cn": "你回来啦。今天的第一阵风，我替你留在风铃里了。", "en": "You are back. I kept today's first gust in the chimes for you." }
               ]
             },
             {
               "minLevel": 10,
               "lines": [
-                "走了这么多条航路，最想等到的还是你平安回来。"
+                { "cn": "走了这么多条航路，最想等到的还是你平安回来。", "en": "After all these lanes, the one thing I still wait for is you coming home safe." }
               ]
             }
           ],
           "idle": [
-            "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。",
-            "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。"
+            { "cn": "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。", "en": "If you pass Frogsong Pool, southwest of the terraces, keep an eye out for a planting record. It was my family's last bed of greens." },
+            { "cn": "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。", "en": "The seedlings have no idea how long the lanes have been closed. Water them each day and each day they grow." }
           ],
           "afterGift": [
-            "我会好好收着的。"
+            { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
           ],
           "levelUp": [
-            "和你说话，让我觉得日子又有盼头了。"
+            { "cn": "和你说话，让我觉得日子又有盼头了。", "en": "Talking with you makes the days feel worth waiting through again." }
           ],
           "farewell": [
-            "路上当心，等你回来。"
+            { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
           ],
           "alreadyGifted": [
-            "今天已经收过你的礼物啦。"
+            { "cn": "今天已经收过你的礼物啦。", "en": "You have already given me something today." }
           ],
           "alreadyGiftedPositive": [
-            "今天已经送过了，留一些给自己吧。"
+            { "cn": "今天已经送过了，留一些给自己吧。", "en": "You have given already today — keep something for yourself." }
           ],
           "alreadyGiftedNormal": [
-            "心意收到了，今天就到这里吧。"
+            { "cn": "心意收到了，今天就到这里吧。", "en": "The thought is received. Let us leave it there for today." }
           ],
           "alreadyGiftedNegative": [
-            "今天就不再麻烦你了。"
+            { "cn": "今天就不再麻烦你了。", "en": "I will not trouble you any further today." }
           ]
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            "回来了？灯还亮着，我也在。"
+            { "cn": "回来了？灯还亮着，我也在。", "en": "Back already? The lamp is still burning, and so am I." }
           ],
           "dialogue_idle_married": [
-            "你在的地方，就是我的归航处。"
+            { "cn": "你在的地方，就是我的归航处。", "en": "Wherever you are is where I come home to." }
           ],
           "dialogue_farewell_married": [
-            "平安回来，我们还有很多个明天。"
+            { "cn": "平安回来，我们还有很多个明天。", "en": "Come back safe. We still have a great many tomorrows." }
           ],
           "dialogue_after_gift_married": [
-            "一家人也会被你的用心打动。"
+            { "cn": "一家人也会被你的用心打动。", "en": "Even family can be moved by that much care." }
           ],
           "gift_positive_married": [
-            "你总记得我的小习惯。"
+            { "cn": "你总记得我的小习惯。", "en": "You always remember my little habits." }
           ],
           "gift_normal_married": [
-            "放在家里，好好留着。"
+            { "cn": "放在家里，好好留着。", "en": "I will put it away at home and keep it well." }
           ]
         }
       }
@@ -301,81 +301,81 @@
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
         "positiveBubbles": [
-          "这个正合用，谢谢你。",
-          "你还记得我喜欢什么。"
+          { "cn": "这个正合用，谢谢你。", "en": "This is just what I needed. Thank you." },
+          { "cn": "你还记得我喜欢什么。", "en": "You remembered what I like." }
         ],
         "negativeBubbles": [
-          "谢谢你的心意，只是我暂时用不上。"
+          { "cn": "谢谢你的心意，只是我暂时用不上。", "en": "That is kind of you, but I have no use for it just now." }
         ],
         "normalBubbles": [
-          "我收下了，谢谢。"
+          { "cn": "我收下了，谢谢。", "en": "I'll take it. Thank you." }
         ],
         "dialogues": {
           "greeting": [
             {
               "minLevel": 0,
               "lines": [
-                "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。",
-                "星灯还没灭，只是很久没人替它擦掉灰尘了。"
+                { "cn": "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。", "en": "The wind beacon in the Hanging Root Wood, the star lamp at the Fallen Star Workshop — mend either one and that is a step forward." },
+                { "cn": "星灯还没灭，只是很久没人替它擦掉灰尘了。", "en": "The star lamp never went out. Nobody has simply wiped the dust off it in a long while." }
               ]
             },
             {
               "minLevel": 5,
               "lines": [
-                "灯亮的时候，你的影子总会先到门口。"
+                { "cn": "灯亮的时候，你的影子总会先到门口。", "en": "When the lamp comes up, your shadow always reaches the door first." }
               ]
             },
             {
               "minLevel": 10,
               "lines": [
-                "走了这么多条航路，最想等到的还是你平安回来。"
+                { "cn": "走了这么多条航路，最想等到的还是你平安回来。", "en": "After all these lanes, the one thing I still wait for is you coming home safe." }
               ]
             }
           ],
           "idle": [
-            "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。",
-            "星灯还没灭，只是很久没人替它擦掉灰尘了。"
+            { "cn": "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。", "en": "The wind beacon in the Hanging Root Wood, the star lamp at the Fallen Star Workshop — mend either one and that is a step forward." },
+            { "cn": "星灯还没灭，只是很久没人替它擦掉灰尘了。", "en": "The star lamp never went out. Nobody has simply wiped the dust off it in a long while." }
           ],
           "afterGift": [
-            "我会好好收着的。"
+            { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
           ],
           "levelUp": [
-            "和你说话，让我觉得日子又有盼头了。"
+            { "cn": "和你说话，让我觉得日子又有盼头了。", "en": "Talking with you makes the days feel worth waiting through again." }
           ],
           "farewell": [
-            "路上当心，等你回来。"
+            { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
           ],
           "alreadyGifted": [
-            "今天已经收过你的礼物啦。"
+            { "cn": "今天已经收过你的礼物啦。", "en": "You have already given me something today." }
           ],
           "alreadyGiftedPositive": [
-            "今天已经送过了，留一些给自己吧。"
+            { "cn": "今天已经送过了，留一些给自己吧。", "en": "You have given already today — keep something for yourself." }
           ],
           "alreadyGiftedNormal": [
-            "心意收到了，今天就到这里吧。"
+            { "cn": "心意收到了，今天就到这里吧。", "en": "The thought is received. Let us leave it there for today." }
           ],
           "alreadyGiftedNegative": [
-            "今天就不再麻烦你了。"
+            { "cn": "今天就不再麻烦你了。", "en": "I will not trouble you any further today." }
           ]
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            "回来了？灯还亮着，我也在。"
+            { "cn": "回来了？灯还亮着，我也在。", "en": "Back already? The lamp is still burning, and so am I." }
           ],
           "dialogue_idle_married": [
-            "你在的地方，就是我的归航处。"
+            { "cn": "你在的地方，就是我的归航处。", "en": "Wherever you are is where I come home to." }
           ],
           "dialogue_farewell_married": [
-            "平安回来，我们还有很多个明天。"
+            { "cn": "平安回来，我们还有很多个明天。", "en": "Come back safe. We still have a great many tomorrows." }
           ],
           "dialogue_after_gift_married": [
-            "一家人也会被你的用心打动。"
+            { "cn": "一家人也会被你的用心打动。", "en": "Even family can be moved by that much care." }
           ],
           "gift_positive_married": [
-            "你总记得我的小习惯。"
+            { "cn": "你总记得我的小习惯。", "en": "You always remember my little habits." }
           ],
           "gift_normal_married": [
-            "放在家里，好好留着。"
+            { "cn": "放在家里，好好留着。", "en": "I will put it away at home and keep it well." }
           ]
         }
       }

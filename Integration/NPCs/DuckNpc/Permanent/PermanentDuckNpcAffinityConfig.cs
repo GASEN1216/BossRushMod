@@ -222,19 +222,21 @@ namespace BossRush
             return map;
         }
 
+        // 气泡走数据层的按语言视图（CR-2026-09-12-016）：蓝图里每一句可以写成 {cn, en}，
+        // 这里取当前语言的那一半；老蓝图只有中文时 L10n.T 自动回落，行为不变。
         public string[] PositiveBubbles
         {
-            get { return _data != null ? _data.positiveBubbles : null; }
+            get { return _data != null ? _data.PositiveBubbles : null; }
         }
 
         public string[] NegativeBubbles
         {
-            get { return _data != null ? _data.negativeBubbles : null; }
+            get { return _data != null ? _data.NegativeBubbles : null; }
         }
 
         public string[] NormalBubbles
         {
-            get { return _data != null ? _data.normalBubbles : null; }
+            get { return _data != null ? _data.NormalBubbles : null; }
         }
 
         public string[] GetAlreadyGiftedDialogues(GiftReactionType lastReaction)
