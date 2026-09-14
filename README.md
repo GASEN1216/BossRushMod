@@ -1,7 +1,5 @@
 # BossRushMod for Escape from Duckov
 
-> **AI 协作请先读 [AGENTS.md](AGENTS.md)** —— 仓库级唯一事实来源，含构建门禁、TypeID 分配、本地化注入、刷怪安全网等不可违背的硬约束。
-
 **中文** | **[English](README_EN.md)**
 
 <p align="center">
@@ -12,250 +10,123 @@
 [![Game](https://img.shields.io/badge/Game-Escape%20from%20Duckov-orange)](https://store.steampowered.com/app/3167020)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## 项目概览
+《逃离鸭科夫》（Escape from Duckov）的综合玩法 Mod。以 BossRush 竞技场为起点，现在有八种游戏模式、一张独立出击地图、原创 Boss 与装备、NPC 关系线、剧情战役、基地建筑，以及大量运行时稳定性修复。
 
-BossRushMod 是《Escape from Duckov》的综合型大型 Mod。它以 BossRush 竞技场玩法为核心，但当前源码已经扩展成一个包含多模式玩法（含血猎追击大逃杀模式）、自定义 Boss、自定义装备与物品（含霜之哀伤等自定义武器）、NPC 关系线、成就、重铸、许愿台、死亡亡魂、游戏内 Wiki、在线 Wiki 站点、本地化、音频和运行时稳定性修复的完整内容包。
+- **玩家文档**：[在线 Wiki](https://gasen1216.github.io/BossRushMod/)（与游戏内百科同一份正文，中英双语）
+- **订阅**：[Steam 创意工坊](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
+- **参与开发 / AI 协作**：先读 [AGENTS.md](AGENTS.md)
 
-这份 README 反映当前仓库源码基线。更完整的开发向说明见 [docs/项目全景文档.md](docs/项目全景文档.md)；实现功能前可从 [仓库知识库导航](.qoder/repowiki/README.md) 查找模块知识卡与主题级详解，代码变更后需同步维护。
+## 内容一览
 
-## 内容总览
+### 游戏模式
 
-- 7 个竞技场玩法入口：标准 BossRush 3 档、Mode D、Mode E、Mode F、Mode G；另有独立的末日丧尸模式
-- 9 张已接入 BossRush 的地图
-- 2 个核心自定义 Boss：龙裔遗族、焚天龙皇
-- 3 位常驻 NPC：阿稳、叮当、羽织
-- 多条系统线：装备能力、物品、重铸、好感度、婚姻、成就、游戏内百科、许愿台、亡魂
+| 模式 | 怎么进 | 玩法 |
+| --- | --- | --- |
+| 标准 BossRush（弹指可灭 / 有点意思） | 携带 BossRush 船票 | 每波 1 个 / 3 个 Boss |
+| 无间炼狱 | 携带 BossRush 船票 | 无限波次，每波 Boss 数可配置，带现金池与自动吸附 |
+| 白手起家（Mode D） | 裸装携带船票 | 随机起装，独立的敌池、掉落与成长节奏 |
+| 划地为营（Mode E） | 裸装携带营旗 | 多阵营沙盒混战 |
+| 血猎追击（Mode F） | 裸装携带船票与血猎收发器 | 四阶段大逃杀：持续失血、击杀回血、赏金追踪、工事与撤离 |
+| 宿命回响（Mode G） | 携带船票与宿命回响信物 | 固定九波三幕，会反制你的宿敌与契约 |
+| 百战留痕（黑市鸭王杯） | 基地码头的船，花一张船票 | 当经理人、自己不下场：签斗士、看盘口，一季六场 |
+| 末日丧尸模式 | 基地商人处买尸潮邀请函 | 独立的生存模式：净化点经济、每波选强化、撤离结算 |
 
-## 玩法模式
+### 地图
 
-| 模式 | 进入方式 | 核心规则 |
-|------|----------|----------|
-| **弹指可灭** | 携带 BossRush 船票进入 | 每波 1 个 Boss，适合初次体验 |
-| **有点意思** | 携带 BossRush 船票进入 | 每波 3 个 Boss，标准多目标战斗 |
-| **无间炼狱** | 携带 BossRush 船票进入 | 无限波次，每波 Boss 数由配置决定，带现金池与自动吸附 |
-| **Mode D：白手起家** | 裸装携带 BossRush 船票进入 | 随机起装，独立敌池、掉落和成长节奏 |
-| **Mode E：划地为营** | 裸装携带营旗进入 | 多阵营沙盒混战，支持随机旗、指定旗和”爷的营旗”独狼模式 |
-| **Mode F：血猎追击** | 裸装携带 BossRush 船票 + 血猎收发器进入 | 四阶段大逃杀：准备→赏金→猎杀风暴→撤离，持续失血、击杀回血与成长，赏金标记追踪，工事系统 |
-| **Mode G：宿命回响** | 裸装携带 BossRush 船票 + 宿命回响信物进入 | 固定九波三幕挑战，包含三轴反制、跨局宿敌、宿命契约、严格奖励事务与荣誉记录 |
+- **9 张 BossRush 竞技场地图**，地图选择走原版界面。
+- **天空岛 · 晴岚群岛**：从基地船点出发的独立出击地图，不消耗船票。十二座岛上有修复风标与星灯的主线、搜刮与采集、配方、居民委托，以及 Boss「噬风」。
 
-## 支持地图
+### Boss、NPC 与装备
 
-当前代码中已注册并可用于 BossRush 的地图一共 9 张：
+- **原创 Boss**：龙裔遗族、焚天龙皇、幽灵女巫。
+- **NPC**：阿稳（快递员）、叮当（哥布林工匠，负责重铸）、羽织（护士），以及用捏脸工具做的永久 NPC；好感度、送礼与婚姻线。
+- **装备**：龙裔 / 龙王套装、霜冠 / 雷神套装、腾云驾雾图腾、逆鳞、焚皇断界戟、龙息、焚天龙铳、噬魂挽歌、霜之哀伤，以及毒蛇匕首、召唤法杖、能量盾、冰霜长矛、雷电戒指。
 
-- DEMO终极挑战 / DEMO Ultimate Challenge
-- 零度挑战 / Zero Challenge
-- 零号区 / Ground Zero
-- 仓库区 / Hidden Warehouse
-- 农场镇 / Farm Town
-- J-Lab实验室 / J-Lab Laboratory
-- 口口场地 / Underground Arena
-- 37号实验区 / Zone 37 Experimental Area
-- 迷宫 / Maze
+### 系统
 
-地图选择由原版 UI 集成层接管，BossRush、Mode D 和 Mode E 共用这套地图接入基础。
+鸭王征程（六章剧情战役）、竞技场后山（菜地、战利品登记簿、点唱机）、遗种巢（养崽）、鸭科夫日报、鸭皇图鉴、局内随机事件、词缀锻造、重铸、星愿许愿台、死亡亡魂、变异词条、成就、Boss 筛选器、游戏内百科。
 
-## 自定义内容
-
-### Boss
-
-- **龙裔遗族**：BossRush 体系中的核心自定义 Boss 之一。
-- **焚天龙皇**：当前高阶核心 Boss，英文名为 **Skyburner Dragon Lord**。
-
-### NPC
-
-- **阿稳（Awen）**：快递员与基础引导 NPC，关联商店、存储、Wiki 书等流程。
-- **叮当（Dingdang）**：哥布林 NPC，关联重铸、礼物、折扣和故事线。
-- **羽织（Yu Zhi）**：护士 NPC，负责治疗、礼物互动和婚姻线。
-
-### 装备与能力
-
-- 龙套装
-- 龙王套装
-- 飞行图腾
-- 逆鳞
-- 龙王专属武器系统
-- 霜之哀伤（Frostmourne，500041）：自定义近战武器，带右键召唤亡灵与冰焰特效
-
-#### NewWeapons 扩展包（500048–500052）
-
-| TypeID | 名称 | 英文名 |
-|--------|------|--------|
-| 500048 | 毒蛇匕首 | Viper Dagger |
-| 500049 | 召唤法杖 | Summon Staff |
-| 500050 | 能量盾 | Energy Shield |
-| 500051 | 冰霜长矛 | Frost Spear |
-| 500052 | 雷电戒指 | Thunder Ring |
-
-#### 套装（SetBonus 体系，500053–500056）
-
-| TypeID | 名称 | 所属套装 |
-|--------|------|----------|
-| 500053 | 霜冠 | 冰霜套（头盔） |
-| 500054 | 寒冰铠甲 | 冰霜套（护甲） |
-| 500055 | 雷神之角 | 雷霆套（头盔） |
-| 500056 | 雷霆战甲 | 雷霆套（护甲） |
-
-> 两套装已开放获取：冰霜套走「???」Boss、雷霆套走风暴区 Boss 的额外掉落（每件 20%，原版地图出击同样生效），或叮当商店好感 6 级各限量 1。
-> 套装效果为龙王级：元素伤 50% 转治疗 + 击杀触发技能（冰葬霜爆 / 引雷连锁）+ 受击反制 + 眼光、霜雾、电弧表现。
-
-> 完整、权威的 TypeID 分配见 [docs/Bossrush使用物品ID表.md](docs/Bossrush使用物品ID表.md)。
-
-### 关键物品
-
-- BossRush 船票
-- 生日蛋糕
-- 冒险家日志 / Wiki Book
-- 钻石、钻戒、砖石、安神滴剂、平安护身符、叮当涂鸦、荒野号角
-- Mode E 营旗
-- Mode F 血猎收发器
-- Mode G 宿命回响信物（500057）
-- 阿稳扫箱令（Mode E/F Boss 击杀累计自动发放，一键收集散落掉落箱）
-- Mode E 战场道具：挑衅烟雾弹、混沌引爆器、猎王响哨、血狩烽火
-- 成就勋章
-
-### 关键系统
-
-- NPC 好感度、对话、礼物、礼物容器、商店、婚姻
-- 装备重铸系统
-- 成就系统与 Steam 风格弹窗
-- 游戏内 Wiki
-- 星愿许愿台：玩家可在许愿台写下心愿，经内容校验后通过飞书 API 记录，支持抽奖动画与奖励发放
-- 死亡亡魂系统：玩家死亡后在原地生成复制外观与装备的 Boss 级亡魂，按掉落价值分三档强度
-- BossFilter：Boss 池筛选与无间炼狱权重编辑
-- 波次奖励、掉落箱、地图交互物
-- 现金自动吸附、敌人卡住/坠落恢复等稳定性逻辑
+每一项的规则、数值与获取方式见在线 Wiki。
 
 ## 配置
 
-BossRush 目前同时支持两种配置入口：
-
-1. `ModConfig`
-2. 本地文件 `StreamingAssets/BossRushModConfig.txt`
-
-当前关键配置项如下：
+两个入口：`ModConfig`，以及游戏目录下的 `StreamingAssets/BossRushModConfig.txt`（JSON）。玩法系统默认全部开启，配置里只暴露调参旋钮。常用项：
 
 | 键名 | 默认值 | 说明 |
-|------|--------|------|
-| `waveIntervalSeconds` | `15` | 波次间休息时间 |
-| `enableRandomBossLoot` | `true` | 启用 Boss 随机掉落加成 |
-| `useLegacyBossLootProbabilities` | `true` | 标准 Boss 战利品箱使用原版概率区间；若未出 Q6+ 则额外追加 1 件保底 |
+| --- | --- | --- |
+| `waveIntervalSeconds` | `15` | 波次间休息时间（秒） |
+| `milestoneRestBonusSeconds` | `30` | 每 5 波额外休息时间（秒），0 = 不额外休息 |
 | `useInteractBetweenWaves` | `false` | 波次间改为手动交互开下一波 |
-| `lootBoxBlocksBullets` | `false` | 掉落箱是否可作为掩体挡子弹 |
 | `infiniteHellBossesPerWave` | `3` | 无间炼狱每波 Boss 数 |
 | `bossStatMultiplier` | `1.0` | Boss 全局数值倍率 |
 | `modeDEnemiesPerWave` | `3` | 白手起家每波敌人数 |
+| `enableRandomBossLoot` | `true` | Boss 随机掉落加成 |
+| `useLegacyBossLootProbabilities` | `true` | 标准 Boss 战利品箱用原版概率区间；没出 Q6+ 时额外追加 1 件保底 |
+| `lootBoxBlocksBullets` | `false` | 掉落箱可作为掩体挡子弹 |
 | `disabledBosses` | `[]` | 被禁用的 Boss 列表 |
 | `bossInfiniteHellFactors` | `{}` | 无间炼狱 Boss 刷新权重因子 |
-| `enableDragonDash` | `true` | 是否启用龙冲刺相关能力 |
-| `achievementHotkey` | `L` | 成就面板热键，内部存储为 `KeyCode` 整数值 |
-| `useWolfModelForWildHorn` | `true` | 荒野号角是否使用狼模型 |
-| `enableDeathWraithSystem` | `true` | 死亡亡魂系统开关 |
-| `milestoneRestBonusSeconds` | `30` | 每 5 波额外休息时间（秒），0 = 不额外休息 |
+| `enableDragonDash` | `true` | 龙冲刺相关能力 |
+| `enableDeathWraithSystem` | `true` | 死亡亡魂系统 |
+| `useWolfModelForWildHorn` | `true` | 荒野号角使用狼模型 |
+| `achievementHotkey` | `L` | 成就面板热键（内部存 `KeyCode` 整数） |
 
-## 技术栈与运行方式
-
-| 项目 | 说明 |
-|------|------|
-| 语言 | C# 7.3 |
-| 运行时 | Unity（游戏内嵌 Mono） |
-| 构建方式 | `compile_official.bat` 直接调用已安装 .NET SDK 的 Roslyn `csc.dll`，无 `.csproj` |
-| 输出 | `Build/BossRush.dll` |
-| Harmony | 通过 Workshop 路径下的 `0Harmony.dll` 引用，全项目 31 个 `[HarmonyPatch]`，注册于 `Utilities/AlwaysOnRuntimeHooks.cs`（`PatchAll()`） |
-
-### 验证方式
-
-本项目**没有 C# 单元测试框架**，验证靠三层：
-
-1. **Windows 编译**：`compile_official.bat` 编译出 `Build/BossRush.dll`（静态类型/语法/引用检查，C# 7.3）。仅 Windows 可编译，WSL/Linux 无编译器。
-2. **架构守卫脚本**：`tests/` 下 435 个 Python 脚本静态断言结构不变式（常量一致性、生命周期契约、缓存复用、变异词条语义禁区等），逐个运行 `tests/*.py`。
-3. **游戏内 smoke 测试**：Windows 侧启动 `Duckov.exe`，手工验证波次、武器/套装、售货机 UI、过图性能等运行时行为。
-
-编译通过**不代表**运行时无异常——31 个 Harmony patch 与 493 处字符串反射只能在游戏内验证（官方更新可能静默作废绑定，详见 [docs/架构说明/Harmony补丁契约稳定性.md](docs/架构说明/Harmony补丁契约稳定性.md)）。
+完整选项见 Wiki 的「配置选项」页。
 
 ## 从源码构建
 
-这个仓库不是标准 `.csproj` 工程，而是脚本驱动的 C# 源码仓库。
+仓库不是 `.csproj` 工程：`compile_official.bat` 显式列出全部源码，直接调用 .NET SDK 自带的 Roslyn `csc.dll`（C# 7.3），输出 `Build/BossRush.dll` 并部署到游戏的 Mod 目录。
 
-### 构建脚本
+需要：Windows、.NET SDK、本机安装的《逃离鸭科夫》、创意工坊的 HarmonyLoadMod。脚本会自动探测游戏与创意工坊的路径，探测不到时设置环境变量 `GAME_PATH` / `WORKSHOP_PATH`。
 
-- `compile_official.bat`：编译全部源码并尝试部署 `Build/BossRush.dll`
-- `test_bossrush_official.bat`：编译后复制到本地游戏目录，便于进游戏测试
-- `cleanup_old_files.bat`：清理旧产物
+```text
+compile_official.bat                     正式构建并部署
+compile_dev.bat                          Dev 构建：调试日志、调试热键、F3 玩法验收
+python tools/run_guards.py               结构守卫（CI 在推送与 PR 上自动跑）
+python tools/run_runtime_regressions.py  隔离执行回归
+npm --prefix wiki-site run dev           本地预览在线 Wiki
+```
 
-### 环境前提
-
-- Windows
-- 已安装 `dotnet` SDK
-- 本地存在 `Escape from Duckov` 游戏目录
-- 本地存在 Workshop 目录和 `HarmonyLoadMod`
-- 游戏依赖程序集位于 `Duckov_Data\\Managed\\`
-
-### 维护注意事项
-
-- 新增 `.cs` 文件后，必须同步修改 `compile_official.bat`，否则不会参与编译。
-- 构建脚本包含硬编码路径，换机器或换盘符时需要先调整脚本。
-- 项目主入口是 `ModBehaviour`，但大量逻辑分散在多个 `partial class` 文件中。
+编译和守卫通过不代表运行时正确：Harmony 补丁与反射绑定只能在游戏里确认。新增 `.cs` 必须登记进 `compile_official.bat`；TypeID、本地化、存档兼容等规则见 [AGENTS.md](AGENTS.md)。
 
 ## 目录结构
 
 ```text
 BossRushMod/
-├── ModBehaviour.cs                  # 主入口与全局状态
-├── ModConfigApi.cs                  # ModConfig 封装
-├── Achievement/                     # 成就、勋章、Steam 风格弹窗
-├── Audio/                           # 音频管理
-├── BossFilter/                      # Boss 池筛选与无间炼狱因子
-├── Common/                          # 共享特效、装备工具、通用辅助
-├── Config/                          # 运行时配置与数据
-├── DebugAndTools/                   # ItemSpawner、InventoryInspector、NPC 传送 UI
-├── Injection/                       # 运行时注入辅助
-├── Integration/                     # 动态物品、装备、NPC、商店、Wiki、关系系统总线
-│   ├── DeathWraith/                 # 死亡亡魂系统
-│   ├── Frostmourne/                 # 霜之哀伤武器系统
-│   └── WishFountain/                # 星愿许愿台
-├── Interactables/                   # 路牌、补给、维修、清箱、传送
-├── Localization/                    # 本地化注入与文本管理
-├── LootAndRewards/                  # 掉落、奖励、奖励箱、扫箱令
-├── MapSelection/                    # BossRush 地图选择接入
-├── ModeD/                           # 白手起家
-├── ModeE/                           # 划地为营、营旗、商人、战场道具
-├── ModeF/                           # 血猎追击、阶段状态机、赏金、工事、撤离
-├── ModeG/                           # 宿命回响、九波编排、宿敌、契约、奖励与持久化
-├── UIAndSigns/                      # 场内提示、横幅、路牌 UI
-├── Utilities/                       # 刷怪、缓存、敌人恢复监控等工具
-├── WavesArena/                      # 标准 BossRush / 无间炼狱核心逻辑
-├── WikiContent/                     # 游戏内百科内容
-├── wiki-site/                       # VitePress 在线 Wiki 站点（Cloudflare Pages / GitHub Pages）
-└── docs/                            # 设计文档与项目说明
+├── ModBehaviour.cs, ModConfigApi.cs   主入口、全局状态、配置 API
+├── WavesArena/                        标准 BossRush、无间炼狱
+├── ModeD/ ModeE/ ModeF/ ModeG/ ModeH/ 各模式（ModeH = 百战留痕）
+├── ZombieMode/                        末日丧尸模式
+├── Campaign/                          鸭王征程
+├── PetNest/  RandomEvents/            遗种巢、局内随机事件
+├── Integration/                       物品、装备、NPC、商店、好感、婚姻、重铸、图鉴、日报、后山……
+├── DebugAndTools/                     调试工具与 F3 验收；SkyIsland/ 是天空岛运行时
+├── Common/  Utilities/  Patches/      共享库、跨模块基础设施、Harmony 补丁
+├── Config/  Localization/  LootAndRewards/  Achievement/  Audio/
+├── BossFilter/  Interactables/  MapSelection/  UIAndSigns/
+├── Assets/Data/  Assets/SpawnPoints/  进 git 的 JSON 数据（其余 Assets 为本地资源）
+├── ArtSource/SkyIsland/  tools/       天空岛生成数据、各类生成与校验脚本
+├── tests/                             结构守卫、属性测试、执行回归夹具
+├── WikiContent/  wiki-site/           游戏内百科正文、在线 Wiki 站点
+└── docs/                              本地设计与教程（默认不进 git）
 ```
 
-## 调试与开发辅助
+## 调试热键
 
-项目内置了完整的调试热键体系，常用项包括：
+以下热键只在 Dev 构建（`compile_dev.bat`）里有：
 
 | 热键 | 功能 |
-|------|------|
-| `F2` | 打开 / 关闭 `ItemSpawner` |
-| `F3` | 打开统一调试作弊总控面板（传送、属性调参、物品、加钱、清冷却等） |
+| --- | --- |
+| `F2` | 物品生成器 |
+| `F3` | 调试作弊总控面板（传送、属性、物品、加钱、清冷却）与完整玩法验收 |
 | `F4` | 清空成就数据 |
-| `F5` | 输出附近建筑 / 对象信息 |
-| `F6` | 切换放置模式 |
-| `F7` | 输出最近交互点信息 |
-| `F8` | 输出附近角色信息 |
+| `F5` / `F7` / `F8` | 输出附近建筑与对象 / 最近交互点 / 附近角色信息 |
+| `F6` | 放置模式 |
 | `F9` | 发放 BossRush 船票并打开地图选择 |
 | `F10` | 强制清场并触发通关流程 |
-| `F11` | 打开 `InventoryInspector` |
-| `F12` | 打开 / 关闭 NPC 传送 UI |
-| `Ctrl+F10` | 打开 / 关闭 BossFilter |
-| `L` | 默认成就面板热键 |
+| `F11` | 背包检查器 |
+| `F12` | NPC 传送界面 |
 
-## 文档
-
-- 开发总览：[docs/项目全景文档.md](docs/项目全景文档.md)
-- 仓库知识库：[.qoder/repowiki/README.md](.qoder/repowiki/README.md)（模块知识卡、主题详解与维护流程）
-- 设计文档目录：[docs/](docs/)
-- 游戏内百科内容：[WikiContent/](WikiContent/)
-- 在线 Wiki 站点：[wiki-site/](wiki-site/)（VitePress，支持 Cloudflare Pages 与 GitHub Pages 双部署）
+正式构建里也有的：`Ctrl+F10` 打开 Boss 筛选器，`L`（可在配置里改）打开成就面板。
 
 ## 许可
 

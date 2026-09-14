@@ -1,6 +1,6 @@
 name: Guards
 
-# tests/ 下的 Python 守卫是本仓库最大的质量资产（440 个结构不变式脚本），
+# tests/ 下的 Python 守卫是本仓库最大的质量资产（数百个结构不变式脚本，数量以 runner 输出为准），
 # 但此前只能靠本地手动跑——CI 里只有 Wiki 部署，没有任何 guard。
 #
 # 这里只跑 guard，**不跑编译**：compile_official.bat 需要

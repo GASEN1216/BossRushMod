@@ -574,6 +574,61 @@ Breaking/Operational:
 官方更新必须复验实际程序集 IL，不能回退为减免前因子占比估算。上下文只在主玩家启用相应
 套装时采集，按一次 Hurt 调用持有并由 Finalizer 清理，嵌套调用互不污染。
 
+## 7.1 官方游戏行为：静默失败类陷阱
+
+下面每条都能在反编译源（`鸭科夫源码/`）里核实，而编译和 guard 都查不出来。共同点是**不报错**，表现只是「功能不工作」。
+写到相关 API 时先对照这里；发现新的同类行为就追加一条，并写明核实位置。
+
+**生成与激活**
+
+- `CreateCharacterAsync` 传 `relatedScene != -1` 且 preset 的 `setActiveByPlayerDistance` 为 true 时，角色进官方
+  `SetActiveByPlayerDistance`：玩家跑出约 100 m 就被 `SetActive(false)`，`IsDead` 仍为 false，波次永不结算、NPC 服务凭空消失。
+  Mod 刷怪统一经 `Utilities/SpawnedEnemyActivationHelper` 解除；NPC 用 `SetRelatedScene(sceneIndex, false)`。
+- 官方 preset 的队伍可能是中立，生成后必须走敌对性安全网（`AGENTS.md` §4.5）。
+- `LootBoxLoader.Awake` 按位置哈希随机 `SetActive(false)` 箱子。复用官方 `InteractableLootbox` 预制体时：
+  在**未激活**的暂存父节点下 Instantiate；用 `DestroyImmediate` 摘掉 `LootBoxLoader`（`Destroy` 帧末才生效，挂到活动父节点会本帧触发 `Awake`）；
+  激活前摆好世界坐标；再调 `InteractableLootboxInventoryHelper.EnsureLocalInventory`（官方按位置哈希共享 Inventory，靠近的箱子会串味）。
+- 官方 `OnDead` 在倒下位置 +0.1 m 生成尸体箱，而 `CA_Interact` 按到交互体轴心的距离**严格小于**取唯一目标：同点的第二个交互体整局选不中。
+- 改敌人体型只缩放 `characterModel`，不改角色 transform：`CreateCharacterAsync` 返回时角色已初始化，事后缩放会让碰撞体、导航半径与官方口径失步。染色走 `MaterialPropertyBlock`，碰 `sharedMaterial` 会污染同款的所有敌人。
+
+**物品与属性**
+
+- `ItemAssetsCollection.Search` 结果为空时会自行下调品质区间反复重搜。要精确品质带用 `GetAllTypeIds`；它经过 HashSet、顺序不稳定，固定 seed 抽样前先 `Sort()`。
+- `InstantiateSync` 缺资源时返回空壳 `FallbackItem`（非 null、不抛），还会把同一个 TypeID 写回空壳，回读 `TypeID` 分辨不出。实例化**之前**先问 `ItemAssetsCollection.GetPrefab(typeId)`。
+- 角色没有 `MoveSpeed`、`ReloadSpeedMultiplier` 这类 stat：移动只读 `WalkSpeed` / `RunSpeed` / `Moveability`，`MoveSpeed` 是 Animator 参数名。
+  挂到不存在的 stat 会被 `RuntimeStatModifierTracker` 静默丢弃（`StatKeyExistenceGuard`）。
+- 不设 `item.Value` 时 NPC 商店标价 0（价格 = Value × 耐久比 × priceFactor）；有耐久的装备要 `EquipmentHelper.AddRepairableTag`，维修入列门是 `ItemRepairView.CanRepair`。
+- `EquipmentHelper.AddModifierToItem` 不幂等，配置器又可能被重复调用；要「保证存在一条」时用 `EnsureModifierOnItem`。
+- 每次进图官方都重建主角与 `CharacterItem`（`LevelManager.LoadOrCreateCharacterItemInstance`），挂在旧 Item 上的运行时 Modifier 与旧角色上的特效随之作废。
+  装备类「激活态」要在 `LevelManager.OnAfterLevelInitialized` 先停用再重查。
+- `InteractableBase.interactTime` 是私有序列化字段，`AddComponent` 出来恒为 0（首帧就完成）。要读条时经 `ModeFItemConfigHelper.SetHiddenMember` 写入，**读回 `InteractTime` 核对**，不一致打警告。
+
+**伤害与掉落**
+
+- 自建爆炸显式传 `canHurtSelf: false`（官方默认 true 时 `selfTeam = Teams.all`，爆炸中心的玩家自己必吃这一下）。
+  自建 `DamageInfo` 置 `isFromBuffOrEffect = true`、`fromWeaponItemID = 0`，否则会被只认直接击杀的系统当成击杀起链。
+  `OnHurt` 可能正处在官方 `ExplosionManager` 的循环里，嵌套 `CreateExplosion` 会覆写它的共享缓冲，反击结算延后一帧。
+- 想让**原版地图**击杀也掉落，挂 `CharacterMainControl.OnDead` 前缀（`Patches/Combat/CharacterOnDeadPatch.cs`），只在 Mod 奖励箱协程里加是不够的。
+  走 OnDead 必须补齐 defer 协议的四处接线，掉落 roll 在死亡帧定下并随 pending 携带（`ExtraBossDropDeferGuard`）。
+
+**时间、界面与输入**
+
+- `TimeScaleManager` 在暂停菜单（`GameManager.Paused`，它是 `UIPanel` 不是 `View`）与拍照模式时把 `timeScale` 置 0；`CountDownArea` 按 `Time.time` 计时。
+  玩法计时走游戏时间；表现层走 unscaled 时，暂停中要停推进（`BossRushUI.IsGamePaused()`）。
+- 官方 HUD 显示条件是：无存活隐藏令牌、`View.ActiveView == null`、`!DialogueUI.Active`、`CustomFaceUI.ActiveView == null`、`!CameraMode.Active`，本库判定收在 `BossRushUI.IsOfficialHudHidden()`。
+  官方 Views 画在 sortingOrder 100，本库 `HudOverlay` 是 1200，常驻 HUD 不跟随显隐就会压在背包、地图、对话上面。
+- 官方 HUD 画布是 2560×1440 按短边缩放，本库是 1920×1080 Expand，1 本库单位恒等于 4/3 官方单位。避让官方 HUD 按预制体实测，不按截图估。
+- 输入资产 `Duckov Controls` 只有键鼠方案，没有手柄绑定；`UIInputManager.OnNavigate` 在 started / performed / canceled 各发一次，自绘面板导航按边沿走一步。
+- `NoteIndex.SetNoteDynamic` 只写查询字典、不写 `notes` 列表，两边都写界面才看得到；`titleKey` / `contentKey` 是只读派生属性，文案走 `LocalizationHelper.InjectLocalizations`。
+- 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
+  `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
+- `Duckov.Quests`（`QuestManager` / `Quest` / `Task`）刻意不接：它会把 mod 任务写进官方存档键，卸载后官方报错（`AGENTS.md` §10）。
+
+**渲染与程序集**
+
+- 游戏跑在 URP Deferred：自研世界着色器必须带 `UniversalGBuffer` pass，缺了进得去、走得动，但画面全黑（`docs/架构说明/自研着色器与官方渲染管线约定.md`，闸门 `tools/verify_sky_island_bundle_shaders.py`）。
+- 对字节数组加载的程序集，`Assembly.Location` 返回空串；在静态字段初始化器里拼它会抛 `TypeInitializationException`，把类型永久毒化。Mod 根目录一律走 `ModBehaviour.GetModPath()`。
+
 ## 8. Wiki 内容契约
 
 - `WikiContent/catalog.tsv` 索引游戏内 Wiki 条目。

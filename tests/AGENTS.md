@@ -1,75 +1,69 @@
-# tests/AGENTS.md — Python 守卫专项规则
+# tests/AGENTS.md — 守卫、属性测试与执行回归
 
-> 先读根目录 `AGENTS.md`。顶层 Python 脚本是结构守卫；`fixtures/` 另有链接生产源码、隔离宿主依赖的 C# 执行回归。二者均不能替代 Unity 实机验证。
+> 先读根目录 `AGENTS.md`。本目录有三类东西，都不能替代 Windows 编译和游戏内实机验证：
+>
+> - `tests/*Guard.py`：静态结构守卫，读源码文本断言不变式；
+> - `tests/*PropertyTest.py`：离线属性测试，用真实数据复算几何、导航、落点、布局等；
+> - `tests/fixtures/*/`：链接生产源码、用替身隔离宿主依赖的 C# 执行回归。
 
-## 规则
-
-- 守卫脚本直接位于 `tests/*.py`，不要新建 `tests/guards/` 子目录。
-- 改动被 guard 断言的结构时同步 guard，不要删除断言逃避失败。
-- 新 guard 应聚焦一个明确 invariant，失败信息要指出文件和缺失模式。
-- 白名单只能解释既有债务；新增代码默认不进白名单。
-- 属性/随机测试脚本也应能在普通 Python 环境运行，不依赖游戏进程。
-
-## 运行
-
-全量（推荐入口）：
+## 1. 运行守卫
 
 ```bash
-python tools/run_guards.py
+python tools/run_guards.py                   # 全量；Windows 上 run_guards.bat 等价
+python tools/run_guards.py --changed-only    # 只跑与当前 git 改动相关的（匹配不到时回退全量）
+python tools/run_guards.py --filter ModeG    # 名字含 ModeG 的
+python tools/run_guards.py --verbose         # 打印失败 guard 的完整输出
+python tools/run_guards.py --list-red        # 只列当前失败项
+python tests/SomeGuard.py                    # 单个
 ```
 
-Windows 上等价：`run_guards.bat`。
+runner 全量跑不中断、聚合 PASS/FAIL、强制 UTF-8 输出。不要用 `for %f in (tests\*.py) do python %f`：它不聚合结果，
+fail-fast 的写法还会让第一个红项遮蔽后面所有守卫。
 
-这个 runner 全量跑不中断、聚合 PASS/FAIL、打印失败清单与耗时，并强制 UTF-8 输出。
-**不要再用 `for %f in (tests\*.py) do python %f`**：那个写法不聚合结果，而且仓库里存在
-既有红项时会让人误以为「跑过了」；fail-fast 的循环更糟——第一个红项会永久遮蔽它之后的
-所有 guard（既有红项按字母序排在 D，后面还有 300+ 个从来没被跑到）。
+- 已知红项登记在 `tests/known_red_guards.txt`：失败不计入退出码但会单独列出；登记后又转绿的报 STALE-BASELINE 并判失败，要及时移除。新写的守卫不进这里。
+- CI（`.github/workflows/guards.yml`）跑 `--source-only`：三个依赖 local-only 制品（AssetBundle）的检查标 PARTIAL。发布验证不要用这个参数。干净签出上这三个资源守卫本来就红，不算回归。
+- CI 不跑编译。只能在 Linux / WSL 跑时，写明「未做 Windows 编译验证」。
 
-常用参数：
-
-```bash
-python tools/run_guards.py --changed-only   # 只跑与当前 git 改动相关的 guard
-python tools/run_guards.py --filter ModeG   # 只跑名字含 ModeG 的
-python tools/run_guards.py --verbose        # 打印失败 guard 的输出
-```
-
-单个：
+## 2. 执行回归
 
 ```bash
-python tests/SomeGuard.py
-```
-
-已知红项登记在 `tests/known_red_guards.txt`，失败不计入退出码但会单独列出；
-登记后又转绿的条目会被报成 STALE-BASELINE 并判失败，必须及时从基线移除。
-
-CI（`.github/workflows/guards.yml`）跑的就是这个 runner。CI **不跑编译**——
-`compile_official.bat` 需要游戏程序集，只能在装有《鸭科夫》的 Windows 机器上跑。
-
-如果只能在 Linux/WSL 跑，需要说明这不是 Windows 编译验证。
-
-## 生产源码执行回归
-
-```bash
-python tools/run_runtime_regressions.py
-python tools/run_runtime_regressions.py --filter ModeH
 python tools/run_runtime_regressions.py --list
+python tools/run_runtime_regressions.py --filter SkyIsland
+python tools/run_runtime_regressions.py --jobs 1          # 串行排查
 ```
 
-入口显式登记 `tests/fixtures/` 下的生产源码回归，全部运行后聚合结果，失败返回非零退出码；
-每组日志与 `results.json` 写入 `Build/runtime-regressions/`。新增这类 fixture 时同步入口清单，
-不能只留下单独运行过一次的工程。默认同时运行三组，可用 `--jobs 1` 串行排查。
-需要本机 .NET SDK；部分 Harmony 夹具还依赖已安装的游戏程序集和 Harmony，缺失会明确失败，
-不可据此宣称通过。夹具中真实生产逻辑与宿主替身的边界必须写进 README。
+- 入口显式登记 `tests/fixtures/` 下的工程，聚合结果；日志与 `results.json` 写入 `Build/runtime-regressions/`。新增夹具要同步入口清单，并在夹具 README 里写清「真实生产逻辑」与「宿主替身」的边界。
+- 需要本机 .NET SDK。依赖官方程序集的夹具这样找 DLL：`GAME_PATH`（游戏根目录；不设时读 Windows 编译生成的 `Build/BossRush.rsp`）；Harmony 类夹具另读 `BOSSRUSH_GAME_MANAGED`、`BOSSRUSH_HARMONY_DLL`。报「缺少官方 DLL」是环境没配好，不能据此宣称通过，也不算代码失败。
+- 只用聚合入口跑，不要在夹具目录里直接 `dotnet run`：会留下 `bin/obj`，聚合执行器随后报 CS0579 特性重复。
+- 中文断言名在输出里可能是乱码，按栈帧 `Program.cs:line N` 核对是哪一条。
 
-Wiki 导航另跑 `npm --prefix wiki-site run test:navigation`；构建后的完整链接检查见
-`wiki-site/AGENTS.md` 与 `tools/check_wiki_links.py --help`。
+Wiki 导航另跑 `npm --prefix wiki-site run test:navigation`，构建后的链接检查见 `wiki-site/AGENTS.md`。
 
-## 语法探针
+## 3. 写守卫与属性测试
 
-本机没装游戏时，可以用 Roslyn 做语法层检查（**不等于编译通过**）：
+- 守卫直接放 `tests/*.py`，不要建 `tests/guards/` 子目录。一个守卫聚焦一条不变式，失败信息指出文件和缺失的模式。
+- 改动被守卫断言的结构时同步守卫。**不要为了变绿删除或放宽断言**；白名单只解释既有债务，新代码不进白名单。
+- 剥 C# 注释用 `tests/cs_source_util.py` 的 `clean_source()`，不要用正则（char 字面量 `'"'` 与逐字字符串会让正则失步，假绿假红都出过）。它会剥掉 `#if` 禁用区块：要检查「某写入只出现在 `#if BOSSRUSH_DEV` 里」就扫原文。
+- 子串判断 `x in src` 挡不住注释掉和改名。先规范空白、切出方法体、按完整语句匹配；同一句在两处出现时钉住具体那一处。
+- 钉**数值**，不只钉赋值语句（`Value = value;` 在位不代表价目表不是 0）。只断言方法定义存在不够，调用点单独断言。
+- 文本守卫有结构性上限：防不住「保留 token、杀掉执行路径」（`if (false)` 包住、方法体首行 `return;`、挪进没人调的方法）。行为正确性交给执行回归或属性测试，文档里不要把守卫说成能防住一切。
+- 结构守卫证明不了「玩家走过去有东西」「解析真的把两种形态都读出来了」：几何与可达性写属性测试，解析与状态机写执行回归。
+- 属性测试在普通 Python 环境运行，不依赖游戏进程；尽量 import 生产侧已有的复算实现，不另写第二份。
+- 判据在当前环境下恒真时记 SKIP，不记 PASS。
 
-```bash
-python tools/verify_syntax.py --with-bcl
-```
+## 4. 反向验证
 
-它只抓 CS1xxx 词法/语法错误；类型不存在、签名不匹配、重载歧义必须真编译才能发现。
+新增或修改守卫、属性测试后做反向验证：人为破坏 → 实跑确认转红、而且红在预期的那条断言上 → 按字节还原并核对 sha256。
+
+- 先跑基线确认全绿；破坏用的锚点字符串必须恰好出现一次。
+- 优先在稀疏签出副本上做，不在多个会话共用的工作区里留半截破坏。副本里跑执行回归同样要设 `GAME_PATH`；Git Bash 下 `MSYS_NO_PATHCONV=1` 时，clone 源路径写 `D:/...`。
+- 避开**等价变异**：探针要打在判据真正依赖的那一行。没打到就如实记录、换探针，不要改断言求红。
+
+## 5. 夹具替身
+
+- 生产代码在运行时注入的字段，替身里**不要给非空默认值**，否则合同判据在夹具里永远红不了。夹具应在调用当刻记录真实装配状态，断言的是时序。
+- 替身的 `UnityEngine.Object` 至少模拟两条语义：`==` / `!=` 把已销毁对象当 null；`Destroy(GameObject)` 连带销毁组件。过图必然发生的销毁写成必经步骤，而不是可选用例。
+
+## 6. 语法探针
+
+本机没装游戏时可以跑 `python tools/verify_syntax.py --with-bcl`（或 `verify_syntax.bat --with-bcl`）。它**不等于编译通过**：缺游戏程序集时 Roslyn 解析不出类型，就不分析迭代器方法体，CS16xx 一类错误根本不会产出。探针 PASS 只代表词法 / 语法层没问题，交付时写「语法通过，未正式编译」。

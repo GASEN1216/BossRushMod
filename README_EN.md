@@ -1,7 +1,5 @@
 # BossRushMod for Escape from Duckov
 
-> **AI collaborators should read [AGENTS.md](AGENTS.md) first**. It is the repository-level source of truth for build gates, TypeID allocation, localization injection, spawn safety, review workflow, and compatibility boundaries.
-
 **English** | **[中文](README.md)**
 
 <p align="center">
@@ -12,216 +10,123 @@
 [![Game](https://img.shields.io/badge/Game-Escape%20from%20Duckov-orange)](https://store.steampowered.com/app/3167020)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-## Overview
+A large gameplay mod for Escape from Duckov. It started as a BossRush arena and now includes eight game modes, a standalone raid map, original bosses and gear, NPC relationship lines, a story campaign, base buildings, and a long list of runtime stability fixes.
 
-BossRushMod is a large-scale integrated mod for Escape from Duckov. It started from the BossRush arena loop, but the current source baseline now includes multiple gameplay modes (including the Bloodhunt battle royale mode), custom bosses, custom gear and items (including the Frostmourne weapon), persistent NPC storylines, achievements, reforging, a wish fountain, death wraith system, an in-game wiki, an online wiki site, localization, audio work, and runtime stability systems.
+- **Player docs**: [online wiki](https://gasen1216.github.io/BossRushMod/) (same text as the in-game wiki, Chinese and English)
+- **Subscribe**: [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3612465423)
+- **Contributing / AI collaboration**: read [AGENTS.md](AGENTS.md) first (written in Chinese)
 
-This README reflects the current source baseline in the repository. For the full developer-facing overview, see [docs/项目全景文档.md](docs/项目全景文档.md). Before implementing a feature, use the [repository knowledge base index](.qoder/repowiki/README.md) to find module cards and topic-level deep dives, and keep them in sync with code changes.
+## What's Inside
 
-## At a Glance
+### Game Modes
 
-- 7 arena entry modes: 3 standard BossRush variants plus Mode D, Mode E, Mode F, and Mode G; Zombie Mode remains an independent mode
-- 9 maps integrated into the BossRush flow
-- 2 major custom bosses: Dragon Descendant and the Dragon King
-- 3 persistent NPCs: Awen, Dingdang, and Yu Zhi
-- Multiple long-running systems: gear abilities, items, reforge, affinity, marriage, achievements, in-game wiki, wish fountain, and death wraith
+| Mode | How to enter | What it is |
+| --- | --- | --- |
+| Standard BossRush | Carry a BossRush Ticket | 1 or 3 bosses per wave |
+| Infinite Hell | Carry a BossRush Ticket | Endless waves, configurable bosses per wave, cash pool and auto-collection |
+| From Scratch (Mode D) | Enter naked with a Ticket | Random starting loadout, separate enemy pool, drops and growth curve |
+| Faction War (Mode E) | Enter naked with a faction flag | Multi-faction sandbox battle |
+| Blood Hunt (Mode F) | Enter naked with a Ticket and a Bloodhunt Transponder | Four-phase battle royale: constant bleed, kill-to-heal, bounty tracking, fortifications, extraction |
+| Fate Echo (Mode G) | Carry a Ticket and a Fate Echo Relic | Fixed nine waves in three acts, with a nemesis and contracts that counter you |
+| Black Market Duck Cup (Mode H) | The boat at the base dock, one Ticket | You manage instead of fight: sign fighters, read the odds, six matches per season |
+| Zombie Mode | Buy a Zombie Tide Invitation from the base merchant | Standalone survival mode: purification-point economy, a pick after every wave, extraction payout |
 
-## Game Modes
+### Maps
 
-| Mode | Entry Requirement | Core Rules |
-|------|-------------------|------------|
-| **Easy** | Enter with a BossRush Ticket | 1 boss per wave, best first-run option |
-| **Hard** | Enter with a BossRush Ticket | 3 bosses per wave, standard multi-target pressure |
-| **Infinite Hell** | Enter with a BossRush Ticket | Endless waves, configurable bosses per wave, includes cash pool and auto-collection |
-| **Mode D: Rags to Riches** | Enter naked with a BossRush Ticket | Random starting loadout, separate enemy pool, separate drop and growth curve |
-| **Mode E: Faction War** | Enter naked with a faction flag | Multi-faction sandbox battle with random flag, fixed faction flags, and the solo `Player Flag` route |
-| **Mode F: Bloodhunt** | Enter naked with a BossRush Ticket + Bloodhunt Transponder | Four-phase battle royale: Preparation → Bounty → Hunt Storm → Extraction, with constant bleed, kill-to-heal growth, bounty mark tracking, and a fortification system |
-| **Mode G: Fate Echo** | Enter naked with a BossRush Ticket + Fate Echo Relic | Fixed nine-wave, three-act challenge with adaptive counters, a persistent nemesis, fate contracts, strict reward transactions, and honor-only records |
+- **9 BossRush arena maps**, selected through the original map UI.
+- **Sky Islands · Qinglan**: a standalone raid map reached from the base boat; no ticket needed. Twelve islands with a main story of repairing wind vanes and star lamps, scavenging and gathering, recipes, resident requests, and the boss the Windeater.
 
-## Supported Maps
+### Bosses, NPCs and Gear
 
-The current codebase registers 9 maps for BossRush:
+- **Original bosses**: Dragon Descendant, Skyburner Dragon Lord, Phantom Witch.
+- **NPCs**: Awen (courier), Dingdang (goblin smith, reforging), Yuori (nurse), plus permanent NPCs made with the duck-face NPC tool; affinity, gifts and marriage.
+- **Gear**: Dragon Set, Dragon King Set, Frost Set, Thunder Set, Cloud Rider Totem, Reverse Scale, Skyburner Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, Viper Dagger, Summoning Staff, Energy Shield, Frost Spear, Thunder Ring.
 
-- DEMO Ultimate Challenge
-- Zero Challenge
-- Ground Zero
-- Hidden Warehouse
-- Farm Town
-- J-Lab Laboratory
-- Underground Arena
-- Zone 37 Experimental Area
-- Maze
+### Systems
 
-Map selection is integrated into the original game UI flow, and that integration is shared across standard BossRush, Mode D, and Mode E.
+Duck King Campaign (six-chapter story), Arena Backyard (garden, trophy registry, jukebox), PetNest (raise boss hatchlings), The Duckov Daily, Duck King Codex, random events, affix forging, reforging, StarWish Fountain, death wraiths, mutators, achievements, boss filter, in-game wiki.
 
-## Custom Content
-
-### Bosses
-
-- **Dragon Descendant**
-- **Dragon King**, also surfaced in English as **Skyburner Dragon Lord**
-
-### NPCs
-
-- **Awen**: courier, shop/storage integration, early guidance, and wiki-related flow
-- **Dingdang**: goblin NPC tied to gifts, discounts, story progression, and the reforge system
-- **Yu Zhi**: nurse NPC handling healing, relationship progression, and marriage content
-
-### Gear and Abilities
-
-- Dragon Set
-- Dragon King Set
-- Flight Totem
-- Reverse Scale
-- Dragon King signature weapons
-- Frostmourne: custom melee weapon with right-click undead summoning and frost flame effects
-
-### Key Items
-
-- BossRush Ticket
-- Birthday Cake
-- Adventurer's Journal / Wiki Book
-- Diamond, Diamond Ring, Brickstone, Calming Drops, Peace Charm, Dingdang Graffiti, Wild Horn
-- Mode E faction flags
-- Mode F Bloodhunt Transponder
-- Mode G Fate Echo Relic (500057)
-- Awen Loot Sweep Token (auto-granted on Mode E/F boss kill milestones, one-click collection of scattered loot crates)
-- Mode E battlefield items: Taunt Smoke, Chaos Detonator, Bosscall Whistle, Bloodhunt Beacon
-- Achievement Medal
-
-### Major Systems
-
-- NPC affinity, dialogue, gifts, gift container flow, shops, marriage
-- Equipment reforge
-- Achievement system with Steam-style popups
-- In-game wiki
-- Wish Fountain: players write wishes at the Star Wish Fountain, validated and recorded via Feishu API, with lottery animation and reward distribution
-- Death Wraith system: spawns a boss-grade wraith copying the player's appearance and gear at the death location, scaled to three tiers by dropped item value
-- BossFilter for boss pool control and Infinite Hell weight editing
-- Wave rewards, loot crates, and arena interactables
-- Runtime recovery and stability systems such as cash magnet and enemy recovery monitoring
+Rules, numbers and how to get each item are on the online wiki.
 
 ## Configuration
 
-BossRush currently supports two configuration entry points:
-
-1. `ModConfig`
-2. Local file: `StreamingAssets/BossRushModConfig.txt`
-
-Key config fields:
+Two entry points: `ModConfig`, and `StreamingAssets/BossRushModConfig.txt` (JSON) in the game folder. All gameplay systems are on by default; the config only exposes tuning knobs. Common keys:
 
 | Key | Default | Description |
-|-----|---------|-------------|
-| `waveIntervalSeconds` | `15` | Rest time between waves |
-| `enableRandomBossLoot` | `true` | Enables randomized boss loot bonus |
-| `useLegacyBossLootProbabilities` | `true` | Use legacy-style quality odds for standard Boss lootboxes and append one Q6+ guarantee item when needed |
-| `useInteractBetweenWaves` | `false` | Requires manual interaction to start the next wave |
-| `lootBoxBlocksBullets` | `false` | Makes loot crates act as bullet-blocking cover |
-| `infiniteHellBossesPerWave` | `3` | Boss count per Infinite Hell wave |
+| --- | --- | --- |
+| `waveIntervalSeconds` | `15` | Rest time between waves (seconds) |
+| `milestoneRestBonusSeconds` | `30` | Extra rest every 5 waves (seconds), 0 = none |
+| `useInteractBetweenWaves` | `false` | Start the next wave manually by interacting |
+| `infiniteHellBossesPerWave` | `3` | Bosses per Infinite Hell wave |
 | `bossStatMultiplier` | `1.0` | Global boss stat multiplier |
-| `modeDEnemiesPerWave` | `3` | Enemy count per Mode D wave |
+| `modeDEnemiesPerWave` | `3` | Enemies per From Scratch wave |
+| `enableRandomBossLoot` | `true` | Randomized boss loot bonus |
+| `useLegacyBossLootProbabilities` | `true` | Vanilla quality odds for standard boss loot boxes, plus one Q6+ guarantee when none rolled |
+| `lootBoxBlocksBullets` | `false` | Loot boxes act as bullet-blocking cover |
 | `disabledBosses` | `[]` | Disabled boss list |
-| `bossInfiniteHellFactors` | `{}` | Infinite Hell boss weight multipliers |
-| `enableDragonDash` | `true` | Enables Dragon Dash related abilities |
-| `achievementHotkey` | `L` | Achievement panel hotkey, stored internally as an integer `KeyCode` |
-| `useWolfModelForWildHorn` | `true` | Uses the wolf model for Wild Horn |
-| `enableDeathWraithSystem` | `true` | Enables or disables the death wraith system |
-| `milestoneRestBonusSeconds` | `30` | Extra rest time every 5 waves (seconds), 0 = no extra rest |
+| `bossInfiniteHellFactors` | `{}` | Infinite Hell boss spawn weights |
+| `enableDragonDash` | `true` | Dragon Dash abilities |
+| `enableDeathWraithSystem` | `true` | Death wraith system |
+| `useWolfModelForWildHorn` | `true` | Wolf model for the Wild Horn |
+| `achievementHotkey` | `L` | Achievement panel hotkey (stored as a `KeyCode` integer) |
 
-## Tech Stack and Runtime
-
-| Item | Details |
-|------|---------|
-| Language | C# 7.3 |
-| Runtime | Unity with the game's embedded Mono runtime |
-| Build Method | `compile_official.bat` directly invokes Roslyn `csc.dll` from an installed .NET SDK; there is no `.csproj` |
-| Output | `Build/BossRush.dll` |
-| Harmony | Referenced through `0Harmony.dll` from the Workshop path, mainly for Mode E runtime patches |
+The full list is on the wiki's Configuration page.
 
 ## Building from Source
 
-This repository is not a standard `.csproj` solution. It is a script-driven C# source tree.
+This is not a `.csproj` project. `compile_official.bat` lists every source file and calls the Roslyn `csc.dll` that ships with the .NET SDK (C# 7.3), producing `Build/BossRush.dll` and deploying it to the game's Mods folder.
 
-### Build Scripts
+Requirements: Windows, the .NET SDK, a local install of Escape from Duckov, and HarmonyLoadMod from the Workshop. The script detects the game and Workshop paths; set `GAME_PATH` / `WORKSHOP_PATH` if detection fails.
 
-- `compile_official.bat`: compiles the source list and attempts to deploy `Build/BossRush.dll`
-- `test_bossrush_official.bat`: compiles and copies the result into the local game directory for testing
-- `cleanup_old_files.bat`: removes stale generated files
+```text
+compile_official.bat                     release build and deploy
+compile_dev.bat                          dev build: debug logging, debug hotkeys, F3 gameplay validation
+python tools/run_guards.py               structural guards (CI runs them on push and PRs)
+python tools/run_runtime_regressions.py  isolated execution regressions
+npm --prefix wiki-site run dev           preview the online wiki locally
+```
 
-### Environment Requirements
+A green build and green guards do not prove runtime correctness: Harmony patches and reflection bindings can only be confirmed in-game. Every new `.cs` file must be added to `compile_official.bat`; TypeID, localization and save-compatibility rules are in [AGENTS.md](AGENTS.md).
 
-- Windows
-- Installed `dotnet` SDK
-- Local Escape from Duckov installation
-- Local Workshop content directory and `HarmonyLoadMod`
-- Game assemblies available under `Duckov_Data\\Managed\\`
-
-### Maintenance Notes
-
-- Every new `.cs` file must also be added to `compile_official.bat`, or it will not be compiled.
-- The build scripts contain hard-coded paths and must be adjusted when moving machines or drives.
-- `ModBehaviour` is the central entry point, but a large amount of logic is split across many `partial class` files.
-
-## Project Structure
+## Project Layout
 
 ```text
 BossRushMod/
-├── ModBehaviour.cs                  # Main entry point and global state
-├── ModConfigApi.cs                  # ModConfig wrapper
-├── Achievement/                     # Achievements, medal item, Steam-style popups
-├── Audio/                           # Audio management
-├── BossFilter/                      # Boss pool filtering and Infinite Hell factors
-├── Common/                          # Shared effects, equipment utilities, common helpers
-├── Config/                          # Runtime config and data
-├── DebugAndTools/                   # ItemSpawner, InventoryInspector, NPC teleport UI
-├── Injection/                       # Runtime injection helpers
-├── Integration/                     # Dynamic items, equipment, NPCs, shops, wiki, affinity systems
-│   ├── DeathWraith/                 # Death wraith system
-│   ├── Frostmourne/                 # Frostmourne weapon system
-│   └── WishFountain/                # Star Wish Fountain
-├── Interactables/                   # Signposts, supplies, repair, cleanup, teleport
-├── Localization/                    # Localization injection and text management
-├── LootAndRewards/                  # Loot, rewards, reward crates, loot sweep token
-├── MapSelection/                    # BossRush map selection integration
-├── ModeD/                           # Rags to Riches
-├── ModeE/                           # Faction War, flags, merchant, battlefield items
-├── ModeF/                           # Bloodhunt, phase state machine, bounty, fortifications, extraction
-├── ModeG/                           # Fate Echo, nine-wave plan, nemesis, contracts, rewards, persistence
-├── UIAndSigns/                      # Arena prompts, banners, sign UI
-├── Utilities/                       # Spawn logic, caches, enemy recovery monitoring
-├── WavesArena/                      # Standard BossRush and Infinite Hell core logic
-├── WikiContent/                     # In-game wiki content
-├── wiki-site/                       # VitePress online wiki site (Cloudflare Pages / GitHub Pages)
-└── docs/                            # Design and project documentation
+├── ModBehaviour.cs, ModConfigApi.cs   entry point, global state, config API
+├── WavesArena/                        standard BossRush, Infinite Hell
+├── ModeD/ ModeE/ ModeF/ ModeG/ ModeH/ game modes (ModeH = Black Market Duck Cup)
+├── ZombieMode/                        Zombie Mode
+├── Campaign/                          Duck King Campaign
+├── PetNest/  RandomEvents/            PetNest, random events
+├── Integration/                       items, gear, NPCs, shops, affinity, marriage, reforge, codex, daily, backyard…
+├── DebugAndTools/                     debug tools and F3 validation; SkyIsland/ is the Sky Islands runtime
+├── Common/  Utilities/  Patches/      shared libraries, cross-module infrastructure, Harmony patches
+├── Config/  Localization/  LootAndRewards/  Achievement/  Audio/
+├── BossFilter/  Interactables/  MapSelection/  UIAndSigns/
+├── Assets/Data/  Assets/SpawnPoints/  JSON data tracked in git (other Assets are local-only)
+├── ArtSource/SkyIsland/  tools/       Sky Islands generated data, generators and checkers
+├── tests/                             structural guards, property tests, regression fixtures
+├── WikiContent/  wiki-site/           in-game wiki text, online wiki site
+└── docs/                              local design notes and tutorials (not tracked by default)
 ```
 
-## Debug and Developer Hotkeys
+## Debug Hotkeys
 
-The project includes an extensive built-in debug layer. Common hotkeys:
+These exist only in dev builds (`compile_dev.bat`):
 
 | Hotkey | Action |
-|--------|--------|
-| `F2` | Toggle `ItemSpawner` |
-| `F3` | Open the unified debug/cheat control menu (teleport, stat tuning, items, money, cooldown clears, etc.) |
+| --- | --- |
+| `F2` | Item spawner |
+| `F3` | Debug/cheat control panel (teleport, stats, items, money, cooldowns) and full gameplay validation |
 | `F4` | Clear achievement data |
-| `F5` | Dump nearby building/object info |
-| `F6` | Toggle placement mode |
-| `F7` | Dump nearest interact point info |
-| `F8` | Dump nearby character info |
+| `F5` / `F7` / `F8` | Dump nearby buildings and objects / nearest interact point / nearby characters |
+| `F6` | Placement mode |
 | `F9` | Grant a BossRush Ticket and open map selection |
 | `F10` | Force-clear the arena and trigger the victory flow |
-| `F11` | Open `InventoryInspector` |
-| `F12` | Toggle the NPC teleport UI |
-| `Ctrl+F10` | Toggle BossFilter |
-| `L` | Default achievement panel hotkey |
+| `F11` | Inventory inspector |
+| `F12` | NPC teleport UI |
 
-## Documentation
-
-- Project overview: [docs/项目全景文档.md](docs/项目全景文档.md)
-- Repository knowledge base: [.qoder/repowiki/README.md](.qoder/repowiki/README.md) (module cards, topic deep dives, and update workflow)
-- Design docs: [docs/](docs/)
-- In-game wiki content: [WikiContent/](WikiContent/)
-- Online wiki site: [wiki-site/](wiki-site/) (VitePress, dual-deployed to Cloudflare Pages and GitHub Pages)
+Also available in release builds: `Ctrl+F10` opens the boss filter, `L` (configurable) opens the achievement panel.
 
 ## License
 

@@ -1,5 +1,7 @@
 # CLAUDE.md
 
-The agent guidance for this repository is `AGENTS.md` at the repository root, with subsystem-specific guidance in `<subsystem>/AGENTS.md` where present. Read those first; they are the source of truth.
+本仓库的协作规则在 `AGENTS.md`，下面一行把它导入 Claude Code 的上下文。本文件不维护独立规则。
 
-Do not rely on this file for independent rules. It only points back to the canonical instructions.
+@AGENTS.md
+
+子目录另有专项规则：在 `Integration/`、`Patches/`、`Utilities/`、`ZombieMode/`、`DebugAndTools/SkyIsland/`、`tests/`、`docs/`、`wiki-site/` 下工作时，先读该目录的 `AGENTS.md`。

@@ -164,3 +164,30 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
 统一 docs/README 和三份旧场景文档的入口；原评估中“尚未进入”的描述明确限定为历史调查，石堡试用按后续成功日志更新。用户对地图版本的正向反馈只记为反馈，不扩大成完整用例验收。两份 repowiki 同步教程入口，不改变运行代码或正式地图身份。
 
 验证：五份文档 76 个本地链接/图片存在；教程 25 个围栏代码块配对，8 段 PowerShell 经原生 Parser 检查，Python 片段语法检查通过；两个完整 Unity Editor 示例以本机 Unity 2022.3.62f3 程序集独立编译通过（C# 7.3）。验证记录位于 `Build/scene-tutorial-validation/`。未重新执行会覆盖作者成果的 Blender 生成、Unity 场景重建、Mod 部署或游戏操作。docs 及图片仍遵守 local-only，不强制 git add。
+
+## 2026-09-14 AI 协作文档体系整理（SAFE）
+
+起因：owner 要求全面检查文档里「不新增内容、不加 TypeID、不改存档 schema、不重打包」这类约束是否属于模型能力较弱时期的过时限制，检查整套文档是否适配当前开发，并参考高星项目的 agent 规范全面更新。
+
+盘点结论：
+
+- 仓库里没有字面上的「不新增内容 / 不加 TypeID」长期禁令。这类说法来自三处：各轮交付记录（`FIX_TRACKER.md`、repowiki 天空岛文档的带日期小节、代码注释）对**那一轮**范围的描述，用 `rg` 单独搜到时像长期规则；`docs/天空岛全面优化提示词.md` 的「优先不新增 TypeID」；根 `AGENTS.md` §7 / §10 偏保守的通用条款（「不把产品 / 数值决策擅自定案」，以及与本项目无关的「计费 / 支付」「认证 / 权限模型」）。
+- 根 `AGENTS.md` 796 行，其中约 470 行是 §14 的按日期变更记录；编译调用还写 `cmd /c`（沙箱下失败），验证步骤还写 `python3 tests/*.py` 循环（与 `tests/AGENTS.md` 矛盾）；Claude 会话里 `CLAUDE.md` 只是文字转发，规则并不会自动进上下文。
+- `tests/README.md` 运行方式过时；`skills/` 下 8 个 bossrush 技能大多过时且没有工具加载，丧尸编排技能里有「每阶段停下来问」「未经批准不编译」这类闸门；`.cunzhi-memory/preferences.md` 的「不要生成测试脚本」与现行做法冲突；`docs/项目全景文档.md` 停在 08-27；`wiki-site/AGENTS.md` 有 5 处与代码不符。
+- repowiki 319 个文件中 231 个自 08-13 导入后未动，§4.13「每次变更必须同步、过时即未完成」无法做到也无法校验。
+
+处理：
+
+- 根 `AGENTS.md` 重写：新增 §2 常用命令、§4.16 新增内容原则（新内容 / TypeID / `SCHEMA+` / 重打包是正常开发手段，要求接得上）、§7 决策权三档、§8 证据分级 L1–L3；§10 按本项目实际改写；§14 变更记录迁出（原文 `git show 00c8624:AGENTS.md`）。§4.1–§4.15、§5、§6、§10 编号不变——守卫与代码注释按编号引用，§4.1 / §4.3 的文本被 `OfficialCompileListFileExistenceGuard`、`TypeIdLedgerGuard`、`SkyIslandFieldcraftGuard`、`PetNestEggItemRegistryGuard` 解析。
+- 经验按主题归位：天空岛 → 新建 `DebugAndTools/SkyIsland/AGENTS.md`；官方 API 静默失败类陷阱 → `docs/contracts.md` §7.1；守卫、反向验证与夹具纪律 → `tests/AGENTS.md`；物品接线与可达性 → `Integration/AGENTS.md`。
+- 其余更新：各子系统 `AGENTS.md`、`CODE_REVIEW.md`、`CLAUDE.md`（改为 `@AGENTS.md` 导入）、`README.md` / `README_EN.md`、`tests/README.md`、`docs/README.md`、`docs/AGENTS.md`、两份长任务提示词、`.qoder/repowiki/README.md` 与 `_index.yaml`、遗种巢 repowiki 文档的自相矛盾处、`.github/workflows/guards.yml` 注释里写死的数字。
+- 过时资料只加归档标注、不删除：`docs/项目全景文档.md`、`skills/`（新增 `skills/README.md`，8 个 bossrush 技能加标注）、`codex-skills` 示例补参数；`.cunzhi-memory` 两份按现状改写。
+- repowiki：§4.13 改为「改到已有专题文档时更新，代码为准」，快照期旧文档按快照对待。
+
+未做：没有编译（纯文档）；没有改代码注释里的「见 AGENTS §14」（原文仍可由上面的提交取到）；没有删除任何 local-only 文件；没有提交。
+
+仍需 owner 决定：
+
+1. `skills/`、`codex-skills/` 是删除、移出仓库目录，还是保留归档。
+2. `docs/架构说明/` 是否纳入 git（根规则引用了它，fresh clone 看不到）。
+3. 根目录 2026-09-13 的五份 WSL 审查报告（未入库、内容不可靠）是否删除。

@@ -1,8 +1,11 @@
-# tests/ — 项目守护脚本说明
+# tests/ — 守卫索引（丧尸模式与部分共享层）
 
-本目录的 `*.py` 脚本是**静态文本守护**（grep 风格），用于防止特定代码 invariant 被误改。
+> 运行方式、写守卫的纪律、执行回归与环境变量以 [`tests/AGENTS.md`](AGENTS.md) 为准，本文件只做索引。
+> 这里只收录丧尸模式守卫与少量共享层守卫；全仓守卫有数百个，**没有逐个登记在这里**。
+> 想知道某条不变式由谁守卫，直接 `rg -l "关键词" tests/*.py`，或读守卫文件头的 docstring。
 
-每个守护对应一条具体的"易回归点"，**不是**代码功能测试。功能验证仍以"编译 + 现场冒烟"为主。
+本目录顶层的 `*Guard.py` 是**静态结构守卫**（读源码文本断言不变式），`*PropertyTest.py` 是离线属性测试；
+`tests/fixtures/` 下是链接生产源码的隔离 C# 执行回归。三者都不能替代 Windows 编译和游戏内实机验证。
 
 ---
 
@@ -70,7 +73,7 @@
 | `ZombieModeRealTemporaryNpcPaymentGuard.py` | 真人临时 NPC 的净化点支付隔离契约。 |
 | `ZombieModeRealTemporaryNpcCleanupGuard.py` | 真人临时 NPC 的 run cleanup 与追踪契约。 |
 | `ZombieModeRealTemporaryNpcUiCurrencyGuard.py` | 真人临时 NPC 的阿稳/商店 UI 必须显示净化点口径而不是现金。 |
-| `ZombieModeGoalExperienceGuard.py` | `docs/2026-05-03_末日丧尸模式_goal执行文档.md` 的玩家体验 P0/P1/P2 代码 invariant。 |
+| `ZombieModeGoalExperienceGuard.py` | `docs/末日丧尸模式/末日丧尸模式_goal执行文档.md` 的玩家体验 P0/P1/P2 代码 invariant。 |
 | `ZombieModeUIHelperGraphicCompositionGuard.py` | 运行时 UI helper 不得在同一对象叠加 `Image` 与 `TextMeshProUGUI`。 |
 | `ZombieModeProductionReadinessGuard.py` | 共享刷怪、掉落、Boss 状态 modifier、属性清理等生产化 invariant。 |
 | `ZombieModeReview20260503Guard.py` / `ZombieModeReviewFixGuard.py` | 2026-05-03 审查修复项，包含“物品不阻止入场、入图后转仓库/收件箱”契约，防止已确认代码债回归。 |
@@ -79,7 +82,7 @@
 
 ### 已删除（2026-05-01 修复）
 
-按 `docs/项目可能的待修复问题/2026-05-01_丧尸模式代码审查.md` §四.4 建议清理的 11 个：
+按当时的丧尸模式代码审查（原 `docs/项目可能的待修复问题/2026-05-01_丧尸模式代码审查.md`，该目录后来并入 `docs/代码审查/`）§四.4 的建议清理了 11 个：
 
 - `ZombieModePhase{1-5}*Guard.py`：5 个阶段重复守护，由 `ZombieModeStateModelGuard.py` 覆盖。
 - `ZombieModeReviewOptimizationGuard.py`：阶段性优化守护，整体已被本计划覆盖。
@@ -90,29 +93,31 @@
 
 ---
 
-## 其他模式 / 共享层守护
+## 其他模式 / 共享层守护（节选）
 
-- `OfficialCompileListFileExistenceGuard.py`：`compile_official.bat` 列出的 `.cs` 源文件必须存在。
+- `OfficialCompileListFileExistenceGuard.py`：双向——`compile_official.bat` 列出的 `.cs` 必须存在，仓库里的生产 `.cs` 也必须都在清单里。
+- `TypeIdLedgerGuard.py`：`docs/contracts.md` §1 与根 `AGENTS.md` §4.3 的 TypeID 台账一致，源码里的 `5000xx` 字面量不越界、不回填空洞。
 - `PerformanceTierAdjusterGuard.py`：旧性能档 helper 必须从生产代码和编译列表移除，避免玩法随性能档变化。
 - `RunScopedRegistryGuard.py`：通用局生命周期注册表迭代 helper；ZombieMode cleanup 必须复用 helper。
-- `ModeD*Guard.py`：Mode D 波次/装备/掉落 invariant。
-- `ModeE*Guard.py`、`ModeF*Guard.py`：对应模式守护。
-- `ModeG*Guard.py`：Mode G 九波结构、确定性随机、生成事务、宿敌/档案持久化、奖励、展示资源、发布门控及原模式隔离 invariant。
+- `ModeD*Guard.py`、`ModeE*Guard.py`、`ModeF*Guard.py`、`ModeG*Guard.py`、`ModeH*Guard.py`：对应模式守护。
 - `ManagedBossSpawnOwnershipGuard.py`、`DragonKingChildSpawnCancellationGuard.py`：Mode G 托管 Boss 的 lease 所有权与龙王子代取消契约。
 - `MapSelectionInjectionReuseGuard.py`：BossRush 与 Zombie 都用 `MapSelectionEntryInjectionHelper`。
 - `EnemyRecoveryHealthPreservationGuard.py`：敌人卡住回收时不要重置生命值。
+- `SkyIsland*Guard.py` / `SkyIsland*PropertyTest.py`：天空岛，说明见 `DebugAndTools/SkyIsland/AGENTS.md`。
+- `Wiki*Guard.py`：在线 Wiki 站点，说明见 `wiki-site/AGENTS.md` §7。
 
 ---
 
 ## 怎么跑
 
-```cmd
-for %f in (tests\*.py) do python %f
+```bash
+python tools/run_guards.py                       # 全量：聚合 PASS/FAIL，不会被第一个红项挡住
+python tools/run_guards.py --filter ZombieMode   # 按名字筛
+python tools/run_guards.py --changed-only        # 只跑与当前 git 改动相关的
+python tests/ZombieModeBossMultiplierGuard.py    # 单个
 ```
 
-或针对单个：
-```cmd
-python tests\ZombieModeBossMultiplierGuard.py
-```
+Windows 上 `run_guards.bat` 等价。**不要用 `for %f in (tests\*.py) do python %f`**：它不聚合结果，
+存在已知红项时会让人误以为「跑过了」。已知红项登记在 `tests/known_red_guards.txt`。
 
-退出码 0 = 通过；非 0 = 失败（输出会指明哪条 invariant 被破坏）。
+单个脚本退出码 0 = 通过；非 0 = 失败（输出会指明哪条 invariant 被破坏）。

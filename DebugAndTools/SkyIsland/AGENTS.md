@@ -1,0 +1,90 @@
+# DebugAndTools/SkyIsland/AGENTS.md — 天空岛（晴岚群岛）专项规则
+
+> 先读根目录 `AGENTS.md`。本文件只记天空岛独有的约束与踩过的坑。
+> 每轮的数字、包体大小、验证记录写在 `FIX_TRACKER.md`；设计稿、待拍板与人工验证清单在 `docs/天空岛_*.md`、`docs/制作教程/天空岛/`（local-only）。
+> 官方游戏 API 的静默失败类陷阱（刷怪距离休眠、搜刮箱随机关闭、品质静默降级等）全仓共用，收在 `docs/contracts.md` §7.1。
+
+## 1. 范围
+
+天空岛是从基地船点进入的**独立出击地图**：经官方 `SceneLoader` 切图，基地场景卸载，普通构建即可进入。代码从原型期起放在 `DebugAndTools/` 下，但它是正式内容，不要按目录名当调试代码处理。
+
+| 位置 | 内容 |
+| --- | --- |
+| `DebugAndTools/SkyIsland/` | 入口 `SkyIslandRuntimeModule`、切图租约 `SkyIslandRaidLease`、会话 `SkyIslandSession*`、剧情（纯规则 `SkyIslandStoryRules`，存档 `SkyIslandStoryService` / `SkyIslandStoryCodec`）、遭遇、搜刮、采集、居民服务、云蚋、HUD 与面板 |
+| `Integration/SkyIsland/` | 岛上物品的注册与使用行为 |
+| `DebugAndTools/F3GameplayValidationSkyIsland*.cs` | 岛内只读 F3 验收套件（Dev 构建） |
+| `ArtSource/SkyIsland/`、`tools/generate_sky_island*.py`、`tools/sky_island_*.py` | 布局、导航、小地图等可重复生成的数据与生成器 |
+| 作者 Unity 工程 `D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/` | 场景、自研着色器、构建器 `SkyIslandRaidBuilder.BuildAndExit`；**独立 git 仓库**，那边的改动在那边提交 |
+
+## 2. 证据分级
+
+每条结论标明级别，不能往上抬：
+
+- **L1 静态接线**：从玩家入口一路读到生产逻辑。
+- **L2 隔离回归**：守卫、执行回归、离线几何 / 导航 / 属性测试全绿。
+- **L3 实机**：真实游戏进程里跑出来的结果。
+
+编译绿 + 守卫绿 + 部署成功不等于「已生效」「实际可用」。离线能证的（几何可达、导航连通、落点复算、同点交互竞争、掉落池品质带）做成可重跑的属性测试；证不了的写进 `docs/制作教程/天空岛/天空岛_待人工验证清单.md`，粒度到按哪个键、看哪行 HUD、什么算不合格。`Assets/Data/GameplayCoverage.json` 里没跑过的用例不标 PASS。
+
+## 3. 内容设计
+
+- 新物品、新系统、新 TypeID、`SCHEMA+` 的存档扩展**都可以做**。前提是每件内容写清三栏：从哪来 / 岛上拿来做什么（卖钱不算）/ 串到哪条剧情或系统线。功能重叠的拉开定位；能写成结构守卫的写成守卫（范例 `SkyIslandContentWeaveGuard`）。
+- 新物品除 `Integration/AGENTS.md` 的通用接线外，还要进 `SkyIslandItemRules`（中英名、`ValueOf` 正价值、`AllTypeIds`），由 `SkyIslandFieldcraftGuard` 逐项核对。
+- 按品质带抽物资要**加权**。在筛出来的清单上均匀抽，一档被抽中的概率会正比于这一档的物品种类数。岛上物资池有单件价值上限，挡住高价官方物品。
+- 做收集品的节奏门之前，先算它把完成路径拉长多少、拉长的那段有没有新内容。
+- 按出击刷新的状态（搜刮、委托进度、局内 buff、采集点）不进存档。持久事实优先复用剧情存档的 `discoveredNotes`，按 id 前缀区分。确需新旗标走 `SCHEMA+` 并同步 `SkyIslandStoryRules.KnownFlags`，否则 Codec 拒绝整份存档；新区域同步 `RegionBit`、Codec 区域掩码、marker 与作者布局。
+
+## 4. 运行时规则
+
+- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。一昼夜约 24 现实分钟、夜里约 8 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
+- **玩法计时走游戏时间**（撤离读秒、救援），暂停菜单与拍照模式会冻结它；表现层可以走 unscaled，但暂停时停推进。
+- **常驻 HUD 跟随官方 HUD 显隐**（`BossRushUI.IsOfficialHudHidden()`），右上角卡片排在官方「操作说明」提示栈下沿之下（`BossRushUI.GetTopRightHudTop`）。
+- **当前区域按脚下地面判定**（`COL_Ground_{区域}` 碰撞体），不按离地标的距离。场景包的 `POI_` 节点数不等于区域数，可完成量一律取地面切分出的区域表。
+- **交互体落点**走 `SkyIslandRewardCrate.TryFindCratePosition`，不要把箱子放在角色倒下的位置。新增静态交互体后跑 `SkyIslandInteractionCompetitionPropertyTest` 两两复算。
+- **选项先判再挂**：「能不能挂」与「点了会不会被拒」共用 `SkyIslandStoryRules` 里同一份判据；不挂灰项；同页超过 3–4 项分二级（`SkyIslandChoiceGateGuard`）。
+- **叙事走官方对话，图鉴走官方 `NoteIndex`**（`SkyIslandNoteBridge`）。自绘面板只因 `timeScale = 0` 模态保留，理由写在文件头；官方任务系统刻意不接（`SkyIslandOfficialApiReuseGuard`）。
+- **云蚋这类可被打中的轻量目标不克隆角色**：先失活，建伤害接收体层非触发球 + 运动学刚体 + `DamageReceiver`（`useSimpleHealth`）+ `HealthSimpleBase`（阵营 wolf）再激活；死亡看 `activeSelf`；挪完 `Physics.SyncTransforms()`。躲子弹在 `Projectile.Init(ProjectileContext)` 的后缀里拿弹道，起点用 `firstFrameCheckStartPoint`；瞄准辅助会吸附伤害接收体，所以瞄准线扫过时也要预闪。伤害只在 `SkyIslandGnats`，局内 owner `SkyIslandFieldcraft` 不出现伤害。
+- 独立出击关卡不保证有 `StockShopView`，岛上服务自带 UI；维修入列门照官方 `ItemRepairView.CanRepair`。每项居民服务都要有装置兜底，居民生成失败的那一趟服务也不断线。
+- `SkyIslandSession.cs` 主文件有行数上限，新批次的接线挂到 `SkyIslandWorldStory` 等 owner 上，不往主文件加。
+
+## 5. 岛内 F3 验收套件
+
+- 主套件从基地出发、收尾切图，天空岛不能用。岛内套件要求人已在岛上、只在岛内跑、收尾不切图。
+- **只读**：不写剧情、不搬玩家、不刷怪、不开箱、不写运行标记、不给无敌、不跑全宿主清理。`SkyIslandValidationSuiteGuard` 用禁用清单钉死，并区分纯函数 `SkyIslandStoryRules.TryApply`（允许）与会落盘的 `SkyIslandStoryService.TryApply`（禁止）。
+- 判据不成立时抛 `SkyIslandSkipCase` 记 SKIP，不记 PASS；会话中途结束后的用例记 SKIP 并附原因。
+- F3 只存在于 Dev 构建（编译命令见根 `AGENTS.md` §2），验收完换回正式构建再部署。
+
+## 6. 场景、布局与打包
+
+- 改 `ArtSource/SkyIsland/*.json` 不等于改了游戏里的场景：生成器 → 作者工程重打包 → 判包 → 部署，每一环留证据。
+- 岛位、障碍、聚落摆件、铺路、布景、门与木牌的坐标统一经 `tools/sky_island_frame.py` 换算。导航与聚落互相依赖，要反复跑到标记不再移动。挪内容锚点时连门的位置一起看「开门前从哪边够得着」（`SkyIslandGateNavigationPropertyTest`）；岛距一变，按旧岛距调的触发、追踪半径全要跟。
+- 贴路、靠墙这类语义化摆放不要用 `tools/sky_island_dressing.py` 的 `PlantingSpace.free()` 当可放判据：它是给植被远离路径撒点用的排除语义，会全部拒绝。
+- 导航网格顶点硬上限 4095，超了进岛前就抛异常。余量按运行时 `mesh.vertexCount` 算，不按 UnityPy 离线计数。
+- 中继平台是桥的一段（中心标记 `Relay_<桥 ID>`），不是新岛：`RegionBit`、`COL_Ground_<岛>`、门语义都不因它改变。
+- 布局、聚落规划、小地图、验证台账与 C# 门坐标、遭遇标记互相引用：先在草稿目录里整条跑通（`SKY_ISLAND_SETTLEMENT_PLAN` 覆盖规划路径，小地图脚本有 `--layout` / `--out-dir` / `--out-json`），再整体换进仓库，避免别的会话看到半红的守卫。
+- **重打包不是隔离操作**，会把作者工程当下的全部资产一起发出去：打包前看作者工程资产的修改时间；打包后用 UnityPy 读已构建 bundle 与上一版逐项对照，再跑 `python tools/verify_sky_island_bundle_shaders.py`。作者 / 仓库 / 游戏 Mod 目录三份 SHA-256 写回 `ArtSource/SkyIsland/Validation/raid_deployment_hashes.json`。
+- Unity 批处理：先确认没有别的实例占用工程；每步单独执行并检查退出码与产物，不用分号或 `&&` 串联（会把失败伪装成成功）。Blender 后台加 `--factory-startup --python-exit-code 1`，并在日志里找 PASS 标记。
+- 光色与天色硬编码在四处（玩家看到的天空主要是云 shader 的 haze 常量），改一处同步四处。画风基准是原版暖琥珀色带，材质 `_BaseColor` 全白、颜色在贴图里（`ArtSource/SkyIsland/VANILLA_GRADE.md`）。
+- 小地图形状按几何烘焙、颜色取对齐后的生成图。布局几何一变，`tools/build_sky_island_minimap.py` 会拒绝旧底图：重走 `tools/sky_island_minimap_art.py` 的 reference / generate / align，或加 `--flat`。
+
+## 7. Wiki 与文本
+
+- `WikiContent/{zh,en}/map__sky_island.md` 由 `SkyIslandWikiParityGuard` 按章节形状与语义锚点对齐，改一边就改另一边。
+- 码位区间断言写整数常量（如 `0x4E00`），不写字面汉字或 `\u` 转义。
+
+## 8. 命令
+
+```bash
+python tools/run_guards.py --filter SkyIsland
+python tools/run_runtime_regressions.py --filter SkyIsland
+python tools/verify_sky_island_bundle_shaders.py
+```
+
+执行回归里依赖官方 DLL 的夹具要能找到游戏程序集，环境变量见 `tests/AGENTS.md`。
+
+## 9. 相关文档
+
+- `ArtSource/SkyIsland/README.md`（资源与打包）、`OFFICIAL_SCENE_CONTRACT.md`（独立官方场景合同）、`NAVIGATION.md`（导航与重建顺序）。
+- `docs/架构说明/自研着色器与官方渲染管线约定.md`。
+- `docs/制作教程/天空岛/天空岛_待人工验证清单.md`：实机验收从这里开始。
+- `docs/制作教程/从零搭建自定义场景_Blender到Unity到Mod完整教程.md`：新增一张官方级 Mod 地图的完整流程。

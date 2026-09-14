@@ -73,10 +73,10 @@ WikiContent/zh|en/*.md ─┬─→ 游戏内 Wiki 书（WikiContentManager 自�
 `hubs/<dir>.zh.md` + `hubs/<dir>.en.md` 两份都写；`sync-content.mjs` 的 `HUBS` 加 `<dir>`；
 `structure.mts` 里该类目的 `path` 改成 `/<dir>/`，`entries[0]` 加一条同路径的「总览」条目。
 
-更新日志是唯一的例外：46+ 条且按版本号排序，仍由 `config.mts` 直接读 `catalog.tsv`。
+更新日志是唯一的例外：四十多条且按版本号排序，仍由 `config.mts` 直接读 `catalog.tsv`。
 它在 `useWiki.ts` 里被拼成一个**虚拟类目**（`CHANGELOG_AS_CATEGORY`，条目来自
-`changelog.data.mts`），所以面包屑认得它；页尾用版本时间线（`WikiChangelogTimeline.vue`）
-代替同类导航——四十多个版本平铺成一行没法读。
+`changelog.data.mts`），所以面包屑认得它。页尾的同类导航对它不适用——四十多个版本平铺成一行没法读
+（`changelog.data.mts` 注释里提到的版本时间线 `WikiChangelogTimeline` 目前没有同名组件，2026-09-14 核对）。
 
 ## 4. 速查框（infobox）
 
@@ -240,7 +240,7 @@ fork 的 scoped 样式里还留着七个 `--vp-*`，**不要逐条改写**（改
 ## 4.10 实体链接的悬停预览（WikiRefPreview）
 
 `entityLinkPlugin` 给每个实体链接加了 `data-brs-ref="<规范路径>"`；
-`WikiRefPreview.vue` 挂在 `Layout.vue` 的 `layout-bottom` 插槽上，
+`WikiRefPreview.vue` 由 `Layout.vue` 直接渲染（换皮后不再经过默认主题的 `layout-bottom` 插槽），
 用**事件委托**监听整个文档的 hover / focus，浮出该条目速查框的缩略版
 （前 5 行 + 「条目页还有 N 项」）。数据仍然只读 `infobox.mts`，
 没配速查框的条目**不弹卡**，只当普通链接。
@@ -267,8 +267,7 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 ## 4.11 配图灯箱（WikiLightbox）
 
 正文里三类配图块（`.brs-gallery` / `.brs-figure` / `.brs-icon`）与速查框顶上那枚大图
-可以点开看大图，组件在 `theme/components/WikiLightbox.vue`，挂在 `Layout.vue` 的
-`layout-bottom` 插槽上。
+可以点开看大图，组件在 `theme/components/WikiLightbox.vue`，由 `Layout.vue` 直接渲染。
 
 - **永不超过原始像素**。这是组件唯一一条硬规则：放大到超过原图只会得到一张更大的糊图，
   症结在产物尺寸不在展示尺寸（见 §5）。
@@ -303,7 +302,7 @@ a.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
 顺带：正文 markdown 图片由 `config.mts` 统一补 `loading="lazy" decoding="async"`。
 图鉴那一页有 38 张图，漏了这条就是一开页把整组立绘全拉下来。
 
-三个图片来源：
+两个图片来源：
 
 | 来源 | 生成工具 | 源图位置 |
 | --- | --- | --- |
@@ -371,7 +370,7 @@ DOM 的 id 与 class 一律沿用 MediaWiki 的原名（`#mw-panel` / `#mw-head`
 `ZombieModeMutantWikiGuard` 逐字节比对）、`.brs-table-scroll`、`.brs-eref` 与
 `data-brs-ref` / `data-tier`（悬停预览与稀有度上色的钩子）。
 
-样式分九层，`theme/index.ts` 里的 import 顺序就是层叠顺序：
+样式分十层，`theme/index.ts` 里的 import 顺序就是层叠顺序：
 
 | 文件 | 管什么 |
 | --- | --- |

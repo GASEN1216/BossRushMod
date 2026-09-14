@@ -20,9 +20,7 @@ modules:
             - .gitattributes
             - ModBehaviour.cs
             - ModConfigApi.cs
-            - TeleportDebugMonitor.cs
             - compile_dev.bat
-            - gen_fate_echo_icon.ps1
             - test_bossrush_smoke_manual.bat
             - test_logic_official.bat
             - test_zombiemode_goal_windows.bat
@@ -105,6 +103,7 @@ modules:
         title: BossRush 调试工具与作弊菜单模块
         scope:
             - DebugAndTools/
+            - Integration/SkyIsland/
         source_files: []
         children: []
         depends_on: []
@@ -152,7 +151,6 @@ modules:
             - path: config
             - path: localization
             - path: achievement_system
-            - path: boss_filter
             - path: waves_arena
     campaign:
         dir_name: "BossRushMod 鸭王征程：六章契约战役、零模式重构的目标采集与跨系统解锁"
@@ -208,8 +206,7 @@ modules:
         related_to:
             - path: config
             - path: localization
-            - path: reforge
-            - path: equipment
+            - path: integration_content
     daily_report:
         dir_name: "BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑"
         title: "BossRushMod 鸭科夫日报：自算游戏日、签到梯度与报箱建筑"
