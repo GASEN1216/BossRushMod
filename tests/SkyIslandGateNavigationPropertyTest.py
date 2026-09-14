@@ -208,6 +208,44 @@ def verify(layout, gates):
     return report
 
 
+RUNTIME_CASES = ROOT / "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
+
+
+def read_gate_locked_islands():
+    source = clean_source(RUNTIME_CASES.read_text(encoding="utf-8-sig"))
+    match = re.search(r"GateLockedIslands\s*=\s*\{(.*?)\};", source, re.S)
+    assert match, "F3 用例缺少 GateLockedIslands 表"
+    return dict(re.findall(r'new\[\]\s*\{\s*"([^"]+)"\s*,\s*"([^"]+)"\s*\}', match.group(1)))
+
+
+def verify_f3_gate_locked_islands(layout, gates, encounters, table):
+    """F3 的 SKY_GATE_REACHABILITY 靠 GateLockedIslands 区分「必到点」与「门关着就该走不到的点」。
+
+    用真实导航面在 32 种开闭组合下逐个复算：自动遭遇组标记可达 ⇔ 它所在的岛不在表里，或表里对应的门开着。
+    岛按标记名第二段认，与 F3 的 RegionToken(marker, true) 同一规则。09-13 给钟庭补自动组 H_02 时没有这层分类，
+    岛内验收在没修双航标的档上必定假红（2026-09-14 实机报告）。"""
+    assert set(table.values()) <= set(gates), "GateLockedIslands 引用了不存在的门 " + str(table)
+    topology = Topology(layout)
+    blocked = {gate_id: {i for i, bbox in enumerate(topology.bounds) if intersects(gate_bounds(gate), bbox)}
+               for gate_id, gate in gates.items()}
+    auto = [encounter for encounter in encounters if not encounter.get("manual")]
+    assert auto, "内容表没有自动遭遇组"
+    ids = list(BRIDGES)
+    for bits in range(32):
+        shut = {gate_id for i, gate_id in enumerate(ids) if bits & (1 << i)}
+        blocked_nodes = set().union(*(blocked[gate_id] for gate_id in shut)) if shut else set()
+        actual = topology.reach(topology.markers["PlayerSpawn"], blocked_nodes)
+        for encounter in auto:
+            marker = encounter["marker"]
+            assert marker in topology.markers, "自动遭遇组标记不在导航面上 " + marker
+            parts = marker.split("_")
+            gate = table.get(parts[1] if len(parts) > 1 else "")
+            expected = gate is None or gate not in shut
+            reachable = bool(actual & topology.markers[marker])
+            assert reachable == expected, ("GateLockedIslands 与真实导航不符：%s（%s）在关门 %s 时%s" %
+                                           (encounter["id"], marker, sorted(shut), "走得到" if reachable else "走不到"))
+
+
 def main():
     layout = json.loads((ROOT / "ArtSource/SkyIsland/layout.json").read_text(encoding="utf-8-sig"))
     gates = read_gates()
@@ -242,7 +280,17 @@ def main():
         except AssertionError:
             continue
         raise AssertionError("负向探针未转红 " + label)
-    print("SkyIslandGateNavigationPropertyTest: PASS 32 gate combinations / 5 mutations rejected")
+    # F3 岛内可达性用例的锁门岛表：用真实导航面逐组合复算，并确认表坏了会被抓出来。
+    table = read_gate_locked_islands()
+    verify_f3_gate_locked_islands(layout, gates, content["encounters"], table)
+    for label, broken in (("锁门岛表清空", {}), ("锁门岛写成栈道", {"E": "BellCourt"}), ("钟庭挂错门", {"H": "K3"})):
+        try:
+            verify_f3_gate_locked_islands(layout, gates, content["encounters"], broken)
+        except AssertionError:
+            continue
+        raise AssertionError("负向探针未转红 " + label)
+    print("SkyIslandGateNavigationPropertyTest: PASS 32 gate combinations / 5 mutations rejected / "
+          "F3 锁门岛表 %d 条与导航一致（3 个表破坏探针）" % len(table))
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 

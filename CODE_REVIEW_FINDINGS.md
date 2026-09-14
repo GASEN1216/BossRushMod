@@ -2,6 +2,24 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-14（二）天空岛首轮岛内 F3 实机日志复核：1 P2 + 3 P3（均已修）+ 线索
+
+来源是 owner 13:34–13:35 在岛上跑的岛内只读验收与 Dev 演练（`599bc6b` 的 Dev 构建，MVID `801bcff5`）。每条都对照 `Player.log` 原文与源码核实；修复本身是 L1 / L2，未实机复测。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-14-010 | **P2** / TEST（假红 + 假绿） | ① `SKY_GATE_REACHABILITY` 把全部自动遭遇组当必到点，09-13 补密加在归航钟庭的 `H_02` 要双航标开门才走得到，新档必红。② 探路只看 `path.error`，不看终点离目标多远：五门全关时钟庭地标 `POI_H` 被记成可达（离线属性测试证明它此时走不到），只有更远的 `Search_H_02` 才报错——这条用例的 PASS 抓不到真正的软锁。 | **Fixed**。锁门岛表 `GateLockedIslands` + `ReachabilityGateFor` + `ProbeReachedTarget`（终点 ≤2 m）；门关着的锁门岛点反过来核对走不到，走得到记红。属性测试 32 种门组合复算表、判据回归 +16 条、`SkyIslandFullAuditGuard` 钉接线；磁盘探针 R1–R5 |
+| CR-2026-09-14-011 | P3 / TEST（崩溃） | Dev 演练 `SKY_DRILL_OFFICIAL_DIALOGUE`：`cancelled.GetResult()` 之后又读 `cancelled.IsCompleted`，UniTask 任务已回池，抛 `Token version is not matched`，整条演练 `_UNHANDLED`、断言全丢。`599bc6b` 引入。 | **Fixed**。完成状态在取结果前读进局部变量；新守卫 `UniTaskAwaiterReuseGuard`（全仓、6 个反向检查）；磁盘探针 R6 |
+| CR-2026-09-14-012 | P3 / TEST（误导） | 云蚋演练 `force_night_restored=` 打印的是开跑前的值 `previousForceNight`，读起来像「没还原」；`finally` 实际已还原，但报告里没有真正的还原结果。 | **Fixed**。`finally` 之后读回、写 before / after，不一致记红；`SkyIslandDrillNoPersistenceGuard` +2 个反向检查；磁盘探针 R7 |
+| CR-2026-09-14-013 | P3 / COMPAT（退出报错） | 在岛上直接退游戏：`SkyIslandRuntimeModule.OnDestroy` 无条件 `Close(true, "runtime_shutdown")` → 派发返航 → 销毁途中 `SceneLoader.LoadScene` → Unity 报 `GameObjects can not be made active when they are being destroyed`。两局 Player.log 都复现。岛上进度由 `Cleanup` 的 `CloseOrRetain` 落盘，未见数据后果。 | **Fixed**。订阅 `Application.quitting`（同一 owner 布尔、`OnDestroy` 退订），退游戏走 `Close(false, "application_quit")`；`SkyIslandLifecycleGuard` 钉住；磁盘探针 R8 / R9 |
+
+### UNVERIFIED（线索，不是 confirmed bug）
+
+- **天空岛帧时间**：码头零敌人时 p95 50.6 / 54.0 ms，本机主套件在其它地图 15–22 ms。只有一次采样，另一会话当时是否占用机器不明；日志拿不到原因（renderers=1272、materials=142、lights=13）。
+- **物资池懒建**：`SKY_LOOT_BANDS` 单步 639 ms；`SkyIslandLootPools.GetBand` 首次用到才建池，正常游玩第一次生成远航 / 星工档箱子可能卡顿。未在游玩中测。
+- **验收单帧 1944.77 ms**：日志定位不到用例。
+- **`SKY_ENCOUNTER_CAP` 的密集段**：这次站在码头、活敌 0，帧时间判据没有被触发，PASS 只证明了内容表与活体上限。
+
 ## 2026-09-14 天空岛与共享 UI「实机前减负」：4 P2 + 5 P3（均已修）+ 登记与未验证线索
 
 任务书要求把最后那次实机的人工检查尽量改成读报告，并修剧情面板三处与常驻 HUD 显隐。每条都先读码核实再动手；

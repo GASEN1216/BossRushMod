@@ -220,6 +220,42 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 只能经过某道剧情门才走得到的岛：{岛, 门}。门关着时这些岛上的点「走不到」是对的，SKY_GATE_REACHABILITY
+        /// 不把它们算必到点，反过来核对「确实被挡住」。按 layout.json 的桥，目前只有归航钟庭 H：它只接 E–H 一座桥，门就在桥上；
+        /// 三条捷径门与折翎门只挡近路，挡不住任何一座岛（中继平台从远端岛走得过去）。
+        /// 这张表由 tests/SkyIslandGateNavigationPropertyTest.py 用真实导航面在 32 种开闭组合下逐条复算、比对，
+        /// 新增自动遭遇组或改桥时对不上就红——2026-09-14 实机报告里 H_02 的假红，就是 09-13 补密后缺了这层分类。
+        /// </summary>
+        internal static readonly string[][] GateLockedIslands = { new[] { "H", "BellCourt" } };
+
+        /// <summary>标记所在的岛只能经过某道门才到得了时返回那道门的 id，否则 null。岛按标记名第二段认（`Search_H_02` → H）。</summary>
+        internal static string ReachabilityGateFor(string marker)
+        {
+            string island = RegionToken(marker, true);
+            for (int i = 0; i < GateLockedIslands.Length; i++)
+                if (string.Equals(GateLockedIslands[i][0], island, StringComparison.Ordinal)) return GateLockedIslands[i][1];
+            return null;
+        }
+
+        /// <summary>探路终点离目标的水平容差（米）。离线属性测试证明全部标记都落在导航面上，真走到了应当几乎贴合；门后的点离门这一侧至少 8 m。</summary>
+        internal const float ProbeReachHorizontalMeters = 2f;
+        /// <summary>探路终点离目标的竖直容差（米）：挡住「正上方 / 正下方另一层」的误判。</summary>
+        internal const float ProbeReachVerticalMeters = 2.5f;
+
+        /// <summary>
+        /// 探路「真的走到了目标」，而不只是「路算完了」。
+        /// 2026-09-14 实机报告：五门全关时钟庭地标 POI_H（离门约 73 m）被记成可达，而离线属性测试证明它此时走不到；
+        /// 只有离门约 119 m 的 Search_H_02 报了错。看起来是 A* 在目标走不到时把路算到出发一侧离目标最近的点、照样报完成，
+        /// 所以只看 <c>path.error</c> 的旧判据，PASS 抓不到真正的软锁。
+        /// </summary>
+        internal static bool ProbeReachedTarget(float endX, float endY, float endZ, float targetX, float targetY, float targetZ, out float gap)
+        {
+            float dx = endX - targetX, dz = endZ - targetZ;
+            gap = (float)Math.Sqrt(dx * dx + dz * dz);
+            return gap <= ProbeReachHorizontalMeters && Math.Abs(endY - targetY) <= ProbeReachVerticalMeters;
+        }
+
+        /// <summary>
         /// SKY_ENCOUNTER_CAP 的运行时半边：采样窗口里活敌峰值 ≤12；本局装配出的遭遇组数与内容表一致；
         /// 活敌达到密集段时帧时间 p95 不越阈值（与 SKY_PERF_FINAL_5S 同一条：基线 p95 × 1.75，至少 50 ms）。
         /// 不在密集段时帧时间只进 metrics，不判。

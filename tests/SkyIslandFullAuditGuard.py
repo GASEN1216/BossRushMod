@@ -154,6 +154,18 @@ def main():
     require(suite, 'string targetName = target == null ? "missing_target" : target.name;',
             "探路必须先取出目标名：等待期间场景卸载后再读 target.name 会对已销毁对象二次抛")
     forbid(suite, "failures.Add(target.name", "探路失败记录又直接读 target.name")
+    # ---- 2026-09-14 实机：H_02 假红，以及把「路算完了」当成「走到了」 ----
+    require(suite, "completed = ProbeReachedTarget(end.x, end.y, end.z, _probeTarget.x, _probeTarget.y, _probeTarget.z, out gap);",
+            "探路必须按终点离目标的距离判「走到了」：只看 path.error 时，A* 把路算到门这一侧最近的点也记可达，抓不到软锁")
+    if reach:
+        require(reach, "string gate = ReachabilityGateFor(content.Encounters[i].Marker);",
+                "锁门岛上的自动遭遇组必须按门的开闭分类：门关着时不能算必到点（09-13 补密后钟庭 H_02 的假红）")
+        require(reach, "if (gate != null && (progress == null || !content.IsGateOpen(gate, progress)))",
+                "锁门岛分类必须真的看门的开闭（读不到进度按关着算），不能被短路")
+        require(reach, "ProbePath(seeker, origin, locked[i], mask, lockedBlocked, lockedLeaks)",
+                "门关着的锁门岛遭遇点要反过来核对「确实被挡住」，走得到记进 lockedLeaks")
+        require(reach, "if (unreachable.Count > 0 || lockedLeaks.Count > 0)",
+                "门关着却走得到（门没切进导航图）必须记红")
 
     # ---- CR-2026-09-10-020：桥口木牌英文溢出 ----
     gates = read(SKY + "SkyIslandGates.cs")

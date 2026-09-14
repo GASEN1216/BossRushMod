@@ -240,7 +240,12 @@ namespace BossRush
                     health.SetHealth(Mathf.Max(health.CurrentHealth, previousHealth));
             }
 
-            string metrics = string.Join(" | ", notes.ToArray()) + " | other_hits=" + otherHits + ",force_night_restored=" + previousForceNight;
+            // 还原结果要读出来才算数：finally 之后读回强制夜里、与开跑前比。旧写法把开跑前的值写成「已还原」，
+            // 2026-09-14 实机报告里读成了没还原。不一致一律记红（即便前面判了 SKIP，永夜也不能被 SKIP 盖住）。
+            bool forceNightAfter = SkyIslandNight.DevForceNight;
+            if (forceNightAfter != previousForceNight) { errors.Add("force_night_not_restored"); skip = null; }
+            string metrics = string.Join(" | ", notes.ToArray()) + " | other_hits=" + otherHits
+                + ",force_night_before=" + previousForceNight + ",force_night_after=" + forceNightAfter;
             if (skip != null) Record("SKY_DRILL_GNAT_SWARM", "SKIP", sw.ElapsedMilliseconds, metrics, skip);
             else if (errors.Count > 0) Record("SKY_DRILL_GNAT_SWARM", "FAIL", sw.ElapsedMilliseconds, metrics, "云蚋演练不合格：" + string.Join(",", errors.ToArray()));
             else Record("SKY_DRILL_GNAT_SWARM", "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
@@ -298,16 +303,21 @@ namespace BossRush
                 if (reentry != null) { errors.Add("reentry_not_blocked"); reentry.Dispose(); }
 
                 // 3. 选：点官方选项控件——与鼠标点击同一条 OnPointerClick → NotifyChoiceConfirmed 路径。
+                // UniTask 的任务取完结果就回对象池、令牌作废：完成状态必须在取结果之前读进局部变量，之后只用这个变量。
+                // 2026-09-14 实机：取消那一步取完结果又读了一次状态，抛 "Token version is not matched"，整条演练记成 UNHANDLED
+                // （UniTaskAwaiterReuseGuard 钉住）。取结果本身抛了别的异常也只记进 errors，不让整条演练崩掉。
                 int picked = -2;
                 if (target != null)
                 {
                     target.OnPointerClick(null);
                     float pickUntil = Time.realtimeSinceStartup + 3f;
                     while (Time.realtimeSinceStartup < pickUntil && !pick.IsCompleted) yield return null;
-                    if (pick.IsCompleted)
+                    bool pickCompleted = pick.IsCompleted;
+                    if (pickCompleted)
                     {
                         try { picked = pick.GetResult(); }
                         catch (OperationCanceledException) { picked = -3; }
+                        catch (Exception e) { errors.Add("pick_threw_" + e.GetType().Name); }
                     }
                 }
                 else first.Cancel();
@@ -328,15 +338,17 @@ namespace BossRush
                     second.Cancel();
                     float cancelUntil = Time.realtimeSinceStartup + 2f;
                     while (Time.realtimeSinceStartup < cancelUntil && !cancelled.IsCompleted) yield return null;
+                    bool cancelCompleted = cancelled.IsCompleted;
                     bool threwCancel = false;
-                    if (cancelled.IsCompleted)
+                    if (cancelCompleted)
                     {
                         try { cancelled.GetResult(); }
                         catch (OperationCanceledException) { threwCancel = true; }
+                        catch (Exception e) { errors.Add("cancel_threw_" + e.GetType().Name); }
                     }
                     float hideUntil = Time.realtimeSinceStartup + 1f;
                     while (Time.realtimeSinceStartup < hideUntil && (DialogueManager.IsDialogueActive || DialogueUI.Active)) yield return null;
-                    notes.Add("cancel_completed=" + cancelled.IsCompleted + ",threw_cancel=" + threwCancel
+                    notes.Add("cancel_completed=" + cancelCompleted + ",threw_cancel=" + threwCancel
                         + ",manager_active=" + DialogueManager.IsDialogueActive + ",official_ui_active=" + DialogueUI.Active);
                     if (!threwCancel) errors.Add("cancel_did_not_throw_operation_canceled");
                     if (DialogueManager.IsDialogueActive) errors.Add("manager_still_active_after_cancel");

@@ -42,9 +42,19 @@ namespace BossRush
             {
                 LevelManager.OnAfterLevelInitialized += OnLevelReady;
                 SceneLoader.onStartedLoadingScene += OnStartedLoading;
+                Application.quitting += OnApplicationQuitting;
                 subscribed = true;
             }
         }
+
+        /// <summary>
+        /// 退游戏时 Unity 正在销毁对象，模块 OnDestroy 若照常把玩家「送回基地」，会在销毁途中切场景、点亮黑幕
+        /// （2026-09-14 两局 Player.log 都有 GameObjects can not be made active when they are being destroyed）。
+        /// 岛上进度由会话 Cleanup 里的 SkyIslandStorySaveRecovery.CloseOrRetain 落盘，与返航无关；
+        /// 只有游戏还开着时 Mod 被卸载，才需要把人送回基地。
+        /// </summary>
+        private bool applicationQuitting;
+        private void OnApplicationQuitting() { applicationQuitting = true; }
 
         public override void OnStart() { SkyIslandSceneReferenceBridge.EnsureRegistered(); ScheduleEntry(); }
 
@@ -210,13 +220,15 @@ namespace BossRush
             {
                 LevelManager.OnAfterLevelInitialized -= OnLevelReady;
                 SceneLoader.onStartedLoadingScene -= OnStartedLoading;
+                Application.quitting -= OnApplicationQuitting;
                 subscribed = false;
             }
             ClearEntry();
             if (owner != null)
             {
                 SkyIslandSession session = owner.GetComponent<SkyIslandSession>();
-                if (session != null) session.Close(true, "runtime_shutdown");
+                // 退游戏不派发返航（见 applicationQuitting）；会话照常清理，岛上进度由 Cleanup 落盘。
+                if (session != null) session.Close(!applicationQuitting, applicationQuitting ? "application_quit" : "runtime_shutdown");
             }
             owner = null;
             SkyIslandSceneReferenceBridge.Shutdown();

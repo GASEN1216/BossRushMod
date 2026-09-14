@@ -31,7 +31,48 @@ internal static class Program
         Keepsakes();
         GatherNodes();
         LetterPigeon();
+        ReachabilityGates();
         Console.WriteLine("PASS: " + assertions + " assertions; F3 Sky Island runtime-case judges (pure half only, no Unity)");
+    }
+
+    // ---------------------------------------------------------------- 可达性：锁门岛分类与「真的走到了」（2026-09-14 实机）
+    private static void ReachabilityGates()
+    {
+        Check(F3GameplayValidationRunner.ReachabilityGateFor("Search_H_02") == "BellCourt",
+            "reach: the bell court auto group H_02 is gated by BellCourt");
+        foreach (string open in new[] { "EnemySpawn_E", "Relay_K1", "Relay_DE", "Search_G_02", "EnemySpawn_S4", "Search_F_02" })
+            Check(F3GameplayValidationRunner.ReachabilityGateFor(open) == null, "reach: " + open + " is not on a gate-locked island");
+        Check(F3GameplayValidationRunner.ReachabilityGateFor("") == null && F3GameplayValidationRunner.ReachabilityGateFor(null) == null,
+            "reach: empty marker names are never gated");
+
+        SkyIslandContentData content = SkyIslandContent.CreateFallback();
+        int gated = 0;
+        string gatedId = null;
+        foreach (SkyIslandEncounterDefinition encounter in content.Encounters)
+        {
+            if (encounter.Manual || F3GameplayValidationRunner.ReachabilityGateFor(encounter.Marker) == null) continue;
+            gated++;
+            gatedId = encounter.Id;
+        }
+        Check(gated == 1 && gatedId == "H_02", "reach: exactly one auto encounter (H_02) sits on a gate-locked island in the production table");
+
+        SkyIslandStoryData fresh = SkyIslandStoryRules.CreateDefault();
+        Check(!content.IsGateOpen("BellCourt", fresh), "reach: a fresh save keeps the bell court closed, so H_02 is not a must-reach point");
+        SkyIslandStoryData beacons = SkyIslandStoryRules.CreateDefault();
+        beacons.flags = (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp);
+        Check(content.IsGateOpen("BellCourt", beacons), "reach: both beacons open the bell court, so H_02 is a must-reach point again");
+
+        float gap;
+        Check(F3GameplayValidationRunner.ProbeReachedTarget(37f, 26f, 255f, 37f, 26f, 255f, out gap) && gap == 0f,
+            "reach: a path ending on the target reached it");
+        Check(F3GameplayValidationRunner.ProbeReachedTarget(38.5f, 25.2f, 255f, 37f, 26f, 255f, out gap),
+            "reach: 1.5 m off on the nav mesh still counts as reached");
+        Check(!F3GameplayValidationRunner.ProbeReachedTarget(5f, 19.3f, 139f, 5f, 26f, 213f, out gap) && gap > 70f,
+            "reach: a path that stops at the closed bell court gate (POI_H ~74 m away) is NOT reached - the 2026-09-14 false green");
+        Check(!F3GameplayValidationRunner.ProbeReachedTarget(0f, 0f, 8f, 0f, 0f, 0f, out gap),
+            "reach: 8 m short (the nearest a point behind any gate can be) is not reached");
+        Check(!F3GameplayValidationRunner.ProbeReachedTarget(0f, 23f, 0f, 0f, 26f, 0f, out gap),
+            "reach: right below the target but 3 m lower (another floor) is not reached");
     }
 
     private static bool Run(Func<Tuple<bool, string, string>> judge, out string metrics, out string reason)

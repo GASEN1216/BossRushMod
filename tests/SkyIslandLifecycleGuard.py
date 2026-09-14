@@ -66,6 +66,21 @@ def main():
         for token in tokens:
             if token not in sources[name]:
                 errors.append(f'{FILES[name]}: 缺少 {token}')
+    # 2026-09-14 实机：在岛上直接退游戏，模块 OnDestroy 仍派发返航，销毁途中切场景、点亮黑幕报错（两局 Player.log 都有）。
+    # 退游戏只走会话清理（进度由 CloseOrRetain 落盘）；游戏还开着时 Mod 被卸载才送人回基地。订阅必须成对退订。
+    module_path = 'DebugAndTools/SkyIsland/SkyIslandRuntimeModule.cs'
+    module = clean_source((ROOT / module_path).read_text(encoding='utf-8-sig'))
+    destroy = module.split('public override void OnDestroy()', 1)[1] if 'public override void OnDestroy()' in module else ''
+    for token, why in (('Application.quitting += OnApplicationQuitting;', '没有订阅 Application.quitting'),
+                       ('private void OnApplicationQuitting() { applicationQuitting = true; }', '退游戏标志没有置位'),
+                       ('session.Close(!applicationQuitting, applicationQuitting ? "application_quit" : "runtime_shutdown")',
+                        '模块销毁时仍无条件派发返航（退游戏也会切场景）')):
+        if token not in module:
+            errors.append(f'{module_path}: {why}：缺少 {token}')
+    if 'Application.quitting -= OnApplicationQuitting;' not in destroy:
+        errors.append(f'{module_path}: OnDestroy 没有退订 Application.quitting')
+    if 'session.Close(true, "runtime_shutdown")' in module:
+        errors.append(f'{module_path}: 模块销毁仍写死 Close(true, "runtime_shutdown")，退游戏也会派发返航')
     session = sources['Session']
     if session.index('while ((SceneManager.GetActiveScene().handle != entryScene.handle') > session.index('lighting.Apply(root)'):
         errors.append('必须等待官方活动场景与相机就绪后才创建天空岛光照')

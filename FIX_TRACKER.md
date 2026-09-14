@@ -2,6 +2,53 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-14（二）天空岛首轮岛内 F3 实机日志复核：可达性假红与探路判据、对话演练崩溃、夜里指标、退游戏返航（1 P2 + 3 P3，全部已修）
+
+**来源**：owner 13:34–13:35 在岛上跑了岛内只读验收与 Dev 演练（`Player.log`、`BossRushTestReports/BossRushValidation_20260914_053459_241` 与 `_053527_989`，构建 MVID `801bcff5`，即 `599bc6b` 的 Dev 构建；主套件没跑）。
+**分类**：`SAFE`（验收用例与守卫）+ `COMPAT`（退游戏不再派发返航）。不加内容、不改存档 schema、不重打包。**本轮没有开游戏，没有读写存档目录**（只读了 `Player.log` 与测试报告）。
+
+**这次实机拿到的 L3**（新档 flags=0、站在码头）：只读验收 34 PASS / 1 FAIL / 2 SKIP。`599bc6b` 新增的岛内用例在真机上全部 PASS——
+选项门 32 对判决一致、导语最长 23 字；遭遇表 21 组 / 61 敌、新自动组正确、安全区无自动组；20 条见闻在官方图鉴各一条、无原始 key；
+纪念物图标不是克隆源；信鸽带 `Letter_01` = NextFor；风晶灯与夜风读回一致；13 张面板底图与皮肤五档齐；采集点 30 落位、读条时长对。
+`SKY_GNAT_RUNTIME` 白天 SKIP，但精灵表可用、开枪补丁已挂。云蚋演练 PASS：冲刺最长 0.90 m、击杀计数恰好 +1 且不掉落、叮 2 口起痒、叮咬没打穿下限
+（12 发合成弹道只触发 1 次闪避，闪避上限的证据偏弱）。
+
+**验证**（本机 Windows，全部实跑）：
+- Dev 构建与正式构建各 `Build succeeded`、0 个 `error CS`；正式构建已部署，`Build/BossRush.dll` 与 D 盘游戏目录同为 `EED0D701…F90CBC`（15:11:14），游戏没开，目录里不是 Dev 构建。
+- `python tools/run_guards.py` → **605 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（+1：`UniTaskAwaiterReuseGuard`）。
+- `python tools/run_runtime_regressions.py`（三个 D 盘环境变量）→ **35 PASS / 0 FAIL**；`SkyIslandValidationJudges` 76 → 92 条断言。
+- `SkyIslandGateNavigationPropertyTest` 新增锁门岛表复算（真实导航面、32 种门组合）与 3 个表破坏探针。
+- 磁盘级反向探针 9 条（HEAD 共享副本叠加本轮文件）：逐条人为破坏 → 对应守卫或执行回归转红 → 逐字节还原、sha256 一致 → 复绿。
+
+- `CR-2026-09-14-010` / `SAFE` / **P2**：**`SKY_GATE_REACHABILITY` 假红，而且它的 PASS 本来就不可信。**
+  ① 必到点 = 撤离点 + 全部自动遭遇组；09-13 补密给归航钟庭加了自动组 `H_02`（标记 `Search_H_02`），钟庭要双航标才开，没修航标的档跑这条必红。
+  ② 探路只看 `!path.error && vectorPath.Count >= 2`，不看终点离目标多远：五门全关时钟庭地标 `POI_H`（离门约 73 m）被记成可达，而离线属性测试证明它此时走不到；
+  只有离门约 119 m 的 `Search_H_02` 报了 `Couldn't find a node close to the end point`。也就是说这条用例的 PASS 抓不到真正的软锁。
+  修法：纯判据区新增 `GateLockedIslands = {H: BellCourt}`、`ReachabilityGateFor`、`ProbeReachedTarget`（终点离目标水平 ≤2 m、竖直 ≤2.5 m 才算走到）；
+  锁门岛上的自动组门开着才算必到点，门关着反过来核对「确实走不到」，走得到记红（门没切进导航图）；metrics 增 `max_end_gap_m`、`gate_locked`，失败项带 `end_gap`。
+  离线证明：属性测试用真实导航面在 32 种开闭组合下复算这张表（新增自动组或改桥对不上就红）；判据执行回归 +16 条；`SkyIslandFullAuditGuard` 钉住接线与判定条件。**未实机复测。**
+- `CR-2026-09-14-011` / `SAFE` / P3：**Dev 演练 `SKY_DRILL_OFFICIAL_DIALOGUE` 崩溃（`599bc6b` 引入）。** 取消那一步 `cancelled.GetResult()` 之后又读 `cancelled.IsCompleted`，
+  UniTask 任务已回池 → `InvalidOperationException: Token version is not matched`，整条记成 `_UNHANDLED`。日志里弹出 → 选中收起 → 再弹出 → 取消收起四步都发生了，只是断言没留下。
+  修法：两处都在取结果之前把完成状态读进局部变量；取结果时的其它异常只记进 errors。新守卫 `UniTaskAwaiterReuseGuard`（全仓扫描存起来的 awaiter，取完结果后不得再读状态，6 个反向检查）。**需要重跑演练。**
+- `CR-2026-09-14-012` / `SAFE` / P3：云蚋演练 metrics 的 `force_night_restored=False` 打的是开跑前的值，读起来像没还原（`finally` 实际已还原）。
+  改为 `finally` 之后读回、写出 `force_night_before` / `force_night_after`，不一致记红（前面判了 SKIP 也盖不住）。`SkyIslandDrillNoPersistenceGuard` +2 个反向检查。
+- `CR-2026-09-14-013` / `COMPAT` / P3：**在岛上直接退游戏报 `GameObjects can not be made active when they are being destroyed`（两局 Player.log 都有）。**
+  `SkyIslandRuntimeModule.OnDestroy` 无条件 `session.Close(true, "runtime_shutdown")` → 派发返航 → 销毁途中 `SceneLoader.LoadScene` 点亮黑幕。
+  岛上进度由会话 `Cleanup` 里的 `SkyIslandStorySaveRecovery.CloseOrRetain` 落盘，与返航无关，没看到数据后果。
+  修法：模块订阅 `Application.quitting`（复用现有 `subscribed` owner，`OnDestroy` 退订），退游戏时走 `Close(false, "application_quit")`；游戏还开着时 Mod 被卸载仍送人回基地。
+  官方反编译源不用 `Application.quitting` / `OnApplicationQuit`，没有时序冲突。`SkyIslandLifecycleGuard` 钉住。**未实机复测**（「退出事件先于对象销毁」按 Unity 文档口径）。
+
+**线索（UNVERIFIED，只登记不修）**：
+- **帧时间**：码头零敌人时基线 p95 50.6 ms、收尾 54.0 ms（约 18–20 fps）；本机主套件在其它地图历来 15–22 ms。本会话的守卫与回归 12:29 就跑完，另一会话当时是否占用机器查不到。需干净环境复测后剖析。
+- `SKY_LOOT_BANDS` 单步 639 ms：物资池首次用到才建（`SkyIslandLootPools.GetBand` 懒建 + 缓存），正常游玩第一次生成远航 / 星工档箱子可能卡一下。
+- 验收期间有一帧 1944.77 ms，日志定位不到是哪条用例；`SKY_KEEPSAKE_ITEMS` 404 ms 里触发了两件物品的运行时兜底注册与图标加载（懒初始化，不写存档）。
+- `SKY_ENCOUNTER_CAP` 这次 `living_peak=0`（站在码头），密集段帧时间没测到。
+- 与天空岛无关：基地 `No prefab for building casino_building / wedding_chapel` 已有记录（前者缺外部资源，后者注入后重绘兜底）；`BattlefieldTypeKillNoticeMod`、TDAE 的报错来自别的 Mod。
+
+**状态**：代码与守卫已改，随本条一起提交（未推送）。**未实机复测**：岛上重跑岛内验收（看第 14 项）与演练，再在岛上直接退游戏看 Player.log 不再有那条报错（清单第 2.16 步 D1–D6）。
+
+---
+
 ## 2026-09-14 天空岛与共享 UI「实机前减负」：F3 自动检查 / 剧情面板三处 / 常驻 HUD 跟随官方界面（4 P2 + 5 P3，全部已实现）
 
 **授权**：owner 任务书「实机前减负」一轮，全程无人值守；歧义按「最低风险 + 可回退」自行决定，写进报告待拍板。

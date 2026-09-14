@@ -161,6 +161,15 @@ def check(raw):
             errors.append("压低的主角血量没有在 finally 里还回去")
     if len(re.findall(r"\bDevForceNight\s*=(?!=)", drill)) != 2:
         errors.append("演练里只许有「打开」与「finally 复位」两处写强制夜里")
+    # 指标如实（2026-09-14 实机）：旧写法把开跑前的值打成 force_night_restored，报告里读成「没还原」。
+    # 必须在 finally 之后读回强制夜里、与开跑前比对，不一致记红。
+    after_at = gnat_case.find("bool forceNightAfter = SkyIslandNight.DevForceNight;")
+    if after_at < 0 or after_at < gnat_case.rfind("finally"):
+        errors.append("云蚋演练没有在 finally 之后读回强制夜里（还原结果得读出来才算数）")
+    if 'force_night_after=" + forceNightAfter' not in gnat_case or 'errors.Add("force_night_not_restored");' not in gnat_case:
+        errors.append("云蚋演练必须把还原前后的强制夜里都写进报告，不一致记 force_night_not_restored")
+    if 'force_night_restored=" + previousForceNight' in gnat_case:
+        errors.append("force_night_restored 打的是开跑前的值，不是还原结果")
     dialogue = body_of(drill, "private IEnumerator RunSkyIslandDrillDialogue()") or ""
     dialogue_finally = body_of(dialogue, "finally") if dialogue else None
     if dialogue_finally is None or "first.Cancel();" not in dialogue_finally or "second.Cancel();" not in dialogue_finally:
@@ -191,6 +200,8 @@ def main():
         (EXECUTION, "read_only=false | drill=true", "read_only=true | drill=true", "报告头谎报只读"),
         (RUNNER, "#if BOSSRUSH_DEV\n            // 演练", "            // 演练", "按钮挪出 #if"),
         (BAT, "echo(DebugAndTools" + BACKSLASH + "F3GameplayValidationSkyIslandDrill.cs", "", "编译清单漏登记"),
+        (DRILL, '",force_night_after=" + forceNightAfter', '",force_night_restored=" + previousForceNight', "指标又把开跑前的值当还原结果"),
+        (DRILL, 'errors.Add("force_night_not_restored");', "", "强制夜里还原不一致不记红"),
     )
     for rel, before, after, label in probes:
         text = raw[rel].replace("\r\n", "\n")
