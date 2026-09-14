@@ -14,6 +14,8 @@ namespace BossRush
         private bool _sessionCompleted;
         /// <summary>本轮是否真的写过运行标记。只有写过才在收尾时清：岛内套件从不写（见 BeginSession）。</summary>
         private bool _runMarkerWritten;
+        /// <summary>本轮是 Dev 演练（F3GameplayValidationSkyIslandDrill.cs，非只读）。只在 Dev 构建里会被置位，复位在 CompleteSession。</summary>
+        private bool _skyIslandDrill;
         private int _sessionSlot, _runtimeErrors, _externalErrors, _errorSamples, _textDiagnostics;
         private float _nextHeartbeat;
         private ValidationCoroutineStack _sessionStack;
@@ -51,8 +53,11 @@ namespace BossRush
                     _sessionSubscribed = true;
                 }
                 if (!_skyIslandMode) ProtectCurrentPlayer();
+                // Dev 演练同样不写运行标记、不接管无敌与回血，但它会改这趟出击的状态：报告头必须如实写 read_only=false。
                 WriteRaw(_skyIslandMode
-                    ? "SESSION | slot=" + _sessionSlot + " | assisted=false | read_only=true | player_invincible=false | player_health_refill=false | run_marker=false"
+                    ? (_skyIslandDrill
+                        ? "SESSION | slot=" + _sessionSlot + " | assisted=false | read_only=false | drill=true | save_writes=false | player_invincible=false | player_health_refill=false | run_marker=false"
+                        : "SESSION | slot=" + _sessionSlot + " | assisted=false | read_only=true | player_invincible=false | player_health_refill=false | run_marker=false")
                     : "SESSION | slot=" + _sessionSlot + " | assisted=true | player_invincible=true | player_health_refill=true | combat_balance=MANUAL_PENDING");
                 return true;
             }
@@ -167,6 +172,7 @@ namespace BossRush
             // 否则下一次从基地启动完整验收会错走天空岛编排。复位前先记下本轮是不是岛内套件。
             bool skyIsland = _skyIslandMode;
             _skyIslandMode = false;
+            _skyIslandDrill = false;
             DisposeSessionStack();
             if (_sessionSubscribed)
             {

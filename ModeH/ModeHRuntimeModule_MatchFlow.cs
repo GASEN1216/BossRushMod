@@ -23,6 +23,7 @@ namespace BossRush
 
         partial void OnUpdateInternal(float deltaTime, float unscaledDeltaTime)
         {
+            if (_ui != null) _ui.ApplyHudVisibility(); // 观战 HUD 跟随官方界面与暂停收起，刷怪期也要（见 ModeHUI）
             if (_commandsClosed) return;
             if (_runState == null) return;
             if (_restoredSeasonPending || _resumeScenePending) return;

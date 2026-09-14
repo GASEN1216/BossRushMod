@@ -1,0 +1,792 @@
+// ============================================================================
+// F3GameplayValidationSkyIslandRuntimeCases.cs - 天空岛岛内验收：运行时状态的只读用例（2026-09-14）
+// ============================================================================
+// 「实机前减负」一轮补的九条：选项门、遭遇上限、灯与风、官方图鉴（岛上 / 基地各一次）、纪念品（岛上 / 基地各一次）、
+// 采集点、信鸽、云蚋运行时。目标是把最后那次实机里「开面板数一数 / 翻图鉴看一眼 / 数仓库里几枚航徽」这类人工行
+// 改成读报告。
+//
+// 纪律与 F3GameplayValidationSkyIsland.cs 头注释一致，而且只会更严：
+//   1. **只读**。不写存档、不收录、不采集、不点灯、不合成、不捧放蛙卵、不注册图鉴条目、不解码插图、不发物品。
+//      `tests/SkyIslandValidationSuiteGuard.py` 按名单扫本文件。
+//   2. **判据与取数分开**：每条用例先在 Unity 侧把状态读成普通值，再交给「纯判据」区里的 `Judge*` 函数判。
+//      那一区不碰 Unity，隔离回归 `tests/fixtures/SkyIslandValidationJudges` 把它逐字抽出来执行、喂红样本。
+//   3. 判据在当前状态下不成立（白天没有云蚋、一个采集点都还没建、不在基地）记 SKIP，不记 PASS。
+//   4. 不引用 Dev 演练套件（F3GameplayValidationSkyIslandDrill.cs）的任何东西——那一套会改状态。
+// ============================================================================
+
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Reflection;
+using Duckov.NoteIndexs;
+using ItemStatsSystem;
+using Saves;
+using UnityEngine;
+
+namespace BossRush
+{
+    internal sealed partial class F3GameplayValidationRunner
+    {
+        #region 纯判据（隔离回归逐字抽出执行：这一区不许引用 Unity）
+
+        internal const int ExpectedEncounterGroups = 21;
+        internal const int ExpectedEncounterEnemies = 61;
+        /// <summary>活体上限。生产里是 SkyIslandEncounters 两处内联的 12（BeginChallenge / Tick），没有常量可引。</summary>
+        internal const int LivingEnemyCap = 12;
+        /// <summary>活敌达到这个数才算「密集段」，帧时间才有判据。</summary>
+        internal const int DenseLivingThreshold = 6;
+        internal const int JournalHomeExpected = 2;
+        internal const int BriefMaxChars = 40;
+        /// <summary>第三轮（CR-2026-09-13-010）补的 5 组：三个中继平台、栈道与钟庭各一组。</summary>
+        internal static readonly string[] NewAutoEncounterIds = { "K1_Relay", "K2_Relay", "K3_Relay", "E_03", "H_02" };
+
+        /// <summary>
+        /// SKY_BOUNTY_GATING 的判据。
+        ///
+        /// 前三类（清理威胁 / 搜刮补给 / 巡视区域）是**硬门**：可完成量只随本趟进度单调递减，接单时 available ≥ target
+        /// 就保证做得完，所以「在手的单做不完」一定是死单，判红。
+        ///
+        /// 驱蚋是**软门**（`SkyIslandSessionGnatBounty.AvailableGnatCull` 的注释写明）：刷新是概率事件、白天可完成量归零、
+        /// 玩家焚香或站在灶火烟里就能把供给压没，而退单出口一直挂着。白天带着没做完的驱蚋单是合法状态，
+        /// 只记进 metrics（`soft=…`），不判红——旧判据对四类一律硬判，白天跑 F3 必定假红。
+        /// </summary>
+        internal static bool JudgeBountyGating(SkyIslandBountyKind[] kinds, Func<SkyIslandBountyKind, int> targetFor,
+            Func<SkyIslandBountyKind, int> availableFor, bool hasActive, SkyIslandBountyKind active, int progress, int target,
+            int completedRounds, int groundRegions, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> parts = new List<string>();
+            List<string> errors = new List<string>();
+            string soft = "none";
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                int kindTarget = targetFor(kinds[i]);
+                int available = availableFor(kinds[i]);
+                parts.Add(kinds[i] + "=avail " + available + "/target " + kindTarget);
+                if (kindTarget <= 0) errors.Add(kinds[i] + ":target_not_positive");
+            }
+            // 派单门控的全部意义就是「只派做得完的单」：接了单却没有可完成量就是死单（驱蚋除外，见上）。
+            if (hasActive && availableFor(active) + progress < target)
+            {
+                if (active == SkyIslandBountyKind.Gnats) soft = "gnats_unfinishable_now(abandon_available)";
+                else errors.Add("active_contract_unfinishable");
+            }
+            if (completedRounds > SkyIslandBounty.MaxRounds) errors.Add("rounds_over_max");
+            // 巡岛可完成量不得超过本局真正索引到的区域数。旧口径按 POI_ 节点计数，装饰节点 POI_B_Mural 让它
+            // 永久多算 1——剩 3 个真区域时算成 4，正好派得出一张做不完的「巡视群岛区域 ×4」。
+            if (availableFor(SkyIslandBountyKind.Survey) > groundRegions) errors.Add("survey_available_exceeds_regions");
+            metrics = "ground_regions=" + groundRegions + ",rounds=" + completedRounds + "/" + SkyIslandBounty.MaxRounds
+                + ",active=" + active + ",progress=" + progress + "/" + target + ",soft=" + soft
+                + " | " + string.Join(" ", parts.ToArray());
+            if (errors.Count > 0) reason = "委托门控不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_CHOICE_GATES 的判据。
+        ///
+        /// ① 全部剧情动作 × {当前进度, 新档}：<c>CanApply</c> 与 <c>TryApply</c> 的判决逐条一致。两者都经过私有的
+        ///    <c>SkyIslandStoryRules.Describe</c>（结构由 <c>tests/SkyIslandChoiceGateGuard.py</c> 钉），这里在真实存档上把行为跑一遍：
+        ///    能做时 TryApply 必须真的改了旗标；给了「还差什么」时它必须与 TryApply 的拒绝回话逐字相同。
+        /// ② 选项类型没有「灰掉」这一态：字段只有 Label 与 Select。
+        /// ③ 本趟打开过手记时，首页实际挂出的项数必须是 2；没打开过只记 not_opened_this_raid，不判。
+        /// ④ 20 处见闻都有自己的导语（不是兜底文案）；中文语境下每句 ≤40 字。英文长度另有版式把关，这里不判。
+        /// </summary>
+        internal static bool JudgeChoiceGates(SkyIslandStoryData current, int journalHomeChoices, bool chinese,
+            string[] choiceFields, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            int pairs = 0, applicable = 0, hinted = 0;
+            SkyIslandStoryData[] samples = { current, SkyIslandStoryRules.CreateDefault() };
+            for (int s = 0; s < samples.Length; s++)
+            {
+                SkyIslandStoryData sample = samples[s];
+                if (sample == null) { errors.Add("story_data_missing"); continue; }
+                foreach (SkyIslandStoryAction action in Enum.GetValues(typeof(SkyIslandStoryAction)))
+                {
+                    string blocker;
+                    bool can = SkyIslandStoryRules.CanApply(sample, action, out blocker);
+                    SkyIslandStoryData candidate;
+                    string message;
+                    bool tried = SkyIslandStoryRules.TryApply(sample, action, out candidate, out message);
+                    pairs++;
+                    string tag = (s == 0 ? "current:" : "default:") + action;
+                    if (can != tried) { errors.Add(tag + ":can_apply=" + can + "/try_apply=" + tried); continue; }
+                    if (can)
+                    {
+                        applicable++;
+                        if (candidate == null || candidate.flags == sample.flags) errors.Add(tag + ":apply_changed_nothing");
+                    }
+                    else if (blocker != null)
+                    {
+                        hinted++;
+                        if (!string.Equals(blocker, message, StringComparison.Ordinal)) errors.Add(tag + ":hint_differs_from_refusal");
+                    }
+                }
+            }
+            bool shapeOk = choiceFields != null && choiceFields.Length == 2
+                && Array.IndexOf(choiceFields, "Label") >= 0 && Array.IndexOf(choiceFields, "Select") >= 0;
+            string fields = choiceFields == null ? "null" : string.Join("+", choiceFields);
+            if (!shapeOk) errors.Add("choice_type_fields=" + fields);
+            if (journalHomeChoices >= 0 && journalHomeChoices != JournalHomeExpected)
+                errors.Add("journal_home_items=" + journalHomeChoices + "/" + JournalHomeExpected);
+
+            string fallback = SkyIslandPointText.Brief("__sky_island_not_a_point__");
+            List<string> fallbackBriefs = new List<string>();
+            List<string> longBriefs = new List<string>();
+            int briefs = 0, longest = 0;
+            string[][] chapters = SkyIslandJournal.Chapters;
+            for (int c = 0; c < chapters.Length; c++)
+            {
+                for (int i = 0; i < chapters[c].Length; i++)
+                {
+                    string id = chapters[c][i];
+                    string brief = SkyIslandPointText.Brief(id);
+                    briefs++;
+                    if (string.IsNullOrEmpty(brief) || string.Equals(brief, fallback, StringComparison.Ordinal))
+                    {
+                        fallbackBriefs.Add(id);
+                        continue;
+                    }
+                    if (brief.Length > longest) longest = brief.Length;
+                    if (chinese && brief.Length > BriefMaxChars) longBriefs.Add(id + "=" + brief.Length);
+                }
+            }
+            if (briefs != SkyIslandJournal.NoteCount) errors.Add("brief_points=" + briefs + "/" + SkyIslandJournal.NoteCount);
+            if (fallbackBriefs.Count > 0) errors.Add("brief_fallback:" + string.Join("+", fallbackBriefs.ToArray()));
+            if (longBriefs.Count > 0) errors.Add("brief_over_" + BriefMaxChars + ":" + string.Join("+", longBriefs.ToArray()));
+
+            metrics = "action_pairs=" + pairs + ",applicable=" + applicable + ",hinted=" + hinted
+                + ",journal_home=" + (journalHomeChoices < 0 ? "not_opened_this_raid" : journalHomeChoices.ToString())
+                + ",briefs=" + briefs + ",longest_brief=" + longest + (chinese ? "(zh)" : "(en,length_not_judged)")
+                + ",choice_fields=" + fields;
+            if (errors.Count > 0) reason = "选项门不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_ENCOUNTER_CAP 的内容表半边：遭遇组 21、敌人 61；第三轮新增的 5 组都是自动组；
+        /// 码头 A 与风铃集 B 没有自动组（刻意的安全枢纽）。区域按「id 前缀」与「标记名第二段」两头认，任一头落在 A / B 都算。
+        /// </summary>
+        internal static bool JudgeEncounterTable(SkyIslandContentData content, out string metrics, out string reason)
+        {
+            reason = null;
+            SkyIslandEncounterDefinition[] encounters = content == null ? null : content.Encounters;
+            if (encounters == null) { metrics = "encounters=null"; reason = "内容表没有遭遇组"; return false; }
+            List<string> errors = new List<string>();
+            int enemies = 0, auto = 0;
+            List<string> safeHubAuto = new List<string>();
+            for (int i = 0; i < encounters.Length; i++)
+            {
+                SkyIslandEncounterDefinition encounter = encounters[i];
+                enemies += encounter.Count;
+                if (encounter.Manual) continue;
+                auto++;
+                string byId = RegionToken(encounter.Id, false), byMarker = RegionToken(encounter.Marker, true);
+                if (byId == "A" || byId == "B" || byMarker == "A" || byMarker == "B")
+                    safeHubAuto.Add(encounter.Id + "@" + encounter.Marker);
+            }
+            List<string> newGroups = new List<string>();
+            for (int i = 0; i < NewAutoEncounterIds.Length; i++)
+            {
+                bool found = false;
+                for (int j = 0; j < encounters.Length; j++)
+                {
+                    if (!string.Equals(encounters[j].Id, NewAutoEncounterIds[i], StringComparison.Ordinal)) continue;
+                    found = true;
+                    if (encounters[j].Manual) newGroups.Add(NewAutoEncounterIds[i] + ":manual");
+                }
+                if (!found) newGroups.Add(NewAutoEncounterIds[i] + ":missing");
+            }
+            if (encounters.Length != ExpectedEncounterGroups) errors.Add("groups=" + encounters.Length + "/" + ExpectedEncounterGroups);
+            if (enemies != ExpectedEncounterEnemies) errors.Add("enemies=" + enemies + "/" + ExpectedEncounterEnemies);
+            if (newGroups.Count > 0) errors.Add("new_auto_groups:" + string.Join("+", newGroups.ToArray()));
+            if (safeHubAuto.Count > 0) errors.Add("auto_group_in_safe_hub:" + string.Join("+", safeHubAuto.ToArray()));
+            metrics = "table_groups=" + encounters.Length + ",table_enemies=" + enemies + ",auto_groups=" + auto
+                + ",new_auto_ok=" + (newGroups.Count == 0) + ",safe_hub_auto=" + safeHubAuto.Count;
+            if (errors.Count > 0) reason = "遭遇内容表不合格：" + string.Join(",", errors.ToArray()) + "；";
+            return errors.Count == 0;
+        }
+
+        /// <summary>`C_02` → C、`K1_Relay` → K1（按 id 取第一段）；`EnemySpawn_S1` → S1、`Relay_K1` → K1（按标记取第二段）。</summary>
+        internal static string RegionToken(string name, bool marker)
+        {
+            if (string.IsNullOrEmpty(name)) return string.Empty;
+            string[] parts = name.Split('_');
+            if (marker) return parts.Length > 1 ? parts[1] : string.Empty;
+            return parts[0];
+        }
+
+        /// <summary>
+        /// SKY_ENCOUNTER_CAP 的运行时半边：采样窗口里活敌峰值 ≤12；本局装配出的遭遇组数与内容表一致；
+        /// 活敌达到密集段时帧时间 p95 不越阈值（与 SKY_PERF_FINAL_5S 同一条：基线 p95 × 1.75，至少 50 ms）。
+        /// 不在密集段时帧时间只进 metrics，不判。
+        /// </summary>
+        internal static bool JudgeEncounterRuntime(int groupsBuilt, int livingStart, int livingPeak, int samples, float p95Ms,
+            float peakMs, float thresholdMs, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            bool dense = livingPeak >= DenseLivingThreshold;
+            if (groupsBuilt != ExpectedEncounterGroups) errors.Add("groups_built=" + groupsBuilt + "/" + ExpectedEncounterGroups);
+            if (livingPeak > LivingEnemyCap) errors.Add("living_peak=" + livingPeak + ">" + LivingEnemyCap);
+            if (dense && samples > 0 && p95Ms > thresholdMs)
+                errors.Add("dense_p95_ms=" + p95Ms.ToString("F2") + ">" + thresholdMs.ToString("F2"));
+            metrics = "groups_built=" + groupsBuilt + ",living_start=" + livingStart + ",living_peak=" + livingPeak + "/" + LivingEnemyCap
+                + ",dense=" + dense + "(>=" + DenseLivingThreshold + "),samples=" + samples + ",p95_ms=" + p95Ms.ToString("F2")
+                + ",peak_ms=" + peakMs.ToString("F2") + ",threshold_ms=" + thresholdMs.ToString("F2");
+            if (errors.Count > 0) reason = "遭遇上限或密集段帧时间不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_LAMPS_WIND 的判据。
+        /// ① 三处灶火锚点都在且都亮着；七盏风晶灯「存档里点过」⇔「场景里有那盏灯」，锚点一个不缺；
+        ///    owner 记的缺失盏数为 0，owner 手里的盏数与存档算出来的一致。
+        /// ② 风级读回：最近一次夜风采样按纯规则复算，大风档必须对得上；实际施加的风级要么等于大风档，
+        ///    要么是噬风之核把大风压成的微风；参与判定的盏数必须是「存档盏数 − 缺失锚点」。还没采过样只记 not_sampled_yet。
+        /// </summary>
+        internal static bool JudgeLampsWind(SkyIslandStoryData data, Func<string, bool> anchorPresent, Func<string, bool> fireBuilt,
+            int missingFireAnchors, int lightsLit, SkyIslandWindSample wind, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            List<string> missingAnchors = new List<string>();
+            List<string> mismatch = new List<string>();
+            int lampsLit = 0;
+            string[] hearths = SkyIslandLights.HearthMarkers;
+            for (int i = 0; i < hearths.Length; i++)
+            {
+                if (!anchorPresent(hearths[i])) missingAnchors.Add(hearths[i]);
+                else if (!fireBuilt(hearths[i])) mismatch.Add(hearths[i] + ":hearth_dark");
+            }
+            SkyIslandLight[] lamps = SkyIslandLights.All;
+            for (int i = 0; i < lamps.Length; i++)
+            {
+                bool lit = SkyIslandLights.Lit(data, lamps[i].Id);
+                if (lit) lampsLit++;
+                if (!anchorPresent(lamps[i].Marker)) { missingAnchors.Add(lamps[i].Marker); continue; }
+                bool shown = fireBuilt(lamps[i].Marker);
+                if (lit != shown) mismatch.Add(lamps[i].Id + (lit ? ":saved_lit_but_dark" : ":dark_in_save_but_lit"));
+            }
+            if (missingAnchors.Count > 0) errors.Add("anchor_missing:" + string.Join("+", missingAnchors.ToArray()));
+            if (missingFireAnchors != 0) errors.Add("missing_fire_anchors=" + missingFireAnchors);
+            if (mismatch.Count > 0) errors.Add("lamp_vs_save:" + string.Join("+", mismatch.ToArray()));
+            int saved = SkyIslandLights.LitCount(data);
+            if (lightsLit != saved) errors.Add("lights_lit=" + lightsLit + "/save=" + saved);
+
+            string windText = "not_sampled_yet";
+            if (wind.Sampled)
+            {
+                int gale = SkyIslandFieldcraftRules.WindLevel(SkyIslandFieldcraftRules.NightWind(wind.Night, wind.EffectiveLights),
+                    wind.OnBridge, wind.OnBoardwalk, wind.StormPending);
+                bool eased = wind.Level == SkyIslandFieldcraftRules.CoreEased(wind.Gale, true);
+                if (wind.Gale != gale) errors.Add("wind_gale_readback=" + wind.Gale + "/rule=" + gale);
+                if (wind.Level != wind.Gale && !eased) errors.Add("wind_level_readback=" + wind.Level + "/gale=" + wind.Gale);
+                if (wind.Level < 0 || wind.Level > 2) errors.Add("wind_level_out_of_range=" + wind.Level);
+                if (wind.EffectiveLights != lightsLit - missingFireAnchors)
+                    errors.Add("wind_effective_lights=" + wind.EffectiveLights + "/" + (lightsLit - missingFireAnchors));
+                windText = "level=" + wind.Level + ",gale=" + wind.Gale + ",night=" + wind.Night + ",bridge=" + wind.OnBridge
+                    + ",boardwalk=" + wind.OnBoardwalk + ",storm_pending=" + wind.StormPending + ",effective_lights=" + wind.EffectiveLights;
+            }
+            metrics = "lamps_saved=" + lampsLit + "/" + lamps.Length + ",lights_lit=" + lightsLit + "/" + SkyIslandLights.Target
+                + ",hearths=" + hearths.Length + ",missing_fire_anchors=" + missingFireAnchors + ",wind(" + windText + ")";
+            if (errors.Count > 0) reason = "灯与风不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_OFFICIAL_NOTES 的判据（岛上、基地各跑一次）。口径同 <c>SkyIslandNoteBridge</c>：**我们的存档是唯一权威，官方图鉴只做镜像**。
+        /// 20 处见闻在官方 NoteIndex 的 notes 列表里各恰好一条（只写字典不写列表的话界面一条也看不见）；
+        /// 官方解锁状态与我们的存档逐条一致；标题取得到、且不是裸 key（本地化没注入时官方显示的就是 key）。
+        /// </summary>
+        internal static bool JudgeOfficialNotes(SkyIslandStoryData data, IList<string> officialKeys, Func<string, bool> unlocked,
+            Func<string, string> titleOf, string where, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            List<string> missing = new List<string>(), duplicated = new List<string>(), state = new List<string>(),
+                rawTitles = new List<string>();
+            int total = 0, recorded = 0, lit = 0;
+            string[][] chapters = SkyIslandJournal.Chapters;
+            for (int c = 0; c < chapters.Length; c++)
+            {
+                for (int i = 0; i < chapters[c].Length; i++)
+                {
+                    string id = chapters[c][i];
+                    string key = SkyIslandNoteBridge.BuildNoteKey(id);
+                    total++;
+                    int count = 0;
+                    for (int n = 0; n < officialKeys.Count; n++)
+                        if (string.Equals(officialKeys[n], key, StringComparison.Ordinal)) count++;
+                    if (count == 0) { missing.Add(id); continue; }
+                    if (count > 1) duplicated.Add(id + "x" + count);
+                    bool ours = data != null && SkyIslandJournal.Recorded(data, id);
+                    bool theirs = unlocked(key);
+                    if (ours) recorded++;
+                    if (theirs) lit++;
+                    if (ours != theirs) state.Add(id + (ours ? ":recorded_but_locked" : ":not_recorded_but_unlocked"));
+                    string title = titleOf(key);
+                    if (string.IsNullOrEmpty(title) || title.IndexOf("Note_" + key + "_Title", StringComparison.Ordinal) >= 0)
+                        rawTitles.Add(id);
+                }
+            }
+            if (data == null) errors.Add("story_data_missing");
+            if (total != SkyIslandJournal.NoteCount) errors.Add("points=" + total + "/" + SkyIslandJournal.NoteCount);
+            if (missing.Count > 0) errors.Add("not_in_notes_list:" + string.Join("+", missing.ToArray()));
+            if (duplicated.Count > 0) errors.Add("duplicated:" + string.Join("+", duplicated.ToArray()));
+            if (state.Count > 0) errors.Add("unlock_vs_save:" + string.Join("+", state.ToArray()));
+            if (rawTitles.Count > 0) errors.Add("raw_or_empty_title:" + string.Join("+", rawTitles.ToArray()));
+            metrics = "where=" + where + ",listed=" + (total - missing.Count) + "/" + total + ",recorded_in_save=" + recorded
+                + ",unlocked_in_official=" + lit + ",duplicated=" + duplicated.Count + ",raw_titles=" + rawTitles.Count;
+            if (errors.Count > 0) reason = "官方图鉴镜像不合格（" + where + "）：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_KEEPSAKE_ITEMS 的判据（岛上、基地各跑一次）。晴岚航徽、噬风之核各至多一件（背包含容器 + 基地仓库）；
+        /// 两件的图标取得到、且不是运行时兜底克隆源的图标。在基地时再核对岛上耗材一样都没跟回来：
+        /// 采集 / 合成 / 夜风 owner、云蚋 owner 与头顶那盏风灯都已经不在。
+        /// </summary>
+        internal static bool JudgeKeepsakes(int badgeCount, int coreCount, string badgeIcon, string coreIcon, bool atBase,
+            bool fieldcraftLeft, bool gnatsLeft, bool lanternLeft, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            if (badgeCount > 1) errors.Add("homecoming_badge=" + badgeCount);
+            if (coreCount > 1) errors.Add("windeater_core=" + coreCount);
+            if (!string.Equals(badgeIcon, "ok", StringComparison.Ordinal)) errors.Add("badge_icon:" + badgeIcon);
+            if (!string.Equals(coreIcon, "ok", StringComparison.Ordinal)) errors.Add("core_icon:" + coreIcon);
+            if (atBase)
+            {
+                if (fieldcraftLeft) errors.Add("fieldcraft_owner_left_on_base");
+                if (gnatsLeft) errors.Add("gnat_owner_left_on_base");
+                if (lanternLeft) errors.Add("wind_lantern_light_left_on_base");
+            }
+            metrics = "where=" + (atBase ? "base" : "island") + ",badge=" + badgeCount + "/1,core=" + coreCount + "/1"
+                + ",badge_icon=" + badgeIcon + ",core_icon=" + coreIcon
+                + (atBase ? ",fieldcraft_left=" + fieldcraftLeft + ",gnats_left=" + gnatsLeft + ",lantern_left=" + lanternLeft : string.Empty);
+            if (errors.Count > 0) reason = "纪念品或离岛残留不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_GATHER_NODES 的判据。30 处采集点全部落位（离线交互竞争属性测试已按真实几何算过都落得下，少一处就是真缺陷）；
+        /// 已经建出来的每一处都有贴地光斑精灵，读条时长读回来等于规则值（官方字段改名时会变成秒采）。
+        /// 交互体走进 60 m 才建：一个都还没建时后两条判据不适用，记 SKIP。
+        /// </summary>
+        internal static bool JudgeGatherNodes(int nodes, int placed, int built, int harvested, IList<string> glowMissing,
+            IList<string> timeMismatch, out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = "nodes=" + nodes + ",placed=" + placed + ",built=" + built + ",harvested=" + harvested
+                + ",glow_missing=" + glowMissing.Count + ",time_mismatch=" + timeMismatch.Count;
+            if (placed != nodes)
+            {
+                reason = "有采集点没有落位（运行时静默跳过）：placed=" + placed + "/" + nodes;
+                return false;
+            }
+            if (built == 0) throw new SkyIslandSkipCase("no_gather_node_built_yet", metrics);
+            List<string> errors = new List<string>();
+            if (glowMissing.Count > 0) errors.Add("glow_disc_missing:" + JoinList(glowMissing));
+            if (timeMismatch.Count > 0) errors.Add("interact_time_mismatch:" + JoinList(timeMismatch));
+            if (errors.Count > 0) reason = "采集点不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        /// <summary>
+        /// SKY_LETTER_PIGEON 的判据。
+        /// 信鸽在场 ⇔ 手里有信，且在场时一次性落点闩一定是合上的；带的信没收过、前置已满足，并且就是
+        /// <c>SkyIslandLetters.NextFor</c> 算出来的那一封——唯一的例外是放下之后剧情推进、一封有前置的信排到了前面
+        /// （它会等这只信鸽被收下之后再来，TickPigeon 的注释写明「未收的信不被替换」）。
+        /// 闩合上而信鸽不在是合法的（这一趟找不到净空、或存档写不进去就不放），只记 metrics。
+        /// </summary>
+        internal static bool JudgeLetterPigeon(SkyIslandStoryData data, string carriedLetterId, bool latch, bool present,
+            bool objectNamed, bool canWrite, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            SkyIslandLetter next = SkyIslandLetters.NextFor(data);
+            SkyIslandLetter sameRaid = SkyIslandLetters.NextSameRaidFor(data);
+            if (data == null) errors.Add("story_data_missing");
+            if (present && !latch) errors.Add("pigeon_present_without_latch");
+            if (present && carriedLetterId == null) errors.Add("pigeon_without_letter");
+            if (!present && carriedLetterId != null) errors.Add("letter_without_pigeon");
+            if (present && carriedLetterId != null)
+            {
+                if (!objectNamed) errors.Add("pigeon_object_not_named_after_letter");
+                SkyIslandLetter carried = SkyIslandLetters.Find(carriedLetterId);
+                if (carried == null) errors.Add("unknown_letter:" + carriedLetterId);
+                else
+                {
+                    if (SkyIslandLetters.Collected(data, carried.Id)) errors.Add("carrying_collected_letter:" + carried.Id);
+                    if (!SkyIslandLetters.Unlocked(data, carried)) errors.Add("carrying_locked_letter:" + carried.Id);
+                    bool isNext = next != null && string.Equals(next.Id, carried.Id, StringComparison.Ordinal);
+                    bool preemptedByGated = next != null && next.Requires != SkyIslandStoryFlag.None;
+                    if (!isNext && !preemptedByGated)
+                        errors.Add("carrying_" + carried.Id + "_but_next_is_" + (next == null ? "none" : next.Id));
+                }
+            }
+            metrics = "present=" + present + ",latch=" + latch + ",carried=" + (carriedLetterId ?? "none")
+                + ",next_for=" + (next == null ? "none" : next.Id) + ",next_same_raid=" + (sameRaid == null ? "none" : sameRaid.Id)
+                + ",collected=" + SkyIslandLetters.CollectedCount(data) + ",can_write=" + canWrite;
+            if (errors.Count > 0) reason = "信鸽不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        private static string JoinList(IList<string> values)
+        {
+            string[] array = new string[values.Count];
+            for (int i = 0; i < values.Count; i++) array[i] = values[i];
+            return string.Join("+", array);
+        }
+
+        #endregion
+
+        #region 取数（Unity 侧，只读）
+
+        /// <summary>SKY_ENCOUNTER_CAP 的帧时间采样窗口（秒）。</summary>
+        private const float EncounterSampleSeconds = 3f;
+
+        /// <summary>面板整屏底图的资源名前缀，与 SkyIslandUiArt 私有的 BackgroundPrefix 同值；F3 只探测、不解码。</summary>
+        private const string PanelBackgroundAssetPrefix = "skyisland_bg_";
+
+        private bool ValidateSkyIslandChoiceGates(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            SkyIslandStoryService story = session == null ? null : session.ValidationStory;
+            if (story == null) { reason = "story_service_missing"; return false; }
+            FieldInfo[] fields = typeof(SkyIslandStoryPresentation.Choice).GetFields(
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            string[] names = new string[fields.Length];
+            for (int i = 0; i < fields.Length; i++) names[i] = fields[i].Name;
+            return JudgeChoiceGates(story.Current, session.ValidationJournalHomeChoices, L10n.IsChinese, names,
+                out metrics, out reason);
+        }
+
+        /// <summary>
+        /// 活敌上限与密集段帧时间。钩子是 <c>SkyIslandEncounters.LivingEnemyCount</c>（经 ValidationLivingEnemies）。
+        /// 采样 3 秒：只读 unscaledDeltaTime 与活敌数，不刷怪、不搬人，所以「密集段」取决于跑的时候玩家站在哪儿——
+        /// 要验帧时间，就站到三个中继平台连着的那一段再按（清单写明）。
+        /// </summary>
+        private IEnumerator RunSkyIslandEncounterCap()
+        {
+            Stopwatch sw = Stopwatch.StartNew();
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            if (session == null)
+            {
+                Record("SKY_ENCOUNTER_CAP", "FAIL", 0L, string.Empty, "session_missing");
+                yield break;
+            }
+            string tableMetrics, tableReason;
+            bool table = JudgeEncounterTable(SkyIslandContent.CreateFallback(), out tableMetrics, out tableReason);
+            int groups = session.ValidationSnapshot().EncounterGroups;
+            int livingStart = session.ValidationLivingEnemies;
+            int livingPeak = livingStart;
+            List<float> frames = new List<float>(256);
+            float until = Time.realtimeSinceStartup + EncounterSampleSeconds;
+            while (Time.realtimeSinceStartup < until && !ShouldAbort())
+            {
+                yield return null;
+                string gone;
+                if (!SkyIslandSessionStillValid(out gone))
+                {
+                    Record("SKY_ENCOUNTER_CAP", "SKIP", sw.ElapsedMilliseconds, tableMetrics, gone);
+                    yield break;
+                }
+                float ms = Time.unscaledDeltaTime * 1000f;
+                if (ms > 0f) frames.Add(ms);
+                int living = session.ValidationLivingEnemies;
+                if (living > livingPeak) livingPeak = living;
+            }
+            frames.Sort();
+            float p95 = frames.Count > 0 ? frames[Mathf.Clamp(Mathf.CeilToInt(frames.Count * 0.95f) - 1, 0, frames.Count - 1)] : 0f;
+            float peak = frames.Count > 0 ? frames[frames.Count - 1] : 0f;
+            float threshold = Mathf.Max(50f, _baselineP95Ms * 1.75f);
+            string runtimeMetrics, runtimeReason;
+            bool runtime = JudgeEncounterRuntime(groups, livingStart, livingPeak, frames.Count, p95, peak, threshold,
+                out runtimeMetrics, out runtimeReason);
+            string metrics = tableMetrics + "," + runtimeMetrics;
+            if (table && runtime) Record("SKY_ENCOUNTER_CAP", "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
+            else Record("SKY_ENCOUNTER_CAP", "FAIL", sw.ElapsedMilliseconds, metrics, (tableReason ?? string.Empty) + (runtimeReason ?? string.Empty));
+        }
+
+        private bool ValidateSkyIslandLampsWind(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            GameObject root = session == null ? null : session.ValidationWorldRoot;
+            SkyIslandStoryService story = session == null ? null : session.ValidationStory;
+            if (root == null || story == null) { reason = "world_root_or_story_missing"; return false; }
+            SkyIslandFieldcraft field = SkyIslandFieldcraft.Current;
+            if (field == null) { reason = "fieldcraft_owner_missing：营火、风晶灯与夜风都没有装配"; return false; }
+            Transform world = root.transform;
+            return JudgeLampsWind(story.Current, marker => world.Find(marker) != null,
+                marker => world.Find("SkyIslandFire_" + marker) != null, field.MissingFireAnchors, field.LightsLit,
+                field.WindSample, out metrics, out reason);
+        }
+
+        private bool ValidateSkyIslandOfficialNotes(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            SkyIslandStoryService story = session == null ? null : session.ValidationStory;
+            if (story == null) { reason = "story_service_missing"; return false; }
+            return JudgeOfficialNotesNow(story.Current, "island", out metrics, out reason);
+        }
+
+        /// <summary>
+        /// 主套件在基地跑的那一次。权威副本从存档里读——与 <c>SkyIslandNoteBridge.Tick</c> 在基地的口径一致
+        /// （`SavesSystem.Load` 只读缓存，不初始化、不改写剧情存档）。回基地之后条目还在、状态还对，才算镜像落了盘。
+        /// </summary>
+        private bool ValidateSkyIslandOfficialNotesAtBase(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            if (LevelManager.Instance == null || !LevelManager.Instance.IsBaseLevel)
+                throw new SkyIslandSkipCase("not_in_base", "is_base_level=false");
+            SkyIslandStoryData data;
+            if (!SavesSystem.KeyExisits(SkyIslandStoryRules.StorageKey)) data = SkyIslandStoryRules.CreateDefault();
+            else
+            {
+                data = SkyIslandStoryCodec.Decode(SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey));
+                if (data == null) { reason = "群岛记录无法解码：官方图鉴镜像没有可比对的权威副本"; return false; }
+            }
+            return JudgeOfficialNotesNow(data, "base", out metrics, out reason);
+        }
+
+        private static bool JudgeOfficialNotesNow(SkyIslandStoryData data, string where, out string metrics, out string reason)
+        {
+            NoteIndex index = NoteIndex.Instance;
+            List<Note> notes = index == null ? null : index.Notes;
+            if (notes == null)
+            {
+                metrics = "where=" + where + ",note_index=" + (index != null);
+                reason = "官方 NoteIndex 或它的 notes 列表不可用";
+                return false;
+            }
+            List<string> keys = new List<string>(notes.Count);
+            Dictionary<string, string> titles = new Dictionary<string, string>(StringComparer.Ordinal);
+            for (int i = 0; i < notes.Count; i++)
+            {
+                Note note = notes[i];
+                if (note == null || note.key == null) continue;
+                keys.Add(note.key);
+                if (!note.key.StartsWith(SkyIslandNoteBridge.NoteKeyPrefix, StringComparison.Ordinal) || titles.ContainsKey(note.key))
+                    continue;
+                string title;
+                try { title = note.Title; }
+                catch (Exception e) { title = "!" + e.GetType().Name; }
+                titles[note.key] = title;
+            }
+            return JudgeOfficialNotes(data, keys, NoteIndex.GetNoteUnlocked,
+                key => { string title; return titles.TryGetValue(key, out title) ? title : null; },
+                where, out metrics, out reason);
+        }
+
+        private bool ValidateSkyIslandKeepsakes(out string metrics, out string reason)
+        {
+            return JudgeKeepsakesNow(false, out metrics, out reason);
+        }
+
+        private bool ValidateSkyIslandKeepsakesAtBase(out string metrics, out string reason)
+        {
+            if (LevelManager.Instance == null || !LevelManager.Instance.IsBaseLevel)
+                throw new SkyIslandSkipCase("not_in_base", "is_base_level=false");
+            return JudgeKeepsakesNow(true, out metrics, out reason);
+        }
+
+        private static bool JudgeKeepsakesNow(bool atBase, out string metrics, out string reason)
+        {
+            string badgeWhere, coreWhere;
+            int badge = CountOwnedItems(BossRushItemIds.SkyIslandHomecomingBadge, out badgeWhere);
+            int core = CountOwnedItems(BossRushItemIds.SkyIslandWindeaterCore, out coreWhere);
+            bool ok = JudgeKeepsakes(badge, core, DescribeKeepsakeIcon(BossRushItemIds.SkyIslandHomecomingBadge),
+                DescribeKeepsakeIcon(BossRushItemIds.SkyIslandWindeaterCore), atBase,
+                SkyIslandFieldcraft.Current != null, SkyIslandGnats.Current != null,
+                GameObject.Find("SkyIslandLanternLight") != null, out metrics, out reason);
+            metrics += ",badge_where=" + badgeWhere + ",core_where=" + coreWhere;
+            return ok;
+        }
+
+        /// <summary>背包（含背包里的容器）与基地仓库里某一件的数量。仓库在当前场景不可用时记 n/a、按 0 算。</summary>
+        private static int CountOwnedItems(int typeId, out string where)
+        {
+            int pack = 0, storage = -1;
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main != null && main.CharacterItem != null) pack = CountInInventory(main.CharacterItem.Inventory, typeId, 0);
+            }
+            catch (Exception) { pack = -1; }
+            try
+            {
+                if (PlayerStorage.Inventory != null) storage = CountInInventory(PlayerStorage.Inventory, typeId, 0);
+            }
+            catch (Exception) { storage = -1; }
+            where = "pack:" + (pack < 0 ? "error" : pack.ToString()) + "/storage:" + (storage < 0 ? "n/a" : storage.ToString());
+            return Math.Max(0, pack) + Math.Max(0, storage);
+        }
+
+        private static int CountInInventory(Inventory inventory, int typeId, int depth)
+        {
+            if (inventory == null || inventory.Content == null || depth > 4) return 0;
+            int total = 0;
+            foreach (Item item in inventory.Content)
+            {
+                if (item == null) continue;
+                if (item.TypeID == typeId) total += item.Stackable ? Math.Max(1, item.StackCount) : 1;
+                if (item.Inventory != null && !ReferenceEquals(item.Inventory, inventory))
+                    total += CountInInventory(item.Inventory, typeId, depth + 1);
+            }
+            return total;
+        }
+
+        /// <summary>
+        /// 纪念品图标：prefab 取得到、图标不为空、且不是运行时兜底克隆源（遗种蛋 / 便携安全区 / 尸潮信标 / 尸潮邀请函，
+        /// 顺序照 `SkyIslandItems.FindRuntimeFallbackSource`）的图标。只读 prefab，不实例化。
+        /// </summary>
+        private static string DescribeKeepsakeIcon(int typeId)
+        {
+            try
+            {
+                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                if (prefab == null) return "prefab_missing";
+                Sprite icon = prefab.Icon;
+                if (icon == null) return "icon_missing";
+                int[] cloneSources =
+                {
+                    BossRushItemIds.RelicEgg, BossRushItemIds.PortableSafeZoneDevice,
+                    BossRushItemIds.ZombieTideBeacon, BossRushItemIds.ZombieTideInvitation
+                };
+                for (int i = 0; i < cloneSources.Length; i++)
+                {
+                    Item source = ItemAssetsCollection.GetPrefab(cloneSources[i]);
+                    Sprite sourceIcon = source == null ? null : source.Icon;
+                    if (sourceIcon == null) continue;
+                    if (ReferenceEquals(sourceIcon, icon) || (icon.texture != null && ReferenceEquals(sourceIcon.texture, icon.texture)))
+                        return "same_as_clone_source_" + cloneSources[i];
+                }
+                return "ok";
+            }
+            catch (Exception e)
+            {
+                return "error_" + e.GetType().Name;
+            }
+        }
+
+        private bool ValidateSkyIslandGatherNodes(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            GameObject root = session == null ? null : session.ValidationWorldRoot;
+            if (root == null) { reason = "world_root_missing"; return false; }
+            SkyIslandFieldcraft field = SkyIslandFieldcraft.Current;
+            if (field == null) { reason = "fieldcraft_owner_missing：采集点没有装配"; return false; }
+            SkyIslandGatherNode[] nodes = SkyIslandFieldcraftRules.Nodes;
+            int built = 0;
+            List<string> glowMissing = new List<string>();
+            List<string> timeMismatch = new List<string>();
+            for (int i = 0; i < nodes.Length; i++)
+            {
+                Transform point = root.transform.Find("SkyIslandGather_" + nodes[i].Id);
+                if (point == null) continue;
+                built++;
+                Transform disc = point.Find("GatherGlowDisc");
+                SpriteRenderer glow = disc == null ? null : disc.GetComponent<SpriteRenderer>();
+                if (glow == null || glow.sprite == null) glowMissing.Add(nodes[i].Id);
+                SkyIslandGatherPoint interact = point.GetComponent<SkyIslandGatherPoint>();
+                float expected = SkyIslandFieldcraftRules.InteractSeconds(nodes[i].Kind);
+                if (interact == null) timeMismatch.Add(nodes[i].Id + ":no_interactable");
+                else if (Mathf.Abs(interact.InteractTime - expected) > 0.01f)
+                    timeMismatch.Add(nodes[i].Id + "=" + interact.InteractTime.ToString("F2") + "/" + expected.ToString("F2"));
+            }
+            return JudgeGatherNodes(nodes.Length, field.GatherPlaced, built, field.GatherHarvested, glowMissing, timeMismatch,
+                out metrics, out reason);
+        }
+
+        private bool ValidateSkyIslandLetterPigeon(out string metrics, out string reason)
+        {
+            reason = null;
+            metrics = string.Empty;
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            GameObject root = session == null ? null : session.ValidationWorldRoot;
+            SkyIslandStoryService story = session == null ? null : session.ValidationStory;
+            if (root == null || story == null) { reason = "world_root_or_story_missing"; return false; }
+            SkyIslandLetter letter = session.ValidationPigeonLetter;
+            bool named = letter != null && root.transform.Find("SkyIslandPigeon_" + letter.Id) != null;
+            return JudgeLetterPigeon(story.Current, letter == null ? null : letter.Id, session.ValidationPigeonPlaced,
+                session.ValidationPigeonPresent, named, story.CanWrite, out metrics, out reason);
+        }
+
+        /// <summary>
+        /// 云蚋运行时。白天记 SKIP；夜里先查「这一趟到底会不会有蚋」——精灵表不可用或开枪补丁没挂上时
+        /// 场上永远是 0 只，若先按「没有蚋」记 SKIP，这两个缺陷就永远不会红，所以它们排在 SKIP 之前；
+        /// 之后场上没有蚋才记 SKIP。有蚋时：活蚋 ≤6；每只与主角移动碰撞体的接触都已屏蔽（否则会把人顶开或卡住）。
+        /// </summary>
+        private bool ValidateSkyIslandGnatRuntime(out string metrics, out string reason)
+        {
+            reason = null;
+            double hours = SkyIslandLighting.ClockHours();
+            bool night = SkyIslandNight.IsNight(hours);
+            SkyIslandFieldcraft field = SkyIslandFieldcraft.Current;
+            SkyIslandGnats swarm = field == null ? null : field.Gnats;
+            string patchDetail;
+            bool patched = GnatProjectilePatchInstalled(out patchDetail);
+            int alive = swarm == null ? 0 : swarm.Alive;
+            metrics = "night=" + night + ",hours=" + hours.ToString("F2") + ",fieldcraft=" + (field != null)
+                + ",swarm=" + (swarm != null) + ",usable=" + (swarm != null && swarm.Usable) + ",alive=" + alive
+                + "/" + SkyIslandMosquitoRules.MaxAlive + ",projectile_patch=" + patchDetail;
+            if (!night) throw new SkyIslandSkipCase("daytime", metrics);
+            if (field == null) { reason = "fieldcraft_owner_missing：云蚋挂在它下面"; return false; }
+            if (swarm == null) { reason = "云蚋装配失败（SkyIslandFieldcraft.Gnats 为空）：这一趟不会刷蚋"; return false; }
+            if (!swarm.Usable) { reason = "云蚋精灵表不可用：这一趟不会刷蚋"; return false; }
+            if (!patched) { reason = "开枪补丁没有挂在 Projectile.Init(ProjectileContext) 上：云蚋躲不了子弹"; return false; }
+            if (alive == 0) throw new SkyIslandSkipCase("no_gnats_on_field", metrics);
+            if (alive > SkyIslandMosquitoRules.MaxAlive) { reason = "活蚋超过上限"; return false; }
+            int inspected;
+            bool colliderFound;
+            int notIgnored = swarm.CountPlayerContactsNotIgnored(out inspected, out colliderFound);
+            metrics += ",inspected=" + inspected + ",player_collider=" + colliderFound + ",contact_not_ignored=" + notIgnored;
+            if (!colliderFound) { reason = "取不到主角的移动碰撞体：接触屏蔽无从核对"; return false; }
+            if (notIgnored > 0) { reason = "有云蚋与主角的接触没有屏蔽：会把主角顶开或卡住"; return false; }
+            return true;
+        }
+
+        /// <summary>开枪补丁是否真的挂在官方 Projectile.Init(ProjectileContext) 的后缀上。只读 Harmony 的补丁表。</summary>
+        private static bool GnatProjectilePatchInstalled(out string detail)
+        {
+            try
+            {
+                MethodBase original = HarmonyLib.AccessTools.Method(typeof(Projectile), "Init", new[] { typeof(ProjectileContext) });
+                if (original == null) { detail = "target_missing"; return false; }
+                HarmonyLib.Patches info = HarmonyLib.Harmony.GetPatchInfo(original);
+                if (info == null) { detail = "no_patches"; return false; }
+                foreach (HarmonyLib.Patch patch in info.Postfixes)
+                {
+                    if (patch != null && patch.PatchMethod != null && patch.PatchMethod.DeclaringType == typeof(SkyIslandGnatProjectilePatch))
+                    {
+                        detail = "postfix_owner_" + patch.owner;
+                        return true;
+                    }
+                }
+                detail = "postfixes_" + info.Postfixes.Count + "_without_sky_island";
+                return false;
+            }
+            catch (Exception e)
+            {
+                detail = "error_" + e.GetType().Name;
+                return false;
+            }
+        }
+
+        #endregion
+    }
+}

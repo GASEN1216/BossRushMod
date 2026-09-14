@@ -32,6 +32,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tests"))
+from cs_source_util import clean_source
 
 UI = "Common/UI/BossRushUI.cs"
 ART = "DebugAndTools/SkyIsland/SkyIslandUiArt.cs"
@@ -92,6 +94,23 @@ def const(src, name, where):
     if not m:
         raise AssertionError("读不到 " + where + " 的常量 " + name)
     return float(m.group(1))
+
+
+def body_of(source, signature):
+    """切出以 signature 开头的方法体；找不到返回空串（调用方的 require 会报出来）。"""
+    start = source.find(signature)
+    if start < 0:
+        return ""
+    brace = source.find("{", start)
+    depth = 0
+    for i in range(brace, len(source)):
+        if source[i] == "{":
+            depth += 1
+        elif source[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return source[brace + 1:i]
+    return ""
 
 
 def required(px):
@@ -217,6 +236,51 @@ def check(sources):
             PANEL + " 主视觉没有标题实底带：单靠 t² 渐变的话不透明度全堆在底边，"
                     "标题最上面那行等于直接压在插图上")
 
+    # ---------- 2.6 剧情面板：悬停 / 键盘焦点与常态之间（2026-09-14）----------
+    # 旧写法有两套、方向还相反：行底写在 image.color，Button 的 highlightedColor 又给了绝对色，
+    # ColorTint 相乘后鼠标悬停反而变暗；键盘 Select() 则把底色换亮。统一成一个焦点色之后，
+    # 「这一行被选中了」是非文本信息：焦点行对常态行按 WCAG 1.4.11 要 3:1，标签压在焦点行上仍要够读。
+    # 底图亮度从 0 扫到最亮那张的 p99：焦点对比最差在暗底（底图透出来的暗色把两者一起压低），标签最差在亮底。
+    lift = const(panel, "ChoiceFocusLift", PANEL)
+    focus_alpha = const(panel, "ChoiceFocusAlpha", PANEL)
+    raised = tokens["SurfaceRaised"][:3]
+    focus_rgb = tuple(raised[i] + (1.0 - raised[i]) * lift for i in range(3))
+    worst_focus = worst_label = None
+    worst_at = 0.0
+    for step in range(0, 76):
+        bg_l = min(PANEL_BG_P99, step / 100.0)
+        base = over(tokens["Surface"][:3] + (tint,), (bg_l,) * 3)
+        normal_row = over(raised + (row_alpha,), base)
+        focus_row = over(focus_rgb + (focus_alpha,), base)
+        value = ratio(focus_row, normal_row)
+        if worst_focus is None or value < worst_focus:
+            worst_focus, worst_at = value, bg_l
+        label = ratio(tokens["TextPrimary"][:3], focus_row)
+        if worst_label is None or label < worst_label:
+            worst_label = label
+    require(worst_focus >= 3.0,
+            "选项焦点行对常态行最差只有 %.2f:1（底图亮度 %.2f；WCAG 1.4.11 非文本要 3:1）："
+            "ChoiceFocusLift=%.2f / ChoiceFocusAlpha=%.2f 抬得不够" % (worst_focus, worst_at, lift, focus_alpha))
+    require(worst_label >= required(choice_font),
+            "选项标签压在焦点行上最差只有 %.2f:1（需要 %.1f:1）：焦点色抬过头了" % (worst_label, required(choice_font)))
+    # 结构：复算的算式就是生产的算式；悬停与键盘当前项都走它；Graphic 置白、行底色不写进 image.color。
+    code = clean_source(panel)
+    focus_fn = body_of(code, "private static Color FocusColor(Color row)")
+    require("Color focus = Color.Lerp(row, Color.white, ChoiceFocusLift);" in focus_fn
+            and "focus.a = ChoiceFocusAlpha;" in focus_fn,
+            PANEL + " 的 FocusColor 不再是「向白插值 ChoiceFocusLift、不透明度 ChoiceFocusAlpha」：守卫复算的对象对不上生产")
+    choice = body_of(code, "private void BuildChoice(")
+    require("ZombieModeUIHelper.ApplyButtonColors(button, rowColor, FocusColor(rowColor)," in choice,
+            PANEL + " 的选项悬停没有走 ApplyButtonColors + FocusColor：Graphic 不置白的话 ColorTint 会把悬停乘暗")
+    require("image.color = rowColor;" not in choice,
+            PANEL + " 又把行底色写进了 image.color：与 ColorBlock 的绝对色相乘，鼠标悬停变暗（2026-09-14 修过的就是这个）")
+    select = body_of(code, "private void Select(int index)")
+    focused = body_of(code, "private void SetFocused(int index, bool focused)")
+    require("SetFocused(index, true);" in select and "FocusColor(buttonColors[index])" in focused,
+            PANEL + " 的键盘当前项没有走同一个 FocusColor：悬停与键盘又会是两种样子")
+    require("GetHoverColor(" not in select + focused + choice,
+            PANEL + " 的选项又用回共享 GetHoverColor：向白 0.22 在半透明行底上只有 1.66:1，不够非文本 3:1")
+
     # ---------- 3. F3 面板：按钮标签必须按底色挑字色 ----------
     require("BossRushUI.GetButtonTextColor(color)" in controls,
             CONTROLS + " 的按钮标签写死字色，没有走 GetButtonTextColor："
@@ -299,6 +363,19 @@ def main():
              "Color Success = new Color(0.18f, 0.52f, 0.36f, 1f)"),
         (UI, "Color Warning = new Color(0.539f, 0.390f, 0.158f, 1f)",
              "Color Warning = new Color(0.58f, 0.42f, 0.17f, 1f)"),
+        # 焦点色抬得不够（退回共享悬停的 0.22）：焦点行对常态行只剩 1.7:1
+        (PANEL, "ChoiceFocusLift = 0.39f", "ChoiceFocusLift = 0.22f"),
+        # 焦点色抬过头：标签在焦点行上读不清
+        (PANEL, "ChoiceFocusLift = 0.39f", "ChoiceFocusLift = 0.60f"),
+        # 焦点行退回常态行的不透明度：0.39 时焦点对比跌破 3:1
+        (PANEL, "ChoiceFocusAlpha = 0.90f", "ChoiceFocusAlpha = 0.78f"),
+        # 行底色又写回 image.color（悬停乘暗的原 bug）
+        (PANEL, "            rowColor.a = ChoiceRowAlpha;\n",
+                "            rowColor.a = ChoiceRowAlpha;\n            image.color = rowColor;\n"),
+        # 悬停退回共享 GetHoverColor
+        (PANEL, "FocusColor(rowColor),", "BossRushUI.GetHoverColor(rowColor),"),
+        # 键盘当前项不再走焦点色
+        (PANEL, "SetFocused(index, true);", "buttons[index].image.color = Color.white;"),
     ]
     for path, before, after in probes:
         if before not in sources[path]:
@@ -316,7 +393,7 @@ def main():
         print("SkyIslandUiContrastGuard: FAIL\n  " + "\n  ".join(errors))
         return 1
     print("SkyIslandUiContrastGuard: PASS（大标题三行 + 字幕两态 × 两档场景亮度 + "
-          "F3 按钮五色 + 描边分层；%d 个反向检查；非 Unity 实机）" % len(probes))
+          "选项焦点对常态 3:1 + F3 按钮五色 + 描边分层；%d 个反向检查；非 Unity 实机）" % len(probes))
     return 0
 
 

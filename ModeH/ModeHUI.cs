@@ -199,6 +199,18 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 观战 HUD 跟随官方界面与暂停菜单收起（常驻 HUD 口径，2026-09-14）。由模块每帧驱动，**不放进 TickHud**：
+        /// TickHud 只在交战期被调，放在里面的话刷怪那几秒 HUD 仍压在 sortingOrder 100 的背包与地图上面。
+        /// 只开关画布：画布关着时拍铃按钮一起点不到，关掉背包后立刻回来。
+        /// </summary>
+        public void ApplyHudVisibility()
+        {
+            if (_hudCanvas == null) return;
+            bool visible = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
+            if (_hudCanvas.enabled != visible) _hudCanvas.enabled = visible;
+        }
+
+        /// <summary>
         /// 刷新 HUD。只在值变化或最多 `HudRefreshIntervalSeconds` 一次时写文本，
         /// 避免每帧字符串分配。
         /// </summary>

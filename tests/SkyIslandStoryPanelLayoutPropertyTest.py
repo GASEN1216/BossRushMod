@@ -52,6 +52,82 @@ C = {n: const(PANEL_SRC, n) for n in (
     'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
 
+
+def cs_eval(expr, env, has_portrait):
+    """把生产里的一条 C# 浮点表达式按 Python 求值。
+
+    只认数字（带 f 后缀）、标识符、四则、`Mathf.Max` / `Mathf.Min` 与**顶层**的
+    `portrait != null ? A : B`；认不出的写法直接抛异常——宁可红，也不许静默算成别的数。
+    """
+    e = re.sub(r'(\d+(?:\.\d+)?)f\b', r'\1', ' '.join(expr.split()))
+    e = e.replace('Mathf.Max', 'max').replace('Mathf.Min', 'min')
+    m = re.fullmatch(r'portrait != null \? (.+) : (.+)', e)
+    if m:
+        e = '(%s) if has_portrait else (%s)' % (m.group(1), m.group(2))
+    if re.search(r'[^\w\s.+\-*/(),]', e):
+        raise AssertionError('认不出的 C# 表达式：' + expr)
+    scope = dict(env)
+    scope['has_portrait'] = has_portrait
+    return float(eval(e, {'__builtins__': {}, 'max': max, 'min': min}, scope))
+
+
+def method_body(src, signature):
+    """切出以 signature 开头的方法体（到配对的收尾大括号为止）。"""
+    start = src.find(signature)
+    if start < 0:
+        raise AssertionError('找不到方法：' + signature)
+    brace = src.index('{', start)
+    depth = 0
+    for i in range(brace, len(src)):
+        if src[i] == '{':
+            depth += 1
+        elif src[i] == '}':
+            depth -= 1
+            if depth == 0:
+                return src[brace + 1:i]
+    raise AssertionError('方法体没有闭合：' + signature)
+
+
+HERO_ASSIGN = re.compile(r'(?:\bfloat\s+)?\b(titleHeight|titleBlock|bandHeight)\s*=(?!=)\s*([^;]+);')
+
+
+def show_title_block(src, title_h, has_portrait):
+    """Show 里 `float titleBlock = …;` 按真实分支求值：它决定主视觉的地板，也是交给 BuildHero 的那一份。"""
+    body = method_body(src, 'internal void Show(string title, string text, IList<Choice> choices,')
+    m = re.search(r'\bfloat\s+titleBlock\s*=(?!=)\s*([^;]+);', body)
+    if not m:
+        raise AssertionError('Show 里找不到 titleBlock 的算式')
+    env = dict(C)
+    env['titleHeight'] = title_h
+    return cs_eval(m.group(1), env, has_portrait)
+
+
+def hero_geometry(src, title_block, hero_h, has_portrait):
+    """按生产 BuildHero 的**真实分支**算它自己用的标题块与实底带高度，返回 (标题块, 实底带)。
+
+    BuildHero 里按出现顺序的 `titleHeight` / `titleBlock` / `bandHeight` 赋值逐条求值，不在这里另写一份：
+    2026-09-13 这份测试与离线预览都自己写了「标题块 = 标题本身」，而 BuildHero 里有立绘时另算的
+    `max(PortraitSize, titleHeight)` 一直留着——居民面板的实底带被 208 的立绘顶到 169 高，
+    盖掉 247 高插图的 68%，三处算术却全绿。
+    """
+    body = method_body(src, 'private static void BuildHero(')
+    env = dict(C)
+    env['titleBlock'] = title_block
+    env['height'] = hero_h
+    band = None
+    for name, expr in HERO_ASSIGN.findall(body):
+        env[name] = cs_eval(expr, env, has_portrait)
+        if name == 'bandHeight':
+            band = env[name]
+            break
+    if band is None:
+        raise AssertionError('BuildHero 里找不到 bandHeight 的算式')
+    return env['titleBlock'], band
+
+
+# 一行标题的居民面板里，实底带最多占主视觉的一半（旧 bug 是 169 / 247 = 68%）。
+BAND_MAX_SHARE = 0.5
+
 # 参考分辨率 1920×1080、Expand 缩放，逻辑视口高度至少 1080。
 # 生产里是 Clamp(viewport.y - 140, 520, 980)，最坏情况取下界。
 MAX_PANEL = min(980.0, 1080.0 - 140.0)
@@ -71,21 +147,22 @@ def text_height(s, width, font):
     return lines * font * 1.25 + 4.0
 
 
-def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 / 288.0):
+def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 / 288.0, src=None):
     """逐字重放 SkyIslandStoryPresentation.Show 的算术。返回各块的高度与面板高。
 
     2026-09-13 版式：标题（与立绘）压在**全出血**的主视觉上，插图不再单占一块。
     从上往下是 hero（无上 Pad）→ Gap → 分隔线 → Gap → 正文 → Gap → 选项 → Gap → 页脚 → 下 Pad。
+    `src` 缺省为生产源码；破坏探针传入改过的源码，按同一套求值走一遍。
     """
+    src = PANEL_SRC if src is None else src
     hero_content_w = C['PanelWidth'] - C['HeroInset'] * 2
     # 立绘贴主视觉右下角、不留 inset，标题让到左边：可用宽度 = 面板宽 − 左 inset − 立绘 − 间距。
     title_w = (C['PanelWidth'] - C['HeroInset'] - C['PortraitSize'] - C['Gap']
                if has_portrait else hero_content_w)
     # 标题开了自动缩放，最坏情况按下限字号量（缩到下限还超就是省略号，不会溢出）
     title_h = max(C['TitleMinHeight'], text_height(title, title_w, C['TitleFontMin']))
-    # 立绘不再和标题抢同一块高度（旧写法 max(PortraitSize, title_h) 会被 160 的立绘顶出
-    # 一条 204 的实底带，把 247 高的插图盖掉 83%）。
-    title_block = title_h
+    # 标题块按生产 Show 的算式求值（不在这里写第二份）；BuildHero 自己用的那一份在收缩之后按真实分支再算。
+    title_block = show_title_block(src, title_h, has_portrait)
 
     # hero 不会被整条撤掉（标题在它上面），只能压到这个地板；带立绘时还要装得下立绘。
     hero_floor = max(C['HeroMinHeight'], title_block + C['HeroInset'] * 2)
@@ -128,12 +205,25 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
             hero_h -= give
             chrome -= give
         panel_h = min(MAX_PANEL, chrome + body_h)
-    # 标题在 title_block 里垂直居中，所以它的上沿在 inset + title_block/2 + title_h/2，
-    # 再加一个 inset 就是渐隐至少要有的高度（与生产 BuildHero 同一条算式）。
-    title_top = C['HeroInset'] * 2 + title_block * 0.5 + title_h * 0.5
+    # 实底带与 BuildHero 自己用的标题块：按生产 BuildHero 的真实分支求值（有立绘 / 无立绘各走各的）。
+    hero_block, band = hero_geometry(src, title_block, hero_h, has_portrait)
+    # 标题在 BuildHero 的标题块里垂直居中，上沿在 inset + block/2 + title_h/2，再加一个 inset 就是渐隐至少要有的高度。
+    title_top = C['HeroInset'] * 2 + hero_block * 0.5 + title_h * 0.5
     return dict(panel=panel_h, hero=hero_h, hero_floor=hero_floor, title=title_block,
+                hero_title=hero_block, band=band, art=hero_art, has_portrait=has_portrait,
                 title_top=title_top, body=body_h, body_natural=body_natural,
                 choices=choice_hs, choices_total=choices_h, divider=divider_block)
+
+
+def resident_band_errors(name, lay):
+    """一行标题 + 立绘 + 区域插图的居民面板：实底带不许盖掉大半张插图。"""
+    if lay['art'] <= 0 or lay['hero'] <= 0:
+        return ['%s: 没有插图，判据不适用' % name]
+    share = lay['band'] / lay['hero']
+    if share > BAND_MAX_SHARE:
+        return ['%s: 实底带 %.0f 盖掉主视觉 %.0f 的 %.0f%%（上限 %.0f%%）'
+                % (name, lay['band'], lay['hero'], share * 100, BAND_MAX_SHARE * 100)]
+    return []
 
 
 def check(name, lay):
@@ -154,6 +244,11 @@ def check(name, lay):
     if lay['title_top'] > fade + 0.5:
         errors.append('%s: 标题上沿 %.1f 高过渐隐 %.1f，会骑到亮插图上'
                       % (name, lay['title_top'], fade))
+    # Show 与 BuildHero 必须是同一份标题块（2026-09-14）：BuildHero 另算一份的话，
+    # 居民面板的实底带会被立绘顶高、盖掉大半张插图，而上面的版式算术照样全绿。
+    if abs(lay['hero_title'] - lay['title']) > 0.01:
+        errors.append('%s: BuildHero 的标题块 %.1f 与 Show 的 %.1f 不是同一个口径（%s）'
+                      % (name, lay['hero_title'], lay['title'], '有立绘' if lay['has_portrait'] else '无立绘'))
     top -= lay['hero'] + C['Gap']
     top -= lay['divider']
     top -= lay['body'] + C['Gap']
@@ -263,6 +358,26 @@ def main():
     if not check('探针40选项', huge):
         errors.append('探针失效：40 个选项都不报错，说明判据恒真')
 
+    # 居民面板（一行标题 + 立绘 + 区域插图）：实底带按生产 BuildHero 的真实分支算。
+    resident = layout('晴禾的菜畦', '一句导语。', ['接一单委托'] * 3, True, True)
+    errors += check('居民面板/一行标题', resident)
+    errors += resident_band_errors('居民面板/一行标题', resident)
+
+    # 破坏探针二：BuildHero 退回 2026-09-13 的写法（有立绘时另算 max(PortraitSize, titleHeight)）。
+    # 「同一口径」与「实底带不许盖掉大半张插图」两条都必须红，否则这份测试又一次看不出这个缺陷。
+    anchor = 'float titleHeight = titleBlock;'
+    if anchor not in PANEL_SRC:
+        errors.append('破坏探针二的锚点失效：BuildHero 里找不到 ' + anchor)
+    else:
+        legacy = PANEL_SRC.replace(anchor, anchor + '\n            titleBlock = portrait != null ? '
+                                   'Mathf.Max(PortraitSize, titleHeight) : titleHeight;', 1)
+        legacy_lay = layout('晴禾的菜畦', '一句导语。', ['接一单委托'] * 3, True, True, src=legacy)
+        if not check('探针旧分支', legacy_lay):
+            errors.append('破坏探针二失效：BuildHero 另算标题块时「同一口径」判据没有红')
+        if not resident_band_errors('探针旧分支', legacy_lay):
+            errors.append('破坏探针二失效：实底带盖掉 %.0f%% 插图时判据没有红'
+                          % (legacy_lay['band'] / legacy_lay['hero'] * 100))
+
     if errors:
         for e in errors:
             print('  - ' + e)
@@ -272,8 +387,8 @@ def main():
     sample = layout(title, body, [longest_label] * 5, False, True)
     print('PASS SkyIslandStoryPanelLayoutPropertyTest '
           '(最长标题 %d 字 / 最长正文 %d 字 / %d 条选项文案；5 选项+横幅时面板 %.0f/%.0f px，'
-          '15 种组合全部不溢出，破坏探针被拒)'
-          % (len(title), len(body), label_count, sample['panel'], MAX_PANEL))
+          '15 种组合全部不溢出；居民面板实底带 %.0f/%.0f px（按 BuildHero 真实分支）；两个破坏探针被拒)'
+          % (len(title), len(body), label_count, sample['panel'], MAX_PANEL, resident['band'], resident['hero']))
 
 
 def batch_three_strings():

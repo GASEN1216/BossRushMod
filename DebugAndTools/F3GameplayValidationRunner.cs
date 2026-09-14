@@ -51,6 +51,11 @@ namespace BossRush
             CreateActionButton(rowSky.transform, font,
                 L10n.T("天空岛验收（岛内运行）", "Sky Islands Validation (run on the island)"),
                 new Color(0.20f, 0.36f, 0.46f, 1f), StartSkyIslandValidationFromF3);
+#if BOSSRUSH_DEV
+            // 演练会改这趟出击的状态（强制夜里、刷云蚋、压血量、弹对话），独立按钮、只在 Dev 构建里有；仍不写存档。
+            CreateActionButton(rowSky.transform, font, L10n.T("天空岛演练（会改状态）", "Sky Islands Drill (changes state)"),
+                BossRushUIColors.Warning, StartSkyIslandDrillFromF3);
+#endif
 
             GameObject row3 = CreateF3Row(section.transform);
             CreateActionButton(row3.transform, font,
@@ -92,6 +97,16 @@ namespace BossRush
             }
             HideF3DebugCheatMenu();
         }
+
+#if BOSSRUSH_DEV
+        private void StartSkyIslandDrillFromF3()
+        {
+            string reason;
+            if (F3GameplayValidationRunner.TryStartSkyIslandDrill(this, out reason)) { HideF3DebugCheatMenu(); return; }
+            SetF3DebugCheatStatus(reason, true);
+            RefreshF3GameplayValidationStatus();
+        }
+#endif
 
         private void CancelFullGameplayValidationFromF3()
         {
@@ -449,6 +464,9 @@ namespace BossRush
             RunSyncCase("PETNEST_REWARD_DEBT", ValidatePetNestRewardDebt);
             RunSyncCase("AFFIX_TEMP_ITEM_LIFECYCLE", ValidateAffixTemporaryItem);
             RunSyncCase("UI_IDEMPOTENT_CLEANUP", ValidateUiCleanup);
+            // 天空岛在基地这一侧的只读核对：官方图鉴镜像回基地还在、纪念品不多发、岛上耗材的增益与灯不跟回基地。
+            RunSyncCase("SKY_OFFICIAL_NOTES_BASE", ValidateSkyIslandOfficialNotesAtBase);
+            RunSyncCase("SKY_KEEPSAKE_ITEMS_BASE", ValidateSkyIslandKeepsakesAtBase);
             yield return RunPublishedItemCases();
 
             SetStage("3/7 后山与经济");

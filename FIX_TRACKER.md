@@ -2,6 +2,68 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-14 天空岛与共享 UI「实机前减负」：F3 自动检查 / 剧情面板三处 / 常驻 HUD 跟随官方界面（4 P2 + 5 P3，全部已实现）
+
+**授权**：owner 任务书「实机前减负」一轮，全程无人值守；歧义按「最低风险 + 可回退」自行决定，写进报告待拍板。
+**分类**：`COMPAT` / `SAFE`——**不新增内容、不加 TypeID、不改存档 schema、不重打包**。**没开游戏、没读写玩家存档。**
+报告：`docs/天空岛_实机前减负_2026-09-14.md`（local-only）；人工清单第 2 步编号表与第 2.16 步。
+
+**验证**（本机 Windows，全部实跑）：
+- `compile_official.bat`（PowerShell `&` 完整路径）**Build succeeded、0 error**；Dev 构建同样 0 error，随后换回正式构建。
+  `compile_dev.bat` 内部是相对路径 `call`，沙箱下报「不是内部或外部命令」——改为设 `BOSSRUSH_DEV_BUILD=1` 后用完整路径调 `compile_official.bat`，等价。
+- ⚠️ **两次自动部署都失败**：本机 `Duckov.exe`（PID 41148，**不是本会话启动的**）开着，锁住了 `Mods\BossRush\BossRush.dll`。
+  游戏目录仍是 2026-09-14 10:16 的正式构建 `e6056f55…`——**本轮改动没有进游戏目录，也没有 Dev 产物残留**；`Build/BossRush.dll` 为 `f081701c…`（正式构建）。
+- `python tools/run_guards.py` → **604 PASS / 0 NEW-FAIL / 0 KNOWN-RED**（599 + 本轮新增 4 个 + 并行会话新增 1 个）。
+- `python tools/run_runtime_regressions.py`（三个 D 盘环境变量）→ **35 PASS / 0 FAIL**：新增 `SkyIslandValidationJudges`（76 条断言），`F3ValidationExecution` 38 → 51 条。
+- **17 个反向探针**全部在仓库稀疏副本上跑：逐条人为破坏 → 对应守卫或执行回归转红 → 逐字节还原、sha256 核对一致 → 复绿。
+
+- `CR-2026-09-14-001` / `SAFE` / **P2**：**`SKY_BOUNTY_GATING` 对驱蚋委托硬判，白天带着没做完的驱蚋单跑 F3 必定假红。**
+  判据收进纯函数 `JudgeBountyGating`（`DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs`）：清理 / 搜刮 / 巡视三类仍硬判，
+  驱蚋是软门（`SkyIslandSessionGnatBounty.AvailableGnatCull` 注释写明）只记 `soft=gnats_unfinishable_now`。
+  `SkyIslandFullAuditGuard` 断言跟着判据走一条没少并加钉软门 / 硬门；执行回归覆盖三类硬门各一红、驱蚋一绿。**回退**：judge 里 `soft =` 那一支改回 `errors.Add`。
+- `CR-2026-09-14-002` / `SAFE` / P3：**`tools/gameplay_coverage.py` 认不出 `RunSkyIslandSync` / `RunSkyIslandCase` 登记的用例**——岛内 28 条只是碰巧都手工登记了，
+  新加一条忘了登记守卫照样全绿。外壳名单收成 `CASE_RUNNERS` + `case_ids_in`；新守卫 `GameplayCoverageCaseRunnerGuard`
+  要求 F3 源码里每个 `string id` / `string caseId` 外壳都登记或写明排除理由，并用两条端到端探针（塞一条没登记的岛内用例必须报出来）。
+- `CR-2026-09-14-003` / `SAFE` / P3：**`SkyIslandEncounters.LivingEnemyCount` 注释写着「给 F3 验收用」，全仓零调用。** 经会话观测面
+  `ValidationLivingEnemies` 接进 `SKY_ENCOUNTER_CAP`；`SkyIslandValidationSuiteGuard` 钉住接线（开跑与采样窗口各读一次）。
+- `CR-2026-09-14-004` / `SAFE` / P3：**离线执行回归只抽了主套件外壳，天空岛外壳与它的 SKIP 分支从未离线执行过。**
+  `tests/fixtures/F3ValidationExecution` 追加逐字抽取 `RunSkyIslandSync` / `RunSkyIslandCase` / `SkyIslandSessionStillValid` / `RunSyncCase` / `SkyIslandSkipCase`，13 条新断言。
+- `CR-2026-09-14-005` / `COMPAT` / **P2**：**居民面板的标题实底带被立绘顶高，盖掉区域插图 68%。** `BuildHero` 有立绘时另算
+  `titleBlock = max(PortraitSize, titleHeight)`（169 / 247 px），而 `Show`、布局属性测试与离线预览都按「标题本身」算（86 px），三处都看不出。
+  `Show` 把自己的标题块传给 `BuildHero`，不再另算；布局属性测试与 `tools/preview_sky_island_panel.py` 改成**从生产源码读 `Show` / `BuildHero` 的算式按真实分支求值**，
+  新增「同一口径」与「实底带 ≤ 主视觉一半」两条判据与一条旧写法探针。**回退**：`BuildHero` 恢复那一行 max。
+- `CR-2026-09-14-006` / `COMPAT` / **P2**：**选项悬停反而变暗，键盘焦点却变亮——两套相反的焦点表现。** 行底色写在 `image.color`、
+  `highlightedColor` 又给绝对色 `GetHoverColor(SurfaceRaised)`，ColorTint 相乘（最亮底图上合成亮度 0.0140 → 0.0076）。
+  照 `ZombieModeUIHelper.ApplyButtonColors` 的口径：Graphic 置白、底色进 ColorBlock，悬停与键盘当前项共用 `FocusColor`
+  （向白 `ChoiceFocusLift=0.39`、不透明度 `ChoiceFocusAlpha=0.90`），`navigation` 置 None 免得 EventSystem 选中态变成第三处高亮。
+  按 `SkyIslandUiContrastGuard` 的 WCAG 算法扫底图亮度 0–0.747：焦点对常态最差 **3.13:1**、标签在焦点行上最差 **4.76:1**
+  （共享 `GetHoverColor` 的 0.22 只有 1.66:1）。守卫新增焦点复算 + 结构断言 + 6 个探针。**回退**：`BuildChoice` / `Select` 退回旧写法（守卫会红，需同改）。
+- `CR-2026-09-14-007` / `COMPAT` / P3：**零选项面板（收下信之后、纪念物）只认键盘 ESC，右上角 ESC 键帽 `raycastTarget=false`，纯鼠标玩家关不掉。**
+  键帽接成可点的关闭按钮（不进可导航项，键盘与手柄行为不变；数字键帽仍不吃点击）。`SkyIslandHudGuard` 第 21 节。
+- `CR-2026-09-14-008` / `COMPAT` / **P2**：**常驻 HUD 不跟随官方界面隐藏。** 全仓只有 `SkyIslandHud` 与 `CampaignHud` 调了 `IsOfficialHudHidden`，
+  而且两者暂停菜单开着时都不隐藏；随机事件徽章、血月全屏红罩、伴宠状态条、Mode H 观战 HUD、Mode G 状态文本完全不管，
+  Mode F 雷达只认 View 与暂停菜单，词条浮层只看输入与 timeScale，丧尸 HUD（28000 层）只认暂停菜单。
+  十块常驻 HUD 的每帧入口一律同时调 `BossRushUI.IsOfficialHudHidden()` 与 `IsGamePaused()`（`BossRushUI.cs` 已 1200/1200，不加合并函数）；
+  Mode H 的判定挂在模块每帧入口而不是只在交战期调用的 `TickHud`（刷怪期也要）。
+  新守卫 `PersistentHudVisibilityGuard`：清单里每块都经过两份判定并落到显隐、每帧入口有驱动、**全仓引用 HUD 层级常量的文件都必须归类**（常驻或写明理由的排除），31 个反向检查。
+  `SkyIslandHudGuard` 第 7 节改钉「暂停并进隐藏判定」（更严，不是放宽）。**回退**：各 HUD 删去两行判定即回到原行为。
+- `CR-2026-09-14-009` / `SAFE` / P3：人工清单 2.14.9「面板开着按 ESC 开暂停」照做不了——面板里 ESC 是关闭键。按实际口径改写。
+
+**新增 F3 用例**（`GameplayCoverage.json` 的 `SKY_ISLAND.automatic` 28 → 40）：岛内只读 `SKY_GATHER_NODES` / `SKY_CHOICE_GATES` / `SKY_ENCOUNTER_CAP` /
+`SKY_OFFICIAL_NOTES` / `SKY_KEEPSAKE_ITEMS` / `SKY_LETTER_PIGEON` / `SKY_LAMPS_WIND` / `SKY_GNAT_RUNTIME`；基地主套件 `SKY_OFFICIAL_NOTES_BASE` / `SKY_KEEPSAKE_ITEMS_BASE`；
+Dev 演练（**非只读**，`#if BOSSRUSH_DEV`、独立按钮、`read_only=false`）`SKY_DRILL_GNAT_SWARM` / `SKY_DRILL_OFFICIAL_DIALOGUE`。
+`SKY_PANEL_ART` 扩到 13 张面板底图 + 手记横幅 + 皮肤五档。新守卫 `SkyIslandReadOnlySuiteDrillIsolationGuard`（只读套件不得引用演练代码）与
+`SkyIslandDrillNoPersistenceGuard`（演练不写存档不收录、finally 还原）；`SkyIslandValidationSuiteGuard` 扫描新文件并扩禁用名单。
+⚠️ 登记演练用例之后，**只跑岛内只读验收的报告覆盖状态会是 INCOMPLETE**（演练用例 NOT_RUN），属如实信号，见报告待拍板。
+
+**本轮只登记、不动手**（任务书第四节）：Dev 专用自建试验场状态行不跟随官方界面；Mode H 诊断页（ModeHDiagnostics 970，可交互）按模态面板排除；
+`DialogueManager` 自身不挡重入（靠调用方先判 `IsDialogueActive`）；`Integration/Dialogue/DialogueManager.cs` 同文件 CRLF / LF 混排（613 / 51）。详见 `CODE_REVIEW_FINDINGS.md` 同日条目。
+
+⚠️ **未启动游戏**。F3 新用例的 Unity 侧取数、演练套件、十块 HUD 在官方界面上的实际显隐、面板悬停与点键帽的手感，**离线一条都证明不了**，
+全部写进人工清单第 2.16 步。**未修改玩家存档。**
+
+---
+
 ## 2026-09-13 天空岛第三轮：官方 API 复用 / 选项分层 / 文案分层 / 敌怪补洞 / 立绘抠图（4 P2 + 2 P3 + 1 documented）
 
 **授权**：owner 六条试用反馈 +「请你做个完整的计划去实现」，方案逐条拍板后执行

@@ -165,7 +165,11 @@ namespace BossRush
                 return;
             }
 
-            SetVisible(true);
+            // 常驻 HUD 跟随官方界面与暂停菜单收起（ModeGHud 900 在 sortingOrder 100 的背包 / 地图上面，2026-09-14）。
+            // 隐藏期间不刷新文本，关掉背包后按 4Hz 节奏补上。
+            bool visible = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
+            SetVisible(visible);
+            if (!visible) return;
 
             _refreshTimer += deltaTime;
             if (_refreshTimer < RefreshIntervalSeconds) return;

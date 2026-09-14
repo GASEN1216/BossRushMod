@@ -503,7 +503,7 @@ namespace BossRush
         internal void Tick(float unscaledDelta, bool suppressed)
         {
             if (canvas == null) return;
-            bool hidden = suppressed || BossRushUI.IsOfficialHudHidden();
+            bool hidden = suppressed || BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused();
             float target = hidden ? 0f : 1f;
             if (visibility != target)
             {
@@ -511,9 +511,9 @@ namespace BossRush
                 if (rootGroup != null) rootGroup.alpha = visibility;
             }
             // 隐藏期间不推进大标题与字幕：玩家开着地图的那几秒，不该把它们在背后悄悄播完。
-            // 暂停菜单同理：它不隐藏官方 HUD（PauseMenu 是 UIPanel 不是 View），但画布 sortingOrder 10000
-            // 整个盖在上面；本 HUD 的淡变走 unscaled 时间，不停下来的话一条 Boss 机制提示会在暂停菜单背后播完。
-            if (hidden || BossRushUI.IsGamePaused()) return;
+            // 暂停菜单同理，并且从 2026-09-14 起它也让本 HUD 淡出（常驻 HUD 同一口径：官方隐藏 HUD、暂停、拍照模式都收起）。
+            // PauseMenu 是 UIPanel 不是 View，不让官方 HUD 隐藏；本 HUD 的淡变走 unscaled 时间，不停下来的话一条 Boss 机制提示会在暂停菜单背后播完。
+            if (hidden) return;
 
             layoutTimer -= unscaledDelta;
             if (layoutTimer <= 0f)

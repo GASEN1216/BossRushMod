@@ -972,4 +972,17 @@ namespace BossRush
 
         private static SkyIslandIngredient In(int typeId, int count) { return new SkyIslandIngredient(typeId, count); }
     }
+
+    /// <summary>
+    /// 最近一次夜风采样的输入与结果。由 <c>SkyIslandFieldcraft.TickWind</c> 整块赋值，**不参与任何玩法判定**：
+    /// 它只给 F3 的 <c>SKY_LAMPS_WIND</c> 用本文件的纯规则（<see cref="SkyIslandFieldcraftRules.WindLevel"/> /
+    /// <see cref="SkyIslandFieldcraftRules.NightWind"/> / <see cref="SkyIslandFieldcraftRules.CoreEased"/>）复算后比对。
+    /// 放在纯规则文件里而不是 SkyIslandFieldcraft.cs，是为了让隔离回归不带 Unity 就能构造它。
+    /// <see cref="Sampled"/> 为假表示这一趟还没采过（夜风推进前 F3 先跑了）。
+    /// </summary>
+    internal struct SkyIslandWindSample
+    {
+        internal bool Sampled, Night, OnBridge, OnBoardwalk, StormPending;
+        internal int EffectiveLights, Gale, Level;
+    }
 }

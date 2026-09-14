@@ -136,6 +136,13 @@ namespace BossRush
                 suppressed = true;
             }
 
+            // 常驻浮层口径（2026-09-14）：官方界面（背包 / 地图 / 对话 / 捏脸 / 拍照模式）与暂停菜单开着时一起收起。
+            // 上面两条只看 gameplay 输入与 timeScale，是否覆盖官方对话与全部 View 没有核实过；这里直接用与 SkyIslandHud 同一份判定。
+            if (!suppressed && (BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused()))
+            {
+                suppressed = true;
+            }
+
             if (suppressed)
             {
                 SetHoveredIndex(-1);

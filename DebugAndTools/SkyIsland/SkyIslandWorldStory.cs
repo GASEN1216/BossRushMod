@@ -22,6 +22,8 @@ namespace BossRush
         private GameObject pigeon;
         private SkyIslandLetter pigeonLetter;
         private bool pigeonPlaced;
+        /// <summary>本趟手记首页实际挂出的项数（F3 只读 SKY_CHOICE_GATES）；本趟还没打开过手记时为 -1。</summary>
+        private int journalHomeChoices = -1;
         private float pigeonCaptionAt = -1f;
         /// <summary>内容批次三：采集点、合成台、局内耗材与夜风的本趟 owner（会话就绪后第一次推进时创建，随本对象销毁）。</summary>
         private SkyIslandFieldcraft fieldcraft;
@@ -29,6 +31,12 @@ namespace BossRush
         /// <summary>信鸽落地字幕推迟的游戏秒数：错开落地大标题与目标卡，别在同一秒挤三句话。</summary>
         internal const float PigeonCaptionDelay = 8f;
         internal bool Visible { get { return presentation.Visible; } }
+        /// <summary>F3 只读（SKY_LETTER_PIGEON）：信鸽此刻带的信、一次性落点闩、信鸽在不在场。玩法不读这三个。</summary>
+        internal SkyIslandLetter PigeonLetter { get { return pigeonLetter; } }
+        internal bool PigeonPlaced { get { return pigeonPlaced; } }
+        internal bool PigeonPresent { get { return pigeon != null; } }
+        /// <summary>F3 只读（SKY_CHOICE_GATES）：本趟手记首页实际挂出的项数，没打开过为 -1。</summary>
+        internal int JournalHomeChoices { get { return journalHomeChoices; } }
         internal SkyIslandWorldStory(SkyIslandSession session, SkyIslandStoryService story, GameObject root)
         {
             this.session = session; this.story = story; this.root = root;
@@ -723,6 +731,7 @@ namespace BossRush
                 OpenJournalIsles();
                 return SkyIslandJournal.IslesBrief(story.Current);
             }));
+            journalHomeChoices = choices.Count;
             presentation.Show(L10n.T("群岛手记", "Archipelago journal"),
                 SkyIslandJournal.Brief(story.Current), choices, null,
                 SkyIslandUiArt.GetJournalBanner());

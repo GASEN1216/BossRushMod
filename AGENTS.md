@@ -201,6 +201,16 @@ grep -rn 'DisplayNameRaw = "BossRush_' Integration/
   `tests/modbehaviour_partial_budget.json` 记录整类规模上限；收敛后下调，不能为普通功能增长抬高预算或添加新例外。
   该指标包含注释及所在文件的其他类型，不等于 AST 方法体行数；不得通过压缩排版或删必要注释来凑预算。
 
+### 4.16 F3 验收用例与常驻 HUD
+
+F3 玩法验收只在 Dev 构建里存在（`BOSSRUSH_DEV_BUILD=1`），目标是把实机前能自动看的都收进报告，人工清单只留读报告与手感项。新增用例时：
+
+- **判据与取数分开**：判据写成 `#region 纯判据` 里的静态函数，只吃基本类型与小结构、返回 ok / reason / metrics，由执行回归逐字抽取运行（天空岛是 `tests/fixtures/SkyIslandValidationJudges`）；取数方法只读观测面（天空岛是 `SkyIslandSessionValidation.cs` 的属性）。物理、渲染、Harmony 这类离线造不出来的只做 L1 守卫，不硬凑执行回归。
+- **只读套件就是只读**：不写剧情与存档、不注册或写官方图鉴、不刷怪、不改强制夜里、不打补丁（`SkyIslandValidationSuiteGuard` 的禁用清单）。会改状态的检查进 Dev 演练套件：整文件 `#if BOSSRUSH_DEV`、独立按钮、复用专用测试档的开跑门、报告头 `read_only=false`、`finally` 还原、不写存档不收录；只读套件不得引用演练代码（`SkyIslandReadOnlySuiteDrillIsolationGuard`、`SkyIslandDrillNoPersistenceGuard`）。
+- **SKIP 不能吞缺陷**：先查「缺了会让这条用例永远 SKIP」的前提（资源在不在、补丁装没装、皮肤注入没有），再按场景条件（白天、场上没有目标）记 SKIP。
+- **用例 id 写字面量交给外壳**：`RunSyncCase` / `RunSkyIslandSync` / `RunSkyIslandCase` 一类外壳的第一个参数写字面量；新增外壳登记进 `tools/gameplay_coverage.py` 的 `CASE_RUNNERS`，用例登记进 `Assets/Data/GameplayCoverage.json`（`GameplayCoverageCaseRunnerGuard`）。要在基地看的（官方图鉴镜像、出击残留）挂主套件 `RunSuite`，不塞进岛内套件。
+- **常驻 HUD**（进局就一直在、不是玩家主动打开的）每帧入口同时经过 `BossRushUI.IsOfficialHudHidden()` 与 `BossRushUI.IsGamePaused()`，并登记进 `tests/PersistentHudVisibilityGuard.py`。引用 HUD 层级常量的文件都要在那里归类；模态面板与玩家主动打开的面板写明理由排除。
+
 ## 5. 不可破坏契约
 
 详细契约见 `docs/contracts.md`。本节列出进入代码前必须先识别的兼容面：

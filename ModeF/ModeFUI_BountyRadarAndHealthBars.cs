@@ -390,6 +390,8 @@ namespace BossRush
 
         private bool IsModeFBountyRadarSuppressedByOverlay()
         {
+            // 常驻 HUD 口径（2026-09-14）：官方界面（含对话、捏脸、拍照模式）与暂停菜单开着时收起；IsAnyUIOpen 只认 View 与暂停菜单。
+            if (BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused()) return true;
             if (BossRush.Utils.NPCCommonUtils.IsAnyUIOpen())
             {
                 return true;

@@ -2,6 +2,35 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-14 天空岛与共享 UI「实机前减负」：4 P2 + 5 P3（均已修）+ 登记与未验证线索
+
+任务书要求把最后那次实机的人工检查尽量改成读报告，并修剧情面板三处与常驻 HUD 显隐。每条都先读码核实再动手；
+证据来自离线读码、按生产常量复算与反编译源对照，**本轮没有进游戏**，全部是 L1 / L2。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-14-001 | **P2** / TEST（假红） | `SKY_BOUNTY_GATING` 的 `active_contract_unfinishable` 对四类委托一律硬判。驱蚋是软门（`SkyIslandSessionGnatBounty.AvailableGnatCull`：刷新是概率事件、白天可完成量恒 0、焚香能把供给压没，退单出口兜底），所以**白天带着没做完的驱蚋单跑 F3 必定红**，而那是合法状态。 | **Fixed**。判据收进纯函数 `JudgeBountyGating`：前三类硬门不变，驱蚋只记 `soft=`。`SkyIslandFullAuditGuard` 改钉判据本体并加钉软门 / 硬门；执行回归 `SkyIslandValidationJudges`；探针 P09（驱蚋退回硬判 → 守卫与回归双红） |
+| CR-2026-09-14-002 | P3 / TEST（覆盖漏登记） | `tools/gameplay_coverage.py` 抽用例 id 的正则只认主套件外壳（`RunSyncCase` / `RunIsolatedCase` / …），**不认 `RunSkyIslandSync` / `RunSkyIslandCase`**。岛内 28 条恰好都手工登记了，`automatic - required` 那一侧又是子串判定，于是「用例存在但没登记」不会报。 | **Fixed**。外壳名单收成 `CASE_RUNNERS` + `case_ids_in`；新守卫 `GameplayCoverageCaseRunnerGuard`（外壳全登记或写明排除、端到端两条探针、名单退回旧样子时岛内新用例「看不见」）；探针 P10 / P11 |
+| CR-2026-09-14-003 | P3 / MAINTAINABILITY | `SkyIslandEncounters.LivingEnemyCount` 注释写明「给 F3 验收记录 12 活体上限的实际水位」，**全仓零调用**。 | **Fixed**。观测面 `ValidationLivingEnemies` → `SKY_ENCOUNTER_CAP`（开跑与 3 秒采样窗口各读）；`SkyIslandValidationSuiteGuard` 钉接线；探针 P15 |
+| CR-2026-09-14-004 | P3 / TEST | `tests/fixtures/F3ValidationExecution` 只逐字抽了主套件的 `RunIsolatedCase` / `TryStep`；**天空岛外壳与它的全部 SKIP 分支从未离线执行过**。 | **Fixed**。同一夹具追加抽取 `RunSkyIslandSync` / `RunSkyIslandCase` / `SkyIslandSessionStillValid` / `RunSyncCase` / `SkyIslandSkipCase`，13 条新断言（38 → 51）；探针 P16（会话没了记成 PASS → 回归红） |
+| CR-2026-09-14-005 | **P2** / UX | 居民面板：`BuildHero` 有立绘时 `titleBlock = Mathf.Max(PortraitSize, titleHeight)`，实底带 = inset×2 + block/2 + title/2 = **169 px**，盖掉 247 px 插图的 **68%**；而 `Show` 与旁边注释都说「立绘不算进来」（86 px）。布局属性测试与离线预览自己写了一份 Show 口径，**看不出这条分支**。 | **Fixed**。Show 把标题块传给 BuildHero，不再另算；测试与预览改为从生产源码读两处算式按真实分支求值，新增同一口径 / 实底带 ≤ 一半两条判据与旧写法探针；磁盘探针 P01 |
+| CR-2026-09-14-006 | **P2** / UX（a11y） | 选项行：`image.color = SurfaceRaised×0.78`，`highlightedColor = GetHoverColor(SurfaceRaised)` 是绝对色，ColorTint 相乘后**悬停变暗**（最亮底图上合成亮度 0.0140 → 0.0076）；键盘 `Select()` 却把 `image.color` 换成更亮的色。两套相反。另外按原强度（向白 0.22）即便方向对，焦点行对常态行也只有 1.66:1。 | **Fixed**。Graphic 置白、底色进 ColorBlock（`ZombieModeUIHelper.ApplyButtonColors`），悬停与键盘当前项共用 `FocusColor`（0.39 / 0.90），`navigation=None`。WCAG 实算：焦点对常态最差 3.13:1、标签 4.76:1。`SkyIslandUiContrastGuard` 新增复算 + 结构断言 + 6 个探针；磁盘探针 P02 / P03 |
+| CR-2026-09-14-007 | P3 / UX | 零选项面板没有可导航项，右上 ESC 键帽 `raycastTarget=false`——**纯鼠标玩家看得见关闭提示却点不动**。 | **Fixed**。键帽接成可点按钮（不进 `buttons`，键盘 / 手柄行为不变，数字键帽仍不吃点击）；`SkyIslandHudGuard` 第 21 节；磁盘探针 P04 |
+| CR-2026-09-14-008 | **P2** / UX（叠层） | 常驻 HUD 不跟随官方界面：随机事件徽章（HudOverlay 1200）、血月红罩（1200）、伴宠（990）、Mode H 观战 HUD（960）、Mode G 状态文本（900）**完全没有显隐门**；Mode F 雷达只认 View 与暂停菜单（`NPCCommonUtils.IsAnyUIOpen`），看不见官方对话与拍照模式；词条浮层只看 `InputManager.InputActived` 与 timeScale；丧尸 HUD（28000，压在暂停菜单之上）只认 `PauseMenu.Shown`；天空岛卡片与征程追踪条暂停菜单开着时不隐藏。官方 Views 与对话画布在 sortingOrder 100（2026-09-10 UnityPy 读 `resources.assets` 实测），这些全都压在背包、地图、对话上。 | **Fixed**。十块 HUD 的每帧入口同时经过 `IsOfficialHudHidden()` 与 `IsGamePaused()`；Mode H 挂在模块每帧入口（`TickHud` 只在交战期调，刷怪期会漏）。新守卫 `PersistentHudVisibilityGuard`（落点 + 驱动 + 全仓 HUD 层级文件必须归类，31 个反向检查）；磁盘探针 P05–P08 |
+| CR-2026-09-14-009 | P3 / DOCS | 人工清单 2.14.9「面板开着时按 ESC 打开暂停菜单，看入场动画停住」照做不了：面板里 ESC 是关闭键（`Tick` 与 `OnCancel` 都 `Dispose`）。 | **Fixed**。按实际口径改写；入场动画的暂停门由代码守着，面板开着时没有实机入口 |
+
+### 登记在案、本轮不动手（任务书第四节「发现相关问题只登记」）
+
+- **Dev 专用自建试验场的状态行**（`DebugAndTools/ArenaPrototype/ArenaPrototypeControls.cs`，`BossRushUILayers.Hud`）不跟随官方界面。只在 Dev 构建出现，已进 `PersistentHudVisibilityGuard` 的排除清单并写明理由。
+- **Mode H 诊断页**（`ModeHUI` 的 `ModeHDiagnostics` 970，带「取消并退款」按钮，只在认证阶段出现）按模态面板排除——判断依据是它是一块需要玩家操作的准备期界面，不是常驻信息。若 owner 认为它也该让位，另开一轮。
+- **`Integration/Dialogue/DialogueManager.cs` 同一文件 CRLF / LF 混排**（613 / 51 行）。按字节替换时要兼容两种换行；本轮没有改它。
+
+### UNVERIFIED（未验证线索，不是 confirmed bug）
+
+- `DialogueManager.ShowMultipleChoiceInternal` 自身不判 `isDialogueActive`，`BeginDialogueSession` 已激活时直接返回但仍会 `RequestMultipleChoices`——**两个调用方同时弹多选时后一个可能顶掉前一个的界面**。现有调用方（`SkyIslandResidentDialogue.Run`）都先判 `IsDialogueActive`，Dev 演练 `SKY_DRILL_OFFICIAL_DIALOGUE` 验的也是这条调用方门。未实机、未构造并发场景。
+- 丧尸模式 HUD 画布挂着一个**启用的** `GraphicRaycaster`，而它是非交互 HUD（线索来自读码，`ZombieModeHudController.cs` 约 325–330 行）。是否挡住了局内点击未核实。
+- 词条浮层原来的抑制条件（`!InputManager.InputActived || Time.timeScale <= 0f`）是否覆盖官方对话与全部 View 未在反编译源里核实；本轮已并入与 `SkyIslandHud` 同一份判定，不再依赖它。
+
 ## 2026-09-13（第三轮）天空岛 owner 试用反馈：4 P2 + 2 P3（均已修）+ 1 条 documented 决策
 
 owner 提了六件事。逐条查证下来**三件是真问题、一件比反馈说的更糟、一件有更好的解法、一件不成立**。

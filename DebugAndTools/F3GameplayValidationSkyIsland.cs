@@ -59,6 +59,9 @@ namespace BossRush
             "SKY_STORY_OBJECTIVE", "SKY_STORY_CODEC", "SKY_STORY_SAVE_STATE", "SKY_SERVICE_PRICING",
             "SKY_BOUNTY_GATING", "SKY_RESIDENTS", "SKY_EXTRACTION_RINGS", "SKY_EXTRACTION_RULE",
             "SKY_EXTRACTION_OFFICIAL_UI", "SKY_STORM_TUNING", "SKY_LOCALIZATION_EN", "SKY_SCENE_BASELINE",
+            // 2026-09-14「实机前减负」：运行时状态的只读用例（F3GameplayValidationSkyIslandRuntimeCases.cs）。
+            "SKY_GATHER_NODES", "SKY_CHOICE_GATES", "SKY_ENCOUNTER_CAP", "SKY_OFFICIAL_NOTES", "SKY_KEEPSAKE_ITEMS",
+            "SKY_LETTER_PIGEON", "SKY_LAMPS_WIND", "SKY_GNAT_RUNTIME",
         };
 
         // ====================================================================
@@ -179,11 +182,14 @@ namespace BossRush
             RunSkyIslandSync("SKY_INTERACTION_SEPARATION", ValidateSkyIslandInteractionSeparation);
             RunSkyIslandSync("SKY_LOOT_BANDS", ValidateSkyIslandLootBands);
             RunSkyIslandSync("SKY_PANEL_ART", ValidateSkyIslandPanelArt);
+            RunSkyIslandSync("SKY_GATHER_NODES", ValidateSkyIslandGatherNodes);
 
             SetStage("3/5 门控与导航");
             RunSkyIslandSync("SKY_GATE_STATE", ValidateSkyIslandGateState);
             yield return RunSkyIslandCase("SKY_GATE_REACHABILITY", RunSkyIslandReachability);
             RunSkyIslandSync("SKY_STORY_OBJECTIVE", ValidateSkyIslandObjective);
+            RunSkyIslandSync("SKY_CHOICE_GATES", ValidateSkyIslandChoiceGates);
+            yield return RunSkyIslandCase("SKY_ENCOUNTER_CAP", RunSkyIslandEncounterCap);
 
             SetStage("4/5 存档、服务与居民");
             RunSkyIslandSync("SKY_STORY_CODEC", ValidateSkyIslandStoryCodec);
@@ -191,12 +197,17 @@ namespace BossRush
             RunSkyIslandSync("SKY_SERVICE_PRICING", ValidateSkyIslandServicePricing);
             RunSkyIslandSync("SKY_BOUNTY_GATING", ValidateSkyIslandBountyGating);
             RunSkyIslandSync("SKY_RESIDENTS", ValidateSkyIslandResidents);
+            RunSkyIslandSync("SKY_OFFICIAL_NOTES", ValidateSkyIslandOfficialNotes);
+            RunSkyIslandSync("SKY_KEEPSAKE_ITEMS", ValidateSkyIslandKeepsakes);
+            RunSkyIslandSync("SKY_LETTER_PIGEON", ValidateSkyIslandLetterPigeon);
 
             SetStage("5/5 撤离、表现与本地化");
             RunSkyIslandSync("SKY_EXTRACTION_RINGS", ValidateSkyIslandExtractionRings);
             RunSkyIslandSync("SKY_EXTRACTION_RULE", ValidateSkyIslandExtractionRule);
             RunSkyIslandSync("SKY_EXTRACTION_OFFICIAL_UI", ValidateSkyIslandOfficialCountdown);
             RunSkyIslandSync("SKY_STORM_TUNING", ValidateSkyIslandStormTuning);
+            RunSkyIslandSync("SKY_LAMPS_WIND", ValidateSkyIslandLampsWind);
+            RunSkyIslandSync("SKY_GNAT_RUNTIME", ValidateSkyIslandGnatRuntime);
             RunSkyIslandSync("SKY_LOCALIZATION_EN", ValidateSkyIslandEnglishText);
             RunSkyIslandSync("SKY_SCENE_BASELINE", ValidateSkyIslandSceneBaseline);
         }

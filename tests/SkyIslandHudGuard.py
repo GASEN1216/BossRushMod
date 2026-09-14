@@ -209,17 +209,19 @@ def main():
         errors.append("HUD 的 Tick 没有把会话侧的隐藏条件并进同一个判定")
     # 暂停菜单（GameManager.Paused）不是 View、不让官方 HUD 隐藏，但它的画布 sortingOrder 10000 整个盖在上面；
     # 本 HUD 的淡变走 unscaled 时间，不停下来的话一条 Boss 机制提示会在暂停菜单背后播完。
+    # 2026-09-14 起常驻 HUD 同一口径（tests/PersistentHudVisibilityGuard.py）：暂停也并进隐藏判定，淡出而不只是冻结。
     paused = need_body(shared_ui, "internal static bool IsGamePaused()", "官方暂停判定")
     if paused and "GameManager.Paused" not in paused:
         errors.append("暂停判定没有读官方 GameManager.Paused")
-    pause_line = line_with(tick, "BossRushUI.IsGamePaused()")
-    if tick and ("hidden" not in pause_line or "return;" not in pause_line):
-        errors.append("HUD 的 Tick 没有在隐藏或暂停时提前 return：开着地图或暂停菜单时大标题与字幕会在背后播完")
+    if tick and hidden_at >= 0 and "BossRushUI.IsGamePaused()" not in statement_from(tick, hidden_at):
+        errors.append("HUD 的 Tick 没有把暂停并进隐藏判定：常驻 HUD 在暂停菜单开着时要一起收起")
+    gate = re.search(r"if \(hidden\) return;", tick) if tick else None
+    if tick and not gate:
+        errors.append("HUD 的 Tick 没有在隐藏（含暂停）时提前 return：开着地图或暂停菜单时大标题与字幕会在背后播完")
     elif tick:
-        gate_at = tick.find(pause_line)
         for step in ("TickBanner(", "TickCaption("):
             at = tick.find(step)
-            if at < 0 or at < gate_at:
+            if at < 0 or at < gate.start():
                 errors.append("隐藏/暂停的提前 return 必须排在 " + step + " 之前")
     update = need_body(session, "private void Update()", "会话 Update")
     drive = update.find("hud.Tick(Time.unscaledDeltaTime, HudSuppressed())")
@@ -476,15 +478,35 @@ def main():
         if "0.01f" in late:
             errors.append("世界提示字又用回 1% 阈值：走过一次淡变带要重建上百次 TMP 网格")
 
+    # ---- 21. 零选项面板鼠标也关得掉：右上角 ESC 键帽可点，键盘路径与可导航项数不变 ----
+    # 收下信之后、纪念物是零选项面板，页脚删掉之后只剩 ESC；旧版键帽 raycastTarget=false，纯鼠标玩家看得见点不动。
+    hero_body = need_body(panel, "private static void BuildHero(", "剧情面板主视觉")
+    esc = re.search(r'Image (\w+) = KeyCap\(hero, "ESC"', hero_body)
+    if hero_body and not esc:
+        errors.append("ESC 键帽没有拿返回值接成按钮：零选项面板（收下信之后、纪念物）纯鼠标玩家关不掉")
+    elif esc:
+        cap = esc.group(1)
+        for token in (cap + ".raycastTarget = true;", cap + ".gameObject.AddComponent<Button>()",
+                      ".onClick.AddListener(close)"):
+            if token not in hero_body:
+                errors.append("ESC 键帽缺 " + token + "：看得见点不动")
+        if "Register(" in hero_body or "buttons.Add(" in hero_body:
+            errors.append("ESC 键帽进了可导航项列表：数字键与 W/S 的项数会多出一格")
+    keycap = need_body(panel, "private static Image KeyCap(", "键帽构件")
+    if keycap and "capImage.raycastTarget = false;" not in keycap:
+        errors.append("键帽默认必须不吃点击：数字键帽画在选项行里，吃掉点击会让点在数字上的那一下落空")
+    if panel_show and "cursor, Dispose);" not in panel_show:
+        errors.append("Show 没有把 Dispose 交给主视觉的 ESC 键帽：点了没反应")
+
     if errors:
         for error in errors:
             print("  - " + error)
         print("SkyIslandHudGuard: FAIL")
         raise SystemExit(1)
-    print("SkyIslandHudGuard: PASS (20 条：不回退正上方裸文字 / 标题与字幕在中线下 / 卡片贴右 / 二维柔边 / "
+    print("SkyIslandHudGuard: PASS (21 条：不回退正上方裸文字 / 标题与字幕在中线下 / 卡片贴右 / 二维柔边 / "
           "存档静默 / 无 Overflow / 跟随官方 HUD 显隐与暂停 / 一区一标题且区域来自脚下 / 单一出口 / 官方撤离读条 / "
           "令牌按引用注销 / 键盘导航 / 走近才浮现 / 不念内部 id / 警示插队 / 纵向避让复算 / 避让官方提示栈 / "
-          "倒下与切图收读条 / 边沿导航与保留当前项 / 提示字不每帧轮询)")
+          "倒下与切图收读条 / 边沿导航与保留当前项 / 提示字不每帧轮询 / 零选项面板 ESC 键帽可点)")
 
 
 if __name__ == "__main__":

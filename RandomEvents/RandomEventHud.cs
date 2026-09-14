@@ -81,6 +81,15 @@ namespace BossRush
                     _badge.SetActive(true);
                 }
 
+                // 常驻 HUD 跟随官方界面收起（2026-09-14）：背包 / 地图 / 对话 / 捏脸 / 拍照模式（IsOfficialHudHidden）与暂停菜单。
+                // 本画布在 HudOverlay（1200），不让位就压在 sortingOrder 100 的官方界面上面。只开关画布、不走 HideImmediate：
+                // 后者会清掉已显示的事件与秒数，关掉背包那一帧还要重刷一遍。
+                bool visible = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
+                if (_canvas != null && _canvas.enabled != visible)
+                {
+                    _canvas.enabled = visible;
+                }
+
                 // 事件切换才重刷图标与名称
                 if (_shownId != activeId)
                 {

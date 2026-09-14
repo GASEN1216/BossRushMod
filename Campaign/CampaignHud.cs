@@ -85,6 +85,8 @@ namespace BossRush
                 // HudOverlay（1200），不让位就会压在它们上面（口径同 SkyIslandHud，判定共用 BossRushUI）。
                 // 只开关画布、不走 HideImmediate：后者会作废进度快照，关掉背包那一帧还要重拼一次正文。
                 bool visible = !BossRushUI.IsOfficialHudHidden();
+                // 暂停菜单开着时也收起（常驻 HUD 同一口径，2026-09-14）：暂停菜单不是 View，不让官方 HUD 隐藏。
+                if (BossRushUI.IsGamePaused()) visible = false;
                 if (_canvas != null && _canvas.enabled != visible) _canvas.enabled = visible;
 
                 // 顶边排在官方右上角「操作说明」提示栈下面：它展开后会一路长到屏幕中部，写死的 y=-110 会被盖住。

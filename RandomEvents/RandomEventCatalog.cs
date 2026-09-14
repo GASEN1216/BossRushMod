@@ -432,6 +432,10 @@ namespace BossRush
                 // 呼吸动画：纯 float 运算 + 一次 color 赋值，无分配、无日志
                 if (_vignette != null)
                 {
+                    // 红罩也是常驻覆盖层（HudOverlay 1200，压在 sortingOrder 100 的背包 / 地图上面）：官方界面、
+                    // 暂停菜单与拍照模式开着时一起收起，否则背包与地图会被整片染红（2026-09-14）。
+                    bool shown = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
+                    if (_vignette.enabled != shown) _vignette.enabled = shown;
                     float phase = (Mathf.Sin(
                         ctx.ElapsedSeconds * (Mathf.PI * 2f) / RandomEventsTuning.BloodMoonVignetteBreathSeconds) + 1f) * 0.5f;
                     float alpha = Mathf.Lerp(

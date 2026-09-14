@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>Regression</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- run.py 逐字抽出的「纯判据」区（F3GameplayValidationSkyIslandRuntimeCases.cs）与 SkyIslandSkipCase。 -->
+    <Compile Include="../../../Build/runtime-regressions/SkyIslandValidationJudges/gen/Judges.cs" Link="Generated/Judges.cs" />
+    <!-- 与 SkyIslandStory 执行回归同一套生产纯规则与替身：判据调用的全是这些类型。 -->
+    <Compile Include="../SkyIslandStory/Stubs.cs" Link="Stubs/Stubs.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPointText.cs" Link="Production/SkyIslandPointText.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandCrew.cs" Link="Production/SkyIslandCrew.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandJournal.cs" Link="Production/SkyIslandJournal.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandFieldcraftRules.cs" Link="Production/SkyIslandFieldcraftRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLights.cs" Link="Production/SkyIslandLights.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNight.cs" Link="Production/SkyIslandNight.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandMosquitoRules.cs" Link="Production/SkyIslandMosquitoRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBounty.cs" Link="Production/SkyIslandBounty.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
+    <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />
+    <Compile Include="../../../Common/Lifecycle/BossRushSaveCoordinatorEngine.cs" Link="Production/BossRushSaveCoordinatorEngine.cs" />
+    <Compile Include="../../../Common/Data/BossRushJsonValue.cs" Link="Production/BossRushJsonValue.cs" />
+    <Compile Include="../../../Common/Data/JsonDataRegistry.cs" Link="Production/JsonDataRegistry.cs" />
+    <Compile Include="../../../Utilities/SimpleJsonHelper.cs" Link="Production/SimpleJsonHelper.cs" />
+  </ItemGroup>
+</Project>

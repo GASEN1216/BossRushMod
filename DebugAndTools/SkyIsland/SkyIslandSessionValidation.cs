@@ -45,6 +45,18 @@ namespace BossRush
         internal bool ValidationStoryPanelVisible { get { return worldStory != null && worldStory.Visible; } }
         /// <summary>HUD 卡片此刻登记的目标文本。F3 比对「显示给玩家的」，而不是再算一遍规则。</summary>
         internal string ValidationHudObjective { get { return hud == null ? null : hud.ObjectiveText; } }
+        /// <summary>
+        /// 此刻活着的敌人数（SKY_ENCOUNTER_CAP 读 12 活体上限的实际水位）。钩子就是
+        /// <c>SkyIslandEncounters.LivingEnemyCount</c>——那条注释写着「给 F3 验收用」，此前一直没有调用点。
+        /// </summary>
+        internal int ValidationLivingEnemies { get { return encounters == null ? 0 : encounters.LivingEnemyCount; } }
+        /// <summary>信鸽此刻带的信（SKY_LETTER_PIGEON）；这一趟没有信鸽或已飞走时为 null。</summary>
+        internal SkyIslandLetter ValidationPigeonLetter { get { return worldStory == null ? null : worldStory.PigeonLetter; } }
+        /// <summary>信鸽的一次性落点闩（SKY_LETTER_PIGEON）：为真表示这一趟已经放过（或放不下而放弃），等收信后重新武装。</summary>
+        internal bool ValidationPigeonPlaced { get { return worldStory != null && worldStory.PigeonPlaced; } }
+        internal bool ValidationPigeonPresent { get { return worldStory != null && worldStory.PigeonPresent; } }
+        /// <summary>本趟手记首页实际挂出的项数（SKY_CHOICE_GATES）；本趟没打开过手记时为 -1。</summary>
+        internal int ValidationJournalHomeChoices { get { return worldStory == null ? -1 : worldStory.JournalHomeChoices; } }
         /// <summary>本局全部见闻点标记名（含 _02 点位）。F3 英文完整性用例遍历真实点位，不再手写一份清单。</summary>
         internal string[] ValidationSearchMarkerNames()
         {

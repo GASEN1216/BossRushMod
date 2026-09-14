@@ -59,6 +59,8 @@ namespace BossRush
         private GameObject lanternLight;
         private float nextTick = -1f, lastTick = -1f, lanternUntil = -1f, incenseUntil = -1f, exposure, nextCarryCheck = -1f;
         private int fireNight = -1, lightsLit, missingFireAnchors;
+        /// <summary>最近一次夜风采样（F3 只读，见 <see cref="SkyIslandWindSample"/>）；玩法判定不读它。</summary>
+        private SkyIslandWindSample windSample;
         private bool lanternLowWarned, incenseLowWarned, charmWorn, chilled, exposureWarned, windExplained, coreCarried, coreExplained, disposed, inventoryBusy;
 
         internal SkyIslandFieldcraft(SkyIslandSession owner, SkyIslandStoryService storyService, Transform worldRoot)
@@ -90,6 +92,10 @@ namespace BossRush
         internal float Exposure { get { return exposure; } }
         internal bool Chilled { get { return chilled; } }
         internal int LightsLit { get { return lightsLit; } }
+        /// <summary>锚点不在场景里、没建起来的灯的盏数（F3 只读 SKY_LAMPS_WIND；场景包健康时恒为 0）。</summary>
+        internal int MissingFireAnchors { get { return missingFireAnchors; } }
+        /// <summary>最近一次夜风采样的输入与结果（F3 只读 SKY_LAMPS_WIND 的「风级读回」）。</summary>
+        internal SkyIslandWindSample WindSample { get { return windSample; } }
 
         /// <summary>
         /// 本趟系着晴岚护符：噬风的风暴脉冲按 <see cref="SkyIslandFieldcraftRules.CharmStormWard"/> 减伤。
@@ -603,6 +609,12 @@ namespace BossRush
             int gale = SkyIslandFieldcraftRules.WindLevel(
                 SkyIslandFieldcraftRules.NightWind(night, lightsLit - missingFireAnchors), onBridge, onBoardwalk, stormPending);
             int level = SkyIslandFieldcraftRules.CoreEased(gale, CarriesCore());
+            // F3 只读的风级读回：整块记下这一次采样的输入与结果（值类型，不分配）。玩法判定不读它。
+            windSample = new SkyIslandWindSample
+            {
+                Sampled = true, Night = night, OnBridge = onBridge, OnBoardwalk = onBoardwalk, StormPending = stormPending,
+                EffectiveLights = lightsLit - missingFireAnchors, Gale = gale, Level = level
+            };
             // 灶火与风晶灯旁、驱风香什么风都挡；只有风灯时大风里只挡一半。
             SkyIslandWarmth warmth = SkyIslandFieldcraftRules.Warmth(NearFire(player.transform.position), incenseUntil > 0f, lanternUntil > 0f);
             // 内容批次四：云蚋读同一次采样——环境风（噬风之核只改你身上的寒意、不改空气）、灶火的烟、点起来的风晶灯、驱风香与风灯。

@@ -346,6 +346,9 @@ namespace BossRush
         ///
         /// 只读：走 `SkyIslandUiArt.HasArt` 探测，不解码贴图、不写缓存（旧写法在玩家帧上同步解码约 20 MB，
         /// 还会把查不到的 null 永久缓存）。一张都没有时「部分部署」这条判据不适用，记 SKIP 并写明原因。
+        ///
+        /// 2026-09-14 扩展：13 张面板整屏底图（12 区 + 手记）与手记横幅并进同一条「全有或全无」；
+        /// UI 皮肤图集注入过的话，面板 / 卡片 / 按钮 / 分隔线 / 滚动滑块五档都要真取得到图——取不到的档会静默退回程序化底图。
         /// </summary>
         private bool ValidateSkyIslandPanelArt(out string metrics, out string reason)
         {
@@ -364,18 +367,52 @@ namespace BossRush
                 if (SkyIslandUiArt.HasArt(SkyIslandUiArt.PortraitAssetName(residents[i]))) portraits++;
                 else missing.Add("portrait:" + residents[i]);
             }
-            int found = scenes + portraits;
-            int total = regions.Length + residents.Length;
+            int backgrounds = 0;
+            for (int i = 0; i <= regions.Length; i++)
+            {
+                string key = i < regions.Length ? regions[i] : "journal";
+                if (SkyIslandUiArt.HasArt(PanelBackgroundAssetPrefix + key)) backgrounds++;
+                else missing.Add("background:" + key);
+            }
+            bool journalBanner = SkyIslandUiArt.HasArt(SkyIslandUiArt.JournalSceneAsset);
+            if (!journalBanner) missing.Add("journal_banner");
+            bool skinInjected = BossRushUISkinLoader.IsSkinInjected;
+            BossRushUISkinPart[] tiers =
+            {
+                BossRushUISkinPart.Panel, BossRushUISkinPart.Card, BossRushUISkinPart.Button,
+                BossRushUISkinPart.Rule, BossRushUISkinPart.ScrollHandle
+            };
+            List<string> emptyTiers = new List<string>();
+            if (skinInjected)
+                for (int i = 0; i < tiers.Length; i++)
+                    if (BossRushUISkin.GetInjected(tiers[i]) == null) emptyTiers.Add(tiers[i].ToString());
+            int found = scenes + portraits + backgrounds + (journalBanner ? 1 : 0);
+            int total = regions.Length + residents.Length + (regions.Length + 1) + 1;
             metrics = "scenes=" + scenes + "/" + regions.Length
                 + ",portraits=" + portraits + "/" + residents.Length
+                + ",backgrounds=" + backgrounds + "/" + (regions.Length + 1) + ",journal_banner=" + journalBanner
+                + ",skin_injected=" + skinInjected
+                + ",empty_skin_tiers=" + (emptyTiers.Count == 0 ? "none" : string.Join("+", emptyTiers.ToArray()))
                 + ",missing=" + (missing.Count == 0 ? "none" : string.Join(",", missing.ToArray()));
-            if (found == 0) throw new SkyIslandSkipCase("art_not_deployed", metrics);
-            if (found != total)
+            // 整套插图都没出是合法状态（面板退成无插图布局），但「部分命中」与「皮肤档位取不到图」不是：
+            // 这两条先判，免得「一张插图都没有」的 SKIP 把皮肤图集没注入这种部署缺陷一起盖掉。
+            if (found != 0 && found != total)
             {
                 reason = "面板插图只部署了一部分，玩家会看到有的区域有图有的没有：" +
                     string.Join(",", missing.ToArray());
                 return false;
             }
+            if (!skinInjected)
+            {
+                reason = "UI 皮肤图集没有注入：面板、卡片、按钮全部退回程序化底图（bossrush_ui_skin 缺失或加载失败）";
+                return false;
+            }
+            if (emptyTiers.Count > 0)
+            {
+                reason = "皮肤分档取到的图为空（这几档会退回程序化底图）：" + string.Join(",", emptyTiers.ToArray());
+                return false;
+            }
+            if (found == 0) throw new SkyIslandSkipCase("art_not_deployed", metrics);
             return true;
         }
 
@@ -565,6 +602,10 @@ namespace BossRush
             return errors.Count == 0;
         }
 
+        /// <summary>
+        /// 委托门控。判据收在纯函数 <see cref="JudgeBountyGating"/>（F3GameplayValidationSkyIslandRuntimeCases.cs，
+        /// 隔离回归执行）：前三类硬门，驱蚋是软门——白天带着没做完的驱蚋单只记 metrics，不再必定假红（2026-09-14）。
+        /// </summary>
         private bool ValidateSkyIslandBountyGating(out string metrics, out string reason)
         {
             reason = null;
@@ -573,30 +614,9 @@ namespace BossRush
             if (session == null) { reason = "session_missing"; return false; }
             SkyIslandBounty bounty = session.Bounty;
             if (bounty == null) { reason = "bounty_owner_missing"; return false; }
-            SkyIslandBountyKind[] kinds = SkyIslandBounty.AllKinds;
-            List<string> parts = new List<string>();
-            List<string> errors = new List<string>();
-            for (int i = 0; i < kinds.Length; i++)
-            {
-                int target = bounty.TargetFor(kinds[i]);
-                int available = session.AvailableBountyProgress(kinds[i]);
-                parts.Add(kinds[i] + "=avail " + available + "/target " + target);
-                if (target <= 0) errors.Add(kinds[i] + ":target_not_positive");
-            }
-            // 派单门控的全部意义就是「只派做得完的单」：接了单却没有可完成量就是死单。
-            if (bounty.HasActive && session.AvailableBountyProgress(bounty.Active) + bounty.Progress < bounty.Target)
-                errors.Add("active_contract_unfinishable");
-            if (bounty.CompletedRounds > SkyIslandBounty.MaxRounds) errors.Add("rounds_over_max");
-            // 巡岛可完成量不得超过本局真正索引到的区域数。旧口径按 POI_ 节点计数，装饰节点 POI_B_Mural 让它
-            // 永久多算 1——剩 3 个真区域时算成 4，正好派得出一张做不完的「巡视群岛区域 ×4」。
-            int regions = session.ValidationGroundRegionCount;
-            if (session.AvailableBountyProgress(SkyIslandBountyKind.Survey) > regions)
-                errors.Add("survey_available_exceeds_regions");
-            metrics = "ground_regions=" + regions + ",rounds=" + bounty.CompletedRounds + "/" + SkyIslandBounty.MaxRounds
-                + ",active=" + bounty.Active + ",progress=" + bounty.Progress + "/" + bounty.Target
-                + " | " + string.Join(" ", parts.ToArray());
-            if (errors.Count > 0) reason = "委托门控不合格：" + string.Join(",", errors.ToArray());
-            return errors.Count == 0;
+            return JudgeBountyGating(SkyIslandBounty.AllKinds, bounty.TargetFor, session.AvailableBountyProgress,
+                bounty.HasActive, bounty.Active, bounty.Progress, bounty.Target, bounty.CompletedRounds,
+                session.ValidationGroundRegionCount, out metrics, out reason);
         }
 
         private bool ValidateSkyIslandResidents(out string metrics, out string reason)

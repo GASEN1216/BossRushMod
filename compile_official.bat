@@ -237,6 +237,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandInventoryTransaction.cs
 echo(DebugAndTools\SkyIsland\SkyIslandNight.cs
 echo(DebugAndTools\SkyIsland\SkyIslandMosquitoRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGnats.cs
+echo(DebugAndTools\SkyIsland\SkyIslandGnatsDrill.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGnatProjectilePatch.cs
 echo(DebugAndTools\SkyIsland\SkyIslandHearthFx.cs
 echo(DebugAndTools\ArenaPrototype\StoneOutpostMapDataLease.cs
@@ -270,6 +271,8 @@ echo(DebugAndTools\F3GameplayValidationDeepFlows.cs
 echo(DebugAndTools\F3GameplayValidationLeaks.cs
 echo(DebugAndTools\F3GameplayValidationSkyIsland.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
+echo(DebugAndTools\F3GameplayValidationSkyIslandRuntimeCases.cs
+echo(DebugAndTools\F3GameplayValidationSkyIslandDrill.cs
 echo(DebugAndTools\NPCTeleportUI.cs
 echo(Integration\BossRushDynamicItemRegistry.cs
 echo(Integration\BossRushIntegration.cs

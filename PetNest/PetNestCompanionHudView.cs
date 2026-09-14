@@ -125,7 +125,11 @@ namespace BossRush
 
         private void Update()
         {
-            // 每帧唯一的工作：递减计时器
+            // 常驻 HUD 跟随官方界面与暂停菜单收起（口径同 CampaignHud，2026-09-14）：只开关画布，下面的节流刷新照旧。
+            bool visible = !BossRushUI.IsOfficialHudHidden() && !BossRushUI.IsGamePaused();
+            if (_canvas != null && _canvas.enabled != visible) _canvas.enabled = visible;
+
+            // 其余的每帧工作只有递减计时器
             _refreshTimer -= Time.unscaledDeltaTime;
             if (_refreshTimer > 0f) return;
             _refreshTimer = RefreshIntervalSeconds;

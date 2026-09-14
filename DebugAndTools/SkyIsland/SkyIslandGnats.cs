@@ -24,7 +24,7 @@ namespace BossRush
     /// 纪律：玩法计时走游戏时间（`Time.time` / `Time.deltaTime`）；逐帧路径不查找场景、不分配、不用 LINQ 与闭包；
     /// 精灵表缺失时**整趟不刷云蚋**（看不见却会叮人的蚊子比没有更糟），只打一条 CriticalLog。
     /// </summary>
-    internal sealed class SkyIslandGnats : IDisposable, ISkyIslandGnatSpace
+    internal sealed partial class SkyIslandGnats : IDisposable, ISkyIslandGnatSpace
     {
         /// <summary>本趟的蚊群 owner：开枪补丁只在按下扳机时读一次；离岛时为 null。</summary>
         internal static SkyIslandGnats Current { get; private set; }
@@ -521,6 +521,30 @@ namespace BossRush
             }
             catch (Exception) { playerCollider = null; }
             return playerCollider;
+        }
+
+        /// <summary>
+        /// F3 只读（SKY_GNAT_RUNTIME）：场上活蚋逐只核对「与主角移动碰撞体的接触已屏蔽」，返回**没屏蔽**的只数。
+        /// 用与刷新时同一个 <see cref="PlayerCollider"/>（它只缓存引用）；取不到主角碰撞体时
+        /// <paramref name="playerColliderFound"/> 为假并返回 0。不改蚊群、碰撞体或主角的任何状态。
+        /// </summary>
+        internal int CountPlayerContactsNotIgnored(out int inspected, out bool playerColliderFound)
+        {
+            inspected = 0;
+            Collider carrier = PlayerCollider();
+            playerColliderFound = carrier != null;
+            if (carrier == null) return 0;
+            int notIgnored = 0;
+            for (int i = 0; i < gnats.Length; i++)
+            {
+                Gnat gnat = gnats[i];
+                if (gnat == null || gnat.Root == null || !gnat.Root.activeSelf) continue;
+                Collider body = gnat.Root.GetComponent<Collider>();
+                if (body == null) continue;
+                inspected++;
+                if (!Physics.GetIgnoreCollision(body, carrier)) notIgnored++;
+            }
+            return notIgnored;
         }
 
         /// <summary>

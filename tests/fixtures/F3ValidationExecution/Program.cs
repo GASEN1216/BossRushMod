@@ -161,6 +161,85 @@ internal static class Program
         using (var stack = new ValidationCoroutineStack(factoryCase.Run(delegate { throw new Exception("factory failed"); })))
             while (stack.MoveNext()) { }
         Check(factoryCase.Reclaimed && factoryCase.Results.Contains("CASE:FAIL"), "factory exception records failure and reclaims");
-        Console.WriteLine("PASS: " + assertions + " assertions; production coroutine stack and case wrapper, no Unity smoke");
+
+        SkyIslandShell();
+        Console.WriteLine("PASS: " + assertions + " assertions; production coroutine stack, main and Sky Island case wrappers, no Unity smoke");
+    }
+
+    // ---- 2026-09-14: the Sky Island shell (RunSkyIslandSync / RunSkyIslandCase / SkyIslandSessionStillValid / RunSyncCase) ----
+    private static ProductionSkyIslandCase Island(bool session, bool ready, int handle, int startedHandle)
+    {
+        var shell = new ProductionSkyIslandCase();
+        if (session) shell.Session = new SkyIslandSession { IsReady = ready, ValidationScene = new SceneStub { handle = handle } };
+        shell.Begin(startedHandle);
+        return shell;
+    }
+
+    private static void Drain(IEnumerator routine)
+    {
+        using (var stack = new ValidationCoroutineStack(routine))
+            while (stack.MoveNext()) { }
+    }
+
+    private static void SkyIslandShell()
+    {
+        bool ran = false;
+        ProductionSkyIslandCase.SyncValidation never = (out string m, out string r) => { ran = true; m = "x"; r = null; return true; };
+
+        var closed = Island(false, true, 7, 7);
+        closed.Sync("SKY_X", never);
+        Check(closed.Results.Count == 1 && closed.Results[0] == "SKY_X:SKIP" && closed.Reasons[0] == "island_session_closed" && !ran,
+            "island sync case: session gone -> SKIP island_session_closed and the case body never runs");
+        var notReady = Island(true, false, 7, 7);
+        notReady.Sync("SKY_X", never);
+        Check(notReady.Results[0] == "SKY_X:SKIP" && notReady.Reasons[0] == "island_session_not_ready" && !ran,
+            "island sync case: returning / dead session -> SKIP island_session_not_ready");
+        var changed = Island(true, true, 8, 7);
+        changed.Sync("SKY_X", never);
+        Check(changed.Results[0] == "SKY_X:SKIP" && changed.Reasons[0] == "island_scene_changed" && !ran,
+            "island sync case: another scene instance -> SKIP island_scene_changed");
+
+        var pass = Island(true, true, 7, 7);
+        pass.Sync("SKY_PASS", (out string m, out string r) => { m = "metrics"; r = null; return true; });
+        Check(pass.Results[0] == "SKY_PASS:PASS" && pass.Metrics[0] == "metrics", "island sync case: judgement true -> PASS with metrics");
+        var fail = Island(true, true, 7, 7);
+        fail.Sync("SKY_FAIL", (out string m, out string r) => { m = "metrics"; r = "why"; return false; });
+        Check(fail.Results[0] == "SKY_FAIL:FAIL" && fail.Reasons[0] == "why", "island sync case: judgement false -> FAIL with reason");
+        var skip = Island(true, true, 7, 7);
+        skip.Sync("SKY_SKIP", (out string m, out string r) => { throw new SkyIslandSkipCase("daytime", "night=false"); });
+        Check(skip.Results[0] == "SKY_SKIP:SKIP" && skip.Reasons[0] == "daytime" && skip.Metrics[0] == "night=false",
+            "island sync case: SkyIslandSkipCase -> SKIP (never PASS) and keeps its metrics");
+        var threw = Island(true, true, 7, 7);
+        threw.Sync("SKY_THROW", (out string m, out string r) => { throw new InvalidOperationException("boom"); });
+        Check(threw.Results[0] == "SKY_THROW:FAIL" && threw.Reasons[0].Contains("boom"), "island sync case: unexpected exception -> FAIL");
+
+        bool factoryRan = false;
+        var goneCoro = Island(false, true, 7, 7);
+        Drain(goneCoro.Coroutine("SKY_CORO", delegate { factoryRan = true; return Parent(false); }));
+        Check(goneCoro.Results.Count == 1 && goneCoro.Results[0] == "SKY_CORO:SKIP" && goneCoro.Reasons[0] == "island_session_closed" && !factoryRan,
+            "island coroutine case: session gone -> SKIP before the coroutine is even created");
+        var cancelled = Island(true, true, 7, 7);
+        cancelled.Cancelled = true;
+        Drain(cancelled.Coroutine("SKY_CORO", delegate { factoryRan = true; return Parent(false); }));
+        Check(cancelled.Results[0] == "SKY_CORO:SKIP" && cancelled.Reasons[0] == "cancelled" && !factoryRan,
+            "island coroutine case: abort requested -> SKIP with the abort reason");
+        var factoryThrows = Island(true, true, 7, 7);
+        Drain(factoryThrows.Coroutine("SKY_CORO", delegate { throw new Exception("factory failed"); }));
+        Check(factoryThrows.Results[0] == "SKY_CORO:FAIL" && factoryThrows.Reasons[0].StartsWith("case_factory_threw:"),
+            "island coroutine case: factory exception -> FAIL case_factory_threw");
+        var factoryNull = Island(true, true, 7, 7);
+        Drain(factoryNull.Coroutine("SKY_CORO", delegate { return null; }));
+        Check(factoryNull.Results[0] == "SKY_CORO:FAIL" && factoryNull.Reasons[0] == "case_factory_returned_null",
+            "island coroutine case: factory returned null -> FAIL");
+        cleanup.Clear();
+        var nested = Island(true, true, 7, 7);
+        Drain(nested.Coroutine("SKY_CORO", delegate { return Parent(true); }));
+        Check(nested.Results.Count == 1 && nested.Results[0] == "SKY_CORO_UNHANDLED:FAIL" && cleanup.Contains("parent"),
+            "island coroutine case: nested exception -> _UNHANDLED FAIL and suspended finally blocks still run");
+        cleanup.Clear();
+        var clean = Island(true, true, 7, 7);
+        Drain(clean.Coroutine("SKY_CORO", delegate { return Parent(false); }));
+        Check(clean.Results.Count == 0 && string.Join(",", cleanup) == "child,parent",
+            "island coroutine case: normal completion records nothing from the shell (the case records its own verdict)");
     }
 }

@@ -14,11 +14,29 @@ def load_manifest():
     return json.loads(MANIFEST.read_text(encoding='utf-8-sig'))
 
 
-def required_automatic_ids():
-    code = '\n'.join(p.read_text(encoding='utf-8-sig') for p in (ROOT / 'DebugAndTools').glob('F3GameplayValidation*.cs'))
-    result = set(re.findall(r'(?:RunSyncCase(?:Gated)?|RunIsolatedCase|VerifyArenaCleanup|SamplePerformance|WaitRuntimeReady)\("([A-Z0-9_]+)"', code))
+# F3 源码里「第一个实参是字面量用例 id」的用例外壳。新增一种外壳就要登记在这里，否则经它跑的用例
+# 不会被要求登记进 GameplayCoverage.json。2026-09-14 之前天空岛的 RunSkyIslandSync / RunSkyIslandCase
+# 就不在这份清单里——岛内 28 条用例只是碰巧都手工登记了，新加一条忘了登记也不会有人报。
+# tests/GameplayCoverageCaseRunnerGuard.py 反向核对：F3 源码里每一个 `string id` / `string caseId` 外壳都必须在这里或写明不登记的理由。
+CASE_RUNNERS = ('RunSyncCase', 'RunSyncCaseGated', 'RunIsolatedCase', 'VerifyArenaCleanup', 'SamplePerformance',
+                'WaitRuntimeReady', 'RunSkyIslandSync', 'RunSkyIslandCase')
+
+
+def f3_source():
+    return '\n'.join(p.read_text(encoding='utf-8-sig') for p in (ROOT / 'DebugAndTools').glob('F3GameplayValidation*.cs'))
+
+
+def case_ids_in(code):
+    """按用例外壳与固定 Record 抽出用例 id。"""
+    result = set(re.findall(r'(?:' + '|'.join(CASE_RUNNERS) + r')\("([A-Z0-9_]+)"', code))
     # 固定 Record 同样必须登记，异常/基础设施错误是诊断分支，不要求每轮触发。
     result.update(re.findall(r'Record\("([A-Z0-9_]+)"', code))
+    return result
+
+
+def required_automatic_ids():
+    code = f3_source()
+    result = case_ids_in(code)
     result.difference_update({'RUN_MARKER', 'COVERAGE_REPORT', 'SUITE_EXECUTION', 'RUNTIME_ERRORS', 'EXTERNAL_ERRORS', 'LOG_DIAGNOSTICS'})
     result.discard('RANDOM_EVENT_')
     result.update({'SCENE_ENTER_ARENA', 'SCENE_RETURN_BASE', 'SCENE_CLICK_GATE_ENTER', 'SCENE_CLICK_GATE_READY',

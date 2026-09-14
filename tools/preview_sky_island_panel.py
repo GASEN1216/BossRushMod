@@ -26,6 +26,14 @@ from PIL import Image, ImageDraw, ImageFont
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'tests'))
 from cs_source_util import clean_source
+import importlib.util
+
+# 主视觉的标题块与实底带按生产 Show / BuildHero 的**真实分支**求值，与布局属性测试共用同一个求值器，
+# 不在预览里另写一份（2026-09-13 预览自己写了「标题块 = 标题本身」，于是画不出居民面板那条被立绘顶高的带子）。
+_layout_spec = importlib.util.spec_from_file_location(
+    'sky_island_panel_layout', ROOT / 'tests/SkyIslandStoryPanelLayoutPropertyTest.py')
+PANEL_LAYOUT = importlib.util.module_from_spec(_layout_spec)
+_layout_spec.loader.exec_module(PANEL_LAYOUT)
 
 PANEL_CS = ROOT / 'DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs'
 UI_CS = ROOT / 'Common/UI/BossRushUI.cs'
@@ -146,7 +154,7 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
     title_w = (PW - inset - C['PortraitSize'] - C['Gap']) if portrait_name else hero_content_w
     title_lines = wrap(d0, title, f_title, title_w)
     title_h = max(C['TitleMinHeight'], len(title_lines) * C['TitleFontMax'] * 1.25 + 4)
-    title_block = title_h
+    title_block = PANEL_LAYOUT.show_title_block(PANEL_LAYOUT.PANEL_SRC, title_h, bool(portrait_name))
     hero_floor = max(C['HeroMinHeight'], title_block + inset * 2)
     if portrait_name:
         hero_floor = max(hero_floor, C['PortraitSize'])
@@ -207,7 +215,8 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
     # 实底带罩住标题 + 带子上方再淡出到全透，与生产 BuildHero 同一条算式。
     # 只用一条 t² 渐变的话，不透明度全堆在底边，标题上沿只落在 0.19 的淡出区上（CR-2026-09-13-007）。
     band_a = C['HeroTitleBandAlpha']
-    band_h = int(min(hero_h, inset * 2 + title_block * 0.5 + title_h * 0.5))
+    hero_block, band = PANEL_LAYOUT.hero_geometry(PANEL_LAYOUT.PANEL_SRC, title_block, hero_h, bool(portrait_name))
+    band_h = int(band)
     panel.alpha_composite(
         Image.new('RGBA', (PW_i, band_h), COL['Surface'][:3] + (int(round(band_a * 255)),)),
         (0, hero_i - band_h))
@@ -246,7 +255,7 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
         panel.alpha_composite(face.resize((size, size), Image.LANCZOS), (px0, py0))
         draw = ImageDraw.Draw(panel)
     # 标题左对齐、底边距 hero 底边一个 inset（海报式主视觉的通用写法）。
-    ty = hero_i - inset - title_block + (title_block - len(title_lines) * C['TitleFontMax'] * 1.25) / 2
+    ty = hero_i - inset - hero_block + (hero_block - len(title_lines) * C['TitleFontMax'] * 1.25) / 2
     for line in title_lines:
         draw.text((title_x, ty), line, font=f_title, fill=COL['TextPrimary'])
         ty += C['TitleFontMax'] * 1.25

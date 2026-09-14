@@ -30,6 +30,7 @@ BACKSLASH = chr(92)
 
 SUITE = "DebugAndTools/F3GameplayValidationSkyIsland.cs"
 CASES = "DebugAndTools/F3GameplayValidationSkyIslandCases.cs"
+RUNTIME = "DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs"
 SURFACE = "DebugAndTools/SkyIsland/SkyIslandSessionValidation.cs"
 
 # `Inspect` 的 CJK 码位区间。C# 那边写成整数常量而不是字面汉字或 \u 转义，是因为后两者
@@ -68,6 +69,19 @@ MUTATING_MEMBERS = (
     ("TakeSpawn", "捧蛙卵扣材料"), ("ReleaseSpawn", "放生写手记"), ("SpawnChoice", "打开蛙卵选项"), ("ReleaseChoice", "打开放生选项"),
     ("DeployZapper", "放灭蚊灯"), ("SwingFan", "扇云蚋"), ("Soothe", "止痒"), ("RemedyClearsItch", "止痒"),
     ("OnProjectile", "登记弹道让云蚋躲闪"), ("Sample", "推进云蚋刷新与痒"), ("Frame", "推进云蚋飞行与叮咬"),
+    # 2026-09-14 运行时只读用例：图鉴注册、发物品、反射写官方字段、解码插图写缓存、注入皮肤、放信鸽、弹官方对话、
+    # 改主角血量、订阅事件，以及 Dev 演练入口，一样都不许碰。
+    ("EnsureRegistered", "注册官方图鉴条目"), ("RequestSync", "改图鉴同步状态"), ("EnsureRuntime", "订阅图鉴同步事件"),
+    ("InjectNoteKeys", "注入本地化"), ("SetNoteDynamic", "写官方图鉴"), ("SetNoteUnlocked", "点亮官方图鉴"),
+    ("TryGive", "发物品"), ("GrantKeepsakes", "发纪念品"), ("SetHiddenMember", "反射写官方字段"),
+    ("GetRadialGlow", "新建贴图写缓存"), ("GetPanelBackground", "解码底图写缓存"), ("GetJournalBanner", "解码横幅写缓存"),
+    ("GetScene", "解码插图写缓存"), ("GetPortrait", "解码立绘写缓存"), ("EnsureInjected", "注入 UI 皮肤"),
+    ("TickPigeon", "放信鸽"), ("PlacePigeon", "放信鸽"), ("ReleasePigeon", "放走信鸽"),
+    ("RearmPigeonIfStoryLetterWaiting", "重新武装信鸽"), ("ReadLetter", "打开读信面板"),
+    ("ShowMultipleChoiceBilingual", "弹官方对话"), ("ShowDialogueSequenceBilingual", "弹官方对话"),
+    ("ForceEndDialogue", "结束别人的对话"), ("SetHealth", "改主角血量"), ("AddListener", "订阅事件"),
+    ("DevSpawnAround", "Dev 演练：刷云蚋"), ("DevSyntheticShot", "Dev 演练：登记合成弹道"),
+    ("DevKillOne", "Dev 演练：打死云蚋"), ("DevMotorStats", "Dev 演练入口"),
 )
 
 # 不以方法名出现、但同样会改状态的写法。
@@ -85,6 +99,11 @@ FORBIDDEN_PATTERNS = (
     (r"\bRunFinalChecks\(", "调主套件收尾（会 LoadScene 回基地）"),
     (r"\bRunSuite\(", "调主套件编排"),
     (r"\bValidationSafeCleanup\(", "跑面向主套件的全宿主清理"),
+    (r"\bSkyIslandNoteBridge\.(?:Unlock|Tick|EnsureRegistered|RequestSync|EnsureRuntime|InjectNoteKeys|ResetStaticCaches)\b",
+     "改官方图鉴镜像"),
+    (r"\bDevForceNight\s*=(?![=>])", "改强制夜里开关"),
+    (r"\bRuntimeStatModifierTracker\.(?:TryAdd|RemoveAll)\b", "给主角挂或摘增益"),
+    (r"\.(?:Patch|Unpatch|PatchAll|UnpatchAll)\(", "改 Harmony 补丁"),
 )
 
 # 观测面允许调用的会话方法：全部是只读的几何与计数。
@@ -200,6 +219,7 @@ def main():
 
     suite = read(SUITE)
     cases = read(CASES)
+    runtime = read(RUNTIME)
     surface = read(SURFACE)
     runner = read("DebugAndTools/F3GameplayValidationRunner.cs")
     execution = read("DebugAndTools/F3GameplayValidationExecution.cs")
@@ -220,7 +240,7 @@ def main():
         return body
 
     # ---- 1. 新文件必须进编译清单（无通配符，漏了不报错）----
-    for path in (SUITE, CASES, SURFACE):
+    for path in (SUITE, CASES, RUNTIME, SURFACE):
         if path.replace("/", BACKSLASH) not in bat:
             errors.append("编译清单缺少 " + path)
 
@@ -269,7 +289,7 @@ def main():
         errors.append("会话侧只许在 CompleteSession 这一处复位 _skyIslandMode")
 
     # ---- 5. 只读纪律：套件、用例与会话观测面 ----
-    for label, source in (("岛内套件", suite), ("岛内用例", cases), ("会话观测面", surface)):
+    for label, source in (("岛内套件", suite), ("岛内用例", cases), ("岛内运行时用例", runtime), ("会话观测面", surface)):
         flat = normalize(source)
         for name, why in MUTATING_MEMBERS:
             if re.search(r"\." + name + r"(?:\(|\s*[,;)])", flat) or re.search(r"(?<![\w.])" + name + r"\(", flat):
@@ -365,7 +385,7 @@ def main():
             if index == 0:
                 executed.append(cm.group(1))
             delegates.append(cm.group(2))
-            if not re.search(r"private (?:bool|IEnumerator) " + re.escape(cm.group(2)) + r"\(", suite + cases):
+            if not re.search(r"private (?:bool|IEnumerator) " + re.escape(cm.group(2)) + r"\(", suite + cases + runtime):
                 errors.append(label + " 引用了不存在的用例方法：" + cm.group(2))
     for kind, values in (("用例 id", executed), ("用例方法", delegates)):
         repeated = sorted({value for value in values if values.count(value) > 1})
@@ -407,6 +427,14 @@ def main():
          "internal SkyIslandValidationSnapshot ValidationSnapshot()",
          "internal bool ValidationIsInsideExtractionAt(Vector3 position, out string markerName)",
          "internal static float ValidationExtractionRadius")
+    # 2026-09-14：SkyIslandEncounters.LivingEnemyCount 的注释写着「给 F3 验收用」，此前全仓零调用。
+    # 钩子必须真的接上：观测面读它，SKY_ENCOUNTER_CAP 用观测面读活敌水位——任一头断了，12 活体上限又回到没人看。
+    if not re.search(r"internal int ValidationLivingEnemies \{ get \{ return encounters == null \? 0 : encounters\.LivingEnemyCount; \} \}",
+                     surface):
+        errors.append("会话观测面没有经 SkyIslandEncounters.LivingEnemyCount 暴露活敌数：那条钩子又成了没人调的死代码")
+    encounter_cap = need_body(runtime, "private IEnumerator RunSkyIslandEncounterCap()", "SKY_ENCOUNTER_CAP")
+    if encounter_cap and encounter_cap.count("session.ValidationLivingEnemies") < 2:
+        errors.append("SKY_ENCOUNTER_CAP 没有在开跑与采样窗口里都读活敌数（只读一次的话，峰值恒等于起点）")
     if re.search(r"\b(?:internal|public|private|protected)\s+(?:static\s+)?[\w<>\[\],.]+\s+Validation[A-Z]\w*\s*(?:\(|\{|=>)",
                  session):
         errors.append("F3 观测面成员只许写在 SkyIslandSessionValidation.cs：会话主文件里又长出了 Validation* 成员，"

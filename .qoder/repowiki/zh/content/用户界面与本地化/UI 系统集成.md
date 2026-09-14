@@ -526,3 +526,62 @@ BossRushUI.ApplyPanelStroke(surface, 18, BossRushUISkinPart.Panel, BossRushUICol
 此前却被「圆角底板 + 描边 + 内缩 5px」三层装回了框里。抠图就该直接站在插图上；
 边缘会糊的问题用**脚下落影**解决（一张程序化径向柔光，`SkyIslandUiArt.GetRadialGlow()`），
 不是用一块黑底板解决。
+
+## 附录四：按钮焦点色、零选项面板与常驻 HUD 显隐（2026-09-14）
+
+台账 `CR-2026-09-14-005` … `-008`。
+
+### ColorTint 是乘法：底色不要写在 Graphic 上
+
+`Button` 的 ColorTint 过渡把 `ColorBlock` 里的颜色**乘**到 `Graphic.color` 上。天空岛选项行把行底色写在
+`image.color`（`SurfaceRaised × 0.78`），`highlightedColor` 又给了绝对色 `GetHoverColor(SurfaceRaised)`——
+两个深色相乘，**悬停反而变暗**（最亮底图上合成亮度 0.0140 → 0.0076）；键盘 `Select()` 却直接把
+`image.color` 换成更亮的色。同一块面板，两套方向相反的焦点表现。
+
+正解照 `ZombieModeUIHelper.ApplyButtonColors`：Graphic 置白，常态 / 悬停 / 按下 / 禁用的**绝对色**全放进
+`ColorBlock`；键盘当前项改 `ColorBlock.normalColor`（`Button.colors` 的 setter 会立刻重跑状态过渡），
+与悬停共用同一个 `FocusColor`。`navigation` 置 `None`，免得 EventSystem 的选中态变成第三种高亮。
+
+焦点强度按 WCAG 非文本 3:1 实算，不凭感觉：底图亮度扫 0–0.747，共享 `GetHoverColor`（向白 0.22）
+焦点行对常态行只有 **1.66:1**；向白 0.39、不透明度 0.90 时最差 **3.13:1**，标签在焦点行上最差 **4.76:1**。
+由 `tests/SkyIslandUiContrastGuard.py` 复算。
+
+### 零选项面板：看得见的关闭提示必须点得动
+
+面板没有可导航项时只能按 ESC 关，而右上角 ESC 键帽 `raycastTarget=false`，纯鼠标玩家看得见却点不动。
+把键帽直接挂成按钮（不进可导航项，键盘与手柄行为不变），比「点遮罩关闭」改动小，也不会误关。
+
+### 测试要按生产分支求值，不要抄一份算式
+
+标题实底带的高度，`Show`、布局属性测试与离线预览都按「标题本身」算（86 px），`BuildHero` 却在有立绘时另算
+`max(PortraitSize, titleHeight)`——实际 169 px，盖掉 247 px 插图的 68%。三处都没看出来，因为测试里的算式
+是**抄过去的**。现在布局测试与 `tools/preview_sky_island_panel.py` 从生产源码读 `Show` / `BuildHero` 的赋值式，
+按真实分支求值。
+
+### 常驻 HUD 跟随官方界面与暂停
+
+官方 `HUDManager.ShouldDisplay` 在 View、对话、捏脸、拍照模式任一打开时隐藏官方 HUD，
+`BossRushUI.IsOfficialHudHidden()` 照这四条判定；暂停菜单是 `UIPanel` 不是 `View`，官方 HUD 暂停时**不**隐藏，
+所以常驻 HUD 还要另查 `BossRushUI.IsGamePaused()`。官方 Views 与对话画布在 sortingOrder 100，
+下表的层级都在它之上，不跟随就压在背包、地图、对话上面。
+
+| 常驻 HUD | 画布层级 | 判定落点 |
+| --- | --- | --- |
+| 随机事件徽章 | `HudOverlay` 1200 | `RandomEventHud.Tick` → `_canvas.enabled` |
+| 血月全屏红罩 | `HudOverlay` 1200 | `RandomEventBloodMoon.OnTick` → `_vignette.enabled` |
+| 伴宠状态条 | `PetNestCompanionHud` 990 | `PetNestCompanionHudView.Update` → `_canvas.enabled` |
+| Mode H 观战 HUD | `ModeHHud` 960 | `ModeHUI.ApplyHudVisibility`，由模块每帧入口调用（`TickHud` 只在交战期调，刷怪期会漏） |
+| Mode G 状态文本 | `ModeGHud` 900 | `ModeGHUD.Update` → `SetVisible` |
+| Mode F 赏金雷达 | `ModeFBountyRadar` 240 | `IsModeFBountyRadarSuppressedByOverlay` |
+| 词条浮层 | `HudOverlay` 1200 | `MutatorUI.Tick` → `suppressed` |
+| 丧尸模式 HUD | `ZombieHud` 28000 | `ZombieModeHudController.Update` → `SetPauseMenuHidden` |
+| 征程契约追踪条 | `HudOverlay` 1200 | `CampaignHud.Tick` → `_canvas.enabled` |
+| 天空岛右上卡片、区域大标题与字幕 | `HudOverlay` 1200 | `SkyIslandHud.Tick` → `rootGroup.alpha` |
+
+不按常驻 HUD 处理的：玩家主动打开或需要操作的界面（Mode G 回顾与入场、Mode H 模态 / 恢复 / 诊断页、遗种巢界面与弹窗、
+丧尸模态、征程面板、图鉴、许愿台、F3 菜单、天空岛剧情面板），它们由各自的打开 / 关闭流程管理；
+世界空间画布（基地船点招牌、桥口木牌）不是屏幕 HUD。Dev 专用自建试验场的状态行只登记、未改。
+
+`tests/PersistentHudVisibilityGuard.py` 钉住：清单里每块 HUD 都经过两份判定并落到显隐、每帧入口有驱动，
+**全仓引用 HUD 层级常量的文件都必须归类**（常驻或写明理由的排除）——新加一块 HUD 忘了跟随，守卫会直接点名。
+`BossRushUI.cs` 没有行数余量，两份判定分开调用，不另加合并函数。

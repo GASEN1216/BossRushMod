@@ -131,10 +131,19 @@ def main():
     require(english, "SkyIslandSession.RegionLabel(", "SKY_LOCALIZATION_EN 必须覆盖 HUD 用的区域名入口")
     forbid(english, '"Search_A_02"', "SKY_LOCALIZATION_EN 又用回手写见闻点清单（会漏掉 _02 点位）")
 
+    # 2026-09-14：判据搬进纯函数 JudgeBountyGating（隔离回归 SkyIslandValidationJudges 执行的那一份），
+    # 用例本体只取数、只转交。断言跟着判据走，一条没少，并加钉「驱蚋软门 / 前三类硬门」。
     bounty = need_body(cases, "private bool ValidateSkyIslandBountyGating(out string metrics, out string reason)", "SKY_BOUNTY_GATING")
-    require(bounty, "session.AvailableBountyProgress(SkyIslandBountyKind.Survey) > regions",
+    require(bounty, "return JudgeBountyGating(", "SKY_BOUNTY_GATING 的判据必须交给纯函数 JudgeBountyGating")
+    require(bounty, "session.ValidationGroundRegionCount", "SKY_BOUNTY_GATING 必须把本局索引到的区域数交给判据")
+    judges = read("DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs")
+    judge = need_body(judges, "internal static bool JudgeBountyGating(", "SKY_BOUNTY_GATING 判据")
+    require(judge, "availableFor(SkyIslandBountyKind.Survey) > groundRegions",
             "SKY_BOUNTY_GATING 必须核对巡岛可完成量不超过区域数")
-    require(bounty, '"survey_available_exceeds_regions"', "SKY_BOUNTY_GATING 越界时必须报红")
+    require(judge, '"survey_available_exceeds_regions"', "SKY_BOUNTY_GATING 越界时必须报红")
+    require(judge, "if (active == SkyIslandBountyKind.Gnats) soft =",
+            "驱蚋委托是软门：白天做不完只记 metrics，硬判红就是白天必定假红")
+    require(judge, 'else errors.Add("active_contract_unfinishable");', "清理 / 搜刮 / 巡视三类做不完仍必须硬判红")
 
     markers = need_body(cases, "private bool ValidateSkyIslandMarkers(out string metrics, out string reason)", "SKY_MARKERS")
     require(markers, "groundRegions == required.Length", "SKY_MARKERS 必须核对按地面碰撞体索引到全部区域")
