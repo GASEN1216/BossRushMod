@@ -2,6 +2,109 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-14 全自动实机验收（F3「自动验收」接上天空岛后半程，Dev 构建）
+
+**来源**：owner 任务「全自动实机验收」：现有 F3「自动验收 + 完整待测清单」按钮从基地一键跑完主套件与天空岛全部检查（自动推进剧情、瞬移、交互、截图与像素检查），产出结果目录给 AI 读；不新增按钮、无人值守。
+**分类**：`COMPAT`（Dev 构建新功能、步骤表数据、`GameplayCoverage.json` 自动项扩充）+ `SAFE`（守卫、执行回归、审阅工具、文档）+ `OPERATIONAL`（`compile_official.bat` 新增 9 个源文件与 `UnityEngine.ScreenCaptureModule` 引用；天空岛人工验收流程改为「按按钮 + AI 审阅」）。正式构建行为不变：新代码整份 `#if BOSSRUSH_DEV`。
+
+**做了什么**
+- 编排 `F3GameplayValidationAutotest.cs`：主套件回到基地后读步骤表 → 快照 → 经船点真实出发 → 落地、岛内只读套件与演练、真实存档状态、六个剧情阶段、换语言复拍 → 码头撤离回基地 → 还原与汇总；每步预算、切图看门狗、`[AUTOTEST] step=… begin / end result=…` 日志。
+- 动作库与断言 `…Actions.cs` / `…Asserts.cs`（41 个动词、45 个断言名，名单只在 `F3AutotestJudges`）；截图与像素检查 `…Capture.cs`（线性色彩空间 WCAG、TMP 溢出、世界物体 Weber 可见度，单轮 ≤300 MB 分档）；快照、阶段推进、还原、物品账与崩溃恢复 `…Story.cs`；结果目录 `…Report.cs`；纯判据 `…Judges.cs`。
+- 岛上 Dev 入口：`SkyIslandSessionAutotest.cs`（先核地面再瞬移、兜底返航）、`SkyIslandStoryServiceAutotest.cs`（整份清空 / 还原，只走共享 store 与协调器）。
+- 存档安全：写入先过 `AutotestWriteAllowed`（Dev + 专用测试档 + 正在跑 + 槽位没换 + 快照已落盘）；快照先于第一次写入；收尾阶段与 `CompleteSession` 两道还原并复位语言、强制夜里、无敌、血量、时间流速；中途崩溃回基地按快照键恢复；发出去的岛上物品按件数差收回，金钱只记账。
+- 步骤表 `Assets/Data/SkyIslandAutotest.json`：11 个阶段 61 步；覆盖表 193 行（清单 2.10–2.17 共 179 行 + `M_SKY_ISLAND_01–14`）：自动断言 147、截图给 AI 看 40、只能人工 6（手感 4、声音 1、好不好玩 1）。含 2.16 D1–D6、2.17 A/B、UI 审核第八节五项。
+- 工具：`tools/autotest_review.py`（Pillow 缩略图按清单编号分组、红项置顶、与上一轮对比，拒绝写进仓库）、`tools/check_dll_identifiers.py`（DLL 实查 Dev 专用标识）。
+- 规则与文档：根 `AGENTS.md` §4.17 第三档、`DebugAndTools/SkyIsland/AGENTS.md` §5、repowiki「调试工具」一节、`docs/ai-docs-migration.md`；人工清单顶部改为「按按钮 + AI 审阅」与交付报告 `docs/全自动实机验收_2026-09-14.md`（两者 local-only）。
+
+**实施中发现并当场修掉的（未发布，不进 findings）**
+- 两步只用「用耗材」动作，会被游戏侧 `ValidateTable` 判成「既无断言也无截图」，整轮停在读表那一步：新增 `AssertingVerbs`（自带判定的动作算断言），守卫与判据同口径。
+- 居民站位写反（晴禾在 `POI_B`、苇白在 `EnemySpawn_B`）、字幕与选项文案、灶火可见度目标等二十余处名字与生产不符：`SkyIslandAutotestTableGuard` 逐项对生产代码核对后改正。
+- 分项计时的录制窗口只许 F3 运行时用例开：改走 `BeginSkyIslandFrameProfile()`（`SkyIslandFrameProfileGuard` 曾因此转红）。
+- 写入门补上「快照已落盘」；岛上每一步开跑前、收回物品前再过一次门。
+- 执行回归暴露的四处判据约定：只有离线证据的清单行在 summary 里恒为 NOT_RUN（改记 OFFLINE，离线证据不参与取最差）；断言全是 SKIP 但截到了图的步骤记 PASS（改记 SKIP，SKIP 不能吞缺陷）；全部步骤 SKIP 的一轮记 PASS（改记 INCOMPLETE）；`note:` 推进动作读表时收任意 id、推演时只收灯（改成与生产 `RecordNote` 同一份登记表）。
+- 夹具链接的 `SkyIslandBossRules.cs` 只在另一会话的工作区里：改成 `Condition="Exists(...)"`，干净签出上照样编得过。
+
+**验证（L1 / L2，没有进游戏）**
+- Windows Dev 构建 Build succeeded（临时 GAME_PATH，未部署）；`tools/check_dll_identifiers.py --expect present` PASS（11 个标识，证明探针有效）。
+- 守卫：全量 612 个脚本 611 PASS / 1 NEW-FAIL（`SkyIslandFrameProfileGuard`，修后单跑 PASS）；`F3AutotestOrchestratorGuard` 20 条、`SkyIslandAutotestTableGuard` 21 条进程内反向检查全部转红；`AutotestReviewToolPropertyTest` PASS，副本上两处语义破坏转红、按字节还原 sha256 一致。
+- 执行回归：`F3AutotestJudges` PASS 290 条；反向验证 8 处（建夹具时 4 处、收尾时对四处约定再做 4 处）全部转红、按字节还原 sha256 一致。`SkyIsland*` 在工作区 10 PASS / 1 FAIL（`SkyIslandEncounters` 编不过：另一会话未提交的头目 R1 代码引用 `SkyIslandBossContext`，非本轮）。
+- 干净签出：在 `45bd39e` 的临时 worktree 上（Managed 拷贝，不部署）Dev 构建 `D4CE6E1D…`、正式构建 `FB14EEA5…` 均 Build succeeded；Dev DLL `check_dll_identifiers --expect present` PASS，正式 DLL `--expect absent` PASS；编排、步骤表、覆盖、编译清单、帧计时、岛内套件、演练隔离、文件预算等 9 个守卫 PASS（步骤表守卫在签出里记 PARTIAL：清单是 local-only）。
+- 部署：从干净签出编的正式构建 DLL 复制到 `D:\software\steam\steamapps\common\Escape from Duckov\Duckov_Data\Mods\BossRush\BossRush.dll`，按 D 盘路径复核 SHA-256 `FB14EEA51E0E4F1ADEC64A615B003A83D2B653C81DAFC4A569F8B0E352DC9360` 一致，部署后的 DLL `--expect absent` PASS；部署前是 `4C75B098…`（同为正式构建）。只换 DLL、bundle 没动，游戏目录没有 Dev 产物。
+
+**未做 / 待拍板**：见交付报告第十节。第一次实机就是 owner 在基地用专用测试档按一次按钮、AI 读结果目录；阈值（对比度 4.5 / 3、可见度 Weber）是第一版经验值，按实测调。
+
+## 2026-09-14（五）天空岛头目 / 岛主 R1：残星匠首 + 瞭台观星手（新内容，TypeID 500086–500089）
+
+**来源**：owner 需求「按岛与小环境加大 Boss / 小 Boss，Boss 直接穿新装备、掉落好管理（不像龙王）」；方案经批准。拍板四条：纵切一位岛主 + 一位头目、装备一开始就做新模型、每次全穿但龙王式一格掉一件其余走原版、岛主随岛生成每趟都刷。
+**分类**：`COMPAT`（新档次 `Chief` / `Lord`、新 TypeID、首杀记录复用 `discoveredNotes`、不加存档字段）+ `OPERATIONAL`（`compile_official.bat` 新增装备 bundle `skyisland_boss_gear` 的部署行）+ `SAFE`（守卫、夹具、文档）。
+
+**做了什么**
+- 档案：纯规则 `SkyIslandBossRules`。G 组带队 → 岛主「残星匠首」，S4 组带队 → 头目「瞭台观星手」；只改内置表与 `World.json` 的 lead，id / marker / count 不变。
+- 生成：`SkyIslandEncounters.ApplyIdentity` 在折翎 / 钟守之后先问 `SkyIslandBossForge.TryApply`；配装事务先问 prefab、失败整批回收；只缩放 `characterModel`。
+- 掉落：`SkyIslandBossLoot` 挂该角色实例的 `BeforeCharacterSpawnLootOnDead`，按权重留一件（满耐久）、其余配装卸下销毁；箱里其余照官方。不走 BossRush 奖励箱、不挂 `OnDead` 前缀。
+- 招式：`SkyIslandForemanBoss`（供能桩 / 星焰三圈 / 过热 / 破甲断招）、`SkyIslandStargazerChief`（视线标记 → 锁定 → 两发星火）。
+- 装备：星铜护目盔 / 星炉背甲 / 星炉背囊 / 观星镜盔（500086–500089）。
+  - `SkyIslandBossGearConfig` 接进 `EquipmentFactory` 配置链、本地化、掉落黑名单（代码 + JSON + 守卫映射）。
+  - 动态注册表只加一行 `EquipmentOnly("skyisland_boss_gear")`；克隆占位挂 `SetBonusPlaceholderRegistry.EnsureAllRegistered`，配置器挂 `SkyIslandItems.RegisterConfigurators`。
+  - 名字与价值在 `SkyIslandItemRules`，**不进** `AllTypeIds`。
+- 岛上用处：任穿两件星工装备，渡口工台配方的残铜片少一片（`SkyIslandFieldcraftRules.ForWearer`，Craft 与合成面板共用）；观星镜盔站定 2 秒标出 40 米内的敌人（`SkyIslandFieldcraftBossGear`）。
+- 剧情：首杀记手记 `Lord_Foreman` / `Chief_Stargazer`（`RecordNote` 白名单）+ 字幕；手记总览「岛主与头目 n/2」、「群岛之物」四行；浮舟、苇白各一句。
+- 美术：
+  - 概念图 4 张、背包图标 4 张（`tools/gen_sky_island_boss_gear_art.py`）。
+  - owner 在 Tripo 网页出的 GLB 经 `tools/sky_island_boss_gear_import.py` 规范化：尺寸、原点与朝向按已上线装备实测。
+  - 作者工程 `SkyIslandBossGearBundleBuilder` 打包，2,445,418 字节，SHA-256 `4CE1556B…291C`。UnityPy 回读 TypeID / 品质 / 尺寸 / 朝向 / `_MainTex` 全对，已放进 `Assets/Equipment/`。
+- F3 与清单：
+  - 只读 `SKY_BOSS_PROFILES`（判据 `JudgeBossProfiles`）。
+  - Dev 演练 `SKY_DRILL_BOSS_LOADOUT`：在玩家前方刷一名 middle 阵营的官方拾荒者，经 `DevLoadoutForDrill` 只配装、不挂招式，核对三个槽位与模型；耐久压到 1 后经 `DevResolveForDrill` 按固定抽样值结算，核对只留一件、补满耐久、原版物品不变、结算上闩。
+  - 演练**不走死亡**：不建尸体箱、不记官方击杀计数、不派发首杀事件、不写存档。两个 Dev 入口整段 `#if BOSSRUSH_DEV`，并登记进 `SkyIslandReadOnlySuiteDrillIsolationGuard` 的符号表。
+  - 手动 `M_SKY_ISLAND_15`；人工清单第 2.19 步（2.19.0 是演练）。
+- Wiki：
+  - 地图页敌人一节中英同改。
+  - 新页「星工装备」：catalog / entry-map / structure / infobox 已登记，`GameplayCoverage.json` 挂在 SKY_ISLAND 下。
+  - 导航图标 `eq-sky-island-starworks-gear` 已生成：走 `tools/gen_wiki_icons.py` 同一条管线只出这一张，只往 `wiki-icons.json` 与 `image-manifest.json` 的 ui 组插这一条，其余 WebP 不重编。
+- 遭遇夹具 `tests/fixtures/SkyIslandEncounters`：补 `SkyIslandBossContext` / `SkyIslandBossForge` 替身（按 G / S4 带队回答接手），并加断言：带队先交给 Forge、随从照常走档次装饰、上下文带着岛根与字幕通道、观星镜盔的查询只数范围内的活敌。
+- 台账：AGENTS §4.3、`docs/contracts.md` §1、`docs/Bossrush使用物品ID表.md`；`DebugAndTools/SkyIsland/AGENTS.md` 新增「配装即掉落」规则；repowiki「天空岛剧情与持久化」新增一节。
+
+**实施中定下的三处结构（理由）**
+- **专属装备不进 `SkyIslandItemRules.AllTypeIds`。** 那张表是 500068 起连续的岛上克隆物品族：故事回归钉连续、织网守卫钉 18 种形态、批次四守卫钉上限。装备走另一条注册管线。
+  - `SkyIslandMosquitoGuard` 的游离常量检查按 `AllGearTypeIds` 豁免。
+  - `SkyIslandContentWeaveGuard` 要求「群岛之物」同样逐件写用处，并核对减耗接线。
+- **五栏设计说明写成注释。** 小环境 / 核心招式 / 克制 / 装备联动 / 串联写在档案表上方的 `// 【五栏】` 注释里，不编进运行时。原因是 `SkyIslandLocalizationGuard` 把任何中文字面量都当玩家文案；Boss 名同理改成 `NameCn` / `NameEn` 配对访问器。
+- **注册入口挪出 partial 预算。** `ModBehaviourPartialBudgetGuard` 把 `BossRushDynamicItemRegistry.cs` 等注册入口算在预算内，余量只有 1 行。初版 12 行注册计划加两处入口超了 14 行，改成上面的写法后回到 105108 / 105108，没有抬预算。
+
+**验证（L1 / L2，没有进游戏）**
+- Windows 正式构建与 Dev 构建（含演练）均 Build succeeded。用的是临时 GAME_PATH（`Duckov_Data\Managed` 拷贝）。
+- 执行回归（设 D 盘 `GAME_PATH` / `BOSSRUSH_GAME_MANAGED` / `BOSSRUSH_HARMONY_DLL`）：`SkyIsland*` 11 PASS / 0 FAIL。
+  - `SkyIslandStory` 12683 条（含新增 `SkyIslandBossRulesRegression`）。
+  - `SkyIslandValidationJudges` 145 条。
+  - `SkyIslandEncounters` 51 条：补替身前编不过，全自动验收那一节记的 1 FAIL 就是它。
+- 全量守卫：
+  - 改动前基线 605 PASS / 4 NEW-FAIL，均为其他会话在建的 Autotest 文件。
+  - 改动后 608 PASS / 2 NEW-FAIL。其中 `GameplayValidationCoverageGuard` 是本轮新 Wiki 页漏登记，已补并单跑 PASS。
+  - 剩 `SkyIslandFrameProfileGuard`（`F3GameplayValidationAutotestActions.cs`，非本轮）。
+- 反向验证：新守卫 `SkyIslandBossEcologyGuard` 自带的进程内反向探针全红；改过的既有守卫（织网、批次四、档次表、本地化、黑名单、编译清单）进程内反向探针 9/9 转红，磁盘文件不动。
+- `npm --prefix wiki-site run build` 通过；导航检查 80 条 URL 通过。
+
+**owner 授权拍板**（「没做完或要你决定的全部都帮我决定以及做完」）
+- **Dev 演练：做了（见上），但不走死亡。** 官方击杀计数会写存档、首杀会写手记，演练守卫不许。尸体箱真的只收这一件，仍靠清单 2.19.6 / 2.19.8 实机看。
+- **背带可能穿模、背甲压扁约三成：保持现状，等实机。** 已上线护甲本身也压到约 0.64，没有实机证据时改尺寸只是换一种猜法。要调的话：`tools/sky_island_boss_gear_import.py --box <件名>=宽,高,深` 重导出 → 作者工程重打包 → UnityPy 回读。
+- **提交：只暂存本轮改动。**
+  - 与其他会话混改的文件按 hunk 过滤。
+  - 先在临时签出上编译、跑守卫与执行回归，确认这份提交自己站得住再提交。
+  - 作者工程单独提交；不推送。
+- **部署：从本提交的干净签出做正式构建。**
+  - 这样游戏目录里不混进其他会话未提交的代码。
+  - 再把 `skyisland_boss_gear` 与四张背包图标拷进 Mod 目录，按 D 盘路径核对 SHA-256（数值见交付报告）。
+  - 不启动游戏。
+
+**待实机**（清单第 2.19 步、`M_SKY_ISLAND_15`）
+- 模型穿在官方角色身上是否贴合（背囊是 Mod 第一次用背包槽）。
+- 招式手感与预警圈。
+- 尸体箱内容。
+- 重启后物品不退化。
+- G 岛帧时间。
+- 回退：G / S4 的 lead 改回 `Elite`（内置表 + `World.json` + `SkyIslandContentExpansionGuard`）即恢复原生态；已发的 TypeID 不回收。
+
 ## 2026-09-14（四）UI 优化对照审核：全部修复（6 P2 + 18 P3 已修；5 条 PLAUSIBLE 中 4 条防御性修复、1 条 Deferred）
 
 **来源**：`docs/代码审查/2026-09-14-UI优化对照审核.md`（F-01…F-29，local-only，末尾有逐条修复状态）。owner：「直接全部修复，需要我拍板都由你自己按照主流游戏的设置去拍板。」finding 见 `CODE_REVIEW_FINDINGS.md` 的 `CR-2026-09-14-015` … `-038`。

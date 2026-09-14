@@ -52,6 +52,8 @@ namespace BossRush
         private readonly Action<string, Vector3> stormDefeated;
         private bool closed;
         private float nextTick;
+        /// <summary>头目 / 岛主招式控制器要的场景上下文（根节点、地面层、有效性、字幕通道），首次用到时建一次。</summary>
+        private SkyIslandBossContext bossContext;
         internal string ContentSource { get; private set; }
 
         /// <summary>内容表由会话加载一次后传入；同一次进岛不重复解析 World.json。</summary>
@@ -372,6 +374,9 @@ namespace BossRush
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "bellkeeper", "失控的守钟装置", "Runaway Bell Engine");
                 return;
             }
+            // 头目 / 岛主（SkyIslandBossRules 档案按「遭遇 id + 位次」查）：名字、数值、配装、掉落与招式控制器由 Forge 一次做完；
+            // 这一位没有档案时返回 false，照常走下面的档次装饰。
+            if (SkyIslandBossForge.TryApply(created, encounter.Id, index, BossContext())) return;
             SkyIslandEnemyTiers.Apply(created, tier);
             if (tier != SkyIslandEnemyTier.Storm) return;
             Transform bossTransform = created.transform;
@@ -414,6 +419,35 @@ namespace BossRush
                 foreach (SkyIslandEnemyRecord actor in encounter.Actors)
                     if (!actor.Died && actor.Life != null) count++;
             return count;
+        }
+
+        /// <summary>
+        /// 观星镜盔「站定标敌」的只读查询：把 <paramref name="radius"/> 米内活着的敌人本体追加进 <paramref name="into"/>，返回个数。
+        /// 调用方（会话）先清空列表；这里不改遭遇状态、不分配。
+        /// </summary>
+        internal int CopyLivingEnemies(Vector3 center, float radius, List<Transform> into)
+        {
+            if (into == null || closed) return 0;
+            float sqr = radius * radius;
+            int count = 0;
+            foreach (Encounter encounter in encounters)
+                foreach (SkyIslandEnemyRecord actor in encounter.Actors)
+                {
+                    if (actor.Died || actor.Life == null) continue;
+                    Transform body = actor.Life.transform;
+                    if ((body.position - center).sqrMagnitude > sqr) continue;
+                    into.Add(body);
+                    count++;
+                }
+            return count;
+        }
+
+        /// <summary>头目 / 岛主招式控制器的场景上下文：本对象的根节点、地面层、会话有效性与字幕通道，首次用到时建一次。</summary>
+        private SkyIslandBossContext BossContext()
+        {
+            if (bossContext == null)
+                bossContext = new SkyIslandBossContext { Root = root.transform, GroundMask = groundMask, Valid = valid, Report = report };
+            return bossContext;
         }
 
         private Vector3 FindGround(Transform marker, int index)

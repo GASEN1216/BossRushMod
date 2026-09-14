@@ -252,7 +252,12 @@ def main():
     numbers = [value for value, _ in batch_four]
     if not 1 <= len(numbers) <= MAX_NEW_TYPEIDS or numbers != list(range(BATCH_FOUR_FIRST, BATCH_FOUR_FIRST + len(numbers))):
         errors.append("批次四 TypeID 必须从 %d 连续、1–%d 件，实际 %r" % (BATCH_FOUR_FIRST, MAX_NEW_TYPEIDS, numbers))
-    stray = sorted(name for name, value in id_values.items() if value >= BATCH_FOUR_FIRST and name not in all_names)
+    # 头目 / 岛主的专属装备（500086 起）不是批次四的岛上物品：走装备 bundle 注册，登记在 SkyIslandBossRules.AllGearTypeIds。
+    boss_rules = read(SKY + "SkyIslandBossRules.cs")
+    boss_gear = set(re.findall(r"BossRushItemIds\.(\w+)",
+                               boss_rules.split("internal static readonly int[] AllGearTypeIds", 1)[-1].split("};", 1)[0]))
+    stray = sorted(name for name, value in id_values.items()
+                   if value >= BATCH_FOUR_FIRST and name not in all_names and name not in boss_gear)
     if stray:
         errors.append("TypeID 常量 %r 没进 SkyIslandItemRules.AllTypeIds（注册、黑名单、图标都会漏）" % stray)
     batch_names = {name for _, name in batch_four}

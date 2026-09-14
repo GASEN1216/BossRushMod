@@ -231,6 +231,8 @@ namespace BossRush
                 ItemFactory.RegisterConfigurator(typeId, delegate(Item item) { ConfigureItem(typeId, item); });
             }
             ModBehaviour.DevLog(LogPrefix + "物品配置器已注册 " + all.Length + " 件");
+            // 头目 / 岛主的专属装备走装备 bundle，配置器与岛上物品同一时点登记（官方按 TypeID 实例化时补齐名字、数值与图标）。
+            SkyIslandBossGearConfig.RegisterConfigurators();
         }
 
         private static void ConfigureItem(int typeId, Item item)

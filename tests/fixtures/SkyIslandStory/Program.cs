@@ -1177,6 +1177,7 @@ internal static class Program
         // ---- 内容批次四：云蚋的纯规则与躲闪离线模拟（生产 SkyIslandMosquitoRules / SkyIslandGnatMotor 原样执行） ----
         SkyIslandMosquitoRegression.Run(Check);
         SkyIslandGnatDodgeSimulation.Run(Check);
+        SkyIslandBossRulesRegression.Run(Check);
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

@@ -69,5 +69,13 @@ namespace BossRush
         public const int SkyIslandGnatZapper = 500084;
         /// <summary>药烟蒲扇：内容批次四，岛上的工具，扇落贴脸的云蚋（使用不消耗）。</summary>
         public const int SkyIslandSmokeFan = 500085;
+        /// <summary>星铜护目盔：天空岛岛主「残星匠首」的专属头盔（SkyIslandBossRules；只从它身上掉）。</summary>
+        public const int SkyIslandStarbrassVisorHelm = 500086;
+        /// <summary>星炉背甲：残星匠首的专属护甲。</summary>
+        public const int SkyIslandStarfurnaceHarness = 500087;
+        /// <summary>星炉背囊：残星匠首的专属背包。</summary>
+        public const int SkyIslandStarfurnacePack = 500088;
+        /// <summary>观星镜盔：天空岛头目「瞭台观星手」的专属头盔。</summary>
+        public const int SkyIslandStargazerLensHelm = 500089;
     }
 }

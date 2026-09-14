@@ -237,6 +237,9 @@ namespace BossRush
             SkyIslandLootPools.ResetStaticCaches();
             SkyIslandEnemyTiers.ResetStaticCaches();
             SkyIslandStormBoss.ResetStaticCaches();
+            // 头目 / 岛主：击败事件的静态订阅（剧情 owner 销毁时已退订，这里兜底）与专属装备的占位克隆表。
+            SkyIslandBossForge.ResetStaticCaches();
+            SkyIslandBossGearConfig.ResetStaticCaches();
             SkyIslandItems.ResetStaticCaches();
             // 群岛耗材找 owner 用的静态引用：会话销毁时 owner 自己会清，模块销毁再兜一次。
             SkyIslandFieldcraft.ResetStaticCaches();

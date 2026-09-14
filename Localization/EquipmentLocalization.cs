@@ -114,6 +114,7 @@ namespace BossRush
                 InjectDragonBurnBuffLocalization();
                 InjectFrostSetLocalization();       // 冰霜套装
                 InjectThunderSetLocalization();     // 雷霆套装
+                SkyIslandBossGearConfig.InjectLocalization();  // 天空岛头目 / 岛主的专属装备
                 ModBehaviour.DevLog("[EquipmentLocalization] 所有装备本地化注入完成");
             }
             catch (Exception e)

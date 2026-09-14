@@ -228,6 +228,12 @@
     "en": "Thunder Set"
   },
   {
+    "key": "eq-sky-island-starworks-gear",
+    "src": "/images/ui/eq-sky-island-starworks-gear.webp",
+    "zh": "星工装备",
+    "en": "Starworks Gear"
+  },
+  {
     "key": "item-key",
     "src": "/images/ui/item-key.webp",
     "zh": "入场与功能物品",

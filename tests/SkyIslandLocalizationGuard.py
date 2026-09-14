@@ -87,6 +87,13 @@ FILES = [
     "SkyIslandWorldStoryEcho.cs",
     "SkyIslandSessionLabels.cs",
     "SkyIslandFrameProfile.cs",
+    # 2026-09-14 头目 / 岛主 R1：纯规则（首杀字幕、居民台词）、两位 Boss 的招式字幕、剧情接线与玩家穿上专属装备后的回话。
+    "SkyIslandBossRules.cs",
+    "SkyIslandBossForge.cs",
+    "SkyIslandForemanBoss.cs",
+    "SkyIslandStargazerChief.cs",
+    "SkyIslandWorldStoryBosses.cs",
+    "SkyIslandFieldcraftBossGear.cs",
 ]
 
 # 内容批次四起一并扫描 Integration/SkyIsland：物品描述、使用说明与耗材回话同样是玩家可见文案。

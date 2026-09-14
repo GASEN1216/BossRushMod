@@ -421,6 +421,7 @@ namespace BossRush
                 EquipmentBundles = new string[] { "thunder_set" },
                 FallbackLoader = EnsureSetBonusPlaceholder
             }, 500055, 500056);
+            Add(plans, EquipmentOnly("skyisland_boss_gear"), SkyIslandBossRules.AllGearTypeIds);
 
             return plans;
         }

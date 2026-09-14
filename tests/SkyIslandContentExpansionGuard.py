@@ -31,12 +31,14 @@ EXPECTED_ENCOUNTERS = {
     'D_02': ('Search_D_02', 3, False, 'Scav', 'Scav'),
     'E': ('Relay_DE', 3, False, 'Scav', 'Scav'),
     'E_02': ('Relay_GE', 3, False, 'Scav', 'Scav'),
-    'G': ('EnemySpawn_G', 3, False, 'Scav', 'Elite'),
+    # 2026-09-14 头目 / 岛主 R1：G 组带队换成岛主「残星匠首」、S4 组带队换成头目「瞭台观星手」（SkyIslandBossRules）；
+    # id、marker、人数都不变，修星灯与观星镜的前置自然包含它们。
+    'G': ('EnemySpawn_G', 3, False, 'Scav', 'Lord'),
     'G_02': ('Search_G_02', 3, False, 'Scav', 'Scav'),
     'S1': ('EnemySpawn_S1', 3, False, 'Scav', 'Scav'),
     'S2': ('EnemySpawn_S2', 3, False, 'Scav', 'Scav'),
     'S3': ('EnemySpawn_S3', 3, False, 'Scav', 'Scav'),
-    'S4': ('EnemySpawn_S4', 3, False, 'Scav', 'Elite'),
+    'S4': ('EnemySpawn_S4', 3, False, 'Scav', 'Chief'),
     'F': ('Search_F_02', 3, False, 'Scav', 'Scav'),
     'Zheling': ('EnemySpawn_F', 1, True, 'Champion', 'Champion'),
     'BellKeeper': ('EnemySpawn_H', 3, True, 'Scav', 'Champion'),

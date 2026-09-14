@@ -46,6 +46,9 @@ namespace BossRush
             // 雷霆战甲 - 护甲
             EnsureRegistered(THUNDER_ARMOR_ID);
 
+            // 天空岛头目 / 岛主的专属装备（500086-500089）同样是「缺 bundle 时克隆同槽位官方装备顶上」，在同一个装配期时点补齐。
+            SkyIslandBossGearConfig.EnsureAllRegistered();
+
             initialized = true;
         }
 

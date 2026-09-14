@@ -317,6 +317,19 @@ export const INFOBOX: Record<string, Infobox> = {
     ],
     links: ['/equipment/frost-set'],
   },
+  '/equipment/sky-island-starworks-gear': {
+    eyebrowZh: '天空岛 · 4 件',
+    eyebrowEn: 'Sky Island · 4 pieces',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '5', tier: 5 },
+      { zh: '部件', en: 'Pieces', vz: '星铜护目盔 / 星炉背甲 / 星炉背囊 / 观星镜盔', ve: "Starbrass Visor Helm / Starfurnace Harness / Starfurnace Pack / Stargazer's Lens Helm" },
+      { zh: '耐久', en: 'Durability', vz: '70 / 100 / 无 / 50', ve: '70 / 100 / none / 50' },
+      { zh: '岛上用处', en: 'On the isles', vz: '任穿两件星工装备：渡口工台少耗 1 片残铜片；观星镜盔站定标敌', ve: 'Any two Starworks pieces: one less brass scrap at the dock; the lens helm spots enemies' },
+      { zh: '获取', en: 'Availability', vz: '残星匠首必掉一件（35 / 35 / 30%）/ 瞭台观星手 30% 掉镜盔', ve: 'Starforge Foreman always drops one (35 / 35 / 30%) / Overlook Stargazer 30% lens helm' },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500086–500089' },
+    ],
+    links: ['/maps/sky-island'],
+  },
 
   // ── 游戏模式 ────────────────────────────────────────────
   // 「带什么进 / 打多少波 / 掉不掉箱子 / 抽不抽词条」是选模式时唯一要比的四件事，

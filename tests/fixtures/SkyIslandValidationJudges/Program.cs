@@ -35,6 +35,7 @@ internal static class Program
         StormEcho();
         LootPrewarm();
         FrameProfile();
+        BossProfiles();
         Console.WriteLine("PASS: " + assertions + " assertions; F3 Sky Island runtime-case judges (pure half only, no Unity)");
     }
 
@@ -530,5 +531,28 @@ internal static class Program
             && reason.Contains("carrying_locked_letter"), "pigeon: carrying a letter whose prerequisites are not met -> FAIL");
         Check(!F3GameplayValidationRunner.JudgeLetterPigeon(fresh, "Letter_99", true, true, true, true, out metrics, out reason)
             && reason.Contains("unknown_letter"), "pigeon: an unknown letter id -> FAIL");
+    }
+
+    /// <summary>SKY_BOSS_PROFILES（2026-09-14 头目 / 岛主 R1）：档案挂位、专属装备注册、掉落口径。</summary>
+    private static void BossProfiles()
+    {
+        string metrics, reason;
+        SkyIslandContentData content = SkyIslandContent.CreateFallback();
+        Check(F3GameplayValidationRunner.JudgeBossProfiles(content, id => null, out metrics, out reason)
+            && metrics.Contains("profiles_bound=2/2") && metrics.Contains("gear_ok=4/4"), "boss profiles: bound groups and registered gear -> PASS");
+        Check(!F3GameplayValidationRunner.JudgeBossProfiles(content, id => id == BossRushItemIds.SkyIslandStarfurnacePack ? "prefab_missing" : null,
+            out metrics, out reason) && reason.Contains("500088:prefab_missing"), "boss profiles: a missing gear prefab is named in the reason -> FAIL");
+        SkyIslandContentData demoted = SkyIslandContent.CreateFallback();
+        Array.Find(demoted.Encounters, e => e.Id == "G").Lead = SkyIslandEnemyTier.Elite;
+        Check(!F3GameplayValidationRunner.JudgeBossProfiles(demoted, id => null, out metrics, out reason) && reason.Contains("Foreman:tier=Elite"),
+            "boss profiles: a lord profile on an elite-led group -> FAIL");
+        SkyIslandContentData manual = SkyIslandContent.CreateFallback();
+        Array.Find(manual.Encounters, e => e.Id == "S4").Manual = true;
+        Check(!F3GameplayValidationRunner.JudgeBossProfiles(manual, id => null, out metrics, out reason) && reason.Contains("Stargazer:group_is_manual"),
+            "boss profiles: a chief on a one-off manual group would never come back -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeBossProfiles(null, id => null, out metrics, out reason) && reason.Contains("group_missing"),
+            "boss profiles: missing content table -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeBossProfiles(content, null, out metrics, out reason) && reason.Contains("no_probe"),
+            "boss profiles: no gear probe -> FAIL (never a silent PASS)");
     }
 }

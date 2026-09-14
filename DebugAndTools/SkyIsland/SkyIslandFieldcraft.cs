@@ -23,7 +23,7 @@ namespace BossRush
     /// 5. **内容批次四**：夜里的云蚋由 <see cref="SkyIslandGnats"/> 持有（伤害代码只在那里，本文件不出现），这里把夜风的那次采样、
     ///    灶火的烟与风晶灯的光、驱风香与风灯喂给它；灭蚊灯、蒲扇与药膏止痒经耗材入口转交。
     /// </summary>
-    internal sealed class SkyIslandFieldcraft : IDisposable
+    internal sealed partial class SkyIslandFieldcraft : IDisposable
     {
         /// <summary>
         /// 本趟的 owner。耗材的 `CanBeUsed` / `OnUse` 只在玩家按下使用时读一次（不在每帧路径上），
@@ -135,6 +135,8 @@ namespace BossRush
             TickBuffs(now);
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.FiresAndBuffs);
             TickWind(player, night, elapsed);
+            // 头目 / 岛主 R1：戴着观星镜盔站定标敌（SkyIslandFieldcraftBossGear.cs；没戴时读一次头盔槽就早返）。
+            TickStargazerSight(player, now, elapsed);
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.WindAndSwarm);
         }
 
@@ -257,6 +259,8 @@ namespace BossRush
                 message = SkyIslandFieldcraftRules.LockedMessage(recipe);
                 return false;
             }
+            // 头目 / 岛主 R1：星工两件套穿着时换成这位穿戴者的配方（残铜片少一片）；点料、预留、扣料与回话都用这一份。
+            recipe = SkyIslandFieldcraftRules.ForWearer(recipe, StarworksPiecesWorn());
             List<SkyIslandIngredient> missing = SkyIslandFieldcraftRules.Missing(recipe, CountInPack);
             if (missing.Count > 0)
             {
@@ -784,6 +788,8 @@ namespace BossRush
             DestroyLantern();
             // 蚊群先收：它的痒 Modifier、灭蚊灯与嗡声都是本趟的。
             if (gnats != null) gnats.Dispose();
+            // 头目 / 岛主 R1：观星镜盔挂在敌人脚下的星标圈（SkyIslandFieldcraftBossGear.cs）。
+            ClearSightRings();
             for (int i = 0; i < fires.Count; i++)
                 if (fires[i] != null) UnityEngine.Object.Destroy(fires[i].gameObject);
             fires.Clear();

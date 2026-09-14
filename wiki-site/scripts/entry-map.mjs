@@ -60,6 +60,7 @@ export const ENTRY_TO_PATH = {
   'equipment__thunder_ring':    'equipment/thunder-ring.md',
   'equipment__frost_set':       'equipment/frost-set.md',
   'equipment__thunder_set':     'equipment/thunder-set.md',
+  'equipment__sky_island_starworks_set': 'equipment/sky-island-starworks-gear.md',
   'item__overview':             'items/index.md',
   'item__key_items':            'items/key-items.md',
   'item__npc_items':            'items/npc-items.md',

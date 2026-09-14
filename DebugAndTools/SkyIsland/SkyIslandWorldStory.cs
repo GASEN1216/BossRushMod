@@ -48,6 +48,8 @@ namespace BossRush
             // 而且 Session 卡在 1200 行预算上。
             if (story != null) SkyIslandNoteBridge.EnsureRegistered(story.Current);
             pigeonCaptionAt = Time.time + PigeonCaptionDelay;
+            // 头目 / 岛主 R1：首杀记手记 + 字幕（SkyIslandWorldStoryBosses.cs），Dispose 里退订。
+            AttachBossEvents();
         }
 
 
@@ -924,6 +926,8 @@ namespace BossRush
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             var locked = new List<string>();
             List<SkyIslandRecipe> recipes = SkyIslandFieldcraftRules.RecipesFor(station);
+            // 头目 / 岛主 R1：星工两件套的减耗按开面板那一刻身上穿的件数写进按钮；Craft 按下时再读一次，两边同一条规则。
+            int starworksWorn = fieldcraft.StarworksPiecesWorn();
             for (int i = 0; i < recipes.Count; i++)
             {
                 SkyIslandRecipe recipe = recipes[i];
@@ -933,7 +937,8 @@ namespace BossRush
                     locked.Add(SkyIslandFieldcraftRules.LockedLabel(recipe));
                     continue;
                 }
-                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(recipe, fieldcraft.CountInPack), delegate
+                choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.RecipeLabel(
+                    SkyIslandFieldcraftRules.ForWearer(recipe, starworksWorn), fieldcraft.CountInPack), delegate
                 {
                     if (fieldcraft == null) return L10n.T("现在没法做东西。", "Nothing can be made right now.");
                     string message;
@@ -1156,6 +1161,7 @@ namespace BossRush
         public void Dispose()
         {
             disposed = true;
+            DetachBossEvents();
             Hide();
             // reopen 捕获了 marker key、recorded 回调与说话人 Transform，会话结束后一并放开。
             reopen = null;

@@ -30,6 +30,12 @@
 
 - 新物品、新系统、新 TypeID、`SCHEMA+` 的存档扩展**都可以做**。前提是每件内容写清三栏：从哪来 / 岛上拿来做什么（卖钱不算）/ 串到哪条剧情或系统线。功能重叠的拉开定位；能写成结构守卫的写成守卫（范例 `SkyIslandContentWeaveGuard`）。
 - 新物品除 `Integration/AGENTS.md` 的通用接线外，还要进 `SkyIslandItemRules`（中英名、`ValueOf` 正价值、`AllTypeIds`），由 `SkyIslandFieldcraftGuard` 逐项核对。
+- **头目 / 岛主「配装即掉落」**（`SkyIslandBossRules` 档案表，`SkyIslandBossEcologyGuard`）：
+  - 档案挂在已有自动组的带队位上，只改内容表的 lead 档次，不动 id / marker / count。
+  - 每次都穿全套专属装备：配装前先 `ItemAssetsCollection.GetPrefab` 预检，刷新模型用 `ForceInvokeSlotContentChangedEvent`，不重复调 `SetItem`。
+  - 死后只在该角色实例的 `BeforeCharacterSpawnLootOnDead`（官方建尸体箱之前）按权重留一件、其余配装卸下销毁，箱里其余照官方掉落；不走 BossRush 奖励箱、不挂 `OnDead` 前缀。
+  - 专属装备走装备 bundle `skyisland_boss_gear` 注册，名字与价值进 `SkyIslandItemRules`，但**不进** `AllTypeIds`（那张表是 500068 起连续的岛上克隆物品），登记在 `SkyIslandBossRules.AllGearTypeIds`。
+  - 模型尺寸、原点与朝向按已上线装备实测：挂点空间 Y 上 Z 前、原点居中；贴图写在 `_MainTex`（`tools/sky_island_boss_gear_import.py` 文件头）。
 - 按品质带抽物资要**加权**。在筛出来的清单上均匀抽，一档被抽中的概率会正比于这一档的物品种类数。岛上物资池有单件价值上限，挡住高价官方物品。
 - 做收集品的节奏门之前，先算它把完成路径拉长多少、拉长的那段有没有新内容。
 - 按出击刷新的状态（搜刮、委托进度、局内 buff、采集点）不进存档。持久事实优先复用剧情存档的 `discoveredNotes`，按 id 前缀区分。确需新旗标走 `SCHEMA+` 并同步 `SkyIslandStoryRules.KnownFlags`，否则 Codec 拒绝整份存档；新区域同步 `RegionBit`、Codec 区域掩码、marker 与作者布局。

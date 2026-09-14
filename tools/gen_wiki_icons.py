@@ -205,6 +205,9 @@ ICONS = [
     ("eq-thunder-set", "雷神套装", "Thunder Set",
      icon("A horned helm with two lightning-bolt horns above a storm-plated cuirass crackling "
           "with arcs, electric yellow and dark blue palette.")),
+    ("eq-sky-island-starworks-gear", "星工装备", "Starworks Gear",
+     icon("A riveted brass workshop helmet with a flipped-up amber visor resting on a small brass furnace "
+          "backpack, a leather cap with a brass telescope eyepiece beside it, warm amber, brass and teal palette.")),
 
     # ── 物品 ──
     ("item-key", "入场与功能物品", "Entry & Utility Items",

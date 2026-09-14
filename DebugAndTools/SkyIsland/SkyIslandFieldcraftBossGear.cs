@@ -1,0 +1,117 @@
+// ============================================================================
+// SkyIslandFieldcraftBossGear.cs - 头目 / 岛主的专属装备穿在玩家身上时，在岛上拿来做什么（R1）
+// ============================================================================
+// 从 SkyIslandFieldcraft.cs 拆出来单独放：主文件只在 Tick、Craft 与 Dispose 各多一句。
+//
+// - 星工两件套（星铜护目盔 / 星炉背甲 / 星炉背囊任意两件）：渡口工台的配方少耗 1 片残铜片
+//   （SkyIslandFieldcraftRules.InputsFor；按下合成、打开面板时现读主角三个槽位，不在每帧路径上）。
+// - 观星镜盔：戴着站定 2 秒，40 米内活着的敌人脚下亮一圈星标 4 秒，8 秒冷却。
+//   只在主角头盔槽确实是一顶还起作用的观星镜盔时才做事（根 AGENTS §4.12）：没戴时每次推进读一次槽位就早返。
+//   星标圈挂在敌人本体上：敌人倒下、被回收时一起消失；离岛时 Dispose 统一收。
+// ============================================================================
+
+using System;
+using System.Collections.Generic;
+using ItemStatsSystem;
+using ItemStatsSystem.Items;
+using UnityEngine;
+
+namespace BossRush
+{
+    internal sealed partial class SkyIslandFieldcraft
+    {
+        private const float SightStillSeconds = 2f;
+        private const float SightRange = 40f;
+        private const float SightMarkSeconds = 4f;
+        private const float SightCooldown = 8f;
+        /// <summary>两次推进之间挪动不超过这么远就算站着没动（米）。</summary>
+        private const float SightStillTolerance = 0.35f;
+        private static readonly Color SightTint = new Color(0.62f, 0.86f, 1f, 1f);
+
+        private readonly List<Transform> sightTargets = new List<Transform>();
+        private readonly List<GameObject> sightRings = new List<GameObject>();
+        private Vector3 sightAnchor;
+        private float sightStill, sightReadyAt = -1f, sightClearAt = -1f;
+        private bool sightExplained;
+
+        /// <summary>主角身上穿着几件星工装备（头盔 / 护甲 / 背包三槽）。合成与合成面板按下时读一次。</summary>
+        internal int StarworksPiecesWorn()
+        {
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null) return 0;
+            try
+            {
+                Item helm = main.GetHelmatItem();
+                Item armor = main.GetArmorItem();
+                Slot packSlot = SkyIslandBossForge.FindSlot(main.CharacterItem, "Backpack");
+                Item pack = packSlot == null ? null : packSlot.Content;
+                return SkyIslandBossRules.StarworksPiecesWorn(helm == null ? 0 : helm.TypeID, armor == null ? 0 : armor.TypeID,
+                    pack == null ? 0 : pack.TypeID);
+            }
+            catch (Exception)
+            {
+                // 槽位读不到按没穿处理：少一个折扣，不影响合成本身
+                return 0;
+            }
+        }
+
+        /// <summary>由 <see cref="Tick"/> 按规则节拍调用：观星镜盔的站定标敌。</summary>
+        private void TickStargazerSight(CharacterMainControl player, float now, float elapsed)
+        {
+            if (sightClearAt > 0f && now >= sightClearAt) ClearSightRings();
+            Item helm = null;
+            try { helm = player.GetHelmatItem(); }
+            catch (Exception)
+            {
+                // 槽位读不到按没戴处理
+                helm = null;
+            }
+            if (SkyIslandBossForge.PieceBroken(helm, BossRushItemIds.SkyIslandStargazerLensHelm))
+            {
+                sightStill = 0f;
+                return;
+            }
+            Vector3 position = player.transform.position;
+            if ((position - sightAnchor).sqrMagnitude > SightStillTolerance * SightStillTolerance)
+            {
+                sightAnchor = position;
+                sightStill = 0f;
+                return;
+            }
+            sightStill += elapsed;
+            if (sightStill < SightStillSeconds || now < sightReadyAt) return;
+            sightStill = 0f;
+            sightReadyAt = now + SightCooldown;
+            int count = session.CopyLivingEnemies(position, SightRange, sightTargets);
+            ClearSightRings();
+            for (int i = 0; i < sightTargets.Count; i++)
+            {
+                Transform target = sightTargets[i];
+                if (target == null) continue;
+                try
+                {
+                    LineRenderer ring = SkyIslandGroundRing.Create(target, new Vector3(0f, 0.08f, 0f));
+                    ring.gameObject.name = "SkyIslandStargazerSightRing";
+                    SkyIslandGroundRing.SetShape(ring, 0.9f, 0.2f, SightTint);
+                    sightRings.Add(ring.gameObject);
+                }
+                catch (Exception e) { Debug.LogWarning("[SkyIslandFieldcraft] 观星镜盔星标失败：" + e.Message); }
+            }
+            sightTargets.Clear();
+            sightClearAt = now + SightMarkSeconds;
+            if (sightExplained) return;
+            sightExplained = true;
+            session.Announce(count > 0
+                ? string.Format(L10n.T("观星镜盔：40 米内有 {0} 名敌人，脚下亮起了星标。", "Stargazer's lens: {0} enemies within 40 m, marked with stars at their feet."), count)
+                : L10n.T("观星镜盔：40 米内看不到敌人。站定一会儿，镜片会替你盯着。", "Stargazer's lens: no enemies within 40 m. Stand still a moment and the lens keeps watch for you."), false);
+        }
+
+        private void ClearSightRings()
+        {
+            for (int i = 0; i < sightRings.Count; i++)
+                if (sightRings[i] != null) UnityEngine.Object.Destroy(sightRings[i]);
+            sightRings.Clear();
+            sightClearAt = -1f;
+        }
+    }
+}

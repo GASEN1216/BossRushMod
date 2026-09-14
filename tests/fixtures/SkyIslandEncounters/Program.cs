@@ -174,6 +174,30 @@ internal static class Program
                 "the defeat callback carries the echo id so the session can route its cache");
             Check(world.Encounters.IsBusy(SkyIslandStormEchoRules.EncounterId), "a live echo group counts as busy (it drives the returning gale)");
         }
+        // ---- 2026-09-14 头目 / 岛主 R1：G / S4 组带队先交给 Forge（档案按遭遇 id + 位次查），随从照常走档次装饰 ----
+        Reset();
+        SkyIslandBossForge.Applied.Clear();
+        SkyIslandEnemyTiers.Reset();
+        using (var world = new World("G"))
+        {
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == GroupSize("G"), "the G group spawns with its island lord in the lead slot");
+            Check(SkyIslandBossForge.Applied.Count == GroupSize("G") && SkyIslandBossForge.Applied[0] == "G#0",
+                "every G member is offered to the boss forge, lead first");
+            Check(SkyIslandEnemyTiers.Applied.Count == GroupSize("G") - 1 && !SkyIslandEnemyTiers.Applied.Contains(SkyIslandEnemyTier.Lord),
+                "the forge takes the lead; followers keep the ordinary tier decoration");
+            Check(SkyIslandBossForge.LastContext != null && SkyIslandBossForge.LastContext.Root == world.Root.transform
+                && SkyIslandBossForge.LastContext.Valid != null && SkyIslandBossForge.LastContext.Report != null,
+                "the boss context carries the island root, validity and caption channel");
+            Check(SkyIslandEnemyTiers.AiTiers.Count == GroupSize("G") && SkyIslandEnemyTiers.AiTiers.Contains(SkyIslandEnemyTier.Lord),
+                "AI tuning still runs for the lead before the forge dresses it");
+            var near = new List<Transform>();
+            Check(world.Encounters.CopyLivingEnemies(new Vector3(0, 0, 0), 35f, near) == GroupSize("G") && near.Count == GroupSize("G"),
+                "the lens-helm query lists the living G group nearby");
+            near.Clear();
+            Check(world.Encounters.CopyLivingEnemies(new Vector3(0, 0, 500), 35f, near) == 0 && near.Count == 0,
+                "the lens-helm query ignores enemies out of range");
+        }
         Console.WriteLine("PASS SkyIslandEncounters: " + checks + " assertions (production owner with Unity / async substitutes)");
     }
 }

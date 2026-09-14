@@ -185,4 +185,26 @@ namespace BossRush
             Action<string, bool> report, Action defeated, bool echo)
         { Bound++; if (echo) EchoBound++; LastDefeated = defeated; }
     }
+
+    /// 头目 / 岛主（2026-09-14 R1）的替身：遭遇 owner 只负责「这一位先交给 Forge」，
+    /// 配装、掉落与招式在 Unity 侧（SkyIslandBossForge.cs），这里只记录被问到的「遭遇 id#位次」，
+    /// 并按生产档案表（G / S4 的带队）回答接不接手。
+    internal sealed class SkyIslandBossContext
+    {
+        internal UnityEngine.Transform Root;
+        internal int GroundMask;
+        internal Func<bool> Valid;
+        internal Action<string, bool> Report;
+    }
+    internal static class SkyIslandBossForge
+    {
+        internal static readonly List<string> Applied = new List<string>();
+        internal static SkyIslandBossContext LastContext;
+        internal static bool TryApply(CharacterMainControl created, string encounterId, int index, SkyIslandBossContext context)
+        {
+            Applied.Add(encounterId + "#" + index);
+            LastContext = context;
+            return index == 0 && (encounterId == "G" || encounterId == "S4");
+        }
+    }
 }

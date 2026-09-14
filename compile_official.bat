@@ -232,6 +232,14 @@ echo(DebugAndTools\SkyIsland\SkyIslandStormEchoReward.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryEcho.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFrameProfile.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLetters.cs
+echo(DebugAndTools\SkyIsland\SkyIslandBossRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandBossForge.cs
+echo(DebugAndTools\SkyIsland\SkyIslandBossLoot.cs
+echo(DebugAndTools\SkyIsland\SkyIslandForemanBoss.cs
+echo(DebugAndTools\SkyIsland\SkyIslandStargazerChief.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionBosses.cs
+echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryBosses.cs
+echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftBossGear.cs
 echo(DebugAndTools\SkyIsland\SkyIslandPuzzles.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryServices.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCrew.cs
@@ -1025,6 +1033,7 @@ echo(Integration\BackMountain\ShowcaseBuildingBuilder.cs
 echo(Localization\BackMountainLocalization.cs
 echo(Integration\BackMountain\BackMountainRuntimeModule.cs
 echo(Integration\SkyIsland\SkyIslandItems.cs
+echo(Integration\SkyIsland\SkyIslandBossGearConfig.cs
 echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
 echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
@@ -1316,6 +1325,12 @@ if %BUILD_EXIT_CODE% EQU 0 (
             )
         )
         echo Deployed new weapon bundles to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets
+        rem Sky Island boss gear bundle, TypeIDs 500086-500089. Without it the gear falls back to cloned official models.
+        if exist "Assets\Equipment\skyisland_boss_gear" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment"
+            copy /Y "Assets\Equipment\skyisland_boss_gear" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment\skyisland_boss_gear" >nul 2>nul
+            if errorlevel 1 echo WARNING: sky island boss gear bundle deploy failed.
+        )
     )
 ) else (
     echo.

@@ -708,6 +708,9 @@ namespace BossRush
                         // 配置 P1 冰霜/雷霆套装（真实资源主路径）
                         FrostThunderSetConfig.TryConfigure(itemPrefab, baseName);
 
+                        // 配置天空岛头目 / 岛主的专属装备（500086-500089，bundle skyisland_boss_gear）
+                        SkyIslandBossGearConfig.TryConfigure(itemPrefab, baseName);
+
                         // 配置飞行图腾（设置本地化键和属性）
                         FlightTotemConfig.TryConfigure(itemPrefab, baseName);
 

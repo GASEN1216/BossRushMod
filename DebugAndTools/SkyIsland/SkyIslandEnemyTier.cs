@@ -15,6 +15,13 @@ namespace BossRush
         /// <summary>折翎与钟守这类具名剧情对手：数值加强，但保留自己的脸与名字。</summary>
         Champion = 2,
         /// <summary>噬风：风灾留下的那一股，全图唯一的 Boss。</summary>
-        Storm = 3
+        Storm = 3,
+        /// <summary>
+        /// 头目：小环境里一招一式的守卫带队者，身上穿一件专属装备（`SkyIslandBossRules`）。
+        /// 这两档追加在末尾，序号不代表强度——强度看档案按护甲折算的有效血量（内容表按字符串名解析，不认序号）。
+        /// </summary>
+        Chief = 4,
+        /// <summary>岛主：守着自己那座岛的多阶段 Boss，每趟都在，穿全套专属装备（`SkyIslandBossRules`）。</summary>
+        Lord = 5
     }
 }

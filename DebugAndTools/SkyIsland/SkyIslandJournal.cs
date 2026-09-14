@@ -128,13 +128,15 @@ namespace BossRush
             text.Append(SkyIslandLights.LitCount(data)).Append('/').Append(SkyIslandLights.Target);
             // 内容批次四：放回蛙鸣池的蛙卵（写在本槽手记里的 Frog_1..3）。
             text.Append(SkyIslandMosquitoRules.FrogProgress(data));
+            // 头目 / 岛主 R1：首杀记在本槽手记（Lord_Foreman / Chief_Stargazer）；它们每趟照常刷新、照常掉装备。
+            text.Append(SkyIslandBossRules.ProgressLine(data));
             if (!string.IsNullOrEmpty(summary)) text.Append("\n\n").Append(summary);
             if (NotesComplete(data)) text.Append("\n\n").Append(Epilogue);
             return text.ToString();
         }
 
         /// <summary>
-        /// 「群岛之物」：十八件天空岛物品在岛上各拿来做什么。采集、合成、剧情、风晶灯、夜风与云蚋怎么串在一起，就看这一页；
+        /// 「群岛之物」：十八件天空岛物品与头目 / 岛主的四件专属装备在岛上各拿来做什么。采集、合成、剧情、风晶灯、夜风与云蚋怎么串在一起，就看这一页；
         /// 会影响选择的两个数（护符减伤、航徽折扣）取规则常量，不另写一份。
         /// </summary>
         internal static string Uses()
@@ -177,6 +179,15 @@ namespace BossRush
                 "set down for about 5 minutes: draws nearby cloud gnats in and zaps them (holds an area)"));
             Use(text, BossRushItemIds.SkyIslandSmokeFan, L10n.T("扇一下：扑落面前贴脸的云蚋、扇退远一点的（近身、瞬时，不消耗）",
                 "one sweep: knocks down the gnats on your face and blows back the ones further off (close and instant, not consumed)"));
+            // 头目 / 岛主 R1 的专属装备（SkyIslandBossRules.AllGearTypeIds）：只从 Boss 身上来，穿上才有岛上的用处。
+            Use(text, BossRushItemIds.SkyIslandStarbrassVisorHelm, L10n.T("残星匠首掉的头盔：和星炉背甲、星炉背囊任穿两件，渡口工台做东西少耗 1 片残铜片",
+                "the Starforge Foreman's helmet: wear any two of it, the Starfurnace Harness and the Starfurnace Pack and the dock workbench takes one less brass scrap"));
+            Use(text, BossRushItemIds.SkyIslandStarfurnaceHarness, L10n.T("残星匠首掉的护甲：星工两件套之一（渡口工台少耗 1 片残铜片）",
+                "the Starforge Foreman's armour: one of the Starworks pair (one less brass scrap at the dock workbench)"));
+            Use(text, BossRushItemIds.SkyIslandStarfurnacePack, L10n.T("残星匠首掉的背囊：背包容量 +6，也算星工两件套之一",
+                "the Starforge Foreman's pack: +6 pack capacity, and it counts toward the Starworks pair"));
+            Use(text, BossRushItemIds.SkyIslandStargazerLensHelm, L10n.T("瞭台观星手掉的镜盔：戴着站定 2 秒，40 米内的敌人脚下亮起星标（耐久打光就不灵了）",
+                "the Overlook Stargazer's lens helm: stand still for 2 seconds while wearing it and enemies within 40 m get star marks at their feet (stops working at zero durability)"));
             return text.ToString();
         }
 

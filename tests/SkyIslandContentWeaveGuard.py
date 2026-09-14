@@ -188,9 +188,22 @@ def main():
             errors.append("物品 %s 的形态 %s 不认识：新形态要在这里说清楚它在岛上拿来做什么" % (name, kind))
     if squash("if (buff == SkyIslandFieldBuff.Meal)") not in use_consumable or "session.Services.PackedMeal()" not in use_consumable:
         errors.append("便当那一顿要在 UseConsumable 里交给归航菜服务（PackedMeal）")
+    # 头目 / 岛主的专属装备不是岛上的克隆物品（不进 AllTypeIds，走装备 bundle 注册），但同样要在「群岛之物」写清岛上用处，并真有接线。
+    boss_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandBossRules.cs"))
+    boss_gear = re.findall(r"BossRushItemIds\.(\w+)", boss_rules.split("internal static readonly int[] AllGearTypeIds", 1)[-1].split("};", 1)[0])
+    boss_uses = squash(clean_source(read("DebugAndTools/SkyIsland/SkyIslandFieldcraftBossGear.cs")))
+    if len(boss_gear) != 4 or set(boss_gear) & set(all_names):
+        errors.append("专属装备表没解析全或混进了岛上物品表：%r" % boss_gear)
+    for token, why in (("SkyIslandBossRules.StarworksPiecesWorn(", "星工两件套要现读主角的头盔 / 护甲 / 背包三槽"),
+                       ("BossRushItemIds.SkyIslandStargazerLensHelm", "观星镜盔要在局内 owner 里真的起作用")):
+        if squash(token) not in boss_uses:
+            errors.append("专属装备的岛上用处没有接线：" + why)
+    if squash("recipe = SkyIslandFieldcraftRules.ForWearer(recipe, StarworksPiecesWorn());") not in squash(fieldcraft):
+        errors.append("星工两件套的减耗要在 Craft 里按穿戴者换配方（面板与合成共用 ForWearer）")
     use_rows = set(re.findall(r"Use\(text,\s*BossRushItemIds\.(\w+),", journal))
-    if use_rows != set(all_names):
-        errors.append("群岛手记「群岛之物」一页必须逐件写用处：缺 %r / 多 %r" % (sorted(set(all_names) - use_rows), sorted(use_rows - set(all_names))))
+    expected_rows = set(all_names) | set(boss_gear)
+    if use_rows != expected_rows:
+        errors.append("群岛手记「群岛之物」一页必须逐件写用处：缺 %r / 多 %r" % (sorted(expected_rows - use_rows), sorted(use_rows - expected_rows)))
 
     # ---- 2. 岛上的灯 ----
     # 三张文案表已拆进 SkyIslandPointText.cs（纯静态查表，WorldStory 卡在 1200 行预算上）。

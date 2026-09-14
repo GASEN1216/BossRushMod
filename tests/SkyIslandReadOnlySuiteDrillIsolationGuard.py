@@ -36,7 +36,7 @@ DRILL_FILES = (
 DRILL_SYMBOL = re.compile(
     r"\b(?:SkyIslandDrillCaseIds|TryStartSkyIslandDrill|RunSkyIslandDrill\w*|_skyIslandDrill|CountLooseLootForDrill"
     r"|Drill(?:ApproachSeconds|Shots|ShotInterval|BiteWatchSeconds|FloorWatchSeconds)"
-    r"|DevSpawnAround|DevSyntheticShot|DevKillOne|DevMotorStats)\b|SKY_DRILL_")
+    r"|DevSpawnAround|DevSyntheticShot|DevKillOne|DevMotorStats|DevLoadoutForDrill|DevResolveForDrill)\b|SKY_DRILL_")
 DECLARATION = re.compile(
     r"\b(?:internal|private|public|protected)\s+(?:static\s+)?(?:readonly\s+)?(?:const\s+)?"
     r"[\w<>\[\],.]+\s+(\w+)\s*(?:\(|=|;)")

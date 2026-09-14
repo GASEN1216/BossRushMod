@@ -114,6 +114,8 @@ namespace BossRush
             if (value == "Elite") { tier = SkyIslandEnemyTier.Elite; return true; }
             if (value == "Champion") { tier = SkyIslandEnemyTier.Champion; return true; }
             if (value == "Storm") { tier = SkyIslandEnemyTier.Storm; return true; }
+            if (value == "Chief") { tier = SkyIslandEnemyTier.Chief; return true; }
+            if (value == "Lord") { tier = SkyIslandEnemyTier.Lord; return true; }
             return false;
         }
 
@@ -139,11 +141,13 @@ namespace BossRush
                     Encounter("D_02", "Search_D_02", 3),
                     // 布局 v2：鸣风栈道两侧桥上的中继平台（设计稿「战斗放在中继平台，桥面负责移动」）。
                     Encounter("E", "Relay_DE", 3), Encounter("E_02", "Relay_GE", 3),
-                    Encounter("G", "EnemySpawn_G", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
+                    // 头目 / 岛主 R1（2026-09-14）：G 组带队是岛主「残星匠首」、S4 组带队是头目「瞭台观星手」（SkyIslandBossRules 档案）。
+                    // 只换带队档次：id、marker、人数不变，修星灯与校准观星镜的前置自然包含它们。
+                    Encounter("G", "EnemySpawn_G", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Lord),
                     Encounter("G_02", "Search_G_02", 3),
                     Encounter("S1", "EnemySpawn_S1", 3), Encounter("S2", "EnemySpawn_S2", 3),
                     Encounter("S3", "EnemySpawn_S3", 3),
-                    Encounter("S4", "EnemySpawn_S4", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Elite),
+                    Encounter("S4", "EnemySpawn_S4", 3, false, SkyIslandEnemyTier.Scav, SkyIslandEnemyTier.Chief),
                     Encounter("F", "Search_F_02", 3),
                     // 三条回程捷径的中继平台（设计稿「战斗只放在中继岛平台，桥面负责移动与观察」）：
                     // 5 个 Relay_* 此前只用了 2 个，K1/K2/K3 上只有一个箱子，回程白走。

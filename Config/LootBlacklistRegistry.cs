@@ -206,6 +206,11 @@ namespace BossRush
                 BossRushItemIds.SkyIslandCloudmossVeil,
                 BossRushItemIds.SkyIslandGnatZapper,
                 BossRushItemIds.SkyIslandSmokeFan,
+                // 天空岛头目 / 岛主的专属装备：只从 Boss 身上掉（配装即掉落），不进任何随机奖池。
+                BossRushItemIds.SkyIslandStarbrassVisorHelm,
+                BossRushItemIds.SkyIslandStarfurnaceHarness,
+                BossRushItemIds.SkyIslandStarfurnacePack,
+                BossRushItemIds.SkyIslandStargazerLensHelm,
             };
         }
     }

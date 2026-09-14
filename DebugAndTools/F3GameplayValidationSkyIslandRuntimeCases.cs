@@ -640,9 +640,78 @@ namespace BossRush
             return string.Join("+", array);
         }
 
+        /// <summary>
+        /// SKY_BOSS_PROFILES 的判据（2026-09-14 头目 / 岛主 R1）。只读，三件事：
+        /// ① 每份档案挂在内容表里同 id 的**自动组**、同位次、同档次上（挂错组 → 这位 Boss 永远刷不出来，编译与守卫都看不见）；
+        /// ② 每件专属装备：<paramref name="gearProblem"/> 返回 null 才算合格（取数侧查 prefab、TypeID、槽位标签、价值、可维修、掉落黑名单）；
+        /// ③ 掉落口径与预警：岛主不掉权重为 0（必出一件）、头目有不掉权重；两位 Boss 的预警圈逃圈速度 ≤ 5.5 m/s。
+        /// </summary>
+        internal static bool JudgeBossProfiles(SkyIslandContentData content, Func<int, string> gearProblem, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            SkyIslandBossProfile[] profiles = SkyIslandBossRules.Profiles;
+            int bound = 0, gearOk = 0, gearTotal = 0;
+            for (int i = 0; i < profiles.Length; i++)
+            {
+                SkyIslandBossProfile profile = profiles[i];
+                SkyIslandEncounterDefinition group = null;
+                if (content != null && content.Encounters != null)
+                    for (int j = 0; j < content.Encounters.Length; j++)
+                        if (string.Equals(content.Encounters[j].Id, profile.EncounterId, StringComparison.Ordinal)) group = content.Encounters[j];
+                if (group == null) errors.Add(profile.Id + ":group_missing");
+                else if (group.Manual) errors.Add(profile.Id + ":group_is_manual");
+                else if (profile.Index >= group.Count) errors.Add(profile.Id + ":index_out_of_group");
+                else if (group.TierFor(profile.Index) != profile.Tier) errors.Add(profile.Id + ":tier=" + group.TierFor(profile.Index));
+                else bound++;
+                if (profile.Tier == SkyIslandEnemyTier.Lord && profile.NoDropWeight != 0) errors.Add(profile.Id + ":lord_may_drop_nothing");
+                if (profile.Tier == SkyIslandEnemyTier.Chief && profile.NoDropWeight <= 0) errors.Add(profile.Id + ":chief_always_drops");
+                for (int g = 0; g < profile.Gear.Length; g++)
+                {
+                    gearTotal++;
+                    string problem = gearProblem == null ? "no_probe" : gearProblem(profile.Gear[g].TypeId);
+                    if (problem == null) gearOk++;
+                    else errors.Add(profile.Gear[g].TypeId + ":" + problem);
+                }
+            }
+            float starfire = SkyIslandBossRules.EscapeSpeed(SkyIslandBossRules.StarfireRadius, SkyIslandBossRules.StarfireTelegraph);
+            float flare = SkyIslandBossRules.EscapeSpeed(SkyIslandBossRules.FlareRadius, SkyIslandBossRules.MarkLockSeconds);
+            if (starfire > SkyIslandBossRules.MaxEscapeSpeed) errors.Add("starfire_escape=" + starfire.ToString("0.00"));
+            if (flare > SkyIslandBossRules.MaxEscapeSpeed) errors.Add("flare_escape=" + flare.ToString("0.00"));
+            metrics = "profiles_bound=" + bound + "/" + profiles.Length + ",gear_ok=" + gearOk + "/" + gearTotal
+                + ",starfire_escape=" + starfire.ToString("0.00") + ",flare_escape=" + flare.ToString("0.00");
+            if (errors.Count > 0) reason = "头目 / 岛主不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
         #endregion
 
         #region 取数（Unity 侧，只读）
+
+        /// <summary>
+        /// SKY_BOSS_PROFILES：档案 ↔ 内容表 ↔ 专属装备注册。只读——查 prefab 与黑名单，不刷怪、不实例化、不改档。
+        /// 内容表严格绑定内置表（「来自已部署 JSON」另由 SKY_CONTENT_TABLE 查），这里按内置表核对档案挂位。
+        /// </summary>
+        private bool ValidateSkyIslandBossProfiles(out string metrics, out string reason)
+        {
+            Func<int, string> problem = delegate (int typeId)
+            {
+                SkyIslandBossGearSpec spec = SkyIslandBossRules.GearSpec(typeId);
+                if (spec == null) return "spec_missing";
+                ItemStatsSystem.Item prefab;
+                try { prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeId); }
+                catch (Exception e) { return "prefab_error_" + e.GetType().Name; }
+                if (prefab == null) return "prefab_missing";
+                // 缺资源时官方会回一个空壳（TypeID 对不上），这里一并算缺。
+                if (prefab.TypeID != typeId) return "typeid_" + prefab.TypeID;
+                if (prefab.Tags == null || !prefab.Tags.Contains(spec.Slot)) return "slot_tag_missing_" + spec.Slot;
+                if (prefab.Value <= 0) return "value_zero";
+                if (spec.Durability > 0f && !prefab.Repairable) return "not_repairable";
+                if (!LootBlacklistRegistry.Contains(typeId)) return "not_blacklisted";
+                return null;
+            };
+            return JudgeBossProfiles(SkyIslandContent.CreateFallback(), problem, out metrics, out reason);
+        }
 
         /// <summary>SKY_ENCOUNTER_CAP 的帧时间采样窗口（秒）。</summary>
         private const float EncounterSampleSeconds = 3f;

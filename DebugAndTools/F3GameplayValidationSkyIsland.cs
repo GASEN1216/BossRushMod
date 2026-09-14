@@ -64,6 +64,8 @@ namespace BossRush
             "SKY_LETTER_PIGEON", "SKY_LAMPS_WIND", "SKY_GNAT_RUNTIME",
             // 2026-09-14 B 轮：噬风·回响的开启状态与本趟计数。
             "SKY_STORM_ECHO",
+            // 2026-09-14 头目 / 岛主 R1：档案挂位、专属装备注册与掉落口径。
+            "SKY_BOSS_PROFILES",
         };
 
         // ====================================================================
@@ -209,6 +211,7 @@ namespace BossRush
             RunSkyIslandSync("SKY_EXTRACTION_OFFICIAL_UI", ValidateSkyIslandOfficialCountdown);
             RunSkyIslandSync("SKY_STORM_TUNING", ValidateSkyIslandStormTuning);
             RunSkyIslandSync("SKY_STORM_ECHO", ValidateSkyIslandStormEcho);
+            RunSkyIslandSync("SKY_BOSS_PROFILES", ValidateSkyIslandBossProfiles);
             RunSkyIslandSync("SKY_LAMPS_WIND", ValidateSkyIslandLampsWind);
             RunSkyIslandSync("SKY_GNAT_RUNTIME", ValidateSkyIslandGnatRuntime);
             RunSkyIslandSync("SKY_LOCALIZATION_EN", ValidateSkyIslandEnglishText);

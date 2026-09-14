@@ -275,8 +275,9 @@ namespace BossRush
         internal bool RecordNote(string id, out string message)
         {
             // 内容批次四：放回蛙鸣池的蛙卵（Frog_1..3，SkyIslandMosquitoRules.IsFrogNote）同样只收登记过的 id。
+            // 头目 / 岛主 R1：首杀记录（Lord_Foreman / Chief_Stargazer，SkyIslandBossRules.IsBossNote）。
             if (SkyIslandLetters.Find(id) == null && SkyIslandCrew.IndexOf(id) < 0 && SkyIslandItemRules.FindKeepsake(id) == null &&
-                SkyIslandLights.Find(id) == null && !SkyIslandMosquitoRules.IsFrogNote(id))
+                SkyIslandLights.Find(id) == null && !SkyIslandMosquitoRules.IsFrogNote(id) && !SkyIslandBossRules.IsBossNote(id))
             {
                 message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
                 return false;
@@ -383,7 +384,7 @@ namespace BossRush
                                 "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n")) +
                         (SkyIslandLetters.Collected(data, "Letter_02")
                             ? L10n.T("苇生的信你替我收下了？……他还是那么爱说大话。\n", "You took in Weisheng's letter for me? …He still loves to talk big.\n")
-                            : string.Empty) + WeibaiZapperLine(data);
+                            : string.Empty) + SkyIslandBossRules.ResidentLine("sky_weibai", data) + WeibaiZapperLine(data);
                 case "sky_fuzhou":
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("浮舟：钟声听见了。船一直在这里，船头挂着名册，四个归来的人各写了一页，去看看吧。",
@@ -392,7 +393,7 @@ namespace BossRush
                             "Fuzhou: Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.")) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳……我这就挂回最高的那根桩上。", "\nAchao's mooring line… I will hang it back on the tallest post right away.")
-                            : string.Empty) + FuzhouLampLine(data);
+                            : string.Empty) + FuzhouLampLine(data) + SkyIslandBossRules.ResidentLine("sky_fuzhou", data);
                 case "sky_miantai":
                     return MiantaiLine(data) + MiantaiItchLine;
                 case "sky_zheling":

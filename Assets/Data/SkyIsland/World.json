@@ -55,7 +55,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Elite"
+      "lead": "Lord"
     },
     {
       "id": "G_02",
@@ -95,7 +95,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Elite"
+      "lead": "Chief"
     },
     {
       "id": "F",

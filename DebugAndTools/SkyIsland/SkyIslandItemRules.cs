@@ -91,6 +91,11 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandCloudmossVeil: return "云苔纱笠";
                 case BossRushItemIds.SkyIslandGnatZapper: return "风晶灭蚊灯";
                 case BossRushItemIds.SkyIslandSmokeFan: return "药烟蒲扇";
+                // 头目 / 岛主的专属装备（SkyIslandBossRules.AllGearTypeIds）：名字与价值同样只在这里一处，但不进 AllTypeIds。
+                case BossRushItemIds.SkyIslandStarbrassVisorHelm: return "星铜护目盔";
+                case BossRushItemIds.SkyIslandStarfurnaceHarness: return "星炉背甲";
+                case BossRushItemIds.SkyIslandStarfurnacePack: return "星炉背囊";
+                case BossRushItemIds.SkyIslandStargazerLensHelm: return "观星镜盔";
                 default: return "天空岛物品";
             }
         }
@@ -118,6 +123,10 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandCloudmossVeil: return "Cloudmoss Veil";
                 case BossRushItemIds.SkyIslandGnatZapper: return "Windcrystal Gnat Zapper";
                 case BossRushItemIds.SkyIslandSmokeFan: return "Remedy-Smoke Fan";
+                case BossRushItemIds.SkyIslandStarbrassVisorHelm: return "Starbrass Visor Helm";
+                case BossRushItemIds.SkyIslandStarfurnaceHarness: return "Starfurnace Harness";
+                case BossRushItemIds.SkyIslandStarfurnacePack: return "Starfurnace Pack";
+                case BossRushItemIds.SkyIslandStargazerLensHelm: return "Stargazer's Lens Helm";
                 default: return "Sky Islands item";
             }
         }
@@ -137,6 +146,11 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandCloudmossVeil: return 1400;
                 case BossRushItemIds.SkyIslandGnatZapper: return 1600;
                 case BossRushItemIds.SkyIslandSmokeFan: return 420;
+                // 头目 / 岛主的专属装备：品质 5 的战利品，头盔 / 背包 1.2 万、护甲 1.5 万、观星镜盔 0.9 万（不进岛上物资池，价值上限不适用）。
+                case BossRushItemIds.SkyIslandStarbrassVisorHelm: return 12000;
+                case BossRushItemIds.SkyIslandStarfurnaceHarness: return 15000;
+                case BossRushItemIds.SkyIslandStarfurnacePack: return 12000;
+                case BossRushItemIds.SkyIslandStargazerLensHelm: return 9000;
                 case BossRushItemIds.SkyIslandHomecomingBadge: return 5000;
                 case BossRushItemIds.SkyIslandWindeaterCore: return 12000;
                 case BossRushItemIds.SkyIslandWindVaneCompass: return 1500;

@@ -113,6 +113,14 @@ namespace BossRush
 
         /// <summary>这条配方要等岛上点亮 <paramref name="lamps"/> 盏风晶灯才会做（内容批次四：苇白得先听清灯芯的调子）。</summary>
         internal SkyIslandRecipe AfterLamps(int lamps) { RequiresLamps = lamps; return this; }
+
+        /// <summary>同一条配方换一组材料的副本（身份、成品与门槛不变）：穿戴者减耗用，不改写共享的配方表。</summary>
+        internal SkyIslandRecipe WithInputs(SkyIslandIngredient[] inputs)
+        {
+            var copy = (SkyIslandRecipe)MemberwiseClone();
+            copy.Inputs = inputs;
+            return copy;
+        }
     }
 
     /// <summary>
@@ -690,6 +698,27 @@ namespace BossRush
             return L10n.T("制作 ", "Make ") + SkyIslandItemRules.Name(recipe.OutputTypeId) +
                 (recipe.OutputCount > 1 ? " ×" + recipe.OutputCount : string.Empty) +
                 L10n.T("（", " (") + HaveNeedList(recipe.Inputs, countInPack) + L10n.T("）", ")");
+        }
+
+        /// <summary>
+        /// 头目 / 岛主 R1「星工两件套」：穿着任意两件星工装备时，渡口工台配方里的残铜片少一片（至少还要一片，<see cref="SkyIslandBossRules.BrassScrapCost"/>）。
+        /// 返回这位穿戴者的配方——没有折扣时原样返回同一个对象；有折扣时是副本（<see cref="SkyIslandRecipe.WithInputs"/>），不改写共享配方表。
+        /// Craft 与合成面板共用这一份，按钮上写的件数与真正扣的一致。
+        /// </summary>
+        internal static SkyIslandRecipe ForWearer(SkyIslandRecipe recipe, int starworksPiecesWorn)
+        {
+            if (recipe == null || recipe.Inputs == null || recipe.Station != SkyIslandCraftStation.Dock) return recipe;
+            SkyIslandIngredient[] inputs = null;
+            for (int i = 0; i < recipe.Inputs.Length; i++)
+            {
+                SkyIslandIngredient input = recipe.Inputs[i];
+                if (input.TypeId != BossRushItemIds.SkyIslandBrassScrap) continue;
+                int count = SkyIslandBossRules.BrassScrapCost(input.Count, starworksPiecesWorn);
+                if (count == input.Count) continue;
+                if (inputs == null) inputs = (SkyIslandIngredient[])recipe.Inputs.Clone();
+                inputs[i] = new SkyIslandIngredient(input.TypeId, count);
+            }
+            return inputs == null ? recipe : recipe.WithInputs(inputs);
         }
 
         /// <summary>「浮木 2/2 · 云苔纤维 1/1」：配方按钮与点灯按钮共用，有几件按需要的封顶。</summary>

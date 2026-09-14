@@ -35,7 +35,7 @@ namespace BossRush
     internal sealed partial class F3GameplayValidationRunner
     {
         /// <summary>演练套件的用例 ID。装配失败时批量记 SKIP，报告里不留空白。</summary>
-        private static readonly string[] SkyIslandDrillCaseIds = { "SKY_DRILL_GNAT_SWARM", "SKY_DRILL_OFFICIAL_DIALOGUE" };
+        private static readonly string[] SkyIslandDrillCaseIds = { "SKY_DRILL_GNAT_SWARM", "SKY_DRILL_OFFICIAL_DIALOGUE", "SKY_DRILL_BOSS_LOADOUT" };
 
         /// <summary>刷蚋之后等它们飞近的时间（秒，现实时间）。</summary>
         private const float DrillApproachSeconds = 1.5f;
@@ -86,10 +86,168 @@ namespace BossRush
                     Record(SkyIslandDrillCaseIds[i], "SKIP", 0L, string.Empty, "sky_island_session_missing");
                 yield break;
             }
-            SetStage("演练 1/2 云蚋（强制夜里、刷一群、合成弹道、击杀、叮咬下限、痒）");
+            SetStage("演练 1/3 云蚋（强制夜里、刷一群、合成弹道、击杀、叮咬下限、痒）");
             yield return RunSkyIslandCase("SKY_DRILL_GNAT_SWARM", RunSkyIslandDrillGnats);
-            SetStage("演练 2/2 官方对话（弹出、防重入、选择、取消）");
+            SetStage("演练 2/3 官方对话（弹出、防重入、选择、取消）");
             yield return RunSkyIslandCase("SKY_DRILL_OFFICIAL_DIALOGUE", RunSkyIslandDrillDialogue);
+            SetStage("演练 3/3 头目配装（刷一名、穿全套、结算只留一件）");
+            yield return RunSkyIslandCase("SKY_DRILL_BOSS_LOADOUT", RunSkyIslandDrillBossLoadout);
+        }
+
+        // ====================================================================
+        // 头目 / 岛主：穿上全套 → 只留一件
+        // ====================================================================
+
+        /// <summary>
+        /// SKY_DRILL_BOSS_LOADOUT（2026-09-14 头目 / 岛主 R1）：在玩家前方刷一名官方拾荒者，按残星匠首的档案穿上三件专属装备，
+        /// 核对三个槽位与身上的模型；把耐久压到 1 后按固定抽样值结算一次，核对「只留抽中的那件并补满耐久、另外两件卸下销毁、
+        /// 武器与背包里的原版物品原样在、结算上闩」。
+        /// **不走死亡**：不建官方尸体箱、不记官方击杀计数、不派发首杀事件，所以不写任何存档；阵营设成 middle、不挂招式控制器，
+        /// 演练期间它不会攻击玩家。finally 里销毁角色与 preset 克隆。尸体箱真的收走这一件、箱里其余照原版，只能实机看（清单 2.19.6）。
+        /// </summary>
+        private IEnumerator RunSkyIslandDrillBossLoadout()
+        {
+            const float spawnDistance = 6f;
+            const float spawnTimeout = 15f;
+            const int settleFrames = 10;
+            // 权重 35 / 35 / 30：0.5 落在第二件（星炉背甲）。
+            const double fixedRoll = 0.5;
+            Stopwatch sw = Stopwatch.StartNew();
+            CharacterMainControl player = CharacterMainControl.Main;
+            SkyIslandBossProfile profile = SkyIslandBossRules.Find("G", 0);
+            if (player == null || profile == null)
+            {
+                Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", 0L, "player=" + (player != null) + ",profile=" + (profile != null), "主角或残星匠首档案不可用");
+                yield break;
+            }
+            CharacterRandomPreset source = null;
+            foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
+                if (preset != null && !preset.isBoss && !preset.isZombie && preset.team == Teams.scav &&
+                    preset.name.IndexOf("Dummy", StringComparison.OrdinalIgnoreCase) < 0 &&
+                    !preset.name.StartsWith("BossRush_", StringComparison.Ordinal) &&
+                    (source == null || string.CompareOrdinal(preset.name, source.name) < 0)) source = preset;
+            if (source == null)
+            {
+                Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", 0L, string.Empty, "没有可用的官方拾荒者 preset（遭遇 owner 同一口径）");
+                yield break;
+            }
+            Vector3 forward = player.transform.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.01f) forward = Vector3.forward;
+            forward.Normalize();
+            RaycastHit ground;
+            Vector3 probe = player.transform.position + forward * spawnDistance + Vector3.up * 2f;
+            if (!Physics.Raycast(probe, Vector3.down, out ground, 6f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                Record("SKY_DRILL_BOSS_LOADOUT", "SKIP", 0L, "probe=" + probe, "玩家前方 6 米找不到地面：换个开阔的地方再演练");
+                yield break;
+            }
+
+            int[] gearIds = SkyIslandBossRules.AllGearTypeIds;
+            Func<ItemStatsSystem.Item, int> countVanilla = delegate (ItemStatsSystem.Item root)
+            {
+                int count = 0;
+                if (root == null) return count;
+                if (root.Inventory != null)
+                    foreach (ItemStatsSystem.Item item in root.Inventory)
+                        if (item != null && Array.IndexOf(gearIds, item.TypeID) < 0) count++;
+                if (root.Slots != null)
+                    foreach (ItemStatsSystem.Items.Slot slot in root.Slots)
+                        if (slot != null && slot.Content != null && Array.IndexOf(gearIds, slot.Content.TypeID) < 0) count++;
+                return count;
+            };
+            List<string> errors = new List<string>();
+            List<string> notes = new List<string>();
+            CharacterRandomPreset clone = UnityEngine.Object.Instantiate(source);
+            clone.name = "BossRush_SkyIslandDrill_Boss";
+            clone.dropBoxOnDead = false;
+            clone.setActiveByPlayerDistance = false;
+            CharacterMainControl created = null;
+            try
+            {
+                UniTask<CharacterMainControl>.Awaiter spawning = clone.CreateCharacterAsync(ground.point + Vector3.up * 0.1f, -forward, -1, null, false).GetAwaiter();
+                float spawnUntil = Time.realtimeSinceStartup + spawnTimeout;
+                while (!spawning.IsCompleted && Time.realtimeSinceStartup < spawnUntil && !ShouldAbort()) yield return null;
+                // 完成状态先读进局部变量再取结果，取完不再碰 awaiter（UniTaskAwaiterReuseGuard）。
+                bool spawnCompleted = spawning.IsCompleted;
+                if (spawnCompleted)
+                {
+                    try { created = spawning.GetResult(); }
+                    catch (Exception e) { errors.Add("spawn_threw_" + e.GetType().Name); }
+                }
+                if (created == null)
+                {
+                    if (errors.Count == 0) errors.Add(spawnCompleted ? "spawn_returned_null" : "spawn_timeout");
+                }
+                else
+                {
+                    SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(created);
+                    // middle 阵营：官方 AI 只打敌对阵营，演练期间不会朝玩家开火。
+                    created.SetTeam(Teams.middle);
+                    string loadoutReason;
+                    SkyIslandBossLoot loot = SkyIslandBossForge.DevLoadoutForDrill(created, profile, out loadoutReason);
+                    for (int frame = 0; frame < settleFrames; frame++) yield return null;
+
+                    ItemStatsSystem.Item characterItem = created.CharacterItem;
+                    int worn = 0, models = 0;
+                    Transform[] parts = created.GetComponentsInChildren<Transform>(true);
+                    for (int i = 0; i < profile.Gear.Length; i++)
+                    {
+                        ItemStatsSystem.Items.Slot slot = SkyIslandBossForge.FindSlot(characterItem, profile.Gear[i].Slot);
+                        ItemStatsSystem.Item piece = slot == null ? null : slot.Content;
+                        if (piece == null || piece.TypeID != profile.Gear[i].TypeId) continue;
+                        worn++;
+                        if (piece.UseDurability) piece.Durability = 1f;
+                        SkyIslandBossGearSpec spec = SkyIslandBossRules.GearSpec(profile.Gear[i].TypeId);
+                        for (int p = 0; p < parts.Length && spec != null; p++)
+                            if (parts[p] != null && parts[p].name.IndexOf(spec.ModelBaseName, StringComparison.Ordinal) >= 0) { models++; break; }
+                    }
+                    int vanillaBefore = countVanilla(characterItem);
+                    notes.Add("preset=" + source.name + ",loadout=" + (loadoutReason ?? "ok") + ",worn=" + worn + "/" + profile.Gear.Length
+                        + ",models=" + models + "/" + profile.Gear.Length + ",vanilla_before=" + vanillaBefore);
+                    if (loadoutReason != null) errors.Add(loadoutReason);
+                    if (worn != profile.Gear.Length) errors.Add("worn_" + worn + "_of_" + profile.Gear.Length);
+                    else if (models != profile.Gear.Length) errors.Add("gear_model_missing_" + models + "_of_" + profile.Gear.Length);
+
+                    string outcome = loot == null ? "loot_component_missing" : loot.DevResolveForDrill(fixedRoll);
+                    yield return null;
+                    int chosen = loot == null ? -1 : loot.ChosenTypeId;
+                    int left = 0, leftFull = 0;
+                    if (characterItem != null)
+                    {
+                        List<ItemStatsSystem.Item> remaining = new List<ItemStatsSystem.Item>();
+                        if (characterItem.Inventory != null)
+                            foreach (ItemStatsSystem.Item item in characterItem.Inventory) if (item != null) remaining.Add(item);
+                        if (characterItem.Slots != null)
+                            foreach (ItemStatsSystem.Items.Slot slot in characterItem.Slots) if (slot != null && slot.Content != null) remaining.Add(slot.Content);
+                        foreach (ItemStatsSystem.Item item in remaining)
+                        {
+                            if (Array.IndexOf(gearIds, item.TypeID) < 0) continue;
+                            left++;
+                            if (item.TypeID == chosen && (!item.UseDurability || item.Durability >= item.MaxDurability - 0.001f)) leftFull++;
+                        }
+                    }
+                    int vanillaAfter = countVanilla(characterItem);
+                    string again = loot == null ? "loot_component_missing" : loot.DevResolveForDrill(0.99);
+                    notes.Add("outcome=" + outcome + ",chosen=" + chosen + ",gear_left=" + left + ",kept_full=" + leftFull
+                        + ",vanilla_after=" + vanillaAfter + ",second_resolve=" + again);
+                    if (outcome != "slot") errors.Add("outcome_" + outcome);
+                    if (chosen != BossRushItemIds.SkyIslandStarfurnaceHarness) errors.Add("fixed_roll_picked_" + chosen);
+                    if (left != 1) errors.Add("gear_left_" + left);
+                    if (leftFull != 1) errors.Add("kept_piece_not_full_durability");
+                    if (vanillaAfter != vanillaBefore) errors.Add("vanilla_items_changed_" + vanillaBefore + "_to_" + vanillaAfter);
+                    if (again != "not_bound_or_already_resolved") errors.Add("resolve_not_latched");
+                }
+            }
+            finally
+            {
+                if (created != null) { created.gameObject.SetActive(false); UnityEngine.Object.Destroy(created.gameObject); }
+                if (clone != null) UnityEngine.Object.Destroy(clone, 0.1f);
+            }
+
+            string metrics = string.Join(" | ", notes.ToArray());
+            if (errors.Count > 0) Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", sw.ElapsedMilliseconds, metrics, "头目配装演练不合格：" + string.Join(",", errors.ToArray()));
+            else Record("SKY_DRILL_BOSS_LOADOUT", "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
         }
 
         // ====================================================================

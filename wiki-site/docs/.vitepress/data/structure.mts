@@ -414,6 +414,16 @@ export const CATEGORIES: WikiCategory[] = [
         tagZh: '套装',
         tagEn: 'Set',
       },
+      {
+        path: '/equipment/sky-island-starworks-gear',
+        zh: '星工装备',
+        en: 'Starworks Gear',
+        icon: 'eq-sky-island-starworks-gear',
+        blurbZh: '天空岛头目与岛主身上穿的，倒下按权重留一件',
+        blurbEn: 'Worn by Sky Island bosses; each fall leaves one piece',
+        tagZh: '天空岛',
+        tagEn: 'Sky Island',
+      },
     ],
   },
   {

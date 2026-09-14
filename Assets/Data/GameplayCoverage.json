@@ -36,6 +36,7 @@
         "SKY_EXTRACTION_OFFICIAL_UI",
         "SKY_STORM_TUNING",
         "SKY_STORM_ECHO",
+        "SKY_BOSS_PROFILES",
         "SKY_LOCALIZATION_EN",
         "SKY_SCENE_BASELINE",
         "SKY_PERF_FINAL_5S",
@@ -52,6 +53,7 @@
         "SKY_GNAT_RUNTIME",
         "SKY_DRILL_GNAT_SWARM",
         "SKY_DRILL_OFFICIAL_DIALOGUE",
+        "SKY_DRILL_BOSS_LOADOUT",
         "AUTOTEST_LEG",
         "AUTOTEST_STEP_TABLE",
         "AUTOTEST_STORY_SNAPSHOT",
@@ -69,7 +71,8 @@
         "SKY_AUTOTEST_*"
       ],
       "wiki": [
-        "map__sky_island"
+        "map__sky_island",
+        "equipment__sky_island_starworks_set"
       ],
       "manual": [
         {
@@ -141,6 +144,11 @@
           "id": "M_SKY_ISLAND_14",
           "steps": "（B 轮「噬风·回响」与两条帧时间线索，2026-09-14）① 读报告：Dev 构建进岛，跑 F3 天空岛只读验收。在报告里找 `SKY_STORM_ECHO`；找 `SKY_LOOT_BANDS` 的 `prewarm_ran` / `built` / `frames` / `total_ms` / `max_band_ms` / `cached_before_case`；找 `SKY_PERF_BASELINE_5S` 与 `SKY_PERF_FINAL_5S` 的 `top_p95`（最慢三段）、`seg_p95_max_ms(...)`（每段 p95/最大值，毫秒）、`instrumented_p95_ms`、`lights_active` / `lights_shadowed`、`renderers_visible`。再在 Player.log 里找 `[SkyIslandLoot] PREWARM` 一行。② 回响可达：用已敲响归航钟、打过噬风的专用测试档到鸣风栈道双航标门装置：背包里既不放噬风之核也不带晴岚风晶时看一次面板；只放核看一次；核与一块晴岚风晶都在背包里再看一次，按「引风」。③ 回响战斗：看开场字幕、预警圈与三波；第三波后先留在圈外等那一声，另一次第三波后立刻走回圈里；系与不系晴岚护符各挨一次；打的过程中站到栈道与桥上看是否起大风，焚一支驱风香看挡不挡得住。④ 击败后开回响遗存箱记下内容，同一趟回装置上再看一次；离岛重进再引一次。⑤ 找钟守聊一次，翻手记「群岛之物」与名册第一页。⑥ 切英文重看以上字幕、按钮与手记。",
           "expected": "报告：`SKY_STORM_ECHO` 未敲钟或未打噬风的档记 SKIP `echo_locked_by_story`，结局后记 PASS 且 `starts` ≤1、`blocker` 与规则一致；`SKY_LOOT_BANDS` 的 `prewarm_ran=True`、`cached_before_case` 等于 `prewarm_bands`、`frames` ≥ `built`；两条 PERF 用例都有分段表（不是 `profile=unavailable`）。**分项计时只诊断，不设阈值**：把 `top_p95` 的三段与灯数、可见 renderer 数抄回清单 2.17 步。回响：面板没有灰掉的「引风」，缺什么就在正文末尾写什么；按下后面板收起、字幕报出风眼张开、晴岚风晶少一块、噬风之核还在；三波之后原地再响一声，半径同第三圈，留在圈外不掉血、走回圈里会挨；护符照样减伤；回响在场时栈道与桥上起大风、驱风香挡得住，打完风停；回响遗存箱里有风晶碎片 3、星屑 2，外加晴岚护符 / 归航菜便当 / 驱风香 2 之一；同一趟再看写着本趟已经引过；重进后能再引；不会写成首战的「噬风倒下」，名册与手记不回退。钟守、手记、名册提到回响；英文界面无中文残留。任一条不成立即为不合格。"
+        },
+        {
+          "id": "M_SKY_ISLAND_15",
+          "steps": "（头目 / 岛主 R1「残星匠首」「瞭台观星手」，2026-09-14）① 读报告：Dev 构建进岛跑 F3 天空岛只读验收，找 `SKY_BOSS_PROFILES` 的 `profiles_bound` / `gear_ok` / `starfire_escape` / `flare_escape`。② 残星工坊：走到星灯附近，看 G 组带队的名字、Boss 血条与身上三件装备（头盔、背甲、背囊）是否穿好、有无穿模或飘在身外；打到七成、四成、一成半各看一次供能桩（先不拆看护甲变化，再拆掉看回落）；看星焰三个预警圈能否横移躲开；数两轮星焰后的过热窗口；专打头部把护目盔耐久打光后再看星焰；打死后开尸体箱。③ 残星瞭台：在 10–40 米外露头让观星手标记，分别出圈、躲掩体、冲到 8 米内各试一次；打光镜盔耐久后再露头；打死后开箱（多打几趟看三成掉率）。④ 捡回的装备穿上：看属性面板与耐久；任穿两件星工装备去浮舟的渡口工台看晴岚护符 / 风标罗盘 / 灭蚊灯的残铜片件数，脱下一件再看；戴观星镜盔在岛上站定 2 秒看星标。⑤ 离岛回基地把装备放进仓库，重启游戏再看是否仍是这四件（不是空壳物品），在维修台修一次头盔与背甲。⑥ 首杀后翻手记总览，找浮舟、苇白各聊一次；切英文重看以上字幕、物品名与描述。⑦ G 岛战斗时记一次帧时间（F3 帧计时），抄回清单。",
+          "expected": "报告：`SKY_BOSS_PROFILES` PASS，`profiles_bound=2/2`、`gear_ok=4/4`，两个逃圈速度都 ≤5.5；出现 `prefab_missing` / `not_blacklisted` 即不合格。匠首：名字「残星匠首」、Boss 血条，三件装备都穿在身上且贴合；三个血线各立 2 根桩，桩在时明显更硬、拆掉回落，约 25 秒后桩自熄；星焰圈约 1.25 秒预警、横移躲得开；两轮后约 4 秒停火且更怕打；护目盔耐久打光后星焰只落 1 圈；尸体箱里恰好一件星工装备（满耐久）加上它原本带的东西，另外两件不在箱里。观星手：标记圈跟人约 0.8 秒后锁定，出圈或躲掩体都能躲，躲掩体会打断标记，贴到 8 米内不再标；镜盔耐久打光后不再标记；约三成的趟次掉观星镜盔。玩家穿上：头甲 / 体甲 / 背包容量与物品页一致；任穿两件星工装备时要两片以上残铜片的配方少一片、按钮件数同步，脱下恢复；观星镜盔站定 2 秒，40 米内的敌人脚下亮星标约 4 秒、8 秒冷却，第一次有字幕。重启后四件仍是原物品、图标正确、可维修。首杀后手记总览「岛主与头目」计数加一并有首杀字幕；浮舟、苇白首杀前后说法不同；英文界面无中文残留。任一条不成立即为不合格。"
         }
       ]
     },

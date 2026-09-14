@@ -43,6 +43,11 @@ CONSTANT_VALUES = {
     "BossRushItemIds.SkyIslandCloudmossVeil": 500083,
     "BossRushItemIds.SkyIslandGnatZapper": 500084,
     "BossRushItemIds.SkyIslandSmokeFan": 500085,
+    # 天空岛头目 / 岛主的专属装备：只从 Boss 身上掉。
+    "BossRushItemIds.SkyIslandStarbrassVisorHelm": 500086,
+    "BossRushItemIds.SkyIslandStarfurnaceHarness": 500087,
+    "BossRushItemIds.SkyIslandStarfurnacePack": 500088,
+    "BossRushItemIds.SkyIslandStargazerLensHelm": 500089,
     "DragonDescendantConfig.DRAGON_HELM_TYPE_ID": 500003,
     "DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID": 500004,
     "DragonBreathConfig.WEAPON_TYPE_ID": 500005,
