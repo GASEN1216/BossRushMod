@@ -197,6 +197,7 @@ namespace BossRush
             if (timeOfDayTemplate == null) throw new InvalidOperationException("官方天气配置缺失，无法创建完整关卡");
             content = SkyIslandContent.Load();
             story = new SkyIslandStoryService(); story.Open();
+            story.RaidHeldCosts = true;
             lease = new SkyIslandRaidLease();
             lease.Prepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
             loadStarted = true;
@@ -939,6 +940,8 @@ namespace BossRush
             Safe("ambience", delegate { if (ambience != null) ambience.Dispose(); });
             Safe("story_ui", delegate { if (worldStory != null) worldStory.Dispose(); });
             // 待保存 owner 与 Mod 宿主无关：CloseOrRetain 一律移交给独立持久对象，宿主销毁不再吞掉已接受事实。
+            // 这一趟暂不入档的永久记录先结算：只有岛场景随返航卸载（撤离或倒下，官方已存好背包）才保留，退游戏或会话被销毁一律撤掉。
+            Safe("story_raid_held", delegate { if (story != null) story.SettleRaidHeld(reason == "raid_unloaded"); });
             Safe("story_save", delegate { SkyIslandStorySaveRecovery.CloseOrRetain(story); });
             Safe("enemy", DestroyEnemy);
             Safe("path", delegate { if (probe != null) probe.CancelCurrentPathRequest(); });

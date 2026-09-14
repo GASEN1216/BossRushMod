@@ -596,10 +596,12 @@ namespace BossRush
             _operationReason = null;
             float deadline = Time.realtimeSinceStartup + AutotestReturnTimeoutSeconds;
             float loadingSince = -1f, strandedSince = -1f;
-            bool recovered = false;
+            bool recovered = false, closureClicked = false;
             while (Time.realtimeSinceStartup < deadline)
             {
                 if (SkyIslandSessionOrNull() == null && IsRuntimeReady(BaseSceneNameForValidation())) { _operationSucceeded = true; yield break; }
+                // 撤离结算画面（官方 ClosureView）要点「继续」才切图，无人值守时这里替玩家点（首轮实测卡在这里 190 秒）。
+                if (!closureClicked && TryClickAutotestClosureContinue()) { closureClicked = true; notes.Add("closure_continue_clicked"); }
                 if (SceneLoader.IsSceneLoading)
                 {
                     strandedSince = -1f;
@@ -627,6 +629,28 @@ namespace BossRush
                 yield return null;
             }
             _operationReason = "return_base_timeout";
+        }
+
+        /// <summary>
+        /// 撤离结算画面（官方 <c>ClosureView</c>）：经验条走完才把「继续」设为可点，点了才切图。
+        /// 只在按钮已经可点时点一次，点法与玩家相同（<c>Button.onClick</c>）；画面不在或还不能点就什么都不做。
+        /// </summary>
+        private static bool TryClickAutotestClosureContinue()
+        {
+            try
+            {
+                Duckov.UI.ClosureView view = Duckov.UI.ClosureView.Instance;
+                if (view == null || !view.gameObject.activeInHierarchy) return false;
+                const System.Reflection.BindingFlags Flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+                System.Reflection.FieldInfo canContinue = typeof(Duckov.UI.ClosureView).GetField("canContinue", Flags);
+                System.Reflection.FieldInfo continueButton = typeof(Duckov.UI.ClosureView).GetField("continueButton", Flags);
+                UnityEngine.UI.Button button = continueButton == null ? null : continueButton.GetValue(view) as UnityEngine.UI.Button;
+                if (button == null || !button.gameObject.activeInHierarchy) return false;
+                if (canContinue != null && !(bool)canContinue.GetValue(view)) return false;
+                button.onClick.Invoke();
+                return true;
+            }
+            catch (Exception) { return false; }
         }
 
         #endregion

@@ -153,6 +153,29 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 显示对话文本区（通过反射访问私有字段）。官方多选的选项挂在文本区下面（BG/Options），
+        /// 文本区的 FadeGroup 管着物体激活：每句字幕播完官方都会把它收起，没有前置字幕时它开局就是收起的，
+        /// 而官方 DoMultipleChoice 自己不显示它——不补这一下，选项整棵子树都是失活的，看不见也点不到（2026-09-14 实机）。
+        /// 用 Show 而不是 ShowAndReturnTask：后者会先 SkipHide 再淡入，闪一下。
+        /// </summary>
+        private static void ShowDialogueTextArea()
+        {
+            try
+            {
+                InitializeReflection();
+
+                if (DialogueUI.instance == null || textAreaFadeGroupField == null) return;
+
+                FadeGroup textAreaFadeGroup = textAreaFadeGroupField.GetValue(DialogueUI.instance) as FadeGroup;
+                if (textAreaFadeGroup != null) textAreaFadeGroup.Show();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(LOG_TAG + " [WARNING] 显示对话文本区失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
         /// 隐藏对话 UI 主面板（通过反射访问私有字段）
         /// </summary>
         private static void HideDialogueUIPanel()
@@ -576,6 +599,8 @@ namespace BossRush
             {
                 // 管理输入状态（另一段对话还开着时排队）
                 owner = await AcquireSession(cancellationToken);
+                // 选项挂在文本区下面，发请求之前先把它显示出来（见 ShowDialogueTextArea）。
+                ShowDialogueTextArea();
 
                 request = new OfficialRequest();
                 OfficialRequest captured = request;

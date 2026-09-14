@@ -36,7 +36,7 @@ def main():
         # 与剧情手记进同一批；否则「已记账、物品未持久化」会在跨重启窗口里吞掉纪念品。
         "DebugAndTools/SkyIsland/SkyIslandWorldStory.cs": [
             # 负判 + 失败跳过 + 之后才发放：只核对顺序不够，快照检查必须是**承重**的。
-            r"if \(!story.RequireAssetSnapshot\(out snapshotError\)\)[\s\S]{0,400}?continue;"
+            r"if \(!story.RequireAssetSnapshot\(all\[i\]\.NoteId, out snapshotError\)\)[\s\S]{0,400}?continue;"
             r"[\s\S]*?SkyIslandItems.TryGive\(",
         ],
         "DebugAndTools/SkyIsland/SkyIslandStoryService.cs": [
@@ -44,6 +44,15 @@ def main():
             r"PlayerStorageBuffer.SaveBuffer\(\)", r'SavesSystem.Save<float>\("MainCharacterHealth"',
             r"assetSnapshotRequired = true;",
             r"OnPhysicalSaveSucceeded\(\) \{ owner.assetSnapshotRequired = false; \}",
+            # 出击图（天空岛）里没有基地仓库：永久记录随这一趟结算（owner 2026-09-14「随撤离一起存」）。
+            # 写盘编码必须剥掉暂不入档的记录，否则任何一次写盘（含官方收集存档）都会把它和出击前的背包一起存下。
+            r"Encode = EncodeForSave",
+            r"if \(RaidHeldCosts\)[\s\S]{0,200}?raidHeldNotes.Add\(noteId\);[\s\S]{0,40}?return true;",
+            r"if \(!raidHeldNotes.Contains\(id\)\) kept.Add\(id\);",
+        ],
+        "DebugAndTools/SkyIsland/SkyIslandSession.cs": [
+            r"story.RaidHeldCosts = true;",
+            r'story.SettleRaidHeld\(reason == "raid_unloaded"\)[\s\S]{0,200}?SkyIslandStorySaveRecovery.CloseOrRetain\(story\)',
         ],
         # 发放顺序：实例造出来了才记台账；只有「确实没有归属、也没有仓库缓冲回执」才回滚台账。
         "Integration/SkyIsland/SkyIslandItems.cs": [

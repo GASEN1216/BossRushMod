@@ -1061,7 +1061,7 @@ namespace BossRush
             {
                 if (!SkyIslandItemRules.Due(story.Current, all[i])) continue;
                 string snapshotError;
-                if (!story.RequireAssetSnapshot(out snapshotError))
+                if (!story.RequireAssetSnapshot(all[i].NoteId, out snapshotError))
                 {
                     Debug.LogWarning("[SkyIsland] 纪念品发放前无法建立实物快照：" + (snapshotError ?? "unknown"));
                     continue;

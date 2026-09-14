@@ -410,6 +410,30 @@ namespace BossRush
             return choices;
         }
 
+        /// <summary>找不到官方选项时把对话框各层的显隐记进报告（首轮实测：选项不渲染、也找不到，只知道对话「在进行」）。</summary>
+        private static string DescribeAutotestDialogueUi()
+        {
+            DialogueUI ui = DialogueUI.instance;
+            if (ui == null) return "dialogue_ui=null";
+            var parts = new List<string> { "manager_active=" + DialogueManager.IsDialogueActive, "ui_active=" + DialogueUI.Active };
+            foreach (string name in new[] { "mainFadeGroup", "textAreaFadeGroup", "choiceListFadeGroup" })
+            {
+                Duckov.UI.Animations.FadeGroup group = null;
+                try { group = typeof(DialogueUI).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance).GetValue(ui) as Duckov.UI.Animations.FadeGroup; }
+                catch (Exception) { }
+                parts.Add(group == null ? name + "=null" : name + "=shown:" + group.IsShown + "/hiding:" + group.IsHidingInProgress
+                    + "/active:" + group.gameObject.activeInHierarchy);
+            }
+            int active = 0, inactive = 0;
+            foreach (DialogueUIChoice choice in Resources.FindObjectsOfTypeAll<DialogueUIChoice>())
+            {
+                if (choice == null || !choice.gameObject.scene.IsValid()) continue;
+                if (choice.gameObject.activeInHierarchy) active++; else inactive++;
+            }
+            parts.Add("choices_active=" + active + ",choices_inactive=" + inactive);
+            return string.Join(",", parts.ToArray());
+        }
+
         private IEnumerator AutotestDialogueChoose(F3AutotestStepRecord record, string[] args)
         {
             int index = ArgInt(args, 0, 0);
@@ -420,7 +444,7 @@ namespace BossRush
                 foreach (DialogueUIChoice choice in AutotestDialogueChoices()) if (choice.Index == index) target = choice;
                 if (target == null) yield return null;
             }
-            if (target == null) { AutotestFail(record, "action:dialogue_choose", "official_choice_not_found:" + index, null, true); yield break; }
+            if (target == null) { AutotestFail(record, "action:dialogue_choose", "official_choice_not_found:" + index, DescribeAutotestDialogueUi(), true); yield break; }
             target.OnPointerClick(null);
             record.Notes.Add("dialogue_choice=" + index);
             yield return WaitAutotestReal(0.6f);
@@ -897,7 +921,7 @@ namespace BossRush
                     int wrong = step.Answer == 0 ? 1 : 0;
                     for (int miss = 0; miss < 2; miss++)
                     {
-                        if (!PressAutotestRowByLabel(step.Options[wrong].Label)) { AutotestFail(record, "action:puzzle_solve", "wrong_option_row_missing", step.Options[wrong].Label, true); yield break; }
+                        if (!PressAutotestRowByLabel(step.Options[wrong].Label)) { AutotestFail(record, "action:puzzle_solve", "wrong_option_row_missing", step.Options[wrong].Label + " | " + DescribeAutotestPanelRows(), true); yield break; }
                         yield return WaitAutotestReal(0.6f);
                         string body = AutotestPanelBody();
                         string expected = miss == 0 ? step.Hint : step.Reveal;
@@ -909,7 +933,7 @@ namespace BossRush
                 }
                 if (!PressAutotestRowByLabel(step.Options[step.Answer].Label))
                 {
-                    AutotestFail(record, "action:puzzle_solve", "answer_row_missing:step" + index, step.Options[step.Answer].Label, true);
+                    AutotestFail(record, "action:puzzle_solve", "answer_row_missing:step" + index, step.Options[step.Answer].Label + " | " + DescribeAutotestPanelRows(), true);
                     yield break;
                 }
                 yield return WaitAutotestReal(0.8f);
@@ -918,6 +942,12 @@ namespace BossRush
             SkyIslandStoryService story = session == null ? null : session.ValidationStory;
             bool flagged = story != null && story.Current.Has(puzzle.Flag);
             record.Assertions.Add(AutotestAssertion("puzzle_solved_flag:" + puzzle.Flag, flagged ? "PASS" : "FAIL", flagged ? null : "flag_not_written", marker));
+        }
+
+        private static string DescribeAutotestPanelRows()
+        {
+            List<Button> rows = AutotestPanelRows();
+            return "panel=" + AutotestPanelOpen() + ",rows=" + rows.Count + ",labels=" + AutotestRowLabels(rows);
         }
 
         private static bool PressAutotestRowByLabel(string label)
@@ -1009,8 +1039,20 @@ namespace BossRush
             string best = string.Empty;
             if (row == null) return best;
             foreach (TextMeshProUGUI text in row.GetComponentsInChildren<TextMeshProUGUI>(false))
-                if (text != null && text.text != null && text.text.Length > best.Length) best = text.text;
+            {
+                if (text == null || string.IsNullOrEmpty(text.text)) continue;
+                // 行首的数字键帽（1…9）不是选项文字：单字选项「西」与键帽「2」一样长，按长度取会取到键帽（首轮实测瞭台谜题因此按不到）。
+                if (IsAutotestKeycap(text.text)) continue;
+                if (text.text.Length > best.Length) best = text.text;
+            }
             return best;
+        }
+
+        private static bool IsAutotestKeycap(string value)
+        {
+            if (value.Length > 2) return false;
+            foreach (char c in value) if (c < '0' || c > '9') return false;
+            return true;
         }
 
         private static string AutotestRowLabels(List<Button> rows)

@@ -72,8 +72,8 @@
     },
     {
       "id": "SKY_AUTO_REAL_RESIDENT_DECLINE", "title": "选「先这样」不开面板；说完话再跟同一个人说一次还说得上",
-      "stage": "real", "location": "EnemySpawn_B", "class": "auto", "checklist": ["2.15.4", "2.15.7d"], "budget": 60,
-      "actions": ["interact:resident:sky_weibai", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:1", "wait_real:1.5", "assert:panel_closed", "assert:dialogue_inactive", "interact:resident:sky_weibai", "wait_dialogue:5", "assert:dialogue_active", "shot:talk_again:ui:Dialogue"]
+      "stage": "real", "location": "EnemySpawn_B", "class": "auto", "checklist": ["2.15.4", "2.15.7d"], "budget": 80,
+      "actions": ["interact:resident:sky_weibai", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:1", "wait_real:1.5", "assert:panel_closed", "assert:dialogue_inactive", "interact:resident:sky_weibai", "wait_dialogue:5", "assert:dialogue_active", "shot:talk_again:ui:Dialogue", "dialogue_advance:30", "dialogue_choose:1", "wait_real:1", "assert:dialogue_inactive"]
     },
     {
       "id": "SKY_AUTO_REAL_GATHER_DOCK", "title": "码头浮木：近处光斑、交互读条、产出进背包、采过即消失",
@@ -173,7 +173,7 @@
     {
       "id": "SKY_AUTO_NEW_S4_GUARD", "title": "残星瞭台：守卫没清时解不开（截图里看回话是不是「先清守卫」）；瞭台观星手在场时截一张世界图（metrics 记装备）；清完解谜、观星镜旗标写入",
       "stage": "new_save", "location": "Search_S4", "class": "auto", "checklist": ["2.10.7", "2.12.7"], "budget": 90,
-      "actions": ["invincible:on", "teleport:Search_S4:2:0", "wait_real:0.3", "interact:Search_S4", "wait_real:1.5", "choose_label:收录见闻|Record the note:0.7:soft", "shot:s4_before_clear:ui", "assert:no_flag:Telescope", "wait_boss:stargazer:12:optional", "shot:stargazer_spawned:world", "clear_nearby:50:20", "interact:Search_S4", "wait_panel:4", "shot:s4_puzzle:ui", "puzzle_solve:Search_S4:0", "assert:flag:Telescope"]
+      "actions": ["invincible:on", "teleport:Search_S4:2:0", "wait_real:0.3", "interact:Search_S4", "wait_real:1.5", "choose_label:收录见闻|Record the note:0.7:soft", "shot:s4_before_clear:ui", "assert:no_flag:Telescope", "wait_boss:stargazer:12:optional", "shot:stargazer_spawned:world", "clear_nearby:50:20", "wait_real:3", "clear_nearby:60:15", "interact:Search_S4", "wait_panel:4", "shot:s4_puzzle:ui", "puzzle_solve:Search_S4:0", "assert:flag:Telescope"]
     },
     {
       "id": "SKY_AUTO_NEW_CRAFT_LOCKED", "title": "新档渡口工台：还不会做的配方（晴岚风晶、风标罗盘）不是按钮，在正文末尾各占一行写要等什么；材料不够的配方点了只说缺什么、一件不做",
@@ -343,7 +343,7 @@
     {
       "id": "SKY_AUTO_ALT_RESIDENT", "title": "换语言跟苇白说话：官方对话框里的名字与台词换了语言",
       "stage": "alt_language", "location": "EnemySpawn_B", "class": "shot", "checklist": ["M_SKY_ISLAND_09"], "budget": 60,
-      "actions": ["teleport:EnemySpawn_B:2.5:0", "interact:resident:sky_weibai", "wait_dialogue:5", "shot:dialogue_alt:ui:Dialogue", "dialogue_advance:30", "shot:dialogue_alt_choice:ui:Dialogue"]
+      "actions": ["teleport:EnemySpawn_B:2.5:0", "interact:resident:sky_weibai", "wait_dialogue:5", "shot:dialogue_alt:ui:Dialogue", "dialogue_advance:30", "shot:dialogue_alt_choice:ui:Dialogue", "dialogue_choose:1", "wait_real:1", "assert:dialogue_inactive"]
     },
     {
       "id": "SKY_AUTO_BASE_AFTER_RESIDUE", "title": "回基地：纪念品件数回到开跑前、岛上 owner 与头顶风灯没跟回来",

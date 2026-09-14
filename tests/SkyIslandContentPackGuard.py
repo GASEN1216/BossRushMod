@@ -214,7 +214,7 @@ def main():
     ordered(tick, ["AnnounceCombatOutcomes(added);", "GrantKeepsakes();"], "旗标变化后补查纪念品（旧存档第一次进岛同样补发）")
     grant = need_body(world, "private void GrantKeepsakes()", "纪念品发放")
     ordered(grant, ["if (!story.CanWrite) return;", "SkyIslandItemRules.Due(story.Current, all[i])",
-                    "story.RequireAssetSnapshot(out snapshotError)",
+                    "story.RequireAssetSnapshot(all[i].NoteId, out snapshotError)",
                     "SkyIslandItems.TryGive(all[i].TypeId, all[i].ToStorage,",
                     "delegate { return story.RecordNote(all[i].NoteId, out message); }"],
             "纪念品把记账交给发放入口：实例准备好才记手记，记成功才转移，缺资源不得永久烧掉领取资格")

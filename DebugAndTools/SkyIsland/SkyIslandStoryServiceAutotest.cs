@@ -44,6 +44,8 @@ namespace BossRush
             SkyIslandStoryData candidate = data.Copy();
             string encoded = SkyIslandStoryCodec.Encode(candidate);
             if (encoded == null || SkyIslandStoryCodec.Decode(encoded) == null) { error = "replacement_rejected_by_codec"; return false; }
+            // 整份替换是权威数据：这一趟暂不入档的名单作废，否则快照里本来就有的灯会在还原时被剥掉。
+            raidHeldNotes.Clear();
             if (!store.Store(candidate)) { error = "store_rejected:" + (store.LastError ?? "unknown"); return false; }
             MarkPending(true);
             return !flushNow || DevAutotestFlush(out error);

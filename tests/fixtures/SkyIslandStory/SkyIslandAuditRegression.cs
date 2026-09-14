@@ -48,6 +48,35 @@ internal static class SkyIslandAuditRegression
             check(story.TryClose(), "reopened cost probe closes");
         }
 
+        // 出击图里没有基地仓库（owner 2026-09-14「随撤离一起存」）：花材料换来的记录内存里立刻算数，
+        // 存档里等这一趟结算——回到基地保留，退游戏撤掉；结算之前任何一次写盘都带不走它们。
+        int raidSlot = 100110;
+        foreach (bool keep in new[] { true, false })
+        {
+            SavesSystem.Switch(raidSlot++);
+            story = new SkyIslandStoryService(); story.Open();
+            story.RaidHeldCosts = true;
+            PlayerStorage heldStorage = PlayerStorage.Instance;
+            PlayerStorage.Instance = null;
+            check(story.RecordNote("Light_F", out message) && Array.IndexOf(story.Current.discoveredNotes, "Light_F") >= 0,
+                "raid: lamp counts in memory without a base storage snapshot (keep=" + keep + ")");
+            check(story.RecordNote("Frog_2", out message), "raid: frog release accepted the same way (keep=" + keep + ")");
+            check(story.TryApply(SkyIslandStoryAction.FindOldLetter, out message), "raid: unrelated story fact still commits (keep=" + keep + ")");
+            story.Tick(true);
+            SkyIslandStoryData midRaid = SkyIslandStoryCodec.Decode(SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey));
+            check(midRaid != null && midRaid.Has(SkyIslandStoryFlag.OldLetter)
+                && Array.IndexOf(midRaid.discoveredNotes, "Light_F") < 0 && Array.IndexOf(midRaid.discoveredNotes, "Frog_2") < 0,
+                "raid: mid-raid save carries the story fact but not the held records (keep=" + keep + ")");
+            story.SettleRaidHeld(keep);
+            check(story.TryClose(), "raid: settle then close persists (keep=" + keep + ")");
+            SkyIslandStoryData settled = SkyIslandStoryCodec.Decode(SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey));
+            bool lampSaved = settled != null && Array.IndexOf(settled.discoveredNotes, "Light_F") >= 0;
+            bool frogSaved = settled != null && Array.IndexOf(settled.discoveredNotes, "Frog_2") >= 0;
+            check(settled != null && settled.Has(SkyIslandStoryFlag.OldLetter) && lampSaved == keep && frogSaved == keep,
+                keep ? "raid: returning to base keeps the held records" : "raid: quitting drops the held records");
+            PlayerStorage.Instance = heldStorage;
+        }
+
         SavesSystem.Switch(100104);
         var data = SkyIslandStoryRules.CreateDefault();
         // 秘境物证 S1 走生产路径：解开谜题只写剧情旗标，不进 discoveredNotes（2026-09-14 审核 F-03，旧夹具直接塞进 discoveredNotes 掩盖了它）。

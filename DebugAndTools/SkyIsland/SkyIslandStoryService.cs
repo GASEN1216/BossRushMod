@@ -15,6 +15,8 @@ namespace BossRush
         private string lastSaveError;
         private float nextRecoveryAt;
         private bool assetSnapshotRequired;
+        /// <summary>这一趟出击里暂不入档的永久记录 id（见 <see cref="EncodeForSave"/>）。</summary>
+        private readonly HashSet<string> raidHeldNotes = new HashSet<string>(StringComparer.Ordinal);
         private string summaryCache, summaryStatus;
         private int summaryFlags;
         private bool summaryChinese;
@@ -33,7 +35,7 @@ namespace BossRush
                 SchemaVersion = SkyIslandStoryRules.SchemaVersion,
                 LogPrefix = "[SkyIsland] ", DisplayName = "晴岚群岛",
                 CreateDefault = SkyIslandStoryRules.CreateDefault,
-                Encode = SkyIslandStoryCodec.Encode, Decode = SkyIslandStoryCodec.Decode,
+                Encode = EncodeForSave, Decode = SkyIslandStoryCodec.Decode,
                 ReadSchemaVersion = SkyIslandStoryCodec.ReadSchemaVersion,
                 NotifySlotChanged = OnSlotChanged
             });
@@ -51,16 +53,75 @@ namespace BossRush
         internal SkyIslandStoryData Current { get { return store.Current; } }
         internal bool CanWrite { get { return IsCurrentSlot && !store.HasWriteBarrier && !store.IsStoreFaulted; } }
 
-        internal bool RequireAssetSnapshot(out string error)
+        /// <summary>
+        /// 会话在出击图（天空岛）里打开的剧情门面：花材料换来的永久记录随这一趟出击结算，不在岛上立资产快照。
+        /// 官方仓库箱只在基地场景（出击图里 <c>PlayerStorage.Instance</c> 为空），出击中途退游戏背包回到出击前、不算死；
+        /// 在岛上存背包会让「点完灯直接退游戏」保住这一趟捡的东西。owner 2026-09-14 拍板「随撤离一起存」。
+        /// </summary>
+        internal bool RaidHeldCosts;
+
+        /// <summary>
+        /// 永久记录（点灯、放生、纪念品）提交前的资产义务。基地：立实物快照，与手记同一批落盘。
+        /// 出击图（<see cref="RaidHeldCosts"/>）：记录内存里立刻算数，存档里先不写，等 <see cref="SettleRaidHeld"/> 结算。
+        /// </summary>
+        internal bool RequireAssetSnapshot(string noteId, out string error)
         {
             error = null;
-            if (!CanWrite || SavesSystem.IsSaving || CharacterMainControl.Main == null ||
-                CharacterMainControl.Main.CharacterItem == null || PlayerStorage.Instance == null ||
-                !PlayerStorage.Instance.HasInitialized() || PlayerStorage.Loading ||
+            if (!CanWrite || SavesSystem.IsSaving || CharacterMainControl.Main == null || CharacterMainControl.Main.CharacterItem == null)
+            { error = "asset_save_not_ready"; return false; }
+            if (RaidHeldCosts)
+            {
+                if (string.IsNullOrEmpty(noteId)) { error = "raid_record_needs_id"; return false; }
+                raidHeldNotes.Add(noteId);
+                return true;
+            }
+            if (PlayerStorage.Instance == null || !PlayerStorage.Instance.HasInitialized() || PlayerStorage.Loading ||
                 PlayerStorage.Inventory == null || PlayerStorageBuffer.Instance == null)
             { error = "asset_save_not_ready"; return false; }
             assetSnapshotRequired = true;
             return true;
+        }
+
+        /// <summary>
+        /// 写进存档的编码：这一趟暂不入档的记录从手记里剥掉，其余事实（到访、清场、剧情动作）照常落盘。
+        /// 官方收集存档（撤离、切图）也走这里，所以任何一次写盘都带不走它们；崩溃时它们本来就不在盘上。
+        /// </summary>
+        private string EncodeForSave(SkyIslandStoryData value)
+        {
+            if (value == null || raidHeldNotes.Count == 0 || value.discoveredNotes == null) return SkyIslandStoryCodec.Encode(value);
+            SkyIslandStoryData persisted = value.Copy();
+            var kept = new List<string>(persisted.discoveredNotes.Length);
+            foreach (string id in persisted.discoveredNotes)
+                if (!raidHeldNotes.Contains(id)) kept.Add(id);
+            persisted.discoveredNotes = kept.ToArray();
+            return SkyIslandStoryCodec.Encode(persisted);
+        }
+
+        /// <summary>
+        /// 这一趟出击结算。<paramref name="keep"/> 为真：回到基地（撤离或倒下，官方已按结果存好背包），记录放进待写批次；
+        /// 为假：退游戏或会话被销毁（背包会回到出击前），从手记里撤掉，与没做过一样。
+        /// </summary>
+        internal void SettleRaidHeld(bool keep)
+        {
+            if (raidHeldNotes.Count == 0) return;
+            SkyIslandStoryData current = Current;
+            var present = new List<string>();
+            if (current != null && current.discoveredNotes != null)
+                foreach (string id in current.discoveredNotes)
+                    if (raidHeldNotes.Contains(id)) present.Add(id);
+            raidHeldNotes.Clear();
+            if (present.Count == 0 || !CanWrite) return;
+            SkyIslandStoryData candidate = current.Copy();
+            if (!keep)
+            {
+                var kept = new List<string>(candidate.discoveredNotes.Length);
+                foreach (string id in candidate.discoveredNotes)
+                    if (present.IndexOf(id) < 0) kept.Add(id);
+                candidate.discoveredNotes = kept.ToArray();
+            }
+            bool stored = store.Store(candidate);
+            if (stored) MarkPending(true);
+            Debug.Log("[SkyIsland] RAID_HELD_SETTLE keep=" + keep + " stored=" + stored + " ids=" + string.Join(",", present.ToArray()));
         }
         /// <summary>
         /// 当前目标。HUD 每 0.5 秒读一次，而 `SkyIslandStoryRules.Objective` 每次都重新拼接字符串；
@@ -282,13 +343,13 @@ namespace BossRush
                 message = L10n.T("这条手记没有登记。", "That journal entry is not registered.");
                 return false;
             }
-            // 永久成本记录必须与已扣除材料的背包快照一起落盘；SaveFile 本身不会采集角色。
-            // 放在提交入口，点灯、放生及后续调用方都不能漏掉这项义务。
+            // 永久成本记录必须与已扣除材料的背包一起落盘：基地立实物快照（SaveFile 本身不会采集角色），
+            // 出击图里随这一趟结算（RaidHeldCosts）。放在提交入口，点灯、放生及后续调用方都不能漏掉这项义务。
             if (SkyIslandLights.Find(id) != null || SkyIslandMosquitoRules.IsFrogNote(id))
             {
                 if (!CanWrite) { message = SaveStatus; return false; }
                 string error;
-                if (Array.IndexOf(Current.discoveredNotes, id) < 0 && !RequireAssetSnapshot(out error))
+                if (Array.IndexOf(Current.discoveredNotes, id) < 0 && !RequireAssetSnapshot(id, out error))
                 {
                     message = L10n.T("物品存档尚未就绪，请稍后再试。", "Item saving is not ready. Please try again shortly.");
                     return false;
@@ -313,6 +374,7 @@ namespace BossRush
             SkyIslandStoryData candidate = current.Copy();
             candidate.discoveredNotes = values.ToArray();
             if (!store.Store(candidate)) return false;
+            raidHeldNotes.Remove(id);
             MarkPending(true);
             return true;
         }

@@ -277,7 +277,7 @@ namespace BossRush
                 || message.StartsWith("[BossRushValidation]", StringComparison.Ordinal)) return;
             bool own = message.IndexOf("BossRush", StringComparison.OrdinalIgnoreCase) >= 0
                 || message.IndexOf("No prefab for building wedding_chapel", StringComparison.OrdinalIgnoreCase) >= 0
-                || (!string.IsNullOrEmpty(trace) && trace.IndexOf("BossRush", StringComparison.OrdinalIgnoreCase) >= 0);
+                || OwnsLoggedTrace(trace, type);
             if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert)
             {
                 // DevLog 的 [ERROR] 实际按 LogType.Log 输出，CriticalLog 也可能为 Warning。
@@ -296,6 +296,24 @@ namespace BossRush
             if (_errorSamples++ < 80)
                 WriteRaw("RUNTIME_ERROR | source=" + (own ? "BossRush" : "host_or_other_mod")
                     + " | " + Sanitize(message) + " | stack=" + Sanitize(trace));
+        }
+
+        /// <summary>
+        /// 调用栈里有 BossRush 时是不是本 Mod 的错。异常穿过我们的栈照旧算自己的；显式 LogError 看第一帧是谁在记：
+        /// 我们调官方 API（例如切语言）时别的 Mod 的回调记的错，栈底也有 BossRush，不能算到我们头上（首轮实测 19 条）。
+        /// </summary>
+        private static bool OwnsLoggedTrace(string trace, LogType type)
+        {
+            if (string.IsNullOrEmpty(trace) || trace.IndexOf("BossRush", StringComparison.OrdinalIgnoreCase) < 0) return false;
+            if (type == LogType.Exception) return true;
+            foreach (string raw in trace.Split('\n'))
+            {
+                string line = raw.Trim();
+                if (line.Length == 0 || line.StartsWith("UnityEngine.Debug", StringComparison.Ordinal)
+                    || line.StartsWith("UnityEngine.Logger", StringComparison.Ordinal)) continue;
+                return line.IndexOf("BossRush", StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            return true;
         }
 
         private void ProtectCurrentPlayer()

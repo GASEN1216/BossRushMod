@@ -426,6 +426,7 @@ namespace BossRush
                 SystemLanguage alternate = L10n.IsChinese ? SystemLanguage.English : SystemLanguage.ChineseSimplified;
                 LocalizationManager.SetLanguage(alternate);
                 _autotest.LanguageSwitched = true;
+                SkyIslandWorldTextBuiltInOtherLanguage = true;
                 _autotest.Info.AltLanguage = LocalizationManager.CurrentLanguage.ToString();
                 return true;
             }
@@ -439,6 +440,7 @@ namespace BossRush
         private bool RestoreAutotestLanguage(out string detail)
         {
             SystemLanguage target = _autotest != null && _autotest.Snapshot != null ? _autotest.Snapshot.Language : LocalizationManager.CurrentLanguage;
+            SkyIslandWorldTextBuiltInOtherLanguage = false;
             try
             {
                 if (!SameAutotestLanguage(LocalizationManager.CurrentLanguage, target)) LocalizationManager.SetLanguage(target);
