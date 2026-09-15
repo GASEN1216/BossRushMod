@@ -147,6 +147,33 @@ namespace BossRush
             }
         }
 
+        private static System.Reflection.FieldInfo _officialWaitingForChoiceField;
+        private static bool _officialWaitingForChoiceResolved;
+
+        /// <summary>
+        /// 官方对话是否已经在等玩家选（私有字段 <c>DialogueUI.waitingForChoice</c>）。
+        /// <c>DoMultipleChoice</c> 先激活选项控件并淡入，淡入完才进 <c>WaitForChoice</c>、把 confirmedChoice 清成 -1——
+        /// 这之前点的选项会被清掉，对话一直等下去（2026-09-15 第三轮岛内 5 条红，官方 IL 实查）。
+        /// 与「点击继续」同属官方界面的等待点探测，放在这里而不放 runner 宿主文件（ModBehaviour partial 预算）。
+        /// 取不到字段（官方改名）返回 null，调用方退回「见到选项就点」。
+        /// </summary>
+        private static bool? OfficialDialogueWaitingForChoice()
+        {
+            Dialogues.DialogueUI ui = Dialogues.DialogueUI.instance;
+            if (ui == null) return false;
+            if (!_officialWaitingForChoiceResolved)
+            {
+                _officialWaitingForChoiceResolved = true;
+                _officialWaitingForChoiceField = typeof(Dialogues.DialogueUI).GetField("waitingForChoice",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (_officialWaitingForChoiceField == null)
+                    ModBehaviour.DevLog("[Validation] 取不到 DialogueUI.waitingForChoice，点对话选项退回「见到选项就点」");
+            }
+            if (_officialWaitingForChoiceField == null) return null;
+            try { return (bool)_officialWaitingForChoiceField.GetValue(ui); }
+            catch (Exception) { return null; }
+        }
+
         private IEnumerator WaitRuntimeReady(string caseId, float timeout,
             string expectedScene = null, bool isFinalCleanup = false)
         {

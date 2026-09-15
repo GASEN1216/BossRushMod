@@ -170,6 +170,7 @@ namespace BossRush
             List<string> overflowing, List<string> truncated)
         {
             string[] roots = string.IsNullOrEmpty(canvasFilter) ? new[] { "SkyIslandHud", "SkyIslandStory" } : canvasFilter.Split('+');
+            Transform officialDialogue = Dialogues.DialogueUI.instance != null ? Dialogues.DialogueUI.instance.transform : null;
             int inspected = 0;
             foreach (TextMeshProUGUI text in UnityEngine.Object.FindObjectsOfType<TextMeshProUGUI>())
             {
@@ -187,8 +188,12 @@ namespace BossRush
                     {
                         Bounds bounds = text.textBounds;
                         Rect box = text.rectTransform.rect;
-                        if (bounds.size.x > 0f && (bounds.min.x < box.xMin - 2f || bounds.max.x > box.xMax + 2f
-                            || bounds.min.y < box.yMin - 2f || bounds.max.y > box.yMax + 2f)) overflowing.Add(path);
+                        bool outside = bounds.size.x > 0f && (bounds.min.x < box.xMin - 2f || bounds.max.x > box.xMax + 2f
+                            || bounds.min.y < box.yMin - 2f || bounds.max.y > box.yMax + 2f);
+                        // 官方对话框（名字条、台词、选项）是 TMP 默认 Overflow 配自适应布局与遮罩：第三轮 12 张对话框截图连中文也全判红，是误报。
+                        // 这些只列进 truncated 供看截图，不判红；我们自己的 HUD 与面板照旧判红。
+                        if (outside && officialDialogue != null && text.transform.IsChildOf(officialDialogue)) truncated.Add(path);
+                        else if (outside) overflowing.Add(path);
                     }
                     else if (text.isTextTruncated || text.isTextOverflowing) truncated.Add(path);
                 }

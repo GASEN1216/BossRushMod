@@ -109,8 +109,9 @@ namespace BossRush
                 int picked = await DialogueManager.ShowMultipleChoiceBilingual(actor, new string[][]
                 {
                     // 中英成对写在同一条语句里（本地化守卫认的对照表形状）。
-                    Pair("我想办点事", "There is something I need"),
-                    Pair("先这样", "That is all for now"),
+                    // 英文要短：官方选项按钮定宽，"There is something I need" 在 2026-09-15 第三轮截图里被截成 "There is something I"。
+                    Pair("我想办点事", "I need something"),
+                    Pair("先这样", "That's all for now"),
                 }, 0f, ChoiceKeyPrefix, token);
 
                 // 超时（-1）也当作「要办事」：宁可多开一次面板，也不要让人白跟 NPC 说了一通。

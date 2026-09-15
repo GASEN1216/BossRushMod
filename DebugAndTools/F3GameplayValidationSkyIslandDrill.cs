@@ -443,15 +443,22 @@ namespace BossRush
                 UniTask<int>.Awaiter pick = DialogueManager.ShowMultipleChoiceBilingual(actor, choices, 0f,
                     "BossRush_SkyIslandDrillChoice", first.Token).GetAwaiter();
                 DialogueUIChoice target = null;
+                bool? waiting = null;
                 float popUntil = Time.realtimeSinceStartup + 3f;
-                while (Time.realtimeSinceStartup < popUntil && target == null && !pick.IsCompleted)
+                // 选项控件出现还不算弹好：官方淡入完才进 WaitForChoice、把 confirmedChoice 清成 -1，之前点的会被清掉
+                // （2026-09-15 第三轮演练 picked=-2、对话一直挂着）。要等官方真在等玩家选。
+                while (Time.realtimeSinceStartup < popUntil && !pick.IsCompleted)
                 {
                     yield return null;
+                    target = null;
                     foreach (DialogueUIChoice candidate in DialogueUI.instance.GetComponentsInChildren<DialogueUIChoice>(false))
                         if (candidate != null && candidate.Index == 1) target = candidate;
+                    waiting = OfficialDialogueWaitingForChoice();
+                    if (target != null && waiting != false) break;
                 }
                 bool popped = DialogueManager.IsDialogueActive && DialogueUI.Active;
-                notes.Add("popped=" + popped + ",choice_found=" + (target != null));
+                notes.Add("popped=" + popped + ",choice_found=" + (target != null)
+                    + ",waiting_for_choice=" + (waiting.HasValue ? waiting.Value.ToString() : "unknown"));
                 if (!popped) errors.Add("dialogue_not_shown");
 
                 // 2. 防重入：对话开着时走居民对话的生产入口，必须被挡下（它先判 DialogueManager.IsDialogueActive）。
@@ -465,7 +472,7 @@ namespace BossRush
                 // 2026-09-14 实机：取消那一步取完结果又读了一次状态，抛 "Token version is not matched"，整条演练记成 UNHANDLED
                 // （UniTaskAwaiterReuseGuard 钉住）。取结果本身抛了别的异常也只记进 errors，不让整条演练崩掉。
                 int picked = -2;
-                if (target != null)
+                if (target != null && waiting != false)
                 {
                     target.OnPointerClick(null);
                     float pickUntil = Time.realtimeSinceStartup + 3f;
@@ -483,6 +490,7 @@ namespace BossRush
                 while (Time.realtimeSinceStartup < closeUntil && DialogueManager.IsDialogueActive) yield return null;
                 notes.Add("picked=" + picked + ",closed_after_pick=" + !DialogueManager.IsDialogueActive);
                 if (target == null) errors.Add("official_choice_widget_not_found");
+                else if (waiting == false) errors.Add("official_not_waiting_for_choice");
                 else if (picked != 1) errors.Add("pick_returned_" + picked);
                 if (DialogueManager.IsDialogueActive) errors.Add("still_active_after_pick");
 

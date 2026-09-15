@@ -416,6 +416,8 @@ namespace BossRush
             DialogueUI ui = DialogueUI.instance;
             if (ui == null) return "dialogue_ui=null";
             var parts = new List<string> { "manager_active=" + DialogueManager.IsDialogueActive, "ui_active=" + DialogueUI.Active };
+            bool? waitingNow = OfficialDialogueWaitingForChoice();
+            parts.Add("waiting_for_choice=" + (waitingNow.HasValue ? waitingNow.Value.ToString() : "unknown"));
             foreach (string name in new[] { "mainFadeGroup", "textAreaFadeGroup", "choiceListFadeGroup" })
             {
                 Duckov.UI.Animations.FadeGroup group = null;
@@ -438,15 +440,34 @@ namespace BossRush
         {
             int index = ArgInt(args, 0, 0);
             DialogueUIChoice target = null;
+            bool? waiting = null;
             float until = Time.realtimeSinceStartup + ArgFloat(args, 1, 3f);
-            while (target == null && Time.realtimeSinceStartup < until && !ShouldAbort())
+            // 官方先激活并淡入选项，淡入完才进 WaitForChoice 把 confirmedChoice 清成 -1：见到选项就点会被清掉、对话一直挂着
+            // （2026-09-15 第三轮：浮舟、晴禾、折翎、英文苇白都点丢了）。等官方真在等玩家选再点。
+            while (Time.realtimeSinceStartup < until && !ShouldAbort())
             {
+                target = null;
                 foreach (DialogueUIChoice choice in AutotestDialogueChoices()) if (choice.Index == index) target = choice;
-                if (target == null) yield return null;
+                waiting = OfficialDialogueWaitingForChoice();
+                if (target != null && waiting != false) break;
+                yield return null;
             }
             if (target == null) { AutotestFail(record, "action:dialogue_choose", "official_choice_not_found:" + index, DescribeAutotestDialogueUi(), true); yield break; }
-            target.OnPointerClick(null);
-            record.Notes.Add("dialogue_choice=" + index);
+            if (waiting == false) { AutotestFail(record, "action:dialogue_choose", "official_not_waiting_for_choice:" + index, DescribeAutotestDialogueUi(), true); yield break; }
+            // 点完要确认被官方吃掉（waitingForChoice 落回 false）：1 秒内没吃掉就再点，最多 3 次。字段取不到时只点一次（旧做法）。
+            int clicks = 0;
+            do
+            {
+                target.OnPointerClick(null);
+                clicks++;
+                if (waiting == null) break;
+                float consumedUntil = Time.realtimeSinceStartup + 1f;
+                while (Time.realtimeSinceStartup < consumedUntil && OfficialDialogueWaitingForChoice() == true) yield return null;
+            }
+            while (clicks < 3 && OfficialDialogueWaitingForChoice() == true && !ShouldAbort());
+            record.Notes.Add("dialogue_choice=" + index + ",clicks=" + clicks);
+            if (waiting != null && OfficialDialogueWaitingForChoice() == true)
+            { AutotestFail(record, "action:dialogue_choose", "choice_not_consumed:" + index, DescribeAutotestDialogueUi(), true); yield break; }
             yield return WaitAutotestReal(0.6f);
         }
 

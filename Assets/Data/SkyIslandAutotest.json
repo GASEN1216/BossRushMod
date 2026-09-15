@@ -308,7 +308,7 @@
     {
       "id": "SKY_AUTO_LAMPS_STAGE", "title": "七盏风晶灯点亮：存档与场景里的灯一致，栈道装置上方亮起灯",
       "stage": "ending_lamps", "location": "Search_E", "class": "auto", "checklist": ["2.12.5", "2.12.14"], "budget": 40,
-      "actions": ["assert:stage_data", "assert:case:SKY_LAMPS_WIND", "invincible:on", "teleport:Search_E:3:3", "shot:lamp_boardwalk:world", "assert:object_present:SkyIslandFire_Search_E"]
+      "actions": ["assert:stage_data", "wait_real:2", "assert:case:SKY_LAMPS_WIND", "invincible:on", "teleport:Search_E:3:3", "shot:lamp_boardwalk:world", "assert:object_present:SkyIslandFire_Search_E"]
     },
     {
       "id": "SKY_AUTO_LAMPS_ISLE_WIND", "title": "十盏灯都亮之后，夜里站在岛上不积寒意（开夜后读 SKY_LAMPS_WIND 的风级；不点灯时微风积满也要约 143 秒，chilled 只作旁证）",

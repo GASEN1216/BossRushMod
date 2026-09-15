@@ -2,6 +2,40 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-15 全自动实机验收第三轮：点对话选项太早、风级读早、官方对话框溢出误报
+
+**来源**：owner 跑第三轮（runId `20260915_011652_914`，Dev `2F15DF88`，主工作区 09:15:51 编，C# 与上一节 `F406C2C0` 相同），看完复核说「修吧，改完编译部署」。岛内 61 PASS / 5 FAIL / 1 SKIP，还原全 PASS。另一会话同时复核了这一轮，结论一致；按消息分工，教堂整区重绘仍归它。
+**分类**：
+- `SAFE`：Dev 验收动作、演练、截图探针、步骤表与守卫（生产行为不变）。
+- `COMPAT`：英文居民选项文案缩短（中文不变）。
+
+**实机转绿**（L3）
+- 岛上点灯随撤离存：回基地 `RAID_HELD_SETTLE keep=True`，七盏灯与两件纪念品落盘；`END_LAMP_PANEL` PASS。
+- 居民多选可见：截图里「我想办点事 / 先这样」与英文两项都在。
+- 返基地：`SCENE_RETURN_BASE` 喂 1 次点击后 PASS；岛上撤离结算页替玩家点「继续」PASS。
+- 世界文字跟语言：`SKY_AUTO_ALT_LOCALE` 英文检查 0 条中文残留。
+
+**岛内 5 条红的根因与修复**（官方 IL 实查 L1，与同一步骤里的成功 / 失败对照吻合）
+- **点官方对话选项太早**（`SKY_AUTO_REAL_SERVICES` 浮舟段、`BEACONS_QINGHE`、`BEACONS_ZHELING`、`ALT_RESIDENT`、`SKY_DRILL_OFFICIAL_DIALOGUE`）
+  - 官方 `DoMultipleChoice` 先 `DisplayOptions`：选项控件立刻激活、淡入、Menu 获得焦点；淡入完才进 `WaitForChoice`，把 `confirmedChoice` 清成 -1、`waitingForChoice` 置真。淡入期间点的会被清掉，对话一直等。
+  - 验收见到选项就点，演练首帧就点；眠苔、苇白碰巧点在淡入之后。真人看到选项再点，不受影响。
+  - 修复：`F3GameplayValidationScenes.OfficialDialogueWaitingForChoice` 反射官方私有字段（取不到返回 null、退回旧做法）。`dialogue_choose` 等它为真再点，点完核对被吃掉，1 秒没吃掉再点、最多 3 次，吃不掉记 `choice_not_consumed`；演练同样等再点，没等到记 `official_not_waiting_for_choice`。对话框诊断带 `waiting_for_choice`。
+  - 放在 Scenes.cs 而不是 runner 宿主文件：后者是 ModBehaviour partial，第一版加进去超了预算 26 行。
+- **灯与风判早了**（`SKY_AUTO_LAMPS_STAGE`，`wind_effective_lights=4/10`）：日志里七盏灯都经生产 `LightLamp` 点亮（总数 4→10），但 fieldcraft 每 0.5 游戏秒才重采风级，阶段刚推完就判读到旧样本；同轮 20 秒后 `LAMPS_ISLE_WIND` 同一判据 10/10。步骤表在判之前加 `wait_real:2`。
+
+**其它**
+- 截图溢出探针把全部官方对话框截图（中文也在内）判 `overflow=FAIL`：官方 TMP 默认 Overflow 配自适应布局与遮罩，是误报。官方对话框层级里画出框的字改为只列进 truncated、不判红；我们自己的 HUD 与面板照旧判红。
+- 英文居民选项 "There is something I need" 在官方定宽按钮上被截成 "There is something I"（P3，L3 截图）：改为 "I need something" / "That's all for now"。
+- 主套件进竞技场超时、整段竞技场 SKIP：主线程两段各约 50 秒没 tick，基线 10 秒只有 170 帧（p95 138 ms，上一轮 19.86 ms）。游戏 PlayerSettings `runInBackground=true`（UnityPy 实读），排除窗口失焦，判为机器负载；不改代码。Mode F / 丧尸撤离的点击门、Mode H 赛季本轮没跑到。
+- 没修：教堂整区重绘打断官方游戏机加载（P3，另一会话的未提交文件里）；外部错误 10 条（DuckMarket 换语言 NRE、A* 线程、卡顿后 InitLevel）不是本 Mod。
+
+**守卫与验证**（L1 / L2，没有进游戏）
+- 新增 `tests/F3DialogueChoiceTimingGuard.py`：内存反向检查 8/8 转红；磁盘上把 `dialogue_choose` 改回「见到选项就点」实跑转红，按字节还原。
+- 全量守卫 616 PASS；执行回归 `SkyIslandDialogue`、`F3AutotestJudges`、`SkyIslandValidationJudges`、`F3ValidationExecution` PASS。
+- 干净 worktree（`f5b8c97` + 另一会话未提交的 8 个 .cs + 本节 5 个 .cs 与步骤表）：Dev 与正式构建 Build succeeded、0 警告；`check_dll_identifiers` Dev present、正式 absent。
+- 部署：D 盘 `BossRush.dll` = Dev `024D07A4…`（覆盖 `2F15DF88`，已备份），步骤表 `E0295B16…`，SHA 核对一致。
+
+
 ## 2026-09-15 全自动实机验收第二轮：Mode F 撤离后停在「点击继续」
 
 **来源**：owner 跑第二轮（runId `20260915_001546_093`，Dev `3B3A3C84`）。主套件 pass 152 / fail 7 / skip 11，天空岛全自动整段没跑（`not_back_in_base_after_main_suite`）。开跑进基地时，恢复器已把槽 1 首轮留下的残局还原（`AUTOTEST_RECOVERY` PASS，10 种材料收回）。
