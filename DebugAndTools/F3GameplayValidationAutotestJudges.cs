@@ -781,6 +781,45 @@ namespace BossRush
             return "PASS";
         }
 
+        /// <summary>环带在屏幕上至少要有这么多段才判覆盖率；少了说明圈大半在画面外，是拍法问题。</summary>
+        internal const int RingCoverageMinSamples = 16;
+
+        /// <summary>
+        /// 地面圆环（撤离环、噬风预警圈）沿环带的可见覆盖率。旧口径（<see cref="JudgeWorldVisibility"/>）取投影框里离邻域最远的 15% 像素，
+        /// 环被广场台面盖得只剩碎弧时，量到的是框里日照的石面，照样 PASS（2026-09-15 第四轮截图）。
+        /// 每段给环带中心线上的线性 RGB 与紧挨环带内外两侧的平均线性 RGB（<paramref name="bandRgb"/> / <paramref name="nearRgb"/> 按 r,g,b 平铺）：
+        /// 环带相对邻域朝环的声明颜色偏过去（投影 ≥ <paramref name="minShift"/>、夹角余弦 ≥ 0.6）才算这一段看得见。
+        /// 覆盖率 = 看得见的段数 / 在屏幕上的段数，由断言按步骤表阈值判；环色与邻域几乎同色的段算看不见。
+        /// </summary>
+        internal static string JudgeRingCoverage(double[] bandRgb, double[] nearRgb, double ringR, double ringG, double ringB,
+            double minShift, out double coverage, out string metrics, out string reason)
+        {
+            coverage = 0.0;
+            reason = null;
+            int samples = bandRgb == null || nearRgb == null ? 0 : Math.Min(bandRgb.Length, nearRgb.Length) / 3;
+            if (samples < RingCoverageMinSamples)
+            {
+                metrics = "mode=ring_coverage,samples=" + samples;
+                reason = "ring_mostly_off_screen";
+                return "SKIP";
+            }
+            int visible = 0;
+            for (int i = 0; i < samples; i++)
+            {
+                int k = i * 3;
+                double dr = bandRgb[k] - nearRgb[k], dg = bandRgb[k + 1] - nearRgb[k + 1], db = bandRgb[k + 2] - nearRgb[k + 2];
+                double rr = ringR - nearRgb[k], rg = ringG - nearRgb[k + 1], rb = ringB - nearRgb[k + 2];
+                double ringLength = Math.Sqrt(rr * rr + rg * rg + rb * rb);
+                double shiftLength = Math.Sqrt(dr * dr + dg * dg + db * db);
+                if (ringLength < 1e-6 || shiftLength < 1e-9) continue;
+                double toward = (dr * rr + dg * rg + db * rb) / ringLength;
+                if (toward + 1e-12 >= minShift && toward / shiftLength >= 0.6) visible++;
+            }
+            coverage = visible / (double)samples;
+            metrics = "mode=ring_coverage,samples=" + samples + ",visible=" + visible + ",coverage=" + F(coverage) + ",min_shift=" + F(minShift);
+            return "PASS";
+        }
+
         /// <summary>
         /// 文字溢出：画到框外的（overflowMode 为 Overflow 而且内容超框）判红；被省略号截断的只列出来，不判红——
         /// 省略号是版式最后一道兜底（清单 2.8.12 / 2.8.14 明文接受），截断得多不多交给 AI 看截图。

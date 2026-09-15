@@ -62,7 +62,7 @@ UNKNOWN_RESULT_RANK = 1  # 游戏侧只写 PASS / FAIL / SKIP；万一出现别�
 RESTORE_OK_VALUES = ("PASS", "NOT_NEEDED")
 
 # 与上一轮对比时在 review.md 里单列的数值键；review.json 里列出全部数值键的变化。
-WATCH_METRIC_KEYS = ("ratio", "p95_ms", "max_ms", "weber", "alpha", "distance_m", "killed",
+WATCH_METRIC_KEYS = ("ratio", "p95_ms", "max_ms", "weber", "coverage", "alpha", "distance_m", "killed",
                      "measured", "wcag", "overflowing", "truncated", "living_enemies")
 WATCH_METRIC_SUFFIXES = ("_ms", "_m", "ratio")
 

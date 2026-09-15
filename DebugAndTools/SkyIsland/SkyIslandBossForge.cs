@@ -285,7 +285,7 @@ namespace BossRush
         private static Vector3 LocalOf(Transform root, Vector3 world)
         {
             Vector3 local = root != null ? root.InverseTransformPoint(world) : world;
-            return local + Vector3.up * 0.08f;
+            return local + Vector3.up * SkyIslandGroundRing.GroundLift;
         }
 
         /// <summary>按半径与蓄力度（0..1）重画圈：蓄力只影响线宽与不透明度，**不影响半径**。</summary>

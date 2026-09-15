@@ -23,6 +23,14 @@ namespace BossRush
         /// <summary>透明排序序号。两个调用方共用，避免一处改了另一处压不住。</summary>
         internal const int SortingOrder = 120;
 
+        /// <summary>
+        /// 贴地圈离地面碰撞体的抬高（米），撤离环、噬风预警圈与头目圈共用。
+        /// 广场是生成器 paved_disc 铺的：调用高度比岛面高 0.03–0.05 m，台面顶在调用高度 +0.02 m、放射缝顶到约 +0.058 m，
+        /// 而碰撞体只在岛面上。旧的 0.06 m 正好与悬根林广场、归航钟庭的台面共面，绿环被盖成几段碎弧（2026-09-15 第四轮截图）。
+        /// 统一抬到最高装饰之上再留几厘米；俯视 55° 下视差约 0.1 m，读不出来。tests/SkyIslandGroundRingGuard.py 按生成器里的实际高度核对。
+        /// </summary>
+        internal const float GroundLift = 0.16f;
+
         private static Material shared;
         private static Texture2D bandTexture;
 
@@ -210,8 +218,8 @@ namespace BossRush
     {
         /// <summary>环带宽度。够粗才能在俯视视角下一眼看见，又不至于糊住脚下的地面。</summary>
         internal const float RingWidth = 0.32f;
-        /// <summary>抬离地面的高度，避免与地面共面产生 z-fighting。</summary>
-        internal const float GroundOffset = 0.06f;
+        /// <summary>抬离地面碰撞体的高度：与噬风预警圈、头目圈共用 <see cref="SkyIslandGroundRing.GroundLift"/>，高过广场台面与放射缝。</summary>
+        internal const float GroundOffset = SkyIslandGroundRing.GroundLift;
 
         private LineRenderer dockRing, bellRing, windRing, starRing;
         private bool bellVisible, windVisible, starVisible, disposed;

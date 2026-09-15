@@ -274,8 +274,8 @@ namespace BossRush
         {
             Transform map = boss.transform.parent;
             LineRenderer line = echo && map != null
-                ? SkyIslandGroundRing.Create(map, map.InverseTransformPoint(eyeOrigin) + Vector3.up * 0.08f)
-                : SkyIslandGroundRing.Create(boss.transform, Vector3.up * 0.08f);
+                ? SkyIslandGroundRing.Create(map, map.InverseTransformPoint(eyeOrigin) + Vector3.up * SkyIslandGroundRing.GroundLift)
+                : SkyIslandGroundRing.Create(boss.transform, Vector3.up * SkyIslandGroundRing.GroundLift);
             line.gameObject.name = "SkyIslandStormWarningRing";
             SetRing(line, RadiusForWave(0), 0f);
             return line;

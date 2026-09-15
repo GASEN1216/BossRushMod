@@ -75,6 +75,57 @@ internal static partial class Program
         Check(F3AutotestJudges.JudgeTextContrast(null, null, 0.9, 4.5, out measured, out metrics, out reason) == "SKIP", "missing samples SKIP");
     }
 
+    private static double[] RepeatRgb(int count, double r, double g, double b)
+    {
+        var values = new double[count * 3];
+        for (int i = 0; i < count; i++)
+        {
+            values[i * 3] = r;
+            values[i * 3 + 1] = g;
+            values[i * 3 + 2] = b;
+        }
+        return values;
+    }
+
+    /// <summary>地面圆环沿环带的覆盖率（2026-09-15 第四轮：广场上被台面盖成碎弧的撤离环，旧亮度口径照样 PASS）。</summary>
+    private static void RingCoverageCases()
+    {
+        double coverage;
+        string metrics, reason;
+        // 线性 RGB：日照石面偏米黄，撤离环青绿；环带像素是环色与石面各半。
+        double[] stone = RepeatRgb(32, 0.30, 0.25, 0.20);
+        const double ringR = 0.05, ringG = 0.45, ringB = 0.45;
+        double[] ringOnStone = RepeatRgb(32, 0.175, 0.35, 0.325);
+        string result = F3AutotestJudges.JudgeRingCoverage(ringOnStone, stone, ringR, ringG, ringB, 0.02, out coverage, out metrics, out reason);
+        Check(result == "PASS" && reason == null && Near(coverage, 1.0, 1e-12), "a fully drawn ring covers every on-screen segment: " + metrics);
+        Check(metrics.Contains("mode=ring_coverage") && metrics.Contains("samples=32") && metrics.Contains("visible=32"),
+            "ring metrics carry mode, samples and visible count");
+
+        result = F3AutotestJudges.JudgeRingCoverage(stone, stone, ringR, ringG, ringB, 0.02, out coverage, out metrics, out reason);
+        Check(result == "PASS" && coverage == 0.0, "red: a ring buried under the plaza floor has zero coverage (" + coverage + ")");
+
+        var dashes = new double[96];
+        Array.Copy(ringOnStone, 0, dashes, 0, 48);
+        Array.Copy(stone, 48, dashes, 48, 48);
+        F3AutotestJudges.JudgeRingCoverage(dashes, stone, ringR, ringG, ringB, 0.02, out coverage, out metrics, out reason);
+        Check(Near(coverage, 0.5, 1e-12), "a ring broken into dashes reports only its visible fraction: " + coverage);
+
+        F3AutotestJudges.JudgeRingCoverage(RepeatRgb(32, 0.60, 0.50, 0.40), stone, ringR, ringG, ringB, 0.02, out coverage, out metrics, out reason);
+        Check(coverage == 0.0, "red: sunlit stone brighter than its surroundings is not a ring (the old luminance probe passed this)");
+
+        F3AutotestJudges.JudgeRingCoverage(RepeatRgb(32, 0.29, 0.254, 0.205), stone, ringR, ringG, ringB, 0.02, out coverage, out metrics, out reason);
+        Check(coverage == 0.0, "a shift toward the ring colour below min_shift does not count");
+
+        result = F3AutotestJudges.JudgeRingCoverage(ringOnStone, ringOnStone, 0.175, 0.35, 0.325, 0.02, out coverage, out metrics, out reason);
+        Check(result == "PASS" && coverage == 0.0, "a ring the same colour as its neighbourhood is not visible");
+
+        result = F3AutotestJudges.JudgeRingCoverage(RepeatRgb(15, 0.175, 0.35, 0.325), RepeatRgb(15, 0.30, 0.25, 0.20), ringR, ringG, ringB, 0.02,
+            out coverage, out metrics, out reason);
+        Check(result == "SKIP" && reason == "ring_mostly_off_screen" && coverage == 0.0, "fewer than 16 on-screen segments SKIP");
+        Check(F3AutotestJudges.JudgeRingCoverage(null, stone, ringR, ringG, ringB, 0.02, out coverage, out metrics, out reason) == "SKIP",
+            "missing ring samples SKIP");
+    }
+
     private static void VisibilityCases()
     {
         double weber;

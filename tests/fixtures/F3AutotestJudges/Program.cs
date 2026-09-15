@@ -43,6 +43,7 @@ internal static partial class Program
         Section("snapshot on story service", SnapshotServiceCases);
         Section("linear contrast", ContrastCases);
         Section("visibility", VisibilityCases);
+        Section("ring coverage", RingCoverageCases);
         Section("results and manifest", ManifestCases);
         if (failures.Count > 0)
         {

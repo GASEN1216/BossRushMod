@@ -54,7 +54,14 @@ namespace BossRush
         {
             internal string Target, Name;
             internal Rect Screen;
+            // 地面圆环（撤离环、噬风预警圈）：沿环带逐段的屏幕采样点、紧挨环带内外两侧各一份，与环的声明颜色。
+            internal bool Ring;
+            internal Vector2[] Band, Inner, Outer;
+            internal Color RingColor;
         }
+
+        /// <summary>环带相对邻域朝环的颜色至少偏这么多（线性 RGB）才算这一段看得见。</summary>
+        private const double AutotestRingMinShift = 0.02;
 
         /// <summary>截图前必须不在屏幕上的调试浮层根物体（F3 菜单、NPC 传送面板）。</summary>
         private static readonly string[] AutotestOverlayRoots = { "F3DebugCheatMenu", "NPCTeleportUI" };
@@ -355,6 +362,7 @@ namespace BossRush
                 bool found = false;
                 float bestDistance = float.MaxValue;
                 AutotestWorldProbe best = default(AutotestWorldProbe);
+                Transform bestTransform = null;
                 foreach (Transform t in all)
                 {
                     if (t == null || !t.gameObject.activeInHierarchy) continue;
@@ -365,9 +373,12 @@ namespace BossRush
                     if (distance >= bestDistance) continue;
                     bestDistance = distance;
                     best = new AutotestWorldProbe { Target = target, Name = t.name, Screen = screen };
+                    bestTransform = t;
                     found = true;
                 }
-                if (found) probes.Add(best);
+                if (!found) continue;
+                if (AutotestRingTarget(target)) CollectAutotestRingSamples(camera, bestTransform, ref best);
+                probes.Add(best);
             }
             return probes;
         }
@@ -424,6 +435,11 @@ namespace BossRush
                         analysis.Visibility[target] = new AutotestMeasure { Result = "SKIP", Reason = "target_not_found_on_screen:" + target };
             foreach (AutotestWorldProbe probe in probes)
             {
+                if (probe.Ring)
+                {
+                    AnalyzeAutotestRing(pixels, analysis, probe);
+                    continue;
+                }
                 Rect inner = probe.Screen;
                 float pad = Mathf.Max(10f, Mathf.Max(inner.width, inner.height) * 0.5f);
                 double[] objectY = SampleAutotestY(pixels, analysis.Width, analysis.Height, inner, default(Rect), 3000);
@@ -437,6 +453,107 @@ namespace BossRush
                     Metrics = "object=" + probe.Name + ",rect=" + AutotestRectText(inner) + "," + metrics
                 };
             }
+        }
+
+        /// <summary>地面圆环按环带逐段取样判覆盖率（<see cref="F3AutotestJudges.JudgeRingCoverage"/>），不按投影框取亮度。</summary>
+        private static bool AutotestRingTarget(string target)
+        {
+            return target == "ground_ring" || target == "echo_ring";
+        }
+
+        /// <summary>
+        /// 沿 LineRenderer 的每个顶点取环带中心线、向内与向外各 1.5 个带宽的屏幕点（只收三点都在屏幕内的段）。
+        /// 找不到 LineRenderer 也记成圆环探针、样本为空，判据给 SKIP——不退回投影框口径，免得再被石面亮度骗过。
+        /// </summary>
+        private static void CollectAutotestRingSamples(Camera camera, Transform target, ref AutotestWorldProbe probe)
+        {
+            probe.Ring = true;
+            probe.Band = probe.Inner = probe.Outer = new Vector2[0];
+            LineRenderer line = target == null ? null : target.GetComponent<LineRenderer>();
+            if (line == null || line.positionCount < 8) return;
+            Vector3 center = target.position;
+            float halfBand = Mathf.Max(0.05f, line.widthMultiplier * 0.5f);
+            var band = new List<Vector2>(line.positionCount);
+            var inner = new List<Vector2>(line.positionCount);
+            var outer = new List<Vector2>(line.positionCount);
+            for (int i = 0; i < line.positionCount; i++)
+            {
+                Vector3 local = line.GetPosition(i);
+                Vector3 world = line.useWorldSpace ? local : line.transform.TransformPoint(local);
+                Vector3 radial = world - center;
+                float radius = radial.magnitude;
+                if (radius < 0.001f) continue;
+                Vector3 direction = radial / radius;
+                Vector2 a, b, c;
+                if (!AutotestScreenPoint(camera, world, out a)
+                    || !AutotestScreenPoint(camera, center + direction * Mathf.Max(0f, radius - halfBand * 3f), out b)
+                    || !AutotestScreenPoint(camera, center + direction * (radius + halfBand * 3f), out c)) continue;
+                band.Add(a);
+                inner.Add(b);
+                outer.Add(c);
+            }
+            probe.Band = band.ToArray();
+            probe.Inner = inner.ToArray();
+            probe.Outer = outer.ToArray();
+            probe.RingColor = line.startColor;
+        }
+
+        private static bool AutotestScreenPoint(Camera camera, Vector3 world, out Vector2 screen)
+        {
+            Vector3 point = camera.WorldToScreenPoint(world);
+            screen = new Vector2(point.x, point.y);
+            return point.z > 0f && point.x >= 1f && point.y >= 1f && point.x < Screen.width - 1 && point.y < Screen.height - 1;
+        }
+
+        private static void AnalyzeAutotestRing(Color32[] pixels, AutotestShotAnalysis analysis, AutotestWorldProbe probe)
+        {
+            int count = probe.Band == null ? 0 : probe.Band.Length;
+            var band = new double[count * 3];
+            var near = new double[count * 3];
+            var inside = new double[3];
+            var outside = new double[3];
+            for (int i = 0; i < count; i++)
+            {
+                SampleAutotestLinearRgb(pixels, analysis.Width, analysis.Height, probe.Band[i], band, i * 3);
+                SampleAutotestLinearRgb(pixels, analysis.Width, analysis.Height, probe.Inner[i], inside, 0);
+                SampleAutotestLinearRgb(pixels, analysis.Width, analysis.Height, probe.Outer[i], outside, 0);
+                for (int k = 0; k < 3; k++) near[i * 3 + k] = (inside[k] + outside[k]) * 0.5;
+            }
+            double coverage;
+            string metrics, reason;
+            string result = F3AutotestJudges.JudgeRingCoverage(band, near, F3AutotestJudges.SrgbToLinear(probe.RingColor.r),
+                F3AutotestJudges.SrgbToLinear(probe.RingColor.g), F3AutotestJudges.SrgbToLinear(probe.RingColor.b),
+                AutotestRingMinShift, out coverage, out metrics, out reason);
+            analysis.Visibility[probe.Target] = new AutotestMeasure
+            {
+                Result = result, Reason = reason, Value = coverage,
+                Metrics = "object=" + probe.Name + ",rect=" + AutotestRectText(probe.Screen) + "," + metrics
+            };
+        }
+
+        /// <summary>以屏幕点为中心 3×3 取平均线性 RGB，写进 <paramref name="into"/> 的 offset..offset+2。</summary>
+        private static void SampleAutotestLinearRgb(Color32[] pixels, int width, int height, Vector2 point, double[] into, int offset)
+        {
+            int cx = Mathf.RoundToInt(point.x), cy = Mathf.RoundToInt(point.y);
+            double r = 0.0, g = 0.0, b = 0.0;
+            int n = 0;
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int x = cx + dx, y = cy + dy;
+                    if (x < 0 || y < 0 || x >= width || y >= height) continue;
+                    Color32 c = pixels[y * width + x];
+                    r += AutotestLinear[c.r];
+                    g += AutotestLinear[c.g];
+                    b += AutotestLinear[c.b];
+                    n++;
+                }
+            }
+            if (n == 0) n = 1;
+            into[offset] = r / n;
+            into[offset + 1] = g / n;
+            into[offset + 2] = b / n;
         }
 
         #endregion

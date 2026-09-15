@@ -320,6 +320,14 @@ class Checker:
         elif name == "visible_min":
             self.object_name(where, r0)
             self.positional(where, rest[1:], [NUM])
+            # 圆环（撤离环、噬风预警圈）量的是沿环带的覆盖率（F3AutotestJudges.JudgeRingCoverage），不是 Weber 对比度：
+            # 碎成几段的环也要判红，阈值至少一半（2026-09-15 第四轮：旧口径 0.15 被广场日照石面骗过）。
+            if r0 in ("ground_ring", "echo_ring") and len(rest) > 1:
+                try:
+                    if float(rest[1]) < 0.5:
+                        self.err("%s：圆环 %s 的可见度是环带覆盖率，阈值至少 0.5（现在 %s）" % (where, r0, rest[1]))
+                except ValueError:
+                    pass
         elif name == "contrast_min":
             base, _, part = r0.partition("#")
             if part not in ("", "first", "last"):
@@ -573,6 +581,7 @@ PROBES = (
     ("物体名写错", replace_action("SKY_AUTO_REAL_LANTERN", "assert:object_present:SkyIslandLanternLight", "assert:object_present:SkyIslandLanternLite")),
     ("人工用例没有归类", drop_row("M_SKY_ISLAND_15")),
     ("Boss 种类写错", replace_action("SKY_AUTO_REAL_BOSS_FOREMAN", "wait_boss:foreman:30", "wait_boss:formean:30")),
+    ("圆环覆盖率阈值放宽回旧口径", replace_action("SKY_AUTO_LAND_DOCK_WORLD", "assert:visible_min:ground_ring:0.6", "assert:visible_min:ground_ring:0.15")),
 )
 
 

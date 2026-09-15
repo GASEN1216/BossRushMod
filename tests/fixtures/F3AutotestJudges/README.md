@@ -34,6 +34,7 @@
 4. **线性对比度**：`SrgbToLinear` 0 / 1 / 0.5≈0.2140、线性段、钳位；亮度权重；白对黑 21:1；`CompositeLuminance` 在线性光里合成（50% 白压黑 Y=0.5，与 sRGB 空间混合的 0.214 不同）、背景不二次反解、alpha 钳位；
    `JudgeTextContrast` 亮字压暗底 PASS（取离底色最远的一截而非抗锯齿均值、外圈取中位数、至少 4 个）、恰好等于下限 PASS、灰字压灰底 FAIL、样本不足 SKIP。
 5. **可见度与溢出**：`JudgeWorldVisibility` 亮物体 PASS 且不被大投影框稀释、暗物体压亮邻域 PASS、同亮 FAIL、略亮 FAIL 且 Weber 值低、样本不足 SKIP；`JudgeTextOverflow` 的 SKIP / FAIL / 截断只列不判红。
+   `JudgeRingCoverage`（地面圆环沿环带的覆盖率）：整圈画出来覆盖率 1、被台面盖住为 0、碎成虚线按比例、日照石面比邻域亮但不朝环色偏记 0（旧亮度口径会过）、偏移不足 min_shift 不算、环色与邻域同色不算、屏幕上不足 16 段 SKIP。
 6. **结果与报告**：`AggregateResult`、`ChooseEncoding` 六成 / 九成 / 满额两侧分档、`LogLine`、`JudgeOfficialNotesAfterAutotest`；`RenderManifest` 用 `BossRushJsonParser` 解析回来核对 schema、头部、restore / shots 块、
    每步字段与断言截图、每行覆盖的状态（PASS / FAIL / MANUAL / NOT_RUN / SKIP）；`RenderSummary` 还原失败或 PENDING 时红色提示在标题之前、成功时没有、环境还原失败给警告、红项与覆盖表；
    `RestoreNeedsAttention`；`RunStatus` 的还原失败 / 取消 / 中止 / 有红 / 不完整 / 全绿优先级。
