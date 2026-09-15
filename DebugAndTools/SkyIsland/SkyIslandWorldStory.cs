@@ -171,7 +171,8 @@ namespace BossRush
             if (disposed || (dialogue != null && dialogue.Active) || DialogueManager.IsDialogueActive) return;
             if (BlockedByCombat()) return;
             dialogue = SkyIslandResidentDialogue.Run(id, speaker, story.DescribeNpc(id),
-                delegate { OpenResidentPanel(id, speaker); }, CanContinueDialogue);
+                delegate { OpenResidentPanel(id, speaker); }, CanContinueDialogue,
+                delegate { return ResidentChoices(id, speaker).Count > 0 || NextStep() != null; });
         }
 
         /// <summary>居民的功能面板：接委托 / 苔药 / 整备 / 合成 / 手记。叙事不在这里，见 <see cref="Talk"/>。</summary>
@@ -179,6 +180,21 @@ namespace BossRush
         {
             if (BlockedByCombat()) return;
             reopen = delegate { OpenResidentPanel(id, speaker); };
+            List<SkyIslandStoryPresentation.Choice> choices = ResidentChoices(id, speaker);
+            // 主视觉给「他家那一区」的插图：居民站在自己的地标上，立绘就压在那张图上。
+            // 正文**不再重复台词**——那段话官方对话刚刚一句一屏地说完了，
+            // 这里只留「被隐藏的选项还差什么」，没有就空着。
+            presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id),
+                WithNextStep(string.Empty), choices, SkyIslandUiArt.GetPortrait(id),
+                SkyIslandUiArt.GetScene(SkyIslandResidents.MarkerOf(id)));
+        }
+
+        /// <summary>
+        /// 居民功能面板挂哪些选项。<see cref="Talk"/> 问不问「我想办点事」也用它：有选项或「还差什么」才问，
+        /// 否则点下去是空面板（2026-09-15 第五轮，结局后的无声钟守）。
+        /// </summary>
+        private List<SkyIslandStoryPresentation.Choice> ResidentChoices(string id, Transform speaker)
+        {
             hiddenHints.Clear();
             var choices = new List<SkyIslandStoryPresentation.Choice>();
             if (id == "sky_qinghe")
@@ -209,12 +225,7 @@ namespace BossRush
                 HealChoice(choices);
                 CraftChoice(choices, SkyIslandCraftStation.Mortar);
             }
-            // 主视觉给「他家那一区」的插图：居民站在自己的地标上，立绘就压在那张图上。
-            // 正文**不再重复台词**——那段话官方对话刚刚一句一屏地说完了，
-            // 这里只留「被隐藏的选项还差什么」，没有就空着。
-            presentation.Show(L10n.T("晴岚群岛 · ", "Qinglan · ") + ResidentName(id),
-                WithNextStep(string.Empty), choices, SkyIslandUiArt.GetPortrait(id),
-                SkyIslandUiArt.GetScene(SkyIslandResidents.MarkerOf(id)));
+            return choices;
         }
 
         /// <summary>居民显示名的唯一来源：交互提示、血条名与剧情面板标题共用同一份中英对照。</summary>
@@ -724,17 +735,6 @@ namespace BossRush
             }
         }
 
-        /// <summary>「翻阅群岛手记」：苇白与码头装置各挂一份，打开的是同一本（只读存档，不写任何东西）。</summary>
-        private void JournalChoice(List<SkyIslandStoryPresentation.Choice> choices)
-        {
-            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("翻阅群岛手记", "Open the archipelago journal"), delegate
-            {
-                OpenJournal();
-                // 回调的返回值会写进（新开的）面板正文：返回导语，与手记首页自己的正文一致。
-                return SkyIslandJournal.Brief(story.Current);
-            }));
-        }
-
         /// <summary>
         /// 群岛手记（首页）。
         ///
@@ -840,22 +840,6 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 「打开合成台」。居民与兜底装置各挂一份：渡口工台 = 浮舟 / 码头装置，灶台 = 晴禾 / 菜畦，药臼 = 眠苔 / 悬根林见闻点。
-        /// 居民婚后离岛（晴禾）或生成失败时，配方照样可用。
-        /// </summary>
-        private void CraftChoice(List<SkyIslandStoryPresentation.Choice> choices, SkyIslandCraftStation station)
-        {
-            choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.StationChoice(station), delegate
-            {
-                if (fieldcraft == null)
-                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
-                OpenCrafting(station);
-                // 返回 null：新开的合成面板自己的正文保持不动（见 SkyIslandStoryPresentation.BuildChoice）。
-                return null;
-            }));
-        }
-
-        /// <summary>
         /// 「点起风晶灯」（<see cref="SkyIslandLights"/>）：七处装置各缺一盏，每一盏都是一封信里的请求；亮了就不再挂这一项。
         /// 灯是本存档的持久事实（写进手记），灯旁暖和、夜风吹不透；十盏凑满之后岛上的夜里不再起风。
         /// 按钮上写着「背包里有几件 / 要几件」；残星瞭台那盏同样要先清掉瞭台上的守卫。
@@ -884,15 +868,18 @@ namespace BossRush
 
         /// <summary>
         /// 内容批次四「蛙鸣池复蛙」：镜水寺池边（见闻 F_02）夜里捧一团蛙卵（用掉一把云苔纤维），这一趟里带回蛙鸣池（S1）放生。
-        /// 每放一团写进本槽手记（`Frog_n`），近水的云蚋永久少一档；放满三团之后来信、名册与居民台词都有回音。白天也挂着，按钮写明要等夜里。
+        /// 每放一团写进本槽手记（`Frog_n`），近水的云蚋永久少一档；放满三团之后来信、名册与居民台词都有回音。
+        /// 白天不挂按钮，「要等夜里」与蛙鸣池进度进正文：纯说明性的占位项不挂（AGENTS §4.14；2026-09-15 第五轮截图里白天挂着说明项）。
         /// </summary>
         private void SpawnChoice(List<SkyIslandStoryPresentation.Choice> choices)
         {
             SkyIslandGnats swarm = fieldcraft != null ? fieldcraft.Gnats : null;
             if (swarm == null || !swarm.Usable || swarm.CarryingSpawn || SkyIslandMosquitoRules.FrogsComplete(story.Current)) return;
             int fiber = fieldcraft.CountInPack(BossRushItemIds.SkyIslandCloudmossFiber);
+            int released = SkyIslandMosquitoRules.FrogsReleased(story.Current);
+            if (!swarm.NightNow) { Hint(SkyIslandMosquitoRules.SpawnChoice(false, fiber, released)); return; }
             choices.Add(new SkyIslandStoryPresentation.Choice(
-                SkyIslandMosquitoRules.SpawnChoice(swarm.NightNow, fiber, SkyIslandMosquitoRules.FrogsReleased(story.Current)), delegate
+                SkyIslandMosquitoRules.SpawnChoice(true, fiber, released), delegate
                 {
                     string message;
                     bool taken = swarm.TakeSpawn(out message);

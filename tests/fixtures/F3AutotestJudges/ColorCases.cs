@@ -131,32 +131,66 @@ internal static partial class Program
         double weber;
         string metrics, reason;
         double[] ground = Fill(16, 0.1);
-        string result = F3AutotestJudges.JudgeWorldVisibility(Concat(Fill(4, 0.6), Fill(16, 0.1)), ground, 0.15, out weber, out metrics, out reason);
+        const double whole = 1.0, wide = 60.0, none = double.NaN;
+        string result = F3AutotestJudges.JudgeWorldVisibility(Concat(Fill(4, 0.6), Fill(16, 0.1)), ground, 0.15, whole, wide, none, none, out weber, out metrics, out reason);
         Check(result == "PASS" && reason == null && Near(weber, 0.5 / 0.15, 1e-9), "bright object on darker surroundings PASS: " + metrics);
-        Check(metrics.Contains("wcag=") && metrics.Contains("min_weber=0.15") && metrics.Contains("object_samples=20"), "visibility metrics carry wcag, minimum and counts");
-        result = F3AutotestJudges.JudgeWorldVisibility(Concat(Fill(15, 0.6), Fill(85, 0.1)), ground, 0.15, out weber, out metrics, out reason);
+        Check(metrics.Contains("wcag=") && metrics.Contains("min_weber=0.15") && metrics.Contains("object_samples=20") && metrics.Contains("on_screen=1")
+            && metrics.Contains("target_px=60") && !metrics.Contains("chroma="), "visibility metrics carry wcag, minimum, counts and framing; chroma only when asked");
+        result = F3AutotestJudges.JudgeWorldVisibility(Concat(Fill(15, 0.6), Fill(85, 0.1)), ground, 0.15, whole, wide, none, none, out weber, out metrics, out reason);
         Check(result == "PASS" && Near(weber, 0.5 / 0.15, 1e-9), "a small bright ring inside a large box is not diluted by the ground (" + weber + ")");
-        result = F3AutotestJudges.JudgeWorldVisibility(Fill(8, 0.05), Fill(16, 0.5), 0.15, out weber, out metrics, out reason);
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(8, 0.05), Fill(16, 0.5), 0.15, whole, wide, none, none, out weber, out metrics, out reason);
         Check(result == "PASS" && Near(weber, 0.45 / 0.55, 1e-9), "a dark object on a bright neighbourhood also counts");
 
-        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.1), ground, 0.15, out weber, out metrics, out reason);
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.1), ground, 0.15, whole, wide, none, none, out weber, out metrics, out reason);
         Check(result == "FAIL" && reason == "visibility_below_min" && weber == 0.0, "red: object as bright as its neighbourhood FAIL");
-        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.11), ground, 0.15, out weber, out metrics, out reason);
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.11), ground, 0.15, whole, wide, none, none, out weber, out metrics, out reason);
         Check(result == "FAIL" && Near(weber, 0.01 / 0.15, 1e-9), "red: barely brighter object FAIL with a low Weber value (" + weber + ")");
 
-        result = F3AutotestJudges.JudgeWorldVisibility(Fill(3, 0.6), ground, 0.15, out weber, out metrics, out reason);
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(3, 0.6), ground, 0.15, whole, wide, none, none, out weber, out metrics, out reason);
         Check(result == "SKIP" && reason == "target_not_on_screen" && weber == 0.0, "fewer than four object samples SKIP");
-        Check(F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.6), Fill(7, 0.1), 0.15, out weber, out metrics, out reason) == "SKIP", "fewer than eight neighbour samples SKIP");
-        Check(F3AutotestJudges.JudgeWorldVisibility(new double[0], null, 0.15, out weber, out metrics, out reason) == "SKIP" && metrics == "object_samples=0,neighbor_samples=0",
+        Check(F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.6), Fill(7, 0.1), 0.15, whole, wide, none, none, out weber, out metrics, out reason) == "SKIP", "fewer than eight neighbour samples SKIP");
+        Check(F3AutotestJudges.JudgeWorldVisibility(new double[0], null, 0.15, whole, wide, none, none, out weber, out metrics, out reason) == "SKIP" && metrics == "object_samples=0,neighbor_samples=0",
             "empty samples SKIP");
 
-        result = F3AutotestJudges.JudgeTextOverflow(new List<string>(), new List<string>(), 0, out metrics, out reason);
+        // 2026-09-15 第五轮：投影框大半在画面外（A2 11 m 只剩上沿一条）、目标只有十来个像素（810×540 下的云蚋）是拍法问题，记 SKIP，不判红也不判绿。
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.6), ground, 0.15, 0.3, wide, none, none, out weber, out metrics, out reason);
+        Check(result == "SKIP" && reason == "target_mostly_off_screen" && metrics.Contains("on_screen=0.3"), "mostly off-screen target SKIP, even when bright");
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.1), ground, 0.15, whole, 16.0, none, none, out weber, out metrics, out reason);
+        Check(result == "SKIP" && reason == "target_too_small_on_screen" && metrics.Contains("target_px=16"), "target a dozen pixels wide SKIP instead of red");
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.1), ground, 0.15, F3AutotestJudges.WorldProbeMinOnScreen, F3AutotestJudges.WorldProbeMinPixels,
+            none, none, out weber, out metrics, out reason);
+        Check(result == "FAIL", "exactly at the framing limits is still judged");
+
+        // 光斑靠色相：亮度与地面一样、色度偏移够就算看得见；色度也不够照样红。
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.1), ground, 0.15, whole, wide, 0.18, F3AutotestJudges.GlowMinChromaShift, out weber, out metrics, out reason);
+        Check(result == "PASS" && weber == 0.0 && metrics.Contains("chroma=0.18") && metrics.Contains("min_chroma=0.12"), "warm glow as bright as sunlit sand PASS on chroma: " + metrics);
+        result = F3AutotestJudges.JudgeWorldVisibility(Fill(20, 0.1), ground, 0.15, whole, wide, 0.08, F3AutotestJudges.GlowMinChromaShift, out weber, out metrics, out reason);
+        Check(result == "FAIL" && reason == "visibility_below_min", "red: neither brightness nor chroma stands out FAIL");
+        Check(F3AutotestJudges.VisibilityMet(0.2, 0.1, none, none) && !F3AutotestJudges.VisibilityMet(0.05, 0.1, 0.5, none)
+            && !F3AutotestJudges.VisibilityMet(0.05, 0.1, none, 0.12) && F3AutotestJudges.VisibilityMet(0.05, 0.1, 0.12, 0.12),
+            "VisibilityMet: brightness, or chroma only when a chroma threshold is given");
+
+        // 色度偏移：邻域是暖白砂岩，物体框里一小块偏橙；整块平均会被地面稀释，前 15% 不会。
+        double[] sand = RepeatRgb(16, 0.60, 0.55, 0.45);
+        double[] glowPatch = Concat(RepeatRgb(6, 0.70, 0.45, 0.20), RepeatRgb(34, 0.60, 0.55, 0.45));
+        double shift = F3AutotestJudges.ChromaShift(glowPatch, sand);
+        Check(Near(shift, 0.191, 0.005) && shift > F3AutotestJudges.GlowMinChromaShift, "small warm patch on sand shows a chroma shift (" + shift + ")");
+        Check(F3AutotestJudges.ChromaShift(RepeatRgb(40, 0.60, 0.55, 0.45), sand) < 1e-9, "same colour: zero chroma shift");
+        Check(F3AutotestJudges.ChromaShift(RepeatRgb(40, 0.30, 0.275, 0.225), sand) < 0.02, "same hue, only darker: brightness is not chroma");
+        Check(double.IsNaN(F3AutotestJudges.ChromaShift(RepeatRgb(3, 0.7, 0.45, 0.2), sand))
+            && double.IsNaN(F3AutotestJudges.ChromaShift(glowPatch, RepeatRgb(7, 0.6, 0.55, 0.45))), "too few samples: NaN");
+
+        result = F3AutotestJudges.JudgeTextOverflow(new List<string>(), new List<string>(), null, 0, out metrics, out reason);
         Check(result == "SKIP" && reason == "no_visible_text", "overflow with nothing inspected SKIP");
-        result = F3AutotestJudges.JudgeTextOverflow(new List<string> { "Panel/Title" }, null, 12, out metrics, out reason);
+        result = F3AutotestJudges.JudgeTextOverflow(new List<string> { "Panel/Title" }, null, null, 12, out metrics, out reason);
         Check(result == "FAIL" && reason == "text_draws_outside_its_box" && metrics.Contains("overflow_list=Panel/Title"), "red: text drawn outside its box FAIL");
         var truncated = new List<string>();
         for (int i = 0; i < 10; i++) truncated.Add("Row" + i);
-        result = F3AutotestJudges.JudgeTextOverflow(null, truncated, 12, out metrics, out reason);
+        result = F3AutotestJudges.JudgeTextOverflow(null, truncated, null, 12, out metrics, out reason);
         Check(result == "PASS" && metrics.Contains("truncated=10") && metrics.Contains("truncated_list=Row0+") && metrics.Contains("+…2"), "ellipsis truncation is listed, not red: " + metrics);
+        // 2026-09-15 第五轮：字幕封顶两行，却只排出一行就省略号（7 条长字幕丢了后半句），一直自动绿。
+        result = F3AutotestJudges.JudgeTextOverflow(null, truncated, new List<string> { "SkyIslandHud/SkyIslandCaption/Text" }, 12, out metrics, out reason);
+        Check(result == "FAIL" && reason == "text_truncated_before_its_line_budget" && metrics.Contains("truncated_early=1")
+            && metrics.Contains("truncated_early_list=SkyIslandHud/SkyIslandCaption/Text"), "red: caption truncated at one line FAIL");
     }
 }

@@ -40,11 +40,12 @@ SKY_DIR = "DebugAndTools/SkyIsland"
 BOSS_KINDS = ("storm", "foreman", "stargazer")
 WORLD_ALIASES = {"gnat", "ground_ring", "gather_glow", "echo_ring"}
 DYNAMIC_PREFIXES = ("制作 ", "Make ", "还不会做 ", "Not yet: ")
-LABEL_ASSERTS = {"choice_present", "choice_absent", "body_contains", "body_absent", "caption_contains", "objective_contains"}
+LABEL_ASSERTS = {"choice_present", "choice_absent", "body_contains", "body_absent", "caption_contains", "objective_contains",
+                 "dialogue_line_contains"}
 TYPE_ASSERTS = {"pack_count_ge", "pack_delta", "pack_delta_ge", "crate_has"}
 NUM, INT = "num", "int"
 VERB_ARGS = {
-    "wait_real": [NUM], "wait_panel": [NUM, ("true", "false")], "wait_dialogue": [NUM, ("true", "false")],
+    "wait_real": [NUM], "wait_panel": [NUM, ("true", "false")], "wait_dialogue": [NUM, ("true", "false")], "wait_dialogue_typed": [NUM],
     "wait_quiet": [NUM, ("true", "false")], "dialogue_advance": [NUM], "dialogue_choose": [INT, NUM], "choose": [INT, NUM],
     "hover": [INT], "clear_nearby": [NUM, NUM], "kill_nearby": [NUM, NUM], "invincible": [("on", "off", "restore")],
     "night": [("on", "off", "restore"), NUM], "set_health": [NUM], "spawn_gnats": [INT, NUM], "echo_hurt": [NUM, NUM],
@@ -52,6 +53,10 @@ VERB_ARGS = {
     "open_modeg_confirm": [], "close_modeg_confirm": [], "reachability": [], "encounter_cap": [],
     "wait_boss": [BOSS_KINDS, NUM, ("optional",)], "boss_hurt": [BOSS_KINDS, NUM, NUM],
 }
+# 这些动作之后官方对话换了一句、换了一段或关掉了：再截对话图 / 再单次推进之前要重新 wait_dialogue_typed
+# （2026-09-15 第五轮：官方逐字显示 40 字/秒，截图截在半句上；打字途中的单次推进只把这句补完、不翻页）。
+DIALOGUE_RESETTERS = {"interact", "wait_dialogue", "dialogue_advance", "dialogue_choose", "teleport", "teleport_view",
+                      "close_panel", "choose", "choose_label", "click_close"}
 
 
 def read(rel):
@@ -239,6 +244,15 @@ class Checker:
             self.marker(where, a0)
             self.positional(where, args[1:], [NUM, NUM, NUM])
             return a0
+        elif verb == "teleport_view":
+            # 取景瞬移：目标可以是标记，也可以是生产代码建出来的物体（SkyIslandGather_A2）。
+            if a0 not in ctx["markers"]:
+                self.object_name(where, a0)
+            self.positional(where, args[1:], [NUM, NUM, NUM])
+            return a0
+        elif verb == "ring_replay":
+            self.object_name(where, a0)
+            self.positional(where, args[1:], [])
         elif verb == "interact":
             if a0 == "resident":
                 rid = args[1] if len(args) > 1 else ""
@@ -426,7 +440,7 @@ class Checker:
             for cid in step.get("checklist", []):
                 if not is_checklist_id(cid):
                     self.err("%s：清单编号 %s 格式不对" % (where, cid))
-            counted, shots, last_teleport = 0, 0, None
+            counted, shots, last_teleport, typed = 0, 0, None, False
             for action in step.get("actions", []):
                 parts = action.split(":")
                 verb, args = parts[0], parts[1:]
@@ -434,6 +448,14 @@ class Checker:
                 if verb not in verbs:
                     self.err(spot + "：未知动词")
                     continue
+                if verb == "shot" and len(args) >= 3 and args[2] == "Dialogue" and not typed:
+                    self.err(spot + "：官方对话截图前要先 wait_dialogue_typed（官方逐字显示 40 字/秒，直接截会截在半句上）")
+                if verb == "dialogue_advance" and args and is_num(args[0]) and float(args[0]) < 1 and not typed:
+                    self.err(spot + "：单次推进（不到 1 秒只点一次确认）前要先 wait_dialogue_typed，否则这一下只是把正在打字的这句补完、不翻页")
+                if verb == "wait_dialogue_typed":
+                    typed = True
+                elif verb in DIALOGUE_RESETTERS:
+                    typed = False
                 if verb == "assert":
                     counted += 1
                     if not args or args[0] not in asserts:
@@ -558,6 +580,17 @@ def drop_case(key, value):
     return mutate
 
 
+def drop_before(sid, anchor):
+    """删掉 anchor 前面紧挨着的那条 wait_dialogue_typed；不是它就当锚点过期。"""
+    def mutate(table, ctx):
+        actions = step_of(table, sid)["actions"]
+        i = actions.index(anchor)
+        if i == 0 or actions[i - 1].split(":")[0] != "wait_dialogue_typed":
+            raise ValueError(anchor)
+        del actions[i - 1]
+    return mutate
+
+
 PROBES = (
     ("未知动词", replace_action("SKY_AUTO_BASE_PREV_QUIT_LOG", "assert:prev_log_quit", "asert:prev_log_quit")),
     ("步骤既无断言也无截图", set_actions("SKY_AUTO_REAL_CHARM", ["wait_real:1"])),
@@ -582,6 +615,13 @@ PROBES = (
     ("人工用例没有归类", drop_row("M_SKY_ISLAND_15")),
     ("Boss 种类写错", replace_action("SKY_AUTO_REAL_BOSS_FOREMAN", "wait_boss:foreman:30", "wait_boss:formean:30")),
     ("圆环覆盖率阈值放宽回旧口径", replace_action("SKY_AUTO_LAND_DOCK_WORLD", "assert:visible_min:ground_ring:0.6", "assert:visible_min:ground_ring:0.15")),
+    ("取景瞬移的采集点写错", replace_action("SKY_AUTO_REAL_GATHER_GLOW_DAY", "teleport_view:SkyIslandGather_A2:11:0:2", "teleport_view:SkyIslandGather_A9:11:0:2")),
+    ("环重播的物体名写错", replace_action("SKY_AUTO_BEACONS_EXITS", "ring_replay:SkyIslandExtractionRing_Region_D", "ring_replay:SkyIslandExtractionRing_Region_X")),
+    ("对话截图前不等这句打完", drop_before("SKY_AUTO_BEACONS_FUZHOU", "shot:fuzhou_line3:ui:Dialogue")),
+    ("单次推进落在逐字显示中途", drop_before("SKY_AUTO_END_BELLKEEPER", "dialogue_advance:0.4")),
+    ("等打完的超时不是数字", replace_action("SKY_AUTO_ALT_BELLKEEPER", "wait_dialogue_typed:10", "wait_dialogue_typed:soon")),
+    ("对话关键句的文字写错", replace_action("SKY_AUTO_END_BELLKEEPER", "assert:dialogue_line_contains:它会回来找你|it will come looking for you",
+                                    "assert:dialogue_line_contains:它会回来找您|it will come looking for us")),
 )
 
 

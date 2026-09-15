@@ -86,6 +86,14 @@ namespace BossRush
                     }
                     case "dialogue_active": return AutotestBool(label, DialogueManager.IsDialogueActive, "dialogue_not_active", null);
                     case "dialogue_inactive": return AutotestBool(label, !DialogueManager.IsDialogueActive && !DialogueUI.Active, "dialogue_still_active", null);
+                    case "dialogue_line_contains":
+                    {
+                        // 关键句截到了没有：句序随状态（首杀、灯、蛙卵）漂移时直接转红，不只靠人看图（2026-09-15 第五轮）。
+                        TMPro.TMP_Text line = OfficialDialogueText();
+                        string shown = line == null ? null : line.text;
+                        return AutotestBool(label, shown != null && OfficialDialogueLineShown() != false
+                            && AutotestContainsAny(shown, AutotestAlternatives(Arg(args, 1))), "dialogue_line_mismatch", "line=" + AutotestShort(shown, 160));
+                    }
                     case "objective_contains":
                     {
                         string objective = session == null ? null : session.ValidationHudObjective;
@@ -319,7 +327,8 @@ namespace BossRush
             if (measure == null) return AutotestAssertion(label, "SKIP", "not_measured_in_last_shot", null);
             if (measure.Result == "SKIP") return AutotestAssertion(label, "SKIP", measure.Reason, measure.Metrics);
             if (measure.Result == "FAIL" && measure.Value <= 0.0) return AutotestAssertion(label, "FAIL", measure.Reason, measure.Metrics);
-            bool ok = measure.Value + 1e-9 >= min;
+            // 备选口径（采集光斑的色度偏移）与截图判据同一条规则；对比度与圆环覆盖率没有 Alt，照旧只比 Value。
+            bool ok = F3AutotestJudges.VisibilityMet(measure.Value, min, measure.Alt, measure.AltMin);
             return AutotestAssertion(label, ok ? "PASS" : "FAIL", ok ? null : "below_min_" + min.ToString("0.##", CultureInfo.InvariantCulture), measure.Metrics);
         }
 

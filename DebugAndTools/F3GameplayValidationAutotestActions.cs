@@ -224,10 +224,13 @@ namespace BossRush
             switch (verb)
             {
                 case "teleport": return AutotestTeleport(record, args);
+                case "teleport_view": return AutotestTeleportView(record, args);
+                case "ring_replay": AutotestRingReplay(record, args); return null;
                 case "wait_real": return WaitAutotestReal(ArgFloat(args, 0, 1f));
                 case "interact": return AutotestInteract(record, args);
                 case "wait_panel": return AutotestWaitUntil(record, "wait_panel", ArgFloat(args, 0, 3f), AutotestPanelOpen, ArgBool(args, 1, true));
                 case "wait_dialogue": return AutotestWaitUntil(record, "wait_dialogue", ArgFloat(args, 0, 3f), AutotestDialogueOpen, ArgBool(args, 1, true));
+                case "wait_dialogue_typed": return AutotestWaitDialogueTyped(record, ArgFloat(args, 0, 10f));
                 case "dialogue_advance": return AutotestDialogueAdvance(record, args);
                 case "dialogue_choose": return AutotestDialogueChoose(record, args);
                 case "choose": return AutotestChoose(record, args, false);
@@ -418,6 +421,12 @@ namespace BossRush
             var parts = new List<string> { "manager_active=" + DialogueManager.IsDialogueActive, "ui_active=" + DialogueUI.Active };
             bool? waitingNow = OfficialDialogueWaitingForChoice();
             parts.Add("waiting_for_choice=" + (waitingNow.HasValue ? waitingNow.Value.ToString() : "unknown"));
+            bool? shownNow = OfficialDialogueLineShown();
+            parts.Add("line_shown=" + (shownNow.HasValue ? shownNow.Value.ToString() : "unknown"));
+            TMP_Text lineText = OfficialDialogueText();
+            if (lineText != null)
+                parts.Add("visible=" + lineText.maxVisibleCharacters + "/" + (lineText.textInfo == null ? 0 : lineText.textInfo.characterCount)
+                    + ",line=" + AutotestShort(lineText.text, 40));
             foreach (string name in new[] { "mainFadeGroup", "textAreaFadeGroup", "choiceListFadeGroup" })
             {
                 Duckov.UI.Animations.FadeGroup group = null;
@@ -1061,10 +1070,11 @@ namespace BossRush
             if (row == null) return best;
             foreach (TextMeshProUGUI text in row.GetComponentsInChildren<TextMeshProUGUI>(false))
             {
-                if (text == null || string.IsNullOrEmpty(text.text)) continue;
+                string value = text == null ? null : AutotestPlainText(text.text);
+                if (string.IsNullOrEmpty(value)) continue;
                 // 行首的数字键帽（1…9）不是选项文字：单字选项「西」与键帽「2」一样长，按长度取会取到键帽（首轮实测瞭台谜题因此按不到）。
-                if (IsAutotestKeycap(text.text)) continue;
-                if (text.text.Length > best.Length) best = text.text;
+                if (IsAutotestKeycap(value)) continue;
+                if (value.Length > best.Length) best = value;
             }
             return best;
         }
@@ -1091,7 +1101,7 @@ namespace BossRush
             {
                 if (t.name != "Body") continue;
                 TextMeshProUGUI text = t.GetComponentInChildren<TextMeshProUGUI>(false);
-                if (text != null) return text.text;
+                if (text != null) return AutotestPlainText(text.text);
             }
             return null;
         }

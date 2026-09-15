@@ -44,6 +44,17 @@ internal static class Program
         var goodbye = Start("");
         DialogueTree.Choices[DialogueTree.Choices.Count - 1](1); UniTask.Pump();
         Check(!goodbye.Active && opened == 1, "goodbye closes without panel");
+        // 2026-09-15 第五轮：结局后的无声钟守没有可办的事，「我想办点事」点开是空面板。没有事就不问、不开。
+        int choicesBefore = DialogueTree.Choices.Count;
+        var idle = SkyIslandResidentDialogue.Run("resident", new UnityEngine.Transform(), "", () => opened++, () => valid, () => false);
+        UniTask.Pump();
+        Check(!idle.Active && opened == 1 && DialogueTree.Choices.Count == choicesBefore && !InputManager.Disabled,
+            "nothing to do: no service question and no empty panel");
+        DialogueActorFactory.Fail = true;
+        var idleFallback = SkyIslandResidentDialogue.Run("resident", new UnityEngine.Transform(), "line", () => opened++, () => valid, () => false);
+        UniTask.Pump();
+        Check(!idleFallback.Active && opened == 1, "actor failure with nothing to do opens no empty panel");
+        DialogueActorFactory.Fail = false;
 
         var interrupted = Start("scene transition"); valid = false;
         Check(!interrupted.CanContinue(), "owner predicate detects session invalidation");

@@ -43,10 +43,11 @@ DIALOGUE = SKY + "SkyIslandResidentDialogue.cs"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 BRIDGE = SKY + "SkyIslandNoteBridge.cs"
 PANEL = SKY + "SkyIslandStoryPresentation.cs"
+MARKERS = SKY + "SkyIslandMapMarkers.cs"
 FINDINGS = "CODE_REVIEW_FINDINGS.md"
 START = "Integration/BossRushIntegration_StartAndScene.cs"
 
-PATHS = [DIALOGUE, WORLD, BRIDGE, PANEL, START, FINDINGS]
+PATHS = [DIALOGUE, WORLD, BRIDGE, PANEL, START, FINDINGS, MARKERS]
 
 # 天空岛**不许**出现的官方任务系统符号（理由见文件头）。
 # findings 里那条归档小节的标题，守卫按它取范围。
@@ -83,10 +84,18 @@ def check(sources):
     # ---- 2) fail-open：跟 NPC 说不上话不能变成办不了事 ----
     # 拿不到 actor、官方对话抛异常，这两条都必须兜到功能面板：
     # 官方对话挂了不能变成「接不了委托、买不到苔药」。
-    require(dialogue.count("if (CanContinue()) openPanel();") >= 2,
+    require(dialogue.count("if (CanContinue() && HasBusiness()) openPanel();") >= 2,
             DIALOGUE + " 的失败路径没有兜到 openPanel()："
                        "拿不到 actor、官方对话抛异常时都必须直接开功能面板——"
-                       "官方对话挂了不能变成「接不了委托、买不到苔药」")
+                       "官方对话挂了不能变成「接不了委托、买不到苔药」（没有可办的事时才不开，免得开出空面板）")
+
+    # ---- 2a) 没有可办的事就不问「我想办点事」 ----
+    # 2026-09-15 第五轮：结局后的无声钟守选「我想办点事」开出一块没正文没选项的空面板。
+    # 判据必须与开面板同一份（ResidentChoices），在台词说完那一刻取。
+    require("if (!CanContinue() || speaker == null || !HasBusiness()) return;" in dialogue,
+            DIALOGUE + " 问「我想办点事」之前没有判断有没有可办的事：没事可办时点下去是空面板")
+    require("ResidentChoices(id, speaker).Count > 0 || NextStep() != null" in world,
+            WORLD + " 的 Talk 没有把「有没有可办的事」交给对话：判据要与 OpenResidentPanel 用的 ResidentChoices 同一份")
     require("catch (Exception" in dialogue and "[WARNING]" in dialogue,
             DIALOGUE + " 官方对话失败时必须记一条 WARNING 并继续，不许静默吞掉")
 
@@ -177,6 +186,15 @@ def check(sources):
         ):
             require(token in section,
                     FINDINGS + " 的官方任务系统归档小节里缺「" + token + "」：" + why)
+
+    # ---- 官方地图标记：displayName 是本地化键，不是成品文字 ----
+    # 官方 SimplePointOfInterest.DisplayName => displayName.ToPlainText()，查不到键就显示「*键*」。
+    # 2026-09-15 第五轮：直接传成品文字，地图上天空岛标签全带星号。要先注册覆盖文本、再把键交给它。
+    markers = clean_source(sources[MARKERS])
+    require("LocalizationHelper.InjectLocalization(key, label);" in markers and "poi.Setup(null, key);" in markers,
+            MARKERS + " 给官方地图标记传的不是注册过的本地化键：SimplePointOfInterest 会把成品文字当键查，显示成「*文字*」")
+    require("language == appliedLanguage" in markers,
+            MARKERS + " 换语言时没有重建标记：覆盖文本按注入时的语言写死，地图上的字不会跟着换")
     return errors
 
 
@@ -194,10 +212,17 @@ def main():
     probes = [
         # 居民叙事退回自绘
         (WORLD, "SkyIslandResidentDialogue.Run(", "NoOpDialogue.Run("),
+        # 地图标记又把成品文字当本地化键：标签带星号
+        (MARKERS, "poi.Setup(null, key);", "poi.Setup(null, label);"),
+        # 换语言不重建：地图上的字停在旧语言
+        (MARKERS, "language == appliedLanguage", "true"),
         # 取消被当成失败处理：玩家一走开就被塞一个 timeScale=0 的模态面板
         (DIALOGUE, "catch (OperationCanceledException) { }", ""),
         # 拿不到 actor 时不再兜底开面板
-        (DIALOGUE, "if (CanContinue()) openPanel();", ""),
+        (DIALOGUE, "if (CanContinue() && HasBusiness()) openPanel();", ""),
+        # 没事可办照样问「我想办点事」：结局后的钟守开出空面板
+        (DIALOGUE, "if (!CanContinue() || speaker == null || !HasBusiness()) return;", "if (!CanContinue() || speaker == null) return;"),
+        (WORLD, "ResidentChoices(id, speaker).Count > 0 || NextStep() != null", "true"),
         # finally 不交还取消源：Active 永远为真，再也说不上话
         (DIALOGUE, "cancellation = null;", ""),
         # 不挡重入：两段台词互相顶掉

@@ -35,6 +35,8 @@
 //   （旧口径里排第一的「页脚」已于 2026-09-13 删除。）
 //   正文收缩到下限后套 ScrollRect（共享 `ConfigureScrollRect`），滚动而不是溢出。
 //   这样「文字超出 UI」不再是调参问题，而是结构上不可能发生。
+//   换正文（选项回执、手记子页、名册翻页）同样走这套算术：`SetBodyText` 按新正文整页重建，
+//   不是塞进打开时量好的视口；空正文收成 0 高（2026-09-15 第五轮 D3/D5）。
 //
 // 【操作与官方界面对齐】
 //   - 鼠标、数字键 1–9（选项左侧有键帽）、ESC 关闭；右上角 ESC 键帽也能用鼠标点；
@@ -52,6 +54,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -222,9 +225,18 @@ namespace BossRush
         #endregion
 
         private Canvas canvas;
-        private TextMeshProUGUI body;
-        private RectTransform bodyViewport;
         private ScrollRect bodyScroll;
+        /// <summary>
+        /// 这一页的原始参数（正文存未加标签的原文）。换正文（<see cref="SetBodyText"/>）按同一页整页重建，
+        /// 量高、挤压与滚动和首次打开是同一份算术。<see cref="Dispose"/> 里清空：选项捕获着回调。
+        /// </summary>
+        private string shownTitle;
+        private string shownText;
+        private IList<Choice> shownChoices;
+        private Sprite shownPortrait;
+        private Sprite shownBanner;
+        /// <summary>当前面板根。换正文重建后按旧底边摆放（见 SetBodyText）。</summary>
+        private RectTransform panelRect;
         private ZombieModeUIHelper.ModalInputLease input;
         /// <summary>注册给官方 HUDManager 的隐藏令牌，即当前面板的 canvas 根。</summary>
         private GameObject hideToken;
@@ -258,7 +270,7 @@ namespace BossRush
         internal void Show(string title, string text, IList<Choice> choices,
             Sprite portrait, Sprite banner)
         {
-            // 选项回执会重开面板（SkyIslandWorldStory.Refreshed）。重开时：
+            // 选项回执会重开面板（SkyIslandWorldStory.Refreshed），换正文（SetBodyText）也走这里。重开时：
             // 1. 先挂新令牌再摘旧令牌，官方 HUD 全程保持隐藏，不会在两次之间闪回来一下；
             // 2. 不重播打开动画，否则每点一个选项面板都要「弹」一下。
             bool reopening = canvas != null;
@@ -269,6 +281,11 @@ namespace BossRush
             hideToken = null;
             Dispose();
             if (choices == null) choices = new List<Choice>();
+            shownTitle = title;
+            shownText = text;
+            shownChoices = choices;
+            shownPortrait = portrait;
+            shownBanner = banner;
 
             canvas = BossRushUI.CreateCanvasRoot("SkyIslandStory", BossRushUILayers.Modal, true);
             BossRushUI.CreateBackdrop(canvas.transform);
@@ -332,19 +349,24 @@ namespace BossRush
             // 正文用 TextPrimary 不是 TextSecondary：它是主信息不是注脚。
             TextMeshProUGUI bodyText = MakeText(canvas.transform, text, BodyFont,
                 BossRushUIColors.TextPrimary, TextAlignmentOptions.TopLeft);
-            float bodyNatural = BossRushUI.MeasureTextHeight(bodyText,
-                ContentWidth - ScrollbarGutter, BodyMinHeight);
+            // 空正文（居民功能面板常见）收成 0 高，连同它下面那道 Gap 一起省掉，选项紧接分隔线（2026-09-15 第五轮 D5）。
+            // 有正文按自然高度量、不再垫到 BodyMinHeight：一行回执就是一行高；BodyMinHeight 只管「挤到多矮就上滚动条」。
+            bool hasBody = !string.IsNullOrEmpty(text);
+            float bodyNatural = hasBody ? BossRushUI.MeasureTextHeight(bodyText,
+                ContentWidth - ScrollbarGutter, 0f) : 0f;
+            float bodyGap = hasBody ? Gap : 0f;
 
             // ---- 2. 按顺序挤：选项不压，先压正文，再压主视觉 ----
             // 主视觉**不再能被整条撤掉**（标题在它上面），只能压到 heroFloor；
             // 从上往下依次是：hero（无上 Pad，全出血）→ Gap → 分隔线 → Gap → 正文
-            // → Gap → 选项 → 下 Pad。三个 Gap 里有一个算在 dividerBlock 里。
+            // → Gap → 选项 → 下 Pad。三个 Gap 里有一个算在 dividerBlock 里；
+            // 空正文时正文与它下面那道 Gap 都是 0（bodyGap）。
             //
             // 页脚「继续旅程」已删（2026-09-13）：它的 onClick 就是 Dispose()，与 ESC 完全等价
             // （OnCancel 与 Tick 里的 Escape 分支），纯冗余还占掉 48 + 14 px。
             // 关闭提示改成主视觉右上角的 ESC 键帽。
             float dividerBlock = DividerHeight + Gap;
-            float chrome = Pad + heroHeight + dividerBlock + choicesHeight + Gap * 2f;
+            float chrome = Pad + heroHeight + dividerBlock + choicesHeight + Gap + bodyGap;
             // 限制的是视口，不能截断自然高度，否则长正文不会建立完整的滚动内容。
             float bodyHeight = Mathf.Min(BodyPreferredMax, bodyNatural);
             float panelHeight = chrome + bodyHeight;
@@ -366,6 +388,7 @@ namespace BossRush
             // ---- 3. 从上往下摆 ----
             RectTransform panel = MakeRect(canvas.transform, "StoryPanel", Vector2.zero,
                 new Vector2(PanelWidth, panelHeight));
+            panelRect = panel;
             Image surface = panel.gameObject.AddComponent<Image>();
             surface.color = BossRushUIColors.Surface;
             BossRushUI.ApplyPanelSkin(surface, 18, BossRushUISkinPart.Panel);
@@ -397,7 +420,7 @@ namespace BossRush
             cursor -= dividerBlock;
 
             BuildBody(panel, bodyText, bodyHeight, bodyNatural, cursor);
-            cursor -= bodyHeight + Gap;
+            cursor -= bodyHeight + bodyGap;
 
             for (int i = 0; i < choices.Count; i++)
             {
@@ -669,8 +692,6 @@ namespace BossRush
         {
             RectTransform viewport = MakeRect(panel, "Body",
                 new Vector2(0f, top - height * 0.5f), new Vector2(ContentWidth, height));
-            bodyViewport = viewport;
-            body = text;
             text.rectTransform.SetParent(viewport, false);
             text.rectTransform.anchorMin = new Vector2(0f, 1f);
             text.rectTransform.anchorMax = new Vector2(0f, 1f);
@@ -777,31 +798,30 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 换正文。**必须重新量高**：选项回执可能比原正文长得多，
-        /// 直接赋值就会把新文本画到面板外——旧版正是这么做的。
-        /// 面板高度已经定死，所以这里只在既有视口内调整并按需上滚动条。
+        /// 换正文：**按新正文整页重建**（走 <c>Show</c>）。量高、挤压与滚动和首次打开是同一份算术——
+        /// 上限一致、超出才滚动，空正文收成 0 高。
+        ///
+        /// 【为什么不在原视口里换字】视口是打开那一刻按导语量的：手记子页（岛上的灯 / 群岛之物 / 这一趟）、
+        /// 名册翻页、谜题回执一换进来就只剩一两行在滚（2026-09-15 第五轮 D3），一行合成回执底下又空出按长正文量的一大块（D5）。
+        ///
+        /// 重建走 Show 的 reopening 分支：不重播打开与错峰动画、保留键盘当前项、先挂新 HUD 令牌再摘旧的，
+        /// 与选项回执重开（SkyIslandWorldStory.Refreshed）同一条路。重建后按**旧底边**摆放：选项行尽量留在原处，
+        /// 鼠标底下还是刚点的那一行（悬停即选中），长高的部分往上长；贴到屏幕上下各留 Pad 的边界时整体挪回来。
+        /// 面板已经收起（挑战开始、引风）时什么都不做：回执由调用方改走字幕（SkyIslandPlaytimeFlowGuard §3）。
         /// </summary>
         private void SetBodyText(string value)
         {
-            if (body == null || bodyViewport == null) return;
-            body.text = value ?? string.Empty;
-            float width = ContentWidth - ScrollbarGutter;
-            float viewportHeight = bodyViewport.rect.height;
-            float natural = Mathf.Max(viewportHeight,
-                Mathf.Ceil(body.GetPreferredValues(body.text, width, float.PositiveInfinity).y) + 4f);
-            body.rectTransform.sizeDelta = new Vector2(width, natural);
-            body.rectTransform.anchoredPosition = Vector2.zero;
-            if (natural <= viewportHeight + 0.5f) return;
-            if (bodyScroll == null)
-            {
-                if (bodyViewport.GetComponent<RectMask2D>() == null)
-                    bodyViewport.gameObject.AddComponent<RectMask2D>();
-                bodyScroll = bodyViewport.gameObject.AddComponent<ScrollRect>();
-                bodyScroll.content = body.rectTransform;
-                bodyScroll.viewport = bodyViewport;
-                BossRushUI.ConfigureScrollRect(bodyScroll);
-            }
-            bodyScroll.verticalNormalizedPosition = 1f;
+            if (!Visible) return;
+            value = value ?? string.Empty;
+            // 跳子页、返回上一页时回调返回的就是新页自己的正文：同一句不再重建。
+            if (string.Equals(value, shownText, StringComparison.Ordinal)) return;
+            bool anchored = panelRect != null;
+            float bottom = anchored ? panelRect.anchoredPosition.y - panelRect.sizeDelta.y * 0.5f : 0f;
+            Show(shownTitle, value, shownChoices, shownPortrait, shownBanner);
+            if (!anchored || panelRect == null) return;
+            float height = panelRect.sizeDelta.y;
+            float room = Mathf.Max(0f, (ZombieModeUIHelper.GetReferenceViewportSize().y - height) * 0.5f - Pad);
+            panelRect.anchoredPosition = new Vector2(0f, Mathf.Clamp(bottom + height * 0.5f, -room, room));
         }
 
         #endregion
@@ -961,8 +981,12 @@ namespace BossRush
             }
             if (canvas != null) UnityEngine.Object.Destroy(canvas.gameObject);
             canvas = null;
-            body = null;
-            bodyViewport = null;
+            panelRect = null;
+            shownTitle = null;
+            shownText = null;
+            shownChoices = null;
+            shownPortrait = null;
+            shownBanner = null;
             bodyScroll = null;
             buttons.Clear();
             buttonColors.Clear();
@@ -992,12 +1016,30 @@ namespace BossRush
                 .gameObject.AddComponent<TextMeshProUGUI>();
             BossRushUI.ApplyGameFont(text);
             text.fontSize = size;
-            text.text = value ?? string.Empty;
+            text.text = KeepCountsTogether(value);
             text.color = color;
             text.alignment = alignment;
             text.enableWordWrapping = true;
             text.raycastTarget = false;
             return text;
+        }
+
+        /// <summary>
+        /// 「名称 + 计数」不许被折行拆开（2026-09-15 第五轮 D8）：「（已读 / 0/4）」「到 / 访区域 5/12」「Brass / Scrap 0/3」「Greenear / Sheaf 2」。
+        /// 分隔符（行首、换行、「· 」、全角或半角左括号、全角冒号、「: 」）之后、以计数结尾（后面紧跟行尾、换行、「 ·」或右括号）
+        /// 的一小段包进 TMP 的 &lt;nobr&gt;：中文字之间 TMP 可以任意断，U+00A0 只管得住空格，所以用标签。
+        /// 段长上限 24 字：最长一段加计数在正文与选项的一行里都放得下（布局属性测试按这个上限复算），TMP 不会被迫逐字断。
+        /// 规则文案本身不带标签（隔离回归逐字核对的是纯文本）；F3 验收读面板文字时剥掉标签再匹配。
+        /// </summary>
+        private static readonly Regex CountedRun = new Regex(
+            @"(^|\n|· |（|\(|：|: )([^\n·（）()：:<>]{1,24} \d+(?:/\d+)?)(?=$|\n| ·|）|\))",
+            RegexOptions.CultureInvariant);
+
+        private static string KeepCountsTogether(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return string.Empty;
+            if (value.IndexOf("<nobr>", StringComparison.Ordinal) >= 0) return value;
+            return CountedRun.Replace(value, "$1<nobr>$2</nobr>");
         }
 
         #endregion

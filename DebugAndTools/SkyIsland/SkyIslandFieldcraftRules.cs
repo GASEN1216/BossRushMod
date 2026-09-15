@@ -209,7 +209,9 @@ namespace BossRush
             {
                 // A 登云码头 / B 风铃集 / C 青穗梯田：安全区，产出最少。
                 Node("A1", "Lamp_A", 90f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "A"),
-                Node("A2", "Lamp_A_02", 0f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "A"),
+                // A2 原朝 0°：那一点压在 Tripo_cottage_small_03 的碰撞箱里，实机按 60° 步进换到小屋与 A_Cover01 箱堆之间，
+                // 浮空字被箱堆挡掉一截（2026-09-15 第五轮截图）。240° 那一点离两者都有 7 m 以上。
+                Node("A2", "Lamp_A_02", 240f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "A"),
                 Node("B1", "Lamp_B", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "B"),
                 Node("B2", "Lamp_B_02", 0f, 8f, SkyIslandGatherKind.Driftwood, SkyIslandLootTier.Supply, "B"),
                 Node("C1", "POI_C", 0f, 8f, SkyIslandGatherKind.Grass, SkyIslandLootTier.Supply, "C"),

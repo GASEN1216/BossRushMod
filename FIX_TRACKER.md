@@ -2,6 +2,119 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-15 全自动实机验收第五轮：撤离环实机生效，截图审出字幕截断、地图标签星号、手记视口、钟守空面板
+
+**来源**：owner 跑第五轮（runId `20260915_044339_816`），看完复核说「全部修复吧」。
+- 这轮的 DLL 是 12:42 在主工作区编出并自动部署的 Dev `0D0AFF95`，与 `5561f25` 加另一会话未提交的 8 个 .cs 同源。
+- 截图分辨率 810×540。
+
+**分类**：
+- `COMPAT`：字幕两行高度、地图标签、钟守没事可办不问、白天蛙卵说明进正文、A2 浮木落点、对话正文去说话人前缀、剧情面板正文随内容长高 / 空正文收拢 / 计数不折断。不加 TypeID、不改存档、不重打包。
+- `SAFE`：验收判据与取景、对话等打完、步骤表、守卫与夹具、审阅工具。
+
+**结果**（L3）
+- 主套件 pass 302 / fail 4 / skip 4 / warn 2，4 条 FAIL 都在岛内新增步骤。岛内 78 步 73 PASS / 4 FAIL / 1 SKIP，还原 PASS。本 Mod 运行时错误 0，外部 20（DuckMarket ×16、casino_building ×4）。
+- 撤离环修复生效：`ground_ring` 覆盖率码头 0.828、悬根林广场 1.0、归航钟庭 1.0，`echo_ring` 0.891。截图里三处都是整圈连续（码头上沿被落地大标题压住一段）。
+- 新增 9 步（英文导语、居民、世界文字、夜风）全 PASS。
+
+**第六轮中途复测**（runId `20260915_071110_004`，L3）
+- owner 在修复进行中又跑了一轮。DLL 是 15:10 主工作区自动部署的 Dev `5C2C7A8D`：含本节大部分 C# 与另一会话的 loot_boss；**不含**面板 D3/D5/D8 与 `AutotestPlainText`；步骤表仍是合并前的旧表。
+- 主套件 301 / 5 / 4 / 2，岛内 72 / 5 / 1，还原 PASS，本 Mod 运行时错误 0。
+- 实机转好：
+  - D1 字幕排成两行（英文寒意字幕完整）；
+  - D2 地图标签无星号；
+  - D4 结局后钟守说完直接结束，没有空面板；
+  - D6 镜水寺白天说明进正文、无按钮；
+  - D7 对话首句无名字前缀。
+- 验收修正生效：
+  - A1 11 m 光斑按色度 0.183 转 PASS；A2 11 m 出画记 SKIP；
+  - 倒挂邮亭键帽转 PASS（6.05）；
+  - 65 条溢出断言无 `truncated_early`。
+- 5 条红：
+  - 钟守两步是新代码配旧表（旧表还在点「我想办点事」），新表已改；
+  - 信鸽 / 码头面板键帽取色 1.25 / 1.33：外圈夹进底板后，10×8 px 字形框量不准，同一个键帽在倒挂邮亭量成 6.05。已改为字形框面积 < 150 px² 记 SKIP，1080p 下照常量；
+  - 云蚋 28 px 投影框量成 0.03：`WorldProbeMinPixels` 24 → 32。
+- 新出现的外部错误：`CharacterRandomPreset.CreateCharacterAsync` NRE ×2，主套件竞技场收尾时出现，调用栈全在官方刷怪。未验证线索，本节不修。
+
+**截图审出的生产缺陷与修复**（子代理逐张看 187/196 张，本会话复核 D1–D4 截图与代码；修复 L1/L2，D1/D2/D4/D6/D7 已在第六轮实机确认）
+- **D1 长字幕只排一行就省略号**（P2，7 处，云蚋提示丢了「贴近了才打得中」）
+  - 原因：`SkyIslandHud.CaptionMaxHeight = 60`，注释写两行，游戏字体行高大，实际只排得下一行。
+  - 修复：改 70。上沿 -216 仍在大标题操作提示行最低处 -215 之下（`SkyIslandHudGuard` 按常量复算）。
+- **D2 官方地图上天空岛标签全带星号**（P2，上一轮就有）
+  - 原因：`SimplePointOfInterest.DisplayName` 把 displayName 当本地化键查，查不到显示 `*键*`，我们传的是成品文字。
+  - 修复：`SkyIslandMapMarkers.Add` 按标记注册一条覆盖文本（`LocalizationHelper.InjectLocalization`），把键交给它；换语言时 `Apply` 整体重建。
+- **D3 手记子页 / 名册翻页 / 谜题回执正文只露 1–2 行**（P2）与 **D5 空正文留约 76 px 空带、一行回执底下空一大块**（P3）
+  - D3 原因：`SkyIslandStoryPresentation.SetBodyText` 只在打开时按导语量好的视口里换字，视口从不改高。
+  - D5 原因：正文量高以 `BodyMinHeight` 76 为下限，下方还恒留一道 Gap。
+  - 修复：`SetBodyText` 按新正文走 `Show` 整页重建（reopening 分支：不重播动画、保留键盘当前项、先挂新 HUD 令牌再摘旧的），与首次打开同一份量高 / 挤压 / 滚动算术。重建后按旧底边摆放，选项行尽量不动。
+  - 空正文高度与它下面的 Gap 都收成 0；有正文按自然高度量。
+- **D4 结局后对无声钟守选「我想办点事」开出空面板**（P2）
+  - 修复：`SkyIslandResidentDialogue.Run` 多一个 `hasBusiness`，台词说完这一刻判；没有可办的事就不问、不开，拿不到 actor 的兜底也同样判。
+  - 判据与开面板同一份：`SkyIslandWorldStory.OpenResidentPanel` 的选项拆进 `ResidentChoices`，有选项或「还差什么」才算有事。
+  - 为腾出主文件行数，`JournalChoice` / `CraftChoice` 原样搬进 `SkyIslandWorldStoryServices.cs`（主文件 1199 → 1186）。
+- **D6 镜水寺白天挂着纯说明性的蛙卵选项**（P3）：白天不挂按钮，「夜里浅水边才有新产的蛙卵（蛙鸣池 n/3）」进正文（AGENTS §4.14）。
+- **D7 官方对话首句仍带「苇白：」「The Bell Keeper:」前缀**（P3，铭牌已写名字，英文铭牌与前缀还不一致）：`SkyIslandStoryService.DescribeNpc` 等 18 对中英文字面量去掉说话人前缀，「旧腰牌上刻着：」这类引文不动。
+- **D8 折行把「名称 + 计数」拆开**（P3）：「（已读 / 0/4）」「到 / 访区域」「Brass / Scrap 0/3」「Greenear / Sheaf 2」。
+  - 修复：面板文字统一出口 `MakeText` 过 `KeepCountsTogether`，把分隔符之后、以计数结尾的一小段（≤24 字）包进 TMP 的 `<nobr>`。
+  - 规则文案与夹具不动；F3 验收读选项与正文时先剥标签（`AutotestPlainText`）。
+- **D9 A2 浮木浮空字被箱堆挡掉一截**（P3）
+  - 原因：A2 原朝 0°，那一点压在 `Tripo_cottage_small_03` 的碰撞箱里。
+  - 修复：改朝 240°，离小屋与 `A_Cover01` 都有 7 m 以上。落点模型（`SkyIslandInteractionCompetitionPropertyTest` 的 `resolve_crate`）第一次尝试就站得住。
+
+**验收修正**（第五轮 4 条红都是探针或拍法问题，截图上没有对应真缺陷）
+- **采集光斑 A1 11 m**：只比亮度（Weber 0.015），白天暖色光斑主要靠色相。
+  - `visible_min:gather_glow` 同时认色度偏移（纯判据 `ChromaShift` ≥ 0.12）。第五轮实测：有光斑的四张 0.18–0.51，同图挪到空地 ≤ 0.08。
+- **A2 11 m 两张出画**：rect 是左下原点，出的是上沿。
+  - 新动作 `teleport_view:目标:右:上[:等待]`：按相机水平朝向把目标（含建好的采集点 `SkyIslandGather_*`）摆到画面中心右 / 上若干米。
+  - 可见度判据在投影框大半出画时记 SKIP（`target_mostly_off_screen`）。
+- **云蚋**：810×540 下每只 3–5 px，投影框还被拖尾撑大。
+  - 投影框不算 TrailRenderer；长边不足 24 px 记 SKIP（`target_too_small_on_screen`）。要判看不看得见请用 1920×1080 或以上跑。
+- **ESC 键帽取色 3.75**：外圈落到主视觉插画上，底板内实测 9.9:1。字直接坐在底板上时外圈夹在底板内。
+- **字幕截断一直自动绿**：溢出判据加 `truncated_early`，字幕（封顶两行）只排出一行就被截断时判红。
+- **对话截图截在逐字显示中途**：打字途中的单次推进只把这句补完、不翻页。
+  - 新动作 `wait_dialogue_typed:秒`：读官方私有字段 `continueIndicator` 或 `waitingForChoice`，只等不点，再等一帧才截。
+  - 新断言 `assert:dialogue_line_contains`：钟守第 4 句「它会回来找你」、浮舟第 5 / 6 句星工装备、苇白英文第 3 句观星手。
+  - 步骤表守卫要求：官方对话截图与单次推进之前必须先有 `wait_dialogue_typed`。
+- **撤离环展开动画截不到**：新动作 `ring_replay:环物体名`（停用再启用、重播 0.35 秒开环）后连拍。
+- **码头环被落地大标题压住一段**：等标题淡出再拍；另加 1.6 秒呼吸连拍。
+- **钟守立绘**：结局后不再开面板，改在钟守放行、未敲钟时拍（`SKY_AUTO_BELL_OFFERED`）。
+- **英文复拍便当字幕没出来**：吃便当前先关掉折翎腰牌面板。
+- **截图 metrics 带 `at_ms`**：本步内的时刻，连拍判时长用。
+- **审阅工具**：`autotest_review.py` 给 rect 补一份左上原点的 y，免得读反。
+
+**守卫与验证**（L1 / L2）
+- 新增与同步的守卫：
+  - `SkyIslandAutotestTableGuard`：teleport_view / ring_replay 参数与目标；官方对话截图与单次推进前必须 `wait_dialogue_typed`；`dialogue_line_contains` 文字对得上生产。反向检查加到 30 条。
+  - `F3DialogueChoiceTimingGuard`：continueIndicator 探测、只等不点。反向检查 11/11。
+  - `SkyIslandOfficialApiReuseGuard`：没事可办不问、地图标记传注册过的键、换语言重建。反向检查 19 个。
+  - `SkyIslandFieldcraftGuard` / `SkyIslandFullAuditGuard`：锚点改到 `ResidentChoices`。
+  - `SkyIslandStoryPanelLayoutPropertyTest`：D3/D5/D8 三组判据加五个破坏探针。
+  - `F3AutotestJudges` 夹具：可见度出画 / 太小 / 色度、色度偏移、字幕只排一行判红。
+- 磁盘反向验证（人为破坏 → 实跑转红 → 按字节还原并核 sha256）：
+  - `ResidentChoices` 改名 → Fieldcraft 与 FullAudit 守卫转红；
+  - 去掉「没事可办不问」→ `SkyIslandDialogue` 回归与 OfficialApiReuse 守卫转红；
+  - 色度门槛改 0.5、删掉 `truncated_early` 判红 → `F3AutotestJudges` 转红；
+  - 面板五个变体 → 布局属性测试转红。
+- 执行回归全 PASS：`F3AutotestJudges`、`SkyIslandDialogue`、`SkyIslandStory`、`SkyIslandValidationJudges`、`F3ValidationExecution`、`GameplayLogFixes`。
+- 全量守卫 617 PASS（本节只改已有守卫，没有新增守卫文件）。
+- 干净 worktree 编译：`5561f25` 加主工作区全部已改动的编译文件，共 22 个。
+  - 包括本节修复、另一会话未提交的世界文字跟语言，以及 bossrushmod-78 未提交的 loot_boss 与步骤表改动。
+  - Dev `B42A2EF8…` 与正式 `7BD82B88…` 都 Build succeeded、0 警告；`check_dll_identifiers` Dev present、正式 absent。
+- 部署：D 盘 `BossRush.dll` = Dev `B42A2EF8…`（覆盖第六轮的 `5C2C7A8D`，已备份），步骤表 `8AAD4DA1…`，SHA 核对一致。
+- 本节提交只含本会话的 hunk，另两个会话的改动留在工作区。提交前按提交树单独编了 Dev 与正式构建，都 Build succeeded、0 警告，关键守卫与三个执行回归 PASS。
+- 提交树单独跑时，`F3GameplayValidationAutotestActions.cs` 在不含 bossrushmod-78 那段删减的情况下是 1203 行，超了 `LargeFileBudgetGuard` 的 1200。
+  - 处理：把 `AutotestPlainText` 原样挪进同一 partial 的 `...AutotestCapture.cs`。
+  - 部署的 `B42A2EF8` 是挪之前编的；同一个类里挪位置，行为不变。
+
+**取舍与回退**
+- 字幕 `CaptionMaxHeight` 70：改回 60 即恢复，但会重新截成一行。
+- A2 朝 240°：改回 0° 即恢复。
+- 换正文重建后锚旧底边（选项是悬停即选中，面板一跳鼠标底下会换行）：删掉 `SetBodyText` 末尾锚定那几行即回到居中。
+- 非空正文量高下限从 76 改为 0（一行回执就是一行高）：把 `bodyNatural` 的 `0f` 换回 `BodyMinHeight` 即恢复两行半下限，布局属性测试的 token 同步改。
+- `<nobr>` 在面板出口统一包（启发式正则，名字超过 24 字不保护，退回普通折行）：不想要就让 `MakeText` 直接写原文。
+- 未验证：TMP 量高是否与渲染同样遵守 `<nobr>`、重建后鼠标悬停会不会把键盘当前项带走、一次点击建两次面板的开销。实机清单第 2.20 步。
+
+
 ## 2026-09-15 全自动实机验收第四轮：日志全绿，截图审出广场撤离环被台面盖住
 
 **来源**：owner 跑第四轮（runId `20260915_022634_653`，Dev `024D07A4` = `8d321c2` 源码 + 另一会话未提交的 8 个 .cs），看完复核说「全部修复吧」。

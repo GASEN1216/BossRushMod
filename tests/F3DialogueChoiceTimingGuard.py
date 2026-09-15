@@ -15,7 +15,9 @@ Menu 获得焦点——淡入完才进 WaitForChoice，把 confirmedChoice 清�
 2. 自动验收 dialogue_choose 只在 waiting != false 时点，点完核对被吃掉（最多 3 次），吃不掉记 choice_not_consumed；
 3. Dev 演练弹出后同样等 waiting 再点，没等到记 official_not_waiting_for_choice，不去点一个必丢的选项；
 4. 溢出探针对官方对话框只列进 truncated、不判红，自己的 HUD 与面板照旧判红；
-5. 步骤表里 LAMPS_STAGE 在判 SKY_LAMPS_WIND 之前先等至少两个 fieldcraft 采样间隔。
+5. 步骤表里 LAMPS_STAGE 在判 SKY_LAMPS_WIND 之前先等至少两个 fieldcraft 采样间隔；
+6. （2026-09-15 第五轮）对话截图截在逐字显示中途：OfficialDialogueLineShown 读官方私有字段 continueIndicator（WaitForConfirm 期间才激活），
+   取不到返回 null；wait_dialogue_typed（AutotestWaitDialogueTyped，在截图文件里）同时认「本句打完」与「选项在等玩家选」，只等不点，满足后再等一帧。
 
 反向检查在内存里逐条破坏，必须转红。
 """
@@ -72,6 +74,27 @@ def check(sources, table):
             errors.append("是否在等玩家选必须读官方私有字段 waitingForChoice")
         if "if (_officialWaitingForChoiceField == null) return null;" not in helper:
             errors.append("取不到 waitingForChoice 时必须返回 null，交给调用方退回旧做法，不能静默当真或当假")
+
+    shown = method_body(sources[HELPER], "private static bool? OfficialDialogueLineShown()")
+    if shown is None:
+        errors.append("F3GameplayValidationScenes.cs 缺少 OfficialDialogueLineShown")
+    else:
+        resolve = method_body(sources[HELPER], "private static void ResolveOfficialLineFields()") or ""
+        if '"continueIndicator"' not in resolve:
+            errors.append("本句是否打完必须读官方私有字段 continueIndicator（WaitForConfirm 期间才激活）")
+        if "if (_officialContinueIndicatorField == null) return null;" not in shown:
+            errors.append("取不到 continueIndicator 时必须返回 null，交给调用方退回读 TMP，不能静默当真或当假")
+    typed = method_body(sources[CAPTURE], "private IEnumerator AutotestWaitDialogueTyped(")
+    if typed is None:
+        errors.append("缺少 AutotestWaitDialogueTyped")
+    else:
+        if "OfficialDialogueLineShown()" not in typed or "OfficialDialogueWaitingForChoice() == true" not in typed:
+            errors.append("wait_dialogue_typed 要同时认「本句打完」与「选项在等玩家选」")
+        if ".Confirm(" in typed or "OnPointerClick" in typed:
+            errors.append("wait_dialogue_typed 只等不点：打字途中点确认只会补完这句，截到的不是自然打完的画面")
+        met = typed.find("if (met)")
+        if met < 0 or "yield return null;" not in typed[met:]:
+            errors.append("满足之后要再等一帧让状态渲染出来再截图")
 
     choose = method_body(sources[ACTIONS], "private IEnumerator AutotestDialogueChoose(")
     if choose is None:
@@ -139,6 +162,10 @@ def reverse_checks(sources, table):
         ("演练没等到也不记红", DRILL, 'errors.Add("official_not_waiting_for_choice");', ""),
         ("官方对话框照旧判红", CAPTURE, "text.transform.IsChildOf(officialDialogue)) truncated.Add(path);",
          "text.transform.IsChildOf(officialDialogue)) overflowing.Add(path);"),
+        ("本句打完不读 continueIndicator", HELPER, '"continueIndicator"', '"confirmed"'),
+        ("取不到 continueIndicator 当真", HELPER, "if (_officialContinueIndicatorField == null) return null;",
+         "if (_officialContinueIndicatorField == null) return true;"),
+        ("等打完时顺手点确认", CAPTURE, 'probe = "tmp_fallback";', 'probe = "tmp_fallback"; DialogueUI.instance.Confirm();'),
     )
     failures = []
     for name, rel, old, new in cases:
@@ -166,7 +193,7 @@ def main():
         for error in errors:
             print("FAIL: " + error)
         return 1
-    print("PASS: F3 点官方对话选项等 waitingForChoice、点完核对被吃掉；演练同样等；官方对话框溢出只列不判；LAMPS_STAGE 等新风级样本（反向检查 8/8 转红）")
+    print("PASS: F3 点官方对话选项等 waitingForChoice、点完核对被吃掉；演练同样等；官方对话框溢出只列不判；LAMPS_STAGE 等新风级样本；对话截图等本句打完（反向检查 11/11 转红）")
     return 0
 
 

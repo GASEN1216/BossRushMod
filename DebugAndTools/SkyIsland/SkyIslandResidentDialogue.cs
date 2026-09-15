@@ -40,17 +40,22 @@ namespace BossRush
         private const string ChoiceKeyPrefix = "BossRush_SkyIslandTalkChoice";
 
         private CancellationTokenSource cancellation = new CancellationTokenSource();
-        private Func<bool> valid;
+        private Func<bool> valid, hasBusiness;
         internal bool Active { get { return cancellation != null; } }
 
-        /// <summary>同步返回会话 owner；功能面板仅由仍有效的异步回调打开。</summary>
+        /// <summary>
+        /// 同步返回会话 owner；功能面板仅由仍有效的异步回调打开。
+        /// <paramref name="hasBusiness"/>：这位居民的功能面板此刻有没有可办的事（选项或「还差什么」），与开面板同一份判据；
+        /// 为 false 时台词照说，但不问「我想办点事」、不开空面板。不传视为有事可办。
+        /// </summary>
         internal static SkyIslandResidentDialogue Run(string npcId, Transform speaker, string body,
-            Action openPanel, Func<bool> valid)
+            Action openPanel, Func<bool> valid, Func<bool> hasBusiness = null)
         {
             if (openPanel == null || valid == null || !valid() || DialogueManager.IsDialogueActive) return null;
             var dialogue = new SkyIslandResidentDialogue();
             bool hadSpeaker = speaker != null;
             dialogue.valid = () => valid() && (!hadSpeaker || speaker != null);
+            dialogue.hasBusiness = hasBusiness;
             dialogue.RunAsync(npcId, speaker, body, openPanel).Forget();
             return dialogue;
         }
@@ -58,6 +63,11 @@ namespace BossRush
         internal bool CanContinue()
         {
             return cancellation != null && !cancellation.IsCancellationRequested && valid != null && valid();
+        }
+
+        private bool HasBusiness()
+        {
+            return hasBusiness == null || hasBusiness();
         }
 
         public void Dispose()
@@ -97,14 +107,16 @@ namespace BossRush
                 IDialogueActor actor = EnsureActor(npcId, speaker);
                 if (actor == null)
                 {
-                    if (CanContinue()) openPanel();
+                    if (CanContinue() && HasBusiness()) openPanel();
                     return;
                 }
                 string[][] lines = Split(body);
                 if (lines.Length > 0)
                     await DialogueManager.ShowDialogueSequenceBilingual(actor, lines, LineKeyPrefix, token);
 
-                if (!CanContinue() || speaker == null) return;
+                // 没有可办的事（例如结局后的无声钟守）就不问「我想办点事」：点下去是一块没正文没选项的空面板，走不下去
+                // （2026-09-15 第五轮截图；AGENTS §4.14 先判断再挂）。判据在台词说完这一刻取，与面板打开时同一份。
+                if (!CanContinue() || speaker == null || !HasBusiness()) return;
 
                 int picked = await DialogueManager.ShowMultipleChoiceBilingual(actor, new string[][]
                 {
@@ -121,13 +133,14 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(LogPrefix + "[WARNING] 官方对话不可用: " + e.Message);
-                if (CanContinue()) openPanel();
+                if (CanContinue() && HasBusiness()) openPanel();
             }
             finally
             {
                 cancellation.Dispose();
                 cancellation = null;
                 valid = null;
+                hasBusiness = null;
             }
         }
 

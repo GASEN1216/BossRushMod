@@ -174,12 +174,13 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
                              len(ls) * C['ChoiceFont'] * 1.25 + 4 + C['ChoicePadY'] * 2))
     choices_h = sum(choice_hs) + max(0, len(choice_hs) - 1) * C['Gap'] * 0.5
 
-    body_lines = wrap(d0, body, f_body, CONTENT_W - C['ScrollbarGutter'])
-    body_h = min(C['BodyPreferredMax'],
-                 max(C['BodyMinHeight'], len(body_lines) * C['BodyFont'] * 1.25 + 4))
+    # 空正文收成 0 高、连同它下面那道 Gap；有正文按自然高度量，不再垫到 BodyMinHeight（与生产 Show 同口径，2026-09-15 第五轮 D5）。
+    body_lines = wrap(d0, body, f_body, CONTENT_W - C['ScrollbarGutter']) if body else []
+    body_gap = C['Gap'] if body else 0.0
+    body_h = min(C['BodyPreferredMax'], len(body_lines) * C['BodyFont'] * 1.25 + 4) if body else 0.0
 
     divider_block = C['DividerHeight'] + C['Gap']
-    chrome = C['Pad'] + hero_h + divider_block + choices_h + C['Gap'] * 2
+    chrome = C['Pad'] + hero_h + divider_block + choices_h + C['Gap'] + body_gap
     panel_h = chrome + body_h
     if panel_h > MAX_PANEL:
         excess = panel_h - MAX_PANEL
@@ -273,7 +274,7 @@ def render(title, body, choices, banner_name=None, portrait_name=None):
             break
         draw.text((C['Pad'], by), line, font=f_body, fill=COL['TextSecondary'])
         by += C['BodyFont'] * 1.25
-    y += body_h + C['Gap']
+    y += body_h + body_gap
 
     f_cap = font(13, True)
     for index, (ls, h) in enumerate(zip(choice_lines, choice_hs)):

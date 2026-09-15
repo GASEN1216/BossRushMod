@@ -17,6 +17,12 @@ Overflow —— 超框既不裁剪也不省略，直接画到面板外。实测�
 估宽模型保守：CJK/全角按 1.0em、其余按 0.5em，比 TMP 实际字形**偏宽**，
 因此这里放得下、实机一定放得下。它证明的是**算术**，不证明 Unity 的实际排版、
 字体度量与 ScrollRect 手感——那些只能实机看，见 docs/制作教程/天空岛/天空岛_待人工验证清单.md。
+
+## 2026-09-15 第五轮（D3 / D5 / D8）
+
+换正文（`SetBodyText`）按新正文走 `Show` 整页重建，不再塞进打开时按导语量好的视口；空正文收成 0 高、
+连同它下面那道 Gap；「名称 + 计数」由 `MakeText` 统一包进 TMP 的 `<nobr>`，估高把包起来的一段当不可拆单元排。
+三处各有绑定生产源码的判据与破坏探针（set_body_errors / body_collapse_errors / keep_counts_errors）。
 """
 import re
 import sys
@@ -53,6 +59,22 @@ C = {n: const(PANEL_SRC, n) for n in (
     'ChoiceMinHeight', 'ChoicePadY', 'ChoicePadX', 'ScrollbarGutter', 'KeyHintWidth',
     'DividerHeight', 'BodyFont', 'ChoiceFont', 'HeroFadeFraction', 'KeyCapSize')}
 CONTENT_W = C['PanelWidth'] - C['Pad'] * 2
+
+# D8（2026-09-15 第五轮）：面板把「名称 + 计数」包进 TMP 的 <nobr>（SkyIslandStoryPresentation.KeepCountsTogether，MakeText 统一过一遍）。
+# 正则从生产源码逐字抽取、不在这里写第二份；.NET 与 Python 在这个子集（捕获组、字符类、\d、先行断言）上语义一致。
+_COUNTED = re.search(r'CountedRun\s*=\s*new\s+[\w.]*Regex\(\s*@"((?:[^"]|"")*)"', PANEL_SRC)
+if not _COUNTED:
+    raise AssertionError('读不到面板的 CountedRun 正则（KeepCountsTogether）')
+COUNTED_RUN = re.compile(_COUNTED.group(1).replace('""', '"'))
+COUNTED_CAP = int(re.search(r'\{1,(\d+)\}', _COUNTED.group(1)).group(1))
+NOBR = re.compile(r'<nobr>(.*?)</nobr>')
+
+
+def keep_counts_together(s):
+    """照生产 KeepCountsTogether：空串原样、已经带 <nobr> 的原样，其余把「名称 + 计数」包成不可拆的一段。"""
+    if not s or '<nobr>' in s:
+        return s or ''
+    return COUNTED_RUN.sub(r'\1<nobr>\2</nobr>', s)
 
 
 def cs_eval(expr, env, has_portrait):
@@ -179,16 +201,33 @@ MAX_PANEL = min(980.0, 1080.0 - 140.0)
 
 
 def text_height(s, width, font):
-    """保守估高：按 1.0em/0.5em 估宽折行，行高 1.25em，再加 MeasureTextHeight 的 +4。"""
+    """保守估高：按 1.0em/0.5em 估宽折行，行高 1.25em，再加 MeasureTextHeight 的 +4。
+
+    带 <nobr> 的行按「不可拆的一段整体换行」贪心排（D8）；不带的行照旧按总宽除行宽。
+    """
     lines = 0
     for seg in s.replace('\\n', '\n').split('\n'):
-        w = 0.0
-        for ch in seg:
-            o = ord(ch)
-            wide = (0x2E80 <= o <= 0x9FFF) or (0xFF00 <= o <= 0xFFEF) or (0x3000 <= o <= 0x303F)
-            w += (1.0 if wide else 0.5)
-        w *= font
-        lines += max(1, int(w // width) + (1 if w % width else 0))
+        if '<nobr>' not in seg:
+            w = text_width(seg, font)
+            lines += max(1, int(w // width) + (1 if w % width else 0))
+            continue
+        atoms, pos = [], 0
+        for m in NOBR.finditer(seg):
+            atoms.extend(seg[pos:m.start()])
+            atoms.append(m.group(1))
+            pos = m.end()
+        atoms.extend(seg[pos:])
+        n, used = 1, 0.0
+        for atom in atoms:
+            w = text_width(atom, font)
+            if used > 0 and used + w > width:
+                n += 1
+                used = 0.0
+            used += w
+            while used > width:   # 比整行还宽的一段：TMP 退回逐字断，这里按溢出多记行，偏保守
+                n += 1
+                used -= width
+        lines += n
     return lines * font * 1.25 + 4.0
 
 
@@ -200,6 +239,9 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
     `src` 缺省为生产源码；破坏探针传入改过的源码，按同一套求值走一遍。
     """
     src = PANEL_SRC if src is None else src
+    # 照生产 MakeText：正文与选项文字先过 KeepCountsTogether（D8），估高按「不可拆的一段」排。
+    body = keep_counts_together(body)
+    choices = [keep_counts_together(label) for label in choices]
     show = method_body(src, 'internal void Show(string title, string text, IList<Choice> choices,')
     env = dict(C)
     # 标题可用宽度、字号与主视觉地板都按生产 Show 的算式求值，不在这里写第二份
@@ -232,15 +274,17 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
         choice_hs.append(h)
         choices_h += h + (C['Gap'] * 0.5 if i > 0 else 0.0)
 
-    body_natural = max(text_height(body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont']),
-                       C['BodyMinHeight'])
+    # 空正文收成 0 高、连同它下面那道 Gap（2026-09-15 第五轮 D5）；有正文按自然高度量，不再垫到 BodyMinHeight。
+    has_body = bool(body)
+    body_natural = text_height(body, CONTENT_W - C['ScrollbarGutter'], C['BodyFont']) if has_body else 0.0
+    body_gap = C['Gap'] if has_body else 0.0
 
     # 分隔线不再是 1px 裸 quad：它现在铺图集的 divider（8×8 / border 2），亮带在可拉伸中心区，
     # rect 高 1 时中心区归零、整条线画不出来。高度读生产常量，这里不写第二份。
     divider_block = C['DividerHeight'] + C['Gap']
     # 页脚「继续旅程」已删（2026-09-13）：它与 ESC 完全等价，纯冗余。
-    # 现在是 hero → Gap → 分隔线 → Gap → 正文 → Gap → 选项 → 下 Pad，三个 Gap 里一个在 dividerBlock。
-    chrome = C['Pad'] + hero_h + divider_block + choices_h + C['Gap'] * 2
+    # 现在是 hero → Gap → 分隔线 → Gap → 正文 → Gap → 选项 → 下 Pad，三个 Gap 里一个在 dividerBlock；空正文时正文下那道 Gap 是 0。
+    chrome = C['Pad'] + hero_h + divider_block + choices_h + C['Gap'] + body_gap
     body_h = min(C['BodyPreferredMax'], body_natural)
     panel_h = chrome + body_h
     if panel_h > MAX_PANEL:
@@ -259,7 +303,7 @@ def layout(title, body, choices, has_portrait, has_banner, banner_aspect=1024.0 
     title_top = C['HeroInset'] * 2 + hero_block * 0.5 + title_h * 0.5
     return dict(panel=panel_h, hero=hero_h, hero_floor=hero_floor, title=title_block,
                 hero_title=hero_block, band=band, art=hero_art, has_portrait=has_portrait,
-                title_top=title_top, body=body_h, body_natural=body_natural,
+                title_top=title_top, body=body_h, body_natural=body_natural, body_gap=body_gap,
                 choices=choice_hs, choices_total=choices_h, divider=divider_block)
 
 
@@ -299,7 +343,7 @@ def check(name, lay):
                       % (name, lay['hero_title'], lay['title'], '有立绘' if lay['has_portrait'] else '无立绘'))
     top -= lay['hero'] + C['Gap']
     top -= lay['divider']
-    top -= lay['body'] + C['Gap']
+    top -= lay['body'] + lay['body_gap']
     for i, h in enumerate(lay['choices']):
         bottom = top - h
         top = bottom - C['Gap'] * 0.5
@@ -373,6 +417,65 @@ def batch_two_strings():
     bodies = [puzzle_page, kept_letter, longest(crew_pages)]
     labels = options + crew_names + chapter_names
     return titles, bodies, labels
+
+
+def set_body_errors(src):
+    """D3：换正文按新正文整页重建（与首次打开同一份量高与挤压算术），不是塞进打开时按导语量好的视口。"""
+    body = ' '.join(method_body(src, 'private void SetBodyText(string value)').split())
+    errors = []
+    if 'if (!Visible) return;' not in body:
+        errors.append('SetBodyText 不再先判面板是否还开着：挑战开始 / 引风收起面板之后回执会把面板重新打开')
+    if 'Show(shownTitle, value, shownChoices, shownPortrait, shownBanner);' not in body:
+        errors.append('SetBodyText 不再走 Show 整页重建：手记子页、名册翻页、谜题与合成回执又会被塞进打开时量好的视口（D3/D5）')
+    if 'bodyViewport' in body or 'viewportHeight' in body:
+        errors.append('SetBodyText 又在既有视口里换字（旧写法）')
+    return errors
+
+
+def body_collapse_errors(src):
+    """D5：空正文收成 0 高、连同下面那道 Gap；有正文按自然高度量（不再垫到 BodyMinHeight）。"""
+    show = ' '.join(method_body(src, 'internal void Show(string title, string text, IList<Choice> choices,').split())
+    errors = []
+    for token in ('bool hasBody = !string.IsNullOrEmpty(text);',
+                  'float bodyNatural = hasBody ? BossRushUI.MeasureTextHeight(bodyText, ContentWidth - ScrollbarGutter, 0f) : 0f;',
+                  'float bodyGap = hasBody ? Gap : 0f;',
+                  'float chrome = Pad + heroHeight + dividerBlock + choicesHeight + Gap + bodyGap;',
+                  'cursor -= bodyHeight + bodyGap;'):
+        if token not in show:
+            errors.append('Show 的空正文收拢口径变了（缺 ' + token + '）：这份测试复算的正文区与生产对不上')
+    return errors
+
+
+def keep_counts_errors(src):
+    """D8：第五轮截图里被拆开的五处都包成一段；叙事句不包；包起来的一段最长也放得进选项一行。"""
+    errors = []
+    make_text = ' '.join(method_body(src, 'private static TextMeshProUGUI MakeText(').split())
+    if 'text.text = KeepCountsTogether(value);' not in make_text:
+        errors.append('MakeText 不再给面板文字过 KeepCountsTogether（D8）')
+    if 'CountedRun.Replace(value, "$1<nobr>$2</nobr>")' not in src:
+        errors.append('KeepCountsTogether 不再包 <nobr>（D8）')
+    must = [('归航船系在码头，船头挂着一本名册。四位归来的船员各写了一页。（已读 0/4）', '已读 0/4'),
+            ('The homecoming boat is tied at the dock. (Read 1/4)', 'Read 1/4'),
+            ('群岛手记 · 见闻 3/20 · 信鸽来信 0/12 · 到访区域 5/12 · 岛上的灯 3/10', '到访区域 5/12'),
+            ('Archipelago journal · notes 3/20 · crew roster 1/4 · keepsakes 0/3', 'crew roster 1/4'),
+            ('Archipelago journal · lights on the isles 3/10 · island lords and chiefs 0/2', 'island lords and chiefs 0/2'),
+            ('Make Windcrystal Gnat Zapper (Brass Scrap 0/3 · Qinglan Windcrystal 1/1)', 'Brass Scrap 0/3'),
+            ('Island materials in your pack (pack only, not base storage): Greenear Sheaf 2 · Driftwood 3', 'Greenear Sheaf 2'),
+            ('背包里的群岛材料（只算背包，不算基地仓库）：青穗草 2 · 浮木 3\n还不会做 晴岚风晶（星灯修好之后）', '浮木 3')]
+    for text, run in must:
+        got = keep_counts_together(text)
+        if '<nobr>' + run + '</nobr>' not in got:
+            errors.append('D8：' + run + ' 没有包成不可拆的一段：' + got)
+    for text in ('手记记了 5 页，还空着 15 页。', '第 1/3 步 · 哪一边的风先到？', '还有 3 封信在路上。',
+                 'set down for about 5 minutes: draws nearby cloud gnats in', '渡口整备 · 修补随身装备（120）',
+                 '还不会做 晴岚风晶（星灯修好之后）', '接委托 · 清理航路威胁 ×3'):
+        if '<nobr>' in keep_counts_together(text):
+            errors.append('D8：叙事句被误包：' + keep_counts_together(text))
+    worst_run = COUNTED_CAP * 1.0 * C['ChoiceFont'] + len(' 99/99') * 0.5 * C['ChoiceFont']
+    label_w = CONTENT_W - C['ChoicePadX'] * 2 - C['KeyHintWidth']
+    if worst_run > label_w:
+        errors.append('D8：包起来的一段最长 %.0f px，超过选项一行 %.0f px（TMP 会被迫逐字断）' % (worst_run, label_w))
+    return errors
 
 
 def main():
@@ -457,6 +560,21 @@ def main():
             errors.append('破坏探针二失效：实底带盖掉 %.0f%% 插图时判据没有红'
                           % (legacy_lay['band'] / legacy_lay['hero'] * 100))
 
+    # ---- D3 / D5 / D8（2026-09-15 第五轮）----
+    errors += set_body_errors(PANEL_SRC) + body_collapse_errors(PANEL_SRC) + keep_counts_errors(PANEL_SRC)
+    empty = layout('晴禾的菜畦', '', ['接一单委托'] * 3, True, True)
+    if empty['body'] != 0 or empty['body_gap'] != 0:
+        errors.append('空正文仍占 %.0f + %.0f px（D5）' % (empty['body'], empty['body_gap']))
+    errors += check('居民面板/空正文', empty)
+    for anchor, broken, fn, name in (
+            ('Show(shownTitle, value, shownChoices, shownPortrait, shownBanner);', 'body.text = value;', set_body_errors, '三'),
+            ('Gap + bodyGap;', 'Gap * 2f;', body_collapse_errors, '四'),
+            ('text.text = KeepCountsTogether(value);', 'text.text = value ?? string.Empty;', keep_counts_errors, '五')):
+        if anchor not in PANEL_SRC:
+            errors.append('破坏探针' + name + '的锚点失效：' + anchor)
+        elif not fn(PANEL_SRC.replace(anchor, broken, 1)):
+            errors.append('破坏探针' + name + '失效：生产退回旧写法时判据没有红')
+
     if errors:
         for e in errors:
             print('  - ' + e)
@@ -466,7 +584,7 @@ def main():
     sample = layout(title, body, [longest_label] * 5, False, True)
     print('PASS SkyIslandStoryPanelLayoutPropertyTest '
           '(最长标题 %d 字 / 最长正文 %d 字 / %d 条选项文案；5 选项+横幅时面板 %.0f/%.0f px，'
-          '15 种组合全部不溢出；居民面板实底带 %.0f/%.0f px（按 BuildHero 真实分支）；两个破坏探针被拒)'
+          '15 种组合全部不溢出；居民面板实底带 %.0f/%.0f px（按 BuildHero 真实分支）；五个破坏探针被拒)'
           % (len(title), len(body), label_count, sample['panel'], MAX_PANEL, resident['band'], resident['hero']))
 
 

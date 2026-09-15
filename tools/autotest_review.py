@@ -158,6 +158,21 @@ def parse_metrics(text):
     return result
 
 
+_RECT_RE = re.compile(r"\brect=(-?\d+),(-?\d+),(\d+)x(\d+)")
+
+
+def with_top_left(metrics, height):
+    """manifest 的 rect 是 Unity 屏幕坐标（左下原点）；审阅时补一份图片坐标（左上原点）的 y，免得读反
+    （2026-09-15 第五轮：rect=145,537 在画面上沿之外，被读成了下沿）。"""
+    if not metrics or not height:
+        return metrics
+
+    def annotate(match):
+        y, h = int(match.group(2)), int(match.group(4))
+        return "%s(左上 y=%d)" % (match.group(0), height - y - h)
+    return _RECT_RE.sub(annotate, metrics)
+
+
 def as_number(value):
     if not isinstance(value, str):
         return None
@@ -263,6 +278,10 @@ def build_run(result_dir, manifest, warnings):
                   "encoding": text_of(s, "encoding"), "bytes": int_of(s, "bytes"), "metrics": text_of(s, "metrics"),
                   "thumb": None, "placeholder": None}
                  for s in list_of(raw, "shots") if isinstance(s, dict)]
+        sizes = [re.search(r"\bsize=(\d+)x(\d+)", shot["metrics"] or "") for shot in shots]
+        height = next((int(size.group(2)) for size in sizes if size), None)
+        for assertion in assertions:
+            assertion["metrics"] = with_top_left(assertion["metrics"], height)
         step = {
             "index": index,
             "id": text_of(raw, "id") or "(no id #%d)" % index,

@@ -243,7 +243,8 @@ def main():
     read_point = need_body(world_story, "internal void ReadPoint(string key, Action recorded)", "装置面板")
     # 居民的服务挂在功能面板上（叙事走官方对话，说完才开 OpenResidentPanel）；服务按钮统一经 *Choice 助手挂（2026-09-14 审核 F-06）。
     # 旧写法按 Talk 的方法体找服务，服务搬走之后这条判断恒为假、等于没查。
-    resident = need_body(world_story, "private void OpenResidentPanel(string id, Transform speaker)", "居民功能面板")
+    # 2026-09-15 选项拆进 ResidentChoices（对话判断「有没有事可办」与开面板共用同一份），在它里面查。
+    resident = need_body(world_story, "private List<SkyIslandStoryPresentation.Choice> ResidentChoices(string id, Transform speaker)", "居民功能面板")
     for helper, resident_label, device_label in (
             ("RepairChoice(choices);", "浮舟", "码头装置 Search_A"),
             ("HealChoice(choices);", "眠苔", "悬根林见闻点 Search_D_02"),

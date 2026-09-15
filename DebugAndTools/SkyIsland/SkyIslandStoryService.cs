@@ -425,34 +425,34 @@ namespace BossRush
                 case "sky_qinghe":
                     return (data.Has(SkyIslandStoryFlag.PlantingDelivered)
                         ? (data.Has(SkyIslandStoryFlag.Ending)
-                            ? L10n.T("晴禾：归航船上的人都来吃过了。最后一畦我还留着——留给下一位旅人。",
-                                "Qinghe: Everyone off the homecoming boat has been by to eat. I am still keeping the last bed — for the next traveller.")
-                            : L10n.T("晴禾：新风车转起来了。下一船归来时，他们会有热菜吃。",
-                                "Qinghe: The new pinwheel is turning. When the next ship comes home there will be a hot meal waiting."))
-                        : L10n.T("晴禾：蛙鸣池那边有我丢下的种植记录。没来得及说出口的事，都写在里面了。",
-                            "Qinghe: My planting record is still out at Frogsong Pool. Everything I never got to say is written in it.")) +
+                            ? L10n.T("归航船上的人都来吃过了。最后一畦我还留着——留给下一位旅人。",
+                                "Everyone off the homecoming boat has been by to eat. I am still keeping the last bed — for the next traveller.")
+                            : L10n.T("新风车转起来了。下一船归来时，他们会有热菜吃。",
+                                "The new pinwheel is turning. When the next ship comes home there will be a hot meal waiting."))
+                        : L10n.T("蛙鸣池那边有我丢下的种植记录。没来得及说出口的事，都写在里面了。",
+                            "My planting record is still out at Frogsong Pool. Everything I never got to say is written in it.")) +
                         (SkyIslandLetters.Collected(data, "Letter_03")
                             ? L10n.T("\n……那封没署名的信，我认得那笔字。田埂上那一格，我还替他留着。",
                                 "\n…That unsigned letter — I know that handwriting. I am still keeping that plot on the ridge for him.")
                             : string.Empty) + QingheGnatLine(data);
                 case "sky_weibai":
                     return (data.Has(SkyIslandStoryFlag.Ending)
-                        ? L10n.T("苇白：钟响那天，东西两头的风铃一起响了——苇生以前说，那是岛在叫大家回家。委托板我还挂着，路过就来揭一张。\n",
-                            "Weibai: The day the bell rang, the chimes at both ends of the market rang together — Weisheng used to say that is the island calling everyone home. The contract board stays up; take a slip whenever you pass.\n")
+                        ? L10n.T("钟响那天，东西两头的风铃一起响了——苇生以前说，那是岛在叫大家回家。委托板我还挂着，路过就来揭一张。\n",
+                            "The day the bell rang, the chimes at both ends of the market rang together — Weisheng used to say that is the island calling everyone home. The contract board stays up; take a slip whenever you pass.\n")
                         : data.BothBeacons
-                            ? L10n.T("苇白：两盏灯都亮了，东西两头的风铃在一起响！去鸣风栈道吧，钟庭在等你。\n",
-                                "Weibai: Both lamps are lit and the chimes at either end are ringing together! On to Windsong Boardwalk — the Bell Court is waiting for you.\n")
-                            : L10n.T("苇白：西边悬根林有风标，东边残星工坊有星灯，先去哪边都行。装置还在，修好它们就能让双航标门重新工作。\n",
-                                "Weibai: The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n")) +
+                            ? L10n.T("两盏灯都亮了，东西两头的风铃在一起响！去鸣风栈道吧，钟庭在等你。\n",
+                                "Both lamps are lit and the chimes at either end are ringing together! On to Windsong Boardwalk — the Bell Court is waiting for you.\n")
+                            : L10n.T("西边悬根林有风标，东边残星工坊有星灯，先去哪边都行。装置还在，修好它们就能让双航标门重新工作。\n",
+                                "The wind beacon is west in the Hanging Root Wood, the star lamp east at the Fallen Star Workshop — either order works. The devices are still standing; repair them and the twin-beacon gate runs again.\n")) +
                         (SkyIslandLetters.Collected(data, "Letter_02")
                             ? L10n.T("苇生的信你替我收下了？……他还是那么爱说大话。\n", "You took in Weisheng's letter for me? …He still loves to talk big.\n")
                             : string.Empty) + SkyIslandBossRules.ResidentLine("sky_weibai", data) + WeibaiZapperLine(data);
                 case "sky_fuzhou":
                     return (data.Has(SkyIslandStoryFlag.Ending)
-                        ? L10n.T("浮舟：钟声听见了。船一直在这里，船头挂着名册，四个归来的人各写了一页，去看看吧。",
-                            "Fuzhou: I heard the bell. The boat has always been here — there is a roster at the bow, and each of the four who came home wrote a page. Go and have a look.")
-                        : L10n.T("浮舟：沿桥去风铃集找苇白。走累了随时回来，码头的系泊桩会送你回家，已记录的故事下次继续。",
-                            "Fuzhou: Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.")) +
+                        ? L10n.T("钟声听见了。船一直在这里，船头挂着名册，四个归来的人各写了一页，去看看吧。",
+                            "I heard the bell. The boat has always been here — there is a roster at the bow, and each of the four who came home wrote a page. Go and have a look.")
+                        : L10n.T("沿桥去风铃集找苇白。走累了随时回来，码头的系泊桩会送你回家，已记录的故事下次继续。",
+                            "Follow the bridge to Windchime Market and find Weibai. Come back whenever you tire — the mooring post at the dock takes you home, and whatever you have recorded carries over.")) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳……我这就挂回最高的那根桩上。", "\nAchao's mooring line… I will hang it back on the tallest post right away.")
                             : string.Empty) + FuzhouLampLine(data) + SkyIslandBossRules.ResidentLine("sky_fuzhou", data);
@@ -462,16 +462,16 @@ namespace BossRush
                     return ZhelingLine(data);
                 case "sky_bellkeeper":
                     if (data.Has(SkyIslandStoryFlag.Ending))
-                        return L10n.T("钟守：钟声不是命令，是回答。名册上多了一行字，我没有擦掉。",
-                            "The Bell Keeper: A bell is not an order; it is an answer. A new line appeared in the register, and I have not wiped it away.") +
+                        return L10n.T("钟声不是命令，是回答。名册上多了一行字，我没有擦掉。",
+                            "A bell is not an order; it is an answer. A new line appeared in the register, and I have not wiped it away.") +
                             (SkyIslandMosquitoRules.FrogsComplete(data)
                                 ? L10n.T("\n夜里敲钟的时候，蛙鸣池那边有蛙应声。", "\nWhen the bell rings at night now, the frogs at Frogsong Pool answer.")
                                 : string.Empty) + BellKeeperEchoLine(data);
                     return data.BellKeeperResolved
-                        ? L10n.T("钟守：去吧，敲响归航钟。让他们知道，岛上还有人在等。",
-                            "The Bell Keeper: Go on, ring the Homecoming Bell. Let them know someone on the islands is still waiting.")
-                        : L10n.T("无声钟守：钟一响，就会有人再出海。我需要你证明航路安全，否则先停下我的守钟装置。",
-                            "The Silent Bell Keeper: Ring it and someone puts to sea again. Prove the lanes are safe — or stop my bell engine first.");
+                        ? L10n.T("去吧，敲响归航钟。让他们知道，岛上还有人在等。",
+                            "Go on, ring the Homecoming Bell. Let them know someone on the islands is still waiting.")
+                        : L10n.T("钟一响，就会有人再出海。我需要你证明航路安全，否则先停下我的守钟装置。",
+                            "Ring it and someone puts to sea again. Prove the lanes are safe — or stop my bell engine first.");
                 default: return CurrentObjective;
             }
         }
@@ -480,28 +480,28 @@ namespace BossRush
         {
             return data.Has(SkyIslandStoryFlag.WindBeacon)
                         ? (data.Has(SkyIslandStoryFlag.OldLetter)
-                            ? L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭那封信你拿到了？那就去镜水寺吧，折翎等它等了很久。",
-                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. You have the letter from the Upturned Post Hut? Then go to Mirrorwater Temple — Zheling has waited a long time for it.")
-                            : L10n.T("眠苔：风标转回来了，根环里的风也顺了。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
-                                "Miantai: The wind beacon has turned back and the air in the root ring runs smooth again. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can."))
-                        : L10n.T("眠苔：风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
-                            "Miantai: The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
+                            ? L10n.T("风标转回来了，根环里的风也顺了。倒挂邮亭那封信你拿到了？那就去镜水寺吧，折翎等它等了很久。",
+                                "The wind beacon has turned back and the air in the root ring runs smooth again. You have the letter from the Upturned Post Hut? Then go to Mirrorwater Temple — Zheling has waited a long time for it.")
+                            : L10n.T("风标转回来了，根环里的风也顺了。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                                "The wind beacon has turned back and the air in the root ring runs smooth again. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can."))
+                        : L10n.T("风标困在根环那头，先清掉附近的威胁再校准。倒挂邮亭还吊着一封信——风没有把它送到，或许你可以。",
+                            "The wind beacon is stuck out past the root ring; clear the threats around it before you calibrate. A letter still hangs in the Upturned Post Hut — the wind never delivered it. Perhaps you can.");
         }
 
         private static string ZhelingLine(SkyIslandStoryData data)
         {
             return data.ZhelingResolved
                 ? (data.Has(SkyIslandStoryFlag.ZhelingReconciled)
-                    ? L10n.T("折翎：路已修好。这次我守着灯，等大家回来。",
-                        "Zheling: The road is mended. This time I keep the light and wait for them to come home.") +
+                    ? L10n.T("路已修好。这次我守着灯，等大家回来。",
+                        "The road is mended. This time I keep the light and wait for them to come home.") +
                       (SkyIslandLetters.Collected(data, "Letter_06")
                         ? L10n.T("\n扫地的老人还替我擦着钟……等灯都亮了，我回寺里喝那杯茶。",
                             "\nThe old sweeper still polishes the bell for me… Once every light is lit, I will go back to the temple for that cup of tea.")
                         : string.Empty) + ZhelingFrogLine(data)
                     : L10n.T("旧腰牌上刻着：『航路交给你。』",
                         "The old badge is engraved: 'The route is yours now.'"))
-                : L10n.T("折翎：我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
-                    "Zheling: I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
+                : L10n.T("我不会再让人走进那场风灾。若有旧信和航路图，就留下来谈；若坚持通行，请明确挑战。",
+                    "I will not let anyone walk into that storm again. If you carry the old letter and the route chart, stay and talk. If you insist on passing, challenge me outright.");
         }
 
         /// <summary>
@@ -545,10 +545,10 @@ namespace BossRush
             if (lamps <= 0) return string.Empty;
             SkyIslandRecipe zapper = SkyIslandFieldcraftRules.FindRecipe("Zapper");
             if (zapper != null && lamps < zapper.RequiresLamps)
-                return L10n.T("苇白：风晶灯的芯会嗡嗡地唱，云蚋就是循着那点声音和光来的。再亮一盏，我就听得清那个调子，能把灯芯调成陷阱。\n",
-                    "Weibai: A windcrystal wick hums, and the cloud gnats come for that hum and the light. Light one more and I will hear the tune clearly enough to turn a wick into a trap.\n");
-            return L10n.T("苇白：灭蚊灯的调子我交给浮舟了——晴岚风晶作芯、残铜片打罩，去他的渡口工台做。\n",
-                "Weibai: I gave Fuzhou the tune for the gnat zapper — a Qinglan Windcrystal for the wick and brass scrap for the cage. Make it at his dock workbench.\n");
+                return L10n.T("风晶灯的芯会嗡嗡地唱，云蚋就是循着那点声音和光来的。再亮一盏，我就听得清那个调子，能把灯芯调成陷阱。\n",
+                    "A windcrystal wick hums, and the cloud gnats come for that hum and the light. Light one more and I will hear the tune clearly enough to turn a wick into a trap.\n");
+            return L10n.T("灭蚊灯的调子我交给浮舟了——晴岚风晶作芯、残铜片打罩，去他的渡口工台做。\n",
+                "I gave Fuzhou the tune for the gnat zapper — a Qinglan Windcrystal for the wick and brass scrap for the cage. Make it at his dock workbench.\n");
         }
 
         /// <summary>内容批次四：和解之后的折翎说起寺里池子的青蛙——蛙卵从这里捧回蛙鸣池。</summary>

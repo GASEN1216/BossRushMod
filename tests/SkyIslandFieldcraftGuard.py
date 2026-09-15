@@ -305,7 +305,8 @@ def main():
     for token in ("reopen = delegate { OpenCrafting(station); };", "fieldcraft.Craft(recipe, out message)", "Refreshed(crafted, message)"):
         require(open_crafting, token, "做成才重开面板刷新件数")
     read_point = need_body(world, "internal void ReadPoint(string key, Action recorded)", "ReadPoint")
-    talk = need_body(world, "private void OpenResidentPanel(string id, Transform speaker)", "Talk")
+    # 2026-09-15 居民面板的选项拆进 ResidentChoices（对话判断「有没有事可办」与开面板共用），合成台接线在它里面查。
+    talk = need_body(world, "private List<SkyIslandStoryPresentation.Choice> ResidentChoices(string id, Transform speaker)", "居民面板选项")
 
     def case_slice(text, label):
         marker = squash('case "%s":' % label)

@@ -171,8 +171,13 @@ namespace BossRush
         private const float CaptionY = -286f;
         private const float CaptionWidth = 1000f;
         private const float CaptionFont = 20f;
-        /// <summary>字幕最多两行的高度，再长就省略号收尾：字幕是临场提示，不是段落。</summary>
-        private const float CaptionMaxHeight = 60f;
+        /// <summary>
+        /// 字幕最多两行的高度，再长就省略号收尾：字幕是临场提示，不是段落。
+        /// 游戏字体的行高比字面大，旧值 60 实际只排得下一行：2026-09-15 第五轮截图里 7 条长字幕全被截成一行、丢掉后半句
+        /// （云蚋提示少了「贴近了才打得中」）。70 装得下两行；上沿 CaptionY + 70 = -216，仍在区域大标题操作提示行最低处 -215 之下
+        /// （SkyIslandHudGuard 按常量复算）。一行被截断由 F3 自动验收的溢出判据判红。
+        /// </summary>
+        private const float CaptionMaxHeight = 70f;
         /// <summary>
         /// 字幕压暗底比文字**高**多少：高度 = 文字高 ÷ 平台占比，与
         /// <see cref="FitBannerScrim"/> 反算宽度是同一条算式。

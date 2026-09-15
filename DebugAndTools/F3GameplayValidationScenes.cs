@@ -174,6 +174,58 @@ namespace BossRush
             catch (Exception) { return null; }
         }
 
+        private static System.Reflection.FieldInfo _officialContinueIndicatorField, _officialDialogueTextField;
+        private static bool _officialLineFieldsResolved;
+
+        private static void ResolveOfficialLineFields()
+        {
+            if (_officialLineFieldsResolved) return;
+            _officialLineFieldsResolved = true;
+            const System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance;
+            _officialContinueIndicatorField = typeof(Dialogues.DialogueUI).GetField("continueIndicator", flags);
+            _officialDialogueTextField = typeof(Dialogues.DialogueUI).GetField("text", flags);
+            if (_officialContinueIndicatorField == null)
+                ModBehaviour.DevLog("[Validation] 取不到 DialogueUI.continueIndicator，等本句打完退回读 TMP 可见字数");
+        }
+
+        /// <summary>
+        /// 官方对话这一句是否已经完整显示、在等确认（私有字段 <c>DialogueUI.continueIndicator</c> 的 activeSelf）。
+        /// 官方 DoSubtitle（IL 实查）：开头置失活 → 逐字显示（speed 序列化 40 字/秒）→ WaitForConfirm 先 SetActive(true) 再清 confirmed
+        /// → 等到确认才置回失活、淡出换句。打字途中的 Confirm 只补完这句、不翻页（2026-09-15 第五轮对话截图截在半句上）。
+        /// 取不到字段（官方改名）返回 null，调用方退回读 TMP；没有对话界面返回 false。
+        /// </summary>
+        private static bool? OfficialDialogueLineShown()
+        {
+            Dialogues.DialogueUI ui = Dialogues.DialogueUI.instance;
+            if (ui == null) return false;
+            ResolveOfficialLineFields();
+            if (_officialContinueIndicatorField == null) return null;
+            try
+            {
+                GameObject indicator = _officialContinueIndicatorField.GetValue(ui) as GameObject;
+                return indicator != null && indicator.activeSelf;
+            }
+            catch (Exception) { return null; }
+        }
+
+        /// <summary>官方对话框当前这一句的文字组件（逐字显示时 text 已是整句，只是 maxVisibleCharacters 在涨）。取不到返回 null。</summary>
+        private static TMPro.TMP_Text OfficialDialogueText()
+        {
+            Dialogues.DialogueUI ui = Dialogues.DialogueUI.instance;
+            if (ui == null) return null;
+            ResolveOfficialLineFields();
+            try
+            {
+                TMPro.TMP_Text field = _officialDialogueTextField == null ? null : _officialDialogueTextField.GetValue(ui) as TMPro.TMP_Text;
+                if (field != null) return field;
+            }
+            catch (Exception) { }
+            // 退路：官方层级名（resources.assets 实读：BG/Content/ContentFrame/ContentArea/TextArea/ContentText）。
+            foreach (TMPro.TMP_Text candidate in ui.GetComponentsInChildren<TMPro.TMP_Text>(true))
+                if (candidate != null && candidate.name == "ContentText") return candidate;
+            return null;
+        }
+
         private IEnumerator WaitRuntimeReady(string caseId, float timeout,
             string expectedScene = null, bool isFinalCleanup = false)
         {

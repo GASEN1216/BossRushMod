@@ -1,8 +1,9 @@
 // ============================================================================
 // SkyIslandWorldStoryServices.cs - 居民服务按钮与「航务委托」子页的挂法
 // ============================================================================
-// 从 SkyIslandWorldStory.cs 拆出来单独放（主文件有 1200 行预算）：主文件的 ReadPoint / OpenResidentPanel
+// 从 SkyIslandWorldStory.cs 拆出来单独放（主文件有 1200 行预算）：主文件的 ReadPoint / ResidentChoices
 // 只各多一句调用，派单本身（BountyChoices）与服务回话（Repair / Heal / Meal）仍在主文件。
+// 手记与合成台两个入口（JournalChoice / CraftChoice）2026-09-15 原样搬来：主文件拆出 ResidentChoices 供对话判断「有没有事可办」要腾行数。
 //
 // 2026-09-14 UI 优化对照审核 F-06 与拍板 O-3（照主流游戏的商店 / 服务口径）：
 // - 付费服务：没有要做的（装备都结实、没受伤）不挂；钱不够、还在冷却照挂，按钮上写价钱或还要等几秒——
@@ -135,6 +136,33 @@ namespace BossRush
             return contract.HasActive
                 ? L10n.T("手上这一单：", "Current contract: ") + contract.Describe() + "\n" + rounds
                 : rounds;
+        }
+
+        /// <summary>「翻阅群岛手记」：苇白与码头装置各挂一份，打开的是同一本（只读存档，不写任何东西）。</summary>
+        private void JournalChoice(List<SkyIslandStoryPresentation.Choice> choices)
+        {
+            choices.Add(new SkyIslandStoryPresentation.Choice(L10n.T("翻阅群岛手记", "Open the archipelago journal"), delegate
+            {
+                OpenJournal();
+                // 回调的返回值会写进（新开的）面板正文：返回导语，与手记首页自己的正文一致。
+                return SkyIslandJournal.Brief(story.Current);
+            }));
+        }
+
+        /// <summary>
+        /// 「打开合成台」。居民与兜底装置各挂一份：渡口工台 = 浮舟 / 码头装置，灶台 = 晴禾 / 菜畦，药臼 = 眠苔 / 悬根林见闻点。
+        /// 居民婚后离岛（晴禾）或生成失败时，配方照样可用。
+        /// </summary>
+        private void CraftChoice(List<SkyIslandStoryPresentation.Choice> choices, SkyIslandCraftStation station)
+        {
+            choices.Add(new SkyIslandStoryPresentation.Choice(SkyIslandFieldcraftRules.StationChoice(station), delegate
+            {
+                if (fieldcraft == null)
+                    return L10n.T("工具还没摆开，等群岛就绪再来。", "The tools are not laid out yet — come back once the isles are ready.");
+                OpenCrafting(station);
+                // 返回 null：新开的合成面板自己的正文保持不动（见 SkyIslandStoryPresentation.BuildChoice）。
+                return null;
+            }));
         }
     }
 }

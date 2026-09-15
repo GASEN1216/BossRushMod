@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Generic;
 using Duckov.MiniMaps;
+using SodaCraft.Localizations;
 using UnityEngine;
 
 namespace BossRush
@@ -31,6 +32,7 @@ namespace BossRush
         private readonly List<GameObject> spawned = new List<GameObject>();
         private int appliedFlags = int.MinValue;
         private int appliedExits = -1;
+        private SystemLanguage appliedLanguage;
         private bool disposed;
 
         internal SkyIslandMapMarkers(Transform root, Action<string, bool> notify)
@@ -43,11 +45,14 @@ namespace BossRush
         {
             if (disposed || root == null) return;
             int exits = (bell != null ? 1 : 0) | (wind != null ? 2 : 0) | (star != null ? 4 : 0);
-            if (data.flags == appliedFlags && exits == appliedExits) return;
+            // 标签是按当前语言注入的覆盖文本（见 Add）：换了语言也整体重建一次，地图上的字才跟着换。
+            SystemLanguage language = LocalizationManager.CurrentLanguage;
+            if (data.flags == appliedFlags && exits == appliedExits && language == appliedLanguage) return;
             // 进岛时已经开着的出口不提示；只有这一趟里新点亮的才提示一次。
             int opened = appliedExits < 0 ? 0 : exits & ~appliedExits;
             appliedFlags = data.flags;
             appliedExits = exits;
+            appliedLanguage = language;
             Clear();
             Add(dock, L10n.T("码头撤离点", "Dock extraction"), BossRushUIColors.Accent, 0f);
             Add(bell, L10n.T("归航钟庭撤离点", "Bell Court extraction"), BossRushUIColors.SuccessText, 0f);
@@ -118,7 +123,11 @@ namespace BossRush
                 poi.ScaleFactor = areaRadius > 0f ? 1f : 1.4f;
                 poi.IsArea = areaRadius > 0f;
                 poi.AreaRadius = areaRadius;
-                poi.Setup(null, label);
+                // 官方 SimplePointOfInterest.DisplayName 把 displayName 当本地化键去查（ToPlainText），查不到就显示「*键*」：
+                // 直接传成品文字，地图上天空岛的标签全带星号（2026-09-15 第五轮截图）。按标记注册一条覆盖文本，再把键交给它。
+                string key = "BossRush_SkyIslandMap_" + spawned.Count;
+                LocalizationHelper.InjectLocalization(key, label);
+                poi.Setup(null, key);
                 spawned.Add(go);
             }
             catch (Exception e)

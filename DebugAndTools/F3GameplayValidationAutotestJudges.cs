@@ -136,12 +136,12 @@ namespace BossRush
         /// <summary>动作动词。游戏侧分派（F3GameplayValidationAutotestActions.cs）与步骤表守卫都只认这一份。</summary>
         internal static readonly string[] ActionVerbs =
         {
-            "teleport", "wait_real", "interact", "wait_panel", "wait_dialogue", "dialogue_advance", "dialogue_choose",
+            "teleport", "wait_real", "interact", "wait_panel", "wait_dialogue", "wait_dialogue_typed", "dialogue_advance", "dialogue_choose",
             "choose", "choose_label", "hover", "close_panel", "clear_nearby", "kill_nearby", "wait_quiet", "invincible",
             "night", "give", "give_if_missing", "use_buff", "use_item", "use_compass", "set_health", "spawn_gnats", "echo_hurt",
             "wait_object", "wait_alpha", "caption", "wait_caption", "frame", "loot", "puzzle_solve", "open_map", "close_view",
             "click_close", "open_modeg_confirm", "close_modeg_confirm", "reachability", "encounter_cap", "wait_boss", "boss_hurt",
-            "shot", "burst", "assert",
+            "teleport_view", "ring_replay", "shot", "burst", "assert",
         };
 
         /// <summary>
@@ -158,7 +158,7 @@ namespace BossRush
         internal static readonly string[] AssertNames =
         {
             "panel_open", "panel_closed", "choice_present", "choice_absent", "choice_count_le", "body_contains", "body_absent",
-            "dialogue_active", "dialogue_inactive", "objective_contains", "caption_contains", "case", "object_present",
+            "dialogue_active", "dialogue_inactive", "dialogue_line_contains", "objective_contains", "caption_contains", "case", "object_present",
             "object_absent", "pack_count_ge", "pack_delta", "pack_delta_ge", "crate_has", "crate_has_any", "flag", "no_flag", "note",
             "alpha_le", "killed_ge", "near",
             "stage_data", "contrast_min", "row_contrast_min", "overflow_none", "visible_min", "profile_ok", "quiet",
@@ -731,14 +731,7 @@ namespace BossRush
                 return "SKIP";
             }
             double background = Median(ringY);
-            var distance = new double[inside];
-            var order = new int[inside];
-            for (int i = 0; i < inside; i++) { distance[i] = -Math.Abs(insideY[i] - background); order[i] = i; }
-            Array.Sort(distance, order);
-            int take = Math.Max(4, (int)Math.Ceiling(inside * 0.12));
-            double sum = 0.0;
-            for (int i = 0; i < take; i++) sum += insideY[order[i]];
-            double text = sum / take;
+            double text = MeanOfFarthest(insideY, background, 0.12);
             measured = ContrastRatio(text, background);
             double declared = double.IsNaN(declaredY) ? double.NaN : ContrastRatio(declaredY, background);
             metrics = "bg_Y=" + F(background) + ",text_Y=" + F(text) + ",measured=" + F(measured)
@@ -748,16 +741,90 @@ namespace BossRush
             return "PASS";
         }
 
+        /// <summary>投影框至少要有这么大一块落在截图里才判：大半在画面外是拍法问题（第五轮 A2 11 m 两张只剩上沿一条）。</summary>
+        internal const double WorldProbeMinOnScreen = 0.5;
+        /// <summary>投影框长边不到这么多像素不判：810×540 下云蚋投影框 17–28 px、虫子本身只有 3–5 px，量出来的是地面花纹（第六轮 28 px 那张量成 0.03）。</summary>
+        internal const double WorldProbeMinPixels = 32.0;
+        /// <summary>
+        /// 采集光斑的色度偏移达到它也算看得见：白天暖色光斑压在砂岩与花丛上主要靠色相。第五轮实测（线性 RGB 色度坐标）：
+        /// A1 11 m 肉眼可见而亮度 Weber 只有 0.004、色度 0.18；有光斑的四张 0.18–0.51，同图挪到空地的对照 ≤ 0.08。
+        /// </summary>
+        internal const double GlowMinChromaShift = 0.12;
+
+        /// <summary>亮度 Weber 达标，或（给了色度门槛时）色度偏移达标，都算看得见。截图判据与 visible_min 断言共用这一条。</summary>
+        internal static bool VisibilityMet(double weber, double minWeber, double chromaShift, double minChroma)
+        {
+            if (weber + 1e-9 >= minWeber) return true;
+            return !double.IsNaN(chromaShift) && !double.IsNaN(minChroma) && chromaShift + 1e-9 >= minChroma;
+        }
+
+        /// <summary>
+        /// 物体相对邻域的色度偏移：线性 RGB 换成 r/(r+g+b) 一类色度坐标，邻域逐通道取中位数作参照，物体里离参照最远的前 15%（至少 4 个）求平均距离。
+        /// 口径同亮度的「前 15%」：光斑只占投影框一小块，整块平均会被地面稀释。<paramref name="objectRgb"/> 与 <paramref name="neighborRgb"/> 是 r,g,b 连排；样本不够返回 NaN。
+        /// </summary>
+        internal static double ChromaShift(double[] objectRgb, double[] neighborRgb)
+        {
+            int objects = objectRgb == null ? 0 : objectRgb.Length / 3, neighbors = neighborRgb == null ? 0 : neighborRgb.Length / 3;
+            if (objects < 4 || neighbors < 8) return double.NaN;
+            var nr = new double[neighbors];
+            var ng = new double[neighbors];
+            var nb = new double[neighbors];
+            for (int i = 0; i < neighbors; i++)
+            {
+                double sum = neighborRgb[i * 3] + neighborRgb[i * 3 + 1] + neighborRgb[i * 3 + 2] + 0.03;
+                nr[i] = neighborRgb[i * 3] / sum;
+                ng[i] = neighborRgb[i * 3 + 1] / sum;
+                nb[i] = neighborRgb[i * 3 + 2] / sum;
+            }
+            double cr = Median(nr), cg = Median(ng), cb = Median(nb);
+            var distance = new double[objects];
+            for (int i = 0; i < objects; i++)
+            {
+                double sum = objectRgb[i * 3] + objectRgb[i * 3 + 1] + objectRgb[i * 3 + 2] + 0.03;
+                double dr = objectRgb[i * 3] / sum - cr, dg = objectRgb[i * 3 + 1] / sum - cg, db = objectRgb[i * 3 + 2] / sum - cb;
+                distance[i] = Math.Sqrt(dr * dr + dg * dg + db * db);
+            }
+            return MeanOfFarthest(distance, 0.0, 0.15);
+        }
+
+        /// <summary>
+        /// <paramref name="values"/> 里离 <paramref name="reference"/> 最远的前 <paramref name="share"/>（至少 4 个）求平均：
+        /// 字形、地面圆环、光斑、云蚋在取样框里只占一小块，整块取平均会被背景稀释。文字对比度、世界可见度、色度偏移共用。
+        /// </summary>
+        private static double MeanOfFarthest(double[] values, double reference, double share)
+        {
+            var distance = new double[values.Length];
+            var order = new int[values.Length];
+            for (int i = 0; i < values.Length; i++) { distance[i] = -Math.Abs(values[i] - reference); order[i] = i; }
+            Array.Sort(distance, order);
+            int take = Math.Min(values.Length, Math.Max(4, (int)Math.Ceiling(values.Length * share)));
+            double sum = 0.0;
+            for (int i = 0; i < take; i++) sum += values[order[i]];
+            return sum / take;
+        }
+
         /// <summary>
         /// 世界物体在屏幕上的可见度：物体投影矩形内的平均亮度与外扩邻域平均亮度之比，按 Weber 口径 |Lo−Ln| / (Ln + 0.05)，
         /// 同时给 WCAG 比值作参考。物体不在屏幕里（样本太少）记 SKIP。数值只能说明「和周围亮度差多少」，好不好认仍要看截图。
         /// </summary>
+        /// <param name="onScreenFraction">投影框落在截图里的面积占比。</param>
+        /// <param name="targetPixels">投影框长边的像素数。</param>
+        /// <param name="chromaShift">物体相对邻域的色度偏移（<see cref="ChromaShift"/>）；NaN 表示不看色度。</param>
+        /// <param name="minChroma">色度门槛（光斑一类靠色相的目标）；NaN 表示只看亮度。</param>
         internal static string JudgeWorldVisibility(double[] objectY, double[] neighborY, double minWeber,
+            double onScreenFraction, double targetPixels, double chromaShift, double minChroma,
             out double weber, out string metrics, out string reason)
         {
             weber = 0.0;
             reason = null;
             int objects = objectY == null ? 0 : objectY.Length, neighbors = neighborY == null ? 0 : neighborY.Length;
+            string frame = ",on_screen=" + F(onScreenFraction) + ",target_px=" + F(targetPixels);
+            if (onScreenFraction < WorldProbeMinOnScreen || targetPixels < WorldProbeMinPixels)
+            {
+                metrics = "object_samples=" + objects + ",neighbor_samples=" + neighbors + frame;
+                reason = onScreenFraction < WorldProbeMinOnScreen ? "target_mostly_off_screen" : "target_too_small_on_screen";
+                return "SKIP";
+            }
             if (objects < 4 || neighbors < 8)
             {
                 metrics = "object_samples=" + objects + ",neighbor_samples=" + neighbors;
@@ -766,18 +833,12 @@ namespace BossRush
             }
             double n = Median(neighborY);
             // 物体像素里离邻域最远的那一截（前 15%，至少 4 个）：地面圆环、光斑、云蚋在投影矩形里只占一小部分，整块取平均会被地面稀释。
-            var distance = new double[objects];
-            var order = new int[objects];
-            for (int i = 0; i < objects; i++) { distance[i] = -Math.Abs(objectY[i] - n); order[i] = i; }
-            Array.Sort(distance, order);
-            int take = Math.Min(objects, Math.Max(4, (int)Math.Ceiling(objects * 0.15)));
-            double sum = 0.0;
-            for (int i = 0; i < take; i++) sum += objectY[order[i]];
-            double o = sum / take;
+            double o = MeanOfFarthest(objectY, n, 0.15);
             weber = Math.Abs(o - n) / (n + 0.05);
             metrics = "object_Y=" + F(o) + ",neighbor_Y=" + F(n) + ",weber=" + F(weber) + ",wcag=" + F(ContrastRatio(o, n))
-                + ",min_weber=" + F(minWeber) + ",object_samples=" + objects + ",neighbor_samples=" + neighbors;
-            if (weber + 1e-9 < minWeber) { reason = "visibility_below_min"; return "FAIL"; }
+                + ",min_weber=" + F(minWeber) + ",object_samples=" + objects + ",neighbor_samples=" + neighbors + frame
+                + (double.IsNaN(chromaShift) ? string.Empty : ",chroma=" + F(chromaShift) + ",min_chroma=" + F(minChroma));
+            if (!VisibilityMet(weber, minWeber, chromaShift, minChroma)) { reason = "visibility_below_min"; return "FAIL"; }
             return "PASS";
         }
 
@@ -823,17 +884,22 @@ namespace BossRush
         /// <summary>
         /// 文字溢出：画到框外的（overflowMode 为 Overflow 而且内容超框）判红；被省略号截断的只列出来，不判红——
         /// 省略号是版式最后一道兜底（清单 2.8.12 / 2.8.14 明文接受），截断得多不多交给 AI 看截图。
+        /// 例外 <paramref name="truncatedEarly"/>：设计上有行数余量、却没排满就被截断的（字幕封顶两行，只排出一行就省略号），
+        /// 说明框高算小了，判红（2026-09-15 第五轮 7 条长字幕只剩一行，一直自动绿）。
         /// </summary>
-        internal static string JudgeTextOverflow(IList<string> overflowing, IList<string> truncated, int inspected,
+        internal static string JudgeTextOverflow(IList<string> overflowing, IList<string> truncated, IList<string> truncatedEarly, int inspected,
             out string metrics, out string reason)
         {
             reason = null;
             metrics = "inspected=" + inspected + ",overflowing=" + (overflowing == null ? 0 : overflowing.Count)
                 + ",truncated=" + (truncated == null ? 0 : truncated.Count)
+                + ",truncated_early=" + (truncatedEarly == null ? 0 : truncatedEarly.Count)
                 + (overflowing != null && overflowing.Count > 0 ? ",overflow_list=" + Join(overflowing, 8) : string.Empty)
-                + (truncated != null && truncated.Count > 0 ? ",truncated_list=" + Join(truncated, 8) : string.Empty);
+                + (truncated != null && truncated.Count > 0 ? ",truncated_list=" + Join(truncated, 8) : string.Empty)
+                + (truncatedEarly != null && truncatedEarly.Count > 0 ? ",truncated_early_list=" + Join(truncatedEarly, 8) : string.Empty);
             if (inspected == 0) { reason = "no_visible_text"; return "SKIP"; }
             if (overflowing != null && overflowing.Count > 0) { reason = "text_draws_outside_its_box"; return "FAIL"; }
+            if (truncatedEarly != null && truncatedEarly.Count > 0) { reason = "text_truncated_before_its_line_budget"; return "FAIL"; }
             return "PASS";
         }
 

@@ -32,6 +32,8 @@ namespace BossRush
         {
             internal string Result, Reason, Metrics;
             internal double Value;
+            // 备选口径（采集光斑的色度偏移）：Value 没到门槛、Alt 到了 AltMin 也算过（F3AutotestJudges.VisibilityMet）。
+            internal double Alt = double.NaN, AltMin = double.NaN;
         }
 
         private sealed class AutotestShotAnalysis
@@ -48,6 +50,8 @@ namespace BossRush
             internal string Requested, Path;
             internal Rect Screen;
             internal Color Declared;
+            // 字直接坐在一块底板上（父物体的 Image，例如 ESC 键帽）时底板的屏幕矩形；没有就是空矩形。
+            internal Rect Plate;
         }
 
         private struct AutotestWorldProbe
@@ -62,6 +66,12 @@ namespace BossRush
 
         /// <summary>环带相对邻域朝环的颜色至少偏这么多（线性 RGB）才算这一段看得见。</summary>
         private const double AutotestRingMinShift = 0.02;
+
+        /// <summary>
+        /// 文字取色的字形框面积下限（px²）。再小，抗锯齿边就占满了字形：810×540 下 ESC 键帽只有 10×8 px，
+        /// 第六轮同一个键帽在信鸽 / 码头面板量成 1.2–1.3、倒挂邮亭量成 6.0。低于它记 SKIP，1920×1080 下键帽约 24×19 px 照常量。
+        /// </summary>
+        private const float AutotestTextMinArea = 150f;
 
         /// <summary>截图前必须不在屏幕上的调试浮层根物体（F3 菜单、NPC 传送面板）。</summary>
         private static readonly string[] AutotestOverlayRoots = { "F3DebugCheatMenu", "NPCTeleportUI" };
@@ -108,7 +118,8 @@ namespace BossRush
             var texts = new List<AutotestTextProbe>();
             var overflowing = new List<string>();
             var truncated = new List<string>();
-            int inspected = CollectAutotestTextProbes(canvasFilter, contrastPaths, texts, overflowing, truncated);
+            var truncatedEarly = new List<string>();
+            int inspected = CollectAutotestTextProbes(canvasFilter, contrastPaths, texts, overflowing, truncated, truncatedEarly);
             List<AutotestWorldProbe> worlds = CollectAutotestWorldProbes(worldTargets);
             List<Rect> rows = CollectAutotestRowRects();
 
@@ -122,6 +133,8 @@ namespace BossRush
                 yield break;
             }
             Texture2D texture = null, half = null;
+            // 这一张在本步里的时刻：连拍判「0.15 秒提亮、0.5 秒内落回」这类时长要用（第五轮 manifest 没有逐张时间）。
+            long atMs = AutotestStepElapsedMs(record);
             try
             {
                 texture = ScreenCapture.CaptureScreenshotAsTexture();
@@ -129,7 +142,7 @@ namespace BossRush
                 var analysis = new AutotestShotAnalysis { Width = texture.width, Height = texture.height };
                 AnalyzeAutotestText(pixels, analysis, texts, contrastPaths);
                 string overflowMetrics, overflowReason;
-                string overflowResult = F3AutotestJudges.JudgeTextOverflow(overflowing, truncated, inspected, out overflowMetrics, out overflowReason);
+                string overflowResult = F3AutotestJudges.JudgeTextOverflow(overflowing, truncated, truncatedEarly, inspected, out overflowMetrics, out overflowReason);
                 analysis.Overflow = new AutotestMeasure { Result = overflowResult, Reason = overflowReason, Metrics = overflowMetrics };
                 AnalyzeAutotestWorld(pixels, analysis, worlds, worldTargets);
                 foreach (Rect row in rows) analysis.RowLuminance.Add(MeanAutotestLuminance(pixels, analysis.Width, analysis.Height, AutotestRowStrip(row)));
@@ -156,7 +169,7 @@ namespace BossRush
                     if (encoding == "jpg_half" || (encoding == "jpg" && shot.Kind == "ui")) _autotest.Info.ShotsDegraded++;
                 }
                 else _autotest.Info.ShotsSkipped++;
-                shot.Metrics = "size=" + analysis.Width + "x" + analysis.Height + ",texts=" + inspected + ",contrast_probes=" + analysis.Contrast.Count
+                shot.Metrics = "size=" + analysis.Width + "x" + analysis.Height + ",at_ms=" + atMs + ",texts=" + inspected + ",contrast_probes=" + analysis.Contrast.Count
                     + ",world_probes=" + analysis.Visibility.Count + ",rows=" + analysis.RowLuminance.Count + ",overflow=" + overflowResult;
             }
             catch (Exception e)
@@ -174,7 +187,7 @@ namespace BossRush
         #region 文字
 
         private static int CollectAutotestTextProbes(string canvasFilter, List<string> requested, List<AutotestTextProbe> probes,
-            List<string> overflowing, List<string> truncated)
+            List<string> overflowing, List<string> truncated, List<string> truncatedEarly)
         {
             string[] roots = string.IsNullOrEmpty(canvasFilter) ? new[] { "SkyIslandHud", "SkyIslandStory" } : canvasFilter.Split('+');
             Transform officialDialogue = Dialogues.DialogueUI.instance != null ? Dialogues.DialogueUI.instance.transform : null;
@@ -202,7 +215,13 @@ namespace BossRush
                         if (outside && officialDialogue != null && text.transform.IsChildOf(officialDialogue)) truncated.Add(path);
                         else if (outside) overflowing.Add(path);
                     }
-                    else if (text.isTextTruncated || text.isTextOverflowing) truncated.Add(path);
+                    else if (text.isTextTruncated || text.isTextOverflowing)
+                    {
+                        truncated.Add(path);
+                        // 字幕设计上封顶两行再省略号收尾；只排出一行就被截断，是框高算小了（第五轮 7 条长字幕只剩一行、一直自动绿）。
+                        if (path.IndexOf("SkyIslandCaption/", StringComparison.Ordinal) >= 0 && text.textInfo != null && text.textInfo.lineCount < 2)
+                            truncatedEarly.Add(path);
+                    }
                 }
                 catch (Exception) { }
                 if (requested == null) continue;
@@ -219,10 +238,35 @@ namespace BossRush
                     if (already || !TryAutotestTextRect(text, root, part, out screen)) continue;
                     Color declared = text.color;
                     declared.a = alpha;
-                    probes.Add(new AutotestTextProbe { Requested = want, Path = path, Screen = screen, Declared = declared });
+                    probes.Add(new AutotestTextProbe { Requested = want, Path = path, Screen = screen, Declared = declared, Plate = AutotestTextPlate(text, root, screen) });
                 }
             }
             return inspected;
+        }
+
+        /// <summary>字直接坐在一块底板（父物体上启用的 Image）上、且字的中心落在底板里时，返回底板的屏幕矩形；否则空矩形。</summary>
+        private static Rect AutotestTextPlate(TMP_Text text, Canvas root, Rect textRect)
+        {
+            Transform parent = text.transform.parent;
+            Image plate = parent != null ? parent.GetComponent<Image>() : null;
+            if (plate == null || !plate.enabled) return default(Rect);
+            Camera camera = root.renderMode == RenderMode.ScreenSpaceOverlay ? null : root.worldCamera;
+            var corners = new Vector3[4];
+            plate.rectTransform.GetWorldCorners(corners);
+            Vector2 a = RectTransformUtility.WorldToScreenPoint(camera, corners[0]);
+            Vector2 b = RectTransformUtility.WorldToScreenPoint(camera, corners[2]);
+            Rect rect = Rect.MinMaxRect(Mathf.Min(a.x, b.x), Mathf.Min(a.y, b.y), Mathf.Max(a.x, b.x), Mathf.Max(a.y, b.y));
+            return rect.Contains(textRect.center) ? rect : default(Rect);
+        }
+
+        /// <summary>
+        /// 剧情面板把「名称 + 计数」包进 TMP 的 &lt;nobr&gt;（SkyIslandStoryPresentation.KeepCountsTogether，2026-09-15 第五轮 D8）。
+        /// 步骤表按玩家看到的字写，面板文字先剥标签再匹配（AutotestRowLabel / AutotestPanelBody）。
+        /// 不用 GetParsedText：选项标签是省略号溢出，被截掉的尾巴会丢，而且要等网格生成。放在这里而不放动作文件：那份有 1200 行预算。
+        /// </summary>
+        private static string AutotestPlainText(string value)
+        {
+            return string.IsNullOrEmpty(value) ? value : value.Replace("<nobr>", string.Empty).Replace("</nobr>", string.Empty);
         }
 
         private static bool TryAutotestTextRect(TMP_Text text, Canvas root, string part, out Rect screen)
@@ -273,9 +317,21 @@ namespace BossRush
             foreach (AutotestTextProbe probe in probes)
             {
                 Rect inner = probe.Screen;
+                if (inner.width * inner.height < AutotestTextMinArea)
+                {
+                    analysis.Contrast[probe.Requested] = new AutotestMeasure
+                    {
+                        Result = "SKIP", Reason = "text_too_small_on_screen",
+                        Metrics = "path=" + probe.Path + ",rect=" + AutotestRectText(inner) + ",min_area=" + AutotestTextMinArea.ToString("F0", CultureInfo.InvariantCulture)
+                    };
+                    continue;
+                }
                 float pad = Mathf.Clamp(Mathf.Min(inner.width, inner.height) * 0.35f, 4f, 14f);
                 double[] inside = SampleAutotestY(pixels, analysis.Width, analysis.Height, inner, default(Rect), 2400);
                 Rect outer = AutotestExpand(inner, 2f + pad);
+                // 字坐在小底板上（ESC 键帽在 810×540 下只有 18×10 px）时外圈不能出底板：第五轮外圈上下落到主视觉插画上，
+                // 量成了字对插画（倒挂邮亭 3.75 假红；只取底板内像素是 9.9:1）。
+                if (probe.Plate.width > 0f) outer = AutotestIntersect(outer, probe.Plate);
                 double[] ring = SampleAutotestY(pixels, analysis.Width, analysis.Height, outer, AutotestExpand(inner, 2f), 1200);
                 double bgR, bgG, bgB;
                 MeanAutotestLinearRgb(pixels, analysis.Width, analysis.Height, outer, AutotestExpand(inner, 2f), out bgR, out bgG, out bgB);
@@ -406,7 +462,8 @@ namespace BossRush
             Bounds bounds = default(Bounds);
             foreach (Renderer renderer in target.GetComponentsInChildren<Renderer>(false))
             {
-                if (renderer == null || !renderer.enabled) continue;
+                // 拖尾不算物体本身：云蚋的 TrailRenderer 把投影框撑大，框里大半是地面。
+                if (renderer == null || !renderer.enabled || renderer is TrailRenderer) continue;
                 if (!any) { bounds = renderer.bounds; any = true; }
                 else bounds.Encapsulate(renderer.bounds);
             }
@@ -444,12 +501,23 @@ namespace BossRush
                 float pad = Mathf.Max(10f, Mathf.Max(inner.width, inner.height) * 0.5f);
                 double[] objectY = SampleAutotestY(pixels, analysis.Width, analysis.Height, inner, default(Rect), 3000);
                 double[] neighborY = SampleAutotestY(pixels, analysis.Width, analysis.Height, AutotestExpand(inner, pad), AutotestExpand(inner, 2f), 3000);
+                Rect visible = AutotestIntersect(inner, new Rect(0f, 0f, analysis.Width, analysis.Height));
+                double onScreen = inner.width * inner.height <= 0f ? 0.0 : (double)(visible.width * visible.height) / (inner.width * inner.height);
+                double chroma = double.NaN, minChroma = double.NaN;
+                if (probe.Target == "gather_glow")
+                {
+                    // 白天暖色光斑压在砂岩与花丛上主要靠色相（第五轮 A1 11 m 肉眼可见、亮度差只有 0.004）。
+                    chroma = F3AutotestJudges.ChromaShift(SampleAutotestRgb(pixels, analysis.Width, analysis.Height, inner, default(Rect), 3000),
+                        SampleAutotestRgb(pixels, analysis.Width, analysis.Height, AutotestExpand(inner, pad), AutotestExpand(inner, 2f), 3000));
+                    minChroma = F3AutotestJudges.GlowMinChromaShift;
+                }
                 double weber;
                 string metrics, reason;
-                string result = F3AutotestJudges.JudgeWorldVisibility(objectY, neighborY, 0.0, out weber, out metrics, out reason);
+                string result = F3AutotestJudges.JudgeWorldVisibility(objectY, neighborY, 0.0, onScreen, Mathf.Max(inner.width, inner.height),
+                    chroma, minChroma, out weber, out metrics, out reason);
                 analysis.Visibility[probe.Target] = new AutotestMeasure
                 {
-                    Result = result, Reason = reason, Value = weber,
+                    Result = result, Reason = reason, Value = weber, Alt = chroma, AltMin = minChroma,
                     Metrics = "object=" + probe.Name + ",rect=" + AutotestRectText(inner) + "," + metrics
                 };
             }
@@ -558,11 +626,160 @@ namespace BossRush
 
         #endregion
 
+        #region 取景
+
+        /// <summary>
+        /// 取景瞬移 <c>teleport_view:目标:右:上[:等待]</c>：让目标落在画面中心右 <c>右</c> 米、上 <c>上</c> 米处（沿相机水平朝向算），
+        /// 再走生产的 <see cref="SkyIslandSession.DevAutotestTeleport"/>。按标记写死的世界偏移会因为相机朝向与采集点换位出画
+        /// （第五轮 A2 两张 11 m 截图光斑在画面上沿外）。目标可以是标记，也可以是建好的采集点 <c>SkyIslandGather_A2</c>。
+        /// </summary>
+        private IEnumerator AutotestTeleportView(F3AutotestStepRecord record, string[] args)
+        {
+            string target = Arg(args, 0);
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            if (session == null) { AutotestFail(record, "action:teleport_view", "no_island_session", target, true); yield break; }
+            Camera camera = GameCamera.Instance != null ? GameCamera.Instance.renderCamera : Camera.main;
+            Vector3 right = camera != null ? camera.transform.right : Vector3.zero;
+            Vector3 up = camera != null ? camera.transform.forward : Vector3.zero;
+            right.y = 0f;
+            up.y = 0f;
+            if (right.sqrMagnitude < 1e-4f || up.sqrMagnitude < 1e-4f) { AutotestFail(record, "action:teleport_view", "no_camera_heading", target, true); yield break; }
+            right.Normalize();
+            up.Normalize();
+            Vector3 offset = -(right * ArgFloat(args, 1, 0f) + up * ArgFloat(args, 2, 0f));
+            CloseAutotestPanels();
+            string reason;
+            if (!session.DevAutotestTeleport(session.DevAutotestFind(target), offset.x, offset.z, out reason))
+            {
+                AutotestFail(record, "action:teleport_view", reason, target, true);
+                yield break;
+            }
+            record.Notes.Add("teleport_view=" + target + ",offset=" + offset.x.ToString("F1", CultureInfo.InvariantCulture)
+                + "," + offset.z.ToString("F1", CultureInfo.InvariantCulture));
+            yield return WaitAutotestReal(ArgFloat(args, 3, 1.5f));
+        }
+
+        /// <summary>
+        /// 重播撤离环的展开 <c>ring_replay:环物体名</c>：环停用再启用，<see cref="SkyIslandGroundRingPulse"/> 的 OnEnable 把动画计时清零，
+        /// 接着连拍就截得到 0.35 秒的展开（阶段推进那一刻玩家不在广场，第五轮截不到）。只动表现层，判定不看它。
+        /// </summary>
+        private void AutotestRingReplay(F3AutotestStepRecord record, string[] args)
+        {
+            string name = Arg(args, 0);
+            GameObject ring = GameObject.Find(name);
+            SkyIslandGroundRingPulse pulse = ring != null ? ring.GetComponentInChildren<SkyIslandGroundRingPulse>(false) : null;
+            if (pulse == null) { AutotestFail(record, "action:ring_replay", "ring_not_found", name, true); return; }
+            pulse.gameObject.SetActive(false);
+            pulse.gameObject.SetActive(true);
+            record.Notes.Add("ring_replay=" + name);
+        }
+
+        /// <summary>
+        /// <c>wait_dialogue_typed:秒</c>：等官方对话「这一句已完整显示、在等确认」或「选项已淡入、在等玩家选」，再多等一帧让这个状态渲染出来——
+        /// 截图的文字探针在 WaitForEndOfFrame 之前取，状态在官方 UniTask 的回调里变。只等不点：第五轮截图截在逐字显示中途，
+        /// 单次推进又只把这句补完、不翻页，相邻两张截的是同一句。探测字段取不到时退回读 TMP：可见字数到齐，且不是进入等待时就停在那里的旧句。
+        /// 依赖：前一条 dialogue_advance 点完固定等 0.45 秒，官方下一帧就把 ▼ 置回失活，这里读不到上一句的旧状态。
+        /// </summary>
+        private IEnumerator AutotestWaitDialogueTyped(F3AutotestStepRecord record, float seconds)
+        {
+            float started = Time.realtimeSinceStartup;
+            float until = started + Mathf.Max(0.1f, seconds);
+            TMP_Text text = OfficialDialogueText();
+            string entryLine = text == null ? null : text.text;
+            bool entryTyped = AutotestTmpLineTyped(text);
+            string probe = "indicator";
+            bool met = false, choices = false;
+            while (Time.realtimeSinceStartup < until && !ShouldAbort())
+            {
+                if (!DialogueManager.IsDialogueActive) break;
+                if (OfficialDialogueWaitingForChoice() == true) { met = true; choices = true; break; }
+                bool? shown = OfficialDialogueLineShown();
+                if (shown == true) { met = true; break; }
+                if (shown == null)
+                {
+                    probe = "tmp_fallback";
+                    text = OfficialDialogueText();
+                    if (AutotestTmpLineTyped(text) && (!entryTyped || text.text != entryLine)) { met = true; break; }
+                }
+                yield return null;
+            }
+            if (met)
+            {
+                yield return null;
+                text = OfficialDialogueText();
+                record.Notes.Add("dialogue_typed=" + (choices ? "choices" : "line") + ",probe=" + probe
+                    + ",waited_ms=" + ((int)((Time.realtimeSinceStartup - started) * 1000f)).ToString(CultureInfo.InvariantCulture)
+                    + (choices || text == null ? string.Empty : ",line=" + AutotestShort(text.text, 60)));
+                yield break;
+            }
+            if (ShouldAbort()) yield break;
+            if (!DialogueManager.IsDialogueActive)
+            {
+                AutotestFail(record, "action:wait_dialogue_typed", "dialogue_not_active", DescribeAutotestDialogueUi(), true);
+                yield break;
+            }
+            if (probe == "tmp_fallback" && AutotestTmpLineTyped(text))
+            {
+                record.Notes.Add("dialogue_typed=line,probe=tmp_fallback_timeout");
+                yield break;
+            }
+            AutotestFail(record, "action:wait_dialogue_typed",
+                "timeout_" + seconds.ToString("F1", CultureInfo.InvariantCulture) + "s", DescribeAutotestDialogueUi(), true);
+        }
+
+        private static bool AutotestTmpLineTyped(TMP_Text text)
+        {
+            if (text == null || string.IsNullOrEmpty(text.text) || !text.gameObject.activeInHierarchy) return false;
+            int count = text.textInfo == null ? 0 : text.textInfo.characterCount;
+            return count > 0 && text.maxVisibleCharacters >= count;
+        }
+
+        /// <summary>这一步开始到现在的毫秒数；StartedUtc 解析不了时 -1。</summary>
+        private static long AutotestStepElapsedMs(F3AutotestStepRecord record)
+        {
+            DateTime started;
+            if (record == null || !DateTime.TryParse(record.StartedUtc, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out started)) return -1;
+            return (long)(DateTime.UtcNow - started.ToUniversalTime()).TotalMilliseconds;
+        }
+
+        #endregion
+
         #region 像素
 
         private static Rect AutotestExpand(Rect rect, float amount)
         {
             return Rect.MinMaxRect(rect.xMin - amount, rect.yMin - amount, rect.xMax + amount, rect.yMax + amount);
+        }
+
+        private static Rect AutotestIntersect(Rect a, Rect b)
+        {
+            float xMin = Mathf.Max(a.xMin, b.xMin), yMin = Mathf.Max(a.yMin, b.yMin);
+            float xMax = Mathf.Min(a.xMax, b.xMax), yMax = Mathf.Min(a.yMax, b.yMax);
+            return xMax <= xMin || yMax <= yMin ? default(Rect) : Rect.MinMaxRect(xMin, yMin, xMax, yMax);
+        }
+
+        /// <summary>取样步长同 <see cref="SampleAutotestY"/>，返回线性 RGB 连排（r,g,b,r,g,b…）。</summary>
+        private static double[] SampleAutotestRgb(Color32[] pixels, int width, int height, Rect rect, Rect exclude, int maxSamples)
+        {
+            int x0 = Mathf.Clamp(Mathf.FloorToInt(rect.xMin), 0, width), x1 = Mathf.Clamp(Mathf.CeilToInt(rect.xMax), 0, width);
+            int y0 = Mathf.Clamp(Mathf.FloorToInt(rect.yMin), 0, height), y1 = Mathf.Clamp(Mathf.CeilToInt(rect.yMax), 0, height);
+            if (x1 <= x0 || y1 <= y0) return new double[0];
+            int area = (x1 - x0) * (y1 - y0);
+            int stride = Math.Max(1, (int)Math.Ceiling(Math.Sqrt(area / (double)Math.Max(1, maxSamples))));
+            bool excluding = exclude.width > 0f && exclude.height > 0f;
+            var values = new List<double>(Math.Min(maxSamples + 64, area) * 3);
+            for (int y = y0; y < y1; y += stride)
+            {
+                for (int x = x0; x < x1; x += stride)
+                {
+                    if (excluding && x >= exclude.xMin && x < exclude.xMax && y >= exclude.yMin && y < exclude.yMax) continue;
+                    Color32 c = pixels[y * width + x];
+                    values.Add(AutotestLinear[c.r]);
+                    values.Add(AutotestLinear[c.g]);
+                    values.Add(AutotestLinear[c.b]);
+                }
+            }
+            return values.ToArray();
         }
 
         /// <summary>矩形内（可挖掉一块）按步长取相对亮度 Y；样本数封顶 <paramref name="maxSamples"/>。</summary>
