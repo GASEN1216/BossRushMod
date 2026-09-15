@@ -2,38 +2,38 @@
   "status": "PASS",
   "worldBoundsCenter": [
     0.0,
-    -5.729782,
+    -105.758621,
     0.0
   ],
   "worldBoundsSize": [
     12000.001,
-    308.54184,
+    468.4841,
     12000.0
   ],
-  "renderers": 686,
-  "visualTriangles": 1176955,
-  "materials": 43,
-  "cloudRenderers": 28,
-  "cloudTriangles": 109030,
+  "renderers": 721,
+  "visualTriangles": 1559387,
+  "materials": 99,
+  "cloudRenderers": 25,
+  "cloudTriangles": 90586,
   "cloudRendering": "Opaque depth-writing volumes; no raymarch, transparent stacks, realtime lights, or CPU animation",
-  "markers": 77,
+  "markers": 82,
   "groundMeshColliders": 27,
-  "wallBoxColliders": 88,
+  "wallBoxColliders": 146,
   "railMeshColliders": 1,
   "navigation": {
-    "vertices": 4037,
-    "triangles": 4215,
-    "areaM2": 213933.11785161076,
-    "connectedTriangles": 4215,
-    "maximumSlopeDegrees": 16.3138981,
+    "vertices": 3870,
+    "triangles": 4048,
+    "areaM2": 108029.01990571618,
+    "connectedTriangles": 4048,
+    "maximumSlopeDegrees": 15.4612741,
     "bounds": [
-      783.597351,
-      61.99994,
-      723.596252
+      653.595947,
+      25.9999714,
+      538.5928
     ]
   },
   "runtimeRootActive": false,
   "runtimeHasAuthorCamera": false,
   "groundVerification": "Imported collision mesh ray/triangle intersection; runtime Physics smoke remains separate",
-  "sourceFbxSHA256": "aaed0c64f2c3877dad29b63a69b88c1d3b343e5bf97a2c4599dffe4ff6d3b417"
+  "sourceFbxSHA256": "de36df8f87ebde6597f73ae4bad6c210113463f34381f50c3efa58d626abd58f"
 }

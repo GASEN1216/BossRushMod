@@ -291,9 +291,9 @@
     },
     "Sky_CloudFar": {
       "rgba": [
-        0.7607843137254902,
-        0.8156862745098039,
-        0.8470588235294118,
+        0.611764705882353,
+        0.7215686274509804,
+        0.7843137254901961,
         1.0
       ],
       "texture": null,
@@ -448,6 +448,36 @@
       ],
       "texture": null,
       "emission": 0
+    },
+    "Sky_GeologySand": {
+      "rgba": [
+        1.03,
+        1.11,
+        1.26,
+        1
+      ],
+      "texture": "Textures/geology_handpainted_native.png",
+      "emission": 0
+    },
+    "Sky_GeologyLight": {
+      "rgba": [
+        1.13,
+        1.18,
+        1.3,
+        1
+      ],
+      "texture": "Textures/geology_handpainted_native.png",
+      "emission": 0
+    },
+    "Sky_GeologyDeep": {
+      "rgba": [
+        0.82,
+        0.9,
+        1.04,
+        1
+      ],
+      "texture": "Textures/geology_handpainted_native.png",
+      "emission": 0
     }
   },
   "blend": "ArtSource/SkyIsland/SkyIsland_ModelKit.blend",
@@ -474,7 +504,7 @@
           16.119999885559082
         ]
       },
-      "triangles": 3874,
+      "triangles": 3698,
       "vertices": 2178,
       "meshCount": 16,
       "materials": [
@@ -525,7 +555,7 @@
         {
           "name": "VIS_SkyIsland_TeaHouse_Brass",
           "vertices": 232,
-          "triangles": 384,
+          "triangles": 368,
           "material": "Sky_Brass"
         },
         {
@@ -573,7 +603,7 @@
         {
           "name": "VIS_SkyIsland_TeaHouse_LeafLight",
           "vertices": 240,
-          "triangles": 384,
+          "triangles": 288,
           "material": "Sky_LeafLight"
         },
         {
@@ -597,11 +627,11 @@
         {
           "name": "VIS_SkyIsland_TeaHouse_Leaf",
           "vertices": 160,
-          "triangles": 256,
+          "triangles": 192,
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 123852
+      "bytes": 123580
     },
     {
       "name": "SkyIsland_House",
@@ -624,7 +654,7 @@
           12.862711499303707
         ]
       },
-      "triangles": 3626,
+      "triangles": 3450,
       "vertices": 2024,
       "meshCount": 14,
       "materials": [
@@ -697,7 +727,7 @@
         {
           "name": "VIS_SkyIsland_House_Brass",
           "vertices": 40,
-          "triangles": 64,
+          "triangles": 48,
           "material": "Sky_Brass"
         },
         {
@@ -715,7 +745,7 @@
         {
           "name": "VIS_SkyIsland_House_LeafLight",
           "vertices": 240,
-          "triangles": 384,
+          "triangles": 288,
           "material": "Sky_LeafLight"
         },
         {
@@ -733,11 +763,11 @@
         {
           "name": "VIS_SkyIsland_House_Leaf",
           "vertices": 160,
-          "triangles": 256,
+          "triangles": 192,
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 109676
+      "bytes": 109452
     },
     {
       "name": "SkyIsland_Lantern",
@@ -820,7 +850,7 @@
           1.3586362278007504
         ]
       },
-      "triangles": 336,
+      "triangles": 272,
       "vertices": 210,
       "meshCount": 2,
       "materials": [
@@ -846,11 +876,11 @@
         {
           "name": "VIS_SkyIsland_Planter_Leaf",
           "vertices": 160,
-          "triangles": 256,
+          "triangles": 192,
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 24060
+      "bytes": 23996
     },
     {
       "name": "SkyIsland_Bench",
@@ -993,7 +1023,7 @@
           0.9
         ]
       },
-      "triangles": 12676,
+      "triangles": 11716,
       "vertices": 6928,
       "meshCount": 5,
       "materials": [
@@ -1028,7 +1058,7 @@
         {
           "name": "VIS_SkyIsland_WindChime_Brass",
           "vertices": 1300,
-          "triangles": 2220,
+          "triangles": 2020,
           "material": "Sky_Brass"
         },
         {
@@ -1040,11 +1070,11 @@
         {
           "name": "VIS_SkyIsland_WindChime_BrassLight",
           "vertices": 5440,
-          "triangles": 10120,
+          "triangles": 9360,
           "material": "Sky_BrassLight"
         }
       ],
-      "bytes": 226172
+      "bytes": 224380
     },
     {
       "name": "SkyIsland_HomecomingBell",
@@ -1067,7 +1097,7 @@
           4.675
         ]
       },
-      "triangles": 3064,
+      "triangles": 2832,
       "vertices": 1680,
       "meshCount": 6,
       "materials": [
@@ -1109,7 +1139,7 @@
         {
           "name": "VIS_SkyIsland_HomecomingBell_Brass",
           "vertices": 408,
-          "triangles": 700,
+          "triangles": 620,
           "material": "Sky_Brass"
         },
         {
@@ -1121,11 +1151,11 @@
         {
           "name": "VIS_SkyIsland_HomecomingBell_BrassLight",
           "vertices": 1088,
-          "triangles": 2024,
+          "triangles": 1872,
           "material": "Sky_BrassLight"
         }
       ],
-      "bytes": 78748
+      "bytes": 78284
     },
     {
       "name": "SkyIsland_DuckStatue",
@@ -1148,7 +1178,7 @@
           2.8
         ]
       },
-      "triangles": 1200,
+      "triangles": 1048,
       "vertices": 678,
       "meshCount": 5,
       "materials": [
@@ -1171,25 +1201,25 @@
         {
           "name": "VIS_SkyIsland_DuckStatue_Limestone",
           "vertices": 172,
-          "triangles": 300,
+          "triangles": 260,
           "material": "Sky_Limestone"
         },
         {
           "name": "VIS_SkyIsland_DuckStatue_Ivory",
           "vertices": 252,
-          "triangles": 448,
+          "triangles": 392,
           "material": "Sky_Ivory"
         },
         {
           "name": "VIS_SkyIsland_DuckStatue_Brass",
           "vertices": 84,
-          "triangles": 144,
+          "triangles": 120,
           "material": "Sky_Brass"
         },
         {
           "name": "VIS_SkyIsland_DuckStatue_WoodDark",
           "vertices": 80,
-          "triangles": 128,
+          "triangles": 96,
           "material": "Sky_WoodDark"
         },
         {
@@ -1199,7 +1229,7 @@
           "material": "Sky_Teal"
         }
       ],
-      "bytes": 50396
+      "bytes": 49948
     },
     {
       "name": "SkyIsland_Tree",
@@ -1222,7 +1252,7 @@
           10.677918219034522
         ]
       },
-      "triangles": 596,
+      "triangles": 516,
       "vertices": 352,
       "meshCount": 3,
       "materials": [
@@ -1249,17 +1279,17 @@
         {
           "name": "VIS_SkyIsland_Tree_LeafLight",
           "vertices": 60,
-          "triangles": 100,
+          "triangles": 80,
           "material": "Sky_LeafLight"
         },
         {
           "name": "VIS_SkyIsland_Tree_Leaf",
           "vertices": 180,
-          "triangles": 300,
+          "triangles": 240,
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 33340
+      "bytes": 33276
     },
     {
       "name": "SkyIsland_produce_stall",
@@ -1282,7 +1312,7 @@
           3.1493043331418895
         ]
       },
-      "triangles": 5188,
+      "triangles": 5060,
       "vertices": 2977,
       "meshCount": 14,
       "materials": [
@@ -1362,7 +1392,7 @@
         {
           "name": "VIS_SkyIsland_produce_stall_LeafLight",
           "vertices": 208,
-          "triangles": 320,
+          "triangles": 256,
           "material": "Sky_LeafLight"
         },
         {
@@ -1386,7 +1416,7 @@
         {
           "name": "VIS_SkyIsland_produce_stall_Coral",
           "vertices": 192,
-          "triangles": 316,
+          "triangles": 252,
           "material": "Sky_Coral"
         },
         {
@@ -1396,7 +1426,7 @@
           "material": "Sky_PaintTealDeep"
         }
       ],
-      "bytes": 139404
+      "bytes": 139036
     },
     {
       "name": "SkyIsland_supply_handcart",
@@ -1521,7 +1551,7 @@
           4.472561359405518
         ]
       },
-      "triangles": 1564,
+      "triangles": 1544,
       "vertices": 888,
       "meshCount": 10,
       "materials": [
@@ -1591,7 +1621,7 @@
         {
           "name": "VIS_SkyIsland_camp_tent_Ivory",
           "vertices": 78,
-          "triangles": 128,
+          "triangles": 108,
           "material": "Sky_Ivory"
         },
         {
@@ -1607,7 +1637,7 @@
           "material": "Sky_WoodLight"
         }
       ],
-      "bytes": 71564
+      "bytes": 71468
     },
     {
       "name": "SkyIsland_tool_workbench",
@@ -1630,7 +1660,7 @@
           2.250658740328479
         ]
       },
-      "triangles": 2984,
+      "triangles": 2940,
       "vertices": 1660,
       "meshCount": 9,
       "materials": [
@@ -1675,7 +1705,7 @@
         {
           "name": "VIS_SkyIsland_tool_workbench_Brass",
           "vertices": 192,
-          "triangles": 304,
+          "triangles": 260,
           "material": "Sky_Brass"
         },
         {
@@ -1709,7 +1739,7 @@
           "material": "Sky_PaintTeal"
         }
       ],
-      "bytes": 93708
+      "bytes": 93564
     },
     {
       "name": "SkyIsland_rain_barrel",
@@ -1869,7 +1899,7 @@
           2.675000042915344
         ]
       },
-      "triangles": 1476,
+      "triangles": 1408,
       "vertices": 866,
       "meshCount": 13,
       "materials": [
@@ -1924,7 +1954,7 @@
         {
           "name": "VIS_SkyIsland_windmill_planter_Brass",
           "vertices": 76,
-          "triangles": 128,
+          "triangles": 108,
           "material": "Sky_Brass"
         },
         {
@@ -1954,7 +1984,7 @@
         {
           "name": "VIS_SkyIsland_windmill_planter_LeafLight",
           "vertices": 144,
-          "triangles": 224,
+          "triangles": 176,
           "material": "Sky_LeafLight"
         },
         {
@@ -1976,7 +2006,7 @@
           "material": "Sky_Copper"
         }
       ],
-      "bytes": 80508
+      "bytes": 80364
     },
     {
       "name": "SkyIsland_floatboat_cargo",
@@ -1999,7 +2029,7 @@
           4.0275185108184814
         ]
       },
-      "triangles": 3308,
+      "triangles": 3268,
       "vertices": 1811,
       "meshCount": 9,
       "materials": [
@@ -2038,7 +2068,7 @@
         {
           "name": "VIS_SkyIsland_floatboat_cargo_PaintTealDeep",
           "vertices": 396,
-          "triangles": 720,
+          "triangles": 680,
           "material": "Sky_PaintTealDeep"
         },
         {
@@ -2078,7 +2108,7 @@
           "material": "Sky_Coral"
         }
       ],
-      "bytes": 93916
+      "bytes": 93900
     },
     {
       "name": "SkyIsland_firewood_rack",
@@ -2189,7 +2219,7 @@
           2.38
         ]
       },
-      "triangles": 1268,
+      "triangles": 1160,
       "vertices": 739,
       "meshCount": 13,
       "materials": [
@@ -2250,19 +2280,19 @@
         {
           "name": "VIS_SkyIsland_duck_mailbox_WoodDark",
           "vertices": 170,
-          "triangles": 284,
+          "triangles": 236,
           "material": "Sky_WoodDark"
         },
         {
           "name": "VIS_SkyIsland_duck_mailbox_PaintTeal",
           "vertices": 90,
-          "triangles": 144,
+          "triangles": 108,
           "material": "Sky_PaintTeal"
         },
         {
           "name": "VIS_SkyIsland_duck_mailbox_BrassLight",
           "vertices": 132,
-          "triangles": 232,
+          "triangles": 208,
           "material": "Sky_BrassLight"
         },
         {
@@ -2296,7 +2326,7 @@
           "material": "Sky_Leaf"
         }
       ],
-      "bytes": 78060
+      "bytes": 77788
     },
     {
       "name": "SkyIsland_laundry_rack",
@@ -2428,7 +2458,7 @@
           2.27
         ]
       },
-      "triangles": 2184,
+      "triangles": 2132,
       "vertices": 1233,
       "meshCount": 14,
       "materials": [
@@ -2472,7 +2502,7 @@
         {
           "name": "VIS_SkyIsland_compost_planter_Soil",
           "vertices": 114,
-          "triangles": 200,
+          "triangles": 180,
           "material": "Sky_Soil"
         },
         {
@@ -2496,7 +2526,7 @@
         {
           "name": "VIS_SkyIsland_compost_planter_LeafLight",
           "vertices": 92,
-          "triangles": 144,
+          "triangles": 112,
           "material": "Sky_LeafLight"
         },
         {
@@ -2542,7 +2572,7 @@
           "material": "Sky_Coral"
         }
       ],
-      "bytes": 97644
+      "bytes": 97564
     },
     {
       "name": "SkyIsland_picnic_table",
@@ -2565,7 +2595,7 @@
           3.2800000000000002
         ]
       },
-      "triangles": 2228,
+      "triangles": 2208,
       "vertices": 1244,
       "meshCount": 9,
       "materials": [
@@ -2634,7 +2664,7 @@
         {
           "name": "VIS_SkyIsland_picnic_table_BrassLight",
           "vertices": 60,
-          "triangles": 100,
+          "triangles": 80,
           "material": "Sky_BrassLight"
         },
         {
@@ -2644,7 +2674,7 @@
           "material": "Sky_PaintTeal"
         }
       ],
-      "bytes": 79420
+      "bytes": 79388
     },
     {
       "name": "SkyIsland_wayfinding_sign",
@@ -2667,7 +2697,7 @@
           1.1620731485544056
         ]
       },
-      "triangles": 704,
+      "triangles": 686,
       "vertices": 415,
       "meshCount": 14,
       "materials": [
@@ -2699,7 +2729,7 @@
         {
           "name": "VIS_SkyIsland_wayfinding_sign_Chalk",
           "vertices": 45,
-          "triangles": 72,
+          "triangles": 54,
           "material": "Sky_Chalk"
         },
         {
@@ -2781,7 +2811,7 @@
           "material": "Sky_LeafLight"
         }
       ],
-      "bytes": 71276
+      "bytes": 71260
     },
     {
       "name": "SkyIsland_tea_stove",
@@ -2804,7 +2834,7 @@
           2.1206914806365966
         ]
       },
-      "triangles": 2570,
+      "triangles": 2488,
       "vertices": 1455,
       "meshCount": 12,
       "materials": [
@@ -2846,7 +2876,7 @@
         {
           "name": "VIS_SkyIsland_tea_stove_WoodDark",
           "vertices": 202,
-          "triangles": 332,
+          "triangles": 316,
           "material": "Sky_WoodDark"
         },
         {
@@ -2858,13 +2888,13 @@
         {
           "name": "VIS_SkyIsland_tea_stove_Coral",
           "vertices": 156,
-          "triangles": 254,
+          "triangles": 212,
           "material": "Sky_Coral"
         },
         {
           "name": "VIS_SkyIsland_tea_stove_Glow",
           "vertices": 35,
-          "triangles": 56,
+          "triangles": 42,
           "material": "Sky_Glow"
         },
         {
@@ -2882,7 +2912,7 @@
         {
           "name": "VIS_SkyIsland_tea_stove_PaintTealDeep",
           "vertices": 82,
-          "triangles": 140,
+          "triangles": 130,
           "material": "Sky_PaintTealDeep"
         },
         {
@@ -2904,12 +2934,13 @@
           "material": "Sky_Ivory"
         }
       ],
-      "bytes": 99228
+      "bytes": 99036
     }
   ],
   "modelCount": 24,
-  "totalTriangles": 59038,
+  "totalTriangles": 56618,
   "packedImages": [
+    "geology_handpainted_native.png",
     "grass_handpainted_vanilla.png",
     "roof_handpainted_terracotta.png",
     "sky_cloth.png",

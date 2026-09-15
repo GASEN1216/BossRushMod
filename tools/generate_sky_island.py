@@ -17,6 +17,8 @@ from mathutils import Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sky_island_frame  # noqa: E402  旧版手写坐标 → 当前岛位（main 里按 layout 绑定）
+from sky_island_mesh_hygiene import clean_faces
+from sky_island_tripo_props import stable_seed
 
 TAU = math.tau
 RNG = random.Random(20260908)
@@ -26,6 +28,7 @@ CURRENT = 'A'
 COLLISIONS = []
 ANIMATED = []
 PAVING_TRACKS = []
+MESH_HYGIENE = {'removedFaces': 0, 'collapsedCorners': 0}
 EMISSION = {'Glow': 1.2, 'StarGlow': 1.2, 'CrystalLavender': .18,
             'CrystalTeal': .22, 'PearlGlow': .55}
 # 调色板对齐原版鸭科夫：从游戏 `resources.assets` 采样 154 张 `_C` 反照率贴图，色相集中在
@@ -43,12 +46,13 @@ PALETTE = {
     'Brass': '#bd914d', 'BrassLight': '#dbb267', 'Copper': '#b47e52',
     'Coral': '#be7460', 'Blue': '#7d94a0', 'Water': '#6fa392',
     'Glow': '#ffe3a0', 'StarGlow': '#a8edf0', 'Cloud': '#e8e4da',
-    'CloudShade': '#cdd2d2', 'CloudFar': '#c2d0d8', 'CloudBackdrop': '#a8bcc4', 'Soil': '#7a5c40', 'Flower': '#dfcaa1',
+    'CloudShade': '#cdd2d2', 'CloudFar': '#9cb8c8', 'CloudBackdrop': '#a8bcc4', 'Soil': '#7a5c40', 'Flower': '#dfcaa1',
     'Mural': '#ffffff', 'Cloth': '#ffffff',
     'Blossom': '#d9a3a6', 'Lavender': '#b3a6c4', 'Fern': '#6a8a55',
     'LilyWhite': '#f4ece2', 'CrystalLavender': '#a89ad6',
     'CrystalTeal': '#72b7bf', 'PearlGlow': '#f2cfe4',
     'PaintTeal': '#487f78', 'PaintTealLight': '#81aba1', 'PaintTealDeep': '#365d59',
+    'GeologySand': '#c0a381', 'GeologyLight': '#d2b78d', 'GeologyDeep': '#99846b',
 }
 # 图集贴图通道：有贴图但**不平铺**，且必须保留调用方传入的 UV。
 # 不能塞进 TILED_TEXTURES —— create_object 对那里的材质会丢弃传入 UV 改用世界坐标平面投影，
@@ -61,6 +65,10 @@ TRIPO_DIR = None
 TRIPO_PROPS = None
 
 TILED_TEXTURES = {
+    # 原生生成的低对比砂岩只用于新岩体；铺装石材保留自己的尺度与裂缝语言。
+    'GeologySand': ('geology_handpainted_native.png', 20, [1.03,1.11,1.26,1]),
+    'GeologyLight': ('geology_handpainted_native.png', 20, [1.13,1.18,1.30,1]),
+    'GeologyDeep': ('geology_handpainted_native.png', 20, [.82,.90,1.04,1]),
     'Limestone': ('stone_handpainted_vanilla.png', 8, [1.02,1.01,.90,1]),   # #d9c9a4 砖墙暖白
     'Ivory': ('stone_handpainted_vanilla.png', 6, [1.11,1.13,1.04,1]),   # #ece0bd 亮面石材
     'Chalk': ('stone_handpainted_vanilla.png', 8, [.92,.90,.81,1]),   # #c3b394 灰泥
@@ -85,14 +93,28 @@ def linear_color(color):
     return [v/12.92 if v<=.04045 else ((v+.055)/1.055)**2.4 for v in color[:3]]+[color[3]]
 
 
-def addmesh(mat, verts, faces, uv=None, smooth=False, group=None):
+def addmesh(mat, verts, faces, uv=None, smooth=False, group=None, corner_normals=None):
+    if corner_normals is not None and (len(corner_normals) != len(faces) or
+            any(len(n) != len(f) for n, f in zip(corner_normals, faces))):
+        raise ValueError('Custom normals must match every supplied face corner: ' + mat)
+    faces, smooth_faces, removed, collapsed = clean_faces(verts, faces, smooth)
+    if corner_normals is not None and (removed or collapsed):
+        raise ValueError('Custom-normal source must already have clean faces: ' + mat)
+    MESH_HYGIENE['removedFaces'] += removed
+    MESH_HYGIENE['collapsedCorners'] += collapsed
+    if not faces:
+        return
     key = (group or CURRENT, mat)
     data = GROUPS.setdefault(key, {'v': [], 'f': [], 'uv': [], 'smooth': []})
+    if data['f'] and ('corner_normals' in data) != (corner_normals is not None):
+        raise ValueError('Cannot mix retained and recalculated normals in one material group: ' + mat)
+    if corner_normals is not None:
+        data.setdefault('corner_normals', []).extend(corner_normals)
     offset = len(data['v'])
     data['v'].extend(verts)
     data['f'].extend(tuple(offset + i for i in face) for face in faces)
     data['uv'].extend(uv or [(0.0, 0.0)] * len(verts))
-    data['smooth'].extend([smooth] * len(faces))
+    data['smooth'].extend(smooth_faces)
 
 
 def box(center, size, mat, bevel=0.12, yaw=0, group=None):
@@ -194,7 +216,7 @@ def marker(name,pos):
     obj.empty_display_type='PLAIN_AXES'; obj.empty_display_size=1.2
 
 
-def create_object(name,verts,faces,mat=None,uv=None,smooth=None,hidden=False):
+def create_object(name,verts,faces,mat=None,uv=None,smooth=None,hidden=False,corner_normals=None):
     mesh=bpy.data.meshes.new(name)
     mesh.from_pydata([(p[0],p[2],p[1]) for p in verts],[],[tuple(reversed(f)) for f in faces])
     mesh.update()
@@ -215,11 +237,19 @@ def create_object(name,verts,faces,mat=None,uv=None,smooth=None,hidden=False):
         for poly in mesh.polygons:
             for li in poly.loop_indices: layer.data[li].uv=uv[mesh.loops[li].vertex_index]
     # Recompute closed-shell normals; open terrain keeps the supplied upward faces.
-    if not name.startswith(('NAV_','COL_Ground','VIS_Ground')):
+    if corner_normals is None and not name.startswith(('NAV_','COL_Ground','VIS_Ground')):
         bm=bmesh.new(); bm.from_mesh(mesh)
         bmesh.ops.recalc_face_normals(bm,faces=list(bm.faces)); bm.to_mesh(mesh); bm.free()
     if smooth:
         for p,s in zip(mesh.polygons,smooth): p.use_smooth=s
+    if corner_normals is not None:
+        # Face order is already the whole model's corrected order. Keep the
+        # corresponding corner normals when material boundaries split adjacency.
+        values=[(n[0],n[2],n[1]) for row in corner_normals for n in reversed(row)]
+        if len(values) != len(mesh.loops):
+            raise ValueError('Retained normals do not match final mesh corners: ' + name)
+        mesh.normals_split_custom_set(values)
+        mesh.update()
     obj=bpy.data.objects.new(name,mesh)
     bpy.context.scene.collection.objects.link(obj)
     obj.hide_render=hidden
@@ -349,31 +379,9 @@ def house(obs,index):
 
 
 def island_shell(island):
-    x,y,z=island['center']; outline=island['outline']; n=len(outline)
-    verts=[]
-    depth=38 if len(island['id'])==1 else 24
-    for level,(drop,factor) in enumerate([(0,1),(-3,1.02),(-13,.95),(-depth,.57),(-depth-15,.13)]):
-        for i,(px,pz) in enumerate(outline):
-            jitter=0 if level==0 else (math.sin(i*13.7+level)*1.8)
-            verts.append((x+(px-x)*factor,y+drop+jitter,z+(pz-z)*factor))
-    for level in range(4):
-        for i in range(n):
-            j=(i+1)%n
-            mat= ['Limestone','RockLight','Rock','RockDeep'][level]
-            if i%4==0 and level==2: mat='RockDeep'
-            addmesh(mat,[verts[level*n+i],verts[level*n+j],verts[(level+1)*n+j],verts[(level+1)*n+i]],[(0,1,2,3)])
-    # Thin warm limestone rim, broad geological strata and dangling roots.
-    for i,(px,pz) in enumerate(outline):
-        qx,qz=outline[(i+1)%n]
-        beam((px,y-.55,pz),(qx,y-.55,qz),.65,'Limestone',6)
-        if i%2==0:
-            root=[(px,y-1,pz),(x+(px-x)*.94,y-12,z+(pz-z)*.94),
-                  (x+(px-x)*.74+3,y-25,z+(pz-z)*.74),(x+(px-x)*.64,y-32,z+(pz-z)*.64)]
-            ribbon(root,'Forest',.6 if len(island['id'])==1 else .3)
-    # Steep hanging chalk columns visually break the simple ring silhouette.
-    for i in range(0,n,3):
-        px,pz=outline[i]
-        cylinder((x+(px-x)*.89,y-13,z+(pz-z)*.89),3.6,21,'RockLight',5,radius_top=5)
+    # 原生参考 E_geology_native：连续封底、偏心基岩与三组扶壁，严格保留 layout 顶圈。
+    import sky_island_geology
+    sky_island_geology.emit_shell(sys.modules[__name__],island)
 
 
 def paved_disc(x,y,z,r,mat='Limestone'):
@@ -724,13 +732,13 @@ def landscape_scatter(islands,obstacles):
                          'blossom' if base in ['B','F','S2'] and math.sin(xx*.137+zz*.073)>-.2 else
                          'moonleaf' if base in ['D','S3'] and math.cos(xx*.07-zz*.09)>.2 else 'plain')
                 if TRIPO_PROPS is None or not TRIPO_PROPS.replace_tree(sys.modules[__name__],TRIPO_DIR,
-                                                           xx,y,zz,tscale,variant,hash((sid,i))&0xffffffff):
+                                                           xx,y,zz,tscale,variant,TRIPO_PROPS.stable_seed('tree',sid,i)):
                     tree(xx,y,zz,tscale,gold=sid in ['C','S1'])
             else:
                 # 灌木原为 8 段 4 环不平滑的正椭球，读成硬边低模球。改平滑并提高分段，
                 # 同时按实例扰动三轴比例——完美椭球本身就假，只改着色不够。
                 # 用独立 RNG 取扰动，避免改动全局 RNG 序列而扰乱后续所有摆放。
-                jitter=random.Random(hash((sid,i,'bush'))&0xffffffff)
+                jitter=random.Random(stable_seed(sid,i,'bush'))
                 # 第二轮：有 Tripo 灌木就摆成品，一件都没导入时才退回程序化椭球（见 stamp_variant）。
                 if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
                         ('bush_a','bush_b','bush_c'),xx,y,zz,2.1*jitter.uniform(.8,1.25),('bush',sid,i)):
@@ -739,7 +747,7 @@ def landscape_scatter(islands,obstacles):
                            'Leaf' if i%2 else 'LeafLight',12,6,True)
             if i%2==0:
                 # 石块保留硬边（岩石本就有棱），但提高分段并打散比例，不再是一排同样的圆球。
-                jitter=random.Random(hash((sid,i,'rock'))&0xffffffff)
+                jitter=random.Random(stable_seed(sid,i,'rock'))
                 if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
                         ('rock_a','rock_b'),xx+2,y-.25,zz-1,1.7*jitter.uniform(.7,1.35),('rock',sid,i)):
                     sphere((xx+2,y+.6,zz-1),(1.7*jitter.uniform(.65,1.4),1.0*jitter.uniform(.7,1.5),
@@ -757,16 +765,17 @@ def world_clouds():
     global CURRENT
     CURRENT='CloudSea'
     # Broad closed horizon; backdrop shader fades this floor into layered mist, not a visible edge.
-    addmesh('CloudBackdrop',[(-6000,-160,-6000),(-6000,-160,6000),(6000,-160,6000),(6000,-160,-6000)],[(0,1,2,3)])
+    addmesh('CloudBackdrop',[(-6000,-340,-6000),(-6000,-340,6000),(6000,-340,6000),(6000,-340,-6000)],[(0,1,2,3)])
     cloud_rng=random.Random(930108)
     for i in range(56):
         a=i*2.39996
         if i<34:
-            r=125+76*math.sqrt(i); y=-75-cloud_rng.random()*14; base=30+cloud_rng.random()*29
+            r=125+76*math.sqrt(i); y=-175-cloud_rng.random()*10; base=60+cloud_rng.random()*24
         elif i<46:
-            r=600+(i-34)*17; y=-50+cloud_rng.random()*26; base=47+cloud_rng.random()*34
+            r=600+(i-34)*17; y=-210+cloud_rng.random()*20; base=90+cloud_rng.random()*28
         else:
-            r=1350+(i-46)*85; y=-40+cloud_rng.random()*80; base=105+cloud_rng.random()*90
+            # 固定侧视中远云曾铺成比群岛更高大的白墙；缩小轮廓并压近天空色。
+            r=1350+(i-46)*85; y=-345+cloud_rng.random()*20; base=100+cloud_rng.random()*40
         CURRENT='CloudBank_'+str(i//4)
         cloud_cluster((r*math.cos(a),y,r*math.sin(a)),base,i,'near' if i<34 else 'mid' if i<46 else 'far')
     # Very distant fragment silhouettes are visual geometry without navigation/collision.
@@ -786,10 +795,11 @@ def world_clouds():
         cylinder((x,y,z),13,.5,'Grass',9)
 
 
-# 近景塔状积云最出体积，中远景用云筏铺底，碎云打散节奏；权重按距离环切换。
-CLOUD_SHAPE_WEIGHTS={'near':(('tower',.60),('raft',.25),('wisp',.15)),
-                     'mid':(('tower',.35),('raft',.45),('wisp',.20)),
-                     'far':(('tower',.15),('raft',.55),('wisp',.30))}
+# 原生 Hero 参考的云海以岛底之下的宽云筏为主；少量积云打破水平节奏。
+# 旧版六成近云是高塔，和孤立远云一起抢了地标轮廓；分层高度与云型共同决定可见轮廓。
+CLOUD_SHAPE_WEIGHTS={'near':(('tower',.08),('raft',.72),('wisp',.20)),
+                     'mid':(('tower',0),('raft',.78),('wisp',.22)),
+                     'far':(('tower',0),('raft',.72),('wisp',.28))}
 
 
 def cloud_shape(rng,tier):
@@ -859,6 +869,11 @@ def cloud_cluster(center,base,seed,tier='near'):
         sy=rng.uniform(.92,1.15) if shape=='tower' else rng.uniform(.52,.70) if shape=='raft' else rng.uniform(.60,.85)
         sx,sz=rng.uniform(.88,1.2),rng.uniform(.73,1.04)
         floor=base*.42                                       # 凝结高度：以下削平成云底
+        # 以最终顶点约束云顶，而不是只调云心：巨大的远云曾仍高出岛面、抢走地标。
+        # 三层云顶均在玩法面下方；增宽远层覆盖、降低垂直轮廓，形成云海层次。
+        ceiling={'near':-82.0,'mid':-100.0,'far':-215.0}[tier]
+        peak=max(max(v.co.z,floor) for v in mesh.vertices)
+        sy=min(sy,(ceiling-y)/max(peak,.001))
         cosine,sine=math.cos(yaw),math.sin(yaw)
         vertices=[(x+v.co.x*sx*cosine+v.co.y*sz*sine,y+max(v.co.z,floor)*sy,
                    z-v.co.x*sx*sine+v.co.y*sz*cosine) for v in mesh.vertices]
@@ -1078,28 +1093,16 @@ def village_life(layout,islands):
 
 def cliff_dressing(islands):
     global CURRENT
+    import sky_island_geology
     for sid,island in islands.items():
         CURRENT=sid+'_Cliff'; x,y,z=island['center']; outline=island['outline']
-        # Broad limestone clumps break the extrusion silhouette below the walk surface.
+        # 历史随机流契约：沿边石块虽已并入闭合岩体，仍消费原来的两次随机数，
+        # 保持随后 landscape_scatter 的树木、石块与花丛布置不漂移。
         for i,(a,b) in enumerate(zip(outline,outline[1:]+outline[:1])):
             length=math.dist(a,b)
             for j in range(max(1,int(length/17))):
-                t=(j+.45)/max(1,int(length/17)); xx=a[0]+(b[0]-a[0])*t; zz=a[1]+(b[1]-a[1])*t
-                # RNG 必须照原样取完两次：少取会让后面所有岛的石块尺寸跟着错位。
-                rx=4+RNG.random()*4; ry=5+RNG.random()*9
-                # 第二轮：悬挂石块换成品，顶端贴在岛面下 1 米、按原椭球的竖直直径缩放。
-                if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                        ('cliff_chunk_a','cliff_chunk_b','cliff_chunk_c'),xx,y-1-2*ry,zz,2*ry,('cliff',sid,i,j)):
-                    sphere((xx,y-ry-1,zz),(rx,ry,rx*.8),'RockLight' if (i+j)%3 else 'Rock',8,5,False)
-                if (i+j)%3==0:
-                    # 林冠压在石块顶上、不高过岛面，否则会像一丛灌木浮在路边。
-                    if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                            ('cliff_shrub_cap',),xx,y-3.2,zz,3.0,('cap',sid,i,j)):
-                        sphere((xx,y-2,zz),(rx*.8,2,rx*.65),'Forest',8,4,False)
-                    for k in range(3):
-                        if TRIPO_PROPS is None or not TRIPO_PROPS.stamp_variant(sys.modules[__name__],TRIPO_DIR,
-                                ('cliff_vine',),xx+k*.8,y-13-k*2,zz-.6,11+k*2,('cliffvine',sid,i,j,k)):
-                            ribbon([(xx+k*.8,y-2,zz),(xx+k*.8-1,y-7,zz-.6),(xx+k*.5+1,y-13-k*2,zz-1)],'Leaf',.13)
+                RNG.random(); RNG.random()
+        sky_island_geology.dress_cliff(sys.modules[__name__],island)
     # Decorative cloud-fed waterfalls stay beyond the collision boundary.
     # 按旧版岛位手写并换算；F 的瀑布从 z=-23 挪到 z=0，避开布局 v2 里改到同侧岛边的 FS3 桥口。
     for sid,legacy_x,legacy_z,w in [('F',336,0,7),('D',-345,102,5),('C',-293,-194,4)]:
@@ -1300,8 +1303,13 @@ def main():
             CURRENT=m.get('island','Lamps'); lantern(*m['position'])
     marker('POI_B_Mural',mural_marker(islands))
     stats={}
+    # 岩体跨材质保持闭合，已由 geology 直接生成；加入同一份导出统计。
+    for obj in bpy.context.scene.objects:
+        if obj.type=='MESH' and obj.name.startswith('VIS_') and obj.name.endswith('_Geology'):
+            stats[obj.name]={'vertices':len(obj.data.vertices),'triangles':sum(len(p.vertices)-2 for p in obj.data.polygons)}
     for (region,mat),data in GROUPS.items():
-        obj=create_object('VIS_'+region+'_'+mat,data['v'],data['f'],mat,data['uv'],data['smooth'])
+        obj=create_object('VIS_'+region+'_'+mat,data['v'],data['f'],mat,data['uv'],data['smooth'],
+                          corner_normals=data.get('corner_normals'))
         stats[obj.name]={'vertices':len(data['v']),'triangles':sum(len(f)-2 for f in data['f'])}
     scene=bpy.context.scene; scene.unit_settings.system='METRIC'; scene.unit_settings.scale_length=1
     bpy.ops.object.select_all(action='DESELECT')
@@ -1310,7 +1318,7 @@ def main():
     bpy.ops.export_scene.fbx(filepath=str(fbx),use_selection=True,object_types={'MESH','EMPTY'},axis_forward='-Z',axis_up='Y',bake_anim=False,add_leaf_bones=False,path_mode='RELATIVE')
     metadata={'coordinateSystem':'Unity XYZ metres','materials':{'Sky_'+name:{'rgba':TILED_TEXTURES[name][2] if name in TILED_TEXTURES else rgba(color),'texture':(MODEL_TEXTURES[name].replace(chr(92),'/') if name in MODEL_TEXTURES else 'Textures/sky_mural.png' if name=='Mural' else 'Textures/sky_cloth.png' if name=='Cloth' else 'Textures/'+TILED_TEXTURES[name][0] if name in TILED_TEXTURES else None),'emission':EMISSION.get(name,0)} for name,color in PALETTE.items()},
               'markers':[{'name':m['id'],'position':m['position']} for m in layout['markers']]+[{'name':'POI_B_Mural','position':mural_marker(islands)}],
-              'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'collisionBoxes':COLLISIONS,
+              'visualMeshes':stats,'totalVisualTriangles':sum(s['triangles'] for s in stats.values()),'meshHygiene':MESH_HYGIENE,'collisionBoxes':COLLISIONS,
               'navVertices':len(layout['navigation']['vertices']),'navTriangles':len(layout['navigation']['triangles']),
               'sourceLayout':str(assets/'sky_island_layout.json'),'textures':['Textures/sky_mural.png','Textures/sky_cloth.png']+['Textures/'+n for n in sorted(set(v[0] for v in TILED_TEXTURES.values()))]}
     (source/'sky_island_geometry.json').write_text(json.dumps(metadata,indent=2,ensure_ascii=False),encoding='utf-8')

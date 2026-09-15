@@ -1,6 +1,6 @@
 """把 sky_island_tripo_import.py 产出的 Tripo3D 模型摆进天空岛世界。
 
-只做装饰：全部避开可行走面与导航网格。导航顶点现为 4037 / 4095，余量只剩 58，
+只做装饰：全部避开可行走面与导航网格。Unity 运行时导航顶点为 3870 / 4095，余量 225，
 本模块一个顶点都不往导航里加。避让复用 sky_island_dressing.PlantingSpace 的 free()，
 它已经覆盖岛缘、障碍物、标记点、桥头、路径与中心广场净空。
 
@@ -14,6 +14,8 @@ from pathlib import Path
 import random
 
 import sky_island_frame  # 锚点半径随岛同比例缩放（调用方按 layout 绑定）
+import sky_island_botany
+import sky_island_surface_materials
 
 TAU = math.tau
 
@@ -93,6 +95,7 @@ TREE_VARIANTS = {'gold': 'tree_gold', 'blossom': 'tree_blossom',
 
 _CACHE = {}
 _KIND_SEEN = {}
+_ORIENTATIONS = None
 
 
 def _model(g, data_dir, name):
@@ -112,15 +115,22 @@ def reset():
     """每次完整生成前清空，避免跨次运行串味。"""
     _CACHE.clear()
     _KIND_SEEN.clear()
+    sky_island_surface_materials.clear()
+    sky_island_botany.reset()
 
 
 def _stamp(g, entry, x, base_y, z, yaw_deg, scale=1.0):
     payload, material = entry
+    rebuilt = sky_island_botany.stamp(g, payload, x, base_y, z, yaw_deg, scale)
+    if rebuilt is not None:
+        return rebuilt
     mesh = payload['mesh']
     yaw = math.radians(yaw_deg)
     cosine, sine = math.cos(yaw), math.sin(yaw)
     vertices = [(x + (vx * cosine + vz * sine) * scale, base_y + vy * scale,
                  z + (-vx * sine + vz * cosine) * scale) for vx, vy, vz in mesh['v']]
+    if sky_island_surface_materials.stamp(g, payload, material, vertices):
+        return len(mesh['f'])
     g.addmesh(material, vertices, mesh['f'], mesh['uv'], mesh.get('smooth', True))
     return len(mesh['f'])
 
@@ -137,8 +147,7 @@ def replace_obstacle(g, obs, data_dir, island_centre=None):
         return False
     x, y, z = obs['center']
     centre = island_centre or (x, z)
-    yaw = resolve_yaw(names[index % len(names)], x, z, centre[0], centre[1],
-                      hash((obs['id'],)) & 0xffffffff)
+    yaw = obstacle_yaw(names[index % len(names)], obs, centre)
     _stamp(g, entry, x, y - obs['size'][1] / 2.0, z, yaw)
     return True
 
@@ -171,8 +180,38 @@ ROUND2_MODELS = (
 
 
 def stable_rng(*key):
+    return random.Random(stable_seed(*key))
+
+
+def stable_seed(*key):
     import zlib
-    return random.Random(zlib.crc32(repr(key).encode('utf-8')))
+    return zlib.crc32(repr(key).encode('utf-8'))
+
+
+def orientations():
+    global _ORIENTATIONS
+    if _ORIENTATIONS is None:
+        path = Path(__file__).resolve().parents[1] / 'ArtSource/SkyIsland/model_orientations.json'
+        _ORIENTATIONS = json.loads(path.read_text(encoding='utf-8'))
+        if _ORIENTATIONS.get('schemaVersion') != 1:
+            raise ValueError('Unsupported SkyIsland model orientation manifest')
+    return _ORIENTATIONS
+
+
+def obstacle_yaw(name, obs, centre):
+    frozen = orientations()['obstacleYaws'].get(obs['id'])
+    if frozen is not None:
+        return float(frozen)
+    x, _, z = obs['center']
+    return resolve_yaw(name, x, z, centre[0], centre[1], stable_seed('obstacle', obs['id']))
+
+
+def anchor_yaw(name, island_id, angle_deg, x, z, cx, cz, fallback):
+    key = name + '|' + island_id + '|' + str(angle_deg)
+    frozen = orientations()['anchorYaws'].get(key)
+    if frozen is not None:
+        return float(frozen)
+    return resolve_yaw(name, x, z, cx, cz, stable_seed('anchor', name, island_id, angle_deg), fallback)
 
 
 def stamp_variant(g, data_dir, names, x, base_y, z, height, key, yaw=None):
@@ -290,7 +329,7 @@ def collision_fit(obs, data_dir, island_centre=None):
         return None
     x, y, z = obs['center']
     centre = island_centre or (x, z)
-    yaw = resolve_yaw(name, x, z, centre[0], centre[1], hash((obs['id'],)) & 0xffffffff)
+    yaw = obstacle_yaw(name, obs, centre)
     extent_x, extent_z = rotated_extent(payload['meta']['bounds'], yaw)
     width, height, depth = obs['size']
     return [min(width, extent_x * 2), height, min(depth, extent_z * 2)]
@@ -343,6 +382,7 @@ def register(g, data_dir):
         key = material_name(name)
         g.PALETTE[key] = '#ffffff'          # 白底，颜色全部来自贴图
         g.MODEL_TEXTURES[key] = 'Textures/' + texture['file']
+        sky_island_surface_materials.register(g, name, g.MODEL_TEXTURES[key])
         registered[name] = key
     return registered
 
@@ -410,20 +450,36 @@ def build(g, layout, data_dir, dressing):
                             yaw_deg = facing_yaw(x, z, ax, az)
                         else:
                             yaw_deg = facing_yaw(x, z, 2 * x - ax, 2 * z - az)
-                        yaw = math.radians(yaw_deg)
-                        cosine, sine = math.cos(yaw), math.sin(yaw)
+                        adjustment = None
+                        if (name == 'stone_bench' and island_id == 'B'
+                                and math.hypot(x + 4.01262, z + 109.79367) < .1):
+                            # B 南路缘凳原座板穿入市场侧箱。按 0.25m / 32 方位近邻
+                            # 搜索取得首个严格 PlantingSpace 净空位；保持原朝向与随机流。
+                            # 真实重制包络及周围摊位 / 箱桶 / 花箱已逐三角验证。
+                            before = [x, island['center'][1], z]
+                            x, z = x - 2.451963201, z - .487725805
+                            rebuilt = sky_island_botany.model(name, bounds)
+                            radius = max(math.hypot(v[0], v[2])
+                                         for part in rebuilt.values() for v in part['v'])
+                            if not space.free(x, z, radius):
+                                raise ValueError('B south stone bench no longer passes placement clearance')
+                            adjustment = {'reason': 'separate_market_stall_side_box',
+                                          'originalPosition': before,
+                                          'offset': [-2.451963201, 0, -.487725805],
+                                          'footprintRadius': radius,
+                                          'strictPlantingSpacePassed': True,
+                                          'yawPreserved': True}
                         g.CURRENT = island_id
                         cy = island['center'][1]
-                        vertices = [(x + vx * cosine + vz * sine, cy + vy, z - vx * sine + vz * cosine)
-                                    for vx, vy, vz in mesh['v']]
-                        g.addmesh(material, vertices, mesh['f'], mesh['uv'], mesh.get('smooth', True))
-                        triangles += len(mesh['f'])
+                        triangles += _stamp(g, (payload, material), x, cy, z, yaw_deg)
                         placed += 1
                         progressed = True
                         placements.append({'model': name, 'island': island_id,
                                            'position': [round(x, 2), round(cy, 2), round(z, 2)],
                                            'yaw': round(yaw_deg, 1), 'material': material,
                                            'placement': strategy[0]})
+                        if adjustment is not None:
+                            placements[-1]['adjustment'] = adjustment
                         break
                 if not progressed:
                     break
@@ -442,14 +498,9 @@ def build(g, layout, data_dir, dressing):
             if spot is None:
                 continue
             x, z = spot
-            yaw_deg = resolve_yaw(name, x, z, cx, cz, hash((name, island_id, angle_deg)) & 0xffffffff, yaw_deg)
-            yaw = math.radians(yaw_deg)
-            cosine, sine = math.cos(yaw), math.sin(yaw)
+            yaw_deg = anchor_yaw(name, island_id, angle_deg, x, z, cx, cz, yaw_deg)
             g.CURRENT = island_id
-            vertices = [(x + vx * cosine + vz * sine, cy + vy, z - vx * sine + vz * cosine)
-                        for vx, vy, vz in mesh['v']]
-            g.addmesh(material, vertices, mesh['f'], mesh['uv'], mesh.get('smooth', True))
-            triangles += len(mesh['f'])
+            triangles += _stamp(g, (payload, material), x, cy, z, yaw_deg)
             # 只有锚点分支补碰撞：这一支走 `free()` 严格避让，离敌人要走的路最远。
             # 语义分支（路缘 / 墙角）不补，理由见 COLLISION_POLICY 上方的注释。
             solid = emit_collision(g, name, placed, x, cy, z, yaw_deg, bounds)
@@ -467,7 +518,8 @@ def build(g, layout, data_dir, dressing):
             'placementPolicy': {'navigation': 'untouched; decorative geometry only',
                                 'avoidance': 'sky_island_dressing.PlantingSpace.free()',
                                 'clearance': 'model bounding radius + 1.5m'},
-            'placements': placements}
+            'placements': placements,
+            'vegetationPathClearance': list(sky_island_botany.PATH_REJECTIONS)}
 
 # ── 语义化摆放 ─────────────────────────────────────────────────────────
 #

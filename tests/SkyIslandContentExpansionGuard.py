@@ -651,13 +651,13 @@ def check_encounter_refresh():
     session = source('SkyIslandSession.cs')
     assert 'id == "Storm" && (!story.Current.BothBeacons || story.Current.StormResolved)' in session, \
         'The storm must stay one-shot'
+    # 判据收在 CanBeginChallenge（剧情面板挂不挂挑战项与点下去共用，2026-09-14 审核 F-28 ②），入口先过它再刷怪。
     begin = encounters.split('internal bool BeginChallenge(string id)', 1)[1].split(chr(10) + '        }', 1)[0]
     assert 'if (!CanBeginChallenge(id, out reason)) return false;' in begin, \
         'Starting a manual challenge must go through the shared gate'
     gate = encounters.split('internal bool CanBeginChallenge(string id, out string reason)', 1)[1] \
         .split(chr(10) + '        }', 1)[0]
     assert 'completed(id)' in gate, 'Manual challenges must still be blocked by the saved fact'
-    # 判据收在 CanBeginChallenge（剧情面板挂不挂挑战项与点下去共用，2026-09-14 审核 F-28 ②），入口先过它再刷怪。
     # 剧情装置的前置读的仍是同一份持久事实，重刷的敌群不会把已完成的装置重新锁上。
     rules = source('SkyIslandStoryRules.cs')
     for region in ('D', 'G'):

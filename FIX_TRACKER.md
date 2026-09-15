@@ -517,6 +517,26 @@ B-11 分项计时只诊断，Dev 构建里录不到时 PERF 用例记 FAIL。
 
 ---
 
+## 2026-09-14 天空岛实体植被、道路可视净空与 B 南石凳穿插修复
+
+分类 `COMPAT / SCHEMA+`，证据 `L2`。`COMPAT` 为离线模型和摆放修正；`SCHEMA+` 仅为 `sky_island_tripo.json` 新增可选 `vegetationPathClearance`、`placements[].adjustment` 导出元数据，**不涉及玩家存档**。实现为 `tools/sky_island_botany.py` 与 `tools/sky_island_tripo_props.py`；本步骤未改运行时 C#、未操作存档。
+
+- **11 种程序库覆盖**：树 / 灌木 / 蕨 / 珊瑚 / 石凳使用独立实体模型，原 11 份 JSON 和图集保留。实体冠替代旧黑边 / 破裂叶皮，连续管轴截面修正近竖直急弯处的翻轴针腰。当前 10 种实际放置，`cliff_shrub_cap` 仅库可用、没有场景实例。语义与锚点分支统一经过 `_stamp` 后，实际 World 逐顶点确认 **4 张新石凳、4 棵新 cherry_tree**。
+- **道路可视净空**：采用同源 `PAVING_TRACKS` / `PlantingSpace` 道路半宽 + 0.9 m + 实际包络；树只测离地 2.2 m 内，灌木测完整半径。命中装饰不再回落 primitive，保留 RNG；已有登记碰撞的树不能只隐藏外观。最终 **126 条 `omit_decorative_plant`**，名称、位置、半径和道路距离随导出保存。A 出生主路与北桥头已看当前焦点图，路侧陈设仍保留。
+- **B 南凳 50→0**：座板 / 腿与摊位侧箱全材质 BVH 原有 50 对交叉（早期 45 对只计 Limestone）。只移动该凳 (-2.451963201, 0, -0.487725805)，最终约 (-6.46458, 5, -110.28140)，yaw -119.8° 保持。重新执行全部 114 条摆放，仅该条位置变化、RNG 状态不变；严格 `PlantingSpace.free` 通过，实际半径 1.954656 m、道路净空余量 6.10748 m。最终实际 World 与摊位 / 箱桶 / 花箱 / 路灯的三角交叉分别均为 **0**。
+
+验证：Blender 5.2.1 实际网格匹配、全材质 BVH、同源道路判据与固定焦点渲染通过；脚本语法通过。最终 layout 字节、146 个 collisionBoxes、82 个 markers 与备份一致；导航 metadata 3870 / 4048 计数保持。证据为 [final_focus_validation.json](Build/sky-production-20260914/round03/blender/final_focus_validation.json)、[bench_fix_validation.json](Build/sky-production-20260914/round02/blender/bench_fix_validation.json)、[source_contracts.json](Build/sky-production-20260914/round03/blender/source_contracts.json)，对应最终 FBX SHA `de36df8f…abd58f`。相关 repowiki 知识卡与生产复核页已同步。Unity 性能 A/B 复核由总体生产继续记录；用户延期的真人游戏实测未完成，不记通过。
+
+## 2026-09-14 天空岛第三轮瀑布法线保持与屋面接缝修复
+
+同日追加屋面源修复（`COMPAT / L2`）：父级确认 `tea_house` 的斜裂线 / 屋脊黑缝与 `village_house_a` 的分段瓦脊细裂口在白模也存在。用原 GLB 在原预算重演旧 JSON 的 v / f / UV 全部一致后，沿现有 `sky_island_surface_repair.py` 恢复几何连通，保留面角 UV 再受控减面。各 2,999 面，原图集 SHA、`meta.bounds` 不变，实际点全在旧范围内；茶铺不变换，民居仅 X 平移 0.0003 米。24 张正背 / 屋面近景对照已审，父级授权后集成两 JSON；`surface_repair/roof/contract/integration_manifest.json` 在复制前记录 old / candidate / sourceGLB SHA，复制后回读，原登记 manifest 未变。局部源修复不代替完整世界重新生成与 Unity 验证。
+
+屋面集成后的完整世界已重生成（元数据 1,557,939 可见三角面 / 694 批次）；两源回读 SHA 仍与集成候选一致。最新 FBX SHA `de36df8f87ebde6597f73ae4bad6c210113463f34381f50c3efa58d626abd58f` 的 `round03/geology-final-v2/` 实测通过：48 个闭合岩体 / 13,200 面；3 个实际瀑布 / 6 批次显式法线、面 / UV 对齐，最大法线差 0.106°；284 个保护 FBX 对象与封存基线完全相同，JSON 保护 41 项通过（layout 字节、146 collisionBoxes、82 markers 均相同）。原生砂岩 F 与作者纹理 SHA 相同，三份 Unity 材质正确绑定 `_BaseMap`；FBX 本身仅含三槽，纹理由 metadata / 作者构建器补绑定，不能声称 F 已嵌入 FBX。未改作者源，本步骤不替代 Unity 最终审图 / 性能结果。
+
+分类 `COMPAT`，证据 `L2`。原瀑布分成静态石壁与青蓝流水后，各组独立重算法线，按实际双面 `SV_IsFrontFace` 修正共同翻面后仍有 79 个面角偏差超过 5°。现先在实际实例坐标上计算未拆分整件的面序和面角法线，经 `addmesh/create_object` 的可选 `corner_normals` 显式传到 FBX；分面组不再独立 recalc。喷泉顶部实体晶体被误选流水的 80 面通过取消 `crystal_fountain` 分面支持消除，恢复原静态图集路径（当前无实例）。
+
+实际 Blender 5.2.1 与 FBX 导出再导入在原坐标、旋转 / 平移 / 缩放两个实例中通过：每件 3,722 面与 UV 完全对应，面序 / 平滑标志无改动，生成坐标误差 0；FBX 位置误差最大 0.000038 米，法线相对旧整件最大 0.106°（FBX 传递额外误差 <0.0033°），超过 5° 的残余为 0。源 payload 未改，喷泉单组 8,000 面。报告、原图集与分组 mask 在 `Build/sky-production-20260914/surface_materials/`。未进行游戏实测；动态高光和全场景由总体 Unity 第三轮验证继续确认。未改运行时 C#，本子任务未调用 Mod 编译或部署。
+
 ## 2026-09-14（二）天空岛首轮岛内 F3 实机日志复核：可达性假红与探路判据、对话演练崩溃、夜里指标、退游戏返航（1 P2 + 3 P3，全部已修）
 
 **来源**：owner 13:34–13:35 在岛上跑了岛内只读验收与 Dev 演练（`Player.log`、`BossRushTestReports/BossRushValidation_20260914_053459_241` 与 `_053527_989`，构建 MVID `801bcff5`，即 `599bc6b` 的 Dev 构建；主套件没跑）。
@@ -7859,3 +7879,13 @@ Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
   （`ModeHEffectConditions` / `appliesWhen`），不宜由本会话强改。
 - Mode H `finish` 口令对任何 stable key 恒不可选（认证探针的 `ReadField` 不含点火型控制点）。
   同属该子系统。
+
+## 2026-09-14 天空岛生产整合：朝向漂移、退化面与最终资源
+
+分类：COMPAT；导出记录的可选字段为 SCHEMA+（不涉及玩家存档）；本地资源复制为 OPERATIONAL。
+
+确认生成器中 Python hash 随进程变化，会同时影响部分外观朝向和模型适配后的碰撞尺寸。改用确定种子与原始 World 反解的朝向登记，绘制 / collision_fit 共用判据。两进程对照从 21 个碰撞差异、29 个外观差异降为 0，最终 146 盒、82 标记及布局完整恢复基线。证据：`Build/sky-production-20260914/determinism-probe/`、`round03/geology-final-v2/protection_validation.json`。
+
+最终 float32 坐标判定清除了原来球极点、零半径截面和共线花叶的零面积三角；没有批量删双面叶片或焊 UV。三轮 Blender 可见零面积三角 39,155 → 443 → 0 → 0，最终 48 岩体全部闭合。三轮固定图、5 件源修缝、实体植被、凳落位和瀑布法线的具体证据见本日各专项记录及 `SKY_ISLAND_PRODUCTION_AUDIT.md`。
+
+最终出击包 `67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636` 已复制到作者导出、仓库和本地游戏 Mod 目录，SHA 一致；三类着色器的 GBuffer pass 回读通过。39 项天空岛相关守卫通过；游戏内实测按用户最新指令延期，未启动游戏、未将编辑器数据记为 L3 通过。旧资源与旧验证记录保存在 `Build/sky-production-20260914/backup/`。

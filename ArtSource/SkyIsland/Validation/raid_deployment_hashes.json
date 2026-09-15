@@ -1,513 +1,460 @@
 {
-  "verifiedAt": "2026-09-10T13:18:27.587421Z",
-  "verifiedBy": "天空岛官方地图换手绘底图后重打包部署 · 逐个文件实测 SHA-256 + UnityPy 回读小地图贴图 + 判包重跑；本会话不开游戏",
-  "build": "Release (compile_official.bat default; BOSSRUSH_DEV not defined)",
+  "verifiedAt": "2026-09-14T10:47:42.582819+00:00",
+  "classification": [
+    "COMPAT",
+    "SCHEMA+ (author metadata only)",
+    "OPERATIONAL (local asset copy)"
+  ],
+  "status": "ART_AUTHOR_VALIDATION_COMPLETE_GAME_ACCEPTANCE_DEFERRED",
   "gameSmoke": {
-    "ranAt": "2026-09-10T03:48Z",
-    "by": "owner（本会话不开游戏）",
-    "log": "%LocalLow%/TeamSoda/Duckov/Player.log",
-    "result": "PASS —— 首次「进得去且看得见」。零 [SkyIsland] 报错；晴岚群岛已就绪 → ENTER_PASS nodes=4215 enemyPoints=12 searches=20 landmarks=13 lootPoints=39 → SEARCH_COMPLETE point=Search_A → CLEANUP reason=raid_unloaded。",
-    "renderDiag": "passes=UniversalForward|UniversalGBuffer|SHADOWCASTER|DepthOnly; pipeline=UniversalRenderPipelineAsset; camera mask=0xcfffdf clear=SolidColor far=300; lightingEnabled=1 sun=(1.00,0.82,0.62) ambient=(0.26,0.33,0.45) ambientMode=Trilight fog=False",
-    "caveat": "RENDER_DIAG 的 visible= 在 activated / post_scan 两个采样点不可信（仍在读条幕布后面，相机尚未渲染 raid 场景），成功这局它照样是 False，不要拿它当判据。",
-    "stillUnproven": "水面波纹与云层飘动的实际观感、四档光色切换、帧率。",
-    "appliesToBundle": "fb12e540a30e5cb32f5c65a852ea6c1b1169c018c2ac4c8c9ea31073b101694c",
-    "currentBundle": "未实机：ef40465f149a09d8… 布局 v2 + 手绘官方地图，只做了离线判包与 UnityPy 回读"
+    "status": "NOT_PERFORMED_USER_DEFERRED",
+    "reason": "用户明确暂不进行游戏内实测；未进入游戏。"
+  },
+  "sourceFbx": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\SkyIslandWorld.fbx",
+    "bytes": 51522988,
+    "sha256": "de36df8f87ebde6597f73ae4bad6c210113463f34381f50c3efa58d626abd58f"
+  },
+  "sourceBlend": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ArtSource\\SkyIsland\\SkyIslandWorld.blend",
+    "bytes": 82779607,
+    "sha256": "0de153c363527bef6036a2716f42b7c9c53acdcd08a93731999d6099285c233f"
+  },
+  "kitBlend": {
+    "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ArtSource\\SkyIsland\\SkyIsland_ModelKit.blend",
+    "bytes": 16228538,
+    "sha256": "680876eab3a33524c6cc8f2c7540dbb62ccd369661d05e64895756aad2352643"
   },
   "raid_bundle": {
+    "author_export": {
+      "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
+      "bytes": 105408139,
+      "sha256": "67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636"
+    },
     "repo": {
-      "path": "Assets\\arenas\\sky_island_raid",
-      "bytes": 118636309,
-      "sha256": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
-      "mtimeUtc": "2026-09-10T13:15:45.628691Z"
+      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
+      "bytes": 105408139,
+      "sha256": "67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636"
     },
     "game": {
       "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
+      "bytes": 105408139,
+      "sha256": "67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636"
+    },
+    "allThreeMatch": true
+  },
+  "previousRaidCopies": [
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
       "bytes": 118636309,
       "sha256": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
-      "mtimeUtc": "2026-09-10T13:15:45.696690Z"
+      "rollbackFile": "D:\\code\\ykf\\BossRushMod\\Build\\sky-production-20260914\\backup\\PreviousRaidBundles\\ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf.bundle"
     },
-    "author_export": {
-      "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
+    {
+      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
       "bytes": 118636309,
       "sha256": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
-      "mtimeUtc": "2026-09-10T13:13:50.217725Z"
-    },
-    "allThreeMatch": true,
-    "previousSha256": "2d18789caa9434430091e054eca376fd9a74c8db18279b8be29dbf19f739fd8a",
-    "previousBytes": 116702892,
-    "note": "2026-09-10 官方地图换手绘底图后重打包并部署：只换 13 张小地图贴图（形状仍按 layout 几何烘焙；颜色取 gpt-image-2 按 Blender 俯视参考图重绘、ECC 对齐并调回原版色带的底图），导入压缩由 Compressed 改 CompressedHQ；场景其余内容与上一版 2d18789c… 同一份来源。包体 116,702,892 → 118,636,309 字节。上一版出击包没有另存备份：回退用 `python tools/build_sky_island_minimap.py --flat` 重烘后重跑 BuildAndExit。",
-    "preDeployBundleAudit": {
-      "method": "UnityPy 读已部署的 bundle：对象计数与 SkyIslandWorld 标记前缀计数；Unity 构建日志 GEOMETRY_PASS 补可见三角面",
-      "navigationMeshVertices": 3870,
-      "navigationMeshTriangles": 4048,
-      "navigationMeshHardLimit": 4095,
-      "navigationUnchangedFromPreviousBundle": false,
-      "markersIdenticalToPreviousBundle": false,
-      "markerCounts": {
-        "Search": 20,
-        "POI_": 13,
-        "EnemySpawn": 12,
-        "Lamp_": 16,
-        "Region_": 12,
-        "Relay_": 5
-      },
-      "collisionObjects": {
-        "boxColliders": 146,
-        "meshColliders": 28
-      },
-      "gameObjects": 1053,
-      "meshRenderers": 777,
-      "materials": 110,
-      "texture2D": 87,
-      "meshes": 99,
-      "unityGeometryPass": {
-        "renderers": 777,
-        "visualTriangles": 1636738,
-        "markers": 82,
-        "groundColliders": 27,
-        "wallBoxes": 146
-      },
-      "notProven": "只证明包内对象图、标记与网格数据；游戏内行走、敌人寻路、镜头遮挡、观感与帧率未实机。",
-      "minimapTextures": {
-        "method": "UnityPy 解码包内 sky_island_minimap* Texture2D，与仓库 PNG 比可见像素的平均 RGB 差与 alpha 一致率",
-        "objectCounts": {
-          "GameObject": 1053,
-          "Texture2D": 87,
-          "Sprite": 13,
-          "Material": 110,
-          "Mesh": 99,
-          "MeshRenderer": 777
-        },
-        "textureCount": 13,
-        "textures": {
-          "sky_island_minimap": {
-            "format": "25",
-            "size": [
-              1024,
-              1024
-            ],
-            "meanAbsRgbDiffVisible": 0.2,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_A": {
-            "format": "4",
-            "size": [
-              171,
-              171
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_B": {
-            "format": "4",
-            "size": [
-              349,
-              349
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_C": {
-            "format": "4",
-            "size": [
-              289,
-              289
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_D": {
-            "format": "4",
-            "size": [
-              333,
-              333
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_E": {
-            "format": "4",
-            "size": [
-              318,
-              318
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_F": {
-            "format": "4",
-            "size": [
-              303,
-              303
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_G": {
-            "format": "4",
-            "size": [
-              362,
-              362
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_H": {
-            "format": "4",
-            "size": [
-              215,
-              215
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_S1": {
-            "format": "4",
-            "size": [
-              135,
-              135
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_S2": {
-            "format": "25",
-            "size": [
-              128,
-              128
-            ],
-            "meanAbsRgbDiffVisible": 1.61,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_S3": {
-            "format": "4",
-            "size": [
-              142,
-              142
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          },
-          "sky_island_minimap_S4": {
-            "format": "4",
-            "size": [
-              142,
-              142
-            ],
-            "meanAbsRgbDiffVisible": 0.0,
-            "alphaAgreement": 1.0
-          }
-        },
-        "formatLegend": {
-          "25": "BC7",
-          "4": "RGBA32（边长不是 4 的倍数，块压缩不可用）"
-        }
-      }
+      "rollbackFile": "D:\\code\\ykf\\BossRushMod\\Build\\sky-production-20260914\\backup\\PreviousRaidBundles\\ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf.bundle"
     }
-  },
-  "terrainRootConvergence": {
-    "change": "Assets/Editor/SkyIslandRaidBuilder.cs: world.SetActive(false) -> world.SetActive(true)",
-    "state": "packaged_and_deployed",
-    "verifiedInBundle": "UnityPy 读回：SkyIslandWorld m_IsActive=True，SkyIslandLevel m_IsActive=False",
-    "why": "OFFICIAL_SCENE_CONTRACT.md 「已知时序差异」的收敛项：主角先于地形创建，黑幕期间会短暂坠落。",
-    "rollback": "改回 world.SetActive(false) 并重跑 BuildAndExit，再复制回仓库与游戏目录。",
-    "evidence": "L1 静态 + 包内回读；**未实机**，落地坠落窗口是否真的消失见待人工清单第 1.1 条。"
-  },
-  "shaderVerification": {
-    "tool": "python tools/verify_sky_island_bundle_shaders.py",
-    "ranAt": "2026-09-10T13:15:48.464556Z",
-    "result": "PASS（仓库副本与游戏副本各 3/3）",
-    "passes": {
-      "BossRush/SkyIsland/Environment": 4,
-      "BossRush/SkyIsland/Water": 3,
-      "BossRush/SkyIsland/Cloud": 3
+  ],
+  "previousVerification": "D:\\code\\ykf\\BossRushMod\\Build\\sky-production-20260914\\backup\\RepoValidationBeforeFinal\\raid_deployment_hashes.json",
+  "shaderVerification": "Three required shaders have compiled passes and Deferred GBuffer; see round03/raid-stage.log",
+  "runtimeDll": "Not changed by this art delivery",
+  "copiedEvidence": [
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_geometry.json",
+      "bytes": 128194,
+      "sha256": "2d62bc668edffbc94e4249a6972537d9bfe62ee9d11068e9839dc90747876d6f"
     },
-    "lightModes": {
-      "BossRush/SkyIsland/Environment": "UniversalForward, UniversalGBuffer, SHADOWCASTER, DepthOnly",
-      "BossRush/SkyIsland/Cloud": "UniversalForward, UniversalGBuffer, DepthOnly",
-      "BossRush/SkyIsland/Water": "UsePass -> WorldForward / GBuffer / DepthOnly"
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_dressing.json",
+      "bytes": 1090024,
+      "sha256": "e17431dcb5a5bea266b92abd68e628c4f707062161e699fcf1c80626d8c052ab"
     },
-    "d3d11Programs": {
-      "Environment": 38,
-      "Cloud": "有",
-      "Water": "0（UsePass 引用 Environment，属正常）"
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_model_kit.json",
+      "bytes": 75218,
+      "sha256": "030fbd3e1df374ab731b7852fd25adee3fb9ef24e998e5fd21d59fbc1cf98413"
     },
-    "newGate": "判据新增一条：三个着色器都必须有 UniversalGBuffer（或 UsePass 到它），否则 NO-GBUFFER 判红。用旧包实测形状反向验证过：旧形状红、新形状绿。",
-    "notProven": "仍未实机：布局 v2 在延迟管线下的实际观感与帧率。",
-    "bundle": "ef40465f149a09d86b304dbf80252938f7b8f1e655c82636156ca8e088a1c0cf",
-    "materials": {
-      "BossRush/SkyIsland/Environment": 103,
-      "BossRush/SkyIsland/Water": 2,
-      "BossRush/SkyIsland/Cloud": 4
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_validation.json",
+      "bytes": 1049,
+      "sha256": "ce1ffa802de78695a26b40f434525ddb2ea23016a31a2e3d72da04dc1dd21804"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_bundle_validation.json",
+      "bytes": 313,
+      "sha256": "53960641460d11a330593d5fe2615a83f524203d7a7b7f868db3d60819382e07"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_physics_validation.json",
+      "bytes": 512,
+      "sha256": "c00011ab9f81c2ded2204c882a06ad2beec64e7c538ae9bf193089281e350cfc"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_model_kit_validation.json",
+      "bytes": 17966,
+      "sha256": "8d871e4083d71a82fafd4baad3f8eed9a9f2c960ae78f8d01a0271ff0d6853dd"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_raid_validation.json",
+      "bytes": 278,
+      "sha256": "0e9b10b81036c704f9521b75b1b77a81fab26841d938f649accca4257f93e2dc"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\01_hero.png",
+      "bytes": 868788,
+      "sha256": "2f241bf775727373474aafbd608c9bccb1b45c87c34450f5f770999faf7e0863"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\02_front.png",
+      "bytes": 779128,
+      "sha256": "089caed5c0aa1fb2c1207079ea761c0d77afe0aed5a23a7758a6102324963b12"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\03_side.png",
+      "bytes": 730406,
+      "sha256": "0745825a2a9cee7c0200142eede8ecc01e91be2168045107d0c68ecc610a8b89"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\04_back.png",
+      "bytes": 753492,
+      "sha256": "08ba798b6a2252f820b384e158a1c03ca43732ddfa7115e54d4e3177cafd216d"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\05_top.png",
+      "bytes": 887502,
+      "sha256": "d68f9426b61020a509939f68fb0e5f890aa44793ea8426dd0fe909c2d032fc76"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\06_underside.png",
+      "bytes": 852648,
+      "sha256": "8144802ca4c2fee3686d859f139490f552cff271fed7d593d4d17321232e6052"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\06_underside_solid.png",
+      "bytes": 609443,
+      "sha256": "4fc89ae9668fe5d70ef9837fb37120939f872048973fe679beca0b3eaace0752"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\06_underside_wireframe.png",
+      "bytes": 748429,
+      "sha256": "0580edd14679020db584b5b5c39b13963aa66b805b5a801705037a3289d5a4ae"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\07_main_path.png",
+      "bytes": 1073238,
+      "sha256": "13d9bd62817ba179991fb9709798fe08057816c9000d57a66f7b1817bc9be6a8"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\08_landmark.png",
+      "bytes": 781962,
+      "sha256": "e19ff5af314488b7e0043ebf3a3bc3a0664fa103bd252d856dd74505dc431da8"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\09_architecture.png",
+      "bytes": 969214,
+      "sha256": "2060cc43335d73d1f2718171e5e7db6e63f2ed254e7d69a724b61dc11f2526e7"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\09_architecture_solid.png",
+      "bytes": 803017,
+      "sha256": "ad5f7f0b68d5cee88a2c0a27fa5929ed26c636cb21aa85b2e515e87592cb8598"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\09_architecture_wireframe.png",
+      "bytes": 964788,
+      "sha256": "68abe0c3240c0155744972af5a12a18dc4c207db77b95ab83361be53c01381db"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\10_cliff.png",
+      "bytes": 919800,
+      "sha256": "cebe9c85af333fe907c97c85eba8b290e6c0e7c7951f1c362d3a677efd284512"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\10_cliff_solid.png",
+      "bytes": 710941,
+      "sha256": "1e917774bf7c40364415bc3d818d52465b1f1d4cccf9f84b860c06042bd45bfb"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\10_cliff_wireframe.png",
+      "bytes": 857597,
+      "sha256": "9da05e43677142d25272a1ec68b514b843b820dda27421e815fa3d99836916f3"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\11_vegetation.png",
+      "bytes": 743755,
+      "sha256": "cb3fd934f68f2434bfe33d261c646849e1bfa2433252802ca6d19736b72af198"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\11_vegetation_solid.png",
+      "bytes": 642817,
+      "sha256": "f4a803315864cea665cb0546851a62906b57e89d751fa7061359e58139b5c6ce"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\11_vegetation_wireframe.png",
+      "bytes": 701240,
+      "sha256": "65a6a342bcfdc35fa618729c21bc9b8d2e1805bb7ccd7d4c56d822f6daf34ef5"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\asset_disposition_baseline848.csv",
+      "bytes": 176003,
+      "sha256": "61c0a3e7070600809036fc6a0ce9cd7c94a0745954e122fa25916a29359a843c"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\asset_disposition_baseline848.json",
+      "bytes": 1147252,
+      "sha256": "41f18ce4502d1b570b0e7db983d599ea346ea3bc045c1d7fe02d53ca988b560d"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\asset_disposition_current.csv",
+      "bytes": 160409,
+      "sha256": "36b22e6ba18e21ef77ba495510135224bea8341ed550d4256428c2615f1c14d2"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\asset_disposition_current.json",
+      "bytes": 1090402,
+      "sha256": "75ac7d8f353f8a07d2652440108131344189e34ee1e1621fc816c67cba090a39"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\A_north_bridge.png",
+      "bytes": 980739,
+      "sha256": "b9a611906ac481522a753527e3e179d0ccb07d808c1ca5f41fb8bcfe8811d921"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\A_spawn.png",
+      "bytes": 919373,
+      "sha256": "c4787889c3b9d8ee283a8b9b2b50098e78004ea67d1072e46b3cc6623a4b88ba"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\B_stone_bench.png",
+      "bytes": 803510,
+      "sha256": "c96674c40196b8a0ac2c27ce182aa96522fd9930f8822da4c5d65306497f7ae1"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\cameras.json",
+      "bytes": 5444,
+      "sha256": "0cf063302d9cf73c98380fa2057d4e98e8b357b5fc2bb48505da2b774f2e13e4"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\final_delivery_manifest.json",
+      "bytes": 10424,
+      "sha256": "6289d82c6bee4fe893edb1cd03dcc42f424d876efef339d4e321318988c9ca2a"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\final_focus_cameras.json",
+      "bytes": 3097,
+      "sha256": "f7200b3c3f6c02a66c1ef17e878c33cd7f79b7634d6153bf91aba29385a53c57"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\final_focus_validation.json",
+      "bytes": 10193,
+      "sha256": "dac7bd582db1a29ca66ac63405cb23bf34ca364f27e72bf0de8c302cd5595e42"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\protection_and_coverage.json",
+      "bytes": 3835,
+      "sha256": "39d87a7b92a6f48d2f5967fcf8e2df16af23a48f2a99a2b4b3bd662294e7f8bb"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\render_manifest_all.json",
+      "bytes": 7817,
+      "sha256": "8ac71834261384eaad376dea4270ef8fc7c709c35aac16308ea27272a181751c"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\roof_closeup.png",
+      "bytes": 928167,
+      "sha256": "5753725182a1a75e75b245b44341c9d92049dec33347c73392b91410987f8bf7"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\roof_ray_offline.json",
+      "bytes": 13129,
+      "sha256": "36975adf3cde014d80e38ee6d5af2b0db752bea206be839c58f619bcbaee95ea"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\round03_11_views.jpg",
+      "bytes": 531292,
+      "sha256": "958cdacbd6799f2ffbc65770e814739da45ac698cf60d0d59d0616200a6c396f"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\round03_focus_views.jpg",
+      "bytes": 209600,
+      "sha256": "23b28c7e46adbd5a982e7798338fa15bb5e5004199a7716e77cf6a4298036f66"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\round03_technical_views.jpg",
+      "bytes": 300930,
+      "sha256": "5e534abecbec2b810ccad98a4c634ae3a85628605c6fb212d93bc4c8f1698879"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\scene_audit.json",
+      "bytes": 1691372,
+      "sha256": "69598ff8cf8775114af7944958f6b343a475cc1ca049ac0f3a8ab144dd9362fe"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Blender\\source_contracts.json",
+      "bytes": 213576,
+      "sha256": "94682ee60df256d3905f0b7a7e5137ceab67aae895a42a8f2f507de68d8de54b"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\01_Hero_ThreeQuarter.png",
+      "bytes": 1163521,
+      "sha256": "4adaecb5b5124eaa10570f0a7381db87402666a78ddfda818250a2bf2f2ad183"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\02_Front.png",
+      "bytes": 967328,
+      "sha256": "43fc5ad3378de158c02848c7938b2bc7b12707c33d1e9148aabab39dfba0a562"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\03_Side.png",
+      "bytes": 882863,
+      "sha256": "72030303ffdceff5cf010d925440a8dda103b9ef89d53d07611769aa4b5c66c7"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\04_Back.png",
+      "bytes": 917375,
+      "sha256": "8aca3ffce2880eaa87979629b2b30f181271128ecb37374db26b32575041ccf6"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\05_Top.png",
+      "bytes": 1293948,
+      "sha256": "f1c3697ef20b64f3ecb889546a3455ae64dbdb84e08f807660e9ff5905910fe5"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\06_Underside_CloudsIsolated.png",
+      "bytes": 498303,
+      "sha256": "c099e4be93224793b7579a82ee7e590c97bafc9ab8e80f8984ae1628df5fc043"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\07_MainPath_PlayerView.png",
+      "bytes": 2773521,
+      "sha256": "18d4bf6cf240df5507e40e594fb86ffbe3b14a196a432c154fe5025d88c67648"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\08_Landmark_PlayerView.png",
+      "bytes": 1390503,
+      "sha256": "af84811c9dc1ff15570337b51990398fccd8b3084c1411d8d0473aacda94dc36"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\09_Architecture_Close.png",
+      "bytes": 2780452,
+      "sha256": "34b54b126872ec4a26353c9da7f8a795b2d77829cd1f580e92d8b4a6b08ca61d"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\10_Cliff_Close.png",
+      "bytes": 1863309,
+      "sha256": "3cda979be147ec407d68ccf6a9b1bf3f521358e4b807ea5919ee8b4662ad774e"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\11_Material_Vegetation_Close.png",
+      "bytes": 2207511,
+      "sha256": "f1ef207fca80875439dece500003de6a92309d88889d7136f2a2307ae704d81e"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\camera_validation.json",
+      "bytes": 396855,
+      "sha256": "cd9d6f1d9c814f799fa93b6fe1867076c21c454d0adb44a84f4db66966a1acba"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\profile_deferred_PlayerSpawn.png",
+      "bytes": 2618324,
+      "sha256": "1f35ca52fc5cb3ccdec2671fd73e8370d52f79650bea976f92e662c1fdbc9bc9"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\profile_deferred_Region_B.png",
+      "bytes": 3033622,
+      "sha256": "73140c01058b0fa6824f7b389fbfcba9b07c5dde02f855c7fbdd7567e6e3e15b"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\profile_deferred_Region_F.png",
+      "bytes": 2771817,
+      "sha256": "ec9169a60a8e526768f2a181ab7b324c3babc597d18388c2e16ab5a4e6e793db"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Unity\\profile_deferred_Region_H.png",
+      "bytes": 2484061,
+      "sha256": "725d6a8c964a6d183ae165cf8692381979f52406ee55f55a885423f186345113"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\baseline-deferred-after\\result.json",
+      "bytes": 7318,
+      "sha256": "0e24cebd556c464b5661f0559d3326e822067e493132e8682d9a088ec177859d"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\baseline-deferred-before\\result.json",
+      "bytes": 7313,
+      "sha256": "90de8e4b3a420a098b6f1d0483bd82beab2c3a39672d98fc2e1538f9a86d17d7"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\baseline-forward\\result.json",
+      "bytes": 7285,
+      "sha256": "f30dceb82e58c890c59cd182a912d1ab766c63f68a6429de63087fb6b1e428e9"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\final-deferred\\result.json",
+      "bytes": 7330,
+      "sha256": "44914e65ba1e85effac3f17625432868d16c3e82e8adcaa0d076c818bc96e7c0"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\final-forward\\result.json",
+      "bytes": 7311,
+      "sha256": "458bfeb7ad35759e94b33a0d5d07ad26b5db8d6ecbf29a920eb5afd607abd865"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\baseline-deferred-after\\process_cpu_samples.json",
+      "bytes": 38758,
+      "sha256": "f741392602406fa5bd5f665ec22bad0aca556d201b2d835037426d5c2c100d8d"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\baseline-deferred-before\\process_cpu_samples.json",
+      "bytes": 69438,
+      "sha256": "fd58f8f9ba26ee6435fae42d4fe5d76721fb13cbf8cf055fd7a05771366f88cd"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\baseline-forward\\process_cpu_samples.json",
+      "bytes": 38777,
+      "sha256": "88505a0b67a870af552169babfc9a2ff46019ef30dc80ac15fd6e21165576e91"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\final-deferred\\process_cpu_samples.json",
+      "bytes": 38692,
+      "sha256": "64c31402f3303f6ca359dd97e9ea69f43cbe80bd6d87dd646bf6048b5c4e149a"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\Final\\Performance\\final-forward\\process_cpu_samples.json",
+      "bytes": 39900,
+      "sha256": "cb32964fc7f7c5d1f68337e5cdfee90b84b612aae09ad0dab45896502ec1dea1"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\RefinedSources\\cave_rock.json",
+      "bytes": 417116,
+      "sha256": "961a642eadc6ac76efc9e185506845fc144df7fba39404d902812b191bfd7c74"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\RefinedSources\\rock_b.json",
+      "bytes": 26423,
+      "sha256": "fe5fe699ebb8ac1656140d09ef642a17beb0839523154324fe1cc07d6f884ac0"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\RefinedSources\\glow_crystal.json",
+      "bytes": 69333,
+      "sha256": "c5f695030048ea3b7513ee26752c7fa82712ff5fa0067947bf7a58edb5340f8b"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\RefinedSources\\tea_house.json",
+      "bytes": 321917,
+      "sha256": "4c329c33619420abd26e749ba43562ff71f8e7c2d02bfe1c21377f77c461e00d"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\RefinedSources\\village_house_a.json",
+      "bytes": 380374,
+      "sha256": "08be1e52e422d5f2683b3b170f5dde1bd10b3dee2e0417c7ace61d473b10f3ae"
+    },
+    {
+      "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Production20260914\\RefinedSources\\geology_handpainted_native.png",
+      "bytes": 1663362,
+      "sha256": "940b7160fed63ee1c731e6fc2ebcffa598ad99ba777a1920589e9139b777c7c1"
     }
-  },
-  "dll": {
-    "source": {
-      "path": "Build\\BossRush.dll",
-      "bytes": 4777472,
-      "sha256": "2a00bd010de5ebe9ce2859c646521c80bad66f3745e4c2a97ad7bd423392134f",
-      "mtimeUtc": "2026-09-10T12:04:22.901563Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\BossRush.dll",
-      "bytes": 4777472,
-      "sha256": "2a00bd010de5ebe9ce2859c646521c80bad66f3745e4c2a97ad7bd423392134f",
-      "mtimeUtc": "2026-09-10T12:04:22.901563Z"
-    },
-    "match": true,
-    "flavor": "Release（compile_official.bat，未定义 BOSSRUSH_DEV）",
-    "previousSha256": "1a0c84e15413fa6a20da137b7efc7c265331caa15893c9ba239f69af913df953",
-    "note": "2026-09-10 布局 v2：Release 编译并部署（compile_official.bat，未定义 BOSSRUSH_DEV）。改动：五扇门与十块木牌坐标（K1/K2/K3 门移到风铃集一侧桥头）、自动敌群 55 m / 手动挑战 70 m / 强制追踪 70·85·100 m、双航标开钟庭与 D/G 航标广场撤离、官方地图撤离点与当前目标、中继平台遭遇与搜刮锚点。585 guard 全绿；天空岛执行回归 8 PASS / 0 FAIL。源码 = 977eff9（含同日另一会话已提交的石堡前哨读秒改动）+ 本轮未提交的布局 v2 改动。本会话不开游戏。"
-  },
-  "story_content": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\SkyIsland\\World.json",
-      "bytes": 2082,
-      "sha256": "63afc051b713bf23d2c18222cd329b8ba2e06d09fbf8ebd0276d0edf2f499983",
-      "mtimeUtc": "2026-09-10T11:30:37.627082Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\SkyIsland\\World.json",
-      "bytes": 2082,
-      "sha256": "63afc051b713bf23d2c18222cd329b8ba2e06d09fbf8ebd0276d0edf2f499983",
-      "mtimeUtc": "2026-09-10T11:30:37.627082Z"
-    },
-    "match": true
-  },
-  "npc_content": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\DuckNpcs.json",
-      "bytes": 24607,
-      "sha256": "4cdc27f3e0f826fb0b1d0bddd1d887b0efee859b0d9ffc27bd0b548f15b55005",
-      "mtimeUtc": "2026-09-08T08:29:31.124282Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\DuckNpcs.json",
-      "bytes": 24607,
-      "sha256": "4cdc27f3e0f826fb0b1d0bddd1d887b0efee859b0d9ffc27bd0b548f15b55005",
-      "mtimeUtc": "2026-09-08T08:29:31.124282Z"
-    },
-    "match": true
-  },
-  "gameplay_coverage": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Data\\GameplayCoverage.json",
-      "bytes": 70803,
-      "sha256": "45f9ca514e530c727498ca2176b748b36e22f1f35fa143f07fe5b2d25206be46",
-      "mtimeUtc": "2026-09-10T11:33:25.751500Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Data\\GameplayCoverage.json",
-      "bytes": 70803,
-      "sha256": "45f9ca514e530c727498ca2176b748b36e22f1f35fa143f07fe5b2d25206be46",
-      "mtimeUtc": "2026-09-10T11:33:25.751500Z"
-    },
-    "match": true
-  },
-  "sfx_device_awake": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\device_awake.wav",
-      "bytes": 160044,
-      "sha256": "110e39790860a89237e220f2953dbdd01e13d28545208a21411ebb1911d3d7f1",
-      "mtimeUtc": "2026-09-08T08:41:49.657106Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\device_awake.wav",
-      "bytes": 160044,
-      "sha256": "110e39790860a89237e220f2953dbdd01e13d28545208a21411ebb1911d3d7f1",
-      "mtimeUtc": "2026-09-08T08:41:49.657106Z"
-    },
-    "match": true
-  },
-  "sfx_homecoming_bell": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\homecoming_bell.wav",
-      "bytes": 448044,
-      "sha256": "114d2e570501b50c16854d2f5d0a76ef8622401cb6b3382d3cdd358145236321",
-      "mtimeUtc": "2026-09-08T08:41:49.161506Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\homecoming_bell.wav",
-      "bytes": 448044,
-      "sha256": "114d2e570501b50c16854d2f5d0a76ef8622401cb6b3382d3cdd358145236321",
-      "mtimeUtc": "2026-09-08T08:41:49.161506Z"
-    },
-    "match": true
-  },
-  "sfx_island_wind": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\island_wind.wav",
-      "bytes": 512044,
-      "sha256": "46740690c92274714fccbdf20b10438e0c40c95eea5d517b072e04a22814736d",
-      "mtimeUtc": "2026-09-08T08:41:47.603602Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\island_wind.wav",
-      "bytes": 512044,
-      "sha256": "46740690c92274714fccbdf20b10438e0c40c95eea5d517b072e04a22814736d",
-      "mtimeUtc": "2026-09-08T08:41:47.603602Z"
-    },
-    "match": true
-  },
-  "sfx_wind_chimes": {
-    "source": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Sounds\\SkyIsland\\wind_chimes.wav",
-      "bytes": 256044,
-      "sha256": "fec39956fd90300e73a3fb32b0ffa56477767812fb60fa3690be1e2c567b27ea",
-      "mtimeUtc": "2026-09-08T08:41:48.387886Z"
-    },
-    "deployed": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Sounds\\SkyIsland\\wind_chimes.wav",
-      "bytes": 256044,
-      "sha256": "fec39956fd90300e73a3fb32b0ffa56477767812fb60fa3690be1e2c567b27ea",
-      "mtimeUtc": "2026-09-08T08:41:48.387886Z"
-    },
-    "match": true
-  },
-  "collisionCoverage": {
-    "boxes": 146,
-    "shrunk": "52 个 Tripo 替换件里 31 个的碰撞盒被收敛到模型真实投影",
-    "worstAirWallRemoved": "H_HomecomingBell 34.0x26.0 -> 4.4x6.0（单边少挡 14.8 / 10.0 m）",
-    "navigation": "布局 v2：3870 顶点 / 4048 三角（上一版 4037 / 4215）；layout obstacles 88 = 60 手写 + 28 聚落摆件",
-    "knownTradeoff": "新增的 73 个盒**全部**落在导航网格上（附加件本来就摆在可行走草地上，只避开了路径）。A* 走的是导航网格、不认这些盒，所以敌人有可能贴着新碰撞打滑。实机第一优先观察项。要回退只需清空 sky_island_tripo_props.COLLISION_POLICY 后重打包。",
-    "properFixBlockedBy": "把附加件登记进 layout obstacles 让导航挖洞才是正解；导航顶点现为 3870/4095（余量 225），逐件挖洞的顶点开销仍需另行评估",
-    "verifiedAgainstBundle": "2d18789caa943443…：BoxCollider 146 / MeshCollider 28",
-    "boxesSplit": "布局 v2 未逐项拆分障碍盒与 Tripo 附加件盒；岛缩小后锚点类 Tripo 大件少放，碰撞盒 161 → 146"
-  },
-  "authorWorldBundle": {
-    "bundle": {
-      "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandExport\\sky_island_world",
-      "bytes": 116976864,
-      "sha256": "3ad7925b9aba394b430193dc086ad862cf1db4430fbd8ff814f6fd0ff280af44",
-      "mtimeUtc": "2026-09-10T11:18:14.314593Z"
-    },
-    "validation": {
-      "status": "PASS",
-      "target": "StandaloneWindows64",
-      "scene": "Assets/SkyIsland/SkyIslandWorld.unity",
-      "bytes": 116976864,
-      "bundleSHA256": "3ad7925b9aba394b430193dc086ad862cf1db4430fbd8ff814f6fd0ff280af44",
-      "sourceFbxSHA256": "4c45bbdcd16c89229637314149afd1988cbefcc065763a6193cb552bbfa41509"
-    },
-    "builtWith": "BossRush.SkyIslandBundleBuilder.BuildResourcesAndExit（退出码 0，无 FAILED）",
-    "geometryPassMatchesRaidSource": true,
-    "note": "布局 v2 用 BuildResourcesAndExit 重建：GEOMETRY_PASS renderers 777 / visualTriangles 1,636,738 / markers 82 / ground colliders 27 / wall boxes 146。正式出击包不读这个包；tools/build_sky_island_art_preview.ps1 -Physics 读它。"
-  },
-  "artRound2": {
-    "deployedAtLocal": "2026-09-10 15:44",
-    "wiredInstances": {
-      "cliff_chunk_a": 142,
-      "cliff_chunk_b": 177,
-      "cliff_chunk_c": 174,
-      "cliff_shrub_cap": 167,
-      "bush_a": 376,
-      "bush_b": 341,
-      "rock_b": 219,
-      "fern_clump": 159,
-      "coral_clump": 189,
-      "distant_islet_a": 4,
-      "distant_islet_b": 4,
-      "distant_islet_c": 4,
-      "mushroom_cluster": 9,
-      "glow_crystal": 40,
-      "brass_lamp_post": 29,
-      "waterfall": 3
-    },
-    "importedNotWired": {
-      "brass_railing_module": "待 owner 定：环岛护栏现为木栏，换铜栏杆属于改画风"
-    },
-    "pendingRemodel": [
-      "bush_c",
-      "rock_a",
-      "flower_patch",
-      "lavender_clump",
-      "cliff_vine"
-    ],
-    "triangles": {
-      "unityVisualPrevious": 1515740,
-      "unityVisualCurrent": 1817552,
-      "unityDelta": 301812,
-      "unityDeltaPercent": 19.9,
-      "unityVisualBeforeBudgetTrim": 1966951,
-      "blenderPrevious": 1604946,
-      "blenderCurrent": 1858588,
-      "blenderTripoCurrent": 955635,
-      "blenderTripoSharePercent": 51.4,
-      "basis": "以 Unity GEOMETRY_PASS visualTriangles 为准（不含云 80,234）；Blender 统计口径不同，仅作追溯"
-    },
-    "budgetTrim": "岛缘石块 240→160、林冠 200→140、灌木 300→220、碎石 250→180、发光水晶 900→500、铜灯柱 1000→600",
-    "nextBudgetRisk": "cliff_vine 855 份 × 120 面 ≈ 10 万面，远超被替换的程序化垂藤；回来时要压单件面数或减条数",
-    "settlementCheckOnFreshOutputs": "PASS（modelTypes 14 / modelInstances 28 / protectedMarkers 76 / propTriangles 62782）",
-    "rollbackBundle": "Build\\sky_island_raid.fb12e540.bak（上一版出击包原样备份，复制回两处部署位置即可回退）"
-  },
-  "layoutV2": {
-    "deployedAtLocal": "2026-09-10 19:34（出击包）；DLL 时间见 dll.source.mtimeUtc",
-    "generator": "tools/sky_island_navigation.py（ISLAND_SPECS / BRIDGE_SPECS / BRIDGE_RELAYS）+ tools/sky_island_frame.py",
-    "current": {
-      "navigationVertices": 3870,
-      "navigationTriangles": 4048,
-      "physicalWalkableAreaXZ": 114177.912,
-      "maximumSlopeDegrees": 15.4612,
-      "spawnToBellExtractionMeters": 524.56,
-      "explorationRouteMeters": 1704.03,
-      "bridgeTotalMeters": 763.4,
-      "markers": 81,
-      "obstacles": 88
-    },
-    "previous": {
-      "navigationVertices": 4037,
-      "physicalWalkableAreaXZ": 222265,
-      "maximumSlopeDegrees": 16.3139,
-      "spawnToBellExtractionMeters": 930.72,
-      "explorationRouteMeters": 2665.42,
-      "bridgeTotalMeters": 1603
-    },
-    "gates": "K1/K2/K3 在风铃集一侧往桥内 8 m，BellCourt / ZhelingPass 在来路一侧 8 m；各封 2/6/2/2/2 个导航三角形（SkyIslandGateNavigationPropertyTest，32 组合）",
-    "tripoHeroInstances": {
-      "previous": 134,
-      "current": 114
-    },
-    "rollback": "仓库侧 git checkout 布局、生成器与 C# 改动；作者工程侧 git checkout 未提交的 SkyIsland 资源后重跑生成链与两次 Unity 构建，再把出击包复制到仓库与游戏目录。"
-  },
-  "minimapArt": {
-    "deployedAtLocal": "2026-09-10 21:18",
-    "source": {
-      "image": "ArtSource/SkyIsland/Minimap/Source/sky_island_minimap_art.png",
-      "sha256": "2b6d8a6ee7b6aa8ddf29f21fd52d71b0ebc6503f15a4aad3390fa489dbd2534e",
-      "grade": "vanilla"
-    },
-    "pipeline": "tools/sky_island_minimap_art.py（reference → generate → align）+ tools/build_sky_island_minimap.py",
-    "model": "gpt-image-2",
-    "rawSize": [
-      1254,
-      1254
-    ],
-    "grade": "vanilla",
-    "alignmentIoU": [
-      0.9549,
-      0.9566
-    ],
-    "warp": [
-      [
-        1.0006999969482422,
-        0.0009899999713525176,
-        -0.9404399991035461
-      ],
-      [
-        -5.999999848427251e-05,
-        1.0037699937820435,
-        -2.1252400875091553
-      ]
-    ],
-    "prompt": "ArtSource/SkyIsland/Minimap/Source/prompt.txt",
-    "baseTexture": {
-      "sha256": "6a9f11272821808bf5f128fcf4372512db3cc14d8edbebbde9d5e6ebcb0ba223",
-      "bytes": 363576
-    },
-    "layerGeometryUnchanged": true,
-    "importCompression": "CompressedHQ（作者工程 Assets/Editor/SkyIslandRaidBuilder.cs 的 ImportSprite）。块压缩要求边长是 4 的倍数：1024 底图与 S2（128）为 BC7，其余 11 张分区图层 Unity 存未压缩 RGBA32",
-    "checks": "SkyIslandMiniMapGuard PASS（新增手绘底图 sha256 校验，两条破坏探针转红）；SkyIslandMiniMapLayerAlignmentPropertyTest PASS 0.000%；12 个图层尺寸与偏移和纯色版一致；烘焙结果与 owner 过目的预览可见像素逐像素一致",
-    "notProven": "游戏内地图的实际观感、缩放清晰度与迷雾切换未实机。",
-    "workDir": "ArtSource/SkyIsland/MinimapArt（俯视渲染、参考图、原始生成图；local-only）"
-  }
+  ]
 }

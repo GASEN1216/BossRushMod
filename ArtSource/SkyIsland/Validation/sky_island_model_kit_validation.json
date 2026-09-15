@@ -29,7 +29,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "8aac8715b3bc97d596ff54941c1d6ce2e35a13a217d6ce9dfc0a6955db993b8f"
+      "sourceSHA256": "e8968705eda546a1209d7395bd72710f605bb9be27d8a180a98ea44c1bdc0739"
     },
     {
       "name": "SkyIsland_Bench",
@@ -59,14 +59,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "d6fe4b1f984dc930ba55b2e3d41b74169430cefa072dadb1ade509fe97cf6ce9"
+      "sourceSHA256": "22e488aaac2e4bc32d7ebacdfa28bd64d3a8dbe1bdf5e809533bf62365cb4966"
     },
     {
       "name": "SkyIsland_DuckStatue",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_DuckStatue.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_DuckStatue.prefab",
       "renderers": 5,
-      "triangles": 1104,
+      "triangles": 1048,
       "boundsMin": [
         -1.4000001,
         -2.38418579E-07,
@@ -89,14 +89,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "66e49b00e635eb7a8ef1823556f4cd75a6c14bcf9974613200116dad28bdd71d"
+      "sourceSHA256": "6b7a3ababb1e24e28d99b8ead74076a5facb59d8a9909cccc26145367e30f99f"
     },
     {
       "name": "SkyIsland_HomecomingBell",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_HomecomingBell.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_HomecomingBell.prefab",
       "renderers": 6,
-      "triangles": 2900,
+      "triangles": 2832,
       "boundsMin": [
         -3.50000024,
         -2.38418579E-07,
@@ -119,7 +119,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "9f7c0f7184892d30636e6577356beae1dd4cd43a38e26d489b89c7a7f34aba9c"
+      "sourceSHA256": "84a88831ba5a3a475dfc2098541934014ef2c6c08df093a8d3a31da4a8b5e4fd"
     },
     {
       "name": "SkyIsland_House",
@@ -149,7 +149,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "6a13f68fc3ce473f6e32c77e13e68d44d2cf9e4b7e91acbdc3567a7d9f956a8d"
+      "sourceSHA256": "0e61709dbab062f46384133dbcb0e79837774ea9a3ec254202e1effcbb980e40"
     },
     {
       "name": "SkyIsland_Lantern",
@@ -179,14 +179,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "2b6de6b4d7c342bece76dc5a59991817b26074e498576345f2da0c40f56c6b5a"
+      "sourceSHA256": "e6d52e3509c36e7118b26e0890c653f31ea2a16b0a241d8d5dc651fdd5576499"
     },
     {
       "name": "SkyIsland_Planter",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_Planter.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Planter.prefab",
       "renderers": 2,
-      "triangles": 280,
+      "triangles": 272,
       "boundsMin": [
         -0.8194543,
         -5.96046448E-08,
@@ -209,7 +209,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "1c268d3baf66555bca43ef7e781182e4dea65a830a741dd31be4895ca1c94b8d"
+      "sourceSHA256": "32a714501f435696d4caddc1da37f45a21ca60fe54e3bac4a10486e2db957e51"
     },
     {
       "name": "SkyIsland_TeaHouse",
@@ -239,14 +239,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "309c276385f8b1e869032e5f9d5ef4b5a82cb3429cd059c7d186829161f93920"
+      "sourceSHA256": "80175e3d4cf43aec61f79194c053211b7394020f53083cbd5179cc2fdc03ac47"
     },
     {
       "name": "SkyIsland_Tree",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_Tree.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_Tree.prefab",
       "renderers": 3,
-      "triangles": 524,
+      "triangles": 516,
       "boundsMin": [
         -5.31862736,
         -4.76837158E-07,
@@ -269,14 +269,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "40c120013ff75e00931db64c93ee06ee92ba36288d354274c9d453fcf5f2ee59"
+      "sourceSHA256": "e79e75e82aa1f1a37f9ef9b631dd32bad1e19b3cbdd7cba7c6e9c0b3dd007e13"
     },
     {
       "name": "SkyIsland_WindChime",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_WindChime.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_WindChime.prefab",
       "renderers": 5,
-      "triangles": 11888,
+      "triangles": 11716,
       "boundsMin": [
         -2.8,
         0.0,
@@ -299,7 +299,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "6067ea631f424a4fe8fb3adc531d3cb011cf1543b8e6a0e00ed0481e303cec62"
+      "sourceSHA256": "cea1367883882ba2bd369b7d31dbbfc9c1483b97dff823411f1972359f6cfbef"
     },
     {
       "name": "SkyIsland_camp_tent",
@@ -329,7 +329,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "637308ccb3c172be69b9524032a5d458f00ea34c2f8eb3a6b44cab457545e8f8"
+      "sourceSHA256": "8e7ec26f40f32efd0f3a5af57410f747ec30b588387388204b22b20e58c458ab"
     },
     {
       "name": "SkyIsland_compost_planter",
@@ -359,14 +359,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "ed644f3fe0d6484f6dfdfb205e0f49211fec48ef0a0bc4119d7d5d2104e2ff2b"
+      "sourceSHA256": "f7633cf644e782c688c4b51e74c60822d2b2a17b71fe3ea2d138997e3cc2d3ba"
     },
     {
       "name": "SkyIsland_duck_mailbox",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_duck_mailbox.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_duck_mailbox.prefab",
       "renderers": 13,
-      "triangles": 1172,
+      "triangles": 1160,
       "boundsMin": [
         -1.342581,
         -1.1920929E-07,
@@ -389,7 +389,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "29a315dc149c6507035f7da637cc4d33899613d50f7db8e83db84773f0119a4c"
+      "sourceSHA256": "c0c11b7b29eb909b3422774187628b5a6c438bc82193b3e8e9beebb5492375d8"
     },
     {
       "name": "SkyIsland_firewood_rack",
@@ -419,7 +419,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "310e04b1e39eea375e7bf3de3c95dca9ec95e896f74dea1348ed74b10b07acd5"
+      "sourceSHA256": "b46ce77eb6cf09d6a4e3a98e727bd559c87572a3022855bc1a13af39709971e6"
     },
     {
       "name": "SkyIsland_floatboat_cargo",
@@ -449,7 +449,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "4d4e9b52574cfb8f6f868762e90fb13e0b9e5a1acf288dda6cd5ed902f66f008"
+      "sourceSHA256": "c02dfae6330eae6f111bc7eb7baacf80a7207de31f249f635700065a776564a8"
     },
     {
       "name": "SkyIsland_laundry_rack",
@@ -479,7 +479,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "48338076f8aa81c19d3479f7dfdb5fe2d3815bcfa58f88f5694e357cda5c1d2d"
+      "sourceSHA256": "93efbc905d40a78b834b654fafd59ac4815e7c978efde9e9dc7e549b7e47cf24"
     },
     {
       "name": "SkyIsland_picnic_table",
@@ -509,7 +509,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "795bbc08e25f71490c52a423c3355acb6ea8ad679fa1e794e1352d90ce26d927"
+      "sourceSHA256": "e8205434735083aa0b59d064eb787648194866c7a087cc8af75cfd43a30d0c72"
     },
     {
       "name": "SkyIsland_produce_stall",
@@ -539,7 +539,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "1616e04579cbdb90240154651845e9840f9b1a22cc2394076e8fbff0a998c4d3"
+      "sourceSHA256": "b0708e361fece3943fedd70028da3d63e720b35bb5b13955931f865aafc3500c"
     },
     {
       "name": "SkyIsland_rain_barrel",
@@ -569,7 +569,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "518cf4295c586642d3165d5f43db03ffbe44cad40dd4282290e2c3f731d53a35"
+      "sourceSHA256": "a3886e23de019f23d123798ffdebcdc54e9253bff800b7a0cb5472cb2670b192"
     },
     {
       "name": "SkyIsland_supply_handcart",
@@ -599,7 +599,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "b475dc380accf29bae582de3e7c6eb8c6e217d96504d074995d79309b512e375"
+      "sourceSHA256": "6b4a4491e2175d2bde51fd82d49c816cb00bc43aeba6e302af1691ea8cdb4b7a"
     },
     {
       "name": "SkyIsland_tea_stove",
@@ -629,7 +629,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "ab38c96c373b8f00663a919b2db31c9f47726e7d334a732dd3d95426167c7d72"
+      "sourceSHA256": "4c3ad40fe8d1c1e85f0724405c34cf458c166918ea5dd494f2674c2b0af925fa"
     },
     {
       "name": "SkyIsland_tool_workbench",
@@ -659,14 +659,14 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "547ab2d14bfa3a7fccc58a8da685045b5d648221e6588e49f2b6dbbc70dec942"
+      "sourceSHA256": "8d53747d60121fc7ade5e89a5333797af9d92b1f2014589bb6cc42aef625067a"
     },
     {
       "name": "SkyIsland_wayfinding_sign",
       "fbx": "Assets/SkyIsland/Models/SkyIsland_wayfinding_sign.fbx",
       "prefab": "Assets/SkyIsland/Models/Prefabs/SkyIsland_wayfinding_sign.prefab",
       "renderers": 14,
-      "triangles": 695,
+      "triangles": 686,
       "boundsMin": [
         -1.68,
         -1.1920929E-07,
@@ -689,7 +689,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "5f9106850a4e70354c8e71bbbf67a7133310592e652fa497c9df9528df2fd3b9"
+      "sourceSHA256": "988795287dc865d737c42969b348bd2278751d5ddec4acdcb5f631bd97a972b3"
     },
     {
       "name": "SkyIsland_windmill_planter",
@@ -719,7 +719,7 @@
         1.0
       ],
       "colliders": 0,
-      "sourceSHA256": "82afbcb470c2feb5c63c98b66cca8b590b1fce5f45c352bc5054d21e396dc540"
+      "sourceSHA256": "1a807af7a97ddf7ca1049392a8c548528b61ea1ec9bdb757aa70a35c0d4cf20f"
     }
   ]
 }

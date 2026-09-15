@@ -2,7 +2,7 @@
   "status": "PASS",
   "target": "StandaloneWindows64",
   "scene": "Assets/SkyIsland/SkyIslandWorld.unity",
-  "bytes": 59471150,
-  "bundleSHA256": "ef46c9e181dc1f8d81710b201af78c7021630fb30cd33ac0614580eeb33efaf9",
-  "sourceFbxSHA256": "aaed0c64f2c3877dad29b63a69b88c1d3b343e5bf97a2c4599dffe4ff6d3b417"
+  "bytes": 103517331,
+  "bundleSHA256": "702e93afaaec44c7405db4fc0a1230c984ffb2ff4e357b303a9fe29af11997c3",
+  "sourceFbxSHA256": "de36df8f87ebde6597f73ae4bad6c210113463f34381f50c3efa58d626abd58f"
 }
