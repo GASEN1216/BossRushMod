@@ -141,9 +141,9 @@
       "actions": ["invincible:on", "set_health:1", "teleport:POI_D:2.5:0", "wait_real:6", "clear_nearby:45:20", "wait_real:4", "clear_nearby:45:15", "interact:resident:sky_miantai", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "assert:panel_open", "assert:choice_absent:请眠苔敷一副苔药|Ask Miantai for a moss remedy", "shot:miantai_full_health:ui", "close_panel", "set_health:0.6", "interact:resident:sky_miantai", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "assert:choice_present:请眠苔敷一副苔药|Ask Miantai for a moss remedy", "shot:miantai_hurt_price:ui", "close_panel", "teleport:POI_A:2.5:0", "interact:resident:sky_fuzhou", "wait_dialogue:5", "dialogue_advance:30", "dialogue_choose:0", "wait_panel:5", "assert:panel_open", "shot:fuzhou_panel_refit:ui"]
     },
     {
-      "id": "SKY_AUTO_REAL_BOSS_FOREMAN", "title": "头目 / 岛主 R1：残星工坊 G 组带队是残星匠首、装备在身上（metrics 记头盔 / 背甲 TypeID）；打到七成立起供能桩；采帧时间；击杀",
+      "id": "SKY_AUTO_REAL_BOSS_FOREMAN", "title": "头目 / 岛主 R1：残星工坊 G 组带队是残星匠首、装备在身上（metrics 记头盔 / 背甲 TypeID）；打到七成立起供能桩；采帧时间；单独击杀岛主读官方尸体箱（专属装备恰好一件、原版掉落照常），再清随从",
       "stage": "real", "location": "EnemySpawn_G", "class": "auto", "checklist": ["2.19.2", "2.19.3", "2.19.6", "2.19.14", "M_SKY_ISLAND_15"], "budget": 150,
-      "actions": ["invincible:on", "kill_nearby:600", "teleport:EnemySpawn_G:6:0", "wait_boss:foreman:30", "wait_real:1.5", "shot:foreman_spawned:world", "assert:boss_alive:foreman:60", "frame:5", "assert:profile_ok", "boss_hurt:foreman:0.65:10", "wait_object:SkyIslandForemanPylon:6", "wait_caption:供能桩|furnace pylons:4:optional", "shot:foreman_pylons:world", "assert:object_present:SkyIslandForemanPylon", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:3", "assert:boss_alive:foreman:80:false", "shot:foreman_down:world"]
+      "actions": ["invincible:on", "kill_nearby:600", "teleport:EnemySpawn_G:6:0", "wait_boss:foreman:30", "wait_real:1.5", "shot:foreman_spawned:world", "assert:boss_alive:foreman:60", "frame:5", "assert:profile_ok", "boss_hurt:foreman:0.65:10", "wait_object:SkyIslandForemanPylon:6", "wait_caption:供能桩|furnace pylons:4:optional", "shot:foreman_pylons:world", "assert:object_present:SkyIslandForemanPylon", "loot_boss:foreman:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:3", "assert:boss_alive:foreman:80:false", "shot:foreman_down:world"]
     },
     {
       "id": "SKY_AUTO_REAL_GATHER_GLOW_NIGHT", "title": "采集光斑昼夜对照：残星工坊 G1 残铜矿脉（约 6.5 m）与 G3 风晶簇（约 10.7 m）同屏，先白天一张、开夜再一张（夜里更亮、风晶簇最亮，但不至于满岛都是灯）；码头 A2 浮木夜里 11 m 再拍一张（匠首那一步清过 G 组才来）",
@@ -633,7 +633,7 @@
     { "checklist": "2.19.3", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_FOREMAN", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机只验打到七成立桩；拆桩后护甲回落与约 25 秒自熄由执行回归证" },
     { "checklist": "2.19.4", "class": "manual", "reason": "手感：星焰预警圈横移能不能躲开、两轮后的过热窗口伤害高不高" },
     { "checklist": "2.19.5", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "打光指定部件的耐久要精确控伤；断招规则由执行回归证" },
-    { "checklist": "2.19.6", "class": "auto", "evidence": ["SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "箱里恰好一件由演练按抽样结算核对；实机击杀后截图" },
+    { "checklist": "2.19.6", "class": "auto", "evidence": ["SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "实机单独击杀残星匠首后读官方尸体箱（loot_boss）：专属装备恰好是抽中的那一件、原版掉落照常；抽中哪件与补满耐久由演练核对" },
     { "checklist": "2.19.7", "class": "manual", "reason": "手感：观星手的标记圈能不能靠出圈、躲掩体、贴脸躲开" },
     { "checklist": "2.19.8", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "镜盔打光与约三成掉率要多打几趟；规则与抽样由执行回归证" },
     { "checklist": "2.19.9", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "offline:tests/SkyIslandBossEcologyGuard.py"], "reason": "穿上看属性面板要改装备栏；装备注册、属性与黑名单由守卫与 SKY_BOSS_PROFILES 证" },
@@ -644,6 +644,6 @@
     { "checklist": "2.19.14", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_FOREMAN"] },
     { "checklist": "2.19.15", "class": "shot", "evidence": ["SKY_AUTO_ALT_JOURNAL", "SKY_AUTO_ALT_FUZHOU", "SKY_AUTO_ALT_RESIDENT"], "reason": "残星匠首与瞭台观星手本趟已在中文段击杀，2.19.2–2.19.8 的血条名、立桩字幕与标记圈在复拍里造不出；复拍截手记「这一趟」岛主与头目计数、「群岛之物」头目装备英文句（body_contains）、浮舟与苇白的英文台词" },
     { "checklist": "2.19.16", "class": "auto", "evidence": ["offline:tools/check_dll_identifiers.py"], "reason": "换回正式构建由 AI 在读完结果目录后执行并实查 DLL" },
-    { "checklist": "M_SKY_ISLAND_15", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "躲闪手感（2.19.4、2.19.7）与跨出击掉率照原步骤看；配装、立桩、帧时间与首杀计数自动" }
+    { "checklist": "M_SKY_ISLAND_15", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "躲闪手感（2.19.4、2.19.7）与跨出击掉率照原步骤看；配装、立桩、帧时间、首杀计数与尸体箱只留一件专属装备自动" }
   ]
 }

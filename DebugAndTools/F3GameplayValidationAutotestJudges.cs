@@ -141,7 +141,7 @@ namespace BossRush
             "night", "give", "give_if_missing", "use_buff", "use_item", "use_compass", "set_health", "spawn_gnats", "echo_hurt",
             "wait_object", "wait_alpha", "caption", "wait_caption", "frame", "loot", "puzzle_solve", "open_map", "close_view",
             "click_close", "open_modeg_confirm", "close_modeg_confirm", "reachability", "encounter_cap", "wait_boss", "boss_hurt",
-            "teleport_view", "ring_replay", "shot", "burst", "assert",
+            "loot_boss", "teleport_view", "ring_replay", "shot", "burst", "assert",
         };
 
         /// <summary>
@@ -151,7 +151,7 @@ namespace BossRush
         internal static readonly string[] AssertingVerbs =
         {
             "use_buff", "use_item", "use_compass", "wait_caption", "frame", "loot", "puzzle_solve", "reachability", "encounter_cap",
-            "open_modeg_confirm", "wait_boss",
+            "open_modeg_confirm", "wait_boss", "loot_boss",
         };
 
         /// <summary>断言名。<c>assert:名字[:参数…]</c>。</summary>
@@ -901,6 +901,45 @@ namespace BossRush
             if (overflowing != null && overflowing.Count > 0) { reason = "text_draws_outside_its_box"; return "FAIL"; }
             if (truncatedEarly != null && truncatedEarly.Count > 0) { reason = "text_truncated_before_its_line_budget"; return "FAIL"; }
             return "PASS";
+        }
+
+        #endregion
+
+        #region 头目 / 岛主的尸体箱（配装即掉落的实机核对）
+
+        /// <summary>
+        /// <c>loot_boss</c> 读到的官方尸体箱是否符合「每次都穿全套，死后只留其中一件」（owner 2026-09-14 拍板）：
+        /// 死亡结算真的跑了（<paramref name="outcome"/> 是 slot / inventory / no_drop，不是 alive / error / missing）；
+        /// 箱里的专属装备恰好是抽中的那一件，没抽中时一件都没有，岛主（<paramref name="mustDrop"/>）不许没抽中；原版掉落至少一件。
+        /// 建箱前事件没接上时，官方会把 Boss 身上的全套收进箱子——这里按件数判红。演练不走死亡，证不到这一条。
+        /// </summary>
+        internal static bool JudgeBossDrop(IDictionary<int, int> crate, int[] gearTypeIds, int chosenTypeId, string outcome, bool mustDrop,
+            out string metrics, out string reason)
+        {
+            int gearInBox = 0, chosenInBox = 0, vanilla = 0;
+            if (crate != null)
+            {
+                foreach (KeyValuePair<int, int> pair in crate)
+                {
+                    if (pair.Value <= 0) continue;
+                    if (gearTypeIds == null || Array.IndexOf(gearTypeIds, pair.Key) < 0) { vanilla += pair.Value; continue; }
+                    gearInBox += pair.Value;
+                    if (pair.Key == chosenTypeId) chosenInBox += pair.Value;
+                }
+            }
+            bool resolved = outcome == "slot" || outcome == "inventory" || outcome == "no_drop";
+            int expectedGear = chosenTypeId > 0 ? 1 : 0;
+            metrics = "outcome=" + (outcome ?? "null") + ",chosen=" + chosenTypeId + ",gear_in_box=" + gearInBox
+                + ",vanilla_items=" + vanilla + ",must_drop=" + (mustDrop ? "true" : "false");
+            if (crate == null) reason = "crate_not_read";
+            else if (!resolved) reason = "drop_not_resolved:" + (outcome ?? "null");
+            else if ((outcome == "no_drop") != (chosenTypeId <= 0)) reason = "outcome_chosen_mismatch";
+            else if (mustDrop && chosenTypeId <= 0) reason = "lord_dropped_no_gear";
+            else if (gearInBox != expectedGear) reason = "gear_in_box_" + gearInBox + "_expected_" + expectedGear;
+            else if (chosenInBox != expectedGear) reason = "chosen_piece_not_in_box";
+            else if (vanilla <= 0) reason = "vanilla_loot_missing";
+            else reason = null;
+            return reason == null;
         }
 
         #endregion

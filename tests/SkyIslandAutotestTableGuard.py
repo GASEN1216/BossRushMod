@@ -52,6 +52,8 @@ VERB_ARGS = {
     "frame": [NUM], "use_compass": [], "click_close": [], "close_panel": [], "open_map": [], "close_view": [],
     "open_modeg_confirm": [], "close_modeg_confirm": [], "reachability": [], "encounter_cap": [],
     "wait_boss": [BOSS_KINDS, NUM, ("optional",)], "boss_hurt": [BOSS_KINDS, NUM, NUM],
+    # 只有带档案的头目 / 岛主有专属掉落：噬风不走这条（没有 SkyIslandBossProfile）。
+    "loot_boss": [("foreman", "stargazer"), NUM],
 }
 # 这些动作之后官方对话换了一句、换了一段或关掉了：再截对话图 / 再单次推进之前要重新 wait_dialogue_typed
 # （2026-09-15 第五轮：官方逐字显示 40 字/秒，截图截在半句上；打字途中的单次推进只把这句补完、不翻页）。

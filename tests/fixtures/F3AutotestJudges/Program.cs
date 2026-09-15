@@ -45,6 +45,7 @@ internal static partial class Program
         Section("visibility", VisibilityCases);
         Section("ring coverage", RingCoverageCases);
         Section("results and manifest", ManifestCases);
+        Section("boss corpse crate", BossDropCases);
         if (failures.Count > 0)
         {
             Console.WriteLine("FAILED: " + failures.Count + " of " + checks + " assertions");

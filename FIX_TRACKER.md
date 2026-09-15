@@ -2,6 +2,34 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-15 头目 R1 补齐：残星匠首真实击杀后读尸体箱，核对「配装即掉落」
+
+**来源**：owner 问敌人生态做完没有，选了「先补齐 R1」。R1 的「死后只留一件专属装备」此前只有 Dev 演练按抽样结算核对（不走死亡），官方建箱前事件的接线没有实机断言。
+**分类**：`SAFE`（Dev 验收：新动词、纯判据、步骤表、守卫与夹具；正式构建与玩家行为不变，不加 TypeID、不改存档、不重打包）。
+
+**改动**
+- 新动词 `loot_boss:种类:秒数`（`DebugAndTools/F3GameplayValidationAutotestBosses.cs`）：过写入门后只击杀这一位 Boss，与 `kill_nearby` 走同一条官方 `Health.Hurt`。击杀前记下已有箱子，等倒下处 4 m 内新出现的官方尸体箱，读内容写进 `LastLoot`，再把 `SkyIslandBossLoot.Outcome / ChosenTypeId` 交给纯判据。
+- 纯判据 `F3AutotestJudges.JudgeBossDrop`：
+  - 结算真的发生（slot / inventory / no_drop）；
+  - 箱里的专属装备恰好是抽中的那一件（没抽中时 0 件，岛主不许没抽中）；
+  - 原版掉落至少一件。
+  - 建箱前事件没接上时，官方会把全套收进箱子，按件数判红。
+- 步骤表 `SKY_AUTO_REAL_BOSS_FOREMAN`：立桩断言之后插入 `loot_boss:foreman:6`，随从留给后面的 `kill_nearby`。覆盖行 2.19.6、`M_SKY_ISLAND_15` 的理由同步改写；步数仍 78，覆盖行仍 238。
+- 复用：`kill_nearby` 与 `loot` 改调新抽出的 `HurtAutotestToDeath` / `CountAutotestLootbox`，行为不变，动作库净减 25 行。
+- 守卫 `SkyIslandAutotestTableGuard` 登记 `loot_boss` 参数（只认 foreman / stargazer）。夹具 `tests/fixtures/F3AutotestJudges/BossDropCases.cs`：3 条绿样本、12 条红样本，装备表从生产档案读。
+
+**验证**
+- L1：读官方 `CharacterMainControl.OnDead`，建箱前事件与 `CreateFromItem` 在同一帧，箱子建在倒下处 +0.1 m。
+- L2，在只含本次 hunk 的干净 worktree（HEAD `5561f25`）上：
+  - Dev 构建通过；
+  - `F3AutotestJudges` 执行回归 PASS（317 条断言）；
+  - `SkyIslandAutotestTableGuard`、`F3AutotestOrchestratorGuard`、`LargeFileBudgetGuard`、`SkyIslandBossEcologyGuard` PASS。
+- 反向验证 6/6 转红，并按字节还原：判据不数件数、把 alive 当已结算、不要求原版掉落、步骤表写 storm、名单删 loot_boss、删分派。
+- 主工作区 `run_guards --changed-only` 99 PASS。主工作区里 `F3AutotestJudges` 暂时编不过：另一会话正在改 `JudgeWorldVisibility` / `JudgeTextOverflow` 的签名，调用方还没跟上，与本次无关。
+- 没部署：游戏目录是另一会话的 Dev 构建，下一次从主工作区编 Dev 时一并带上。
+- L3 待下一轮 F3：看 `SKY_AUTO_REAL_BOSS_FOREMAN` 的 `action:loot_boss:foreman` 断言与 metrics（outcome、chosen、`gear_in_box=1`、vanilla_items）。
+- 仍需 owner 亲手看：清单 2.19.4 / 2.19.7 手感、三件模型穿模与背甲是否压扁、捡起穿上的属性与重进存档、G 岛战斗段帧时间。
+
 ## 2026-09-15 全自动实机验收第五轮：撤离环实机生效，截图审出字幕截断、地图标签星号、手记视口、钟守空面板
 
 **来源**：owner 跑第五轮（runId `20260915_044339_816`），看完复核说「全部修复吧」。

@@ -253,6 +253,7 @@ namespace BossRush
                 case "echo_hurt": return AutotestBossHurt(record, "storm", ArgFloat(args, 0, 0.75f), ArgFloat(args, 1, 15f));
                 case "boss_hurt": return AutotestBossHurt(record, Arg(args, 0), ArgFloat(args, 1, 0.65f), ArgFloat(args, 2, 15f));
                 case "wait_boss": return AutotestWaitBoss(record, args);
+                case "loot_boss": return AutotestLootBoss(record, args);
                 case "wait_object": return AutotestWaitObject(record, args);
                 case "wait_alpha": return AutotestWaitAlpha(record, args);
                 case "caption": AutotestCaption(record, args); return WaitAutotestReal(0.3f);
@@ -575,18 +576,7 @@ namespace BossRush
             foreach (CharacterMainControl character in UnityEngine.Object.FindObjectsOfType<CharacterMainControl>())
             {
                 if (!IsAutotestHostileWithin(character, player, radius)) continue;
-                try
-                {
-                    DamageInfo damage = new DamageInfo(player);
-                    damage.damageValue = character.Health.MaxHealth * 20f;
-                    damage.ignoreArmor = true;
-                    damage.toDamageReceiver = character.mainDamageReceiver;
-                    damage.damagePoint = character.transform.position;
-                    character.Health.SetInvincible(false);
-                    character.Health.Hurt(damage);
-                    if (character.Health.IsDead) killed++;
-                }
-                catch (Exception e) { ModBehaviour.DevLog("[Validation] 自动验收击杀失败: " + e.Message); }
+                if (HurtAutotestToDeath(character, player)) killed++;
             }
             return killed;
         }
@@ -893,26 +883,11 @@ namespace BossRush
                 if (box == null) yield return WaitAutotestReal(0.3f);
             }
             if (box == null) { AutotestFail(record, "action:loot", "crate_not_found:" + prefix, null, true); yield break; }
-            var counts = new Dictionary<int, int>();
-            var parts = new List<string>();
-            try
-            {
-                if (box.Inventory != null && box.Inventory.Content != null)
-                {
-                    foreach (Item item in box.Inventory.Content)
-                    {
-                        if (item == null) continue;
-                        int units = item.Stackable ? Math.Max(1, item.StackCount) : 1, existing;
-                        counts.TryGetValue(item.TypeID, out existing);
-                        counts[item.TypeID] = existing + units;
-                    }
-                }
-            }
-            catch (Exception e) { record.Notes.Add("loot_read_threw:" + e.GetType().Name); }
-            foreach (KeyValuePair<int, int> pair in counts) parts.Add(pair.Key + "x" + pair.Value);
+            string contents;
+            Dictionary<int, int> counts = CountAutotestLootbox(box, record, out contents);
             _autotest.LastLoot = counts;
             record.Assertions.Add(AutotestAssertion("action:loot", counts.Count > 0 ? "PASS" : "FAIL", counts.Count > 0 ? null : "crate_empty",
-                "crate=" + box.gameObject.name + ",contents=" + string.Join("+", parts.ToArray())));
+                "crate=" + box.gameObject.name + ",contents=" + contents));
         }
 
         private static InteractableLootbox NearestAutotestLootbox(string prefix)
