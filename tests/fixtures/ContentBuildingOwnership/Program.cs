@@ -21,6 +21,7 @@ namespace Duckov.Buildings
     {
         public static bool Any(string id, bool includeDestroyed) { return id == "fixture_building" && !includeDestroyed; }
         public static bool Any(string id) { throw new Exception("wrong overload"); }
+        public static int GetBuildingAmount(string id) { return id == "fixture_building" ? 1 : 0; }
         private static string GetBuildingData(int id) { return "data_" + id; }
     }
 }
@@ -102,6 +103,9 @@ class Program
         var any = BuildingInjectionHelper.GetBuildingManagerAnyMethod();
         Check((bool)any.Invoke(null, new object[] { "fixture_building", false })
             && ReferenceEquals(any, BuildingInjectionHelper.GetBuildingManagerAnyMethod()), "Any lookup keeps exact two-argument overload and cached identity");
+        var amount = BuildingInjectionHelper.GetBuildingAmountMethod();
+        Check((int)amount.Invoke(null, new object[] { "fixture_building" }) == 1 && (int)amount.Invoke(null, new object[] { "missing" }) == 0
+            && ReferenceEquals(amount, BuildingInjectionHelper.GetBuildingAmountMethod()), "GetBuildingAmount lookup keeps exact one-argument overload and cached identity");
         Check((string)BuildingInjectionHelper.GetBuildingDataMethod().Invoke(null, new object[] { 42 }) == "data_42", "private static GetBuildingData reflection remains callable");
         Check((string)BuildingInjectionHelper.GetBuildingIdProperty().GetValue(new Duckov.Buildings.Building()) == "fixture_building", "building ID property binding remains readable");
         var target = new Containers();

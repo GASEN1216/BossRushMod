@@ -16,6 +16,10 @@ namespace BossRush
         private static MethodInfo cachedBuildingManagerAnyMethod = null;
         private static bool buildingManagerAnyMethodResolved = false;
 
+        /// <summary>BuildingManager.GetBuildingAmount 方法缓存</summary>
+        private static MethodInfo cachedGetBuildingAmountMethod = null;
+        private static bool getBuildingAmountMethodResolved = false;
+
         /// <summary>BuildingManager.GetBuildingData 方法缓存</summary>
         private static MethodInfo cachedGetBuildingDataMethod = null;
         private static bool getBuildingDataMethodResolved = false;
@@ -72,6 +76,31 @@ namespace BossRush
             }
 
             return cachedBuildingManagerAnyMethod;
+        }
+
+        /// <summary>
+        /// 存档里某个建筑 ID 放了几座：按原始 ID 计数，不看 info 是否已注册。
+        /// 官方 <c>Any</c> 跳过 info 无效（还没注入）的记录，注入前恒为 false，拿它判「这档放没放过」等于循环依赖。
+        /// </summary>
+        internal static MethodInfo GetBuildingAmountMethod()
+        {
+            if (!getBuildingAmountMethodResolved)
+            {
+                Type buildingManagerType = GetBuildingManagerType();
+                if (buildingManagerType != null)
+                {
+                    cachedGetBuildingAmountMethod = buildingManagerType.GetMethod(
+                        "GetBuildingAmount",
+                        BindingFlags.Public | BindingFlags.Static,
+                        null,
+                        new Type[] { typeof(string) },
+                        null);
+                }
+
+                getBuildingAmountMethodResolved = true;
+            }
+
+            return cachedGetBuildingAmountMethod;
         }
 
         internal static MethodInfo GetBuildingDataMethod()

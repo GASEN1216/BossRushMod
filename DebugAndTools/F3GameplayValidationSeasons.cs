@@ -150,8 +150,11 @@ namespace BossRush
                 if (reason != null) break;
                 yield return WaitSeconds(0.25f);
             }
+            // 名人堂点「确认」之后生产原地收场（FinishSeason → RequestExit → ShutdownRuntime），不切场景，玩家留在竞技场。
+            // 09-08 起这里等的是 Base_SceneV2，每轮白等 SceneTimeoutSeconds 后判红（2026-09-14 首轮全自动复核）。
+            string arenaScene = _host.GetArenaSceneName();
             float deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
-            while (!IsRuntimeReady(BaseSceneNameForValidation()) && Time.realtimeSinceStartup < deadline && !ShouldAbort())
+            while (!IsRuntimeReady(arenaScene) && Time.realtimeSinceStartup < deadline && !ShouldAbort())
             {
                 if (runtime.HasActiveRun) break;
                 yield return null;
@@ -179,7 +182,7 @@ namespace BossRush
                     rewardCount++;
                 }
             exactOnce &= reports == ModeHConfig.SeasonMatchCount && rewardCount == reports && rewards.Count == 0;
-            bool clean = !runtime.HasActiveRun && IsRuntimeReady(BaseSceneNameForValidation())
+            bool clean = !runtime.HasActiveRun && IsRuntimeReady(arenaScene)
                 && ModeHEventRouter.ParticipantCount == 0 && ModeHEventRouter.DiagnosticCount == 0
                 && !ModeHProfilePersistence.IsStoreFaulted && !ModeHProfilePersistence.IsWriteBarrier;
             bool passed = fights.Count == ModeHConfig.SeasonMatchCount && transfers.Contains(2) && transfers.Contains(4)
@@ -187,7 +190,10 @@ namespace BossRush
             Record("MODE_H_FULL_SEASON", passed ? "PASS" : "FAIL", sw.ElapsedMilliseconds,
                 "fights=" + fights.Count + ",reports=" + reports + ",transfer2=" + transfers.Contains(2)
                     + ",transfer4=" + transfers.Contains(4) + ",hall=" + hall + ",exact_once=" + exactOnce
-                    + ",base_ready=" + clean + ",assisted=true,real_stake=false",
+                    + ",arena_ready=" + clean + ",active=" + runtime.HasActiveRun
+                    + ",participants=" + ModeHEventRouter.ParticipantCount + ",diagnostics=" + ModeHEventRouter.DiagnosticCount
+                    + ",faulted=" + ModeHProfilePersistence.IsStoreFaulted + ",barrier=" + ModeHProfilePersistence.IsWriteBarrier
+                    + ",assisted=true,real_stake=false",
                 reason ?? (passed ? null : "six_match_season_incomplete"));
         }
 

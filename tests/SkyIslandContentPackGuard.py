@@ -207,11 +207,14 @@ def main():
             "JournalChoice(choices);", "码头装置要能翻群岛手记（每趟必经）")
 
     # ---- 5. 归航船名册与纪念品 ----
-    require(tick, 'Beacon("Lamp_A_02", L10n.T("归航船 · 船员名册", "Homecoming boat · crew roster"), BossRushUIColors.Accent,',
+    # 纪念物整组在 RebuildFeedback 里按旗标重建：旗标变化与岛上切语言共用（2026-09-15）。
+    rebuild = need_body(world, "private void RebuildFeedback()", "纪念物重建")
+    require(rebuild, 'Beacon("Lamp_A_02", L10n.T("归航船 · 船员名册", "Homecoming boat · crew roster"), BossRushUIColors.Accent,',
             "结局后码头要挂归航船名册")
     crew_choices = need_body(world, "private List<SkyIslandStoryPresentation.Choice> CrewChoices()", "名册选项")
     require(crew_choices, "story.RecordNote(SkyIslandCrew.NoteId(page), out message)", "名册翻页要记进手记")
-    ordered(tick, ["AnnounceCombatOutcomes(added);", "GrantKeepsakes();"], "旗标变化后补查纪念品（旧存档第一次进岛同样补发）")
+    ordered(tick, ["AnnounceCombatOutcomes(added);", "GrantKeepsakes();", "RebuildFeedback();"],
+            "旗标变化后补查纪念品（旧存档第一次进岛同样补发），再按旗标重建纪念物")
     grant = need_body(world, "private void GrantKeepsakes()", "纪念品发放")
     ordered(grant, ["if (!story.CanWrite) return;", "SkyIslandItemRules.Due(story.Current, all[i])",
                     "story.RequireAssetSnapshot(all[i].NoteId, out snapshotError)",

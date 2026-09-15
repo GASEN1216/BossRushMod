@@ -1062,6 +1062,14 @@ namespace BossRush
         protected override string InteractionGroupLabel { get { return "[SkyIsland]"; } }
         protected override bool IsBuildingInteractable() { return interact != null; }
         internal void Bind(string title, Action action) { label = title; interact = action; }
+        /// <summary>切了语言：换交互名与头顶的字，回调不动（标题由 owner 按当前语言重取）。</summary>
+        internal void Relabel(string title)
+        {
+            label = title;
+            Transform sign = transform.Find("Label");
+            TextMeshPro text = sign != null ? sign.GetComponent<TextMeshPro>() : null;
+            if (text != null) text.text = title;
+        }
         protected override void OnInteractCompleted() { if (interact != null) interact(); }
         internal static GameObject Create(Transform parent, Vector3 position, string name, string title, Action action)
         {

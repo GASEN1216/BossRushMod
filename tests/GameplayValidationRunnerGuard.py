@@ -160,9 +160,12 @@ def main():
                       "ModeGExitReason.Victory", "MODE_H_FULL_SEASON", "button.onClick.Invoke()",
                       "GetParticipantsForValidation(true)", "transfers.Contains(2)", "transfers.Contains(4)",
                       "ModeHMatchReportStatus.Archived", "ModeHSeasonRewardOperationStatus.Archived",
-                      "tokens.Add(report.resultToken)", "IsRuntimeReady(BaseSceneNameForValidation())", "target.Health.Hurt(damage)"):
+                      "tokens.Add(report.resultToken)", "IsRuntimeReady(arenaScene)", "target.Health.Hurt(damage)"):
             if token not in seasons:
                 errors.append("完整模式流程必须观察生产事实: " + token)
+        # 名人堂确认后 Mode H 原地收场、不切场景：赛季用例再等基地场景就是白等超时后判红（2026-09-14 复核）。
+        if "BaseSceneNameForValidation()" in seasons:
+            errors.append("完整赛季收场在竞技场原地判干净，不得等基地场景")
         for token in ("SetInvincible(false)", "TryLockBattleResult", "TryTransition(", "FindObjectsOfType", "DebugFinishValidationSeason"):
             if token in seasons:
                 errors.append("完整模式验收不能改状态/清场伪造自然终态: " + token)

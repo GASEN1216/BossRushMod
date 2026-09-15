@@ -144,7 +144,9 @@ def main():
 
     # ---- 2. 折翎旧腰牌的刻字 ----
     # 腰牌落在他那一战的锚点上：R-1 之后居民站位 = 遭遇锚点 EnemySpawn_F（SkyIslandContentPackGuard 按 World.json 核对三者同点）。
-    require(tick, 'Beacon("EnemySpawn_F", L10n.T("折翎的旧腰牌", "Zheling\'s old badge"), BossRushUIColors.Accent, ZhelingBadgeText);',
+    # 纪念物整组在 RebuildFeedback 里按旗标重建（旗标变化与岛上切语言共用，2026-09-15）。
+    require(need_body(world, "private void RebuildFeedback()", "纪念物重建"),
+            'Beacon("EnemySpawn_F", L10n.T("折翎的旧腰牌", "Zheling\'s old badge"), BossRushUIColors.Accent, ZhelingBadgeText);',
             "折翎纪念物必须带自己的正文（刻字 + 物证含义），并落在他那一战的锚点上")
     badge = need_body(world, "private string ZhelingBadgeText()", "旧腰牌正文")
     require(badge, "『航路交给你。』", "旧腰牌正文缺刻字")

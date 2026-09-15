@@ -114,7 +114,6 @@
 - `<nobr>` 在面板出口统一包（启发式正则，名字超过 24 字不保护，退回普通折行）：不想要就让 `MakeText` 直接写原文。
 - 未验证：TMP 量高是否与渲染同样遵守 `<nobr>`、重建后鼠标悬停会不会把键盘当前项带走、一次点击建两次面板的开销。实机清单第 2.20 步。
 
-
 ## 2026-09-15 全自动实机验收第四轮：日志全绿，截图审出广场撤离环被台面盖住
 
 **来源**：owner 跑第四轮（runId `20260915_022634_653`，Dev `024D07A4` = `8d321c2` 源码 + 另一会话未提交的 8 个 .cs），看完复核说「全部修复吧」。
@@ -163,7 +162,6 @@
 
 **下一轮开跑前**：把游戏窗口设到 1920×1080 或以上（2.18.26 圆角、2.14.5 竖条、2.18.5 键帽、2.13.1 云蚋在 810×540 下只有几像素）。
 
-
 ## 2026-09-15 全自动实机验收第三轮：点对话选项太早、风级读早、官方对话框溢出误报
 
 **来源**：owner 跑第三轮（runId `20260915_011652_914`，Dev `2F15DF88`，主工作区 09:15:51 编，C# 与上一节 `F406C2C0` 相同），看完复核说「修吧，改完编译部署」。岛内 61 PASS / 5 FAIL / 1 SKIP，还原全 PASS。另一会话同时复核了这一轮，结论一致；按消息分工，教堂整区重绘仍归它。
@@ -196,7 +194,6 @@
 - 全量守卫 616 PASS；执行回归 `SkyIslandDialogue`、`F3AutotestJudges`、`SkyIslandValidationJudges`、`F3ValidationExecution` PASS。
 - 干净 worktree（`f5b8c97` + 另一会话未提交的 8 个 .cs + 本节 5 个 .cs 与步骤表）：Dev 与正式构建 Build succeeded、0 警告；`check_dll_identifiers` Dev present、正式 absent。
 - 部署：D 盘 `BossRush.dll` = Dev `024D07A4…`（覆盖 `2F15DF88`，已备份），步骤表 `E0295B16…`，SHA 核对一致。
-
 
 ## 2026-09-15 全自动实机验收第二轮：Mode F 撤离后停在「点击继续」
 
@@ -236,6 +233,57 @@
   - `check_dll_identifiers`：Dev present 11/11，正式 absent。
 - 部署：D 盘 `BossRush.dll` = Dev `F406C2C0…`（覆盖 `3B3A3C84`，已备份），步骤表 `729889B2` 不变，SHA 核对一致。
 
+## 2026-09-15 全自动实机验收首轮复核补修：世界文字跟语言、婚礼教堂注入前判存在、Mode H 赛季收场判据
+
+**来源**：owner 看完首轮（runId `20260914_143303_766`）的日志复核后要求「全部修复」。另一会话在 `84994b1` 修了对话多选、岛上点灯随撤离结算、撤离结算点「继续」、行标签跳过键帽和错误归属（下一节）；本节是它没修的两项和两条旧账，两边按文件分工并互发消息确认。
+**分类**：
+- `COMPAT`：两处生产缺陷（CR-2026-09-15-001、CR-2026-09-15-002）。不加 TypeID、不改存档字段、不重打包。
+- `SAFE`：验收判据、守卫与夹具（CR-2026-09-15-003）。
+
+**生产缺陷**（修复未复测）
+- **岛上切语言后世界文字不换**（CR-2026-09-15-001，P3；现象 L3，根因 L1）
+  - 首轮复拍切成英文后，`SKY_LOCALIZATION_EN` 扫到 75 块世界文字仍是中文。桥口木牌、采集点与搜刮点的浮空字、纪念物与信鸽的标签都只在建出来或门状态变化时写一次，违反 AGENTS §4.4「语言在取用时解析」。
+  - 修复：各 owner 在已有推进里比较语言，变了才重写，平时每帧只多一次布尔比较。
+    - `SkyIslandGates.Apply`：门没变时只重写木牌（`WriteLabels`），不重扫导航。
+    - `SkyIslandGathering.Tick`：已建、没采的点重写浮空字与官方交互名（`SkyIslandGatherPoint.Relabel`）；检查排在昼夜早退之前。
+    - `SkyIslandScavenging.Tick`：已建的牌子连暂时隐藏的一起重写；建牌与重写共用 `TierLabel`。
+    - `SkyIslandWorldStory.Tick`：纪念物重建抽成 `RebuildFeedback`，旗标变化与切语言共用，切语言时不重播回话、不补发纪念品；信鸽走 `SkyIslandStoryInteractable.Relabel(PigeonTitle())`。
+  - `SkyIslandWorldStory.cs` 现为 1199 行（`LargeFileBudgetGuard` 上限 1200）。第一版超了 1 行，改为把换语言分支内联进 Tick，没有压缩既有代码。
+  - 另一会话在 `SKY_LOCALIZATION_EN` 里加的「中途换语言、只剩木牌残留时记 SKIP」分支，修好后吞不到东西了；按「SKIP 不能吞缺陷」建议撤掉。文件属那边，未改。
+- **婚礼教堂注入前判「放没放过」恒为假**（CR-2026-09-15-002，P2，重开 CR-2026-09-07-008；L1 + 日志）
+  - 每轮 F3 进基地都报 `No prefab for building wedding_chapel`（09-07 起每轮 3 条）。
+  - 原因：09-07 的修复在注入前调官方 `BuildingManager.Any(id, false)`，而 `Any` 跳过 info 无效（还没注册）的记录，注入前恒为 false。缺好感历史标记、但存档里放过教堂的档，两条入口都不注入，教堂永久看不见、点不到，之后也没有重绘补回。存档记录还在，修好后能恢复。
+  - 修复：新增 `BuildingInjectionHelper.GetBuildingAmountMethod()`（按原始 ID 计数，解析一次、失败也缓存）；`RefreshWeddingBuildingPresence` 同行数替换，ModBehaviour partial 预算净零。注入后新旧写法结果相同（教堂 `alternativeFor` 为空）。
+  - 回归为什么以前没抓到：`GameplayLogFixes` 夹具把 `RefreshWeddingBuildingPresence` 整段替成 `return ChapelPlaced`。现在原样抽取生产方法，替身按官方语义写（`Any` 要求已注册，`GetBuildingAmount` 按原始 ID 计数）。
+  - 未验证线索（L1）：没注册时这条存档记录尺寸为 0、不占格子，玩家可能在教堂原位放了别的建筑，恢复后会重叠。实机看。
+
+**验收判据**
+- **`MODE_H_FULL_SEASON` 等基地场景**（CR-2026-09-15-003，P3 / TEST；09-08 起每轮红）
+  - 生产在名人堂「确认」后原地收场（`FinishSeason` → `RequestExit` → `ShutdownRuntime`），不切场景；用例却等 `Base_SceneV2`，白等 90 秒后判红。
+  - 修复：在竞技场原地判干净，指标拆出 `active / participants / diagnostics / faulted / barrier`。
+  - 未验证线索（L1）：真实入场时 Legacy 初始化提前退出、不生成 BossRush 撤离点，赛季结束后能否走出竞技场全靠隔离租约恢复原生出口。已在 `M_MODE_H_01` 补一步实机检查。
+
+**守卫与回归**
+- 新增 `tests/SkyIslandWorldTextLanguageGuard.py`。
+- 同步：
+  - `SkyIslandContentPackGuard`、`SkyIslandPlaytimeFlowGuard`：纪念物断言改看 `RebuildFeedback` 体；
+  - `GameplayValidationRunnerGuard`：赛季文件不得再等基地场景；
+  - `ContentBuildingOwnershipGuard`：新绑定与缓存，教堂存在判定不得用 `Any`。
+- 夹具：`ContentBuildingOwnership` +1 条；`GameplayLogFixes` 改为抽取生产存在判定，+1 条。
+- 反向验证 13/13 转红，按字节还原 sha256 一致：木牌检查删除 / 注释、采集点删检查、搜刮点写常量、纪念物分支禁用、信鸽写常量、交互体不写字、重建调用删掉、重建改名、赛季改回等基地、教堂存在改回 `Any`（守卫、夹具各一）、新绑定不缓存。
+
+**验证**（L1 / L2，没有进游戏）
+- 干净 worktree（`84994b1` + 本节 16 个文件）：正式与 Dev 两种构建 Build succeeded（临时 GAME_PATH）。
+- 全量守卫 609 PASS，另 4 条红：
+  - 3 条 local-only bundle，干净签出基线恒红；
+  - `StatKeyExistenceGuard`：worktree 里只放了夹具要抽取的 3 个官方源码文件，扫不全；主工作区全量官方源码下 PASS。
+- 执行回归 `ContentBuildingOwnership`、`GameplayLogFixes`、`SkyIsland` 11 套全部 PASS。
+- 部署：
+  - D 盘游戏目录 `BossRush.dll` = Dev `3B3A3C84…`（09-15 00:22，同一 worktree 编），覆盖另一会话的 Dev `9B8EB2C5`；
+  - 步骤表 `SkyIslandAutotest.json` = `729889B2`、`GameplayCoverage.json` = `73C8127B`，与 worktree 一致；
+  - `check_dll_identifiers --expect present` 11/11。
+- 测试档槽 1 仍是首轮留下的 PENDING_RECOVERY，恢复器只在 Dev 构建里：先回基地读槽 1 让它恢复，再跑第二轮。跑完、读完日志后换回正式构建。
+- 未提交。
 
 ## 2026-09-14 全自动实机验收：首轮实测复核与修复
 
@@ -268,7 +316,6 @@
 - 守卫全量 613 个脚本全部 PASS。`AssetSnapshotBoundaryGuard` 新钉 5 处（写盘编码剥记录、出击图立名单、会话打开即标出击、卸载才保留），逐处破坏都转红，按字节还原 sha256 一致。
 - 执行回归 `SkyIslandStory`（新增出击暂不入档两段：回到基地保留 / 退游戏撤掉）、`SkyIslandDialogue`、`F3AutotestJudges` PASS。`SkyIslandStory` 反向验证 2 处（去掉写盘过滤、退游戏不撤）均转红，按字节还原。
 - 多选文本区与撤离结算的结论来自游戏 DLL 的 IL 静态分析，要本轮复测截图确认。
-
 
 ## 2026-09-14 全自动实机验收：待拍板落地
 

@@ -42,9 +42,15 @@ def main():
     for name in ("FindGameType", "GetBuildingType", "GetBuildingManagerType", "GetBuildingManagerAnyMethod", "GetBuildingDataMethod", "GetBuildingIdProperty", "AssignBuildingContainerField"):
         assert re.search(r"internal static [\w<>\[\]]+ " + name + r"\(", helper), "Missing shared binding: " + name
         assert "BuildingInjectionHelper." + name + "(" in read("Integration/Wedding/WeddingBuildingInjector.cs"), "Legacy building caller must forward: " + name
-    for flag in ("buildingManagerTypeResolved", "buildingManagerAnyMethodResolved", "getBuildingDataMethodResolved", "buildingTypeResolved", "buildingIdPropertyResolved"):
+    for flag in ("buildingManagerTypeResolved", "buildingManagerAnyMethodResolved", "getBuildingAmountMethodResolved", "getBuildingDataMethodResolved", "buildingTypeResolved", "buildingIdPropertyResolved"):
         assert "if (!" + flag + ")" in helper and flag + " = true" in helper, "One-time resolution, including misses, must remain cached"
     assert 'new Type[] { typeof(string), typeof(bool) }' in helper, "Any reflection overload contract must remain exact"
+    assert re.search(r"internal static MethodInfo GetBuildingAmountMethod\(", helper), "Missing shared binding: GetBuildingAmountMethod"
+    assert '"GetBuildingAmount"' in helper and 'new Type[] { typeof(string) }' in helper, "GetBuildingAmount reflection overload contract must remain exact"
+    wedding = read("Integration/Wedding/WeddingBuildingInjector.cs")
+    presence = wedding.split("private bool RefreshWeddingBuildingPresence()", 1)[1].split("private bool TryUseCachedWeddingNpcPosition", 1)[0]
+    assert "BuildingInjectionHelper.GetBuildingAmountMethod()" in presence and "GetBuildingManagerAnyMethod" not in presence, \
+        "Chapel presence before injection must count raw saved IDs: official Any skips unregistered infos and is always false before injection"
     for name in ("CollectStarwishRenderableComponents", "TryGetCombinedBounds", "AddStarwishGraphicsCollider", "FixStarwishModelShaders"):
         assert re.search(r"internal static [\w<>\[\]]+ " + name + r"\(", models), "Missing model utility: " + name
         assert "BuildingModelHelper." + name + "(" in read("Integration/WishFountain/WishFountainBuilder.cs"), "Wish fountain must forward model utility: " + name

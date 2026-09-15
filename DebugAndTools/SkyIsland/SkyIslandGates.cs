@@ -164,11 +164,20 @@ namespace BossRush
             return gateMask;
         }
 
+        /// <summary>木牌上一次按哪种语言写的：玩家在岛上切了语言时只重写字，不重扫导航。</summary>
+        private bool labelsChinese;
+
         internal void Apply(SkyIslandStoryData story)
         {
             if (story == null) return;
             int relevant = story.flags & GateMask();
-            if (flags == relevant) return;
+            bool chinese = L10n.IsChinese;
+            if (flags == relevant)
+            {
+                // 门没变、只是切了语言：木牌按当前语言重写（语言在取用时解析，AGENTS §4.4）。
+                if (chinese != labelsChinese) WriteLabels(story, chinese);
+                return;
+            }
             var blocked = new List<Bounds>();
             // 先采集激活的 collider 边界；关闭对象后 Bounds 会变空。
             foreach (Gate gate in gates)
@@ -176,14 +185,24 @@ namespace BossRush
                 bool open = content.IsGateOpen(gate.Id, story);
                 gate.Root.SetActive(!open);
                 if (!open) blocked.Add(gate.Blocker.bounds);
+            }
+            WriteLabels(story, chinese);
+            navigation.SetBlockedAreas(blocked.ToArray());
+            flags = relevant;
+        }
+
+        private void WriteLabels(SkyIslandStoryData story, bool chinese)
+        {
+            foreach (Gate gate in gates)
+            {
+                bool open = content.IsGateOpen(gate.Id, story);
                 foreach (TextMeshPro label in gate.Labels)
                 {
                     label.text = Notice(gate.Id, open, story);
                     label.color = open ? BossRushUIColors.SuccessText : BossRushUIColors.WarningText;
                 }
             }
-            navigation.SetBlockedAreas(blocked.ToArray());
-            flags = relevant;
+            labelsChinese = chinese;
         }
         public void Dispose()
         {

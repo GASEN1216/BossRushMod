@@ -149,10 +149,10 @@ namespace BossRush
         {
             try
             {
-                MethodInfo anyMethod = GetBuildingManagerAnyMethod();
-                bool isPresent = anyMethod != null
-                    && anyMethod.Invoke(null, new object[] { WEDDING_BUILDING_ID, false }) is bool result
-                    && result;
+                MethodInfo amountMethod = BuildingInjectionHelper.GetBuildingAmountMethod();
+                bool isPresent = amountMethod != null
+                    && amountMethod.Invoke(null, new object[] { WEDDING_BUILDING_ID }) is int count
+                    && count > 0;
 
                 SetWeddingBuildingPresence(isPresent);
                 return isPresent;

@@ -115,7 +115,27 @@ namespace BossRush
             return found;
         }
 
-        /// <summary>由 <see cref="SkyIslandFieldcraft"/> 按推进间隔调用：建最近的一个未建采集点；昼夜切换时改一次光强。</summary>
+        /// <summary>已建采集点的浮空字与交互名上一次按哪种语言写的。</summary>
+        private bool labelsChinese = L10n.IsChinese;
+
+        /// <summary>玩家在岛上切了语言：已建、还没采的点把浮空字与官方交互名按当前语言重写（语言在取用时解析，AGENTS §4.4）。</summary>
+        private void Relabel(bool chinese)
+        {
+            labelsChinese = chinese;
+            for (int i = 0; i < spots.Count; i++)
+            {
+                Spot spot = spots[i];
+                if (spot.Root == null || spot.Harvested) continue;
+                string label = SkyIslandFieldcraftRules.GatherLabel(spot.Node.Kind);
+                Transform sign = spot.Root.transform.Find("Label");
+                TextMeshPro text = sign != null ? sign.GetComponent<TextMeshPro>() : null;
+                if (text != null) text.text = label;
+                SkyIslandGatherPoint point = spot.Root.GetComponent<SkyIslandGatherPoint>();
+                if (point != null) point.Relabel(label);
+            }
+        }
+
+        /// <summary>由 <see cref="SkyIslandFieldcraft"/> 按推进间隔调用：建最近的一个未建采集点；昼夜切换时改一次光强；切了语言时重写已建点的字。</summary>
         internal void Tick(Vector3 origin, bool night)
         {
             if (disposed) return;
@@ -130,6 +150,8 @@ namespace BossRush
             }
             // 一次只建一个：走进一片新区域时不在同一帧集中创建交互体。
             if (best != null) Build(best, night);
+            bool chinese = L10n.IsChinese;
+            if (chinese != labelsChinese) Relabel(chinese);
             if (night == glowNight) return;
             glowNight = night;
             for (int i = 0; i < spots.Count; i++)
@@ -301,6 +323,9 @@ namespace BossRush
             if (Mathf.Abs(InteractTime - seconds) > 0.01f)
                 Debug.LogWarning("[SkyIslandGather] 采集读条时长没有写进官方字段（可能已改名），将变成立即完成：" + name);
         }
+
+        /// <summary>切了语言：换交互名，读条与回调不动（<see cref="InteractNameKey"/> 每次取用时重注入）。</summary>
+        internal void Relabel(string title) { label = title; }
 
         protected override void OnInteractCompleted()
         {

@@ -221,6 +221,23 @@ namespace BossRush
             // 一次只建一个：入区瞬间不集中做实例化与物品创建。
             if (best != null) Build(best);
             UpdateLabels(origin);
+            bool chinese = L10n.IsChinese;
+            if (chinese != labelsChinese) RelabelPoints(chinese);
+        }
+
+        /// <summary>已建物资牌子上一次按哪种语言写的。</summary>
+        private bool labelsChinese = L10n.IsChinese;
+
+        /// <summary>玩家在岛上切了语言：已建的牌子（含暂时隐藏的）按当前语言重写，下次显形就是对的（语言在取用时解析，AGENTS §4.4）。</summary>
+        private void RelabelPoints(bool chinese)
+        {
+            labelsChinese = chinese;
+            for (int i = 0; i < points.Count; i++)
+            {
+                GameObject label = points[i].Label;
+                TextMeshPro text = label != null ? label.GetComponent<TextMeshPro>() : null;
+                if (text != null) text.text = TierLabel(points[i].Anchor.Tier);
+            }
         }
 
         /// <summary>
@@ -280,12 +297,17 @@ namespace BossRush
             sign.transform.rotation = Quaternion.Euler(60f, 0f, 0f);
             TextMeshPro text = sign.GetComponent<TextMeshPro>();
             text.font = ZombieModeUIHelper.GetGameFont();
-            text.text = L10n.T(SkyIslandLootTables.TierNameCn(tier), SkyIslandLootTables.TierNameEn(tier));
+            text.text = TierLabel(tier);
             text.fontSize = 2.2f;
             text.alignment = TextAlignmentOptions.Center;
             text.color = TierColor(tier);
             text.rectTransform.sizeDelta = new Vector2(12f, 3f);
             return sign;
+        }
+
+        private static string TierLabel(SkyIslandLootTier tier)
+        {
+            return L10n.T(SkyIslandLootTables.TierNameCn(tier), SkyIslandLootTables.TierNameEn(tier));
         }
 
         internal static Color TierColor(SkyIslandLootTier tier)

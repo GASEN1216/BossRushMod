@@ -40,6 +40,7 @@ if __name__ == "__main__":
         "internal partial class ModBehaviour": [
             ("Integration/Wedding/WeddingBuildingInjector.cs", "public void InitWeddingBuilding()"),
             ("Integration/Wedding/WeddingBuildingInjector.cs", "private void TryInitializeWeddingBuildingEarly()"),
+            ("Integration/Wedding/WeddingBuildingInjector.cs", "private bool RefreshWeddingBuildingPresence()"),
         ],
     }
     parts = ["using System; using System.Collections; using System.Collections.Generic; using System.Reflection; using UnityEngine; namespace BossRush {"]

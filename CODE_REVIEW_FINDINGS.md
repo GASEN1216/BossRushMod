@@ -2,6 +2,18 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-15 F3 全自动验收首轮复核补修：1 P2 + 2 P3（均已修，未实机）
+
+来源：owner 首轮全自动验收（runId `20260914_143303_766`，Dev MVID `2fb9d50b`）复核后要求全部修复。
+对话多选看不见、岛上点灯被拒两处生产缺陷由另一会话在 `84994b1` 修复（见 `FIX_TRACKER.md` 2026-09-14 首轮实测一节）；本节是其余三条。
+修复均为 L1 / L2，待下一轮复测。流水见 `FIX_TRACKER.md` 同日一节。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-15-001 | P3 / COMPAT（本地化） | 天空岛世界空间文字只在建出来或门状态变化时写一次：岛上中途切语言后，桥口木牌、采集点与搜刮点浮空字、纪念物与信鸽标签仍是旧语言（首轮复拍英文扫描 75 处，L3） | **Fixed（L2）**。四个 owner 在已有推进里比较语言，变了才重写：门不重扫导航；纪念物抽成 `RebuildFeedback`，不重播回话、不补发。新增 `SkyIslandWorldTextLanguageGuard`，反向验证 7 处 |
+| CR-2026-09-15-002 | **P2** / COMPAT（存档恢复） | CR-2026-09-07-008 的修复没有生效。`RefreshWeddingBuildingPresence` 在注入前调官方 `BuildingManager.Any(id, false)`，而 `Any` 跳过 info 未注册的记录，注入前恒 false；缺好感历史标记、存档里放过教堂的档两条入口都不注入，教堂永久不显示，官方每次进基地报 `No prefab for building wedding_chapel`（09-07 起每轮 3 条） | **Fixed（L2）**。改按 `BuildingManager.GetBuildingAmount` 的原始 ID 计数（`BuildingInjectionHelper` 新绑定）。`GameplayLogFixes` 夹具改为原样抽取生产方法、替身按官方语义，换回 `Any` 转红；`ContentBuildingOwnershipGuard` 同步 |
+| CR-2026-09-15-003 | P3 / TEST（判据错位） | `MODE_H_FULL_SEASON` 要求赛季结束后回到 `Base_SceneV2`，而生产在名人堂确认后原地收场、不切场景；09-08 起每轮白等 90 秒后判红，掩盖其余子项 | **Fixed**。在竞技场原地判干净并拆出子项；`GameplayValidationRunnerGuard` 禁止赛季文件再等基地场景 |
+
 ## 2026-09-14（四）UI 优化对照审核：6 P2 + 18 P3（均已修）+ 5 条 PLAUSIBLE
 
 来源：对照图集规格、实机前减负报告、人工清单 §2.14–2.16、AGENTS §4.14 / §4.17，审核 `c00617f` / `00c8624` / `599bc6b`（报告 `docs/代码审查/2026-09-14-UI优化对照审核.md`，local-only，编号 F-01…F-29）。owner 随后要求全部修复、需要拍板的自行按主流游戏口径定。流水与拍板见 `FIX_TRACKER.md` 同日（四）一节。**修复全部是 L1 / L2，没有实机**（清单第 2.18 步）。
@@ -658,7 +670,7 @@ Documented（不计缺陷）：服务根/地形根在 `sceneLoaded` 回调里才
 | CR-2026-09-07-005 | P1 / COMPAT | Mod 晚于选档事件启动时，`ModeHWarehouseStakeJournal` 未 LoadPersisted，一致性与 deferred 均保持默认 false；零押品锁盘也永久报 `stake_slot_inconsistent`，本次六场测试实际 0 场。 | Fixed：OnAwake 风险扫描后、恢复赛季前加载当前押品日志；干净/未就绪/活动/损坏/已返还日志回归通过，保留旧押品安全屏障 |
 | CR-2026-09-07-006 | P2 / COMPAT | 认证候选刚保存后，`DebugFinishValidationSeason` 的普通写入被同帧节流，归档失败，触发首次认证及缓存认证清理 FAIL。 | Fixed：退出归档要求 durable 保存；实际协调器回归验证同帧成功及真实 I/O 失败仍不退出 |
 | CR-2026-09-07-007 | P2 / COMPAT | 官方 Hurt 先派发死亡、Mode G 停用龙王，再派发 OnHurt；迟到回调重触发孩儿护我，向 inactive GameObject 启动协程。 | Fixed：OnBossHurt 首先检查组件/角色/生命/死亡阶段；停用、死亡与正常技能回归通过 |
-| CR-2026-09-07-008 | P2 / COMPAT | `wedding_chapel` 已有放置记录，但缺少好感历史标记时两条初始化入口均拒绝注册 prefab；官方重绘已有建筑报缺模型。 | Fixed：已有教堂可恢复，空档仍遵守好感解锁；重复初始化和早期入口回归通过 |
+| CR-2026-09-07-008 | P2 / COMPAT | `wedding_chapel` 已有放置记录，但缺少好感历史标记时两条初始化入口均拒绝注册 prefab；官方重绘已有建筑报缺模型。 | **Reopened 2026-09-15 → 见 CR-2026-09-15-002**：原修复在注入前用官方 `Any` 判存在，`Any` 跳过未注册 info，注入前恒 false，修复没有生效；当时的回归把存在判定整段替成常量，没有抓到 |
 | CR-2026-09-07-009 | P2 / COMPAT、WIRE+ | 官方搜索/障碍任务的延迟回调直接访问 `agent.gameObject`，角色销毁后 agent 无效时抛空引用；同次日志反复出现。 | Fixed：两个精确目标 Prefix 在原解引用前检查 Unity 生命周期；原回调错误复现，正常结果与任务完成回归通过 |
 | CR-2026-09-07-010 | P2 / COMPAT、WIRE+ | 官方 `InteractableBase.Awake` 无条件遍历未初始化的交互组，运行时 AddComponent 缺少序列化列表时失败；本次 `MakeTimeQuacker.Bed2Interactable.Awake` 走到该路径。 | Fixed：Awake 前仅补 null 列表，保留已有组与完整原初始化；原方法回归复现失败并验证修复 |
 | CR-2026-09-07-011 | P2 / COMPAT、WIRE+ | 官方 FowSmoke 长计时无销毁取消，切图后继续申请 `WaitForEndOfFrame(this)`，已销毁 runner 触发 StartCoroutine 空引用。 | Fixed：仅该重载中已销毁 FowSmoke 返回取消任务；实际游戏 IL/签名核对及正常/失效/其他 owner 边界回归通过 |

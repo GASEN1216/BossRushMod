@@ -557,12 +557,29 @@ namespace BossRush
             TickPigeon();
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Pigeon);
             TickFieldcraft();
+            // 玩家在岛上切了语言：纪念物按当前语言重建、信鸽换字（语言在取用时解析，AGENTS §4.4）；旗标没变，不重播回话、不补发纪念品。
+            if (displayedFlags >= 0 && L10n.IsChinese != feedbackChinese)
+            {
+                RebuildFeedback();
+                SkyIslandStoryInteractable bird = pigeon != null ? pigeon.GetComponent<SkyIslandStoryInteractable>() : null;
+                if (bird != null) bird.Relabel(PigeonTitle());
+            }
             if (displayedFlags == story.Current.flags) return;
             // 进岛首帧 displayedFlags 为 -1：存档里早就有的结果只重建世界状态、不重播回话；之后只读真正新增的位。
             int added = displayedFlags < 0 ? 0 : story.Current.flags & ~displayedFlags;
             displayedFlags = story.Current.flags;
             AnnounceCombatOutcomes(added);
             GrantKeepsakes();
+            RebuildFeedback();
+        }
+
+        /// <summary>纪念物上一次按哪种语言建的。</summary>
+        private bool feedbackChinese;
+
+        /// <summary>按持久旗标整组重建纪念物（光 + 只读交互体），标题按当前语言取；旗标变化与岛上切语言共用。</summary>
+        private void RebuildFeedback()
+        {
+            feedbackChinese = L10n.IsChinese;
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();
             if (story.Current.Has(SkyIslandStoryFlag.WindBeacon))
@@ -1002,7 +1019,7 @@ namespace BossRush
                 SkyIslandLootTables.StableHash(letter.Id) % 360, SkyIslandRewardCrate.InteractableSeparation,
                 GameplayDataSettings.Layers.groundLayerMask.value, out spot)) return false;
             pigeon = SkyIslandStoryInteractable.Create(root.transform, spot, "SkyIslandPigeon_" + letter.Id,
-                L10n.T("信鸽 · 来信", "Carrier pigeon · a letter"), delegate { ReadLetter(letter); });
+                PigeonTitle(), delegate { ReadLetter(letter); });
             GameObject glow = new GameObject("PigeonGlow");
             glow.transform.SetParent(pigeon.transform, false);
             glow.transform.localPosition = Vector3.up * 2f;
@@ -1010,6 +1027,9 @@ namespace BossRush
             light.intensity = 1.2f; light.range = 9; light.shadows = LightShadows.None;
             return true;
         }
+
+        /// <summary>信鸽头顶的字：建出来时与岛上切语言时取同一句。</summary>
+        private static string PigeonTitle() { return L10n.T("信鸽 · 来信", "Carrier pigeon · a letter"); }
 
         /// <summary>读信：收下才写进手记；信鸽随即飞走（交互体销毁），面板换成没有选项的同一页并附一句回执。</summary>
         private void ReadLetter(SkyIslandLetter letter)

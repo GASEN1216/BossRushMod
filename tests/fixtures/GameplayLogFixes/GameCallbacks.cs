@@ -97,6 +97,11 @@ internal static class GameCallbackChecks
             Program.Require(locked.Prefabs == 0 && unlocked.Injections == 1 && unlocked.Repaints == 0,
                 "normal unlock rules changed");
         });
+        Program.Check("chapel presence counts saved IDs before its building info is registered", () => {
+            var host = new ModBehaviour { ChapelPlaced = true };
+            Program.Require(host.Presence() && !FakeBuildingManager.Any("wedding_chapel", false),
+                "presence relied on official Any, which skips unregistered buildings and stays false before injection");
+        });
     }
 
     private static Cysharp.Threading.Tasks.UniTask WaitAtEndOfFrame(UnityEngine.MonoBehaviour owner, bool patched)
@@ -219,18 +224,34 @@ namespace BossRush
     internal static class AffinityManager { internal static bool Unlocked; internal static bool HasAnyNPCEverReachedMaxLevel() { return Unlocked; } }
     internal static class LocalizationInjector { internal static void InjectWeddingBuildingLocalization() { } }
     internal class FakeBuildingDataCollection { public static object Instance { get { return typeof(FakeBuildingDataCollection); } } }
+    // 官方语义替身：Any 只认 info 已注册（注入过）的记录，GetBuildingAmount 按存档里的原始 ID 计数（BuildingManager.cs:152、196，BuildingAreaData.Any 554-571）。
+    // 生产的 RefreshWeddingBuildingPresence 原样抽进来跑，不再整段替成 `return ChapelPlaced`：换回 Any 时「缺好感标记的已有教堂」必须转红。
+    internal static class FakeBuildingManager
+    {
+        internal static bool Placed, Registered;
+        public static bool Any(string id, bool includeTokens) { return id == "wedding_chapel" && Placed && Registered; }
+        public static int GetBuildingAmount(string id) { return id == "wedding_chapel" && Placed ? 1 : 0; }
+    }
+    internal static class BuildingInjectionHelper
+    {
+        internal static System.Reflection.MethodInfo GetBuildingAmountMethod() { return typeof(FakeBuildingManager).GetMethod("GetBuildingAmount"); }
+    }
     internal partial class ModBehaviour
     {
         private bool weddingBuildingInjected;
         private const int WEDDING_BUILDING_REQUIRED_AFFINITY_LEVEL = 10;
-        internal bool ChapelPlaced;
+        private const string WEDDING_BUILDING_ID = "wedding_chapel";
+        internal ModBehaviour() { FakeBuildingManager.Placed = false; FakeBuildingManager.Registered = false; }
+        internal bool ChapelPlaced { get { return FakeBuildingManager.Placed; } set { FakeBuildingManager.Placed = value; } }
         internal int Prefabs, Injections, Repaints, Events;
         internal void Early() { TryInitializeWeddingBuildingEarly(); }
-        private bool RefreshWeddingBuildingPresence() { return ChapelPlaced; }
+        internal bool Presence() { return RefreshWeddingBuildingPresence(); }
+        private static System.Reflection.MethodInfo GetBuildingManagerAnyMethod() { return typeof(FakeBuildingManager).GetMethod("Any"); }
+        private void SetWeddingBuildingPresence(bool isPresent) { }
         private void LoadWeddingBuildingIcon() { }
         private void LoadWeddingBuildingModel() { }
         private void CreateWeddingBuildingPrefab() { Prefabs++; }
-        private void InjectWeddingBuildingData() { Injections++; }
+        private void InjectWeddingBuildingData() { Injections++; FakeBuildingManager.Registered = true; }
         private void RegisterWeddingBuildingEvents() { Events++; }
         private void RequestBaseBuildingAreaRepaint(string source) { Repaints++; }
         private static bool IsBaseHubSceneName(string scene) { return scene == "Base"; }
