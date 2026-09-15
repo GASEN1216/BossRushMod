@@ -310,13 +310,10 @@ namespace BossRush
                 if (!entered) enterReason = "runtime_ready_timeout_after_click_gate";
             }
 
-            // 判定只认「进得去」，不拿 clicks_fed>0 当硬断言。原因是 SceneLoader.clicked
-            // 的重置时机无法从反编译确认：只能看到 NotifyPointerClick 里置 true
-            // （SceneLoader.cs:191）和字段声明（:274），真正等点击的 LoadScene 只是转发壳
-            // （:106/150），逻辑在编译器生成的 <LoadScene>d__45.MoveNext 里、该状态机体在
-            // 那份反编译中被剥离，故「每次加载是否重置」既不能证实也不能证伪。若实际不
-            // 重置，本用例排在第 5 阶段、前面已切过多次图，门可能早被满足、一次都不用喂。
-            // 那种情况下这轮没真正压到点击门，记 WARN 标出覆盖缺口，不冤枉健康构建。
+            // 判定只认「进得去」，不拿 clicks_fed>0 当硬断言。<LoadScene>d__45 的 IL（2026-09-15 实查）：
+            // 等点击前先 SetActive(true) 点击接收器、把 clicked 复位为 false，再无超时地逐帧等；
+            // runner 只在接收器激活时喂，所以健康构建这里至少喂一次。喂了 0 次还进得去，
+            // 说明这次加载没停在点击门，记 WARN 标出覆盖缺口，不冤枉健康构建。
             string outcome = !entered ? "FAIL" : (clicksFed > 0 ? "PASS" : "WARN");
             Record("SCENE_CLICK_GATE", outcome, sw.ElapsedMilliseconds,
                 "click_to_continue=true,clicks_fed=" + clicksFed

@@ -973,11 +973,8 @@ namespace BossRush
                 }
             }
 
+            // 世界文字随语言重写（CR-2026-09-15-001），中途换语言后残留中文照样红，不再单列 SKIP。
             metrics = "language=en,checked=" + checkedStrings + ",offenders=" + offenders.Count + ",world_offenders=" + worldOffenders;
-            // 世界牌子在进岛搭场景时按当时的语言写好，本趟中途换语言（全自动验收的复拍）后它们没有判据；
-            // 只有世界牌子残留中文、且确实是本趟中途换的语言时记 SKIP，其余中文残留照样红。
-            if (offenders.Count > 0 && offenders.Count == worldOffenders && SkyIslandWorldTextBuiltInOtherLanguage)
-                throw new SkyIslandSkipCase("world_text_built_before_language_switch", metrics);
             if (offenders.Count > 0)
             {
                 reason = "英文语境下仍出现中文：" + string.Join(";", offenders.ToArray());
@@ -985,9 +982,6 @@ namespace BossRush
             }
             return true;
         }
-
-        /// <summary>本趟进岛之后换过语言（Dev 全自动验收的复拍）：世界牌子按进岛时的语言写好，英文扫描对它们没有判据。</summary>
-        internal bool SkyIslandWorldTextBuiltInOtherLanguage;
 
         /// <summary>
         /// CJK 统一表意文字（含扩展 A）与 CJK 标点、全角形式。

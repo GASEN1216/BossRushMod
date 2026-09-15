@@ -219,6 +219,7 @@ namespace BossRush
                 if (SavesSystem.CurrentSlot != _sessionSlot) _slotChanged = true;
                 if (_slotChanged) return;
                 if (!_skyIslandMode) ProtectCurrentPlayer();
+                FeedSceneContinueClickWhenWaiting();
                 if (Time.realtimeSinceStartup >= _nextHeartbeat)
                 {
                     _nextHeartbeat = Time.realtimeSinceStartup + 10f;

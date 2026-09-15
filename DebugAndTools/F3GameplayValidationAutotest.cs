@@ -526,7 +526,7 @@ namespace BossRush
             AutotestLog("AUTOTEST_ISLAND_READY", "begin", null);
             sw = Stopwatch.StartNew();
             float deadline = Time.realtimeSinceStartup + AutotestIslandReadyTimeoutSeconds;
-            float loadingSince = -1f, nextClick = 0f;
+            float loadingSince = -1f;
             string failure = null;
             while (!ShouldAbort())
             {
@@ -535,12 +535,8 @@ namespace BossRush
                 if (session.IsReady && SkyIslandRaidLease.IsRaidScene(SceneManager.GetActiveScene())) { _operationSucceeded = true; break; }
                 if (SceneLoader.IsSceneLoading)
                 {
+                    // 出发走 clickToConinue=true，「点击继续」由 Update 统一喂（FeedSceneContinueClickWhenWaiting）。
                     if (loadingSince < 0f) loadingSince = Time.realtimeSinceStartup;
-                    if (Time.realtimeSinceStartup >= nextClick)
-                    {
-                        nextClick = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
-                        FeedSceneContinueClick();
-                    }
                     if (Time.realtimeSinceStartup - loadingSince > AutotestLoadWatchdogSeconds) { failure = "load_watchdog"; break; }
                 }
                 else loadingSince = -1f;

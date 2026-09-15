@@ -2,6 +2,45 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-15 全自动实机验收第二轮：Mode F 撤离后停在「点击继续」
+
+**来源**：owner 跑第二轮（runId `20260915_001546_093`，Dev `3B3A3C84`）。主套件 pass 152 / fail 7 / skip 11，天空岛全自动整段没跑（`not_back_in_base_after_main_suite`）。开跑进基地时，恢复器已把槽 1 首轮留下的残局还原（`AUTOTEST_RECOVERY` PASS，10 种材料收回）。
+**分类**：`SAFE`。只动 Dev 验收 runner、守卫与文档，生产代码不变。
+
+**现象**（L3）
+- `MODE_F_EXTRACTION` 触发撤离后进了 `LoadingScreen_Black`，之后十分钟 `SceneLoader.IsSceneLoading` 一直为真。
+- 后面 5 个恢复竞技场的过图各白等 90 秒，记 `previous_scene_load_timeout`；`SCENE_RETURN_BASE` 同样超时，天空岛段因此跳过。
+- 日志里没有异常。Mode F 结算、两次存档、卸载旧场景、加载幕布，都和首轮逐行一致。
+
+**根因**（官方 IL 实查 L1，与 L3 现象吻合）
+- 官方 `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47`）。
+- `<LoadScene>d__45` 读完基地后，先 `SetActive(true)` 点击接收器、把 `clicked` 复位，再逐帧等点击，没有超时。淡入淡出与 0.1 秒等待都走 unscaled，排除了 timeScale。
+- runner 只在自己发起、且参数传 true 的加载里喂点击：
+  - `SCENE_RETURN_BASE` 走 `LoadBaseScene`，参数却传 false；
+  - Mode F、丧尸撤离由玩法代码发起，用例只等不点。
+- 首轮这些返基地在幕布上停了 10–30 秒才继续，推断是有人点了加载屏；第二轮按要求没碰键鼠，就一直停着。
+- 不是玩家缺陷：真人会点，点击门与原版一致。
+
+**修复**
+- `F3GameplayValidationScenes.FeedSceneContinueClickWhenWaiting`：runner 的 `Update` 在验收运行期间每帧调。
+  - 只在官方点击接收器 `pointerClickEventRecevier` 激活时，按 0.5 秒节奏喂 `NotifyPointerClick`，不管加载是谁发起的。
+  - 字段取不到时退回「加载中就喂」。
+- `LoadScene` 外壳不再按自身参数喂，`clicks_fed` 改按全局计数的差值算；天空岛出发段删掉自己那份喂点击。
+- `DescribeSceneReadiness` 在加载中带 `loader_step=SceneLoader.LoadingComment`，下次卡加载能直接看到官方停在哪个等待点。
+- `SCENE_CLICK_GATE` 的注释按 IL 改正，原来写的是「重置时机无法确认」。
+- `SKY_LOCALIZATION_EN` 撤掉「中途换语言、只剩世界木牌残留时记 SKIP」。世界文字已随语言重写（CR-2026-09-15-001，另一会话、未提交），残留照样红。
+- `docs/contracts.md` §7.1 记下官方点击门。
+
+**守卫与验证**（L1 / L2，没有进游戏）
+- 新增 `tests/F3SceneContinueClickGuard.py`：内存反向检查 7/7 转红；另在磁盘上注释掉 `Update` 里那一行实跑转红，按字节还原。
+- 全量守卫 615 PASS。
+- 执行回归 `F3ValidationExecution`、`F3AutotestJudges`、`SkyIslandValidationJudges` PASS。
+- 干净 worktree（`84994b1` + 另一会话上一节的 8 个 .cs + 本节 6 个 .cs）：
+  - Dev 与正式构建都 Build succeeded、0 警告；
+  - `check_dll_identifiers`：Dev present 11/11，正式 absent。
+- 部署：D 盘 `BossRush.dll` = Dev `F406C2C0…`（覆盖 `3B3A3C84`，已备份），步骤表 `729889B2` 不变，SHA 核对一致。
+
+
 ## 2026-09-14 全自动实机验收：首轮实测复核与修复
 
 **来源**：owner 按「自动验收 + 完整待测清单」跑完第一轮（runId `20260914_143303_766`）。66 步 PASS 54 / FAIL 9 / SKIP 3，最后回基地卡住，还原记 PENDING_RECOVERY。明细见交付报告第十四节。

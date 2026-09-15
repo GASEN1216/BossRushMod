@@ -43,6 +43,7 @@ namespace BossRush
                 yield break;
             }
 
+            int clicksAtStart = _sceneClicksFed;
             UniTask task;
             try
             {
@@ -57,17 +58,11 @@ namespace BossRush
                 Record(caseId, "FAIL", sw.ElapsedMilliseconds, DescribeSceneReadiness(expectedScene), _operationReason);
                 yield break;
             }
+            // 「点击继续」由 Update 里的 FeedSceneContinueClickWhenWaiting 统一喂（LoadBaseScene 恒开点击门），这里只数本次喂了几下。
             deadline = Time.realtimeSinceStartup + SceneTimeoutSeconds;
-            float nextClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
             while (task.Status == UniTaskStatus.Pending && Time.realtimeSinceStartup < deadline)
-            {
-                if (clickToContinue && Time.realtimeSinceStartup >= nextClickAt)
-                {
-                    nextClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
-                    if (FeedSceneContinueClick()) _lastSceneClicksFed++;
-                }
                 yield return null;
-            }
+            _lastSceneClicksFed = _sceneClicksFed - clicksAtStart;
             if (task.Status == UniTaskStatus.Pending)
             {
                 _operationReason = "scene_load_timeout";
@@ -105,6 +100,50 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[Validation] 喂「点击继续」失败: " + e.Message);
                 return false;
+            }
+        }
+
+        private float _nextSceneClickAt;
+        private int _sceneClicksFed;
+        private static System.Reflection.FieldInfo _sceneLoaderClickReceiverField;
+        private static bool _sceneLoaderClickReceiverResolved;
+
+        /// <summary>
+        /// 官方加载停在「点击继续」时替玩家点。验收跑着的每一帧由 Update 调，不管加载是谁发起的：
+        /// <c>LoadBaseScene</c> 恒传 clickToConinue=true（IL 实查），Mode F / 丧尸撤离、返基地收尾、岛上返航兜底都会停在这一屏，
+        /// 而官方等点击的循环没有超时（2026-09-15 第二轮 Mode F 撤离后停在加载屏十分钟，后面整段连带作废）。
+        /// 只在点击接收器激活时喂：官方只在等点击那一段 SetActive(true)，进等待前先把 clicked 复位，
+        /// 早喂的点击不算数，不等点击的加载也不会空响点击音效。接收器字段取不到（官方改名）时退回「加载中就喂」，宁可多响不卡死。
+        /// </summary>
+        private void FeedSceneContinueClickWhenWaiting()
+        {
+            if (!SceneLoader.IsSceneLoading || Time.realtimeSinceStartup < _nextSceneClickAt) return;
+            _nextSceneClickAt = Time.realtimeSinceStartup + SceneClickFeedIntervalSeconds;
+            if (IsSceneLoaderWaitingForClick() && FeedSceneContinueClick()) _sceneClicksFed++;
+        }
+
+        private static bool IsSceneLoaderWaitingForClick()
+        {
+            SceneLoader loader = SceneLoader.Instance;
+            if (loader == null) return false;
+            try
+            {
+                if (!_sceneLoaderClickReceiverResolved)
+                {
+                    _sceneLoaderClickReceiverResolved = true;
+                    _sceneLoaderClickReceiverField = typeof(SceneLoader).GetField("pointerClickEventRecevier",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    if (_sceneLoaderClickReceiverField == null)
+                        ModBehaviour.DevLog("[Validation] 取不到 SceneLoader.pointerClickEventRecevier，加载中一律喂「点击继续」");
+                }
+                if (_sceneLoaderClickReceiverField == null) return true;
+                Component receiver = _sceneLoaderClickReceiverField.GetValue(loader) as Component;
+                return receiver != null && receiver.gameObject.activeSelf;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Validation] 判断「点击继续」失败，按在等处理: " + e.Message);
+                return true;
             }
         }
 
@@ -146,7 +185,8 @@ namespace BossRush
                 + ",after_init=" + (manager != null && LevelManager.AfterInit)
                 + ",player=" + (player != null) + ",player_active=" + (player != null && player.gameObject.activeInHierarchy)
                 + ",player_alive=" + (player != null && player.Health != null && !player.Health.IsDead)
-                + ",camera=" + (manager != null && manager.GameCamera != null && manager.GameCamera.isActiveAndEnabled);
+                + ",camera=" + (manager != null && manager.GameCamera != null && manager.GameCamera.isActiveAndEnabled)
+                + (SceneLoader.IsSceneLoading ? ",loader_step=" + SceneLoader.LoadingComment : string.Empty);
         }
 
         private IEnumerator EnsureArenaForCase(string caseId)

@@ -624,6 +624,8 @@ Breaking/Operational:
   2026-09-14 拍板接受为例外（天空岛见闻、征程线索）。我们的存档仍是权威，镜像双向同步：官方点亮而我们存档里没有的，经公开属性 `UnlockedNotes`（返回的就是解锁集合本身）收回并照官方写法调 `onNoteStatusChanged`。
 - 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
+- `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47` IL 实查）：基地读完后停在「点击继续」，等 `clicked` 的循环没有超时；进等待前先 `SetActive(true)` 点击接收器 `pointerClickEventRecevier` 并把 `clicked` 复位。
+  无人值守的流程要在接收器激活后调 `NotifyPointerClick`，否则玩法代码发起的返基地（Mode F / 丧尸撤离）会一直停在加载屏。卡加载时先看 `SceneLoader.LoadingComment`，官方每个等待点都写了一句（如 `Wait for click...`）。
 - `Duckov.Quests`（`QuestManager` / `Quest` / `Task`）刻意不接：它会把 mod 任务写进官方存档键，卸载后官方报错（`AGENTS.md` §10）。
 
 **渲染与程序集**
