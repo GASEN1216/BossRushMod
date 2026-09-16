@@ -44,13 +44,13 @@
 
 ## 4. 运行时规则
 
-- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。一昼夜约 24 现实分钟、夜里约 8 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
+- **判夜只有一个口径**：`SkyIslandNight` + `SkyIslandLighting.ClockHours()`。没有 `GameClock` 实例时 `TimeOfDay` 恒为 00:00 且不抛异常；不要用官方 `TimeOfDayController.AtNight`。夜是 19–5 点，刻意等于官方 `TimeOfDayController` 的 `nightStart / morningStart`（官方 Volume 与敌人夜间感知同相）；一昼夜约 24 现实分钟、夜里约 10 分钟（`clockTimeScale = 60`），写夜间内容先按这个算（`SkyIslandMosquitoGuard`）。
 - **玩法计时走游戏时间**（撤离读秒、救援），暂停菜单与拍照模式会冻结它；表现层可以走 unscaled，但暂停时停推进。
 - **常驻 HUD 跟随官方 HUD 显隐**（`BossRushUI.IsOfficialHudHidden()`），右上角卡片排在官方「操作说明」提示栈下沿之下（`BossRushUI.GetTopRightHudTop`）。
 - **当前区域按脚下地面判定**（`COL_Ground_{区域}` 碰撞体），不按离地标的距离。场景包的 `POI_` 节点数不等于区域数，可完成量一律取地面切分出的区域表。
 - **交互体落点**走 `SkyIslandRewardCrate.TryFindCratePosition`，不要把箱子放在角色倒下的位置。新增静态交互体后跑 `SkyIslandInteractionCompetitionPropertyTest` 两两复算。
 - **选项先判再挂**：「能不能挂」与「点了会不会被拒」共用 `SkyIslandStoryRules` 里同一份判据；不挂灰项；同页超过 3–4 项分二级（`SkyIslandChoiceGateGuard`）。
-- **叙事走官方对话，图鉴走官方 `NoteIndex`**（`SkyIslandNoteBridge`）。自绘面板只因 `timeScale = 0` 模态保留，理由写在文件头；官方任务系统刻意不接（`SkyIslandOfficialApiReuseGuard`）。
+- **叙事走官方对话，图鉴走官方 `NoteIndex`**（`SkyIslandNoteBridge`），**跨局主线走官方 `Duckov.Quests`**：任务表只有 `SkyIslandOfficialQuestTable` 一份（序章 590001 挂 Jeff；岛上 590011–590013 挂苇白 / 浮舟 / 钟守，官方 enum 之外的整数给予者 5901–5903，居民缺席那趟由委托板 / 渡口工台 / 钟庭装置兜底），Mod 分槽存档为权威、每条任务 Accepted + Delivered 两位、官方四类快照剥离自己的 ID；桥常驻 `SkyIslandRuntimeModule` 且先于「岛上会话存在就早退」运行（`SkyIslandPreludeGuard`）。按出击刷新的委托不接（`SkyIslandOfficialApiReuseGuard`）。自绘面板只因 `timeScale = 0` 模态保留，理由写在文件头。
 - **云蚋这类可被打中的轻量目标不克隆角色**：先失活，建伤害接收体层非触发球 + 运动学刚体 + `DamageReceiver`（`useSimpleHealth`）+ `HealthSimpleBase`（阵营 wolf）再激活；死亡看 `activeSelf`；挪完 `Physics.SyncTransforms()`。躲子弹在 `Projectile.Init(ProjectileContext)` 的后缀里拿弹道，起点用 `firstFrameCheckStartPoint`；瞄准辅助会吸附伤害接收体，所以瞄准线扫过时也要预闪。伤害只在 `SkyIslandGnats`，局内 owner `SkyIslandFieldcraft` 不出现伤害。
 - **头目 / 岛主招式控制器走 `SkyIslandBossProps` 共用件**（`SkyIslandBossEcologyGuard`）：
   - 换位只走 `Teleport`：`CancelCurrentPathRequest(true)` →（要硬直时）`BossAIController.Pause` → `SetPosition` → `Physics.SyncTransforms()`，硬直结束由调用方 `Resume`。`StopMove` 不取消在途寻路，回调会把旧路径装回来。

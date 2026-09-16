@@ -196,7 +196,8 @@ namespace BossRush
             return scale > 0.0 && !double.IsNaN(scale) && !double.IsInfinity(scale) ? scale : SkyIslandNight.DefaultClockScale;
         }
 
-        // 0–5 星夜；5–7 晨光；7–10 晴昼；16–19 暮色；19–21 星夜。星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份）。
+        // 0–5 星夜；5–7 晨光；7–10 晴昼；10–16 晴昼恒定；16–18 晴昼→暮色；18–19 暮色→星夜；19–24 星夜。
+        // 星夜整档的起止取 SkyIslandNight（与夜风、云蚋同一份），与官方 TimeOfDayController 的 dawnStart=16 / nightStart=19 同相。
         // 以连续小时和 SmoothStep 插值，午夜仍在同一星夜档，不产生跳变。
         internal static void ResolveTimeBlend(double hours, out int from, out int to, out float blend)
         {
@@ -207,8 +208,8 @@ namespace BossRush
             else if (hours < 7) { from = 2; to = 3; start = SkyIslandNight.EndHour; end = 7; }
             else if (hours < 10) { from = 3; to = 0; start = 7; end = 10; }
             else if (hours < 16) { from = to = 0; start = 10; end = 16; }
-            else if (hours < 19) { from = 0; to = 1; start = 16; end = 19; }
-            else { from = 1; to = 2; start = 19; end = SkyIslandNight.StartHour; }
+            else if (hours < 18) { from = 0; to = 1; start = 16; end = 18; }
+            else { from = 1; to = 2; start = 18; end = SkyIslandNight.StartHour; }
             float t = (float)((hours - start) / (end - start));
             blend = from == to ? 0 : t * t * (3 - 2 * t);
         }

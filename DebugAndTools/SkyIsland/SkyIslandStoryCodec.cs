@@ -28,10 +28,29 @@ namespace BossRush
             // 不猜测修复互斥结局或跳过前置的损坏存档，避免随后保存把原始证据覆盖。
             if (data.Has(SkyIslandStoryFlag.ZhelingReconciled | SkyIslandStoryFlag.ZhelingDefeated) ||
                 data.Has(SkyIslandStoryFlag.BellKeeperReconciled | SkyIslandStoryFlag.BellKeeperDefeated) ||
+                (data.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered) && !data.Has(SkyIslandStoryFlag.PreludeAccepted)) ||
+                (data.Has(SkyIslandStoryFlag.RouteUnlocked) && !data.Has(SkyIslandStoryFlag.PreludeAccepted | SkyIslandStoryFlag.PreludeInstrumentRecovered)) ||
                 (data.Has(SkyIslandStoryFlag.Ending) && (!data.BothBeacons || !data.BellKeeperResolved)) ||
+                // 岛上主线任务：交付必先接取、必先有对应事实；任何任务位都只能出现在已解锁航线的槽里。
+                QuestContradicts(data, SkyIslandStoryFlag.BeaconQuestAccepted, SkyIslandStoryFlag.BeaconQuestDelivered, data.BothBeacons) ||
+                QuestContradicts(data, SkyIslandStoryFlag.BellCourtQuestAccepted, SkyIslandStoryFlag.BellCourtQuestDelivered, data.BellKeeperResolved) ||
+                QuestContradicts(data, SkyIslandStoryFlag.HomecomingQuestAccepted, SkyIslandStoryFlag.HomecomingQuestDelivered, data.Has(SkyIslandStoryFlag.Ending)) ||
+                (AnyIslandQuestFlag(data) && !data.Has(SkyIslandStoryFlag.RouteUnlocked)) ||
                 // 噬风只在双航标点亮后才会到场，因此「已击败噬风但航标没亮」必然是坏数据。
                 (data.Has(SkyIslandStoryFlag.StormSlain) && !data.BothBeacons)) return null;
             return data;
+        }
+
+        private static bool QuestContradicts(SkyIslandStoryData data, SkyIslandStoryFlag accepted, SkyIslandStoryFlag delivered, bool factDone)
+        {
+            return data.Has(delivered) && (!data.Has(accepted) || !factDone);
+        }
+
+        private static bool AnyIslandQuestFlag(SkyIslandStoryData data)
+        {
+            foreach (SkyIslandStoryFlag[] pair in SkyIslandStoryRules.IslandQuestFlags)
+                if (data.Has(pair[0]) || data.Has(pair[1])) return true;
+            return false;
         }
 
         private static bool ValidIds(List<string> values)

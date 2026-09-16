@@ -13,7 +13,20 @@ namespace BossRush
         ZhelingReconciled = 1024, ZhelingDefeated = 2048,
         BellKeeperReconciled = 4096, BellKeeperDefeated = 8192, Ending = 16384,
         /// <summary>SCHEMA+：新增位，旧档读出来为 0，语义即「尚未挑战噬风」。</summary>
-        StormSlain = 32768
+        StormSlain = 32768,
+        /// <summary>Jeff 已把零号区的异常坠落线索交给玩家。</summary>
+        PreludeAccepted = 65536,
+        /// <summary>玩家在零号区击败断风游猎并读出了失落航向仪。</summary>
+        PreludeInstrumentRecovered = 131072,
+        /// <summary>玩家把航向仪坐标交回 Jeff，基地船点正式开放晴岚航线。</summary>
+        RouteUnlocked = 262144,
+        /// <summary>SCHEMA+：岛上主线三条官方任务的接取 / 交付事实（各两位）。旧档读出 0 = 从未接过；官方 history 每次都被剥掉，读档只靠这两位重建投影。</summary>
+        BeaconQuestAccepted = 524288,
+        BeaconQuestDelivered = 1048576,
+        BellCourtQuestAccepted = 2097152,
+        BellCourtQuestDelivered = 4194304,
+        HomecomingQuestAccepted = 8388608,
+        HomecomingQuestDelivered = 16777216
     }
 
     internal enum SkyIslandStoryAction
@@ -22,7 +35,9 @@ namespace BossRush
         FindRouteChart, RepairTelescope, DeliverPlantingRecord,
         OpenShortcutK1, OpenShortcutK2, OpenShortcutK3,
         ReconcileZheling, ZhelingDefeated, ReconcileBellKeeper, BellKeeperDefeated, RingHomecomingBell,
-        StormSlain
+        StormSlain, AcceptPrelude, RecoverPreludeInstrument, UnlockRoute,
+        AcceptBeaconQuest, DeliverBeaconQuest, AcceptBellCourtQuest, DeliverBellCourtQuest,
+        AcceptHomecomingQuest, DeliverHomecomingQuest
     }
 
     [Serializable]
@@ -44,6 +59,7 @@ namespace BossRush
         internal bool ZhelingResolved { get { return Has(SkyIslandStoryFlag.ZhelingReconciled) || Has(SkyIslandStoryFlag.ZhelingDefeated); } }
         internal bool BellKeeperResolved { get { return Has(SkyIslandStoryFlag.BellKeeperReconciled) || Has(SkyIslandStoryFlag.BellKeeperDefeated); } }
         internal bool StormResolved { get { return Has(SkyIslandStoryFlag.StormSlain); } }
+        internal bool SkyIslandRouteUnlocked { get { return Has(SkyIslandStoryFlag.RouteUnlocked); } }
         internal bool EncounterCleared(string id) { return Array.IndexOf(clearedEncounters ?? new string[0], id) >= 0; }
         internal SkyIslandStoryData Copy()
         {
@@ -62,11 +78,59 @@ namespace BossRush
         internal const int SchemaVersion = 1;
         internal const string StorageKey = "BossRush_SkyIsland_Story_v1";
         /// <summary>已登记位的并集。新增位必须同时更新这里，否则解码会拒绝整份存档。</summary>
-        internal const int KnownFlags = 65535;
+        internal const int LegacyKnownFlags = 65535;
+        internal const int KnownFlags = 33554431;
         internal static SkyIslandStoryData CreateDefault()
         {
             return new SkyIslandStoryData { schemaVersion = SchemaVersion, flags = 0,
                 clearedEncounters = new string[0], discoveredNotes = new string[0] };
+        }
+
+        /// <summary>
+        /// 入口门发布前已经玩过天空岛的槽位必须继续可进。只认实际群岛事实；一个完全空的新槽不会被迁移。
+        /// 旧旗标、到访、清场或手记任一存在都说明该槽以前已经完成过一次正式进入。
+        /// </summary>
+        internal static bool HasLegacyIslandProgress(SkyIslandStoryData data)
+        {
+            return data != null && (((data.flags & LegacyKnownFlags) != 0) || data.visitedRegions != 0 ||
+                (data.clearedEncounters != null && data.clearedEncounters.Length > 0) ||
+                (data.discoveredNotes != null && data.discoveredNotes.Length > 0));
+        }
+
+        internal static bool TryGrantLegacyRoute(SkyIslandStoryData source, out SkyIslandStoryData candidate)
+        {
+            candidate = null;
+            if (source == null || source.SkyIslandRouteUnlocked || !HasLegacyIslandProgress(source)) return false;
+            candidate = source.Copy();
+            candidate.flags |= (int)(SkyIslandStoryFlag.PreludeAccepted |
+                SkyIslandStoryFlag.PreludeInstrumentRecovered | SkyIslandStoryFlag.RouteUnlocked);
+            return true;
+        }
+
+        /// <summary>岛上主线任务的接取 + 交付两位。</summary>
+        internal static readonly SkyIslandStoryFlag[][] IslandQuestFlags =
+        {
+            new[] { SkyIslandStoryFlag.BeaconQuestAccepted, SkyIslandStoryFlag.BeaconQuestDelivered },
+            new[] { SkyIslandStoryFlag.BellCourtQuestAccepted, SkyIslandStoryFlag.BellCourtQuestDelivered },
+            new[] { SkyIslandStoryFlag.HomecomingQuestAccepted, SkyIslandStoryFlag.HomecomingQuestDelivered }
+        };
+
+        /// <summary>
+        /// 官方任务上线前已经打通过的槽不该被再问一遍「去点灯吧」：按既有事实把对应任务补成已接取 + 已交付。
+        /// 只对已解锁航线的槽做（岛上任务只能在岛上接）；一个什么都没做过的槽不动。
+        /// </summary>
+        internal static bool TryBackfillIslandQuests(SkyIslandStoryData source, out SkyIslandStoryData candidate)
+        {
+            candidate = null;
+            if (source == null || !source.SkyIslandRouteUnlocked) return false;
+            int grant = 0;
+            if (source.BothBeacons) grant |= (int)(SkyIslandStoryFlag.BeaconQuestAccepted | SkyIslandStoryFlag.BeaconQuestDelivered);
+            if (source.BothBeacons && source.BellKeeperResolved) grant |= (int)(SkyIslandStoryFlag.BellCourtQuestAccepted | SkyIslandStoryFlag.BellCourtQuestDelivered);
+            if (source.Has(SkyIslandStoryFlag.Ending)) grant |= (int)(SkyIslandStoryFlag.HomecomingQuestAccepted | SkyIslandStoryFlag.HomecomingQuestDelivered);
+            if (grant == 0 || (source.flags & grant) == grant) return false;
+            candidate = source.Copy();
+            candidate.flags |= grant;
+            return true;
         }
 
         internal static bool TryApply(SkyIslandStoryData source, SkyIslandStoryAction action,
@@ -190,6 +254,60 @@ namespace BossRush
             required = null;
             switch (action)
             {
+                case SkyIslandStoryAction.AcceptPrelude:
+                    flag = SkyIslandStoryFlag.PreludeAccepted;
+                    message = L10n.T("Jeff：零号区落下了一具不属于地面的航向仪。把守它的家伙也不像本地拾荒者。去把仪器里的坐标读回来。",
+                        "Jeff: A navigation instrument fell into Ground Zero, and its guard is no local scavenger. Bring back the coordinates stored inside it."); break;
+                case SkyIslandStoryAction.RecoverPreludeInstrument:
+                    flag = SkyIslandStoryFlag.PreludeInstrumentRecovered;
+                    if (!source.Has(SkyIslandStoryFlag.PreludeAccepted))
+                        required = L10n.T("先向基地的 Jeff 询问异常坠落线索。",
+                            "Ask Jeff at the base about the strange wreckage first.");
+                    message = L10n.T("航向仪仍在工作。残缺记录反复指向云层之上的『晴岚群岛』；把坐标交给 Jeff。",
+                        "The instrument still works. Its damaged log points again and again to the Qinglan Archipelago above the clouds. Take the coordinates to Jeff."); break;
+                case SkyIslandStoryAction.UnlockRoute:
+                    flag = SkyIslandStoryFlag.RouteUnlocked;
+                    if (!source.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered))
+                        required = L10n.T("先在零号区找到失落的航向仪。",
+                            "Find the lost navigation instrument in Ground Zero first.");
+                    message = L10n.T("Jeff 校准了坐标，并让基地船工把晴岚航线写进航路表。天空岛旅程现在可以从船点出发。",
+                        "Jeff calibrates the coordinates and has the base crew add Qinglan to the route table. The Sky Islands journey can now depart from the boat."); break;
+                case SkyIslandStoryAction.AcceptBeaconQuest:
+                    flag = SkyIslandStoryFlag.BeaconQuestAccepted;
+                    message = L10n.T("苇白：两端航标都灭了，绳桥也不敢系。你要是肯跑这一趟，风铃集这边我来安排。",
+                        "Weibai: Both beacons are dark and nobody dares lash the bridges. Make the trip and I'll handle things here."); break;
+                case SkyIslandStoryAction.DeliverBeaconQuest:
+                    flag = SkyIslandStoryFlag.BeaconQuestDelivered;
+                    if (!source.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
+                        required = L10n.T("先在风铃集接下苇白的委托。", "Take Weibai's commission at Windchime Market first.");
+                    else if (!source.BothBeacons)
+                        required = L10n.T("风标与星灯都亮起来再回来复命。", "Light both the wind beacon and the star lamp, then report back.");
+                    message = L10n.T("苇白在名册上画了两道：东西两端都回话了。绳桥今晚就能系。",
+                        "Weibai strikes two marks in the roster: both ends answer again. The rope bridges go up tonight."); break;
+                case SkyIslandStoryAction.AcceptBellCourtQuest:
+                    flag = SkyIslandStoryFlag.BellCourtQuestAccepted;
+                    message = L10n.T("浮舟：灯都亮了，钟守还是不肯让钟响。去归航钟庭，说服他，或者打赢他。",
+                        "Fuzhou: The lamps burn, yet the Bell Keeper still won't let the bell ring. Go to the Bell Court and talk him down, or beat him."); break;
+                case SkyIslandStoryAction.DeliverBellCourtQuest:
+                    flag = SkyIslandStoryFlag.BellCourtQuestDelivered;
+                    if (!source.Has(SkyIslandStoryFlag.BellCourtQuestAccepted))
+                        required = L10n.T("先在码头接下浮舟的委托。", "Take Fuzhou's commission at the dock first.");
+                    else if (!source.BellKeeperResolved)
+                        required = L10n.T("和解或战胜钟守之后再回来复命。", "Reconcile with or defeat the Bell Keeper, then report back.");
+                    message = L10n.T("浮舟把船头掉向钟庭：『那就等钟声。』",
+                        "Fuzhou turns the bow toward the Bell Court: 'Then we wait for the bell.'"); break;
+                case SkyIslandStoryAction.AcceptHomecomingQuest:
+                    flag = SkyIslandStoryFlag.HomecomingQuestAccepted;
+                    message = L10n.T("钟守：去敲响归航钟。这一次，是为归来的人。",
+                        "The Bell Keeper: Ring the Homecoming Bell. This time, for the ones coming home."); break;
+                case SkyIslandStoryAction.DeliverHomecomingQuest:
+                    flag = SkyIslandStoryFlag.HomecomingQuestDelivered;
+                    if (!source.Has(SkyIslandStoryFlag.HomecomingQuestAccepted))
+                        required = L10n.T("先在归航钟庭接下钟守的托付。", "Take the Bell Keeper's charge at the Bell Court first.");
+                    else if (!source.Has(SkyIslandStoryFlag.Ending))
+                        required = L10n.T("敲响归航钟之后再回来复命。", "Ring the Homecoming Bell, then report back.");
+                    message = L10n.T("钟守望着云海：『听见了。他们都听见了。』",
+                        "The Bell Keeper looks out over the cloud sea: 'They heard it. All of them.'"); break;
                 case SkyIslandStoryAction.RepairWindBeacon:
                     flag = SkyIslandStoryFlag.WindBeacon;
                     if (!source.EncounterCleared("D") || !source.EncounterCleared("D_02"))

@@ -45,6 +45,27 @@ internal static class Program
     private static void Main()
     {
         SkyIslandAuditRegression.Run(Check);
+        var prelude = Open(100120);
+        Reject(prelude, SkyIslandStoryAction.RecoverPreludeInstrument);
+        Reject(prelude, SkyIslandStoryAction.UnlockRoute);
+        Apply(prelude, SkyIslandStoryAction.AcceptPrelude);
+        Apply(prelude, SkyIslandStoryAction.RecoverPreludeInstrument);
+        Apply(prelude, SkyIslandStoryAction.UnlockRoute);
+        Check(prelude.Current.SkyIslandRouteUnlocked, "prelude: Jeff hand-in unlocks the route");
+        SkyIslandStoryData untouched = SkyIslandStoryRules.CreateDefault();
+        SkyIslandStoryData migrated;
+        Check(!SkyIslandStoryRules.TryGrantLegacyRoute(untouched, out migrated) && migrated == null,
+            "prelude: a fresh slot is not migrated past Jeff");
+        SkyIslandStoryData legacy = SkyIslandStoryRules.CreateDefault();
+        legacy.visitedRegions = 1;
+        Check(SkyIslandStoryRules.TryGrantLegacyRoute(legacy, out migrated) && migrated.SkyIslandRouteUnlocked &&
+            migrated.Has(SkyIslandStoryFlag.PreludeAccepted | SkyIslandStoryFlag.PreludeInstrumentRecovered),
+            "prelude: an existing island save keeps access without replaying the tutorial");
+        SkyIslandStoryData brokenPrelude = SkyIslandStoryRules.CreateDefault();
+        brokenPrelude.flags = (int)SkyIslandStoryFlag.RouteUnlocked;
+        Check(SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(brokenPrelude)) == null,
+            "prelude: route unlock without accepted and recovered facts is rejected");
+        Check(prelude.TryClose(), "prelude: route facts close cleanly");
         var story = Open(1);
         story.Open(); Check(SavesSystem.Subscribers == 1, "Open subscription idempotent");
         Reject(story, SkyIslandStoryAction.RepairWindBeacon);
@@ -730,9 +751,9 @@ internal static class Program
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandSmokeFan) == SkyIslandFieldBuff.Fan
             && SkyIslandFieldcraftRules.BuffFor(BossRushItemIds.SkyIslandCloudmossVeil) == SkyIslandFieldBuff.None
             && SkyIslandFieldcraftRules.UsageText(SkyIslandFieldBuff.Soothe).Length > 0, "the zapper and the fan are used on the isles; the veil only has to be carried");
-        Check(SkyIslandFieldcraftRules.IsNight(21) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
-            && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(20.99)
-            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 21:00 to 05:00");
+        Check(SkyIslandFieldcraftRules.IsNight(19) && SkyIslandFieldcraftRules.IsNight(23.5) && SkyIslandFieldcraftRules.IsNight(4.99)
+            && !SkyIslandFieldcraftRules.IsNight(5) && !SkyIslandFieldcraftRules.IsNight(12) && !SkyIslandFieldcraftRules.IsNight(18.99)
+            && SkyIslandFieldcraftRules.IsNight(-1) && !SkyIslandFieldcraftRules.IsNight(double.NaN), "night is 19:00 to 05:00 (official nightStart)");
         // 内容批次四：判夜收成一个口径（SkyIslandNight），夜风的入口只是转交，逐点一致。
         for (double hour = -3; hour <= 27; hour += 0.125)
             Check(SkyIslandFieldcraftRules.IsNight(hour) == SkyIslandNight.IsNight(hour), "wind night follows the one night rule: " + hour);
@@ -1200,6 +1221,7 @@ internal static class Program
         SkyIslandMosquitoRegression.Run(Check);
         SkyIslandGnatDodgeSimulation.Run(Check);
         SkyIslandBossRulesRegression.Run(Check);
+        SkyIslandOfficialQuestRegression.Run(Check);
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

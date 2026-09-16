@@ -392,6 +392,9 @@ namespace BossRush
         }
 
         internal static bool IsRunning { get { return _instance != null && _instance._running && !_instance.AllowsSkyIslandEntry(); } }
+        /// <summary>全自动验收自己发起的那一次正式入口允许绕过玩家序章；正式构建恒为 false。</summary>
+        internal static bool AllowsLockedSkyIslandEntry
+        { get { return _instance != null && _instance._running && _instance.AllowsSkyIslandEntry(); } }
 
         internal static bool TryStart(ModBehaviour host, out string reason)
         {

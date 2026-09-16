@@ -191,7 +191,7 @@ namespace BossRush
         /// <summary>观星镜校准之后，残星瞭台的风晶簇多出星屑的概率。</summary>
         internal const double TelescopeStardustBonus = 0.20;
 
-        /// <summary>夜里（21 点到次日 5 点，与光照的「星夜」整档一致）风晶簇多出星屑的概率。</summary>
+        /// <summary>夜里（19 点到次日 5 点，与光照的「星夜」整档一致）风晶簇多出星屑的概率。</summary>
         internal const double NightStardustBonus = 0.15;
 
         #endregion
@@ -881,7 +881,7 @@ namespace BossRush
         { get { return L10n.T("它只认得晴岚群岛的风——到了岛上才有用。", "It only answers to the winds of the Qinglan isles — use it there."); } }
 
         /// <summary>
-        /// 夜里：转给唯一口径 <see cref="SkyIslandNight.IsNight"/>（21 点到次日 5 点，光照的星夜整档、夜风与云蚋共用）。
+        /// 夜里：转给唯一口径 <see cref="SkyIslandNight.IsNight"/>（19 点到次日 5 点，光照的星夜整档、夜风与云蚋共用）。
         /// 这里不再另写一份小时数；保留这个入口只为已有调用点与回归不改签名。
         /// </summary>
         internal static bool IsNight(double hours)

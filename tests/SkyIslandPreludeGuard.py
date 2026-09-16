@@ -1,0 +1,285 @@
+# -*- coding: utf-8 -*-
+"""天空岛官方任务注册表守卫：Jeff 序章 + 岛上三条主线都真接官方 Quest，Mod 存档为权威，卸载不留孤儿 ID。
+
+2026-09-16 起本守卫从「序章单任务」扩成「多任务注册表」口径（文件名保留，FIX_TRACKER 与教程都引它）：
+- 序章：官方 Jeff Quest → 零号区航向仪 / 断风游猎 → 官方交付后开放船点（三层航线门）。
+- 岛上：590011–590013 挂在苇白 / 浮舟 / 钟守（自定义 QuestGiverID 整数 5901–5903）名下，只在岛上接、岛上交。
+- 桥：所有权 = ID + 对象名 + 专用 Task 组件；每条目各自 fail-closed；四类官方快照逐 id 剥离；
+  桥在模块 OnUpdate 里**先于**「岛上会话存在就早退」运行（否则岛上三条任务根本不跑）。
+- 存档：每条任务 Accepted + Delivered 两位（官方 history 每次都被剥掉，读档只靠这两位重建）；KnownFlags 同步；
+  Codec 拒绝「交付无接取 / 交付无事实 / 未解锁航线却有任务位」。
+反向探针在内存里恢复旧写法，确保每条断言真的抓得住。
+"""
+from pathlib import Path
+
+from cs_source_util import clean_source
+
+ROOT = Path(__file__).resolve().parents[1]
+SKY = "DebugAndTools/SkyIsland/"
+PRELUDE = SKY + "SkyIslandPreludeFlow.cs"
+QUEST = SKY + "SkyIslandOfficialQuestBridge.cs"
+TABLE = SKY + "SkyIslandOfficialQuestTable.cs"
+GIVERS = SKY + "SkyIslandOfficialQuestGivers.cs"
+RUNTIME = SKY + "SkyIslandRuntimeModule.cs"
+SESSION = SKY + "SkyIslandSession.cs"
+SESSION_QUEST = SKY + "SkyIslandSessionQuestBridge.cs"
+RESIDENTS = SKY + "SkyIslandResidents.cs"
+RULES = SKY + "SkyIslandStoryRules.cs"
+CODEC = SKY + "SkyIslandStoryCodec.cs"
+SERVICE = SKY + "SkyIslandStoryService.cs"
+START = "Integration/BossRushIntegration_StartAndScene.cs"
+F3 = "DebugAndTools/F3GameplayValidationRunner.cs"
+COMPILE = "compile_official.bat"
+CSPROJ = "tests/fixtures/SkyIslandStory/Regression.csproj"
+PATHS = (PRELUDE, QUEST, TABLE, GIVERS, RUNTIME, SESSION, SESSION_QUEST, RESIDENTS, RULES, CODEC, SERVICE, START, F3, COMPILE, CSPROJ)
+
+QUEST_SYMBOLS = ("QuestManager", "QuestGiverID", "QuestCollection", "QuestGiverView", "Duckov.Quests")
+
+
+def check(sources):
+    errors = []
+
+    def require(condition, message):
+        if not condition:
+            errors.append(message)
+
+    def ordered(text, first, second, message):
+        a = text.find(first)
+        b = text.find(second)
+        require(a >= 0 and b >= 0 and a < b, message)
+
+    prelude = clean_source(sources[PRELUDE])
+    quest = clean_source(sources[QUEST])
+    table = clean_source(sources[TABLE])
+    givers = clean_source(sources[GIVERS])
+    runtime = clean_source(sources[RUNTIME])
+    session = clean_source(sources[SESSION])
+    session_quest = clean_source(sources[SESSION_QUEST])
+    residents = clean_source(sources[RESIDENTS])
+    rules = clean_source(sources[RULES])
+    codec = clean_source(sources[CODEC])
+    service = clean_source(sources[SERVICE])
+    start = clean_source(sources[START])
+    f3 = clean_source(sources[F3])
+
+    # ---- 1) 序章：官方 Jeff、零号区目标、头目复用、生命周期 ----
+    for token, why in (
+        ("candidate.ID != QuestGiverID.Jeff", "必须按官方公开枚举识别 Jeff，不能猜名字或层级"),
+        ("officialQuest.PrepareGiver(candidate)", "找到 Jeff 后没有刷新官方任务标记"),
+        ('GroundZeroScene = "Level_GroundZero_1"', "前置调查没有落在官方零号区"),
+        ("SimplePointOfInterest.Create", "目标没有复用官方地图标记"),
+        ('SkyIslandBossForge.TryApply(created, "K3_Relay", 0, context)', "没有复用群岛断风游猎头目"),
+        ("SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(created)", "官方角色仍可能停在距离休眠"),
+        ("created.SetTeam(Teams.wolf)", "前置头目缺少敌对阵营安全网"),
+        ("expected == generation", "异步生成缺少场景代数门"),
+        ("health.OnDeadEvent.RemoveListener(OnDead)", "头目死亡监听没有成对退订"),
+        ("GiverId = (int)QuestGiverID.Jeff", "序章给予者必须是官方 Jeff"),
+        ("Accept = TryAcceptOfficialQuest, Deliver = TryCompleteOfficialQuest", "序章的接取 / 交付没有交给注册表"),
+        ("officialQuest.Register(BuildDefinition())", "序章没有向多任务注册表登记"),
+        ("officialQuest.Unregister(SkyIslandOfficialQuestTable.PreludeQuestId)", "序章销毁时没有从注册表撤掉自己"),
+        ("SkyIslandOfficialQuestStory.SetBaseSource(story)", "基地故事没有发布给任务桥当事实源"),
+        ('reason = L10n.T("回到基地向 Jeff 交付坐标。"', "序章交付必须回基地（岛上三条才是原地交付）"),
+    ):
+        require(token in prelude, PRELUDE + "：" + why + "（缺 " + token + "）")
+    require(prelude.count("SetBaseSource(null)") >= 3,
+            PRELUDE + " 关闭 / 切换基地故事时没有把任务桥的事实源置空（应至少三处：EnsureStory 失败、CloseStory、TryPrepareDeparture）")
+    require("private const float TickInterval = 0.25f" in prelude and "jeffAttempts = 12" in prelude and "jeffAttempts--" in prelude,
+            PRELUDE + " 缺少节流 Tick 或 Jeff 有界重试")
+    require(prelude.count("FindObjectsOfType<QuestGiver>(true)") == 1, PRELUDE + " 的 Jeff 全局扫描必须只有一个有界调用点")
+    require("BossActivationRange * BossActivationRange" in prelude, PRELUDE + " 必须等玩家接近目标后再创建完整角色")
+    bundle_gate = prelude.split("internal void Tick()", 1)[1].split("if (!EnsureStory())", 1)[0] if "internal void Tick()" in prelude else ""
+    require("SkyIslandRaidLease.IsBundleDeployed()" in bundle_gate, PRELUDE + " 缺包时仍会给 Jeff 一条无法完成的任务")
+
+    # ---- 2) 任务表：纯规则、稳定 ID、两位旗标、链条门 ----
+    for token, why in (
+        ("PreludeQuestId = 590001", "序章 Quest ID 未冻结"),
+        ("BeaconQuestId = 590011", "两端航标任务 ID 未冻结"),
+        ("BellCourtQuestId = 590012", "钟庭之争任务 ID 未冻结"),
+        ("HomecomingQuestId = 590013", "归航钟任务 ID 未冻结"),
+        ("WeibaiGiverId = 5901", "苇白给予者整数未冻结"),
+        ("FuzhouGiverId = 5902", "浮舟给予者整数未冻结"),
+        ("BellKeeperGiverId = 5903", "钟守给予者整数未冻结"),
+        ("SkyIslandStoryRules.CanApply(data, action, out blocker)", "目标行文案没有取自绘面板同一份「还差什么」"),
+        ("context.Data.Has(SkyIslandStoryFlag.BeaconQuestDelivered)", "钟庭之争没有等两端航标交付"),
+        ("context.Data.Has(SkyIslandStoryFlag.BellCourtQuestDelivered)", "归航钟没有等钟庭之争交付"),
+        ("context.OnIsland && context.Data != null && context.Data.SkyIslandRouteUnlocked", "岛上任务的门没有要求人在岛上且航线已开"),
+    ):
+        require(token in table, TABLE + "：" + why + "（缺 " + token + "）")
+    require(table.count("AcceptedFlag = SkyIslandStoryFlag.") == 3 and table.count("DeliveredFlag = SkyIslandStoryFlag.") == 3,
+            TABLE + " 每条岛上任务都必须同时有 Accepted 与 Delivered 两位：官方 history 每次都被剥掉，少了 Delivered 读档后会再要你点一次完成")
+    for banned in ("using UnityEngine", "using Duckov", "QuestGiverID", "QuestManager"):
+        require(banned not in table, TABLE + " 出现了 " + banned + "：任务表必须无 Unity / Duckov 依赖，隔离回归才能逐字链接")
+    require("SkyIslandOfficialQuestTable.cs" in sources[CSPROJ], CSPROJ + " 没有链接任务表：执行回归证不了「任务页与规则同源」")
+
+    # ---- 3) 桥：注册表、所有权、逐条目 fail-closed、四类快照、时序 ----
+    for token, why in (
+        ("QuestCollection collection = GameplayDataSettings.QuestCollection", "没有向官方任务 prefab 集合登记"),
+        ("manager.ActivateQuest(entry.Def.QuestId, (QuestGiverID)entry.Def.GiverId)", "没有通过官方 QuestManager 激活任务 / 给予者没有走定义"),
+        ("class SkyIslandOfficialQuestTask : Duckov.Quests.Task", "没有使用官方 Task 基类"),
+        ("public int questId;", "Task 必须只带整数回查表（委托不随 Instantiate 克隆）"),
+        ("public int taskId;", "Task 必须只带整数回查表（委托不随 Instantiate 克隆）"),
+        ("Quest.onQuestActivated += OnQuestActivated", "官方接取没有写回 Mod 事实"),
+        ("Quest.onQuestCompleted += OnQuestCompleted", "官方完成没有接回桥"),
+        ("Quest.onQuestActivated -= OnQuestActivated", "接取事件没有退订"),
+        ("Quest.onQuestCompleted -= OnQuestCompleted", "完成事件没有退订"),
+        ("HarmonyPatch(typeof(Quest), nameof(Quest.MeetsPrerequisit))", "任务没有进入给予者的官方可接取列表"),
+        ("HarmonyPatch(typeof(Quest), nameof(Quest.TryComplete))", "官方完成按钮提交前没有先落 Mod 交付事实"),
+        ("HarmonyPatch(typeof(QuestManager), nameof(QuestManager.GenerateSaveData))", "没有隔离官方 Quest 存档快照"),
+        ("HarmonyPatch(typeof(QuestManager), nameof(QuestManager.SetupSaveData)", "读档时没有防御性过滤旧残留"),
+        ("entry.Prefab.gameObject.name == entry.Def.ObjectName", "所有权只比整数 ID，会误伤占用相同 ID 的其它 Mod"),
+        ("entry.Prefab.GetComponent<SkyIslandOfficialQuestTask>() != null", "所有权没有验专用 Task 组件"),
+        ("if (!OwnsRegisteredQuest(entry.Def.QuestId)) continue;", "存档过滤没有逐条按所有权放行冲突 ID"),
+        ("RemoveSavedQuest(data.activeQuestsData, id)", "没有剥离 active 快照"),
+        ("RemoveSavedQuest(data.historyQuestsData, id)", "没有剥离 history 快照"),
+        ("data.completedQuests.Remove(id)", "没有剥离 completedQuests（残留会把 IsQuestAvaliable 永久钉死）"),
+        ("data.everInspectedQuest.Remove(id)", "没有剥离 everInspected"),
+        ("if (!initialized)", "读档时目标已完成会被误报成刚完成，导致每次重建重复通知"),
+        ("lastKnown = current", "读档时目标已完成会被误报成刚完成"),
+        ("ReferenceEquals(entry.CleanedFreshManager, manager)", "空白槽的官方列表清理必须按任务管理器与槽位缓存"),
+        ("entry.CleanedFreshSlot == context.Slot", "空白槽的官方列表清理必须按任务管理器与槽位缓存"),
+        ("bool slotChanged = context.Slot != lastSlot", "换槽没有先按新槽整清再重建"),
+        ("if (slotChanged) { ClearProjection(entry, manager);", "换槽没有先按新槽整清再重建"),
+        ("if (!context.StoryReady || context.Data == null) return;", "故事暂缺（离岛的一两拍）时不能清也不能建"),
+        ("internal bool Blocked, CollisionReported;", "ID 冲突 / 注册失败必须按条目 fail-closed，不能整桥停摆"),
+    ):
+        require(token in quest, QUEST + "：" + why + "（缺 " + token + "）")
+    require(quest.count("entry.Blocked = true") >= 2, QUEST + " Quest ID 冲突或结构性注册失败后仍会每秒重试并制造异常")
+    require("root.SetActive(false)" not in quest and "PrefabRoot.SetActive(false)" not in quest,
+            QUEST + " 的 Quest 模板不能停用，否则官方克隆出的 Quest/Task 会继承停用状态")
+    require("registrationBlocked" not in quest, QUEST + " 回到了整桥级 fail-closed：一条 ID 冲突不该让整条主线消失")
+    ordered(quest, "owned[i] = Owns(entries[i]);", "disposed = true;", QUEST + " 销毁桥时没有先冻结每条的所有权，会清掉冲突 Mod 的同 ID 任务")
+
+    # ---- 4) 给予者：Awake 之前写 id、官方任务页缺席不挂、装置兜底只在居民缺席且整队生成完之后 ----
+    attach = givers.split("private static bool Attach(", 1)[1] if "private static bool Attach(" in givers else ""
+    ordered(attach, "if (QuestGiverView.Instance == null)", "NPCInteractionGroupHelper.AddSubInteractable<QuestGiver>(",
+            GIVERS + " 官方 QuestGiverView 不在场时仍会挂给予者：那会变成一个点了没反应的选项")
+    setup = attach.split("NPCInteractionGroupHelper.AddSubInteractable<QuestGiver>(", 1)[1].split("});", 1)[0] if "AddSubInteractable<QuestGiver>(" in attach else ""
+    require("GiverIdField.SetValue(component, (QuestGiverID)giverId);" in setup,
+            GIVERS + " questGiverID 必须在 AddSubInteractable 的 setup 回调里写（官方 Awake 之前），否则头顶标记绑错给予者")
+    require("component.spawnPOI = false;" in setup, GIVERS + " 岛上地图标记归 SkyIslandMapMarkers，不要官方 POI")
+    for token, why in (
+        ("session.ResidentsSettled", "居民还没生成完就判「谁缺席」，兜底会挂到每个装置上"),
+        ("fallbackAttempts >= FallbackAttemptLimit", "装置兜底没有有界重试"),
+        ("NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(device", "兜底给予者必须分组进装置，不另起同点交互体"),
+        ("RefreshIndicatorMethod.Invoke(giver, null)", "剧情事实变了没有刷头顶标记"),
+        ("internal static void ResetStaticCaches()", "静态给予者缓存没有唯一清理 owner"),
+    ):
+        require(token in givers, GIVERS + "：" + why + "（缺 " + token + "）")
+    require("GetOrCreateStandaloneInteractable" not in givers, GIVERS + " 用了独立交互体：会新增同点竞争体")
+    require("SkyIslandOfficialQuestGivers.AttachResident(relationship.transform, group, id);" in residents,
+            RESIDENTS + " 发任务的居民身上没有挂官方给予者")
+    require("finally { spawnFinished = true; }" in residents, RESIDENTS + " 整队生成完没有落标记，兜底判「谁缺席」没有依据")
+    for symbol in QUEST_SYMBOLS:
+        require(symbol not in residents, RESIDENTS + " 引用了官方任务符号 " + symbol + "：居民 owner 不碰任务系统，接线只经 SkyIslandOfficialQuestGivers")
+    for token, why in (
+        ("IsSessionValid() ? story : null", "岛上事实源没有按会话有效性给出"),
+        ("residents.SpawnFinished", "会话没有暴露居民整队生成完的状态"),
+        ("GetComponent<SkyIslandSearchPoint>()", "兜底装置不是岛上的见闻点交互体"),
+    ):
+        require(token in session_quest, SESSION_QUEST + "：" + why + "（缺 " + token + "）")
+
+    # ---- 5) 模块接线：桥常驻、先于岛上早退运行、销毁时清理 ----
+    require("quests = new SkyIslandOfficialQuestBridge(host)" in runtime, RUNTIME + " 没有持有常驻任务桥")
+    update = runtime.split("public override void OnUpdate(", 1)[1].split("public override", 1)[0] if "public override void OnUpdate(" in runtime else ""
+    ordered(update, "quests.Tick();", "owner.GetComponent<SkyIslandSession>() != null) return;",
+            RUNTIME + " 任务桥的 Tick 排在「岛上会话存在就早退」之后：岛上三条任务根本不跑")
+    for token in ("quests.Dispose()", "SkyIslandOfficialQuestGivers.ResetStaticCaches()", "SkyIslandOfficialQuestStory.ResetStaticCaches()"):
+        require(token in runtime, RUNTIME + " 销毁时缺 " + token)
+    require("SkyIslandPreludeFlow.InjectLocalizations();" in start and "SkyIslandOfficialQuestTable.InjectLocalizations();" in start,
+            START + " 没有注入官方任务标题与说明：任务页会显示裸 key")
+
+    # ---- 6) 存档：新位、掩码、回填、Codec 矛盾态；schema key 不变 ----
+    for token in ("PreludeAccepted = 65536", "PreludeInstrumentRecovered = 131072", "RouteUnlocked = 262144",
+                  "BeaconQuestAccepted = 524288", "BeaconQuestDelivered = 1048576",
+                  "BellCourtQuestAccepted = 2097152", "BellCourtQuestDelivered = 4194304",
+                  "HomecomingQuestAccepted = 8388608", "HomecomingQuestDelivered = 16777216",
+                  "LegacyKnownFlags = 65535", "KnownFlags = 33554431", "TryGrantLegacyRoute", "HasLegacyIslandProgress",
+                  "TryBackfillIslandQuests", "case SkyIslandStoryAction.DeliverBeaconQuest:",
+                  "case SkyIslandStoryAction.DeliverBellCourtQuest:", "case SkyIslandStoryAction.DeliverHomecomingQuest:"):
+        require(token in rules, RULES + " 缺任务 / 兼容状态：" + token)
+    require("SchemaVersion = 1" in rules and 'StorageKey = "BossRush_SkyIsland_Story_v1"' in rules,
+            RULES + " 不得仅为任务投影提升 schema 或更换存档 key")
+    require("PreludeInstrumentRecovered) && !data.Has(SkyIslandStoryFlag.PreludeAccepted" in codec and
+            "RouteUnlocked) && !data.Has(SkyIslandStoryFlag.PreludeAccepted | SkyIslandStoryFlag.PreludeInstrumentRecovered" in codec,
+            CODEC + " 没有拒绝跳过 Jeff / 航向仪的损坏状态")
+    for token in ("QuestContradicts(data, SkyIslandStoryFlag.BeaconQuestAccepted, SkyIslandStoryFlag.BeaconQuestDelivered, data.BothBeacons)",
+                  "QuestContradicts(data, SkyIslandStoryFlag.BellCourtQuestAccepted, SkyIslandStoryFlag.BellCourtQuestDelivered, data.BellKeeperResolved)",
+                  "QuestContradicts(data, SkyIslandStoryFlag.HomecomingQuestAccepted, SkyIslandStoryFlag.HomecomingQuestDelivered, data.Has(SkyIslandStoryFlag.Ending))",
+                  "AnyIslandQuestFlag(data) && !data.Has(SkyIslandStoryFlag.RouteUnlocked)"):
+        require(token in codec, CODEC + " 没有拒绝岛上任务的矛盾状态：" + token)
+    require("TryBackfillIslandQuests(changed ? candidate : Current" in service,
+            SERVICE + " 老档没有按既有事实回填任务位：已敲钟的槽会被再问一遍「去点灯吧」")
+
+    # ---- 7) 三层航线门与编译清单 ----
+    scan_prefix = runtime.split("foreach (InteractableBase candidate", 1)[0]
+    require("prelude == null || !prelude.RouteUnlocked" in scan_prefix, RUNTIME + " 未解锁仍会扫描并注入船点")
+    require("prelude.TryPrepareDeparture(out reason)" in runtime, RUNTIME + " 点击船点没有二次确认并先关闭基地存档 owner")
+    require("SkyIslandPreludeFlow.CanUseRoute(out reason)" in session, SESSION + " 的 CanEnter 没有航线硬门，未来调用可绕过船点")
+    require("AllowsLockedSkyIslandEntry" in session and "AllowsLockedSkyIslandEntry" in f3, "全自动专用测试档的窄旁路没有保留")
+    for name in ("SkyIslandPreludeFlow.cs", "SkyIslandOfficialQuestBridge.cs", "SkyIslandOfficialQuestTable.cs",
+                 "SkyIslandOfficialQuestGivers.cs", "SkyIslandSessionQuestBridge.cs"):
+        require(name in sources[COMPILE], COMPILE + " 未登记 " + name)
+    return errors
+
+
+def main():
+    sources = {path: (ROOT / path).read_text(encoding="utf-8-sig") for path in PATHS}
+    errors = check(sources)
+    probes = (
+        (PRELUDE, "candidate.ID != QuestGiverID.Jeff", "candidate.name != \"Jeff\""),
+        (PRELUDE, "jeffAttempts--", ""),
+        (PRELUDE, "health.OnDeadEvent.RemoveListener(OnDead)", ""),
+        (PRELUDE, "SkyIslandRaidLease.IsBundleDeployed()", "true"),
+        (PRELUDE, "Accept = TryAcceptOfficialQuest, Deliver = TryCompleteOfficialQuest", "Accept = null, Deliver = null"),
+        (PRELUDE, "officialQuest.Unregister(SkyIslandOfficialQuestTable.PreludeQuestId)", "officialQuest.Dispose()"),
+        (QUEST, "manager.ActivateQuest(entry.Def.QuestId, (QuestGiverID)entry.Def.GiverId)", ""),
+        (QUEST, "collection.Add(quest);", "root.SetActive(false);\n                collection.Add(quest);"),
+        (QUEST, "RemoveSavedQuest(data.activeQuestsData, id)", ""),
+        (QUEST, "data.everInspectedQuest.Remove(id)", "false"),
+        (QUEST, "if (!OwnsRegisteredQuest(entry.Def.QuestId)) continue;", ""),
+        (QUEST, "entry.Prefab.gameObject.name == entry.Def.ObjectName", "true"),
+        (QUEST, "internal bool Blocked, CollisionReported;", "internal bool CollisionReported;"),
+        (QUEST, "if (!initialized)", "if (false)"),
+        (QUEST, "if (slotChanged) { ClearProjection(entry, manager);", "if (false) {"),
+        (QUEST, "if (!context.StoryReady || context.Data == null) return;", ""),
+        (QUEST, "HarmonyPatch(typeof(Quest), nameof(Quest.TryComplete))", "HarmonyPatch(typeof(Quest), nameof(Quest.ForceComplete))"),
+        (TABLE, "DeliveredFlag = SkyIslandStoryFlag.HomecomingQuestDelivered", "DeliveredFlag = 0"),
+        (TABLE, "context.Data.Has(SkyIslandStoryFlag.BeaconQuestDelivered)", "true"),
+        (GIVERS, "GiverIdField.SetValue(component, (QuestGiverID)giverId);", ""),
+        (GIVERS, "if (QuestGiverView.Instance == null)", "if (false)"),
+        (GIVERS, "session.ResidentsSettled", "true"),
+        (GIVERS, "component.spawnPOI = false;", ""),
+        (RESIDENTS, "SkyIslandOfficialQuestGivers.AttachResident(relationship.transform, group, id);", ""),
+        (RESIDENTS, "finally { spawnFinished = true; }", "finally { }"),
+        (RUNTIME, "if (quests != null) quests.Tick();\n            if (prelude != null) prelude.Tick();",
+         "if (prelude != null) prelude.Tick();\n            if (owner.GetComponent<SkyIslandSession>() != null) return;\n            if (quests != null) quests.Tick();"),
+        (RUNTIME, "prelude == null || !prelude.RouteUnlocked", "false"),
+        (RUNTIME, "prelude.TryPrepareDeparture(out reason)", "true"),
+        (SESSION, "SkyIslandPreludeFlow.CanUseRoute(out reason)", "true"),
+        (RULES, "KnownFlags = 33554431", "KnownFlags = 524287"),
+        (RULES, "case SkyIslandStoryAction.DeliverBellCourtQuest:", "case SkyIslandStoryAction.DeliverBellCourtQuest :"),
+        (CODEC, "AnyIslandQuestFlag(data) && !data.Has(SkyIslandStoryFlag.RouteUnlocked)", "false"),
+        (CODEC, "PreludeInstrumentRecovered) && !data.Has(SkyIslandStoryFlag.PreludeAccepted", "PreludeInstrumentRecovered) && false"),
+        (SERVICE, "TryBackfillIslandQuests(changed ? candidate : Current", "TryBackfillIslandQuests(null"),
+        (START, "SkyIslandOfficialQuestTable.InjectLocalizations();", ""),
+        (COMPILE, "echo(DebugAndTools\\SkyIsland\\SkyIslandOfficialQuestTable.cs", ""),
+        (COMPILE, "echo(DebugAndTools\\SkyIsland\\SkyIslandOfficialQuestGivers.cs", ""),
+        (CSPROJ, '<Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs" Link="Production/SkyIslandOfficialQuestTable.cs" />', ""),
+    )
+    for path, before, after in probes:
+        if before not in sources[path]:
+            errors.append("反向检查锚点失效：" + path + " -> " + before)
+            continue
+        altered = dict(sources)
+        altered[path] = altered[path].replace(before, after, 1)
+        if not check(altered):
+            errors.append("未拦截旧写法：" + path + " -> " + before)
+    if errors:
+        print("SkyIslandPreludeGuard: FAIL\n  " + "\n  ".join(errors))
+        return 1
+    print("SkyIslandPreludeGuard: PASS（官方 Jeff Quest + 岛上三条主线挂居民 / 装置兜底 + 逐条 fail-closed + 无孤儿任务 ID + 三层航线门；%d 个反向检查）" % len(probes))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

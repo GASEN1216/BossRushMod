@@ -2,6 +2,40 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-16 天空岛昼夜时钟与官方任务接口审核：1 P1 + 1 P2 + 2 P3（均已修，L1 / L2）
+
+来源：owner 要求审核昼夜切换是否跟官方时钟、剧情任务有没有走官方接口。未启动游戏、未读写玩家存档；正式构建已部署，实机按人工清单 2.24。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-16-003 | **P1** / WIRE | 序章桥 `officialQuest.Tick()` 排在 `SkyIslandPreludeFlow.Tick()` 的 `GetComponent<SkyIslandSession>() != null` 早退之后，岛上根本不跑；任何岛上官方任务都无法投影。岛上主线（航标 → 钟守 → 归航钟）全部只在 Mod 旗标 + 自绘面板里，玩家看不到官方任务日志。 | **Fixed（L1 / L2）**。桥上移到 `SkyIslandRuntimeModule` 常驻并先于早退运行；单任务桥改成注册表；岛上三条挂苇白 / 浮舟 / 钟守（`SkyIslandOfficialQuestTable`），`SkyIslandPreludeGuard` 钉住时序。 |
+| CR-2026-09-16-004 | **P2** / PLAYABILITY | 岛上判夜 21–5 与官方 `TimeOfDayController` 19–5 差两小时且两套同时生效：19–21 点官方 Volume 走夜档、敌人视野已按夜里衰减，岛上却不起夜风、不刷云蚋、夜限定头目不补刷。时间值本身 100% 读官方 `GameClock`（基地 `TimeOfDayConfig.forceSetTime/Weather` UnityPy 实读 false，不拨表）。 | **Fixed（L2）**。`SkyIslandNight` 19–5、`ForcedHour` 22、光照分段 16–18 / 18–19；守卫 / 夹具 / 文案 12 处同步；Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对官方常量。 |
+| CR-2026-09-16-005 | P3 / DOC | `DebugAndTools/SkyIsland/AGENTS.md` §4 仍写「官方任务系统刻意不接」，与代码、根 AGENTS、contracts 冲突；repowiki 同。 | **Fixed**。 |
+| CR-2026-09-16-006 | P3 / DOC | 教程示例标识符（`IsOwnQuest` / `ObjectiveDone` / `TryCommitFinalFact`）与实现对不上；未提 `completedQuests` 残留钉死 `IsQuestAvaliable`、`ActivateQuest` / `IsQuestAvaliable` 对未知 id NRE。 | **Fixed**：教程按注册表实现对齐并补 §7a 自定义给予者。 |
+
+### 已接受（documented）
+
+- 已交付任务 history 缺失时 `ForceComplete` 重建再发一次 `Quest.onQuestCompleted`：`AchievementManager` 查不到 `Quest_59xxxx` 直接返回，`BDSManager` 一条匿名遥测；每次加载每条至多一次。摘掉单个监听要反射事件后备字段，属 §10 级别改动，不值。
+- `ModBehaviourPartialBudgetGuard` 红由另一会话未提交的 +5 行造成（见 FIX_TRACKER 本轮），本轮净增 0。
+
+### UNVERIFIED（需要 L3）
+
+- 官方 `QuestGiverView` 在自建 bundle 场景里是否存在（代码 fail-closed）；岛上给予者三页、目标通知一次、原地交付、换槽 / 重进 / 旧槽回填、缺席兜底、隔离副本卸载；19 点起夜与官方同相。
+
+## 2026-09-16 天空岛入口与 Jeff 序章审核：2 P1（均已修，L1 / L2）
+
+来源：owner 要求全面审核天空岛的玩家流程、代码设计与性能，并对照 `鸭科夫源码/`，把首次进入改成由官方 NPC Jeff 自然引出。本轮未启动游戏、未部署、未读写玩家存档；实机表现与帧时间仍按人工清单验收。
+
+| ID | 级别 / 分类 | 已确认缺陷 | 状态与验证 |
+| --- | --- | --- | --- |
+| CR-2026-09-16-001 | **P1** / PLAYABILITY + WIRE | 天空岛入口没有任何故事门：模块一发现基地船点就直接加招牌和「前往天空岛」，`SkyIslandSession.CanEnter` 也没有解锁判据。新玩家安装 Mod 后会被直接告知可上岛，官方世界里没有人、物或事件介绍群岛，流程突兀；老玩家与新玩家也没有兼容分流。 | **Fixed（L1 / L2）**。向官方 `QuestCollection` 注册稳定 ID `590001` 的 Quest / Task prefab，给予者为 `QuestGiverID.Jeff`：在 Jeff 官方任务页接取「云上的坐标」→ 正常出击零号区 → 地图 POI「失落的航向仪」→ 近点才生成「断风游猎·守」→ 击杀后读取坐标，官方任务目标完成并提示 → 回 Jeff 的官方进行中页点「完成任务」解锁船点。船点扫描、交互回调、`SkyIslandSession.CanEnter` 三层共用同一解锁事实；旧槽只有存在既有群岛事实才自动补齐三段旗标，空白槽不迁移。官方任务只做 UI / 事件投影，保存快照过滤本 Mod ID，权威进度仍在 Mod 分槽存档。 |
+| CR-2026-09-16-002 | **P1** / SAVE（故障恢复） | `SkyIslandStoryService.SettleRaidHeld(false)` 在确认 store 可写前就清掉 `raidHeldNotes`。若此时已有写屏障 / `StoreFaulted`，恢复 owner 会把内存旧快照重新编码，原本应随出击回滚的灯、蛙等记录会永久留档，造成物品回滚而剧情事实没回滚。 | **Fixed（L2）**。`keep=false` 在写屏障和恢复期间继续保留排除集；真正存入撤回候选后才清。`keep=true` 则在编码前解除排除。`SkyIslandAuditRegression` 加入故障注入，核对恢复 JSON 不含被撤回记录。 |
+
+### UNVERIFIED（需要 L3）
+
+- Jeff 官方任务的可接取 / 进行中 / 已完成页、任务标记、零号区 POI 可见性、目标位置的实地碰撞、头目生成与掉落箱、官方完成按钮和船点即时开放，均需按人工清单第 0 步实测。
+- 静态热路径检查未发现新逐帧全局扫描：主循环 0.25 秒节流，Jeff 查询最多 12 次，角色资源扫描只在玩家进入目标 70 米内且本次需要生成头目时执行。没有本轮实机采样，不能据此宣称「无性能问题」；零号区接敌帧时间与应用退出时尚有待写故事批次的故障窗口仍需 L3 / 进程级故障注入。
+
 ## 2026-09-15 F3 全自动验收首轮复核补修：1 P2 + 2 P3（均已修，未实机）
 
 来源：owner 首轮全自动验收（runId `20260914_143303_766`，Dev MVID `2fb9d50b`）复核后要求全部修复。
@@ -128,26 +162,27 @@ owner 提了六件事。逐条查证下来**三件是真问题、一件比反馈
 
 ### 本轮登记为 documented、**不是缺陷**的一条决策
 
-**官方任务系统 `Duckov.Quests` 刻意不接。** owner 问「玩家的任务也是原版有的，你可以看看我们是否使用了
-而不是自己另实现一个」——查证结论是**官方确实有全套且完整，但天空岛不该接**，四条理由：
+**官方任务系统 `Duckov.Quests` 的最终边界（2026-09-16 owner 两次拍板）：跨局主线接（Jeff 序章 + 岛上三条挂岛上 NPC），按出击刷新的岛上委托不接。**
 
-1. **`Quest` 与 `Task` 都是 MonoBehaviour prefab。** `QuestManager.ActivateQuest` 只收 `int id`，
-   去 `GameplayDataSettings.QuestCollection` 里 `Instantiate`。mod 要注册一条任务，得在运行时造 prefab 塞进官方集合。
-2. **`QuestGiverID` 是写死的 enum**（12 个官方 NPC），**没有 mod 的位置**。
-3. **会污染玩家存档。** `QuestManager` 实现 `ISaveDataProvider`，把任务序列化进**官方存档键 `"Quest"/"Data"`**；
-   玩家卸载 mod 之后，官方对存档里缺失的 id 打 `LogError`。这是改官方存档 schema，
-   按 `AGENTS.md` §10 属于**没有 owner 签字不得执行**的事。
-4. **语义也对不上。** 岛上委托是**按出击计、不进存档**的；官方 Quest 是跨局持久任务。
+岛上给予者用官方给予者枚举之外的整数（5901–5903，`SkyIslandOfficialQuestGivers`）。四条安全证据：官方 UI 不显示给予者名（`QuestsData.GetDisplayName` / `GetInfo` 无调用方）；`Quest.Compare` 只做整数减法；按给予者列任务的官方查询只做整数相等比较；`Quest.SaveData.questGiverID` 随整条记录被我们从快照剥掉。
+
+`Quest` 与 `Task` 是 MonoBehaviour prefab，`QuestManager.ActivateQuest` 会从 `GameplayDataSettings.QuestCollection` 克隆；
+`QuestGiverID` 是写死的 enum，因此本 Mod 复用已有的官方 Jeff，不创建新发布人。序章是跨局、一次性的持久流程，语义与官方 Quest 一致，现已用稳定 Quest ID `590001` 与 Task ID `1` 接入 Jeff 的可接取 / 进行中 / 已完成页面和玩家任务日志。
+
+卸载兼容仍是硬约束：官方 `QuestManager` 默认把任务写进 `"Quest"/"Data"`，缺 prefab 时加载会打 `LogError`。owner 已明确授权接入（对应 `AGENTS.md` 的拍板要求），实现没有把风险转嫁给存档：Mod 故事 key 仍是唯一权威；Harmony 只在 `GenerateSaveData` / `SetupSaveData` 的快照中剥离 ID `590001` 的 active、history、completed、ever-inspected 四类记录，每次加载再从 Mod 事实重建官方投影。卸载后官方存档没有孤儿 Quest ID。
+
+跨 Mod 冲突按所有权处理：任务可用性、完成按钮、全局任务事件、存档过滤与销毁清理不只比较整数 ID，还要求当前注册模板带专用对象名和 `SkyIslandOfficialPreludeTask` 组件。若别的内容先占用 `590001`，本 Mod 停止注册并完全放行对方任务，不删除对方存档；结构性注册失败也停止周期重试。
+
+岛上居民委托继续按单次出击刷新，不进入跨局 Quest；它们还依赖模态功能面板冻结战斗，不能为了界面统一改变玩法语义。
 
 **与之相反的另一条则该接、已经接了**：官方图鉴 `NoteIndex`（见 CR-2026-09-13-009）——
 它没有第 1、2、4 条问题，而且同一仓库里征程早有范例。第 3 条部分成立（2026-09-14 UI 优化对照审核 O-1 更正）：
 官方 `NoteIndex.Save` 会把解锁状态写进官方存档键 `NoteIndexData`，卸载 Mod 后只剩带本 Mod 前缀的孤儿 key（读档不报错，
 图鉴已解锁数可能虚高）。同日拍板接受为例外，镜像改为双向同步，见 `docs/contracts.md` §7.1。
 
-这四条写在这里是为了**避免以后每轮重查一遍**。同样的理由另有两处副本：
+这条边界写在这里是为了**避免以后每轮重查一遍**。同样的理由另有两处副本：
 `tests/SkyIslandOfficialApiReuseGuard.py` 的文件头（守卫会断言这些关键词在本文件里还在），
 以及 `DebugAndTools/SkyIsland/SkyIslandStoryPresentation.cs` 的文件头。
-**想推翻这个决定，先拿到 owner 对第 3 条的签字。**
 
 ## 2026-09-13 天空岛 UI 美术化审核：1 P1 + 4 P2 + 2 P3（均已修）
 

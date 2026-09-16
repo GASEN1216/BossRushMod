@@ -62,13 +62,21 @@ namespace BossRush
 
         private async UniTaskVoid SpawnAllAsync()
         {
-            for (int i = 0; i < Ids.Length && IsValid(); i++)
+            try
             {
-                try { await SpawnOneAsync(Ids[i], Markers[i], SkyIslandWorldStory.ResidentName(Ids[i])); }
-                catch (Exception e) { Debug.LogWarning("[SkyIslandResidents] " + Ids[i] + " 生成失败：" + e.Message); }
-                await UniTask.Yield();
+                for (int i = 0; i < Ids.Length && IsValid(); i++)
+                {
+                    try { await SpawnOneAsync(Ids[i], Markers[i], SkyIslandWorldStory.ResidentName(Ids[i])); }
+                    catch (Exception e) { Debug.LogWarning("[SkyIslandResidents] " + Ids[i] + " 生成失败：" + e.Message); }
+                    await UniTask.Yield();
+                }
             }
+            finally { spawnFinished = true; }
         }
+
+        private bool spawnFinished;
+        /// <summary>整队生成流程已经跑完（成功与否都算）。官方任务给予者据此判断谁缺席、要不要挂装置兜底。只读。</summary>
+        internal bool SpawnFinished { get { return spawnFinished; } }
 
         private async UniTask SpawnOneAsync(string id, string markerName, string displayName)
         {
@@ -134,6 +142,8 @@ namespace BossRush
                 List<InteractableBase> group = NPCInteractionGroupHelper.GetOrCreateGroupList(relationship, "[SkyIslandResidents]");
                 NPCInteractionGroupHelper.AddSubInteractable(relationship.transform, "IslandStoryOption", group,
                     (SkyIslandResidentInteractable component) => component.Bind(id, displayName, npc.transform, onTalk, IsValid));
+                // 发任务的居民再挂一个官方任务给予者（同组、不抢交互位）；官方任务符号全在 SkyIslandOfficialQuestGivers。
+                SkyIslandOfficialQuestGivers.AttachResident(relationship.transform, group, id);
                 return;
             }
             GameObject child = new GameObject("IslandStoryInteractRoot");

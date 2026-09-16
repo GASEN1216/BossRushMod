@@ -10,19 +10,21 @@ namespace BossRush
     ///   云蚋再写第三份就会出现「天黑了、风没起、蚊子却来了」这种三处对不上的情形。
     /// - 官方 `GameClock` 没有实例时 `TimeOfDay` 恒为 00:00（反编译源 `GameClock.cs` 的 `SecondsOfDay`），照读会把整趟判成夜里；
     ///   这里约定**读不到时钟就当不是夜里**（光照回退晴昼），由 <see cref="EffectiveHours"/> 把「没有时钟」变成 NaN。
-    /// - 不用官方 `TimeOfDayController.AtNight`：它是 19–5 点，与岛上的光和风差两个小时。
+    /// - 边界与官方 `TimeOfDayController` 同相（`morningStart = 5 / nightStart = 19`，2026-09-16 反编译源），但仍不读官方
+    ///   `AtNight`：它依赖场景里的 controller 实例、分段函数是私有的，纯规则夹具也测不了；官方若改这两个值，这里要跟着改
+    ///   （Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
     ///
     /// 纯逻辑、无 Unity 依赖：隔离回归（`SkyIslandStory` 与 `SkyIslandLighting` 两个夹具）直接执行。
     /// 运行时读钟只有 `SkyIslandLighting.ClockHours()` 一处。
     /// </summary>
     internal static class SkyIslandNight
     {
-        /// <summary>夜里从 21 点开始（与光照的「星夜」整档一致）。</summary>
-        internal const double StartHour = 21.0;
-        /// <summary>夜里到次日 5 点结束。</summary>
+        /// <summary>夜里从 19 点开始（对齐官方 `TimeOfDayController.nightStart`，与光照的「星夜」整档一致）。</summary>
+        internal const double StartHour = 19.0;
+        /// <summary>夜里到次日 5 点结束（对齐官方 `morningStart`）。</summary>
         internal const double EndHour = 5.0;
-        /// <summary>开发构建「强制夜里」时读出的钟点：星夜整档的正中。</summary>
-        internal const double ForcedHour = 23.0;
+        /// <summary>开发构建「强制夜里」时读出的钟点：19–5 这一段的中段，给驱蚋演练留足天亮前的余量。</summary>
+        internal const double ForcedHour = 22.0;
 
         /// <summary>
         /// Dev 构建 F3 天空岛面板的「强制夜里」开关：只改本 Mod 读出来的钟点，**不拨官方时钟**（时钟随存档保存）。
@@ -30,7 +32,7 @@ namespace BossRush
         /// </summary>
         internal static bool DevForceNight;
 
-        /// <summary>21 点到次日 5 点算夜里；非有限值（读不到时钟）一律不算。</summary>
+        /// <summary>19 点到次日 5 点算夜里；非有限值（读不到时钟）一律不算。</summary>
         internal static bool IsNight(double hours)
         {
             if (double.IsNaN(hours) || double.IsInfinity(hours)) return false;
@@ -50,7 +52,7 @@ namespace BossRush
 
         /// <summary>
         /// 官方时钟的默认倍率（反编译源 <c>GameClock.clockTimeScale = 60f</c>）：一现实秒走 60 游戏秒，
-        /// 于是一整夜（21–5 点，8 游戏小时）约合 8 现实分钟。读不到实例时按它折算。
+        /// 于是一整夜（19–5 点，10 游戏小时）约合 10 现实分钟。读不到实例时按它折算。
         /// </summary>
         internal const double DefaultClockScale = 60.0;
 
@@ -66,7 +68,7 @@ namespace BossRush
             if (!IsNight(hours)) return 0.0;
             if (double.IsNaN(clockScale) || double.IsInfinity(clockScale) || clockScale <= 0.0) return 0.0;
             hours = (hours % 24 + 24) % 24;
-            // 21 点之后要先走到午夜再走到 5 点；午夜之后直接走到 5 点。
+            // 19 点之后要先走到午夜再走到 5 点；午夜之后直接走到 5 点。
             double remainingHours = hours >= StartHour ? 24.0 - hours + EndHour : EndHour - hours;
             return remainingHours * 3600.0 / clockScale;
         }

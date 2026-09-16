@@ -2,6 +2,49 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-16 天空岛审核：昼夜对齐官方 19–5、岛上主线接官方任务（挂岛上 NPC）
+
+**来源**：owner 要求审核天空岛的昼夜切换是否跟游戏时钟、剧情任务有没有走教程规定的官方接口。审核结论：时间值 100% 读官方 `GameClock`（不自算、不拨表；Base.unity 与 GroundZero_Main 的 `TimeOfDayConfig.forceSetTime / forceSetWeather` 用 UnityPy 实读为 false），但 Mod 夜 21–5 与官方 19–5 差两小时、两套在岛上同时生效；官方任务只有 Jeff 序章接了，岛上主线全在 Mod 旗标里。owner 拍板：夜对齐官方 19–5；Jeff 只留序章，岛上主线接到岛上自己的 NPC 名下。
+
+**昼夜（COMPAT）**：`SkyIslandNight.StartHour` 21 → 19、`ForcedHour` 23 → 22；`ResolveTimeBlend` 分段改为 16–18 晴昼→暮色、18–19 暮色→星夜（19 点整纯星夜，与官方 `dawnStart / nightStart` 同相）。不改成运行时读 `TimeOfDayController`（会把纯规则拖进 Unity、实例时序无 L3 证据、判据私有），改为 Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对。夜长 8 → 10 分钟（+25%）：夜限定头目窗口、云蚋供给、风寒轮次都朝「更容易碰上夜里内容」走，不调数值。守卫 / 夹具 / Wiki / 覆盖表 / repowiki 共 12 处同步（`SkyIslandMosquitoGuard` 反向探针已实跑转红）。
+
+**官方任务（COMPAT / SCHEMA+）**：新增纯规则任务表 `SkyIslandOfficialQuestTable`（590011 点亮两端航标 → 苇白 5901、590012 钟庭之争 → 浮舟 5902、590013 归航钟 → 钟守 5903；`QuestGiverID` 之外的整数在官方链路里安全：UI 不显示给予者名、`Compare` 整数减法、快照整条剥离），桥 `SkyIslandOfficialQuestBridge` 从单任务改成注册表（按条目所有权 / fail-closed / 四类快照逐 id 剥离 / 换槽先整清再重建 / 故事暂缺不清不建），上移到 `SkyIslandRuntimeModule` 常驻并**先于**「岛上会话存在就早退」运行（原序章桥在 `PreludeFlow.Tick` 的早退之后，岛上根本不跑——P1）。给予者 `SkyIslandOfficialQuestGivers`：`AddSubInteractable<QuestGiver>` 的 setup 回调里反射写 `questGiverID`（官方 Awake 之前）、`spawnPOI=false`、`QuestGiverView.Instance` 缺席不挂；居民缺席那趟（苇白 / 晴禾 `isPermanent` 婚后不上岛）挂到 `Search_B / A / H` 装置（分组 owner，不另起同点交互体），只在居民整队生成完后判断、有界重试。存档六位 `BeaconQuestAccepted = 2^19 … HomecomingQuestDelivered = 2^24`、`KnownFlags = 33554431`、schema 与 key 不变；已解锁航线的旧槽按既有事实回填（`TryBackfillIslandQuests`）；Codec 拒绝交付无接取 / 交付无事实 / 未解锁航线却有任务位。目标行文案取自绘面板同一份 blocker。岛上交付不要求回基地；自绘面板一个选项不删（它仍是写事实的地方）。序章不变，只改成注册表第一条。
+
+**已接受的副作用**：已交付任务 history 缺失时 `ForceComplete` 重建再发一次 `onQuestCompleted`（成就查不到直接返回、遥测一条），每次加载每条至多一次，写进 contracts。
+
+**验证（无游戏进程、无玩家存档读写）**：`Build/bossrush.rsp` 加五个新源做 Roslyn C# 7.3 全量类型检查 0 错误；`SkyIslandPreludeGuard` 改成注册表口径 38 个反向探针全红、生产树 PASS；`SkyIslandOfficialApiReuseGuard` 21 探针 PASS（新增按语义禁委托文件接 Quest）；`run_guards --filter SkyIsland` 45/45；`run_runtime_regressions --filter SkyIsland` 12/12（新增 `SkyIslandOfficialQuestRegression`：穷举 2^11 旗标组合核对 CanOffer / CanDeliver 与 `CanApply` 同源、Task 判据 = 交付 blocker、文案同源中英、Codec 矛盾态、回填、位并集 == KnownFlags）；`npm --prefix wiki-site run build`；正式构建见本节末尾。
+
+**未解决 / 待 owner**：`ModBehaviourPartialBudgetGuard` 红：HEAD 总行数恰等于预算 105108，另一会话未提交的 Jeff 序章批次在 `F3GameplayValidationRunner.cs`（+3，`AllowsLockedSkyIslandEntry` 带三行注释）与 `Integration/BossRushIntegration_StartAndScene.cs`（+2）合计 +5，本轮在这两个文件的净增为 0；按 §4.15 不抬预算，建议那边把三行 XML 注释并成一行、或把 `AllowsLockedSkyIslandEntry` 与 `IsRunning` 合写。
+
+**待 L3**：`docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 2.24 步（岛上给予者、官方三页、目标通知一次、岛上交付、三种中间状态重进、换槽、旧槽回填、缺席兜底、隔离副本卸载、19 点起夜与官方同相）。`QuestGiverView` 在自建 bundle 场景里是否存在只有实机能证；缺席时代码 fail-closed、自绘面板照常。
+
+## 2026-09-16 天空岛 Jeff 官方任务接入、旧档迁移与出击回滚修复
+
+**来源**：owner 要求查看天空岛代码并全面审核玩家流程、代码设计与性能；特别要求对照 `鸭科夫源码/`，判断首次进入是否应先由官方 NPC Jeff 给出一个发生在官方地图上的任务，再以天空岛相关头目和物证自然引出群岛。
+
+**拍板与实现**：
+
+- 新安装的空白槽不再在基地船点直接看到天空岛目的地。运行时向官方 `QuestCollection` 注册稳定 Quest ID `590001` / Task ID `1` 的「云上的坐标」，给予者为 `QuestGiverID.Jeff`；玩家从 Jeff 的官方可接取页接受，任务进入官方日志。随后正常出击 `Level_GroundZero_1`，地图出现「失落的航向仪」。走近 70 米才克隆一名官方拾荒者并装配天空岛现有 `K3_Relay` 第 0 档「断风游猎·守」，释放距离休眠并设为敌对队伍；击杀后读取世界物证，官方目标变为完成，回 Jeff 的进行中页点击官方完成按钮才开放船点。
+- `BossRush_SkyIsland_Story_v1` 仍是跨会话权威，官方 Quest 是从故事事实重建的界面 / 事件投影。`QuestManager.GenerateSaveData` 与 `SetupSaveData` 只过滤本 Mod ID 的 active、history、completed、ever-inspected 四类快照，避免卸载后官方加载留下「未找到Quest 590001」；Jeff 原任务和其它 Mod 任务不受影响。
+- 所有 Harmony 补丁、全局任务事件和销毁清理都同时验证专用对象名与 `SkyIslandOfficialPreludeTask` 组件；若 `590001` 已被其它内容占用，本 Mod fail closed 并完全放行对方的接取、完成和存档。结构性注册失败停止重试，不产生每秒异常。
+- 解锁门设在船点扫描、船点交互回调和 `SkyIslandSession.CanEnter` 三层。专用 F3 自动验收保留一个窄 bypass，正式玩家路径不走它。
+- 旧版已经产生任一群岛事实的槽位自动补 `PreludeAccepted + PreludeInstrumentRecovered + RouteUnlocked`，无需重做序章；完全空白槽不迁移。schemaVersion 与存档 key 不变，`KnownFlags` 扩展并由 Codec 检查前后顺序。
+- 资源包缺失时 Jeff 选项和船点都不显示，只打一条 critical log；其它 BossRush 模式正在运行时，零号区目标不生成。切图、换槽、销毁会取消对话并清理 POI、物证、头目、preset 和死亡监听。
+- 同轮修复 `SettleRaidHeld(false)`：写屏障 / StoreFaulted 时保留本次出击排除集，避免恢复 owner 把已回滚的灯、蛙等记录重新写回。
+
+**性能与生命周期审核**：新增常驻检查每 0.25 秒一次；Jeff 的全局查询限定 12 次，找到即停；官方任务同步只扫描官方 active / history 小表，空白槽清理按 `QuestManager + 槽位` 缓存；角色 preset 查询只在零号区玩家进入目标 70 米且确实需要生成一次头目时执行。没有增加逐帧 LINQ、导航扫描或敌人轮询。任务模板没有 Update，隐藏且常驻；异步生成用 generation 拦截过期回调，完整清理归一到 `ClearObjective` / `Dispose`。这些是 L1 静态结论；零号区实战帧时间、官方任务 UI 与应用正好在待写批次时退出的进程级窗口仍需 L3，未宣称完全无性能问题。
+
+**验证（无部署、无游戏进程、无玩家存档读写）**：
+
+- 使用现有 `Build/bossrush.rsp` 加新源文件做完整 Roslyn C# 7.3 类型检查：通过，0 条编译诊断；
+- `SkyIslandPreludeGuard`：19 个反向探针全部转红，生产树 PASS；
+- `SkyIslandOfficialApiReuseGuard`：20 个反向探针全部转红，生产树 PASS；
+- `tools/run_guards.py --filter SkyIsland`：45 / 45 PASS；
+- `tools/run_runtime_regressions.py --filter SkyIsland`：12 / 12 PASS，含序章顺序、旧档迁移、非法 Codec 状态与 StoreFault 故障注入；
+- `SkyIslandWikiParityGuard`、`SkyIslandPlayerEntryGuard`：PASS；中英文首跑与地图 Wiki 已改为 Jeff → 零号区 → 头目 → 航向仪 → 回 Jeff → 船点。
+
+**待 L3**：按 `docs/制作教程/天空岛/天空岛_待人工验证清单.md` 第 0 步验证 Jeff 官方可接取 / 进行中 / 已完成页、任务日志与完成通知、Jeff 原任务未被遮挡、地图 POI/碰撞/头目/掉落箱、回基地完成任务后即时开放、三种中间状态重进恢复、旧槽迁移、缺包隐藏及隔离副本卸载读取；在零号区接敌段采帧时间，并做一次待写批次期间的应用退出故障验证。
+
 ## 2026-09-16 F3 第八轮复核：四条红项全修 + 日志里审出的两条（落脚点弹球、观星手无自动首杀断言）
 
 **来源**：owner 跑完第八轮（runId `20260916_001039_864`，Dev `319647D3`，步骤表 85 步），问「游戏流程是否正确」「天空岛敌人生态是否完整」，看完复核后说「全部修复」。只读 manifest / summary / `Player.log` 文字，没读截图（根 AGENTS §4.17）。

@@ -2,7 +2,7 @@
 
 ### Step 1: Buy a Ticket
 
-Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. For an exploration journey, choose **Depart for Sky Islands · Qinglan** at the base boat; that journey does not require a ticket. See the Sky Islands · Qinglan entry.
+Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. To begin the Sky Islands journey, find the official NPC **Jeff** at base and accept **Coordinates Above the Clouds** in his normal quest screen. Investigate Ground Zero, read the lost navigation instrument, then return to Jeff's Active tab and complete the quest; only then does **Depart for Sky Islands · Qinglan** appear at the base boat. The journey does not require a ticket. See the Sky Islands · Qinglan entry.
 
 Also grab:
 - **Achievement Medal** — Free. Right-click to open achievements

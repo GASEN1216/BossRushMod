@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""天空岛必须复用官方 API，而不是各造一套——以及**刻意不接**官方任务系统的理由归档。
+"""天空岛必须复用官方 API；跨局主线（Jeff 序章 + 岛上三条）接官方 Quest，按出击刷新的委托维持出击内语义。
 
 ## 背景（2026-09-13 调查）
 
@@ -13,20 +13,15 @@ owner 问「我们天空岛的 NPC 在剧情推动的时候有没有使用原版
 
 两处都改过来了，本守卫钉住不许退回去。
 
-## 官方任务系统：**刻意不接**，理由在此归档
+## 官方任务系统：跨局主线已接（序章 590001 + 岛上 590011–590013），按出击刷新的委托不接
 
-`Duckov.Quests.QuestManager` / `Quest` / `Task` / `QuestGiverView` 全套存在且完整，但天空岛**不接**：
+owner 于 2026-09-16 明确批准接入 `Duckov.Quests.QuestManager` / `Quest` / `Task` / `QuestGiverView`：Jeff 只留开头的序章，
+岛上主线三段挂在岛上居民（自定义 `QuestGiverID` 整数 5901–5903）名下。实现用官方任务页接取与交付、任务日志展示，
+并从官方保存快照中过滤 Mod Quest ID；进度权威仍是 Mod 故事存档。任务表只有一份：`SkyIslandOfficialQuestTable`。
 
-1. `Quest` 与 `Task` 都是 **MonoBehaviour prefab**，`QuestManager.ActivateQuest` 只收 `int id`
-   并去 `GameplayDataSettings.QuestCollection` 里 `Instantiate`；mod 要注册一条任务得运行时造 prefab 塞进去。
-2. `QuestGiverID` 是**写死的 enum**（12 个官方 NPC），**没有 mod 的位置**。
-3. `QuestManager` 实现 `ISaveDataProvider`，会把 mod 任务序列化进**官方存档键 `"Quest"/"Data"`**；
-   卸载 mod 之后官方对缺失 id 打 LogError。这是**污染玩家存档**，按 `AGENTS.md` §10
-   属于没有 owner 签字不得执行的事。
-4. 语义也对不上：岛上委托是**按出击计、不进存档**的（`SkyIslandBounty.cs` 文件头），
-   官方 Quest 是持久任务。
+岛上居民委托（`SkyIslandBounty`）仍不接官方 Quest：它们按单次出击刷新，不该变成跨局任务；相关功能也需要模态面板冻结战斗。
 
-**这四条写在这里，是为了让下一个人不必重查一遍。** 想改这个决定，先拿到 owner 对第 3 条的签字。
+本守卫同时钉住两条边界：主线必须真接官方任务；岛上局内委托不得被顺手改成跨局 Quest（按语义禁，不只按文件禁）。
 
 反向检查在内存里恢复旧写法，确保每条断言真的抓得住。
 """
@@ -42,12 +37,15 @@ SKY = "DebugAndTools/SkyIsland/"
 DIALOGUE = SKY + "SkyIslandResidentDialogue.cs"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 BRIDGE = SKY + "SkyIslandNoteBridge.cs"
+PRELUDE_QUEST = SKY + "SkyIslandOfficialQuestBridge.cs"
+BOUNTY = SKY + "SkyIslandBounty.cs"
+GNAT_BOUNTY = SKY + "SkyIslandSessionGnatBounty.cs"
 PANEL = SKY + "SkyIslandStoryPresentation.cs"
 MARKERS = SKY + "SkyIslandMapMarkers.cs"
 FINDINGS = "CODE_REVIEW_FINDINGS.md"
 START = "Integration/BossRushIntegration_StartAndScene.cs"
 
-PATHS = [DIALOGUE, WORLD, BRIDGE, PANEL, START, FINDINGS, MARKERS]
+PATHS = [DIALOGUE, WORLD, BRIDGE, PRELUDE_QUEST, PANEL, START, FINDINGS, MARKERS, BOUNTY, GNAT_BOUNTY]
 
 # 天空岛**不许**出现的官方任务系统符号（理由见文件头）。
 # findings 里那条归档小节的标题，守卫按它取范围。
@@ -142,14 +140,25 @@ def check(sources):
     require("SkyIslandNoteBridge.InjectNoteKeys();" in start,
             START + " 没有注入见闻图鉴文案：官方按 Note_{key}_Title/_Content 查表，缺了显示裸 key")
 
-    # ---- 5) 官方任务系统刻意不接 ----
+    # ---- 5) 跨局主线真接官方任务；按出击刷新的委托不混成跨局 Quest ----
+    prelude_quest = clean_source(sources[PRELUDE_QUEST])
+    for token, why in (
+        ("QuestCollection", "运行时 Quest prefab 必须登记到官方集合"),
+        ("QuestManager", "接取与任务列表必须走官方 manager"),
+        ("class SkyIslandOfficialQuestTask : Duckov.Quests.Task", "目标必须走官方 Task"),
+        ("(QuestGiverID)entry.Def.GiverId", "给予者必须来自任务表（序章是官方 Jeff，岛上是自定义整数）"),
+        ("FilterSaveSnapshot", "必须隔离官方存档中的 Mod ID，保证卸载兼容"),
+    ):
+        require(token in prelude_quest, PRELUDE_QUEST + " 缺 " + token + "：" + why)
+    for rel in (BOUNTY, GNAT_BOUNTY):
+        for symbol in QUEST_SYMBOLS:
+            require(symbol not in sources[rel],
+                    rel + " 引用了官方任务系统符号 " + symbol + "：岛上委托按出击刷新、不进存档，不得改成跨局 Quest")
     for symbol in QUEST_SYMBOLS:
         for rel in (WORLD, BRIDGE, DIALOGUE):
             require(symbol not in sources[rel],
-                    rel + " 引用了官方任务系统符号 " + symbol + "。"
-                          "这是刻意不接的：Quest/Task 是 prefab、QuestGiverID 是写死的 enum、"
-                          "而且 QuestManager 会把 mod 任务写进官方存档键（卸载后官方报错）——"
-                          "属 AGENTS §10 需 owner 签字。理由见本守卫文件头。")
+                    rel + " 引用了官方任务系统符号 " + symbol + "。Jeff 序章可以接跨局 Quest，"
+                          "岛上居民委托按出击刷新，不能改变成跨局任务。理由见本守卫文件头。")
 
     # ---- 6) 自绘面板保留的理由必须写下来 ----
     # 此前这条只存在于 repowiki，代码与文档里从来没写过「为什么不用官方对话」——
@@ -163,8 +172,7 @@ def check(sources):
                 PANEL + " 文件头缺「" + token + "」：**为什么保留自绘面板**这条理由必须写在代码里，"
                         "否则下一个人还会再问一遍「为什么不用官方对话」（" + why + "）")
 
-    # ---- 7) 「任务系统刻意不接」的理由必须归档在 findings 里 ----
-    # 光在代码注释里写不够：这是一条**决策**，要能在问题库里查到，才不会每轮重查一遍。
+    # ---- 7) 官方任务边界必须归档在 findings 里 ----
     # 断言只在归档小节内取词——整篇 findings 里 prefab / AGENTS.md / LogError 到处都是，
     # 拿全文做断言的话，把这一小节整个删掉守卫也不会红。
     findings = sources[FINDINGS]
@@ -178,10 +186,10 @@ def check(sources):
         section = findings.split(ARCHIVE_HEADING, 1)[1].split(chr(10) + "## ", 1)[0]
         for token, why in (
             ("Duckov.Quests", "要点名是哪一套官方系统"),
-            ("prefab", "Quest/Task 是 MonoBehaviour prefab，mod 注册不进去"),
-            ("QuestGiverID", "给予者是写死的 enum，没有 mod 的位置"),
-            ("LogError", "卸载 mod 后官方对存档里缺失的 id 报错"),
-            ("AGENTS.md", "污染官方存档属 §10，需 owner 签字"),
+            ("prefab", "要说明官方任务需要运行时 prefab"),
+            ("QuestGiverID", "要说明复用的是官方 Jeff 身份"),
+            ("LogError", "要说明为什么必须过滤保存快照"),
+            ("AGENTS.md", "要留下 owner 授权与兼容边界"),
             ("NoteIndex", "要同时写明**相反的那条该接**，否则读者会以为「官方的一律不用」"),
         ):
             require(token in section,
@@ -237,8 +245,12 @@ def main():
         (BRIDGE, "notes.Add(note);", ""),
         # 图鉴正文另写一份
         (BRIDGE, "SkyIslandPointText.Lore(id)", '"另写的正文"'),
-        # 接了官方任务系统
+        # Jeff 序章丢失官方任务系统接线
         (BRIDGE, "using Duckov.NoteIndexs;", "using Duckov.NoteIndexs;\nusing Duckov.Quests;"),
+        (PRELUDE_QUEST, "class SkyIslandOfficialQuestTask : Duckov.Quests.Task",
+         "class SkyIslandOfficialQuestTask : MonoBehaviour"),
+        # 岛上委托被顺手改成跨局 Quest
+        (BOUNTY, "namespace BossRush", "using Duckov.Quests;" + chr(10) + "namespace BossRush"),
         # 自绘面板的理由被删掉
         (PANEL, "免费暂停", "（略）"),
         # 决策归档整节被删掉：后人又得从头查一遍官方任务系统
@@ -260,7 +272,7 @@ def main():
         print("SkyIslandOfficialApiReuseGuard: FAIL\n  " + "\n  ".join(errors))
         return 1
     print("SkyIslandOfficialApiReuseGuard: PASS（官方对话 + 官方图鉴 + fail-open + "
-          "任务系统刻意不接的理由归档；%d 个反向检查）" % len(probes))
+          "跨局主线官方任务接入 / 岛内委托边界归档；%d 个反向检查）" % len(probes))
     return 0
 
 

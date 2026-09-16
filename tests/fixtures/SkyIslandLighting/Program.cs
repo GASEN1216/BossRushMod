@@ -25,11 +25,13 @@ internal static class Program
     private static void Main()
     {
         Check(Weights(0)[2] == 1 && Weights(24)[2] == 1, "午夜跨日恒为星夜");
-        Check(Weights(7)[3] == 1 && Weights(12)[0] == 1 && Weights(19)[1] == 1, "四时段锚点");
+        Check(Weights(7)[3] == 1 && Weights(12)[0] == 1 && Weights(18)[1] == 1, "四时段锚点");
         Check(Math.Abs(Weights(6)[2] - .5) < 1e-6 && Math.Abs(Weights(6)[3] - .5) < 1e-6, "黎明中点");
         Check(Weights(double.NaN)[0] == 1 && Weights(double.PositiveInfinity)[0] == 1, "异常时钟回退晴昼");
         Check(Weights(-1)[2] == 1 && Weights(31)[3] == 1, "负数与跨日归一");
-        foreach (double boundary in new double[] { 0, 5, 7, 10, 16, 19, 21, 24 })
+        // 对齐官方 TimeOfDayController（nightStart = 19）：19 点整已是纯星夜，18 点整是纯暮色。
+        Check(Weights(19)[2] == 1 && Weights(18.999)[2] < 1, "19 点整进入星夜");
+        foreach (double boundary in new double[] { 0, 5, 7, 10, 16, 18, 19, 24 })
         {
             double[] before = Weights(boundary - .0001), after = Weights(boundary + .0001);
             for (int i = 0; i < 4; i++) Check(Math.Abs(before[i] - after[i]) < .00001, "时段边界必须连续 " + boundary);

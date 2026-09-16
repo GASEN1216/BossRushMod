@@ -11,6 +11,9 @@ namespace BossRush
     internal sealed class SkyIslandRuntimeModule : BossRushRuntimeModuleBase
     {
         private ModBehaviour owner;
+        private SkyIslandPreludeFlow prelude;
+        /// <summary>官方任务桥常驻模块：基地的 Jeff 序章与岛上三条主线都经它投影，岛上会话不另起一份。</summary>
+        private SkyIslandOfficialQuestBridge quests;
         private SkyIslandDepartureInteractable departure;
         private List<InteractableBase> boatGroup;
         private Canvas sign;
@@ -36,6 +39,8 @@ namespace BossRush
         public override void OnAwake(ModBehaviour host)
         {
             owner = host;
+            quests = new SkyIslandOfficialQuestBridge(host);
+            prelude = new SkyIslandPreludeFlow(host, ScheduleEntry, quests);
             SkyIslandNoteBridge.EnsureRuntime();
             SkyIslandSceneReferenceBridge.EnsureRegistered();
             if (!subscribed)
@@ -69,6 +74,7 @@ namespace BossRush
         private void OnStartedLoading(SceneLoadingContext context)
         {
             ClearEntry();
+            if (prelude != null) prelude.OnStartedLoading();
             attempts = 0;
             cachedSceneHandle = 0;
         }
@@ -76,6 +82,7 @@ namespace BossRush
         private void ScheduleEntry()
         {
             SkyIslandNoteBridge.RequestSync();
+            if (prelude != null) prelude.Schedule();
             attempts = 12;
             nextAttempt = Time.unscaledTime + 0.5f;
             cachedSceneHandle = 0;
@@ -106,12 +113,22 @@ namespace BossRush
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             if (owner == null) return;
+            // 官方任务桥必须在「岛上会话存在就早退」之前跑：岛上三条任务的接取 / 交付投影全靠它。
+            if (quests != null) quests.Tick();
+            if (prelude != null) prelude.Tick();
             // 岛上不再有自绘地图，也就不需要任何输入处理：
             // 官方地图由玩家自己绑定的地图键开合（`CharacterInputControl.OnUIMapInput`）。
             if (owner.GetComponent<SkyIslandSession>() != null) return;
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
             SkyIslandNoteBridge.Tick();
             if (!InBaseHubScene())
+            {
+                ClearEntry();
+                return;
+            }
+            // 晴岚航线由 Jeff 的零号区调查解锁。入口显示与 SkyIslandSession.CanEnter 的硬门读取同一状态，
+            // 不让开发按钮、未来调用点或旧船点残留绕过序章。
+            if (prelude == null || !prelude.RouteUnlocked)
             {
                 ClearEntry();
                 return;
@@ -138,7 +155,7 @@ namespace BossRush
                 boatSeen = true;
                 boatGroup = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(candidate, "[SkyIsland]");
                 departure = NPCInteractionGroupHelper.AddSubInteractable<SkyIslandDepartureInteractable>(
-                    candidate.transform, "BossRush_SkyIsland_Departure", boatGroup, value => value.Bind(owner));
+                    candidate.transform, "BossRush_SkyIsland_Departure", boatGroup, value => value.Bind(owner, prelude));
                 if (departure == null) continue;
                 CreateSign(candidate.transform);
                 if (!announced)
@@ -224,6 +241,12 @@ namespace BossRush
                 subscribed = false;
             }
             ClearEntry();
+            if (prelude != null) prelude.Dispose();
+            prelude = null;
+            if (quests != null) quests.Dispose();
+            quests = null;
+            SkyIslandOfficialQuestGivers.ResetStaticCaches();
+            SkyIslandOfficialQuestStory.ResetStaticCaches();
             if (owner != null)
             {
                 SkyIslandSession session = owner.GetComponent<SkyIslandSession>();
@@ -258,6 +281,7 @@ namespace BossRush
     public sealed class SkyIslandDepartureInteractable : BossRushBuildingInteractableBase
     {
         private ModBehaviour owner;
+        private SkyIslandPreludeFlow prelude;
         protected override string InteractNameKey
         {
             get
@@ -269,11 +293,15 @@ namespace BossRush
         }
         protected override string LogPrefix { get { return "[SkyIsland] "; } }
         protected override string InteractionGroupLabel { get { return "[SkyIslandDeparture]"; } }
-        internal void Bind(ModBehaviour host) { owner = host; }
-        protected override bool IsBuildingInteractable() { return owner != null && owner.GetComponent<SkyIslandSession>() == null; }
+        internal void Bind(ModBehaviour host, SkyIslandPreludeFlow gate) { owner = host; prelude = gate; }
+        protected override bool IsBuildingInteractable()
+        { return owner != null && prelude != null && prelude.RouteUnlocked && owner.GetComponent<SkyIslandSession>() == null; }
         protected override void OnInteractCompleted()
         {
-            if (owner != null) SkyIslandSession.Enter(owner, Report);
+            if (owner == null || prelude == null) return;
+            string reason;
+            if (!prelude.TryPrepareDeparture(out reason)) { Report(reason, true); return; }
+            SkyIslandSession.Enter(owner, Report);
         }
         private void Report(string message, bool error)
         {

@@ -199,12 +199,12 @@ def main():
     # ---- 1. 判夜只有一个口径 ----
     ordered(need_body(night, "internal static bool IsNight(double hours)", "唯一判夜"),
             ("double.IsNaN(hours)", "return false;", "return hours >= StartHour || hours < EndHour;"),
-            "读不到时钟（NaN）必须先判成不是夜里，再按 21–5 点判")
+            "读不到时钟（NaN）必须先判成不是夜里，再按 19–5 点判")
     ordered(need_body(night, "internal static double EffectiveHours(bool clockAvailable, double clockHours)", "本 Mod 读到的钟点"),
             ("if (DevForceNight) return ForcedHour;", "return clockAvailable ? clockHours : double.NaN;"),
             "没有官方时钟实例时必须返回 NaN（TimeOfDay 恒为 00:00，照读会整趟判成夜里）")
-    if number(night, "StartHour", "SkyIslandNight") != 21 or number(night, "EndHour", "SkyIslandNight") != 5:
-        errors.append("夜里的钟点不再是 21–5 点：光照的星夜整档、星屑夜里加成与文案都按 21–5 写")
+    if number(night, "StartHour", "SkyIslandNight") != 19 or number(night, "EndHour", "SkyIslandNight") != 5:
+        errors.append("夜里的钟点不再是 19–5 点：这两个值刻意等于官方 TimeOfDayController 的 nightStart / morningStart，光照的星夜整档、星屑夜里加成与文案都按 19–5 写")
     clock = need_body(lighting, "internal static double ClockHours()", "光照读钟")
     require(clock, "bool available = GameClock.Instance != null;", "读钟要先判官方时钟实例")
     require(clock, "return SkyIslandNight.EffectiveHours(available, available ? GameClock.TimeOfDay.TotalHours : double.NaN);",
@@ -221,7 +221,7 @@ def main():
     for path in sorted((ROOT / "DebugAndTools/SkyIsland").glob("*.cs")) + sorted((ROOT / "Integration/SkyIsland").glob("*.cs")):
         code = clean_source(path.read_text(encoding="utf-8-sig"))
         if re.search(r"\bAtNight\b", code):
-            errors.append("%s 用了官方 AtNight（19–5 点，与岛上的光和风差两小时）" % path.name)
+            errors.append("%s 用了官方 AtNight（判夜只经 SkyIslandNight：AtNight 依赖场景里的 controller 实例、分段私有、纯规则夹具测不了）" % path.name)
         hits = len(re.findall(r"GameClock\.TimeOfDay", code))
         clock_reads += hits
         if hits and path.name != "SkyIslandLighting.cs":

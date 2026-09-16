@@ -145,6 +145,8 @@ namespace BossRush
                 reason = L10n.T("请先回基地再前往天空岛", "Return to base before departing for the Sky Islands");
                 return false;
             }
+            if (!F3GameplayValidationRunner.AllowsLockedSkyIslandEntry && !SkyIslandPreludeFlow.CanUseRoute(out reason))
+                return false;
             if (GameCamera.Instance == null || GameCamera.Instance.renderCamera == null)
             { reason = L10n.T("游戏相机尚未就绪", "The game camera is not ready yet"); return false; }
             return true;

@@ -4,9 +4,17 @@ The Qinglan Archipelago is a standalone raid you launch from the base dock. Cros
 
 ### Setting out
 
-Return to base, wait for your character and the level to finish loading, then pick "Depart for Sky Islands · Qinglan" at the existing dock. The normal build is enough — no developer mode, and no BossRush ticket is spent. End any other active mode first.
+On a first install, the route is not yet in the base route table. Find the official NPC **Jeff** at base, open his normal quest screen, and accept **Coordinates Above the Clouds** from the Available tab. It appears in the regular quest journal and marks the signal from a lost navigation instrument in Ground Zero on the game's own map. Jeff's original quests remain available as usual.
 
-"The existing dock" is the boat you already use to head out — the same interaction menu that holds the vanilla challenge maps. **You have to walk over to the boat before the option appears**: that part of the base streams in separately, so while you are standing in the main base area the boat does not exist yet and not seeing "Depart for Sky Islands" is expected.
+Enter an ordinary Ground Zero raid, open the map, and head to **Lost Navigation Instrument**. As you approach, a Qinglan boss — **Galebreaker Ranger (Warden)** — guards the wreckage. Defeat it and interact with the instrument to read its coordinates; the official quest objective then completes. Return to Jeff at base, open his Active tab, and choose Complete Quest. He calibrates the route and unlocks the boat option. The instrument is a world story object and its readout is recorded, so it takes no backpack slot.
+
+Once unlocked, wait for your character and the level to finish loading, then pick "Depart for Sky Islands · Qinglan" at the existing dock. The normal build is enough — no developer mode, and no BossRush ticket is spent. End any other active mode first. If the Sky Islands scene bundle is missing, Jeff does not offer Coordinates Above the Clouds and the boat route does not appear, so the game never sends you into an impossible chain.
+
+A save that already played the Sky Islands in an older version keeps access automatically when existing visits, story facts, encounter clears or journal entries are found. Only a save with no previous Sky Islands progress starts with Jeff.
+
+On the isles the main line is three proper quests that appear in the regular quest journal: take **Light Both Beacons** from **Weibai** at Windchime Market and hand it in once both burn; take **The Bell Court Standoff** from **Fuzhou** at the dock and hand it in after reconciling with or defeating the Bell Keeper; finally take **The Homecoming Bell** from the **Bell Keeper** at the Bell Court and hand it in once it has rung. These quests are accepted and completed on the isles, never back at base; on a trip where a resident is away, the same quest hangs on the commission board, the dock workbench or the bell engine instead. Stages an older save has already finished show up straight away on the Completed tab.
+
+"The existing dock" is the boat you already use to head out — the same interaction menu that holds the vanilla challenge maps. **Even after unlocking it, you have to walk over to the boat before the option appears**: that part of the base streams in separately, so while you are standing in the main base area the boat does not exist yet and not seeing "Depart for Sky Islands" is expected.
 
 There is combat on the islands, so prepare weapons, ammo and supplies at base. You bring your own gear and backpack.
 
@@ -171,7 +179,7 @@ There are **30 gathering spots** beside the islands' lamps, landmarks and relay 
 | Stranded driftwood | Driftwood | 1–2 at the dock and the market; 2–3 in Hanging Root Wood, on the boardwalk, at the Upturned Post Hut and on the woodland relay platform |
 | Cloudmoss patch | Cloudmoss Fiber | 1–2 on the terraces; 2–3 in Hanging Root Wood, at Mirrorwater Temple and on the hidden isles |
 | Brass vein | Brass Scrap | 2–3 in Rainlisten Grotto (15% chance of a windcrystal shard); 2–4 at the workshop, the Bell Court, the overlook and the maintenance-walk platform (30%) |
-| Wind crystal cluster | Windcrystal Shard | 1–2 on the boardwalk, in Rainlisten Grotto and on the centre-bridge platform (15% chance of stardust); 2–3 at the workshop, the Bell Court and the overlook (35%); **at night (21:00–05:00) the stardust chance rises by another 15%** |
+| Wind crystal cluster | Windcrystal Shard | 1–2 on the boardwalk, in Rainlisten Grotto and on the centre-bridge platform (15% chance of stardust); 2–3 at the workshop, the Bell Court and the overlook (35%); **at night (19:00–05:00) the stardust chance rises by another 15%** |
 
 | Story progress | What grows back thicker |
 | --- | --- |
@@ -207,7 +215,7 @@ Each recipe button shows how many of each material you have against how many it 
 - **Once all ten lights are burning, the islands' nights stop blowing** (the bridges keep a little wind).
 - The journal's "Overview · lights · what things are for" page lists every lamp and what it still needs, and the crew on the homecoming boat notice the lamp at their own place. A lamp is recorded before its materials are taken, so a save that cannot be written right now never costs you anything.
 
-**The night wind**: at night (game time 21:00 to 05:00), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there (or while its echo is), Windsong Boardwalk and the bridges are in a **gale**. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster — **no health loss and no slower running**. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day the islands themselves are calm.
+**The night wind**: at night (game time 19:00 to 05:00, in step with the game's own day/night), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there (or while its echo is), Windsong Boardwalk and the bridges are in a **gale**. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster — **no health loss and no slower running**. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day the islands themselves are calm.
 
 **In-raid consumables** each hold off one layer of wind. They only work on the Qinglan isles — away from them the use button is greyed out, so none are wasted — and their effects end when you leave. Their timers run on game time, so they do not burn down behind the pause menu:
 
@@ -219,7 +227,7 @@ Each recipe button shows how many of each material you have against how many it 
 
 ### Cloud gnats at night
 
-At night (game time 21:00 to 05:00) swarms of **cloud gnats** come out on the isles: 2–4 at a time, flying in from the edge of the screen 8–14 m away, never more than 6 at once. They are thickest **by still water** (within 20 m of Frogsong Pool, the Mirrorwater Temple pool, and the terrace water wheel and rain barrel), a little thicker in the open middle of an island, and half as many in a breeze; **light draws them** — more come near a lit windcrystal lamp or while your wind lantern burns. They do not come by day, **in hearth smoke** (about 9 m around the three hearths), **while windward incense burns**, **in a gale** (night bridges, the boardwalk before the storm) or **with enemies nearby**, and any already circling you scatter.
+At night (game time 19:00 to 05:00) swarms of **cloud gnats** come out on the isles: 2–4 at a time, flying in from the edge of the screen 8–14 m away, never more than 6 at once. They are thickest **by still water** (within 20 m of Frogsong Pool, the Mirrorwater Temple pool, and the terrace water wheel and rain barrel), a little thicker in the open middle of an island, and half as many in a breeze; **light draws them** — more come near a lit windcrystal lamp or while your wind lantern burns. They do not come by day, **in hearth smoke** (about 9 m around the three hearths), **while windward incense burns**, **in a gale** (night bridges, the boardwalk before the storm) or **with enemies nearby**, and any already circling you scatter.
 
 - **Bites**: when its moment comes, a gnat dives at your neck for **1 health** (difficulty does not scale it), roughly one bite every 1.5–2.5 seconds each, and several never bite in the same instant. **Below about 35% health they only circle** — cloud gnats cannot kill you.
 - **Itching**: about six bites in quick succession start an itch (−12% stamina recovery) that fades once the biting stops; captions mark when it starts and ends.
@@ -254,4 +262,3 @@ Crate contents, contract progress, the homecoming meal, gathering spots, consuma
 [tip] The objective on the card at the right of the screen changes with your progress. If the next step isn't obvious, open the map first, then follow the physical bridges you have already unlocked. The HUD also tells you how many scavenging points are left this run and whether you're carrying a contract.
 
 [tip] Each of the twenty notes around the isles has its own entry, and several quietly point to a side path or a mechanic — the dock's waiting list, the contract stubs at the market, the notches on the boardwalk rail, the maintenance log at the workshop. Notes you have recorded can be reread at any time in the archipelago journal.
-

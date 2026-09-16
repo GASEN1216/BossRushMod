@@ -109,10 +109,22 @@ namespace BossRush
             if (current != null && current.discoveredNotes != null)
                 foreach (string id in current.discoveredNotes)
                     if (raidHeldNotes.Contains(id)) present.Add(id);
-            raidHeldNotes.Clear();
-            if (present.Count == 0 || !CanWrite) return;
+            if (present.Count == 0) { raidHeldNotes.Clear(); return; }
+            // keep=false 时，写入屏障 / StoreFaulted 下必须保留 raidHeldNotes：EncodeForSave 会继续把这些
+            // 本应随出击回滚的记录剥掉，随后 TryRecoverFaultedStore 才不会把内存里的旧快照误救回磁盘。
+            // 旧代码先 Clear 再因 !CanWrite 返回，恢复 owner 会把灯 / 蛙记录永久保存。
+            if (!CanWrite)
+            {
+                if (keep) raidHeldNotes.Clear();
+                return;
+            }
             SkyIslandStoryData candidate = current.Copy();
-            if (!keep)
+            if (keep)
+            {
+                // Store 在接受候选时就调用 EncodeForSave；先解除排除，返回基地的记录才会进入待写 JSON。
+                raidHeldNotes.Clear();
+            }
+            else
             {
                 var kept = new List<string>(candidate.discoveredNotes.Length);
                 foreach (string id in candidate.discoveredNotes)
@@ -120,7 +132,11 @@ namespace BossRush
                 candidate.discoveredNotes = kept.ToArray();
             }
             bool stored = store.Store(candidate);
-            if (stored) MarkPending(true);
+            if (stored)
+            {
+                raidHeldNotes.Clear();
+                MarkPending(true);
+            }
             Debug.Log("[SkyIsland] RAID_HELD_SETTLE keep=" + keep + " stored=" + stored + " ids=" + string.Join(",", present.ToArray()));
         }
         /// <summary>
@@ -282,6 +298,29 @@ namespace BossRush
             LogTiming("story", action.ToString());
             // 不再在回话末尾追加「进度已记录，待安全时机保存」：存档一切正常时那是状态转储、不是剧情（2026-09-14 审核 F-24 ①）；
             // 存档出了问题才需要玩家知道，那一句由 Summary 里的 SaveProblem 给。
+            return true;
+        }
+
+        /// <summary>把入口门上线前已经玩过群岛的槽位迁移成完整序章状态，并按既有事实回填岛上主线任务的接取 / 交付位；新槽不动。</summary>
+        internal bool EnsureRouteCompatibility(out bool migrated, out string message)
+        {
+            migrated = false;
+            message = null;
+            if (!CanWrite) { message = SaveStatus; return false; }
+            SkyIslandStoryData candidate;
+            bool changed = SkyIslandStoryRules.TryGrantLegacyRoute(Current, out candidate);
+            SkyIslandStoryData withQuests;
+            if (SkyIslandStoryRules.TryBackfillIslandQuests(changed ? candidate : Current, out withQuests)) { candidate = withQuests; changed = true; }
+            if (!changed) return true;
+            if (!store.Store(candidate))
+            {
+                message = L10n.T("旧群岛记录迁移失败，请稍后重试。",
+                    "Could not migrate the existing archipelago record. Try again shortly.");
+                return false;
+            }
+            migrated = true;
+            MarkPending(true);
+            LogTiming("story", "LegacyRouteUnlock");
             return true;
         }
 

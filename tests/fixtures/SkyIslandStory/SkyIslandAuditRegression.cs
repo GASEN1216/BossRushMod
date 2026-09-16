@@ -77,6 +77,21 @@ internal static class SkyIslandAuditRegression
             PlayerStorage.Instance = heldStorage;
         }
 
+        // 写 key 的那一刻故障：keep=false 仍要把 raid-held 排除集合留给恢复编码器，不能把已回滚资产的记录救回磁盘。
+        SavesSystem.Switch(100112);
+        story = new SkyIslandStoryService(); story.Open();
+        story.RaidHeldCosts = true;
+        check(story.RecordNote("Light_F", out message), "raid fault: held lamp accepted in memory");
+        SavesSystem.FailKeyWrite = true;
+        check(story.TryApply(SkyIslandStoryAction.FindOldLetter, out message), "raid fault: unrelated fact reaches the pending batch");
+        story.Tick(true);
+        SavesSystem.FailKeyWrite = false;
+        story.SettleRaidHeld(false);
+        check(story.TryClose(), "raid fault: close recovers through a fresh store");
+        SkyIslandStoryData faultSettled = SkyIslandStoryCodec.Decode(SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey));
+        check(faultSettled != null && Array.IndexOf(faultSettled.discoveredNotes, "Light_F") < 0,
+            "raid fault: quitting never restores a held record whose item rolled back");
+
         SavesSystem.Switch(100104);
         var data = SkyIslandStoryRules.CreateDefault();
         // 秘境物证 S1 走生产路径：解开谜题只写剧情旗标，不进 discoveredNotes（2026-09-14 审核 F-03，旧夹具直接塞进 discoveredNotes 掩盖了它）。

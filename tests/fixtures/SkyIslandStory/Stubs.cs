@@ -172,5 +172,6 @@ namespace BossRush
     internal static class LocalizationHelper
     {
         internal static void InjectLocalizations(Dictionary<string, string> entries) { }
+        internal static void InjectLocalization(string key, string value) { }
     }
 }

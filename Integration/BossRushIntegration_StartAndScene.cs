@@ -64,6 +64,8 @@ namespace BossRush
             // 20 处见闻在官方笔记图鉴里的标题与正文（官方查 Note_{key}_Title / _Content）。
             // 文案不在那边另写一份，取的就是 SkyIslandPointText.Name / Lore。
             SkyIslandNoteBridge.InjectNoteKeys();
+            // Jeff 序章与岛上三条主线的官方 Quest 标题与说明；任务进度由 Mod 分槽故事事实驱动。
+            SkyIslandPreludeFlow.InjectLocalizations(); SkyIslandOfficialQuestTable.InjectLocalizations();
             RespawnItemConfig.InjectLocalization();
             LocalizationInjector.InjectZombieModeLocalization();
             InjectModeFItemLocalization();

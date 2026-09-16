@@ -28,9 +28,9 @@ internal static class SkyIslandMosquitoRegression
 
     private static void Night(Action<bool, string> check)
     {
-        check(SkyIslandNight.IsNight(21) && SkyIslandNight.IsNight(23.5) && SkyIslandNight.IsNight(4.99) && SkyIslandNight.IsNight(-1),
-            "gnat night covers 21:00 to 05:00 and wraps across midnight");
-        check(!SkyIslandNight.IsNight(5) && !SkyIslandNight.IsNight(12) && !SkyIslandNight.IsNight(20.99), "daytime hours are not night");
+        check(SkyIslandNight.IsNight(19) && SkyIslandNight.IsNight(23.5) && SkyIslandNight.IsNight(4.99) && SkyIslandNight.IsNight(-1),
+            "gnat night covers 19:00 to 05:00 (official nightStart) and wraps across midnight");
+        check(!SkyIslandNight.IsNight(5) && !SkyIslandNight.IsNight(12) && !SkyIslandNight.IsNight(18.99), "daytime hours are not night");
         check(!SkyIslandNight.IsNight(double.NaN) && !SkyIslandNight.IsNight(double.PositiveInfinity), "non-finite hours never count as night");
         // 官方 GameClock 没有实例时 TimeOfDay 恒为 00:00：照读会把整趟判成夜里。
         check(double.IsNaN(SkyIslandNight.EffectiveHours(false, 0)) && !SkyIslandNight.IsNight(SkyIslandNight.EffectiveHours(false, 0)),

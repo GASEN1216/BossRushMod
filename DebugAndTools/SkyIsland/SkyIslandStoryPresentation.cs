@@ -12,11 +12,11 @@
 //   分工因此固定下来：**说话走官方，办事留这里**。要动这条先读
 //   `SkyIslandResidentDialogue.cs` 的文件头。
 //
-//   顺带记下**官方任务系统 `Duckov.Quests` 刻意不接**：`Quest`/`Task` 是 MonoBehaviour prefab、
-//   `QuestGiverID` 是写死的 enum（没有 mod 的位置）、`QuestManager` 会把 mod 任务序列化进
-//   官方存档键（卸载 mod 后官方对缺失 id 打 LogError，属 AGENTS §10 需 owner 签字），
-//   而岛上委托是按出击计、不进存档的。完整理由归档在
-//   `tests/SkyIslandOfficialApiReuseGuard.py` 的文件头与 `CODE_REVIEW_FINDINGS.md`。
+//   官方任务系统接**跨局主线**：`SkyIslandOfficialQuestBridge` 把 Jeff 序章与岛上三条主线（任务表
+//   `SkyIslandOfficialQuestTable`，给予者是苇白 / 浮舟 / 钟守）投影成官方 Quest / Task，并在官方存档快照里
+//   过滤自己的 ID，防止卸载后出现孤儿任务；本面板仍是**写事实的地方**，官方任务只是投影与入口。
+//   岛上居民委托仍按单次出击计、不进存档，所以继续留在本面板，不混进跨局 Quest。
+//   边界与卸载兼容理由见 `tests/SkyIslandOfficialApiReuseGuard.py` 与 `CODE_REVIEW_FINDINGS.md`。
 //
 // 【为什么重写布局】
 //   旧版把每个元素钉在写死的 anchoredPosition 上（标题 y=275、正文 y=139、

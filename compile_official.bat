@@ -191,9 +191,13 @@ echo(DebugAndTools\SkyIsland\SkyIslandContent.cs
 echo(DebugAndTools\SkyIsland\SkyIslandEncounters.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGuideInteractable.cs
 echo(DebugAndTools\SkyIsland\SkyIslandOfficialContract.cs
+echo(DebugAndTools\SkyIsland\SkyIslandOfficialQuestBridge.cs
+echo(DebugAndTools\SkyIsland\SkyIslandOfficialQuestGivers.cs
+echo(DebugAndTools\SkyIsland\SkyIslandOfficialQuestTable.cs
 echo(DebugAndTools\SkyIsland\SkyIslandRaidLease.cs
 echo(DebugAndTools\SkyIsland\SkyIslandResidentInteractable.cs
 echo(DebugAndTools\SkyIsland\SkyIslandResidents.cs
+echo(DebugAndTools\SkyIsland\SkyIslandPreludeFlow.cs
 echo(DebugAndTools\SkyIsland\SkyIslandRuntimeModule.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSceneReferenceBridge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryCodec.cs
@@ -247,6 +251,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandPiperChief.cs
 echo(DebugAndTools\SkyIsland\SkyIslandMirrorChief.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWindhunterChief.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionBosses.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionQuestBridge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryBosses.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftBossGear.cs
 echo(DebugAndTools\SkyIsland\SkyIslandLetters.cs

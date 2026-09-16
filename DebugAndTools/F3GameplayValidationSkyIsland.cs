@@ -61,7 +61,7 @@ namespace BossRush
             "SKY_EXTRACTION_OFFICIAL_UI", "SKY_STORM_TUNING", "SKY_LOCALIZATION_EN", "SKY_SCENE_BASELINE",
             // 2026-09-14「实机前减负」：运行时状态的只读用例（F3GameplayValidationSkyIslandRuntimeCases.cs）。
             "SKY_GATHER_NODES", "SKY_CHOICE_GATES", "SKY_ENCOUNTER_CAP", "SKY_OFFICIAL_NOTES", "SKY_KEEPSAKE_ITEMS",
-            "SKY_LETTER_PIGEON", "SKY_LAMPS_WIND", "SKY_GNAT_RUNTIME",
+            "SKY_LETTER_PIGEON", "SKY_LAMPS_WIND", "SKY_GNAT_RUNTIME", "SKY_NIGHT_BOUNDARY_OFFICIAL",
             // 2026-09-14 B 轮：噬风·回响的开启状态与本趟计数。
             "SKY_STORM_ECHO",
             // 2026-09-14 头目 / 岛主 R1：档案挂位、专属装备注册与掉落口径。
@@ -214,6 +214,7 @@ namespace BossRush
             RunSkyIslandSync("SKY_BOSS_PROFILES", ValidateSkyIslandBossProfiles);
             RunSkyIslandSync("SKY_LAMPS_WIND", ValidateSkyIslandLampsWind);
             RunSkyIslandSync("SKY_GNAT_RUNTIME", ValidateSkyIslandGnatRuntime);
+            RunSkyIslandSync("SKY_NIGHT_BOUNDARY_OFFICIAL", ValidateSkyIslandNightBoundary);
             RunSkyIslandSync("SKY_LOCALIZATION_EN", ValidateSkyIslandEnglishText);
             RunSkyIslandSync("SKY_SCENE_BASELINE", ValidateSkyIslandSceneBaseline);
         }

@@ -91,6 +91,10 @@ Mode G 冻结 key：
 - `BossRush_SkyIsland_Story_v1` — `SkyIslandStoryRules.StorageKey`，独立槽位 JSON 字符串，`schemaVersion = 1`。
   `flags` 保存两航标、四支线、三捷径与两个角色的互斥结果、终章；`visitedRegions` 的位 0–7 对应 A–H，
   位 8–11 对应 S1–S4；`clearedEncounters` / `discoveredNotes` 保存稳定内容 ID。枚举位与 ID 不随显示名变化。
+  2026-09-16 扩展三个入口事实位：`PreludeAccepted = 65536`、`PreludeInstrumentRecovered = 131072`、
+  `RouteUnlocked = 262144`；同日再扩六位岛上主线任务的接取 / 交付事实 `BeaconQuestAccepted = 524288` … `HomecomingQuestDelivered = 16777216`
+  （`KnownFlags = 33554431`）。已解锁航线的旧槽按既有事实一次性回填对应任务位（`TryBackfillIslandQuests`）；Codec 拒绝「交付无接取」「交付无对应事实」「未解锁航线却有任务位」。既有槽只有出现旧旗标、到访、清场或手记任一真实群岛事实时才一次性补齐三位；
+  完全空白槽不迁移。schemaVersion 与 key 保持不变，Codec 拒绝「未接任务却已取物证」或「未完成前两步却已解锁航线」的矛盾数据。
   不保存 Unity 对象，不与 Campaign 或好感字段混用；未知版本、坏字段、矛盾结局经共享 store 建立写屏障。
   独立出击地图仅在会话确认无战斗时经共享 coordinator 保存；离岛推迟由 `SkyIslandStorySaveRecovery` 保留 owner 重试。
   入口在同槽恢复 owner 尚未结束时不得创建第二个 store；换槽、同槽删档必须使旧会话失效。
@@ -624,9 +628,25 @@ Breaking/Operational:
   2026-09-14 拍板接受为例外（天空岛见闻、征程线索）。我们的存档仍是权威，镜像双向同步：官方点亮而我们存档里没有的，经公开属性 `UnlockedNotes`（返回的就是解锁集合本身）收回并照官方写法调 `onNoteStatusChanged`。
 - 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
+- 岛上判夜 19–5（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 的 `nightStart = 19 / morningStart = 5`（官方 Volume 与敌人夜间感知同相）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
 - `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47` IL 实查）：基地读完后停在「点击继续」，等 `clicked` 的循环没有超时；进等待前先 `SetActive(true)` 点击接收器 `pointerClickEventRecevier` 并把 `clicked` 复位。
   无人值守的流程要在接收器激活后调 `NotifyPointerClick`，否则玩法代码发起的返基地（Mode F / 丧尸撤离）会一直停在加载屏。卡加载时先看 `SceneLoader.LoadingComment`，官方每个等待点都写了一句（如 `Wait for click...`）。
-- `Duckov.Quests`（`QuestManager` / `Quest` / `Task`）刻意不接：它会把 mod 任务写进官方存档键，卸载后官方报错（`AGENTS.md` §10）。
+- `Duckov.Quests` 只接天空岛的跨局主线，任务表 `SkyIslandOfficialQuestTable` 一份（2026-09-16 授权）：
+
+  | Quest | 给予者（`QuestGiverID` 整数） | 接取 / 交付位 |
+  | --- | --- | --- |
+  | `590001` 云上的坐标 | 官方 Jeff（1），只在基地接、回基地交 | `PreludeAccepted` / `RouteUnlocked` |
+  | `590011` 点亮两端航标 | 苇白 `5901`（缺席时 `Search_B` 委托板） | `BeaconQuestAccepted` / `BeaconQuestDelivered` |
+  | `590012` 钟庭之争 | 浮舟 `5902`（缺席时 `Search_A` 渡口工台） | `BellCourtQuestAccepted` / `BellCourtQuestDelivered` |
+  | `590013` 归航钟 | 钟守 `5903`（缺席时 `Search_H` 钟庭装置） | `HomecomingQuestAccepted` / `HomecomingQuestDelivered` |
+
+  区间 5900–5949 归 BossRush 的自定义给予者（官方 UI 不显示给予者名，`Quest.Compare` 只做整数减法，`GetAllQuestsByQuestGiverID` 只做相等比较）。
+  运行时向官方 `QuestCollection` 注册 prefab，接取、任务日志、目标完成通知与交付按钮均走官方 `QuestManager` / `Quest` / `Task` / `QuestGiverView`；岛上三条只在岛上接、岛上交，返航后仍留在官方任务日志里。
+  `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
+  加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。
+  已接受的副作用：已交付任务的 history 投影缺失时用 `ForceComplete` 重建，会再发一次 `Quest.onQuestCompleted`（`AchievementManager` 查不到 `Quest_59xxxx` 直接返回，`BDSManager` 上报一条匿名遥测），每次加载每条至多一次。
+  所有补丁与清理都按条目验证专用模板所有权（ID + 对象名 + `SkyIslandOfficialQuestTask` 组件）；ID 冲突时那一条 fail closed，不得改动占用相同整数 ID 的其它内容。
+  官方 `QuestGiverView` 在出击图缺席时不挂岛上给予者（fail-closed，自绘面板照常）。岛上按出击刷新的居民委托不接跨局 Quest。
 
 **渲染与程序集**
 
