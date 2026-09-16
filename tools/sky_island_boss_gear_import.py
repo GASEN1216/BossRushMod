@@ -14,6 +14,8 @@ frost_set / thunder_set / dragon_equipment / dragonking_equipment，与游戏 re
 导入、减面、展 UV、导出贴图全部复用 sky_island_tripo_import 的函数，不另写一份。
 Tripo3D 的朝向不固定：`--yaw 件名=度` 绕竖直轴转到「正面朝 Blender -Y」（FBX 按 axis_forward='-Z' 导出后即 Unity +Z）；
 `--box 件名=宽,高,深` 覆盖目标包围盒；`--source 件名=文件名` 对上 Tripo 网页下载时它自己起的文件名（不改 owner 的文件）。
+`--back-quantile 件名=q`（只对背包）：贴背面取顶点前后深度的 q 分位点而不是最前沿。Tripo 的背包常自带一圈背带环，
+按最前沿贴背会把包身推到身后很远；q 取背带段占的顶点比例（约 0.15–0.2），默认 0 即最前沿，R1 四件不受影响。
 
 用法（Blender 后台模式抛异常默认仍退出 0：必须同时查退出码与最后一行的 PASS 标记）：
     D:/blender/blender.exe -b --factory-startup --python-exit-code 1 \
@@ -47,10 +49,31 @@ PIECES = {
     # 星炉背囊是 Boss 的大件，宽给到 0.50；贴背一面放在 z=-0.08、包体中心抬到 +0.03（见 BEHIND_SOCKET）。
     'starworks_foreman_backpack': ('StarfurnacePack_Backpack', 'Backpack', (0.50, 0.50, 0.35), False, 6500, 1024),
     'lookout_stargazer_helmet':   ('StargazerLens_Helmet',     'Helmat',   (0.92, 0.76, 0.96), False, 6500, 1024),
+    # ---- R2–R4（2026-09-15）：头盔 / 护甲 / 背包沿用 R1 的口径；面罩与耳机的目标盒按官方面罩 / 耳机实测（见 SOCKET_CENTER 注释）----
+    'roothunter_facemask':        ('RootweaveMask_FaceMask',   'FaceMask', (0.61, 0.23, 0.31), False, 6500, 1024),
+    'roothunter_armor':           ('VinewovenCuirass_Armor',   'Armor',    (1.02, 0.60, 0.66), True,  6500, 1024),
+    'roothunter_backpack':        ('HangrootQuiver_Backpack',  'Backpack', (0.40, 0.66, 0.32), False, 6500, 1024),
+    'waylayer_backpack':          ('OldMailbag_Backpack',      'Backpack', (0.46, 0.44, 0.30), False, 6500, 1024),
+    'sickle_helmet':              ('GreenearStrawHat_Helmet',  'Helmat',   (1.05, 0.62, 1.05), False, 6500, 1024),
+    'sickle_armor':               ('StrawRaincoat_Armor',      'Armor',    (1.06, 0.60, 0.72), True,  6500, 1024),
+    'sickle_backpack':            ('GrainSack_Backpack',       'Backpack', (0.48, 0.56, 0.36), False, 6500, 1024),
+    'listener_headset':           ('RainhushEarmuffs_Headset', 'Headset',  (0.94, 0.64, 0.20), False, 6500, 1024),
+    'piper_facemask':             ('MossgauzeMask_FaceMask',   'FaceMask', (0.63, 0.30, 0.34), False, 6500, 1024),
+    'mirror_armor':               ('MirrorgrainPlate_Armor',   'Armor',    (1.00, 0.56, 0.62), True,  6500, 1024),
+    'windhunter_helmet':          ('WindbreakHood_Helmet',     'Helmat',   (0.90, 0.86, 1.04), False, 6500, 1024),
+    'windhunter_armor':           ('WindbreakMantle_Armor',    'Armor',    (1.00, 0.56, 0.70), True,  6500, 1024),
+    'windhunter_backpack':        ('WindbreakPack_Backpack',   'Backpack', (0.40, 0.58, 0.28), False, 6500, 1024),
 }
 
 # 槽位 -> (贴背面在挂点空间的 z, 包体中心高度 y)；不在表里的槽位原点放几何中心（头盔、护甲实测都是这样）。
 BEHIND_SOCKET = {'Backpack': (-0.08, 0.03)}
+
+# 槽位 -> 包围盒中心在挂点空间的 (x, y, z)（Unity 轴：y 上、z 前），原点留在挂点上（2026-09-15 用 UnityPy 读官方 IG_FackMask_* / IG_Headset_* 实测）：
+# - 面罩挂在 FaceMaskSocket（头部中轴、眼睛高度），官方 Glass / Blindfold / GasMask 的网格都往前偏在顶点里，根节点生成时会被清零。
+#   盖住眼睛与扁嘴上半的推荐包围盒 x ±0.305、y -0.09…+0.14、z +0.06…+0.37：中心 (0, +0.025, +0.215)。
+# - 耳机挂在 HelmatSocket（与头盔同一个挂点）；官方耳罩贴头、与所有标准头盔互穿。不穿插 19 顶标准头盔的推荐盒
+#   x ±0.47、y -0.18…+0.46、z -0.10…+0.10：中心 (0, +0.14, 0)。
+SOCKET_CENTER = {'FaceMask': (0.0, 0.025, 0.215), 'Headset': (0.0, 0.14, 0.0)}
 
 PASS_MARKER = 'SKY_ISLAND_BOSS_GEAR_IMPORT_OK'
 
@@ -81,7 +104,12 @@ def mesh_bounds(mesh):
     return ([min(c[i] for c in coords) for i in range(3)], [max(c[i] for c in coords) for i in range(3)])
 
 
-def normalise_equipment(obj, box, stretch, yaw_degrees, slot):
+def depth_quantile(mesh, q):
+    ys = sorted(v.co[1] for v in mesh.vertices)
+    return ys[min(len(ys) - 1, int(q * (len(ys) - 1)))]
+
+
+def normalise_equipment(obj, box, stretch, yaw_degrees, slot, back_quantile=0.0):
     """在 Blender 的 Z-up 空间里摆正：绕 Z 转 yaw，缩到目标包围盒，原点放几何中心（背包再挪到挂点身后）。
 
     Blender 轴与挂点轴：X = 宽、Z = 高（Unity +Y）、-Y = 正前（Unity +Z）。
@@ -117,7 +145,14 @@ def normalise_equipment(obj, box, stretch, yaw_degrees, slot):
         front_z, center_y = placement
         lo, hi = mesh_bounds(mesh)
         # Unity z = -Blender y：贴背面（Unity z 最大）就是 Blender y 最小，挪到 y = -front_z
-        mesh.transform(Matrix.Translation((0.0, -front_z - lo[1], center_y)))
+        # 给了 back_quantile 时贴背面取深度分位点：自带的背带环穿过躯干，包身贴背（见文件头 --back-quantile）
+        back = depth_quantile(mesh, back_quantile) if back_quantile > 0 else lo[1]
+        mesh.transform(Matrix.Translation((0.0, -front_z - back, center_y)))
+    center = SOCKET_CENTER.get(slot)
+    if center:
+        # 已经居中在原点：Unity (x, y, z) = Blender (x, z, -y)，把包围盒中心挪到挂点空间里的指定位置
+        cx, cy, cz = center
+        mesh.transform(Matrix.Translation((cx, -cz, cy)))
     mesh.update()
     lo, hi = mesh_bounds(mesh)
     return {
@@ -149,6 +184,7 @@ def main():
     parser.add_argument('--yaw', action='append')
     parser.add_argument('--box', action='append')
     parser.add_argument('--source', action='append')
+    parser.add_argument('--back-quantile', action='append')
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     args = parser.parse_args(argv)
 
@@ -158,6 +194,10 @@ def main():
     yaws = parse_overrides(args.yaw, float)
     boxes = parse_overrides(args.box, parse_box)
     sources = parse_overrides(args.source, str)
+    back_quantiles = parse_overrides(args.back_quantile, float)
+    for name, q in back_quantiles.items():
+        if PIECES[name][1] != 'Backpack' or not 0.0 <= q < 0.5:
+            raise SystemExit('--back-quantile 只给背包、取值 [0, 0.5)：%s=%s' % (name, q))
     wanted = set(args.only.split(',')) if args.only else set(PIECES)
     unknown = wanted - set(PIECES)
     if unknown:
@@ -180,7 +220,8 @@ def main():
         before = sum(len(p.vertices) - 2 for p in obj.data.polygons)
         box = boxes.get(name, default_box)
         yaw = yaws.get(name, 0.0)
-        bounds = normalise_equipment(obj, box, stretch, yaw, slot)
+        back_quantile = back_quantiles.get(name, 0.0)
+        bounds = normalise_equipment(obj, box, stretch, yaw, slot, back_quantile)
         after = tripo.decimate(obj, budget)
         if after > budget:
             raise RuntimeError('%s 减面后仍超预算：%d > %d' % (name, after, budget))
@@ -190,7 +231,7 @@ def main():
             raise RuntimeError(name + ' 没有 base color 贴图：Tripo 要选带贴图的输出，白模不打包')
         export_fbx(obj, out_dir / (base + '.fbx'))
         record = {'name': name, 'base': base, 'slot': slot, 'box': list(box), 'stretch': stretch, 'yaw': yaw,
-                  'trianglesBefore': before, 'triangles': after, 'uvGenerated': unwrapped, 'texture': texture,
+                  'backQuantile': back_quantile, 'trianglesBefore': before, 'triangles': after, 'uvGenerated': unwrapped, 'texture': texture,
                   'bounds': bounds, 'source': source.name}
         manifest.append(record)
         print('%-28s -> %-26s %6d -> %5d 面  宽高深 %s  yaw %+.0f  贴图 %s'

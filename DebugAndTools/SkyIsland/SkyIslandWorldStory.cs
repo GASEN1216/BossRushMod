@@ -77,16 +77,18 @@ namespace BossRush
         /// 「手头这一单还没交」；交完单，本该重新出现的派单选项要退出面板再进来才看得到。
         /// 每次成功改变状态后重开一次，选项就永远与实际状态一致。
         ///
-        /// 重开走的是 `Show`（内部先 Dispose 再重建）。调用点在按钮回调里，回调结束后外层会把
-        /// 本次操作的返回文案写进**新**面板的正文，所以玩家看到的是「新选项 + 刚才那句回话」。
+        /// 重开在按钮回调里先整理新页面参数；表现层在回调结束后用最终回执只建一页面板。
+        /// 回执保留新页面里第一条「还差什么」，所以收录见闻不会顺便把修航标的指引挤掉。
         /// </summary>
         private Action reopen;
 
-        /// <summary>成功就重开面板；失败保持原样。返回原样的提示文案，供按钮回调写回正文。</summary>
+        /// <summary>状态改变就刷新选项，回执带上新页面的下一步；失败保持原样。</summary>
         private string Refreshed(bool changed, string message)
         {
-            if (changed && reopen != null) reopen();
-            return message;
+            if (!changed || reopen == null) return message;
+            hiddenHints.Clear();
+            reopen();
+            return WithNextStep(message);
         }
 
         internal void ReadPoint(string key, Action recorded)
@@ -251,7 +253,8 @@ namespace BossRush
                 if (!session.IsReady) return L10n.T("请等待群岛就绪。", "Wait for the archipelago to finish loading.");
                 // 分段计时只记「点过一次服务」；成交与否看服务 owner 的回话。
                 story.LogTiming("service", action.Method.Name);
-                return action();
+                // 成交会改变耐久、血量、饭食次数与价钱；连失败也按同一判据重取按钮，不能让旧报价留在原页。
+                return Refreshed(true, action());
             }));
         }
 
@@ -665,6 +668,8 @@ namespace BossRush
         {
             if (dialogue != null) dialogue.Dispose();
             presentation.Dispose();
+            // 返航、死亡和外部切图都先让会话失效再 Hide；此刻发声体还在，不能等场景卸载后才停循环。
+            if (!session.IsReady && fieldcraft != null && fieldcraft.Gnats != null) fieldcraft.Gnats.StopBuzz();
         }
 
         /// <summary>
@@ -743,7 +748,8 @@ namespace BossRush
                         bool recordedNow = story.RecordSearch(key, out message);
                         if (recordedNow && recorded != null) recorded();
                         if (recordedNow) SkyIslandNoteBridge.Unlock(key);
-                        return Refreshed(recordedNow, feedback + "\n\n" + message);
+                        // 解题状态已经改变，即使记录暂不可写也换成收录重试页，不把最后一道题留作假按钮。
+                        return Refreshed(true, feedback + "\n\n" + message);
                     }
                     // 前进要换一组选项，只能重开；重开之后回执写进新面板的正文，所以回执里带上下一步的提问。
                     if (outcome == SkyIslandPuzzleOutcome.Advanced && reopen != null) reopen();
@@ -1153,7 +1159,7 @@ namespace BossRush
         private void RearmPigeonIfStoryLetterWaiting()
         {
             if (story == null || !story.CanWrite) return;
-            if (SkyIslandLetters.NextSameRaidFor(story.Current) == null) return;
+            if (SkyIslandLetters.NextSameRaidFor(story.Current) == null && MailbagLetterThisRaid() == null) return;
             pigeonPlaced = false;
             pigeonCaptionAt = Time.time + PigeonCaptionDelay;
         }

@@ -47,7 +47,7 @@ namespace BossRush
         /// 刻意**不**带「与已放置点净空」那一段：它依赖搜刮点自己的点表。委托谢礼靠调用方
         /// 给每轮不同的方位角来错开，不需要全局点表。
         ///
-        /// 失败返回 false，调用方 fail-open 退回锚点本身（宁可压在锚点上，也不能不给奖励）。
+        /// 失败返回 false，由调用方保留待领取资格或跳过可选装饰；不要把未经检测的锚点当成安全落点。
         /// </summary>
         internal static bool TryFindCratePosition(Transform root, Vector3 anchor, float bearing,
             float distance, int groundMask, out Vector3 result)
@@ -150,8 +150,9 @@ namespace BossRush
             if (pool == null || pool.Length == 0) return 0;
             System.Random random = SkyIslandLootTables.CreateStream(raidSeed, streamId);
             // 岛上特产（SkyIslandItemRules.IslandExtraFor）：每箱至多多装一件，走独立随机流——原有 count 件的抽样结果一件不变。
-            int extra = SkyIslandItemRules.IslandExtraFor(tier,
-                SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble());
+            // 悬根猎装任两件（SkyIslandBossGearWorn，头目 R2）：同一个抽样数压一半，特产机会翻倍、不多抽随机数。
+            int extra = SkyIslandItemRules.IslandExtraFor(tier, SkyIslandBossRules.HunterIslandExtraRoll(
+                SkyIslandLootTables.CreateStream(raidSeed, streamId + "#island").NextDouble(), SkyIslandBossGearWorn.RootweavePieces));
             int total = extra != 0 ? count + 1 : count;
             int added = 0;
             for (int i = 0; i < total; i++)

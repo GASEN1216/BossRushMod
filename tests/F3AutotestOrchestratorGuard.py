@@ -57,7 +57,7 @@ SYMBOL = re.compile(r"\b\w*Autotest\w*\b|\b_autotest\w*\b|SKY_AUTO_")
 # 存档写入口：第一句必须是写入门。
 GATED_ENTRIES = {
     "DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs": ("DevAutotestReplace", "DevAutotestFlush"),
-    "DebugAndTools/SkyIsland/SkyIslandSessionAutotest.cs": ("DevAutotestTeleport", "DevAutotestReturnToBase"),
+    "DebugAndTools/SkyIsland/SkyIslandSessionAutotest.cs": ("DevAutotestTeleport", "DevAutotestResetEncounter", "DevAutotestReturnToBase"),
 }
 READ_ONLY_ENTRIES = {
     "DevAutotestOpen": "只烙印槽位、订阅并读档，不写",

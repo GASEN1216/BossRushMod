@@ -192,10 +192,18 @@ def main():
     boss_rules = clean_source(read("DebugAndTools/SkyIsland/SkyIslandBossRules.cs"))
     boss_gear = re.findall(r"BossRushItemIds\.(\w+)", boss_rules.split("internal static readonly int[] AllGearTypeIds", 1)[-1].split("};", 1)[0])
     boss_uses = squash(clean_source(read("DebugAndTools/SkyIsland/SkyIslandFieldcraftBossGear.cs")))
-    if len(boss_gear) != 4 or set(boss_gear) & set(all_names):
+    if len(boss_gear) != 17 or set(boss_gear) & set(all_names):
         errors.append("专属装备表没解析全或混进了岛上物品表：%r" % boss_gear)
     for token, why in (("SkyIslandBossRules.StarworksPiecesWorn(", "星工两件套要现读主角的头盔 / 护甲 / 背包三槽"),
-                       ("BossRushItemIds.SkyIslandStargazerLensHelm", "观星镜盔要在局内 owner 里真的起作用")):
+                       ("BossRushItemIds.SkyIslandStargazerLensHelm", "观星镜盔要在局内 owner 里真的起作用"),
+                       # R2–R4：每一件都要在主角穿戴采样里有去处（悬根猎装翻箱、蓑衣农装割草、断风套走桥、耳罩 / 面罩 / 镜纹甲 / 旧邮包各自的用处）。
+                       ("SkyIslandBossRules.SetPiecesWorn(SkyIslandBossRules.RootweaveSet", "悬根猎装要按主角五个槽计件"),
+                       ("SkyIslandBossRules.SetPiecesWorn(SkyIslandBossRules.SickleSet", "蓑衣农装要按主角五个槽计件"),
+                       ("SkyIslandBossRules.SetPiecesWorn(SkyIslandBossRules.WindbreakSet", "断风套要按主角五个槽计件"),
+                       ("BossRushItemIds.SkyIslandRainhushEarmuffs", "静听耳罩要在穿戴采样里认得出"),
+                       ("BossRushItemIds.SkyIslandMossgauzeMask", "苔纱面罩要在穿戴采样里认得出"),
+                       ("BossRushItemIds.SkyIslandMirrorgrainPlate", "镜纹甲要在穿戴采样里认得出"),
+                       ("BossRushItemIds.SkyIslandOldMailbag", "旧邮包要在穿戴采样里认得出")):
         if squash(token) not in boss_uses:
             errors.append("专属装备的岛上用处没有接线：" + why)
     if squash("recipe = SkyIslandFieldcraftRules.ForWearer(recipe, StarworksPiecesWorn());") not in squash(fieldcraft):

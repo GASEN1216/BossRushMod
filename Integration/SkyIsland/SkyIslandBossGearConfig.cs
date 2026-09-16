@@ -1,5 +1,5 @@
 // ============================================================================
-// SkyIslandBossGearConfig.cs - 天空岛头目 / 岛主的专属装备（500086-500089）
+// SkyIslandBossGearConfig.cs - 天空岛头目 / 岛主的专属装备（R1 500086-500089，R2–R4 500090-500102）
 // ============================================================================
 // 真实资源走 EquipmentFactory 主管线：Assets/Equipment/skyisland_boss_gear 里的 {名}_{类型}_Item / _Model
 // （命名规则见 EquipmentFactory；基名在 SkyIslandBossRules.GearSpecs，发布后不改）。
@@ -9,7 +9,8 @@
 // 耐久、价值与图标。玩家背包与仓库里存着这些 TypeID，漏兜底会让重启后它们退化成官方 FallbackItem。
 //
 // 单一事实源：数值只在 SkyIslandBossRules.GearSpecs，价值与中英名只在 SkyIslandItemRules，本文件不另写数字。
-// 唯一来源：头目 / 岛主身上——每次穿全套、死后按权重只留一件（SkyIslandBossLoot）；四件全部登记掉落黑名单。
+// 唯一来源：头目 / 岛主身上——每次穿全套、死后按权重只留一件（SkyIslandBossLoot）；全部登记掉落黑名单。
+// 槽位有头盔 / 护甲 / 背包 / 面罩（FaceMask）/ 耳机（Headset）五种：克隆兜底按槽位标签名找官方同槽件，五种都认。
 // ============================================================================
 
 using System;
@@ -166,7 +167,7 @@ namespace BossRush
             for (int i = 0; i < ids.Length; i++) EnsureRegistered(ids[i]);
         }
 
-        /// <summary>同槽位标签（Helmat / Armor / Backpack）的第一件官方装备，按 TypeID 排序保证跨机器稳定。</summary>
+        /// <summary>同槽位标签（Helmat / Armor / Backpack / FaceMask / Headset）的第一件官方装备，按 TypeID 排序保证跨机器稳定。</summary>
         private static Item FindOfficialSource(string slotTag)
         {
             try
@@ -246,6 +247,58 @@ namespace BossRush
                     return L10n.T(
                         "瞭台观星手的皮帽，右眼前挂着一副三层伸缩镜片的铜目镜，侧边别着一卷星图。头部护甲 +2。在晴岚群岛上戴着它站定 2 秒，40 米内的敌人会被标出来。只从残星瞭台的头目身上得到：它倒下时有三成机会留下这顶盔；镜片被爆头打穿之前，它会从瞭台上远远标记你。",
                         "The overlook stargazer's leather cap, a three-lens telescoping brass eyepiece hanging over the right eye and a star chart tucked at the side. Head armor +2. On the Qinglan isles, stand still for 2 seconds while wearing it and enemies within 40 m are marked. Only from the chief of the Starfall Overlook: it leaves this helm behind three times in ten; until its lens is shot through, it marks you from the platform at range.");
+                case BossRushItemIds.SkyIslandRootweaveMask:
+                    return L10n.T(
+                        "悬根猎首的半截面罩：暗色的树根与树皮条编成，遮住喙的上半与双眼，编缝里塞着苔藓。头部护甲 +1。在晴岚群岛上，与藤编甲或悬根箭囊任意两件一起穿，翻搜刮箱时出岛上特产（便当、药膏、罗盘）的机会翻倍。只从悬根林的岛主身上得到：它每次都穿着全套，倒下时只留下其中一件。它戴着这副面罩时根洞亮 1 秒就钻出来，面罩被暴击打穿之后要亮 2 秒。",
+                        "The Hanging-Root Huntmaster's half mask: dark roots and bark strips woven over the top of the bill and around the eyes, moss tucked into the weave. Head armor +1. On the Qinglan isles, wearing any two rootweave pieces (with the Vinewoven Cuirass or Hanging-Root Quiver) doubles the chance of island goods (bentos, salves, compasses) turning up in crates you search. Only from the island lord of the Hanging Root Wood: it always wears the full set and leaves one piece behind when it falls. While it wears this mask a root hollow glows for 1 second before it bursts out; crit the mask through and the glow lasts 2.");
+                case BossRushItemIds.SkyIslandVinewovenCuirass:
+                    return L10n.T(
+                        "粗藤编在弯曲的硬树皮板上，两条交叉的皮带，腰间挂着小皮囊。身体护甲 +3。在晴岚群岛上，与根须面罩或悬根箭囊任意两件一起穿，翻搜刮箱时出岛上特产的机会翻倍。只从悬根林的岛主身上得到：它的绊索就系在这件甲的皮带扣上，甲被打穿之后绊索只能让你慢一半。",
+                        "Thick braided vines over hard curved bark plates, two crossed leather belts and small pouches at the waist. Body armor +3. On the Qinglan isles, wearing any two rootweave pieces (with the Rootweave Mask or Hanging-Root Quiver) doubles the chance of island goods turning up in crates you search. Only from the island lord of the Hanging Root Wood: its tripwires hitch to this cuirass's buckles, and once the cuirass is shot through a tripwire only slows you half as much.");
+                case BossRushItemIds.SkyIslandHangrootQuiver:
+                    return L10n.T(
+                        "空心的老树根捆着藤绳，插满削尖的根桩，侧边挂着一卷藤编绊索。背包容量 +6。在晴岚群岛上，与根须面罩或藤编甲任意两件一起穿，翻搜刮箱时出岛上特产的机会翻倍。只从悬根林的岛主身上得到：它拉绊索用的根桩就是从这只箭囊里拔出来的。",
+                        "A hollow gnarled root bound with vine rope, stuffed with sharpened root stakes, a coil of vine tripwire hanging at the side. Backpack capacity +6. On the Qinglan isles, wearing any two rootweave pieces (with the Rootweave Mask or Vinewoven Cuirass) doubles the chance of island goods turning up in crates you search. Only from the island lord of the Hanging Root Wood: the stakes it strings its tripwires between come out of this quiver.");
+                case BossRushItemIds.SkyIslandOldMailbag:
+                    return L10n.T(
+                        "褪色的奶白帆布邮包，翻盖上钉着一枚铜邮号，里面塞着一捆没写字的封好的信封。背包容量 +4。在晴岚群岛上背着它，信鸽那一趟会多送一封信（每趟一次）。只从倒挂邮亭的头目身上得到：它倒下时有三成机会留下这只邮包；邮包还在它背上时它会贴身抢你的岛上耗材，血线低于四成才把抢来的东西丢下。",
+                        "A faded cream canvas mailbag with a brass post-horn badge on the flap, stuffed with a bundle of sealed blank envelopes. Backpack capacity +4. Carry it on the Qinglan isles and the pigeons bring one extra letter that raid (once per raid). Only from the chief of the Upturned Post Hut: it leaves this bag behind three times in ten; while the bag is on its back it snatches island supplies off you up close, and only drops what it took once it falls below 40% health.");
+                case BossRushItemIds.SkyIslandGreenearStrawHat:
+                    return L10n.T(
+                        "宽檐的草编斗笠，铜边箍，帽带上插着几支青穗。头部护甲 +2。在晴岚群岛上，与蓑衣甲或谷囊任意两件一起穿，割青穗草时一次多割一份。只从青穗梯田的岛主身上得到：它每次都穿着全套，倒下时只留下其中一件。它戴着这顶斗笠时开闸冲出三块泥，斗笠被爆头打穿之后只冲出一块。",
+                        "A wide-brimmed conical straw hat with a brass rim band and a few green grain ears tucked into the band. Head armor +2. On the Qinglan isles, wearing any two straw-cloak pieces (with the Straw Raincoat or Grain Sack) yields one more sheaf each time you cut greenear. Only from the island lord of the Green Terraces: it always wears the full set and leaves one piece behind when it falls. While it wears this hat its sluices flood three patches of mud; shoot the hat through and only one floods.");
+                case BossRushItemIds.SkyIslandStrawRaincoat:
+                    return L10n.T(
+                        "一层层金黄的蓑草披在肩上和胸前，胸口铆了几块铜片，腰间一根草绳配月牙铜扣。身体护甲 +3。在晴岚群岛上，与青穗斗笠或谷囊任意两件一起穿，割青穗草时一次多割一份。只从青穗梯田的岛主身上得到：甲还完好时它的镰扫只亮 0.9 秒圈，甲被打穿之后要亮 1.6 秒。",
+                        "Layer upon layer of golden straw over the shoulders and chest, a few brass plates riveted at the chest, a rope belt with a crescent brass clasp. Body armor +3. On the Qinglan isles, wearing any two straw-cloak pieces (with the Greenear Straw Hat or Grain Sack) yields one more sheaf each time you cut greenear. Only from the island lord of the Green Terraces: while the raincoat holds its sickle sweep glows for only 0.9 seconds; shoot it through and the sweep takes 1.6.");
+                case BossRushItemIds.SkyIslandGrainSack:
+                    return L10n.T(
+                        "鼓囊囊的麻布谷袋背在身后，袋口扎着麻绳，冒出几支青穗，侧边捆着木瓢和收鞘的镰刀。背包容量 +7。在晴岚群岛上，与青穗斗笠或蓑衣甲任意两件一起穿，割青穗草时一次多割一份。只从青穗梯田的岛主身上得到：第一次开闸时它会把谷仓那边还站着的帮手喊过来。",
+                        "A plump burlap grain sack tied with twine, green grain ears poking out, a wooden scoop and a sheathed sickle strapped to the side. Backpack capacity +7. On the Qinglan isles, wearing any two straw-cloak pieces (with the Greenear Straw Hat or Straw Raincoat) yields one more sheaf each time you cut greenear. Only from the island lord of the Green Terraces: the first time it opens a sluice it calls over whatever hands are still standing by the barn.");
+                case BossRushItemIds.SkyIslandRainhushEarmuffs:
+                    return L10n.T(
+                        "铜头箍连着两只厚实的圆耳罩，耳罩衬着青色毛毡，铜网面上刻着一滴雨，一侧卷出一只小铜听筒。听觉 +0.5。在晴岚群岛上戴着它，所有头目与岛主的预警圈都亮得更久，听雨人要你开 16 枪才引一次落石。只从听雨洞的头目身上得到：它倒下时有三成机会留下这副耳罩；耳罩被暴击打穿之前，它会循着你的枪声让洞顶落石。",
+                        "Two chunky round earmuffs on a brass headband, teal felt padding behind brass mesh grilles engraved with a rain drop, a little brass ear trumpet curling off one side. Hearing +0.5. Wear it on the Qinglan isles and every chief's and island lord's warning rings stay lit longer, and the Rain Listener needs 16 of your shots to bring rocks down. Only from the chief of the Rainlisten Grotto: it leaves these earmuffs behind three times in ten; until they are crit through it follows your gunfire and drops rocks from the overhang.");
+                case BossRushItemIds.SkyIslandMossgauzeMask:
+                    return L10n.T(
+                        "细竹框上绷着淡绿的苔纱，遮住脸和喙，边上别着干草药，下巴底下挂着一支小铜笛。头部护甲 +1。在晴岚群岛上戴着它，身边的云蚋认不出你在瞄它，躲不开你的枪口。只从蛙鸣池的头目身上得到：它只在夜里出来，倒下时有三成机会留下这副面罩；面罩被暴击打穿之前，它会吹笛把云蚋全引到你身上。",
+                        "Pale green moss gauze stretched over a thin bamboo frame covering the face and bill, dried herbs tucked at the rim, a little brass flute hanging below the chin. Head armor +1. Wear it on the Qinglan isles and the cloud gnats around you cannot tell you are aiming at them — they stop dodging your shots. Only from the chief of Frogsong Pool: it comes out only at night and leaves this mask behind three times in ten; until the mask is crit through, its flute draws every gnat onto you.");
+                case BossRushItemIds.SkyIslandMirrorgrainPlate:
+                    return L10n.T(
+                        "打磨光亮的银青漆甲片层层叠压，刻着水面倒影的波纹，胸口嵌一面圆铜镜，肩上是云纹护肩。身体护甲 +2。在晴岚群岛上穿着它去见折翎，他认得这身纹路：不带旧信与航路图也能和解。只从镜水寺的头目身上得到：它只在夜里出来，倒下时有三成机会留下这件甲；甲还完好时它翻到你背后会留下一个倒影，甲被打穿之后就留不下了。",
+                        "Overlapping polished silver-teal lacquered plates etched with rippling reflections, a round bronze mirror at the chest, cloud-shaped shoulder guards. Body armor +2. Wear it on the Qinglan isles to see Zheling — he knows the pattern and will reconcile without the old letter or the route chart. Only from the chief of Mirrorwater Temple: it comes out only at night and leaves this plate behind three times in ten; while the plate holds it leaves a reflection behind when it flips round to your back, and once the plate is shot through it cannot.");
+                case BossRushItemIds.SkyIslandWindbreakHood:
+                    return L10n.T(
+                        "旧青帆布兜帽罩着一顶轻铜盔，布帘朝后飘着，顶上一片小铜风翼，额前推着一副铜护目镜。头部护甲 +2。在晴岚群岛上，与断风披甲或断风行囊任意两件一起穿，走桥与中继平台时移动更快。只从守着中央回程中继平台的断风游猎 · 守身上得到：它倒下时有四成机会留下这顶兜帽；兜帽被爆头打穿之后，它冲锋前地上的线要亮两倍久。",
+                        "A weathered teal canvas hood over a light brass skull cap, cloth flaps streaming back, a little brass wind fin on top and brass goggles pushed up on the brow. Head armor +2. On the Qinglan isles, wearing any two Galebreaker pieces (with the Galebreaker Mantle or Pack) makes you faster on bridges and relay platforms. Only from the Galebreaker Ranger (Warden) on the central return relay platform: it leaves this hood behind four times in ten; shoot the hood through and the line before its lunge stays lit twice as long.");
+                case BossRushItemIds.SkyIslandWindbreakMantle:
+                    return L10n.T(
+                        "薄皮鳞片层层压成的轻甲，肩后飘着一截青布短披风，铜扣做成鸟翼的样子。身体护甲 +2。在晴岚群岛上，与断风兜帽或断风行囊任意两件一起穿，走桥与中继平台时移动更快。只从守着西北回程中继平台的断风游猎 · 追身上得到：它倒下时有四成机会留下这件披甲；披甲被打穿之后，它冲锋前地上的线要亮两倍久。",
+                        "Light armor of overlapping thin leather scales, a short teal mantle streaming back from the shoulders, brass buckles shaped like bird wings. Body armor +2. On the Qinglan isles, wearing any two Galebreaker pieces (with the Galebreaker Hood or Pack) makes you faster on bridges and relay platforms. Only from the Galebreaker Ranger (Chaser) on the northwest return relay platform: it leaves this mantle behind four times in ten; shoot the mantle through and the line before its lunge stays lit twice as long.");
+                case BossRushItemIds.SkyIslandWindbreakPack:
+                    return L10n.T(
+                        "细长的青帆布行囊，顶上横捆着铺盖卷，两侧各一片小铜风翼，边上竖绑着一支铜望远镜。背包容量 +5。在晴岚群岛上，与断风兜帽或断风披甲任意两件一起穿，走桥与中继平台时移动更快。只从守着东侧回程中继平台的断风游猎 · 伏身上得到：它倒下时有四成机会留下这只行囊；它血线过半之前，冲完一步就闪回平台边缘补枪。",
+                        "A slim teal canvas pack with a bedroll strapped across the top, a little brass wind fin on each side and a brass spyglass tube along one edge. Backpack capacity +5. On the Qinglan isles, wearing any two Galebreaker pieces (with the Galebreaker Hood or Mantle) makes you faster on bridges and relay platforms. Only from the Galebreaker Ranger (Stalker) on the east return relay platform: it leaves this pack behind four times in ten; until it drops below half health it lunges once and then flicks back to the platform edge to shoot.");
                 default:
                     return string.Empty;
             }

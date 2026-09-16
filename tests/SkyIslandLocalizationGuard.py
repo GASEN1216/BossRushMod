@@ -94,6 +94,16 @@ FILES = [
     "SkyIslandStargazerChief.cs",
     "SkyIslandWorldStoryBosses.cs",
     "SkyIslandFieldcraftBossGear.cs",
+    # 2026-09-15 头目 / 岛主 R2–R4：共用小件与七个招式控制器的机制字幕；云蚋诱饵分文件没有玩家文案，照样登记（新增文案必须双语）。
+    "SkyIslandBossProps.cs",
+    "SkyIslandGnatsLure.cs",
+    "SkyIslandRootHunterBoss.cs",
+    "SkyIslandWaylayerChief.cs",
+    "SkyIslandSickleBoss.cs",
+    "SkyIslandListenerChief.cs",
+    "SkyIslandPiperChief.cs",
+    "SkyIslandMirrorChief.cs",
+    "SkyIslandWindhunterChief.cs",
 ]
 
 # 内容批次四起一并扫描 Integration/SkyIsland：物品描述、使用说明与耗材回话同样是玩家可见文案。

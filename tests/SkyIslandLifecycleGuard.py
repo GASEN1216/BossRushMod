@@ -4,7 +4,7 @@ from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 FILES = {name: f'DebugAndTools/SkyIsland/SkyIsland{name}.cs'
-         for name in ('Session', 'RaidLease', 'Rendering', 'Lighting', 'SearchPoint', 'Controls')}
+         for name in ('Session', 'SessionFooting', 'RaidLease', 'Rendering', 'Lighting', 'SearchPoint', 'Controls')}
 
 
 def main():
@@ -92,9 +92,23 @@ def main():
             errors.append('腾空计时不得混用 unscaled 时间：' + line.strip())
     if 'else if (airborneSince < 0) airborneSince = Time.time;' not in update:
         errors.append('腾空计时的起点必须是 Time.time（与救援判定同一时基）')
-    rescue = session.split('private void Rescue()', 1)[1].split('\n        }', 1)[0]
+    # 落脚点与坠落救援在 SkyIslandSessionFooting.cs（同一 partial，主文件贴着行数预算）。
+    footing = sources['SessionFooting']
+    rescue = footing.split('private void Rescue()', 1)[1].split('\n        }', 1)[0]
     if 'extractionHeld = -1;' not in rescue:
         errors.append('坠落救援必须清零撤离读条：被拉回落脚点的人已经不在撤离圈里')
+    # 落脚点自己站不住时捞回去会再掉一次（2026-09-16 第八轮 F3 在 EnemySpawn_C 一步之内连捞 11 次）：
+    # 这几条接线缺一条，人就会在原地弹球，或者弹球这件事根本不会出现在报告里。
+    if 'if (!Blocked(hit.point)) safePosition = hit.point' not in session:
+        errors.append('地面探针必须只把净空的落点记成落脚点（Blocked 墙体胶囊）')
+    if 'GameplayDataSettings.Layers.wallLayerMask' not in footing or 'Physics.CheckCapsule' not in footing:
+        errors.append('落脚点净空判定必须是墙体层胶囊，口径同头目冲步落点')
+    if 'sameSpotRescues >= SameSpotRescueLimit' not in rescue or 'TryFallbackFooting' not in rescue:
+        errors.append('同一处连捞必须换锚点，否则捞回去还是掉')
+    if 'FALL_RESCUE_LOOP' not in rescue:
+        errors.append('换锚点要留一条带坐标的日志，场景包那一侧才修得了')
+    if 'internal int RescueCount' not in footing:
+        errors.append('捞回次数必须暴露给 F3（一步之内连捞要记红，不靠人翻 Player.log）')
     for event, callback in [('SceneLoader.onStartedLoadingScene', 'OnStartedLoading'),
                             ('SceneManager.sceneLoaded', 'OnSceneLoaded'), ('SceneManager.sceneUnloaded', 'OnSceneUnloaded')]:
         for operator in ('+=', '-='):

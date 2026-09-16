@@ -7,7 +7,7 @@
 1. 结构（与 ValidateTable 同口径）：阶段、步骤 id、预算、动词与断言名只认 F3AutotestJudges 的名单；每步至少一条断言或一张截图
    （AssertingVerbs 里自带判定的动作算断言），class=shot 的步骤必须有截图；第一个 story 阶段以 reset 开头。
 2. 名单与实现一致：名单里的每个动词在 RunAutotestVerb 有分派，每个断言名在 EvaluateAutotestAssert 有 case。
-3. 清单编号：天空岛人工清单 2.10–2.19（含 2.16 的 D1–D6）每一行都在覆盖表里，引用的编号都真实存在；GameplayCoverage.json 里
+3. 清单编号：天空岛人工清单 2.10–2.19 与 2.21–2.23（含 2.16 的 D1–D6）每一行都在覆盖表里，引用的编号都真实存在；GameplayCoverage.json 里
    全部 M_SKY_ISLAND_* 都有归类（新增人工用例就在覆盖表里补一行）。清单文档是 local-only，不在本机时记 PARTIAL。
    「只能人工」理由必须写明手感 / 声音 / 好不好玩。
 4. 证据：assert:case 只认 AutotestCaseDelegate 映射到的用例；覆盖表证据认 GameplayCoverage.json 已登记的自动项；
@@ -37,7 +37,10 @@ GEOMETRY = "ArtSource/SkyIsland/Validation/sky_island_geometry.json"
 WORLD = "Assets/Data/SkyIsland/World.json"
 SKY_DIR = "DebugAndTools/SkyIsland"
 
-BOSS_KINDS = ("storm", "foreman", "stargazer")
+BOSS_KINDS = ("storm", "foreman", "stargazer", "roothunter", "waylayer", "sickle", "listener", "piper", "mirror",
+              "windhunter_chaser", "windhunter_stalker", "windhunter_warden")
+# 只有带档案的头目 / 岛主有专属掉落与贴身动作：噬风不走这些（没有 SkyIslandBossProfile）。
+PROFILED_BOSS_KINDS = tuple(kind for kind in BOSS_KINDS if kind != "storm")
 WORLD_ALIASES = {"gnat", "ground_ring", "gather_glow", "echo_ring"}
 DYNAMIC_PREFIXES = ("制作 ", "Make ", "还不会做 ", "Not yet: ")
 LABEL_ASSERTS = {"choice_present", "choice_absent", "body_contains", "body_absent", "caption_contains", "objective_contains",
@@ -52,8 +55,11 @@ VERB_ARGS = {
     "frame": [NUM], "use_compass": [], "click_close": [], "close_panel": [], "open_map": [], "close_view": [],
     "open_modeg_confirm": [], "close_modeg_confirm": [], "reachability": [], "encounter_cap": [],
     "wait_boss": [BOSS_KINDS, NUM, ("optional",)], "boss_hurt": [BOSS_KINDS, NUM, NUM],
-    # 只有带档案的头目 / 岛主有专属掉落：噬风不走这条（没有 SkyIslandBossProfile）。
-    "loot_boss": [("foreman", "stargazer"), NUM],
+    "loot_boss": [PROFILED_BOSS_KINDS, NUM],
+    # 头目 R2–R4：瞬移到这位 Boss 身边（截信人的劫包要贴身）；给听雨人记几枪（Dev 钩子，替代真开枪）。
+    # feed_shots 的 need：补到这一场真正要的枪数（玩家戴着静听耳罩时翻倍）。步骤表写死数字会跟不上规则，
+    # 2026-09-16 第八轮 F3 就是规则改成 16 枪、步骤仍喂 8 枪，落石圈永远等不到——所以听雨人那一步只许写 need。
+    "approach_boss": [PROFILED_BOSS_KINDS, NUM], "feed_shots": [("need",)],
 }
 # 这些动作之后官方对话换了一句、换了一段或关掉了：再截对话图 / 再单次推进之前要重新 wait_dialogue_typed
 # （2026-09-15 第五轮：官方逐字显示 40 字/秒，截图截在半句上；打字途中的单次推进只把这句补完、不翻页）。
@@ -167,7 +173,8 @@ def load_context():
         ctx["doc_ids"] = None
     else:
         # 行首编号后面可能跟着「🤖（部分）」一类标注，编号本身到空白或竖线为止。
-        ids = set(re.findall(r"^\|\s*(2\.1[0-9]\.\d+[a-z]?)(?=[\s|])[^|\n]*\|", doc, re.M))
+        # 2.20（剧情面板随内容长高，另一轮）还没进覆盖表，先不纳入；2.21–2.23 是头目 / 岛主 R2–R4。
+        ids = set(re.findall(r"^\|\s*(2\.(?:1[0-9]|2[1-3])\.\d+[a-z]?)(?=[\s|])[^|\n]*\|", doc, re.M))
         ids.update("2.16." + d for d in re.findall(r"^\|\s*(D[1-9])(?=[\s|])[^|\n]*\|", doc, re.M))
         ctx["doc_ids"] = ids
     return ctx
@@ -304,6 +311,11 @@ class Checker:
         elif verb == "choose_label":
             self.label_text(where, a0)
             self.positional(where, args[1:], [NUM, ("soft",)])
+        elif verb == "reset_encounter":
+            # 头目步骤开头把这一组复原成本趟没刷过（Dev 钩子）：组 id 必须在内容表里，手动组在运行时拒绝。
+            if a0 not in ctx["encounters"]:
+                self.err("%s：遭遇 %s 不在内容表里（重置不了不存在的组）" % (where, a0))
+            self.positional(where, args[1:], [])
         elif verb == "wait_caption":
             self.label_text(where, a0)
             self.positional(where, args[1:], [NUM, ("optional",)])
@@ -624,6 +636,7 @@ PROBES = (
     ("等打完的超时不是数字", replace_action("SKY_AUTO_ALT_BELLKEEPER", "wait_dialogue_typed:10", "wait_dialogue_typed:soon")),
     ("对话关键句的文字写错", replace_action("SKY_AUTO_END_BELLKEEPER", "assert:dialogue_line_contains:它会回来找你|it will come looking for you",
                                     "assert:dialogue_line_contains:它会回来找您|it will come looking for us")),
+    ("重置的遭遇组 id 写错", replace_action("SKY_AUTO_REAL_BOSS_ROOTHUNTER", "reset_encounter:D", "reset_encounter:DX")),
 )
 
 

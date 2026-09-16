@@ -456,5 +456,34 @@
       "bytes": 1663362,
       "sha256": "940b7160fed63ee1c731e6fc2ebcffa598ad99ba777a1920589e9139b777c7c1"
     }
-  ]
+  ],
+  "gear_bundle": {
+    "verifiedAt": "2026-09-15T14:21:31.266741+00:00",
+    "round": "SkyIsland boss gear R1 + R2–R4 (17 pieces, TypeID 500086–500102)",
+    "author_export": {
+      "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandBossGearExport\\skyisland_boss_gear",
+      "bytes": 9554567,
+      "sha256": "79d0b9d6892981726aac82b2286a7a0fc257efe081a08e2c683b47e2c028a4ae"
+    },
+    "repo": {
+      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Equipment\\skyisland_boss_gear",
+      "bytes": 9554567,
+      "sha256": "79d0b9d6892981726aac82b2286a7a0fc257efe081a08e2c683b47e2c028a4ae"
+    },
+    "game": {
+      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Equipment\\skyisland_boss_gear",
+      "bytes": 9554567,
+      "sha256": "79d0b9d6892981726aac82b2286a7a0fc257efe081a08e2c683b47e2c028a4ae"
+    },
+    "previous": {
+      "sha256": "4ce1556b4e7d21a41305a9d93b9a104cc44d762624a70318e1596cdfc648291c",
+      "bytes": 2445418,
+      "rollbackFile": "C:\\Users\\GASEN\\AppData\\Local\\Temp\\claude\\D--code-ykf-BossRushMod\\08030671-248b-4b29-ad6c-ccda1ec65685\\scratchpad\\bundle_backup_r1\\skyisland_boss_gear"
+    },
+    "readBack": "UnityPy 17/17: _Item TypeID and quality, _Model material _MainTex, mesh size matches ArtSource/SkyIsland/BossGear/manifest.json",
+    "gameSmoke": {
+      "status": "PENDING_OWNER_F3",
+      "checklist": "天空岛人工清单 2.21–2.23, M_SKY_ISLAND_16–18"
+    }
+  }
 }

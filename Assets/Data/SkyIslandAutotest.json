@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "scope": "全自动实机验收（F3「自动验收 + 完整待测清单」的天空岛后半程，只在 Dev 构建里跑）。stages 决定编排顺序，steps 由 DebugAndTools/F3GameplayValidationAutotestActions.cs 逐条执行，coverage 把天空岛人工清单 2.10–2.19 与 GameplayCoverage.json 里全部 M_SKY_ISLAND_* 逐行归成自动断言 / 截图待 AI 看 / 只能人工。动作与断言名单只在 F3AutotestJudges 一处；tests/SkyIslandAutotestTableGuard.py 核对清单编号、证据与每步至少一条断言或一张截图。",
+  "scope": "全自动实机验收（F3「自动验收 + 完整待测清单」的天空岛后半程，只在 Dev 构建里跑）。stages 决定编排顺序，steps 由 DebugAndTools/F3GameplayValidationAutotestActions.cs 逐条执行，coverage 把天空岛人工清单 2.10–2.19、2.21–2.23 与 GameplayCoverage.json 里全部 M_SKY_ISLAND_* 逐行归成自动断言 / 截图待 AI 看 / 只能人工。动作与断言名单只在 F3AutotestJudges 一处；tests/SkyIslandAutotestTableGuard.py 核对清单编号、证据与每步至少一条断言或一张截图。",
   "stages": [
     { "id": "base_before", "title": "基地 · 出发前", "when": "base_before" },
     { "id": "landing", "title": "落地", "when": "landing" },
@@ -146,14 +146,54 @@
       "actions": ["invincible:on", "kill_nearby:600", "teleport:EnemySpawn_G:6:0", "wait_boss:foreman:30", "wait_real:1.5", "shot:foreman_spawned:world", "assert:boss_alive:foreman:60", "frame:5", "assert:profile_ok", "boss_hurt:foreman:0.65:10", "wait_object:SkyIslandForemanPylon:6", "wait_caption:供能桩|furnace pylons:4:optional", "shot:foreman_pylons:world", "assert:object_present:SkyIslandForemanPylon", "loot_boss:foreman:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:3", "assert:boss_alive:foreman:80:false", "shot:foreman_down:world"]
     },
     {
+      "id": "SKY_AUTO_REAL_BOSS_STARGAZER", "title": "头目 / 岛主 R1：残星瞭台 S4 带队是瞭台观星手、装备在身上（metrics 记观星镜盔 TypeID 与镜片、标记状态）；站到十四米外（标记要 8–42 m 且有视线）等它把镜筒对准你的标记字幕；单独击杀读官方尸体箱（专属装备恰好一件、原版掉落照常），再清随从",
+      "stage": "real", "location": "EnemySpawn_S4", "class": "auto", "checklist": ["2.19.8", "2.19.13"], "budget": 150,
+      "actions": ["invincible:on", "kill_nearby:600", "reset_encounter:S4", "teleport:EnemySpawn_S4:-13:6", "wait_boss:stargazer:30", "wait_real:1.5", "shot:stargazer_spawned:world", "assert:boss_alive:stargazer:60", "wait_caption:把镜筒对准了你|swings its lens onto you:12:optional", "shot:stargazer_marking:world", "loot_boss:stargazer:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:2", "assert:boss_alive:stargazer:80:false"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_ROOTHUNTER", "title": "头目 / 岛主 R2：先把 D 组复原成本趟没刷过（前面的步骤清过场），悬根林 D 组带队是悬根猎首、面罩 / 藤编甲 / 箭囊在身上（metrics 记三槽 TypeID）；10 米外等根桩立起、绊索拉开；打到七成钻根洞伏击（字幕）；采帧时间；单独击杀读官方尸体箱（专属装备恰好一件），再清随从",
+      "stage": "real", "location": "EnemySpawn_D", "class": "auto", "checklist": ["2.21.2", "2.21.3", "2.21.5", "2.21.7", "2.21.14", "M_SKY_ISLAND_16"], "budget": 150,
+      "actions": ["invincible:on", "kill_nearby:600", "reset_encounter:D", "teleport:EnemySpawn_D:-9:5", "wait_boss:roothunter:30", "wait_real:1.5", "shot:roothunter_spawned:world", "assert:boss_alive:roothunter:60", "frame:5", "assert:profile_ok", "wait_object:SkyIslandRootStake:14", "wait_object:SkyIslandRootSnare:3", "shot:roothunter_snare:world", "boss_hurt:roothunter:0.7:10", "wait_caption:钻进了树根里|dives into the roots:5", "shot:roothunter_ambush:world", "wait_real:3", "loot_boss:roothunter:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:2", "assert:boss_alive:roothunter:80:false", "shot:roothunter_down:world"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_WAYLAYER", "title": "头目 R2：倒挂邮亭 S2 带队是截信人；背包里放一份归航菜便当后贴到它身边，等伸手圈与「抢走」字幕；单独击杀读尸体箱，赃物（岛上耗材之一）在箱里",
+      "stage": "real", "location": "EnemySpawn_S2", "class": "auto", "checklist": ["2.21.8", "2.21.10", "M_SKY_ISLAND_16"], "budget": 120,
+      "actions": ["invincible:on", "kill_nearby:600", "give:500071:1", "teleport:EnemySpawn_S2:-9:5", "wait_boss:waylayer:30", "wait_real:1", "shot:waylayer_spawned:world", "assert:boss_alive:waylayer:60", "approach_boss:waylayer:1.5", "wait_object:SkyIslandSnatchRing:8", "approach_boss:waylayer:1.2", "shot:waylayer_snatch_ring:world", "wait_caption:截信人抢走了你的|The Waylayer snatched your:5", "shot:waylayer_fled:world", "loot_boss:waylayer:6", "assert:crate_has_any:500071+500072+500080+500081+500082+500083+500084+500085", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:2", "assert:boss_alive:waylayer:80:false"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_SICKLE", "title": "头目 / 岛主 R3：青穗梯田 C 组带队是穗镰、斗笠 / 蓑衣甲 / 谷囊在身上；打到七成半开闸冲泥（泥圈物体）并朝谷仓喊人（字幕）；贴身等镰扫圈；采帧时间；单独击杀读尸体箱，再清随从与喊来的帮手",
+      "stage": "real", "location": "EnemySpawn_C", "class": "auto", "checklist": ["2.22.1", "2.22.2", "2.22.5", "2.22.7", "2.22.14", "M_SKY_ISLAND_17"], "budget": 150,
+      "actions": ["invincible:on", "kill_nearby:600", "reset_encounter:C", "teleport:EnemySpawn_C:-9:5", "wait_boss:sickle:30", "wait_real:1.5", "shot:sickle_spawned:world", "assert:boss_alive:sickle:60", "frame:5", "assert:profile_ok", "boss_hurt:sickle:0.75:10", "wait_object:SkyIslandMudPatch:4", "wait_caption:穗镰朝谷仓吆喝了一声|Grain Sickle hollers toward the barn:8", "shot:sickle_mud:world", "approach_boss:sickle:2", "wait_object:SkyIslandSickleSweep:8", "shot:sickle_sweep:world", "loot_boss:sickle:6", "kill_nearby:80", "wait_real:2", "kill_nearby:80", "wait_real:2", "assert:boss_alive:sickle:80:false", "shot:sickle_down:world"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_LISTENER", "title": "头目 R3：听雨洞 S3 带队是听雨人；站在洞口一带经 Dev 钩子记满规则要的枪数（feed_shots:need，替代真开枪；戴着静听耳罩时翻倍），等身边落石圈与字幕；单独击杀读尸体箱",
+      "stage": "real", "location": "EnemySpawn_S3", "class": "auto", "checklist": ["2.22.8", "2.22.9", "M_SKY_ISLAND_17"], "budget": 100,
+      "actions": ["invincible:on", "kill_nearby:600", "teleport:EnemySpawn_S3:-5:9", "wait_boss:listener:30", "wait_real:1", "shot:listener_spawned:world", "assert:boss_alive:listener:60", "feed_shots:need", "wait_object:SkyIslandRockfallRing:4", "shot:listener_rockfall:world", "wait_caption:洞顶的石头被枪声震松了|shakes stones loose:4", "wait_real:2", "loot_boss:listener:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:2", "assert:boss_alive:listener:80:false"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_PIPER", "title": "头目 R3：开夜去蛙鸣池 S1，带队蚋笛翁补刷出来；等它吹笛（笛圈）、吹响字幕与身边招来的云蚋；单独击杀读尸体箱，收尾复原昼夜",
+      "stage": "real", "location": "EnemySpawn_S1", "class": "auto", "checklist": ["2.22.10", "2.22.11", "M_SKY_ISLAND_17"], "budget": 120,
+      "actions": ["invincible:on", "kill_nearby:600", "night:on:3", "teleport:EnemySpawn_S1:-5:9", "wait_boss:piper:30", "wait_real:1", "shot:piper_spawned:world", "assert:boss_alive:piper:60", "wait_object:SkyIslandFluteRing:12", "shot:piper_flute:world", "wait_caption:蚋笛翁吹响了笛子|The Gnat Piper plays its flute:5", "wait_real:1", "assert:gnats_alive_ge:1", "shot:piper_gnats:world", "loot_boss:piper:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:2", "assert:boss_alive:piper:80:false", "night:restore:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_MIRROR", "title": "头目 R4：开夜去镜水寺 F，带队镜中客补刷出来；站在镜池一带等背后亮起换位圈、翻身后留下倒影物体；单独击杀读尸体箱，收尾复原昼夜",
+      "stage": "real", "location": "Search_F_02", "class": "auto", "checklist": ["2.23.1", "2.23.2", "2.23.6", "M_SKY_ISLAND_18"], "budget": 120,
+      "actions": ["invincible:on", "kill_nearby:600", "night:on:3", "teleport:Search_F_02:-3:-10", "wait_boss:mirror:30", "wait_real:1", "shot:mirror_spawned:world", "assert:boss_alive:mirror:60", "wait_object:SkyIslandMirrorRing:14", "shot:mirror_ring:world", "wait_object:SkyIslandMirrorDecoy:5", "shot:mirror_decoy:world", "loot_boss:mirror:6", "kill_nearby:60", "wait_real:2", "kill_nearby:60", "wait_real:2", "assert:boss_alive:mirror:80:false", "night:restore:1"]
+    },
+    {
+      "id": "SKY_AUTO_REAL_BOSS_GALEBREAKERS", "title": "头目 R4：回程中继平台 K3 → K1 → K2，带队依次是断风游猎 · 守 / 追 / 伏；各站到约 9 米外等冲锋线物体，K3 采帧时间；三位各单独击杀读尸体箱，再清随从",
+      "stage": "real", "location": "Relay_K3, Relay_K1, Relay_K2", "class": "auto", "checklist": ["2.23.7", "2.23.8", "2.23.11", "2.23.13", "M_SKY_ISLAND_18"], "budget": 300,
+      "actions": ["invincible:on", "kill_nearby:600", "reset_encounter:K3_Relay", "teleport:Relay_K3:6:6", "wait_boss:windhunter_warden:30", "wait_real:1", "shot:warden_spawned:world", "assert:boss_alive:windhunter_warden:60", "frame:5", "assert:profile_ok", "wait_object:SkyIslandWindLine:12:false", "assert:boss_alive:windhunter_warden:60", "shot:warden_lunge:world", "loot_boss:windhunter_warden:6", "kill_nearby:55", "wait_real:2", "kill_nearby:55", "reset_encounter:K1_Relay", "teleport:Relay_K1:0:-9", "wait_boss:windhunter_chaser:30", "wait_real:1", "shot:chaser_spawned:world", "wait_object:SkyIslandWindLine:12:false", "assert:boss_alive:windhunter_chaser:60", "shot:chaser_lunge:world", "loot_boss:windhunter_chaser:6", "kill_nearby:55", "wait_real:2", "kill_nearby:55", "reset_encounter:K2_Relay", "teleport:Relay_K2:-9:0", "wait_boss:windhunter_stalker:30", "wait_real:1", "shot:stalker_spawned:world", "wait_object:SkyIslandWindLine:12:false", "assert:boss_alive:windhunter_stalker:60", "shot:stalker_lunge:world", "loot_boss:windhunter_stalker:6", "kill_nearby:55", "wait_real:2", "kill_nearby:55", "wait_real:2", "assert:boss_alive:windhunter_stalker:80:false"]
+    },
+    {
       "id": "SKY_AUTO_REAL_GATHER_GLOW_NIGHT", "title": "采集光斑昼夜对照：残星工坊 G1 残铜矿脉（约 6.5 m）与 G3 风晶簇（约 10.7 m）同屏，先白天一张、开夜再一张（夜里更亮、风晶簇最亮，但不至于满岛都是灯）；码头 A2 浮木夜里 11 m 再拍一张（匠首那一步清过 G 组才来）",
       "stage": "real", "location": "Lamp_G, Lamp_A_02", "class": "shot", "checklist": ["2.14.18", "2.14.20"], "budget": 70,
       "actions": ["invincible:on", "teleport:Lamp_G:7:12", "clear_nearby:45:15", "wait_real:1", "shot:g_glow_day:world", "night:on:2.5", "shot:g_glow_night:world", "assert:visible_min:gather_glow:0.1", "teleport_view:SkyIslandGather_A2:11:0:2", "shot:a2_glow_night_11m:world", "assert:visible_min:gather_glow:0.1", "night:restore:1"]
     },
     {
-      "id": "SKY_AUTO_REAL_BOSS_JOURNAL", "title": "首杀之后翻手记「这一趟」：进度表里有「岛主与头目」计数，残星匠首的首杀记录已写进本槽手记",
-      "stage": "real", "location": "Search_A", "class": "auto", "checklist": ["2.19.13"], "budget": 60,
-      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "choose:1", "wait_panel:3", "choose_label:这一趟|This run", "wait_real:0.6", "assert:body_contains:岛主与头目|island lords and chiefs", "assert:note:Lord_Foreman", "shot:journal_boss_progress:ui"]
+      "id": "SKY_AUTO_REAL_BOSS_JOURNAL", "title": "首杀之后翻手记「这一趟」：进度表里有「岛主与头目」计数，残星匠首与 R1–R4 另外十位头目 / 岛主的首杀记录已写进本槽手记",
+      "stage": "real", "location": "Search_A", "class": "auto", "checklist": ["2.19.13", "2.21.13", "2.22.14", "2.23.13"], "budget": 60,
+      "actions": ["teleport:Search_A:1.6:0", "interact:Search_A", "wait_panel:4", "choose_label:翻阅群岛手记|Open the archipelago journal", "wait_panel:3", "choose:1", "wait_panel:3", "choose_label:这一趟|This run", "wait_real:0.6", "assert:body_contains:岛主与头目|island lords and chiefs", "assert:note:Lord_Foreman", "assert:note:Lord_RootHunter", "assert:note:Chief_Waylayer", "assert:note:Lord_Sickle", "assert:note:Chief_Listener", "assert:note:Chief_Piper", "assert:note:Chief_Stargazer", "assert:note:Chief_Mirror", "assert:note:Chief_WindhunterChaser", "assert:note:Chief_WindhunterStalker", "assert:note:Chief_WindhunterWarden", "shot:journal_boss_progress:ui"]
     },
     {
       "id": "SKY_AUTO_NEW_STAGE", "title": "新档：剧情数据到位、编解码往返、目标卡写「恢复两端航标」",
@@ -183,7 +223,7 @@
     {
       "id": "SKY_AUTO_NEW_S4_GUARD", "title": "残星瞭台：守卫在场时通用交火门先挡住面板，只出字幕「附近还有威胁」——不出谜题、不挂收录与点灯（正文「先清除瞭台上的守卫」只在守卫离开交火半径而遭遇未记清场时才出，实机造不稳）；瞭台观星手在场时截一张世界图（metrics 记装备）；清完解谜、观星镜旗标写入",
       "stage": "new_save", "location": "Search_S4", "class": "auto", "checklist": ["2.10.7", "2.12.7", "2.18.7"], "budget": 90,
-      "actions": ["invincible:on", "teleport:Search_S4:2:0", "wait_real:0.3", "interact:Search_S4", "wait_real:1.5", "assert:panel_closed", "assert:caption_contains:附近还有威胁|threats nearby", "shot:s4_before_clear:ui:SkyIslandHud", "assert:no_flag:Telescope", "wait_boss:stargazer:12:optional", "shot:stargazer_spawned:world", "clear_nearby:50:20", "wait_real:3", "clear_nearby:60:15", "interact:Search_S4", "wait_panel:4", "shot:s4_puzzle:ui", "puzzle_solve:Search_S4:0", "assert:flag:Telescope"]
+      "actions": ["invincible:on", "reset_encounter:S4", "teleport:Search_S4:2:0", "wait_real:0.3", "interact:Search_S4", "wait_real:1.5", "assert:panel_closed", "assert:caption_contains:附近还有威胁|threats nearby", "shot:s4_before_clear:ui:SkyIslandHud", "assert:no_flag:Telescope", "wait_boss:stargazer:12:optional", "shot:stargazer_spawned:world", "clear_nearby:50:20", "wait_real:3", "clear_nearby:60:15", "interact:Search_S4", "wait_panel:4", "shot:s4_puzzle:ui", "puzzle_solve:Search_S4:0", "assert:flag:Telescope"]
     },
     {
       "id": "SKY_AUTO_NEW_CRAFT_LOCKED", "title": "新档渡口工台：还不会做的配方（晴岚风晶、风标罗盘）不是按钮，在正文末尾各占一行写要等什么；材料不够的配方点了只说缺什么、一件不做",
@@ -366,9 +406,9 @@
       "actions": ["invincible:on", "teleport:Search_E_02:2:0", "clear_nearby:45:10", "interact:Search_E_02", "wait_panel:4:false", "shot:brief_E_02_alt:ui", "assert:overflow_none", "teleport:Search_F:2:0", "clear_nearby:45:10", "interact:Search_F", "wait_panel:4:false", "shot:brief_F_alt:ui", "assert:overflow_none", "teleport:Search_F_02:2:0", "clear_nearby:45:10", "interact:Search_F_02", "wait_panel:4:false", "shot:brief_F_02_alt:ui", "assert:overflow_none", "teleport:Search_G:2:0", "clear_nearby:45:10", "interact:Search_G", "wait_panel:4:false", "shot:brief_G_alt:ui", "assert:overflow_none", "teleport:Search_G_02:2:0", "clear_nearby:45:10", "interact:Search_G_02", "wait_panel:4:false", "shot:brief_G_02_alt:ui", "assert:overflow_none", "teleport:Search_H:2:0", "clear_nearby:60:10", "interact:Search_H", "wait_panel:4:false", "shot:brief_H_alt:ui", "assert:overflow_none", "teleport:Search_H_02:2:0", "clear_nearby:45:10", "interact:Search_H_02", "wait_panel:4:false", "shot:brief_H_02_alt:ui", "assert:overflow_none", "teleport:Search_S3:2:0", "clear_nearby:45:10", "interact:Search_S3", "wait_panel:4:false", "shot:puzzle_S3_alt:ui", "assert:overflow_none", "teleport:Search_S4:2:0", "clear_nearby:60:10", "interact:Search_S4", "wait_panel:4:false", "shot:brief_S4_alt:ui", "assert:overflow_none"]
     },
     {
-      "id": "SKY_AUTO_ALT_RESIDENT", "title": "换语言跟苇白说话：官方对话框里的名字与台词换了语言，逐句等打完再截（第 3、4 句是瞭台观星手）；选「I need something」开功能面板（立绘、委托与手记入口英文）",
+      "id": "SKY_AUTO_ALT_RESIDENT", "title": "换语言跟苇白说话：官方对话框里的名字与台词换了语言，逐句等打完再截（第 3、4 句是下一位还没打倒的头目：观星手、悬根猎首或断风游猎）；选「I need something」开功能面板（立绘、委托与手记入口英文）",
       "stage": "alt_language", "location": "EnemySpawn_B", "class": "shot", "checklist": ["M_SKY_ISLAND_09", "2.18.19", "2.19.15"], "budget": 80,
-      "actions": ["teleport:EnemySpawn_B:2.5:0", "interact:resident:sky_weibai", "wait_dialogue:5", "wait_dialogue_typed:10", "shot:dialogue_alt:ui:Dialogue", "dialogue_advance:0.4", "wait_dialogue_typed:10", "shot:dialogue_alt_line2:ui:Dialogue", "dialogue_advance:0.4", "wait_dialogue_typed:10", "shot:dialogue_alt_line3:ui:Dialogue", "assert:dialogue_line_contains:观星手|stargazer up on", "dialogue_advance:0.4", "wait_dialogue_typed:10", "shot:dialogue_alt_line4:ui:Dialogue", "dialogue_advance:30", "wait_dialogue_typed:10", "shot:dialogue_alt_choice:ui:Dialogue", "dialogue_choose:0", "wait_panel:5", "assert:dialogue_inactive", "shot:resident_panel_alt:ui", "assert:overflow_none", "choose_label:航务委托|Lane contracts", "wait_panel:3", "shot:contracts_alt_weibai:ui", "assert:overflow_none"]
+      "actions": ["teleport:EnemySpawn_B:2.5:0", "interact:resident:sky_weibai", "wait_dialogue:5", "wait_dialogue_typed:10", "shot:dialogue_alt:ui:Dialogue", "dialogue_advance:0.4", "wait_dialogue_typed:10", "shot:dialogue_alt_line2:ui:Dialogue", "dialogue_advance:0.4", "wait_dialogue_typed:10", "shot:dialogue_alt_line3:ui:Dialogue", "assert:dialogue_line_contains:观星手|stargazer up on|悬根林的风标底下蹲着个猎首|huntmaster crouches|断风游猎|Galebreaker Ranger holds", "dialogue_advance:0.4", "wait_dialogue_typed:10", "shot:dialogue_alt_line4:ui:Dialogue", "dialogue_advance:30", "wait_dialogue_typed:10", "shot:dialogue_alt_choice:ui:Dialogue", "dialogue_choose:0", "wait_panel:5", "assert:dialogue_inactive", "shot:resident_panel_alt:ui", "assert:overflow_none", "choose_label:航务委托|Lane contracts", "wait_panel:3", "shot:contracts_alt_weibai:ui", "assert:overflow_none"]
     },
     {
       "id": "SKY_AUTO_ALT_FUZHOU", "title": "换语言跟浮舟说话：逐句等打完截七句（结局 + 十盏灯：第 4、5 句十盏灯；第 6、7 句星工装备——new_save 重置过手记，是匠首首杀前的版本），第 6 句判出现星工装备；再开功能面板（渡口工台、立绘）",
@@ -635,15 +675,62 @@
     { "checklist": "2.19.5", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "打光指定部件的耐久要精确控伤；断招规则由执行回归证" },
     { "checklist": "2.19.6", "class": "auto", "evidence": ["SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "实机单独击杀残星匠首后读官方尸体箱（loot_boss）：专属装备恰好是抽中的那一件、原版掉落照常；抽中哪件与补满耐久由演练核对" },
     { "checklist": "2.19.7", "class": "manual", "reason": "手感：观星手的标记圈能不能靠出圈、躲掩体、贴脸躲开" },
-    { "checklist": "2.19.8", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "镜盔打光与约三成掉率要多打几趟；规则与抽样由执行回归证" },
+    { "checklist": "2.19.8", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_STARGAZER", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机单独击杀瞭台观星手后读官方尸体箱（loot_boss）：专属装备恰好是抽中的那一件、原版掉落照常；镜盔打光与约三成掉率要多打几趟，规则与抽样由执行回归证" },
     { "checklist": "2.19.9", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "offline:tests/SkyIslandBossEcologyGuard.py"], "reason": "穿上看属性面板要改装备栏；装备注册、属性与黑名单由守卫与 SKY_BOSS_PROFILES 证" },
     { "checklist": "2.19.10", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "穿两件星工装备要改装备栏；减耗规则由执行回归证" },
     { "checklist": "2.19.11", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "戴观星镜盔站定要改装备栏；星标规则由执行回归证" },
     { "checklist": "2.19.12", "class": "auto", "evidence": ["offline:tests/SkyIslandBossEcologyGuard.py"], "reason": "重启游戏进程内做不到；物品注册与存档形态由守卫证" },
-    { "checklist": "2.19.13", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_JOURNAL", "SKY_AUTO_BEACONS_FUZHOU"] },
+    { "checklist": "2.19.13", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_JOURNAL", "SKY_AUTO_REAL_BOSS_STARGAZER", "SKY_AUTO_BEACONS_FUZHOU"] },
     { "checklist": "2.19.14", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_FOREMAN"] },
     { "checklist": "2.19.15", "class": "shot", "evidence": ["SKY_AUTO_ALT_JOURNAL", "SKY_AUTO_ALT_FUZHOU", "SKY_AUTO_ALT_RESIDENT"], "reason": "残星匠首与瞭台观星手本趟已在中文段击杀，2.19.2–2.19.8 的血条名、立桩字幕与标记圈在复拍里造不出；复拍截手记「这一趟」岛主与头目计数、「群岛之物」头目装备英文句（body_contains）、浮舟与苇白的英文台词" },
     { "checklist": "2.19.16", "class": "auto", "evidence": ["offline:tools/check_dll_identifiers.py"], "reason": "换回正式构建由 AI 在读完结果目录后执行并实查 DLL" },
-    { "checklist": "M_SKY_ISLAND_15", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "躲闪手感（2.19.4、2.19.7）与跨出击掉率照原步骤看；配装、立桩、帧时间、首杀计数与尸体箱只留一件专属装备自动" }
+    { "checklist": "M_SKY_ISLAND_15", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_FOREMAN"], "reason": "躲闪手感（2.19.4、2.19.7）与跨出击掉率照原步骤看；配装、立桩、帧时间、首杀计数与尸体箱只留一件专属装备自动" },
+    { "checklist": "2.21.0", "class": "auto", "evidence": ["SKY_DRILL_BOSS_LOADOUT"] },
+    { "checklist": "2.21.1", "class": "auto", "evidence": ["SKY_BOSS_PROFILES"] },
+    { "checklist": "2.21.2", "class": "shot", "evidence": ["SKY_AUTO_REAL_BOSS_ROOTHUNTER"], "reason": "带队是不是悬根猎首、三件装备的 TypeID 读 wait_boss 的 metrics；贴不贴合、面罩遮不遮眼看 roothunter_spawned（owner 目检）" },
+    { "checklist": "2.21.3", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_ROOTHUNTER"], "reason": "实机在 10 米外等根桩与绊索物体立起" },
+    { "checklist": "2.21.4", "class": "manual", "reason": "手感：跨过绊索被绊住的减速、砍倒根桩后绊索断得干不干脆" },
+    { "checklist": "2.21.5", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_ROOTHUNTER", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机打到七成等钻根洞的字幕；伏击圈逃离速度上限由执行回归证，出圈躲不躲得开的手感在 M_SKY_ISLAND_16" },
+    { "checklist": "2.21.6", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "打光指定部件的耐久要精确控伤；伏击预警翻倍、减速减半的规则由执行回归证" },
+    { "checklist": "2.21.7", "class": "auto", "evidence": ["SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_ROOTHUNTER"], "reason": "实机单独击杀后读官方尸体箱（loot_boss）：专属装备恰好一件；抽中哪件与补满耐久由演练核对" },
+    { "checklist": "2.21.8", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_WAYLAYER"], "reason": "实机给一份归航菜便当后贴到它身边，等伸手圈与「抢走」字幕；后撤抓空与一场两次的上限要人手里操作" },
+    { "checklist": "2.21.9", "class": "manual", "reason": "手感：被抢之后追不追得上、四成以下丢在脚下的东西好不好捡；离岛就丢要跨一趟出击" },
+    { "checklist": "2.21.10", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_WAYLAYER", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机击杀后读尸体箱核赃物还在（crate_has_any）；约三成掉率由执行回归证" },
+    { "checklist": "2.21.11", "class": "auto", "evidence": ["offline:tests/SkyIslandBossEcologyGuard.py", "offline:tests/fixtures/SkyIslandStory"], "reason": "穿上装备要改装备栏；装备注册与属性由守卫证，两件猎装翻箱加成与旧邮包多一封信由执行回归证" },
+    { "checklist": "2.21.12", "class": "auto", "evidence": ["offline:tests/SkyIslandBossEcologyGuard.py"], "reason": "重启游戏进程内做不到；物品注册与存档形态由守卫证" },
+    { "checklist": "2.21.13", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_JOURNAL", "offline:tests/fixtures/SkyIslandStory"], "reason": "手记计数与首杀记录实机读；浮舟、苇白首杀前后的台词由执行回归证（ResidentLine）" },
+    { "checklist": "2.21.14", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_ROOTHUNTER"] },
+    { "checklist": "2.22.1", "class": "shot", "evidence": ["SKY_AUTO_REAL_BOSS_SICKLE"], "reason": "带队与装备 TypeID 读 wait_boss 的 metrics；斗笠贴不贴合看 sickle_spawned（owner 目检）" },
+    { "checklist": "2.22.2", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_SICKLE"], "reason": "实机打到七成半等泥圈物体与朝谷仓喊人的字幕（有人应、没人应两种都算接上）" },
+    { "checklist": "2.22.3", "class": "manual", "reason": "手感：泥里跑不快的程度、出泥恢复干不干脆；每档只开一次与泥的时长由执行回归证" },
+    { "checklist": "2.22.4", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandEncounters"], "reason": "先清谷仓再打要多一段清场；喊人时跳过已清、手动与不认识的组由执行回归证（CallGroup）" },
+    { "checklist": "2.22.5", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_SICKLE"], "reason": "实机贴到 2 米内等镰扫圈物体；退开躲不躲得掉的手感在 M_SKY_ISLAND_17" },
+    { "checklist": "2.22.6", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "打光指定部件的耐久要精确控伤；少冲泥与镰扫变慢的规则由执行回归证" },
+    { "checklist": "2.22.7", "class": "auto", "evidence": ["SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_SICKLE"], "reason": "实机单独击杀后读官方尸体箱（loot_boss）；抽中哪件由演练核对" },
+    { "checklist": "2.22.8", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_LISTENER", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机经 Dev 钩子记 8 枪（feed_shots，替代真开枪）等落石圈与字幕；引出洞区不落石由执行回归证（InCave）" },
+    { "checklist": "2.22.9", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_LISTENER", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机击杀读尸体箱；耳罩打光要精确控伤，约三成掉率由执行回归证" },
+    { "checklist": "2.22.10", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_PIPER", "offline:tests/fixtures/SkyIslandEncounters"], "reason": "实机开夜后等蚋笛翁补刷；白天只刷随从、清组不等带队、夜里补刷一次由执行回归证" },
+    { "checklist": "2.22.11", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_PIPER", "offline:tests/SkyIslandBossEcologyGuard.py"], "reason": "实机开夜等笛圈、吹响字幕与身边云蚋（gnats_alive_ge）；灭蚊灯引不走的接线由守卫证" },
+    { "checklist": "2.22.12", "class": "manual", "reason": "手感：吹笛那一秒打不打得断、打断后下一口来得快算不算奖励；面罩断招与掉率由执行回归证" },
+    { "checklist": "2.22.13", "class": "auto", "evidence": ["offline:tests/SkyIslandBossEcologyGuard.py", "offline:tests/fixtures/SkyIslandStory"], "reason": "穿上装备要改装备栏；属性与苔纱面罩让云蚋不躲的接线由守卫证，两件农装多割、耳罩倍率与 16 枪由执行回归证" },
+    { "checklist": "2.22.14", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_JOURNAL", "SKY_AUTO_REAL_BOSS_SICKLE", "offline:tests/fixtures/SkyIslandStory"], "reason": "手记计数与首杀记录实机读，C 岛帧时间实机采；晴禾、眠苔的台词由执行回归证" },
+    { "checklist": "2.23.1", "class": "shot", "evidence": ["SKY_AUTO_REAL_BOSS_MIRROR"], "reason": "实机开夜后等镜中客补刷（wait_boss；白天不刷由 2.22.10 的执行回归证）；镜纹甲贴不贴合看 mirror_spawned（owner 目检）" },
+    { "checklist": "2.23.2", "class": "shot", "evidence": ["SKY_AUTO_REAL_BOSS_MIRROR"], "reason": "实机等换位圈与倒影物体；倒影是不是半透明、像不像它看 mirror_decoy（owner 目检）" },
+    { "checklist": "2.23.3", "class": "manual", "reason": "手感：边退边打会不会退进圈、看圈转身来不来得及" },
+    { "checklist": "2.23.4", "class": "manual", "reason": "手感：倒影吸不吸准星、打碎后晃的那 3 秒好不好打" },
+    { "checklist": "2.23.5", "class": "auto", "evidence": ["offline:tests/fixtures/SkyIslandStory"], "reason": "离镜池不翻身由执行回归证（NearMirrorPool）；镜纹甲打光后不留倒影要精确控伤，照 M_SKY_ISLAND_18 实机看" },
+    { "checklist": "2.23.6", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_MIRROR", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机击杀读尸体箱；约三成掉率由执行回归证" },
+    { "checklist": "2.23.7", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_GALEBREAKERS"], "reason": "实机站到守约 9 米外等冲锋线物体" },
+    { "checklist": "2.23.8", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_GALEBREAKERS", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机等追的冲锋线；第二步停在身后由执行回归证（LungeLanding）" },
+    { "checklist": "2.23.9", "class": "manual", "reason": "手感：伏冲完闪回平台边缘接着开枪、一半以下不再闪回，这套节奏好不好打" },
+    { "checklist": "2.23.10", "class": "manual", "reason": "好不好玩：三伙游猎与拾荒者互相开火，玩家能不能真的借刀" },
+    { "checklist": "2.23.11", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_GALEBREAKERS", "offline:tests/fixtures/SkyIslandStory"], "reason": "实机击杀三位各读尸体箱；打光兜帽 / 披甲要精确控伤，冲锋线翻倍与约四成掉率由执行回归证" },
+    { "checklist": "2.23.12", "class": "auto", "evidence": ["offline:tests/SkyIslandBossEcologyGuard.py", "offline:tests/fixtures/SkyIslandStory"], "reason": "穿上装备要改装备栏；属性由守卫证，镜纹甲放行折翎与断风桥面加速由执行回归证" },
+    { "checklist": "2.23.13", "class": "auto", "evidence": ["SKY_AUTO_REAL_BOSS_JOURNAL", "SKY_AUTO_REAL_BOSS_GALEBREAKERS", "offline:tests/fixtures/SkyIslandStory"], "reason": "手记计数与首杀记录实机读，K 平台帧时间实机采；眠苔、苇白的台词由执行回归证" },
+    { "checklist": "2.23.14", "class": "shot", "evidence": ["SKY_AUTO_ALT_JOURNAL"], "reason": "R2–R4 的头目本趟已在中文段击杀，血条名与招式字幕在复拍里造不出；复拍截手记「这一趟」计数与「群岛之物」英文句" },
+    { "checklist": "2.23.15", "class": "auto", "evidence": ["offline:tools/check_dll_identifiers.py"], "reason": "换回正式构建由 AI 在读完结果目录后执行并实查 DLL" },
+    { "checklist": "M_SKY_ISLAND_16", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_ROOTHUNTER", "SKY_AUTO_REAL_BOSS_WAYLAYER"], "reason": "绊索与伏击的躲闪手感、截信人后撤抓空与追逃、跨出击掉率照原步骤看；配装、立桩、伏击字幕、劫包、尸体箱与帧时间自动" },
+    { "checklist": "M_SKY_ISLAND_17", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_SICKLE", "SKY_AUTO_REAL_BOSS_LISTENER", "SKY_AUTO_REAL_BOSS_PIPER"], "reason": "泥地与镰扫手感、真开枪落石、打断笛声与跨出击掉率照原步骤看；开闸喊人、镰扫圈、落石圈、夜里补刷与招蚋、尸体箱自动" },
+    { "checklist": "M_SKY_ISLAND_18", "class": "auto", "evidence": ["SKY_BOSS_PROFILES", "SKY_DRILL_BOSS_LOADOUT", "SKY_AUTO_REAL_BOSS_MIRROR", "SKY_AUTO_REAL_BOSS_GALEBREAKERS"], "reason": "倒影吸准星、冲步躲闪、两派互打与跨出击掉率照原步骤看；夜里补刷、换位圈与倒影、三位冲锋线、尸体箱自动" }
   ]
 }

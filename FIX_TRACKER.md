@@ -2,6 +2,166 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-16 F3 第八轮复核：四条红项全修 + 日志里审出的两条（落脚点弹球、观星手无自动首杀断言）
+
+**来源**：owner 跑完第八轮（runId `20260916_001039_864`，Dev `319647D3`，步骤表 85 步），问「游戏流程是否正确」「天空岛敌人生态是否完整」，看完复核后说「全部修复」。只读 manifest / summary / `Player.log` 文字，没读截图（根 AGENTS §4.17）。
+**分类**：`SAFE`（Dev 动词、步骤表、守卫、回归）+ `COMPAT`（云蚋淡尾、断风被贴身就撤、落脚点净空与换锚点）。不加 TypeID、不改存档 schema、不重打包。
+
+**这一轮的结论**（主套件 `pass=322 fail=0`；岛内 85 步 PASS=80 / FAIL=4 / SKIP=1，收尾还原 PASS）
+- 流程正确：出击上船 → 登岛 → 六段阶段推进 → 中英切换 → 码头撤离（`closure_continue_clicked`）→ 回基地 → 剧情 / 环境 / 物品 / 金钱四项还原全绿。
+- 生态结构完整（22 组 64 人 + 11 份头目档案 + 4 个剧情手动组 + 云蚋），本轮实证 8 位头目刷出 → 配装 → 击杀 → 读尸体箱；差三块：断风 · 追没刷出、断风 · 守没打死（连带两条首杀手记缺席）、瞭台观星手没有自动首杀 / 掉落断言。
+- 27 条 `EXTERNAL_ERRORS` 全是别的 Mod 与官方的（鸭鸭市场本地化 NRE ×16、`casino_building` 缺 prefab ×4、VTModifiers 刷怪 postfix NRE ×3），与本 Mod 无关。
+
+**四条红项的根因与修法**
+1. `SKY_AUTO_REAL_BOSS_LISTENER`（落石圈等不到）——**步骤表跟不上新规则**，玩法本身对。metrics `shots=8/16`，上一轮是 `8/8`：新加的 `ShotsPerRockfallEarmuffs`（玩家自己戴静听耳罩要翻倍开枪）改了阈值，步骤仍喂 8 枪。
+   - `feed_shots` 支持 `need`：补到 `ShotsNeeded - Shots`，步骤表改成 `feed_shots:need`；
+   - `SkyIslandAutotestTableGuard` 把 `feed_shots` 的参数收紧成只许 `need`，写死数字直接记红（反向验证已转红）。
+2. `SKY_AUTO_REAL_BOSS_GALEBREAKERS`（冲锋线等不到）——头目刷出、控制器已绑（`variant=3`、`piece=True`）、日志零告警，说明卡在 `TryStartLunge`；距离样本 8.0 → 7.5 m 一路收窄，`LungeMinRange = 6 m`。
+   - 诊断：`BlockedNear / BlockedFar / BlockedLanding`、`Disengages`、`LastRange` 进 F3 metrics（`block=near:n/far:n/land:n`），下一轮一眼分清是贴太近、离太远还是落点吸不到地；
+   - 玩法：被贴身 `CloseQuartersSeconds = 2.5 s` 且冷却到了就退到 `DisengageRange = 9 m`（不伤人、不画预警，走冲步同一套掐 AI → 落位 → 恢复，撤一次进一次 `LungeCooldown`）。理由：官方 AI 会一路走到脸上，进了冲步下限之后三位游猎会退化成普通拾荒者；回退办法是删掉 `ShouldDisengage` 那一个判据与 `DisengageRoutine`，其余不动；
+   - 步骤表：三处 `wait_object:SkyIslandWindLine:12` 改成非致命并各补一条 `assert:boss_alive`，等不到线也照样往下打完三位（红项照记），不再连累后面两位与手记。
+3. `SKY_AUTO_REAL_BOSS_JOURNAL`（缺两条首杀手记）——第 2 条的连带，随之消失；顺手补 `assert:note:Chief_Stargazer`。
+4. `SKY_AUTO_REAL_NIGHT_GNATS`（8–14 m 看不见）——两轮同一读数（Weber 0.129 / 门槛 0.2、33.7 px），不是抖动。判据不动（不放宽门槛），改表现：`CruiseWake` 按距离给巡航淡尾（`WakeNearRange 5 m` 起、`WakeFarRange 12 m` 满，最浓也比冲刺尾淡一截），远处那三五个像素才看得出在动；档位化写入，每帧每只只剩一次布尔赋值。
+
+**日志里审出、报告没记红的两条**
+5. `EnemySpawn_C (-153, 10.15, -91)` 一步之内连捞 11 次（上一轮更多，那一轮穗镰干脆没刷出来），步骤照记 PASS。
+   - 地面探针只把**净空**的落点记成落脚点（`Blocked`：墙体层胶囊，口径同头目冲步落点）；
+   - 同一处连捞 3 次就换成真正站得住的地标锚点，并记一条带坐标的 `FALL_RESCUE_LOOP`（场景包那一侧另修）；
+   - `DevAutotestTeleport` 落点被占时照 `SnapNear` 绕一圈再吸，吸不到才报红；
+   - `RescueCount` 暴露给 F3，一步之内捞回 ≥3 次记 `assert:footing` 红（非致命），不再靠人翻 `Player.log`。
+   - 落脚点这一段连同新判据原样提取到新 partial `SkyIslandSessionFooting.cs`（主文件回到 1184 行，预算 1200），已登记进编译清单。
+6. 瞭台观星手是 11 位里唯一没有自动首杀 / 掉落断言的：新增步骤 `SKY_AUTO_REAL_BOSS_STARGAZER`（R1 的另一位，复原 S4 组 → 等刷出 → 标记字幕 → 单独击杀读尸体箱），挂 2.19.8 / 2.19.13；`SKY_AUTO_NEW_S4_GUARD` 开头补 `reset_encounter:S4`，免得真实状态段打完之后新档阶段等不到守卫。2.19.7 仍是人工项（手感）。
+
+**验证**
+- Dev 构建通过并部署到 D 盘游戏目录：DLL `CE992878…`（仓库与游戏目录同 SHA-256），`check_dll_identifiers --expect present` 11 条标识全中；步骤表 `B8B624D0…` 两边一致，86 步。
+- 全量守卫 618/618 PASS；执行回归 37/37 PASS（`SkyIslandStory` 13119 条断言，新增断风脱离与云蚋淡尾判据）。
+- 反向验证：守卫侧 6 条（净空落脚点、墙体层胶囊、换锚点、`FALL_RESCUE_LOOP`、`RescueCount`、`feed_shots:need`）、回归侧 3 条（`CruiseWake` 近处为 0、`ShouldDisengage` 的贴身计时与冷却、`DisengageRange` 落在冲步区间内）人为改坏后全部转红，按字节还原。
+- 证据级别：以上全是 L1/L2。落石圈能不能等到、冲锋线三位能不能走完、云蚋远处看不看得见、C 岛还掉不掉，都要第九轮 F3（L3）；云蚋那条还要 owner 目检 `gnats_night` / `gnats_incoming_*` 两组图。
+
+## 2026-09-15 F3 第七轮复核（R2–R4 首次实机）：三位头目等不到是步骤顺序、苇白台词期望过时、钟庭门中途漏通；补头目专属捏脸
+
+**来源**：owner 跑完第七轮（runId `20260915_143132_759`，Dev `837AD341`，新步骤表 85 步），问「游戏流程是否正确」「敌人是否做了标志性的捏脸」。复核只读 `review.md` / manifest / `Player.log` 文字，没读截图。
+**分类**：`SAFE`（Dev 验收动词、步骤表、守卫、回归）+ `COMPAT`（头目专属脸蓝图、门导航自检）。不加 TypeID、不改存档、不重打包。
+
+**这一轮的结论**（PASS 78 / FAIL 6 / SKIP 1，收尾还原 PASS）
+- 实机转绿（L3）：
+  - 截信人真偷了星苔药膏，击杀后在尸体箱里；
+  - 听雨人经 Dev 钩子记枪后落石，掉了静听耳罩（`gear_in_box=1`）；
+  - 蚋笛翁夜里补刷、吹笛招来云蚋；
+  - 镜中客夜里补刷、换位圈与倒影物体都在；
+  - 断风游猎 · 守 / 追是 `bear` 阵营，冲锋线出现，追掉了断风披甲。
+- 悬根猎首、穗镰、断风游猎 · 伏「30 秒内没刷出来」：不是游戏问题。
+  - 前面的步骤已经清过 D、C、K2 这三组：`GATHER_KINDS` 在 `Relay_K2` / `Lamp_C_02` 清场，`COMBAT_GATE` 在 `Search_C_02` 清场，`RELAY_DENSE` 在 `Lamp_D` 做了 `kill_nearby:600`，`SERVICES` 在 `POI_D` 清场。
+  - 自动组一趟只刷一次。三位头目其实刷出过，也被那几步杀了：手记步骤里它们的首杀记录都在。
+- 英文复拍苇白第 3 句从观星手变成悬根猎首：苇白按首杀进度往后说下一位没打倒的头目，步骤表期望过时。
+- 云蚋可见度仍红：老探针问题，另一会话在跟。
+- **新档可达性翻红（真问题）**：
+  - 这一轮开头的只读套件里钟庭门挡得住（1/1）；真实状态段跑完后，新档阶段门关着却走得到（0/1）。
+  - 剧情标志全程是 0，`SetBlockedAreas` 只有 `SkyIslandGates` 在调。所以不是门算错，是导航节点的「不可走」被别的东西恢复了。
+  - 官方 `resources.assets` / `sharedassets*` 里没有 `NavmeshCut` 一类组件；根因未证实。
+
+**改动**
+- 新 Dev 动词 `reset_encounter:遭遇id`：`SkyIslandEncounters.DevResetEncounter`（`#if BOSSRUSH_DEV`）把一组自动遭遇的死亡事实与清场标记清零，主角走近时整组照常刷出，持久的 `clearedEncounters` 不回退，手动组拒绝。
+  - 会话入口 `DevAutotestResetEncounter` 第一句过写入门，已登记进 `F3AutotestOrchestratorGuard` 的 `GATED_ENTRIES`；
+  - 步骤表在悬根猎首、穗镰与三座中继平台瞬移前各加一次重置；
+  - `SkyIslandAutotestTableGuard` 校验遭遇 id 必须在内容表里，并加一条反向探针。
+- `SKY_AUTO_ALT_RESIDENT` 的断言接受观星手 / 悬根猎首 / 断风游猎三段台词里任一句。
+- 头目专属捏脸：
+  - `Assets/Data/DuckNpcs.json` 加 11 份 `skyboss_*` 蓝图：json 脸，`scenes` 为空，不会被当 NPC 刷出来；
+  - 11 位头目 / 岛主的 `FaceId` 指过去，由已有的 `SkyIslandBossForge` → `ApplyBattleFace` 套上；
+  - 部件 ID 沿用居民用过的一套（hair 7 / eye 3 / brow 2 / mouth 5 / tail 2 / foot 1 / wing 1，合法 ID 只能进游戏枚举），靠羽色、冠羽大小颜色、眼色大小、眉色与倾角、喙色、头的大小拉开；
+  - 回归原来断言「FaceId 为空」，改成「必须指向 json 脸、`scenes` 为空的蓝图」。
+- 钟庭门导航自检：`SkyIslandGates` 在门标志没变时每秒抽查一次关着的门，看门框中心的节点能不能走。
+  - 能走就按当前碰撞盒重封，记一次 `[SkyIsland] gate navigation block was lost and re-applied`，带重封前后的可走节点数，下一轮拿这个数找根因；
+  - 重封后仍能走说明抽查点不在挡区里，停掉自检，不会每秒重封；
+  - `ArenaPrototypeNavigation` 新增只读查询 `IsWalkableAt`。
+
+**验证**
+- 主工作区：Dev 构建通过并部署到 D 盘游戏目录，DLL `4B5F93F7…` 与装备包 `79D0B9D6…` 按 SHA-256 与仓库一致，`DuckNpcs.json` 部署后 11 份 `skyboss_*` 都在。
+- 与改动相关的守卫 171/171 PASS（步骤表守卫 31 条、编排守卫 20 条反向检查全部转红）；执行回归 SkyIsland 12/12、`F3AutotestJudges` PASS。
+- 捏脸长相、门自检是否触发、三位头目能不能等到，都待第八轮 F3（L3）；专属脸要 owner 看截图。
+
+## 2026-09-15 天空岛头目 / 岛主 R2–R4：九位 Boss 与 13 件专属装备（模型已进包、Dev 已部署；第七轮 F3 复核见上一节）
+
+**来源**：owner「请你做个完整的计划一次性完成 R2,R3,R4」，计划批准后说「继续」。四项拍板（AskUserQuestion）：
+1. 截信人真偷岛上耗材：只偷我们的岛上耗材与工具，杀了从尸体箱拿回，不杀就丢；
+2. 夜限定头目夜里才刷；
+3. R4 做镜中客 + 断风三游猎 + 便宜版两派（三游猎整组换 `Teams.bear`）；
+4. 等模型齐再验收：代码与概念图先做，owner 传完 13 件 GLB、打包之后再统一部署，中途不部署占位版。
+
+**分类**：
+- `COMPAT`：新档案、TypeID 500090–500102、首杀手记 id、`[NonSerialized]` 运行时字段。不加存档字段、不改 schema。
+- `OPERATIONAL`：`skyisland_boss_gear` 要重打包（部署行不变），等模型。
+
+**名册**（只改内容表里 lead 的档次，id / marker / count 不动）
+
+| Boss | 组 | 档次 | 专属装备 | 掉落 |
+| --- | --- | --- | --- | --- |
+| 悬根猎首 | D | Lord | 500090 根须面罩 · 500091 藤编甲 · 500092 悬根箭囊 | 35/35/30 必掉 |
+| 截信人 | S2 | Chief | 500093 旧邮包 | 30% |
+| 穗镰 | C | Lord | 500094 青穗斗笠 · 500095 蓑衣甲 · 500096 谷囊 | 35/35/30 必掉 |
+| 听雨人 | S3 | Chief | 500097 静听耳罩 | 30% |
+| 蚋笛翁 | S1（夜） | Chief | 500098 苔纱面罩 | 30% |
+| 镜中客 | F（夜） | Chief | 500099 镜纹甲 | 30% |
+| 断风游猎 · 追 / 伏 / 守 | K1 / K2 / K3_Relay（bear） | Chief | 500101 断风披甲 / 500102 断风行囊 / 500100 断风兜帽 | 各 40% |
+
+**改动**
+- 规则 `SkyIslandBossRules`：
+  - Kind +7；档案加 `NightOnly` / `RivalFaction` / `Variant`；9 条档案都带五栏；13 条 GearSpec。
+  - 纯函数：逃圈速度、落点、套装件数、居民台词。
+  - 回归「一档一控制器」改钉 `(Kind, Variant)`。
+- 遭遇层 `SkyIslandEncounters`：
+  - 夜限定：白天带队位留空、不算缺人、不挡清场，入夜单独补刷一次；
+  - 两派：K1–K3 整组 `SetTeam(Teams.bear)`，写在 wolf 安全网之后；
+  - `CallGroup`：穗镰喊谷仓 C_02 活着的人过来。
+- 共用件 `SkyIslandBossProps`（新）：换位顺序、倒影 `BakeMesh`、主角减速、面罩 / 耳机磨损（官方只在暴击时磨头盔、非暴击磨身甲）、根桩接收体。
+- 七个招式控制器（新）：`SkyIslandRootHunterBoss`、`SkyIslandWaylayerChief`、`SkyIslandSickleBoss`、`SkyIslandListenerChief`、`SkyIslandPiperChief`、`SkyIslandMirrorChief`、`SkyIslandWindhunterChief`。
+- 玩家侧：
+  - `SkyIslandFieldcraftBossGear` 读五个装备槽，写穿戴快照 `SkyIslandBossGearWorn`；
+  - 套装效果：悬根猎装两件翻箱特产翻倍，蓑衣农装两件割青穗草多一份，断风套两件在桥与中继平台跑速 +12%；
+  - 静听耳罩：所有头目 / 岛主预警 ×1.25，听雨人要 16 枪才落石；
+  - `SkyIslandGnatsLure`（新）：蚋笛翁引蚋，压过灭蚊灯；苔纱面罩让云蚋不躲枪口；
+  - 旧邮包：`NextSameRaidFor(data, mailbagCarried)` + `MailbagLetterThisRaid`，每趟多一封信；
+  - 镜纹甲：`wearsMirrorArmor` 放行折翎。
+- 物品与文案：`ConfigItemIds`、`SkyIslandItemRules`（中英名与价值）、`SkyIslandBossGearConfig.Description`、掉落黑名单三处、手记「群岛之物」13 行、晴禾 / 眠苔 / 浮舟 / 苇白的居民台词。
+- F3：
+  - `SKY_BOSS_PROFILES` 判据通用化：逐圈 `escape_max`、`night_leads`、`rival_groups`；
+  - 演练 `SKY_DRILL_BOSS_LOADOUT` 循环全部 11 位；
+  - 新动词 `approach_boss`、`feed_shots`（听雨人的 Dev 钩子）；
+  - 步骤表 +7 步（78 → 85），覆盖行 +47（238 → 285），手记步骤补 9 条首杀记录断言。
+- 台账：根 `AGENTS.md` §4.3（`500xxx` 区间、`500001-500102`、下一可用 `500103`）、`docs/contracts.md` §1、`docs/Bossrush使用物品ID表.md`（local-only）；天空岛人工清单 2.21–2.23 与 `M_SKY_ISLAND_16–18`。
+- 守卫：
+  - `SkyIslandBossEcologyGuard` 按 11 位档案重写；
+  - `TypeIdLedgerGuard` 扫描正则 `5000\d{2}` → `500\d{3}`（旧写法扫不到 500100 起的号），词缀 Buff.ID 500601/604/607 进豁免；
+  - `SkyIslandAutotestTableGuard` 清单区间加 2.21–2.23；2.20 暂不纳入（另一轮剧情面板一节还没进覆盖表）。
+- 美术脚本（主工作区 `tools/`）：`gen_sky_island_boss_gear_art.py`、`sky_island_boss_gear_import.py` 的 PIECES +13。面罩与耳机的尺寸和挂点按官方实测（`SOCKET_CENTER`）。
+
+**自己定的玩法取舍**（「好玩优先」口径；回退办法写在每条后面）
+- 伏闪回边缘后立刻恢复 AI 接着开枪，不再硬直。五栏写的反打窗口是「冲到你面前那一下」，闪回后还硬直等于站着让人打。回退：删掉 `SkyIslandWindhunterChief` 闪回成功后的 `EndLunge(true); yield break;`。
+- 镜中客翻身距离下限 6 → 4 米，仍大于圈半径 1.8。6 米时落地那一震几乎碰不到人；4 米时边退边打的人一步就退进圈。回退：`SwapMinDistance` 改回 6（回归里「下限 < 2 × 半径 + 1」的断言同步删）。
+- 蚋笛翁的吹笛与打断字幕只播第一次：每 9 秒一口，每口都播会刷屏。
+- 截信人闪身后不再强制认人：强制认人会让它顶着 +30% 跑速直线折回，「追到逃点打」就没了。
+- 截信人伸手时自己背包满会抓空，不计次数、没有字幕；写进清单 2.21.8 的不合格说明，暂不改。
+- 信的规则：`NextSameRaidFor(data)` 原口径那一行原样保留（`SkyIslandContentPackGuard` 钉的「规则只有一处」不放宽），旧邮包走独立重载，由剧情 owner 计次。
+
+**验证**
+- worktree 阶段（`Build/boss-r2r4-wt`，分支 `skyisland/boss-r2r4`，起点 `f3f8912`；`GAME_PATH` 指临时 Managed 拷贝，不碰游戏目录）：
+  - Dev 与正式构建都 `Build succeeded!`；正式 DLL 跑 `check_dll_identifiers --expect absent` PASS。编译时查出 `DamageInfo` 是值类型、`damage == null` 编不过（CS0019），已修；语法探针查不出这类错。
+  - 反向验证：`TypeIdLedgerGuard` 把台账改回 `500099` 后 500100–500102 越界转红；`SkyIslandBossEcologyGuard` 这次改的三条（笛声压着时不散群、原口径不给才轮到旧邮包、旧邮包每趟只多一封）在内存里逐条删掉 3/3 转红；步骤表守卫自带的破坏探针全部转红。
+  - worktree 里跑守卫有 4 条与本轮无关的假红：3 条 local-only bundle 守卫（worktree 里没有资源）、`ModeHLocalizationGuard`（按路径段排除 `Build`）。合回主工作区后全绿。
+- 美术（owner 说「你自己生成」，密钥由启动器在运行时从 `docs/AI生图API和密钥.md` 读进子进程环境，不上命令行、不进脚本与日志）：
+  - 13 张 Tripo 输入概念图、13 张背包图标（512² 带透明、无色键残边）、2 张 Wiki 导航图标，全部失败 0；
+  - `build_wiki_images.py` 在 worktree 里跑会因为缺 local-only 源图把立绘 / 战役图 / 图标三段清单清空，已按 HEAD 还原、只插入这两条新图标。
+- 模型（owner 在 Tripo 网页出了 17 个 GLB，文件名是 Tripo 自己起的）：
+  - 按多角度渲染图逐个认出对应件：其中 4 个是 R1 已上线件的重复，**不替换 R1**；另外 13 个拷成件名放进 `ArtSource/SkyIsland/BossGear/`，owner 的原文件不动；
+  - 导入朝向：面罩、护甲、头盔多为 yaw -90，耳罩与四个背包 +90（背带朝人）；逐件配线框头 / 躯干参照渲染，核过朝向与挂点位置；
+  - 悬根箭囊、旧邮包、断风行囊自带背带环，按最前沿贴背会把包身推到身后 0.15–0.5 米。导入脚本新增按件覆盖的 `--back-quantile`（默认 0 即原行为，R1 不受影响）：箭囊取 0.18 并用 `--box` 把宽压到 0.30，另两件取 0.2；
+  - 作者工程 `SkyIslandBossGearBundleBuilder` 的 `Pieces` +13（品质、价值同 Mod 侧，重量按槽位参照 R1），打出 `skyisland_boss_gear` 9,554,567 字节、SHA-256 `79D0B9D6…A4AE`。UnityPy 回读 17/17：TypeID、品质、`_MainTex`、网格尺寸与导入清单一致。R1 旧包 `4CE1556B…291C` 已备份。作者工程改动未提交。
+- 合回主工作区：worktree 逐文件三路合并，58 覆盖 / 19 新增 / 3 合并 / 0 冲突；别的会话在 `SkyIslandGnats`、`SkyIslandRewardCrate`、`SkyIslandWorldStory` 里的未提交改动都保留。
+  - 守卫全量 618/618 PASS；执行回归 SkyIsland 12/12、`F3AutotestJudges` PASS；`npm --prefix wiki-site run build` 通过。
+  - Dev 构建 DLL `837AD341…` 已部署到 D 盘游戏目录，DLL、装备包、图标按 SHA-256 与仓库一致（明细在 `ArtSource/SkyIsland/Validation/raid_deployment_hashes.json` 的 `gear_bundle`）。
+- L3 待 owner 跑 F3（清单 2.21–2.23、手动用例 `M_SKY_ISLAND_16–18`，看图清单见交付报告）；全绿后换回正式构建并 `check_dll_identifiers --expect absent`。
+
 ## 2026-09-15 头目 R1 补齐：残星匠首真实击杀后读尸体箱，核对「配装即掉落」
 
 **来源**：owner 问敌人生态做完没有，选了「先补齐 R1」。R1 的「死后只留一件专属装备」此前只有 Dev 演练按抽样结算核对（不走死亡），官方建箱前事件的接线没有实机断言。

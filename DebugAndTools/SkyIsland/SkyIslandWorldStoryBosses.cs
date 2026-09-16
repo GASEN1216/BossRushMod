@@ -17,7 +17,22 @@ namespace BossRush
 {
     internal sealed partial class SkyIslandWorldStory
     {
-        private bool bossEventsAttached;
+        private bool bossEventsAttached, mailbagLetterUsed;
+
+        /// <summary>
+        /// 原口径（有前置的信同趟连送，SkyIslandLetters.NextSameRaidFor）不给下一封时的补位：主角背着截信人的旧邮包、
+        /// 这一趟还没用过，就再放一封无前置的信（每趟一次，头目 R2）。背包由局内 owner 按采样节拍读（SkyIslandBossGearWorn）。
+        /// </summary>
+        private SkyIslandLetter MailbagLetterThisRaid()
+        {
+            if (story == null || mailbagLetterUsed || !SkyIslandBossGearWorn.Mailbag) return null;
+            SkyIslandLetter next = SkyIslandLetters.NextSameRaidFor(story.Current, true);
+            if (next == null) return null;
+            mailbagLetterUsed = true;
+            session.Announce(L10n.T("旧邮包里还压着一封没送出去的信：信鸽会再飞一趟。",
+                "One more undelivered letter is still pressed inside the old mailbag: the pigeon will fly again."), false);
+            return next;
+        }
 
         private void AttachBossEvents()
         {

@@ -25,9 +25,11 @@ EXPECTED_ENCOUNTERS = {
     # 2026-09-13：自动组人数 2 -> 3（设计规格是「每点 2–4 敌」，现状原本取下限），
     # 并补 5 组：3 个空着的捷径中继平台 + E/H 两岛（此前只有手动组，通关后永久零敌）。
     # 全部复用 layout.json 里已存在的 marker，不重烘导航、不重打包。
-    'C': ('EnemySpawn_C', 3, False, 'Scav', 'Scav'),
+    # 2026-09-15 头目 / 岛主 R2–R4：C / D 带队是岛主（穗镰、悬根猎首），S1 / S2 / S3 / F 与 K1–K3 中继平台带队是头目；
+    # 同 R1 只换带队档次，id、marker、人数都不变。
+    'C': ('EnemySpawn_C', 3, False, 'Scav', 'Lord'),
     'C_02': ('Search_C_02', 3, False, 'Scav', 'Scav'),
-    'D': ('EnemySpawn_D', 3, False, 'Scav', 'Elite'),
+    'D': ('EnemySpawn_D', 3, False, 'Scav', 'Lord'),
     'D_02': ('Search_D_02', 3, False, 'Scav', 'Scav'),
     'E': ('Relay_DE', 3, False, 'Scav', 'Scav'),
     'E_02': ('Relay_GE', 3, False, 'Scav', 'Scav'),
@@ -35,17 +37,17 @@ EXPECTED_ENCOUNTERS = {
     # id、marker、人数都不变，修星灯与观星镜的前置自然包含它们。
     'G': ('EnemySpawn_G', 3, False, 'Scav', 'Lord'),
     'G_02': ('Search_G_02', 3, False, 'Scav', 'Scav'),
-    'S1': ('EnemySpawn_S1', 3, False, 'Scav', 'Scav'),
-    'S2': ('EnemySpawn_S2', 3, False, 'Scav', 'Scav'),
-    'S3': ('EnemySpawn_S3', 3, False, 'Scav', 'Scav'),
+    'S1': ('EnemySpawn_S1', 3, False, 'Scav', 'Chief'),
+    'S2': ('EnemySpawn_S2', 3, False, 'Scav', 'Chief'),
+    'S3': ('EnemySpawn_S3', 3, False, 'Scav', 'Chief'),
     'S4': ('EnemySpawn_S4', 3, False, 'Scav', 'Chief'),
-    'F': ('Search_F_02', 3, False, 'Scav', 'Scav'),
+    'F': ('Search_F_02', 3, False, 'Scav', 'Chief'),
     'Zheling': ('EnemySpawn_F', 1, True, 'Champion', 'Champion'),
     'BellKeeper': ('EnemySpawn_H', 3, True, 'Scav', 'Champion'),
     'Storm': ('POI_E', 3, True, 'Elite', 'Storm'),
-    'K1_Relay': ('Relay_K1', 3, False, 'Scav', 'Scav'),
-    'K2_Relay': ('Relay_K2', 3, False, 'Scav', 'Scav'),
-    'K3_Relay': ('Relay_K3', 3, False, 'Scav', 'Scav'),
+    'K1_Relay': ('Relay_K1', 3, False, 'Scav', 'Chief'),
+    'K2_Relay': ('Relay_K2', 3, False, 'Scav', 'Chief'),
+    'K3_Relay': ('Relay_K3', 3, False, 'Scav', 'Chief'),
     'E_03': ('EnemySpawn_E', 3, False, 'Scav', 'Elite'),
     'H_02': ('Search_H_02', 3, False, 'Scav', 'Elite'),
     # 2026-09-14 B 轮：噬风·回响。同一处风眼、首战的编成，独立 id（沿用 "Storm" 会被一次性判定当成已清场）。

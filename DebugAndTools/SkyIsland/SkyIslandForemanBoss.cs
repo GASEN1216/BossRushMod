@@ -330,10 +330,12 @@ namespace BossRush
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 星焰预警失败：" + e.Message); }
 
+            // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：预警只会更长，逃圈判据仍按不戴的算。
+            float telegraph = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.StarfireTelegraph, SkyIslandBossGearWorn.Earmuffs);
             float started = Time.time;
-            while (Time.time - started < SkyIslandBossRules.StarfireTelegraph && !Aborted())
+            while (Time.time - started < telegraph && !Aborted())
             {
-                float charge = Mathf.Clamp01((Time.time - started) / SkyIslandBossRules.StarfireTelegraph);
+                float charge = Mathf.Clamp01((Time.time - started) / telegraph);
                 for (int i = 0; i < lines.Count; i++)
                     SkyIslandBossForge.SetRing(lines[i], SkyIslandBossRules.StarfireRadius, charge, StarfireTint);
                 yield return null;

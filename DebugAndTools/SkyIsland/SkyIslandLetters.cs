@@ -99,7 +99,17 @@ namespace BossRush
         internal static SkyIslandLetter NextSameRaidFor(SkyIslandStoryData data)
         {
             SkyIslandLetter next = NextFor(data);
-            return next != null && next.Requires != SkyIslandStoryFlag.None ? next : null;
+            if (next == null) return null;
+            return next.Requires != SkyIslandStoryFlag.None ? next : null;
+        }
+
+        /// <summary>
+        /// 同上，但玩家背着截信人的旧邮包（头目 R2）时，无前置的信也可以同趟再来一封：背着就只看还有没有下一封。
+        /// 「每趟至多多来一封」由调用方计次（剧情 owner 的 <c>MailbagLetterThisRaid</c>），这里只管这一封该不该来。
+        /// </summary>
+        internal static SkyIslandLetter NextSameRaidFor(SkyIslandStoryData data, bool mailbagCarried)
+        {
+            return mailbagCarried ? NextFor(data) : NextSameRaidFor(data);
         }
 
         private static SkyIslandLetter[] Build()

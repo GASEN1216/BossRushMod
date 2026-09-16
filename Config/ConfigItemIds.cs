@@ -77,5 +77,31 @@ namespace BossRush
         public const int SkyIslandStarfurnacePack = 500088;
         /// <summary>观星镜盔：天空岛头目「瞭台观星手」的专属头盔。</summary>
         public const int SkyIslandStargazerLensHelm = 500089;
+        /// <summary>根须面罩：天空岛岛主「悬根猎首」的专属面罩（R2）。</summary>
+        public const int SkyIslandRootweaveMask = 500090;
+        /// <summary>藤编甲：悬根猎首的专属护甲。</summary>
+        public const int SkyIslandVinewovenCuirass = 500091;
+        /// <summary>悬根箭囊：悬根猎首的专属背包。</summary>
+        public const int SkyIslandHangrootQuiver = 500092;
+        /// <summary>旧邮包：天空岛头目「截信人」的专属背包（R2）。</summary>
+        public const int SkyIslandOldMailbag = 500093;
+        /// <summary>青穗斗笠：天空岛岛主「穗镰」的专属头盔（R3）。</summary>
+        public const int SkyIslandGreenearStrawHat = 500094;
+        /// <summary>蓑衣甲：穗镰的专属护甲。</summary>
+        public const int SkyIslandStrawRaincoat = 500095;
+        /// <summary>谷囊：穗镰的专属背包。</summary>
+        public const int SkyIslandGrainSack = 500096;
+        /// <summary>静听耳罩：天空岛头目「听雨人」的专属耳机（R3）。</summary>
+        public const int SkyIslandRainhushEarmuffs = 500097;
+        /// <summary>苔纱面罩：天空岛头目「蚋笛翁」的专属面罩（R3）。</summary>
+        public const int SkyIslandMossgauzeMask = 500098;
+        /// <summary>镜纹甲：天空岛头目「镜中客」的专属护甲（R4）。</summary>
+        public const int SkyIslandMirrorgrainPlate = 500099;
+        /// <summary>断风兜帽：天空岛头目「断风游猎 · 守」的专属头盔（R4，断风套之一）。</summary>
+        public const int SkyIslandWindbreakHood = 500100;
+        /// <summary>断风披甲：「断风游猎 · 追」的专属护甲（断风套之一）。</summary>
+        public const int SkyIslandWindbreakMantle = 500101;
+        /// <summary>断风行囊：「断风游猎 · 伏」的专属背包（断风套之一）。</summary>
+        public const int SkyIslandWindbreakPack = 500102;
     }
 }

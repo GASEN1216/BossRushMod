@@ -119,6 +119,7 @@ namespace BossRush
                 _autotest.FrameSampled = false;
                 _autotest.LastFrameReason = null;
                 _autotest.LastKilled = 0;
+                _autotest.StepStartRescues = AutotestRescueCount();
                 _autotest.StaticProbes.Clear();
                 ValidationCoroutineStack stack = new ValidationCoroutineStack(RunAutotestActions(record, step));
                 string error = null;
@@ -144,6 +145,7 @@ namespace BossRush
                     try { stack.Dispose(); }
                     catch (Exception e) { record.Notes.Add("dispose_threw:" + e.GetType().Name); }
                 }
+                AutotestCheckFooting(record);
                 int written = 0;
                 foreach (F3AutotestShot shot in record.Shots) if (!string.IsNullOrEmpty(shot.File)) written++;
                 if (error == null && ShouldAbort() && record.Assertions.Count == 0 && written == 0)
@@ -254,6 +256,9 @@ namespace BossRush
                 case "boss_hurt": return AutotestBossHurt(record, Arg(args, 0), ArgFloat(args, 1, 0.65f), ArgFloat(args, 2, 15f));
                 case "wait_boss": return AutotestWaitBoss(record, args);
                 case "loot_boss": return AutotestLootBoss(record, args);
+                case "approach_boss": return AutotestApproachBoss(record, args);
+                case "feed_shots": AutotestFeedShots(record, args); return WaitAutotestReal(0.3f);
+                case "reset_encounter": AutotestResetEncounter(record, args); return WaitAutotestReal(0.3f);
                 case "wait_object": return AutotestWaitObject(record, args);
                 case "wait_alpha": return AutotestWaitAlpha(record, args);
                 case "caption": AutotestCaption(record, args); return WaitAutotestReal(0.3f);
@@ -1132,6 +1137,29 @@ namespace BossRush
         }
 
         /// <summary>动作失败：记一条 FAIL 断言；<paramref name="critical"/> 为真时这一步后面的动作不再执行（断言记 SKIP）。</summary>
+        /// <summary>会话到现在捞回主角几次；不在岛上返回 0。</summary>
+        private int AutotestRescueCount()
+        {
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            return session == null ? 0 : session.RescueCount;
+        }
+
+        /// <summary>
+        /// 一步之内被捞回落脚点这么多次就记红：站得住的地方不会连着掉。
+        /// 第八轮 F3 在 EnemySpawn_C 连捞 11 次、穗镰那一步照样记 PASS，红项只能靠人翻 Player.log 才看得出来。
+        /// </summary>
+        private const int AutotestRescueLimit = 3;
+
+        /// <summary>步骤收尾：把这一步之内的坠落捞回次数变成断言，落点站不住不再只写在 Player.log 里。</summary>
+        private void AutotestCheckFooting(F3AutotestStepRecord record)
+        {
+            int rescues = AutotestRescueCount() - _autotest.StepStartRescues;
+            if (rescues <= 0) return;
+            record.Notes.Add("fall_rescues=" + rescues);
+            if (rescues >= AutotestRescueLimit)
+                AutotestFail(record, "assert:footing", "fall_rescue_loop:" + rescues, "rescues=" + rescues, false);
+        }
+
         private void AutotestFail(F3AutotestStepRecord record, string name, string reason, string metrics, bool critical)
         {
             record.Assertions.Add(AutotestAssertion(name, "FAIL", reason, metrics));

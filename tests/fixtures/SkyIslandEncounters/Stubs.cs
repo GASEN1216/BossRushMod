@@ -41,6 +41,7 @@ namespace UnityEngine
         internal override bool IsDestroyed { get { return Destroyed || (!ReferenceEquals(gameObject, null) && gameObject.Destroyed); } }
         public T[] GetComponentsInChildren<T>(bool include) where T : Component { return gameObject.GetComponentsInChildren<T>(include); }
         public T GetComponentInChildren<T>() where T : Component { return gameObject.GetComponentInChildren<T>(); }
+        public T GetComponent<T>() where T : Component { return gameObject.GetComponentInChildren<T>(); }
     }
     public class MonoBehaviour : Component { }
     public class GameObject : Object
@@ -100,7 +101,7 @@ namespace Pathfinding
     public struct GraphMask { }
     public class Seeker : UnityEngine.Component { public GraphMask graphMask; public void CancelCurrentPathRequest() { } }
 }
-public enum Teams { scav, wolf }
+public enum Teams { scav, wolf, bear }
 public class AICharacterController : UnityEngine.Component { public float forceTracePlayerDistance; }
 public class DamageInfo { }
 public class DeathEvent
@@ -186,25 +187,41 @@ namespace BossRush
         { Bound++; if (echo) EchoBound++; LastDefeated = defeated; }
     }
 
-    /// 头目 / 岛主（2026-09-14 R1）的替身：遭遇 owner 只负责「这一位先交给 Forge」，
-    /// 配装、掉落与招式在 Unity 侧（SkyIslandBossForge.cs），这里只记录被问到的「遭遇 id#位次」，
-    /// 并按生产档案表（G / S4 的带队）回答接不接手。
+    /// 头目 / 岛主（2026-09-14 R1，2026-09-15 R2–R4）的替身：遭遇 owner 只负责「这一位先交给 Forge」、夜限定带队等不等夜、
+    /// 整组换不换阵营与叫帮手，配装、掉落与招式在 Unity 侧（SkyIslandBossForge.cs）。这里记录被问到的「遭遇 id#位次」，
+    /// 接不接手、夜限定与换阵营都问**真实档案表**（SkyIslandBossRules.cs 直接链进夹具）；夜里没有由夹具翻 <see cref="Night"/>。
     internal sealed class SkyIslandBossContext
     {
         internal UnityEngine.Transform Root;
         internal int GroundMask;
         internal Func<bool> Valid;
         internal Action<string, bool> Report;
+        internal Func<string, UnityEngine.Vector3, int> CallGroup;
     }
     internal static class SkyIslandBossForge
     {
         internal static readonly List<string> Applied = new List<string>();
         internal static SkyIslandBossContext LastContext;
+        internal static bool Night;
         internal static bool TryApply(CharacterMainControl created, string encounterId, int index, SkyIslandBossContext context)
         {
             Applied.Add(encounterId + "#" + index);
             LastContext = context;
-            return index == 0 && (encounterId == "G" || encounterId == "S4");
+            return SkyIslandBossRules.Find(encounterId, index) != null;
         }
+        internal static bool IsNightLead(string encounterId) { return SkyIslandBossRules.LeadIsNightOnly(encounterId); }
+        internal static bool LeadWaitsForNight(string encounterId) { return SkyIslandBossRules.LeadIsNightOnly(encounterId) && !Night; }
+        internal static bool IsRivalFaction(string encounterId) { return SkyIslandBossRules.IsRivalFaction(encounterId); }
+    }
+    /// 穗镰叫帮手用到的落位与挪人：替身只把人放到给定点并记账（落地检测与寻路在 Unity 侧）。
+    internal static class SkyIslandBossProps
+    {
+        internal static readonly List<UnityEngine.Vector3> Teleported = new List<UnityEngine.Vector3>();
+        internal static int Noticed;
+        internal static bool SnapNear(UnityEngine.Vector3 point, SkyIslandBossContext context, float clearance, float jitter, out UnityEngine.Vector3 ground)
+        { ground = point; return true; }
+        internal static bool Teleport(CharacterMainControl character, UnityEngine.Vector3 target, object pause)
+        { character.transform.position = target; Teleported.Add(target); return true; }
+        internal static void NoticePlayer(CharacterMainControl character) { Noticed++; }
     }
 }

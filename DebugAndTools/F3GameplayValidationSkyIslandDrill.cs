@@ -90,7 +90,7 @@ namespace BossRush
             yield return RunSkyIslandCase("SKY_DRILL_GNAT_SWARM", RunSkyIslandDrillGnats);
             SetStage("演练 2/3 官方对话（弹出、防重入、选择、取消）");
             yield return RunSkyIslandCase("SKY_DRILL_OFFICIAL_DIALOGUE", RunSkyIslandDrillDialogue);
-            SetStage("演练 3/3 头目配装（刷一名、穿全套、结算只留一件）");
+            SetStage("演练 3/3 头目配装（十一位逐一：刷一名、穿全套、结算只留一件）");
             yield return RunSkyIslandCase("SKY_DRILL_BOSS_LOADOUT", RunSkyIslandDrillBossLoadout);
         }
 
@@ -99,25 +99,24 @@ namespace BossRush
         // ====================================================================
 
         /// <summary>
-        /// SKY_DRILL_BOSS_LOADOUT（2026-09-14 头目 / 岛主 R1）：在玩家前方刷一名官方拾荒者，按残星匠首的档案穿上三件专属装备，
-        /// 核对三个槽位与身上的模型；把耐久压到 1 后按固定抽样值结算一次，核对「只留抽中的那件并补满耐久、另外两件卸下销毁、
-        /// 武器与背包里的原版物品原样在、结算上闩」。
+        /// SKY_DRILL_BOSS_LOADOUT（2026-09-14 头目 / 岛主 R1；2026-09-15 R2–R4 起逐位演练全部档案）：每一位在玩家前方刷一名官方拾荒者，
+        /// 按档案穿上全套专属装备，核对各槽位（含 Mod 第一次用的面罩与耳机槽）与身上的模型；把耐久压到 1 后按固定抽样值结算一次，
+        /// 核对「只留抽中的那件并补满耐久、其余卸下销毁、武器与背包里的原版物品原样在、结算上闩」。期望值从档案与 RollDrop 推导：
+        /// 岛主抽 0.5（落第二件）、头目抽 0.1（留下它唯一的那件），不在这里抄权重表。
         /// **不走死亡**：不建官方尸体箱、不记官方击杀计数、不派发首杀事件，所以不写任何存档；阵营设成 middle、不挂招式控制器，
-        /// 演练期间它不会攻击玩家。finally 里销毁角色与 preset 克隆。尸体箱真的收走这一件、箱里其余照原版，只能实机看（清单 2.19.6）。
+        /// 演练期间它不会攻击玩家。每一位的 finally 里销毁角色与 preset 克隆。尸体箱真的收走这一件、箱里其余照原版，由自动验收的 loot_boss 实机证。
         /// </summary>
         private IEnumerator RunSkyIslandDrillBossLoadout()
         {
             const float spawnDistance = 6f;
-            const float spawnTimeout = 15f;
-            const int settleFrames = 10;
-            // 权重 35 / 35 / 30：0.5 落在第二件（星炉背甲）。
-            const double fixedRoll = 0.5;
+            // 单条用例 60 秒预算：留出余量，超了记失败并写明演到第几位，不拖垮后面的收尾。
+            const double drillBudgetSeconds = 50.0;
             Stopwatch sw = Stopwatch.StartNew();
             CharacterMainControl player = CharacterMainControl.Main;
-            SkyIslandBossProfile profile = SkyIslandBossRules.Find("G", 0);
-            if (player == null || profile == null)
+            SkyIslandBossProfile[] profiles = SkyIslandBossRules.Profiles;
+            if (player == null || profiles.Length == 0)
             {
-                Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", 0L, "player=" + (player != null) + ",profile=" + (profile != null), "主角或残星匠首档案不可用");
+                Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", 0L, "player=" + (player != null) + ",profiles=" + profiles.Length, "主角或头目档案不可用");
                 yield break;
             }
             CharacterRandomPreset source = null;
@@ -143,6 +142,36 @@ namespace BossRush
                 yield break;
             }
 
+            List<string> errors = new List<string>();
+            List<string> notes = new List<string>();
+            int drilled = 0;
+            for (int p = 0; p < profiles.Length && !ShouldAbort(); p++)
+            {
+                if (sw.Elapsed.TotalSeconds > drillBudgetSeconds)
+                {
+                    errors.Add("drill_budget_exceeded_after_" + drilled);
+                    break;
+                }
+                yield return RunSkyIslandDrillBossLoadoutOne(profiles[p], source, ground.point, forward, errors, notes);
+                drilled++;
+            }
+            string metrics = "drilled=" + drilled + "/" + profiles.Length + " | " + string.Join(" | ", notes.ToArray());
+            if (errors.Count > 0 || drilled != profiles.Length)
+                Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", sw.ElapsedMilliseconds, metrics, "头目配装演练不合格：" + string.Join(",", errors.ToArray()));
+            else Record("SKY_DRILL_BOSS_LOADOUT", "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
+        }
+
+        /// <summary>SKY_DRILL_BOSS_LOADOUT 的一位：刷一名、穿全套、按固定抽样值结算一次；错误带「档案 id:」前缀写进 <paramref name="errors"/>。</summary>
+        private IEnumerator RunSkyIslandDrillBossLoadoutOne(SkyIslandBossProfile profile, CharacterRandomPreset source, Vector3 point, Vector3 forward,
+            List<string> errors, List<string> notes)
+        {
+            const float spawnTimeout = 8f;
+            const int settleFrames = 10;
+            double fixedRoll = profile.Tier == SkyIslandEnemyTier.Lord ? 0.5 : 0.1;
+            int expectedIndex = SkyIslandBossRules.RollDrop(profile, fixedRoll);
+            int expectedTypeId = expectedIndex < 0 ? -1 : profile.Gear[expectedIndex].TypeId;
+            string expectedOutcome = expectedIndex < 0 ? "no_drop" : "slot";
+            string tag = profile.Id + ":";
             int[] gearIds = SkyIslandBossRules.AllGearTypeIds;
             Func<ItemStatsSystem.Item, int> countVanilla = delegate (ItemStatsSystem.Item root)
             {
@@ -156,8 +185,6 @@ namespace BossRush
                         if (slot != null && slot.Content != null && Array.IndexOf(gearIds, slot.Content.TypeID) < 0) count++;
                 return count;
             };
-            List<string> errors = new List<string>();
-            List<string> notes = new List<string>();
             CharacterRandomPreset clone = UnityEngine.Object.Instantiate(source);
             clone.name = "BossRush_SkyIslandDrill_Boss";
             clone.dropBoxOnDead = false;
@@ -165,7 +192,7 @@ namespace BossRush
             CharacterMainControl created = null;
             try
             {
-                UniTask<CharacterMainControl>.Awaiter spawning = clone.CreateCharacterAsync(ground.point + Vector3.up * 0.1f, -forward, -1, null, false).GetAwaiter();
+                UniTask<CharacterMainControl>.Awaiter spawning = clone.CreateCharacterAsync(point + Vector3.up * 0.1f, -forward, -1, null, false).GetAwaiter();
                 float spawnUntil = Time.realtimeSinceStartup + spawnTimeout;
                 while (!spawning.IsCompleted && Time.realtimeSinceStartup < spawnUntil && !ShouldAbort()) yield return null;
                 // 完成状态先读进局部变量再取结果，取完不再碰 awaiter（UniTaskAwaiterReuseGuard）。
@@ -173,11 +200,11 @@ namespace BossRush
                 if (spawnCompleted)
                 {
                     try { created = spawning.GetResult(); }
-                    catch (Exception e) { errors.Add("spawn_threw_" + e.GetType().Name); }
+                    catch (Exception e) { errors.Add(tag + "spawn_threw_" + e.GetType().Name); }
                 }
                 if (created == null)
                 {
-                    if (errors.Count == 0) errors.Add(spawnCompleted ? "spawn_returned_null" : "spawn_timeout");
+                    errors.Add(tag + (spawnCompleted ? "spawn_returned_null" : "spawn_timeout"));
                 }
                 else
                 {
@@ -203,11 +230,11 @@ namespace BossRush
                             if (parts[p] != null && parts[p].name.IndexOf(spec.ModelBaseName, StringComparison.Ordinal) >= 0) { models++; break; }
                     }
                     int vanillaBefore = countVanilla(characterItem);
-                    notes.Add("preset=" + source.name + ",loadout=" + (loadoutReason ?? "ok") + ",worn=" + worn + "/" + profile.Gear.Length
+                    notes.Add(tag + "preset=" + source.name + ",loadout=" + (loadoutReason ?? "ok") + ",worn=" + worn + "/" + profile.Gear.Length
                         + ",models=" + models + "/" + profile.Gear.Length + ",vanilla_before=" + vanillaBefore);
-                    if (loadoutReason != null) errors.Add(loadoutReason);
-                    if (worn != profile.Gear.Length) errors.Add("worn_" + worn + "_of_" + profile.Gear.Length);
-                    else if (models != profile.Gear.Length) errors.Add("gear_model_missing_" + models + "_of_" + profile.Gear.Length);
+                    if (loadoutReason != null) errors.Add(tag + loadoutReason);
+                    if (worn != profile.Gear.Length) errors.Add(tag + "worn_" + worn + "_of_" + profile.Gear.Length);
+                    else if (models != profile.Gear.Length) errors.Add(tag + "gear_model_missing_" + models + "_of_" + profile.Gear.Length);
 
                     string outcome = loot == null ? "loot_component_missing" : loot.DevResolveForDrill(fixedRoll);
                     yield return null;
@@ -229,14 +256,15 @@ namespace BossRush
                     }
                     int vanillaAfter = countVanilla(characterItem);
                     string again = loot == null ? "loot_component_missing" : loot.DevResolveForDrill(0.99);
-                    notes.Add("outcome=" + outcome + ",chosen=" + chosen + ",gear_left=" + left + ",kept_full=" + leftFull
+                    notes.Add(tag + "outcome=" + outcome + ",chosen=" + chosen + ",gear_left=" + left + ",kept_full=" + leftFull
                         + ",vanilla_after=" + vanillaAfter + ",second_resolve=" + again);
-                    if (outcome != "slot") errors.Add("outcome_" + outcome);
-                    if (chosen != BossRushItemIds.SkyIslandStarfurnaceHarness) errors.Add("fixed_roll_picked_" + chosen);
-                    if (left != 1) errors.Add("gear_left_" + left);
-                    if (leftFull != 1) errors.Add("kept_piece_not_full_durability");
-                    if (vanillaAfter != vanillaBefore) errors.Add("vanilla_items_changed_" + vanillaBefore + "_to_" + vanillaAfter);
-                    if (again != "not_bound_or_already_resolved") errors.Add("resolve_not_latched");
+                    int expectedLeft = expectedIndex < 0 ? 0 : 1;
+                    if (outcome != expectedOutcome) errors.Add(tag + "outcome_" + outcome + "_expected_" + expectedOutcome);
+                    if (chosen != expectedTypeId) errors.Add(tag + "fixed_roll_picked_" + chosen + "_expected_" + expectedTypeId);
+                    if (left != expectedLeft) errors.Add(tag + "gear_left_" + left + "_expected_" + expectedLeft);
+                    if (leftFull != expectedLeft) errors.Add(tag + "kept_piece_not_full_durability");
+                    if (vanillaAfter != vanillaBefore) errors.Add(tag + "vanilla_items_changed_" + vanillaBefore + "_to_" + vanillaAfter);
+                    if (again != "not_bound_or_already_resolved") errors.Add(tag + "resolve_not_latched");
                 }
             }
             finally
@@ -244,10 +272,8 @@ namespace BossRush
                 if (created != null) { created.gameObject.SetActive(false); UnityEngine.Object.Destroy(created.gameObject); }
                 if (clone != null) UnityEngine.Object.Destroy(clone, 0.1f);
             }
-
-            string metrics = string.Join(" | ", notes.ToArray());
-            if (errors.Count > 0) Record("SKY_DRILL_BOSS_LOADOUT", "FAIL", sw.ElapsedMilliseconds, metrics, "头目配装演练不合格：" + string.Join(",", errors.ToArray()));
-            else Record("SKY_DRILL_BOSS_LOADOUT", "PASS", sw.ElapsedMilliseconds, metrics, string.Empty);
+            // 上一位的角色销毁要等一帧，免得下一位刷在同一个点上被它挡住。
+            yield return null;
         }
 
         // ====================================================================

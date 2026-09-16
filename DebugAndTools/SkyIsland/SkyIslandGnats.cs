@@ -43,6 +43,15 @@ namespace BossRush
         private const float WingFramesPerSecond = 20f;
         private const float SplatSeconds = 0.6f;
         private const string ModifierContext = "SkyIslandGnats";
+        /// <summary>冲刺尾迹（原样）与巡航淡尾共用的色相；巡航只改宽度与不透明度，不另起一种颜色。</summary>
+        private static readonly Color DashTrailColor = new Color(0.86f, 0.95f, 1f, 0.7f);
+        private const float DashTrailWidth = 0.16f;
+        private const float CruiseTrailWidthMin = 0.06f;
+        private const float CruiseTrailWidthMax = 0.13f;
+        /// <summary>巡航淡尾最浓时的不透明度：比冲刺尾淡一截，远处看得见、近处不会被误读成前摇。</summary>
+        private const float CruiseTrailAlpha = 0.45f;
+        /// <summary>尾迹档位的哨兵：任何真实档位（-1 冲刺、0–WakeSteps 巡航）都不等于它。</summary>
+        private const int WakeLevelUnset = -2;
 
         private sealed class Gnat
         {
@@ -55,6 +64,12 @@ namespace BossRush
             internal Vector3 Position, Wander, LeaveDirection, LastStep;
             internal float Phase, BiteReadyAt, BiteShownUntil, WanderUntil, LeaveUntil, OrbitAngle;
             internal bool Leaving;
+            /// <summary>
+            /// 上一次写进 TrailRenderer 的尾迹档位：-1 冲刺尾迹、0–<see cref="SkyIslandMosquitoRules.WakeSteps"/> 巡航尾迹（见 ApplyWake）。
+            /// 建出来时是哨兵 <see cref="WakeLevelUnset"/>，保证第一次 ApplyWake 一定写一遍——
+            /// 否则新建的那只会顶着建体时写进去的冲刺尾配色（不透明度 0.7）在远处拖一条亮尾。
+            /// </summary>
+            internal int WakeLevel = WakeLevelUnset;
         }
 
         private sealed class Zapper
@@ -189,8 +204,8 @@ namespace BossRush
                         Remove(i, false, now, view);
                         continue;
                     }
-                    Animate(gnat, now, view);
                     float sqr = (gnat.Position - playerPosition).sqrMagnitude;
+                    Animate(gnat, now, view, sqr);
                     if (sqr < nearestSqr)
                     {
                         nearestSqr = sqr;
@@ -228,7 +243,8 @@ namespace BossRush
             float dazzle = SkyIslandMosquitoRules.LanternDazzleRadius;
             motor.Dazzled = lantern && (gnat.Position - playerPosition).sqrMagnitude <= dazzle * dazzle;
             motor.Tick(dt);
-            if (!gnat.Leaving) motor.OnAim(ToVec(gnat.Position), muzzle, aim, frame, this);
+            // 主角戴着蚋笛翁的苔纱面罩（SkyIslandBossGearWorn）：云蚋认不出你在瞄它，不躲枪口。
+            if (!gnat.Leaving && !SkyIslandBossGearWorn.MossgauzeMask) motor.OnAim(ToVec(gnat.Position), muzzle, aim, frame, this);
             Vector3 step = ToVector(motor.Step(dt));
             if (step.sqrMagnitude <= 0f && (gnat.Leaving || motor.CanAct)) step = Cruise(gnat, playerPosition, now, dt);
             float cap = SkyIslandMosquitoRules.DashSpeed * dt;
@@ -255,7 +271,8 @@ namespace BossRush
             else
             {
                 Vector3 target;
-                Zapper lure = NearestLure(gnat.Position);
+                // 笛声压着的这几秒不理灭蚊灯，全都往玩家身上扑（SkyIslandGnatsLure.cs）。
+                Zapper lure = LureOverridesZappers(now) ? null : NearestLure(gnat.Position);
                 if (lure != null) target = lure.Root.transform.position + Vector3.up * 1.1f;
                 else
                 {
@@ -307,7 +324,7 @@ namespace BossRush
             bitesSinceSample++;
         }
 
-        private void Animate(Gnat gnat, float now, Quaternion view)
+        private void Animate(Gnat gnat, float now, Quaternion view, float distanceSqr)
         {
             SkyIslandGnatPhase phase = gnat.Motor.Phase;
             Quaternion rotation = view;
@@ -329,7 +346,36 @@ namespace BossRush
             }
             gnat.Sprite.sprite = frames[index];
             gnat.Visual.rotation = rotation;
-            gnat.Trail.emitting = phase == SkyIslandGnatPhase.Dash;
+            ApplyWake(gnat, phase == SkyIslandGnatPhase.Dash, distanceSqr);
+        }
+
+        /// <summary>
+        /// 尾迹：冲刺时是原来那条亮尾（躲闪的读法不变）；巡航时按离主角的距离给一条淡尾
+        /// （<see cref="SkyIslandMosquitoRules.CruiseWake"/>），远处那几个像素才看得出在动，走近自己收掉。
+        /// 每帧每只都写 TrailRenderer 是浪费：档位没变就只留一次布尔赋值（根 AGENTS §4.12）。
+        /// </summary>
+        private static void ApplyWake(Gnat gnat, bool dashing, float distanceSqr)
+        {
+            TrailRenderer trail = gnat.Trail;
+            if (trail == null) return;
+            // 一直 emitting、只改不透明度：按档位开关 emitting 的话，停在档位边界上的那几只（例如绕着 6 m 外那盏风灯打转的）
+            // 会一帧一帧地开关尾迹闪烁；而且开关的瞬间尾迹是从零长起，档位变化处会「跳」一下。
+            if (!trail.emitting) trail.emitting = true;
+            int level = dashing ? -1 : SkyIslandMosquitoRules.WakeLevel(Mathf.Sqrt(distanceSqr));
+            if (gnat.WakeLevel == level) return;
+            gnat.WakeLevel = level;
+            if (level < 0)
+            {
+                trail.widthMultiplier = DashTrailWidth;
+                trail.startColor = DashTrailColor;
+                trail.endColor = new Color(DashTrailColor.r, DashTrailColor.g, DashTrailColor.b, 0f);
+                return;
+            }
+            float wake = (float)level / SkyIslandMosquitoRules.WakeSteps;
+            trail.widthMultiplier = Mathf.Lerp(CruiseTrailWidthMin, CruiseTrailWidthMax, wake);
+            Color tint = new Color(DashTrailColor.r, DashTrailColor.g, DashTrailColor.b, CruiseTrailAlpha * wake);
+            trail.startColor = tint;
+            trail.endColor = new Color(tint.r, tint.g, tint.b, 0f);
         }
 
         #endregion
@@ -352,6 +398,8 @@ namespace BossRush
                 Vector3 position = player.transform.position;
                 string reason;
                 bool enemiesNear = !session.CanOpenStoryPanel(out reason);
+                // 蚋笛翁吹笛的那几秒（SkyIslandGnatsLure.cs）附近有敌人也不散：吹笛的本身就是敌人。
+                if (HostileLureActive) enemiesNear = false;
                 RefreshVeil(now);
                 TickItch(player, now, elapsed);
                 Scatter(position, now, windLevel, enemiesNear, inSmoke, incense);
@@ -477,10 +525,10 @@ namespace BossRush
                 trail.sharedMaterial = trailMaterial;
                 trail.time = 0.12f;
                 trail.minVertexDistance = 0.05f;
-                trail.widthMultiplier = 0.16f;
+                trail.widthMultiplier = DashTrailWidth;
                 trail.widthCurve = AnimationCurve.Linear(0f, 1f, 1f, 0f);
-                trail.startColor = new Color(0.86f, 0.95f, 1f, 0.7f);
-                trail.endColor = new Color(0.86f, 0.95f, 1f, 0f);
+                trail.startColor = DashTrailColor;
+                trail.endColor = new Color(DashTrailColor.r, DashTrailColor.g, DashTrailColor.b, 0f);
                 trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 trail.receiveShadows = false;
                 trail.sortingOrder = SortingOrder - 1;
@@ -990,8 +1038,10 @@ namespace BossRush
             }
         }
 
-        private void StopBuzz()
+        /// <summary>会话停用时可提前收声；幂等，日常关面板不调用，完整 Dispose 仍作最终兜底。</summary>
+        internal void StopBuzz()
         {
+            if (!buzzing) return;
             buzzing = false;
             try
             {

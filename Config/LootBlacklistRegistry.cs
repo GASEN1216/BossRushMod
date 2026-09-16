@@ -211,6 +211,19 @@ namespace BossRush
                 BossRushItemIds.SkyIslandStarfurnaceHarness,
                 BossRushItemIds.SkyIslandStarfurnacePack,
                 BossRushItemIds.SkyIslandStargazerLensHelm,
+                BossRushItemIds.SkyIslandRootweaveMask,
+                BossRushItemIds.SkyIslandVinewovenCuirass,
+                BossRushItemIds.SkyIslandHangrootQuiver,
+                BossRushItemIds.SkyIslandOldMailbag,
+                BossRushItemIds.SkyIslandGreenearStrawHat,
+                BossRushItemIds.SkyIslandStrawRaincoat,
+                BossRushItemIds.SkyIslandGrainSack,
+                BossRushItemIds.SkyIslandRainhushEarmuffs,
+                BossRushItemIds.SkyIslandMossgauzeMask,
+                BossRushItemIds.SkyIslandMirrorgrainPlate,
+                BossRushItemIds.SkyIslandWindbreakHood,
+                BossRushItemIds.SkyIslandWindbreakMantle,
+                BossRushItemIds.SkyIslandWindbreakPack,
             };
         }
     }

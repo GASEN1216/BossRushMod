@@ -127,11 +127,13 @@ namespace BossRush
                 Vector3 locked;
                 if (!SkyIslandBossForge.SnapToGround(player.transform.position, context, 0f, out locked)) locked = player.transform.position;
                 SkyIslandBossForge.PlaceRing(markRing, context.Root, locked);
+                // 戴着静听耳罩的玩家早一点听见（SkyIslandBossGearWorn，头目 R3）：锁定只会更长，逃圈判据仍按不戴的算。
+                float lockSeconds = SkyIslandBossRules.TelegraphSeconds(SkyIslandBossRules.MarkLockSeconds, SkyIslandBossGearWorn.Earmuffs);
                 started = Time.time;
-                while (Time.time - started < SkyIslandBossRules.MarkLockSeconds && !Aborted())
+                while (Time.time - started < lockSeconds && !Aborted())
                 {
                     SkyIslandBossForge.SetRing(markRing, SkyIslandBossRules.FlareRadius,
-                        0.5f + 0.5f * (Time.time - started) / SkyIslandBossRules.MarkLockSeconds, MarkTint);
+                        0.5f + 0.5f * (Time.time - started) / lockSeconds, MarkTint);
                     yield return null;
                 }
                 if (!Aborted())

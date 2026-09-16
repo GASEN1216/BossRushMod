@@ -328,7 +328,33 @@ export const INFOBOX: Record<string, Infobox> = {
       { zh: '获取', en: 'Availability', vz: '残星匠首必掉一件（35 / 35 / 30%）/ 瞭台观星手 30% 掉镜盔', ve: 'Starforge Foreman always drops one (35 / 35 / 30%) / Overlook Stargazer 30% lens helm' },
       { zh: '物品 ID', en: 'Internal ID', vz: '500086–500089' },
     ],
-    links: ['/maps/sky-island'],
+    links: ['/maps/sky-island', '/equipment/sky-island-lords-gear', '/equipment/sky-island-chiefs-gear'],
+  },
+  '/equipment/sky-island-lords-gear': {
+    eyebrowZh: '天空岛 · 6 件',
+    eyebrowEn: 'Sky Island · 6 pieces',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '5', tier: 5 },
+      { zh: '部件', en: 'Pieces', vz: '根须面罩 / 藤编甲 / 悬根箭囊 / 青穗斗笠 / 蓑衣甲 / 谷囊', ve: 'Rootweave Mask / Vinewoven Cuirass / Hanging-Root Quiver / Greenear Straw Hat / Straw Raincoat / Grain Sack' },
+      { zh: '耐久', en: 'Durability', vz: '40 / 100 / 无 / 60 / 90 / 无', ve: '40 / 100 / none / 60 / 90 / none' },
+      { zh: '岛上用处', en: 'On the isles', vz: '悬根猎装任穿两件：搜刮箱出特产的机会翻倍；蓑衣农装任穿两件：割青穗草多一份', ve: 'Any two rootweave pieces: island goods in crates twice as often; any two straw-cloak pieces: one more greenear per cut' },
+      { zh: '获取', en: 'Availability', vz: '悬根猎首、穗镰各必掉一件（35 / 35 / 30%）', ve: 'Hanging-Root Huntmaster and Grain Sickle each always drop one (35 / 35 / 30%)' },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500090–500092, 500094–500096' },
+    ],
+    links: ['/maps/sky-island', '/equipment/sky-island-starworks-gear', '/equipment/sky-island-chiefs-gear'],
+  },
+  '/equipment/sky-island-chiefs-gear': {
+    eyebrowZh: '天空岛 · 7 件',
+    eyebrowEn: 'Sky Island · 7 pieces',
+    rows: [
+      { zh: '品质', en: 'Rarity', vz: '4–5' },
+      { zh: '部件', en: 'Pieces', vz: '旧邮包 / 静听耳罩 / 苔纱面罩 / 镜纹甲 / 断风兜帽 / 断风披甲 / 断风行囊', ve: 'Old Mailbag / Rainhush Earmuffs / Mossgauze Mask / Mirrorgrain Plate / Galebreaker Hood / Galebreaker Mantle / Galebreaker Pack' },
+      { zh: '耐久', en: 'Durability', vz: '无 / 40 / 40 / 80 / 50 / 70 / 无', ve: 'none / 40 / 40 / 80 / 50 / 70 / none' },
+      { zh: '岛上用处', en: 'On the isles', vz: '邮包多一封信；耳罩预警更久；面罩让云蚋不躲；镜纹甲免物证与折翎和解；断风套任穿两件桥上快 12%', ve: 'Mailbag: one more letter; earmuffs: longer warnings; mask: gnats stop dodging; plate: reconcile with Zheling without the letter or chart; any two Galebreaker pieces: 12% faster on bridges' },
+      { zh: '获取', en: 'Availability', vz: '截信人 / 听雨人 / 蚋笛翁 / 镜中客各 30%；三位断风游猎各 40%', ve: 'Waylayer / Rain Listener / Gnat Piper / Mirror Guest 30% each; the three Galebreaker Rangers 40% each' },
+      { zh: '物品 ID', en: 'Internal ID', vz: '500093, 500097–500102' },
+    ],
+    links: ['/maps/sky-island', '/equipment/sky-island-starworks-gear', '/equipment/sky-island-lords-gear'],
   },
 
   // ── 游戏模式 ────────────────────────────────────────────

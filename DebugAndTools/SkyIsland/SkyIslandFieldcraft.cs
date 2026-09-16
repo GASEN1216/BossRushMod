@@ -135,8 +135,8 @@ namespace BossRush
             TickBuffs(now);
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.FiresAndBuffs);
             TickWind(player, night, elapsed);
-            // 头目 / 岛主 R1：戴着观星镜盔站定标敌（SkyIslandFieldcraftBossGear.cs；没戴时读一次头盔槽就早返）。
-            TickStargazerSight(player, now, elapsed);
+            // 头目 / 岛主：穿戴快照、断风套加成、观星镜盔站定标敌（SkyIslandFieldcraftBossGear.cs；读五个槽位，不分配）。
+            TickBossGear(player, now, elapsed);
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.WindAndSwarm);
         }
 
@@ -166,6 +166,8 @@ namespace BossRush
             {
                 yields = SkyIslandFieldcraftRules.Roll(node,
                     SkyIslandLootTables.CreateStream(seed, "gather:" + node.Id), IsNight(), data);
+                // 头目 R3：蓑衣农装任两件，割青穗草多一份（SkyIslandFieldcraftBossGear；结果随采集点缓存，只加一次）。
+                yields = WithSickleBonus(node, yields);
                 pendingHarvest.Add(node.Id, yields);
             }
             var given = new List<SkyIslandYield>(yields.Length);
@@ -788,8 +790,8 @@ namespace BossRush
             DestroyLantern();
             // 蚊群先收：它的痒 Modifier、灭蚊灯与嗡声都是本趟的。
             if (gnats != null) gnats.Dispose();
-            // 头目 / 岛主 R1：观星镜盔挂在敌人脚下的星标圈（SkyIslandFieldcraftBossGear.cs）。
-            ClearSightRings();
+            // 头目 / 岛主：观星镜盔的星标圈、断风套加成与穿戴快照（SkyIslandFieldcraftBossGear.cs）。
+            DisposeBossGear();
             for (int i = 0; i < fires.Count; i++)
                 if (fires[i] != null) UnityEngine.Object.Destroy(fires[i].gameObject);
             fires.Clear();

@@ -43,6 +43,8 @@ namespace BossRush
             internal F3AutotestTable Table;
             internal AutotestSnapshot Snapshot;
             internal int ExpectedSteps, LastKilled;
+            /// <summary>这一步开始时会话已经捞回主角几次（SkyIslandSession.RescueCount）：一步之内连捞说明落点站不住。</summary>
+            internal int StepStartRescues;
             internal long ShotBytes;
             internal readonly F3AutotestRunInfo Info = new F3AutotestRunInfo();
             internal readonly List<F3AutotestStepRecord> Records = new List<F3AutotestStepRecord>();

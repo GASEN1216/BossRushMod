@@ -7,13 +7,18 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>头目 / 岛主控制器从遭遇 owner 拿到的环境：地图根、地面层、会话是否仍有效、字幕通道。</summary>
+    /// <summary>头目 / 岛主控制器从遭遇 owner 拿到的环境：地图根、地面层、会话是否仍有效、字幕通道与叫帮手。</summary>
     internal sealed class SkyIslandBossContext
     {
         internal Transform Root;
         internal int GroundMask;
         internal Func<bool> Valid;
         internal Action<string, bool> Report;
+        /// <summary>
+        /// 穗镰「谷仓叫人」（R3）：把某一组还活着的人拉到给定位置附近并盯上主角，返回拉过来几个。
+        /// 手动组、已清场的组不叫；不另开生成路径（SkyIslandEncounters.CallGroup）。
+        /// </summary>
+        internal Func<string, Vector3, int> CallGroup;
     }
 
     /// <summary>已按档案装配过的一次性标记。随角色销毁，不需要额外清理。</summary>
@@ -252,9 +257,51 @@ namespace BossRush
                     case SkyIslandBossKind.Stargazer:
                         created.gameObject.AddComponent<SkyIslandStargazerChief>().Bind(created, profile, context);
                         break;
+                    case SkyIslandBossKind.RootHunter:
+                        created.gameObject.AddComponent<SkyIslandRootHunterBoss>().Bind(created, profile, context);
+                        break;
+                    case SkyIslandBossKind.Waylayer:
+                        created.gameObject.AddComponent<SkyIslandWaylayerChief>().Bind(created, profile, context);
+                        break;
+                    case SkyIslandBossKind.Sickle:
+                        created.gameObject.AddComponent<SkyIslandSickleBoss>().Bind(created, profile, context);
+                        break;
+                    case SkyIslandBossKind.Listener:
+                        created.gameObject.AddComponent<SkyIslandListenerChief>().Bind(created, profile, context);
+                        break;
+                    case SkyIslandBossKind.Piper:
+                        created.gameObject.AddComponent<SkyIslandPiperChief>().Bind(created, profile, context);
+                        break;
+                    case SkyIslandBossKind.Mirror:
+                        created.gameObject.AddComponent<SkyIslandMirrorChief>().Bind(created, profile, context);
+                        break;
+                    case SkyIslandBossKind.Windhunter:
+                        created.gameObject.AddComponent<SkyIslandWindhunterChief>().Bind(created, profile, context);
+                        break;
                 }
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 招式控制器装配失败，只剩官方 AI：" + e.Message); }
+        }
+
+        /// <summary>这一组的带队是「只在夜里出来」的头目（蚋笛翁、镜中客）。遭遇 owner 装配时读一次。</summary>
+        internal static bool IsNightLead(string encounterId)
+        {
+            return SkyIslandBossRules.LeadIsNightOnly(encounterId);
+        }
+
+        /// <summary>
+        /// 这一组的带队现在该不该继续等夜：是夜限定头目、而此刻不是夜里（判夜只有一个口径：SkyIslandNight + SkyIslandLighting.ClockHours）。
+        /// 遭遇 owner 据此白天只刷随从、把带队位留到夜里补刷；不在这里跳过装配——自动组每个位置每趟只刷一次。
+        /// </summary>
+        internal static bool LeadWaitsForNight(string encounterId)
+        {
+            return SkyIslandBossRules.LeadIsNightOnly(encounterId) && !SkyIslandNight.IsNight(SkyIslandLighting.ClockHours());
+        }
+
+        /// <summary>这一组整组换成另一阵营（断风游猎）。遭遇 owner 装配时读一次。</summary>
+        internal static bool IsRivalFaction(string encounterId)
+        {
+            return SkyIslandBossRules.IsRivalFaction(encounterId);
         }
 
         internal static void RaiseDefeated(SkyIslandBossProfile profile, Vector3 position)
@@ -266,7 +313,7 @@ namespace BossRush
         }
 
         // ====================================================================
-        // 两位 Boss 共用的表现与伤害（不改 SkyIslandStormBoss）
+        // 各位 Boss 共用的表现与伤害（不改 SkyIslandStormBoss；R2–R4 另有 SkyIslandBossProps）
         // ====================================================================
 
         /// <summary>贴地预警圈：挂在地图根上、放在世界坐标 <paramref name="world"/>。半径由 <see cref="SetRing"/> 画，必须等于真实判定范围。</summary>
@@ -368,10 +415,11 @@ namespace BossRush
         }
 #endif
 
-        /// <summary>由 SkyIslandRuntimeModule.OnDestroy 调用：清掉静态事件的残留订阅。</summary>
+        /// <summary>由 SkyIslandRuntimeModule.OnDestroy 调用：清掉静态事件的残留订阅与主角穿戴快照。</summary>
         internal static void ResetStaticCaches()
         {
             Defeated = null;
+            SkyIslandBossGearWorn.Reset();
         }
     }
 }

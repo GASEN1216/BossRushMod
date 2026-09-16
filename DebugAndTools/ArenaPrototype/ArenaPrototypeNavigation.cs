@@ -42,6 +42,16 @@ namespace BossRush
             return count;
         }
 
+        /// <summary>离这个点最近的本租约图节点现在能不能走；图没建好或找不到节点时按能走算。给剧情门自检用：门关着时门框中心应当走不了。</summary>
+        internal bool IsWalkableAt(Vector3 point)
+        {
+            if (graph == null || owner == null) return true;
+            NNConstraint constraint = NNConstraint.None;
+            constraint.graphMask = GraphMask.FromGraph(graph);
+            GraphNode node = owner.GetNearest(point, constraint).node;
+            return node == null || node.Walkable;
+        }
+
         /// <summary>只修改本租约图。按整块三角面包围盒相交封门，避免长三角形中心落在门外而漏通。</summary>
         internal void SetBlockedAreas(Bounds[] areas)
         {

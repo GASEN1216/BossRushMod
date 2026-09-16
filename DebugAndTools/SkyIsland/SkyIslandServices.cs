@@ -303,6 +303,8 @@ namespace BossRush
             waitSeconds = 0;
             badge = false;
             if (disposed || player == null || player.Health == null) return SkyIslandServiceReadiness.Unavailable;
+            // 没有伤口就没有服务需求；即使上次用药仍在冷却，也不挂一个无事可办的倒计时按钮。
+            if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f) return SkyIslandServiceReadiness.NothingToDo;
             // 冷却是玩法计时，走游戏时间（AGENTS「玩法计时一律走游戏时间」）：旧写法 unscaledTime 在暂停菜单、
             // 拍照模式与剧情面板（timeScale 压到 0）背后照走，开着暂停菜单挂 5 分钟就能再敷一副。
             if (Time.time < healReadyAt)
@@ -310,7 +312,6 @@ namespace BossRush
                 waitSeconds = Mathf.CeilToInt(healReadyAt - Time.time);
                 return SkyIslandServiceReadiness.CoolingDown;
             }
-            if (player.Health.CurrentHealth >= player.Health.MaxHealth - 0.01f) return SkyIslandServiceReadiness.NothingToDo;
             badge = CarriesBadge();
             price = SkyIslandItemRules.ServicePrice(HealPriceFor(player.Health.CurrentHealth, player.Health.MaxHealth), badge);
             return EconomyManager.IsEnough(new Cost((long)price), AccountAvailable, true)
@@ -429,7 +430,8 @@ namespace BossRush
         /// 传进来的 <paramref name="position"/> 是锚点（苇白本人或风铃集留言板），**不能**直接当落点：
         /// 那会把箱子生成在 NPC / 告示牌身体里，抢同一次交互选择；而且三轮委托的锚点完全相同，
         /// 箱子会一摞叠在一处，只有最上面那个按得到。这里按轮次分 120° 方位角退开 3 m，
-        /// 再走与搜刮点同一套地面/墙体裁决。落点探测失败才退回锚点本身（fail-open，不能不给奖励）。
+        /// 再走与搜刮点同一套地面/墙体裁决。找不到安全落点就返回 false，委托保留等待重试；
+        /// 不能把箱子硬塞回装置/居民身上，再把它当作「已送达」消费委托。
         /// </summary>
         internal bool DropBountyReward(Vector3 position, SkyIslandLootTier tier, int round)
         {
@@ -442,7 +444,7 @@ namespace BossRush
             Vector3 drop;
             if (!SkyIslandRewardCrate.TryFindCratePosition(root.transform, position,
                 BountyRewardBearing + round * BountyRewardBearingStep, BountyRewardDistance, groundMask, out drop))
-                drop = position;
+                return false;
             return SkyIslandRewardCrate.Create(root.transform, drop, tier,
                 "SkyIslandBountyReward_" + round, "Bounty" + round, raidSeed, BountyRewardItemCount, true);
         }

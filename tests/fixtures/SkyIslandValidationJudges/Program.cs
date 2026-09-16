@@ -538,8 +538,16 @@ internal static class Program
     {
         string metrics, reason;
         SkyIslandContentData content = SkyIslandContent.CreateFallback();
+        int profileCount = SkyIslandBossRules.Profiles.Length, gearCount = 0;
+        foreach (SkyIslandBossProfile profile in SkyIslandBossRules.Profiles) gearCount += profile.Gear.Length;
         Check(F3GameplayValidationRunner.JudgeBossProfiles(content, id => null, out metrics, out reason)
-            && metrics.Contains("profiles_bound=2/2") && metrics.Contains("gear_ok=4/4"), "boss profiles: bound groups and registered gear -> PASS");
+            && metrics.Contains("profiles_bound=" + profileCount + "/" + profileCount) && metrics.Contains("gear_ok=" + gearCount + "/" + gearCount)
+            && profileCount == 11 && gearCount == 17 && metrics.Contains("night_leads=2") && metrics.Contains("rival_groups=3") && metrics.Contains("escape_max="),
+            "boss profiles: eleven bound groups, seventeen registered pieces, every ring escapable -> PASS");
+        SkyIslandContentData stalker = SkyIslandContent.CreateFallback();
+        Array.Find(stalker.Encounters, e => e.Id == "K2_Relay").Lead = SkyIslandEnemyTier.Scav;
+        Check(!F3GameplayValidationRunner.JudgeBossProfiles(stalker, id => null, out metrics, out reason) && reason.Contains("WindhunterStalker:tier=Scav"),
+            "boss profiles: a relay chief demoted back to a scavenger lead -> FAIL");
         Check(!F3GameplayValidationRunner.JudgeBossProfiles(content, id => id == BossRushItemIds.SkyIslandStarfurnacePack ? "prefab_missing" : null,
             out metrics, out reason) && reason.Contains("500088:prefab_missing"), "boss profiles: a missing gear prefab is named in the reason -> FAIL");
         SkyIslandContentData demoted = SkyIslandContent.CreateFallback();

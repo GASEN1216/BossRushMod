@@ -209,3 +209,11 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
   - 同一类视觉项反复需要人看时，改成进程内像素探针。
 - 冲突记录：上一节写的「按按钮 + AI 审阅」，在截图这一环改为 owner 目检；文字部分仍由 AI 审阅。`tools/autotest_review.py` 照常生成拼图，但拼图是给 owner 看的。
 - 未做：没有改代码与工具。
+
+## 2026-09-15 天空岛头目 / 岛主 R2–R4（SAFE；代码本体见 FIX_TRACKER）
+
+- 根 `AGENTS.md` §4.3：「5000xx 区间」改成「500xxx 区间」（TypeID 已越过 500099），登记范围 `500001-500102`、下一可用 `500103`；`docs/contracts.md` §1 同步。`TypeIdLedgerGuard` 的扫描正则同步放宽，否则 500100 起的号整段漏扫。
+- `DebugAndTools/SkyIsland/AGENTS.md` §3 头目组补两条（夜限定在遭遇层等夜、不在 Forge 跳过；换阵营写在 wolf 安全网之后），§4 补两条（招式控制器走 `SkyIslandBossProps` 共用件：换位顺序、倒影不克隆角色、面罩 / 耳机由控制器照头盔口径磨；主角穿戴只在 `SkyIslandFieldcraftBossGear` 读、其余读快照）。
+- repowiki「天空岛剧情与持久化」新增 R2–R4 一节，「调试工具」补 `approach_boss` / `feed_shots` 两个动词。
+- 冲突记录：计划稿里的 `WakeGroup`、镜池对称、悬根猎装「减速减半」、苔纱面罩「不累积瘙痒」与最终代码不一致，文档一律按代码写（`CallGroup`、以玩家为轴翻身、翻箱特产翻倍、云蚋不躲枪口）；官方 `Health.Hurt` 是暴击磨头盔、非暴击磨身甲，不是「只在暴击时磨头盔与身甲」。
+- 天空岛人工清单：2.20 已被剧情面板一节占用，R2–R4 用 2.21–2.23；`SkyIslandAutotestTableGuard` 的清单区间暂不含 2.20（那一节还没进覆盖表）。

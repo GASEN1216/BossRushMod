@@ -223,6 +223,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandHud.cs
 echo(DebugAndTools\SkyIsland\SkyIslandCaptionQueue.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionValidation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionAutotest.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSessionFooting.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionRecall.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionGnatBounty.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionLabels.cs
@@ -237,6 +238,14 @@ echo(DebugAndTools\SkyIsland\SkyIslandBossForge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossLoot.cs
 echo(DebugAndTools\SkyIsland\SkyIslandForemanBoss.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStargazerChief.cs
+echo(DebugAndTools\SkyIsland\SkyIslandBossProps.cs
+echo(DebugAndTools\SkyIsland\SkyIslandRootHunterBoss.cs
+echo(DebugAndTools\SkyIsland\SkyIslandWaylayerChief.cs
+echo(DebugAndTools\SkyIsland\SkyIslandSickleBoss.cs
+echo(DebugAndTools\SkyIsland\SkyIslandListenerChief.cs
+echo(DebugAndTools\SkyIsland\SkyIslandPiperChief.cs
+echo(DebugAndTools\SkyIsland\SkyIslandMirrorChief.cs
+echo(DebugAndTools\SkyIsland\SkyIslandWindhunterChief.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSessionBosses.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryBosses.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFieldcraftBossGear.cs
@@ -256,6 +265,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandInventoryTransaction.cs
 echo(DebugAndTools\SkyIsland\SkyIslandNight.cs
 echo(DebugAndTools\SkyIsland\SkyIslandMosquitoRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGnats.cs
+echo(DebugAndTools\SkyIsland\SkyIslandGnatsLure.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGnatsDrill.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGnatProjectilePatch.cs
 echo(DebugAndTools\SkyIsland\SkyIslandHearthFx.cs

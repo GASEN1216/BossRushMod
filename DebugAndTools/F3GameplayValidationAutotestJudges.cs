@@ -141,7 +141,7 @@ namespace BossRush
             "night", "give", "give_if_missing", "use_buff", "use_item", "use_compass", "set_health", "spawn_gnats", "echo_hurt",
             "wait_object", "wait_alpha", "caption", "wait_caption", "frame", "loot", "puzzle_solve", "open_map", "close_view",
             "click_close", "open_modeg_confirm", "close_modeg_confirm", "reachability", "encounter_cap", "wait_boss", "boss_hurt",
-            "loot_boss", "teleport_view", "ring_replay", "shot", "burst", "assert",
+            "loot_boss", "approach_boss", "feed_shots", "reset_encounter", "teleport_view", "ring_replay", "shot", "burst", "assert",
         };
 
         /// <summary>

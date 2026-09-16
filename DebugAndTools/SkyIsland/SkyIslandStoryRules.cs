@@ -33,6 +33,11 @@ namespace BossRush
         public int visitedRegions;
         public string[] clearedEncounters;
         public string[] discoveredNotes;
+        /// <summary>
+        /// 运行时注入、不进存档：主角此刻穿着镜中客的镜纹甲（头目 R4）。折翎认得那身纹路，和解可以不带旧信与航路图。
+        /// 由局内 owner 按穿戴采样写（SkyIslandFieldcraftBossGear）；默认 false，隔离回归不写就等于没穿。
+        /// </summary>
+        [NonSerialized] internal bool wearsMirrorArmor;
 
         internal bool Has(SkyIslandStoryFlag value) { return (flags & (int)value) == (int)value; }
         internal bool BothBeacons { get { return Has(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp); } }
@@ -44,7 +49,7 @@ namespace BossRush
         {
             return new SkyIslandStoryData { schemaVersion = schemaVersion, flags = flags, visitedRegions = visitedRegions,
                 clearedEncounters = (string[])(clearedEncounters ?? new string[0]).Clone(),
-                discoveredNotes = (string[])(discoveredNotes ?? new string[0]).Clone() };
+                discoveredNotes = (string[])(discoveredNotes ?? new string[0]).Clone(), wearsMirrorArmor = wearsMirrorArmor };
         }
     }
 
@@ -247,7 +252,8 @@ namespace BossRush
                     if (source.ZhelingResolved)
                         required = L10n.T("折翎的选择已经记下；镜水寺的道路保持开放。",
                             "Zheling's choice is already on record; the Mirrorwater Temple road stays open.");
-                    else if (!source.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart))
+                    // 穿着镜中客的镜纹甲（运行时字段，不进存档）：折翎认得那身纹路，不带旧信与航路图也肯谈。
+                    else if (!source.wearsMirrorArmor && !source.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart))
                         required = L10n.T("折翎：拿到倒挂邮亭的旧信和听雨洞的航路图，我们再谈。你也可以离开，或明确挑战我。",
                             "Zheling: Bring the old letter from the Upturned Post Hut and the route chart from the Rainlisten Grotto, and then we talk. You may also walk away, or challenge me outright.");
                     message = L10n.T("折翎放下武器：『我守住了路，却把回家的人也挡在外面。让我把它修好。』",

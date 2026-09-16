@@ -166,6 +166,9 @@ namespace BossRush
 
         /// <summary>木牌上一次按哪种语言写的：玩家在岛上切了语言时只重写字，不重扫导航。</summary>
         private bool labelsChinese;
+        /// <summary>关着的门自检节拍（见 <see cref="VerifyBlocked"/>）；自检点不在挡区里时停掉，免得每秒重封。</summary>
+        private float nextVerifyAt;
+        private bool verifyDisabled, leakReported;
 
         internal void Apply(SkyIslandStoryData story)
         {
@@ -176,19 +179,58 @@ namespace BossRush
             {
                 // 门没变、只是切了语言：木牌按当前语言重写（语言在取用时解析，AGENTS §4.4）。
                 if (chinese != labelsChinese) WriteLabels(story, chinese);
+                VerifyBlocked(story);
                 return;
             }
+            WriteLabels(story, chinese);
+            navigation.SetBlockedAreas(CollectBlocked(story, true));
+            flags = relevant;
+        }
+
+        /// <summary>按剧情开关门体，返回关着的门的碰撞盒。先采集激活的 collider 边界；关闭对象后 Bounds 会变空。</summary>
+        private Bounds[] CollectBlocked(SkyIslandStoryData story, bool toggle)
+        {
             var blocked = new List<Bounds>();
-            // 先采集激活的 collider 边界；关闭对象后 Bounds 会变空。
             foreach (Gate gate in gates)
             {
                 bool open = content.IsGateOpen(gate.Id, story);
-                gate.Root.SetActive(!open);
+                if (toggle) gate.Root.SetActive(!open);
                 if (!open) blocked.Add(gate.Blocker.bounds);
             }
-            WriteLabels(story, chinese);
-            navigation.SetBlockedAreas(blocked.ToArray());
-            flags = relevant;
+            return blocked.ToArray();
+        }
+
+        /// <summary>
+        /// 门关着时每秒抽查一次门框中心的导航节点：能走说明挡区被别的东西冲掉了（2026-09-15 第七轮 F3：
+        /// 真实状态段跑完之后，新档阶段钟庭门关着却走得到，而剧情标志全程没变、挡区只有这里在写）。
+        /// 按当前碰撞盒重新封一遍，记一次日志与重封前后的可走节点数，方便下一轮查出是谁冲掉的。
+        /// 平时每秒最多几次最近节点查询；重封之后门框中心仍然能走，说明自检点本来就不在挡区里，停掉自检。
+        /// </summary>
+        private void VerifyBlocked(SkyIslandStoryData story)
+        {
+            if (verifyDisabled || Time.time < nextVerifyAt) return;
+            nextVerifyAt = Time.time + 1f;
+            string leaked = LeakedGate(story);
+            if (leaked == null) return;
+            int before = navigation.CountWalkableNodes();
+            navigation.SetBlockedAreas(CollectBlocked(story, false));
+            string still = LeakedGate(story);
+            if (still != null) verifyDisabled = true;
+            if (leakReported && still == null) return;
+            leakReported = true;
+            Debug.LogWarning("[SkyIsland] gate navigation block was lost and re-applied: gate=" + leaked
+                + ",walkable_before=" + before + ",walkable_after=" + navigation.CountWalkableNodes()
+                + (still != null ? ",probe_not_in_block=" + still + ",verify_disabled=True" : string.Empty));
+        }
+
+        private string LeakedGate(SkyIslandStoryData story)
+        {
+            foreach (Gate gate in gates)
+            {
+                if (gate.Root == null || !gate.Root.activeInHierarchy || content.IsGateOpen(gate.Id, story)) continue;
+                if (navigation.IsWalkableAt(gate.Blocker.bounds.center)) return gate.Id;
+            }
+            return null;
         }
 
         private void WriteLabels(SkyIslandStoryData story, bool chinese)

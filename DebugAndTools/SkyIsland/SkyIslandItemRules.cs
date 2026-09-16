@@ -50,6 +50,18 @@ namespace BossRush
             BossRushItemIds.SkyIslandSmokeFan
         };
 
+        /// <summary>
+        /// 截信人会下手的东西：岛上的耗材与随身工具（便当、药膏、风灯、驱风香、护符、纱笠、灭蚊灯、蒲扇）。
+        /// 纪念品、材料与官方物品一律不偷——被抢的只该是「这一趟拿来用的东西」，倒下时原物进它的尸体箱。
+        /// </summary>
+        internal static readonly int[] StealableTypeIds =
+        {
+            BossRushItemIds.SkyIslandHomecomingBento, BossRushItemIds.SkyIslandStarmossSalve,
+            BossRushItemIds.SkyIslandWindLantern, BossRushItemIds.SkyIslandWindwardIncense,
+            BossRushItemIds.SkyIslandQinglanCharm, BossRushItemIds.SkyIslandCloudmossVeil,
+            BossRushItemIds.SkyIslandGnatZapper, BossRushItemIds.SkyIslandSmokeFan
+        };
+
         private static readonly SkyIslandKeepsake[] keepsakes =
         {
             Keepsake(CompassKeepsake, BossRushItemIds.SkyIslandWindVaneCompass, false,
@@ -96,6 +108,19 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandStarfurnaceHarness: return "星炉背甲";
                 case BossRushItemIds.SkyIslandStarfurnacePack: return "星炉背囊";
                 case BossRushItemIds.SkyIslandStargazerLensHelm: return "观星镜盔";
+                case BossRushItemIds.SkyIslandRootweaveMask: return "根须面罩";
+                case BossRushItemIds.SkyIslandVinewovenCuirass: return "藤编甲";
+                case BossRushItemIds.SkyIslandHangrootQuiver: return "悬根箭囊";
+                case BossRushItemIds.SkyIslandOldMailbag: return "旧邮包";
+                case BossRushItemIds.SkyIslandGreenearStrawHat: return "青穗斗笠";
+                case BossRushItemIds.SkyIslandStrawRaincoat: return "蓑衣甲";
+                case BossRushItemIds.SkyIslandGrainSack: return "谷囊";
+                case BossRushItemIds.SkyIslandRainhushEarmuffs: return "静听耳罩";
+                case BossRushItemIds.SkyIslandMossgauzeMask: return "苔纱面罩";
+                case BossRushItemIds.SkyIslandMirrorgrainPlate: return "镜纹甲";
+                case BossRushItemIds.SkyIslandWindbreakHood: return "断风兜帽";
+                case BossRushItemIds.SkyIslandWindbreakMantle: return "断风披甲";
+                case BossRushItemIds.SkyIslandWindbreakPack: return "断风行囊";
                 default: return "天空岛物品";
             }
         }
@@ -127,6 +152,19 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandStarfurnaceHarness: return "Starfurnace Harness";
                 case BossRushItemIds.SkyIslandStarfurnacePack: return "Starfurnace Pack";
                 case BossRushItemIds.SkyIslandStargazerLensHelm: return "Stargazer's Lens Helm";
+                case BossRushItemIds.SkyIslandRootweaveMask: return "Rootweave Mask";
+                case BossRushItemIds.SkyIslandVinewovenCuirass: return "Vinewoven Cuirass";
+                case BossRushItemIds.SkyIslandHangrootQuiver: return "Hanging-Root Quiver";
+                case BossRushItemIds.SkyIslandOldMailbag: return "Old Mailbag";
+                case BossRushItemIds.SkyIslandGreenearStrawHat: return "Greenear Straw Hat";
+                case BossRushItemIds.SkyIslandStrawRaincoat: return "Straw Raincoat";
+                case BossRushItemIds.SkyIslandGrainSack: return "Grain Sack";
+                case BossRushItemIds.SkyIslandRainhushEarmuffs: return "Rainhush Earmuffs";
+                case BossRushItemIds.SkyIslandMossgauzeMask: return "Mossgauze Mask";
+                case BossRushItemIds.SkyIslandMirrorgrainPlate: return "Mirrorgrain Plate";
+                case BossRushItemIds.SkyIslandWindbreakHood: return "Galebreaker Hood";
+                case BossRushItemIds.SkyIslandWindbreakMantle: return "Galebreaker Mantle";
+                case BossRushItemIds.SkyIslandWindbreakPack: return "Galebreaker Pack";
                 default: return "Sky Islands item";
             }
         }
@@ -151,6 +189,20 @@ namespace BossRush
                 case BossRushItemIds.SkyIslandStarfurnaceHarness: return 15000;
                 case BossRushItemIds.SkyIslandStarfurnacePack: return 12000;
                 case BossRushItemIds.SkyIslandStargazerLensHelm: return 9000;
+                // R2–R4：岛主三件同 R1（1.2 万 / 1.5 万 / 1.2 万）；头目单件 0.8–1.0 万；断风套三位头目各四成掉一件，单件 0.7 万。
+                case BossRushItemIds.SkyIslandRootweaveMask: return 12000;
+                case BossRushItemIds.SkyIslandVinewovenCuirass: return 15000;
+                case BossRushItemIds.SkyIslandHangrootQuiver: return 12000;
+                case BossRushItemIds.SkyIslandOldMailbag: return 8000;
+                case BossRushItemIds.SkyIslandGreenearStrawHat: return 12000;
+                case BossRushItemIds.SkyIslandStrawRaincoat: return 15000;
+                case BossRushItemIds.SkyIslandGrainSack: return 12000;
+                case BossRushItemIds.SkyIslandRainhushEarmuffs: return 9000;
+                case BossRushItemIds.SkyIslandMossgauzeMask: return 9000;
+                case BossRushItemIds.SkyIslandMirrorgrainPlate: return 10000;
+                case BossRushItemIds.SkyIslandWindbreakHood: return 7000;
+                case BossRushItemIds.SkyIslandWindbreakMantle: return 7000;
+                case BossRushItemIds.SkyIslandWindbreakPack: return 7000;
                 case BossRushItemIds.SkyIslandHomecomingBadge: return 5000;
                 case BossRushItemIds.SkyIslandWindeaterCore: return 12000;
                 case BossRushItemIds.SkyIslandWindVaneCompass: return 1500;

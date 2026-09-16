@@ -32,6 +32,8 @@
 - 新物品除 `Integration/AGENTS.md` 的通用接线外，还要进 `SkyIslandItemRules`（中英名、`ValueOf` 正价值、`AllTypeIds`），由 `SkyIslandFieldcraftGuard` 逐项核对。
 - **头目 / 岛主「配装即掉落」**（`SkyIslandBossRules` 档案表，`SkyIslandBossEcologyGuard`）：
   - 档案挂在已有自动组的带队位上，只改内容表的 lead 档次，不动 id / marker / count。
+  - 夜限定（`NightOnly`）在遭遇层等夜，不在 `SkyIslandBossForge` 里跳过：自动组每个位置每趟只刷一次，Forge 一跳过就把带队位烧成白板拾荒者。`SkyIslandEncounters` 白天留着带队位、不算缺人、不挡清场，入夜再单独补刷；判夜照 §4 的唯一口径。
+  - 换阵营（`RivalFaction`）整组 `SetTeam(Teams.bear)`，写在 `Spawn` 里 `SetTeam(Teams.wolf)` 安全网之后、身份层之前，不替代安全网（根 `AGENTS.md` §4.5）。
   - 每次都穿全套专属装备：配装前先 `ItemAssetsCollection.GetPrefab` 预检，刷新模型用 `ForceInvokeSlotContentChangedEvent`，不重复调 `SetItem`。
   - 死后只在该角色实例的 `BeforeCharacterSpawnLootOnDead`（官方建尸体箱之前）按权重留一件、其余配装卸下销毁，箱里其余照官方掉落；不走 BossRush 奖励箱、不挂 `OnDead` 前缀。
   - 专属装备走装备 bundle `skyisland_boss_gear` 注册，名字与价值进 `SkyIslandItemRules`，但**不进** `AllTypeIds`（那张表是 500068 起连续的岛上克隆物品），登记在 `SkyIslandBossRules.AllGearTypeIds`。
@@ -50,8 +52,14 @@
 - **选项先判再挂**：「能不能挂」与「点了会不会被拒」共用 `SkyIslandStoryRules` 里同一份判据；不挂灰项；同页超过 3–4 项分二级（`SkyIslandChoiceGateGuard`）。
 - **叙事走官方对话，图鉴走官方 `NoteIndex`**（`SkyIslandNoteBridge`）。自绘面板只因 `timeScale = 0` 模态保留，理由写在文件头；官方任务系统刻意不接（`SkyIslandOfficialApiReuseGuard`）。
 - **云蚋这类可被打中的轻量目标不克隆角色**：先失活，建伤害接收体层非触发球 + 运动学刚体 + `DamageReceiver`（`useSimpleHealth`）+ `HealthSimpleBase`（阵营 wolf）再激活；死亡看 `activeSelf`；挪完 `Physics.SyncTransforms()`。躲子弹在 `Projectile.Init(ProjectileContext)` 的后缀里拿弹道，起点用 `firstFrameCheckStartPoint`；瞄准辅助会吸附伤害接收体，所以瞄准线扫过时也要预闪。伤害只在 `SkyIslandGnats`，局内 owner `SkyIslandFieldcraft` 不出现伤害。
+- **头目 / 岛主招式控制器走 `SkyIslandBossProps` 共用件**（`SkyIslandBossEcologyGuard`）：
+  - 换位只走 `Teleport`：`CancelCurrentPathRequest(true)` →（要硬直时）`BossAIController.Pause` → `SetPosition` → `Physics.SyncTransforms()`，硬直结束由调用方 `Resume`。`StopMove` 不取消在途寻路，回调会把旧路径装回来。
+  - 倒影一类分身用 `CreateDecoy`（`BakeMesh` 烤成静态网格挂在轻量接收体上），不 `Instantiate` 角色或模型：会连身上的 `Item` / `ItemAgent` 一起复制。
+  - 官方 `Health.Hurt` 在出击图上只磨头盔（暴击）与身甲（非暴击），不磨面罩与耳机：穿这两槽专属装备的 Boss 由自己的控制器在 `Health.OnHurtEvent` 里调 `WearSoftPiece`（照头盔口径），`OnDestroy` 退订。
+- **主角穿戴只在一处读**：`SkyIslandFieldcraftBossGear` 按局内 owner 的节拍读主角装备槽，写进快照 `SkyIslandBossGearWorn`；招式控制器、剧情、搜刮箱与云蚋只读快照，不自己读槽，离岛与模块销毁时复位。要进剧情判据的（镜纹甲放行折翎）写 `SkyIslandStoryData` 的 `[NonSerialized]` 运行时字段，不加存档字段。
 - 独立出击关卡不保证有 `StockShopView`，岛上服务自带 UI；维修入列门照官方 `ItemRepairView.CanRepair`。每项居民服务都要有装置兜底，居民生成失败的那一趟服务也不断线。
-- `SkyIslandSession.cs` 主文件有行数上限，新批次的接线挂到 `SkyIslandWorldStory` 等 owner 上，不往主文件加。
+- `SkyIslandSession.cs` 主文件有行数上限，新批次的接线挂到 `SkyIslandWorldStory` 等 owner 上，不往主文件加；落脚点与坠落捞回在同一 partial 的 `SkyIslandSessionFooting.cs`。
+- **落脚点必须站得住**：地面探针只把净空的落点（`Blocked`，墙体层胶囊，口径同头目冲步落点）记成 `safePosition`；同一处连捞 3 次换成地标锚点并记一条带坐标的 `FALL_RESCUE_LOOP`。落点自己站不住时捞回去会再掉一次，人在原地弹球（2026-09-16 第八轮 F3 在 `EnemySpawn_C` 一步之内连捞 11 次，步骤还记 PASS）。捞回次数经 `RescueCount` 进 F3，一步之内 ≥3 次记红。
 
 ## 5. 岛内 F3 验收套件
 

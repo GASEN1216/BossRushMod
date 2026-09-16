@@ -136,7 +136,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 「群岛之物」：十八件天空岛物品与头目 / 岛主的四件专属装备在岛上各拿来做什么。采集、合成、剧情、风晶灯、夜风与云蚋怎么串在一起，就看这一页；
+        /// 「群岛之物」：十八件天空岛物品与头目 / 岛主的十七件专属装备在岛上各拿来做什么。采集、合成、剧情、风晶灯、夜风与云蚋怎么串在一起，就看这一页；
         /// 会影响选择的两个数（护符减伤、航徽折扣）取规则常量，不另写一份。
         /// </summary>
         internal static string Uses()
@@ -188,6 +188,33 @@ namespace BossRush
                 "the Starforge Foreman's pack: +6 pack capacity, and it counts toward the Starworks pair"));
             Use(text, BossRushItemIds.SkyIslandStargazerLensHelm, L10n.T("瞭台观星手掉的镜盔：戴着站定 2 秒，40 米内的敌人脚下亮起星标（耐久打光就不灵了）",
                 "the Overlook Stargazer's lens helm: stand still for 2 seconds while wearing it and enemies within 40 m get star marks at their feet (stops working at zero durability)"));
+            // 头目 / 岛主 R2–R4 的专属装备：同样只从 Boss 身上来，穿上才有岛上的用处（SkyIslandFieldcraftBossGear 的穿戴采样）。
+            Use(text, BossRushItemIds.SkyIslandRootweaveMask, L10n.T("悬根猎首掉的面罩：和藤编甲、悬根箭囊任穿两件，翻搜刮箱时出岛上特产的机会翻倍",
+                "the Hanging-Root Huntmaster's mask: wear any two of it, the Vinewoven Cuirass and the Hanging-Root Quiver and island goods turn up twice as often in crates you search"));
+            Use(text, BossRushItemIds.SkyIslandVinewovenCuirass, L10n.T("悬根猎首掉的护甲：悬根猎装之一（翻箱出特产的机会翻倍）",
+                "the Huntmaster's armour: one of the rootweave pair (island goods turn up twice as often in crates)"));
+            Use(text, BossRushItemIds.SkyIslandHangrootQuiver, L10n.T("悬根猎首掉的箭囊：背包容量 +6，也算悬根猎装之一",
+                "the Huntmaster's quiver: +6 pack capacity, and it counts toward the rootweave pair"));
+            Use(text, BossRushItemIds.SkyIslandOldMailbag, L10n.T("截信人掉的邮包：背着上岛，信鸽那一趟多送一封信",
+                "the Waylayer's mailbag: carried on the isles, the pigeons bring one extra letter that raid"));
+            Use(text, BossRushItemIds.SkyIslandGreenearStrawHat, L10n.T("穗镰掉的斗笠：和蓑衣甲、谷囊任穿两件，割青穗草一次多割一份",
+                "Grain Sickle's hat: wear any two of it, the Straw Raincoat and the Grain Sack and each cut of greenear yields one more sheaf"));
+            Use(text, BossRushItemIds.SkyIslandStrawRaincoat, L10n.T("穗镰掉的护甲：蓑衣农装之一（割青穗草多一份）",
+                "Grain Sickle's armour: one of the straw-cloak pair (one more greenear sheaf per cut)"));
+            Use(text, BossRushItemIds.SkyIslandGrainSack, L10n.T("穗镰掉的谷囊：背包容量 +7，也算蓑衣农装之一",
+                "Grain Sickle's sack: +7 pack capacity, and it counts toward the straw-cloak pair"));
+            Use(text, BossRushItemIds.SkyIslandRainhushEarmuffs, L10n.T("听雨人掉的耳罩：戴着，所有头目与岛主的预警圈亮得更久；听雨人要 16 枪才引一次落石",
+                "the Rain Listener's earmuffs: worn, every chief's and lord's warning rings stay lit longer; the Rain Listener needs 16 shots to bring rocks down"));
+            Use(text, BossRushItemIds.SkyIslandMossgauzeMask, L10n.T("蚋笛翁掉的面罩：戴着，身边的云蚋躲不开你的枪口",
+                "the Gnat Piper's mask: worn, the cloud gnats around you stop dodging your shots"));
+            Use(text, BossRushItemIds.SkyIslandMirrorgrainPlate, L10n.T("镜中客掉的护甲：穿着去见折翎，不带旧信与航路图也能和解",
+                "the Mirror Guest's plate: wear it to see Zheling and you can reconcile without the old letter or the route chart"));
+            Use(text, BossRushItemIds.SkyIslandWindbreakHood, L10n.T("断风游猎 · 守掉的兜帽：和断风披甲、断风行囊任穿两件，走桥与中继平台更快",
+                "the Galebreaker Warden's hood: wear any two of it, the Galebreaker Mantle and the Galebreaker Pack and you move faster on bridges and relay platforms"));
+            Use(text, BossRushItemIds.SkyIslandWindbreakMantle, L10n.T("断风游猎 · 追掉的披甲：断风套之一（走桥更快）",
+                "the Galebreaker Chaser's mantle: one of the Galebreaker pair (faster on bridges)"));
+            Use(text, BossRushItemIds.SkyIslandWindbreakPack, L10n.T("断风游猎 · 伏掉的行囊：背包容量 +5，也算断风套之一",
+                "the Galebreaker Stalker's pack: +5 pack capacity, and it counts toward the Galebreaker pair"));
             return text.ToString();
         }
 

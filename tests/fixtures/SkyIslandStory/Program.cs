@@ -55,6 +55,19 @@ internal static class Program
         Apply(story, SkyIslandStoryAction.FindRouteChart);
         Apply(story, SkyIslandStoryAction.ReconcileZheling);
         Reject(story, SkyIslandStoryAction.ZhelingDefeated);
+        // 头目 R4：穿着镜中客的镜纹甲（运行时字段，不进存档）去见折翎，不带旧信与航路图也能和解；默认 false、候选状态照拷、编解码不带它。
+        SkyIslandStoryData mirror = SkyIslandStoryRules.CreateDefault();
+        SkyIslandStoryData mirrorCandidate;
+        string mirrorMessage;
+        Check(!mirror.wearsMirrorArmor && !SkyIslandStoryRules.TryApply(mirror, SkyIslandStoryAction.ReconcileZheling, out mirrorCandidate, out mirrorMessage),
+            "without the mirrorgrain plate Zheling still asks for the old letter and the route chart");
+        mirror.wearsMirrorArmor = true;
+        Check(SkyIslandStoryRules.TryApply(mirror, SkyIslandStoryAction.ReconcileZheling, out mirrorCandidate, out mirrorMessage)
+            && mirrorCandidate != null && mirrorCandidate.Has(SkyIslandStoryFlag.ZhelingReconciled),
+            "wearing the mirrorgrain plate lets Zheling reconcile without them");
+        Check(mirror.Copy().wearsMirrorArmor, "the runtime flag survives Copy (story candidates are copies)");
+        SkyIslandStoryData decodedMirror = SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(mirror));
+        Check(decodedMirror != null && !decodedMirror.wearsMirrorArmor, "the runtime flag never reaches the save");
         Apply(story, SkyIslandStoryAction.FindPlantingRecord);
         Apply(story, SkyIslandStoryAction.DeliverPlantingRecord);
         Reject(story, SkyIslandStoryAction.DeliverPlantingRecord);
@@ -208,8 +221,8 @@ internal static class Program
         Check(storm.TierFor(0) == SkyIslandEnemyTier.Storm && storm.TierFor(1) == SkyIslandEnemyTier.Elite,
             "storm group is boss plus elite escorts");
         SkyIslandEncounterDefinition beacon = Array.Find(content.Encounters, e => e.Id == "D");
-        Check(beacon.TierFor(0) == SkyIslandEnemyTier.Elite && beacon.TierFor(1) == SkyIslandEnemyTier.Scav,
-            "beacon guard group is led by an elite");
+        Check(beacon.TierFor(0) == SkyIslandEnemyTier.Lord && beacon.TierFor(1) == SkyIslandEnemyTier.Scav,
+            "beacon guard group is led by the hanging-root lord");
         Check(!SkyIslandContent.TryParse(world.Replace("\"lead\": \"Storm\"", "\"lead\": \"Scav\""),
             out content, out contentError), "tier downgrade rejected");
         Check(!SkyIslandContent.TryParse(world.Replace("\"tier\": \"Champion\"", "\"tier\": \"Nonsense\""),
@@ -393,6 +406,15 @@ internal static class Program
         Check(chain.Count == 4, "the four gated letters chain within one raid once their conditions are met");
         Check(SkyIslandLetters.NextSameRaidFor(paced) == null && SkyIslandLetters.NextFor(paced) == null,
             "the chain stops when every letter is collected");
+        // 头目 R2：背着截信人的旧邮包，无前置的信也能同趟再来一封（「每趟一次」由剧情 owner 计次）；信收完了邮包也变不出信。
+        SkyIslandStoryData bag = fresh.Copy();
+        bag.discoveredNotes = new[] { "Letter_01" };
+        Check(SkyIslandLetters.NextSameRaidFor(bag) == null && SkyIslandLetters.NextSameRaidFor(bag, false) == null,
+            "without the old mailbag an ungated letter still waits for the next raid");
+        SkyIslandLetter bagged = SkyIslandLetters.NextSameRaidFor(bag, true);
+        Check(bagged != null && SkyIslandLetters.NextFor(bag) != null && bagged.Id == SkyIslandLetters.NextFor(bag).Id,
+            "carrying the old mailbag lets the next ungated letter come this raid");
+        Check(SkyIslandLetters.NextSameRaidFor(paced, true) == null, "the mailbag cannot conjure a letter once every letter is collected");
 
         SkyIslandStoryData mailRoundTrip = SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(mail));
         Check(mailRoundTrip != null && mailRoundTrip.discoveredNotes.Length == 8, "letter ids round trip through the save codec");

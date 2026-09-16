@@ -7,7 +7,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Lord"
     },
     {
       "id": "C_02",
@@ -23,7 +23,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Elite"
+      "lead": "Lord"
     },
     {
       "id": "D_02",
@@ -71,7 +71,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "S2",
@@ -79,7 +79,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "S3",
@@ -87,7 +87,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "S4",
@@ -103,7 +103,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "Zheling",
@@ -135,7 +135,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "K2_Relay",
@@ -143,7 +143,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "K3_Relay",
@@ -151,7 +151,7 @@
       "count": 3,
       "manual": false,
       "tier": "Scav",
-      "lead": "Scav"
+      "lead": "Chief"
     },
     {
       "id": "E_03",

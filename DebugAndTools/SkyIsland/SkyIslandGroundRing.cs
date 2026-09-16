@@ -55,18 +55,25 @@ namespace BossRush
             return line;
         }
 
-        /// <summary>按半径重画圆环。<paramref name="radius"/> 必须是真实判定半径。</summary>
+        /// <summary>
+        /// 半径变化才重画几何；蓄力只改带宽与颜色。首顶点恒为 (radius, 0, 0)，直接读它作半径回执，
+        /// 不另建逐环缓存或组件。<paramref name="radius"/> 始终是真实判定半径，圆心跟随仍由 Transform 负责。
+        /// </summary>
         internal static void SetShape(LineRenderer line, float radius, float width, Color color)
         {
             if (line == null) return;
-            for (int i = 0; i < Segments; i++)
+            if (line.positionCount != Segments || line.GetPosition(0).x != radius)
             {
-                float angle = i * (2f * Mathf.PI / Segments);
-                line.SetPosition(i, new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius);
+                line.positionCount = Segments;
+                for (int i = 0; i < Segments; i++)
+                {
+                    float angle = i * (2f * Mathf.PI / Segments);
+                    line.SetPosition(i, new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), 0f) * radius);
+                }
             }
-            line.widthMultiplier = width;
-            line.startColor = color;
-            line.endColor = color;
+            if (line.widthMultiplier != width) line.widthMultiplier = width;
+            if (!line.startColor.Equals(color)) line.startColor = color;
+            if (!line.endColor.Equals(color)) line.endColor = color;
         }
 
         private static Material SharedMaterial()

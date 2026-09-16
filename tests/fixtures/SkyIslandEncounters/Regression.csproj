@@ -13,6 +13,11 @@
     <!-- PresetIndex 用 SkyIslandLootTables.StableHash 取跨机稳定的 preset 下标；
          该文件只 using System，没有 Unity 依赖，直接链真实生产源码即可，不需要替身。 -->
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
+    <!-- 头目 / 岛主档案表（R1–R4）：Forge 替身问真实档案决定接手、夜限定与换阵营；档案表只依赖下面这几份纯规则。 -->
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandItemRules.cs" Link="Production/SkyIslandItemRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
+    <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Data/BossRushJsonValue.cs" Link="Production/BossRushJsonValue.cs" />
     <Compile Include="../../../Common/Data/JsonDataRegistry.cs" Link="Production/JsonDataRegistry.cs" />
     <Compile Include="../../../Utilities/SimpleJsonHelper.cs" Link="Production/SimpleJsonHelper.cs" />

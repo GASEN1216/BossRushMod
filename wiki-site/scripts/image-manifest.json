@@ -553,6 +553,18 @@
       "en": "Starworks Gear"
     },
     {
+      "key": "eq-sky-island-lords-gear",
+      "src": "/images/ui/eq-sky-island-lords-gear.webp",
+      "zh": "岛主装备",
+      "en": "Island Lord Gear"
+    },
+    {
+      "key": "eq-sky-island-chiefs-gear",
+      "src": "/images/ui/eq-sky-island-chiefs-gear.webp",
+      "zh": "头目装备",
+      "en": "Island Chief Gear"
+    },
+    {
       "key": "item-key",
       "src": "/images/ui/item-key.webp",
       "zh": "入场与功能物品",

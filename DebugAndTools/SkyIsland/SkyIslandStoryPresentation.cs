@@ -235,6 +235,15 @@ namespace BossRush
         private IList<Choice> shownChoices;
         private Sprite shownPortrait;
         private Sprite shownBanner;
+        /// <summary>一次同步点击只提交最后一页：先更新玩法与选项，再用最终回执量高，避免成功操作连续建两张画布。</summary>
+        private sealed class PendingPage
+        {
+            internal string Title, Text;
+            internal IList<Choice> Choices;
+            internal Sprite Portrait, Banner;
+        }
+        private bool selecting;
+        private PendingPage pendingPage;
         /// <summary>当前面板根。换正文重建后按旧底边摆放（见 SetBodyText）。</summary>
         private RectTransform panelRect;
         private ZombieModeUIHelper.ModalInputLease input;
@@ -270,6 +279,12 @@ namespace BossRush
         internal void Show(string title, string text, IList<Choice> choices,
             Sprite portrait, Sprite banner)
         {
+            // 按钮回调内的重开只记参数；RunChoice 收到回执之后一次建完，模态租约在执行动作期间不中断。
+            if (selecting)
+            {
+                pendingPage = new PendingPage { Title = title, Text = text, Choices = choices, Portrait = portrait, Banner = banner };
+                return;
+            }
             // 选项回执会重开面板（SkyIslandWorldStory.Refreshed），换正文（SetBodyText）也走这里。重开时：
             // 1. 先挂新令牌再摘旧令牌，官方 HUD 全程保持隐藏，不会在两次之间闪回来一下；
             // 2. 不重播打开动画，否则每点一个选项面板都要「弹」一下。
@@ -762,7 +777,7 @@ namespace BossRush
 
             Func<string> select = choice.Select;
             // 回调返回 null 表示「正文不动」：跳到子页、返回上一页时，新开面板自己的正文就是对的，不能被覆盖成空。
-            button.onClick.AddListener(delegate { string reply = select(); if (reply != null) SetBodyText(reply); });
+            button.onClick.AddListener(delegate { RunChoice(select); });
             Register(button, rowColor);
             if (animate)
                 BossRushUIEntranceAnimation.Play(rect.gameObject, index * ChoiceStagger,
@@ -798,6 +813,39 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 合并一次点击里的「更新选项 + 写回执」。重入、异常与主动关闭不留下待提交页面；
+        /// 跳页返回 null 时保留目标页导语，回执改变正文时按点击前的底边摆放，不先排一张临时导语页。
+        /// </summary>
+        private void RunChoice(Func<string> select)
+        {
+            if (!Visible || selecting || select == null) return;
+            bool anchored = panelRect != null;
+            float bottom = anchored ? panelRect.anchoredPosition.y - panelRect.sizeDelta.y * 0.5f : 0f;
+            string reply;
+            PendingPage page;
+            selecting = true;
+            try
+            {
+                reply = select();
+                page = pendingPage;
+            }
+            finally
+            {
+                selecting = false;
+                pendingPage = null;
+            }
+            if (!Visible) return;
+            if (page == null)
+            {
+                if (reply != null) SetBodyText(reply);
+                return;
+            }
+            bool changedBody = reply != null && !string.Equals(reply, page.Text, StringComparison.Ordinal);
+            Show(page.Title, reply ?? page.Text, page.Choices, page.Portrait, page.Banner);
+            if (changedBody) RestoreBottom(anchored, bottom);
+        }
+
+        /// <summary>
         /// 换正文：**按新正文整页重建**（走 <c>Show</c>）。量高、挤压与滚动和首次打开是同一份算术——
         /// 上限一致、超出才滚动，空正文收成 0 高。
         ///
@@ -818,6 +866,11 @@ namespace BossRush
             bool anchored = panelRect != null;
             float bottom = anchored ? panelRect.anchoredPosition.y - panelRect.sizeDelta.y * 0.5f : 0f;
             Show(shownTitle, value, shownChoices, shownPortrait, shownBanner);
+            RestoreBottom(anchored, bottom);
+        }
+
+        private void RestoreBottom(bool anchored, float bottom)
+        {
             if (!anchored || panelRect == null) return;
             float height = panelRect.sizeDelta.y;
             float room = Mathf.Max(0f, (ZombieModeUIHelper.GetReferenceViewportSize().y - height) * 0.5f - Pad);
@@ -967,6 +1020,7 @@ namespace BossRush
 
         public void Dispose()
         {
+            pendingPage = null;
             UnsubscribeInput();
             if (input != null) input.Release();
             input = null;

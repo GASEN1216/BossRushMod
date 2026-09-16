@@ -434,7 +434,7 @@ namespace BossRush
                         (SkyIslandLetters.Collected(data, "Letter_03")
                             ? L10n.T("\n……那封没署名的信，我认得那笔字。田埂上那一格，我还替他留着。",
                                 "\n…That unsigned letter — I know that handwriting. I am still keeping that plot on the ridge for him.")
-                            : string.Empty) + QingheGnatLine(data);
+                            : string.Empty) + QingheGnatLine(data) + SkyIslandBossRules.ResidentLine("sky_qinghe", data);
                 case "sky_weibai":
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("钟响那天，东西两头的风铃一起响了——苇生以前说，那是岛在叫大家回家。委托板我还挂着，路过就来揭一张。\n",
@@ -457,7 +457,7 @@ namespace BossRush
                             ? L10n.T("\n阿潮的缆绳……我这就挂回最高的那根桩上。", "\nAchao's mooring line… I will hang it back on the tallest post right away.")
                             : string.Empty) + FuzhouLampLine(data) + SkyIslandBossRules.ResidentLine("sky_fuzhou", data);
                 case "sky_miantai":
-                    return MiantaiLine(data) + MiantaiItchLine;
+                    return MiantaiLine(data) + MiantaiItchLine + SkyIslandBossRules.ResidentLine("sky_miantai", data);
                 case "sky_zheling":
                     return ZhelingLine(data);
                 case "sky_bellkeeper":

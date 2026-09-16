@@ -435,6 +435,33 @@ namespace BossRush
         /// <summary>晃了眼的云蚋绕着灯罩打转的半径。</summary>
         internal const float LanternHaloRadius = 0.75f;
 
+        /// <summary>巡航尾迹：离主角这么近以内不拖尾（贴脸那几只已经够大，再拖尾会和冲刺前摇混淆）。</summary>
+        internal const float WakeNearRange = 5f;
+        /// <summary>巡航尾迹：离主角这么远起尾迹最浓。刷新距离是 <see cref="SpawnMinDistance"/>–<see cref="SpawnMaxDistance"/>，刚飞近的那一段全在浓度区里。</summary>
+        internal const float WakeFarRange = 12f;
+
+        /// <summary>
+        /// 巡航尾迹的浓度（0 不拖尾、1 最浓）：夜里 8–14 m 外的云蚋在屏幕上只有三五个像素，
+        /// 静止的小黑点混在夜色里读不出来（2026-09-16 第八轮 F3：8–14 m 那张亮度 Weber 0.129，门槛 0.2），
+        /// 给远处那几只一条淡尾迹，玩家先看见「有东西在动」，走近尾迹自己收掉。冲刺尾迹另算，不走这里。
+        /// </summary>
+        internal static float CruiseWake(float distance)
+        {
+            if (distance <= WakeNearRange) return 0f;
+            if (distance >= WakeFarRange) return 1f;
+            return (distance - WakeNearRange) / (WakeFarRange - WakeNearRange);
+        }
+
+        /// <summary>尾迹浓度的档位（0–<see cref="WakeSteps"/>）：每帧每只都重写 TrailRenderer 的颜色与宽度是浪费，按档变了才写。</summary>
+        internal const int WakeSteps = 4;
+
+        internal static int WakeLevel(float distance)
+        {
+            float wake = CruiseWake(distance);
+            int level = (int)(wake * WakeSteps + 0.5f);
+            return level < 0 ? 0 : level > WakeSteps ? WakeSteps : level;
+        }
+
         #endregion
 
         #region 躲闪

@@ -71,6 +71,55 @@ PIECES = [
      DUCK_FIT + "a light explorer skull cap of stitched brown leather with brass trim and an open face with a wide "
      "notch at the front for a flat duck bill, a brass monocular eyepiece rig on a hinged arm hanging over the right "
      "eye with three stacked telescoping lenses of pale sky-blue glass, a small rolled star chart tucked under a side strap."),
+    # ---- R2–R4（2026-09-15）：件名与 tools/sky_island_boss_gear_import.py 的 PIECES 一致，图标名与 GearSpecs.IconName 一致 ----
+    ("roothunter_facemask", "sky_island_rootweave_mask",
+     DUCK_FIT + "a hunter's half face mask that covers the top of a flat duck bill and the area around both eyes, woven "
+     "from dark braided tree roots and thin bark strips, two round eye openings, small carved wooden toggles, a few tufts "
+     "of green moss tucked into the weave, a thin leather tie strap at the back. Only the mask itself, seen from the front three-quarter."),
+    ("roothunter_armor", "sky_island_vinewoven_cuirass",
+     DUCK_FIT + "a sleeveless forest hunter's chest armor woven from thick braided vines over hard curved bark plates, "
+     "two crossed leather belts with wooden buckles, small leather pouches at the waist, moss and tiny green leaves "
+     "caught in the weave, short layered bark tassets at the hips."),
+    ("roothunter_backpack", "sky_island_hangroot_quiver",
+     DUCK_FIT + "a tall back quiver made from a hollow gnarled root log bound with vine rope, a bundle of sharpened "
+     "wooden root stakes sticking out of the top, a coil of braided vine tripwire hanging on one side, thick leather "
+     "shoulder straps with brass buckles."),
+    ("waylayer_backpack", "sky_island_old_mailbag",
+     DUCK_FIT + "a battered postal satchel worn as a backpack: faded cream canvas with two soft teal stripes, a brass "
+     "post-horn badge on the flap, a bundle of blank sealed envelopes tied with string peeking out under the flap (no "
+     "writing on them), a rolled paper map strapped underneath, leather straps with brass buckles, patched corners."),
+    ("sickle_helmet", "sky_island_greenear_straw_hat",
+     DUCK_FIT + "a conical woven straw farmer's hat with a wide brim, a thin brass rim band, a few bound green grain "
+     "ears tucked into the band like a plume, a braided cord chin strap hanging down, the crown sized to sit on a small round head."),
+    ("sickle_armor", "sky_island_straw_raincoat",
+     DUCK_FIT + "a sleeveless layered straw rain cape armor in the style of an old farmer's straw raincoat: shaggy "
+     "overlapping layers of golden straw over the shoulders and chest, a few riveted brass plates reinforcing the "
+     "chest, tied at the waist with a woven rope belt and a small crescent-shaped brass clasp."),
+    ("sickle_backpack", "sky_island_grain_sack",
+     DUCK_FIT + "a plump burlap grain sack backpack tied shut at the top with twine, a few green grain ears poking out, "
+     "a small wooden water scoop and a sheathed curved sickle blade strapped to one side, woven straw shoulder straps."),
+    ("listener_headset", "sky_island_rainhush_earmuffs",
+     DUCK_FIT + "a pair of chunky round earmuffs joined by a curved brass headband that arcs over the top of a small "
+     "round head, each ear cup padded with soft teal felt and faced with a brass mesh grille engraved with a tiny rain "
+     "drop, a small brass ear trumpet curling off one cup. Only the headset itself, seen from the front three-quarter."),
+    ("piper_facemask", "sky_island_mossgauze_mask",
+     DUCK_FIT + "a soft face veil mask: fine pale green moss-gauze netting stretched over a thin curved bamboo frame "
+     "that covers the face and a flat duck bill, dried herb sprigs tucked along the rim, a small brass reed flute "
+     "hanging on a cord below the chin, cloth ties at the sides. Only the mask itself, seen from the front three-quarter."),
+    ("mirror_armor", "sky_island_mirrorgrain_plate",
+     DUCK_FIT + "a sleek temple guardian chest armor of overlapping polished pale silver-teal lacquered plates etched "
+     "with a rippling water reflection pattern, a round polished bronze mirror disc set in the middle of the chest, "
+     "cream silk cord lacing, cloud-shaped shoulder guards."),
+    ("windhunter_helmet", "sky_island_windbreak_hood",
+     DUCK_FIT + "a scout's hood helmet of weathered teal canvas pulled over a light brass skull cap, swept-back cloth "
+     "flaps streaming backward as if in a strong wind, a small brass wind-vane fin on top, an open face with a wide "
+     "notch at the front for a flat duck bill, a pair of brass goggles pushed up on the brow."),
+    ("windhunter_armor", "sky_island_windbreak_mantle",
+     DUCK_FIT + "a light scout's chest armor of overlapping thin leather scale plates with a short teal cloth mantle "
+     "swept back from the shoulders as if in strong wind, brass buckles shaped like bird wings, a belt with small pouches."),
+    ("windhunter_backpack", "sky_island_windbreak_pack",
+     DUCK_FIT + "a slim streamlined scout backpack of teal canvas and leather, a rolled bedroll strapped across the "
+     "top, two small brass wind fins on the sides, a brass spyglass tube strapped vertically along one edge."),
 ]
 
 

@@ -1,13 +1,13 @@
 """Guard: TypeID 台账一致性
 
-golden rule 4.3：自定义物品/装备 TypeID 使用 5000xx 区间，严格递增、不复用、不回填已删 ID。
+golden rule 4.3：自定义物品/装备 TypeID 使用 500xxx 区间，严格递增、不复用、不回填已删 ID。
 TypeID 会进入存档键、掉落表、Wiki 与调试流程，复用属于存档兼容风险（BREAKING）。
 
 此前这条规则完全靠人工遵守，没有任何自动化——本 guard 补上：
 
 1. 从 `docs/contracts.md` §1 解析台账（已登记范围 + 保留空洞），作为唯一事实源。
 2. 交叉核对 `AGENTS.md` §4.3 的范围与空洞与 contracts.md 一致（防止两份文档各说各话）。
-3. 扫描全部 Mod 源码（剥离注释）里的 `5000xx` 字面量：
+3. 扫描全部 Mod 源码（剥离注释）里的 `500xxx` 字面量：
    - 命中保留空洞 = 回填，直接 FAIL；
    - 超出已登记范围 = 台账未更新（或写错了 ID），FAIL；
    - 已知非 TypeID 的同形数字走 tests/typeid_literal_allowlist.txt 豁免。
@@ -29,7 +29,8 @@ EXCLUDE_DIRS = {
     "鸭科夫源码", "wiki-site", ".qoder", "obj", "bin",
 }
 
-RE_TYPEID_LITERAL = re.compile(r"\b(5000\d{2})\b")
+# 500xxx 而不是 5000xx：TypeID 已越过 500099，旧写法会让 500100 起的号整段漏扫。
+RE_TYPEID_LITERAL = re.compile(r"\b(500\d{3})\b")
 RE_RANGE = re.compile(r"(500\d{3})\s*-\s*(500\d{3})")
 RE_HOLE = re.compile(r"`(500\d{3})`")
 
@@ -139,7 +140,7 @@ def strip_comments(text):
 
 
 def load_allowlist():
-    """已知非 TypeID 的 5000xx 数字；格式 `相对路径:数字 | 原因`。"""
+    """已知非 TypeID 的 500xxx 数字；格式 `相对路径:数字 | 原因`。"""
     allowed = set()
     if not ALLOWLIST_FILE.exists():
         return allowed

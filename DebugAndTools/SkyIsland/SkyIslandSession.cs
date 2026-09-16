@@ -74,6 +74,14 @@ namespace BossRush
         private int groundMask, searchCount, nextLandmark;
         private bool subscribed, closed, ready, moved, spawning, pathCompleted, pathValid;
         private float enteredAt, nextGroundCheck, airborneSince = -1, nextHud;
+        /// <summary>
+        /// 本趟被捞回落脚点的次数，以及「同一处连着捞」的计数与上一次捞回的位置。
+        /// 落脚点本身站不住时（场景包里那一块有洞或被实体挡住），捞回去就再掉一次，会变成原地弹球：
+        /// 2026-09-16 第八轮 F3 在 EnemySpawn_C (-153, 10.15, -91) 连捞 11 次。计数给 F3 读，连捞则换锚点。
+        /// </summary>
+        private int rescueCount, sameSpotRescues;
+        private Vector3 lastRescueAt;
+        private bool rescueLoopReported;
         // 撤离圈里已停留的**游戏时间**秒数，-1 表示不在圈里。时基与官方 CountDownArea 一致（Time.time）：
         // 暂停菜单（GameManager.Paused）、拍照模式（CameraMode.Active）与剧情面板都会把 timeScale 压到 0，
         // Time.deltaTime 为 0，读条自然冻结；旧版用 unscaledTime，开着暂停菜单也会被送回基地。
@@ -696,7 +704,9 @@ namespace BossRush
                 if (Physics.Raycast(player.transform.position + Vector3.up * 0.25f, Vector3.down, out hit, 1.4f,
                     groundMask, QueryTriggerInteraction.Ignore) && hit.transform.IsChildOf(root.transform))
                 {
-                    safePosition = hit.point + Vector3.up * 0.35f;
+                    // 脚下这块地被实体占着（岩体、实体植被、门框）就不记成落脚点：记下来会在捞回时把人塞进实体里，
+                    // 弹出来又掉一次，变成原地弹球。这一帧仍算「踩到地了」，落脚点保持上一处站得住的。
+                    if (!Blocked(hit.point)) safePosition = hit.point + Vector3.up * 0.35f;
                     airborneSince = -1;
                     // 同一条射线顺手认出脚下是哪个区域；桥不在表里，走在桥上保持上一个。
                     string region;
@@ -806,14 +816,6 @@ namespace BossRush
             return chipsText;
         }
 
-        private void Rescue()
-        {
-            player.SetPosition(safePosition);
-            airborneSince = -1;
-            extractionHeld = -1;
-            Status(L10n.T("已返回最近安全落脚点", "Returned to the nearest safe footing"), false);
-            Debug.Log("[SkyIsland] FALL_RESCUE position=" + safePosition);
-        }
         private static Transform Nearest(List<Transform> markers, Vector3 point)
         {
             Transform result = null;

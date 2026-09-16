@@ -208,6 +208,13 @@ ICONS = [
     ("eq-sky-island-starworks-gear", "星工装备", "Starworks Gear",
      icon("A riveted brass workshop helmet with a flipped-up amber visor resting on a small brass furnace "
           "backpack, a leather cap with a brass telescope eyepiece beside it, warm amber, brass and teal palette.")),
+    ("eq-sky-island-lords-gear", "岛主装备", "Island Lord Gear",
+     icon("A woven root-and-bark half mask resting against a wide conical straw hat with a brass rim band and a few "
+          "green grain ears tucked into it, a vine-bound quiver of sharpened root stakes behind them, earthy brown, "
+          "straw gold and moss green palette.")),
+    ("eq-sky-island-chiefs-gear", "头目装备", "Island Chief Gear",
+     icon("A faded cream canvas mailbag with a brass post-horn badge, a pair of chunky brass earmuffs with teal felt "
+          "and a teal canvas hood with a small brass wind fin grouped together, cream, brass and teal palette.")),
 
     # ── 物品 ──
     ("item-key", "入场与功能物品", "Entry & Utility Items",

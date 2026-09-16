@@ -15,6 +15,7 @@ internal static class SkyIslandMosquitoRegression
         Night(check);
         Spawn(check);
         Bites(check);
+        Wake(check);
         Itch(check);
         FanAndZapper(check);
         Frogs(check);
@@ -170,6 +171,32 @@ internal static class SkyIslandMosquitoRegression
         check(SkyIslandMosquitoRules.OrbitRadiusFor(true) > SkyIslandMosquitoRules.BiteReach &&
               SkyIslandMosquitoRules.OrbitRadiusFor(false) < SkyIslandMosquitoRules.BiteReach,
             "with the veil the swarm circles outside biting reach and has to dive in");
+    }
+
+    private static void Wake(Action<bool, string> check)
+    {
+        check(SkyIslandMosquitoRules.CruiseWake(SkyIslandMosquitoRules.WakeNearRange) == 0f
+            && SkyIslandMosquitoRules.CruiseWake(0f) == 0f,
+            "gnat wake: the ones on your neck leave no trail, so the dash telegraph stays readable");
+        check(SkyIslandMosquitoRules.CruiseWake(SkyIslandMosquitoRules.WakeFarRange) == 1f
+            && SkyIslandMosquitoRules.CruiseWake(SkyIslandMosquitoRules.WakeFarRange + 20f) == 1f,
+            "gnat wake: far ones are at full trail and it never overshoots");
+        float mid = SkyIslandMosquitoRules.CruiseWake(
+            (SkyIslandMosquitoRules.WakeNearRange + SkyIslandMosquitoRules.WakeFarRange) * 0.5f);
+        check(mid > 0.4f && mid < 0.6f, "gnat wake: the trail fades in evenly between the two ranges");
+        check(SkyIslandMosquitoRules.WakeNearRange < SkyIslandMosquitoRules.SpawnMinDistance,
+            "gnat wake: a freshly spawned swarm is already inside the trail band (that is the shot the judge reads)");
+        check(SkyIslandMosquitoRules.WakeLevel(0f) == 0
+            && SkyIslandMosquitoRules.WakeLevel(SkyIslandMosquitoRules.WakeFarRange) == SkyIslandMosquitoRules.WakeSteps,
+            "gnat wake: the level buckets span the whole band");
+        int previous = -1;
+        for (int i = 0; i <= 40; i++)
+        {
+            int level = SkyIslandMosquitoRules.WakeLevel(i * 0.5f);
+            check(level >= previous && level >= 0 && level <= SkyIslandMosquitoRules.WakeSteps,
+                "gnat wake: the level only ever climbs with distance (" + (i * 0.5f) + " m)");
+            previous = level;
+        }
     }
 
     private static void Itch(Action<bool, string> check)

@@ -24,6 +24,8 @@ namespace BossRush
             internal int Count;
             internal SkyIslandEncounterDefinition Definition;
             internal bool Manual, Started, Cleared, Spawning;
+            /// <summary>带队是只在夜里出来的头目（蚋笛翁、镜中客）；整组换阵营（断风游猎）。装配时从档案读一次。</summary>
+            internal bool NightLead, RivalFaction;
             internal float RetryAt;
             internal SkyIslandEnemyRecord[] Actors;
             internal bool AllDead
@@ -31,7 +33,14 @@ namespace BossRush
                 get
                 {
                     if (!Started || Spawning) return false;
-                    foreach (SkyIslandEnemyRecord actor in Actors) if (!actor.Died) return false;
+                    for (int i = 0; i < Actors.Length; i++)
+                    {
+                        SkyIslandEnemyRecord actor = Actors[i];
+                        if (actor.Died) continue;
+                        // 夜限定带队从没刷出来：白天这一组只算随从，它不挡清场（清场之后夜里照样单独补刷）。
+                        if (i == 0 && NightLead && actor.Life == null) continue;
+                        return false;
+                    }
                     return true;
                 }
             }
@@ -85,7 +94,9 @@ namespace BossRush
             var actors = new SkyIslandEnemyRecord[definition.Count];
             for (int i = 0; i < definition.Count; i++) actors[i] = new SkyIslandEnemyRecord();
             encounters.Add(new Encounter { Id = definition.Id, Marker = marker, Count = definition.Count,
-                Manual = definition.Manual, Definition = definition, Actors = actors });
+                Manual = definition.Manual, Definition = definition, Actors = actors,
+                NightLead = !definition.Manual && SkyIslandBossForge.IsNightLead(definition.Id),
+                RivalFaction = SkyIslandBossForge.IsRivalFaction(definition.Id) });
         }
 
         /// <summary>
@@ -99,6 +110,36 @@ namespace BossRush
                 if (encounters[i].Id == id) return encounters[i];
             return null;
         }
+
+#if BOSSRUSH_DEV
+        /// <summary>
+        /// Dev 全自动验收：把一组自动遭遇复原成「这一趟还没刷过」，主角走近时照常整组刷出（带队头目重新配装、重新挂招式）。
+        /// 自动组一趟只刷一次，验收前面的步骤常把这一组清掉；头目步骤开头调它，就不依赖步骤顺序。
+        /// 只动本趟内存：死亡事实与清场标记清零，活着的角色不碰；持久的 clearedEncounters 不回退（剧情前置照旧）。
+        /// 死掉的角色身上的 <see cref="SkyIslandEnemyLife"/> 只在死亡事件那一刻写记录，清零之后不会再被写回。手动组不许重置。
+        /// </summary>
+        internal bool DevResetEncounter(string id, out string note)
+        {
+            Encounter encounter = Find(id);
+            if (encounter == null) { note = "encounter_unknown:" + id; return false; }
+            if (encounter.Manual) { note = "encounter_manual:" + id; return false; }
+            if (encounter.Spawning) { note = "encounter_spawning:" + id; return false; }
+            int restored = 0;
+            foreach (SkyIslandEnemyRecord actor in encounter.Actors)
+            {
+                if (!actor.Died) continue;
+                actor.Died = false;
+                actor.Life = null;
+                restored++;
+            }
+            bool wasCleared = encounter.Cleared;
+            encounter.Cleared = false;
+            encounter.RetryAt = 0f;
+            if (CountLiving(encounter) == 0) encounter.Started = false;
+            note = "reset_encounter=" + id + ",restored=" + restored + ",was_cleared=" + wasCleared;
+            return true;
+        }
+#endif
 
         private bool AnySpawning()
         {
@@ -159,9 +200,9 @@ namespace BossRush
         {
             if (closed) return false;
             float squared = radius * radius;
+            // 已清场的组也要看：夜限定带队可以在清场之后才单独补刷（活体上限 12，多遍历几组可忽略）。
             foreach (Encounter encounter in encounters)
             {
-                if (encounter.Cleared) continue;
                 foreach (SkyIslandEnemyRecord actor in encounter.Actors)
                 {
                     if (actor.Died || actor.Life == null) continue;
@@ -182,7 +223,10 @@ namespace BossRush
             get
             {
                 foreach (Encounter encounter in encounters)
+                {
                     if (encounter.Started && !encounter.Cleared && !encounter.AllDead) return true;
+                    if (encounter.Cleared && CountLiving(encounter) > 0) return true;
+                }
                 return false;
             }
         }
@@ -250,7 +294,12 @@ namespace BossRush
             int active = 0;
             foreach (Encounter encounter in encounters)
             {
-                if (encounter.Cleared) continue;
+                if (encounter.Cleared)
+                {
+                    // 清过场的组平常不会再有活人；夜限定带队清场之后才补刷的那一位照样算进同时存活上限。
+                    active += CountLiving(encounter);
+                    continue;
+                }
                 // 存档事实只用来一次性关掉**手动**组（折翎 / 钟守 / 噬风）：它们是具名剧情对手，
                 // 打过一次就不该再出现。自动组按出击刷新——不这么做，跑通一遍之后全岛零敌人，
                 // 而 39 个搜刮点每趟重刷，这张图就退化成无风险刷宝台。
@@ -289,7 +338,8 @@ namespace BossRush
             if (AnySpawning()) return;
             foreach (Encounter encounter in encounters)
             {
-                if ((encounter.Manual && !encounter.Started) || encounter.Cleared || Time.time < encounter.RetryAt) continue;
+                // 已清场的组只剩一种情况还要刷：白天清过场、带队是夜限定头目、现在入夜了（NightLeadDue）。
+                if ((encounter.Manual && !encounter.Started) || (encounter.Cleared && !NightLeadDue(encounter)) || Time.time < encounter.RetryAt) continue;
                 int missing = CountMissing(encounter);
                 if (missing == 0 || active + missing > 12) continue;
                 if ((player.transform.position - encounter.Marker.position).sqrMagnitude > AutoSpawnRange * AutoSpawnRange) continue;
@@ -308,6 +358,8 @@ namespace BossRush
                     if (closed || !valid()) return;
                     SkyIslandEnemyRecord actor = encounter.Actors[i];
                     if (actor.Died || actor.Life != null) continue;
+                    // 夜限定带队白天不刷：位置留着，玩家夜里走近时再补（SkyIslandBossForge.LeadWaitsForNight）。
+                    if (LeadWaiting(encounter, i)) continue;
                     Vector3 point = FindGround(encounter.Marker, i);
                     CharacterRandomPreset clone = UnityEngine.Object.Instantiate(sources[PresetIndex(encounter.Id, i)]);
                     clone.name = "BossRush_SkyIsland_" + encounter.Id;
@@ -332,6 +384,8 @@ namespace BossRush
                         foreach (Seeker seeker in seekers) { seeker.CancelCurrentPathRequest(); seeker.graphMask = mask; }
                         SpawnedEnemyActivationHelper.ReleaseFromPlayerDistanceSleep(created);
                         created.SetTeam(Teams.wolf);
+                        // 断风游猎（SkyIslandBossRules.IsRivalFaction）整组换成另一阵营：官方 Team.IsEnemy 下与玩家、与岛上其余敌人都敌对。
+                        if (encounter.RivalFaction) created.SetTeam(Teams.bear);
                         SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
                         SkyIslandEnemyTiers.ApplyAi(ai, tier);
                         ApplyIdentity(created, encounter, i, tier);
@@ -409,8 +463,62 @@ namespace BossRush
         private static int CountMissing(Encounter encounter)
         {
             int count = 0;
-            foreach (SkyIslandEnemyRecord actor in encounter.Actors) if (!actor.Died && actor.Life == null) count++;
+            for (int i = 0; i < encounter.Actors.Length; i++)
+            {
+                SkyIslandEnemyRecord actor = encounter.Actors[i];
+                if (actor.Died || actor.Life != null || LeadWaiting(encounter, i)) continue;
+                count++;
+            }
             return count;
+        }
+
+        private static int CountLiving(Encounter encounter)
+        {
+            int count = 0;
+            foreach (SkyIslandEnemyRecord actor in encounter.Actors) if (!actor.Died && actor.Life != null) count++;
+            return count;
+        }
+
+        /// <summary>这一位是夜限定带队、此刻还不是夜里（白天不刷、不算缺人）。</summary>
+        private static bool LeadWaiting(Encounter encounter, int index)
+        {
+            return index == 0 && encounter.NightLead && SkyIslandBossForge.LeadWaitsForNight(encounter.Id);
+        }
+
+        /// <summary>夜限定带队这一趟还没刷过、没死过，而现在入夜了：清过场的组也要把它单独补出来。</summary>
+        private static bool NightLeadDue(Encounter encounter)
+        {
+            if (!encounter.NightLead || encounter.Actors.Length == 0) return false;
+            SkyIslandEnemyRecord lead = encounter.Actors[0];
+            return !lead.Died && lead.Life == null && !LeadWaiting(encounter, 0);
+        }
+
+        /// <summary>
+        /// 穗镰「谷仓叫人」（头目 R3，经 <see cref="SkyIslandBossContext.CallGroup"/>）：把 <paramref name="id"/> 这一组还活着的人
+        /// 挪到 <paramref name="near"/> 附近并盯上主角，返回挪过来几个。手动组、已清场的组、还没刷出来的人都不叫——
+        /// 先把谷仓那边清了，它就喊不来人；不另开生成路径。
+        /// </summary>
+        internal int CallGroup(string id, Vector3 near)
+        {
+            if (closed || !valid()) return 0;
+            Encounter encounter = Find(id);
+            if (encounter == null || encounter.Manual || encounter.Cleared) return 0;
+            int moved = 0;
+            for (int i = 0; i < encounter.Actors.Length; i++)
+            {
+                SkyIslandEnemyRecord actor = encounter.Actors[i];
+                if (actor.Died || actor.Life == null) continue;
+                CharacterMainControl character = actor.Life.GetComponent<CharacterMainControl>();
+                if (character == null || character.Health == null || character.Health.IsDead) continue;
+                float angle = i * 2.1f;
+                Vector3 ground;
+                if (!SkyIslandBossProps.SnapNear(near + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * 1.8f, BossContext(), 0.45f, 1.5f, out ground))
+                    continue;
+                if (!SkyIslandBossProps.Teleport(character, ground + Vector3.up * 0.1f, null)) continue;
+                SkyIslandBossProps.NoticePlayer(character);
+                moved++;
+            }
+            return moved;
         }
         private int CountActiveActors()
         {
@@ -442,11 +550,11 @@ namespace BossRush
             return count;
         }
 
-        /// <summary>头目 / 岛主招式控制器的场景上下文：本对象的根节点、地面层、会话有效性与字幕通道，首次用到时建一次。</summary>
+        /// <summary>头目 / 岛主招式控制器的场景上下文：本对象的根节点、地面层、会话有效性、字幕通道与叫帮手，首次用到时建一次。</summary>
         private SkyIslandBossContext BossContext()
         {
             if (bossContext == null)
-                bossContext = new SkyIslandBossContext { Root = root.transform, GroundMask = groundMask, Valid = valid, Report = report };
+                bossContext = new SkyIslandBossContext { Root = root.transform, GroundMask = groundMask, Valid = valid, Report = report, CallGroup = CallGroup };
             return bossContext;
         }
 

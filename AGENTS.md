@@ -81,11 +81,11 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.3 TypeID 严格递增、不复用
 
-自定义物品 / 装备 TypeID 用 5000xx 区间，严格递增，不回填删掉的号。TypeID 会进存档键、掉落表、Wiki 与调试流程，复用会破坏存档。
+自定义物品 / 装备 TypeID 用 500xxx 区间，严格递增，不回填删掉的号。TypeID 会进存档键、掉落表、Wiki 与调试流程，复用会破坏存档。
 
-- 当前登记范围：`500001-500089`。
+- 当前登记范围：`500001-500102`。
 - 保留空洞：`500009`、`500047`，不回填。
-- 下一可用：`500090`。
+- 下一可用：`500103`。
 - 新增时同时更新本节、`docs/contracts.md` §1 与 `docs/Bossrush使用物品ID表.md`（`TypeIdLedgerGuard` 交叉核对前两处），接线清单见 `Integration/AGENTS.md`。Boss、NPC、建筑的字符串 ID 不占这个序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入

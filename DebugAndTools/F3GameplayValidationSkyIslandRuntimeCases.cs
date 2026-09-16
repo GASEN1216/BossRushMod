@@ -674,11 +674,28 @@ namespace BossRush
                     else errors.Add(profile.Gear[g].TypeId + ":" + problem);
                 }
             }
+            // R2–R4 起逐圈核：会伤人或减速的每一个预警圈都要 ≤ 5.5 m/s（SkyIslandBossRules.TelegraphRingNames，与执行回归同一张）。
+            float escapeMax = 0f;
+            string escapeRing = string.Empty;
+            string[] rings = SkyIslandBossRules.TelegraphRingNames;
+            for (int r = 0; r < rings.Length; r++)
+            {
+                float speed = SkyIslandBossRules.TelegraphRingEscapeSpeed(r);
+                if (speed > escapeMax) { escapeMax = speed; escapeRing = rings[r]; }
+                if (speed > SkyIslandBossRules.MaxEscapeSpeed) errors.Add(rings[r] + "_escape=" + speed.ToString("0.00"));
+            }
+            int nightLeads = 0, rivalGroups = 0;
+            for (int i = 0; i < profiles.Length; i++)
+            {
+                if (profiles[i].NightOnly) nightLeads++;
+                if (profiles[i].RivalFaction) rivalGroups++;
+                if ((profiles[i].NightOnly || profiles[i].RivalFaction) && profiles[i].Tier != SkyIslandEnemyTier.Chief) errors.Add(profiles[i].Id + ":special_lead_not_chief");
+            }
             float starfire = SkyIslandBossRules.EscapeSpeed(SkyIslandBossRules.StarfireRadius, SkyIslandBossRules.StarfireTelegraph);
             float flare = SkyIslandBossRules.EscapeSpeed(SkyIslandBossRules.FlareRadius, SkyIslandBossRules.MarkLockSeconds);
-            if (starfire > SkyIslandBossRules.MaxEscapeSpeed) errors.Add("starfire_escape=" + starfire.ToString("0.00"));
-            if (flare > SkyIslandBossRules.MaxEscapeSpeed) errors.Add("flare_escape=" + flare.ToString("0.00"));
             metrics = "profiles_bound=" + bound + "/" + profiles.Length + ",gear_ok=" + gearOk + "/" + gearTotal
+                + ",escape_max=" + escapeMax.ToString("0.00") + "(" + escapeRing + ")"
+                + ",night_leads=" + nightLeads + ",rival_groups=" + rivalGroups
                 + ",starfire_escape=" + starfire.ToString("0.00") + ",flare_escape=" + flare.ToString("0.00");
             if (errors.Count > 0) reason = "头目 / 岛主不合格：" + string.Join(",", errors.ToArray());
             return errors.Count == 0;

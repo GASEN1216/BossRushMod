@@ -198,6 +198,64 @@ internal static class Program
             Check(world.Encounters.CopyLivingEnemies(new Vector3(0, 0, 500), 35f, near) == 0 && near.Count == 0,
                 "the lens-helm query ignores enemies out of range");
         }
+        // ---- 2026-09-15 头目 / 岛主 R2–R4：夜限定带队（蚋笛翁 S1）白天留位、清场不等它、入夜单独补刷且每趟只刷一次 ----
+        Reset();
+        SkyIslandBossForge.Applied.Clear();
+        SkyIslandBossForge.Night = false;
+        using (var world = new World("S1"))
+        {
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == GroupSize("S1") - 1 && !SkyIslandBossForge.Applied.Contains("S1#0"),
+                "by day the night-only lead keeps its slot and only the followers spawn");
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == GroupSize("S1") - 1,
+                "a lead waiting for night is not a missing actor (the group is not re-picked every tick)");
+            foreach (CharacterMainControl enemy in CharacterRandomPreset.Created.ToArray()) Kill(enemy);
+            world.Tick();
+            world.Tick();
+            Check(world.Saved.Contains("S1"), "by day the followers alone clear the group; the waiting lead does not block the record");
+            SkyIslandBossForge.Night = true;
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == GroupSize("S1") && SkyIslandBossForge.Applied[SkyIslandBossForge.Applied.Count - 1] == "S1#0",
+                "at night the lead spawns alone into the already-cleared group");
+            Check(world.Encounters.HasLivingEnemies && world.Encounters.HasLivingEnemiesWithin(new Vector3(0, 0, 0), 20f),
+                "the late lead still counts as a living enemy for the quiet gates");
+            Kill(CharacterRandomPreset.Created[CharacterRandomPreset.Created.Count - 1]);
+            world.Tick();
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == GroupSize("S1") && !world.Encounters.HasLivingEnemies,
+                "the night lead spawns once per raid: dead stays dead");
+        }
+        SkyIslandBossForge.Night = false;
+        // ---- 断风游猎：整组换阵营（官方 Team.IsEnemy 下与拾荒者互打），普通组保持岛上的阵营 ----
+        Reset();
+        using (var world = new World("K1_Relay"))
+        {
+            world.Tick();
+            Check(CharacterRandomPreset.Created.Count == GroupSize("K1_Relay") && CharacterRandomPreset.Created.TrueForAll(c => c.Team == Teams.bear),
+                "the Galebreaker relay group spawns on the rival faction, lead and followers alike");
+        }
+        // ---- 穗镰「谷仓叫人」：只挪这一组还活着的人，手动组与清过场的组不叫 ----
+        Reset();
+        SkyIslandBossProps.Teleported.Clear();
+        SkyIslandBossProps.Noticed = 0;
+        using (var world = new World("C_02"))
+        {
+            world.Tick();
+            Check(CharacterRandomPreset.Created.TrueForAll(c => c.Team == Teams.wolf), "ordinary groups stay on the island faction");
+            SkyIslandBossContext context = SkyIslandBossForge.LastContext;
+            Check(context != null && context.CallGroup != null, "the boss context carries the call-for-helpers channel");
+            int called = context.CallGroup("C_02", new Vector3(5, 0, 5));
+            Check(called == GroupSize("C_02") && SkyIslandBossProps.Teleported.Count == GroupSize("C_02") && SkyIslandBossProps.Noticed == GroupSize("C_02"),
+                "calling the barn group moves every living member next to the sickle and turns them on the player");
+            Check(context.CallGroup("Storm", new Vector3(5, 0, 5)) == 0 && context.CallGroup("NoSuchGroup", new Vector3(5, 0, 5)) == 0,
+                "manual and unknown groups never answer the call");
+            foreach (CharacterMainControl enemy in CharacterRandomPreset.Created.ToArray()) Kill(enemy);
+            world.Tick();
+            world.Tick();
+            Check(world.Saved.Contains("C_02") && context.CallGroup("C_02", new Vector3(5, 0, 5)) == 0,
+                "once the barn side is cleared nobody comes");
+        }
         Console.WriteLine("PASS SkyIslandEncounters: " + checks + " assertions (production owner with Unity / async substitutes)");
     }
 }
