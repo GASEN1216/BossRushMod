@@ -47,7 +47,7 @@ namespace BossRush
                 Item seed = ItemAssetsCollection.InstantiateSync(seedTypeId);
                 if (seed == null) return;
 
-                inv.AddItem(seed);
+                if (!InteractableLootboxInventoryHelper.TryAddExtraItem(inv, seed)) return;
                 DevLog(BackMountainConfig.LogPrefix + "掉落菜地种子: " + seedTypeId);
             }
             catch (Exception e)

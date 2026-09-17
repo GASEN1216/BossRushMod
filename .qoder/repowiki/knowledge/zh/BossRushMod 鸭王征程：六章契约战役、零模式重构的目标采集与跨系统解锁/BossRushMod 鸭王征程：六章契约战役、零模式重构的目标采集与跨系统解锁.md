@@ -259,3 +259,8 @@ SavesSystem 内存里从不落盘。现新增独立的 `_saveFilePending`（欠�
 ## 2026-09-07 界面可读性与视觉整理（COMPAT）
 
 `Campaign/CampaignBoardView.cs` 改为 1040×840 公告板：标题和关闭入口固定，六章正文放入带滑块的独立 ScrollRect。每条目标另起一行，18 号正文按实际高度扩展卡片，标题、目标与右侧动作互相让位；不再把整章目标压进固定 40px 高度。公告板和 `Integration/BackMountain/ShowcaseUI.cs` 的标题背景都锚到面板左右两端，修复旧版只占右半边导致的偏移。章节状态、接约/交付/放弃与登记奖励不变；实机操作和双语文本待验。
+
+
+## 2026-09-17 无伤目标与可完成路径
+
+CampaignObjectiveCollector 只把正 finalDamage 计为受伤，避免官方零伤害事件误败第一章。CampaignPlayability 链接实际六章数据、追踪器和采集器，覆盖无伤边界、所有章节完成输入、暂停/撤离、非玩家击杀、写入重试与换局。恢复旧受击判定会报错；各模式实机 notify 仍需 L3，不能将目标输入回归当作通关实证。

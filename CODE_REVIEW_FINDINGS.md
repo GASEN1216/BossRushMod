@@ -8,6 +8,22 @@
 | --- | --- | --- | --- |
 | CR-2026-09-17-012 | P2 / COMPAT | `PreCachePrefabs` 把名称含 `fire` 的任何 Grenade 当燃烧弹，`Firework` 命中；搜索还预先缓存首个任意手雷，最终选择依赖已加载资源及遍历顺序。用户报告更新后投烟花；本轮确认的是错误选择规则，未复现用户游戏中的具体遍历顺序。 | **Fixed（L1 + 结构守卫）**。物品站确认官方燃烧弹为 #941 / `Item_FireGrenade`；按物品身份读取 `ItemSetting_Skill → Skill_Grenade → grenadePfb`，并照官方 `OnRelease` 同步引信与范围等参数，缺失时使用既有火焰爆炸后备。定时与复活八方向共用入口。六种反向破坏均被守卫拦截并按字节还原；Windows 编译及 L3 状态见 FIX_TRACKER 同名记录。 |
 
+## 2026-09-17 全项目玩法闭环复核：无伤判定、纯演出与额外战利品
+
+用户优先目标清楚、奖励有用、战斗与配装深度，并明确不删减内容。以下为本轮从当前生产代码与官方实现核实的问题；与同日天空岛并行会话的修复分别记账。详细范围与 L3 待验项见 `docs/代码审查/2026-09-17-全项目玩法生产审查.md`。
+
+| ID | 级别 / 分类 | 已确认问题 | 修复与证据 |
+| --- | --- | --- | --- |
+| CR-2026-09-17-008 | P2 / COMPAT | `CampaignObjectiveCollector.OnGlobalHurt` 对每个玩家受击事件都报告失去无伤。官方 `Health.Hurt` 即使 `finalDamage == 0` 也发 OnHurt，导致第一章前两波无伤目标误败。 | **Fixed（L2）**。仅正最终伤害记受伤；`CampaignPlayability` 直接链接采集器、追踪器和六章实际数据，验证零/负/NaN 与正伤害、波次边界、暂停、撤离、失败重试与换局。恢复旧判定确实转红；实机事件链待验。 |
+| CR-2026-09-17-009 | P2 / COMPAT | `CreateRandomEventHarmlessExplosion` 用零伤害调用官方 ExplosionManager。官方仍逐接收体调用 Hurt，0.05 米半径不能保证不命中；烟花和空投尘土会额外进入战斗事件管线，违背纯演出用途。 | **Fixed（L1 + 结构守卫）**。直接实例化官方 normal/flash FX，保留原范围与幅度的镜头轻震；空投自己的引怪声保留。`RandomEventFlavorBudgetGuard` 下钻桥方法，反向加入战斗调用/移除特效均报错。视觉与实机受击副作用待 L3。 |
+| CR-2026-09-17-010 | P1 / COMPAT | 种子、龙裔与龙王专属奖励直接调用 `Inventory.AddItem` 且忽略 false。`LogBossLootInventory_LootAndRewards` 在另一个协程把箱容量收紧到现有物品数；专属奖励含子 IEnumerator，入箱路径没有容量保证。合法满箱输入下官方 AddItem 返回 false；旧代码漏物品却记录成功，龙系还登记收藏（L2 已复现，实机发生频率未测）。 | **Fixed（L2）**。三条路径复用 `InteractableLootboxInventoryHelper.TryAddExtraItem`，有空格复用、满箱扩一格，失败回收未交付实例；只成功交付才登记收藏。`BossRewardDelivery` 链接种子与 helper、逐字抽取龙系方法，34 条断言；逐条恢复旧入箱调用均报满箱丢奖励。实例化/扩容故障、回调在挂载后抛错也覆盖；Unity 调度和搜刮界面待 L3。 |
+
+### 同轮工作树集成时修正的文案回归
+
+| ID | 级别 / 分类 | 已确认问题 | 修复与证据 |
+| --- | --- | --- | --- |
+| CR-2026-09-17-011 | P2 / SAFE | 并行精简后的灭蚊灯说明写成“吸引并电落 12 米内的云蚋”/“lures and zaps … within 12m”，把吸引与击杀范围合成同一数值，容易让玩家把灯摆在无法攻击的位置。 | **Fixed（L1）**。只修这两行说明，明确“12 米吸引、3.2 米内逐只电落”；依据 `SkyIslandMosquitoRules.ZapperLureRadius = 12f`、`ZapperRadius = 3.2f`、`ZapperHits` 与既有双语 Wiki。运行规则不变，完整文案精简仍归原会话；物品提示框待实机目检。 |
+
 ## 2026-09-16 天空岛昼夜时钟与官方任务接口审核：1 P1 + 1 P2 + 2 P3（均已修，L1 / L2）
 
 来源：owner 要求审核昼夜切换是否跟官方时钟、剧情任务有没有走官方接口。未启动游戏、未读写玩家存档；正式构建已部署，实机按人工清单 2.24。

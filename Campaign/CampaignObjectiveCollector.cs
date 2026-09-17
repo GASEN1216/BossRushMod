@@ -69,6 +69,8 @@ namespace BossRush
             try
             {
                 if (target == null || !target.IsMainCharacterHealth) return;
+                // 官方 Hurt 即使最终伤害为零也会发 OnHurt；无伤目标只认实际掉血。
+                if (!(info.finalDamage > 0f)) return;
 
                 ModBehaviour owner = ModBehaviour.Instance;
                 if (owner == null) return;

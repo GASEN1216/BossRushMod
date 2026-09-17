@@ -10,7 +10,7 @@ import sys
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
     "SkyIslandSceneReferenceBridge", "RandomEventsFailure",
-    "RuntimeOwnership", "ContentTransactions", "ContentSecondReview", "AirdropSecondReview",
+    "RuntimeOwnership", "ContentTransactions", "CampaignPlayability", "BossRewardDelivery", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",
     "ContentBuildingOwnership", "F3ValidationExecution", "SetBonusCoroutines", "GameplayLogFixes",

@@ -338,14 +338,8 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 零伤害爆炸（E1 落地尘土 / E6 烟花）。
-        ///
-        /// ⚠️ 待实机验证：零伤爆炸是否附带击退 / 是否仍会对半径内的 DamageReceiver 派发
-        /// damageValue=0 的 Hurt（进而触发 Health.OnHurt、让 AI noticed=true、污染图鉴计时）。
-        /// 当前对策是把半径压到 RandomEventsTuning.FireworksExplosionRadius(0.05f)，
-        /// 让 Physics.OverlapSphereNonAlloc 命中 0 个 receiver。
-        /// 若实机发现仍有击退或掉血，改为纯粒子实例化（ExplosionManager.normalFxPfb），
-        /// 不再调用 CreateExplosion。
+        /// E1 落地尘土 / E6 烟花只实例化官方特效并保留镜头轻震。
+        /// 官方零伤害爆炸仍会对范围内的接收体调用 Hurt；缩小半径不能保证纯演出。
         /// </summary>
         internal void CreateRandomEventHarmlessExplosion(Vector3 center, ExplosionFxTypes fx, float shake)
         {
@@ -354,7 +348,6 @@ namespace BossRush
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null)
                 {
-                    // CreateExplosion 首两行裸读 Main.transform，null 必 NRE。
                     return;
                 }
 
@@ -364,21 +357,20 @@ namespace BossRush
                     return;
                 }
 
-                DamageInfo dmg = new DamageInfo(main);
-                dmg.damageValue = 0f;
-                dmg.isExplosion = true;
+                GameObject prefab = fx == ExplosionFxTypes.normal
+                    ? level.ExplosionManager.normalFxPfb
+                    : fx == ExplosionFxTypes.flash ? level.ExplosionManager.flashFxPfb : null;
+                if (prefab != null)
+                    UnityEngine.Object.Instantiate<GameObject>(prefab, center, Quaternion.identity);
 
-                level.ExplosionManager.CreateExplosion(
-                    center,
-                    RandomEventsTuning.FireworksExplosionRadius,
-                    dmg,
-                    fx,
-                    shake,
-                    false);
+                // 与官方爆炸相同的距离和幅度，只保留表现，不进入伤害与碰撞查询。
+                Vector3 offset = center - level.MainCharacter.transform.position;
+                if (shake > 0f && Vector3.Distance(center, main.transform.position) < 30f)
+                    CameraShaker.Shake(offset.normalized * 0.4f * shake, CameraShaker.CameraShakeTypes.explosion);
             }
             catch (Exception e)
             {
-                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 零伤爆炸失败: " + e.Message);
+                DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 演出特效失败: " + e.Message);
             }
         }
 

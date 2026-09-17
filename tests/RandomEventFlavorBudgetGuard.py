@@ -29,6 +29,7 @@ MODELS = 'RandomEvents/RandomEventModels.cs'
 DIRECTOR = 'RandomEvents/RandomEventDirector.cs'
 CATALOG = 'RandomEvents/RandomEventCatalog.cs'
 FUN = 'RandomEvents/RandomEventCatalog_Fun.cs'
+EFFECTS = 'RandomEvents/RandomEventEffectsBridge.cs'
 
 # 纯演出事件的白名单。往这里加条目 = 声明「这个事件对玩家没有任何玩法回报」，
 # 要同时改玩家 Wiki 的频率一节与 repowiki；给了回报就不该进这里。
@@ -86,6 +87,7 @@ models = read(MODELS)
 director = read(DIRECTOR)
 catalog = read(CATALOG)
 fun = read(FUN)
+effects = read(EFFECTS)
 
 # ---- 1. 基类默认占配额 ----
 base_prop = body(models, 'internal virtual bool ConsumesRunBudget', 'RandomEventBase')
@@ -125,6 +127,17 @@ for name in FLAVOR_CLASSES:
         if token in block:
             errors.append('%s 里出现了 %r：给了玩法回报就不该算纯演出，请去掉白名单登记'
                           % (name, token))
+
+# 纯演出的调用链也必须只播特效：0 点伤害的官方爆炸仍调用 DamageReceiver.Hurt。
+harmless = body(effects, 'internal void CreateRandomEventHarmlessExplosion(', EFFECTS)
+for token in ('CreateExplosion', 'Hurt', 'DamageInfo', 'OverlapSphere', 'OverlapSphereNonAlloc'):
+    if re.search(r'\b' + token + r'\b', harmless):
+        errors.append('纯演出桥包含战斗调用 ' + token)
+compact = re.sub(r'\s+', '', harmless)
+require(compact, 'UnityEngine.Object.Instantiate<GameObject>(prefab,center,Quaternion.identity);',
+        '纯演出桥必须实际实例化官方特效')
+require(compact, 'level.ExplosionManager.normalFxPfb', '普通演出复用官方 normalFxPfb')
+require(compact, 'level.ExplosionManager.flashFxPfb', '闪光演出复用官方 flashFxPfb')
 
 # ---- 4. 事件池仍然是登记在案的八个（防止新增事件悄悄绕过本守卫） ----
 pool = body(catalog, '_all = new RandomEventBase[]', CATALOG)

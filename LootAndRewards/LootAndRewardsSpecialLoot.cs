@@ -964,7 +964,7 @@ namespace BossRush
                     DevLog("[DragonDescendant] 已配置龙息武器属性");
                 }
 
-                inv.AddItem(newItem);
+                if (!InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)) yield break;
                 DevLog("[DragonDescendant] 已将 " + itemName + " 添加到掉落箱");
 
                 // 记录收藏龙裔掉落物（用于成就追踪）
@@ -1080,7 +1080,7 @@ namespace BossRush
                     newItem.DurabilityLoss = 0f;
                 }
 
-                inv.AddItem(newItem);
+                if (!InteractableLootboxInventoryHelper.TryAddExtraItem(inv, newItem)) return false;
                 DevLog("[DragonKing] 已将 " + itemName + " 添加到掉落箱");
 
                 try

@@ -262,3 +262,8 @@ Store 在 Save 已改官方缓存但回读失败时恢复此前 JSON，避免向
 验证：`BackMountainStructureGuard` 验证可见按钮到服务的接线；`tests/fixtures/ContentTransactions/run.py`
 直接执行完整服务，覆盖满柜升级、拒绝非法替代品、写失败/回读失败/重新加载与撤销。未运行游戏，实际中英文
 布局、鼠标交互与加成更新仍需实机确认。
+
+
+## 2026-09-17 满箱种子不丢失
+
+BackMountainSeedDrops 经共享 InteractableLootboxInventoryHelper.TryAddExtraItem 入箱：空位复用、满箱扩一格、失败回收未挂载实例，成功才记录掉落。龙裔/龙王专属奖励也复用该 helper，收藏在交付成功后记录。BossRewardDelivery 的满箱、容量失败、挂载前后异常和门控用例为 L2，原掉率与种植、出击餐数值不变；实际搜刮与收获待 L3。

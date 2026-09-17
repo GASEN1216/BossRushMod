@@ -12,10 +12,7 @@
 //   - 协程一律登记进 ctx.Scope，由 RuntimeScope.Clear 统一 StopCoroutine。
 //   - 所有对官方 API 的调用都在桥里做过判空，事件层不重复裸调。
 //
-// ⚠️ E6 待实机验证（见 RandomEventEffectsBridge.cs 的同名说明）：
-//    零伤害爆炸是否带击退 / 是否仍会对半径内 DamageReceiver 派发 damageValue=0 的 Hurt。
-//    当前用极小半径（RandomEventsTuning.FireworksExplosionRadius）规避；
-//    若实机确认仍有击退或吸怪，改为纯粒子实例化，不再调用 CreateExplosion。
+// E6 只实例化官方特效与镜头轻震，不进入爆炸伤害管线；观感仍需实机验证。
 // ============================================================================
 
 using System;
@@ -147,9 +144,8 @@ namespace BossRush
     // ========================================================================
 
     /// <summary>
-    /// 鸭王的烟花：玩家周围连放零伤害烟花，纯演出。
-    /// 每发之前都重新判空主角：官方 CreateExplosion 会裸解引用 CharacterMainControl.Main，
-    /// 玩家在演出途中死亡 / 切图会直接 NRE（桥内也有判空，这里是第二道闸）。
+    /// 鸭王的烟花：玩家周围连放烟花，纯演出。
+    /// 每发之前都重新判空主角，避免演出途中切图后仍访问旧角色。
     /// </summary>
     internal sealed class RandomEventFireworks : RandomEventBase
     {
