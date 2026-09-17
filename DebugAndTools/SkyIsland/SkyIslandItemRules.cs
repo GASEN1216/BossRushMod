@@ -66,16 +66,16 @@ namespace BossRush
         {
             Keepsake(CompassKeepsake, BossRushItemIds.SkyIslandWindVaneCompass, false,
                 "收下第一封信鸽来信", "keep your first pigeon letter",
-                "浮舟托信鸽捎来一只风标罗盘（已放进背包，放不下就寄回基地仓库）：在群岛上使用，它会指向信鸽或下一个目标。",
-                "Fuzhou sent a wind-vane compass along with the pigeon (in your pack, or in base storage if it was full). Use it on the isles and it points to the pigeon or your next objective."),
+                "浮舟捎来一只风标罗盘，已放进背包或基地仓库。在岛上使用，可寻找信鸽或下一个目标。",
+                "Fuzhou sent a wind-vane compass. Check your pack, or base storage if it was full. Use it on the isles to find pigeons or your next objective."),
             Keepsake("Keepsake_Badge", BossRushItemIds.SkyIslandHomecomingBadge, true,
                 "敲响归航钟", "ring the Homecoming Bell",
-                "归航钟的回声还没散：一枚晴岚航徽已寄回基地仓库。带着它上岛，码头的人都认得你：渡口整备与眠苔的苔药半价，在岛上用它还能拉缆绳回到码头（每趟一次）。",
-                "The bell is still echoing: a Qinglan Homecoming Badge has been sent to your base storage. Carry it on the isles and the islanders know you: the dock refit and Miantai's moss remedy cost half, and using it on the isles pulls you back to the dock (once per raid)."),
+                "晴岚航徽已寄回基地仓库。随身带着，渡口整备与眠苔的苔药半价。在岛上使用可回码头，每趟一次。",
+                "Your Qinglan Homecoming Badge is in base storage. Carry it for half-price dock refits and Miantai's remedies. Use it on the isles to return to the dock, once per raid."),
             Keepsake("Keepsake_Core", BossRushItemIds.SkyIslandWindeaterCore, true,
                 "击败鸣风栈道上的噬风", "defeat the Windeater on Windsong Boardwalk",
-                "噬风散去的地方留下一枚噬风之核，已寄回基地仓库。带着它上岛，核里那团风会吃掉身边的风：大风对你只算微风。",
-                "Where the Windeater broke apart it left a Windeater Core behind; it has been sent to your base storage. Carry it on the isles and the whirl inside eats into the wind around you: a gale only counts as a breeze.")
+                "噬风之核已寄回基地仓库。随身带着，大风对你只算微风。",
+                "The Windeater Core has been sent to base storage. Carry it to make gales count as breezes.")
         };
 
         internal static SkyIslandKeepsake[] Keepsakes { get { return keepsakes; } }

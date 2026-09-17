@@ -264,8 +264,8 @@ namespace BossRush
             // 规则说明
             ZombieModeUIHelper.CreateText("Rules", st,
                 L10n.T(
-                    "携带自己的装备挑战九波；后续波次会针对你上一波的距离、弹药和伤害类型\n改变打法破解反制可获得 Resolve；第 9 波胜利后按 Resolve 发放 6-10 件 Q5-Q8 奖励并返还信物\n消耗 1 船票 + 1 宿命回响信物",
-                    "Bring your loadout through 9 waves; later waves counter your previous range, ammo, and damage style\nAdapt to break counters and earn Resolve; victory grants 6-10 Q5-Q8 items and refunds the relic\nCosts 1 ticket + 1 Fate Echo relic"),
+                    "自带装备挑战九波。敌人会针对上一波的距离、弹药与伤害类型。\n破解反制获得Resolve。通关按Resolve奖励6–10件Q5–Q8物品，并返还信物。\n入场消耗：船票×1、宿命回响信物×1。",
+                    "9 waves with your gear. Foes counter your last range, ammo and damage type.\nBreak counters for Resolve. Clear: 6–10 Q5–Q8 items based on Resolve; relic returned.\nEntry: 1 ticket + 1 Fate Echo relic."),
                 16f, new Vector2(0f, 148f), new Vector2(ModalWidth - 80f, 78f),
                 TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
 

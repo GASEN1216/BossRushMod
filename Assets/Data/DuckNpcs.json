@@ -71,92 +71,92 @@
         "positiveItemTypeIds": [],
         "negativeItemTypeIds": [],
         "positiveBubbles": [
-          "诶——这个我正好喜欢！",
-          "谢谢你，我会好好收着的。",
-          "你怎么知道我想要这个呀？"
+          { "cn": "诶——这个我正好喜欢！", "en": "Oh, I like this!" },
+          { "cn": "谢谢你，我会好好收着的。", "en": "Thank you. I'll keep it safe." },
+          { "cn": "你怎么知道我想要这个呀？", "en": "How did you know I wanted this?" }
         ],
         "negativeBubbles": [
-          "……这个我大概用不上。",
-          "唔，谢谢，不过下次不用麻烦了。"
+          { "cn": "……这个我大概用不上。", "en": "I don't think I can use this." },
+          { "cn": "唔，谢谢，不过下次不用麻烦了。", "en": "Thanks, but you needn't bring this again." }
         ],
         "normalBubbles": [
-          "谢谢啦。",
-          "收下了，心意我记着。"
+          { "cn": "谢谢啦。", "en": "Thanks." },
+          { "cn": "收下了，心意我记着。", "en": "I'll keep it. Thanks for thinking of me." }
         ],
         "dialogues": {
           "greeting": [
             {
               "minLevel": 0,
               "lines": [
-                "又是你啊，今天外面还太平吗？",
-                "站在这儿看久了，连风都认得我了。",
-                "你回来了就好。"
+                { "cn": "又是你啊，今天外面还太平吗？", "en": "You again. Quiet out there today?" },
+                { "cn": "站在这儿看久了，连风都认得我了。", "en": "Been here so long, I know every draft." },
+                { "cn": "你回来了就好。", "en": "Glad you're back." }
               ]
             },
             {
               "minLevel": 5,
               "lines": [
-                "回来啦？我一直在这儿等着呢。",
-                "看到你没事，我这一天就算过好了。"
+                { "cn": "回来啦？我一直在这儿等着呢。", "en": "Back already? I've been waiting here." },
+                { "cn": "看到你没事，我这一天就算过好了。", "en": "Seeing you safe makes my day." }
               ]
             },
             {
               "minLevel": 10,
               "lines": [
-                "你走的每一趟我都在数。这趟也数完了。",
-                "别的我不图，你平安回来就够了。"
+                { "cn": "你走的每一趟我都在数。这趟也数完了。", "en": "I count each trip you take. Another one home." },
+                { "cn": "别的我不图，你平安回来就够了。", "en": "Just come home safe. That's enough for me." }
               ]
             }
           ],
           "idle": [
-            "外面的天色又变了。",
-            "这地方待久了，倒也不觉得闷。",
-            "……嗯？没什么，随便看看。"
+            { "cn": "外面的天色又变了。", "en": "Weather's turning again." },
+            { "cn": "这地方待久了，倒也不觉得闷。", "en": "You get used to this place. I don't mind the quiet." },
+            { "cn": "……嗯？没什么，随便看看。", "en": "Hm? Nothing. Just looking around." }
           ],
           "afterGift": [
-            "这个我收下了，真的谢谢你。",
-            "你总是这样。"
+            { "cn": "这个我收下了，真的谢谢你。", "en": "I'll keep this. Thank you." },
+            { "cn": "你总是这样。", "en": "Always thinking of me." }
           ],
           "levelUp": [
-            "跟你说话越来越自在了。",
-            "感觉我们……算是熟起来了吧？"
+            { "cn": "跟你说话越来越自在了。", "en": "It's getting easier to talk to you." },
+            { "cn": "感觉我们……算是熟起来了吧？", "en": "Feels like we know each other a bit now." }
           ],
           "farewell": [
-            "路上当心。",
-            "早点回来。"
+            { "cn": "路上当心。", "en": "Watch yourself out there." },
+            { "cn": "早点回来。", "en": "Come back soon." }
           ],
           "alreadyGifted": [
-            "今天已经收过你的东西啦，够啦。"
+            { "cn": "今天已经收过你的东西啦，够啦。", "en": "You've given me enough today." }
           ],
           "alreadyGiftedPositive": [
-            "今天你已经送过我了，我可不好意思再要。"
+            { "cn": "今天你已经送过我了，我可不好意思再要。", "en": "You already brought me a gift. I can't take another." }
           ],
           "alreadyGiftedNormal": [
-            "今天的份已经收过了。"
+            { "cn": "今天的份已经收过了。", "en": "I already have today's gift." }
           ],
           "alreadyGiftedNegative": [
-            "今天……就先这样吧。"
+            { "cn": "今天……就先这样吧。", "en": "Let's leave it there for today." }
           ]
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            "回来了？饭在锅里温着呢。",
-            "今天也辛苦了。"
+            { "cn": "回来了？饭在锅里温着呢。", "en": "You're home? Dinner's keeping warm." },
+            { "cn": "今天也辛苦了。", "en": "Long day? Take a rest." }
           ],
           "dialogue_idle_married": [
-            "有你在，这地方才像个家。"
+            { "cn": "有你在，这地方才像个家。", "en": "This place feels like home with you here." }
           ],
           "dialogue_farewell_married": [
-            "去吧，我等你。"
+            { "cn": "去吧，我等你。", "en": "Go on. I'll be waiting." }
           ],
           "dialogue_after_gift_married": [
-            "都成一家人了还这么客气。"
+            { "cn": "都成一家人了还这么客气。", "en": "We're family. You don't have to fuss." }
           ],
           "gift_positive_married": [
-            "你还记得我喜欢这个呀。"
+            { "cn": "你还记得我喜欢这个呀。", "en": "You remembered I like these." }
           ],
           "gift_normal_married": [
-            "收下了，谢谢你。"
+            { "cn": "收下了，谢谢你。", "en": "I'll keep it. Thank you." }
           ]
         }
       }
@@ -177,7 +177,7 @@
       "equipmentTypeIds": [
         1252
       ],
-      "canWander": false,
+      "canWander": true,
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"
@@ -207,32 +207,39 @@
             {
               "minLevel": 0,
               "lines": [
-                { "cn": "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。", "en": "If you pass Frogsong Pool, southwest of the terraces, keep an eye out for a planting record. It was my family's last bed of greens." },
-                { "cn": "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。", "en": "The seedlings have no idea how long the lanes have been closed. Water them each day and each day they grow." }
+                { "cn": "鞋底的泥先蹭蹭，别踩着菜苗。", "en": "Wipe your boots. Mind the seedlings." },
+                { "cn": "风一大，我就得追着草帽跑。", "en": "Every strong gust sends me chasing my hat." },
+                { "cn": "种菜急不得，先浇水，再等。", "en": "No rushing a crop. Water it, then wait." }
               ]
             },
             {
               "minLevel": 5,
               "lines": [
-                { "cn": "你回来啦。今天的第一阵风，我替你留在风铃里了。", "en": "You are back. I kept today's first gust in the chimes for you." }
+                { "cn": "回来啦？先坐，我把手上的泥洗掉。", "en": "You're back? Sit down while I wash this mud off." },
+                { "cn": "今天没把菜煮老，你回来得正好。", "en": "The greens aren't overcooked today. Good timing." },
+                { "cn": "帮我尝尝咸淡？这锅可别再放盐了。", "en": "Taste this for me? I think that's enough salt." }
               ]
             },
             {
               "minLevel": 10,
               "lines": [
-                { "cn": "走了这么多条航路，最想等到的还是你平安回来。", "en": "After all these lanes, the one thing I still wait for is you coming home safe." }
+                { "cn": "听见你的脚步了，和踩田埂一个动静。", "en": "I know those footsteps. Just like you on the field paths." },
+                { "cn": "今天的菜长得好，我想先告诉你。", "en": "The greens came up well today. Wanted to tell you first." },
+                { "cn": "你歇会儿，我也偷个懒。", "en": "Take a break. I'll sneak one in too." }
               ]
             }
           ],
           "idle": [
-            { "cn": "如果你路过梯田西南的蛙鸣池，帮我留意一本种植记录。那是我们家的最后一畦。", "en": "If you pass Frogsong Pool, southwest of the terraces, keep an eye out for a planting record. It was my family's last bed of greens." },
-            { "cn": "菜苗不懂航路停了多久。每天给它浇水，它每天都会长。", "en": "The seedlings have no idea how long the lanes have been closed. Water them each day and each day they grow." }
+            { "cn": "这一垄先留种，可别全摘了。", "en": "Leave this row for seed. Don't pick it all." },
+            { "cn": "菜汤得小火煨，火大了准糊底。", "en": "Low heat for the soup, or it will burn." },
+            { "cn": "篱笆又松了一截，明早得补上。", "en": "The fence has come loose again. I'll mend it tomorrow." },
+            { "cn": "菜篮要补个底，不然一路捡菜回来。", "en": "Need to mend this basket, or I will be picking greens off the path." }
           ],
           "afterGift": [
             { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
           ],
           "levelUp": [
-            { "cn": "和你说话，让我觉得日子又有盼头了。", "en": "Talking with you makes the days feel worth waiting through again." }
+            { "cn": "跟你说话，手上的活儿都做快了。", "en": "Work goes faster with you to talk to." }
           ],
           "farewell": [
             { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
@@ -244,7 +251,7 @@
             { "cn": "今天已经送过了，留一些给自己吧。", "en": "You have given already today — keep something for yourself." }
           ],
           "alreadyGiftedNormal": [
-            { "cn": "心意收到了，今天就到这里吧。", "en": "The thought is received. Let us leave it there for today." }
+            { "cn": "今天收过啦，给自己留点。", "en": "You gave me something today. Keep some for yourself." }
           ],
           "alreadyGiftedNegative": [
             { "cn": "今天就不再麻烦你了。", "en": "I will not trouble you any further today." }
@@ -252,22 +259,25 @@
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            { "cn": "回来了？灯还亮着，我也在。", "en": "Back already? The lamp is still burning, and so am I." }
+            { "cn": "回来啦？锅还温着，先洗手。", "en": "You're home? The pot's still warm. Wash your hands." },
+            { "cn": "鞋又湿了？放门边，我给你找双干的。", "en": "Wet boots again? Leave them by the door. I'll find a dry pair." }
           ],
           "dialogue_idle_married": [
-            { "cn": "你在的地方，就是我的归航处。", "en": "Wherever you are is where I come home to." }
+            { "cn": "明天种点什么？这次听你的。", "en": "What shall we plant tomorrow? Your pick this time." },
+            { "cn": "你坐着，我把这把菜择完就来。", "en": "Sit down. I'll join you after sorting these greens." }
           ],
           "dialogue_farewell_married": [
-            { "cn": "平安回来，我们还有很多个明天。", "en": "Come back safe. We still have a great many tomorrows." }
+            { "cn": "饭给你留着，别赶路赶得忘了吃。", "en": "I'll save you dinner. Don't forget to eat out there." },
+            { "cn": "早点回来，别让我把菜热第三遍。", "en": "Come home early. Don't make me reheat dinner three times." }
           ],
           "dialogue_after_gift_married": [
-            { "cn": "一家人也会被你的用心打动。", "en": "Even family can be moved by that much care." }
+            { "cn": "又给我带东西？快腾只手来接碗。", "en": "More gifts? Free up a hand and take this bowl." }
           ],
           "gift_positive_married": [
-            { "cn": "你总记得我的小习惯。", "en": "You always remember my little habits." }
+            { "cn": "正想买这个呢，你倒先带回来了。", "en": "I was going to buy this. You beat me to it." }
           ],
           "gift_normal_married": [
-            { "cn": "放在家里，好好留着。", "en": "I will put it away at home and keep it well." }
+            { "cn": "先放桌上吧，一会儿一起收。", "en": "Leave it on the table. We'll put it away together." }
           ]
         }
       }
@@ -286,7 +296,7 @@
       "pushCharacter": false,
       "randomEquipment": false,
       "equipmentTypeIds": [],
-      "canWander": false,
+      "canWander": true,
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"
@@ -315,32 +325,39 @@
             {
               "minLevel": 0,
               "lines": [
-                { "cn": "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。", "en": "The wind beacon in the Hanging Root Wood, the star lamp at the Fallen Star Workshop — mend either one and that is a step forward." },
-                { "cn": "星灯还没灭，只是很久没人替它擦掉灰尘了。", "en": "The star lamp never went out. Nobody has simply wiped the dust off it in a long while." }
+                { "cn": "小心这根线，风铃刚穿好。", "en": "Mind this string. I just finished threading the chimes." },
+                { "cn": "先别碰灯罩，铜边还烫着。", "en": "Careful with that lamp cover. The brass is still hot." },
+                { "cn": "风铃不响？让我听听，八成又缠线了。", "en": "Chimes gone quiet? Let me hear. The strings must be tangled." }
               ]
             },
             {
               "minLevel": 5,
               "lines": [
-                { "cn": "灯亮的时候，你的影子总会先到门口。", "en": "When the lamp comes up, your shadow always reaches the door first." }
+                { "cn": "远远就听见你来了，脚步比风铃还响。", "en": "Heard you coming. Your boots are louder than the chimes." },
+                { "cn": "替我拿一下铜片？手上全是灯油。", "en": "Hold this brass sheet? My hands are covered in lamp oil." },
+                { "cn": "这回没把灯芯装反，你可不许再笑了。", "en": "Got the wick the right way round this time. Stop laughing." }
               ]
             },
             {
               "minLevel": 10,
               "lines": [
-                { "cn": "走了这么多条航路，最想等到的还是你平安回来。", "en": "After all these lanes, the one thing I still wait for is you coming home safe." }
+                { "cn": "你一来，我连锉刀都放得下了。", "en": "You're here. I can put the file down for a bit." },
+                { "cn": "今天不聊修灯。说说你路上的事吧。", "en": "Enough lamp talk today. Tell me about your trip." },
+                { "cn": "你站这儿，正好替我挡风。再待一会儿。", "en": "You're blocking the wind nicely. Stay a little longer." }
               ]
             }
           ],
           "idle": [
-            { "cn": "悬根林的风标、残星工坊的星灯，修好哪一盏都算往前一步。", "en": "The wind beacon in the Hanging Root Wood, the star lamp at the Fallen Star Workshop — mend either one and that is a step forward." },
-            { "cn": "星灯还没灭，只是很久没人替它擦掉灰尘了。", "en": "The star lamp never went out. Nobody has simply wiped the dust off it in a long while." }
+            { "cn": "这只风铃低半个音，听着总别扭。", "en": "This chime is half a note flat. Keeps bothering me." },
+            { "cn": "灯芯剪短些，烟就没那么呛。", "en": "Trim the wick a little. Less smoke that way." },
+            { "cn": "铜片磨圆了才不割手，急不得。", "en": "Round the brass edges, or they'll cut you. Takes time." },
+            { "cn": "东边的铃先响，就该收工具了。", "en": "When the east chimes ring first, I pack up my tools." }
           ],
           "afterGift": [
             { "cn": "我会好好收着的。", "en": "I'll keep it safe." }
           ],
           "levelUp": [
-            { "cn": "和你说话，让我觉得日子又有盼头了。", "en": "Talking with you makes the days feel worth waiting through again." }
+            { "cn": "这回我不用放下工具防着你了。", "en": "I don't feel the need to guard my tools around you now." }
           ],
           "farewell": [
             { "cn": "路上当心，等你回来。", "en": "Mind the road. I'll be waiting." }
@@ -352,7 +369,7 @@
             { "cn": "今天已经送过了，留一些给自己吧。", "en": "You have given already today — keep something for yourself." }
           ],
           "alreadyGiftedNormal": [
-            { "cn": "心意收到了，今天就到这里吧。", "en": "The thought is received. Let us leave it there for today." }
+            { "cn": "今天的收好了，别又掏空口袋。", "en": "Today's gift is put away. Don't empty your pockets again." }
           ],
           "alreadyGiftedNegative": [
             { "cn": "今天就不再麻烦你了。", "en": "I will not trouble you any further today." }
@@ -360,22 +377,25 @@
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            { "cn": "回来了？灯还亮着，我也在。", "en": "Back already? The lamp is still burning, and so am I." }
+            { "cn": "回来啦。把门带上，风要吹跑我的图纸。", "en": "You're home. Shut the door before my plans blow away." },
+            { "cn": "听见你开门了，灯给你留着呢。", "en": "Heard the door. I left the light on for you." }
           ],
           "dialogue_idle_married": [
-            { "cn": "你在的地方，就是我的归航处。", "en": "Wherever you are is where I come home to." }
+            { "cn": "这盏灯留在家里，不拿去卖。", "en": "This lamp stays here. It's not for sale." },
+            { "cn": "今晚歇工，陪我听会儿风铃。", "en": "No more work tonight. Sit and listen to the chimes with me." }
           ],
           "dialogue_farewell_married": [
-            { "cn": "平安回来，我们还有很多个明天。", "en": "Come back safe. We still have a great many tomorrows." }
+            { "cn": "灯我会修，你可别把自己磕坏了。", "en": "I can fix a lamp. Please don't break yourself." },
+            { "cn": "门边那盏灯会一直亮着，认着光回来。", "en": "The lamp by the door stays lit. Follow it home." }
           ],
           "dialogue_after_gift_married": [
-            { "cn": "一家人也会被你的用心打动。", "en": "Even family can be moved by that much care." }
+            { "cn": "藏哪儿了？我收工具时竟没翻到。", "en": "Where did you hide this? I missed it while putting my tools away." }
           ],
           "gift_positive_married": [
-            { "cn": "你总记得我的小习惯。", "en": "You always remember my little habits." }
+            { "cn": "这下省得我找半天了。过来，让我抱一下。", "en": "Saved me a long search. Come here, give me a hug." }
           ],
           "gift_normal_married": [
-            { "cn": "放在家里，好好留着。", "en": "I will put it away at home and keep it well." }
+            { "cn": "收好了，可别和废铜片混一块儿。", "en": "I'll put it away. Best keep it out of the scrap brass." }
           ]
         }
       }
@@ -394,7 +414,7 @@
       "pushCharacter": false,
       "randomEquipment": false,
       "equipmentTypeIds": [],
-      "canWander": false,
+      "canWander": true,
       "wanderRadius": 2.5,
       "scenes": [
         "SkyIslandRaid"

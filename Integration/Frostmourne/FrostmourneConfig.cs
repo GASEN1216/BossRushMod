@@ -19,8 +19,8 @@ namespace BossRush
         public override int ItemTypeId => FrostmourneIds.WeaponTypeId;
         public override string DisplayNameCN => "霜之哀伤";
         public override string DisplayNameEN => "Frostmourne";
-        public override string DescriptionCN => "传说中被永恒寒冰封印的魔剑，剑身散发着幽蓝的寒气，触之彻骨。据说每一次挥斩都会夺取敌人的灵魂，化为剑主的亡灵仆从。\n<color=#4FC3F7>【寒冰之力】</color>冰属性攻击，附带寒冷防护+2。\n<color=#81D4FA>【亡灵召唤】</color>右键在周围召唤5只亡灵仆从，与你并肩作战。冷却时间10秒。";
-        public override string DescriptionEN => "A legendary cursed blade sealed in eternal ice, emanating a chilling blue aura that freezes to the bone. Each swing is said to claim the souls of the fallen, binding them as undead servants.\n<color=#4FC3F7>[Frost Power]</color> Ice-element attacks with Cold Protection +2.\n<color=#81D4FA>[Undead Summoning]</color> Right-click to summon 5 undead servants around you. 10s cooldown.";
+        public override string DescriptionCN => "剑刃覆着蓝霜，靠近就能听到低语。\n<color=#4FC3F7>【寒冰之力】</color>冰属性攻击，寒冷防护+2。\n<color=#81D4FA>【亡灵召唤】</color>右键召唤5只亡灵仆从。冷却10秒。";
+        public override string DescriptionEN => "Blue frost coats the blade. It whispers when held close.\n<color=#4FC3F7>[Frost Power]</color> Ice attacks. Cold Protection +2.\n<color=#81D4FA>[Undead Summoning]</color> Right-click to summon 5 undead servants. Cooldown: 10s.";
         public override int ItemQuality => 6;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special", "DragonKing" };
         public override string IconAssetName => FrostmourneIds.IconAssetName;

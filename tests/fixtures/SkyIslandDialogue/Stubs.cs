@@ -112,7 +112,8 @@ namespace NodeCanvas.DialogueTrees
     public class SubtitlesRequestInfo
     {
         public Action done;
-        public SubtitlesRequestInfo(IDialogueActor a, IStatement s, Action done) { this.done = done; }
+        public IStatement statement;
+        public SubtitlesRequestInfo(IDialogueActor a, IStatement s, Action done) { this.done = done; statement = s; }
     }
     public class MultipleChoiceRequestInfo
     {
@@ -122,14 +123,24 @@ namespace NodeCanvas.DialogueTrees
     public static class DialogueTree
     {
         public static readonly List<Action> Lines = new List<Action>();
+        public static readonly List<string> ShownText = new List<string>();
         public static readonly List<Action<int>> Choices = new List<Action<int>>();
-        public static void RequestSubtitles(SubtitlesRequestInfo info) { Lines.Add(info.done); }
+        public static void RequestSubtitles(SubtitlesRequestInfo info)
+        {
+            Lines.Add(info.done);
+            ShownText.Add(((SodaCraft.Localizations.LocalizedStatement)info.statement).Text);
+        }
         public static void RequestMultipleChoices(MultipleChoiceRequestInfo info) { Choices.Add(info.done); }
     }
 }
 namespace SodaCraft.Localizations
 {
-    public class LocalizedStatement : NodeCanvas.DialogueTrees.IStatement { public LocalizedStatement(string key) { } }
+    public class LocalizedStatement : NodeCanvas.DialogueTrees.IStatement
+    {
+        private readonly string key;
+        public LocalizedStatement(string key) { this.key = key; }
+        public string Text { get { return BossRush.LocalizationHelper.Texts[key]; } }
+    }
 }
 namespace Dialogues
 {
@@ -163,7 +174,11 @@ namespace BossRush
 {
     public static class ModBehaviour { public static void DevLog(string message) { } }
     public static class L10n { public static string T(string cn, string en) { return en; } }
-    public static class LocalizationHelper { public static void InjectLocalization(string key, string text) { } }
+    public static class LocalizationHelper
+    {
+        public static readonly Dictionary<string, string> Texts = new Dictionary<string, string>();
+        public static void InjectLocalization(string key, string text) { Texts[key] = text; }
+    }
     public class DuckovDialogueActor : NodeCanvas.DialogueTrees.IDialogueActor { }
     public static class DialogueActorFactory
     {

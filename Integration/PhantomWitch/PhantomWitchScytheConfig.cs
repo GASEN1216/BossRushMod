@@ -23,12 +23,12 @@ namespace BossRush
         public override string DisplayNameEN => "Soulreaper's Requiem";
 
         public override string DescriptionCN =>
-            "相传这柄镰刃诞生于怨魂恸哭的长夜，刃锋所过，亡者低吟，生者失魄。它不以鲜血立名，只以被收割的魂火为证。\n" +
+            "镰刃拖着一缕冷焰，挥过时像有人在耳边低语。\n" +
             "<color=#C88BFF>【噬魂之力】</color>幽灵属性攻击，50% 概率施加诅咒，每层 -30% 移速，最多 3 层。\n" +
-            "<color=#9B4DCA>【挽歌领域】</color>右键在脚下展开紫色符文阵，持续 4 秒；领域内敌人每 0.5 秒被诅咒并受到幽能伤害。冷却 12 秒。";
+            "<color=#9B4DCA>【挽歌领域】</color>右键在脚下展开符文阵，持续4秒。\n阵内敌人每0.5秒受到诅咒和幽能伤害。冷却12秒。";
 
         public override string DescriptionEN =>
-            "A scythe said to be forged in a night of grieving spirits. Where its blade passes, the dead begin to murmur and the living feel their souls tremble. It is remembered not for bloodshed, but for the soulfire it harvests.\n" +
+            "A cold flame trails the blade. Each swing brings a whisper close to your ear.\n" +
             "<color=#C88BFF>[Soulreaving Power]</color> Ghost-element attacks with a 50% chance to inflict Curse (-30% move speed per stack, up to 3 stacks).\n" +
             "<color=#9B4DCA>[Requiem Realm]</color> Right-click to unfurl a violet rune circle beneath you for 4s. Enemies inside take ghost damage and receive a curse stack every 0.5s. 12s cooldown.";
 

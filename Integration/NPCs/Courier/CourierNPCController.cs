@@ -590,8 +590,10 @@ namespace BossRush
                 // 使用原版气泡系统显示对话（speed=-1表示一次性显示全部文字）
                 // yOffset 设置为名字标签高度附近（1.5f，比名字标签稍低）
                 float yOffset = 1.5f;
+                // 英文同一条情报通常占更多字符，留出读完的时间；气泡不阻挡操作。
+                float duration = Mathf.Clamp(1f + dialogue.Length * (L10n.IsChinese ? 0.1f : 0.05f), 3f, 5f);
                 Cysharp.Threading.Tasks.UniTaskExtensions.Forget(
-                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(dialogue, transform, yOffset, false, false, -1f, 3f)
+                    Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(dialogue, transform, yOffset, false, false, -1f, duration)
                 );
 
                 ModBehaviour.DevLog("[CourierNPC] 显示对话: " + dialogue);
@@ -627,7 +629,7 @@ namespace BossRush
             }
 
             // 回退：保证在本地化注入异常时依然有可显示内容
-            return L10n.T("补给到了……先把伞可乐灌了，灵魂别掉地上。", "Supplies arrived... drink your Umbrella Cola first, don't let your soul drop.");
+            return L10n.T("补给到了。可乐给我留一瓶，要有糖的。", "Supplies are here. Save me a cola. With sugar.");
         }
 
         /// <summary>

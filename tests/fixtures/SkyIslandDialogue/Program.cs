@@ -69,7 +69,85 @@ internal static class Program
         var noActor = SkyIslandResidentDialogue.Run("resident", null, "line", () => opened++, () => valid);
         Check(!noActor.Active && opened == 3, "missing actor still offers services in valid session");
         Check(UniTask.Pending == 0 && !InputManager.Disabled && !DialogueManager.IsDialogueActive, "all owners release resources");
+        CheckOptionalConversation();
         DialogueManager.Cleanup();
         Console.WriteLine("PASS SkyIslandDialogue (" + checks + " assertions)");
+    }
+
+    private static void FinishLine()
+    {
+        DialogueTree.Lines[DialogueTree.Lines.Count - 1]();
+        UniTask.Pump();
+    }
+
+    private static void Pick(int index)
+    {
+        DialogueTree.Choices[DialogueTree.Choices.Count - 1](index);
+        UniTask.Pump();
+    }
+
+    private static void CheckOptionalConversation()
+    {
+        const string body = "The route is open. Come back whenever you need.\nI have a letter for you. It arrived this morning.";
+        int before = opened, lineCount = DialogueTree.Lines.Count;
+        var business = Start(body);
+        FinishLine(); FinishLine();
+        Check(DialogueTree.Lines.Count == lineCount + 2, "service choice arrives after two lines, before optional lore");
+        Pick(0);
+        Check(!business.Active && opened == before + 1 && DialogueTree.Lines.Count == lineCount + 2,
+            "early business opens services without playing the rest");
+
+        var goodbye = Start(body);
+        FinishLine(); FinishLine(); Pick(1);
+        Check(!goodbye.Active && opened == before + 1, "early goodbye does not open services");
+
+        lineCount = DialogueTree.Lines.Count;
+        var more = Start(body);
+        FinishLine(); FinishLine(); Pick(2);
+        Check(DialogueTree.Lines.Count == lineCount + 3 && opened == before + 1,
+            "tell me more advances to the third line without replaying the greeting");
+        Check(DialogueTree.ShownText[lineCount + 2] == "I have a letter for you.",
+            "optional conversation starts with the unread text, not the greeting");
+        FinishLine(); FinishLine(); Pick(0);
+        Check(!more.Active && opened == before + 2 && DialogueTree.Lines.Count == lineCount + 4,
+            "all optional lines remain reachable, then services open once");
+
+        var cancel = Start(body);
+        FinishLine(); FinishLine();
+        var late = DialogueTree.Choices[DialogueTree.Choices.Count - 1];
+        lineCount = DialogueTree.Lines.Count;
+        valid = false; cancel.Dispose(); UniTask.Pump(); late(2); UniTask.Pump();
+        Check(!cancel.Active && opened == before + 2 && DialogueTree.Lines.Count == lineCount,
+            "cancelled early choice cannot play lore or open a stale panel");
+        valid = true;
+
+        bool hasBusiness = true;
+        var changed = SkyIslandResidentDialogue.Run("resident", new UnityEngine.Transform(), body,
+            () => opened++, () => valid, () => hasBusiness);
+        FinishLine(); hasBusiness = false; FinishLine();
+        Check(!changed.Active && opened == before + 2, "service availability is rechecked after the greeting");
+
+        hasBusiness = true;
+        var earlyUnavailable = SkyIslandResidentDialogue.Run("resident", new UnityEngine.Transform(), body,
+            () => opened++, () => valid, () => hasBusiness);
+        FinishLine(); FinishLine(); hasBusiness = false; Pick(0);
+        Check(!earlyUnavailable.Active && opened == before + 2,
+            "service disappearing during the early choice opens no empty panel");
+
+        hasBusiness = true;
+        var lateUnavailable = SkyIslandResidentDialogue.Run("resident", new UnityEngine.Transform(), body,
+            () => opened++, () => valid, () => hasBusiness);
+        FinishLine(); FinishLine(); Pick(2); FinishLine(); FinishLine(); hasBusiness = false; Pick(0);
+        Check(!lateUnavailable.Active && opened == before + 2,
+            "service availability is rechecked after the final choice too");
+
+        int choices = DialogueTree.Choices.Count;
+        var idle = SkyIslandResidentDialogue.Run("resident", new UnityEngine.Transform(), body,
+            () => opened++, () => valid, () => false);
+        FinishLine(); FinishLine(); FinishLine(); FinishLine();
+        Check(!idle.Active && DialogueTree.Choices.Count == choices && opened == before + 2,
+            "resident without services finishes the story without an empty business choice");
+        Check(UniTask.Pending == 0 && !InputManager.Disabled && !DialogueManager.IsDialogueActive,
+            "optional conversation releases all waits and input");
     }
 }

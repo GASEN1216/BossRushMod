@@ -11,8 +11,8 @@ namespace BossRush
         public const string LOC_KEY_DISPLAY = "BossRush_FateEchoRelic";
         public const string DISPLAY_NAME_CN = "宿命回响信物";
         public const string DISPLAY_NAME_EN = "Fate Echo Relic";
-        public const string DESCRIPTION_CN = "一枚铭刻着宿命回路的古老信物。携带它、船票和自己的装备进入 BossRush，将启动宿命回响模式——你的每一次选择都将成为下一局的题目。";
-        public const string DESCRIPTION_EN = "An ancient relic engraved with fate circuits. Bring it, a ticket, and your own loadout into BossRush to start Fate Echo — your every choice becomes the next run's challenge.";
+        public const string DESCRIPTION_CN = "带着它、船票和自己的装备进入BossRush，开启宿命回响。\n九波三幕，选择契约，迎战宿敌。";
+        public const string DESCRIPTION_EN = "Bring this relic, a ticket, and your gear into BossRush to start Fate Echo.\nNine waves in three acts. Choose contracts and face your nemesis.";
         public const int DEFAULT_PRICE = 20000;
         public const int BASE_SHOP_STOCK = 5;
 

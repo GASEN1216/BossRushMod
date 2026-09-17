@@ -9,7 +9,7 @@
 //
 // 【分工：叙事走官方，功能留自绘】
 //   - **官方对话**负责说话：逐句推进、自带立绘、玩家按键翻页。
-//     居民台词里最长的一段有 156 个中文字符，此前是一次性糊在面板的正文位上。
+//     长对话先说两句，再由玩家选择办事、告辞或继续聊；续聊从未读的第三句开始。
 //   - **自绘面板**（`SkyIslandStoryPresentation`）负责办事：接委托、苔药、整备、合成、手记。
 //     它保留的唯一理由是**模态**——官方 `DialogueUI` 只给「台词 + 纯文本选项」，
 //     给不了 `timeScale = 0`，而面板里挂着眠苔的苔药与浮舟的整备：
@@ -111,6 +111,31 @@ namespace BossRush
                     return;
                 }
                 string[][] lines = Split(body);
+                // 办事的人只需听前两句；来信、生活近况和头目情报留给主动续聊的人。
+                // 0 / 1 仍是办事 / 告辞，和短对话的选项顺序一致。
+                if (lines.Length > 2 && HasBusiness())
+                {
+                    await DialogueManager.ShowDialogueSequenceBilingual(actor,
+                        new[] { lines[0], lines[1] }, LineKeyPrefix, token);
+                    if (!CanContinue() || speaker == null) return;
+                    if (!HasBusiness()) return;
+                    int earlyChoice = await DialogueManager.ShowMultipleChoiceBilingual(actor, new string[][]
+                    {
+                        Pair("我想办点事", "I need something"),
+                        Pair("先这样", "See you"),
+                        Pair("再聊聊", "Tell me more"),
+                    }, 0f, ChoiceKeyPrefix, token);
+                    if (earlyChoice == 1) return;
+                    if (earlyChoice != 2)
+                    {
+                        if (CanContinue() && HasBusiness()) openPanel();
+                        return;
+                    }
+                    if (!CanContinue() || speaker == null) return;
+                    var remaining = new string[lines.Length - 2][];
+                    Array.Copy(lines, 2, remaining, 0, remaining.Length);
+                    lines = remaining;
+                }
                 if (lines.Length > 0)
                     await DialogueManager.ShowDialogueSequenceBilingual(actor, lines, LineKeyPrefix, token);
 
@@ -123,11 +148,11 @@ namespace BossRush
                     // 中英成对写在同一条语句里（本地化守卫认的对照表形状）。
                     // 英文要短：官方选项按钮定宽，"There is something I need" 在 2026-09-15 第三轮截图里被截成 "There is something I"。
                     Pair("我想办点事", "I need something"),
-                    Pair("先这样", "That's all for now"),
+                    Pair("先这样", "See you"),
                 }, 0f, ChoiceKeyPrefix, token);
 
                 // 超时（-1）也当作「要办事」：宁可多开一次面板，也不要让人白跟 NPC 说了一通。
-                if (picked != 1 && CanContinue() && speaker != null) openPanel();
+                if (picked != 1 && CanContinue() && speaker != null && HasBusiness()) openPanel();
             }
             catch (OperationCanceledException) { }
             catch (Exception e)

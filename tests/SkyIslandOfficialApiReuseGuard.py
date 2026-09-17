@@ -82,10 +82,11 @@ def check(sources):
     # ---- 2) fail-open：跟 NPC 说不上话不能变成办不了事 ----
     # 拿不到 actor、官方对话抛异常，这两条都必须兜到功能面板：
     # 官方对话挂了不能变成「接不了委托、买不到苔药」。
-    require(dialogue.count("if (CanContinue() && HasBusiness()) openPanel();") >= 2,
-            DIALOGUE + " 的失败路径没有兜到 openPanel()："
-                       "拿不到 actor、官方对话抛异常时都必须直接开功能面板——"
-                       "官方对话挂了不能变成「接不了委托、买不到苔药」（没有可办的事时才不开，免得开出空面板）")
+    actor_failure = dialogue.split("if (actor == null)", 1)[-1].split("string[][] lines", 1)[0]
+    dialogue_failure = dialogue.split("catch (Exception e)", 1)[-1].split("finally", 1)[0]
+    for branch, label in ((actor_failure, "actor 缺席"), (dialogue_failure, "对话异常")):
+        require("if (CanContinue() && HasBusiness()) openPanel();" in branch,
+                DIALOGUE + " " + label + " 的失败路径必须在可继续且有业务时打开功能面板")
 
     # ---- 2a) 没有可办的事就不问「我想办点事」 ----
     # 2026-09-15 第五轮：结局后的无声钟守选「我想办点事」开出一块没正文没选项的空面板。
@@ -94,6 +95,16 @@ def check(sources):
             DIALOGUE + " 问「我想办点事」之前没有判断有没有可办的事：没事可办时点下去是空面板")
     require("ResidentChoices(id, speaker).Count > 0 || NextStep() != null" in world,
             WORLD + " 的 Talk 没有把「有没有可办的事」交给对话：判据要与 OpenResidentPanel 用的 ResidentChoices 同一份")
+    # 长对话的服务入口提前；续聊仍交给同一个可取消 owner。
+    for token in (
+        "if (lines.Length > 2 && HasBusiness())",
+        "new[] { lines[0], lines[1] }, LineKeyPrefix, token)",
+        "if (!HasBusiness()) return;",
+        "if (earlyChoice == 1) return;",
+        "if (earlyChoice != 2)",
+        "Array.Copy(lines, 2, remaining, 0, remaining.Length);",
+    ):
+        require(token in dialogue, DIALOGUE + " 缺少提前办事 / 自愿续聊接线：" + token)
     require("catch (Exception" in dialogue and "[WARNING]" in dialogue,
             DIALOGUE + " 官方对话失败时必须记一条 WARNING 并继续，不许静默吞掉")
 
@@ -227,10 +238,18 @@ def main():
         # 取消被当成失败处理：玩家一走开就被塞一个 timeScale=0 的模态面板
         (DIALOGUE, "catch (OperationCanceledException) { }", ""),
         # 拿不到 actor 时不再兜底开面板
-        (DIALOGUE, "if (CanContinue() && HasBusiness()) openPanel();", ""),
+        (DIALOGUE, "if (actor == null)\n                {\n                    if (CanContinue() && HasBusiness()) openPanel();",
+         "if (actor == null)\n                {"),
+        (DIALOGUE, 'ModBehaviour.DevLog(LogPrefix + "[WARNING] 官方对话不可用: " + e.Message);\n                if (CanContinue() && HasBusiness()) openPanel();',
+         'ModBehaviour.DevLog(LogPrefix + "[WARNING] 官方对话不可用: " + e.Message);'),
         # 没事可办照样问「我想办点事」：结局后的钟守开出空面板
         (DIALOGUE, "if (!CanContinue() || speaker == null || !HasBusiness()) return;", "if (!CanContinue() || speaker == null) return;"),
         (WORLD, "ResidentChoices(id, speaker).Count > 0 || NextStep() != null", "true"),
+        (DIALOGUE, "if (lines.Length > 2 && HasBusiness())", "if (lines.Length > 20 && HasBusiness())"),
+        (DIALOGUE, "if (!HasBusiness()) return;", ""),
+        (DIALOGUE, "if (earlyChoice == 1) return;", ""),
+        (DIALOGUE, "if (earlyChoice != 2)", "if (earlyChoice != 1)"),
+        (DIALOGUE, "Array.Copy(lines, 2, remaining, 0, remaining.Length);", "Array.Copy(lines, 0, remaining, 0, remaining.Length);"),
         # finally 不交还取消源：Active 永远为真，再也说不上话
         (DIALOGUE, "cancellation = null;", ""),
         # 不挡重入：两段台词互相顶掉

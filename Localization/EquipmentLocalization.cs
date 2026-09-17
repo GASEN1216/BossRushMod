@@ -23,14 +23,14 @@ namespace BossRush
         // 赤龙首（原龙头）
         private static readonly string DragonHelmNameCN = "赤龙首";
         private static readonly string DragonHelmNameEN = "Crimson Dragon Helm";
-        private static readonly string DragonHelmDescCN = "由旧时代火龙残骸锻造而成的头盔，鳞片依然散发着微弱的热量。据说与焰鳞甲一同穿戴时，会产生神秘的共鸣，获得火龙的祝福。\n<color=#FFD700>【龙之套装】</color>与焰鳞甲同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
-        private static readonly string DragonHelmDescEN = "A helmet forged from the remains of an ancient fire dragon. The scales still emit faint warmth. Legend says wearing it with Flame Scale Armor creates a mysterious resonance, granting the fire dragon's blessing.\n<color=#FFD700>[Dragon Set]</color> When worn with Flame Scale Armor: double-tap movement to Dragon Dash (3m); fire damage heals you.";
+        private static readonly string DragonHelmDescCN = "火龙残骸锻成的头盔，摸着还热。\n<color=#FFD700>【龙之套装】</color>与焰鳞甲同时穿戴：\n双击方向键冲刺3米。火焰伤害转为治疗。";
+        private static readonly string DragonHelmDescEN = "A helm forged from fire dragon remains. Still warm to the touch.\n<color=#FFD700>[Dragon Set]</color> Wear with Flame Scale Armor:\nDouble-tap movement to dash 3m. Fire damage heals you.";
         
         // 焰鳞甲（原龙甲）
         private static readonly string DragonArmorNameCN = "焰鳞甲";
         private static readonly string DragonArmorNameEN = "Flame Scale Armor";
-        private static readonly string DragonArmorDescCN = "以旧时代火龙的胸甲残片为核心打造的护甲，触摸时能感受到沉睡的龙焰。与赤龙首一同穿戴时，会唤醒其中蕴含的远古力量。\n<color=#FFD700>【龙之套装】</color>与赤龙首同时穿戴：双击方向键发动龙影冲刺(3米)；火焰伤害转化为治疗。";
-        private static readonly string DragonArmorDescEN = "Armor crafted around chest plate fragments of an ancient fire dragon. You can feel dormant dragon flames when touching it. Wearing it with Crimson Dragon Helm awakens the ancient power within.\n<color=#FFD700>[Dragon Set]</color> When worn with Crimson Dragon Helm: double-tap movement to Dragon Dash (3m); fire damage heals you.";
+        private static readonly string DragonArmorDescCN = "护甲留着火龙胸鳞的弧度，贴身的一面总是温的。\n<color=#FFD700>【龙之套装】</color>与赤龙首同时穿戴：\n双击方向键冲刺3米。火焰伤害转为治疗。";
+        private static readonly string DragonArmorDescEN = "Armor shaped from a fire dragon's chest scales. Warm against the skin.\n<color=#FFD700>[Dragon Set]</color> Wear with Crimson Dragon Helm:\nDouble-tap movement to dash 3m. Fire damage heals you.";
         
         #endregion
         
@@ -55,14 +55,14 @@ namespace BossRush
         // 龙王之冕（龙王专属头盔）
         private static readonly string DragonKingHelmNameCN = "龙王之冕";
         private static readonly string DragonKingHelmNameEN = "Dragon King's Crown";
-        private static readonly string DragonKingHelmDescCN = "真正的龙王遗冠，其上镌刻着远古龙族的王权印记。当你戴上它的那一刻，会感受到一股毁灭一切的力量在血脉中觉醒。唯有配得上这份力量的人，才能承受它的重量。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：双击方向键发动龙王冲刺(6米)，可连续追加第二次冲刺(3米)，冲刺路径留下熔浆灼烧敌人；火焰伤害转化为治疗。";
-        private static readonly string DragonKingHelmDescEN = "The true crown of the Dragon King, etched with the royal sigils of an ancient dragon lineage. The moment you don it, you feel an overwhelming power awaken in your veins. Only those worthy of this power can bear its weight.\n<color=#FFD700>[Dragon King Set]</color> When worn with Dragon King's Scale Mail: double-tap movement to Dragon King Dash (6m), chain a second dash (3m), leaving lava trails that burn enemies; fire damage heals you.";
+        private static readonly string DragonKingHelmDescCN = "龙王遗下的冠冕，额前的王印烫得碰不得。\n<color=#FFD700>【龙王套装】</color>与龙王鳞铠同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
+        private static readonly string DragonKingHelmDescEN = "The Dragon King's crown. Its royal seal is too hot to touch.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Scale Mail:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
         
         // 龙王鳞铠（龙王专属护甲）
         private static readonly string DragonKingArmorNameCN = "龙王鳞铠";
         private static readonly string DragonKingArmorNameEN = "Dragon King's Scale Mail";
-        private static readonly string DragonKingArmorDescCN = "由龙王心脏区域的核心鳞甲锻造而成，据说仍有微弱的心跳声在其中回响。与龙王之冕一同穿戴时会产生神秘的共鸣，获得龙王的庇护，但也将被烙上龙族的灵魂印记，永远无法逃离火焰的宿命。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：双击方向键发动龙王冲刺(6米)，可连续追加第二次冲刺(3米)，冲刺路径留下熔浆灼烧敌人；火焰伤害转化为治疗。";
-        private static readonly string DragonKingArmorDescEN = "Forged from the core scales near the Dragon King's heart, a faint heartbeat still echoes within. When worn with the Dragon King's Crown, a mysterious resonance occurs, granting the Dragon King's protection, but forever marking you with the dragon's soul, bound to the fate of flames.\n<color=#FFD700>[Dragon King Set]</color> When worn with Dragon King's Crown: double-tap movement to Dragon King Dash (6m), chain a second dash (3m), leaving lava trails that burn enemies; fire damage heals you.";
+        private static readonly string DragonKingArmorDescCN = "龙王心口的鳞甲锻成，贴近时能听到微弱的跳动。\n<color=#FFD700>【龙王套装】</color>与龙王之冕同时穿戴：\n双击方向键冲刺6米，可再接一次3米冲刺。\n冲刺留下熔浆灼烧敌人。火焰伤害转为治疗。";
+        private static readonly string DragonKingArmorDescEN = "Forged from scales over the Dragon King's heart. A faint beat remains.\n<color=#FFD700>[Dragon King Set]</color> Wear with Dragon King's Crown:\nDouble-tap movement to dash 6m, then chain a 3m dash.\nDashes leave burning lava. Fire damage heals you.";
         
         #endregion
 
@@ -567,14 +567,14 @@ namespace BossRush
         // 霜冠（冰霜头盔）
         private static readonly string FrostHelmNameCN = "霜冠";
         private static readonly string FrostHelmNameEN = "Frost Crown";
-        private static readonly string FrostHelmDescCN = "寒冰凝结的王冠，散发着刺骨的冷气。\n<color=#87CEEB>套装件之一（2/2 激活「寒冰之护」）</color>\n<color=#AADDFF>套装效果：冰抗+50%，受到的冰伤 50% 转为治疗；击杀敌人触发「冰葬」——尸体处 4.5 米霜爆，20 冰伤并冻结（1.5 秒冷却）；被 5 米内攻击者命中时 30% 概率冻结对方（5 秒冷却）</color>\n<color=#BBBBBB>来源：「???」Boss 掉落 / 叮当的小店（好感 6 级）</color>";
-        private static readonly string FrostHelmDescEN = "A crown forged from condensed ice, radiating bone-chilling cold.\n<color=#87CEEB>Set piece (2/2 activates Frost Ward)</color>\n<color=#AADDFF>Set bonus: +50% Ice Resist, 50% of ice damage taken heals you; kills unleash Frost Nova (4.5 m burst at the corpse, 20 ice damage + freeze, 1.5 s cooldown); 30% chance to freeze attackers within 5 m (5 s cooldown)</color>\n<color=#BBBBBB>Source: \"???\" boss drop / Dingdang's Shop (affinity level 6)</color>";
+        private static readonly string FrostHelmDescCN = "冠沿结着白霜，隔着手套也冷。\n<color=#87CEEB>【寒冰之护】穿齐2件生效</color>\n<color=#AADDFF>冰抗+50%，所受冰伤的50%转为治疗。\n击杀触发冰葬：尸体处4.5米霜爆，20冰伤并冻结。冷却1.5秒。\n受击：30%概率冻结5米内的攻击者。冷却5秒。</color>\n<color=#BBBBBB>来源：「???」Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string FrostHelmDescEN = "Frost rims the crown. Cold even through gloves.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage taken heals you.\nOn kill: Frost Nova bursts 4.5m from the corpse, 20 ice damage and freeze. Cooldown: 1.5s.\nOn hit: 30% chance to freeze the attacker within 5m. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: \"???\" boss / Dingdang's Shop (affinity 6)</color>";
 
         // 寒冰铠甲
         private static readonly string FrostArmorNameCN = "寒冰铠甲";
         private static readonly string FrostArmorNameEN = "Ice Armor";
-        private static readonly string FrostArmorDescCN = "以万年寒冰铸就的铠甲，受击时能冻结来犯之敌。\n<color=#87CEEB>套装件之一（2/2 激活「寒冰之护」）</color>\n<color=#AADDFF>套装效果：冰抗+50%，受到的冰伤 50% 转为治疗；击杀敌人触发「冰葬」——尸体处 4.5 米霜爆，20 冰伤并冻结（1.5 秒冷却）；被 5 米内攻击者命中时 30% 概率冻结对方（5 秒冷却）</color>\n<color=#BBBBBB>来源：「???」Boss 掉落 / 叮当的小店（好感 6 级）</color>";
-        private static readonly string FrostArmorDescEN = "Armor forged from ancient ice. Freezes attackers when struck.\n<color=#87CEEB>Set piece (2/2 activates Frost Ward)</color>\n<color=#AADDFF>Set bonus: +50% Ice Resist, 50% of ice damage taken heals you; kills unleash Frost Nova (4.5 m burst at the corpse, 20 ice damage + freeze, 1.5 s cooldown); 30% chance to freeze attackers within 5 m (5 s cooldown)</color>\n<color=#BBBBBB>Source: \"???\" boss drop / Dingdang's Shop (affinity level 6)</color>";
+        private static readonly string FrostArmorDescCN = "铠甲内侧凝着冰，走动时簌簌作响。\n<color=#87CEEB>【寒冰之护】穿齐2件生效</color>\n<color=#AADDFF>冰抗+50%，所受冰伤的50%转为治疗。\n击杀触发冰葬：尸体处4.5米霜爆，20冰伤并冻结。冷却1.5秒。\n受击：30%概率冻结5米内的攻击者。冷却5秒。</color>\n<color=#BBBBBB>来源：「???」Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string FrostArmorDescEN = "Ice lines the armor, crackling with each step.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage taken heals you.\nOn kill: Frost Nova bursts 4.5m from the corpse, 20 ice damage and freeze. Cooldown: 1.5s.\nOn hit: 30% chance to freeze the attacker within 5m. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: \"???\" boss / Dingdang's Shop (affinity 6)</color>";
 
         // 冰冻 Buff
         private static readonly string FrostBuffNameCN = "冰冻";
@@ -589,14 +589,14 @@ namespace BossRush
         // 雷神之角（雷霆头盔）
         private static readonly string ThunderHelmNameCN = "雷神之角";
         private static readonly string ThunderHelmNameEN = "Thunder Horn";
-        private static readonly string ThunderHelmDescCN = "蕴含雷霆之力的角盔，电弧在表面游走。\n<color=#FFD700>套装件之一（2/2 激活「雷霆之怒」）</color>\n<color=#FFEE88>套装效果：电抗+50%，受到的电伤 50% 转为治疗；击杀敌人触发「引雷术」——6 米内最多 3 个敌人被连锁闪电击中（35 电伤，最多连跳 3 次）；被 6 米内攻击者命中时 25% 概率雷霆反震（4 米 30 电伤，3 秒冷却，不伤自己）</color>\n<color=#BBBBBB>来源：风暴区 Boss 掉落 / 叮当的小店（好感 6 级）</color>";
-        private static readonly string ThunderHelmDescEN = "A horned helm imbued with thunder, arcs of lightning dance across its surface.\n<color=#FFD700>Set piece (2/2 activates Thunder's Wrath)</color>\n<color=#FFEE88>Set bonus: +50% Elec Resist, 50% of shock damage taken heals you; kills trigger Chain Lightning (up to 3 enemies within 6 m, 35 shock damage, chains up to 3 times); 25% chance to counter-shock attackers within 6 m (4 m, 30 damage, 3 s cooldown, never hurts you)</color>\n<color=#BBBBBB>Source: Storm Zone boss drop / Dingdang's Shop (affinity level 6)</color>";
+        private static readonly string ThunderHelmDescCN = "角尖不时跳出电弧。\n<color=#FFD700>【雷霆之怒】穿齐2件生效</color>\n<color=#FFEE88>电抗+50%，所受电伤的50%转为治疗。\n击杀：引雷术攻击6米内最多3名敌人。35电伤，最多连跳3次。\n受击：6米内攻击者有25%概率触发雷霆反震。\n反震造成4米范围30电伤，不伤自己。冷却3秒。</color>\n<color=#BBBBBB>来源：风暴区Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string ThunderHelmDescEN = "Arcs flicker between the horns.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Elec Resist +50%. Half of shock damage taken heals you.\nOn kill: lightning hits up to 3 foes within 6m. 35 shock damage, up to 3 jumps.\nOn hit: attackers within 6m have a 25% chance to trigger a counter-shock.\nThe shock deals 30 damage within 4m and cannot hurt you. Cooldown: 3s.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
 
         // 雷霆战甲
         private static readonly string ThunderArmorNameCN = "雷霆战甲";
         private static readonly string ThunderArmorNameEN = "Thunder Armor";
-        private static readonly string ThunderArmorDescCN = "以雷电淬炼的战甲，受击时释放电击反制周围敌人。\n<color=#FFD700>套装件之一（2/2 激活「雷霆之怒」）</color>\n<color=#FFEE88>套装效果：电抗+50%，受到的电伤 50% 转为治疗；击杀敌人触发「引雷术」——6 米内最多 3 个敌人被连锁闪电击中（35 电伤，最多连跳 3 次）；被 6 米内攻击者命中时 25% 概率雷霆反震（4 米 30 电伤，3 秒冷却，不伤自己）</color>\n<color=#BBBBBB>来源：风暴区 Boss 掉落 / 叮当的小店（好感 6 级）</color>";
-        private static readonly string ThunderArmorDescEN = "Armor tempered by lightning. Releases electric counter when struck.\n<color=#FFD700>Set piece (2/2 activates Thunder's Wrath)</color>\n<color=#FFEE88>Set bonus: +50% Elec Resist, 50% of shock damage taken heals you; kills trigger Chain Lightning (up to 3 enemies within 6 m, 35 shock damage, chains up to 3 times); 25% chance to counter-shock attackers within 6 m (4 m, 30 damage, 3 s cooldown, never hurts you)</color>\n<color=#BBBBBB>Source: Storm Zone boss drop / Dingdang's Shop (affinity level 6)</color>";
+        private static readonly string ThunderArmorDescCN = "甲片间藏着电光，碰一下就麻手。\n<color=#FFD700>【雷霆之怒】穿齐2件生效</color>\n<color=#FFEE88>电抗+50%，所受电伤的50%转为治疗。\n击杀：引雷术攻击6米内最多3名敌人。35电伤，最多连跳3次。\n受击：6米内攻击者有25%概率触发雷霆反震。\n反震造成4米范围30电伤，不伤自己。冷却3秒。</color>\n<color=#BBBBBB>来源：风暴区Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string ThunderArmorDescEN = "Sparks hide between the plates. A touch numbs your fingers.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Elec Resist +50%. Half of shock damage taken heals you.\nOn kill: lightning hits up to 3 foes within 6m. 35 shock damage, up to 3 jumps.\nOn hit: attackers within 6m have a 25% chance to trigger a counter-shock.\nThe shock deals 30 damage within 4m and cannot hurt you. Cooldown: 3s.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
 
         #endregion
 

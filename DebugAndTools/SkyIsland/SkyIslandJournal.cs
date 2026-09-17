@@ -153,19 +153,19 @@ namespace BossRush
                 "five fuse into a Qinglan Windcrystal (once the star lamp is lit); charms, salves and compasses need them too; the echo's cache gives three back"));
             Use(text, BossRushItemIds.SkyIslandStardust, L10n.T("晴岚护符、云苔纱笠、残星瞭台的风晶灯；夜里风晶簇更容易出；回响遗存里有两撮",
                 "Qinglan charms, the cloudmoss veil and the Starfall Overlook lamp; clusters yield more at night; the echo's cache holds two"));
-            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("七盏风晶灯与灭蚊灯的灯芯：灯旁暖和，岛上的灯凑满十盏之后夜里不再起风；结局后在鸣风栈道烧一块引风，唤回噬风·回响（每趟一次）",
-                "the wick of the seven windcrystal lamps and of the gnat zapper: warm beside them, and with ten lights on the isles the nights stop blowing; after the ending, burn one on Windsong Boardwalk to call the Windeater's echo (once per raid)"));
-            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风里挡一半、夜里照明——光招来更多云蚋，可灯下的只绕着灯转：不叮人、也躲不开枪口，灯灭前扇掉或打掉；钟庭的风晶灯要挂一盏",
-                "holds off a breeze and half of a gale, lights the night — its light draws more cloud gnats, but the ones in it only circle the flame: they will not bite and cannot dodge your aim, so clear them before it burns out; the Bell Court lamp hangs one"));
-            Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("什么风都挡得住、耐力恢复加快，烟能赶开云蚋；镜水寺的风晶灯要焚一炷；回响在场时栈道与桥上重新起大风，它照样挡",
-                "holds off any wind and speeds stamina, and its smoke drives off cloud gnats; the Mirrorwater Temple lamp burns one; while the echo is out the boardwalk and bridges blow a gale again, and it still holds"));
+            Use(text, BossRushItemIds.SkyIslandQinglanWindcrystal, L10n.T("用于七盏风晶灯与灭蚊灯，灯旁能取暖。十盏灯全亮后，岛上夜里无风，桥上仍有风。结局后可在鸣风栈道消耗一块「引风」，召回噬风·回响，每趟一次。",
+                "Wicks for seven windcrystal lamps and the gnat zapper. Lamps provide warmth. Ten lit lamps stop island night winds; bridges stay windy. After the ending, burn one on Windsong Boardwalk to call the Windeater's echo, once per raid."));
+            Use(text, BossRushItemIds.SkyIslandWindLantern, L10n.T("挡微风、大风挡一半，也能照明。会招云蚋，但灯下的蚋不叮人、不躲子弹，趁灯亮着清掉。钟庭风晶灯也需要一盏。",
+                "Blocks breezes and half of a gale. Draws gnats into its light, where they cannot bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));
+            Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("挡风、加快耐力恢复，也能驱蚋。镜水寺风晶灯需要一炷。回响唤起的栈道与桥上大风也能挡。",
+                "Blocks wind, speeds stamina recovery and repels gnats. The Mirrorwater Temple lamp needs one. Also blocks gales on the boardwalk and bridges during the echo fight."));
             Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风（含回响）的风暴伤害 −{0}%，生命上限与耐力恢复小幅提升",
                 "{0}% less damage from the Windeater's storm (its echo included) this raid, a little more max health and stamina recovery"),
                 Percent(SkyIslandFieldcraftRules.CharmStormWard)));
             Use(text, BossRushItemIds.SkyIslandHomecomingBento, L10n.T("菜畦重新开张之后在岛上吃，算作晴禾的归航菜；回响遗存里偶尔有一份",
                 "once the garden has reopened, eaten on the isles it counts as Qinghe's homecoming meal; the echo's cache sometimes holds one"));
-            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("不付钱、不等冷却地回血；止云蚋的痒，抹上之后这一阵叮上也不痒（出门前先抹也算；苔药管伤，药膏管痒）",
-                "heals without paying Miantai or waiting on her remedy; stops gnat itching, and for a while after it goes on new bites will not itch (applying it before you set out counts; the remedy is for wounds, the salve for itching)"));
+            Use(text, BossRushItemIds.SkyIslandStarmossSalve, L10n.T("回复生命并止痒，短时间内叮咬也不发痒。可以出门前先抹，不用等眠苔的苔药冷却。",
+                "Heals and stops itching. New bites will not itch for a while. Apply before leaving if needed; no need to wait for Miantai's remedy cooldown."));
             Use(text, BossRushItemIds.SkyIslandWindVaneCompass, L10n.T("捧着蛙卵时先指蛙鸣池；平时指信鸽、目标、支线，最后指缺灯处或风晶簇",
                 "while carrying frogspawn, points to Frogsong Pool first; otherwise to pigeons, objectives, side paths, then missing lamps or wind crystal clusters"));
             Use(text, BossRushItemIds.SkyIslandHomecomingBadge, string.Format(L10n.T("带在身上：渡口整备与眠苔的苔药只收 {0}%；在岛上使用：拉缆绳回登云码头（每趟一次）",

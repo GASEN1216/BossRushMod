@@ -367,14 +367,14 @@ def main():
         errors.append("缺 CharmStormWard 常量")
     else:
         percent = int(round(float(ward.group(1)) * 100))
-        for token in ("−%d%%" % percent, "%d%% less damage from the Windeater's storm" % percent):
+        for token in ("−%d%%" % percent, "%d%% less storm damage from the Windeater and its echo" % percent):
             if token not in descriptions:
                 errors.append("晴岚护符的描述要写明噬风风暴减伤 %d%%（与 CharmStormWard 一致）：缺 %s" % (percent, token))
     if not rate or float(rate.group(1)) != 0.5:
         errors.append("航徽描述写的是「半价」，BadgeServiceRate 必须是 0.5（改了要同步描述、字幕与 Wiki）")
-    for token, why in (("渡口整备与眠苔的苔药都只收半价", "航徽描述要写明带在身上的效果"),
-                       ("大风对你只算微风", "噬风之核描述要写明带在身上的效果"),
-                       ("群岛上七处装置旁各缺一盏风晶灯", "晴岚风晶描述要写明它是风晶灯的灯芯")):
+    for token, why in (("渡口整备、眠苔苔药半价", "航徽描述要写明带在身上的效果"),
+                       ("大风按微风计算", "噬风之核描述要写明带在身上的效果"),
+                       ("用于七盏风晶灯", "晴岚风晶描述要写明它是风晶灯的灯芯")):
         if token not in descriptions:
             errors.append(why + "（缺「%s」）" % token)
 

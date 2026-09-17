@@ -875,8 +875,8 @@ namespace BossRush
                     return L10n.T("第一次打倒悬根猎首：它每趟都会回到悬根林，每次都穿着全套悬根猎装，倒下时只留下其中一件。",
                         "The Hanging-Root Huntmaster is down for the first time. It returns to the Hanging Root Wood every raid in its full rootweave hunting gear and leaves one piece behind each time it falls.");
                 case SkyIslandBossKind.Waylayer:
-                    return L10n.T("第一次打倒截信人：它每趟都会回到倒挂邮亭，被它抢走的东西都在它身上；倒下时有三成机会留下那只旧邮包。",
-                        "The Waylayer is down for the first time. It returns to the Upturned Post Hut every raid; whatever it snatched is on its body, and three times in ten it leaves its old mailbag behind.");
+                    return L10n.T("首次击败截信人。它每趟都会回倒挂邮亭，赃物都在尸体上。有三成机会掉落旧邮包。",
+                        "First Waylayer defeat. It returns to the Upturned Post Hut each raid. Recover stolen items from its body. Old Mailbag drop chance: 30%.");
                 case SkyIslandBossKind.Sickle:
                     return L10n.T("第一次打倒穗镰：它每趟都会回到青穗梯田，每次都穿着全套蓑衣农装，倒下时只留下其中一件。",
                         "Grain Sickle is down for the first time. It returns to the Green Terraces every raid in its full straw-cloak farm gear and leaves one piece behind each time it falls.");
@@ -890,8 +890,8 @@ namespace BossRush
                     return L10n.T("第一次打倒镜中客：它只在夜里回到镜水寺，倒下时有三成机会留下镜纹甲。",
                         "The Mirror Guest is down for the first time. It returns to Mirrorwater Temple only at night and leaves its mirrorgrain plate behind three times in ten.");
                 case SkyIslandBossKind.Windhunter:
-                    return string.Format(L10n.T("第一次打倒{0}：三位断风游猎各守一座回程中继平台、各穿断风套里的一件，倒下时有四成机会留下它那件。",
-                        "{0} is down for the first time. The three Galebreaker Rangers each hold a return relay platform in one piece of the Galebreaker set, and each leaves its piece behind four times in ten."), Name(profile));
+                    return string.Format(L10n.T("首次击败{0}。三位断风游猎各守一座回程中继平台，各穿一件断风装备。每位有四成机会掉落所穿的那件。",
+                        "First defeat of {0}. Each Galebreaker holds a return relay platform and wears one set piece. Each has a 40% chance to drop that piece."), Name(profile));
                 default:
                     return L10n.T("头目倒下了。", "The chief is down.");
             }
@@ -1068,6 +1068,13 @@ namespace BossRush
         /// <summary>
         /// 居民说起头目 / 岛主：每位居民管自己那几位，按顺序说**第一位还没打倒的**「在哪、怎么躲」；都打倒过就说那几套装备拿去做什么。
         /// 拼接口径与各自台词一致：浮舟、晴禾、眠苔那句以换行开头，苇白那句以换行结尾。
+        ///
+        /// 【2026-09-17 改写】信息一个不少，说法换成各人自己的口气：浮舟话少说船说料、苇白像在派活、
+        /// 晴禾拿农活打比方、眠苔只关心伤口与夜里的东西。原来那版是攻略腔（「先拆供能桩，等炉子过热再打它」），
+        /// 放在谁嘴里都一样。**每条仍是两屏**（官方对话一句一屏），关键词
+        /// 「星工装备 / Starworks outfit」「悬根林的风标底下蹲着个猎首 / huntmaster crouches」
+        /// 「断风游猎 / Galebreaker Ranger holds」「观星手 / stargazer up on」原样保留——
+        /// 全自动验收按屏序截图并断言这些词（Assets/Data/SkyIslandAutotest.json）。
         /// </summary>
         internal static string ResidentLine(string npcId, SkyIslandStoryData data)
         {
@@ -1075,43 +1082,43 @@ namespace BossRush
             {
                 case "sky_fuzhou":
                     if (!Defeated(data, Find("G", 0)))
-                        return L10n.T("\n残星工坊的星灯边上守着一个穿全套星工装备的家伙，每趟都在。它立起供能桩就先拆桩，炉子过热那几秒最好打。",
-                            "\nSomeone in a full Starworks outfit guards the star lamp at the Fallen Star Workshop, every raid. When it raises its pylons, break those first; hit it hardest while its furnace overheats.");
+                        return L10n.T("\n星灯那边的匠首，穿着全套星工装备。先拆它的供能桩，炉子过热那几秒才轮到你。",
+                            "\nThe Foreman by the star lamp wears the full Starworks outfit. Break its pylons first — your turn comes when the furnace overheats.");
                     if (!Defeated(data, Find("S2", 0)))
-                        return L10n.T("\n倒挂邮亭有个截信的，专挑身上的便当和药膏下手，抢了就往邮亭另一头跑。别让它贴身；真被抢了就追上去打倒它，东西都在它身上。",
-                            "\nThere is a waylayer at the Upturned Post Hut who goes for the bentos and salves on you and bolts for the far end of the hut. Keep it off you; if it does snatch something, run it down — your things are on its body.");
-                    return L10n.T("\n匠首那身星工装备，凑齐任意两件穿上再来：渡口工台做东西能省一片残铜片。截信人那只旧邮包要是落到你手里，背着它上岛，信鸽那一趟会多送一封。",
-                        "\nThat Starworks gear the Foreman wears — put on any two pieces and come back: the dock workbench takes one less brass scrap. And if that waylayer's old mailbag lands in your hands, carry it on the isles and the pigeons bring one extra letter that raid.");
+                        return L10n.T("\n倒挂邮亭那个专抢便当和药膏。别让它近身，真丢了就打倒它，东西还在它身上。",
+                            "\nThe one at the Upturned Post Hut takes bentos and salves. Don't let it close, and if it takes something, put it down — it's still on it.");
+                    return L10n.T("\n星工装备穿两件，我这工台就少收你一片残铜。背上它那只旧邮包，信鸽一趟多来一封。",
+                            "\nTwo Starworks pieces and my bench takes one less brass scrap. Carry its old mailbag and the pigeon brings one extra letter.");
                 case "sky_weibai":
                     if (!Defeated(data, Find("S4", 0)))
-                        return L10n.T("残星瞭台上有个观星手，被它盯上脚下会亮一圈——躲到掩体后面断开视线，或者干脆冲到它跟前。\n",
-                            "There is a stargazer up on the Starfall Overlook. When it marks you, a ring lights up at your feet — break its line of sight behind cover, or rush right up to it.\n");
+                        return L10n.T("残星瞭台上那个观星手，眼睛毒得很。脚下一亮圈，要么钻掩体，要么冲到它脸上。\n",
+                            "The stargazer up on Starfall Overlook has a mean eye. If a ring lights at your feet, find cover or get right in its face.\n");
                     if (!Defeated(data, Find("D", 0)))
-                        return L10n.T("悬根林的风标底下蹲着个猎首，会在你和它之间拉绊索，还会从树根洞里换个地方钻出来——先砍桩，看见根洞亮就躲开。\n",
-                            "A huntmaster crouches under the Hanging Root Wood's wind beacon. It strings tripwires between you and it and bursts out of a different root hollow — cut a stake first, and step away from a hollow when it lights up.\n");
+                        return L10n.T("悬根林的风标底下蹲着个猎首。它的绊索桩砍一根就断，地上根洞一亮赶紧让开。\n",
+                            "A huntmaster crouches under the beacon in Hanging Root Wood. Cut one tripwire stake and the line drops; when a root hollow lights, move.\n");
                     if (!Defeated(data, Find("K1_Relay", 0)) || !Defeated(data, Find("K2_Relay", 0)) || !Defeated(data, Find("K3_Relay", 0)))
-                        return L10n.T("留言板上有人写：三座回程中继平台上各守着一个断风游猎，跟岛上的拾荒者不是一伙，见面就打。它们冲过来之前地上会亮一条线——横着让开。\n",
-                            "Someone pinned a note on the board: a Galebreaker Ranger holds each of the three return relay platforms, and they are no friends of the scavengers — they fight on sight. A line lights up on the ground before one lunges — sidestep it.\n");
-                    return L10n.T("观星手那顶镜盔戴上站定，远处的人影会自己亮起来；悬根猎装任穿两件去翻箱子，岛上的特产更容易翻出来；断风套凑两件，走桥快一截。\n",
-                        "Wear the stargazer's lens helm and stand still, and distant figures light up; any two pieces of the rootweave gear turn up more island goods in crates; any two Galebreaker pieces make you quicker on the bridges.\n");
+                        return L10n.T("三座回程中继，一座一个断风游猎，连拾荒者也打。冲锋前地上先亮一条线，横着让。\n",
+                            "A Galebreaker Ranger holds each return relay, and they fight the scavengers too. A line lights before the charge — step sideways.\n");
+                    return L10n.T("戴观星镜盔站着别动，远处的人影会给你标出来。悬根套两件好翻箱，断风套两件走桥快。\n",
+                            "Stand still in the lens helm and far figures get marked for you. Two Rootweave pieces turn up more local goods; two Galebreaker pieces speed the bridges.\n");
                 case "sky_qinghe":
                     if (!Defeated(data, Find("C", 0)))
-                        return L10n.T("\n梯田里那个拿镰刀的会开水渠的闸，地上泡成烂泥就挪不动脚；谷仓那头的帮手也会被它喊过来——先把谷仓那边清了。",
-                            "\nThe one with the sickle out on the terraces opens the channel sluices; once the ground turns to mud you can barely move, and it calls the hands over from the barn — clear the barn side first.");
+                        return L10n.T("\n梯田上拿镰刀那个，一急就开闸放水，还朝谷仓喊人。先把谷仓清了，泥里别站。",
+                            "\nThe one with the sickle opens the sluice when pressed and shouts for the barn. Clear the barn first, and keep out of the mud.");
                     if (!Defeated(data, Find("S3", 0)))
-                        return L10n.T("\n听雨洞里坐着个听雨人，你在洞口开枪它全听得见，枪声多了洞顶就掉石头。去那儿少开枪，或者把它引出洞口再打。",
-                            "\nA rain listener sits in the Rainlisten Grotto. It hears every shot you fire at the mouth, and enough gunfire brings rocks down from the overhang. Fire less there, or draw it out of the cave first.");
-                    return L10n.T("\n穗镰那身蓑衣任穿两件去割青穗草，一次多割一份。听雨人那副耳罩戴上，头目蓄力的动静你能早一点听见。",
-                        "\nWear any two pieces of Grain Sickle's straw-cloak gear and each cut of greenear yields one more sheaf. With the rain listener's earmuffs on you hear a chief winding up a little sooner.");
+                        return L10n.T("\n听雨洞里少开枪，响得多了顶上会掉石头。真要打，把它引到洞外面去。",
+                            "\nDon't fire much in Rainlisten Grotto; too many shots bring the ceiling down. If you must fight, draw it outside.");
+                    return L10n.T("\n穗镰那身穿两件，割青穗草一次多一把。它那副耳罩你戴着，出招前能多喘一口。",
+                            "\nTwo Grain Sickle pieces give an extra handful of greenear each cut. Wear the earmuffs and you get a breath more before a boss swings.");
                 case "sky_miantai":
                     if (!Defeated(data, Find("S1", 0)))
-                        return L10n.T("\n夜里蛙鸣池边有个吹笛子的老头，笛声一响云蚋全冲你来。趁它吹的那一下打它，笛子就断了；白天去是找不到它的。",
-                            "\nAt night an old piper sits by Frogsong Pool, and when the flute sounds every cloud gnat comes for you. Hit it while it plays and the tune breaks off; you will not find it there by day.");
+                        return L10n.T("\n蚋笛翁只在夜里的蛙鸣池边。笛子一响云蚋全冲你来，趁它吹的时候打，曲子就断。",
+                            "\nThe Gnat Piper only shows at Frogsong Pool at night. The flute pulls every gnat onto you; hit it while it plays and the tune breaks.");
                     if (!Defeated(data, Find("F", 0)))
-                        return L10n.T("\n夜里镜水寺的镜池边有个镜中客，它会翻到你背后去，原地只剩个倒影。先把倒影打碎，它会晃好一阵。",
-                            "\nAt night a mirror guest walks the Mirrorwater Temple pool. It flips round to your back and leaves only a reflection where it stood. Shatter the reflection first and it reels for a while.");
-                    return L10n.T("\n蚋笛翁那副苔纱面罩戴上，云蚋认不出你在瞄它，躲不开你的枪口。镜中客那件镜纹甲穿去见折翎，他认得那身纹路，不用旧信和航路图也肯坐下来谈。",
-                        "\nWear the gnat piper's mossgauze mask and the cloud gnats cannot tell you are aiming at them — they stop dodging your shots. Wear the mirror guest's mirrorgrain plate to see Zheling: he knows that pattern and will sit down to talk without the old letter or the route chart.");
+                        return L10n.T("\n镜中客也是夜里，在镜池边，会换到你背后。它留下的倒影打碎，它就站不稳。",
+                            "\nThe Mirror Guest is a night thing too, and it swaps behind you at the pool. Break the reflection it leaves and it can't keep its feet.");
+                    return L10n.T("\n苔纱面罩戴上，云蚋认不出你在瞄它。穿镜纹甲去见折翎，没有旧信和航路图他也肯谈。",
+                            "\nIn the mossgauze mask, gnats can't read your aim and stop dodging. In the Mirrorgrain Plate, Zheling will talk without the letter or chart.");
                 default:
                     return string.Empty;
             }

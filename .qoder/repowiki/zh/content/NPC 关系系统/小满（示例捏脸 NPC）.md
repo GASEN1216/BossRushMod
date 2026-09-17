@@ -78,3 +78,7 @@ Destroy 清掉等待请求并推进世代，不提前放开仍在途的生成；
 
 章节来源：`Integration/NPCs/DuckNpc/DuckNpcMovement.cs`、`DuckNpcRuntimeMarker.cs`。
 执行回归：`tests/fixtures/IntegrationThirdReviewFixes/run.py`，使用官方路径跟随方法体与可投递晚回调的替身；实机导航仍待验。
+
+## 2026-09-17 补齐双语对白（COMPAT）
+
+`DuckNpcs.json` 中小满的问候、闲聊、送礼与婚后对白改用现有 `{cn, en}` 双语对象，保留中文含义及列表顺序。解析器原本就支持此形态，不新增 schema 或存档字段；语言由现有永久 NPC 对话管线在使用时选择。晴禾与苇白的问候、闲聊及婚后对白也在同一数据表中，分别围绕种菜做饭与修灯风铃，不再共用同文模板。

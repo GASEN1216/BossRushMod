@@ -148,17 +148,17 @@ namespace BossRush
             return new string[][]
             {
                 new string[] {
-                    "别找名字。第三十三个人进来那天，最下面那行自己走了。我跟着走的。",
-                    "Don't look for a name. The day the thirty-third walked in, the bottom line walked out. I went with it." },
+                    "第三十三个人进来那天，我的名字从碑上掉了下去。",
+                    "When the thirty-third arrived, my name fell off the plaque." },
                 new string[] {
-                    "我当掉了战甲。挂过三面旗。给自己写的悬赏令改了十一次数字。三年，没有一处写得下我。",
-                    "I pawned the armor. Flew three banners. Rewrote my own bounty eleven times. Three years, and not one of them had room for me." },
+                    "我当了战甲，挂过三面旗，改了十一次悬赏。三年，还是没我的位置。",
+                    "I pawned my armor, flew three banners, rewrote my bounty eleven times. Three years. Still no room." },
                 new string[] {
-                    "后来我找到一本不挤人的册子。写进去的一条都不会掉。代价是那一页上不写名字。",
-                    "Then I found a book that evicts nobody. Nothing written in it ever falls out. The price is that the page carries no name." },
+                    "后来找到一本不挤人的册子。那一页却不能写名字。",
+                    "Then I found a book with room for everyone. But my page couldn't carry a name." },
                 new string[] {
-                    "你来刮碑上那一行。刮不动了。动手吧——影子不认字，它只认打赢过它的。",
-                    "You came to scrape that line off the plaque. It won't come off. Draw. A silhouette can't read. It only remembers who beat it." },
+                    "碑就别刮了，名字早没了。动手吧。",
+                    "Don't scrape the plaque. The name's gone. Draw." },
             };
         }
 
@@ -180,64 +180,64 @@ namespace BossRush
                     return new string[][]
                     {
                         new string[] {
-                            "两张碑拓，我对过了。三十二个名字，一个不多。他不是被谁抹掉的——是排队排出去的。",
-                            "I compared the two rubbings. Thirty-two names, exactly. Nobody erased him. He was queued out." },
+                            "两张碑拓对过了，都是三十二人。新名字挤掉了最底下一行。",
+                            "Both rubbings have thirty-two names. The newest pushed out the bottom one." },
                         new string[] {
-                            "掉出名单的第二天，他把整套战甲当了。去白手起家那边问问，当铺认得那身货。",
-                            "The day after he dropped off the list, he pawned his whole kit. Ask around in Bootstrap — the pawnshop knows that gear." }
+                            "第二天，他当掉了整套战甲。去白手起家那边查查当票。",
+                            "Next day, he pawned his armor. Check the ticket in Rags to Riches." }
                     };
                 case "ch2":
                     return new string[][]
                     {
                         new string[] {
-                            "当票是真的。他不是缺钱，他是想从零再打一遍，重新排进那三十二格。",
-                            "The ticket's real. He wasn't short of money. He wanted to climb back into those thirty-two slots from nothing." },
+                            "当票是真的。他想从零再打，挤回那三十二个名字里。",
+                            "The pawn ticket's real. He wanted to start over and earn his place back." },
                         new string[] {
-                            "没排进去。后来他开始挨个阵营挂旗——只要有人肯把他名字重新写下来就行。",
-                            "He didn't make it. After that he started flying every faction's banner, hoping someone would write his name down again." }
+                            "没挤进去，后来又投了几次阵营。换面旗，总该有人认得他吧。",
+                            "He failed. Then tried joining other factions. Hoped someone would remember him." }
                     };
                 case "ch3":
                     return new string[][]
                     {
                         new string[] {
-                            "三个头目都说他是自己人，三个都叫不出他名字。查无此人，就是这么来的。",
-                            "Three bosses all claim him. Not one can say his name. That's how a man becomes 'no such person.'" },
+                            "三个头目都认得那半面旗，没人叫得出他的名字。",
+                            "Three bosses recognized the half-banner. None remembered his name." },
                         new string[] {
-                            "所以他自己写了。猎杀名单上有张没发出去的悬赏令，目标栏是他自己的名字。",
-                            "So he wrote it himself. There's an unposted bounty notice on the kill list — the target field is his own name." }
+                            "他给自己写了张悬赏令，却没发出去。去猎杀名单上找。",
+                            "He wrote his own bounty but never posted it. Check the kill list." }
                     };
                 case "ch4":
                     return new string[][]
                     {
                         new string[] {
-                            "赏金改了十一次，改到没人敢接。他要的不是有人来杀他，是那张纸上必须写清他叫什么。",
-                            "The sum was rewritten eleven times, up to where nobody would take it. He didn't want a killer. He wanted his name spelled out on something." },
+                            "赏金改了十一次。他在意的倒是目标栏，名字写得很清楚。",
+                            "He changed the bounty eleven times. Kept his name perfectly clear in the target field." },
                         new string[] {
-                            "最后一封信从疫区寄出。他大概听说了：污染能把一只鸭改成别的东西。",
-                            "His last letter came from the quarantine. He'd heard what contamination does — it turns a duck into something else." }
+                            "最后一封信从疫区寄出。听说他想靠污染变个样。",
+                            "His last letter came from quarantine. He thought contamination might change him." }
                     };
                 case "ch5":
                     return new string[][]
                     {
                         new string[] {
-                            "十七遍「我还认得自己吗」。他改错了地方——污染改的是你是什么，不是你叫什么。",
-                            "Seventeen times: \"Do I still recognize myself?\" He aimed at the wrong thing. Contamination changes what you are, not what you're called." },
+                            "「我还认得自己吗」，他写了十七遍。污染没帮上他的忙。",
+                            "He wrote 'Do I still recognize myself?' seventeen times. Contamination didn't help." },
                         new string[] {
-                            "他现在在竞技场。不是作为选手回来的。你自己去看吧，我不陪你。",
-                            "He's at the arena now. Not as a fighter. Go see for yourself. I'm not coming." }
+                            "他现在在竞技场，已经不是选手了。你去看，我不陪。",
+                            "He's at the arena now. No longer a contestant. Go look. I'm staying here." }
                     };
                 case "ch6":
                     return new string[][]
                     {
                         new string[] {
-                            "看清楚了？名人堂进一个挤一个，Boss 图鉴不挤人。写进去的，一条都不会掉。",
-                            "Now you see it. The Hall of Fame swaps one in for one out. The bestiary evicts nobody — once you're written in, you stay." },
+                            "名人堂会挤人，Boss图鉴不会。他把自己留在了那本册子里。",
+                            "The Hall of Fame runs out of room. The bestiary doesn't. That's where he stayed." },
                         new string[] {
-                            "他找了三年一个不会被挤掉的位置。找到了。代价是那个位置上不写名字。",
-                            "He spent three years looking for a slot that couldn't be taken from him. He found one. The price is that the slot carries no name." },
+                            "他找了三年，终于有了永久的位置。写在上面的却只是一道影子。",
+                            "Three years to find a permanent place. All it holds is a shadow." },
                         new string[] {
-                            "碑上那一行现在归别人了，没人去刮。案子到此为止，钱你拿好。",
-                            "That line on the plaque belongs to someone else now. Nobody scrapes it off. Case closed. Take your money." }
+                            "案子结了。碑上那一行归别人，没人去刮。",
+                            "Case closed. That line on the plaque belongs to someone else. Leave it." }
                     };
                 default:
                     return new string[][]

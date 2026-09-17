@@ -789,22 +789,14 @@ namespace BossRush
         {
             switch (buff)
             {
-                case SkyIslandFieldBuff.Lantern: return L10n.T("使用：在晴岚群岛上点亮约 4 分钟：微风里不积寒意，大风里只挡一半；照亮身边。夜里招来更多云蚋，但灯下的只绕着灯转、不叮人也不躲子弹——灯灭前记得扇掉或打掉（离岛无效）",
-                    "Use: on the Qinglan isles, burns about 4 minutes: no chill in a breeze, half protection in a gale; lights your way. At night it draws more cloud gnats, but the ones in its light only circle the flame — they will not bite and cannot dodge bullets; clear them before it goes out (no effect elsewhere)");
-                case SkyIslandFieldBuff.Incense: return L10n.T("使用：在晴岚群岛上约 5 分钟什么风都挡得住（大风也一样），耐力恢复加快（离岛无效）",
-                    "Use: on the Qinglan isles, about 5 minutes safe from any wind (gales too) with faster stamina recovery (no effect elsewhere)");
-                case SkyIslandFieldBuff.Charm: return L10n.T("使用：本趟出击噬风的风暴伤害 −35%、生命上限 +10%、耐力恢复 +10%（只在晴岚群岛上能用，离岛失效，不叠加）",
-                    "Use: this raid, 35% less damage from the Windeater's storm, +10% max health and +10% stamina recovery (Qinglan isles only; ends when you leave; does not stack)");
-                case SkyIslandFieldBuff.Meal: return L10n.T("在晴岚群岛上吃：菜畦重新开张之后，算作晴禾的归航菜（本趟一次）",
-                    "Eat on the Qinglan isles: once the garden has reopened, it counts as Qinghe's homecoming meal (once per raid)");
-                case SkyIslandFieldBuff.Recall: return L10n.T("使用：在晴岚群岛上拉一下缆绳，回到登云码头（每趟一次，附近有敌人时不行；不消耗）",
-                    "Use: on the Qinglan isles, pull the line back to Cloudrise Dock (once per raid, not with enemies nearby; not consumed)");
-                case SkyIslandFieldBuff.Zapper: return L10n.T("使用：在晴岚群岛上放在地上约 5 分钟，把 12 米内的云蚋引过去电落（同时至多两盏；离岛无效）",
-                    "Use: on the Qinglan isles, set it down for about 5 minutes to draw cloud gnats in from 12 m and zap them (up to two at once; no effect elsewhere)");
-                case SkyIslandFieldBuff.Fan: return L10n.T("使用：在晴岚群岛上扇一下，扑落面前三米多贴脸的云蚋、扇退远一点的（不消耗；离岛无效）",
-                    "Use: on the Qinglan isles, sweep once to knock down gnats within about 3 m in front and blow back those further off (not consumed; no effect elsewhere)");
-                case SkyIslandFieldBuff.Soothe: return L10n.T("在晴岚群岛上抹一层：止住云蚋的痒；抹上之后约 90 秒内再被叮也不痒（出门前先抹也算）",
-                    "Rub it on while on the Qinglan isles: stops cloud gnat itching, and for about 90 seconds afterwards new bites will not itch (worth applying before you set out)");
+                case SkyIslandFieldBuff.Lantern: return L10n.T("风灯：照明、防风约4分钟。夜里引蚋，灯灭前清掉。仅群岛有效。", "Lantern: light and wind shelter for about 4 min. At night, clear gnats before it goes out. Qinglan only.");
+                case SkyIslandFieldBuff.Incense: return L10n.T("使用：防风并加快耐力恢复，持续约5分钟。仅群岛有效。", "Use: block wind chill and recover stamina faster for about 5 min. Qinglan only.");
+                case SkyIslandFieldBuff.Charm: return L10n.T("使用：噬风风暴伤害−35%，生命上限与回耐+10%。本趟有效，不叠加，离岛失效。", "Use: Windeater storm damage -35%; max HP and stamina recovery +10%. This raid only. No stacking; ends on leaving.");
+                case SkyIslandFieldBuff.Meal: return L10n.T("岛上食用：交还种植记录后，可获得归航菜增益。每趟一次。", "Eat on Qinglan for the meal buff after returning the planting record. Once per raid.");
+                case SkyIslandFieldBuff.Recall: return L10n.T("岛上使用：返回登云码头，每趟一次，不消耗。附近有敌人时不可用。", "Use on Qinglan: return to Cloudrise Dock once per raid. Not consumed. No enemies nearby.");
+                case SkyIslandFieldBuff.Zapper: return L10n.T("岛上放置：吸引并电落12米内的云蚋，持续约5分钟。最多两盏，离岛失效。", "Place on Qinglan: lure and zap gnats within 12m for about 5 min. Up to two; ends on leaving.");
+                case SkyIslandFieldBuff.Fan: return L10n.T("岛上使用：扑落前方约3米内的云蚋，击退稍远的蚋。不消耗。", "Use on Qinglan: knock down gnats within about 3m ahead and push back those further away. Not consumed.");
+                case SkyIslandFieldBuff.Soothe: return L10n.T("岛上使用：立即止痒，之后约90秒内叮咬不再发痒。", "Use on Qinglan: stop itching and prevent new itches for about 90s.");
                 default: return string.Empty;
             }
         }
