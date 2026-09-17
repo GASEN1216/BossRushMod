@@ -1,5 +1,14 @@
 # 捏脸 NPC 工具链
 
+## 2026-09-17 天空岛婚姻生命周期审核补充（SAFE 记录）
+
+晴禾 / 苇白可在岛上满足送戒指条件后结婚，婚礼收尾由 `NPCMarriageSystem.RelocateOrDespawnMarriedNpc` 移除当前实例；后续教堂驻留 / 跨图跟随走已有永久配偶异步 owner。恢复只挂 `AttachPermanentParts`，没有岛上居民版“聊聊航路”，剧情 / 服务由岛上装置继续承担。
+
+两个未修缺口已确认：`CR-2026-09-17-013`（P1 / COMPAT）是苇白当趟移除后官方任务给予者完成缓存不失效，下一趟才能补挂委托板；`CR-2026-09-17-014`（P2 / COMPAT）是 `WeddingModBehaviourBridge.HandleDivorceNpcRelocation` 只处理叮当 / 羽织，永久 NPC 离婚只取消待完成请求，不清已经驻留的真实实例和 registry，当前基地可能残留前配偶。正常切图清理后可恢复原居民，不据此推断永久卡档。
+
+现有异步 owner 对“离婚后迟到生成”有保护，不等于已完成实例的离婚清理齐全。生产方法隔离复现与人工清单见 `docs/代码审查/2026-09-17-天空岛NPC婚姻与剧情衔接审核.md`；均为 Open，L1 / L2，未实机，本轮未修改生产代码。
+
+
 <cite>
 **本文引用的文件**
 - [DuckNpcFaceCatalog.cs](file://Integration/NPCs/DuckNpc/DuckNpcFaceCatalog.cs)

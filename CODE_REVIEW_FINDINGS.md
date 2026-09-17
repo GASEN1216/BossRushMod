@@ -1,5 +1,15 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+## 2026-09-17 天空岛 NPC 中途结婚与剧情衔接（审核，未修复）
+
+详细证据、功能映射与人工验证：`docs/代码审查/2026-09-17-天空岛NPC婚姻与剧情衔接审核.md`。本轮只记录审核结果，生产代码未改；建议修复均为 COMPAT。
+
+| ID | 级别 / 分类 | 已确认问题 | 状态与证据 |
+| --- | --- | --- | --- |
+| CR-2026-09-17-013 | P1 / COMPAT | `SkyIslandOfficialQuestGivers.EnsureDeviceFallback` 第 54 / 60 行按 `fallbackDone` 永久跳过曾挂接的给予者。苇白本趟结婚后被 `RelocateOrDespawnMarriedNpc` 销毁，委托板不会接管 590011，未接取 / 待交付任务失去本趟入口，继而影响 590012 接取。常规航务委托不是该主线的替代入口。 | **Open（L1 + L2 隔离复现，未 L3）**。逐字抽取生产缓存与方法，父物体销毁同时使给予者判空，后续 120 次调用仍无兜底；入岛前已婚和清会话后重入的对照均能挂板。正常返航再进岛可恢复；点灯 / 解决钟守 / 敲钟本身未被婚姻条件封锁，不能写成永久无法通关。建议按实际给予者失效撤销对应缓存并恢复有界补接。 |
+| CR-2026-09-17-014 | P2 / COMPAT | `WeddingModBehaviourBridge.HandleDivorceNpcRelocation` 第 432 行只有叮当 / 羽织实体分支，缺永久 NPC。晴禾 / 苇白离婚后只取消待完成请求和删除占位物，真实教堂角色及 registry、驻留状态未清理。 | **Open（L1 + L2 分发复现，未 L3）**。两个 sky ID 均未分发实体清理，叮当对照执行移除；`DestroyWeddingPlaceholder` 不处理真实永久 NPC。可导致本次基地停留残留前配偶，尚无跨图永久卡档证据。建议复用永久 NPC 按身份回收 / 注销，并由下次地图 owner 恢复原居民。 |
+
+
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
 ## 2026-09-17 龙裔燃烧弹误选烟花
