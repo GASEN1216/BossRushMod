@@ -12,7 +12,7 @@ Once unlocked, wait for your character and the level to finish loading, then pic
 
 A save that already played the Sky Islands in an older version keeps access automatically when existing visits, story facts, encounter clears or journal entries are found. Only a save with no previous Sky Islands progress starts with Jeff.
 
-On the isles the main line is three proper quests that appear in the regular quest journal: take **Light Both Beacons** from **Weibai** at Windchime Market and hand it in once both burn; take **The Bell Court Standoff** from **Fuzhou** at the dock and hand it in after reconciling with or defeating the Bell Keeper; finally take **The Homecoming Bell** from the **Bell Keeper** at the Bell Court and hand it in once it has rung. These quests are accepted and completed on the isles, never back at base; on a trip where a resident is away, the same quest hangs on the commission board, the dock workbench or the bell engine instead. Stages an older save has already finished show up straight away on the Completed tab.
+On the isles the main line is three proper quests in the regular quest journal: take **Light Both Beacons** from **Weibai** at Windchime Market and report back once both burn; take **The Bell Court Standoff** from **Fuzhou** at the dock, then talk the Bell Keeper down or stop his bell engine. Once the standoff is resolved, accept **The Homecoming Bell** from the **Bell Keeper** right there, ring it and hand it in locally, then report to Fuzhou on your way home. There is no need for a dock detour just to unlock the bell quest. The HUD names the next giver and hand-in location. These quests are accepted and completed on the isles, never back at base; when a resident is away, the same quest hangs on the commission board, dock workbench or bell engine instead. Older saves that had not used this quest chain receive a one-time completion backfill; quests already accepted still need your hand-in, and reloading never completes them automatically.
 
 "The existing dock" is the boat you already use to head out — the same interaction menu that holds the vanilla challenge maps. **Even after unlocking it, you have to walk over to the boat before the option appears**: that part of the base streams in separately, so while you are standing in the main base area the boat does not exist yet and not seeing "Depart for Sky Islands" is expected.
 
@@ -44,11 +44,9 @@ North of Cloudrise Dock lies Windchime Market. Talk to Weibai the lamp-keeper fi
 
 There are **39 scavenging points** across the map — 3–4 in each of the eight main regions and 2 on each of the four side paths — and they use the familiar official looting interface. A label above each crate names its tier:
 
-| Tier | Where | Items per crate | Roughly what's inside |
-| --- | --- | --- | --- |
-| Household Stores (11) | Cloudrise Dock, Windchime Market, Green Terraces | 1–2 | Low-quality everyday goods to top up before you set out |
-| Voyage Supplies (18) | Hanging Root Wood, Windsong Boardwalk, Mirrorwater Temple and three side paths | 2–3 | Mid-quality gear — the payoff for taking the detours |
-| Starworks Cache (10) | Fallen Star Workshop, Bell Court, Starfall Overlook | 2–4 | The highest quality on the map, and the hardest to reach |
+- **Household Stores (11)** — Where: Cloudrise Dock, Windchime Market, Green Terraces; Items per crate: 1–2; Roughly what's inside: Low-quality everyday goods to top up before you set out
+- **Voyage Supplies (18)** — Where: Hanging Root Wood, Windsong Boardwalk, Mirrorwater Temple and three side paths; Items per crate: 2–3; Roughly what's inside: Mid-quality gear — the payoff for taking the detours
+- **Starworks Cache (10)** — Where: Fallen Star Workshop, Bell Court, Starfall Overlook; Items per crate: 2–4; Roughly what's inside: The highest quality on the map, and the hardest to reach
 
 - Crates are only placed as you approach, so the whole map is never spawned at once. The HUD shows "looted / available".
 - **Contents are fixed for the run**: walk away and come back and it is the same crate; what you took does not restock. **Only a fresh raid re-rolls them.**
@@ -95,6 +93,8 @@ You can finish the story without fighting it. Once beaten, the save slot remembe
 
 ## Residents and their services
 
+For longer conversations with a service provider, the first two lines lead to three choices: "I need something", "See you" or "Tell me more". More talk resumes with the next line, including letters, route news and chief hints. Qinghe talks about her garden and cooking; Weibai talks about lamps, wind chimes and the lanes.
+
 Qinghe and Weibai are long-term residents: daily chat, gifts, affinity and marriage all work. After marriage their location follows the usual spouse living and following rules; every required lane action also exists as a standalone device, so a resident being away never blocks the main line.
 
 Four of them offer a practical service; the other two are story branches:
@@ -107,7 +107,7 @@ Four of them offer a practical service; the other two are story branches:
 
 ## Lane contracts
 
-Take a contract from Weibai herself or from the Windchime Market noticeboard — one of three:
+Take a contract from Weibai or the Windchime Market noticeboard:
 
 - **Clear the lanes** — finish a number of encounter groups.
 - **Recover supplies** — loot a number of scavenging points.
@@ -153,9 +153,9 @@ The evidence on the four hidden isles (Frogsong Pool, the Upturned Post Hut, the
 
 Weibai herself, or the "Dock refit" device at Cloudrise Dock, lets you **open the archipelago journal**:
 
-- **Four chapters of notes** (the dock and the market / the west / the east / the boardwalk and the Bell Court): recorded notes show in full, unrecorded ones show only their title marked "not yet recorded", so you can hunt down the rest. Once all twenty are in, a final page appears at the end of the overview.
-- **Letters · crew roster · keepsakes**: every letter you have kept can be reread; letters still to come only show their number, with no spoilers.
-- **Overview · lights · what things are for**: your collection progress and a summary of the journey; which lights on the isles are burning and what each missing lamp still needs; and what each of the eighteen Sky Islands items is for, all on one page.
+- **Twenty notes**: recorded notes appear in the official note index and can be reread at base. The journal home no longer lists four note chapters. Collection progress and the final page for all twenty notes are under "This run · journey progress".
+- **Letters and people**: opens separate "Pigeon letters", "Crew roster" and "Keepsakes you carry" pages, including letters you have already received.
+- **About the isles**: opens "Lights on the isles", "What things are for" and "This run · journey progress" for lamp materials, item uses and collection progress.
 
 After you ring the Homecoming Bell, the homecoming boat ties up **beside the dock lamp** with a **crew roster** at the bow: the old helmsman, the post carrier, the workshop apprentice and the ship's doctor have each written a page. Every page reacts to this save's choices — whether you reconciled with or defeated Zheling and the Bell Keeper, whether you beat the Windeater, calibrated the telescope and returned the planting record — so a second save that takes the other road reads different words.
 
@@ -175,21 +175,17 @@ Each keepsake is granted once per save, and the grant is recorded with the Sky I
 
 There are **30 gathering spots** beside the islands' lamps, landmarks and relay platforms. You can see a faint glow from a distance; the name appears as you get close. Stand next to one and hold interact for 1.5–3.5 seconds to gather. Each spot can be gathered once per raid and grows back on your next departure. The deeper the island, the more it yields — and **places you have mended grow back thicker** (the caption says why):
 
-| Spot | Yields | Notes |
-| --- | --- | --- |
-| Greenear tuft | Greenear Sheaf | 2–3 at Windchime Market and the Green Terraces; 3–4 at Mirrorwater Temple and Frogsong Pool |
-| Stranded driftwood | Driftwood | 1–2 at the dock and the market; 2–3 in Hanging Root Wood, on the boardwalk, at the Upturned Post Hut and on the woodland relay platform |
-| Cloudmoss patch | Cloudmoss Fiber | 1–2 on the terraces; 2–3 in Hanging Root Wood, at Mirrorwater Temple and on the hidden isles |
-| Brass vein | Brass Scrap | 2–3 in Rainlisten Grotto (15% chance of a windcrystal shard); 2–4 at the workshop, the Bell Court, the overlook and the maintenance-walk platform (30%) |
-| Wind crystal cluster | Windcrystal Shard | 1–2 on the boardwalk, in Rainlisten Grotto and on the centre-bridge platform (15% chance of stardust); 2–3 at the workshop, the Bell Court and the overlook (35%); **at night (19:00–05:00) the stardust chance rises by another 15%** |
+- **Greenear tuft** — Yields: Greenear Sheaf; Notes: 2–3 at Windchime Market and the Green Terraces; 3–4 at Mirrorwater Temple and Frogsong Pool
+- **Stranded driftwood** — Yields: Driftwood; Notes: 1–2 at the dock and the market; 2–3 in Hanging Root Wood, on the boardwalk, at the Upturned Post Hut and on the woodland relay platform
+- **Cloudmoss patch** — Yields: Cloudmoss Fiber; Notes: 1–2 on the terraces; 2–3 in Hanging Root Wood, at Mirrorwater Temple and on the hidden isles
+- **Brass vein** — Yields: Brass Scrap; Notes: 2–3 in Rainlisten Grotto (15% chance of a windcrystal shard); 2–4 at the workshop, the Bell Court, the overlook and the maintenance-walk platform (30%)
+- **Wind crystal cluster** — Yields: Windcrystal Shard; Notes: 1–2 on the boardwalk, in Rainlisten Grotto and on the centre-bridge platform (15% chance of stardust); 2–3 at the workshop, the Bell Court and the overlook (35%); **at night (19:00–05:00) the stardust chance rises by another 15%**
 
-| Story progress | What grows back thicker |
-| --- | --- |
-| Planting record returned to Qinghe | Each greenear tuft on the Green Terraces yields 1 more |
-| Wind beacon calibrated | Each cloudmoss patch in Hanging Root Wood yields 1 more |
-| Star lamp repaired | Each brass vein at the Fallen Star Workshop (and its maintenance-walk platform) yields 1 more |
-| Windeater defeated | Each wind crystal cluster on Windsong Boardwalk (and the centre-bridge platform) yields 1 more shard — the wind has set into crystal |
-| Telescope calibrated | The Starfall Overlook cluster gets a +20% chance of stardust |
+- **Planting record returned to Qinghe** — What grows back thicker: Each greenear tuft on the Green Terraces yields 1 more
+- **Wind beacon calibrated** — What grows back thicker: Each cloudmoss patch in Hanging Root Wood yields 1 more
+- **Star lamp repaired** — What grows back thicker: Each brass vein at the Fallen Star Workshop (and its maintenance-walk platform) yields 1 more
+- **Windeater defeated** — What grows back thicker: Each wind crystal cluster on Windsong Boardwalk (and the centre-bridge platform) yields 1 more shard — the wind has set into crystal
+- **Telescope calibrated** — What grows back thicker: The Starfall Overlook cluster gets a +20% chance of stardust
 
 Whatever you gather goes into your pack, and **if your pack is full it drops at your feet** — gathered goods ride along with this raid's pack like any other loot and are never sent back to base storage.
 
@@ -203,19 +199,17 @@ Each recipe button shows how many of each material you have against how many it 
 
 **The isles' lights**: the old letter in the Upturned Post Hut asks only one thing — "please do not let the island's lights go out" — and the child writing to the frogs in Frogsong Pool says it will be time to come home once they have counted ten lights. The three residents' hearths (Fuzhou's dock, Qinghe's garden, beside Miantai) are always lit and count as the first three; **seven devices on the isles are each missing a windcrystal lamp**, and each lamp is something a letter asked for. At the device, the panel offers "Light a windcrystal lamp", showing what it needs and how much you carry:
 
-| Place | The letter that asks for it | To light it |
-| --- | --- | --- |
-| Windsong Boardwalk · twin-beacon gate | From the boardwalk watch | Qinglan Windcrystal ×1, Driftwood ×3, Cloudmoss Fiber ×2 |
-| Mirrorwater Temple | From the one who sweeps the temple | Qinglan Windcrystal ×1, Windward Incense ×1, Driftwood ×2 |
-| Fallen Star Workshop | The apprentice's work order | Qinglan Windcrystal ×1, Brass Scrap ×4 |
-| Homecoming Bell Court | A loose page from the register | Qinglan Windcrystal ×1, Wind Lantern ×1, Brass Scrap ×2 |
-| Upturned Post Hut | The post hut log | Qinglan Windcrystal ×1, Cloudmoss Fiber ×3, Driftwood ×1 |
-| Rainlisten Grotto | A note pinned to the chart | Qinglan Windcrystal ×1, Driftwood ×2, Brass Scrap ×2 |
-| Starfall Overlook | The overlook stargazing log | Qinglan Windcrystal ×1, Stardust ×2 (clear the overlook guards first) |
+- **Windsong Boardwalk · twin-beacon gate** — The letter that asks for it: From the boardwalk watch; To light it: Qinglan Windcrystal ×1, Driftwood ×3, Cloudmoss Fiber ×2
+- **Mirrorwater Temple** — The letter that asks for it: From the one who sweeps the temple; To light it: Qinglan Windcrystal ×1, Windward Incense ×1, Driftwood ×2
+- **Fallen Star Workshop** — The letter that asks for it: The apprentice's work order; To light it: Qinglan Windcrystal ×1, Brass Scrap ×4
+- **Homecoming Bell Court** — The letter that asks for it: A loose page from the register; To light it: Qinglan Windcrystal ×1, Wind Lantern ×1, Brass Scrap ×2
+- **Upturned Post Hut** — The letter that asks for it: The post hut log; To light it: Qinglan Windcrystal ×1, Cloudmoss Fiber ×3, Driftwood ×1
+- **Rainlisten Grotto** — The letter that asks for it: A note pinned to the chart; To light it: Qinglan Windcrystal ×1, Driftwood ×2, Brass Scrap ×2
+- **Starfall Overlook** — The letter that asks for it: The overlook stargazing log; To light it: Qinglan Windcrystal ×1, Stardust ×2 (clear the overlook guards first)
 
 - A lit lamp is **saved with your story** and burns every time you return; beside a lamp, as beside a hearth, **no wind gets through**.
 - **Once all ten lights are burning, the islands' nights stop blowing** (the bridges keep a little wind).
-- The journal's "Overview · lights · what things are for" page lists every lamp and what it still needs, and the crew on the homecoming boat notice the lamp at their own place. A lamp is recorded before its materials are taken, so a save that cannot be written right now never costs you anything.
+- The journal's "About the isles → Lights on the isles" page lists every lamp and what it still needs, and the crew on the homecoming boat notice the lamp at their own place. A lamp is recorded before its materials are taken, so a save that cannot be written right now never costs you anything.
 
 **The night wind**: at night (game time 19:00 to 05:00, in step with the game's own day/night), and whenever you stand on a bridge or relay platform, you slowly build up **chill**; once both beacons are lit and the Windeater is still out there (or while its echo is), Windsong Boardwalk and the bridges are in a **gale**. A full chill (about two and a half minutes in a breeze, about one minute in a gale) gives you **wind chill**: stamina recovers slower and you get hungry faster — **no health loss and no slower running**. Captions tell you when the wind first picks up, when the chill is halfway, and when wind chill sets in and wears off. By day the islands themselves are calm.
 
@@ -240,16 +234,14 @@ At night (game time 19:00 to 05:00) swarms of **cloud gnats** come out on the is
 
 **Counters** each have their own job:
 
-| What | Where | What it does |
-| --- | --- | --- |
-| Hearth smoke / Windward Incense | the three hearths; stove or mortar | stand in the smoke or burn incense: no gnats come, and those around you scatter |
-| Wind Lantern | dock workbench | **trades a crowd for quiet**: more come while it burns, but those within 6 m in its light only circle the flame — they neither bite nor dodge; the moment it goes out they are back on your neck (with 20 s left you are told how many are still circling) |
-| Cloudmoss Veil | Qinghe · garden stove | works from your pack: gnats can only circle about 1 m off and bite about three times less often |
-| Remedy-Smoke Fan | Miantai · moss mortar | the swarm on your face: knocks down gnats in a cone within about 3.4 m in front of you and blows those within 6 m back 2.5 m, dazed for 1.2 s; wait a second between sweeps; **not consumed** |
-| Windcrystal Gnat Zapper | Fuzhou · dock workbench (once two windcrystal lamps are lit on the isles; two per batch) | holds an area: set on the ground for about 5 minutes, its hum draws gnats in from 12 m and zaps one within 3.2 m about every 0.7 s; up to two at once |
-| Weibai's “Thin the gnats” contract | Weibai / the Windchime Market noticeboard (at night) | turns killing them into income: `12` per contract, paid at the same tier as the other three |
-| Starmoss Salve | Miantai · moss mortar | stops the itch, and for about 90 seconds after it goes on new bites will not itch; **applying it before you set out counts** |
-| Miantai's moss remedy | Miantai | clears the current itch along with your wounds; new bites itch as usual |
+- **Hearth smoke / Windward Incense** — Where: the three hearths; stove or mortar; What it does: stand in the smoke or burn incense: no gnats come, and those around you scatter
+- **Wind Lantern** — Where: dock workbench; What it does: **trades a crowd for quiet**: more come while it burns, but those within 6 m in its light only circle the flame — they neither bite nor dodge; the moment it goes out they are back on your neck (with 20 s left you are told how many are still circling)
+- **Cloudmoss Veil** — Where: Qinghe · garden stove; What it does: works from your pack: gnats can only circle about 1 m off and bite about three times less often
+- **Remedy-Smoke Fan** — Where: Miantai · moss mortar; What it does: the swarm on your face: knocks down gnats in a cone within about 3.4 m in front of you and blows those within 6 m back 2.5 m, dazed for 1.2 s; wait a second between sweeps; **not consumed**
+- **Windcrystal Gnat Zapper** — Where: Fuzhou · dock workbench (once two windcrystal lamps are lit on the isles; two per batch); What it does: holds an area: set on the ground for about 5 minutes, its hum draws gnats in from 12 m and zaps one within 3.2 m about every 0.7 s; up to two at once
+- **Weibai's “Thin the gnats” contract** — Where: Weibai / the Windchime Market noticeboard (at night); What it does: turns killing them into income: `12` per contract, paid at the same tier as the other three
+- **Starmoss Salve** — Where: Miantai · moss mortar; What it does: stops the itch, and for about 90 seconds after it goes on new bites will not itch; **applying it before you set out counts**
+- **Miantai's moss remedy** — Where: Miantai; What it does: clears the current itch along with your wounds; new bites itch as usual
 
 **The frogs of Frogsong Pool**: in the letter to the frogs of Frogsong Pool, a child asks the frogs to count the lights for them, but the pool went quiet long ago. At night, go to **Mirrorwater Temple · a rubbing in the pool** and wrap a clutch of frogspawn in a handful of Cloudmoss Fiber (the frogs gather in the shallows to breed at night), then carry it during that raid to **the note by Frogsong Pool ("Qinghe's planting record")** and release it; **release still works after dawn**. While you carry it, the Wind-Vane Compass points to Frogsong Pool before other targets. **If you fall or leave the isles, the spawn in your hands is lost**, but every clutch already released is saved: deliver the three clutches on separate trips as you pass, without repeating the route in one raid. Each clutch lowers **the chance of gnats spawning near water**; after all three, frogs can be heard near the pool at night and water's extra attraction is gone, but **lamps and sheltered ground can still draw gnats**. The roster, that letter and several residents mention Frogsong Pool croaking again and the frogs that grew there spreading along the waterline. Progress is shown on the journal's Overview page.
 
@@ -272,5 +264,5 @@ The objective on the card at the right of the screen changes with your progress.
 :::
 
 ::: tip
-Each of the twenty notes around the isles has its own entry, and several quietly point to a side path or a mechanic — the dock's waiting list, the contract stubs at the market, the notches on the boardwalk rail, the maintenance log at the workshop. Notes you have recorded can be reread at any time in the archipelago journal.
+Each of the twenty notes around the isles has its own entry, and several quietly point to a side path or a mechanic — the dock's waiting list, the contract stubs at the market, the notches on the boardwalk rail, the maintenance log at the workshop. Recorded notes can be reread in the official note index at any time.
 :::

@@ -50,5 +50,5 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 - Base armor (Head +5 / Body +5) is low — not meant for pure tank builds; the set lives on control
 
 ::: tip
-Counter-freeze is strongest against melee-chasing bosses (Hunter, Dragon King). Freeze them after they gap-close, then punish during the stun window.
+Counter-freeze is useful against enemies that chase into melee range. When it triggers, use the control window to create distance or attack.
 :::

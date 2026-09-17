@@ -15,11 +15,9 @@
 Once the first payout lands, buy and build these three. They're cheap, and they all **keep
 producing** - the earlier you set them up, the more they've earned by the time you need them.
 
-| Spend | Cost | What it buys you |
-| --- | --- | --- |
-| **Duck King Codex** | 4000 | Logs every Boss you kill. The first entry alone returns **50,000** in achievement cash |
-| **Mailbox** | 500 | A daily paper with a bounty and a check-in wall that pays high-quality prizes as it fills |
-| **Campaign Board** | 500 | Takes the six Duck King Campaign contracts. Chapter 1 pays **20,000** |
+- **Duck King Codex** — Cost: 4000; What it buys you: Logs every Boss you kill. The first entry alone returns **50,000** in achievement cash
+- **Mailbox** — Cost: 500; What it buys you: A daily paper with a bounty and a check-in wall that pays high-quality prizes as it fills
+- **Campaign Board** — Cost: 500; What it buys you: Takes the six Duck King Campaign contracts. Chapter 1 pays **20,000**
 
 [tip] The Codex pays for itself ten times over on the first square you light. And it has actually **been logging since the day you installed the Mod** - buying the book just lets you open it.
 
@@ -40,7 +38,7 @@ jukebox tracks.
 
 - Find **Dingdang** and **Yuori** on normal maps
 - Chat + gift daily → build Affinity
-- Dingdang **Lv.2** = shop (**Affix Forge Stones** stocked here) / **Lv.4** = Cold Quench Fluid → start reforging
+- Dingdang **Lv.2** = shop (**Affix Forge Stones** stocked here) / **Lv.4** = Cold Quench Fluid for stat locks; reforging is available from the start
 - Dingdang also runs **affix forging**: reforging changes numbers, affixes change behavior
   (kill explosions, lifesteal on hit, armor thorns)
 
@@ -66,9 +64,9 @@ By the official difficulty rating, lowest first:
 
 - **From Scratch** ★★★ — Naked + Ticket. Random start, grow from zero
 - **Faction War** ★★★ — Naked + Banner. Multi-faction chaos
-- **Black Market Duck Cup** ★★★ — just a Ticket. You never fight; two signed fighters do it for
-  you, so **you never take a hit**. The difficulty isn't in the aiming, it's in the decisions
-  you make before the bell
+- **Black Market Duck Cup** ★★★ — just a Ticket. You normally manage from the stands; two signed fighters do it for
+  you. Pre-match decisions matter most; an ERROR on an eligible fighter can briefly put you
+  in control of that fighter
 - **Infinite Hell** ★★★★ — unlimited waves, find your ceiling
 - **Zombie Mode** ★★★★ — Horde Invitation to enter. Naked against an endless horde, running its
   own Purification Point economy. It shares nothing with the modes above, and Duck King Campaign

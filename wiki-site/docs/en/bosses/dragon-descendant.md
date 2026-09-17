@@ -71,11 +71,12 @@ several kills, and Dragon Breath is the stubborn one.
 - Melee players should wait for the ice slow to trigger before committing
 
 ## Spawn Limits
-- Standard BossRush: excluded from the first 20 waves
+- Standard BossRush: normally moved beyond the first 20 candidate positions; short pools, insufficient ordinary Bosses or filtering can make it appear earlier
+- Infinite Hell: eligible for weighted draws from wave 1
 - Faction War: Max 1 per session
 - Blood Hunt: Max 1 per session
 
 ## Related Achievements
-- **Dragon Heir Hunter** — First kill (reward: 30,000)
+- **Dragon Slayer** — First kill (reward: 30,000)
 - **Perfect Dragon Hunt** — No-damage kill (reward: 200,000)
-- **Dragon Heir Collection** — Collect all exclusive drops (reward: 300,000)
+- **Dragon Descendant Collector** — Collect all exclusive drops (reward: 300,000)

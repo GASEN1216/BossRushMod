@@ -6,7 +6,7 @@ A **summoner melee staff** with modest personal damage but a right-click that pu
 
 - **Type**: Melee / **Quality**: 5
 - **Drop**: 20% from Big Xing (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
-- Won't drop on death
+- Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ### Stats
 
@@ -15,7 +15,7 @@ A **summoner melee staff** with modest personal damage but a right-click that pu
 
 ### Soul Summon (Right Click)
 
-- **Cooldown**: 12s
+- **Cooldown**: 12s / **Cast cost**: 12 stamina (separate from 6 per melee swing)
 - Summons **3 soul warriors** around you (2.2m radius)
 - Each has **80 HP**, fights on your side, pursues enemies
 - Lasts **15 seconds**, then fades (or dies from damage)

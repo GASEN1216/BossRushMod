@@ -11,7 +11,7 @@ A run in the arena is only the beginning. What you get afterwards, how you resha
 - **Loot & Rewards** — Read this first: crates, cash pools and strict rewards, mode by mode
 - **Death Wraith** — Turns one death into a rematch you have to win back
 - **Random Events** — Supply drops, blood moons and worse: everything that can happen mid-run
-- **Mutator System** — 28 mutators rolled at the start of a run that rewrite its rules
+- **Mutator System** — A pool of 28 mutators; eligible modes draw a few at run start to rewrite its rules
 
 ## Reshaping your gear
 
@@ -28,7 +28,7 @@ A run in the arena is only the beginning. What you get afterwards, how you resha
 
 ## Story and relationships
 
-- **Duck King Campaign** — Six story contracts that string every existing mode together
+- **Duck King Campaign** — Six story contracts linking selected modes and base progression
 - **Affinity & Marriage** — Ten affinity tiers, gifts and dates, all the way to a wedding
 
 ## Tuning the mod

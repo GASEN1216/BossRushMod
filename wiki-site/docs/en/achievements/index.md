@@ -38,10 +38,10 @@ BossRush Mod currently contains 45 achievements across 9 categories. Completing 
 ## Speedrun
 | Achievement | Requirement | Reward | Difficulty |
 | --- | --- | --- | --- |
-| Lightning Run | Reach the clear condition of any mode within 5 minutes | $30,000 | ★★ |
-| Speed Demon | Reach the clear condition of any mode within 3 minutes | $120,000 | ★★★★ |
-| Time Assassin | Reach the clear condition of any mode within 2 minutes | $400,000 | ★★★★★ |
-| Instant Kill (Hidden) | Reach the clear condition of any mode within 1 minute | $800,000 | ★★★★★ |
+| Lightning Run | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 5 minutes | $30,000 | ★★ |
+| Speed Demon | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 3 minutes | $120,000 | ★★★★ |
+| Time Assassin | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 2 minutes | $400,000 | ★★★★★ |
+| Instant Kill (Hidden) | Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 1 minute | $800,000 | ★★★★★ |
 
 ::: tip
 "Instant Kill" is a hidden achievement and will not appear in the achievement panel until unlocked.

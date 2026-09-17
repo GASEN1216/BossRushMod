@@ -30,10 +30,10 @@ BossRush Mod currently contains 45 achievements across 9 categories. Completing 
 - Iron Will: Survive 10 waves in Infinite Hell without taking damage. Reward `$500,000`, difficulty `★★★★★`
 
 ### Speedrun
-- Lightning Run: Reach the clear condition of any mode within 5 minutes. Reward `$30,000`, difficulty `★★`
-- Speed Demon: Reach the clear condition of any mode within 3 minutes. Reward `$120,000`, difficulty `★★★★`
-- Time Assassin: Reach the clear condition of any mode within 2 minutes. Reward `$400,000`, difficulty `★★★★★`
-- Instant Kill (Hidden): Reach the clear condition of any mode within 1 minute. Reward `$800,000`, difficulty `★★★★★`
+- Lightning Run: Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 5 minutes. Reward `$30,000`, difficulty `★★`
+- Speed Demon: Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 3 minutes. Reward `$120,000`, difficulty `★★★★`
+- Time Assassin: Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 2 minutes. Reward `$400,000`, difficulty `★★★★★`
+- Instant Kill (Hidden): Clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch within 1 minute. Reward `$800,000`, difficulty `★★★★★`
 
 [tip] "Instant Kill" is a hidden achievement and will not appear in the achievement panel until unlocked.
 

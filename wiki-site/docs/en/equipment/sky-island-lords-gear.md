@@ -50,5 +50,5 @@ Only found on two of Sky Island's island lords, the Hanging-Root Huntmaster and 
 - **Breaking its gear cuts its attacks**: once the Greenear Straw Hat is shot through, a sluice floods only one patch; once the Straw Raincoat is at zero durability, the sweep's warning slows to 1.6 seconds.
 
 ::: tip
-Both show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal's overview. With Rainhush Earmuffs on, their warning rings stay lit longer (see "Island Chief Gear").
+Both show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal under "About the isles → This run · journey progress". With Rainhush Earmuffs on, their warning rings stay lit longer (see "Island Chief Gear").
 :::

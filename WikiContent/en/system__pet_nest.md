@@ -57,7 +57,7 @@ While a cub is out with you, the pet backpack travels with it. Capacity comes fr
 - **No cubs**
   - Fate Echo: a grudge between two has no room for a third
   - Zombie Mode: it runs its own lifecycle and rewards
-  - Black Market Duck Cup: a spectator mode, you never step onto the field
+  - Black Market Duck Cup: pet deployment is disabled, including during an ERROR control swap
 - **Base**: cubs idle around the nest, up to 3 at once
 
 ### Disaster Expeditions

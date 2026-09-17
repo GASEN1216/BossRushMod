@@ -61,8 +61,8 @@ The Phantom Witch cycles between true stealth, semi-stealth, and visible states:
 - Shows up on your status bar as **Ghost Curse**
 - Duration: 5 seconds
 - Max stacks: 3
-- Per-stack slow: -30% move speed
-- At 3 stacks, that's -90% — you're practically rooted
+- Per-stack slow: -0.3 to both walk-speed and run-speed stats
+- At 3 stacks the flat reduction is 0.9, not a 90% slow or a root
 
 ::: warning
 Be wary at one curse stack. If you eat another from a Curse Realm or the Harass minion while already cursed, reaching three stacks means you probably can't escape the next attack.
@@ -108,16 +108,14 @@ scythe is appended to the loot crate without displacing anything already in it.
 - Don't chase the semi-transparent model — wait for the tracking marker to lock before looking for damage windows
 - Ranged players should circle in open ground, keeping markers and Realms in different spots
 - Melee players should treat each entry as a short trade: wait for the teleport sweep to end, hit from the side, then disengage
-- At 3 curse stacks you lose 90% move speed — avoid eating consecutive curse abilities
+- The curse slow stacks up to 3 times — avoid eating consecutive curse abilities
 - Don't peek the same cover repeatedly — the 2-second tracking marker can deliver a teleport sweep behind it
 
 ## Spawn Restrictions
 - Standard BossRush and Infinite Hell: not in the strong-Boss exclusion list, can appear normally
-- From Scratch: eligible from the first wave
+- From Scratch: no Bosses in waves 1–5; eligible from wave 6
 - Faction War: joins the normal draw
 - Blood Hunt: joins the normal draw
 
 ## Related Achievements
-- **Ghost Hunter** — First kill
-- **Perfect Exorcism** — No-damage kill
-- **Requiem Collector** — Obtain Soulreaper's Requiem
+There are currently no Witch-specific first-kill, no-hit or weapon-collection achievements. Qualifying kills advance her Codex entry and Codex collection progress; see the achievement list for the actual conditions.

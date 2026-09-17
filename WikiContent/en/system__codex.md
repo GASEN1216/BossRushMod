@@ -52,9 +52,7 @@ Each entry tracks four things:
 **Almost every mode counts**: Standard BossRush, Infinite Hell, From Scratch, Faction War,
 Blood Hunt, Fate Echo, Zombie Apocalypse - even Bosses you happen to kill on vanilla raid maps.
 
-**The one exception is the Black Market Duck Cup**: you never step onto the field there, so the
-Bosses are killed by your contracted fighters, not by you. Those kills don't enter the codex and
-don't update fastest-kill times.
+**The one exception is the Black Market Duck Cup**: all kills in that mode, including during an ERROR control swap, are excluded from Codex entries and fastest-kill records.
 
 ### Milestone rewards
 
@@ -73,8 +71,7 @@ That's **1.8 million** across the five. For a 4000 book, the math works out.
 
 ### Common questions
 
-- **Do kills someone else landed count?** No. Only kills where you dealt the lethal damage.
-  Companions, pets, mercenaries and environmental damage don't count.
+- **Do kills by others count?** Usually only fatal blows attributed to the main player count. Ordinary companions, pets and environmental finishing blows do not. **In Faction War, kills by a Boss you hired are attributed to you**, subject to the entry's other mode and target requirements.
 - **Do my PetNest cub's kills count?** No, companions are explicitly excluded. Do it yourself.
 - **Is there a point in killing the same Boss again?** Yes. Total kills keeps climbing and you
   might beat your fastest time, but the square only needs lighting once.

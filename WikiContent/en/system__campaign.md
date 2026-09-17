@@ -83,6 +83,8 @@ Both objectives have to be met **in the same run**. The payout lands when you ha
 - Extract successfully once
 - Reward **100,000**
 
+[tip] Wave 4 only meets the wave objective. Zombie Mode offers extraction after Boss waves 5, 10, 15 and so on; you still need a successful extraction.
+
 #### Chapter 6 · Shadow of the Champion
 - Beat the **Shadow of the Champion** in the arena
 - Reward **200,000**
@@ -115,8 +117,7 @@ Both objectives have to be met **in the same run**. The payout lands when you ha
 - **Does progress carry between runs?** No. Every objective is judged **within a single run**. Miss
   one and the progress resets for the next attempt. The contract itself never drops, so retry as
   often as you want.
-- **Do kills by others count?** No. Only kills where you dealt the fatal blow. Companions, pets,
-  mercenaries and environmental damage don't count.
+- **Do kills by others count?** Usually only fatal blows attributed to the main player count. Ordinary companions, pets and environmental finishing blows do not. **In Faction War, kills by a Boss you hired are attributed to you**, subject to the entry's other mode and target requirements.
 - **I broke the no-damage objective — should I finish the run?** The tracker marks it `✗`. That
   objective is done for this run and the others can't make up for it. Restarting is faster.
 - **Does Infinite Hell count as a Chapter 1 clear?** No. Chapter 1 only accepts the standard tiers.

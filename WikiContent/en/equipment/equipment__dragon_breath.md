@@ -18,7 +18,7 @@ Your first custom gun. Dropped by Dragon Descendant. Looks modest on paper, but 
 - Player damage cap: 2 per tick
 - Fire resistance can reduce burn
 
-At full 10 stacks: **1% max HP + 10 true damage per second.** Against a 1000 HP Boss, that's 20 DPS from burns alone.
+At full 10 stacks: **1% max HP + 10 true damage per second.** Against a non-fire-immune 1000 HP Boss, that's 20 DPS before fire mitigation. Dragon Descendant and Skyburner Dragon Lord heal from fire, so this example does not apply to them.
 
 ### Tips
 
@@ -28,6 +28,6 @@ At full 10 stacks: **1% max HP + 10 true damage per second.** Against a 1000 HP 
 
 ### Achievement
 
-- **Dragon Heir Collection** — All Dragon Descendant drops (300K)
+- **Dragon Descendant Collector** — All Dragon Descendant drops (300K)
 
 [tip] Your entry point to custom gear. Don't sleep on the burn — it melts high-HP targets.

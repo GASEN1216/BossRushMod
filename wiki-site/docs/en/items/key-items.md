@@ -2,11 +2,11 @@
 
 ## BossRush Ticket
 
-Your gateway to every mode. Consumed on arena entry.
+The entry item for ticket-based arena modes. Faction War uses a Banner, Zombie Mode uses an invitation, and the unlocked Sky Islands route is free.
 
 - **Name in the shop**: `Boss Rush Ticket`
 - **Source**: Base merchant / **Stock**: 10
-- Required for: Standard, Infinite Hell, From Scratch, Blood Hunt, Fate Echo
+- Required for: Standard, Infinite Hell, From Scratch, Blood Hunt, Fate Echo and the Black Market Duck Cup
 
 ---
 
@@ -150,7 +150,7 @@ Materials for the Sky Islands' gathering spots, crafting stations and windcrysta
 - **Driftwood**: wind lanterns, bento firewood, the fan's handle; the boardwalk, temple, post hut and grotto lamps
 - **Brass Scrap**: Qinglan charms, wind-vane compasses, the gnat zapper's cage; the workshop, Bell Court and grotto lamps. Workshop veins yield 1 more once the star lamp is repaired
 - **Windcrystal Shard**: gathered from wind crystal clusters, and now and then from the deeper brass veins; charms, salves and compasses need them; five fuse into a whole **Qinglan Windcrystal** at Fuzhou's dock workbench once the Fallen Star Workshop's star lamp is lit. Boardwalk clusters yield 1 more once the Windeater is gone
-- **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (21:00–05:00) and at the overlook once the telescope is calibrated; Qinglan charms, cloudmoss veils and the Starfall Overlook lamp need it
+- **Stardust**: an occasional extra from wind crystal clusters from the boardwalk onward, more often at night (19:00–05:00) and at the overlook once the telescope is calibrated; Qinglan charms, cloudmoss veils and the Starfall Overlook lamp need it
 - **Qinglan Windcrystal**: **the wick of the seven windcrystal lamps**. Seven devices are each missing one, and each lamp is something a letter asked for; once lit, the night wind cannot reach you beside it and it burns on every later trip; with ten lights on the isles (the three hearths count as three) the nights stop blowing. Once two lamps are lit, the dock workbench also turns one into a pair of gnat zappers
 - Gathered materials go into your pack and drop at your feet if it is full — never to base storage; crafting and lighting lamps count only what is in your pack
 

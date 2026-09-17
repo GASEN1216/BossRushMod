@@ -44,7 +44,7 @@ Once you've extracted with your first payout, three cheap things start paying ou
   strung across modes you're already playing. Chapter 1 only asks you to clear one standard
   arena run without taking damage through wave 2, and pays 20,000 plus the base garden
 - **Go meet Dingdang and Yuori** — chat and gift daily to build affinity. Dingdang opens his
-  shop at Lv.2 and gives Cold Quench Fluid at Lv.4, which is when reforging becomes possible
+  shop at Lv.2 and gives Cold Quench Fluid at Lv.4, for locking good stats; reforging itself is available from the start
 
 ::: tip
 The mailbox and the board are 1000 combined - the two best-value builds in the Mod. The earlier you put them up, the longer they've been accumulating.
@@ -59,7 +59,7 @@ Once you're comfortable:
 - **Blood Hunt** — Naked + Ticket + Transponder. Constant bleed, kill to survive
 - **Fate Echo** — Current gear + Ticket + Fate Echo Relic. Nine waves, three acts, and the
   Bosses counter whatever you did last wave
-- **Black Market Duck Cup** — just a Ticket. You never fight: sign two fighters, read the odds,
+- **Black Market Duck Cup** — just a Ticket. You normally manage from the stands: sign two fighters, read the odds,
   place your bets and call one order per match
 - **Infinite Hell** — pick the Infinite Hell difficulty and find your ceiling
 
@@ -78,5 +78,5 @@ Chat with Dingdang and Yuori on normal maps to unlock more content. Beyond refor
 :::
 
 ::: tip
-Every arena Boss you kill banks **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.
+Eligible Bosses in Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt bank **relic souls** (tankier Bosses pay more), with about a 4% chance of dropping a **relic egg** outright. This accumulates whether or not you've built the PetNest yet, so it's all waiting for you when you do. The egg lands with the rest of the loot, so don't stop at the gear.
 :::

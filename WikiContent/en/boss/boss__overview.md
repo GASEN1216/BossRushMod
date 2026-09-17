@@ -1,6 +1,8 @@
 ## Boss Overview
 
-3 fully custom Bosses on top of the vanilla pool. Each has its own skill set, phase transitions, and exclusive loot.
+Three custom arena Bosses join the vanilla pool. Each has its own skill set, phase transitions, and exclusive loot.
+
+The Sky Islands have a separate roster of lords and chiefs. See Sky Islands · Qinglan Archipelago and the island equipment pages for their locations, loot and stories.
 
 ### The Roster
 
@@ -10,7 +12,8 @@
 
 ### When Do They Appear?
 
-- **Standard / Infinite Hell** — First 20 waves exclude the vanilla Four Horsemen and Koko Koko, plus the Dragon Descendant and the Skyburner Dragon Lord. **The Phantom Witch is not on that list** and can turn up from wave 1
+- **Standard** — At the start, the mode tries to move the Four Horsemen, Koko Koko, Dragon Descendant and Skyburner Dragon Lord beyond the first 20 candidate positions. Short pools, too few ordinary Bosses and player filtering can defeat that protection. The Phantom Witch is not excluded
+- **Infinite Hell** — Weighted draws from enabled Bosses begin on wave 1, with no 20-wave heavy-hitter exclusion
 - **From Scratch** — No Bosses for waves 1-5; waves 6-10 exclude heavy hitters (the Phantom Witch is not on that list either); full pool from wave 11
 - **Faction War** — Dragon Descendant max 1/session, Dragon Lord doesn't appear, Phantom Witch in normal draw
 - **Blood Hunt** — Same as Faction War; dead Bosses auto-replaced
@@ -23,10 +26,10 @@ Customize the pool via **Ctrl+F10**:
 
 ### Achievements
 
-- **Dragon Heir Hunter** — First Dragon Descendant kill (30K)
+- **Dragon Slayer** — First Dragon Descendant kill (30K)
 - **Perfect Dragon Hunt** — No-damage Dragon Descendant kill (200K)
-- **Dragon Slayer** — First Dragon Lord kill (100K)
-- **Perfect Dragon Slayer** — No-damage Dragon Lord kill (500K)
-- **Dragon Master** — 10 Dragon Lord kills (600K)
-- **Dragon Heir Collection** — All Dragon Descendant drops (300K)
-- **Dragon King's Vault** — All Dragon Lord drops (500K)
+- **Kingslayer** — First Dragon Lord kill (100K)
+- **Perfect Kingslayer** — No-damage Dragon Lord kill (500K)
+- **Dragon Slayer Master** — 10 Dragon Lord kills (600K)
+- **Dragon Descendant Collector** — All Dragon Descendant drops (300K)
+- **Dragon King Collector** — All Dragon Lord drops (500K)

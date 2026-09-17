@@ -98,5 +98,5 @@ Gift it back to him = **-300 Affinity**. He will be devastated. Don't.
 
 Ancient horn. Blow it to summon a mount (3s cooldown). Use again to call it over.
 
-- **Source**: Shop or drops / Durability 999
+- **Source**: Normal Wish Fountain reward pool / Durability 999
 - Wolf model enabled in config → mount becomes a wolf (eats dumplings instead of carrots)

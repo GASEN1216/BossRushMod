@@ -47,4 +47,4 @@
 - **Sickle sweep**: get within 3 m and a ring lights at its feet; about 0.9 seconds later it sweeps (2.2 m radius), then waits 4 seconds — keep your distance and back off when the ring lights.
 - **Breaking its gear cuts its attacks**: once the Greenear Straw Hat is shot through, a sluice floods only one patch; once the Straw Raincoat is at zero durability, the sweep's warning slows to 1.6 seconds.
 
-[tip] Both show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal's overview. With Rainhush Earmuffs on, their warning rings stay lit longer (see "Island Chief Gear").
+[tip] Both show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal under "About the isles → This run · journey progress". With Rainhush Earmuffs on, their warning rings stay lit longer (see "Island Chief Gear").

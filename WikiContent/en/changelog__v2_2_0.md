@@ -51,20 +51,16 @@ Pool includes: Swift Storm / Iron Fortress / Bullet Rain / Giants / Ratswarm / B
 
 **P0 New Weapons (5 items)**
 
-| Equipment | Type | Core Feature |
-|-----------|------|-------------|
-| **Viper Dagger** | Melee / Poison | Stack 5 poison layers on a target; burst for 35 bonus damage at max stacks |
-| **Summoning Staff** | Melee | Right-click (12s CD): summon 3 soul warriors (80 HP / 15s) |
-| **Energy Shield** | Totem | Frontal hits restore 30% of damage as HP (cap 25, 0.5s CD) |
-| **Frost Spear** | Melee / Ice | 100% freeze on hit, 2.4m reach |
-| **Thunder Ring** | Totem | Charge on hits taken (max 5); next attack releases 40 lightning damage |
+- **Viper Dagger** — Type: Melee / Poison; Core Feature: Stack 5 poison layers on a target; burst for 35 bonus damage at max stacks
+- **Summoning Staff** — Type: Melee; Core Feature: Right-click (12s CD): summon 3 soul warriors (80 HP / 15s)
+- **Energy Shield** — Type: Totem; Core Feature: Frontal hits restore 30% of damage as HP (cap 25, 0.5s CD)
+- **Frost Spear** — Type: Melee / Ice; Core Feature: 100% freeze on hit, 2.4m reach
+- **Thunder Ring** — Type: Totem; Core Feature: Charge on hits taken (max 5); next attack releases 40 lightning damage
 
 **P1 Sets (4 pieces / 2 sets)**
 
-| Set | Pieces | 2-Piece Effect |
-|-----|--------|---------------|
-| **Frost Set** | Frost Crown + Ice Armor | Ice resistance +50%; 30% chance to freeze close-range (<5m) attacker on hit (5s CD) |
-| **Thunder Set** | Thunder Horn + Thunder Armor | Electricity resistance +50%; 25% chance to release 4m lightning AOE on close-range (<6m) hit (3s CD) |
+- **Frost Set** — Pieces: Frost Crown + Ice Armor; 2-Piece Effect: Ice resistance +50%; 30% chance to freeze close-range (<5m) attacker on hit (5s CD)
+- **Thunder Set** — Pieces: Thunder Horn + Thunder Armor; 2-Piece Effect: Electricity resistance +50%; 25% chance to release 4m lightning AOE on close-range (<6m) hit (3s CD)
 
 ---
 

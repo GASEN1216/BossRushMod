@@ -19,7 +19,7 @@
 # 官方本地化表来源与刷新方式见 docs/官方本地化表/README.md。表找不到时 guard 自行 skip。
 
 Cname_Boss_Blue	???	???	=	=	equipment/equipment__frostmourne,equipment/equipment__overview,system__rewards_and_loot
-Cname_StormBoss5	口口口口	Koko Koko	=	=	boss/boss__overview,mode/mode__mode_a,mode/mode__mode_d,tips/tips__hell_and_mode_d
+Cname_StormBoss5	口口口口	Koko Koko	=	=	boss/boss__overview,mode/mode__mode_a,mode/mode__mode_d
 Quest_502	四骑士	The Four Horsemen	=	Four Horsemen	boss/boss__overview,mode/mode__mode_a,mode/mode__mode_d,tips/tips__hell_and_mode_d
 Buff_Cold	寒冷	Cold	=	=	equipment/equipment__frost_spear,equipment/equipment__frostmourne
 Cname_Ghost	幽灵	Ghost	=	=	boss/boss__phantom_witch

@@ -2,7 +2,8 @@
 
 ### Birthday Cake
 
-- **Source**: Special events / **Affinity**: +150 to any NPC
+- **Source**: the normal Wish Fountain reward pool; a one-time save gift during real-world December (not renewed each year) / **Affinity**: +150 to Dingdang or Yuori
+- **Eating**: restores 100 energy, no water; also applies the vanilla Happy buff when that buff is available
 
 Second only to Diamond Ring (+500) for raw Affinity gain. If you get one, **give it to whoever you're courting**.
 

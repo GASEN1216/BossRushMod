@@ -36,8 +36,8 @@ const stats = computed(() => {
   const count = (id: string) => categories.find((c) => c.id === id)?.entries.length ?? 0
   return [
     { n: String(count('game-modes') - 1), zh: '个游戏模式', en: 'game modes' },
-    { n: String(count('bosses') - 1), zh: '个原创 Boss', en: 'original bosses' },
-    { n: String(count('equipment') - 1), zh: '件原创装备', en: 'custom gear' },
+    { n: String(count('bosses') - 1), zh: '个竞技场原创 Boss', en: 'original arena bosses' },
+    { n: String(count('equipment') - 1), zh: '篇装备指南', en: 'equipment guides' },
     { n: String(wikiStats.achievements || 45), zh: '个成就', en: 'achievements' },
     { n: String(wikiStats.maps || 9), zh: '张竞技场地图', en: 'arena maps' },
   ]

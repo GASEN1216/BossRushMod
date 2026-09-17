@@ -1,12 +1,16 @@
 # NPC Overview
 
-3 custom NPCs, each with their own services and personality.
+Three regular NPC companions have their own services and personality, alongside the Sky Islands residents.
 
 ## The Cast
 
 - **Dingdang** (Goblin Smith) — Reforge, affix forging, shop, daily chat
 - **Yuori** (Nurse) — Healing, debuff removal
 - **Awen** (Courier) — Item storage & retrieval
+
+## Sky Islands Residents
+
+The Qinglan Archipelago has its own residents, including Weibai, Fuzhou and the islanders involved in its side stories. Weibai and Fuzhou have separate affinity and marriage progression; see Sky Islands · Qinglan Archipelago for their services, visits and quests. The locations below describe Dingdang, Yuori and Awen.
 
 ## Affinity System
 

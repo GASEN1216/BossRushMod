@@ -75,13 +75,11 @@ Contracts are extra objectives, not direct stat multipliers. Completed contracts
 
 Resolve caps at 11 and comes from axis breaks and Last Stand executions:
 
-| Resolve | Wave-9 victory reward |
-| ---: | ---: |
-| 0-2 | 6 items |
-| 3-5 | 7 items |
-| 6-8 | 8 items |
-| 9 | 9 items |
-| 10-11 | 10 items |
+- **0-2** — Wave-9 victory reward: 6 items
+- **3-5** — Wave-9 victory reward: 7 items
+- **6-8** — Wave-9 victory reward: 8 items
+- **9** — Wave-9 victory reward: 9 items
+- **10-11** — Wave-9 victory reward: 10 items
 
 Rewards are paid only after wave 9 victory. Candidates come from the existing Boss loot pool, restricted to **Q5-Q8**, and are selected by price bands. The Relic is returned first, then normal rewards are delivered item by item; a full backpack falls back to storage buffering and a scene drop.
 

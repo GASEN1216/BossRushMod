@@ -6,7 +6,7 @@ The most mechanically rich melee weapon in the mod. Three-hit combo + Dragon Kin
 
 ### Stats
 
-- **Type**: Melee / **Quality**: 7 / **Element**: Fire / **Drop**: Dragon Lord (15%) / Won't drop on death
+- **Type**: Melee / **Quality**: 7 / **Element**: Fire / **Drop**: Dragon Lord (15%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 - Dmg 55 / Speed 2.2 / Range 2.5m / Crit 10% / Crit Dmg 2.0x / Pierce 6 / Bleed 15%
 - Block 1 / Stamina 10/hit / Move Speed 110% / Gem Slots 2
 

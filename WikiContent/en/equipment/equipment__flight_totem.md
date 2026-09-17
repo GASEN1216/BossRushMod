@@ -6,7 +6,7 @@ Equip this totem and **you can fly**. Actual flight. Ascend, glide, dodge ground
 
 ### Stats
 
-- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (15%) / Won't drop on death
+- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (15%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ### Controls
 
@@ -38,4 +38,4 @@ Equip this totem and **you can fly**. Actual flight. Ascend, glide, dodge ground
 - Aerial overview in Faction War to track faction positions
 
 ### Related Achievement
-- **Ride the Wind** — First flight ($50K)
+- **Wind Rider** — First flight ($50K)

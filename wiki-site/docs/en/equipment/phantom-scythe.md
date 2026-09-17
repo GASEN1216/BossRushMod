@@ -6,15 +6,15 @@ The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every
 
 ## Stats
 
-- **Type**: Melee / **Quality**: 6 / **Element**: Ghost / **Drop**: Phantom Witch (50%) / Won't drop on death
+- **Type**: Melee / **Quality**: 6 / **Element**: Ghost / **Drop**: Phantom Witch (50%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 - Dmg 35.5 / Speed 1.56 / Range 2.22m / Crit 5.5% / Crit Dmg 1.33x / Pierce 3.8
 - Bleed 8% / Block 0.45 / Stamina 6.5/hit / **Move Speed 120%** / Gem Slots 2
 
 ## Soulreaving Power (Passive)
 
 - All attacks deal Ghost damage
-- **50% chance** to apply Curse: -30% move speed per stack, max 3 stacks, 5s duration
-- 3 stacks = **90% slow.** They're not going anywhere
+- **50% chance** to apply Curse: -0.3 to walk-speed and run-speed stats per stack, max 3 stacks, 5s duration
+- 3 stacks = **0.9 flat speed reduction**, not a 90% slow or a root
 
 ## Requiem Realm (Right Click)
 
@@ -25,7 +25,7 @@ The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every
 ## Tips
 
 - **120% move speed** = best kiting weapon in the mod
-- Curse stacking = free crowd control. 3 stacks nearly immobilizes enemies
+- Curse stacking = free crowd control. Keep the slow applied while repositioning
 - Realm holds chokepoints beautifully — stand in it and watch enemies melt
 - Raw damage slightly below Frostmourne, but mobility + CC more than compensate
 

@@ -6,7 +6,7 @@ A **totem-slot defensive item** that converts frontal incoming damage into healt
 
 - **Type**: Totem / **Quality**: 5
 - **Drop**: 20% from Goofy Goose (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
-- Won't drop on death
+- Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ### Stat Bonus
 
@@ -27,9 +27,9 @@ A successful frontal absorb flashes a **pale blue shield ring** in front of you 
 
 ### Tips
 
-- In a 1v1 against a frontal melee boss, this effectively negates 30% of all damage
+- Against one attacker in front of you, qualifying hits refund 30% of damage; the 25 HP cap and 0.5 s cooldown still apply
 - Nearly worthless when surrounded — only the hits that still come from your front trigger it — positioning matters
 - Totem slot means it stacks with any melee weapon you're already using
 - Pairs well with builds that naturally face enemies head-on (Dragon sets, aggressive melee)
 
-[tip] Against Skyburner Dragon Lord (single-target melee boss), the absorption adds up significantly over a prolonged fight. Pair with a high-damage melee weapon and facetank.
+[tip] Best when you can keep one attacker in front of you. Keep dodging the Dragon Lord's projectiles and area attacks: a 30% heal is not immunity.

@@ -32,10 +32,8 @@ PetNest companions, affix forging (the temporary goblin doesn't offer it), and r
 
 You must pick one of two loadouts upon entering:
 
-| Loadout | Starting Gear |
-|---------|---------------|
-| **Melee** | Random melee weapon ×1 (quality ≤5) + healing items (with guaranteed recovery items) + food ×3 + drinks ×2 |
-| **Gunner** | Random firearm ×1 + matching caliber ammo ×2000 + medical ×3 + food ×2 + drinks ×1 |
+- **Melee** — Starting Gear: Random melee weapon ×1 (quality ≤5) + healing items (with guaranteed recovery items) + food ×3 + drinks ×2
+- **Gunner** — Starting Gear: Random firearm ×1 + matching caliber ammo ×2000 + medical ×3 + food ×2 + drinks ×1
 
 ---
 
@@ -82,13 +80,11 @@ After each Boss Wave, the preparation phase includes an **extraction opportunity
 
 The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Peak Tide → Boss Tide.
 
-| Cycle Wave | Stage | Field Pressure | Kill Target | Refill Interval | Non-Boss Move Speed |
-|------------|-------|----------------|-------------|-----------------|------------------|
-| Wave 1 | Low Tide | 24 | 18 | 1.00s | 72% |
-| Wave 2 | Rising Tide | 36 | 24 | 0.86s | 76% |
-| Wave 3 | High Tide | 51 | 30 | 0.72s | 79% |
-| Wave 4 | Peak Tide | 69 | 38 | 0.58s | 83% |
-| Wave 5 | Boss Tide | 24 support zombies | Defeat the Boss | 1.00s | 86% (support only) |
+- **Wave 1** — Stage: Low Tide; Field Pressure: 24; Kill Target: 18; Refill Interval: 1.00s; Non-Boss Move Speed: 72%
+- **Wave 2** — Stage: Rising Tide; Field Pressure: 36; Kill Target: 24; Refill Interval: 0.86s; Non-Boss Move Speed: 76%
+- **Wave 3** — Stage: High Tide; Field Pressure: 51; Kill Target: 30; Refill Interval: 0.72s; Non-Boss Move Speed: 79%
+- **Wave 4** — Stage: Peak Tide; Field Pressure: 69; Kill Target: 38; Refill Interval: 0.58s; Non-Boss Move Speed: 83%
+- **Wave 5** — Stage: Boss Tide; Field Pressure: 24 support zombies; Kill Target: Defeat the Boss; Refill Interval: 1.00s; Non-Boss Move Speed: 86% (support only)
 
 - After each Boss, the next cycle drops back to Low Tide with +18 normal-wave baseline pressure, the original +18 kill-target growth, and slightly faster refills
 - Non-Boss enemy move speed starts at 72%, increases by 3.5% each wave, and caps at the original 100%
@@ -103,13 +99,11 @@ The tide runs in five-wave cycles: Low Tide → Rising Tide → High Tide → Pe
 - Boss cycles do not add movement speed; difficulty grows through Boss health, damage, and support pressure
 - The wave completes only after every Boss is dead
 
-| Boss Wave | Boss Count | Per-Boss HP | Per-Boss Damage | Support Pressure | Per-Boss Purification | Roguelite Rewards |
-|-----------|------------|-------------|-----------------|------------------|-----------------------|-------------------|
-| Wave 5 | 1 | 100% | 100% | 24 | 100% | One full-pool 4-choice pick |
-| Wave 10 | 2 | 130% | 112% | 33 | 125% | One combat 4-choice pick + one full-pool 4-choice pick |
-| Wave 15 | 3 | 160% | 124% | 42 | 150% | One combat 4-choice pick + one full-pool 4-choice pick |
-| Wave 20 | 4 | 190% | 136% | 51 | 175% | One combat 4-choice pick + one full-pool 4-choice pick |
-| Wave 25 | 5 | 220% | 148% | 60 | 200% | One combat 4-choice pick + one full-pool 4-choice pick |
+- **Wave 5** — Boss Count: 1; Per-Boss HP: 100%; Per-Boss Damage: 100%; Support Pressure: 24; Per-Boss Purification: 100%; Roguelite Rewards: One full-pool 4-choice pick
+- **Wave 10** — Boss Count: 2; Per-Boss HP: 130%; Per-Boss Damage: 112%; Support Pressure: 33; Per-Boss Purification: 125%; Roguelite Rewards: One combat 4-choice pick + one full-pool 4-choice pick
+- **Wave 15** — Boss Count: 3; Per-Boss HP: 160%; Per-Boss Damage: 124%; Support Pressure: 42; Per-Boss Purification: 150%; Roguelite Rewards: One combat 4-choice pick + one full-pool 4-choice pick
+- **Wave 20** — Boss Count: 4; Per-Boss HP: 190%; Per-Boss Damage: 136%; Support Pressure: 51; Per-Boss Purification: 175%; Roguelite Rewards: One combat 4-choice pick + one full-pool 4-choice pick
+- **Wave 25** — Boss Count: 5; Per-Boss HP: 220%; Per-Boss Damage: 148%; Support Pressure: 60; Per-Boss Purification: 200%; Roguelite Rewards: One combat 4-choice pick + one full-pool 4-choice pick
 
 - Later Bosses cap at 250% HP and 180% damage; support pressure caps at 60 and purification gain caps at 300%
 - The bonus combat pick only contains attributes, projectiles, triggers, and run mutators; NPC, ordinary supply, and economy choices cannot occupy it
@@ -137,14 +131,12 @@ The rank-and-file of the horde. Drop **1** purification star (3-8 points).
 
 Stronger than normal with unique abilities. Drop **3** purification stars (30–60 points total). The multipliers below are the final special-type values before pollution scaling; every Special starts from HP ×1.40, damage ×1.20, and speed ×1.10.
 
-| Mutant | Combat multipliers before pollution | Target color / size | Known behavior |
-|------|------|------|------|
-| **Sprinter Zombie** | HP ×1.40 / damage ×1.20 / speed ×1.32 | Yellow target `#FFD91F`; size ×1.35 | Dash distance 12m, 0.5s startup, 8s cooldown. |
-| **Exploder Zombie** (mod blast) | HP ×1.30 / damage ×1.20 / speed ×1.10 | Red-orange target `#FF4D14`; size ×1.60 | Detonates when the player enters 2.5m; 1s delay, 4m radius, 80 damage, 9s skill cycle; self-destructs after triggering, and a pre-detonation death can trigger the blast once. |
-| **Exploder Zombie** (vanilla blast) | HP ×1.30 / damage ×1.20 / speed ×1.10 | Red-orange target `#FF4D14`; size ×1.60 | Uses the base game zombie's own self-destruct skill. The mod does not layer a second blast on top; its exact range and damage come from the base game and are not guessed here. |
-| **Plague Zombie** | HP ×1.50 / damage ×1.20 / speed ×0.95 | Green target `#2EFF59`; size ×1.80 | Every 12s, casts a poison cloud with 0.9s telegraph, 4m radius, 3s duration, and 8 DPS. The ground zone stays at the cast point; the mutant also carries a green plague aura. |
-| **Summoner Zombie** | HP ×1.50 / damage ×1.20 / speed ×0.95 | Purple target `#BF4DFF`; size ×2.00 | Every 15s, summons 2 normal zombies. Summoned zombies are scaled to ×0.60. |
-| **Harasser Zombie** | HP ×1.30 / damage ×1.20 / speed ×1.10 | Cyan target `#26F2FF`; size ×1.45 | Every 4s, fires a visible-trail projectile (speed 10, damage 25, flight lifetime 3.5s). It deals damage and creates a 3.5m slow zone only on an actual player hit; reaching the launch-time target point or expiring without a hit counts as a successful dodge. |
+- **Sprinter Zombie** — Combat multipliers before pollution: HP ×1.40 / damage ×1.20 / speed ×1.32; Target color / size: Yellow target `#FFD91F`; size ×1.35; Known behavior: Dash distance 12m, 0.5s startup, 8s cooldown.
+- **Exploder Zombie** (mod blast) — Combat multipliers before pollution: HP ×1.30 / damage ×1.20 / speed ×1.10; Target color / size: Red-orange target `#FF4D14`; size ×1.60; Known behavior: Detonates when the player enters 2.5m; 1s delay, 4m radius, 80 damage, 9s skill cycle; self-destructs after triggering, and a pre-detonation death can trigger the blast once.
+- **Exploder Zombie** (vanilla blast) — Combat multipliers before pollution: HP ×1.30 / damage ×1.20 / speed ×1.10; Target color / size: Red-orange target `#FF4D14`; size ×1.60; Known behavior: Uses the base game zombie's own self-destruct skill. The mod does not layer a second blast on top; its exact range and damage come from the base game and are not guessed here.
+- **Plague Zombie** — Combat multipliers before pollution: HP ×1.50 / damage ×1.20 / speed ×0.95; Target color / size: Green target `#2EFF59`; size ×1.80; Known behavior: Every 12s, casts a poison cloud with 0.9s telegraph, 4m radius, 3s duration, and 8 DPS. The ground zone stays at the cast point; the mutant also carries a green plague aura.
+- **Summoner Zombie** — Combat multipliers before pollution: HP ×1.50 / damage ×1.20 / speed ×0.95; Target color / size: Purple target `#BF4DFF`; size ×2.00; Known behavior: Every 15s, summons 2 normal zombies. Summoned zombies are scaled to ×0.60.
+- **Harasser Zombie** — Combat multipliers before pollution: HP ×1.30 / damage ×1.20 / speed ×1.10; Target color / size: Cyan target `#26F2FF`; size ×1.45; Known behavior: Every 4s, fires a visible-trail projectile (speed 10, damage 25, flight lifetime 3.5s). It deals damage and creates a 3.5m slow zone only on an actual player hit; reaching the launch-time target point or expiring without a hit counts as a successful dodge.
 
 > Both exploder variants show in-game as "Exploder Zombie"; they differ only in whether the blast is the mod's or the base game's.
 > Neither appears in waves 1-5; the full special pool opens up from wave 6.
@@ -157,20 +149,18 @@ Pollution is applied after the base and affix multipliers: HP ×`(1 + pollution 
 
 **Affix encyclopedia**:
 
-| Affix | Exact effect | Target color (priority) | Size bonus | Unlock tier |
-|-------|-------|-------|-------|-------|
-| **Swift** | Additional speed ×1.30. | Yellow `#FFD91F` (5) | None | 0 |
-| **Frenzied** | Additional damage ×1.15 and speed ×1.10. | Yellow `#FFD91F` (5) | None | 0 |
-| **Tough** | Additional HP ×1.40. | Default orange `#FFA61F` (6) | +0.20 | 0 |
-| **Stalwart** | Additional HP ×1.15; damage from the main player that is not melee is reduced to 10% (90% reduction). | Default orange `#FFA61F` (6) | +0.20 | 1 |
-| **Regenerating** | Restores 2.5% of max HP every second, with a minimum of 1 HP. | Green `#2EFF59` (2) | None | 1 |
-| **Burst** | Death explosion: 4m radius, 40 damage. | Red-orange `#FF4D14` (4) | None | 1 |
-| **Plague** | Every 12s, casts a fixed-position poison cloud: 0.9s telegraph, 5.5m radius, 3s duration, 26 total damage (about 8.67 DPS). | Green `#2EFF59` (2) | None | 1 |
-| **Commander** | An 8m aura refreshes every 0.5s; nearby zombies gain +20% walk/run speed and +15% melee/gun damage. | Purple `#BF4DFF` (1) | None | 3 |
-| **Toxic Aura** | Every 12s, creates a caster-following toxic zone: 0.9s telegraph, 5.5m radius, 3s duration, 26 total damage (about 8.67 DPS). | Green `#2EFF59` (2) | None | 3 |
-| **Splitting** | On death, spawns 2 normal small zombies at ×0.60 size. | Purple `#BF4DFF` (1) | None | 3 |
-| **Shielded** | Additional HP ×1.25; every 12s gains a shield equal to 25% of max HP for 5s. | Cyan `#26F2FF` (3) | +0.20 | 3 |
-| **Adaptive** | After 5 consecutive melee or 5 consecutive non-melee hits from the main player, damage from that category is reduced by 60% for 8s; switching category resets the opposite counter. | Cyan `#26F2FF` (3) | None | 5 |
+- **Swift** — Exact effect: Additional speed ×1.30.; Target color (priority): Yellow `#FFD91F` (5); Size bonus: None; Unlock tier: 0
+- **Frenzied** — Exact effect: Additional damage ×1.15 and speed ×1.10.; Target color (priority): Yellow `#FFD91F` (5); Size bonus: None; Unlock tier: 0
+- **Tough** — Exact effect: Additional HP ×1.40.; Target color (priority): Default orange `#FFA61F` (6); Size bonus: +0.20; Unlock tier: 0
+- **Stalwart** — Exact effect: Additional HP ×1.15; damage from the main player that is not melee is reduced to 10% (90% reduction).; Target color (priority): Default orange `#FFA61F` (6); Size bonus: +0.20; Unlock tier: 1
+- **Regenerating** — Exact effect: Restores 2.5% of max HP every second, with a minimum of 1 HP.; Target color (priority): Green `#2EFF59` (2); Size bonus: None; Unlock tier: 1
+- **Burst** — Exact effect: Death explosion: 4m radius, 40 damage.; Target color (priority): Red-orange `#FF4D14` (4); Size bonus: None; Unlock tier: 1
+- **Plague** — Exact effect: Every 12s, casts a fixed-position poison cloud: 0.9s telegraph, 5.5m radius, 3s duration, 26 total damage (about 8.67 DPS).; Target color (priority): Green `#2EFF59` (2); Size bonus: None; Unlock tier: 1
+- **Commander** — Exact effect: An 8m aura refreshes every 0.5s; nearby zombies gain +20% walk/run speed and +15% melee/gun damage.; Target color (priority): Purple `#BF4DFF` (1); Size bonus: None; Unlock tier: 3
+- **Toxic Aura** — Exact effect: Every 12s, creates a caster-following toxic zone: 0.9s telegraph, 5.5m radius, 3s duration, 26 total damage (about 8.67 DPS).; Target color (priority): Green `#2EFF59` (2); Size bonus: None; Unlock tier: 3
+- **Splitting** — Exact effect: On death, spawns 2 normal small zombies at ×0.60 size.; Target color (priority): Purple `#BF4DFF` (1); Size bonus: None; Unlock tier: 3
+- **Shielded** — Exact effect: Additional HP ×1.25; every 12s gains a shield equal to 25% of max HP for 5s.; Target color (priority): Cyan `#26F2FF` (3); Size bonus: +0.20; Unlock tier: 3
+- **Adaptive** — Exact effect: After 5 consecutive melee or 5 consecutive non-melee hits from the main player, damage from that category is reduced by 60% for 8s; switching category resets the opposite counter.; Target color (priority): Cyan `#26F2FF` (3); Size bonus: None; Unlock tier: 5
 
 **Affix count by pollution**:
 - Pollution < 5: 1 affix
@@ -193,24 +183,20 @@ Pollution is applied after the base and affix multipliers: HP ×`(1 + pollution 
 
 The first five waves use a fixed onboarding curve instead of the pollution table:
 
-| Wave | Elite % | Special % |
-|------|---------|-----------|
-| Wave 1 | 0% | 0% |
-| Wave 2 | 0% | 3% |
-| Wave 3 | 0% | 5% |
-| Waves 4–5 | 1% | 8% |
+- **Wave 1** — Elite %: 0%; Special %: 0%
+- **Wave 2** — Elite %: 0%; Special %: 3%
+- **Wave 3** — Elite %: 0%; Special %: 5%
+- **Waves 4–5** — Elite %: 1%; Special %: 8%
 
 From wave 6 onward, the mode uses continuously growing weights. Normal weight stays at 100; Elite weight is "pollution base + 3 × (wave - 5)"; Special weight is "pollution base + 5 × (wave - 5)." The three weights are normalized, so the combined Elite/Special chance keeps approaching 100% without either type crowding out the other.
 
 Examples below assume pollution 0; higher pollution raises the Elite and Special shares further:
 
-| Wave | Elite % | Special % | Elite + Special |
-|------|---------|-----------|-----------------|
-| Wave 6 | 3.5% | 8.8% | 12.3% |
-| Wave 10 | 11.0% | 20.5% | 31.5% |
-| Wave 20 | 20.4% | 35.4% | 55.8% |
-| Wave 50 | 29.2% | 49.4% | 78.5% |
-| Wave 100 | 33.0% | 55.4% | 88.5% |
+- **Wave 6** — Elite %: 3.5%; Special %: 8.8%; Elite + Special: 12.3%
+- **Wave 10** — Elite %: 11.0%; Special %: 20.5%; Elite + Special: 31.5%
+- **Wave 20** — Elite %: 20.4%; Special %: 35.4%; Elite + Special: 55.8%
+- **Wave 50** — Elite %: 29.2%; Special %: 49.4%; Elite + Special: 78.5%
+- **Wave 100** — Elite %: 33.0%; Special %: 55.4%; Elite + Special: 88.5%
 
 ---
 
@@ -218,13 +204,11 @@ Examples below assume pollution 0; higher pollution raises the Elite and Special
 
 Boss Waves appear every 5 waves. There are 5 Boss types. Each drops **8** purification stars (300–800 points total).
 
-| Boss | HP Mult | Dmg Mult | Scale | Speed | Traits |
-|------|---------|----------|-------|-------|--------|
-| **Titan** | ×35 | ×1.8 | ×1.8 | ×0.7 | Slow but extremely tanky, shockwave + damage reduction |
-| **Hunter** | ×18 | ×1.4 | ×1.2 | ×1.6 | Fast dash, low-HP frenzy |
-| **Splitter** | ×25 | ×1.1 | ×1.5 | ×0.95 | Summons minions, HP-threshold splits |
-| **Shielder** | ×28 | ×1.3 | ×1.3 | ×0.9 | Self shield + group shield aura |
-| **Corruptor** | ×26 | ×1.2 | ×1.4 | ×1.0 | Ground corruption zones + poison trail |
+- **Titan** — HP Mult: ×35; Dmg Mult: ×1.8; Scale: ×1.8; Speed: ×0.7; Traits: Slow but extremely tanky, shockwave + damage reduction
+- **Hunter** — HP Mult: ×18; Dmg Mult: ×1.4; Scale: ×1.2; Speed: ×1.6; Traits: Fast dash, low-HP frenzy
+- **Splitter** — HP Mult: ×25; Dmg Mult: ×1.1; Scale: ×1.5; Speed: ×0.95; Traits: Summons minions, HP-threshold splits
+- **Shielder** — HP Mult: ×28; Dmg Mult: ×1.3; Scale: ×1.3; Speed: ×0.9; Traits: Self shield + group shield aura
+- **Corruptor** — HP Mult: ×26; Dmg Mult: ×1.2; Scale: ×1.4; Speed: ×1.0; Traits: Ground corruption zones + poison trail
 
 ### Boss Abilities
 
@@ -272,12 +256,10 @@ The core currency of Zombie Mode:
 
 ### Star Drops
 
-| Enemy Type | Stars | Point Range (total) |
-|------------|-------|---------------------|
-| Normal | 1 | 3–8 |
-| Special | 3 | 30–60 |
-| Elite | 5 | 80–150 |
-| Boss | 8 | 300–800 |
+- **Normal** — Stars: 1; Point Range (total): 3–8
+- **Special** — Stars: 3; Point Range (total): 30–60
+- **Elite** — Stars: 5; Point Range (total): 80–150
+- **Boss** — Stars: 8; Point Range (total): 300–800
 
 > High pollution grants bonus points: +10% per 10 pollution, up to +50%.
 
@@ -318,20 +300,18 @@ After each wave, choose from rewards:
 
 ### Reward Categories
 
-| Category | Description |
-|----------|-------------|
-| **Attribute** | Permanent boosts to HP/speed/melee damage/ranged damage/reload speed/damage reduction |
-| **Equipment** | Random weapons/ammo/medical/armor/high-quality items/one-use Portable Safe-Zone Device |
-| **Economy** | Purification Points/paid-refresh discounts/healing/a high-weight low-quality junk recycling option; weapons, ammo, medical, food, keys, special items, and containers with attachments or contents are protected |
-| **NPC** | Temporarily summon merchant/nurse/goblin/courier |
-| **Fortification** | Defensive structure supply packs |
-| **Contract** | High-risk high-reward trades (may increase pollution) |
-| **Insurance** | Keep some items on death |
-| **Map Event** | High-value airdrop/elite squad |
-| **Projectile Mod** | Penetration/burn/cold/poison/armor break/trident/shotgun spray/stasis/ricochet/fork/return/helix/trail |
-| **Trigger** | Lifesteal/crit burst/purification siphon/second wind/doom pulse |
-| **Mutator** | Crit focus/bullet time/guardian shield/quick reload/dash boost |
-| **Battlefield** | Ammo rain/purge aura/curse trap/black hole/gravity drag |
+- **Attribute** — Description: Permanent boosts to HP/speed/melee damage/ranged damage/reload speed/damage reduction
+- **Equipment** — Description: Random weapons/ammo/medical/armor/high-quality items/one-use Portable Safe-Zone Device
+- **Economy** — Description: Purification Points/paid-refresh discounts/healing/a high-weight low-quality junk recycling option; weapons, ammo, medical, food, keys, special items, and containers with attachments or contents are protected
+- **NPC** — Description: Temporarily summon merchant/nurse/goblin/courier
+- **Fortification** — Description: Defensive structure supply packs
+- **Contract** — Description: High-risk high-reward trades (may increase pollution)
+- **Insurance** — Description: Keep some items on death
+- **Map Event** — Description: High-value airdrop/elite squad
+- **Projectile Mod** — Description: Penetration/burn/cold/poison/armor break/trident/shotgun spray/stasis/ricochet/fork/return/helix/trail
+- **Trigger** — Description: Lifesteal/crit burst/purification siphon/second wind/doom pulse
+- **Mutator** — Description: Crit focus/bullet time/guardian shield/quick reload/dash boost
+- **Battlefield** — Description: Ammo rain/purge aura/curse trap/black hole/gravity drag
 
 ---
 
@@ -341,21 +321,19 @@ Spawns automatically in the safe zone each preparation phase. All items cost Pur
 
 ### Normal Wave Stock
 
-| Item | Stock | Base Price |
-|------|-------|------------|
-| Firearm | 1 | 500 |
-| Melee Weapon | 1 | 300 |
-| Accessory | 1 | 260 |
-| Ammo | 120 purchases | 100 per purchase, 200 rounds each |
-| Helmet | 1 | 350 |
-| Armor | 1 | 400 |
-| Backpack | 1 | 260 |
-| Totem | 1 | 500 |
-| Mask | 1 | 180 |
-| Medical | 3 | 80 |
-| Food | 4 | 30 |
-| Drinks | 4 | 30 |
-| Bait | 3 | 45 |
+- **Firearm** — Stock: 1; Base Price: 500
+- **Melee Weapon** — Stock: 1; Base Price: 300
+- **Accessory** — Stock: 1; Base Price: 260
+- **Ammo** — Stock: 120 purchases; Base Price: 100 per purchase, 200 rounds each
+- **Helmet** — Stock: 1; Base Price: 350
+- **Armor** — Stock: 1; Base Price: 400
+- **Backpack** — Stock: 1; Base Price: 260
+- **Totem** — Stock: 1; Base Price: 500
+- **Mask** — Stock: 1; Base Price: 180
+- **Medical** — Stock: 3; Base Price: 80
+- **Food** — Stock: 4; Base Price: 30
+- **Drinks** — Stock: 4; Base Price: 30
+- **Bait** — Stock: 3; Base Price: 45
 
 ### Boss Node Stock
 
@@ -365,13 +343,11 @@ The terminal shows current Purification balance, stock, and price directly. When
 
 ### Nurse Services
 
-| Service | Price | Uses |
-|---------|-------|------|
-| Heal 50% HP | 120 | 5 |
-| Full Heal | 300 | 2 |
-| Detox | 80 | 4 |
-| Stop Bleeding | 60 | 4 |
-| First Aid (revive insurance) | 500 | 1 |
+- **Heal 50% HP** — Price: 120; Uses: 5
+- **Full Heal** — Price: 300; Uses: 2
+- **Detox** — Price: 80; Uses: 4
+- **Stop Bleeding** — Price: 60; Uses: 4
+- **First Aid (revive insurance)** — Price: 500; Uses: 1
 
 ---
 

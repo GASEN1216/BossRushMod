@@ -6,7 +6,7 @@ A **poison-element short blade** that stacks venom layers on every hit. Single-h
 
 - **Type**: Melee / **Quality**: 5 / **Element**: Poison
 - **Drop**: 20% from the Warden (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
-- Won't drop on death
+- Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ### Stats
 

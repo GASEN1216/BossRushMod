@@ -12,7 +12,7 @@ No end. No evacuation. Bosses get +2% stronger every wave, forever. **How long c
 
 - **Bosses/wave**: 3 (adjustable in config)
 - **Waves**: Unlimited
-- **Boss scaling**: +2% HP and damage per wave (cumulative)
+- **Boss scaling**: +2% HP and damage per wave, added linearly: 1.00× on wave 1, 1.98× on wave 50, 2.98× on wave 100
 - **Loot crates**: None — uses a cash pool instead
 - **Clear condition**: Can't clear. Survive until you don't
 
@@ -42,15 +42,15 @@ In Infinite Hell, the signpost also shows:
 
 ### Achievements
 
-- **10 waves** → Infinite Hell · Ten (50K) / **25** → Twenty-Five (150K) / **50** → Fifty (350K)
-- **100** → Hundred (800K) / **200** → Two Hundred (2M)
+- **10 waves** → Hell Wave 10 (50K) / **25** → Hell Wave 25 (150K) / **50** → Hell Wave 50 (350K)
+- **100** → Hell Wave 100 (800K) / **200** → Hell Wave 200 (2M)
 - **10 waves no damage** → Iron Will (500K)
-- **10 waves no healing** → Iron Man Challenge (hidden, 250K)
+- **10 waves no healing** → Iron Man (hidden, 250K)
 
 ### Tips
 
-- +2% per wave sounds small. At wave 50 it's +100%. At wave 100 it's +200%. **It adds up fast.**
-- No loot crates = bring your best gear in, or rely on milestone rewards
+- +2% per wave sounds small. At wave 50 it's +98%. At wave 100 it's +198%. **It adds up fast.**
+- No regular loot crates: bring your gear and use milestone rewards; eligible exclusive equipment still drops on the ground
 - Boss Filter lets you tune the pool — remove the Bosses you hate most
 - Infinite Hell rolls timed random events too: a Blood Moon buffs every enemy on the field for a while, so play it safe; Golden Duck Rain is free cash, and cash flies to you here anyway. See the "Random Events" page
 

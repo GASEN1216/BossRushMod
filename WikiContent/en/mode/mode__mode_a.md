@@ -30,7 +30,7 @@ Screen suddenly going red, a supply crate falling out of the sky, or a Boss that
 ### Boss Pool
 
 - Every Boss in the game is in the pool
-- First 20 waves exclude heavy hitters (Four Horsemen, Koko Koko, Dragon Descendant, Skyburner Dragon Lord) — warm-up time. The Phantom Witch is not on that list and can turn up any time
+- The initial order tries to move heavy hitters (Four Horsemen, Koko Koko, Dragon Descendant, Skyburner Dragon Lord) beyond the first 20 candidate positions. Short pools, too few ordinary Bosses or filtering can let them appear earlier. The Phantom Witch is not excluded
 - Use the **Boss Filter** to disable specific Bosses
 
 ### Clear Rewards
@@ -56,9 +56,9 @@ After clearing, an evacuation point opens. Interact to return to base.
 
 ### Related Achievements
 
-- **Rookie** — First clear on any difficulty
-- **Easy / Normal** — Clear the respective difficulty
-- **Perfect Easy / Perfect Normal** — No-damage clears
-- **Blitz / Speed Clear / Time Assassin** — Speedrun achievements
+- **First Steps** — First clear on any difficulty
+- **Easy Peasy / Getting Serious** — Clear the respective difficulty
+- **Flawless Easy / Flawless Normal** — No-damage clears
+- **Lightning Run / Speed Demon / Time Assassin** — Speedrun achievements
 
 See the full achievement list for details.

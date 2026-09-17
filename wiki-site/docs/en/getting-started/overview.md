@@ -2,17 +2,17 @@
 
 ## What Is BossRush Mod?
 
-A massive content expansion for Escape from Duckov (Steam Workshop). What started as a Boss arena grew into a full content pack: 8 modes, 3 custom Bosses, NPC companions, gear progression, and an achievement system.
+A massive content expansion for Escape from Duckov (Steam Workshop). What started as a Boss arena grew into a full content pack: 8 modes, arena Bosses, the Sky Islands, NPC companions, gear progression, and an achievement system.
 
 ## At a Glance
 
-- **8 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup (bet, don't fight), Zombie Mode
-- **9 Maps** — Covering most in-game scenes
-- **3 Custom Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
-- **3 NPCs** — Dingdang (Smith), Yuori (Nurse), Awen (Courier)
-- **20 Custom Equipment Pieces** (sets counted piece by piece) — the Dragon and Dragon King sets, two totems, the Skyburner Halberd, Dragon Breath, Dragon Cannon, Soulreaper's Requiem, Frostmourne, the Frost and Thunder sets,
-  plus the Viper Dagger, Summoning Staff, Energy Shield, Frost Spear and Thunder Ring. **All 20 can be farmed or bought** (see Equipment Overview)
-- **40+ Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
+- **8 Game Modes** — Standard, Infinite Hell, From Scratch, Faction War, Blood Hunt, Fate Echo, Black Market Duck Cup (recruit and bet), Zombie Mode
+- **9 Arena Maps + Sky Islands** — Arena battles across the map pool, plus separate expeditions to the Qinglan Archipelago
+- **3 Custom Arena Bosses** — Dragon Descendant, Skyburner Dragon Lord, Phantom Witch (unique skills + exclusive drops)
+- **3 Regular NPC Companions** — Dingdang (Smith), Yuori (Nurse), Awen (Courier)
+- **37 Custom Equipment Pieces** (sets counted piece by piece) — 20 regular weapons, totems and armor pieces, plus 17 Sky Islands wearable pieces; see Equipment Overview for sources
+- **Sky Islands Residents & Adventures** — Island quests, per-expedition commissions, lords and chiefs, gathering and crafting, and affinity and marriage with Weibai and Fuzhou
+- **Custom Items** — Consumables, mode-exclusive props, functional items, forge stones, relic eggs, raid meals
 - **A Story Campaign** — Duck King Campaign: six contracts that string the existing modes into one cold case, one piece of evidence per chapter
 - **Base Buildings** — Wedding Chapel, Dust-Covered StarWish Fountain, PetNest, Daily mailbox, Campaign board, Trophy showcase
 - **Reforge System** — Stat rerolling + Cold Quench Fluid to lock affixes
@@ -32,4 +32,4 @@ Full Chinese + English support: items, NPC dialogue, UI, encyclopedia.
 
 - Steam Workshop subscription — one click install
 - No original game files modified (Mod loader + Harmony patches)
-- Stays compatible with game updates
+- Check compatibility after game updates; see the release notes

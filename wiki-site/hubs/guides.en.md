@@ -12,7 +12,8 @@ This section is not about rules; it is about winning. Pick the guide for whereve
 
 ## A boss keeps killing you
 
-- **Boss Fights** — Phase-by-phase tactics and gear advice for Dragon Descendant, Skyburner Dragon Lord and Phantom Witch
+- **Boss Fights** — Phase-by-phase tactics and gear advice for Dragon Descendant and Skyburner Dragon Lord
+- [Phantom Witch](/en/bosses/phantom-witch) — Blinks, Curse Realm and all three phases
 
 ## A mode keeps beating you
 

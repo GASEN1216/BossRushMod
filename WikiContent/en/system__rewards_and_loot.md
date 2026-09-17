@@ -74,8 +74,8 @@ The config option `useLegacyBossLootProbabilities` controls the quality distribu
   - And so on, doubling every 100 waves.
 
 #### Early Wave Protection
-- Early waves automatically exclude certain high-intensity Bosses to avoid encountering overpowered enemies at the start.
-- As waves progress, the Boss pool gradually unlocks all Bosses, with difficulty steadily increasing.
+- Infinite Hell draws enabled Bosses by weight from wave 1, without a 20-wave heavy-hitter exclusion.
+- As waves progress, high-base-health Bosses gain relative weight; use the Boss Filter to disable Bosses or adjust their weights.
 
 ### From Scratch Loot
 - Enemies carry random equipment, all of which drops in a loot crate on kill.
@@ -133,10 +133,12 @@ The Witch works the other way: Soulreaper's Requiem is an **independent extra ro
 appended to the loot crate without competing with anything else. Frostmourne's drop from the
 vanilla "???" Boss uses the same independent-extra mechanism.
 
-### Every Boss also drops these
+### Extra progression drops from arena Bosses
 
-The above covers loot crates and exclusive gear. On top of that, **any Boss** you kill runs the
+The above covers loot crates and exclusive gear. On top of that, **eligible Bosses in Standard BossRush, Infinite Hell, From Scratch, Faction War and Blood Hunt** run the
 rolls below. They're independent of each other and never take away anything you'd otherwise get.
+
+Vanilla raids, the Sky Islands, Fate Echo, the Black Market Duck Cup and Zombie Mode do not use this relic-soul, relic-egg and forge-stone drop path.
 
 #### Relic Souls (guaranteed)
 

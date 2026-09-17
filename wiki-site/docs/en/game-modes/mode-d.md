@@ -50,8 +50,8 @@ Enemies carry random gear too — quality scales with wave and HP: `Quality = 1 
 
 ## Achievements
 
-- **From Scratch** — Complete 10 waves (30K)
-- **Perfect Scratch** — 5 waves no damage (350K)
+- **From Nothing** — Complete 10 waves (30K)
+- **Flawless Mode D** — 5 waves no damage (350K)
 
 ## Tips
 

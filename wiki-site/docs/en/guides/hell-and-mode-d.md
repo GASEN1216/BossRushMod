@@ -10,7 +10,7 @@ No end. Bosses gain +2% stats per wave. **Survive as long as you can.**
 - Cloud Rider for aerial dodging, Reverse Scale for emergency saves
 
 ### Pacing
-- First 20 waves = warm-up (Four Horsemen, Koko Koko, Dragon Descendant and Dragon Lord excluded; the Phantom Witch still shows up) — find your rhythm
+- Infinite Hell draws from enabled Bosses by weight from wave 1; it has no 20-wave heavy-hitter protection, so a Dragon Lord or one of the Four Horsemen can appear immediately
 - Ammo shop near signpost — resupply often
 - Cash within 2m auto-flies to you, but you need to walk into range first
 - High-quality item every 5 waves — don't miss it
@@ -24,7 +24,7 @@ No end. Bosses gain +2% stats per wave. **Survive as long as you can.**
 ### Achievements
 - 10 waves / 25 / 50 / 100 / 200 — escalating milestones
 - 10 waves no damage: Iron Will
-- 10 waves no healing: Iron Man Challenge (hidden)
+- 10 waves no healing: Iron Man (hidden)
 
 ---
 

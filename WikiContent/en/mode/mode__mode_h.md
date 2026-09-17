@@ -6,7 +6,7 @@ You are not a fighter here. You are a manager.
 
 Sign two contenders, read the odds, call exactly one order, and let them fight all six matches for you.
 
-You never step into the ring. You spend the whole season in the stands with nothing but a bell. How it goes is half about who you signed and half about the handful of decisions you make before each opening whistle.
+Normally you direct the match from the stands with a bell. Certain fighters with the **ERROR** anomaly can trigger a control swap; see the questions below. How it goes is half about who you signed and half about the handful of decisions you make before each opening whistle.
 
 Six matches per season. Match 6 is the final. There is no match 7.
 
@@ -124,7 +124,7 @@ One line worth memorizing: **a full 2-credit stake never loses money on a win, a
 
 ### The Bell: The One Thing You Actually Do
 
-You get exactly one active input all match: **ring the bell**.
+Your normal active command during a match is to **ring the bell**.
 
 - **Before the match**, lock in one order.
 - **During the match you may ring once**, and the order runs for **6 seconds**.
@@ -204,13 +204,13 @@ Being pushed out is not a failure. It is what the rule was always going to do �
 
 ### Questions You Might Have
 
-- **Can I fight myself?** No. You are the manager here, and you stay in the stands the whole way.
-- **Can I bring my PetNest companions?** No. You never enter the ring, so there is nothing for them to follow.
+- **Can I fight myself?** Normally no. Certain eligible fighters with the **ERROR** anomaly get one 8% check per match. Success gives you control of the fighter while your own body stays in the stands. The swap ends when the fighter goes down, the match ends or control is restored. These kills still do not count toward the Codex.
+- **Can I bring my PetNest companions?** No. This mode does not admit PetNest companions.
 - **Are there mutation affixes?** No. This mode applies no mutation affixes and fires no in-run random events. What the board says is what walks into the ring.
 - **Do kills here count toward the Duck King Codex?** No. Your fighter landed the blow, not you.
 - **Can I reroll the candidates?** No. Closing and reopening the page changes nothing. Those five are the five.
 - **What happens after a season?** The season closes and your champion is recorded in the **Hall of Fame**. The Hall keeps only **32 places** — the 33rd entry pushes out the oldest one.
-- **Does a technical failure count as a loss?** No. The match restarts from the same brief and no defeat is recorded.
+- **Does a technical failure count as a loss?** No. The match retries from the same brief, up to two automatic retries, without recording a defeat. Further failures suspend the season for recovery through the boat menu.
 - **My season is stuck and won't continue.** Interact with the boat and you get a recovery page instead of the usual entry. It can hand your staked items back, and it offers **Abandon this season and settle stakes** — that closes the stake ledger, clears the stuck season and lets you start a new one. Stakes are returned as they were; the season itself is gone.
 
 [tip] The real work in this mode happens before the whistle: who you signed, which order you locked, and whether you dared to stake the full two credits. Once the bell rings, the rest is up to them.

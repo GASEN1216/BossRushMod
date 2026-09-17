@@ -46,7 +46,7 @@ Buy more than **10** of the same ammo type in one go at the arena ammo shop and 
 **3** achievements in the panel show only `???` until you unlock them:
 
 - **Iron Man** — clear 10 waves of Infinite Hell without using a single healing item
-- **Instant Kill** — meet any mode's clear condition inside 1 minute
+- **Instant Kill** — clear Standard BossRush or complete wave 10 of Infinite Hell / From Scratch inside 1 minute
 - **A Name on the Stone** — carve the first name into the PetNest memorial
 
 The first two are hardcore challenges. The last one… requires sending a cub off to die first.

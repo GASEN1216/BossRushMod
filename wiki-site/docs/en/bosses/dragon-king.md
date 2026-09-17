@@ -105,7 +105,8 @@ That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation 
 - For no-damage kills, use the Boss Filter to clear other bosses and face the Dragon Lord alone
 
 ## Spawn Limits
-- Standard BossRush: excluded from the first 20 waves
+- Standard BossRush: normally moved beyond the first 20 candidate positions; short pools, insufficient ordinary Bosses or filtering can make it appear earlier
+- Infinite Hell: eligible for weighted draws from wave 1
 - Faction War: Does not appear
 - Blood Hunt: Does not appear
 
@@ -113,4 +114,4 @@ That 1% on the Dragon Cannon means roughly 100 Dragon Lord kills on expectation 
 - **Kingslayer** — First kill (reward: 100,000)
 - **Perfect Kingslayer** — No-damage kill (reward: 500,000)
 - **Dragon Slayer Master** — 10 cumulative kills (reward: 600,000)
-- **Dragon King's Vault** — Collect all exclusive drops (reward: 500,000)
+- **Dragon King Collector** — Collect all exclusive drops (reward: 500,000)

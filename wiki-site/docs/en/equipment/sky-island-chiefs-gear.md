@@ -1,7 +1,7 @@
 # Island Chief Gear
 
 ::: tip
-Only found on seven of Sky Island's chiefs: the Waylayer, the Rain Listener, the Gnat Piper and the Mirror Guest each wear one piece and leave it behind 30% of the time; the three Galebreaker Rangers each wear one piece of the Galebreaker set and leave it behind 40% of the time. The piece takes one slot in the loot box; the rest of the box is whatever the chief was carrying.
+Found on seven Sky Islands chiefs, plus the Galebreaker Warden in Jeff's prelude: the Waylayer, the Rain Listener, the Gnat Piper and the Mirror Guest each wear one piece and leave it behind 30% of the time; the three Galebreaker Rangers each wear one piece of the Galebreaker set and leave it behind 40% of the time. The piece takes one slot in the loot box; the rest of the box is whatever the chief was carrying.
 :::
 
 ## What Is It?
@@ -27,7 +27,8 @@ Only found on seven of Sky Island's chiefs: the Waylayer, the Rain Listener, the
 - **Gnat Piper** (chief, Frogsong Pool, **night only**): drops the Mossgauze Mask **30%** of the time, nothing the other 70%.
 - **Mirror Guest** (chief, Mirrorwater Temple, **night only**): drops the Mirrorgrain Plate **30%** of the time, nothing the other 70%.
 - **Galebreaker Ranger (Chaser / Stalker / Warden)** (chiefs, the three return relay platforms: K1 Hanging Root Wood, K2 Fallen Star Workshop, K3 Windsong Boardwalk): the Chaser wears the Galebreaker Mantle, the Stalker carries the Galebreaker Pack and the Warden wears the Galebreaker Hood; each leaves its own piece behind **40%** of the time, nothing the other 60%. Completing the set means beating all three.
-- "Night" means 21:00 to 05:00 game time: by day you will only find followers at Frogsong Pool and Mirrorwater Temple, and the chief only comes out when you approach at night.
+- **Jeff's prelude (Ground Zero)**: the Galebreaker Warden guarding the lost navigation instrument uses the same profile and has a **40%** chance to drop the Galebreaker Hood.
+- "Night" means 19:00 to 05:00 game time: by day you will only find followers at Frogsong Pool and Mirrorwater Temple, and the chief only comes out when you approach at night.
 - The piece that drops comes at **full durability**.
 - Never in any random pool (island crates, Wish Fountain, daily sign-in, boss loot crates) — these chiefs are the only source.
 
@@ -74,6 +75,7 @@ Only found on seven of Sky Island's chiefs: the Waylayer, the Rain Listener, the
 - Once its Mirrorgrain Plate is at zero durability it still flips, but can no longer leave a reflection.
 
 **Galebreaker Rangers (all three):**
+- Stay inside 6 m for about **2.5 seconds** with its lunge ready and it retreats toward 9 m to seek another lunge. Hugging it does not permanently disable the move.
 - When you are **6–28 m** away, a **lunge line** runs along the ground from its feet to just in front of you and a ring (1.8 m radius) lights at the landing spot; once the line is fully lit it dashes in, slams down and then **staggers for 1.2 seconds**. **Sidestep** as soon as the line lights.
 - Their whole group is **no friend of the scavengers** and fights them on sight — lead one over and let them go at each other.
 - **Chaser (K1)**: lunges twice — first to just in front of you, then it re-aims at where you are now and lands just **behind** you for a second slam; sidestep both. Its line stays lit about 0.9 seconds, twice as long once its Galebreaker Mantle is at zero durability.
@@ -81,5 +83,5 @@ Only found on seven of Sky Island's chiefs: the Waylayer, the Rain Listener, the
 - **Warden (K3)**: lunges only once and its line stays lit longest (about 1.2 seconds), the easiest of the three to read — learn the lunge on it first. Its line stays lit twice as long once its Galebreaker Hood is shot through.
 
 ::: tip
-All of them show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal's overview. Talk to Fuzhou, Weibai, Qinghe or Miantai and they mention where the chiefs you have not beaten yet are and how to handle them.
+All of them show a boss health bar and name and come back every raid even after you beat them; first kills are recorded in the archipelago journal under "About the isles → This run · journey progress". Talk to Fuzhou, Weibai, Qinghe or Miantai and they mention where the chiefs you have not beaten yet are and how to handle them.
 :::

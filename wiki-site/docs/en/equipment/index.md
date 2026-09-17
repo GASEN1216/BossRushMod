@@ -1,6 +1,6 @@
 # Equipment Overview
 
-All **20 pieces** of custom gear are obtainable (sets counted piece by piece — the roster below is 9 entries covering 11 items, plus the 4 pieces of the Frost and Thunder sets, plus the 5 P0 weapons), drawn from three Boss lines: Dragon Descendant, Skyburner Dragon Lord, and Phantom Witch. Plus Frostmourne from the vanilla "???" Boss.
+There are **37 obtainable custom equipment pieces** (sets counted piece by piece): 20 regular pieces plus 17 Sky Islands wearable pieces. Regular gear comes from custom Bosses, extra official Boss drops and Dingdang's shop; island gear mainly comes from island lords and chiefs, and the prelude Warden can also drop a Galebreaker Hood.
 
 The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch are **all obtainable now** (see below): each weapon drops at 20% from one official boss — vanilla maps included — or can be bought from Dingdang's Shop at Affinity 5.
 
@@ -23,7 +23,7 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 - **Viper Dagger** — Poison dagger; stack 5 poison layers for a burst
 - **Summoning Staff** — Right-click summons 3 soul warriors to soak aggro
 - **Energy Shield** — Totem; frontal hits restore part of the damage as HP
-- **Frost Spear** — Ice spear with long reach and guaranteed freeze on hit
+- **Frost Spear** — Ice spear with long reach and guaranteed vanilla Cold effect on hit (not a hard freeze every hit)
 - **Thunder Ring** — Totem; charge on hits taken, release lightning burst at max
 
 **P1 Sets (2 sets, 4 pieces) · Obtainable Now**
@@ -33,6 +33,16 @@ The 5 new weapons from v2.2.0 and the Frost and Thunder sets from the same batch
 
 ::: tip
 Both sets drop on vanilla raids too — you don't need a BossRush run. See their own pages for details.
+:::
+
+## Sky Islands Gear (17 Pieces)
+
+- **Sky Island Starworks Gear** — Starbrass Visor Helm, Starfurnace Harness, Starfurnace Pack and Stargazer's Lens Helm: 4 pieces for cheaper crafting and stationary scouting
+- **Sky Island Lords' Gear** — 3 rootweave and 3 straw-cloak pieces: 6 pieces that improve local-goods looting and greenear gathering
+- **Sky Island Chiefs' Gear** — Old Mailbag, Rainhush Earmuffs, Mossgauze Mask, Mirrorgrain Plate and the 3 Galebreaker pieces: 7 pieces for mail, night travel, reconciliation and bridge mobility
+
+::: tip
+Island equipment perks require the gear to be worn. The Cloudmoss Veil works from your inventory and is a utility item, not one of these 17 equipment pieces. See the equipment pages and Sky Islands · Qinglan Archipelago.
 :::
 
 ## Set Effects

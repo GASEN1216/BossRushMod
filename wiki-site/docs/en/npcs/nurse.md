@@ -24,7 +24,7 @@ Former senior medical researcher at J-Lab. After the lab collapsed, she escaped 
 
 ## Gifts
 
-- **Likes**: Diamond, Birthday Cake, consumable/medical items (+80)
+- **Likes**: Diamond and consumable/medical items (+80); Birthday Cake (+150)
 - **Loves**: Diamond Ring (+500)
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone — reminds her of the lab (-60)

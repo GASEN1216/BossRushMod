@@ -6,7 +6,7 @@ Touch the dragon's scale, and face its wrath. **A one-time lifesave totem**: aut
 
 ## Stats
 
-- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (39%) / Won't drop on death
+- **Type**: Totem / **Quality**: 6 (Legendary) / **Drop**: Dragon Lord (39%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ## How It Works
 
@@ -29,4 +29,4 @@ Touch the dragon's scale, and face its wrath. **A one-time lifesave totem**: aut
 
 ## Achievement
 
-- **Touch the Scale** — First trigger ($80K)
+- **Dragon's Wrath** — First trigger ($80K)

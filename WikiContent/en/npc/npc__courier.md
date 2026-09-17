@@ -2,7 +2,7 @@
 
 ### Who Is He?
 
-Your personal item courier. No Affinity, no gifts, no drama — just business. Shows up in normal maps and **every BossRush mode**.
+Awen handles deliveries, storage and loot sweeping. His services need no affinity. He also shares news from his rounds.
 
 ### Services
 
@@ -60,3 +60,9 @@ Present in: Normal Maps ✓ / Standard ✓ / From Scratch ✓ / Faction War ✓ 
 - **Stash valuables before risky modes** to avoid loss
 - `Store All` / `Deposit All` for fast inventory clearing
 - Blood Hunt rewards auto-go to Storage — **remember to pick them up**
+
+### News from the road
+
+Awen talks about Fate Echo, the Black Market Duck Cup, the campaign and Sky Island. He also mentions Pet Nest, affix forging, the back-mountain garden and where to find new gear.
+
+For Sky Island, start with Jeff's navigator quest. Awen's chatter offers hints; check the matching Wiki entry for full rules.

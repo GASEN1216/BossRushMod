@@ -29,7 +29,7 @@ Reforging and affix forging are separate menu options and never interfere. One c
 
 ## Gifts
 
-- **Likes**: Diamond, Birthday Cake, recipe/blueprint items (+80)
+- **Likes**: Diamond and recipe/blueprint items (+80); Birthday Cake (+150)
 - **Loves**: Diamond Ring (+500)
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone — fake diamond (-40)

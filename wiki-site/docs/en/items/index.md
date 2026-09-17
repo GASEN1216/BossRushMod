@@ -1,6 +1,6 @@
 # Item Overview
 
-40+ custom items across 5 categories. For equipment (sets, totems, weapons), see Equipment Overview.
+Custom items cover entry, NPC services, consumables, mode tools, base progression and Sky Islands crafting. For equipment (sets, totems, weapons), see Equipment Overview.
 
 ## Categories
 
@@ -9,6 +9,8 @@
 - **Consumables** — Healing, buffs, summoning
 - **Mode-Exclusive** — Faction War tactical items, Blood Hunt fortifications, the Fate Echo Relic, and Zombie Mode's Portable Safe-Zone Device (run reward, single use)
 - **Progression & Base** — Affix Forge Stones, relic eggs and relic souls (PetNest), and the Backyard's three seeds and three raid meals
+
+- **Sky Islands Goods & Crafts** — Driftwood, cloudmoss, greenear, windcrystal and stardust support commissions, crafting, lamps, charms and night exploration
 
 ## Where to Get Them
 
@@ -20,4 +22,5 @@
 - **Loot Crates** — Random drops post-Boss
 - **Achievements** — Cash rewards via the panel
 - **System** — Dingdang's Drawing (Lv.10), auto-granted consumables in modes
+- **Sky Islands Gathering & Crafting** — Gather local goods or find them in crates, then craft at residents' workstations; see the island map page
 - **Mystery Merchant** — Categorized shops in Faction War / Blood Hunt

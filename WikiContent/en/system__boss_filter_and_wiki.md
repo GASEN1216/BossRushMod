@@ -22,9 +22,9 @@
 #### Infinite Hell Weight
 - You can set an individual appearance weight multiplier for each Boss in Infinite Hell:
   - Default weight is 1.0
-  - Set to 2.0 = double the appearance probability
-  - Set to 0.5 = halve the appearance probability
-  - Set to 0 = equivalent to disabling
+  - Set to 2.0 = double the relative draw weight; final probability also depends on every other weight
+  - Set to 0.5 = halve the relative draw weight
+  - Set to 0 = omitted from normal weighted draws; if all enabled Bosses have zero weight, the mode falls back to a uniform draw. Uncheck a Boss to exclude it completely
 
 #### Boss Pool Refresh Rules
 - After a mod update or Boss-pool rebuild, the filter reconstructs its list from the current roster.

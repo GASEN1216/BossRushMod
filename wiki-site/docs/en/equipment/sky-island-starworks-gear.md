@@ -1,7 +1,7 @@
 # Starworks Gear
 
 ::: tip
-Only found on Sky Island's chief and island lord: they wear the full set every raid, and when they fall they keep **just one piece** by weight, which takes one slot in the loot box; the rest of the box is whatever they were carrying.
+The Starforge Foreman wears the full Starworks set and always leaves one piece: helm 35%, harness 35%, pack 30%. The Overlook Stargazer separately has a 30% chance to drop its lens helm. The piece takes one slot in the loot box alongside ordinary supplies.
 :::
 
 ## What Is It?
@@ -49,5 +49,5 @@ Only found on Sky Island's chief and island lord: they wear the full set every r
 - Wear its lens helm down to zero durability and it can no longer mark anyone.
 
 ::: tip
-Both show a boss health bar and name. First kills of the Foreman and the Stargazer are recorded in the archipelago journal's overview.
+Both show a boss health bar and name. First kills of the Foreman and the Stargazer are recorded in the archipelago journal under "About the isles → This run · journey progress".
 :::

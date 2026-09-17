@@ -30,12 +30,12 @@ Fate Echo **reads you first, then tests you**. Do not treat the strongest habit 
 
 - Check the HUD for the named ammo type
 - Swap ammo, swap weapons, or go melee before you start violating the mark
-- The Nemesis is already pressure enough; protect the break condition before gambling on Last Stand
+- The Nemesis is already pressure enough; protect the break condition; Last Stand belongs to waves 2, 5 and 8
 
 ## Act II: Spend Resources Carefully (Waves 4-6)
 
 - Wave 4 applies an Attribute Lock against the side that carried wave 3
-- If guns dominated, prepare melee or a different gun plan; do the reverse if melee dominated
+- If guns dominated, prepare melee; if melee dominated, prepare guns. Another gun does not bypass a gun-side lock
 - Wave 5 asks for another range change
 - Wave 6 combines the Nemesis with an Ammo Mark. Save healing, ammo, and a retreat line
 
@@ -53,7 +53,7 @@ Last Stand only triggers on multi-Boss waves (2, 5, 8) — at most 3 chances per
 
 - **Safe route**: finish the last Boss during the countdown and secure the wave
 - **Contract route**: only chase Resolve when a scoreable direct gun/melee final blow is ready
-- **Greedy route**: drag the timer for one more Resolve and let the Nemesis turn the fight
+- **Greedy route**: drag the timer for one more Resolve and let the empowered final Boss turn the fight
 
 When Last Stand expires, the Boss heals and gains movement, gun, and melee damage. Do not trade a stable clear for a low-confidence gamble.
 
@@ -67,7 +67,7 @@ Resolve caps at 11:
 - 9: 9 items
 - 10-11: 10 items
 
-The 6-to-8 range is a meaningful reward step. If your contract asks for all three axes, secure those breaks first instead of gambling every wave for the maximum total.
+Reaching 6 Resolve raises the reward to 8 items; 6–8 Resolve share that bracket, and 9 is the next step. If your contract asks for all three axes, secure those breaks first instead of gambling every wave for the maximum total.
 
 ## Nemesis Rematches
 

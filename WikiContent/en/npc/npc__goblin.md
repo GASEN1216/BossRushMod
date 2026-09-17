@@ -27,7 +27,7 @@ A goblin created by J-Lab, way smarter than your average green dude. **Your go-t
 
 ### Gifts
 
-- **Likes**: Diamond, Birthday Cake, recipe/blueprint items (+80)
+- **Likes**: Diamond and recipe/blueprint items (+80); Birthday Cake (+150)
 - **Loves**: Diamond Ring (+500)
 - **Neutral**: Other items (+20)
 - **Dislikes**: Brick Stone — fake diamond (-40)

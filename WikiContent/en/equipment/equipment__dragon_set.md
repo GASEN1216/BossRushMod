@@ -7,11 +7,11 @@ Your first custom set. Dropped by Dragon Descendant. Equip both pieces for fire 
 ### Pieces
 
 #### Crimson Dragon Helm
-Armor 7 / Durability 200 / Phys Res -10% / Storm +1 / Cold +1 / Crit Dmg +10% / Fire Res -15% / Shock -15% / **Poison vuln +30%** / **FOV -20%**
+Armor 7 / Durability 200 / Physical damage taken -10% / Storm +1 / Cold +1 / Gun Crit Dmg +10% / Fire damage taken -15% / Shock damage taken -15% / **Poison vuln +30%** / **FOV -20%**
 - Drop: Dragon Descendant (30%)
 
 #### Flame Scale Armor
-Armor 7 / Durability 200 / Phys Res -20% / Storm +1 / Cold +1 / Fire Res -20% / Shock -20% / **Poison vuln +40%**
+Armor 7 / Durability 200 / Physical damage taken -20% / Storm +1 / Cold +1 / Fire damage taken -20% / Shock damage taken -20% / **Poison vuln +40%**
 - Drop: Dragon Descendant (60%)
 
 ### Set Effect (Both Equipped)

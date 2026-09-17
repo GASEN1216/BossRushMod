@@ -6,7 +6,7 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 
 - **Type**: Totem / **Quality**: 5
 - **Drop**: 20% from Triple-Shot Man (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
-- Won't drop on death
+- Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 
 ## Thunder Charge (Passive)
 

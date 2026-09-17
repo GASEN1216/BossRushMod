@@ -195,15 +195,15 @@ H["head/favicon"] --> I["站点图标"]
 
 ### 主题定制（theme/index.ts、Layout.vue、components/、css/）
 - 入口
-  - 主题入口**不再** extends 默认主题，只导出 Layout 与 enhanceApp；全局注册 WikiHome / WikiCardGrid / WikiInfobox / WikiContentSub / WikiToc / WikiIcon；按层叠顺序引入 css/ 下九个样式文件。
-- 布局插槽（Layout.vue）
-  - doc-before：WikiBreadcrumb（面包屑）、WikiInfobox（速查框，数据来自 infobox.mts）。
-  - doc-footer-before：类目主页上依次为 WikiCompare（速查对比表）与 WikiCardGrid（条目宫格）；更新日志页面用 WikiChangelogTimeline（按 major.minor 分行的版本时间线）代替 WikiNavbox（同类导航）。
-  - 更新日志在 useWiki.ts 里被拼成虚拟类目（条目来自 changelog.data.mts），面包屑与时间线因此认得它。
+  - 主题入口**不再** extends 默认主题，只导出 Layout 与 enhanceApp；全局注册 WikiHome / WikiCardGrid / WikiInfobox / WikiContentSub / WikiToc / WikiIcon；样式层及引入顺序以 theme/index.ts 为准。
+- 布局与渲染（Layout.vue / config.mts）
+  - 已不使用默认主题的 doc-before / doc-footer-before 插槽。位置提示、速查框与目录由 config.mts 的 Markdown 插件插入正文，Layout 直接渲染 Content 与页尾组件。
+  - 类目主页正文之后依次是 WikiCompare 与 WikiCardGrid；普通条目使用 WikiNavbox。更新日志在 useWiki.ts 中是虚拟类目，不展开普通同类导航；当前没有 WikiBreadcrumb 或 WikiChangelogTimeline 组件。
+  - 更新日志条目来自 changelog.data.mts，供当前分类、导航与首页最近更新使用。
 - 速查对比表（WikiCompare.vue）
   - 按速查框眉标首段分组（装备拆成近战 / 套装 / 图腾 / 枪械），列 = 组内至少两个条目共有的标签，「获取 / 来源」「基础伤害 / 伤害」按别名合并，「物品 ID」行不进对比表；点表头按数字、★ 数或字符串排序，缺值行沉底。数据只读 infobox.mts，无独立清单。
 - 首页（WikiHome.vue）
-  - 刊头、WikiSearchBar（整行搜索框转发给 VitePress 搜索按钮 + 随机条目）、数据速览（模式 / Boss / 装备数来自 structure.mts，成就与地图数由 stats.data.mts 从 WikiContent 正文统计）、三步上手、门户宫格、最近更新（changelog.data.mts 前 6 条）。
+  - 刊头、数据速览、三步上手、门户宫格和最近更新；搜索入口在标签行 WikiHeadSearch。模式 / 竞技场 Boss / 装备指南数来自 structure.mts，成就与竞技场地图数由 stats.data.mts 从 WikiContent 正文统计。
 - 样式
   - css/tokens.css：全部 --theme-* / --layout-* 令牌；:root 是默认皮肤 Overworld（深色），html.theme-Snow 是浅色。加皮肤只改这里加 data/themes.mts 加内联脚本三处。
   - css/layout.css / content.css / widgets.css / mainpage.css / responsive.css / print.css：骨架、正文、构件、首页、七档媒体查询与打印。
@@ -337,11 +337,22 @@ Build --> Deploy["deploy.yml"]
 [本节为总结，无需特定文件引用]
 
 ## 附录：编写规范与维护实践
+
+### 内容与代码的一致性（2026-09-17 核对）
+
+- 当前源码、调用入口和数据表是事实源。先核对触发条件、边界、获取渠道与数值，再同时修改 `WikiContent/zh` 和 `WikiContent/en`；只看配置注释或旧版本日志可能漏掉运行时差异。
+- 游戏内正文不写 Markdown 表格与图片；多列数据改为带字段名的列表，`[tip]` / `[warn]` 每条单行。在线站需要的装饰继续由同步脚本与主题注入。
+- 正文之外，`hubs/` 的类目简介、`infobox.mts` 的速查数据和 `WikiHome.vue` 的统计标签也要核对。首页装备数来自文章条目，标签是「装备指南」，不能把套装文章数当装备件数；Boss 与地图计数标明竞技场范围。
+- `npm --prefix wiki-site run build` 会先同步正文，再构建。随后跑 `npm --prefix wiki-site run test:navigation`、`python3 tools/check_wiki_links.py`、图片与主题资源的 `--check`，以及 Wiki 守卫。守卫验证结构与接线，不代替内容核对或游戏实机验证。
+- 历史更新日志保留当时版本含义；当前攻略与总览按现状维护。本地生成 / 构建成功不表示远端站点已经发布。
+
+### 原有维护入口
+
 - 内容编写规范
-  - 所有文档内容必须维护在 WikiContent/zh 与 WikiContent/en 下，文件名与 catalog.tsv 的 entryId 保持一致。
+  - 双端共用正文维护在 WikiContent/zh 与 WikiContent/en 下，文件名与 catalog.tsv 的 entryId 保持一致；在线专用类目主页维护在 hubs/。
   - 使用统一的标题层级与 Callout 语法，以便同步脚本正确转换。
   - 新增条目需在 catalog.tsv 中注册、在 entry-map.mjs 的 ENTRY_TO_PATH 中补充路由映射，并在 structure.mts 对应类目的 entries 中登记（三步缺一不可）。
-  - 速查框数值以 WikiContent/zh 正文为准，改数值时 infobox.mts 同步改；类目主页的对比表自动跟随。
+  - 速查框与中英文正文一起对照生产代码校准；改数值时 infobox.mts 同步改，类目主页的对比表自动跟随。
 - 贡献流程
   - 修改 WikiContent 后，运行同步脚本验证生成结果。
   - 提交 PR 并等待 CI 构建与预览。

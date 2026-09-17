@@ -1,6 +1,6 @@
 ## Game Mode Overview
 
-8 modes, from chill to "why did I do this to myself" to a standalone zombie survival gauntlet — plus one where you never draw a weapon at all.
+8 modes, from chill to "why did I do this to myself" to a standalone zombie survival gauntlet — plus a manager mode built around signing fighters and placing bets.
 
 ### At a Glance
 
