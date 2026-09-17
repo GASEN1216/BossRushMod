@@ -81,14 +81,30 @@ def check(sources):
         ('reason = L10n.T("回到基地向 Jeff 交付坐标。"', "序章交付必须回基地（岛上三条才是原地交付）"),
     ):
         require(token in prelude, PRELUDE + "：" + why + "（缺 " + token + "）")
-    require(prelude.count("SetBaseSource(null)") >= 3,
-            PRELUDE + " 关闭 / 切换基地故事时没有把任务桥的事实源置空（应至少三处：EnsureStory 失败、CloseStory、TryPrepareDeparture）")
+    departure = prelude.split("internal bool TryPrepareDeparture(", 1)[1].split("private void CloseStory()", 1)[0]
+    require("SkyIslandOfficialQuestStory.SetBaseSource(null);" in departure,
+            PRELUDE + " 出发前没有释放基地故事投影")
     require("private const float TickInterval = 0.25f" in prelude and "jeffAttempts = 12" in prelude and "jeffAttempts--" in prelude,
             PRELUDE + " 缺少节流 Tick 或 Jeff 有界重试")
     require(prelude.count("FindObjectsOfType<QuestGiver>(true)") == 1, PRELUDE + " 的 Jeff 全局扫描必须只有一个有界调用点")
     require("BossActivationRange * BossActivationRange" in prelude, PRELUDE + " 必须等玩家接近目标后再创建完整角色")
     bundle_gate = prelude.split("internal void Tick()", 1)[1].split("if (!EnsureStory())", 1)[0] if "internal void Tick()" in prelude else ""
-    require("SkyIslandRaidLease.IsBundleDeployed()" in bundle_gate, PRELUDE + " 缺包时仍会给 Jeff 一条无法完成的任务")
+    schedule = prelude.split("internal void Schedule()", 1)[1].split("internal void OnStartedLoading()", 1)[0]
+    require("bundleDeployed = SkyIslandRaidLease.IsBundleDeployed();" in schedule and "if (!bundleDeployed)" in bundle_gate,
+            PRELUDE + " 缺包门必须由关卡调度采样，再在序章 Tick 中使用")
+    require("SkyIslandRaidLease.IsBundleDeployed()" not in bundle_gate,
+            PRELUDE + " 常驻 Tick 不应反复访问磁盘")
+    require("context.BundleDeployed = SkyIslandPreludeFlow.BundleDeployed;" in givers,
+            GIVERS + " 任务上下文必须复用入口 owner 的资源状态")
+    ensure_story = prelude.split("private bool EnsureStory()", 1)[1].split("private bool NoConflictingMode()", 1)[0]
+    require("story.IsCurrentSlot && storyReady" in ensure_story, PRELUDE + " 迁移失败的门面不能被误当作就绪")
+    ordered(ensure_story, "story.EnsureRouteCompatibility(", "SkyIslandOfficialQuestStory.SetBaseSource(story);",
+            PRELUDE + " 兼容检查完成前不能发布故事")
+    close_story = prelude.split("private void CloseStory()", 1)[1].split("private void Report(", 1)[0]
+    require("storyReady = false;" in close_story and "SkyIslandOfficialQuestStory.SetBaseSource(null);" in close_story,
+            PRELUDE + " 关闭时必须复位就绪状态并释放任务事实源")
+    failed_init = ensure_story.split("catch (Exception e)", 1)[1]
+    require("CloseStory();" in failed_init, PRELUDE + " 初始化异常必须委托同一关闭 owner 清理")
 
     # ---- 2) 任务表：纯规则、稳定 ID、两位旗标、链条门 ----
     for token, why in (
@@ -101,7 +117,7 @@ def check(sources):
         ("BellKeeperGiverId = 5903", "钟守给予者整数未冻结"),
         ("SkyIslandStoryRules.CanApply(data, action, out blocker)", "目标行文案没有取自绘面板同一份「还差什么」"),
         ("context.Data.Has(SkyIslandStoryFlag.BeaconQuestDelivered)", "钟庭之争没有等两端航标交付"),
-        ("context.Data.Has(SkyIslandStoryFlag.BellCourtQuestDelivered)", "归航钟没有等钟庭之争交付"),
+        ("context.Data.BothBeacons && context.Data.BellKeeperResolved", "归航钟必须在钟庭事件解决后就地接取"),
         ("context.OnIsland && context.Data != null && context.Data.SkyIslandRouteUnlocked", "岛上任务的门没有要求人在岛上且航线已开"),
     ):
         require(token in table, TABLE + "：" + why + "（缺 " + token + "）")
@@ -110,6 +126,14 @@ def check(sources):
     for banned in ("using UnityEngine", "using Duckov", "QuestGiverID", "QuestManager"):
         require(banned not in table, TABLE + " 出现了 " + banned + "：任务表必须无 Unity / Duckov 依赖，隔离回归才能逐字链接")
     require("SkyIslandOfficialQuestTable.cs" in sources[CSPROJ], CSPROJ + " 没有链接任务表：执行回归证不了「任务页与规则同源」")
+
+    require("SkyIslandStoryRules.CanApply(context.Data, definition.AcceptAction, out blocker)" in table,
+            TABLE + " 接取必须复用剧情规则")
+    delivery = quest.split("internal static bool TryCommitDelivery(", 1)[1].split("internal static bool IsTaskDone(", 1)[0]
+    ordered(delivery, "SkyIslandOfficialQuestTable.CanDeliver(", "active.DefaultCommit(", QUEST + " 交付必须先验证地点和事实")
+    require("SkyIslandOfficialQuestTable.NextContactObjective(data)" in rules, RULES + " HUD 缺少官方任务接取 / 交付引导")
+    require('LocalizationHelper.InjectLocalization("BossRush_SkyIsland_QuestGiver",' in table,
+            TABLE + " 给予者交互名必须进入已有语言切换注入链")
 
     # ---- 3) 桥：注册表、所有权、逐条目 fail-closed、四类快照、时序 ----
     for token, why in (
@@ -165,6 +189,11 @@ def check(sources):
         ("internal static void ResetStaticCaches()", "静态给予者缓存没有唯一清理 owner"),
     ):
         require(token in givers, GIVERS + "：" + why + "（缺 " + token + "）")
+    fallback = givers.split("internal static void EnsureDeviceFallback(", 1)[1].split("private static bool HasAttachedGiver(", 1)[0]
+    require("HasAttachedGiver(giverId)" in fallback and "session.FindResidentQuestOwner(resident)" in fallback,
+            GIVERS + " 居民存在不能代替给予者接线成功；UI 后就绪要补回居民原组")
+    require("SkyIslandOfficialQuestGivers.AttachResident(interaction.transform, standaloneGroup, id);" in residents,
+            RESIDENTS + " 普通居民交互路径也必须接任务给予者")
     require("GetOrCreateStandaloneInteractable" not in givers, GIVERS + " 用了独立交互体：会新增同点竞争体")
     require("SkyIslandOfficialQuestGivers.AttachResident(relationship.transform, group, id);" in residents,
             RESIDENTS + " 发任务的居民身上没有挂官方给予者")
@@ -226,6 +255,16 @@ def main():
     sources = {path: (ROOT / path).read_text(encoding="utf-8-sig") for path in PATHS}
     errors = check(sources)
     probes = (
+        (PRELUDE, "story.IsCurrentSlot && storyReady", "story.IsCurrentSlot"),
+        (PRELUDE, "storyReady = false;", "storyReady = true;"),
+        (GIVERS, "context.BundleDeployed = SkyIslandPreludeFlow.BundleDeployed;", "context.BundleDeployed = SkyIslandRaidLease.IsBundleDeployed();"),
+        (GIVERS, "HasAttachedGiver(giverId)", "session.HasResident(resident)"),
+        (GIVERS, "session.FindResidentQuestOwner(resident)", "null"),
+        (RESIDENTS, "SkyIslandOfficialQuestGivers.AttachResident(interaction.transform, standaloneGroup, id);", ""),
+        (TABLE, 'LocalizationHelper.InjectLocalization("BossRush_SkyIsland_QuestGiver",', 'LocalizationHelper.InjectLocalization("unused",'),
+        (TABLE, "SkyIslandStoryRules.CanApply(context.Data, definition.AcceptAction, out blocker)", "true"),
+        (QUEST, "SkyIslandOfficialQuestTable.CanDeliver(entry.Def, SkyIslandOfficialQuestStory.Capture(active.host))", "true"),
+        (RULES, "SkyIslandOfficialQuestTable.NextContactObjective(data)", "null"),
         (PRELUDE, "candidate.ID != QuestGiverID.Jeff", "candidate.name != \"Jeff\""),
         (PRELUDE, "jeffAttempts--", ""),
         (PRELUDE, "health.OnDeadEvent.RemoveListener(OnDead)", ""),

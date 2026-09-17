@@ -67,7 +67,10 @@ internal static class SkyIslandOfficialQuestRegression
                 if (offer) { offers++; check(ruleAccept, "offered quest must be acceptable by the rules: " + def.QuestId + " flags=" + flags); }
                 bool ruleDeliver = SkyIslandStoryRules.CanApply(data, def.DeliverAction, out blocker);
                 bool deliver = SkyIslandOfficialQuestTable.CanDeliver(def, Context(data, true, true));
-                check(deliver == ruleDeliver, "deliverable by the table iff deliverable by the rules: " + def.QuestId + " flags=" + flags);
+                bool atGiverStage = def.Gate == null || def.Gate(Context(data, true, true));
+                check(deliver == (ruleDeliver && atGiverStage), "delivery requires both the story rule and the giver gate: " + def.QuestId + " flags=" + flags);
+                check(!SkyIslandOfficialQuestTable.CanDeliver(def, Context(data, false, true)), "island quests cannot be delivered away from the island: " + def.QuestId);
+                check(!SkyIslandOfficialQuestTable.CanDeliver(def, Context(data, true, false)), "read-only story cannot deliver: " + def.QuestId);
                 if (deliver) delivers++;
                 // 2) Task 判据 = Describe 的前置：目标没完成时交付动作必给出「还差什么」。
                 bool tasksDone = SkyIslandOfficialQuestTable.TasksDone(def, data);
@@ -81,8 +84,8 @@ internal static class SkyIslandOfficialQuestRegression
             SkyIslandStoryData route = Data(flags | (int)SkyIslandStoryFlag.RouteUnlocked);
             if (!route.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
                 check(!SkyIslandOfficialQuestTable.CanOffer(island[1], Context(route, true, true)), "the Bell Court quest waits for the beacon quest to be delivered");
-            if (!route.Has(SkyIslandStoryFlag.BellCourtQuestDelivered))
-                check(!SkyIslandOfficialQuestTable.CanOffer(island[2], Context(route, true, true)), "the Homecoming quest waits for the Bell Court quest to be delivered");
+            if (!route.BothBeacons || !route.BellKeeperResolved)
+                check(!SkyIslandOfficialQuestTable.CanOffer(island[2], Context(route, true, true)), "the Homecoming quest waits for safe beacons and a resolved Bell Keeper");
         }
         check(offers > 0 && delivers > 0, "the exhaustive sweep exercised both offer and deliver paths");
 
@@ -95,7 +98,9 @@ internal static class SkyIslandOfficialQuestRegression
             string blocker;
             SkyIslandStoryRules.CanApply(lit, SkyIslandStoryAction.ReconcileBellKeeper, out blocker);
             string line = island[1].Tasks[0].Description(lit);
-            check(!string.IsNullOrEmpty(blocker) && line == blocker, "Bell Court task line equals the panel blocker (" + (chinese ? "zh" : "en") + ")");
+            check(line.Contains(chinese ? "守钟装置" : "bell engine"), "Bell Court objective always keeps the combat alternative visible");
+            check(!string.IsNullOrEmpty(blocker) && island[1].Tasks[0].ExtraHint(lit) == blocker,
+                "Bell Court optional evidence hint shares the panel blocker (" + (chinese ? "zh" : "en") + ")");
             SkyIslandStoryData bare = Data((int)(SkyIslandStoryFlag.RouteUnlocked | SkyIslandStoryFlag.BeaconQuestAccepted));
             SkyIslandStoryRules.CanApply(bare, SkyIslandStoryAction.RepairWindBeacon, out blocker);
             check(island[0].Tasks[0].Description(bare) == blocker, "wind beacon task line equals the panel blocker (" + (chinese ? "zh" : "en") + ")");
@@ -141,9 +146,120 @@ internal static class SkyIslandOfficialQuestRegression
         check(SkyIslandStoryRules.TryBackfillIslandQuests(partial, out filled) && filled.Has(SkyIslandStoryFlag.BeaconQuestDelivered)
             && !filled.Has(SkyIslandStoryFlag.BellCourtQuestAccepted), "backfill only grants what the facts support");
 
+        VerifyJourneyAndMigration(check, island);
+
         // 7) 所有枚举位的并集 == KnownFlags：再加位忘了同步掩码，整份存档会被拒。
         int union = 0;
         foreach (object value in Enum.GetValues(typeof(SkyIslandStoryFlag))) union |= (int)value;
         check(union == SkyIslandStoryRules.KnownFlags, "KnownFlags equals the union of every SkyIslandStoryFlag bit");
     }
+    private static void VerifyJourneyAndMigration(Action<bool, string> check, IList<SkyIslandOfficialQuestDefinition> island)
+    {
+        // 正常新档：实际执行序章、接任务、做目标、复命，HUD 不得在复命前催玩家离开。
+        SkyIslandStoryData data = SkyIslandStoryRules.CreateDefault();
+        string message;
+        SkyIslandStoryData next;
+        foreach (SkyIslandStoryAction action in new[] { SkyIslandStoryAction.AcceptPrelude,
+            SkyIslandStoryAction.RecoverPreludeInstrument, SkyIslandStoryAction.UnlockRoute })
+        {
+            check(SkyIslandStoryRules.TryApply(data, action, out next, out message), "new journey accepts " + action);
+            data = next;
+        }
+        check(data.islandQuestMigrationComplete, "normal route unlock is never eligible for legacy quest completion");
+        check(!SkyIslandStoryRules.TryBackfillIslandQuests(data, out next), "new journey cannot be backfilled");
+        foreach (bool chinese in new[] { true, false })
+        {
+            L10n.IsChinese = chinese;
+            SkyIslandStoryData journey = data.Copy();
+            for (int i = 0; i < island.Count; i++)
+            {
+                SkyIslandOfficialQuestDefinition quest = island[i];
+                string objective = SkyIslandStoryRules.Objective(journey);
+                check(objective.Contains(quest.Contact()) && objective.Contains(quest.Name()), "HUD names the next giver and quest");
+                check(SkyIslandStoryRules.TryApply(journey, quest.AcceptAction, out next, out message), "journey accepts " + quest.QuestId);
+                journey = next;
+                check(SkyIslandOfficialQuestTable.NextContactObjective(journey) == null, "unfinished task keeps the exploration objective");
+                if (i == 0)
+                {
+                    journey.clearedEncounters = new[] { "D", "D_02", "G", "G_02" };
+                    foreach (SkyIslandStoryAction repair in new[] { SkyIslandStoryAction.RepairStarLamp, SkyIslandStoryAction.RepairWindBeacon })
+                    {
+                        check(SkyIslandStoryRules.TryApply(journey, repair, out next, out message), "either beacon order remains playable");
+                        journey = next;
+                    }
+                }
+                else
+                {
+                    SkyIslandStoryAction outcome = i == 1 ? SkyIslandStoryAction.BellKeeperDefeated : SkyIslandStoryAction.RingHomecomingBell;
+                    check(SkyIslandStoryRules.TryApply(journey, outcome, out next, out message), "journey resolves " + outcome);
+                    journey = next;
+                }
+                SkyIslandStoryData reloaded = SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(journey));
+                check(reloaded != null && !SkyIslandStoryRules.TryBackfillIslandQuests(reloaded, out next), "completed objective survives reload without automatic delivery");
+                check(!reloaded.Has(quest.DeliveredFlag), "player still owns the hand-in choice after reload");
+                objective = SkyIslandStoryRules.Objective(reloaded);
+                if (i == 1)
+                {
+                    check(objective.Contains(island[2].Contact()), "HUD keeps the player at the Bell Court to ring the bell before the return journey");
+                    check(SkyIslandOfficialQuestTable.CanOffer(island[2], Context(reloaded, true, true)), "Homecoming is available before reporting to Fuzhou");
+                    SkyIslandStoryData direct = reloaded.Copy();
+                    foreach (SkyIslandStoryAction local in new[] { SkyIslandStoryAction.AcceptHomecomingQuest,
+                        SkyIslandStoryAction.RingHomecomingBell, SkyIslandStoryAction.DeliverHomecomingQuest })
+                    {
+                        check(SkyIslandStoryRules.TryApply(direct, local, out next, out message), "finish locally without a dock detour: " + local);
+                        direct = next;
+                    }
+                    check(!direct.Has(SkyIslandStoryFlag.BellCourtQuestDelivered) && SkyIslandStoryRules.Objective(direct).Contains(quest.Contact()),
+                        "after ringing and reporting to the keeper, the HUD guides the natural return to Fuzhou");
+                    check(SkyIslandStoryRules.TryApply(direct, quest.DeliverAction, out next, out message) &&
+                        !message.Contains(chinese ? "等钟声" : "wait for the bell"), "Fuzhou acknowledges the bell that already rang");
+                }
+                else check(objective.Contains(quest.Contact()) && objective.Contains(chinese ? "交付" : "complete"), "HUD directs completed objectives back to their giver");
+                check(SkyIslandOfficialQuestTable.CanDeliver(quest, Context(reloaded, true, true)), "completed objective can be handed in on the island");
+                check(SkyIslandStoryRules.TryApply(reloaded, quest.DeliverAction, out next, out message), "journey hands in " + quest.QuestId);
+                journey = next;
+            }
+            check(SkyIslandOfficialQuestTable.NextContactObjective(journey) == null, "fully delivered story returns to free exploration");
+        }
+        L10n.IsChinese = true;
+
+        // 上一版已经接任务的档（无迁移字段）只能盖迁移标记，不能把目标完成冒充复命。
+        foreach (SkyIslandOfficialQuestDefinition quest in island)
+        {
+            SkyIslandStoryData pending = Data((int)(SkyIslandStoryFlag.RouteUnlocked | SkyIslandStoryFlag.WindBeacon |
+                SkyIslandStoryFlag.StarLamp | SkyIslandStoryFlag.BellKeeperDefeated | SkyIslandStoryFlag.Ending | quest.AcceptedFlag));
+            string oldJson = SkyIslandStoryCodec.Encode(pending).Replace(",\"islandQuestMigrationComplete\":false", "");
+            SkyIslandStoryData old = SkyIslandStoryCodec.Decode(oldJson);
+            check(old != null && !old.islandQuestMigrationComplete, "missing migration field defaults to false");
+            check(SkyIslandStoryRules.TryBackfillIslandQuests(old, out next) && next.flags == old.flags && next.islandQuestMigrationComplete,
+                "legacy accepted quest retains all exact flags: " + quest.QuestId);
+            check(old.flags == pending.flags && !old.islandQuestMigrationComplete, "migration does not mutate the source");
+        }
+        SkyIslandStoryData emptyRoute = Data((int)SkyIslandStoryFlag.RouteUnlocked);
+        check(SkyIslandStoryRules.TryBackfillIslandQuests(emptyRoute, out next) && next.flags == emptyRoute.flags,
+            "legacy route with no finished objectives is stamped once");
+        next.flags |= (int)(SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp);
+        SkyIslandStoryData later = SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(next));
+        check(!SkyIslandStoryRules.TryBackfillIslandQuests(later, out next) && !later.Has(SkyIslandStoryFlag.BeaconQuestDelivered),
+            "objectives completed on a later raid are never legacy-backfilled");
+        check(SkyIslandStoryCodec.Decode(SkyIslandStoryCodec.Encode(data).Replace("\"islandQuestMigrationComplete\":true", "\"islandQuestMigrationComplete\":1")) == null,
+            "present migration metadata must be boolean");
+
+        // 实际服务的落盘 / 重开：不只测 pure rule。
+        Saves.SavesSystem.Switch(100171);
+        var service = new SkyIslandStoryService();
+        service.Open();
+        foreach (SkyIslandStoryAction action in new[] { SkyIslandStoryAction.AcceptPrelude, SkyIslandStoryAction.RecoverPreludeInstrument,
+            SkyIslandStoryAction.UnlockRoute, SkyIslandStoryAction.AcceptBeaconQuest })
+            check(service.TryApply(action, out message), "service accepts " + action);
+        foreach (string id in new[] { "D", "D_02", "G", "G_02" }) service.RecordEncounterCleared(id);
+        check(service.TryApply(SkyIslandStoryAction.RepairWindBeacon, out message) && service.TryApply(SkyIslandStoryAction.RepairStarLamp, out message), "service completes both beacon objectives");
+        check(service.TryClose(), "service saves before re-entry");
+        service = new SkyIslandStoryService(); service.Open();
+        bool migrated;
+        check(service.EnsureRouteCompatibility(out migrated, out message) && !migrated && service.Current.BothBeacons &&
+            !service.Current.Has(SkyIslandStoryFlag.BeaconQuestDelivered), "real service re-entry keeps a completed quest pending delivery");
+        check(service.TryClose(), "service closes after re-entry");
+    }
+
 }

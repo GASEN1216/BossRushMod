@@ -274,3 +274,12 @@ namespace BossRush
         { CreateCalls++; return Created; }
     }
 }
+
+namespace BossRush
+{
+    // Quest table text injection is outside this fixture; story objectives use the real table.
+    internal static class LocalizationHelper
+    {
+        internal static void InjectLocalization(string key, string value) { }
+    }
+}

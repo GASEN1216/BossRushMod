@@ -1222,6 +1222,7 @@ internal static class Program
         SkyIslandGnatDodgeSimulation.Run(Check);
         SkyIslandBossRulesRegression.Run(Check);
         SkyIslandOfficialQuestRegression.Run(Check);
+        SkyIslandQuestLifecycleRegression.Run(Check);
         Console.WriteLine("PASS SkyIslandStory: " + checks + " assertions (production rules, codec, store, coordinator and save recovery; host substitutes)");
     }
 }

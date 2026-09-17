@@ -225,3 +225,12 @@ namespace BossRush
         internal static void NoticePlayer(CharacterMainControl character) { Noticed++; }
     }
 }
+
+namespace BossRush
+{
+    // Quest table text injection is outside this fixture; story objectives use the real table.
+    internal static class LocalizationHelper
+    {
+        internal static void InjectLocalization(string key, string value) { }
+    }
+}

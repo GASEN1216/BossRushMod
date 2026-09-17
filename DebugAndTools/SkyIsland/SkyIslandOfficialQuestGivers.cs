@@ -50,24 +50,36 @@ namespace BossRush
         /// </summary>
         internal static void EnsureDeviceFallback(SkyIslandSession session)
         {
-            if (session == null || !session.ResidentsSettled || fallbackAttempts >= FallbackAttemptLimit) return;
-            fallbackAttempts++;
             IList<SkyIslandOfficialQuestDefinition> island = SkyIslandOfficialQuestTable.Island;
+            if (session == null || !session.ResidentsSettled || fallbackDone.Count >= island.Count ||
+                fallbackAttempts >= FallbackAttemptLimit) return;
+            fallbackAttempts++;
             for (int i = 0; i < island.Count; i++)
             {
                 int giverId = island[i].GiverId;
                 if (fallbackDone.Contains(giverId)) continue;
                 string resident = SkyIslandOfficialQuestTable.ResidentOfGiver(giverId);
-                if (resident == null || session.HasResident(resident)) { fallbackDone.Add(giverId); continue; }
-                InteractableBase device = session.FindDeviceInteractable(SkyIslandOfficialQuestTable.FallbackMarkerOfGiver(giverId));
+                if (resident == null || HasAttachedGiver(giverId)) { fallbackDone.Add(giverId); continue; }
+                // 居民先于官方 UI 就绪时，首次 Attach 会失败；有人在岛上不等于他已经能发任务。
+                // 按同一有界重试补到居民原交互组，只有居民缺席才使用装置。
+                InteractableBase device = session.HasResident(resident)
+                    ? session.FindResidentQuestOwner(resident)
+                    : session.FindDeviceInteractable(SkyIslandOfficialQuestTable.FallbackMarkerOfGiver(giverId));
                 if (device == null) continue;
                 List<InteractableBase> group = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(device, "[SkyIslandQuest]");
                 if (Attach(device.transform, group, giverId))
                 {
                     fallbackDone.Add(giverId);
-                    ModBehaviour.DevLog("[SkyIslandQuest] 居民 " + resident + " 不在岛上，任务给予者挂到装置 " + device.name);
+                    ModBehaviour.DevLog("[SkyIslandQuest] 任务给予者补齐: " + resident + " -> " + device.name);
                 }
             }
+        }
+
+        private static bool HasAttachedGiver(int giverId)
+        {
+            for (int i = 0; i < attached.Count; i++)
+                if (attached[i] != null && (int)attached[i].ID == giverId) return true;
+            return false;
         }
 
         private static bool Attach(Transform parent, List<InteractableBase> group, int giverId)
@@ -173,7 +185,7 @@ namespace BossRush
             context.Data = story == null ? null : story.Current;
             context.CanWrite = story != null && story.CanWrite;
             context.InBaseHub = !onIsland && SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name);
-            context.BundleDeployed = SkyIslandRaidLease.IsBundleDeployed();
+            context.BundleDeployed = SkyIslandPreludeFlow.BundleDeployed;
             string mode;
             context.NoConflictingMode = host == null || !host.ValidationHasActiveMode(out mode);
             return context;

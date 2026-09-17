@@ -155,7 +155,10 @@ namespace BossRush
             capsule.center = Vector3.up;
             foreach (Collider other in npc.GetComponentsInChildren<Collider>(true))
                 if (other != capsule) Physics.IgnoreCollision(capsule, other, true);
-            child.AddComponent<SkyIslandResidentInteractable>().Bind(id, displayName, npc.transform, onTalk, IsValid);
+            SkyIslandResidentInteractable interaction = child.AddComponent<SkyIslandResidentInteractable>();
+            interaction.Bind(id, displayName, npc.transform, onTalk, IsValid);
+            List<InteractableBase> standaloneGroup = NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(interaction, "[SkyIslandResidents]");
+            SkyIslandOfficialQuestGivers.AttachResident(interaction.transform, standaloneGroup, id);
             child.SetActive(true);
         }
 
@@ -174,6 +177,15 @@ namespace BossRush
         {
             CharacterMainControl npc;
             return owned.TryGetValue(id, out npc) && npc != null;
+        }
+
+        /// <summary>现有居民交互组的宿主，供任务 UI 延迟就绪时补接；不另造碰撞体。</summary>
+        internal InteractableBase FindQuestInteractionOwner(string id)
+        {
+            CharacterMainControl npc;
+            if (!owned.TryGetValue(id, out npc) || npc == null) return null;
+            PermanentDuckNpcInteractable relationship = npc.GetComponentInChildren<PermanentDuckNpcInteractable>(true);
+            return relationship != null ? (InteractableBase)relationship : npc.GetComponentInChildren<SkyIslandResidentInteractable>(true);
         }
 
         /// <summary>

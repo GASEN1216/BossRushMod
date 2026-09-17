@@ -18,6 +18,9 @@ namespace BossRush
         /// <summary>某位居民这一趟是不是真的在岛上（决定要不要给装置挂兜底的官方给予者）。只读。</summary>
         internal bool HasResident(string id) { return residents != null && residents.IsSpawned(id); }
 
+        internal InteractableBase FindResidentQuestOwner(string id)
+        { return residents == null ? null : residents.FindQuestInteractionOwner(id); }
+
         /// <summary>居民 owner 已经把整队生成完（成功与否都算）；在此之前不判「谁缺席」。只读。</summary>
         internal bool ResidentsSettled { get { return residents != null && residents.SpawnFinished; } }
 

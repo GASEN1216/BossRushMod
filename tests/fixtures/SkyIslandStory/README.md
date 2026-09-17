@@ -3,6 +3,9 @@
 分类：COMPAT / SCHEMA+。运行 `python tools/run_runtime_regressions.py --filter SkyIslandStory`。
 
 工程直接链接生产剧情规则、编解码、服务、共享 JSON parser/writer、槽位 store 与保存协调引擎。
+2026-09-17 增加官方任务旅程：中英 HUD 的接取 / 复命引导、钟庭就地敲钟再返航交差、迁移一次性标记、旧档已接任务不自动交付、实际 Service 保存重开。
+`run.py` 另逐字抽取生产 `SkyIslandPreludeFlow.EnsureStory` / `CloseStory` / `Schedule`；故事与恢复引擎仍为真源码，场景查询、资源存在性查询与发布任务桥是替身。
+故障注入验证初始化失败时不发布半就绪门面、恢复后完成迁移、换槽不继承航线；不证明 Unity 场景回调与官方任务界面时序。
 SavesSystem、基地状态与每帧写盘节流是内存替身，不加载 Unity 或接触玩家存档。
 
 覆盖东西顺序自由、清场前置、四支线、先发现后交付、折翎互斥结果、两种终章、通关补支线、

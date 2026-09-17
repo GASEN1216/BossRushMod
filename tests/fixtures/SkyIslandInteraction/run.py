@@ -82,7 +82,7 @@ def generate():
     OUT.mkdir(parents=True, exist_ok=True)
     generated = OUT / "Production.cs"
     generated.write_text("\n".join(parts), encoding="utf-8-sig")
-    linked = [ROOT / SKY / n for n in ("SkyIslandStoryRules.cs", "SkyIslandPuzzles.cs", "SkyIslandBounty.cs")]
+    linked = [ROOT / SKY / n for n in ("SkyIslandStoryRules.cs", "SkyIslandOfficialQuestTable.cs", "SkyIslandPuzzles.cs", "SkyIslandBounty.cs")]
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
     (OUT / "source-hashes.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")

@@ -49,6 +49,8 @@ namespace BossRush
         internal string DescriptionKey;
         internal Func<string> Name;
         internal Func<string> Description;
+        /// <summary>HUD 的接取 / 交付引导与任务表共用地点；进行中的探索目标仍由剧情规则描述。</summary>
+        internal Func<string> Contact;
         internal SkyIslandStoryFlag AcceptedFlag;
         internal SkyIslandStoryFlag DeliveredFlag;
         internal SkyIslandStoryAction AcceptAction;
@@ -149,6 +151,8 @@ namespace BossRush
         {
             if (definition == null || !context.StoryReady || !context.CanWrite || context.Data == null) return false;
             if (context.Data.Has(definition.AcceptedFlag) || context.Data.Has(definition.DeliveredFlag)) return false;
+            string blocker;
+            if (!SkyIslandStoryRules.CanApply(context.Data, definition.AcceptAction, out blocker)) return false;
             if (definition.Gate != null && !definition.Gate(context)) return false;
             return definition.RuntimeGate == null || definition.RuntimeGate();
         }
@@ -166,11 +170,33 @@ namespace BossRush
         {
             if (definition == null || !context.StoryReady || !context.CanWrite || context.Data == null) return false;
             if (context.Data.Has(definition.DeliveredFlag) || !context.Data.Has(definition.AcceptedFlag)) return false;
+            if (definition.Gate != null && !definition.Gate(context)) return false;
             return TasksDone(definition, context.Data);
+        }
+
+        /// <summary>只补任务接取和复命这两个旧 HUD 漏掉的步骤，不把支线、和解或战斗改成强制任务。</summary>
+        internal static string NextContactObjective(SkyIslandStoryData data)
+        {
+            if (data == null || !data.SkyIslandRouteUnlocked) return null;
+            for (int i = 0; i < island.Length; i++)
+            {
+                SkyIslandOfficialQuestDefinition quest = island[i];
+                if (data.Has(quest.DeliveredFlag)) continue;
+                bool accepted = data.Has(quest.AcceptedFlag);
+                if (accepted && !TasksDone(quest, data)) return null;
+                // 钟庭事件完成后先处理就在面前的归航钟，之后再提示回码头复命。
+                if (quest.QuestId == BellCourtQuestId && accepted && !data.Has(SkyIslandStoryFlag.HomecomingQuestDelivered)) continue;
+                return quest.Contact() + L10n.T(" · 航路任务：", " · Route quests: ") +
+                    (accepted ? L10n.T("交付「", "complete ") : L10n.T("接取「", "accept ")) +
+                    quest.Name() + L10n.T("」", "");
+            }
+            return null;
         }
 
         internal static void InjectLocalizations()
         {
+            // 与任务标题一起由全局语言切换注入；不能只在居民生成时缓存一次中文。
+            LocalizationHelper.InjectLocalization("BossRush_SkyIsland_QuestGiver", L10n.T("航路任务", "Route quests"));
             for (int i = 0; i < island.Length; i++)
             {
                 LocalizationHelper.InjectLocalization(island[i].NameKey, island[i].Name());
@@ -199,6 +225,7 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590011",
                 NameKey = BeaconQuestNameKey, DescriptionKey = BeaconQuestDescriptionKey,
                 Name = () => L10n.T("点亮两端航标", "Light Both Beacons"),
+                Contact = () => L10n.T("风铃集 · 苇白", "Windchime Market · Weibai"),
                 Description = () => L10n.T("苇白：两端航标都灭了，绳桥也不敢系。校准悬根林的风标、修好残星工坊的星灯，再回风铃集告诉我。",
                     "Weibai: Both beacons are dark and nobody dares lash the bridges. Calibrate the wind beacon in Hanging Root Wood, repair the star lamp at the Fallen Star Workshop, then tell me at Windchime Market."),
                 AcceptedFlag = SkyIslandStoryFlag.BeaconQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BeaconQuestDelivered,
@@ -231,8 +258,9 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590012",
                 NameKey = BellCourtQuestNameKey, DescriptionKey = BellCourtQuestDescriptionKey,
                 Name = () => L10n.T("钟庭之争", "The Bell Court Standoff"),
-                Description = () => L10n.T("浮舟：两端航标都亮了，可钟守还是不肯让归航钟响。经鸣风栈道去归航钟庭，说服他，或者打赢他。",
-                    "Fuzhou: Both beacons burn, yet the Bell Keeper still refuses to let the Homecoming Bell ring. Cross Windsong Boardwalk to the Bell Court and talk him down, or beat him."),
+                Contact = () => L10n.T("码头 · 浮舟", "Dock · Fuzhou"),
+                Description = () => L10n.T("浮舟：两端航标都亮了，可钟守还是不肯让归航钟响。经鸣风栈道去归航钟庭，说服他或击停守钟装置，再回码头告诉我。",
+                    "Fuzhou: Both beacons burn, yet the Bell Keeper still refuses to let the Homecoming Bell ring. Cross Windsong Boardwalk, talk him down or stop his bell engine, then report back at the dock."),
                 AcceptedFlag = SkyIslandStoryFlag.BellCourtQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BellCourtQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptBellCourtQuest, DeliverAction = SkyIslandStoryAction.DeliverBellCourtQuest,
                 Gate = context => OnIslandWithRoute(context) && context.Data.Has(SkyIslandStoryFlag.BeaconQuestDelivered),
@@ -243,10 +271,13 @@ namespace BossRush
                         TaskId = 1, Done = data => data.BellKeeperResolved,
                         Description = data => data.BellKeeperResolved
                             ? L10n.T("钟守已放下阻拦。", "The Bell Keeper has stood down.")
+                            : L10n.T("前往归航钟庭，说服钟守或击停守钟装置。", "Go to the Bell Court: talk the Bell Keeper down or stop his bell engine."),
+                        ExtraHint = data => data.BellKeeperResolved
+                            ? (data.Has(SkyIslandStoryFlag.HomecomingQuestDelivered)
+                                ? L10n.T("回码头，在浮舟的「航路任务」中交付。", "Return to the dock and complete this quest with Fuzhou under Route quests.")
+                                : L10n.T("可先在钟庭完成钟守的「归航钟」，返航时再向码头的浮舟复命。", "You can finish the Bell Keeper's Homecoming Bell here first, then report to Fuzhou at the dock on your way home."))
                             : Blocker(data, SkyIslandStoryAction.ReconcileBellKeeper,
-                                L10n.T("前往归航钟庭，和解或战胜钟守。", "Go to the Bell Court and reconcile with or defeat the Bell Keeper.")),
-                        ExtraHint = data => data.StormResolved ? null
-                            : L10n.T("栈道上的「噬风」也是钟守不肯敲钟的理由之一。", "The Windeater on the boardwalk is one of the Bell Keeper's reasons too."),
+                                L10n.T("航路安全的证据已经足够，可以直接与钟守谈谈。", "You have enough proof that the lanes are safe; you can talk to the Bell Keeper.")),
                     },
                 },
             };
@@ -256,11 +287,13 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590013",
                 NameKey = HomecomingQuestNameKey, DescriptionKey = HomecomingQuestDescriptionKey,
                 Name = () => L10n.T("归航钟", "The Homecoming Bell"),
+                Contact = () => L10n.T("归航钟庭 · 钟守", "Bell Court · Bell Keeper"),
                 Description = () => L10n.T("钟守：这一次钟声不是催他们出航，是告诉他们有人等着归来。去敲响归航钟。",
                     "The Bell Keeper: This time the bell is not sending them out. It tells them someone is waiting for them to come home. Ring the Homecoming Bell."),
                 AcceptedFlag = SkyIslandStoryFlag.HomecomingQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.HomecomingQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptHomecomingQuest, DeliverAction = SkyIslandStoryAction.DeliverHomecomingQuest,
-                Gate = context => OnIslandWithRoute(context) && context.Data.Has(SkyIslandStoryFlag.BellCourtQuestDelivered),
+                // 钟庭事件就地衔接敲钟；浮舟的复命可留在返航路上，避免钟庭→码头→钟庭的空跑。
+                Gate = context => OnIslandWithRoute(context) && context.Data.BothBeacons && context.Data.BellKeeperResolved,
                 Tasks = new[]
                 {
                     new SkyIslandOfficialQuestTaskDefinition

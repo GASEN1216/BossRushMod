@@ -35,6 +35,9 @@ namespace BossRush
         private CharacterMainControl boss;
         private SimplePointOfInterest mapMarker;
         private bool disposed, routeUnlocked, bossDead, bossSpawning, objectiveAnnounced, poiWarned, bundleWarned;
+        private bool bundleDeployed, storyReady;
+        /// <summary>资源可用性由现有关卡调度刷新；常驻任务查询只读内存，真正登岛仍由租约核查文件。</summary>
+        internal static bool BundleDeployed { get { return active != null && !active.disposed && active.bundleDeployed; } }
         private int openedSlot = -1, generation, jeffAttempts;
         private float nextTick, nextJeffAttempt, nextBossAttempt, nextPoiAttempt;
 
@@ -109,6 +112,7 @@ namespace BossRush
 
         internal void Schedule()
         {
+            bundleDeployed = SkyIslandRaidLease.IsBundleDeployed();
             jeffAttempts = 12;
             nextJeffAttempt = Time.unscaledTime + 0.5f;
             nextTick = 0f;
@@ -129,7 +133,7 @@ namespace BossRush
             if (SceneLoader.IsSceneLoading || LevelManager.LevelInitializing || !LevelManager.LevelInited) return;
             if (owner.GetComponent<SkyIslandSession>() != null) return;
             // 场景包缺失时不把玩家引进一条无法完成的任务链；更新完整资源后，下次关卡就绪会自然恢复。
-            if (!SkyIslandRaidLease.IsBundleDeployed())
+            if (!bundleDeployed)
             {
                 ClearJeff();
                 ClearObjective();
@@ -161,21 +165,26 @@ namespace BossRush
 
         private bool EnsureStory()
         {
-            if (story != null && story.IsCurrentSlot) return true;
-            if (story != null) CloseStory();
+            if (story != null && story.IsCurrentSlot && storyReady) return true;
+            if (story != null && !story.IsCurrentSlot) CloseStory();
             try
             {
-                story = new SkyIslandStoryService();
-                story.Open();
-                SkyIslandOfficialQuestStory.SetBaseSource(story);
-                openedSlot = Saves.SavesSystem.CurrentSlot;
+                if (story == null)
+                {
+                    story = new SkyIslandStoryService();
+                    story.Open();
+                    openedSlot = Saves.SavesSystem.CurrentSlot;
+                }
                 bool migrated;
                 string message;
                 if (!story.EnsureRouteCompatibility(out migrated, out message))
                 {
-                    if (!string.IsNullOrEmpty(message)) Report(message, true);
+                    // 临时写屏障下保留同一门面，下一拍重试；未完成兼容检查前不向任务桥发布半就绪故事。
+                    story.Tick(SceneRuntimeGate.IsBaseHubSceneName(SceneManager.GetActiveScene().name));
                     return false;
                 }
+                storyReady = true;
+                SkyIslandOfficialQuestStory.SetBaseSource(story);
                 routeUnlocked = story.Current != null && story.Current.SkyIslandRouteUnlocked;
                 if (migrated)
                 {
@@ -187,11 +196,7 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[SkyIslandPrelude] [WARNING] 序章记录未就绪: " + e.Message);
-                if (story != null) story.Close();
-                story = null;
-                SkyIslandOfficialQuestStory.SetBaseSource(null);
-                routeUnlocked = false;
-                openedSlot = -1;
+                CloseStory();
                 return false;
             }
         }
@@ -500,6 +505,9 @@ namespace BossRush
 
         private void CloseStory()
         {
+            storyReady = false;
+            routeUnlocked = false;
+            openedSlot = -1;
             if (story != null) story.Close();
             story = null;
             SkyIslandOfficialQuestStory.SetBaseSource(null);

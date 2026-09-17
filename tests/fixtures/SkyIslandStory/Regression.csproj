@@ -4,6 +4,7 @@
     <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(SkyQuestGeneratedSource)" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandNoteBridge.cs" Link="Production/SkyIslandNoteBridge.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPointText.cs" Link="Production/SkyIslandPointText.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />

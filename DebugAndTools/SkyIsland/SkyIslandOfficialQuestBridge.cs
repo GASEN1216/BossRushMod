@@ -121,8 +121,19 @@ namespace BossRush
                 reason = L10n.T("晴岚任务尚未就绪。", "The Qinglan quest is not ready yet.");
                 return false;
             }
+            if (!SkyIslandOfficialQuestTable.CanDeliver(entry.Def, SkyIslandOfficialQuestStory.Capture(active.host)))
+            {
+                reason = L10n.T("目标完成后，请在任务给予者所在地图交付。", "Finish the objectives, then report to the giver on their map.");
+                return false;
+            }
             if (entry.Def.Deliver != null) return entry.Def.Deliver(out reason);
             return active.DefaultCommit(entry, entry.Def.DeliveredFlag, entry.Def.DeliverAction, out reason);
+        }
+
+        internal static void ReportDeliveryFailure(string reason)
+        {
+            if (active != null && !active.disposed && active.host != null && !string.IsNullOrEmpty(reason))
+                active.host.ShowMessage(reason);
         }
 
         internal static bool IsTaskDone(int questId, int taskId)
@@ -590,7 +601,7 @@ namespace BossRush
             string reason;
             if (SkyIslandOfficialQuestBridge.TryCommitDelivery(__instance.ID, out reason)) return true;
             __result = false;
-            if (!string.IsNullOrEmpty(reason) && ModBehaviour.Instance != null) ModBehaviour.Instance.ShowMessage(reason);
+            SkyIslandOfficialQuestBridge.ReportDeliveryFailure(reason);
             return false;
         }
     }

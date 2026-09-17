@@ -95,6 +95,9 @@ Mode G 冻结 key：
   `RouteUnlocked = 262144`；同日再扩六位岛上主线任务的接取 / 交付事实 `BeaconQuestAccepted = 524288` … `HomecomingQuestDelivered = 16777216`
   （`KnownFlags = 33554431`）。已解锁航线的旧槽按既有事实一次性回填对应任务位（`TryBackfillIslandQuests`）；Codec 拒绝「交付无接取」「交付无对应事实」「未解锁航线却有任务位」。既有槽只有出现旧旗标、到访、清场或手记任一真实群岛事实时才一次性补齐三位；
   完全空白槽不迁移。schemaVersion 与 key 保持不变，Codec 拒绝「未接任务却已取物证」或「未完成前两步却已解锁航线」的矛盾数据。
+  `islandQuestMigrationComplete` 是可选布尔字段（2026-09-17，`SCHEMA+`）：缺省 false；存在但不是布尔值时拒绝解码。
+  正常解锁航线 / 接取任务时置 true；旧槽回填只执行一次，已有任意岛上任务位时只标记迁移完成，绝不替玩家交付。
+  钟庭事件解决且两端航标已亮即可在钟守处接「归航钟」，不必先回码头交「钟庭之争」；可先敲钟、就地交付，再顺路向浮舟复命。
   不保存 Unity 对象，不与 Campaign 或好感字段混用；未知版本、坏字段、矛盾结局经共享 store 建立写屏障。
   独立出击地图仅在会话确认无战斗时经共享 coordinator 保存；离岛推迟由 `SkyIslandStorySaveRecovery` 保留 owner 重试。
   入口在同槽恢复 owner 尚未结束时不得创建第二个 store；换槽、同槽删档必须使旧会话失效。

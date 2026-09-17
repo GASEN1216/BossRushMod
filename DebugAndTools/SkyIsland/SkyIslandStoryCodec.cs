@@ -23,8 +23,12 @@ namespace BossRush
                 !root.TryGetInt("visitedRegions", out visited) || visited < 0 || (visited & ~4095) != 0 ||
                 !root.TryGetStringList("clearedEncounters", out cleared) ||
                 !root.TryGetStringList("discoveredNotes", out notes) || !ValidIds(cleared) || !ValidIds(notes)) return null;
+            bool migrationComplete = false;
+            if (root.GetProperty("islandQuestMigrationComplete") != null &&
+                !root.TryGetBool("islandQuestMigrationComplete", out migrationComplete)) return null;
             var data = new SkyIslandStoryData { schemaVersion = schema, flags = flags, visitedRegions = visited,
-                clearedEncounters = cleared.ToArray(), discoveredNotes = notes.ToArray() };
+                clearedEncounters = cleared.ToArray(), discoveredNotes = notes.ToArray(),
+                islandQuestMigrationComplete = migrationComplete };
             // 不猜测修复互斥结局或跳过前置的损坏存档，避免随后保存把原始证据覆盖。
             if (data.Has(SkyIslandStoryFlag.ZhelingReconciled | SkyIslandStoryFlag.ZhelingDefeated) ||
                 data.Has(SkyIslandStoryFlag.BellKeeperReconciled | SkyIslandStoryFlag.BellKeeperDefeated) ||
@@ -67,7 +71,8 @@ namespace BossRush
             if (value == null) return null;
             var writer = new BossRushJsonWriter();
             writer.BeginObject().Int("schemaVersion", SkyIslandStoryRules.SchemaVersion).Int("flags", value.flags)
-                .Int("visitedRegions", value.visitedRegions).BeginArray("clearedEncounters");
+                .Int("visitedRegions", value.visitedRegions).Bool("islandQuestMigrationComplete", value.islandQuestMigrationComplete)
+                .BeginArray("clearedEncounters");
             foreach (string id in value.clearedEncounters) writer.ItemStr(id);
             writer.EndArray().BeginArray("discoveredNotes");
             foreach (string id in value.discoveredNotes) writer.ItemStr(id);

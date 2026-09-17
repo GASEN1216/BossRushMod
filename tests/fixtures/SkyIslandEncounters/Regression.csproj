@@ -8,6 +8,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandOfficialQuestTable.cs" Link="Production/SkyIslandOfficialQuestTable.cs" />
     <!-- 噬风·回响的遭遇 id 与解锁口径（只依赖 System 与剧情存档类型）。 -->
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs" Link="Production/SkyIslandStormEchoRules.cs" />
     <!-- PresetIndex 用 SkyIslandLootTables.StableHash 取跨机稳定的 preset 下标；
