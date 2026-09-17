@@ -607,6 +607,9 @@ Breaking/Operational:
   装备类「激活态」要在 `LevelManager.OnAfterLevelInitialized` 先停用再重查。
 - `InteractableBase.interactTime` 是私有序列化字段，`AddComponent` 出来恒为 0（首帧就完成）。要读条时经 `ModeFItemConfigHelper.SetHiddenMember` 写入，**读回 `InteractTime` 核对**，不一致打警告。
 
+- 官方投掷物按物品身份取 `ItemAssetsCollection.GetPrefab(typeId)` → `ItemSetting_Skill.Skill` → `Skill_Grenade.grenadePfb`，不按 `fire` 名称子串或 `fxType` 猜燃烧弹（`Firework` 烟花同样命中）。龙裔使用官方 #941 / `Item_FireGrenade`；缺失时走明确后备，不能随机挑手雷。
+  `Skill_Grenade.OnRelease` 还会写 `createExplosion`、`explosionShakeStrength`、`SkillContext.effectRange`、`delayFromCollide`、`delay`、`isLandmine`、`landmineTriggerRange`；仅克隆 Grenade 会漏掉技能上的设置。核实位置：`鸭科夫源码/TeamSoda.Duckov.Core/Skill_Grenade.cs`、`Grenade.cs`。
+
 **伤害与掉落**
 
 - 自建爆炸显式传 `canHurtSelf: false`（官方默认 true 时 `selfTeam = Teams.all`，爆炸中心的玩家自己必吃这一下）。

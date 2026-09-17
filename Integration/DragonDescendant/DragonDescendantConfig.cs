@@ -67,6 +67,12 @@ namespace BossRush
         public const float RocketBossDamageRadius = 5f;
         
         // ========== 燃烧弹配置 ==========
+
+        /// <summary>
+        /// 官方燃烧弹（Item_FireGrenade），物品表按 TypeID 定位，不能按 fire 名称模糊匹配。
+        /// https://escapefromduckov.net/zh/items/firegrenade
+        /// </summary>
+        public const int IncendiaryGrenadeTypeId = 941;
         
         /// <summary>
         /// 正常状态下燃烧弹投掷间隔（秒）

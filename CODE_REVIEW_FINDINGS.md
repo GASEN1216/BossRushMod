@@ -2,6 +2,12 @@
 
 > 只记录 confirmed findings。未验证线索放本文件的 UNVERIFIED 区，或在 `FIX_TRACKER.md` 中标为 `accepted/deferred/refuted/documented`。
 
+## 2026-09-17 龙裔燃烧弹误选烟花
+
+| ID | 级别 / 分类 | 已确认问题 | 修复与证据 |
+| --- | --- | --- | --- |
+| CR-2026-09-17-012 | P2 / COMPAT | `PreCachePrefabs` 把名称含 `fire` 的任何 Grenade 当燃烧弹，`Firework` 命中；搜索还预先缓存首个任意手雷，最终选择依赖已加载资源及遍历顺序。用户报告更新后投烟花；本轮确认的是错误选择规则，未复现用户游戏中的具体遍历顺序。 | **Fixed（L1 + 结构守卫）**。物品站确认官方燃烧弹为 #941 / `Item_FireGrenade`；按物品身份读取 `ItemSetting_Skill → Skill_Grenade → grenadePfb`，并照官方 `OnRelease` 同步引信与范围等参数，缺失时使用既有火焰爆炸后备。定时与复活八方向共用入口。六种反向破坏均被守卫拦截并按字节还原；Windows 编译及 L3 状态见 FIX_TRACKER 同名记录。 |
+
 ## 2026-09-16 天空岛昼夜时钟与官方任务接口审核：1 P1 + 1 P2 + 2 P3（均已修，L1 / L2）
 
 来源：owner 要求审核昼夜切换是否跟官方时钟、剧情任务有没有走官方接口。未启动游戏、未读写玩家存档；正式构建已部署，实机按人工清单 2.24。

@@ -90,9 +90,9 @@ namespace BossRush
         // ========== 性能优化：预制体缓存 ==========
 
         /// <summary>
-        /// 缓存的燃烧弹预制体（启动时查找一次）
+        /// 缓存的官方燃烧弹技能（同时提供投掷物与引信、范围参数）
         /// </summary>
-        private static Grenade cachedGrenadePrefab = null;
+        private static Skill_Grenade cachedGrenadeSkill = null;
 
         /// <summary>
         /// 是否已搜索过燃烧弹预制体
@@ -114,7 +114,7 @@ namespace BossRush
         /// </summary>
         public static void ClearStaticCache()
         {
-            cachedGrenadePrefab = null;
+            cachedGrenadeSkill = null;
             grenadeSearched = false;
             cachedBulletPrefab = null;
             bulletSearched = false;
@@ -290,47 +290,31 @@ namespace BossRush
                 grenadeSearched = true;
                 try
                 {
-                    // 使用Resources.FindObjectsOfTypeAll查找所有Grenade预制体
-                    // 注意：此方法仅在Boss初始化时调用一次，不影响战斗性能
-                    var grenades = Resources.FindObjectsOfTypeAll<Grenade>();
-                    ModBehaviour.DevLog("[DragonDescendant] 搜索到 " + grenades.Length + " 个Grenade预制体");
-
-                    foreach (var grenade in grenades)
+                    // 官方物品 -> 技能 -> 投掷物：Firework 也含 fire，不能按名称或爆炸特效猜类型。
+                    // GetPrefab 不实例化物品，也不会产生 InstantiateSync 的 FallbackItem 空壳。
+                    var itemPrefab = ItemAssetsCollection.GetPrefab(DragonDescendantConfig.IncendiaryGrenadeTypeId);
+                    if (itemPrefab != null &&
+                        itemPrefab.TypeID == DragonDescendantConfig.IncendiaryGrenadeTypeId &&
+                        string.Equals(itemPrefab.DisplayNameRaw, "Item_FireGrenade", StringComparison.Ordinal))
                     {
-                        if (grenade == null) continue;
-
-                        // 查找火焰类型的手雷
-                        if (grenade.fxType == ExplosionFxTypes.fire ||
-                            grenade.name.IndexOf("fire", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            grenade.name.IndexOf("incendiary", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            grenade.name.Contains("燃烧") ||
-                            grenade.name.Contains("Fire") ||
-                            grenade.name.Contains("Burn"))
+                        var skillSetting = itemPrefab.GetComponent<ItemSetting_Skill>();
+                        var grenadeSkill = skillSetting != null ? skillSetting.Skill as Skill_Grenade : null;
+                        if (grenadeSkill != null && grenadeSkill.grenadePfb != null)
                         {
-                            cachedGrenadePrefab = grenade;
-                            ModBehaviour.DevLog("[DragonDescendant] 已缓存燃烧弹预制体: " + grenade.name + " (fxType=" + grenade.fxType + ")");
-                            break;
-                        }
-
-                        // 记录第一个找到的手雷作为后备
-                        if (cachedGrenadePrefab == null)
-                        {
-                            cachedGrenadePrefab = grenade;
+                            cachedGrenadeSkill = grenadeSkill;
+                            ModBehaviour.DevLog("[DragonDescendant] 已缓存官方燃烧弹: TypeID=" + itemPrefab.TypeID +
+                                ", prefab=" + grenadeSkill.grenadePfb.name);
                         }
                     }
 
-                    if (cachedGrenadePrefab != null && cachedGrenadePrefab.fxType != ExplosionFxTypes.fire)
+                    if (cachedGrenadeSkill == null)
                     {
-                        ModBehaviour.DevLog("[DragonDescendant] 使用默认手雷预制体: " + cachedGrenadePrefab.name);
-                    }
-                    else if (cachedGrenadePrefab == null)
-                    {
-                        ModBehaviour.DevLog("[DragonDescendant] [WARNING] 未找到任何Grenade预制体，将使用火焰爆炸作为后备");
+                        Debug.LogWarning("[DragonDescendant] 官方燃烧弹 941 的物品身份或技能引用无效，将使用延迟火焰爆炸后备。");
                     }
                 }
                 catch (Exception e)
                 {
-                    ModBehaviour.DevLog("[DragonDescendant] [WARNING] 缓存燃烧弹预制体失败: " + e.Message);
+                    Debug.LogWarning("[DragonDescendant] 缓存官方燃烧弹失败，将使用延迟火焰爆炸后备: " + e.Message);
                 }
             }
 

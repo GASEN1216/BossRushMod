@@ -2,6 +2,18 @@
 
 > 修 bug、回归、兼容问题或 owner decision 后更新本文件。旧路径 `docs/协作/FIX_TRACKER.md` 只做兼容转发。
 
+## 2026-09-17 龙裔燃烧弹误选烟花
+
+**来源 / 分类**：owner 报告版本更新后龙裔改投烟花，要求结合物品站与本地官方源码修复。`COMPAT`；finding `CR-2026-09-17-012`。
+
+**完成**：移除按 `fire` 子串、爆炸特效及首个 Grenade 选资源的逻辑，改为官方燃烧弹 #941 / `Item_FireGrenade` 的物品身份校验与 `ItemSetting_Skill → Skill_Grenade → grenadePfb` 引用链；缓存技能，创建时同步官方引信、范围与爆炸参数。保留原 `DamageInfo.damageValue = 30f` 赋值、5 秒/1 秒间隔、既有弹道、Mode E 阵营门与缺资源时的火焰爆炸后备。复活八方向共用同一创建入口。初始化仅取一次官方资源，切图清空缓存。
+
+**依据 / 决策**：物品站 [燃烧弹 #941](https://escapefromduckov.net/zh/items/firegrenade) 与官方 `ItemAssetsCollection.GetPrefab`、`ItemSetting_Skill`、`Skill_Grenade.OnRelease`、`Grenade.Explode/Launch`。物品身份是选择依据，`fxType` 只决定爆炸表现，不能代表会不会生成地面火焰。本机 `resources.assets` 实读确认 #941 的技能引用 `Grenade_Fire`，设置 `delayFromCollide=true`、`delay=0`、`createExplosion=false`；地面火区由 `createOnExlode` 生成，持续伤害沿用官方火区资源，不能把保留的 `DamageInfo` 30 点赋值等同于火区每跳伤害。`Grenade_FireWork` 与 `Grenade_Fire` 的 `fxType` 均为 custom（4），前者没有地面火区引用。同步技能参数是复用官方燃烧弹行为，投掷节奏保持原样；需要回退时只撤销本条三份生产文件的差异。
+
+**验证**：独立 worktree（基线 `3baee68`，仅覆盖本轮三份生产源码和两篇专题文档，新增本轮守卫）运行 `python3 tools/run_guards.py --changed-only --verbose`：6 PASS / 0 FAIL；另行核对 `RepowikiReferenceGuard` 与 `StaticCacheLifecycleGuard` 均通过（后者仅有已有白名单警告）；关联脚本为 `BossRushDynamicItemRegistryGuard.py`、`DragonBossRewardContentPreloadGuard.py`、`DragonDescendantDistanceMathGuard.py`、`DragonDescendantIncendiaryBindingGuard.py`、`LootBlacklistDataRegistryGuard.py`、`PetNestModelsGuard.py`。`DragonDescendantIncendiaryBindingGuard` 六个反向探针（错误 ID、错误 raw key、恢复全局扫描、漏引信、漏初始化调用、漏八方向调用）均在预期断言转红，副本按 SHA-256 还原。Windows PowerShell 以完整路径执行原版 `compile_official.bat`：退出码 0、`Build succeeded!`；`GAME_PATH` 指向复制了 Managed 的临时目录，未部署到实际游戏。正式 DLL SHA-256：`49e2f9f412c514c5c6cd1ee1014ea18e92ac4fd614dc80b21a489a84f5e94756`；三份生产源码与编译副本按字节一致。证据在 `Build/incendiary-check-vg0tx42i/official-build.log`、`changed-guards.log`、`official-grenade-resources.json`。共享工作区最初启动的 `--changed-only` 把其他会话大量改动也纳入扫描，尚未结束便停止，未计作通过；交付只引用上述独立副本结果。静态接线与本机资产读取为 L1，守卫为离线结构证据；没有游戏内 L3，也未把其他会话改动算入本轮验证。
+
+**L3 待 owner 实机**：重新启动游戏载入修复构建，在会出现龙裔的 BossRush 战斗中与其保持交战距离，观察一阶段连续两次约 5 秒间隔的投掷：应有抛物线投掷物，落地出现燃烧区域，不能出现烟花。将它打到首次濒死，等待复活动画/对白完成，检查八方向投掷都为燃烧弹；继续观察狂暴阶段约 1 秒间隔投掷。切图后再遇龙裔，确认仍投燃烧弹；有烟花、只有瞬时爆炸没有地面火焰、投掷停止或出现官方燃烧弹资源告警都算未通过。本轮无 L3 与帧时间采样。
+
 ## 2026-09-16 天空岛审核：昼夜对齐官方 19–5、岛上主线接官方任务（挂岛上 NPC）
 
 **来源**：owner 要求审核天空岛的昼夜切换是否跟游戏时钟、剧情任务有没有走教程规定的官方接口。审核结论：时间值 100% 读官方 `GameClock`（不自算、不拨表；Base.unity 与 GroundZero_Main 的 `TimeOfDayConfig.forceSetTime / forceSetWeather` 用 UnityPy 实读为 false），但 Mod 夜 21–5 与官方 19–5 差两小时、两套在岛上同时生效；官方任务只有 Jeff 序章接了，岛上主线全在 Mod 旗标里。owner 拍板：夜对齐官方 19–5；Jeff 只留序章，岛上主线接到岛上自己的 NPC 名下。

@@ -177,8 +177,9 @@ namespace BossRush
             {
                 Vector3 startPos = bossCharacter.transform.position + Vector3.up * 1.5f;
 
-                // 查找燃烧弹预制体
-                Grenade grenadePrefab = FindIncendiaryGrenadePrefab();
+                // 只使用物品表确认过的官方燃烧弹技能。
+                Skill_Grenade grenadeSkill = FindIncendiaryGrenadeSkill();
+                Grenade grenadePrefab = grenadeSkill != null ? grenadeSkill.grenadePfb : null;
 
                 if (grenadePrefab != null)
                 {
@@ -190,6 +191,15 @@ namespace BossRush
                     dmgInfo.damageValue = 30f;
                     dmgInfo.AddElementFactor(ElementTypes.fire, 1f);
                     grenade.damageInfo = dmgInfo;
+
+                    // 对齐官方 Skill_Grenade.OnRelease：这些参数在技能上，不能只克隆 Grenade。
+                    grenade.createExplosion = grenadeSkill.createExplosion;
+                    grenade.explosionShakeStrength = grenadeSkill.explosionShakeStrength;
+                    grenade.damageRange = grenadeSkill.SkillContext.effectRange;
+                    grenade.delayFromCollide = grenadeSkill.delayFromCollide;
+                    grenade.delayTime = grenadeSkill.delay;
+                    grenade.isLandmine = grenadeSkill.isLandmine;
+                    grenade.landmineTriggerRange = grenadeSkill.landmineTriggerRange;
 
                     // 计算投掷速度
                     Vector3 velocity = CalculateThrowVelocity(startPos, targetPos, 8f);
@@ -210,12 +220,12 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 查找燃烧弹预制体（使用缓存）
+        /// 查找官方燃烧弹技能（使用缓存）
         /// </summary>
-        private Grenade FindIncendiaryGrenadePrefab()
+        private Skill_Grenade FindIncendiaryGrenadeSkill()
         {
-            // 直接返回缓存的预制体（已在Initialize时预缓存）
-            return cachedGrenadePrefab;
+            // 直接返回缓存的技能（已在Initialize时预缓存）
+            return cachedGrenadeSkill;
         }
 
         /// <summary>
