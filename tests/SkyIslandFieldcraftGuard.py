@@ -295,8 +295,16 @@ def main():
                     "ItemAssetsCollection.GetPrefab(recipe.OutputTypeId) == null", "SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main, recipe.Inputs, out materials)",
                     "SkyIslandInventoryTransaction.TryDeliver(output, CharacterMainControl.Main)", "materials.Commit();"],
             "合成：先点清材料、先造出成品、独占预留、交付成功后提交扣料")
-    ordered(need_body(fieldcraft, "private static bool ConsumeFromPack(int typeId, int count)", "扣材料"),
-            ["inventory.RemoveItem(item);", "item.DestroyTree();"], "整堆扣掉的材料要 DestroyTree，不留孤儿物品")
+    consume = need_body(fieldcraft, "internal bool ConsumeOne(int typeId)", "蛙卵扣材料")
+    ordered(consume, ["if (disposed || inventoryBusy || !session.IsReady) return false;", "inventoryBusy = true;",
+                      "SkyIslandInventoryTransaction.TryReserve(", "if (disposed || !session.IsReady) return false;",
+                      "material.Commit();", "material.Dispose();", "inventoryBusy = false;"],
+            "蛙卵扣材料复用预留事务：防重入、预留后复核会话、提交或归还并释放占用")
+    transaction = clean_source(read("DebugAndTools/SkyIsland/SkyIslandInventoryTransaction.cs"))
+    require(need_body(transaction, "internal void Commit()", "材料提交"),
+            "if (entry.Take == entry.Count) DestroyUnowned(entry.Item);", "整堆提交销毁未归属原件，不留孤儿物品")
+    require(need_body(transaction, "internal static void DestroyUnowned(Item item)", "原件清理"),
+            "item.DestroyTree();", "原件清理沿用官方物品树销毁")
     require(need_body(fieldcraft, "internal int CountInPack(int typeId)", "背包计数"), "ItemFactory.GetItemCountInInventory(typeId)",
             "背包计数复用 ItemFactory（只数背包顶层，不数基地仓库）")
     open_crafting = need_body(world, "private void OpenCrafting(SkyIslandCraftStation station)", "合成面板")

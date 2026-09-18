@@ -97,7 +97,7 @@ namespace BossRush
             Outcome = TryAddFresh(characterItem, ChosenTypeId) ? "inventory" : "missing";
         }
 
-        /// <summary>补一件新的进背包。先问 prefab：缺资源时官方给的空壳带着同一个 TypeID，回读分辨不出来（contracts §7.1）。</summary>
+        /// <summary>补一件新的进背包。先问 prefab；交付复用额外战利品入口，满箱扩一格，挂载后的通知异常不销毁已交付装备。</summary>
         private static bool TryAddFresh(Item characterItem, int typeId)
         {
             Item created = null;
@@ -107,13 +107,13 @@ namespace BossRush
                 created = ItemAssetsCollection.InstantiateSync(typeId);
                 if (created == null || created.TypeID != typeId) return false;
                 if (created.UseDurability) created.Durability = created.MaxDurability;
-                if (!characterItem.Inventory.AddItem(created)) return false;
+                bool delivered = InteractableLootboxInventoryHelper.TryAddExtraItem(characterItem.Inventory, created);
                 created = null;
-                return true;
+                return delivered;
             }
             finally
             {
-                if (created != null) created.DestroyTree();
+                SkyIslandInventoryTransaction.DestroyUnowned(created);
             }
         }
 

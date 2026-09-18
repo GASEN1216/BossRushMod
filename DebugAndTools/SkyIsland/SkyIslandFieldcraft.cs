@@ -304,39 +304,26 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 从背包顶层扣材料，计数口径与 `ItemFactory.GetItemCountInInventory` 一致。
-        /// 形态照 `ItemFactory.ConsumeItem`，但整堆拿走的物品要 DestroyTree——只 RemoveItem 会留下脱离背包的孤儿物品对象。
-        /// </summary>
-        private static bool ConsumeFromPack(int typeId, int count)
-        {
-            CharacterMainControl player = CharacterMainControl.Main;
-            if (player == null || player.CharacterItem == null || ItemFactory.GetItemCountInInventory(typeId) < count) return false;
-            var inventory = player.CharacterItem.Inventory;
-            if (inventory == null || inventory.Content == null) return false;
-            int remaining = count;
-            for (int i = inventory.Content.Count - 1; i >= 0 && remaining > 0; i--)
-            {
-                Item item = inventory.Content[i];
-                if (item == null || item.TypeID != typeId) continue;
-                int stack = item.Stackable ? item.StackCount : 1;
-                if (stack > remaining)
-                {
-                    item.StackCount = stack - remaining;
-                    remaining = 0;
-                    break;
-                }
-                inventory.RemoveItem(item);
-                item.DestroyTree();
-                remaining -= stack;
-            }
-            return remaining == 0;
-        }
-
-        /// <summary>从背包顶层扣一件（云蚋那边包蛙卵用一把云苔纤维）。口径同 <see cref="ConsumeFromPack"/>。</summary>
+        /// <summary>包蛙卵用一把云苔纤维：与合成、点灯共用预留事务，库存通知失败或会话结束时归还原件。</summary>
         internal bool ConsumeOne(int typeId)
         {
-            return !disposed && !inventoryBusy && ConsumeFromPack(typeId, 1);
+            if (disposed || inventoryBusy || !session.IsReady) return false;
+            SkyIslandInventoryTransaction material = null;
+            inventoryBusy = true;
+            try
+            {
+                if (!SkyIslandInventoryTransaction.TryReserve(CharacterMainControl.Main,
+                    new[] { new SkyIslandIngredient(typeId, 1) }, out material)) return false;
+                // 预留会触发官方库存回调；此时可能已经返航或正在清理 owner。
+                if (disposed || !session.IsReady) return false;
+                material.Commit();
+                return true;
+            }
+            finally
+            {
+                try { if (material != null) material.Dispose(); }
+                finally { inventoryBusy = false; }
+            }
         }
 
         #endregion
