@@ -19,6 +19,15 @@ namespace BossRush
         private Func<bool> sessionValid;
         private Action<string, Transform> onTalk;
         private bool disposed;
+        /// <summary>居民侧的头顶气泡预算。敌人侧另有一个实例，两边加起来同屏最多两个气泡。</summary>
+        private SkyIslandChatter chatter;
+        /// <summary>气泡推进的节流间隔（秒）。冷却本身是 15–25 秒，用不着每帧看。</summary>
+        private const float ChatterTickInterval = 0.25f;
+        /// <summary>气泡挂多高：与官方血条名同高，免得两块字互相压。</summary>
+        private const float ResidentBubbleHeight = 2.2f;
+        private float nextChatterTick;
+        private bool dialogueHeld;
+        private bool? namesChinese;
 
         private static readonly string[] Ids = {
             "sky_qinghe", "sky_weibai", "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper"
@@ -51,9 +60,90 @@ namespace BossRush
             navigation = graph;
             sessionValid = isSessionValid;
             onTalk = talk;
+            chatter = new SkyIslandChatter(SkyIslandChatter.ResidentCooldownMin,
+                SkyIslandChatter.ResidentCooldownMax, IsValid);
             PermanentDuckNpcModule.RegisterAllAffinityConfigs();
             SpawnAllAsync().Forget();
         }
+
+        /// <summary>
+        /// 居民的「活人感」推进：头顶气泡 + 说话时停下脚步。由会话每帧调，自己节流到
+        /// <see cref="ChatterTickInterval"/>。
+        ///
+        /// 【停下脚步按状态推，不按事件推】官方对话是异步的，取消路径有五条（说完、选「先这样」、
+        /// 死亡、切图、战斗打断）。逐条挂事件必漏，所以这里每次推进比一次「此刻在不在对话/暂停里」，
+        /// 变了才动——幂等，而且漏不掉任何一条退出路径。
+        /// </summary>
+        /// <param name="story">当前剧情存档；台词随进度变化。为 null 时按早期版本说。</param>
+        internal void Tick(Vector3 playerPosition, SkyIslandStoryData story)
+        {
+            if (disposed || root == null || chatter == null) return;
+            RefreshLocalizedNames();
+            // 暂停门与对话门同时也是气泡的静音门（SkyIslandChatter.Silenced 再判一次，这里只管脚步）。
+            bool busy = DialogueManager.IsDialogueActive || BossRushUI.IsGamePaused();
+            if (busy != dialogueHeld)
+            {
+                dialogueHeld = busy;
+                ApplyDialogueHold(busy);
+            }
+            if (busy || Time.time < nextChatterTick) return;
+            nextChatterTick = Time.time + ChatterTickInterval;
+            // 静音门问一次就够：`Ready` 每位都会再问一遍，六位居民就是六次会话有效性委托。
+            if (chatter.Muted) return;
+            chatter.PlayerPosition = playerPosition;
+            string speakerId = null;
+            Transform speaker = null;
+            float best = float.MaxValue;
+            foreach (KeyValuePair<string, CharacterMainControl> pair in owned)
+            {
+                CharacterMainControl npc = pair.Value;
+                if (npc == null || !npc.gameObject.activeInHierarchy) continue;
+                Transform body = npc.transform;
+                if (!chatter.Ready(body)) continue;
+                // 同时有好几位轮得到时挑最近的：玩家站在谁跟前，就该听见谁说话。
+                float distance = (body.position - playerPosition).sqrMagnitude;
+                if (distance >= best) continue;
+                best = distance;
+                speakerId = pair.Key;
+                speaker = body;
+            }
+            if (speaker == null) return;
+            chatter.TrySay(speaker, ResidentBubbleHeight, SkyIslandChatterLines.Resident(speakerId, story));
+        }
+
+        /// <summary>只在语言变化时更新现有名字登记，含隐藏居民及本会话持有的两位永久居民。</summary>
+        private void RefreshLocalizedNames()
+        {
+            bool chinese = L10n.IsChinese;
+            if (namesChinese == chinese) return;
+            foreach (KeyValuePair<string, CharacterMainControl> pair in owned)
+            {
+                if (pair.Value == null) continue;
+                NPCNameTagHelper.UpdateOriginalHealthBarDisplayName(
+                    pair.Value.transform, SkyIslandWorldStory.ResidentName(pair.Key));
+            }
+            namesChinese = chinese;
+        }
+
+        /// <summary>
+        /// 对话 / 暂停期间让会走动的居民停下；结束后隔一秒再走（口径同快递员阿稳退出服务后的延迟恢复）。
+        /// 站桩的居民（折翎、无声钟守）没有这个组件，整条早退。
+        /// </summary>
+        private void ApplyDialogueHold(bool hold)
+        {
+            foreach (KeyValuePair<string, CharacterMainControl> pair in owned)
+            {
+                CharacterMainControl npc = pair.Value;
+                if (npc == null) continue;
+                DuckNpcMovement movement = npc.GetComponent<DuckNpcMovement>();
+                if (movement == null) continue;
+                if (hold) movement.HoldForDialogue();
+                else movement.ReleaseFromDialogue(1f);
+            }
+        }
+
+        /// <summary>F3 只读：居民这一侧本趟说了几句气泡、此刻有没有气泡挂着。玩法不读它。</summary>
+        internal SkyIslandChatter ValidationChatter { get { return chatter; } }
 
         private bool IsValid()
         {
@@ -100,6 +190,8 @@ namespace BossRush
                 // await 期间离岛、结婚或其他 owner 先登记时，只回收本请求刚创建的对象。
                 if (!IsValid() || (blueprint.isPermanent && (AffinityManager.IsMarriedToPlayer(id)
                     || PermanentDuckNpcRegistry.GetInstance(id) != null))) return;
+                // 生成可能跨帧；取落地时的语言，避免 await 期间切语言后新居民仍登记旧名字。
+                displayName = SkyIslandWorldStory.ResidentName(id);
                 if (blueprint.isPermanent)
                 {
                     NPCAffinityInteractionHelper.ApplyDailyDecayOnSpawn(id, "[SkyIslandResidents]");
@@ -257,6 +349,8 @@ namespace BossRush
             }
             owned.Clear();
             hidden.Clear();
+            if (chatter != null) chatter.Clear();
+            chatter = null;
             onTalk = null;
             sessionValid = null;
             navigation = null;

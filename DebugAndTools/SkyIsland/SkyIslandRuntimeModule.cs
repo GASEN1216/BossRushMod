@@ -17,6 +17,8 @@ namespace BossRush
         private SkyIslandDepartureInteractable departure;
         private List<InteractableBase> boatGroup;
         private Canvas sign;
+        private TextMeshProUGUI signText;
+        private bool? signChinese;
         private bool subscribed;
         /// <summary>
         /// 「天空岛航路已开放」那条提示条**每进程只发一次**。
@@ -205,9 +207,8 @@ namespace BossRush
             // 招牌不再是一块远远就亮着的黄字：主标题用正文色、副标题降一级，走近船点才浮现
             // （SkyIslandProximityLabel）。远处靠官方交互标记与首次到基地时那条公告指路就够了，
             // 常驻的浮空字正是网游式头顶标语的来源。
-            text.text = L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan") + "\n<size=62%><color=#" +
-                ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">" +
-                L10n.T("与船点互动即可出发", "Interact with the boat to depart") + "</color></size>";
+            signText = text;
+            RefreshSignText();
             text.fontSize = 34;
             text.alignment = TextAlignmentOptions.Center;
             text.color = BossRushUIColors.TextPrimary;
@@ -215,8 +216,21 @@ namespace BossRush
             SkyIslandProximityLabel.Attach(sign.gameObject, 9f, 16f);
         }
 
+        // 已有船点使 OnUpdate 提前返回；表现层只在语言变化时写一次原 TMP。
+        private void RefreshSignText()
+        {
+            if (signText == null) return;
+            bool chinese = L10n.IsChinese;
+            if (signChinese == chinese) return;
+            signText.text = L10n.T("天空岛 · 晴岚群岛", "Sky Islands · Qinglan") + "\n<size=62%><color=#" +
+                ColorUtility.ToHtmlStringRGB(BossRushUIColors.TextSecondary) + ">" +
+                L10n.T("与船点互动即可出发", "Interact with the boat to depart") + "</color></size>";
+            signChinese = chinese;
+        }
+
         public override void OnLateUpdate()
         {
+            RefreshSignText();
             if (sign != null && GameCamera.Instance != null && GameCamera.Instance.renderCamera != null)
                 sign.transform.rotation = GameCamera.Instance.renderCamera.transform.rotation;
         }
@@ -229,6 +243,8 @@ namespace BossRush
             departure = null;
             if (sign != null) UnityEngine.Object.Destroy(sign.gameObject);
             sign = null;
+            signText = null;
+            signChinese = null;
         }
 
         public override void OnDestroy()
@@ -284,12 +300,7 @@ namespace BossRush
         private SkyIslandPreludeFlow prelude;
         protected override string InteractNameKey
         {
-            get
-            {
-                const string key = "BossRush_SkyIsland_Departure";
-                LocalizationHelper.InjectLocalization(key, L10n.T("前往天空岛 · 晴岚群岛", "Depart for Sky Islands · Qinglan"));
-                return key;
-            }
+            get { return SkyIslandPreludeFlow.DepartureNameKey; }
         }
         protected override string LogPrefix { get { return "[SkyIsland] "; } }
         protected override string InteractionGroupLabel { get { return "[SkyIslandDeparture]"; } }

@@ -177,6 +177,16 @@ namespace BossRush
         /// <summary>只补任务接取和复命这两个旧 HUD 漏掉的步骤，不把支线、和解或战斗改成强制任务。</summary>
         internal static string NextContactObjective(SkyIslandStoryData data)
         {
+            SkyIslandOfficialQuestDefinition quest = NextContactQuest(data);
+            if (quest == null) return null;
+            return quest.Contact() + L10n.T(" · 航路任务：", " · Route quests: ") +
+                (data.Has(quest.AcceptedFlag) ? L10n.T("交付「", "complete ") : L10n.T("接取「", "accept ")) +
+                quest.Name() + L10n.T("」", "");
+        }
+
+        /// <summary>HUD、地图与罗盘共用下一次接取/复命；探索阶段返回 null。</summary>
+        internal static SkyIslandOfficialQuestDefinition NextContactQuest(SkyIslandStoryData data)
+        {
             if (data == null || !data.SkyIslandRouteUnlocked) return null;
             for (int i = 0; i < island.Length; i++)
             {
@@ -186,9 +196,7 @@ namespace BossRush
                 if (accepted && !TasksDone(quest, data)) return null;
                 // 钟庭事件完成后先处理就在面前的归航钟，之后再提示回码头复命。
                 if (quest.QuestId == BellCourtQuestId && accepted && !data.Has(SkyIslandStoryFlag.HomecomingQuestDelivered)) continue;
-                return quest.Contact() + L10n.T(" · 航路任务：", " · Route quests: ") +
-                    (accepted ? L10n.T("交付「", "complete ") : L10n.T("接取「", "accept ")) +
-                    quest.Name() + L10n.T("」", "");
+                return quest;
             }
             return null;
         }

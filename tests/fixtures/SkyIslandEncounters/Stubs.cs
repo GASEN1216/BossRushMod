@@ -33,6 +33,7 @@ namespace UnityEngine
         public static bool operator !=(Object a, Object b) { return !(a == b); }
         public override bool Equals(object value) { return this == value as Object; }
         public override int GetHashCode() { return base.GetHashCode(); }
+        public int GetInstanceID() { return GetHashCode(); }
     }
     public class Component : Object
     {
@@ -81,7 +82,19 @@ namespace UnityEngine
         public float sqrMagnitude { get { return x*x+y*y+z*z; } }
         public static float Distance(Vector3 a, Vector3 b) { return (float)Math.Sqrt((a-b).sqrMagnitude); }
     }
-    public static class Mathf { public const float Deg2Rad = 0.0174532925f; public static float Cos(float a) { return (float)Math.Cos(a); } public static float Sin(float a) { return (float)Math.Sin(a); } }
+    public static class Mathf
+    {
+        public const float Deg2Rad = 0.0174532925f;
+        public static float Cos(float a) { return (float)Math.Cos(a); }
+        public static float Sin(float a) { return (float)Math.Sin(a); }
+        public static float Max(float a, float b) { return Math.Max(a, b); }
+        public static float Clamp(float v, float min, float max) { return Math.Max(min, Math.Min(max, v)); }
+    }
+    public static class Random
+    {
+        public static int Range(int min, int max) { return min; }
+        public static float Range(float min, float max) { return min; }
+    }
     public struct RaycastHit { public Vector3 point; public Transform transform; }
     public enum QueryTriggerInteraction { Ignore }
     public static class Physics
@@ -102,7 +115,12 @@ namespace Pathfinding
     public class Seeker : UnityEngine.Component { public GraphMask graphMask; public void CancelCurrentPathRequest() { } }
 }
 public enum Teams { scav, wolf, bear }
-public class AICharacterController : UnityEngine.Component { public float forceTracePlayerDistance; }
+public class AICharacterController : UnityEngine.Component
+{
+    public float forceTracePlayerDistance;
+    public bool noticed;
+    public CharacterMainControl NoticeFromCharacter { get; set; }
+}
 public class DamageInfo { }
 public class DeathEvent
 {
@@ -152,7 +170,8 @@ namespace BossRush
     internal static class ModBehaviour
     {
         internal static string GetModPath() { return Environment.CurrentDirectory; }
-        internal static void DevLog(string value) { }
+        internal static readonly List<string> Logs = new List<string>();
+        internal static void DevLog(string value) { Logs.Add(value); }
         internal static void CriticalLog(string key, string value) { }
     }
     internal static class SkyIslandResidents
@@ -197,9 +216,13 @@ namespace BossRush
         internal Func<bool> Valid;
         internal Action<string, bool> Report;
         internal Func<string, UnityEngine.Vector3, int> CallGroup;
+        internal SkyIslandBarkDelegate Bark;
     }
     internal static class SkyIslandBossForge
     {
+        internal static void BindVoice(CharacterMainControl created, SkyIslandBossProfile profile,
+            string championId, SkyIslandBossContext context)
+        { created.gameObject.AddComponent<SkyIslandBossVoice>(); }
         internal static readonly List<string> Applied = new List<string>();
         internal static SkyIslandBossContext LastContext;
         internal static bool Night;
@@ -232,5 +255,43 @@ namespace BossRush
     internal static class LocalizationHelper
     {
         internal static void InjectLocalization(string key, string value) { }
+    }
+    // Voice component is configured by the Forge (also a host substitute in this fixture).
+    internal sealed class SkyIslandBossVoice : UnityEngine.MonoBehaviour { }
+    internal static class BossRushUI { internal static bool Paused; internal static bool IsGamePaused() { return Paused; } }
+    internal static class DialogueManager { internal static bool IsDialogueActive; }
+}
+namespace Cysharp.Threading.Tasks
+{
+    public static class UniTaskExtensions
+    {
+        // 与官方 Forget 一样不阻塞调用者，异常交给观察回调；不能靠同步 GetResult 模拟。
+        public static async void Forget(Task task, Action<Exception> onError)
+        {
+            try { await task; }
+            catch (Exception error) { onError(error); }
+        }
+    }
+}
+namespace Duckov.UI.DialogueBubbles
+{
+    public sealed class DialogueBubblesManager : UnityEngine.MonoBehaviour
+    {
+        public static DialogueBubblesManager Instance;
+        public bool isActiveAndEnabled;
+        internal static int Shown;
+        internal static bool Fail, ThrowSynchronously;
+        internal static Task ImmediateResult;
+        internal static TaskCompletionSource<bool> LastRequest;
+        public static Task Show(string line, UnityEngine.Transform speaker, float height, bool a, bool b, float speed, float duration)
+        {
+            // 官方缺 manager / prefab 是静默完成；正常展示是跨帧任务。
+            if (Instance == null || Fail) return Task.CompletedTask;
+            if (ThrowSynchronously) throw new InvalidOperationException("bubble sync failure");
+            if (ImmediateResult != null) return ImmediateResult;
+            Shown++;
+            LastRequest = new TaskCompletionSource<bool>();
+            return LastRequest.Task;
+        }
     }
 }

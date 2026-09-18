@@ -73,9 +73,15 @@ namespace BossRush
                 notify(L10n.T("双航标已亮：归航钟庭的撤离点开放", "Both beacons lit: the Bell Court extraction is open"), false);
         }
 
-        /// <summary>与 <see cref="SkyIslandStoryRules.Objective"/> 同一顺序：先两端航标，再归航钟庭；结局后不再圈目标。</summary>
+        /// <summary>与 <see cref="SkyIslandStoryRules.Objective"/> 同一顺序：先接取/复命，再探索；结局后的未交任务仍保留目标。</summary>
         internal static IEnumerable<string> ObjectiveTargets(SkyIslandStoryData data)
         {
+            SkyIslandOfficialQuestDefinition contact = SkyIslandOfficialQuestTable.NextContactQuest(data);
+            if (contact != null)
+            {
+                yield return SkyIslandOfficialQuestTable.FallbackMarkerOfGiver(contact.GiverId);
+                yield break;
+            }
             if (data.Has(SkyIslandStoryFlag.Ending)) yield break;
             if (!data.BothBeacons)
             {

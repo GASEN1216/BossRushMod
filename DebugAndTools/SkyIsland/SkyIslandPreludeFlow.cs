@@ -21,6 +21,9 @@ namespace BossRush
         private const string QuestObjectName = "BossRush_SkyIslandPrelude_OfficialQuest";
         private const string QuestNameKey = "BossRush_SkyIslandPrelude_QuestName";
         private const string QuestDescriptionKey = "BossRush_SkyIslandPrelude_QuestDescription";
+        internal const string DepartureNameKey = "BossRush_SkyIsland_Departure";
+        internal const string ObjectiveNameKey = "BossRush_SkyIslandPrelude_Objective";
+        internal const string InstrumentNameKey = "BossRush_SkyIslandPrelude_Instrument";
         private static readonly Vector3 ObjectiveAnchor = new Vector3(373.52f, 0.02f, 286.93f);
         private static readonly Vector3 BossOffset = new Vector3(6f, 0f, 0f);
         private static SkyIslandPreludeFlow active;
@@ -53,6 +56,13 @@ namespace BossRush
 
         internal static void InjectLocalizations()
         {
+            // 交互体只在 Awake / Start 读取 key；已有目标随全局语言注入刷新，不重建场景对象。
+            LocalizationHelper.InjectLocalization(DepartureNameKey,
+                L10n.T("前往天空岛 · 晴岚群岛", "Depart for Sky Islands · Qinglan"));
+            LocalizationHelper.InjectLocalization(ObjectiveNameKey,
+                L10n.T("失落的航向仪", "Lost Navigation Instrument"));
+            LocalizationHelper.InjectLocalization(InstrumentNameKey,
+                L10n.T("读取失落的航向仪", "Read the lost navigation instrument"));
             LocalizationHelper.InjectLocalization(QuestNameKey, L10n.T("云上的坐标", "Coordinates Above the Clouds"));
             LocalizationHelper.InjectLocalization(QuestDescriptionKey,
                 L10n.T("Jeff 请你调查零号区坠落的航向仪。击败看守仪器的陌生游猎，读出坐标，再回 Jeff 处完成任务。",
@@ -351,9 +361,7 @@ namespace BossRush
             nextPoiAttempt = Time.unscaledTime + 5f;
             try
             {
-                const string key = "BossRush_SkyIslandPrelude_Objective";
-                LocalizationHelper.InjectLocalization(key, L10n.T("失落的航向仪", "Lost Navigation Instrument"));
-                mapMarker = SimplePointOfInterest.Create(position, GroundZeroScene, key, null, false);
+                mapMarker = SimplePointOfInterest.Create(position, GroundZeroScene, ObjectiveNameKey, null, false);
                 if (mapMarker != null)
                 {
                     mapMarker.Color = new Color(0.35f, 0.90f, 0.95f, 1f);
@@ -538,12 +546,7 @@ namespace BossRush
         internal void Bind(SkyIslandPreludeFlow value) { flow = value; }
         protected override string InteractNameKey
         {
-            get
-            {
-                const string key = "BossRush_SkyIslandPrelude_Instrument";
-                LocalizationHelper.InjectLocalization(key, L10n.T("读取失落的航向仪", "Read the lost navigation instrument"));
-                return key;
-            }
+            get { return SkyIslandPreludeFlow.InstrumentNameKey; }
         }
         protected override string LogPrefix { get { return "[SkyIslandPrelude] "; } }
         protected override string InteractionGroupLabel { get { return "[SkyIslandPrelude]"; } }

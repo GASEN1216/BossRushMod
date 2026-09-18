@@ -26,9 +26,29 @@ source = source_path.read_text(encoding="utf-8-sig")
 methods = [method(source, signature) for signature in
            ("private bool EnsureStory()", "private void CloseStory()", "internal void Schedule()")]
 generated = OUT / "PreludeGenerated.cs"
-generated.write_text("using System; using UnityEngine; using UnityEngine.SceneManagement;\n"
+# 导航只抽取真正决定地图/罗盘目标的生产迭代器，不在替身里另写任务状态树。
+marker_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandMapMarkers.cs"
+marker_source = marker_path.read_text(encoding="utf-8-sig")
+marker_methods = [method(marker_source, signature) for signature in
+                  ("internal static IEnumerable<string> ObjectiveTargets(", "internal static IEnumerable<string> SideTargets(")]
+world_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandWorldStory.cs"
+world_source = world_path.read_text(encoding="utf-8-sig")
+# 掩码和初始化值也来自生产文件；否则生产删掉一项，测试还在用自己的正确常量会假绿。
+import re
+feedback_fields = []
+for name in ("feedbackChinese", "feedbackFlags", "FeedbackFlags"):
+    found = re.findall(r"^        private (?:const )?\w+ " + name + r"\b[^;]*;", world_source, re.M)
+    assert len(found) == 1, name
+    feedback_fields.extend(found)
+generated.write_text("using System; using System.Collections.Generic; using UnityEngine; using UnityEngine.SceneManagement;\n"
                      "namespace BossRush { internal sealed partial class SkyIslandPreludeFlow {\n"
-                     + "\n".join(methods) + "\n} }\n", encoding="utf-8")
+                     + "\n".join(methods) + "\n}\n"
+                     + "internal static class SkyIslandMapMarkers {\n" + "\n".join(marker_methods) + "\n}\n"
+                     + "internal sealed partial class SkyIslandFeedbackHarness {\n" + "\n".join(feedback_fields)
+                     + "\n" + method(world_source, "private void RebuildFeedback()") + "\n} }\n", encoding="utf-8")
+(OUT / "navigation-feedback-source-sha256.txt").write_text("\n".join(
+    str(path.relative_to(ROOT)) + " " + hashlib.sha256(path.read_bytes()).hexdigest()
+    for path in (marker_path, world_path)), encoding="utf-8")
 (OUT / "prelude-source-sha256.txt").write_text(hashlib.sha256(source_path.read_bytes()).hexdigest() + "\n", encoding="utf-8")
 build = subprocess.run([
     'dotnet', 'build', str(HERE / 'Regression.csproj'), '--configuration', 'Release',

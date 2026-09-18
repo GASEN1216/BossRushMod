@@ -258,26 +258,6 @@ namespace BossRush
             }));
         }
 
-        private string Repair()
-        {
-            SkyIslandServices services = session.Services;
-            return services == null ? L10n.T("渡口暂时没人。", "Nobody is at the dock right now.") : services.Repair();
-        }
-
-        private string Heal()
-        {
-            SkyIslandServices services = session.Services;
-            return services == null ? L10n.T("眠苔不在。", "Miantai is not here.") : services.Heal();
-        }
-
-        private string Meal()
-        {
-            SkyIslandServices services = session.Services;
-            return services == null
-                ? L10n.T("菜畦还没开张。", "The garden is not open yet.")
-                : services.Meal(session.HasPlantingDelivered);
-        }
-
         /// <summary>
         /// 苇白的派单面板。
         ///
@@ -578,10 +558,18 @@ namespace BossRush
 
         /// <summary>纪念物上一次按哪种语言建的。</summary>
         private bool feedbackChinese;
+        private int feedbackFlags = -1;
+        private const SkyIslandStoryFlag FeedbackFlags = SkyIslandStoryFlag.WindBeacon | SkyIslandStoryFlag.StarLamp
+            | SkyIslandStoryFlag.Telescope | SkyIslandStoryFlag.PlantingDelivered | SkyIslandStoryFlag.StormSlain
+            | SkyIslandStoryFlag.ZhelingDefeated | SkyIslandStoryFlag.Ending;
 
         /// <summary>按持久旗标整组重建纪念物（光 + 只读交互体），标题按当前语言取；旗标变化与岛上切语言共用。</summary>
         private void RebuildFeedback()
         {
+            // 接取/交付任务不改变场景纪念物；语言与剧情同时变化也只建一次。
+            int flags = story.Current.flags & (int)FeedbackFlags;
+            if (feedbackFlags == flags && feedbackChinese == L10n.IsChinese) return;
+            feedbackFlags = flags;
             feedbackChinese = L10n.IsChinese;
             foreach (GameObject go in feedback) if (go != null) UnityEngine.Object.Destroy(go);
             feedback.Clear();

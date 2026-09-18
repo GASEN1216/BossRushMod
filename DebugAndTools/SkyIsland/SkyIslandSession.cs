@@ -676,6 +676,8 @@ namespace BossRush
                 // 钟守不同：战斗对象是「失控的守钟装置」，人本来就该活着，照旧只在战斗中隐藏。
                 residents.SetVisible("sky_zheling", !ZhelingDefeated && !HasStoryChallengeStarted("Zheling"));
                 residents.SetVisible("sky_bellkeeper", !IsStoryChallengeActive("BellKeeper"));
+                // 活人感：头顶气泡 + 说话时停下脚步。自己节流，说话与否的四道门都在 SkyIslandChatter。
+                residents.Tick(player.transform.position, story == null ? null : story.Current);
             }
             SkyIslandFrameProfile.Mark(SkyIslandFrameSegment.Residents);
             // 落盘门按半径而不是全图。自动组改成按出击刷新之后，全岛几乎总有活着的敌人，

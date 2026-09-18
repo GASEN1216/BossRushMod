@@ -2,7 +2,7 @@
 // SkyIslandWorldStoryServices.cs - 居民服务按钮与「航务委托」子页的挂法
 // ============================================================================
 // 从 SkyIslandWorldStory.cs 拆出来单独放（主文件有 1200 行预算）：主文件的 ReadPoint / ResidentChoices
-// 只各多一句调用，派单本身（BountyChoices）与服务回话（Repair / Heal / Meal）仍在主文件。
+// 只各多一句调用；派单本身（BountyChoices）仍在主文件，服务回话与按钮在本文件。
 // 手记与合成台两个入口（JournalChoice / CraftChoice）2026-09-15 原样搬来：主文件拆出 ResidentChoices 供对话判断「有没有事可办」要腾行数。
 //
 // 2026-09-14 UI 优化对照审核 F-06 与拍板 O-3（照主流游戏的商店 / 服务口径）：
@@ -20,6 +20,26 @@ namespace BossRush
 {
     internal sealed partial class SkyIslandWorldStory
     {
+        private string Repair()
+        {
+            SkyIslandServices services = session.Services;
+            return services == null ? L10n.T("渡口暂时没人。", "Nobody is at the dock right now.") : services.Repair();
+        }
+
+        private string Heal()
+        {
+            SkyIslandServices services = session.Services;
+            return services == null ? L10n.T("眠苔不在。", "Miantai is not here.") : services.Heal();
+        }
+
+        private string Meal()
+        {
+            SkyIslandServices services = session.Services;
+            return services == null
+                ? L10n.T("菜畦还没开张。", "The garden is not open yet.")
+                : services.Meal(session.HasPlantingDelivered);
+        }
+
         /// <summary>
         /// 渡口整备挂不挂、按钮上写什么（口径见文件头）。服务 owner 还没建好（群岛没就绪）时挂原标签，点了回「请等待群岛就绪」。
         /// 面板开着时游戏暂停，标签上的价钱与秒数不会过期。

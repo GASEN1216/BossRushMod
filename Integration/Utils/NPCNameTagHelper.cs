@@ -116,6 +116,21 @@ namespace BossRush.Utils
             }
         }
 
+        /// <summary>更新已有登记的文字；保留高度、样式与 UI 实例，不为已注销的 NPC 新建登记。</summary>
+        internal static bool UpdateOriginalHealthBarDisplayName(Transform parent, string displayName)
+        {
+            if (parent == null) return false;
+            OriginalHealthBarEntry entry;
+            if (!OriginalHealthBarEntriesByTransformId.TryGetValue(parent.GetInstanceID(), out entry) || entry == null)
+                return false;
+            string next = displayName ?? string.Empty;
+            if (string.Equals(entry.DisplayName, next, StringComparison.Ordinal)) return true;
+            entry.DisplayName = next;
+            try { RefreshOriginalHealthBarName(parent); }
+            catch (Exception e) { ModBehaviour.DevLog(entry.LogPrefix + " [WARNING] 更新名字显示失败: " + e.Message); }
+            return true;
+        }
+
         /// <summary>
         /// 刷新原版名字组件显示，内部带节流，可安全在 Update/LateUpdate 中调用。
         /// </summary>

@@ -17,6 +17,7 @@ internal static class Program
         RewardPlacement();
         GroundRing();
         AudioStop();
+        LocalizationRegression.Run(Check);
         Check(HUDManager.Tokens.Count == 0 && ZombieModeUIHelper.Leases == 0, "all modal and HUD owners released");
         Console.WriteLine("PASS SkyIslandInteraction assertions=" + checks + " (production control flow; Unity, physics and audio substituted)");
     }

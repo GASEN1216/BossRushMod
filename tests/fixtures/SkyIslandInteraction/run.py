@@ -38,7 +38,8 @@ def member(source, signature):
 def generate():
     sources = {}
     for name in ("SkyIslandStoryPresentation.cs", "SkyIslandWorldStory.cs", "SkyIslandWorldStoryServices.cs",
-                 "SkyIslandServices.cs", "SkyIslandGnats.cs", "SkyIslandGroundRing.cs"):
+                 "SkyIslandServices.cs", "SkyIslandGnats.cs", "SkyIslandGroundRing.cs",
+                 "SkyIslandRuntimeModule.cs", "SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"):
         sources[name] = (ROOT / SKY / name).read_text(encoding="utf-8-sig")
     presentation = sources["SkyIslandStoryPresentation.cs"]
     fields = presentation[presentation.index("        #region 布局常量"):presentation.index("        internal void Show(string title, string text, IList<Choice> choices)\n")]
@@ -57,16 +58,16 @@ def generate():
     world_services = sources["SkyIslandWorldStoryServices.cs"]
     service = sources["SkyIslandServices.cs"]
     constants = "\n".join(re.findall(r"        internal const [^;]+;", service))
-    parts = ["using System;\nusing System.Collections.Generic;\nusing System.Reflection;\nusing System.Text.RegularExpressions;\nusing UnityEngine;\nusing UnityEngine.UI;\nusing TMPro;\nusing Duckov.Economy;\nnamespace BossRush {\n"]
+    parts = ["using System;\nusing System.Collections.Generic;\nusing System.Reflection;\nusing System.Text.RegularExpressions;\nusing UnityEngine;\nusing UnityEngine.UI;\nusing TMPro;\nusing Duckov.Economy;\nusing BossRush.Utils;\nnamespace BossRush {\n"]
     parts.append("internal sealed partial class SkyIslandStoryPresentation {\n" + member(presentation, "internal sealed class Choice") + "\n" + fields)
     parts.extend(member(presentation, s) for s in panel_methods)
     parts.append(counted.group(0) + "\n}\ninternal sealed partial class SkyIslandWorldStory {\n")
     parts.extend(member(world, s) for s in (
-        "private string Refreshed(", "private void ServiceChoice(", "private string Repair()",
-        "private string Heal()", "private string Meal()", "private string WithNextStep(",
+        "private string Refreshed(", "private void ServiceChoice(", "private string WithNextStep(",
         "private void Hint(", "private string NextStep()", "private void PuzzleChoices(",
-        "private string PuzzleBody(", "internal void Hide()"))
+        "private string PuzzleBody(", "internal void Hide()", "internal static string ResidentName("))
     parts.extend(member(world_services, s) for s in (
+        "private string Repair()", "private string Heal()", "private string Meal()",
         "private void RepairChoice(", "private void HealChoice(", "private void MealChoice(", "private static string ServiceTag("))
     parts.append("}\n" + member(service, "internal enum SkyIslandServiceReadiness") + "\ninternal sealed partial class SkyIslandServices {\n" + constants)
     parts.extend(member(service, s) for s in (
@@ -79,14 +80,37 @@ def generate():
     if not segments:
         raise AssertionError("Segments 缺失")
     parts.append("internal static class SkyIslandGroundRing {\n" + segments.group(0) + "\n" + member(ring, "internal static void SetShape(") + "\n}\n}\n")
+    # 语言刷新运行真实方法和字段，Unity UI 写入与语言管理器由显式替身观测。
+    runtime, prelude, residents = (sources[n] for n in (
+        "SkyIslandRuntimeModule.cs", "SkyIslandPreludeFlow.cs", "SkyIslandResidents.cs"))
+    def field(source, name):
+        found = re.findall(r"^        private [^;{}]*\b" + name + r"\b[^;{}]*;", source, re.M)
+        if len(found) != 1:
+            raise AssertionError("字段锚点必须唯一: " + name)
+        return found[0]
+    parts.append("namespace BossRush { internal sealed partial class SkyIslandRuntimeModule {\n"
+                 + field(runtime, "signText") + "\n" + field(runtime, "signChinese") + "\n"
+                 + member(runtime, "private void RefreshSignText()") + "\n}\n")
+    parts.append("internal sealed partial class SkyIslandResidents {\n" + field(residents, "owned") + "\n"
+                 + field(residents, "namesChinese") + "\n" + member(residents, "private void RefreshLocalizedNames()") + "\n}\n")
+    parts.append("internal sealed class SkyIslandPreludeFlow {\n"
+                 + "\n".join(re.findall(r"^        (?:private|internal) const string [^;]+;", prelude, re.M))
+                 + "\n" + member(prelude, "internal static void InjectLocalizations()") + "\n}\n}\n")
+    helper_path = ROOT / "Integration/Utils/NPCNameTagHelper.cs"
+    helper = helper_path.read_text(encoding="utf-8-sig")
+    parts.append("namespace BossRush.Utils { internal static partial class NPCNameTagHelper {\n"
+                 + member(helper, "private sealed class OriginalHealthBarEntry") + "\n"
+                 + field(helper, "OriginalHealthBarEntriesByTransformId") + "\n"
+                 + member(helper, "internal static bool UpdateOriginalHealthBarDisplayName(") + "\n}\n}\n")
     OUT.mkdir(parents=True, exist_ok=True)
     generated = OUT / "Production.cs"
     generated.write_text("\n".join(parts), encoding="utf-8-sig")
     linked = [ROOT / SKY / n for n in ("SkyIslandStoryRules.cs", "SkyIslandOfficialQuestTable.cs", "SkyIslandPuzzles.cs", "SkyIslandBounty.cs")]
     hashes = {SKY + n: hashlib.sha256((ROOT / SKY / n).read_bytes()).hexdigest() for n in sources}
     hashes.update({p.relative_to(ROOT).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest() for p in linked})
+    hashes[helper_path.relative_to(ROOT).as_posix()] = hashlib.sha256(helper_path.read_bytes()).hexdigest()
     (OUT / "source-hashes.json").write_text(json.dumps(hashes, indent=2), encoding="utf-8")
-    return [generated, HERE / "Stubs.cs", HERE / "Host.cs", HERE / "Program.cs"] + linked
+    return [generated, HERE / "Stubs.cs", HERE / "Host.cs", HERE / "Program.cs", HERE / "LocalizationRegression.cs"] + linked
 
 
 def main():

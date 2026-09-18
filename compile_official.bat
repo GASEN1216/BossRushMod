@@ -203,6 +203,8 @@ echo(DebugAndTools\SkyIsland\SkyIslandSceneReferenceBridge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryCodec.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryPresentation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryRules.cs
+echo(DebugAndTools\SkyIsland\SkyIslandChatterLines.cs
+echo(DebugAndTools\SkyIsland\SkyIslandChatter.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStorySaveRecovery.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryService.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryServiceAutotest.cs

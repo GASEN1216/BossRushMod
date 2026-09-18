@@ -16,6 +16,7 @@ namespace UnityEngine
         public static bool operator !=(Object a, Object b) { return !(a == b); }
         public override bool Equals(object value) { return ReferenceEquals(this, value); }
         public override int GetHashCode() { return base.GetHashCode(); }
+        internal int GetInstanceID() { return GetHashCode(); }
         public static void Destroy(Object obj)
         {
             if (ReferenceEquals(obj, null) || obj.Destroyed) return;
@@ -35,6 +36,8 @@ namespace UnityEngine
     internal class GameObject : Object
     {
         internal string name;
+        internal bool activeSelf = true;
+        internal void SetActive(bool value) { activeSelf = value; }
         internal Transform transform;
         internal readonly List<Component> Components = new List<Component>();
         internal GameObject(string name, params Type[] types)
@@ -165,7 +168,9 @@ namespace TMPro
     internal enum TextOverflowModes { Ellipsis }
     internal class TextMeshProUGUI : UnityEngine.Component
     {
-        internal string text;
+        private string value;
+        internal int TextWrites;
+        internal string text { get { return value; } set { this.value = value; TextWrites++; } }
         internal float fontSize;
         internal bool enableAutoSizing, enableWordWrapping, raycastTarget;
         internal UnityEngine.Color color;
@@ -188,7 +193,7 @@ internal sealed class TestHealth
     internal float CurrentHealth = 50, MaxHealth = 100;
     internal void SetHealth(float health) { CurrentHealth = health; }
 }
-internal sealed class CharacterMainControl
+internal sealed class CharacterMainControl : UnityEngine.Object
 {
     internal TestHealth Health = new TestHealth();
     internal UnityEngine.Transform transform = new UnityEngine.GameObject("player").transform;
@@ -224,7 +229,7 @@ namespace BossRush
     internal static class BossRushUIColors
     {
         internal static Color TextPrimary = Color.white, SurfaceRaised = new Color(.1f, .1f, .1f), Surface = new Color(.05f, .05f, .05f),
-            Stroke = Color.white, Accent = Color.white, Divider = Color.white;
+            Stroke = Color.white, Accent = Color.white, Divider = Color.white, TextSecondary = Color.white;
     }
     internal static class BossRushUI
     {
@@ -277,9 +282,10 @@ namespace BossRush
 
 namespace BossRush
 {
-    // Quest table text injection is outside this fixture; story objectives use the real table.
+    // 保留覆盖字典，模拟官方 SetLanguage 不清 overrideTexts；生产注入必须覆盖已有值。
     internal static class LocalizationHelper
     {
-        internal static void InjectLocalization(string key, string value) { }
+        internal static readonly Dictionary<string, string> Texts = new Dictionary<string, string>();
+        internal static void InjectLocalization(string key, string value) { Texts[key] = value; }
     }
 }

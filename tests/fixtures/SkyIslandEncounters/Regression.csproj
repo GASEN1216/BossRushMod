@@ -5,6 +5,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEncounters.cs" Link="Production/SkyIslandEncounters.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandChatter.cs" Link="Production/SkyIslandChatter.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandContent.cs" Link="Production/SkyIslandContent.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryRules.cs" Link="Production/SkyIslandStoryRules.cs" />

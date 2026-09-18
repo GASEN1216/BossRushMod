@@ -61,6 +61,7 @@ internal static class Program
     { character.Health.Die(); UnityEngine.Object.Destroy(character.gameObject); }
     private static void Main()
     {
+        CheckChatter();
         Reset();
         using (var world = new World("D"))
         {
@@ -257,5 +258,72 @@ internal static class Program
                 "once the barn side is cleared nobody comes");
         }
         Console.WriteLine("PASS SkyIslandEncounters: " + checks + " assertions (production owner with Unity / async substitutes)");
+    }
+
+    private static void CheckChatter()
+    {
+        Time.time = 0f;
+        bool valid = true;
+        var chatter = new SkyIslandChatter(35f, 60f, () => valid);
+        var speaker = new GameObject("speaker").transform;
+        string[] lines = SkyIslandChatterLines.Mob(false, SkyIslandChatterMoment.Idle);
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Instance = null;
+        Check(!chatter.TrySay(speaker, 2f, lines) && !chatter.Busy && chatter.SpokenCount == 0,
+            "missing manager does not consume budget");
+        var manager = new GameObject("bubbles").AddComponent<Duckov.UI.DialogueBubbles.DialogueBubblesManager>();
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Instance = manager;
+        Check(!chatter.TrySay(speaker, 2f, lines) && chatter.Ready(speaker),
+            "inactive manager leaves speaker ready");
+        manager.isActiveAndEnabled = true;
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Shown = 0;
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Fail = true;
+        Check(!chatter.TrySay(speaker, 2f, lines) && !chatter.Busy && chatter.SpokenCount == 0,
+            "failed bubble does not consume budget");
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.Fail = false;
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.ImmediateResult = System.Threading.Tasks.Task.FromException(
+            new InvalidOperationException("bubble failed before display"));
+        int logCount = ModBehaviour.Logs.Count;
+        Check(!chatter.TrySay(speaker, 2f, lines) && chatter.Ready(speaker) && chatter.SpokenCount == 0
+            && ModBehaviour.Logs.Count == logCount + 1, "faulted async result is observed without charging budget");
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.ImmediateResult = System.Threading.Tasks.Task.FromCanceled(
+            new System.Threading.CancellationToken(true));
+        Check(!chatter.TrySay(speaker, 2f, lines) && !chatter.Busy && chatter.SpokenCount == 0,
+            "canceled result does not consume budget");
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.ImmediateResult = null;
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.ThrowSynchronously = true;
+        Check(!chatter.TrySay(speaker, 2f, lines) && chatter.Ready(speaker), "synchronous failure does not consume budget");
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.ThrowSynchronously = false;
+        Check(chatter.TrySay(speaker, 2f, lines), "valid nearby speaker can talk");
+        Check(chatter.SpokenCount == 1 && Duckov.UI.DialogueBubbles.DialogueBubblesManager.Shown == 1,
+            "restored service starts and counts exactly one request");
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.LastRequest.SetResult(true);
+        Check(chatter.SpokenCount == 1, "normal asynchronous completion does not double count");
+        Check(!chatter.Ready(speaker) && !chatter.TrySay(speaker, 2f, lines), "busy speaker cannot talk twice");
+        Time.time = 5;
+        Check(!chatter.Busy && !chatter.Ready(speaker), "per-speaker cooldown survives bubble expiry");
+        Time.time = 36;
+        Check(chatter.Ready(speaker), "speaker recovers after cooldown");
+        speaker.position = new Vector3(SkyIslandChatter.SpeakRange + 1, 0, 0);
+        Check(!chatter.TrySay(speaker, 2f, lines, true), "forced death line still respects range");
+        speaker.position = new Vector3();
+        BossRushUI.Paused = true;
+        Check(!chatter.Ready(speaker) && !chatter.TrySay(speaker, 2f, lines, true), "pause silences even forced line");
+        BossRushUI.Paused = false; DialogueManager.IsDialogueActive = true;
+        Check(!chatter.TrySay(speaker, 2f, lines, true), "official dialogue silences forced line");
+        DialogueManager.IsDialogueActive = false; valid = false;
+        Check(!chatter.TrySay(speaker, 2f, lines, true), "obsolete owner cannot emit bubble");
+        valid = true;
+        Check(chatter.TrySay(speaker, 2f, lines, true) && chatter.SpokenCount == 2, "forced valid line can talk");
+        UnityEngine.Object.Destroy(speaker.gameObject);
+        Check(!chatter.Ready(speaker) && !chatter.TrySay(speaker, 2f, lines, true), "destroyed speaker cannot emit bubble");
+        chatter.Clear();
+        Check(!chatter.Busy, "owner cleanup releases budget");
+        logCount = ModBehaviour.Logs.Count;
+        Duckov.UI.DialogueBubbles.DialogueBubblesManager.LastRequest.SetException(new InvalidOperationException("late display failure"));
+        Check(ModBehaviour.Logs.Count == logCount + 1 && !chatter.Busy,
+            "late asynchronous error is observed without reviving cleared owner budget");
+        UnityEngine.Object.Destroy(manager.gameObject);
+        var nextSpeaker = new GameObject("next speaker").transform;
+        Check(!chatter.TrySay(nextSpeaker, 2f, lines) && !chatter.Busy, "destroyed manager cannot start a display");
     }
 }

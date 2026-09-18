@@ -89,6 +89,8 @@ FILES = [
     "SkyIslandFrameProfile.cs",
     # 2026-09-14 头目 / 岛主 R1：纯规则（首杀字幕、居民台词）、两位 Boss 的招式字幕、剧情接线与玩家穿上专属装备后的回话。
     "SkyIslandBossRules.cs",
+    "SkyIslandChatterLines.cs",
+    "SkyIslandChatter.cs",
     "SkyIslandBossForge.cs",
     "SkyIslandForemanBoss.cs",
     "SkyIslandStargazerChief.cs",
