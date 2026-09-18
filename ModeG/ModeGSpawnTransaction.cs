@@ -439,6 +439,9 @@ namespace BossRush
                         // Mode G 奖励池只消费现有 Boss 战利品中的 Q5-Q8 高品质候选；
                         // 普通 BossRush 仍复用原始 Q1-Q8 搜索结果，不改变 Legacy 经济。
                         if (meta.id != typeId || meta.quality < 5 || meta.quality > 8) continue;
+                        // 元数据存在不代表 prefab 可实例化；缺资源的空壳不能进入冻结奖励计划。
+                        ItemStatsSystem.Item prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeId);
+                        if (prefab == null || prefab.TypeID != typeId) continue;
                         candidates.Add(new ModeGRewardCandidate(typeId, meta.priceEach, meta.defaultStackCount));
                     }
                     catch { /* 单项失败跳过 */ }

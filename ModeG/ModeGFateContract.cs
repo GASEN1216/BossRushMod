@@ -151,13 +151,13 @@ namespace BossRush
 
             new ContractDef(IdEdgeWalker, ModeGContractFamily.Style, "EdgeWalker",
                 "边缘行者", "Edge Walker",
-                "累计触发三次距离回声。",
-                "Trigger distance echoes three times."),
+                "第1/4/7波均以枪械或近战直伤收尾，触发三次距离回声。",
+                "Finish waves 1/4/7 with direct gun or melee hits to trigger three distance echoes."),
 
             new ContractDef(IdArsenalDiscipline, ModeGContractFamily.Style, "ArsenalDiscipline",
                 "武库戒律", "Arsenal Discipline",
-                "达成至少 2 次弹药禁令与 1 次属性封锁。",
-                "Enforce at least 2 ammo bans and 1 attribute lock."),
+                "触发2次弹药点名和1次属性封锁；学习波需至少5次有效开火，并换用未被点名的弹种。",
+                "Trigger 2 ammo bans and 1 attribute lock. Fire 5 valid shots per learning wave; use ammo not yet named."),
 
             new ContractDef(IdFinalMinute, ModeGContractFamily.Execution, "FinalMinute",
                 "最终时刻", "Final Minute",
@@ -166,8 +166,8 @@ namespace BossRush
 
             new ContractDef(IdNemesisDenied, ModeGContractFamily.Adaptation, "NemesisDenied",
                 "宿敌否定", "Nemesis Denied",
-                "第 3/6/9 波全部可用弹药禁令。",
-                "Keep the ammo ban available on all of waves 3, 6 and 9."),
+                "第3/6/9波均触发弹药点名；三轮学习分别使用未被点名的弹种，每轮至少5次有效开火。",
+                "Trigger bans on waves 3/6/9: fire 5 valid shots with new, unnamed ammo in each learning wave."),
         };
 
         /// <summary>

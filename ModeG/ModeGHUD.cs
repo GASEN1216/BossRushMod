@@ -114,6 +114,7 @@ namespace BossRush
             try
             {
                 GameObject root = new GameObject(RootName);
+                _root = root; // 创建后立即归属 owner，后续构建失败也能销毁。
                 UnityEngine.Object.DontDestroyOnLoad(root);
 
                 Canvas canvas = root.AddComponent<Canvas>();
@@ -140,13 +141,11 @@ namespace BossRush
                 _statusText.richText = true;
                 _statusText.enableWordWrapping = false;
 
-                _root = root;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeG] [WARNING] HUD Canvas 创建失败（降级无 HUD）: " + e.Message);
-                _root = null;
-                _statusText = null;
+                Dispose();
             }
         }
 
@@ -326,7 +325,9 @@ namespace BossRush
                     + " · <color=#2E8B57>" + L10n.T("BossRush_ModeG_Hud_BanClean") + "</color>";
             }
 
-            if (m.objectiveState == ModeGObjectiveState.ThresholdsMet)
+            // 属性轴双门槛达标后仍需相反武器系末击，继续显示具体收尾要求。
+            if (m.objectiveState == ModeGObjectiveState.ThresholdsMet
+                && m.axis == ModeGCounterAxis.Distance)
             {
                 return "<color=#2E8B57>" + L10n.T("BossRush_ModeG_Hud_WillBreak") + "</color>";
             }

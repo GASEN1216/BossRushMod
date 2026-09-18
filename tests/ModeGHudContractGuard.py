@@ -145,7 +145,7 @@ def main():
              r"ModeGAdaptiveCombat\.PredictAttributeLockFamily\(_telemetry\)",
              "休整预告复用属性封锁纯函数（不独立推断）"),
             ("InvalidFailClosed",
-             r"_telemetry\.IsTelemetryDegraded \|\| _telemetry\.ContaminatedByCharacterSwitch",
+             r"!_telemetry\.IsWaveScoreValid",
              "污染/溢出统一判为本波挑战无效"),
             ("ViolationAnnounce",
              r"private void TickAmmoViolationAnnounce\(\)"

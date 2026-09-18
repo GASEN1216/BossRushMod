@@ -15,6 +15,13 @@ namespace BossRush
         public ModeGSpawnTransaction SpawnTransaction { get { return _spawnTransaction; } }
         public ModeGAdaptiveCombat Adaptive { get { return _adaptive; } }
         public int TotalBossKills { get { return _totalBossKills; } }
+
+        internal System.Collections.Generic.List<ModeGRewardTransaction.RewardSlotPlan> BuildVictoryRewardPlan(int resolve)
+        {
+            if (_rewardPlan == null) return null;
+            int count = ModeGRewardTransaction.GetRewardItemCount(resolve);
+            return _rewardPlan.Count >= count ? _rewardPlan.GetRange(0, count) : null;
+        }
         public bool IsNemesisDefeatedThisRun { get { return _nemesisDefeatedThisRun; } }
 
         public bool ArmVictorySafety()
@@ -180,7 +187,7 @@ namespace BossRush
         {
             // 代理控制污染与有界缓存溢出都会使本波全部计分 fail-closed
             bool invalid = _telemetry != null
-                && (_telemetry.IsTelemetryDegraded || _telemetry.ContaminatedByCharacterSwitch);
+                && !_telemetry.IsWaveScoreValid;
 
             if (m.axis == ModeGCounterAxis.Distance)
             {

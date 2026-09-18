@@ -372,7 +372,21 @@ namespace BossRush
                 if (_state == null || !_state.IsCombatActive) return;
                 if (health == null) return;
                 if (!_state.IsRegisteredBossHealth(health)) return;
+                // 官方死亡事件先于 OnHurt；致命伤已在 HandleOnDead 结算。
+                if (health.IsDead) return;
+                RecordDirectDamage(health, info);
+            }
+            catch
+            {
+                // 热路径无噪声日志
+            }
+        }
 
+        private void RecordDirectDamage(Health health, DamageInfo info)
+        {
+            try
+            {
+                if (_state == null || !_state.IsCombatActive || !IsWaveScoreValid) return;
                 ModeGDirectDamageClass family = ResolveWeaponFamily(info.fromWeaponItemID, false);
                 ModeGDirectDamageClass cls = ModeGDirectDamageClassifier.Classify(
                     true,
@@ -383,7 +397,10 @@ namespace BossRush
                     family);
                 if (cls == ModeGDirectDamageClass.NotScoreable) return;
 
-                float amount = info.damageValue;
+                // finalDamage 是官方护甲/暴击/抗性与过量伤害钳制后的值。
+                // 输入 damageValue 会让低穿甲攻击虚报血量贡献，暴击则少计。
+                float amount = info.finalDamage;
+                if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)) return;
                 _totalDirectDamage += amount;
                 if (cls == ModeGDirectDamageClass.Gun) _gunDirectDamage += amount;
                 else _meleeDirectDamage += amount;
@@ -501,6 +518,8 @@ namespace BossRush
                 // run owner：只处理已登记 Boss；玩家死亡路由在 ModeGDeathRouting（独立订阅）
                 if (_state == null || health == null) return;
                 if (!_state.IsRegisteredBossHealth(health)) return;
+                // 回调会注销 exact Health，必须先记致命一击；后续 OnHurt 不再重复记账。
+                RecordDirectDamage(health, info);
                 if (_onBossDeadCallback != null) _onBossDeadCallback(health, info);
             }
             catch { /* no-throw */ }
@@ -575,8 +594,9 @@ namespace BossRush
                 if (prefab != null && prefab.TypeID == ammoTypeId && prefab.Constants != null)
                 {
                     float damageMultiplier = prefab.Constants.GetFloat(ConstKey_DamageMultiplier, float.NaN);
-                    float explosionDamage = prefab.Constants.GetFloat(ConstKey_ExplosionDamage, float.NaN);
-                    float explosionRange = prefab.Constants.GetFloat(ConstKey_ExplosionRange, float.NaN);
+                    // 与官方 ItemAgent_Gun 一致：普通弹药可省略爆炸字段，缺省为 0。
+                    float explosionDamage = prefab.Constants.GetFloat(ConstKey_ExplosionDamage, 0f);
+                    float explosionRange = prefab.Constants.GetFloat(ConstKey_ExplosionRange, 0f);
                     if (!float.IsNaN(damageMultiplier) && !float.IsInfinity(damageMultiplier)
                         && !float.IsNaN(explosionDamage) && !float.IsInfinity(explosionDamage)
                         && !float.IsNaN(explosionRange) && !float.IsInfinity(explosionRange)
@@ -615,6 +635,11 @@ namespace BossRush
         {
             get { return _runTelemetryDegraded || _waveTelemetryDegraded; }
         }
+        /// <summary>当前波样本可信度：HUD、轴判定和末击归因共用。</summary>
+        public bool IsWaveScoreValid
+        {
+            get { return !IsTelemetryDegraded && !ContaminatedByCharacterSwitch; }
+        }
         public bool ContaminatedByCharacterSwitch { get { return _contaminationByCharacterSwitch; } }
         public float CombatStartAggregatePrimaryMaxHealth { get { return _combatStartAggregatePrimaryMaxHealth; } }
 
@@ -646,6 +671,7 @@ namespace BossRush
 
         public ModeGDirectDamageClass ClassifyTerminalDamage(Health health, DamageInfo info)
         {
+            if (!IsWaveScoreValid) return ModeGDirectDamageClass.NotScoreable;
             ModeGDirectDamageClass family = ResolveWeaponFamily(info.fromWeaponItemID, true);
             return ModeGDirectDamageClassifier.Classify(
                 true,

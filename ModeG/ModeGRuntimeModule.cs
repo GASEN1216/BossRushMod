@@ -49,6 +49,7 @@ namespace BossRush
         private ModeGCombatTelemetry _telemetry;
         private ModeGSpawnTransaction _spawnTransaction;
         private ModeGAdaptiveCombat _adaptive;
+        private List<ModeGRewardTransaction.RewardSlotPlan> _rewardPlan;
 
         private readonly List<ManagedBossRuntimeHandle> _managedHandles = new List<ManagedBossRuntimeHandle>(4);
         // 托管辅助单位（女巫随从等）激活前原子提交登记（规格 §20 第 16 条；End 统一清空）
@@ -174,6 +175,17 @@ namespace BossRush
                 _telemetry = new ModeGCombatTelemetry(state, HandleBossDead);
                 _spawnTransaction = new ModeGSpawnTransaction(state);
                 _adaptive = new ModeGAdaptiveCombat(state);
+
+                // 开战前验证并冻结完整奖池；资源不足立即拒绝启动，由入口事务返还道具。
+                // 胜利只按 Resolve 截取，避免九波打完才发现奖励无法构建。
+                _rewardPlan = ModeGRewardTransaction.BuildSlotPlan(state.runSeed,
+                    ModeGAdaptiveCombat.MaxResolveTotal, _host.GetModeGRewardCandidates());
+                if (_rewardPlan == null || _rewardPlan.Count != ModeGRewardTransaction.SlotCount)
+                {
+                    _host.ShowMessage(L10n.T("宿命回响奖励资源不足，本次入场取消并返还道具。",
+                        "Fate Echo rewards are unavailable. Entry cancelled; entry items will be returned."));
+                    return false;
+                }
 
                 ModeGRewardTransaction.ResetRelicReturnGate();
                 ModeGRewardTransaction.InitializeNonces(state.runSeed);
@@ -976,13 +988,13 @@ namespace BossRush
             }
             else if (axis == ModeGCounterAxis.Attribute)
             {
-                // 属性封锁破解：被封锁侧仍保持 >=35% 伤害占比并达血量贡献门槛
+                // 属性封锁破解：相反武器系达到双门槛并直接终结。
                 resolved = _adaptive.IsAttributeAxisBroken(_telemetry, _lastTerminalFamily);
             }
 
             if (axis != ModeGCounterAxis.None)
             {
-                if (resolved && _adaptive.RecordResolve(axis))
+                if (resolved && _telemetry.IsWaveScoreValid && _adaptive.RecordResolve(axis))
                 {
                     if (_state.actIndex >= 0 && _state.actIndex < _resolvesPerAct.Length)
                     {

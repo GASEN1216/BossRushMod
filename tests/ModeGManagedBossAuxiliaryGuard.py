@@ -15,6 +15,7 @@ ModeGManagedBossAuxiliaryGuard — 托管 Boss 主/辅分离守卫（规格 §20
 import os
 import re
 import sys
+from cs_source_util import clean_source
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CONTRACTS = os.path.join(REPO_ROOT, "Utilities", "ManagedBossSpawnContracts.cs")
@@ -23,6 +24,8 @@ PW_SCHEDULER = os.path.join(REPO_ROOT, "Integration", "PhantomWitch",
                             "PhantomWitchAbilityController_PackageScheduler.cs")
 PW_TICKS = os.path.join(REPO_ROOT, "Integration", "PhantomWitch",
                         "PhantomWitchAbilityController_RuntimeTicks.cs")
+PW_ADAPTER = os.path.join(REPO_ROOT, "Integration", "PhantomWitch", "PhantomWitchBoss_ModeGAdapter.cs")
+PW_MINIONS = os.path.join(REPO_ROOT, "Integration", "PhantomWitch", "PhantomWitchAbilityController_Minions.cs")
 
 
 def read(path, errors):
@@ -71,27 +74,23 @@ def main():
             if not re.search(pattern, contracts):
                 errors.append("[{}] 不满足: {}".format(name, desc))
 
-    # 原子提交必须有消费点（激活路径在提交返回 true 后才放行）
-    if contracts:
-        consumer_found = False
-        for dirpath, _, filenames in os.walk(REPO_ROOT):
-            if dirpath.endswith("tests") or os.sep + "tests" in dirpath:
-                continue
-            for f in filenames:
-                if not f.endswith(".cs"):
-                    continue
-                p = os.path.join(dirpath, f)
-                if os.path.abspath(p) == os.path.abspath(CONTRACTS):
-                    continue
-                try:
-                    with open(p, "r", encoding="utf-8", errors="replace") as fh:
-                        if "TryCommitAuxiliaryBeforeActivation" in fh.read():
-                            consumer_found = True
-                except OSError:
-                    continue
-        if not consumer_found:
-            errors.append("[AuxCommitConsumed] TryCommitAuxiliaryBeforeActivation 仅有契约定义，"
-                          "全库无激活前原子提交消费点（随从未走托管辅助提交通道）")
+    # 直接核对生产消费链；扫描整个仓库会进入 Build/、官方源码与 node_modules，
+    # 而任意注释里出现委托名就能假绿，既慢也不能证明激活屏障。
+    adapter = clean_source(read(PW_ADAPTER, errors))
+    minions = clean_source(read(PW_MINIONS, errors))
+    for name, pattern, source in (
+        ("AuxAdapterBinding", r"capturedController\.BindModeGAuxiliaryContract\(\s*"
+         r"ctx\.TryCommitAuxiliaryBeforeActivation,\s*ctx\.OnAuxiliaryReleased\);", adapter),
+        ("AuxDelegateStored", r"_modeGAuxCommit = tryCommitBeforeActivation;\s*"
+         r"_modeGAuxReleased = onReleased;", minions),
+        ("AuxCommitBeforeActivation", r"auxCommitted = _modeGAuxCommit\(minion, ManagedBossRole\.Auxiliary\);"
+         r"[\s\S]{0,500}?if \(!auxCommitted\)\s*\{\s*CleanupSpawnedMinion\(minion\);\s*return;\s*\}"
+         r"\s*_modeGCommittedMinions\.Add\(minion\);\s*\}\s*FinalizeSpawnedMinion\(minion, index\);", minions),
+        ("AuxReleaseOnce", r"if \(!_modeGCommittedMinions\.Remove\(minion\)\) return;\s*"
+         r"if \(_modeGAuxReleased == null\) return;\s*_modeGAuxReleased\(minion, ManagedBossRole\.Auxiliary\);", minions),
+    ):
+        if not re.search(pattern, source):
+            errors.append("[{}] 托管辅助提交/释放生产接线缺失".format(name))
 
     if pw_config:
         if not re.search(r"public const int MaxMinions = 2;", pw_config):

@@ -231,7 +231,7 @@ namespace BossRush
             ModeGCombatTelemetry telemetry, ModeGDistanceVerdict verdict)
         {
             ModeGDistanceVerdict target = GetDistanceTargetBand(verdict);
-            if (telemetry == null || target == ModeGDistanceVerdict.None)
+            if (telemetry == null || !telemetry.IsWaveScoreValid || target == ModeGDistanceVerdict.None)
                 return new ModeGAxisProgress(0f, 0f, false);
 
             float aggregate = telemetry.CombatStartAggregatePrimaryMaxHealth;
@@ -307,7 +307,7 @@ namespace BossRush
         {
             try
             {
-                if (telemetry == null) return -1;
+                if (telemetry == null || !telemetry.IsWaveScoreValid) return -1;
                 if (!telemetry.IsAmmoSampleValid) return -1;
                 if (telemetry.TotalAmmoSamples < AmmoAxisMinSamples) return -1;
 
@@ -380,7 +380,7 @@ namespace BossRush
         /// </summary>
         public static ModeGDirectDamageClass PredictAttributeLockFamily(ModeGCombatTelemetry telemetry)
         {
-            if (telemetry == null || telemetry.TotalDirectDamage <= 0f) return ModeGDirectDamageClass.NotScoreable;
+            if (telemetry == null || !telemetry.IsWaveScoreValid || telemetry.TotalDirectDamage <= 0f) return ModeGDirectDamageClass.NotScoreable;
             if (Math.Abs(telemetry.GunDirectDamage - telemetry.MeleeDirectDamage) < 0.0001f)
                 return ModeGDirectDamageClass.NotScoreable;
             return telemetry.GunDirectDamage > telemetry.MeleeDirectDamage
@@ -458,7 +458,7 @@ namespace BossRush
         public ModeGAxisProgress EvaluateAttributeProgress(ModeGCombatTelemetry telemetry)
         {
             ModeGDirectDamageClass opposite = AttributeBreakFamily;
-            if (telemetry == null || opposite == ModeGDirectDamageClass.NotScoreable)
+            if (telemetry == null || !telemetry.IsWaveScoreValid || opposite == ModeGDirectDamageClass.NotScoreable)
                 return new ModeGAxisProgress(0f, 0f, false);
 
             float aggregate = telemetry.CombatStartAggregatePrimaryMaxHealth;

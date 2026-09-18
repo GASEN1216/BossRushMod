@@ -256,10 +256,7 @@ namespace BossRush
             }
 
             int resolve = module.Adaptive != null ? module.Adaptive.TotalResolve : 0;
-            var plan = ModeGRewardTransaction.BuildSlotPlan(
-                state.runSeed,
-                resolve,
-                host.GetModeGRewardCandidates());
+            var plan = module.BuildVictoryRewardPlan(resolve);
             if (plan == null || plan.Count == 0 ||
                 !ModeGRewardTransaction.Execute(state, host, inventory, plan,
                     (total, succeeded, failed) =>

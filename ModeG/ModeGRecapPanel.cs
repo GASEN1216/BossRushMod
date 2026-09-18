@@ -166,6 +166,7 @@ namespace BossRush
                 DismissActive();
 
                 GameObject root = new GameObject("ModeG_Recap");
+                _activeRoot = root; // 构建中途失败仍由唯一 owner 回收画布。
                 UnityEngine.Object.DontDestroyOnLoad(root);
 
                 Canvas canvas = root.AddComponent<Canvas>();
@@ -201,7 +202,8 @@ namespace BossRush
                     TextAlignmentOptions.Center, ZombieModeUIHelper.TextPrimaryColor);
 
                 // 奖励档 near-miss：当前档件数 + 距下一档还差 X Resolve
-                ZombieModeUIHelper.CreateText("RewardGap", st, ComposeRewardGapLine(resolve),
+                ZombieModeUIHelper.CreateText("RewardGap", st,
+                    victory ? ComposeRewardGapLine(resolve) : L10n.T("本局未通关，无通关奖励。", "Run not cleared; no victory rewards."),
                     18f, new Vector2(0f, 178f), new Vector2(PanelWidth - 80f, 30f),
                     TextAlignmentOptions.Center, ZombieModeUIHelper.TextSecondaryColor);
 
@@ -250,11 +252,11 @@ namespace BossRush
                 RecapAutoClose autoClose = root.AddComponent<RecapAutoClose>();
                 autoClose.remainingSeconds = victory ? VictoryAutoCloseSeconds : DefeatAutoCloseSeconds;
 
-                _activeRoot = root;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ModeG] [WARNING] recap 面板创建失败（降级无面板）: " + e.Message);
+                DismissActive();
             }
         }
 
@@ -278,6 +280,7 @@ namespace BossRush
             {
                 try
                 {
+                    if (BossRushUI.IsGamePaused()) return;
                     remainingSeconds -= Time.unscaledDeltaTime;
                     if (remainingSeconds <= 0f) DismissActive();
                 }

@@ -128,7 +128,9 @@ namespace BossRush
                 return L10n.T("龙王", "Dragon King");
             if (string.Equals(key, ManagedPhantomWitchKey, StringComparison.Ordinal))
                 return L10n.T("幽灵女巫", "Phantom Witch");
-            return key;
+            // official stable key 就是 preset.nameKey；每次取用按当前语言解析。
+            string localized = L10n.T(key);
+            return string.IsNullOrEmpty(localized) || localized == "*" + key + "*" ? key : localized;
         }
 
         #endregion
