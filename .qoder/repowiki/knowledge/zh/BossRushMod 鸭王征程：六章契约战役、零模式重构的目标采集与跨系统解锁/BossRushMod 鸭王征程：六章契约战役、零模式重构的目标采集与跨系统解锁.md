@@ -33,7 +33,7 @@ source_files:
 
 鸭王征程是 mod 的**第一个剧情系统**：一条六章的悬赏契约线，把既有的五个玩法入口
 串成一次调查。玩家在基地建「征程公告板」接约，进指定模式完成特殊目标，回来交付，
-听中间人讲一段，拿到一件「证物」写进官方笔记图鉴，并解锁一处竞技场后山设施。
+听中间人讲一段，拿到一件「证物」写进官方笔记图鉴；前三章各解锁一处竞技场后山设施。
 
 定位与鸭皇图鉴同属「乘法型」内容：不新开模式，而是给已有模式**加一层动机**。
 
@@ -65,7 +65,7 @@ source_files:
 | `CampaignNoteBridge.cs` | 线索接入官方 NoteIndex；**两边都写**（列表 + 字典），fail-open |
 | `CampaignDialoguePlayer.cs` | 交付剧情 + 终章冠军独白：复用 `DialogueManager` 与官方对话 UI 的原生立绘位。**两个说话人各有独立 actor 宿主 GameObject**——`DialogueActorFactory` 的缓存按 GameObject 索引，`Create` 命中缓存时会忽略传入的 actorId/nameKey/portrait，共用宿主会让冠军顶着中间人的名字和立绘说话 |
 | `CampaignBoardBuilder.cs` | 公告板建筑注入（照日报报箱：反射 BuildingInfo、dormant 契约、老档幽灵防护） |
-| `CampaignBoardView.cs` | 公告板面板（走 `Common/UI/BossRushUI.cs` 共享库） |
+| `CampaignBoardView.cs` | 独立公告板面板：共享皮肤、模态输入租约、Esc 和语言刷新；旧宿主入口在 ModeBridge 薄转发 |
 | `CampaignHud.cs` | 局内目标追踪条，未武装时早返；每帧先做零分配脏检查（只比整数与 bool），内容真变了才拼字符串写 TMP |
 | `CampaignFinalBoss.cs` | 终章决战编排：召唤石维护、门禁、变体改造、让路策略、**开战前冠军独白**（`StartCampaignFinalBossPrologueThenSpawnAsync` 先 await 独白再生成 Boss；F3 的 `DebugStartCampaignFinalBossForValidation` 刻意直连 `StartCampaignFinalBossAsync` 绕过独白，否则对话要等玩家点击才 resolve，验收会一路等到超时记 `spawn_timeout`）|
 
@@ -125,11 +125,10 @@ Available。这样调整章节表不需要迁移存档，也不会出现「存�
 ### 3.4 终章：零新增 3D 资产
 
 复用 `SpawnPhantomWitch` 的公开生成 API，生成后叠三层：`ApplyBossStatMultiplier`
-补战役倍率、`localScale` 放大、`MaterialPropertyBlock` 绯红染色（照丧尸模式污染染色）。
+补战役倍率、工厂 `extraModelScale` 在碰撞体缓存前缩放、`MaterialPropertyBlock` 绯红染色。
 官方 preset 在生成流程里已被克隆过一份，改 `nameKey` 只影响这一只。
 
-**门禁**：legacy 生成会写标准竞技场的静态流程状态，因此开战前逐一检查六个模式标志，
-任一激活即拒绝。玩家中途开了模式则战役主动中止让路，而不是去改路牌的 `IsInteractable`。
+**门禁与隔离**：复用女巫工厂的 `isNonWaveSpawn: true`，不登记标准波次；只在终章契约进行中、主玩家存活且场上没有其它模式时显示/允许召唤。玩家中途开了模式则征程取消独白、回收 Boss 并让路，不修改路牌入口。
 
 **用召唤石而非自动开战**：进场即刷 Boss 会抢掉玩家想跑的普通局，而且标准模式要等
 玩家点路牌才置 `bossRushArenaActive`，自动触发恰好卡在那个窗口里。
@@ -264,3 +263,15 @@ SavesSystem 内存里从不落盘。现新增独立的 `_saveFilePending`（欠�
 ## 2026-09-17 无伤目标与可完成路径
 
 CampaignObjectiveCollector 只把正 finalDamage 计为受伤，避免官方零伤害事件误败第一章。CampaignPlayability 链接实际六章数据、追踪器和采集器，覆盖无伤边界、所有章节完成输入、暂停/撤离、非玩家击杀、写入重试与换局。恢复旧受击判定会报错；各模式实机 notify 仍需 L3，不能将目标输入回归当作通关实证。
+
+## 2026-09-18 可玩性与生产接线复核（COMPAT / SAFE）
+
+六章定位保持：标准无伤技巧 → 白手起家近战取舍 → 阵营敌对战斗 → 悬赏后撤离 → 尸潮撤离 → 冠军决战。第二章在活动近战契约下保证走原近战配装入口；共用整备同时服务 E/F，调用必须带 `modeDActive`。第三章保留八名敌方头目，移除十分钟纯等待；敌我关系走官方 `Team.IsEnemy`，友军和中立不计数。未调整奖金、TypeID、存档字段或身份键；达标/已交付旧档继续有效，活动第三章按新目标开始下一局。
+
+完成态冻结，不再次武装或继续增长计数；完成入队失败保留本会话终点事实，离场后仍每秒重试入队，物理保存仍只有共享协调器。换槽清该事实并取消终章、对话及面板；进程崩溃前从未成功写入的事件不具备跨重启保证。
+
+公告板给出入场准备、设施回报和丧尸最早第五波 Boss 后撤离的说明，复用现有模态租约；HUD 脏检查包含语言并按实际文本量高。线索以 Mod 当前槽为权威，修复官方列表已有但字典缺失，并撤回非权威镜像；存档读故障时不以空集撤回。对话 token 沿用共享管理器的 owner 清理，取消旧等待不影响后继会话。
+
+终章生成编号隔离旧成功/旧异常，返回无 Health/已死亡产物也回收。落点复用关卡点和 `SpawnPositionHelper`，召唤石采样至多每秒一次。程序化公告板/召唤石复用现有 URP shader，纹理、sprite、材质与染色工具归 `CampaignAssetCache` 的现有账本；没有另建缓存或调度器。
+
+执行证据：`CampaignPlayability`、`ContentTransactions`；结构接线：`CampaignFlowGuard`。新增内容必须同时维护 JSON、硬编码 fallback 与签名校验，不能承诺只改 JSON 即热扩展。详细范围、失败记录与实机清单见 `docs/代码审查/2026-09-18-鸭王征程生产审核与体验优化.md`。离线结果不证明实战难度、物理/渲染或帧时间。

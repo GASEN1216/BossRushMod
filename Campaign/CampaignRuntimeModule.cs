@@ -101,6 +101,9 @@ namespace BossRush
             try
             {
                 _sceneGeneration++;
+                CampaignObjectiveTracker.ResetSession();
+                CampaignBoardView.Close();
+                CampaignDialoguePlayer.InvalidatePlayback();
 
                 // 场景已换 = 上一场决战无论输赢都结束了。玩家打输时 Boss 随场景销毁、
                 // 死亡回调不会来，只有在这里收尾才能让 campaignFinalBossActive 复位，
@@ -148,6 +151,8 @@ namespace BossRush
                     _owner.TickCampaignModeBridge(deltaTime);
                 }
                 CampaignHud.Tick();
+                CampaignBoardView.Tick();
+                CampaignProgressService.RetryPendingObjectives(unscaledDeltaTime);
                 CampaignSaveCoordinator.Tick();
             }
             catch (Exception e)
@@ -161,6 +166,7 @@ namespace BossRush
         {
             try
             {
+                if (_owner != null) _owner.CleanupCampaignFinalBoss(true);
                 if (_bootstrapped)
                 {
                     // 销毁是最后机会：绕过基地场景闸尽力落一次盘，宁可在战斗帧写一次
@@ -223,9 +229,11 @@ namespace BossRush
                 // 关掉开关也要把已入队的进度落下去，否则玩家刚交付的章节会丢
                 CampaignSaveCoordinator.TryFlushOnHostDestroy();
                 CampaignSaveCoordinator.ShutdownSubscription();
+                if (_owner != null) _owner.CleanupCampaignFinalBoss(true);
                 CampaignObjectiveTracker.ResetSession();
                 CampaignProgressService.ResetStaticCaches();
                 CampaignBoardView.Close();
+                CampaignDialoguePlayer.InvalidatePlayback();
                 CampaignHud.ResetStaticCaches();
                 // 必须复位解锁契约：否则关掉战役后，后山仍能查到 token 并保持设施可见，
                 // 违反「关闭即 dormant」。同时清掉装载标记，让查询回到 fail-closed。

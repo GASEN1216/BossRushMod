@@ -165,6 +165,7 @@ namespace BossRush
         public static void DevLog(string text) { }
         public static void CriticalLog(string text) { throw new Exception(text); }
         public void ShowMessage(string text) { }
+        public void CleanupCampaignFinalBoss(bool destroyBoss) { }
         public bool IsBackMountainConfiguredEnabled() { return true; }
     }
     static class L10n { public static string T(string cn, string en) { return en; } }
@@ -186,6 +187,8 @@ namespace BossRush
         public static void LoadGrantedTokens(IEnumerable<string> keys) { }
     }
     static class CampaignObjectiveTracker { public static void ResetSession() { } }
+    static class CampaignDialoguePlayer { public static void InvalidatePlayback() { } }
+    static class CampaignBoardView { public static void Close() { } }
     static class DailyReportTuning { public const string LogPrefix = "DailyReport"; }
     class DailyReportData
     {

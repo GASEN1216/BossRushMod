@@ -23,7 +23,7 @@ EXPECTED_COUNTS = {
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
-    "Campaign": 15,
+    "Campaign": 16,
     "Audio": 9,
     "ModeF": 6,
     "Patches": 8,
@@ -35,7 +35,7 @@ EXPECTED_COUNTS = {
     "DebugAndTools": 1,
 }
 
-EXPECTED_TOTAL = 414
+EXPECTED_TOTAL = 415
 
 
 def fail(message: str) -> int:

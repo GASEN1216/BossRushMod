@@ -164,11 +164,13 @@ namespace BossRush
 
                 byte[] bytes = File.ReadAllBytes(iconPath);
                 Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                CampaignAssetCache.Own(texture);
                 if (!texture.LoadImage(bytes)) return;
                 campaignBoardIcon = Sprite.Create(
                     texture,
                     new Rect(0f, 0f, texture.width, texture.height),
                     new Vector2(0.5f, 0.5f));
+                CampaignAssetCache.Own(campaignBoardIcon);
             }
             catch (Exception e)
             {
@@ -218,8 +220,8 @@ namespace BossRush
         {
             try
             {
-                Shader shader = Shader.Find("Unlit/Color");
-                if (shader == null) shader = Shader.Find("Standard");
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Simple Lit");
 
                 Color post = new Color(0.36f, 0.26f, 0.17f, 1f);
                 Color board = new Color(0.52f, 0.38f, 0.24f, 1f);
@@ -282,6 +284,7 @@ namespace BossRush
                 if (renderer != null && shader != null)
                 {
                     Material material = new Material(shader);
+                    CampaignAssetCache.Own(material);
                     material.color = color;
                     renderer.material = material;
                 }

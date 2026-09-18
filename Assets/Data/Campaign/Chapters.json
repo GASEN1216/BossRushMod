@@ -22,7 +22,7 @@
       "titleCN": "白手起家的誓言",
       "titleEN": "Vow of the Empty-Handed",
       "objectives": [
-        { "type": "reach_wave", "threshold": 5, "descCN": "裸装打到第 5 波", "descEN": "Reach wave 5 from nothing" },
+        { "type": "reach_wave", "threshold": 5, "descCN": "白手起家打到第 5 波", "descEN": "Reach wave 5 from nothing" },
         { "type": "melee_kills", "threshold": 5, "descCN": "近战送走 5 个", "descEN": "Put down 5 with melee" }
       ],
       "rewardCash": 35000,
@@ -36,8 +36,7 @@
       "titleCN": "立旗为界",
       "titleEN": "Planting the Banner",
       "objectives": [
-        { "type": "faction_boss_kills", "threshold": 8, "descCN": "击败 8 名头目", "descEN": "Defeat 8 bosses" },
-        { "type": "survive_minutes", "threshold": 10, "descCN": "在场上撑满 10 分钟", "descEN": "Stay on the field a full 10 minutes" }
+        { "type": "faction_boss_kills", "threshold": 8, "descCN": "击败 8 名敌方头目", "descEN": "Defeat 8 hostile bosses" }
       ],
       "rewardCash": 50000,
       "facilityToken": "BossRush_Campaign_Unlock_Ch3",

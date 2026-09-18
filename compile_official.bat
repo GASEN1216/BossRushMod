@@ -241,6 +241,7 @@ echo(DebugAndTools\SkyIsland\SkyIslandWorldStoryServices.cs
 echo(DebugAndTools\SkyIsland\SkyIslandFrameProfile.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossRules.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossForge.cs
+echo(DebugAndTools\SkyIsland\SkyIslandBossVoice.cs
 echo(DebugAndTools\SkyIsland\SkyIslandBossLoot.cs
 echo(DebugAndTools\SkyIsland\SkyIslandForemanBoss.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStargazerChief.cs

@@ -2,14 +2,14 @@
 // CampaignTuning.cs - 鸭王征程数值与标识常量单点（M0 骨架）
 // ============================================================================
 // 归位依据 AGENTS.md 4.8「Config 三层归位」第 2 层：玩法强耦合常量放模块配置类。
-// 只有入口总开关 campaignEnabled 走 Config/Config.cs + ModConfig（第 1 层），
+// 内部兼容开关 campaignEnabled 走 Config；玩家侧内容恒开，
 // 章节内容表走 Assets/Data/Campaign/*.json（第 3 层），其余常量一律在这里。
 //
 // 【冻结契约】以下常量进入存档键、跨系统 token 与官方笔记键，发布后不得改名：
 //   - ProgressSaveKey、FacilityTokenPrefix、BoardBuildingId、NoteKeyPrefix
 //   登记见 docs/contracts.md。
 //
-// 【数值待 owner 审定】终章倍率、章节奖金、公告板造价均为草案，改动只需改本文件。
+// 现行终章倍率与公告板造价在此集中维护；战斗手感仍需实机采样。
 // ============================================================================
 
 using UnityEngine;
@@ -61,19 +61,19 @@ namespace BossRush
 
         #endregion
 
-        #region 公告板（草案，待 owner 审定）
+        #region 公告板
 
         /// <summary>公告板建造费用。</summary>
         internal const int BoardBuildCost = 500;
 
         #endregion
 
-        #region 终章 Boss 变体（草案，待 owner 审定）
+        #region 终章 Boss 变体
 
         /// <summary>终章 Boss 在其自身生成倍率之上再叠加的战役倍率。</summary>
         internal const float FinalBossStatMultiplier = 1.6f;
 
-        /// <summary>终章 Boss 体型放大系数。纯视觉，不影响碰撞判定口径。</summary>
+        /// <summary>终章 Boss 体型放大系数。在生成时应用，让模型与碰撞器初始化保持一致。</summary>
         internal const float FinalBossScale = 1.15f;
 
         /// <summary>终章 Boss 染色（绯红）。走 MaterialPropertyBlock，不改共享材质。</summary>

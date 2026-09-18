@@ -1,6 +1,6 @@
 # 内容资产事务回归
 
-运行：`python tests/fixtures/ContentTransactions/run.py`。需要 .NET 8 SDK，不需要游戏 DLL，不接触游戏存档。项目、抽取方法、编译产物及源码 SHA-256 均写到 `Build/content-transactions/`；失败返回非零退出码。
+运行：`python tools/run_runtime_regressions.py --filter ContentTransactions`。需要 .NET 8 SDK，不需要游戏 DLL，不接触游戏存档。项目、抽取方法、编译产物及源码 SHA-256 均写到 `Build/content-transactions/`；失败返回非零退出码。
 
 覆盖五项修复（`COMPAT`）：战役奖金与 Completed 同盘、日报悬赏奖金与 claimed 同盘、凝蛋单候选 Bundle、实体蛋消费与孵化统计提交、餐食官方二次门禁后的扣量补偿。
 
@@ -20,3 +20,5 @@
 同日直接链接完整 `ShowcaseService.cs`：满柜 Q5→Q8 原位升级（原加成公式不变）、重复/自产/低品质
 拒绝、存档拒写与 Save 后回读失败时同时恢复内存及官方缓存、重新加载和明确撤销入口的后端事务。
 属性挂载为替身，不证明 Unity 界面布局；可见按钮接线由 `BackMountainStructureGuard` 钉住。
+
+2026-09-18 征程增补：目标全部完成的入队失败事实由真实 `CampaignProgressService` 保留；局内追踪 Reset 后仍能重试，同帧重复通知不重复完成，已达标不可被放弃，切槽丢弃旧槽的未入队事实。Boss 清理、面板关闭和对话取消在本夹具中是宿主替身；终章异步与取消生命周期由 `CampaignPlayability` 覆盖。只验证本进程保留并补交事实，不承诺进程在写入失败期间崩溃还能恢复这条未持久化事件。

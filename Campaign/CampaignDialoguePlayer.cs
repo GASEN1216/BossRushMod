@@ -16,6 +16,7 @@
 
 using System;
 using Cysharp.Threading.Tasks;
+using System.Threading;
 using NodeCanvas.DialogueTrees;
 using UnityEngine;
 
@@ -50,6 +51,28 @@ namespace BossRush
         /// 顶着中间人的名字和立绘说话。
         /// </summary>
         private static GameObject _championActorHost;
+        private static int _playbackGeneration;
+        private static CancellationTokenSource _playbackCancellation;
+
+        internal static void InvalidatePlayback()
+        {
+            _playbackGeneration++;
+            CancellationTokenSource previous = _playbackCancellation;
+            _playbackCancellation = null;
+            if (previous == null) return;
+            try { previous.Cancel(); }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 取消征程对话失败: " + e.Message);
+            }
+            finally { previous.Dispose(); }
+        }
+
+        private static CancellationToken PlaybackToken()
+        {
+            if (_playbackCancellation == null) _playbackCancellation = new CancellationTokenSource();
+            return _playbackCancellation.Token;
+        }
 
         /// <summary>章节交付后的剧情。fire-and-forget：不阻塞交付流程。</summary>
         internal static void PlayChapterDelivered(CampaignChapterDef def)
@@ -67,6 +90,7 @@ namespace BossRush
 
         private static async UniTask PlayChapterDeliveredAsync(CampaignChapterDef def)
         {
+            int generation = _playbackGeneration;
             try
             {
                 LocalizationHelper.InjectLocalization(
@@ -79,16 +103,18 @@ namespace BossRush
                     ModBehaviour.Instance?.ShowMessage(
                         L10n.T("契约已交付：", "Contract handed in: ")
                         + L10n.T(def.TitleCN, def.TitleEN));
+                    CampaignNoteBridge.UnlockClue(def.ClueId);
                     return;
                 }
 
                 string[][] lines = BuildLinesForChapter(def);
                 await DialogueManager.ShowDialogueSequenceBilingual(
-                    actor, lines, "BossRush_Campaign_" + def.ChapterId);
+                    actor, lines, "BossRush_Campaign_" + def.ChapterId, PlaybackToken());
 
                 // 剧情播完再解锁线索：先看故事，再拿到"证物"，顺序符合叙事
-                CampaignNoteBridge.UnlockClue(def.ClueId);
+                if (generation == _playbackGeneration) CampaignNoteBridge.UnlockClue(def.ClueId);
             }
+            catch (OperationCanceledException) { }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 交付剧情异常: " + e.Message);
@@ -122,13 +148,12 @@ namespace BossRush
                 }
 
                 await DialogueManager.ShowDialogueSequenceBilingual(
-                    actor, BuildFinalBossPrologueLines(), "BossRush_Campaign_FinalBossPrologue");
+                    actor, BuildFinalBossPrologueLines(), "BossRush_Campaign_FinalBossPrologue", PlaybackToken());
             }
+            catch (OperationCanceledException) { throw; }
             catch (Exception e)
             {
-                // 对话中途抛异常会把输入禁用令牌留在 DisableInput 状态（玩家卡住不能动），
-                // 强制收场是既有 NPC 对话的同款兜底。
-                DialogueManager.ForceEndDialogue();
+                // 共享对话管理器按 owner 收尾；这里不能关闭随后开始的其他对话。
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);
             }
         }
@@ -299,6 +324,7 @@ namespace BossRush
         /// <summary>宿主销毁时的静态缓存复位。</summary>
         internal static void ResetStaticCaches()
         {
+            InvalidatePlayback();
             try
             {
                 if (_actorHost != null)

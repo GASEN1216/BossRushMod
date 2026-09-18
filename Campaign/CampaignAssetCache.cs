@@ -44,6 +44,14 @@ namespace BossRush
 
         private static AssetBundle _bundle;
         private static bool _bundleLoadAttempted;
+        private static Material _altarMaterial;
+        /// <summary>染色用的属性块。复用一份，避免每个 renderer 新建。</summary>
+        private static readonly MaterialPropertyBlock campaignFinalBossColorBlock = new MaterialPropertyBlock();
+
+        private static readonly int CampaignBossColorProperty = Shader.PropertyToID("_Color");
+        private static readonly int CampaignBossTintColorProperty = Shader.PropertyToID("_TintColor");
+        private static readonly int CampaignBossBaseColorProperty = Shader.PropertyToID("_BaseColor");
+
 
         /// <summary>资源名 → Sprite。null 值也缓存，避免反复打盘找不存在的文件。</summary>
         private static readonly Dictionary<string, Sprite> _sprites =
@@ -55,6 +63,45 @@ namespace BossRush
         #endregion
 
         #region 查询
+
+        internal static void SetRendererColor(Renderer renderer, Color color)
+        {
+            if (renderer == null) return;
+
+            renderer.GetPropertyBlock(campaignFinalBossColorBlock);
+            Material sharedMaterial = renderer.sharedMaterial;
+            if (sharedMaterial != null && sharedMaterial.HasProperty(CampaignBossColorProperty))
+            {
+                campaignFinalBossColorBlock.SetColor(CampaignBossColorProperty, color);
+            }
+            else if (sharedMaterial != null && sharedMaterial.HasProperty(CampaignBossTintColorProperty))
+            {
+                campaignFinalBossColorBlock.SetColor(CampaignBossTintColorProperty, color);
+            }
+            else
+            {
+                campaignFinalBossColorBlock.SetColor(CampaignBossBaseColorProperty, color);
+            }
+
+            renderer.SetPropertyBlock(campaignFinalBossColorBlock);
+        }
+
+        internal static void Own(UnityEngine.Object resource)
+        {
+            if (resource != null) _ownedObjects.Add(resource);
+        }
+
+        /// <summary>召唤石共用一份 URP 材质；颜色用属性块，卸载由本缓存统一回收。</summary>
+        internal static Material GetAltarMaterial()
+        {
+            if (_altarMaterial != null) return _altarMaterial;
+            Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+            if (shader == null) shader = Shader.Find("Universal Render Pipeline/Simple Lit");
+            if (shader == null) return null;
+            _altarMaterial = new Material(shader);
+            _ownedObjects.Add(_altarMaterial);
+            return _altarMaterial;
+        }
 
         /// <summary>中间人立绘。缺失返回 null（对话会自动隐藏立绘位）。</summary>
         internal static Sprite GetBrokerPortrait()
@@ -224,6 +271,7 @@ namespace BossRush
             }
 
             _sprites.Clear();
+            _altarMaterial = null;
             _bundleLoadAttempted = false;
         }
 

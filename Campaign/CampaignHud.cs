@@ -39,6 +39,7 @@ namespace BossRush
         /// 与下面两个数组一起构成**零分配脏检查**：只有内容真的变了才拼字符串。
         /// </summary>
         private static string _shownChapterId;
+        private static bool _shownChinese;
 
         /// <summary>上一次写进 TMP 时各目标的计数。容器复用，比对不分配。</summary>
         private static readonly List<int> _shownCurrent = new List<int>();
@@ -111,7 +112,13 @@ namespace BossRush
                 if (_titleText != null) _titleText.text = title;
 
                 string body = BuildBody();
-                if (_bodyText != null) _bodyText.text = body;
+                if (_bodyText != null)
+                {
+                    _bodyText.text = body;
+                    float height = BossRushUI.MeasureTextHeight(_bodyText, 356f, 36f);
+                    ((RectTransform)_panel.transform).SetSizeWithCurrentAnchors(
+                        RectTransform.Axis.Vertical, 52f + height + 14f);
+                }
             }
             catch (Exception)
             {
@@ -125,6 +132,7 @@ namespace BossRush
         private static bool HasProgressChanged(CampaignChapterDef def)
         {
             if (!string.Equals(_shownChapterId, def.ChapterId, StringComparison.Ordinal)) return true;
+            if (_shownChinese != L10n.IsChinese) return true;
 
             IList<CampaignObjectiveProgress> progress = CampaignObjectiveTracker.Progress;
             if (_shownCurrent.Count != progress.Count) return true;
@@ -144,6 +152,7 @@ namespace BossRush
         private static void CaptureProgressSnapshot(CampaignChapterDef def)
         {
             _shownChapterId = def.ChapterId;
+            _shownChinese = L10n.IsChinese;
             _shownCurrent.Clear();
             _shownFailed.Clear();
 
@@ -206,7 +215,7 @@ namespace BossRush
                 _panel = ZombieModeUIHelper.CreateRect(
                     "CampaignHud", _canvas.transform,
                     new Vector2(1f, 1f), new Vector2(1f, 1f),
-                    new Vector2(-24f, -110f), new Vector2(300f, 96f),
+                    new Vector2(-24f, -110f), new Vector2(380f, 100f),
                     new Vector2(1f, 1f));
 
                 Image background = _panel.AddComponent<Image>();
@@ -217,7 +226,7 @@ namespace BossRush
                 _titleText = ZombieModeUIHelper.CreateText(
                     "Title", _panel.transform, string.Empty, 15f,
                     new Vector2(0f, 1f), new Vector2(1f, 1f),
-                    new Vector2(0f, -16f), new Vector2(-20f, 22f),
+                    new Vector2(0f, -24f), new Vector2(-24f, 40f),
                     TextAlignmentOptions.Left, BossRushUIColors.Accent);
                 _titleText.raycastTarget = false;
                 BossRushUI.ApplyGameFont(_titleText);
@@ -225,8 +234,9 @@ namespace BossRush
                 _bodyText = ZombieModeUIHelper.CreateText(
                     "Body", _panel.transform, string.Empty, 13f,
                     new Vector2(0f, 1f), new Vector2(1f, 1f),
-                    new Vector2(0f, -56f), new Vector2(-20f, 56f),
+                    new Vector2(0f, -52f), new Vector2(-24f, 36f),
                     TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+                _bodyText.rectTransform.pivot = new Vector2(0.5f, 1f);
                 _bodyText.raycastTarget = false;
                 BossRushUI.ApplyGameFont(_bodyText);
             }

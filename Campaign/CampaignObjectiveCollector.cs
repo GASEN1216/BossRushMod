@@ -47,6 +47,8 @@ namespace BossRush
                 if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
 
                 CharacterMainControl victim = target.TryGetCharacter();
+                // 只奖励战斗：盟友、雇员、宠物与中立角色不能刷契约进度。
+                if (victim == null || !Team.IsEnemy(info.fromCharacter.Team, victim.Team)) return;
                 bool isBoss = victim != null && victim.isBossCharacter;
                 bool isMelee = IsMeleeWeapon(info.fromWeaponItemID);
                 bool hasBounty = isBoss && HasBountyMark(victim);

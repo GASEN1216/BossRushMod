@@ -80,8 +80,9 @@ namespace BossRush
                     GiveRandomHelmet(main);
                 }
 
-                // 5. 发放近战武器（随机给，40%概率）
-                if (UnityEngine.Random.value > 0.6f)
+                // 5. 默认 40%；征程近战契约进行中时保证提供任务工具，复用同一配装流程。
+                if (UnityEngine.Random.value > 0.6f
+                    || (modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit()))
                 {
                     GiveRandomMeleeWeapon(main);
                 }

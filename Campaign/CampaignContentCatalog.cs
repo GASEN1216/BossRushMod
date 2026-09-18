@@ -6,12 +6,11 @@
 //
 // 【为什么必须有硬编码 fallback】
 //   数据表读不到就没有章节，玩家点开公告板会看到空面板——这是玩家可见故障。
-//   硬编码兜底保证「即使 JSON 丢了/坏了，战役照样能玩」，JSON 只负责让策划改数值
-//   不用重新编译。校验不过时**整表回退**，不做逐条挑拣：半张表比没有表更难排查。
+//   硬编码兜底保证「即使 JSON 丢了/坏了，战役照样能玩」，JSON 与硬编码签名必须同步更新，避免部署旧表。校验不过时**整表回退**，不做逐条挑拣：半张表比没有表更难排查。
 //
-// 【数值均为草案，待 owner 审定】
+// 【现行数值】
 //   章节奖金 2 万 → 20 万递增（参照成就系统约 1676 万的总奖金量级取的保守值）。
-//   目标阈值取自方案的六章设计。改动只需改本文件或 JSON，不影响任何结构。
+//   2026-09-18 保留奖金与战斗门槛，第三章移除无额外决策价值的等待门。
 // ============================================================================
 
 using System;
@@ -98,6 +97,32 @@ namespace BossRush
                 if (_chapters[i].Order == order) return _chapters[i];
             }
             return null;
+        }
+
+        internal static string GetEntryHint(string mode)
+        {
+            switch (mode)
+            {
+                case CampaignContentCatalog.ModeStandard:
+                    return L10n.T("带装备和船票入场，路牌选择标准难度；前两波先求稳；交付解锁后山菜地。",
+                        "Enter with gear and a ticket; choose a standard tier at the sign. Play the first two waves safely; hand in to unlock the garden.");
+                case CampaignContentCatalog.ModeModeD:
+                    return L10n.T("只带船票入场（含宠物背包清空），局内可正常穿戴；用开局近战武器积累击杀；交付解锁展示柜。",
+                        "Enter with only a ticket, including an empty pet bag. Equip loot freely; use the starter melee weapon for kills. Hand in to unlock the showcase.");
+                case CampaignContentCatalog.ModeModeE:
+                    return L10n.T("带船票和营旗入场，选择阵营后击败敌方头目；击杀达标即可回去交付，解锁点唱机战歌。",
+                        "Enter with a ticket and faction banner. Defeat hostile bosses; hand in as soon as the tally is met to unlock jukebox battle tracks.");
+                case CampaignContentCatalog.ModeModeF:
+                    return L10n.T("带船票和血猎收发器入场；猎取三名悬赏目标后完成模式撤离。",
+                        "Enter with a ticket and Bloodhunt Transceiver. Kill three marked targets, then use the mode's extraction.");
+                case CampaignContentCatalog.ModeZombie:
+                    return L10n.T("使用尸潮邀请函出发；第 4 波是进度门槛，最早在第 5 波 Boss 战后撤离。",
+                        "Use a Zombie Invitation. Wave 4 meets the wave goal; the first extraction follows the wave 5 Boss.");
+                case CampaignContentCatalog.ModeFinal:
+                    return L10n.T("带装备和船票进竞技场，不带其它模式信物；先别开路牌，交互身边的召唤石。",
+                        "Enter the arena with gear and a ticket, without other mode tokens. Use the nearby altar before starting the sign.");
+                default: return string.Empty;
+            }
         }
 
         #region 装载
@@ -393,16 +418,14 @@ namespace BossRush
             list.Add(MakeChapter(
                 "ch2", 2, ModeModeD, "白手起家的誓言", "Vow of the Empty-Handed", 35000, 2, "clue_ch2",
                 MakeObjective(CampaignObjectiveKind.ReachWave, 5,
-                    "裸装打到第 5 波", "Reach wave 5 from nothing"),
+                    "白手起家打到第 5 波", "Reach wave 5 from nothing"),
                 MakeObjective(CampaignObjectiveKind.MeleeKills, 5,
                     "近战送走 5 个", "Put down 5 with melee")));
 
             list.Add(MakeChapter(
                 "ch3", 3, ModeModeE, "立旗为界", "Planting the Banner", 50000, 3, "clue_ch3",
                 MakeObjective(CampaignObjectiveKind.FactionBossKills, 8,
-                    "击败 8 名头目", "Defeat 8 bosses"),
-                MakeObjective(CampaignObjectiveKind.SurviveMinutes, 10,
-                    "在场上撑满 10 分钟", "Stay on the field a full 10 minutes")));
+                    "击败 8 名敌方头目", "Defeat 8 hostile bosses")));
 
             list.Add(MakeChapter(
                 "ch4", 4, ModeModeF, "猎杀名单", "The Kill List", 75000, 4, "clue_ch4",

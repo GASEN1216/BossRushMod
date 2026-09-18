@@ -3889,3 +3889,66 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 
 
 Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产源码夹具19 PASS、三个守卫10次反向验证全部按预期转红并逐字还原。CR-2026-09-18-009同时补齐HUD与结算页画布构建异常的owner回收。CR-2026-09-18-011的守卫本身已完成L2验证；其守护的真实女巫激活/回收仍待L3。隔离基线加本轮Mode G修改已正式编译成功；全工作区编译/守卫受并行新武器开发影响未全绿。详情与人工清单见上述报告。
+
+## 2026-09-18 鸭王征程生产审核与体验优化
+
+来源：owner 要求全面审核并优化。以下为当前代码确认并已修复的问题；未做 L3，完整范围与验收见 `docs/代码审查/2026-09-18-鸭王征程生产审核与体验优化.md`。第三章去等待属于体验取舍，不列为缺陷。
+
+### CR-2026-09-18-026 · P1 / COMPAT · 终章异步生成未与标准波次隔离，旧失败可清掉后继挑战
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignFinalBoss.cs`。
+- 原因与修复：原工厂未传 isNonWaveSpawn，使用默认波次登记；旧请求 catch 无条件清理。现在走原工厂非波次路径，成功/异常都校验生成编号；死亡、让路、切槽、卸载回收，取消独白等待。
+- 验证：L1/L2：真实编排抽取回归、非波次/旧异常/取消反向探针。
+
+### CR-2026-09-18-027 · P1 / COMPAT · 目标终点入队失败后会随离场丢失重试机会
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignProgressService.cs`。
+- 原因与修复：原目标完成只依赖局内追踪再次通知，终章死亡后立刻 ResetSession，一次性事件无法重发。服务保存会话内未入队事实，每秒重试；待交付和已达标未入队均不允许放弃，切槽清旧事实。
+- 验证：L1/L2：ContentTransactions 执行一次终点、离场重试、切槽和重复操作；重试早返变异转红。
+
+### CR-2026-09-18-028 · P2 / COMPAT · 待交付章节可被重新武装，完成计数继续变化
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignObjectiveTracker.cs`。
+- 原因与修复：原 EnsureArmedFor 只认活动章节定义，ReadyToDeliver 仍被 GetActiveChapterDef 返回；计数与无伤判断在完成后继续消费事件。改为只武装 ContractActive，完成冻结、计数封顶，并重置同模式新局的波次观察。
+- 验证：L1/L2：真实追踪器与模式桥覆盖；重新武装变异转红。
+
+### CR-2026-09-18-029 · P2 / COMPAT · 敌方目标未按实际敌我关系过滤
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignObjectiveCollector.cs`。
+- 原因与修复：原主玩家致命一击通过后直接统计，未排除友军与中立头目。复用官方 Team.IsEnemy，拒绝非敌对受害者，保留模式现有击杀归属。
+- 验证：L1/L2：友军/中立/敌对回归，移除敌对门控变异转红。
+
+### CR-2026-09-18-030 · P2 / COMPAT · 第二章近战目标缺少稳定开局工具
+
+- 状态：Fixed，待 L3。
+- 位置：`ModeD/ModeDEquipment_StarterKit.cs`。
+- 原因与修复：原近战武器只有 40% 开局概率，而契约要求五次近战击杀且入场禁止自带装备。仅 ModeD 活动近战契约保证调用原近战配装；其它模式共用整备不获得这个保证，待交付也不触发。
+- 验证：L1/L2：实际入口接线、契约判据回归、移除 ModeD 限定的反向探针；物品实例化仍待 L3。
+
+### CR-2026-09-18-031 · P2 / COMPAT · 公告板未取得模态输入，HUD 语言与高度未随内容更新
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignBoardView.cs、Campaign/CampaignHud.cs`。
+- 原因与修复：原建 Canvas 只提供 Raycaster；模态界面未占有输入，HUD 脏检查不含语言且固定高度。复用 ModalInputLease 并在 Esc/销毁/切槽释放；语言参与脏检查、正文实测量高；待交付和失败反馈明确。
+- 验证：L1；L2 结构接线及模态/语言反向探针。实际输入栈、渲染和双语布局待 L3。
+
+### CR-2026-09-18-032 · P2 / COMPAT · 线索镜像可残留旧槽状态，旧对话等待未取消
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignNoteBridge.cs、Campaign/CampaignDialoguePlayer.cs`。
+- 原因与修复：原注册只补新条目的字典，解锁只向官方单向追加；常驻 actor 的异步对话可跨槽继续。改为权威存档双向校正列表/字典/解锁，读故障不反锁；共享取消 token 与代际门保护交付反馈。
+- 验证：L1/L2：真实 Note 桥回归、取消方法/终章编排、共享 DialogueManager 回归及反向探针；官方图鉴界面待 L3。
+
+### CR-2026-09-18-033 · P2 / COMPAT · 程序化资源缺少完整归属，重复创建/卸载可残留材质和图标
+
+- 状态：Fixed，待 L3。
+- 位置：`Campaign/CampaignAssetCache.cs、Campaign/CampaignBoardBuilder.cs`。
+- 原因与修复：召唤石子件原分别 new Material，公告板运行时图标与材质未进入统一账本。共用现有 AssetCache 的材质和 ownedObjects，运行时纹理/sprite/材质随 owner 回收，染色工具从宿主原样移入资源类型；无新增缓存或调度器。
+- 验证：L1：分配与销毁路径核对；L2 资源归属接线守卫。实际 Unity 对象回收与帧耗待 L3。
+
+
+提交集成补记（OPERATIONAL，L1/L2）：上游 f3d28dc 新增 SkyIslandBossVoice.cs 未登记 compile_official.bat，当前 HEAD 的 BossForge 已引用它；由 OfficialCompileListFileExistenceGuard 可直接检出。本次仅补显式编译清单一行，使新提交可独立构建，不改该模块玩法。

@@ -28,13 +28,6 @@ namespace BossRush
     /// <summary>线索 → 官方笔记图鉴的桥。</summary>
     internal static class CampaignNoteBridge
     {
-        #region 状态
-
-        /// <summary>本会话已注册进官方图鉴的 note key，避免重复注册。</summary>
-        private static readonly HashSet<string> _registeredKeys = new HashSet<string>(StringComparer.Ordinal);
-
-        #endregion
-
         /// <summary>线索 ID → 官方 note key。</summary>
         internal static string BuildNoteKey(string clueId)
         {
@@ -79,38 +72,44 @@ namespace BossRush
                 List<Note> notes = index.Notes;
                 if (notes == null) return;
 
-                // 场景重载后官方实例会重建，_registeredKeys 里的记录就过期了——
-                // 因此判重必须看真实列表，不能只信本地集合。
-                bool present = false;
+                // 场景重载后官方实例会重建，直接以真实列表判重。
+                Note note = null;
                 for (int i = 0; i < notes.Count; i++)
                 {
                     Note existing = notes[i];
                     if (existing == null) continue;
                     if (string.Equals(existing.key, key, StringComparison.Ordinal))
                     {
-                        present = true;
+                        note = existing;
                         break;
                     }
                 }
 
-                if (!present)
+                if (note == null)
                 {
-                    Note note = new Note();
+                    note = new Note();
                     note.key = key;
                     note.image = CampaignAssetCache.GetChapterPoster(def.Order);
                     note.hide = false;
 
                     // 两边都写：列表决定界面能不能列出来，字典决定按 key 查得到
                     notes.Add(note);
-                    NoteIndex.SetNoteDynamic(note);
-                    _registeredKeys.Add(key);
                 }
+                // 列表已有条目也补字典：上一次注册可能在 Add 后中断。
+                NoteIndex.SetNoteDynamic(note);
 
-                // 已在战役存档里解锁的线索，同步标进官方解锁集（官方按槽自持久化）
-                if (CampaignProgressService.IsClueUnlocked(def.ClueId)
-                    && !NoteIndex.GetNoteUnlocked(key))
+                bool ours = CampaignProgressService.IsClueUnlocked(def.ClueId);
+                bool theirs = NoteIndex.GetNoteUnlocked(key);
+                // 存档暂不可读时不能拿默认空集收回已取得线索。
+                if (CampaignPersistence.HasWriteBarrier || CampaignPersistence.IsStoreFaulted) return;
+                if (ours && !theirs)
                 {
                     NoteIndex.SetNoteUnlocked(key);
+                }
+                else if (!ours && theirs && index.UnlockedNotes.Remove(key))
+                {
+                    Action<string> changed = NoteIndex.onNoteStatusChanged;
+                    if (changed != null) changed(key);
                 }
             }
             catch (Exception e)
@@ -129,13 +128,10 @@ namespace BossRush
             if (string.IsNullOrEmpty(clueId)) return;
             try
             {
+                if (!CampaignProgressService.IsClueUnlocked(clueId)) return;
                 EnsureNotesRegistered();
-
                 string key = BuildNoteKey(clueId);
-                if (!string.IsNullOrEmpty(key) && !NoteIndex.GetNoteUnlocked(key))
-                {
-                    NoteIndex.SetNoteUnlocked(key);
-                }
+                if (NoteIndex.Instance == null || !NoteIndex.GetNoteUnlocked(key)) return;
 
                 ModBehaviour.Instance?.ShowMessage(
                     L10n.T("已获得新线索，可在笔记中查看", "New clue acquired — check your notes"));
@@ -149,7 +145,7 @@ namespace BossRush
 
         internal static void ResetStaticCaches()
         {
-            _registeredKeys.Clear();
+            // 无静态镜像：每次都核对官方列表与当前槽的权威状态。
         }
     }
 }

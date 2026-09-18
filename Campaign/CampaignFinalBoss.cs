@@ -5,12 +5,8 @@
 //   数值倍率（ApplyBossStatMultiplier）+ 体型放大 + MaterialPropertyBlock 染色。
 // 官方 preset 在生成流程里已被克隆过一份，改 nameKey 只影响这一只，不污染 Boss 池。
 //
-// 【门禁：为什么必须「无任何模式激活」才能开战】
-//   生成走的是 legacy 路径，会写 currentBoss / currentWaveBosses 这些标准竞技场
-//   的静态流程状态。标准流程只在 bossRushArenaActive 为真时消费它们，
-//   所以空手开战是安全的；但反过来，如果玩家已经在跑某个模式，
-//   我们的 Boss 就会被那个模式的波次逻辑当成自己的敌人算进去。
-//   因此开战前逐一检查六个模式标志，任一激活即拒绝。
+// 复用女巫的 isNonWaveSpawn，不写标准竞技场追踪；仍要求场上没有其它模式，
+// 避免玩家同时承担两场战斗。生成编号负责拒收迟到结果。
 //
 // 【让路策略】
 //   玩家在决战途中开了标准竞技场：战役主动中止并清理自己的 Boss，
@@ -54,12 +50,6 @@ namespace BossRush
         /// <summary>上次计算出的「当前场景是竞技场」结果。</summary>
         private bool campaignArenaSceneIsValid;
 
-        /// <summary>染色用的属性块。复用一份，避免每个 renderer 新建。</summary>
-        private readonly MaterialPropertyBlock campaignFinalBossColorBlock = new MaterialPropertyBlock();
-
-        private static readonly int CampaignBossColorProperty = Shader.PropertyToID("_Color");
-        private static readonly int CampaignBossTintColorProperty = Shader.PropertyToID("_TintColor");
-        private static readonly int CampaignBossBaseColorProperty = Shader.PropertyToID("_BaseColor");
         private int campaignFinalBossDeathPresentationCount;
 
         #endregion
@@ -81,23 +71,8 @@ namespace BossRush
         /// </summary>
         internal bool CanStartCampaignFinalBoss()
         {
-            try
-            {
-                if (!IsCampaignConfiguredEnabled()) return false;
-                if (campaignFinalBossActive) return false;
-
-                CampaignChapterDef def = CampaignProgressService.GetActiveChapterDef();
-                if (def == null) return false;
-                if (!string.Equals(def.Mode, CampaignContentCatalog.ModeFinal, StringComparison.Ordinal)) return false;
-
-                if (!IsCampaignArenaSceneCached()) return false;
-
-                return !IsAnyGameplayModeActiveForCampaign();
-            }
-            catch (Exception)
-            {
-                return false;
-            }
+            try { return ShouldCampaignFinalBossAltarExist(); }
+            catch (Exception) { return false; }
         }
 
         /// <summary>
@@ -129,7 +104,7 @@ namespace BossRush
 
         /// <summary>
         /// 是否有任何既有模式正在跑。决战必须独占场地——
-        /// legacy 生成会写标准流程的静态状态，混跑会让 Boss 被别的模式记账。
+        /// 虽已隔离波次登记，仍不允许两场战斗同时占用玩家的场地。
         /// </summary>
         private bool IsAnyGameplayModeActiveForCampaign()
         {
@@ -168,6 +143,7 @@ namespace BossRush
 
         /// <summary>场上的召唤石实例。随场景销毁，按需重建。</summary>
         private GameObject campaignFinalBossAltar;
+        private float campaignAltarRetryAt;
 
         /// <summary>
         /// 每帧维护召唤石：终章契约进行中且身处竞技场时确保它在场，否则清掉。
@@ -193,11 +169,16 @@ namespace BossRush
                 }
 
                 if (campaignFinalBossAltar != null) return;
+                if (Time.unscaledTime < campaignAltarRetryAt) return;
+                campaignAltarRetryAt = Time.unscaledTime + 1f;
 
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null) return;
 
-                CreateCampaignFinalBossAltar(main.transform.position + main.transform.forward * 3f);
+                // 无地面时先不创建；只有准备终章时才做这次几何查询。
+                Vector3 position;
+                if (SpawnPositionHelper.TryFindAroundPlayer(main.transform.position, 8, 3f,
+                    out position, 0f, 1.5f, 1f)) CreateCampaignFinalBossAltar(position);
             }
             catch (Exception)
             {
@@ -209,7 +190,7 @@ namespace BossRush
         /// 召唤石现在该不该在场。
         ///
         /// 【判定顺序是性能约束，不是风格】这是每帧路径。终章契约查询是纯内存的
-        /// （字典命中 + 整数比较，零分配），而场景判定会分配字符串。
+        /// （有界列表查询 + 整数比较，零分配），而场景判定会分配字符串。
         /// 绝大多数玩家在绝大多数时间里没有进行中的终章契约，
         /// 因此必须让零分配的那个先短路掉（AGENTS.md 4.12）。
         /// </summary>
@@ -225,6 +206,8 @@ namespace BossRush
             if (CampaignProgressService.GetState(def.ChapterId) != CampaignChapterState.ContractActive) return false;
 
             if (!IsCampaignArenaSceneCached()) return false;
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null || main.Health == null || main.Health.IsDead) return false;
             return !IsAnyGameplayModeActiveForCampaign();
         }
 
@@ -236,18 +219,17 @@ namespace BossRush
                 campaignFinalBossAltar = new GameObject("BossRushCampaignFinalBossAltar");
                 campaignFinalBossAltar.transform.position = position;
 
-                Shader shader = Shader.Find("Unlit/Color");
-                if (shader == null) shader = Shader.Find("Standard");
+                Material material = CampaignAssetCache.GetAltarMaterial();
 
                 CreateCampaignAltarPart(campaignFinalBossAltar, PrimitiveType.Cube, "Base",
                     new Vector3(1.0f, 0.25f, 1.0f), new Vector3(0f, 0.12f, 0f),
-                    new Color(0.10f, 0.10f, 0.13f, 1f), shader);
+                    new Color(0.10f, 0.10f, 0.13f, 1f), material);
                 CreateCampaignAltarPart(campaignFinalBossAltar, PrimitiveType.Cube, "Pillar",
                     new Vector3(0.34f, 0.85f, 0.34f), new Vector3(0f, 0.60f, 0f),
-                    new Color(0.16f, 0.15f, 0.19f, 1f), shader);
+                    new Color(0.16f, 0.15f, 0.19f, 1f), material);
                 CreateCampaignAltarPart(campaignFinalBossAltar, PrimitiveType.Sphere, "Core",
                     new Vector3(0.34f, 0.34f, 0.34f), new Vector3(0f, 1.20f, 0f),
-                    CampaignTuning.FinalBossTint, shader);
+                    CampaignTuning.FinalBossTint, material);
 
                 BoxCollider collider = campaignFinalBossAltar.AddComponent<BoxCollider>();
                 collider.isTrigger = true;
@@ -261,13 +243,14 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 召唤石生成失败: " + e.Message);
+                if (campaignFinalBossAltar != null) UnityEngine.Object.Destroy(campaignFinalBossAltar);
                 campaignFinalBossAltar = null;
             }
         }
 
         private void CreateCampaignAltarPart(
             GameObject parent, PrimitiveType type, string name,
-            Vector3 scale, Vector3 localPos, Color color, Shader shader)
+            Vector3 scale, Vector3 localPos, Color color, Material material)
         {
             GameObject part = GameObject.CreatePrimitive(type);
             part.name = name;
@@ -280,11 +263,10 @@ namespace BossRush
             if (partCollider != null) UnityEngine.Object.Destroy(partCollider);
 
             Renderer renderer = part.GetComponent<Renderer>();
-            if (renderer != null && shader != null)
+            if (renderer != null && material != null)
             {
-                Material material = new Material(shader);
-                material.color = color;
-                renderer.material = material;
+                renderer.sharedMaterial = material;
+                CampaignAssetCache.SetRendererColor(renderer, color);
             }
         }
 
@@ -333,6 +315,7 @@ namespace BossRush
             {
                 await CampaignDialoguePlayer.PlayFinalBossPrologueAsync();
             }
+            catch (OperationCanceledException) { return; }
             catch (Exception e)
             {
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战独白异常: " + e.Message);
@@ -369,13 +352,13 @@ namespace BossRush
 
                 Vector3 position = ResolveCampaignFinalBossSpawnPosition();
 
-                // notifyBossRushOnFailure:false —— 失败不能去通知标准竞技场流程，
+                // notifyBossRushOnFailure:false、isNonWaveSpawn:true —— 不读写标准竞技场的波次，
                 // 那会在没有波次的情况下推进它的状态机
                 // 体型倍率必须在生成时传入，不能生成后再改 localScale：
                 // localScale 会缩放碰撞体，而属性/AI 初始化会缓存碰撞器半径。
                 CharacterMainControl boss = await SpawnPhantomWitch(
                     position, false, false, PhantomWitchDeathPresentation.CampaignFinal,
-                    CampaignTuning.FinalBossScale);
+                    CampaignTuning.FinalBossScale, isNonWaveSpawn: true);
 
                 // 生成是异步的：等待期间玩家可能已经切场景、死亡或开了别的模式，
                 // 那一场已经被收尾过了。此时绝不能把 Boss 认领回来——
@@ -400,9 +383,10 @@ namespace BossRush
 
                 campaignFinalBossSpawnResolved = true;
 
-                if (boss == null)
+                if (boss == null || boss.Health == null || boss.Health.IsDead)
                 {
-                    campaignFinalBossActive = false;
+                    campaignFinalBossInstance = boss;
+                    CleanupCampaignFinalBoss(true);
                     ShowMessage(L10n.T("决战未能开始，请稍后重试", "The showdown could not begin; try again"));
                     return;
                 }
@@ -418,25 +402,23 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                campaignFinalBossActive = false;
-                campaignFinalBossSpawnResolved = false;
+                if (runId == campaignFinalBossRunId) CleanupCampaignFinalBoss(true);
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战生成异常: " + e.Message);
             }
         }
 
-        /// <summary>决战 Boss 的生成位置：玩家前方一段距离，拿不到玩家时退回原点。</summary>
+        /// <summary>复用关卡刷怪点与落地工具，避免把 Boss 放进玩家面前的墙体。</summary>
         private Vector3 ResolveCampaignFinalBossSpawnPosition()
         {
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null) return Vector3.zero;
-                return main.transform.position + main.transform.forward * 8f;
-            }
-            catch (Exception)
-            {
-                return Vector3.zero;
-            }
+            CharacterMainControl main = CharacterMainControl.Main;
+            if (main == null) throw new InvalidOperationException("campaign_player_unavailable");
+            Vector3[] points = GetCurrentSceneSpawnPoints();
+            if (points != null && points.Length > 0)
+                return SpawnPositionHelper.FindNearestSafeSpawnPoint(points, main.transform.position, 8f);
+            Vector3 position;
+            if (SpawnPositionHelper.TryFindAroundPlayer(main.transform.position, 8, 8f, out position,
+                SpawnPositionHelper.DefaultLiftOffset, 6f, 1f)) return position;
+            throw new InvalidOperationException("campaign_spawn_ground_unavailable");
         }
 
         #endregion
@@ -470,7 +452,7 @@ namespace BossRush
                 Renderer[] renderers = boss.GetComponentsInChildren<Renderer>(true);
                 for (int i = 0; i < renderers.Length; i++)
                 {
-                    SetCampaignFinalBossRendererColor(renderers[i], CampaignTuning.FinalBossTint);
+                    CampaignAssetCache.SetRendererColor(renderers[i], CampaignTuning.FinalBossTint);
                 }
             }
             catch (Exception e)
@@ -493,28 +475,6 @@ namespace BossRush
             {
                 DevLog(CampaignTuning.LogPrefix + "[WARNING] 决战变体名失败: " + e.Message);
             }
-        }
-
-        private void SetCampaignFinalBossRendererColor(Renderer renderer, Color color)
-        {
-            if (renderer == null) return;
-
-            renderer.GetPropertyBlock(campaignFinalBossColorBlock);
-            Material sharedMaterial = renderer.sharedMaterial;
-            if (sharedMaterial != null && sharedMaterial.HasProperty(CampaignBossColorProperty))
-            {
-                campaignFinalBossColorBlock.SetColor(CampaignBossColorProperty, color);
-            }
-            else if (sharedMaterial != null && sharedMaterial.HasProperty(CampaignBossTintColorProperty))
-            {
-                campaignFinalBossColorBlock.SetColor(CampaignBossTintColorProperty, color);
-            }
-            else
-            {
-                campaignFinalBossColorBlock.SetColor(CampaignBossBaseColorProperty, color);
-            }
-
-            renderer.SetPropertyBlock(campaignFinalBossColorBlock);
         }
 
         #endregion
@@ -562,6 +522,12 @@ namespace BossRush
             if (!campaignFinalBossActive) return;
             try
             {
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null || main.Health == null || main.Health.IsDead)
+                {
+                    CleanupCampaignFinalBoss(true);
+                    return;
+                }
                 if (IsAnyGameplayModeActiveForCampaign())
                 {
                     DevLog(CampaignTuning.LogPrefix + "检测到既有模式启动，决战主动让路");
@@ -628,6 +594,10 @@ namespace BossRush
             }
             finally
             {
+                if (campaignFinalBossActive) CampaignDialoguePlayer.InvalidatePlayback();
+                if (campaignFinalBossAltar != null) UnityEngine.Object.Destroy(campaignFinalBossAltar);
+                campaignFinalBossAltar = null;
+                campaignAltarRetryAt = 0f;
                 campaignFinalBossInstance = null;
                 campaignFinalBossActive = false;
                 campaignFinalBossSpawnResolved = false;

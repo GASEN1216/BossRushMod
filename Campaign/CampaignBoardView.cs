@@ -12,6 +12,7 @@
 // 【为什么每次打开都重建而不是常驻】
 //   章节状态、目标进度、线索解锁都可能在两次打开之间变化，重建比逐项刷新简单可靠，
 //   而公告板是低频交互（一局最多开两次），重建成本无所谓。
+// 官方对话承载剧情；本面板保留六章状态、逐项目标与交付动作的并列总览。
 // ============================================================================
 
 using System;
@@ -28,8 +29,25 @@ namespace BossRush
         #region 状态
 
         private static GameObject _root;
+        private static ZombieModeUIHelper.ModalInputLease _modalLease;
+        private static bool _shownChinese;
+
+        internal static void Tick()
+        {
+            if (_root == null) { if (_modalLease != null) Close(); return; }
+            if (Input.GetKeyDown(KeyCode.Escape)) { Close(); return; }
+            if (_shownChinese != L10n.IsChinese) Open();
+        }
 
         #endregion
+
+        internal static void OpenForOwner(ModBehaviour owner)
+        {
+            if (owner == null || !owner.IsCampaignConfiguredEnabled()) return;
+            CampaignProgressService.EnsureInitialized();
+            CampaignNoteBridge.EnsureNotesRegistered();
+            Open();
+        }
 
         /// <summary>面板当前是否打开。</summary>
         internal static bool IsOpen { get { return _root != null; } }
@@ -56,6 +74,7 @@ namespace BossRush
         {
             try
             {
+                if (_modalLease != null) { _modalLease.Release(); _modalLease = null; }
                 if (_root != null)
                 {
                     UnityEngine.Object.Destroy(_root);
@@ -83,6 +102,8 @@ namespace BossRush
             Canvas canvas = BossRushUI.CreateCanvasRoot(
                 "BossRushCampaignBoardCanvas", BossRushUILayers.Panel, true);
             _root = canvas.gameObject;
+            _shownChinese = L10n.IsChinese;
+            _modalLease = ZombieModeUIHelper.ClaimModalInput(_root, "CampaignBoard");
 
             BossRushUI.CreateBackdrop(_root.transform);
 
@@ -244,6 +265,9 @@ namespace BossRush
                 return L10n.T("已交付　奖金 $" + def.RewardCash.ToString("N0"),
                               "Handed in　Reward $" + def.RewardCash.ToString("N0"));
             }
+            if (state == CampaignChapterState.ReadyToDeliver)
+                return L10n.T("目标已完成，点击右侧交付领取奖金与证物。无需再打一局。",
+                    "Objectives complete. Hand in for your reward and evidence; no replay needed.");
 
             System.Text.StringBuilder builder = new System.Text.StringBuilder();
             builder.Append(L10n.T("前往：", "Go to: "));
@@ -252,6 +276,7 @@ namespace BossRush
             builder.Append(L10n.T("奖金 $", "Reward $"));
             builder.Append(def.RewardCash.ToString("N0"));
             builder.Append('\n');
+            builder.Append(CampaignContentCatalog.GetEntryHint(def.Mode)).Append('\n');
 
             // 进行中的章节显示实时进度；仅可接取时只显示目标本身
             bool showProgress = state == CampaignChapterState.ContractActive
@@ -298,11 +323,11 @@ namespace BossRush
                 case CampaignContentCatalog.ModeStandard:
                     return L10n.T("标准竞技场", "Standard Arena");
                 case CampaignContentCatalog.ModeModeD:
-                    return L10n.T("白手起家", "Bootstrap");
+                    return L10n.T("白手起家", "From Scratch");
                 case CampaignContentCatalog.ModeModeE:
-                    return L10n.T("划地为营", "Banner Wars");
+                    return L10n.T("划地为营", "Faction War");
                 case CampaignContentCatalog.ModeModeF:
-                    return L10n.T("血猎追击", "Bloodhunt");
+                    return L10n.T("血猎追击", "Blood Hunt");
                 case CampaignContentCatalog.ModeZombie:
                     return L10n.T("末日丧尸", "Zombie Apocalypse");
                 case CampaignContentCatalog.ModeFinal:
@@ -365,8 +390,10 @@ namespace BossRush
         {
             try
             {
-                CampaignProgressService.TryAbandonContract();
-                ModBehaviour.Instance?.ShowMessage(L10n.T("已放弃契约", "Contract abandoned"));
+                bool abandoned = CampaignProgressService.TryAbandonContract();
+                ModBehaviour.Instance?.ShowMessage(abandoned
+                    ? L10n.T("已放弃契约", "Contract abandoned")
+                    : L10n.T("未能放弃，契约仍保留", "Could not abandon; your contract is unchanged"));
                 Open();
             }
             catch (Exception e)
@@ -398,23 +425,5 @@ namespace BossRush
         }
 
         #endregion
-    }
-
-    public partial class ModBehaviour
-    {
-        /// <summary>公告板交互入口。由 CampaignBoardInteractable 调用。</summary>
-        public void OpenCampaignBoardUI()
-        {
-            try
-            {
-                if (!IsCampaignConfiguredEnabled()) return;
-                CampaignProgressService.EnsureInitialized();
-                CampaignBoardView.Open();
-            }
-            catch (Exception e)
-            {
-                DevLog(CampaignTuning.LogPrefix + "[WARNING] 打开公告板失败: " + e.Message);
-            }
-        }
     }
 }

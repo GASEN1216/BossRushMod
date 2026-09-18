@@ -41,7 +41,8 @@
 
 ### 2. Take a contract
 
-- The panel lists all six chapters. Each card tells you the mode, the objectives, and the payout.
+- The panel lists all six chapters, including entry preparation, objectives, and payouts. Press Esc to close.
+- The Broker supplies the evidence after completion; there are no extra quest items to search for in the field.
 - **Only one contract at a time.** Want to switch chapters? Hit "Abandon" first — there is
   **no penalty at all**. The chapter goes back to available and you can re-take it whenever.
 - Chapters unlock in order; the next one opens only after you hand in the current one. Locked
@@ -69,7 +70,7 @@ Forgot what the chapter wants? Check the top-right tracker in a run, or open the
 
 ## What each chapter asks for
 
-Both objectives have to be met **in the same run**. The payout lands when you hand in.
+All objectives listed for a chapter must be met **in the same run**. The payout lands when you hand in.
 
 ### Chapter 1 · Echoes of the Ring
 
@@ -82,7 +83,7 @@ Both objectives have to be met **in the same run**. The payout lands when you ha
 
 - Go to **Standard BossRush** (the board calls it "Standard Arena")
 - Clear one run
-- Take zero damage through wave 2
+- Take zero damage through wave 2. If your filtered run has fewer than two waves, finish the whole run without damage.
 - Reward **20,000**
 
 ### Chapter 2 · Vow of the Empty-Handed
@@ -95,8 +96,8 @@ Both objectives have to be met **in the same run**. The payout lands when you ha
 </div>
 
 - Go to **From Scratch**
-- Reach wave 5 from nothing
-- Put down 5 with melee
+- Enter with only a ticket, including an empty pet bag, and reach wave 5. Equip anything you find during the run.
+- Put down 5 with melee. While this contract is active, the starter kit includes a melee weapon.
 - Reward **35,000**
 
 ### Chapter 3 · Planting the Banner
@@ -109,8 +110,7 @@ Both objectives have to be met **in the same run**. The payout lands when you ha
 </div>
 
 - Go to **Faction War**
-- Defeat 8 bosses
-- Stay on the field a full 10 minutes
+- Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
 - Reward **50,000**
 
 ### Chapter 4 · The Kill List

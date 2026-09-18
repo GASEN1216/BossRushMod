@@ -21,6 +21,9 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        /// <summary>公告板的兼容入口；状态与 UI 归面板所有。</summary>
+        public void OpenCampaignBoardUI() { CampaignBoardView.OpenForOwner(this); }
+
         #region 轮询状态
 
         /// <summary>上一帧观察到的波次，用于做边沿检测，避免每帧重复上报。</summary>
@@ -67,7 +70,8 @@ namespace BossRush
                     return;
                 }
 
-                if (!string.Equals(campaignLastObservedMode, mode, StringComparison.Ordinal))
+                if (!CampaignObjectiveTracker.IsArmed
+                    || !string.Equals(campaignLastObservedMode, mode, StringComparison.Ordinal))
                 {
                     campaignLastObservedMode = mode;
                     campaignLastObservedWave = 0;
@@ -104,6 +108,9 @@ namespace BossRush
         {
             try
             {
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main == null || main.Health == null || main.Health.IsDead) return null;
+                if (modeGActive) return null;
                 if (modeEActive) return CampaignContentCatalog.ModeModeE;
                 if (modeFActive) return CampaignContentCatalog.ModeModeF;
                 if (modeDActive) return CampaignContentCatalog.ModeModeD;

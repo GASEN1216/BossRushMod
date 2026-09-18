@@ -34,6 +34,9 @@ namespace BossRush
 
         /// <summary>本会话内「目标已达成、等交付」的章节缓存；权威状态同时落盘。</summary>
         private static string _readyToDeliverChapterId;
+        // 目标终点可能只发生一次；入队失败后由本服务保留事实，不能随局内追踪一起清掉。
+        private static string _pendingObjectiveChapterId;
+        private static float _objectiveRetrySeconds;
 
         /// <summary>
         /// 「奖金已发但状态没写成功、且退款也失败」的章节。
@@ -73,11 +76,16 @@ namespace BossRush
         {
             _initialized = false;
             _readyToDeliverChapterId = null;
+            _pendingObjectiveChapterId = null;
+            _objectiveRetrySeconds = 0f;
             // 闩是按章节记的，换槽后章节含义变了，留着会让新槽第一次交付白拿不到钱
             _cashPaidPendingChapterId = null;
             try
             {
                 CampaignObjectiveTracker.ResetSession();
+                ModBehaviour.Instance?.CleanupCampaignFinalBoss(true);
+                CampaignDialoguePlayer.InvalidatePlayback();
+                CampaignBoardView.Close();
             }
             catch (Exception e)
             {
@@ -134,9 +142,8 @@ namespace BossRush
             try
             {
                 EnsureInitialized();
-                if (!string.IsNullOrEmpty(_readyToDeliverChapterId)) return _readyToDeliverChapterId;
-
                 CampaignSaveData data = CampaignPersistence.Current;
+                if (!string.IsNullOrEmpty(_readyToDeliverChapterId)) return _readyToDeliverChapterId;
                 if (data == null || data.chapters == null) return null;
                 for (int i = 0; i < data.chapters.Length; i++)
                 {
@@ -255,9 +262,11 @@ namespace BossRush
                 EnsureInitialized();
                 string active = GetActiveChapterId();
                 if (string.IsNullOrEmpty(active)) return false;
+                if (GetState(active) != CampaignChapterState.ContractActive
+                    || !string.IsNullOrEmpty(_pendingObjectiveChapterId)) return false;
 
-                _readyToDeliverChapterId = null;
                 if (!WriteState(active, CampaignChapterState.Available)) return false;
+                _readyToDeliverChapterId = null;
 
                 CampaignObjectiveTracker.ResetSession();
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "已放弃契约: " + active);
@@ -283,17 +292,23 @@ namespace BossRush
                 // 已经是 ReadyToDeliver：本章早已上报成功，返回 true 让追踪器锁存，避免重复上报。
                 if (string.Equals(_readyToDeliverChapterId, chapterId, StringComparison.Ordinal)) return true;
 
+                bool firstAttempt = _pendingObjectiveChapterId == null;
+                _pendingObjectiveChapterId = chapterId;
                 if (!WriteState(chapterId, CampaignChapterState.ReadyToDeliver))
                 {
                     // 写盘失败必须让调用方知道，否则 _notified 会锁死本局后续所有目标事件：
                     // 玩家打完了、章节没推进、还没有任何提示。
-                    ModBehaviour.DevLog(CampaignTuning.LogPrefix
-                        + "[ERROR] 契约目标达成写入失败，本局将继续重试: " + chapterId);
-                    Duckov.UI.NotificationText.Push(L10n.T(
-                        "契约进度暂时无法保存，稍后会自动重试。",
-                        "Contract progress could not be saved yet; it will retry automatically."));
+                    if (firstAttempt)
+                    {
+                        ModBehaviour.DevLog(CampaignTuning.LogPrefix
+                            + "[ERROR] 契约目标达成写入失败，本局将继续重试: " + chapterId);
+                        Duckov.UI.NotificationText.Push(L10n.T(
+                            "契约进度暂时无法保存，稍后会自动重试。",
+                            "Contract progress could not be saved yet; it will retry automatically."));
+                    }
                     return false;
                 }
+                _pendingObjectiveChapterId = null;
                 _readyToDeliverChapterId = chapterId;
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "契约目标已全部达成: " + chapterId);
 
@@ -309,6 +324,20 @@ namespace BossRush
                 LogFailure("objectives_satisfied", e);
                 return false;
             }
+        }
+
+        /// <summary>只重试已达成事实的入队；物理写盘仍完全归共享协调器。</summary>
+        internal static void RetryPendingObjectives(float deltaTime)
+        {
+            if (_pendingObjectiveChapterId == null) return;
+            _objectiveRetrySeconds += deltaTime;
+            if (_objectiveRetrySeconds < 1f) return;
+            _objectiveRetrySeconds = 0f;
+            // 读取当前槽先触发共享 store 的漂移检测，不能把旧槽事实补到新槽。
+            CampaignSaveData data = CampaignPersistence.Current;
+            if (data == null || _pendingObjectiveChapterId == null
+                || CampaignPersistence.HasWriteBarrier || CampaignPersistence.IsStoreFaulted) return;
+            NotifyObjectivesSatisfied(_pendingObjectiveChapterId);
         }
 
         /// <summary>
@@ -528,6 +557,8 @@ namespace BossRush
             _initialized = false;
             _readyToDeliverChapterId = null;
             _cashPaidPendingChapterId = null;
+            _pendingObjectiveChapterId = null;
+            _objectiveRetrySeconds = 0f;
         }
 
         #endregion

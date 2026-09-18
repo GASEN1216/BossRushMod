@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
-  "max_files": 204,
-  "max_total_lines": 105108,
+  "max_files": 203,
+  "max_total_lines": 104717,
   "allowed_files": [
     "Achievement/AchievementMedalItem.cs",
     "Achievement/AchievementRuntimeHooks.cs",
@@ -9,7 +9,6 @@
     "Audio/BossRushAudioHooks.cs",
     "BossFilter/BossFilter.cs",
     "BossFilter/BossFilterUi.cs",
-    "Campaign/CampaignBoardView.cs",
     "Campaign/CampaignFinalBoss.cs",
     "Campaign/CampaignModeBridge.cs",
     "Common/Lifecycle/BossRushRuntimeModuleRegistration.cs",

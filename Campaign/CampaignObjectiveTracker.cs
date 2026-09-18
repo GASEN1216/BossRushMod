@@ -57,6 +57,17 @@ namespace BossRush
 
         #region 武装与复位
 
+        /// <summary>开局配装早于追踪武装；按当前契约判断是否需要近战工具。</summary>
+        internal static bool NeedsMeleeStarterKit()
+        {
+            CampaignChapterDef def = CampaignProgressService.GetActiveChapterDef();
+            if (def == null || def.Mode != CampaignContentCatalog.ModeModeD
+                || CampaignProgressService.GetState(def.ChapterId) != CampaignChapterState.ContractActive) return false;
+            for (int i = 0; i < def.Objectives.Count; i++)
+                if (def.Objectives[i].Kind == CampaignObjectiveKind.MeleeKills) return true;
+            return false;
+        }
+
         /// <summary>
         /// 若当前有进行中契约且其指定模式与传入模式一致，则武装本局追踪。
         /// 幂等：同一局重复调用不会清掉已累积的进度。
@@ -83,6 +94,7 @@ namespace BossRush
                 CampaignChapterDef def = CampaignProgressService.GetActiveChapterDef();
                 if (def == null) return;
                 if (!string.Equals(def.Mode, mode, StringComparison.Ordinal)) return;
+                if (CampaignProgressService.GetState(def.ChapterId) != CampaignChapterState.ContractActive) return;
 
                 _armedChapterId = def.ChapterId;
                 _armedMode = mode;
@@ -125,13 +137,14 @@ namespace BossRush
         /// <summary>玩家造成的一次击杀。isMelee/isBoss 由采集器判定后传入。</summary>
         internal static void ReportPlayerKill(bool isMelee, bool isBoss, bool hasBountyMark)
         {
-            if (!IsArmed) return;
+            if (!IsArmed || _notified) return;
             try
             {
                 for (int i = 0; i < _progress.Count; i++)
                 {
                     CampaignObjectiveProgress item = _progress[i];
                     if (item == null || item.Def == null) continue;
+                    if (item.IsSatisfied) continue;
 
                     switch (item.Def.Kind)
                     {
@@ -157,7 +170,7 @@ namespace BossRush
         /// <summary>玩家受到一次伤害。会让尚未跨过波次门槛的无伤目标直接判失败。</summary>
         internal static void ReportPlayerDamaged(int currentWave)
         {
-            if (!IsArmed) return;
+            if (!IsArmed || _notified) return;
             try
             {
                 for (int i = 0; i < _progress.Count; i++)
@@ -165,7 +178,7 @@ namespace BossRush
                     CampaignObjectiveProgress item = _progress[i];
                     if (item == null || item.Def == null) continue;
                     if (item.Def.Kind != CampaignObjectiveKind.NoDamageUntilWave) continue;
-                    if (item.Failed) continue;
+                    if (item.Failed || item.IsSatisfied) continue;
 
                     // 已经打过了门槛波次就不再判失败——目标已达成
                     if (currentWave > item.Def.Threshold) continue;
@@ -184,7 +197,7 @@ namespace BossRush
         /// <summary>本局到达的波次（取历史最大值，防止波次回退把进度抹掉）。</summary>
         internal static void ReportWaveReached(int wave)
         {
-            if (!IsArmed) return;
+            if (!IsArmed || _notified) return;
             try
             {
                 for (int i = 0; i < _progress.Count; i++)
@@ -194,7 +207,7 @@ namespace BossRush
 
                     if (item.Def.Kind == CampaignObjectiveKind.ReachWave)
                     {
-                        if (wave > item.Current) item.Current = wave;
+                        if (wave > item.Current) item.Current = Math.Min(wave, item.Def.Threshold);
                     }
                     else if (item.Def.Kind == CampaignObjectiveKind.NoDamageUntilWave)
                     {
@@ -287,8 +300,8 @@ namespace BossRush
         /// </summary>
         internal static void Tick(float deltaTime)
         {
-            if (!IsArmed) return;
-            if (deltaTime <= 0f) return;
+            if (!IsArmed || _notified) return;
+            if (!(deltaTime > 0f) || float.IsInfinity(deltaTime)) return;
 
             try
             {
@@ -303,7 +316,7 @@ namespace BossRush
                     if (item.Def.Kind != CampaignObjectiveKind.SurviveMinutes) continue;
                     if (minutes > item.Current)
                     {
-                        item.Current = minutes;
+                        item.Current = Math.Min(minutes, item.Def.Threshold);
                         changed = true;
                     }
                 }

@@ -65,6 +65,28 @@ class Program
     }
     static void CampaignCash()
     {
+        Reset();
+        Check(CampaignProgressService.TryAcceptContract("ch1"), "campaign accepts available contract");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true);
+        Check(!CampaignProgressService.NotifyObjectivesSatisfied("ch1"), "terminal event reports failed enqueue");
+        CampaignObjectiveTracker.ResetSession();
+        Check(!CampaignProgressService.TryAbandonContract(), "earned pending completion cannot be abandoned");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", false);
+        CampaignProgressService.RetryPendingObjectives(1f);
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ReadyToDeliver,
+            "terminal completion retries after session cleanup without a second kill");
+        Check(!CampaignProgressService.TryAbandonContract(), "ready completion cannot be discarded by stale action");
+
+        Reset();
+        CampaignProgressService.TryAcceptContract("ch1");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", true);
+        CampaignProgressService.NotifyObjectivesSatisfied("ch1");
+        SetPrivate(typeof(CampaignPersistence), "_storeFaulted", false);
+        CampaignProgressService.NotifySlotChanged();
+        CampaignProgressService.RetryPendingObjectives(1f);
+        Check(CampaignProgressService.GetState("ch1") == CampaignChapterState.ContractActive,
+            "pending completion cannot follow a slot change");
+
         Reset(); PrepareCampaign();
         Check(CampaignProgressService.TryDeliver("ch1"), "campaign accepts delivery");
         Check(CampaignClaimedOnDisk() && DiskMoney == 104000 && SavesSystem.Writes == 1,
