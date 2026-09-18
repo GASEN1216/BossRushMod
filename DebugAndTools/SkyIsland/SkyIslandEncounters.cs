@@ -28,6 +28,8 @@ namespace BossRush
             internal bool NightLead, RivalFaction;
             internal float RetryAt;
             internal SkyIslandEnemyRecord[] Actors;
+            /// <summary>已经为这一组里倒下的第几个人喊过话。按出击刷新，不进存档。</summary>
+            internal int Mourned;
             internal bool AllDead
             {
                 get
@@ -63,6 +65,13 @@ namespace BossRush
         private float nextTick;
         /// <summary>头目 / 岛主招式控制器要的场景上下文（根节点、地面层、有效性、字幕通道），首次用到时建一次。</summary>
         private SkyIslandBossContext bossContext;
+        /// <summary>
+        /// 敌人侧的头顶气泡预算（小兵共享话语库 + 头目专属台词共用同一个同屏上限）。
+        /// 居民侧另有一个实例，两边加起来同屏最多两个气泡。
+        /// </summary>
+        private readonly SkyIslandChatter chatter;
+        /// <summary>小兵气泡挂多高。官方拾荒者模型比居民矮一点。</summary>
+        private const float MobBubbleHeight = 2f;
         internal string ContentSource { get; private set; }
 
         /// <summary>内容表由会话加载一次后传入；同一次进岛不重复解析 World.json。</summary>
@@ -76,6 +85,7 @@ namespace BossRush
             this.valid = valid; this.completed = completed; this.cleared = cleared; this.report = report;
             this.describe = describe;
             this.stormDefeated = onStormDefeated;
+            chatter = new SkyIslandChatter(SkyIslandChatter.EnemyCooldownMin, SkyIslandChatter.EnemyCooldownMax, valid);
             // 一次加载时缓存，不在每帧/每次遭遇扫描全局资源。
             foreach (CharacterRandomPreset preset in Resources.FindObjectsOfTypeAll<CharacterRandomPreset>())
                 if (preset != null && !preset.isBoss && !preset.isZombie && preset.team == Teams.scav &&
@@ -334,6 +344,9 @@ namespace BossRush
                     encounter.RetryAt = Time.time + 1f;
                 }
             }
+            // 气泡排在生成之前：AnySpawning 期间（异步生成一组要跨好几帧）不推进的话，
+            // chatter.PlayerPosition 会陈旧，而头目的血线 / 倒下台词按它判 20 米距离门。
+            TickChatter();
             // 同时最多 12 名活跃敌人，一次只启动一组异步生成。既有遭遇只补失去 owner 的未死槽。
             if (AnySpawning()) return;
             foreach (Encounter encounter in encounters)
@@ -346,6 +359,77 @@ namespace BossRush
                 Spawn(encounter);
                 break;
             }
+        }
+
+        /// <summary>
+        /// 小兵的头顶气泡：**每次推进最多说一句**。优先级「身边倒下一个 &gt; 第一次注意到你 &gt; 闲话」——
+        /// 有人刚倒下的时候还在念叨残铜值几个钱，比不说话更假。
+        ///
+        /// 头目 / 岛主 / 具名对手（<see cref="SkyIslandBossVoice"/>）与噬风不走这条路：生成时已经按
+        /// <c>SkyIslandEnemyRecord.Silent</c> 标出来。四道门（静音 / 同屏上限 / 距离 / 单人冷却）全在
+        /// <see cref="SkyIslandChatter"/> 里，这里只挑候选；<c>Ready</c> 挡掉的候选不为它建话语数组。
+        ///
+        /// 【为什么先问 Muted 再遍历】「第一次注意到你」是一次性事件，遍历里会把它记成已发生。
+        /// 玩家正在跟居民说话时有敌人察觉到他，若照常遍历，那一句喊话就被永久吃掉。
+        /// </summary>
+        private void TickChatter()
+        {
+            if (chatter == null || player == null || chatter.Muted) return;
+            chatter.PlayerPosition = player.transform.position;
+            Transform speaker = null;
+            SkyIslandChatterMoment moment = SkyIslandChatterMoment.Idle;
+            bool rival = false;
+            // 0 还没挑到 / 1 闲话 / 2 第一次注意到你 / 3 身边倒下一个
+            int priority = 0;
+            for (int i = 0; i < encounters.Count && priority < 3; i++)
+            {
+                Encounter encounter = encounters[i];
+                if (!encounter.Started || encounter.Cleared) continue;
+                int dead = 0;
+                Transform living = null;
+                Transform freshlyNoticed = null;
+                for (int j = 0; j < encounter.Actors.Length; j++)
+                {
+                    SkyIslandEnemyRecord actor = encounter.Actors[j];
+                    if (actor.Died) { dead++; continue; }
+                    if (actor.Silent || actor.Life == null) continue;
+                    // 官方 `noticed` 是「听见动静或挨了打」就永久置位，**不是**「看见你」：队友开一枪、
+                    // 隔壁两伙打起来都会把它点亮（`AICharacterController.OnHeardSound` / `OnHurt`）。
+                    // 所以这里认 `NoticeFromCharacter`——那个字段才说得清是冲着谁来的。
+                    // 只按 `noticed` 判的话，它会对着自己队友的枪声喊「有人上来了」。
+                    bool justNoticed = false;
+                    if (!actor.Noticed && actor.Ai != null && actor.Ai.NoticeFromCharacter == player)
+                    {
+                        actor.Noticed = true;
+                        justNoticed = true;
+                    }
+                    Transform body = actor.Life.transform;
+                    if (!chatter.Ready(body)) continue;
+                    if (justNoticed && freshlyNoticed == null) freshlyNoticed = body;
+                    if (living == null) living = body;
+                }
+                bool mourn = dead > encounter.Mourned;
+                if (mourn) encounter.Mourned = dead;
+                if (mourn && living != null)
+                {
+                    speaker = living; moment = SkyIslandChatterMoment.AllyDown;
+                    rival = encounter.RivalFaction; priority = 3;
+                    continue;
+                }
+                if (freshlyNoticed != null && priority < 2)
+                {
+                    speaker = freshlyNoticed; moment = SkyIslandChatterMoment.Noticed;
+                    rival = encounter.RivalFaction; priority = 2;
+                    continue;
+                }
+                if (living != null && priority < 1)
+                {
+                    speaker = living; moment = SkyIslandChatterMoment.Idle;
+                    rival = encounter.RivalFaction; priority = 1;
+                }
+            }
+            if (speaker == null) return;
+            chatter.TrySay(speaker, MobBubbleHeight, SkyIslandChatterLines.Mob(rival, moment));
         }
 
         private async void Spawn(Encounter encounter)
@@ -389,6 +473,14 @@ namespace BossRush
                         SkyIslandEnemyTier tier = encounter.Definition.TierFor(i);
                         SkyIslandEnemyTiers.ApplyAi(ai, tier);
                         ApplyIdentity(created, encounter, i, tier);
+                        // 头顶气泡：头目 / 岛主 / 具名对手在身份层里挂过自己的台词组件，噬风按人设不说话；
+                        // 其余全是小兵，走共享话语库。判一次存进记录，推进时不再逐个 GetComponent。
+                        // `Noticed` 必须跟着复位：这个槽位可能是补刷（上一位丢了 owner），
+                        // 沿用旧标记的话新刷出来的这一位永远不会喊那句「有人上来了」。
+                        actor.Ai = ai;
+                        actor.Noticed = false;
+                        actor.Silent = tier == SkyIslandEnemyTier.Storm
+                            || created.GetComponent<SkyIslandBossVoice>() != null;
                         life.Bind(created, actor);
                         actor.Life = life;
                         retained = true;
@@ -420,12 +512,14 @@ namespace BossRush
             {
                 SkyIslandResidents.ApplyBattleFace(created, "sky_zheling");
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "zheling", "折翎", "Zheling");
+                SkyIslandBossForge.BindVoice(created, null, "zheling", BossContext());
                 return;
             }
             if (encounter.Id == "BellKeeper" && index == 0)
             {
                 SkyIslandResidents.ApplyBattleFace(created, "sky_bellkeeper");
                 SkyIslandEnemyTiers.ApplyStoryChampion(created, "bellkeeper", "失控的守钟装置", "Runaway Bell Engine");
+                SkyIslandBossForge.BindVoice(created, null, "bellkeeper", BossContext());
                 return;
             }
             // 头目 / 岛主（SkyIslandBossRules 档案按「遭遇 id + 位次」查）：名字、数值、配装、掉落与招式控制器由 Forge 一次做完；
@@ -550,11 +644,20 @@ namespace BossRush
             return count;
         }
 
-        /// <summary>头目 / 岛主招式控制器的场景上下文：本对象的根节点、地面层、会话有效性、字幕通道与叫帮手，首次用到时建一次。</summary>
+        /// <summary>F3 只读（SKY_CHATTER）：敌人这一侧的气泡预算——本趟说了几句、此刻有没有气泡挂着。玩法不读它。</summary>
+        internal SkyIslandChatter ValidationChatter { get { return chatter; } }
+
+        /// <summary>头目 / 岛主招式控制器的场景上下文：本对象的根节点、地面层、会话有效性、字幕通道、叫帮手与头顶气泡，首次用到时建一次。</summary>
         private SkyIslandBossContext BossContext()
         {
             if (bossContext == null)
-                bossContext = new SkyIslandBossContext { Root = root.transform, GroundMask = groundMask, Valid = valid, Report = report, CallGroup = CallGroup };
+                bossContext = new SkyIslandBossContext
+                {
+                    Root = root.transform, GroundMask = groundMask, Valid = valid, Report = report, CallGroup = CallGroup,
+                    // 头目一场仗里只有四句，按小兵那 35–60 秒的冷却会把血线那两句全吞掉，所以单独给一个短冷却。
+                    Bark = (speaker, height, pool, force) =>
+                        chatter.TrySay(speaker, height, pool, force, SkyIslandChatter.BossCooldown)
+                };
             return bossContext;
         }
 
@@ -577,6 +680,8 @@ namespace BossRush
         {
             if (closed) return;
             closed = true;
+            if (chatter != null) chatter.Clear();
+            if (bossContext != null) bossContext.Bark = null;
             foreach (Encounter encounter in encounters)
                 foreach (SkyIslandEnemyRecord actor in encounter.Actors)
                     if (actor.Life != null) { actor.Life.gameObject.SetActive(false); UnityEngine.Object.Destroy(actor.Life.gameObject); }
@@ -587,6 +692,15 @@ namespace BossRush
     {
         internal bool Died;
         internal SkyIslandEnemyLife Life;
+        /// <summary>
+        /// 这一位不走小兵共享话语库：头目 / 岛主 / 具名剧情对手各有自己的台词
+        /// （<see cref="SkyIslandBossVoice"/>），噬风按人设一个字都不说。生成时判一次，不进存档。
+        /// </summary>
+        internal bool Silent;
+        /// <summary>已经喊过「注意到你」那一句。按出击刷新，不进存档。</summary>
+        internal bool Noticed;
+        /// <summary>官方战斗 AI（挂在子物体上）。生成时取一次，用来判「第一次注意到你」，省得每次推进再找一遍。</summary>
+        internal AICharacterController Ai;
     }
 
     internal sealed class SkyIslandEnemyLife : MonoBehaviour

@@ -1086,7 +1086,7 @@ namespace BossRush
                             "\nThe Foreman by the star lamp wears the full Starworks outfit. Break its pylons first — your turn comes when the furnace overheats.");
                     if (!Defeated(data, Find("S2", 0)))
                         return L10n.T("\n倒挂邮亭那个专抢便当和药膏。别让它近身，真丢了就打倒它，东西还在它身上。",
-                            "\nThe one at the Upturned Post Hut takes bentos and salves. Don't let it close, and if it takes something, put it down — it's still on it.");
+                            "\nThe one at the Upturned Post Hut takes bentos and salves. Don't let it close, and if it takes something, put it down — your things are on its body.");
                     return L10n.T("\n星工装备穿两件，我这工台就少收你一片残铜。背上它那只旧邮包，信鸽一趟多来一封。",
                             "\nTwo Starworks pieces and my bench takes one less brass scrap. Carry its old mailbag and the pigeon brings one extra letter.");
                 case "sky_weibai":
@@ -1100,7 +1100,7 @@ namespace BossRush
                         return L10n.T("三座回程中继，一座一个断风游猎，连拾荒者也打。冲锋前地上先亮一条线，横着让。\n",
                             "A Galebreaker Ranger holds each return relay, and they fight the scavengers too. A line lights before the charge — step sideways.\n");
                     return L10n.T("戴观星镜盔站着别动，远处的人影会给你标出来。悬根套两件好翻箱，断风套两件走桥快。\n",
-                            "Stand still in the lens helm and far figures get marked for you. Two Rootweave pieces turn up more local goods; two Galebreaker pieces speed the bridges.\n");
+                            "Stand still in the lens helm and far figures get marked for you. Two Rootweave pieces turn up more local goods; two Galebreaker pieces make the bridges quicker.\n");
                 case "sky_qinghe":
                     if (!Defeated(data, Find("C", 0)))
                         return L10n.T("\n梯田上拿镰刀那个，一急就开闸放水，还朝谷仓喊人。先把谷仓清了，泥里别站。",

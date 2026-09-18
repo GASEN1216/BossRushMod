@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>头目 / 岛主控制器从遭遇 owner 拿到的环境：地图根、地面层、会话是否仍有效、字幕通道与叫帮手。</summary>
+    /// <summary>头目 / 岛主控制器从遭遇 owner 拿到的环境：地图根、地面层、会话是否仍有效、字幕通道、叫帮手与头顶气泡。</summary>
     internal sealed class SkyIslandBossContext
     {
         internal Transform Root;
@@ -19,6 +19,12 @@ namespace BossRush
         /// 手动组、已清场的组不叫；不另开生成路径（SkyIslandEncounters.CallGroup）。
         /// </summary>
         internal Func<string, Vector3, int> CallGroup;
+        /// <summary>
+        /// 头顶气泡（<see cref="SkyIslandBossVoice"/> 用）。与 <see cref="Report"/> 是两条通道：
+        /// Report 是屏幕下方的机制字幕（必须读到），Bark 是头顶演出（漏读不影响打得过）。
+        /// 敌人侧的气泡预算由遭遇 owner 持有，控制器不直接拿 `SkyIslandChatter`。
+        /// </summary>
+        internal SkyIslandBarkDelegate Bark;
     }
 
     /// <summary>已按档案装配过的一次性标记。随角色销毁，不需要额外清理。</summary>
@@ -72,8 +78,27 @@ namespace BossRush
                 created.gameObject.AddComponent<SkyIslandBossLoot>().Bind(created, profile, seed);
             }
             catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 专属掉落组件装配失败（原版掉落照常）：" + e.Message); }
+            BindVoice(created, profile, null, context);
             BindController(created, profile, context);
             return true;
+        }
+
+        /// <summary>
+        /// 头顶台词（<see cref="SkyIslandBossVoice"/>）。与掉落、招式一样是**可失败的装饰**：
+        /// 装不上只是这一位不说话，这场仗照打。具名剧情对手（折翎战斗体、失控的守钟装置）
+        /// 不在档案表里，由遭遇 owner 直接调这一个入口。
+        /// </summary>
+        internal static void BindVoice(CharacterMainControl created, SkyIslandBossProfile profile,
+            string championId, SkyIslandBossContext context)
+        {
+            if (created == null || context == null || context.Bark == null) return;
+            try
+            {
+                SkyIslandBossVoice voice = created.gameObject.AddComponent<SkyIslandBossVoice>();
+                if (profile != null) voice.Bind(created, profile, context);
+                else voice.BindChampion(created, championId, context);
+            }
+            catch (Exception e) { Debug.LogWarning("[SkyIslandBoss] 头顶台词装配失败（只是这一位不说话）：" + e.Message); }
         }
 
         private static void ApplyIdentity(CharacterMainControl created, SkyIslandBossProfile profile)

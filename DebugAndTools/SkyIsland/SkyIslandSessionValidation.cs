@@ -61,6 +61,10 @@ namespace BossRush
         internal bool ValidationStormEchoCleared { get { return stormEchoCleared; } }
         /// <summary>本趟手记首页实际挂出的项数（SKY_CHOICE_GATES）；本趟没打开过手记时为 -1。</summary>
         internal int ValidationJournalHomeChoices { get { return worldStory == null ? -1 : worldStory.JournalHomeChoices; } }
+        /// <summary>居民侧的头顶气泡预算（SKY_CHATTER）：本趟说了几句、此刻有没有气泡挂着。</summary>
+        internal SkyIslandChatter ValidationResidentChatter { get { return residents == null ? null : residents.ValidationChatter; } }
+        /// <summary>敌人侧的头顶气泡预算（SKY_CHATTER）。与居民侧各一个，所以同屏至多两个气泡。</summary>
+        internal SkyIslandChatter ValidationEnemyChatter { get { return encounters == null ? null : encounters.ValidationChatter; } }
         /// <summary>本局全部见闻点标记名（含 _02 点位）。F3 英文完整性用例遍历真实点位，不再手写一份清单。</summary>
         internal string[] ValidationSearchMarkerNames()
         {
