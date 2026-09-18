@@ -77,8 +77,9 @@ namespace BossRush
                 // 所以这里不需要另建映射表。
                 if (appliesWhen.StartsWith(ArenaConditionPrefix, StringComparison.Ordinal))
                 {
-                    string conditionId = appliesWhen.Substring(ArenaConditionPrefix.Length);
-                    return string.Equals(context.ArenaConditionId, conditionId, StringComparison.Ordinal);
+                    string conditionId = context.ArenaConditionId;
+                    return conditionId != null && appliesWhen.Length == ArenaConditionPrefix.Length + conditionId.Length
+                        && string.CompareOrdinal(appliesWhen, ArenaConditionPrefix.Length, conditionId, 0, conditionId.Length) == 0;
                 }
             }
             catch (Exception)
@@ -109,6 +110,82 @@ namespace BossRush
         public bool TargetBool;
         /// <summary>是否需要在窗口结束时还原（nextReleaseSkillTimeMarker 固定 false）。</summary>
         public bool Restore;
+        internal AICharacterController Character;
+        internal ModeHEffectSpec Effect;
+        internal float Multiplier;
+    }
+
+    /// <summary>
+    /// 同一战斗上下文内共享字段基线。每个窗口只登记自己的分量；任何顺序到期均重算
+    /// 剩余分量，最后一个窗口恢复真实原值。无静态缓存，重申不分配，不另建字段写入路径。
+    /// </summary>
+    internal sealed class ModeHFieldLayers
+    {
+        private readonly List<ModeHControlPointModulation> _layers = new List<ModeHControlPointModulation>();
+
+        private static bool SameField(ModeHControlPointModulation a, ModeHControlPointModulation b)
+        {
+            return ReferenceEquals(a.Character, b.Character) && a.ControlPointId == b.ControlPointId;
+        }
+
+        internal void Add(ModeHControlPointModulation layer)
+        {
+            for (int i = 0; i < _layers.Count; i++)
+            {
+                ModeHControlPointModulation existing = _layers[i];
+                if (!SameField(existing, layer)) continue;
+                layer.OriginalFloat = existing.OriginalFloat;
+                layer.OriginalVector = existing.OriginalVector;
+                layer.OriginalBool = existing.OriginalBool;
+                break;
+            }
+            _layers.Add(layer);
+            Recompute(layer);
+        }
+
+        internal void Remove(ModeHControlPointModulation layer)
+        {
+            _layers.Remove(layer);
+            Recompute(layer);
+        }
+
+        private void Recompute(ModeHControlPointModulation field)
+        {
+            float number = field.OriginalFloat;
+            Vector2 vector = field.OriginalVector;
+            bool flag = field.OriginalBool;
+            for (int i = 0; i < _layers.Count; i++)
+            {
+                ModeHControlPointModulation layer = _layers[i];
+                if (!SameField(field, layer)) continue;
+                ModeHEffectSpec effect = layer.Effect;
+                switch (effect.Op)
+                {
+                    case "multiply":
+                    case "multiply_capped":
+                        number *= layer.Multiplier;
+                        vector = new Vector2(vector.x * layer.Multiplier, vector.y * layer.Multiplier);
+                        if (effect.Op == "multiply_capped" && effect.CapMilli > 0)
+                            number = Math.Min(number, effect.CapMilli / 1000f);
+                        break;
+                    case "set_value": number = effect.ValueMilli / 1000f; break;
+                    case "add_seconds_milli": number += effect.AddMilli / 1000f; break;
+                    case "set_bool": flag = effect.BoolValue; break;
+                }
+            }
+            field.TargetFloat = number;
+            field.TargetVector = vector;
+            field.TargetBool = flag;
+            // Validate 和所有窗口重申都读取组合结果，不能再按各自的旧目标相互覆盖。
+            for (int i = 0; i < _layers.Count; i++)
+            {
+                ModeHControlPointModulation layer = _layers[i];
+                if (!SameField(field, layer)) continue;
+                layer.TargetFloat = number;
+                layer.TargetVector = vector;
+                layer.TargetBool = flag;
+            }
+        }
     }
 
     /// <summary>
@@ -132,6 +209,7 @@ namespace BossRush
             new List<ModeHControlPointModulation>();
 
         private AICharacterController _ai;
+        private ModeHFieldLayers _fieldLayers = new ModeHFieldLayers();
         private ModeHCommandSpec _spec;
         private List<ModeHEffectSpec> _effects;
         private string _ownerEntryId;
@@ -240,6 +318,7 @@ namespace BossRush
             }
 
             _ai = ai;
+            if (fireContext != null) _fieldLayers = fireContext.FieldLayers;
             _ownerEntryId = ownerEntryId;
             _effects = new List<ModeHEffectSpec>(effects);
             _commandScale = commandScale > 0f ? commandScale : 1f;
@@ -338,38 +417,20 @@ namespace BossRush
 
         private void ApplyFloat(ModeHEffectSpec effect, float original, Action<float> setter)
         {
-            float target = original;
-            if (string.Equals(effect.Op, "multiply", StringComparison.Ordinal))
-            {
-                target = original * ResolveMultiplier(effect);
-            }
-            else if (string.Equals(effect.Op, "multiply_capped", StringComparison.Ordinal))
-            {
-                target = original * ResolveMultiplier(effect);
-                float cap = effect.CapMilli > 0 ? effect.CapMilli / 1000f : float.MaxValue;
-                if (target > cap) target = cap;
-            }
-            else if (string.Equals(effect.Op, "set_value", StringComparison.Ordinal))
-            {
-                target = effect.ValueMilli / 1000f;
-            }
-            else if (string.Equals(effect.Op, "add_seconds_milli", StringComparison.Ordinal))
-            {
-                target = original + effect.AddMilli / 1000f;
-            }
-            else
-            {
-                return;
-            }
+            if (effect.Op != "multiply" && effect.Op != "multiply_capped"
+                && effect.Op != "set_value" && effect.Op != "add_seconds_milli") return;
 
             ModeHControlPointModulation modulation = new ModeHControlPointModulation();
             modulation.EffectId = effect.EffectId;
             modulation.ControlPointId = effect.ControlPointId;
             modulation.OriginalFloat = original;
-            modulation.TargetFloat = target;
             modulation.Restore = effect.Restore;
+            modulation.Character = _ai;
+            modulation.Effect = effect;
+            modulation.Multiplier = ResolveMultiplier(effect);
             _modulations.Add(modulation);
-            setter(target);
+            _fieldLayers.Add(modulation);
+            setter(modulation.TargetFloat);
         }
 
         private void ApplyBool(ModeHEffectSpec effect, bool original, Action<bool> setter)
@@ -380,26 +441,29 @@ namespace BossRush
             modulation.EffectId = effect.EffectId;
             modulation.ControlPointId = effect.ControlPointId;
             modulation.OriginalBool = original;
-            modulation.TargetBool = effect.BoolValue;
             modulation.Restore = effect.Restore;
+            modulation.Character = _ai;
+            modulation.Effect = effect;
+            modulation.Multiplier = ResolveMultiplier(effect);
             _modulations.Add(modulation);
-            setter(effect.BoolValue);
+            _fieldLayers.Add(modulation);
+            setter(modulation.TargetBool);
         }
 
         private void ApplyVector(ModeHEffectSpec effect, Vector2 original, Action<Vector2> setter)
         {
             if (!string.Equals(effect.Op, "multiply", StringComparison.Ordinal)) return;
-            float multiplier = ResolveMultiplier(effect);
-            Vector2 target = new Vector2(original.x * multiplier, original.y * multiplier);
-
             ModeHControlPointModulation modulation = new ModeHControlPointModulation();
             modulation.EffectId = effect.EffectId;
             modulation.ControlPointId = effect.ControlPointId;
             modulation.OriginalVector = original;
-            modulation.TargetVector = target;
             modulation.Restore = effect.Restore;
+            modulation.Character = _ai;
+            modulation.Effect = effect;
+            modulation.Multiplier = ResolveMultiplier(effect);
             _modulations.Add(modulation);
-            setter(target);
+            _fieldLayers.Add(modulation);
+            setter(modulation.TargetVector);
         }
 
         private void ApplyMarker(ModeHEffectSpec effect)
@@ -514,9 +578,8 @@ namespace BossRush
         /// 按当前场况让带 `appliesWhen` 的分量上下线（owner 拍板的"随战斗持续求值"口径）。
         ///
         /// 条件真伪翻转时才动手：真→假还原那一条并摘掉，假→真按当前值重新施加。
-        /// 重新施加时捕获的是**此刻**的原值而不是开窗时的原值——这与本适配器一贯的
-        /// 嵌套语义一致（口令、伤病、战痕三套窗口可能同时在改同一个控制点，
-        /// 每一层只负责还原到自己接手时看到的值）。
+        /// 所有窗口复用上下文中的字段基线；条件翻转只撤销自己的分量，再组合仍在线的
+        /// 伤病、战痕与口令，避免晚结束的窗口把早已到期的效果写回来。
         ///
         /// `Restore == false` 的分量（当前只有 nextReleaseSkillTimeMarker）一旦施加就不摘：
         /// 它的契约是"写入后把所有权交还原版，绝不还原"。
@@ -578,21 +641,23 @@ namespace BossRush
         /// <summary>把一条调制写回原值。Restore() 与条件下线共用，避免两份 switch 漂移。</summary>
         private void WriteOriginal(ModeHControlPointModulation m)
         {
-            if (_ai == null || m == null) return;
+            if (m == null) return;
+            _fieldLayers.Remove(m);
+            if (_ai == null) return;
             try
             {
                 switch (m.ControlPointId)
                 {
-                    case "skillSuccessChance": _ai.skillSuccessChance = m.OriginalFloat; break;
-                    case "itemSkillChance": _ai.itemSkillChance = m.OriginalFloat; break;
-                    case "itemSkillCoolTime": _ai.itemSkillCoolTime = m.OriginalFloat; break;
-                    case "sightDistance": _ai.sightDistance = m.OriginalFloat; break;
-                    case "sightAngle": _ai.sightAngle = m.OriginalFloat; break;
-                    case "combatTurnSpeed": _ai.combatTurnSpeed = m.OriginalFloat; break;
-                    case "patrolTurnSpeed": _ai.patrolTurnSpeed = m.OriginalFloat; break;
-                    case "baseReactionTime": _ai.baseReactionTime = m.OriginalFloat; break;
-                    case "shootCanMove": _ai.shootCanMove = m.OriginalBool; break;
-                    case "skillCoolTimeRange": _ai.skillCoolTimeRange = m.OriginalVector; break;
+                    case "skillSuccessChance": _ai.skillSuccessChance = m.TargetFloat; break;
+                    case "itemSkillChance": _ai.itemSkillChance = m.TargetFloat; break;
+                    case "itemSkillCoolTime": _ai.itemSkillCoolTime = m.TargetFloat; break;
+                    case "sightDistance": _ai.sightDistance = m.TargetFloat; break;
+                    case "sightAngle": _ai.sightAngle = m.TargetFloat; break;
+                    case "combatTurnSpeed": _ai.combatTurnSpeed = m.TargetFloat; break;
+                    case "patrolTurnSpeed": _ai.patrolTurnSpeed = m.TargetFloat; break;
+                    case "baseReactionTime": _ai.baseReactionTime = m.TargetFloat; break;
+                    case "shootCanMove": _ai.shootCanMove = m.TargetBool; break;
+                    case "skillCoolTimeRange": _ai.skillCoolTimeRange = m.TargetVector; break;
                     default: break;
                 }
             }
@@ -677,16 +742,12 @@ namespace BossRush
             _applied = false;
             _windowRemaining = 0f;
 
-            if (_ai != null)
+            // 已销毁的角色也必须移除分量所有权，避免上下文保留旧角色。
+            for (int i = _modulations.Count - 1; i >= 0; i--)
             {
-                // 逆序还原（LIFO），与条件下线共用同一个 WriteOriginal，
-                // 避免两处 switch 各自漂移出不同的控制点集合。
-                for (int i = _modulations.Count - 1; i >= 0; i--)
-                {
-                    ModeHControlPointModulation m = _modulations[i];
-                    if (!m.Restore) continue;
-                    WriteOriginal(m);
-                }
+                ModeHControlPointModulation m = _modulations[i];
+                if (!m.Restore) continue;
+                WriteOriginal(m);
             }
 
             _modulations.Clear();
@@ -755,6 +816,7 @@ namespace BossRush
     internal sealed class ModeHCommandFireContext
     {
         /// <summary>擂台中心。</summary>
+        internal ModeHFieldLayers FieldLayers = new ModeHFieldLayers();
         public Vector3 ArenaCenter;
         /// <summary>拍铃是否已消耗（条件 before_bell 取它的反面）。</summary>
         public bool BellConsumed;

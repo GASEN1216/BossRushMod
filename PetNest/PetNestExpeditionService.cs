@@ -26,11 +26,15 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>一个远征目的地的静态定义。</summary>
+    /// <summary>
+    /// 一个远征目的地的静态定义。
+    /// **不带元素字段**：目的地 -> 元素只有 PetNestLineageCatalog.GetDestinationElement
+    /// 一份表（元素亲和判定读的就是它）。这里曾经并存一个从没有人读的 Element 字段，
+    /// 是典型的第二真相来源，改一处漏一处。
+    /// </summary>
     internal sealed class PetNestDestinationInfo
     {
         internal string Id;
-        internal ElementTypes Element;
     }
 
     /// <summary>天灾远征服务。数据层，无演出与 UI 依赖。</summary>
@@ -69,9 +73,9 @@ namespace BossRush
         /// <summary>三个天灾目的地。首版是纯结算模拟：不加载场景、不改天气。</summary>
         internal static readonly PetNestDestinationInfo[] Destinations =
         {
-            new PetNestDestinationInfo { Id = PetNestTuning.DestinationStormSea, Element = ElementTypes.electricity },
-            new PetNestDestinationInfo { Id = PetNestTuning.DestinationAcidRuins, Element = ElementTypes.poison },
-            new PetNestDestinationInfo { Id = PetNestTuning.DestinationFrozenWaste, Element = ElementTypes.ice },
+            new PetNestDestinationInfo { Id = PetNestTuning.DestinationStormSea },
+            new PetNestDestinationInfo { Id = PetNestTuning.DestinationAcidRuins },
+            new PetNestDestinationInfo { Id = PetNestTuning.DestinationFrozenWaste },
         };
 
         /// <summary>按 id 查目的地。查不到返回 null（调用方 fail-closed）。</summary>
@@ -720,24 +724,90 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 首版产出：现金 + 同血脉遗魂，亡命档小概率带回一枚遗种蛋。
+        /// 远征产出：同血脉遗魂 + 按档位的战利品（亡命档另有小概率一枚遗种蛋）。
         ///
-        /// 材料 / 装备件的产出表需要经 owner 审定的官方物品 ID 表，首版不猜 ID；
-        /// DTO 的 outcomeLootTypeIds 已经预留，补表时只填这里，不动结构。
+        /// 战利品候选来自 <see cref="BossRushQualityItemPool"/>——官方全表按品质随机、
+        /// 过掉落黑名单、按品质缓存，与《鸭科夫日报》签到奖励**同一份实现同一份缓存**，
+        /// 因此不猜物品 ID、不新增数据表。件数与品质在 PetNestTuning，置 0 即关掉这一档。
+        ///
+        /// 池暂时取不到候选（ItemAssetsCollection 未就绪）时**只跳过、不记欠账**：
+        /// 记录里没有这一格，翻牌与补发都不会被一件抽不出来的奖励卡住。
         /// </summary>
         private static void RollLoot(PetNestExpeditionRecord record, PetNestPetRecord pet)
         {
             if (pet == null) return;
 
-            int souls = record.riskTier == (int)PetNestRiskTier.Desperate ? 90
-                : record.riskTier == (int)PetNestRiskTier.Rough ? 40 : 15;
-            PetNestService.AddSouls(pet.lineageKey, souls, false);
+            PetNestRiskTier tier = (PetNestRiskTier)record.riskTier;
+            PetNestService.AddSouls(pet.lineageKey, GetSoulReward(tier), false);
 
-            if (record.riskTier == (int)PetNestRiskTier.Desperate
-                && UnityEngine.Random.value < 0.2f)
+            if (tier == PetNestRiskTier.Desperate
+                && UnityEngine.Random.value < PetNestTuning.ExpeditionRelicEggChanceDesperate)
             {
-                record.outcomeLootTypeIds.Add(RelicEggConfig.TYPE_ID);
-                record.outcomeLootCounts.Add(1);
+                AddLoot(record, RelicEggConfig.TYPE_ID, 1);
+            }
+
+            int quality = GetLootQuality(tier);
+            int count = GetLootCount(tier);
+            if (quality <= 0 || count <= 0) return;
+
+            // 候选池按品质缓存，一次结算只查一次
+            int[] candidates = BossRushQualityItemPool.GetCandidates(quality);
+            if (candidates == null || candidates.Length <= 0)
+            {
+                ModBehaviour.DevLog("[PetNest] 远征战利品候选池为空（品质 "
+                    + quality + "），本次只发现金与遗魂");
+                return;
+            }
+            for (int i = 0; i < count; i++)
+            {
+                AddLoot(record, candidates[UnityEngine.Random.Range(0, candidates.Length)], 1);
+            }
+        }
+
+        /// <summary>把一件战利品并进结果表；同一 typeId 合并计数，避免展开出一长串同名条目。</summary>
+        private static void AddLoot(PetNestExpeditionRecord record, int typeId, int count)
+        {
+            if (record == null || typeId <= 0 || count <= 0) return;
+            for (int i = 0; i < record.outcomeLootTypeIds.Count; i++)
+            {
+                if (record.outcomeLootTypeIds[i] != typeId) continue;
+                if (i < record.outcomeLootCounts.Count)
+                {
+                    record.outcomeLootCounts[i] = record.outcomeLootCounts[i] + count;
+                    return;
+                }
+            }
+            record.outcomeLootTypeIds.Add(typeId);
+            record.outcomeLootCounts.Add(count);
+        }
+
+        private static int GetSoulReward(PetNestRiskTier tier)
+        {
+            switch (tier)
+            {
+                case PetNestRiskTier.Rough: return PetNestTuning.ExpeditionSoulRewardRough;
+                case PetNestRiskTier.Desperate: return PetNestTuning.ExpeditionSoulRewardDesperate;
+                default: return PetNestTuning.ExpeditionSoulRewardSafe;
+            }
+        }
+
+        private static int GetLootQuality(PetNestRiskTier tier)
+        {
+            switch (tier)
+            {
+                case PetNestRiskTier.Rough: return PetNestTuning.ExpeditionLootQualityRough;
+                case PetNestRiskTier.Desperate: return PetNestTuning.ExpeditionLootQualityDesperate;
+                default: return PetNestTuning.ExpeditionLootQualitySafe;
+            }
+        }
+
+        private static int GetLootCount(PetNestRiskTier tier)
+        {
+            switch (tier)
+            {
+                case PetNestRiskTier.Rough: return PetNestTuning.ExpeditionLootCountRough;
+                case PetNestRiskTier.Desperate: return PetNestTuning.ExpeditionLootCountDesperate;
+                default: return PetNestTuning.ExpeditionLootCountSafe;
             }
         }
 

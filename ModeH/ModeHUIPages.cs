@@ -525,7 +525,7 @@ namespace BossRush
         private static void CreatePreparationOptions(Transform surface, Vector2 panelSize,
             ModeHPageContent content, float topY)
         {
-            const float rowHeight = 48f;
+            const float rowHeight = 112f;
             float height = topY + panelSize.y * 0.5f - GetActionBandReserve(panelSize, content);
             GameObject host = CreateScrollHost(surface, panelSize, topY, height,
                 Math.Max(height, content.PreparationOptions.Count * rowHeight));

@@ -98,7 +98,8 @@ namespace BossRush
                 if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
 
                 CharacterMainControl victim = target.TryGetCharacter();
-                bool isBoss = victim != null && victim.isBossCharacter;
+                if (victim == null || !Team.IsEnemy(info.fromCharacter.Team, victim.Team)) return;
+                bool isBoss = victim.isBossCharacter;
                 DailyReportService.ReportKill(isBoss);
             }
             catch (Exception)
@@ -116,21 +117,21 @@ namespace BossRush
             if (!IsActive()) return;
             try
             {
-                if (target == null || info.fromCharacter == null) return;
+                if (target == null) return;
 
                 float dmg = info.finalDamage;
-                if (dmg <= 0f) return;
-
-                bool fromPlayer = info.fromCharacter.IsMainCharacter;
-                bool toPlayer = target.IsMainCharacterHealth;
-
-                if (fromPlayer && !toPlayer)
-                {
-                    DailyReportService.ReportDamageDealt(dmg);
-                }
-                else if (!fromPlayer && toPlayer)
+                if (dmg <= 0f || float.IsNaN(dmg) || float.IsInfinity(dmg)) return;
+                // 环境伤害也会掉血，承伤不要求来源角色存在。
+                if (target.IsMainCharacterHealth)
                 {
                     DailyReportService.ReportDamageTaken(dmg);
+                    return;
+                }
+                if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return;
+                CharacterMainControl victim = target.TryGetCharacter();
+                if (victim != null && Team.IsEnemy(info.fromCharacter.Team, victim.Team))
+                {
+                    DailyReportService.ReportDamageDealt(dmg);
                 }
             }
             catch (Exception)
@@ -172,6 +173,7 @@ namespace BossRush
 
         private static void HandleNewRaid(RaidUtilities.RaidInfo info)
         {
+            if (!info.valid || info.ended) return;
             if (!IsActive()) return;
             try
             {
@@ -192,7 +194,7 @@ namespace BossRush
             if (!IsActive()) return;
             try
             {
-                if (!info.dead)
+                if (info.valid && info.ended && !info.dead)
                 {
                     DailyReportService.ReportExtraction();
                 }

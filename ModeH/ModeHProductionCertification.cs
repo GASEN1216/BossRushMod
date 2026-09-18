@@ -397,6 +397,11 @@ namespace BossRush
                 }
             }
 
+            // 全部擂台规则共用的官方字段必须存在，避免签约后才发现固定场次无法实现。
+            if (failure == null && (!ModeHMatchRules.HasRequiredHostSupport(scavHandle.Character)
+                || !ModeHMatchRules.HasRequiredHostSupport(wolfHandle.Character)))
+                failure = "certification_match_rule_support_missing";
+
             // 两只诊断角色在真实 AI 更新中采样口令，完成还原后才执行受控死亡。
             if (failure == null)
             {

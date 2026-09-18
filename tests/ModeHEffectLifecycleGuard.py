@@ -100,7 +100,7 @@ def reverse_checks(sources):
         (0, "_commandModulations[i].RemainingSeconds -= deltaTime;", "", "expiry"),
         (0, "window.Adapter.Restore();\n                    _activeWindows.RemoveAt(i);", "_activeWindows.RemoveAt(i);", "owner finalization"),
         (1, "_windowRemaining -= deltaTime;", "_windowRemaining = 0f;", "adapter finalization order"),
-        (2, "RefreshFireContext(0f, true);\n            _injuryAndScar.BindFighter", "_injuryAndScar.BindFighter", "initial context"),
+        (2, "RefreshFireContext(0f, true);\n            _commandController.ShareFieldLayers(_fireContext);", "_commandController.ShareFieldLayers(_fireContext);", "initial context"),
         (2, "GetCommandScaleForBell(_commandController.LockedCommandId)", "GetCommandScale(_commandController.LockedCommandId)", "bell preview"),
         (2, "if (!ok) return false;", "", "failed bell consumption"),
         (2, "RefreshEffectConditionInputs();\n            string reason;", "string reason;", "post-bell context"),

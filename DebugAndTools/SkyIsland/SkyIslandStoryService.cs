@@ -469,34 +469,20 @@ namespace BossRush
         /// （`Assets/Data/SkyIslandAutotest.json` 的 `shot:xxx_lineN` 与 `dialogue_line_contains`）。
         /// 核对屏数用 `python3 tools/sky_island_line_screens.py "<台词>"`。
         /// </summary>
-        internal string DescribeNpc(string id)
+        internal string DescribeNpc(string id, bool married = false, bool onIsland = true, bool weibaiAway = false)
         {
             SkyIslandStoryData data = Current;
             switch (id)
             {
                 // 居民台词随进度与收到的信变化：信鸽送来的信大多是写给他们的（SkyIslandLetters），收下之后当面会提一句。
                 case "sky_qinghe":
-                    return (data.Has(SkyIslandStoryFlag.PlantingDelivered)
-                        ? (data.Has(SkyIslandStoryFlag.Ending)
-                            ? L10n.T("归航的人都吃上热菜了。最后一畦留给下一船。",
-                            "Everyone who came home got a hot meal. The last bed is for the next boat.")
-                            : L10n.T("新风车转起来了。等下一船靠岸，我就下锅。",
-                            "The new pinwheel is turning. I'll start cooking when the next boat docks."))
-                        : L10n.T("我的种植记录落在蛙鸣池了。路过帮我找找，纸上有泥手印。",
-                            "I left my planting record at Frogsong Pool. Look for the muddy handprints.")) +
+                    return QingheStoryLine(data, married, onIsland) +
                         (SkyIslandLetters.Collected(data, "Letter_03")
                             ? L10n.T("\n那封没署名的信，我认得字。田埂上那一格，还给他留着。",
                             "\nI know the writing on that unsigned letter. His plot is still waiting.")
-                            : string.Empty) + QingheGnatLine(data) + SkyIslandBossRules.ResidentLine("sky_qinghe", data);
+                            : string.Empty) + QingheGnatLine(data, onIsland) + SkyIslandBossRules.ResidentLine("sky_qinghe", data);
                 case "sky_weibai":
-                    return (data.Has(SkyIslandStoryFlag.Ending)
-                        ? L10n.T("钟响时，两头的风铃也响了。委托板还挂着，路过来揭一张。\n",
-                            "The chimes at both ends rang with the bell. There's still work on the contract board.\n")
-                        : data.BothBeacons
-                            ? L10n.T("两盏灯都亮了！沿鸣风栈道去钟庭吧。\n",
-                            "Both lamps are lit! Follow Windsong Boardwalk to the Bell Court.\n")
-                            : L10n.T("西边悬根林那支风标，东边残星工坊那盏星灯，都得修。两头一亮，双航标门自己就开。\n",
-                            "The west beacon in Hanging Root Wood and the east star lamp at Fallen Star Workshop both need fixing. Light both ends and the twin-beacon gate opens itself.\n")) +
+                    return WeibaiStoryLine(data, married, onIsland) +
                         (SkyIslandLetters.Collected(data, "Letter_02")
                             ? L10n.T("苇生的信你收到了？这家伙，还说回来替我修风铃。\n",
                             "You got Weisheng's letter? He still says he'll come back and fix my chimes.\n")
@@ -505,7 +491,10 @@ namespace BossRush
                     return (data.Has(SkyIslandStoryFlag.Ending)
                         ? L10n.T("听见钟声了，船头的名册也添了四页。归来的人亲手写的，去看看。",
                             "Heard the bell. Four new pages in the roster at the bow. Written by the people who came home.")
-                        : L10n.T("沿桥去风铃集，找苇白。要返航就回码头解系泊桩——记下的事，下趟接着算。",
+                        : weibaiAway
+                            ? L10n.T("航路任务找苇白接交；她没来岛上，就用风铃集委托板。要返航就回码头解系泊桩——记下的事，下趟接着算。",
+                            "Take and turn in route quests with Weibai; if she stayed home, use the Windchime Market board. To head home, use the mooring post — your progress keeps for next trip.")
+                            : L10n.T("沿桥去风铃集，找苇白。要返航就回码头解系泊桩——记下的事，下趟接着算。",
                             "Follow the bridge to Windchime Market and find Weibai. To head home, come back to the mooring post — whatever you've written down keeps for next trip.")) +
                         (SkyIslandLetters.Collected(data, "Letter_01")
                             ? L10n.T("\n阿潮的缆绳，我挂回最高那根桩上了。打结的手法还是老样子。",
@@ -582,8 +571,14 @@ namespace BossRush
         }
 
         /// <summary>内容批次四：晴禾说起梯田水车边的云蚋、她的纱笠与蛙鸣池的青蛙（<see cref="SkyIslandMosquitoRules"/>）。</summary>
-        private static string QingheGnatLine(SkyIslandStoryData data)
+        private static string QingheGnatLine(SkyIslandStoryData data, bool onIsland)
         {
+            if (!onIsland)
+                return SkyIslandMosquitoRules.FrogsComplete(data)
+                    ? L10n.T("\n蛙鸣池的青蛙养起来了，下趟去岛上还可以听听。纱笠的织法留在菜畦灶台，夜里去记得戴上。",
+                        "\nThe Frogsong frogs are thriving; listen for them next trip. The veil pattern is at the island's garden stove. Wear one at night.")
+                    : L10n.T("\n岛上的水车边蚋多。纱笠的织法留在菜畦灶台，带云苔纤维和星屑就能做。",
+                        "\nGnats swarm by the island's waterwheel. The veil pattern is at the garden stove; bring cloudmoss fiber and stardust to make one.");
             if (SkyIslandMosquitoRules.FrogsComplete(data))
                 return L10n.T("\n蛙鸣池又有蛙叫了，水车边的蚋也少了。夜里下地，我还是戴着纱笠。",
                             "\nFrogsong Pool is croaking again, and there are fewer gnats by the wheel. I still wear my veil at night.");

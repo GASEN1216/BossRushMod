@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-A **totem-slot charge-up item** — the more hits you take, the harder your next strike. Each hit you receive builds a lightning charge. At 5 charges, your next hit releases a 40 lightning-damage burst. High-risk, high-reward.
+A **totem-slot charge-up item** — the more hits you take, the harder your next strike. Every hit you take builds a lightning charge. At 5 charges, your next hit on an enemy releases a lightning burst: 40 flat damage plus 60% of that hit's actual damage. High-risk, high-reward.
 
 - **Type**: Totem / **Quality**: 5
 - **Drop**: 20% from Triple-Shot Man (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
@@ -11,18 +11,20 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 ### Thunder Charge (Passive)
 
 **Charging:**
-- Each hit taken adds **1 charge** (max 5)
+- Each **hit taken** adds **1 charge** (max 5)
+- **Damage over time does not charge it** — you cannot fill the ring by standing in fire
 - 0.3s cooldown between charge gains (rapid-fire hits won't instant-fill it)
 - If you take no hits for **8 seconds**, all charges are lost
 
 **Releasing:**
-- At **5 charges**, your next hit deals **+40 lightning damage** and clears all charges
+- At **5 charges**, your next hit deals **+40 flat lightning damage plus 60% of that hit's actual damage**, and clears all charges
 - **Any weapon works** — gunfire consumes the full charge and triggers the release just like melee does
+- **Only a real hit on an enemy counts**: your own summons, and your own damage-over-time or reflect damage, never consume the charges
 - Charging immediately restarts after release
 
 ### What It Looks Like
 
-At full charge the release **arcs lightning from your chest to the target**, bursting into a golden flash at the impact point with a short, heavy discharge. No arc means the stacks were not full, or the 8-second timeout already cleared them.
+Reaching 5 charges prints a "Fully charged" bubble over your head — that is the one moment you need to act on (swap to something heavy before you swing). The release then **arcs lightning from your chest to the target**, bursting into a golden flash at the impact point with a short, heavy discharge; the release itself no longer prints a second bubble. No arc means the stacks were not full, or the 8-second timeout already cleared them.
 
 ### Tips
 
@@ -31,5 +33,7 @@ At full charge the release **arcs lightning from your chest to the target**, bur
 - Useless in low-density phases where enemies aren't hitting you
 - Totem slot — doesn't replace your melee weapon, stacks on top of it
 - Best combined with high-burst weapons (e.g. Skyburner Halberd) so the release fires on a strong combo hit
+- **Which hit you spend it on matters**: the percentage part scales off that single hit, so save it for heavy single-shot weapons
+- Shotguns get less out of it — only the first pellet of a blast consumes the charges
 
-[tip] Don't hoard the 5th charge — the burst is always 40 damage flat. Release it and start charging again; total output is higher if you cycle faster.
+[tip] Once charged, don't dump it into a weak poke — the flat 40 is the same for everyone, but the 60% part only knows how heavy the swing you just landed was.

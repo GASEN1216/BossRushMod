@@ -37,7 +37,11 @@ namespace BossRush
         /// <summary>维护节流间隔（4Hz，与 ModeG HUD 同口径）。</summary>
         internal const float MaintainIntervalSeconds = 0.25f;
 
-        /// <summary>超过该距离直接传送到主人身边（官方 PetAI.Update 同款阈值）。</summary>
+        /// <summary>
+        /// 超过该距离直接传送到主人身边（官方 PetAI.Update 同款阈值）。
+        /// 这是**默认档**；性格会在 <see cref="ApplyPersonality"/> 里覆盖成自己的阈值
+        /// （忠诚贴得更紧、懒散放得更开），表在 PetNest/PetNestPersonality.cs。
+        /// </summary>
         internal const float TeleportDistance = 40f;
 
         #endregion
@@ -149,6 +153,12 @@ namespace BossRush
         private bool _identityRegistered;
         private bool _bound;
 
+        /// <summary>
+        /// 本只崽的跟随传送阈值（平方值，省掉每次维护的一次开方）。
+        /// 默认是 <see cref="TeleportDistance"/>，由 <see cref="ApplyPersonality"/> 按性格覆盖。
+        /// </summary>
+        private float _teleportDistanceSqr = TeleportDistance * TeleportDistance;
+
         /// <summary>当前主人（玩家）。</summary>
         internal CharacterMainControl Master { get { return _master; } }
 
@@ -158,6 +168,18 @@ namespace BossRush
         #endregion
 
         #region 绑定
+
+        /// <summary>
+        /// 按性格设置跟随距离。必须在 <see cref="Bind"/> 之前调（Bind 会立刻做一次维护）。
+        /// profile 为 null 或数值非法时保持默认档。
+        /// </summary>
+        internal void ApplyPersonality(PetNestPersonalityProfile profile)
+        {
+            float distance = profile != null && profile.FollowTeleportDistance > 0f
+                ? profile.FollowTeleportDistance
+                : TeleportDistance;
+            _teleportDistanceSqr = distance * distance;
+        }
 
         /// <summary>
         /// 绑定自身角色与主人。幂等：重复调用只刷新引用，不重复登记身份表。
@@ -272,8 +294,9 @@ namespace BossRush
                     _ai.leader = _master;
                 }
 
-                float distance = Vector3.Distance(_self.transform.position, _master.transform.position);
-                if (distance > TeleportDistance)
+                // 平方比较：避免每次维护一次开方（与 NPCFollowMovementBaseSqr 的仓库惯例一致）
+                Vector3 offset = _self.transform.position - _master.transform.position;
+                if (offset.sqrMagnitude > _teleportDistanceSqr)
                 {
                     TeleportToMaster();
                 }

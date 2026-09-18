@@ -5,12 +5,9 @@
 The Duckov Daily is a newspaper delivered to your base automatically, one issue per game day,
 writing up what you did yesterday as news.
 
-It gives you no combat bonus at all. What it gives you is **rhythm**: a small thing to do every
-day, a bounty telling you where to point today's run, and a check-in wall that pays out when
-it fills. Finish a run, come home, flip through the paper - that's how base life in this Mod
-accumulates.
+It connects things you already play: read your recap, check for a bounty that fits your next run, check in, then collect any prizes at the delivery point. Bounties track automatically and need no acceptance. Skipping one never blocks a run.
 
-How the paper writes about you, mind you, is not always flattering.
+Fortunes and gossip are flavor text. They grant no hidden stats and do not unlock secret tasks.
 
 ## Getting a subscription
 
@@ -43,10 +40,10 @@ How the paper writes about you, mind you, is not always flattering.
   wiping out dozens of enemies, dying repeatedly, or making a lot of money each get their own
   story. Doing nothing at all gets its own story too.
 - **Yesterday's recap**: kills, boss kills, deployments, extractions, deaths, money in and out,
-  and your biggest single hit. Black Market Duck Cup matches are excluded - your contracted
+  damage dealt, damage taken, and your biggest single hit. Only hostile characters killed by the player count; bosses are included in the kill total. Damage taken includes environmental damage. Black Market Duck Cup matches are excluded - your contracted
   fighters did the work, not you, so bounties don't progress there either.
-- **Bounty column**: yesterday's bounty result, plus today's new bounty and live progress.
-- **Weather & gossip**: tomorrow's forecast (storm warnings included), today's do's and don'ts,
+- **Bounty column**: yesterday's bounty result, plus today's new bounty, live progress, payout and settlement timing.
+- **Weather & gossip**: weather at this world time tomorrow (including storms; not a forecast for the entire day, with fixed map weather labeled separately), today's do's and don'ts,
   and word on the street.
 - **Check-in wall**: thirty slots per period.
 
@@ -59,7 +56,7 @@ rolled alongside it. Target and payout move together:
 - **Slay bosses** - `1 / 3 / 5`, paying `1,200 / 3,000 / 5,000`
 - **Extract successfully** - `1 / 2 / 4` times, paying `700 / 1,400 / 2,800`
 - **Earn in a day** - `5,000 / 15,000 / 40,000`, paying `900 / 2,000 / 4,500`
-- **Deploy without dying** - flat `1,500`
+- **Extract with zero deaths that day** - flat `1,500`
 
 A few rules:
 
@@ -67,8 +64,9 @@ A few rules:
   If you don't like it, wait for tomorrow.
 - The paper shows live progress, so you can check how far off you are at any time.
 - Completing it is announced in **the next day's paper**, and the reward pays out automatically.
-- "No deaths" requires you to **actually deploy at least once**. Sitting in base all day doesn't
-  count - of course you didn't die.
+- "No deaths" requires **at least one successful extraction that day**, with no deaths before the next issue. Deploying without returning does not count. A raid spanning two days counts on its extraction day.
+- Income uses gross earnings, without deducting spending. Daily bounty cash does not advance it.
+- Unpaid cash stays pending while later days settle normally. Opening the paper retries payment; the result changes to received only after successful delivery.
 
 ::: tip
 Check the paper before you head out and line the bounty up with whatever you were going to play anyway: "slay 5 bosses" points at the standard arena, "extract 4 times" points at short runs. Money you make on the way is the only free money there is.
@@ -86,8 +84,7 @@ Open the paper and hit `Check in` once a day. One per day, 30 slots to a period.
 - Slot `30` → quality `8`
 
 **From period 2 onward** it settles into a steady payout: slots numbered 31 through 60, with a
-reward at slot `7 / 14 / 21 / 28` of each period, **always at quality `8`**. Survive the first
-month and you're collecting a top-tier item every week.
+reward at slot `7 / 14 / 21 / 28` of each period, **always at quality `8`**. All of these days are game days, not calendar days.
 
 - Milestone slots are gold on the wall and marked with `★` - impossible to miss.
 - **Missing a day clears the current period**: skip a check-in and the period resets to zero at
@@ -95,7 +92,7 @@ month and you're collecting a top-tier item every week.
   from period 2 back to period 1, so reward quality never regresses.
 
 ::: warning
-Breaking the streak costs you "this month's progress", not everything. If it happens, don't give up on it: from period 2 on there's a Q8 every 7 slots, so one more week gets you back in the black.
+Missing a game day resets this period's check-in progress. Your period number and earned prizes remain. Offline time and pauses do not advance the Daily; there is no calendar-day login requirement.
 :::
 
 ## Where the rewards go
@@ -108,7 +105,9 @@ Breaking the streak costs you "this month's progress", not everything. If it hap
   it is **not** also queued at the delivery point, so an empty pending list doesn't mean the reward
   was lost. Check your bag and the floor first.
 - Only if both routes fail is it counted as a failed delivery, and then it is re-sent
-  automatically the next time you open the paper.
+  automatically the next time you open the paper. Missed check-ins and period rollover never erase earned prizes.
+- If the promised item quality is temporarily unavailable, the reward stays pending instead of being downgraded.
+- The paper and check-in wall scroll, while the close button stays at the bottom. The check-in area shows the next reward quality or the number of pending prizes.
 
 ## Do I need to enable it?
 

@@ -362,16 +362,16 @@ namespace BossRush
         {
             if (disposed || player == null) return L10n.T("现在吃不上饭。", "There is no meal to be had right now.");
             if (!plantingDelivered)
-                return L10n.T("晴禾：种植记录还没回来，菜畦也就还没重新开张。",
-                    "Qinghe: The planting record is not back yet, so the garden has not reopened.");
+                return L10n.T("种植记录还没交还，菜畦尚未重新开张。",
+                    "The planting record has not been returned, so the garden has not reopened.");
             if (mealUsed)
-                return L10n.T("晴禾：这一顿你已经吃过啦，下次出岛再来。",
-                    "Qinghe: You have already had this one. Come back next trip.");
+                return L10n.T("本趟已经吃过归航菜，下次出击再来。",
+                    "You have already had a homecoming meal this raid. Come back next trip.");
             if (!ApplyMeal())
-                return L10n.T("晴禾：这顿饭好像没落到实处，回头我再试试。",
-                    "Qinghe: That meal did not seem to take. Let me try again later.");
-            return L10n.T("晴禾：归航菜，趁热。走远路的人得先吃饱。（本次出击生效）",
-                "Qinghe: A homecoming meal — eat it while it is hot. Long roads start on a full stomach. (this raid only)");
+                return L10n.T("归航菜暂时未能领取，请稍后重试。",
+                    "The homecoming meal could not be served. Please try again later.");
+            return L10n.T("吃过了晴禾准备的归航菜，身上暖和起来。（本次出击生效）",
+                "Qinghe's homecoming meal leaves you warm and well fed. (this raid only)");
         }
 
         /// <summary>

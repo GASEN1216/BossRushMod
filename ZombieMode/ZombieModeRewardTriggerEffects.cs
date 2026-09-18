@@ -182,21 +182,8 @@ namespace BossRush
                 return;
             }
 
-            Vector3 center = player.transform.position;
-            Vector3 forward = player.transform.forward;
-            if (forward.sqrMagnitude <= 0.0001f)
-            {
-                forward = Vector3.forward;
-            }
-
-            float radius = 2.75f;
-            float damage = 30f + 10f * (stacks - 1);
-            float offsetDistance = 1.5f + 0.25f * (stacks - 1);
-            for (int i = 0; i < 3; i++)
-            {
-                Vector3 offset = Quaternion.Euler(0f, 120f * i, 0f) * forward * offsetDistance;
-                CreateZombieModeOptionExplosion(runId, center + offset, radius, damage);
-            }
+            ZombieModeRuntimeModule.TriggerDoomPulse(player, stacks,
+                (point, radius, damage) => CreateZombieModeOptionExplosion(runId, point, radius, damage));
         }
 
         private void CreateZombieModeOptionExplosion(int runId, Vector3 position, float radius, float damage)
@@ -223,27 +210,31 @@ namespace BossRush
                 return;
             }
 
-            try
+            ZombieModeRuntimeModule.DeferExplosion(this, zombieModeRunState, runId,
+                () => IsZombieModeRunValid(runId), () =>
             {
-                DamageInfo info = new DamageInfo(player);
-                info.damageValue = damage;
-                info.damagePoint = position;
-                Vector3 normal = player.transform.position - position;
-                info.damageNormal = normal.sqrMagnitude > 0.0001f ? normal.normalized : Vector3.up;
-                info.isExplosion = true;
-                info.isFromBuffOrEffect = true;
-                LevelManager.Instance.ExplosionManager.CreateExplosion(
-                    position,
-                    radius,
-                    info,
-                    ExplosionFxTypes.normal,
-                    0.35f,
-                    false);
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] option explosion failed: " + e.Message);
-            }
+                try
+                {
+                    DamageInfo info = new DamageInfo(player);
+                    info.damageValue = damage;
+                    info.damagePoint = position;
+                    Vector3 normal = player.transform.position - position;
+                    info.damageNormal = normal.sqrMagnitude > 0.0001f ? normal.normalized : Vector3.up;
+                    info.isExplosion = true;
+                    info.isFromBuffOrEffect = true;
+                    LevelManager.Instance.ExplosionManager.CreateExplosion(
+                        position,
+                        radius,
+                        info,
+                        ExplosionFxTypes.normal,
+                        0.35f,
+                        false);
+                }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] option explosion failed: " + e.Message);
+                }
+            });
         }
 
         private void StartZombieModeAmmoRainIfNeeded(int runId)

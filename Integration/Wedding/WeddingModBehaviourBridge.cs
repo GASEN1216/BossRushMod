@@ -446,6 +446,7 @@ namespace BossRush
                     DestroyNurseNPC();
                     SpawnNurseNPC(null, false, false);
                 }
+                else PermanentDuckNpcModule.ReleaseDivorcedNpc(npcId);
             }
             catch (Exception e)
             {
@@ -683,7 +684,7 @@ namespace BossRush
             }
         }
 
-        private GameObject GetSpouseInstance(string spouseNpcId)
+        internal GameObject GetSpouseInstance(string spouseNpcId)
         {
             if (spouseNpcId == GoblinAffinityConfig.NPC_ID)
             {

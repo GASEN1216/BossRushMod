@@ -27,10 +27,10 @@ namespace BossRush
         /// <summary>成功撤离 N 次。</summary>
         Extractions = 2,
 
-        /// <summary>当日净赚 N 金。</summary>
+        /// <summary>当日进账 N 金（不扣支出，不含日报自己的奖金）。</summary>
         EarnMoney = 3,
 
-        /// <summary>当日零死亡（需至少出击一次，防止挂机白嫖）。</summary>
+        /// <summary>当日成功撤离且零死亡。</summary>
         NoDeath = 4,
     }
 
@@ -145,8 +145,13 @@ namespace BossRush
                 def.Id = Templates[i].Id;
                 def.Kind = Templates[i].Kind;
                 def.Target = target;
-                def.CashReward = 0L; // 已结算记录不再需要奖金数值
-                return def;
+                for (int tier = 0; tier < Templates[i].Tiers.Length; tier++)
+                {
+                    if (Templates[i].Tiers[tier] != target) continue;
+                    def.CashReward = Templates[i].Rewards[tier];
+                    return def;
+                }
+                return null;
             }
             return null;
         }
@@ -177,8 +182,8 @@ namespace BossRush
                     raw = net > int.MaxValue ? int.MaxValue : (int)net;
                     break;
                 case DailyReportBountyKind.NoDeath:
-                    // 需要至少出击一次才算数：否则整天待在基地也能白拿。
-                    raw = (stats.Raids > 0 && stats.Deaths == 0) ? 1 : 0;
+                    // 只出门不等于生还；跨日报日出击也以实际撤离当天记功。
+                    raw = (stats.Extractions > 0 && stats.Deaths == 0) ? 1 : 0;
                     break;
                 default:
                     raw = 0;
@@ -221,8 +226,8 @@ namespace BossRush
                     return L10n.T("单日进账 " + def.Target + " 金",
                         "Earn " + def.Target + " in a single day");
                 case DailyReportBountyKind.NoDeath:
-                    return L10n.T("出击且全身而退（零阵亡）",
-                        "Deploy and survive (zero deaths)");
+                    return L10n.T("成功撤离且当日零阵亡",
+                        "Extract with zero deaths today");
                 default:
                     return L10n.T("今日无悬赏", "No bounty today");
             }
@@ -245,11 +250,11 @@ namespace BossRush
                     return L10n.T("撤离调度处提醒：活着回来才算数。",
                         "Extraction Dispatch reminds you: only coming back counts.");
                 case DailyReportBountyKind.EarnMoney:
-                    return L10n.T("商会告示：今日汇率不错，适合做买卖。",
-                        "Merchant notice: favorable rates today. Good day for trade.");
+                    return L10n.T("出售多余战利品可推进；只计进账，不扣支出。",
+                        "Sell spare loot. Gross income counts; spending is not deducted.");
                 case DailyReportBountyKind.NoDeath:
-                    return L10n.T("医保局温馨提示：少来几趟，我们也省点钱。",
-                        "Health Bureau: fewer visits, lower premiums. For both of us.");
+                    return L10n.T("至少成功撤离一次；出刊前阵亡仍会失败。",
+                        "Extract at least once. Any death before the next issue fails this bounty.");
                 default:
                     return string.Empty;
             }

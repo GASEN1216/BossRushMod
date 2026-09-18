@@ -46,6 +46,7 @@ FILES = [
     "SkyIslandGuideInteractable.cs",
     "SkyIslandSearchPoint.cs",
     "SkyIslandResidentInteractable.cs",
+    "SkyIslandStoryResidentText.cs",
     "SkyIslandLighting.cs",
     "SkyIslandStormBoss.cs",
     "SkyIslandEnemyTiers.cs",
@@ -89,8 +90,6 @@ FILES = [
     "SkyIslandFrameProfile.cs",
     # 2026-09-14 头目 / 岛主 R1：纯规则（首杀字幕、居民台词）、两位 Boss 的招式字幕、剧情接线与玩家穿上专属装备后的回话。
     "SkyIslandBossRules.cs",
-    "SkyIslandChatterLines.cs",
-    "SkyIslandChatter.cs",
     "SkyIslandBossForge.cs",
     "SkyIslandForemanBoss.cs",
     "SkyIslandStargazerChief.cs",
@@ -106,6 +105,11 @@ FILES = [
     "SkyIslandPiperChief.cs",
     "SkyIslandMirrorChief.cs",
     "SkyIslandWindhunterChief.cs",
+    # 2026-09-17 头顶气泡：话语表（全岛唯一的气泡文案来源）、调度器与头目的事件化台词。
+    # 后两个今天只有诊断日志，照样登记——新增文案必须双语，名单外的文件加一句裸中文不会被拦。
+    "SkyIslandChatterLines.cs",
+    "SkyIslandChatter.cs",
+    "SkyIslandBossVoice.cs",
 ]
 
 # 内容批次四起一并扫描 Integration/SkyIsland：物品描述、使用说明与耗材回话同样是玩家可见文案。

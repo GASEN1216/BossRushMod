@@ -5,7 +5,7 @@ HERE=Path(__file__).resolve().parent
 OUT=ROOT/'Build'/'runtime-regressions'/'ModeHMarketAudit'
 OUT.mkdir(parents=True,exist_ok=True)
 PROD=OUT/'Production'; PROD.mkdir(exist_ok=True)
-files=['ModeHCombatTelemetry.cs','ModeHTransferMarket.cs','ModeHContentModels.cs','ModeHStateDtos.cs','ModeHStateModel.cs','ModeHConfig.cs','ModeHDraftController.cs','ModeHEncounterPlanner.cs','ModeHSeedStream.cs','ModeHCanonicalDigest.cs']
+files=['ModeHCombatTelemetry.cs','ModeHTransferMarket.cs','ModeHContentModels.cs','ModeHStateDtos.cs','ModeHStateModel.cs','ModeHConfig.cs','ModeHDraftController.cs','ModeHEncounterPlanner.cs','ModeHSeedStream.cs','ModeHCanonicalDigest.cs','ModeHOddsController.cs','ModeHVirtualStakeController.cs','ModeHRuntimeModule_LoadoutEditing.cs','ModeHMatchRules.cs']
 for name in files:(PROD/name).write_bytes((ROOT/'ModeH'/name).read_bytes())
 (PROD/'BossRushJsonValue.cs').write_bytes((ROOT/'Common/Data/BossRushJsonValue.cs').read_bytes())
 (PROD/'SimpleJsonHelper.cs').write_bytes((ROOT/'Utilities/SimpleJsonHelper.cs').read_bytes())
@@ -18,7 +18,7 @@ source=(ROOT/'ModeH/ModeHRuntimeModule_CombatProfiles.cs').read_text(encoding='u
 extracted='''using System; using System.Collections.Generic; namespace BossRush {
 internal sealed class SeedOwner { public long RunSeed=1; public int MatchIndex; public ModeHLifecycle Lifecycle; }
 internal sealed class MessageOwner { public string Message; public void ShowMessage(string s){Message=s;} }
-internal static class L10n { public static string T(string zh,string en){return en;} }
+internal static class L10n { public static string T(string zh,string en){return en;} public static string T(string key){string v; return LocalizationHelper.Map.TryGetValue(key,out v)?v:key;} }
 internal sealed class PlanInputs {
  public ModeHSeasonDto _season; private SeedOwner _runState=new SeedOwner();
  private bool _commandsClosed=false; private MessageOwner _owner=new MessageOwner(); public bool Closed;
@@ -42,7 +42,24 @@ pick=method(flow,'private void OnDraftPick(')
 assert pick.index('CanConstructFullSeason(contract, assignments, out failureReasonId)') < pick.index('_season.contract = contract;'), 'viability must run before accepting contract'
 (PROD/'PlanInputs.cs').write_text(extracted+'}}',encoding='utf-8')
 (OUT/'Harness.cs').write_bytes((HERE/'Harness.cs').read_bytes())
+(OUT/'ContentAudit.cs').write_bytes((HERE/'ContentAudit.cs').read_bytes())
+(OUT/'MatchRulesAudit.cs').write_bytes((HERE/'MatchRulesAudit.cs').read_bytes())
+(PROD/'RuntimeStatModifierTracker.cs').write_bytes((ROOT/'Common/Stats/RuntimeStatModifierTracker.cs').read_bytes())
+(PROD/'ModeHLocalization.cs').write_bytes((ROOT/'Localization/ModeHLocalization.cs').read_bytes())
+extra='using System; using System.Collections.Generic; namespace BossRush { internal sealed partial class ModeHRuntimeModule {\n'
+for file, signatures in {
+ 'ModeHRuntimeModule_CombatFlow.cs': ['private bool EnsurePreparedMatchSelection(', 'private List<string> BuildDefaultKitSelection('],
+ 'ModeHRuntimeModule_CombatProfiles.cs': ['private ModeHProfileDto FindSeasonProfile(', 'private static IList<string> FilterKitsForInjury(', 'private static string ResolveCommandDisplayName('],
+}.items():
+ for signature in signatures:extra+=method((ROOT/'ModeH'/file).read_text(encoding='utf-8-sig'),signature)+'\n'
+extra+='} internal static class ModeHCommandController {\n'
+for signature in ['public static List<string> GetSelectableCommands(', 'private static bool IsSelectableForRole(', 'private static ModeHCommandSpec ResolveSpec(']:
+ extra+=method((ROOT/'ModeH/ModeHCommandController.cs').read_text(encoding='utf-8-sig'),signature)+'\n'
+extra+='} internal static class ModeHInjuryAndScarSystem {\n'
+extra+=method((ROOT/'ModeH/ModeHInjuryAndScarSystem.cs').read_text(encoding='utf-8-sig'),'private static ModeHInjurySpec GetInjury(')+'\n'
+extra+=method((ROOT/'ModeH/ModeHInjuryAndScarSystem.cs').read_text(encoding='utf-8-sig'),'public static bool InjuryDisablesKitSlot(')+'\n}}'
+(PROD/'SelectionMethods.cs').write_text(extra,encoding='utf-8')
 (OUT/'source-sha256.txt').write_text('\n'.join(hashlib.sha256((PROD/n).read_bytes()).hexdigest()+'  ModeH/'+n for n in files),encoding='utf-8')
-(OUT/'Fixture.csproj').write_text('''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0414</NoWarn></PropertyGroup><ItemGroup><Compile Include="Production/*.cs"/><Compile Include="Harness.cs"/></ItemGroup></Project>''',encoding='utf-8')
+(OUT/'Fixture.csproj').write_text('''<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0414</NoWarn></PropertyGroup><ItemGroup><Compile Include="Production/*.cs"/><Compile Include="Harness.cs"/><Compile Include="ContentAudit.cs"/><Compile Include="MatchRulesAudit.cs"/></ItemGroup></Project>''',encoding='utf-8')
 r=subprocess.run(['dotnet','run','--project',str(OUT/'Fixture.csproj'),'--configuration','Release','--verbosity','quiet'],cwd=ROOT,capture_output=True,text=True,encoding='utf-8',errors='replace')
 o=r.stdout+r.stderr;(OUT/'execution.log').write_text(o,encoding='utf-8');print(o,end='');sys.exit(r.returncode)

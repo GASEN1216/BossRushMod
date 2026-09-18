@@ -582,6 +582,7 @@ namespace BossRush
             }
 
             EnsureMatchPlan();
+            AppendMatchPreview(page);
             AppendReconLinesAndActions(page);
             page.Actions.Add(new ModeHActionData
             {
@@ -600,7 +601,7 @@ namespace BossRush
         /// 于是「每场一次免费侦察」这条设计在游戏里根本不存在：玩家只能盲押。
         ///
         /// 呈现口径：
-        /// - 未用过：先出一行「免费侦察一次」当小标题，再逐条列出四个可选项；
+        /// - 未用过：先出一行「免费侦察一次」当小标题，再列出有实战信息的可选项；
         /// - 已用过：只回显揭示了哪一项，不再出按钮（TryApplyRecon 自己也会以
         ///   `recon_already_consumed` 拒绝，这里是让玩家看得见，而不是靠点了才知道）。
         ///
@@ -622,13 +623,13 @@ namespace BossRush
                     line += L10n.T("：", ": ") + L10n.T(revealKey);
                 }
                 // reconResult 是「成员顺序」「第二装备」两项的文本结果。
-                if (!string.IsNullOrEmpty(plan.reconResult))
+                if (!string.IsNullOrEmpty(plan.reconResult) || plan.reconChoiceId == "current_injury")
                 {
-                    line += "　" + plan.reconResult;
+                    line += "　" + DescribeReconResult(plan);
                 }
                 // coreTraitTags（「隐藏坏习惯」那一项）此前**全仓零消费**：写进
                 // publicSummary 后再没人读，玩家消耗掉本场唯一一次侦察机会却什么都看不到。
-                // 带伤数量那一项确实由赔率页摘要呈现（ModeHOddsController 读它），不重复。
+                // 旧存档的履历侦察仅回显，新的按钮不消费纯履历信息。
                 List<string> traits = plan.publicSummary != null
                     ? plan.publicSummary.coreTraitTags : null;
                 if (traits != null && traits.Count > 0)
@@ -650,8 +651,8 @@ namespace BossRush
             for (int i = 0; i < choices.Count; i++)
             {
                 ModeHReconChoiceSpec choice = choices[i];
-                if (choice == null || string.IsNullOrEmpty(choice.ReconChoiceId)) continue;
-                // 闭包不能捕获循环变量，否则四个按钮点下去都是最后一条（照 SelectSettlementReward 的写法）
+                if (!ModeHEncounterPlanner.IsReconChoicePlayable(choice) || string.IsNullOrEmpty(choice.ReconChoiceId)) continue;
+                // 闭包不能捕获循环变量，否则按钮点下去都是最后一条（照 SelectSettlementReward 的写法）
                 string selectedReconId = choice.ReconChoiceId;
                 page.Actions.Add(new ModeHActionData
                 {

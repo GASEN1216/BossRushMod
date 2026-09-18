@@ -290,20 +290,20 @@ namespace BossRush
                     flag = SkyIslandStoryFlag.BeaconQuestAccepted;
                     if (!source.SkyIslandRouteUnlocked)
                         required = L10n.T("先向 Jeff 交付坐标，开放晴岚航线。", "Deliver the coordinates to Jeff to open the Qinglan route first.");
-                    message = L10n.T("苇白：两端航标都灭了，绳桥也不敢系。你要是肯跑这一趟，风铃集这边我来安排。",
-                        "Weibai: Both beacons are dark and nobody dares lash the bridges. Make the trip and I'll handle things here."); break;
+                    message = L10n.T("已接下航路委托：确认两端航标都已修复，再提交记录。",
+                        "Route commission accepted: verify both beacons are repaired, then submit the record."); break;
                 case SkyIslandStoryAction.DeliverBeaconQuest:
                     flag = SkyIslandStoryFlag.BeaconQuestDelivered;
                     if (!source.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
-                        required = L10n.T("先在风铃集接下苇白的委托。", "Take Weibai's commission at Windchime Market first.");
+                        required = L10n.T("先找苇白接下航标任务；她不在时，用风铃集委托板的「航路任务」。", "Take the beacon quest from Weibai first, or use Route quests at the Windchime Market board when she is away.");
                     else if (!source.BothBeacons)
                         required = L10n.T("风标与星灯都亮起来再回来复命。", "Light both the wind beacon and the star lamp, then report back.");
-                    message = L10n.T("苇白在名册上画了两道：东西两端都回话了。绳桥今晚就能系。",
-                        "Weibai strikes two marks in the roster: both ends answer again. The rope bridges go up tonight."); break;
+                    message = L10n.T("两端航标的修复记录已交付，航路名册添上了两道标记。可以到码头找浮舟接下钟庭之争。",
+                        "Both beacon repairs are recorded in the route roster. Fuzhou at the dock can now offer The Bell Court Standoff."); break;
                 case SkyIslandStoryAction.AcceptBellCourtQuest:
                     flag = SkyIslandStoryFlag.BellCourtQuestAccepted;
                     if (!source.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
-                        required = L10n.T("先回风铃集向苇白交付两端航标任务。", "Report the two beacons to Weibai at Windchime Market first.");
+                        required = L10n.T("先向苇白交付两端航标任务；她不在时，用风铃集委托板的「航路任务」。", "Turn in the beacon quest to Weibai first, or use Route quests at the Windchime Market board when she is away.");
                     message = L10n.T("浮舟：灯都亮了，钟守还是不肯让钟响。去归航钟庭，说服他，或者击停守钟装置，再回来告诉我。",
                         "Fuzhou: The lamps burn, yet the Bell Keeper still won't let the bell ring. Go to the Bell Court, talk him down or stop his bell engine, then report back to me."); break;
                 case SkyIslandStoryAction.DeliverBellCourtQuest:
@@ -364,10 +364,10 @@ namespace BossRush
                 case SkyIslandStoryAction.DeliverPlantingRecord:
                     flag = SkyIslandStoryFlag.PlantingDelivered;
                     if (!source.Has(SkyIslandStoryFlag.PlantingRecord))
-                        required = L10n.T("晴禾：种植记录落在蛙鸣池了，看到的话替我带回来吧。",
-                            "Qinghe: I left the planting record at Frogsong Pool. Bring it back for me if you see it.");
-                    message = L10n.T("晴禾：原来大家都还记得。最后一畦就种给下一艘归航船吧。菜畦挂起了新的风车。",
-                        "Qinghe: So everyone still remembers. Then the last bed goes to the next ship home. A new pinwheel goes up over the garden."); break;
+                        required = L10n.T("先在蛙鸣池找到晴禾的种植记录。",
+                            "Find Qinghe's planting record at Frogsong Pool first.");
+                    message = L10n.T("种植记录已交还，菜畦挂起了新的风车。归航菜可以在菜畦领取。",
+                        "The planting record is returned and a new pinwheel turns over the garden. A homecoming meal is available there."); break;
                 case SkyIslandStoryAction.OpenShortcutK1:
                     flag = SkyIslandStoryFlag.ShortcutK1;
                     if (!source.Has(SkyIslandStoryFlag.WindBeacon))

@@ -87,15 +87,26 @@ namespace BossRush
         /// <summary>单局击杀经验上限，避免刷小怪把等级冲满。</summary>
         internal const int PetExpCompanionKillRunCap = 30;
 
-        /// <summary>
-        /// 天灾远征存活归来的经验（已废弃，改用分档常量）。
-        /// 保留字段以兼容旧代码引用，实际使用 PetExpExpeditionSurvive{Safe|Rough|Desperate}。
-        /// </summary>
-        [System.Obsolete("Use PetExpExpeditionSurviveSafe/Rough/Desperate instead", false)]
-        internal const int PetExpExpeditionSurvive = 25;
-
         /// <summary>每多少级给玩家 +1 格捡漏背包（PetCapcity）。</summary>
         internal const int PetLevelsPerCapacityBonus = 3;
+
+        /// <summary>
+        /// 每级额外生命（小数口径，0.06 = +6%；作用在角色 Item 的 MaxHealth 上）。
+        ///
+        /// 在此之前，Lv1 与 Lv10 的崽进局后属性一模一样——等级的唯一回报是每 3 级 +1 格
+        /// 捡漏背包，而那还要先借到官方宠物席位才生效。养 20 局看不出差别，
+        /// "养成"这条主循环等于不存在。
+        /// 复用 PetNestCompanionSpawner.ApplyPetModifiers 的同一条 Modifier 管线，
+        /// 不新增系统、不占存档字段。置 0 即回到旧行为。
+        /// </summary>
+        internal const float PetLevelMaxHealthBonusPerLevel = 0.06f;
+
+        /// <summary>
+        /// 每级额外伤害（小数口径，作用在 GunDamageMultiplier / MeleeDamageMultiplier 上）。
+        /// Lv10 = +45%，即基准 0.06 提到约 0.087，仍然远低于玩家，
+        /// 守住设计稿「锦上添花不改天换地」。置 0 即回到旧行为。
+        /// </summary>
+        internal const float PetLevelDamageBonusPerLevel = 0.05f;
 
         /// <summary>每崽战痕上限。溢出后最旧的合并进 mergedOldScarCount，防存档膨胀。</summary>
         internal const int MaxScarsPerPet = 8;
@@ -167,8 +178,9 @@ namespace BossRush
         internal const float ElementAffinityBonus = 0.12f;
 
         /// <summary>
-        /// 发奖尝试次数上限。到顶仍未发全时放弃并置 rewardsGranted，
-        /// 避免一件永远发不出去的战利品把翻牌永久卡死（MarkRevealed 会拒绝未发奖的记录）。
+        /// 发奖尝试次数上限。**只用于诊断退避与日志**：连续这么多次仍未发全时打一条
+        /// [ERROR]，欠账照旧保留到成功为止，绝不因为次数到顶就置 rewardsGranted
+        /// （`tests/GameplayReliabilityPersistenceGuard.py` 正是断言这一点）。
         /// 每次回基地至多消耗两次（模块扫一次 + 翻牌前补发一次）。
         /// </summary>
         internal const int MaxRewardGrantAttempts = 6;
@@ -184,6 +196,30 @@ namespace BossRush
         internal const int PetExpExpeditionSurviveRough = 30;
         /// <summary>亡命档远征经验（60 exp 可部分补偿 12% 死亡风险下的期望损失）。</summary>
         internal const int PetExpExpeditionSurviveDesperate = 60;
+
+        /// <summary>平安档远征成功带回的同血脉遗魂。</summary>
+        internal const int ExpeditionSoulRewardSafe = 15;
+        /// <summary>风浪档远征成功带回的同血脉遗魂。</summary>
+        internal const int ExpeditionSoulRewardRough = 40;
+        /// <summary>亡命档远征成功带回的同血脉遗魂。</summary>
+        internal const int ExpeditionSoulRewardDesperate = 90;
+
+        /// <summary>亡命档成功后额外掉一枚遗种蛋的概率。</summary>
+        internal const float ExpeditionRelicEggChanceDesperate = 0.2f;
+
+        /// <summary>
+        /// 远征战利品的品质与件数（0 件 = 该档只给现金与遗魂）。
+        ///
+        /// 候选来自 Common/Loot/BossRushQualityItemPool（官方全表按品质随机 + 掉落黑名单，
+        /// 与《鸭科夫日报》签到奖励同一口径、同一份缓存），因此不新增也不猜物品 ID。
+        /// 平安档保持「最多空手」的定位不给物；想关掉整张表把件数置 0 即可。
+        /// </summary>
+        internal const int ExpeditionLootQualitySafe = 0;
+        internal const int ExpeditionLootCountSafe = 0;
+        internal const int ExpeditionLootQualityRough = 3;
+        internal const int ExpeditionLootCountRough = 1;
+        internal const int ExpeditionLootQualityDesperate = 4;
+        internal const int ExpeditionLootCountDesperate = 1;
 
         #endregion
 

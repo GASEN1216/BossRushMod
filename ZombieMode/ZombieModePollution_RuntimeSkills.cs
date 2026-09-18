@@ -946,34 +946,40 @@ namespace BossRush
                 return;
             }
 
-            try
+            ZombieModeRuntimeModule.DeferExplosion(this, zombieModeRunState, runId,
+                () => IsZombieModeRunValid(runId), () =>
             {
-                if (source != null &&
-                    LevelManager.Instance != null &&
-                    LevelManager.Instance.ExplosionManager != null)
+                try
                 {
-                    DamageInfo dmgInfo = new DamageInfo(source);
-                    dmgInfo.damageValue = damage;
-                    dmgInfo.isExplosion = true;
+                    if (source != null &&
+                        LevelManager.Instance != null &&
+                        LevelManager.Instance.ExplosionManager != null)
+                    {
+                        DamageInfo dmgInfo = new DamageInfo(source);
+                        dmgInfo.damageValue = damage;
+                        dmgInfo.isExplosion = true;
+                        dmgInfo.isFromBuffOrEffect = ReferenceEquals(source, CharacterMainControl.Main);
 
-                    LevelManager.Instance.ExplosionManager.CreateExplosion(
-                        origin,
-                        radius,
-                        dmgInfo,
-                        ExplosionFxTypes.normal,
-                        0.5f,
-                        canHurtSelf);
-                    return;
+                        LevelManager.Instance.ExplosionManager.CreateExplosion(
+                            origin,
+                            radius,
+                            dmgInfo,
+                            ExplosionFxTypes.normal,
+                            0.5f,
+                            canHurtSelf);
+                        return;
+                    }
                 }
-            }
-            catch (System.Exception e)
-            {
-                DevLog("[ZombieMode] ExplosionManager 调用失败，回退 player-only 路径: " + e.Message);
-            }
+                catch (System.Exception e)
+                {
+                    DevLog("[ZombieMode] ExplosionManager 调用失败，回退 player-only 路径: " + e.Message);
+                }
 
-            // 兜底：源码 API 不可用 / source 为空时仍走 player-only 实现，
-            // 与原行为一致避免技能完全失效。
-            DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage);
+                // 兜底：源码 API 不可用 / source 为空时仍走 player-only 实现，
+                // 与原行为一致避免技能完全失效。
+                if (canHurtSelf || !ReferenceEquals(source, CharacterMainControl.Main))
+                    DealZombieModeAreaDamageToPlayer(runId, source, origin, radius, damage);
+            });
         }
     }
 }

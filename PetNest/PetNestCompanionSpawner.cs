@@ -66,8 +66,12 @@ namespace BossRush
         /// <summary>入场落点相对玩家的偏移。</summary>
         internal static readonly Vector3 SpawnOffset = new Vector3(1.2f, 0.5f, 1.2f);
 
-        /// <summary>幼体视觉缩放基准档。</summary>
-        internal const float DefaultModelScale = 0.4f;
+        /// <summary>
+        /// 幼体视觉缩放基准档。
+        /// 数值单点在 PetNestTuning.DefaultCubModelScale；这里只保留调用面，
+        /// 避免同一个 0.4f 在两处各写一遍、改一处漏一处。
+        /// </summary>
+        internal const float DefaultModelScale = PetNestTuning.DefaultCubModelScale;
 
         #endregion
 
@@ -282,6 +286,14 @@ namespace BossRush
                 NormalizeCombatOutput(handle.Character);
                 // 天赋与战痕必须真的挂上去，否则它们只是面板上的展示文本
                 ApplyPetModifiers(handle.Character, pet);
+                // MaxHealth 类 Modifier 是在角色创建**之后**挂的，而官方 CurrentHealth
+                // 是创建时写死的字段、MaxHealth 则实时从角色 Item 的 stat 算
+                // （鸭科夫源码/TeamSoda.Duckov.Core/Health.cs:44-116）。不补这一步，
+                // 「结实」天赋与等级成长会让崽一入场就是残血，战痕的 MaxHealth 减益
+                // 又会让血条超过 100%。官方 SetHealth 自带 Mathf.Min，两个方向都对。
+                TopUpHealthToMax(handle);
+
+                PetNestPersonalityProfile personality = PetNestPersonality.Resolve(pet);
 
                 AICharacterController ai = handle.Character.GetComponentInChildren<AICharacterController>();
                 if (ai != null)
@@ -291,6 +303,8 @@ namespace BossRush
                     ai.forceTracePlayerDistance = 0f;
                     ai.searchedEnemy = null;
                     ai.noticed = false;
+                    // 性格落地：只写官方 public 字段，不反射、不另挂行为树
+                    ApplyPersonalityToAI(ai, personality);
                 }
 
                 PetNestCompanionAgent agent = handle.Character.GetComponent<PetNestCompanionAgent>();
@@ -299,6 +313,7 @@ namespace BossRush
                     agent = handle.Character.gameObject.AddComponent<PetNestCompanionAgent>();
                 }
                 handle.Agent = agent;
+                agent.ApplyPersonality(personality);
 
                 handle.Character.gameObject.SetActive(true);
                 if (handle.Health != null)
@@ -417,7 +432,7 @@ namespace BossRush
         internal static readonly object CompanionPetModifierSource = new object();
 
         /// <summary>
-        /// 把崽的出身天赋与战痕应用到幼体身上。
+        /// 把崽的出身天赋、等级成长、性格与战痕应用到幼体身上。
         ///
         /// 不做这一步，天赋与战痕就只是面板上的展示文本——两只天赋完全不同的崽进局后
         /// 属性一模一样，养成与战痕惩罚在玩法上等于不存在。
@@ -443,17 +458,12 @@ namespace BossRush
                 {
                     for (int i = 0; i < pet.talents.Count; i++)
                     {
-                        PetNestTalentEntry t = pet.talents[i];
-                        if (t == null || string.IsNullOrEmpty(t.statKey)) continue;
-                        if (string.Equals(t.statKey, PetNestPetProxyBridge.PetCapacityStatKey,
-                                StringComparison.Ordinal))
-                        {
-                            continue;
-                        }
-                        ApplyOneModifier(characterItem, t.statKey, t.value, t.percentage);
+                        ApplyStatRow(characterItem, pet.talents[i]);
                     }
                 }
 
+                ApplyLevelModifiers(characterItem, pet);
+                ApplyPersonalityModifiers(characterItem, pet);
                 ApplyScarModifiers(characterItem, pet);
             }
             catch (Exception e)
@@ -462,26 +472,116 @@ namespace BossRush
             }
         }
 
-        /// <summary>同一 stat 上的战痕合并成一条并按封顶钳制，避免逐条叠加突破上限。</summary>
+        /// <summary>
+        /// 等级成长。**养成回报的唯一落点**：在此之前 Lv1 与 Lv10 的崽进局后属性完全一样，
+        /// 等级只换来每 3 级 +1 格捡漏背包，而那还要先借到官方宠物席位才生效。
+        /// 数值在 PetNestTuning（置 0 即回到旧行为），走的是天赋同一条 Modifier 管线。
+        /// </summary>
+        private static void ApplyLevelModifiers(Item characterItem, PetNestPetRecord pet)
+        {
+            int levels = pet.level - 1;
+            if (levels <= 0) return;
+
+            float health = PetNestTuning.PetLevelMaxHealthBonusPerLevel * levels;
+            float damage = PetNestTuning.PetLevelDamageBonusPerLevel * levels;
+
+            ApplyOneModifier(characterItem, "MaxHealth", health, true);
+            ApplyOneModifier(characterItem, "GunDamageMultiplier", damage, true);
+            ApplyOneModifier(characterItem, "MeleeDamageMultiplier", damage, true);
+        }
+
+        /// <summary>
+        /// 性格的属性签名。表在 PetNest/PetNestPersonality.cs（唯一一份），
+        /// 这里只负责挂上去；AI 侧的索敌与追击旋钮见 ApplyPersonalityToAI。
+        /// </summary>
+        private static void ApplyPersonalityModifiers(Item characterItem, PetNestPetRecord pet)
+        {
+            PetNestTalentEntry[] rows = PetNestPersonality.Resolve(pet).Modifiers;
+            if (rows == null) return;
+            for (int i = 0; i < rows.Length; i++)
+            {
+                ApplyStatRow(characterItem, rows[i]);
+            }
+        }
+
+        /// <summary>
+        /// 挂一条 statKey/value/percentage 形状的属性行（天赋与性格共用）。
+        /// PetCapcity 在这里统一跳过：官方读的是玩家的 stat，挂幼体身上是纯浪费。
+        /// </summary>
+        private static void ApplyStatRow(Item characterItem, PetNestTalentEntry row)
+        {
+            if (row == null || string.IsNullOrEmpty(row.statKey)) return;
+            if (string.Equals(row.statKey, PetNestPetProxyBridge.PetCapacityStatKey,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+            ApplyOneModifier(characterItem, row.statKey, row.value, row.percentage);
+        }
+
+        /// <summary>
+        /// 性格的 AI 旋钮。两个都是官方 public 字段，不经反射；
+        /// 倍率作用在 preset 给出的原值上，因此不同血脉之间的相对差异保持不变。
+        /// </summary>
+        private static void ApplyPersonalityToAI(
+            AICharacterController ai, PetNestPersonalityProfile personality)
+        {
+            if (ai == null || personality == null) return;
+            try
+            {
+                if (personality.SightDistanceMultiplier > 0f
+                    && !Mathf.Approximately(personality.SightDistanceMultiplier, 1f))
+                {
+                    ai.sightDistance = ai.sightDistance * personality.SightDistanceMultiplier;
+                }
+                if (personality.TraceTargetChance > 0f)
+                {
+                    ai.traceTargetChance = Mathf.Clamp01(personality.TraceTargetChance);
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 应用性格 AI 旋钮失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 挂完全部 Modifier 之后把血量补到新的上限。
+        ///
+        /// 官方 Health.MaxHealth 是从角色 Item 的 stat 实时算的，CurrentHealth 则是
+        /// 角色创建时写死的字段。我们的 Modifier 全部挂在创建**之后**，不补这一步：
+        /// 加血类（结实天赋、等级成长）会让崽一入场就少血，减血类（战痕）会让血条超过 100%。
+        /// </summary>
+        private static void TopUpHealthToMax(PetNestCompanionHandle handle)
+        {
+            try
+            {
+                Health health = handle != null ? handle.Health : null;
+                if (health == null) return;
+                float max = health.MaxHealth;
+                if (max <= 0f) return;
+                health.SetHealth(max);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] [WARNING] 幼体血量补齐失败: " + e.Message);
+            }
+        }
+
+        /// <summary>
+        /// 同一 stat 上的战痕合并成一条并按封顶钳制，避免逐条叠加突破上限。
+        /// 「有哪些 stat 挨过疤」与「封顶后的实际数值」两份口径都在 PetNestDownedHandler，
+        /// 这里不再自建第二份聚合（展示层 PetNestUIPages 走的是同两个入口）。
+        /// </summary>
         private static void ApplyScarModifiers(Item characterItem, PetNestPetRecord pet)
         {
-            if (pet.scars == null || pet.scars.Count == 0) return;
-
-            Dictionary<string, float> byStat = new Dictionary<string, float>(StringComparer.Ordinal);
-            for (int i = 0; i < pet.scars.Count; i++)
-            {
-                PetNestScarRecord s = pet.scars[i];
-                if (s == null || string.IsNullOrEmpty(s.statKey)) continue;
-                float sum;
-                byStat.TryGetValue(s.statKey, out sum);
-                byStat[s.statKey] = sum + s.percent;
-            }
-
-            foreach (KeyValuePair<string, float> pair in byStat)
+            List<string> statKeys = new List<string>();
+            PetNestDownedHandler.CollectScarStatKeys(pet, statKeys);
+            for (int i = 0; i < statKeys.Count; i++)
             {
                 // 封顶口径只有一份权威实现，避免两处各写一遍后悄悄跑偏
-                float clamped = PetNestDownedHandler.GetEffectiveScarPercent(pet, pair.Key);
-                ApplyOneModifier(characterItem, pair.Key, clamped, true);
+                float clamped = PetNestDownedHandler.GetEffectiveScarPercent(pet, statKeys[i]);
+                ApplyOneModifier(characterItem, statKeys[i], clamped, true);
             }
         }
 

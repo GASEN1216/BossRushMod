@@ -74,8 +74,6 @@ namespace BossRush
         private static readonly GameObject[] cachedSwiftHandGOs = new GameObject[TIER_COUNT];
         private static readonly GameObject[] cachedFrenzyGOs = new GameObject[TIER_COUNT];
 
-        private static bool localizationInjected;
-
         // ---- 反射字段（与 PhantomWitchAssetManager 同一套字段名，已逐个核实）----
         private static bool buffReflectionInitialized;
         private static FieldInfo buffIdField;
@@ -160,8 +158,6 @@ namespace BossRush
         /// </summary>
         public static void InjectLocalization()
         {
-            localizationInjected = true;
-
             try
             {
                 LocalizationHelper.InjectLocalization(LOC_BULWARK_NAME, L10n.T("磐石", "Bulwark"));
@@ -197,8 +193,6 @@ namespace BossRush
             effectTriggersField = null;
             effectActionsField = null;
             modifierBuffField = null;
-
-            localizationInjected = false;
         }
 
         // ====================================================================

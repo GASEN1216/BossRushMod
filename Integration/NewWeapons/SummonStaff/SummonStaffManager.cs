@@ -7,8 +7,6 @@
 // ============================================================================
 
 using BossRush.Common.Equipment;
-using ItemStatsSystem;
-using ItemStatsSystem.Items;
 using UnityEngine;
 using UnityEngine.EventSystems;
 
@@ -128,31 +126,15 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 检查玩家是否持有召唤法杖
+        /// 检查玩家是否持有召唤法杖。
+        /// 判据走 NewWeaponEquipState 的共享缓存——与毒蛇匕首用同一份「当前手持是什么」，
+        /// 不再各自 GetMeleeWeapon + CurrentHoldItemAgent 抄一遍。
         /// </summary>
         internal static bool IsHoldingSummonStaff(CharacterMainControl character)
         {
             if (character == null) return false;
-
-            try
-            {
-                ItemAgent_MeleeWeapon melee = character.GetMeleeWeapon();
-                if (melee != null && melee.Item != null &&
-                    melee.Item.TypeID == NewWeaponIds.SummonStaffTypeId)
-                {
-                    return true;
-                }
-
-                DuckovItemAgent holdAgent = character.CurrentHoldItemAgent;
-                if (holdAgent != null && holdAgent.Item != null &&
-                    holdAgent.Item.TypeID == NewWeaponIds.SummonStaffTypeId)
-                {
-                    return true;
-                }
-            }
-            catch  { /* best-effort fallback intentionally ignored */ }
-
-            return false;
+            if (!ReferenceEquals(character, CharacterMainControl.Main)) return false;
+            return NewWeaponEquipState.IsHolding(NewWeaponIds.SummonStaffTypeId);
         }
 
         private static bool IsGameplayInputAllowed()

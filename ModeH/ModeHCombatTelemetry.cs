@@ -61,6 +61,7 @@ namespace BossRush
         private string _lastSpecialKillTag;
         private string _lastSpecialKillProfileId;
         private bool _highThreatCoreKilled;
+        private float _highThreatCoreEnteredAt = -1f;
         private string _highThreatCoreStableKey;
         private string _lastDefeatedEnemyStableKey;
 
@@ -76,6 +77,12 @@ namespace BossRush
 
         /// <summary>本场已用秒数。</summary>
         public float ElapsedSeconds { get { return _elapsedSeconds; } }
+
+        internal bool IsHighThreatCoreThreatening
+        {
+            get { return _highThreatCoreEnteredAt >= 0f && !_highThreatCoreKilled
+                && _elapsedSeconds - _highThreatCoreEnteredAt >= ModeHConfig.CowardStrongCoreSurvivalSeconds; }
+        }
 
         /// <summary>本场剩余秒数（不为负）。</summary>
         public float RemainingSeconds
@@ -163,6 +170,7 @@ namespace BossRush
             _lastSpecialKillTag = null;
             _lastSpecialKillProfileId = null;
             _highThreatCoreKilled = false;
+            _highThreatCoreEnteredAt = -1f;
             _highThreatCoreStableKey = highThreatCoreStableKey;
             _lastDefeatedEnemyStableKey = null;
             _activeFighterTookRangedDamage = false;
@@ -177,6 +185,8 @@ namespace BossRush
         {
             if (enemy == null || !enemy.IsEnemy) return;
             if (!_liveEnemies.Contains(enemy)) _liveEnemies.Add(enemy);
+            if (_highThreatCoreEnteredAt < 0f && !string.IsNullOrEmpty(_highThreatCoreStableKey)
+                && enemy.StableKey == _highThreatCoreStableKey) _highThreatCoreEnteredAt = _elapsedSeconds;
         }
 
         /// <summary>

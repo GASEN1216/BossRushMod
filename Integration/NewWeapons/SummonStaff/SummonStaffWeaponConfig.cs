@@ -2,21 +2,15 @@
 // SummonStaffWeaponConfig.cs - 召唤法杖装备工厂配置器
 // ============================================================================
 // 模块说明：
-//   在 EquipmentFactory 加载 AssetBundle 后，自动为召唤法杖 Prefab 配置：
-//   - ItemAgent_MeleeWeapon 组件
-//   - ItemSetting_MeleeWeapon 组件
-//   - 近战 Stats（偏弱）
-//   - 物品标签
-//   - 本地化注入
+//   声明召唤法杖与共享配置流程的差异项（偏弱的近战面板、无元素、无官方 buff、文案），
+//   流程本身在 NewWeaponConfiguratorCore。右键技能「灵魂投射」在 SummonStaffAction。
+//
+//   文案取自 SummonStaffConfig 的实例属性（它继承 EquipmentAbilityConfig，
+//   是实例成员而非常量），因此这里持有一份只读实例，与 NewWeaponPlaceholderRegistry 同源。
 // ============================================================================
 
-using System;
 using System.Collections.Generic;
-using System.Reflection;
-using UnityEngine;
 using ItemStatsSystem;
-using ItemStatsSystem.Stats;
-using ItemStatsSystem.Items;
 
 namespace BossRush
 {
@@ -25,25 +19,40 @@ namespace BossRush
     /// </summary>
     public static class SummonStaffWeaponConfig
     {
-        private static readonly Dictionary<string, float> WEAPON_STATS = new Dictionary<string, float>
-        {
-            { "Damage", SummonStaffConfig.Damage },
-            { "MoveSpeedMultiplier", SummonStaffConfig.MoveSpeedMultiplier },
-            { "BlockBullet", SummonStaffConfig.BlockBullet },
-            { "CritRate", SummonStaffConfig.CritRate },
-            { "CritDamageFactor", SummonStaffConfig.CritDamageFactor },
-            { "ArmorPiercing", SummonStaffConfig.ArmorPiercing },
-            { "AttackSpeed", SummonStaffConfig.AttackSpeed },
-            { "AttackRange", SummonStaffConfig.AttackRange },
-            { "DealDamageTime", SummonStaffConfig.DealDamageTime },
-            { "StaminaCost", SummonStaffConfig.StaminaCost },
-            { "BleedChance", SummonStaffConfig.BleedChance }
-        };
+        /// <summary>文案单一来源：与右键技能共用同一个 Config 实例的属性。</summary>
+        private static readonly SummonStaffConfig TextSource = new SummonStaffConfig();
 
-        private static readonly HashSet<string> DISPLAY_STATS = new HashSet<string>
+        private static readonly NewWeaponMeleeSpec Spec = new NewWeaponMeleeSpec
         {
-            "Damage", "MoveSpeedMultiplier", "CritRate", "CritDamageFactor",
-            "ArmorPiercing", "AttackSpeed", "AttackRange", "StaminaCost"
+            TypeId = NewWeaponIds.SummonStaffTypeId,
+            BaseName = NewWeaponIds.SummonStaffBaseName,
+            ModelBaseName = NewWeaponIds.SummonStaffModelBaseName,
+            LogPrefix = "[SummonStaff]",
+            DisplayLabelCN = "召唤法杖",
+
+            Stats = new Dictionary<string, float>
+            {
+                { "Damage", SummonStaffConfig.Damage },
+                { "MoveSpeedMultiplier", SummonStaffConfig.MoveSpeedMultiplier },
+                { "BlockBullet", SummonStaffConfig.BlockBullet },
+                { "CritRate", SummonStaffConfig.CritRate },
+                { "CritDamageFactor", SummonStaffConfig.CritDamageFactor },
+                { "ArmorPiercing", SummonStaffConfig.ArmorPiercing },
+                { "AttackSpeed", SummonStaffConfig.AttackSpeed },
+                { "AttackRange", SummonStaffConfig.AttackRange },
+                { "DealDamageTime", SummonStaffConfig.DealDamageTime },
+                { "StaminaCost", SummonStaffConfig.StaminaCost },
+                { "BleedChance", SummonStaffConfig.BleedChance }
+            },
+
+            // 法杖自身不带元素与官方 buff：它的价值全在右键投放出去的灵魂战士上
+            Element = ElementTypes.physics,
+            BuffKind = NewWeaponMeleeBuffKind.None,
+
+            DisplayNameCN = TextSource.DisplayNameCN,
+            DisplayNameEN = TextSource.DisplayNameEN,
+            DescriptionCN = TextSource.DescriptionCN,
+            DescriptionEN = TextSource.DescriptionEN
         };
 
         /// <summary>
@@ -51,157 +60,12 @@ namespace BossRush
         /// </summary>
         public static bool TryConfigure(Item item, string baseName)
         {
-            if (item == null || string.IsNullOrEmpty(baseName)) return false;
-            if (!baseName.Equals(NewWeaponIds.SummonStaffBaseName, StringComparison.OrdinalIgnoreCase) &&
-                !baseName.Equals(NewWeaponIds.SummonStaffModelBaseName, StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            try
-            {
-                ModBehaviour.DevLog("[SummonStaff] 开始配置召唤法杖...");
-
-                ItemAgent modelAgent = null;
-                EquipmentFactory.TryGetLoadedModel(NewWeaponIds.SummonStaffModelBaseName, out modelAgent);
-
-                ConfigureStats(item);
-                ConfigureMeleeAgent(item, modelAgent);
-                ConfigureMeleeSetting(item);
-                ConfigureTags(item);
-                // 品质 / 售价 / 耐久 / 可维修标签（与占位符路径共用同一张表）
-                NewWeaponItemAttributes.Apply(item, NewWeaponIds.SummonStaffTypeId);
-
-                if (modelAgent != null)
-                {
-                    EquipmentFactory.TryBindLoadedMeleeModel(item, NewWeaponIds.SummonStaffModelBaseName, NewWeaponIds.SummonStaffBaseName);
-                }
-
-                InjectLocalization(item);
-
-                ModBehaviour.DevLog("[SummonStaff] 配置完成 (TypeID=" + item.TypeID + ")");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[SummonStaff] 配置失败: " + e.Message);
-                return false;
-            }
-        }
-
-        private static void ConfigureStats(Item item)
-        {
-            StatCollection stats = item.Stats;
-            if (stats == null)
-            {
-                item.CreateStatsComponent();
-                stats = item.Stats;
-            }
-            if (stats == null) return;
-
-            foreach (KeyValuePair<string, float> kvp in WEAPON_STATS)
-            {
-                bool shouldDisplay = DISPLAY_STATS.Contains(kvp.Key);
-                Stat existingStat = stats.GetStat(kvp.Key);
-                if (existingStat != null)
-                {
-                    existingStat.BaseValue = kvp.Value;
-                }
-                else
-                {
-                    stats.Add(new Stat(kvp.Key, kvp.Value, shouldDisplay));
-                }
-            }
-        }
-
-        private static void ConfigureMeleeAgent(Item item, ItemAgent modelAgent)
-        {
-            ItemAgent_MeleeWeapon meleeAgent = item.GetComponent<ItemAgent_MeleeWeapon>();
-            if (meleeAgent == null)
-            {
-                meleeAgent = item.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
-            }
-
-            meleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
-            meleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
-
-            try
-            {
-                FieldInfo soundKeyField = typeof(ItemAgent_MeleeWeapon).GetField("soundKey",
-                    BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public);
-                if (soundKeyField != null)
-                {
-                    soundKeyField.SetValue(meleeAgent, "Default");
-                }
-            }
-            catch  { /* best-effort fallback intentionally ignored */ }
-
-            if (modelAgent != null)
-            {
-                ItemAgent_MeleeWeapon modelMeleeAgent = modelAgent.gameObject.GetComponent<ItemAgent_MeleeWeapon>();
-                if (modelMeleeAgent == null)
-                {
-                    modelMeleeAgent = modelAgent.gameObject.AddComponent<ItemAgent_MeleeWeapon>();
-                }
-                modelMeleeAgent.handheldSocket = HandheldSocketTypes.normalHandheld;
-                modelMeleeAgent.handAnimationType = HandheldAnimationType.meleeWeapon;
-                NewWeaponMeleeFx.EnsureMeleeAttackFx(modelMeleeAgent);
-            }
-
-            // slashFx / hitFx 回退走共享的 MeleeWeaponFxPolicy（三把新近战共用一处实现，
-            // 不再复制第四份 EnsureMeleeAttackFx 模板）
-            NewWeaponMeleeFx.EnsureMeleeAttackFx(meleeAgent);
-        }
-
-        private static void ConfigureMeleeSetting(Item item)
-        {
-            ItemSetting_MeleeWeapon meleeSetting = item.GetComponent<ItemSetting_MeleeWeapon>();
-            if (meleeSetting == null)
-            {
-                meleeSetting = item.gameObject.AddComponent<ItemSetting_MeleeWeapon>();
-            }
-
-            // 无特殊元素
-            meleeSetting.element = ElementTypes.physics;
-            meleeSetting.dealExplosionDamage = false;
-            meleeSetting.buffChance = 0f;
-        }
-
-        private static void ConfigureTags(Item item)
-        {
-            EquipmentHelper.AddTagToItem(item, "Weapon");
-            EquipmentHelper.AddTagToItem(item, "MeleeWeapon");
-            EquipmentHelper.AddTagToItem(item, "DontDropOnDeadInSlot");
-            EquipmentHelper.AddTagToItem(item, "Special");
-
-            try
-            {
-                item.SetBool("IsMeleeWeapon", true, true);
-            }
-            catch  { /* best-effort fallback intentionally ignored */ }
-        }
-
-        private static void InjectLocalization(Item item)
-        {
-            try
-            {
-                SummonStaffConfig config = new SummonStaffConfig();
-                string displayName = L10n.T(config.DisplayNameCN, config.DisplayNameEN);
-                string description = L10n.T(config.DescriptionCN, config.DescriptionEN);
-
-                string itemKey = "Item_" + item.TypeID;
-                LocalizationHelper.InjectLocalization(itemKey, displayName);
-                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[SummonStaff] 本地化注入失败: " + e.Message);
-            }
+            return NewWeaponConfiguratorCore.ConfigureMelee(item, baseName, Spec);
         }
 
         public static void ResetStaticCaches()
         {
-            // 当前无需清理的静态缓存
+            // 当前无需清理的静态缓存（Spec 是只读数据）
         }
     }
 }

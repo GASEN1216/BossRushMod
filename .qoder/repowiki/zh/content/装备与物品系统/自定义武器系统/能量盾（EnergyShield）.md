@@ -9,6 +9,26 @@
 - [NewWeaponIds.cs](file://Integration/NewWeapons/Common/NewWeaponIds.cs)
 </cite>
 
+> **2026-09-18 变更（以代码为准，下文正文是 2026-08 快照）**
+> 五把新武器的**装备判定**统一改走 `NewWeaponEquipState`（事件驱动缓存，查询 O(1)）：
+> `IsHoldingViperDagger` / `IsHoldingSummonStaff` / `IsEquippingEnergyShield` / `IsEquippingThunderRing`
+> 四份实现已删除，不再在 `Health.OnHurt` 回调里遍历 `CharacterItem.Slots`。
+> 五个 `XxxWeaponConfig` 只声明差异项 `Spec`，配置流程收敛到 `NewWeaponConfiguratorCore`
+> （`ConfigureStats` / `ConfigureMeleeAgent` / `ConfigureTags` / `InjectLocalization` 四段模板已删）。
+> 生命周期（初始化 / 过图 / 加载后配置 / 销毁清理）从 `partial ModBehaviour` 移到
+> `NewWeaponRuntime`，`NewWeaponBootstrap.cs` 只剩四个一行转发。
+> 新增文件：`Integration/NewWeapons/Common/NewWeaponEquipState.cs`、`NewWeaponConfiguratorCore.cs`、`NewWeaponRuntime.cs`。
+>
+> 本装备专有（**修正了一个功能性缺陷**）：正面判定原先用 `player.transform.forward`。
+> 官方角色的根 Transform 从不旋转，朝向写在子节点 `modelRoot` 上
+> （`Movement.rotationRoot => CharacterMainControl.modelRoot`，官方 `Movement.cs:193/445/464`），
+> 因此旧判据等价于「只有从世界 +Z 方向打来才吸收」，与玩家实际朝向无关——
+> 核心机制与它自称的「侧背面不触发」弱点同时失效。
+> 现改用 `CharacterMainControl.CurrentAimDirection`（官方 `CharacterMainControl.cs:254`），
+> `IsFrontalAttack` 与护盾特效摆位 `GetFacing` 同源。
+> 回血改调官方 `Health.AddHealth`（内部已含 `Min(MaxHealth, …)`），不再手工钳一次再 `SetHealth`。
+> 守卫 `tests/EnergyShieldFrontalDotGuard.py` 已加上「必须用 CurrentAimDirection、禁止 transform.forward」两条断言。
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -208,7 +228,7 @@ class EnergyShieldRuntime {
 +ResetStaticCaches()
 -OnHurt(targetHealth, damageInfo)
 -IsFrontalAttack(player, damageInfo) bool
--IsEquippingEnergyShield(player) bool
+-（已删除，改读 NewWeaponEquipState.IsTotemEquipped）
 }
 class EnergyShieldConfig {
 <<static>>
@@ -267,7 +287,7 @@ NewWeaponBootstrap --> EnergyShieldRuntime : "订阅/取消订阅"
 
 ## 故障排查指南
 - 未触发回血
-  - 检查是否装备了能量盾（图腾槽位），确认 IsEquippingEnergyShield 返回 true。
+  - 检查是否装备了能量盾（图腾槽位）：现在读 NewWeaponEquipState.IsTotemEquipped 的缓存，不再逐槽遍历。
   - 检查攻击方向是否在正面 ±60° 范围内，确认 IsFrontalAttack 判定逻辑。
   - 检查冷却时间是否未满，确认 lastTriggerTime 与 TriggerCooldown。
 - 回血量异常

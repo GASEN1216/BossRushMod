@@ -271,7 +271,7 @@ def check(sources):
     if "SkyIslandHomecomingBento" not in reward_ids or "SkyIslandQinglanCharm" not in reward_ids or "SkyIslandWindwardIncense" not in reward_ids:
         errors.append("回响遗存要能抽到归航菜便当、晴岚护符与驱风香（打下一趟用得上的东西）")
     service = squash(src[SERVICE])
-    npc = need_body(SERVICE, "internal string DescribeNpc(string id)", "居民台词")
+    npc = need_body(SERVICE, "internal string DescribeNpc(string id, bool married = false, bool onIsland = true, bool weibaiAway = false)", "居民台词")
     bell = npc.split(squash('case "sky_bellkeeper":'), 1)[-1] if squash('case "sky_bellkeeper":') in npc else ""
     require(bell, "BellKeeperEchoLine(data)", "钟守结局后要提一句回响（走官方对话）")
     require(need_body(SERVICE, "private static string BellKeeperEchoLine(SkyIslandStoryData data)", "钟守回响台词"),

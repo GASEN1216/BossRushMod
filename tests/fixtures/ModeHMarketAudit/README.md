@@ -19,3 +19,12 @@
 签约可行性门：第二次选秀点击在写入 Season.contract 之前，调用 `CanConstructFullSeason`，用 `ModeHEncounterPlanner` 当前算法和现有每场技术重试上限预构造六场。失败只显示更换替补提示，不推进 `RosterLocked`，不触碰玩家资产；这是对认证池过小或威胁走廊无解的前置拒绝。该检查仅发生在选秀/整备 UI 回调，不进入战斗热路径。
 
 转会可行性门：夹具逐字提取 `AcceptTransferOffer`，验证第 4 场转会在提交前预构造第 5、6 场；完整剩余赛程接受并关闭窗口，八候选认证池的无解转会保留 Pending 且不修改合同。拒绝时生产选秀页已有“重新选择主将”动作，清除 `_pendingContractMainId` 后可重新选两席。
+
+## 2026-09-18 扩展：内容与擂台实战
+
+额外完整编译 OddsController、VirtualStakeController、LoadoutEditing、ModeHLocalization、
+ModeHMatchRules 和共享 RuntimeStatModifierTracker；准备/过滤/口令选择等入口从生产逐字提取。
+覆盖不可用首发口令、护甲伤病过滤、分页/说明/过期回调、核心身份与入场计时、真实伤势侦察与
+公开赔率，以及六类擂台规则的双边属性、区域进出、伤害宽限、增援独立窗口、治疗递归门和清理。
+Unity/官方 Stat 的语义由 MatchRulesAudit 提供替身，包含销毁即 null 与父物体销毁子组件。
+该夹具不证明渲染可见、官方物理/伤害事件及真实 AI；这些仍需 L3。权重与认证矩阵也使用受控替身。

@@ -76,6 +76,10 @@ def main():
     if result.returncode or "--verify-regressions" not in sys.argv:
         return result.returncode
     mutations = {
+        "separate-field-baselines": {"ModeHCommandAdapters.cs": [("_fieldLayers = fireContext.FieldLayers", "_fieldLayers = new ModeHFieldLayers()")]},
+        "lost-layer-removal": {"ModeHCommandAdapters.cs": [("_fieldLayers.Remove(m);", "")]},
+        "unreachable-starter-command": {"ModeHCommandController.cs": [("(!spec.RequiresRelayEntered || isRelay)", "true")]},
+        "unshared-combat-fields": {"ModeHCombatControl.cs": [("_commandController.ShareFieldLayers(_fireContext);", "")]},
         "unowned-scar": {"ModeHInjuryAndScarSystem.cs": [("if (!_ownedScarIds.Contains(scarId))", "if (false)")]},
         "expired-adapter": {
             "ModeHInjuryAndScarSystem.cs": [("window.Adapter.Restore();\n                    _activeWindows.RemoveAt(i);", "_activeWindows.RemoveAt(i);")],

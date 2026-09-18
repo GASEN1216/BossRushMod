@@ -9,6 +9,22 @@
 - [NewWeaponIds.cs](file://Integration/NewWeapons/Common/NewWeaponIds.cs)
 </cite>
 
+> **2026-09-18 变更（以代码为准，下文正文是 2026-08 快照）**
+> 五把新武器的**装备判定**统一改走 `NewWeaponEquipState`（事件驱动缓存，查询 O(1)）：
+> `IsHoldingViperDagger` / `IsHoldingSummonStaff` / `IsEquippingEnergyShield` / `IsEquippingThunderRing`
+> 四份实现已删除，不再在 `Health.OnHurt` 回调里遍历 `CharacterItem.Slots`。
+> 五个 `XxxWeaponConfig` 只声明差异项 `Spec`，配置流程收敛到 `NewWeaponConfiguratorCore`
+> （`ConfigureStats` / `ConfigureMeleeAgent` / `ConfigureTags` / `InjectLocalization` 四段模板已删）。
+> 生命周期（初始化 / 过图 / 加载后配置 / 销毁清理）从 `partial ModBehaviour` 移到
+> `NewWeaponRuntime`，`NewWeaponBootstrap.cs` 只剩四个一行转发。
+> 新增文件：`Integration/NewWeapons/Common/NewWeaponEquipState.cs`、`NewWeaponConfiguratorCore.cs`、`NewWeaponRuntime.cs`。
+>
+> 本武器专有：满 5 层**毒性爆发**由固定 35 点改为
+> `35 + 本轮 5 次命中对该目标累计实伤 × ViperDaggerConfig.BurstAccumulatedDamageRatio(0.20)`；
+> `PoisonState` 增加 `accumulatedDamage` 字段。叠毒新增敌对目标过滤
+> （`NewWeaponAttribution.IsHostileVictim`，挡掉玩家阵营的召唤物与友军），
+> 并去掉了每 5 次命中就弹一次的「毒性爆发」对话气泡。
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)

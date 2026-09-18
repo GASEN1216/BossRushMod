@@ -8,7 +8,7 @@
 //   - 选稿用确定性随机：同一天重开游戏、反复开合面板，头条稿件不会变。
 //   - 天气预报口径：`WeatherManager.GetWeather(TimeSpan)` 是 (种子, 世界时间) 的纯函数，
 //     所以能精确预报。但它预报的是**官方世界时间的明天**，与日报自算的期号并不对齐
-//     （玩家睡一觉两者就错位），因此措辞上只说「未来一个游戏日」，不说「第 N 期当天」。
+//     （玩家睡一觉两者就错位），因此明确标注「明日此时（世界时间）」这个采样时点。
 // ============================================================================
 
 using System;
@@ -50,6 +50,9 @@ namespace BossRush
         /// <summary>今日悬赏目标。</summary>
         internal int TodayBountyTarget;
 
+        /// <summary>今日悬赏奖金。</summary>
+        internal long TodayBountyCash;
+
         /// <summary>天气预报行。</summary>
         internal string WeatherLine;
 
@@ -88,6 +91,7 @@ namespace BossRush
                 // 直读会让首次开报纸用 0 号种子选头条/运势/杂谈，之后任一悬赏查询
                 // 冻结真种子，同一天重开整版换稿，违背「同日重开不换稿」的承诺。
                 long seed = DailyReportService.EnsureBountySeed(data);
+                if (seed == 0L) return BuildEmptyIssue(issue);
                 // 被报道的是"昨天"，即刚结算完的那一天
                 int reportedDay = data.DayIndex - 1;
                 if (reportedDay < 1) reportedDay = 1;
@@ -163,10 +167,10 @@ namespace BossRush
                     : L10n.T("首领覆灭：目击者称场面一度失控",
                         "Boss Down: Witnesses Say Things Got Out of Hand");
                 issue.HeadlineBody = L10n.T(
-                    "昨日共有 " + y.BossKills + " 名首领被同一名鸭科夫人送走，附带 "
-                        + y.Kills + " 名随行者。治安委员会拒绝置评。",
-                    "A single Duckov operative removed " + y.BossKills + " bosses yesterday, plus "
-                        + y.Kills + " escorts. The Safety Board declined to comment.");
+                    "昨日确认击杀 " + y.Kills + " 名敌人，其中 " + y.BossKills
+                        + " 名是首领。治安委员会拒绝置评。",
+                    "Yesterday's " + y.Kills + " confirmed kills included " + y.BossKills
+                        + " bosses. The Safety Board declined to comment.");
                 return;
             }
 
@@ -238,17 +242,16 @@ namespace BossRush
             issue.StatLines.Add(L10n.T("进账：" + y.MoneyEarned + "　支出：" + y.MoneySpent,
                 "Earned: " + y.MoneyEarned + "   Spent: " + y.MoneySpent));
 
-            // 输出/承伤此前只采集不展示。注意承伤口径：无来源者的环境伤害
-            // （摔落、燃烧等）不计入，采集侧要求 fromCharacter 非空。
+            // 输出只计敌方角色；承伤包含环境伤害。
             issue.StatLines.Add(L10n.T(
-                "输出：" + (int)y.DamageDealt + "　承伤：" + (int)y.DamageTaken,
-                "Damage dealt: " + (int)y.DamageDealt + "   Taken: " + (int)y.DamageTaken));
+                "输出：" + y.DamageDealt.ToString("0") + "　承伤：" + y.DamageTaken.ToString("0"),
+                "Damage dealt: " + y.DamageDealt.ToString("0") + "   Taken: " + y.DamageTaken.ToString("0")));
 
             if (y.MaxSingleHit > 0f)
             {
                 issue.StatLines.Add(L10n.T(
-                    "最大单次伤害：" + (int)y.MaxSingleHit,
-                    "Biggest single hit: " + (int)y.MaxSingleHit));
+                    "最大单次伤害：" + y.MaxSingleHit.ToString("0"),
+                    "Biggest single hit: " + y.MaxSingleHit.ToString("0")));
             }
         }
 
@@ -267,19 +270,26 @@ namespace BossRush
             DailyReportBountyDef def = DailyReportBounty.Rebuild(data.BountyKindId, data.BountyTarget);
             string title = DailyReportBounty.DescribeTitle(def);
 
+            string resultDay = L10n.T("第 " + data.BountyDayIndex + " 天", "Day " + data.BountyDayIndex);
             if (data.BountyCompleted)
             {
-                issue.BountyResultLine = L10n.T(
-                    "【悬赏达成】" + title + " —— 奖金已寄出。",
-                    "[Bounty Cleared] " + title + " - reward dispatched.");
+                issue.BountyResultLine = data.BountyRewardClaimed
+                    ? L10n.T("【" + resultDay + "达成】" + title + " · 奖金已到账",
+                        "[" + resultDay + ": cleared] " + title + " · Cash received")
+                    : L10n.T("【" + resultDay + "达成】" + title + " · 奖金待补发",
+                        "[" + resultDay + ": cleared] " + title + " · Cash pending");
             }
             else
             {
                 issue.BountyResultLine = L10n.T(
-                    "【悬赏未达成】" + title + "（进度 " + data.BountyProgress + "/" + data.BountyTarget + "）",
-                    "[Bounty Failed] " + title + " (progress " + data.BountyProgress
-                        + "/" + data.BountyTarget + ")");
+                    "【" + resultDay + "未达成】" + title + "（" + data.BountyProgress + "/" + data.BountyTarget + "）",
+                    "[" + resultDay + ": incomplete] " + title + " (" + data.BountyProgress + "/" + data.BountyTarget + ")");
             }
+            long pending = DailyReportService.GetPendingBountyCash(data);
+            if (pending > 0L)
+                issue.BountyResultLine += L10n.T(" · 待到账共 " + pending + " 金",
+                    " · Total pending: " + pending);
+
         }
 
         private static void BuildTodayBounty(DailyReportIssue issue, DailyReportData data)
@@ -294,6 +304,7 @@ namespace BossRush
 
             issue.TodayBountyTitle = DailyReportBounty.DescribeTitle(def);
             issue.TodayBountyFlavor = DailyReportBounty.DescribeFlavor(def);
+            issue.TodayBountyCash = def.CashReward;
             issue.TodayBountyTarget = def.Target;
             issue.TodayBountyProgress = DailyReportBounty.EvaluateProgress(def, data.Today);
         }
@@ -310,10 +321,15 @@ namespace BossRush
         {
             try
             {
+                if (GameClock.Instance == null || WeatherManager.Instance == null)
+                    return L10n.T("暂无天气预报。", "Forecast unavailable.");
+                if (WeatherManager.Instance.ForceWeather)
+                    return L10n.T("当前固定天气：" + DescribeWeather(WeatherManager.Instance.ForceWeatherValue),
+                        "Fixed weather: " + DescribeWeatherEn(WeatherManager.Instance.ForceWeatherValue));
                 TimeSpan tomorrow = GameClock.Now + TimeSpan.FromDays(1d);
                 Weather w = WeatherManager.GetWeather(tomorrow);
-                return L10n.T("未来一个游戏日：" + DescribeWeather(w),
-                    "Next game day: " + DescribeWeatherEn(w));
+                return L10n.T("明日此时（世界时间）：" + DescribeWeather(w),
+                    "Tomorrow at this world time: " + DescribeWeatherEn(w));
             }
             catch (Exception)
             {
@@ -327,8 +343,8 @@ namespace BossRush
             {
                 case Weather.Sunny: return "晴，适合出门捡垃圾";
                 case Weather.Cloudy: return "多云，视野尚可";
-                case Weather.Rainy: return "有雨，注意脚下打滑";
-                case Weather.Snow: return "降雪，记得多穿一件";
+                case Weather.Rainy: return "有雨，出发前检查补给";
+                case Weather.Snow: return "降雪，留意沿途敌情";
                 case Weather.Stormy_I: return "风暴警报（一级），非必要不出门";
                 case Weather.Stormy_II: return "风暴警报（二级），出门等于送死";
                 default: return "天象不明";
@@ -341,8 +357,8 @@ namespace BossRush
             {
                 case Weather.Sunny: return "clear - good day for scavenging";
                 case Weather.Cloudy: return "cloudy - visibility acceptable";
-                case Weather.Rainy: return "rain - watch your footing";
-                case Weather.Snow: return "snow - bring another layer";
+                case Weather.Rainy: return "rain - check supplies before leaving";
+                case Weather.Snow: return "snow - watch for hostiles";
                 case Weather.Stormy_I: return "storm warning (level 1) - stay in unless necessary";
                 case Weather.Stormy_II: return "storm warning (level 2) - going out is suicide";
                 default: return "unreadable";
@@ -374,8 +390,8 @@ namespace BossRush
 
             string g = Pick(ref stream, good);
             string b = Pick(ref stream, bad);
-            return L10n.T("今日运势　宜：" + g + "　忌：" + b,
-                "Today's fortune - Do: " + g + " / Don't: " + b);
+            return L10n.T("趣味运势（无加成）　宜：" + g + "　忌：" + b,
+                "Fortune (flavor only) - Do: " + g + " / Don't: " + b);
         }
 
         private static string BuildGossipLine(long seed, int dayIndex)
@@ -383,18 +399,18 @@ namespace BossRush
             ModeHSeedStream stream = ModeHSeedStream.Create(seed, GossipDomain, dayIndex);
             return Pick(ref stream, new string[]
             {
-                L10n.T("坊间传闻：有人在地下室听见了奇怪的敲击声，三长两短。",
-                    "Word on the street: strange knocking in the cellar. Three long, two short."),
-                L10n.T("读者来信：我的枪昨天卡壳了七次，请问这算不算工伤。",
-                    "Reader mail: my gun jammed seven times yesterday. Does that count as a workplace injury?"),
-                L10n.T("商会公告：本周回收价维持不变，别再问了。",
-                    "Guild notice: buyback rates unchanged this week. Stop asking."),
-                L10n.T("失物招领：一只左脚的靴子，在撤离点附近拾获。",
-                    "Lost and found: one left boot, recovered near the extraction point."),
-                L10n.T("本报提醒：仓库不是无底洞，虽然它看起来是。",
-                    "A reminder: your storage is not bottomless, however much it looks like it."),
-                L10n.T("匿名投稿：我觉得那些箱子在我背后动过。",
-                    "Anonymous submission: I swear those crates moved behind my back."),
+                L10n.T("编辑部提醒：出发前先看悬赏，顺路做，别为奖金丢掉整包战利品。",
+                    "Editor's tip: check the bounty before deploying. A full loot bag is worth bringing home."),
+                L10n.T("读者来信：带够弹药和药品之后，我终于不再给敌人送快递了。",
+                    "Reader mail: packing enough ammo and medicine has greatly reduced my donations to the enemy."),
+                L10n.T("报童便条：签到奖品先去快递站找，报箱只负责报纸。",
+                    "Paperboy's note: check-in prizes go to the delivery point. This box holds the paper."),
+                L10n.T("本报提醒：睡觉不会催出下一期，排字工也得慢慢干。",
+                    "A reminder: sleeping won't rush the next issue. Our typesetters need their time."),
+                L10n.T("仓库小贴士：处理用不上的战利品，再给下一趟留点空间。",
+                    "Storage tip: sell surplus loot to make room for the next run."),
+                L10n.T("调度处提示：百战留痕是选手的比赛，不计入你的日报悬赏。",
+                    "Dispatch: Black Market Cup matches belong to your fighters, so they do not advance your bounties."),
             });
         }
 

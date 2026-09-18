@@ -186,12 +186,110 @@ internal static class Program
             && Near(combat.Effects.GetCommandScale("press"), 1f)
             && Near(combat.Effects.GetCommandScaleForBell("press"), 1.2f), "Apply rejection keeps consumed-bell contract without consuming scar trigger");
     }
+    private static void OverlappingFields()
+    {
+        string reason;
+        foreach (bool injuryFirst in new[] { true, false })
+        {
+            var ai = new AICharacterController();
+            var context = new ModeHCommandFireContext();
+            var injury = new ModeHCommandAdapter();
+            var command = new ModeHCommandAdapter();
+            var slow = new[] { new ModeHEffectSpec { EffectId = "injury.sight", ControlPointId = "sightDistance", Op = "multiply", MultiplierMilli = 850, Restore = true } };
+            var boost = new[] { new ModeHEffectSpec { EffectId = "command.sight", ControlPointId = "sightDistance", Op = "multiply", MultiplierMilli = 1400, Restore = true } };
+            Check(injury.ApplyEffects(ai, "injury", slow, 180f, 1f, context, out reason), "injury layer applies");
+            Check(command.ApplyEffects(ai, "command", boost, 6f, 1f, context, out reason), "command layer applies");
+            command.Tick(0.1f, context);
+            injury.Tick(0.1f, context);
+            Check(Near(ai.sightDistance, 119f), "overlapping fields compose after both reassert");
+            if (injuryFirst) injury.Restore(); else command.Restore();
+            Check(Near(ai.sightDistance, injuryFirst ? 140f : 85f), "out of order expiry preserves surviving layer");
+            if (injuryFirst) command.Restore(); else injury.Restore();
+            Check(Near(ai.sightDistance, 100f), "last layer restores true baseline");
+            command.Restore(); injury.Restore();
+            Check(Near(ai.sightDistance, 100f), "layer cleanup is idempotent");
+        }
+    }
+    private static void MixedLayerTypes()
+    {
+        string reason;
+        foreach (bool firstExpires in new[] { true, false })
+        {
+            var ai = new AICharacterController(); var other = new AICharacterController { sightDistance = 200f };
+            var context = new ModeHCommandFireContext();
+            var first = new ModeHCommandAdapter(); var second = new ModeHCommandAdapter(); var independent = new ModeHCommandAdapter();
+            var a = new[] {
+                new ModeHEffectSpec { EffectId="a.vector", ControlPointId="skillCoolTimeRange", Op="multiply", MultiplierMilli=1500, Restore=true },
+                new ModeHEffectSpec { EffectId="a.bool", ControlPointId="shootCanMove", Op="set_bool", BoolValue=false, Restore=true },
+                new ModeHEffectSpec { EffectId="a.cap", ControlPointId="itemSkillChance", Op="multiply_capped", MultiplierMilli=3000, CapMilli=1000, Restore=true } };
+            var b = new[] {
+                new ModeHEffectSpec { EffectId="b.vector", ControlPointId="skillCoolTimeRange", Op="multiply", MultiplierMilli=800, Restore=true },
+                new ModeHEffectSpec { EffectId="b.bool", ControlPointId="shootCanMove", Op="set_bool", BoolValue=true, Restore=true },
+                new ModeHEffectSpec { EffectId="b.value", ControlPointId="itemSkillChance", Op="set_value", ValueMilli=300, Restore=true } };
+            first.ApplyEffects(ai,"a",a,180,1,context,out reason); second.ApplyEffects(ai,"b",b,180,1,context,out reason);
+            Check(Near(ai.skillCoolTimeRange.x,6) && Near(ai.skillCoolTimeRange.y,12) && ai.shootCanMove && Near(ai.itemSkillChance,.3f), "vector bool and capped/set operations compose in order");
+            if (firstExpires) first.Restore(); else second.Restore();
+            Check(Near(ai.skillCoolTimeRange.x, firstExpires ? 4 : 7.5f) && ai.shootCanMove == firstExpires
+                && Near(ai.itemSkillChance, firstExpires ? .3f : 1), "mixed operations preserve surviving layer");
+            first.Restore(); second.Restore();
+            Check(Near(ai.skillCoolTimeRange.x,5) && ai.shootCanMove && Near(ai.itemSkillChance,.5f), "mixed fields return to original baseline");
+            var sight = new[] { new ModeHEffectSpec { EffectId="shared", ControlPointId="sightDistance", Op="multiply", MultiplierMilli=1500, Restore=true } };
+            first.ApplyEffects(ai,"same",sight,180,1,context,out reason); independent.ApplyEffects(other,"same",sight,180,1,context,out reason);
+            first.Restore(); independent.Reassert(context);
+            Check(Near(ai.sightDistance,100) && Near(other.sightDistance,300), "same field on another character has independent ownership");
+            independent.Restore();
+        }
+    }
+    private static void SharedCombatContextAndAllocation()
+    {
+        string reason;
+        var ai = new AICharacterController();
+        var combat = new ModeHCombatControl { ArenaCondition = "open_field" };
+        var profile = new ModeHProfileDto { profileId = "starter", stableKey = "fixture-key", injuryId = "leg", scarIds = new List<string> { "center_keeper" } };
+        Check(combat.OnFighterEntered(new ModeHParticipantRef { Character = ai }, profile, out reason), "production entry binds overlapping injury and scar");
+        combat.Commands.LockCommand("press", "starter", 7, out reason);
+        Check(combat.TryRingBell(null, out reason), "production bell joins fighter effects");
+        combat.Commands.Tick(0.1f, combat.Context.ArenaCenter, null, null, 2);
+        combat.Effects.Tick(0.1f, combat.Context);
+        Check(Near(ai.sightDistance, 100f * 0.85f * 0.85f * 1.5f), "production combat shares field composition across all owners");
+        combat.Commands.RestoreAll(); combat.Effects.RestoreAll();
+        Check(Near(ai.sightDistance, 100f), "production cleanup restores baseline after layered fields");
+
+        var context = new ModeHCommandFireContext { ArenaConditionId = "open_field" };
+        var adapter = new ModeHCommandAdapter();
+        var effects = new[] { new ModeHEffectSpec { EffectId = "conditional.sight", ControlPointId = "sightDistance", Op = "multiply", MultiplierMilli = 850, Restore = true, AppliesWhen = "condition_open_field" } };
+        adapter.ApplyEffects(ai, "conditional", effects, 180f, 1f, context, out reason);
+        for (int i = 0; i < 1000; i++) adapter.Reassert(context);
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 1000; i++) adapter.Reassert(context);
+        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        Check(allocated == 0, "1000 steady reassertions allocate zero bytes in isolated .NET host: " + allocated);
+        context.ArenaConditionId = "danger_edge";
+        adapter.Reassert(context); Check(Near(ai.sightDistance, 100f), "condition false removes its layer");
+        context.ArenaConditionId = "open_field";
+        adapter.Reassert(context); Check(Near(ai.sightDistance, 85f), "condition true rejoins from baseline");
+        adapter.Restore();
+    }
+    private static void SelectableCommandRoles()
+    {
+        ModeHContentCatalog.Commands.Add(new ModeHCommandSpec { CommandId = "handoff", IsSignature = true, RequiresRelayEntered = true });
+        Check(!ModeHCommandController.GetSelectableCommands("finisher", null, "handoff", null).Contains("handoff"), "solo starter cannot select relay-only order");
+        Check(!ModeHCommandController.GetSelectableCommands("finisher", "ranged", "handoff", "last_mag").Contains("handoff"), "starter handoff remains unusable with another relay");
+        Check(ModeHCommandController.GetSelectableCommands("ranged", "finisher", "last_mag", "handoff").Contains("handoff"), "relay owner can select handoff");
+        var starter = new ModeHProfileDto { profileId = "starter", signatureCommandId = "handoff" };
+        var relay = new ModeHProfileDto { profileId = "relay", signatureCommandId = "handoff" };
+        Check(ModeHCommandController.ResolveCommandOwner("handoff", starter, relay) == "relay", "two finishers still bind relay-only command to relay");
+    }
     public static void Main()
     {
         LoadCatalog();
         OwnershipAndCleanup();
         CommandScopesAndContext();
         BellConsumption();
+        OverlappingFields();
+        MixedLayerTypes();
+        SelectableCommandRoles();
+        SharedCombatContextAndAllocation();
         Console.WriteLine("Mode H effects regression: " + _assertions + " assertions passed (host stubs; no Unity runtime).");
     }
 }

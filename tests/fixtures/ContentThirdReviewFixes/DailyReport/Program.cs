@@ -3,10 +3,23 @@ using System.Collections.Generic;
 using BossRush;
 
 namespace UnityEngine { static class Time { public static float realtimeSinceStartup; } }
-class GameClock { public static GameClock Instance = new GameClock(); public float clockTimeScale = 60; }
+class GameClock { public static GameClock Instance = new GameClock(); public float clockTimeScale = 60; public static TimeSpan Now; }
 namespace BossRush
 {
-    static class ModBehaviour { internal static void DevLog(string text) {} }
+    class ModBehaviour
+    {
+        public static ModBehaviour Instance = new ModBehaviour();
+        public static bool ModeH;
+        public bool Enabled = true;
+        public bool IsDailyReportConfiguredEnabled() { return Enabled; }
+        public static bool IsModeHRunInProgressSafe() { return ModeH; }
+        internal static void DevLog(string text) {}
+    }
+    static class L10n
+    {
+        public static bool Chinese = true;
+        public static string T(string cn, string en) { return Chinese ? cn : en; }
+    }
     // Substitute the host I/O boundary, while keeping the production service and full JSON codec.
     static class DailyReportPersistence
     {
@@ -32,16 +45,12 @@ namespace BossRush
         }
         internal static bool TryPrepareCashReward() { return true; }
     }
-    class DailyReportBountyDef { internal string Id; internal int Target; internal long CashReward; }
-    static class DailyReportBounty
-    {
-        internal static DailyReportBountyDef SelectForDay(long seed, int day) { return null; }
-        internal static int EvaluateProgress(DailyReportBountyDef def, DailyReportStats stats) { return 0; }
-    }
     static class DailyReportRewards
     {
         internal static bool Reject, FaultAfterGrant;
         internal static int Attempts;
+        internal static long Cash;
+        internal static bool RejectCash;
         internal static int RejectQuality;
         internal static readonly List<string> Delivered = new List<string>();
         internal static bool TryGrantMilestone(int quality, long seed, int day, int slot, out string reason)
@@ -53,11 +62,11 @@ namespace BossRush
             if (FaultAfterGrant) DailyReportPersistence.IsStoreFaulted = true;
             return true;
         }
-        internal static bool TryGrantBountyCash(long amount, out string reason) { reason = null; return true; }
+        internal static bool TryGrantBountyCash(long amount, out string reason) { reason = null; if (RejectCash) return false; Cash += amount; return true; }
     }
 }
 
-class Program
+partial class Program
 {
     static int checks;
     static void Check(bool condition, string description)
@@ -79,6 +88,8 @@ class Program
     static void Reset(int period, int signed, int last, int day, int mask = 0, long seed = 99)
     {
         DailyReportService.ResetStaticCaches();
+        DailyReportStatsCollector.ResetStaticCaches();
+        DailyReportRewards.Cash = 0; DailyReportRewards.RejectCash = false;
         DailyReportPersistence.IsStoreFaulted = DailyReportPersistence.HasWriteBarrier = false;
         DailyReportPersistence.RejectStore = false;
         DailyReportSaveCoordinator.FaultOnNextFlush = false;
@@ -212,6 +223,7 @@ class Program
             "corrupt declared debt rejects whole payload instead of swallowing or redrawing reward");
         Check(DailyReportCodec.Decode("{\"schemaVersion\":1,\"pendingMilestoneCount\":2147483647}") == null,
             "unbounded declared debt count fails closed before iteration");
+        Playability();
         Console.WriteLine("DailyReport regression checks=" + checks);
     }
 }

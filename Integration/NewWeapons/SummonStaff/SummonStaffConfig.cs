@@ -2,8 +2,9 @@
 // SummonStaffConfig.cs - 召唤法杖配置
 // ============================================================================
 // 模块说明：
-//   继承 EquipmentAbilityConfig，定义右键技能「灵魂召唤」参数
-//   核心机制：召出短命友军帮忙压场，自身直接伤害偏弱
+//   继承 EquipmentAbilityConfig，定义右键技能「灵魂投射」参数
+//   核心机制：朝瞄准方向投放 3 只短命灵魂战士，它们消散或阵亡时原地爆裂
+//   定位与霜之哀伤（5 只常驻亡灵、贴身缠斗）明确错开，理由见 SummonStaffAction 文件头
 // ============================================================================
 
 using BossRush.Common.Equipment;
@@ -20,8 +21,8 @@ namespace BossRush
         public override int ItemTypeId => NewWeaponIds.SummonStaffTypeId;
         public override string DisplayNameCN => "召唤法杖";
         public override string DisplayNameEN => "Summoning Staff";
-        public override string DescriptionCN => "一根刻满古老符文的法杖，能够撕裂空间召唤短暂存在的灵魂战士。法杖本身攻击力平庸，但召唤物可以有效分散敌人火力。\n<color=#BA68C8>【灵魂召唤】</color>右键召唤3只灵魂战士，持续15秒后消散。冷却12秒。\n<color=#CE93D8>【代价】</color>自身近战伤害较低。\n<color=#BBBBBB>来源：大兴兴 掉落 20% / 叮当的小店（好感 5 级）</color>";
-        public override string DescriptionEN => "A staff carved with ancient runes that tears through space to summon ephemeral soul warriors. The staff itself deals modest damage, but summons effectively draw enemy fire.\n<color=#BA68C8>[Soul Summon]</color> Right-click to summon 3 soul warriors lasting 15s. 12s cooldown.\n<color=#CE93D8>[Trade-off]</color> Low personal melee damage.\n<color=#BBBBBB>Source: 20% drop from Big Xing / Dingdang's Shop (Affinity 5)</color>";
+        public override string DescriptionCN => "一根刻满古老符文的法杖，能在数米之外撕开空间，把灵魂战士直接扔进敌群里。法杖本身攻击力平庸，但灵魂战士既能吸走火力，散去时还会炸开。\n<color=#BA68C8>【灵魂投射】</color>右键在瞄准方向前方 6 米处召出 3 只灵魂战士，持续 12 秒。冷却 12 秒。\n<color=#CE93D8>【灵魂爆裂】</color>灵魂战士消散或阵亡时原地爆开，对 3 米内敌人造成 45 点灵魂伤害，不伤你与友军。\n<color=#CE93D8>【代价】</color>自身近战伤害较低。\n<color=#BBBBBB>来源：大兴兴 掉落 20% / 叮当的小店（好感 5 级）</color>";
+        public override string DescriptionEN => "A staff carved with ancient runes. It tears space open metres away and drops soul warriors straight into the enemy pack. The staff itself hits softly, but the warriors soak fire and detonate when they go.\n<color=#BA68C8>[Soul Projection]</color> Right-click to summon 3 soul warriors 6m ahead of your aim, lasting 12s. 12s cooldown.\n<color=#CE93D8>[Soul Burst]</color> When a warrior fades or falls it bursts for 45 ghost damage in a 3m radius. Never harms you or your allies.\n<color=#CE93D8>[Trade-off]</color> Low personal melee damage.\n<color=#BBBBBB>Source: 20% drop from Big Xing / Dingdang's Shop (Affinity 5)</color>";
         public override int ItemQuality => 5;
         public override string[] ItemTags => new string[] { "Weapon", "MeleeWeapon", "DontDropOnDeadInSlot", "Special" };
         public override string IconAssetName => NewWeaponIds.SummonStaffIconAssetName;
@@ -54,7 +55,15 @@ namespace BossRush
         public const int SummonCount = 3;
 
         /// <summary>
-        /// 召唤半径（米）
+        /// 投放点距玩家的距离（米）。朝瞄准方向量取；撞墙会自动缩短，
+        /// 设为 0 则退回「召在脚边」的旧行为（回退开关）。
+        /// 取 6 米：比法杖自己的攻击范围（1.8 米）远得多，投放才成为一次真正的决策；
+        /// 又在玩家一眼能看清的范围内，不至于扔到视野外。
+        /// </summary>
+        public const float PlacementDistance = 6f;
+
+        /// <summary>
+        /// 召唤半径（米）：三只灵魂战士围着投放点等角散开的半径
         /// </summary>
         public const float SummonRadius = 2.2f;
 
@@ -64,9 +73,22 @@ namespace BossRush
         public const float SummonHealth = 80f;
 
         /// <summary>
-        /// 召唤物存活时间（秒）
+        /// 召唤物存活时间（秒）。与冷却对齐成 12 秒：一组消散（并炸开）时正好能投下一组，
+        /// 形成「投放 → 吸火力 → 爆裂 → 再投放」的节奏，而不是无脑挂着三个小弟。
         /// </summary>
-        public const float SummonLifetime = 15f;
+        public const float SummonLifetime = 12f;
+
+        /// <summary>
+        /// 灵魂爆裂伤害。设为 0 即关闭爆裂（回退开关）。
+        /// 取 45：单只约等于法杖自身两刀半，三只全炸 135；要吃满得让敌人贴着召唤物，
+        /// 比霜之哀伤那 5 只持续输出更看走位，也更容易空。
+        /// </summary>
+        public const float SoulBurstDamage = 45f;
+
+        /// <summary>
+        /// 灵魂爆裂半径（米）
+        /// </summary>
+        public const float SoulBurstRadius = 3f;
 
         /// <summary>
         /// 召唤物预设名（复用僵尸预设）

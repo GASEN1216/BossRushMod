@@ -21,6 +21,70 @@ namespace BossRush
 {
     internal sealed partial class F3GameplayValidationRunner
     {
+        #region 纯判据（隔离回归逐字抽出执行）
+        /// <summary>
+        /// SKY_CHATTER：头顶气泡的话语表在**运行时**真的取得到，而且同屏不超过两个气泡。
+        ///
+        /// 守卫（tests/SkyIslandChatterGuard.py）查的是文本本身（谁有台词、长不长、重不重），
+        /// 这里查的是「跑起来之后按当前存档取，每个说话者仍然有话」——剧情分支写错时，
+        /// 某位居民在某个进度下会返回空池子，游戏里表现为他从此再也不吭声，而那既不报错也不掉帧。
+        ///
+        /// <paramref name="residentBusy"/> / <paramref name="enemyBusy"/> 是两个 owner 各自「此刻有没有气泡挂着」；
+        /// 每个 owner 至多一个，所以同屏上限就是 2。
+        /// </summary>
+        internal static bool JudgeChatter(string[] residentIds, SkyIslandStoryData story,
+            bool residentBusy, bool enemyBusy, int residentSpoken, int enemySpoken, out string metrics, out string reason)
+        {
+            reason = null;
+            List<string> errors = new List<string>();
+            int residentLines = 0;
+            for (int i = 0; residentIds != null && i < residentIds.Length; i++)
+            {
+                string[] pool = SkyIslandChatterLines.Resident(residentIds[i], story);
+                if (!SkyIslandChatterLines.HasLines(pool)) { errors.Add(residentIds[i] + ":no_lines"); continue; }
+                residentLines += pool.Length;
+            }
+            int mobLines = 0;
+            SkyIslandChatterMoment[] mobMoments =
+            {
+                SkyIslandChatterMoment.Idle, SkyIslandChatterMoment.Noticed, SkyIslandChatterMoment.AllyDown
+            };
+            for (int faction = 0; faction < 2; faction++)
+                for (int m = 0; m < mobMoments.Length; m++)
+                {
+                    string[] pool = SkyIslandChatterLines.Mob(faction == 1, mobMoments[m]);
+                    if (!SkyIslandChatterLines.HasLines(pool))
+                    { errors.Add((faction == 1 ? "ranger:" : "scav:") + mobMoments[m] + ":no_lines"); continue; }
+                    mobLines += pool.Length;
+                }
+            int bossLines = 0;
+            SkyIslandChatterMoment[] bossMoments =
+            {
+                SkyIslandChatterMoment.Noticed, SkyIslandChatterMoment.Wounded, SkyIslandChatterMoment.Down
+            };
+            SkyIslandBossProfile[] profiles = SkyIslandBossRules.Profiles;
+            for (int i = 0; i < profiles.Length; i++)
+                for (int m = 0; m < bossMoments.Length; m++)
+                {
+                    string[] pool = SkyIslandChatterLines.Boss(profiles[i].Kind, profiles[i].Variant, bossMoments[m]);
+                    if (!SkyIslandChatterLines.HasLines(pool))
+                    { errors.Add(profiles[i].Id + ":" + bossMoments[m] + ":no_lines"); continue; }
+                    bossLines += pool.Length;
+                }
+            // 噬风是一股风，按人设一个字都不说：它要是忽然有了台词，说明有人把它接进了共享库。
+            if (SkyIslandChatterLines.HasLines(SkyIslandChatterLines.Champion("storm", SkyIslandChatterMoment.Noticed)))
+                errors.Add("storm:should_stay_silent");
+            int onScreen = (residentBusy ? 1 : 0) + (enemyBusy ? 1 : 0);
+            if (onScreen > 2) errors.Add("bubbles_on_screen=" + onScreen);
+            metrics = "resident_pools=" + (residentIds == null ? 0 : residentIds.Length) + ",resident_lines=" + residentLines
+                + ",mob_lines=" + mobLines + ",boss_lines=" + bossLines
+                + ",on_screen=" + onScreen + ",spoken_resident=" + residentSpoken + ",spoken_enemy=" + enemySpoken;
+            if (errors.Count > 0) reason = "头顶气泡不合格：" + string.Join(",", errors.ToArray());
+            return errors.Count == 0;
+        }
+
+        #endregion
+
         // ====================================================================
         // 1/5 场景装配与官方合同
         // ====================================================================

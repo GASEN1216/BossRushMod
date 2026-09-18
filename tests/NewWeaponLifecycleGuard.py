@@ -10,8 +10,12 @@
 - 稳定线：叮当商店五条 ShopItemEntry 齐全，解锁等级与库存走 NewWeaponShopConfig。
 - 售价：NewWeaponItemAttributes 必须写 item.Value —— 不写商店会标价 0 元。
 - 注册即配置：五个 TypeID 登记进 ItemFactory 配置器，不能只靠延迟 bootstrap 那一次调用。
+- 共享配置流程：五个 XxxWeaponConfig 只声明 Spec 并委托 NewWeaponConfiguratorCore，
+  品质/售价/耐久由 core 统一调 NewWeaponItemAttributes.Apply；不许退回「每把各抄一遍模板」。
 - 表现层：四个触发瞬间各自的特效 / 音效调用在位；三把近战走共享挥砍拖尾补丁。
-- 自建伤害：毒爆发与雷电释放必须标 isFromBuffOrEffect（与 Mode G 矩阵登记口径一致）。
+- 自建伤害：毒爆发、雷电释放、灵魂爆裂必须标 isFromBuffOrEffect（与 Mode G 矩阵登记口径一致）。
+- 成长项：毒爆发与雷电释放的「固定底 + 比例」两个常量都在位——只留固定底会让两件装备中后期失效。
+- 召唤法杖定位：投放距离与灵魂爆裂常量在位，且爆裂不在死亡事件栈里调官方爆炸。
 """
 
 from pathlib import Path
@@ -30,14 +34,20 @@ DROP_HANDLER = Path("Integration/NewWeapons/Common/NewWeaponBossDropHandler.cs")
 FX = Path("Integration/NewWeapons/Common/NewWeaponFx.cs")
 MELEE_FX = Path("Integration/NewWeapons/Common/NewWeaponMeleeFx.cs")
 BOOTSTRAP = Path("Integration/NewWeapons/Common/NewWeaponBootstrap.cs")
+RUNTIME = Path("Integration/NewWeapons/Common/NewWeaponRuntime.cs")
+CONFIG_CORE = Path("Integration/NewWeapons/Common/NewWeaponConfiguratorCore.cs")
+EQUIP_STATE = Path("Integration/NewWeapons/Common/NewWeaponEquipState.cs")
 ON_DEAD_PATCH = Path("Patches/Combat/CharacterOnDeadPatch.cs")
 GOBLIN = Path("Integration/Affinity/NPCs/GoblinAffinityConfig.cs")
 ITEM_REGISTRY = Path("Integration/Items/ItemContentRegistry.cs")
 VIPER_RUNTIME = Path("Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs")
+VIPER_CONFIG = Path("Integration/NewWeapons/ViperDagger/ViperDaggerConfig.cs")
 THUNDER_RUNTIME = Path("Integration/NewWeapons/ThunderRing/ThunderRingRuntime.cs")
+THUNDER_CONFIG = Path("Integration/NewWeapons/ThunderRing/ThunderRingConfig.cs")
 SHIELD_RUNTIME = Path("Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs")
 SPEAR_RUNTIME = Path("Integration/NewWeapons/FrostSpear/FrostSpearRuntime.cs")
 STAFF_ACTION = Path("Integration/NewWeapons/SummonStaff/SummonStaffAction.cs")
+STAFF_CONFIG = Path("Integration/NewWeapons/SummonStaff/SummonStaffConfig.cs")
 
 WEAPON_TYPE_IDS = {
     "ViperDaggerTypeId": 500048,
@@ -120,18 +130,34 @@ def main():
         "public const int TotemValue = 16000;",
     ), "StableLine")
 
-    # Apply 的调用点：只断言定义存在的话，把某一把的调用注释掉照样全绿
-    APPLY_CALL_SITES = {
+    # Apply 的调用点：五把武器的 Spec 各自声明 TypeId，由共享流程统一写属性。
+    # 只断言 core 里有 Apply 的话，把某个 Spec 的 TypeId 写错照样全绿，所以两头都钉。
+    SPEC_TYPE_IDS = {
         "ViperDagger/ViperDaggerWeaponConfig.cs": "ViperDaggerTypeId",
         "SummonStaff/SummonStaffWeaponConfig.cs": "SummonStaffTypeId",
         "EnergyShield/EnergyShieldWeaponConfig.cs": "EnergyShieldTypeId",
         "FrostSpear/FrostSpearWeaponConfig.cs": "FrostSpearTypeId",
         "ThunderRing/ThunderRingWeaponConfig.cs": "ThunderRingTypeId",
     }
-    for rel_name, const_name in sorted(APPLY_CALL_SITES.items()):
-        snippet = "NewWeaponItemAttributes.Apply(item, NewWeaponIds.{});".format(const_name)
-        if snippet not in read(Path("Integration/NewWeapons") / rel_name):
-            errors.append("[StableLine] 缺少属性写入调用 -> " + rel_name + " : " + snippet)
+    for rel_name, const_name in sorted(SPEC_TYPE_IDS.items()):
+        weapon_config = read(Path("Integration/NewWeapons") / rel_name)
+        snippet = "TypeId = NewWeaponIds.{},".format(const_name)
+        if snippet not in weapon_config:
+            errors.append("[StableLine] Spec 缺少 TypeId 声明 -> " + rel_name + " : " + snippet)
+        # 退回「每把各抄一遍配置模板」会让改一处口径漏掉其它几把，这里堵死
+        for template in ("private static void ConfigureStats(", "private static void ConfigureTags("):
+            if template in weapon_config:
+                errors.append("[SharedConfigurator] " + rel_name
+                              + " 又抄回了本地配置模板 -> " + template)
+
+    config_core = read(CONFIG_CORE)
+    require(config_core, (
+        "NewWeaponItemAttributes.Apply(item, spec.TypeId);",
+        "internal static bool ConfigureMelee(Item item, string baseName, NewWeaponMeleeSpec spec)",
+        "internal static bool ConfigureTotem(Item item, string baseName, NewWeaponTotemSpec spec)",
+    ), "SharedConfigurator")
+    if config_core.count("NewWeaponItemAttributes.Apply(item, spec.TypeId);") < 2:
+        errors.append("[SharedConfigurator] 近战与图腾两条流程都必须调 NewWeaponItemAttributes.Apply")
 
     # ---- 注册即配置 ----
     require(read(ITEM_REGISTRY), (
@@ -145,7 +171,7 @@ def main():
 
     # ---- 表现层 ----
     require(read(VIPER_RUNTIME), (
-        "burstDamage.isFromBuffOrEffect = true;",
+        "burstDamageInfo.isFromBuffOrEffect = true;",
         "NewWeaponFx.PlayBurst(",
         "NewWeaponFx.PlaySound(NewWeaponSfx.VenomBurst);",
     ), "Fx:ViperDagger")
@@ -175,6 +201,63 @@ def main():
         "NewWeaponSwingFx.PlayAt(",
     ), "Fx:Swing")
 
+    # ---- 命中归因（2026-09-18）----
+    # 「打在敌人身上才触发」的机制必须过同一套谓词：不过滤的话，打木箱、误伤自己的召唤物、
+    # 以及本 Mod 自己的 buff/效果伤害（荆棘反弹、殉爆、毒爆发）都会把攒满的电能/毒层白白吃掉。
+    require(read(EQUIP_STATE), (
+        "internal static bool IsHostileVictim(Health victim)",
+        "internal static bool IsPlayerDirectHit(Health victim, ref DamageInfo info, CharacterMainControl player)",
+        "return victim.team != Teams.player;",
+        "if (info.isFromBuffOrEffect) return false;",
+        # 事件驱动缓存的三个订阅点与退订路径
+        "CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent += OnHoldItemChanged;",
+        "CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent -= OnHoldItemChanged;",
+        "internal static void ResetStaticCaches()",
+    ), "Attribution")
+    require(read(VIPER_RUNTIME), (
+        "if (!NewWeaponAttribution.IsHostileVictim(targetHealth)) return;",
+    ), "Attribution:ViperDagger")
+    require(read(THUNDER_RUNTIME), (
+        "if (!NewWeaponAttribution.IsPlayerDirectHit(targetHealth, ref damageInfo, player)) return;",
+        # DoT 不该能把电能攒满（站火里 1.5 秒满层）
+        "if (damageInfo.isFromBuffOrEffect) return;",
+    ), "Attribution:ThunderRing")
+
+    # ---- 数值成长项（中后期不失效）----
+    require(read(VIPER_CONFIG), (
+        "public const float BurstDamageOnMaxStack = 35f;",
+        "public const float BurstAccumulatedDamageRatio =",
+    ), "Scaling:ViperDagger")
+    require(read(VIPER_RUNTIME), (
+        "accumulatedDamage * ViperDaggerConfig.BurstAccumulatedDamageRatio",
+    ), "Scaling:ViperDagger")
+    require(read(THUNDER_CONFIG), (
+        "public const float ReleaseDamage = 40f;",
+        "public const float ReleaseHitDamageRatio =",
+    ), "Scaling:ThunderRing")
+    require(read(THUNDER_RUNTIME), (
+        "damageInfo.finalDamage * ThunderRingConfig.ReleaseHitDamageRatio",
+    ), "Scaling:ThunderRing")
+
+    # ---- 召唤法杖定位（与霜之哀伤错开）----
+    require(read(STAFF_CONFIG), (
+        "public const float PlacementDistance =",
+        "public const float SoulBurstDamage =",
+        "public const float SoulBurstRadius =",
+    ), "Identity:SummonStaff")
+    staff_action = read(STAFF_ACTION)
+    require(staff_action, (
+        "ResolvePlacementCenter(player, playerPos)",
+        "player.CurrentAimDirection",
+        "blast.isFromBuffOrEffect = true;",
+        "ExplosionFxTypes.normal",
+        "private void TriggerSoulBurst()",
+    ), "Identity:SummonStaff")
+    # 爆裂只能从 Update 触发：在 Health.OnDead/OnHurt 派发栈里调官方爆炸会覆写它的命中缓冲
+    if "Health.OnDead" in staff_action or "Health.OnHurt" in staff_action:
+        errors.append("[Identity:SummonStaff] 灵魂爆裂不得订阅 Health 死亡/受伤事件，"
+                      "只能在 Update 里按 IsDead 自查（CR-2026-09-17-015）")
+
     # 音效路径必须惰性解析：静态字段里拼 Assembly.Location 会毒化类型并吃掉后续气泡
     fx = read(FX)
     require(fx, ("ModBehaviour.GetModPath();",), "Fx:SfxPath")
@@ -191,11 +274,22 @@ def main():
             print("  [WARN] 音效产物缺失，跑 tools/gen_newweapon_sfx.py 生成 -> " + wav)
 
     # ---- 清理 ----
-    require(read(BOOTSTRAP), (
+    # 实现在 NewWeaponRuntime（AGENTS §4.15：子系统状态不放宿主 partial），
+    # 宿主只留四个一行转发；两头都钉，任一处断掉都等于清理链断掉。
+    require(read(RUNTIME), (
+        "NewWeaponEquipState.Unsubscribe();",
         "FrostSpearRuntime.Unsubscribe();",
+        "NewWeaponEquipState.ResetStaticCaches();",
         "NewWeaponFx.ResetStaticCaches();",
         "NewWeaponBossDropHandler.ResetStaticCaches();",
+        "SummonStaffAction.CleanupAllSummonedAllies();",
     ), "Cleanup")
+    require(read(BOOTSTRAP), (
+        "NewWeaponRuntime.Initialize();",
+        "NewWeaponRuntime.SetupForScene(this, scene);",
+        "NewWeaponRuntime.ConfigureAfterLoad();",
+        "NewWeaponRuntime.CleanupOnDestroy();",
+    ), "HostForwarding")
 
     if errors:
         print("NewWeaponLifecycleGuard: FAIL ({} errors)".format(len(errors)))

@@ -29,6 +29,9 @@ namespace BossRush
         private const float CardFlipSeconds = 0.55f;
         private const float CardHoldSeconds = 1.4f;
 
+        /// <summary>翻牌卡上最多点名的战利品件数，多出来的并成「+N」。</summary>
+        private const int MaxLootNamesShown = 3;
+
         #endregion
 
         private static PetNestExpeditionRevealView _instance;
@@ -224,23 +227,22 @@ namespace BossRush
 
         private static string BuildCardDetail(PetNestExpeditionRecord record)
         {
-            string dest = LocalizationHelper.GetLocalizedText(
-                PetNestTuning.LocalizationPrefix + "Dest_" + record.destinationId);
-            string risk = LocalizationHelper.GetLocalizedText(
-                PetNestTuning.LocalizationPrefix + "Risk_" + DescribeRiskSuffix(record.riskTier));
-            string deathRateLabel = LocalizationHelper.GetLocalizedText(
-                PetNestTuning.LocalizationPrefix + "DeathRateLabel");
-
-            string text = dest + " · " + risk
-                + " · " + deathRateLabel + " " + ((int)Mathf.Round(record.deathRate * 100f)) + "%";
+            // 目的地 / 档位 / 死亡率的文案口径与面板共用 PetNestLocalization 的单点入口，
+            // 此前这里另写了一份 switch 与一份取整，加档位时必然漏改一处。
+            string text = PetNestLocalization.DescribeDestination(record.destinationId)
+                + " · " + PetNestLocalization.DescribeRisk(record.riskTier)
+                + " · " + LocalizationHelper.GetLocalizedText(
+                    PetNestTuning.LocalizationPrefix + "DeathRateLabel")
+                + " " + PetNestLocalization.FormatPercent(record.deathRate);
 
             if (record.outcomeCash > 0L)
             {
                 text += "\n" + L10n.T("现金", "Cash") + " +" + record.outcomeCash;
             }
-            if (record.outcomeLootTypeIds != null && record.outcomeLootTypeIds.Count > 0)
+            string loot = DescribeLoot(record);
+            if (!string.IsNullOrEmpty(loot))
             {
-                text += "\n" + L10n.T("战利品", "Loot") + " ×" + record.outcomeLootTypeIds.Count;
+                text += "\n" + L10n.T("战利品", "Loot") + " " + loot;
             }
             if (record.outcomeDead)
             {
@@ -250,13 +252,55 @@ namespace BossRush
             return text;
         }
 
-        private static string DescribeRiskSuffix(int riskTier)
+        /// <summary>
+        /// 战利品清单。**报名字而不是报件数**：翻牌是这趟远征唯一的结果画面，
+        /// "战利品 ×1" 等于什么都没说。名字查不到时回落到件数，绝不空着。
+        /// 最多列 MaxLootNamesShown 件，其余并成「+N」，避免一行撑爆卡片。
+        /// </summary>
+        private static string DescribeLoot(PetNestExpeditionRecord record)
         {
-            switch ((PetNestRiskTier)riskTier)
+            if (record.outcomeLootTypeIds == null || record.outcomeLootTypeIds.Count == 0)
             {
-                case PetNestRiskTier.Rough: return "rough";
-                case PetNestRiskTier.Desperate: return "desperate";
-                default: return "safe";
+                return null;
+            }
+
+            string text = null;
+            int shown = 0;
+            int hidden = 0;
+            for (int i = 0; i < record.outcomeLootTypeIds.Count; i++)
+            {
+                if (shown >= MaxLootNamesShown)
+                {
+                    hidden++;
+                    continue;
+                }
+                int count = i < record.outcomeLootCounts.Count ? record.outcomeLootCounts[i] : 1;
+                string name = ResolveItemName(record.outcomeLootTypeIds[i]);
+                if (string.IsNullOrEmpty(name)) continue;
+                if (text != null) text += "，";
+                text += count > 1 ? name + " ×" + count : name;
+                shown++;
+            }
+            if (hidden > 0) text += " +" + hidden;
+
+            // 一个名字都查不到（资源未就绪）时回落件数，保证这一行有内容
+            return text ?? ("×" + record.outcomeLootTypeIds.Count);
+        }
+
+        /// <summary>单件战利品的显示名。查不到返回 null 由调用方回落。</summary>
+        private static string ResolveItemName(int typeId)
+        {
+            if (typeId == RelicEggConfig.TYPE_ID) return RelicEggConfig.GetDisplayName();
+            try
+            {
+                ItemStatsSystem.Item prefab = ItemStatsSystem.ItemAssetsCollection.GetPrefab(typeId);
+                string name = prefab != null ? prefab.DisplayName : null;
+                return string.IsNullOrEmpty(name) ? null : name;
+            }
+            catch (Exception)
+            {
+                // 物品表未就绪：交由调用方回落成件数
+                return null;
             }
         }
 

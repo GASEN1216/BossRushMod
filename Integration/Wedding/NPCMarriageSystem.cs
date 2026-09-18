@@ -34,6 +34,62 @@ namespace BossRush
         private static bool marriageVideoPreviousCursorVisible = false;
         private static CursorLockMode marriageVideoPreviousCursorLockState = CursorLockMode.Locked;
 
+        // 只保留单调代际，不在静态字段里持有角色。新的关系操作使旧收尾失效。
+        private static long operationGeneration;
+
+        private sealed class MarriageOperation
+        {
+            internal ModBehaviour Host;
+            internal CharacterMainControl Player;
+            internal GameObject Npc;
+            internal string NpcId;
+            internal int Slot, SceneHandle;
+            internal long Generation;
+            internal bool Married;
+
+            internal bool IsCurrent()
+            {
+                try
+                {
+                    if (Generation != operationGeneration || Host == null || Host != ModBehaviour.Instance
+                        || Player == null || Player != CharacterMainControl.Main || Player.Health == null || Player.Health.IsDead
+                        || Npc == null || SceneLoader.IsSceneLoading
+                        || Slot != Saves.SavesSystem.CurrentSlot
+                        || SceneHandle != UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle
+                        || Host.GetSpouseInstance(NpcId) != Npc) return false;
+                    string spouse = AffinityManager.GetCurrentSpouseNpcId();
+                    return Married
+                        ? spouse == NpcId && AffinityManager.IsMarriedToPlayer(NpcId) && !AffinityManager.IsSpouseFollowingPlayer(NpcId)
+                        : string.IsNullOrEmpty(spouse) && !AffinityManager.IsMarriedToPlayer(NpcId);
+                }
+                catch (Exception) { return false; }
+            }
+        }
+
+        private static MarriageOperation BeginOperation(string npcId, Transform target, bool married)
+        {
+            long generation = ++operationGeneration;
+            try
+            {
+                ModBehaviour host = ModBehaviour.Instance;
+                GameObject npc = host == null ? null : host.GetSpouseInstance(npcId);
+                if (npc == null || target == null || (target != npc.transform && !target.IsChildOf(npc.transform))) return null;
+                var operation = new MarriageOperation
+                {
+                    Host = host, Player = CharacterMainControl.Main, Npc = npc, NpcId = npcId,
+                    Slot = Saves.SavesSystem.CurrentSlot,
+                    SceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle,
+                    Generation = generation, Married = married
+                };
+                return operation.IsCurrent() ? operation : null;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[Marriage] [WARNING] 无法建立婚姻收尾上下文: " + e.Message);
+                return null;
+            }
+        }
+
         /// <summary>
         /// 钻石戒指赠送成功后的入口
         /// </summary>
@@ -49,7 +105,8 @@ namespace BossRush
                 return;
             }
 
-            RunMarriageSequenceAsync(npcId, npcTransform, npcController, marriageDateTextCN).Forget();
+            MarriageOperation operation = BeginOperation(npcId, npcTransform, true);
+            if (operation != null) RunMarriageSequenceAsync(operation, npcTransform, npcController, marriageDateTextCN).Forget();
         }
 
         /// <summary>
@@ -89,6 +146,9 @@ namespace BossRush
                 return;
             }
 
+            MarriageOperation operation = BeginOperation(npcId, npcTransform, false);
+            if (operation == null) return;
+
             try
             {
                 INPCController controller = npcController;
@@ -116,7 +176,7 @@ namespace BossRush
                 ModBehaviour.DevLog("[Marriage] [WARNING] 离婚反馈显示失败: " + e.Message);
             }
 
-            RunDivorceFinalizeAsync(npcId).Forget();
+            RunDivorceFinalizeAsync(operation).Forget();
         }
 
         /// <summary>
@@ -180,20 +240,23 @@ namespace BossRush
         /// 执行结婚过场与后续反馈
         /// </summary>
         private static async UniTaskVoid RunMarriageSequenceAsync(
-            string npcId,
+            MarriageOperation operation,
             Transform npcTransform,
             INPCController npcController,
             string marriageDateTextCN)
         {
+            string npcId = operation.NpcId;
             try
             {
+                if (!operation.IsCurrent()) return;
                 // 进入对话态，避免过场期间NPC乱跑
                 if (npcController != null)
                 {
                     npcController.StartDialogue();
                 }
 
-                bool playedVideo = await PlayMarriageVideoCutsceneAsync(npcId);
+                bool playedVideo = await PlayMarriageVideoCutsceneAsync(npcId, operation.IsCurrent);
+                if (!operation.IsCurrent()) return;
                 if (!playedVideo)
                 {
                     var actor = ResolveDialogueActor(npcId, npcTransform);
@@ -201,7 +264,8 @@ namespace BossRush
                     {
                         string[][] cutsceneDialogues = BuildMarriageCutsceneDialogues(npcId);
                         string keyPrefix = "BossRush_MarriageCutscene_" + npcId + "_" + DateTime.Now.ToString("yyyyMMddHHmmss");
-                        await DialogueManager.ShowDialogueSequenceBilingual(actor, cutsceneDialogues, keyPrefix);
+                        await DialogueManager.ShowDialogueSequenceBilingual(actor, cutsceneDialogues, keyPrefix,
+                            operation.Npc.GetCancellationTokenOnDestroy());
                     }
                     else
                     {
@@ -209,18 +273,21 @@ namespace BossRush
                     }
                 }
             }
+            catch (OperationCanceledException) { }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[Marriage] [ERROR] 结婚过场异常: " + e.Message);
-                DialogueManager.ForceEndDialogue();
+                if (operation.IsCurrent()) DialogueManager.ForceEndDialogue();
             }
             finally
             {
-                ShowMarriageFeedback(npcId, npcTransform, npcController, marriageDateTextCN);
-
-                // 给反馈留一点展示时间，再进行场景内重定位
-                await UniTask.Delay(TimeSpan.FromSeconds(DIVORCE_RELOCATE_DELAY_SECONDS));
-                RelocateOrDespawnMarriedNpc(npcId);
+                if (operation.IsCurrent())
+                {
+                    ShowMarriageFeedback(npcId, npcTransform, npcController, marriageDateTextCN);
+                    // 等待后再次复核；旧场景/旧关系的收尾不得动当前 registry。
+                    await UniTask.Delay(TimeSpan.FromSeconds(DIVORCE_RELOCATE_DELAY_SECONDS));
+                    RelocateOrDespawnMarriedNpc(operation);
+                }
             }
         }
 
@@ -231,8 +298,10 @@ namespace BossRush
         /// 2) Assets/cutscenes/marriage.mp4
         /// </summary>
         /// <returns>播放过视频返回 true；没有视频或播放失败返回 false</returns>
-        private static async UniTask<bool> PlayMarriageVideoCutsceneAsync(string npcId)
+        private static async UniTask<bool> PlayMarriageVideoCutsceneAsync(string npcId, Func<bool> valid = null)
         {
+            if (valid != null && !valid()) return false;
+            ModBehaviour videoHost = ModBehaviour.Instance;
             string videoPath = DiamondRingConfig.GetMarriageVideoPath(npcId);
             if (string.IsNullOrEmpty(videoPath) || !File.Exists(videoPath))
             {
@@ -306,11 +375,12 @@ namespace BossRush
 
                 onPrepared = delegate(VideoPlayer vp)
                 {
+                    if (valid != null && !valid()) { finished = true; return; }
                     try
                     {
                         if (!string.IsNullOrEmpty(audioPath))
                         {
-                            ModBehaviour mod = ModBehaviour.Instance;
+                            ModBehaviour mod = videoHost;
                             if (mod != null)
                             {
                                 mod.PlaySoundEffect(audioPath);
@@ -352,6 +422,7 @@ namespace BossRush
                 while (!finished && elapsed < MARRIAGE_VIDEO_TIMEOUT_SECONDS)
                 {
                     await UniTask.Yield(PlayerLoopTiming.Update);
+                    if (valid != null && !valid()) return false;
                     elapsed += Time.unscaledDeltaTime;
                 }
 
@@ -532,13 +603,14 @@ namespace BossRush
         {
             if (npcTransform == null) return null;
 
+            string npcName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
             var existing = npcTransform.GetComponent<DuckovDialogueActor>();
             if (existing != null)
             {
+                DialogueActorFactory.RefreshPresentation(existing, npcName, npcName);
                 return existing;
             }
 
-            string npcName = AffinityManager.GetNPCConfig(npcId)?.DisplayName ?? npcId;
             return DialogueActorFactory.CreateBilingual(
                 npcTransform.gameObject,
                 "marriage_" + npcId,
@@ -602,12 +674,13 @@ namespace BossRush
         /// <summary>
         /// 将已婚NPC转移到婚礼教堂；若当前场景无教堂则先移除该NPC
         /// </summary>
-        private static void RelocateOrDespawnMarriedNpc(string npcId)
+        private static void RelocateOrDespawnMarriedNpc(MarriageOperation operation)
         {
             try
             {
-                ModBehaviour mod = ModBehaviour.Instance;
-                if (mod == null) return;
+                if (!operation.IsCurrent()) return;
+                string npcId = operation.NpcId;
+                ModBehaviour mod = operation.Host;
 
                 Transform weddingNpc = mod.TrySpawnMarriedNpcAtWeddingPoint();
                 if (weddingNpc != null)
@@ -644,16 +717,13 @@ namespace BossRush
         /// <summary>
         /// 离婚后延迟执行NPC回收/重刷，给心碎反馈留展示时间
         /// </summary>
-        private static async UniTaskVoid RunDivorceFinalizeAsync(string npcId)
+        private static async UniTaskVoid RunDivorceFinalizeAsync(MarriageOperation operation)
         {
             try
             {
                 await UniTask.Delay(TimeSpan.FromSeconds(DIVORCE_RELOCATE_DELAY_SECONDS));
-
-                ModBehaviour mod = ModBehaviour.Instance;
-                if (mod == null) return;
-
-                mod.HandleDivorceNpcRelocation(npcId);
+                if (!operation.IsCurrent()) return;
+                operation.Host.HandleDivorceNpcRelocation(operation.NpcId);
             }
             catch (Exception e)
             {

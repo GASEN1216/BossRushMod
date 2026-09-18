@@ -66,13 +66,14 @@ Win a match and you are offered one to three **reward kits**. Pick one to unlock
 
 #### The pre-match page: roster, kits and command
 
-The odds page carries an **Edit roster / kits / command** button, and that one page settles all four
-pre-match decisions:
+The odds page carries an **Edit roster / kits / command** button, with separate roster, starter-kit, relay-kit and command sections, showing up to six options per page. Kits describe slots and quality; orders list their effects and conditions:
 
 - **Who starts** — pick one of your two contracted fighters to open.
 - **Who relays** — the one who takes over when the starter goes down.
 - **Rest relay; fight solo** — bench the sub for the whole match and win it with your starter alone.
 - **Kits and command** — swap reward kits slot by slot, and lock this match's order.
+
+Kits disabled by an armor injury are excluded from selection and scoring. Hand Off requires an eligible relay; orders whose enemy-count requirement cannot be reached are also excluded.
 
 Go back to the odds page and the odds and public summary are recalculated from **the selection you
 actually made**, and only then do you lock the board.
@@ -85,16 +86,28 @@ The enemy plan is frozen **before** you start building your loadout. What you se
 
 The brief discloses their **head count range**, **primary role**, **entry pace**, **ring condition**, and any **known high-threat core**. The rest you have to guess at.
 
+#### Playing the Ring Conditions
+
+Rules apply equally to both sides, with the effect shown before the fight:
+
+- **Center Cover** — inside the blue ring, physical damage factor is reduced by 25%; leaving removes it. This is a cover zone, with no added blocking walls.
+- **Danger Edge** — outside the orange ring, take 2% max-health armor-bypassing damage each second. Every entrant gets 5 seconds of grace; Center can help when available.
+- **Limited Medical** — all actual healing is halved; direct damage is unchanged. Favor early pressure over prolonged recovery.
+- **Narrow Cage** — close-combat rules: melee damage factor +20%, gun damage factor -20%. Choose weapons accordingly; no physical cage is added.
+- **Open Field** — ranged rules: gun damage factor +15% for both teams.
+- **Residual Might** — gun and melee damage factors +20% for 8 seconds after each entry. Starters, relays and reinforcements have separate windows.
+
+Positional and entry-window benefits do not add a flat archetype terrain score. Injuries, scars and orders affecting the same AI field compose, and expiry removes only the expiring effect.
+
 #### Free Scouting: One Look Per Match
 
-The bottom of the brief gives you **one free scout**, once per match. Pick one of four:
+The brief gives you **one free scout** per match. Choose one:
 
-- **Hidden Quirk** — reveals the enemy core's quirk and temperament
-- **Current Injuries** — reveals how many of them are carrying wounds
-- **Members & Order** — reveals how many arrive in each wave (counts only, not who)
-- **Secondary Gear** — reveals the enemy core's extra capability tags
+- **Current Injuries** — reveals the actual wounded count. Wounded enemies enter at **75% health**, starting with the highest-threat enemy; they can still heal.
+- **Members & Order** — reveals how many arrive in each batch, without identifying members.
+- **Core Combat Traits** — reveals close assault, ranged pressure, heavy armor and similar capabilities.
 
-Which one you want depends on how you plan to bet: unsure whether to go big, check injuries; worried one particular core will turn the match, check the quirk. **The reveal folds into the public summary, so it moves the odds too** — showing that they're wounded shifts the board your way.
+Check batches to time your bell against reinforcements, wounds to plan an early finish, or core traits before choosing kits. Each revealed wounded enemy reduces the enemy public score by 5; other scouting offers tactical information without necessarily changing the odds. Flavor quirks and temperament descriptions no longer consume a scout.
 
 Once used, that row shows which one you picked and the buttons are gone.
 
@@ -153,7 +166,7 @@ If your starter retires, the relay is promoted. **If both contracted fighters re
 ### Scars: The Riskier the Win, the More There Is to Keep
 
 Win a match **at locked odds of x3 or better** and the settlement page offers the surviving fighter
-a **scar**, at most one per match. Safe boards (x1, x2) offer nothing — scars only grow out of hard fights.
+a **scar**, at most one per match. Favored boards (x1, x2) offer nothing — scars only grow out of hard fights.
 
 A scar is one permanent change with **an upside and a downside welded together**, drawn only from those
 compatible with that fighter's archetype. Two examples:
@@ -170,7 +183,7 @@ The settlement page gives you three ways to answer:
 
 [tip] Closing the settlement page does not void the offer — it is written into the match report and will still be there next time. If you are unsure, leave it and come back after the next match.
 
-That "N scars" line in the Hall of Fame is the running total of these decisions you made for them.
+Settlement and Hall of Fame show fame and scar counts. Fame is a record, not hidden combat power.
 
 ### Real Stakes (Read This Before You Bet)
 
@@ -194,7 +207,7 @@ Real stakes and virtual credits are **two parallel bets**. Neither converts into
 Win the sixth match and your champion is inscribed in the **Hall of Fame**.
 
 - The Hall **persists across seasons** and holds exactly **32 seats**. When the thirty-third arrives, **the oldest record is pushed out**.
-- Each record carries the champion's name, archetype and temperament, signature order, that season's **best odds win** and **best credit win**, and how many scars they carried.
+- Each record carries the champion's name, archetype and temperament, signature order, that season's **best odds win** and **best credit win**, and their scar count and fame.
 - A champion with an anomaly is marked apart in the list.
 - The season wrap-up page shows you the current Hall directly, so you can see how many seats are left and who is about to be pushed out.
 

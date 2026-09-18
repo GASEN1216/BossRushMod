@@ -233,9 +233,9 @@ namespace BossRush
                 ObjectName = "BossRush_SkyIsland_Quest_590011",
                 NameKey = BeaconQuestNameKey, DescriptionKey = BeaconQuestDescriptionKey,
                 Name = () => L10n.T("点亮两端航标", "Light Both Beacons"),
-                Contact = () => L10n.T("风铃集 · 苇白", "Windchime Market · Weibai"),
-                Description = () => L10n.T("苇白：两端航标都灭了，绳桥也不敢系。校准悬根林的风标、修好残星工坊的星灯，再回风铃集告诉我。",
-                    "Weibai: Both beacons are dark and nobody dares lash the bridges. Calibrate the wind beacon in Hanging Root Wood, repair the star lamp at the Fallen Star Workshop, then tell me at Windchime Market."),
+                Contact = () => L10n.T("苇白／风铃集委托板", "Weibai / Windchime Market board"),
+                Description = () => L10n.T("航路委托：校准悬根林的风标、修好残星工坊的星灯。两端都亮起后找苇白交付；她不在时，到风铃集委托板选「航路任务」。",
+                    "Route commission: Calibrate the wind beacon in Hanging Root Wood and repair the star lamp at Fallen Star Workshop. Turn in to Weibai once both are lit; when she is away, choose Route quests at the Windchime Market board."),
                 AcceptedFlag = SkyIslandStoryFlag.BeaconQuestAccepted, DeliveredFlag = SkyIslandStoryFlag.BeaconQuestDelivered,
                 AcceptAction = SkyIslandStoryAction.AcceptBeaconQuest, DeliverAction = SkyIslandStoryAction.DeliverBeaconQuest,
                 Gate = OnIslandWithRoute,
@@ -256,7 +256,7 @@ namespace BossRush
                             ? L10n.T("残星工坊星灯已点亮。", "The Fallen Star Workshop star lamp is lit.")
                             : Blocker(data, SkyIslandStoryAction.RepairStarLamp,
                                 L10n.T("在残星工坊星灯下的见闻点修复东侧星灯。", "Repair the east star lamp at the record point under the Fallen Star Workshop lamp.")),
-                        ExtraHint = data => L10n.T("两盏都亮起后回风铃集向苇白复命。", "Once both burn, report back to Weibai at Windchime Market."),
+                        ExtraHint = data => L10n.T("两盏都亮起后找苇白交付；她不在时，用风铃集委托板的「航路任务」。", "Once both burn, turn in to Weibai, or use Route quests at the Windchime Market board when she is away."),
                     },
                 },
             };

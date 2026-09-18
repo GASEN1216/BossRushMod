@@ -99,7 +99,7 @@ namespace BossRush
         #region 玩家公开分
 
         /// <summary>
-        /// `playerPublicScore = roster + matchup + equipment + injury + anomaly + scar + command + arena`。
+        /// `playerPublicScore = roster + matchup + equipment + injury + anomaly + scar + command`。
         /// </summary>
         public static int ComputePlayerPublicScore(
             ModeHOddsPlayerInput input, ModeHMatchPlanDto plan, List<ModeHOddsBreakdownEntry> breakdown)
@@ -165,9 +165,7 @@ namespace BossRush
             int command = ComputeCommandScore(input, summary, w);
             if (command != 0) total += Add(breakdown, false, "Odds_Command", command);
 
-            // arena：整场只计一次
-            int arena = ComputeArenaScore(input, summary.conditionId, w);
-            if (arena != 0) total += Add(breakdown, false, "Odds_Arena", arena);
+            // 擂台规则对双方同等生效，位置/入场窗口的收益不预先当成某原型的固定优势。
 
             return total;
         }
@@ -390,55 +388,12 @@ namespace BossRush
             return false;
         }
 
-        /// <summary>擂台条件：对当前双人组合整场只计一次；同时有利与不利取 0。</summary>
-        private static int ComputeArenaScore(
-            ModeHOddsPlayerInput input, string conditionId, BossRushJsonValue w)
-        {
-            if (string.IsNullOrEmpty(conditionId)) return 0;
-            List<ModeHArenaConditionSpec> conditions = ModeHContentCatalog.ArenaConditions;
-            if (conditions == null) return 0;
-            ModeHArenaConditionSpec spec = null;
-            for (int i = 0; i < conditions.Count; i++)
-            {
-                if (conditions[i] != null
-                    && string.Equals(conditions[i].ConditionId, conditionId, StringComparison.Ordinal))
-                {
-                    spec = conditions[i];
-                    break;
-                }
-            }
-            if (spec == null) return 0;
-
-            bool favored = false;
-            bool disfavored = false;
-            EvaluateArena(spec, input.Starter, ref favored, ref disfavored);
-            EvaluateArena(spec, input.Relay, ref favored, ref disfavored);
-            if (favored && disfavored) return 0;
-            if (favored) return ModeHContentCatalog.GetWeight(w, "arenaFavorable", 4);
-            if (disfavored) return ModeHContentCatalog.GetWeight(w, "arenaUnfavorable", -4);
-            return 0;
-        }
-
-        private static void EvaluateArena(
-            ModeHArenaConditionSpec spec, ModeHProfileDto profile, ref bool favored, ref bool disfavored)
-        {
-            if (profile == null || string.IsNullOrEmpty(profile.archetypeId)) return;
-            if (spec.FavoredArchetypeIds != null && spec.FavoredArchetypeIds.Contains(profile.archetypeId))
-            {
-                favored = true;
-            }
-            if (spec.DisfavoredArchetypeIds != null && spec.DisfavoredArchetypeIds.Contains(profile.archetypeId))
-            {
-                disfavored = true;
-            }
-        }
-
         #endregion
 
         #region 敌方公开分
 
         /// <summary>
-        /// `enemyPublicScore = stage + count + core + synergy + visibleEnemyStatus`。
+        /// `enemyPublicScore = stage + count + core + synergy`。
         /// 只聚合一次公开计划字段，绝不按隐藏 stable key 或每个未公开敌人重复累计。
         /// </summary>
         public static int ComputeEnemyPublicScore(
@@ -467,8 +422,12 @@ namespace BossRush
             int synergy = ComputeEnemySynergyScore(summary, w);
             if (synergy != 0) total += Add(breakdown, true, "Odds_EnemySynergy", synergy);
 
-            int status = ComputeEnemyStatusScore(plan, summary, w);
-            if (status != 0) total += Add(breakdown, true, "Odds_EnemyStatus", status);
+            // 只计侦察公开且确实会以伤势入场的数量，旧摘要不能凭空增加受伤敌军。
+            int wounded = Math.Max(0, Math.Min(summary.visibleWoundedEnemyCount,
+                ModeHEncounterPlanner.GetWoundedEnemyCount(plan)));
+            if (wounded > 0) total += Add(breakdown, true, "Odds_EnemyWounded",
+                wounded * ModeHContentCatalog.GetWeight(w, "woundedEnemy", -5));
+            // 敌方没有经理人胆怯/ERROR 控制，旧 anomaly 字段继续不计分。
 
             return total;
         }
@@ -488,75 +447,6 @@ namespace BossRush
                 if (summary.synergyTags.Contains(category.PublicTag)) score += perCategory;
             }
             return score > cap ? cap : score;
-        }
-
-        /// <summary>公开带伤敌人与公开异常；只有 VerifiedBehavior 才计分。</summary>
-        private static int ComputeEnemyStatusScore(
-            ModeHMatchPlanDto plan, ModeHPublicSummaryDto summary, BossRushJsonValue w)
-        {
-            int score = 0;
-            if (summary.visibleWoundedEnemyCount > 0)
-            {
-                int perWounded = ModeHContentCatalog.GetWeight(w, "woundedEnemy", -5);
-                for (int i = 0; i < summary.visibleWoundedEnemyCount; i++)
-                {
-                    if (IsEnemyInjuryVerified(plan)) score += perWounded;
-                }
-            }
-            if (summary.visibleAnomalyIds != null)
-            {
-                for (int i = 0; i < summary.visibleAnomalyIds.Count; i++)
-                {
-                    string anomalyId = summary.visibleAnomalyIds[i];
-                    if (!IsEnemyAnomalyVerified(plan, anomalyId)) continue;
-                    if (string.Equals(anomalyId, ModeHStableIds.AnomalyCowardBlood, StringComparison.Ordinal))
-                    {
-                        score += ModeHContentCatalog.GetWeight(w, "anomalyBlood", -5);
-                    }
-                    else if (string.Equals(anomalyId, ModeHStableIds.AnomalyCowardCrowd, StringComparison.Ordinal))
-                    {
-                        score += ModeHContentCatalog.GetWeight(w, "anomalyCrowd", -7);
-                    }
-                    else if (string.Equals(anomalyId, ModeHStableIds.AnomalyCowardStrong, StringComparison.Ordinal))
-                    {
-                        score += ModeHContentCatalog.GetWeight(w, "anomalyStrong", -4);
-                    }
-                    else if (string.Equals(anomalyId, ModeHStableIds.AnomalyError, StringComparison.Ordinal))
-                    {
-                        score += ModeHContentCatalog.GetWeight(w, "anomalyError", -2);
-                    }
-                }
-            }
-            return score;
-        }
-
-        /// <summary>敌方带伤：任一计划成员的伤病行为通过认证才计分。</summary>
-        private static bool IsEnemyInjuryVerified(ModeHMatchPlanDto plan)
-        {
-            if (plan == null || plan.enemyStableKeys == null) return false;
-            for (int i = 0; i < plan.enemyStableKeys.Count; i++)
-            {
-                if (ModeHCommandCompatibilityRegistry.HasVerifiedInjuryBehavior(plan.enemyStableKeys[i]))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /// <summary>敌方异常：其持有者的对应行为通过认证才计分。</summary>
-        private static bool IsEnemyAnomalyVerified(ModeHMatchPlanDto plan, string anomalyId)
-        {
-            if (plan == null || plan.enemyStableKeys == null || string.IsNullOrEmpty(anomalyId)) return false;
-            for (int i = 0; i < plan.enemyStableKeys.Count; i++)
-            {
-                string key = plan.enemyStableKeys[i];
-                ModeHProfileTemplate template = ModeHProfileRegistry.GetByStableKey(key);
-                if (template == null) continue;
-                if (!string.Equals(template.AnomalyId, anomalyId, StringComparison.Ordinal)) continue;
-                if (ModeHCommandCompatibilityRegistry.HasVerifiedAnomalyBehavior(key, anomalyId)) return true;
-            }
-            return false;
         }
 
         #endregion

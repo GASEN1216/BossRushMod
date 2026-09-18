@@ -63,7 +63,7 @@ namespace BossRush
     internal enum ModeHParticipantStatus { Available, Injured, Retired }
     internal sealed class ModeHProfileDto
     {
-        public string profileId, stableKey, injuryId, archetypeId, anomalyId;
+        public string profileId, stableKey, injuryId, archetypeId, anomalyId, signatureCommandId;
         public int status, fameDisplayCount;
         public List<string> scarIds;
     }
@@ -83,8 +83,12 @@ namespace BossRush
         public void OnFighterEntered(ModeHParticipantRef fighter) { }
     }
     internal sealed class ModeHFixtureRunState { public long OwnerToken = 7; }
+    // 区域规则在 ModeHMarketAudit 链接完整生产类验证；本夹具只隔离口令/战痕。
+    internal sealed class ModeHFixtureMatchRules
+    { public bool Enter(ModeHParticipantRef p, out string reason) { reason = null; return true; } }
     internal sealed partial class ModeHCombatControl
     {
+        private readonly ModeHFixtureMatchRules _matchRules = new ModeHFixtureMatchRules();
         private ModeHParticipantRef _activeFighter;
         private string _activeProfileId, _activeStableKey, _activeAnomalyId;
         private object _activeFighterArmorItem;

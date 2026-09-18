@@ -1,12 +1,12 @@
 """玩家整备选择必须可达，并由赔率、摘要、锁盘消费同一口令。"""
 from pathlib import Path
-import re
+from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main():
-    files = {name: (ROOT / "ModeH" / name).read_text(encoding="utf-8") for name in [
+    files = {name: clean_source((ROOT / "ModeH" / name).read_text(encoding="utf-8")) for name in [
         "ModeHRuntimeModule_LoadoutEditing.cs", "ModeHRuntimeModule_MatchFlow.cs",
         "ModeHRuntimeModule_CombatFlow.cs", "ModeHUIPages.cs"]}
     editor, flow, combat, ui = files.values()
@@ -21,7 +21,7 @@ def main():
         (editor, "input.commandId = _selectedMatchCommandId;"),
         (combat, "string commandId = _selectedMatchCommandId;"),
         (combat, "commands.Contains(_selectedMatchCommandId) ? _selectedMatchCommandId : null"),
-        (combat, "lockedCommand == commandRelay.signatureCommandId"),
+        (combat, "ModeHCommandController.ResolveCommandOwner(lockedCommand, starter, commandRelay)"),
         (combat, "lockedCommand, commandOwner,"),
         (ui, "CreatePreparationOptions(surface, panelSize, content, cursorY)"),
         (ui, "content.PreparationOptions.Count * rowHeight"),

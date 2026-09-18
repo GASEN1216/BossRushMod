@@ -13,6 +13,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryResidentText.cs" Link="Production/SkyIslandStoryResidentText.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />
@@ -27,6 +28,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoRules.cs" Link="Production/SkyIslandStormEchoRules.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />
     <Compile Include="../../../Config/ConfigItemIds.cs" Link="Production/ConfigItemIds.cs" />
     <Compile Include="../../../Common/Lifecycle/BossRushSlotJsonStore.cs" Link="Production/BossRushSlotJsonStore.cs" />

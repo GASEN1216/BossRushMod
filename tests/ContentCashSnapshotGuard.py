@@ -9,6 +9,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -18,9 +19,7 @@ def read(path):
 
 
 def strip_comments(text):
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+    return clean_source(text)
 
 
 def method_body(source, signature):
@@ -64,7 +63,7 @@ def main():
 
     for prefix, directory, grant in (
         ("Campaign", "Campaign", "EconomyManager.Add(def.RewardCash)"),
-        ("DailyReport", "Integration/DailyReport", "DailyReportRewards.TryGrantBountyCash(settled.CashReward, out reason)"),
+        ("DailyReport", "Integration/DailyReport", "DailyReportRewards.TryGrantBountyCash(amount, out reason)"),
     ):
         coordinator = strip_comments(read(f"{directory}/{prefix}SaveCoordinator.cs"))
         persistence = strip_comments(read(f"{directory}/{prefix}Persistence.cs"))

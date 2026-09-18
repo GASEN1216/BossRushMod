@@ -148,6 +148,7 @@ echo(Common\Infrastructure\HarmonyPatchGroupRegistrar.cs
 echo(Common\Infrastructure\HarmonyBindingSelfCheck.cs
 echo(Common\Data\JsonDataRegistry.cs
 echo(Common\Data\BossRushJsonValue.cs
+echo(Common\Loot\BossRushQualityItemPool.cs
 echo(Common\MapConfig\BossRushMapConfig.cs
 echo(Common\MapConfig\MapSpawnPointRegistry.cs
 echo(Common\Utils\ReflectionCache.cs
@@ -188,6 +189,8 @@ echo(DebugAndTools\SkyIsland\SkyIslandSearchPoint.cs
 echo(DebugAndTools\SkyIsland\SkyIslandSession.cs
 echo(DebugAndTools\SkyIsland\SkyIslandControls.cs
 echo(DebugAndTools\SkyIsland\SkyIslandContent.cs
+echo(DebugAndTools\SkyIsland\SkyIslandChatterLines.cs
+echo(DebugAndTools\SkyIsland\SkyIslandChatter.cs
 echo(DebugAndTools\SkyIsland\SkyIslandEncounters.cs
 echo(DebugAndTools\SkyIsland\SkyIslandGuideInteractable.cs
 echo(DebugAndTools\SkyIsland\SkyIslandOfficialContract.cs
@@ -203,10 +206,9 @@ echo(DebugAndTools\SkyIsland\SkyIslandSceneReferenceBridge.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryCodec.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryPresentation.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryRules.cs
-echo(DebugAndTools\SkyIsland\SkyIslandChatterLines.cs
-echo(DebugAndTools\SkyIsland\SkyIslandChatter.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStorySaveRecovery.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryService.cs
+echo(DebugAndTools\SkyIsland\SkyIslandStoryResidentText.cs
 echo(DebugAndTools\SkyIsland\SkyIslandStoryServiceAutotest.cs
 echo(DebugAndTools\SkyIsland\SkyIslandWorldStory.cs
 echo(DebugAndTools\SkyIsland\SkyIslandAmbience.cs
@@ -501,6 +503,7 @@ echo(ModeH\ModeHAvailability.cs
 echo(ModeH\ModeHBattleSnapshot.cs
 echo(ModeH\ModeHCanonicalDigest.cs
 echo(ModeH\ModeHCombatControl.cs
+echo(ModeH\ModeHMatchRules.cs
 echo(ModeH\ModeHCombatTelemetry.cs
 echo(ModeH\ModeHCommandAdapters.cs
 echo(ModeH\ModeHCommandCompatibilityRegistry.cs
@@ -703,6 +706,9 @@ echo(Integration\Frostmourne\FrostmourneAction.cs
 echo(Integration\Frostmourne\FrostmourneAbilityManager.cs
 echo(Integration\Frostmourne\FrostmourneBootstrap.cs
 echo(Integration\NewWeapons\Common\NewWeaponIds.cs
+echo(Integration\NewWeapons\Common\NewWeaponEquipState.cs
+echo(Integration\NewWeapons\Common\NewWeaponConfiguratorCore.cs
+echo(Integration\NewWeapons\Common\NewWeaponRuntime.cs
 echo(Integration\NewWeapons\Common\NewWeaponItemAttributes.cs
 echo(Integration\NewWeapons\Common\NewWeaponItemConfigurators.cs
 echo(Integration\NewWeapons\Common\NewWeaponFx.cs
@@ -916,6 +922,7 @@ echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs
 echo(PetNest\PetNestTuning.cs
+echo(PetNest\PetNestPersonality.cs
 echo(PetNest\PetNestLineageCatalog.cs
 echo(Config\ConfigPetNest.cs
 echo(PetNest\PetNestPersistenceCodec.cs

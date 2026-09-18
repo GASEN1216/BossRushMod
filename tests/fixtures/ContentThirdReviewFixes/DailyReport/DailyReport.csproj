@@ -11,6 +11,11 @@
     <Compile Include="../../../../Integration/DailyReport/DailyReportCodec.cs" />
     <Compile Include="../../../../Utilities/SimpleJsonHelper.cs" />
     <Compile Include="../../../../Common/Data/BossRushJsonValue.cs" />
+    <Compile Include="../../../../Integration/DailyReport/DailyReportBounty.cs" />
+    <Compile Include="../../../../Integration/DailyReport/DailyReportContent.cs" />
+    <Compile Include="../../../../Integration/DailyReport/DailyReportStatsCollector.cs" />
+    <Compile Include="../../../../ModeH/ModeHSeedStream.cs" />
     <Compile Include="Program.cs" />
+    <Compile Include="PlayabilityRegression.cs" />
   </ItemGroup>
 </Project>

@@ -57,6 +57,18 @@ namespace BossRush
         public string statKey;
         /// <summary>永久 Modifier 的百分比值（负数表示减益）。</summary>
         public float percent;
+
+        /// <summary>深拷贝。字段一一对应，新增字段必须同步（PetNestModelsGuard 断言）。</summary>
+        public PetNestScarRecord Clone()
+        {
+            PetNestScarRecord clone = new PetNestScarRecord();
+            clone.ticks = ticks;
+            clone.place = place;
+            clone.killer = killer;
+            clone.statKey = statKey;
+            clone.percent = percent;
+            return clone;
+        }
     }
 
     /// <summary>一条出身天赋。数据形态镜像官方 EndowmentEntry 的 ModifierDescription。</summary>
@@ -71,10 +83,25 @@ namespace BossRush
         public float value;
         /// <summary>是否按百分比生效（false 表示直接加常量，如背包格子）。</summary>
         public bool percentage;
+
+        /// <summary>深拷贝。字段一一对应，新增字段必须同步（PetNestModelsGuard 断言）。</summary>
+        public PetNestTalentEntry Clone()
+        {
+            PetNestTalentEntry clone = new PetNestTalentEntry();
+            clone.id = id;
+            clone.statKey = statKey;
+            clone.value = value;
+            clone.percentage = percentage;
+            return clone;
+        }
     }
 
     /// <summary>
-    /// 成年体快照。首版**只存数据、零 UI、零玩法**，为未来斗蛐蛐（Mode H）留接口。
+    /// 成年体快照。为未来斗蛐蛐（Mode H）留的接口：编解码与拷贝已经接通，
+    /// **但目前没有生产者**——满级只由 level &gt;= PetMaxLevel 派生判定
+    /// （PetNestProgressionService.IsAdult），不写这份快照。
+    /// 先有消费者再写生产者：现在填进去的 maxHealth / damageFactor 没有任何读者，
+    /// 而它们的口径要等 Mode H 那边定（绝对值还是倍率）。老档里已有的快照会原样保留。
     /// </summary>
     [Serializable]
     internal sealed class PetNestAdultSnapshot
@@ -93,6 +120,20 @@ namespace BossRush
         public int careerCount;
         /// <summary>成年时的战痕条数。</summary>
         public int scarCount;
+
+        /// <summary>深拷贝。字段一一对应，新增字段必须同步（PetNestModelsGuard 断言）。</summary>
+        public PetNestAdultSnapshot Clone()
+        {
+            PetNestAdultSnapshot clone = new PetNestAdultSnapshot();
+            clone.ticks = ticks;
+            clone.level = level;
+            clone.maxHealth = maxHealth;
+            clone.damageFactor = damageFactor;
+            clone.personalityId = personalityId;
+            clone.careerCount = careerCount;
+            clone.scarCount = scarCount;
+            return clone;
+        }
     }
 
     /// <summary>一只崽。</summary>
@@ -142,6 +183,56 @@ namespace BossRush
             if (exp < 0) exp = 0;
             if (careerCount < 0) careerCount = 0;
         }
+
+        /// <summary>
+        /// 深拷贝。**过滤规则与 PetNestCodec.DecodePet 逐条对齐**：空 id 一律丢弃、
+        /// 容器里的 null 项不带过去。拷贝与解码必须给出同一份结果，否则"事务候选包"
+        /// 与"读档结果"会是两套状态。
+        /// </summary>
+        public PetNestPetRecord Clone()
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+
+            PetNestPetRecord clone = new PetNestPetRecord();
+            clone.id = id;
+            clone.lineageKey = lineageKey;
+            clone.displayName = displayName;
+            clone.birthTicks = birthTicks;
+            clone.level = level;
+            clone.exp = exp;
+            clone.shiny = shiny;
+            clone.personalityId = personalityId;
+            clone.state = state;
+            clone.lockedByExpeditionId = lockedByExpeditionId;
+            clone.careerCount = careerCount;
+            clone.expeditionCount = expeditionCount;
+            clone.mergedOldScarCount = mergedOldScarCount;
+
+            clone.talents = new List<PetNestTalentEntry>(talents != null ? talents.Count : 0);
+            if (talents != null)
+            {
+                for (int i = 0; i < talents.Count; i++)
+                {
+                    PetNestTalentEntry t = talents[i];
+                    if (t != null) clone.talents.Add(t.Clone());
+                }
+            }
+
+            clone.scars = new List<PetNestScarRecord>(scars != null ? scars.Count : 0);
+            if (scars != null)
+            {
+                for (int i = 0; i < scars.Count; i++)
+                {
+                    PetNestScarRecord s = scars[i];
+                    if (s != null) clone.scars.Add(s.Clone());
+                }
+            }
+
+            clone.adultSnapshot = adultSnapshot != null ? adultSnapshot.Clone() : null;
+
+            clone.Normalize();
+            return clone;
+        }
     }
 
     /// <summary>同血脉遗魂账本的一条。</summary>
@@ -152,6 +243,18 @@ namespace BossRush
         public string lineageKey;
         /// <summary>已攒遗魂数。</summary>
         public int souls;
+
+        /// <summary>
+        /// 深拷贝。空 lineageKey 一律丢弃，与 PetNestCodec.DecodeNest 的账本过滤同口径。
+        /// </summary>
+        public PetNestSoulLedgerEntry Clone()
+        {
+            if (string.IsNullOrEmpty(lineageKey)) return null;
+            PetNestSoulLedgerEntry clone = new PetNestSoulLedgerEntry();
+            clone.lineageKey = lineageKey;
+            clone.souls = souls;
+            return clone;
+        }
     }
 
     /// <summary>巢的整体状态（v2 聚合包中的 nest；v1 key 仅作迁移输入）。</summary>
@@ -179,6 +282,43 @@ namespace BossRush
                 if (pets[i] != null) pets[i].Normalize();
             }
             if (capacity <= 0) capacity = PetNestTuning.DefaultNestCapacity;
+        }
+
+        /// <summary>深拷贝。过滤规则与 PetNestCodec.DecodeNest 逐条对齐。</summary>
+        public PetNestNestData Clone()
+        {
+            PetNestNestData clone = new PetNestNestData();
+            clone.deployedPetId = deployedPetId;
+            clone.capacity = capacity;
+            clone.nameSerial = nameSerial;
+
+            clone.pets = new List<PetNestPetRecord>(pets != null ? pets.Count : 0);
+            if (pets != null)
+            {
+                for (int i = 0; i < pets.Count; i++)
+                {
+                    PetNestPetRecord p = pets[i];
+                    if (p == null) continue;
+                    PetNestPetRecord copy = p.Clone();
+                    if (copy != null) clone.pets.Add(copy);
+                }
+            }
+
+            clone.soulLedger = new List<PetNestSoulLedgerEntry>(
+                soulLedger != null ? soulLedger.Count : 0);
+            if (soulLedger != null)
+            {
+                for (int i = 0; i < soulLedger.Count; i++)
+                {
+                    PetNestSoulLedgerEntry e = soulLedger[i];
+                    if (e == null) continue;
+                    PetNestSoulLedgerEntry copy = e.Clone();
+                    if (copy != null) clone.soulLedger.Add(copy);
+                }
+            }
+
+            clone.Normalize();
+            return clone;
         }
     }
 
@@ -260,6 +400,44 @@ namespace BossRush
             if (outcomeLootTypeIds == null) outcomeLootTypeIds = new List<int>();
             if (outcomeLootCounts == null) outcomeLootCounts = new List<int>();
         }
+
+        /// <summary>
+        /// 深拷贝。空 id 一律丢弃，与 PetNestCodec.DecodeExpedition 的记录过滤同口径。
+        /// </summary>
+        public PetNestExpeditionRecord Clone()
+        {
+            if (string.IsNullOrEmpty(id)) return null;
+
+            PetNestExpeditionRecord clone = new PetNestExpeditionRecord();
+            clone.id = id;
+            clone.petId = petId;
+            clone.petDisplayName = petDisplayName;
+            clone.petLineageKey = petLineageKey;
+            clone.destinationId = destinationId;
+            clone.riskTier = riskTier;
+            clone.departTicks = departTicks;
+            clone.returnTicks = returnTicks;
+            clone.deathRate = deathRate;
+            clone.successRate = successRate;
+            clone.settled = settled;
+            clone.revealed = revealed;
+            clone.rewardsGranted = rewardsGranted;
+            clone.cashGranted = cashGranted;
+            clone.grantedLootUnits = grantedLootUnits;
+            clone.rewardGrantAttempts = rewardGrantAttempts;
+            clone.outcomeDead = outcomeDead;
+            clone.outcomeInjured = outcomeInjured;
+            clone.outcomeCash = outcomeCash;
+            clone.outcomeLootTypeIds = outcomeLootTypeIds != null
+                ? new List<int>(outcomeLootTypeIds)
+                : new List<int>();
+            clone.outcomeLootCounts = outcomeLootCounts != null
+                ? new List<int>(outcomeLootCounts)
+                : new List<int>();
+
+            clone.Normalize();
+            return clone;
+        }
     }
 
     /// <summary>远征总状态（进行中 + 已结算未翻牌）。</summary>
@@ -279,6 +457,26 @@ namespace BossRush
             {
                 if (records[i] != null) records[i].Normalize();
             }
+        }
+
+        /// <summary>深拷贝。过滤规则与 PetNestCodec.DecodeExpedition 逐条对齐。</summary>
+        public PetNestExpeditionData Clone()
+        {
+            PetNestExpeditionData clone = new PetNestExpeditionData();
+            clone.idSerial = idSerial;
+            clone.records = new List<PetNestExpeditionRecord>(records != null ? records.Count : 0);
+            if (records != null)
+            {
+                for (int i = 0; i < records.Count; i++)
+                {
+                    PetNestExpeditionRecord r = records[i];
+                    if (r == null) continue;
+                    PetNestExpeditionRecord copy = r.Clone();
+                    if (copy != null) clone.records.Add(copy);
+                }
+            }
+            clone.Normalize();
+            return clone;
         }
     }
 
@@ -302,6 +500,21 @@ namespace BossRush
         public int careerCount;
         /// <summary>是否异色。</summary>
         public bool shiny;
+
+        /// <summary>深拷贝。字段一一对应，新增字段必须同步（PetNestModelsGuard 断言）。</summary>
+        public PetNestMemorialEntry Clone()
+        {
+            PetNestMemorialEntry clone = new PetNestMemorialEntry();
+            clone.displayName = displayName;
+            clone.lineageKey = lineageKey;
+            clone.destinationId = destinationId;
+            clone.riskTier = riskTier;
+            clone.deathRate = deathRate;
+            clone.deathTicks = deathTicks;
+            clone.careerCount = careerCount;
+            clone.shiny = shiny;
+            return clone;
+        }
     }
 
     /// <summary>一个血脉的图鉴统计。</summary>
@@ -322,6 +535,23 @@ namespace BossRush
         public int expeditions;
         /// <summary>是否已解锁图鉴页（首次孵化解锁）。</summary>
         public bool unlocked;
+
+        /// <summary>
+        /// 深拷贝。空 lineageKey 一律丢弃，与 PetNestCodec.DecodeMuseum 的过滤同口径。
+        /// </summary>
+        public PetNestLineageStats Clone()
+        {
+            if (string.IsNullOrEmpty(lineageKey)) return null;
+            PetNestLineageStats clone = new PetNestLineageStats();
+            clone.lineageKey = lineageKey;
+            clone.kills = kills;
+            clone.hatched = hatched;
+            clone.shinyHatched = shinyHatched;
+            clone.maxLevel = maxLevel;
+            clone.expeditions = expeditions;
+            clone.unlocked = unlocked;
+            return clone;
+        }
     }
 
     /// <summary>博物馆总状态（v2 聚合包中的 museum；v1 key 仅作迁移输入）。</summary>
@@ -340,6 +570,38 @@ namespace BossRush
         {
             if (lineages == null) lineages = new List<PetNestLineageStats>();
             if (memorials == null) memorials = new List<PetNestMemorialEntry>();
+        }
+
+        /// <summary>深拷贝。过滤规则与 PetNestCodec.DecodeMuseum 逐条对齐。</summary>
+        public PetNestMuseumData Clone()
+        {
+            PetNestMuseumData clone = new PetNestMuseumData();
+            clone.mergedMemorialCount = mergedMemorialCount;
+
+            clone.lineages = new List<PetNestLineageStats>(lineages != null ? lineages.Count : 0);
+            if (lineages != null)
+            {
+                for (int i = 0; i < lineages.Count; i++)
+                {
+                    PetNestLineageStats s = lineages[i];
+                    if (s == null) continue;
+                    PetNestLineageStats copy = s.Clone();
+                    if (copy != null) clone.lineages.Add(copy);
+                }
+            }
+
+            clone.memorials = new List<PetNestMemorialEntry>(memorials != null ? memorials.Count : 0);
+            if (memorials != null)
+            {
+                for (int i = 0; i < memorials.Count; i++)
+                {
+                    PetNestMemorialEntry m = memorials[i];
+                    if (m != null) clone.memorials.Add(m.Clone());
+                }
+            }
+
+            clone.Normalize();
+            return clone;
         }
     }
 
@@ -378,6 +640,27 @@ namespace BossRush
                     break;
                 }
             }
+        }
+
+        /// <summary>
+        /// 深拷贝。**全系统热路径**：每开一次事务、每入队一次 pending 都要走它
+        /// （PetNestPersistence.BeginTransaction / PetNestBundleStore.Store）。
+        ///
+        /// 2026-09-18 之前这里是「整包 JSON 编码 -> 解析 -> 解码」的往返，一次写操作要做两遍；
+        /// 满档约 25 KB JSON，无间炼狱里每次 Boss 击杀都要付两次，是击杀帧上的可观 CPU 与 GC。
+        /// 现在改成对象图直拷，**过滤规则逐条沿用各 Decode***：这是"拷贝结果必须等于
+        /// 读档结果"的前提，也是 PetNestModelsGuard 逐字段核对 Clone() 的原因——
+        /// 新增 DTO 字段却忘了在 Clone() 里带上，会在每次事务里静默丢数据。
+        /// </summary>
+        public PetNestBundleData Clone()
+        {
+            PetNestBundleData clone = new PetNestBundleData();
+            clone.generation = generation;
+            clone.nest = nest != null ? nest.Clone() : null;
+            clone.expedition = expedition != null ? expedition.Clone() : null;
+            clone.museum = museum != null ? museum.Clone() : null;
+            clone.Normalize();
+            return clone;
         }
     }
 }

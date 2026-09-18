@@ -18,3 +18,5 @@ python tests/ModeHRecoverySecondReviewGuard.py
 边界替身包括 Unity 协程/租约/UI、押品服务、磁盘写入及归档后的下一场路由。写失败测试仅证明 owner、租约和恢复控件保留；协调器原有 pending DTO 与重试语义由其它持久化夹具负责，不伪造已写盘。异常清理断言证明后续阶段仍尝试，不保证抛错的宿主 API 自身成功。真实观战输入还原、竞技场重开、六场赛季及游戏磁盘保存仍需实机验证。
 
 结构 guard 另含 9 个反向变异；它不能代替上述执行断言或正式 Windows 双配置编译。
+
+2026-09-18：结算名声展示新增调用 FindSeasonProfile，夹具同步逐字提取该生产 helper。

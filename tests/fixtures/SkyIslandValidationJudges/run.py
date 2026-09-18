@@ -1,6 +1,7 @@
 """把 F3 天空岛运行时用例的「纯判据」区逐字抽出来，与生产纯规则一起编译执行（不启动 Unity、不碰存档）。
 
-抽取对象：`DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs` 里 `#region 纯判据` 到它的 `#endregion`，
+抽取对象：`DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs` 与 `F3GameplayValidationSkyIslandCases.cs`
+各自 `#region 纯判据` 到其 `#endregion`，
 以及 `DebugAndTools/F3GameplayValidationSkyIsland.cs` 里的 `SkyIslandSkipCase`。纯判据区一旦引用 Unity，这里直接失败——
 那一区的全部意义就是能在这里跑。
 
@@ -36,7 +37,8 @@ def pure_region(source):
 if __name__ == '__main__':
     cases = (ROOT / 'DebugAndTools/F3GameplayValidationSkyIslandRuntimeCases.cs').read_text(encoding='utf-8-sig')
     suite = (ROOT / 'DebugAndTools/F3GameplayValidationSkyIsland.cs').read_text(encoding='utf-8-sig')
-    judges = pure_region(cases)
+    additional = (ROOT / 'DebugAndTools/F3GameplayValidationSkyIslandCases.cs').read_text(encoding='utf-8-sig')
+    judges = pure_region(cases) + pure_region(additional)
     for token in ('UnityEngine', 'Mathf.', 'GameObject', 'Transform', 'SkyIslandSession ', 'NoteIndex.Instance'):
         if token in judges:
             raise SystemExit('纯判据区引用了 Unity 或运行时对象（' + token + '）：它必须能脱离游戏执行')

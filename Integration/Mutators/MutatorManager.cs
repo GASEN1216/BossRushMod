@@ -287,6 +287,7 @@ namespace BossRush
                 if (!IsActive || _currentContext == null) return;
                 if (_currentContext.EnemyKilledCallbacks.Count == 0) return;
                 if (deadHealth == null) return;
+                if (damageInfo.isFromBuffOrEffect) return;
 
                 // 重入守卫：若一次死亡分发过程中（如殉爆）又触发了新的死亡，
                 // 不再递归分发，避免同帧连环爆炸把玩家瞬间炸死 / 深递归卡死。
@@ -307,29 +308,50 @@ namespace BossRush
                     ? dead.transform.position
                     : damageInfo.damagePoint;
 
-                _dispatchingEnemyKilled = true;
-                try
-                {
-                    for (int i = 0; i < _currentContext.EnemyKilledCallbacks.Count; i++)
-                    {
-                        try
-                        {
-                            _currentContext.EnemyKilledCallbacks[i]?.Invoke(dead, pos);
-                        }
-                        catch (Exception e)
-                        {
-                            ModBehaviour.DevLog("[Mutator] EnemyKilled 回调失败: " + e.Message);
-                        }
-                    }
-                }
-                finally
-                {
-                    _dispatchingEnemyKilled = false;
-                }
+                ModBehaviour owner = ModBehaviour.Instance;
+                if (owner != null)
+                    owner.StartCoroutine(DispatchEnemyKilledNextFrame(owner, _currentContext, dead, pos, LevelManager.Instance));
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[Mutator] OnAnyCharacterDead 异常: " + e.Message);
+            }
+        }
+
+        private static IEnumerator DispatchEnemyKilledNextFrame(ModBehaviour owner, MutatorContext context,
+            CharacterMainControl dead, Vector3 pos, LevelManager level)
+        {
+            yield return null;
+            while (true)
+            {
+                if (owner == null || !IsActive || !ReferenceEquals(context, _currentContext)
+                    || level == null || !ReferenceEquals(level, LevelManager.Instance)
+                    || context.Player == null || !ReferenceEquals(context.Player, CharacterMainControl.Main)
+                    || context.Player.Health == null || context.Player.Health.IsDead) yield break;
+                if (!BossRushUI.IsGamePaused()) break;
+                yield return null;
+            }
+
+            _dispatchingEnemyKilled = true;
+            try
+            {
+                for (int i = 0; i < context.EnemyKilledCallbacks.Count; i++)
+                {
+                    // 回调可能终止本局（天降殉爆可伤玩家）；不能继续派发旧 context。
+                    if (!IsActive || !ReferenceEquals(context, _currentContext)) break;
+                    try
+                    {
+                        context.EnemyKilledCallbacks[i]?.Invoke(dead, pos);
+                    }
+                    catch (Exception e)
+                    {
+                        ModBehaviour.DevLog("[Mutator] EnemyKilled 回调失败: " + e.Message);
+                    }
+                }
+            }
+            finally
+            {
+                _dispatchingEnemyKilled = false;
             }
         }
 

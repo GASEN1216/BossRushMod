@@ -10,8 +10,8 @@ namespace ItemStatsSystem {
  public static class ItemAssetsCollection { public static ItemMetaData GetMetaData(int id) { return new ItemMetaData(); } }
 }
 namespace BossRush {
- internal sealed class CharacterMainControl { public Health Health = new Health(); }
- internal sealed class Health { public float MaxHealth=100; public float CurrentHealth=100; }
+ internal sealed partial class CharacterMainControl : UnityEngine.Object { }
+ internal sealed partial class Health : UnityEngine.Object { }
  internal sealed class ModeHParticipantRef { public string ProfileId; public string StableKey; public int PlanSlotIndex=-1; public bool IsEnemy; public bool IsRelay; public CharacterMainControl Character; public int BatchIndex; }
  internal interface IModeHTelemetrySink { void OnParticipantHurt(ModeHParticipantRef t,ModeHParticipantRef a,float d,int w); void OnParticipantDead(ModeHParticipantRef t,ModeHParticipantRef k); }
  internal static class ModeHProfileRegistry {
@@ -22,7 +22,7 @@ namespace BossRush {
   public static bool IsStableTemperament(ModeHProfileTemplate t){return t!=null&&Array.IndexOf(ModeHStableIds.StableTemperaments,t.TemperamentId)>=0;}
  }
  internal static class ModeHPresetRegistry { public static List<string> ProductionKeys { get {return ModeHProfileRegistry.Map.Keys.Where(k=>!Rejected.Contains(k)).OrderBy(k=>k).ToList();} } public static HashSet<string> Rejected=new HashSet<string>(); public static bool IsProductionKey(string k){return !Rejected.Contains(k)&&ModeHProfileRegistry.GetByStableKey(k)!=null;} }
- internal static class ModeHContentCatalog {
+ internal static partial class ModeHContentCatalog {
   public static List<ModeHMatchCorridor> MatchCorridors; public static List<ModeHSkeletonSpec> Skeletons; public static List<ModeHEntryScriptSpec> EntryScripts; public static List<ModeHArenaConditionSpec> ArenaConditions; public static List<ModeHSynergyCategory> SynergyCategories; public static List<ModeHArchetypeCapability> ArchetypeCapabilities; public static List<ModeHReconChoiceSpec> ReconChoices;
   internal static readonly JsonSerializerOptions Json=new JsonSerializerOptions{IncludeFields=true,PropertyNameCaseInsensitive=true};
   static List<T> Rows<T>(JsonElement doc,string key){return JsonSerializer.Deserialize<List<T>>(doc.GetProperty(key).GetRawText(),Json);}
@@ -32,7 +32,7 @@ namespace BossRush {
    ModeHProfileRegistry.Map.Clear();foreach(var t in Rows<ModeHProfileTemplate>(JsonDocument.Parse(File.ReadAllText("Assets/Data/ModeH/BossProfiles.json")).RootElement,"profileTemplates")) if(t.ProductionCandidate)ModeHProfileRegistry.Map[t.StableKey]=t;
   }
  }
- internal static class ModeHCommandCompatibilityRegistry { public static List<ModeHBehaviorStatusDto> BuildBehaviorSnapshot(string k){return new List<ModeHBehaviorStatusDto>();} }
+ internal static partial class ModeHCommandCompatibilityRegistry { public static List<ModeHBehaviorStatusDto> BuildBehaviorSnapshot(string k){return new List<ModeHBehaviorStatusDto>();} }
  internal static class ModBehaviour { public static string LastLog; public static void DevLog(string s){LastLog=s;} }
  class Program {
   static int checks;
@@ -69,6 +69,8 @@ namespace BossRush {
    season=Season(r);offer=ModeHTransferMarket.BuildOffer(season,4,out reason);ModeHPresetRegistry.Rejected.Add("enemy_key");Check(!ModeHTransferMarket.TryAcceptOffer(season,offer.offerId,out reason),"revoked offer rejected before mutation");Check(season.contract.contractSubProfileId=="sub","rejected offer preserves sub");
    Console.WriteLine("ModeHMarketAudit: PASS ("+checks+" production telemetry and market execution assertions)");
    PlanAudit();
+   ContentAudit.Run();
+   MatchRulesAudit.Run();
   }
   static void PlanAudit(){
    ModeHPresetRegistry.Rejected.Clear();ModeHContentCatalog.Load();

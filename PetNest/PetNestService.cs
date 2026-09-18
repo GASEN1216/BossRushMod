@@ -226,7 +226,15 @@ namespace BossRush
             try
             {
                 if (!BeginCandidate(out failureReasonId)) return false;
+                // 从候选包重新解析实体；候选包与权威内存是两份对象，取不到就直接撤销，
+                // 不要靠外层 catch 把 NullReferenceException 兜成一条看不懂的失败码。
                 pet = TryGetPet(petId);
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
                 PetNestNestData nest = Nest;
                 nest.pets.Remove(pet);
                 if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
@@ -270,6 +278,12 @@ namespace BossRush
             {
                 if (!BeginCandidate(out failureReasonId)) return false;
                 pet = TryGetPet(petId);
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
                 PetNestNestData nest = Nest;
                 string lineageKey = pet.lineageKey;
 
@@ -304,6 +318,12 @@ namespace BossRush
             {
                 if (!BeginCandidate(out failureReasonId)) return false;
                 pet = TryGetPet(petId);
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
                 pet.displayName = string.IsNullOrEmpty(displayName) ? null : displayName.Trim();
                 return CommitCandidate(out failureReasonId);
             }
@@ -380,6 +400,12 @@ namespace BossRush
             {
                 if (!BeginCandidate(out failureReasonId)) return false;
                 pet = TryGetPet(petId);
+                if (pet == null)
+                {
+                    PetNestPersistenceAccess.AbortTransaction();
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
                 PetNestNestData nest = Nest;
                 PetNestPetRecord previous = TryGetPet(nest.deployedPetId);
 

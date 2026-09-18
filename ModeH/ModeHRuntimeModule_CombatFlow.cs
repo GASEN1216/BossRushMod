@@ -63,6 +63,7 @@ namespace BossRush
                 _season.matchRoster = roster;
                 _selectedMatchCommandId = null;
                 _showLoadoutEditor = false;
+                _loadoutSection = _loadoutOptionPage = 0;
             }
 
             ModeHProfileDto selectedStarter =
@@ -74,15 +75,12 @@ namespace BossRush
                 failureReasonId = "match_selected_starter_missing";
                 return false;
             }
+            NormalizeInjuredLoadout(_season.matchRoster, selectedStarter, selectedRelay);
             _starterDisplayName = ResolveProfileDisplayName(selectedStarter.profileId);
             _relayDisplayName = selectedRelay != null
                 ? ResolveProfileDisplayName(selectedRelay.profileId) : "-";
 
-            List<string> commands = ModeHCommandController.GetSelectableCommands(
-                selectedStarter.stableKey,
-                selectedRelay != null ? selectedRelay.stableKey : null,
-                selectedStarter.signatureCommandId,
-                selectedRelay != null ? selectedRelay.signatureCommandId : null);
+            List<string> commands = GetMatchCommands(selectedStarter, selectedRelay);
             if (commands == null || commands.Count == 0)
             {
                 failureReasonId = "match_no_selectable_command";
@@ -156,11 +154,7 @@ namespace BossRush
                 return false;
             }
 
-            List<string> commands = ModeHCommandController.GetSelectableCommands(
-                starter.stableKey,
-                relay != null ? relay.stableKey : null,
-                starter.signatureCommandId,
-                relay != null ? relay.signatureCommandId : null);
+            List<string> commands = GetMatchCommands(starter, relay);
             string commandId = commands.Contains(_selectedMatchCommandId) ? _selectedMatchCommandId : null;
             if (string.IsNullOrEmpty(commandId))
             {
@@ -346,7 +340,11 @@ namespace BossRush
 
             for (int i = 0; i < _enemyParticipants.Count; i++)
             {
-                _combatControl.OnEnemyEntered(_enemyParticipants[i]);
+                if (!_combatControl.OnEnemyEntered(_enemyParticipants[i], out failureReasonId))
+                {
+                    AbortMatchSpawning(failureReasonId);
+                    yield break;
+                }
             }
             if (!_combatControl.OnFighterEntered(_starterParticipant, starter, out failureReasonId))
             {
@@ -374,14 +372,7 @@ namespace BossRush
             failureReasonId = null;
             _combatTelemetry = new ModeHCombatTelemetry();
             _combatControl = new ModeHCombatControl();
-            string highThreatKey = null;
-            if (_season.currentMatchPlan.publicSummary != null
-                && _season.currentMatchPlan.publicSummary.hasHighThreatCore
-                && _season.currentMatchPlan.enemyStableKeys != null
-                && _season.currentMatchPlan.enemyStableKeys.Count > 0)
-            {
-                highThreatKey = _season.currentMatchPlan.enemyStableKeys[0];
-            }
+            string highThreatKey = ModeHEncounterPlanner.GetHighThreatCoreStableKey(_season.currentMatchPlan);
             // 擂台条件与最后批次序号都是分量条件（appliesWhen）的输入，整场不变，
             // 因此和 highThreatKey 一样在开场一次性交给战斗控制，
             // 而不是让它反过来持有 Season 引用。
@@ -390,6 +381,7 @@ namespace BossRush
                 _runState.RunSeed, highThreatKey,
                 _season.currentMatchPlan.conditionId,
                 ResolveLastEntryBatch(_season.currentMatchPlan));
+            if (!_combatControl.ConfigureMatchRules(_season.currentMatchPlan, out failureReasonId)) return false;
 
             _starterParticipant = BuildParticipant(_activeFighterHandle, starter.profileId, false, -1, false);
             ModeHProfileDto relay = FindSeasonProfile(_season.matchRoster.matchRelayProfileId);
@@ -410,13 +402,13 @@ namespace BossRush
             for (int i = 0; i < _spawnTransaction.EnemyHandles.Count; i++)
             {
                 ModeHSpawnHandle handle = _spawnTransaction.EnemyHandles[i];
-                handle.PlanSlotIndex = i;
-                ModeHParticipantRef enemy = BuildParticipant(handle, null, true, i, false);
+                handle.PlanSlotIndex = _season.currentMatchPlan.enemyStableKeys.IndexOf(handle.StableKey);
+                ModeHParticipantRef enemy = BuildParticipant(handle, null, true, handle.PlanSlotIndex, false);
                 // 入场批次跟着计划走，供战痕条件 first_wave_alive 判断第一批是否还有活口。
-                enemy.BatchIndex = ResolveEnemyBatchIndex(_season.currentMatchPlan, i);
+                enemy.BatchIndex = ResolveEnemyBatchIndex(_season.currentMatchPlan, handle.PlanSlotIndex);
                 _enemyParticipants.Add(enemy);
                 ModeHSnapshotEnemyInput snapshotEnemy = new ModeHSnapshotEnemyInput();
-                snapshotEnemy.PlanSlotIndex = i;
+                snapshotEnemy.PlanSlotIndex = handle.PlanSlotIndex;
                 snapshotEnemy.StableKey = handle.StableKey;
                 snapshotEnemy.ProfileId = string.Empty;
                 snapshotEnemy.Character = handle.Character;
@@ -436,8 +428,7 @@ namespace BossRush
 
             string lockedCommand = _season.currentLoadoutLock.commandId;
             ModeHProfileDto commandRelay = FindSeasonProfile(_season.currentLoadoutLock.matchRelayProfileId);
-            string commandOwner = commandRelay != null && lockedCommand == commandRelay.signatureCommandId
-                && lockedCommand != starter.signatureCommandId ? commandRelay.profileId : starter.profileId;
+            string commandOwner = ModeHCommandController.ResolveCommandOwner(lockedCommand, starter, commandRelay);
             if (!_combatControl.CommandController.LockCommand(
                     lockedCommand, commandOwner,
                     _runState.OwnerToken, out failureReasonId))

@@ -19,7 +19,7 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 274,
+    "Integration": 277,
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
@@ -32,10 +32,10 @@ EXPECTED_COUNTS = {
     "MapSelection": 3,
     "ModeD": 1,
     "ModeH": 1,
-    "DebugAndTools": 1,
+    "DebugAndTools": 4,
 }
 
-EXPECTED_TOTAL = 415
+EXPECTED_TOTAL = 421
 
 
 def fail(message: str) -> int:

@@ -73,8 +73,8 @@ namespace BossRush
         {
             get
             {
-                return Kills > 0 || Deaths > 0 || Raids > 0 || Extractions > 0
-                    || MoneyEarned > 0L || MoneySpent > 0L;
+                return Kills > 0 || BossKills > 0 || Deaths > 0 || Raids > 0 || Extractions > 0
+                    || MoneyEarned > 0L || MoneySpent > 0L || DamageDealt > 0f || DamageTaken > 0f;
             }
         }
 
@@ -183,6 +183,12 @@ namespace BossRush
         /// <summary>当前悬赏奖励是否已发放（幂等）。</summary>
         internal bool BountyRewardClaimed;
 
+        /// <summary>本次结算冻结的奖金；旧档为 0 时按原种类与目标还原。</summary>
+        internal long BountyCashReward;
+
+        /// <summary>更早各期尚未到账的现金合计。与最新结果分开，欠款不阻断新悬赏。</summary>
+        internal long PendingBountyCash;
+
         #endregion
 
         #region 统计
@@ -236,6 +242,8 @@ namespace BossRush
             copy.BountyProgress = BountyProgress;
             copy.BountyCompleted = BountyCompleted;
             copy.BountyRewardClaimed = BountyRewardClaimed;
+            copy.BountyCashReward = BountyCashReward;
+            copy.PendingBountyCash = PendingBountyCash;
             copy.Today = Today != null ? Today.Clone() : new DailyReportStats();
             copy.Yesterday = Yesterday != null ? Yesterday.Clone() : new DailyReportStats();
             copy.HasYesterday = HasYesterday;

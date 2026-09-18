@@ -38,6 +38,7 @@
 - [ModeHProductionCertification.cs](file://ModeH/ModeHProductionCertification.cs)
 - [ModeHCommandCompatibilityRegistry.cs](file://ModeH/ModeHCommandCompatibilityRegistry.cs)
 - [ModeHCombatControl.cs](file://ModeH/ModeHCombatControl.cs)
+- [ModeHMatchRules.cs](file://ModeH/ModeHMatchRules.cs)
 - [ModeHCombatTelemetry.cs](file://ModeH/ModeHCombatTelemetry.cs)
 - [ModeHEventRouter.cs](file://ModeH/ModeHEventRouter.cs)
 - [ModeHInjuryAndScarSystem.cs](file://ModeH/ModeHInjuryAndScarSystem.cs)
@@ -100,6 +101,43 @@ E2 --> E3["结算 → 战痕 offer → 幕间"]
 候选不是运行时角色实例，只是稳定 key 的公开档案。签约顺序固定为“先主将、后替补”，
 剩余三席立刻以固定种子做一次 Fisher-Yates，得到回场签 / 候签 / 撕票三张去向牌。
 
+## 2026-09-18 生产复核：现行规则
+
+本轮为 COMPAT / WIRE+。owner 已明确授权补齐擂台与敌军伤势并允许相应玩法、数值调整。
+此前只有标签/赔率的条件现由 `ModeHMatchRules` 在本场临时参赛者上执行：
+
+| 条件 | 实战 | 玩家决策 |
+| --- | --- | --- |
+| center_cover | 中央蓝圈（擂台半径 30%）内物理伤害系数 -25% | 争夺掩护位置；不是新增实体墙 |
+| danger_edge | 橙圈（半径 65%）外每秒最大生命 2% 穿甲伤害；每人入场宽限 5 秒 | 可用时留 center 令回中；增援有独立宽限 |
+| medical_limited | 每次实际正向生命增量减半 | 治疗和拖延收益下降 |
+| narrow_cage | 双方近战伤害系数 +20%、枪械 -20% | 武器/首发选择；不改变导航网格 |
+| open_field | 双方枪械伤害系数 +15% | 对射火力取舍 |
+| residual_might | 每人入场前 8 秒枪械与近战系数 +20% | 首发、接力、增援分别利用窗口 |
+
+全部规则对双方同等适用。位置与入场的动态优势不虚拟成固定原型赔率分。
+`wounded_line` 的 `woundedUnits` 现在由同一规划 helper 分配给最高威胁者优先的计划槽位，
+真实入场生命为 75%；侦察公开数量后按既有 woundedEnemy 权重计分。敌方的经理人胆怯/ERROR
+仍不投影为实战能力，不再借这些字段改赔率。普通怪癖保留为履历，不消耗侦察；当前可选
+侦察为伤病、批次、核心作战特点。旧 ID/字段保留，不迁移存档。
+
+规则由 CombatControl 的本场 owner 持有，首发、接力与增援实际入场时幂等登记，收尾统一移除
+Modifier、健康事件与区域圈。属性复用 `RuntimeStatModifierTracker`；医疗只订阅本对象的
+`Health.OnHealthChange`，有递归门与对称退订；圈复用 `SkyIslandGroundRing`，不新建材质系统。
+生产认证提前核对所需 Stat 和 Health 事件；缺可见标识时拒绝危险场，不能静默伤人。
+
+口令、伤病、战痕的 AI 字段统一经 `ModeHFieldLayers` 合成：同一个 AI/字段只有一个真实基线，
+任意窗口到期重算剩余层，最后一层恢复原值。无全局缓存，稳定重申不分配；条件标签比较不再
+每次 Substring。首发不提供只能接力使用的 handoff，人数不可能满足的口令也不进入选择/锁盘。
+畏强的五秒从实际最高威胁核心入场算起，核心未进场或已死亡不判畏强。
+
+整备复用既有页面，按阵容/首发套装/接力套装/口令分区并分页，展示真实说明与限制。
+护甲伤病的无效 kit 在摘要、赔率与实战之前统一剔除；结算显示战痕利弊、奖励说明与名声。
+套装文案按真实物品槽、品质与配发弹药修正，不再许诺未实现的额外射速、视野或经验。
+
+证据：生产源码执行回归、结构反向验证及 Windows 隔离正式编译，未获得本轮 L3。
+真实 AI、区域圈观感、完整六场、ERROR 与实际帧耗须按本轮交付报告验收。
+
 ## 敌军计划与赔率（§17.5）
 
 `ModeHEncounterPlanner` 在玩家整备**之前**冻结敌军计划，三层叠加：
@@ -108,7 +146,7 @@ E2 --> E3["结算 → 战痕 offer → 幕间"]
 | --- | --- |
 | 编制骨架 | 独兽 / 双煞 / 头领与护卫 / 猎群 / 接力队 / 远近交替 / 残阵 / 回场核心 / 冠军独兽 / 后程增援 |
 | 进场剧本 | 斥候先行 / 开场压上 / 后程增援 / 远近交替 / 核心压轴 / 未知席位 |
-| 擂台条件 | 中央掩体 / 危险边缘 / 医疗受限 / 窄笼 / 开阔场 / 余威 |
+| 擂台条件 | 六类双边实战规则，具体数值与接线见上节；只有中央掩护与危险边缘使用区域判定 |
 
 威胁走廊按场次冻结为 `100 / 115 / 130 / 145 / 165 / 190`，同屏上限 `2 / 2 / 3 / 3 / 3 / 3`。
 候选先过全局能力矩阵审计（不得同时封死五种原型），再过 roster-level veto
@@ -133,8 +171,7 @@ E2 --> E3["结算 → 战痕 offer → 幕间"]
 守卫与回归：`tests/ModeHSeasonViabilityGuard.py`（结构断言 + 破坏探针，并在数据层重算走廊算术：
 每场至少一档可行；认证池 ≥ 10 人时任何合法五席都建得出六场）、
 `tests/fixtures/ModeHMarketAudit` 的 `TenCertifiedViabilityAudit`（500 组签约组合走真实 `CanConstructFullSeason`）。
-**已知口子**：认证池只有 8–9 人（预设在玩家机器上不可用）时对手池只剩 3–4 人，第 4 / 第 6 场仍可能无解，
-数量已冻成守卫上界，出路待 owner 拍板。
+**候选池边界**：生产最低候选数已在 2026-09-12 调到 9（见本文末节）。低于足够组合规模时仍须以真实 `CanConstructFullSeason` 结果为准；签约前验证完整六场，不能承诺单凭数量必然可行。
 
 赔率是公开分差，`ModeHOddsController` 只读公开摘要与玩家当前公开整备：
 
@@ -167,8 +204,8 @@ rewardCandidateCount = 1 + min(2, floor(max(0, net) / 2))
 
 - 八条通用口令：稳住 / 压上 / 回到中间 / 清掉旁边 / 收割 / 留一手 / 护替补 / 拼了；
 - 五类招牌口令：打弱点 / 钉住 / 最后一梭 / 一起上 / 交给你；
-- 口令窗口 6 秒，`ModeHCommandAdapters` 以 **0.1 秒**周期重申，
-  压过行为树 0.15 秒的 `TraceTarget` 重发；
+- 口令窗口 6 秒，`ModeHCommandAdapters` 以 **0.1 秒**周期重申；
+  具体控制点是否可用以生产认证为准，节流数字本身不能证明能覆盖原版行为树；
 - 控制点严格限于 §17.6.2 白名单；`nextReleaseSkillTimeMarker` 写入后**不还原**，
   只把所有权交还原版；
 - 窗口结束、倒地、接力、技术中止、切图与 shutdown 共用同一幂等还原入口；

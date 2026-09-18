@@ -51,8 +51,19 @@ namespace BossRush
         internal static void EnsureDeviceFallback(SkyIslandSession session)
         {
             IList<SkyIslandOfficialQuestDefinition> island = SkyIslandOfficialQuestTable.Island;
-            if (session == null || !session.ResidentsSettled || fallbackDone.Count >= island.Count ||
-                fallbackAttempts >= FallbackAttemptLimit) return;
+            if (session == null || !session.ResidentsSettled) return;
+            // 婚礼 / 送配偶回家会连同子给予者销毁 NPC。成功记录只在实例仍存活时有效；
+            // 必须先检查失效，再检查重试上限，否则本趟曾经耗尽预算后仍无法接管。
+            for (int i = 0; i < island.Count; i++)
+            {
+                int giverId = island[i].GiverId;
+                if (fallbackDone.Contains(giverId) && !HasAttachedGiver(giverId))
+                {
+                    fallbackDone.Remove(giverId);
+                    fallbackAttempts = 0;
+                }
+            }
+            if (fallbackDone.Count >= island.Count || fallbackAttempts >= FallbackAttemptLimit) return;
             fallbackAttempts++;
             for (int i = 0; i < island.Count; i++)
             {

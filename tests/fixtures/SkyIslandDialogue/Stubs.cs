@@ -184,7 +184,7 @@ namespace BossRush
     {
         public static bool Fail;
         public static DuckovDialogueActor Get(UnityEngine.GameObject host) { return null; }
-        public static void RefreshBilingualName(string id, string cn, string en) { }
+        public static void RefreshPresentation(DuckovDialogueActor actor, string cn, string en, object portrait = null) { }
         public static DuckovDialogueActor CreateBilingual(UnityEngine.GameObject host, string id, string cn, string en, UnityEngine.Vector3 offset, object portrait)
         { if (Fail) throw new InvalidOperationException("actor failure"); return new DuckovDialogueActor(); }
     }

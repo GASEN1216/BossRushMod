@@ -30,6 +30,7 @@ namespace BossRush
         private readonly ModeHCommandController _commandController = new ModeHCommandController();
         private readonly ModeHInjuryAndScarSystem _injuryAndScar = new ModeHInjuryAndScarSystem();
         private readonly ModeHBattleSnapshot _snapshot = new ModeHBattleSnapshot();
+        private readonly ModeHMatchRules _matchRules = new ModeHMatchRules();
         private readonly ModeHCommandFireContext _fireContext = new ModeHCommandFireContext();
 
         /// <summary>点火目标重扫的节流累加器，节奏对齐 CommandReassertIntervalSeconds。</summary>
@@ -219,8 +220,10 @@ namespace BossRush
             _activeAnomalyId = profile.anomalyId;
             _activeAi = ResolveAi(fighter.Character);
 
+            if (!_matchRules.Enter(fighter, out failureReasonId)) return false;
             _telemetry.OnFighterEntered(fighter);
             RefreshFireContext(0f, true);
+            _commandController.ShareFieldLayers(_fireContext);
             _injuryAndScar.BindFighter(_activeAi, profile.profileId, profile.stableKey, _matchIndex, _fireContext);
 
             string reason;
@@ -244,9 +247,16 @@ namespace BossRush
         }
 
         /// <summary>一名敌军进入擂台。</summary>
-        public void OnEnemyEntered(ModeHParticipantRef enemy)
+        internal bool ConfigureMatchRules(ModeHMatchPlanDto plan, out string reason)
         {
+            return _matchRules.Begin(plan, _map, out reason);
+        }
+
+        public bool OnEnemyEntered(ModeHParticipantRef enemy, out string reason)
+        {
+            if (!_matchRules.Enter(enemy, out reason)) return false;
             if (_telemetry != null) _telemetry.OnEnemyEntered(enemy);
+            return true;
         }
 
         /// <summary>由本场生成 owner 在终局判定前同步，不改变超时、胆怯或倒地处理。</summary>
@@ -277,6 +287,9 @@ namespace BossRush
                 _fireContext.LowestHealthEnemy, _fireContext.EnemyCount);
             _injuryAndScar.Tick(deltaTime, _fireContext);
             TickErrorSwap(deltaTime);
+            string ruleFailure;
+            if (!_matchRules.Tick(deltaTime, out ruleFailure))
+                throw new InvalidOperationException(ruleFailure);
 
             EvaluateTriggeredInjuries();
 
@@ -447,7 +460,7 @@ namespace BossRush
             }
             if (string.Equals(_activeAnomalyId, ModeHStableIds.AnomalyCowardStrong, StringComparison.Ordinal))
             {
-                if (_telemetry.ElapsedSeconds < ModeHConfig.CowardStrongCoreSurvivalSeconds) return false;
+                if (!_telemetry.IsHighThreatCoreThreatening) return false;
                 return RollCoward(ModeHStableIds.AnomalyCowardStrong,
                     ModeHConfig.CowardStrongBaseChance * mitigation, out cowardiceType);
             }
@@ -878,6 +891,7 @@ namespace BossRush
         /// </summary>
         public void RestoreAll()
         {
+            _matchRules.RestoreAll();
             RestoreErrorSwap();
             _commandController.RestoreAll();
             _injuryAndScar.RestoreAll();

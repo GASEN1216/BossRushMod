@@ -202,19 +202,24 @@ namespace BossRush
 
         private string BuildDetailText()
         {
-            string personality = LocalizationHelper.GetLocalizedText(
-                PetNestTuning.LocalizationPrefix + "Personality_"
-                + (_result.Pet.personalityId ?? string.Empty));
+            // 文案口径与巢页共用 PetNestLocalization 的单点入口：
+            // 此前这里直接拼英文 statKey，玩家孵出第一只崽看到的是 "PetCapcity+2"。
+            string text = L10n.T("性格：", "Temperament: ")
+                + PetNestLocalization.DescribePersonality(_result.Pet.personalityId);
+            string personalityEffect =
+                PetNestLocalization.DescribePersonalityEffect(_result.Pet.personalityId);
+            if (!string.IsNullOrEmpty(personalityEffect))
+            {
+                text += "\n" + personalityEffect;
+            }
 
-            string text = L10n.T("性格：", "Temperament: ") + personality;
             if (_result.Pet.talents != null)
             {
                 for (int i = 0; i < _result.Pet.talents.Count; i++)
                 {
                     PetNestTalentEntry t = _result.Pet.talents[i];
                     if (t == null) continue;
-                    // 复用面板的同一口径：百分比项存的是小数，直接拼 "%" 会变成 "+0.08%"
-                    text += "\n" + t.statKey + PetNestUIPages.FormatModifierValue(t.value, t.percentage);
+                    text += "\n" + PetNestLocalization.DescribeTalent(t);
                 }
             }
             if (_result.FromCondense)

@@ -4,10 +4,28 @@
 **本文引用的文件**
 - [FrostSpearConfig.cs](file://Integration/NewWeapons/FrostSpear/FrostSpearConfig.cs)
 - [FrostSpearWeaponConfig.cs](file://Integration/NewWeapons/FrostSpear/FrostSpearWeaponConfig.cs)
+- [FrostSpearRuntime.cs](file://Integration/NewWeapons/FrostSpear/FrostSpearRuntime.cs)
+- [NewWeaponConfiguratorCore.cs](file://Integration/NewWeapons/Common/NewWeaponConfiguratorCore.cs)
+- [NewWeaponEquipState.cs](file://Integration/NewWeapons/Common/NewWeaponEquipState.cs)
+- [NewWeaponRuntime.cs](file://Integration/NewWeapons/Common/NewWeaponRuntime.cs)
 - [FrostSetBonus.cs](file://Integration/Bonus/FrostSetBonus.cs)
 - [frost-spear.md](file://wiki-site/docs/equipment/frost-spear.md)
 - [frost-set.md](file://wiki-site/docs/en/equipment/frost-set.md)
 </cite>
+
+> **2026-09-18 变更（以代码为准，下文正文是 2026-08 快照）**
+> 五把新武器的**装备判定**统一改走 `NewWeaponEquipState`（事件驱动缓存，查询 O(1)）：
+> `IsHoldingViperDagger` / `IsHoldingSummonStaff` / `IsEquippingEnergyShield` / `IsEquippingThunderRing`
+> 等旧遍历实现已废弃或重构，不再在受击回调里反复遍历 `CharacterItem.Slots`。
+> 五个 `XxxWeaponConfig` 只声明差异项 `Spec`，配置流程收敛到 `NewWeaponConfiguratorCore`
+> （`ConfigureStats` / `ConfigureMeleeAgent` / `ConfigureTags` / `InjectLocalization` 四段模板已删）。
+> 生命周期（初始化 / 过图 / 加载后配置 / 销毁清理）从 `partial ModBehaviour` 移到
+> `NewWeaponRuntime`，`NewWeaponBootstrap.cs` 只剩四个一行转发。
+> 新增文件：`Integration/NewWeapons/Common/NewWeaponEquipState.cs`、`NewWeaponConfiguratorCore.cs`、`NewWeaponRuntime.cs`。
+>
+> 本武器专有：`FrostSpearWeaponConfig` 接入 `NewWeaponConfiguratorCore.ConfigureMelee`，
+> 保留 Cold buff 与 ColdProtection+1 专属注入；
+> 命中霜环表现层由 `FrostSpearRuntime` 管理（关闭点光源、0.35s 目标去重冷却、定期清理过期键）。
 
 ## 目录
 1. [简介](#简介)

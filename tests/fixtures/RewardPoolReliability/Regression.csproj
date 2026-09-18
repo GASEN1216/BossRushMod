@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework>
+    <LangVersion>7.3</LangVersion><Nullable>disable</Nullable><ImplicitUsings>disable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../../Integration/DailyReport/DailyReportRewards.cs" Link="Production/DailyReportRewards.cs" />
+    <Compile Include="../../../ModeH/ModeHRewardItemPool.cs" Link="Production/ModeHRewardItemPool.cs" />
+    <Compile Include="../../../ModeH/ModeHSeedStream.cs" Link="Production/ModeHSeedStream.cs" />
+  </ItemGroup>
+</Project>

@@ -45,7 +45,7 @@ namespace BossRush
     internal sealed class ModeHSpawnHandle
     {
         public Character Character; public Health Health; public Teams Team;
-        public string StableKey; public bool Activated; public int Recycles;
+        public string StableKey; public int PlanSlotIndex; public bool Activated; public int Recycles;
     }
     internal sealed class ModeHSpawnDiagnostics
     {
@@ -75,7 +75,9 @@ namespace BossRush
         public static Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> CreateIsolatedAsync(CharacterRandomPreset p, string key, Teams team, Vector3 position, ModeHSpawnDiagnostics d)
         {
             Requests++;
-            return new Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle>(Creates.Count > 0 ? Creates.Dequeue()() : Task.FromResult(Handle(team)));
+            Task<ModeHSpawnHandle> task = Creates.Count > 0 ? Creates.Dequeue()() : Task.FromResult(Handle(team));
+            if (task.IsCompleted && !task.IsFaulted && !task.IsCanceled) task.Result.StableKey = key;
+            return new Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle>(task);
         }
         public static bool TryPrepareForArena(ModeHSpawnHandle handle, Vector3 pos, out string reason)
         { reason = FailCommit ? "injected_commit_failure" : null; return !FailCommit; }
@@ -110,7 +112,7 @@ namespace BossRush
     { public static int Cap = 3; public static ModeHMatchCorridor GetCorridor(int i) { return new ModeHMatchCorridor { SimultaneousCap = Cap }; } }
     internal static class ModeHPresetRegistry
     { public static string Missing; public static CharacterRandomPreset GetAuditedPreset(string key) { return key == Missing ? null : new CharacterRandomPreset(); } }
-    internal sealed class ModeHParticipantRef { public int BatchIndex; public Character Character; }
+    internal sealed class ModeHParticipantRef { public int PlanSlotIndex; public int BatchIndex; public Character Character; }
     internal sealed class ModeHBattleSnapshotContext { }
     internal enum ModeHSnapshotTrigger { Interval, BatchEntered }
     internal sealed class Snapshot { public int SnapshotSequence; public bool TickInterval(float d) { return false; } }
@@ -128,8 +130,15 @@ namespace BossRush
         public bool TryClaimVictory(bool alive) { if (!alive || LiveEnemyCount != 0) return false; HasResult = true; return true; }
         public void ConsumePendingDown() { } public void OnEnemyEntered(ModeHParticipantRef enemy) { LiveEnemyCount++; }
     }
+    // 区域规则另由 ModeHMarketAudit 的完整生产类验证；此处只测生成所有权。
+    internal sealed class Rules
+    {
+        public bool Enter(ModeHParticipantRef p, out string reason) { reason = null; return true; }
+        public bool Tick(float d, out string reason) { reason = null; return true; }
+    }
     internal sealed partial class ModeHCombatControl
     {
+        private readonly Rules _matchRules = new Rules();
         internal Telemetry _telemetry = new Telemetry();
         private readonly FireContext _fireContext = new FireContext();
         private readonly Window _commandController = new Window(), _injuryAndScar = new Window();
@@ -154,11 +163,13 @@ namespace BossRush
     internal static class ModeHEventRouter { public static void ClearMatchRegistry() { } public static void Unbind() { } }
     internal static class ModeHLoadoutKitApplicator { public static void Recycle(object x) { } }
     internal static class ModBehaviour { public static void DevLog(string s) { } }
+    internal sealed class Season { public ModeHMatchPlanDto currentMatchPlan = new ModeHMatchPlanDto(); }
     internal sealed partial class ModeHRuntimeModule
     {
         private Run _runState = new Run(); private int _sceneGeneration = 1;
         private bool _commandsClosed, _shutdownCompleted, _errorSwapInputYielded;
         private Coroutine _relaySpawnRoutine;
+        private readonly Season _season = new Season();
         private readonly Owner _owner = new Owner(); private readonly ModeHSupportedMap _map = new ModeHSupportedMap();
         private ModeHCombatControl _combatControl = new ModeHCombatControl(); private Telemetry _combatTelemetry;
         private readonly ModeHBattleSnapshotContext _battleSnapshotContext = new ModeHBattleSnapshotContext();
@@ -171,7 +182,7 @@ namespace BossRush
         internal int Retries, Settlements; internal bool ThrowRegister;
         internal ModeHRuntimeModule(int last = 1) { _combatControl.Configure(last); _combatTelemetry = _combatControl._telemetry; }
         private static int ResolveEnemyBatchIndex(ModeHMatchPlanDto plan, int i) { return plan.enemyBatchIndices[i]; }
-        private static ModeHParticipantRef BuildParticipant(ModeHSpawnHandle h, string p, bool e, int i, bool r) { return new ModeHParticipantRef { Character = h.Character }; }
+        private static ModeHParticipantRef BuildParticipant(ModeHSpawnHandle h, string p, bool e, int i, bool r) { return new ModeHParticipantRef { Character = h.Character, PlanSlotIndex = i }; }
         private void RegisterParticipant(ModeHSpawnHandle h, ModeHParticipantRef r) { if (ThrowRegister) throw new InvalidOperationException("register"); }
         private void RefreshBattleSnapshotContext() { } private void AttachAndPersistBattleSnapshot(string s) { }
         private void RequestTechnicalRetry(string s) { Retries++; ReleaseCombatRuntimeObjects(); _runState.Lifecycle = ModeHLifecycle.Recovering; }
@@ -183,7 +194,11 @@ namespace BossRush
         private void BeginMatchSettlement() { Settlements++; _runState.Lifecycle = ModeHLifecycle.Intermission; ReleaseCombatRuntimeObjects(); }
 
         internal void Queue(int count, int batch = 1)
-        { for (int i = 0; i < count; i++) _pendingEnemyBatchKeys.Add(new ModeHPendingEnemyEntry { BatchIndex = batch, StableKey = "enemy" + i }); }
+        { for (int i = 0; i < count; i++) {
+            string key = "enemy" + i;
+            _pendingEnemyBatchKeys.Add(new ModeHPendingEnemyEntry { BatchIndex = batch, StableKey = key });
+            if (!_season.currentMatchPlan.enemyStableKeys.Contains(key)) _season.currentMatchPlan.enemyStableKeys.Add(key);
+        } }
         internal void Tick() { TickActiveCombat(.016f); }
         internal void Start() { TryReleaseNextEnemyBatch(); }
         internal void Drain() { _owner.Drain(); }

@@ -133,14 +133,14 @@ namespace BossRush
             Add(map, "Command_steady_Desc", "压住慌乱，降低胆怯发作概率。",
                 "Hold the nerves; lowers the chance of a cowardice check firing.");
             Add(map, "Command_press", "压上", "Press");
-            Add(map, "Command_press_Desc", "缩短出招间隔，抢在对面成型前打。",
-                "Shortens skill intervals to strike before the enemy sets up.");
+            Add(map, "Command_press_Desc", "扩大索敌范围、加快转身并允许移动射击，持续 6 秒。",
+                "Extends detection range, speeds up turning and enables mobile fire for 6 seconds.");
             Add(map, "Command_center", "回到中间", "Center");
-            Add(map, "Command_center_Desc", "把交战面拉回擂台中央。",
-                "Pulls the engagement back to the middle of the ring.");
+            Add(map, "Command_center_Desc", "缩短索敌距离，并尝试回到擂台中央，持续 6 秒。",
+                "Shortens detection range and attempts to move to ring center for 6 seconds.");
             Add(map, "Command_spread", "清掉旁边", "Spread");
-            Add(map, "Command_spread_Desc", "先处理侧翼，避免被围。",
-                "Clears the flank first to avoid getting surrounded.");
+            Add(map, "Command_spread_Desc", "至少两名敌军在场时，扩大索敌视角、加快转身并允许移动射击。",
+                "Requires at least two enemies; widens detection angle, speeds turning and enables mobile fire.");
             Add(map, "Command_finish", "收割", "Finish");
             Add(map, "Command_finish_Desc", "锁定最残的敌人补刀。",
                 "Locks onto the weakest enemy for the kill.");
@@ -148,28 +148,28 @@ namespace BossRush
             Add(map, "Command_hold_Desc", "把技能留给后续增援。",
                 "Saves skills for the reinforcements still to come.");
             Add(map, "Command_guard", "护替补", "Guard");
-            Add(map, "Command_guard_Desc", "拉开距离，给接力者留出场时间。",
-                "Backs off to buy the relay fighter time.");
+            Add(map, "Command_guard_Desc", "停止移动射击，缩短反应耗时并加快转身，持续 6 秒。",
+                "Stops mobile fire, reduces reaction delay and speeds turning for 6 seconds.");
             Add(map, "Command_all_in", "拼了", "All In");
             Add(map, "Command_all_in_Desc", "全部压上，不留后手。",
                 "Everything forward, nothing held back.");
 
             // 招牌口令：Commands.json 会引用 `_Desc`，缺了就在盘口页显示 raw key
             Add(map, "Command_weakness", "打弱点", "Weak Point");
-            Add(map, "Command_weakness_Desc", "命中判定更狠，技能更容易生效。",
-                "Hits land harder and skills connect more often.");
+            Add(map, "Command_weakness_Desc", "优先索敌残血敌军，并扩大索敌距离，持续 6 秒。",
+                "Prioritizes wounded enemies and extends detection range for 6 seconds.");
             Add(map, "Command_anchor", "钉住", "Anchor");
-            Add(map, "Command_anchor_Desc", "咬住当前目标不放，转火更慢。",
-                "Stays locked on the current target and switches more slowly.");
+            Add(map, "Command_anchor_Desc", "停止移动射击并加快战斗转身，持续 6 秒。",
+                "Stops mobile fire and speeds combat turning for 6 seconds.");
             Add(map, "Command_last_mag", "最后一梭", "Last Mag");
-            Add(map, "Command_last_mag_Desc", "残弹期倾泻输出，几乎不再走位。",
-                "Dumps everything while the mag lasts, barely repositioning.");
+            Add(map, "Command_last_mag_Desc", "停止移动射击，提高物品技能施放概率，持续 6 秒。",
+                "Stops mobile fire and raises item-skill chance for 6 seconds.");
             Add(map, "Command_together", "一起上", "Together");
-            Add(map, "Command_together_Desc", "贴着队友推进，视野与反应一起拉高。",
-                "Pushes alongside teammates, raising sight and reaction together.");
+            Add(map, "Command_together_Desc", "提高技能与物品技能的施放概率，持续 6 秒。",
+                "Raises skill and item-skill chances for 6 seconds.");
             Add(map, "Command_handoff", "交给你", "Hand Off");
-            Add(map, "Command_handoff_Desc", "主动让位给接力者，自己转为拉扯。",
-                "Yields the front to the relay fighter and switches to pulling aggro.");
+            Add(map, "Command_handoff_Desc", "仅持有此招牌的接力者实际登场后可用：提高技能施放概率与转身速度，持续 6 秒。",
+                "Only usable after its signature owner relays in: raises skill chance and turn speed for 6 seconds.");
 
             Add(map, "CommandStatus_VerifiedBehavior", "已验证", "Verified");
             Add(map, "CommandStatus_PartiallyVerified", "部分验证", "Partially Verified");
@@ -196,11 +196,8 @@ namespace BossRush
                 "May forfeit when a strong core refuses to fall.");
             Add(map, "Anomaly_error", "控制权异常", "ERROR");
             Add(map, "Anomaly_error_Desc",
-                "有几率把控制权交到你手上，同时它的性格进入你的身体在看台自行行动。"
-                + "接管期间的击杀按原版规则计入你的击杀统计与经验。",
-                "May hand you direct control while its temperament walks your body around "
-                + "the stands. Kills during the takeover count toward your own kill stats "
-                + "and experience, as vanilla does.");
+                "每场有一次机会交换控制权：你操作选手，原身体在看台表演；结束后还原。此模式击杀不计入鸭皇图鉴。",
+                "Once per match, may swap control: you play the fighter while your body performs in the stands. Control is restored afterward. Mode H kills do not count toward the Duck Codex.");
 
             Add(map, "Injury_leg", "腿伤", "Leg Injury");
             Add(map, "Injury_leg_Desc", "追不远、转身慢。", "Cannot chase far; turns slowly.");
@@ -304,11 +301,17 @@ namespace BossRush
             Add(map, "Condition_narrow_cage", "窄笼", "Narrow Cage");
             Add(map, "Condition_open_field", "开阔场", "Open Field");
             Add(map, "Condition_residual_might", "余威", "Residual Might");
+            Add(map, "Condition_center_cover_Desc", "蓝圈内获得中央掩护：物理伤害系数降低 25%，离圈解除。双方同等适用。", "Inside the blue ring: physical damage factor reduced by 25%; removed on exit. Applies to both sides.");
+            Add(map, "Condition_danger_edge_Desc", "橙圈外每秒受到最大生命 2% 的穿甲伤害。每名参赛者入场后有 5 秒宽限；回到中间可避开。", "Outside the orange ring: 2% max-health armor-bypassing damage per second. Each entrant has 5 seconds of grace; return to center to avoid it.");
+            Add(map, "Condition_medical_limited_Desc", "双方所有实际治疗量减半，直接伤害不变。", "All actual healing is halved for both sides; direct damage is unchanged.");
+            Add(map, "Condition_narrow_cage_Desc", "近战规则：双方近战伤害系数 +20%，枪械伤害系数 -20%。", "Close-combat rules: melee damage factor +20%, gun damage factor -20% for both sides.");
+            Add(map, "Condition_open_field_Desc", "远射规则：双方枪械伤害系数 +15%。", "Ranged-combat rules: gun damage factor +15% for both sides.");
+            Add(map, "Condition_residual_might_Desc", "每名参赛者实际入场后的前 8 秒，枪械与近战伤害系数 +20%；首发、接力和增援均适用。", "For 8 seconds after each actual entry, gun and melee damage factors +20%; applies to starters, relays and reinforcements.");
 
             Add(map, "Recon_hidden_quirk", "隐藏坏习惯", "Hidden Quirk");
             Add(map, "Recon_current_injury", "当前伤病", "Current Injuries");
             Add(map, "Recon_member_order", "成员与顺序线索", "Members & Order");
-            Add(map, "Recon_second_equipment", "第二装备", "Secondary Gear");
+            Add(map, "Recon_second_equipment", "核心作战特点", "Core combat traits");
             Add(map, "Recon_Consumed", "本场侦察已用", "Scouting already used this match");
 
             Add(map, "Summary_EnemyCount", "人数区间", "Enemy Count");
@@ -324,7 +327,7 @@ namespace BossRush
 
         private static void AddOddsAndStake(Dictionary<string, string> map)
         {
-            Add(map, "OddsTone_x1", "稳赢盘", "Heavy Favorite");
+            Add(map, "OddsTone_x1", "优势盘", "Heavy Favorite");
             Add(map, "OddsTone_x2", "小优盘", "Slight Favorite");
             Add(map, "OddsTone_x3", "五五盘", "Even Money");
             Add(map, "OddsTone_x4", "劣势盘", "Underdog");
@@ -413,37 +416,37 @@ namespace BossRush
         private static void AddKits(Dictionary<string, string> map)
         {
             AddKit(map, "starter_field_armor", "战地防弹衣", "Field Armor",
-                "标准三级防护，够挡两下。", "Standard tier-3 plate; good for a couple of hits.");
+                "护甲整备；品质 3。", "Armor kit; quality 3.");
             AddKit(map, "starter_field_helmet", "战地头盔", "Field Helmet",
-                "特警制式，保住脑袋。", "Police-issue; keeps the head attached.");
+                "头盔整备；品质 3。", "Helmet kit; quality 3.");
             AddKit(map, "starter_assault_rifle", "突击步枪", "Assault Rifle",
-                "配一百二十发普通弹。", "Comes with 120 standard rounds.");
+                "主武器整备；品质 4；配发弹药 120 发。", "Primary weapon kit; quality 4; 120 rounds supplied.");
             AddKit(map, "starter_assault_blade", "近身钝器", "Close-quarters Club",
-                "近身补刀用。", "For finishing at arm's length.");
+                "近身武器整备；品质 3。", "Melee weapon kit; quality 3.");
             AddKit(map, "starter_marksman_rifle", "精确射手步枪", "Marksman Rifle",
-                "配一梭狙击弹。", "Comes with a stack of sniper rounds.");
+                "主武器整备；品质 5；配发弹药 40 发。", "Primary weapon kit; quality 5; 40 rounds supplied.");
             AddKit(map, "starter_sidearm", "副武器手枪", "Sidearm",
-                "主武器哑火时的保险。", "Insurance when the primary jams.");
+                "副武器整备；品质 2；配发弹药 60 发。", "Secondary weapon kit; quality 2; 60 rounds supplied.");
             AddKit(map, "starter_heavy_plate", "重型防弹衣", "Heavy Plate",
-                "五级防护，慢但硬。", "Tier-5 plate; slow but solid.");
+                "护甲整备；品质 5。", "Armor kit; quality 5.");
             AddKit(map, "starter_scout_helmet", "侦察头盔", "Scout Helmet",
-                "四级防护，视野更好。", "Tier-4 with a better field of view.");
+                "头盔整备；品质 4。", "Helmet kit; quality 4.");
             AddKit(map, "reward_breacher_gun", "破门枪", "Breacher",
-                "高射速，弹药管够。", "High rate of fire, plenty of ammo.");
+                "主武器整备；品质 5；配发弹药 150 发。", "Primary weapon kit; quality 5; 150 rounds supplied.");
             AddKit(map, "reward_long_barrel", "长弓", "Long Bow",
-                "远距离压制，箭矢有限。", "Long-range pressure with limited arrows.");
+                "主武器整备；品质 7；配发弹药 30 发。", "Primary weapon kit; quality 7; 30 rounds supplied.");
             AddKit(map, "reward_riot_plate", "防暴甲", "Riot Plate",
-                "六级防护。", "Tier-6 protection.");
+                "护甲整备；品质 6。", "Armor kit; quality 6.");
             AddKit(map, "reward_command_helmet", "指挥头盔", "Command Helmet",
-                "六级防护，视野最好。", "Tier-6 with the best field of view.");
+                "头盔整备；品质 6。", "Helmet kit; quality 6.");
             AddKit(map, "reward_executioner_blade", "行刑刃", "Executioner Blade",
-                "近身收割。", "For close-range harvesting.");
+                "近身武器整备；品质 6。", "Melee weapon kit; quality 6.");
             AddKit(map, "reward_hold_out_pistol", "大口径手枪", "Hold-out Magnum",
-                "一发换一条命。", "One round, one life.");
+                "副武器整备；品质 4；配发弹药 32 发。", "Secondary weapon kit; quality 4; 32 rounds supplied.");
             AddKit(map, "reward_bulwark_plate", "壁垒甲", "Bulwark Plate",
-                "七级防护，全场最硬。", "Tier-7; the hardest thing in the ring.");
+                "护甲整备；品质 7。", "Armor kit; quality 7.");
             AddKit(map, "reward_skirmisher_blade", "游击刃", "Skirmisher Blade",
-                "轻快的近身武器。", "A light, quick close-range blade.");
+                "近身武器整备；品质 5。", "Melee weapon kit; quality 5.");
         }
 
         private static void AddKit(

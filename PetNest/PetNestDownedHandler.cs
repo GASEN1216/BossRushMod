@@ -18,6 +18,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
@@ -304,6 +305,36 @@ namespace BossRush
         {
             float sum = SumScarPercent(pet, statKey);
             return Mathf.Max(sum, PetNestTuning.ScarModifierCapFraction);
+        }
+
+        /// <summary>
+        /// 这只崽身上挨过疤的全部 stat（去重，按首次出现顺序）。
+        ///
+        /// **唯一枚举入口**：随从入场挂 Modifier 与面板展示战痕效果此前各建一份
+        /// Dictionary 聚合，而且展示侧还自己写了一遍封顶，两处口径随时可能跑偏。
+        /// 调用方拿到 key 之后一律用 <see cref="GetEffectiveScarPercent"/> 取数值。
+        /// </summary>
+        internal static void CollectScarStatKeys(PetNestPetRecord pet, List<string> into)
+        {
+            if (into == null) return;
+            into.Clear();
+            if (pet == null || pet.scars == null) return;
+
+            for (int i = 0; i < pet.scars.Count; i++)
+            {
+                PetNestScarRecord s = pet.scars[i];
+                if (s == null || string.IsNullOrEmpty(s.statKey)) continue;
+                bool seen = false;
+                for (int k = 0; k < into.Count; k++)
+                {
+                    if (string.Equals(into[k], s.statKey, StringComparison.Ordinal))
+                    {
+                        seen = true;
+                        break;
+                    }
+                }
+                if (!seen) into.Add(s.statKey);
+            }
         }
 
         #endregion

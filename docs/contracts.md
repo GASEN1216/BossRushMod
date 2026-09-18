@@ -220,9 +220,17 @@ Breaking:
 
 ## 6.1 Mode H 外部契约（百战留痕：黑市鸭王杯，已实现）
 
-Mode H 已按 `docs/设计提案/2026-08-17_斗蛐蛐新模式创意脑暴.md` §17–§29 一次性完整实现：
-正式入口、五席试棚、三幕六战、虚拟整备与下注、口令/伤病/战痕、ERROR 完整互换、
-战场快照续战、真实仓库 escrow/journal/清算、转会、名人堂、恢复与存档全部在本批交付。
+Mode H 的正式入口、五席试棚、三幕六战、虚拟整备与下注、口令/伤病/战痕、ERROR 互换、
+真实仓库 escrow/journal/清算、转会、名人堂、恢复与存档已接线。恢复按同场看盘重开，
+不支持快照位置上的局中续战。代码接线、隔离回归与编译不等于所有实机玩法已验收。
+
+**擂台与敌军伤势（2026-09-18，COMPAT / WIRE+）。** owner 授权补全效果并允许玩法与数值调整。
+`ModeHMatchRules` 只管理实际入场的临时参赛者，所有规则双边生效；属性复用官方 Stat Modifier
+及共享 tracker，医疗限制通过实例 Health.OnHealthChange 递归门实现并对称退订，不新增 Harmony。
+场地区域使用现有贴地圈，判定与画圈使用同一个半径；缺可见圈拒绝危险场。
+`woundedUnits` 按最高威胁优先分配到计划槽位，敌军以 75% 生命入场。伤势侦察与赔率共用该
+计划 helper；旧伤势数量被实际数量封顶，未实现的敌方胆怯/ERROR 字段不计分。
+位置与入场时机的优势不额外换算成固定原型地形分。旧 ID、schema 与存档键不变。
 本节替换 2026-08-26 的旧稿：**不再存在“先做 H0 技术样机”的阶段划分**，
 也不再存在旧稿列出的真实资产开关与四门口径。
 
@@ -479,8 +487,8 @@ Breaking：
 
 **配置面（COMPAT）。** `ModBehaviour.BossRushConfig` 只新增**一个**字段
 `dailyReportEnabled=true`，运行时只通过 `ModBehaviour.IsDailyReportConfiguredEnabled()` 读取
-（定义在 `Config/ConfigDailyReport.cs`，与 `Config/Config.cs` 同一 partial class，
-拆开只为 1200 行预算）。ModConfig 镜像键只有 `BossRush_DailyReportEnabled`。
+（定义在 `Config/ConfigDailyReport.cs`，与 `Config/Config.cs` 同一 partial class）。
+字段与 `BossRush_DailyReportEnabled` 镜像键为兼容保留；当前 ModConfig 注册流程不再调用日报总开关注册。
 默认开启的理由：报箱要玩家花 500 金自建，已是天然门槛，不必再用开关拦一道。
 
 **存档面（SCHEMA+）。** 新增**一个**槽级 key `BossRush_DailyReport_v1`，
@@ -513,6 +521,12 @@ mod 程序集改名/重构就会让老档读不回来。
 历史版本已经丢失的信息不猜测回填。计数、身份或种子损坏时整体拒绝解码，不能静默删债或重抽。
 实际发物前必须确认存储层未故障且无写屏障；发后才删除对应欠账并标记匹配的当前格位。
 一次送达后恰逢写失败仍保留至少一次恢复语义，已知永久故障之后则不得反复送出同一奖励。
+
+**悬赏欠款合并（2026-09-18，SCHEMA+）。** 保留现有 key、schemaVersion=1 与 Bounty* 字段；追加可选 `bountyCashReward`（最新结算冻结的奖金）和 `pendingBountyCash`（更早各期尚欠现金合计），旧档默认 0。旧未领结果未冻结金额时，按既有种类与目标还原原档奖金，不重抽题。跨天先把旧未领金额归入合计，再照常结算当天；发钱仍经同一现金快照义务，成功提交后清除合计并标记最新已完成结果。损坏的已声明金额拒收整份 payload；不可还原的旧债务阻止该次结算，不能清统计吞奖。合计使存储与补发成本不随欠款天数增长。曾被旧版本跳过的历史奖励无事实可还原，不猜测回填。
+
+悬赏 `no_death` 要求当日成功撤离至少一次且截至结算零死亡；跨天出击记入实际撤离日。`earn_money` 保持进账口径，不扣支出，日报奖金不自我计入。Mode H 整个采集器排除；击杀/输出只计玩家对敌方角色，承伤包含环境来源。
+
+签到随机奖励用官方 `GetAllTypeIds` 精确过滤品质，再过既有黑名单，候选排序后使用原随机流。空池保留欠奖而不降级；实例化前复核 prefab，避免把官方同 TypeID 空壳当成奖品。奖品池内容与品质梯度不变。
 
 **计时口径（不可改）。** 一天 = **86300 游戏秒**，镜像官方 `GameClock.SecondsPerDay`
 （**不是 86400**）。天数由 `DailyReportService` 自算：累计宿主
@@ -600,6 +614,11 @@ Breaking/Operational:
   激活前摆好世界坐标；再调 `InteractableLootboxInventoryHelper.EnsureLocalInventory`（官方按位置哈希共享 Inventory，靠近的箱子会串味）。
 - 官方 `OnDead` 在倒下位置 +0.1 m 生成尸体箱，而 `CA_Interact` 按到交互体轴心的距离**严格小于**取唯一目标：同点的第二个交互体整局选不中。
 - 改敌人体型只缩放 `characterModel`，不改角色 transform：`CreateCharacterAsync` 返回时角色已初始化，事后缩放会让碰撞体、导航半径与官方口径失步。染色走 `MaterialPropertyBlock`，碰 `sharedMaterial` 会污染同款的所有敌人。
+- `AICharacterController.noticed` **不是「看见玩家」**：它在「听见一处声音」（`OnHeardSound`，距离 < `sound.radius * hearingAbility`）或「挨了打」（`OnHurt`）时置 true，**而且全程不复位**。
+  队友在几十米外开一枪、两伙敌人自己打起来，都会把它点亮。拿它当「发现玩家」用，表现就是敌人对着空气喊话、Boss 在玩家露面前念出场白——不报错、不掉帧。
+  要「冲着玩家来的」就读 `NoticeFromCharacter`（未 `noticed` 时返回 null）并与 `CharacterMainControl.Main` 比；只要「最近有动静」用 `isNoticing(timeThreshold)`。
+  核实位置：`鸭科夫源码/TeamSoda.Duckov.Core/AICharacterController.cs` 的 `noticed` 字段、`NoticeFromCharacter` 属性与两处赋值。
+- 该组件挂在角色的**子物体**上，根节点 `GetComponent<AICharacterController>()` 恒为 null。
 
 **物品与属性**
 
@@ -618,9 +637,9 @@ Breaking/Operational:
 
 **伤害与掉落**
 
-- 自建爆炸显式传 `canHurtSelf: false`（官方默认 true 时 `selfTeam = Teams.all`，爆炸中心的玩家自己必吃这一下）。
-  自建 `DamageInfo` 置 `isFromBuffOrEffect = true`、`fromWeaponItemID = 0`，否则会被只认直接击杀的系统当成击杀起链。
-  `OnHurt` 可能正处在官方 `ExplosionManager` 的循环里，嵌套 `CreateExplosion` 会覆写它的共享缓冲，反击结算延后一帧。
+- 玩家装备 / 奖励自建爆炸显式传 `canHurtSelf: false`（官方默认 true 时 `selfTeam = Teams.all`）；明确带伤己风险的玩法如共享变异「天降殉爆」保留 true。玩家效果 `DamageInfo` 置 `isFromBuffOrEffect = true`、`fromWeaponItemID = 0`，避免被只认直接击杀的系统当成击杀起链；敌方技能保持原来的受击反应语义。
+  `OnHurt` 与 `OnDead` 都可能正处在官方 `ExplosionManager` 的循环里，嵌套 `CreateExplosion` 会覆写它共用的 colliders / damagedHealth，追加爆炸须先让出一帧。延迟请求在暂停时等待，换局 / 切图 / 装备 context 失效 / 玩家死亡时作废；丧尸模式复用 RunOnlyObjects，执行完即移除记录。
+  原爆炸禁止自伤时，接口失败后的 player-only fallback 也不能伤害施放者。`AffixCombat` 以生产入口与官方缓冲语义替身验证这些边界，实际物理与性能仍待实机。
 - 想让**原版地图**击杀也掉落，挂 `CharacterMainControl.OnDead` 前缀（`Patches/Combat/CharacterOnDeadPatch.cs`），只在 Mod 奖励箱协程里加是不够的。
   走 OnDead 必须补齐 defer 协议的四处接线，掉落 roll 在死亡帧定下并随 pending 携带（`ExtraBossDropDeferGuard`）。
 
@@ -638,6 +657,7 @@ Breaking/Operational:
 - 切图前要禁输入，就用**当前场景内的临时对象**调 `InputManager.DisableInput`：`blockInputSources` 只在源销毁或失活时解封，挂 DontDestroyOnLoad 会让输入永久锁死。
   `SceneLoader.LoadScene` 同步拒绝时 `LoadFinished` 立刻为 true，等待场景的循环必须看它。
 - `DialogueBubblesManager.Show` 在 manager 缺席，或无可复用气泡且 prefab 缺失时，正常完成 UniTask 而不显示。异常也会进入返回任务，`Forget` 没有同步抛错不代表发送成功。
+  天空岛只发送非交互、正时长气泡：主线程调用后正常展示必定跨帧；已完成任务只消费一次结果并拒绝记账，挂起的请求用异常观察回调消费一次。该判断依赖官方当前 `Show` / `ShowTask` 合同；官方更新时需复核，计数不是像素可见性证据。
 - 岛上判夜 19–5（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 的 `nightStart = 19 / morningStart = 5`（官方 Volume 与敌人夜间感知同相）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
 - `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47` IL 实查）：基地读完后停在「点击继续」，等 `clicked` 的循环没有超时；进等待前先 `SetActive(true)` 点击接收器 `pointerClickEventRecevier` 并把 `clicked` 复位。
   无人值守的流程要在接收器激活后调 `NotifyPointerClick`，否则玩法代码发起的返基地（Mode F / 丧尸撤离）会一直停在加载屏。卡加载时先看 `SceneLoader.LoadingComment`，官方每个等待点都写了一句（如 `Wait for click...`）。

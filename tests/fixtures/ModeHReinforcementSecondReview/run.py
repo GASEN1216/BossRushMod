@@ -37,7 +37,7 @@ def main():
         runtime.append(method(sources[file], signature))
     control = []
     for signature in ["public bool Tick(float deltaTime, ModeHBattleSnapshotContext snapshotContext)",
-                      "public void OnEnemyBatchEntered(", "public void OnEnemyEntered(",
+                      "public void OnEnemyBatchEntered(", "public bool OnEnemyEntered(",
                       "public void SetEnemySpawningPending("]:
         control.append(method(sources["ModeHCombatControl.cs"], signature))
     generated = "using System;using System.Collections;using System.Collections.Generic;using UnityEngine;\nnamespace BossRush {\n"

@@ -192,6 +192,7 @@ namespace BossRush
             // 静态缓存兜底清理：星愿许愿台抽奖动画
             WishFountainRewardAnimationView.ResetStaticCaches();
             BossRushDynamicItemRegistry.ResetStaticCaches();
+            BossRushQualityItemPool.ResetStaticCaches();
             ItemFactory.ResetStaticCaches();
             EquipmentFactory.ResetStaticCaches();
             NewWeaponPlaceholderRegistry.ResetStaticCaches();

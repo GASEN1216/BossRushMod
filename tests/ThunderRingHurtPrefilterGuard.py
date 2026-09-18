@@ -61,10 +61,14 @@ def main() -> int:
     if attack_body is None:
         return fail("missing HandlePlayerAttack body")
 
+    EQUIP_CHECK = "if (!NewWeaponEquipState.IsTotemEquipped(NewWeaponIds.ThunderRingTypeId))"
+    ATTRIBUTION = "if (!NewWeaponAttribution.IsPlayerDirectHit(targetHealth, ref damageInfo, player)) return;"
+
     attack_required = [
         "if (currentCharges <= 0) return;",
         "if (currentCharges < ThunderRingConfig.MaxCharges) return;",
-        "if (!IsEquippingThunderRing(player))",
+        ATTRIBUTION,
+        EQUIP_CHECK,
     ]
     for snippet in attack_required:
         if snippet not in attack_body:
@@ -72,26 +76,31 @@ def main() -> int:
 
     first_charge_exit = attack_body.find("if (currentCharges <= 0) return;")
     max_charge_exit = attack_body.find("if (currentCharges < ThunderRingConfig.MaxCharges) return;")
-    equip_check = attack_body.find("if (!IsEquippingThunderRing(player))")
-    if first_charge_exit < 0 or equip_check < 0 or first_charge_exit > equip_check:
-        return fail("Thunder Ring attack should skip equip scanning when no charges exist")
-    if max_charge_exit < 0 or max_charge_exit > equip_check:
-        return fail("Thunder Ring attack should skip equip scanning until charges are full")
+    attribution_check = attack_body.find(ATTRIBUTION)
+    equip_check = attack_body.find(EQUIP_CHECK)
+    # 层数判定必须排在归因与装备判定之前：没攒到层就不该为它们付一分钱
+    if first_charge_exit < 0 or attribution_check < 0 or first_charge_exit > attribution_check:
+        return fail("Thunder Ring attack should skip attribution work when no charges exist")
+    if max_charge_exit < 0 or max_charge_exit > attribution_check:
+        return fail("Thunder Ring attack should skip attribution work until charges are full")
+    if equip_check < attribution_check:
+        return fail("Thunder Ring attack should attribute the hit before reading the equip cache")
 
-    equip_body = extract_method_body(text, "private static bool IsEquippingThunderRing(")
-    if equip_body is None:
-        return fail("missing IsEquippingThunderRing body")
+    # 装备判定必须走共享的事件驱动缓存：本文件不得再自己遍历图腾槽，
+    # 也不得回退到「每帧缓存一次」那版——那仍然是每帧一次线性扫描。
+    if "IsEquippingThunderRing" in text or "CharacterItem.Slots" in text or 'StartsWith("Totem")' in text:
+        return fail("Thunder Ring must not scan totem slots itself; use NewWeaponEquipState")
 
+    equip_state = Path("Integration/NewWeapons/Common/NewWeaponEquipState.cs").read_text(encoding="utf-8-sig")
     equip_cache_required = [
-        "cachedEquipCheckFrame == frame && cachedEquipCheckPlayer == player",
-        "return cachedEquipCheckResult;",
-        "cachedEquipCheckFrame = frame;",
-        "cachedEquipCheckPlayer = player;",
-        "cachedEquipCheckResult = isEquipped;",
+        "private static bool isDirty = true;",
+        "private static void EnsureFresh()",
+        "if (!isDirty && ReferenceEquals(player, cachedPlayer))",
+        "internal static bool IsTotemEquipped(int typeId)",
     ]
     for snippet in equip_cache_required:
-        if snippet not in equip_body:
-            return fail("missing Thunder Ring same-frame equip cache snippet -> " + snippet)
+        if snippet not in equip_state:
+            return fail("missing shared equip-state cache snippet -> " + snippet)
 
     unsubscribe_body = extract_method_body(text, "public static void Unsubscribe(")
     if unsubscribe_body is None:

@@ -28,6 +28,7 @@ groups = {
         ('ModeHRuntimeModule_SettlementFlow.cs', 'private void SelectSettlementReward('),
         ('ModeHRuntimeModule_SettlementFlow.cs', 'private void CompleteSettlementAndRoute()'),
         ('ModeHRuntimeModule_CombatProfiles.cs', 'private ModeHMatchReportDto FindLatestPendingReport()'),
+        ('ModeHRuntimeModule_CombatProfiles.cs', 'private ModeHProfileDto FindSeasonProfile('),
         ('ModeHRuntimeModule_CombatProfiles.cs', 'private ModeHSeasonRewardOperationDto FindRewardOperation('),
         ('ModeHRuntimeModule_UiFlow.cs', 'private void AbandonSeasonFromRecovery()'),
         ('ModeHRuntimeModule_UiFlow.cs', 'private void DestroyUi()'),

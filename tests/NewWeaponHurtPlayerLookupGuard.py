@@ -6,6 +6,8 @@ import sys
 
 ENERGY_SHIELD = Path("Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs")
 VIPER_DAGGER = Path("Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs")
+THUNDER_RING = Path("Integration/NewWeapons/ThunderRing/ThunderRingRuntime.cs")
+SUMMON_STAFF_MANAGER = Path("Integration/NewWeapons/SummonStaff/SummonStaffManager.cs")
 
 
 def fail(message: str) -> int:
@@ -67,10 +69,13 @@ def main() -> int:
     viper_required = [
         "if (targetHealth == null || targetHealth.IsDead) return;",
         "CharacterMainControl player = CharacterMainControl.Main;",
-        "ApplyPoisonStack(targetId, targetHealth, player);",
-        "private static void ApplyPoisonStack(int targetId, Health targetHealth, CharacterMainControl player)",
-        "TriggerBurst(targetHealth, player);",
-        "private static void TriggerBurst(Health targetHealth, CharacterMainControl player)",
+        # 已解析好的 player 必须一路传下去，不许在下游再读一次 CharacterMainControl.Main。
+        # 只钉「形参里带 CharacterMainControl player」，不钉整条签名——
+        # 否则每加一个数值参数就要改守卫，而不变式本身没变。
+        "ApplyPoisonStack(targetId, targetHealth, player",
+        "private static void ApplyPoisonStack(int targetId, Health targetHealth, CharacterMainControl player",
+        "TriggerBurst(targetHealth, player",
+        "private static void TriggerBurst(Health targetHealth, CharacterMainControl player",
     ]
     for snippet in viper_required:
         if snippet not in viper_text:
@@ -81,6 +86,27 @@ def main() -> int:
 
     if "CharacterMainControl player = CharacterMainControl.Main;" in trigger_burst:
         return fail("ViperDagger burst still rereads CharacterMainControl.Main")
+
+    # ---- 装备判定必须走共享缓存，不许在受击回调里遍历槽位（AGENTS §4.12）----
+    # 三个运行时此前各写一份「遍历 CharacterItem.Slots 找 Totem*」/「GetMeleeWeapon + CurrentHoldItemAgent」，
+    # 既重复又是每次受击一次线性扫描。现在统一读 NewWeaponEquipState 的事件驱动缓存。
+    thunder_text = THUNDER_RING.read_text(encoding="utf-8-sig")
+    staff_text = SUMMON_STAFF_MANAGER.read_text(encoding="utf-8-sig")
+
+    for label, text, expected in (
+        ("EnergyShield", energy_text,
+         "NewWeaponEquipState.IsTotemEquipped(NewWeaponIds.EnergyShieldTypeId)"),
+        ("ThunderRing", thunder_text,
+         "NewWeaponEquipState.IsTotemEquipped(NewWeaponIds.ThunderRingTypeId)"),
+        ("ViperDagger", viper_text,
+         "NewWeaponEquipState.IsHolding(NewWeaponIds.ViperDaggerTypeId)"),
+        ("SummonStaff", staff_text,
+         "NewWeaponEquipState.IsHolding(NewWeaponIds.SummonStaffTypeId)"),
+    ):
+        if expected not in text:
+            return fail(label + " must read the shared equip cache -> " + expected)
+        if 'StartsWith("Totem")' in text or "CharacterItem.Slots" in text:
+            return fail(label + " still scans totem slots inline; use NewWeaponEquipState")
 
     print("NewWeaponHurtPlayerLookupGuard: PASS")
     return 0

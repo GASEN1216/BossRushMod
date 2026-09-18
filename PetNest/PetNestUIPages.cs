@@ -184,7 +184,7 @@ namespace BossRush
                 },
             });
 
-            // 放生：巢满时唯一可预期的腾位手段（此前只能押 22% 死亡率的亡命远征等崽死）。
+            // 放生：巢满时唯一可预期的腾位手段（此前只能押亡命远征的死亡率等崽死）。
             // 不可逆，因此走确认弹窗；远征锁定期间禁用（服务层也会再拒一次）。
             PetNestPetRecord releaseTarget = PetNestService.TryGetPet(selectedPetId);
             page.Actions.Add(new PetNestActionData
@@ -232,9 +232,10 @@ namespace BossRush
                 + (PetNestProgressionService.IsAdult(pet)
                     ? " · " + T("Level_Adult")
                     : " (" + pet.exp + "/" + PetNestTuning.PetExpPerLevel + ")")
-                + " · " + T("Personality_" + (pet.personalityId ?? string.Empty));
+                + " · " + PetNestLocalization.DescribePersonality(pet.personalityId);
 
             card.Body = DescribePetState(pet)
+                + "\n" + DescribePersonality(pet)
                 + "\n" + DescribeTalents(pet)
                 + "\n" + DescribeScars(pet);
 
@@ -284,6 +285,20 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 性格那一行。性格现在真的会改索敌距离、追击意愿、跟随距离与属性
+        /// （表在 PetNest/PetNestPersonality.cs），所以必须把效果写给玩家看，
+        /// 否则它和改动之前一样只是个词。
+        /// </summary>
+        private static string DescribePersonality(PetNestPetRecord pet)
+        {
+            string name = PetNestLocalization.DescribePersonality(pet.personalityId);
+            string effect = PetNestLocalization.DescribePersonalityEffect(pet.personalityId);
+            string text = L10n.T("性格：", "Temperament: ") + name;
+            if (!string.IsNullOrEmpty(effect)) text += " " + effect;
+            return text;
+        }
+
         private static string DescribeTalents(PetNestPetRecord pet)
         {
             if (pet.talents == null || pet.talents.Count == 0)
@@ -291,34 +306,27 @@ namespace BossRush
                 return L10n.T("出身：无", "Endowments: none");
             }
             string text = L10n.T("出身：", "Endowments: ");
+            bool first = true;
             for (int i = 0; i < pet.talents.Count; i++)
             {
                 PetNestTalentEntry t = pet.talents[i];
                 if (t == null) continue;
-                if (i > 0) text += "，";
-                text += t.statKey + FormatModifierValue(t.value, t.percentage);
+                if (!first) text += "，";
+                first = false;
+                // 文案单点在 PetNestLocalization：此前这里直接拼英文 statKey，
+                // 中文玩家看到的是 "PetCapcity+2"（还是官方拼错的那个词）
+                text += PetNestLocalization.DescribeTalent(t);
             }
             return text;
         }
 
         /// <summary>
-        /// 把 Modifier 数值格式化成玩家看得懂的文本。
-        /// 百分比项内部存的是**小数**（0.08 = +8%，官方 PercentageAdd 口径），
-        /// 展示时要 ×100，否则玩家看到的是 "+0.08%"。官方 EndowmentEntry 同款换算。
-        /// </summary>
-        /// <summary>
-        /// 天赋/战痕数值的统一格式化。百分比项在数据层存的是小数（0.08 = 8%），
-        /// 直接拼 "%" 会显示成 "+0.08%"，因此展示侧一律走这里。
-        /// internal：孵化揭晓演出也要用同一口径。
+        /// 天赋/战痕数值的统一格式化。实现已收敛到 PetNestLocalization（面板、孵化揭晓、
+        /// 战痕说明三处共用同一口径）；此处保留薄转发，避免调用点散落两个入口。
         /// </summary>
         internal static string FormatModifierValue(float value, bool percentage)
         {
-            if (!percentage)
-            {
-                return (value >= 0f ? "+" : "") + ((int)Math.Round(value)).ToString();
-            }
-            float percent = value * 100f;
-            return (percent >= 0f ? "+" : "") + percent.ToString("0.#") + "%";
+            return PetNestLocalization.FormatModifierValue(value, percentage);
         }
 
         private static string DescribeScars(PetNestPetRecord pet)
@@ -333,26 +341,24 @@ namespace BossRush
             return text;
         }
 
+        /// <summary>
+        /// 当前生效的战痕减益。
+        /// 「有哪些 stat 挨过疤」与「封顶后的实际数值」两份口径都在 PetNestDownedHandler，
+        /// 展示侧不再自建聚合与封顶——此前这里写的是自己的 Math.Max，随从入场挂的却是
+        /// GetEffectiveScarPercent，两边一旦跑偏，面板上写的就不是玩家实际承受的。
+        /// </summary>
         private static string DescribeScarEffect(PetNestPetRecord pet)
         {
-            if (pet.scars == null || pet.scars.Count == 0) return null;
-            Dictionary<string, float> byStat = new Dictionary<string, float>(StringComparer.Ordinal);
-            for (int i = 0; i < pet.scars.Count; i++)
-            {
-                PetNestScarRecord s = pet.scars[i];
-                if (s == null || string.IsNullOrEmpty(s.statKey)) continue;
-                float sum;
-                byStat.TryGetValue(s.statKey, out sum);
-                byStat[s.statKey] = sum + s.percent;
-            }
-            if (byStat.Count == 0) return null;
+            List<string> statKeys = new List<string>();
+            PetNestDownedHandler.CollectScarStatKeys(pet, statKeys);
+            if (statKeys.Count == 0) return null;
 
             string text = null;
-            foreach (KeyValuePair<string, float> pair in byStat)
+            for (int i = 0; i < statKeys.Count; i++)
             {
-                float clamped = Math.Max(pair.Value, PetNestTuning.ScarModifierCapFraction);
+                float clamped = PetNestDownedHandler.GetEffectiveScarPercent(pet, statKeys[i]);
                 if (text != null) text += "，";
-                text += pair.Key + FormatModifierValue(clamped, true);
+                text += PetNestLocalization.DescribeStatDelta(statKeys[i], clamped, true);
             }
             return text;
         }
@@ -412,14 +418,14 @@ namespace BossRush
         private static void AppendCondenseCards(
             PetNestPageContent page, Action refresh, Action<PetNestHatchResult> onHatched)
         {
-            IList<PetNestLineageInfo> lineages = PetNestLineageCatalog.All;
+            // 血脉有几十条，攒过魂的会一行一行铺满整页。按「离凝蛋还差多少」升序，
+            // 可凝的与快凑够的排最前，玩家一眼看到的是下一步能做什么。
+            List<PetNestLineageInfo> ledger = CollectSoulLedgerLines();
             bool ledgerHeaderWritten = false;
-            for (int i = 0; i < lineages.Count; i++)
+            for (int i = 0; i < ledger.Count; i++)
             {
-                PetNestLineageInfo lineage = lineages[i];
-                if (lineage == null) continue;
+                PetNestLineageInfo lineage = ledger[i];
                 int souls = PetNestService.GetSouls(lineage.LineageKey);
-                if (souls <= 0) continue;
 
                 if (!ledgerHeaderWritten)
                 {
@@ -452,6 +458,35 @@ namespace BossRush
                     },
                 });
             }
+        }
+
+        /// <summary>
+        /// 攒过遗魂的血脉，按距离凝蛋阈值由近到远排序。
+        /// 只在打开孵化页时跑一次，血脉量级只有几十条，不是热路径。
+        /// </summary>
+        private static List<PetNestLineageInfo> CollectSoulLedgerLines()
+        {
+            IList<PetNestLineageInfo> lineages = PetNestLineageCatalog.All;
+            List<PetNestLineageInfo> ledger = new List<PetNestLineageInfo>(lineages.Count);
+            for (int i = 0; i < lineages.Count; i++)
+            {
+                PetNestLineageInfo lineage = lineages[i];
+                if (lineage == null) continue;
+                if (PetNestService.GetSouls(lineage.LineageKey) <= 0) continue;
+                ledger.Add(lineage);
+            }
+
+            ledger.Sort(delegate (PetNestLineageInfo a, PetNestLineageInfo b)
+            {
+                int remainingA = PetNestTuning.SoulsPerCondensedEgg
+                    - PetNestService.GetSouls(a.LineageKey);
+                int remainingB = PetNestTuning.SoulsPerCondensedEgg
+                    - PetNestService.GetSouls(b.LineageKey);
+                if (remainingA != remainingB) return remainingA.CompareTo(remainingB);
+                // 余量相同时按名字定序，避免同一份数据两次打开顺序不一样
+                return string.Compare(a.DisplayName, b.DisplayName, StringComparison.Ordinal);
+            });
+            return ledger;
         }
 
         #endregion
@@ -502,7 +537,8 @@ namespace BossRush
         {
             PetNestCardData card = new PetNestCardData();
             card.Title = PetNestExpeditionService.DescribePetName(r);
-            card.Subtitle = T("Dest_" + r.destinationId) + " · " + DescribeRisk(r.riskTier);
+            card.Subtitle = PetNestLocalization.DescribeDestination(r.destinationId)
+                + " · " + DescribeRisk(r.riskTier);
             card.IsDanger = r.riskTier == (int)PetNestRiskTier.Desperate;
 
             if (r.settled)
@@ -538,7 +574,8 @@ namespace BossRush
                     page.Actions.Add(new PetNestActionData
                     {
                         // 死亡率写在按钮上：赌的知情权是底线
-                        Label = T("Dest_" + destination.Id) + " · " + DescribeRisk(t)
+                        Label = PetNestLocalization.DescribeDestination(destination.Id)
+                            + " · " + DescribeRisk(t)
                             + " · " + T("DeathRateLabel") + " " + FormatPercent(deathRate)
                             + (affinity ? " · " + T("ElementAffinity") : string.Empty),
                         IsDanger = tier == PetNestRiskTier.Desperate,
@@ -556,19 +593,18 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 风险档位与百分比的文案口径都在 PetNestLocalization（面板与翻牌演出共用），
+        /// 这里只保留薄转发，避免两个展示层各写一份 switch 与一份取整。
+        /// </summary>
         private static string DescribeRisk(int riskTier)
         {
-            switch ((PetNestRiskTier)riskTier)
-            {
-                case PetNestRiskTier.Rough: return T("Risk_rough");
-                case PetNestRiskTier.Desperate: return T("Risk_desperate");
-                default: return T("Risk_safe");
-            }
+            return PetNestLocalization.DescribeRisk(riskTier);
         }
 
         private static string FormatPercent(float rate)
         {
-            return ((int)UnityEngine.Mathf.Round(rate * 100f)) + "%";
+            return PetNestLocalization.FormatPercent(rate);
         }
 
         #endregion
@@ -636,7 +672,7 @@ namespace BossRush
                 // 碑文一定要刻风险档位：那是玩家自己按下的选择
                 page.Lines.Add(m.displayName
                     + " · " + lineageName
-                    + " · " + T("Dest_" + m.destinationId)
+                    + " · " + PetNestLocalization.DescribeDestination(m.destinationId)
                     + " · " + DescribeRisk(m.riskTier)
                     + " · " + T("DeathRateLabel") + " " + FormatPercent(m.deathRate)
                     + " · " + L10n.T("生涯", "Career") + " " + m.careerCount);

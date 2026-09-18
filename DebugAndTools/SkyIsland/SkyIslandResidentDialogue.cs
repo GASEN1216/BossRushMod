@@ -92,7 +92,7 @@ namespace BossRush
             if (existing != null)
             {
                 // actor 按 NPC 缓存、名字只在创建时注入：本趟切过语言的话，官方对话框里的名字要跟着换（2026-09-14 审核 F-29）。
-                DialogueActorFactory.RefreshBilingualName(npcId, name, name);
+                DialogueActorFactory.RefreshPresentation(existing, name, name, SkyIslandUiArt.GetPortrait(npcId));
                 return existing;
             }
             return DialogueActorFactory.CreateBilingual(host, npcId, name, name,

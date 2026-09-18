@@ -20,6 +20,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryResidentText.cs" Link="Production/SkyIslandStoryResidentText.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />

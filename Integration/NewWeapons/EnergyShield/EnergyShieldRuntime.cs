@@ -5,13 +5,22 @@
 //   监听 Health.OnHurt 事件，当玩家装备能量盾且正面受击时：
 //   - 判定攻击方向是否在正面 ±60 度内
 //   - 回复受到伤害的 30% 生命值
-//   性能优化：不装备能量盾时回调立即返回
+//
+// 朝向口径（2026-09-18 修正，重要）：
+//   官方角色的**根 Transform 从不旋转**，朝向写在子节点 modelRoot 上
+//   （Movement.rotationRoot => CharacterMainControl.modelRoot，官方 Movement.cs:193/445/464），
+//   对外暴露为 CharacterMainControl.CurrentAimDirection（官方 CharacterMainControl.cs:254）。
+//   本文件此前用 player.transform.forward 做「正面」判据，等于拿一个恒定的世界方向去比——
+//   实际效果是「只有从世界 +Z 方向打来才吸收」，与玩家实际面朝哪儿完全无关，
+//   核心机制与它自称的弱点（侧背面不触发）都是失效的。现统一改用 CurrentAimDirection，
+//   与仓库其它用到朝向的地方（焚皇断界戟、霜之哀伤、新武器挥砍拖尾）口径一致。
+//
+// 性能（AGENTS §4.12）：
+//   「是否佩戴能量盾」走 NewWeaponEquipState 的 O(1) 缓存，不在受击回调里遍历图腾槽。
 // ============================================================================
 
 using System;
 using UnityEngine;
-using ItemStatsSystem;
-using ItemStatsSystem.Items;
 
 namespace BossRush
 {
@@ -83,8 +92,8 @@ namespace BossRush
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null || player.Health != targetHealth) return;
 
-            // 检查玩家是否装备了能量盾
-            if (!IsEquippingEnergyShield(player)) return;
+            // 检查玩家是否装备了能量盾（O(1) 读缓存，不遍历图腾槽）
+            if (!NewWeaponEquipState.IsTotemEquipped(NewWeaponIds.EnergyShieldTypeId)) return;
 
             // 冷却检查
             if (Time.time - lastTriggerTime < EnergyShieldConfig.TriggerCooldown) return;
@@ -101,13 +110,13 @@ namespace BossRush
             // 回复生命值（heal-back 模式：伤害已扣，加回部分）
             try
             {
-                float currentHp = player.Health.CurrentHealth;
-                float maxHp = player.Health.MaxHealth;
-                float newHp = Mathf.Min(currentHp + healAmount, maxHp);
+                Health health = player.Health;
+                float beforeHp = health.CurrentHealth;
+                // 官方 AddHealth 内部就是 Min(MaxHealth, Current + v)，不需要自己再钳一次
+                health.AddHealth(healAmount);
 
-                if (newHp > currentHp)
+                if (health.CurrentHealth > beforeHp)
                 {
-                    player.Health.SetHealth(newHp);
                     lastTriggerTime = Time.time;
 
                     // 表现层：在玩家正前方亮一层护盾环 + 音效（配色取自描述文案的 #64B5F6）。
@@ -126,13 +135,17 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 玩家朝向的水平单位向量。朝向退化时回退为 Vector3.forward，只用于摆放护盾特效。
+        /// 玩家面朝的水平单位向量。取官方 CurrentAimDirection（= modelRoot.forward），
+        /// 不能用 transform.forward —— 根节点从不旋转。朝向退化时回退为 Vector3.forward。
         /// </summary>
         private static Vector3 GetFacing(CharacterMainControl player)
         {
-            if (player == null || player.transform == null) return Vector3.forward;
+            if (player == null) return Vector3.forward;
 
-            Vector3 forward = player.transform.forward;
+            Vector3 forward;
+            try { forward = player.CurrentAimDirection; }
+            catch { return Vector3.forward; }
+
             forward.y = 0f;
             if (forward.sqrMagnitude < 0.0001f) return Vector3.forward;
             return forward.normalized;
@@ -168,8 +181,8 @@ namespace BossRush
             float toAttackerSqr = toAttacker.sqrMagnitude;
             if (toAttackerSqr < 0.01f) return false;
 
-            // 玩家朝向
-            Vector3 playerForward = player.transform.forward;
+            // 玩家朝向：官方把朝向写在 modelRoot 上，CurrentAimDirection 是它的对外出口
+            Vector3 playerForward = player.CurrentAimDirection;
             playerForward.y = 0f;
 
             float playerForwardSqr = playerForward.sqrMagnitude;
@@ -180,38 +193,6 @@ namespace BossRush
 
             return dot * dot >= playerForwardSqr * toAttackerSqr *
                 EnergyShieldFrontalAngleCos * EnergyShieldFrontalAngleCos;
-        }
-
-        /// <summary>
-        /// 检查玩家是否装备了能量盾（图腾槽位）
-        /// </summary>
-        private static bool IsEquippingEnergyShield(CharacterMainControl player)
-        {
-            if (player == null) return false;
-
-            try
-            {
-                Item characterItem = player.CharacterItem;
-                if (characterItem == null) return false;
-
-                // 遍历所有槽位，检查以 "Totem" 开头的槽位
-                if (characterItem.Slots != null)
-                {
-                    foreach (ItemStatsSystem.Items.Slot slot in characterItem.Slots)
-                    {
-                        if (slot == null || slot.Content == null) continue;
-                        if (!slot.Key.StartsWith("Totem")) continue;
-
-                        if (slot.Content.TypeID == NewWeaponIds.EnergyShieldTypeId)
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-            catch  { /* best-effort fallback intentionally ignored */ }
-
-            return false;
         }
     }
 }

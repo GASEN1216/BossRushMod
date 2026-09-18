@@ -25,6 +25,7 @@ namespace BossRush
         internal bool Visible;
         internal float HealthRatio;
         internal int ScarCount;
+        internal int Level;
         internal bool Downed;
 
         internal bool SameAs(PetNestHudModel other)
@@ -32,6 +33,7 @@ namespace BossRush
             return Visible == other.Visible
                 && Mathf.Approximately(HealthRatio, other.HealthRatio)
                 && ScarCount == other.ScarCount
+                && Level == other.Level
                 && Downed == other.Downed;
         }
     }
@@ -172,6 +174,7 @@ namespace BossRush
                 if (pet != null)
                 {
                     model.ScarCount = (pet.scars != null ? pet.scars.Count : 0) + pet.mergedOldScarCount;
+                    model.Level = pet.level;
                     model.Downed = pet.state == (int)PetNestPetState.Downed;
                 }
             }
@@ -221,7 +224,8 @@ namespace BossRush
                 return L10n.T("重伤退场", "Carried off");
             }
             int percent = (int)Mathf.Round(model.HealthRatio * 100f);
-            string text = L10n.T("血量", "HP") + " " + percent + "%";
+            // 等级摆在血量前面：养成的回报现在真的作用在属性上，局内得看得见它长到几级了
+            string text = "Lv" + model.Level + "   " + L10n.T("血量", "HP") + " " + percent + "%";
             if (model.ScarCount > 0)
             {
                 text += "   " + L10n.T("战痕", "Scars") + " " + model.ScarCount;

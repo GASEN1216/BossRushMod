@@ -1221,6 +1221,8 @@ internal static class Program
         SkyIslandMosquitoRegression.Run(Check);
         SkyIslandGnatDodgeSimulation.Run(Check);
         SkyIslandBossRulesRegression.Run(Check);
+        SkyIslandChatterRegression.Run(Check);
+        SkyIslandMarriageTextRegression.Run(Check);
         SkyIslandOfficialQuestRegression.Run(Check);
         SkyIslandNavigationRegression.Run(Check);
         SkyIslandFeedbackRegression.Run(Check);

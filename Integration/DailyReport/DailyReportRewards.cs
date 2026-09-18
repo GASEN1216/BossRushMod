@@ -55,6 +55,8 @@ namespace BossRush
                 return false;
             }
 
+            Item item = null;
+            bool delivered = false;
             try
             {
                 int typeId = PickRewardTypeId(quality, seed, dayIndex, slot);
@@ -66,7 +68,13 @@ namespace BossRush
                     return false;
                 }
 
-                Item item = ItemAssetsCollection.InstantiateSync(typeId);
+                // 官方缺 prefab 时会返回同 TypeID 的空壳；不能把空壳当作已兑现的奖励。
+                if (ItemAssetsCollection.Instance == null || ItemAssetsCollection.GetPrefab(typeId) == null)
+                {
+                    failureReason = "prefab_unavailable";
+                    return false;
+                }
+                item = ItemAssetsCollection.InstantiateSync(typeId);
                 if (item == null)
                 {
                     failureReason = "instantiate_failed";
@@ -83,10 +91,9 @@ namespace BossRush
                 if (sent <= 0 && fallbackDelivered <= 0)
                 {
                     failureReason = "deliver_failed";
-                    // 快递与回退两路都没送出去，此时物品确为无主游离树，销毁避免泄漏
-                    TryDestroy(item);
                     return false;
                 }
+                delivered = true;
 
                 if (sent <= 0)
                 {
@@ -106,6 +113,10 @@ namespace BossRush
                 failureReason = "exception:" + e.GetType().Name;
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[ERROR] 里程碑发奖异常: " + e.Message);
                 return false;
+            }
+            finally
+            {
+                if (!delivered) TryDestroy(item);
             }
         }
 
@@ -194,12 +205,7 @@ namespace BossRush
 
             int[] built = BuildCandidates(quality);
 
-            // 空结果不入缓存。官方 Search 自带降品质兜底（result.Length < 1 就一路降到
-            // quality < 0，见 鸭科夫源码/ItemStatsSystem/ItemAssetsCollection.cs:270-277），
-            // 合法的空池几乎不可能出现，所以空数组必然是 ItemAssetsCollection 未就绪或
-            // Search 瞬时异常的故障残影。缓存它会把一次瞬时失败放大成该品质整会话
-            // no_candidate，每次开面板补发都失败刷 WARNING。
-            // 非空结果照旧缓存：全表扫描不能每次签到都跑。
+            // 精确品质可能暂时没有候选，留债重试；空结果不固化，非空池只扫描一次。
             if (built == null || built.Length <= 0) return built;
 
             lock (_lock)
@@ -224,7 +230,8 @@ namespace BossRush
                 filter.maxQuality = quality;
                 filter.caliber = string.Empty;
 
-                int[] raw = ItemAssetsCollection.Search(filter);
+                // Search 会在空池时偷偷降品质；复用官方精确过滤入口，保持承诺的品质。
+                int[] raw = ItemAssetsCollection.GetAllTypeIds(filter);
                 if (raw == null || raw.Length <= 0) return new int[0];
 
                 List<int> safe = new List<int>(raw.Length);
@@ -236,6 +243,8 @@ namespace BossRush
                     safe.Add(id);
                 }
 
+                // 官方动态表/HashSet 的枚举顺序不稳定；排序后确定性种子才有确定性奖品。
+                safe.Sort();
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "品质 " + quality
                     + " 候选池：" + safe.Count + " 件（原始 " + raw.Length + " 件）");
                 return safe.ToArray();

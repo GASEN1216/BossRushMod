@@ -190,7 +190,7 @@ def check(sources):
     ):
         require(token in givers, GIVERS + "：" + why + "（缺 " + token + "）")
     fallback = givers.split("internal static void EnsureDeviceFallback(", 1)[1].split("private static bool HasAttachedGiver(", 1)[0]
-    require("HasAttachedGiver(giverId)" in fallback and "session.FindResidentQuestOwner(resident)" in fallback,
+    require("resident == null || HasAttachedGiver(giverId)" in fallback and "session.FindResidentQuestOwner(resident)" in fallback,
             GIVERS + " 居民存在不能代替给予者接线成功；UI 后就绪要补回居民原组")
     require("SkyIslandOfficialQuestGivers.AttachResident(interaction.transform, standaloneGroup, id);" in residents,
             RESIDENTS + " 普通居民交互路径也必须接任务给予者")
@@ -258,7 +258,7 @@ def main():
         (PRELUDE, "story.IsCurrentSlot && storyReady", "story.IsCurrentSlot"),
         (PRELUDE, "storyReady = false;", "storyReady = true;"),
         (GIVERS, "context.BundleDeployed = SkyIslandPreludeFlow.BundleDeployed;", "context.BundleDeployed = SkyIslandRaidLease.IsBundleDeployed();"),
-        (GIVERS, "HasAttachedGiver(giverId)", "session.HasResident(resident)"),
+        (GIVERS, "resident == null || HasAttachedGiver(giverId)", "resident == null || session.HasResident(resident)"),
         (GIVERS, "session.FindResidentQuestOwner(resident)", "null"),
         (RESIDENTS, "SkyIslandOfficialQuestGivers.AttachResident(interaction.transform, standaloneGroup, id);", ""),
         (TABLE, 'LocalizationHelper.InjectLocalization("BossRush_SkyIsland_QuestGiver",', 'LocalizationHelper.InjectLocalization("unused",'),

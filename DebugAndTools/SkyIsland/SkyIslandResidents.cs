@@ -232,8 +232,7 @@ namespace BossRush
             if (relationship != null)
             {
                 List<InteractableBase> group = NPCInteractionGroupHelper.GetOrCreateGroupList(relationship, "[SkyIslandResidents]");
-                NPCInteractionGroupHelper.AddSubInteractable(relationship.transform, "IslandStoryOption", group,
-                    (SkyIslandResidentInteractable component) => component.Bind(id, displayName, npc.transform, onTalk, IsValid));
+                SkyIslandResidentInteractable.AttachPermanent(npc, id);
                 // 发任务的居民再挂一个官方任务给予者（同组、不抢交互位）；官方任务符号全在 SkyIslandOfficialQuestGivers。
                 SkyIslandOfficialQuestGivers.AttachResident(relationship.transform, group, id);
                 return;

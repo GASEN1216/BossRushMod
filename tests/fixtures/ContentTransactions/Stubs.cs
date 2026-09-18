@@ -192,11 +192,11 @@ namespace BossRush
     static class DailyReportTuning { public const string LogPrefix = "DailyReport"; }
     class DailyReportData
     {
-        public bool BountyCompleted, BountyRewardClaimed; public string BountyKindId; public int BountyDayIndex;
+        public bool BountyCompleted, BountyRewardClaimed; public string BountyKindId; public int BountyDayIndex, BountyTarget; public long BountyCashReward, PendingBountyCash;
         public DailyReportData Clone() { return (DailyReportData)MemberwiseClone(); }
     }
     class DailyReportBountyDef { public string Id = "bounty"; public long CashReward = 700; }
-    static class DailyReportBounty { public static DailyReportBountyDef SelectForDay(long seed, int day) { return new DailyReportBountyDef(); } }
+    static class DailyReportBounty { public static DailyReportBountyDef Rebuild(string id, int target) { return new DailyReportBountyDef(); } public static DailyReportBountyDef SelectForDay(long seed, int day) { return new DailyReportBountyDef(); } }
     static class DailyReportStatsCollector { public static bool Suppressed; public static void SetMoneyDeltaSuppressed(bool value) { Suppressed = value; } }
     static partial class DailyReportService
     {
@@ -241,6 +241,11 @@ namespace BossRush
     {
         public static HashSet<string> Unlocked = new HashSet<string>();
         public static void TryUnlock(string id) { Unlocked.Add(id); }
+    }
+    static class BossRushQualityItemPool
+    {
+        public static int[] GetCandidates(int quality) { return new int[] { 101 }; }
+        public static void ResetStaticCaches() { }
     }
     static class BackMountainItems
     {

@@ -56,6 +56,7 @@ namespace BossRush
 
         internal static void InjectLocalizations()
         {
+            SkyIslandResidentInteractable.InjectLocalizations();
             // 交互体只在 Awake / Start 读取 key；已有目标随全局语言注入刷新，不重建场景对象。
             LocalizationHelper.InjectLocalization(DepartureNameKey,
                 L10n.T("前往天空岛 · 晴岚群岛", "Depart for Sky Islands · Qinglan"));

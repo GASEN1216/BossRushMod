@@ -56,6 +56,9 @@ namespace BossRush
                     + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Injury_Rested"));
             }
 
+            ModeHProfileDto rewardOwner = operation != null ? FindSeasonProfile(operation.rewardProfileId) : null;
+            if (rewardOwner != null) page.Lines.Add(ResolveProfileDisplayName(rewardOwner.profileId)
+                + L10n.T(" · 名声：", " · Fame: ") + rewardOwner.fameDisplayCount);
             // 战痕候选先于整备呈现：它是不可逆的，且满三条时要玩家指名替换哪一条。
             // 此前这一步在 BeginMatchSettlement 里被替玩家做掉了，结算页只字不提。
             BuildSettlementScarActions(page, report);
@@ -68,6 +71,8 @@ namespace BossRush
                 {
                     string kitId = operation.candidateKitIds[i];
                     string selectedKitId = kitId;
+                    page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId)
+                        + ": " + L10n.T(ModeHConfig.LocalizationKeyPrefix + "Kit_" + kitId + "_Desc"));
                     page.Actions.Add(new ModeHActionData
                     {
                         // kitId 是内部 ID（如 "assault_starter"）。32 条 Kit_ 文案早已注入，
@@ -241,6 +246,7 @@ namespace BossRush
             page.Lines.Add(L10n.T("战痕候选：", "Scar offer: ") + scarName + "　"
                 + ResolveProfileDisplayName(profile.profileId) + "　#" + report.matchIndex);
 
+            page.Lines.Add(L10n.T(ModeHConfig.LocalizationKeyPrefix + "Scar_" + report.scarOfferId + "_Desc"));
             string offerId = report.scarOfferId;
             string operationId = report.seasonRewardOperationId;
             long ownerToken = _runState.OwnerToken;

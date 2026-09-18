@@ -335,6 +335,7 @@ namespace BossRush
             try
             {
                 PermanentDuckNpcInteractable.Attach(npc, blueprint.id);
+                SkyIslandResidentInteractable.AttachPermanent(npc, blueprint.id);
             }
             catch (Exception e)
             {
@@ -449,8 +450,18 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 由婚姻系统的泛化分支调用：在指定位置强制生成一只永久 NPC（婚礼教堂用）。
+        /// 离婚时回收真实配偶及登记；原居民由其场景 owner 在后续进入时恢复。
         /// </summary>
+        internal static void ReleaseDivorcedNpc(string npcId)
+        {
+            if (!PermanentDuckNpcRegistry.IsPermanentDuckNpc(npcId)) return;
+            CharacterMainControl npc = PermanentDuckNpcRegistry.GetInstance(npcId);
+            if (npc != null) DuckNpcSpawner.Despawn(npc);
+            PermanentDuckNpcRegistry.UnregisterInstance(npcId);
+            // 原居住场景由蓝图与场景 owner 决定；天空岛居民下一趟回岛，不能在基地重刷。
+        }
+
+        /// <summary>由婚姻 owner 在指定位置恢复永久 NPC，异步完成前后均复核请求。</summary>
         internal static async UniTask<CharacterMainControl> ForceSpawnAtAsync(
             string npcId, Vector3 position, bool stayStill, Func<bool> isRequestValid = null)
         {

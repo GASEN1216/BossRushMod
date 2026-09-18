@@ -259,25 +259,25 @@
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            { "cn": "回来啦？锅还温着，先洗手。", "en": "You're home? The pot's still warm. Wash your hands." },
-            { "cn": "鞋又湿了？放门边，我给你找双干的。", "en": "Wet boots again? Leave them by the door. I'll find a dry pair." }
+            { "cn": "忙完啦？饿了就歇一会儿，别光顾着赶路。", "en": "Done for now? Rest if you're hungry. Don't spend all day rushing." },
+            { "cn": "鞋又湿了？可别硬撑，咱们找机会换双干的。", "en": "Wet boots again? Don't tough it out. Let's find you a dry pair when we can." }
           ],
           "dialogue_idle_married": [
             { "cn": "明天种点什么？这次听你的。", "en": "What shall we plant tomorrow? Your pick this time." },
-            { "cn": "你坐着，我把这把菜择完就来。", "en": "Sit down. I'll join you after sorting these greens." }
+            { "cn": "再忙也得歇歇，陪我说会儿话吧。", "en": "Even busy days need a pause. Stay and talk with me a little." }
           ],
           "dialogue_farewell_married": [
             { "cn": "饭给你留着，别赶路赶得忘了吃。", "en": "I'll save you dinner. Don't forget to eat out there." },
-            { "cn": "早点回来，别让我把菜热第三遍。", "en": "Come home early. Don't make me reheat dinner three times." }
+            { "cn": "别太逞强，饭要好好吃，路要慢慢走。", "en": "Don't push yourself too hard. Eat well and take your time." }
           ],
           "dialogue_after_gift_married": [
-            { "cn": "又给我带东西？快腾只手来接碗。", "en": "More gifts? Free up a hand and take this bowl." }
+            { "cn": "又给我带东西？你自己的那份也要留着。", "en": "More gifts? Keep something for yourself too." }
           ],
           "gift_positive_married": [
             { "cn": "正想买这个呢，你倒先带回来了。", "en": "I was going to buy this. You beat me to it." }
           ],
           "gift_normal_married": [
-            { "cn": "先放桌上吧，一会儿一起收。", "en": "Leave it on the table. We'll put it away together." }
+            { "cn": "我先收好了。你的心意，我记着呢。", "en": "I'll keep it safe. I know the thought you put into it." }
           ]
         }
       }
@@ -377,12 +377,12 @@
         },
         "marriedDialogues": {
           "dialogue_greeting_married": [
-            { "cn": "回来啦。把门带上，风要吹跑我的图纸。", "en": "You're home. Shut the door before my plans blow away." },
-            { "cn": "听见你开门了，灯给你留着呢。", "en": "Heard the door. I left the light on for you." }
+            { "cn": "在呢。想我了，还是又惦记航路上的事？", "en": "I'm here. Missing me, or thinking about the lanes again?" },
+            { "cn": "听见你喊我了。什么事这么着急？慢慢说。", "en": "I heard you call. What's the hurry? Take your time." }
           ],
           "dialogue_idle_married": [
             { "cn": "这盏灯留在家里，不拿去卖。", "en": "This lamp stays here. It's not for sale." },
-            { "cn": "今晚歇工，陪我听会儿风铃。", "en": "No more work tonight. Sit and listen to the chimes with me." }
+            { "cn": "忙完这阵，陪我听会儿风铃。", "en": "Once things settle down, listen to the chimes with me." }
           ],
           "dialogue_farewell_married": [
             { "cn": "灯我会修，你可别把自己磕坏了。", "en": "I can fix a lamp. Please don't break yourself." },

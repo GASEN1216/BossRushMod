@@ -54,6 +54,11 @@ namespace BossRush
 
         #endregion
 
+        internal void ShareFieldLayers(ModeHCommandFireContext context)
+        {
+            if (context != null) _fireContext.FieldLayers = context.FieldLayers;
+        }
+
         #region 赛前锁定
 
         /// <summary>
@@ -68,26 +73,44 @@ namespace BossRush
             for (int i = 0; i < ModeHStableIds.AllCommonCommands.Length; i++)
             {
                 string commandId = ModeHStableIds.AllCommonCommands[i];
-                if (ModeHCommandCompatibilityRegistry.IsCommandSelectable(starterStableKey, commandId))
+                if (IsSelectableForRole(starterStableKey, commandId, false)
+                    || IsSelectableForRole(relayStableKey, commandId, true))
                 {
                     result.Add(commandId);
                 }
             }
             if (!string.IsNullOrEmpty(starterSignatureCommandId)
-                && ModeHCommandCompatibilityRegistry.IsCommandSelectable(
-                    starterStableKey, starterSignatureCommandId))
+                && IsSelectableForRole(starterStableKey, starterSignatureCommandId, false))
             {
                 result.Add(starterSignatureCommandId);
             }
             if (!string.IsNullOrEmpty(relayStableKey)
                 && !string.IsNullOrEmpty(relaySignatureCommandId)
-                && ModeHCommandCompatibilityRegistry.IsCommandSelectable(
-                    relayStableKey, relaySignatureCommandId))
+                && IsSelectableForRole(relayStableKey, relaySignatureCommandId, true))
             {
                 if (!result.Contains(relaySignatureCommandId)) result.Add(relaySignatureCommandId);
             }
             result.Sort(StringComparer.Ordinal);
             return result;
+        }
+
+        private static bool IsSelectableForRole(string stableKey, string commandId, bool isRelay)
+        {
+            ModeHCommandSpec spec = ResolveSpec(commandId);
+            return !string.IsNullOrEmpty(stableKey) && spec != null
+                && (!spec.RequiresRelayEntered || isRelay)
+                && ModeHCommandCompatibilityRegistry.IsCommandSelectable(stableKey, commandId);
+        }
+
+        internal static string ResolveCommandOwner(string commandId, ModeHProfileDto starter, ModeHProfileDto relay)
+        {
+            ModeHCommandSpec spec = ResolveSpec(commandId);
+            if (spec == null || !spec.IsSignature) return null;
+            bool starterOwns = starter != null && starter.signatureCommandId == commandId
+                && !spec.RequiresRelayEntered;
+            bool relayOwns = relay != null && relay.signatureCommandId == commandId;
+            if (starterOwns && relayOwns) return null; // 两名持有者均可响应。
+            return relayOwns ? relay.profileId : (starterOwns ? starter.profileId : null);
         }
 
         /// <summary>锁盘：冻结本场口令与拍铃次数。</summary>

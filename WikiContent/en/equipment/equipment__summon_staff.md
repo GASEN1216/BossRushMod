@@ -2,7 +2,7 @@
 
 ### What Is It?
 
-A **summoner melee staff** with modest personal damage but a right-click that pulls 3 soul warriors from the void to fight for you. Play it safe — let the summons draw aggro while you pick your spots.
+A **summoner melee staff** with modest personal damage, but its right-click tears space open **6m ahead of your aim** and drops 3 soul warriors straight into the enemy pack. They soak fire, and when they fade or fall they detonate on the spot — this is a "where and when do I throw them" weapon, not a "press right-click for three more bodies" weapon.
 
 - **Type**: Melee / **Quality**: 5
 - **Drop**: 20% from Big Xing (works on vanilla maps too) / Dingdang's Shop (Affinity 5, stock 1)
@@ -13,23 +13,39 @@ A **summoner melee staff** with modest personal damage but a right-click that pu
 - Dmg 18 / Speed 1.2 / Range 1.8m / Crit 4% / Crit Dmg 1.3x / Pierce 1 / Hit Delay 0.1s
 - Block 0.3 / Stamina 6/hit / Bleed 0% / Move Speed 105%
 
-### Soul Summon (Right Click)
+### Soul Projection (Right Click)
 
 - **Cooldown**: 12s / **Cast cost**: 12 stamina (separate from 6 per melee swing)
-- Summons **3 soul warriors** around you (2.2m radius)
+- Summons **3 soul warriors** **6m ahead of your aim**, spread 2.2m around the drop point
+- A wall in the way shortens the throw automatically; if no ground is found the drop falls back to your feet
 - Each has **80 HP**, fights on your side, pursues enemies
-- Lasts **15 seconds**, then fades (or dies from damage)
+- Lasts **12 seconds**, then fades (or dies from damage)
 - Inactive if you already have 3 active summons — wait for them to expire first
+
+### Soul Burst (Passive)
+
+- Every soul warrior detonates when it **fades or falls**
+- **45 ghost damage** within **3m**
+- **Never harms you or your allies**
+- All three bursting on the same pack adds up to 135
+
+### Staff or Frostmourne?
+
+Both summon, but they are opposite tools:
+
+- **Frostmourne** (Quality 6): **5 permanent undead** hugging you, no timer, they fight until they die — melee brawl, bodyguard duty
+- **Summoning Staff** (Quality 5): **3 short-lived souls** thrown downrange, collected 12 s later along with their explosions — ranged placement, burst creation
 
 ### What It Looks Like
 
-Swings leave a **soul-purple trail**. Casting lights a rune ring under the caster, and each of the three soul warriors gets its own small ring at its landing spot, over a summoning tone that resolves into a solid thud when they arrive.
+Swings leave a **soul-purple trail**. Casting lights a rune ring under the caster, and each of the three soul warriors gets its own small ring at its landing spot, over a summoning tone that resolves into a solid thud. When a warrior fades or drops, a larger purple ring blows open where it stood — that ring is your confirmation that the burst resolved.
 
 ### Tips
 
 - Personal damage stats are intentionally low (18 dmg, 4% crit) — you're not the carry
-- 3 summons effectively split boss aggro, giving you safe windows to attack
-- 12s cooldown vs 15s lifetime means near-seamless uptime if you summon immediately on expiry
-- Shines most in Zombie Mode or multi-enemy scenarios where summons absorb attention
+- A good drop point means the summons soak fire *and* all detonate together 12 s later
+- 12s cooldown against a 12s lifetime gives a clean loop: throw → soak → burst → throw again
+- Against stationary bosses: drop them right on top of the boss, all three bursts land
+- Against mobile enemies: drop them on the choke point you want covered and treat the bursts as mines
 
-[tip] The summons look like zombies but fight for you. Use them as meat shields against boss abilities to buy time.
+[tip] The summons look like zombies but fight for you. They burst when killed too — so throwing them into the thickest pack pays better than parking them somewhere safe.

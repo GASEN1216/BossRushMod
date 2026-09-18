@@ -18,8 +18,8 @@
 //   2. context 只由主角自身的 4 个位置重建（手持 + 护甲 + 头盔 + 面罩）。
 //      NPC 手持同款武器、仓库/背包里的闲置装备一律不进 context —— 因此
 //      **context 为空时战斗订阅必须立即退订**：订阅数与激活词缀严格同生共死。
-//   3. 每帧热路径（OnGlobalHurt / OnGlobalDead / OnMainCharacterShoot / TickDrain）
-//      零日志、零分配、零 GetComponent；异常整体自吞，避免截断同一静态事件上
+//   3. 每帧热路径不写日志、不 GetComponent；殉爆仅在实际触发时建延迟协程，
+//      不在死亡事件栈里调用官方爆炸（其命中缓冲不支持重入）。异常整体自吞，避免截断
 //      其它订阅者（图鉴 / 日报 / Mutators / DragonSet / ThunderSet 都在同一条多播链上）。
 //   4. 常驻型词缀（鹰目 / 狂血 / 玻璃炮）用运行时 Modifier 挂在角色 CharacterItem 的
 //      Stat 上，**绝不**走 EquipmentHelper.AddModifierToItem（那会写进装备的持久
@@ -132,7 +132,13 @@ namespace BossRush
         public static void ShutdownRuntime()
         {
             UnsubscribeStructural();
+            ClearActiveContext();
+            _dispatching = false;
+        }
 
+        /// <summary>清掉当前装备效果，保留结构订阅供换装 / 新角色就绪后重建。</summary>
+        private static void ClearActiveContext()
+        {
             _active.Clear();
             RemoveAllPersistentModifiers();
 
@@ -140,7 +146,6 @@ namespace BossRush
             SyncCombatSubscriptions();
             SyncTicker();
 
-            _dispatching = false;
             _shotGateOpen = false;
             _lastShotTime = -999f;
         }
@@ -379,7 +384,7 @@ namespace BossRush
                 }
 
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null)
+                if (main == null || main.Health == null || main.Health.IsDead)
                 {
                     SyncCombatSubscriptions();
                     SyncTicker();
@@ -589,7 +594,7 @@ namespace BossRush
         }
 
         // ====================================================================
-        // 热路径：三个战斗事件 handler（零日志、零分配）
+        // 热路径：三个战斗事件 handler（殉爆按触发调度，不在事件栈内扫描）
         // ====================================================================
 
         /// <summary>
@@ -616,7 +621,7 @@ namespace BossRush
                 }
 
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null)
+                if (main == null || main.Health == null || main.Health.IsDead)
                 {
                     return;
                 }
@@ -708,13 +713,21 @@ namespace BossRush
         {
             try
             {
-                if (_dispatching || _active.Count == 0 || health == null)
+                if (health == null) return;
+                // 官方先 OnDead 后 OnHurt：死亡立即作废旧词缀与延迟殉爆，
+                // 不能让致死受击再加磐石 / 反弹，或局内复活后接上上一条命的结算。
+                if (health.IsMainCharacterHealth)
+                {
+                    ClearActiveContext();
+                    return;
+                }
+                if (_dispatching || _active.Count == 0)
                 {
                     return;
                 }
 
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main == null)
+                if (main == null || main.Health == null || main.Health.IsDead)
                 {
                     return;
                 }

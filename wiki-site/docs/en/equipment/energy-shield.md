@@ -14,12 +14,12 @@ A **totem-slot defensive item** that converts frontal incoming damage into healt
 
 ## Frontal Absorption (Passive)
 
-When hit from the **front (±60° arc)**:
+When hit from the **front (±60° arc measured from the direction you are currently aiming)**:
 - Recover **30%** of the damage taken as HP
 - Capped at **25 HP** per trigger
 - Maximum **once every 0.5 seconds**
 
-Side and rear attacks do **not** trigger the healing.
+Side and rear attacks do **not** trigger the healing. The check uses the direction your character is actually facing (the same direction you aim), not the direction you are moving — when something is chasing you, turn and face it.
 
 ## What It Looks Like
 

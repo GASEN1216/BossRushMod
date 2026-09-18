@@ -149,7 +149,9 @@ namespace BossRush
         /// </summary>
         internal static void Tick(float realDeltaSeconds)
         {
-            if (realDeltaSeconds <= 0f) return;
+            if (realDeltaSeconds <= 0f || float.IsNaN(realDeltaSeconds) || float.IsInfinity(realDeltaSeconds)) return;
+            // 主菜单/加载期间没有官方时钟，不用默认倍率偷跑日报。
+            if (GameClock.Instance == null) return;
 
             // 加载完成后的首帧 deltaTime 可能是个大尖峰，钳一下避免把一次卡顿算成几分钟游戏时间。
             if (realDeltaSeconds > DailyReportTuning.MaxRealDeltaPerFrame)
@@ -195,7 +197,11 @@ namespace BossRush
             try
             {
                 GameClock clock = GameClock.Instance;
-                if (clock != null && clock.clockTimeScale > 0f) return clock.clockTimeScale;
+                if (clock != null)
+                {
+                    float scale = clock.clockTimeScale;
+                    return scale >= 0f && !float.IsNaN(scale) && !float.IsInfinity(scale) ? scale : 0f;
+                }
             }
             catch (Exception)
             {
@@ -286,6 +292,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
+                _settleRetryAfterRealtime = Time.realtimeSinceStartup + SettleRetryBackoffSeconds;
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[ERROR] 跨天结算异常: " + e.Message);
             }
         }
@@ -343,7 +350,8 @@ namespace BossRush
             {
                 DailyReportData data = DailyReportPersistence.Current;
                 if (data == null) return null;
-                return DailyReportBounty.SelectForDay(EnsureBountySeed(data), data.DayIndex);
+                long seed = EnsureBountySeed(data);
+                return seed != 0L ? DailyReportBounty.SelectForDay(seed, data.DayIndex) : null;
             }
             catch (Exception)
             {
@@ -375,6 +383,9 @@ namespace BossRush
         internal static long EnsureBountySeed(DailyReportData data)
         {
             if (data == null) return 0L;
+            // 调用方可能在上一次候选提交前取得 DTO；权威缓存可能已换过实例。
+            data = DailyReportPersistence.Current;
+            if (data == null) return 0L;
             if (data.BountySeed != 0L) return data.BountySeed;
 
             DailyReportData candidate = data.Clone();
@@ -400,31 +411,20 @@ namespace BossRush
 
         /// <summary>
         /// 结算刚结束那一天的悬赏。必须在 Today 被重置之前调用。
-        /// 达成则立刻发奖并记 claimed；发奖失败保留未领状态，由玩家下次开报纸时补发。
+        /// 冻结奖金与结果；整份候选提交成功后才发钱，失败保留欠款。
         /// </summary>
         private static void StageBountySettlement(DailyReportData data)
         {
             try
             {
-                // 上一天还欠着没发出去的悬赏奖金时，**不能**改写这对字段：
-                // BountyCompleted/BountyRewardClaimed 是这笔债务唯一的载体，
-                // 而唯一的补发入口 TryRedeliverPendingBountyReward 的前置条件正是它俩。
-                // 无条件覆盖等于把债务的生存期压成一个游戏日（约 24 现实分钟），
-                // 玩家错过就静默消失、日志里也没有任何记录。
-                // 发放失败是真实可达的：官方 EconomyManager.Instance 为空时 Add 直接返回 false。
-                bool hasUnpaidBounty = data.BountyCompleted && !data.BountyRewardClaimed;
-                if (hasUnpaidBounty)
-                {
-                    // 日期参与奖金的确定性抽取，必须与 kind/target 一起冻结到补发成功。
-                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                        + "上一笔悬赏奖金尚未发放，保留待发债务，本日不覆盖悬赏状态");
-                    return;
-                }
+                // 现金可合并记账：先归档旧欠款，再独立结算今天；不因旧奖未到而吞新奖。
+                data.PendingBountyCash = GetPendingBountyCash(data);
 
                 DailyReportBountyDef def = DailyReportBounty.SelectForDay(
                     EnsureBountySeedInCandidate(data), data.DayIndex);
                 if (def == null)
                 {
+                    data.BountyCashReward = 0L;
                     data.BountyKindId = string.Empty;
                     data.BountyTarget = 0;
                     data.BountyProgress = 0;
@@ -437,6 +437,7 @@ namespace BossRush
                 int progress = DailyReportBounty.EvaluateProgress(def, today);
                 bool completed = progress >= def.Target && def.Target > 0;
 
+                data.BountyCashReward = def.CashReward;
                 data.BountyDayIndex = data.DayIndex;
                 data.BountyKindId = def.Id;
                 data.BountyTarget = def.Target;
@@ -447,6 +448,7 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 悬赏结算异常: " + e.Message);
+                throw; // 不能让 rollover 在欠款无法还原时仍清空今日统计。
             }
         }
 
@@ -460,24 +462,17 @@ namespace BossRush
             {
                 DailyReportData data = DailyReportPersistence.Current;
                 if (data == null) return;
-                if (!data.BountyCompleted || data.BountyRewardClaimed) return;
-                if (string.IsNullOrEmpty(data.BountyKindId)) return;
-                // 与 SettleBounty 同理：写屏障下补发同样会造成跨会话重复发钱
                 if (DailyReportPersistence.IsStoreFaulted || DailyReportPersistence.HasWriteBarrier) return;
-
-                DailyReportBountyDef settled = DailyReportBounty.SelectForDay(
-                    EnsureBountySeed(data), data.BountyDayIndex);
-                if (settled == null || !string.Equals(settled.Id, data.BountyKindId, StringComparison.Ordinal))
-                {
-                    return;
-                }
+                long amount = GetPendingBountyCash(data);
+                if (amount <= 0L) return;
 
                 string reason;
                 if (!DailyReportSaveCoordinator.TryPrepareCashReward()) return;
-                if (DailyReportRewards.TryGrantBountyCash(settled.CashReward, out reason))
+                if (DailyReportRewards.TryGrantBountyCash(amount, out reason))
                 {
                     DailyReportData candidate = data.Clone();
-                    candidate.BountyRewardClaimed = true;
+                    candidate.PendingBountyCash = 0L;
+                    candidate.BountyRewardClaimed = candidate.BountyCompleted;
                     if (Persist(candidate))
                     {
                         ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "悬赏奖金补发成功");
@@ -493,6 +488,26 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 悬赏补发异常: " + e.Message);
             }
+        }
+
+        /// <summary>只读计算欠款；旧 v1 尚未冻结金额时按既有种类/目标还原，不重新抽题。</summary>
+        internal static long GetPendingBountyCash(DailyReportData data)
+        {
+            if (data == null) return 0L;
+            long amount = data.PendingBountyCash;
+            if (data.BountyCompleted && !data.BountyRewardClaimed)
+            {
+                long latest = data.BountyCashReward;
+                if (latest <= 0L)
+                {
+                    DailyReportBountyDef def = DailyReportBounty.Rebuild(data.BountyKindId, data.BountyTarget);
+                    if (def == null || def.CashReward <= 0L)
+                        throw new InvalidOperationException("Cannot restore earned bounty cash");
+                    latest = def.CashReward;
+                }
+                amount = checked(amount + latest);
+            }
+            return amount;
         }
 
         #endregion
@@ -811,7 +826,7 @@ namespace BossRush
         /// <summary>累计造成的伤害，并顺带维护最大单次伤害。</summary>
         internal static void ReportDamageDealt(float amount)
         {
-            if (amount <= 0f) return;
+            if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)) return;
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
             today.DamageDealt += amount;
@@ -821,7 +836,7 @@ namespace BossRush
         /// <summary>累计承受的伤害。</summary>
         internal static void ReportDamageTaken(float amount)
         {
-            if (amount <= 0f) return;
+            if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)) return;
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
             today.DamageTaken += amount;
@@ -898,6 +913,7 @@ namespace BossRush
                 _initialized = false;
             }
             _pendingIssueBanner = false;
+            _settleRetryAfterRealtime = 0f;
         }
 
         /// <summary>提示已发出，清挂起标志。</summary>
@@ -957,6 +973,7 @@ namespace BossRush
             }
             _pendingIssueBanner = false;
             _rolloverCount = 0;
+            _settleRetryAfterRealtime = 0f;
         }
 
         #endregion

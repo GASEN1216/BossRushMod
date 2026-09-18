@@ -602,6 +602,13 @@ namespace BossRush
         }
 
         /// <summary>威胁最高者为核心；同分按 stable key ordinal 取小者，保证确定性。</summary>
+        internal static string GetHighThreatCoreStableKey(ModeHMatchPlanDto plan)
+        {
+            if (plan == null || plan.publicSummary == null || !plan.publicSummary.hasHighThreatCore) return null;
+            int index = PickCoreIndex(plan.enemyStableKeys);
+            return index >= 0 ? plan.enemyStableKeys[index] : null;
+        }
+
         private static int PickCoreIndex(IList<string> units)
         {
             int bestIndex = -1;
@@ -837,22 +844,17 @@ namespace BossRush
             // 骨架与剧本的公开标签同样进入摘要（赔率的口令相合/冲突读这一份）
             AppendTags(synergyTags, skeleton.PublicTags);
             AppendTags(synergyTags, entryScript.PublicTags);
-            AppendTags(synergyTags, condition.PublicTags);
+            // 只有已接到战痕的环境标签参与对应战痕；其余条件不伪装成地图效果。
+            if (condition.ConditionId == "danger_edge" || condition.ConditionId == "open_field")
+                synergyTags.Add(condition.ConditionId);
             synergyTags.Sort(StringComparer.Ordinal);
             summary.synergyTags = synergyTags;
 
             // 带伤敌人数量属于侦察 current_injury 才揭示的隐藏字段
             summary.visibleWoundedEnemyCount = 0;
 
-            List<string> anomalies = new List<string>();
-            for (int i = 0; i < units.Count; i++)
-            {
-                ModeHProfileTemplate template = ModeHProfileRegistry.GetByStableKey(units[i]);
-                if (template == null || string.IsNullOrEmpty(template.AnomalyId)) continue;
-                anomalies.Add(template.AnomalyId);
-            }
-            anomalies.Sort(StringComparer.Ordinal);
-            summary.visibleAnomalyIds = anomalies;
+            // 敌方仅使用官方预设 AI；选手侧的胆怯与 ERROR 不投影成敌方实战能力。
+            summary.visibleAnomalyIds = new List<string>();
 
             summary.coreTraitTags = new List<string>();
             summary.reconRevealKey = string.Empty;
@@ -888,7 +890,7 @@ namespace BossRush
                 return false;
             }
             ModeHReconChoiceSpec choice = GetReconChoice(reconChoiceId);
-            if (choice == null)
+            if (choice == null || !IsReconChoicePlayable(choice))
             {
                 failureReasonId = "recon_choice_unknown";
                 return false;
@@ -912,7 +914,7 @@ namespace BossRush
             }
             else if (string.Equals(choice.RevealField, "visibleWoundedEnemyCount", StringComparison.Ordinal))
             {
-                plan.publicSummary.visibleWoundedEnemyCount = skeleton != null ? skeleton.WoundedUnits : 0;
+                plan.publicSummary.visibleWoundedEnemyCount = GetWoundedEnemyCount(plan);
             }
             else if (string.Equals(choice.RevealField, "entryOrderHint", StringComparison.Ordinal))
             {
@@ -957,6 +959,30 @@ namespace BossRush
             string[] parts = new string[sizes.Count];
             for (int i = 0; i < sizes.Count; i++) parts[i] = sizes[i].ToString();
             return string.Join("-", parts);
+        }
+
+        internal static int GetWoundedEnemyCount(ModeHMatchPlanDto plan)
+        {
+            ModeHSkeletonSpec skeleton = plan != null ? GetSkeleton(plan.skeletonId) : null;
+            return skeleton == null || plan.enemyStableKeys == null ? 0
+                : Math.Max(0, Math.Min(skeleton.WoundedUnits, plan.enemyStableKeys.Count));
+        }
+
+        internal static bool IsWoundedEnemy(ModeHMatchPlanDto plan, int slot)
+        {
+            int count = GetWoundedEnemyCount(plan);
+            if (count <= 0 || slot < 0 || slot >= plan.enemyStableKeys.Count) return false;
+            int core = PickCoreIndex(plan.enemyStableKeys);
+            if (slot == core) return true;
+            return slot - (slot > core ? 1 : 0) < count - 1;
+        }
+
+        internal static bool IsReconChoicePlayable(ModeHReconChoiceSpec choice)
+        {
+            // 怪癖保留为履历；伤势、批次与核心能力都来自同一份实际出战计划。
+            return choice != null && (choice.RevealField == "entryOrderHint"
+                || choice.RevealField == "visibleWoundedEnemyCount"
+                || choice.RevealField == "secondaryEquipmentHint");
         }
 
         private static ModeHReconChoiceSpec GetReconChoice(string reconChoiceId)

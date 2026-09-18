@@ -310,6 +310,7 @@ namespace BossRush
             {
                 body.Add(L10n.T("最高筹码胜 ", "Best credit win ") + record.maxVirtualStakeWin);
             }
+            if (snapshot != null) body.Add(L10n.T("名声 ", "Fame ") + snapshot.fameDisplayCount);
             int scarCount = record.scarIds != null ? record.scarIds.Count : 0;
             if (scarCount > 0)
             {

@@ -84,30 +84,33 @@ namespace BossRush
             return data;
         }
 
+        /// <summary>
+        /// 深拷贝。**不再走 JSON 往返**：拷贝实现下沉到 DTO 自己的 Clone()
+        /// （PetNestModels.cs，与字段同文件，过滤规则与 Decode* 逐条对齐）。
+        /// 事务与 pending 入队是热路径，整包编码+解析+解码在无间炼狱里是击杀帧上的可观开销。
+        /// </summary>
         internal static PetNestBundleData CloneBundle(PetNestBundleData source)
         {
             if (source == null) return CreateDefaultBundle();
-            string json = EncodeBundle(source);
-            PetNestBundleData clone = DecodeBundle(BossRushJsonParser.ParseOrNull(json));
-            return clone ?? CreateDefaultBundle();
+            return source.Clone() ?? CreateDefaultBundle();
         }
 
         internal static PetNestNestData CloneNest(PetNestNestData source)
         {
-            PetNestNestData clone = DecodeNest(BossRushJsonParser.ParseOrNull(EncodeNest(source)));
-            return clone ?? CreateDefaultNest();
+            if (source == null) return CreateDefaultNest();
+            return source.Clone() ?? CreateDefaultNest();
         }
 
         internal static PetNestExpeditionData CloneExpedition(PetNestExpeditionData source)
         {
-            PetNestExpeditionData clone = DecodeExpedition(BossRushJsonParser.ParseOrNull(EncodeExpedition(source)));
-            return clone ?? CreateDefaultExpedition();
+            if (source == null) return CreateDefaultExpedition();
+            return source.Clone() ?? CreateDefaultExpedition();
         }
 
         internal static PetNestMuseumData CloneMuseum(PetNestMuseumData source)
         {
-            PetNestMuseumData clone = DecodeMuseum(BossRushJsonParser.ParseOrNull(EncodeMuseum(source)));
-            return clone ?? CreateDefaultMuseum();
+            if (source == null) return CreateDefaultMuseum();
+            return source.Clone() ?? CreateDefaultMuseum();
         }
 
         #endregion

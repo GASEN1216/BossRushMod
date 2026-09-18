@@ -28,6 +28,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 TUNING = Path("Integration/DailyReport/DailyReportTuning.cs")
@@ -64,15 +65,7 @@ def fail(message):
 
 
 def strip_comments(text):
-    """去掉 // 行注释与 /* */ 块注释。
-
-    本 guard 断言的是**代码**，不是散文：源码注释里会成段解释
-    "为什么不订阅 GameClock.OnGameClockStep"，不剥注释就会把这些解释
-    误判成违规。
-    """
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+    return clean_source(text)
 
 
 def main():
@@ -242,9 +235,9 @@ def main():
     # ---- 11) 空候选池不得进缓存 ----
     if not re.search(r"built\.Length\s*<=\s*0\)\s*return\s+built", rewards_code):
         return fail(
-            "空候选池不得写进 _candidateCache：官方 Search 自带降品质兜底，"
-            "空数组必然是 ItemAssetsCollection 未就绪或 Search 瞬时异常的故障残影，"
-            "缓存它会把一次瞬时失败放大成该品质整会话 no_candidate")
+            "空候选池不得写进 _candidateCache：资源未就绪或精确品质暂缺时必须允许恢复")
+    if "ItemAssetsCollection.Search(" in rewards_code or "ItemAssetsCollection.GetAllTypeIds(filter)" not in rewards_code:
+        return fail("日报奖品必须精确匹配承诺品质，禁止 Search 静默降级")
 
     # ---- 12) 跨天提示必须落盘；UI 销毁必须调用动画基类清理 ----
     if "PendingIssueBanner" not in models:

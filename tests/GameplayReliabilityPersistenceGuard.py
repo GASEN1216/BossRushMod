@@ -4,6 +4,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 def fail(messages):
@@ -24,7 +25,7 @@ def main():
     service = read("PetNest/PetNestService.cs")
     expedition = read("PetNest/PetNestExpeditionService.cs")
     models = read("PetNest/PetNestModels.cs")
-    daily = read("Integration/DailyReport/DailyReportService.cs")
+    daily = clean_source(read("Integration/DailyReport/DailyReportService.cs"))
     daily_store = read("Integration/DailyReport/DailyReportPersistence.cs")
 
     for token in (
@@ -75,9 +76,17 @@ def main():
         errors.append("翻牌 UI 与奖励欠账未解耦")
 
     for token in ("DailyReportData candidate = current.Clone()", "Persist(candidate)",
-                  "candidate.PendingIssueBanner", "candidate.BountyRewardClaimed = true"):
+                  "candidate.PendingIssueBanner", "candidate.BountyRewardClaimed = candidate.BountyCompleted",
+                  "candidate.PendingBountyCash = 0L"):
         if token not in daily:
             errors.append("DailyReport 候选副本提交缺失: " + token)
+    cash = daily.split("internal static void TryRedeliverPendingBountyReward()", 1)[-1].split(
+        "internal static long GetPendingBountyCash", 1)[0]
+    cash_steps = [cash.find(token) for token in ("TryGrantBountyCash(amount, out reason)",
+        "DailyReportData candidate = data.Clone()", "candidate.PendingBountyCash = 0L",
+        "candidate.BountyRewardClaimed = candidate.BountyCompleted", "Persist(candidate)")]
+    if min(cash_steps) < 0 or cash_steps != sorted(cash_steps):
+        errors.append("日报现金必须先交付，再在候选内清欠款并按最新结果标记领取")
     if "SetValidationRejectStore" not in daily_store or "if (_validationRejectStore && ModBehaviour.DevModeEnabled) return false;" not in daily_store:
         errors.append("DailyReport 缺少 Dev Store 失败注入")
     if re.search(r"\bdata\.CarrySeconds\s*=\s*_carrySeconds", daily):

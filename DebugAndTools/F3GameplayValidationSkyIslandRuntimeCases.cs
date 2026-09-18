@@ -1160,6 +1160,23 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// SKY_CHATTER：头顶气泡。**只读**——只取两个 owner 的计数与忙位、按当前存档取一遍话语池，
+        /// 不说话、不改冷却、不碰存档。判据在 <see cref="JudgeChatter"/>。
+        /// </summary>
+        private bool ValidateSkyIslandChatter(out string metrics, out string reason)
+        {
+            SkyIslandSession session = SkyIslandSessionOrNull();
+            if (session == null) { metrics = string.Empty; reason = "session_missing"; return false; }
+            SkyIslandChatter resident = session.ValidationResidentChatter;
+            SkyIslandChatter enemy = session.ValidationEnemyChatter;
+            SkyIslandStoryData story = session.ValidationStory == null ? null : session.ValidationStory.Current;
+            return JudgeChatter(SkyIslandResidents.AllIds, story,
+                resident != null && resident.Busy, enemy != null && enemy.Busy,
+                resident == null ? -1 : resident.SpokenCount, enemy == null ? -1 : enemy.SpokenCount,
+                out metrics, out reason);
+        }
+
         #endregion
     }
 }

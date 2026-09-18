@@ -183,6 +183,18 @@ namespace BossRush
             LocalizationHelper.InjectLocalization(BilingualNameKey(actorId), L10n.T(nameCN, nameEN));
         }
 
+        /// <summary>复用其它流程创建的 actor：刷新它实际读取的名字；有立绘时补装，缺资源时保留原图。</summary>
+        public static void RefreshPresentation(DuckovDialogueActor actor, string nameCN, string nameEN, Sprite portrait = null)
+        {
+            if (actor == null) return;
+            string nameKey = actor.NameKey;
+            if (!string.IsNullOrEmpty(nameKey))
+                LocalizationHelper.InjectLocalization(nameKey, L10n.T(nameCN, nameEN));
+            if (portrait == null) return;
+            InitializeReflection();
+            SetField(actor, fieldPortraitSprite, portrait);
+        }
+
         /// <summary>
         /// 获取已创建的 Actor（如果存在）
         /// </summary>

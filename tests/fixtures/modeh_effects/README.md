@@ -11,7 +11,7 @@ python tests/fixtures/modeh_effects/run.py --verify-regressions
 
 需要 .NET 8 SDK；C# 以 7.3 语言版本编译。项目和输出生成到
 `Build/fix-20260905/modeh-effects-fixture`，不写生产文件、不读取玩家存档、不部署 DLL。
-第二条命令将六种旧缺陷分别注入 Build 内的源码副本；每个副本必须编译并运行到对应失败断言，
+第二条命令将十种旧缺陷分别注入 Build 内的源码副本；每个副本必须编译并运行到对应失败断言，
 编译失败或错误早退不能当作反向验证通过。原生产文件全程不变。
 
 生产代码覆盖：
@@ -23,9 +23,9 @@ python tests/fixtures/modeh_effects/run.py --verify-regressions
 - 从当前 `Assets/Data/ModeH/Scars.json` 投影效果字段，避免重新手写战痕数值；
   不覆盖生产 JSON parser 本身。
 
-41 条断言覆盖无持有触发拒绝、已有伤病门、整条验证门、触发一次性、接力清理、
+断言覆盖无持有触发拒绝、已有伤病门、整条验证门、触发一次性、接力清理、
 5/6/8 秒窗口在 16ms 帧步长下的字段还原、无引擎适配器的自结算期限、范围组合、
-首发擂台条件、拍铃预览/成功/资格失败/Apply 拒绝。六个行为反向变异分别退回归属缺失、
+首发擂台条件、拍铃预览/成功/资格失败/Apply 拒绝。既有六个行为反向变异分别退回归属缺失、
 到期未还原、全口令倍率、永久倍率、空首发上下文、拍铃后才得到倍率。
 
 `Stubs.cs` 替代 Unity/AI 字段、兼容矩阵、场况采集与无关状态 DTO。兼容矩阵按场景可控，
@@ -35,3 +35,8 @@ python tests/fixtures/modeh_effects/run.py --verify-regressions
 
 结构守卫 `tests/ModeHEffectLifecycleGuard.py` 不依赖 .NET，常规 guard runner 可直接运行；
 它同时执行九种内存反向变异，锁住生产入口和效果 owner 的必要连接。
+
+2026-09-18：追加共享字段基线、任意到期顺序、不同 AI、浮点/向量/布尔/封顶与设值组合、
+首发 handoff 过滤、真实入场共享上下文及条件翻转。额外四个变异覆盖独立基线、漏移除层、
+不可用首发口令和漏共享上下文。1000 次稳定重申的分配检查只代表 .NET 替身宿主，不代表 Mono 帧耗。
+擂台规则在本夹具中隔离，完整类由 ModeHMarketAudit 验证。

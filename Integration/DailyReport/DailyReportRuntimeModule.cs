@@ -22,6 +22,8 @@ namespace BossRush
         private ModBehaviour _owner;
         private int _sceneGeneration;
         private bool _bootstrapped;
+        private int _announcedDayIndex;
+        private int _announcedSlot = -1;
 
         #endregion
 
@@ -168,6 +170,7 @@ namespace BossRush
                 SafeRuntime.Run("DailyReportSaveCoordinator.ShutdownSubscription", () => DailyReportSaveCoordinator.ShutdownSubscription());
                 SafeRuntime.Run("DailyReportStatsCollector.ShutdownSubscription", () => DailyReportStatsCollector.ShutdownSubscription());
                 SafeRuntime.Run("DailyReportStatsCollector.ResetStaticCaches", () => DailyReportStatsCollector.ResetStaticCaches());
+                SafeRuntime.Run("DailyReportView.CleanupRuntime", () => DailyReportView.CleanupRuntime());
 
                 // 报箱建筑注入器的状态挂在宿主实例上（partial ModBehaviour），经 owner 清
                 ModBehaviour owner = _owner;
@@ -238,13 +241,20 @@ namespace BossRush
         /// <summary>发出「新一期已送达」横幅并清挂起标志。</summary>
         private void AnnounceNewIssue()
         {
+            DailyReportData data = DailyReportService.Data;
+            if (data == null || _owner == null) return;
+            int slot = Saves.SavesSystem.CurrentSlot;
+            if (_announcedDayIndex == data.DayIndex && _announcedSlot == slot) return;
+            // 消费标记可能因写屏障失败；同一会话仍最多提示一次，避免每帧刷横幅。
+            _announcedDayIndex = data.DayIndex;
+            _announcedSlot = slot;
             try
             {
                 if (_owner != null)
                 {
                     _owner.ShowBigBanner(L10n.T(
-                        "《鸭科夫日报》新一期已送达信箱",
-                        "A new issue of the Duckov Daily has arrived"));
+                        "《鸭科夫日报》更新了：在基地报箱阅读",
+                        "New Duckov Daily issue: read it at your base mailbox"));
                 }
             }
             catch (Exception)

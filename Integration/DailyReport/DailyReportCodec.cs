@@ -47,6 +47,8 @@ namespace BossRush
             data.BountyProgress = 0;
             data.BountyCompleted = false;
             data.BountyRewardClaimed = false;
+            data.BountyCashReward = 0L;
+            data.PendingBountyCash = 0L;
             data.Today = new DailyReportStats();
             data.Yesterday = new DailyReportStats();
             data.HasYesterday = false;
@@ -88,6 +90,8 @@ namespace BossRush
             SimpleJsonHelper.AppendInt(sb, "bountyProgress", data.BountyProgress);
             SimpleJsonHelper.AppendBool(sb, "bountyCompleted", data.BountyCompleted);
             SimpleJsonHelper.AppendBool(sb, "bountyRewardClaimed", data.BountyRewardClaimed);
+            SimpleJsonHelper.AppendLong(sb, "bountyCashReward", data.BountyCashReward);
+            SimpleJsonHelper.AppendLong(sb, "pendingBountyCash", data.PendingBountyCash);
 
             SimpleJsonHelper.AppendBool(sb, "hasYesterday", data.HasYesterday);
             // 可选追加字段；旧档缺失时解码回落 false，保持向后兼容。
@@ -190,6 +194,15 @@ namespace BossRush
                 data.BountyProgress = root.GetInt("bountyProgress", 0);
                 data.BountyCompleted = root.GetBool("bountyCompleted", false);
                 data.BountyRewardClaimed = root.GetBool("bountyRewardClaimed", false);
+                data.BountyCashReward = root.GetLong("bountyCashReward", 0L);
+                data.PendingBountyCash = root.GetLong("pendingBountyCash", 0L);
+                // 已声明的现金债务损坏时拒收整份数据，不能静默吞奖。
+                foreach (string key in new[] { "bountyCashReward", "pendingBountyCash" })
+                {
+                    BossRushJsonValue value = root.GetProperty(key);
+                    if (value != null && (value.Kind != BossRushJsonKind.Integer || root.GetLong(key, -1L) < 0L))
+                        return null;
+                }
 
                 data.HasYesterday = root.GetBool("hasYesterday", false);
                 data.PendingIssueBanner = root.GetBool("pendingIssueBanner", false);

@@ -172,7 +172,9 @@ namespace BossRush
         {
             if (disposed || (dialogue != null && dialogue.Active) || DialogueManager.IsDialogueActive) return;
             if (BlockedByCombat()) return;
-            dialogue = SkyIslandResidentDialogue.Run(id, speaker, story.DescribeNpc(id),
+            dialogue = SkyIslandResidentDialogue.Run(id, speaker,
+                story.DescribeNpc(id, AffinityManager.IsMarriedToPlayer(id), true,
+                    AffinityManager.IsMarriedToPlayer("sky_weibai") || !session.HasResident("sky_weibai")),
                 delegate { OpenResidentPanel(id, speaker); }, CanContinueDialogue,
                 delegate { return ResidentChoices(id, speaker).Count > 0 || NextStep() != null; });
         }
@@ -278,7 +280,7 @@ namespace BossRush
                 // 派完了、暂时没有能接的活：都不挂占位项（点了只回一句话），那句话进正文（2026-09-14 审核 F-06）。
                 if (!contract.CanAcceptMore)
                 {
-                    Hint(L10n.T("苇白：今天的活都派完啦（", "Weibai: That is all the work for today (") +
+                    Hint(L10n.T("本趟航务委托已全部完成（", "All lane contracts are complete for this trip (") +
                         contract.CompletedRounds + "/" + SkyIslandBounty.MaxRounds +
                         L10n.T("），剩下的留给下一趟。", "). The rest can wait for your next trip."));
                     return;
@@ -308,11 +310,11 @@ namespace BossRush
                 // 玩家在游戏里第一次该遇到它的地方就完全不知道它存在。
                 // 只在这一趟真会起蚋时才承诺（精灵表缺失的那趟整夜没有蚋）。
                 if (offered == 0)
-                    Hint(L10n.T("苇白：航路这阵子清得差不多了，物资点也翻遍了。",
-                            "Weibai: The lanes are mostly clear and the caches are picked over.")
+                    Hint(L10n.T("航路威胁已清理，物资点也翻遍了。",
+                            "The lanes are clear and the caches are picked over.")
                         + (session.HasGnatBountyThisRaid && !session.IsNightNow
-                            ? L10n.T("天黑以后再来一趟——起蚋的夜里我这儿还有一张驱蚋的单子。",
-                                " Come back after dark — on gnat nights I still have a culling contract for you.")
+                            ? L10n.T("天黑以后再来——起蚋的夜里还有驱蚋委托可接。",
+                                " Come back after dark — gnat culling contracts are available on gnat nights.")
                             : L10n.T("下次出岛再来看看吧。",
                                 " Come and see me again next trip.")));
                 return;

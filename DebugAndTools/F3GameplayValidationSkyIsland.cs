@@ -66,6 +66,8 @@ namespace BossRush
             "SKY_STORM_ECHO",
             // 2026-09-14 头目 / 岛主 R1：档案挂位、专属装备注册与掉落口径。
             "SKY_BOSS_PROFILES",
+            // 2026-09-17 头顶气泡：按当前存档取一遍话语池（谁忽然不吭声了），以及同屏气泡上限。
+            "SKY_CHATTER",
         };
 
         // ====================================================================
@@ -201,6 +203,7 @@ namespace BossRush
             RunSkyIslandSync("SKY_SERVICE_PRICING", ValidateSkyIslandServicePricing);
             RunSkyIslandSync("SKY_BOUNTY_GATING", ValidateSkyIslandBountyGating);
             RunSkyIslandSync("SKY_RESIDENTS", ValidateSkyIslandResidents);
+            RunSkyIslandSync("SKY_CHATTER", ValidateSkyIslandChatter);
             RunSkyIslandSync("SKY_OFFICIAL_NOTES", ValidateSkyIslandOfficialNotes);
             RunSkyIslandSync("SKY_KEEPSAKE_ITEMS", ValidateSkyIslandKeepsakes);
             RunSkyIslandSync("SKY_LETTER_PIGEON", ValidateSkyIslandLetterPigeon);

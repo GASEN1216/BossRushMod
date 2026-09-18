@@ -5,7 +5,10 @@
 // 语义是同一份 partial class：
 //   - 归位依据 AGENTS.md 4.8 第 1 层：运行时可调开关走 Config + ModConfig；
 //     遗种巢**只有这一个** 配置项，其余数值全部在 PetNest/PetNestTuning.cs。
-//   - 镜像键 `BossRush_PetNestEnabled`，实装期默认 false（全系统 dormant）。
+//   - 镜像键 `BossRush_PetNestEnabled`，**默认 true**（owner 2026-08-30 定：遗种巢属于
+//     默认内容，总开关不再暴露给玩家，且由 ForceContentSystemSwitchesOn() 在读档后
+//     强制拉回 true，抹掉老版本可能存下的 false）。下面三个 ModConfig 接线因此已不再被调用，
+//     保留是为了开关本身仍然可在运行时变化时走同一条路径。
 //   - 唯一只读入口 IsPetNestConfiguredEnabled()：no-throw，缺配置返回 false；
 //     禁止反射私有字段，也禁止把开关缓存进 PetNestTuning 或存档。
 // ============================================================================

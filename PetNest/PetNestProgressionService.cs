@@ -3,8 +3,11 @@
 // ============================================================================
 // 设计稿只写了两句机制（「等级/天赋以 Modifier 形式加 PetCapcity」「满级后成年体不再成长」），
 // 数值由 owner 2026-08-29 拍板：Lv10 封顶、每级 100 exp 线性，
-// 经验来源＝进局存活归巢 +10 / 随从击杀 +2（单局封顶 +30）/ 远征存活 +25，
-// 效果＝每 3 级给玩家 +1 格捡漏背包。存档字段 level/exp 早已就绪，无 schema 变更。
+// 经验来源＝进局存活归巢 +10 / 随从击杀 +2（单局封顶 +30）/ 远征存活按风险档
+// 15 / 30 / 60（PetNestTuning.PetExpExpeditionSurvive{Safe|Rough|Desperate}）。
+// 等级的回报有两条，都走既有管线、都不占新存档字段：
+//   每 3 级给玩家 +1 格捡漏背包（PetNestCompanionRuntime.ResolveCapacityBonus），
+//   以及每级的生命 / 伤害成长（PetNestCompanionSpawner.ApplyLevelModifiers）。
 //
 // 纪律：
 //   - AddExp **只改内存，不落档**：调用方按自己的事务边界提交
@@ -213,6 +216,10 @@ namespace BossRush
                 if (info.fromCharacter == null || info.fromCharacter != companion) return;
                 // 随从自己倒下不算战功
                 if (PetNestCompanionAgent.IsCompanionHealth(health)) return;
+                // 去重判定必须排在开事务**之前**：开事务要深拷贝整包状态，
+                // 为一次重复派发的死亡事件付这笔钱纯属浪费。
+                if (_countedVictims.Contains(health)) return;
+
                 string transactionError;
                 if (!PetNestPersistenceAccess.BeginTransaction(out transactionError)) return;
                 if (!_countedVictims.Add(health))

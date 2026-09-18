@@ -22,6 +22,7 @@
 //   记录容器沿用同一个 ZombieModeAttributeModifierRecord，不产生第二套语义。
 // ============================================================================
 
+using System.Collections;
 using System.Collections.Generic;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
@@ -272,10 +273,49 @@ namespace BossRush
         private static void Do_DeathBurst(ActiveAffix active, Vector3 position, CharacterMainControl main)
         {
             LevelManager level = LevelManager.Instance;
-            if (level == null || level.ExplosionManager == null)
+            ModBehaviour owner = ModBehaviour.Instance;
+            if (owner == null || level == null || level.ExplosionManager == null)
             {
                 return;
             }
+
+            // 与现有套装击杀技能同形：StartCoroutine 立即跑到第一个 yield，
+            // 必须先让出一帧，避免覆写正在派发本次死亡的官方爆炸命中缓冲。
+            owner.StartCoroutine(DeathBurstNextFrame(active, position, main, owner, level));
+        }
+
+        private static IEnumerator DeathBurstNextFrame(ActiveAffix active, Vector3 position,
+            CharacterMainControl main, ModBehaviour owner, LevelManager level)
+        {
+            yield return null;
+
+            while (true)
+            {
+                if (owner == null || !ReferenceEquals(owner, ModBehaviour.Instance)
+                    || level == null || !ReferenceEquals(level, LevelManager.Instance)
+                    || main == null || !ReferenceEquals(main, CharacterMainControl.Main)
+                    || main.Health == null || main.Health.IsDead || !IsEnabled
+                    || !_active.Contains(active)) yield break;
+                if (!BossRushUI.IsGamePaused()) break;
+                yield return null;
+            }
+
+            // ActiveAffix 是每次装备 context 重建时新建的对象：离手、卸下、死亡、
+            // 关停或切图重建后，旧引用不在列表中，重穿同一件装备也不会接续旧爆炸。
+            try
+            {
+                ApplyDeathBurst(active, position, main, level);
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog(LogPrefix + " [WARNING] 延迟殉爆失败: " + e.Message);
+            }
+        }
+
+        private static void ApplyDeathBurst(ActiveAffix active, Vector3 position,
+            CharacterMainControl main, LevelManager level)
+        {
+            if (level.ExplosionManager == null) return;
 
             float damage = AffixDefinitions.GetTierValue(active.Def, active.Tier);
             float radius = AffixDefinitions.GetTierValue2(active.Def, active.Tier);
@@ -289,6 +329,7 @@ namespace BossRush
             blast.damagePoint = position;
             blast.isExplosion = true;
             blast.isFromBuffOrEffect = true;        // 防连环殉爆递归
+            blast.fromWeaponItemID = 0;
             blast.AddElementFactor(ElementTypes.fire, 1f);
 
             level.ExplosionManager.CreateExplosion(

@@ -174,12 +174,11 @@ namespace BossRush
                     return;
                 }
                 PetNestDownedHandler.Tick();
-                if (IsBaseScene()) TickBaseMaintenance();
+                // 场景判定每帧只做一次，两个分支共用
+                bool inBase = IsBaseScene();
+                if (inBase) TickBaseMaintenance();
                 // 入场重试：模式标志通常晚于 sceneLoaded 才置位，只采样一次会永远进不了场
-                if (!IsBaseScene())
-                {
-                    PetNestCompanionRuntime.TickSpawnRetry(_owner, _sceneGeneration);
-                }
+                else PetNestCompanionRuntime.TickSpawnRetry(_owner, _sceneGeneration);
                 PetNestSaveCoordinator.Tick();
             }
             catch (Exception e)
@@ -250,14 +249,29 @@ namespace BossRush
 
         #endregion
 
+        /// <summary>基地维护的节流间隔（秒）。奖励补发的退避也按它走。</summary>
+        private const float BaseMaintenanceIntervalSeconds = 5f;
+
+        /// <summary>
+        /// 基地侧的周期性维护：孤儿锁自愈、归巢结算、到期远征结算、欠奖补发、翻牌。
+        ///
+        /// **每帧入口必须是 O(1)**：基地是玩家停留最久的场景，而
+        /// HasPendingRewardDebt 会走 SavesSystem.CurrentSlot 并遍历整张远征表——
+        /// 它此前排在时间闸之前，等于每帧扫一遍。现在顺序是
+        /// 「时间闸（一次浮点比较） -> 资源就绪（三次空判，不消耗预算，未就绪时下一帧再试）
+        ///  -> 消耗预算 -> 真正的欠账扫描与维护」。
+        /// </summary>
         private void TickBaseMaintenance()
         {
-            if (!_baseMaintenancePending && !PetNestExpeditionService.HasPendingRewardDebt) return;
             if (UnityEngine.Time.unscaledTime < _nextBaseMaintenanceTime) return;
             if (LevelManager.Instance == null || !LevelManager.AfterInit
                 || CharacterMainControl.Main == null) return;
 
-            _nextBaseMaintenanceTime = UnityEngine.Time.unscaledTime + 5f;
+            _nextBaseMaintenanceTime =
+                UnityEngine.Time.unscaledTime + BaseMaintenanceIntervalSeconds;
+
+            if (!_baseMaintenancePending && !PetNestExpeditionService.HasPendingRewardDebt) return;
+
             try
             {
                 if (_baseMaintenancePending)

@@ -31,7 +31,7 @@ for token in ['await DuckNpcSpawner.SpawnAsync', 'PermanentDuckNpcModule.AttachP
               'PermanentDuckNpcRegistry.RegisterInstance', 'AffinityManager.IsMarriedToPlayer',
               'PermanentDuckNpcRegistry.GetInstance(id) != null', 'if (!retained)',
               'PermanentDuckNpcRegistry.GetInstance(id) == npc', 'DuckNpcSpawner.Despawn(npc)',
-              'seeker.graphMask = navigation.Mask', 'NPCInteractionGroupHelper.AddSubInteractable',
+              'seeker.graphMask = navigation.Mask', 'SkyIslandResidentInteractable.AttachPermanent(npc, id)',
               'child.transform.SetParent(npc.transform, false)', 'Physics.IgnoreCollision',
               'disposed = true', 'npc.characterModel.SetFaceFromData(face)']:
     if token not in SOURCE:
@@ -39,6 +39,15 @@ for token in ['await DuckNpcSpawner.SpawnAsync', 'PermanentDuckNpcModule.AttachP
 
 if 'callback(npcId, speaker)' not in INTERACT or 'valid()' not in INTERACT:
     errors.append('剧情交互必须检查会话 owner 后调用故事入口')
+for token in ['NPCInteractionGroupHelper.AddSubInteractable(owner.transform, "IslandStoryOption", group,',
+              'component.TalkPermanent, component.CanTalkPermanent', 'session.TalkToResident(id, target)',
+              'story.DescribeNpc(id, true, false)', 'homeDialogue.Dispose()',
+              'story.IsCurrentSlot', 'SceneLoader.IsSceneLoading']:
+    if token not in INTERACT:
+        errors.append('婚后剧情交互缺少绑定或生命周期门：' + token)
+module = clean_source((ROOT / 'Integration/NPCs/DuckNpc/Permanent/PermanentDuckNpcModule.cs').read_text(encoding='utf-8-sig'))
+if 'SkyIslandResidentInteractable.AttachPermanent(npc, blueprint.id);' not in module:
+    errors.append('永久 NPC 装配（含婚后恢复）没有接回航路剧情')
 if 'new SkyIslandResidents' not in SESSION or '.Dispose()' not in SESSION:
     errors.append('天空岛会话未接居民创建/清理')
 bridge = clean_source((ROOT / 'DebugAndTools/SkyIsland/SkyIslandSceneReferenceBridge.cs').read_text(encoding='utf-8-sig'))

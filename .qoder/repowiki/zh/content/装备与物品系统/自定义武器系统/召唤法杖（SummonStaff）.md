@@ -11,6 +11,28 @@
 - [summon-staff.md](file://wiki-site/docs/en/equipment/summon-staff.md)
 </cite>
 
+> **2026-09-18 变更（以代码为准，下文正文是 2026-08 快照）**
+> 五把新武器的**装备判定**统一改走 `NewWeaponEquipState`（事件驱动缓存，查询 O(1)）：
+> `IsHoldingViperDagger` / `IsHoldingSummonStaff` / `IsEquippingEnergyShield` / `IsEquippingThunderRing`
+> 四份实现已删除，不再在 `Health.OnHurt` 回调里遍历 `CharacterItem.Slots`。
+> 五个 `XxxWeaponConfig` 只声明差异项 `Spec`，配置流程收敛到 `NewWeaponConfiguratorCore`
+> （`ConfigureStats` / `ConfigureMeleeAgent` / `ConfigureTags` / `InjectLocalization` 四段模板已删）。
+> 生命周期（初始化 / 过图 / 加载后配置 / 销毁清理）从 `partial ModBehaviour` 移到
+> `NewWeaponRuntime`，`NewWeaponBootstrap.cs` 只剩四个一行转发。
+> 新增文件：`Integration/NewWeapons/Common/NewWeaponEquipState.cs`、`NewWeaponConfiguratorCore.cs`、`NewWeaponRuntime.cs`。
+>
+> 本武器专有（**定位重做**）：原实现与 `FrostmourneAction` 是同一件事——同一个 `Cname_Zombie` 预设、
+> 同一套阵营与 AI 设置、同样召在脚边，差别只有数量 3<5、血量 80<100、冷却 12>10，
+> 品质 5 的它被品质 6 的霜之哀伤完全覆盖。现在两者错开：
+> - 霜之哀伤 = 5 只**常驻**亡灵贴身护卫（无时限）；
+> - 召唤法杖 = 3 只**可投放**的短命灵魂：在 `CurrentAimDirection` 前方
+>   `SummonStaffConfig.PlacementDistance(6f)` 处召出（撞墙自动缩短、找不到地面退回脚边），
+>   存活 `SummonLifetime` 由 15 秒改为 **12 秒**（与 12 秒冷却对齐），
+>   **消散或阵亡时**原地触发**灵魂爆裂**：`SoulBurstDamage(45)` / `SoulBurstRadius(3m)` /
+>   `ElementTypes.ghost` / `canHurtSelf=false`。
+> 爆裂只在 `SummonStaffAllyLifetime.Update` 里触发，**不订阅 `Health.OnDead`**——
+> 在死亡派发栈里调官方 `CreateExplosion` 会覆写它的命中缓冲（CR-2026-09-17-015）。
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -334,7 +356,7 @@ Manager --> WeaponCfg
 - 战术指导
   - 利用 3 个召唤物分散 Boss 仇恨，创造安全的输出窗口。
   - 在僵尸模式或多敌场景中发挥最大价值，吸引火力并拖延关键技能。
-  - 合理把握 12 秒冷却与 15 秒寿命，尽量在到期后立即续召以保持高覆盖率。
+  - 冷却与寿命都是 12 秒：到期消散并触发灵魂爆裂之后立即续投，节奏是「投放 → 吸火力 → 爆裂 → 再投放」。
 - 高级配置技巧
   - 调整 SummonCount、SummonLifetime、SummonHealth 以平衡强度与性能。
   - 修改 SummonRadius 以改变站位密度，避免拥挤或过散。

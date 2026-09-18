@@ -480,17 +480,21 @@ namespace BossRush
                         for (int i = 0; i < tx.EnemyHandles.Count; i++)
                         {
                             ModeHSpawnHandle handle = tx.EnemyHandles[i];
-                            ModeHParticipantRef enemy = BuildParticipant(handle, null, true, -1, false);
+                            handle.PlanSlotIndex = _season.currentMatchPlan.enemyStableKeys.IndexOf(handle.StableKey);
+                            ModeHParticipantRef enemy = BuildParticipant(handle, null, true, handle.PlanSlotIndex, false);
                             enemy.BatchIndex = nextBatch;
                             _enemyParticipants.Add(enemy);
                             RegisterParticipant(handle, enemy);
-                            control.OnEnemyEntered(enemy);
+                            if (!control.OnEnemyEntered(enemy, out failureReasonId)) break;
                         }
-                        _currentEntryBatchIndex = nextBatch;
-                        RefreshBattleSnapshotContext();
-                        control.OnEnemyBatchEntered(nextBatch, _battleSnapshotContext);
-                        AttachAndPersistBattleSnapshot("reinforcement_batch_entered");
-                        completed = true;
+                        if (failureReasonId == null)
+                        {
+                            _currentEntryBatchIndex = nextBatch;
+                            RefreshBattleSnapshotContext();
+                            control.OnEnemyBatchEntered(nextBatch, _battleSnapshotContext);
+                            AttachAndPersistBattleSnapshot("reinforcement_batch_entered");
+                            completed = true;
+                        }
                     }
                 }
                 catch (Exception e) { failureReasonId = "reinforcement_commit_exception:" + e.GetType().Name; }

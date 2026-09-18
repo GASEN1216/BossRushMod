@@ -52,11 +52,9 @@ def check_registration(errors):
 
 
 def check_no_second_new(errors):
-    for root, _dirs, files in os.walk(REPO_ROOT):
-        rel_root = os.path.relpath(root, REPO_ROOT)
-        parts = rel_root.split(os.sep)
-        if any(p in ("Build", ".git", ".codex_tmp", "tests", "docs", "鸭科夫源码", "wiki-site") for p in parts):
-            continue
+    skip_dirs = {"Build", ".git", ".codex_tmp", "tests", "docs", "鸭科夫源码", "wiki-site", "node_modules", "bin", "obj"}
+    for root, dirs, files in os.walk(REPO_ROOT):
+        dirs[:] = [d for d in dirs if d not in skip_dirs]
         for name in files:
             if not name.endswith(".cs"):
                 continue

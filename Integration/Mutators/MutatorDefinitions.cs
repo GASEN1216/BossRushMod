@@ -870,6 +870,8 @@ namespace BossRush
                         // 爆炸来源记为玩家，但不豁免任何人——会波及玩家自身（风险与收益并存）
                         DamageInfo dmg = new DamageInfo(player);
                         dmg.damageValue = 40f;
+                        dmg.isFromBuffOrEffect = true;
+                        dmg.fromWeaponItemID = 0;
                         dmg.damagePoint = pos;
                         dmg.isExplosion = true;
                         dmg.AddElementFactor(ElementTypes.fire, 1.0f);

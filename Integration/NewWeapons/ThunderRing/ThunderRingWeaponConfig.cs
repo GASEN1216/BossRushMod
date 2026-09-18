@@ -2,14 +2,12 @@
 // ThunderRingWeaponConfig.cs - 雷电戒指装备工厂配置器
 // ============================================================================
 // 模块说明：
-//   在 EquipmentFactory 加载 AssetBundle 后，自动为雷电戒指 Prefab 配置：
-//   - 饰品标签
-//   - 本地化注入
+//   声明雷电戒指与共享图腾配置流程的差异项（模型、文案），
+//   流程本身在 NewWeaponConfiguratorCore。蓄雷 / 释放逻辑在 ThunderRingRuntime。
+//   本件不挂常驻 modifier：它的全部价值在「挨打攒电、下一击放出去」这条主动循环上。
 // ============================================================================
 
-using System;
 using ItemStatsSystem;
-using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
@@ -18,84 +16,31 @@ namespace BossRush
     /// </summary>
     public static class ThunderRingWeaponConfig
     {
+        private static readonly NewWeaponTotemSpec Spec = new NewWeaponTotemSpec
+        {
+            TypeId = NewWeaponIds.ThunderRingTypeId,
+            BaseName = NewWeaponIds.ThunderRingBaseName,
+            ModelBaseName = NewWeaponIds.ThunderRingModelBaseName,
+            LogPrefix = ThunderRingConfig.LogPrefix,
+            DisplayLabelCN = "雷电戒指",
+
+            DisplayNameCN = ThunderRingConfig.DisplayNameCN,
+            DisplayNameEN = ThunderRingConfig.DisplayNameEN,
+            DescriptionCN = ThunderRingConfig.DescriptionCN,
+            DescriptionEN = ThunderRingConfig.DescriptionEN
+        };
+
         /// <summary>
         /// 尝试配置雷电戒指
         /// </summary>
         public static bool TryConfigure(Item item, string baseName)
         {
-            if (item == null || string.IsNullOrEmpty(baseName)) return false;
-            // 接受两种 baseName：
-            //   - "ThunderRing"（占位符 / ConfigureNewWeaponsAfterLoad 直接传入）
-            //   - "ThunderRing_Totem"（EquipmentFactory.LoadBundleInternal 从 prefab 名 ThunderRing_Totem_Item 提取）
-            if (!baseName.Equals(NewWeaponIds.ThunderRingBaseName, StringComparison.OrdinalIgnoreCase) &&
-                !baseName.Equals(NewWeaponIds.ThunderRingBaseName + "_Totem", StringComparison.OrdinalIgnoreCase))
-            {
-                return false;
-            }
-
-            try
-            {
-                ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 开始配置雷电戒指...");
-
-                // 1. 配置标签（作为图腾类装备）
-                ConfigureTags(item);
-
-                // 1.5 品质 / 售价 / 耐久 / 可维修标签（与占位符路径共用同一张表）
-                NewWeaponItemAttributes.Apply(item, NewWeaponIds.ThunderRingTypeId);
-
-                // 2. 注入本地化
-                TryBindLoadedModel(item);
-                InjectLocalization(item);
-
-                ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 配置完成 (TypeID=" + item.TypeID + ")");
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 配置失败: " + e.Message);
-                return false;
-            }
-        }
-
-        private static void ConfigureTags(Item item)
-        {
-            EquipmentHelper.AddTagToItem(item, "Totem");
-            EquipmentHelper.AddTagToItem(item, "DontDropOnDeadInSlot");
-            EquipmentHelper.AddTagToItem(item, "Special");
-        }
-
-        private static void TryBindLoadedModel(Item item)
-        {
-            try
-            {
-                EquipmentFactory.TryBindLoadedEquipmentModel(item, NewWeaponIds.ThunderRingModelBaseName);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 绑定模型失败: " + e.Message);
-            }
-        }
-
-        private static void InjectLocalization(Item item)
-        {
-            try
-            {
-                string displayName = L10n.T(ThunderRingConfig.DisplayNameCN, ThunderRingConfig.DisplayNameEN);
-                string description = L10n.T(ThunderRingConfig.DescriptionCN, ThunderRingConfig.DescriptionEN);
-
-                string itemKey = "Item_" + item.TypeID;
-                LocalizationHelper.InjectLocalization(itemKey, displayName);
-                LocalizationHelper.InjectLocalization(itemKey + "_Desc", description);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(ThunderRingConfig.LogPrefix + " 本地化注入失败: " + e.Message);
-            }
+            return NewWeaponConfiguratorCore.ConfigureTotem(item, baseName, Spec);
         }
 
         public static void ResetStaticCaches()
         {
-            // 当前无需清理的静态缓存
+            // 当前无需清理的静态缓存（Spec 是只读数据）
         }
     }
 }

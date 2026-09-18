@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 EFFECTS = Path("ZombieMode/ZombieModeRewardEffects.cs")
@@ -9,11 +10,12 @@ EFFECT_PARTS = [
     Path("ZombieMode/ZombieModeRewardProjectileSpread.cs"),
     Path("ZombieMode/ZombieModeRewardRuntimeModifiers.cs"),
     Path("ZombieMode/ZombieModeRewardTriggerEffects.cs"),
+    Path("ZombieMode/ZombieModeRuntimeModule.cs"),
 ]
 
 
 def read_effects() -> str:
-    return "\n".join(path.read_text(encoding="utf-8", errors="ignore") for path in EFFECT_PARTS)
+    return "\n".join(clean_source(path.read_text(encoding="utf-8", errors="ignore")) for path in EFFECT_PARTS)
 
 
 
@@ -43,6 +45,12 @@ def main() -> int:
         "0.30f + 0.10f * (stacks - 1)",
         "Mathf.Max(20, 40 - 6 * (stacks - 1))",
         "TriggerZombieModeDoomPulse",
+        "ZombieModeRuntimeModule.TriggerDoomPulse(player, stacks,",
+        "(point, radius, damage) => CreateZombieModeOptionExplosion(runId, point, radius, damage)",
+        "float radius = 2.75f;",
+        "float damage = 30f + 10f * (stacks - 1);",
+        "Quaternion.Euler(0f, 120f * i, 0f) * forward * offsetDistance",
+        "explode(center + offset, radius, damage);",
         "for (int i = 0; i < 3; i++)",
         "info.damagePoint = position;",
         "info.damageNormal =",

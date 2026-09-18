@@ -17,6 +17,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandEnemyTier.cs" Link="Production/SkyIslandEnemyTier.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryCodec.cs" Link="Production/SkyIslandStoryCodec.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryService.cs" Link="Production/SkyIslandStoryService.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStoryResidentText.cs" Link="Production/SkyIslandStoryResidentText.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStorySaveRecovery.cs" Link="Production/SkyIslandStorySaveRecovery.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLetters.cs" Link="Production/SkyIslandLetters.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandPuzzles.cs" Link="Production/SkyIslandPuzzles.cs" />
@@ -32,6 +33,7 @@
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandStormEchoReward.cs" Link="Production/SkyIslandStormEchoReward.cs" />
     <!-- 头目 / 岛主 R1：SKY_BOSS_PROFILES 判据读档案表；剧情存档白名单与合成台减耗也引用它。 -->
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandBossRules.cs" Link="Production/SkyIslandBossRules.cs" />
+    <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandChatterLines.cs" Link="Production/SkyIslandChatterLines.cs" />
     <!-- 帧时间分项计时：夹具不定义 BOSSRUSH_DEV（与正式构建同口径），只剩段名表与恒返回 false 的交出接口。 -->
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandFrameProfile.cs" Link="Production/SkyIslandFrameProfile.cs" />
     <Compile Include="../../../DebugAndTools/SkyIsland/SkyIslandLootTables.cs" Link="Production/SkyIslandLootTables.cs" />

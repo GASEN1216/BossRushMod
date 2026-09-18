@@ -2,7 +2,7 @@
 // SkyIslandSessionQuestBridge.cs - 官方任务桥从岛上会话只读取事实的几个口子
 // ============================================================================
 // 从 SkyIslandSession.cs 拆出来单独放：会话主文件卡在行数预算上（DebugAndTools/SkyIsland/AGENTS.md §4）。
-// 只读：不写剧情、不改居民显隐、不碰官方任务系统符号（那些全在 SkyIslandOfficialQuestGivers / Bridge）。
+// 任务查询只读；配偶的剧情交互转发给本趟 worldStory。官方任务符号仍只在 Givers / Bridge。
 // ============================================================================
 
 namespace BossRush
@@ -16,10 +16,22 @@ namespace BossRush
         internal SkyIslandStoryService OfficialQuestStory { get { return IsSessionValid() ? story : null; } }
 
         /// <summary>某位居民这一趟是不是真的在岛上（决定要不要给装置挂兜底的官方给予者）。只读。</summary>
-        internal bool HasResident(string id) { return residents != null && residents.IsSpawned(id); }
+        internal bool HasResident(string id) { return FindResidentQuestOwner(id) != null; }
 
         internal InteractableBase FindResidentQuestOwner(string id)
-        { return residents == null ? null : residents.FindQuestInteractionOwner(id); }
+        {
+            InteractableBase owner = residents == null ? null : residents.FindQuestInteractionOwner(id);
+            if (owner != null) return owner;
+            CharacterMainControl spouse = PermanentDuckNpcRegistry.GetInstance(id);
+            return spouse != null && player != null && spouse.gameObject.scene == player.gameObject.scene
+                ? spouse.GetComponentInChildren<PermanentDuckNpcInteractable>(true) : null;
+        }
+
+        /// <summary>随行配偶也走本趟的战斗门、服务和剧情 owner。</summary>
+        internal void TalkToResident(string id, UnityEngine.Transform speaker)
+        {
+            if (IsSessionValid() && worldStory != null) worldStory.Talk(id, speaker);
+        }
 
         /// <summary>居民 owner 已经把整队生成完（成功与否都算）；在此之前不判「谁缺席」。只读。</summary>
         internal bool ResidentsSettled { get { return residents != null && residents.SpawnFinished; } }

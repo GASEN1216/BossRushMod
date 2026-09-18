@@ -169,6 +169,34 @@ namespace BossRush
             }
         }
 
+        // ========== 状态气泡 ==========
+
+        /// <summary>
+        /// 在角色头顶弹一条状态气泡（官方 DialogueBubbles）。
+        /// 三处调用点此前各写一份逐字相同的 try/catch 包装，现收敛到这里。
+        ///
+        /// 使用纪律：气泡是**状态提示**，不是命中反馈。只给「玩家需要据此改变操作」的瞬间用
+        /// （例：雷能攒满，可以换把大伤害武器再开枪）。命中 / 爆发 / 释放这类一次性结果
+        /// 靠爆发环、电弧与音效表达——它们不会糊在角色头顶，也不会和 NPC 对白抢位置。
+        /// </summary>
+        public static void ShowBubble(CharacterMainControl character, string textCN, string textEN, float duration = 1.5f)
+        {
+            if (character == null || character.transform == null) return;
+
+            try
+            {
+                Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(
+                    L10n.T(textCN, textEN),
+                    character.transform,
+                    duration,
+                    false,
+                    false,
+                    -1f,
+                    1.5f);
+            }
+            catch { /* 气泡失败不得影响玩法结算 */ }
+        }
+
         // ========== 清理 ==========
 
         /// <summary>由 NewWeaponBootstrap 的 cleanup 路径调用。</summary>

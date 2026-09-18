@@ -26,7 +26,7 @@ def method(path, signature):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     extracted = "using System; namespace BossRush { internal static partial class DailyReportService {\n"
-    for signature in ("internal static void TryRedeliverPendingBountyReward()", "private static bool Persist(DailyReportData data)"):
+    for signature in ("internal static void TryRedeliverPendingBountyReward()", "private static bool Persist(DailyReportData data)", "internal static long GetPendingBountyCash(DailyReportData data)"):
         extracted += method("Integration/DailyReport/DailyReportService.cs", signature) + "\n"
     extracted += "}\ninternal static partial class DailyReportPersistence {\n"
     # 2026-09-06 (D-2): the collect callback lives in the shared BossRushSlotJsonStore; the daily

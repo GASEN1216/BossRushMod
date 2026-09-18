@@ -10,6 +10,24 @@
 - [ThunderSetBonus.cs](file://Integration/Bonus/ThunderSetBonus.cs)
 </cite>
 
+> **2026-09-18 变更（以代码为准，下文正文是 2026-08 快照）**
+> 五把新武器的**装备判定**统一改走 `NewWeaponEquipState`（事件驱动缓存，查询 O(1)）：
+> `IsHoldingViperDagger` / `IsHoldingSummonStaff` / `IsEquippingEnergyShield` / `IsEquippingThunderRing`
+> 四份实现已删除，不再在 `Health.OnHurt` 回调里遍历 `CharacterItem.Slots`。
+> 五个 `XxxWeaponConfig` 只声明差异项 `Spec`，配置流程收敛到 `NewWeaponConfiguratorCore`
+> （`ConfigureStats` / `ConfigureMeleeAgent` / `ConfigureTags` / `InjectLocalization` 四段模板已删）。
+> 生命周期（初始化 / 过图 / 加载后配置 / 销毁清理）从 `partial ModBehaviour` 移到
+> `NewWeaponRuntime`，`NewWeaponBootstrap.cs` 只剩四个一行转发。
+> 新增文件：`Integration/NewWeapons/Common/NewWeaponEquipState.cs`、`NewWeaponConfiguratorCore.cs`、`NewWeaponRuntime.cs`。
+>
+> 本装备专有：满层**雷霆释放**由固定 40 点改为
+> `40 + 触发这一击的 finalDamage × ThunderRingConfig.ReleaseHitDamageRatio(0.60)`。
+> 蓄能侧排除 `isFromBuffOrEffect`（灼烧 / 中毒等 DoT 不再蓄能）；
+> 释放侧改走 `NewWeaponAttribution.IsPlayerDirectHit`，只认「玩家用武器真的打在敌人身上」，
+> 打可破坏物件、误伤自己的召唤物、以及自建 buff/效果伤害都不再消耗满层。
+> 原先的单帧装备判定缓存字段（`cachedEquipCheckFrame` 等）随 `NewWeaponEquipState` 一并删除。
+> 「雷霆释放」气泡已去掉，只保留「雷能已满」那一条状态提示。
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)
@@ -105,7 +123,7 @@ RT->>UI : 显示“雷霆释放”
 - 运行参数：
   - 最大层数：5
   - 层数持续时间：8秒（超时清零）
-  - 释放伤害：40点雷电伤害
+  - 释放伤害：40 点固定 + 触发这一击实伤的 60%（2026-09-18 起，见文首变更说明）
   - 受击冷却：0.3秒（防止瞬间叠满）
 - 日志前缀：便于调试定位。
 
@@ -245,7 +263,7 @@ TS["ThunderSetBonus"] -.-> RT
 
 ## 故障排查指南
 - 症状：蓄雷不叠加
-  - 检查是否装备了雷电戒指（图腾槽位），确认 IsEquippingThunderRing 判断路径。
+  - 检查是否装备了雷电戒指（图腾槽位）：现在读 NewWeaponEquipState.IsTotemEquipped 的缓存，不再逐槽遍历。
   - 检查受击冷却是否处于CD，或层数是否已过期。
 - 症状：攻击不释放
   - 检查层数是否达到最大且未过期。

@@ -4,7 +4,7 @@
 // 形态照 Integration/WishFountain/WishFountainUI.cs：继承官方 Duckov.UI.View +
 // FadeGroup 运行时装配，挂在 GameplayUIManager 下。
 // 选它而不是自建 Canvas 的理由：官方 View 栈自带 ESC / 焦点互斥，
-// 不必像 AchievementRuntimeHooks 那样手动判 View.ActiveView == null。
+// 报纸双栏与签到墙需要自定义排版；滚动和焦点复用官方 ScrollRect / View。
 //
 // 遵循 AGENTS.md 4.14（tests/BossRushUISharedLibraryGuard.py 守卫）：
 //   - sortingOrder 只用 BossRushUILayers 常量，不写魔法数字；
@@ -38,9 +38,9 @@ namespace BossRush
         private static readonly Color PaperInkSoft = new Color(0.34f, 0.30f, 0.25f, 1f);
         private static readonly Color PaperRule = new Color(0.42f, 0.36f, 0.28f, 0.55f);
         private static readonly Color CellEmpty = new Color(0.78f, 0.74f, 0.65f, 1f);
-        private static readonly Color CellSigned = new Color(0.36f, 0.46f, 0.30f, 1f);
-        private static readonly Color CellMilestone = new Color(0.72f, 0.55f, 0.20f, 1f);
-        private static readonly Color CellMilestoneDone = new Color(0.52f, 0.42f, 0.18f, 1f);
+        private static readonly Color CellSigned = new Color(0.28f, 0.38f, 0.23f, 1f);
+        private static readonly Color CellMilestone = new Color(0.86f, 0.70f, 0.34f, 1f);
+        private static readonly Color CellMilestoneDone = new Color(0.45f, 0.35f, 0.12f, 1f);
 
         #endregion
 
@@ -49,6 +49,7 @@ namespace BossRush
         private const float PanelWidth = 1000f;
         private const float PanelHeight = 760f;
         private const float Margin = 28f;
+        private const float ContentHeight = 980f;
 
         /// <summary>签到墙右侧留给签到按钮与状态的宽度。</summary>
         private const float SignInSideWidth = 250f;
@@ -70,6 +71,12 @@ namespace BossRush
 
         private FadeGroup fadeGroup;
         private RectTransform panelRect;
+        private ScrollRect paperScroll;
+        private TextMeshProUGUI statsTitleText, sideTitleText, closeText, rulesText;
+        private readonly List<TextMeshProUGUI> legendLabels = new List<TextMeshProUGUI>();
+        private float nextRefreshTime;
+        private bool displayedChinese;
+        private int displayedDay, displayedPercent, displayedBountyProgress;
 
         private TextMeshProUGUI mastheadText;
         private TextMeshProUGUI issueText;
@@ -140,7 +147,8 @@ namespace BossRush
         {
             GameObject panel = ZombieModeUIHelper.CreateRect(
                 "Paper", rootRect, new Vector2(0.5f, 0.5f), new Vector2(PanelWidth, PanelHeight));
-            panelRect = panel.GetComponent<RectTransform>();
+            RectTransform paperRect = panel.GetComponent<RectTransform>();
+            BuildPaperScroll(paperRect);
 
             Image paper = panel.AddComponent<Image>();
             paper.color = PaperBase;
@@ -151,7 +159,7 @@ namespace BossRush
             // 纵向游标：每块自己申报高度，画完把游标推下去。
             // 早先是逐块手算 `top - 118f` 这类绝对偏移，任何一块改高度都要重算后面所有块，
             // 结果就是上半页空、下半页挤。用游标之后加减一块不影响别处。
-            float y = PanelHeight * 0.5f - Margin;
+            float y = ContentHeight * 0.5f - Margin;
 
             // ---- 报头 ----
             mastheadText = CreateBlock(
@@ -179,12 +187,12 @@ namespace BossRush
             // ---- 双栏：左战绩 / 右天气运势杂谈 ----
             float columnWidth = innerWidth * 0.5f - 14f;
             float columnCenterX = innerWidth * 0.25f + 7f;
-            const float columnBodyHeight = 168f;
+            const float columnBodyHeight = 220f;
 
             float titleY = y - 13f;
-            CreateColumnTitle("StatsTitle", L10n.T("昨 日 战 绩", "YESTERDAY"),
+            statsTitleText = CreateColumnTitle("StatsTitle", L10n.T("昨 日 战 绩", "YESTERDAY"),
                 -columnCenterX, titleY, columnWidth);
-            CreateColumnTitle("SideTitle", L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"),
+            sideTitleText = CreateColumnTitle("SideTitle", L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"),
                 columnCenterX, titleY, columnWidth);
             y -= 30f;
 
@@ -198,7 +206,7 @@ namespace BossRush
             // ---- 悬赏栏 ----
             bountyText = CreateBlock(
                 "Bounty", string.Empty, 16f,
-                innerWidth, 62f, ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 4f);
+                innerWidth, 118f, ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 4f);
             AllowWrap(bountyText);
 
             AdvanceRule(panelRect, ref y, innerWidth);
@@ -206,14 +214,54 @@ namespace BossRush
             // ---- 签到墙 ----
             BuildSignInGrid(panelRect, innerWidth, ref y);
 
-            // ---- 关闭 ----
-            ZombieModeUIHelper.CreateButton(
-                "Close", panelRect, L10n.T("合上报纸", "Close"),
+            rulesText = CreateBlock("Rules", string.Empty, 16f, innerWidth, 70f,
+                ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 0f);
+            AllowWrap(rulesText);
+
+            // 关闭按钮固定在纸面下沿，正文和签到墙共用滚动区。
+            Button close = ZombieModeUIHelper.CreateButton(
+                "Close", paperRect, L10n.T("合上报纸", "Close"),
                 new Vector2(0.5f, 0.5f),
                 new Vector2(innerWidth * 0.5f - 70f, -PanelHeight * 0.5f + Margin + 18f),
                 new Vector2(140f, 36f),
                 PaperRaised, 16f, new Vector2(130f, 30f),
                 OnCloseClicked, true);
+            if (close != null) closeText = close.GetComponentInChildren<TextMeshProUGUI>();
+        }
+
+        private void BuildPaperScroll(RectTransform paperRect)
+        {
+            ScrollRect prefab = Duckov.Utilities.GameplayDataSettings.UIPrefabs.ScrollRect;
+            if (prefab != null)
+            {
+                paperScroll = Instantiate(prefab, paperRect);
+                // 只替换布局容器，继续使用官方滚动条与输入组件。
+                if (paperScroll.content != null) Destroy(paperScroll.content.gameObject);
+            }
+            else
+            {
+                GameObject host = new GameObject("PaperScroll", typeof(RectTransform), typeof(ScrollRect));
+                host.transform.SetParent(paperRect, false);
+                paperScroll = host.GetComponent<ScrollRect>();
+                GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
+                viewport.transform.SetParent(host.transform, false);
+                paperScroll.viewport = viewport.GetComponent<RectTransform>();
+                StretchRect(paperScroll.viewport);
+            }
+            RectTransform scrollRect = paperScroll.GetComponent<RectTransform>();
+            StretchRect(scrollRect);
+            scrollRect.offsetMin = new Vector2(0f, 64f);
+            scrollRect.offsetMax = new Vector2(0f, -8f);
+            GameObject content = new GameObject("PaperContent", typeof(RectTransform));
+            content.transform.SetParent(paperScroll.viewport, false);
+            panelRect = content.GetComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0f, 1f);
+            panelRect.anchorMax = new Vector2(1f, 1f);
+            panelRect.pivot = new Vector2(0.5f, 1f);
+            panelRect.sizeDelta = new Vector2(-20f, ContentHeight);
+            paperScroll.content = panelRect;
+            BossRushUI.ConfigureScrollRect(paperScroll);
+            paperScroll.verticalNormalizedPosition = 1f;
         }
 
         /// <summary>铺一整幅宽的文本块，并把游标推到它下面。</summary>
@@ -238,13 +286,14 @@ namespace BossRush
             y -= 8f;
         }
 
-        private void CreateColumnTitle(string name, string content, float x, float y, float width)
+        private TextMeshProUGUI CreateColumnTitle(string name, string content, float x, float y, float width)
         {
             TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
                 name, panelRect, content, 19f,
                 new Vector2(x, y), new Vector2(width, 26f),
                 TextAlignmentOptions.Center, PaperInk);
             LockFontSize(text, 19f);
+            return text;
         }
 
         private TextMeshProUGUI CreateColumnBody(string name, float x, float y, float width, float height)
@@ -294,7 +343,7 @@ namespace BossRush
 
                 Image img = cell.AddComponent<Image>();
                 img.color = CellEmpty;
-                BossRushUI.ApplyPanelSkin(img, 6);
+                BossRushUI.ApplyPanelSkin(img, 6, BossRushUISkinPart.Card);
                 signInCells.Add(img);
 
                 TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
@@ -326,7 +375,7 @@ namespace BossRush
 
             signInStatusText = ZombieModeUIHelper.CreateText(
                 "SignInStatus", parent, string.Empty, 15f,
-                new Vector2(rightX, gridMidY - 30f), new Vector2(220f, 76f),
+                new Vector2(rightX, gridMidY - 48f), new Vector2(220f, 104f),
                 TextAlignmentOptions.Top, PaperInkSoft);
             LockFontSize(signInStatusText, 15f);
             AllowWrap(signInStatusText);
@@ -364,7 +413,7 @@ namespace BossRush
             box.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, centerY);
             Image image = box.AddComponent<Image>();
             image.color = color;
-            BossRushUI.ApplyPanelSkin(image, 4);
+            BossRushUI.ApplyPanelSkin(image, 4, BossRushUISkinPart.Card);
             image.raycastTarget = false;
 
             const float labelWidth = 92f;
@@ -375,6 +424,7 @@ namespace BossRush
                 TextAlignmentOptions.Left, PaperInkSoft);
             LockFontSize(text, 14f);
             text.raycastTarget = false;
+            legendLabels.Add(text);
 
             return x + swatch + 12f + labelWidth;
         }
@@ -391,6 +441,7 @@ namespace BossRush
             DailyReportService.TryRedeliverPendingBountyReward();
 
             Refresh();
+            DailyReportService.ConsumeIssueBanner();
 
             if (open) return;
             Open();
@@ -401,10 +452,15 @@ namespace BossRush
         {
             try
             {
-                DailyReportData data = DailyReportService.Data;
                 DailyReportIssue issue = DailyReportContent.BuildCurrentIssue();
+                DailyReportData data = DailyReportService.Data;
                 if (data == null || issue == null) return;
 
+                RefreshLabels();
+                displayedChinese = L10n.IsChinese;
+                displayedDay = data.DayIndex;
+                displayedPercent = Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f);
+                displayedBountyProgress = issue.TodayBountyProgress;
                 SetText(issueText, L10n.T(
                     "第 " + issue.IssueNumber + " 期　·　今日为第 " + data.DayIndex + " 天　·　当日进度 "
                         + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%",
@@ -438,7 +494,9 @@ namespace BossRush
                 ? "（" + issue.TodayBountyProgress + "/" + issue.TodayBountyTarget + "）"
                 : string.Empty;
 
-            result += L10n.T("【今日悬赏】", "[Today's Bounty] ") + issue.TodayBountyTitle + progress;
+            result += L10n.T("【今日悬赏】", "[Today's Bounty] ") + issue.TodayBountyTitle + progress
+                + L10n.T(" · 奖金 " + issue.TodayBountyCash + " 金（下期结算）",
+                    " · " + issue.TodayBountyCash + " cash (next issue)");
             if (!string.IsNullOrEmpty(issue.TodayBountyFlavor))
             {
                 result += "\n" + issue.TodayBountyFlavor;
@@ -477,7 +535,7 @@ namespace BossRush
                 // 显示的是累计天号：第 2 期第 1 格显示 31
                 int display = DailyReportService.ToDisplayDayNumber(data.PeriodIndex, slot);
                 label.text = isMilestone ? display + "★" : display.ToString();
-                label.color = (signed || isMilestone) ? new Color(0.96f, 0.94f, 0.88f, 1f) : PaperInk;
+                label.color = BossRushUI.GetButtonTextColor(cell.color);
             }
         }
 
@@ -497,10 +555,16 @@ namespace BossRush
             }
 
             int nextMilestone = FindNextMilestoneSlot(data);
-            string milestoneLine = nextMilestone > 0
-                ? L10n.T("距下个奖励还差 " + (nextMilestone - data.PeriodSignedCount) + " 天",
-                    (nextMilestone - data.PeriodSignedCount) + " day(s) to next reward")
-                : L10n.T("本期奖励已全部领取", "All rewards claimed this period");
+            int pendingCount = data.PendingMilestones != null ? data.PendingMilestones.Count : 0;
+            string milestoneLine = pendingCount > 0
+                ? L10n.T("待补发奖品 " + pendingCount + " 件，再次打开重试",
+                    pendingCount + " prize(s) pending; reopen to retry")
+                : nextMilestone > 0
+                ? L10n.T("再签 " + (nextMilestone - data.PeriodSignedCount) + " 天：品质 "
+                    + DailyReportService.GetMilestoneQuality(data.PeriodIndex, nextMilestone),
+                    (nextMilestone - data.PeriodSignedCount) + " check-ins to Q"
+                    + DailyReportService.GetMilestoneQuality(data.PeriodIndex, nextMilestone))
+                : L10n.T("本期奖励格已签满", "All reward slots signed");
 
             SetText(signInStatusText, L10n.T(
                 "第 " + data.PeriodIndex + " 期　" + data.PeriodSignedCount + "/"
@@ -522,6 +586,34 @@ namespace BossRush
         }
 
         #endregion
+
+        // 只在打开时以一秒频率检查变化；正文、天气与格子仅在值变化时重建。
+        private void Update()
+        {
+            if (!open) return;
+            if (displayedChinese == L10n.IsChinese
+                && (BossRushUI.IsGamePaused() || Time.unscaledTime < nextRefreshTime)) return;
+            nextRefreshTime = Time.unscaledTime + 1f;
+            DailyReportData data = DailyReportService.Data;
+            if (data == null) return;
+            if (displayedChinese != L10n.IsChinese || displayedDay != data.DayIndex
+                || displayedPercent != Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f)
+                || displayedBountyProgress != DailyReportService.GetActiveBountyProgress()) Refresh();
+        }
+
+        private void RefreshLabels()
+        {
+            SetText(mastheadText, L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"));
+            SetText(statsTitleText, L10n.T("昨 日 战 绩", "YESTERDAY"));
+            SetText(sideTitleText, L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"));
+            SetText(closeText, L10n.T("合上报纸", "Close"));
+            string[] labels = { L10n.T("未签", "Upcoming"), L10n.T("已签", "Signed"),
+                L10n.T("★ 奖励格", "★ Reward"), L10n.T("奖励已领", "Claimed") };
+            for (int i = 0; i < legendLabels.Count && i < labels.Length; i++) SetText(legendLabels[i], labels[i]);
+            SetText(rulesText, L10n.T(
+                "每天手动签到一次；漏签会清空本期进度，已挣得的奖品保留。\n一天约 24 分钟游玩时间；暂停停表，睡觉不催刊。悬赏自动计数，次日结算。",
+                "Check in once per game day. Missing a day resets this period; earned prizes stay yours.\nA day takes about 24 minutes of play. Pausing stops the clock; sleeping won't skip issues. Bounties settle next issue."));
+        }
 
         #region 交互
 
@@ -601,6 +693,20 @@ namespace BossRush
 
         #region View 生命周期
 
+        internal static void CleanupRuntime()
+        {
+            DailyReportView view = Instance;
+            if (view == null) return;
+            try { view.Close(); }
+            finally
+            {
+                // Host Canvas 也属于日报，不能在卸载后留在 GameplayUIManager 上。
+                GameObject host = view.transform.parent != null ? view.transform.parent.gameObject : view.gameObject;
+                Instance = null;
+                Destroy(host);
+            }
+        }
+
         protected override void OnOpen()
         {
             base.OnOpen();
@@ -656,7 +762,8 @@ namespace BossRush
         private static void SetText(TextMeshProUGUI target, string value)
         {
             if (target == null) return;
-            target.text = value ?? string.Empty;
+            value = value ?? string.Empty;
+            if (target.text != value) target.text = value;
         }
 
         private static string JoinLines(List<string> lines)

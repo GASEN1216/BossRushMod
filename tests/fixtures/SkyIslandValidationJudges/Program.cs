@@ -36,7 +36,30 @@ internal static class Program
         LootPrewarm();
         FrameProfile();
         BossProfiles();
+        Chatter();
         Console.WriteLine("PASS: " + assertions + " assertions; F3 Sky Island runtime-case judges (pure half only, no Unity)");
+    }
+
+    // ---------------------------------------------------------------- 头顶气泡：按当前存档取一遍话语池 + 同屏上限（2026-09-17）
+    private static void Chatter()
+    {
+        string metrics, reason;
+        string[] residents = { "sky_qinghe", "sky_weibai", "sky_fuzhou", "sky_miantai", "sky_zheling", "sky_bellkeeper" };
+        SkyIslandStoryData fresh = SkyIslandStoryRules.CreateDefault();
+        SkyIslandStoryData ending = SkyIslandStoryRules.CreateDefault();
+        ending.flags |= (int)SkyIslandStoryFlag.Ending;
+        foreach (SkyIslandStoryData data in new[] { fresh, ending })
+            Check(F3GameplayValidationRunner.JudgeChatter(residents, data, false, false, 0, 0, out metrics, out reason)
+                && metrics.Contains("resident_pools=6") && metrics.Contains("on_screen=0"),
+                "chatter: every speaker still has lines at this point in the story -> PASS");
+        // 两个 owner 各挂一个气泡是上限本身，不是缺陷。
+        Check(F3GameplayValidationRunner.JudgeChatter(residents, fresh, true, true, 3, 1, out metrics, out reason)
+            && metrics.Contains("on_screen=2"), "chatter: one resident bubble plus one enemy bubble is the cap -> PASS");
+        // 表外的说话者返回空池子：真出现这种 id（打错字、新居民漏配）时必须红，不能静默沉默。
+        Check(!F3GameplayValidationRunner.JudgeChatter(new[] { "sky_nobody" }, fresh, false, false, 0, 0, out metrics, out reason)
+            && reason.Contains("sky_nobody:no_lines"), "chatter: a speaker with no lines is named in the reason -> FAIL");
+        Check(!F3GameplayValidationRunner.JudgeChatter(null, fresh, false, false, 0, 0, out metrics, out reason)
+            || metrics.Contains("resident_pools=0"), "chatter: no resident list still reports what it saw, never a silent PASS");
     }
 
     // ---------------------------------------------------------------- 可达性：锁门岛分类与「真的走到了」（2026-09-14 实机）

@@ -291,7 +291,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 该崽提供的额外背包格子：基础值 + 出身天赋里的 PetCapcity 常量加。
+        /// 该崽提供的额外背包格子：基础值 + 等级成长 + 性格 + 出身天赋里的 PetCapcity 常量加。
         /// </summary>
         internal static int ResolveCapacityBonus(PetNestPetRecord pet)
         {
@@ -299,12 +299,16 @@ namespace BossRush
             if (pet == null) return bonus;
             // 等级成长：每 PetLevelsPerCapacityBonus 级 +1 格（Lv10 满级共 +3）
             bonus += pet.level / PetNestTuning.PetLevelsPerCapacityBonus;
+            // 性格：懒散「攻击欲低但背包大」的那一格（表在 PetNestPersonality）
+            bonus += PetNestPersonality.Resolve(pet).ExtraPetCapacity;
             if (pet.talents == null) return bonus;
             for (int i = 0; i < pet.talents.Count; i++)
             {
                 PetNestTalentEntry t = pet.talents[i];
                 if (t == null || t.percentage) continue;
-                if (string.Equals(t.statKey, "PetCapcity", StringComparison.Ordinal))
+                // 官方拼写就是 PetCapcity（少一个 a）；常量单点在借席桥，不写字面量
+                if (string.Equals(t.statKey, PetNestPetProxyBridge.PetCapacityStatKey,
+                        StringComparison.Ordinal))
                 {
                     bonus += Mathf.RoundToInt(t.value);
                 }
