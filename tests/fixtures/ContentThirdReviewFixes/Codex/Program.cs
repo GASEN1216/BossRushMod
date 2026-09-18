@@ -80,7 +80,223 @@ class Program
             "slot change removes previous slot historical membership");
         Check(!CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current), "empty new slot cannot be all-collected");
         CheckBossTimerIsolation();
+        CheckSaveTransactions();
+        CheckCatalogAndLanguage();
+        CheckCodec();
+        CheckCapacityAndCleanup();
+        CheckKillEligibility();
         Console.WriteLine("Codex regression checks=" + checks);
+    }
+
+    static void Reset()
+    {
+        CodexPersistence.Current = new CodexData();
+        CodexPersistence.HasWriteBarrier = CodexPersistence.IsStoreFaulted = CodexPersistence.RejectStore = false;
+        CodexPersistence.StoreCalls = 0;
+        CodexKillCollector.ResetStaticCaches();
+        CodexBossCatalog.ResetStaticCaches();
+        CodexMilestones.ResetStaticCaches();
+        BossRushAchievementManager.Unlocked.Clear();
+        ModBehaviour.Instance.Pool.Clear();
+    }
+
+    static void CheckSaveTransactions()
+    {
+        Reset();
+        var original = CodexPersistence.Current;
+        CodexPersistence.RejectStore = true;
+        Kill("rejected");
+        CodexBossInfo ignored;
+        Check(ReferenceEquals(original, CodexPersistence.Current) && original.Entries.Count == 0
+            && !CodexBossCatalog.TryGet("rejected", out ignored) && BossRushAchievementManager.Unlocked.Count == 0,
+            "rejected first kill cannot change current data, catalog or rewards");
+        CodexPersistence.RejectStore = false;
+        Kill("accepted");
+        original = CodexPersistence.Current;
+        string saved = CodexPersistence.SavedJson;
+        CodexPersistence.RejectStore = true;
+        Kill("accepted");
+        Check(ReferenceEquals(original, CodexPersistence.Current) && original.Find("accepted").Kills == 1
+            && CodexPersistence.SavedJson == saved, "rejected repeat kill preserves committed record and bytes");
+        CodexPersistence.RejectStore = false;
+        CodexPersistence.HasWriteBarrier = true;
+        int calls = CodexPersistence.StoreCalls;
+        Kill("barrier");
+        Check(CodexPersistence.StoreCalls == calls && original.Find("barrier") == null,
+            "known write barrier blocks mutation and serialization");
+        CodexPersistence.HasWriteBarrier = false;
+        CodexPersistence.IsStoreFaulted = true;
+        Kill("fault");
+        Check(CodexPersistence.StoreCalls == calls && original.Find("fault") == null,
+            "known storage fault blocks mutation and serialization");
+        original.Find("accepted").FastestKillSeconds = 5;
+        BossRushAchievementManager.Unlocked.Clear();
+        CodexMilestones.EvaluateOnPanelOpen(original);
+        Check(BossRushAchievementManager.Unlocked.Count == 0, "faulted panel cannot award milestones");
+        CodexPersistence.IsStoreFaulted = false;
+        CodexMilestones.EvaluateOnPanelOpen(original);
+        Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementFastKill),
+            "panel restores earned fast-kill achievement from saved measurement");
+        original.Find("accepted").Kills = int.MaxValue;
+        Kill("accepted");
+        Check(CodexPersistence.Current.Find("accepted").Kills == int.MaxValue, "kill count saturates without losing unlock");
+    }
+
+    static void CheckCatalogAndLanguage()
+    {
+        Reset();
+        ModBehaviour.Instance.Pool.Add(new EnemyPresetInfo { name = DragonKingConfig.BossNameKey, displayName = "stale king" });
+        ModBehaviour.Instance.Pool.Add(new EnemyPresetInfo { name = "official", displayName = "old name" });
+        CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
+        CodexBossInfo king, official;
+        Check(CodexBossCatalog.Count == 9 && CodexBossCatalog.TryGet(DragonKingConfig.BossNameKey, out king)
+            && king.IsCustomBoss && king.DisplayName != "stale king", "custom boss already in shared pool keeps custom classification");
+        CodexBossCatalog.TryGet("official", out official);
+        LocalizationHelper.Text["official"] = "中文名";
+        Check(official.DisplayName == "中文名", "current language takes precedence over cached pool display name");
+        LocalizationHelper.Text["official"] = "English name";
+        Check(official.DisplayName == "English name", "same catalog object follows language switch without rebuilding");
+        LocalizationHelper.Text.Clear();
+        Check(official.DisplayName == "old name", "missing translation retains recorded fallback name");
+        var ghost = CodexPersistence.Current.GetOrCreate("empty_history", "empty");
+        CodexBossCatalog.SynchronizeHistoricalEntries(CodexPersistence.Current);
+        CodexBossInfo ignored;
+        Check(!CodexBossCatalog.TryGet(ghost.Key, out ignored), "zero-kill historical entry cannot become an unreachable requirement");
+        foreach (CodexBossInfo info in CodexBossCatalog.All)
+        {
+            L10n.IsChinese = true;
+            string cn = CodexBossCatalog.GetEncounterHint(info);
+            L10n.IsChinese = false;
+            Check(!string.IsNullOrEmpty(cn) && cn != CodexBossCatalog.GetEncounterHint(info), "each catalog kind offers bilingual encounter guidance");
+        }
+        L10n.IsChinese = true;
+        Check(CodexBossCatalog.BuildZombieBossKey((ZombieModeBossKind)999) == null, "unknown zombie kind cannot invent a collectible");
+        string key = CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);
+        long before = GC.GetAllocatedBytesForCurrentThread();
+        for (int i = 0; i < 10000; i++) CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);
+        Check(GC.GetAllocatedBytesForCurrentThread() == before && key == "zombie_boss_Titan", "zombie identity hot lookup allocates zero bytes and preserves frozen key");
+        ModBehaviour.Instance.Pool = null;
+        CodexBossCatalog.Invalidate();
+        CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
+        foreach (CodexBossInfo info in CodexBossCatalog.All)
+            CodexPersistence.Current.GetOrCreate(info.Key, info.DisplayName).Kills = 1;
+        Check(!CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current),
+            "unavailable official pool cannot grant completion from fallback entries alone");
+        ModBehaviour.Instance.Pool = new System.Collections.Generic.List<EnemyPresetInfo>();
+    }
+
+    static void CheckCodec()
+    {
+        Check(CodexCodec.ReadSchemaVersion("{\"schemaVersion\":1.2}") == -1,
+            "invalid fractional schema version cannot be rounded into a writable v1 save");
+        Check(CodexCodec.Decode("{\"schemaVersion\":1,\"entries\":[{\"k\":\"old\"}]}").Find("old").Kills == 0,
+            "v1 optional fields retain defaults");
+        string[] invalid =
+        {
+            "{\"schemaVersion\":1}", "{\"schemaVersion\":1,\"entries\":{}}",
+            "{\"schemaVersion\":1,\"entries\":[null]}", "{\"schemaVersion\":1,\"entries\":[{}]}",
+            "{\"schemaVersion\":1,\"entries\":[{\"k\":\"a\"},{\"k\":\"a\"}]}",
+            "{\"schemaVersion\":1,\"entries\":[{\"k\":\"a\",\"kills\":\"5\"}]}",
+            "{\"schemaVersion\":1,\"entries\":[{\"k\":\"a\",\"kills\":-1}]}",
+            "{\"schemaVersion\":1,\"entries\":[{\"k\":\"a\",\"first\":9223372036854775807}]}",
+            "{\"schemaVersion\":1,\"entries\":[{\"k\":\"a\",\"fast\":1e100}]}"
+        };
+        foreach (string json in invalid) Check(CodexCodec.Decode(json) == null, "damaged collection rejects whole payload: " + json);
+        var entries = new System.Text.StringBuilder();
+        for (int i = 0; i <= CodexTuning.MaxEntries; i++)
+        {
+            if (i > 0) entries.Append(',');
+            entries.Append("{\"k\":\"").Append(i).Append("\"}");
+        }
+        Check(CodexCodec.Decode("{\"entries\":[" + entries + "]}") == null,
+            "oversized stored collection is protected, never truncated and overwritten");
+        var data = new CodexData();
+        var entry = data.GetOrCreate("escaped\\\"", "中文");
+        entry.Kills = 7; entry.FirstMode = "raid"; entry.FastestKillSeconds = 0.001f;
+        string encoded = CodexCodec.Encode(data);
+        Check(CodexCodec.Encode(CodexCodec.Decode(encoded)) == encoded,
+            "real codec round trip preserves escaped key, unicode and sub-frame timing bytes");
+    }
+
+    static void CheckCapacityAndCleanup()
+    {
+        Reset();
+        var hit = new DamageInfo { fromCharacter = new CharacterMainControl { IsMainCharacter = true }, finalDamage = 10 };
+        var targets = new Health[CodexTuning.MaxFightStartTracked + 1];
+        UnityEngine.Time.time = 10;
+        for (int i = 0; i < targets.Length; i++)
+        {
+            targets[i] = new Health { Character = new CharacterMainControl { isBossCharacter = true,
+                Team = Teams.wolf, characterPreset = new CharacterRandomPreset { nameKey = "capacity_" + i } } };
+            CodexKillCollector.OnGlobalHurt(targets[i], hit);
+        }
+        Check(CodexKillCollector.TrackedFightCount == CodexTuning.MaxFightStartTracked,
+            "capacity keeps existing timers while rejecting only extra timing");
+        UnityEngine.Time.time = 19;
+        targets[0].IsDead = true;
+        CodexKillCollector.OnGlobalDead(targets[0], hit);
+        Check(CodexPersistence.Current.Find("capacity_0").FastestKillSeconds == 9,
+            "oldest boss keeps measured time when table is full");
+        targets[1].Character.Team = Teams.player;
+        targets[1].IsDead = true;
+        CodexKillCollector.OnGlobalDead(targets[1], hit);
+        Check(CodexKillCollector.TrackedFightCount == CodexTuning.MaxFightStartTracked - 2
+            && CodexPersistence.Current.Find("capacity_1") == null, "allegiance change clears timing without counting a friendly kill");
+        CodexKillCollector.NotifySceneChanged();
+        Check(CodexKillCollector.TrackedFightCount == 0, "scene transition clears all outstanding timers");
+    }
+
+    static void CheckKillEligibility()
+    {
+        Reset();
+        var hit = new DamageInfo { fromCharacter = new CharacterMainControl { IsMainCharacter = true }, finalDamage = 10 };
+        var target = new Health { Character = new CharacterMainControl { isBossCharacter = true,
+            Team = Teams.wolf, characterPreset = new CharacterRandomPreset { nameKey = "excluded" } } };
+        ModBehaviour.ModeHRunning = true;
+        CodexKillCollector.OnGlobalHurt(target, hit);
+        target.IsDead = true;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        Check(CodexKillCollector.TrackedFightCount == 0 && CodexPersistence.Current.Entries.Count == 0,
+            "Mode H player-attributed kill is excluded before timer and collection");
+        ModBehaviour.ModeHRunning = false;
+        target.IsCompanion = true;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        target.IsCompanion = false;
+        target.Character.Team = Teams.player;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        target.Character.Team = Teams.wolf;
+        LevelManager.Instance.IsBaseLevel = true;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        LevelManager.Instance.IsBaseLevel = false;
+        target.IsMainCharacterHealth = true;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        target.IsMainCharacterHealth = false;
+        target.Character.isBossCharacter = false;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        Check(CodexPersistence.Current.Entries.Count == 0, "companions, allies, base, player and ordinary enemies cannot unlock entries");
+        ModBehaviour.Instance.IsZombieModeActive = true;
+        foreach (ZombieModeBossKind kind in Enum.GetValues(typeof(ZombieModeBossKind)))
+        {
+            var boss = new Health { Character = new CharacterMainControl { Team = Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = "ordinary_preset" },
+                Component = new ZombieModeEnemyRuntimeMarker { IsBoss = true, BossKind = kind } } };
+            UnityEngine.Time.time = 100;
+            CodexKillCollector.OnGlobalHurt(boss, hit);
+            UnityEngine.Time.time = 109;
+            boss.IsDead = true;
+            CodexKillCollector.OnGlobalDead(boss, hit);
+            CodexKillCollector.OnGlobalDead(boss, hit);
+            var entry = CodexPersistence.Current.Find(CodexBossCatalog.BuildZombieBossKey(kind));
+            Check(entry != null && entry.Kills == 1 && entry.FastestKillSeconds == 9
+                && entry.FirstMode == CodexTuning.ModeIdZombie,
+                "zombie marker drives unique identity, timing and duplicate-death exclusion: " + kind);
+        }
+        target.Character.isBossCharacter = true;
+        target.Character.Component = new ZombieModeEnemyRuntimeMarker { IsBoss = false };
+        CodexKillCollector.OnGlobalDead(target, hit);
+        Check(CodexPersistence.Current.Find("excluded") == null && CodexPersistence.Current.Entries.Count == 5,
+            "ordinary zombie marker cannot inherit a boss preset identity");
+        ModBehaviour.Instance.IsZombieModeActive = false;
     }
 
     static void CheckBossTimerIsolation()

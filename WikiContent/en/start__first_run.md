@@ -7,9 +7,9 @@ Buy a **BossRush Ticket** from the base merchant to enter the Boss arena. To beg
 Also grab:
 - **Achievement Medal** — Free. Right-click to open achievements
 - **Adventurer's Journal** — the in-game Wiki you're reading now
-- **Duck King Codex** — 4000, and the shop only stocks one. It logs every Boss you personally
-  kill, and the "first entry" achievement alone pays back **50,000**. **The fastest-paying
-  purchase in the Mod.**
+- **Duck King Codex** — 4000, with one copy per restock. View defeated Bosses, missing entries,
+  and fastest times. Kills and achievement rewards accumulate without the book;
+  buy it when you want to plan your next challenge.
 
 ### Step 2: Pick a Map
 

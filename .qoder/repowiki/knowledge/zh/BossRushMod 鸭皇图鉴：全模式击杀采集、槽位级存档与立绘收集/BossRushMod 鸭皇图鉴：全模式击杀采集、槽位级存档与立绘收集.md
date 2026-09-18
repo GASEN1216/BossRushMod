@@ -22,15 +22,16 @@ source_files:
     - Localization/CodexLocalization.cs
     - tests/CodexPersistenceGuard.py
     - tests/CodexKillTrackingGuard.py
+    - tests/CodexPresentationGuard.py
 ---
 
 ## 1. 系统概述
 
-鸭皇图鉴是**贯穿全部玩法入口**的收集型元系统：玩家每亲手击杀一个 Boss，图鉴里对应条目
+鸭皇图鉴是跨模式的 Boss 收藏系统：排除 Mode H 观战与基地，玩家亲手击杀符合采集条件的 Boss，图鉴里对应条目
 就点亮一格，记录累计击杀、初见日期、首杀所在模式和最快击杀时间，并配一张 AI 生成的立绘。
 解锁数达到阈值时经现有成就系统发放里程碑奖励。
 
-定位上它是「乘法型」内容：不新开模式，而是让已有的 9 个入口都产出可积累的收集进度。
+定位是让已有战斗产出可积累的收集进度：挑选未击败的目标、按挑战来源出击、首杀收录，再挑战改善用时。
 入口是可用物品「鸭皇图鉴」（TypeID 500061，使用不消耗），基地商店可购。
 
 `codexEnabled` 字段与旧键 `BossRush_CodexEnabled` 为兼容保留；图鉴现属默认内容，
@@ -41,7 +42,7 @@ source_files:
 | 文件 | 职责 |
 | --- | --- |
 | `CodexTuning.cs` | 全部常量单点：存档 key、schema 版本、里程碑阈值与奖励、丧尸合成 key、立绘 bundle 名、计时表容量上限 |
-| `CodexModels.cs` | `CodexData` / `CodexEntryData` DTO（`k` / `n` / `kills` / `first` / `fm` / `fast`） |
+| `CodexModels.cs` | `CodexData` / `CodexEntry` DTO（`k` / `n` / `kills` / `first` / `fm` / `fast`），深复制候选避免拒写污染已提交状态 |
 | `CodexCodec.cs` | 写侧 `SimpleJsonHelper` 追加（字节格式冻结），读侧 2026-09-06 起走共享节点解析器 `Common/Data/BossRushJsonValue.cs`；`CreateDefault()` 是唯一默认值出处，no-throw |
 | `CodexPersistence.cs` | 槽位级存档门面：只保留 key / schema / 编解码绑定与下游复位，状态机（幂等订阅、槽位烙印、写屏障、回读核对、`Store()` 只入队）在共享的 `Common/Lifecycle/BossRushSlotJsonStore.cs` |
 | `CodexSaveCoordinator.cs` | 图鉴**唯一**物理落盘入口：门面持有一个 `Common/Lifecycle/BossRushSaveCoordinatorEngine.cs` 实例（基地场景闸 + deferred 重试预算 + 欠一次 SaveFile 记账），`SaveFile` 本身只在引擎里 |
@@ -49,16 +50,16 @@ source_files:
 | `CodexKillCollector.cs` | `Health.OnDead/OnHurt` 的命名 handler，过滤序 + 实例去重 + 最快击杀计时 |
 | `CodexMilestones.cs` | 解锁数变化后调成就 `TryUnlock`，幂等 |
 | `CodexPortraitCache.cs` | 立绘 bundle 加载与 per-sprite 缓存，**fail-open** |
-| `CodexView.cs` / `CodexView_Grid.cs` | 面板与网格卡片（走 `Common/UI/BossRushUI.cs` 共享库） |
-| `CodexBookItem.cs` | 入口物品 500061（`CodexBookConfig`）+ `UsageBehavior` + 商店注入 + partial ModBehaviour 的清理入口 |
-| `CodexRuntimeModule.cs` | 宿主回调唯一落点：dormant 契约、幂等 bootstrap、开关热切 |
+| `CodexView.cs` / `CodexView_Grid.cs` | 面板、每页最多12张卡、待收集筛选与挑战来源（复用官方 ScrollRect 和 `Common/UI/BossRushUI.cs`） |
+| `CodexBookItem.cs` | 入口物品 500061（`CodexBookConfig`）+ 零消耗 `UsageBehavior` + 商店注入与宿主兼容转发 |
+| `CodexRuntimeModule.cs` | 宿主回调及运行时销毁清理的唯一 owner：dormant 契约、幂等 bootstrap、兼容开关门控 |
 
 ## 3. 架构与设计约定
 
 ### 3.1 数据源是官方静态事件，不是任何模式的内部管线
 
-9 个入口的敌人死亡最终都会走官方 `Health.Hurt()` 的死亡分支派发静态 `Health.OnDead`，
-**与模式无关**。因此图鉴直接订阅它，而不是接任何模式的波次/奖励管线。
+常规战斗经官方 `Health.Hurt()` 的死亡分支派发静态 `Health.OnDead`。
+图鉴从已有全局事件转发采集，不接各模式的波次/奖励管线；Mode H 在采集入口明确排除。
 
 这条选择是刻意的，两个被否掉的替代方案：
 
@@ -71,15 +72,15 @@ source_files:
 
 ### 3.2 过滤序（顺序有意义，删任何一条都会记错）
 
-1. 开关门控早返；
-2. 排除玩家自己的死亡；
-3. 只记 `info.fromCharacter` 为主角的击杀（环境伤害、随从击杀不算）；
-4. 排除友军（`Teams.player`，涵盖宠物/雇佣兵/临时同伴）；
-5. 排除基地场景（保护基地闲逛的遗种幼体）；
-6. 排除遗种巢随从（`PetNestCompanionAgent.IsCompanionHealth`）；
-7. 实例去重（`HashSet`，切场景清空）；
-8. 身份归属：主路查 `characterPreset.nameKey`；丧尸支路**仅在丧尸模式激活时**才走
-   `GetComponent<ZombieModeEnemyRuntimeMarker>()`，避免每次普通击杀白付一次组件查找。
+1. 开关与空目标早返；随后取出并移除死亡目标的计时，归属改变也不遗留起点；
+2. 排除 Mode H（必须先于主角归属判断，覆盖其控制互换）；
+3. 排除玩家自己的死亡；只记 `info.fromCharacter` 为主角的击杀（环境伤害、随从击杀不算）；
+4. 排除遗种巢随从（`PetNestCompanionAgent.IsCompanionHealth`）；
+5. 解析受害角色，排除友军 `Teams.player` 与基地场景；
+6. 身份归属：主路检查 Boss 身份并取 `characterPreset.nameKey`；丧尸支路**仅在丧尸模式激活时**才走
+   `GetComponent<ZombieModeEnemyRuntimeMarker>()`，marker 存在时由它判定是否为 Boss；
+7. 实例去重（`HashSet`，切场景清空），计算有效用时；
+8. 在数据副本上记击杀，Store 接受后才发布目录进度、请求保存并评估成就。
 
 ### 3.3 已知语义（与既有系统口径一致，不是 bug）
 
@@ -90,31 +91,35 @@ source_files:
 
 ### 3.4 最快击杀 = 「首次玩家伤害 → 死亡」区间
 
-不侵入 9 个模式的生成路径，改在 `OnGlobalHurt` 里记 `Time.time` 起点、`OnGlobalDead` 结算取 min。
+复用 `OnGlobalHurt` 记录 `Time.time` 起点、`OnGlobalDead` 结算取 min，不侵入各模式的生成路径。
 时序安全性来自官方派发顺序：致命一击的 `OnHurt` 在 `OnDead` **之后**派发且 `isDead` 已置位，
-所以 `!target.IsDead` 检查天然挡住死后脏写。计时字典有容量上限防泄漏。
+所以 `!target.IsDead` 检查挡住死后脏写。计时字典满时只拒绝新起点，保留已观测战斗。
+一击致死若没有起点仍收录击杀，但不猜测用时或发速杀成就；有起点的同帧击杀保留最小正计时。
 
 语义上这是「交战时长」而非「出场到死亡」，跨波躲藏会拉长该 Boss 的表观时间——
 作为收集玩法的趣味数字足够，且全模式统一口径。
 
 ### 3.5 存档跟槽位（不是账号全局）
 
-key `BossRush_Codex_v1`，`Save<string>` 整存 JSON + `{schemaVersion, payload}` envelope。三条理由：
+key `BossRush_Codex_v1`，`Save<string>` 整存 JSON，顶层字段为 `schemaVersion`、`lastUpdatedTicks`、`entries`。三条理由：
 
 1. 里程碑奖励落在当前槽位资产上，统计跟着槽位才不会出现「新槽位白拿/旧槽位拿不到」；
 2. `SaveGlobal` 每次调用立即整写 Global.json + 备份，高频击杀场景需要自建第二套节流，无现成模板；
 3. 遗种巢博物馆（同为图鉴语义）就是槽位级先例。
 
-高频击杀只改内存 + 单一 pending，物理写盘只有三个出口：官方 `OnCollectSaveData` 顺带 merge、
-基地场景 `Tick()`、宿主销毁兜底。schema 不符时写屏障只读不覆盖。
+有效 Boss 击杀在有容量上限的数据副本上修改并编码，经 Store 接受后进入单一 pending。
+官方 `OnCollectSaveData` 合并快照；主动物理落盘复用协调器的基地 `Tick()` 与宿主销毁兜底。
+schema 不符或收藏结构损坏时启用写屏障，保留原始档；不把坏条目跳过后覆写成缩水收藏。
 
 ### 3.6 展示目录取并集
 
 `EnsureBuilt` = `GetFilteredEnemyPresets()` ∪ 3 自定义 canonical key ∪ 5 丧尸合成条目
-∪ **存档中已有的历史条目**。最后一项解决的是「玩家在 Boss 筛选器里禁用了某 Boss 之后，
+∪ **存档中已有击杀的历史条目**。公共池中的自定义 Boss 先排除，再按自定义类别统一登记。
+最后一项解决的是「玩家在 Boss 筛选器里禁用了某 Boss 之后，
 已收集的历史条目从图鉴里消失」。
 
 `BossFilter.InvalidateFilteredPresetsCache()` 是唯一咽喉点，图鉴目录在那里并联失效重建。
+待收集筛选只影响展示；全录逐个核对目录 key，官方池读取失败不发全录。名字按当前语言解析，缺译文才回落历史快照。
 
 ### 3.7 立绘缓存是 fail-open（与 Mode G 的 fail-closed 相反）
 
@@ -127,13 +132,15 @@ Mode G/H 的展示 bundle 是**入口门票**，缺包必须 fail-closed 挡住�
 
 ## 4. 性能
 
-`Health.OnDead/OnHurt` 是全 Mod 最热的静态事件（一局丧尸潮几千次），因此两个 handler：
-零分配、零日志、零字符串拼接、开关早返 O(1)；丧尸 `GetComponent` 被模式门控。
-面板打开是低频操作，每次全量重建卡片即可（与成就面板同型）。
+`Health.OnDead/OnHurt` 是高频静态事件，关闭时 O(1) 早返；丧尸组件查找受模式门控，
+五类 key 返回既有常量，避免每次受伤枚举转字符串和拼接。有效 Boss 死亡会复制数据并编码，
+不能称为零分配；普通受伤不执行复制或保存。字典初次扩容等分配也不能用 key 查询回归排除。
+面板每页最多创建12张卡、按页取立绘；每帧只比较语言与已提交快照，变化或用户操作才重画。
+旧卡先失活再销毁。离线分配检查不等于 Unity 帧耗采样，首次资源加载与长局性能仍待实机。
 
 ## 5. 契约面（发布后冻结）
 
-- 存档 key `BossRush_Codex_v1` 与 envelope 字段；条目字段 `k/n/kills/first/fm/fast`（只增不改）。
+- 存档 key `BossRush_Codex_v1` 与顶层字段 `schemaVersion/lastUpdatedTicks/entries`；条目字段 `k/n/kills/first/fm/fast`。
 - TypeID `500061`（鸭皇图鉴）；本地化键 `BossRush_Codex_*`、`BossRush_CodexBook`。
 - 立绘 bundle 名与 asset 命名规则 `codex_portrait_<bossKey 小写>`。
 - 成就分类 `AchievementCategory.Codex`（**追加在枚举末尾**，老档 int 值不漂移）与 5 条成就 id。
@@ -143,11 +150,20 @@ Mode G/H 的展示 bundle 是**入口门票**，缺包必须 fail-closed 挡住�
 
 F3 调试菜单可导出目录清单（nameKey + 显示名），用于核对立绘任务单与排查条目缺失。
 
-## 7. 已知未完成项
+## 7. 资源与实机验证状态
 
-- 立绘 AssetBundle 需在兄弟 Unity 工程构建；`AllowDevRawPngFallback` 在发布构建恒 false，
-  因此仅有 raw PNG 时正式包会走占位链。
-- 实机 smoke 未做（详见 `FIX_TRACKER.md` 2026-08-30 条目）。
+- 2026-09-18 已确认工作区 `Assets/ui/codex_portraits` 与 `Assets/Items/codex_book.png` 存在，构建脚本有部署接线。
+  `AllowDevRawPngFallback` 在发布构建恒 false，缺包时仍按占位链显示；文件存在不等于游戏内资源加载成功。
+- 本轮实机步骤 C01～C07 尚待 owner，见下方生产审核报告；不能以旧版 smoke 或离线检查替代。
+
+## 2026-09-18 生产审核同步（COMPAT / SAFE）
+
+修复拒写污染、坏档截断、自定义分类与语言冻结、满表计时丢失、速杀补判及布局替换时序，
+补齐待收集筛选、分页和挑战来源；保留原有收集范围、奖励、TypeID 和 v1 字段。
+生产链接回归67项及相关守卫通过，干净基线叠加图鉴补丁的 Windows 正式编译通过；
+共享工作区另有并行改动，未声明全库构建通过，尚无 L3 或游戏帧耗采样。
+当前专题见 [鸭皇图鉴系统](file://.qoder/repowiki/zh/content/高级功能/鸭皇图鉴系统.md)，
+完整证据、取舍与实机清单见本地交付报告 `docs/代码审查/2026-09-18-鸭皇图鉴生产审核.md`（local-only）。
 
 ## 8. 2026-08-31 商店入口修复
 

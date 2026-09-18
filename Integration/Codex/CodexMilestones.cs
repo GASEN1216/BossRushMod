@@ -36,7 +36,7 @@ namespace BossRush
         /// </summary>
         internal static void Evaluate(CodexData data, float lastKillSeconds)
         {
-            if (data == null) return;
+            if (data == null || CodexPersistence.HasWriteBarrier || CodexPersistence.IsStoreFaulted) return;
 
             try
             {
@@ -68,13 +68,24 @@ namespace BossRush
         /// </summary>
         internal static void EvaluateOnPanelOpen(CodexData data)
         {
-            if (data == null) return;
+            if (data == null || CodexPersistence.HasWriteBarrier || CodexPersistence.IsStoreFaulted) return;
 
             try
             {
                 BossRushAchievementManager.Initialize();
                 _lastEvaluatedUnlockedCount = -1;
                 EvaluateUnlockCount(data);
+                // 成就与图鉴分别保存；已落档的有效速杀也应能在重开时补判。
+                for (int i = 0; i < data.Entries.Count; i++)
+                {
+                    CodexEntry entry = data.Entries[i];
+                    if (entry != null && entry.Kills > 0 && entry.FastestKillSeconds > 0f
+                        && entry.FastestKillSeconds <= CodexTuning.FastKillSeconds)
+                    {
+                        BossRushAchievementManager.TryUnlock(CodexTuning.AchievementFastKill);
+                        break;
+                    }
+                }
             }
             catch (Exception e)
             {

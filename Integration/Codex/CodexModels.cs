@@ -49,6 +49,25 @@ namespace BossRush
         /// <summary>key -&gt; 条目的查询索引。允许为 null（惰性重建）。</summary>
         private Dictionary<string, CodexEntry> _index;
 
+        /// <summary>候选快照；Store 接受前不能修改当前收藏或向成就系统报告成功。</summary>
+        internal CodexData Clone()
+        {
+            CodexData copy = new CodexData();
+            copy.LastUpdatedTicks = LastUpdatedTicks;
+            for (int i = 0; i < Entries.Count; i++)
+            {
+                CodexEntry entry = Entries[i];
+                if (entry == null) continue;
+                copy.Entries.Add(new CodexEntry
+                {
+                    Key = entry.Key, DisplayName = entry.DisplayName, Kills = entry.Kills,
+                    FirstKillTicks = entry.FirstKillTicks, FirstMode = entry.FirstMode,
+                    FastestKillSeconds = entry.FastestKillSeconds,
+                });
+            }
+            return copy;
+        }
+
         /// <summary>
         /// 重建查询索引。Decode 完成后、以及任何绕过 GetOrCreate 直接改 Entries 之后必须调。
         /// 重复 key 走「后者覆盖」而不是抛异常：脏档不得让整个图鉴读不出来。

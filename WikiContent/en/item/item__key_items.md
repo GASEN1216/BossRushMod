@@ -23,7 +23,7 @@ In-game Wiki. Use it to browse all mod content. Supports CN/EN, updated each ver
 A Boss collection book that keeps its own ledger. Right-click to open the codex panel and see
 which Bosses you've personally put down.
 
-- **Source**: base merchant, **stock 1**, priced at **4000**
+- **Source**: base merchant, **one per restock**, priced at **4000**
 - **Use**: reusable, never consumed; does not stack
 
 **The book is not what starts the ledger.** The codex has been logging since the day you installed

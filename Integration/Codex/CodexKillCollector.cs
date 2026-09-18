@@ -85,6 +85,15 @@ namespace BossRush
                 // 2) 空目标
                 if (target == null) return;
 
+                // 死亡无论归属是否变化都结束计时，避免转为友军或非 Boss 后遗留起点。
+                float start;
+                bool hasStart;
+                lock (_lock)
+                {
+                    hasStart = _fightStart.TryGetValue(target.GetInstanceID(), out start);
+                    _fightStart.Remove(target.GetInstanceID());
+                }
+
                 // 2.5) 排 Mode H（owner 2026-09-03 定：观战模式的击杀不计入图鉴）。
                 //      必须在 fromCharacter 判定之前：ERROR 完整互换期间官方会把
                 //      fromCharacter 改写成主角（见 ModeHCombatControl 的互换注释与
@@ -98,8 +107,6 @@ namespace BossRush
                 // 4) 只记主角亲手击杀：随从、雇佣兵、环境伤害都不算
                 if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter)
                 {
-                    // 玩家先打过、最后由随从/环境补刀时仍要结束计时，只是不计个人击杀。
-                    lock (_lock) { _fightStart.Remove(target.GetInstanceID()); }
                     return;
                 }
 
@@ -133,20 +140,14 @@ namespace BossRush
 
                 // 10) 结算战斗耗时。计时表未命中给 -1f，表示"本次没有有效计时"
                 float seconds = -1f;
-                int healthId = target.GetInstanceID();
-                lock (_lock)
+                if (hasStart)
                 {
-                    float start;
-                    if (_fightStart.TryGetValue(healthId, out start))
-                    {
-                        _fightStart.Remove(healthId);
-                        float elapsed = Time.time - start;
-                        // 同帧多次命中可以有真实起点却算出 0；持久字段的 0 是未知，
-                        // 所以只对有起点的非负测量值使用最小正单位。未命中不猜一击。
-                        if (elapsed >= 0f)
-                            seconds = elapsed < CodexTuning.MinimumFightSeconds
-                                ? CodexTuning.MinimumFightSeconds : elapsed;
-                    }
+                    float elapsed = Time.time - start;
+                    // 同帧多次命中可以有真实起点却算出 0；持久字段的 0 是未知，
+                    // 所以只对有起点的非负测量值使用最小正单位。未命中不猜一击。
+                    if (elapsed >= 0f)
+                        seconds = elapsed < CodexTuning.MinimumFightSeconds
+                            ? CodexTuning.MinimumFightSeconds : elapsed;
                 }
 
                 RecordKill(key, seconds);
@@ -191,8 +192,8 @@ namespace BossRush
                     if (_fightStart.ContainsKey(id)) return;
                     if (_fightStart.Count >= CodexTuning.MaxFightStartTracked)
                     {
-                        // 满表整清而不是逐条淘汰：这里不能付排序/遍历的代价
-                        _fightStart.Clear();
+                        // 保留已有战斗；新目标只缺计时，不影响击杀收录。无遍历或排序。
+                        return;
                     }
                     _fightStart[id] = Time.time;
                 }
@@ -327,14 +328,17 @@ namespace BossRush
         private static void RecordKill(string key, float fightSeconds)
         {
             CodexData data = CodexPersistence.Current;
-            if (data == null) return;
+            if (data == null || CodexPersistence.HasWriteBarrier || CodexPersistence.IsStoreFaulted) return;
+
+            // 只在有效 Boss 死亡时复制有上限的 DTO；受伤热路径不复制、不编码。
+            data = data.Clone();
 
             CodexEntry entry = data.GetOrCreate(key, CodexBossCatalog.ResolveDisplayName(key));
             // 达到条目上限：fail-closed，不新增条目（已有条目照常累计）
             if (entry == null) return;
 
             bool firstUnlock = entry.Kills <= 0;
-            entry.Kills++;
+            if (entry.Kills < int.MaxValue) entry.Kills++;
             if (firstUnlock)
             {
                 entry.FirstKillTicks = DateTime.UtcNow.Ticks;
@@ -353,11 +357,9 @@ namespace BossRush
             // 形态与 DailyReportService.Persist / PetNestService 完全一致。
             // 击杀必然发生在非基地（过滤序第 7 步已排掉基地），因此这里只会登记 deferred，
             // 不会在交火帧上真的 SaveFile。
-            if (CodexPersistence.Store(data))
-            {
-                CodexSaveCoordinator.RequestFlush();
-                if (firstUnlock) CodexBossCatalog.SynchronizeHistoricalEntries(data);
-            }
+            if (!CodexPersistence.Store(data)) return;
+            CodexSaveCoordinator.RequestFlush();
+            if (firstUnlock) CodexBossCatalog.SynchronizeHistoricalEntries(data);
 
             CodexMilestones.Evaluate(data, fightSeconds);
         }

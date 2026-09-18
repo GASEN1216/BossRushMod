@@ -99,7 +99,8 @@ namespace BossRush
             try
             {
                 BossRushJsonValue root = BossRushJsonParser.ParseOrNull(json);
-                return root != null ? root.GetInt("schemaVersion", -1) : -1;
+                int version;
+                return root != null && root.TryGetInt("schemaVersion", out version) ? version : -1;
             }
             catch (Exception)
             {
@@ -122,28 +123,31 @@ namespace BossRush
                 CodexData data = new CodexData();
                 data.LastUpdatedTicks = root.GetLong("lastUpdatedTicks", 0L);
 
-                List<BossRushJsonValue> entries = root.GetArray("entries");
+                List<BossRushJsonValue> entries;
+                // 存在但损坏的收藏不能被解释为新档，或截断后覆盖原收藏。
+                if (!root.TryGetArray("entries", out entries) || entries.Count > CodexTuning.MaxEntries)
+                    return null;
+                HashSet<string> keys = new HashSet<string>(StringComparer.Ordinal);
                 for (int i = 0; i < entries.Count; i++)
                 {
                     BossRushJsonValue node = entries[i];
-                    if (node == null || node.Kind != BossRushJsonKind.Object) continue;
+                    if (node == null || node.Kind != BossRushJsonKind.Object) return null;
                     string key = node.GetString("k", null);
-                    if (string.IsNullOrEmpty(key)) continue;
-                    // 上限截断：超出的条目丢弃，已读进来的照常保留
-                    if (data.Entries.Count >= CodexTuning.MaxEntries) break;
+                    if (string.IsNullOrEmpty(key) || !keys.Add(key)) return null;
 
                     CodexEntry entry = new CodexEntry();
                     entry.Key = key;
-                    entry.DisplayName = node.GetString("n", string.Empty);
-                    entry.Kills = node.GetInt("kills", 0);
-                    entry.FirstKillTicks = node.GetLong("first", 0L);
-                    entry.FirstMode = node.GetString("fm", string.Empty);
-                    entry.FastestKillSeconds = node.GetFloat("fast", 0f);
-
-                    // 取值收敛：老档缺字段时回落 0，负数一律钳回合法域
-                    if (entry.Kills < 0) entry.Kills = 0;
-                    if (entry.FirstKillTicks < 0L) entry.FirstKillTicks = 0L;
-                    if (entry.FastestKillSeconds < 0f) entry.FastestKillSeconds = 0f;
+                    // 旧档缺可选字段仍用默认值；已有字段类型错误则保留原始档并拒写。
+                    if ((node.GetProperty("n") != null && !node.TryGetString("n", out entry.DisplayName))
+                        || (node.GetProperty("kills") != null && !node.TryGetInt("kills", out entry.Kills))
+                        || (node.GetProperty("first") != null && !node.TryGetLong("first", out entry.FirstKillTicks))
+                        || (node.GetProperty("fm") != null && !node.TryGetString("fm", out entry.FirstMode))
+                        || (node.GetProperty("fast") != null && !node.TryGetFloat("fast", out entry.FastestKillSeconds)))
+                        return null;
+                    if (entry.Kills < 0 || entry.FirstKillTicks < 0L
+                        || entry.FirstKillTicks > DateTime.MaxValue.Ticks
+                        || entry.FastestKillSeconds < 0f || float.IsNaN(entry.FastestKillSeconds)
+                        || float.IsInfinity(entry.FastestKillSeconds)) return null;
                     if (entry.DisplayName == null) entry.DisplayName = string.Empty;
                     if (entry.FirstMode == null) entry.FirstMode = string.Empty;
 

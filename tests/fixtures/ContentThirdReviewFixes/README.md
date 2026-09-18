@@ -1,6 +1,6 @@
 # 日报与图鉴第三轮审查回归
 
-运行：`python tests/fixtures/ContentThirdReviewFixes/run.py`（需要 .NET 8 SDK）。
+运行：`python tools/run_runtime_regressions.py --filter ContentThirdReviewFixes`（需要 .NET 8 SDK）。
 
 覆盖 CR-2026-09-06-009、010、015。项目通过相对路径直接编译生产源码，C# 7.3；没有复制产品算法。日报链接完整 Service、Models、Codec、Tuning、SimpleJsonHelper 与共享 BossRushJsonValue，存储替身每次接收候选均经过真实编码再解码。旧档用没有扩展字段的 v1 JSON 字面量验证。
 
@@ -8,3 +8,5 @@
 - 图鉴：真实全局击杀采集器接收战役冠军 key，目录立即展示；补齐最后缺失 key 才发全录；重复击杀不重建；等数量但缺实际 key 不发全录；面板重判与切槽历史清理。
 
 边界：健康、成就系统、存储 I/O、游戏时钟及奖励配送使用可注入替身。这里验证产品状态机、编解码与调用顺序，不代表 Unity、ES3、背包或掉落实物已实机验证。官方 Windows 编译与全量守卫由主审统一执行。
+
+2026-09-18 图鉴追加：链接真实 Codec、共享 JSON 节点解析器与 SimpleJsonHelper。存储替身可注入 Store 拒绝、写屏障和永久故障；接受时经过真实 Encode/Decode 核验，不模拟 ES3 物理落盘。覆盖首次/重复击杀拒写不改变已提交对象、故障不发奖、已保存速杀补判、整数饱和、公共池自定义分类、同目录对象语言切换、零击杀历史项、损坏/超限存档整份拒读、64 个在战 Boss 容量保护、转友军后的死亡清理；直接驱动真实采集器验证五类丧尸 marker 归属、同一实例重复死亡以及 Mode H、玩家、友军、基地、随从、杂兵排除。10,000 次丧尸 key 查询检查 .NET 分配计数；该数字不是 Unity 帧时间采样。

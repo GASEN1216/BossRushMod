@@ -118,6 +118,7 @@ namespace BossRush
             CodexSaveCoordinator.NotifySlotChanged();
             CodexKillCollector.NotifySlotChanged();
             CodexBossCatalog.NotifySlotChanged();
+            CodexMilestones.ResetStaticCaches();
         }
 
         #endregion

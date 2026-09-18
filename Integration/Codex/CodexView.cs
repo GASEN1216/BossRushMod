@@ -4,6 +4,7 @@
 // 骨架照 Achievement/AchievementView.cs（单例 MonoBehaviour + DontDestroyOnLoad +
 // 自建 Canvas + 官方 ScrollRect prefab 优先），网格卡片与详情弹层在同一个 partial
 // 的续篇 CodexView_Grid.cs 里。
+// 保留自绘的理由：官方 NoteIndex 不提供按 Boss 的击杀/速杀统计和待收集筛选。
 //
 // UI 硬约束（AGENTS.md 4.14，全部走共享库，无一例外）：
 //   - Canvas 走 BossRushUI.CreateCanvasRoot + BossRushUILayers 常量，禁魔法数字；
@@ -15,8 +16,8 @@
 //     （CreateCanvasRoot 内部已经过了，这里不再手写）。
 //
 // 性能硬约束：
-//   - 面板**不得每帧重建**。RefreshAll() 只在 Open() 与显式刷新时调；
-//     Update() 里只处理 Escape，禁止任何目录扫描或字符串拼接。
+//   - 仅打开、翻页、筛选、语言或已提交快照变化时重建；
+//     Update() 常态只有 Escape 与 O(1) 变化比较，无目录扫描或字符串拼接。
 //   - 立绘走 CodexPortraitCache 的 fail-open 三级占位链，缺图不阻断面板。
 // ============================================================================
 
@@ -35,8 +36,8 @@ namespace BossRush
         #region 布局常量
 
         private const float HeaderHeight = 58f;
-        private const float ProgressHeight = 54f;
-        private const float FooterHeight = 34f;
+        private const float ProgressHeight = 92f;
+        private const float FooterHeight = 46f;
         private const float PanelSidePadding = 20f;
         private const float GridPadding = 12f;
 
@@ -143,6 +144,11 @@ namespace BossRush
         private TextMeshProUGUI _progressText;
         private Image _progressFill;
         private RectTransform _progressTrack;
+        private Button _filterButton;
+        private Button _previousPageButton;
+        private Button _nextPageButton;
+        private TextMeshProUGUI _pageText;
+        private TextMeshProUGUI _statusText;
 
         private float _panelWidth;
         private float _panelHeight;
@@ -153,6 +159,8 @@ namespace BossRush
 
         private bool _isOpen;
         private bool _uiBuilt;
+        private bool _isChinese;
+        private CodexData _renderedData;
 
         /// <summary>当前渲染出来的卡片。重建网格时逐个销毁。</summary>
         private readonly List<GameObject> _cards = new List<GameObject>();
@@ -198,6 +206,7 @@ namespace BossRush
         {
             try
             {
+                Close();
                 HideDetail();
                 ClearCards();
             }
@@ -212,10 +221,14 @@ namespace BossRush
             }
         }
 
-        /// <summary>只处理 Escape 关闭。禁止在这里做任何目录扫描或字符串拼接。</summary>
+        /// <summary>处理 Escape 与语言/已提交快照变化，稳定状态不重建。</summary>
         private void Update()
         {
             if (!_isOpen) return;
+
+            // 仅比较语言与已提交快照；变化时才更新，平时不扫描目录或创建文本。
+            if (_isChinese != L10n.IsChinese || !ReferenceEquals(_renderedData, CodexPersistence.Current))
+                RefreshAll();
 
             if (Input.GetKeyDown(KeyCode.Escape))
             {
@@ -316,6 +329,10 @@ namespace BossRush
             try
             {
                 CodexData data = CodexPersistence.Current;
+                _renderedData = data;
+                _isChinese = L10n.IsChinese;
+                HideDetail();
+                if (_titleText != null) _titleText.text = CodexBookConfig.GetDisplayName();
 
                 // 老档补齐：面板打开时把该发未发的里程碑补上
                 CodexMilestones.EvaluateOnPanelOpen(data);
@@ -458,7 +475,7 @@ namespace BossRush
                 row.transform,
                 string.Empty,
                 15f,
-                new Vector2(0f, 0f),
+                new Vector2(0f, 0.42f),
                 new Vector2(0.34f, 1f),
                 new Vector2(PanelSidePadding, 0f),
                 Vector2.zero,
@@ -468,8 +485,8 @@ namespace BossRush
             GameObject track = ZombieModeUIHelper.CreateRect(
                 "ProgressTrack",
                 row.transform,
-                new Vector2(0.36f, 0.34f),
-                new Vector2(1f, 0.66f),
+                new Vector2(0.36f, 0.61f),
+                new Vector2(1f, 0.79f),
                 new Vector2(-PanelSidePadding * 0.5f, 0f),
                 new Vector2(-PanelSidePadding * 1.5f, 0f),
                 new Vector2(0.5f, 0.5f));
@@ -492,6 +509,13 @@ namespace BossRush
             _progressFill.color = BossRushUIColors.Accent;
             BossRushUI.ApplyPanelSkin(_progressFill, 4, BossRushUISkinPart.ScrollHandle);
             _progressFill.raycastTarget = false;
+
+            _filterButton = CreateNavigationButton("Filter", row.transform, new Vector2(0f, 0f),
+                new Vector2(100f, 22f), new Vector2(164f, 30f), ToggleMissingFilter);
+            _statusText = ZombieModeUIHelper.CreateText("Status", row.transform, string.Empty, 13f,
+                new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(89f, 22f),
+                new Vector2(-218f, 34f), TextAlignmentOptions.Left, BossRushUIColors.TextSecondary);
+            _statusText.raycastTarget = false;
         }
 
         private void CreateScrollArea()
@@ -574,7 +598,8 @@ namespace BossRush
             VerticalLayoutGroup vertical = content.GetComponent<VerticalLayoutGroup>();
             if (vertical != null)
             {
-                Destroy(vertical);
+                // LayoutGroup 禁止同物体并存；延迟 Destroy 会令本帧 AddComponent 失败。
+                DestroyImmediate(vertical);
             }
 
             GridLayoutGroup grid = content.GetComponent<GridLayoutGroup>();
@@ -600,18 +625,36 @@ namespace BossRush
 
         private void CreateFooterHint()
         {
-            TextMeshProUGUI hint = ZombieModeUIHelper.CreateText(
+            _pageText = ZombieModeUIHelper.CreateText(
                 "FooterHint",
                 _panelRoot.transform,
-                L10n.T("点击卡片查看详情 · ESC 关闭", "Click a card for details · ESC to close"),
+                string.Empty,
                 13f,
                 new Vector2(0f, 0f),
                 new Vector2(1f, 0f),
                 new Vector2(0f, FooterHeight * 0.5f),
-                new Vector2(0f, FooterHeight),
+                new Vector2(-260f, FooterHeight),
                 TextAlignmentOptions.Center,
                 BossRushUIColors.TextSecondary);
-            hint.raycastTarget = false;
+            _pageText.raycastTarget = false;
+            _previousPageButton = CreateNavigationButton("PreviousPage", _panelRoot.transform,
+                new Vector2(0f, 0f), new Vector2(72f, FooterHeight * 0.5f), new Vector2(104f, 30f), PreviousPage);
+            _nextPageButton = CreateNavigationButton("NextPage", _panelRoot.transform,
+                new Vector2(1f, 0f), new Vector2(-72f, FooterHeight * 0.5f), new Vector2(104f, 30f), NextPage);
+        }
+
+        private Button CreateNavigationButton(string name, Transform parent, Vector2 anchor,
+            Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
+        {
+            return ZombieModeUIHelper.CreateButton(name, parent, string.Empty, anchor, position, size,
+                BossRushUIColors.Header, 14f, size, action, true);
+        }
+
+        private static void SetButtonLabel(Button button, string value)
+        {
+            if (button == null) return;
+            TextMeshProUGUI label = button.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (label != null) label.text = value;
         }
 
         private static ScrollRect GetScrollRectPrefab()
@@ -656,6 +699,16 @@ namespace BossRush
             }
 
             RebuildMilestoneTicks(unlocked, total);
+            if (_statusText != null)
+            {
+                _statusText.text = CodexPersistence.HasWriteBarrier || CodexPersistence.IsStoreFaulted
+                    ? L10n.T("记录暂不可保存，请重载后查看；原存档受保护。",
+                        "Recording unavailable. Reload to check; your saved data is protected.")
+                    : L10n.T("击杀自动记录 · 1 / 10 / 20 条与全收集解锁成就",
+                        "Kills log automatically · Achievements at 1 / 10 / 20 entries and completion");
+            }
+            SetButtonLabel(_filterButton, _onlyMissing
+                ? L10n.T("查看全部", "Show all") : L10n.T("只看待收集", "Show missing"));
         }
 
         /// <summary>
@@ -679,7 +732,8 @@ namespace BossRush
 
             AddMilestoneTick(CodexTuning.MilestoneTenThreshold, unlocked, total);
             AddMilestoneTick(CodexTuning.MilestoneTwentyThreshold, unlocked, total);
-            AddMilestoneTick(total, unlocked, total);
+            if (total != CodexTuning.MilestoneTenThreshold && total != CodexTuning.MilestoneTwentyThreshold)
+                AddMilestoneTick(total, unlocked, total);
         }
 
         private void AddMilestoneTick(int threshold, int unlocked, int total)

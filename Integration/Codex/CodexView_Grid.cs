@@ -29,11 +29,15 @@ namespace BossRush
     {
         #region 卡片布局常量
 
-        private const float CardPortraitSize = 140f;
-        private const float CardTextHeight = 20f;
-        private const float DetailPanelWidth = 460f;
-        private const float DetailPanelHeight = 540f;
-        private const float DetailPortraitSize = 220f;
+        private const float CardPortraitSize = 124f;
+        private const float CardTextHeight = 18f;
+        private const float DetailPanelWidth = 520f;
+        private const float DetailPanelHeight = 650f;
+        private const float DetailPortraitSize = 180f;
+        private const int CardsPerPage = 12;
+        private int _pageIndex;
+        private bool _onlyMissing;
+        private readonly List<CodexBossInfo> _pageEntries = new List<CodexBossInfo>();
 
         #endregion
 
@@ -59,6 +63,7 @@ namespace BossRush
                 GameObject card = _cards[i];
                 if (card != null)
                 {
+                    card.SetActive(false);
                     Destroy(card);
                 }
             }
@@ -76,16 +81,35 @@ namespace BossRush
             ClearCards();
 
             IList<CodexBossInfo> catalog = CodexBossCatalog.All;
-            if (catalog == null || catalog.Count == 0)
+            _pageEntries.Clear();
+            for (int i = 0; i < catalog.Count; i++)
+            {
+                CodexBossInfo info = catalog[i];
+                if (info == null || string.IsNullOrEmpty(info.Key)) continue;
+                CodexEntry entry = data != null ? data.Find(info.Key) : null;
+                if (_onlyMissing && entry != null && entry.Kills > 0) continue;
+                _pageEntries.Add(info);
+            }
+            int pageCount = Math.Max(1, (_pageEntries.Count + CardsPerPage - 1) / CardsPerPage);
+            _pageIndex = Math.Max(0, Math.Min(_pageIndex, pageCount - 1));
+            if (_pageText != null) _pageText.text = (_pageIndex + 1) + " / " + pageCount
+                + L10n.T(" · 点击卡片查看详情 · ESC 关闭", " · Click for details · ESC to close");
+            SetButtonLabel(_previousPageButton, L10n.T("上一页", "Previous"));
+            SetButtonLabel(_nextPageButton, L10n.T("下一页", "Next"));
+            if (_previousPageButton != null) _previousPageButton.gameObject.SetActive(_pageIndex > 0);
+            if (_nextPageButton != null) _nextPageButton.gameObject.SetActive(_pageIndex + 1 < pageCount);
+
+            if (_pageEntries.Count == 0)
             {
                 CreateEmptyHint();
                 return;
             }
 
-            for (int i = 0; i < catalog.Count; i++)
+            // 只创建本页卡片，立绘也随本页按需加载。目录增长不增加单次 UI 构建量。
+            int end = Math.Min(_pageEntries.Count, (_pageIndex + 1) * CardsPerPage);
+            for (int i = _pageIndex * CardsPerPage; i < end; i++)
             {
-                CodexBossInfo info = catalog[i];
-                if (info == null || string.IsNullOrEmpty(info.Key)) continue;
+                CodexBossInfo info = _pageEntries[i];
 
                 CodexEntry entry = data != null ? data.Find(info.Key) : null;
                 try
@@ -107,6 +131,25 @@ namespace BossRush
             Canvas.ForceUpdateCanvases();
         }
 
+        private void ToggleMissingFilter()
+        {
+            _onlyMissing = !_onlyMissing;
+            _pageIndex = 0;
+            RefreshAll();
+            if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 1f;
+        }
+
+        private void PreviousPage() { ChangePage(-1); }
+        private void NextPage() { ChangePage(1); }
+
+        private void ChangePage(int delta)
+        {
+            _pageIndex += delta;
+            HideDetail();
+            PopulateGrid(CodexPersistence.Current);
+            if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 1f;
+        }
+
         /// <summary>目录为空时的占位提示（Boss 池被全筛掉时会出现）。</summary>
         private void CreateEmptyHint()
         {
@@ -118,8 +161,8 @@ namespace BossRush
 
             TextMeshProUGUI text = ZombieModeUIHelper.CreateTMPText(
                 hintRoot,
-                L10n.T("暂无可收录的 Boss。检查 Boss 筛选器是否把全部条目都关掉了。",
-                    "No boss entries yet. Check whether the boss filter has disabled everything."),
+                _onlyMissing ? L10n.T("当前目录已收集齐全。", "All current entries collected.")
+                    : L10n.T("目录暂不可用，请稍后重新打开。", "Catalog unavailable. Please reopen later."),
                 15f,
                 TextAlignmentOptions.Center,
                 BossRushUIColors.TextSecondary);
@@ -173,11 +216,16 @@ namespace BossRush
                 15f,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
-                new Vector2(0f, -(CardPortraitSize + 10f)),
-                new Vector2(-8f, CardTextHeight + 4f),
+                new Vector2(0f, -(CardPortraitSize + 27f)),
+                new Vector2(-12f, 36f),
                 TextAlignmentOptions.Center,
                 locked ? BossRushUIColors.TextSecondary : BossRushUIColors.TextPrimary);
             nameText.fontStyle = locked ? FontStyles.Normal : FontStyles.Bold;
+            nameText.enableAutoSizing = true;
+            nameText.fontSizeMin = 12f;
+            nameText.fontSizeMax = 15f;
+            nameText.overflowMode = TextOverflowModes.Ellipsis;
+            nameText.raycastTarget = false;
 
             // 统计数字：锁定态一律隐藏成占位符
             TextMeshProUGUI killsText = ZombieModeUIHelper.CreateText(
@@ -189,10 +237,10 @@ namespace BossRush
                 13f,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
-                new Vector2(0f, -(CardPortraitSize + 10f + CardTextHeight + 4f)),
+                new Vector2(0f, -181f),
                 new Vector2(-8f, CardTextHeight),
                 TextAlignmentOptions.Center,
-                locked ? BossRushUIColors.Disabled : BossRushUIColors.Accent);
+                locked ? BossRushUIColors.TextSecondary : BossRushUIColors.Accent);
             killsText.raycastTarget = false;
 
             TextMeshProUGUI fastestText = ZombieModeUIHelper.CreateText(
@@ -204,7 +252,7 @@ namespace BossRush
                 12f,
                 new Vector2(0f, 1f),
                 new Vector2(1f, 1f),
-                new Vector2(0f, -(CardPortraitSize + 10f + (CardTextHeight + 4f) * 2f)),
+                new Vector2(0f, -200f),
                 new Vector2(-8f, CardTextHeight),
                 TextAlignmentOptions.Center,
                 BossRushUIColors.TextSecondary);
@@ -342,22 +390,26 @@ namespace BossRush
                     24f,
                     new Vector2(0f, 1f),
                     new Vector2(1f, 1f),
-                    new Vector2(0f, -(DetailPortraitSize + 40f)),
-                    new Vector2(-24f, 32f),
+                    new Vector2(0f, -(DetailPortraitSize + 56f)),
+                    new Vector2(-24f, 44f),
                     TextAlignmentOptions.Center,
                     BossRushUIColors.TextPrimary);
                 title.fontStyle = FontStyles.Bold;
+                title.enableAutoSizing = true;
+                title.fontSizeMin = 16f;
+                title.fontSizeMax = 24f;
+                title.overflowMode = TextOverflowModes.Ellipsis;
 
                 ZombieModeUIHelper.CreateSeparator(
                     "DetailDivider",
                     surface.transform,
                     new Vector2(0f, 1f),
                     new Vector2(1f, 1f),
-                    new Vector2(0f, -(DetailPortraitSize + 78f)),
+                    new Vector2(0f, -(DetailPortraitSize + 92f)),
                     2f,
                     BossRushUIColors.Divider);
 
-                float rowTop = DetailPortraitSize + 92f;
+                float rowTop = DetailPortraitSize + 116f;
                 CreateDetailRow(surface.transform, rowTop, L10n.T("分类", "Category"), FormatCategory(info));
                 CreateDetailRow(surface.transform, rowTop + 34f, L10n.T("累计击杀", "Total kills"),
                     locked ? "—" : entry.Kills.ToString());
@@ -367,6 +419,15 @@ namespace BossRush
                     locked ? "—" : FormatFirstSeen(entry.FirstKillTicks));
                 CreateDetailRow(surface.transform, rowTop + 136f, L10n.T("初见模式", "First mode"),
                     locked ? "—" : FormatModeName(entry.FirstMode));
+
+                TextMeshProUGUI hint = ZombieModeUIHelper.CreateText("EncounterHint", surface.transform,
+                    CodexBossCatalog.GetEncounterHint(info) + "\n"
+                    + L10n.T("需归属于你的致命一击；百战留痕不记。无有效首击计时则最快用时显示 —。",
+                        "The fatal blow must be credited to you; the Duck Cup is excluded. No observed starting hit means no time record."),
+                    14f, new Vector2(0f, 1f), new Vector2(1f, 1f),
+                    new Vector2(0f, -529f), new Vector2(-40f, 130f),
+                    TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
+                hint.raycastTarget = false;
 
                 Button closeButton = ZombieModeUIHelper.CreateButton(
                     "DetailClose",
@@ -484,7 +545,8 @@ namespace BossRush
         /// <summary>最快击杀。&lt;=0 表示未记录。</summary>
         private string FormatFastest(float seconds)
         {
-            if (seconds <= 0f) return "—";
+            if (seconds <= 0f || float.IsNaN(seconds) || float.IsInfinity(seconds)) return "—";
+            if (seconds < 0.1f) return L10n.T("<0.1 秒", "<0.1s");
             return seconds.ToString("F1") + L10n.T(" 秒", "s");
         }
 
@@ -508,7 +570,7 @@ namespace BossRush
                 case CodexTuning.ModeIdModeG:
                     return L10n.T("宿命回响", "Fate Echo");
                 case CodexTuning.ModeIdModeH:
-                    return L10n.T("斗蛐蛐", "Cricket Fight");
+                    return L10n.T("百战留痕", "Black Market Duck Cup");
                 case CodexTuning.ModeIdZombie:
                     return L10n.T("末日丧尸", "Zombie Tide");
                 case CodexTuning.ModeIdRaid:

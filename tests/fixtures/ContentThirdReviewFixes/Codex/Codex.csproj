@@ -10,6 +10,9 @@
     <Compile Include="../../../../Integration/Codex/CodexModels.cs" />
     <Compile Include="../../../../Integration/Codex/CodexTuning.cs" />
     <Compile Include="../../../../Integration/Codex/CodexMilestones.cs" />
+    <Compile Include="../../../../Integration/Codex/CodexCodec.cs" />
+    <Compile Include="../../../../Common/Data/BossRushJsonValue.cs" />
+    <Compile Include="../../../../Utilities/SimpleJsonHelper.cs" />
     <Compile Include="Stubs.cs" /><Compile Include="Program.cs" />
   </ItemGroup>
 </Project>

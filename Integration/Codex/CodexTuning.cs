@@ -47,8 +47,7 @@ namespace BossRush
         #region 采集
 
         /// <summary>
-        /// 最快击杀计时表容量上限（防泄漏）。满了就整表清空重来：
-        /// 计时只是锦上添花的统计，宁可丢一批计时，也不能让字典无限膨胀。
+        /// 最快击杀计时表容量上限。满表保留已有战斗，新目标只收录击杀而不计时。
         /// </summary>
         internal const int MaxFightStartTracked = 64;
 

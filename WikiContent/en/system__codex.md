@@ -1,91 +1,62 @@
 ## Duck King Codex
 
-### What is it
+### What it helps you do
 
-A Boss collection book that keeps its own ledger. Every Boss you personally kill turns its
-entry from a black silhouette into a full-color portrait.
+The Codex records defeated bosses so you can choose an opponent you have not beaten, or revisit a familiar fight to improve your time. A first kill unlocks an entry; repeat kills update its count and best time. Completing the collection does not require repeatedly farming the same boss.
 
-It changes no combat rule. What it changes is **why** you go after a particular Boss - for
-that one square that still isn't lit.
+### Opening the book
 
-### How to open it
+- Buy a **Duckov Codex** from the normal base merchant. Its base price is **4,000**, with **one copy per restock**.
+- Right-click it in your inventory. Reading consumes neither the book nor durability.
+- The book opens the viewer. **Kills and achievements are recorded without owning it**, so you can start collecting first.
+- If you lose it, wait for the shop's normal restock to buy another. Progress belongs to your save slot, not the book.
 
-- Buy a `Duck King Codex` from the base shop for **4000**. The shop only ever stocks **1**.
-- Use it from your inventory (right-click) to open the panel. **Using it does not consume it** -
-  buy once and you're set for good.
-- The book is the only way in. The codex panel has no hotkey and no second entry point in any
-  other screen - open your inventory when you want to browse it.
+### Choosing your next opponent
 
-**It records with or without the book.** The book is how you *look* at the ledger, not what
-starts it - every Boss you've killed since installing the Mod is already logged. Buy the book
-whenever you feel like it and you'll open it to a pile of entries already lit. There's no need
-to buy it "before you start collecting", and nothing is lost by buying it late.
+- The top bar shows collected entries and the current catalog size, with marks at 10, 20 and completion.
+- Select **Show missing** to find undefeated bosses, or **Show all** to restore the full list. This display filter does not change achievement requirements.
+- Each page contains up to **12 cards in four columns**. Use the bottom buttons to change pages; scroll when the page does not fit. Cards show names, kills and best times.
+- Click a card for its first-kill date, first-kill mode and **where to encounter it**. Locked cards still show names and encounter guidance; unrecorded stats show a dash.
+- ESC closes the details first, then the Codex. Changing the game language updates the interface and boss names that have a current translation.
 
-[tip] 4000 for a permanent collection book is the best-value purchase in the Mod - the very first entry's milestone alone pays out 50,000.
+Pick a missing entry, follow its encounter guidance and return after the fight to check your record. Revisit familiar opponents when you want to improve your time.
 
-### What's in the panel
+### Which bosses appear
 
-- A progress bar at the top with milestone marks, so you can see how many kills separate you
-  from the next payout.
-- Below it, a **4-column** card grid. Each card shows the portrait, name, total kills, fastest
-  kill and first-seen date.
-- Click any card to enlarge the portrait. Locked entries are darkened silhouettes - the
-  outline is there, the content is not.
+- **Official bosses**: the shared pool enabled in your Boss Filter. Arena and Infinite Hell pick from that pool randomly; enabling a boss does not guarantee it in the next wave.
+- **Three custom bosses**: Dragon Descendant, Skyburner Dragon Lord and Phantom Witch. These always remain in the catalog. Re-enable them in the Boss Filter if you disabled them.
+- **Five zombie bosses**: Titan, Hunter, Splitter, Shielder and Corruptor. Zombie Mode has a boss wave every five waves, with kinds rotating as you advance.
+- **Additional defeated bosses**: qualifying kills outside the catalog are kept as historical records, such as the campaign's final Champion's Shadow. Undiscovered hidden opponents do not add locked entries in advance.
 
-### What it records
+Filtering out a collected boss never removes its record. Names use the current translation when available, otherwise the historical name.
 
-Each entry tracks four things:
+### Kill credit and timing
 
-- **Total kills** - how many times you've put it down.
-- **First seen** - the date of your first kill.
-- **First-kill mode** - which mode that first one happened in (Standard Arena / Infinite Hell /
-  From Scratch / Faction War / Blood Hunt / Fate Echo / Zombie Apocalypse / vanilla raid).
-- **Fastest kill** - timed from your first hit on it until it goes down. Hiding to heal mid-fight
-  inflates this number.
-
-### Which Bosses appear
-
-- Every Boss in the base game's Boss pool.
-- The Mod's three custom Bosses: Dragon Descendant, Skyburner Dragon Lord, Phantom Witch.
-- Zombie Mode's five Bosses (Titan, Hunter, Splitter, Shielder, Corruptor) each get a square too.
-
-**Almost every mode counts**: Standard BossRush, Infinite Hell, From Scratch, Faction War,
-Blood Hunt, Fate Echo, Zombie Apocalypse - even Bosses you happen to kill on vanilla raid maps.
-
-**The one exception is the Black Market Duck Cup**: all kills in that mode, including during an ERROR control swap, are excluded from Codex entries and fastest-kill records.
+- The **fatal blow must be attributed to the main player**. Ordinary pets, PetNest companions and environmental finishing blows do not count. Player deaths, friendly targets and base demonstration characters are excluded.
+- **Faction War exception**: that mode attributes kills by your hired bosses to you, so those kills can count.
+- **The Black Market Duck Cup is excluded throughout**, including ERROR control swaps. Qualifying kills in other modes and vanilla raids can count.
+- **Best time** measures from your first observed damaging hit until death, using game time. Pausing adds no time; dodging, reloading and healing during the fight do.
+- A one-hit kill or missing starting observation records the kill without inventing a duration, shown as **—**. A valid starting hit and kill observed within the same frame display **<0.1s**.
+- First-kill date and mode are set once. All modes share one best-time record per boss; this is not a leaderboard for equal difficulty.
 
 ### Milestone rewards
 
-Hitting certain counts unlocks achievements and pays out through the achievement system you
-already know:
+The existing achievement system unlocks and pays these once per save slot. Owning or carrying the book is unnecessary:
 
-- Unlock your **1st** entry → `$50,000`
-- Unlock **10** → `$150,000`
-- Unlock **20** → `$400,000`
-- **Complete the codex** → `$1,000,000`
-- Plus a novelty achievement, "Inside Ten Seconds": kill any Boss within **10 seconds** → `$200,000`
+- First entry → **50,000**
+- 10 different entries → **150,000**
+- 20 different entries → **400,000**
+- Complete the current catalog → **1,000,000**
+- **Inside Ten Seconds**: one boss kill with a valid measured time of 10 seconds or less → **200,000**
 
-That's **1.8 million** across the five. For a 4000 book, the math works out.
+Completion requires defeating every boss in the current catalog. Extra historical entries cannot substitute for a missing boss. The official portion follows the Boss Filter; the three custom bosses and five zombie kinds remain required. If your filtered catalog has fewer than 10 or 20 entries, enable more bosses to pursue those count milestones. Expanding the catalog does not revoke achievements already earned.
 
-[tip] Farm "Inside Ten Seconds" on the thinnest-health Boss you can find. The timer starts on your first hit, so line up your burst and a full magazine before you make contact.
+[tip] The ten-second achievement needs an observed starting hit. Prepare ammunition and burst damage against a familiar opponent; a one-hit kill alone does not create a timing record.
 
-### Common questions
+### Saving and portraits
 
-- **Do kills by others count?** Usually only fatal blows attributed to the main player count. Ordinary companions, pets and environmental finishing blows do not. **In Faction War, kills by a Boss you hired are attributed to you**, subject to the entry's other mode and target requirements.
-- **Do my PetNest cub's kills count?** No, companions are explicitly excluded. Do it yourself.
-- **Is there a point in killing the same Boss again?** Yes. Total kills keeps climbing and you
-  might beat your fastest time, but the square only needs lighting once.
-- **What happens across save slots?** The codex follows the **save slot**, so each save collects
-  separately. That's what keeps milestone payouts from being free money on a fresh save.
-- **I disabled a Boss in the Boss Filter - do I lose its record?** No. Collected entries stay in
-  the codex forever, displayed under the name you recorded them with. The codex tracks what you
-  *have* killed, not what you can still find.
-- **How many entries is "complete"?** It depends on your current Boss pool, and the official
-  Boss count shifts with game versions. The denominator on the progress bar is the live answer.
-- **Do kills from before I bought the book count?** Yes. The ledger runs regardless; the book
-  just lets you read it.
+The Codex is enabled by default, with separate progress for each save slot. Kills first enter the save queue; returning to base and the normal save flow write them to disk. Forcing the process to close can lose records that have not yet been saved.
 
-### Do I need to enable it?
+If the panel reports that recording is unavailable, reload and check again. Rejected updates do not appear as earned progress, and unreadable saved data is not overwritten with an empty collection.
 
-No. The codex is on by default and logging from the moment you install. There is nothing to
-switch on.
+If a dedicated portrait is missing, a card uses an official icon or a name initial. Names, encounter guidance, collection and rewards remain available.

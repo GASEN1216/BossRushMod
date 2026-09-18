@@ -163,6 +163,8 @@ namespace BossRush
             }
 
             ModeFItemConfigHelper.BindUsageUtilitiesToItem(item, usageUtils, USE_TIME);
+            usageUtils.useDurability = true;
+            usageUtils.durabilityUsage = 0; // 克隆源可能消耗耐久；翻阅不能继承其消耗量。
         }
 
         #endregion

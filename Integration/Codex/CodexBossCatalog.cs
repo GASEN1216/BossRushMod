@@ -5,8 +5,8 @@
 // 蓝本：PetNest/PetNestLineageCatalog.cs（惰性构建 + Invalidate 重建）。
 //
 // 口径（与遗种巢血脉目录同源，但**刻意多一步并集**）：
-//   1) ModBehaviour.GetFilteredEnemyPresets() 的官方过滤池；
-//   2) 三个自定义 Boss 常量（它们不在官方 preset 池里）；
+//   1) ModBehaviour.GetFilteredEnemyPresets() 的过滤池（自定义键留给下一步）；
+//   2) 三个自定义 Boss 常量（也在公共池注册，在这里统一分类）；
 //   3) 五个丧尸模式 Boss 的合成条目；
 //   4) **存档里已经出现过、但前三步都不含的历史条目**。
 //
@@ -26,14 +26,20 @@ using System.Collections.Generic;
 
 namespace BossRush
 {
-    /// <summary>一个 Boss 的目录条目。只读快照，构建后不再变更。</summary>
+    /// <summary>Boss 身份快照；显示名按取用时的游戏语言解析。</summary>
     internal sealed class CodexBossInfo
     {
         /// <summary>身份 key（官方 preset nameKey / 自定义 Boss 常量 / zombie_boss_*）。</summary>
         internal string Key;
 
-        /// <summary>显示名（回落链见 ResolveOfficialDisplayName / ResolveCustomDisplayName）。</summary>
-        internal string DisplayName;
+        private string _fallbackName;
+
+        /// <summary>名字按当前语言取用；快照只在现有本地化无法解析时回落。</summary>
+        internal string DisplayName
+        {
+            get { return CodexBossCatalog.ResolveCurrentDisplayName(Key, _fallbackName); }
+            set { _fallbackName = value; }
+        }
 
         /// <summary>是否是本 Mod 的自定义 Boss。</summary>
         internal bool IsCustomBoss;
@@ -50,7 +56,7 @@ namespace BossRush
     {
         #region 自定义 / 丧尸登记表
 
-        /// <summary>三个自定义 Boss 的 canonical key。它们不在官方 preset 池里，走显式登记。</summary>
+        /// <summary>三个自定义 Boss 的 canonical key。统一登记，避免在公共池里被误分为官方条目。</summary>
         private static readonly string[] CustomBossKeys =
         {
             DragonDescendantConfig.BOSS_NAME_KEY,
@@ -79,6 +85,7 @@ namespace BossRush
         private static Dictionary<string, CodexBossInfo> _byKey;
         private static List<CodexBossInfo> _ordered;
         private static bool _built;
+        private static bool _officialPoolAvailable;
         private static int _buildCount;
 
         /// <summary>目录是否已构建。</summary>
@@ -118,7 +125,7 @@ namespace BossRush
 
                 try
                 {
-                    AddOfficialEntries(owner, byKey, ordered);
+                    _officialPoolAvailable = AddOfficialEntries(owner, byKey, ordered);
                     AddCustomEntries(byKey, ordered);
                     AddZombieEntries(byKey, ordered);
                     AddHistoricalEntries(saved, byKey, ordered);
@@ -151,21 +158,21 @@ namespace BossRush
         }
 
         /// <summary>第 1 步：官方过滤池。</summary>
-        private static void AddOfficialEntries(
+        private static bool AddOfficialEntries(
             ModBehaviour owner,
             Dictionary<string, CodexBossInfo> byKey,
             List<CodexBossInfo> ordered)
         {
-            if (owner == null) return;
+            if (owner == null) return false;
 
             List<EnemyPresetInfo> pool = null;
             try { pool = owner.GetFilteredEnemyPresets(); }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(CodexTuning.LogPrefix + "[WARNING] 读取 Boss 过滤池失败: " + e.Message);
-                return;
+                return false;
             }
-            if (pool == null) return;
+            if (pool == null) return false;
 
             // 官方返回的是内部缓存列表**本体**（BossFilter.GetFilteredEnemyPresets 直接
             // return _filteredPresetsCache），只能读、不能改，也不能长期持有引用：
@@ -174,6 +181,8 @@ namespace BossRush
             {
                 EnemyPresetInfo info = pool[i];
                 if (info == null || string.IsNullOrEmpty(info.name)) continue;
+                // 公共池也登记了三个自定义 Boss，交给下一步统一分类，避免被先占为官方条目。
+                if (IsCustomBossKey(info.name)) continue;
                 if (byKey.ContainsKey(info.name)) continue;
 
                 CodexBossInfo entry = new CodexBossInfo();
@@ -186,6 +195,7 @@ namespace BossRush
                 byKey[entry.Key] = entry;
                 ordered.Add(entry);
             }
+            return true;
         }
 
         /// <summary>第 2 步：三个自定义 Boss 的 canonical key。</summary>
@@ -248,7 +258,7 @@ namespace BossRush
             for (int i = 0; i < saved.Entries.Count; i++)
             {
                 CodexEntry stored = saved.Entries[i];
-                if (stored == null || string.IsNullOrEmpty(stored.Key)) continue;
+                if (stored == null || stored.Kills <= 0 || string.IsNullOrEmpty(stored.Key)) continue;
                 if (byKey.ContainsKey(stored.Key)) continue;
 
                 CodexBossInfo entry = new CodexBossInfo();
@@ -285,7 +295,7 @@ namespace BossRush
             if (data == null) return false;
             lock (_lock)
             {
-                if (!_built || _ordered == null || _ordered.Count == 0) return false;
+                if (!_built || !_officialPoolAvailable || _ordered == null || _ordered.Count == 0) return false;
                 for (int i = 0; i < _ordered.Count; i++)
                 {
                     CodexEntry entry = data.Find(_ordered[i].Key);
@@ -298,6 +308,39 @@ namespace BossRush
         #endregion
 
         #region 显示名回落链
+
+        internal static bool IsCustomBossKey(string key)
+        {
+            for (int i = 0; i < CustomBossKeys.Length; i++)
+                if (string.Equals(key, CustomBossKeys[i], StringComparison.Ordinal)) return true;
+            return false;
+        }
+
+        internal static string ResolveCurrentDisplayName(string key, string fallback)
+        {
+            if (string.IsNullOrEmpty(key)) return fallback ?? string.Empty;
+            if (IsCustomBossKey(key)) return ResolveCustomDisplayName(key);
+            for (int i = 0; i < ZombieBossKinds.Length; i++)
+                if (key == BuildZombieBossKey(ZombieBossKinds[i])) return ResolveZombieDisplayName(ZombieBossKinds[i]);
+            string localized = LocalizationHelper.GetLocalizedText(key);
+            if (!string.IsNullOrEmpty(localized) && localized != key && localized.IndexOf('*') < 0)
+                return localized;
+            return string.IsNullOrEmpty(fallback) ? key : fallback;
+        }
+
+        /// <summary>仅描述现有可达入口；历史记录不承诺已移除的 Boss 仍能刷新。</summary>
+        internal static string GetEncounterHint(CodexBossInfo info)
+        {
+            if (info == null) return string.Empty;
+            if (info.IsZombieBoss)
+                return L10n.T("末日丧尸：每五波的 Boss 波轮换登场。推进波次可收集五种 Boss。",
+                    "Zombie Mode: boss waves rotate through all five kinds every five waves. Keep advancing to meet them.");
+            if (info.IsHistoricalOnly)
+                return L10n.T("已收录的额外记录。可回到首杀模式重访；被筛选禁用的 Boss 需先重新启用。",
+                    "An additional collected record. Revisit its first-kill mode; re-enable filtered bosses before hunting them again.");
+            return L10n.T("标准竞技场 / 无间炼狱：在 Boss 筛选器启用此 Boss，进入波次随机遭遇。",
+                "Arena / Infinite Hell: enable this boss in the Boss Filter, then encounter it in randomized waves.");
+        }
 
         /// <summary>官方 Boss：displayName -&gt; 本地化表 -&gt; 裸 nameKey。</summary>
         private static string ResolveOfficialDisplayName(EnemyPresetInfo info)
@@ -422,7 +465,16 @@ namespace BossRush
         /// <summary>丧尸 Boss 合成 key。存档兼容面，取值域冻结。</summary>
         internal static string BuildZombieBossKey(ZombieModeBossKind kind)
         {
-            return CodexTuning.ZombieBossKeyPrefix + kind.ToString();
+            // OnGlobalHurt 每次命中都会查询，不能 Enum.ToString + 拼接分配。
+            switch (kind)
+            {
+                case ZombieModeBossKind.Titan: return CodexTuning.ZombieBossKeyTitan;
+                case ZombieModeBossKind.Hunter: return CodexTuning.ZombieBossKeyHunter;
+                case ZombieModeBossKind.Splitter: return CodexTuning.ZombieBossKeySplitter;
+                case ZombieModeBossKind.Shielder: return CodexTuning.ZombieBossKeyShielder;
+                case ZombieModeBossKind.Corruptor: return CodexTuning.ZombieBossKeyCorruptor;
+                default: return null;
+            }
         }
 
         #endregion
@@ -439,6 +491,7 @@ namespace BossRush
                 _byKey = null;
                 _ordered = null;
                 _built = false;
+                _officialPoolAvailable = false;
             }
         }
 
