@@ -1,9 +1,8 @@
 // ============================================================================
-// BackMountainConfig.cs - 竞技场后山常量单点（M0 骨架）
+// BackMountainConfig.cs - 竞技场后山常量单点
 // ============================================================================
 // 归位依据 AGENTS.md 4.8 第 2 层：玩法强耦合常量放模块配置类。
-// 只有两个入口开关走 Config/Config.cs + ModConfig（第 1 层），
-// 曲目映射等数据表走 Assets/Data/BackMountain/*.json（第 3 层）。
+// 玩家偏好走 ConfigBackMountain；曲目表复用 Assets/Data/Audio/BgmTracks.json。
 //
 // 【冻结契约】建筑 ID、cropID 字符串、存档键发布后不得改名（docs/contracts.md）。
 //
@@ -90,14 +89,7 @@ namespace BossRush
 
         #endregion
 
-        #region 数据表文件名（Assets/Data/BackMountain/）
-
-        /// <summary>Boss 战 BGM 与 stinger 的曲目映射表。</summary>
-        internal const string BgmTracksDataFile = "BgmTracks.json";
-
-        #endregion
-
-        #region 展示柜（草案，待 owner 审定）
+        #region 展示柜（保留既有平衡）
 
         /// <summary>展示柜建造费用。</summary>
         internal const int ShowcaseBuildCost = 800;

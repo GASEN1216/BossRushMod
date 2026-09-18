@@ -39,6 +39,14 @@ namespace BossRush
             List<ZombieModeAttributeModifierRecord> records,
             string context)
         {
+            return TryAdd(character, statName, percent, source, records, context, ModifierType.PercentageAdd);
+        }
+
+        /// <summary>Gain 类零基数属性可显式用 Add；旧入口仍按 PercentageAdd 计算。</summary>
+        internal static bool TryAdd(
+            CharacterMainControl character, string statName, float percent, object source,
+            List<ZombieModeAttributeModifierRecord> records, string context, ModifierType modifierType)
+        {
             if (character == null || character.CharacterItem == null ||
                 string.IsNullOrEmpty(statName) || records == null || source == null)
             {
@@ -58,7 +66,7 @@ namespace BossRush
                     return false;
                 }
 
-                Modifier modifier = new Modifier(ModifierType.PercentageAdd, percent, source);
+                Modifier modifier = new Modifier(modifierType, percent, source);
                 stat.AddModifier(modifier);
 
                 ZombieModeAttributeModifierRecord record = new ZombieModeAttributeModifierRecord();

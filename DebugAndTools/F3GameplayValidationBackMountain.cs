@@ -13,8 +13,8 @@
 //     断言重点是登记只保留一条（后吃覆盖先吃）、ApplyForRun 幂等、
 //     以及 ClearForRun 之后不残留 Modifier。
 //
-// 【测试档纪律】本文件的用例会写后山存档段。这就是「必须先标记专用测试档」的原因；
-//   每个用例都在 finally 里把自己造的状态撤掉，不给下一个用例留脏数据。
+// 本文件只读后山观测面，不向测试槽登记虚构战利品或餐食。
+// 事务与生命周期行为由 tests/fixtures/BackMountainLifecycle 执行生产代码验证。
 // ============================================================================
 
 using System;
@@ -85,140 +85,28 @@ namespace BossRush
         /// </summary>
         private bool ValidateShowcaseLedger(out string metrics, out string reason)
         {
-            metrics = string.Empty;
-            reason = null;
-
-            int beforeCount = ShowcaseService.DisplayedCount;
-            float beforeBonus = ShowcaseService.CalculateBonus();
-            IList<int> beforeList = ShowcaseService.GetDisplayed();
-            int probe = PickShowcaseProbeTypeId(beforeList);
-            if (probe == 0)
-            {
-                metrics = "displayed=" + beforeCount + ",probe=none";
-                reason = "找不到未登记的探针 TypeID（收藏已满或目录为空），本项需人工复测";
-                return false;
-            }
-
-            bool displayed = false;
-            try
-            {
-                displayed = ShowcaseService.TryDisplay(probe);
-                int afterCount = ShowcaseService.DisplayedCount;
-                float afterBonus = ShowcaseService.CalculateBonus();
-                bool counted = displayed && afterCount == beforeCount + 1;
-                // 加成只能涨或持平（同类物品可能不再叠加），绝不能因登记而下降。
-                bool bonusSane = afterBonus >= beforeBonus - 0.0001f;
-                bool listed = false;
-                IList<int> afterList = ShowcaseService.GetDisplayed();
-                for (int i = 0; afterList != null && i < afterList.Count; i++)
-                    if (afterList[i] == probe) { listed = true; break; }
-
-                metrics = "displayed=" + beforeCount + "->" + afterCount
-                    + ",bonus=" + beforeBonus.ToString("F4") + "->" + afterBonus.ToString("F4")
-                    + ",probe=" + probe + ",listed=" + listed;
-                if (!displayed) reason = "登记被拒绝: TryDisplay 返回 false";
-                else if (!counted || !listed) reason = "登记后计数或快照未同步";
-                else if (!bonusSane) reason = "登记后加成下降";
-                return reason == null;
-            }
-            finally
-            {
-                // 撤销探针并复检回落，避免给下一个用例留脏收藏。
-                try
-                {
-                    if (displayed)
-                    {
-                        ShowcaseService.TryRemoveRecord(probe);
-                        ShowcaseService.ReapplyBonuses();
-                        if (ShowcaseService.DisplayedCount != beforeCount)
-                        {
-                            ModBehaviour.DevLog("[Validation] 展示柜探针撤销后计数未回落: "
-                                + ShowcaseService.DisplayedCount + " != " + beforeCount);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[Validation] 展示柜探针撤销失败: " + e.Message);
-                }
-            }
+            // 变更/回滚由离线执行回归覆盖；F3 只观察真实槽，满柜也能验收。
+            IList<int> displayed = ShowcaseService.GetDisplayed();
+            var seen = new HashSet<int>();
+            reason = ShowcaseService.IsReadable ? null : "收藏存档不可读，已禁止覆盖";
+            for (int i = 0; i < displayed.Count; i++)
+                if (displayed[i] <= 0 || !seen.Add(displayed[i])) reason = "收藏存在无效或重复登记";
+            float bonus = ShowcaseService.CalculateBonus();
+            if (displayed.Count > BackMountainConfig.ShowcaseSlotCount) reason = "收藏超过展示柜容量";
+            if (float.IsNaN(bonus) || float.IsInfinity(bonus) || bonus < 0f) reason = "收藏加成不是有效非负数";
+            metrics = "displayed=" + displayed.Count + ",bonus=" + bonus.ToString("F4") + ",read_only=true";
+            return reason == null;
         }
 
-        /// <summary>挑一个当前未登记的后山产出 TypeID 当探针。</summary>
-        private static int PickShowcaseProbeTypeId(IList<int> displayed)
-        {
-            int[] candidates =
-            {
-                BossRushItemIds.DragonFruit, BossRushItemIds.EmberChili, BossRushItemIds.PhantomMushroom
-            };
-            for (int i = 0; i < candidates.Length; i++)
-            {
-                bool used = false;
-                for (int j = 0; displayed != null && j < displayed.Count; j++)
-                    if (displayed[j] == candidates[i]) { used = true; break; }
-                if (!used) return candidates[i];
-            }
-            return 0;
-        }
-
-        /// <summary>
-        /// 出击餐：登记单条覆盖语义 + 清理。
-        /// 不在基地调 ApplyForRun——它按设计只在非基地场景生效，
-        /// 在基地断言「挂上了 Modifier」会得出错误结论。
-        /// </summary>
+        /// <summary>只观察待生效登记；登记/覆盖/消费/回滚由 BackMountainLifecycle 执行回归验证。</summary>
         private bool ValidateRaidMealLifecycle(out string metrics, out string reason)
         {
-            metrics = string.Empty;
-            reason = null;
-            int original = 0;
-            try
-            {
-                original = RaidMealService.ReadRegisteredMeal();
-
-                bool firstOk = RaidMealService.RegisterMeal(BossRushItemIds.DragonFruit);
-                int afterFirst = RaidMealService.ReadRegisteredMeal();
-
-                // 后吃覆盖先吃：连吃两份不叠加，登记里只能剩最后那一份。
-                bool secondOk = RaidMealService.RegisterMeal(BossRushItemIds.EmberChili);
-                int afterSecond = RaidMealService.ReadRegisteredMeal();
-                bool overwritten = afterSecond == BossRushItemIds.EmberChili
-                    && afterFirst == BossRushItemIds.DragonFruit;
-
-                // 陌生 ID 必须被拒绝且不污染已有登记（这条正是 8/30 修过的那类静默吃掉）。
-                bool unknownRejected = !RaidMealService.RegisterMeal(int.MaxValue)
-                    && RaidMealService.ReadRegisteredMeal() == afterSecond;
-
-                // ClearForRun 清的是本局 Modifier，不清登记；基地下调用应幂等无副作用。
-                RaidMealService.ClearForRun();
-                RaidMealService.ClearForRun();
-                bool clearIdempotent = RaidMealService.ReadRegisteredMeal() == afterSecond;
-
-                metrics = "original=" + original + ",first=" + afterFirst + ",second=" + afterSecond
-                    + ",overwritten=" + overwritten + ",unknown_rejected=" + unknownRejected
-                    + ",clear_idempotent=" + clearIdempotent;
-                if (!firstOk || !secondOk) reason = "合法出击餐登记被拒绝";
-                else if (!overwritten) reason = "出击餐登记未按「后吃覆盖先吃」保留单条";
-                else if (!unknownRejected) reason = "陌生出击餐 ID 未被拒绝或污染了已有登记";
-                else if (!clearIdempotent) reason = "ClearForRun 误清了跨局登记";
-                return reason == null;
-            }
-            finally
-            {
-                // 还原玩家原本的登记，别把测试用的餐留在存档里。
-                try
-                {
-                    // ClearForRun 只摘本局 Modifier、不清存档登记（用例自己在上面
-                    // 断言过这条语义）。玩家原本没有登记时必须调真正清键的入口，
-                    // 否则测试写进去的焚心椒会留在玩家存档里被下一局消费掉。
-                    if (original != 0) RaidMealService.RegisterMeal(original);
-                    else RaidMealService.ClearRegisteredMeal();
-                    RaidMealService.ClearForRun();
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[Validation] 出击餐登记还原失败: " + e.Message);
-                }
-            }
+            int registered = RaidMealService.ReadRegisteredMeal();
+            BackMountainItems.Definition def = BackMountainItems.GetDefinition(registered);
+            bool valid = registered == 0 || (def != null && !def.IsSeed);
+            metrics = "registered=" + registered + ",read_only=true";
+            reason = valid ? null : "待生效记录不是已知餐食，原记录已保留";
+            return valid;
         }
 
         /// <summary>

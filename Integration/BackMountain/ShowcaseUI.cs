@@ -21,6 +21,20 @@ namespace BossRush
     internal static class ShowcaseUI
     {
         private static GameObject _root;
+        private static ZombieModeUIHelper.ModalInputLease _modalLease;
+        private static bool _isChinese;
+
+        internal static void Tick()
+        {
+            if (_root == null) return;
+            if (Input.GetKeyDown(KeyCode.Escape)) { Close(); return; }
+            if (_isChinese != L10n.IsChinese) Open();
+        }
+
+        internal static void NotifyDestroyed(GameObject root)
+        {
+            if (ReferenceEquals(_root, root)) Close();
+        }
         internal static bool IsOpen { get { return _root != null; } }
         #region 开关
         /// <summary>打开面板（幂等：已开时先关再开，保证内容最新）。</summary>
@@ -41,11 +55,14 @@ namespace BossRush
         {
             try
             {
-                if (_root != null)
+                if (_modalLease != null)
                 {
-                    UnityEngine.Object.Destroy(_root);
-                    _root = null;
+                    _modalLease.Release();
+                    _modalLease = null;
                 }
+                GameObject root = _root;
+                _root = null;
+                if (root != null) UnityEngine.Object.Destroy(root);
             }
             catch (Exception e)
             {
@@ -67,6 +84,9 @@ namespace BossRush
             Canvas canvas = BossRushUI.CreateCanvasRoot(
                 "BossRushShowcaseCanvas", BossRushUILayers.Panel, true);
             _root = canvas.gameObject;
+            _isChinese = L10n.IsChinese;
+            _root.AddComponent<ShowcasePanelLifetime>();
+            _modalLease = ZombieModeUIHelper.ClaimModalInput(_root, "TrophyShowcase");
 
             BossRushUI.CreateBackdrop(_root.transform);
 
@@ -169,7 +189,9 @@ namespace BossRush
                 BossRushUI.ApplyGameFont(qualityText);
 
                 int recordTypeId = typeId;
-                ZombieModeUIHelper.CreateButton(
+                string replacementReason;
+                Item replacement = ResolveReplacement(recordTypeId, out replacementReason);
+                if (replacement != null) ZombieModeUIHelper.CreateButton(
                     "ReplaceRecord", row.transform,
                     L10n.T("替换", "Replace"),
                     new Vector2(1f, 0.5f), new Vector2(-181f, 0f), new Vector2(126f, 32f),
@@ -202,19 +224,20 @@ namespace BossRush
         {
             TextMeshProUGUI hint = ZombieModeUIHelper.CreateText(
                 "ReplaceHint", parent,
-                L10n.T("替换优先使用手持战利品，其次使用首件合格穿戴。登记与撤销均不消耗物品。",
-                    "Replace uses your held trophy, then eligible worn gear. Recording or removing never consumes items."),
+                L10n.T("手持或穿戴 Q5+ 战利品后登记；替换优先手持。所有操作均不消耗物品。",
+                    "Hold or wear a Q5+ trophy to record it. Replace prefers held gear. Items are never consumed."),
                 12f, new Vector2(0f, -214f), new Vector2(680f, 22f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
             BossRushUI.ApplyGameFont(hint);
 
-            ZombieModeUIHelper.CreateButton(
+            string displayReason;
+            if (ShowcaseService.CanDisplay(ResolveHeldItem(), out displayReason)) ZombieModeUIHelper.CreateButton(
                 "Display", parent, L10n.T("登记手持战利品", "Record held trophy"),
                 new Vector2(0.5f, 0f), new Vector2(-190f, 40f), new Vector2(190f, 42f),
                 BossRushUIColors.Accent, 15f, new Vector2(180f, 34f),
                 delegate { OnDisplayHeld(); }, true);
 
-            ZombieModeUIHelper.CreateButton(
+            if (ResolveEquippedTrophy() != null) ZombieModeUIHelper.CreateButton(
                 "DisplayEquipped", parent, L10n.T("登记穿戴战利品", "Record equipped trophy"),
                 new Vector2(0.5f, 0f), new Vector2(15f, 40f), new Vector2(190f, 42f),
                 BossRushUIColors.Accent, 15f, new Vector2(180f, 34f),
@@ -283,14 +306,19 @@ namespace BossRush
             }
         }
 
+        private static Item ResolveReplacement(int oldTypeId, out string reason)
+        {
+            Item item = ResolveHeldItem();
+            if (ShowcaseService.CanReplaceRecord(oldTypeId, item, out reason)) return item;
+            return ResolveEquippedTrophy(oldTypeId);
+        }
+
         private static void OnReplaceRecord(int oldTypeId)
         {
             try
             {
                 string reason;
-                Item replacement = ResolveHeldItem();
-                if (!ShowcaseService.CanReplaceRecord(oldTypeId, replacement, out reason))
-                    replacement = ResolveEquippedTrophy(oldTypeId);
+                Item replacement = ResolveReplacement(oldTypeId, out reason);
                 if (!ShowcaseService.TryReplaceRecord(oldTypeId, replacement, out reason))
                 {
                     ModBehaviour.Instance?.ShowMessage(reason);
@@ -316,7 +344,7 @@ namespace BossRush
             }
 
             int typeId = item.TypeID;
-            if (!ShowcaseService.TryDisplay(typeId))
+            if (!ShowcaseService.TryDisplay(item))
             {
                 ModBehaviour.Instance?.ShowMessage(L10n.T("登记失败", "Failed to record"));
                 return;
@@ -359,7 +387,7 @@ namespace BossRush
 
                 string[] preferredSlots =
                 {
-                    "Armor", "Helmat", "Helmet", "FaceMask",
+                    "Armor", "Helmat", "Helmet", "FaceMask", "Backpack",
                     "PrimaryWeapon", "SecondaryWeapon", "MeleeWeapon"
                 };
                 for (int i = 0; i < preferredSlots.Length; i++)
@@ -389,6 +417,12 @@ namespace BossRush
         }
 
         #endregion
+    }
+
+    // Unity 可先销毁场景画布再通知模块；输入租约仍须在该路径释放。
+    internal sealed class ShowcasePanelLifetime : MonoBehaviour
+    {
+        private void OnDestroy() { ShowcaseUI.NotifyDestroyed(gameObject); }
     }
 
     public partial class ModBehaviour

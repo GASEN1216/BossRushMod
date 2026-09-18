@@ -3819,3 +3819,73 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 | CR-2026-09-18-015 | P2 / COMPAT | Boss 计时容量满时清空全部起点；目标转友军后死亡会提前退出而不清表；丧尸受伤路径每次拼接身份字符串。 | **Fixed（L1/L2，待 L3）**。满表只拒绝新计时，死亡先清理起点；五种丧尸 key 改用既有冻结常量。 |
 | CR-2026-09-18-016 | P2 / COMPAT | 图鉴已保存的有效速杀在成就尚未保存时，重开面板只补累计成就，无法补判十秒成就。 | **Fixed（L1/L2，待 L3）**。面板补判真实已保存的有效最快用时，复用既有成就幂等接口；切槽清判定缓存。 |
 | CR-2026-09-18-017 | P2 / COMPAT | CodexView.EnsureGridLayout 延迟 Destroy 官方 VerticalLayoutGroup 后同帧添加 GridLayoutGroup，违反同物体单 LayoutGroup 约束；每次打开全目录创建卡片/加载立绘。 | **Fixed（L1/L2，待 L3）**。即时移除克隆容器的旧布局；每页最多12卡按页取图，旧卡立即失活，销毁路径释放输入；新增呈现守卫。 |
+
+
+## 2026-09-18 竞技场后山生产复审
+
+### CR-2026-09-18-018 · P1 · COMPAT · 出击餐在局内换区时丢失
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/BackMountainRuntimeModule.cs`。
+- 证据与修复：原 OnSceneLoaded 无条件 ClearForRun，消费过的餐不能重挂。现以官方 raid ID、槽位和角色身份保留同局餐，结束/死亡/换槽清理；执行回归覆盖 additive 与角色销毁重建。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-019 · P1 · COMPAT · 焚心椒零基数换弹增益与餐食提前结算
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/RaidMealService.cs`。
+- 证据与修复：官方 ItemAgent_Gun 用时间/(1+ReloadSpeedGain)，原 PercentageAdd 在零基数上无效；原代码先清登记后忽略 TryAdd 返回值。现显式 Add，所有 stat 成功才结算，失败移除部分效果并恢复待餐。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-020 · P1 · COMPAT · 设施恢复被解锁总门挡住且偏好变更不刷新
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/BackMountainRuntimeModule.cs`。
+- 证据与修复：原 RefreshFacilitiesForScene 先检查任意设施解锁，使菜地棘轮无法独立恢复；OnUpdate 不响应 UnlockAll。现按基地场景名早期恢复、就绪补试、偏好变化刷新，种植开放前写入恢复标记。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-021 · P1 · COMPAT · 六件后山物品没有官方描述键
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/BackMountainItems.cs`。
+- 证据与修复：官方 Item.DescriptionRaw 恒为 DisplayNameRaw+_Desc，旧反射写描述不会改变该 getter；旧 InjectLocalization 只注入名称。现补齐中英文 _Desc，含实际效果与覆盖规则，使用行为复用共享绑定。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-022 · P1 · COMPAT · 展示柜没有占用输入且可见动作与资格脱节
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/ShowcaseUI.cs`。
+- 证据与修复：CreateCanvasRoot 只建 Raycaster，不禁用玩家输入。现取得共享模态租约，Esc/销毁/换槽释放；绘制与执行复用资格判定，补 Backpack 可达性。生产生命周期提取回归验证旧画布不会关闭新画布。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-023 · P2 · COMPAT · 展示柜模板跨槽重复追加且卸载不释放资源
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/ShowcaseBuildingBuilder.cs`。
+- 证据与修复：旧换槽只移除 infos，下一次注入再次追加同一 prefab；Cleanup 只清图标引用。现按引用去重，真实注入成功才置完成，清理 own prefab/材质/纹理/目录；同步采用 URP 材质。资源回收和渲染仍需 L3。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-024 · P2 · COMPAT · 展示柜低层登记可绕过食材排除，F3 使用该漏洞写探针
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/ShowcaseService.cs`。
+- 证据与修复：旧 TryDisplay(int) 不验证目录品质与后山食材，F3 正用餐食 TypeID 登记，满柜时又无法选探针。现服务复核、拒绝非法输入，异常/超容量集合保留原文并写保护，共享 JSON 读写；F3 改只读，事务由隔离回归执行。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+### CR-2026-09-18-025 · P2 · COMPAT / SCHEMA+ · 英文点唱机仍显示硬编码中文曲名
+
+- 状态：fixed，L3 待 owner 实机。
+- 位置：`Integration/BackMountain/JukeboxTrackInjector.cs`。
+- 证据与修复：原曲目表只有 musicName，注入器无语言路径且按标题判重。新增可选 musicNameEn 并缺省回退旧名；按音频路径更新原槽，语言切换不改索引、不重复追加。
+- 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
+- 验证需求：`docs/代码审查/2026-09-18-竞技场后山生产复审.md` 的逐步清单；不把离线结果当作实机表现。
+
+
+Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产源码夹具19 PASS、三个守卫10次反向验证全部按预期转红并逐字还原。CR-2026-09-18-009同时补齐HUD与结算页画布构建异常的owner回收。CR-2026-09-18-011的守卫本身已完成L2验证；其守护的真实女巫激活/回收仍待L3。隔离基线加本轮Mode G修改已正式编译成功；全工作区编译/守卫受并行新武器开发影响未全绿。详情与人工清单见上述报告。

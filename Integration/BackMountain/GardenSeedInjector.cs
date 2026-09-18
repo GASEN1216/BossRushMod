@@ -43,7 +43,7 @@ namespace BossRush
         /// </summary>
         private const string RatchetSaveKey = "BossRush_BackMountain_GardenRatchet_v1";
 
-        /// <summary>作物成熟所需时间（现实分钟）。草案值，待 owner 审定。</summary>
+        /// <summary>作物成熟所需时间（现实分钟），保留既有平衡。</summary>
         private const int GrowMinutes = 20;
 
         /// <summary>每次收获产出数量。</summary>
@@ -82,17 +82,17 @@ namespace BossRush
                 if (!EnsureItemsRegistered()) return;
 
                 CropDatabase database = GameplayDataSettings.CropDatabase;
-                if (database == null)
+                if (database == null || database.entries == null || database.seedInfos == null)
                 {
                     ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "CropDatabase 尚不可用，稍后重试");
                     return;
                 }
 
+                // 先保证下次启动能恢复这些作物，再把可种条目交给官方 UI。
+                if (unlocked && !ratcheted && !WriteRatchet()) return;
                 InjectCrops(database);
                 InjectSeeds(database);
-
                 _injected = true;
-                if (unlocked && !ratcheted) WriteRatchet();
 
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "菜地作物已注入官方种植系统");
             }
@@ -222,16 +222,18 @@ namespace BossRush
             }
         }
 
-        private static void WriteRatchet()
+        private static bool WriteRatchet()
         {
             try
             {
-                if (SavesSystem.IsSaving) return;
+                if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0) return false;
                 SavesSystem.Save<bool>(RatchetSaveKey, true);
+                return SavesSystem.Load<bool>(RatchetSaveKey);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 棘轮标记写入失败: " + e.Message);
+                return false;
             }
         }
 

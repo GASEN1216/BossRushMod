@@ -20,7 +20,7 @@
 //   登记的是「你拥有过这一型战利品」，没有耐久、词缀之类的实例状态需要保留。
 //   存 TypeID 集合让存档结构极简。
 //
-// 【加成数值均为草案，待 owner 审定】
+// 【沿用既有加成，不改变经济平衡】
 //   按品质给：每高于 Q4 一级 +0.5% 最大生命（Q5→+0.5%，Q8→+2%）。
 //   八格全满额外 +5%。上限约 +21%，不至于让展示柜变成必刷。
 // ============================================================================
@@ -44,7 +44,7 @@ namespace BossRush
     /// <summary>展示柜收藏与加成服务。</summary>
     internal static class ShowcaseService
     {
-        #region 常量（草案，待 owner 审定）
+        #region 常量
 
         private const int CurrentSchemaVersion = 1;
 
@@ -82,6 +82,8 @@ namespace BossRush
         #endregion
 
         #region 收藏读写
+
+        internal static bool IsReadable { get { EnsureLoaded(); return !_writeBarrier; } }
 
         /// <summary>当前陈列的物品 TypeID 快照。永不返回 null。</summary>
         internal static IList<int> GetDisplayed()
@@ -154,13 +156,20 @@ namespace BossRush
             }
         }
 
-        /// <summary>登记一件战利品。物品仍归玩家，这里只记 TypeID。</summary>
+        internal static bool TryDisplay(Item item)
+        {
+            string reason;
+            return CanDisplay(item, out reason) && TryDisplay(item.TypeID);
+        }
+
+        /// <summary>兼容已有入口，写入前按当前目录复核资格，不允许直接传种子或餐食绕过 UI。</summary>
         internal static bool TryDisplay(int typeId)
         {
             try
             {
                 EnsureLoaded();
-                if (_writeBarrier || typeId <= 0) return false;
+                if (_writeBarrier || typeId <= 0 || BackMountainItems.GetDefinition(typeId) != null
+                    || ReadQuality(typeId) < MinDisplayQuality) return false;
                 if (_displayed.Count >= BackMountainConfig.ShowcaseSlotCount) return false;
                 if (_displayed.Contains(typeId)) return false;
 
@@ -336,7 +345,7 @@ namespace BossRush
             try
             {
                 ItemMetaData meta = ItemAssetsCollection.GetMetaData(typeId);
-                if (meta.id <= 0) return 0;
+                if (meta.id != typeId) return 0;
                 return meta.quality;
             }
             catch (Exception)
@@ -393,22 +402,25 @@ namespace BossRush
                 string raw = SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey);
                 if (string.IsNullOrEmpty(raw)) return;
 
-                ShowcaseSaveData data = JsonUtility.FromJson<ShowcaseSaveData>(raw);
-                if (data == null || data.displayedTypeIds == null) return;
-                if (data.schemaVersion != CurrentSchemaVersion)
-                {
-                    // 未知版本只读不写：宁可这一局不加成，也不覆盖玩家的收藏
-                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix
-                        + "[WARNING] 展示柜存档版本不符，只读不覆盖");
-                    return;
-                }
+                BossRushJsonValue root;
+                string error;
+                int version;
+                List<BossRushJsonValue> ids;
+                if (!BossRushJsonParser.TryParse(raw, out root, out error) || root == null
+                    || !root.TryGetInt("schemaVersion", out version) || version != CurrentSchemaVersion
+                    || !root.TryGetArray("displayedTypeIds", out ids)
+                    || ids.Count > BackMountainConfig.ShowcaseSlotCount) return;
 
-                for (int i = 0; i < data.displayedTypeIds.Length; i++)
+                foreach (BossRushJsonValue id in ids)
                 {
-                    int typeId = data.displayedTypeIds[i];
-                    if (typeId <= 0) continue;
-                    if (_displayed.Contains(typeId)) continue;
-                    _displayed.Add(typeId);
+                    if (id == null || id.Kind != BossRushJsonKind.Integer
+                        || id.IntegerValue <= 0 || id.IntegerValue > int.MaxValue
+                        || _displayed.Contains((int)id.IntegerValue))
+                    {
+                        _displayed.Clear();
+                        return;
+                    }
+                    _displayed.Add((int)id.IntegerValue);
                 }
                 _writeBarrier = false;
             }
@@ -429,17 +441,9 @@ namespace BossRush
 
                 previousJson = SavesSystem.KeyExisits(BackMountainConfig.ShowcaseSaveKey)
                     ? SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey)
-                    : JsonUtility.ToJson(new ShowcaseSaveData
-                    {
-                        schemaVersion = CurrentSchemaVersion,
-                        displayedTypeIds = new int[0]
-                    });
+                    : Encode(new ShowcaseSaveData { schemaVersion = CurrentSchemaVersion, displayedTypeIds = new int[0] });
 
-                ShowcaseSaveData data = new ShowcaseSaveData();
-                data.schemaVersion = CurrentSchemaVersion;
-                data.displayedTypeIds = _displayed.ToArray();
-
-                string json = JsonUtility.ToJson(data);
+                string json = Encode(new ShowcaseSaveData { schemaVersion = CurrentSchemaVersion, displayedTypeIds = _displayed.ToArray() });
                 writeAttempted = true;
                 SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, json);
                 string readback = SavesSystem.Load<string>(BackMountainConfig.ShowcaseSaveKey);
@@ -465,6 +469,14 @@ namespace BossRush
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 展示柜落档失败: " + e.Message);
                 return false;
             }
+        }
+
+        private static string Encode(ShowcaseSaveData data)
+        {
+            var writer = new BossRushJsonWriter();
+            writer.BeginObject().Int("schemaVersion", data.schemaVersion).BeginArray("displayedTypeIds");
+            for (int i = 0; i < data.displayedTypeIds.Length; i++) writer.ItemInt(data.displayedTypeIds[i]);
+            return writer.EndArray().EndObject().ToString();
         }
 
         /// <summary>当前存档槽位；拿不到时返回哨兵值。no-throw。</summary>

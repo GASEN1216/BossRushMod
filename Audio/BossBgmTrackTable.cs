@@ -25,6 +25,7 @@ namespace BossRush
     internal class BossBgmJukeboxEntry
     {
         public string musicName;
+        public string musicNameEn;
         public string author;
         public string file;
     }
@@ -88,6 +89,7 @@ namespace BossRush
                 if (!row.TryGetString("musicName", out entry.musicName)
                     || !row.TryGetString("file", out entry.file)) continue;
                 row.TryGetString("author", out entry.author);
+                row.TryGetString("musicNameEn", out entry.musicNameEn);
                 music.Add(entry);
             }
 

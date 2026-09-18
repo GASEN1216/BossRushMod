@@ -23,6 +23,8 @@ source_files:
     - tests/BackMountainStructureGuard.py
 ---
 
+> 2026-09-18 已按当前实现复审。生命周期、事务、输入租约及验证细节见 `.qoder/repowiki/zh/content/高级功能/竞技场后山修复约定.md` 当日条目。下方带日期的旧修复记录保留历史背景。
+
 ## 1. 系统概述
 
 竞技场后山是「两局之间做点别的」的基地侧循环，三个设施由鸭王征程的章节 token
@@ -83,13 +85,13 @@ source_files:
 `LevelManager.OnAfterLevelInitialized`（官方 `BuildingEffect` 给建筑加成用的同一时机，
 本 mod 的 `SetBonusManager` / `DragonSetBonus` 处理「已穿戴装备进入游戏」用的也是它）
 再挂 Modifier，清理走 `RuntimeStatModifierTracker.RemoveAll`。
-同一时间只保留一条，后吃覆盖先吃。
+同一时间只保留一条，后吃覆盖先吃。以官方 raid ID 和槽位识别一次出击，换区保持当前餐，结束/死亡/换槽清理。
 
 **挂载时机是硬约束，不能退到 `sceneLoaded`**：官方主角由
 `LevelManager.CreateMainCharacterAsync` **异步**创建，`SceneManager.sceneLoaded`
-那一刻 `CharacterMainControl.Main` 必然还是 null。在场景回调里挂加成会静默失败
+那一刻 `CharacterMainControl.Main` 未必就绪；additive 加载也可能保留现有角色。在场景回调里挂加成会静默失败
 且没有重试，玩家侧表现为「饭吃了没效果」「登记了不加血」。
-因此模块把两类刷新拆开：设施注入（作物表 / 点唱机 / 展示柜建筑）走 `OnSceneLoaded`，
+因此模块把两类刷新拆开：设施注入走 `OnSceneLoaded` 并在关卡就绪补试，
 角色加成（出击餐 Modifier、展示柜加成）走 `OnAfterLevelInitialized`；
 模块若在关卡初始化之后才 bootstrap，用 `LevelManager.AfterInit` 补一次。
 （CR-2026-08-31-001 / -002 修复。）
@@ -138,7 +140,7 @@ source_files:
 `BossRushDynamicItemRegistry`——漏登记会让重启后它们退化成官方 FallbackItem。
 自定义 cropID 为字符串 `BossRush_Crop_<seedTypeId>`，不占 TypeID 序列。
 
-数值均为草案，待 owner 审定；改动只需改 `RaidMealService` / `ShowcaseService` 的常量。
+本轮保留既有数值，具体手感仍需 L3；数值单点在 `RaidMealService` / `ShowcaseService` 的常量。
 
 ## 5. 冻结契约
 
@@ -161,8 +163,8 @@ source_files:
 ## 7. 风险（必须实机验证）
 
 1. 官方 Garden 三连：`GameplayDataSettings.CropDatabase` 非 null 时机、基地 Garden
-   实例存在性、注入后种植/生长显示/收获全流程。失败即切退化方案（自建种植箱）。
-2. mod 作物在卸载 mod 后的老档残留（棘轮注入缓解，`Crop.Initialize` 早退已确认不崩）。
+   实例存在性、注入后种植/生长显示/收获全流程。失败时先核对恢复标记与注入时机，继续复用官方系统。
+2. mod 作物在卸载 mod 后的老档残留（`Crop.Initialize` 找不到定义会早退，仅 L1；未实机证明卸载后的完整表现）。
 3. `BaseBGMSelector` 追加时机与官方只存 index 导致的曲目移位（官方机制本身如此，
    mod 条目固定追加在官方之后）。
 4. 展示柜建筑注入全链（照日报报箱已趟平，仍需实机过一遍）。
@@ -173,9 +175,9 @@ source_files:
 后山餐食都排除在战利品外。登记写入返回 bool 并回读 JSON，官方正在保存或回读不一致时
 撤销刚加入的 TypeID，不再显示成功后重进丢失。
 
-出击餐在基地、非种子、已识别且 `SavesSystem.IsSaving == false` 时才允许使用；登记与消费都
-回读核对。进入下一局时先把登记持久清零，成功后才挂 modifier，清零失败则本局不消耗也不生效，
-避免同一份餐跨多局重复生效。旧档陌生 ID 会给玩家明确提示并尝试清除。
+出击餐在基地、非种子且已识别时才允许使用；存档忙由登记层拒绝并补偿官方扣量，不能在二次 CanBeUsed 阶段拒绝。登记与消费都
+回读核对。2026-09-18 起先完整挂载 modifier，再结算登记；任一步失败摘除刚挂的效果并保留餐食记录，
+避免同一份餐跨多局重复生效。2026-09-18 起，旧档陌生 ID 保留原值，不应用加成，也不自动清除。
 
 ## 2026-09-04 焚心椒的换弹加成用了不存在的 stat key
 

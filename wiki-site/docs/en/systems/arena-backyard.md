@@ -43,8 +43,7 @@ Seeds and the food you harvest can't be recorded in the Showcase — that cabine
 ## Trophy Showcase
 
 - Build a `Trophy Showcase` from the base's construction menu: `800` money, 2×1 footprint, one only.
-- Walk up and interact with it to open the panel: eight slots, your current bonus, and record, replace,
-  and remove actions.
+- Walk up and interact to see eight slots and your current bonus. Record and Replace appear when you have an eligible trophy; existing records can be removed. Press Esc to close.
 
 **The key point: recording does not take your gear away.**
 
@@ -56,11 +55,11 @@ Seeds and the food you harvest can't be recorded in the Showcase — that cabine
 
 **How the bonus works**
 
-- Only gear of quality `5` or above is worth recording.
+- Only trophies of quality `5` or above that you can hold or wear qualify, including backpacks.
 - Each recorded piece gives max health by quality: `+0.5%` for every level above quality 4.
   Quality 5 is `+0.5%`, quality 8 is `+2%`.
 - Filling all eight slots adds another `+5%`.
-- Eight quality-8 pieces come to roughly `+21%` max health — that's the ceiling.
+- For example, eight quality-8 pieces give roughly `+21%` max health.
 - The bonus is **always on**: it counts in the base and in a run, whatever you're carrying.
 
 <div class="brs-icon">
@@ -75,8 +74,7 @@ Seeds and the food you harvest can't be recorded in the Showcase — that cabine
 
 - Once unlocked, mod battle tracks are appended to the base jukebox's playlist, sitting alongside
   the vanilla songs for you to pick from.
-- Two tracks so far, listed under their original titles: `龙裔挽歌` (Dragon Descendant's Elegy)
-  and `幽影回廊` (Umbral Corridor).
+- Two tracks so far: `Dragon Elegy` and `Umbral Corridors`. Switching language updates their titles without duplicating tracks.
 - Mod tracks always go after the vanilla ones, so nothing you already had shifts position in the list.
 
 ## How raid meals work
@@ -87,7 +85,7 @@ Raid meals are the Backyard's signature mechanic, and there are only three rules
   so you can't waste one by accident.
 - **It applies to your next run.** Nothing happens when you eat it; the effect goes on at the start
   of the next run you leave the base for.
-- **It lasts one run.** When that run ends the effect is gone, whether you extracted or died.
+- **It lasts one run.** Moving between areas during the same raid keeps the effect. Extraction or death ends it; it does not carry into the next raid.
 
 Two more that catch people out:
 
@@ -107,8 +105,12 @@ Two more that catch people out:
 **Raid meals** (harvested from the Garden, 2 per harvest)
 
 - **Dragonbreath Fruit** — `+10%` gun and melee damage on your next run
-- **Emberheart Chili** — `+8%` move speed and `+10%` reload speed on your next run
+- **Emberheart Chili** — `+8%` move speed and `+10%` reload speed gain on your next run
 - **Umbral Mushroom** — `-10%` physical damage taken on your next run
+
+::: tip
+Chili adds to your equipment's reload speed gain. With no other reload bonuses, reload time is about `9.1%` shorter.
+:::
 
 ## Questions you might have
 

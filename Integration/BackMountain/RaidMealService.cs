@@ -10,22 +10,23 @@
 //   玩家完全可能吃完饭就退游戏，第二天再进。内存变量会让那顿饭白吃。
 //
 // 【生效与清理】
-//   生效点选 LevelManager.OnLevelInitialized——这正是官方 BuildingEffect 给
+//   生效点选 LevelManager.OnAfterLevelInitialized——这正是官方 BuildingEffect 给
 //   建筑加成用的时机，说明那时角色 Stat 已就绪。
 //   清理走 RuntimeStatModifierTracker.RemoveAll（PercentageAdd + 反向迭代），
-//   并在「回到基地」时一并消费掉登记：一顿饭只管一局。
+//   首次装配成功后消费登记；同一次官方出击换区可重挂，结束/死亡/换槽清理。
 // ============================================================================
 
 using System;
 using System.Collections.Generic;
 using Saves;
+using ItemStatsSystem.Stats;
 
 namespace BossRush
 {
     /// <summary>出击餐的登记、生效与清理。</summary>
     internal static class RaidMealService
     {
-        #region 数值（草案，待 owner 审定）
+        #region 数值（保留既有平衡）
 
         /// <summary>龙息果：枪械与近战伤害倍率 +10%。</summary>
         private const float DragonFruitDamageBonus = 0.10f;
@@ -59,7 +60,10 @@ namespace BossRush
         private static readonly object _modifierSource = new object();
 
         /// <summary>本局是否已经应用过（防止同一局重复挂）。</summary>
-        private static bool _appliedThisRun;
+        private static int _activeMeal;
+        private static uint _activeRaidId;
+        private static int _activeSlot = -1;
+        private static CharacterMainControl _appliedCharacter;
 
         #endregion
 
@@ -71,34 +75,8 @@ namespace BossRush
         /// </summary>
         internal static bool RegisterMeal(int mealTypeId)
         {
-            int previous = 0;
-            bool writeAttempted = false;
-            try
-            {
-                if (BackMountainItems.GetDefinition(mealTypeId) == null) return false;
-                if (SavesSystem.IsSaving) return false;
-                if (SavesSystem.KeyExisits(BackMountainConfig.RaidMealSaveKey))
-                    previous = SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey);
-                writeAttempted = true;
-                SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, mealTypeId);
-                if (SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey) != mealTypeId)
-                {
-                    throw new InvalidOperationException("meal_readback_mismatch");
-                }
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "出击餐已登记: " + mealTypeId);
-                return true;
-            }
-            catch (Exception e)
-            {
-                if (writeAttempted)
-                {
-                    try { SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, previous); }
-                    catch (Exception rollbackError)
-                    { ModBehaviour.CriticalLog(BackMountainConfig.LogPrefix + "出击餐登记回滚失败: " + rollbackError.Message); }
-                }
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 出击餐登记失败: " + e.Message);
-                return false;
-            }
+            BackMountainItems.Definition definition = BackMountainItems.GetDefinition(mealTypeId);
+            return definition != null && !definition.IsSeed && TryWriteRegisteredMeal(mealTypeId);
         }
 
         /// <summary>读取当前登记的出击餐；没有返回 0。</summary>
@@ -126,15 +104,34 @@ namespace BossRush
         /// </summary>
         internal static bool ClearRegisteredMeal()
         {
+            return TryWriteRegisteredMeal(0);
+        }
+
+        // 登记、覆盖与结算共用同一事务，失败恢复原值。
+        private static bool TryWriteRegisteredMeal(int mealTypeId)
+        {
+            int previous = 0;
+            bool writeAttempted = false;
             try
             {
-                if (SavesSystem.IsSaving) return false;
-                SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, 0);
-                return SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey) == 0;
+                if (SavesSystem.IsSaving || SavesSystem.CurrentSlot < 0) return false;
+                if (SavesSystem.KeyExisits(BackMountainConfig.RaidMealSaveKey))
+                    previous = SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey);
+                writeAttempted = true;
+                SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, mealTypeId);
+                if (SavesSystem.Load<int>(BackMountainConfig.RaidMealSaveKey) != mealTypeId)
+                    throw new InvalidOperationException("meal_readback_mismatch");
+                return true;
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 清理出击餐登记失败: " + e.Message);
+                if (writeAttempted)
+                {
+                    try { SavesSystem.Save<int>(BackMountainConfig.RaidMealSaveKey, previous); }
+                    catch (Exception rollbackError)
+                    { ModBehaviour.CriticalLog(BackMountainConfig.LogPrefix + "出击餐登记回滚失败: " + rollbackError.Message); }
+                }
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 出击餐登记写入失败: " + e.Message);
                 return false;
             }
         }
@@ -151,68 +148,50 @@ namespace BossRush
         {
             try
             {
-                if (_appliedThisRun) return;
-
-                int mealTypeId = ReadRegisteredMeal();
-                if (mealTypeId <= 0) return;
+                // 只有真实出击能消费餐食；菜单、基地与非出击关卡都不算一局。
+                if (LevelManager.Instance == null || LevelManager.Instance.IsBaseLevel
+                    || !LevelManager.Instance.IsRaidMap) return;
+                RaidUtilities.RaidInfo raid = RaidUtilities.CurrentRaid;
+                int slot = SavesSystem.CurrentSlot;
+                if (!raid.valid || raid.ended || raid.dead || slot < 0) return;
+                if (_activeMeal != 0 && (_activeRaidId != raid.ID || _activeSlot != slot)) ClearForRun();
 
                 CharacterMainControl main = CharacterMainControl.Main;
                 if (main == null) return;
+                if (_activeMeal != 0 && _appliedCharacter == main && _records.Count > 0) return;
 
-                // 先确认这是认识的餐品再消费登记。原先的写法是先清登记再 switch，
-                // 遇到旧存档里的陌生 ID 会走 default 直接 return——饭被吃掉、
-                // 加成没给、玩家也看不到任何提示。
-                if (BackMountainItems.GetDefinition(mealTypeId) == null)
-                {
-                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix
-                        + "[WARNING] 登记的出击餐 ID 无法识别，已丢弃: " + mealTypeId);
-                    bool cleared = ClearRegisteredMeal();
-                    Duckov.UI.NotificationText.Push(cleared
-                        ? L10n.T("旧版出击餐记录无法识别，已清除。",
-                            "An unrecognized legacy meal record was cleared.")
-                        : L10n.T("出击餐记录无法识别且暂时不能清除，请稍后重试。",
-                            "The meal record is unrecognized and could not be cleared; try again later."));
-                    return;
-                }
-
-                // 先持久消费登记，再挂本局 modifier；消费失败时绝不让同一份餐跨局重复生效。
-                if (!ClearRegisteredMeal())
-                {
-                    Duckov.UI.NotificationText.Push(
-                        L10n.T("出击餐登记暂时无法结算，本局未消耗也未生效。",
-                            "The meal record could not be settled; it was neither consumed nor applied."));
-                    return;
-                }
-                _appliedThisRun = true;
-
-                switch (mealTypeId)
-                {
-                    case BossRushItemIds.DragonFruit:
-                        AddModifier(main, ZombieModeStatNames.GunDamageMultiplier, DragonFruitDamageBonus);
-                        AddModifier(main, ZombieModeStatNames.MeleeDamageMultiplier, DragonFruitDamageBonus);
-                        break;
-                    case BossRushItemIds.EmberChili:
-                        // 官方角色只有 WalkSpeed / RunSpeed / Moveability 三个移动 stat，
-                        // "MoveSpeed" 是 Animator 参数名（AGENTS §14），挂上去会被
-                        // RuntimeStatModifierTracker 当缺失 stat 静默丢弃，故不再挂。
-                        AddModifier(main, ZombieModeStatNames.RunSpeed, EmberChiliSpeedBonus);
-                        AddModifier(main, ZombieModeStatNames.WalkSpeed, EmberChiliSpeedBonus);
-                        // 换弹的官方 stat 是 ReloadSpeedGain（CharacterMainControl 的
-                        // reloadSpeedGainHash）；"ReloadSpeedMultiplier" 在官方源码里不存在。
-                        AddModifier(main, ZombieModeStatNames.ReloadSpeedGain, EmberChiliReloadBonus);
-                        break;
-                    case BossRushItemIds.PhantomMushroom:
-                        AddModifier(main, ZombieModeStatNames.ElementFactorPhysics,
-                            PhantomMushroomPhysicsDamageReduction);
-                        break;
-                }
-
+                bool pending = _activeMeal == 0;
+                int mealTypeId = pending ? ReadRegisteredMeal() : _activeMeal;
+                if (mealTypeId == 0) return;
                 BackMountainItems.Definition def = BackMountainItems.GetDefinition(mealTypeId);
-                if (def != null)
+                // 陌生旧记录保留原值，不以“修复”为由清除玩家数据。
+                if (def == null || def.IsSeed) return;
+
+                RuntimeStatModifierTracker.RemoveAll(_records, "RaidMeal");
+                _appliedCharacter = null;
+                if (!TryApplyModifiers(main, mealTypeId))
                 {
-                    ModBehaviour.Instance?.ShowMessage(
-                        L10n.T("出击餐生效：", "Meal in effect: ") + L10n.T(def.NameCN, def.NameEN));
+                    RuntimeStatModifierTracker.RemoveAll(_records, "RaidMeal");
+                    Duckov.UI.NotificationText.Push(L10n.T(
+                        "出击餐属性尚未就绪，餐食记录已保留。",
+                        "Meal stats are not ready; your meal record has been kept."));
+                    return;
                 }
+                // 所有属性装配成功后才结算；写入失败也摘掉刚挂的效果，避免半份餐或白吃。
+                if (pending && !ClearRegisteredMeal())
+                {
+                    RuntimeStatModifierTracker.RemoveAll(_records, "RaidMeal");
+                    Duckov.UI.NotificationText.Push(L10n.T(
+                        "出击餐登记暂时无法结算，本局未消耗也未生效。",
+                        "The meal record could not be settled; it was neither consumed nor applied."));
+                    return;
+                }
+                _activeMeal = mealTypeId;
+                _activeRaidId = raid.ID;
+                _activeSlot = slot;
+                _appliedCharacter = main;
+                if (pending) ModBehaviour.Instance?.ShowMessage(
+                    L10n.T("出击餐生效：", "Meal in effect: ") + L10n.T(def.NameCN, def.NameEN));
             }
             catch (Exception e)
             {
@@ -220,9 +199,30 @@ namespace BossRush
             }
         }
 
-        private static void AddModifier(CharacterMainControl character, string statName, float percent)
+        private static bool TryApplyModifiers(CharacterMainControl main, int mealTypeId)
         {
-            RuntimeStatModifierTracker.TryAdd(
+            switch (mealTypeId)
+            {
+                case BossRushItemIds.DragonFruit:
+                    return AddModifier(main, ZombieModeStatNames.GunDamageMultiplier, DragonFruitDamageBonus)
+                        && AddModifier(main, ZombieModeStatNames.MeleeDamageMultiplier, DragonFruitDamageBonus);
+                case BossRushItemIds.EmberChili:
+                    return AddModifier(main, ZombieModeStatNames.RunSpeed, EmberChiliSpeedBonus)
+                        && AddModifier(main, ZombieModeStatNames.WalkSpeed, EmberChiliSpeedBonus)
+                        // 官方换弹时间 = 武器时间 / (1 + ReloadSpeedGain)。Gain 基础值为零，须加值。
+                        && RuntimeStatModifierTracker.TryAdd(main, ZombieModeStatNames.ReloadSpeedGain,
+                            EmberChiliReloadBonus, _modifierSource, _records, "RaidMeal", ModifierType.Add);
+                case BossRushItemIds.PhantomMushroom:
+                    return AddModifier(main, ZombieModeStatNames.ElementFactorPhysics,
+                        PhantomMushroomPhysicsDamageReduction);
+                default:
+                    return false;
+            }
+        }
+
+        private static bool AddModifier(CharacterMainControl character, string statName, float percent)
+        {
+            return RuntimeStatModifierTracker.TryAdd(
                 character, statName, percent, _modifierSource, _records, "RaidMeal");
         }
 
@@ -237,12 +237,17 @@ namespace BossRush
                 {
                     RuntimeStatModifierTracker.RemoveAll(_records, "RaidMeal");
                 }
-                _appliedThisRun = false;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 出击餐清理失败: " + e.Message);
-                _appliedThisRun = false;
+            }
+            finally
+            {
+                _activeMeal = 0;
+                _activeSlot = -1;
+                _activeRaidId = 0;
+                _appliedCharacter = null;
             }
         }
 

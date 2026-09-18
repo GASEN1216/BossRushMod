@@ -115,23 +115,23 @@ namespace BossRush
 
                 Make(BossRushItemIds.DragonFruit, "BossRush_DragonFruit", "BossRush_DragonFruit",
                     "龙息果", "Dragonbreath Fruit",
-                    "咬一口喉咙发烫。出击前吃下，**下一局**的攻击会更狠。效果只持续一局。",
-                    "One bite and your throat burns. Eat it before heading out and your **next run** hits harder. "
-                    + "Lasts one run only.",
+                    "基地食用：下次出击枪械与近战伤害 +10%，持续到撤离或阵亡。只保留一份餐，后吃的覆盖先吃的。",
+                    "Eat at base: +10% gun and melee damage next raid, until extraction or death. "
+                    + "Only one meal can be prepared; eating another replaces it.",
                     "dragon_fruit", 2400, 5, false),
 
                 Make(BossRushItemIds.EmberChili, "BossRush_EmberChili", "BossRush_EmberChili",
                     "焚心椒", "Emberheart Chili",
-                    "辣得人坐不住。出击前吃下，**下一局**跑得更快、换弹更利索。效果只持续一局。",
-                    "Too hot to sit still. Eat it before heading out and your **next run** is quicker on the "
-                    + "feet and the reload. Lasts one run only.",
+                    "基地食用：下次出击移动速度 +8%、换弹增益 +10%，持续到撤离或阵亡。只保留一份餐，后吃的覆盖先吃的。",
+                    "Eat at base: +8% movement speed and +10% reload speed gain next raid, until extraction or death. "
+                    + "Only one meal can be prepared; eating another replaces it.",
                     "ember_chili", 2400, 5, false),
 
                 Make(BossRushItemIds.PhantomMushroom, "BossRush_PhantomMushroom", "BossRush_PhantomMushroom",
                     "幽影蘑菇", "Umbral Mushroom",
-                    "吃下去像披了层影子。出击前吃下，**下一局**受到的物理伤害更少。效果只持续一局。",
-                    "Eating it feels like pulling a shadow over yourself. Eat it before heading out and your "
-                    + "**next run** takes less physical damage. Lasts one run only.",
+                    "基地食用：下次出击受到的物理伤害 -10%，持续到撤离或阵亡。只保留一份餐，后吃的覆盖先吃的。",
+                    "Eat at base: -10% physical damage taken next raid, until extraction or death. "
+                    + "Only one meal can be prepared; eating another replaces it.",
                     "phantom_mushroom", 2400, 5, false)
             };
         }
@@ -189,14 +189,13 @@ namespace BossRush
         public static void RegisterConfigurators()
         {
             if (_configuratorsRegistered) return;
-            _configuratorsRegistered = true;
-
             Definition[] all = Definitions;
             for (int i = 0; i < all.Length; i++)
             {
                 int typeId = all[i].TypeId;
                 ItemFactory.RegisterConfigurator(typeId, delegate(Item item) { ConfigureItem(typeId, item); });
             }
+            _configuratorsRegistered = true;
             ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "物品配置器已注册 " + all.Length + " 件");
         }
 
@@ -218,8 +217,7 @@ namespace BossRush
                 item.StackCount = 1;
                 item.Value = def.Value;
                 item.Quality = def.Quality;
-                ModeFItemConfigHelper.SetHiddenMember(item, "description", L10n.T(def.DescCN, def.DescEN));
-                ModeFItemConfigHelper.SetHiddenMember(item, "DescriptionRaw", L10n.T(def.DescCN, def.DescEN));
+                // DescriptionRaw is derived by the game from DisplayNameRaw + "_Desc".
                 EquipmentHelper.AddTagToItem(item, "Special");
                 EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
 
@@ -242,7 +240,6 @@ namespace BossRush
                 if (usageUtils == null)
                 {
                     usageUtils = item.gameObject.AddComponent<UsageUtilities>();
-                    SetUsageUtilitiesMaster(usageUtils, item);
                 }
 
                 RaidMealUsageBehavior usage = item.GetComponent<RaidMealUsageBehavior>();
@@ -260,44 +257,11 @@ namespace BossRush
                     usageUtils.behaviors.Add(usage);
                 }
 
-                SetUsageUtilitiesMaster(usageUtils, item);
-                SetItemUsageUtilities(item, usageUtils);
+                ModeFItemConfigHelper.BindUsageUtilitiesToItem(item, usageUtils, 1f);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "挂载出击餐使用行为失败: " + e.Message);
-            }
-        }
-
-        /// <summary>UsageUtilities.master 是私有字段，只能反射写。</summary>
-        private static void SetUsageUtilitiesMaster(UsageUtilities usageUtils, Item item)
-        {
-            try
-            {
-                System.Reflection.FieldInfo masterField = typeof(UsageUtilities).BaseType.GetField(
-                    "master",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (masterField != null) masterField.SetValue(usageUtils, item);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 回填 UsageUtilities master 失败: " + e.Message);
-            }
-        }
-
-        /// <summary>Item.usageUtilities 同样是私有字段。</summary>
-        private static void SetItemUsageUtilities(Item item, UsageUtilities usageUtils)
-        {
-            try
-            {
-                System.Reflection.FieldInfo field = typeof(Item).GetField(
-                    "usageUtilities",
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (field != null) field.SetValue(item, usageUtils);
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 回填物品 UsageUtilities 失败: " + e.Message);
             }
         }
 
@@ -421,6 +385,7 @@ namespace BossRush
                 for (int i = 0; i < all.Length; i++)
                 {
                     map[all[i].LocKey] = L10n.T(all[i].NameCN, all[i].NameEN);
+                    map[all[i].LocKey + "_Desc"] = L10n.T(all[i].DescCN, all[i].DescEN);
                 }
 
                 LocalizationHelper.InjectLocalizations(map);
@@ -438,6 +403,7 @@ namespace BossRush
         internal static void ResetStaticCaches()
         {
             _runtimeRegistered.Clear();
+            _configuratorsRegistered = false;
         }
 
         #endregion

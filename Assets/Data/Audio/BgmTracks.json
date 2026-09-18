@@ -12,7 +12,7 @@
     { "eventKey": "RunVictory", "file": "stinger_run_victory.wav" }
   ],
   "jukebox": [
-    { "musicName": "龙裔挽歌", "author": "BossRushMod", "file": "boss_descendant_loop.wav" },
-    { "musicName": "幽影回廊", "author": "BossRushMod", "file": "boss_witch_loop.wav" }
+    { "musicName": "龙裔挽歌", "musicNameEn": "Dragon Elegy", "author": "BossRushMod", "file": "boss_descendant_loop.wav" },
+    { "musicName": "幽影回廊", "musicNameEn": "Umbral Corridors", "author": "BossRushMod", "file": "boss_witch_loop.wav" }
   ]
 }

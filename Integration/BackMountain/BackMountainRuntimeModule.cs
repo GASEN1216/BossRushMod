@@ -1,5 +1,5 @@
 // ============================================================================
-// BackMountainRuntimeModule.cs - 竞技场后山运行时模块宿主（M0 骨架）
+// BackMountainRuntimeModule.cs - 竞技场后山运行时模块宿主
 // ============================================================================
 // 硬约束（tests/BackMountainStructureGuard.py 守卫）：
 //   - 全系统只有一个实例：由 ModBehaviour 持有并把**同一个引用**注册给
@@ -10,8 +10,7 @@
 //     不注册建筑、不追加点唱机曲目、不订阅战役事件。开关运行时可变，
 //     因此 bootstrap 走幂等的 EnsureBootstrapped。
 //
-// M0 的 bootstrap 只订阅战役解锁事件并留出即时解锁回调；
-// 真正的设施接入按里程碑逐个挂进 HandleFacilityUnlocked 与 OnSceneLoaded。
+// 设施在场景加载、关卡就绪与实时解锁时幂等接入；角色效果由官方出击生命周期驱动。
 //
 // 【两类刷新分属两个时机，不能合并】
 //   1. **设施注入**（作物表/点唱机/展示柜建筑）只需要场景就绪，走 OnSceneLoaded。
@@ -47,6 +46,9 @@ namespace BossRush
 
         /// <summary>存档换槽事件的订阅幂等标记（AGENTS.md 4.6）。</summary>
         private bool _saveEventSubscribed;
+        private bool _raidEventSubscribed;
+        private bool _lastUnlockAll;
+        private bool _lastChinese;
 
         #endregion
 
@@ -120,7 +122,7 @@ namespace BossRush
         /// 关闭时只推进代数并回到 dormant。
         ///
         /// 角色相关的加成**不在这里挂**：此刻主角还没生成（异步创建），
-        /// 那部分归 HandleLevelReady。这里只把上一个角色的残留记录清掉。
+        /// 那部分归 HandleLevelReady；局内换区保留出击餐身份，随新角色重挂。
         /// </summary>
         public override void OnSceneLoaded(SceneRuntimeContext context)
         {
@@ -134,10 +136,10 @@ namespace BossRush
                 }
                 EnsureBootstrapped();
 
-                // 上一个角色已随场景销毁，Modifier 记录整体作废；
-                // 同时复位「本局已应用」标记，好让 HandleLevelReady 给新角色重挂一次
-                ClearCharacterBoundEffects();
-                RefreshFacilitiesForScene();
+                // additive 场景也会触发 sceneLoaded；不能把换区当作出击结束。
+                ShowcaseUI.Close();
+                if (CharacterMainControl.Main == null) ShowcaseService.ClearBonuses();
+                RefreshFacilitiesForScene(context.SceneName);
             }
             catch (Exception e)
             {
@@ -161,7 +163,23 @@ namespace BossRush
                 if (!IsEnabled)
                 {
                     ShutdownIfEnabledTurnedOff();
+                    return;
                 }
+                bool unlockAll = _owner.IsBackMountainUnlockAllConfigured();
+                if (unlockAll != _lastUnlockAll)
+                {
+                    _lastUnlockAll = unlockAll;
+                    ShowcaseUI.Close();
+                    if (_owner != null) _owner.NotifyShowcaseSlotChanged();
+                    RefreshFacilitiesForScene();
+                    if (IsLevelAfterInit()) RefreshCharacterBoundEffects();
+                }
+                if (_lastChinese != L10n.IsChinese)
+                {
+                    _lastChinese = L10n.IsChinese;
+                    RefreshFacilitiesForScene();
+                }
+                ShowcaseUI.Tick();
             }
             catch (Exception e)
             {
@@ -207,6 +225,8 @@ namespace BossRush
             EnsureSubscriptions();
 
             _bootstrapped = true;
+            _lastUnlockAll = _owner.IsBackMountainUnlockAllConfigured();
+            _lastChinese = L10n.IsChinese;
             ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "运行时模块已启动");
 
             // 可能在关卡初始化之后才 bootstrap（宿主重建、开关中途打开）：
@@ -214,6 +234,7 @@ namespace BossRush
             // 否则出击餐与展示柜加成要等到下次切场景才生效。
             if (IsLevelAfterInit())
             {
+                RefreshFacilitiesForScene();
                 RefreshCharacterBoundEffects();
             }
         }
@@ -229,6 +250,11 @@ namespace BossRush
                 {
                     LevelManager.OnAfterLevelInitialized += HandleLevelReady;
                     _levelEventSubscribed = true;
+                }
+                if (!_raidEventSubscribed)
+                {
+                    RaidUtilities.OnRaidEnd += HandleRaidEnded;
+                    _raidEventSubscribed = true;
                 }
                 if (!_saveEventSubscribed)
                 {
@@ -252,6 +278,11 @@ namespace BossRush
                 {
                     LevelManager.OnAfterLevelInitialized -= HandleLevelReady;
                     _levelEventSubscribed = false;
+                }
+                if (_raidEventSubscribed)
+                {
+                    RaidUtilities.OnRaidEnd -= HandleRaidEnded;
+                    _raidEventSubscribed = false;
                 }
                 if (_saveEventSubscribed)
                 {
@@ -304,12 +335,12 @@ namespace BossRush
         /// **只做注入，不碰角色加成**：那部分依赖主角就绪，归 HandleLevelReady。
         /// 本方法也被实时解锁回调复用，在那条路径上摘加成是错的（玩家就在基地站着）。
         /// </summary>
-        private void RefreshFacilitiesForScene()
+        private void RefreshFacilitiesForScene(string loadedSceneName = null)
         {
             try
             {
-                if (!BackMountainUnlocks.IsAnyFacilityUnlocked()) return;
-                if (!IsBaseScene()) return;
+                // sceneLoaded 早于 Garden.Start；即使 LevelManager 尚未就绪，基地场景名也可识别。
+                if (!IsBaseScene() && !ModBehaviour.IsBaseHubSceneName(loadedSceneName)) return;
 
                 // 三个设施的注入都必须自身幂等：每次进基地都会走到这里
                 GardenSeedInjector.EnsureInjected();
@@ -332,6 +363,7 @@ namespace BossRush
             try
             {
                 if (!IsEnabled) return;
+                RefreshFacilitiesForScene();
                 RefreshCharacterBoundEffects();
             }
             catch (Exception e)
@@ -367,21 +399,9 @@ namespace BossRush
             }
         }
 
-        /// <summary>
-        /// 摘掉角色相关加成并复位「本局已应用」标记。
-        /// 切场景时调用：记录指向的角色已经销毁，留着只会让下一局重复挂。
-        /// </summary>
-        private void ClearCharacterBoundEffects()
+        private void HandleRaidEnded(RaidUtilities.RaidInfo raid)
         {
-            try
-            {
-                RaidMealService.ClearForRun();
-                ShowcaseService.ClearBonuses();
-            }
-            catch (Exception e)
-            {
-                LogFailure("clear_character_effects", e);
-            }
+            RaidMealService.ClearForRun();
         }
 
         /// <summary>
@@ -392,6 +412,8 @@ namespace BossRush
         {
             try
             {
+                ShowcaseUI.Close();
+                RaidMealService.ClearForRun();
                 ShowcaseService.NotifySlotChanged();
                 // 展示柜**建筑条目**必须从官方长寿表里摘掉并复位注入闸：
                 // 它的 requireBuildings/requireQuests 是空数组，官方

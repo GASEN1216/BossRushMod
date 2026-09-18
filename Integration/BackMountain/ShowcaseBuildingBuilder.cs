@@ -9,8 +9,7 @@
 //   **老档已建过是例外**：必须照常注册 prefab，否则官方 BuildingArea 会报缺 prefab，
 //   留下一个幽灵建筑。
 //
-// 零新增 Unity 资源：走程序化占位模型；补上 Assets/buildings/ 同名 bundle 与 png
-// 之后本文件零改动。
+// 模型由本模块程序化构造，图标读取 Assets/buildings/ 对应 PNG；材质与纹理由本 owner 释放。
 //
 // 共享反射工具（FindGameType / AssignBuildingContainerField /
 // RequestBaseBuildingAreaRepaint）由共享工具与显式 _owner 提供，模块不再借 partial 访问兄弟私有状态。
@@ -18,6 +17,7 @@
 
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using UnityEngine;
@@ -50,7 +50,9 @@ namespace BossRush
 
         private bool backMountainShowcaseInjected;
         private GameObject backMountainShowcasePrefabGO;
-        private static Sprite backMountainShowcaseIcon;
+        private Sprite backMountainShowcaseIcon;
+        private Texture2D _iconTexture;
+        private readonly List<Material> _materials = new List<Material>();
 
         #endregion
 
@@ -79,7 +81,7 @@ namespace BossRush
                 BackMountainLocalization.InjectBuildingKeys();
                 LoadShowcaseBuildingIcon();
                 CreateShowcaseBuildingPrefab();
-                InjectShowcaseBuildingData();
+                if (!InjectShowcaseBuildingData()) return;
 
                 backMountainShowcaseInjected = true;
 
@@ -141,7 +143,8 @@ namespace BossRush
 
                 byte[] bytes = File.ReadAllBytes(iconPath);
                 Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes)) return;
+                if (!texture.LoadImage(bytes)) { UnityEngine.Object.Destroy(texture); return; }
+                _iconTexture = texture;
                 backMountainShowcaseIcon = Sprite.Create(
                     texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f));
             }
@@ -187,8 +190,8 @@ namespace BossRush
         {
             try
             {
-                Shader shader = Shader.Find("Unlit/Color");
-                if (shader == null) shader = Shader.Find("Standard");
+                Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+                if (shader == null) shader = Shader.Find("Universal Render Pipeline/Simple Lit");
 
                 Color wood = new Color(0.42f, 0.30f, 0.20f, 1f);
                 Color glass = new Color(0.62f, 0.78f, 0.85f, 0.35f);
@@ -231,8 +234,20 @@ namespace BossRush
                 if (renderer != null && shader != null)
                 {
                     Material material = new Material(shader);
-                    material.color = color;
-                    renderer.material = material;
+                    if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", color);
+                    if (material.HasProperty("_Color")) material.SetColor("_Color", color);
+                    if (color.a < 1f)
+                    {
+                        material.SetFloat("_Surface", 1f);
+                        material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                        material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                        material.SetFloat("_ZWrite", 0f);
+                        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                        material.renderQueue = 3000;
+                        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                    }
+                    _materials.Add(material);
+                    renderer.sharedMaterial = material;
                 }
             }
             catch (Exception e)
@@ -369,21 +384,29 @@ namespace BossRush
 
         #region 数据注入
 
-        private void InjectShowcaseBuildingData()
+        private bool InjectShowcaseBuildingData()
         {
             Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
-            if (bdcType == null) return;
+            if (bdcType == null) return false;
 
             PropertyInfo instanceProp = bdcType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
             object bdcInstance = instanceProp != null ? instanceProp.GetValue(null, null) : null;
-            if (bdcInstance == null) return;
+            if (bdcInstance == null) return false;
 
             FieldInfo infosField = bdcType.GetField("infos", BindingFlags.NonPublic | BindingFlags.Instance);
             object infosList = infosField != null ? infosField.GetValue(bdcInstance) : null;
-            if (infosList == null) return;
+            if (infosList == null) return false;
 
             Type buildingInfoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
-            if (buildingInfoType == null) return;
+            if (buildingInfoType == null) return false;
+
+            Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
+            Component buildingComp = buildingType != null && backMountainShowcasePrefabGO != null
+                ? backMountainShowcasePrefabGO.GetComponent(buildingType) : null;
+            FieldInfo prefabsField = bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance);
+            IList prefabsList = prefabsField != null ? prefabsField.GetValue(bdcInstance) as IList : null;
+            if (buildingComp == null || prefabsList == null || !(infosList is IList)) return false;
+            if (!prefabsList.Contains(buildingComp)) prefabsList.Add(buildingComp);
 
             // 判重：BuildingDataCollection 是长寿 ScriptableObject，不能重复注入
             FieldInfo infoIdField = buildingInfoType.GetField("id");
@@ -394,7 +417,7 @@ namespace BossRush
                 string existingId = infoIdField.GetValue(enumerator.Current) as string;
                 if (string.Equals(existingId, BACKMOUNTAIN_SHOWCASE_BUILDING_ID, StringComparison.Ordinal))
                 {
-                    return;
+                    return true;
                 }
             }
 
@@ -412,26 +435,11 @@ namespace BossRush
             }
             SetShowcaseBuildingCost(buildingInfoType, ref newInfo);
 
-            MethodInfo addMethod = infosList.GetType().GetMethod("Add");
-            if (addMethod != null) addMethod.Invoke(infosList, new object[] { newInfo });
-
-            FieldInfo prefabsField = bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance);
-            object prefabsList = prefabsField != null ? prefabsField.GetValue(bdcInstance) : null;
-            if (prefabsList != null)
-            {
-                Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
-                Component buildingComp = buildingType != null && backMountainShowcasePrefabGO != null
-                    ? backMountainShowcasePrefabGO.GetComponent(buildingType)
-                    : null;
-                if (buildingComp != null)
-                {
-                    MethodInfo prefabAddMethod = prefabsList.GetType().GetMethod("Add");
-                    if (prefabAddMethod != null) prefabAddMethod.Invoke(prefabsList, new object[] { buildingComp });
-                }
-            }
+            ((IList)infosList).Add(newInfo);
 
             FieldInfo readonlyField = bdcType.GetField("readonlyInfos", BindingFlags.Public | BindingFlags.Instance);
             if (readonlyField != null) readonlyField.SetValue(bdcInstance, null);
+            return true;
         }
 
         private static void SetShowcaseInfoField(
@@ -509,11 +517,36 @@ namespace BossRush
         {
             try
             {
-                backMountainShowcaseIcon = null;
+                RemoveShowcaseBuildingData();
+                Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
+                PropertyInfo instance = bdcType != null ? bdcType.GetProperty("Instance") : null;
+                object collection = instance != null ? instance.GetValue(null, null) : null;
+                FieldInfo field = bdcType != null ? bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance) : null;
+                IList prefabs = collection != null && field != null ? field.GetValue(collection) as IList : null;
+                if (prefabs != null && backMountainShowcasePrefabGO != null)
+                {
+                    for (int i = prefabs.Count - 1; i >= 0; i--)
+                    {
+                        Component entry = prefabs[i] as Component;
+                        if (entry != null && entry.gameObject == backMountainShowcasePrefabGO) prefabs.RemoveAt(i);
+                    }
+                }
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜清理失败: " + e.Message);
+            }
+            finally
+            {
+                if (backMountainShowcasePrefabGO != null) UnityEngine.Object.Destroy(backMountainShowcasePrefabGO);
+                backMountainShowcasePrefabGO = null;
+                foreach (Material material in _materials) if (material != null) UnityEngine.Object.Destroy(material);
+                _materials.Clear();
+                if (backMountainShowcaseIcon != null) UnityEngine.Object.Destroy(backMountainShowcaseIcon);
+                if (_iconTexture != null) UnityEngine.Object.Destroy(_iconTexture);
+                backMountainShowcaseIcon = null;
+                _iconTexture = null;
+                backMountainShowcaseInjected = false;
             }
         }
 

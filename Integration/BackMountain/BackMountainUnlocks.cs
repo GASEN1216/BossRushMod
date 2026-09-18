@@ -1,5 +1,5 @@
 // ============================================================================
-// BackMountainUnlocks.cs - 后山设施解锁状态的读侧（M0 骨架）
+// BackMountainUnlocks.cs - 后山设施解锁状态的读侧
 // ============================================================================
 // 契约对面是 Campaign/CampaignFacilityUnlocks（战役侧写，后山侧读）。
 //
@@ -100,11 +100,11 @@ namespace BossRush
             {
                 if (facility == BackMountainFacility.None) return false;
 
-                // 旁路：后山自己的调试开关，不经战役侧契约
-                if (_owner != null && _owner.IsBackMountainUnlockAllConfigured()) return true;
-
                 int chapter = BackMountainConfig.GetRequiredChapter(facility);
                 if (chapter <= 0) return false;
+
+                // 旁路只跳过已知设施的章节要求，未知设施仍不可解锁。
+                if (_owner != null && _owner.IsBackMountainUnlockAllConfigured()) return true;
 
                 string token = CampaignFacilityUnlocks.BuildTokenForChapter(chapter);
                 if (string.IsNullOrEmpty(token)) return false;
