@@ -240,7 +240,7 @@ for token, what in [
     ("Say(SkyIslandChatterMoment.Down, true)", "倒下那句强制说出口（跳过同屏上限与冷却）"),
     ("GetComponentInChildren<AICharacterController>()", "官方 AI 挂在子物体上，根节点取不到"),
     # 与小兵同一个坑：`noticed` 是「听见动静或挨打」永久置位，队友开枪也会点亮。
-    ("ai.NoticeFromCharacter != CharacterMainControl.Main", "出场那句要认 NoticeFromCharacter，不能只看 noticed"),
+    ("SkyIslandChatter.TargetsPlayer(ai, CharacterMainControl.Main)", "头目出场认当前目标与最近动静"),
     # 说不出口（玩家还在二十米外）时不能记成已出场，否则走到跟前它再也不开口。
     ("if (Say(SkyIslandChatterMoment.Noticed, false)) announced = true;", "出场那句说成了才记「已出场」"),
 ]:
@@ -258,13 +258,22 @@ require(RESIDENTS, "movement.ReleaseFromDialogue(1f)", "说完之后继续走")
 require(RESIDENTS, "chatter.Clear()", "离岛时释放居民气泡预算")
 require(CHATTER, "internal bool Muted", "整个 owner 的静音门要能被驱动方问到")
 require(ENCOUNTERS, "TickChatter();", "遭遇 owner 推进小兵气泡")
-# 官方 `noticed` 是「听见动静或挨打」就永久置位，队友开枪也会点亮它；只按它判会让小兵对着队友的枪声
-# 喊「有人上来了」。认 NoticeFromCharacter 才说得清是冲着谁来的。
-require(ENCOUNTERS, "actor.Ai.NoticeFromCharacter == player",
-        "「第一次注意到你」要认 NoticeFromCharacter，不能只看 noticed")
-# 一次性事件不能在静音期间被记成已发生：玩家正跟居民说话时有敌人察觉到他，那句喊话不该被永久吃掉。
-require(ENCOUNTERS, "chatter.Muted) return;", "静音时整条早退，不在遍历里消费「注意到你」")
-require(ENCOUNTERS, "actor.Noticed = false;", "补刷同一个槽位要复位「已喊过」，否则新刷的那位永远不吭声")
+# 当前目标优先；未锁定目标时，听声来源还必须在有效时间内。旧 noticed/来源不能代表当前交战。
+require(ENCOUNTERS, "SkyIslandChatter.TargetsPlayer(actor.Ai, player)", "小兵与头目共用目标判定")
+require(CHATTER, "ai.searchedEnemy == player.mainDamageReceiver", "视觉搜索与强制追踪同样能触发出场")
+require(CHATTER, "ai.NoticeFromCharacter == player && ai.isNoticing(EventLifetime)", "听声来源要有时限")
+require(ENCOUNTERS, "!SkyIslandChatter.Engaged(actor.Ai)", "闲话必须排除当前交战与最近动静")
+require(ENCOUNTERS, "speakerGroup.Mourning.Consume()", "同伴死亡由成功发送分支消费")
+require(ENCOUNTERS, "speaker.Notice.Consume()", "发现玩家由成功发送分支消费")
+require(VOICE, "wounded.Observe(stage, Time.time)", "血线按最新阶段合并")
+require(VOICE, "wounded.Pending(Time.time) && Say(SkyIslandChatterMoment.Wounded, false)", "血线发送成功才消费")
+voice_update = re.search(r"private void Update\(\)\s*\{(.*?)\n        \}", VOICE, re.S)
+require(voice_update.group(1) if voice_update else "", "TryWounded();", "待播血线由 Update 主动重试")
+require(CHATTER, "internal struct SkyIslandChatterEvent", "有限待播事件共用实现")
+require(CHATTER, "if (now >= expiresAt) Discard();", "过期事件不能迟到播放")
+# 静音时不挑候选；成功消费、过期与跨优先级重试由真实 owner 执行回归验证。
+require(ENCOUNTERS, "chatter.Muted) return;", "静音时整条早退，恢复后再观测当前目标")
+require(ENCOUNTERS, "actor.Notice = default(SkyIslandChatterEvent);", "补刷同一个槽位要复位「已喊过」，否则新刷的那位永远不吭声")
 require(ENCOUNTERS, "actor.Silent = tier == SkyIslandEnemyTier.Storm", "噬风与头目不走小兵共享库")
 require(ENCOUNTERS, "SkyIslandChatterLines.Mob(rival, moment)", "小兵按阵营取共享库")
 require(ENCOUNTERS, "chatter.Clear()", "离岛时释放敌人气泡预算")

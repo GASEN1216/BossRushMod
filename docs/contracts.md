@@ -616,8 +616,8 @@ Breaking/Operational:
 - 改敌人体型只缩放 `characterModel`，不改角色 transform：`CreateCharacterAsync` 返回时角色已初始化，事后缩放会让碰撞体、导航半径与官方口径失步。染色走 `MaterialPropertyBlock`，碰 `sharedMaterial` 会污染同款的所有敌人。
 - `AICharacterController.noticed` **不是「看见玩家」**：它在「听见一处声音」（`OnHeardSound`，距离 < `sound.radius * hearingAbility`）或「挨了打」（`OnHurt`）时置 true，**而且全程不复位**。
   队友在几十米外开一枪、两伙敌人自己打起来，都会把它点亮。拿它当「发现玩家」用，表现就是敌人对着空气喊话、Boss 在玩家露面前念出场白——不报错、不掉帧。
-  要「冲着玩家来的」就读 `NoticeFromCharacter`（未 `noticed` 时返回 null）并与 `CharacterMainControl.Main` 比；只要「最近有动静」用 `isNoticing(timeThreshold)`。
-  核实位置：`鸭科夫源码/TeamSoda.Duckov.Core/AICharacterController.cs` 的 `noticed` 字段、`NoticeFromCharacter` 属性与两处赋值。
+  判断当前目标优先读 `searchedEnemy` 并与主玩家 `mainDamageReceiver` 比；视觉搜索和强制追踪可直接写该字段，不一定先有声音。无当前目标时才将 `NoticeFromCharacter` 与主玩家比，并同时要求 `isNoticing(timeThreshold)`，否则旧听声来源会误报；目标已转向别人时不能被旧来源覆盖。只要「最近有动静」用 `isNoticing(timeThreshold)`。
+  核实位置：`鸭科夫源码/TeamSoda.Duckov.Core/AICharacterController.cs` 的 `noticed`、`NoticeFromCharacter`、`isNoticing` 与 `Update` 的 `searchedEnemy` 追踪分支。
 - 该组件挂在角色的**子物体**上，根节点 `GetComponent<AICharacterController>()` 恒为 null。
 
 **物品与属性**

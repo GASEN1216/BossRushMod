@@ -28,8 +28,8 @@ namespace BossRush
             internal bool NightLead, RivalFaction;
             internal float RetryAt;
             internal SkyIslandEnemyRecord[] Actors;
-            /// <summary>已经为这一组里倒下的第几个人喊过话。按出击刷新，不进存档。</summary>
-            internal int Mourned;
+            /// <summary>同伴死亡按数量合并；成功发送或过期后消费，不进存档。</summary>
+            internal SkyIslandChatterEvent Mourning;
             internal bool AllDead
             {
                 get
@@ -369,67 +369,67 @@ namespace BossRush
         /// <c>SkyIslandEnemyRecord.Silent</c> 标出来。四道门（静音 / 同屏上限 / 距离 / 单人冷却）全在
         /// <see cref="SkyIslandChatter"/> 里，这里只挑候选；<c>Ready</c> 挡掉的候选不为它建话语数组。
         ///
-        /// 【为什么先问 Muted 再遍历】「第一次注意到你」是一次性事件，遍历里会把它记成已发生。
-        /// 玩家正在跟居民说话时有敌人察觉到他，若照常遍历，那一句喊话就被永久吃掉。
+        /// 静音时不挑候选；恢复后按当前目标观测。待播事件最多保留 12 秒，
+        /// 同类进度合并，发送失败可重试；战斗和最近动静期间不选闲话。
         /// </summary>
         private void TickChatter()
         {
             if (chatter == null || player == null || chatter.Muted) return;
             chatter.PlayerPosition = player.transform.position;
-            Transform speaker = null;
+            SkyIslandEnemyRecord speaker = null;
+            Encounter speakerGroup = null;
             SkyIslandChatterMoment moment = SkyIslandChatterMoment.Idle;
-            bool rival = false;
-            // 0 还没挑到 / 1 闲话 / 2 第一次注意到你 / 3 身边倒下一个
             int priority = 0;
-            for (int i = 0; i < encounters.Count && priority < 3; i++)
+            for (int i = 0; i < encounters.Count; i++)
             {
                 Encounter encounter = encounters[i];
                 if (!encounter.Started || encounter.Cleared) continue;
                 int dead = 0;
-                Transform living = null;
-                Transform freshlyNoticed = null;
+                SkyIslandEnemyRecord living = null, freshlyNoticed = null, idle = null;
                 for (int j = 0; j < encounter.Actors.Length; j++)
                 {
                     SkyIslandEnemyRecord actor = encounter.Actors[j];
                     if (actor.Died) { dead++; continue; }
                     if (actor.Silent || actor.Life == null) continue;
-                    // 官方 `noticed` 是「听见动静或挨了打」就永久置位，**不是**「看见你」：队友开一枪、
-                    // 隔壁两伙打起来都会把它点亮（`AICharacterController.OnHeardSound` / `OnHurt`）。
-                    // 所以这里认 `NoticeFromCharacter`——那个字段才说得清是冲着谁来的。
-                    // 只按 `noticed` 判的话，它会对着自己队友的枪声喊「有人上来了」。
-                    bool justNoticed = false;
-                    if (!actor.Noticed && actor.Ai != null && actor.Ai.NoticeFromCharacter == player)
-                    {
-                        actor.Noticed = true;
-                        justNoticed = true;
-                    }
+                    bool targetsPlayer = SkyIslandChatter.TargetsPlayer(actor.Ai, player);
+                    if (targetsPlayer) actor.Notice.Observe(1, Time.time);
+                    else actor.Notice.Discard(); // 已转向别的目标，不补喊旧的「发现你」。
+                    bool noticed = actor.Notice.Pending(Time.time);
                     Transform body = actor.Life.transform;
-                    if (!chatter.Ready(body)) continue;
-                    if (justNoticed && freshlyNoticed == null) freshlyNoticed = body;
-                    if (living == null) living = body;
+                    if (chatter.Ready(body, SkyIslandChatter.EventCooldown))
+                    {
+                        if (living == null) living = actor;
+                        if (noticed && freshlyNoticed == null) freshlyNoticed = actor;
+                    }
+                    if (idle == null && !SkyIslandChatter.Engaged(actor.Ai) && chatter.Ready(body)) idle = actor;
                 }
-                bool mourn = dead > encounter.Mourned;
-                if (mourn) encounter.Mourned = dead;
-                if (mourn && living != null)
+                // 每组都观测，即使先前已有高优先级候选；否则排在后面的事件会永远不开始过期。
+                encounter.Mourning.Observe(dead, Time.time);
+                bool mourn = encounter.Mourning.Pending(Time.time);
+                if (mourn && living != null && priority < 3)
                 {
                     speaker = living; moment = SkyIslandChatterMoment.AllyDown;
-                    rival = encounter.RivalFaction; priority = 3;
-                    continue;
+                    speakerGroup = encounter; priority = 3;
                 }
-                if (freshlyNoticed != null && priority < 2)
+                else if (freshlyNoticed != null && priority < 2)
                 {
                     speaker = freshlyNoticed; moment = SkyIslandChatterMoment.Noticed;
-                    rival = encounter.RivalFaction; priority = 2;
-                    continue;
+                    speakerGroup = encounter; priority = 2;
                 }
-                if (living != null && priority < 1)
+                else if (idle != null && !mourn && priority < 1)
                 {
-                    speaker = living; moment = SkyIslandChatterMoment.Idle;
-                    rival = encounter.RivalFaction; priority = 1;
+                    speaker = idle; moment = SkyIslandChatterMoment.Idle;
+                    speakerGroup = encounter; priority = 1;
                 }
             }
             if (speaker == null) return;
-            chatter.TrySay(speaker, MobBubbleHeight, SkyIslandChatterLines.Mob(rival, moment));
+            bool rival = speakerGroup.RivalFaction;
+            float cooldown = moment == SkyIslandChatterMoment.Idle ? -1f : SkyIslandChatter.EventCooldown;
+            if (!chatter.TrySay(speaker.Life.transform, MobBubbleHeight,
+                SkyIslandChatterLines.Mob(rival, moment), false, cooldown)) return;
+            // 候选、距离、预算或官方展示失败都不消费事件。一次推进只提交真正发出的那一句。
+            if (moment == SkyIslandChatterMoment.AllyDown) speakerGroup.Mourning.Consume();
+            else if (moment == SkyIslandChatterMoment.Noticed) speaker.Notice.Consume();
         }
 
         private async void Spawn(Encounter encounter)
@@ -475,10 +475,10 @@ namespace BossRush
                         ApplyIdentity(created, encounter, i, tier);
                         // 头顶气泡：头目 / 岛主 / 具名对手在身份层里挂过自己的台词组件，噬风按人设不说话；
                         // 其余全是小兵，走共享话语库。判一次存进记录，推进时不再逐个 GetComponent。
-                        // `Noticed` 必须跟着复位：这个槽位可能是补刷（上一位丢了 owner），
+                        // `Notice` 必须跟着复位：这个槽位可能是补刷（上一位丢了 owner），
                         // 沿用旧标记的话新刷出来的这一位永远不会喊那句「有人上来了」。
                         actor.Ai = ai;
-                        actor.Noticed = false;
+                        actor.Notice = default(SkyIslandChatterEvent);
                         actor.Silent = tier == SkyIslandEnemyTier.Storm
                             || created.GetComponent<SkyIslandBossVoice>() != null;
                         life.Bind(created, actor);
@@ -697,8 +697,8 @@ namespace BossRush
         /// （<see cref="SkyIslandBossVoice"/>），噬风按人设一个字都不说。生成时判一次，不进存档。
         /// </summary>
         internal bool Silent;
-        /// <summary>已经喊过「注意到你」那一句。按出击刷新，不进存档。</summary>
-        internal bool Noticed;
+        /// <summary>「注意到你」的待播事件。按角色实例刷新，不进存档。</summary>
+        internal SkyIslandChatterEvent Notice;
         /// <summary>官方战斗 AI（挂在子物体上）。生成时取一次，用来判「第一次注意到你」，省得每次推进再找一遍。</summary>
         internal AICharacterController Ai;
     }

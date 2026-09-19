@@ -243,7 +243,7 @@ namespace BossRush
                         L10n.T("我想把它放在抬眼就能看到的地方。...柜子上层就很好。", "I want to put it somewhere I can see at a glance. ...The top shelf should do nicely."),
                         L10n.T("在实验室的时候，从来没人给过我这种东西。", "Back in the lab, no one ever gave me anything like this."),
                         L10n.T("你不觉得给一个护士送这个有点奇怪吗？...但我很喜欢。", "Don't you think giving this to a nurse is a little strange? ...But I like it a lot."),
-                        L10n.T("这东西真温柔...像鸭科夫难得安静下来的时候。", "This feels so gentle... like those rare quiet moments Duckov sometimes has."),
+                        L10n.T("看到这个，值班的烦心事都忘了。...就一会儿。", "This made me forget about my shift. ...Just for a moment."),
                         L10n.T("只是眼睛有点酸而已，才不是被你感动到了。", "My eyes just sting a little, that's all. It's not because you moved me."),
                         
                         // 可爱反应
@@ -450,7 +450,7 @@ namespace BossRush
                     L10n.T("今天这份已经够了，再多我反而不知道该摆在哪儿。", "Today's gift is enough. More than that, and I won't even know where to put it."),
                     L10n.T("礼物留到明天吧，今天你人来了就够了。", "Save the next gift for tomorrow. Today, the fact that you came is enough."),
                     L10n.T("我已经把今天收到的东西整理好了，别让我再重摆第二遍。", "I've already put away what I received today. Don't make me reorganize everything a second time."),
-                    L10n.T("嗯，今天的额度用完了。把你的好意留到下次。", "Mm. You've used up today's quota. Save your kindness for next time."),
+                    L10n.T("今天已经收过了。剩下的明天再拿来，我又不会跑。", "You already brought me something today. Save the rest for tomorrow. I'm not going anywhere."),
                     L10n.T("比起再送一份，我更想知道你今天有没有好好照顾自己。", "Instead of another gift, I'd rather know whether you've been taking proper care of yourself today.")
                 };
             }
@@ -513,7 +513,7 @@ namespace BossRush
                     return GetRandomDialogue(new string[]
                     {
                         L10n.T("又给我准备了礼物？你这样会让我越来越舍不得放你走。", "Another gift for me? At this rate, I won't want to let you go."),
-                        L10n.T("我会收好它，就像收好你每次来见我的心意。", "I'll keep it safe, just like I keep every bit of care you bring me."),
+                        L10n.T("我把它放在诊疗记录旁边。值班的时候也能看见。", "I'll keep it beside my charts, where I can see it during my shift."),
                         L10n.T("你挑得很认真。我一眼就看出来了。", "You chose this carefully. I could tell at a glance."),
                         L10n.T("谢谢。你总能把这一天变得没那么累。", "Thank you. You always make the day feel less exhausting."),
                     });

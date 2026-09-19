@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using BossRush;
 using UnityEngine;
 
-internal static class Program
+internal static partial class Program
 {
     private static int checks;
     private static void Check(bool value, string name) { checks++; if (!value) throw new Exception("FAIL " + name); }
@@ -62,6 +62,7 @@ internal static class Program
     private static void Main()
     {
         CheckChatter();
+        CheckChatterBehavior();
         Reset();
         using (var world = new World("D"))
         {

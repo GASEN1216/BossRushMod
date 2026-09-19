@@ -44,7 +44,7 @@ namespace UnityEngine
         public T GetComponentInChildren<T>() where T : Component { return gameObject.GetComponentInChildren<T>(); }
         public T GetComponent<T>() where T : Component { return gameObject.GetComponentInChildren<T>(); }
     }
-    public class MonoBehaviour : Component { }
+    public class MonoBehaviour : Component { public bool enabled = true; }
     public class GameObject : Object
     {
         internal readonly List<Component> Components = new List<Component>();
@@ -119,12 +119,17 @@ public class AICharacterController : UnityEngine.Component
 {
     public float forceTracePlayerDistance;
     public bool noticed;
+    public DamageReceiver searchedEnemy;
+    public float noticeTime = -1000f;
+    public bool isNoticing(float threshold) { return noticed && UnityEngine.Time.time - noticeTime < threshold; }
     public CharacterMainControl NoticeFromCharacter { get; set; }
 }
 public class DamageInfo { }
+public class DamageReceiver : UnityEngine.Component { }
 public class DeathEvent
 {
     private event Action<DamageInfo> handlers;
+    internal int ListenerCount { get { return handlers == null ? 0 : handlers.GetInvocationList().Length; } }
     public void AddListener(Action<DamageInfo> handler) { handlers += handler; }
     public void RemoveListener(Action<DamageInfo> handler) { handlers -= handler; }
     internal void Invoke() { if (handlers != null) handlers(new DamageInfo()); }
@@ -132,18 +137,23 @@ public class DeathEvent
 public class Health : UnityEngine.Object
 {
     public bool IsDead;
+    public float MaxHealth = 100f, CurrentHealth = 100f;
+    public DeathEvent OnHurtEvent = new DeathEvent();
     public DeathEvent OnDeadEvent = new DeathEvent();
     internal void Die() { IsDead = true; OnDeadEvent.Invoke(); }
 }
 public class CharacterMainControl : UnityEngine.Component
 {
     public Health Health;
+    public static CharacterMainControl Main;
+    public DamageReceiver mainDamageReceiver;
     public Teams Team;
     public void SetTeam(Teams value) { Team = value; }
     internal static CharacterMainControl Create(bool healthy = true)
     {
         var go = new UnityEngine.GameObject("enemy"); var character = go.AddComponent<CharacterMainControl>();
         character.Health = healthy ? new Health() : null;
+        character.mainDamageReceiver = go.AddComponent<DamageReceiver>();
         go.AddComponent<Pathfinding.Seeker>(); go.AddComponent<AICharacterController>(); return character;
     }
 }
@@ -222,7 +232,11 @@ namespace BossRush
     {
         internal static void BindVoice(CharacterMainControl created, SkyIslandBossProfile profile,
             string championId, SkyIslandBossContext context)
-        { created.gameObject.AddComponent<SkyIslandBossVoice>(); }
+        {
+            var voice = created.GetComponent<SkyIslandBossVoice>() ?? created.gameObject.AddComponent<SkyIslandBossVoice>();
+            if (profile != null) voice.Bind(created, profile, context);
+            else voice.BindChampion(created, championId, context);
+        }
         internal static readonly List<string> Applied = new List<string>();
         internal static SkyIslandBossContext LastContext;
         internal static bool Night;
@@ -230,7 +244,10 @@ namespace BossRush
         {
             Applied.Add(encounterId + "#" + index);
             LastContext = context;
-            return SkyIslandBossRules.Find(encounterId, index) != null;
+            var profile = SkyIslandBossRules.Find(encounterId, index);
+            if (profile == null) return false;
+            BindVoice(created, profile, null, context);
+            return true;
         }
         internal static bool IsNightLead(string encounterId) { return SkyIslandBossRules.LeadIsNightOnly(encounterId); }
         internal static bool LeadWaitsForNight(string encounterId) { return SkyIslandBossRules.LeadIsNightOnly(encounterId) && !Night; }
@@ -256,8 +273,6 @@ namespace BossRush
     {
         internal static void InjectLocalization(string key, string value) { }
     }
-    // Voice component is configured by the Forge (also a host substitute in this fixture).
-    internal sealed class SkyIslandBossVoice : UnityEngine.MonoBehaviour { }
     internal static class BossRushUI { internal static bool Paused; internal static bool IsGamePaused() { return Paused; } }
     internal static class DialogueManager { internal static bool IsDialogueActive; }
 }
@@ -280,6 +295,7 @@ namespace Duckov.UI.DialogueBubbles
         public static DialogueBubblesManager Instance;
         public bool isActiveAndEnabled;
         internal static int Shown;
+        internal static readonly List<string> Lines = new List<string>();
         internal static bool Fail, ThrowSynchronously;
         internal static Task ImmediateResult;
         internal static TaskCompletionSource<bool> LastRequest;
@@ -290,6 +306,7 @@ namespace Duckov.UI.DialogueBubbles
             if (ThrowSynchronously) throw new InvalidOperationException("bubble sync failure");
             if (ImmediateResult != null) return ImmediateResult;
             Shown++;
+            Lines.Add(line);
             LastRequest = new TaskCompletionSource<bool>();
             return LastRequest.Task;
         }

@@ -23,20 +23,18 @@ namespace BossRush
     {
         #region 纯判据（隔离回归逐字抽出执行）
         /// <summary>
-        /// SKY_CHATTER：头顶气泡的话语表在**运行时**真的取得到，而且同屏不超过两个气泡。
-        ///
-        /// 守卫（tests/SkyIslandChatterGuard.py）查的是文本本身（谁有台词、长不长、重不重），
-        /// 这里查的是「跑起来之后按当前存档取，每个说话者仍然有话」——剧情分支写错时，
-        /// 某位居民在某个进度下会返回空池子，游戏里表现为他从此再也不吭声，而那既不报错也不掉帧。
-        ///
-        /// <paramref name="residentBusy"/> / <paramref name="enemyBusy"/> 是两个 owner 各自「此刻有没有气泡挂着」；
-        /// 每个 owner 至多一个，所以同屏上限就是 2。
+        /// 核对话语池、必要 owner 与官方展示入口；无发送观测记 SKIP。
+        /// 请求计数不能证明像素可见、完整播放或同屏数量，画面仍需实机目检。
         /// </summary>
         internal static bool JudgeChatter(string[] residentIds, SkyIslandStoryData story,
-            bool residentBusy, bool enemyBusy, int residentSpoken, int enemySpoken, out string metrics, out string reason)
+            int residentSpoken, int enemySpoken, bool displayReady, out string metrics, out string reason)
         {
             reason = null;
             List<string> errors = new List<string>();
+            if (residentIds == null || residentIds.Length == 0) errors.Add("resident_list_missing");
+            if (residentSpoken < 0) errors.Add("resident_owner_missing");
+            if (enemySpoken < 0) errors.Add("enemy_owner_missing");
+            if (!displayReady) errors.Add("bubble_manager_missing");
             int residentLines = 0;
             for (int i = 0; residentIds != null && i < residentIds.Length; i++)
             {
@@ -74,13 +72,17 @@ namespace BossRush
             // 噬风是一股风，按人设一个字都不说：它要是忽然有了台词，说明有人把它接进了共享库。
             if (SkyIslandChatterLines.HasLines(SkyIslandChatterLines.Champion("storm", SkyIslandChatterMoment.Noticed)))
                 errors.Add("storm:should_stay_silent");
-            int onScreen = (residentBusy ? 1 : 0) + (enemyBusy ? 1 : 0);
-            if (onScreen > 2) errors.Add("bubbles_on_screen=" + onScreen);
             metrics = "resident_pools=" + (residentIds == null ? 0 : residentIds.Length) + ",resident_lines=" + residentLines
                 + ",mob_lines=" + mobLines + ",boss_lines=" + bossLines
-                + ",on_screen=" + onScreen + ",spoken_resident=" + residentSpoken + ",spoken_enemy=" + enemySpoken;
-            if (errors.Count > 0) reason = "头顶气泡不合格：" + string.Join(",", errors.ToArray());
-            return errors.Count == 0;
+                + ",spoken_resident=" + residentSpoken + ",spoken_enemy=" + enemySpoken + ",visual_check=manual";
+            if (errors.Count > 0)
+            {
+                reason = "头顶气泡不合格：" + string.Join(",", errors.ToArray());
+                return false;
+            }
+            if (residentSpoken == 0 || enemySpoken == 0)
+                throw new SkyIslandSkipCase("chatter_not_observed", metrics);
+            return true;
         }
 
         #endregion

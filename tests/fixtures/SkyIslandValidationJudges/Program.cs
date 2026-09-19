@@ -49,17 +49,25 @@ internal static class Program
         SkyIslandStoryData ending = SkyIslandStoryRules.CreateDefault();
         ending.flags |= (int)SkyIslandStoryFlag.Ending;
         foreach (SkyIslandStoryData data in new[] { fresh, ending })
-            Check(F3GameplayValidationRunner.JudgeChatter(residents, data, false, false, 0, 0, out metrics, out reason)
-                && metrics.Contains("resident_pools=6") && metrics.Contains("on_screen=0"),
-                "chatter: every speaker still has lines at this point in the story -> PASS");
-        // 两个 owner 各挂一个气泡是上限本身，不是缺陷。
-        Check(F3GameplayValidationRunner.JudgeChatter(residents, fresh, true, true, 3, 1, out metrics, out reason)
-            && metrics.Contains("on_screen=2"), "chatter: one resident bubble plus one enemy bubble is the cap -> PASS");
-        // 表外的说话者返回空池子：真出现这种 id（打错字、新居民漏配）时必须红，不能静默沉默。
-        Check(!F3GameplayValidationRunner.JudgeChatter(new[] { "sky_nobody" }, fresh, false, false, 0, 0, out metrics, out reason)
-            && reason.Contains("sky_nobody:no_lines"), "chatter: a speaker with no lines is named in the reason -> FAIL");
-        Check(!F3GameplayValidationRunner.JudgeChatter(null, fresh, false, false, 0, 0, out metrics, out reason)
-            || metrics.Contains("resident_pools=0"), "chatter: no resident list still reports what it saw, never a silent PASS");
+            Check(F3GameplayValidationRunner.JudgeChatter(residents, data, 3, 1, true, out metrics, out reason)
+                && metrics.Contains("resident_pools=6") && metrics.Contains("visual_check=manual") && !metrics.Contains("on_screen"),
+                "chatter: valid pools and observed requests do not claim pixel visibility or screen count");
+        Check(!F3GameplayValidationRunner.JudgeChatter(new[] { "sky_nobody" }, fresh, 0, 0, true, out metrics, out reason)
+            && reason.Contains("sky_nobody:no_lines"), "missing pool fails before unobserved skip");
+        Check(!F3GameplayValidationRunner.JudgeChatter(null, fresh, 0, 0, true, out metrics, out reason)
+            && reason.Contains("resident_list_missing"), "missing resident list fails");
+        Check(!F3GameplayValidationRunner.JudgeChatter(residents, fresh, -1, -1, true, out metrics, out reason)
+            && reason.Contains("resident_owner_missing") && reason.Contains("enemy_owner_missing"), "absent owners fail");
+        Check(!F3GameplayValidationRunner.JudgeChatter(residents, fresh, 1, -1, true, out metrics, out reason), "one missing owner fails");
+        Check(!F3GameplayValidationRunner.JudgeChatter(residents, fresh, 0, 0, false, out metrics, out reason)
+            && reason.Contains("bubble_manager_missing"), "missing official manager fails before skip");
+        foreach (int[] counts in new[] { new[] { 0, 0 }, new[] { 1, 0 }, new[] { 0, 1 } })
+        {
+            bool skipped = false;
+            try { F3GameplayValidationRunner.JudgeChatter(residents, fresh, counts[0], counts[1], true, out metrics, out reason); }
+            catch (SkyIslandSkipCase e) { skipped = e.Message.Contains("chatter_not_observed"); }
+            Check(skipped, "valid prerequisites without both observations are SKIP, not PASS");
+        }
     }
 
     // ---------------------------------------------------------------- 可达性：锁门岛分类与「真的走到了」（2026-09-14 实机）

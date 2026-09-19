@@ -12,7 +12,7 @@
 // 【四道门】顺序是「最便宜的先判」：
 //   1. 静音：官方对话进行中、游戏暂停（剧情面板把 timeScale 压到 0）、会话已失效 —— 一律不说。
 //      会话 `Update` 在面板可见时本来就提前 return，这道门是为了异步落地的那一帧。
-//   2. 同屏上限：**每个 owner 同时至多一个气泡**。居民 owner 一个 + 敌人 owner 一个 = 同屏最多两个。
+//   2. 同屏上限：**每个 owner 同时至多一个气泡**。居民 owner 一个 + 敌人 owner 一个；倒下台词可强制插入，不保证像素层绝对上限。
 //   3. 距离：玩家 `SpeakRange` 米内才说（平方比较，不开根）。看不见的地方说话等于白算。
 //   4. 单人冷却：同一个说话者多久才轮得到再说一次。居民与小兵用不同的区间——
 //      owner 定的口径是「居民中等密度、小兵话少一点」，所以两个 owner 各建一个实例、各带各的区间。
@@ -51,11 +51,15 @@ namespace BossRush
 
         /// <summary>头目 / 岛主：一场仗里只有出场、两档血线、倒下四句，冷却只用来挡同一档重入。</summary>
         internal const float BossCooldown = 6f;
+        /// <summary>事件不能沿用闲话的长冷却，也不能隔了半分钟才喊旧事。</summary>
+        internal const float EventCooldown = 6f;
+        internal const float EventLifetime = 12f;
 
-        /// <summary>跟踪的说话者上限。一趟出击刷过的敌人会越攒越多，超了整批忘掉（顶多丢「不重复上一句」的记忆）。</summary>
+        /// <summary>跟踪的说话者上限。一趟出击刷过的敌人会越攒越多，超限只清理已经过期的记录。</summary>
         private const int TrackedSpeakerCap = 160;
 
         private readonly Dictionary<int, float> nextAt = new Dictionary<int, float>();
+        private readonly Dictionary<int, float> lastSpokenAt = new Dictionary<int, float>();
         private readonly Dictionary<int, int> lastLine = new Dictionary<int, int>();
         /// <summary>Prune 的临时缓冲：复用同一个 List，不在推进里分配。</summary>
         private readonly List<int> expired = new List<int>();
@@ -83,9 +87,8 @@ namespace BossRush
         /// <summary>
         /// 此刻整个 owner 都不该说话（官方对话中 / 暂停 / 会话失效）。
         ///
-        /// 驱动方**必须先问这一句再遍历**：不是为了省那几次静态读取，而是因为「第一次注意到你」这种
-        /// 一次性事件在遍历里会被记成已发生。玩家正跟居民说话时有敌人察觉到他，若照常遍历，
-        /// 那一句喊话就被永久吃掉了——对话结束后它再也不会喊。
+        /// 驱动方先问这一句再遍历；静音期间不挑候选，恢复后再观测当前目标。
+        /// 已经观测的待播事件按游戏时间过期，不积压到很久以后。
         /// </summary>
         internal bool Muted { get { return Silenced(); } }
 
@@ -101,12 +104,11 @@ namespace BossRush
         /// 这位此刻轮不轮得到说话。驱动方用它**先挑候选再取台词**——取台词要现建数组，
         /// 挑不中的那些不该为此付代价。
         /// </summary>
-        internal bool Ready(Transform speaker)
+        internal bool Ready(Transform speaker, float cooldown = -1f)
         {
             if (speaker == null || Silenced() || Time.time < busyUntil) return false;
             if ((speaker.position - PlayerPosition).sqrMagnitude > SpeakRange * SpeakRange) return false;
-            float next;
-            return !nextAt.TryGetValue(speaker.GetInstanceID(), out next) || Time.time >= next;
+            return !CoolingDown(speaker.GetInstanceID(), cooldown);
         }
 
         /// <summary>
@@ -116,7 +118,7 @@ namespace BossRush
         /// <param name="pool">这一刻的话语池（<see cref="SkyIslandChatterLines"/> 现取，随语言与剧情变化）。</param>
         /// <param name="force">倒下那一句：跳过同屏上限与单人冷却。静音与距离照走。</param>
         /// <param name="cooldown">
-        /// 覆盖这一位说完之后的冷却（秒）；负数表示用本实例的区间。
+        /// 本次请求距上次说话的最短间隔（秒）；负数表示遵守闲话冷却。事件说完仍重置完整的闲话冷却。
         /// 头目要用它：一场仗里出场、两档血线、倒下共四句，按小兵那 35–60 秒的区间会把血线那两句全吞掉。
         /// </param>
         /// <returns>是否已进入官方展示流程。</returns>
@@ -128,8 +130,7 @@ namespace BossRush
             if ((speaker.position - PlayerPosition).sqrMagnitude > SpeakRange * SpeakRange) return false;
 
             int key = speaker.GetInstanceID();
-            float next;
-            if (!force && nextAt.TryGetValue(key, out next) && Time.time < next) return false;
+            if (!force && CoolingDown(key, cooldown)) return false;
 
             int last;
             if (!lastLine.TryGetValue(key, out last)) last = -1;
@@ -142,11 +143,35 @@ namespace BossRush
             if (!Show(speaker, height, line, duration)) return false;
 
             lastLine[key] = index;
-            nextAt[key] = Time.time + (cooldown >= 0f ? cooldown : UnityEngine.Random.Range(cooldownMin, cooldownMax));
+            lastSpokenAt[key] = Time.time;
+            nextAt[key] = Time.time + UnityEngine.Random.Range(cooldownMin, cooldownMax);
             busyUntil = Time.time + duration;
             SpokenCount++;
             Prune();
             return true;
+        }
+
+        // 显式短冷却用于事件：闲话刚说过也只等六秒，不必等完整的 35–60 秒。
+        private bool CoolingDown(int key, float cooldown)
+        {
+            float next;
+            if (cooldown >= 0f)
+                return lastSpokenAt.TryGetValue(key, out next) && Time.time < next + cooldown;
+            return nextAt.TryGetValue(key, out next) && Time.time < next;
+        }
+
+        /// <summary>当前目标或最近动静；不把永不复位的 noticed 当作一直在战斗。</summary>
+        internal static bool Engaged(AICharacterController ai)
+        {
+            return ai != null && (ai.searchedEnemy != null || ai.isNoticing(EventLifetime));
+        }
+
+        internal static bool TargetsPlayer(AICharacterController ai, CharacterMainControl player)
+        {
+            if (ai == null || player == null) return false;
+            // 强制追踪/视觉搜索直接写 searchedEnemy，不一定先经过听声的 NoticeFromCharacter。
+            if (ai.searchedEnemy != null) return ai.searchedEnemy == player.mainDamageReceiver;
+            return ai.NoticeFromCharacter == player && ai.isNoticing(EventLifetime);
         }
 
         /// <summary>
@@ -197,6 +222,7 @@ namespace BossRush
             if (speaker == null) return;
             int key = speaker.GetInstanceID();
             nextAt.Remove(key);
+            lastSpokenAt.Remove(key);
             lastLine.Remove(key);
         }
 
@@ -217,6 +243,7 @@ namespace BossRush
             for (int i = 0; i < expired.Count; i++)
             {
                 nextAt.Remove(expired[i]);
+                lastSpokenAt.Remove(expired[i]);
                 lastLine.Remove(expired[i]);
             }
             expired.Clear();
@@ -226,8 +253,37 @@ namespace BossRush
         internal void Clear()
         {
             nextAt.Clear();
+            lastSpokenAt.Clear();
             lastLine.Clear();
             busyUntil = 0f;
         }
     }
+
+    /// <summary>
+    /// 单个说话者/小队的待播进度。新版本覆盖旧版本，过期或成功才消费；不持有宿主对象。
+    /// 小兵发现、同伴死亡、Boss 血线共用它，新增事件仍由各自 owner 观测与派发。
+    /// </summary>
+    internal struct SkyIslandChatterEvent
+    {
+        private int observed;
+        private int consumed;
+        private float expiresAt;
+
+        internal void Observe(int version, float now)
+        {
+            if (version <= observed) return;
+            observed = version;
+            expiresAt = now + SkyIslandChatter.EventLifetime;
+        }
+
+        internal bool Pending(float now)
+        {
+            if (now >= expiresAt) Discard();
+            return observed > consumed;
+        }
+
+        internal void Consume() { consumed = observed; }
+        internal void Discard() { consumed = observed; }
+    }
+
 }
