@@ -23,7 +23,7 @@ namespace BossRush
         #region 键与默认值
 
         /// <summary>随机事件总开关的 ModConfig 镜像键后缀。
-        /// 已退役：总开关不再注册进 UI，本常量只作键名台账，防止将来被同名复用。</summary>
+        /// 默认开启，玩家可随时关闭；沿用已有键，不迁移配置。</summary>
         private const string RandomEventsEnabledModConfigKeySuffix = "_RandomEventsEnabled";
 
         /// <summary>频率档 ModConfig 镜像键后缀。</summary>
@@ -57,13 +57,16 @@ namespace BossRush
 
         #region ModConfig 接线
 
-        /// <summary>批量加载路径：从 ModConfig 读随机事件频率档。
-        /// 总开关不读——它恒为开启，不暴露给玩家。</summary>
-        private void LoadRandomEventsConfigFromModConfig(MethodInfo intLoadMethod)
+        /// <summary>批量加载路径：从 ModConfig 读取默认开启的总开关与频率档。</summary>
+        private void LoadRandomEventsConfigFromModConfig(MethodInfo intLoadMethod, MethodInfo boolLoadMethod)
         {
             try
             {
                 if (config == null) return;
+
+                if (boolLoadMethod != null)
+                    config.randomEventsEnabled = (bool)boolLoadMethod.Invoke(null,
+                        new object[] { ModName + RandomEventsEnabledModConfigKeySuffix, config.randomEventsEnabled });
 
                 if (intLoadMethod != null)
                 {
@@ -79,13 +82,19 @@ namespace BossRush
             }
         }
 
-        /// <summary>单键变更路径：命中随机事件频率键时重新读取并返回 true。
-        /// 总开关不在此列——它不注册进 UI，永远收不到变更事件。</summary>
+        /// <summary>单键变更路径：总开关与频率都支持运行中热更新。</summary>
         private bool TryLoadRandomEventsSingleModConfigValue(string changedKey, MethodInfo loadMethod)
         {
             try
             {
                 if (loadMethod == null || config == null) return false;
+
+                if (changedKey == ModName + RandomEventsEnabledModConfigKeySuffix)
+                {
+                    config.randomEventsEnabled = (bool)loadMethod.MakeGenericMethod(typeof(bool)).Invoke(null,
+                        new object[] { changedKey, config.randomEventsEnabled });
+                    return true;
+                }
 
                 string freqKey = ModName + RandomEventsFrequencyModConfigKeySuffix;
                 if (changedKey == freqKey)
@@ -106,13 +115,17 @@ namespace BossRush
             }
         }
 
-        /// <summary>向 ModConfig 注册随机事件的频率档选项。
-        /// 总开关不注册——随机事件属于默认内容，恒为开启。</summary>
-        private void RegisterRandomEventsModConfigOptions(MethodInfo addSliderMethod)
+        /// <summary>向 ModConfig 注册随机事件总开关和频率档。</summary>
+        private void RegisterRandomEventsModConfigOptions(MethodInfo addSliderMethod, MethodInfo addToggleMethod)
         {
             try
             {
                 if (config == null) return;
+
+                if (addToggleMethod != null)
+                    addToggleMethod.Invoke(null, new object[] {
+                        ModName, ModName + RandomEventsEnabledModConfigKeySuffix,
+                        L10n.T("鸭生无常：局内随机事件", "Duck's Uncertainty: random events"), config.randomEventsEnabled });
 
                 if (addSliderMethod != null)
                 {

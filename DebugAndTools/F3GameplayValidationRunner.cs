@@ -392,6 +392,22 @@ namespace BossRush
         }
 
         internal static bool IsRunning { get { return _instance != null && _instance._running && !_instance.AllowsSkyIslandEntry(); } }
+
+#if BOSSRUSH_DEV
+        internal static bool CanRunManualProgression(ModBehaviour host, out string reason)
+        {
+            reason = null;
+            if (!ModBehaviour.DevModeEnabled || host == null) { reason = L10n.T("仅 Dev 构建可用", "Dev build required"); return false; }
+            if (!IsDedicatedCurrentSlot()) { reason = L10n.T("请先在玩法验收页将当前槽标记为专用测试档", "Mark this slot as a test save on the validation page first"); return false; }
+            if (_instance != null && _instance._running) { reason = L10n.T("自动验收运行中", "Automatic validation is running"); return false; }
+            if (!IsBaseScene() || !LevelManager.AfterInit || CharacterMainControl.Main == null)
+            { reason = L10n.T("请在基地加载完成后使用", "Wait until the base finishes loading"); return false; }
+            if (SavesSystem.IsSaving) { reason = L10n.T("存档系统正忙", "Save system is busy"); return false; }
+            string mode;
+            if (host.ValidationHasActiveMode(out mode)) { reason = L10n.T("先结束活动玩法：", "End the active mode first: ") + mode; return false; }
+            return true;
+        }
+#endif
         /// <summary>全自动验收自己发起的那一次正式入口允许绕过玩家序章；正式构建恒为 false。</summary>
         internal static bool AllowsLockedSkyIslandEntry
         { get { return _instance != null && _instance._running && _instance.AllowsSkyIslandEntry(); } }

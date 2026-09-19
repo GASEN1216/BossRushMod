@@ -33,7 +33,7 @@ A full Roguelite survival mode joins the mod. Buy a "Zombie Tide Invitation" fro
 Before each run starts, **1–3 random mutators** are drawn from a pool of 15 (default 2) and applied immediately for the entire run.
 
 - **Applies to**: Standard BossRush, Infinite Hell, From Scratch, Faction War, Blood Hunt (Zombie Mode excluded)
-- **Three categories**: ⚔ Enemy Buff (7) / ★ Player Boon (2) / ☠ Environment Rule (6)
+- **Three categories**: ◆ Enemy Buff (7) / ★ Player Boon (2) / ※ Environment Rule (6)
 - On by default; disable via `enableMutators` config
 - Count adjustable via `mutatorCount` (1–3)
 

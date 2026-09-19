@@ -62,14 +62,25 @@ namespace BossRush
 
         #region 权重（与 RandomEventId 一一对应；<= 0 表示不入池）
 
-        internal const float WeightAirdropSupply = 30f;
+        internal const float WeightAirdropSupply = 6f;
         internal const float WeightBloodMoon = 15f;         // 降低惩罚性事件频率（原 20f）
         internal const float WeightBossIntrusion = 18f;
         internal const float WeightWanderingMerchant = 15f;
         internal const float WeightFeint = 12f;
         internal const float WeightFireworks = 10f;
-        internal const float WeightGoldenDuckRain = 25f;    // 提升至与空投相当（原 12f）
+        internal const float WeightGoldenDuckRain = 6f;
         internal const float WeightDuckParade = 8f;
+        internal const float WeightWildChase = 16f;
+        internal const float WeightMeleeCarnival = 16f;
+        internal const float WeightHeavySteps = 16f;
+
+        internal const float TempoDurationSeconds = 24f;
+        internal const float TempoRefreshSeconds = 2f;
+        internal const float WildChaseMoveBonus = 0.25f;
+        internal const float MeleeCarnivalMeleeBonus = 0.35f;
+        internal const float MeleeCarnivalGunPenalty = -0.15f;
+        internal const float HeavyStepsMovePenalty = -0.20f;
+        internal const float HeavyStepsMeleeBonus = 0.20f;
 
         #endregion
 

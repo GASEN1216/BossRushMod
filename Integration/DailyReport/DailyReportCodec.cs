@@ -39,6 +39,7 @@ namespace BossRush
             data.PendingMilestones = new List<DailyReportMilestoneDebt>();
             data.Streak = 0;
             data.LastSignedDayIndex = 0;
+            data.LastDailyRewardDayIndex = 0;
             data.TotalSignedDays = 0;
             data.BountySeed = 0L;          // 0 = 未派生，首次使用时由 Service 派生并冻结
             data.BountyDayIndex = 0;
@@ -80,6 +81,7 @@ namespace BossRush
             SimpleJsonHelper.AppendInt(sb, "periodClaimedMask", data.PeriodClaimedMask);
             SimpleJsonHelper.AppendInt(sb, "streak", data.Streak);
             SimpleJsonHelper.AppendInt(sb, "lastSignedDayIndex", data.LastSignedDayIndex);
+            SimpleJsonHelper.AppendInt(sb, "lastDailyRewardDayIndex", data.LastDailyRewardDayIndex);
             SimpleJsonHelper.AppendInt(sb, "totalSignedDays", data.TotalSignedDays);
             AppendPendingMilestones(sb, data.PendingMilestones);
 
@@ -136,6 +138,7 @@ namespace BossRush
                 SimpleJsonHelper.AppendInt(sb, prefix + "signDayIndex", debt.SignDayIndex);
                 SimpleJsonHelper.AppendInt(sb, prefix + "quality", debt.Quality);
                 SimpleJsonHelper.AppendLong(sb, prefix + "seed", debt.Seed);
+                SimpleJsonHelper.AppendBool(sb, prefix + "isDaily", debt.IsDaily);
             }
         }
 
@@ -183,6 +186,11 @@ namespace BossRush
                 data.PeriodClaimedMask = root.GetInt("periodClaimedMask", 0);
                 data.Streak = root.GetInt("streak", 0);
                 data.LastSignedDayIndex = root.GetInt("lastSignedDayIndex", 0);
+                BossRushJsonValue dailyDay = root.GetProperty("lastDailyRewardDayIndex");
+                // 缺字段是旧档；已声明却超 Int32 范围必须拒收，不能回落 0 再补发一次。
+                data.LastDailyRewardDayIndex = dailyDay == null ? 0 : root.GetInt("lastDailyRewardDayIndex", -1);
+                if (dailyDay != null && (dailyDay.Kind != BossRushJsonKind.Integer
+                    || data.LastDailyRewardDayIndex < 0 || data.LastDailyRewardDayIndex > data.LastSignedDayIndex)) return null;
                 data.TotalSignedDays = root.GetInt("totalSignedDays", 0);
                 data.PendingMilestones = DecodePendingMilestones(root);
                 if (data.PendingMilestones == null) return null;
@@ -253,12 +261,15 @@ namespace BossRush
                 debt.SignDayIndex = root.GetInt(prefix + "signDayIndex", 0);
                 debt.Quality = root.GetInt(prefix + "quality", 0);
                 debt.Seed = root.GetLong(prefix + "seed", 0L);
+                debt.IsDaily = root.GetBool(prefix + "isDaily", false);
+                BossRushJsonValue daily = root.GetProperty(prefix + "isDaily");
+                if (daily != null && daily.Kind != BossRushJsonKind.Bool) return null;
                 if (debt.PeriodIndex < 1 || debt.Slot < 1 || debt.Slot > DailyReportTuning.DaysPerPeriod
                     || debt.SignDayIndex < 1 || debt.Quality < 1 || debt.Quality > 8 || debt.Seed == 0L)
                     return null; // 损坏欠奖不能静默丢弃或重抽，交给持久层写屏障。
                 for (int j = 0; j < debts.Count; j++)
                     if (debts[j].PeriodIndex == debt.PeriodIndex && debts[j].Slot == debt.Slot
-                        && debts[j].SignDayIndex == debt.SignDayIndex) return null;
+                        && debts[j].SignDayIndex == debt.SignDayIndex && debts[j].IsDaily == debt.IsDaily) return null;
                 debts.Add(debt);
             }
             return debts;

@@ -461,6 +461,9 @@ namespace BossRush
 
         private void BuildF3NpcStoryPage()
         {
+#if BOSSRUSH_DEV
+            CampaignPetNestDebugControls.Build(f3DebugCheatContentRoot, this, HideF3DebugCheatMenu, SetF3DebugCheatStatus);
+#endif
             Font font = BossRushUI.GetLegacyChineseFont();
             GameObject section = CreateF3Section(L10n.T("NPC 与剧情测试", "NPC and Story Tests"), L10n.T("整合已有的婚姻、成就、NPC 刷新和日限制测试能力。", "Pulls together the existing marriage, achievement, NPC refresh, and daily-limit test actions."), font);
 

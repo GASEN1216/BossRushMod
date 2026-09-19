@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-"""一次性美术生成脚本：鸭皇图鉴立绘 + 词缀/事件/物品图标。
+"""美术生成脚本：鸭皇图鉴立绘 + 词缀/事件/物品/成就/建筑图标。
 
 设计要点：
-  - 可断点续跑：目标文件已存在就跳过，网关抽风或中途中断都能重跑补齐。
+  - 默认断点续跑；--filter 限定范围，--force 在暂存目录重出，整张成功才替换旧资产。
+  - --list 只预览规格，不启动外部脚本、不联网、不创建生成目录。
   - 全部走色键出图（#ff00ff）+ remove_chroma_key 抠图 + 正方形归一，
     因为网关的 GPT Image 系列不接受 background=transparent，且返回尺寸不受控
     （2.5-flare 实测：请求 1024x1024 实回 1536x1024）。模型名见 tools/imagegen_model.py。
@@ -11,19 +12,20 @@
 
 用法（需要网络出口，密钥见 docs/AI生图API和密钥.md）：
     export OPENAI_BASE_URL=... OPENAI_API_KEY=...
-    python tools/gen_codex_art.py
+    python tools/gen_codex_art.py --list --filter Assets/achievement/
+    python tools/gen_codex_art.py --filter Assets/achievement/ --force
 """
+import argparse
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 import time
 
 from PIL import Image
 from imagegen_model import IMAGE_MODEL
 
-HOME = os.path.expanduser("~")
-IMAGEGEN = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "image_gen.py")
-CHROMA = os.path.join(HOME, ".codex", "skills", ".system", "imagegen", "scripts", "remove_chroma_key.py")
 RAW = "output/codex_raw"
 
 STYLE = (" Painterly stylized game-art illustration, bold readable silhouette, "
@@ -115,6 +117,35 @@ EVENTS = {
     8: "a row of small cheerful cartoon ducks waddling in a line, duck-parade motif.",
 }
 
+ACHIEVEMENTS = {
+    "petnest_first_hatch": "a cracked ancient duck egg revealing one tiny duckling silhouette, warm amber light, first-hatching motif.",
+    "petnest_lineage_10": "a sturdy nest supporting a young branching golden family tree with duck-shaped leaves, growing-lineage motif.",
+    "petnest_lineage_30": "an ancient majestic golden family tree rising from a relic nest, three large branching tiers of duck-shaped leaves, enduring-lineage motif.",
+    "petnest_shiny": "one luminous iridescent duck feather beside a sparkling relic egg, rare-shiny-offspring motif.",
+    "petnest_memorial": "a small weathered stone memorial with a carved duck feather and one glowing soul mote, remembrance motif.",
+    "codex_first_entry": "an open crimson bestiary with one golden duck silhouette on a page, first-discovery motif.",
+    "codex_10": "a crimson bestiary with a bronze duck-shaped seal and a small fan of collected pages, early-collection motif.",
+    "codex_20": "two ornate crimson bestiary volumes beneath a silver duck-shaped seal, expanded-collection motif.",
+    "codex_all": "a complete open crimson bestiary crowned with a golden duck crown and a radiant laurel wreath, complete-collection motif.",
+    "codex_fast_kill": "a golden stopwatch crossed by one decisive silver blade, fast-boss-defeat motif.",
+}
+
+BUILDINGS = {
+    "petnest_relic_nest": "an ancient circular twig nest cradling one cracked egg, a small duck feather and two relic stones",
+    "bossrush_campaign_board": "a rustic wooden notice board with pinned campaign scrolls and one small duck-crown crest",
+    # 2026-09-19 实测补充：这张原本是不透明彩色渲染图，与报箱/婚礼堂的纯白手绘不是一路。
+    "bossrush_backmountain_showcase": "a glass-domed trophy display counter on a short plinth, one helmet and one rifle displayed inside, a small plaque on the front",
+}
+
+
+def building_icon(desc):
+    return ("Single game construction-menu icon of " + desc +
+            ". Pure white hand-drawn chalk linework and white silhouette accents only. "
+            "Simple bold readable strokes, centered, no scene, no shading, no grey, no colored subject. "
+            "Place the white drawing on a perfectly flat solid #ff00ff chroma-key background "
+            "for removal to full transparency. No text, no watermark, no border, no frame.")
+
+
 SPECS = []
 for _key, _desc in BOSSES.items():
     SPECS.append(("Assets/ui/Codex/codex_portrait_%s.png" % _key.lower(), 512, portrait(_desc)))
@@ -128,70 +159,162 @@ for _aid, _desc in AFFIX.items():
     SPECS.append(("Assets/ui/AffixForge/affix_%s.png" % _aid, 256, icon(_desc)))
 for _eid, _desc in EVENTS.items():
     SPECS.append(("Assets/ui/random_events/evt_%d.png" % _eid, 128, icon(_desc)))
+for _aid, _desc in ACHIEVEMENTS.items():
+    SPECS.append(("Assets/achievement/%s.png" % _aid, 256, icon(_desc)))
+for _bid, _desc in BUILDINGS.items():
+    SPECS.append(("Assets/buildings/%s.png" % _bid, 256, building_icon(_desc)))
+WHITE_ICONS = {"Assets/buildings/%s.png" % key for key in BUILDINGS}
 
 
-def normalize(src, dst, size):
-    """裁到内容包围盒 -> 等比缩放 -> 居中贴进透明正方形画布。"""
-    im = Image.open(src).convert("RGBA")
-    bbox = im.getbbox()
-    if bbox:
-        im = im.crop(bbox)
+def normalize(src, dst, size, white=False):
+    """裁到 alpha 包围盒，居中合成；保留半透明边缘，建筑线稿只留纯白 RGB。"""
+    with Image.open(src) as source:
+        im = source.convert("RGBA")
+    bbox = im.getchannel("A").getbbox()
+    if not bbox:
+        raise ValueError("图像没有可见内容")
+    im = im.crop(bbox)
     im.thumbnail((size, size), Image.LANCZOS)
+    if white:
+        silhouette = Image.new("RGBA", im.size, (255, 255, 255, 0))
+        silhouette.putalpha(im.getchannel("A"))
+        im = silhouette
     canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    canvas.paste(im, ((size - im.size[0]) // 2, (size - im.size[1]) // 2), im)
-    os.makedirs(os.path.dirname(dst), exist_ok=True)
+    canvas.alpha_composite(im, ((size - im.size[0]) // 2, (size - im.size[1]) // 2))
+    os.makedirs(os.path.dirname(os.path.abspath(dst)), exist_ok=True)
     canvas.save(dst, "PNG", optimize=True)
 
 
-def main():
+def tool_paths():
+    """真正生成时才解析外部工具位置，预览和本地像素验证不接触工具。"""
+    script_root = os.path.join(os.path.expanduser("~"), ".codex", "skills", ".system", "imagegen", "scripts")
+    return os.path.join(script_root, "image_gen.py"), os.path.join(script_root, "remove_chroma_key.py")
+
+
+def inspect_image(path, require_transparency=False):
+    with Image.open(path) as source:
+        alpha_min, alpha_max = source.convert("RGBA").getchannel("A").getextrema()
+    if alpha_max == 0:
+        raise ValueError("图像没有可见内容")
+    if require_transparency and alpha_min == 255:
+        raise ValueError("抠图结果没有透明背景")
+    return alpha_min < 255
+
+
+def generate_raw(prompt, staging_dir, imagegen):
+    # 每次尝试独立输出，失败产生的半成品不能被后一次当作成功，也不能退回旧 raw。
+    last_err = ""
+    for attempt in range(1, 4):
+        attempt_raw = os.path.join(staging_dir, "attempt_%d.png" % attempt)
+        try:
+            result = subprocess.run(
+                [sys.executable, imagegen, "generate", "--model", IMAGE_MODEL,
+                 "--size", "1024x1024", "--n", "1", "--no-augment",
+                 "--out", attempt_raw, "--prompt", prompt],
+                capture_output=True, text=True, timeout=300)
+            if result.returncode == 0 and os.path.isfile(attempt_raw):
+                inspect_image(attempt_raw)
+                return attempt_raw
+            last_err = (result.stderr or "外部生成器未输出有效图片")[-160:]
+        except (OSError, ValueError, subprocess.TimeoutExpired) as error:
+            last_err = str(error)[-160:]
+        print("   [retry %d/3] %s" % (attempt, last_err.replace(chr(10), " ")[-90:]), flush=True)
+        if attempt < 3:
+            time.sleep(8 * attempt)
+    raise RuntimeError("生成失败: " + last_err)
+
+
+def publish_outputs(replacements, staging_dir):
+    """全部处理成功后逐文件原子替换；提交中出错则恢复本轮已替换的旧文件。"""
+    backups = {}
+    for index, (_, target) in enumerate(replacements):
+        os.makedirs(os.path.dirname(os.path.abspath(target)), exist_ok=True)
+        if os.path.exists(target):
+            backup = os.path.join(staging_dir, "previous_%d.png" % index)
+            shutil.copy2(target, backup)
+            backups[target] = backup
+    published = []
+    try:
+        for staged, target in replacements:
+            os.replace(staged, target)
+            published.append(target)
+    except OSError:
+        for target in reversed(published):
+            if target in backups:
+                os.replace(backups[target], target)
+            else:
+                os.remove(target)
+        raise
+
+
+def generate_one(spec, force=False):
+    dst, size, prompt = spec
+    stem = os.path.splitext(os.path.basename(dst))[0]
+    raw = os.path.join(RAW, stem + "_raw.png")
+    cut = os.path.join(RAW, stem + "_cut.png")
+    imagegen, chroma = tool_paths()
     os.makedirs(RAW, exist_ok=True)
-    todo = [s for s in SPECS if not os.path.exists(s[0])]
-    print("总计 %d 项，待生成 %d 项" % (len(SPECS), len(todo)), flush=True)
+    with tempfile.TemporaryDirectory(prefix=stem + "-", dir=RAW) as staging_dir:
+        stage_raw = os.path.join(staging_dir, "raw.png")
+        stage_cut = os.path.join(staging_dir, "cut.png")
+        stage_final = os.path.join(staging_dir, "final.png")
+        if not force and os.path.isfile(raw):
+            shutil.copy2(raw, stage_raw)
+        else:
+            fresh_raw = generate_raw(prompt, staging_dir, imagegen)
+            os.replace(fresh_raw, stage_raw)
+        if inspect_image(stage_raw):
+            shutil.copy2(stage_raw, stage_cut)
+        else:
+            result = subprocess.run(
+                [sys.executable, chroma, "--input", stage_raw, "--out", stage_cut,
+                 "--auto-key", "border", "--soft-matte", "--transparent-threshold", "12",
+                 "--opaque-threshold", "220", "--despill"],
+                capture_output=True, text=True, timeout=180)
+            if result.returncode != 0 or not os.path.isfile(stage_cut):
+                raise RuntimeError("抠图失败，保留原有资产: " + (result.stderr or "未输出抠图文件")[-160:])
+        inspect_image(stage_cut, require_transparency=True)
+        normalize(stage_cut, stage_final, size, white=dst in WHITE_ICONS)
+        publish_outputs([(stage_raw, raw), (stage_cut, cut), (stage_final, dst)], staging_dir)
+
+
+def select_specs(filters):
+    lowered = [value.replace("\\", "/").lower() for value in filters]
+    return [spec for spec in SPECS if not lowered or any(value in spec[0].lower() for value in lowered)]
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="生成游戏美术；--list 可离线预览，不生成文件")
+    parser.add_argument("--filter", action="append", default=[], metavar="PATH_OR_ID",
+                        help="仅处理路径或 ID 含此子串的条目；可多次指定，取并集")
+    parser.add_argument("--force", action="store_true", help="重新生成选中条目的 raw 和最终资产，失败保留旧文件")
+    parser.add_argument("--list", action="store_true", help="只列出选中条目，不启动外部工具、不创建目录")
+    args = parser.parse_args(argv)
+    selected = select_specs(args.filter)
+    todo = [spec for spec in selected if args.force or not os.path.exists(spec[0])]
+    print("选中 %d 项，待生成 %d 项" % (len(selected), len(todo)), flush=True)
+    if args.list:
+        for dst, size, _ in selected:
+            state = "重出" if args.force and os.path.exists(dst) else "已存在" if os.path.exists(dst) else "缺失"
+            print("%s (%dpx, %s)" % (dst, size, state), flush=True)
+        return 0
+    if not selected:
+        print("没有匹配条目；请先使用 --list 核对筛选条件。", flush=True)
+        return 2
     ok = 0
     fail = 0
-    for i, (dst, size, prompt) in enumerate(todo, 1):
-        stem = os.path.splitext(os.path.basename(dst))[0]
-        raw = os.path.join(RAW, stem + "_raw.png")
-        cut = os.path.join(RAW, stem + "_cut.png")
-        print("[%d/%d] %s" % (i, len(todo), dst), flush=True)
+    for index, spec in enumerate(todo, 1):
+        print("[%d/%d] %s" % (index, len(todo), spec[0]), flush=True)
         try:
-            if not os.path.exists(raw):
-                # 网关会间歇性抛 APIConnectionError，单次失败不代表这张图不能出，
-                # 因此带指数退避重试；仍然失败就跳过，靠断点续跑在收尾轮补齐。
-                last_err = ""
-                for attempt in range(1, 4):
-                    r = subprocess.run([sys.executable, IMAGEGEN, "generate", "--model", IMAGE_MODEL,
-                                        "--size", "1024x1024", "--n", "1", "--no-augment",
-                                        "--out", raw, "--prompt", prompt],
-                                       capture_output=True, text=True, timeout=300)
-                    if r.returncode == 0 and os.path.exists(raw):
-                        break
-                    last_err = (r.stderr or "")[-160:]
-                    print("   [retry %d/3] %s" % (attempt, last_err.replace(chr(10), " ")[-90:]),
-                          flush=True)
-                    time.sleep(8 * attempt)
-                if not os.path.exists(raw):
-                    print("   [FAIL] 生成失败: " + last_err, flush=True)
-                    fail += 1
-                    continue
-            im = Image.open(raw)
-            if im.mode == "RGBA" and im.split()[-1].getextrema()[0] < 255:
-                src = raw  # 网关直接回了透明图，跳过抠图
-            else:
-                subprocess.run([sys.executable, CHROMA, "--input", raw, "--out", cut,
-                                "--auto-key", "border", "--soft-matte",
-                                "--transparent-threshold", "12", "--opaque-threshold", "220",
-                                "--despill"], capture_output=True, text=True, timeout=180)
-                src = cut if os.path.exists(cut) else raw
-            normalize(src, dst, size)
+            generate_one(spec, force=args.force)
             ok += 1
-            print("   [OK] -> %s (%dpx)" % (dst, size), flush=True)
-        except Exception as e:  # noqa: BLE001 - 单张失败不该中断整批
+            print("   [OK] -> %s (%dpx)" % (spec[0], spec[1]), flush=True)
+        except Exception as error:  # noqa: BLE001 - 单张失败不该中断整批
             fail += 1
-            print("   [ERR] %s" % e, flush=True)
-        # 网关限流约 1 次/分钟（docs/制作教程 与实测一致）。间隔太短会大面积撞
-        # APIConnectionError：首轮用 3 秒跑出过约 50% 失败率，补齐轮拉到 20 秒。
-        time.sleep(int(os.environ.get('ART_GEN_DELAY', '20')))
+            print("   [ERR] %s" % error, flush=True)
+        # 网关请求之间保留节流；离线预览和空批次不等待。
+        if index < len(todo):
+            time.sleep(int(os.environ.get("ART_GEN_DELAY", "20")))
     print("完成：成功 %d，失败 %d" % (ok, fail), flush=True)
     return 0 if fail == 0 else 1
 

@@ -285,6 +285,7 @@ echo(DebugAndTools\PermanentDuckNpcDebug.cs
 echo(DebugAndTools\ItemSpawner.cs
 echo(DebugAndTools\F3DebugCheatMenu.cs
 echo(DebugAndTools\F3DebugCheatMenuUi.cs
+echo(DebugAndTools\CampaignPetNestDebugControls.cs
 echo(DebugAndTools\F3DebugCheatMenuPlayerStats.cs
 echo(DebugAndTools\F3DebugCheatMenuActions.cs
 echo(DebugAndTools\F3GameplayValidationRunner.cs
@@ -930,6 +931,7 @@ echo(PetNest\PetNestPersistence.cs
 echo(PetNest\PetNestSaveCoordinator.cs
 echo(PetNest\PetNestService.cs
 echo(PetNest\PetNestDropService.cs
+echo(PetNest\PetNestSoulNotice.cs
 echo(PetNest\PetNestHatchService.cs
 echo(PetNest\PetNestModeGate.cs
 echo(PetNest\PetNestCompanionRuntime.cs
@@ -990,6 +992,7 @@ echo(Integration\Codex\CodexRuntimeModule.cs
 echo(Localization\CodexLocalization.cs
 echo(Config\ConfigRandomEvents.cs
 echo(RandomEvents\RandomEventsTuning.cs
+echo(RandomEvents\RandomEventTempo.cs
 echo(RandomEvents\RandomEventModels.cs
 echo(RandomEvents\RandomEventModeGate.cs
 echo(RandomEvents\RandomEventDirector.cs
@@ -1266,6 +1269,13 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed Mode G presentation bundle to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui
             )
         )
+        rem Achievement bundle and high-resolution PNG overrides.
+        if exist "Assets\achievement" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\achievement" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\achievement"
+            if exist "Assets\achievement\achievement_icons" copy /Y "Assets\achievement\achievement_icons" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\achievement\achievement_icons" >nul
+            if exist "Assets\achievement\*.png" xcopy /Y /I "Assets\achievement\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\achievement\" >nul
+            if errorlevel 1 echo WARNING: Achievement art deploy failed.
+        )
         if exist "Assets\ui\codex_portraits" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
             copy /Y "Assets\ui\codex_portraits" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\codex_portraits" >nul 2>nul
@@ -1357,6 +1367,23 @@ if %BUILD_EXIT_CODE% EQU 0 (
             copy /Y "Assets\Equipment\skyisland_boss_gear" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment\skyisland_boss_gear" >nul 2>nul
             if errorlevel 1 echo WARNING: sky island boss gear bundle deploy failed.
         )
+        rem 2026-09-19: sweep the whole Equipment/Items bundle folders.
+        rem The named blocks above only cover part of what the mod ships. After a texture
+        rem re-import and repack, frost_set / thunder_set / frostmourne / fenhuang and about
+        rem twenty item bundles stayed at their old content in the game folder because nobody
+        rem listed them here - the rebuild was real but the player never saw it.
+        rem xcopy /D copies only newer files, so this stays cheap on a no-op build.
+        if exist "Assets\Equipment" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment"
+            xcopy /Y /D /I "Assets\Equipment\*" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Equipment\" >nul 2>nul
+            if errorlevel 4 echo WARNING: Equipment bundle sweep deploy failed.
+        )
+        if exist "Assets\Items" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items"
+            xcopy /Y /D /I "Assets\Items\*" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Items\" >nul 2>nul
+            if errorlevel 4 echo WARNING: Items bundle sweep deploy failed.
+        )
+        echo Deployed Equipment and Items bundle folders to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets
     )
 ) else (
     echo.

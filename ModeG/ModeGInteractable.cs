@@ -382,7 +382,7 @@ namespace BossRush
 
         private static string BuildChoiceLabel(ModeGFateContract.ContractDef def, bool selected)
         {
-            string marker = selected ? "▶ " : string.Empty;
+            string marker = selected ? "→ " : string.Empty;
             return marker + def.GetDisplayName() + "\n<size=13>" + def.GetDescription() + "</size>";
         }
 

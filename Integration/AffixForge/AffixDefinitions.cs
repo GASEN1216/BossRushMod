@@ -189,8 +189,17 @@ namespace BossRush
         /// <summary>Item.Quality &gt;= 该值 → 3 槽。</summary>
         public const int SlotQualityThreshold3 = 7;
 
-        /// <summary>一次重铸消耗的词缀熔石数量。</summary>
+        /// <summary>每个未锁槽消耗的词缀熔石数量。</summary>
         public const int ForgeStoneCostPerRoll = 1;
+
+        /// <summary>每个未锁槽按折后重铸底价的十倍收费。</summary>
+        public const int MoneyCostPerSlotMultiplier = 10;
+
+        /// <summary>已有普通/稀有/诅咒词缀分别附加 2/5/8 份折后重铸底价，不叠加阶级倍率。</summary>
+        public static int GetMoneySurcharge(AffixRarity rarity)
+        {
+            return rarity == AffixRarity.Curse ? 8 : rarity == AffixRarity.Rare ? 5 : 2;
+        }
 
         /// <summary>锁定一个槽消耗的词缀熔石数量（解锁免费）。</summary>
         public const int ForgeStoneCostPerLock = 2;
@@ -198,9 +207,9 @@ namespace BossRush
         /// <summary>
         /// Boss 击杀直掉词缀熔石的概率。游戏内 Wiki 写的是「Boss 掉落（概率不高）」。
         ///
-        /// 取 0.08：一次重随机只花 1 颗（ForgeStoneCostPerRoll），比遗种蛋的 0.04 宽松一倍——
+        /// 取 0.08：每个未锁槽花 1 颗（ForgeStoneCostPerRoll），比遗种蛋的 0.04 宽松一倍——
         /// 蛋是能开出随从的终局奖励，熔石只是消耗材料，卡材料比卡蛋难受得多。
-        /// 标准竞技场一局十几只 Boss 期望掉 1 颗左右，配合哥布林商店（好感 2 级、库存 5）
+        /// 标准竞技场一局十几只 Boss 期望掉 1 颗左右，配合哥布林商店（好感 10 级、库存 5）
         /// 构成「稳定买 + 运气捡」两条线，都不足以让玩家无限重随机。
         /// </summary>
         public const float ForgeStoneBossDropChance = 0.08f;
@@ -428,8 +437,8 @@ namespace BossRush
                 TierValues = Val_BloodRageDamage,
                 TierValues2 = Val_BloodRageHealth,
                 NameCN = "狂血", NameEN = "Blood Rage",
-                DescCN = "诅咒：全部武器伤害 +{0}，但生命上限 −{1}。",
-                DescEN = "Curse: all weapon damage +{0}, but max health −{1}."
+                DescCN = "诅咒：全部武器伤害 +{0}，但生命上限 -{1}。",
+                DescEN = "Curse: all weapon damage +{0}, but max health -{1}."
             },
             new AffixDefinition
             {
@@ -442,8 +451,8 @@ namespace BossRush
                 TierValues2 = Val_GlassCannonArmor,
                 Value2IsPercent = false,
                 NameCN = "玻璃炮", NameEN = "Glass Cannon",
-                DescCN = "诅咒：全部武器伤害 +{0}，但护甲 −{1} 点。",
-                DescEN = "Curse: all weapon damage +{0}, but armor −{1}."
+                DescCN = "诅咒：全部武器伤害 +{0}，但护甲 -{1} 点。",
+                DescEN = "Curse: all weapon damage +{0}, but armor -{1}."
             },
             new AffixDefinition
             {

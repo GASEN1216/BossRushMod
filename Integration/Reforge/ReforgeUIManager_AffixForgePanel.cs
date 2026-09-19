@@ -264,14 +264,18 @@ namespace BossRush
                 "Desc",
                 textColumn.transform,
                 new Vector2(0.5f, 0.5f),
-                new Vector2(200f, AFFIX_DESC_FONT_SIZE + 8));
-            AddFixedLayoutElement(descObj, 0, AFFIX_DESC_FONT_SIZE + 8);
+                new Vector2(200f, AFFIX_DESC_FONT_SIZE * 2 + 8));
+            AddFixedLayoutElement(descObj, 0, AFFIX_DESC_FONT_SIZE * 2 + 8);
             widgets.DescText = ZombieModeUIHelper.CreateTMPText(
                 descObj,
                 string.Empty,
                 AFFIX_DESC_FONT_SIZE,
                 TextAlignmentOptions.MidlineLeft,
                 BossRushUIColors.TextSecondary);
+
+            widgets.NameText.enableAutoSizing = false;
+            widgets.DescText.enableAutoSizing = false;
+            widgets.DescText.enableWordWrapping = true;
 
             // ---- 锁定按钮（命名方法回调，不捕获 Item）----
             widgets.LockButton = ZombieModeUIHelper.CreateButton(
@@ -298,6 +302,8 @@ namespace BossRush
                 widgets.LockButtonText = widgets.LockButton.GetComponentInChildren<TextMeshProUGUI>(true);
             }
 
+            widgets.RowLayout = rowLayout;
+            widgets.DescriptionLayout = descObj.GetComponent<LayoutElement>();
             widgets.Root = row;
             return widgets;
         }

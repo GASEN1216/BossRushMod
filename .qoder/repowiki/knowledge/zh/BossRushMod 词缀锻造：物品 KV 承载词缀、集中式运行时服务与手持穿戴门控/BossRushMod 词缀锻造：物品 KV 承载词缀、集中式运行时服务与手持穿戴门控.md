@@ -37,7 +37,7 @@ source_files:
 （唯一开 UI 的入口）没有任何调用点，整个子系统对玩家完全不可达。
 
 熔石有两条产出线（游戏内 Wiki 承诺的口径）：
-哥布林商店（`GoblinAffinityConfig.GetShopItems`，好感度 2 级解锁、库存 5）
+哥布林商店（`GoblinAffinityConfig.GetShopItems`，好感度 10 级解锁、库存 5）
 与 Boss 掉落（`AffixForgeStoneDropService`，8%）。
 **注意熔石带 `Special` tag，因此不会进星愿许愿台奖池**（那条池子按 tag 排除 Special），
 旧 Wiki 曾写过「许愿台奖池」，已按实现更正。

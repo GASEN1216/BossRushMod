@@ -1,5 +1,35 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-19 人工实测补漏（第二轮，COMPAT / SAFE / OPERATIONAL）
+
+- owner 给出作者工程绝对路径后，把第一轮挂起的第 1/3/4 条资源工作做完，并修掉三处第一轮「改了表征没改根因」和一处第一轮完全没发现的问题。逐项说明见 `docs/testing/20260919人工实测修复记录_第二轮.md`。
+- **第 1 条（贴图）**：真正的两个原因是「importer Max Size 被留在 64/128」和「crunch quality 50 的块状噪点」，不是生成脚本的输出尺寸。按 owner 口径（物品/装备/图标 128–512，立绘/横幅/海报最多 1024，关 crunch）改了作者工程 213 个 `.meta`，并把口径写进三个 Editor 构建器防止下次导入写回去。新增 `tools/apply_unity_texture_policy.py` 与守卫 `tests/UnityTextureImportPolicyGuard.py`（反向破坏已验证）。天空岛环境/地形贴图按 owner 决定保持原样。
+- **第 3 条（成就图标）**：生成 10 张新图标（256px，带 alpha）；另外发现旧的 36 张在包里只有 64px，用 `tools/sync_achievement_icons.py` 把源图落成 256 PNG 走 PNG 优先路径，不重打包即可生效。十条新成就的触发链回归第一轮已补齐，本轮复核确认都有真实达成断言。
+- **第 4 条（建筑图标）**：重出遗种巢与征程公告板；另外补上第一轮没注意到的后山战利品展示柜（原本是不透明彩色渲染图）。三张现在可见像素 100% 纯白、透明底，与合格的报箱同一路。
+- **第 11 条（挥砍拖尾）**：根因是 `rateOverDistance` 把一帧的量全撒在当帧那一个位置上，配合缓出曲线就成了「起手一坨」。改成 `EmitAlongArc` 沿弧插值逐点 `Emit`，自动发射全关，另加 `sizeOverLifetime` 收尾。`EquipmentManualFindingsGuard` 同步断言新口径。
+- **第 16 条（显示不出来的符号）**：改用「GBK 能否编码」作客观判据重扫，玩家可见文本里又找出 20 多处（征程 HUD 的 ✓✗、百科三级项目符号 •◦▪、百战留痕与许愿池的 ✓、宿命回响的 ▶、诅咒词缀与天空岛说明里的 U+2212 减号、游戏内百科 19 个文件里的 ✅❌⚔☠）。全部换成 GBK 内的同义写法，新增守卫 `tests/PlayerFacingGlyphGuard.py`（覆盖生产 `.cs` 字面量、`WikiContent/` 与 `Assets/Data/`；日志与报告文本除外，♥ 为实测可显示的单点例外）。在线 Wiki 描述游戏内标记的地方同步改成 √/×。
+- **第 2 条（鸭皇图鉴崩溃）**：第一轮漏了静态 `ItemAssetsCollection.InstantiateAsync(int)`——它的方法体是编译器生成的状态机，看不出转不转发给 `_Local`，不能靠猜。本轮补上 Postfix 并让守卫要求三条实例化入口都有。
+- **第 7 条**：补上「为什么大部分弄不了」的解释——不合格装备在格子里点不动，玩家永远看不到那句提示，现在未选中时就写明可锻造范围。图腾不进词缀体系仍是既有设计。
+- **第 20 条**：F3 补上逐委托、逐目标入口（下一个委托 / 查看进度 / 只接取 / 完成下一条目标 / 交付 / 静态自检）。自检刻意只做静态核对，不驱动追踪器（达标会经 `NotifyObjectivesSatisfied` 改章节状态）。`ManualProgressionGuard` 同步断言。
+- **第一轮完全没发现的**：仓库里六处写死 `D:/code/ykf/duckov_modding-main/...`，工程早搬到 Steam 库下，而这些引用大多「找不到就跳过」——`SkyIslandMiniMapGuard` 的第 3 组检查因此从来没真正跑过。统一改走 `tools/unity_project_path.py`（含 Unity Editor 路径，本机实际在 `E:\Unity\2022.3.62f3`）。修好后那组检查第一次真正执行，结果 PASS。
+- **OPERATIONAL（部署缺口）**：`compile_official.bat` 的部署段只按名单复制部分 bundle，`frost_set` / `thunder_set` / `frostmourne` / `fenhuang` 和约二十个物品包从来不在名单里——重打了也到不了游戏目录。补一段 `Assets\Equipment` 与 `Assets\Items` 的整目录 `xcopy /D` 扫尾（增量，无改动时不重复复制）。
+- **重打包（owner 明确授权「现在就重打全部 bundle」）**：用工程自带版本 `E:\Unity\2022.3.62f3`（revision 与 `ProjectVersion.txt` 一致）跑 `DuckovBundleBuilder.BuildAllBundles`。52 个包重打完成后卡在 URP/Lit 片元着色器的 55,296 个变体（实测约 1.4 变体/秒，折合 11 小时），主动中止；已重打的 52 个里属于 Mod 的 46 个按 SHA 差异回拷，未重打的 `phantom_scythe` / `starwish_fountain` / `weddingchapel` 保持原样（它们的贴图本轮也没改）。天空岛头目装备另用专用构建器单独重打（Standard 着色器，秒级）。回拷前对 49 个基线包做了完整备份。
+- 尺寸变化与预期一致：`achievement_icons` 69,507→902,713（64→256，像素 16 倍）、`frost_set` +48% / `thunder_set` +47% / `viperdagger_melee_model` +29%（关 crunch）、`fenhuang_halberd_item` +658% / `frostmourne_item` +564%（图标 128→512）、`skyisland_boss_gear` 9,554,567→4,207,756（1024→512）。`goblinnpc` / `nursenpc` / `respawn_items` 等有 −0% 级别的重打抖动，非本轮贴图改动所致。
+- L2：全量守卫 637 PASS / 0 FAIL（新增两个守卫均做过反向破坏→转红→按字节还原）；隔离执行回归 47 PASS / 0 FAIL（3 项需 `BOSSRUSH_HARMONY_DLL` 与 `BOSSRUSH_GAME_MANAGED`，本机分别指向创意工坊 `3588386576\0Harmony.dll` 与 `Duckov_Data\Managed`）。Wiki 构建通过，237 页 / 39,130 处引用，0 缺失 / 0 坏锚点。
+- 构建与部署：Dev 与 Release 均编译通过，仅剩既有 `RuntimeGate` CS0649 警告；留在游戏目录的是 Release，`check_dll_identifiers.py --expect absent` 实查 11 个 Dev 标识全部缺席；`Assets\Equipment`(13) / `Assets\Items`(80) / `Assets\achievement`(47) / `Assets\buildings`(9) 与 `BossRush.dll` 逐文件 SHA-256 与仓库一致，0 不匹配。
+- L3 未验证：没有启动游戏、没有读写玩家存档、没有看实测截图。贴图清晰度与噪点、三张建筑图标风格、挥砍拖尾观感、符号是否还有豆腐块、F3 逐委托流程、图鉴使用/丢弃，都要 owner 按 `docs/testing/20260919人工实测修复记录_第二轮.md` 的 N01–N08 实机确认。
+
+## 2026-09-19 人工实测 25 项修复（COMPAT / SCHEMA+ / OPERATIONAL）
+
+- 对照 `docs/testing/20260919人工实测发现的问题.md` 的 25 条有效问题完成工作区内代码修复：动态物品同步/异步实例补初始化；词缀字号、全未锁槽计价与装备补配、熔石 Lv.10 上架；冰雷套装模型/耐久/三杀触发、五武器拖尾/握姿、法杖按手持分帧准备、盾实际回血数字、雷戒落雷；日报每日小礼到快递与布局；六章征程/遗种巢 F3 手动演练、随机事件开关和三个双刃事件、隐藏后山调试项、遗魂聚合气泡与蛋/石掉落链。成就回归同时修复首次孵化未初始化目录和远征纪念碑保存失败提前授奖。
+- 数值决定按本次人工反馈：词缀每个未锁槽一石，金币为折后重铸基价 ×（10×未锁槽数 + 2×普通 + 5×稀有 + 8×诅咒），不另乘 T；冰/雷改三次直接击杀后小范围效果、四件耐久100；日常签到品质2小礼与里程碑分开；空投/金鸭雨首抽各约4.35%、排除上一事件后最高各5%，新增事件敌我同规则。蛋4%和熔石8%仍非保底。没有改 TypeID、既有 key、官方任务或破坏性 schema；日报追加可选 lastDailyRewardDayIndex / m{n}_isDaily。回退按精确差异进行，旧版不能识别新日常欠奖，先交付未清债务再降级，不迁移/删除玩家数据。
+- 第1/3/4项资源工作尚未全部交付：十张成就和两张纯白建筑图的生成规格、PNG优先加载/旧包回退、缓存释放与复制链已完成；生成器修复重复乘alpha、失败保留旧资产及旧调用入口。只读解析203张本地bundle纹理元数据，确证天空岛17张装备Albedo仍为1024；生成表已改512，实际资源仍须作者工程重导入打包。未获外部作者工程/生图技能目录绝对路径授权，未生图、未重打包，不能把此三项标为全部完成。
+- L2：主聚合14组执行回归全部PASS；动态物品9、成就加载71、图鉴225、遗种巢事务167、词缀66、日报177、套装及盾38、征程73、随机新事件483项检查通过。生成链20项、纹理预算4项通过；新增/修改守卫与关键行为在工作区副本做预期破坏转红、SHA还原后复验，包含最终气泡跳字/取消/重新激活的3项探针。全量源码检查主跑630 PASS / 3 PARTIAL；审阅工具属性测试首跑因TEMP目录前置失败，随后用工作区内微型仓库、同级临时目录及Pillow默认字体替身保留原断言复验PASS（4次调用/43字段，源码SHA未变），合计631 PASS / 3 PARTIAL。天空岛小地图守卫因外部Unity路径未授权未运行。没有放宽主仓库断言，系统中文字体渲染不计入此隔离证据。
+- Windows最终Release/Dev隔离编译均PASS：按正式945源码/42引用清单，C#7.3，引用只用工作区内既有游戏/Harmony副本；输入哈希稳定，仅既有RuntimeGate CS0649警告。最终产物为 `Build/manual-fixes-20260919/compile-working/{Release,Dev}/BossRush.dll`，保留正式程序集名；11个自动验收Dev标识及新增手动控件均在Release缺席、Dev存在。成就部署块在工作区两种假目标布局验证复制后SHA相同，没有写实际游戏目录。
+- Wiki标准构建、80项导航、237页/39130处引用检查通过，0缺失/0坏锚点。双语正文、速查框、配置契约和相关repowiki同步；没有发布网站。全部证据见 `Build/manual-fixes-20260919/`，逐项状态、玩法理由、资源剩余范围及M01–M12实机/看图清单见 `docs/testing/20260919人工实测修复记录.md`。
+- L3未验证：未启动游戏、未操作玩家存档、未部署实际游戏、未查看实测截图、未提交或推送。模型、特效、气泡、UI、实际任务/掉落、Harmony命中和帧耗须owner按清单复测；不宣称已实机生效、无卡顿或25项全部完成。
+
+
 ## 2026-09-19 Mode H 奖励池可靠性复核（COMPAT）
 
 - 完成 `CR-2026-09-19-016`：Mode H 同品质奖励改用共享 `BossRushQualityItemPool`，候选先过黑名单并排序后再由 `ModeHSeedStream` 抽取；`TryInstantiate` 在 `InstantiateSync` 前确认资源实例与 prefab 存在，拒绝官方缺资源时产生的同 TypeID 空壳。没有新增缓存、存档字段、TypeID、经济档位或第二套抽样算法。

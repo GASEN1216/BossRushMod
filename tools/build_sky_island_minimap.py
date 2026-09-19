@@ -32,6 +32,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageOps, ImageStat
 
+from unity_project_path import CANDIDATES as UNITY_CANDIDATES, find_unity_project
+
 ROOT = Path(__file__).resolve().parent.parent
 LAYOUT = ROOT / 'ArtSource/SkyIsland/layout.json'
 OUT_DIR = ROOT / 'ArtSource/SkyIsland/Minimap'
@@ -218,7 +220,8 @@ def write(path, image):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--unity-project', default=r'D:/code/ykf/duckov_modding-main/UnityFiles/BossRush')
+    # 默认位置由 tools/unity_project_path.py 解析；写死路径在工程搬家后会静默失效。
+    parser.add_argument('--unity-project', default=(find_unity_project() or UNITY_CANDIDATES[0]))
     # 默认读写仓库路径；换布局时可先指到草稿目录烘一版，与其它产物一起再换进仓库。
     parser.add_argument('--layout', default=str(LAYOUT))
     parser.add_argument('--out-dir', default=str(OUT_DIR))

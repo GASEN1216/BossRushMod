@@ -174,7 +174,7 @@ namespace BossRush
         /// <summary>耗材快燃尽时提醒的剩余游戏秒数。</summary>
         internal const float BuffLowSeconds = 20f;
 
-        /// <summary>风寒：耐力恢复 −25%、饥饿速度 +25%。</summary>
+        /// <summary>风寒：耐力恢复 -25%、饥饿速度 +25%。</summary>
         internal const float ChillStaminaRecover = -0.25f;
         internal const float ChillEnergyCost = 0.25f;
         /// <summary>驱风香：耐力恢复 +15%。</summary>
@@ -791,7 +791,7 @@ namespace BossRush
             {
                 case SkyIslandFieldBuff.Lantern: return L10n.T("风灯：照明、防风约4分钟。夜里引蚋，灯灭前清掉。仅群岛有效。", "Lantern: light and wind shelter for about 4 min. At night, clear gnats before it goes out. Qinglan only.");
                 case SkyIslandFieldBuff.Incense: return L10n.T("使用：防风并加快耐力恢复，持续约5分钟。仅群岛有效。", "Use: block wind chill and recover stamina faster for about 5 min. Qinglan only.");
-                case SkyIslandFieldBuff.Charm: return L10n.T("使用：噬风风暴伤害−35%，生命上限与回耐+10%。本趟有效，不叠加，离岛失效。", "Use: Windeater storm damage -35%; max HP and stamina recovery +10%. This raid only. No stacking; ends on leaving.");
+                case SkyIslandFieldBuff.Charm: return L10n.T("使用：噬风风暴伤害-35%，生命上限与回耐+10%。本趟有效，不叠加，离岛失效。", "Use: Windeater storm damage -35%; max HP and stamina recovery +10%. This raid only. No stacking; ends on leaving.");
                 case SkyIslandFieldBuff.Meal: return L10n.T("岛上食用：交还种植记录后，可获得归航菜增益。每趟一次。", "Eat on Qinglan for the meal buff after returning the planting record. Once per raid.");
                 case SkyIslandFieldBuff.Recall: return L10n.T("岛上使用：返回登云码头，每趟一次，不消耗。附近有敌人时不可用。", "Use on Qinglan: return to Cloudrise Dock once per raid. Not consumed. No enemies nearby.");
                 case SkyIslandFieldBuff.Zapper: return L10n.T("岛上放置：吸引并电落12米内的云蚋，持续约5分钟。最多两盏，离岛失效。", "Place on Qinglan: lure and zap gnats within 12m for about 5 min. Up to two; ends on leaving.");

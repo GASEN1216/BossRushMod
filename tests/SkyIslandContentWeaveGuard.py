@@ -367,7 +367,9 @@ def main():
         errors.append("缺 CharmStormWard 常量")
     else:
         percent = int(round(float(ward.group(1)) * 100))
-        for token in ("−%d%%" % percent, "%d%% less storm damage from the Windeater and its echo" % percent):
+        # 减号用 ASCII '-'：U+2212 不在 GBK 里，官方中文字体不保证有字形
+        # （PlayerFacingGlyphGuard，2026-09-19 实测第 16 条）。
+        for token in ("-%d%%" % percent, "%d%% less storm damage from the Windeater and its echo" % percent):
             if token not in descriptions:
                 errors.append("晴岚护符的描述要写明噬风风暴减伤 %d%%（与 CharmStormWard 一致）：缺 %s" % (percent, token))
     if not rate or float(rate.group(1)) != 0.5:

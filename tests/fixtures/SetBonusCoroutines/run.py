@@ -77,6 +77,15 @@ if __name__ == '__main__':
             + '} internal static void InvokeDead(Health target){ OnAnyDead(target, new DamageInfo()); } }}'
         )
     (OUT / 'WeaponDeathHandlers.cs').write_text('using System; using UnityEngine;\n' + '\n'.join(weapon_methods), encoding='utf-8')
+    shield_source = (ROOT / 'Integration/NewWeapons/EnergyShield/EnergyShieldRuntime.cs').read_text(encoding='utf-8-sig')
+    shield_methods = '\n'.join(member(shield_source, signature) for signature in (
+        'private static void OnHurt(', 'private static Vector3 GetFacing(', 'private static bool IsFrontalAttack('))
+    (OUT / 'ShieldBehaviour.cs').write_text(
+        'using System; using UnityEngine; namespace BossRush { internal static class EnergyShieldBehaviourProbe {'
+        'private static float lastTriggerTime; private static readonly float EnergyShieldFrontalAngleCos = '
+        'Mathf.Cos(EnergyShieldConfig.FrontalAngleThreshold * Mathf.Deg2Rad);' + shield_methods +
+        'internal static void Reset(){ lastTriggerTime = 0f; } '
+        'internal static void Hurt(Health health, DamageInfo info){ OnHurt(health, info); } }}', encoding='utf-8')
     (OUT / 'source.sha256').write_text(hashlib.sha256(generated.encode('utf-8')).hexdigest(), encoding='utf-8')
     raise SystemExit(subprocess.call(['dotnet', 'run', '--project', str(HERE / 'SetBonusCoroutines.csproj'),
                                      '--configuration', 'Release', '--verbosity', 'quiet'], cwd=ROOT,

@@ -1253,7 +1253,7 @@ namespace BossRush
             TextMeshProUGUI checkmarkText = checkmark.GetComponent<TextMeshProUGUI>();
             ConfigureTMPText(checkmarkText, font, 18, TextAlignmentOptions.Center);
             checkmarkText.fontStyle = FontStyles.Bold;
-            checkmarkText.text = "✓";
+            checkmarkText.text = "√";
             checkmarkText.color = new Color(0.99f, 0.82f, 0.33f, 1f);
             checkmarkText.raycastTarget = false;
 

@@ -41,6 +41,9 @@ namespace BossRush
         /// <summary>每期天数（UI 一页 30 格）。满期翻下一期，防止签到墙无限变长。</summary>
         internal const int DaysPerPeriod = 30;
 
+        /// <summary>每次签到的小礼品质；里程碑奖励仍另外发放。</summary>
+        internal const int DailyGiftQuality = 2;
+
         /// <summary>第 1 期的里程碑格位（1-based），与 MilestoneQualitiesFirstPeriod 一一对应。</summary>
         internal static readonly int[] MilestoneSlotsFirstPeriod = { 7, 15, 24, 30 };
 

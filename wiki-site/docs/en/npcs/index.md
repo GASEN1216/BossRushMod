@@ -25,9 +25,9 @@ See Affinity and Marriage for details.
 
 ## Where Do They Show Up?
 
-- **Normal Maps** — All three ✓
-- **Wedding Chapel** — Dingdang ✓ / Yuori ✓ (after marriage)
-- **Standard / From Scratch** — Awen ✓ + one of Dingdang or Yuori (random; married NPCs excluded)
-- **Faction War / Blood Hunt** — All three ✓
+- **Normal Maps** — All three √
+- **Wedding Chapel** — Dingdang √ / Yuori √ (after marriage)
+- **Standard / From Scratch** — Awen √ + one of Dingdang or Yuori (random; married NPCs excluded)
+- **Faction War / Blood Hunt** — All three √
 
 Faction War and Blood Hunt also spawn a **Mystery Merchant** with categorized shops.

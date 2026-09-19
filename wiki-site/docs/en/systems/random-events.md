@@ -13,9 +13,11 @@ red, it starts raining money, or a Boss who isn't on tonight's card kicks the do
 
 Put simply: it doesn't change the rules of your run, it changes your plan for this minute.
 
-## Eight events, most common first
+## Event list
 
-### Windfall (about 23%, 45 seconds)
+The percentages below describe the first draw. Consecutive repeats are excluded, so later probabilities vary slightly. Airdrop Supply and Golden Duck Rain each stay at or below `5%` on every draw.
+
+### Airdrop Supply (about 4.35%, 45 seconds)
 
 A supply crate drops from `28` metres up and lands a couple of seconds later.
 
@@ -34,7 +36,7 @@ A supply crate drops from `28` metres up and lands a couple of seconds later.
 The thud is your cue to decide: go now, or let the enemies crowd the crate first and collect from the bodies.
 :::
 
-### Golden Duck Rain (about 19%, 20 seconds)
+### Golden Duck Rain (about 4.35%, 20 seconds)
 
 Money falls from the sky: `10-15` piles scattered over `5` metres, **30000** in total.
 
@@ -42,7 +44,7 @@ Free, riskless, and the only cost is bending down. **In Infinite Hell you don't 
 that mode has a cash magnet that pulls anything within `2` metres to you, so one walk through
 the pile collects the lot.
 
-### Uninvited Guest (about 14%, 120 seconds)
+### Uninvited Guest (about 13%, 120 seconds)
 
 One Boss pulled at random from the current Boss pool, walking in from `30` metres out.
 
@@ -99,7 +101,7 @@ no reward. Twelve seconds of pure disinformation.
 Those twelve seconds are free downtime: reload, heal, reposition. Don't chase the noise.
 :::
 
-### Duck King's Fireworks (about 8%, 14 seconds)
+### Duck King's Fireworks (about 7.2%, 14 seconds)
 
 One burst every `0.55` seconds, `15` in total, `6` metres up along a `12` metre ring.
 
@@ -115,6 +117,20 @@ and leave.
 They won't bother you. Don't bother them. That's the whole event.
 Like the fireworks, it does **not** spend your event budget.
 
+### Wild Chase (about 11.6%, 24 seconds)
+
+Players and enemies gain `25%` walk and run speed. Reposition quickly, but expect enemies to close the distance faster too. New arrivals receive the same effect.
+
+### Melee Carnival (about 11.6%, 24 seconds)
+
+Players and enemies gain `35%` melee damage and lose `15%` gun damage. Switching weapons can pay off, but getting cornered is more dangerous.
+
+### Heavy Steps (about 11.6%, 24 seconds)
+
+Players and enemies lose `20%` run speed and gain `20%` melee damage. Find cover before enemies get close.
+
+These three events grant no cash or items and spend the normal event budget. Their temporary stats are removed on expiry, leaving the run, or disabling random events.
+
 ## Which modes trigger events
 
 Only **Standard BossRush, Infinite Hell and From Scratch**.
@@ -125,7 +141,9 @@ events in would only fight with them.
 
 ## Frequency
 
-Random events are on by default. What you can adjust is the **frequency tier**: pick
+Random events are on by default. Disable **Duck's Uncertainty: random events** in ModConfig to end the current event and remove its temporary effects.
+
+While enabled, adjust the **frequency tier**: pick
 low / mid / high in the Mod settings screen (ModConfig). It sets **how many events with actual
 gameplay can fire in a single run** - `2` on low, `3` on mid, `5` on high. Mid is the default.
 
@@ -140,5 +158,5 @@ gameplay can fire in a single run** - `2` on low, `3` on mid, `5` on high. Mid i
 - Once the budget is spent the run goes quiet for good - not even fireworks.
 
 ::: tip
-Turn it up if you want a run with more going on; turn it down to fight Bosses in peace. Even on low you'll still see a couple.
+Use a higher tier for more interruptions, a lower tier for fewer, or disable random events for a quiet run.
 :::

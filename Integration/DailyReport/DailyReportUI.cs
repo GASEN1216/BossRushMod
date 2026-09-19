@@ -46,18 +46,18 @@ namespace BossRush
 
         #region 布局常量
 
-        private const float PanelWidth = 1000f;
-        private const float PanelHeight = 760f;
+        private const float PanelWidth = 1333f;
+        private const float PanelHeight = 1013f;
         private const float Margin = 28f;
 
         /// <summary>签到墙右侧留给签到按钮与状态的宽度。</summary>
-        private const float SignInSideWidth = 250f;
+        private const float SignInSideWidth = 300f;
 
         /// <summary>签到格边长。34 太小，格子里还要塞"31★"这种两位数带星。</summary>
-        private const float SignInCellSize = 38f;
+        private const float SignInCellSize = 46f;
 
         /// <summary>图例行高。</summary>
-        private const float LegendRowHeight = 20f;
+        private const float LegendRowHeight = 26f;
 
         private const int HostSortingOrder = BossRushUILayers.Panel;
 
@@ -174,23 +174,23 @@ namespace BossRush
 
             // ---- 报头 ----
             mastheadText = CreateBlock(
-                "Masthead", L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"), 38f,
-                innerWidth, 48f, ref y, TextAlignmentOptions.Center, PaperInk, 0f);
+                "Masthead", L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"), 46f,
+                innerWidth, 56f, ref y, TextAlignmentOptions.Center, PaperInk, 0f);
 
             issueText = CreateBlock(
-                "Issue", string.Empty, 17f,
-                innerWidth, 24f, ref y, TextAlignmentOptions.Center, PaperInkSoft, 2f);
+                "Issue", string.Empty, 20f,
+                innerWidth, 28f, ref y, TextAlignmentOptions.Center, PaperInkSoft, 2f);
 
             AdvanceRule(panelRect, ref y, innerWidth);
 
             // ---- 头条 ----
             headlineText = CreateBlock(
-                "Headline", string.Empty, 28f,
-                innerWidth, 38f, ref y, TextAlignmentOptions.Center, PaperInk, 4f);
+                "Headline", string.Empty, 34f,
+                innerWidth, 44f, ref y, TextAlignmentOptions.Center, PaperInk, 4f);
 
             headlineBodyText = CreateBlock(
-                "HeadlineBody", string.Empty, 17f,
-                innerWidth, 46f, ref y, TextAlignmentOptions.Top, PaperInkSoft, 4f);
+                "HeadlineBody", string.Empty, 22f,
+                innerWidth, 54f, ref y, TextAlignmentOptions.Top, PaperInkSoft, 4f);
             AllowWrap(headlineBodyText);
 
             AdvanceRule(panelRect, ref y, innerWidth);
@@ -198,7 +198,7 @@ namespace BossRush
             // ---- 双栏：左战绩 / 右天气运势杂谈 ----
             float columnWidth = innerWidth * 0.5f - 14f;
             float columnCenterX = innerWidth * 0.25f + 7f;
-            const float columnBodyHeight = 220f;
+            const float columnBodyHeight = 168f;
 
             float titleY = y - 13f;
             statsTitleText = CreateColumnTitle("StatsTitle", L10n.T("昨 日 战 绩", "YESTERDAY"),
@@ -218,8 +218,8 @@ namespace BossRush
 
             // ---- 悬赏栏 ----
             bountyText = CreateBlock(
-                "Bounty", string.Empty, 16f,
-                innerWidth, 118f, ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 4f);
+                "Bounty", string.Empty, 21f,
+                innerWidth, 78f, ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 4f);
             AllowWrap(bountyText);
 
             AdvanceRule(panelRect, ref y, innerWidth);
@@ -232,7 +232,7 @@ namespace BossRush
             PinSignInContentToTop();
             paperRows.Add(new PaperRow(signInArea, 210f, 4f));
 
-            rulesText = CreateBlock("Rules", string.Empty, 16f, innerWidth, 70f,
+            rulesText = CreateBlock("Rules", string.Empty, 18f, innerWidth, 30f,
                 ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 0f);
             AllowWrap(rulesText);
 
@@ -319,10 +319,10 @@ namespace BossRush
         private TextMeshProUGUI CreateColumnBody(string name, float x, float y, float width, float height)
         {
             TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
-                name, panelRect, string.Empty, 17f,
+                name, panelRect, string.Empty, 22f,
                 new Vector2(x, y), new Vector2(width, height),
                 TextAlignmentOptions.TopLeft, PaperInkSoft);
-            LockFontSize(text, 17f);
+            LockFontSize(text, 22f);
             AllowWrap(text);
             return text;
         }
@@ -367,10 +367,10 @@ namespace BossRush
                 signInCells.Add(img);
 
                 TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
-                    "Label", cell.transform, string.Empty, 15f,
+                    "Label", cell.transform, string.Empty, 19f,
                     Vector2.zero, new Vector2(SignInCellSize, SignInCellSize),
                     TextAlignmentOptions.Center, PaperInk);
-                LockFontSize(label, 15f);
+                LockFontSize(label, 19f);
                 signInCellLabels.Add(label);
             }
 
@@ -394,10 +394,10 @@ namespace BossRush
             }
 
             signInStatusText = ZombieModeUIHelper.CreateText(
-                "SignInStatus", parent, string.Empty, 15f,
+                "SignInStatus", parent, string.Empty, 18f,
                 new Vector2(rightX, gridMidY - 48f), new Vector2(220f, 104f),
                 TextAlignmentOptions.Top, PaperInkSoft);
-            LockFontSize(signInStatusText, 15f);
+            LockFontSize(signInStatusText, 18f);
             AllowWrap(signInStatusText);
 
             y = gridTop - gridHeight - 10f;
@@ -436,13 +436,13 @@ namespace BossRush
             BossRushUI.ApplyPanelSkin(image, 4, BossRushUISkinPart.Card);
             image.raycastTarget = false;
 
-            const float labelWidth = 92f;
+            const float labelWidth = 126f;
             TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
-                "LegendLabel", parent, label, 14f,
+                "LegendLabel", parent, label, 17f,
                 new Vector2(x + swatch * 0.5f + 6f + labelWidth * 0.5f, centerY),
                 new Vector2(labelWidth, LegendRowHeight),
                 TextAlignmentOptions.Left, PaperInkSoft);
-            LockFontSize(text, 14f);
+            LockFontSize(text, 17f);
             text.raycastTarget = false;
             legendLabels.Add(text);
 
@@ -495,12 +495,12 @@ namespace BossRush
                     ? L10n.T("等待出刊结算", "Awaiting settlement")
                     : L10n.T("距下期约 " + displayedMinutes + " 分钟游玩时间",
                         "Next issue in about " + displayedMinutes + " minutes of play");
-                SetText(issueText, issueText.text + "\n" + deadline);
+                SetText(issueText, issueText.text + "　·　" + deadline);
 
                 SetText(headlineText, issue.Headline);
                 SetText(headlineBodyText, issue.HeadlineBody);
                 SetText(statsText, JoinLines(issue.StatLines));
-                SetText(sideText, issue.WeatherLine + "\n\n" + issue.FortuneLine + "\n\n" + issue.GossipLine);
+                SetText(sideText, issue.WeatherLine + "\n" + issue.FortuneLine + "\n" + issue.GossipLine);
                 SetText(bountyText, BuildBountyBlock(issue));
 
                 RefreshSignInGrid(data);
@@ -529,10 +529,6 @@ namespace BossRush
             result += L10n.T("【今日悬赏】", "[Today's Bounty] ") + issue.TodayBountyTitle + progress
                 + L10n.T(" · 奖金 " + issue.TodayBountyCash + " 金（下期结算）",
                     " · " + issue.TodayBountyCash + " cash (next issue)");
-            if (!string.IsNullOrEmpty(issue.TodayBountyFlavor))
-            {
-                result += "\n" + issue.TodayBountyFlavor;
-            }
             if (!string.IsNullOrEmpty(issue.TodayBountyStatus)) result += "\n" + issue.TodayBountyStatus;
             return result;
         }
@@ -711,8 +707,8 @@ namespace BossRush
                 L10n.T("★ 奖励格", "★ Reward"), L10n.T("奖励已领", "Claimed") };
             for (int i = 0; i < legendLabels.Count && i < labels.Length; i++) SetText(legendLabels[i], labels[i]);
             SetText(rulesText, L10n.T(
-                "每天手动签到一次；漏签会清空本期进度，已挣得的奖品保留。\n一天约 24 分钟游玩时间；暂停停表，睡觉不催刊。悬赏自动计数，次日结算。",
-                "Check in once per game day. Missing a day resets this period; earned prizes stay yours.\nA day takes about 24 minutes of play. Pausing stops the clock; sleeping won't skip issues. Bounties settle next issue."));
+                "每日签到领小礼，奖品到快递站领取。漏签重置本期，已得奖品保留；悬赏次日结算。",
+                "Daily gifts go to your delivery point. Missing a day resets this period; earned prizes remain. Bounties settle next issue."));
         }
 
         #region 交互
@@ -736,8 +732,10 @@ namespace BossRush
                         else
                         {
                             ShowBanner(L10n.T(
-                                "签到成功：累计第 " + result.DisplayDayNumber + " 天",
-                                "Checked in - day " + result.DisplayDayNumber));
+                                DailyReportService.Data.PendingMilestones.Exists(debt => debt.IsDaily && debt.SignDayIndex == DailyReportService.Data.DayIndex)
+                                    ? "签到成功，小礼待补发；再次打开报纸重试" : "签到成功，小礼已寄往快递站",
+                                DailyReportService.Data.PendingMilestones.Exists(debt => debt.IsDaily && debt.SignDayIndex == DailyReportService.Data.DayIndex)
+                                    ? "Checked in; daily gift pending. Reopen to retry." : "Checked in! Daily gift sent to your delivery point."));
                         }
                         break;
 

@@ -610,14 +610,13 @@ namespace BossRush
         {
             DailyReportSignInResult result;
             if (!TrySignInToday(out result)) return result;
+            TryRedeliverPendingMilestones();
             if (!result.HitMilestone || result.MilestoneQuality <= 0) return result;
 
             try
             {
                 DailyReportData data = DailyReportPersistence.Current;
-                DailyReportMilestoneDebt debt = FindCurrentMilestone(data, result.PeriodSlot);
-                bool persistenceBlocked;
-                if (!TryDeliverMilestone(debt, out persistenceBlocked))
+                if (!IsMilestoneClaimed(data, result.PeriodSlot))
                 {
                     // 没发出去就不置掩码：下次开面板时 TryRedeliverPendingMilestone 会补。
                     result.HitMilestone = false;
@@ -687,6 +686,21 @@ namespace BossRush
                     Seed = EnsureBountySeedInCandidate(data),
                 });
             }
+            // 旧档仅补当天已签的小礼；过去没有记录的普通日不猜测回填。
+            if (data.PeriodSignedCount > 0 && data.LastSignedDayIndex == data.DayIndex
+                && data.LastDailyRewardDayIndex < data.LastSignedDayIndex)
+            {
+                data.PendingMilestones.Add(new DailyReportMilestoneDebt
+                {
+                    PeriodIndex = data.PeriodIndex,
+                    Slot = data.PeriodSignedCount,
+                    SignDayIndex = data.LastSignedDayIndex,
+                    Quality = DailyReportTuning.DailyGiftQuality,
+                    Seed = EnsureBountySeedInCandidate(data),
+                    IsDaily = true,
+                });
+                data.LastDailyRewardDayIndex = data.LastSignedDayIndex;
+            }
         }
 
         private static DailyReportMilestoneDebt FindCurrentMilestone(DailyReportData data, int slot)
@@ -696,7 +710,7 @@ namespace BossRush
             for (int i = 0; i < data.PendingMilestones.Count; i++)
             {
                 DailyReportMilestoneDebt debt = data.PendingMilestones[i];
-                if (debt.PeriodIndex == data.PeriodIndex && debt.Slot == slot && debt.SignDayIndex == day)
+                if (!debt.IsDaily && debt.PeriodIndex == data.PeriodIndex && debt.Slot == slot && debt.SignDayIndex == day)
                     return debt;
             }
             return null;
@@ -745,7 +759,7 @@ namespace BossRush
                 if (index < 0) return false;
                 candidate.PendingMilestones.RemoveAt(index);
                 // 同一期断签重来的相同格位也不是同一笔债务，不能误标新一轮的奖励。
-                if (debt.PeriodIndex == candidate.PeriodIndex && debt.Slot <= candidate.PeriodSignedCount
+                if (!debt.IsDaily && debt.PeriodIndex == candidate.PeriodIndex && debt.Slot <= candidate.PeriodSignedCount
                     && debt.SignDayIndex == ResolveMilestoneSignDayIndex(candidate, debt.Slot))
                     candidate.PeriodClaimedMask |= (1 << (debt.Slot - 1));
                 return Persist(candidate);

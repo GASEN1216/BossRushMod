@@ -7,6 +7,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Program.cs" />
+    <Compile Include="../../../Integration/NewWeapons/EnergyShield/EnergyShieldConfig.cs" />
+    <Compile Include="../../../Build/set-bonus-coroutines/ShieldBehaviour.cs" />
     <Compile Include="../../../Integration/Bonus/ThunderSetBonus_Storm.cs" />
     <Compile Include="../../../Integration/Bonus/FrostSetBonus_Nova.cs" />
     <Compile Include="../../../Build/set-bonus-coroutines/DeathHandlers.cs" />

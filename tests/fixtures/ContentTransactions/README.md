@@ -1,5 +1,7 @@
 # 内容资产事务回归
 
+2026-09-19：新增五项遗种巢成就生产链测试。真实蛋孵化及放生推进到 30 种血脉，检查 9/10、29/30 阈值、异色 roll、亡命远征死亡、物理保存失败重试与重复授奖幂等。成就宿主替身遵循真实 `TryUnlock` 的未初始化拒绝和已解锁去重规则，不预设初始化成功。测试先复现首次成就初始化遗漏与纪念碑候选阶段提前授奖，再验证修复。
+
 运行：`python tools/run_runtime_regressions.py --filter ContentTransactions`。需要 .NET 8 SDK，不需要游戏 DLL，不接触游戏存档。项目、抽取方法、编译产物及源码 SHA-256 均写到 `Build/content-transactions/`；失败返回非零退出码。
 
 覆盖五项修复（`COMPAT`）：战役奖金与 Completed 同盘、日报悬赏奖金与 claimed 同盘、凝蛋单候选 Bundle、实体蛋消费与孵化统计提交、餐食官方二次门禁后的扣量补偿。

@@ -79,6 +79,7 @@ class Program
         Check(!CodexBossCatalog.TryGet(champion, out info) && CodexBossCatalog.Count == initial,
             "slot change removes previous slot historical membership");
         Check(!CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current), "empty new slot cannot be all-collected");
+        CheckNewAchievementThresholds();
         CheckBossTimerIsolation();
         CheckSaveTransactions();
         CheckCatalogAndLanguage();
@@ -86,6 +87,51 @@ class Program
         CheckCapacityAndCleanup();
         CheckKillEligibility();
         Console.WriteLine("Codex regression checks=" + checks);
+    }
+
+    static void CheckNewAchievementThresholds()
+    {
+        Reset();
+        LevelManager.Instance.IsBaseLevel = false;
+        for (int i = 0; i < 30; i++)
+            ModBehaviour.Instance.Pool.Add(new EnemyPresetInfo { name = "threshold_" + i, displayName = "boss" });
+        CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
+        var keys = new System.Collections.Generic.List<string>();
+        foreach (var boss in CodexBossCatalog.All) keys.Add(boss.Key);
+        CodexPersistence.RejectStore = true;
+        Kill(keys[0]);
+        Check(BossRushAchievementManager.Unlocked.Count == 0, "failed kill transaction awards no codex achievement");
+        CodexPersistence.RejectStore = false;
+        for (int i = 0; i < keys.Count; i++)
+        {
+            Kill(keys[i]);
+            int count = i + 1;
+            Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementFirstEntry), "first logged boss unlocks first entry");
+            Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementTen) == (count >= 10), "ten entries exact threshold " + count);
+            Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementTwenty) == (count >= 20), "twenty entries exact threshold " + count);
+            Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementAll) == (count == keys.Count), "complete codex requires final actual key " + count);
+        }
+        int earned = BossRushAchievementManager.Unlocked.Count;
+        Kill(keys[0]);
+        Check(BossRushAchievementManager.Unlocked.Count == earned, "repeat boss does not award milestones again");
+        foreach (float seconds in new[] { 10f, 10.01f })
+        {
+            Reset();
+            var player = new CharacterMainControl { IsMainCharacter = true };
+            var boss = new Health { Character = new CharacterMainControl { isBossCharacter = true, Team = Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = "timed" } } };
+            var damage = new DamageInfo { fromCharacter = player, finalDamage = 10 };
+            UnityEngine.Time.time = 100;
+            CodexKillCollector.OnGlobalHurt(boss, damage);
+            UnityEngine.Time.time = 100 + seconds;
+            boss.IsDead = true;
+            CodexKillCollector.OnGlobalDead(boss, damage);
+            Check(BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementFastKill) == (seconds <= 10f),
+                "observed hit and death enforce ten-second boundary " + seconds);
+            int kills = CodexPersistence.Current.Find("timed").Kills;
+            CodexKillCollector.OnGlobalDead(boss, damage);
+            Check(CodexPersistence.Current.Find("timed").Kills == kills, "duplicate death cannot advance achievements");
+        }
     }
 
     static void Reset()

@@ -156,7 +156,7 @@ namespace BossRush
             try
             {
                 CharacterMainControl character = __instance.characterController;
-                if (character == null) return;
+                if (character == null || character != CharacterMainControl.Main) return;
 
                 ItemAgent_MeleeWeapon melee = character.GetMeleeWeapon();
                 if (melee == null || melee.Item == null) return;

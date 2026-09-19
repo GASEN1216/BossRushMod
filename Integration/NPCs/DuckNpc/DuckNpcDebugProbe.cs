@@ -851,7 +851,7 @@ namespace BossRush
                 if (characterLayer >= 0)
                 {
                     bool ignored = Physics.GetIgnoreLayerCollision(characterLayer, characterLayer);
-                    sb.AppendLine("- 层碰撞矩阵 Character↔Character: "
+                    sb.AppendLine("- 层碰撞矩阵 Character<->Character: "
                         + (ignored ? "**已忽略（角色之间本就不互相阻挡）**" : "生效（角色之间应当互相阻挡）"));
                     sb.AppendLine();
                 }

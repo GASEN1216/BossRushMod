@@ -8,7 +8,7 @@
 //   - 常驻：青白色双眼电闪 + 肩部环境电弧（见 ThunderSetBonus_Storm.cs）
 //   - 击杀触发「引雷术」：连锁闪电（见 ThunderSetBonus_Storm.cs）
 //   - 受击触发「雷霆反震」：被 6 米内的攻击者命中时 25% 概率以玩家为中心释放电击 AOE
-//     （4 米 / 30 电伤 / 3 秒冷却 / canHurtSelf=false 不伤自己与友军），附电弧与爆发环
+//     （3 米 / 12 电伤 / 5 秒冷却 / canHurtSelf=false 不伤自己与友军），附电弧与爆发环
 //
 // 实现方式：
 //   通过 Health.OnHurt / Health.OnDead 静态事件（命名方法、成对订阅、私有 bool 幂等）监听主角受击与全局死亡；
@@ -35,9 +35,9 @@ namespace BossRush
 
         // 雷霆套数值配置
         private const float THUNDER_SET_COUNTER_CHANCE = 0.25f;       // 25% 反击概率
-        private const float THUNDER_SET_COUNTER_DAMAGE = 30f;         // 电击伤害
-        private const float THUNDER_SET_COUNTER_RADIUS = 4f;          // 电击范围（米）
-        private const float THUNDER_SET_COOLDOWN = 3f;                // 电击冷却时间（秒）
+        private const float THUNDER_SET_COUNTER_DAMAGE = 12f;         // 电击伤害
+        private const float THUNDER_SET_COUNTER_RADIUS = 3f;          // 电击范围（米）
+        private const float THUNDER_SET_COOLDOWN = 5f;                // 电击冷却时间（秒）
         private const float THUNDER_SET_ELEC_RESIST_BONUS = 0.5f;     // 电抗 +50%
         private const float THUNDER_SET_ELEC_HEAL_RATIO = 0.5f;       // 受到的电系伤害 50% 回补为治疗
         // 触发距离：与冰霜套保持一致，远程攻击不触发反制（设计意图是"近身反制"）

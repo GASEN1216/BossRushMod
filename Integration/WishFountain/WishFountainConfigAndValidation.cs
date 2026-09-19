@@ -533,8 +533,8 @@ namespace BossRush
             if (text.Length < MIN_CHARS)
             {
                 errorMsg = L10n.T(
-                    "⚠ 最少输入 " + MIN_CHARS + " 个字符哦",
-                    "⚠ At least " + MIN_CHARS + " characters required");
+                    "最少输入 " + MIN_CHARS + " 个字符哦",
+                    "At least " + MIN_CHARS + " characters required");
                 return false;
             }
 

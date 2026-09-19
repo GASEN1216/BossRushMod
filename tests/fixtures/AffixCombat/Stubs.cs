@@ -63,12 +63,18 @@ namespace ItemStatsSystem
 {
     public sealed class Item
     {
-        public int TypeID;
+        public int TypeID, Quality = 7, Capacity = 3, ForgeBaseCost = 100;
+        public readonly TagCollection Tags = new TagCollection();
+        public object Setting;
+        public T GetComponent<T>() where T : class { return Setting as T; }
         internal readonly List<AffixSlotView> Affixes = new List<AffixSlotView>();
         private readonly Dictionary<string, Stat> stats = new Dictionary<string, Stat>();
         public Stat GetStat(string key) { Stat s; if (!stats.TryGetValue(key, out s)) stats[key] = s = new Stat(); return s; }
     }
 }
+public class ItemSetting_Gun { }
+public class ItemSetting_MeleeWeapon { }
+public class TagCollection : HashSet<string> { }
 namespace ItemStatsSystem.Items { public sealed class Slot { public string Key; } }
 namespace ItemStatsSystem.Stats
 {
@@ -257,12 +263,27 @@ namespace BossRush
         private static bool _dispatchingEnemyKilled;
         internal static void Emit(Health health, DamageInfo info) { OnAnyCharacterDead(health, info); }
     }
-    public static class ReforgeSystem { public const int MIN_REFORGE_COST = 500; }
+    public static class ReforgeSystem
+    {
+        public const int MIN_REFORGE_COST = 500;
+        public static int GetDiscountedCost(Item item) { return item.ForgeBaseCost; }
+    }
+    public static class CustomItemRuntimeStateHelper
+    {
+        public static bool IsRuntimeConfiguredType(int id) { return id == 500099; }
+        public static bool EnsureCustomItemConfigured(Item item)
+        { item.Quality = 7; item.Setting = new ItemSetting_MeleeWeapon(); return true; }
+    }
     public static class L10n { public static string T(string zh, string en) { return zh; } }
     internal static class BossRushUI { internal static bool Paused; internal static bool IsGamePaused() { return Paused; } }
-    public struct AffixSlotView { public string AffixId; public int Tier; public bool IsEmpty { get { return string.IsNullOrEmpty(AffixId); } } }
-    public static class AffixItemData
+    public struct AffixSlotView { public string AffixId; public int Tier; public bool Locked; public bool IsEmpty { get { return string.IsNullOrEmpty(AffixId); } } }
+    public static partial class AffixItemData
     {
+        public static bool IsAffixEligible(Item item) { return GetEquipMask(item) != AffixEquipMask.None; }
+        public static int GetCapacity(Item item) { return item == null ? 0 : item.Capacity; }
+        public static bool IsLocked(Item item, int slot) { return slot <= item.Affixes.Count && item.Affixes[slot - 1].Locked; }
+        public static bool TryReadSlot(Item item, int slot, out AffixSlotView view)
+        { view = slot <= item.Affixes.Count ? item.Affixes[slot - 1] : new AffixSlotView(); return true; }
         public static bool HasAffixData(Item item) { return item.Affixes.Count > 0; }
         public static void ReadAllSlots(Item item, List<AffixSlotView> into) { into.AddRange(item.Affixes); }
     }

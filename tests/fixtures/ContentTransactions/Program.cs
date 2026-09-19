@@ -38,7 +38,7 @@ class Program
         LevelManager.Instance.IsBaseLevel = true; UnityEngine.Time.frameCount++;
         CharacterMainControl.Main = new CharacterMainControl { CharacterItem = new Item { Inventory = new Inventory() } };
         PlayerStorage.Inventory = new Inventory(); PlayerStorage.Loading = false;
-        BossRushAchievementManager.Unlocked.Clear();
+        BossRushAchievementManager.Reset();
         PetNestExpeditionService.ResetValidationRewardBackend();
         ShowcaseService.ResetStaticCaches();
         ItemUtilities.Delivered.Clear(); RelicEggConfig.FailStamp = false;
@@ -416,7 +416,67 @@ class Program
     }
     static void Main()
     {
-        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); Meals(); ExpeditionEggIdentity(); ShowcaseReplacement();
+        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseReplacement();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
+    }
+
+    static void PetNestAchievements()
+    {
+        Reset(); PrepareNest(); UnityEngine.Random.value = .99f;
+        PetNestHatchResult result; string error;
+        Check(BossRushAchievementManager.Unlocked.Count == 0, "empty nest grants no taming achievement");
+        for (int i = 1; i <= 30; i++)
+        {
+            var egg = new Item { Lineage = "test_" + i };
+            PlayerStorage.Inventory.AddAt(egg, 5);
+            UnityEngine.Time.frameCount++;
+            bool failedMilestone = i == 10 || i == 30;
+            if (failedMilestone) SavesSystem.FailPhysical = 1;
+            bool hatched = PetNestHatchService.TryHatchEgg(egg, out result, out error);
+            if (failedMilestone)
+            {
+                string id = "petnest_lineage_" + i;
+                Check(!hatched && !BossRushAchievementManager.Unlocked.Contains(id), id + " waits for physical persistence");
+                UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
+                Check(BossRushAchievementManager.Unlocked.Contains(id), id + " publishes after physical retry");
+            }
+            else Check(hatched, "real egg hatch accepted for lineage " + i);
+            if (i == 1) Check(BossRushAchievementManager.Initialized && BossRushAchievementManager.Unlocked.Contains("petnest_first_hatch"),
+                "first persisted egg initializes achievement catalog and unlocks first hatch");
+            if (i == 9) Check(!BossRushAchievementManager.Unlocked.Contains("petnest_lineage_10"), "nine lineages cannot unlock ten");
+            if (i == 29) Check(!BossRushAchievementManager.Unlocked.Contains("petnest_lineage_30"), "twenty-nine lineages cannot unlock thirty");
+            Check(PetNestService.TryReleasePet(PetNestService.Pets[0].id, out error), "release through production service leaves museum progress");
+        }
+        Check(!BossRushAchievementManager.Unlocked.Contains("petnest_shiny") && !BossRushAchievementManager.Unlocked.Contains("petnest_memorial"),
+            "normal hatches cannot unlock shiny or memorial achievements");
+        PetNestMuseumStats.EvaluatePersistedAchievements(); PetNestMuseumStats.EvaluatePersistedAchievements();
+        foreach (string id in new[] { "petnest_first_hatch", "petnest_lineage_10", "petnest_lineage_30" })
+            Check(BossRushAchievementManager.Grants[id] == 1, id + " grants once after repeated checks and releases");
+
+        Reset(); PrepareNest(); var shinyEgg = Egg(); SavesSystem.FailPhysical = 1;
+        Check(!PetNestHatchService.TryHatchEgg(shinyEgg, out result, out error)
+            && !BossRushAchievementManager.Unlocked.Contains("petnest_shiny"), "shiny waits for persisted hatch");
+        UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
+        Check(BossRushAchievementManager.Unlocked.Contains("petnest_shiny"), "real shiny roll unlocks after save retry");
+        PetNestMuseumStats.EvaluatePersistedAchievements();
+        Check(BossRushAchievementManager.Grants["petnest_shiny"] == 1, "shiny achievement grants once");
+
+        Reset(); PrepareNest(); UnityEngine.Random.value = .99f;
+        Check(PetNestHatchService.TryHatchEgg(Egg(), out result, out error), "memorial test starts with a real hatched pet");
+        PetNestExpeditionRecord expedition;
+        UnityEngine.Time.frameCount++;
+        Check(PetNestExpeditionService.TryDepart(result.Pet.id, PetNestTuning.DestinationStormSea,
+            PetNestRiskTier.Desperate, out expedition, out error), "real desperate expedition starts");
+        Check(!BossRushAchievementManager.Unlocked.Contains("petnest_memorial"), "departure is not a memorial");
+        expedition.returnTicks = 0; UnityEngine.Random.value = 0; UnityEngine.Time.frameCount++;
+        SavesSystem.FailPhysical = 1;
+        PetNestExpeditionService.TrySettle(expedition, out error);
+        Check(!BossRushAchievementManager.Unlocked.Contains("petnest_memorial"), "memorial candidate never unlocks before physical persistence");
+        UnityEngine.Time.frameCount++; PetNestSaveCoordinator.Tick();
+        Check(PetNestMuseumStats.MemorialCount == 1 && BossRushAchievementManager.Unlocked.Contains("petnest_memorial"),
+            "persisted expedition death unlocks memorial achievement");
+        PetNestExpeditionService.TrySettle(PetNestExpeditionService.Records[0], out error);
+        PetNestMuseumStats.EvaluatePersistedAchievements();
+        Check(BossRushAchievementManager.Grants["petnest_memorial"] == 1, "repeated settlement cannot grant a second memorial achievement");
     }
 }

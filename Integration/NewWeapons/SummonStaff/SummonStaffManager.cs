@@ -6,6 +6,7 @@
 //   检测 ADS（右键）输入，验证是否持有召唤法杖，触发召唤
 // ============================================================================
 
+using System.Collections;
 using BossRush.Common.Equipment;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -19,6 +20,9 @@ namespace BossRush
         : EquipmentAbilityManager<SummonStaffConfig, SummonStaffAction>
     {
         private readonly SummonStaffConfig configInstance = new SummonStaffConfig();
+        private bool holdEventSubscribed;
+        private bool preparationComplete;
+        private Coroutine preparation;
 
         // 单例访问（类型安全）
         public static new SummonStaffManager Instance
@@ -30,12 +34,15 @@ namespace BossRush
         {
             if (!ModBehaviour.CanRunGameplayRuntimeCached())
             {
+                CancelPreparation();
                 return;
             }
 
             SuppressVanillaAdsIfNeeded();
 
             if (!abilityEnabled) return;
+            if (!preparationComplete && preparation == null && IsHoldingSummonStaff(targetCharacter))
+                preparation = StartCoroutine(PrepareWhileHeld(targetCharacter));
 
             HandleSummonInput();
         }
@@ -78,13 +85,70 @@ namespace BossRush
         protected override void OnManagerInitialized()
         {
             SummonStaffAction.SetConfig(configInstance);
+            if (!holdEventSubscribed)
+            {
+                CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent += OnHoldItemChanged;
+                holdEventSubscribed = true;
+            }
             LogIfVerbose("召唤法杖右键技能管理器已初始化");
         }
 
         public override void OnSceneChanged()
         {
+            CancelPreparation();
             SummonStaffAction.ResetPresetCache();
             base.OnSceneChanged();
+        }
+
+        protected override void OnDestroy()
+        {
+            if (holdEventSubscribed)
+            {
+                CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent -= OnHoldItemChanged;
+                holdEventSubscribed = false;
+            }
+            CancelPreparation();
+            base.OnDestroy();
+        }
+
+        protected override void OnAfterDeactivate()
+        {
+            CancelPreparation();
+            base.OnAfterDeactivate();
+        }
+
+        private void OnHoldItemChanged(CharacterMainControl character, DuckovItemAgent agent)
+        {
+            if (character != CharacterMainControl.Main) return;
+            CancelPreparation();
+        }
+
+        private void CancelPreparation()
+        {
+            if (preparation != null) StopCoroutine(preparation);
+            preparation = null;
+            preparationComplete = false;
+        }
+
+        private bool CanPrepare(CharacterMainControl player)
+        {
+            return abilityEnabled && player != null && player == targetCharacter
+                && player.Health != null && !player.Health.IsDead && IsHoldingSummonStaff(player);
+        }
+
+        private IEnumerator PrepareWhileHeld(CharacterMainControl player)
+        {
+            // 两阶段各占一帧，入口仅为实际手持；右键回调不再做首次全局 preset 扫描。
+            yield return null;
+            if (!CanPrepare(player)) { preparation = null; yield break; }
+            SummonStaffAction.PreparePreset();
+            yield return null;
+            if (!CanPrepare(player)) { preparation = null; yield break; }
+            BossRushProceduralSprites.GetCircleSprite();
+            BossRushProceduralSprites.GetRingSprite();
+            BossRush.Common.Effects.RingParticleEffect.GetSharedParticleMaterial();
+            preparationComplete = true;
+            preparation = null;
         }
 
         private void HandleSummonInput()

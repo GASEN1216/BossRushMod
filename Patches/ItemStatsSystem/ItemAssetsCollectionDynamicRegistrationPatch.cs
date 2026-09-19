@@ -1,6 +1,7 @@
 using System;
 using System.Reflection;
 using HarmonyLib;
+using Cysharp.Threading.Tasks;
 using ItemStatsSystem;
 using ItemStatsSystem.Data;
 
@@ -13,12 +14,14 @@ namespace BossRush.Patches.ItemStatsSystem
             internal readonly MethodBase Original;
             internal readonly Type PatchType;
             internal readonly string Label;
+            internal readonly bool RequirePostfix;
 
-            internal CriticalPatchSpec(MethodBase original, Type patchType, string label)
+            internal CriticalPatchSpec(MethodBase original, Type patchType, string label, bool requirePostfix = false)
             {
                 Original = original;
                 PatchType = patchType;
                 Label = label;
+                RequirePostfix = requirePostfix;
             }
         }
 
@@ -38,6 +41,31 @@ namespace BossRush.Patches.ItemStatsSystem
                 ModBehaviour.DevLog("[BossRushDynamicItemRegistry] [ERROR] TypeID=" + typeID + " 注册入口异常: " + e);
                 return false;
             }
+        }
+
+        // 非激活的运行时克隆 prefab 不执行 Awake；官方 InstantiateSync/Async 也只 Instantiate。
+        // 必须在交付实例前补初始化，否则拾取与使用共用的 AgentUtilities.Master 仍为 null。
+        internal static void InitializeInstance(Item item)
+        {
+            if (item == null || !BossRushDynamicItemRegistry.IsBossRushDynamicItemType(item.TypeID)) return;
+            if (item.AgentUtilities.Master == item) return;
+            try
+            {
+                item.Initialize();
+                if (item.AgentUtilities.Master != item) item.AgentUtilities.Initialize(item);
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.CriticalLog("dynamic-item-initialize-" + item.TypeID,
+                    "[BossRushDynamicItemRegistry] 物品实例初始化失败: " + item.TypeID + ", " + e.Message);
+            }
+        }
+
+        internal static async UniTask<Item> InitializeAsyncInstance(UniTask<Item> operation)
+        {
+            Item item = await operation;
+            InitializeInstance(item);
+            return item;
         }
 
         internal static void EnsureTree(ItemTreeData data)
@@ -79,7 +107,7 @@ namespace BossRush.Patches.ItemStatsSystem
                     continue;
                 }
 
-                if (!HasOwnedPrefix(spec.Original, harmony.Id, spec.PatchType))
+                if (!HasOwnedRequiredPatches(spec, harmony.Id))
                 {
                     try
                     {
@@ -94,7 +122,7 @@ namespace BossRush.Patches.ItemStatsSystem
                     }
                 }
 
-                if (HasOwnedPrefix(spec.Original, harmony.Id, spec.PatchType))
+                if (HasOwnedRequiredPatches(spec, harmony.Id))
                 {
                     verified++;
                 }
@@ -126,15 +154,15 @@ namespace BossRush.Patches.ItemStatsSystem
                 new CriticalPatchSpec(
                     AccessTools.Method(typeof(ItemAssetsCollection), "InstantiateSync", intArgument),
                     typeof(ItemAssetsCollectionInstantiateSyncDynamicRegistrationPatch),
-                    "ItemAssetsCollection.InstantiateSync(int)"),
+                    "ItemAssetsCollection.InstantiateSync(int)", true),
                 new CriticalPatchSpec(
                     AccessTools.Method(typeof(ItemAssetsCollection), "InstantiateAsync", intArgument),
                     typeof(ItemAssetsCollectionInstantiateAsyncDynamicRegistrationPatch),
-                    "ItemAssetsCollection.InstantiateAsync(int)"),
+                    "ItemAssetsCollection.InstantiateAsync(int)", true),
                 new CriticalPatchSpec(
                     AccessTools.Method(typeof(ItemAssetsCollection), "InstantiateAsync_Local", intArgument),
                     typeof(ItemAssetsCollectionInstantiateAsyncLocalDynamicRegistrationPatch),
-                    "ItemAssetsCollection.InstantiateAsync_Local(int)"),
+                    "ItemAssetsCollection.InstantiateAsync_Local(int)", true),
                 new CriticalPatchSpec(
                     AccessTools.Method(typeof(ItemTreeData), "InstantiateAsync", new Type[] { typeof(ItemTreeData) }),
                     typeof(ItemTreeDataInstantiateAsyncDynamicRegistrationPatch),
@@ -150,23 +178,31 @@ namespace BossRush.Patches.ItemStatsSystem
             };
         }
 
-        private static bool HasOwnedPrefix(MethodBase original, string owner, Type patchType)
+        private static bool HasOwnedRequiredPatches(CriticalPatchSpec spec, string owner)
         {
-            HarmonyLib.Patches patchInfo = Harmony.GetPatchInfo(original);
+            HarmonyLib.Patches patchInfo = Harmony.GetPatchInfo(spec.Original);
             if (patchInfo == null)
             {
                 return false;
             }
 
+            bool hasPrefix = false;
             foreach (Patch prefix in patchInfo.Prefixes)
             {
                 MethodInfo patchMethod = prefix.PatchMethod;
-                if (prefix.owner == owner && patchMethod != null && patchMethod.DeclaringType == patchType)
+                if (prefix.owner == owner && patchMethod != null && patchMethod.DeclaringType == spec.PatchType)
                 {
-                    return true;
+                    hasPrefix = true;
+                    break;
                 }
             }
-
+            if (!hasPrefix || !spec.RequirePostfix) return hasPrefix;
+            foreach (Patch postfix in patchInfo.Postfixes)
+            {
+                MethodInfo patchMethod = postfix.PatchMethod;
+                if (postfix.owner == owner && patchMethod != null && patchMethod.DeclaringType == spec.PatchType)
+                    return true;
+            }
             return false;
         }
     }
@@ -199,6 +235,12 @@ namespace BossRush.Patches.ItemStatsSystem
         {
             DynamicItemRegistrationPatchSupport.Ensure(typeID);
         }
+
+        [HarmonyPostfix]
+        private static void Postfix(Item __result)
+        {
+            DynamicItemRegistrationPatchSupport.InitializeInstance(__result);
+        }
     }
 
     [HarmonyPatch(typeof(ItemAssetsCollection), "InstantiateAsync", new Type[] { typeof(int) })]
@@ -209,6 +251,16 @@ namespace BossRush.Patches.ItemStatsSystem
         {
             DynamicItemRegistrationPatchSupport.Ensure(typeID);
         }
+
+        // 静态 InstantiateAsync 的方法体是编译器生成的状态机，反编译源里看不到它到底
+        // 走不走 InstantiateAsync_Local。不能靠猜：这里也包一层，InitializeInstance
+        // 自身幂等（Master 已经是自己就早返），重复初始化没有代价，漏一条路径就是崩溃。
+        [HarmonyPostfix]
+        private static void Postfix(int typeID, ref UniTask<Item> __result)
+        {
+            if (BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID))
+                __result = DynamicItemRegistrationPatchSupport.InitializeAsyncInstance(__result);
+        }
     }
 
     [HarmonyPatch(typeof(ItemAssetsCollection), "InstantiateAsync_Local", new Type[] { typeof(int) })]
@@ -218,6 +270,13 @@ namespace BossRush.Patches.ItemStatsSystem
         private static void Prefix(int typeID)
         {
             DynamicItemRegistrationPatchSupport.Ensure(typeID);
+        }
+
+        [HarmonyPostfix]
+        private static void Postfix(int typeID, ref UniTask<Item> __result)
+        {
+            if (BossRushDynamicItemRegistry.IsBossRushDynamicItemType(typeID))
+                __result = DynamicItemRegistrationPatchSupport.InitializeAsyncInstance(__result);
         }
     }
 
@@ -271,6 +330,7 @@ namespace BossRush.Patches.ItemStatsSystem
             }
 
             __result = UnityEngine.Object.Instantiate(prefab);
+            DynamicItemRegistrationPatchSupport.InitializeInstance(__result);
             return false;
         }
     }

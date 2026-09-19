@@ -128,18 +128,20 @@ def main():
         r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(?:=[^,\n]*)?,?\s*$",
         strip_comments(enum_block.group(1)), flags=re.M) if m != "None"]
 
-    catalog_sources = [p for p in sources if p.name.startswith("RandomEventCatalog")]
+    catalog_sources = [p for p in sources if p.name.startswith("RandomEventCatalog") or p.name == "RandomEventTempo.cs"]
     if not catalog_sources:
         return fail("找不到事件目录 RandomEventCatalog*.cs")
     catalog = strip_comments(
         "\n".join(p.read_text(encoding="utf-8", errors="ignore") for p in catalog_sources))
 
     subclasses = re.findall(r"class\s+([A-Za-z0-9_]+)\s*:\s*RandomEventBase", catalog)
-    if len(subclasses) < len(members):
-        return fail(
-            "RandomEventId 有 " + str(len(members)) + " 个事件（" + ", ".join(members)
-            + "），但只找到 " + str(len(subclasses)) + " 个 RandomEventBase 子类。"
-            "只加枚举不加实现，调度器抽中它就会空转掉一次触发机会。")
+    # 多个稳定 ID 可共享参数化生命周期，但每个 ID 必须有真实实例登记，不能只数子类。
+    implemented = re.findall(r"override\s+RandomEventId\s+Id\s*\{\s*get\s*\{\s*return\s+RandomEventId\.(\w+);", catalog)
+    profiles = re.findall(r"new\s+RandomEventTempo\(RandomEventId\.(\w+)\)", catalog)
+    if sorted(implemented + profiles) != sorted(members):
+        return fail("事件 ID 与具体实现/节奏实例登记不一致: " + str(implemented + profiles))
+    if profiles and not re.search(r"RandomEventTempo\(RandomEventId id\)\s*\{\s*_id = id;\s*\}", catalog):
+        return fail("节奏实例必须保留注册时的稳定 ID")
 
     if re.search(r"override\s+void\s+OnCleanup\s*\([^)]*\)\s*\{\s*\}", catalog):
         return fail("存在空的 OnCleanup 实现，事件结束后世界状态不会被还原")

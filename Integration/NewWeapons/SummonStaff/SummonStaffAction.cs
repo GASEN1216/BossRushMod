@@ -68,6 +68,7 @@ namespace BossRush
 
         protected override bool IsReadyInternal()
         {
+            if (cachedPreset == null) return false;
             CleanupDeadAllies();
             if (summonedAllies.Count >= SummonStaffConfig.SummonCount)
             {
@@ -122,7 +123,7 @@ namespace BossRush
                 CharacterMainControl player = CharacterMainControl.Main;
                 if (player == null) return;
 
-                CharacterRandomPreset preset = FindPreset();
+                CharacterRandomPreset preset = cachedPreset;
                 if (preset == null)
                 {
                     LogIfVerbose("未找到召唤预设，取消召唤");
@@ -192,8 +193,8 @@ namespace BossRush
                         LogIfVerbose("召唤友军异常: " + e.Message);
                     }
 
-                    // 每只之间让出一帧
-                    await UniTask.Yield();
+                    // NextFrame 保证分到不同帧；Yield 在相同 PlayerLoop 阶段可能仍在当前帧恢复。
+                    await UniTask.NextFrame();
                 }
 
                 if (!IsRequestValid(requestId, player, sceneIndex)) return;
@@ -294,7 +295,13 @@ namespace BossRush
                 return false;
             if (player.Health != null && player.Health.IsDead)
                 return false;
+            if (!SummonStaffManager.IsHoldingSummonStaff(player)) return false;
             return UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == sceneIndex;
+        }
+
+        internal static void PreparePreset()
+        {
+            FindPreset();
         }
 
         private static CharacterRandomPreset FindPreset()

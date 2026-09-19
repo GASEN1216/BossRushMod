@@ -30,7 +30,10 @@ try:
 except ImportError as exc:
     raise SystemExit("需要 shapely 2.1：python -m pip install --target Build/sky-island-python-deps shapely==2.1.2") from exc
 
-UNITY_PROJECT = Path("D:/code/ykf/duckov_modding-main/UnityFiles/BossRush")
+# 作者工程位置统一走 tools/unity_project_path.py；写死路径在工程搬家后会静默失效。
+from unity_project_path import CANDIDATES as _UNITY_CANDIDATES, find_unity_project as _find_unity_project
+_resolved_unity = _find_unity_project()
+UNITY_PROJECT = Path(_resolved_unity) if _resolved_unity else Path(_UNITY_CANDIDATES[0])
 CLEARANCE = 0.7
 BRIDGE_MAX_TURN_DEGREES = 10.0
 BRIDGE_ENTRY_EASE_METERS = 4.0

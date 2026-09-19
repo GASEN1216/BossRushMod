@@ -26,8 +26,18 @@ namespace BossRush
     {
         private const float BaseTrailDistance = 1.4f;
         private const float MinTrailDistance = 0.3f;
-        private const float Duration = 0.2f;
+        private const float Duration = 0.22f;
+        private const float ParticleTailDuration = 0.3f;
         private const int MaxPoolSize = 8;
+
+        /// <summary>每米弧长撒几颗。乘上 0.22 秒扫过的弧长（约 2.3–3.4 米）得到一条挥击的总量。</summary>
+        private const float ParticlesPerMeter = 26f;
+
+        /// <summary>单帧最多补几个采样点。60fps 下一帧只走 1/13 的弧，够用；掉帧时也不会一次撒爆。</summary>
+        private const int MaxSubStepsPerFrame = 12;
+
+        /// <summary>粒子上限。ParticlesPerMeter × 最长弧长（约 3.4 米）留一倍余量。</summary>
+        private const int MaxParticles = 192;
 
         private static readonly Stack<NewWeaponSwingFx> Pool = new Stack<NewWeaponSwingFx>();
 
@@ -40,7 +50,11 @@ namespace BossRush
         private float startAngle;
         private float sweepAngle;
         private bool isPlaying;
-        private bool emissionStopped;
+
+        // 手撒粒子需要的状态：上一帧撒到哪个角度、这一次挥击的半径与配色。
+        private float lastEmittedAngle;
+        private float trailRadius;
+        private float particleSize;
 
         /// <summary>
         /// 在 position/rotation 处播放一次拖尾。
@@ -87,6 +101,9 @@ namespace BossRush
 
             startAngle = -sweep * 0.5f;
             sweepAngle = sweep;
+            trailRadius = trailDistance;
+            particleSize = 0.22f * sizeScale;
+            lastEmittedAngle = startAngle;
 
             trailRoot.localRotation = Quaternion.Euler(0f, startAngle, 0f);
             if (trailNode != null)
@@ -98,7 +115,6 @@ namespace BossRush
             Restart();
 
             elapsed = 0f;
-            emissionStopped = false;
             isPlaying = true;
         }
 
@@ -133,17 +149,33 @@ namespace BossRush
             ParticleSystem.MainModule main = trailParticles.main;
             main.loop = false;
             main.playOnAwake = false;
-            main.duration = Duration;
-            main.maxParticles = 80;
+            // 手撒粒子期间系统必须一直在跑：duration 设成整条尾迹的寿命，
+            // 否则 0.22 秒一到系统就 Stop，后面几帧 Emit 会被吞掉。
+            main.duration = Duration + ParticleTailDuration;
+            main.maxParticles = MaxParticles;
             main.simulationSpace = ParticleSystemSimulationSpace.World;
 
+            // 位置由 Update 逐点给出，形状发射器不参与。
             ParticleSystem.ShapeModule shape = trailParticles.shape;
-            shape.enabled = true;
-            shape.shapeType = ParticleSystemShapeType.Sphere;
-            shape.radius = 0.12f;
+            shape.enabled = false;
 
+            // 自动发射一律关掉。rateOverDistance 是「这一帧走了多远就撒多少颗」，
+            // 但 Unity 把这一批全撒在**当帧的那一个位置**上；挥击用的是缓出曲线，
+            // 起手一帧就吃掉小半条弧，于是起手处堆成一坨、后半条几乎是空的
+            // ——2026-09-19 实测反馈的「只在一开始弄一坨」就是这个。
             ParticleSystem.EmissionModule emission = trailParticles.emission;
-            emission.enabled = true;
+            emission.enabled = false;
+            emission.rateOverTime = new ParticleSystem.MinMaxCurve(0f);
+            emission.rateOverDistance = new ParticleSystem.MinMaxCurve(0f);
+
+            // 尾迹尾部收细，避免整条粗细一样像一根棍子。
+            ParticleSystem.SizeOverLifetimeModule sizeOverLifetime = trailParticles.sizeOverLifetime;
+            sizeOverLifetime.enabled = true;
+            AnimationCurve taper = new AnimationCurve();
+            taper.AddKey(0f, 1f);
+            taper.AddKey(0.35f, 0.85f);
+            taper.AddKey(1f, 0.15f);
+            sizeOverLifetime.size = new ParticleSystem.MinMaxCurve(1f, taper);
 
             nodeObject.SetActive(true);
         }
@@ -153,14 +185,10 @@ namespace BossRush
             if (trailParticles == null) return;
 
             ParticleSystem.MainModule main = trailParticles.main;
-            main.startColor = new ParticleSystem.MinMaxGradient(coreColor, fadeColor);
+            main.startColor = Color.white;
             main.startLifetime = new ParticleSystem.MinMaxCurve(0.14f, 0.3f);
-            main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.6f);
-            main.startSizeMultiplier = 0.55f * sizeScale;
-
-            ParticleSystem.EmissionModule emission = trailParticles.emission;
-            emission.rateOverTime = new ParticleSystem.MinMaxCurve(0f);
-            emission.rateOverDistance = new ParticleSystem.MinMaxCurve(70f);
+            main.startSpeed = new ParticleSystem.MinMaxCurve(0f);
+            main.startSizeMultiplier = 0.22f * sizeScale;
 
             ParticleSystem.ColorOverLifetimeModule colorOverLifetime = trailParticles.colorOverLifetime;
             colorOverLifetime.enabled = true;
@@ -182,8 +210,6 @@ namespace BossRush
         private void Restart()
         {
             if (trailParticles == null) return;
-            ParticleSystem.EmissionModule emission = trailParticles.emission;
-            emission.enabled = true;
             trailParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             trailParticles.Play(true);
         }
@@ -195,23 +221,59 @@ namespace BossRush
             elapsed += Time.deltaTime;
             float t = Mathf.Clamp01(elapsed / Duration);
 
+            // 与霜之哀伤同款缓出曲线，起手快、收势慢
+            float easeT = 1f - Mathf.Pow(1f - t, 3f);
+            float currentAngle = startAngle + sweepAngle * easeT;
+
             if (trailRoot != null)
             {
-                // 与霜之哀伤同款缓出曲线，起手快、收势慢
-                float easeT = 1f - Mathf.Pow(1f - t, 3f);
-                trailRoot.localRotation = Quaternion.Euler(0f, startAngle + sweepAngle * easeT, 0f);
+                trailRoot.localRotation = Quaternion.Euler(0f, currentAngle, 0f);
             }
 
-            if (!emissionStopped && t >= 0.8f && trailParticles != null)
-            {
-                emissionStopped = true;
-                ParticleSystem.EmissionModule emission = trailParticles.emission;
-                emission.enabled = false;
-            }
+            EmitAlongArc(currentAngle);
+            lastEmittedAngle = currentAngle;
 
-            if (t >= 1f)
+            // 挥击停发后让世界空间粒子自然淡出，不能在 0.22 秒时直接清空整条尾迹。
+            if (elapsed >= Duration + ParticleTailDuration)
             {
                 Recycle();
+            }
+        }
+
+        /// <summary>
+        /// 在上一帧与这一帧之间按等弧长插值补点，逐点 <see cref="ParticleSystem.Emit"/>。
+        /// 这是「拖尾均匀」的关键：不能把一帧的量全撒在当帧位置上。
+        /// </summary>
+        private void EmitAlongArc(float currentAngle)
+        {
+            if (trailParticles == null || trailRoot == null) return;
+
+            float deltaDegrees = currentAngle - lastEmittedAngle;
+            if (Mathf.Abs(deltaDegrees) < 0.001f) return;
+
+            float arcLength = Mathf.Abs(deltaDegrees) * Mathf.Deg2Rad * trailRadius;
+            int steps = Mathf.Clamp(Mathf.CeilToInt(arcLength * ParticlesPerMeter), 1, MaxSubStepsPerFrame);
+
+            Transform pivotParent = trailRoot.parent != null ? trailRoot.parent : transform;
+            ParticleSystem.EmitParams emitParams = new ParticleSystem.EmitParams();
+            emitParams.applyShapeToPosition = false;
+            emitParams.startColor = Color.white;
+            emitParams.velocity = Vector3.zero;
+
+            for (int i = 1; i <= steps; i++)
+            {
+                float angle = Mathf.Lerp(lastEmittedAngle, currentAngle, (float)i / steps);
+                Vector3 local = Quaternion.Euler(0f, angle, 0f) * new Vector3(0f, 0f, trailRadius);
+                // 加一点点抖动，免得整条尾迹是一根几何上完美的细线。
+                local += new Vector3(
+                    UnityEngine.Random.Range(-0.05f, 0.05f),
+                    UnityEngine.Random.Range(-0.06f, 0.06f),
+                    UnityEngine.Random.Range(-0.05f, 0.05f));
+
+                emitParams.position = pivotParent.TransformPoint(local);
+                emitParams.startSize = particleSize * UnityEngine.Random.Range(0.75f, 1.25f);
+                emitParams.startLifetime = UnityEngine.Random.Range(0.14f, 0.3f);
+                trailParticles.Emit(emitParams, 1);
             }
         }
 
@@ -219,7 +281,6 @@ namespace BossRush
         {
             if (!isPlaying) return;
             isPlaying = false;
-            emissionStopped = false;
 
             if (trailParticles != null)
             {

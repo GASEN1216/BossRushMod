@@ -301,8 +301,8 @@ export const INFOBOX: Record<string, Infobox> = {
     rows: [
       { zh: '品质', en: 'Rarity', vz: '6', tier: 6 },
       { zh: '部件', en: 'Pieces', vz: '霜冠（头盔）/ 寒冰铠甲（护甲）', ve: 'Frost Crown / Ice Armor' },
-      { zh: '耐久', en: 'Durability', vz: '999（近似永久）', ve: '999 (effectively permanent)' },
-      { zh: '套装效果', en: 'Set bonus', vz: '寒冰之护：冰伤转治疗 + 击杀冰葬霜爆 + 反击冻结', ve: 'Ice heals you, kills unleash a frost nova, freezing riposte' },
+      { zh: '耐久', en: 'Durability', vz: '100' },
+      { zh: '套装效果', en: 'Set bonus', vz: '冰伤回补；每3次直接击杀触发3米/8冰伤/最多3敌冻结，6秒冷却；受击冻结', ve: 'Ice healing; every 3 direct kills: 3m nova, 8 damage, up to 3 frozen foes, 6s cooldown; freezing riposte' },
       { zh: '获取', en: 'Availability', vz: '「???」Boss 掉落（每件 20%，原版地图也算）/ 叮当商店好感 6 级', ve: "\"???\" boss drop (20% per piece, vanilla raids too) / Dingdang's shop at affinity 6" },
       { zh: '物品 ID', en: 'Internal ID', vz: '500053 / 500054' },
     ],
@@ -314,8 +314,8 @@ export const INFOBOX: Record<string, Infobox> = {
     rows: [
       { zh: '品质', en: 'Rarity', vz: '6', tier: 6 },
       { zh: '部件', en: 'Pieces', vz: '雷神之角（头盔）/ 雷霆战甲（护甲）', ve: 'Thunder Horns / Storm Plate' },
-      { zh: '耐久', en: 'Durability', vz: '999（近似永久）', ve: '999 (effectively permanent)' },
-      { zh: '套装效果', en: 'Set bonus', vz: '雷霆之怒：电伤转治疗 + 击杀引雷连锁 + 反击雷击 AOE', ve: 'Shock heals you, kills chain lightning, lightning AoE riposte' },
+      { zh: '耐久', en: 'Durability', vz: '100' },
+      { zh: '套装效果', en: 'Set bonus', vz: '电伤回补；每3次直接击杀触发4米/12电伤/最多2敌单跳，5秒冷却；反震3米/12电伤/5秒', ve: 'Shock healing; every 3 direct kills: 4m discharge, 12 damage, 2 foes, 5s cooldown; counter: 3m/12 damage/5s' },
       { zh: '获取', en: 'Availability', vz: '风暴区 Boss 掉落（每件 20%，原版地图也算）/ 叮当商店好感 6 级', ve: "Storm Zone boss drop (20% per piece, vanilla raids too) / Dingdang's shop at affinity 6" },
       { zh: '物品 ID', en: 'Internal ID', vz: '500055 / 500056' },
     ],

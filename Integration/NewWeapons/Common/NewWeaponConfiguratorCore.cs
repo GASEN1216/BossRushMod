@@ -115,6 +115,7 @@ namespace BossRush
 
                 ItemAgent modelAgent = null;
                 EquipmentFactory.TryGetLoadedModel(spec.ModelBaseName, out modelAgent);
+                ApplyModelFit(modelAgent, spec.TypeId);
 
                 ApplyStats(item, spec.Stats);
                 ApplyMeleeAgent(item, modelAgent);
@@ -190,6 +191,39 @@ namespace BossRush
             }
             return !string.IsNullOrEmpty(model) &&
                    baseName.Equals(model, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static void ApplyModelFit(ItemAgent agent, int typeId)
+        {
+            if (agent == null) return;
+            Transform root = agent.transform;
+            const string fitName = "BossRush_WeaponFit_20260919";
+            if (root.Find(fitName) != null) return;
+            bool dagger = typeId == NewWeaponIds.ViperDaggerTypeId;
+            bool centeredGrip = typeId == NewWeaponIds.SummonStaffTypeId || typeId == NewWeaponIds.FrostSpearTypeId;
+            if (!dagger && !centeredGrip) return;
+
+            HashSet<Transform> visuals = new HashSet<Transform>();
+            foreach (Renderer renderer in agent.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null || renderer is ParticleSystemRenderer) continue;
+                Transform visual = renderer.transform;
+                if (visual == root) continue;
+                while (visual.parent != root) visual = visual.parent;
+                visuals.Add(visual);
+            }
+            if (visuals.Count == 0) return;
+            Transform fit = new GameObject(fitName).transform;
+            fit.SetParent(root, false);
+            foreach (Transform visual in visuals)
+            {
+                visual.SetParent(fit, false);
+                // 当前两支长柄 bundle 的 Mesh 中心约零，却统一偏移 +0.8m；
+                // 清掉这段平移，使握持点回到杆身中部，保留作者旋转与尺寸。
+                if (centeredGrip) visual.localPosition = Vector3.zero;
+            }
+            // 匕首以手部挂点为中心缩小，也同时把原 -0.6m 偏移收近到 -0.48m。
+            fit.localScale = dagger ? Vector3.one * 0.8f : Vector3.one;
         }
 
         private static void ApplyStats(Item item, Dictionary<string, float> stats)

@@ -10,8 +10,21 @@
 $ErrorActionPreference = 'Stop'
 
 $ModRoot     = Split-Path -Parent $PSScriptRoot
-$UnityProj   = 'D:\code\ykf\duckov_modding-main\UnityFiles\BossRush'
-$UnityExe    = 'C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe'
+# 作者工程位置：环境变量优先，其次仓库同级目录，最后历史位置（与 tools/unity_project_path.py 同口径）。
+$UnityProj   = $env:BOSSRUSH_UNITY_PROJECT
+if (-not $UnityProj) {
+    $sibling = Join-Path (Split-Path -Parent $ModRoot) 'duckov_modding-main\UnityFiles\BossRush'
+    if (Test-Path (Join-Path $sibling 'Assets')) { $UnityProj = $sibling }
+    else { $UnityProj = 'D:\code\ykf\duckov_modding-main\UnityFiles\BossRush' }
+}
+# Editor 版本必须与 ProjectVersion.txt 一致；换版本会触发整工程重新导入。
+$UnityExe    = $env:BOSSRUSH_UNITY_EDITOR
+if (-not $UnityExe -or -not (Test-Path $UnityExe)) {
+    $UnityExe = 'E:\Unity\2022.3.62f3\Editor\Unity.exe'
+}
+if (-not (Test-Path $UnityExe)) {
+    $UnityExe = 'C:\Program Files\Unity\Hub\Editor\2022.3.62f3\Editor\Unity.exe'
+}
 $SrcDir      = Join-Path $ModRoot 'Assets\ui\Codex'
 $DstDir      = Join-Path $UnityProj 'Assets\UI\Codex'
 $ExportPath  = Join-Path $UnityProj 'CodexExport\codex_portraits'

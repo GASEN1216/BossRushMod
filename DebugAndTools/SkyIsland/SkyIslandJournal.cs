@@ -159,7 +159,7 @@ namespace BossRush
                 "Blocks breezes and half of a gale. Draws gnats into its light, where they cannot bite or dodge shots. Clear them before it goes out. The Bell Court lamp also needs one."));
             Use(text, BossRushItemIds.SkyIslandWindwardIncense, L10n.T("挡风、加快耐力恢复，也能驱蚋。镜水寺风晶灯需要一炷。回响唤起的栈道与桥上大风也能挡。",
                 "Blocks wind, speeds stamina recovery and repels gnats. The Mirrorwater Temple lamp needs one. Also blocks gales on the boardwalk and bridges during the echo fight."));
-            Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风（含回响）的风暴伤害 −{0}%，生命上限与耐力恢复小幅提升",
+            Use(text, BossRushItemIds.SkyIslandQinglanCharm, string.Format(L10n.T("本趟噬风（含回响）的风暴伤害 -{0}%，生命上限与耐力恢复小幅提升",
                 "{0}% less damage from the Windeater's storm (its echo included) this raid, a little more max health and stamina recovery"),
                 Percent(SkyIslandFieldcraftRules.CharmStormWard)));
             Use(text, BossRushItemIds.SkyIslandHomecomingBento, L10n.T("菜畦重新开张之后在岛上吃，算作晴禾的归航菜；回响遗存里偶尔有一份",

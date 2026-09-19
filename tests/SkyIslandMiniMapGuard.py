@@ -13,16 +13,23 @@
 """
 import hashlib
 import json
+import sys
 from pathlib import Path
 
 from cs_source_util import clean_source
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'tools'))
+from unity_project_path import describe_missing, find_unity_project  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 PNG = ROOT / 'ArtSource/SkyIsland/Minimap/sky_island_minimap.png'
 META = ROOT / 'ArtSource/SkyIsland/Validation/sky_island_minimap.json'
 LAYOUT = ROOT / 'ArtSource/SkyIsland/layout.json'
 NEWLINE = chr(10)
-BUILDER = Path(r'D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/Assets/Editor/SkyIslandRaidBuilder.cs')
+# 作者工程位置由 tools/unity_project_path.py 统一解析：写死路径在工程搬家后会让
+# 下面第 3 组检查静默跳过，看上去一直是 PASS。
+_UNITY_PROJECT = find_unity_project()
+BUILDER = (Path(_UNITY_PROJECT) / 'Assets/Editor/SkyIslandRaidBuilder.cs') if _UNITY_PROJECT else None
 
 
 def png_size(path):
@@ -123,7 +130,9 @@ def main():
 
     # ---- 3) Unity 构建器确实装配 MiniMapSettings ----
     # 作者工程是 local-only（不进 git），因此缺失时只跳过，不当作失败。
-    if BUILDER.is_file():
+    if BUILDER is None or not BUILDER.is_file():
+        print('SkyIslandMiniMapGuard: SKIP 第 3 组（Unity 构建器检查）—— ' + describe_missing())
+    if BUILDER is not None and BUILDER.is_file():
         builder = clean_source(BUILDER.read_text(encoding='utf-8-sig'))
         # 断言真实的装配调用，不是光看类型名出现过：
         # 只找 'MiniMapSettings' 会被 using 和 MapEntry 的类型限定名满足。

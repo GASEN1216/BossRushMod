@@ -612,7 +612,7 @@ namespace BossRush
                 {
                     // 使用文本作为后备
                     TextMeshProUGUI iconText = iconObj.AddComponent<TextMeshProUGUI>();
-                    iconText.text = "❄";
+                    iconText.text = "◇";
                     iconText.fontSize = COLD_QUENCH_ICON_FONT_SIZE;
                     iconText.color = new Color(0.5f, 0.8f, 1f);
                     iconText.alignment = TextAlignmentOptions.Center;

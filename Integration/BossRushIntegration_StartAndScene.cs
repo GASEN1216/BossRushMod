@@ -307,7 +307,7 @@ namespace BossRush
                     // 达到 10 个时显示横幅提示
                     if (item105PurchaseCount == 10)
                     {
-                        ShowBigBanner(L10n.T("喂喂，你这家伙来这进货了是吗(*´･д･)?", "Hey, are you here to stock up? (*´･д･)?"));
+                        ShowBigBanner(L10n.T("喂喂，你这家伙来这进货了是吗(*´·д·)?", "Hey, are you here to stock up? (*´·д·)?"));
                     }
                 }
             }

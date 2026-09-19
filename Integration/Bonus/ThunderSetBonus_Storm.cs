@@ -2,15 +2,11 @@
 // ThunderSetBonus_Storm.cs - 雷霆套装「引雷术」与环境电弧
 // ============================================================================
 // 模块说明：
-//   引雷术：主角亲手击杀敌人时，以尸体为中心向 6 米内最多 3 个存活敌人放出连锁闪电（35 电伤）。
-//   若这一跳打死了人，就从**其中一具**尸体继续下一跳，最多 3 跳、每跳伤害 ×0.75。
+//   引雷术：累计 3 次主角直接击杀后，向尸体 4 米内最多 2 个敌人各放出 12 电伤闪电。
+//   5 秒冷却，只放一跳；保留原线性调度与代数保护，杜绝击杀自续清场。
 //
-//   为什么下一跳由本协程自己接、而不是靠 Hurt 同步派发的 OnDead 再进来一次：
-//   后者会让一跳里死掉的每个目标各起一条链（3 目标 × 3 跳 = 最坏 39 次结算与 39 道电弧，
-//   全挤在 0.24 秒内），既与「最多 3 跳」的说明不符，也会在密集波次里抖帧。
-//   现在整条链是一条线：每跳至多 3 次伤害、全程至多 9 次，且同一敌人在一条链里只吃一次
-//   （thunderChainHits 去重）。链自身的伤害带 isFromBuffOrEffect，加上「在飞」标志双保险，
-//   绝不会反过来再起新链。
+//   调度保留线性跳数上限与去重；当前最多一跳，绝不靠 Hurt 同步派发的 OnDead 再起链。
+//   链自身带 isFromBuffOrEffect，加上在飞标志，避免同一次击杀递归传播。
 //
 //   重入安全：Health.OnDead 回调里只做过滤与调度，实际扫描/结算延后到协程；结算时把当前跳数
 //   写进 thunderChainDepth 供嵌套 OnDead 读取，try/finally 保证归零。
@@ -28,12 +24,12 @@ namespace BossRush
     {
         #region 引雷术配置
 
-        private const float THUNDER_CHAIN_RADIUS = 6f;               // 连锁搜索半径（米）
-        private const int THUNDER_CHAIN_MAX_TARGETS = 3;             // 每跳最多目标数
-        private const float THUNDER_CHAIN_DAMAGE = 35f;              // 首跳电伤
-        private const int THUNDER_CHAIN_MAX_DEPTH = 3;               // 最多跳数
+        private const float THUNDER_CHAIN_RADIUS = 4f;               // 连锁搜索半径（米）
+        private const int THUNDER_CHAIN_MAX_TARGETS = 2;             // 每跳最多目标数
+        private const float THUNDER_CHAIN_DAMAGE = 12f;              // 首跳电伤
+        private const int THUNDER_CHAIN_MAX_DEPTH = 1;               // 最多跳数
         private const float THUNDER_CHAIN_DAMAGE_DECAY = 0.75f;      // 每跳伤害衰减
-        private const float THUNDER_CHAIN_FIRST_HOP_COOLDOWN = 0.4f; // 两条链之间的最小间隔（秒）
+        private const float THUNDER_CHAIN_FIRST_HOP_COOLDOWN = 5f; // 两条链之间的最小间隔（秒）
         private const float THUNDER_CHAIN_HOP_DELAY = 0.08f;         // 每跳延后（给电弧动画留时间，也脱离原调用栈）
         private const float THUNDER_AMBIENT_ARC_INTERVAL = 3f;       // 环境电弧平均间隔（秒）
         private const float THUNDER_AMBIENT_ARC_JITTER = 1f;         // 环境电弧间隔抖动（秒）
@@ -46,6 +42,8 @@ namespace BossRush
         private bool thunderChainInFlight = false;
         // 本条链已命中过的目标，跨跳去重：同一敌人不该被同一条链电两次
         private readonly List<Health> thunderChainHits = new List<Health>(THUNDER_CHAIN_MAX_TARGETS * THUNDER_CHAIN_MAX_DEPTH);
+        private const int THUNDER_CHAIN_KILLS_REQUIRED = 3;
+        private int thunderChainKillCount;
         private float lastThunderChainTime = -999f;
         private Coroutine thunderAmbientArcCoroutine = null;
 
@@ -59,6 +57,7 @@ namespace BossRush
             thunderChainInFlight = false;
             thunderChainHits.Clear();
             lastThunderChainTime = -999f;
+            thunderChainKillCount = 0;
         }
 
         /// <summary>
@@ -74,12 +73,14 @@ namespace BossRush
                 // 两条一起挡住「链打死人 → 又起一条链」的指数分叉。
                 if (thunderChainInFlight || thunderChainDepth != 0) return;
                 if (damageInfo.isFromBuffOrEffect) return;
-                if (Time.time - lastThunderChainTime < THUNDER_CHAIN_FIRST_HOP_COOLDOWN) return;
 
                 CharacterMainControl victim;
                 Vector3 position;
                 if (!TryResolveSetBonusKillVictim(target, damageInfo, out victim, out position)) return;
 
+                if (thunderChainKillCount < THUNDER_CHAIN_KILLS_REQUIRED) thunderChainKillCount++;
+                if (thunderChainKillCount < THUNDER_CHAIN_KILLS_REQUIRED || Time.time - lastThunderChainTime < THUNDER_CHAIN_FIRST_HOP_COOLDOWN) return;
+                thunderChainKillCount = 0;
                 lastThunderChainTime = Time.time;
                 thunderChainInFlight = true;
                 thunderChainHits.Clear();

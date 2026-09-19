@@ -118,6 +118,9 @@ namespace BossRush
                 if (health.CurrentHealth > beforeHp)
                 {
                     lastTriggerTime = Time.time;
+                    // 复用官方伤害数字池，显示实际回血（满血钳制后），与龙套装一致。
+                    FX.PopText.Pop("+" + (health.CurrentHealth - beforeHp).ToString("F1"),
+                        player.transform.position + Vector3.up * 2f, new Color(0.2f, 1f, 0.2f), 1.2f, null);
 
                     // 表现层：在玩家正前方亮一层护盾环 + 音效（配色取自描述文案的 #64B5F6）。
                     // 触发点本身已有 0.5 秒冷却，这里不会连闪。

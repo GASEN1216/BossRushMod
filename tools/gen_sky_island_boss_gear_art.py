@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """天空岛头目 / 岛主专属装备的美术：Tripo 输入概念图 + 与概念图同一件东西的背包图标。
 
-两步，都可断点续跑（成品已存在就跳过；要重画必须连 output/ 里的原图一起删，口径同 gen_codex_art）：
+两步，都可断点续跑（成品已存在就跳过；概念图与参考图编辑使用各自缓存）：
 1. concepts：单体居中、浅灰纯色底、均匀柔光无投影——这是 Tripo image-to-3D 的输入要求（强方向光会被烘进 albedo 拆不掉）。
    输出 output/sky_island_boss_gear_concepts/<件名>.png；由 owner 在 Tripo 网页手动上传生成 GLB（API 钱包未开通，上传无法自动化），
    GLB 存到 ArtSource/SkyIsland/BossGear/<件名>.glb，再跑 tools/sky_island_boss_gear_import.py。
@@ -138,7 +138,7 @@ def run_concepts(pieces):
         print("[concept] " + name, flush=True)
         last = ""
         for attempt in range(1, 4):
-            result = subprocess.run([sys.executable, base.IMAGEGEN, "generate", "--model", IMAGE_MODEL,
+            result = subprocess.run([sys.executable, base.tool_paths()[0], "generate", "--model", IMAGE_MODEL,
                                      "--size", "1024x1024", "--n", "1", "--no-augment",
                                      "--out", dst, "--prompt", desc + CONCEPT_STYLE],
                                     capture_output=True, text=True, timeout=420)
@@ -199,7 +199,7 @@ def run_icons(pieces):
         if picture.mode == "RGBA" and picture.split()[-1].getextrema()[0] < 255:
             source = raw  # 网关直接回了透明图，跳过抠图
         else:
-            subprocess.run([sys.executable, base.CHROMA, "--input", raw, "--out", cut, "--auto-key", "border",
+            subprocess.run([sys.executable, base.tool_paths()[1], "--input", raw, "--out", cut, "--auto-key", "border",
                             "--soft-matte", "--transparent-threshold", "12", "--opaque-threshold", "220", "--despill"],
                            capture_output=True, text=True, timeout=180)
             source = cut if os.path.exists(cut) else raw

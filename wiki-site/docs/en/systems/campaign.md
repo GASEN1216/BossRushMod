@@ -52,7 +52,7 @@
 
 - Objectives track themselves. There's nothing extra to press.
 - Once you're in, a tracker strip appears in the **top-right** of the screen, one line per
-  objective: `·` in progress, `✓` done, `✗` failed for this run. Counted objectives show your
+  objective: `·` in progress, `√` done, `×` failed for this run. Counted objectives show your
   current tally.
 - Playing a **different** mode won't confuse it. Tracking only starts when you enter the mode that
   chapter names, and nothing that happens anywhere else counts.
@@ -194,7 +194,7 @@ Wave 4 only meets the wave objective. Zombie Mode offers extraction after Boss w
   one and the progress resets for the next attempt. The contract itself never drops, so retry as
   often as you want.
 - **Do kills by others count?** Usually only fatal blows attributed to the main player count. Ordinary companions, pets and environmental finishing blows do not. **In Faction War, kills by a Boss you hired are attributed to you**, subject to the entry's other mode and target requirements.
-- **I broke the no-damage objective — should I finish the run?** The tracker marks it `✗`. That
+- **I broke the no-damage objective — should I finish the run?** The tracker marks it `×`. That
   objective is done for this run and the others can't make up for it. Restarting is faster.
 - **Does Infinite Hell count as a Chapter 1 clear?** No. Chapter 1 only accepts the standard tiers.
 - **Do the Chapter 2 melee kills have to be Bosses?** No, regular enemies count too — the weapon in

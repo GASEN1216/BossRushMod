@@ -50,7 +50,7 @@ Rules, numbers and how to get each item are on the online wiki.
 
 ## Configuration
 
-Two entry points: `ModConfig`, and `StreamingAssets/BossRushModConfig.txt` (JSON) in the game folder. All gameplay systems are on by default; the config only exposes tuning knobs. Common keys:
+Two entry points: `ModConfig`, and `StreamingAssets/BossRushModConfig.txt` (JSON) in the game folder. Gameplay systems are on by default. Duckov Chance can be disabled; other content systems expose tuning options. Common keys:
 
 | Key | Default | Description |
 | --- | --- | --- |

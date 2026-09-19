@@ -35,6 +35,7 @@ CONFIG_KEYS = [
 # 手工登记正是当初漏掉 PetNest / 图鉴 / 词缀锻造 / 随机事件的原因。
 # 这里只钉住“扫描至少应该发现这些”，防止正则失效后守卫变成空转。
 EXPECTED_DELEGATED_KEYS = {
+    "_RandomEventsEnabled",
     "_RandomEventsFrequency",
     "_ModeGAbandonHotkey",
 }
@@ -48,7 +49,6 @@ CONTENT_SYSTEM_SWITCHES = {
     "_DailyReportEnabled": "dailyReportEnabled",
     "_CodexEnabled": "codexEnabled",
     "_AffixForgeEnabled": "affixForgeEnabled",
-    "_RandomEventsEnabled": "randomEventsEnabled",
     "_CampaignEnabled": "campaignEnabled",
     "_BackMountainEnabled": "backMountainEnabled",
     "_ModeHEnabled": "modeHEnabled",
@@ -147,6 +147,12 @@ def check_content_system_switches(scanned_keys):
         if ("config." + field + " = true;") not in force:
             return ("ForceContentSystemSwitchesOn does not force " + field +
                     "：老版本存下的 false 会把玩家永久关在 " + key + " 外面")
+
+    if "config.randomEventsEnabled = true;" in force:
+        return "randomEventsEnabled is player-controlled and must not be forced on"
+    problem = check_default_is_true(all_text, "_RandomEventsEnabled", "randomEventsEnabled")
+    if problem:
+        return problem
 
     load_from_file = extract_method(SOURCE.read_text(encoding="utf-8"),
                                     "private void LoadConfigFromFile()")

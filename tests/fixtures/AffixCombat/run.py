@@ -40,6 +40,16 @@ def main():
     generated += member(mutators, "private static IEnumerator DispatchEnemyKilledNextFrame(") + '\n'
     generated += 'internal static void BindVolatile(MutatorContext ctx) ' + callback + '\n}\n'
     generated += member(models, "public sealed class ZombieModeRunOnlyRecord") + '\n}'
+    forge = (ROOT / "Integration/AffixForge/AffixForgeSystem.cs").read_text(encoding="utf-8-sig")
+    item_data = (ROOT / "Integration/AffixForge/AffixItemData.cs").read_text(encoding="utf-8-sig")
+    generated += "\nnamespace BossRush { public static class AffixForgeSystem {\n"
+    for signature in ("public static bool CanAffixForge(", "public static int GetMoneyCost(",
+                      "public static int GetStoneCost(", "public static int GetUnlockedSlotCount(",
+                      "public static int GetSlotCount("):
+        generated += member(forge, signature) + "\n"
+    generated += "} public static partial class AffixItemData {\n"
+    generated += member(item_data, "public static AffixEquipMask GetEquipMask(") + "\n}}"
+    generated = "using ItemStatsSystem;\n" + generated
     extracted = OUT / "ExplosionEntrypoints.cs"
     extracted.write_text(generated, encoding="utf-8")
     sources = [ROOT / "Integration/AffixForge" / name for name in (

@@ -400,10 +400,9 @@ namespace BossRush
                     config.mutatorCount = loadedMutatorCount;
 
                     // Mode H 是恒开内容系统；保留旧键只为兼容，不再读取历史 false。
-                    // 八个内容系统总开关不再从 ModConfig 读取：老版本可能存过 false，
+                    // 恒开的内容总开关不读取历史 false；随机事件保留玩家选择，
                     // 读回来会把玩家永久关在系统外面（UI 已撤，无处改回）。
-                    LoadRandomEventsConfigFromModConfig(intLoadMethod);
-                    LoadBackMountainConfigFromModConfig(boolLoadMethod);
+                    LoadRandomEventsConfigFromModConfig(intLoadMethod, boolLoadMethod);
                     DevLog("[BossRush] 从 ModConfig 加载配置: waveIntervalSeconds=" + loadedWave + ", enableRandomBossLoot=" + loadedLoot + ", useLegacyBossLootProbabilities=" + loadedLegacyLoot + ", useInteractBetweenWaves=" + loadedInteract + ", lootBoxBlocksBullets=" + loadedCover + ", infiniteHellBossesPerWave=" + loadedHell + ", bossStatMultiplier=" + loadedBossStat + ", milestoneRestBonusSeconds=" + loadedMilestone + ", modeDEnemiesPerWave=" + loadedModeD + ", enableDragonDash=" + loadedDragonDash + ", achievementHotkey=" + loadedHotkey + ", useWolfModelForWildHorn=" + loadedWolfModel + ", enableDeathWraithSystem=" + loadedDeathWraith + ", enableMutators=" + loadedMutators + ", mutatorCount=" + loadedMutatorCount);
                 }
                 else
@@ -598,7 +597,6 @@ namespace BossRush
                 if (TryLoadCodexSingleModConfigValue(changedKey, loadMethod)) return true;
                 if (TryLoadAffixForgeSingleModConfigValue(changedKey, loadMethod)) return true;
                 if (TryLoadRandomEventsSingleModConfigValue(changedKey, loadMethod)) return true;
-                if (TryLoadBackMountainSingleModConfigValue(changedKey, loadMethod)) return true;
             }
             catch (Exception ex)
             {
@@ -885,12 +883,11 @@ namespace BossRush
                     DevLog("[BossRush] 注册变异词条配置项失败: " + ex.Message);
                 }
 
-                // 遗种巢 / 日报 / 图鉴 / 词缀锻造 / 随机事件 / 鸭王征程 /
+                // 遗种巢 / 日报 / 图鉴 / 词缀锻造 / 鸭王征程 /
                 // 竞技场后山 / Mode H 是默认内容，总开关不再
                 // 暴露给玩家（恒为开启，见 Config/ConfigContentSystemSwitches.cs）。
                 // 频率档这类调参旋钮照常暴露。
-                RegisterRandomEventsModConfigOptions(addSliderMethod);
-                RegisterBackMountainModConfigOptions(addBoolMethod);
+                RegisterRandomEventsModConfigOptions(addSliderMethod, addBoolMethod);
                 // ========== 数值滑条类配置 ==========
                 
                 // 波次间休息时间

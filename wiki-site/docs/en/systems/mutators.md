@@ -8,14 +8,14 @@ At the start of every run, the system draws a handful of mutators from a pool of
 
 ## Applicable Modes
 
-- **Standard BossRush** — Rolls mutators?: ✅
-- **Infinite Hell** — Rolls mutators?: ✅
-- **From Scratch (Mode D)** — Rolls mutators?: ✅
-- **Faction War (Mode E)** — Rolls mutators?: ✅
-- **Blood Hunt (Mode F)** — Rolls mutators?: ✅
-- **Fate Echo (Mode G)** — Rolls mutators?: ❌ (the nine-wave counter schedule is fixed)
-- **Black Market Duck Cup (Mode H)** — Rolls mutators?: ❌ (what the odds sheet says is what you get)
-- **Zombie Mode** — Rolls mutators?: ❌ (separate system)
+- **Standard BossRush** — Rolls mutators?: √
+- **Infinite Hell** — Rolls mutators?: √
+- **From Scratch (Mode D)** — Rolls mutators?: √
+- **Faction War (Mode E)** — Rolls mutators?: √
+- **Blood Hunt (Mode F)** — Rolls mutators?: √
+- **Fate Echo (Mode G)** — Rolls mutators?: × (the nine-wave counter schedule is fixed)
+- **Black Market Duck Cup (Mode H)** — Rolls mutators?: × (what the odds sheet says is what you get)
+- **Zombie Mode** — Rolls mutators?: × (separate system)
 
 ## How to See Active Mutators
 
@@ -34,7 +34,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 
 ## Mutator Pool (28 Total)
 
-### ⚔ Enemy Buffs (9)
+### ◆ Enemy Buffs (9)
 
 - **Swift Storm** — Effect: All enemies movement speed **+30%**
 - **Iron Fortress** — Effect: All enemies max HP **+50%** (existing enemies gain HP immediately)
@@ -43,7 +43,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 - **Ratswarm** — Effect: All enemies size **×0.6**, speed **+45%** (smaller and faster)
 - **Bloodhounds** — Effect: All enemies have infinite aggro range — **permanently lock onto you**
 - **Vicious** — Effect: All enemies deal **+30%** gun and melee damage
-- **Enemy Marksman** — Effect: All enemies gun scatter **−25%** (shots are tighter)
+- **Enemy Marksman** — Effect: All enemies gun scatter **-25%** (shots are tighter)
 - **Frenzy** — Effect: All enemies movement speed and fire rate **+20%**
 
 ### ★ Player Boons (11)
@@ -51,7 +51,7 @@ At the start of every run, the system draws a handful of mutators from a pool of
 - **Fleet Footed** — Effect: Player walk/run speed **+35%**
 - **Sharpshooter** — Effect: Player gun crit rate **+30%**
 - **Trigger Discipline** — Effect: Player fire rate **+25%**
-- **Steady Aim** — Effect: Player gun scatter **−30%**
+- **Steady Aim** — Effect: Player gun scatter **-30%**
 - **Fast Hands** — Effect: Player reload speed **+40%**
 - **Lethal Strike** — Effect: Player gun crit damage **+50%**
 - **Long Shot** — Effect: Player gun range **+30%**
@@ -60,15 +60,15 @@ At the start of every run, the system draws a handful of mutators from a pool of
 - **Field Medic** — Effect: Player healing effectiveness **+50%**
 - **Lucky Star** — Effect: Player gun and melee crit rate **+20%**
 
-### ☠ Environment Rules (8)
+### ※ Environment Rules (8)
 
 - **Hemorrhage** — Effect: Bleed damage speed **×1.5**; Note: Blood Hunt (Mode F) only
-- **Festering Wounds** — Effect: All healing effectiveness **−40%**
+- **Festering Wounds** — Effect: All healing effectiveness **-40%**
 - **Undying** — Effect: Bosses regenerate **5% HP every 10 seconds**
 - **Glass Cannon** — Effect: Player damage **+50%**, but armor is zeroed; Note: Applies to gun and melee
-- **Blitz** — Effect: Player move speed **+40%**, but max HP **−20%**; Note: Current HP is clamped to the new cap
+- **Blitz** — Effect: Player move speed **+40%**, but max HP **-20%**; Note: Current HP is clamped to the new cap
 - **Lifesteal** — Effect: Killing an enemy restores **8% max HP**
-- **Blood Pact** — Effect: Direct player kills restore **16% max HP**, but healing **−30%**; Note: Direct player kill credit only
+- **Blood Pact** — Effect: Direct player kills restore **16% max HP**, but healing **-30%**; Note: Direct player kill credit only
 - **Volatile Remains** — Effect: Enemies explode on death (3m radius, 40 fire damage); Note: **Can injure you** — watch spacing
 
 ---

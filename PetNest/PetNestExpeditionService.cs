@@ -981,7 +981,8 @@ namespace BossRush
                     museum.mergedMemorialCount++;
                 }
 
-                PetNestMuseumStats.NotifyMemorialChanged();
+                // 这里只修改候选包。纪念碑成就由协调器在物理保存成功后统一评估，
+                // 否则死亡结算写失败时，成就会先永久解锁。
             }
             catch (Exception e)
             {

@@ -4,7 +4,7 @@
 // 职责：
 //   - RandomEventId / RandomEventPhase / RandomEventEndReason 三个稳定枚举；
 //   - RandomEventContext：单次事件的运行期上下文（作废判据 + 生成物回收作用域）；
-//   - RandomEventBase：单个事件的实现基类，事件目录里的 8 个事件全部继承它。
+//   - RandomEventBase：单个事件的实现基类，事件目录里的全部事件都继承它。
 //
 // 硬约束：
 //   - RandomEventId 的数值进 F3 调试菜单与日志，**只增不改、不复用**；
@@ -41,7 +41,10 @@ namespace BossRush
         /// <summary>E7 金鸭雨。</summary>
         GoldenDuckRain = 7,
         /// <summary>E8 鸭群巡游。</summary>
-        DuckParade = 8
+        DuckParade = 8,
+        WildChase = 9,
+        MeleeCarnival = 10,
+        HeavySteps = 11
     }
 
     /// <summary>调度器状态机相位。</summary>

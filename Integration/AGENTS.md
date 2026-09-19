@@ -38,7 +38,7 @@
 - Boss 子目录新增文件遵循 `docs/架构说明/BOSS模板约定.md`；旧 Boss 不强制重构。
 - 自定义武器的运行时参数在 `Integration/BossRushIntegration.cs` 的 `RegisterCustomWeaponRuntimeConfigs()` 登记。
 - 各子系统的本地化放 `Localization/<子系统>Localization.cs`，挂进 `InjectLocalization_Extra_Integration()`；台词语言在取用时解析（玩家能在游戏里切语言）。
-- 玩法系统总开关不暴露给玩家、默认恒开，只暴露调参旋钮；新增 ModConfig 键要登记白名单，否则热更新静默失效（`ModConfigOptionChangeGuard`）。
+- 玩法系统总开关默认恒开，只暴露调参旋钮；鸭生无常默认开启并允许手动关闭；新增 ModConfig 键要登记白名单，否则热更新静默失效（`ModConfigOptionChangeGuard`）。
 - 游戏内 Wiki 书由 `Integration/WikiContentManager.cs` 解析 `WikiContent/`：只认标题、粗体、列表、行内代码、链接与单行 `[tip]` / `[warn]`，不认图片和表格（详见 `wiki-site/AGENTS.md` §2）。
 
 ## 验证

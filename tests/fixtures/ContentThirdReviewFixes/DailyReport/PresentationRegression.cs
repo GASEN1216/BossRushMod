@@ -126,7 +126,6 @@ namespace BossRush
     }
     partial class DailyReportView
     {
-        private const float Margin = 28, PanelWidth = 1000, PanelHeight = 760;
         private UnityEngine.RectTransform panelRect, paperFrame, signInArea;
         private UnityEngine.Transform transform;
         private TMPro.TextMeshProUGUI signInStatusText;

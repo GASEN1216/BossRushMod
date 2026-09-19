@@ -76,6 +76,10 @@ Check the paper before you head out and line the bounty up with whatever you wer
 
 Open the paper and hit `Check in` once a day. One per day, 30 slots to a period.
 
+**Every check-in sends one random quality `2` gift** to your delivery point. Reaching a milestone below sends its reward in addition. Both daily gifts and milestone prizes remain pending if delivery fails.
+
+After updating, reopening the paper grants one daily gift if you already checked in that game day. Earlier ordinary check-ins with no reward record are not retroactively paid.
+
 **Period 1** is the ramp, and the rewards climb:
 
 - Slot `7` → a random quality `5` item

@@ -93,6 +93,9 @@ namespace BossRush
             if (item == null) return false;
             try
             {
+                // 读档实例可能尚未补回自定义武器的 ItemSetting/标签；与重铸入口共用补配流程。
+                if (CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID))
+                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(item);
                 if (item.Quality < 1) return false;
                 return AffixItemData.IsAffixEligible(item);
             }
@@ -114,7 +117,19 @@ namespace BossRush
             if (item == null) return AffixDefinitions.MinMoneyCost;
             try
             {
-                return ReforgeSystem.GetDiscountedCost(item);
+                int baseCost = ReforgeSystem.GetDiscountedCost(item);
+                double multiplier = GetUnlockedSlotCount(item) * AffixDefinitions.MoneyCostPerSlotMultiplier;
+                for (int slot = 1; slot <= GetSlotCount(item); slot++)
+                {
+                    AffixSlotView view;
+                    if (!AffixItemData.TryReadSlot(item, slot, out view) || view.IsEmpty) continue;
+                    AffixDefinition definition = AffixDefinitions.Find(view.AffixId);
+                    if (definition == null) continue;
+                    // 已锁词缀也参与稀有度附加费：保留高稀有词缀有相应的锻造成本。
+                    multiplier += AffixDefinitions.GetMoneySurcharge(definition.Rarity);
+                }
+                return (int)Math.Min(int.MaxValue, Math.Max(AffixDefinitions.MinMoneyCost,
+                    Math.Ceiling(baseCost * multiplier)));
             }
             catch (Exception)
             {
@@ -125,7 +140,7 @@ namespace BossRush
         /// <summary>一次重铸消耗的词缀熔石数量。</summary>
         public static int GetStoneCost(Item item)
         {
-            return AffixDefinitions.ForgeStoneCostPerRoll;
+            return GetUnlockedSlotCount(item) * AffixDefinitions.ForgeStoneCostPerRoll;
         }
 
         /// <summary>锁定一个槽消耗的词缀熔石数量（解锁免费）。</summary>

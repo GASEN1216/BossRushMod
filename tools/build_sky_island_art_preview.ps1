@@ -1,11 +1,29 @@
-param(
-    [string]$ProjectPath = 'D:/code/ykf/duckov_modding-main/UnityFiles/BossRush',
-    [string]$UnityPath = 'C:/Program Files/Unity/Hub/Editor/2022.3.62f3/Editor/Unity.exe',
+﻿param(
+    # 缺省值在 param 里算不出相对路径，留空后在下面按 tools/unity_project_path.py 的顺序解析。
+    [string]$ProjectPath = '',
+    [string]$UnityPath = '',
     [switch]$Physics
 )
 
 $ErrorActionPreference = 'Stop'
 $skyRepo = Split-Path -Parent $PSScriptRoot
+if (-not $ProjectPath) {
+    $ProjectPath = $env:BOSSRUSH_UNITY_PROJECT
+}
+if (-not $UnityPath) {
+    $UnityPath = $env:BOSSRUSH_UNITY_EDITOR
+}
+if (-not $UnityPath -or -not (Test-Path $UnityPath)) {
+    $UnityPath = 'E:/Unity/2022.3.62f3/Editor/Unity.exe'
+}
+if (-not (Test-Path $UnityPath)) {
+    $UnityPath = 'C:/Program Files/Unity/Hub/Editor/2022.3.62f3/Editor/Unity.exe'
+}
+if (-not $ProjectPath) {
+    $sibling = Join-Path (Split-Path -Parent $skyRepo) 'duckov_modding-main/UnityFiles/BossRush'
+    if (Test-Path (Join-Path $sibling 'Assets')) { $ProjectPath = $sibling }
+    else { $ProjectPath = 'D:/code/ykf/duckov_modding-main/UnityFiles/BossRush' }
+}
 $previewProject = Join-Path $skyRepo 'Build/sky-island-art-preview'
 $sourceAssets = Join-Path $ProjectPath 'Assets/SkyIsland'
 if (!(Test-Path -LiteralPath (Join-Path $sourceAssets 'SkyIslandWorld.prefab'))) {

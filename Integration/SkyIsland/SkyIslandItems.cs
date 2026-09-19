@@ -136,7 +136,7 @@ namespace BossRush
                     "Pressed cloudmoss and greenear with warm smoke.\nOn Qinglan for about 5 min: blocks all wind chill and speeds stamina recovery.\nAlso used for the temple lamp. Made at the stove or mortar. Ends when you leave.",
                     "sky_island_windward_incense", 3, 5, 2f),
                 Consumable(BossRushItemIds.SkyIslandQinglanCharm, SkyIslandFieldBuff.Charm, "BossRush_SkyIsland_QinglanCharm",
-                    "残铜底座里嵌着风晶与星屑。\n本趟群岛出击：噬风及其回响的风暴伤害−35%。生命上限、耐力恢复小幅提升。\n不叠加，离岛失效。\n来源：渡口工台制作，或回响遗存。",
+                    "残铜底座里嵌着风晶与星屑。\n本趟群岛出击：噬风及其回响的风暴伤害-35%。生命上限、耐力恢复小幅提升。\n不叠加，离岛失效。\n来源：渡口工台制作，或回响遗存。",
                     "Windcrystal and stardust set in brass.\nThis Qinglan raid: 35% less storm damage from the Windeater and its echo. Slightly higher max HP and stamina recovery.\nDoes not stack. Ends when you leave.\nMade at the dock; also found in echo caches.",
                     "sky_island_qinglan_charm", 4, 3, 1.5f),
 

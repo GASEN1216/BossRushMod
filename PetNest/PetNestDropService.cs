@@ -182,8 +182,13 @@ namespace BossRush
                     // 官方 OnCollectSaveData 与切图/回基地的 flush 会把它写下去。
                     int before = PetNestService.GetSouls(lineageKey);
                     PetNestService.AddSouls(lineageKey, souls, false);
-                    _stagedSoulWrites++;
-                    NotifyCondensableCrossed(owner, lineageKey, before);
+                    int credited = PetNestService.GetSouls(lineageKey) - before;
+                    if (credited > 0)
+                    {
+                        _stagedSoulWrites++;
+                        PetNestSoulNotice.Queue(lineageKey, credited);
+                        NotifyCondensableCrossed(owner, lineageKey, before);
+                    }
                 }
 
                 // 欧轨：低概率直掉遗种蛋
@@ -210,7 +215,7 @@ namespace BossRush
         /// <summary>
         /// 遗魂刚好攒够凝一枚蛋时提示一次。
         ///
-        /// 不逐次击杀提示：无间炼狱一局几十次击杀会直接刷屏；
+        /// 大横幅不逐次击杀提示（逐杀反馈由聚合气泡负责），避免无间炼狱刷屏；
         /// 只在跨过「可凝蛋」阈值这一刻说一句，既有反馈又是玩家真正需要行动的时机。
         /// </summary>
         private static void NotifyCondensableCrossed(
@@ -286,6 +291,7 @@ namespace BossRush
             try
             {
                 BossRushDynamicItemRegistry.EnsureRegistered(RelicEggConfig.TYPE_ID);
+                if (ItemAssetsCollection.GetPrefab(RelicEggConfig.TYPE_ID) == null) return null;
                 egg = ItemAssetsCollection.InstantiateSync(RelicEggConfig.TYPE_ID);
                 if (egg == null)
                 {

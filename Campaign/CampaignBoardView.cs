@@ -290,7 +290,7 @@ namespace BossRush
                 CampaignObjectiveDef objective = def.Objectives[i];
                 if (objective == null) continue;
                 if (i > 0) builder.Append('\n');
-                builder.Append("• ");
+                builder.Append("· ");
                 builder.Append(L10n.T(objective.DescCN, objective.DescEN));
 
                 if (progress != null && i < progress.Count && progress[i] != null

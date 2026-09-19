@@ -238,7 +238,8 @@ namespace BossRush
             Sprite sprite = BossRushProceduralSprites.GetCircleSprite();
             if (sprite == null) return;
 
-            SpawnRing(position, color, radius, life, sprite, withLight);
+            Sprite ringSprite = BossRushProceduralSprites.GetRingSprite();
+            if (ringSprite != null) SpawnRing(position, color, radius, life, ringSprite, withLight);
 
             for (int i = 0; i < shardCount; i++)
             {

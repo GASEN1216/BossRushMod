@@ -39,6 +39,8 @@ Breaking:
 - `enableDeathWraithSystem`
 - `milestoneRestBonusSeconds`
 
+`randomEventsEnabled` 默认 true，玩家可在 ModConfig 开关；不再被恒开策略覆盖。`backMountainUnlockAll` 旧字段保留兼容，正式构建恒返 false，不注册设置。
+
 Mode H 保留唯一配置字段 `modeHEnabled`（当前默认 true，内容恒开策略），详见第 6.1 节。
 **不存在也不得引入** `modeHRealWarehouseStakeEnabled`：真实押品没有开关，进入模式即知情同意（§22.1），`ModeHConfigApiGuard` 断言该符号一律不出现。
 
@@ -490,6 +492,8 @@ Breaking：
 字段与 `BossRush_DailyReportEnabled` 镜像键为兼容保留；当前 ModConfig 注册流程不再调用日报总开关注册。
 默认开启的理由：报箱要玩家花 500 金自建，已是天然门槛，不必再用开关拦一道。
 
+普通签到每天赠送一件品质 2 奖品，复用快递欠奖队列。v1 新增可选 `lastDailyRewardDayIndex`（默认 0）及债务字段 `m{n}_isDaily`（默认 false），不改变既有 key/schemaVersion；日常债务不占里程碑掩码。升级当日已签到但未领普通礼可补一次，不追溯没有记录的历史普通日。
+
 **存档面（SCHEMA+）。** 新增**一个**槽级 key `BossRush_DailyReport_v1`，
 `SavesSystem.Save<string>` 整存扁平 JSON，顶层带 `schemaVersion`。
 不用 typed `Save<T>`：ES3 会把 assembly-qualified 类型名写进存档，
@@ -599,6 +603,8 @@ Breaking/Operational:
 套装时采集，按一次 Hurt 调用持有并由 Finalizer 清理，嵌套调用互不污染。
 
 ## 7.1 官方游戏行为：静默失败类陷阱
+
+- 非激活克隆物品不会执行 Awake；官方 ItemAssetsCollection 的同步/异步 Instantiate 不保证 Initialize。动态注册补丁在同步、异步本地与 fallback 返回前幂等补初始化，确保 AgentUtilities.Master 指向实际实例，否则使用与丢弃都会失败。
 
 下面每条都能在反编译源（`鸭科夫源码/`）里核实，而编译和 guard 都查不出来。共同点是**不报错**，表现只是「功能不工作」。
 写到相关 API 时先对照这里；发现新的同类行为就追加一条，并写明核实位置。
@@ -746,7 +752,7 @@ Mode G 入场与旧路牌契约（2026-08-18 owner 裁决）：
 及遗种巢奖励债务全部为零。
 
 “敌人”只指 runtime team 明确敌对 `Teams.player` 的存活角色；友军、设施 NPC 与遗种随从不构成
-清场债务。八种随机事件必须分别等待实际副作用完成并输出独立 `RANDOM_EVENT_*` case，不能只把
+清场债务。全部已登记随机事件必须分别等待实际副作用完成并输出独立 `RANDOM_EVENT_*` case，不能只把
 `TryForceTrigger=true` 当成功。完整验收期间普通消息和大横幅不进入官方通知队列，所有退出路径
 必须复位该抑制标记。
 

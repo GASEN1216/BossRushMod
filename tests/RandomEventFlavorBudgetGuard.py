@@ -108,7 +108,8 @@ require(tick, 'if (_activeEventCounted && _eventsFiredThisRun > 0) _eventsFiredT
 
 # ---- 3. 覆写成 false 的只有登记在案的纯演出事件 ----
 overrides = set()
-for src, rel in ((catalog, CATALOG), (fun, FUN)):
+for rel in sorted(path.relative_to(ROOT).as_posix() for path in (ROOT / 'RandomEvents').glob('*.cs')):
+    src = read(rel)
     for match in re.finditer(r'internal sealed (?:partial )?class (RandomEvent\w+)\s*:\s*RandomEventBase', src):
         name = match.group(1)
         block = body(src, match.group(0), rel)
@@ -139,11 +140,17 @@ require(compact, 'UnityEngine.Object.Instantiate<GameObject>(prefab,center,Quate
 require(compact, 'level.ExplosionManager.normalFxPfb', '普通演出复用官方 normalFxPfb')
 require(compact, 'level.ExplosionManager.flashFxPfb', '闪光演出复用官方 flashFxPfb')
 
-# ---- 4. 事件池仍然是登记在案的八个（防止新增事件悄悄绕过本守卫） ----
+# ---- 4. 登记事件与有副作用的节奏事件都不得绕过配额 ----
 pool = body(catalog, '_all = new RandomEventBase[]', CATALOG)
 registered = re.findall(r'new (RandomEvent\w+)\(\)', pool)
 if len(registered) != 8 or len(set(registered)) != 8:
-    errors.append('事件池不是八个互不相同的事件：%r' % registered)
+    errors.append('既有八个无参事件登记缺失或重复：%r' % registered)
+tempo_ids = re.findall(r'new RandomEventTempo\(RandomEventId\.(\w+)\)', pool)
+if sorted(tempo_ids) != sorted(('WildChase', 'MeleeCarnival', 'HeavySteps')):
+    errors.append('三个双刃事件必须各登记一次：%r' % tempo_ids)
+tempo = read('RandomEvents/RandomEventTempo.cs')
+if 'ConsumesRunBudget' in tempo:
+    errors.append('改变战斗属性的节奏事件必须继承默认占配额规则')
 for name in FLAVOR_CLASSES:
     if name not in registered:
         errors.append('白名单里的 %s 不在事件池里' % name)
@@ -155,4 +162,4 @@ if errors:
     raise SystemExit(1)
 
 print('RandomEventFlavorBudgetGuard: PASS（基类默认占配额；调度器按声明计数与退款；'
-      '纯演出事件 %s 不占配额且无任何回报符号；事件池 8 个）' % '/'.join(FLAVOR_CLASSES))
+      '纯演出事件 %s 不占配额且无任何回报符号；三个双刃事件占配额）' % '/'.join(FLAVOR_CLASSES))

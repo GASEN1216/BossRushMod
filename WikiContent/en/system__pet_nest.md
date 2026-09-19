@@ -35,9 +35,9 @@ Hatching locks in three things at once, **with no rerolls**:
 
 Temperament affects combat and following as well as personality:
 
-- **Reckless** — notices enemies farther away and pursues aggressively; +10% melee damage multiplier, −8% body armor
-- **Cautious** — shorter sight range and less pursuit; +10% body armor, −5% gun damage multiplier
-- **Lazy** — less eager to chase, −6% run speed, but +1 extra scavenging-backpack slot
+- **Reckless** — notices enemies farther away and pursues aggressively; +10% melee damage multiplier, -8% body armor
+- **Cautious** — shorter sight range and less pursuit; +10% body armor, -5% gun damage multiplier
+- **Lazy** — less eager to chase, -6% run speed, but +1 extra scavenging-backpack slot
 - **Loyal** — stays closer to you and gains +8% max health
 
 If an egg's bloodline can no longer be identified after a game update, the system says so and **leaves your egg untouched** rather than consuming it.

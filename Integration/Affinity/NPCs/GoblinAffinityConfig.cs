@@ -108,7 +108,7 @@ namespace BossRush
                         { 5, new[] { L10n.T("叮当的故事（上）", "Dingdang's Story (Part 1)") } },
                         { 6, new[] { L10n.T("15%折扣", "15% Discount") } },
                         { 7, new[] { DiamondRingConfig.GetDisplayName() } },
-                        { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount") } }
+                        { 10, new[] { L10n.T("叮当的故事（下）", "Dingdang's Story (Part 2)"), L10n.T("20%折扣", "20% Discount"), AffixForgeStoneConfig.GetDisplayName() } }
                     };
                 }
                 return _unlocksByLevel;
@@ -797,9 +797,8 @@ namespace BossRush
                 new ShopItemEntry(ColdQuenchFluidConfig.TYPE_ID, COLD_QUENCH_UNLOCK_LEVEL, 5),
                 new ShopItemEntry(DiamondRingConfig.TYPE_ID, DiamondRingConfig.UNLOCK_LEVEL, 1),  // 钻石戒指，7级解锁，限量1个
                 // 词缀熔石：锻造的唯一消耗材料，游戏内 Wiki 承诺「哥布林商店（要好感度）」。
-                // 与商店同级解锁（2级）——锻造是纯自愿的基地玩法，不该再加一道好感度墙；
-                // 库存 5 与钻石/冷淬液同档，配合 Boss 掉落构成稳定 + 运气两条补给线。
-                new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, SHOP_UNLOCK_LEVEL, 5),
+                // 满级好感后才提供有限补货，前期熔石以 BossRush 掉落为主。
+                new ShopItemEntry(AffixForgeStoneConfig.TYPE_ID, 10, 5),
                 // 冰霜/雷霆套装（500053-500056）：「上头批出库了」。这里是稳定线，运气线是 Boss 专属掉落格
                 // （风暴区 Boss 掉雷霆、「???」Boss 掉冰霜，见 LootAndRewardsSetBonusLoot.cs）。
                 // 6 级解锁介于冷淬液 4 级与钻戒 7 级之间；库存 1 与钻戒同款（每次开店重置）。

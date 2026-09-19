@@ -367,7 +367,7 @@ namespace BossRush
                 {
                     int indentSpaces = m.Groups[1].Value.Length;
                     int level = Mathf.Clamp(indentSpaces / 2, 0, 4);
-                    string bullet = level == 0 ? "•" : (level == 1 ? "◦" : "▪");
+                    string bullet = level == 0 ? "·" : (level == 1 ? "○" : "◇");
                     return new string(' ', level * 4) + bullet + " " + m.Groups[2].Value;
                 });
 

@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -30,6 +31,11 @@ def extract_presentation():
         hashes[path] = hashlib.sha256(raw).hexdigest()
         source = raw.decode("utf-8-sig")
         code += "partial class " + cls + " {\n"
+        if cls == "DailyReportView":
+            for constant in ("Margin", "PanelWidth", "PanelHeight"):
+                declaration = re.search(r"private const float " + constant + r"\s*=\s*[0-9.]+f;", source)
+                assert declaration, constant
+                code += declaration.group(0) + "\n"
         for signature in signatures:
             start = source.index(signature)
             opening = source.index("{", start)

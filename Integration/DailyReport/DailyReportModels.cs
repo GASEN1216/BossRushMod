@@ -22,6 +22,7 @@ namespace BossRush
         internal int SignDayIndex;
         internal int Quality;
         internal long Seed;
+        internal bool IsDaily;
 
         internal DailyReportMilestoneDebt Clone()
         {
@@ -31,7 +32,8 @@ namespace BossRush
         internal bool SameIdentity(DailyReportMilestoneDebt other)
         {
             return other != null && PeriodIndex == other.PeriodIndex && Slot == other.Slot
-                && SignDayIndex == other.SignDayIndex && Quality == other.Quality && Seed == other.Seed;
+                && SignDayIndex == other.SignDayIndex && Quality == other.Quality && Seed == other.Seed
+                && IsDaily == other.IsDaily;
         }
     }
 
@@ -155,6 +157,9 @@ namespace BossRush
         /// <summary>最后一次签到对应的天号（0 = 从未签到）。跨天时据此判断是否断签。</summary>
         internal int LastSignedDayIndex;
 
+        /// <summary>已登记每日小礼的最后签到日；0 兼容旧档，欠奖由同一队列保留。</summary>
+        internal int LastDailyRewardDayIndex;
+
         /// <summary>累计签到天数（跨期累加，只增不减）。</summary>
         internal int TotalSignedDays;
 
@@ -234,6 +239,7 @@ namespace BossRush
             }
             copy.Streak = Streak;
             copy.LastSignedDayIndex = LastSignedDayIndex;
+            copy.LastDailyRewardDayIndex = LastDailyRewardDayIndex;
             copy.TotalSignedDays = TotalSignedDays;
             copy.BountySeed = BountySeed;
             copy.BountyDayIndex = BountyDayIndex;

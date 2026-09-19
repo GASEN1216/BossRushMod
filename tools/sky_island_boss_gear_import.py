@@ -41,28 +41,29 @@ import sky_island_tripo_import as tripo  # noqa: E402
 # 不拉伸时只按宽度等比缩放（头盔先保证套得住头），高、深跟着模型走，清单里记实际值。
 # 基名与 DebugAndTools/SkyIsland/SkyIslandBossRules.cs 的 GearSpecs.ModelBaseName 一一对应，发布后不改。
 # 三角面预算按 Tripo 网页「面数上限约 6000」给：回收件本来就在预算内时不减面（减面会把贴图接缝拉花）。
+# 装备材质贴图上限 512；立绘的 1024 例外不适用于随身装备贴图。
 PIECES = {
-    'starworks_foreman_helmet':   ('StarbrassVisor_Helmet',    'Helmat',   (0.88, 1.06, 1.04), False, 6500, 1024),
-    'starworks_foreman_armor':    ('StarfurnaceHarness_Armor', 'Armor',    (1.02, 0.62, 0.66), True,  6500, 1024),
+    'starworks_foreman_helmet':   ('StarbrassVisor_Helmet',    'Helmat',   (0.88, 1.06, 1.04), False, 6500, 512),
+    'starworks_foreman_armor':    ('StarfurnaceHarness_Armor', 'Armor',    (1.02, 0.62, 0.66), True,  6500, 512),
     # 官方背包（IG_Backpack_LV1 / LV4）：根节点单位变换，网格子节点偏到挂点身后——
     # 包体中心 (0, +0.01~+0.04, -0.22~-0.28)，宽 0.44、高 0.38~0.68、深 0.30~0.39，贴背那一面在 z≈-0.08。
     # 星炉背囊是 Boss 的大件，宽给到 0.50；贴背一面放在 z=-0.08、包体中心抬到 +0.03（见 BEHIND_SOCKET）。
-    'starworks_foreman_backpack': ('StarfurnacePack_Backpack', 'Backpack', (0.50, 0.50, 0.35), False, 6500, 1024),
-    'lookout_stargazer_helmet':   ('StargazerLens_Helmet',     'Helmat',   (0.92, 0.76, 0.96), False, 6500, 1024),
+    'starworks_foreman_backpack': ('StarfurnacePack_Backpack', 'Backpack', (0.50, 0.50, 0.35), False, 6500, 512),
+    'lookout_stargazer_helmet':   ('StargazerLens_Helmet',     'Helmat',   (0.92, 0.76, 0.96), False, 6500, 512),
     # ---- R2–R4（2026-09-15）：头盔 / 护甲 / 背包沿用 R1 的口径；面罩与耳机的目标盒按官方面罩 / 耳机实测（见 SOCKET_CENTER 注释）----
-    'roothunter_facemask':        ('RootweaveMask_FaceMask',   'FaceMask', (0.61, 0.23, 0.31), False, 6500, 1024),
-    'roothunter_armor':           ('VinewovenCuirass_Armor',   'Armor',    (1.02, 0.60, 0.66), True,  6500, 1024),
-    'roothunter_backpack':        ('HangrootQuiver_Backpack',  'Backpack', (0.40, 0.66, 0.32), False, 6500, 1024),
-    'waylayer_backpack':          ('OldMailbag_Backpack',      'Backpack', (0.46, 0.44, 0.30), False, 6500, 1024),
-    'sickle_helmet':              ('GreenearStrawHat_Helmet',  'Helmat',   (1.05, 0.62, 1.05), False, 6500, 1024),
-    'sickle_armor':               ('StrawRaincoat_Armor',      'Armor',    (1.06, 0.60, 0.72), True,  6500, 1024),
-    'sickle_backpack':            ('GrainSack_Backpack',       'Backpack', (0.48, 0.56, 0.36), False, 6500, 1024),
-    'listener_headset':           ('RainhushEarmuffs_Headset', 'Headset',  (0.94, 0.64, 0.20), False, 6500, 1024),
-    'piper_facemask':             ('MossgauzeMask_FaceMask',   'FaceMask', (0.63, 0.30, 0.34), False, 6500, 1024),
-    'mirror_armor':               ('MirrorgrainPlate_Armor',   'Armor',    (1.00, 0.56, 0.62), True,  6500, 1024),
-    'windhunter_helmet':          ('WindbreakHood_Helmet',     'Helmat',   (0.90, 0.86, 1.04), False, 6500, 1024),
-    'windhunter_armor':           ('WindbreakMantle_Armor',    'Armor',    (1.00, 0.56, 0.70), True,  6500, 1024),
-    'windhunter_backpack':        ('WindbreakPack_Backpack',   'Backpack', (0.40, 0.58, 0.28), False, 6500, 1024),
+    'roothunter_facemask':        ('RootweaveMask_FaceMask',   'FaceMask', (0.61, 0.23, 0.31), False, 6500, 512),
+    'roothunter_armor':           ('VinewovenCuirass_Armor',   'Armor',    (1.02, 0.60, 0.66), True,  6500, 512),
+    'roothunter_backpack':        ('HangrootQuiver_Backpack',  'Backpack', (0.40, 0.66, 0.32), False, 6500, 512),
+    'waylayer_backpack':          ('OldMailbag_Backpack',      'Backpack', (0.46, 0.44, 0.30), False, 6500, 512),
+    'sickle_helmet':              ('GreenearStrawHat_Helmet',  'Helmat',   (1.05, 0.62, 1.05), False, 6500, 512),
+    'sickle_armor':               ('StrawRaincoat_Armor',      'Armor',    (1.06, 0.60, 0.72), True,  6500, 512),
+    'sickle_backpack':            ('GrainSack_Backpack',       'Backpack', (0.48, 0.56, 0.36), False, 6500, 512),
+    'listener_headset':           ('RainhushEarmuffs_Headset', 'Headset',  (0.94, 0.64, 0.20), False, 6500, 512),
+    'piper_facemask':             ('MossgauzeMask_FaceMask',   'FaceMask', (0.63, 0.30, 0.34), False, 6500, 512),
+    'mirror_armor':               ('MirrorgrainPlate_Armor',   'Armor',    (1.00, 0.56, 0.62), True,  6500, 512),
+    'windhunter_helmet':          ('WindbreakHood_Helmet',     'Helmat',   (0.90, 0.86, 1.04), False, 6500, 512),
+    'windhunter_armor':           ('WindbreakMantle_Armor',    'Armor',    (1.00, 0.56, 0.70), True,  6500, 512),
+    'windhunter_backpack':        ('WindbreakPack_Backpack',   'Backpack', (0.40, 0.58, 0.28), False, 6500, 512),
 }
 
 # 槽位 -> (贴背面在挂点空间的 z, 包体中心高度 y)；不在表里的槽位原点放几何中心（头盔、护甲实测都是这样）。

@@ -2,8 +2,8 @@
 // FrostSetBonus_Nova.cs - 冰霜套装「冰葬」
 // ============================================================================
 // 模块说明：
-//   冰葬：主角亲手击杀敌人时，以尸体为中心 4.5 米霜爆——范围内存活敌人受 20 冰伤并被冻结
-//   （复用 FrostSetBonus.TryApplyFrostFreeze 的三级回退），1.5 秒冷却，不连锁：
+//   冰葬：累计 3 次主角直接击杀后，以尸体为中心 3 米霜爆，最多 3 个敌人受 8 冰伤并冻结。
+//   6 秒冷却，不连锁；控制与生存定位，输出低于龙皇/龙裔套装：
 //   霜爆结算期间的击杀不再起新的霜爆（frostNovaResolving），DoT 与套装自身伤害的击杀也不起
 //   （isFromBuffOrEffect）。
 //
@@ -21,14 +21,16 @@ namespace BossRush
     {
         #region 冰葬配置
 
-        private const float FROST_NOVA_RADIUS = 4.5f;      // 霜爆半径（米）
-        private const float FROST_NOVA_DAMAGE = 20f;       // 冰伤
-        private const float FROST_NOVA_COOLDOWN = 1.5f;    // 冷却（秒）
-        private const int FROST_NOVA_MAX_TARGETS = 6;      // 每次最多结算目标数
+        private const float FROST_NOVA_RADIUS = 3f;      // 霜爆半径（米）
+        private const float FROST_NOVA_DAMAGE = 8f;       // 冰伤
+        private const float FROST_NOVA_COOLDOWN = 6f;    // 冷却（秒）
+        private const int FROST_NOVA_MAX_TARGETS = 3;      // 每次最多结算目标数
         private const float FROST_NOVA_DELAY = 0.06f;      // 延后（秒），脱离死亡派发调用栈
 
         private static readonly WaitForSeconds frostNovaWait = new WaitForSeconds(FROST_NOVA_DELAY);
 
+        private const int FROST_NOVA_KILLS_REQUIRED = 3;
+        private int frostNovaKillCount;
         private float lastFrostNovaTime = -999f;
         private bool frostNovaResolving = false;   // 结算中：其间的击杀不再起新的霜爆（不连锁）
 
@@ -39,6 +41,7 @@ namespace BossRush
         private void ResetFrostNovaState()
         {
             lastFrostNovaTime = -999f;
+            frostNovaKillCount = 0;
             frostNovaResolving = false;
         }
 
@@ -51,12 +54,14 @@ namespace BossRush
             {
                 if (!frostSetActive || frostNovaResolving) return;
                 if (damageInfo.isFromBuffOrEffect) return;   // 只认玩家亲手的直接击杀
-                if (Time.time - lastFrostNovaTime < FROST_NOVA_COOLDOWN) return;
 
                 CharacterMainControl victim;
                 Vector3 position;
                 if (!TryResolveSetBonusKillVictim(target, damageInfo, out victim, out position)) return;
 
+                if (frostNovaKillCount < FROST_NOVA_KILLS_REQUIRED) frostNovaKillCount++;
+                if (frostNovaKillCount < FROST_NOVA_KILLS_REQUIRED || Time.time - lastFrostNovaTime < FROST_NOVA_COOLDOWN) return;
+                frostNovaKillCount = 0;
                 lastFrostNovaTime = Time.time;
                 StartCoroutine(FrostNovaStep(position, victim, setBonusGeneration));
             }

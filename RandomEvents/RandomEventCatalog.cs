@@ -2,7 +2,7 @@
 // RandomEventCatalog.cs — 局内随机事件「鸭生无常」注册表 + E1~E4 实现
 // ============================================================================
 // 模块职责：
-//   1. RandomEventCatalog：8 个事件实例的懒构建缓存与查找入口（只读，构造后不可变）。
+//   1. RandomEventCatalog：全部事件实例的懒构建缓存与查找入口（只读，构造后不可变）。
 //   2. E1 空投补给 / E2 血月凶兆 / E3 Boss 乱入 / E4 神秘商人路过 的完整实现。
 //      E5~E8 见同名 partial 追加文件 RandomEventCatalog_Fun.cs。
 //
@@ -31,7 +31,7 @@ using Duckov.Economy;
 
 namespace BossRush
 {
-    /// <summary>8 个事件的注册表。懒构建 + 缓存，构造后不可变。</summary>
+    /// <summary>全部事件的注册表。懒构建 + 缓存，构造后不可变。</summary>
     internal static class RandomEventCatalog
     {
         private static RandomEventBase[] _all;
@@ -55,7 +55,10 @@ namespace BossRush
                     new RandomEventFeint(),
                     new RandomEventFireworks(),
                     new RandomEventGoldenDuckRain(),
-                    new RandomEventDuckParade()
+                    new RandomEventDuckParade(),
+                    new RandomEventTempo(RandomEventId.WildChase),
+                    new RandomEventTempo(RandomEventId.MeleeCarnival),
+                    new RandomEventTempo(RandomEventId.HeavySteps)
                 };
             }
             catch (Exception e)

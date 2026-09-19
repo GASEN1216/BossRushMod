@@ -178,8 +178,8 @@ namespace BossRush
 
                 if (_builder.Length > 0) _builder.Append('\n');
 
-                if (item.Failed) _builder.Append("✗ ");
-                else if (item.IsSatisfied) _builder.Append("✓ ");
+                if (item.Failed) _builder.Append("× ");
+                else if (item.IsSatisfied) _builder.Append("√ ");
                 else _builder.Append("· ");
 
                 _builder.Append(L10n.T(item.Def.DescCN, item.Def.DescEN));

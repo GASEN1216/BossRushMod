@@ -9,6 +9,8 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
+using UnityEngine;
 using ItemStatsSystem;
 using ItemStatsSystem.Stats;
 
@@ -51,7 +53,7 @@ namespace BossRush
         private const string THUNDER_ARMOR_LOC_KEY = "BossRush_ThunderArmor";
 
         private const int DEFAULT_QUALITY = 6;
-        private const float DEFAULT_DURABILITY = 999f;
+        private const float DEFAULT_DURABILITY = 100f;
         private const float DEFAULT_ARMOR_VALUE = 5f;
 
         public static bool TryConfigure(Item item, string baseName)
@@ -157,15 +159,43 @@ namespace BossRush
             EnsureBaseArmorModifier(item, isThunderPiece ? "StormProtection" : "ColdProtection", WEATHER_PROTECTION_PER_PIECE);
             item.Value = SET_PIECE_VALUE;
             // 可维修标签：官方 Item.Repairable = UseDurability && Tags.Contains("Repairable")，
-            // 而 UseDurability 就是 MaxDurability > 0——耐久 999 的这四件必然为 true。
+            // 而 UseDurability 就是 MaxDurability > 0——这四件耐久 100，允许官方维修。
             // 不打这个标签，维修台会直接显示「无法维修」，磨损只能永久带着（龙王套装同款处理）。
             EquipmentHelper.AddRepairableTag(item);
             EquipmentHelperIcon.TryInjectIcon(item, bundleName, iconAssetName);
+            ApplyModelFit(modelBaseName, slotTag == "Armor");
 
             if (bindSupportingResources)
             {
                 EquipmentFactory.TryBindLoadedEquipmentModel(item, modelBaseName);
             }
+        }
+
+        private static void ApplyModelFit(string modelBaseName, bool isArmor)
+        {
+            ItemAgent agent;
+            if (!EquipmentFactory.TryGetLoadedModel(modelBaseName, out agent) || agent == null) return;
+            Transform root = agent.transform;
+            const string fitName = "BossRush_SetFit_20260919";
+            if (root.Find(fitName) != null) return;
+
+            // 官方穿戴时会强制重置 agent 根旋转/位置，所以修正在视觉子层；
+            // 单独保留 GroundPoint 等无渲染定位点，重复配置不叠乘。
+            HashSet<Transform> visuals = new HashSet<Transform>();
+            foreach (Renderer renderer in agent.GetComponentsInChildren<Renderer>(true))
+            {
+                if (renderer == null || renderer is ParticleSystemRenderer) continue;
+                Transform visual = renderer.transform;
+                if (visual == root) continue;
+                while (visual.parent != root) visual = visual.parent;
+                visuals.Add(visual);
+            }
+            if (visuals.Count == 0) return;
+            Transform fit = new GameObject(fitName).transform;
+            fit.SetParent(root, false);
+            foreach (Transform visual in visuals) visual.SetParent(fit, false);
+            fit.localScale = isArmor ? Vector3.one * (4f / 3f) : Vector3.one;
+            fit.localRotation = isArmor ? Quaternion.identity : Quaternion.Euler(0f, 180f, 0f);
         }
 
         private static void EnsureBaseArmorModifier(Item item, string key, float value)

@@ -151,8 +151,8 @@ namespace BossRush
             {
                 NewWeaponFx.ShowBubble(
                     player,
-                    "<color=#FFD54F>⚡ 雷能已满！</color>",
-                    "<color=#FFD54F>⚡ Fully charged!</color>");
+                    "<color=#FFD54F>雷能已满！</color>",
+                    "<color=#FFD54F>Fully charged!</color>");
             }
         }
 
@@ -217,17 +217,19 @@ namespace BossRush
                 thunderDamage.damagePoint = strikePoint;
                 thunderDamage.damageType = DamageTypes.normal;
 
-                targetHealth.Hurt(thunderDamage);
-
                 // 表现层：从玩家胸口打一道电弧到目标 + 落点雷光 + 音效（配色取自描述文案的 #FFD54F）。
                 // 不再弹「雷霆释放」气泡：电弧 + 落点雷光 + 放电声已经把这一下说清楚了，
                 // 紧跟在「雷能已满」后面再弹一条只会连着糊两次。
                 NewWeaponFx.PlayArc(
                     player.transform.position + Vector3.up * 1.1f,
                     strikePoint + Vector3.up * 0.8f,
-                    NewWeaponPalette.ThunderCore, 0.12f, 0.22f);
-                NewWeaponFx.PlayBurst(strikePoint, NewWeaponPalette.ThunderCore, 1.8f, 0.35f, 5);
+                    NewWeaponPalette.ThunderCore, 0.12f, 0.35f);
+                // 目标头顶落雷，命中位置抬到身体，避免地面遮挡。
+                NewWeaponFx.PlayArc(strikePoint + Vector3.up * 3.5f, strikePoint + Vector3.up * 0.8f,
+                    NewWeaponPalette.ThunderCore, 0.16f, 0.4f);
+                NewWeaponFx.PlayBurst(strikePoint + Vector3.up * 0.8f, NewWeaponPalette.ThunderCore, 1.8f, 0.35f, 5);
                 NewWeaponFx.PlaySound(NewWeaponSfx.ThunderRelease);
+                targetHealth.Hurt(thunderDamage);
             }
             catch (Exception e)
             {

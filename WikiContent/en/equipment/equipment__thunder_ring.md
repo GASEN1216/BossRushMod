@@ -24,7 +24,7 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 
 ### What It Looks Like
 
-Reaching 5 charges prints a "Fully charged" bubble over your head — that is the one moment you need to act on (swap to something heavy before you swing). The release then **arcs lightning from your chest to the target**, bursting into a golden flash at the impact point with a short, heavy discharge; the release itself no longer prints a second bubble. No arc means the stacks were not full, or the 8-second timeout already cleared them.
+Reaching 5 charges prints a "Fully charged" bubble over your head — that is the one moment you need to act on (swap to something heavy before you swing). The release then **arcs lightning from your chest to the target**, while a bolt strikes down over the enemy and a golden ring expands around their body with a short, heavy discharge; the release itself no longer prints a second bubble. No arc means the stacks were not full, or the 8-second timeout already cleared them.
 
 ### Tips
 

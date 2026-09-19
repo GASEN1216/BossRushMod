@@ -49,20 +49,20 @@ namespace BossRush
         // 常量（避免魔法数字）
         // ============================================================================
         private const string AFFIX_PANEL_NAME = "AffixForgePanel";
-        private const int AFFIX_PANEL_WIDTH = 460;
+        private const int AFFIX_PANEL_WIDTH = 540;
         private const int AFFIX_PANEL_PADDING = 8;
         private const int AFFIX_PANEL_SPACING = 6;
         private const int AFFIX_PANEL_CORNER_RADIUS = 8;
         private const int AFFIX_ICON_SIZE = 56;
-        private const int AFFIX_ROW_HEIGHT = 64;
+        private const int AFFIX_ROW_HEIGHT = 100;
         private const int AFFIX_STONE_ROW_HEIGHT = 44;
         private const int AFFIX_STONE_ICON_SIZE = 36;
-        private const int AFFIX_NAME_FONT_SIZE = 20;
-        private const int AFFIX_DESC_FONT_SIZE = 15;
+        private const int AFFIX_NAME_FONT_SIZE = 26;
+        private const int AFFIX_DESC_FONT_SIZE = 20;
         private const int AFFIX_STONE_FONT_SIZE = 22;
         private const int AFFIX_LOCK_BUTTON_WIDTH = 84;
-        private const int AFFIX_LOCK_BUTTON_HEIGHT = 30;
-        private const int AFFIX_LOCK_FONT_SIZE = 15;
+        private const int AFFIX_LOCK_BUTTON_HEIGHT = 38;
+        private const int AFFIX_LOCK_FONT_SIZE = 18;
         private const int AFFIX_ICON_FALLBACK_FONT_SIZE = 34;
 
         // 锁定语义配色，与 PropertyEntryInteractable 一致：白=普通，蓝=悬停可操作，金=已锁定
@@ -94,6 +94,8 @@ namespace BossRush
             public TextMeshProUGUI IconFallbackText;
             public TextMeshProUGUI NameText;
             public TextMeshProUGUI DescText;
+            public LayoutElement RowLayout;
+            public LayoutElement DescriptionLayout;
             public Button LockButton;
             public TextMeshProUGUI LockButtonText;
             public int SlotIndex;
@@ -488,6 +490,14 @@ namespace BossRush
                 AffixSlotView view = default(AffixSlotView);
                 bool hasSlot = AffixItemData.TryReadSlot(selectedItem, row.SlotIndex, out view);
                 RefreshAffixRow(row, hasSlot, view);
+                // 先按最窄文本列测量；长诅咒说明和英文不再被固定两行高度裁掉。
+                float textWidth = AFFIX_PANEL_WIDTH - AFFIX_PANEL_PADDING * 2 - 8
+                    - AFFIX_ICON_SIZE - AFFIX_LOCK_BUTTON_WIDTH - AFFIX_PANEL_SPACING * 2;
+                float descriptionHeight = BossRushUI.MeasureTextHeight(row.DescText, textWidth,
+                    AFFIX_DESC_FONT_SIZE * 2 + 8);
+                row.DescriptionLayout.minHeight = row.DescriptionLayout.preferredHeight = descriptionHeight;
+                row.RowLayout.minHeight = row.RowLayout.preferredHeight = Mathf.Max(AFFIX_ROW_HEIGHT,
+                    descriptionHeight + AFFIX_NAME_FONT_SIZE + 12);
             }
         }
 
@@ -676,14 +686,22 @@ namespace BossRush
 
             if (selectedItem == null)
             {
-                probabilityText.text = L10n.T("请选择要锻造的装备", "Select equipment to forge");
+                // 不合格的装备在格子里就点不动，玩家看不到下面那条「无法附加词缀」的提示，
+                // 只会觉得「为什么大部分东西都弄不了」（2026-09-19 实测第 7 条）。
+                // 所以把能锻造的范围写在没选中时就能看到的位置。
+                probabilityText.text = L10n.T(
+                    "请选择要锻造的装备\n可锻造：枪械、近战武器、护甲、头盔、面罩\n背包、耳机、图腾不吃词缀",
+                    "Select equipment to forge\nEligible: guns, melee weapons, armor, helmets, face masks\n"
+                    + "Backpacks, headsets and totems cannot carry affixes");
                 probabilityText.color = Color.gray;
                 return;
             }
 
             if (!AffixForgeSystem.CanAffixForge(selectedItem))
             {
-                probabilityText.text = L10n.T("该装备无法附加词缀", "This equipment cannot carry affixes");
+                probabilityText.text = L10n.T(
+                    "该装备无法附加词缀：只有枪械、近战武器、护甲、头盔、面罩可以",
+                    "This equipment cannot carry affixes: only guns, melee weapons, armor, helmets and face masks can");
                 probabilityText.color = new Color(1f, 0.5f, 0.5f);
                 return;
             }
@@ -707,7 +725,7 @@ namespace BossRush
                 L10n.T("词缀熔石", "Affix Forge Stone"),
                 stoneCost,
                 ownedStones,
-                L10n.T("锁定的词缀槽不会被重新随机。", "Locked affix slots are not rerolled."));
+                L10n.T("每个未锁槽 1 熔石；费用含词缀稀有度附加。", "1 stone per unlocked slot; affix rarity adds to the cost."));
             probabilityText.color = Color.white;
         }
 

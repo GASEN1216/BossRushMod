@@ -25,6 +25,31 @@ internal static class Program
         AffixRuntimeService.EnsureRuntime();
         return CharacterMainControl.Main;
     }
+    private static void ForgePricingAndEligibility()
+    {
+        var item = new Item { Capacity = 3, ForgeBaseCost = 1000 };
+        Check(AffixForgeSystem.GetStoneCost(item) == 3, "three empty slots cost three stones");
+        Check(AffixForgeSystem.GetMoneyCost(item) == 30000, "initial fee uses reforge cost for every rolled slot");
+        item.Affixes.Add(new AffixSlotView { AffixId = AffixDefinitions.Id_Lifesteal, Tier = 1, Locked = true });
+        Check(AffixForgeSystem.GetStoneCost(item) == 2, "locking one slot removes exactly one stone");
+        Check(AffixForgeSystem.GetMoneyCost(item) == 22000, "retained common affix adds its surcharge");
+        item.Affixes[0] = new AffixSlotView { AffixId = AffixDefinitions.Id_DeathBurst, Tier = 3, Locked = true };
+        Check(AffixForgeSystem.GetMoneyCost(item) == 25000, "rare affix adds more than common without compounding its tier");
+        item.Affixes[0] = new AffixSlotView { AffixId = AffixDefinitions.Id_DeathBurst, Tier = 1, Locked = true };
+        Check(AffixForgeSystem.GetMoneyCost(item) == 25000, "rarity surcharge is independent of affix tier");
+        item.ForgeBaseCost = int.MaxValue;
+        Check(AffixForgeSystem.GetMoneyCost(item) == int.MaxValue, "large base prices saturate without wrapping negative");
+        var restored = new Item { TypeID = 500099, Quality = 0 };
+        Check(AffixForgeSystem.CanAffixForge(restored) && restored.Setting is ItemSetting_MeleeWeapon,
+            "restored custom weapon is configured before eligibility is evaluated");
+        var armor = new Item(); armor.Tags.Add("Armor");
+        Check(AffixForgeSystem.CanAffixForge(armor), "custom armor tag is accepted");
+        var gun = new Item { Setting = new ItemSetting_Gun() }; gun.Tags.Add("Weapon");
+        Check(AffixItemData.GetEquipMask(gun) == AffixEquipMask.Gun, "weapon component wins over generic weapon tag");
+        var backpack = new Item(); backpack.Tags.Add("Backpack");
+        Check(!AffixForgeSystem.CanAffixForge(backpack), "unsupported utility gear stays excluded");
+    }
+
     private static CharacterMainControl Enemy(float hp = 1000f)
     {
         var e = new CharacterMainControl(); e.Health.CurrentHealth = hp; e.Health.MaxHealth = hp;
@@ -34,6 +59,7 @@ internal static class Program
     { return new DamageInfo(source) { damageValue = damage, fromWeaponItemID = 42 }; }
     private static void Main()
     {
+        ForgePricingAndEligibility();
         CharacterMainControl player = Reset(AffixDefinitions.Id_DeathBurst);
         CharacterMainControl first = Enemy(1f), second = Enemy(), third = Enemy(), near = Enemy();
         ExplosionManager explosions = LevelManager.Instance.ExplosionManager;

@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>完整验收的标准模式与八种随机事件实机副作用用例。</summary>
+    /// <summary>完整验收的标准模式与全目录随机事件实机副作用用例。</summary>
     internal sealed partial class F3GameplayValidationRunner
     {
         private IEnumerator RunStandardAndRandomEvents()

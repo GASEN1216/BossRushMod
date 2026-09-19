@@ -2,7 +2,7 @@
 // AchievementIconLoader.cs - 成就图标加载服务（共享单例）
 // ============================================================================
 // 模块说明：
-//   统一管理成就图标的 AssetBundle 加载，避免重复加载冲突
+//   统一管理成就图标的 PNG 与 AssetBundle 加载、缓存和自有资源
 //   供 SteamAchievementPopup 和 AchievementEntryUI 共同使用
 // ============================================================================
 
@@ -12,12 +12,13 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// 成就图标加载服务 - 单例模式，统一管理 AssetBundle
+    /// 成就图标加载服务 - 优先加载独立 PNG，兼容旧 AssetBundle
     /// </summary>
     public static class AchievementIconLoader
     {
         #region 常量
 
+        private const string PNG_RELATIVE_PATH = "Assets/achievement";
         private const string BUNDLE_RELATIVE_PATH = "Assets/achievement/achievement_icons";
         private const string BUNDLE_NAME = "achievement_icons";
 
@@ -29,6 +30,8 @@ namespace BossRush
         private static bool loadAttempted = false;
         private static Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
         private static Dictionary<string, Texture2D> textureCache = new Dictionary<string, Texture2D>();
+        private static readonly HashSet<Sprite> ownedSprites = new HashSet<Sprite>();
+        private static readonly HashSet<Texture2D> ownedTextures = new HashSet<Texture2D>();
 
         #endregion
 
@@ -39,20 +42,20 @@ namespace BossRush
         /// </summary>
         public static Sprite GetSprite(string iconName)
         {
-            if (string.IsNullOrEmpty(iconName)) return null;
+            if (!IsValidIconName(iconName)) return null;
 
-            // 检查缓存
-            if (spriteCache.TryGetValue(iconName, out Sprite cached))
+            if (spriteCache.TryGetValue(iconName, out Sprite cached) && cached != null)
             {
                 return cached;
             }
 
-            EnsureBundleLoaded();
-            if (iconBundle == null) return null;
+            Sprite sprite = LoadSpriteFromPng(iconName);
+            if (sprite == null)
+            {
+                EnsureBundleLoaded();
+                sprite = LoadSpriteFromBundle(iconName);
+            }
 
-            Sprite sprite = LoadSpriteFromBundle(iconName);
-
-            // 缓存结果
             if (sprite != null)
             {
                 spriteCache[iconName] = sprite;
@@ -66,10 +69,10 @@ namespace BossRush
         /// </summary>
         public static Texture2D GetTexture(string iconName)
         {
-            if (string.IsNullOrEmpty(iconName)) return null;
+            if (!IsValidIconName(iconName)) return null;
 
             // 检查缓存
-            if (textureCache.TryGetValue(iconName, out Texture2D cached))
+            if (textureCache.TryGetValue(iconName, out Texture2D cached) && cached != null)
             {
                 return cached;
             }
@@ -102,6 +105,18 @@ namespace BossRush
         {
             spriteCache.Clear();
             textureCache.Clear();
+
+            // Bundle 中借用的资源由 Bundle 管理，只销毁本加载器创建的对象。
+            foreach (Sprite sprite in ownedSprites)
+            {
+                if (sprite != null) UnityEngine.Object.Destroy(sprite);
+            }
+            ownedSprites.Clear();
+            foreach (Texture2D texture in ownedTextures)
+            {
+                if (texture != null) UnityEngine.Object.Destroy(texture);
+            }
+            ownedTextures.Clear();
         }
 
         /// <summary>
@@ -126,6 +141,61 @@ namespace BossRush
         #endregion
 
         #region 私有方法
+
+        private static bool IsValidIconName(string iconName)
+        {
+            if (string.IsNullOrEmpty(iconName)) return false;
+            for (int i = 0; i < iconName.Length; i++)
+            {
+                char c = iconName[i];
+                if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                    (c >= '0' && c <= '9') || c == '_' || c == '-')) return false;
+            }
+            return true;
+        }
+
+        private static Sprite LoadSpriteFromPng(string iconName)
+        {
+            Texture2D texture = null;
+            Sprite sprite = null;
+            bool retained = false;
+            try
+            {
+                string modPath = ModBehaviour.GetModPath();
+                if (string.IsNullOrEmpty(modPath)) return null;
+                string path = System.IO.Path.Combine(modPath, PNG_RELATIVE_PATH, iconName + ".png");
+                if (!System.IO.File.Exists(path)) return null;
+
+                byte[] bytes = System.IO.File.ReadAllBytes(path);
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (!texture.LoadImage(bytes)) return null;
+                texture.hideFlags = HideFlags.DontSave;
+                texture.name = iconName;
+                texture.wrapMode = TextureWrapMode.Clamp;
+                sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                if (sprite == null) return null;
+                sprite.hideFlags = HideFlags.DontSave;
+                sprite.name = iconName;
+                ownedTextures.Add(texture);
+                ownedSprites.Add(sprite);
+                retained = true;
+                return sprite;
+            }
+            catch (System.Exception e)
+            {
+                ModBehaviour.DevLog("[AchievementIconLoader] 加载 PNG 失败: " + iconName + " - " + e.Message);
+                return null;
+            }
+            finally
+            {
+                // 解码或 Sprite 创建中途失败时，不能把未缓存的原生对象留到下一次加载。
+                if (!retained)
+                {
+                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
+                    if (texture != null) UnityEngine.Object.Destroy(texture);
+                }
+            }
+        }
 
         /// <summary>
         /// 确保 AssetBundle 已加载
@@ -231,7 +301,7 @@ namespace BossRush
             if (iconBundle == null) return null;
 
             // 根据 manifest，资源路径格式为 "assets/achievementicons/xxx.png"（小写）
-            string assetPath = "assets/achievementicons/" + iconName.ToLower() + ".png";
+            string assetPath = "assets/achievementicons/" + iconName.ToLowerInvariant() + ".png";
 
             try
             {
@@ -247,6 +317,7 @@ namespace BossRush
                 if (tex != null)
                 {
                     sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                    if (sprite != null) ownedSprites.Add(sprite);
                     return sprite;
                 }
             }
@@ -265,7 +336,7 @@ namespace BossRush
         {
             if (iconBundle == null) return null;
 
-            string assetPath = "assets/achievementicons/" + iconName.ToLower() + ".png";
+            string assetPath = "assets/achievementicons/" + iconName.ToLowerInvariant() + ".png";
 
             try
             {

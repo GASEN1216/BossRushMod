@@ -35,7 +35,10 @@ from imagegen_model import IMAGE_MODEL
 WORK = ROOT / 'ArtSource/SkyIsland/MinimapArt'
 SOURCE = baker.ART_IMAGE.parent
 PROMPT = SOURCE / 'prompt.txt'
-BLEND = Path('D:/code/ykf/duckov_modding-main/UnityFiles/BossRush/ArtSource/SkyIsland/SkyIslandWorld.blend')
+from unity_project_path import CANDIDATES as _UNITY_CANDIDATES, find_unity_project as _find_unity_project
+# 作者工程位置统一走 tools/unity_project_path.py；写死路径在工程搬家后会静默失效。
+_resolved_unity = _find_unity_project() or _UNITY_CANDIDATES[0]
+BLEND = Path(_resolved_unity) / 'ArtSource/SkyIsland/SkyIslandWorld.blend'
 # 参考图与提示词约定的纯色背景 #2E3A44：生成图保持同色，对齐时才能按「离背景多远」认出陆地。
 BACKGROUND = np.array((46, 58, 68), np.float32)
 RENDER_SIZE = 2048

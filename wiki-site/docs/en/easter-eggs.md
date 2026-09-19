@@ -25,8 +25,8 @@ and you handed it back.
 
 A Brick Stone glitters convincingly. It is a rock.
 
-- **Give it to Dingdang** — he sees through it instantly. Affinity **−40**. A craftsman's pride.
-- **Give it to Yuori** — **−60**, worse than Dingdang. What it brings back for her is J-Lab.
+- **Give it to Dingdang** — he sees through it instantly. Affinity **-40**. A craftsman's pride.
+- **Give it to Yuori** — **-60**, worse than Dingdang. What it brings back for her is J-Lab.
 
 Same worthless rock; it hurts them in different places.
 

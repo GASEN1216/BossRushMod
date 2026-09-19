@@ -49,17 +49,20 @@ namespace BossRush
     static class DailyReportRewards
     {
         internal static bool Reject, FaultAfterGrant;
-        internal static int Attempts;
+        internal static int Attempts, DailyAttempts;
+        internal static readonly List<string> DailyDelivered = new List<string>();
         internal static long Cash;
         internal static bool RejectCash;
         internal static int RejectQuality;
         internal static readonly List<string> Delivered = new List<string>();
         internal static bool TryGrantMilestone(int quality, long seed, int day, int slot, out string reason)
         {
-            Attempts++;
+            if (quality == DailyReportTuning.DailyGiftQuality) DailyAttempts++;
+            else Attempts++;
             reason = Reject || quality == RejectQuality ? "unavailable" : null;
             if (Reject || quality == RejectQuality) return false;
-            Delivered.Add(quality + "/" + seed + "/" + day + "/" + slot);
+            (quality == DailyReportTuning.DailyGiftQuality ? DailyDelivered : Delivered)
+                .Add(quality + "/" + seed + "/" + day + "/" + slot);
             if (FaultAfterGrant) DailyReportPersistence.IsStoreFaulted = true;
             return true;
         }
@@ -98,8 +101,10 @@ partial class Program
         DailyReportRewards.Attempts = 0;
         DailyReportRewards.RejectQuality = 0;
         DailyReportRewards.Delivered.Clear();
+        DailyReportRewards.DailyDelivered.Clear();
+        DailyReportRewards.DailyAttempts = 0;
         DailyReportPersistence.Current = DailyReportCodec.Decode(Legacy(period, signed, last, day, mask, seed));
-        Check(DailyReportPersistence.Current != null && DailyReportPersistence.Current.PendingMilestones.Count == 0,
+        Check(DailyReportPersistence.Current != null && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 0,
             "real codec accepts legacy v1 without debt extension");
     }
 
@@ -111,41 +116,85 @@ partial class Program
         Check(DailyReportPersistence.Current != null, "new ledger round-trips through production codec");
     }
 
+    static void DailyGifts()
+    {
+        Reset(1, 0, 0, 1);
+        var result = DailyReportService.SignInAndClaim();
+        Check(result.Outcome == DailyReportSignInOutcome.Success
+            && DailyReportRewards.DailyDelivered.Count == 1
+            && DailyReportRewards.Delivered.Count == 0, "ordinary check-in delivers a Q2 gift on day one");
+        Reload();
+        DailyReportService.TryRedeliverPendingMilestones();
+        DailyReportService.SignInAndClaim();
+        Check(DailyReportRewards.DailyDelivered.Count == 1, "daily gift remains idempotent across reopen and reload");
+
+        Reset(1, 1, 1, 1);
+        DailyReportService.TryRedeliverPendingMilestones();
+        DailyReportService.TryRedeliverPendingMilestones();
+        Check(DailyReportRewards.DailyDelivered.Count == 1, "legacy signed-today save gets one compensating ordinary gift");
+
+        Reset(1, 0, 0, 1);
+        DailyReportRewards.Reject = true;
+        DailyReportService.SignInAndClaim();
+        Check(DailyReportPersistence.Current.PendingMilestones.Count == 1
+            && DailyReportPersistence.Current.PendingMilestones[0].IsDaily, "failed daily delivery persists an ordinary gift debt");
+        DailyReportService.DebugAdvanceGameSeconds(DailyReportTuning.GameSecondsPerDay * 2);
+        Reload();
+        DailyReportRewards.Reject = false;
+        DailyReportService.TryRedeliverPendingMilestones();
+        Check(DailyReportRewards.DailyDelivered.Count == 1
+            && DailyReportRewards.DailyDelivered[0] == "2/99/1/1"
+            && DailyReportPersistence.Current.PeriodClaimedMask == 0,
+            "daily debt survives a missed day with its original identity and never marks milestone claims");
+
+        Reset(1, 6, 6, 7);
+        DailyReportService.SignInAndClaim();
+        Check(DailyReportRewards.DailyDelivered.Count == 1 && DailyReportRewards.Delivered.Count == 1,
+            "milestone day pays both the ordinary gift and its milestone reward");
+        string payload = DailyReportCodec.Encode(DailyReportPersistence.Current);
+        foreach (string invalid in new[] { "2147483648", "-1", "1.5", "\"1\"" })
+            Check(DailyReportCodec.Decode(payload.Replace("\"lastDailyRewardDayIndex\":7",
+                "\"lastDailyRewardDayIndex\":" + invalid)) == null,
+                "invalid daily gift watermark fails closed: " + invalid);
+        Check(DailyReportCodec.Decode(Legacy(1, 1, 1, 1)).LastDailyRewardDayIndex == 0,
+            "missing daily gift watermark retains the legacy default");
+    }
+
     static void Main()
     {
         Reset(1, 7, 7, 8);
         DailyReportRewards.Reject = true;
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Attempts == 1 && DailyReportPersistence.Current.PendingMilestones.Count == 1,
+        Check(DailyReportRewards.Attempts == 1 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 1,
             "legacy unpaid milestone becomes an independent persisted debt");
         DailyReportService.DebugAdvanceGameSeconds(DailyReportTuning.GameSecondsPerDay);
         Check(DailyReportPersistence.Current.DayIndex == 9 && DailyReportPersistence.Current.PeriodSignedCount == 0
-            && DailyReportPersistence.Current.PendingMilestones.Count == 1, "streak reset preserves the earned reward");
+            && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 1, "streak reset preserves the earned reward");
         Reload();
         DailyReportRewards.Reject = false;
         DailyReportService.TryRedeliverPendingMilestones();
         Check(DailyReportRewards.Delivered.Count == 1 && DailyReportRewards.Delivered[0] == "5/99/7/7",
             "post-reset reload delivers original quality seed sign-day and slot");
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Delivered.Count == 1 && DailyReportPersistence.Current.PendingMilestones.Count == 0,
+        Check(DailyReportRewards.Delivered.Count == 1 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 0,
             "successful recovery clears only the paid debt and does not repeat");
 
         Reset(1, 15, 15, 16);
         DailyReportRewards.RejectQuality = 5;
         DailyReportService.TryRedeliverPendingMilestones();
         Check(DailyReportRewards.Attempts == 2 && DailyReportRewards.Delivered.Count == 1
-            && DailyReportRewards.Delivered[0] == "6/99/15/15" && DailyReportPersistence.Current.PendingMilestones.Count == 1,
+            && DailyReportRewards.Delivered[0] == "6/99/15/15" && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 1,
             "unavailable older quality does not block another deliverable debt");
         DailyReportRewards.RejectQuality = 0;
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Delivered.Count == 2 && DailyReportPersistence.Current.PendingMilestones.Count == 0,
+        Check(DailyReportRewards.Delivered.Count == 2 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 0,
             "older quality recovers independently without repeating paid later reward");
 
         Reset(1, 30, 30, 31, (1 << 6) | (1 << 14) | (1 << 23));
         DailyReportRewards.Reject = true;
         var result = DailyReportService.SignInAndClaim();
         Check(result.Outcome == DailyReportSignInOutcome.Success && DailyReportPersistence.Current.PeriodIndex == 2
-            && DailyReportPersistence.Current.PendingMilestones.Count == 1, "period rollover stages old unpaid Q8 before reset");
+            && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 1, "period rollover stages old unpaid Q8 before reset");
         Reload();
         DailyReportRewards.Reject = false;
         DailyReportService.TryRedeliverPendingMilestones();
@@ -158,7 +207,7 @@ partial class Program
         var data = DailyReportPersistence.Current;
         data.DayIndex = 15; data.LastSignedDayIndex = 14; data.PeriodSignedCount = 6;
         DailyReportService.SignInAndClaim();
-        Check(DailyReportPersistence.Current.PendingMilestones.Count == 2, "same-period restarted streak keeps both slot-seven identities");
+        Check(DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 2, "same-period restarted streak keeps both slot-seven identities");
         Reload();
         DailyReportRewards.Reject = false;
         DailyReportService.TryRedeliverPendingMilestones();
@@ -171,7 +220,7 @@ partial class Program
         DailyReportService.SignInAndClaim();
         DailyReportService.TryRedeliverPendingMilestones();
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Attempts == 0 && DailyReportPersistence.Current.PendingMilestones.Count == 1,
+        Check(DailyReportRewards.Attempts == 0 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 1,
             "fault during sign-in flush blocks initial grant and every panel retry");
         Reload(); DailyReportPersistence.IsStoreFaulted = false;
         DailyReportService.TryRedeliverPendingMilestones();
@@ -187,17 +236,17 @@ partial class Program
         DailyReportService.SignInAndClaim();
         DailyReportService.TryRedeliverPendingMilestones();
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Delivered.Count == 1 && DailyReportPersistence.Current.PendingMilestones.Count == 1,
+        Check(DailyReportRewards.Delivered.Count == 1 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 1,
             "unexpected post-grant fault retains debt but known fault stops further sends");
         Reload(); DailyReportPersistence.IsStoreFaulted = false; DailyReportRewards.FaultAfterGrant = false;
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Delivered.Count == 2 && DailyReportPersistence.Current.PendingMilestones.Count == 0,
+        Check(DailyReportRewards.Delivered.Count == 2 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 0,
             "recovery preserves accepted at-least-once behavior after uncommitted grant");
 
         Reset(1, 7, 7, 8);
         DailyReportPersistence.RejectStore = true;
         DailyReportService.TryRedeliverPendingMilestones();
-        Check(DailyReportRewards.Attempts == 0 && DailyReportPersistence.Current.PendingMilestones.Count == 0,
+        Check(DailyReportRewards.Attempts == 0 && DailyReportPersistence.Current.PendingMilestones.FindAll(debt => !debt.IsDaily).Count == 0,
             "rejected debt candidate grants nothing and does not mutate live state");
         DailyReportService.DebugAdvanceGameSeconds(DailyReportTuning.GameSecondsPerDay);
         Check(DailyReportPersistence.Current.DayIndex == 8 && DailyReportPersistence.Current.PeriodSignedCount == 7,
@@ -224,6 +273,7 @@ partial class Program
             "corrupt declared debt rejects whole payload instead of swallowing or redrawing reward");
         Check(DailyReportCodec.Decode("{\"schemaVersion\":1,\"pendingMilestoneCount\":2147483647}") == null,
             "unbounded declared debt count fails closed before iteration");
+        DailyGifts();
         Playability();
         PresentationAndMailbox();
         Console.WriteLine("DailyReport regression checks=" + checks);

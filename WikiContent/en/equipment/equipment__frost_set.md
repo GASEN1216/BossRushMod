@@ -4,15 +4,15 @@
 
 ### What Is It?
 
-A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** body armor. Each piece gives modest armor plus cold protection on its own; equipping both activates **Frost Ward** — ice damage heals you, kills unleash a frost nova, and you freeze attackers — with pale-blue breathing eyes and frost mist at your feet. An endgame set on par with the Dragon King set.
+A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** body armor. Each piece gives modest armor plus cold protection on its own; equipping both activates **Frost Ward** — ice damage heals you, kills unleash a frost nova, and you freeze attackers — with pale-blue breathing eyes and frost mist at your feet. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
 
 ### Set Pieces
 
 - **Frost Crown** (helmet): quality 6, Head Armor +5, Cold Protection +1, item ID 500053
 - **Ice Armor** (body armor): quality 6, Body Armor +5, Cold Protection +1, item ID 500054
-- Durability: 999 (effectively permanent)
+- Durability: 100
 - On death: like the Dragon King set, these drop with the rest of your gear (they are not bound) — bring them knowing you can lose them
-- Repairable at the workbench (durability 999, so wear is slow)
+- Repairable at the workbench; check its condition before a raid
 
 ### How to Get It
 
@@ -30,8 +30,8 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 - Cold Protection +2 in total
 
 **Frost Nova (on kill):**
-- When you personally kill an enemy, a **4.5 m** frost burst erupts at the corpse: up to 6 enemies inside take **20 ice damage** and are **frozen**
-- Maximum once every **1.5 seconds**; enemies killed by the nova itself do not start another nova (no chaining)
+- After **3 direct kills**, a **3 m** frost burst erupts at the corpse: up to 3 enemies inside take **8 ice damage** and are **frozen**
+- Maximum once every **6 seconds**; enemies killed by the nova itself do not start another nova (no chaining)
 - Only direct weapon/grenade kills count (DoTs and the set's own damage don't trigger it)
 
 **Freeze Counter (on hit):**
@@ -42,7 +42,7 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 
 ### Tips
 
-- Frost Nova is crowd control: drop one enemy, the whole ring around it freezes, then pick them off — perfect for melee brawls and holding a point
+- Frost Nova provides occasional control after three direct kills. Use the freeze to reposition; ordinary attacks on a training dummy do not trigger an on-kill effect
 - Ice refund is especially strong against freezing special zombies and ice bosses
 - 30% freeze proc fires frequently in melee brawls; the 5 s cooldown is permissive compared to most reactive pieces
 - Base armor (Head +5 / Body +5) is low — not meant for pure tank builds; the set lives on control

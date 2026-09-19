@@ -217,6 +217,7 @@ namespace BossRush
                 SafeRuntime.Run("PetNestCompanionAgent.ResetStaticCaches", () => PetNestCompanionAgent.ResetStaticCaches());
                 SafeRuntime.Run("PetNestDownedHandler.ResetStaticCaches", () => PetNestDownedHandler.ResetStaticCaches());
                 SafeRuntime.Run("PetNestDropService.ResetStaticCaches", () => PetNestDropService.ResetStaticCaches());
+                SafeRuntime.Run("PetNestSoulNotice.CleanupCurrentPlayer", () => PetNestSoulNotice.CleanupCurrentPlayer());
                 SafeRuntime.Run("PetNestProgressionService.ResetStaticCaches", () => PetNestProgressionService.ResetStaticCaches());
                 SafeRuntime.Run("PetNestMuseumStats.ResetStaticCaches", () => PetNestMuseumStats.ResetStaticCaches());
 
@@ -383,6 +384,7 @@ namespace BossRush
             // 两个关闭分支（OnSceneLoaded / OnUpdate）都经这里，是唯一的咽喉点；
             // 无追踪时 ClearAllTracking 自身是 O(1) 早返，不破坏关闭态零开销。
             PetNestDropService.ClearAllTracking();
+            PetNestSoulNotice.CleanupCurrentPlayer();
             if (!_bootstrapped) return;
             try
             {

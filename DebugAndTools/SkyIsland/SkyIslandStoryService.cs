@@ -221,7 +221,7 @@ namespace BossRush
                 return summaryCache;
             }
         }
-        private static string Mark(bool value) { return value ? " ✓" : " ○"; }
+        private static string Mark(bool value) { return value ? " √" : " ○"; }
 
         /// <summary>
         /// 岛上物理落盘的去抖秒数。官方 `SavesSystem.SaveFile` 是「备份拷贝 + 整档同步写」（反编译源 `Saves/SavesSystem.cs:503`），

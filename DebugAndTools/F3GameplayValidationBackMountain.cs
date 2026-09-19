@@ -74,7 +74,7 @@ namespace BossRush
             metrics = "distinct_produce=" + produceToSeed.Count + ",all_mapped=" + allMapped
                 + ",no_self_loop=" + noSelfLoop + ",unknown_rejected=" + unknownRejected;
             if (!allMapped || produceToSeed.Count != seeds.Length || !noSelfLoop || !unknownRejected)
-                reason = "种子↔产出映射不是三对一一对应，或未登记 ID 未被拒绝";
+                reason = "种子<->产出映射不是三对一一对应，或未登记 ID 未被拒绝";
             return reason == null;
         }
 

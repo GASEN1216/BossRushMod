@@ -1,5 +1,11 @@
 # 召唤法杖（SummonStaff）
 
+## 2026-09-19 首次施法准备（COMPAT）
+
+`SummonStaffManager` 仅在主玩家实际手持法杖时启动两阶段协程：下一帧查找并缓存官方召唤 preset，再下一帧准备共享环形精灵和粒子材质。各阶段重新验证主角、生命与手持状态；离手、停用、切图、销毁时取消未完成任务，事件按命名方法成对退订。未拿在手中的背包/仓库法杖不预热。
+
+右键动作只消费 `cachedPreset`，准备完成前不放行，避免首次右键回调扫描全部 preset。三只召唤物之间使用 `UniTask.NextFrame` 确保分到不同帧；异步生成后还要复查仍持有法杖，换武器时销毁迟到的新实体。未改数量、生命、伤害与存活时间。官方 CreateCharacterAsync 内部的单次实例化耗时需实机采样，离线守卫不能证明无卡顿。
+
 <cite>
 **本文引用的文件**
 - [SummonStaffManager.cs](file://Integration/NewWeapons/SummonStaff/SummonStaffManager.cs)

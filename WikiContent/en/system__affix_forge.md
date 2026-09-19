@@ -15,8 +15,9 @@ A single piece can carry both reforged stats and affixes. The two systems never 
 ### How to use it
 
 - Talk to Dingdang and pick `Affix Forging`.
-- Select a piece of gear, then spend **1 Affix Forge Stone + money** to roll one affix onto it.
-  The money follows the reforge price curve, so Dingdang's affinity discounts apply here too.
+- Select a piece of gear to reroll **every unlocked slot**. Each unlocked slot costs **1 Affix Forge Stone**; the first forge charges for all slots.
+- Gold uses the discounted reforge base price as its unit: `10` units per unlocked slot, plus `2 / 5 / 8` units for every existing Common / Rare / Cursed affix, including locked ones. T1-T3 does not multiply this surcharge.
+  The reforge base price is `1%` of item value (minimum `100` gold), with Dingdang's affinity discount.
 - How many affixes a piece can hold depends on its **quality**: **1** at quality 4 or below,
   **2** at quality 5-6, **3** at quality 7+. The slot count is frozen at the first forge and
   never changes afterwards.
@@ -35,7 +36,7 @@ below list **T1 / T2 / T3** — you will usually get the leftmost number.
 
 ### Where stones come from
 
-- **Dingdang's shop** — unlocks at affinity Lv.2, up to 5 per restock. This is the steady line.
+- **Dingdang's shop** — stocks stones at affinity **Lv.10**, up to 5 per restock. BossRush is the main source before then.
 - **Boss drops** — around `8%`, so roughly one stone per standard arena run. This is the lucky line.
   Stones land wherever that boss's normal loot lands, same as relic eggs: the **loot crate** in
   standard arena and From Scratch, **on the ground** in Infinite Hell, and **on the boss itself**
@@ -78,8 +79,8 @@ Each affix only goes on certain gear types, noted after the name.
 All three go on any supported gear, and all three are passive: they apply as long as you're
 holding or wearing the piece.
 
-- **Blood Rage** — All weapon damage `+10% / +16% / +24%`, but max health `−12% / −18% / −25%`.
-- **Glass Cannon** — All weapon damage `+15% / +24% / +35%`, but armor `−1 / −2 / −3`.
+- **Blood Rage** — All weapon damage `+10% / +16% / +24%`, but max health `-12% / -18% / -25%`.
+- **Glass Cannon** — All weapon damage `+15% / +24% / +35%`, but armor `-1 / -2 / -3`.
 - **Death Pact** — Kills restore `10% / 14% / 20%` of max health, but you lose
   `0.8% / 1.2% / 1.8%` of max health per second. **It can never kill you** — it always leaves
   you at 1 HP, and there's no drain inside the base.
@@ -100,8 +101,8 @@ holding or wearing the piece.
 - **Do two pieces with the same affix stack?** Yes.
 - **Can one item roll the same affix twice?** No. Duplicates are never rolled onto one piece.
 - **Can I forge in Zombie Mode?** No. The temporary goblin there doesn't offer it.
-- **What if I roll something I don't want?** Lock the ones you're keeping and spend another
-  stone to re-roll. Only the unlocked slots change.
+- **What if I roll something I don't want?** Lock the ones you're keeping and pay one
+  stone per unlocked slot to reroll. Only the unlocked slots change.
 
 ### Do I need to enable it?
 

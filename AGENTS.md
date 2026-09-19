@@ -109,7 +109,7 @@ python tools/run_guards.py --filter OfficialCompileList
 
 ### 4.8 Config 三层归位
 
-1. 运行时可调参数：`Config/Config.cs` + `ModConfigApi`。新增 ModConfig 键要登记白名单，否则热更新静默失效（`ModConfigOptionChangeGuard`）。玩法系统总开关不暴露给玩家、默认恒开，只暴露调参旋钮。
+1. 运行时可调参数：`Config/Config.cs` + `ModConfigApi`。新增 ModConfig 键要登记白名单，否则热更新静默失效（`ModConfigOptionChangeGuard`）。玩法系统总开关默认恒开，只暴露调参旋钮；鸭生无常例外：默认开启并允许玩家手动关闭。
 2. 玩法强耦合常量：模块自己的 `XxxConfig.cs` / `XxxTuning.cs`。
 3. 大型数据表：`Assets/Data/*.json` + Registry + guard + 硬编码 fallback。嵌套 JSON 用 `Common/Data/BossRushJsonValue`，不再建第二套解析器；`JsonUtility` DTO 字段的 CS0649 是误报，定点 `#pragma warning disable 0649` 并写明原因。
 
@@ -151,6 +151,7 @@ python tools/run_guards.py --filter OfficialCompileList
 - 按钮字色用 `BossRushUI.GetButtonTextColor(背景色)`，不写死；对比度按实际合成后的底色算，正文至少 4.5:1。游戏是 Linear 色彩空间，半透明在线性光里混合，复算按线性模型（`docs/contracts.md` §7.1），观感修复以实机截图取色为准。
 - 缓动只用 `BossRushUI.EaseOut`（位移）与 `BossRushUI.SmoothStep`（原地淡变），子元素错峰入场用 `BossRushUIEntranceAnimation`，不引入 DOTween 一类第三方依赖。走 unscaled 时间的表现层自带 `BossRushUI.IsGamePaused()` 门；常驻 HUD 跟随 `BossRushUI.IsOfficialHudHidden()`。
 - 字体用 `BossRushUI.ApplyGameFont` / `ZombieModeUIHelper.GetGameFont()`，新文本用 TMP（内置 Arial 渲染不了中文）；`CanvasScaler` 调 `ZombieModeUIHelper.ConfigureCanvasScaler`。
+- 玩家可见文本（含 `WikiContent/` 正文与随包数据表）**只能用 GBK 收录的符号**：官方字体是中文字体，★☆○●◎◇■□△▲※→←↑↓√Ⅰ① 一定有字形，Emoji、✓✗❄❌⚠、U+2212 减号、U+2022 圆点在游戏里是空白豆腐块（2026-09-19 实测）。判据与例外见 `tests/PlayerFacingGlyphGuard.py`；日志与只给人在编辑器里读的报告不受此限。
 - 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。
 - 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。列表页（合成配方、航务委托）例外：上限 6 项，且不带立绘。
   付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
@@ -173,6 +174,8 @@ python tools/run_guards.py --filter OfficialCompileList
 - 「有代码」不等于「拿得到」：零获取途径、入口没接线、配置器没登记，编译和守卫都查不出来。交付前从玩家入口读一遍到生产逻辑，能写成守卫或属性测试的写上。
 - 存档扩展走 `SCHEMA+`：新字段可选、旧档读出有合理默认值、掩码与版本同步。持久化复用 `Common/Lifecycle/BossRushSaveCoordinatorEngine` 与 `BossRushSlotJsonStore`，不再复制状态机。
 - 重打包会把作者工程当下的全部资产一起发出去：打包前确认作者工程里没有别人未完成的改动，打包与部署后按 `DebugAndTools/SkyIsland/AGENTS.md` §6 核对。
+- **贴图导入设置属于交付内容**：作者工程里的 `TextureImporter` 才决定玩家看到什么，PNG 多大不算数。物品 / 装备 / 图标 128–512（最多 512），立绘、横幅、海报最多 1024，并关掉 `crunchedCompression`（只压磁盘、不省显存，quality 50 在近距离看的图上是可见块状噪点）。口径与批量修正见 `tools/apply_unity_texture_policy.py`，守卫 `tests/UnityTextureImportPolicyGuard.py`。改完必须在 Unity 里重新导入并重打相关 bundle 才生效。
+- 作者工程与 Unity Editor 的路径不要写死：统一走 `tools/unity_project_path.py`（`BOSSRUSH_UNITY_PROJECT` / `BOSSRUSH_UNITY_EDITOR` 优先）。写死路径在工程搬家后会让「找不到就跳过」的守卫**静默变成永远 PASS**。
 - 交付记录里写的「本轮不加 TypeID / 不改存档 / 不重打包」只描述那一轮的范围，不是长期规则。
 
 ### 4.17 F3 验收用例与常驻 HUD

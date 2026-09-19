@@ -16,14 +16,14 @@ A **totem-slot defensive item** that converts frontal incoming damage into healt
 
 When hit from the **front (±60° arc measured from the direction you are currently aiming)**:
 - Recover **30%** of the damage taken as HP
-- Capped at **25 HP** per trigger
+- Capped at **25 HP** per trigger and your maximum health
 - Maximum **once every 0.5 seconds**
 
-Side and rear attacks do **not** trigger the healing. The check uses the direction your character is actually facing (the same direction you aim), not the direction you are moving — when something is chasing you, turn and face it.
+Damage is taken before the refund; a lethal hit cannot be rescued by this healing. Side and rear attacks do **not** trigger the healing. The check uses the direction your character is actually facing (the same direction you aim), not the direction you are moving — when something is chasing you, turn and face it.
 
 ## What It Looks Like
 
-A successful frontal absorb flashes a **pale blue shield ring** in front of you with a metallic chime. Side and rear hits produce nothing — **no ring means no absorb**, which is the fastest way to tell whether you were facing the attacker.
+A successful frontal absorb flashes a **pale blue shield ring** in front of you with a metallic chime and a green number showing the actual HP restored. Side and rear hits produce nothing — **no ring means no absorb**, which is the fastest way to tell whether you were facing the attacker.
 
 ## Tips
 

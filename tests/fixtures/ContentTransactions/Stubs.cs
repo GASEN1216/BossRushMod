@@ -223,8 +223,8 @@ namespace BossRush
     class PetNestLineageInfo { public string DisplayName = "test"; public ElementTypes Element = ElementTypes.electricity; }
     static class PetNestLineageCatalog
     {
-        public static bool TryGet(string key, out PetNestLineageInfo info) { info = key == "test" ? new PetNestLineageInfo() : null; return info != null; }
-        public static bool IsKnownLineage(string key) { return key == "test"; }
+        public static bool TryGet(string key, out PetNestLineageInfo info) { info = IsKnownLineage(key) ? new PetNestLineageInfo() : null; return info != null; }
+        public static bool IsKnownLineage(string key) { return key == "test" || (key != null && key.StartsWith("test_", StringComparison.Ordinal)); }
         public static ElementTypes GetDestinationElement(string id) { return ElementTypes.electricity; }
     }
     static class RelicEggConfig
@@ -240,7 +240,15 @@ namespace BossRush
     static class BossRushAchievementManager
     {
         public static HashSet<string> Unlocked = new HashSet<string>();
-        public static void TryUnlock(string id) { Unlocked.Add(id); }
+        public static Dictionary<string, int> Grants = new Dictionary<string, int>();
+        public static bool Initialized;
+        public static void Initialize() { Initialized = true; }
+        public static void Reset() { Unlocked.Clear(); Grants.Clear(); Initialized = false; }
+        public static bool TryUnlock(string id)
+        {
+            if (!Initialized || !Unlocked.Add(id)) return false;
+            int count; Grants.TryGetValue(id, out count); Grants[id] = count + 1; return true;
+        }
     }
     static class BossRushQualityItemPool
     {

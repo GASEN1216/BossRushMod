@@ -110,7 +110,7 @@ def main():
         specs = SPECS[:2]
     base.SPECS = specs
     base.RAW = "output/sky_island_item_icons_raw"
-    return base.main()
+    return base.main([])
 
 
 if __name__ == "__main__":

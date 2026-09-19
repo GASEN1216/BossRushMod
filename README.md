@@ -50,7 +50,7 @@
 
 ## 配置
 
-两个入口：`ModConfig`，以及游戏目录下的 `StreamingAssets/BossRushModConfig.txt`（JSON）。玩法系统默认全部开启，配置里只暴露调参旋钮。常用项：
+两个入口：`ModConfig`，以及游戏目录下的 `StreamingAssets/BossRushModConfig.txt`（JSON）。玩法系统默认开启；鸭生无常可手动关闭，其余内容系统只暴露调参旋钮。常用项：
 
 | 键名 | 默认值 | 说明 |
 | --- | --- | --- |

@@ -567,14 +567,14 @@ namespace BossRush
         // 霜冠（冰霜头盔）
         private static readonly string FrostHelmNameCN = "霜冠";
         private static readonly string FrostHelmNameEN = "Frost Crown";
-        private static readonly string FrostHelmDescCN = "冠沿结着白霜，隔着手套也冷。\n<color=#87CEEB>【寒冰之护】穿齐2件生效</color>\n<color=#AADDFF>冰抗+50%，所受冰伤的50%转为治疗。\n击杀触发冰葬：尸体处4.5米霜爆，20冰伤并冻结。冷却1.5秒。\n受击：30%概率冻结5米内的攻击者。冷却5秒。</color>\n<color=#BBBBBB>来源：「???」Boss / 叮当的小店（好感6级）</color>";
-        private static readonly string FrostHelmDescEN = "Frost rims the crown. Cold even through gloves.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage taken heals you.\nOn kill: Frost Nova bursts 4.5m from the corpse, 20 ice damage and freeze. Cooldown: 1.5s.\nOn hit: 30% chance to freeze the attacker within 5m. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: \"???\" boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string FrostHelmDescCN = "冠沿结着白霜，隔着手套也冷。\n<color=#87CEEB>【寒冰之护】穿齐2件生效</color>\n<color=#AADDFF>冰抗+50%，所受冰伤的50%转为治疗。\n每累计3次直接击杀触发冰葬：尸体3米内最多3名敌人受8冰伤并冻结。冷却6秒。\n受击：30%概率冻结5米内的攻击者。冷却5秒。</color>\n<color=#BBBBBB>来源：「???」Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string FrostHelmDescEN = "Frost rims the crown. Cold even through gloves.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage taken heals you.\nEvery 3 direct kills: Frost Nova deals 8 ice damage and freezes up to 3 enemies within 3m of the corpse. Cooldown: 6s.\nOn hit: 30% chance to freeze the attacker within 5m. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: \"???\" boss / Dingdang's Shop (affinity 6)</color>";
 
         // 寒冰铠甲
         private static readonly string FrostArmorNameCN = "寒冰铠甲";
         private static readonly string FrostArmorNameEN = "Ice Armor";
-        private static readonly string FrostArmorDescCN = "铠甲内侧凝着冰，走动时簌簌作响。\n<color=#87CEEB>【寒冰之护】穿齐2件生效</color>\n<color=#AADDFF>冰抗+50%，所受冰伤的50%转为治疗。\n击杀触发冰葬：尸体处4.5米霜爆，20冰伤并冻结。冷却1.5秒。\n受击：30%概率冻结5米内的攻击者。冷却5秒。</color>\n<color=#BBBBBB>来源：「???」Boss / 叮当的小店（好感6级）</color>";
-        private static readonly string FrostArmorDescEN = "Ice lines the armor, crackling with each step.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage taken heals you.\nOn kill: Frost Nova bursts 4.5m from the corpse, 20 ice damage and freeze. Cooldown: 1.5s.\nOn hit: 30% chance to freeze the attacker within 5m. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: \"???\" boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string FrostArmorDescCN = "铠甲内侧凝着冰，走动时簌簌作响。\n<color=#87CEEB>【寒冰之护】穿齐2件生效</color>\n<color=#AADDFF>冰抗+50%，所受冰伤的50%转为治疗。\n每累计3次直接击杀触发冰葬：尸体3米内最多3名敌人受8冰伤并冻结。冷却6秒。\n受击：30%概率冻结5米内的攻击者。冷却5秒。</color>\n<color=#BBBBBB>来源：「???」Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string FrostArmorDescEN = "Ice lines the armor, crackling with each step.\n<color=#87CEEB>[Frost Ward] Requires 2 pieces</color>\n<color=#AADDFF>Ice Resist +50%. Half of ice damage taken heals you.\nEvery 3 direct kills: Frost Nova deals 8 ice damage and freezes up to 3 enemies within 3m of the corpse. Cooldown: 6s.\nOn hit: 30% chance to freeze the attacker within 5m. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: \"???\" boss / Dingdang's Shop (affinity 6)</color>";
 
         // 冰冻 Buff
         private static readonly string FrostBuffNameCN = "冰冻";
@@ -589,14 +589,14 @@ namespace BossRush
         // 雷神之角（雷霆头盔）
         private static readonly string ThunderHelmNameCN = "雷神之角";
         private static readonly string ThunderHelmNameEN = "Thunder Horn";
-        private static readonly string ThunderHelmDescCN = "角尖不时跳出电弧。\n<color=#FFD700>【雷霆之怒】穿齐2件生效</color>\n<color=#FFEE88>电抗+50%，所受电伤的50%转为治疗。\n击杀：引雷术攻击6米内最多3名敌人。35电伤，最多连跳3次。\n受击：6米内攻击者有25%概率触发雷霆反震。\n反震造成4米范围30电伤，不伤自己。冷却3秒。</color>\n<color=#BBBBBB>来源：风暴区Boss / 叮当的小店（好感6级）</color>";
-        private static readonly string ThunderHelmDescEN = "Arcs flicker between the horns.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Elec Resist +50%. Half of shock damage taken heals you.\nOn kill: lightning hits up to 3 foes within 6m. 35 shock damage, up to 3 jumps.\nOn hit: attackers within 6m have a 25% chance to trigger a counter-shock.\nThe shock deals 30 damage within 4m and cannot hurt you. Cooldown: 3s.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string ThunderHelmDescCN = "角尖不时跳出电弧。\n<color=#FFD700>【雷霆之怒】穿齐2件生效</color>\n<color=#FFEE88>电抗+50%，所受电伤的50%转为治疗。\n每累计3次直接击杀：引雷术攻击4米内最多2名敌人，各12电伤，不续跳。冷却5秒。\n受击：6米内攻击者有25%概率触发雷霆反震。\n反震造成3米范围12电伤，不伤自己。冷却5秒。</color>\n<color=#BBBBBB>来源：风暴区Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string ThunderHelmDescEN = "Arcs flicker between the horns.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Elec Resist +50%. Half of shock damage taken heals you.\nEvery 3 direct kills: lightning deals 12 shock damage to up to 2 foes within 4m. No extra jumps. Cooldown: 5s.\nOn hit: attackers within 6m have a 25% chance to trigger a counter-shock.\nThe shock deals 12 damage within 3m and cannot hurt you. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
 
         // 雷霆战甲
         private static readonly string ThunderArmorNameCN = "雷霆战甲";
         private static readonly string ThunderArmorNameEN = "Thunder Armor";
-        private static readonly string ThunderArmorDescCN = "甲片间藏着电光，碰一下就麻手。\n<color=#FFD700>【雷霆之怒】穿齐2件生效</color>\n<color=#FFEE88>电抗+50%，所受电伤的50%转为治疗。\n击杀：引雷术攻击6米内最多3名敌人。35电伤，最多连跳3次。\n受击：6米内攻击者有25%概率触发雷霆反震。\n反震造成4米范围30电伤，不伤自己。冷却3秒。</color>\n<color=#BBBBBB>来源：风暴区Boss / 叮当的小店（好感6级）</color>";
-        private static readonly string ThunderArmorDescEN = "Sparks hide between the plates. A touch numbs your fingers.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Elec Resist +50%. Half of shock damage taken heals you.\nOn kill: lightning hits up to 3 foes within 6m. 35 shock damage, up to 3 jumps.\nOn hit: attackers within 6m have a 25% chance to trigger a counter-shock.\nThe shock deals 30 damage within 4m and cannot hurt you. Cooldown: 3s.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
+        private static readonly string ThunderArmorDescCN = "甲片间藏着电光，碰一下就麻手。\n<color=#FFD700>【雷霆之怒】穿齐2件生效</color>\n<color=#FFEE88>电抗+50%，所受电伤的50%转为治疗。\n每累计3次直接击杀：引雷术攻击4米内最多2名敌人，各12电伤，不续跳。冷却5秒。\n受击：6米内攻击者有25%概率触发雷霆反震。\n反震造成3米范围12电伤，不伤自己。冷却5秒。</color>\n<color=#BBBBBB>来源：风暴区Boss / 叮当的小店（好感6级）</color>";
+        private static readonly string ThunderArmorDescEN = "Sparks hide between the plates. A touch numbs your fingers.\n<color=#FFD700>[Thunder's Wrath] Requires 2 pieces</color>\n<color=#FFEE88>Elec Resist +50%. Half of shock damage taken heals you.\nEvery 3 direct kills: lightning deals 12 shock damage to up to 2 foes within 4m. No extra jumps. Cooldown: 5s.\nOn hit: attackers within 6m have a 25% chance to trigger a counter-shock.\nThe shock deals 12 damage within 3m and cannot hurt you. Cooldown: 5s.</color>\n<color=#BBBBBB>Source: Storm Zone boss / Dingdang's Shop (affinity 6)</color>";
 
         #endregion
 

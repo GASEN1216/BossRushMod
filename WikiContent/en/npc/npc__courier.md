@@ -52,7 +52,7 @@ Successful extraction rewards are auto-sent to Storage Point. Find Awen on norma
 
 ### Locations
 
-Present in: Normal Maps ✓ / Standard ✓ / From Scratch ✓ / Faction War ✓ / Blood Hunt ✓
+Present in: Normal Maps √ / Standard √ / From Scratch √ / Faction War √ / Blood Hunt √
 
 ### Tips
 

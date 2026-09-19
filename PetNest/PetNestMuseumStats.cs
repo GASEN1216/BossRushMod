@@ -132,6 +132,8 @@ namespace BossRush
         {
             try
             {
+                // 基地首次孵化可能早于进入竞技场的成就初始化，TryUnlock 本身不负责初始化。
+                BossRushAchievementManager.Initialize();
                 if (UnlockedLineageCount >= 1)
                 {
                     BossRushAchievementManager.TryUnlock("petnest_first_hatch");
@@ -157,12 +159,6 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[PetNest] 驯养成就检查失败: " + e.Message);
             }
-        }
-
-        /// <summary>外部（纪念碑刻档后）触发一次成就检查。</summary>
-        internal static void NotifyMemorialChanged()
-        {
-            CheckTamingAchievements();
         }
 
         /// <summary>物理保存成功后重查；延期孵化也由协调器补发，不再依赖揭晓成功路径。</summary>

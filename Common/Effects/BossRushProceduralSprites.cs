@@ -29,6 +29,8 @@ namespace BossRush
 
         private static Sprite cachedCircleSprite;
         private static Texture2D cachedCircleTexture;
+        private static Sprite cachedRingSprite;
+        private static Texture2D cachedRingTexture;
 
         /// <summary>
         /// 中心亮、边缘线性淡出的圆形精灵。用于爆发环、碎片、护盾闪光等一次性表现。
@@ -84,11 +86,42 @@ namespace BossRush
             }
         }
 
+        /// <summary>薄边空心环，技能扩散时保留中心可见性，不把实心圆放大成一团雾。</summary>
+        public static Sprite GetRingSprite()
+        {
+            if (cachedRingSprite != null) return cachedRingSprite;
+            const int size = 128;
+            Texture2D texture = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            texture.name = "BossRushRingSprite_Shared";
+            texture.hideFlags = HideFlags.DontSave;
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+            Color[] pixels = new Color[size * size];
+            float center = (size - 1) * 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float radius = Vector2.Distance(new Vector2(x, y), new Vector2(center, center)) / center;
+                    float alpha = Mathf.Clamp01(1f - Mathf.Abs(radius - 0.82f) / 0.12f);
+                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+                }
+            }
+            texture.SetPixels(pixels);
+            texture.Apply();
+            cachedRingSprite = Sprite.Create(texture, new Rect(0f, 0f, size, size), new Vector2(0.5f, 0.5f), size);
+            cachedRingSprite.hideFlags = HideFlags.DontSave;
+            cachedRingTexture = texture;
+            return cachedRingSprite;
+        }
+
         /// <summary>清理静态缓存（由 NewWeaponBootstrap 的 cleanup 路径调用）。</summary>
         public static void ResetStaticCaches()
         {
             try
             {
+                if (cachedRingSprite != null) UnityEngine.Object.Destroy(cachedRingSprite);
+                if (cachedRingTexture != null) UnityEngine.Object.Destroy(cachedRingTexture);
                 if (cachedCircleSprite != null)
                 {
                     UnityEngine.Object.Destroy(cachedCircleSprite);
@@ -100,6 +133,8 @@ namespace BossRush
             }
             catch { /* best-effort fallback intentionally ignored */ }
 
+            cachedRingSprite = null;
+            cachedRingTexture = null;
             cachedCircleSprite = null;
             cachedCircleTexture = null;
         }

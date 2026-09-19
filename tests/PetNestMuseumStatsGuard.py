@@ -30,6 +30,9 @@ def check_stats(errors):
         errors.append("[File] 缺少 PetNest/PetNestMuseumStats.cs")
         return
     code = strip_cs_comments(text)
+    achievement_check = re.search(r"private static void CheckTamingAchievements\(\)[\s\S]*?\n        \}", code)
+    if achievement_check is None or "BossRushAchievementManager.Initialize();" not in achievement_check.group(0):
+        errors.append("[成就] 首次基地孵化前必须幂等初始化成就目录")
 
     # 实例去重
     if "HashSet<CharacterMainControl> _countedBossKills" not in code:
@@ -96,6 +99,11 @@ def check_stats(errors):
     expedition = read_petnest("PetNestExpeditionService.cs")
     if expedition is not None and "PetNestMuseumStats.RecordExpedition(pet);" not in strip_cs_comments(expedition):
         errors.append("[接线] 远征出发必须记一次远征")
+    if expedition is not None:
+        ecode = strip_cs_comments(expedition)
+        for forbidden in ("NotifyMemorialChanged()", "EvaluatePersistedAchievements()", "BossRushAchievementManager.TryUnlock("):
+            if forbidden in ecode:
+                errors.append("[成就] 远征候选阶段不得提前发布成就: " + forbidden)
 
 
 def check_idle_spawner(errors):

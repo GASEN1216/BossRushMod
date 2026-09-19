@@ -2,6 +2,8 @@
 
 运行 `python tools/run_runtime_regressions.py --filter AffixCombat`，需要 .NET 8，不启动游戏。
 
+此外逐字抽取生产词缀资格与计价方法，验证空槽按数量收费、锁定少一颗熔石、稀有度附加费、极端价格饱和，以及读档自定义武器先补配再判断资格。物品组件/标签/KV 和重铸基础费用是受控宿主替身，价格计算与装备归类本身来自生产源码。
+
 直接链接完整 `AffixRuntimeService.cs`、`AffixRuntimeService_Effects.cs`、`AffixDefinitions.cs`、
 `ZombieModeRuntimeModule.cs` 与 `RunScopedRegistry.cs`。由装备变化与 Health 事件驱动真实词缀分发器。
 `run.py` 逐字提取共享变异的死亡分发/延迟方法和天降殉爆 OnApply、丧尸奖励爆炸/末日脉冲/区域爆炸入口，

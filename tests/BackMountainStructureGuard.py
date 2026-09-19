@@ -163,18 +163,15 @@ def main():
                 CONFIG_CONST.as_posix() + " 的冻结常量 " + name + " 不再等于 " + literal
                 + "。它进存档键或官方建筑/作物 ID，改名会让老档静默失联。")
 
-    # ---- 6) 恒开契约 + 旁路旋钮仍可拨 ----
-    # 后山总开关属于默认内容（恒开、不进 UI）；而 UnlockAll 是玩家偏好旋钮，
-    # 必须继续注册并留在白名单里，否则玩家拨了没反应。两者性质不同，别一起撤掉。
+    # ---- 6) 正式构建隐藏并禁用旧调试旁路，配置字段仍兼容旧文件 ----
     if not re.search(r"public bool backMountainEnabled\s*=\s*true\s*;", config):
-        return fail(
-            "backMountainEnabled 的默认值不再是 true。它属于默认内容，恒为开启"
-            "（见 Config/ConfigContentSystemSwitches.cs 的策略说明）。")
-    if "BackMountainUnlockAllModConfigKeySuffix" not in config:
-        return fail(
-            "IsHandledModConfigOptionKey 白名单缺少后山旁路旋钮键（查了 "
-            + ", ".join(p.as_posix() for p in CONFIG_SOURCES) + "），"
-            "玩家拨动「跳过战役解锁」不会即时生效。")
+        return fail("backMountainEnabled 必须默认 true")
+    from cs_source_util import clean_source
+    release = clean_source(Path("Config/ConfigBackMountain.cs").read_text(encoding="utf-8"))
+    if "RegisterBackMountainModConfigOptions" in config or "BackMountainUnlockAllModConfigKeySuffix" in config:
+        return fail("后山调试旁路不得再注册或进入单键白名单")
+    if not re.search(r"#if BOSSRUSH_DEV\s+return config != null && config.backMountainUnlockAll;\s+#else\s+return false;\s+#endif", release):
+        return fail("正式构建必须忽略历史 backMountainUnlockAll=true")
 
     # ---- 7) 登记/餐食写入必须可证实，失败不能静默报告成功 ----
     if not re.search(r"private static bool Store\(\)", showcase):
