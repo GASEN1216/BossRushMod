@@ -11,27 +11,21 @@
 //     注意 day 这一维是**签到当日**，不是补发当日：调用方用
 //     DailyReportService.ResolveMilestoneSignDayIndex 从存档字段推导，
 //     否则跨天补发会抽到另一件，承诺就破了。
-//   - 候选表按品质缓存：ItemAssetsCollection.Search 是全表扫描，不能每次签到都跑。
+//   - 候选表复用 BossRushQualityItemPool，与远征共用精确品质过滤与缓存。
 // ============================================================================
 
 using System;
-using System.Collections.Generic;
 using ItemStatsSystem;
 
 namespace BossRush
 {
-    /// <summary>日报奖励发放。静态无状态（除候选表缓存）。</summary>
+    /// <summary>日报奖励发放。候选与缓存由共享品质池持有。</summary>
     internal static class DailyReportRewards
     {
         #region 常量与缓存
 
         /// <summary>确定性随机域：与其他系统的随机流互不干扰。</summary>
         private const string RewardDomain = "bossrush_daily_reward";
-
-        /// <summary>按品质缓存的候选物品 id 表。Search 是全表扫描，不能每次签到都跑。</summary>
-        private static readonly Dictionary<int, int[]> _candidateCache = new Dictionary<int, int[]>();
-
-        private static readonly object _lock = new object();
 
         #endregion
 
@@ -183,78 +177,13 @@ namespace BossRush
         /// </summary>
         private static int PickRewardTypeId(int quality, long seed, int dayIndex, int slot)
         {
-            int[] candidates = GetCandidates(quality);
+            int[] candidates = BossRushQualityItemPool.GetCandidates(quality);
             if (candidates == null || candidates.Length <= 0) return -1;
 
             // sequence 把「天」和「格」揉进同一条流，避免同一天不同格抽到同一件
             int sequence = dayIndex * 100 + slot;
             ModeHSeedStream stream = ModeHSeedStream.Create(seed, RewardDomain, sequence);
             return candidates[stream.NextInt(candidates.Length)];
-        }
-
-        /// <summary>
-        /// 取某品质的候选 id 表（已过黑名单）。**非空结果**才缓存，Search 只跑一次。
-        /// </summary>
-        private static int[] GetCandidates(int quality)
-        {
-            lock (_lock)
-            {
-                int[] cached;
-                if (_candidateCache.TryGetValue(quality, out cached)) return cached;
-            }
-
-            int[] built = BuildCandidates(quality);
-
-            // 精确品质可能暂时没有候选，留债重试；空结果不固化，非空池只扫描一次。
-            if (built == null || built.Length <= 0) return built;
-
-            lock (_lock)
-            {
-                _candidateCache[quality] = built;
-            }
-            return built;
-        }
-
-        private static int[] BuildCandidates(int quality)
-        {
-            try
-            {
-                if (ItemAssetsCollection.Instance == null) return new int[0];
-
-                LootBlacklistRegistry.EnsureInitialized();
-
-                // 全表按品质随机：requireTags 留空，只卡品质区间。
-                ItemFilter filter = new ItemFilter();
-                filter.requireTags = null;
-                filter.minQuality = quality;
-                filter.maxQuality = quality;
-                filter.caliber = string.Empty;
-
-                // Search 会在空池时偷偷降品质；复用官方精确过滤入口，保持承诺的品质。
-                int[] raw = ItemAssetsCollection.GetAllTypeIds(filter);
-                if (raw == null || raw.Length <= 0) return new int[0];
-
-                List<int> safe = new List<int>(raw.Length);
-                for (int i = 0; i < raw.Length; i++)
-                {
-                    int id = raw[i];
-                    if (id <= 0) continue;
-                    if (LootBlacklistRegistry.Contains(id)) continue;
-                    safe.Add(id);
-                }
-
-                // 官方动态表/HashSet 的枚举顺序不稳定；排序后确定性种子才有确定性奖品。
-                safe.Sort();
-                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "品质 " + quality
-                    + " 候选池：" + safe.Count + " 件（原始 " + raw.Length + " 件）");
-                return safe.ToArray();
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(DailyReportTuning.LogPrefix
-                    + "[WARNING] 构建品质 " + quality + " 候选池失败: " + e.Message);
-                return new int[0];
-            }
         }
 
         private static void TryDestroy(Item item)
@@ -271,17 +200,5 @@ namespace BossRush
 
         #endregion
 
-        #region 清理
-
-        /// <summary>静态缓存重置（Mod 卸载 / 宿主重建）。</summary>
-        internal static void ResetStaticCaches()
-        {
-            lock (_lock)
-            {
-                _candidateCache.Clear();
-            }
-        }
-
-        #endregion
     }
 }

@@ -672,7 +672,8 @@
       "id": "PETNEST",
       "title": "遗种巢",
       "sources": [
-        "PetNest"
+        "PetNest",
+        "Common/Loot"
       ],
       "automatic": [
         "PETNEST_BUNDLE_V2",
@@ -703,7 +704,8 @@
       "id": "DAILY",
       "title": "日报与签到",
       "sources": [
-        "Integration/DailyReport"
+        "Integration/DailyReport",
+        "Common/Loot"
       ],
       "automatic": [
         "DAILY_REPORT_ROLLBACK"

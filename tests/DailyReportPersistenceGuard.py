@@ -40,6 +40,7 @@ COLLECTOR = Path("Integration/DailyReport/DailyReportStatsCollector.cs")
 MODULE = Path("Integration/DailyReport/DailyReportRuntimeModule.cs")
 STORE = Path("Common/Lifecycle/BossRushSlotJsonStore.cs")
 ENGINE = Path("Common/Lifecycle/BossRushSaveCoordinatorEngine.cs")
+POOL = Path("Common/Loot/BossRushQualityItemPool.cs")
 COMPILE_LIST = Path("compile_official.bat")
 
 REQUIRED_SOURCES = [
@@ -55,7 +56,7 @@ REQUIRED_SOURCES = [
     Path("Integration/DailyReport/DailyReportMailboxRuntime.cs"),
     Path("Config/ConfigDailyReport.cs"),
     Path("Localization/DailyReportLocalization.cs"),
-    STORE, ENGINE,
+    STORE, ENGINE, POOL,
 ]
 
 
@@ -232,12 +233,20 @@ def main():
             "第 N 天发放失败、第 M 天补发会换奖品，破坏"
             "「同一 (seed, 签到当日, slot) 得到同一件」的确定性承诺")
 
-    # ---- 11) 空候选池不得进缓存 ----
-    if not re.search(r"built\.Length\s*<=\s*0\)\s*return\s+built", rewards_code):
-        return fail(
-            "空候选池不得写进 _candidateCache：资源未就绪或精确品质暂缺时必须允许恢复")
-    if "ItemAssetsCollection.Search(" in rewards_code or "ItemAssetsCollection.GetAllTypeIds(filter)" not in rewards_code:
+    # ---- 11) 复用品质池；空池可恢复且不降级 ----
+    pool_code = strip_comments(POOL.read_text(encoding="utf-8"))
+    if "int[] candidates = BossRushQualityItemPool.GetCandidates(quality);" not in rewards_code:
+        return fail("日报抽样必须直接使用共享品质池")
+    if "_candidateCache" in rewards_code or "BuildCandidates(" in rewards_code:
+        return fail("日报不得重建私有全表扫描/缓存副本")
+    empty = re.search(r"if \(built == null \|\| built.Length <= 0\) return new int\[0\];", pool_code)
+    cache = pool_code.find("_candidateCache[quality] = built;")
+    if not empty or cache < empty.end():
+        return fail("共享池必须在写缓存前拒绝空结果，允许资源恢复")
+    if "ItemAssetsCollection.Search(" in pool_code or "ItemAssetsCollection.GetAllTypeIds(filter)" not in pool_code:
         return fail("日报奖品必须精确匹配承诺品质，禁止 Search 静默降级")
+    if "safe.Sort();" not in pool_code:
+        return fail("共享池必须排序，保持确定性奖品")
 
     # ---- 12) 跨天提示必须落盘；UI 销毁必须调用动画基类清理 ----
     if "PendingIssueBanner" not in models:
@@ -250,6 +259,13 @@ def main():
         return fail("提示消费必须 Store 成功后才更新进程内标志")
     if not re.search(r"protected override void OnDestroy\(\)[\s\S]{0,180}?base\.OnDestroy\(\)", ui):
         return fail("DailyReportUI.OnDestroy 必须调用 FadePanelController 基类清理")
+
+    # ---- 13) 报箱注册失败不得冻结成功标记 ----
+    builder = strip_comments(Path("Integration/DailyReport/DailyReportMailboxBuilder.cs").read_text(encoding="utf-8"))
+    gate = builder.find("if (!InjectDailyReportBuildingData()) return;")
+    accepted = builder.find("dailyReportBuildingInjected = true;")
+    if gate < 0 or accepted <= gate:
+        return fail("报箱必须完整注册成功后才冻结初始化标记")
 
     # ---- 7) 编译清单 ----
     for path in REQUIRED_SOURCES:

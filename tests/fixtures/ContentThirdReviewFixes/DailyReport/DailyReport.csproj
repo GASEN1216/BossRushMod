@@ -17,5 +17,7 @@
     <Compile Include="../../../../ModeH/ModeHSeedStream.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="PlayabilityRegression.cs" />
+    <Compile Include="PresentationRegression.cs" />
+    <Compile Include="../../../../Build/content-third-review-fixes/DailyReport/ExtractedPresentation.cs" />
   </ItemGroup>
 </Project>

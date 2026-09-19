@@ -117,7 +117,7 @@ namespace BossRush
                 LoadDailyReportBuildingIcon();
                 LoadDailyReportBuildingModel();
                 CreateDailyReportBuildingPrefab();
-                InjectDailyReportBuildingData();
+                if (!InjectDailyReportBuildingData()) return;
                 RegisterDailyReportBuildingEvents();
 
                 dailyReportBuildingInjected = true;

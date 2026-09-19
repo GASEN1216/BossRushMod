@@ -59,7 +59,7 @@ namespace BossRush
 
         #endregion
 
-        #region 目录（数值待 owner 微调；改这里即可，不影响结构）
+        #region 目录（既有目标与奖金；保留种类和档位以便旧债务还原）
 
         /// <summary>
         /// 悬赏模板池。每天从这里等概率抽一条，再按同一条流抽档位。
@@ -183,7 +183,7 @@ namespace BossRush
                     break;
                 case DailyReportBountyKind.NoDeath:
                     // 只出门不等于生还；跨日报日出击也以实际撤离当天记功。
-                    raw = (stats.Extractions > 0 && stats.Deaths == 0) ? 1 : 0;
+                    raw = (stats.Extractions > 0 && !IsFailed(def, stats)) ? 1 : 0;
                     break;
                 default:
                     raw = 0;
@@ -193,6 +193,24 @@ namespace BossRush
             if (raw < 0) raw = 0;
             if (def.Target > 0 && raw > def.Target) raw = def.Target;
             return raw;
+        }
+
+        /// <summary>当天已经无法挽回的失败；与结算和展示共用同一判据。</summary>
+        internal static bool IsFailed(DailyReportBountyDef def, DailyReportStats stats)
+        {
+            return def != null && stats != null && def.Kind == DailyReportBountyKind.NoDeath && stats.Deaths != 0;
+        }
+
+        internal static string DescribeStatus(DailyReportBountyDef def, DailyReportStats stats)
+        {
+            if (def == null) return string.Empty;
+            if (IsFailed(def, stats))
+                return L10n.T("今日已失败：发生过阵亡，下一期再试。", "Failed today: a death was recorded. Try next issue.");
+            if (IsComplete(def, stats))
+                return def.Kind == DailyReportBountyKind.NoDeath
+                    ? L10n.T("已满足撤离条件；保持零阵亡至出刊。", "Extraction met; stay death-free until the next issue.")
+                    : L10n.T("目标已达成，奖金将在下期出刊时结算。", "Target reached. Cash settles with the next issue.");
+            return L10n.T("进行中；出刊前完成目标即可领取奖金。", "In progress. Reach the target before the next issue.");
         }
 
         /// <summary>是否达成。</summary>
@@ -241,8 +259,8 @@ namespace BossRush
             switch (def.Kind)
             {
                 case DailyReportBountyKind.Kills:
-                    return L10n.T("治安委员会：近郊野兽泛滥，见者有赏。",
-                        "Public Safety Board: vermin overrun the outskirts. Bounty on sight.");
+                    return L10n.T("累计你亲手击杀的敌对角色；友军和场景物件不计。",
+                        "Your kills of hostile characters count; allies and scenery do not.");
                 case DailyReportBountyKind.BossKills:
                     return L10n.T("头版悬赏：几张熟面孔又出现在了通缉栏上。",
                         "Front-page bounty: familiar faces are back on the wanted board.");

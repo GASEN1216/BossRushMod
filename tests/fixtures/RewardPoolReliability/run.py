@@ -9,7 +9,7 @@ ROOT = HERE.parents[2]
 OUT = ROOT / 'Build/runtime-regressions/RewardPoolReliability'
 OUT.mkdir(parents=True, exist_ok=True)
 paths = ['Integration/DailyReport/DailyReportRewards.cs', 'ModeH/ModeHRewardItemPool.cs',
-         'ModeH/ModeHSeedStream.cs']
+         'ModeH/ModeHSeedStream.cs', 'Common/Loot/BossRushQualityItemPool.cs']
 (OUT / 'sources.json').write_text(json.dumps({p: hashlib.sha256((ROOT/p).read_bytes()).hexdigest()
     for p in paths}, indent=2), encoding='utf-8')
 result = subprocess.run(['dotnet', 'build', str(HERE/'Regression.csproj'), '-c', 'Release',

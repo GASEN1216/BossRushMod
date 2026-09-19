@@ -116,6 +116,18 @@ namespace BossRush
             }
         }
 
+        /// <summary>按当前官方倍率估算剩余游玩分钟；停表或时钟缺席返回 -1。</summary>
+        internal static int GetRemainingPlayMinutes()
+        {
+            if (GameClock.Instance == null) return -1;
+            if (!_initialized && !TryInitializeFromSave()) return -1;
+            float scale = ReadClockTimeScale();
+            if (scale <= 0f) return -1;
+            double remaining = Math.Max(0d, DailyReportTuning.GameSecondsPerDay - CarrySeconds);
+            double minutes = Math.Ceiling(remaining / scale / 60d);
+            return minutes >= int.MaxValue ? int.MaxValue : (int)minutes;
+        }
+
         /// <summary>是否有待提示的新一期。</summary>
         internal static bool HasPendingIssueBanner { get { return _pendingIssueBanner; } }
 
@@ -795,8 +807,8 @@ namespace BossRush
         {
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            today.Kills++;
-            if (isBoss) today.BossKills++;
+            today.Kills = today.Kills < int.MaxValue ? today.Kills + 1 : int.MaxValue;
+            if (isBoss) today.BossKills = today.BossKills < int.MaxValue ? today.BossKills + 1 : int.MaxValue;
         }
 
         /// <summary>玩家死亡 +1。</summary>
@@ -804,7 +816,7 @@ namespace BossRush
         {
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            today.Deaths++;
+            today.Deaths = today.Deaths < int.MaxValue ? today.Deaths + 1 : int.MaxValue;
         }
 
         /// <summary>出击 +1。</summary>
@@ -812,7 +824,7 @@ namespace BossRush
         {
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            today.Raids++;
+            today.Raids = today.Raids < int.MaxValue ? today.Raids + 1 : int.MaxValue;
         }
 
         /// <summary>成功撤离 +1。</summary>
@@ -820,7 +832,7 @@ namespace BossRush
         {
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            today.Extractions++;
+            today.Extractions = today.Extractions < int.MaxValue ? today.Extractions + 1 : int.MaxValue;
         }
 
         /// <summary>累计造成的伤害，并顺带维护最大单次伤害。</summary>
@@ -829,7 +841,7 @@ namespace BossRush
             if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)) return;
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            today.DamageDealt += amount;
+            today.DamageDealt = (float)Math.Min(float.MaxValue, (double)today.DamageDealt + amount);
             if (amount > today.MaxSingleHit) today.MaxSingleHit = amount;
         }
 
@@ -839,7 +851,7 @@ namespace BossRush
             if (amount <= 0f || float.IsNaN(amount) || float.IsInfinity(amount)) return;
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            today.DamageTaken += amount;
+            today.DamageTaken = (float)Math.Min(float.MaxValue, (double)today.DamageTaken + amount);
         }
 
         /// <summary>金钱变动（delta 正数记收入，负数记支出）。</summary>
@@ -848,8 +860,14 @@ namespace BossRush
             if (delta == 0L) return;
             DailyReportStats today = TryGetTodayStats();
             if (today == null) return;
-            if (delta > 0L) today.MoneyEarned += delta;
-            else today.MoneySpent += -delta;
+            // 统计饱和而不回绕；回绕会让已完成悬赏倒退，也会产生无法回读的负数。
+            if (delta > 0L)
+                today.MoneyEarned = today.MoneyEarned > long.MaxValue - delta ? long.MaxValue : today.MoneyEarned + delta;
+            else
+            {
+                long spent = delta == long.MinValue ? long.MaxValue : -delta;
+                today.MoneySpent = today.MoneySpent > long.MaxValue - spent ? long.MaxValue : today.MoneySpent + spent;
+            }
         }
 
         /// <summary>

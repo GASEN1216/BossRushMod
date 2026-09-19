@@ -14,6 +14,7 @@ namespace BossRush
         public bool IsDailyReportConfiguredEnabled() { return Enabled; }
         public static bool IsModeHRunInProgressSafe() { return ModeH; }
         internal static void DevLog(string text) {}
+        internal static void LogError(string text) {}
     }
     static class L10n
     {
@@ -224,6 +225,7 @@ partial class Program
         Check(DailyReportCodec.Decode("{\"schemaVersion\":1,\"pendingMilestoneCount\":2147483647}") == null,
             "unbounded declared debt count fails closed before iteration");
         Playability();
+        PresentationAndMailbox();
         Console.WriteLine("DailyReport regression checks=" + checks);
     }
 }

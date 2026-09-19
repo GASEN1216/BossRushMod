@@ -49,7 +49,6 @@ namespace BossRush
         private const float PanelWidth = 1000f;
         private const float PanelHeight = 760f;
         private const float Margin = 28f;
-        private const float ContentHeight = 980f;
 
         /// <summary>签到墙右侧留给签到按钮与状态的宽度。</summary>
         private const float SignInSideWidth = 250f;
@@ -71,12 +70,23 @@ namespace BossRush
 
         private FadeGroup fadeGroup;
         private RectTransform panelRect;
+        private RectTransform paperFrame, signInArea;
+        private readonly List<PaperRow> paperRows = new List<PaperRow>();
+
+        // 每行保存已有控件；刷新只测量和重排，不销毁重建 View、滚动条或签到格。
+        private sealed class PaperRow
+        {
+            internal RectTransform Left, Right;
+            internal float Minimum, Gap;
+            internal PaperRow(RectTransform left, float minimum, float gap, RectTransform right = null)
+            { Left = left; Right = right; Minimum = minimum; Gap = gap; }
+        }
         private ScrollRect paperScroll;
         private TextMeshProUGUI statsTitleText, sideTitleText, closeText, rulesText;
         private readonly List<TextMeshProUGUI> legendLabels = new List<TextMeshProUGUI>();
         private float nextRefreshTime;
         private bool displayedChinese;
-        private int displayedDay, displayedPercent, displayedBountyProgress;
+        private int displayedDay, displayedPercent, displayedBountyProgress, displayedDeaths, displayedMinutes;
 
         private TextMeshProUGUI mastheadText;
         private TextMeshProUGUI issueText;
@@ -148,6 +158,7 @@ namespace BossRush
             GameObject panel = ZombieModeUIHelper.CreateRect(
                 "Paper", rootRect, new Vector2(0.5f, 0.5f), new Vector2(PanelWidth, PanelHeight));
             RectTransform paperRect = panel.GetComponent<RectTransform>();
+            paperFrame = paperRect;
             BuildPaperScroll(paperRect);
 
             Image paper = panel.AddComponent<Image>();
@@ -159,7 +170,7 @@ namespace BossRush
             // 纵向游标：每块自己申报高度，画完把游标推下去。
             // 早先是逐块手算 `top - 118f` 这类绝对偏移，任何一块改高度都要重算后面所有块，
             // 结果就是上半页空、下半页挤。用游标之后加减一块不影响别处。
-            float y = ContentHeight * 0.5f - Margin;
+            float y = 0f; // 初次占位；正文填充后由 ReflowPaper 按真实字高排版。
 
             // ---- 报头 ----
             mastheadText = CreateBlock(
@@ -194,11 +205,13 @@ namespace BossRush
                 -columnCenterX, titleY, columnWidth);
             sideTitleText = CreateColumnTitle("SideTitle", L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"),
                 columnCenterX, titleY, columnWidth);
+            paperRows.Add(new PaperRow(statsTitleText.rectTransform, 26f, 4f, sideTitleText.rectTransform));
             y -= 30f;
 
             float bodyY = y - columnBodyHeight * 0.5f;
             statsText = CreateColumnBody("Stats", -columnCenterX, bodyY, columnWidth, columnBodyHeight);
             sideText = CreateColumnBody("Side", columnCenterX, bodyY, columnWidth, columnBodyHeight);
+            paperRows.Add(new PaperRow(statsText.rectTransform, columnBodyHeight, 6f, sideText.rectTransform));
             y -= columnBodyHeight + 6f;
 
             AdvanceRule(panelRect, ref y, innerWidth);
@@ -212,7 +225,12 @@ namespace BossRush
             AdvanceRule(panelRect, ref y, innerWidth);
 
             // ---- 签到墙 ----
-            BuildSignInGrid(panelRect, innerWidth, ref y);
+            signInArea = ZombieModeUIHelper.CreateRect("SignInArea", panelRect,
+                new Vector2(0.5f, 0.5f), new Vector2(innerWidth, 210f)).GetComponent<RectTransform>();
+            float signY = 105f;
+            BuildSignInGrid(signInArea, innerWidth, ref signY);
+            PinSignInContentToTop();
+            paperRows.Add(new PaperRow(signInArea, 210f, 4f));
 
             rulesText = CreateBlock("Rules", string.Empty, 16f, innerWidth, 70f,
                 ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 0f);
@@ -258,7 +276,7 @@ namespace BossRush
             panelRect.anchorMin = new Vector2(0f, 1f);
             panelRect.anchorMax = new Vector2(1f, 1f);
             panelRect.pivot = new Vector2(0.5f, 1f);
-            panelRect.sizeDelta = new Vector2(-20f, ContentHeight);
+            panelRect.sizeDelta = new Vector2(-20f, PanelHeight);
             paperScroll.content = panelRect;
             BossRushUI.ConfigureScrollRect(paperScroll);
             paperScroll.verticalNormalizedPosition = 1f;
@@ -274,6 +292,7 @@ namespace BossRush
                 new Vector2(0f, y - height * 0.5f), new Vector2(width, height),
                 alignment, color);
             LockFontSize(text, fontSize);
+            paperRows.Add(new PaperRow(text.rectTransform, height, gapAfter));
             y -= height + gapAfter;
             return text;
         }
@@ -282,7 +301,8 @@ namespace BossRush
         private void AdvanceRule(RectTransform parent, ref float y, float width)
         {
             y -= 5f;
-            CreateRule(parent, new Vector2(0f, y), width);
+            RectTransform rule = CreateRule(parent, new Vector2(0f, y), width);
+            paperRows.Add(new PaperRow(rule, 2f, 11f));
             y -= 8f;
         }
 
@@ -461,11 +481,21 @@ namespace BossRush
                 displayedDay = data.DayIndex;
                 displayedPercent = Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f);
                 displayedBountyProgress = issue.TodayBountyProgress;
+                displayedDeaths = data.Today != null ? data.Today.Deaths : 0;
+                displayedMinutes = DailyReportService.GetRemainingPlayMinutes();
                 SetText(issueText, L10n.T(
                     "第 " + issue.IssueNumber + " 期　·　今日为第 " + data.DayIndex + " 天　·　当日进度 "
                         + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%",
                     "Issue " + issue.IssueNumber + "  ·  Day " + data.DayIndex + "  ·  today "
                         + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%"));
+
+                string deadline = displayedMinutes < 0
+                    ? L10n.T("日报时钟已停", "Daily clock stopped")
+                    : displayedMinutes == 0
+                    ? L10n.T("等待出刊结算", "Awaiting settlement")
+                    : L10n.T("距下期约 " + displayedMinutes + " 分钟游玩时间",
+                        "Next issue in about " + displayedMinutes + " minutes of play");
+                SetText(issueText, issueText.text + "\n" + deadline);
 
                 SetText(headlineText, issue.Headline);
                 SetText(headlineBodyText, issue.HeadlineBody);
@@ -475,6 +505,8 @@ namespace BossRush
 
                 RefreshSignInGrid(data);
                 RefreshSignInButton(data);
+                ReflowPaper();
+                FitPaper();
             }
             catch (Exception e)
             {
@@ -501,6 +533,7 @@ namespace BossRush
             {
                 result += "\n" + issue.TodayBountyFlavor;
             }
+            if (!string.IsNullOrEmpty(issue.TodayBountyStatus)) result += "\n" + issue.TodayBountyStatus;
             return result;
         }
 
@@ -598,8 +631,75 @@ namespace BossRush
             if (data == null) return;
             if (displayedChinese != L10n.IsChinese || displayedDay != data.DayIndex
                 || displayedPercent != Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f)
-                || displayedBountyProgress != DailyReportService.GetActiveBountyProgress()) Refresh();
+                || displayedBountyProgress != DailyReportService.GetActiveBountyProgress()
+                || displayedDeaths != (data.Today != null ? data.Today.Deaths : 0)
+                || displayedMinutes != DailyReportService.GetRemainingPlayMinutes()) Refresh();
         }
+
+        // 签到区扩高时，按钮和网格留在原位，说明只向下延伸。
+        private void PinSignInContentToTop()
+        {
+            float halfHeight = signInArea.rect.height * 0.5f;
+            for (int i = 0; i < signInArea.childCount; i++)
+            {
+                RectTransform child = signInArea.GetChild(i) as RectTransform;
+                if (child == null) continue;
+                Vector2 position = child.anchoredPosition;
+                position.y += child.rect.height * (1f - child.pivot.y) - halfHeight;
+                child.anchorMin = child.anchorMax = new Vector2(0.5f, 1f);
+                child.pivot = new Vector2(child.pivot.x, 1f);
+                child.anchoredPosition = position;
+            }
+        }
+
+        // 文字测量复用共享库；双栏取较高的一栏，整张纸的滚动范围跟随行高。
+        private void ReflowPaper()
+        {
+            if (panelRect == null) return;
+            float scroll = paperScroll != null ? paperScroll.verticalNormalizedPosition : 1f;
+            float y = Margin;
+            for (int i = 0; i < paperRows.Count; i++)
+            {
+                PaperRow row = paperRows[i];
+                float height = MeasureRowPart(row.Left, row.Minimum);
+                if (row.Right != null) height = Mathf.Max(height, MeasureRowPart(row.Right, row.Minimum));
+                if (row.Left == signInArea && signInStatusText != null)
+                {
+                    float statusHeight = BossRushUI.MeasureTextHeight(signInStatusText, 220f, 104f);
+                    height += Mathf.Max(0f, statusHeight - 104f);
+                }
+                PlaceRowPart(row.Left, y, height);
+                if (row.Right != null) PlaceRowPart(row.Right, y, height);
+                y += height + row.Gap;
+            }
+            panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, y + Margin);
+            if (paperScroll != null) paperScroll.verticalNormalizedPosition = scroll;
+        }
+
+        private static float MeasureRowPart(RectTransform rect, float minimum)
+        {
+            TextMeshProUGUI text = rect.GetComponent<TextMeshProUGUI>();
+            return text != null ? BossRushUI.MeasureTextHeight(text, rect.rect.width, minimum) : minimum;
+        }
+
+        private static void PlaceRowPart(RectTransform rect, float top, float height)
+        {
+            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
+            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+            rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, -top - height * 0.5f);
+        }
+
+        private void FitPaper()
+        {
+            RectTransform root = transform as RectTransform;
+            if (root == null || paperFrame == null || root.rect.width <= 0f || root.rect.height <= 0f) return;
+            float scale = Mathf.Min(1f, Mathf.Min((root.rect.width - 24f) / PanelWidth,
+                (root.rect.height - 24f) / PanelHeight));
+            Vector3 target = Vector3.one * Mathf.Max(0.1f, scale);
+            if (paperFrame.localScale != target) paperFrame.localScale = target;
+        }
+
+        private void OnRectTransformDimensionsChange() { FitPaper(); }
 
         private void RefreshLabels()
         {
@@ -778,7 +878,7 @@ namespace BossRush
             return result;
         }
 
-        private static void CreateRule(RectTransform parent, Vector2 position, float width)
+        private static RectTransform CreateRule(RectTransform parent, Vector2 position, float width)
         {
             GameObject rule = ZombieModeUIHelper.CreateRect(
                 "Rule", parent, new Vector2(0.5f, 0.5f), new Vector2(width, 2f));
@@ -786,6 +886,7 @@ namespace BossRush
             Image image = rule.AddComponent<Image>();
             image.color = PaperRule;
             image.raycastTarget = false;
+            return rule.GetComponent<RectTransform>();
         }
 
         private static void StretchRect(RectTransform rect)

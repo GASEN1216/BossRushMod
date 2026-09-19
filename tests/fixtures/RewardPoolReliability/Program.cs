@@ -12,7 +12,7 @@ internal static class Program
     }
     private static void Reset(params int[] ids)
     {
-        DailyReportRewards.ResetStaticCaches();
+        BossRushQualityItemPool.ResetStaticCaches();
         ItemAssetsCollection.Instance = new object();
         ItemAssetsCollection.Prefabs.Clear();
         ItemAssetsCollection.Order = ids;
@@ -85,6 +85,19 @@ internal static class Program
         ItemAssetsCollection.InstantiateThrow = true;
         Check(ModeHRewardItemPool.TryInstantiate(101, out reason) == null && !Grant(4), "creation fault retains reward");
     }
+    private static void SharedPoolReuse()
+    {
+        Reset(309, 101, 205);
+        int[] shared = BossRushQualityItemPool.GetCandidates(4);
+        int scans = ItemAssetsCollection.Queries;
+        Check(Grant(4) && ItemAssetsCollection.Queries == scans, "daily rewards reuse the already built shared pool");
+        Check(ReferenceEquals(shared, BossRushQualityItemPool.GetCandidates(4)), "both callers share one candidate array");
+        Reset(101);
+        ItemAssetsCollection.QueryThrow = true;
+        Check(!Grant(4), "query exception retains reward");
+        ItemAssetsCollection.QueryThrow = false;
+        Check(Grant(4), "query exception is not cached");
+    }
     private static void DeliveryAndRetry()
     {
         Reset(101);
@@ -102,7 +115,7 @@ internal static class Program
     }
     private static int Main()
     {
-        ExactQuality(); DeterministicOrder(); MissingResource(); DeliveryAndRetry();
+        ExactQuality(); DeterministicOrder(); MissingResource(); DeliveryAndRetry(); SharedPoolReuse();
         Console.WriteLine("RewardPoolReliability: " + checks + " checks, " + failures + " failures");
         return failures == 0 ? 0 : 1;
     }

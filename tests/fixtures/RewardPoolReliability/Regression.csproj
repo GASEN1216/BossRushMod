@@ -6,6 +6,7 @@
   <ItemGroup>
     <Compile Include="../../../Integration/DailyReport/DailyReportRewards.cs" Link="Production/DailyReportRewards.cs" />
     <Compile Include="../../../ModeH/ModeHRewardItemPool.cs" Link="Production/ModeHRewardItemPool.cs" />
+    <Compile Include="../../../Common/Loot/BossRushQualityItemPool.cs" Link="Production/BossRushQualityItemPool.cs" />
     <Compile Include="../../../ModeH/ModeHSeedStream.cs" Link="Production/ModeHSeedStream.cs" />
   </ItemGroup>
 </Project>

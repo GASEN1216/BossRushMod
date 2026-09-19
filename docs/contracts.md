@@ -526,7 +526,7 @@ mod 程序集改名/重构就会让老档读不回来。
 
 悬赏 `no_death` 要求当日成功撤离至少一次且截至结算零死亡；跨天出击记入实际撤离日。`earn_money` 保持进账口径，不扣支出，日报奖金不自我计入。Mode H 整个采集器排除；击杀/输出只计玩家对敌方角色，承伤包含环境来源。
 
-签到随机奖励用官方 `GetAllTypeIds` 精确过滤品质，再过既有黑名单，候选排序后使用原随机流。空池保留欠奖而不降级；实例化前复核 prefab，避免把官方同 TypeID 空壳当成奖品。奖品池内容与品质梯度不变。
+签到随机奖励用官方 `GetAllTypeIds` 精确过滤品质，再过既有黑名单，候选排序后使用原随机流。空池保留欠奖而不降级；实例化前复核 prefab，避免把官方同 TypeID 空壳当成奖品。奖品池内容与品质梯度不变。日报与天灾远征共用 `BossRushQualityItemPool` 的候选数组和缓存，缓存清理由集成层统一负责；日报不另做全表扫描。
 
 **计时口径（不可改）。** 一天 = **86300 游戏秒**，镜像官方 `GameClock.SecondsPerDay`
 （**不是 86400**）。天数由 `DailyReportService` 自算：累计宿主
@@ -552,9 +552,10 @@ prefab 名 `BossRushDailyMailbox` 必须与 `BuildingInfo.prefabName` 严格一�
 纸张的浅色配色是局部参数不是第二套 token：`BossRushUI.ApplyPanelSkin` 只给形状不给色。
 
 **零新增 TypeID、零新增资源制品。** 奖品全部从官方物品表按品质随机抽取
-（经 `LootBlacklistRegistry` 过滤），不新造物品；报箱走占位模型
-（立柱 + 箱体 + 斜盖 + 小红旗，`CreatePrimitive` 自带的 Collider 必须删）。
-将来补美术只需在 `Assets/buildings/` 放同名 bundle 与 png，代码零改动。
+（经 `LootBlacklistRegistry` 过滤），不新造物品；报箱优先加载专属 bundle，
+缺席时借用已加载的许愿台模型，否则使用几何报箱模型（石砌基座 + 箱体 +
+半圆柱顶 + 小红旗 + 报纸卷，`CreatePrimitive` 自带的 Collider 必须删）。
+报箱 PNG 已有本地制品；专属模型只需在 `Assets/buildings/` 放同名 bundle，代码零改动。
 
 **发奖路径。** 走 `CourierService.QuickDeliverItems` → `PlayerStorage` 快递缓冲
 （官方 `StorageDock` 待领 UI），因此玩家在战斗中跨天也安全，不会往战斗背包里塞东西。

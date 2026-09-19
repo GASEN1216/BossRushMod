@@ -44,6 +44,9 @@ namespace BossRush
         /// <summary>今日悬赏小字。</summary>
         internal string TodayBountyFlavor;
 
+        /// <summary>与结算判据一致的当前状态。</summary>
+        internal string TodayBountyStatus;
+
         /// <summary>今日悬赏进度。</summary>
         internal int TodayBountyProgress;
 
@@ -96,7 +99,7 @@ namespace BossRush
                 int reportedDay = data.DayIndex - 1;
                 if (reportedDay < 1) reportedDay = 1;
 
-                issue.IssueNumber = reportedDay;
+                issue.IssueNumber = data.DayIndex;
                 issue.HasYesterday = data.HasYesterday;
 
                 DailyReportStats y = data.Yesterday ?? new DailyReportStats();
@@ -141,7 +144,15 @@ namespace BossRush
         {
             ModeHSeedStream stream = ModeHSeedStream.Create(seed, NewsDomain, reportedDay);
 
-            if (!hasYesterday || !y.HasAnyActivity)
+            if (!hasYesterday)
+            {
+                issue.Headline = L10n.T("创刊号：你的战报，从今天开始", "First Issue: Your Story Starts Today");
+                issue.HeadlineBody = L10n.T("先看看今日悬赏，再安排出击。下一期会刊登你的战绩。",
+                    "Check today's bounty before planning a run. Your recap appears in the next issue.");
+                return;
+            }
+
+            if (!y.HasAnyActivity)
             {
                 issue.Headline = Pick(ref stream, new string[]
                 {
@@ -215,9 +226,14 @@ namespace BossRush
             }
 
             issue.Headline = L10n.T("昨日战报", "Yesterday's Dispatch");
-            issue.HeadlineBody = L10n.T(
-                "平静的一天，但平静本身也是一种成绩。",
-                "A quiet day. Quiet is its own kind of achievement.");
+            issue.HeadlineBody = y.Deaths > 0
+                ? L10n.T("昨日阵亡 " + y.Deaths + " 次。整理补给，下一趟量力而行。",
+                    "Deaths yesterday: " + y.Deaths + ". Restock and plan your next run.")
+                : y.Kills > 0
+                ? L10n.T("昨日击杀 " + y.Kills + " 名敌人。每一场战斗都已记入战绩栏。",
+                    "Enemies defeated yesterday: " + y.Kills + ". The recap records your progress.")
+                : L10n.T("补给、整备与路上的见闻，也是出击的一部分。昨日记录见下栏。",
+                    "Supplies and preparation are part of every run. Yesterday's record is below.");
         }
 
         #endregion
@@ -304,6 +320,7 @@ namespace BossRush
 
             issue.TodayBountyTitle = DailyReportBounty.DescribeTitle(def);
             issue.TodayBountyFlavor = DailyReportBounty.DescribeFlavor(def);
+            issue.TodayBountyStatus = DailyReportBounty.DescribeStatus(def, data.Today);
             issue.TodayBountyCash = def.CashReward;
             issue.TodayBountyTarget = def.Target;
             issue.TodayBountyProgress = DailyReportBounty.EvaluateProgress(def, data.Today);

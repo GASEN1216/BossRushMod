@@ -9,3 +9,5 @@
 ```powershell
 python tools/run_runtime_regressions.py --filter RewardPoolReliability
 ```
+
+2026-09-19：日报直接链接共享 `BossRushQualityItemPool`，验证先由另一个调用方建池后日报不再扫描、复用同一候选数组，以及查询异常后仍可恢复。原 Mode H 断言保留；该工作区基线已有 Mode H 候选顺序和空壳检查失败，不能把综合入口称为全绿。

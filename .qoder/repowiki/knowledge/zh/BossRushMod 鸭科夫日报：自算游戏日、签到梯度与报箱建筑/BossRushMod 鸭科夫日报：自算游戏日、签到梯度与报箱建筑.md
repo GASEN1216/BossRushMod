@@ -119,7 +119,7 @@ dormant 退订与清理路径仍保留供卸载和故障回落。
 - `BuildingInfo` 的 `requireBuildings` / `alternativeFor` / `requireQuests` **必须给空数组不能留 null**，官方 `RequirementsSatisfied` 会直接遍历。
 - 注入后必须把 `readonlyInfos` 置 null，让官方重建只读视图。
 - 老存档三保险：`TryInitializeDailyReportMailboxEarly`（抢在 `BuildingArea.Start` 前）→ deferred bootstrap 兜底 → 有存量时 repaint。
-- 无美术时走 primitive 占位模型（立柱 + 箱体 + 斜盖 + 小红旗）；`CreatePrimitive` 自带的 Collider 必须删掉。
+- 缺专属 bundle 时先借用已加载的许愿台模型，否则走 primitive 报箱模型（石砌基座 + 箱体 + 半圆柱顶 + 小红旗 + 报纸卷）；`CreatePrimitive` 自带的 Collider 必须删掉。
 
 ### 3.7 UI
 
@@ -237,3 +237,7 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 - 天气注明“明日此时（世界时间）”，固定天气单列；运势注明无加成。杂谈围绕补给、存储、快递和模式计数，移除没有对应玩法的地下室敲门与枪械卡壳暗示。
 
 证据与边界：真实 Service/Bounty/Content/StatsCollector/Codec 的隔离回归在 `tests/fixtures/ContentThirdReviewFixes/DailyReport/`；现金事务沿用 `ContentTransactions`，UI 颜色与接线由 `DailyReportPresentationGuard` 复算。字体、滚动、实际刷怪归属和帧耗仍需 L3，详见 `docs/代码审查/2026-09-18-鸭科夫日报生产复核.md`。
+
+## 2026-09-19 复核补充
+
+奖品候选改为直接调用 `BossRushQualityItemPool`，日报私有扫描/缓存已移除。报箱注册分别确认元数据与活着的 prefab，失败不置完成标记。阅读面板使用共享文本测量动态排版并按容器缩放，签到子控件固定上沿以容纳长说明，悬赏明确展示失败与待结算状态，刊头显示剩余游玩时间。五类悬赏、签到梯度、日长、已发布 key 和原发奖恢复协议保持不变。详细行为与证据见 `.qoder/repowiki/zh/content/高级功能/日报悬赏欠款.md` 的同日章节。

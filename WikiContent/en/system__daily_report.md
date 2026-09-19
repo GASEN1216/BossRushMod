@@ -54,7 +54,7 @@ A few rules:
 
 - The bounty stays the same no matter how many times you restart that day - **it never rerolls**.
   If you don't like it, wait for tomorrow.
-- The paper shows live progress, so you can check how far off you are at any time.
+- The paper shows live progress and status, with an estimate of remaining play minutes based on the current clock speed. Pauses and offline time do not use up that time. A reached target settles next issue; if you die during a no-death bounty, it explicitly shows failed for today.
 - Completing it is announced in **the next day's paper**, and the reward pays out automatically.
 - "No deaths" requires **at least one successful extraction that day**, with no deaths before the next issue. Deploying without returning does not count. A raid spanning two days counts on its extraction day.
 - Income uses gross earnings, without deducting spending. Daily bounty cash does not advance it.

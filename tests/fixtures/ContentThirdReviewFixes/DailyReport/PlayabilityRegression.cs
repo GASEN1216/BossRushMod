@@ -51,6 +51,7 @@ partial class Program
         BountyDebts();
         ContentAndClock();
         Collection();
+        ProductionBoundaries();
     }
 
     static void BountyRules()
@@ -88,6 +89,40 @@ partial class Program
                 throw new Exception("unreachable or unrecoverable bounty " + def.Id);
         }
         Check(seen.Count == 13, "all five bounty kinds and every distinct tier are reachable and reconstructable");
+        seen.Clear();
+        for (int day = 1; day <= 1000 && seen.Count < 13; day++)
+        {
+            var def = DailyReportBounty.SelectForDay(123, day);
+            if (!seen.Add(def.Id + "/" + def.Target)) continue;
+            Reset(1, 0, 0, day, 0, 123);
+            DailyReportStatsCollector.EnsureSubscribed();
+            var player = new CharacterMainControl { IsMainCharacter = true, Team = 1 };
+            if (def.Kind == DailyReportBountyKind.Kills || def.Kind == DailyReportBountyKind.BossKills)
+            {
+                for (int i = 0; i < def.Target; i++)
+                    DailyReportStatsCollector.OnGlobalDead(new Health { Character = new CharacterMainControl
+                        { Team = 2, isBossCharacter = def.Kind == DailyReportBountyKind.BossKills } },
+                        new DamageInfo { fromCharacter = player });
+            }
+            else if (def.Kind == DailyReportBountyKind.EarnMoney)
+                Duckov.Economy.EconomyManager.Change(0, def.Target);
+            else
+            {
+                for (int i = 0; i < def.Target; i++)
+                {
+                    RaidUtilities.Start(new RaidUtilities.RaidInfo { valid = true });
+                    RaidUtilities.End(new RaidUtilities.RaidInfo { valid = true, ended = true });
+                }
+            }
+            DailyReportService.DebugAdvanceGameSeconds(DailyReportTuning.GameSecondsPerDay);
+            Check(DailyReportPersistence.Current.BountyCompleted && DailyReportPersistence.Current.BountyRewardClaimed
+                && DailyReportRewards.Cash == def.CashReward,
+                "collector-to-settlement payout is wired for " + def.Id + "/" + def.Target);
+            Reload();
+            DailyReportService.TryRedeliverPendingBountyReward();
+            Check(DailyReportRewards.Cash == def.CashReward, "reload cannot repeat paid bounty " + def.Id + "/" + def.Target);
+        }
+
     }
 
     static void BountyDebts()
@@ -166,6 +201,51 @@ partial class Program
         DailyReportService.NotifySlotChanged();
         DailyReportService.Tick(1);
         Check(DailyReportService.CarrySeconds == 60, "slot change resets transient clock and backoff");
+    }
+
+    static void ProductionBoundaries()
+    {
+        Reset(1, 0, 0, 1);
+        GameClock.Instance = new GameClock();
+        Check(DailyReportService.GetRemainingPlayMinutes() == 24, "first open estimates the full day from saved carry");
+        DailyReportService.DebugAdvanceGameSeconds(43150);
+        Check(DailyReportService.GetRemainingPlayMinutes() == 12, "deadline follows actual remaining play time");
+        GameClock.Instance.clockTimeScale = 120;
+        Check(DailyReportService.GetRemainingPlayMinutes() == 6, "deadline follows changed world-clock scale");
+        GameClock.Instance.clockTimeScale = 0;
+        Check(DailyReportService.GetRemainingPlayMinutes() == -1, "stopped clock has no fictitious deadline");
+        GameClock.Instance.clockTimeScale = 60;
+        var first = DailyReportContent.BuildCurrentIssue();
+        DailyReportService.DebugAdvanceGameSeconds(43150);
+        var second = DailyReportContent.BuildCurrentIssue();
+        Check(first.IssueNumber == 1 && second.IssueNumber == 2, "inaugural and next issue have distinct numbers");
+        var def = DailyReportBounty.Rebuild("no_death", 1);
+        foreach (bool chinese in new[] { true, false })
+        {
+            L10n.Chinese = chinese;
+            string pending = DailyReportBounty.DescribeStatus(def, new DailyReportStats());
+            string ready = DailyReportBounty.DescribeStatus(def, new DailyReportStats { Extractions = 1 });
+            string failed = DailyReportBounty.DescribeStatus(def, new DailyReportStats { Deaths = 1 });
+            Check(pending != ready && ready != failed && pending != failed,
+                "survival pending, provisional completion and irreversible failure are distinct in both languages");
+        }
+        L10n.Chinese = true;
+        var stats = DailyReportPersistence.Current.Today;
+        stats.Kills = stats.BossKills = stats.Deaths = stats.Raids = stats.Extractions = int.MaxValue;
+        stats.MoneyEarned = stats.MoneySpent = long.MaxValue - 1;
+        stats.DamageDealt = stats.DamageTaken = float.MaxValue;
+        DailyReportService.ReportKill(true); DailyReportService.ReportPlayerDeath();
+        DailyReportService.ReportRaidStarted(); DailyReportService.ReportExtraction();
+        DailyReportService.ReportMoneyDelta(50); DailyReportService.ReportMoneyDelta(long.MinValue);
+        DailyReportService.ReportDamageDealt(float.MaxValue); DailyReportService.ReportDamageTaken(float.MaxValue);
+        Check(stats.Kills == int.MaxValue && stats.BossKills == int.MaxValue && stats.Deaths == int.MaxValue
+            && stats.Raids == int.MaxValue && stats.Extractions == int.MaxValue, "large counters do not wrap into negative progress");
+        Check(stats.MoneyEarned == long.MaxValue && stats.MoneySpent == long.MaxValue,
+            "money totals and minimum negative delta saturate without overflow");
+        Check(!float.IsInfinity(stats.DamageDealt) && !float.IsInfinity(stats.DamageTaken)
+            && DailyReportCodec.Decode(DailyReportCodec.Encode(DailyReportPersistence.Current)) != null,
+            "large combat totals remain finite and saveable");
+        Reset(1, 0, 0, 1);
     }
 
     static void Collection()

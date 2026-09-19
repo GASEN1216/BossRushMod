@@ -51,6 +51,7 @@ def main():
         assert token in scroll, "日报滚动区缺接线: " + token
     layout = method(ui, "private void BuildLayout(")
     assert "BuildPaperScroll(paperRect);" in layout and '"Close", paperRect,' in layout
+    assert "PinSignInContentToTop();" in layout, "签到区必须在构建后固定上沿，避免长说明挤压按钮"
     refresh = method(ui, "public void Refresh()")
     assert "RefreshLabels();" in refresh
     labels = method(ui, "private void RefreshLabels()")
@@ -59,6 +60,14 @@ def main():
     tick = method(ui, "private void Update()")
     assert tick.index("if (!open) return;") < tick.index("DailyReportService.Data")
     assert "BossRushUI.IsGamePaused()" in tick and "nextRefreshTime = Time.unscaledTime + 1f;" in tick
+    assert "ReflowPaper();" in refresh and "FitPaper();" in refresh
+    reflow = method(ui, "private void ReflowPaper()")
+    assert "MeasureRowPart(row.Left, row.Minimum)" in reflow
+    assert "Mathf.Max(height, MeasureRowPart(row.Right, row.Minimum))" in reflow
+    assert "panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, y + Margin);" in reflow
+    assert "BossRushUI.MeasureTextHeight(text, rect.rect.width, minimum)" in method(ui, "private static float MeasureRowPart(")
+    assert "displayedDeaths !=" in tick and "GetRemainingPlayMinutes()" in tick
+    assert "TodayBountyStatus" in method(ui, "private static string BuildBountyBlock(")
     runtime = source("Integration/DailyReport/DailyReportRuntimeModule.cs")
     cleanup = method(runtime, "public override void OnDestroy()")
     assert "DailyReportView.CleanupRuntime()" in cleanup

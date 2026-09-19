@@ -63,104 +63,83 @@ namespace BossRush
         // 数据注入（BuildingDataCollection）
         // ====================================================================
 
-        private void InjectDailyReportBuildingData()
+        private bool InjectDailyReportBuildingData()
         {
-            Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
-            if (bdcType == null)
+            try
             {
-                ModBehaviour.LogError(DailyReportTuning.LogPrefix + "无法找到 BuildingDataCollection 类型");
-                return;
-            }
+                Type bdcType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingDataCollection");
+                Type infoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
+                Type buildingType = BuildingInjectionHelper.GetBuildingType();
+                if (bdcType == null || infoType == null || buildingType == null)
+                    throw new InvalidOperationException("Building types unavailable");
 
-            PropertyInfo instanceProp = bdcType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
-            object bdcInstance = instanceProp != null ? instanceProp.GetValue(null, null) : null;
-            if (bdcInstance == null)
-            {
-                ModBehaviour.LogError(DailyReportTuning.LogPrefix + "BuildingDataCollection.Instance 为 null");
-                return;
-            }
+                PropertyInfo instanceProp = bdcType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static);
+                object instance = instanceProp != null ? instanceProp.GetValue(null, null) : null;
+                if (instance == null) throw new InvalidOperationException("BuildingDataCollection.Instance unavailable");
+                FieldInfo infosField = bdcType.GetField("infos", BindingFlags.NonPublic | BindingFlags.Instance);
+                FieldInfo prefabsField = bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance);
+                IList infos = infosField != null ? infosField.GetValue(instance) as IList : null;
+                IList prefabs = prefabsField != null ? prefabsField.GetValue(instance) as IList : null;
+                Component prefab = dailyReportBuildingPrefabGO != null
+                    ? dailyReportBuildingPrefabGO.GetComponent(buildingType) : null;
+                FieldInfo idField = infoType.GetField("id");
+                if (infos == null || prefabs == null || prefab == null || idField == null)
+                    throw new InvalidOperationException("Building lists, prefab or id binding unavailable");
 
-            FieldInfo infosField = bdcType.GetField("infos", BindingFlags.NonPublic | BindingFlags.Instance);
-            object infosList = infosField != null ? infosField.GetValue(bdcInstance) : null;
-            if (infosList == null)
-            {
-                ModBehaviour.LogError(DailyReportTuning.LogPrefix + "无法获取 infos 列表");
-                return;
-            }
+                PropertyInfo prefabId = BuildingInjectionHelper.GetBuildingIdProperty();
+                if (prefabId == null || !string.Equals(prefabId.GetValue(prefab, null) as string,
+                    DAILYREPORT_BUILDING_ID, StringComparison.Ordinal))
+                    throw new InvalidOperationException("Mailbox prefab ID binding unavailable");
 
-            Type buildingInfoType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingInfo");
-            if (buildingInfoType == null)
-            {
-                ModBehaviour.LogError(DailyReportTuning.LogPrefix + "无法找到 BuildingInfo 类型");
-                return;
-            }
-
-            // 判重：已注入过就直接返回（同一进程内 BuildingDataCollection 是长寿 ScriptableObject）
-            FieldInfo infoIdField = buildingInfoType.GetField("id");
-            IEnumerator enumerator = ((IEnumerable)infosList).GetEnumerator();
-            while (enumerator.MoveNext())
-            {
-                if (infoIdField == null) break;
-                string existingId = infoIdField.GetValue(enumerator.Current) as string;
-                if (string.Equals(existingId, DAILYREPORT_BUILDING_ID, StringComparison.Ordinal))
+                // 元数据和 prefab 是两份表。上次只写入其中一份时，重试必须补齐另一份。
+                bool hasInfo = false;
+                for (int i = 0; i < infos.Count; i++)
                 {
-                    ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑数据已存在，跳过注入");
-                    return;
+                    if (string.Equals(idField.GetValue(infos[i]) as string, DAILYREPORT_BUILDING_ID, StringComparison.Ordinal))
+                    { hasInfo = true; break; }
                 }
-            }
-
-            object newInfo = Activator.CreateInstance(buildingInfoType);
-            SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "id", DAILYREPORT_BUILDING_ID);
-            SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "prefabName", DAILYREPORT_PREFAB_NAME);
-            SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "maxAmount", DAILYREPORT_BUILDING_MAX_AMOUNT);
-            // 这三个必须给空数组不能留 null：官方 RequirementsSatisfied 会直接遍历
-            SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "requireBuildings", new string[0]);
-            SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "alternativeFor", new string[0]);
-            SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "requireQuests", new int[0]);
-            if (dailyReportBuildingIcon != null)
-            {
-                SetDailyReportBuildingInfoField(buildingInfoType, newInfo, "iconReference", dailyReportBuildingIcon);
-            }
-            SetDailyReportBuildingCost(buildingInfoType, ref newInfo);
-
-            MethodInfo addMethod = infosList.GetType().GetMethod("Add");
-            if (addMethod != null)
-            {
-                addMethod.Invoke(infosList, new object[] { newInfo });
-                ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "BuildingInfo 已注入");
-            }
-
-            FieldInfo prefabsField = bdcType.GetField("prefabs", BindingFlags.NonPublic | BindingFlags.Instance);
-            object prefabsList = prefabsField != null ? prefabsField.GetValue(bdcInstance) : null;
-            if (prefabsList != null)
-            {
-                Type buildingType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.Building");
-                Component buildingComp = buildingType != null && dailyReportBuildingPrefabGO != null
-                    ? dailyReportBuildingPrefabGO.GetComponent(buildingType)
-                    : null;
-                if (buildingComp != null)
+                bool hasPrefab = false;
+                for (int i = 0; i < prefabs.Count; i++)
                 {
-                    MethodInfo prefabAddMethod = prefabsList.GetType().GetMethod("Add");
-                    if (prefabAddMethod != null)
-                    {
-                        prefabAddMethod.Invoke(prefabsList, new object[] { buildingComp });
-                        ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "Building prefab 已注入");
-                    }
+                    Component existing = prefabs[i] as Component;
+                    if (existing != null && existing.name == DAILYREPORT_PREFAB_NAME)
+                    { hasPrefab = true; break; }
                 }
+
+                object newInfo = null;
+                if (!hasInfo)
+                {
+                    newInfo = Activator.CreateInstance(infoType);
+                    SetDailyReportBuildingInfoField(infoType, newInfo, "id", DAILYREPORT_BUILDING_ID);
+                    SetDailyReportBuildingInfoField(infoType, newInfo, "prefabName", DAILYREPORT_PREFAB_NAME);
+                    SetDailyReportBuildingInfoField(infoType, newInfo, "maxAmount", DAILYREPORT_BUILDING_MAX_AMOUNT);
+                    SetDailyReportBuildingInfoField(infoType, newInfo, "requireBuildings", new string[0]);
+                    SetDailyReportBuildingInfoField(infoType, newInfo, "alternativeFor", new string[0]);
+                    SetDailyReportBuildingInfoField(infoType, newInfo, "requireQuests", new int[0]);
+                    if (dailyReportBuildingIcon != null)
+                        SetDailyReportBuildingInfoField(infoType, newInfo, "iconReference", dailyReportBuildingIcon);
+                    SetDailyReportBuildingCost(infoType, ref newInfo);
+                }
+                // prefab 先就位，避免建造菜单短暂暴露无法实例化的条目。
+                if (!hasPrefab) prefabs.Add(prefab);
+                if (!hasInfo) infos.Add(newInfo);
+                FieldInfo readonlyField = bdcType.GetField("readonlyInfos", BindingFlags.Public | BindingFlags.Instance);
+                if (readonlyField != null) readonlyField.SetValue(instance, null);
+                return true;
             }
-
-            // 清 readonly 缓存，让官方下次重建只读视图
-            FieldInfo readonlyField = bdcType.GetField("readonlyInfos", BindingFlags.Public | BindingFlags.Instance);
-            if (readonlyField != null) readonlyField.SetValue(bdcInstance, null);
-
-            ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑数据注入完成");
+            catch (Exception e)
+            {
+                ModBehaviour.LogError(DailyReportTuning.LogPrefix + "报箱注册未完成，保留重试：" + e.Message);
+                return false;
+            }
         }
 
         private static void SetDailyReportBuildingInfoField(
             Type buildingInfoType, object target, string fieldName, object value)
         {
             FieldInfo field = buildingInfoType.GetField(fieldName);
-            if (field != null) field.SetValue(target, value);
+            if (field == null) throw new MissingFieldException(buildingInfoType.FullName, fieldName);
+            field.SetValue(target, value);
         }
 
         /// <summary>官方 Cost 是 struct，必须整体 boxing 后写回。</summary>
@@ -169,7 +148,7 @@ namespace BossRush
             try
             {
                 Type costType = BuildingInjectionHelper.FindGameType("Duckov.Economy.Cost");
-                if (costType == null) return;
+                if (costType == null) throw new InvalidOperationException("Cost type unavailable");
 
                 object cost;
                 ConstructorInfo costCtor = costType.GetConstructor(new Type[] { typeof(long) });
@@ -181,7 +160,8 @@ namespace BossRush
                 {
                     cost = Activator.CreateInstance(costType);
                     FieldInfo moneyField = costType.GetField("money");
-                    if (moneyField != null) moneyField.SetValue(cost, DAILYREPORT_BUILDING_COST);
+                    if (moneyField == null) throw new MissingFieldException(costType.FullName, "money");
+                    moneyField.SetValue(cost, DAILYREPORT_BUILDING_COST);
                     FieldInfo itemsField = costType.GetField("items");
                     if (itemsField != null)
                     {
@@ -191,11 +171,13 @@ namespace BossRush
                 }
 
                 FieldInfo costField = buildingInfoType.GetField("cost");
-                if (costField != null) costField.SetValue(buildingInfo, cost);
+                if (costField == null) throw new MissingFieldException(buildingInfoType.FullName, "cost");
+                costField.SetValue(buildingInfo, cost);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "建筑费用设置失败: " + e.Message);
+                throw; // 造价未成功绑定时不能把免费/损坏的条目加入建造菜单。
             }
         }
 
