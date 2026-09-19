@@ -7,7 +7,10 @@ import sys
 
 
 ROOT = Path(".")
-SKIP_DIRS = {".git", "__pycache__"}
+SKIP_DIRS = {
+    ".git", "__pycache__", "Build", "tmp", "output", "outputs", ".codex_tmp",
+    ".qoder", ".kiro", "鸭科夫源码", "node_modules", "bin", "obj",
+}
 TEXT_SUFFIXES = {".bat", ".cs", ".json", ".md", ".py", ".txt", ".xml"}
 
 

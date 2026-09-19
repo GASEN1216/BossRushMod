@@ -13,7 +13,7 @@ import sys
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ALLOWLIST_FILE = Path(__file__).resolve().parent / "event_subscription_lifecycle_allowlist.txt"
-EXCLUDE_DIRS = {"Build", ".codex_tmp", ".git", ".kiro", "docs", "tests", "鸭科夫源码"}
+EXCLUDE_DIRS = {"Build", ".codex_tmp", ".git", ".kiro", "docs", "tests", "tmp", "output", "outputs", "鸭科夫源码"}
 
 TARGET_SUFFIXES = (
     "Health.OnDead",

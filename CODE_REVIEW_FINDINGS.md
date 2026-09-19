@@ -1,5 +1,11 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+## 2026-09-19 奖励池可靠性复核（COMPAT）
+
+| ID | 级别 | 触发条件与影响 | 状态与证据 |
+| --- | --- | --- | --- |
+| CR-2026-09-19-016 | P1 / COMPAT | `ModeHRewardItemPool` 直接消费官方 `GetAllTypeIds` 的未排序结果，合法候选枚举顺序变化会让同一 `(runSeed, txId, slot)` 重放出不同奖励；`TryInstantiate` 未先检查 prefab，官方缺资源时返回的同 TypeID 空壳可能进入 escrow journal。前者破坏崩溃重放确定性，后者会造成奖励收据看似成功但无法真实交付。 | Fixed：Mode H 与日报、天灾远征统一复用 `BossRushQualityItemPool` 的排序/黑名单/非空缓存；实例化前增加 `Instance + GetPrefab` 门禁及失败原因。`RewardPoolReliability` 从 247 项 / 65 失败恢复为 247 PASS，changed-only 39 PASS、全量 628 PASS；未改经济、存档字段或奖励品质。L3 仍需真实 Mode H 结算与资源缺席场景确认。 |
+
 ## 2026-09-19 Wiki 内容与公开部署复核（SAFE / OPERATIONAL）
 
 来源：owner 要求全面核对 Wiki 与最新代码，随后授权修复并提交本地 commit。文案问题已按现有代码修正，公开部署仍待推送授权；验证证据见 `FIX_TRACKER.md` 同日 Wiki 小节。

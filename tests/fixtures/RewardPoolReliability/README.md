@@ -10,4 +10,4 @@
 python tools/run_runtime_regressions.py --filter RewardPoolReliability
 ```
 
-2026-09-19：日报直接链接共享 `BossRushQualityItemPool`，验证先由另一个调用方建池后日报不再扫描、复用同一候选数组，以及查询异常后仍可恢复。原 Mode H 断言保留；该工作区基线已有 Mode H 候选顺序和空壳检查失败，不能把综合入口称为全绿。
+2026-09-19：日报与 Mode H 共同链接共享 `BossRushQualityItemPool`，验证先由另一个调用方建池后日报不再扫描、复用同一候选数组、候选枚举顺序变化不影响重放，以及缺 prefab / 空壳 / 实例化异常都保留未交付状态。

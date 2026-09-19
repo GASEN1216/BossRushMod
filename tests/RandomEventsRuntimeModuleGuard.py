@@ -59,7 +59,7 @@ def main():
     # ---- 2) 全仓库只有一次 new ----
     news = []
     for path in Path(".").rglob("*.cs"):
-        if any(part in {".git", "Build", "鸭科夫源码"} for part in path.parts):
+        if any(part in {".git", "Build", "tmp", "output", "outputs", "鸭科夫源码"} for part in path.parts):
             continue
         text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
         news += [path.as_posix()] * len(

@@ -40,7 +40,7 @@ MIGRATED = [
 # 各写各的参数则会在不同界面之间产生不一致的缩放。
 # 唯一允许出现 uiScaleMode 赋值的地方就是 helper 自身的实现。
 CANVAS_SCALER_HELPER = Path("ZombieMode/ZombieModeUIHelper.cs")
-SCAN_EXCLUDE_DIRS = {"Build", "tests", ".git", ".kiro", ".codex_tmp", "鸭科夫源码", "wiki-site", ".qoder", "obj", "bin"}
+SCAN_EXCLUDE_DIRS = {"Build", "tests", ".git", ".kiro", ".codex_tmp", "鸭科夫源码", "wiki-site", ".qoder", "tmp", "output", "outputs", "obj", "bin"}
 
 # legacy UI.Text + 内置 Arial 渲染不了中文，这些文件已转 TMP 或改用字体解析器
 NO_ARIAL = [

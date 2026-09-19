@@ -6,7 +6,7 @@ import sys
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-EXCLUDE_DIRS = {"Build", ".codex_tmp", ".git", ".kiro", "docs", "tests", "鸭科夫源码"}
+EXCLUDE_DIRS = {"Build", ".codex_tmp", ".git", ".kiro", "docs", "tests", "tmp", "output", "outputs", "鸭科夫源码"}
 BUDGET_FILE = Path(__file__).resolve().parent / "empty_catch_budget.txt"
 
 EMPTY_CATCH_RE = re.compile(r"catch\s*(?:\([^)]*\))?\s*\{\s*\}", re.S)

@@ -52,7 +52,7 @@ def check_registration(errors):
 
 
 def check_no_second_new(errors):
-    skip_dirs = {"Build", ".git", ".codex_tmp", "tests", "docs", "鸭科夫源码", "wiki-site", "node_modules", "bin", "obj"}
+    skip_dirs = {"Build", ".git", ".codex_tmp", "tests", "docs", "tmp", "output", "outputs", "鸭科夫源码", "wiki-site", "node_modules", "bin", "obj"}
     for root, dirs, files in os.walk(REPO_ROOT):
         dirs[:] = [d for d in dirs if d not in skip_dirs]
         for name in files:

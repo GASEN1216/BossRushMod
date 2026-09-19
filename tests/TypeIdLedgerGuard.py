@@ -26,7 +26,7 @@ ALLOWLIST_FILE = Path(__file__).parent / "typeid_literal_allowlist.txt"
 
 EXCLUDE_DIRS = {
     "Build", "tests", ".git", ".kiro", ".codex_tmp",
-    "鸭科夫源码", "wiki-site", ".qoder", "obj", "bin",
+    "鸭科夫源码", "wiki-site", ".qoder", "tmp", "output", "outputs", "obj", "bin",
 }
 
 # 500xxx 而不是 5000xx：TypeID 已越过 500099，旧写法会让 500100 起的号整段漏扫。

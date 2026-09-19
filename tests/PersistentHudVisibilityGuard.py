@@ -45,7 +45,7 @@ HUD_LAYERS = ("WorldOverlay", "ModeFBountyRadar", "ModeGHud", "ModeHHud", "PetNe
               "Hud", "HudOverlay", "ZombieHud")
 LAYER_PATTERN = re.compile(r"\bBossRushUILayers\.(?:" + "|".join(HUD_LAYERS) + r")\b")
 ANY_LAYER_PATTERN = re.compile(r"\bBossRushUILayers\.\w+\b")
-SKIP_DIRS = {"鸭科夫源码", "Build", "tests", ".git", ".qoder", "wiki-site", "docs", "output", "ArtSource",
+SKIP_DIRS = {"鸭科夫源码", "Build", "tests", ".git", ".qoder", "wiki-site", "docs", "tmp", "output", "outputs", "ArtSource",
              "node_modules", "bin", "obj", "Assets", "skills", "codex-skills"}
 
 # 判定外层允许套的块：try 与判空（`if (_vignette != null)` 一类）。

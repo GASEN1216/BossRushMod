@@ -1,5 +1,12 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-19 Mode H 奖励池可靠性复核（COMPAT）
+
+- 完成 `CR-2026-09-19-016`：Mode H 同品质奖励改用共享 `BossRushQualityItemPool`，候选先过黑名单并排序后再由 `ModeHSeedStream` 抽取；`TryInstantiate` 在 `InstantiateSync` 前确认资源实例与 prefab 存在，拒绝官方缺资源时产生的同 TypeID 空壳。没有新增缓存、存档字段、TypeID、经济档位或第二套抽样算法。
+- 玩法取舍：保持既有同品质奖励、种子域和 escrow journal 语义，只修复候选枚举顺序导致的重放漂移与缺资源假成功；回退为还原 `ModeHRewardItemPool.cs` 本轮差异即可，无玩家数据迁移。
+- L2：`RewardPoolReliability` 247/247 PASS，覆盖三种合法候选顺序、共享池复用、空品质池、黑名单、缺 prefab 空壳、实例化返回 null/抛错、快递拒收与重试；全量源码守卫 628 PASS，changed-only 39 PASS；语法探针 CS1xxx 零错误。全量隔离回归其余 41 项通过，3 项因工作区外 Harmony DLL 未授权读取而未运行。
+- L3 未验证：未启动游戏、未部署、未读写玩家存档。owner 需在 Dev 构建中走一次 Mode H 真实结算/重开，确认同一 journal 重放奖励不变、缺资源时保持 pending 而非生成空壳，并观察实际 UI/帧耗。
+
 ## 2026-09-19 Wiki 内容修正与发布前验证（SAFE / OPERATIONAL）
 
 - SAFE：修正中英消耗品、NPC 物品、护士三组正文，明确安神滴剂与护士治疗仅清除可治疗状态，不能解除幽灵女巫的「幽灵诅咒 / Ghost Curse」；仅有该诅咒时不能使用安神滴剂。护士速查框去掉不存在的复活/野战诊所服务，Lv.6 折扣改正为 7.5 折；中文扫箱令计数与代码、英文统一为 Boss 死亡次数。对应六份在线正文由原同步脚本生成，未手改生成物；在线 Wiki 专题同步说明正文、速查框与公开部署应分别核对。

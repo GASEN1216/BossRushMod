@@ -11,7 +11,7 @@ import sys
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-EXCLUDE_DIRS = {"Build", ".codex_tmp", ".git", ".kiro", "docs", "tests", "鸭科夫源码"}
+EXCLUDE_DIRS = {"Build", ".codex_tmp", ".git", ".kiro", "docs", "tests", "tmp", "output", "outputs", "鸭科夫源码"}
 ALLOWLIST_FILE = Path(__file__).resolve().parent / "large_file_existing_allowlist.txt"
 
 ROADMAP_BUDGETS = {

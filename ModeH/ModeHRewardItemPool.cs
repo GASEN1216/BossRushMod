@@ -37,20 +37,7 @@ namespace BossRush
                 return 0;
             }
 
-            int[] candidates;
-            try
-            {
-                ItemFilter filter = new ItemFilter();
-                filter.minQuality = quality;
-                filter.maxQuality = quality;
-                filter.caliber = string.Empty;
-                candidates = ItemAssetsCollection.GetAllTypeIds(filter);
-            }
-            catch (Exception e)
-            {
-                failureReasonId = "reward_pool_query_failed:" + e.GetType().Name;
-                return 0;
-            }
+            int[] candidates = BossRushQualityItemPool.GetCandidates(quality);
 
             if (candidates == null || candidates.Length == 0)
             {
@@ -75,6 +62,30 @@ namespace BossRush
         internal static Item TryInstantiate(int typeId, out string failureReasonId)
         {
             failureReasonId = null;
+            if (typeId <= 0)
+            {
+                failureReasonId = "reward_invalid_type_id";
+                return null;
+            }
+
+            // InstantiateSync 在官方资源缺失时可能返回同 TypeID 的空壳对象。
+            // escrow 奖励必须是真实可入库的物品，先过 prefab 门禁再实例化，
+            // 避免把空壳写进 journal 后才发现无法交付。
+            try
+            {
+                if (ItemAssetsCollection.Instance == null
+                    || ItemAssetsCollection.GetPrefab(typeId) == null)
+                {
+                    failureReasonId = "reward_prefab_unavailable";
+                    return null;
+                }
+            }
+            catch (Exception e)
+            {
+                failureReasonId = "reward_prefab_query_failed:" + e.GetType().Name;
+                return null;
+            }
+
             Item item;
             try
             {
