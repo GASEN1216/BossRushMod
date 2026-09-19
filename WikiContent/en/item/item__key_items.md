@@ -27,8 +27,8 @@ which Bosses you've personally put down.
 - **Use**: reusable, never consumed; does not stack
 
 **The book is not what starts the ledger.** The codex has been logging since the day you installed
-the Mod - buying late costs you nothing. The "first entry" achievement alone returns 50,000, so it
-pays for itself almost immediately.
+the Mod - buying late costs you nothing. The first-entry achievement awards 50,000
+regardless of whether you own the book.
 
 See the Duck King Codex page.
 
@@ -56,6 +56,7 @@ An egg of one Boss bloodline. Take it to the PetNest to hatch a cub that fights 
   so it varies by mode); or condense one at the PetNest for **240** relic souls of that bloodline
 - **Use**: consumed on hatching
 - **Stack**: **does not stack** - each egg carries its own bloodline, and stacking would lose that
+- **Expedition source**: after surviving a successful Desperate expedition, there is a further **20%** chance of an egg from that cub's bloodline; see PetNest.
 
 [tip] Keep eggs in the outer layer of your bag or stash. The hatch page can now find eggs tucked inside containers too, but the outer layer is easier to count.
 
@@ -105,7 +106,7 @@ See Faction War for details.
 
 ### Wind-Vane Compass
 
-Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Sky Islands and it reads out a bearing and a rough distance: first to an uncollected **carrier pigeon**, then to your nearest current objective, and after the ending to an unfinished side path; when there is nothing left, to **a place still missing its windcrystal lamp** if you carry a Qinglan Windcrystal, or else to **a wind crystal cluster you have not gathered this trip**.
+Fuzhou's old compass, its needle replaced with a tiny wind vane. Use it on the Sky Islands and it reads out a bearing and a rough distance: to **Frogsong Pool** first while carrying frogspawn; otherwise to an uncollected **carrier pigeon**, then to your nearest current objective, and after the ending to an unfinished side path; when there is nothing left, to **a place still missing its windcrystal lamp** if you carry a Qinglan Windcrystal, or else to **a wind crystal cluster you have not gathered this trip**.
 
 - **Source**: arrives with your first kept pigeon letter on the Sky Islands; Starworks crates occasionally hold one; if you lose it, Fuzhou's dock workbench can make another from Brass Scrap ×4 + Windcrystal Shard ×2 (once you have had the first one)
 - **Use**: reusable, never consumed; does not stack

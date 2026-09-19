@@ -33,6 +33,13 @@ Hatching locks in three things at once, **with no rerolls**:
 - **One temperament** — Reckless / Cautious / Lazy / Loyal
 - **Shiny** — an approximately **1.5%** material variant, purely a collector's honour, tracked separately in the index. It grants no stats at all; it's just proof of luck
 
+Temperament affects combat and following as well as personality:
+
+- **Reckless** — notices enemies farther away and pursues aggressively; +10% melee damage multiplier, −8% body armor
+- **Cautious** — shorter sight range and less pursuit; +10% body armor, −5% gun damage multiplier
+- **Lazy** — less eager to chase, −6% run speed, but +1 extra scavenging-backpack slot
+- **Loyal** — stays closer to you and gains +8% max health
+
 If an egg's bloodline can no longer be identified after a game update, the system says so and **leaves your egg untouched** rather than consuming it.
 
 ### Taking a Cub Into a Run
@@ -43,7 +50,7 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 - Its damage is a garnish, not a game-changer. The value is pressure, finishing blows, and simply having it there.
 
 #### Scavenging backpack
-While a cub is out with you, the pet backpack travels with it. Capacity comes from your own pet-capacity stat, and the cub's endowments can add a few more slots.
+While a cub is out with you, the pet backpack travels with it. A deployed cub adds **4 slots** to your own pet-capacity stat, with further slots from levels, endowments and the Lazy temperament.
 
 #### While you are there, it does not die
 - A downed cub **does not die**. It is **carried off wounded**: out for the rest of the run, restored when you return to base.
@@ -81,6 +88,7 @@ The tier sets the payout, the risk and the wait all at once (the wait is real ti
 [tip] All three tiers award 7.5 experience per hour waited if the cub survives. Desperate does not level it faster and carries a risk of permanent death. Choose Safe for steady growth; Desperate offers more loot and a chance at a Relic Egg.
 
 Successful Safe / Rough / Desperate trips bring back `400–1200 / 1200–3600 / 4000–12000` money and `15 / 40 / 90` souls of the cub's bloodline.
+Successful trips also roll an extra item: **one quality-3 item** for Rough, or **one quality-4 item** for Desperate; Safe has no random-item reward. If no eligible item is available at settlement, that random item is skipped and is not queued for later delivery.
 After a Desperate trip survives and succeeds, it has a further `20%` chance to award a Relic Egg of that bloodline. This is not the overall egg chance per departure.
 Returning empty-handed still awards survival experience; dying awards neither experience nor loot.
 
@@ -107,7 +115,8 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
   - Each of its own kills: **+2**, capped at **+30** per run
   - Surviving a Disaster Expedition, by tier: Safe **+15**, Rough **+30**, Desperate **+60**
 - **100 experience per level**, capped at level 10.
-- **What levels give** — +1 pet-backpack slot every 3 levels, so +3 at max, stacking with the base slots and endowment slots.
+- **Combat growth** — each level above level 1 adds +6% max health and +5% to both gun and melee damage multipliers. At level 10, level bonuses total +54% max health and +45% to each damage multiplier, applied alongside endowments, temperament and scars.
+- **Backpack growth** — +1 pet-backpack slot at levels 3 / 6 / 9, so +3 at max, stacking with the deployment bonus, endowment slots and temperament slots.
 - The index records the highest level reached for each bloodline.
 
 ### Nest capacity and releasing
@@ -121,4 +130,4 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 - When the nest is full, expand or release: unlocking more bloodlines raises the cap, releasing frees a place immediately and refunds some souls.
 - Eggs are easiest to track in the top level of your bag or storage. Eggs tucked inside crates and containers are now found too, but the outer level keeps the count obvious.
 - Want a safe trickle? Send Safe runs. Want to gamble? Read the death rate before you press Desperate.
-- A cub on an expedition cannot be deployed or removed — the tension is exactly in those few days without it.
+- A cub on an expedition cannot be deployed or removed — the tension is exactly in those few hours without it.

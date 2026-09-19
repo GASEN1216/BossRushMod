@@ -29,7 +29,7 @@ A run in the arena is only the beginning. What you get afterwards, how you resha
 ## Story and relationships
 
 - **Duck King Campaign** — Six story contracts linking selected modes and base progression
-- **Affinity & Marriage** — Ten affinity tiers, gifts and dates, all the way to a wedding
+- **Affinity & Marriage** — Ten affinity tiers, daily chats and gifts, all the way to a wedding
 
 ## Tuning the mod
 

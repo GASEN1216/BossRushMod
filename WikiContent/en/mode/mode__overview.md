@@ -11,17 +11,17 @@
 - **Blood Hunt** — Naked + Ticket + Transponder / 4 phases / Constant bleed, kill to heal / ★★★★★
 - **Fate Echo** — Current loadout + Ticket + Fate Echo Relic / 9 waves, 3 acts / Counter your habits, then hunt your nemesis / ★★★★★
 - **Zombie Mode** — Zombie Tide Invitation / Roguelite survival / Enter empty-handed, endless zombie waves + escalating pollution + purification-point economy, separate from the seven modes above / ★★★★☆
-- **Black Market Duck Cup** — One BossRush ticket, from the option next to "Boss Rush" at base / Six matches per season / You never step in: sign two fighters, then read the odds, place your bets, and call one order per match / ★★★☆☆
+- **Black Market Duck Cup** — One BossRush ticket, from the option next to "Boss Rush" at base / Six matches per season / Usually managed from the stands: sign two fighters, read the odds, place your bets, and call one order per match; certain ERROR fighters can trigger a control swap / ★★★☆☆
 
 ### Mode Detection Priority
 
 Carrying multiple entry items? The system picks by priority:
 
-1. **Faction War** — Banner detected
-2. **Blood Hunt** — Transponder + Ticket detected
+1. **Faction War** — Naked-entry requirements met + Banner detected
+2. **Blood Hunt** — Naked-entry requirements met + Transponder + Ticket detected
 3. **Fate Echo** — Relic + Ticket detected, no Transponder
 4. **From Scratch** — Naked + Ticket detected
-5. **Standard BossRush** — Ticket only
+5. **Standard BossRush** — Bring a loadout and a ticket without meeting any earlier mode condition
 
 The Black Market Duck Cup is not on this list: like Standard BossRush it just needs a ticket and has no mode-specific entry item. Pick "Black Market Duck Cup" next to "Boss Rush" at base.
 

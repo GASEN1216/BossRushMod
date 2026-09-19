@@ -38,8 +38,8 @@ Interact with the arena signpost:
 Once you've extracted with your first payout, three cheap things start paying out forever:
 
 - **Build a Mailbox** (500) — a new issue of The Duckov Daily every game day, carrying a daily
-  bounty and a check-in wall that hands out high-quality prizes as it fills. Build it and forget
-  it; it accumulates on its own
+  bounty and a check-in wall that hands out high-quality prizes as it fills. Issues arrive automatically,
+  but open the mailbox and press Check In each game day; missing a day resets the current cycle
 - **Build a Campaign Board** (500) — takes the Duck King Campaign contracts. Six story chapters
   strung across modes you're already playing. Chapter 1 only asks you to clear one standard
   arena run without taking damage through wave 2, and pays 20,000 plus the base garden

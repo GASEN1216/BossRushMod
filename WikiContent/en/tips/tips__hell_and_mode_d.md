@@ -35,15 +35,15 @@ Random start, grow from nothing. Adapt or die.
 #### Opening
 - Starting gear is random — **don't restart for perfection**
 - Check your weapon + ammo, adapt your playstyle
-- Got melee only? Melee-clear first waves
+- Dislike your starting gun? A melee weapon you pick up can also clear the early waves
 - Only 3 medical items — they're precious
 
 #### Wave Strategy
 - **1-2**: Weakest grunts, easy loot
 - **3-5**: Stronger grunts, no Bosses — focus on gear upgrades
 - **6-10**: 1 Boss appears — kill it for drops
-- **11-15**: 2 Bosses — watch positioning, don't get pinched
-- **16+**: Full pool — gear should be solid by now
+- **11-15**: 2 Bosses, with the heavy-hitter block lifted from wave 11 — watch positioning, don't get pinched
+- **16+**: Bosses only, no more minions — gear should be solid by now
 
 #### Gear Upgrades
 - Enemy gear quality scales with wave number (late = Q5-6 drops)

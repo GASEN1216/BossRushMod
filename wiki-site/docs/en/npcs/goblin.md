@@ -24,7 +24,6 @@ Reforging and affix forging are separate menu options and never interfere. One c
 - **Lv.5** — Story: Dingdang's Past (Part 1)
 - **Lv.6** — 15% discount
 - **Lv.7** — Diamond Ring available in shop
-- **Lv.8** — Peace Amulet; heart bubble during chat
 - **Lv.10** — Story: Part 2; 20% discount; Dingdang's Drawing
 
 ## Gifts

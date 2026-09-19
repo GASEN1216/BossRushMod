@@ -18,7 +18,7 @@ This section is not about rules; it is about winning. Pick the guide for whereve
 ## A mode keeps beating you
 
 - **Infinite Hell & From Scratch** — Staying alive in the two endless modes
-- **Faction War Guide** — Picking a side, building works, pacing the brawl
+- **Faction War Guide** — Picking a side, managing shells and hiring allies
 - **Blood Hunt Guide** — The four bleed phases and how to outrun them
 - **Fate Echo Guide** — How to switch builds once it starts countering you
 

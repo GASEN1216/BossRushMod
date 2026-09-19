@@ -19,7 +19,7 @@ A **totem-slot charge-up item** — the more hits you take, the harder your next
 **Releasing:**
 - At **5 charges**, your next hit deals **+40 flat lightning damage plus 60% of that hit's actual damage**, and clears all charges
 - **Any weapon works** — gunfire consumes the full charge and triggers the release just like melee does
-- **Only a real hit on an enemy counts**: breakable crates, your own summons, and your own damage-over-time or reflect damage never consume the charges
+- **Only a real hit on an enemy counts**: your own summons, and your own damage-over-time or reflect damage, never consume the charges
 - Charging immediately restarts after release
 
 ## What It Looks Like

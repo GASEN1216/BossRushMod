@@ -10,7 +10,7 @@ Three regular NPC companions have their own services and personality, alongside 
 
 ## Sky Islands Residents
 
-The Qinglan Archipelago has its own residents, including Weibai, Fuzhou and the islanders involved in its side stories. Weibai and Fuzhou have separate affinity and marriage progression; see Sky Islands · Qinglan Archipelago for their services, visits and quests. The locations below describe Dingdang, Yuori and Awen.
+The Qinglan Archipelago has its own residents, including Qinghe, Weibai, Fuzhou and the islanders involved in its side stories. Qinghe and Weibai have separate affinity and marriage progression; see Sky Islands · Qinglan Archipelago for their services, visits and quests. The locations below describe Dingdang, Yuori and Awen.
 
 ## Affinity System
 

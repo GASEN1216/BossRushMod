@@ -22,7 +22,7 @@ Each melee hit applies **1 poison stack** to the target (max 5 layers):
 - Burst damage = **35 flat** + **20% of the damage those 5 hits actually dealt to that target**
 - The burst itself cannot crit, but its percentage part grows with your stats, affixes and set bonuses
 - Stacks and accumulated damage both reset after a burst, and the snowball starts again
-- Enemies only: breakable crates and your own summons never take stacks
+- Enemies only: your own summons and allies never take stacks
 
 ## What It Looks Like
 

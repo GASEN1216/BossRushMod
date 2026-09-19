@@ -8,7 +8,7 @@ Ice-element melee with an icy aura and a right-click **undead army summon**. Dro
 
 - **Type**: Melee / **Quality**: 6 / **Element**: Ice / **Drop**: the vanilla "???" Boss (50% extra) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 - Dmg 38.5 / Speed 1.54 / Range 2.0m / Crit 7% / Crit Dmg 1.4x / Pierce 4.2
-- Bleed 10.5% / Block 0.7 / Stamina 7/hit / Move Speed 107% / Cold Protection +2 / Gem Slots 2
+- Bleed 10.5% / Block 0.7 / Stamina 7/hit / Hit Delay 0.084s / Move Speed 107% / Cold Protection +2 / Gem Slots 2
 
 ## Frost Power
 

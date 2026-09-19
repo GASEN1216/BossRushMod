@@ -8,7 +8,7 @@ The Phantom Witch's scythe. Ghost-element melee with **50% curse chance on every
 
 - **Type**: Melee / **Quality**: 6 / **Element**: Ghost / **Drop**: Phantom Witch (50%) / Protected from death drops while equipped in its slot; not protected merely by being in the backpack
 - Dmg 35.5 / Speed 1.56 / Range 2.22m / Crit 5.5% / Crit Dmg 1.33x / Pierce 3.8
-- Bleed 8% / Block 0.45 / Stamina 6.5/hit / **Move Speed 120%** / Gem Slots 2
+- Bleed 8% / Block 0.45 / Stamina 6.5/hit / Hit Delay 0.09s / **Move Speed 120%** / Gem Slots 2
 
 ### Soulreaving Power (Passive)
 
