@@ -485,7 +485,7 @@ export const INFOBOX: Record<string, Infobox> = {
     eyebrowEn: 'NPC · Base',
     rows: [
       { zh: '身份', en: 'Role', vz: '前 J-Lab 医疗研究员', ve: 'Ex-J-Lab medical researcher' },
-      { zh: '提供', en: 'Services', vz: '治疗 / 复活 / 野战诊所', ve: 'Healing, revives, field clinic' },
+      { zh: '提供', en: 'Services', vz: '恢复满血 / 清除可治疗的负面状态', ve: 'Full healing / removal of treatable debuffs' },
       { zh: '好感度', en: 'Affinity', vz: '10 级，可结婚', ve: '10 tiers, marriable' },
     ],
     links: ['/systems/affinity-marriage', '/items/npc-items'],

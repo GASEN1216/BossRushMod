@@ -8,7 +8,7 @@ Former senior medical researcher at J-Lab. After the lab collapsed, she escaped 
 
 - **Chat** (from start) — Daily chat, Affinity +30/day
 - **Gift** (from start) — 1 gift/day
-- **Healing** (from start) — Restores HP + removes negative buffs. Cost drops with Affinity
+- **Healing** (from start) — Restores full HP + removes treatable debuffs. Cost drops with Affinity
 
 ## Affinity Rewards
 
@@ -38,5 +38,5 @@ See Affinity and Marriage for details.
 ## Tips
 
 - 40% healing discount at max Affinity — **worth the investment**
-- Calming Drops remove most negative buffs, clutch in hard modes
+- Calming Drops and nurse healing remove treatable debuffs such as bleeding, fractures and poison, but not the Phantom Witch's **Ghost Curse**; Ghost Curse alone does not allow Calming Drops to be used
 - Peace Amulet is passive — just having it in your inventory saves your life

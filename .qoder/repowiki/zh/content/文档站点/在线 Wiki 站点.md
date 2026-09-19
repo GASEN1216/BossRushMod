@@ -31,6 +31,12 @@
 > 三节，并补充了类目主页（hubs/）、速查对比表、中文搜索分词、逐页 SEO 与 RSS。
 > 更细的维护规则以 [wiki-site/AGENTS.md](file://wiki-site/AGENTS.md) 为准。
 
+## 内容一致性与发布核对
+
+正文同步、速查框和公开部署是三项独立检查。`sync-content.mjs` 只生成正文；`infobox.mts` 的中英文服务摘要仍需对照实际交互入口人工复核，不能把角色背景中的诊所当成独立服务。护士治疗与安神滴剂的清除范围由 `NurseHealingService` 的可治疗状态名单决定，当前不包含幽灵女巫的诅咒；药品还需要身上存在可治疗状态才允许使用。
+
+本地 `npm --prefix wiki-site run build` 成功只说明生成产物可用。公开页面要在包含修改的提交推送到 `main`、命中根目录工作流的路径条件并部署成功后才会更新；核对 Actions 的 `head_sha` 与实际 HTTP 页面内容，不能把本地 commit 当作发布完成。构建后运行导航检查和 `tools/check_wiki_links.py`，再检查新增页面及中英文正文。
+
 ## 目录
 1. [简介](#简介)
 2. [项目结构](#项目结构)

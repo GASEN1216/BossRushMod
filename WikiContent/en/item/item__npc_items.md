@@ -43,10 +43,12 @@ See Affinity & Marriage for details.
 
 ### Calming Drops
 
-**Clears most negative buffs.** Herbal fragrance included.
+Clears treatable debuffs such as bleeding, fractures and poison. Herbal fragrance included.
 
 - **Source**: 5 free at Yuori Lv.3
 - Stack 20 / Use time 2.5s
+- **Effect**: Removes treatable debuffs; does not remove the Phantom Witch's **Ghost Curse**
+- **Use condition**: At least one treatable debuff is active; Ghost Curse alone does not allow use
 
 ---
 
