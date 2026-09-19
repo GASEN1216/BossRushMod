@@ -320,6 +320,8 @@ namespace BossRush
                 else if (result == ModeGBattleResult.Defeat)
                 {
                     copy.totalDefeats++;
+                    // 败北与本局结果一起提交，沿用 battleResultToken 防止重复死亡记账。
+                    copy.contractStreak = 0;
                 }
 
                 if (waveReached > copy.bestWaveReached) copy.bestWaveReached = waveReached;

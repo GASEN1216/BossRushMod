@@ -501,13 +501,20 @@ namespace BossRush
         {
             UniTask<ManagedBossPrepareResult> pending = source.Preserve();
             int sinkLease = ModeGLateCleanupSink.AcquireLease("spawn_factory:" + (presetKey ?? "unknown"));
-            float deadline = Time.realtimeSinceStartup + ModeGCleanupController.LateCleanupMaxWaitSeconds;
+            float elapsed = 0f;
+            float lastSample = Time.realtimeSinceStartup;
+            bool wasPaused = Time.timeScale <= 0f || BossRushUI.IsGamePaused() || ZombieModeUIHelper.IsModalInputPaused;
             try
             {
                 while (pending.Status == UniTaskStatus.Pending && CanContinueRun()
-                    && Time.realtimeSinceStartup < deadline)
+                    && elapsed < ModeGCleanupController.LateCleanupMaxWaitSeconds)
                 {
                     await UniTask.Yield();
+                    float now = Time.realtimeSinceStartup;
+                    bool paused = Time.timeScale <= 0f || BossRushUI.IsGamePaused() || ZombieModeUIHelper.IsModalInputPaused;
+                    elapsed = AdvanceSpawnWait(elapsed, lastSample, now, wasPaused, paused);
+                    lastSample = now;
+                    wasPaused = paused;
                 }
 
                 if (pending.Status != UniTaskStatus.Pending)
@@ -563,6 +570,13 @@ namespace BossRush
             {
                 ModeGLateCleanupSink.ReleaseLease(sinkLease);
             }
+        }
+
+        private static float AdvanceSpawnWait(float elapsed, float previousSample, float now, bool wasPaused, bool paused)
+        {
+            // 工厂的游戏时间等待会随暂停停止；暂停及恢复边界不能消耗技术超时预算。
+            // 其余时间按真实秒计，不受慢动作/加速影响，取消仍由 CanContinueRun 立即处理。
+            return wasPaused || paused ? elapsed : elapsed + Math.Max(0f, now - previousSample);
         }
 
         /// <summary>

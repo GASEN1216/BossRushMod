@@ -33,10 +33,15 @@ def main():
                  "ModeGNemesisSelectionSource"):
         generated += member(models, "public enum " + name) + "\n"
     generated += member(models, "public static class ModeGPhaseGuards") + "\n"
-    reward = sources["ModeGRewardTransaction.cs"]
-    generated += member(reward, "public enum ModeGRewardBand") + "\n"
-    generated += member(reward, "public struct ModeGRewardCandidate") + "\n"
-    generated += reward[reward.index("public static class ModeGRewardTransaction"):reward.index("        #region Nonces")] + "}\n"
+    materializer_source = ROOT / "LootAndRewards/VictoryRewardShadowCrateController.cs"
+    generated += member(materializer_source.read_text(encoding="utf-8-sig"),
+                        "public sealed class ModeGRewardStrictMaterializer") + "\n"
+    generated += member(sources["ModeGCleanupController.cs"], "public static class ModeGLateCleanupSink") + "\n"
+    generated += "public static partial class ModeGEncounterVariation {\n"
+    generated += member(sources["ModeGEncounterVariation.cs"], "public static UnityEngine.Vector2[] GetSpawnOffsets(") + "\n}\n"
+    generated += "public partial class ModBehaviour {\n"
+    generated += member(sources["ModeGRuntimeBridge.cs"], "private static bool TrySelectModeGFormation(") + "\n"
+    generated += member(sources["ModeGRuntimeBridge.cs"], "private static bool TrySelectModeGSeparatedPoints(") + "\n}\n"
     hud = sources["ModeGHUD.cs"]
     generated += member(hud, "internal enum ModeGObjectiveState") + "\n"
     generated += member(hud, "internal struct ModeGHudModel") + "\n"
@@ -49,7 +54,8 @@ def main():
     end = runtime.index("        #endregion", begin)
     generated += runtime[begin:end]
     for signature in ("private void SettleCurrentWave()", "private void PrepareNextAmmoBanIfNeeded()",
-                      "private void PublishAmmoBan(", "private int GetAmmoThreatSharePercent("):
+                      "private void PublishAmmoBan(", "private int GetAmmoThreatSharePercent(",
+                      "private static float AdvanceSpawnWait("):
         generated += member(runtime, signature) + "\n"
     api = sources["ModeGRuntimeModule_PublicApiAndShutdown.cs"]
     generated += member(api, "public ModeGContractProgress BuildContractProgress()") + "\n"
@@ -60,10 +66,12 @@ def main():
         "ModeGCombatTelemetry.cs", "ModeGAdaptiveCombat.cs", "ModeGRunState.cs", "ModeGWavePlan.cs",
         "ModeGDeterministicRandom.cs", "ModeGAvailability.cs", "ModeGFateContract.cs",
         "ModeGProfilePersistence.cs", "ModeGNemesisPersistence.cs", "ModeGWeaponScoringCompatibilityMatrix.cs",
+        "ModeGRewardTransaction.cs",
     )] + [HERE / "Stubs.cs", HERE / "Program.cs", extracted]
     (OUT / "source-sha256.txt").write_text("\n".join(
         name + " " + hashlib.sha256((ROOT / "ModeG" / name).read_bytes()).hexdigest()
-        for name in sorted(sources)), encoding="utf-8")
+        for name in sorted(sources)) + "\nLootAndRewards/VictoryRewardShadowCrateController.cs "
+        + hashlib.sha256(materializer_source.read_bytes()).hexdigest(), encoding="utf-8")
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType>'
     project += '<TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion>'
     project += '<EnableDefaultCompileItems>false</EnableDefaultCompileItems></PropertyGroup><ItemGroup>'

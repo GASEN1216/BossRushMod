@@ -69,7 +69,7 @@ The confirmation page deterministically offers two contracts from a pool of eigh
 - **Tempo** — Chain breaks or maintain Resolve across all three acts
 - **Style** — Complete targets built around distance echoes, ammo bans, and attribute locks
 
-Contracts are honor objectives: they do not alter Boss strength, player stats, or reward counts. Clearing the run with the objective completed advances your contract streak; “seals” describe that completion, rather than additional collectible items. Your previous selection is excluded from the next candidate pair once.
+Contracts are honor objectives: they do not alter Boss strength, player stats, or reward counts. Clearing the run with the objective completed advances your contract streak; “seals” describe that completion, rather than additional collectible items. Your previous selection is excluded from the next candidate pair once. Defeat, abandoning a run, or clearing it without completing the contract breaks the streak; previous victories and kill records remain.
 
 - **Triad Breaker**: break each axis once; bring both gun and melee options.
 - **Last Executioner**: complete two Last Stand executions and directly finish an R3 Nemesis.

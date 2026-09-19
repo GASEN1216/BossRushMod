@@ -1,5 +1,16 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+## 2026-09-19 Mode G 异常路径复核（COMPAT）
+
+接续全面审核任务；四组问题修复完成，L1/L2 通过，L3 待 owner。详细证据、可玩闭环与实机操作见 `docs/代码审查/2026-09-19-ModeG异常路径复核.md`。
+
+| ID | 级别 | 触发条件与影响 | 状态与证据 |
+| --- | --- | --- | --- |
+| CR-2026-09-19-010 | P1 | `ModeGRewardStrictMaterializer.Update/CancelAndDestroy`：背包销毁后无限早返；交付回调重入取消提前清空快照或错算在途物品，奖励租约/结算保护不能可靠释放。 | Fixed：失效走取消；当前件先结算再取消剩余槽，保持每帧一件。实际发放器源码执行回归覆盖销毁、两种回调取消和一次完成；移除保护转红。 |
+| CR-2026-09-19-011 | P1 | `ModeGRuntimeBridge.TrySelectModeGFormation`：贪心首选阻塞后续槽，即使存在合法双/三 Boss 组合也中止。 | Fixed：仅失败时在同一落地点集回溯，不放宽间距、不额外查物理。具体反例及 1200 组样本对照独立穷举通过，恢复贪心单次选点转红。 |
+| CR-2026-09-19-012 | P1 | `ModeGRuntimeModule.AwaitSpawnAttemptWithTimeout`：工厂随暂停停止，15 秒技术预算仍按墙钟消耗，可误判整局生成失败。 | Fixed：暂停及恢复边界不计时，取消/迟到清理保留。时间预算执行回归、暂停接线守卫及两个反向探针通过；真实异步工厂待 L3。 |
+| CR-2026-09-19-009 | P2 | `ModeGProfilePersistence.RecordRun`：Defeat 只累加败北记录，遗漏清零契约连胜。 | Fixed：同一终局事务清零，battleResultToken 去重、历史保留；败北后从 1 重新累计回归通过，移除赋值转红。 |
+
 ## 2026-09-19 NPC 对白与天空岛气泡复核（COMPAT / SAFE）
 
 四项已确认缺陷已修复，L1/L2 通过，L3 待 owner。最初本地审查编号 001–004 与并行日报审查冲突，入库统一为 005–008。

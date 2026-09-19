@@ -677,6 +677,8 @@ namespace BossRush
         private int succeededCount;
         private int failedCount;
         private bool finished;
+        private bool materializing;
+        private bool cancelRequested;
 
         public bool IsFinished
         {
@@ -705,6 +707,8 @@ namespace BossRush
             succeededCount = 0;
             failedCount = 0;
             finished = false;
+            materializing = false;
+            cancelRequested = false;
             return true;
         }
 
@@ -718,6 +722,11 @@ namespace BossRush
             {
                 return;
             }
+
+            // 背包/物品事件可同步重入取消。当前件必须先确定交付结果，
+            // 再把尚未尝试的槽记失败，不能提前清空 Update 正在使用的快照。
+            cancelRequested = true;
+            if (materializing) return;
 
             int total = typeIdSnapshot != null ? typeIdSnapshot.Length : succeededCount + failedCount;
             int remaining = Math.Max(0, total - nextIndex);
@@ -751,12 +760,19 @@ namespace BossRush
 
         private void Update()
         {
-            if (finished || typeIdSnapshot == null || targetInventory == null)
+            if (finished || materializing || typeIdSnapshot == null)
             {
+                return;
+            }
+            if (targetInventory == null)
+            {
+                // Inventory 是 Unity 对象，角色/背包销毁也必须完成回调以释放结算租约。
+                CancelAndDestroy();
                 return;
             }
 
             // 每帧至多一件 InstantiateSync，避免奖励尖峰
+            materializing = true;
             int typeId = typeIdSnapshot[nextIndex];
             ItemStatsSystem.Item item = null;
             bool committed = false;
@@ -787,6 +803,7 @@ namespace BossRush
             }
 
             if (!committed) failedCount++;
+            nextIndex++;
 
             try
             {
@@ -800,7 +817,12 @@ namespace BossRush
                 ModBehaviour.DevLog("[ModeG] [WARNING] 奖励单件完成回调异常: typeId=" + typeId + ", " + callbackEx.Message);
             }
 
-            nextIndex++;
+            materializing = false;
+            if (cancelRequested)
+            {
+                CancelAndDestroy();
+                return;
+            }
             if (nextIndex >= typeIdSnapshot.Length)
             {
                 finished = true;

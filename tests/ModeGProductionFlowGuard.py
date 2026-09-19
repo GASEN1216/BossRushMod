@@ -43,6 +43,10 @@ def main():
          r"if \(BossRushUI.IsOfficialHudHidden\(\) \|\| BossRushUI.IsGamePaused\(\)\) return;"),
         ("AttributeTerminalHint", "ModeG/ModeGHUD.cs", "private static string ComposeObjectiveLine(",
          r"if \(m.objectiveState == ModeGObjectiveState.ThresholdsMet\s*&& m.axis == ModeGCounterAxis.Distance\)"),
+        ("SpawnPauseBudget", "ModeG/ModeGRuntimeModule.cs", "private async UniTask<ManagedBossPrepareResult> AwaitSpawnAttemptWithTimeout(",
+         r"elapsed < ModeGCleanupController.LateCleanupMaxWaitSeconds\)\s*\{\s*await UniTask.Yield\(\);"
+         r"\s*float now = Time.realtimeSinceStartup;\s*bool paused = Time.timeScale <= 0f \|\| BossRushUI.IsGamePaused\(\) \|\| ZombieModeUIHelper.IsModalInputPaused;"
+         r"\s*elapsed = AdvanceSpawnWait\(elapsed, lastSample, now, wasPaused, paused\);\s*lastSample = now;\s*wasPaused = paused;"),
     ]
     failures = []
     for name, path, signature, pattern in checks:

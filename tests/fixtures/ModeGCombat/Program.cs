@@ -68,8 +68,14 @@ internal static class Program
             CharacterDamageMultiplier=1, Damage=10, ExplosionDamageMultiplier=1 };
     }
     private static void Shoot(ItemAgent_Gun gun,int count=5) { for (int i=0;i<count;i++) gun.Shoot(); }
+    private static void Tick(ModeGRewardStrictMaterializer materializer)
+    {
+        typeof(ModeGRewardStrictMaterializer).GetMethod("Update",
+            System.Reflection.BindingFlags.Instance|System.Reflection.BindingFlags.NonPublic).Invoke(materializer,null);
+    }
     public static int Main()
     {
+        Console.OutputEncoding=new System.Text.UTF8Encoding(false);
         ItemAssetsCollection.metadata[100]=new ItemMetaData { id=100,tags=new[]{new Duckov.Utilities.Tag { name="Gun" }} };
         ItemAssetsCollection.metadata[101]=new ItemMetaData { id=101,tags=new[]{new Duckov.Utilities.Tag { name="MeleeWeapon" }} };
         Case("致命一击在注销前计分且后续 OnHurt 不重复",()=>{
@@ -247,6 +253,103 @@ internal static class Program
             Check(ModeGRewardTransaction.BuildSlotPlan(77,11,new List<ModeGRewardCandidate>())==null,"空池拒绝");
             candidates.RemoveRange(0,25);
             Check(ModeGRewardTransaction.BuildSlotPlan(77,11,candidates)==null,"不足池拒绝");
+        });
+        Case("刷怪首选点阻塞时仍能找到合法双Boss和三Boss组合",()=>{
+            var source=new[]{new Vector3(13,0,0),new Vector3(13,0,8),new Vector3(13,0,-8),new Vector3(21,0,0)};
+            for(int count=2;count<=3;count++) {
+                Vector3[] selected;
+                Check(ModBehaviour.SelectFormation(source,count,ModeGPlanVariant.Split,out selected),"有合法组合不得中止整局 count="+count);
+                for(int i=0;i<count;i++) for(int j=0;j<i;j++)
+                    Check((selected[i]-selected[j]).sqrMagnitude>=100,"保留10米安全间距");
+            }
+            Vector3[] rejected;
+            Check(!ModBehaviour.SelectFormation(new[]{source[0],source[1]},2,ModeGPlanVariant.Split,out rejected),"几何不足仍拒绝");
+        });
+        Case("刷怪超时不包含暂停和恢复边界",()=>{
+            float elapsed=ModeGRuntimeModule.SpawnWait(0,0,5,false,false);
+            elapsed=ModeGRuntimeModule.SpawnWait(elapsed,5,35,false,true);
+            elapsed=ModeGRuntimeModule.SpawnWait(elapsed,35,65,true,true);
+            elapsed=ModeGRuntimeModule.SpawnWait(elapsed,65,95,true,false);
+            Near(5,elapsed,"长暂停和恢复不消耗预算");
+            elapsed=ModeGRuntimeModule.SpawnWait(elapsed,95,105,false,false);
+            Near(15,elapsed,"真实未暂停15秒仍超时");
+            Near(15,ModeGRuntimeModule.SpawnWait(elapsed,105,104,false,false),"时钟回退不倒扣");
+        });
+        Case("编队选点与独立穷举的可行性一致且结果稳定",()=>{
+            var random=new Random(1909);
+            foreach(ModeGPlanVariant variant in Enum.GetValues(typeof(ModeGPlanVariant)))
+            for(int sample=0;sample<200;sample++) for(int count=2;count<=3;count++) {
+                var source=new Vector3[8];
+                for(int i=0;i<source.Length;i++) source[i]=new Vector3(random.Next(-30,31),0,random.Next(-30,31));
+                var spec=ModeGWavePlan.GetFormationSpec(variant);
+                float pairSq=spec.bossPairMinDistance*spec.bossPairMinDistance;
+                float playerSq=spec.playerMinDistance*spec.playerMinDistance;
+                bool possible=false;
+                for(int i=0;i<source.Length;i++) for(int j=i+1;j<source.Length;j++) {
+                    if(source[i].sqrMagnitude<playerSq || source[j].sqrMagnitude<playerSq || (source[i]-source[j]).sqrMagnitude<pairSq) continue;
+                    if(count==2) possible=true;
+                    for(int k=j+1;k<source.Length;k++)
+                        if(source[k].sqrMagnitude>=playerSq && (source[k]-source[i]).sqrMagnitude>=pairSq && (source[k]-source[j]).sqrMagnitude>=pairSq) possible=true;
+                }
+                Vector3[] chosen,again;
+                bool found=ModBehaviour.SelectFormation(source,count,variant,out chosen);
+                Check(found==possible,"合法组合不能漏选 "+variant);
+                Check(ModBehaviour.SelectFormation(source,count,variant,out again)==found,"重复查询一致");
+                if(!found) continue;
+                for(int i=0;i<count;i++) {
+                    Check(chosen[i].sqrMagnitude>=playerSq && (chosen[i]-again[i]).sqrMagnitude==0,"玩家间距与确定性");
+                    for(int j=0;j<i;j++) Check((chosen[i]-chosen[j]).sqrMagnitude>=pairSq,"Boss间距");
+                }
+            }
+        });
+        Case("败北中断契约连胜且同一终局不重复记账",()=>{
+            Saves.SavesSystem.ChangeSlot();
+            ModeGProfilePersistence.IncrementContractStreak(); ModeGProfilePersistence.IncrementContractStreak();
+            ModeGProfilePersistence.RecordRun(ModeGBattleResult.Defeat,5,30,7,false,"defeat-test");
+            var p=ModeGProfilePersistence.Current;
+            Check(p.contractStreak==0,"败北不能保留契约连胜");
+            Check(p.totalRuns==1 && p.totalDefeats==1 && p.totalBossKills==7,"败北历史保留");
+            ModeGProfilePersistence.RecordRun(ModeGBattleResult.Defeat,5,30,7,false,"defeat-test");
+            Check(ModeGProfilePersistence.Current.totalRuns==1,"重复死亡不能二次记账");
+            ModeGProfilePersistence.IncrementContractStreak();
+            Check(ModeGProfilePersistence.Current.contractStreak==1,"下一次完成从1开始");
+        });
+        Case("奖励每帧一件且完成回调恰好一次",()=>{
+            var m=new ModeGRewardStrictMaterializer(); var inventory=new Inventory();
+            int completed=0, items=0, baseline=ItemAssetsCollection.InstantiateCount;
+            Check(m.Initialize(new[]{1,2,3},inventory,(id,item,ok)=>{Check(ok,"交付成功");items++;},
+                (total,ok,bad)=>{Check(total==3 && ok==3 && bad==0,"完成统计");completed++;}),"初始化");
+            Tick(m); Check(items==1 && completed==0 && ItemAssetsCollection.InstantiateCount==baseline+1,"单帧限额");
+            Tick(m); Tick(m); Tick(m); m.CancelAndDestroy();
+            Check(m.IsFinished && completed==1 && items==3,"完成幂等");
+        });
+        Case("背包中途销毁仍结案并释放奖励租约",()=>{
+            var m=new ModeGRewardStrictMaterializer(); var inventory=new Inventory();
+            int completed=0, good=-1, bad=-1;
+            int lease=ModeGLateCleanupSink.AcquireLease("fixture");
+            try {
+                m.Initialize(new[]{1,2,3},inventory,null,(total,ok,failed)=>{
+                    completed++;good=ok;bad=failed;ModeGLateCleanupSink.ReleaseLease(lease);
+                });
+                Tick(m); UnityEngine.Object.Destroy(inventory); Tick(m);
+                Check(m.IsFinished && completed==1 && good==1 && bad==2,"丢失背包不能永远挂起");
+                Check(!ModeGLateCleanupSink.HasPendingLeases,"租约释放");
+            } finally { m.CancelAndDestroy(); ModeGLateCleanupSink.ReleaseLease(lease); }
+        });
+        Case("物品交付事件取消奖励时正确计算在途物品",()=>{
+            var m=new ModeGRewardStrictMaterializer(); var inventory=new Inventory();
+            int completed=0, good=-1, bad=-1;
+            inventory.OnAdding=item=>m.CancelAndDestroy();
+            m.Initialize(new[]{1,2,3},inventory,null,(total,ok,failed)=>{completed++;good=ok;bad=failed;});
+            Tick(m); Tick(m);
+            Check(m.IsFinished && completed==1 && good==1 && bad==2,"已交付当前件应记成功，其余取消");
+        });
+        Case("逐件回调取消奖励不访问已清空快照",()=>{
+            var m=new ModeGRewardStrictMaterializer(); int completed=0, good=-1, bad=-1;
+            m.Initialize(new[]{1,2,3},new Inventory(),(id,item,ok)=>m.CancelAndDestroy(),
+                (total,ok,failed)=>{completed++;good=ok;bad=failed;});
+            Tick(m); Tick(m); m.CancelAndDestroy();
+            Check(completed==1 && good==1 && bad==2,"取消统计守恒且不重入");
         });
         Case("历史选择和未知存档版本不被覆盖",()=>{
             Saves.SavesSystem.ChangeSlot(); ModeGProfilePersistence.RecordSelectedContract(7); ModeGProfilePersistence.FlushPending(false);

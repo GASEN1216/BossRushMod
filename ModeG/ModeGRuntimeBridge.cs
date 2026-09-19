@@ -240,13 +240,42 @@ namespace BossRush
                         bestIndex = index;
                     }
                 }
-                if (bestIndex < 0) return false;
+                if (bestIndex < 0)
+                {
+                    // 贪心首选可能同时挡住其余安全点；仅失败时在已落地的同一候选集
+                    // 回溯至多三个槽。保持安全间距，不增加物理查询或放宽刷怪条件。
+                    if (!TrySelectModeGSeparatedPoints(candidates, selected, 0, 0, pairMinSqr)) return false;
+                    positions = selected;
+                    return true;
+                }
                 used[bestIndex] = true;
                 selected[slot] = candidates[bestIndex];
             }
 
             positions = selected;
             return true;
+        }
+
+        private static bool TrySelectModeGSeparatedPoints(List<Vector3> candidates,
+            Vector3[] selected, int slot, int start, float pairMinSqr)
+        {
+            if (slot == selected.Length) return true;
+            int remaining = selected.Length - slot;
+            for (int i = start; i <= candidates.Count - remaining; i++)
+            {
+                bool pairSafe = true;
+                for (int j = 0; j < slot; j++)
+                {
+                    Vector3 delta = candidates[i] - selected[j];
+                    delta.y = 0f;
+                    if (delta.sqrMagnitude < pairMinSqr) { pairSafe = false; break; }
+                }
+                if (!pairSafe) continue;
+                selected[slot] = candidates[i];
+                if (TrySelectModeGSeparatedPoints(candidates, selected, slot + 1, i + 1, pairMinSqr))
+                    return true;
+            }
+            return false;
         }
 
         internal bool PrepareModeGArenaRuntime(ModeGEntryPreview preview)

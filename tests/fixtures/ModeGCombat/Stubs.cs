@@ -27,10 +27,26 @@ namespace UnityEngine
         }
     }
     public class GameObject : Object { public readonly List<Object> components = new List<Object>(); }
+    public class MonoBehaviour : Object { public GameObject gameObject = new GameObject(); }
     public class Transform { public Vector3 position; }
-    public struct Vector3 { public float x, y, z; public Vector3(float x, float y, float z) { this.x=x; this.y=y; this.z=z; } }
+    public struct Vector2 { public float x,y; public Vector2(float x,float y) { this.x=x;this.y=y; } }
+    public struct Vector3
+    {
+        public float x, y, z;
+        public Vector3(float x, float y, float z) { this.x=x; this.y=y; this.z=z; }
+        public static Vector3 up { get { return new Vector3(0,1,0); } }
+        public static Vector3 forward { get { return new Vector3(0,0,1); } }
+        public static Vector3 operator +(Vector3 a,Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
+        public static Vector3 operator *(Vector3 a,float b) { return new Vector3(a.x*b,a.y*b,a.z*b); }
+        public static Vector3 operator -(Vector3 a,Vector3 b) { return new Vector3(a.x-b.x,a.y-b.y,a.z-b.z); }
+        public float sqrMagnitude { get { return x*x+y*y+z*z; } }
+    }
     public static class Mathf
     {
+        public const float Deg2Rad=(float)(Math.PI/180.0);
+        public static float Cos(float a) { return (float)Math.Cos(a); }
+        public static float Sin(float a) { return (float)Math.Sin(a); }
+        public static int Abs(int a) { return Math.Abs(a); }
         public static float Clamp01(float x) { return Math.Max(0f, Math.Min(1f, x)); }
         public static int Clamp(int x, int min, int max) { return Math.Max(min, Math.Min(max, x)); }
         public static int FloorToInt(float x) { return (int)Math.Floor(x); }
@@ -74,16 +90,46 @@ namespace ItemStatsSystem
     public class Item : UnityEngine.Object
     {
         public int TypeID; public Constants Constants;
+        public int StackCount=1; public Inventory InInventory; public DuckovItemAgent ActiveAgent;
+        public void DestroyTree() { UnityEngine.Object.Destroy(this); }
+        public DuckovItemAgent Drop(Vector3 position,bool a,Vector3 direction,float b)
+        { return ActiveAgent=new DuckovItemAgent(); }
         public readonly Dictionary<string,Stat> stats = new Dictionary<string,Stat>();
         public Stat GetStat(string key) { Stat s; return stats.TryGetValue(key,out s) ? s : null; }
     }
     public struct ItemMetaData { public int id; public Duckov.Utilities.Tag[] tags; }
+    public class Inventory : UnityEngine.Object
+    {
+        public Action<Item> OnAdding;
+        public bool AddAndMerge(Item item,int start)
+        {
+            item.InInventory=this;
+            if (OnAdding!=null) OnAdding(item);
+            return true;
+        }
+    }
     public static class ItemAssetsCollection
     {
         public static readonly Dictionary<int,Item> items = new Dictionary<int,Item>();
         public static readonly Dictionary<int,ItemMetaData> metadata = new Dictionary<int,ItemMetaData>();
+        public static int InstantiateCount;
+        public static Item InstantiateSync(int id) { InstantiateCount++; return new Item { TypeID=id }; }
         public static Item GetPrefab(int id) { Item item; return items.TryGetValue(id,out item) ? item : null; }
         public static ItemMetaData GetMetaData(int id) { ItemMetaData data; metadata.TryGetValue(id,out data); return data; }
+    }
+}
+namespace ItemStatsSystem.Data { public class ItemTreeData { } }
+public class DuckovItemAgent : UnityEngine.Object { }
+public static class PlayerStorage
+{
+    public static List<ItemStatsSystem.Data.ItemTreeData> IncomingItemBuffer=new List<ItemStatsSystem.Data.ItemTreeData>();
+}
+public static class ItemUtilities
+{
+    public static void SendToPlayerStorage(Item item,bool a)
+    {
+        PlayerStorage.IncomingItemBuffer.Add(new ItemStatsSystem.Data.ItemTreeData());
+        item.DestroyTree();
     }
 }
 public enum DamageTypes { normal, realDamage }
@@ -158,12 +204,17 @@ namespace BossRush
         public static string T(string cn, string en) { return Chinese ? cn : en; }
         public static string T(string key) { return key; }
     }
-    public class ModBehaviour
+    public partial class ModBehaviour
     {
         public static ModBehaviour Instance = new ModBehaviour();
         public static void DevLog(string message) { }
         public void ShowMessage(string message) { }
         public void ReportModeGBossKillAchievement(int t, string b, bool f) { }
+        public bool TryStartModeGRewardMaterialization_LootAndRewards(int[] ids,Inventory inventory,
+            Action<int,Item,bool> perItem,Action<int,int,int> completed,out string reason)
+        { reason="fixture does not start Unity components"; return false; }
+        public static bool SelectFormation(Vector3[] source,int count,ModeGPlanVariant variant,out Vector3[] selected)
+        { return TrySelectModeGFormation(source,new Vector3(),0,count,variant,ModeGWavePlan.GetFormationSpec(variant),false,out selected); }
     }
     public sealed class ZombieModeAttributeModifierRecord { public Item CharacterItem; public Stat Stat; public Modifier Modifier; public string StatName; }
     public static class RuntimeStatModifierTracker
@@ -175,9 +226,14 @@ namespace BossRush
     {
         public const int MinimumProductionOfficialBossCount=1, OfficialPoolReplicationTarget=6;
     }
-    public static class ModeGEncounterVariation
+    public static partial class ModeGEncounterVariation
     {
         public static bool IsManagedSignatureKey(string key) { return key.StartsWith("managed_"); }
+    }
+    public static class SpawnPositionHelper
+    {
+        // 夹具仅验证有限候选的几何选取；实际物理落地需实机。
+        public static bool TrySnapToGround(Vector3 source,out Vector3 grounded) { grounded=source;return true; }
     }
     public static class ModeGPersistenceFlushCoordinator
     {
@@ -204,6 +260,8 @@ namespace BossRush
         { _state=state; _telemetry=telemetry; _adaptive=adaptive; }
         public void Settle(ModeGDistanceVerdict distance,ModeGDirectDamageClass terminal)
         { _activeDistanceVerdict=distance; _lastTerminalFamily=terminal; SettleCurrentWave(); }
+        public static float SpawnWait(float elapsed,float previous,float now,bool wasPaused,bool paused)
+        { return AdvanceSpawnWait(elapsed,previous,now,wasPaused,paused); }
         internal ModeGHudModel Objective(ModeGCounterAxis axis)
         { var model = new ModeGHudModel { axis=axis }; FillObjective(ref model); return model; }
     }
