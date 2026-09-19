@@ -25,6 +25,7 @@
 - 提交前复核：owner 授权本地 commit 后，只选本轮 16 个文件，公共台账按小节暂存。待提交生产源码在 Windows 按官方完整清单编译通过，27 项回归及 11 个 Dev 标识缺席检查通过；此前六个反向探针的源码与暂存内容逐字一致（仅 Git 行尾规范化）。全量源码守卫 624 项经验证通过、3 项外部制品 PARTIAL，唯一剩余失败为基线已有的 `GameplayValidationCoverageGuard` 缺 `Common/Loot` 映射；未加入本轮差异时同样失败，未改断言或白名单。两项 Mode H 初始失败分别来自 Windows 扩展路径与 guard 排除祖先 Build，调整副本访问路径后原代码通过。待提交 Wiki 构建、80 项导航、237 页/39118 引用通过。证据在 `Build/modeg-commit-20260919/`；并行百科提交仅改 Markdown，集成时核对生产源码不变。
 - L3 未验证：未启动游戏、未部署实际目录、未读写玩家存档、未查看截图、未提交。人工步骤 MG-R01～06 与 owner 看图清单在 `docs/代码审查/2026-09-19-ModeG异常路径复核.md`；真实暂停调度、AI/导航、奖励交付、画面与帧耗不能由离线通过代替，不宣称全部生产验收完成或无性能问题。
 
+
 ## 2026-09-19 NPC 对白与天空岛气泡修复（COMPAT / SAFE）
 
 **完成**：修复 CR-2026-09-19-005～008。敌人交战不选闲话；发现玩家/同伴死亡发送成功才消费，受阻可重试；Boss 血线合并最新进度并由 Update 重试，绑定/退订幂等；F3 缺 owner/入口失败、未观测发送跳过。羽织 3 条、叮当 21 条双语文案改为人物会说的具体生活语言，保留事件键、池条数与每日赠礼规则。原有居民漫步、阵营共享池及专属 Boss 话语继续接在官方管线上。
@@ -50,6 +51,29 @@
 **后续验收**：本轮隔离构建在 `Build/daily-commit-20260919/compile-snapshot/`，由 owner 自行部署后检查建造/重进、双语长文与滚动/ESC、五类任务尤其零死亡失败、真假撤离边界、跨期/断签补发、真实快递/现金/存档以及帧时间/GC。操作与看图位置见 `docs/代码审查/2026-09-19-鸭科夫日报生产复核.md`。本轮保留工作区其他会话的遗种巢、Mode G、奖励箱等改动，本地提交限定上述日报范围，不推送。
 
 
+## 2026-09-18 遗种巢（PetNest）生产水准审核与优化（COMPAT / SAFE）
+
+**范围与完成**：全面审核并优化遗种巢系统，使其达到生产水准。
+1. **玩家可见文本与裸 ID 拦截（AGENTS §4.4）**：
+   - 补齐模式门控、随从入场、孵化与服务层全部可达失败码的 `Fail_*` 本地化注入（覆盖 `Fail_mode_g_banned`、`Fail_no_run_active` 等 30+ 项），`DescribeFailure` 支持截断异常名后缀匹配；
+   - 面板天赋与战痕彻底告别英文 `statKey` 裸串，通过 `DescribeStatDelta` 统一步行/奔跑/生命/枪伤/近战/护甲/散布/背包格等属性本地化；
+   - 孵化页遗魂账本按"离凝蛋还差多少"升序排序，可凝的血脉排在最前。
+2. **激活养成循环与性格逻辑**：
+   - 随从等级成长实装（`PetLevelMaxHealthBonusPerLevel` 与 `PetLevelDamageBonusPerLevel`），随从在局内随等级获得实在战斗力，局内 HUD 增加等级显示；
+   - 修复随从入场生命上限 Modifier 时序缺陷：挂载 MaxHealth Modifier 后调用 `Health.SetHealth(Health.MaxHealth)` 补齐当前生命，解决入场残血/超血问题；
+   - 建立单点性格效果表 `PetNestPersonality.cs`，莽撞/谨慎/懒散/忠诚四种性格在官方 AI（`sightDistance`、`traceTargetChance`）、跟随传送距离与专属属性/背包格上完全生效；
+   - 天灾远征战利品接入通用共享池 `Common/Loot/BossRushQualityItemPool.cs`，风浪档掉落品质 3 物品，亡命档掉落品质 4 物品，翻牌演出动态解析并展示前三件物品名。
+3. **性能优化与架构收敛**：
+   - DTO 采用对象直拷（`Clone()`）替代整包 JSON 往返序列化，热路径（击杀经验、远征结算、孵化）吞吐显著提升；
+   - `TickBaseMaintenance` 将时间闸前置于 `HasPendingRewardDebt` 全表扫描之前，避免基地每帧遍历远征表；
+   - 死亡事件去重前置于事务深拷贝之前，避免为重复死亡事件支付整包克隆成本；
+   - 收敛战痕聚合、模型缩放（统一到 `PetNestTuning.DefaultCubModelScale`）、删除未引用死常量 `PetExpExpeditionSurvive`。
+4. **守卫与质量闸门**：
+   - `compile_official.bat` 确认已登记 `PetNest/PetNestPersonality.cs` 与 `Common/Loot/BossRushQualityItemPool.cs`（AGENTS §4.1）；
+   - `tests/PetNestModelsGuard.py` 扩充 `Clone()` 覆盖断言与字段防漂移检查，断言 `CloneBundle` 走直拷不调 `EncodeBundle`；
+   - `tests/PetNestUILayerGuard.py` 增加可达 `failureReasonId` 必须有对应 `Fail_*` 键断言；
+   - `tests/PetNestRuntimeModuleGuard.py` 原地裁剪 `os.walk` 的 `_dirs`，消除深层目录遍历性能瓶颈；
+   - 20 个 PetNest 守卫全部 PASS；`tests/fixtures/ContentTransactions` 执行回归全部 PASS；反向变异破坏实跑转红验证完成并已按字节还原。
 
 ## 2026-09-18 天空岛导航、语言与气泡修复提交（COMPAT / SAFE）
 

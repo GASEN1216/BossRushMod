@@ -36,6 +36,7 @@ REQUIRED_DTOS = [
     "PetNestMemorialEntry",
     "PetNestLineageStats",
     "PetNestMuseumData",
+    "PetNestBundleData",
 ]
 
 DTOS_WITH_CONTAINERS = [
@@ -175,11 +176,48 @@ def check_catalog(errors):
         errors.append("[元素] 缺少远征目的地元素映射")
 
 
+def check_clone(errors):
+    text = read_petnest("PetNestModels.cs")
+    if text is None:
+        errors.append("[File] 缺少 PetNest/PetNestModels.cs")
+        return
+    code = strip_cs_comments(text)
+
+    # 1. 每个 DTO 都有 Clone() 且所有 public 字段都在 Clone() 中出现
+    for dto in REQUIRED_DTOS:
+        block = re.search(r"internal sealed class " + dto + r"\b[\s\S]*?\n    \}", code)
+        if block is None:
+            continue
+        body = block.group(0)
+        clone_m = re.search(r"public\s+" + dto + r"\s+Clone\(\)[\s\S]*?\n        \}", body)
+        if clone_m is None:
+            errors.append("[克隆] " + dto + " 缺少 Clone() 方法")
+            continue
+        clone_body = clone_m.group(0)
+        fields = re.findall(r"public\s+[\w<>\[\],\. ]+\s+(\w+)\s*;", body)
+        for f in fields:
+            if f not in clone_body:
+                errors.append("[字段漂移] " + dto + ".Clone() 未复制 public 字段: " + f)
+
+    # 2. PetNestPersistenceCodec.CloneBundle 不得再调用 EncodeBundle
+    codec_text = read_petnest("PetNestPersistenceCodec.cs")
+    if codec_text is None:
+        errors.append("[File] 缺少 PetNest/PetNestPersistenceCodec.cs")
+        return
+    codec_code = strip_cs_comments(codec_text)
+    clone_bundle = re.search(r"internal static PetNestBundleData CloneBundle\([\s\S]*?\n        \}", codec_code)
+    if clone_bundle is None:
+        errors.append("[克隆] 缺少 PetNestPersistenceCodec.CloneBundle")
+    elif "EncodeBundle" in clone_bundle.group(0):
+        errors.append("[性能] CloneBundle 不得调用 EncodeBundle 进行 JSON 往返，必须走对象图直拷")
+
+
 def main():
     errors = []
     check_models(errors)
     check_tuning(errors)
     check_catalog(errors)
+    check_clone(errors)
     return report(GUARD, errors)
 
 

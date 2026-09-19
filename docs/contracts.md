@@ -353,8 +353,7 @@ source/input/bundle SHA-256；若未来要把它们纳入 Git，需另行登记 
 遗种巢按 `docs/设计提案/2026-08-28_养崽系统创意脑暴.md` 与其附录 A（spec 定稿）实现：
 遗种蛋 + 遗魂双轨获取、全 Boss 谱系幼体化、孵化 roll 与命名、单席随从进局、
 重伤退场与战痕、天灾远征与真死、博物馆图鉴与纪念碑、驯养成就。
-**数值全表为草案，待 owner 审定**（集中在 `PetNest/PetNestTuning.cs`）；
-步骤 0 的实机闸门五项待 owner 验证。
+**数值与远征产出已实装（2026-09-18，COMPAT）。** 远征战利品池接入 `Common/Loot/BossRushQualityItemPool`（官方全物品表按品质随机 + 黑名单过滤，与日报签到奖品同源共享缓存）；随从数值成长与性格表集中在 `PetNest/PetNestTuning.cs` 与 `PetNest/PetNestPersonality.cs`；步骤 0 的实机闸门五项待 owner 实机验证。
 
 **配置面（COMPAT）。** `ModBehaviour.BossRushConfig` 只新增**一个**字段
 `petNestEnabled=true`，运行时只通过 `ModBehaviour.IsPetNestConfiguredEnabled()` 读取

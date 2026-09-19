@@ -175,12 +175,56 @@ def check_no_magic_numbers(errors):
                 errors.append("[共享库] " + name + " 不得出现: " + forbidden)
 
 
+def check_failure_reasons(errors):
+    """断言所有可达的 failureReasonId 都必须在 PetNestLocalization 中注册 Fail_ 键。"""
+    loc_text = read_text(repo_path("Localization", "PetNestLocalization.cs"))
+    if loc_text is None:
+        errors.append("[File] 缺少 Localization/PetNestLocalization.cs")
+        return
+    loc_code = strip_cs_comments(loc_text)
+    registered = set(re.findall(r'Add\(map,\s*"Fail_(\w+)"', loc_code))
+
+    core_reasons = [
+        "nest_full", "pet_not_found", "pet_duplicate", "pet_locked_by_expedition",
+        "pet_downed", "pet_invalid", "souls_insufficient", "invalid_request",
+        "lineage_unknown", "egg_missing", "egg_owner_missing", "egg_detach_failed",
+        "roll_failed", "hatch_stats_failed", "add_pet_failed", "destination_unknown",
+        "record_missing", "not_settled", "not_due", "depart_failed", "settle_failed",
+        "mode_g_banned", "zombie_mode_banned", "mode_h_banned", "no_run_active",
+        "mode_query_failed", "pet_downed_this_run", "lineage_preset_missing",
+        "companion_handle_invalid", "companion_activate_failed", "save_write_barrier",
+        "save_store_faulted", "transaction_missing", "nested_transaction",
+        "transaction_clone_failed", "asset_save_not_ready", "commit_failed",
+        "remove_pet_failed", "release_pet_failed", "rename_pet_failed",
+        "set_deployed_failed", "clear_deployed_failed", "spend_souls_failed",
+    ]
+    for r in core_reasons:
+        if r not in registered:
+            errors.append("[本地化覆盖] 缺少核心失败原因本地化键: Fail_" + r)
+
+    pattern = re.compile(r'(?:failureReason(?:Id)?|_lastBlockReasonId)\s*=\s*"([^"]+)"')
+    for name in sorted(os.listdir(PETNEST_DIR)):
+        if not name.endswith(".cs"):
+            continue
+        text = read_text(os.path.join(PETNEST_DIR, name))
+        if text is None:
+            continue
+        code = strip_cs_comments(text)
+        for m in pattern.finditer(code):
+            val = m.group(1)
+            if ":" in val:
+                val = val[:val.index(":")]
+            if val not in registered:
+                errors.append("[本地化覆盖] " + name + " 中的受阻/失败原因 '" + val + "' 缺少 Fail_" + val + " 本地化键")
+
+
 def main():
     errors = []
     check_layers(errors)
     check_panel(errors)
     check_pages(errors)
     check_no_magic_numbers(errors)
+    check_failure_reasons(errors)
     return report(GUARD, errors)
 
 
