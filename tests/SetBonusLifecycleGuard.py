@@ -2,7 +2,8 @@
 
 2026-09-06 扩展（龙王级重做 + 开放获取）：
 - 雷霆反震的 CreateExplosion 必须显式传 canHurtSelf=false，且伤害走 buff/effect 通道；
-- 引雷术 / 冰葬只在 Health.OnDead 回调里过滤与调度，结算延后到协程，并有重入门控；
+- 雷噬 / 霜噬（2026-09-20 起改为普攻附带）只在 Health.OnHurt 回调里过滤与调度，
+  结算延后到协程，并有内置冷却与重入门控；击杀不再触发任何套装技能；
 - 两套装各只保留一个 Health.OnDead 订阅点（同文件 += / -= 配对）；
 - 停用时销毁眼光 / 霜雾 / 电弧池；场景重载先停用再重查（官方每图重建 CharacterItem）；
 - 获取路径：专属掉落格已接进特殊掉落协程，叮当商店四件齐全，Config 设了售价与天气防护。
@@ -73,29 +74,78 @@ def main() -> int:
         # 2026-09-06：单一 OnDead 分派点 + 停用清理 + 冻结三级回退提炼
         "Health.OnDead += OnFrostSetAnyDead;",
         "Health.OnDead -= OnFrostSetAnyDead;",
-        "TryScheduleFrostNova(target, damageInfo);",
+        "TryScheduleFrostBite(health, damageInfo);",
         "DestroySetEyeLights(ref frostSetEyeLights);",
         "StopFrostMist();",
         "ResetFrostNovaState();",
         "private bool TryApplyFrostFreeze(CharacterMainControl target)",
+        # 官方 AddBuff 返回 void 且有静默 no-op 路径：必须回读 buffManager，不能写死 return true
+        "private static bool HasFrostFreezeBuff(CharacterMainControl target, Buff freezeBuff)",
+        "return target.HasBuff(freezeBuff.ID);",
+        "if (HasFrostFreezeBuff(target, freezeBuff))",
+        "return ApplyFrostSetFallbackSlow(target);",
+        "private bool ApplyFrostSetFallbackSlow(CharacterMainControl target)",
         "GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.ice)",
-        "if (!frostSetActive || health == null || health.IsDead || !health.IsMainCharacterHealth) return;",
+        "if (!frostSetActive || health == null) return;",
+        "if (!health.IsMainCharacterHealth)",
+        "if (health.IsDead) return;",
     ), "frost bonus")
     if rc:
         return rc
 
     rc = require(frost_nova, (
-        "if (!frostSetActive || frostNovaResolving) return;",
+        # 普攻附带：内置冷却 + 常数伤害 + 只认玩家亲手的直接命中，三道闸缺一不可
+        "if (!frostSetActive || frostBiteResolving || frostBitePending) return;",
+        "if (Time.time - lastFrostBiteTime < FROST_BITE_COOLDOWN) return;",
+        "frostBitePending = true;",
+        "frostBitePending = false;",
         "if (damageInfo.isFromBuffOrEffect) return;",
-        "yield return frostNovaWait;",
-        "frostNovaResolving = true;",
-        "frostNovaResolving = false;",
+        "if (!(damageInfo.finalDamage > 0f)) return;",
+        "lastFrostBiteTime = Time.time;",
+        "yield return frostBiteWait;",
+        "generation != setBonusGeneration",
+        "frostBiteResolving = true;",
+        "frostBiteResolving = false;",
+        "dmg.damageValue = FROST_BITE_DAMAGE;",
         "dmg.isFromBuffOrEffect = true;",
         "dmg.fromWeaponItemID = 0;",
-        "TryApplyFrostFreeze(enemy);",
-    ), "frost nova")
+        "TryApplyFrostFreeze(victim)",
+    ), "frost bite")
     if rc:
         return rc
+
+    # 伤害必须是常数，不得乘任何武器/命中伤害：否则高 DPS 武器会把套装增伤拉成主输出
+    if "damageInfo.finalDamage *" in frost_nova or "damageInfo.damageValue *" in frost_nova:
+        return fail("frost bite damage must not scale with the triggering hit")
+
+    # 2026-09-20 第三轮：冷却只能在「效果真的落地」之后扣，不能在排队时先扣。
+    # 判据用**位置关系**而不是子串存在性：两者在文件里都在，顺序才是不变式。
+    for label, text, pending_call, cooldown_write in (
+        ("frost bite", frost_nova, "StartCoroutine(FrostBiteStep(", "lastFrostBiteTime = Time.time;"),
+        ("thunder bite", thunder_storm, "StartCoroutine(ThunderBiteStep(", "lastThunderBiteTime = Time.time;"),
+    ):
+        schedule_at = text.find(pending_call)
+        cooldown_at = text.find(cooldown_write)
+        if schedule_at < 0 or cooldown_at < 0:
+            return fail(label + " missing schedule/cooldown anchors")
+        if cooldown_at < schedule_at:
+            return fail(label + " must commit its cooldown inside the resolution step, not before StartCoroutine")
+        if text.count(cooldown_write) != 1:
+            return fail(label + " cooldown must be written exactly once (resolution step only)")
+
+    # 雷噬扫不到别的敌人 = 不造成任何伤害，此时不得扣冷却
+    storm_step = thunder_storm.split("private IEnumerator ThunderBiteStep(", 1)[1]
+    empty_scan_at = storm_step.find("if (count <= 0) yield break;")
+    storm_cooldown_at = storm_step.find("lastThunderBiteTime = Time.time;")
+    if empty_scan_at < 0 or storm_cooldown_at < 0 or storm_cooldown_at < empty_scan_at:
+        return fail("thunder bite must skip the cooldown when the scan finds nobody")
+
+    # 反击冻结：冷却只能在 TryApplyFrostFreeze 返回 true 的分支里扣
+    counter_body = frost.split("// 2) 反击冻结", 1)[1].split("catch (Exception e)", 1)[0]
+    freeze_at = counter_body.find("if (TryApplyFrostFreeze(damageInfo.fromCharacter))")
+    counter_cooldown_at = counter_body.find("lastFrostTriggerTime = Time.time;")
+    if freeze_at < 0 or counter_cooldown_at < 0 or counter_cooldown_at < freeze_at:
+        return fail("frost counter must consume its cooldown only after the freeze actually lands")
 
     rc = require(thunder, (
         "private Stat thunderSetElecResistStat = null;",
@@ -106,7 +156,7 @@ def main() -> int:
         # 2026-09-06：单一 OnDead 分派点 + 反震延后一帧 + buff/effect 通道 + 停用清理
         "Health.OnDead += OnThunderSetAnyDead;",
         "Health.OnDead -= OnThunderSetAnyDead;",
-        "TryScheduleThunderChain(target, damageInfo);",
+        "TryScheduleThunderBite(health, damageInfo);",
         "StartCoroutine(ThunderCounterStep(player, damageInfo.fromCharacter, setBonusGeneration));",
         "dmg.isFromBuffOrEffect = true;",
         "dmg.fromWeaponItemID = 0;",
@@ -114,7 +164,9 @@ def main() -> int:
         "DestroySetArcPool();",
         "ResetThunderChainState();",
         "GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.electricity)",
-        "if (!thunderSetActive || health == null || health.IsDead || !health.IsMainCharacterHealth) return;",
+        "if (!thunderSetActive || health == null) return;",
+        "if (!health.IsMainCharacterHealth)",
+        "if (health.IsDead) return;",
     ), "thunder bonus")
     if rc:
         return rc
@@ -127,50 +179,66 @@ def main() -> int:
         args = [part.strip() for part in call.split(",")]
         if len(args) < 6 or args[-1] != "false":
             return fail("thunder counter CreateExplosion must pass canHurtSelf=false explicitly")
+    # 雷电反震用 flash（闪光）而不是 normal（火焰系爆炸）：normal 在实机上是一团火
+    if "ExplosionFxTypes.flash" not in thunder:
+        return fail("thunder counter must use ExplosionFxTypes.flash, not the fire-flavoured normal explosion")
 
     rc = require(thunder_storm, (
-        # 链必须是线性的：下一跳由本协程自己接，绝不能靠 Hurt 同步派发的 OnDead 再进来一次
-        # （那样一跳里死掉的每个目标都会各起一条链，3 目标 × 3 跳 = 最坏 39 次结算）
-        "if (thunderChainInFlight || thunderChainDepth != 0) return;",
+        # 普攻附带：内置冷却 + 常数伤害 + 只认玩家亲手的直接命中，三道闸缺一不可
+        "if (!thunderSetActive || thunderBiteResolving || thunderBitePending) return;",
+        "if (Time.time - lastThunderBiteTime < THUNDER_BITE_COOLDOWN) return;",
+        "thunderBitePending = true;",
+        "thunderBitePending = false;",
         "if (damageInfo.isFromBuffOrEffect) return;",
-        "if (hasNext && hop < THUNDER_CHAIN_MAX_DEPTH)",
-        "StartCoroutine(ThunderChainStep(nextOrigin, nextCorpse, hop + 1, generation));",
-        "yield return thunderChainHopWait;",
+        "if (!(damageInfo.finalDamage > 0f)) return;",
+        "lastThunderBiteTime = Time.time;",
+        "yield return thunderBiteWait;",
         "generation != setBonusGeneration",
-        "if (!continued && generation == setBonusGeneration)",
-        "thunderChainHits",          # 同一敌人在一条链里只吃一次
-        "thunderChainDepth = hop;",
-        "thunderChainDepth = 0;",
+        "thunderBiteResolving = true;",
+        "thunderBiteResolving = false;",
+        # 命中目标本身不再吃套装伤害（否则等于直接给武器加伤）
+        "ScanSetBonusEnemies(origin, THUNDER_BITE_RADIUS, struckTarget, THUNDER_BITE_MAX_TARGETS)",
+        "dmg.damageValue = THUNDER_BITE_DAMAGE;",
         "dmg.isFromBuffOrEffect = true;",
         "dmg.fromWeaponItemID = 0;",
         "private void StopThunderAmbientArcLoop()",
-    ), "thunder storm")
+    ), "thunder bite")
     if rc:
         return rc
+
+    # 伤害必须是常数，不得乘任何武器/命中伤害
+    if "damageInfo.finalDamage *" in thunder_storm or "damageInfo.damageValue *" in thunder_storm:
+        return fail("thunder bite damage must not scale with the triggering hit")
+
+    # 只有一跳：被电死的目标不得再起第二段（击杀自续清场是旧设计的病灶）
+    if thunder_storm.count("StartCoroutine(ThunderBiteStep(") != 1:
+        return fail("ThunderBiteStep must be started exactly once (no chain continuation)")
 
     # 主角死亡也必须作废已排队的延时技能；只清冷却会让旧伤害在死后/复活后执行。
     for name, source in (("Frost", frost), ("Thunder", thunder)):
         death_body = source.split("private void On" + name + "SetAnyDead(", 1)[1]
-        death_body = death_body.split("return;", 2)[0:2]
-        if "BumpSetBonusGeneration();" not in "return;".join(death_body):
+        death_body = death_body.split("}", 1)[0]
+        if "BumpSetBonusGeneration();" not in death_body:
             return fail(name + " player death must invalidate pending spells")
 
-    # 恰好两处启动：OnDead 分派器起第一跳、协程自己接后续一跳。
-    # 多出第三处通常意味着又把「每个死亡目标各起一条」写回来了。
-    if thunder_storm.count("StartCoroutine(ThunderChainStep(") != 2:
-        return fail("ThunderChainStep must be started exactly twice (one schedule + one linear continuation)")
+    # 击杀不再触发任何套装技能：OnDead 分派器只剩主角分支
+    for name, source in (("Frost", frost), ("Thunder", thunder)):
+        death_body = source.split("private void On" + name + "SetAnyDead(", 1)[1].split("\n        }", 1)[0]
+        if "TrySchedule" in death_body:
+            return fail(name + " kills must no longer schedule set bonus spells")
 
-    if "Health.OnDead +=" in thunder_storm or "Health.OnDead +=" in frost_nova or "Health.OnDead +=" in visuals:
-        return fail("only ThunderSetBonus.cs / FrostSetBonus.cs may subscribe Health.OnDead (paired += / -= in one file)")
+    for name, text in (("thunder_storm", thunder_storm), ("frost_nova", frost_nova), ("visuals", visuals)):
+        if "Health.OnDead +=" in text or "Health.OnHurt +=" in text:
+            return fail("only ThunderSetBonus.cs / FrostSetBonus.cs may subscribe Health events (paired += / -= in one file) -> " + name)
 
     rc = require(visuals, (
-        "private bool TryResolveSetBonusKillVictim(Health target, DamageInfo info, out CharacterMainControl victim, out Vector3 position)",
+        "private bool TryResolveSetBonusEnemyTarget(Health target, DamageInfo info, out CharacterMainControl victim, out Vector3 position)",
         "if (target.IsMainCharacterHealth) return false;",
         "if (IsModeHRunInProgressSafe()) return false;",
         "if (info.fromCharacter == null || !info.fromCharacter.IsMainCharacter) return false;",
         "if (PetNestCompanionAgent.IsCompanionHealth(target)) return false;",
-        "if (resolved.Team == Teams.player) return false;",
-        "Team.IsEnemy(Teams.player, character.Team)",
+        "if (!Team.IsEnemy(info.fromCharacter.Team, resolved.Team)) return false;",
+        "Team.IsEnemy(player.Team, character.Team)",
         "private void DestroySetArcPool()",
         "private void DestroySetEyeLights(ref SetEyeLightState state)",
         # 电弧池是独立 MonoBehaviour：宿主只留门面，不把 LineRenderer 细节堆回 ModBehaviour

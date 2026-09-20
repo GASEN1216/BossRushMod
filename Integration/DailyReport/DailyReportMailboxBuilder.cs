@@ -206,13 +206,7 @@ namespace BossRush
                     return;
                 }
 
-                byte[] bytes = File.ReadAllBytes(iconPath);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes)) return;
-                dailyReportBuildingIcon = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
+                dailyReportBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
             }
             catch (Exception e)
             {
@@ -237,7 +231,7 @@ namespace BossRush
                     return;
                 }
 
-                dailyReportAssetBundle = AssetBundle.LoadFromFile(bundlePath);
+                dailyReportAssetBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (dailyReportAssetBundle == null) return;
 
                 dailyReportModelPrefab = dailyReportAssetBundle.LoadAsset<GameObject>(DAILYREPORT_PREFAB_NAME);

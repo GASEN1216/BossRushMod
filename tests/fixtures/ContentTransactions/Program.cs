@@ -417,7 +417,114 @@ class Program
     static void Main()
     {
         CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseReplacement();
+        ManualChromaAndDurations();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
+    }
+
+    /// 剥掉 TMP 富文本标签，只留可见文字。
+    static string StripRichText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return text ?? string.Empty;
+        var sb = new System.Text.StringBuilder(text.Length);
+        bool inTag = false;
+        for (int i = 0; i < text.Length; i++)
+        {
+            char c = text[i];
+            if (c == '<') { inTag = true; continue; }
+            if (c == '>') { inTag = false; continue; }
+            if (!inTag) sb.Append(c);
+        }
+        return sb.ToString();
+    }
+
+    static void ManualChromaAndDurations()
+    {
+        var pet = new PetNestPetRecord { id = "chroma", shiny = true, chromaA = "black", chromaB = "white" };
+        string chinese = PetNestChroma.Decorate(pet, "阿花", true);
+        string english = PetNestChroma.Decorate(pet, "Cub", false);
+        Check(chinese.IndexOf("异色", StringComparison.Ordinal) < chinese.IndexOf("阿花", StringComparison.Ordinal),
+            "shiny label precedes pet name in Chinese");
+        Check(english.IndexOf("Shiny", StringComparison.Ordinal) < english.IndexOf("Cub", StringComparison.Ordinal),
+            "shiny label precedes pet name in English");
+        Check(pet.Clone().chromaA == "black" && pet.Clone().chromaB == "white", "cloning preserves chroma pair");
+        var pairs = new System.Collections.Generic.HashSet<string>();
+        for (int a = 0; a < 10; a++)
+            for (int b = 0; b < 9; b++)
+            {
+                string x, y;
+                PetNestChroma.RollPair((a + .5f) / 10, (b + .5f) / 9, out x, out y);
+                Check(x != y, "chroma samples distinct colors");
+                pairs.Add(string.CompareOrdinal(x, y) < 0 ? x + "/" + y : y + "/" + x);
+            }
+        Check(pairs.Count == 45, "all forty-five chroma pairs are reachable");
+        Check(Math.Abs(PetNestExpeditionService.GetDurationHours(PetNestRiskTier.Safe) * 60 - 10) < .001
+            && Math.Abs(PetNestExpeditionService.GetDurationHours(PetNestRiskTier.Rough) * 60 - 30) < .001
+            && Math.Abs(PetNestExpeditionService.GetDurationHours(PetNestRiskTier.Desperate) * 60 - 60) < .001,
+            "expedition durations remain 10 / 30 / 60 minutes");
+
+        // 2026-09-20 第三轮：远征卡、翻牌卡与纪念碑显示的往往是**已经不在巢里**的崽
+        // （真死结算会移除 PetRecord），颜色必须随记录固化，否则那三处只剩裸名字。
+        var dead = new PetNestExpeditionRecord
+        {
+            id = "exp_dead", petId = "gone", petDisplayName = "阿花",
+            petShiny = true, petChromaA = "black", petChromaB = "white",
+            destinationId = "d", riskTier = (int)PetNestRiskTier.Desperate, outcomeDead = true,
+        };
+        dead.Normalize();
+        Check(PetNestService.TryGetPet("gone") == null, "fixture models a pet already removed from the nest");
+        // 夹具的 L10n.IsChinese 恒为 false，DescribeDecoratedPetName 走英文分支
+        string deadName = PetNestExpeditionService.DescribeDecoratedPetName(dead);
+        Check(deadName.IndexOf("Shiny", StringComparison.Ordinal) >= 0
+            && deadName.IndexOf("阿花", StringComparison.Ordinal) >= 0
+            && deadName != PetNestExpeditionService.DescribePetName(dead),
+            "removed pet still shows its shiny decoration on the expedition card");
+        // 搭配名是**逐字**渐变（每个字都被 <color> 包一层），所以必须先剥富文本再比
+        string pairName = PetNestChroma.DescribePair("black", "white", false);
+        Check(pairName == "Black-White"
+            && StripRichText(deadName).IndexOf(pairName, StringComparison.Ordinal) >= 0,
+            "removed pet still shows its chroma pair name");
+        var clonedRecord = dead.Clone();
+        Check(clonedRecord.petShiny && clonedRecord.petChromaA == "black" && clonedRecord.petChromaB == "white",
+            "expedition clone preserves the frozen colors");
+
+        // 存档往返：三格必须落盘再读回来，否则重进游戏这些颜色照样丢
+        var expeditionData = new PetNestExpeditionData();
+        expeditionData.Normalize();   // 容器由 Normalize 兜底，模型层没有字段初始化器
+        expeditionData.records.Add(dead);
+        var decodedExpedition = PetNestCodec.DecodeExpedition(
+            BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeExpedition(expeditionData)));
+        Check(decodedExpedition.records.Count == 1 && decodedExpedition.records[0].petShiny
+            && decodedExpedition.records[0].petChromaA == "black"
+            && decodedExpedition.records[0].petChromaB == "white",
+            "expedition colors survive a save round trip");
+
+        var museum = new PetNestMuseumData();
+        museum.Normalize();
+        museum.memorials.Add(new PetNestMemorialEntry
+        {
+            displayName = "阿花", lineageKey = "l", destinationId = "d",
+            shiny = true, chromaA = "black", chromaB = "white",
+        });
+        var decodedMuseum = PetNestCodec.DecodeMuseum(
+            BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeMuseum(museum)));
+        Check(decodedMuseum.memorials.Count == 1 && decodedMuseum.memorials[0].shiny
+            && decodedMuseum.memorials[0].chromaA == "black"
+            && decodedMuseum.memorials[0].chromaB == "white",
+            "memorial colors survive a save round trip");
+        string engraved = PetNestChroma.Decorate(
+            decodedMuseum.memorials[0].shiny, decodedMuseum.memorials[0].chromaA,
+            decodedMuseum.memorials[0].chromaB, decodedMuseum.memorials[0].displayName, true);
+        Check(engraved.IndexOf("异色", StringComparison.Ordinal) >= 0 && engraved != "阿花",
+            "memorial engraving shows shiny and chroma rather than the bare name");
+        Check(PetNestChroma.Decorate(false, "black", "white", "阿花", true).StartsWith("<color=#", StringComparison.Ordinal)
+            && PetNestChroma.Decorate(false, null, null, "阿花", true) == "阿花",
+            "chroma-only decoration gradients the name while a plain pet stays plain");
+
+        // 老档（三格都缺）读出来必须是普通名字，不猜、不冒充
+        var legacy = new PetNestExpeditionRecord { id = "exp_legacy", petId = "gone2", petDisplayName = "旧崽" };
+        legacy.Normalize();
+        Check(PetNestExpeditionService.DescribeDecoratedPetName(legacy) == "旧崽",
+            "legacy record without colors falls back to the plain name");
     }
 
     static void PetNestAchievements()

@@ -151,6 +151,7 @@ namespace BossRush
 
         // 已加载的 bundle 列表（避免重复加载）
         private static HashSet<string> loadedBundles = new HashSet<string>();
+        private static readonly HashSet<AssetBundle> ownedBundles = new HashSet<AssetBundle>();
 
         // 自定义近战武器 TypeID 列表（防止被 ItemSetting_Gun 误识别为枪械）
         private static HashSet<int> customMeleeWeaponTypeIds = new HashSet<int>();
@@ -511,23 +512,26 @@ namespace BossRush
         private static int LoadBundleInternal(string bundlePath, string bundleName)
         {
             AssetBundle bundle = null;
+            bool retained = false;
 
             try
             {
-                bundle = AssetBundle.LoadFromFile(bundlePath);
+                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     ModBehaviour.DevLog("[EquipmentFactory] 加载 AssetBundle 失败: " + bundlePath);
                     return 0;
                 }
 
-                var assets = bundle.LoadAllAssets<GameObject>();
+                var assets = ResourceBundleLoader.LoadAllAssets<GameObject>(bundle);
                 if (assets == null || assets.Length == 0)
                 {
                     ModBehaviour.DevLog("[EquipmentFactory] AssetBundle 中未找到任何资源: " + bundleName);
                     return 0;
                 }
 
+                ownedBundles.Add(bundle);
+                retained = true;
                 // 分类收集所有资源
                 Dictionary<string, Item> itemsByBaseName = new Dictionary<string, Item>();
                 Dictionary<string, ItemAgent> modelsByBaseName = new Dictionary<string, ItemAgent>();
@@ -758,7 +762,11 @@ namespace BossRush
                 ModBehaviour.DevLog("[EquipmentFactory] LoadBundleInternal 出错: " + e.Message + "\n" + e.StackTrace);
                 return 0;
             }
-            // 注意：不要 Unload bundle，因为资源还在使用
+            finally
+            {
+                // Before publication no external object can own this failed/empty bundle.
+                if (!retained && bundle != null) bundle.Unload(true);
+            }
         }
 
     }

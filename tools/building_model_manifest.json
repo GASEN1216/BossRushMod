@@ -1,0 +1,11 @@
+{
+  "schema": 1,
+  "textureSize": 1024,
+  "maxTriangles": 10000,
+  "buildings": [
+    {"id":"mailbox","source":"tripo_model_439d7381-2832-4f00-b993-ffb4a077b078.glb","sha256":"e6034f2a1c62e41d6a94394eda3aa13235196c354bd55587e496bd06257a5bd3","bundle":"bossrush_daily_mailbox","prefab":"BossRushDailyMailbox","box":[0.95,1.5,0.95]},
+    {"id":"noticeboard","source":"tripo_model_61eeab27-d8ba-487e-984f-6f703fefcc24.glb","sha256":"4222549e309e8392a4625b3e4bf9d1f86c981fe58552259458ccd1edacea3092","bundle":"bossrush_campaign_board","prefab":"BossRushCampaignBoard","box":[0.95,1.3,0.95]},
+    {"id":"showcase","source":"tripo_model_b592af94-3fbf-4d80-b365-50d5b13a0213.glb","sha256":"46d152a8838617a57c5c2d3f4a2a998742885697c668b9229c55396a323fab1d","bundle":"bossrush_backmountain_showcase","prefab":"BossRushBackMountainShowcase","box":[1.8,1.5,0.85]},
+    {"id":"petnest","source":"tripo_model_d6daaa1a-b399-45f4-bf4f-32272fd57a53.glb","sha256":"dbffa2714b16a5a5a60dd6658147213b138a6ab24de4a9327fa1edfbf4fdf6ca","bundle":"petnest_relic_nest","prefab":"PetNestRelicNest","box":[1.8,1.5,1.8]}
+  ]
+}

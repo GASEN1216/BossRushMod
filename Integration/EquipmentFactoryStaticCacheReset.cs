@@ -10,6 +10,9 @@ namespace BossRush
             loadedBullets.Clear();
             loadedGuns.Clear();
             loadedBundles.Clear();
+            foreach (var bundle in ownedBundles)
+                if (bundle != null) bundle.Unload(false);
+            ownedBundles.Clear();
             customMeleeWeaponTypeIds.Clear();
             modDirectory = null;
             gameShader = null;

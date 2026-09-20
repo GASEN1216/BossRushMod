@@ -1620,6 +1620,26 @@
           "expected": "未执行显示 NOT_RUN/SKIP，人工显示 MANUAL_PENDING；失败不会被后续 PASS 覆盖；再跑不继承旧结果。"
         }
       ]
+    },
+    {
+      "id": "RESOURCE_PRODUCTION",
+      "title": "Resource production and read-only performance sampling",
+      "sources": [
+        "Utilities/ResourceBundleLoader.cs",
+        "Integration/ProductionIconCache.cs",
+        "DebugAndTools/F3GameplayValidationResourcePerformance.cs"
+      ],
+      "automatic": [
+        "RESOURCE_BASE_10S",
+        "RESOURCE_SKY_10S"
+      ],
+      "manual": [
+        {
+          "id": "M_RESOURCE_SAMPLE",
+          "steps": "Dev F3: run the existing full validation at base, or the existing read-only validation on Sky Islands. Keep the same position and camera for each 10-second window.",
+          "expected": "resource-performance.json, manifest.json and summary.md have counters and explicit unavailable status; no state mutation from sampling. Compare identical scenes and camera settings."
+        }
+      ]
     }
   ]
 }

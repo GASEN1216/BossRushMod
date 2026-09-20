@@ -1,202 +1,172 @@
 // ============================================================================
-// ThunderSetBonus_Storm.cs - 雷霆套装「引雷术」与环境电弧
+// ThunderSetBonus_Storm.cs - 雷霆套装「雷噬」与环境电弧
 // ============================================================================
 // 模块说明：
-//   引雷术：累计 3 次主角直接击杀后，向尸体 4 米内最多 2 个敌人各放出 12 电伤闪电。
-//   5 秒冷却，只放一跳；保留原线性调度与代数保护，杜绝击杀自续清场。
+//   雷噬：主角用**普通攻击**打中敌人时，从命中点向周围最多 2 个**其它**敌人各放一道
+//   小电弧（常数电伤）。2026-09-20 owner 定：从「累计 3 次击杀后引雷连锁」改为普攻附带，
+//   并把单次伤害压低、加内置冷却，避免高射速武器把套装增伤拉成主要 DPS 来源。
 //
-//   调度保留线性跳数上限与去重；当前最多一跳，绝不靠 Hurt 同步派发的 OnDead 再起链。
-//   链自身带 isFromBuffOrEffect，加上在飞标志，避免同一次击杀递归传播。
+//   反 DPS 缩放的三道闸（缺一不可）：
+//     1) THUNDER_BITE_COOLDOWN 内置冷却：每 N 秒最多触发一次，与射速完全脱钩；
+//     2) 单次伤害是常数（不随武器伤害缩放），且只打命中目标**之外**的敌人，不叠在主目标上；
+//     3) 只认玩家亲手的直接命中（isFromBuffOrEffect 的伤害不触发），套装自身伤害不自续。
 //
-//   重入安全：Health.OnDead 回调里只做过滤与调度，实际扫描/结算延后到协程；结算时把当前跳数
-//   写进 thunderChainDepth 供嵌套 OnDead 读取，try/finally 保证归零。
-//   订阅由 ThunderSetBonus.cs 的 OnThunderSetAnyDead 统一分派，本文件不订阅任何事件。
+//   重入安全：Health.OnHurt 回调里只做过滤与调度，实际扫描/结算延后到协程；
+//   结算期间 thunderBiteResolving 置位，套装自己打出的伤害不会再排一次。
+//   订阅由 ThunderSetBonus.cs 的 OnThunderSetHurt 统一分派，本文件不订阅任何事件。
 // ============================================================================
 
 using System;
 using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
-        #region 引雷术配置
+        #region 雷噬配置
 
-        private const float THUNDER_CHAIN_RADIUS = 4f;               // 连锁搜索半径（米）
-        private const int THUNDER_CHAIN_MAX_TARGETS = 2;             // 每跳最多目标数
-        private const float THUNDER_CHAIN_DAMAGE = 12f;              // 首跳电伤
-        private const int THUNDER_CHAIN_MAX_DEPTH = 1;               // 最多跳数
-        private const float THUNDER_CHAIN_DAMAGE_DECAY = 0.75f;      // 每跳伤害衰减
-        private const float THUNDER_CHAIN_FIRST_HOP_COOLDOWN = 5f; // 两条链之间的最小间隔（秒）
-        private const float THUNDER_CHAIN_HOP_DELAY = 0.08f;         // 每跳延后（给电弧动画留时间，也脱离原调用栈）
+        /// <summary>雷噬搜索半径（米），以命中点为中心。</summary>
+        private const float THUNDER_BITE_RADIUS = 4f;
+        /// <summary>雷噬每次最多波及的其它敌人数。</summary>
+        private const int THUNDER_BITE_MAX_TARGETS = 2;
+        /// <summary>雷噬电伤（常数，不随武器伤害缩放）。</summary>
+        private const float THUNDER_BITE_DAMAGE = 7f;
+        /// <summary>雷噬内置冷却（秒）。高射速武器只能按这个节奏触发。</summary>
+        private const float THUNDER_BITE_COOLDOWN = 1.4f;
+        /// <summary>结算延后（秒），给电弧动画留时间，也脱离官方 Hurt 的调用栈。</summary>
+        private const float THUNDER_BITE_DELAY = 0.05f;
+
         private const float THUNDER_AMBIENT_ARC_INTERVAL = 3f;       // 环境电弧平均间隔（秒）
         private const float THUNDER_AMBIENT_ARC_JITTER = 1f;         // 环境电弧间隔抖动（秒）
 
-        private static readonly WaitForSeconds thunderChainHopWait = new WaitForSeconds(THUNDER_CHAIN_HOP_DELAY);
+        private static readonly WaitForSeconds thunderBiteWait = new WaitForSeconds(THUNDER_BITE_DELAY);
 
-        // >0 表示当前正处于第 N 跳的伤害循环内（供嵌套 OnDead 判定是否再起一跳）
-        private int thunderChainDepth = 0;
-        // 一条链从调度到最后一跳收尾期间为 true：跨跳的间隙也不许第二条链插进来抢 thunderChainDepth
-        private bool thunderChainInFlight = false;
-        // 本条链已命中过的目标，跨跳去重：同一敌人不该被同一条链电两次
-        private readonly List<Health> thunderChainHits = new List<Health>(THUNDER_CHAIN_MAX_TARGETS * THUNDER_CHAIN_MAX_DEPTH);
-        private const int THUNDER_CHAIN_KILLS_REQUIRED = 3;
-        private int thunderChainKillCount;
-        private float lastThunderChainTime = -999f;
+        private float lastThunderBiteTime = -999f;
+        /// <summary>结算中：套装自己打出的那一下不再排新的雷噬。</summary>
+        private bool thunderBiteResolving = false;
+        /// <summary>
+        /// 已排队、尚未结算：冷却改在扫到目标那一刻才扣（见 ThunderBiteStep），
+        /// 调度与结算之间的这 50 毫秒必须另有一道闸，否则高射速武器能在窗口里连排好几条。
+        /// </summary>
+        private bool thunderBitePending = false;
         private Coroutine thunderAmbientArcCoroutine = null;
 
         #endregion
 
-        #region 引雷术
+        #region 雷噬
 
         private void ResetThunderChainState()
         {
-            thunderChainDepth = 0;
-            thunderChainInFlight = false;
-            thunderChainHits.Clear();
-            lastThunderChainTime = -999f;
-            thunderChainKillCount = 0;
+            lastThunderBiteTime = -999f;
+            thunderBiteResolving = false;
+            thunderBitePending = false;
         }
 
         /// <summary>
-        /// Health.OnDead 分派入口：过滤 + 调度，不在回调里结算。
-        /// 只认玩家亲手的直接击杀（武器/手雷）：DoT 与套装自身伤害都带 isFromBuffOrEffect，不起链。
+        /// Health.OnHurt 分派入口：过滤 + 调度，不在回调里结算。
+        /// 过滤序按「越便宜越靠前」排布：布尔 → 浮点比较 → 结构体字段 → 组件解析。
         /// </summary>
-        private void TryScheduleThunderChain(Health target, DamageInfo damageInfo)
+        private void TryScheduleThunderBite(Health target, DamageInfo damageInfo)
         {
             try
             {
-                if (!thunderSetActive) return;
-                // 链自身的伤害不再起新链：isFromBuffOrEffect 是主锁，「在飞」是双保险，
-                // 两条一起挡住「链打死人 → 又起一条链」的指数分叉。
-                if (thunderChainInFlight || thunderChainDepth != 0) return;
-                if (damageInfo.isFromBuffOrEffect) return;
+                if (!thunderSetActive || thunderBiteResolving || thunderBitePending) return;
+                if (Time.time - lastThunderBiteTime < THUNDER_BITE_COOLDOWN) return;
+                if (damageInfo.isFromBuffOrEffect) return;   // 只认玩家亲手的直接命中
+                if (!(damageInfo.finalDamage > 0f)) return;
 
                 CharacterMainControl victim;
                 Vector3 position;
-                if (!TryResolveSetBonusKillVictim(target, damageInfo, out victim, out position)) return;
+                if (!TryResolveSetBonusEnemyTarget(target, damageInfo, out victim, out position)) return;
 
-                if (thunderChainKillCount < THUNDER_CHAIN_KILLS_REQUIRED) thunderChainKillCount++;
-                if (thunderChainKillCount < THUNDER_CHAIN_KILLS_REQUIRED || Time.time - lastThunderChainTime < THUNDER_CHAIN_FIRST_HOP_COOLDOWN) return;
-                thunderChainKillCount = 0;
-                lastThunderChainTime = Time.time;
-                thunderChainInFlight = true;
-                thunderChainHits.Clear();
-                StartCoroutine(ThunderChainStep(position, victim, 1, setBonusGeneration));
+                // 冷却在 ThunderBiteStep 扫到目标之后才扣。调度即扣会让
+                // 「附近只有被你打的那一个敌人」「中途脱下装备 / 切图」白白吃掉一整轮冷却——
+                // 单挑 Boss 时那正是最常见的情形。
+                thunderBitePending = true;
+                if (StartCoroutine(ThunderBiteStep(position, victim, setBonusGeneration)) == null)
+                {
+                    thunderBitePending = false;
+                }
             }
             catch (Exception e)
             {
-                thunderChainInFlight = false;
-                DevLog("[ThunderSet] TryScheduleThunderChain 出错: " + e.Message);
+                DevLog("[ThunderSet] TryScheduleThunderBite 出错: " + e.Message);
             }
         }
 
         /// <summary>
-        /// 第 hop 跳结算：扫描（排除本链已命中）→ 电弧/爆发/音效 → 逐目标 Hurt →
-        /// 若打死了人且未到跳数上限，从其中一具尸体接下一跳。
+        /// 雷噬结算：扫描命中点周围（排除被打的那个）→ 电弧 + 爆发 + 音效 → 逐目标电伤。
+        /// 只有一跳，不接链：被电死的目标不会再起第二段。
         /// </summary>
-        private IEnumerator ThunderChainStep(Vector3 origin, CharacterMainControl corpse, int hop, int generation)
+        private IEnumerator ThunderBiteStep(Vector3 origin, CharacterMainControl struckTarget, int generation)
         {
-            yield return thunderChainHopWait;
+            yield return thunderBiteWait;
+            thunderBitePending = false;
 
-            bool continued = false;
+            // 代数不符 = 这条是上一次激活（多半是上一张图）排队下来的，坐标已作废
+            if (!thunderSetActive || generation != setBonusGeneration) yield break;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null) yield break;
+
+            int count = 0;
             try
             {
-                if (!thunderSetActive || generation != setBonusGeneration) yield break;
-                CharacterMainControl player = CharacterMainControl.Main;
-                if (player == null) yield break;
+                count = ScanSetBonusEnemies(origin, THUNDER_BITE_RADIUS, struckTarget, THUNDER_BITE_MAX_TARGETS);
+            }
+            catch (Exception e)
+            {
+                DevLog("[ThunderSet] 雷噬扫描出错: " + e.Message);
+                count = 0;
+            }
+            // 一个都没扫到 = 这次雷噬不会造成任何伤害，冷却不扣，下一发普攻还能再试
+            if (count <= 0) yield break;
 
-                int count = 0;
-                try
-                {
-                    count = ScanSetBonusEnemies(origin, THUNDER_CHAIN_RADIUS, corpse,
-                        THUNDER_CHAIN_MAX_TARGETS, thunderChainHits);
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ThunderSet] 引雷术扫描出错: " + e.Message);
-                    count = 0;
-                }
-                if (count <= 0) yield break;
+            // 走到这里才是真的会放电弧的一次雷噬，此刻才扣冷却
+            lastThunderBiteTime = Time.time;
+            Vector3 from = origin + Vector3.up * 1f;
 
-                float damage = THUNDER_CHAIN_DAMAGE * Mathf.Pow(THUNDER_CHAIN_DAMAGE_DECAY, hop - 1);
-                Vector3 from = origin + Vector3.up * 1f;
+            // 先出表现再结算：Hurt 会同步派发死亡链路，之后 transform 可能已销毁
+            for (int i = 0; i < count; i++)
+            {
+                Health h = setBonusScanResults[i];
+                if (h == null) continue;
+                SpawnSetArc(from, h.transform.position + Vector3.up * 1f, THUNDER_SET_ARC_COLOR, 0.1f, 0.22f);
+            }
+            SpawnSetBurst(origin, THUNDER_SET_BURST_COLOR, 1.2f, 0.25f, 0);
+            PlaySoundEffect(SetBonusSfx.ThunderChain);
 
-                // 先出表现再结算：Hurt 会同步派发 OnDead，尸体位置随后就要用来接下一跳
+            thunderBiteResolving = true;
+            try
+            {
                 for (int i = 0; i < count; i++)
                 {
                     Health h = setBonusScanResults[i];
-                    if (h == null) continue;
-                    SpawnSetArc(from, h.transform.position + Vector3.up * 1f, THUNDER_SET_ARC_COLOR, 0.1f, 0.25f);
+                    if (h == null || h.IsDead) continue;
+
+                    // 位置先取：目标可能在 Hurt 里被销毁，事后读 transform 会抛
+                    Vector3 targetPosition = h.transform.position;
+
+                    DamageInfo dmg = new DamageInfo(player);
+                    dmg.damageValue = THUNDER_BITE_DAMAGE;
+                    dmg.damageType = DamageTypes.normal;
+                    dmg.isFromBuffOrEffect = true;
+                    dmg.fromWeaponItemID = 0;
+                    dmg.damagePoint = targetPosition;
+                    dmg.AddElementFactor(ElementTypes.electricity, 1f);
+                    h.Hurt(dmg);
                 }
-                SpawnSetBurst(origin, THUNDER_SET_BURST_COLOR, 1.5f, 0.3f, 0);
-                PlaySoundEffect(SetBonusSfx.ThunderChain);
-
-                bool hasNext = false;
-                CharacterMainControl nextCorpse = null;
-                Vector3 nextOrigin = origin;
-
-                thunderChainDepth = hop;
-                try
-                {
-                    for (int i = 0; i < count; i++)
-                    {
-                        Health h = setBonusScanResults[i];
-                        if (h == null || h.IsDead) continue;
-
-                        // 本链去重登记必须在 Hurt 之前：Hurt 会同步走完死亡链路，
-                        // 之后 h 可能已被销毁、拿不到引用再补登记。
-                        thunderChainHits.Add(h);
-                        // 位置也先取：目标可能在 Hurt 里被销毁，事后读 transform 会抛
-                        Vector3 targetPosition = h.transform.position;
-
-                        DamageInfo dmg = new DamageInfo(player);
-                        dmg.damageValue = damage;
-                        dmg.damageType = DamageTypes.normal;
-                        dmg.isFromBuffOrEffect = true;
-                        dmg.fromWeaponItemID = 0;
-                        dmg.damagePoint = targetPosition;
-                        dmg.AddElementFactor(ElementTypes.electricity, 1f);
-                        h.Hurt(dmg);
-
-                        // 取第一具被本跳电死的尸体作为下一跳起点：一跳只接一条，链是线性的。
-                        // h 已销毁（== null）同样算「被电死」，此时只有位置可用、没有尸体引用。
-                        if (!hasNext && (h == null || h.IsDead))
-                        {
-                            hasNext = true;
-                            nextOrigin = targetPosition;
-                            nextCorpse = h != null ? h.TryGetCharacter() : null;
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    DevLog("[ThunderSet] 引雷术结算出错: " + e.Message);
-                }
-                finally
-                {
-                    thunderChainDepth = 0;
-                }
-
-                DevLog("[ThunderSet] 引雷术第 " + hop + " 跳命中 " + count + " 个目标，伤害 " + damage.ToString("F0"));
-
-                if (hasNext && hop < THUNDER_CHAIN_MAX_DEPTH)
-                {
-                    continued = true;
-                    StartCoroutine(ThunderChainStep(nextOrigin, nextCorpse, hop + 1, generation));
-                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ThunderSet] 雷噬结算出错: " + e.Message);
             }
             finally
             {
-                // 旧激活也会经 yield break 进入 finally，不能清掉重穿后新链的 owner 与去重表。
-                if (!continued && generation == setBonusGeneration)
-                {
-                    thunderChainInFlight = false;
-                    thunderChainHits.Clear();
-                }
+                thunderBiteResolving = false;
             }
+
+            DevLog("[ThunderSet] 雷噬波及 " + count + " 个目标");
         }
 
         #endregion

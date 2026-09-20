@@ -34,6 +34,19 @@ from petnest_guard_util import (  # noqa: E402
 GUARD = "PetNestCompanionLifecycleGuard"
 
 
+def method_body(code, signature):
+    start = code.find(signature)
+    if start < 0:
+        return None
+    opening = code.index("{", start)
+    depth = 0
+    for end in range(opening, len(code)):
+        depth += (code[end] == "{") - (code[end] == "}")
+        if depth == 0:
+            return code[opening:end + 1]
+    return None
+
+
 def check_runtime(errors):
     text = read_petnest("PetNestCompanionRuntime.cs")
     if text is None:
@@ -76,11 +89,11 @@ def check_runtime(errors):
         errors.append("[回收] 生成失败路径必须在 finally 里回收半成品 handle")
 
     # 清理入口唯一且幂等
-    cleanup = re.search(r"internal static void CleanupOnce\(\)[\s\S]{0,1600}?\n        \}", code)
+    cleanup = method_body(code, "internal static void CleanupOnce()")
     if cleanup is None:
         errors.append("[清理] 缺少统一 CleanupOnce() 入口")
     else:
-        body = cleanup.group(0)
+        body = cleanup
         for token, desc in [
             ("PetNestPetProxyBridge.ReleaseSeat()", "还席"),
             ("PetNestPetProxyBridge.RemoveCapacityBonus(", "摘容量 Modifier"),

@@ -91,9 +91,9 @@ namespace BossRush
                 _autotest.Info.ShotBytes = _autotest.ShotBytes;
                 Dictionary<string, string> outcomes = ReadAutotestCaseOutcomes();
                 File.WriteAllText(Path.Combine(_autotest.RunDir, "manifest.json"),
-                    F3AutotestJudges.RenderManifest(_autotest.Info, _autotest.Records, _autotest.Table, outcomes), AutotestUtf8);
+                    AddResourcePerformanceManifest(F3AutotestJudges.RenderManifest(_autotest.Info, _autotest.Records, _autotest.Table, outcomes)), AutotestUtf8);
                 File.WriteAllText(Path.Combine(_autotest.RunDir, "summary.md"),
-                    F3AutotestJudges.RenderSummary(_autotest.Info, _autotest.Records, _autotest.Table, outcomes), AutotestUtf8);
+                    F3AutotestJudges.RenderSummary(_autotest.Info, _autotest.Records, _autotest.Table, outcomes) + ResourcePerformanceSummary(), AutotestUtf8);
             }
             catch (Exception e)
             {

@@ -270,22 +270,22 @@ namespace BossRush
             {
                 case SkyIslandStoryAction.AcceptPrelude:
                     flag = SkyIslandStoryFlag.PreludeAccepted;
-                    message = L10n.T("Jeff：零号区落下了一具不属于地面的航向仪。把守它的家伙也不像本地拾荒者。去把仪器里的坐标读回来。",
-                        "Jeff: A navigation instrument fell into Ground Zero, and its guard is no local scavenger. Bring back the coordinates stored inside it."); break;
+                    message = L10n.T("Jeff：零号区掉下来一台航向仪，不是地面上的东西。守着它的家伙也不像本地拾荒者。帮我把航向仪带回来。",
+                        "Jeff: A navigation instrument fell into Ground Zero, and it is not from down here. Whatever guards it is no local scavenger either. Bring the instrument back to me."); break;
                 case SkyIslandStoryAction.RecoverPreludeInstrument:
                     flag = SkyIslandStoryFlag.PreludeInstrumentRecovered;
                     if (!source.Has(SkyIslandStoryFlag.PreludeAccepted))
-                        required = L10n.T("先向基地的 Jeff 询问异常坠落线索。",
-                            "Ask Jeff at the base about the strange wreckage first.");
-                    message = L10n.T("航向仪仍在工作。残缺记录反复指向云层之上的『晴岚群岛』；把坐标交给 Jeff。",
-                        "The instrument still works. Its damaged log points again and again to the Qinglan Archipelago above the clouds. Take the coordinates to Jeff."); break;
+                        required = L10n.T("先回基地问问 Jeff 那台坠落的仪器。",
+                            "Ask Jeff back at base about the fallen instrument first.");
+                    message = L10n.T("航向仪还在走。残缺的记录一遍遍指向云上的晴岚群岛。把它带回去给 Jeff。",
+                        "The instrument is still running. Its broken log points again and again to Qinglan, above the clouds. Take it back to Jeff."); break;
                 case SkyIslandStoryAction.UnlockRoute:
                     flag = SkyIslandStoryFlag.RouteUnlocked;
                     if (!source.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered))
-                        required = L10n.T("先在零号区找到失落的航向仪。",
-                            "Find the lost navigation instrument in Ground Zero first.");
-                    message = L10n.T("Jeff 校准了坐标，并让基地船工把晴岚航线写进航路表。天空岛旅程现在可以从船点出发。",
-                        "Jeff calibrates the coordinates and has the base crew add Qinglan to the route table. The Sky Islands journey can now depart from the boat."); break;
+                        required = L10n.T("先去零号区把那台航向仪带回来。",
+                            "Bring the instrument back from Ground Zero first.");
+                    message = L10n.T("Jeff 把坐标读完了，让船工在航路表上添了一条晴岚。想上去看看，船点见。",
+                        "Jeff finishes reading the coordinates and has the crew add Qinglan to the route table. If you want to see it for yourself, the boat is waiting."); break;
                 case SkyIslandStoryAction.AcceptBeaconQuest:
                     flag = SkyIslandStoryFlag.BeaconQuestAccepted;
                     if (!source.SkyIslandRouteUnlocked)
@@ -295,7 +295,7 @@ namespace BossRush
                 case SkyIslandStoryAction.DeliverBeaconQuest:
                     flag = SkyIslandStoryFlag.BeaconQuestDelivered;
                     if (!source.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
-                        required = L10n.T("先找苇白接下航标任务；她不在时，用风铃集委托板的「航路任务」。", "Take the beacon quest from Weibai first, or use Route quests at the Windchime Market board when she is away.");
+                        required = L10n.T("先找苇白接下航标任务。她不在的话，风铃集委托板上也能接。", "Take the beacon quest from Weibai first. If she is away, the Windchime Market board has it too.");
                     else if (!source.BothBeacons)
                         required = L10n.T("风标与星灯都亮起来再回来复命。", "Light both the wind beacon and the star lamp, then report back.");
                     message = L10n.T("两端航标的修复记录已交付，航路名册添上了两道标记。可以到码头找浮舟接下钟庭之争。",
@@ -303,7 +303,7 @@ namespace BossRush
                 case SkyIslandStoryAction.AcceptBellCourtQuest:
                     flag = SkyIslandStoryFlag.BellCourtQuestAccepted;
                     if (!source.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
-                        required = L10n.T("先向苇白交付两端航标任务；她不在时，用风铃集委托板的「航路任务」。", "Turn in the beacon quest to Weibai first, or use Route quests at the Windchime Market board when she is away.");
+                        required = L10n.T("先把两端航标的活交给苇白。她不在的话，风铃集委托板上也能交。", "Turn the beacon work in to Weibai first. If she is away, the Windchime Market board takes it too.");
                     message = L10n.T("浮舟：灯都亮了，钟守还是不肯让钟响。去归航钟庭，说服他，或者击停守钟装置，再回来告诉我。",
                         "Fuzhou: The lamps burn, yet the Bell Keeper still won't let the bell ring. Go to the Bell Court, talk him down or stop his bell engine, then report back to me."); break;
                 case SkyIslandStoryAction.DeliverBellCourtQuest:
@@ -386,13 +386,13 @@ namespace BossRush
                     flag = SkyIslandStoryFlag.ShortcutK3;
                     if (!source.BothBeacons)
                         required = L10n.T("先恢复东西两端航标。", "Restore both the east and west beacons first.");
-                    message = L10n.T("鸣风栈道的双航标门开启，直达风铃集的回程路已恢复。",
-                        "The twin-beacon gate on Windsong Boardwalk opens; the direct way back to Windchime Market is restored."); break;
+                    message = L10n.T("鸣风栈道的双航标门开了，回风铃集的近路又能走了。",
+                        "The twin-beacon gate on Windsong Boardwalk opens, and the short way back to Windchime Market is walkable again."); break;
                 case SkyIslandStoryAction.ReconcileZheling:
                     flag = SkyIslandStoryFlag.ZhelingReconciled;
                     if (source.ZhelingResolved)
-                        required = L10n.T("折翎的选择已经记下；镜水寺的道路保持开放。",
-                            "Zheling's choice is already on record; the Mirrorwater Temple road stays open.");
+                        required = L10n.T("折翎的选择已经记下了，镜水寺的路一直开着。",
+                            "Zheling's choice is already on record, and the Mirrorwater Temple road stays open.");
                     // 穿着镜中客的镜纹甲（运行时字段，不进存档）：折翎认得那身纹路，不带旧信与航路图也肯谈。
                     else if (!source.wearsMirrorArmor && !source.Has(SkyIslandStoryFlag.OldLetter | SkyIslandStoryFlag.RouteChart))
                         required = L10n.T("折翎：拿到倒挂邮亭的旧信和听雨洞的航路图，我们再谈。你也可以离开，或明确挑战我。",

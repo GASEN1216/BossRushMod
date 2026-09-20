@@ -4,7 +4,7 @@
 
 ### What Is It?
 
-A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** body armor. Each piece gives modest armor plus cold protection on its own; equipping both activates **Frost Ward** — ice damage heals you, kills unleash a frost nova, and you freeze attackers — with pale-blue breathing eyes and frost mist at your feet. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
+A **2-piece ice set** composed of the **Frost Crown** helmet and **Ice Armor** body armor. Each piece gives modest armor plus cold protection on its own; equipping both activates **Frost Ward** — ice damage heals you, normal hits carry frostbite, and you freeze attackers — with pale-blue breathing eyes and frost mist at your feet. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
 
 ### Set Pieces
 
@@ -29,10 +29,11 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 - **50%** of the ice damage you take is refunded as healing (next frame, green numbers)
 - Cold Protection +2 in total
 
-**Frost Nova (on kill):**
-- After **3 direct kills**, a **3 m** frost burst erupts at the corpse: up to 3 enemies inside take **8 ice damage** and are **frozen**
-- Maximum once every **6 seconds**; enemies killed by the nova itself do not start another nova (no chaining)
-- Only direct weapon/grenade kills count (DoTs and the set's own damage don't trigger it)
+**Frostbite (on normal hit):**
+- A normal hit on an enemy adds **5 ice damage** and has a **35%** chance to **freeze** the target it struck
+- Maximum once every **1.1 seconds** (internal cooldown, independent of rate of fire)
+- The added damage is a flat value and never scales with weapon damage, so fast weapons gain nothing extra
+- Only direct weapon/grenade hits count (DoTs and the set's own damage don't trigger it)
 
 **Freeze Counter (on hit):**
 - When struck by an attacker within **5 meters**, **30%** chance to **freeze** that attacker
@@ -42,7 +43,7 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 
 ### Tips
 
-- Frost Nova provides occasional control after three direct kills. Use the freeze to reposition; ordinary attacks on a training dummy do not trigger an on-kill effect
+- Frostbite is steady control: at most one freeze every 1.1 s, and switching to a faster weapon does not make it fire more often. Use the freeze window to reposition
 - Ice refund is especially strong against freezing special zombies and ice bosses
 - 30% freeze proc fires frequently in melee brawls; the 5 s cooldown is permissive compared to most reactive pieces
 - Base armor (Head +5 / Body +5) is low — not meant for pure tank builds; the set lives on control

@@ -61,6 +61,8 @@ CONSTANT_VALUES = {
     "BossRushItemIds.SkyIslandWindbreakHood": 500100,
     "BossRushItemIds.SkyIslandWindbreakMantle": 500101,
     "BossRushItemIds.SkyIslandWindbreakPack": 500102,
+    # 失落的航向仪：Jeff 序章的交付物，只从零号区那具尸体箱里出，交付即消耗。
+    "BossRushItemIds.SkyIslandNavInstrument": 500103,
     "DragonDescendantConfig.DRAGON_HELM_TYPE_ID": 500003,
     "DragonDescendantConfig.DRAGON_ARMOR_TYPE_ID": 500004,
     "DragonBreathConfig.WEAPON_TYPE_ID": 500005,

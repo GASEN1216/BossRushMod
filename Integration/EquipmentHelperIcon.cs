@@ -4,10 +4,10 @@
 // 模块说明：
 //   用户提供的资源只包含贴图（PNG）/ 3D 模型 / 音效，不会提供 Item Prefab、
 //   Buff Prefab、Projectile 等"代码层资产"。Item Prefab 一律由占位逻辑克隆生成，
-//   外观差异化主要靠"加载用户提供的图标 PNG"完成。
+//   外观差异化通过原 PNG 路径对应的生产压缩 Sprite 完成。
 //
 //   该辅助类提供多条加载路径：
-//   1) 直接从 Assets/Equipment 或 Assets/Items 下读取 PNG 文件（推荐）
+//   1) 按 Assets/Equipment 或 Assets/Items 的原 PNG 路径取压缩 Sprite；缺包/Dev 才解码散图
 //   2) 从已加载或可加载的 Equipment AssetBundle 中读 Sprite/Texture2D
 //   3) 从 Items AssetBundle 中读 Sprite/Texture2D（参考 ItemFactory.GetSprite）
 //
@@ -35,9 +35,13 @@ namespace BossRush
             new Dictionary<string, Sprite>(StringComparer.OrdinalIgnoreCase);
         private static readonly HashSet<AssetBundle> equipmentIconBundlesLoadedByHelper =
             new HashSet<AssetBundle>();
+        private static readonly HashSet<Sprite> ownedBundleSprites = new HashSet<Sprite>();
 
         public static void ResetStaticCaches()
         {
+            foreach (Sprite sprite in ownedBundleSprites)
+                if (sprite != null) UnityEngine.Object.Destroy(sprite);
+            ownedBundleSprites.Clear();
             foreach (AssetBundle bundle in equipmentIconBundlesLoadedByHelper)
             {
                 if (bundle == null) continue;
@@ -154,6 +158,7 @@ namespace BossRush
                         {
                             sprite.hideFlags = HideFlags.DontSave;
                             sprite.name = iconAssetName;
+                            ownedBundleSprites.Add(sprite);
                         }
                     }
                 }
@@ -200,7 +205,7 @@ namespace BossRush
                 return null;
             }
 
-            loadedBundle = AssetBundle.LoadFromFile(bundlePath);
+            loadedBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
             if (loadedBundle != null)
             {
                 equipmentIconBundles[bundleName] = loadedBundle;
@@ -280,37 +285,12 @@ namespace BossRush
             for (int i = 0; i < candidates.Length; i++)
             {
                 string path = candidates[i];
-                if (!File.Exists(path)) continue;
 
-                try
-                {
-                    byte[] data = File.ReadAllBytes(path);
-                    Texture2D tex = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                    if (!tex.LoadImage(data))
-                    {
-                        UnityEngine.Object.Destroy(tex);
-                        continue;
-                    }
-                    tex.hideFlags = HideFlags.DontSave;
-                    tex.name = iconAssetName;
 
-                    Sprite sprite = Sprite.Create(
-                        tex,
-                        new Rect(0f, 0f, tex.width, tex.height),
-                        new Vector2(0.5f, 0.5f),
-                        100f);
-                    if (sprite != null)
-                    {
-                        sprite.hideFlags = HideFlags.DontSave;
-                        sprite.name = iconAssetName;
-                        ModBehaviour.DevLog("[EquipmentHelperIcon] 加载图标 PNG 成功: " + path);
-                        return sprite;
-                    }
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.DevLog("[EquipmentHelperIcon] 读取 PNG 失败 " + path + ": " + e.Message);
-                }
+                // 物品配置器会反复执行；统一复用工厂的缓存与原生对象释放路径。
+                string relativePath = path.Substring(baseDir.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                Sprite sprite = ItemFactory.GetSpriteFromFile(relativePath);
+                if (sprite != null) return sprite;
             }
 
             return null;

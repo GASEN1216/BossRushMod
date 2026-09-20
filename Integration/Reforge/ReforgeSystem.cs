@@ -743,7 +743,7 @@ namespace BossRush
             {
                 if (CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID))
                 {
-                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(item);
+                    CustomItemRuntimeStateHelper.RestoreRuntimeState(item);
                 }
             }
             catch { }

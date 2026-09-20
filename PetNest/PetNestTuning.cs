@@ -36,8 +36,19 @@ namespace BossRush
 
         #region 孵化 roll（草案）
 
-        /// <summary>异色概率。纯收集荣誉，不给数值。</summary>
-        internal const float ShinyChance = 0.015f;
+        /// <summary>
+        /// 异色概率。纯收集荣誉，不给数值。
+        /// owner 2026-09-20：「异色极为稀有」——从 1.5% 压到 0.4%（约 250 枚蛋出一只），
+        /// 同时新增更常见的炫彩档位补上「开蛋有惊喜」的密度。
+        /// </summary>
+        internal const float ShinyChance = 0.004f;
+
+        /// <summary>
+        /// 炫彩概率（任意两色搭配，45 种）。比异色常见得多，但仍是少数派：
+        /// 每 10 枚蛋里约 1 只带色，既有收集面又不会让普通崽显得寒酸。
+        /// 与异色**独立** roll：同时命中就是异色的炫彩崽。
+        /// </summary>
+        internal const float ChromaChance = 0.10f;
 
         /// <summary>出身天赋条数（孵化即锁定）。</summary>
         internal const int TalentRollCount = 2;
@@ -153,12 +164,14 @@ namespace BossRush
 
         #region 天灾远征（草案）
 
-        /// <summary>平安档时长（小时，现实时间）。</summary>
-        internal const double ExpeditionHoursSafe = 2d;
-        /// <summary>风浪档时长（小时，现实时间）。</summary>
-        internal const double ExpeditionHoursRough = 4d;
-        /// <summary>亡命档时长（小时，现实时间）。</summary>
-        internal const double ExpeditionHoursDesperate = 8d;
+        // owner 2026-09-20 拍板的时长梯度：10 / 30 / 60 分钟（现实时间）。
+        // 旧值是 2 / 4 / 8 小时，一天只能跑两轮，节奏太慢。
+        /// <summary>平安档时长（小时，现实时间）= 10 分钟。</summary>
+        internal const double ExpeditionHoursSafe = 10d / 60d;
+        /// <summary>风浪档时长（小时，现实时间）= 30 分钟。</summary>
+        internal const double ExpeditionHoursRough = 30d / 60d;
+        /// <summary>亡命档时长（小时，现实时间）= 60 分钟。</summary>
+        internal const double ExpeditionHoursDesperate = 60d / 60d;
 
         /// <summary>平安档死亡率。绝对安全，最多空手。</summary>
         internal const float DeathRateSafe = 0f;

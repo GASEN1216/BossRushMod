@@ -271,7 +271,7 @@ namespace BossRush
     public static class CustomItemRuntimeStateHelper
     {
         public static bool IsRuntimeConfiguredType(int id) { return id == 500099; }
-        public static bool EnsureCustomItemConfigured(Item item)
+        public static bool RestoreRuntimeState(Item item)
         { item.Quality = 7; item.Setting = new ItemSetting_MeleeWeapon(); return true; }
     }
     public static class L10n { public static string T(string zh, string en) { return zh; } }

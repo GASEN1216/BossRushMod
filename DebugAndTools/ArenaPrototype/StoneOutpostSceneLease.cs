@@ -36,7 +36,7 @@ namespace BossRush
             if (!File.Exists(path)) throw new FileNotFoundException("缺少石堡前哨场景资源包", path);
             if (SceneManager.GetSceneByPath(ScenePath).isLoaded)
                 throw new InvalidOperationException("前哨场景仍在加载或回收，请稍后再试");
-            bundle = AssetBundle.LoadFromFile(path);
+            bundle = ResourceBundleLoader.LoadFromFile(path);
             if (bundle == null) throw new InvalidOperationException("前哨场景包加载失败");
             string[] scenes = bundle.GetAllScenePaths();
             if (scenes.Length != 1 || !string.Equals(scenes[0], ScenePath, StringComparison.OrdinalIgnoreCase))

@@ -1,0 +1,187 @@
+// Editor-only. Exact path aliases preserve runtime filenames and Sprite names.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEngine;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+
+namespace BossRush
+{
+    public static class ProductionIconBuilder
+    {
+        public static void BuildAndExit()
+        {
+            int code = 0;
+            try { Build(); }
+            catch (Exception e) { Debug.LogException(e); code = 1; }
+            EditorApplication.Exit(code);
+        }
+
+        private static void Configure(string path, int size, bool existing)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null) throw new InvalidOperationException("Missing texture: " + path);
+            if (existing && importer.textureType != TextureImporterType.Sprite)
+                throw new InvalidOperationException("Legacy Sprite contract changed: " + path);
+            var currentDesktop = importer.GetPlatformTextureSettings("Standalone");
+            bool needsImport = importer.maxTextureSize != size || importer.isReadable || importer.crunchedCompression || importer.mipmapEnabled ||
+                importer.textureType != TextureImporterType.Sprite || importer.spriteImportMode != SpriteImportMode.Single ||
+                importer.spritePixelsPerUnit != 100 || !currentDesktop.overridden || currentDesktop.maxTextureSize != size ||
+                currentDesktop.format != TextureImporterFormat.BC7 || currentDesktop.crunchedCompression;
+            // The shipped 1024px icons occupy 10.24 Unity units. Unity scales packed PPU with importer downsampling:
+            // 100 source PPU becomes 25 at 256px, preserving Image native size / SpriteRenderer bounds.
+            if (existing) importer.spritePixelsPerUnit = 100;
+            if (!existing)
+            {
+                importer.textureType = TextureImporterType.Sprite;
+                importer.spriteImportMode = SpriteImportMode.Single;
+                importer.spritePixelsPerUnit = 100;
+                importer.alphaIsTransparency = true;
+                importer.wrapMode = TextureWrapMode.Clamp;
+                importer.filterMode = FilterMode.Bilinear;
+            }
+            importer.maxTextureSize = size;
+            importer.isReadable = false;
+            importer.crunchedCompression = false;
+            importer.mipmapEnabled = false;
+            importer.textureCompression = TextureImporterCompression.CompressedHQ;
+            var defaults = importer.GetDefaultPlatformTextureSettings();
+            defaults.maxTextureSize = size;
+            defaults.crunchedCompression = false;
+            importer.SetPlatformTextureSettings(defaults);
+            var desktop = importer.GetPlatformTextureSettings("Standalone");
+            desktop.name = "Standalone";
+            desktop.overridden = true;
+            desktop.maxTextureSize = size;
+            desktop.format = TextureImporterFormat.BC7;
+            desktop.crunchedCompression = false;
+            desktop.textureCompression = TextureImporterCompression.CompressedHQ;
+            desktop.compressionQuality = 100;
+            importer.SetPlatformTextureSettings(desktop);
+            if (needsImport) importer.SaveAndReimport();
+            var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (texture == null || texture.width > size || texture.height > size || texture.isReadable ||
+                (texture.format != TextureFormat.BC7 && texture.format != TextureFormat.DXT5))
+                throw new InvalidOperationException("Compressed texture contract failed: " + path + " " + (texture == null ? "missing" : texture.format.ToString()));
+            if (AssetDatabase.LoadAssetAtPath<Sprite>(path) == null)
+                throw new InvalidOperationException("Sprite missing: " + path);
+        }
+
+        private static void Build()
+        {
+            string repo = Environment.GetEnvironmentVariable("BOSSRUSH_RESOURCE_REPO");
+            string output = Environment.GetEnvironmentVariable("BOSSRUSH_RESOURCE_OUTPUT");
+            JObject profile = JObject.Parse(File.ReadAllText(Path.Combine(repo, "tools/production_icon_manifest.json")));
+            var paths = new List<string>();
+            var aliases = new List<string>();
+            var imports = new List<object>();
+            foreach (JObject row in profile["icons"])
+            {
+                string relative = (string)row["path"];
+                string path = "Assets/ProductionIcons/" + relative;
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                byte[] pixels = File.ReadAllBytes(Path.Combine(output, "icon-source", relative));
+                if (!File.Exists(path) || !File.ReadAllBytes(path).SequenceEqual(pixels))
+                {
+                    File.WriteAllBytes(path, pixels);
+                    AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                }
+                Configure(path, (int)row["maxSize"], false);
+                var texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                paths.Add(path); aliases.Add(relative.ToLowerInvariant());
+                imports.Add(new { path = relative, texture.width, texture.height, format = texture.format.ToString(), texture.isReadable });
+            }
+            foreach (string path in profile["legacyTextures"].Values<string>()) Configure(path, 256, true);
+            RestoreLegacyPrefab(repo, "birthday_cake", "Assets/Prefabs/BirthdayCake.prefab", "Assets/mymod/BirthdayCake.png");
+            RestoreLegacyPrefab(repo, "bossrush_ticket", "Assets/Prefabs/BossRushTicket.prefab", "Assets/mymod/BossRushTicket2.png");
+            AssetDatabase.SaveAssets();
+            var builds = profile["builds"].ToObject<List<AssetBundleBuild>>();
+            // Unity asset paths are case-insensitive on Windows; resolve canonical paths for diagnostics.
+            builds.Add(new AssetBundleBuild { assetBundleName = "production_icons", assetNames = paths.ToArray(), addressableNames = aliases.ToArray() });
+            string target = Path.Combine(output, "rebuilt");
+            Directory.CreateDirectory(target);
+            var built = BuildPipeline.BuildAssetBundles(target, builds.ToArray(),
+                BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode, BuildTarget.StandaloneWindows64);
+            if (built == null) throw new InvalidOperationException("Production icon build failed");
+            foreach (var entry in builds)
+            {
+                var bundle = AssetBundle.LoadFromFile(Path.Combine(target, entry.assetBundleName));
+                if (bundle == null) throw new InvalidOperationException("Cannot reopen: " + entry.assetBundleName);
+                try
+                {
+                    if (entry.assetBundleName == "production_icons")
+                    {
+                        foreach (string alias in aliases)
+                            if (bundle.LoadAsset<Sprite>(alias) == null) throw new InvalidOperationException("Packed Sprite missing: " + alias);
+                    }
+                    else
+                    {
+                        var prefabs = bundle.LoadAllAssets<GameObject>();
+                        if (prefabs.Length != 1) throw new InvalidOperationException("Legacy prefab contract: " + entry.assetBundleName);
+                        var item = prefabs[0].GetComponents<MonoBehaviour>().SingleOrDefault();
+                        if (item == null || item.GetType().FullName != "ItemStatsSystem.Item")
+                            throw new InvalidOperationException("Packed legacy Item script missing: " + entry.assetBundleName);
+                        var icon = new SerializedObject(item).FindProperty("icon").objectReferenceValue as Sprite;
+                        if (icon == null || icon.texture == null || icon.texture.width != 256 || icon.texture.height != 256 || icon.texture.format != TextureFormat.BC7)
+                            throw new InvalidOperationException("Packed legacy Sprite contract: " + entry.assetBundleName);
+                        if (Mathf.Abs(icon.rect.width / icon.pixelsPerUnit - 10.24f) > .001f ||
+                            Mathf.Abs(icon.rect.height / icon.pixelsPerUnit - 10.24f) > .001f)
+                            throw new InvalidOperationException("Packed legacy Sprite display size changed: " + entry.assetBundleName);
+                    }
+                }
+                finally { bundle.Unload(true); }
+            }
+            File.WriteAllText(Path.Combine(output, "icon-imports.json"), JsonConvert.SerializeObject(imports, Formatting.Indented));
+            Debug.Log("[ProductionIconBuilder] BUILD PASS sprites=" + aliases.Count);
+        }
+
+        private static void RestoreLegacyPrefab(string repo, string bundleName, string path, string iconPath)
+        {
+            // These two historic prefab sources were absent in the author project. Recover exactly
+            // the shipped object (one Item component), replacing only its Sprite reference.
+            var itemScript = MonoImporter.GetAllRuntimeMonoScripts().FirstOrDefault(s => s.GetClass() != null &&
+                s.GetClass().FullName == "ItemStatsSystem.Item" && !string.IsNullOrEmpty(AssetDatabase.GetAssetPath(s)));
+            string scriptGuid; long scriptId;
+            if (itemScript == null || !AssetDatabase.TryGetGUIDAndLocalFileIdentifier(itemScript, out scriptGuid, out scriptId))
+                throw new InvalidOperationException("Author Item MonoScript missing");
+            if (File.Exists(path))
+            {
+                // A bundled MonoScript has no author GUID. Repair only the zero GUID from initial recovery.
+                string yaml = File.ReadAllText(path);
+                string repaired = System.Text.RegularExpressions.Regex.Replace(yaml,
+                    @"m_Script: \{fileID: -?\d+, guid: 00000000000000000000000000000000, type: 0\}",
+                    "m_Script: {fileID: " + scriptId + ", guid: " + scriptGuid + ", type: 3}");
+                if (yaml != repaired) { File.WriteAllText(path, repaired); AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport); }
+                return;
+            }
+            var bundle = AssetBundle.LoadFromFile(Path.Combine(repo, "Assets", bundleName));
+            if (bundle == null) throw new InvalidOperationException("Missing legacy bundle: " + bundleName);
+            GameObject copy = null;
+            try
+            {
+                var original = bundle.LoadAllAssets<GameObject>().Single();
+                copy = UnityEngine.Object.Instantiate(original);
+                copy.name = original.name;
+                var components = copy.GetComponents<MonoBehaviour>();
+                if (components.Length != 1 || components[0] == null || components[0].GetType().FullName != "ItemStatsSystem.Item")
+                    throw new InvalidOperationException("Legacy Item serialization contract changed: " + bundleName);
+                var data = new SerializedObject(components[0]);
+                var property = data.GetIterator();
+                int replaced = 0;
+                while (property.Next(true))
+                    if (property.propertyType == SerializedPropertyType.ObjectReference && property.objectReferenceValue is Sprite)
+                    { property.objectReferenceValue = AssetDatabase.LoadAssetAtPath<Sprite>(iconPath); replaced++; }
+                if (replaced != 1) throw new InvalidOperationException("Legacy icon reference count: " + replaced);
+                data.FindProperty("m_Script").objectReferenceValue = itemScript;
+                data.ApplyModifiedPropertiesWithoutUndo();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                if (PrefabUtility.SaveAsPrefabAsset(copy, path) == null) throw new InvalidOperationException("Cannot recover prefab: " + path);
+                Debug.Log("[ProductionIconBuilder] RECOVERED " + path + " from shipped bundle");
+            }
+            finally { if (copy != null) UnityEngine.Object.DestroyImmediate(copy); bundle.Unload(true); }
+        }
+    }
+}

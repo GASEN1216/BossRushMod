@@ -31,6 +31,7 @@ namespace BossRush
             AffixForgeStoneConfig.RegisterConfigurator();
             CodexBookConfig.RegisterConfigurator();
             SkyIslandItems.RegisterConfigurators();
+            SkyIslandNavInstrumentConfig.RegisterConfigurator();
             ItemFactory.RegisterConfigurator(ADVENTURE_JOURNAL_TYPE_ID, OnAdventureJournalLoaded);
             ItemFactory.RegisterConfigurator(FenHuangHalberdIds.WeaponTypeId, OnFenHuangHalberdLoaded);
             ItemFactory.RegisterConfigurator(FrostmourneIds.WeaponTypeId, OnFrostmourneLoaded);

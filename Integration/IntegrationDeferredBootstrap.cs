@@ -39,11 +39,11 @@ namespace BossRush
             yield return null;
 
             yield return RunDeferredStep_Integration("InitializeAlwaysOnDeferredContent", () => InitializeAlwaysOnDeferredContent());
-            yield return RunDeferredStep_Integration("InitializeDynamicItems", () => InitializeDynamicItems());
+            yield return FactoryResourceLoading.InitializeItems(this, InitializeDynamicItems);
             yield return RunDeferredStep_Integration("InjectBossRushTicketLocalization", () => InjectBossRushTicketLocalization());
-            yield return RunDeferredStep_Integration("InitializeBirthdayCakeItem", () => InitializeBirthdayCakeItem());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/birthday_cake", InitializeBirthdayCakeItem);
             yield return RunDeferredStep_Integration("InjectBirthdayCakeLocalization", () => InjectBirthdayCakeLocalization());
-            yield return RunDeferredStep_Integration("InitializeWikiBookItem", () => InitializeWikiBookItem());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/ui/bossrush_wiki", InitializeWikiBookItem);
             yield return RunDeferredStep_Integration("InjectWikiBookLocalization", () => InjectWikiBookLocalization());
             yield return RunDeferredStep_Integration("InjectAchievementMedalLocalization", () => InjectAchievementMedalLocalization());
 
@@ -55,6 +55,7 @@ namespace BossRush
             }
             ScheduleDeferredSceneSetupForActiveScene("EssentialContentReady:" + source);
 
+            yield return EquipmentFactory.LoadAllEquipmentAsync(this);
             yield return RunDeferredStep_Integration("LoadEquipmentContent", () => LoadEquipmentContent());
             yield return RunDeferredStep_Integration("InitializeEarlyEquipmentAbilitySystems", () => InitializeEarlyEquipmentAbilitySystems());
             yield return RunDeferredStep_Integration("InitializeLateEquipmentAbilitySystems", () => InitializeLateEquipmentAbilitySystems());
@@ -264,7 +265,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return RunDeferredStep_Integration("InitWeddingBuilding", () => InitWeddingBuilding());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/weddingchapel", InitWeddingBuilding);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -276,7 +277,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return RunDeferredStep_Integration("InitWishFountainBuilding", () => InitWishFountainBuilding());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/starwish_fountain", InitWishFountainBuilding);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -288,7 +289,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return RunDeferredStep_Integration("InitPetNestBuilding", () => InitPetNestBuilding());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/petnest_relic_nest", InitPetNestBuilding);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -300,7 +301,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return RunDeferredStep_Integration("InitDailyReportMailbox", () => InitDailyReportMailbox());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/bossrush_daily_mailbox", InitDailyReportMailbox);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -312,7 +313,8 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return RunDeferredStep_Integration("InitCampaignBoardBuilding", () => InitCampaignBoardBuilding());
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/bossrush_campaign_board", InitCampaignBoardBuilding);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/bossrush_backmountain_showcase", InitBackMountainShowcase);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {

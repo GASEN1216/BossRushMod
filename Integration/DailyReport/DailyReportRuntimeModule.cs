@@ -181,6 +181,8 @@ namespace BossRush
 
                 SafeRuntime.Run("DailyReportService.ResetStaticCaches", () => DailyReportService.ResetStaticCaches());
                 SafeRuntime.Run("DailyReportSaveCoordinator.ResetStaticCaches", () => DailyReportSaveCoordinator.ResetStaticCaches());
+                SafeRuntime.Run("DailyReportLayoutTable.ResetStaticCaches", () => DailyReportLayoutTable.ResetStaticCaches());
+                SafeRuntime.Run("DailyReportBackground.ResetStaticCaches", () => DailyReportBackground.ResetStaticCaches());
                 _bootstrapped = false;
                 _owner = null;
             }

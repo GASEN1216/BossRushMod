@@ -187,11 +187,21 @@ namespace BossRush
 
         private static Sprite TryLoadSpriteFromFile(string fullPath, string spriteName)
         {
+            string root = ModBehaviour.GetModPath();
+            if (!string.IsNullOrEmpty(fullPath) && fullPath.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+            {
+                Sprite compressed = ProductionIconCache.Get(fullPath.Substring(root.Length).TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+                if (compressed != null) return compressed;
+            }
+            if (!ProductionIconCache.AllowRawFallback) return null;
             if (string.IsNullOrEmpty(fullPath) || !File.Exists(fullPath))
             {
                 return null;
             }
 
+            Texture2D texture = null;
+            Sprite sprite = null;
+            bool retained = false;
             try
             {
                 byte[] bytes = File.ReadAllBytes(fullPath);
@@ -200,25 +210,34 @@ namespace BossRush
                     return null;
                 }
 
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes))
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (!texture.LoadImage(bytes, true))
                 {
-                    UnityEngine.Object.Destroy(texture);
                     return null;
                 }
 
                 texture.name = spriteName;
-                Sprite sprite = Sprite.Create(
+                sprite = Sprite.Create(
                     texture,
                     new Rect(0f, 0f, texture.width, texture.height),
                     new Vector2(0.5f, 0.5f));
+                if (sprite == null) return null;
                 sprite.name = spriteName;
+                retained = true;
                 return sprite;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[PhantomWitch] [WARNING] 从文件加载Sprite失败: " + fullPath + " - " + e.Message);
                 return null;
+            }
+            finally
+            {
+                if (!retained)
+                {
+                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
+                    if (texture != null) UnityEngine.Object.Destroy(texture);
+                }
             }
         }
 
@@ -963,16 +982,17 @@ namespace BossRush
                 cachedEffectTemplate = null;
             }
 
-            if (cachedCurseBuffIcon != null)
+            if (cachedCurseBuffIcon != null && !ProductionIconCache.IsBorrowed(cachedCurseBuffIcon))
             {
                 Texture2D iconTexture = cachedCurseBuffIcon.texture;
                 UnityEngine.Object.Destroy(cachedCurseBuffIcon);
-                cachedCurseBuffIcon = null;
                 if (iconTexture != null)
                 {
                     UnityEngine.Object.Destroy(iconTexture);
                 }
             }
+
+            cachedCurseBuffIcon = null;
 
             if (cachedEffectMaterial != null)
             {

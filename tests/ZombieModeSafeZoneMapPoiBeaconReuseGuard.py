@@ -54,7 +54,7 @@ def main() -> int:
 
     for snippet in [
         "private string ResolveZombieModeSafeZoneMapSceneId()",
-        "SceneInfoCollection.GetSceneID(activeScene.buildIndex)",
+        "MapPointSceneResolver.Resolve()",
         "DevLog(\"[ZombieMode] 安全区地图标记已创建:",
     ]:
         result = require(extraction, snippet, "safe zone POI must bind to the active minimap scene")

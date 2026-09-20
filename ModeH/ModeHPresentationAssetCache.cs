@@ -38,6 +38,7 @@ namespace BossRush
         #region 状态
 
         private static readonly object _lock = new object();
+        private static readonly System.Collections.Generic.List<Sprite> ownedRawSprites = new System.Collections.Generic.List<Sprite>();
         private static AssetBundle _bundle;
         private static Sprite _emblemSprite;
         private static Sprite _bannerSprite;
@@ -151,7 +152,7 @@ namespace BossRush
                     return false;
                 }
 
-                _bundle = AssetBundle.LoadFromFile(bundlePath);
+                _bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (_bundle == null)
                 {
                     ModBehaviour.DevLog("[ModeH] 展示 bundle 加载失败: " + bundlePath);
@@ -188,36 +189,11 @@ namespace BossRush
 
         private static Sprite LoadDevRawSprite(string assetName)
         {
-            try
-            {
-                if (!ModeHAvailability.AllowDevRawPngFallback) return null;
-
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-
-                string path = Path.Combine(
-                    modPath,
-                    DevRawRelativeDir.Replace('/', Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar
-                        + assetName + ".png");
-                if (!File.Exists(path)) return null;
-
-                byte[] bytes = File.ReadAllBytes(path);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes))
-                {
-                    UnityEngine.Object.Destroy(texture);
-                    return null;
-                }
-
-                ModBehaviour.DevLog("[ModeH] [DEV] 使用 raw PNG fallback: " + assetName);
-                return Sprite.Create(
-                    texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f));
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeH] [WARNING] raw PNG fallback 异常: " + e.Message);
-                return null;
-            }
+            if (!ModeHAvailability.AllowDevRawPngFallback) return null;
+            string path = System.IO.Path.Combine(ModBehaviour.GetModPath(), DevRawRelativeDir, assetName + ".png");
+            Sprite sprite = RawImageLoader.LoadSprite(path, assetName);
+            if (sprite != null) ownedRawSprites.Add(sprite);
+            return sprite;
         }
 
         #endregion
@@ -229,6 +205,14 @@ namespace BossRush
         /// </summary>
         public static void Unload()
         {
+            foreach (Sprite sprite in ownedRawSprites)
+            {
+                if (sprite == null) continue;
+                Texture2D texture = sprite.texture;
+                UnityEngine.Object.Destroy(sprite);
+                if (texture != null) UnityEngine.Object.Destroy(texture);
+            }
+            ownedRawSprites.Clear();
             lock (_lock)
             {
                 // §23.3 冻结顺序：先清空 Sprite 引用，再 Unload(true)。

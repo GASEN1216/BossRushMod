@@ -152,7 +152,7 @@ namespace BossRush
 
                     try
                     {
-                        info.bundle = AssetBundle.LoadFromFile(info.path);
+                        info.bundle = ResourceBundleLoader.LoadFromFile(info.path);
 
                         if (info.bundle == null)
                         {
@@ -543,7 +543,7 @@ namespace BossRush
 
                     try
                     {
-                        info.bundle = AssetBundle.LoadFromFile(info.path);
+                        info.bundle = ResourceBundleLoader.LoadFromFile(info.path);
 
                         if (info.bundle != null)
                         {

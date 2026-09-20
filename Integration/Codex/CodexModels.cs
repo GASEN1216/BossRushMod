@@ -30,8 +30,14 @@ namespace BossRush
         /// <summary>初见 DateTime.UtcNow.Ticks；0 = 未解锁。</summary>
         internal long FirstKillTicks;
 
-        /// <summary>首杀模式 id（CodexTuning.ModeId*）。</summary>
+        /// <summary>首杀模式 id（CodexTuning.ModeId*）。老档唯一的初见信息。</summary>
         internal string FirstMode;
+
+        /// <summary>
+        /// 首杀场景 id（官方 SceneInfoCollection 的键，如 Level_GroundZero_Main）。
+        /// SCHEMA+ 可选字段：老档没有它，显示时回落 FirstMode。空串 = 未记录。
+        /// </summary>
+        internal string FirstScene;
 
         /// <summary>最快击杀秒数；&lt;= 0 = 未记录。</summary>
         internal float FastestKillSeconds;
@@ -62,6 +68,7 @@ namespace BossRush
                 {
                     Key = entry.Key, DisplayName = entry.DisplayName, Kills = entry.Kills,
                     FirstKillTicks = entry.FirstKillTicks, FirstMode = entry.FirstMode,
+                    FirstScene = entry.FirstScene,
                     FastestKillSeconds = entry.FastestKillSeconds,
                 });
             }
@@ -128,6 +135,7 @@ namespace BossRush
             created.Kills = 0;
             created.FirstKillTicks = 0L;
             created.FirstMode = string.Empty;
+            created.FirstScene = string.Empty;
             created.FastestKillSeconds = 0f;
 
             Entries.Add(created);

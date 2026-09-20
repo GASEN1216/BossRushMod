@@ -27,6 +27,7 @@ namespace BossRush
         private static string _deployedPetId;
         private static int _sceneGeneration = -1;
         private static bool _spawnInFlight;
+        private static int _requestGeneration;
         private static string _lastBlockReasonId;
 
         /// <summary>
@@ -201,6 +202,7 @@ namespace BossRush
             int sceneGeneration)
         {
             _spawnInFlight = true;
+            int requestGeneration = _requestGeneration;
             PetNestCompanionHandle handle = null;
             try
             {
@@ -213,7 +215,12 @@ namespace BossRush
                 if (handle == null) return;
 
                 // await 之后重验 owner / 场景代数 / 玩家引用
-                if (!IsRequestStillValid(owner, player, sceneGeneration))
+                PetNestPetRecord deployed = PetNestService.DeployedPet;
+                if (requestGeneration != _requestGeneration
+                    || deployed == null || !string.Equals(deployed.id, pet.id, StringComparison.Ordinal)
+                    || deployed.state == (int)PetNestPetState.Downed
+                    || deployed.state == (int)PetNestPetState.OnExpedition
+                    || !IsRequestStillValid(owner, player, sceneGeneration))
                 {
                     PetNestCompanionSpawner.CleanupOnce(handle);
                     return;
@@ -268,7 +275,7 @@ namespace BossRush
                 {
                     PetNestCompanionSpawner.CleanupOnce(handle);
                 }
-                _spawnInFlight = false;
+                if (requestGeneration == _requestGeneration) _spawnInFlight = false;
             }
         }
 
@@ -359,6 +366,9 @@ namespace BossRush
         /// </summary>
         internal static void CleanupOnce()
         {
+            // 清理也取消尚未返回的生成，避免取消出战、死亡或卸载后迟到激活。
+            unchecked { _requestGeneration++; }
+            _spawnInFlight = false;
             CloseSpawnRetryWindow();
             try
             {

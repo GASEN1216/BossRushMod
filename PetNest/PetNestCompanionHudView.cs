@@ -27,6 +27,7 @@ namespace BossRush
         internal int ScarCount;
         internal int Level;
         internal bool Downed;
+        internal bool Chinese;
 
         internal bool SameAs(PetNestHudModel other)
         {
@@ -34,7 +35,8 @@ namespace BossRush
                 && Mathf.Approximately(HealthRatio, other.HealthRatio)
                 && ScarCount == other.ScarCount
                 && Level == other.Level
-                && Downed == other.Downed;
+                && Downed == other.Downed
+                && Chinese == other.Chinese;
         }
     }
 
@@ -52,6 +54,7 @@ namespace BossRush
         private float _refreshTimer;
         private PetNestHudModel _lastModel;
         private string _lastPetId;
+        private bool _nameChinese;
 
         /// <summary>确保 HUD 存在。幂等。</summary>
         internal static void EnsureCreated()
@@ -162,6 +165,7 @@ namespace BossRush
                 }
 
                 model.Visible = true;
+                model.Chinese = L10n.IsChinese;
 
                 Health health = companion.Health;
                 if (health != null && health.MaxHealth > 0f)
@@ -196,13 +200,14 @@ namespace BossRush
                 if (!model.Visible) return;
 
                 string petId = PetNestCompanionRuntime.ActiveCompanionPetId;
-                if (!string.Equals(petId, _lastPetId, StringComparison.Ordinal))
+                if (!string.Equals(petId, _lastPetId, StringComparison.Ordinal) || _nameChinese != model.Chinese)
                 {
                     _lastPetId = petId;
+                    _nameChinese = model.Chinese;
                     PetNestPetRecord pet = PetNestService.TryGetPet(petId);
                     if (_nameText != null)
                     {
-                        _nameText.text = pet != null ? PetNestService.GetPetDisplayName(pet) : string.Empty;
+                        _nameText.text = pet != null ? PetNestService.GetDecoratedPetName(pet) : string.Empty;
                     }
                 }
 

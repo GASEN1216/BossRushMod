@@ -1184,7 +1184,7 @@ namespace BossRush
 
             if (selectedItem != null)
             {
-                CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(selectedItem);
+                CustomItemRuntimeStateHelper.RestoreRuntimeState(selectedItem);
                 ReforgeDataPersistence.CleanupUnsupportedReforgeData(selectedItem);
 
                 // 保存新物品的属性快照

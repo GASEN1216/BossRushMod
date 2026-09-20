@@ -21,8 +21,8 @@ namespace BossRush
                 return greeting + (onIsland
                     ? L10n.T("种植记录找到了，泥手印还在呢。交给我，或留在风铃集委托板上，菜畦就能重新开张了。",
                         "You found the planting record, muddy prints and all. Hand it to me or leave it at the Windchime Market board to reopen the garden.")
-                    : L10n.T("种植记录已经找到了。下趟回岛留到风铃集委托板上，菜畦就能重新开张；也可以带我同行，在岛上交给我。",
-                        "The planting record is found. Leave it at the Windchime Market board next trip to reopen the garden, or bring me along and hand it to me on the island."));
+                    : L10n.T("种植记录你已经找到了。下趟回岛留在风铃集委托板上就行，菜畦能重新开张。也可以带上我，在岛上直接交给我。",
+                        "You already found the planting record. Leave it at the Windchime Market board next trip and the garden reopens. Or bring me along and hand it to me on the island."));
             return greeting + L10n.T("我的种植记录落在蛙鸣池了。路过帮我找找，纸上有泥手印。",
                 "I left my planting record at Frogsong Pool. Look for the muddy handprints.");
         }
@@ -33,29 +33,29 @@ namespace BossRush
                 ? L10n.T("今天和你一起跑航路，家里的事回去再张罗。\n", "Today we're walking the lanes together. Home can wait until we get back.\n")
                 : L10n.T("回来啦！咱们成了家，岛上的事也不能丢。\n", "You're back! We've made a home together, but the island still needs us.\n");
             if (!onIsland)
-                greeting += L10n.T("航路任务得回岛接交；我留家时，就去风铃集委托板选「航路任务」。\n",
-                    "Take and turn in route quests on the island. When I stay home, choose Route quests at the Windchime Market board.\n");
+                greeting += L10n.T("航路任务得回岛上接、岛上交。我留在家里的时候，去风铃集委托板找「航路任务」就行。\n",
+                    "Route quests are taken and turned in on the island. When I stay home, the Windchime Market board has them under Route quests.\n");
             if (!data.Has(SkyIslandStoryFlag.BeaconQuestDelivered))
             {
                 string progress = data.BothBeacons
-                    ? L10n.T("两盏灯都亮了！航标这单还没交，交好再到码头找浮舟接下一单。\n",
+                    ? L10n.T("两盏灯都亮了！这单还没交呢，交完再去码头找浮舟接下一单。\n",
                         "Both lamps are lit! Turn in the beacon quest first, then Fuzhou has the next quest at the dock.\n")
                     : data.Has(SkyIslandStoryFlag.WindBeacon)
-                        ? L10n.T("西边风标修好了，还差东边残星工坊的星灯。修好后记得交单。\n",
-                            "The west beacon is repaired; the east star lamp at Fallen Star Workshop still needs work. Turn in the quest once it is lit.\n")
+                        ? L10n.T("西边风标修好了，还差东边残星工坊那盏星灯。点亮了回来跟我说一声。\n",
+                            "The west beacon is repaired. The east star lamp at Fallen Star Workshop still needs work. Come tell me once it burns.\n")
                         : data.Has(SkyIslandStoryFlag.StarLamp)
-                            ? L10n.T("东边星灯亮了，还差西边悬根林的风标。修好后记得交单。\n",
-                                "The east star lamp is lit; the west beacon in Hanging Root Wood still needs work. Turn in the quest once it is repaired.\n")
+                            ? L10n.T("东边星灯亮了，还差西边悬根林那支风标。修好了回来跟我说一声。\n",
+                                "The east star lamp is lit. The west beacon in Hanging Root Wood still needs work. Come tell me once it is fixed.\n")
                             : L10n.T("西边悬根林那支风标，东边残星工坊那盏星灯，都得修。两头一亮，双航标门自己就开。\n",
                                 "The west beacon in Hanging Root Wood and the east star lamp at Fallen Star Workshop both need fixing. Light both ends and the twin-beacon gate opens itself.\n");
                 if (!data.Has(SkyIslandStoryFlag.BeaconQuestAccepted))
-                    progress += L10n.T("航标这单还没接，记得先在岛上的「航路任务」里登记。\n",
-                        "You haven't taken the beacon quest yet. Accept it under Route quests on the island.\n");
-                return greeting + progress + L10n.T("在岛上找我接交；我不在时，就到风铃集委托板选「航路任务」。\n",
-                    "Take and turn in this quest with me on the island; when I am away, choose Route quests at the Windchime Market board.\n");
+                    progress += L10n.T("这单你还没接呢，先在岛上的「航路任务」里接一下。\n",
+                        "You haven't taken this one yet. Accept it under Route quests on the island first.\n");
+                return greeting + progress + L10n.T("在岛上找我接、找我交。我不在的时候，风铃集委托板上也有「航路任务」。\n",
+                    "Take it from me and turn it in to me, on the island. When I am away, the Windchime Market board has Route quests too.\n");
             }
             if (!data.Has(SkyIslandStoryFlag.BellCourtQuestAccepted))
-                return greeting + L10n.T("航标这单已经交好了。去岛上码头找浮舟，在「航路任务」里接下钟庭之争。\n",
+                return greeting + L10n.T("航标这单交好了。去码头找浮舟，在「航路任务」里接下钟庭之争。\n",
                     "The beacon quest is turned in. Find Fuzhou at the island dock and take The Bell Court Standoff under Route quests.\n");
             if (data.Has(SkyIslandStoryFlag.Ending))
                 return greeting + L10n.T("钟响时，两头的风铃也响了。岛上委托板还挂着，回去可以再揭一张。\n",

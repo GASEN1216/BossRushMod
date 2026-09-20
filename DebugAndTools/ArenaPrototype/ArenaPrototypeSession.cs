@@ -147,7 +147,7 @@ namespace BossRush
             {
                 string path = System.IO.Path.Combine(modDir, BundleRelativePath);
                 if (!File.Exists(path)) throw new FileNotFoundException("缺少试验场资源包", path);
-                bundle = AssetBundle.LoadFromFile(path);
+                bundle = ResourceBundleLoader.LoadFromFile(path);
                 if (bundle == null) throw new InvalidOperationException("试验场资源包加载失败");
                 prefab = bundle.LoadAsset<GameObject>("ArenaPrototype");
                 if (prefab == null) throw new InvalidOperationException("资源包内缺少 ArenaPrototype");

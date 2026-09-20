@@ -152,8 +152,15 @@ namespace BossRush
         public int level;
         /// <summary>经验。</summary>
         public int exp;
-        /// <summary>是否异色（孵化即锁定）。</summary>
+        /// <summary>是否异色（孵化即锁定）。极为稀有，最豪华的一档。</summary>
         public bool shiny;
+        /// <summary>
+        /// 炫彩第一色 id（PetNestChroma 调色板）。空串 = 无炫彩。
+        /// SCHEMA+ 2026-09-20：可选字段，老档读出空串就是普通崽。
+        /// </summary>
+        public string chromaA;
+        /// <summary>炫彩第二色 id。与 chromaA 同时有效才算炫彩。</summary>
+        public string chromaB;
         /// <summary>性格 id（孵化即锁定）。</summary>
         public string personalityId;
         /// <summary>生命周期状态。</summary>
@@ -201,6 +208,8 @@ namespace BossRush
             clone.level = level;
             clone.exp = exp;
             clone.shiny = shiny;
+            clone.chromaA = chromaA;
+            clone.chromaB = chromaB;
             clone.personalityId = personalityId;
             clone.state = state;
             clone.lockedByExpeditionId = lockedByExpeditionId;
@@ -341,6 +350,16 @@ namespace BossRush
         /// 奖励身份不能继续依赖仍在巢中的 PetRecord。老档缺失时由 Bundle 按同一 petId 补齐。
         /// </summary>
         public string petLineageKey;
+        /// <summary>
+        /// 出发时固化的异色标记。与 petDisplayName 同理：真死结算会把 PetRecord 从巢里移除，
+        /// 之后再也查不到这只崽是不是异色，而远征列表与翻牌卡恰恰是最需要显示它的地方。
+        /// 老档缺失时是 false，显示成普通名字（不猜、不冒充）。SCHEMA+，schemaVersion 不变。
+        /// </summary>
+        public bool petShiny;
+        /// <summary>出发时固化的炫彩 A 色 id。空 = 无炫彩或老档。</summary>
+        public string petChromaA;
+        /// <summary>出发时固化的炫彩 B 色 id。空 = 无炫彩或老档。</summary>
+        public string petChromaB;
         /// <summary>目的地 id。</summary>
         public string destinationId;
         /// <summary>风险档位（PetNestRiskTier 的 int）。</summary>
@@ -413,6 +432,9 @@ namespace BossRush
             clone.petId = petId;
             clone.petDisplayName = petDisplayName;
             clone.petLineageKey = petLineageKey;
+            clone.petShiny = petShiny;
+            clone.petChromaA = petChromaA;
+            clone.petChromaB = petChromaB;
             clone.destinationId = destinationId;
             clone.riskTier = riskTier;
             clone.departTicks = departTicks;
@@ -500,6 +522,12 @@ namespace BossRush
         public int careerCount;
         /// <summary>是否异色。</summary>
         public bool shiny;
+        /// <summary>
+        /// 炫彩 A / B 色 id。碑文与远征卡同理：崽已经被移除，颜色只能刻在碑上。
+        /// 老档缺失时是空串，碑文退回普通名字。SCHEMA+，schemaVersion 不变。
+        /// </summary>
+        public string chromaA;
+        public string chromaB;
 
         /// <summary>深拷贝。字段一一对应，新增字段必须同步（PetNestModelsGuard 断言）。</summary>
         public PetNestMemorialEntry Clone()
@@ -513,6 +541,8 @@ namespace BossRush
             clone.deathTicks = deathTicks;
             clone.careerCount = careerCount;
             clone.shiny = shiny;
+            clone.chromaA = chromaA;
+            clone.chromaB = chromaB;
             return clone;
         }
     }

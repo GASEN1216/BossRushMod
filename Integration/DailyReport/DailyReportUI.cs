@@ -14,6 +14,11 @@
 //
 // 报纸的"泛黄纸张"是**局部配色**，不是第二套设计 token：
 // ApplyPanelSkin 只给形状不给色，颜色由调用方传入，所以浅色纸面与共享库不冲突。
+//
+// 2026-09-20 改版（owner：「好丑都是文字」）：版面从「可滚动的报纸长条」换成
+// 「卡片仪表盘」。底图与坐标表由 tools/gen_daily_report_ui.py 一次产出，
+// 摆位代码在同名 partial DailyReportUI_Dashboard.cs，本文件只留生命周期、
+// 数据刷新与交互。
 // ============================================================================
 
 using System;
@@ -28,7 +33,7 @@ using UnityEngine.UI;
 namespace BossRush
 {
     /// <summary>《鸭科夫日报》阅读面板。</summary>
-    public class DailyReportView : View
+    public partial class DailyReportView : View
     {
         #region 纸张配色（局部，不进共享 token）
 
@@ -41,23 +46,19 @@ namespace BossRush
         private static readonly Color CellSigned = new Color(0.28f, 0.38f, 0.23f, 1f);
         private static readonly Color CellMilestone = new Color(0.86f, 0.70f, 0.34f, 1f);
         private static readonly Color CellMilestoneDone = new Color(0.45f, 0.35f, 0.12f, 1f);
+        /// <summary>标题药丸上的字色。药丸底是深绿 / 深灰，字必须是浅色。</summary>
+        private static readonly Color PillInk = new Color(0.97f, 0.95f, 0.91f, 1f);
+        private static readonly Color ButtonIdle = new Color(0.69f, 0.52f, 0.19f, 1f);
+        private static readonly Color ButtonHover = new Color(0.78f, 0.61f, 0.26f, 1f);
+        private static readonly Color ButtonDisabled = new Color(0.55f, 0.49f, 0.38f, 1f);
 
         #endregion
 
         #region 布局常量
 
-        private const float PanelWidth = 1333f;
-        private const float PanelHeight = 1013f;
-        private const float Margin = 28f;
-
-        /// <summary>签到墙右侧留给签到按钮与状态的宽度。</summary>
-        private const float SignInSideWidth = 300f;
-
-        /// <summary>签到格边长。34 太小，格子里还要塞"31★"这种两位数带星。</summary>
-        private const float SignInCellSize = 46f;
-
-        /// <summary>图例行高。</summary>
-        private const float LegendRowHeight = 26f;
+        // 面板尺寸与底图 / 版面表同源，不在这里另写一份数字
+        private const float PanelWidth = DailyReportLayoutTable.PanelWidth;
+        private const float PanelHeight = DailyReportLayoutTable.PanelHeight;
 
         private const int HostSortingOrder = BossRushUILayers.Panel;
 
@@ -70,31 +71,30 @@ namespace BossRush
 
         private FadeGroup fadeGroup;
         private RectTransform panelRect;
-        private RectTransform paperFrame, signInArea;
-        private readonly List<PaperRow> paperRows = new List<PaperRow>();
-
-        // 每行保存已有控件；刷新只测量和重排，不销毁重建 View、滚动条或签到格。
-        private sealed class PaperRow
-        {
-            internal RectTransform Left, Right;
-            internal float Minimum, Gap;
-            internal PaperRow(RectTransform left, float minimum, float gap, RectTransform right = null)
-            { Left = left; Right = right; Minimum = minimum; Gap = gap; }
-        }
-        private ScrollRect paperScroll;
-        private TextMeshProUGUI statsTitleText, sideTitleText, closeText, rulesText;
+        private RectTransform paperFrame;
+        private TextMeshProUGUI closeText;
         private readonly List<TextMeshProUGUI> legendLabels = new List<TextMeshProUGUI>();
         private float nextRefreshTime;
         private bool displayedChinese;
         private int displayedDay, displayedPercent, displayedBountyProgress, displayedDeaths, displayedMinutes;
+        private long displayedEarned, displayedSpent;
 
-        private TextMeshProUGUI mastheadText;
-        private TextMeshProUGUI issueText;
-        private TextMeshProUGUI headlineText;
-        private TextMeshProUGUI headlineBodyText;
-        private TextMeshProUGUI statsText;
-        private TextMeshProUGUI sideText;
-        private TextMeshProUGUI bountyText;
+        private TextMeshProUGUI mastheadText;      // 报头大字
+        private TextMeshProUGUI subtitleText;      // 报头副标题
+        private TextMeshProUGUI metaIssueText;     // 第 N 期 · 今日为第 N 天
+        private TextMeshProUGUI metaDeadlineText;  // 距离下期
+        private TextMeshProUGUI weatherText;       // 天气 / 世界时间
+        private TextMeshProUGUI incomeTitleText;   // 药丸：今日收益
+        private TextMeshProUGUI statusTitleText;   // 药丸：今日状态
+        private TextMeshProUGUI signInTitleText;   // 药丸：今日签到
+        private TextMeshProUGUI headlineText;      // 黄条：今日悬赏
+        private TextMeshProUGUI headlineBodyText;  // 收益卡底部：昨日战绩
+        private TextMeshProUGUI statsText;         // 本日进账
+        private TextMeshProUGUI sideText;          // 编辑部提醒
+        private TextMeshProUGUI fortuneText;       // 趣味运势
+        private TextMeshProUGUI editorText;        // 头条
+        private TextMeshProUGUI gossipText;        // 杂谈
+        private TextMeshProUGUI bountyText;        // 悬赏奖金
         private TextMeshProUGUI signInStatusText;
         private Button signInButton;
         private TextMeshProUGUI signInButtonText;
@@ -145,308 +145,12 @@ namespace BossRush
 
             DailyReportView view = root.AddComponent<DailyReportView>();
             view.fadeGroup = fade;
-            view.BuildLayout(rootRect);
+            view.BuildDashboard(rootRect);
 
             root.SetActive(true);
             view.HideImmediately();
             Instance = view;
             return view;
-        }
-
-        private void BuildLayout(RectTransform rootRect)
-        {
-            GameObject panel = ZombieModeUIHelper.CreateRect(
-                "Paper", rootRect, new Vector2(0.5f, 0.5f), new Vector2(PanelWidth, PanelHeight));
-            RectTransform paperRect = panel.GetComponent<RectTransform>();
-            paperFrame = paperRect;
-            BuildPaperScroll(paperRect);
-
-            Image paper = panel.AddComponent<Image>();
-            paper.color = PaperBase;
-            BossRushUI.ApplyPanelSkin(paper, 12);
-
-            float innerWidth = PanelWidth - Margin * 2f;
-
-            // 纵向游标：每块自己申报高度，画完把游标推下去。
-            // 早先是逐块手算 `top - 118f` 这类绝对偏移，任何一块改高度都要重算后面所有块，
-            // 结果就是上半页空、下半页挤。用游标之后加减一块不影响别处。
-            float y = 0f; // 初次占位；正文填充后由 ReflowPaper 按真实字高排版。
-
-            // ---- 报头 ----
-            mastheadText = CreateBlock(
-                "Masthead", L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"), 46f,
-                innerWidth, 56f, ref y, TextAlignmentOptions.Center, PaperInk, 0f);
-
-            issueText = CreateBlock(
-                "Issue", string.Empty, 20f,
-                innerWidth, 28f, ref y, TextAlignmentOptions.Center, PaperInkSoft, 2f);
-
-            AdvanceRule(panelRect, ref y, innerWidth);
-
-            // ---- 头条 ----
-            headlineText = CreateBlock(
-                "Headline", string.Empty, 34f,
-                innerWidth, 44f, ref y, TextAlignmentOptions.Center, PaperInk, 4f);
-
-            headlineBodyText = CreateBlock(
-                "HeadlineBody", string.Empty, 22f,
-                innerWidth, 54f, ref y, TextAlignmentOptions.Top, PaperInkSoft, 4f);
-            AllowWrap(headlineBodyText);
-
-            AdvanceRule(panelRect, ref y, innerWidth);
-
-            // ---- 双栏：左战绩 / 右天气运势杂谈 ----
-            float columnWidth = innerWidth * 0.5f - 14f;
-            float columnCenterX = innerWidth * 0.25f + 7f;
-            const float columnBodyHeight = 168f;
-
-            float titleY = y - 13f;
-            statsTitleText = CreateColumnTitle("StatsTitle", L10n.T("昨 日 战 绩", "YESTERDAY"),
-                -columnCenterX, titleY, columnWidth);
-            sideTitleText = CreateColumnTitle("SideTitle", L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"),
-                columnCenterX, titleY, columnWidth);
-            paperRows.Add(new PaperRow(statsTitleText.rectTransform, 26f, 4f, sideTitleText.rectTransform));
-            y -= 30f;
-
-            float bodyY = y - columnBodyHeight * 0.5f;
-            statsText = CreateColumnBody("Stats", -columnCenterX, bodyY, columnWidth, columnBodyHeight);
-            sideText = CreateColumnBody("Side", columnCenterX, bodyY, columnWidth, columnBodyHeight);
-            paperRows.Add(new PaperRow(statsText.rectTransform, columnBodyHeight, 6f, sideText.rectTransform));
-            y -= columnBodyHeight + 6f;
-
-            AdvanceRule(panelRect, ref y, innerWidth);
-
-            // ---- 悬赏栏 ----
-            bountyText = CreateBlock(
-                "Bounty", string.Empty, 21f,
-                innerWidth, 78f, ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 4f);
-            AllowWrap(bountyText);
-
-            AdvanceRule(panelRect, ref y, innerWidth);
-
-            // ---- 签到墙 ----
-            signInArea = ZombieModeUIHelper.CreateRect("SignInArea", panelRect,
-                new Vector2(0.5f, 0.5f), new Vector2(innerWidth, 210f)).GetComponent<RectTransform>();
-            float signY = 105f;
-            BuildSignInGrid(signInArea, innerWidth, ref signY);
-            PinSignInContentToTop();
-            paperRows.Add(new PaperRow(signInArea, 210f, 4f));
-
-            rulesText = CreateBlock("Rules", string.Empty, 18f, innerWidth, 30f,
-                ref y, TextAlignmentOptions.TopLeft, PaperInkSoft, 0f);
-            AllowWrap(rulesText);
-
-            // 关闭按钮固定在纸面下沿，正文和签到墙共用滚动区。
-            Button close = ZombieModeUIHelper.CreateButton(
-                "Close", paperRect, L10n.T("合上报纸", "Close"),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(innerWidth * 0.5f - 70f, -PanelHeight * 0.5f + Margin + 18f),
-                new Vector2(140f, 36f),
-                PaperRaised, 16f, new Vector2(130f, 30f),
-                OnCloseClicked, true);
-            if (close != null) closeText = close.GetComponentInChildren<TextMeshProUGUI>();
-        }
-
-        private void BuildPaperScroll(RectTransform paperRect)
-        {
-            ScrollRect prefab = Duckov.Utilities.GameplayDataSettings.UIPrefabs.ScrollRect;
-            if (prefab != null)
-            {
-                paperScroll = Instantiate(prefab, paperRect);
-                // 只替换布局容器，继续使用官方滚动条与输入组件。
-                if (paperScroll.content != null) Destroy(paperScroll.content.gameObject);
-            }
-            else
-            {
-                GameObject host = new GameObject("PaperScroll", typeof(RectTransform), typeof(ScrollRect));
-                host.transform.SetParent(paperRect, false);
-                paperScroll = host.GetComponent<ScrollRect>();
-                GameObject viewport = new GameObject("Viewport", typeof(RectTransform), typeof(RectMask2D));
-                viewport.transform.SetParent(host.transform, false);
-                paperScroll.viewport = viewport.GetComponent<RectTransform>();
-                StretchRect(paperScroll.viewport);
-            }
-            RectTransform scrollRect = paperScroll.GetComponent<RectTransform>();
-            StretchRect(scrollRect);
-            scrollRect.offsetMin = new Vector2(0f, 64f);
-            scrollRect.offsetMax = new Vector2(0f, -8f);
-            GameObject content = new GameObject("PaperContent", typeof(RectTransform));
-            content.transform.SetParent(paperScroll.viewport, false);
-            panelRect = content.GetComponent<RectTransform>();
-            panelRect.anchorMin = new Vector2(0f, 1f);
-            panelRect.anchorMax = new Vector2(1f, 1f);
-            panelRect.pivot = new Vector2(0.5f, 1f);
-            panelRect.sizeDelta = new Vector2(-20f, PanelHeight);
-            paperScroll.content = panelRect;
-            BossRushUI.ConfigureScrollRect(paperScroll);
-            paperScroll.verticalNormalizedPosition = 1f;
-        }
-
-        /// <summary>铺一整幅宽的文本块，并把游标推到它下面。</summary>
-        private TextMeshProUGUI CreateBlock(
-            string name, string content, float fontSize, float width, float height,
-            ref float y, TextAlignmentOptions alignment, Color color, float gapAfter)
-        {
-            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
-                name, panelRect, content, fontSize,
-                new Vector2(0f, y - height * 0.5f), new Vector2(width, height),
-                alignment, color);
-            LockFontSize(text, fontSize);
-            paperRows.Add(new PaperRow(text.rectTransform, height, gapAfter));
-            y -= height + gapAfter;
-            return text;
-        }
-
-        /// <summary>画一条分隔线并把游标推过它。</summary>
-        private void AdvanceRule(RectTransform parent, ref float y, float width)
-        {
-            y -= 5f;
-            RectTransform rule = CreateRule(parent, new Vector2(0f, y), width);
-            paperRows.Add(new PaperRow(rule, 2f, 11f));
-            y -= 8f;
-        }
-
-        private TextMeshProUGUI CreateColumnTitle(string name, string content, float x, float y, float width)
-        {
-            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
-                name, panelRect, content, 19f,
-                new Vector2(x, y), new Vector2(width, 26f),
-                TextAlignmentOptions.Center, PaperInk);
-            LockFontSize(text, 19f);
-            return text;
-        }
-
-        private TextMeshProUGUI CreateColumnBody(string name, float x, float y, float width, float height)
-        {
-            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
-                name, panelRect, string.Empty, 22f,
-                new Vector2(x, y), new Vector2(width, height),
-                TextAlignmentOptions.TopLeft, PaperInkSoft);
-            LockFontSize(text, 22f);
-            AllowWrap(text);
-            return text;
-        }
-
-        /// <summary>
-        /// 签到墙：一期 30 格，10 列 3 行，右侧是签到按钮与状态。
-        ///
-        /// 格子有四种配色（未签 / 已签 / 里程碑未签 / 里程碑已领），
-        /// **必须配图例**——四种土黄绿褐在纸面上彼此接近，没有图例玩家分不出
-        /// 哪格是"再签就能领奖"、哪格只是"还没到"。
-        /// </summary>
-        private void BuildSignInGrid(RectTransform parent, float innerWidth, ref float y)
-        {
-            const int columns = 10;
-            const int rows = 3;
-            const float rowGap = 8f;
-
-            float gridWidth = innerWidth - SignInSideWidth;
-            float gapX = (gridWidth - columns * SignInCellSize) / (columns - 1);
-            if (gapX < 2f) gapX = 2f;
-            float startX = -innerWidth * 0.5f + SignInCellSize * 0.5f;
-
-            float gridTop = y;
-
-            for (int i = 0; i < DailyReportTuning.DaysPerPeriod; i++)
-            {
-                int row = i / columns;
-                int col = i % columns;
-                if (row >= rows) break;
-
-                float x = startX + col * (SignInCellSize + gapX);
-                float cellY = gridTop - SignInCellSize * 0.5f - row * (SignInCellSize + rowGap);
-
-                GameObject cell = ZombieModeUIHelper.CreateRect(
-                    "Cell" + (i + 1), parent, new Vector2(0.5f, 0.5f),
-                    new Vector2(SignInCellSize, SignInCellSize));
-                cell.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, cellY);
-
-                Image img = cell.AddComponent<Image>();
-                img.color = CellEmpty;
-                BossRushUI.ApplyPanelSkin(img, 6, BossRushUISkinPart.Card);
-                signInCells.Add(img);
-
-                TextMeshProUGUI label = ZombieModeUIHelper.CreateText(
-                    "Label", cell.transform, string.Empty, 19f,
-                    Vector2.zero, new Vector2(SignInCellSize, SignInCellSize),
-                    TextAlignmentOptions.Center, PaperInk);
-                LockFontSize(label, 19f);
-                signInCellLabels.Add(label);
-            }
-
-            float gridHeight = rows * SignInCellSize + (rows - 1) * rowGap;
-
-            // 签到按钮与状态：竖向对齐到网格中线
-            float rightX = innerWidth * 0.5f - SignInSideWidth * 0.5f + 10f;
-            float gridMidY = gridTop - gridHeight * 0.5f;
-
-            signInButton = ZombieModeUIHelper.CreateButton(
-                "SignIn", parent, L10n.T("签 到", "CHECK IN"),
-                new Vector2(0.5f, 0.5f),
-                new Vector2(rightX, gridMidY + 34f),
-                new Vector2(200f, 46f),
-                CellMilestone, 19f, new Vector2(190f, 40f),
-                OnSignInClicked, true);
-
-            if (signInButton != null)
-            {
-                signInButtonText = signInButton.GetComponentInChildren<TextMeshProUGUI>();
-            }
-
-            signInStatusText = ZombieModeUIHelper.CreateText(
-                "SignInStatus", parent, string.Empty, 18f,
-                new Vector2(rightX, gridMidY - 48f), new Vector2(220f, 104f),
-                TextAlignmentOptions.Top, PaperInkSoft);
-            LockFontSize(signInStatusText, 18f);
-            AllowWrap(signInStatusText);
-
-            y = gridTop - gridHeight - 10f;
-
-            BuildSignInLegend(parent, ref y, innerWidth);
-        }
-
-        /// <summary>四色图例：一行色块 + 说明，紧贴签到墙下沿。</summary>
-        private void BuildSignInLegend(RectTransform parent, ref float y, float innerWidth)
-        {
-            const float swatch = 14f;
-            float centerY = y - LegendRowHeight * 0.5f;
-            float x = -innerWidth * 0.5f + swatch * 0.5f + 2f;
-
-            x = AddLegendItem(parent, x, centerY, swatch, CellEmpty,
-                L10n.T("未签", "Upcoming"));
-            x = AddLegendItem(parent, x, centerY, swatch, CellSigned,
-                L10n.T("已签", "Signed"));
-            x = AddLegendItem(parent, x, centerY, swatch, CellMilestone,
-                L10n.T("★ 奖励格", "★ Reward"));
-            AddLegendItem(parent, x, centerY, swatch, CellMilestoneDone,
-                L10n.T("奖励已领", "Claimed"));
-
-            y -= LegendRowHeight;
-        }
-
-        /// <summary>画一个「色块 + 文字」并返回下一个条目的起始 x。</summary>
-        private float AddLegendItem(
-            RectTransform parent, float x, float centerY, float swatch, Color color, string label)
-        {
-            GameObject box = ZombieModeUIHelper.CreateRect(
-                "LegendSwatch", parent, new Vector2(0.5f, 0.5f), new Vector2(swatch, swatch));
-            box.GetComponent<RectTransform>().anchoredPosition = new Vector2(x, centerY);
-            Image image = box.AddComponent<Image>();
-            image.color = color;
-            BossRushUI.ApplyPanelSkin(image, 4, BossRushUISkinPart.Card);
-            image.raycastTarget = false;
-
-            const float labelWidth = 126f;
-            TextMeshProUGUI text = ZombieModeUIHelper.CreateText(
-                "LegendLabel", parent, label, 17f,
-                new Vector2(x + swatch * 0.5f + 6f + labelWidth * 0.5f, centerY),
-                new Vector2(labelWidth, LegendRowHeight),
-                TextAlignmentOptions.Left, PaperInkSoft);
-            LockFontSize(text, 17f);
-            text.raycastTarget = false;
-            legendLabels.Add(text);
-
-            return x + swatch + 12f + labelWidth;
         }
 
         #endregion
@@ -482,36 +186,57 @@ namespace BossRush
                 displayedPercent = Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f);
                 displayedBountyProgress = issue.TodayBountyProgress;
                 displayedDeaths = data.Today != null ? data.Today.Deaths : 0;
+                displayedEarned = data.Today != null ? data.Today.MoneyEarned : 0L;
+                displayedSpent = data.Today != null ? data.Today.MoneySpent : 0L;
                 displayedMinutes = DailyReportService.GetRemainingPlayMinutes();
-                SetText(issueText, L10n.T(
-                    "第 " + issue.IssueNumber + " 期　·　今日为第 " + data.DayIndex + " 天　·　当日进度 "
-                        + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%",
-                    "Issue " + issue.IssueNumber + "  ·  Day " + data.DayIndex + "  ·  today "
-                        + Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f) + "%"));
 
-                string deadline = displayedMinutes < 0
+                SetText(metaIssueText, L10n.T(
+                    "第 " + issue.IssueNumber + " 期\n今日为第 " + data.DayIndex + " 天 · 进度 "
+                        + displayedPercent + "%",
+                    "Issue " + issue.IssueNumber + "\nDay " + data.DayIndex + " · " + displayedPercent + "%"));
+
+                SetText(metaDeadlineText, displayedMinutes < 0
                     ? L10n.T("日报时钟已停", "Daily clock stopped")
                     : displayedMinutes == 0
                     ? L10n.T("等待出刊结算", "Awaiting settlement")
-                    : L10n.T("距下期约 " + displayedMinutes + " 分钟游玩时间",
-                        "Next issue in about " + displayedMinutes + " minutes of play");
-                SetText(issueText, issueText.text + "　·　" + deadline);
+                    : L10n.T("距离下期 " + displayedMinutes + " 分钟",
+                        "Next issue in " + displayedMinutes + " min"));
 
-                SetText(headlineText, issue.Headline);
-                SetText(headlineBodyText, issue.HeadlineBody);
-                SetText(statsText, JoinLines(issue.StatLines));
-                SetText(sideText, issue.WeatherLine + "\n" + issue.FortuneLine + "\n" + issue.GossipLine);
-                SetText(bountyText, BuildBountyBlock(issue));
+                SetText(weatherText, issue.WeatherLine);
+                SetText(statsText, BuildIncomeBlock(issue, data));
+                SetText(bountyText, BuildBountyValueBlock(issue));
+                SetText(headlineText, BuildBountyBlock(issue));
+                SetText(headlineBodyText, JoinLines(issue.StatLines));
+                SetText(fortuneText, issue.FortuneLine);
+                SetText(editorText, issue.Headline);
+                SetText(sideText, issue.HeadlineBody);
+                SetText(gossipText, issue.GossipLine);
 
                 RefreshSignInGrid(data);
                 RefreshSignInButton(data);
-                ReflowPaper();
                 FitPaper();
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog(DailyReportTuning.LogPrefix + "[WARNING] 面板刷新失败: " + e.Message);
             }
+        }
+
+        /// <summary>收益块：本日进账 + 当日进度（与报头的百分比同源）。</summary>
+        private static string BuildIncomeBlock(DailyReportIssue issue, DailyReportData data)
+        {
+            long earned = data.Today != null ? data.Today.MoneyEarned : 0L;
+            long spent = data.Today != null ? data.Today.MoneySpent : 0L;
+            return L10n.T("本日进账", "Today's income") + "\n<size=30><b>" + earned + "</b></size> "
+                + L10n.T("金", "cash")
+                + "  <size=17>(" + L10n.T("支出 ", "spent ") + spent + ")</size>";
+        }
+
+        /// <summary>奖金块：今日悬赏奖金 + 结算时机。</summary>
+        private static string BuildBountyValueBlock(DailyReportIssue issue)
+        {
+            return L10n.T("奖金", "Bounty") + "\n<size=30><b>" + issue.TodayBountyCash + "</b></size> "
+                + L10n.T("金（下期结算）", "cash (next issue)");
         }
 
         private static string BuildBountyBlock(DailyReportIssue issue)
@@ -629,60 +354,9 @@ namespace BossRush
                 || displayedPercent != Mathf.RoundToInt(DailyReportService.DayProgress01 * 100f)
                 || displayedBountyProgress != DailyReportService.GetActiveBountyProgress()
                 || displayedDeaths != (data.Today != null ? data.Today.Deaths : 0)
+                || displayedEarned != (data.Today != null ? data.Today.MoneyEarned : 0L)
+                || displayedSpent != (data.Today != null ? data.Today.MoneySpent : 0L)
                 || displayedMinutes != DailyReportService.GetRemainingPlayMinutes()) Refresh();
-        }
-
-        // 签到区扩高时，按钮和网格留在原位，说明只向下延伸。
-        private void PinSignInContentToTop()
-        {
-            float halfHeight = signInArea.rect.height * 0.5f;
-            for (int i = 0; i < signInArea.childCount; i++)
-            {
-                RectTransform child = signInArea.GetChild(i) as RectTransform;
-                if (child == null) continue;
-                Vector2 position = child.anchoredPosition;
-                position.y += child.rect.height * (1f - child.pivot.y) - halfHeight;
-                child.anchorMin = child.anchorMax = new Vector2(0.5f, 1f);
-                child.pivot = new Vector2(child.pivot.x, 1f);
-                child.anchoredPosition = position;
-            }
-        }
-
-        // 文字测量复用共享库；双栏取较高的一栏，整张纸的滚动范围跟随行高。
-        private void ReflowPaper()
-        {
-            if (panelRect == null) return;
-            float scroll = paperScroll != null ? paperScroll.verticalNormalizedPosition : 1f;
-            float y = Margin;
-            for (int i = 0; i < paperRows.Count; i++)
-            {
-                PaperRow row = paperRows[i];
-                float height = MeasureRowPart(row.Left, row.Minimum);
-                if (row.Right != null) height = Mathf.Max(height, MeasureRowPart(row.Right, row.Minimum));
-                if (row.Left == signInArea && signInStatusText != null)
-                {
-                    float statusHeight = BossRushUI.MeasureTextHeight(signInStatusText, 220f, 104f);
-                    height += Mathf.Max(0f, statusHeight - 104f);
-                }
-                PlaceRowPart(row.Left, y, height);
-                if (row.Right != null) PlaceRowPart(row.Right, y, height);
-                y += height + row.Gap;
-            }
-            panelRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, y + Margin);
-            if (paperScroll != null) paperScroll.verticalNormalizedPosition = scroll;
-        }
-
-        private static float MeasureRowPart(RectTransform rect, float minimum)
-        {
-            TextMeshProUGUI text = rect.GetComponent<TextMeshProUGUI>();
-            return text != null ? BossRushUI.MeasureTextHeight(text, rect.rect.width, minimum) : minimum;
-        }
-
-        private static void PlaceRowPart(RectTransform rect, float top, float height)
-        {
-            rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f);
-            rect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
-            rect.anchoredPosition = new Vector2(rect.anchoredPosition.x, -top - height * 0.5f);
         }
 
         private void FitPaper()
@@ -699,16 +373,15 @@ namespace BossRush
 
         private void RefreshLabels()
         {
-            SetText(mastheadText, L10n.T("鸭 科 夫 日 报", "THE DUCKOV DAILY"));
-            SetText(statsTitleText, L10n.T("昨 日 战 绩", "YESTERDAY"));
-            SetText(sideTitleText, L10n.T("气 象 与 杂 谈", "WEATHER & GOSSIP"));
+            SetText(mastheadText, L10n.T("鸭科夫日报", "THE DUCKOV DAILY"));
+            SetText(subtitleText, L10n.T("D U C K   N E W S", "D U C K   N E W S"));
+            SetText(incomeTitleText, L10n.T("今日收益", "TODAY'S INCOME"));
+            SetText(statusTitleText, L10n.T("鸭科夫 · 今日状态", "DUCKOV · TODAY"));
+            SetText(signInTitleText, L10n.T("今日签到", "CHECK-IN"));
             SetText(closeText, L10n.T("合上报纸", "Close"));
             string[] labels = { L10n.T("未签", "Upcoming"), L10n.T("已签", "Signed"),
                 L10n.T("★ 奖励格", "★ Reward"), L10n.T("奖励已领", "Claimed") };
             for (int i = 0; i < legendLabels.Count && i < labels.Length; i++) SetText(legendLabels[i], labels[i]);
-            SetText(rulesText, L10n.T(
-                "每日签到领小礼，奖品到快递站领取。漏签重置本期，已得奖品保留；悬赏次日结算。",
-                "Daily gifts go to your delivery point. Missing a day resets this period; earned prizes remain. Bounties settle next issue."));
         }
 
         #region 交互
@@ -861,7 +534,16 @@ namespace BossRush
         {
             if (target == null) return;
             value = value ?? string.Empty;
-            if (target.text != value) target.text = value;
+            if (target.text == value) return;
+            target.text = value;
+            ScrollRect scroll = target.GetComponentInParent<ScrollRect>();
+            if (scroll != null && scroll.content == target.rectTransform && scroll.viewport != null)
+            {
+                float height = Mathf.Max(scroll.viewport.rect.height,
+                    target.GetPreferredValues(value, scroll.viewport.rect.width, float.PositiveInfinity).y + 8f);
+                target.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
+                scroll.verticalNormalizedPosition = 1f;
+            }
         }
 
         private static string JoinLines(List<string> lines)
@@ -874,17 +556,6 @@ namespace BossRush
                 result += lines[i];
             }
             return result;
-        }
-
-        private static RectTransform CreateRule(RectTransform parent, Vector2 position, float width)
-        {
-            GameObject rule = ZombieModeUIHelper.CreateRect(
-                "Rule", parent, new Vector2(0.5f, 0.5f), new Vector2(width, 2f));
-            rule.GetComponent<RectTransform>().anchoredPosition = position;
-            Image image = rule.AddComponent<Image>();
-            image.color = PaperRule;
-            image.raycastTarget = false;
-            return rule.GetComponent<RectTransform>();
         }
 
         private static void StretchRect(RectTransform rect)

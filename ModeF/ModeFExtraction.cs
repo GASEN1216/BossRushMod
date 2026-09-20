@@ -31,13 +31,10 @@ namespace BossRush
             CleanupModeFExtractionMapMarker();
             try
             {
-                string sceneId = null;
-                try
-                {
-                    var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-                    sceneId = activeScene.name;
-                }
-                catch { }
+                // 官方要的是场景表里的场景 ID，不是 Unity 场景名（两者在官方数据里确实有不一样的条目，
+                // 见 Utilities/MapPointSceneResolver.cs）。零号区恰好同名，所以这里此前没暴露问题；
+                // 换成共享解析之后，Mode F 将来跑在别的地图上也不会静默丢标记。
+                string sceneId = MapPointSceneResolver.Resolve();
 
                 string label = L10n.T("撤离点", "Extraction");
                 modeFExtractionMapMarker = Duckov.MiniMaps.SimplePointOfInterest.Create(

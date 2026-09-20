@@ -6,14 +6,14 @@
 //   - 被动：电抗提升（ElementFactor_Electricity -0.5，即减少 50% 电伤）
 //   - 被动：受到的电系伤害按 50% 回补为治疗（算法照龙套装的火焰转治疗）
 //   - 常驻：青白色双眼电闪 + 肩部环境电弧（见 ThunderSetBonus_Storm.cs）
-//   - 击杀触发「引雷术」：连锁闪电（见 ThunderSetBonus_Storm.cs）
+//   - 普攻触发「雷噬」：打中敌人时向周围最多 2 个其它敌人各放一道小电弧，带内置冷却（见 ThunderSetBonus_Storm.cs）
 //   - 受击触发「雷霆反震」：被 6 米内的攻击者命中时 25% 概率以玩家为中心释放电击 AOE
 //     （3 米 / 12 电伤 / 5 秒冷却 / canHurtSelf=false 不伤自己与友军），附电弧与爆发环
 //
 // 实现方式：
-//   通过 Health.OnHurt / Health.OnDead 静态事件（命名方法、成对订阅、私有 bool 幂等）监听主角受击与全局死亡；
-//   反震与引雷术的结算都延后一帧到协程：OnHurt 可能正处在敌方爆炸的 ExplosionManager 循环里，
-//   嵌套 CreateExplosion 会覆写其共享缓冲；OnDead 内同步再 Hurt 也会让死亡派发顺序倒置。
+//   通过 Health.OnHurt / Health.OnDead 静态事件（命名方法、成对订阅、私有 bool 幂等）监听全局受击与全局死亡；
+//   反震与雷噬的结算都延后到协程：OnHurt 可能正处在敌方爆炸的 ExplosionManager 循环里，
+//   嵌套 CreateExplosion 会覆写其共享缓冲；回调内同步再 Hurt 也会让伤害派发顺序倒置。
 //   两件装备的 StormProtection +1（风暴天气免疫）、售价等静态属性在 FrostThunderSetConfig。
 // ============================================================================
 
@@ -27,7 +27,7 @@ using ItemStatsSystem.Items;
 namespace BossRush
 {
     /// <summary>
-    /// 雷霆套装效果 - 电伤转治疗 + 受击雷霆反震（引雷术在 ThunderSetBonus_Storm.cs）
+    /// 雷霆套装效果 - 电伤转治疗 + 受击雷霆反震（雷噬在 ThunderSetBonus_Storm.cs）
     /// </summary>
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
@@ -94,7 +94,7 @@ namespace BossRush
                     }
                 }
 
-                // 2. 注册受击/死亡事件（反震 + 引雷术）
+                // 2. 注册受击/死亡事件（雷噬 + 反震）
                 RegisterThunderSetHurtEvent();
 
                 // 3. 常驻表现：眼光电闪 + 肩部环境电弧
@@ -105,8 +105,8 @@ namespace BossRush
                 if (announce)
                 {
                     ShowMessage(L10n.T(
-                        "<color=#FFD700>【雷霆之怒】</color> 套装效果激活！\n电伤转治疗 · 击杀引雷连锁 · 受击雷霆反震",
-                        "<color=#FFD700>[Thunder's Wrath]</color> Set bonus activated!\nShock heals you · kills chain lightning · counter-shock when hit"
+                        "<color=#FFD700>【雷霆之怒】</color> 套装效果激活！\n电伤转治疗 · 普攻附带雷噬 · 受击雷霆反震",
+                        "<color=#FFD700>[Thunder's Wrath]</color> Set bonus activated!\nShock heals you · attacks arc to nearby foes · counter-shock when hit"
                     ));
                 }
             }
@@ -143,7 +143,7 @@ namespace BossRush
                 // 2. 取消受击/死亡事件
                 UnregisterThunderSetHurtEvent();
 
-                // 3. 清理表现层与引雷术状态。先递增代数，让已排队的延时结算协程整条作废
+                // 3. 清理表现层与雷噬状态。先递增代数，让已排队的延时结算协程整条作废
                 BumpSetBonusGeneration();
                 StopThunderAmbientArcLoop();
                 DestroySetEyeLights(ref thunderSetEyeLights);
@@ -203,31 +203,39 @@ namespace BossRush
         /// <summary>
         /// 全局死亡分派器（唯一的 Health.OnDead 订阅点，保证 += / -= 同文件配对）：
         /// - 主角死亡：重置冷却。Mode E/F 等模式支持局内复活，避免复活瞬间被打就触发反制。
-        /// - 其他角色死亡：交给引雷术判定（ThunderSetBonus_Storm.cs），只在套装激活时有效。
+        /// - 其他角色死亡：不再触发任何套装效果（2026-09-20 起雷噬改为普攻附带，
+        ///   见 ThunderSetBonus_Storm.cs），这里只留主角分支。
         /// </summary>
         private void OnThunderSetAnyDead(Health target, DamageInfo damageInfo)
         {
             if (target == null) return;
-            if (target.IsMainCharacterHealth)
-            {
-                BumpSetBonusGeneration(); // 死亡作废仍在等待的连锁与反震，局内复活不继承旧结算。
-                lastThunderTriggerTime = -999f;
-                ResetThunderChainState();
-                return;
-            }
+            if (!target.IsMainCharacterHealth) return;
 
-            TryScheduleThunderChain(target, damageInfo);
+            BumpSetBonusGeneration(); // 死亡作废仍在等待的雷噬与反震，局内复活不继承旧结算。
+            lastThunderTriggerTime = -999f;
+            ResetThunderChainState();
         }
 
         /// <summary>
-        /// 雷霆套受击回调 - 电伤转治疗 + 概率雷霆反震
+        /// 雷霆套受击回调：
+        /// - 敌人被主角打中 → 雷噬（普攻附带，见 ThunderSetBonus_Storm.cs）；
+        /// - 主角受击 → 电伤转治疗 + 概率雷霆反震。
         /// </summary>
         private void OnThunderSetHurt(Health health, DamageInfo damageInfo)
         {
             try
             {
+                if (!thunderSetActive || health == null) return;
+
+                // 敌人侧：普攻附带的雷噬。放在最前面，主角分支的判据与它互斥。
+                if (!health.IsMainCharacterHealth)
+                {
+                    TryScheduleThunderBite(health, damageInfo);
+                    return;
+                }
+
                 // 只处理主角受击
-                if (!thunderSetActive || health == null || health.IsDead || !health.IsMainCharacterHealth) return;
+                if (health.IsDead) return;
 
                 // 1) 电伤转治疗（OnHurt 在扣血之后派发，只做回补，下一帧生效）
                 float electricDamage = GetSetBonusElementDamagePortion(health, damageInfo, ElementTypes.electricity);
@@ -299,7 +307,7 @@ namespace BossRush
                     origin,
                     THUNDER_SET_COUNTER_RADIUS,
                     dmg,
-                    ExplosionFxTypes.normal,
+                    ExplosionFxTypes.flash,
                     0.3f,
                     false
                 );

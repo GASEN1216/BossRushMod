@@ -56,8 +56,8 @@ internal static class LocalizationRegression
     internal static void Run(Action<bool, string> check)
     {
         string[] keys = { "BossRush_SkyIsland_Departure", "BossRush_SkyIslandPrelude_Objective", "BossRush_SkyIslandPrelude_Instrument" };
-        string[] english = { "Depart for Sky Islands · Qinglan", "Lost Navigation Instrument", "Read the lost navigation instrument" };
-        string[] chinese = { "前往天空岛 · 晴岚群岛", "失落的航向仪", "读取失落的航向仪" };
+        string[] english = { "Depart for Sky Islands · Qinglan", "Lost Navigation Instrument", "Salvage a navigation instrument" };
+        string[] chinese = { "前往天空岛 · 晴岚群岛", "失落的航向仪", "从残骸里拆一具航向仪" };
         var sign = new SkyIslandRuntimeModule();
         var label = new GameObject("sign").AddComponent<TextMeshProUGUI>();
         sign.BindText(label);

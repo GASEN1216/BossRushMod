@@ -24,6 +24,7 @@ namespace BossRush
         private const string BannerAssetName = "modeg_echo_banner";
         private const string DevRawRelativeDir = "Assets/ui/ModeG";
 
+        private static readonly System.Collections.Generic.List<Sprite> ownedRawSprites = new System.Collections.Generic.List<Sprite>();
         private static AssetBundle _bundle;
         private static bool _loadAttempted;
         private static bool _preflightAttempted;
@@ -140,7 +141,7 @@ namespace BossRush
                     return false;
                 }
 
-                _bundle = AssetBundle.LoadFromFile(bundlePath);
+                _bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (_bundle == null)
                 {
                     ModBehaviour.DevLog("[ModeG] 展示 bundle 加载失败: " + bundlePath);
@@ -177,31 +178,11 @@ namespace BossRush
 
         private static Sprite LoadDevRawSprite(string assetName)
         {
-            try
-            {
-                if (!ModeGAvailability.AllowDevRawPngFallback) return null;
-
-                string path = assetName == EmblemAssetName ? DevRawEmblemPath() : DevRawBannerPath();
-                if (path == null || !System.IO.File.Exists(path)) return null;
-
-                byte[] bytes = System.IO.File.ReadAllBytes(path);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes))
-                {
-                    UnityEngine.Object.Destroy(texture);
-                    return null;
-                }
-
-                ModBehaviour.DevLog("[ModeG] [DEV] 使用 raw PNG fallback: " + assetName);
-                return Sprite.Create(texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[ModeG] [WARNING] raw PNG fallback 失败 " + assetName + ": " + e.Message);
-                return null;
-            }
+            if (!ModeGAvailability.AllowDevRawPngFallback) return null;
+            string path = System.IO.Path.Combine(ModBehaviour.GetModPath(), DevRawRelativeDir, assetName + ".png");
+            Sprite sprite = RawImageLoader.LoadSprite(path, assetName);
+            if (sprite != null) ownedRawSprites.Add(sprite);
+            return sprite;
         }
 
         private static string DevRawEmblemPath()
@@ -241,6 +222,14 @@ namespace BossRush
         /// </summary>
         public static void Unload()
         {
+            foreach (Sprite sprite in ownedRawSprites)
+            {
+                if (sprite == null) continue;
+                Texture2D texture = sprite.texture;
+                UnityEngine.Object.Destroy(sprite);
+                if (texture != null) UnityEngine.Object.Destroy(texture);
+            }
+            ownedRawSprites.Clear();
             try
             {
                 if (_bundle != null)

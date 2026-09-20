@@ -53,9 +53,11 @@ POLICY = [
     (r"^UI/Campaign/campaign_portrait_", 1024, True, "征程立绘"),
     (r"^UI/Campaign/campaign_poster_", 1024, True, "征程章节海报"),
     (r"_banner\.png$|_Banner\.png$", 1024, True, "模式横幅"),
+    # ModeG 专用构建器冻结 256x256；确认页显示 84x84，保留约三倍采样。
+    (r"^UI/ModeG/modeg_echo_emblem\.png$", 256, True, "Mode G 徽记（构建契约 256）"),
     (r"_emblem\.png$|_Emblem\.png$", 512, True, "模式徽记（源图 512）"),
     # ---------- 随身装备 / 武器模型贴图：上限 512 ----------
-    (r"^SkyIslandBossGear/Models/", 512, False, "天空岛头目装备 albedo"),
+    (r"^SkyIslandBossGear/Models/", 512, True, "天空岛头目装备 albedo"),
     (r"^MeshyImports/new/", 512, True, "五把新武器与冰雷套装模型贴图"),
     (r"^MeshyImports/Frostmourne/", 512, True, "霜之哀伤模型贴图"),
     (r"^MeshyImports/FenHuang/", 512, True, "焚皇断界戟模型贴图"),
@@ -80,7 +82,8 @@ def iter_texture_metas(assets_root):
                 continue
             meta_path = os.path.join(dirpath, name)
             try:
-                text = open(meta_path, encoding="utf-8", errors="ignore").read()
+                with open(meta_path, encoding="utf-8", newline="") as handle:
+                    text = handle.read()
             except OSError:
                 continue
             if "TextureImporter" not in text:
@@ -99,22 +102,22 @@ def match_policy(rel):
 def _rewrite_entry(chunk, target_size, kill_crunch, label, changes):
     """只改一个 platformSettings 条目；条目文本原样返回时表示没有改动。"""
     def _size(match):
-        current = int(match.group(1))
+        current = int(match.group(2))
         if current == target_size:
             return match.group(0)
         changes.append("%s maxTextureSize %d -> %d" % (label, current, target_size))
-        return "    maxTextureSize: %d" % target_size
+        return match.group(1) + str(target_size) + match.group(3)
 
-    chunk = re.sub(r"(?m)^    maxTextureSize:\s*(\d+)\s*$", _size, chunk, count=1)
+    chunk = re.sub(r"(?m)^(    maxTextureSize:[ \t]*)(\d+)([ \t]*)(?=\r?$)", _size, chunk, count=1)
 
     if kill_crunch:
         def _crunch(match):
-            if match.group(1) == "0":
+            if match.group(2) == "0":
                 return match.group(0)
             changes.append("%s crunchedCompression on -> off" % label)
-            return "    crunchedCompression: 0"
+            return match.group(1) + "0" + match.group(3)
 
-        chunk = re.sub(r"(?m)^    crunchedCompression:\s*(\d+)\s*$", _crunch, chunk, count=1)
+        chunk = re.sub(r"(?m)^(    crunchedCompression:[ \t]*)(\d+)([ \t]*)(?=\r?$)", _crunch, chunk, count=1)
     return chunk
 
 
@@ -130,15 +133,15 @@ def rewrite(text, target_size, kill_crunch):
     if not sep:
         return text, changes
 
-    # 顶层 maxTextureSize：Unity 写 TextureImporter.maxTextureSize 时会同步这一处。
+    # 顶层 legacy 字段在 Unity 2022.3 中未必随平台 API 更新；与实际平台设置一起保持策略一致。
     def _head_sub(match):
-        current = int(match.group(1))
+        current = int(match.group(2))
         if current == target_size:
             return match.group(0)
         changes.append("top maxTextureSize %d -> %d" % (current, target_size))
-        return "  maxTextureSize: %d" % target_size
+        return match.group(1) + str(target_size) + match.group(3)
 
-    head = re.sub(r"(?m)^  maxTextureSize:\s*(\d+)\s*$", _head_sub, head, count=1)
+    head = re.sub(r"(?m)^(  maxTextureSize:[ \t]*)(\d+)([ \t]*)(?=\r?$)", _head_sub, head, count=1)
 
     body, sep2, rest = tail.partition("spriteSheet:")
     if not sep2:

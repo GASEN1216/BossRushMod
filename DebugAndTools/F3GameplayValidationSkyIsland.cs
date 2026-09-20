@@ -165,6 +165,9 @@ namespace BossRush
 
         private IEnumerator RunSkyIslandSuite()
         {
+#if BOSSRUSH_DEV
+            yield return SampleResourcePerformance("RESOURCE_SKY_10S");
+#endif
             SkyIslandSession session = SkyIslandSessionOrNull();
             if (session == null)
             {

@@ -93,9 +93,9 @@ namespace BossRush
             if (item == null) return false;
             try
             {
-                // 读档实例可能尚未补回自定义武器的 ItemSetting/标签；与重铸入口共用补配流程。
+                // 补基础配置后必须重新应用 RF_ 差值，否则资格查询会抹掉旧档的重铸增益。
                 if (CustomItemRuntimeStateHelper.IsRuntimeConfiguredType(item.TypeID))
-                    CustomItemRuntimeStateHelper.EnsureCustomItemConfigured(item);
+                    CustomItemRuntimeStateHelper.RestoreRuntimeState(item);
                 if (item.Quality < 1) return false;
                 return AffixItemData.IsAffixEligible(item);
             }

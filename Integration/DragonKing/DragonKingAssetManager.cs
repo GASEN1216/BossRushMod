@@ -94,14 +94,21 @@ namespace BossRush
         // ========== 公开方法 ==========
         
         /// <summary>
-        /// 加载AssetBundle（异步版本，内部使用同步加载）
+        /// 异步预载 Bundle 与 Prefab，完成后交给既有引用计数 owner。
         /// </summary>
         /// <param name="modBasePath">Mod基础路径</param>
         /// <returns>是否加载成功</returns>
         public static async UniTask<bool> LoadAssetBundle(string modBasePath)
         {
-            // 直接调用同步版本，避免UniTask扩展方法的依赖问题
-            return await UniTask.FromResult(LoadAssetBundleSync(modBasePath));
+            if (loadedBundle != null) return LoadAssetBundleSync(modBasePath);
+            ModBehaviour owner = ModBehaviour.Instance;
+            bool result = false;
+            System.Collections.IEnumerator load = ResourceBundleLoader.Prepare(
+                Path.Combine(modBasePath, DragonKingConfig.AssetBundlePath), true,
+                () => owner == null, () => result = LoadAssetBundleSync(modBasePath));
+            try { while (load.MoveNext()) await UniTask.Yield(); }
+            finally { (load as IDisposable)?.Dispose(); }
+            return result;
         }
         
         /// <summary>
@@ -130,7 +137,7 @@ namespace BossRush
                     return false;
                 }
                 
-                loadedBundle = AssetBundle.LoadFromFile(bundlePath);
+                loadedBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 
                 if (loadedBundle == null)
                 {

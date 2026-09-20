@@ -125,6 +125,12 @@ namespace BossRush
 
         private void CancelPreparation()
         {
+            // 离手后再迅速拿回，也必须取消旧请求；仅在 await 后看当前手持会漏掉这次离手。
+            if (abilityAction != null)
+            {
+                abilityAction.CancelPendingSummons();
+                if (abilityAction.Running) abilityAction.StopAction();
+            }
             if (preparation != null) StopCoroutine(preparation);
             preparation = null;
             preparationComplete = false;

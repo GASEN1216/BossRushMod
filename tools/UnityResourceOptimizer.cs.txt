@@ -1,0 +1,281 @@
+// Editor-only source; sync through optimize_unity_resources.py, never compile into the Mod.
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using UnityEditor;
+using UnityEditor.SceneManagement;
+using UnityEngine;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using System.Threading.Tasks;
+
+namespace BossRush
+{
+    public static class UnityResourceOptimizer
+    {
+        private static string Output { get { return Environment.GetEnvironmentVariable("BOSSRUSH_RESOURCE_OUTPUT"); } }
+        private const string ShieldPrefab = "Assets/MeshyImports/new/Meshy_Model_20260531_135548/EnergyShield_Totem_Model.prefab";
+        private static string Repo { get { return Environment.GetEnvironmentVariable("BOSSRUSH_RESOURCE_REPO"); } }
+
+        public static void TextureProbeAndExit()
+        {
+            int code=0;
+            string path="Assets/SkyIsland/Textures/Production/geology_handpainted_native.png";
+            TextureImporter importer=AssetImporter.GetAtPath(path) as TextureImporter;
+            TextureImporterNPOTScale original=importer.npotScale;
+            try
+            {
+                Debug.Log("[RESOURCE_PROBE] target="+EditorUserBuildSettings.activeBuildTarget+" BC7="+SystemInfo.SupportsTextureFormat(TextureFormat.BC7));
+                foreach (var mode in new[]{TextureImporterNPOTScale.None,TextureImporterNPOTScale.ToNearest,TextureImporterNPOTScale.ToLarger})
+                {
+                    importer.npotScale=mode;
+                    importer.textureCompression=TextureImporterCompression.CompressedHQ;
+                    ApplyTexturePolicy(importer);
+                    importer.SaveAndReimport();
+                    Texture2D texture=AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                    Debug.Log("[RESOURCE_PROBE] "+mode+" "+texture.width+"x"+texture.height+" "+texture.format);
+                }
+            }
+            catch(Exception e) { Debug.LogException(e); code=1; }
+            finally { importer.npotScale=original; importer.SaveAndReimport(); }
+            EditorApplication.Exit(code);
+        }
+
+        public static void BuildAndExit()
+        {
+            int code = 0;
+            try { Build(); }
+            catch (Exception e) { Debug.LogException(e); code = 1; }
+            EditorApplication.Exit(code);
+        }
+
+        public static void ApplyTexturePolicy(TextureImporter importer)
+        {
+            importer.crunchedCompression = false;
+            var desktop = importer.GetPlatformTextureSettings("Standalone");
+            desktop.crunchedCompression = false;
+            if (importer.assetPath.StartsWith("Assets/SkyIsland/Textures/", StringComparison.Ordinal))
+            {
+                // Explicit desktop override avoids the old RGB24 fallback.
+                desktop.name = "Standalone";
+                desktop.overridden = true;
+                desktop.maxTextureSize = 2048;
+                desktop.format = TextureImporterFormat.BC7;
+                desktop.textureCompression = TextureImporterCompression.CompressedHQ;
+                desktop.compressionQuality = 100;
+                importer.isReadable = false;
+            }
+            importer.SetPlatformTextureSettings(desktop);
+        }
+
+        public static string ResolveTexturePath(string source)
+        {
+            if (!source.StartsWith("Assets/SkyIsland/Textures/",StringComparison.Ordinal) || source.Contains("/Production/")) return source;
+            string prepared="Assets/SkyIsland/Textures/Production/"+Path.GetFileName(source);
+            return File.Exists(prepared) ? prepared : source;
+        }
+
+        public static void ApplyRenderMeshPolicy(GameObject root)
+        {
+            var collisionMeshes = new HashSet<Mesh>(root.GetComponentsInChildren<MeshCollider>(true).Select(c=>c.sharedMesh));
+            const string directory = "Assets/SkyIsland/GeneratedMeshes";
+            Directory.CreateDirectory(directory);
+            foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
+            {
+                Mesh mesh = filter.sharedMesh;
+                if (mesh == null || collisionMeshes.Contains(mesh) || !mesh.name.StartsWith("VIS_",StringComparison.Ordinal)) continue;
+                // Small static render meshes already lose their CPU copy during build-time batching.
+                // Large meshes and drifting clouds are not batched and need an explicit setting.
+                if (mesh.vertexCount <= 65535 && !mesh.name.EndsWith("_DriftBounds",StringComparison.Ordinal)) continue;
+                string path = AssetDatabase.GetAssetPath(mesh);
+                if (!path.StartsWith(directory+"/",StringComparison.Ordinal))
+                {
+                    path = directory+"/"+mesh.name+"_RenderOnly.asset";
+                    Mesh copy = UnityEngine.Object.Instantiate(mesh);
+                    copy.name = mesh.name;
+                    Mesh saved = AssetDatabase.LoadAssetAtPath<Mesh>(path);
+                    if (saved == null) { AssetDatabase.CreateAsset(copy,path); saved=copy; }
+                    else { EditorUtility.CopySerialized(copy,saved); UnityEngine.Object.DestroyImmediate(copy); }
+                    filter.sharedMesh = mesh = saved;
+                }
+                SetMeshReadOnly(mesh);
+            }
+        }
+
+        private static void SetMeshReadOnly(Mesh mesh)
+        {
+            // Keep the serialized payload for Editor/build use; players do not retain a CPU copy.
+            SerializedObject data = new SerializedObject(mesh);
+            SerializedProperty readable = data.FindProperty("m_IsReadable");
+            if (readable == null) throw new InvalidOperationException("Mesh readable serialization unavailable");
+            readable.boolValue = false;
+            data.ApplyModifiedPropertiesWithoutUndo();
+            EditorUtility.SetDirty(mesh);
+        }
+
+        private static void Build()
+        {
+            JObject profile=JObject.Parse(File.ReadAllText(Path.Combine(Repo,"tools/resource_optimization_profile.json")));
+            foreach (string source in profile["textures"].Values<string>().Concat(profile["skyTextures"].Values<string>()))
+            {
+                string path=ResolveTexturePath(source);
+                TextureImporter importer=AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer==null) throw new InvalidOperationException("Missing texture "+path);
+                if (path!=source)
+                {
+                    var settings=new TextureImporterSettings();
+                    ((TextureImporter)AssetImporter.GetAtPath(source)).ReadTextureSettings(settings);
+                    importer.SetTextureSettings(settings);
+                }
+                ApplyTexturePolicy(importer);
+                importer.SaveAndReimport();
+                Texture2D texture=AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                if (path.Contains("/Production/") && texture.format!=TextureFormat.BC7)
+                    throw new InvalidOperationException("BC7 import fell back: "+path+" "+texture.format);
+                Debug.Log("[UnityResourceOptimizer] TEXTURE "+path+" "+texture.format);
+            }
+            foreach (string path in AssetDatabase.GetDependencies("Assets/SkyIsland/SkyIslandRaid.unity",true))
+            {
+                Material material=AssetDatabase.LoadAssetAtPath<Material>(path);
+                if (material==null) continue;
+                foreach (string property in material.GetTexturePropertyNames())
+                {
+                    Texture texture=material.GetTexture(property);
+                    string source=AssetDatabase.GetAssetPath(texture);
+                    string prepared=ResolveTexturePath(source);
+                    if (prepared==source) continue;
+                    material.SetTexture(property,AssetDatabase.LoadAssetAtPath<Texture2D>(prepared));
+                    EditorUtility.SetDirty(material);
+                }
+            }
+            JObject shield=JObject.Parse(File.ReadAllText(Path.Combine(Output,"shield-reduced.json")));
+            Mesh reduced=new Mesh {name="EnergyShield_Optimized", indexFormat=UnityEngine.Rendering.IndexFormat.UInt32};
+            reduced.vertices=shield["vertices"].Select(v=>new Vector3((float)v[0],(float)v[1],(float)v[2])).ToArray();
+            reduced.normals=shield["normals"].Select(v=>new Vector3((float)v[0],(float)v[1],(float)v[2])).ToArray();
+            reduced.uv=shield["uv"].Select(v=>new Vector2((float)v[0],(float)v[1])).ToArray();
+            reduced.triangles=shield["triangles"].Values<int>().ToArray();
+            reduced.RecalculateBounds();
+            if (reduced.triangles.Length/3>40000) throw new InvalidOperationException("Shield triangle budget exceeded");
+            string meshPath=Path.GetDirectoryName(ShieldPrefab).Replace('\\','/')+"/EnergyShield_Optimized.asset";
+            Mesh existing=AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
+            if (existing==null) { AssetDatabase.CreateAsset(reduced,meshPath); existing=reduced; }
+            else { EditorUtility.CopySerialized(reduced,existing); UnityEngine.Object.DestroyImmediate(reduced); }
+            SetMeshReadOnly(existing);
+            GameObject prefab=PrefabUtility.LoadPrefabContents(ShieldPrefab);
+            try
+            {
+                MeshFilter[] filters=prefab.GetComponentsInChildren<MeshFilter>(true);
+                if (filters.Length!=1) throw new InvalidOperationException("Shield renderer contract changed");
+                filters[0].sharedMesh=existing;
+                PrefabUtility.SaveAsPrefabAsset(prefab,ShieldPrefab);
+            }
+            finally { PrefabUtility.UnloadPrefabContents(prefab); }
+            const string worldPath="Assets/SkyIsland/SkyIslandWorld.prefab";
+            prefab=PrefabUtility.LoadPrefabContents(worldPath);
+            try { ApplyRenderMeshPolicy(prefab); PrefabUtility.SaveAsPrefabAsset(prefab,worldPath); }
+            finally { PrefabUtility.UnloadPrefabContents(prefab); }
+            AssetDatabase.SaveAssets();
+            // Build the existing scene; no layout, lighting, quest or object regeneration.
+            AssetBundleBuild[] builds=profile["builds"].ToObject<AssetBundleBuild[]>();
+            string target=Path.Combine(Output,"rebuilt");
+            Directory.CreateDirectory(target);
+            var manifest=BuildPipeline.BuildAssetBundles(target,builds,
+                BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode,BuildTarget.StandaloneWindows64);
+            if (manifest==null) throw new InvalidOperationException("Resource build failed");
+            Debug.Log("[UnityResourceOptimizer] BUILD PASS");
+        }
+
+        public static async void RecompressAndExit()
+        {
+            int code=0;
+            try
+            {
+                JObject manifest=JObject.Parse(File.ReadAllText(Path.Combine(Repo,"tools/resource_release_manifest.json")));
+                JObject profile=JObject.Parse(File.ReadAllText(Path.Combine(Repo,"tools/resource_optimization_profile.json")));
+                var rebuiltNames=new HashSet<string>(profile["builds"].Select(b=>(string)b["assetBundleName"]));
+                if (File.Exists(Path.Combine(Output,"production-icons.marker")))
+                    rebuiltNames = new HashSet<string>(new[]{"birthday_cake","bossrush_ticket","production_icons"});
+                foreach (string relative in manifest["bundles"].Values<string>())
+                {
+                    string rebuilt=Path.Combine(Output,"rebuilt",Path.GetFileName(relative));
+                    string source=rebuiltNames.Contains(Path.GetFileName(relative)) && Directory.Exists(Path.Combine(Output,"rebuilt"))
+                        ? rebuilt : Path.Combine(Repo,relative);
+                    string target=Path.Combine(Output,"release",relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(target));
+                    var operation=AssetBundle.RecompressAssetBundleAsync(source,target,BuildCompression.LZ4Runtime);
+                    while (!operation.isDone) await Task.Delay(50);
+                    if (!operation.success) throw new InvalidOperationException(relative+": "+operation.humanReadableResult);
+                    Debug.Log("[UnityResourceOptimizer] RECOMPRESS "+relative);
+                }
+                Debug.Log("[UnityResourceOptimizer] RECOMPRESS PASS");
+            }
+            catch (Exception e) { Debug.LogException(e); code=1; }
+            EditorApplication.Exit(code);
+        }
+
+        public static void InspectAndExit()
+        {
+            int code = 0;
+            try { Inspect(); }
+            catch (Exception e) { Debug.LogException(e); code = 1; }
+            EditorApplication.Exit(code);
+        }
+
+        private static void Inspect()
+        {
+            Directory.CreateDirectory(Output);
+            var bundles = new List<object>();
+            foreach (string bundle in AssetDatabase.GetAllAssetBundleNames())
+            {
+                string[] assets = AssetDatabase.GetAssetPathsFromAssetBundle(bundle);
+                var textures = new List<object>();
+                foreach (string path in AssetDatabase.GetDependencies(assets, true))
+                {
+                    TextureImporter importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                    if (importer == null) continue;
+                    Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+                    var platform = importer.GetPlatformTextureSettings("Standalone");
+                    textures.Add(new { path, width=texture.width, height=texture.height, format=texture.format.ToString(),
+                        crunch=importer.crunchedCompression, platformCrunch=platform.crunchedCompression,
+                        readable=importer.isReadable });
+                }
+                bundles.Add(new { bundle, assets, textures });
+            }
+            File.WriteAllText(Path.Combine(Output,"author-bundles.json"), JsonConvert.SerializeObject(bundles, Formatting.Indented));
+            // Re-running the tool must start from the preserved high-poly source,
+            // not simplify the already reduced prefab for a second time.
+            const string shieldSource="Assets/MeshyImports/new/Meshy_Model_20260531_135548/bridge_model_20260531_135537_6da5f028.fbx";
+            Mesh mesh = AssetDatabase.LoadAllAssetsAtPath(shieldSource).OfType<Mesh>().Single();
+            File.WriteAllText(Path.Combine(Output,"shield-source.json"), JsonConvert.SerializeObject(new {
+                vertices=mesh.vertices.Select(v=>new[]{v.x,v.y,v.z}), triangles=mesh.triangles,
+                uv=mesh.uv.Select(v=>new[]{v.x,v.y}), normals=mesh.normals.Select(v=>new[]{v.x,v.y,v.z}),
+                submeshes=mesh.subMeshCount, meshPath=AssetDatabase.GetAssetPath(mesh),
+                bounds=new {center=new[]{mesh.bounds.center.x,mesh.bounds.center.y,mesh.bounds.center.z},
+                    size=new[]{mesh.bounds.size.x,mesh.bounds.size.y,mesh.bounds.size.z}}
+            }));
+            var scene = EditorSceneManager.OpenScene("Assets/SkyIsland/SkyIslandRaid.unity", OpenSceneMode.Single);
+            var usage = new Dictionary<Mesh, List<string>>();
+            foreach (GameObject root in scene.GetRootGameObjects())
+            {
+                foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
+                    AddUsage(usage, filter.sharedMesh, "render:"+filter.name+":static="+filter.gameObject.isStatic);
+                foreach (MeshCollider collider in root.GetComponentsInChildren<MeshCollider>(true))
+                    AddUsage(usage, collider.sharedMesh, "collider:"+collider.name+":convex="+collider.convex);
+            }
+            File.WriteAllText(Path.Combine(Output,"sky-mesh-usage.json"),JsonConvert.SerializeObject(usage.Select(pair=>new {
+                mesh=pair.Key.name, path=AssetDatabase.GetAssetPath(pair.Key), readable=pair.Key.isReadable,
+                vertices=pair.Key.vertexCount, usages=pair.Value
+            }),Formatting.Indented));
+            Debug.Log("[UnityResourceOptimizer] INSPECT PASS");
+        }
+
+        private static void AddUsage(Dictionary<Mesh,List<string>> usage, Mesh mesh, string value)
+        {
+            if (mesh == null) return;
+            List<string> entries;
+            if (!usage.TryGetValue(mesh,out entries)) usage.Add(mesh, entries=new List<string>());
+            entries.Add(value);
+        }
+    }
+}

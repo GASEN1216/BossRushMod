@@ -19,7 +19,7 @@ def load_manifest():
 # 就不在这份清单里——岛内 28 条用例只是碰巧都手工登记了，新加一条忘了登记也不会有人报。
 # tests/GameplayCoverageCaseRunnerGuard.py 反向核对：F3 源码里每一个 `string id` / `string caseId` 外壳都必须在这里或写明不登记的理由。
 CASE_RUNNERS = ('RunSyncCase', 'RunSyncCaseGated', 'RunIsolatedCase', 'VerifyArenaCleanup', 'SamplePerformance',
-                'WaitRuntimeReady', 'RunSkyIslandSync', 'RunSkyIslandCase')
+                'WaitRuntimeReady', 'RunSkyIslandSync', 'RunSkyIslandCase', 'SampleResourcePerformance')
 
 
 def f3_source():

@@ -171,6 +171,8 @@ namespace BossRush
                 SafeRuntime.Run("CodexView.ResetStaticCaches", () => CodexView.ResetStaticCaches());
                 SafeRuntime.Run("CodexPortraitCache.ResetStaticCaches", () => CodexPortraitCache.ResetStaticCaches());
                 SafeRuntime.Run("CodexBossCatalog.ResetStaticCaches", () => CodexBossCatalog.ResetStaticCaches());
+                SafeRuntime.Run("CodexOfficialBossRegistry.ResetStaticCaches", () => CodexOfficialBossRegistry.ResetStaticCaches());
+                SafeRuntime.Run("CodexSceneNames.ResetStaticCaches", () => CodexSceneNames.ResetStaticCaches());
                 // 协调器复位内含 CodexPersistence.ResetStaticCaches（其中会再退订一次，幂等）
                 SafeRuntime.Run("CodexSaveCoordinator.ResetStaticCaches", () => CodexSaveCoordinator.ResetStaticCaches());
                 _bootstrapped = false;

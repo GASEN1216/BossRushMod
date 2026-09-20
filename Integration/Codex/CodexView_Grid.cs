@@ -34,9 +34,13 @@ namespace BossRush
         private const float DetailPanelWidth = 520f;
         private const float DetailPanelHeight = 650f;
         private const float DetailPortraitSize = 180f;
-        private const int CardsPerPage = 12;
-        private int _pageIndex;
         private bool _onlyMissing;
+
+        /// <summary>
+        /// 本次要铺的条目。2026-09-20 起取消分页：整册一次铺完，靠滚动查看
+        /// （owner 定：底部「1/5 · 下一页」整条删掉）。目录上限 CodexTuning.MaxEntries=256，
+        /// 卡片是纯 Image+TMP，一次建完仍是开面板时的一次性成本，不进 Update。
+        /// </summary>
         private readonly List<CodexBossInfo> _pageEntries = new List<CodexBossInfo>();
 
         #endregion
@@ -90,24 +94,13 @@ namespace BossRush
                 if (_onlyMissing && entry != null && entry.Kills > 0) continue;
                 _pageEntries.Add(info);
             }
-            int pageCount = Math.Max(1, (_pageEntries.Count + CardsPerPage - 1) / CardsPerPage);
-            _pageIndex = Math.Max(0, Math.Min(_pageIndex, pageCount - 1));
-            if (_pageText != null) _pageText.text = (_pageIndex + 1) + " / " + pageCount
-                + L10n.T(" · 点击卡片查看详情 · ESC 关闭", " · Click for details · ESC to close");
-            SetButtonLabel(_previousPageButton, L10n.T("上一页", "Previous"));
-            SetButtonLabel(_nextPageButton, L10n.T("下一页", "Next"));
-            if (_previousPageButton != null) _previousPageButton.gameObject.SetActive(_pageIndex > 0);
-            if (_nextPageButton != null) _nextPageButton.gameObject.SetActive(_pageIndex + 1 < pageCount);
-
             if (_pageEntries.Count == 0)
             {
                 CreateEmptyHint();
                 return;
             }
 
-            // 只创建本页卡片，立绘也随本页按需加载。目录增长不增加单次 UI 构建量。
-            int end = Math.Min(_pageEntries.Count, (_pageIndex + 1) * CardsPerPage);
-            for (int i = _pageIndex * CardsPerPage; i < end; i++)
+            for (int i = 0; i < _pageEntries.Count; i++)
             {
                 CodexBossInfo info = _pageEntries[i];
 
@@ -134,19 +127,7 @@ namespace BossRush
         private void ToggleMissingFilter()
         {
             _onlyMissing = !_onlyMissing;
-            _pageIndex = 0;
             RefreshAll();
-            if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 1f;
-        }
-
-        private void PreviousPage() { ChangePage(-1); }
-        private void NextPage() { ChangePage(1); }
-
-        private void ChangePage(int delta)
-        {
-            _pageIndex += delta;
-            HideDetail();
-            PopulateGrid(CodexPersistence.Current);
             if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 1f;
         }
 
@@ -417,17 +398,8 @@ namespace BossRush
                     locked ? "—" : FormatFastest(entry.FastestKillSeconds));
                 CreateDetailRow(surface.transform, rowTop + 102f, L10n.T("初见日期", "First seen"),
                     locked ? "—" : FormatFirstSeen(entry.FirstKillTicks));
-                CreateDetailRow(surface.transform, rowTop + 136f, L10n.T("初见模式", "First mode"),
-                    locked ? "—" : FormatModeName(entry.FirstMode));
-
-                TextMeshProUGUI hint = ZombieModeUIHelper.CreateText("EncounterHint", surface.transform,
-                    CodexBossCatalog.GetEncounterHint(info) + "\n"
-                    + L10n.T("需归属于你的致命一击；百战留痕不记。无有效首击计时则最快用时显示 —。",
-                        "The fatal blow must be credited to you; the Duck Cup is excluded. No observed starting hit means no time record."),
-                    14f, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                    new Vector2(0f, -529f), new Vector2(-40f, 130f),
-                    TextAlignmentOptions.TopLeft, BossRushUIColors.TextSecondary);
-                hint.raycastTarget = false;
+                CreateDetailRow(surface.transform, rowTop + 136f, L10n.T("初见场景", "First seen at"),
+                    locked ? "—" : FormatFirstScene(entry));
 
                 Button closeButton = ZombieModeUIHelper.CreateButton(
                     "DetailClose",
@@ -550,7 +522,24 @@ namespace BossRush
             return seconds.ToString("F1") + L10n.T(" 秒", "s");
         }
 
-        /// <summary>模式 id → 显示名。未知 id 原样返回（老档兼容）。</summary>
+        /// <summary>
+        /// 初见场景显示名。优先用落档的场景名经**官方本地化**解析
+        /// （owner 2026-09-20：不能把 Zeroarea_basic_01 这种裸场景名直接摆给玩家）；
+        /// 老档没有场景字段时回落到旧的模式名，两者都没有才显示破折号。
+        /// </summary>
+        private string FormatFirstScene(CodexEntry entry)
+        {
+            if (entry == null) return "—";
+
+            string scene = CodexSceneNames.Resolve(entry.FirstScene);
+            if (!string.IsNullOrEmpty(scene)) return scene;
+
+            // 老档兼容：v1 只存了模式 id，没有场景
+            string mode = FormatModeName(entry.FirstMode);
+            return string.IsNullOrEmpty(mode) ? "—" : mode;
+        }
+
+        /// <summary>模式 id → 显示名。未知 id 返回破折号（老档兼容）。</summary>
         private string FormatModeName(string modeId)
         {
             if (string.IsNullOrEmpty(modeId)) return "—";
@@ -576,18 +565,24 @@ namespace BossRush
                 case CodexTuning.ModeIdRaid:
                     return L10n.T("撤离行动", "Raid");
                 default:
-                    return modeId;
+                    return "—";
             }
         }
 
-        /// <summary>条目分类标签。</summary>
+        /// <summary>
+        /// 条目分类标签。2026-09-20 起以官方 Boss 名单（CodexOfficialBossRegistry）为准：
+        /// 名单里的才叫「官方 Boss」，名单外的官方生物叫「官方精英」，其余是本 Mod 加的。
+        /// 旧实现把整张过滤池一律标成「官方 Boss」，连官方明确不是 Boss 的精英怪也算进去了。
+        /// </summary>
         private string FormatCategory(CodexBossInfo info)
         {
             if (info == null) return "—";
-            if (info.IsZombieBoss) return L10n.T("末日丧尸", "Zombie Tide");
-            if (info.IsCustomBoss) return L10n.T("自定义 Boss", "Custom boss");
+            if (info.IsZombieBoss) return L10n.T("模组 Boss · 末日丧尸", "Mod boss · Zombie Tide");
+            if (info.IsCustomBoss) return L10n.T("模组 Boss · 自定义", "Mod boss · Custom");
+            if (CodexOfficialBossRegistry.IsOfficialBoss(info.Key)) return L10n.T("官方 Boss", "Official boss");
+            if (CodexOfficialBossRegistry.IsOfficialCreature(info.Key)) return L10n.T("官方精英", "Official elite");
             if (info.IsHistoricalOnly) return L10n.T("历史记录", "Historical");
-            return L10n.T("官方 Boss", "Official boss");
+            return L10n.T("模组 Boss", "Mod boss");
         }
 
         #endregion

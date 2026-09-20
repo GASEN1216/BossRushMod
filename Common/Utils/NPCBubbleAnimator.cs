@@ -128,7 +128,7 @@ namespace BossRush
                     return null;
                 }
                 
-                AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
+                AssetBundle bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     ModBehaviour.DevLog("[NPCBubbleAnimator] 加载AssetBundle失败");

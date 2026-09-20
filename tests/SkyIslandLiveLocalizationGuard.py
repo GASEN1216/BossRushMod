@@ -55,8 +55,12 @@ need(fresh in spawn and spawn.index(fresh) > spawn.find("await DuckNpcSpawner.Sp
 inject = body(prelude, "internal static void InjectLocalizations()")
 for name in ("DepartureNameKey", "ObjectiveNameKey", "InstrumentNameKey"):
     need("LocalizationHelper.InjectLocalization(" + name + "," in inject, name + " 必须接入语言注入链")
-need("SimplePointOfInterest.Create(position, GroundZeroScene, ObjectiveNameKey, null, false);" in
-     body(prelude, "private void CreateMapMarker("), "仪器地图标记必须使用会刷新语言的稳定 key")
+marker = body(prelude, "private void CreateMapMarker(")
+need("SimplePointOfInterest.Create(position, sceneId, ObjectiveNameKey, null, false);" in marker,
+     "仪器地图标记必须使用会刷新语言的稳定 key")
+# 场景参数要的是官方 SceneInfoCollection 的场景 ID，不是 Unity 场景名：传错了标记整条不显示。
+need("string sceneId = MapPointSceneResolver.Resolve(GroundZeroScene);" in marker,
+     "仪器地图标记的场景参数必须走共享解析（官方要的是场景表 ID，不是 Unity 场景名）")
 need("return SkyIslandPreludeFlow.DepartureNameKey;" in runtime, "船点交互须使用统一稳定 key")
 need("return SkyIslandPreludeFlow.InstrumentNameKey;" in prelude, "仪器交互须使用统一稳定 key")
 integration = clean_source((ROOT / "Integration/BossRushIntegration_StartAndScene.cs").read_text(encoding="utf-8-sig"))

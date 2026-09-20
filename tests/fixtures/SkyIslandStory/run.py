@@ -24,7 +24,8 @@ OUT.mkdir(parents=True, exist_ok=True)
 source_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandPreludeFlow.cs"
 source = source_path.read_text(encoding="utf-8-sig")
 methods = [method(source, signature) for signature in
-           ("private bool EnsureStory()", "private void CloseStory()", "internal void Schedule()")]
+           ("private bool EnsureStory()", "private void CloseStory()", "internal void Schedule()",
+            "private bool ShouldRunObjective()")]
 generated = OUT / "PreludeGenerated.cs"
 # 导航只抽取真正决定地图/罗盘目标的生产迭代器，不在替身里另写任务状态树。
 marker_path = ROOT / "DebugAndTools/SkyIsland/SkyIslandMapMarkers.cs"

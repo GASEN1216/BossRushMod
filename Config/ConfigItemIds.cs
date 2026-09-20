@@ -103,5 +103,12 @@ namespace BossRush
         public const int SkyIslandWindbreakMantle = 500101;
         /// <summary>断风行囊：「断风游猎 · 伏」的专属背包（断风套之一）。</summary>
         public const int SkyIslandWindbreakPack = 500102;
+
+        /// <summary>
+        /// 失落的航向仪：Jeff 序章「云上的坐标」的交付物。
+        /// 零号区的断风游猎 · 守倒下后留在尸体箱里，带回基地交给 Jeff 才算完成任务。
+        /// 卖价为 0，只有剧情用途（配置在 Integration/SkyIsland/SkyIslandNavInstrumentConfig.cs）。
+        /// </summary>
+        public const int SkyIslandNavInstrument = 500103;
     }
 }

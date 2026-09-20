@@ -7,6 +7,42 @@ namespace BossRush
 {
     internal static class BuildingModelHelper
     {
+        // 正常基地装配先经 RunSpecial 异步预载；官方早期 GetPrefab 查询保留同步兼容。
+        // 只有实例创建完成才转交租约，坏包/缺 prefab 不妨碍原有占位模型。
+        internal static bool TryInstantiateBundle(string buildingId, string prefabName, Transform parent, out AssetBundle lease)
+        {
+            lease = null;
+            AssetBundle acquired = null;
+            GameObject instance = null;
+            try
+            {
+                string path = System.IO.Path.Combine(ModBehaviour.GetModPath(), "Assets", "buildings", buildingId);
+                if (!System.IO.File.Exists(path)) return false;
+                acquired = ResourceBundleLoader.LoadFromFile(path);
+                if (acquired == null) return false;
+                GameObject prefab = acquired.LoadAsset<GameObject>(prefabName);
+                if (prefab == null) return false;
+                instance = UnityEngine.Object.Instantiate(prefab, parent, false);
+                instance.name = "Model";
+                instance.SetActive(true);
+                lease = acquired;
+                return true;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[BaseBuildings] 模型加载失败 " + buildingId + ": " + e.Message);
+                return false;
+            }
+            finally
+            {
+                if (lease == null)
+                {
+                    if (instance != null) UnityEngine.Object.Destroy(instance);
+                    if (acquired != null) acquired.Unload(true);
+                }
+            }
+        }
+
         internal static Renderer[] CollectStarwishRenderableComponents(GameObject root)
         {
             if (root == null)

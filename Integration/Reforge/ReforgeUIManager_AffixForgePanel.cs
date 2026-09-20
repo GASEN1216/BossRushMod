@@ -274,6 +274,10 @@ namespace BossRush
                 BossRushUIColors.TextSecondary);
 
             widgets.NameText.enableAutoSizing = false;
+            // 词缀名固定一行：名字行的 LayoutElement 高度是 AFFIX_NAME_FONT_SIZE + 6，
+            // 一旦换行第二行就落在框外被裁掉，看起来就是「词缀名不见了」。
+            widgets.NameText.enableWordWrapping = false;
+            widgets.NameText.overflowMode = TextOverflowModes.Ellipsis;
             widgets.DescText.enableAutoSizing = false;
             widgets.DescText.enableWordWrapping = true;
 

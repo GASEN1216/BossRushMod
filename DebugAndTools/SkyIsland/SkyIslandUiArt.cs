@@ -435,7 +435,7 @@ namespace BossRush
             try
             {
                 string path = Path.Combine(ModBehaviour.GetModPath(), BundleRelativePath);
-                if (File.Exists(path)) bundle = AssetBundle.LoadFromFile(path);
+                if (File.Exists(path)) bundle = ResourceBundleLoader.LoadFromFile(path);
             }
             catch (Exception e)
             {
@@ -445,25 +445,11 @@ namespace BossRush
 
         private static Sprite FromRawPng(string assetName)
         {
-            string path = Path.Combine(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir),
-                assetName + ".png");
-            if (!File.Exists(path)) return null;
-            // mipmap 关掉：UI 图不缩小采样，开了只是白占显存。
-            Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
-            // markNonReadable: true —— 上传 GPU 之后丢掉 CPU 端那份拷贝。我们从不读像素，
-            // 留着等于把这批图的常驻内存整整翻一倍（满载约 40 MB → 约 20 MB）。
-            if (!texture.LoadImage(File.ReadAllBytes(path), true))
-            {
-                UnityEngine.Object.Destroy(texture);
-                return null;
-            }
-            texture.name = assetName;
-            texture.wrapMode = TextureWrapMode.Clamp;
-            owned.Add(texture);
-            Sprite sprite = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height),
-                new Vector2(0.5f, 0.5f), 100f, 0u, SpriteMeshType.FullRect);
-            sprite.name = assetName;
-            owned.Add(sprite);
+            Sprite compressed = ProductionIconCache.Get(RawRelativeDir + "/" + assetName + ".png");
+            if (compressed != null) return compressed;
+            if (!ProductionIconCache.AllowRawFallback) return null;
+            Sprite sprite = RawImageLoader.LoadSprite(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir, assetName + ".png"), assetName);
+            if (sprite != null) { owned.Add(sprite.texture); owned.Add(sprite); }
             return sprite;
         }
 

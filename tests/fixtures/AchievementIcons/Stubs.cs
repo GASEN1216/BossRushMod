@@ -4,6 +4,13 @@ using System.Runtime.CompilerServices;
 
 namespace BossRush
 {
+    // This fixture exercises ownership/decoding; native asynchronous lifecycle has its own ResourceProduction fixture.
+    internal static class ResourceBundleLoader
+    {
+        internal static UnityEngine.AssetBundle LoadFromFile(string path) { return UnityEngine.AssetBundle.LoadFromFile(path); }
+        internal static System.Collections.IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer)
+        { if (!cancelled()) consumer(); yield break; }
+    }
     internal static class ModBehaviour
     {
         internal static string ModPath;
@@ -16,6 +23,7 @@ namespace BossRush
 
 namespace UnityEngine
 {
+    public static class Debug { public static void LogWarning(string message) { } }
     public class Object
     {
         public string name;
@@ -52,16 +60,18 @@ namespace UnityEngine
         public bool mipChain;
         public TextureWrapMode wrapMode;
         public bool decoded;
+        public bool isReadable = true;
         public static int DecodeCalls;
         public Texture2D(int width, int height, TextureFormat format, bool mipChain)
         { this.width = width; this.height = height; this.mipChain = mipChain; }
         // The decoder double accepts marker 1, rejects marker 0, and throws for marker 2.
-        public bool LoadImage(byte[] data)
+        public bool LoadImage(byte[] data, bool markNonReadable = false)
         {
             DecodeCalls++;
             if (data.Length > 0 && data[0] == 2) throw new InvalidOperationException("decode failure");
             if (data.Length == 0 || data[0] != 1) return false;
             decoded = true;
+            isReadable = !markNonReadable;
             width = height = 16;
             return true;
         }
@@ -76,6 +86,11 @@ namespace UnityEngine
             if (CreationMode == 2) throw new InvalidOperationException("sprite creation failure");
             return new Sprite { texture = texture };
         }
+    }
+    public static class ImageConversion
+    {
+        public static bool LoadImage(Texture2D texture, byte[] data, bool markNonReadable = false)
+        { return texture.LoadImage(data, markNonReadable); }
     }
     public class AssetBundle : Object
     {

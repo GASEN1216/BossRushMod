@@ -168,7 +168,22 @@ namespace BossRush
         public void CleanupCampaignFinalBoss(bool destroyBoss) { }
         public bool IsBackMountainConfiguredEnabled() { return true; }
     }
-    static class L10n { public static string T(string cn, string en) { return en; } }
+    static class L10n { public static bool IsChinese { get { return false; } } public static string T(string cn, string en) { return en; } }
+
+    // 2026-09-20：席位变化的表现层同步入口。本夹具只验数据事务，
+    // 生成 / 回收随从是 Unity 侧行为，这里用记次数的替身，保证生产方法体原样可编译可执行。
+    internal static class PetNestBaseIdleSpawner
+    {
+        internal static int DeployNotifications;
+        internal static void NotifyDeployedPetChanged() { DeployNotifications++; }
+    }
+
+    internal static class PetNestCompanionRuntime
+    {
+        internal static string ActiveCompanionPetId;
+        internal static int Cleanups;
+        internal static void CleanupOnce() { Cleanups++; ActiveCompanionPetId = null; }
+    }
     static class CampaignTuning
     {
         public const string LogPrefix = "Campaign", ProgressSaveKey = "BossRush_Campaign_Progress_v1";

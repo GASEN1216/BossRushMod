@@ -15,6 +15,7 @@ namespace BossRush
         public static bool IsModeHRunInProgressSafe() { return ModeH; }
         internal static void DevLog(string text) {}
         internal static void LogError(string text) {}
+        internal static void CriticalLog(string key, string text) {}
     }
     static class L10n
     {

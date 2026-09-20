@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../../../Integration/Codex/CodexBossCatalog.cs" />
+    <Compile Include="../../../../Integration/Codex/CodexOfficialBossRegistry.cs" />
     <Compile Include="../../../../Integration/Codex/CodexKillCollector.cs" />
     <Compile Include="../../../../Integration/Codex/CodexModels.cs" />
     <Compile Include="../../../../Integration/Codex/CodexTuning.cs" />

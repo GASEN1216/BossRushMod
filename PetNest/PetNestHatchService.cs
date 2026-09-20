@@ -146,7 +146,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 三层 roll：出身天赋 ×2（不重复）/ 性格 ×1 / 异色。孵化即锁定，不可洗。
+        /// 四层 roll：出身天赋 ×2（不重复）/ 性格 ×1 / 异色 / 炫彩。孵化即锁定，不可洗。
         /// </summary>
         internal static PetNestPetRecord RollNewPet(string lineageKey)
         {
@@ -163,8 +163,15 @@ namespace BossRush
                 pet.talents = new List<PetNestTalentEntry>();
                 pet.scars = new List<PetNestScarRecord>();
 
-                // 异色
+                // 异色（极为稀有）与炫彩（任意两色搭配）。两者独立 roll：
+                // 异色的炫彩崽是双稀有，名字与光环都会同时体现。
                 pet.shiny = UnityEngine.Random.value < PetNestTuning.ShinyChance;
+                if (UnityEngine.Random.value < PetNestTuning.ChromaChance)
+                {
+                    PetNestChroma.RollPair(
+                        UnityEngine.Random.value, UnityEngine.Random.value,
+                        out pet.chromaA, out pet.chromaB);
+                }
 
                 // 性格
                 string[] personalities = PetNestTuning.AllPersonalityIds;

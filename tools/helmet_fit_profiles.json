@@ -1,0 +1,341 @@
+{
+ "schema": 1,
+ "profiles": [
+  {
+   "baseName": "ThunderHorn_Helmet",
+   "prefab": "Assets/MeshyImports/new/Meshy_Model_20260531_135546/ThunderHorn_Helmet_Model.prefab",
+   "bundle": "thunder_set",
+   "referenceOnly": false,
+   "position": [
+    0,
+    0.36,
+    0
+   ],
+   "rotationEuler": [
+    -90,
+    180,
+    0
+   ],
+   "scale": [
+    58,
+    74,
+    55
+   ],
+   "meshCenter": [
+    1.04e-05,
+    7.9e-06,
+    -1.54e-05
+   ],
+   "meshSize": [
+    0.0163486,
+    0.0109479,
+    0.0191037
+   ],
+   "modelUp": [
+    0,
+    0,
+    1
+   ],
+   "modelForward": [
+    0,
+    1,
+    0
+   ],
+   "note": "owner 已确认第一轮朝向；针对头顶穿模，子节点再上移 0.08，盔壳宽深约增加 5%，长角不参与居中。"
+  },
+  {
+   "baseName": "FrostCrown_Helmet",
+   "prefab": "Assets/MeshyImports/new/Meshy_Model_20260531_135546/FrostCrown_Helmet_Model.prefab",
+   "bundle": "frost_set",
+   "referenceOnly": false,
+   "position": [
+    0,
+    0.35,
+    0
+   ],
+   "rotationEuler": [
+    -90,
+    180,
+    0
+   ],
+   "scale": [
+    55,
+    70,
+    55
+   ],
+   "meshCenter": [
+    1.06e-05,
+    1.17e-05,
+    -2.17e-05
+   ],
+   "meshSize": [
+    0.0190932,
+    0.0131958,
+    0.0177669
+   ],
+   "modelUp": [
+    0,
+    0,
+    1
+   ],
+   "modelForward": [
+    0,
+    1,
+    0
+   ],
+   "note": "2026-09-20 实机修正：冠带朝后、尖刺全扣在脑后（owner 截图 image-10）。霜冠与雷神之角是同一批 Meshy 模型，正面同为 +Y，因此与它同样需要 Y=180；旧表把 modelForward 记成 -Y 并写了「不能照抄雷霆的 Y=180」，那条结论是错的。上方仍是 +Z，X=-90 不变；冠带落在额头由 position.y=0.35 保证。"
+  },
+  {
+   "baseName": "GreenearStrawHat_Helmet",
+   "prefab": "Assets/SkyIslandBossGear/Prefabs/GreenearStrawHat_Helmet_Model.prefab",
+   "bundle": "skyisland_boss_gear",
+   "referenceOnly": false,
+   "position": [
+    0,
+    0.09,
+    0
+   ],
+   "rotationEuler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "meshCenter": [
+    0.0006188,
+    -0.000971,
+    -4.79e-05
+   ],
+   "meshSize": [
+    1.0503728,
+    0.8495979,
+    1.0476286
+   ],
+   "modelUp": [
+    0,
+    1,
+    0
+   ],
+   "modelForward": [
+    0,
+    0,
+    1
+   ],
+   "note": "以帽冠与帽檐接触带校准，上移；帽绳与羽饰不作为头部中心。"
+  },
+  {
+   "baseName": "StarbrassVisor_Helmet",
+   "prefab": "Assets/SkyIslandBossGear/Prefabs/StarbrassVisor_Helmet_Model.prefab",
+   "bundle": "skyisland_boss_gear",
+   "referenceOnly": false,
+   "position": [
+    0,
+    0.06,
+    0.13
+   ],
+   "rotationEuler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "meshCenter": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "meshSize": [
+    0.88,
+    1.0580707,
+    1.0415059
+   ],
+   "modelUp": [
+    0,
+    1,
+    0
+   ],
+   "modelForward": [
+    0,
+    0,
+    1
+   ],
+   "note": "按铜盔主体校准，上移并向前补偿前方管件造成的整体包围盒偏差。"
+  },
+  {
+   "baseName": "StargazerLens_Helmet",
+   "prefab": "Assets/SkyIslandBossGear/Prefabs/StargazerLens_Helmet_Model.prefab",
+   "bundle": "skyisland_boss_gear",
+   "referenceOnly": false,
+   "position": [
+    0.02,
+    0.04,
+    0.12
+   ],
+   "rotationEuler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1,
+    1,
+    1
+   ],
+   "meshCenter": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "meshSize": [
+    0.92,
+    0.755112,
+    0.9574745
+   ],
+   "modelUp": [
+    0,
+    1,
+    0
+   ],
+   "modelForward": [
+    0,
+    0,
+    1
+   ],
+   "note": "以盔壳中心校准，补偿单侧镜筒造成的水平与前后偏差。"
+  },
+  {
+   "baseName": "WindbreakHood_Helmet",
+   "prefab": "Assets/SkyIslandBossGear/Prefabs/WindbreakHood_Helmet_Model.prefab",
+   "bundle": "skyisland_boss_gear",
+   "referenceOnly": false,
+   "position": [
+    -0.17,
+    0.08,
+    -0.21
+   ],
+   "rotationEuler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    1.2,
+    1.1,
+    1.15
+   ],
+   "meshCenter": [
+    0.0,
+    -1.87e-05,
+    2.1e-05
+   ],
+   "meshSize": [
+    0.9,
+    0.7589391,
+    0.9825646
+   ],
+   "modelUp": [
+    0,
+    1,
+    0
+   ],
+   "modelForward": [
+    0,
+    0,
+    1
+   ],
+   "note": "排除后方飘带，以盔壳校准：左移、后移并适度放大，保留飘带形状。"
+  },
+  {
+   "baseName": "dargon_Helmet",
+   "prefab": "Assets/MeshyImports/dragon/Meshy_Model_20251221_150652/dargon_Helmet_Model.prefab",
+   "bundle": "dragon_equipment",
+   "referenceOnly": true,
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "rotationEuler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    45,
+    50,
+    45
+   ],
+   "meshCenter": [
+    8.7e-06,
+    0.0001138,
+    -2.66e-05
+   ],
+   "meshSize": [
+    0.017682,
+    0.0168735,
+    0.0201718
+   ],
+   "modelUp": [
+    0,
+    1,
+    0
+   ],
+   "modelForward": [
+    0,
+    0,
+    1
+   ],
+   "note": "owner 实机确认良好，保留原姿态作为参考，不自动改写。"
+  },
+  {
+   "baseName": "dragonking_Helmet",
+   "prefab": "Assets/MeshyImports/dragonking/dragonking_Helmet/dragonking_Helmet_Model.prefab",
+   "bundle": "dragonking_equipment",
+   "referenceOnly": true,
+   "position": [
+    0,
+    0,
+    0
+   ],
+   "rotationEuler": [
+    0,
+    0,
+    0
+   ],
+   "scale": [
+    55,
+    70,
+    55
+   ],
+   "meshCenter": [
+    3.1e-06,
+    -3.86e-05,
+    -1.68e-05
+   ],
+   "meshSize": [
+    0.0171705,
+    0.0138931,
+    0.0191942
+   ],
+   "modelUp": [
+    0,
+    1,
+    0
+   ],
+   "modelForward": [
+    0,
+    0,
+    1
+   ],
+   "note": "owner 实机确认良好，保留原姿态作为参考，不自动改写。"
+  }
+ ]
+}

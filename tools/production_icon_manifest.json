@@ -1,0 +1,1336 @@
+{
+  "schema": 1,
+  "bundle": "Assets/ui/production_icons",
+  "icons": [
+    {
+      "path": "Assets/achievement/clear_100_times.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/clear_10_times.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/clear_50_times.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/codex_10.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/codex_20.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/codex_all.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/codex_fast_kill.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/codex_first_entry.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/collect_dragon_descendant_loot.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/collect_dragon_king_loot.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/completionist.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/dragon_slayer_master.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/easy_clear.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/first_clear.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/first_flight.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/flawless_easy.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/flawless_hell_10.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/flawless_mode_d.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/flawless_normal.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/hell_10.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/hell_100.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/hell_200.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/hell_25.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/hell_50.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/hell_no_heal.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_1000_bosses.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_100_bosses.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_500_bosses.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_50_bosses.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_dragon_descendant.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_dragon_descendant_flawless.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_dragon_king.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/kill_dragon_king_flawless.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/mode_d_clear.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/mode_d_no_pickup.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/normal_clear.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/petnest_first_hatch.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/petnest_lineage_10.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/petnest_lineage_30.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/petnest_memorial.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/petnest_shiny.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/reverse_scale_triggered.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/speedrun_1min.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/speedrun_2min.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/speedrun_3min.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/achievement/speedrun_5min.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/ban.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/buildings/bossrush_backmountain_showcase.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/buildings/bossrush_campaign_board.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/buildings/bossrush_daily_mailbox.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/buildings/petnest_relic_nest.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/buildings/starwish_fountain.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/buildings/wedding_chapel.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/Items/affix_forge_stone.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/codex_book.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/dragon_fruit.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/dragon_seed.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/ember_chili.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/ember_seed.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/energy_shield_icon.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/frost_spear_icon.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/phantom_mushroom.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/phantom_spore.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/relic_egg.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_brass_scrap.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_cloudmoss_fiber.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_cloudmoss_veil.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_driftwood.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_gnat_zapper.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_grain_sack.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_greenear_sheaf.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_greenear_straw_hat.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_hangroot_quiver.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_homecoming_badge.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_homecoming_bento.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_mirrorgrain_plate.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_mossgauze_mask.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_old_mailbag.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_qinglan_charm.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_qinglan_windcrystal.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_rainhush_earmuffs.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_rootweave_mask.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_smoke_fan.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_starbrass_visor_helm.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_stardust.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_starfurnace_harness.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_starfurnace_pack.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_stargazer_lens_helm.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_starmoss_salve.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_straw_raincoat.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_vinewoven_cuirass.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_wind_lantern.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_wind_vane_compass.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_windbreak_hood.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_windbreak_mantle.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_windbreak_pack.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_windcrystal_shard.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_windeater_core.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/sky_island_windward_incense.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/summon_staff_icon.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/thunder_ring_icon.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/Items/viper_dagger_icon.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/preview/demo-preview.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/preview/maze-preview.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/preview/zero-preview.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_bloodrage.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_bulwark.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_deathburst.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_deathpact.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_frenzy.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_glasscannon.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_hawkeye.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_lifesteal.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_overcharge.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_slaughter.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_swifthand.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/AffixForge/affix_thorns.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/bounty_circle_leader.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/bounty_circle_regular.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Buffs/PhantomWitch_CurseBuff.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_portrait_broker.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_portrait_champion.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_poster_ch1.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_poster_ch2.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_poster_ch3.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_poster_ch4.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_poster_ch5.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Campaign/campaign_poster_ch6.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_boss_dragonking.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_boss_phantomwitch.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_alex.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_fo.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_jeff.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_ming.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_mud.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_orange.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_snowpmc.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_character_xavier.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_3shot_child.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_baleader.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_baleader_child.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_bear.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boomcar.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_3shot.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_arcade.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_blue.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_fly.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_fly_alone.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_fly_child.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_lionhead.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_red.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_shot.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_boss_sniper.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_crazyrob.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_dengwolf.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_football_1.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_football_2.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_ghost.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_grenade.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_gunturret.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_horse.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_hunter.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_islandboss.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_killa.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_labtestobjective.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_monsterclimb.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_mushroom.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_pmcleader.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_prison.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_prison_boss.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_raider.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_raiderice.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_roadblock.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_robspider.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_rpg.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_scav.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_scavrage.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_schoolbully.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_schoolbully_child.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_senorengineer.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_serverguardian.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_shorteagle.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_snow_bigice.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_snow_fleeze.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_snow_igny.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_snowman.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_snowman_island.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_speedy.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_speedy_ice.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_speedychild.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_speedychild_ice.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormboss1.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormboss1_child.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormboss2.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormboss3.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormboss4.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormboss5.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormcreature.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_stormvirus.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_superrob.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_tagilla.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_ultraman.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_usec.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_vida.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_wolf.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_wolfking_ice.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_xing.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_xings.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_cname_zombie.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_dragondescendant.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_merchantname_myst.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_zombie_boss_corruptor.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_zombie_boss_hunter.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_zombie_boss_shielder.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_zombie_boss_splitter.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/Codex/codex_portrait_zombie_boss_titan.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/DailyReport/daily_report_bg.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/ModeG/modeg_echo_banner.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/ModeG/modeg_echo_emblem.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/ui/ModeH/ModeH_BlackMarketCup_Banner.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/ModeH/ModeH_BlackMarketCup_Emblem.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/ui/random_events/evt_1.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_2.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_3.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_4.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_5.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_6.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_7.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/random_events/evt_8.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/sky_island_gnat_sheet.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_A.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_B.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_C.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_D.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_E.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_F.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_G.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_H.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_journal.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_S1.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_S2.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_S3.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_bg_S4.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_portrait_sky_bellkeeper.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_portrait_sky_fuzhou.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_portrait_sky_miantai.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_portrait_sky_qinghe.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_portrait_sky_weibai.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_portrait_sky_zheling.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_A.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_B.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_C.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_D.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_E.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_F.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_G.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_H.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_journal.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_S1.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_S2.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_S3.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/ui/SkyIsland/skyisland_scene_S4.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-achievements.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-bosses.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-changelog.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-easter.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-equipment.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-guides.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-items.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-maps.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-modes.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-npcs.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-start.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/cat-systems.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-dragon-breath.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-dragon-cannon.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-dragon-king-set.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-dragon-set.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-energy-shield.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-flight-totem.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-frost-set.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-frost-spear.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-frostmourne.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-halberd.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-phantom-scythe.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-reverse-scale.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-sky-island-chiefs-gear.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-sky-island-lords-gear.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-sky-island-starworks-gear.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-summon-staff.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-thunder-ring.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-thunder-set.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/eq-viper-dagger.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/item-consumable.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/item-key.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/item-mode.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/item-npc.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-bloodhunt.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-cup.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-faction.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-fate.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-hell.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-scratch.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-standard.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/mode-zombie.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/npc-courier.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/npc-goblin.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/npc-nurse.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/start-firstrun.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/start-install.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-backyard.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-campaign.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-config.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-daily.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-events.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-filter.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-fountain.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-loot.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-marriage.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-mutator.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-petnest.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-reforge.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_icons/sys-wraith.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_theme/emblem.png",
+      "maxSize": 512
+    },
+    {
+      "path": "Assets/wiki_theme/frost.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_theme/sky-overworld.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_theme/sky-snow.png",
+      "maxSize": 1024
+    },
+    {
+      "path": "Assets/wiki_theme/wood.png",
+      "maxSize": 1024
+    }
+  ],
+  "legacyTextures": [
+    "Assets/mymod/BirthdayCake.png",
+    "Assets/mymod/BossRushTicket2.png"
+  ],
+  "builds": [
+    {
+      "assetBundleName": "birthday_cake",
+      "assetNames": [
+        "Assets/Prefabs/BirthdayCake.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "bossrush_ticket",
+      "assetNames": [
+        "Assets/Prefabs/BossRushTicket.prefab"
+      ]
+    }
+  ]
+}

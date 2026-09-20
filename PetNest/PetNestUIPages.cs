@@ -82,10 +82,17 @@ namespace BossRush
         /// </summary>
         internal static string LastFailureText;
 
+        /// <summary>
+        /// 远征页二级选择的当前目的地。进程级静态，和 LastFailureText 同纪律：
+        /// 关面板 / 切页时必须清掉，否则下次开面板会直接落在上一次的二级页上。
+        /// </summary>
+        private static string _expeditionDestinationId;
+
         /// <summary>清空跨面板残留的失败提示。面板关闭 / 过图 / 切档都要调。</summary>
         internal static void ClearLastFailureText()
         {
             LastFailureText = null;
+            _expeditionDestinationId = null;
         }
 
         /// <summary>把 out failureReasonId 转成玩家可读文案并记下来。</summary>
@@ -106,6 +113,7 @@ namespace BossRush
         internal static void ClearFailure()
         {
             LastFailureText = null;
+            _expeditionDestinationId = null;
         }
 
         private static string T(string suffix)
@@ -157,7 +165,7 @@ namespace BossRush
             {
                 PetNestPetRecord selected = PetNestService.TryGetPet(selectedPetId);
                 page.Lines.Add(selected != null
-                    ? L10n.T("远征目标：", "Expedition target: ") + PetNestService.GetPetDisplayName(selected)
+                    ? L10n.T("远征目标：", "Expedition target: ") + PetNestService.GetDecoratedPetName(selected)
                     : L10n.T("点「设为出战」或「改名」都会顺手把这只崽选为远征目标。",
                         "Deploying or renaming a cub also picks it as the expedition target."));
             }
@@ -190,7 +198,7 @@ namespace BossRush
             page.Actions.Add(new PetNestActionData
             {
                 Label = T("Release_Action") + (releaseTarget != null
-                    ? " · " + PetNestService.GetPetDisplayName(releaseTarget)
+                    ? " · " + PetNestService.GetDecoratedPetName(releaseTarget)
                     : string.Empty),
                 IsDanger = true,
                 Interactable = release != null && releaseTarget != null
@@ -220,7 +228,7 @@ namespace BossRush
         {
             PetNestCardData card = new PetNestCardData();
             card.Selected = string.Equals(pet.id, selectedPetId, StringComparison.Ordinal);
-            card.Title = PetNestService.GetPetDisplayName(pet);
+            card.Title = PetNestService.GetDecoratedPetName(pet);
             card.Shiny = pet.shiny;
 
             PetNestLineageInfo lineage;
@@ -528,15 +536,150 @@ namespace BossRush
                 return page;
             }
 
-            page.Body = L10n.T("待派遣：", "Ready to depart: ") + PetNestService.GetPetDisplayName(pet);
-            AppendDepartActions(page, pet, refresh);
+            page.Body = L10n.T("待派遣：", "Ready to depart: ") + PetNestService.GetDecoratedPetName(pet);
+            AppendDepartCards(page, pet, refresh);
             return page;
+        }
+
+        /// <summary>
+        /// 出发选项。2026-09-20 改版（owner：「可选择的地方太小了而且中间有很多留白」）：
+        ///   旧版把 3 目的地 × 3 档位 = 9 个按钮塞进面板底部 128px 的动作条，
+        ///   上面 412px 的内容区在没有在途远征时是整片空白。
+        ///   现在改成**两级卡片**，都画在内容区里：
+        ///     一级 = 目的地卡（3 张，带元素契合提示）；
+        ///     二级 = 选中目的地后的风险档卡（3 张，写清时长 / 死亡率 / 产出），外加「返回」。
+        ///   这同时满足 AGENTS 4.14「同一页超过 3–4 项就分二级」。
+        /// </summary>
+        private static void AppendDepartCards(PetNestPageContent page, PetNestPetRecord pet, Action refresh)
+        {
+            PetNestDestinationInfo[] destinations = PetNestExpeditionService.Destinations;
+            if (destinations == null || destinations.Length == 0) return;
+
+            // 一级：还没选目的地
+            if (string.IsNullOrEmpty(_expeditionDestinationId)
+                || PetNestExpeditionService.TryGetDestination(_expeditionDestinationId) == null)
+            {
+                page.Lines.Add(L10n.T("选一个目的地：", "Pick a destination:"));
+                for (int d = 0; d < destinations.Length; d++)
+                {
+                    string destinationId = destinations[d].Id;
+                    bool affinity = PetNestExpeditionService.HasElementAffinity(pet, destinationId);
+
+                    PetNestCardData card = new PetNestCardData();
+                    card.Title = PetNestLocalization.DescribeDestination(destinationId);
+                    card.Subtitle = affinity
+                        ? T("ElementAffinity") + L10n.T("（成功率更高）", " (higher success rate)")
+                        : L10n.T("无元素契合", "No elemental affinity");
+                    card.Body = BuildDestinationSummary();
+                    card.ActionLabel = L10n.T("选择", "Choose");
+                    card.OnClick = delegate
+                    {
+                        _expeditionDestinationId = destinationId;
+                        if (refresh != null) refresh();
+                    };
+                    page.Cards.Add(card);
+                }
+                return;
+            }
+
+            // 二级：已选目的地，挑风险档
+            string chosen = _expeditionDestinationId;
+            bool chosenAffinity = PetNestExpeditionService.HasElementAffinity(pet, chosen);
+            page.Lines.Add(L10n.T("目的地：", "Destination: ")
+                + PetNestLocalization.DescribeDestination(chosen)
+                + (chosenAffinity ? " · " + T("ElementAffinity") : string.Empty));
+
+            for (int t = 0; t <= (int)PetNestRiskTier.Desperate; t++)
+            {
+                PetNestRiskTier tier = (PetNestRiskTier)t;
+                float deathRate = PetNestExpeditionService.GetDeathRate(tier);
+                string petId = pet.id;
+
+                PetNestCardData card = new PetNestCardData();
+                card.Title = DescribeRisk(t);
+                card.Subtitle = FormatDuration(PetNestExpeditionService.GetDurationHours(tier))
+                    + " · " + T("DeathRateLabel") + " " + FormatPercent(deathRate);
+                card.Body = DescribeTierPayoff(tier);
+                card.IsDanger = tier == PetNestRiskTier.Desperate;
+                card.ActionLabel = L10n.T("出发", "Depart");
+                card.OnClick = delegate
+                {
+                    PetNestExpeditionRecord record;
+                    string reason;
+                    bool ok = PetNestExpeditionService.TryDepart(petId, chosen, tier, out record, out reason);
+                    NoteFailure(ok, reason);
+                    if (ok) _expeditionDestinationId = null;
+                    if (refresh != null) refresh();
+                };
+                page.Cards.Add(card);
+            }
+
+            page.Actions.Add(new PetNestActionData
+            {
+                Label = L10n.T("换个目的地", "Pick another destination"),
+                OnClick = delegate
+                {
+                    _expeditionDestinationId = null;
+                    if (refresh != null) refresh();
+                },
+            });
+        }
+
+        /// <summary>三档时长一行说清，省得玩家点进去才知道要等多久。</summary>
+        private static string BuildDestinationSummary()
+        {
+            return L10n.T("三档可选：", "Three tiers: ")
+                + PetNestLocalization.DescribeRisk((int)PetNestRiskTier.Safe) + " "
+                + FormatDuration(PetNestExpeditionService.GetDurationHours(PetNestRiskTier.Safe)) + " · "
+                + PetNestLocalization.DescribeRisk((int)PetNestRiskTier.Rough) + " "
+                + FormatDuration(PetNestExpeditionService.GetDurationHours(PetNestRiskTier.Rough)) + " · "
+                + PetNestLocalization.DescribeRisk((int)PetNestRiskTier.Desperate) + " "
+                + FormatDuration(PetNestExpeditionService.GetDurationHours(PetNestRiskTier.Desperate));
+        }
+
+        /// <summary>该档位的产出口径（经验与遗魂），出发前明示。</summary>
+        private static string DescribeTierPayoff(PetNestRiskTier tier)
+        {
+            int exp;
+            switch (tier)
+            {
+                case PetNestRiskTier.Rough: exp = PetNestTuning.PetExpExpeditionSurviveRough; break;
+                case PetNestRiskTier.Desperate: exp = PetNestTuning.PetExpExpeditionSurviveDesperate; break;
+                default: exp = PetNestTuning.PetExpExpeditionSurviveSafe; break;
+            }
+            string line = L10n.T("平安归来 +", "Safe return +") + exp + L10n.T(" 经验", " exp");
+            if (tier == PetNestRiskTier.Safe)
+            {
+                return line + "\n" + L10n.T("绝对安全，最坏只是空手而归。",
+                    "Absolutely safe. The worst case is coming home empty-handed.");
+            }
+            if (tier == PetNestRiskTier.Rough)
+            {
+                return line + "\n" + L10n.T("可能负伤留疤，但不会真死。",
+                    "May come back scarred, but never dies.");
+            }
+            return line + "\n" + L10n.T("真死：回不来就只剩纪念碑上的名字。",
+                "Real death: if it doesn't come back, only its name remains on the memorial.");
+        }
+
+        /// <summary>现实时长（小时）→ 「10 分钟」/「1 小时」这样的人话。</summary>
+        internal static string FormatDuration(double hours)
+        {
+            if (hours <= 0d) return "—";
+            int minutes = (int)Math.Round(hours * 60d);
+            if (minutes < 60) return minutes + L10n.T(" 分钟", " min");
+            if (minutes % 60 == 0) return (minutes / 60) + L10n.T(" 小时", "h");
+            return (minutes / 60) + L10n.T(" 小时 ", "h ") + (minutes % 60) + L10n.T(" 分钟", "m");
         }
 
         private static PetNestCardData BuildExpeditionCard(PetNestExpeditionRecord r)
         {
             PetNestCardData card = new PetNestCardData();
-            card.Title = PetNestExpeditionService.DescribePetName(r);
+            // 装饰名：炫彩渐变 / 异色金字。崽已阵亡时走记录里固化的颜色，不会退化成裸名字。
+            // 刻意**不**设 card.Shiny：卡片描边色的优先级是 Selected > Shiny > IsDanger，
+            // 让异色顶掉亡命档的红边会把「这趟很可能回不来」这条警示吃掉。
+            // 异色/炫彩已经写在标题的富文本里，不需要再占用描边这条通道。
+            card.Title = PetNestExpeditionService.DescribeDecoratedPetName(r);
             card.Subtitle = PetNestLocalization.DescribeDestination(r.destinationId)
                 + " · " + DescribeRisk(r.riskTier);
             card.IsDanger = r.riskTier == (int)PetNestRiskTier.Desperate;
@@ -549,49 +692,27 @@ namespace BossRush
             {
                 long remaining = PetNestExpeditionService.GetRemainingTicks(r);
                 TimeSpan span = TimeSpan.FromTicks(remaining);
-                card.Body = L10n.T("剩余", "Remaining") + " "
-                    + ((int)span.TotalHours) + "h" + span.Minutes + "m"
+                // 时长梯度改成 10 / 30 / 60 分钟之后，"0h10m" 这种写法看着像坏了；
+                // 一小时以内直接报分钟，最后一分钟内报秒，玩家才知道还要不要等。
+                string remainText;
+                if (span.TotalMinutes >= 60d)
+                {
+                    remainText = ((int)span.TotalHours) + L10n.T(" 小时 ", "h ") + span.Minutes + L10n.T(" 分钟", "m");
+                }
+                else if (span.TotalSeconds >= 60d)
+                {
+                    remainText = ((int)span.TotalMinutes) + L10n.T(" 分钟", " min");
+                }
+                else
+                {
+                    remainText = Math.Max(0, (int)span.TotalSeconds) + L10n.T(" 秒", "s");
+                }
+                card.Body = L10n.T("剩余", "Remaining") + " " + remainText
                     + "\n" + T("DeathRateLabel") + " " + FormatPercent(r.deathRate);
             }
             return card;
         }
 
-        private static void AppendDepartActions(PetNestPageContent page, PetNestPetRecord pet, Action refresh)
-        {
-            PetNestDestinationInfo[] destinations = PetNestExpeditionService.Destinations;
-            for (int d = 0; d < destinations.Length; d++)
-            {
-                PetNestDestinationInfo destination = destinations[d];
-                bool affinity = PetNestExpeditionService.HasElementAffinity(pet, destination.Id);
-
-                for (int t = 0; t <= (int)PetNestRiskTier.Desperate; t++)
-                {
-                    PetNestRiskTier tier = (PetNestRiskTier)t;
-                    float deathRate = PetNestExpeditionService.GetDeathRate(tier);
-                    string petId = pet.id;
-                    string destinationId = destination.Id;
-
-                    page.Actions.Add(new PetNestActionData
-                    {
-                        // 死亡率写在按钮上：赌的知情权是底线
-                        Label = PetNestLocalization.DescribeDestination(destination.Id)
-                            + " · " + DescribeRisk(t)
-                            + " · " + T("DeathRateLabel") + " " + FormatPercent(deathRate)
-                            + (affinity ? " · " + T("ElementAffinity") : string.Empty),
-                        IsDanger = tier == PetNestRiskTier.Desperate,
-                        OnClick = delegate
-                        {
-                            PetNestExpeditionRecord record;
-                            string reason;
-                            NoteFailure(
-                                PetNestExpeditionService.TryDepart(petId, destinationId, tier, out record, out reason),
-                                reason);
-                            if (refresh != null) refresh();
-                        },
-                    });
-                }
-            }
-        }
 
         /// <summary>
         /// 风险档位与百分比的文案口径都在 PetNestLocalization（面板与翻牌演出共用），
@@ -669,8 +790,20 @@ namespace BossRush
                     ? lineage.DisplayName
                     : m.lineageKey;
 
-                // 碑文一定要刻风险档位：那是玩家自己按下的选择
-                page.Lines.Add(m.displayName
+                // 碑文一定要刻风险档位：那是玩家自己按下的选择。
+                // 名字同样要带炫彩 / 异色：崽已经被移除，碑上这一行是这份颜色**唯一**的去处。
+                string memorialName = m.displayName;
+                try
+                {
+                    memorialName = PetNestChroma.Decorate(
+                        m.shiny, m.chromaA, m.chromaB, m.displayName, L10n.IsChinese);
+                }
+                catch (Exception)
+                {
+                    memorialName = m.displayName;
+                }
+
+                page.Lines.Add(memorialName
                     + " · " + lineageName
                     + " · " + PetNestLocalization.DescribeDestination(m.destinationId)
                     + " · " + DescribeRisk(m.riskTier)

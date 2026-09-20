@@ -1,0 +1,200 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using UnityEditor;
+using UnityEngine;
+using UnityEngine.Rendering;
+
+// 输入只来自锁定 GLB 的离线转换；不碰场景、存档或其它建筑的作者资产。
+public static class BaseBuildingBundleBuilder
+{
+    private const string Root = "Assets/BaseBuildings";
+
+    public static async void BuildAndExit()
+    {
+        int code = 0;
+        try
+        {
+            string output = Environment.GetEnvironmentVariable("BOSSRUSH_BUILDING_OUTPUT");
+            if (string.IsNullOrEmpty(output)) throw new InvalidOperationException("BOSSRUSH_BUILDING_OUTPUT required");
+            BuildOnly(output);
+            foreach (JObject entry in Profile()["buildings"])
+            {
+                string name = (string)entry["bundle"];
+                string target = Path.Combine(output, "release/Assets/buildings", name);
+                Directory.CreateDirectory(Path.GetDirectoryName(target));
+                var op = AssetBundle.RecompressAssetBundleAsync(Path.Combine(output, "rebuilt", name), target, BuildCompression.LZ4Runtime);
+                while (!op.isDone) await System.Threading.Tasks.Task.Delay(50);
+                if (!op.success) throw new InvalidOperationException(op.humanReadableResult);
+            }
+            Debug.Log("[BaseBuildings] BUILD / RECOMPRESS PASS");
+        }
+        catch (Exception e) { Debug.LogException(e); code = 1; }
+        EditorApplication.Exit(code);
+    }
+
+    private static JObject Profile() { return JObject.Parse(File.ReadAllText(Root + "/manifest.json")); }
+
+    // 旧遗种巢编辑器入口也走生产模型，历史图元作者文件继续保留。
+    public static void BuildPetNestOnly()
+    {
+        string output = Path.GetFullPath(Path.Combine(Application.dataPath, "../PetNestExport"));
+        BuildOnly(output, "petnest");
+        File.Copy(Path.Combine(output, "rebuilt/petnest_relic_nest"), Path.Combine(output, "petnest_relic_nest"), true);
+    }
+
+    private static void BuildOnly(string output, string only = null)
+    {
+        AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
+        JObject profile = Profile();
+        var entries = profile["buildings"].OfType<JObject>().Where(e => only == null || (string)e["id"] == only).ToArray();
+        var builds = new List<AssetBundleBuild>();
+        foreach (JObject entry in entries)
+        {
+            string path = CreatePrefab(entry, (int)profile["textureSize"]);
+            string name = (string)entry["bundle"];
+            // 每个包只能有当前生产 prefab；取消历史源标签，不删除历史源文件。
+            foreach (string old in AssetDatabase.GetAssetPathsFromAssetBundle(name))
+            {
+                if (old != path) { AssetImporter oldImporter = AssetImporter.GetAtPath(old); oldImporter.assetBundleName = ""; oldImporter.SaveAndReimport(); }
+            }
+            AssetImporter importer = AssetImporter.GetAtPath(path);
+            importer.assetBundleName = name;
+            importer.SaveAndReimport();
+            builds.Add(new AssetBundleBuild { assetBundleName = name, assetNames = new[] { path }, addressableNames = new[] { (string)entry["prefab"] } });
+        }
+        AssetDatabase.SaveAssets();
+        string rebuilt = Path.Combine(output, "rebuilt");
+        Directory.CreateDirectory(rebuilt);
+        var manifest = BuildPipeline.BuildAssetBundles(rebuilt, builds.ToArray(),
+            BuildAssetBundleOptions.ChunkBasedCompression | BuildAssetBundleOptions.StrictMode, BuildTarget.StandaloneWindows64);
+        if (manifest == null) throw new InvalidOperationException("BuildAssetBundles failed");
+        var report = new List<object>();
+        foreach (JObject entry in entries) report.Add(Validate(rebuilt, entry, (int)profile["maxTriangles"], (int)profile["textureSize"]));
+        File.WriteAllText(Path.Combine(output, "unity-validation.json"), JsonConvert.SerializeObject(report, Formatting.Indented));
+    }
+
+    private static Vector3[] Vectors(JToken values)
+    { return values.Select(v => new Vector3((float)v[0], (float)v[1], (float)v[2])).ToArray(); }
+
+    private static string CreatePrefab(JObject entry, int maxSize)
+    {
+        string dir = Root + "/" + (string)entry["id"];
+        string texturePath = dir + "/Albedo.png";
+        TextureImporter ti = (TextureImporter)AssetImporter.GetAtPath(texturePath);
+        ti.textureType = TextureImporterType.Default;
+        ti.sRGBTexture = true;
+        ti.alphaSource = TextureImporterAlphaSource.None;
+        ti.isReadable = false;
+        ti.mipmapEnabled = true;
+        ti.wrapMode = TextureWrapMode.Clamp;
+        ti.filterMode = FilterMode.Trilinear;
+        ti.anisoLevel = 2;
+        ti.maxTextureSize = maxSize;
+        ti.crunchedCompression = false;
+        ti.textureCompression = TextureImporterCompression.CompressedHQ;
+        ti.SetPlatformTextureSettings(new TextureImporterPlatformSettings {
+            name = "Standalone", overridden = true, maxTextureSize = maxSize,
+            format = TextureImporterFormat.BC7, crunchedCompression = false, compressionQuality = 100 });
+        ti.SaveAndReimport();
+
+        JObject input = JObject.Parse(File.ReadAllText(dir + "/mesh.json"));
+        string meshPath = dir + "/Model.asset";
+        Mesh mesh = AssetDatabase.LoadAssetAtPath<Mesh>(meshPath);
+        bool created = mesh == null;
+        if (created) mesh = new Mesh();
+        // 重新构建必须恢复编辑期 CPU 数据可写状态；进包前再关闭。
+        var serialized = new SerializedObject(mesh);
+        serialized.FindProperty("m_IsReadable").boolValue = true;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        mesh.Clear();
+        mesh.name = (string)entry["prefab"] + "_Mesh";
+        mesh.vertices = Vectors(input["vertices"]);
+        mesh.normals = Vectors(input["normals"]);
+        mesh.uv = input["uv"].Select(v => new Vector2((float)v[0], (float)v[1])).ToArray();
+        mesh.triangles = input["triangles"].ToObject<int[]>();
+        mesh.RecalculateBounds();
+        mesh.RecalculateTangents();
+        if (created) AssetDatabase.CreateAsset(mesh, meshPath);
+        serialized = new SerializedObject(mesh);
+        serialized.FindProperty("m_IsReadable").boolValue = false;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(mesh);
+
+        string materialPath = dir + "/Surface.mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(materialPath);
+        Shader shader = Shader.Find("BossRush/SkyIsland/Environment");
+        if (shader == null) throw new InvalidOperationException("Shared environment shader missing");
+        if (material == null) { material = new Material(shader); AssetDatabase.CreateAsset(material, materialPath); }
+        material.shader = shader;
+        material.SetTexture("_BaseMap", AssetDatabase.LoadAssetAtPath<Texture2D>(texturePath));
+        material.SetColor("_BaseColor", Color.white);
+        material.SetFloat("_MaterialKind", 0f);
+        material.SetColor("_EmissionColor", Color.black);
+        material.SetFloat("_EmissionPulse", 0f);
+        material.SetFloat("_Smoothness", 0.1f);
+        material.shaderKeywords = new string[0];
+        material.enableInstancing = true;
+        EditorUtility.SetDirty(material);
+
+        GameObject root = new GameObject((string)entry["prefab"]);
+        string prefabPath = dir + "/" + (string)entry["prefab"] + ".prefab";
+        try
+        {
+            GameObject visual = new GameObject("Visual");
+            visual.transform.SetParent(root.transform, false);
+            visual.AddComponent<MeshFilter>().sharedMesh = mesh;
+            var renderer = visual.AddComponent<MeshRenderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = ShadowCastingMode.On;
+            renderer.receiveShadows = true;
+            // 碰撞与交互仍由运行时 Building/Function 装配，模型包只承载外观。
+            PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
+        }
+        finally { UnityEngine.Object.DestroyImmediate(root); }
+        return prefabPath;
+    }
+
+    private static object Validate(string output, JObject entry, int maxTriangles, int textureSize)
+    {
+        string path = Path.Combine(output, (string)entry["bundle"]);
+        AssetBundle bundle = AssetBundle.LoadFromFile(path);
+        if (bundle == null) throw new InvalidOperationException("Bundle reload failed: " + path);
+        GameObject instance = null;
+        try
+        {
+            var prefab = bundle.LoadAsset<GameObject>((string)entry["prefab"]);
+            if (prefab == null) throw new InvalidOperationException("Named prefab missing");
+            instance = UnityEngine.Object.Instantiate(prefab);
+            if (instance.transform.localPosition != Vector3.zero || instance.transform.localRotation != Quaternion.identity || instance.transform.localScale != Vector3.one)
+                throw new InvalidOperationException("Root transform must be identity");
+            var renderers = instance.GetComponentsInChildren<MeshRenderer>(true);
+            if (renderers.Length != 1 || instance.GetComponentsInChildren<Collider>(true).Length != 0 ||
+                instance.GetComponentsInChildren<MonoBehaviour>(true).Length != 0 || instance.GetComponentsInChildren<LODGroup>(true).Length != 0)
+                throw new InvalidOperationException("Unexpected renderer/behaviour/collider structure");
+            Mesh mesh = instance.GetComponentInChildren<MeshFilter>().sharedMesh;
+            int triangles = (int)mesh.GetIndexCount(0) / 3;
+            if (mesh.isReadable || triangles <= 0 || triangles > maxTriangles || mesh.subMeshCount != 1)
+                throw new InvalidOperationException("Mesh budget/readability failed");
+            Bounds bounds = renderers[0].bounds;
+            var box = entry["box"].ToObject<float[]>();
+            if (Mathf.Abs(bounds.min.y) > 0.001f || Mathf.Abs(bounds.center.x) > 0.001f || Mathf.Abs(bounds.center.z) > 0.001f ||
+                bounds.size.x > box[0] + 0.001f || bounds.size.y > box[1] + 0.001f || bounds.size.z > box[2] + 0.001f)
+                throw new InvalidOperationException("Building bounds/ground pivot failed");
+            Material mat = renderers[0].sharedMaterial;
+            if (mat.FindPass("GBuffer") < 0) throw new InvalidOperationException("Deferred GBuffer missing");
+            var texture = (Texture2D)mat.GetTexture("_BaseMap");
+            if (texture == null || texture.isReadable || texture.format != TextureFormat.BC7 || texture.width != textureSize || texture.height != textureSize)
+                throw new InvalidOperationException("Texture production contract failed");
+            return new { id = (string)entry["id"], bundle = (string)entry["bundle"], prefab = prefab.name, vertices = mesh.vertexCount,
+                triangles, rendererCount = renderers.Length, colliderCount = 0, bounds = new[] { bounds.size.x, bounds.size.y, bounds.size.z },
+                textureWidth = texture.width, textureHeight = texture.height, textureFormat = texture.format.ToString(),
+                textureReadable = texture.isReadable, meshReadable = mesh.isReadable, shader = mat.shader.name, gbufferPass = mat.FindPass("GBuffer"),
+                bytes = new FileInfo(path).Length, instantiated = true };
+        }
+        finally { if (instance != null) UnityEngine.Object.DestroyImmediate(instance); bundle.Unload(true); }
+    }
+}

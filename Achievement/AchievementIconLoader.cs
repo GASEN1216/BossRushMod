@@ -12,7 +12,7 @@ using UnityEngine;
 namespace BossRush
 {
     /// <summary>
-    /// 成就图标加载服务 - 优先加载独立 PNG，兼容旧 AssetBundle
+    /// 成就图标加载服务：优先生产压缩图标，保留缺包/Dev PNG 与旧 AssetBundle 回退。
     /// </summary>
     public static class AchievementIconLoader
     {
@@ -49,7 +49,8 @@ namespace BossRush
                 return cached;
             }
 
-            Sprite sprite = LoadSpriteFromPng(iconName);
+            Sprite sprite = ProductionIconCache.Get(PNG_RELATIVE_PATH + "/" + iconName + ".png");
+            if (sprite == null && ProductionIconCache.AllowRawFallback) sprite = LoadSpriteFromPng(iconName);
             if (sprite == null)
             {
                 EnsureBundleLoaded();
@@ -168,7 +169,7 @@ namespace BossRush
 
                 byte[] bytes = System.IO.File.ReadAllBytes(path);
                 texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes)) return null;
+                if (!texture.LoadImage(bytes, true)) return null;
                 texture.hideFlags = HideFlags.DontSave;
                 texture.name = iconName;
                 texture.wrapMode = TextureWrapMode.Clamp;
@@ -231,7 +232,7 @@ namespace BossRush
 
             try
             {
-                iconBundle = AssetBundle.LoadFromFile(bundlePath);
+                iconBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (iconBundle != null)
                 {
                     ModBehaviour.DevLog("[AchievementIconLoader] 成功加载 AssetBundle: " + bundlePath);

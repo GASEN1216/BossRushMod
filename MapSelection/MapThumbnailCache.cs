@@ -52,8 +52,8 @@ namespace BossRush
                     return cached;
                 }
 
-                // null 缓存项：仅在我们确实记录过失败时直接返回 null。
-                return null;
+                // Unity 已销毁对象也 == null，只有真正的 null 才是失败缓存。
+                if (ReferenceEquals(cached, null)) return null;
             }
 
             Sprite loaded = LoadFromDisk(modPath, imageName);
@@ -63,6 +63,13 @@ namespace BossRush
 
         private static Sprite LoadFromDisk(string modPath, string imageName)
         {
+            Sprite compressed = ProductionIconCache.Get("Assets/preview/" + imageName)
+                ?? ProductionIconCache.Get("Assets/" + imageName);
+            if (compressed != null) return compressed;
+            if (!ProductionIconCache.AllowRawFallback) return null;
+            Texture2D texture = null;
+            Sprite sprite = null;
+            bool retained = false;
             try
             {
                 if (string.IsNullOrEmpty(modPath))
@@ -86,22 +93,30 @@ namespace BossRush
                 }
 
                 byte[] imageData = File.ReadAllBytes(imagePath);
-                Texture2D texture = new Texture2D(2, 2);
-                if (ImageConversion.LoadImage(texture, imageData))
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                if (ImageConversion.LoadImage(texture, imageData, true))
                 {
-                    ownedTextures.Add(texture);
-                    return Sprite.Create(
+                    sprite = Sprite.Create(
                         texture,
                         new Rect(0, 0, texture.width, texture.height),
                         new Vector2(0.5f, 0.5f));
+                    if (sprite == null) return null;
+                    ownedTextures.Add(texture);
+                    retained = true;
+                    return sprite;
                 }
-
-                // 加载失败：销毁刚分配的占位纹理
-                UnityEngine.Object.Destroy(texture);
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[BossRush] MapThumbnailCache 加载失败(" + imageName + "): " + e.Message);
+            }
+            finally
+            {
+                if (!retained)
+                {
+                    if (sprite != null && ownedTextures.Contains(sprite.texture)) UnityEngine.Object.Destroy(sprite);
+                    if (texture != null) UnityEngine.Object.Destroy(texture);
+                }
             }
 
             return null;
@@ -114,6 +129,8 @@ namespace BossRush
         {
             try
             {
+                foreach (Sprite sprite in spriteCache.Values)
+                    if (sprite != null && ownedTextures.Contains(sprite.texture)) UnityEngine.Object.Destroy(sprite);
                 for (int i = 0; i < ownedTextures.Count; i++)
                 {
                     Texture2D tex = ownedTextures[i];

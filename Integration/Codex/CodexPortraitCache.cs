@@ -246,7 +246,7 @@ namespace BossRush
                     return false;
                 }
 
-                _bundle = AssetBundle.LoadFromFile(bundlePath);
+                _bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (_bundle == null)
                 {
                     ModBehaviour.DevLog(CodexTuning.LogPrefix + "立绘 bundle 加载失败，使用占位链: " + bundlePath);
@@ -282,46 +282,10 @@ namespace BossRush
         /// <summary>开发期 raw PNG 回落。发布构建里 AllowDevRawPngFallback 恒 false。</summary>
         private static Sprite LoadDevRawSprite(string assetName)
         {
-            try
-            {
-                if (!AllowDevRawPngFallback) return null;
-
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-
-                string path = System.IO.Path.Combine(
-                    modPath,
-                    CodexTuning.PortraitDevRawRelativeDir.Replace('/', System.IO.Path.DirectorySeparatorChar),
-                    assetName + ".png");
-                if (!System.IO.File.Exists(path)) return null;
-
-                byte[] bytes = System.IO.File.ReadAllBytes(path);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                texture.hideFlags = HideFlags.HideAndDontSave;
-                if (!texture.LoadImage(bytes))
-                {
-                    UnityEngine.Object.Destroy(texture);
-                    return null;
-                }
-
-                Sprite sprite = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
-                sprite.name = assetName;
-                sprite.hideFlags = HideFlags.HideAndDontSave;
-                // 记进自造列表：Unload 必须显式销毁，DontSave 对象不随场景回收
-                _devCreatedSprites.Add(sprite);
-
-                ModBehaviour.DevLog(CodexTuning.LogPrefix + "[DEV] 使用 raw PNG fallback: " + assetName);
-                return sprite;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog(CodexTuning.LogPrefix + "[WARNING] raw PNG fallback 失败 "
-                    + assetName + ": " + e.Message);
-                return null;
-            }
+            if (!AllowDevRawPngFallback) return null;
+            Sprite sprite = RawImageLoader.LoadSprite(System.IO.Path.Combine(ModBehaviour.GetModPath(), CodexTuning.PortraitDevRawRelativeDir, assetName + ".png"), assetName);
+            if (sprite != null) _devCreatedSprites.Add(sprite);
+            return sprite;
         }
 
         /// <summary>资产名：codex_portrait_ + bossKey 全小写（命名已冻结）。</summary>

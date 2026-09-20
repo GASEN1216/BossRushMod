@@ -22,6 +22,14 @@
 
 内容设计上，每件新东西写清「从哪来 / 拿来做什么（卖钱不算）/ 串到哪条系统线」，功能重叠的拉开定位。
 
+## 自定义头盔与装备尺寸
+
+- `EquipmentModel` 根节点保持单位变换。官方 `ChangeEquipmentModel` 清零根节点位置/旋转，不清缩放；轴向、尺寸与佩戴偏移只改网格子节点。
+- 头盔以 `tools/helmet_fit_profiles.json` 为唯一校准数值源，登记源网格 bounds、源上方/正面及子节点绝对变换。先核对轴向，再按盔壳校准；长角/帽绳/飘带拉偏的整体盒中心不能当佩戴中心。参考龙王/龙裔的佩戴关系，不照抄 Scale。
+- `python tools/helmet_fit.py --sync` 同步至作者工程，`HelmetFitUtility` 在生成时绝对赋值，不能把偏移重复烤入 FBX。新头盔或源网格尺寸改变须更新校准，缺登记或与源资源不符时构建失败。
+- 头盔走 `HelmetFitBundleBuilder`，天空岛模型生成保留校准调用，全量 `DuckovBundleBuilder` 打包前验证。构建后运行 `python tools/helmet_fit.py --check` 与 `python tools/run_guards.py --filter HelmetFit`，再核对包内姿态和部署哈希；缺作者工程的 PARTIAL 不是资源通过。
+- 护甲按胸腹与肩臂活动范围、背包按贴背面、面罩/耳机按脸部与两侧定位，不套统一尺寸或偏移。实际头型和动作仍需 owner 试戴；固定资源无法保证极端捏脸均无穿模。教程见 `docs/制作教程/头盔佩戴与装备尺寸校准.md`。
+
 ## 其他规则
 
 - 装备走 `EquipmentFactory`，物品走 `ItemFactory`，不要绕过工厂手写注册。

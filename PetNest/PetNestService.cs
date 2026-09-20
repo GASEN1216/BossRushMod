@@ -349,6 +349,25 @@ namespace BossRush
             return string.IsNullOrEmpty(pet.lineageKey) ? pet.id : pet.lineageKey;
         }
 
+        /// <summary>
+        /// 面板 / 演出用的**装饰名**：在 GetPetDisplayName 之上套炫彩渐变或异色金字
+        /// （PetNestChroma.Decorate 是这套富文本的唯一出处）。
+        /// 只给 TMP 富文本控件用；日志、存档、输入框一律用 GetPetDisplayName。
+        /// </summary>
+        internal static string GetDecoratedPetName(PetNestPetRecord pet)
+        {
+            string raw = GetPetDisplayName(pet);
+            try
+            {
+                return PetNestChroma.Decorate(pet, raw, L10n.IsChinese);
+            }
+            catch (Exception)
+            {
+                // 装饰失败绝不能让名字整条消失
+                return raw;
+            }
+        }
+
         /// <summary>生成一个新的崽 id（巢内唯一，随 nameSerial 递增）。</summary>
         internal static string AllocatePetId()
         {
@@ -417,7 +436,9 @@ namespace BossRush
                 nest.deployedPetId = pet.id;
                 pet.state = (int)PetNestPetState.Deployed;
 
-                return CommitCandidate(out failureReasonId);
+                bool ok = CommitCandidate(out failureReasonId);
+                if (ok) NotifyDeployedPetChanged();
+                return ok;
             }
             catch (Exception e)
             {
@@ -443,13 +464,43 @@ namespace BossRush
                 }
                 nest.deployedPetId = null;
 
-                return CommitCandidate(out failureReasonId);
+                bool ok = CommitCandidate(out failureReasonId);
+                if (ok) NotifyDeployedPetChanged();
+                return ok;
             }
             catch (Exception e)
             {
                 PetNestPersistenceAccess.AbortTransaction();
                 failureReasonId = "clear_deployed_failed:" + e.GetType().Name;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// 出战席位变化后的表现层同步（owner 2026-09-20「点了不带他们出击后就要立马收回」）。
+        /// 基地：立刻收回在场的崽并按新席位重铺；
+        /// 局内：席位已经不是在场那只时立刻回收随从，不等切图。
+        /// 全程 no-throw：表现层同步失败不得回滚已经提交的席位数据。
+        /// </summary>
+        private static void NotifyDeployedPetChanged()
+        {
+            try
+            {
+                PetNestBaseIdleSpawner.NotifyDeployedPetChanged();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 席位变化同步闲逛崽失败: " + e.Message);
+            }
+
+            try
+            {
+                // 生成尚未完成时 ActiveCompanionPetId 为空，同样必须取消这次请求。
+                PetNestCompanionRuntime.CleanupOnce();
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 席位变化同步在场随从失败: " + e.Message);
             }
         }
 

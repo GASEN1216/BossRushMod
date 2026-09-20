@@ -343,6 +343,9 @@ namespace BossRush
             {
                 entry.FirstKillTicks = DateTime.UtcNow.Ticks;
                 entry.FirstMode = ResolveCurrentModeId();
+                // 初见场景：记场景 id，显示时才翻成当前语言的地图名（CodexSceneNames）。
+                // 这里只做一次 O(1) 取值，且只在首次解锁那一击上，不在热路径。
+                entry.FirstScene = CodexSceneNames.Capture();
             }
 
             if (fightSeconds > 0f

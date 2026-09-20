@@ -176,7 +176,7 @@ namespace BossRush
                     modPath, BundleRelativePath.Replace('/', Path.DirectorySeparatorChar));
                 if (!File.Exists(bundlePath)) return false;
 
-                _bundle = AssetBundle.LoadFromFile(bundlePath);
+                _bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 return _bundle != null;
             }
             catch (Exception e)
@@ -201,39 +201,12 @@ namespace BossRush
 
         private static Sprite LoadRawSprite(string assetName)
         {
-            try
-            {
-                string modPath = ModBehaviour.GetModPath();
-                if (string.IsNullOrEmpty(modPath)) return null;
-
-                string path = Path.Combine(
-                    modPath,
-                    RawRelativeDir.Replace('/', Path.DirectorySeparatorChar),
-                    assetName + ".png");
-                if (!File.Exists(path)) return null;
-
-                byte[] bytes = File.ReadAllBytes(path);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes))
-                {
-                    UnityEngine.Object.Destroy(texture);
-                    return null;
-                }
-
-                Sprite sprite = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
-
-                // 程序化对象带 HideFlags 之外的生命周期，必须记账以便 Unload 时销毁
-                _ownedObjects.Add(texture);
-                _ownedObjects.Add(sprite);
-                return sprite;
-            }
-            catch (Exception)
-            {
-                return null;
-            }
+            Sprite compressed = ProductionIconCache.Get(RawRelativeDir + "/" + assetName + ".png");
+            if (compressed != null) return compressed;
+            if (!ProductionIconCache.AllowRawFallback) return null;
+            Sprite sprite = RawImageLoader.LoadSprite(Path.Combine(ModBehaviour.GetModPath(), RawRelativeDir, assetName + ".png"), assetName);
+            if (sprite != null) { _ownedObjects.Add(sprite.texture); _ownedObjects.Add(sprite); }
+            return sprite;
         }
 
         #endregion

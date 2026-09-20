@@ -1087,12 +1087,16 @@ namespace BossRush
             if (artAttempted) return false;
             artAttempted = true;
             Texture2D texture = null;
+            Sprite[] sliced = null;
             try
             {
                 string path = Path.Combine(Path.Combine(ModBehaviour.GetModPath(), "Assets/ui/SkyIsland"), SheetFile);
-                if (!File.Exists(path)) throw new FileNotFoundException("云蚋精灵表未部署", path);
-                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
-                if (!texture.LoadImage(File.ReadAllBytes(path), true)) throw new InvalidOperationException("精灵表解码失败");
+                Sprite packedSheet = ProductionIconCache.Get("Assets/ui/SkyIsland/" + SheetFile);
+                texture = packedSheet != null ? packedSheet.texture : null;
+                if (texture == null && !ProductionIconCache.AllowRawFallback) throw new InvalidOperationException("Packed gnat sheet missing");
+                if (texture == null && !File.Exists(path)) throw new FileNotFoundException("云蚋精灵表未部署", path);
+                if (texture == null) texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, false);
+                if (packedSheet == null && !texture.LoadImage(File.ReadAllBytes(path), true)) throw new InvalidOperationException("精灵表解码失败");
                 if (texture.width != FramePixels * FrameCount || texture.height != FramePixels)
                     throw new InvalidOperationException("精灵表尺寸不对：" + texture.width + "x" + texture.height);
                 texture.name = "SkyIslandGnatSheet";
@@ -1101,7 +1105,7 @@ namespace BossRush
                 texture.wrapMode = TextureWrapMode.Clamp;
                 Shader shader = Shader.Find("Sprites/Default");
                 if (shader == null) throw new InvalidOperationException("找不到 Sprites/Default 着色器");
-                var sliced = new Sprite[FrameCount];
+                sliced = new Sprite[FrameCount];
                 for (int i = 0; i < FrameCount; i++)
                 {
                     sliced[i] = Sprite.Create(texture, new Rect(i * FramePixels, 0f, FramePixels, FramePixels), new Vector2(0.5f, 0.5f),
@@ -1116,7 +1120,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                if (texture != null) UnityEngine.Object.Destroy(texture);
+                if (sliced != null) foreach (Sprite frame in sliced) if (frame != null) UnityEngine.Object.Destroy(frame);
+                if (spriteMaterial != null) UnityEngine.Object.Destroy(spriteMaterial);
+                if (trailMaterial != null) UnityEngine.Object.Destroy(trailMaterial);
+                spriteMaterial = trailMaterial = null;
+                if (texture != null && !ProductionIconCache.IsBorrowed(texture)) UnityEngine.Object.Destroy(texture);
                 ModBehaviour.CriticalLog("sky-island-gnat-art", "[SkyIsland] 云蚋精灵表不可用，本进程不刷云蚋：" + e.Message);
                 return false;
             }
@@ -1162,7 +1170,7 @@ namespace BossRush
                 for (int i = 0; i < frames.Length; i++)
                     if (frames[i] != null) UnityEngine.Object.Destroy(frames[i]);
             frames = null;
-            if (sheet != null) UnityEngine.Object.Destroy(sheet);
+            if (sheet != null && !ProductionIconCache.IsBorrowed(sheet)) UnityEngine.Object.Destroy(sheet);
             sheet = null;
             if (spriteMaterial != null) UnityEngine.Object.Destroy(spriteMaterial);
             if (trailMaterial != null) UnityEngine.Object.Destroy(trailMaterial);

@@ -6,6 +6,8 @@
 //
 // 口径（与遗种巢血脉目录同源，但**刻意多一步并集**）：
 //   1) ModBehaviour.GetFilteredEnemyPresets() 的过滤池（自定义键留给下一步）；
+//   1b) **官方 Boss 名单**（CodexOfficialBossRegistry / Assets/Data/CodexOfficialBosses.json）
+//       里过滤池没给出的那些——这一步 2026-09-20 第三轮补上，见下方长注释；
 //   2) 三个自定义 Boss 常量（也在公共池注册，在这里统一分类）；
 //   3) 五个丧尸模式 Boss 的合成条目；
 //   4) **存档里已经出现过、但前三步都不含的历史条目**。
@@ -126,6 +128,7 @@ namespace BossRush
                 try
                 {
                     _officialPoolAvailable = AddOfficialEntries(owner, byKey, ordered);
+                    AddOfficialRosterEntries(byKey, ordered);
                     AddCustomEntries(byKey, ordered);
                     AddZombieEntries(byKey, ordered);
                     AddHistoricalEntries(saved, byKey, ordered);
@@ -196,6 +199,64 @@ namespace BossRush
                 ordered.Add(entry);
             }
             return true;
+        }
+
+        /// <summary>
+        /// 第 1b 步：官方 Boss 名单里、过滤池没给出的条目，一律补成**未解锁的锁定卡**。
+        ///
+        /// 为什么必须有这一步（owner 2026-09-20 问题 3 的后半段）：
+        /// 过滤池 = BossFilter.GetFilteredEnemyPresets()，它有两道会让官方 Boss 消失的闸——
+        ///   a) 玩家在 Boss 筛选器里关掉了这个 Boss（`IsBossEnabled` 过滤掉）；
+        ///   b) 官方 preset 还没被 InitializeEnemyPresets 扫到（没进过竞技场就是这个状态），
+        ///      或者它的 baseHealth / team 不满足那张池子的口径。
+        /// 于是玩家看到的图鉴会缺格：既没有锁定卡，也没有统计入口和立绘，
+        /// 「还差哪几只没打」这件事在册子里根本查不到。
+        ///
+        /// 图鉴是**收藏册**，它的目录应该是「官方总共有哪些 Boss」，
+        /// 而不是「这一局的刷怪池现在允许刷哪些」。名单本身就是 owner 指定的那份
+        /// （escapefromduckov.net 的 isBoss 标记，落在 Assets/Data/CodexOfficialBosses.json），
+        /// 与 FormatCategory 的分类判据同源——一份名单同时管分类和目录，不会两头打架。
+        ///
+        /// 显示名走 ResolveCurrentDisplayName 的官方本地化 key（`Cname_*` / `Character_*`），
+        /// 解析不出来就退回 key 本身，不编造名字。立绘走 CodexPortraitCache 的同一条
+        /// bossKey 通道（40 个名单条目在 tools/codex_official_presets.json 里都有图）。
+        ///
+        /// fail-open：名单读不出来时 OfficialBossKeys 返回空表，这一步等于不存在，
+        /// 目录退回旧口径，面板照开。
+        /// </summary>
+        private static void AddOfficialRosterEntries(
+            Dictionary<string, CodexBossInfo> byKey,
+            List<CodexBossInfo> ordered)
+        {
+            List<string> roster;
+            try { roster = CodexOfficialBossRegistry.OfficialBossKeys(); }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog(CodexTuning.LogPrefix
+                    + "[WARNING] 官方 Boss 名单补目录失败，本次只用过滤池: " + e.Message);
+                return;
+            }
+            if (roster == null) return;
+
+            for (int i = 0; i < roster.Count; i++)
+            {
+                string key = roster[i];
+                if (string.IsNullOrEmpty(key)) continue;
+                // 自定义 Boss 不该出现在官方名单里；真出现了也让第 2 步统一分类
+                if (IsCustomBossKey(key)) continue;
+                if (byKey.ContainsKey(key)) continue;
+
+                CodexBossInfo entry = new CodexBossInfo();
+                entry.Key = key;
+                entry.DisplayName = null;      // 取用时按当前语言解析官方 key
+                entry.IsCustomBoss = false;
+                entry.IsZombieBoss = false;
+                // 不是历史条目：它是**当前**官方阵容的一员，只是这一局的池子里没有
+                entry.IsHistoricalOnly = false;
+
+                byKey[entry.Key] = entry;
+                ordered.Add(entry);
+            }
         }
 
         /// <summary>第 2 步：三个自定义 Boss 的 canonical key。</summary>
@@ -326,20 +387,6 @@ namespace BossRush
             if (!string.IsNullOrEmpty(localized) && localized != key && localized.IndexOf('*') < 0)
                 return localized;
             return string.IsNullOrEmpty(fallback) ? key : fallback;
-        }
-
-        /// <summary>仅描述现有可达入口；历史记录不承诺已移除的 Boss 仍能刷新。</summary>
-        internal static string GetEncounterHint(CodexBossInfo info)
-        {
-            if (info == null) return string.Empty;
-            if (info.IsZombieBoss)
-                return L10n.T("末日丧尸：每五波的 Boss 波轮换登场。推进波次可收集五种 Boss。",
-                    "Zombie Mode: boss waves rotate through all five kinds every five waves. Keep advancing to meet them.");
-            if (info.IsHistoricalOnly)
-                return L10n.T("已收录的额外记录。可回到首杀模式重访；被筛选禁用的 Boss 需先重新启用。",
-                    "An additional collected record. Revisit its first-kill mode; re-enable filtered bosses before hunting them again.");
-            return L10n.T("标准竞技场 / 无间炼狱：在 Boss 筛选器启用此 Boss，进入波次随机遭遇。",
-                "Arena / Infinite Hell: enable this boss in the Boss Filter, then encounter it in randomized waves.");
         }
 
         /// <summary>官方 Boss：displayName -&gt; 本地化表 -&gt; 裸 nameKey。</summary>

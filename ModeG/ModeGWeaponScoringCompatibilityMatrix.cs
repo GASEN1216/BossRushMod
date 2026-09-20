@@ -132,7 +132,7 @@ namespace BossRush
                 false, false,
                 "DragonSet_BurnPassive_BuffEffect", RequiredVerificationRevision),
 
-            // 雷霆套装（雷神之角+雷霆战甲）：受击电击 AOE 与击杀引雷术连锁均为 buff/effect 通道
+            // 雷霆套装（雷神之角+雷霆战甲）：受击电击 AOE 与普攻附带的雷噬电弧均为 buff/effect 通道
             // （new DamageInfo(Main)、TypeID 0、isFromBuffOrEffect），登记不计分，伤害/推进不变；无普通攻击输出
             new ModeGWeaponScoringEntry(
                 "ThunderSet", 0,
@@ -140,7 +140,7 @@ namespace BossRush
                 false, false,
                 "ThunderSet_ShockAoE_BuffEffect", RequiredVerificationRevision),
 
-            // 冰霜套装（霜冠+寒冰铠甲）：击杀冰葬霜爆为 buff/effect 通道（new DamageInfo(Main)、TypeID 0、
+            // 冰霜套装（霜冠+寒冰铠甲）：普攻附带的霜噬为 buff/effect 通道（new DamageInfo(Main)、TypeID 0、
             // isFromBuffOrEffect），登记不计分，伤害/冻结/推进不变；无普通攻击输出。只追加，不重排。
             new ModeGWeaponScoringEntry(
                 "FrostSet", 0,

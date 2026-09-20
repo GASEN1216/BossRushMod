@@ -327,11 +327,12 @@ namespace BossRush
         private readonly List<Health> setBonusScanResults = new List<Health>(8);
 
         /// <summary>
-        /// 套装击杀触发的统一过滤（过滤序照 CodexKillCollector.OnGlobalDead：越便宜越靠前）。
-        /// 只认「主角亲手击杀敌方角色」：排玩家自身死亡、Mode H 观战互换（官方会把 fromCharacter 改写成主角）、
-        /// 遗种巢随从、友军（宠物/雇佣兵同为 Teams.player）、基地场景。
+        /// 套装触发的统一过滤（过滤序照 CodexKillCollector.OnGlobalDead：越便宜越靠前）。
+        /// 只认「主角亲手打到敌方角色」：排玩家自身、Mode H 观战互换（官方会把 fromCharacter 改写成主角）、
+        /// 遗种巢随从、按玩家当前阵营判定的友军、基地场景。
+        /// 霜噬 / 雷噬（普攻附带）与受击反制共用这一份判据，不另起第二套过滤。
         /// </summary>
-        private bool TryResolveSetBonusKillVictim(Health target, DamageInfo info, out CharacterMainControl victim, out Vector3 position)
+        private bool TryResolveSetBonusEnemyTarget(Health target, DamageInfo info, out CharacterMainControl victim, out Vector3 position)
         {
             victim = null;
             position = Vector3.zero;
@@ -344,7 +345,7 @@ namespace BossRush
 
             CharacterMainControl resolved = target.TryGetCharacter();
             if (resolved == null) return false;
-            if (resolved.Team == Teams.player) return false;
+            if (!Team.IsEnemy(info.fromCharacter.Team, resolved.Team)) return false;
 
             try
             {
@@ -361,7 +362,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 扫描 center 周围 radius 内的存活敌人（Team.IsEnemy(Teams.player, …)），按距离升序最多保留 maxCount 个，
+        /// 扫描 center 周围 radius 内、与玩家当前阵营敌对的存活角色，按距离升序最多保留 maxCount 个，
         /// 结果写入 setBonusScanResults（复用缓冲与列表，零分配）。形态照 PlayerLavaZone.DamageEnemiesInRange。
         ///
         /// 调用方在拿到结果后**不得 yield**：整张 setBonusScanResults 是冰霜/雷霆共用的复用列表，
@@ -373,6 +374,8 @@ namespace BossRush
         {
             setBonusScanResults.Clear();
             if (maxCount <= 0) return 0;
+            CharacterMainControl player = CharacterMainControl.Main;
+            if (player == null) return 0;
 
             if (setBonusScanBuffer == null)
             {
@@ -398,7 +401,7 @@ namespace BossRush
 
                 Health health = character.Health;
                 if (health == null || health.IsDead) continue;
-                if (!Team.IsEnemy(Teams.player, character.Team)) continue;
+                if (!Team.IsEnemy(player.Team, character.Team)) continue;
 
                 if (excludeHealths != null)
                 {

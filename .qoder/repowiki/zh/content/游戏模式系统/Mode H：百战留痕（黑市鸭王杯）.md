@@ -679,3 +679,23 @@ F3 首次认证结束的主动归档使用 durable 保存，不再被同帧候�
 守卫：`ModeHSeasonViabilityGuard` 枚举起点抬到 9、`KNOWN_DEAD_SCENARIOS` 由 `{8: 1332, 9: 62}` 收成 `{9: 62}`；
 `ModeHPresetEligibilityGuard` / `ModeHStructureGuard` 的冻结常量同步；执行回归 `ModeHMarketAudit`
 把「8 人在选秀门口被 `draft_pool_too_small` 挡下」正向钉住，原来的 8 人可建性审计整体改到 9 人那一档。
+
+## 2026-09-20：接入全部 BossRush 地图
+
+owner 定：「地图选择器里已有的所有图都接入我们 7 月以来的所有新模式以及新玩法。」
+
+`ModeHMapSupportRegistry.TryBuildMap` 在地图 JSON 没给 Mode H 点位时改走
+`TryDeriveMap`，从该图已有 Boss 刷新点与非重复的 `customSpawnPos` 派生：
+
+- 候选 = 展开度落在 [4, 26] 米内且最紧凑的 5 个实点；中心取均值，仅用于范围与口令；
+- 斗士 = 离中心最近的候选实点，对手 = 其余四点，避免均值落在墙、坑或楼层间；
+- 看台 = 五席之外、离中心最近且仍在合理间距内的实点；
+- 隔离点 = 擂台中心正下方 240 米（角色在 staging 是 inactive + invincible 创建的，
+  不需要地面，小地图也一定满足 30 米隔离判据）；
+- 离场点 = 玩家自定义传送点或已有 Mode E 传送点，均缺失才回落看台，不能回落地下隔离点。
+
+任何一步找不到合格点就返回 null（fail-closed），绝不凭空造坐标。
+派生地图带 `Derived = true`，`TryGetPrimaryMap` 优先选 owner 实机调过的显式地图
+（DemoChallenge），玩家仍可在地图选择界面改选。`ManualSeptemberReview` 读取真实九图 JSON，
+验证 1 张显式配置、8 张派生配置均可构建，派生落点来自已有实点且席位不重叠；37 号实验区
+使用既有玩家落点补齐五席。L2 不能证明实际导航连通性、看台视野或完整对局，仍需 L3。

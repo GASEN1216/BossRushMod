@@ -31,6 +31,23 @@ namespace BossRush
         /// <summary>等主角出现的最长时间（秒）。超时就放弃本次注册，下次进图再试。</summary>
         private const float PlayerWaitTimeoutSeconds = 15f;
 
+        // 读档/快递恢复与锻造资格共用这份登记；物品工厂的 prefab 配置不能替代实例补配。
+        internal static void RegisterRuntimeConfigs()
+        {
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                NewWeaponIds.ViperDaggerTypeId,
+                item => ViperDaggerWeaponConfig.TryConfigure(item, NewWeaponIds.ViperDaggerBaseName),
+                "毒蛇匕首");
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                NewWeaponIds.FrostSpearTypeId,
+                item => FrostSpearWeaponConfig.TryConfigure(item, NewWeaponIds.FrostSpearBaseName),
+                "冰霜长矛");
+            CustomItemRuntimeStateHelper.RegisterMeleeRuntimeConfiguredItem(
+                NewWeaponIds.SummonStaffTypeId,
+                item => SummonStaffWeaponConfig.TryConfigure(item, NewWeaponIds.SummonStaffBaseName),
+                "召唤法杖");
+        }
+
         // ====================================================================
         // 初始化
         // ====================================================================

@@ -20,6 +20,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # 类型名、方法名与只在 Dev 代码里出现的字符串常量。
 IDENTIFIERS = (
+    "ResourcePerformanceWindow",
+    "ResourcePerformanceMetrics",
+    "SampleResourcePerformance",
     "F3AutotestJudges",
     "F3AutotestSnapshotRecord",
     "AutotestWriteAllowed",

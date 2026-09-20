@@ -327,25 +327,16 @@ namespace BossRush
                         Path.Combine(modPath, "Assets"),
                         Path.Combine(relative, "evt_" + ((int)id) + ".png"));
 
-                    if (File.Exists(path))
+                    sprite = ProductionIconCache.Get("Assets/" + RandomEventsTuning.HudIconDirectory + "/evt_" + ((int)id) + ".png");
+                    if (sprite == null && ProductionIconCache.AllowRawFallback && File.Exists(path))
                     {
-                        byte[] bytes = File.ReadAllBytes(path);
-                        Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                        texture.hideFlags = HideFlags.HideAndDontSave;
-                        if (texture.LoadImage(bytes))
+                        sprite = RawImageLoader.LoadSprite(path, "evt_" + ((int)id));
+                        if (sprite != null)
                         {
-                            sprite = Sprite.Create(
-                                texture,
-                                new Rect(0f, 0f, texture.width, texture.height),
-                                new Vector2(0.5f, 0.5f));
-                            sprite.name = "evt_" + ((int)id);
                             sprite.hideFlags = HideFlags.HideAndDontSave;
-                            _ownedAssets.Add(texture);
+                            sprite.texture.hideFlags = HideFlags.HideAndDontSave;
+                            _ownedAssets.Add(sprite.texture);
                             _ownedAssets.Add(sprite);
-                        }
-                        else
-                        {
-                            UnityEngine.Object.Destroy(texture);
                         }
                     }
                 }

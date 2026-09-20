@@ -16,9 +16,6 @@ def extract_presentation():
     out.mkdir(parents=True, exist_ok=True)
     paths = {
         "DailyReportView": ("Integration/DailyReport/DailyReportUI.cs", (
-            "private sealed class PaperRow", "private void ReflowPaper()",
-            "private void PinSignInContentToTop()",
-            "private static float MeasureRowPart(", "private static void PlaceRowPart(",
             "private void FitPaper()", "private static string BuildBountyBlock(")),
         "DailyReportMailboxBuilder": ("Integration/DailyReport/DailyReportMailboxRuntime.cs", (
             "private bool InjectDailyReportBuildingData()", "private static void SetDailyReportBuildingInfoField(",
@@ -32,8 +29,11 @@ def extract_presentation():
         source = raw.decode("utf-8-sig")
         code += "partial class " + cls + " {\n"
         if cls == "DailyReportView":
-            for constant in ("Margin", "PanelWidth", "PanelHeight"):
-                declaration = re.search(r"private const float " + constant + r"\s*=\s*[0-9.]+f;", source)
+            # 2026-09-20：面板尺寸改为引用版面表常量，不再是字面量
+            for constant in ("PanelWidth", "PanelHeight"):
+                declaration = re.search(
+                    r"private const float " + constant + r"\s*=\s*DailyReportLayoutTable\." + constant + r";",
+                    source)
                 assert declaration, constant
                 code += declaration.group(0) + "\n"
         for signature in signatures:

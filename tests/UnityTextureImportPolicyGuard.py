@@ -19,6 +19,8 @@
 """
 import os
 import sys
+from pathlib import Path
+from cs_source_util import clean_source
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools"))
 
@@ -42,6 +44,21 @@ def main():
         _new_text, changes = rewrite(text, target_size, kill_crunch)
         if changes:
             offenders.append(rel + ": " + "; ".join(sorted(set(changes))))
+
+    # Importers alone can be green while an Editor builder reinstates crunch
+    # on its next run. Check the generators that explicitly set texture policy.
+    for builder in ('PortableSafeZoneDeviceBundleBuilder.cs', 'SkyIslandBossGearBundleBuilder.cs',
+                    'CodexPortraitBundleBuilder.cs', 'CampaignPresentationBundleBuilder.cs'):
+        path = Path(assets) / 'Editor' / builder
+        if not path.is_file():
+            offenders.append('missing texture policy builder: ' + builder)
+            continue
+        source = clean_source(path.read_text(encoding='utf-8-sig'))
+        normalized = ''.join(source.split())
+        if '.crunchedCompression=true;' in normalized:
+            offenders.append(builder + ': builder re-enables crunch')
+        if '.crunchedCompression=false;' not in normalized:
+            offenders.append(builder + ': explicit crunch disable is missing')
 
     if offenders:
         print("UnityTextureImportPolicyGuard: FAIL")

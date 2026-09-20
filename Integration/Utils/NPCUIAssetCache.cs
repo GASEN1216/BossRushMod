@@ -55,13 +55,13 @@ namespace BossRush.Utils
                     return false;
                 }
 
-                AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
+                AssetBundle bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     return false;
                 }
 
-                Sprite[] loaded = bundle.LoadAllAssets<Sprite>();
+                Sprite[] loaded = ResourceBundleLoader.LoadAllAssets<Sprite>(bundle);
                 bundle.Unload(false);
 
                 if (loaded == null || loaded.Length == 0)

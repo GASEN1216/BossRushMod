@@ -37,7 +37,11 @@ namespace BossRush
 
         private const float HeaderHeight = 58f;
         private const float ProgressHeight = 92f;
-        private const float FooterHeight = 46f;
+        /// <summary>底部留白。分页控件已取消，这里只留一点视觉呼吸，不再放文字或按钮。</summary>
+        private const float FooterHeight = 14f;
+
+        /// <summary>滚轮灵敏度。卡片高 210px，取 8 约等于一格滚过半张卡。</summary>
+        private const float ScrollSensitivity = 8f;
         private const float PanelSidePadding = 20f;
         private const float GridPadding = 12f;
 
@@ -145,9 +149,6 @@ namespace BossRush
         private Image _progressFill;
         private RectTransform _progressTrack;
         private Button _filterButton;
-        private Button _previousPageButton;
-        private Button _nextPageButton;
-        private TextMeshProUGUI _pageText;
         private TextMeshProUGUI _statusText;
 
         private float _panelWidth;
@@ -379,7 +380,6 @@ namespace BossRush
             CreateHeader();
             CreateProgressBar();
             CreateScrollArea();
-            CreateFooterHint();
         }
 
         private void CreateMainPanel(Transform parent)
@@ -567,7 +567,9 @@ namespace BossRush
             _scrollRect.horizontal = false;
             _scrollRect.vertical = true;
             _scrollRect.movementType = ScrollRect.MovementType.Elastic;
-            _scrollRect.scrollSensitivity = 28f;
+            // 取消分页之后整册都在这一条滚动里，滚轮灵敏度必须按「一格滚过多少行卡片」来定：
+            // 旧值 28 在 210px 高的卡片上一下就翻过大半屏（owner 2026-09-20 实测「轻轻一滚就好远」）。
+            _scrollRect.scrollSensitivity = ScrollSensitivity;
 
             if (prefab != null)
             {
@@ -623,26 +625,7 @@ namespace BossRush
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
         }
 
-        private void CreateFooterHint()
-        {
-            _pageText = ZombieModeUIHelper.CreateText(
-                "FooterHint",
-                _panelRoot.transform,
-                string.Empty,
-                13f,
-                new Vector2(0f, 0f),
-                new Vector2(1f, 0f),
-                new Vector2(0f, FooterHeight * 0.5f),
-                new Vector2(-260f, FooterHeight),
-                TextAlignmentOptions.Center,
-                BossRushUIColors.TextSecondary);
-            _pageText.raycastTarget = false;
-            _previousPageButton = CreateNavigationButton("PreviousPage", _panelRoot.transform,
-                new Vector2(0f, 0f), new Vector2(72f, FooterHeight * 0.5f), new Vector2(104f, 30f), PreviousPage);
-            _nextPageButton = CreateNavigationButton("NextPage", _panelRoot.transform,
-                new Vector2(1f, 0f), new Vector2(-72f, FooterHeight * 0.5f), new Vector2(104f, 30f), NextPage);
-        }
-
+        /// <summary>小号次级按钮（筛选按钮复用）。</summary>
         private Button CreateNavigationButton(string name, Transform parent, Vector2 anchor,
             Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
         {

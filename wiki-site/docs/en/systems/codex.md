@@ -23,15 +23,16 @@ The Codex records defeated bosses so you can choose an opponent you have not bea
 
 - The top bar shows collected entries and the current catalog size, with marks at 10, 20 and completion.
 - Select **Show missing** to find undefeated bosses, or **Show all** to restore the full list. This display filter does not change achievement requirements.
-- Each page contains up to **12 cards in four columns**. Use the bottom buttons to change pages; scroll when the page does not fit. Cards show names, kills and best times.
-- Click a card for its first-kill date, first-kill mode and **where to encounter it**. Locked cards still show names and encounter guidance; unrecorded stats show a dash.
+- The whole catalog is laid out **in one pass** - there are no page buttons, just scroll. Cards show names, kills and best times.
+- Click a card for its **category, total kills, fastest kill, first-seen date and first-seen location**. Locked cards still show names and category; unrecorded stats show a dash.
 - ESC closes the details first, then the Codex. Changing the game language updates the interface and boss names that have a current translation.
 
-Pick a missing entry, follow its encounter guidance and return after the fight to check your record. Revisit familiar opponents when you want to improve your time.
+Pick a missing entry, make sure it is enabled in the Boss Filter, then head into the arena and return after the fight to check your record. Revisit familiar opponents when you want to improve your time.
 
 ## Which bosses appear
 
-- **Official bosses**: the shared pool enabled in your Boss Filter. Arena and Infinite Hell pick from that pool randomly; enabling a boss does not guarantee it in the next wave.
+- **Official bosses**: every official boss has a slot. Even one you disabled in the Boss Filter, or one you have never met, stays in the book as a locked card so you can see what is still missing. Re-enable it in the Boss Filter before hunting it; Arena and Infinite Hell pick from the enabled pool randomly, so a boss is never guaranteed in the next wave.
+- **Official elites**: high-health opponents the game does not mark as bosses (the red and blue captains, Ultraman, the Ghost and so on). They are not part of the official boss roster; their detail page reads "Official elite".
 - **Three custom bosses**: Dragon Descendant, Skyburner Dragon Lord and Phantom Witch. These always remain in the catalog. Re-enable them in the Boss Filter if you disabled them.
 - **Five zombie bosses**: Titan, Hunter, Splitter, Shielder and Corruptor. Zombie Mode has a boss wave every five waves, with kinds rotating as you advance.
 - **Additional defeated bosses**: qualifying kills outside the catalog are kept as historical records, such as the campaign's final Champion's Shadow. Undiscovered hidden opponents do not add locked entries in advance.
@@ -173,7 +174,7 @@ The existing achievement system unlocks and pays these once per save slot. Ownin
 - Complete the current catalog → **1,000,000**
 - **Inside Ten Seconds**: one boss kill with a valid measured time of 10 seconds or less → **200,000**
 
-Completion requires defeating every boss in the current catalog. Extra historical entries cannot substitute for a missing boss. The official portion follows the Boss Filter; the three custom bosses and five zombie kinds remain required. If your filtered catalog has fewer than 10 or 20 entries, enable more bosses to pursue those count milestones. Expanding the catalog does not revoke achievements already earned.
+Completion requires defeating every boss in the current catalog. Extra historical entries cannot substitute for a missing boss. The official portion is **every official boss** and does not shrink when you disable some in the Boss Filter - disabling only stops them spawning this run, the slot stays in the book. The three custom bosses and five zombie kinds remain required. Expanding the catalog does not revoke achievements already earned.
 
 ::: tip
 The ten-second achievement needs an observed starting hit. Prepare ammunition and burst damage against a familiar opponent; a one-hit kill alone does not create a timing record.
@@ -185,4 +186,4 @@ The Codex is enabled by default, with separate progress for each save slot. Kill
 
 If the panel reports that recording is unavailable, reload and check again. Rejected updates do not appear as earned progress, and unreadable saved data is not overwritten with an empty collection.
 
-If a dedicated portrait is missing, a card uses an official icon or a name initial. Names, encounter guidance, collection and rewards remain available.
+If a dedicated portrait is missing, a card uses an official icon or a name initial. Names, category, collection and rewards remain available.

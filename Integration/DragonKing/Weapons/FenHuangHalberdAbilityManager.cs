@@ -941,6 +941,9 @@ namespace BossRush
                 }
 
                 banTextureLoadAttempted = true;
+                Sprite compressed = ProductionIconCache.Get("Assets/ban.png");
+                if (compressed != null) { banTexture = cachedBanTexture = compressed.texture; return; }
+                if (!ProductionIconCache.AllowRawFallback) return;
 
                 string banPath = System.IO.Path.Combine(modPath, "Assets", "ban.png");
                 if (!System.IO.File.Exists(banPath))
@@ -952,18 +955,20 @@ namespace BossRush
                 byte[] data = System.IO.File.ReadAllBytes(banPath);
                 banTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
                 banTexture.filterMode = FilterMode.Bilinear;
-                if (ImageConversion.LoadImage(banTexture, data))
+                if (ImageConversion.LoadImage(banTexture, data, true))
                 {
                     cachedBanTexture = banTexture;
                 }
                 else
                 {
-                    Destroy(banTexture);
+                    if (!ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);
                     banTexture = null;
                 }
             }
             catch (System.Exception e)
             {
+                if (banTexture != null && banTexture != cachedBanTexture && !ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);
+                banTexture = cachedBanTexture;
                 ModBehaviour.DevLog("[FenHuangHalberd] 加载 ban.png 失败: " + e.Message);
             }
         }
@@ -1049,7 +1054,7 @@ namespace BossRush
 
             if (banTexture != null && banTexture != cachedBanTexture)
             {
-                Destroy(banTexture);
+                if (!ProductionIconCache.IsBorrowed(banTexture)) Destroy(banTexture);
             }
         }
     }

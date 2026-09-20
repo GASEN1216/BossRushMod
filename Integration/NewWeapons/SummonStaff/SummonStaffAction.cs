@@ -42,6 +42,7 @@ namespace BossRush
         private bool spawningStarted;
         private bool spawningComplete;
         private int activeSpawnRequestId;
+        private bool keepPendingSpawnOnStop;
 
         // 缓存的预设
         private static CharacterRandomPreset cachedPreset;
@@ -82,6 +83,7 @@ namespace BossRush
             activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+            keepPendingSpawnOnStop = false;
             return true;
         }
 
@@ -96,21 +98,30 @@ namespace BossRush
 
             if (spawningComplete || actionElapsedTime >= SummonStaffConfig.TotalActionDuration)
             {
+                // 1.2 秒只是施法动作时长；首次资源加载可能更慢，不能把正常收势当作取消召唤。
+                // 收势后仍由请求代数、手持、生命和场景门约束异步结果。
+                keepPendingSpawnOnStop = !spawningComplete;
                 StopAction();
             }
         }
 
         protected override void OnAbilityStop()
         {
+            if (!keepPendingSpawnOnStop) CancelPendingSummons();
+            keepPendingSpawnOnStop = false;
+        }
+
+        internal void CancelPendingSummons()
+        {
             activeSpawnRequestId++;
             spawningStarted = false;
             spawningComplete = false;
+            keepPendingSpawnOnStop = false;
         }
 
         private void OnDestroy()
         {
-            activeSpawnRequestId++;
-            spawningStarted = false;
+            CancelPendingSummons();
         }
 
         /// <summary>
@@ -295,6 +306,7 @@ namespace BossRush
                 return false;
             if (player.Health != null && player.Health.IsDead)
                 return false;
+            if (!ModBehaviour.CanRunGameplayRuntimeCached()) return false;
             if (!SummonStaffManager.IsHoldingSummonStaff(player)) return false;
             return UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == sceneIndex;
         }

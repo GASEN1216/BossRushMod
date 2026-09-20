@@ -141,7 +141,7 @@ namespace BossRush
                     return false;
                 }
                 
-                bundle = AssetBundle.LoadFromFile(bundlePath);
+                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     DevLog("[WikiBook] 加载 AssetBundle 失败: " + bundlePath);
@@ -160,7 +160,7 @@ namespace BossRush
                 }
                 
                 // 加载所有 GameObject 资源
-                UnityEngine.Object[] assets = bundle.LoadAllAssets<GameObject>();
+                UnityEngine.Object[] assets = ResourceBundleLoader.LoadAllAssets<GameObject>(bundle);
                 if (assets == null || assets.Length == 0)
                 {
                     DevLog("[WikiBook] AssetBundle 中未找到任何 GameObject");

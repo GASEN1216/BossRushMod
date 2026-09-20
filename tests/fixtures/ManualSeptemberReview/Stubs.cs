@@ -1,0 +1,177 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
+using UnityEngine;
+
+namespace Cysharp.Threading.Tasks
+{
+    [AsyncMethodBuilder(typeof(TaskBuilder))]
+    public struct UniTask
+    {
+        internal Task Task;
+        public TaskAwaiter GetAwaiter() { return Task.GetAwaiter(); }
+        internal static readonly Queue<TaskCompletionSource<bool>> Delays = new Queue<TaskCompletionSource<bool>>();
+        public static UniTask Delay(TimeSpan time, DelayType type)
+        { var t = new TaskCompletionSource<bool>(); Delays.Enqueue(t); return new UniTask { Task = t.Task }; }
+    }
+    public struct UniTask<T>
+    {
+        internal Task<T> Task;
+        public TaskAwaiter<T> GetAwaiter() { return Task.GetAwaiter(); }
+    }
+    [AsyncMethodBuilder(typeof(VoidBuilder))]
+    public struct UniTaskVoid { internal Task Task; public void Forget() { Pending.Add(Task); } internal static List<Task> Pending = new List<Task>(); }
+    public struct VoidBuilder
+    {
+        private AsyncTaskMethodBuilder builder;
+        public static VoidBuilder Create() { return new VoidBuilder { builder = AsyncTaskMethodBuilder.Create() }; }
+        public UniTaskVoid Task { get { return new UniTaskVoid { Task = builder.Task }; } }
+        public void SetResult() { builder.SetResult(); }
+        public void SetException(Exception e) { builder.SetException(e); }
+        public void SetStateMachine(IAsyncStateMachine s) { builder.SetStateMachine(s); }
+        public void Start<T>(ref T s) where T : IAsyncStateMachine { builder.Start(ref s); }
+        public void AwaitOnCompleted<T, S>(ref T a, ref S s) where T : INotifyCompletion where S : IAsyncStateMachine { builder.AwaitOnCompleted(ref a, ref s); }
+        public void AwaitUnsafeOnCompleted<T, S>(ref T a, ref S s) where T : ICriticalNotifyCompletion where S : IAsyncStateMachine { builder.AwaitUnsafeOnCompleted(ref a, ref s); }
+    }
+    public enum DelayType { UnscaledDeltaTime }
+    public struct TaskBuilder
+    {
+        private AsyncTaskMethodBuilder builder;
+        public static TaskBuilder Create() { return new TaskBuilder { builder=AsyncTaskMethodBuilder.Create() }; }
+        public UniTask Task { get { return new UniTask { Task=builder.Task }; } }
+        public void SetResult() { builder.SetResult(); }
+        public void SetException(Exception e) { builder.SetException(e); }
+        public void SetStateMachine(IAsyncStateMachine s) { builder.SetStateMachine(s); }
+        public void Start<T>(ref T s) where T:IAsyncStateMachine { builder.Start(ref s); }
+        public void AwaitOnCompleted<T,S>(ref T a,ref S s) where T:INotifyCompletion where S:IAsyncStateMachine { builder.AwaitOnCompleted(ref a,ref s); }
+        public void AwaitUnsafeOnCompleted<T,S>(ref T a,ref S s) where T:ICriticalNotifyCompletion where S:IAsyncStateMachine { builder.AwaitUnsafeOnCompleted(ref a,ref s); }
+    }
+}
+
+namespace UnityEngine
+{
+    public class Object
+    {
+        public bool Destroyed;
+        public static bool operator ==(Object a, Object b) { bool an=ReferenceEquals(a,null)||a.Destroyed, bn=ReferenceEquals(b,null)||b.Destroyed; return an||bn ? an==bn : ReferenceEquals(a,b); }
+        public static bool operator !=(Object a, Object b) { return !(a==b); }
+        public override bool Equals(object o) { return this == o as Object; }
+        public override int GetHashCode() { return RuntimeHelpers.GetHashCode(this); }
+    }
+    public struct Vector3
+    {
+        public float x,y,z;
+        public Vector3(float x,float y,float z) { this.x=x;this.y=y;this.z=z; }
+        public static Vector3 zero { get { return new Vector3(); } }
+        public static Vector3 operator +(Vector3 a,Vector3 b) { return new Vector3(a.x+b.x,a.y+b.y,a.z+b.z); }
+        public static Vector3 operator /(Vector3 a,float b) { return new Vector3(a.x/b,a.y/b,a.z/b); }
+        public static float Distance(Vector3 a,Vector3 b) { return (float)Math.Sqrt((a.x-b.x)*(a.x-b.x)+(a.y-b.y)*(a.y-b.y)+(a.z-b.z)*(a.z-b.z)); }
+    }
+    public class Transform { public Vector3 position; }
+    public class Coroutine { }
+    public static class Time { public static float unscaledTime=1, unscaledDeltaTime=.5f; }
+    public static class Mathf { public static int RoundToInt(float f) { return (int)Math.Round(f); } }
+}
+namespace UnityEngine.SceneManagement { public struct Scene { public string name; } public static class SceneManager { public static Scene GetActiveScene() { return new Scene(); } } }
+namespace Duckov.Scenes { public static class MultiSceneCore { public static string MainSceneID="main"; } }
+public class SceneInfoEntry { public string DisplayName; }
+public static class SceneInfoCollection
+{
+    public static Dictionary<string,SceneInfoEntry> Infos=new Dictionary<string,SceneInfoEntry>();
+    public static SceneInfoEntry GetSceneInfo(string id) { SceneInfoEntry value; return Infos.TryGetValue(id,out value)?value:null; }
+}
+public enum Teams { player,scav,wolf,middle }
+public static class Team { public static bool IsEnemy(Teams a,Teams b) { return a!=b && a!=Teams.middle && b!=Teams.middle; } }
+public struct DamageInfo { public CharacterMainControl fromCharacter; public Vector3 damagePoint; }
+public class LevelManager { public static LevelManager Instance=new LevelManager(); public bool IsBaseLevel; }
+public class CharacterMainControl : UnityEngine.Object { public static CharacterMainControl Main=new CharacterMainControl(); public Transform transform=new Transform(); public Health Health=new Health(); public bool IsMainCharacter; public Teams Team; }
+public class Health { public bool IsDead,IsMainCharacterHealth,IsCompanion; public CharacterMainControl Character; public CharacterMainControl TryGetCharacter(){return Character;} }
+public class CharacterRandomPreset { }
+
+namespace BossRush
+{
+    public partial class ModBehaviour : UnityEngine.Object
+    {
+        public static BossRushMapConfig[] Maps;
+        public static BossRushMapConfig[] GetAllMapConfigs() { return Maps; }
+        public static void DevLog(string s) { }
+        public void ShowMessage(string s) { }
+        public static bool IsModeHRunInProgressSafe() { return false; }
+    }
+    static class L10n { public static bool IsChinese=true; public static string T(string a,string b) { return IsChinese?a:b; } }
+    static class LocalizationHelper { public static string GetLocalizedText(string key) { return key; } }
+    static class MapPointSceneResolver { public static string Active="sub"; public static string Resolve() { return Active; } }
+    enum PetNestPetState { InNest,Deployed,Downed,OnExpedition }
+    class PetNestTalentEntry { public string statKey; public bool percentage; public float value; }
+    class PetNestPetRecord { public string id,lineageKey; public int state,level; public List<PetNestTalentEntry> talents; }
+    static class PetNestService
+    {
+        public static PetNestPetRecord DeployedPet;
+        public static PetNestPetRecord TryGetPet(string id) { return DeployedPet; }
+        public static string GetPetDisplayName(PetNestPetRecord p) { return p.id; }
+        public static void StageCommit() { }
+    }
+    static class PetNestCompanionAgent { public static bool IsCompanionHealth(Health h) { return h.IsCompanion; } }
+    class PetNestLineageInfo { public float ModelScale; public string DisplayName="lineage"; }
+    static class PetNestLineageCatalog
+    {
+        public static IList<PetNestLineageInfo> All=new List<PetNestLineageInfo>();
+        public static bool TryGet(string key,out PetNestLineageInfo info) { info=new PetNestLineageInfo();return true; }
+    }
+    class PetNestCompanionHandle { public CharacterMainControl Character; public bool Activated; public int Cleanups; }
+    static class PetNestCompanionSpawner
+    {
+        public static Vector3 StagingOffset,SpawnOffset;
+        public static readonly Queue<TaskCompletionSource<PetNestCompanionHandle>> Requests=new Queue<TaskCompletionSource<PetNestCompanionHandle>>();
+        public static int Activated;
+        public static CharacterRandomPreset ResolveCompanionSourcePreset(string s) { return new CharacterRandomPreset(); }
+        public static Cysharp.Threading.Tasks.UniTask<PetNestCompanionHandle> CreateIsolatedAsync(CharacterRandomPreset s,string key,float scale,Vector3 p)
+        { var t=new TaskCompletionSource<PetNestCompanionHandle>(); Requests.Enqueue(t); return new Cysharp.Threading.Tasks.UniTask<PetNestCompanionHandle> { Task=t.Task }; }
+        public static bool TryActivate(PetNestCompanionHandle h,Vector3 pos,CharacterMainControl p,ModBehaviour o,PetNestPetRecord pet,out string reason)
+        { reason=null;h.Activated=true;Activated++;return true; }
+        public static void CleanupOnce(PetNestCompanionHandle h) { if(h==null)return;h.Cleanups++;h.Activated=false;if(h.Character!=null)h.Character.Destroyed=true;h.Character=null; }
+    }
+    static class PetNestTuning { public const int MaxBaseIdleCompanions=3,CompanionPetCapacityBonus=1,PetLevelsPerCapacityBonus=3; public const float BaseIdleSpawnIntervalSeconds=.1f; }
+    static class PetNestModeGate { public const string ReasonQueryFailed="query"; public static bool Allowed=true; public static bool IsCompanionAllowed(ModBehaviour o,out string reason) { reason=null;return Allowed; } }
+    static class PetNestLocalization { public static string DescribeFailure(string s) { return s; } }
+    static class PetNestPetProxyBridge
+    {
+        public const string PetCapacityStatKey="PetCapcity";
+        public static bool TryBorrowSeat(CharacterMainControl c,out string reason) { reason=null;return true; }
+        public static void ApplyCapacityBonus(CharacterMainControl p,int n) { }
+        public static void ReleaseSeat() { }
+        public static void RemoveCapacityBonus(CharacterMainControl p) { }
+    }
+    static class PetNestDownedHandler { public static void EnsureHurtSubscribed() { } public static void ShutdownHurtSubscription() { } }
+    static class PetNestProgressionService { public static void EnsureKillTrackingSubscribed() { } public static void ShutdownKillTracking() { } }
+    static class PetNestCompanionHudView { public static void EnsureCreated() { } public static void Destroy() { } }
+    class PetNestPersonality { public int ExtraPetCapacity; public static PetNestPersonality Resolve(PetNestPetRecord p) { return new PetNestPersonality(); } }
+    static class PetNestPersistenceAccess { public static bool BeginTransaction(out string reason) { reason=null;return true; } public static void AbortTransaction() { } }
+    class Label { public string text; }
+    class RevealResult { public string LineageDisplayName="actual"; public bool Shiny=true; }
+    static class BossRushUI { public static bool Paused; public static bool IsGamePaused() { return Paused; } }
+    static class BossRushUIColors { public const int Accent=1; }
+    static class ZombieModeUIHelper { public static void SetButtonBaseColor(object button,int color) { } }
+    partial class PetNestHatchRevealView
+    {
+        const float BeginSeconds=1,RollBeginSeconds=1,RollStepSeconds=.2f,ShowResultSeconds=1,PickupSeconds=.5f;
+        const int RollStepCount=3;
+        Label _rollText=new Label(),_resultText=new Label(),_detailText=new Label(),_dismissLabel=new Label();
+        object _dismissButton=new object();
+        RevealResult _result=new RevealResult();
+        Coroutine _playRoutine=new Coroutine();
+        bool _resultShown,_finished;
+        public static int Music,Closed;
+        static void SetText(Label t,string s) { t.text=s; }
+        static void Stop() { Closed++; }
+        void StopCoroutine(Coroutine c) { }
+        string BuildResultTitle() { return "name"; }
+        string BuildDetailText() { return "personality + talents + chroma"; }
+        static void PlayJackpotMusic() { Music++; }
+        public void Click() { OnDismiss(); }
+        public bool Complete { get { return _finished && _detailText.text==BuildDetailText(); } }
+        public static IEnumerator Wait() { return WaitForPresentation(1); }
+    }
+}

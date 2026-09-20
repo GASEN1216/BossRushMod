@@ -9,7 +9,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
-    "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "RandomEventsFailure", "RandomEventTempo",
+    "ResourceProduction",
+    "ManualSeptemberReview",
+    "AffixSelectionUI", "ManualEquipmentRecovery", "AchievementIcons", "DynamicItemInitialization", "SkyIslandSceneReferenceBridge", "RandomEventsFailure", "RandomEventTempo",
     "RuntimeOwnership", "ContentTransactions", "BackMountainLifecycle", "ModeGCombat", "CampaignPlayability", "BossRewardDelivery", "AffixCombat", "ContentSecondReview", "AirdropSecondReview",
     "HarmonyBindingSecondReview", "ModeHReinforcementSecondReview", "modeh_effects",
     "ModeHThirdReviewFixes", "ModeHMarketAudit", "ContentThirdReviewFixes", "IntegrationThirdReviewFixes",

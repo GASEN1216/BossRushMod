@@ -72,6 +72,9 @@ namespace BossRush
 
         private void InitializeSessionReport()
         {
+#if BOSSRUSH_DEV
+            resourcePerformance.windows.Clear();
+#endif
             // 主套件抑制 Mod 提示条是为了不让几百条用例刷屏；岛内套件只读，玩家这趟出击里的正常提示（如装配失败、
             // 返航说明）照常出，不能被验收吞掉。
             if (_host != null && !_skyIslandMode) _host.GameplayValidationSuppressNotifications = true;

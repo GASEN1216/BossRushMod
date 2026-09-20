@@ -21,9 +21,29 @@ namespace BossRush
         private SkyIslandRaidRecovery recovery;
         private float retryAt;
         private Action completed;
+        private System.Collections.IEnumerator preparation;
         internal bool LoadFinished { get; private set; }
         internal string Error { get; private set; }
         internal bool IsReturning { get { return returning; } }
+
+        internal void BeginPrepare(string modDirectory, TimeOfDayConfig template)
+        {
+            if (preparation != null) throw new InvalidOperationException("Raid preparation already started");
+            int scene = SceneManager.GetActiveScene().handle;
+            preparation = ResourceBundleLoader.Prepare(Path.Combine(modDirectory, BundleRelativePath), false,
+                () => releaseRequested || SceneManager.GetActiveScene().handle != scene,
+                () => Prepare(modDirectory, template), 120f);
+        }
+
+        internal bool StepPreparation()
+        {
+            if (preparation == null) return false;
+            if (preparation.MoveNext()) return true;
+            (preparation as IDisposable)?.Dispose();
+            preparation = null;
+            if (bundle == null) throw new InvalidOperationException("Sky Islands bundle preparation cancelled or failed");
+            return false;
+        }
 
         /// <summary>
         /// 场景包是否已随 Mod 部署。入口在挂交互之前先问一次：缺包时不挂船点选项、不立招牌、不发公告，
@@ -56,7 +76,7 @@ namespace BossRush
                 throw new InvalidOperationException("天空岛官方场景引用桥接尚未就绪");
             string path = Path.Combine(modDirectory, BundleRelativePath);
             if (!File.Exists(path)) throw new FileNotFoundException("缺少天空岛独立出击场景包，请更新 Mod 资源", path);
-            bundle = AssetBundle.LoadFromFile(path);
+            bundle = ResourceBundleLoader.LoadFromFile(path);
             if (bundle == null) throw new InvalidOperationException("天空岛独立场景包无法读取");
             string[] scenes = bundle.GetAllScenePaths();
             if (scenes.Length != 1 || !string.Equals(scenes[0], SkyIslandSceneReferenceBridge.ScenePath, StringComparison.OrdinalIgnoreCase))
@@ -194,6 +214,8 @@ namespace BossRush
         {
             if (callback != null) completed += callback;
             releaseRequested = true;
+            (preparation as IDisposable)?.Dispose();
+            preparation = null;
             // 加载途中被取消：官方等待必须收到取消信号，否则它会一直等一个不会到来的 LevelInited。
             if (initializing && loading) Abort("天空岛初始化已被取消");
             TryRelease();

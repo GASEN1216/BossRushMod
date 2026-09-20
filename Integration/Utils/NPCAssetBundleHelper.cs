@@ -60,7 +60,7 @@ namespace BossRush.Utils
                     cachedBundle = null;
                 }
 
-                cachedBundle = AssetBundle.LoadFromFile(bundlePath);
+                cachedBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (cachedBundle == null)
                 {
                     ModBehaviour.DevLog(logPrefix + " 错误：加载 AssetBundle 失败（可能已被加载或文件损坏）: " + bundlePath);
@@ -91,7 +91,7 @@ namespace BossRush.Utils
                 if (cachedPrefab == null)
                 {
                     ModBehaviour.DevLog(logPrefix + " 尝试加载所有 GameObject...");
-                    GameObject[] allPrefabs = cachedBundle.LoadAllAssets<GameObject>();
+                    GameObject[] allPrefabs = ResourceBundleLoader.LoadAllAssets<GameObject>(cachedBundle);
                     if (allPrefabs != null && allPrefabs.Length > 0)
                     {
                         cachedPrefab = allPrefabs[0];

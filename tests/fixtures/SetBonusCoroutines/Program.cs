@@ -28,7 +28,7 @@ namespace UnityEngine
     }
     public class Transform { public Vector3 position, right; }
     public static class Time { public static float time = 10f; }
-public static class Random { public static float Range(float min, float max) { return min; } }
+public static class Random { public static float Forced = 0f; public static float value { get { return Forced; } } public static float Range(float min, float max) { return min; } }
     public struct Color { public Color(float r, float g, float b) {} }
     public static class Mathf {
         public const float Deg2Rad = (float)Math.PI/180f;
@@ -94,19 +94,17 @@ namespace BossRush
         internal float LastRadius;
         internal bool ValidKill = true;
         internal readonly Health[] Enemies = { new Health(), new Health(), new Health(), new Health() };
-        internal bool InFlight { get { return thunderChainInFlight; } }
-        internal int HitHistory { get { return thunderChainHits.Count; } }
-        internal void RememberTarget() { thunderChainHits.Add(Target); }
+        internal bool Resolving(bool frost) { return frost ? frostBiteResolving : thunderBiteResolving; }
         internal void Reactivate() { BumpSetBonusGeneration(); ResetThunderChainState(); ResetFrostNovaState(); }
         private static float GetSetBonusElementDamagePortion(Health h, DamageInfo i, ElementTypes t) { return 0f; }
         private IEnumerator DelayedHeal(Health h, float amount) { yield return null; }
-        internal void Kill(bool frost, bool effect = false)
+        // 模拟一次「主角普攻打中敌人」。effect=true 模拟 DoT / 套装自身伤害。
+        internal void Hit(bool frost, bool effect = false, float damage = 10f)
         {
-            DamageInfo info = new DamageInfo { isFromBuffOrEffect = effect };
-            if (frost) TryScheduleFrostNova(Target, info);
-            else TryScheduleThunderChain(Target, info);
+            DamageInfo info = new DamageInfo { isFromBuffOrEffect = effect, finalDamage = damage };
+            if (frost) TryScheduleFrostBite(Target, info);
+            else TryScheduleThunderBite(Target, info);
         }
-        internal void ChargeSpell(bool frost) { Kill(frost); Kill(frost); Kill(frost); }
         internal void Drain()
         {
             while (Scheduled.Count > 0)
@@ -127,15 +125,19 @@ namespace BossRush
             return new Coroutine();
         }
         private void StopCoroutine(Coroutine coroutine) { }
-        private bool TryResolveSetBonusKillVictim(Health health, DamageInfo damage, out CharacterMainControl victim, out Vector3 position)
-        { victim = null; position = new Vector3(); return ValidKill; }
+        private bool TryResolveSetBonusEnemyTarget(Health health, DamageInfo damage, out CharacterMainControl victim, out Vector3 position)
+        { victim = new CharacterMainControl(); position = new Vector3(); return ValidKill; }
+        internal int ScanCap = int.MaxValue;
         private int ScanSetBonusEnemies(Vector3 center, float radius, CharacterMainControl except, int limit, List<Health> hits = null)
-        { Scans++; LastLimit = limit; LastRadius = radius; int count = Math.Min(limit, Enemies.Length); for (int i = 0; i < count; i++) setBonusScanResults[i] = Enemies[i]; return count; }
+        { Scans++; LastLimit = limit; LastRadius = radius; int count = Math.Min(Math.Min(limit, Enemies.Length), ScanCap); for (int i = 0; i < count; i++) setBonusScanResults[i] = Enemies[i]; return count; }
         private void SpawnSetArc(Vector3 from, Vector3 to, int color, float a, float b) { }
         private void SpawnSetBurst(Vector3 origin, int color, float a, float b, int count) { }
-        private void PlaySoundEffect(string effect) { }
+        private void PlaySoundEffect(string effect) { LastSfx = effect; }
         public static void DevLog(string text) { }
-        private bool TryApplyFrostFreeze(CharacterMainControl target) { return true; }
+        internal bool FreezeSucceeds = true;
+        internal int FreezeAttempts;
+        private bool TryApplyFrostFreeze(CharacterMainControl target) { FreezeAttempts++; return FreezeSucceeds; }
+        internal string LastSfx;
         private void StopAndClearFrostFallbackSlowCoroutines() { }
     }
 internal static class SetBonusSfx { internal const string ThunderChain = "thunder", FrostNova = "frost", FrostCounter = "frost_counter", ThunderCounter = "thunder_counter"; }
@@ -166,57 +168,115 @@ internal static class Program
                 Check(BossRush.ThunderRingDeathProbe.IsReset(), "thunder ring lethal OnDead resets charges and clocks");
             }
         }
+        // 旧激活排队的延时结算必须整条作废，且不能污染新激活的 resolving 闸
         BossRush.ModBehaviour host = new BossRush.ModBehaviour();
-        host.ChargeSpell(false);
+        Time.time = 20f;
+        host.Hit(false);
         IEnumerator old = host.Scheduled.Dequeue();
         host.Reactivate();
-        host.ChargeSpell(false);
+        Time.time += 10f;
+        host.Hit(false);
         IEnumerator current = host.Scheduled.Dequeue();
-        host.RememberTarget();
-        Check(host.InFlight, "new chain owns in-flight gate before stale callback");
         Check(!old.MoveNext(), "old generation exits");
-        Check(host.Scans == 0, "old generation cannot damage");
-        Check(host.InFlight, "old finally cannot release current chain gate");
-        Check(host.HitHistory == 1, "old finally cannot clear current chain deduplication");
-        Check(!current.MoveNext() && !host.InFlight && host.HitHistory == 0, "current chain still releases its own state");
+        Check(host.Scans == 0, "old generation cannot scan or damage");
+        Check(!host.Resolving(false), "old finally cannot leave resolving latched");
+        Check(!current.MoveNext() && host.Scans == 1, "current on-hit still resolves once");
 
         foreach (bool frost in new[] { false, true })
         {
+            string label = frost ? "frost" : "thunder";
+            Time.time = 40f;
             host = new BossRush.ModBehaviour();
-            host.ChargeSpell(frost);
+            host.Hit(frost);
             IEnumerator pending = host.Scheduled.Dequeue();
             host.Die(frost);
-            Check(!pending.MoveNext(), (frost ? "frost" : "thunder") + " pending spell terminates after player death");
-            Check(host.Scans == 0 && host.Target.Hits == 0,
-                (frost ? "frost" : "thunder") + " player death cancels delayed damage");
+            Check(!pending.MoveNext(), label + " pending on-hit effect terminates after player death");
+            Check(host.Scans == 0 && host.Target.Hits == 0, label + " player death cancels delayed damage");
         }
+
         foreach (bool frost in new[] { false, true })
         {
             string label = frost ? "frost" : "thunder";
-            Time.time = 20f;
+            Time.time = 100f;
             host = new BossRush.ModBehaviour();
-            host.Kill(frost); host.Kill(frost);
-            Check(host.Scheduled.Count == 0, label + " first two direct kills do not cast");
-            host.Kill(frost, true);
-            Check(host.Scheduled.Count == 0, label + " effect kill never advances charge");
-            host.ValidKill = false; host.Kill(frost); host.ValidKill = true;
-            Check(host.Scheduled.Count == 0, label + " unrelated victim never advances charge");
-            host.Kill(frost);
-            Check(host.Scheduled.Count == 1, label + " third direct kill casts once");
+
+            host.Hit(frost, true);
+            Check(host.Scheduled.Count == 0, label + " buff/effect damage never triggers the on-hit effect");
+            host.Hit(frost, false, 0f);
+            Check(host.Scheduled.Count == 0, label + " zero final damage never triggers the on-hit effect");
+            host.ValidKill = false; host.Hit(frost); host.ValidKill = true;
+            Check(host.Scheduled.Count == 0, label + " unrelated victim never triggers the on-hit effect");
+
+            // 首次普攻命中即触发（不再需要攒击杀）
+            host.Hit(frost);
+            Check(host.Scheduled.Count == 1, label + " first normal hit triggers immediately");
             host.Drain();
-            Check(host.LastLimit == (frost ? 3 : 2) && host.LastRadius == (frost ? 3f : 4f), label + " target and radius budget");
-            Check(host.Enemies[0].TotalDamage == (frost ? 8f : 12f) && host.Enemies[3].Hits == 0, label + " damage budget and scan cap");
-            host.ChargeSpell(frost);
-            Check(host.Scheduled.Count == 0, label + " charged kills cannot bypass cooldown");
-            Time.time += frost ? 6f : 5f;
-            host.Kill(frost);
-            Check(host.Scheduled.Count == 1, label + " charged spell becomes available after cooldown");
+
+            // 内置冷却：高射速的后续命中一律被挡住，与射速脱钩
+            for (int i = 0; i < 20; i++) host.Hit(frost);
+            Check(host.Scheduled.Count == 0, label + " internal cooldown blocks high rate of fire");
+            Time.time += frost ? 1.2f : 1.5f;
+            host.Hit(frost);
+            Check(host.Scheduled.Count == 1, label + " becomes available again after the internal cooldown");
             host.Drain();
-            host.Reactivate();
-            host.Kill(frost); host.Kill(frost); host.Die(frost);
-            host.Kill(frost);
-            Check(host.Scheduled.Count == 0, label + " death resets partial kill charge");
         }
+
+        // 2026-09-20 第三轮：冷却必须在**效果真的落地**之后才扣，不能在排队时先扣。
+        // 雷噬扫不到其它敌人 = 这一次不造成任何伤害，下一发普攻还应该能再试。
+        Time.time = 500f;
+        host = new BossRush.ModBehaviour();
+        host.ScanCap = 0;
+        host.Hit(false); host.Drain();
+        Check(host.Scans == 1 && host.Enemies[0].TotalDamage == 0f, "thunder bite with nobody in range deals no damage");
+        host.ScanCap = int.MaxValue;
+        host.Hit(false);
+        Check(host.Scheduled.Count == 1, "thunder bite empty scan does not consume the internal cooldown");
+        host.Drain();
+        Check(host.Enemies[0].TotalDamage == 7f, "thunder bite resolves on the very next hit after an empty scan");
+        host.Hit(false);
+        Check(host.Scheduled.Count == 0, "thunder bite consumes the cooldown once it actually arcs");
+
+        // 霜噬：目标在延迟窗口内死掉 = 这一次不造成任何伤害，冷却同样不能被吃掉
+        Time.time = 600f;
+        host = new BossRush.ModBehaviour();
+        host.Hit(true);
+        host.Target.IsDead = true;
+        host.Drain();
+        Check(host.Target.Hits == 0, "frost bite skips a target that died inside the delay window");
+        host.Target = new Health();
+        host.Hit(true);
+        Check(host.Scheduled.Count == 1, "frost bite dead-target abort does not consume the internal cooldown");
+        host.Drain();
+        Check(host.Target.Hits == 1, "frost bite resolves on the very next hit after an aborted one");
+
+        // 冻结失败（抗冻目标）不得播放冻结音效：TryApplyFrostFreeze 现在回报真实结果
+        Time.time = 700f;
+        host = new BossRush.ModBehaviour();
+        UnityEngine.Random.Forced = 0f;                 // 必定进入冻结分支
+        host.FreezeSucceeds = false;
+        host.Hit(true); host.Drain();
+        Check(host.FreezeAttempts == 1 && host.LastSfx == null, "failed freeze plays no freeze sfx");
+        Time.time += 2f;
+        host.FreezeSucceeds = true;
+        host.Hit(true); host.Drain();
+        Check(host.LastSfx == BossRush.SetBonusSfx.FrostNova, "successful freeze plays the freeze sfx");
+        UnityEngine.Random.Forced = 0f;
+
+        // 冰霜：单目标、常数伤害、不扫描
+        Time.time = 200f;
+        host = new BossRush.ModBehaviour();
+        UnityEngine.Random.Forced = 1f;                 // 高于冻结概率 -> 本次不冻结
+        host.Hit(true); host.Drain();
+        Check(host.Scans == 0, "frost bite never scans for extra targets");
+        Check(host.Target.Hits == 1 && host.Target.TotalDamage == 5f, "frost bite deals one constant-damage tick to the struck target");
+
+        // 雷霆：只打命中目标之外的敌人，常数伤害，目标上限与半径
+        Time.time = 300f;
+        host = new BossRush.ModBehaviour();
+        host.Hit(false); host.Drain();
+        Check(host.LastLimit == 2 && host.LastRadius == 4f, "thunder bite target and radius budget");
+        Check(host.Enemies[0].TotalDamage == 7f && host.Enemies[2].Hits == 0, "thunder bite constant damage and scan cap");
+        Check(host.Target.Hits == 0, "thunder bite never stacks extra damage on the struck target");
         Time.time = 40f;
         CharacterMainControl player = CharacterMainControl.Main;
         player.Health.IsMainCharacterHealth = true;
@@ -248,11 +308,11 @@ internal static class Program
         BossRush.NewWeaponEquipState.Equipped = false;
         BossRush.EnergyShieldBehaviourProbe.Hurt(player.Health, frontal);
         Check(player.Health.CurrentHealth == 66f, "unequipped shield cannot heal");
-        Time.time = 50f;
+        Time.time = 400f;
         host = new BossRush.ModBehaviour();
         foreach (Health enemy in host.Enemies) enemy.KillOnHit = true;
-        host.ChargeSpell(false); host.Drain();
-        Check(host.Scans == 1, "thunder lethal hit cannot continue into another hop");
+        host.Hit(false); host.Drain();
+        Check(host.Scans == 1, "thunder bite lethal hit cannot continue into another hop");
         Console.WriteLine("SetBonusCoroutines: " + (checkedCount - failed) + " PASS / " + failed + " FAIL");
         return failed == 0 ? 0 : 1;
     }

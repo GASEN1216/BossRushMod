@@ -626,7 +626,22 @@ namespace BossRush
                     return false;
                 }
 
-                entry.Configure(item);
+                // 配置器也用于新 prefab，会写满耐久；实例补配必须保留已有磨损，不能免费维修。
+                bool preserveWear = item.MaxDurability > 0f;
+                float durability = item.Durability;
+                float durabilityLoss = item.DurabilityLoss;
+                try
+                {
+                    entry.Configure(item);
+                }
+                finally
+                {
+                    if (preserveWear && item != null && item.MaxDurability > 0f)
+                    {
+                        item.DurabilityLoss = durabilityLoss;
+                        item.Durability = durability;
+                    }
+                }
                 ModBehaviour.DevLog("[CustomItemRestore] 已补配自定义物品实例: " + entry.DebugName);
                 return true;
             }
@@ -743,7 +758,7 @@ namespace BossRush
 
             try
             {
-                EnsureCustomItemConfigured(item);
+                RestoreRuntimeState(item);
                 CacheMeleeCompatFields();
 
                 ItemAgent_MeleeWeapon sourceMeleeAgent = item.GetComponent<ItemAgent_MeleeWeapon>();

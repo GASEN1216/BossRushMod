@@ -826,30 +826,24 @@ namespace BossRush
                 + ", radius=" + ZombieModeTuning.SafeZoneRadius);
         }
 
+        /// <summary>
+        /// 安全区地图标记要写的官方场景 ID。解析口径与 Mode F 撤离点、天空岛序章目标共用
+        /// （<see cref="MapPointSceneResolver"/>：先按 buildIndex 反查官方 ID，再退 ActiveSubSceneID，最后才退场景名）；
+        /// 本模式额外保留一条「用本局记录的场景名」兜底。
+        /// </summary>
         private string ResolveZombieModeSafeZoneMapSceneId()
         {
             try
             {
-                UnityEngine.SceneManagement.Scene activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-                string sceneId = SceneInfoCollection.GetSceneID(activeScene.buildIndex);
+                string sceneId = MapPointSceneResolver.Resolve();
                 if (!string.IsNullOrEmpty(sceneId))
                 {
                     return sceneId;
-                }
-
-                if (!string.IsNullOrEmpty(activeScene.name))
-                {
-                    return activeScene.name;
                 }
             }
             catch (System.Exception e)
             {
                 DevLog("[ZombieMode] Resolve safe-zone map scene id failed: " + e.Message);
-            }
-
-            if (!string.IsNullOrEmpty(MultiSceneCore.ActiveSubSceneID))
-            {
-                return MultiSceneCore.ActiveSubSceneID;
             }
 
             return zombieModeRunState.SceneName;

@@ -57,6 +57,7 @@ internal static class Program
         Assert(ReferenceEquals(sprite.texture, AchievementIconLoader.GetTexture("new_icon")), "texture cache returns the same instance");
         Assert(Texture2D.DecodeCalls == 1, "cached PNG is decoded once");
         Assert(!sprite.texture.mipChain && sprite.texture.wrapMode == TextureWrapMode.Clamp, "PNG uses UI texture settings");
+        Assert(!sprite.texture.isReadable, "display-only PNG releases its CPU pixel copy");
         Assert(sprite.hideFlags == HideFlags.DontSave && sprite.texture.hideFlags == HideFlags.DontSave, "runtime PNG objects do not persist");
         Texture2D pngTexture = sprite.texture;
         AchievementIconLoader.ClearCache();
@@ -159,6 +160,8 @@ internal static class Program
         CheckFailedPngCleanup(1, 2, "sprite-exception");
         CheckMissingAndInvalidNames();
         AchievementIconLoader.ResetStaticCaches();
+        ProductionIconCache.ResetStaticCaches();
+        ResourceOwnershipTests.Run(root);
         Console.WriteLine("AchievementIcons: " + passed + " PASS");
         return 0;
     }

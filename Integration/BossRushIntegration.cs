@@ -469,7 +469,7 @@ namespace BossRush
                 // 注册物品配置器（必须在 LoadAllItems 之前）
                 RegisterItemContentConfigurators();
 
-                int itemCount = ItemFactory.LoadAllItems();
+                int itemCount = ItemFactory.LoadedItemCount;
                 if (itemCount > 0)
                 {
                     DevLog("[BossRush] ItemFactory loaded " + itemCount + " items");
@@ -564,6 +564,7 @@ namespace BossRush
         /// </summary>
         private void RegisterCustomWeaponRuntimeConfigs()
         {
+            NewWeaponRuntime.RegisterRuntimeConfigs();
             CustomItemRuntimeStateHelper.RegisterGunRuntimeConfiguredItem(
                 DragonBreathWeaponConfig.WEAPON_TYPE_ID,
                 DragonBreathWeaponConfig.ConfigureWeapon,

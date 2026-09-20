@@ -26,12 +26,15 @@ namespace BossRush
     {
         #region 六段节奏（时长草案，待 owner 审定）
 
-        private const float BeginSeconds = 0.35f;
-        private const float RollBeginSeconds = 0.4f;
-        private const float RollStepSeconds = 0.12f;
+        // owner 2026-09-20：「孵化动画能不能慢一点，以及显示信息能不能由玩家自己关掉，
+        // 根本看不清显示了什么」——整条节奏放慢一倍左右，末段改为**等玩家点关闭**，
+        // 不再自动收。跳过按钮保留：想快的人一键到结果。
+        private const float BeginSeconds = 0.9f;
+        private const float RollBeginSeconds = 1.0f;
+        private const float RollStepSeconds = 0.26f;
         private const int RollStepCount = 9;
-        private const float ShowResultSeconds = 1.1f;
-        private const float PickupSeconds = 0.8f;
+        private const float ShowResultSeconds = 1.6f;
+        private const float PickupSeconds = 0.6f;
 
         #endregion
 
@@ -43,6 +46,11 @@ namespace BossRush
         private TextMeshProUGUI _resultText;
         private TextMeshProUGUI _detailText;
         private PetNestHatchResult _result;
+        private UnityEngine.UI.Button _dismissButton;
+        private TextMeshProUGUI _dismissLabel;
+        private Coroutine _playRoutine;
+        private bool _resultShown;
+        private bool _finished;
 
         /// <summary>播放一次孵化揭晓。result 为 null 时直接返回。</summary>
         internal static void Play(PetNestHatchResult result)
@@ -56,7 +64,7 @@ namespace BossRush
                 _instance = host.AddComponent<PetNestHatchRevealView>();
                 _instance._result = result;
                 _instance.Build();
-                _instance.StartCoroutine(_instance.PlayRoutine());
+                _instance._playRoutine = _instance.StartCoroutine(_instance.PlayRoutine());
             }
             catch (Exception e)
             {
@@ -118,34 +126,40 @@ namespace BossRush
             BossRushUI.CreateBackdrop(_canvas.transform);
 
             GameObject surface = ZombieModeUIHelper.CreateRect(
-                "Surface", _canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 380f));
+                "Surface", _canvas.transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 540f));
             Image image = surface.AddComponent<Image>();
             image.color = BossRushUIColors.Surface;
             BossRushUI.ApplyFramedPanelSkin(image, 14, BossRushUISkinPart.Panel);
 
             _rollText = ZombieModeUIHelper.CreateText(
                 "Roll", surface.transform, string.Empty, 40f,
-                new Vector2(0f, 70f), new Vector2(700f, 60f),
+                new Vector2(0f, 192f), new Vector2(700f, 60f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
             BossRushUI.ApplyGameFont(_rollText);
 
             _resultText = ZombieModeUIHelper.CreateText(
                 "Result", surface.transform, string.Empty, 34f,
-                new Vector2(0f, 0f), new Vector2(700f, 52f),
+                new Vector2(0f, 126f), new Vector2(700f, 52f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             BossRushUI.ApplyGameFont(_resultText);
 
             _detailText = ZombieModeUIHelper.CreateText(
                 "Detail", surface.transform, string.Empty, 20f,
-                new Vector2(0f, -70f), new Vector2(700f, 90f),
+                new Vector2(0f, -35f), new Vector2(700f, 240f),
                 TextAlignmentOptions.Center, BossRushUIColors.TextSecondary);
             BossRushUI.ApplyGameFont(_detailText);
 
-            ZombieModeUIHelper.CreateButton(
-                "Skip", surface.transform, L10n.T("跳过", "Skip"),
-                new Vector2(0.5f, 0.5f), new Vector2(0f, -150f), new Vector2(160f, 44f),
-                BossRushUIColors.SurfaceRaised, 18f, new Vector2(150f, 40f),
-                delegate { Stop(); }, true);
+            // 演出期间是「跳过」，出完结果后改成「关闭」——面板不会自己消失，
+            // 玩家可以把性格 / 天赋 / 炫彩慢慢看完再收。
+            _dismissButton = ZombieModeUIHelper.CreateButton(
+                "Dismiss", surface.transform, L10n.T("跳过", "Skip"),
+                new Vector2(0.5f, 0.5f), new Vector2(0f, -218f), new Vector2(180f, 46f),
+                BossRushUIColors.SurfaceRaised, 18f, new Vector2(170f, 42f),
+                OnDismiss, true);
+            if (_dismissButton != null)
+            {
+                _dismissLabel = _dismissButton.GetComponentInChildren<TextMeshProUGUI>(true);
+            }
 
             // 接管输入：遮罩只是"看起来"挡住了，raycaster 关掉的话下面仍然活着的
             // 孵化面板照样能被盲点到——列表刚好在这一刻重排，玩家会静默连吞第二枚蛋。
@@ -159,11 +173,11 @@ namespace BossRush
         {
             // 1) onBegin
             SetText(_rollText, L10n.T("蛋壳在动……", "The shell is moving..."));
-            yield return new WaitForSecondsRealtime(BeginSeconds);
+            yield return WaitForPresentation(BeginSeconds);
 
             // 2) onRollBegin
             SetText(_rollText, L10n.T("血脉正在显形", "A bloodline is taking shape"));
-            yield return new WaitForSecondsRealtime(RollBeginSeconds);
+            yield return WaitForPresentation(RollBeginSeconds);
 
             // 3) onRollStep ×N：滚动展示血脉名，纯视觉，与结果无关
             IList<PetNestLineageInfo> lineages = PetNestLineageCatalog.All;
@@ -173,31 +187,88 @@ namespace BossRush
                     ? lineages[(i * 7 + 3) % lineages.Count].DisplayName
                     : "...";
                 SetText(_rollText, sample);
-                yield return new WaitForSecondsRealtime(RollStepSeconds);
+                yield return WaitForPresentation(RollStepSeconds);
             }
 
             // 4) onShowResult：这里第一次显示真结果（已 commit 的那一份）
+            ShowResult();
+            yield return WaitForPresentation(ShowResultSeconds);
+
+            // 5) onPickup：出身 / 性格 / 异色 / 炫彩
+            SetText(_detailText, BuildDetailText());
+            yield return WaitForPresentation(PickupSeconds);
+
+            // 6) onEnd：**不自动关**。改成等玩家点「关闭」（owner 2026-09-20）。
+            CompleteReveal();
+            _playRoutine = null;
+        }
+
+        private static IEnumerator WaitForPresentation(float seconds)
+        {
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                yield return null;
+                if (!BossRushUI.IsGamePaused()) elapsed += Time.unscaledDeltaTime;
+            }
+        }
+
+        private void ShowResult()
+        {
+            if (_resultShown) return;
+            _resultShown = true;
             SetText(_rollText, _result.LineageDisplayName);
             SetText(_resultText, BuildResultTitle());
-            yield return new WaitForSecondsRealtime(ShowResultSeconds);
+            if (_result.Shiny) PlayJackpotMusic();
+        }
 
-            // 5) onPickup：出身 / 性格 / 异色
+        private void CompleteReveal()
+        {
+            ShowResult();
             SetText(_detailText, BuildDetailText());
-            yield return new WaitForSecondsRealtime(PickupSeconds);
+            _finished = true;
+            if (_dismissLabel != null)
+            {
+                _dismissLabel.text = L10n.T("关闭", "Close");
+                ZombieModeUIHelper.SetButtonBaseColor(_dismissButton, BossRushUIColors.Accent);
+            }
+        }
 
-            // 6) onEnd
-            Stop();
+        private void OnDismiss()
+        {
+            if (_finished) { Stop(); return; }
+            if (_playRoutine != null) StopCoroutine(_playRoutine);
+            _playRoutine = null;
+            CompleteReveal();
         }
 
         private string BuildResultTitle()
         {
-            string name = PetNestService.GetPetDisplayName(_result.Pet);
-            if (_result.Shiny)
+            // 炫彩 / 异色的富文本口径与巢页、HUD 共用 PetNestChroma，不在这里另写一套
+            return PetNestService.GetDecoratedPetName(_result.Pet);
+        }
+
+        /// <summary>
+        /// 抽到大奖的音乐。复用许愿台那一份 Assets/Sounds/lottery/special.mp3，
+        /// 不新增音频资产；文件缺失时静默跳过（与许愿台同款判据）。
+        /// </summary>
+        private static void PlayJackpotMusic()
+        {
+            try
             {
-                return "<color=#F0AE38>" + name + " · "
-                    + L10n.T("异色", "Shiny") + "</color>";
+                string modPath = ModBehaviour.GetModPath();
+                if (string.IsNullOrEmpty(modPath)) return;
+                string path = System.IO.Path.Combine(
+                    System.IO.Path.Combine(System.IO.Path.Combine(modPath, "Assets"), "Sounds"),
+                    System.IO.Path.Combine("lottery", "special.mp3"));
+                if (!System.IO.File.Exists(path)) return;
+                ModBehaviour owner = ModBehaviour.Instance;
+                if (owner != null) owner.PlaySoundEffect(path);
             }
-            return name;
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[PetNest] 异色大奖音乐播放失败: " + e.Message);
+            }
         }
 
         private string BuildDetailText()
@@ -221,6 +292,11 @@ namespace BossRush
                     if (t == null) continue;
                     text += "\n" + PetNestLocalization.DescribeTalent(t);
                 }
+            }
+            string chroma = PetNestChroma.DescribePair(_result.Pet, L10n.IsChinese);
+            if (!string.IsNullOrEmpty(chroma))
+            {
+                text += "\n" + L10n.T("炫彩：", "Chroma: ") + chroma;
             }
             if (_result.FromCondense)
             {

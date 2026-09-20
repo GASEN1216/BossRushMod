@@ -52,7 +52,9 @@ def main():
     ] + ["PetNest/" + name + ".cs" for name in (
         "PetNestService", "PetNestModels", "PetNestTuning", "PetNestPersistenceCodec",
         "PetNestPersistence", "PetNestSaveCoordinator", "PetNestHatchService", "PetNestMuseumStats",
-        "PetNestExpeditionService")]
+        "PetNestExpeditionService",
+        # 2026-09-20：孵化 roll 与显示名都要用炫彩调色板（纯数据、无 Unity 依赖）
+        "PetNestChroma")]
     paths = [ROOT / p for p in linked] + [HERE / "Program.cs", HERE / "Stubs.cs", OUT / "Extracted.cs"]
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0067</NoWarn></PropertyGroup><ItemGroup>'
     project += "".join('<Compile Include="' + xml.escape(str(p), {'"': '&quot;'}) + '" />' for p in paths)

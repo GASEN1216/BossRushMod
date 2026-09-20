@@ -2,6 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 namespace Cysharp.Threading.Tasks { }
+namespace BossRush
+{
+    // Official scene/lease contract fixture; asynchronous native requests are tested in ResourceProduction.
+    internal static class ResourceBundleLoader
+    {
+        internal static UnityEngine.AssetBundle LoadFromFile(string path) { return UnityEngine.AssetBundle.LoadFromFile(path); }
+        internal static System.Collections.IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer, float timeout)
+        { if (!cancelled()) consumer(); yield break; }
+    }
+}
 namespace UnityEngine
 {
     /// <summary>
@@ -68,6 +78,7 @@ namespace UnityEngine.SceneManagement
     internal class SceneState { internal bool Loaded; internal string Path; internal GameObject[] Roots; }
     public struct Scene
     {
+        public int handle { get { return State == null ? 0 : State.GetHashCode(); } }
         internal SceneState State;
         public string path { get { return State == null ? null : State.Path; } }
         public bool isLoaded { get { return State != null && State.Loaded; } }
@@ -76,6 +87,7 @@ namespace UnityEngine.SceneManagement
     }
     public static class SceneManager
     {
+        public static Scene GetActiveScene() { return Raid; }
         public static event Action<Scene,LoadSceneMode> sceneLoaded;
         public static event Action<Scene> sceneUnloaded;
         internal static Scene Raid;

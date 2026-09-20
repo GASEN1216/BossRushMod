@@ -65,7 +65,7 @@ EQUIPMENT_METHODS = [
 ]
 
 EQUIPMENT_TOKENS = [
-    "int equipCount = EquipmentFactory.LoadAllEquipment();",
+    "int equipCount = EquipmentFactory.LoadedBundleCount;",
     'DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");',
     "DragonKingBossGunRuntime.InitializeRuntime();",
     "DragonKingBossGunRuntime.WarmupProjectileCache();",
@@ -90,7 +90,7 @@ EQUIPMENT_TOKENS = [
 ]
 
 INLINE_EQUIPMENT_TOKENS = [
-    "int equipCount = EquipmentFactory.LoadAllEquipment();",
+    "int equipCount = EquipmentFactory.LoadedBundleCount;",
     "DragonKingBossGunRuntime.InitializeRuntime();",
     "InitializeReverseScaleSystem();",
     "CleanupReverseScaleSystem();",
@@ -162,7 +162,7 @@ def main() -> int:
         integration_text,
         [
             "RegisterItemContentConfigurators();",
-            "int itemCount = ItemFactory.LoadAllItems();",
+            "int itemCount = ItemFactory.LoadedItemCount;",
             "PeaceCharmRuntime.InitializeRuntime();",
         ],
         "ContentRegistryGuard: integration item bootstrap")
@@ -171,7 +171,7 @@ def main() -> int:
 
     for token in [
         "RegisterItemContentConfigurators();",
-        "int itemCount = ItemFactory.LoadAllItems();",
+        "int itemCount = ItemFactory.LoadedItemCount;",
     ]:
         occurrence_error = require_exactly_once(integration_text, token, "ContentRegistryGuard: integration item bootstrap")
         if occurrence_error:
@@ -205,6 +205,10 @@ def main() -> int:
     start_text = Path("Integration/BossRushIntegration_StartAndScene.cs").read_text(
         encoding="utf-8", errors="ignore")
 
+    async_source = Path("Integration/FactoryResourceLoading.cs").read_text(encoding="utf8")
+    async_error = require_ordered_tokens(async_source, ["owner.EnsureItemContentConfiguratorsRegisteredForDynamicRegistry();", "yield return ItemFactory.LoadAllItemsAsync(owner);", "if (owner != null) finish();"], "asynchronous item bootstrap")
+    if async_error: return fail(async_error)
+    if "yield return EquipmentFactory.LoadAllEquipmentAsync(this);" not in deferred_text: return fail("missing asynchronous equipment bootstrap")
     integration_equipment_start_order_error = require_ordered_tokens(
         deferred_text,
         [

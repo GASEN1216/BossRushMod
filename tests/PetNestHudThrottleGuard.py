@@ -70,7 +70,8 @@ def main():
         errors.append("[零分配] 缺少值比较入口 SameAs")
 
     # 5. 不在场整块隐藏
-    build = re.search(r"private PetNestHudModel BuildHudModel\(\)[\s\S]{0,1400}?\n        \}", code)
+    # Extract the method boundary rather than a character budget: adding model fields must not hide it.
+    build = re.search(r"private PetNestHudModel BuildHudModel\(\)[\s\S]*?\n        \}", code)
     if build is None:
         errors.append("[隐藏] 缺少 BuildHudModel()")
     else:

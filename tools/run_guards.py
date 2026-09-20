@@ -49,7 +49,7 @@ KNOWN_RED_FILE = os.path.join(TESTS_DIR, "known_red_guards.txt")
 SKIP_ALWAYS = {"SmokeLogScan.py"}
 EXTERNAL_ARTIFACT_GUARDS = {
     "ModeGPresentationAssetGuard.py", "ModeHPresentationAssetGuard.py",
-    "PortableSafeZoneDeviceBundleGuard.py",
+    "PortableSafeZoneDeviceBundleGuard.py", "BaseBuildingResourcePropertyTest.py",
 }
 
 

@@ -470,6 +470,9 @@ namespace BossRush
         {
             SetStage("1/7 基线与数据");
             yield return SamplePerformance("BASELINE_10S", 10f, true);
+#if BOSSRUSH_DEV
+            yield return SampleResourcePerformance("RESOURCE_BASE_10S");
+#endif
             CaptureLeakBaseline("SUITE");
             RunSyncCase("HARMONY_STARTUP_BINDINGS", HarmonyBindingSelfCheck.ValidateStartupSnapshot);
             RunSyncCase("DATA_CAMPAIGN_JSON", ValidateCampaignJson);

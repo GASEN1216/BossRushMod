@@ -14,7 +14,7 @@
 //   **老档已建过是例外**：必须照常注册 prefab，否则官方 BuildingArea 会报缺 prefab，
 //   留下一个幽灵建筑。这条与报箱/遗种巢逐字一致。
 //
-// 零新增 Unity 资源：没有专属 AssetBundle 与图标 PNG 时走程序化占位模型。
+// 专属模型由 Assets/buildings/bossrush_campaign_board 加载；缺包时保留程序化占位。
 // 将来补美术只需在 Assets/buildings/ 放同名 bundle 与 png，本文件零改动。
 //
 // 共享反射工具（FindGameType / AssignBuildingContainerField /
@@ -64,6 +64,7 @@ namespace BossRush
 
         private bool campaignBoardInjected;
         private GameObject campaignBoardPrefabGO;
+        private AssetBundle campaignBoardModelBundle;
         private static Sprite campaignBoardIcon;
 
         #endregion
@@ -150,6 +151,8 @@ namespace BossRush
         private void LoadCampaignBoardIcon()
         {
             if (campaignBoardIcon != null) return;
+            campaignBoardIcon = ProductionIconCache.Get("Assets/buildings/" + CAMPAIGN_BOARD_BUILDING_ID + ".png");
+            if (campaignBoardIcon != null || !ProductionIconCache.AllowRawFallback) return;
             try
             {
                 string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
@@ -162,14 +165,9 @@ namespace BossRush
                     return;
                 }
 
-                byte[] bytes = File.ReadAllBytes(iconPath);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                CampaignAssetCache.Own(texture);
-                if (!texture.LoadImage(bytes)) return;
-                campaignBoardIcon = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
+                campaignBoardIcon = RawImageLoader.LoadSprite(iconPath, CAMPAIGN_BOARD_BUILDING_ID);
+                if (campaignBoardIcon == null) return;
+                CampaignAssetCache.Own(campaignBoardIcon.texture);
                 CampaignAssetCache.Own(campaignBoardIcon);
             }
             catch (Exception e)
@@ -195,7 +193,8 @@ namespace BossRush
 
             GameObject graphicsContainer = new GameObject("Graphics");
             graphicsContainer.transform.SetParent(campaignBoardPrefabGO.transform, false);
-            CreateCampaignBoardPlaceholderModel(graphicsContainer);
+            if (!BuildingModelHelper.TryInstantiateBundle(CAMPAIGN_BOARD_BUILDING_ID, CAMPAIGN_BOARD_PREFAB_NAME, graphicsContainer.transform, out campaignBoardModelBundle))
+                CreateCampaignBoardPlaceholderModel(graphicsContainer);
 
             GameObject functionContainer = new GameObject("Function");
             functionContainer.transform.SetParent(campaignBoardPrefabGO.transform, false);
@@ -561,6 +560,8 @@ namespace BossRush
         {
             try
             {
+                BossRush.Utils.AssetBundleUnloadHelper.TryUnload(campaignBoardModelBundle, CampaignTuning.LogPrefix);
+                campaignBoardModelBundle = null;
                 campaignBoardIcon = null;
             }
             catch (Exception e)

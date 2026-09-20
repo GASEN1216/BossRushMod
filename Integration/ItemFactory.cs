@@ -49,7 +49,7 @@ namespace BossRush
     /// <summary>
     /// 通用物品工厂 - 从 AssetBundle 加载消耗品等非装备类物品
     /// </summary>
-    public static class ItemFactory
+    public static partial class ItemFactory
     {
         // ========== 缓存字典 ==========
 
@@ -64,6 +64,8 @@ namespace BossRush
 
         // 已加载的图标缓存
         private static Dictionary<string, Sprite> loadedSprites = new Dictionary<string, Sprite>();
+        private static readonly HashSet<Sprite> ownedSprites = new HashSet<Sprite>();
+        private static readonly HashSet<Texture2D> ownedTextures = new HashSet<Texture2D>();
 
         // 物品配置回调（TypeID -> 配置方法）
         private static Dictionary<int, Action<Item>> itemConfigurators = new Dictionary<int, Action<Item>>();
@@ -212,6 +214,9 @@ namespace BossRush
         /// <returns>Sprite 对象，如果未找到则返回 null</returns>
         public static Sprite GetSprite(string bundleName, string spriteName)
         {
+            Sprite compressed = ProductionIconCache.Get("Assets/Items/" + bundleName + "/" + spriteName + ".png")
+                ?? ProductionIconCache.Get("Assets/Items/" + spriteName + ".png");
+            if (compressed != null) return compressed;
             // 检查缓存
             string cacheKey = bundleName + "/" + spriteName;
             if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite))
@@ -238,7 +243,7 @@ namespace BossRush
                         return null;
                     }
 
-                    AssetBundle bundle = AssetBundle.LoadFromFile(bundlePath);
+                    AssetBundle bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                     if (bundle == null)
                     {
                         AssetBundle existingBundle = FindAlreadyLoadedAssetBundle(bundleName);
@@ -278,6 +283,7 @@ namespace BossRush
                     if (texture != null)
                     {
                         sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                        if (sprite != null) ownedSprites.Add(sprite);
                     }
                 }
 
@@ -313,12 +319,19 @@ namespace BossRush
         {
             if (string.IsNullOrEmpty(relativePath)) return null;
 
-            string cacheKey = "file://" + relativePath;
-            if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite))
+            string cacheKey = "file://" + relativePath.Replace('\\', '/');
+            if (loadedSprites.TryGetValue(cacheKey, out Sprite cachedSprite) && cachedSprite != null)
             {
                 return cachedSprite;
             }
 
+            Sprite compressed = ProductionIconCache.Get(relativePath);
+            if (compressed != null) { loadedSprites[cacheKey] = compressed; return compressed; }
+            if (!ProductionIconCache.AllowRawFallback) return null;
+
+            Texture2D texture = null;
+            Sprite sprite = null;
+            bool retained = false;
             try
             {
                 string baseDir = GetModDirectory();
@@ -331,21 +344,36 @@ namespace BossRush
                 byte[] bytes = File.ReadAllBytes(fullPath);
                 if (bytes == null || bytes.Length == 0) return null;
 
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes))
+                texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                // 展示图标只由 GPU 采样，不保留解码后的 CPU 像素副本。
+                if (!texture.LoadImage(bytes, true))
                 {
                     return null;
                 }
 
                 texture.name = Path.GetFileNameWithoutExtension(fullPath);
-                Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                texture.hideFlags = HideFlags.DontSave;
+                sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                if (sprite == null) return null;
+                sprite.hideFlags = HideFlags.DontSave;
+                ownedTextures.Add(texture);
+                ownedSprites.Add(sprite);
                 loadedSprites[cacheKey] = sprite;
+                retained = true;
                 return sprite;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[ItemFactory] 从文件加载 Sprite 失败: " + relativePath + " - " + e.Message);
                 return null;
+            }
+            finally
+            {
+                if (!retained)
+                {
+                    if (sprite != null) UnityEngine.Object.Destroy(sprite);
+                    if (texture != null) UnityEngine.Object.Destroy(texture);
+                }
             }
         }
 
@@ -380,7 +408,7 @@ namespace BossRush
                 }
                 else
                 {
-                    bundle = AssetBundle.LoadFromFile(bundlePath);
+                    bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                     if (bundle == null)
                     {
                         bundle = FindAlreadyLoadedAssetBundle(bundleName);
@@ -534,10 +562,12 @@ namespace BossRush
         private static int LoadBundleInternal(string bundlePath, string bundleName)
         {
             AssetBundle bundle = null;
+            bool acquired = false, retained = false;
 
             try
             {
-                bundle = AssetBundle.LoadFromFile(bundlePath);
+                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
+                acquired = bundle != null;
                 if (bundle == null)
                 {
                     bundle = FindAlreadyLoadedAssetBundle(bundleName);
@@ -548,11 +578,7 @@ namespace BossRush
                     }
                 }
 
-                // 缓存 AssetBundle（重要：用于后续加载图标等资源）
-                loadedAssetBundles[bundleName] = bundle;
-                ModBehaviour.DevLog("[ItemFactory] AssetBundle 已缓存: " + bundleName);
-
-                var assets = bundle.LoadAllAssets<GameObject>();
+                var assets = ResourceBundleLoader.LoadAllAssets<GameObject>(bundle);
                 if (assets == null || assets.Length == 0)
                 {
                     ModBehaviour.DevLog("[ItemFactory] AssetBundle 中未找到任何资源: " + bundleName);
@@ -560,6 +586,11 @@ namespace BossRush
                 }
 
                 int loadedCount = 0;
+
+                // 注册器会查询同包图标；发布任何 Item 引用之前先交给缓存 owner。
+                loadedAssetBundles[bundleName] = bundle;
+                retained = true;
+                ModBehaviour.DevLog("[ItemFactory] AssetBundle 已缓存: " + bundleName);
 
                 foreach (var go in assets)
                 {
@@ -603,7 +634,10 @@ namespace BossRush
                 ModBehaviour.DevLog("[ItemFactory] LoadBundleInternal 出错: " + e.Message + "\n" + e.StackTrace);
                 return 0;
             }
-            // 注意：不要 Unload bundle，因为资源还在使用
+            finally
+            {
+                if (acquired && !retained && bundle != null) bundle.Unload(true);
+            }
         }
 
         /// <summary>
@@ -614,6 +648,13 @@ namespace BossRush
             loadedItems.Clear();
             loadedBundles.Clear();
             loadedSprites.Clear();
+            // 只释放本工厂创建的对象，借用的 bundle Sprite/Texture 仍由原 owner 管理。
+            foreach (Sprite sprite in ownedSprites)
+                if (sprite != null) UnityEngine.Object.Destroy(sprite);
+            ownedSprites.Clear();
+            foreach (Texture2D texture in ownedTextures)
+                if (texture != null) UnityEngine.Object.Destroy(texture);
+            ownedTextures.Clear();
             itemConfigurators.Clear();
             modDirectory = null;
 

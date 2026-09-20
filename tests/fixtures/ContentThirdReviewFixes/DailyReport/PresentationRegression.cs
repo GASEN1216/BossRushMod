@@ -37,7 +37,12 @@ namespace UnityEngine
         public override bool Equals(object value) { return value is Vector3 && this == (Vector3)value; }
         public override int GetHashCode() { return x.GetHashCode(); }
     }
-    public struct Rect { public float width, height; }
+    public struct Rect
+    {
+        public float x, y, width, height;
+        public Rect(float x, float y, float width, float height)
+        { this.x = x; this.y = y; this.width = width; this.height = height; }
+    }
     public class RectTransform : Transform
     {
         public enum Axis { Horizontal, Vertical }
@@ -104,6 +109,29 @@ namespace BossRush
         public static Type GetBuildingType() { return typeof(Duckov.Buildings.Building); }
         public static System.Reflection.PropertyInfo GetBuildingIdProperty() { return GetBuildingType().GetProperty("ID"); }
     }
+    // 版面表要读 Assets/Data/DailyReportLayout.json；夹具直接从仓库读真实文件，
+    // 读不到就让版面表走它自己的硬编码兜底——两条路都要能跑通。
+    static class JsonDataRegistry
+    {
+        public static bool TryReadDataFile(string fileName, out string json)
+        {
+            json = null;
+            try
+            {
+                string path = System.IO.Path.Combine(
+                    System.IO.Path.Combine(System.AppContext.BaseDirectory, RepositoryRelativeDataPath), fileName);
+                if (!System.IO.File.Exists(path)) return false;
+                json = System.IO.File.ReadAllText(path, System.Text.Encoding.UTF8);
+                return true;
+            }
+            catch (Exception) { return false; }
+        }
+
+        // Build/content-third-review-fixes/... -> 仓库根 -> Assets/Data
+        private const string RepositoryRelativeDataPath =
+            "../../../../../../../Assets/Data";
+    }
+
     static class BossRushUI
     {
         public static float MeasureTextHeight(TMPro.TextMeshProUGUI text, float width, float minimum)
@@ -126,55 +154,77 @@ namespace BossRush
     }
     partial class DailyReportView
     {
-        private UnityEngine.RectTransform panelRect, paperFrame, signInArea;
+        private UnityEngine.RectTransform paperFrame;
         private UnityEngine.Transform transform;
-        private TMPro.TextMeshProUGUI signInStatusText;
-        private UnityEngine.UI.ScrollRect paperScroll;
-        private readonly List<PaperRow> paperRows = new List<PaperRow>();
-        private static UnityEngine.RectTransform TextRect(float height)
-        {
-            var rect = new UnityEngine.RectTransform { rect = new UnityEngine.Rect { width = 450, height = 20 } };
-            rect.Text = new TMPro.TextMeshProUGUI { rectTransform = rect, MeasuredHeight = height };
-            return rect;
-        }
+
         internal static void Verify(Action<bool, string> check)
         {
-            var view = new DailyReportView { panelRect = new UnityEngine.RectTransform(),
-                paperScroll = new UnityEngine.UI.ScrollRect { verticalNormalizedPosition = .4f } };
-            var left = TextRect(80); var right = TextRect(340); var below = TextRect(190);
-            view.paperRows.Add(new PaperRow(left, 100, 6, right));
-            view.paperRows.Add(new PaperRow(below, 118, 4));
-            view.ReflowPaper();
-            check(left.rect.height == 340 && right.rect.height == 340, "paper columns reserve the taller text height");
-            check(below.anchoredPosition.y + below.rect.height / 2 <= left.anchoredPosition.y - left.rect.height / 2 - 6,
-                "long column cannot overlap bounty row");
-            check(view.panelRect.rect.height >= -below.anchoredPosition.y + below.rect.height / 2 + Margin,
-                "scroll content includes the complete final row");
-            check(view.paperScroll.verticalNormalizedPosition == .4f, "refresh preserves the reader's scroll position");
-            right.Text.MeasuredHeight = 40; below.Text.MeasuredHeight = 20;
-            view.ReflowPaper();
-            check(left.rect.height == 100 && below.rect.height == 118, "shorter language shrinks back to row minimums");
-            view.signInArea = new UnityEngine.RectTransform { rect = new UnityEngine.Rect { width = 944, height = 210 } };
-            var status = TextRect(260);
-            status.rect.height = 104;
-            status.anchoredPosition = new UnityEngine.Vector2(300, -8);
-            view.signInStatusText = status.Text;
-            var button = new UnityEngine.RectTransform { rect = new UnityEngine.Rect { width = 200, height = 46 },
-                anchoredPosition = new UnityEngine.Vector2(300, 74) };
-            view.signInArea.Children.Add(button); view.signInArea.Children.Add(status);
-            view.PinSignInContentToTop();
-            view.paperRows.Add(new PaperRow(view.signInArea, 210, 4));
-            view.ReflowPaper();
-            check(TopOffset(view.signInArea, status) >= TopOffset(view.signInArea, button) + button.rect.height + 6,
-                "long sign-in status stays below the sign-in button");
-            check(TopOffset(view.signInArea, status) + status.rect.height <= view.signInArea.rect.height,
-                "sign-in row contains the complete long status");
-            float buttonTop = TopOffset(view.signInArea, button), statusTop = TopOffset(view.signInArea, status);
-            status.Text.MeasuredHeight = 60;
-            view.ReflowPaper();
-            check(view.signInArea.rect.height == 210 && status.rect.height == 104
-                && TopOffset(view.signInArea, button) == buttonTop && TopOffset(view.signInArea, status) == statusTop,
-                "short sign-in status restores row height without moving controls");
+            // 1) 版面表本身：每块都要落在面板里，宽高为正
+            string[] names = {
+                "header", "mascot", "title", "infoMeta", "infoWeather",
+                "income", "incomePill", "incomeLeft", "incomeRight", "incomeTip", "incomeNote",
+                "status", "statusPill", "statusLeft", "statusRight", "statusLuck", "statusTaboo",
+                "signin", "signinPill", "button", "sideText", "legend",
+            };
+            foreach (string name in names)
+            {
+                UnityEngine.Rect rect = DailyReportLayoutTable.Get(name);
+                check(rect.width > 0 && rect.height > 0, name + " has a positive size");
+                check(rect.x >= 0 && rect.y >= 0
+                    && rect.x + rect.width <= DailyReportLayoutTable.PanelWidth
+                    && rect.y + rect.height <= DailyReportLayoutTable.PanelHeight,
+                    name + " stays inside the panel");
+            }
+
+            // 2) 三张主卡片不得相互重叠：文字块可以嵌在卡里，卡与卡之间不行
+            string[][] pairs = {
+                new[] { "header", "income" }, new[] { "header", "status" },
+                new[] { "income", "status" }, new[] { "income", "signin" },
+                new[] { "status", "signin" }, new[] { "header", "signin" },
+            };
+            foreach (string[] pair in pairs)
+            {
+                check(!Overlaps(DailyReportLayoutTable.Get(pair[0]), DailyReportLayoutTable.Get(pair[1])),
+                    pair[0] + " and " + pair[1] + " cards do not overlap");
+            }
+
+            // 3) 每块文字都必须在它所属的卡片里
+            check(Contains(DailyReportLayoutTable.Get("income"), DailyReportLayoutTable.Get("incomeTip")),
+                "income tip stays inside the income card");
+            check(Contains(DailyReportLayoutTable.Get("income"), DailyReportLayoutTable.Get("incomeNote")),
+                "income note stays inside the income card");
+            check(Contains(DailyReportLayoutTable.Get("status"), DailyReportLayoutTable.Get("statusTaboo")),
+                "status bottom strip stays inside the status card");
+            check(Contains(DailyReportLayoutTable.Get("signin"), DailyReportLayoutTable.Get("legend")),
+                "legend row stays inside the sign-in card");
+            check(Contains(DailyReportLayoutTable.Get("signin"), DailyReportLayoutTable.Get("button")),
+                "check-in button stays inside the sign-in card");
+
+            // 4) 签到格：数量、不重叠、都在签到卡里
+            int cells = DailyReportLayoutTable.Columns * DailyReportLayoutTable.Rows;
+            check(cells >= DailyReportTuning.DaysPerPeriod, "grid can hold a whole period");
+            for (int i = 0; i < DailyReportTuning.DaysPerPeriod; i++)
+            {
+                UnityEngine.Rect cell = DailyReportLayoutTable.GetCell(i);
+                check(Contains(DailyReportLayoutTable.Get("signin"), cell), "cell " + i + " stays inside the card");
+                if (i > 0)
+                {
+                    check(!Overlaps(DailyReportLayoutTable.GetCell(i - 1), cell), "cell " + i + " does not overlap its neighbour");
+                }
+            }
+            check(!Overlaps(DailyReportLayoutTable.GetCell(DailyReportTuning.DaysPerPeriod - 1),
+                DailyReportLayoutTable.Get("button")), "grid never runs under the check-in button");
+
+            // 5) 坐标换算可逆：中心原点 + Y 向上
+            UnityEngine.Rect probe = DailyReportLayoutTable.Get("income");
+            UnityEngine.Vector2 anchored = DailyReportLayoutTable.ToAnchored(probe);
+            float backX = anchored.x + DailyReportLayoutTable.PanelWidth / 2 - probe.width / 2;
+            float backY = DailyReportLayoutTable.PanelHeight / 2 - anchored.y - probe.height / 2;
+            check(Math.Abs(backX - probe.x) < 0.01f && Math.Abs(backY - probe.y) < 0.01f,
+                "ToAnchored round-trips back to the top-left rect");
+
+            // 6) 面板整体缩放仍然按视口收敛
+            var view = new DailyReportView();
             view.paperFrame = new UnityEngine.RectTransform();
             var root = new UnityEngine.RectTransform(); view.transform = root;
             foreach (var size in new[] { new UnityEngine.Vector2(640, 480), new UnityEngine.Vector2(1280, 720),
@@ -183,16 +233,25 @@ namespace BossRush
                 root.rect = new UnityEngine.Rect { width = size.x, height = size.y }; view.FitPaper();
                 check(PanelWidth * view.paperFrame.localScale.x <= size.x - 23.9f
                     && PanelHeight * view.paperFrame.localScale.y <= size.y - 23.9f,
-                    "paper and fixed close button fit viewport " + size.x + "x" + size.y);
+                    "paper fits viewport " + size.x + "x" + size.y);
             }
+
             string body = BuildBountyBlock(new DailyReportIssue { TodayBountyTarget = 1, TodayBountyTitle = "Return",
                 TodayBountyStatus = "Failed today", TodayBountyCash = 1500 });
             check(body.Contains("Failed today") && body.Contains("1500"), "bounty block retains explicit status and reward");
         }
-        private static float TopOffset(UnityEngine.RectTransform parent, UnityEngine.RectTransform child)
+
+        private static bool Overlaps(UnityEngine.Rect a, UnityEngine.Rect b)
         {
-            return parent.rect.height * (1 - child.anchorMin.y) - child.anchoredPosition.y
-                - child.rect.height * (1 - child.pivot.y);
+            return a.x < b.x + b.width && b.x < a.x + a.width
+                && a.y < b.y + b.height && b.y < a.y + a.height;
+        }
+
+        private static bool Contains(UnityEngine.Rect outer, UnityEngine.Rect inner)
+        {
+            return inner.x >= outer.x && inner.y >= outer.y
+                && inner.x + inner.width <= outer.x + outer.width
+                && inner.y + inner.height <= outer.y + outer.height;
         }
     }
 }

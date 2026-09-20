@@ -3,12 +3,10 @@
 与 tools/sky_island_tripo_import.py 的区别：场景件导出 JSON 网格、并进世界 FBX；装备要单独成预制体、
 挂到官方角色的头盔 / 护甲 / 背包挂点上，所以逐件导出独立 FBX。
 
-尺寸、原点与朝向按**已上线装备模型预制体在自身空间里的实测**定（2026-09-14 用 UnityPy 读 Assets/Equipment 的
-frost_set / thunder_set / dragon_equipment / dragonking_equipment，与游戏 resources.assets 里的官方背包）：
-- 挂点空间 Y 朝上、Z 朝前；原点在包围盒几何中心。
-  docs/制作教程/手把手教你如何在unity里制作头盔护甲.md 写的「头盔原点在底部、高 0.25–0.4」与实测不符，以实测为准。
-- 头盔宽 0.80–1.05、高 0.77–0.97、深 0.91–1.06；护甲宽 0.86–1.06、高 0.49–0.58、深 0.47–0.80
-  （这几件护甲本身就是按轴不等比缩放的：Meshy 网格的竖直方向压到约 0.64）。
+导入基线参考既有装备与官方挂点（2026-09-20 校准口径见 docs/制作教程/头盔佩戴与装备尺寸校准.md）：
+- 导出为 Y-up、Z-forward 的标准化 FBX；头盔在这里按整体包围盒居中只作为导入基线。
+  佩戴时的盔壳中心由 helmet_fit_profiles.json 单独校准，Editor 在模型子节点绝对赋值，不能在 FBX 再烤一次偏移。
+- 逐件标准化尺寸取 PIECES；它不是最终佩戴尺寸，也不是所有头盔/护甲通用的规格。
 - 背包的数取官方背包，见 PIECES 注释。
 
 导入、减面、展 UV、导出贴图全部复用 sky_island_tripo_import 的函数，不另写一份。
@@ -18,11 +16,12 @@ Tripo3D 的朝向不固定：`--yaw 件名=度` 绕竖直轴转到「正面朝 B
 按最前沿贴背会把包身推到身后很远；q 取背带段占的顶点比例（约 0.15–0.2），默认 0 即最前沿，R1 四件不受影响。
 
 用法（Blender 后台模式抛异常默认仍退出 0：必须同时查退出码与最后一行的 PASS 标记）：
-    D:/blender/blender.exe -b --factory-startup --python-exit-code 1 \
+    blender -b --factory-startup --python-exit-code 1 \
         --python tools/sky_island_boss_gear_import.py -- \
-        --glb-dir ArtSource/SkyIsland/BossGear --project D:/code/ykf/duckov_modding-main/UnityFiles/BossRush \
+        --glb-dir ArtSource/SkyIsland/BossGear \
         --source starworks_foreman_helmet=steampunk+diving+helmet+3d+model.glb --yaw starworks_foreman_helmet=-90 [...]
 成功时最后一行打印 SKY_ISLAND_BOSS_GEAR_IMPORT_OK。GLB 与清单都在 ArtSource/SkyIsland/BossGear/（local-only，不进 git）。
+作者工程默认由 unity_project_path.py 解析，BOSSRUSH_UNITY_PROJECT 优先；也可显式传 --project。
 """
 
 import argparse
@@ -36,6 +35,8 @@ from mathutils import Matrix
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import sky_island_tripo_import as tripo  # noqa: E402
+from helmet_fit import load_profiles, validate_staging_bounds  # noqa: E402
+from unity_project_path import find_unity_project  # noqa: E402
 
 # 件名 -> (装备 bundle 基名, 槽位, 目标包围盒 (宽, 高, 深) 米, 是否按轴拉伸, 三角面预算, 贴图上限)
 # 不拉伸时只按宽度等比缩放（头盔先保证套得住头），高、深跟着模型走，清单里记实际值。
@@ -66,7 +67,7 @@ PIECES = {
     'windhunter_backpack':        ('WindbreakPack_Backpack',   'Backpack', (0.40, 0.58, 0.28), False, 6500, 512),
 }
 
-# 槽位 -> (贴背面在挂点空间的 z, 包体中心高度 y)；不在表里的槽位原点放几何中心（头盔、护甲实测都是这样）。
+# 槽位 -> (贴背面在挂点空间的 z, 包体中心高度 y)；其余槽位导入基线居中，头盔佩戴偏移另由 Editor 应用。
 BEHIND_SOCKET = {'Backpack': (-0.08, 0.03)}
 
 # 槽位 -> 包围盒中心在挂点空间的 (x, y, z)（Unity 轴：y 上、z 前），原点留在挂点上（2026-09-15 用 UnityPy 读官方 IG_FackMask_* / IG_Headset_* 实测）：
@@ -111,8 +112,9 @@ def depth_quantile(mesh, q):
 
 
 def normalise_equipment(obj, box, stretch, yaw_degrees, slot, back_quantile=0.0):
-    """在 Blender 的 Z-up 空间里摆正：绕 Z 转 yaw，缩到目标包围盒，原点放几何中心（背包再挪到挂点身后）。
+    """在 Blender 的 Z-up 空间里标准化：绕 Z 转 yaw，缩到目标盒并居中（背包再挪到挂点身后）。
 
+    头盔的几何中心只是导入基线，盔壳与角色贴合由 Editor 的 HelmetFitUtility 完成。
     Blender 轴与挂点轴：X = 宽、Z = 高（Unity +Y）、-Y = 正前（Unity +Z）。
     不在这里换成 Y-up：FBX 导出器按 axis_up='Y' 统一换轴，手工换一次再让导出器换一次会躺倒。
     与场景件同一条教训：不用 obj.bound_box（后台模式下读到过期值），直接遍历顶点。
@@ -180,7 +182,7 @@ def export_fbx(obj, target):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--glb-dir', required=True)
-    parser.add_argument('--project', required=True)
+    parser.add_argument('--project', help='默认使用 BOSSRUSH_UNITY_PROJECT / unity_project_path.py')
     parser.add_argument('--only')
     parser.add_argument('--yaw', action='append')
     parser.add_argument('--box', action='append')
@@ -189,6 +191,10 @@ def main():
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     args = parser.parse_args(argv)
 
+    args.project = args.project or find_unity_project()
+    if not args.project:
+        raise SystemExit('找不到 Unity 作者工程，请设置 BOSSRUSH_UNITY_PROJECT')
+    fit_profiles = load_profiles()
     glb_dir = Path(args.glb_dir).resolve()
     out_dir = Path(args.project).resolve() / 'Assets' / 'SkyIslandBossGear' / 'Models'
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -223,6 +229,7 @@ def main():
         yaw = yaws.get(name, 0.0)
         back_quantile = back_quantiles.get(name, 0.0)
         bounds = normalise_equipment(obj, box, stretch, yaw, slot, back_quantile)
+        validate_staging_bounds(base, slot, bounds, fit_profiles)
         after = tripo.decimate(obj, budget)
         if after > budget:
             raise RuntimeError('%s 减面后仍超预算：%d > %d' % (name, after, budget))

@@ -1,0 +1,131 @@
+{
+  "textures": [
+    "Assets/MeshyImports/PhantomWitch/PhantomScythe_Melee_Item.png",
+    "Assets/MeshyImports/StarWishFountain/Meshy_AI_Celestial_Star_Temple_0409115652_texture.png",
+    "Assets/MeshyImports/StarWishFountain/Meshy_AI_Celestial_Star_Temple_0409115652_texture_metallic.png",
+    "Assets/MeshyImports/StarWishFountain/Meshy_AI_Celestial_Star_Temple_0409115652_texture_normal.png",
+    "Assets/MeshyImports/dragonking/dragonking_Gun/Meshy_AI_Dragonfire_Ember_Cann_0314111815_texture.png",
+    "Assets/MeshyImports/dragonking/dragonking_Gun/Meshy_AI_Dragonfire_Ember_Cann_0314111815_texture_metallic.png",
+    "Assets/MeshyImports/dragonking/dragonking_Gun/Meshy_AI_Dragonfire_Ember_Cann_0314111815_texture_normal.png",
+    "Assets/MeshyImports/dragonking/dragonking_Gun/dragonking_Gun.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203841/Meshy_AI_1_0317123810_texture.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203841/Meshy_AI_1_0317123810_texture_metallic.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203841/Meshy_AI_1_0317123810_texture_normal.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203842/Meshy_AI_2_0317123821_texture.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203842/Meshy_AI_2_0317123821_texture_metallic.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203842/Meshy_AI_2_0317123821_texture_normal.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203923/Meshy_AI_Barbed_Wire_Roll_on_S_0317123917_texture.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203923/Meshy_AI_Barbed_Wire_Roll_on_S_0317123917_texture_metallic.png",
+    "Assets/MeshyImports/modef/Meshy_Model_20260317_203923/Meshy_AI_Barbed_Wire_Roll_on_S_0317123917_texture_normal.png",
+    "Assets/MeshyImports/nursenpc/Idle_9_20260303_224601/Meshy_AI_texture_0.png",
+    "Assets/MeshyImports/nursenpc/Idle_9_20260303_224601/Meshy_AI_texture_0_metallic.png",
+    "Assets/MeshyImports/nursenpc/Idle_9_20260303_224601/Meshy_AI_texture_0_normal.png",
+    "Assets/UI/BrokenHeart/heart_0.png",
+    "Assets/UI/BrokenHeart/heart_1.png",
+    "Assets/UI/BrokenHeart/heart_2.png",
+    "Assets/UI/BrokenHeart/heart_3.png",
+    "Assets/UI/ModeG/modeg_echo_banner.png",
+    "Assets/UI/ModeG/modeg_echo_emblem.png",
+    "Assets/UI/ModeH/ModeH_BlackMarketCup_Banner.png",
+    "Assets/UI/ModeH/ModeH_BlackMarketCup_Emblem.png"
+  ],
+  "skyTextures": [
+    "Assets/SkyIsland/Textures/geology_handpainted_native.png",
+    "Assets/SkyIsland/Textures/grass_handpainted_vanilla.png",
+    "Assets/SkyIsland/Textures/roof_handpainted_terracotta.png",
+    "Assets/SkyIsland/Textures/sky_cloth.png",
+    "Assets/SkyIsland/Textures/sky_mural.png",
+    "Assets/SkyIsland/Textures/stone_handpainted_vanilla.png",
+    "Assets/SkyIsland/Textures/wood_handpainted_vanilla.png"
+  ],
+  "builds": [
+    {
+      "assetBundleName": "broken_heart",
+      "assetNames": [
+        "Assets/UI/BrokenHeart/heart_0.png",
+        "Assets/UI/BrokenHeart/heart_1.png",
+        "Assets/UI/BrokenHeart/heart_2.png",
+        "Assets/UI/BrokenHeart/heart_3.png"
+      ]
+    },
+    {
+      "assetBundleName": "dragonking_equipment",
+      "assetNames": [
+        "Assets/MeshyImports/dragonking/dragonking_Armor/dragonking_Armor_Model.prefab",
+        "Assets/MeshyImports/dragonking/dragonking_Gun/dragonking_Gun_Model.prefab",
+        "Assets/MeshyImports/dragonking/dragonking_Helmet/dragonking_Helmet_Model.prefab",
+        "Assets/Prefabs/dragonking/dragonking_Armor_Item.prefab",
+        "Assets/Prefabs/dragonking/dragonking_Gun_Item.prefab",
+        "Assets/Prefabs/dragonking/dragonking_Helmet_Item.prefab",
+        "Assets/Prefabs/dragonking/ReverseScale_Lv1_Totem_Item.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "energyshield_totem_model",
+      "assetNames": [
+        "Assets/MeshyImports/new/Meshy_Model_20260531_135548/EnergyShield_Totem_Model.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "modef_fortifications",
+      "assetNames": [
+        "Assets/MeshyImports/modef/Meshy_Model_20260317_203841/BossRush_ModeF_FoldableCover_Model.prefab",
+        "Assets/MeshyImports/modef/Meshy_Model_20260317_203842/BossRush_ModeF_ReinforcedRoadblock_Model.prefab",
+        "Assets/MeshyImports/modef/Meshy_Model_20260317_203923/BossRush_ModeF_BarbedWire_Model.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "modeg_presentation",
+      "assetNames": [
+        "Assets/UI/ModeG/modeg_echo_banner.png",
+        "Assets/UI/ModeG/modeg_echo_emblem.png"
+      ]
+    },
+    {
+      "assetBundleName": "modeh_presentation",
+      "assetNames": [
+        "Assets/UI/ModeH/ModeH_BlackMarketCup_Banner.png",
+        "Assets/UI/ModeH/ModeH_BlackMarketCup_Emblem.png"
+      ]
+    },
+    {
+      "assetBundleName": "nursenpc",
+      "assetNames": [
+        "Assets/Prefabs/npc/NurseNPC.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "phantom_scythe",
+      "assetNames": [
+        "Assets/MeshyImports/PhantomWitch/PhantomScythe_Melee_Item.prefab",
+        "Assets/MeshyImports/PhantomWitch/PhantomScythe_Melee_Model.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "starwish_fountain",
+      "assetNames": [
+        "Assets/Prefabs/StarWishFountain/StarWishFountain.prefab"
+      ]
+    },
+    {
+      "assetBundleName": "sky_island_raid",
+      "assetNames": [
+        "Assets/SkyIsland/SkyIslandRaid.unity"
+      ]
+    },
+    {
+      "assetBundleName": "dragon_equipment",
+      "assetNames": [
+        "Assets/MeshyImports/dragon/Meshy_Model_20251221_150652/dargon_Helmet_Model.prefab",
+        "Assets/MeshyImports/dragon/Meshy_Model_20251221_181627/dargon_Armor_Model.prefab",
+        "Assets/MeshyImports/dragon/Meshy_Model_20251225_233606/dragon_Gun_Model.prefab",
+        "Assets/mymod/MyCustomEquip/dargon_Armor_Item.prefab",
+        "Assets/mymod/MyCustomEquip/dargon_Helmet_Item.prefab",
+        "Assets/Prefabs/dragon/dragon_Buff.prefab",
+        "Assets/Prefabs/dragon/dragon_Buff_Fx.prefab",
+        "Assets/Prefabs/dragon/dragon_Gun_Item.prefab",
+        "Assets/Prefabs/dragon/dragon_Projectile.prefab"
+      ]
+    }
+  ]
+}

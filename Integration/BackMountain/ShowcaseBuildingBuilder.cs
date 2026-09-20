@@ -9,7 +9,7 @@
 //   **老档已建过是例外**：必须照常注册 prefab，否则官方 BuildingArea 会报缺 prefab，
 //   留下一个幽灵建筑。
 //
-// 模型由本模块程序化构造，图标读取 Assets/buildings/ 对应 PNG；材质与纹理由本 owner 释放。
+// 模型优先读取 Assets/buildings/bossrush_backmountain_showcase，缺包保留图元；资源由本 owner 释放。
 //
 // 共享反射工具（FindGameType / AssignBuildingContainerField /
 // RequestBaseBuildingAreaRepaint）由共享工具与显式 _owner 提供，模块不再借 partial 访问兄弟私有状态。
@@ -50,6 +50,7 @@ namespace BossRush
 
         private bool backMountainShowcaseInjected;
         private GameObject backMountainShowcasePrefabGO;
+        private AssetBundle showcaseModelBundle;
         private Sprite backMountainShowcaseIcon;
         private Texture2D _iconTexture;
         private readonly List<Material> _materials = new List<Material>();
@@ -133,6 +134,8 @@ namespace BossRush
         private void LoadShowcaseBuildingIcon()
         {
             if (backMountainShowcaseIcon != null) return;
+            backMountainShowcaseIcon = ProductionIconCache.Get("Assets/buildings/" + BACKMOUNTAIN_SHOWCASE_BUILDING_ID + ".png");
+            if (backMountainShowcaseIcon != null || !ProductionIconCache.AllowRawFallback) return;
             try
             {
                 string modDir = Path.GetDirectoryName(typeof(ModBehaviour).Assembly.Location);
@@ -141,12 +144,8 @@ namespace BossRush
                 iconPath = Path.Combine(iconPath, BACKMOUNTAIN_SHOWCASE_BUILDING_ID + ".png");
                 if (!File.Exists(iconPath)) return;
 
-                byte[] bytes = File.ReadAllBytes(iconPath);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes)) { UnityEngine.Object.Destroy(texture); return; }
-                _iconTexture = texture;
-                backMountainShowcaseIcon = Sprite.Create(
-                    texture, new Rect(0f, 0f, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                backMountainShowcaseIcon = RawImageLoader.LoadSprite(iconPath, BACKMOUNTAIN_SHOWCASE_BUILDING_ID);
+                if (backMountainShowcaseIcon != null) _iconTexture = backMountainShowcaseIcon.texture;
             }
             catch (Exception e)
             {
@@ -167,7 +166,8 @@ namespace BossRush
 
             GameObject graphicsContainer = new GameObject("Graphics");
             graphicsContainer.transform.SetParent(backMountainShowcasePrefabGO.transform, false);
-            CreateShowcasePlaceholderModel(graphicsContainer);
+            if (!BuildingModelHelper.TryInstantiateBundle(BACKMOUNTAIN_SHOWCASE_BUILDING_ID, BACKMOUNTAIN_SHOWCASE_PREFAB_NAME, graphicsContainer.transform, out showcaseModelBundle))
+                CreateShowcasePlaceholderModel(graphicsContainer);
 
             GameObject functionContainer = new GameObject("Function");
             functionContainer.transform.SetParent(backMountainShowcasePrefabGO.transform, false);
@@ -540,9 +540,11 @@ namespace BossRush
             {
                 if (backMountainShowcasePrefabGO != null) UnityEngine.Object.Destroy(backMountainShowcasePrefabGO);
                 backMountainShowcasePrefabGO = null;
+                BossRush.Utils.AssetBundleUnloadHelper.TryUnload(showcaseModelBundle, BackMountainConfig.LogPrefix);
+                showcaseModelBundle = null;
                 foreach (Material material in _materials) if (material != null) UnityEngine.Object.Destroy(material);
                 _materials.Clear();
-                if (backMountainShowcaseIcon != null) UnityEngine.Object.Destroy(backMountainShowcaseIcon);
+                if (backMountainShowcaseIcon != null && !ProductionIconCache.IsBorrowed(backMountainShowcaseIcon)) UnityEngine.Object.Destroy(backMountainShowcaseIcon);
                 if (_iconTexture != null) UnityEngine.Object.Destroy(_iconTexture);
                 backMountainShowcaseIcon = null;
                 _iconTexture = null;

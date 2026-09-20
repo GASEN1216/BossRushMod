@@ -197,13 +197,7 @@ namespace BossRush
                     return;
                 }
 
-                byte[] bytes = File.ReadAllBytes(iconPath);
-                Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                if (!texture.LoadImage(bytes)) return;
-                petNestBuildingIcon = Sprite.Create(
-                    texture,
-                    new Rect(0f, 0f, texture.width, texture.height),
-                    new Vector2(0.5f, 0.5f));
+                petNestBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
             }
             catch (Exception e)
             {
@@ -227,7 +221,7 @@ namespace BossRush
                     return;
                 }
 
-                petNestAssetBundle = AssetBundle.LoadFromFile(bundlePath);
+                petNestAssetBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (petNestAssetBundle == null) return;
 
                 petNestModelPrefab = petNestAssetBundle.LoadAsset<GameObject>(PETNEST_PREFAB_NAME);

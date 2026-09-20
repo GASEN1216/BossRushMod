@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using Duckov.Economy;
 using Duckov.Quests;
 using Duckov.Utilities;
 using HarmonyLib;
@@ -31,6 +32,11 @@ namespace BossRush
         private static readonly FieldInfo QuestGiverField = AccessTools.Field(typeof(Quest), "questGiverID");
         private static readonly FieldInfo TaskIdField = AccessTools.Field(typeof(Duckov.Quests.Task), "id");
         private static readonly FieldInfo TaskMasterField = AccessTools.Field(typeof(Duckov.Quests.Task), "master");
+        private static readonly FieldInfo QuestRequiredItemField = AccessTools.Field(typeof(Quest), "requiredItemID");
+        private static readonly FieldInfo QuestRequiredCountField = AccessTools.Field(typeof(Quest), "requiredItemCount");
+        private static readonly FieldInfo QuestRewardsField = AccessTools.Field(typeof(Quest), "rewards");
+        private static readonly FieldInfo RewardIdField = AccessTools.Field(typeof(Reward), "id");
+        private static readonly FieldInfo RewardMasterField = AccessTools.Field(typeof(Reward), "master");
         private static readonly FieldInfo CompletedQuestsField = AccessTools.Field(typeof(QuestManager), "completedQuests");
 
         private static SkyIslandOfficialQuestBridge active;
@@ -126,8 +132,104 @@ namespace BossRush
                 reason = L10n.T("目标完成后，请在任务给予者所在地图交付。", "Finish the objectives, then report to the giver on their map.");
                 return false;
             }
-            if (entry.Def.Deliver != null) return entry.Def.Deliver(out reason);
-            return active.DefaultCommit(entry, entry.Def.DeliveredFlag, entry.Def.DeliverAction, out reason);
+            // 发钱只认「这一拍从未交付变成已交付」：读档重建投影走的是 ForceComplete，不经过这里，也就不会再发一次。
+            SkyIslandStoryData before = CurrentData();
+            bool wasDelivered = before != null && before.Has(entry.Def.DeliveredFlag);
+            bool committed = entry.Def.Deliver != null
+                ? entry.Def.Deliver(out reason)
+                : active.DefaultCommit(entry, entry.Def.DeliveredFlag, entry.Def.DeliverAction, out reason);
+            if (committed && !wasDelivered) active.PayRewardOnce(entry);
+            return committed;
+        }
+
+        /// <summary>官方任务详情页的「所需物品」栏：纯展示，收物品仍由那条任务自己的 Deliver 负责。</summary>
+        private static void ApplyRequiredItem(Entry entry, Quest quest)
+        {
+            if (entry.Def.RequiredItemId <= 0) return;
+            if (QuestRequiredItemField == null || QuestRequiredCountField == null)
+            {
+                ModBehaviour.DevLog("[SkyIslandQuest] [WARNING] 官方 Quest 的需求物品字段已改名，任务页不显示交付物。");
+                return;
+            }
+            QuestRequiredItemField.SetValue(quest, entry.Def.RequiredItemId);
+            QuestRequiredCountField.SetValue(quest, entry.Def.RequiredItemCount > 0 ? entry.Def.RequiredItemCount : 1);
+        }
+
+        /// <summary>
+        /// 奖励投影：官方 <c>Reward</c> 的 <c>Awake</c> 要求 master 已经就位，所以先建停用的子物体、写完字段再激活
+        /// （模板根对象始终保持激活，官方克隆才不会继承停用状态）。
+        /// 不用官方 <c>QuestReward_Money</c>：它的「已领取」写在实例上，而我们每次加载都重建一份投影，
+        /// 玩家在已完成页就能一天领一次钱。这里的 Claimed 读的是本槽交付事实，重建多少次都只有一次。
+        /// </summary>
+        private static void ApplyReward(Entry entry, Quest quest, GameObject root)
+        {
+            if (entry.Def.RewardMoney <= 0) return;
+            if (QuestRewardsField == null || RewardIdField == null || RewardMasterField == null)
+            {
+                ModBehaviour.DevLog("[SkyIslandQuest] [WARNING] 官方 Reward 字段已改名，任务页不显示奖励行（交付照常发钱）。");
+                return;
+            }
+            var rewards = QuestRewardsField.GetValue(quest) as List<Reward>;
+            if (rewards == null) return;
+            GameObject rewardHost = new GameObject("Reward");
+            rewardHost.transform.SetParent(root.transform, false);
+            rewardHost.SetActive(false);
+            SkyIslandOfficialQuestReward reward = rewardHost.AddComponent<SkyIslandOfficialQuestReward>();
+            reward.questId = entry.Def.QuestId;
+            reward.amount = entry.Def.RewardMoney;
+            RewardIdField.SetValue(reward, 1);
+            RewardMasterField.SetValue(reward, quest);
+            rewards.Add(reward);
+            rewardHost.SetActive(true);
+        }
+
+        /// <summary>交付成功且这一拍才落下交付事实时发一次钱。失败只记日志：剧情事实已经落下，不能因此回滚任务。</summary>
+        private void PayRewardOnce(Entry entry)
+        {
+            int money = entry.Def.RewardMoney;
+            if (money <= 0) return;
+            SkyIslandStoryData data = CurrentData();
+            if (data == null || !data.Has(entry.Def.DeliveredFlag)) return;
+            try
+            {
+                if (EconomyManager.Add(money))
+                {
+                    if (host != null) host.ShowMessage(DescribeMoney(money));
+                    return;
+                }
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.CriticalLog("sky-island-quest-reward-" + entry.Def.QuestId,
+                    "[SkyIslandQuest] [ERROR] 任务奖金发放异常 quest=" + entry.Def.QuestId + ": " + e);
+                return;
+            }
+            ModBehaviour.CriticalLog("sky-island-quest-reward-" + entry.Def.QuestId,
+                "[SkyIslandQuest] [ERROR] 任务奖金没有发出去 quest=" + entry.Def.QuestId + " money=" + money);
+        }
+
+        /// <summary>奖励行文案复用官方 Reward_Money（各语言都有），取不到格式串时退回中英双语。</summary>
+        internal static string DescribeMoney(int amount)
+        {
+            try
+            {
+                string format = L10n.T("Reward_Money");
+                if (!string.IsNullOrEmpty(format) && format.IndexOf("{amount}", StringComparison.Ordinal) >= 0)
+                    return format.Replace("{amount}", amount.ToString());
+            }
+            catch (Exception)
+            {
+                // 官方格式串取不到时走下面的退路
+            }
+            return L10n.T("金钱 +" + amount, "Currency +" + amount);
+        }
+
+        internal static bool IsRewardPaid(int questId)
+        {
+            Entry entry;
+            if (!TryGetOwned(questId, out entry)) return false;
+            SkyIslandStoryData data = CurrentData();
+            return data != null && data.Has(entry.Def.DeliveredFlag);
         }
 
         internal static void ReportDeliveryFailure(string reason)
@@ -304,6 +406,8 @@ namespace BossRush
                     TaskMasterField.SetValue(task, quest);
                     quest.Tasks.Add(task);
                 }
+                ApplyRequiredItem(entry, quest);
+                ApplyReward(entry, quest, root);
                 collection.Add(quest);
                 entry.Prefab = quest;
                 entry.PrefabRoot = root;
@@ -575,6 +679,32 @@ namespace BossRush
             ReportStatusChanged();
             // 换槽或故事恢复可能让同一运行时投影从“已完成目标”回到“进行中”；两边都显式同步组件状态。
             enabled = !current;
+        }
+    }
+
+    /// <summary>
+    /// 官方奖励行的投影：只负责在任务详情页与完成面板上显示「金钱 +N」，不自己发钱。
+    /// 「已领取」读的是本槽交付事实，所以每次加载重建出来的投影都是已领取状态，官方按钮点不动，
+    /// 不会出现「已完成页每天领一次」。与 Task 一样只带值类型字段回查（委托不随 Instantiate 克隆）。
+    /// </summary>
+    public sealed class SkyIslandOfficialQuestReward : Duckov.Quests.Reward
+    {
+        public int questId;
+        public int amount;
+
+        public override bool Claimed { get { return SkyIslandOfficialQuestBridge.IsRewardPaid(questId); } }
+        public override bool AutoClaim { get { return true; } }
+        public override string Description { get { return SkyIslandOfficialQuestBridge.DescribeMoney(amount); } }
+
+        /// <summary>发放随交付事实一次完成（见桥的 PayRewardOnce），这里永远是空操作。</summary>
+        public override void OnClaim()
+        {
+        }
+
+        public override object GenerateSaveData() { return Claimed; }
+
+        public override void SetupSaveData(object data)
+        {
         }
     }
 

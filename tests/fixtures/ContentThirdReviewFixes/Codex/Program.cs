@@ -31,8 +31,23 @@ class Program
     static void Main()
     {
         CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
+        // 2026-09-20 第三轮：官方 Boss 名单补目录。过滤池此时是空的（ModBehaviour.Instance.Pool
+        // 没加任何 preset），正是「玩家还没进过竞技场 / 在筛选器里关掉了 Boss」那一档，
+        // 旧实现在这一档下整册只有 8 张卡，官方 Boss 一张锁定卡都没有。
+        int roster = CodexOfficialBossRegistry.OfficialBossKeys().Count;
         int initial = CodexBossCatalog.Count;
-        Check(initial == 8, "production catalog includes custom and zombie entries");
+        Check(CodexOfficialBossRegistry.LoadedFromJson && ModBehaviour.CriticalLogs.Count == 0,
+            "official boss roster comes from the production JSON, not the hard-coded fallback");
+        Check(roster == 40, "official boss roster lists forty bosses");
+        Check(initial == 8 + roster, "production catalog seeds custom, zombie and the full official roster");
+        CodexBossInfo seeded;
+        Check(CodexBossCatalog.TryGet("Cname_StormBoss1", out seeded)
+            && !seeded.IsHistoricalOnly && !seeded.IsCustomBoss && !seeded.IsZombieBoss,
+            "official boss absent from the filtered pool still gets a locked catalog card");
+        Check(CodexOfficialBossRegistry.IsOfficialBoss("Cname_StormBoss1")
+            && !CodexOfficialBossRegistry.IsOfficialBoss("Cname_Boss_Red")
+            && CodexOfficialBossRegistry.IsOfficialCreature("Cname_Boss_Red"),
+            "one roster feeds both the catalog and the category label");
         for (int i = 0; i < initial - 1; i++)
             CodexPersistence.Current.GetOrCreate(CodexBossCatalog.All[i].Key, "boss").Kills = 1;
         string missing = CodexBossCatalog.All[initial - 1].Key;
@@ -195,7 +210,9 @@ class Program
         ModBehaviour.Instance.Pool.Add(new EnemyPresetInfo { name = "official", displayName = "old name" });
         CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
         CodexBossInfo king, official;
-        Check(CodexBossCatalog.Count == 9 && CodexBossCatalog.TryGet(DragonKingConfig.BossNameKey, out king)
+        // 8 张固定卡（3 自定义 + 5 丧尸）+ 官方名单 + 池里那一条 "official"
+        int expected = 8 + CodexOfficialBossRegistry.OfficialBossKeys().Count + 1;
+        Check(CodexBossCatalog.Count == expected && CodexBossCatalog.TryGet(DragonKingConfig.BossNameKey, out king)
             && king.IsCustomBoss && king.DisplayName != "stale king", "custom boss already in shared pool keeps custom classification");
         CodexBossCatalog.TryGet("official", out official);
         LocalizationHelper.Text["official"] = "中文名";
@@ -208,13 +225,13 @@ class Program
         CodexBossCatalog.SynchronizeHistoricalEntries(CodexPersistence.Current);
         CodexBossInfo ignored;
         Check(!CodexBossCatalog.TryGet(ghost.Key, out ignored), "zero-kill historical entry cannot become an unreachable requirement");
-        foreach (CodexBossInfo info in CodexBossCatalog.All)
-        {
-            L10n.IsChinese = true;
-            string cn = CodexBossCatalog.GetEncounterHint(info);
-            L10n.IsChinese = false;
-            Check(!string.IsNullOrEmpty(cn) && cn != CodexBossCatalog.GetEncounterHint(info), "each catalog kind offers bilingual encounter guidance");
-        }
+        // owner 2026-09-20 问题 5：详情页的「遭遇说明」整段删掉，
+        // 连带 GetEncounterHint 本体一起移除——留着不用的话，下一个读代码的人
+        // 会以为那段提示还在发给玩家。
+        Check(typeof(CodexBossCatalog).GetMethod("GetEncounterHint",
+                  System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic
+                  | System.Reflection.BindingFlags.Public) == null,
+            "encounter guidance is gone from the catalog, not merely unused by the panel");
         L10n.IsChinese = true;
         Check(CodexBossCatalog.BuildZombieBossKey((ZombieModeBossKind)999) == null, "unknown zombie kind cannot invent a collectible");
         string key = CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan);

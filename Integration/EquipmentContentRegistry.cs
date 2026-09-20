@@ -7,7 +7,7 @@ namespace BossRush
     {
         private void LoadEquipmentContent()
         {
-            int equipCount = EquipmentFactory.LoadAllEquipment();
+            int equipCount = EquipmentFactory.LoadedBundleCount;
             DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");
 
             // P0 新武器、P1 套装占位符注册：必须在 EquipmentFactory.LoadAllEquipment 之后执行，

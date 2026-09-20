@@ -209,7 +209,8 @@ namespace BossRush
             story = new SkyIslandStoryService(); story.Open();
             story.RaidHeldCosts = true;
             lease = new SkyIslandRaidLease();
-            lease.Prepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
+            lease.BeginPrepare(ModBehaviour.GetModPath(), timeOfDayTemplate);
+            while (lease.StepPreparation()) yield return null;
             loadStarted = true;
             lease.BeginLoad();
             float deadline = Time.realtimeSinceStartup + 120;

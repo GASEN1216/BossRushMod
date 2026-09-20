@@ -11,7 +11,7 @@ def main():
     sources = {name: clean_source((ROOT / path).read_text(encoding='utf-8-sig')) for name, path in FILES.items()}
     required = {
         'Session': ['private readonly Vector3 origin = Vector3.zero', 'SceneRuntimeGate.IsBaseHubSceneName',
-                    'lease = new SkyIslandRaidLease()', 'lease.Prepare(ModBehaviour.GetModPath(), timeOfDayTemplate)',
+                    'lease = new SkyIslandRaidLease()', 'lease.BeginPrepare(ModBehaviour.GetModPath(), timeOfDayTemplate)', 'while (lease.StepPreparation()) yield return null',
                     'lease.BeginLoad()', 'IInitializedQueryHandler',
                     'while ((SceneManager.GetActiveScene().handle != entryScene.handle || GameCamera.Instance == null ||',
                     'LevelManager.RegisterWaitForInitialization(this)', 'LevelManager.UnregisterWaitForInitialization(this)',

@@ -1,5 +1,107 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+## 2026-09-20 人工实测第二轮补漏（COMPAT / SAFE）
+
+- 逐条复核 `20260920人工实测发现的问题.md` 的 17 项；保留上一轮和并行资源会话改动。当前结论、证据与 M20-01–08 人工操作见 `docs/testing/20260920人工实测修复记录_第二轮.md`，第一轮报告已标注为历史实施记录。
+- 修复 `CR-2026-09-20-006–012`：基地/局内随从取消与迟到生成竞态；孵化跳过丢结果、暂停与详情空间；Mode H 均值落点及地下退出兜底；日报长正文截断和金额刷新；图鉴实际子场景与失败缓存；Mode E 套装敌友判断；异色中英前缀与 HUD 语言缓存。
+- L2：全量 645 项守卫通过；51 组执行回归全部通过（其中 3 组修正本机 Harmony/Managed 环境变量后重跑）。新 `ManualSeptemberReview` 98 项断言、`ContentTransactions` 262 项断言通过。7 组行为反向探针与 3 组守卫反向探针均按预期转红、按字节还原；日志与散列在 `Build/manual-second-20260920/`。
+- Windows Roslyn 正式参数快照编译通过（960 源码、退出码 0，只有已有 RuntimeGate CS0649）；资源会话收尾后再编当前完整源码，编译前后源码散列一致，Release 的 14 个 Dev 标识缺席。最终 SHA-256 `8EAC1113F0786A56DA601A2992B65F7F105154B5C74B85278DC90FCE8879C21C`，产物 `Build/manual-second-20260920/compile-final/BossRush.Release.dll`，未部署本轮 DLL。
+- 本轮未新增存档字段/TypeID、未重打资源包、未启动游戏、未读写存档、未查看截图。现有 9 张图的配置成立已由执行回归验证，导航、看台、音效、字体、模型/粒子与性能仍需 owner 的 L3 证据；不承诺图像与参考 100% 一致。
+
+## 2026-09-20 资源生产化续作（COMPAT / OPERATIONAL，无 LOD）
+
+- 游戏目标清单外 bundle 改为复制前/后 fail-closed；历史 sky_island_world 在 SHA-256 备份及生产零引用核验后仅从游戏目标移除，作者/仓库历史文件保留。
+- 两张旧图标实际 1024 DXT5 → 256 BC7；只重打 birthday_cake、bossrush_ticket 与新增 production_icons。328 个 Sprite 按原 PNG 地址加载，正式压缩包可用时禁止 raw PNG 常驻，缺包/Dev 保留回退；解码失败和自造对象幂等清理补齐。
+- 装备/物品 bootstrap 与天空岛预载改用可取消异步/分帧流程，迟到请求释放、场景切换重试、宿主销毁、超时、同步兼容调用均有观测；官方同步 GetPrefab 合同保留。F3 既有只读入口增加基地/天空岛各 10 秒窗口，不新增按钮、不写剧情或存档。
+- L1/L2：645 全量守卫、51 套执行回归、10 个反向探针、69 包 UnityPy 及天空岛 Deferred GBuffer 核验通过；两张 Item 序列化数据除引用映射外相同。最终命令、SHA-256、资源尺寸/格式与物件所有权边界见 `docs/制作教程/20260920_资源生产化续作交付.md` 和 `Build/resource-production-20260920/`。
+
+## 2026-09-20 基地四建筑模型接入（COMPAT / OPERATIONAL）
+
+- 接入 `output/building_concepts/` 的四个锁定 GLB：`439d…` 报箱、`61ee…` 公告栏、`b592…` 展示柜、`d6da…` 遗种巢；保留原建筑 ID、交互、存档身份和缺包占位回退。
+- 新增 `tools/building_model_manifest.json`、`tools/import_building_models.py`、`tools/BaseBuildingBundleBuilder.cs.txt`。模型归一化为地面原点、单网格、单材质，1024×1024 BC7、Mesh/Texture Read/Write 关闭、无 Crunch；没有生成或修改 `LODGroup`。
+- 公告栏和展示柜接入现有 `FactoryResourceLoading.RunSpecial` 预载和 `BuildingModelHelper` 租约；实例化失败、缺包、场景切换和 owner 清理均保留原 fallback 并释放未转交 bundle。
+- L1/L2：Unity 构建与回载、UnityPy 72 包验证、四建筑属性测试、资源守卫、全量守卫 646 PASS、全量隔离回归 51 PASS、Windows 正式编译和正式 DLL 标识检查通过。未启动游戏，未读写存档；模型比例、碰撞和视觉仍待 owner L3 目检。
+- 四建筑包的源、仓库、作者 `ResourceRelease` 和游戏目标 SHA-256 与包体记录见 `Build/buildings-20260920/final-hashes.json`；可回退副本见同目录 `deployment-backup/`。
+- L3 未执行：没有启动游戏或访问玩家存档，没有真实 F3 数据，不宣称无卡顿。报告产出位置及逐步人工验收/看图清单已写进交付文档。
+
+## 2026-09-20 Unity 资源生产优化（COMPAT / OPERATIONAL）
+
+- 按 `docs/制作教程/20260920_Unity资源优化交付.md` 实施：能量盾 410,434 → 40,000 三角形；天空岛环境贴图用 1024 BC7 交付副本；纯渲染网格按引用关闭 CPU 副本；PNG 展示路径释放解码 CPU 像素并补齐所有权清理；68 个发布包改用 LZ4、0 个 Crunch。
+- 发布包排除运行时不加载的历史 `sky_island_world`，未删除本地文件。此前未覆盖的龙王、goblinnpc、nursenpc、bossrush_wiki、love_heart 已纳入清单和 SHA-256 门禁，复制前自动备份。
+- 全量收尾发现并修复 Mode G 通用徽记策略与专用构建器冲突：恢复 256×256、横幅保持 1024×576，Unity 回读通过，包体 199,571 B；补齐词缀选物协程新增 4 条宿主引用的分类记录。
+- L2：最终全量守卫 643 PASS / 0 FAIL，资源预算/贴图策略属性测试、部署脚本隔离测试、AchievementIcons / AffixSelectionUI / ManualEquipmentRecovery / ContentThirdReviewFixes 执行回归、UnityPy 逐包核验和天空岛 shader/GBuffer 校验通过；Windows 正式构建 `Build succeeded!`，Release DLL 无 Dev 标识并与游戏目标一致。219 份作者/工作区副本及 68 个游戏包 SHA 一致；4 个收尾反向探针按预期转红并还原复绿。包体/纹理/网格数字见专题交付文档。
+- L3 尚待 owner：词缀按钮、能量盾近远景、天空岛贴图/导航、模式 UI 和固定环境下帧耗/GC/Native Memory 采样。没有启动游戏或读取存档。
+
+## 2026-09-20 全部头盔校正与佩戴管线统一（COMPAT / SAFE / 局部 OPERATIONAL）
+
+- owner 已确认第一版雷霆总体方向正确（L3 owner 目检），反馈头顶穿模并授权批量处理。第二轮将雷霆子节点 Y 从 0.28 提到 0.36，宽深约增加 5%；修正霜冠轴向与冠环位置，以及星铜、观星镜、青穗斗笠、断风兜帽的主体定位。龙王/龙裔源 prefab 按字节保持不变。
+- 数值唯一源 `tools/helmet_fit_profiles.json`；`tools/helmet_fit.py` 同步/检查。Blender 导入只标准化，Unity `HelmetFitUtility` 在网格子节点绝对赋值；天空岛生成、全量打包与雷霆旧入口均接统一管线，防止重生成覆盖或重复烤偏移。
+- L2：Unity 2022.3.62f3 编译及三包构建退出码 0，包内姿态/源盒/资源清单/无外部依赖通过；42 个资源入口、54 个网格/贴图载荷和非头盔装备姿态不变。HelmetFit 9 项属性测试和接线守卫通过，5 个反向探针实跑转红并按字节还原复绿；changed-only 168 PASS / 0 FAIL，贴图预算 4 项通过。
+- `thunder_set`、`frost_set`、`skyisland_boss_gear` 已部署到指定的 `Duckov_Data/Mods/BossRush/Assets/Equipment/`，作者产物/仓库/游戏三处 SHA-256 一致。旧包和 prefab 备份、日志、哈希回执在 `Build/helmet-fit/all_helmets/`。
+- 教程、规范、contracts 与模型绑定知识库已同步；统一入口 `docs/制作教程/头盔佩戴与装备尺寸校准.md`。逐顶数值、部署哈希、回退方法及试戴清单见 `docs/制作教程/头盔佩戴校正/20260920_全部头盔校正.md`。
+- 第二轮实机尚待 owner 试戴，不能把离线模板视作实际捏脸。没有启动游戏或读取存档，没有改运行时 DLL。
+
+## 2026-09-20 词缀选物 UI 覆盖与资源生产审计（COMPAT / OPERATIONAL）
+
+- owner 再次实测“其他武器选中后仍为无法分解”。确认上一轮恢复登记修复没有覆盖 UI：词缀分支早退跳过下一帧复位、漏修正原版提示；共享按钮刷新还漏了词缀模式分流。现按当前选物合并一次下一帧刷新，关闭/销毁/切模式有门禁且 Cleanup 取消任务；共享按钮入口复用词缀费用与锁槽判据。
+- L2：`AffixSelectionUI` 69 项断言通过（含两种事件先后、不可分解武器、中英、资源不足/全锁、快速切换与生命周期）；`AffixCombat` / `ManualEquipmentRecovery` 通过；相关守卫 166 PASS / 0 FAIL；6 个反向探针预期转红、按字节还原后通过。无新增 Harmony 补丁、轮询或玩法数值变更。
+- Windows 正式构建与游戏 DLL 部署通过，Release 不含 11 个 Dev 标识。SHA-256 `D6CF7A16FEFDD4EBEA288C40F4F1DA8B41D1D51EC508D700167ED0595A2E2BC4`；原目标 DLL 已备份，核验在 `Build/unity-production-review-20260920/deployment-verification.json`。重启后的真实 UI 仍待 L3，操作清单见 `docs/testing/20260920词缀选物按钮修复.md`。
+- 资源审计结论：目前不能认定已达生产级性能。69 包 / 190.06 MiB，排除不再部署的 world 原型为 138.26 MiB；能量盾 767,375 顶点 / 410,434 三角形，65 个 LZMA 包配同步加载，天空岛未压缩纹理与可读网格还有成本，Mode G/H 交付包仍 Crunch。另查出游戏目录 5 个包与工作区不同。详细数据、优先级与 Unity 2022.3 官方依据见 `docs/代码审查/2026-09-20_Unity资源生产审计.md`。本轮资源只读审计，未实施减面、环境压缩、全包重打或加载架构改造；未启动游戏或读写玩家存档。
+
+## 2026-09-20 人工实测补漏（第三轮，COMPAT / SAFE / 局部 OPERATIONAL）
+
+- 复核 `20260919人工实测发现的问题.md` 的 25 条有效问题，第 26 条为空；保留已有改动。完整逐项结论、证据与 T01–T04 复测清单见 `docs/testing/20260919人工实测修复记录_第三轮.md`。
+- **装备恢复（已修复，L1/L2）**：补齐匕首 500048、法杖 500049、冰霜长矛 500051 的实例配置登记；锻造资格、重铸估价/选物及手持恢复改走完整 `RestoreRuntimeState`，避免基础配置覆盖 RF 增益；实例补配保留已有耐久和维修损耗，含 0 耐久破损态。
+- **法杖请求（已修复，L1/L2）**：正常 1.2 秒收势保留尚在加载的请求；离手、停用及清理推进代数，换走再拿回不接纳旧结果；迟到实体继续经原路径销毁。没有真实帧耗采样，首发流畅度仍待 L3。
+- **纹理生成链（已修复，L1/L2）**：便携安全区 Editor 构建器不再重新开启 Crunch，天空岛头目装备策略也显式关 Crunch；纹理工具保留 LF/CRLF 与未启用平台的原始内容。守卫覆盖当前 importer 和四个会写 importer 的构建器。
+- **资源交付（已完成，仅工作区）**：授权 Unity 专用入口重打便携安全区包，退出码 0；图标 512×512，DXT5Crunched → DXT5；资源身份、TypeID 500058、其余六对象载荷及作者 prefab 一致。已回拷 `Assets/Items/portable_safe_zone_device`，SHA-256 `6288667d3fc2f81fd1c01ea34ef939ea6b08d03f7508b5face9a60d2b5919b5c`，备份与核验记录在 `Build/manual-review-20260920/`。
+- **验证**：最终 changed-only 守卫 165 PASS / 0 FAIL；本轮相关执行回归合计 15 组通过，其中新增 `ManualEquipmentRecovery` 57 项断言；5 个装备/召唤与 3 个纹理反向探针均实跑转红并按字节还原后通过；复制资源后 3 项专项检查再次通过。
+- **构建**：Windows Release / Dev 真编译均通过（947 源码、42 引用，只有既有 RuntimeGate CS0649），两档 Dev 标识检查通过。产物在 `Build/manual-review-20260920/compile-working/`，Release SHA-256 `523A7ED1623D08EE42381A6C880763A3A3AC7A18671B87CCBBB21338830F9836`。
+- **剩余验证**：未部署游戏、未启动游戏、未读写玩家存档、未看实测截图。恢复后的面板/磨损、首发召唤与取消、图标观感需 owner 按第三轮报告 T01–T04 实测；前两轮 M/N 清单仍保留。没有把编译、隔离回归或包体检查称为 L3。
+
+## 2026-09-20 雷霆头盔佩戴试修（COMPAT / OPERATIONAL）
+
+> 后续状态：本版方向已由 owner 实机确认；头顶穿模已进入第二轮调整，批量校正与最新证据见上方“全部头盔校正与佩戴管线统一”。下文保留第一阶段历史记录。
+
+- 按 owner 指定先修雷神之角 `500055`，其它头盔待这一顶实机确认后处理。
+- 对照龙王 / 龙裔原始 FBX 与已打包模型，确认雷霆网格是 Z 向上、Y 向前；预制体覆盖了 FBX 的 X 轴校正，仅保留 Y=180，导致横戴。只改作者工程 `ThunderHorn_Helmet_Model.prefab` 的网格子节点：Position `(0,0.28,0)`、Rotation `(-90,180,0)`，Scale 保持 `(55,70,55)`；偏移按去除长角后的中央盔壳范围计算。
+- 单包构建器 `ThunderHelmetPilotBuilder` 只构建 `thunder_set`；Unity 2022.3.62f3 编译/构建退出码 0，四资源入口、姿态与回读包围盒校验通过。新包已复制到本仓库 `Assets/Equipment/thunder_set`，SHA-256 `f4b322e43cdc1e6092c1c0ee5f1eda4d5b8e13d4e4cabc5405d31e109891e039`；旧包备份在 `Build/helmet-fit/thunder_set.before`。9 个网格/贴图资源载荷与旧包一致。2026-09-20 10:30，owner 指定部署目录后，已更新游戏 Mod 的 `Duckov_Data/Mods/BossRush/Assets/Equipment/thunder_set`，部署后 SHA-256 与试修包一致；目标旧包备份为 `Build/helmet-fit/deployed-thunder_set.before`。L3 待试戴。
+- L1：官方挂载链与预制体覆盖核对；L2：网格轴向与盔壳中心复算通过。L3 待 owner 目检，尚未宣称实机贴合。完整证据、操作清单及后续教程/脚本同步入口见 `docs/制作教程/头盔佩戴校正/20260920_雷霆头盔试修.md`。
+
+## 2026-09-20 岛上三条主线：交付奖金与文案统一（COMPAT）
+
+- 来源：owner 要求「所有天空岛相关的任务的文字、奖励和交付物品都和序章一样优化」。
+- **奖金（已做）**：`SkyIslandOfficialQuestTable` 给三条主线加 `RewardMoney`——点亮两端航标 3000、钟庭之争 5000、归航钟 8000（序章 5000）。发放复用序章那一条：桥比较交付前后的旗标，只在「未交付 → 已交付」那一拍调 `EconomyManager.Add`，官方任务页与完成面板照 `Reward_Money` 显示「金钱 +N」，已领取状态读本槽交付事实，读档重建投影不会再发。老档 `TryBackfillIslandQuests` 的回填不走这条路，所以**补齐状态不补发奖金**。
+- **数值理由（owner 授权「好玩优先」拍板）**：按链条递进，参照岛上既有价码（渡口整备下限 60、满血苔药 480）与商店大件（新武器 20000、套装 30000）——一条主线任务给得比一趟整备多得多，又不至于一条任务顶掉半件大装备。回退办法：改 `SkyIslandOfficialQuestTable` 里三个常量即可，不涉及存档。
+- **文案（已做）**：三条任务的标题、说明、目标行、阻塞提示，以及苇白 / 晴禾的接取 - 交付引导句，全部按官方 `Quests` 表语气重写（第一人称、短句、不用分号）。复核后天空岛运行时里**玩家可见的 `L10n.T` 文案已无「；」**。名词（守钟装置、归航钟、航向仪）保持原叫法；`SkyIslandMarriageTextRegression` 的两个中文锚点随文案同步（`回岛接交` → `岛上接`），断言语义不变。
+- **交付物品：本轮没有为岛上三条新增（设计决定，可一句话推翻）**。序章那件之所以成立，是因为它从头目尸体箱里出、还要活着带回基地，有真实的风险；岛上三条的目标是**世界状态**（两盏灯亮了 / 钟守松口了 / 钟响了），没有可搬运的东西，任何信物都只能在状态翻转那一刻自动塞进背包、下一步原样交回去，属于纯记账（根 `AGENTS.md` §4.16「不为新增而新增」）。另外收尾那条已经发实物：敲钟给晴岚航徽，击败噬风给噬风之核。owner 要的话，按序章同一套接线补 TypeID 即可。
+- L2：13 项天空岛隔离回归全绿；changed-only 守卫 150 PASS / 0 FAIL；Windows 正式构建 `Build succeeded!`；Wiki 站构建与中英一致性守卫通过。游戏内百科与在线 Wiki 的天空岛页已写明三条奖励与「回填不补发」。
+- L3 未验证：三条任务各交一次看是否到账且只到账一次、老档回填不应到账、任务页奖励行显示是否正常，要 owner 实机确认。
+
+## 2026-09-20 地图标记场景参数：原判被推翻 + 三处收成一份解析（SAFE / 更正）
+
+- **更正**：同日上一条把天空岛序章「地图上没标出来」判成「`SimplePointOfInterest` 的场景参数传了 Unity 场景名，被官方按子场景过滤掉」。这条判断**错了**，现更正如下。
+- **证据（L2，实读官方数据）**：从 `Duckov_Data/resources.assets` 里定位官方 `SceneInfoCollection` 资产（条目是 id / SceneReference GUID / displayName key 三元组），再用同文件里的 GUID→场景路径表交叉核对。零号区三条的 id 与场景资源名**相同**：`Level_GroundZero_Main`、`Level_GroundZero_1`、`Level_GroundZero_Cave`。也就是说序章原来硬编码的 `"Level_GroundZero_1"` 本来就是合法的官方场景 ID，`GetBuildIndex` 查得到，标记不会因此被过滤。另从玩家日志实证激活场景确实会切到子场景（`Active scene changing: Level_GroundZero_Main -> Level_GroundZero_1`），`scene.name == GroundZeroScene` 这道门也是对的。（只读了 `Player.log`，没有读写任何存档文件。）
+- **但这个坑本身是真的**：同一张表里至少有三条 id 与场景资源名不同，基地的子场景就在其中——`Base_SceneV2_2` → `Base_SceneV2_Sub_01.unity`、`Level_Factory_Main` → `Factory_Main.unity`、`Prepare` → `PREPARE.unity`。传场景名的写法因此是「这张图碰巧对、换张图就整条标记消失且不报错」。
+- **`ModeF/ModeFExtraction.cs` 的嫌疑同样不成立**：它把 `SceneManager.GetActiveScene().name` 当场景 ID 传，但 Mode F 跑在零号区，那里 id == 名字，所以当前不会丢标记。按「不凭猜断言」的要求记为 **REFUTED**，不作为缺陷修复。
+- **实际改动（加固 + 去重）**：新增 `Utilities/MapPointSceneResolver.cs`（根 §4.9：跨模块基础设施），顺序为「按激活场景 buildIndex 反查官方 ID → `MultiSceneCore.ActiveSubSceneID` → 场景名」。Mode F 撤离点、丧尸模式安全区、天空岛序章目标三个 `SimplePointOfInterest.Create(` 调用点全部改走它，原本的三份私有解析收成一份。丧尸模式保留自己的「本局场景名」末位兜底；它原来的顺序把场景名排在 `ActiveSubSceneID` 前面，现在排在后面（更正确，因为 `ActiveSubSceneID` 本身就是官方 ID）。
+- **标记形状按目标尺度决定**：天空岛序章目标画 22 米区域圈（坠落点 + 守卫占一小片地方）；Mode F 撤离点触发半径只有 3 米，画成圈比图标还小更难看见，**评估后保持只画点**，不改。
+- **L2**：新增 `tests/MapPointSceneIdGuard.py`（3 个调用点 + 4 个反向探针，逐个实跑转红）；`ZombieModeSafeZoneMapPoiBeaconReuseGuard` 的锚点同步换成共享解析，断言语义不变。全量守卫与执行回归见下方复跑结果。Windows 正式构建 `Build succeeded!`。
+- **序章「地图上没标出来」的真实成因仍未定位**：现有证据只能排除场景参数这一条。剩下的可能是标记太小被漏看（本轮已改成区域圈）、`NoConflictingMode()` 当时不成立、或者玩家当时并不在 `Level_GroundZero_1` 子场景。owner 实机复验时如果圈还是不出现，请用 Dev 构建看 `Player.log` 里有没有 `[SkyIslandPrelude] 航向仪地图标记已创建 sceneId=...`：有这行就说明标记建出来了，问题在显示层；没有这行就说明 `EnsureObjective` 根本没跑到。
+
+## 2026-09-20 序章任务实物交付、奖金与地图标记（COMPAT / SCHEMA+ / SAFE）
+
+- 来源：owner 报「接了『云上的坐标』去零号区不知道去哪找线索，地图上没标出来」，并要求（1）把官方任务系统可配置的部分补进教程文档，（2）序章改成打死 Boss 掉落交付物 + 5000 金钱奖励，（3）任务文案按官方语气重写。
+- **地图标记**：本轮先判成「场景参数传错导致整条标记被官方过滤」，**后经实读官方数据推翻**（见下一条 2026-09-20 的更正）。实际改动是两项：标记从一个点改成半径 22 米的区域圈（坠落点 + 守卫占一小片地方，只画点容易漏看），以及场景参数改走共享解析 `Utilities/MapPointSceneResolver.cs`（加固，不是成因）。`SkyIslandLiveLocalizationGuard` 与新守卫 `MapPointSceneIdGuard` 同步断言解析入口。
+- **交付物**：新增 TypeID `500103`「失落的航向仪」（`Integration/SkyIsland/SkyIslandNavInstrumentConfig.cs`，零新增 bundle 的克隆兜底）。断风游猎 · 守倒下时在官方 `BeforeCharacterSpawnLootOnDead` 那一拍塞进头目库存，随官方尸体箱一起掉出，不另建箱子。售价 0、登记掉落黑名单、配置器与动态注册均已接线。
+- **不会卡死**：世界目标的在场判据从剧情位改成「手上有没有」，阵亡掉包后守卫下一趟照常回来；残骸交互体改成「手上一具都没有时再拆一具」的兜底产出。官方目标的完成判据同样看持有（未采样时退回剧情位，避免每次切图先取消再完成、白响一次通知）。
+- **奖金**：`SkyIslandOfficialQuestDefinition.RewardMoney = 5000`，桥比较交付前后的旗标，只在「未交付 → 已交付」那一拍调 `EconomyManager.Add`。官方任务页的奖励行用自写的 `SkyIslandOfficialQuestReward`（`Claimed` 读交付事实、`OnClaim` 空实现、文案复用官方 `Reward_Money` 格式串）。**没有用官方 `QuestReward_Money`**：它的已领取写在实例上，而投影每次加载都重建，玩家能在已完成页反复领同一笔钱（守卫已禁用该符号）。`Quest.requiredItemID` 经反射写入，只影响详情页的「所需物品」栏。
+- **文案**：按 `StreamingAssets/Localization/ChineseSimplified.csv` 的 `Quests` 表语气重写序章与岛上三条的标题、说明、目标行与阻塞提示（第一人称、短句、不用分号）。名词（守钟装置、归航钟、航向仪）保持原叫法——执行回归逐字比对目标行与面板「还差什么」。
+- **文档**：`docs/制作教程/官方任务系统接入教程.md` 补 §2a–§2f（Quest 全字段、官方 Task 清单、Reward 与领取时序、Condition、任务挂件与地图标记坑、本地化键与格式串）、§10（交付物与奖励结算顺序）、§15.10–15.12（三个新坑）、§16（L1/L3 新增检查项）与 §18（任务文案怎么写，含官方原文对照表）。游戏内百科与在线 Wiki 的天空岛页同步改成实物交付流程。
+- L2：changed-only 守卫 132 PASS / 0 FAIL，全量 637 PASS；`SkyIslandPreludeGuard` 新增 12 条断言与 14 个反向探针（共 61 个，逐个实跑转红）；13 项天空岛隔离回归全绿，`SkyIslandStory` 新增「零号区目标真值表」逐字抽取 `ShouldRunObjective` 穷举接取 / 拿到 / 丢失 / 已交付四态。Wiki 构建通过。
+- 构建与部署：Windows 正式构建 `Build succeeded!`，仅剩既有 `RuntimeGate` CS0649；部署到游戏目录的 `Duckov_Data\Mods\BossRush\BossRush.dll` 与 `Build/BossRush.dll` 的 SHA-256 一致（`AD893BD0080601FEBDFD8EB11029DA0E2660344C711D36331422B8873E6C5612`），`check_dll_identifiers.py --expect absent` 通过（11 个 Dev 标识全部缺席）。
+- L3 未验证：没有启动游戏、没有读写玩家存档。地图圈是否真的出现在 M 键地图上、尸体箱里有没有航向仪、名字与图标是否正常（本轮没有专属图标 PNG，缺图时退回风标罗盘的图）、5000 到账一次且不可重复领取、丢掉仪器后守卫是否回来，都要 owner 按教程 §16 的 L3 第 12–15 条实机确认。
+
 ## 2026-09-19 人工实测补漏（第二轮，COMPAT / SAFE / OPERATIONAL）
 
 - owner 给出作者工程绝对路径后，把第一轮挂起的第 1/3/4 条资源工作做完，并修掉三处第一轮「改了表征没改根因」和一处第一轮完全没发现的问题。逐项说明见 `docs/testing/20260919人工实测修复记录_第二轮.md`。
@@ -8564,3 +8666,125 @@ Lv.2 的钻石、Lv.4 的冷淬液、Lv.7 的钻石戒指三处一并改为
 - 公开站仍为 2026-09-08 部署的 4b1b5b6，天空岛公开页 HTTP 404；本地相对公开部署有 117 个 WikiContent 路径变化。本轮未提交、推送、发布，也未启动游戏或读写玩家存档；不把本地通过写成公开站已更新或 L3 已通过。
 
 - 提交前完整性复核：owner 追加授权本地 commit。以 TypeID 声明、物品配置器与 RuntimeModule 登记表核对，98 件物品两语言均有说明、16 个玩家系统均有专题；保留空洞与纯 Buff ID 不当作缺失物品。补齐遗种蛋的亡命远征获取途径，修正图鉴书「回本」误导与浮木错名。本次最终范围为 22 份 WikiContent + 4 份 hubs + 29 份生成页及本节台账；其他会话的日报、Mode G 正文和代码继续留在工作区。
+
+
+## 2026-09-20 人工实测 17 项修复（COMPAT / SCHEMA+ / OPERATIONAL）
+
+清单 `docs/testing/20260920人工实测发现的问题.md` 17 项全部处理，详细记录与实机清单见
+`docs/testing/20260920人工实测修复记录.md`。
+
+- **套装（1）**：冰霜「霜噬」/ 雷霆「雷噬」从击杀触发改为**普攻附带**。反 DPS 缩放三道闸：
+  内置冷却（1.1 / 1.4 秒）与射速脱钩、单次伤害是常数（5 / 7，不乘触发那一击）、只认
+  `!isFromBuffOrEffect` 的直接命中。击杀不再触发任何套装技能。雷霆反震的 AOE 是预期效果，
+  但特效从 `ExplosionFxTypes.normal`（火焰系）改成 `flash`。「只有同时穿着才生效」为既有实现，本轮复核通过。
+- **头盔（2）**：霜冠 `rotationEuler` 改 `[-90, 180, 0]`、`modelForward` 改 `+Y`——与雷神之角同批模型，
+  旧表「不能照抄雷霆的 Y=180」这条结论被实机截图证伪。Unity 预制体、`HelmetFitProfiles.json`、
+  属性测试同步；`frost_set` / `thunder_set` / `skyisland_boss_gear` 已重打并落位。
+- **图鉴（3–6）**：新增 `CodexOfficialBossRegistry` + `Assets/Data/CodexOfficialBosses.json`
+  （官方生物数据库 2026-09-20 快照，40 Boss / 42 非 Boss），分类改为 官方 Boss / 官方精英 / 模组 Boss；
+  80 个官方条目立绘换成官方游戏内渲染图（`codex_portraits` 重打 36→88 张，贴图导入设置修正 51 张）；
+  取消分页、滚轮 28→8；详情页删掉遭遇说明；「初见模式」→「初见场景」，存档 `SCHEMA+` 新增可选 `fs`
+  （schemaVersion 保持 1），显示经 `CodexSceneNames` 走官方 `SceneInfoCollection`，**绝不显示裸场景 id**。
+- **建筑概念图（7）**：`tools/gen_building_concepts.py` 产出报箱 / 公告栏 / 遗种巢 / 展示柜四张
+  Tripo 输入图（浅灰平底、无投影、单体居中），落在 `output/building_concepts/`。
+- **词缀（8）**：延时刷新只修按钮不刷行，导致「词缀名整列空着」。补上面板重建 + 行重刷 + 熔石/费用/物品名；
+  词缀名锁成单行防止换行被裁。回归补两条断言并反向验证。
+- **日报（9）**：改成卡片仪表盘。底图 `Assets/ui/DailyReport/daily_report_bg.png` 与坐标表
+  `Assets/Data/DailyReportLayout.json` 由 `tools/gen_daily_report_ui.py` 一次产出，
+  C# 侧 `DailyReportLayoutTable` 读同一份坐标摆字，底图与文字天生对齐；底图缺席 fail-open 退回纯纸色。
+  滚动报纸那一套整体删除，`DailyReportUI.cs` 956→612 行。
+- **全地图接入 Mode H（10）**：`TryDeriveMap` 从各图**已验证的 Boss 刷新点**派生擂台 / 看台 / 落点，
+  隔离点取擂台中心正下方 240 米（staging 是 inactive 创建，不需要地面）。任何一步不合格即 fail-closed。
+  离线复算 9 张图全部可派生；默认目标仍优先 owner 调过的 DemoChallenge。
+- **遗种巢（11–17）**：孵化演出放慢约一倍且改为手动关闭；异色播放许愿台大奖音乐；
+  新增**炫彩**（十色任取两色，45 种，10% 概率，`SCHEMA+` 字段 `chromaA/chromaB`），
+  异色概率 1.5%→0.4%；名字「黑白 - xxx」两色渐变 / 异色金字带 ★（文字色按 Linear 空间复算保证 ≥4.5:1）；
+  崽身上挂 `PetNestAuraEffect` 光环（炫彩两层一色一层、异色金色 + 点光，普通崽零对象）；
+  基地只生成出战席位那一只、改席位/取消立刻收回；天灾远征改「目的地→风险档」两级卡片、
+  面板动作条按条数定高；时长梯度 10 / 30 / 60 分钟。
+- **验证**：全量守卫 **644 PASS / 0 FAIL**（含 3 个新增/改写守卫的反向验证）；
+  执行回归 **49 PASS / 0 FAIL**（`SetBonusCoroutines` 按普攻命中重写；`ContentTransactions`、
+  `ContentThirdReviewFixes`、`AffixSelectionUI` 随结构同步改写）；
+  Windows 正式编译 `Build succeeded!`；`check_dll_identifiers --expect absent` 通过；
+  DLL 与游戏目录 SHA-256 一致 `5B684BED…CFDED9E9`，68 个 bundle SHA-256 校验通过；
+  `npm --prefix wiki-site run build` 通过。
+- **未验证**：全部运行时观感（套装特效频率与手感、霜冠戴上的实际朝向、图鉴立绘在卡片上的观感、
+  日报文字是否出框、炫彩渐变与光环的实际效果、Mode H 派生擂台是否真的能打）只能实机确认，
+  清单在修复记录文末。本轮未启动游戏、未读写玩家存档。
+  `tools/verify_sky_island_bundle_shaders.py` 本机缺 `UnityPy` 跑不起来，属既有环境限制，与本轮无关。
+
+## 2026-09-20 第三轮：外部审查 11 条复核 + 补漏
+
+对应 `docs/testing/20260920人工实测修复记录_第三轮.md`。兼容性：`COMPAT` + `SCHEMA+`
+（远征记录 `petShiny/petChromaA/petChromaB`、纪念碑 `chromaA/chromaB`，schemaVersion 均未变）
++ `OPERATIONAL`（`compile_official.bat` 的音效部署改为整树 + 缺失告警）。无 `SCHEMA-` / `WIRE-` / `BREAKING`。
+
+### 确认并修复（7 条）
+
+- **CR-2026-09-20-013 套装冻结「假成功」**：`TryApplyFrostFreeze` 在 `AddBuff` 后无条件
+  `return true`。官方 `AddBuff` 返回 void 且有三条静默 no-op 路径（`buffResist` 命中
+  `ExclusiveTag`、同 tag 更高 `ExclusiveTagPriority`、同 tag 同优先级但现存剩余时间更长），
+  抗冻目标正好走第一条。现在回读 `target.HasBuff(freezeBuff.ID)`；兜底减速也按
+  CharacterItem / 速度 Stat / 协程是否真的拿到回报真实结果。反击冷却挪到冻结成功分支之内。
+- **CR-2026-09-20-014 霜噬 / 雷噬提前消耗冷却**：冷却从排队时挪到结算时，
+  `frostBitePending` / `thunderBitePending` 挡住延迟窗口内的重复排队。目标在 40~50 毫秒
+  延迟里死掉、中途脱装备切图、或雷噬扫不到其它敌人时不再白吃一轮冷却。
+  反 DPS 三道闸不变（同时最多一条在飞、伤害仍是常数、只认直接命中）。
+- **CR-2026-09-20-015 官方 Boss 名单没补目录**：`AddOfficialEntries` 只遍历
+  `GetFilteredEnemyPresets()`，被筛选器关掉或 preset 还没被扫到的官方 Boss 在图鉴里
+  连锁定卡都没有。新增第 1b 步 `AddOfficialRosterEntries()`，按
+  `CodexOfficialBossRegistry.OfficialBossKeys()`（有序，40 条）补成未解锁卡。
+  连带：「全收集」的分母改为官方全部 Boss + 3 自定义 + 5 丧尸，不再随筛选器缩水。
+  顺带删除只剩夹具在用的死代码 `GetEncounterHint`（owner 问题 5 已要求去掉那段提示）。
+- **CR-2026-09-20-016 日报底图与运行时重复绘制**：签到格 / 签到按钮 / 图例色块
+  两边都画，叠出双描边，且颜色两个来源已经漂了（C# `CellEmpty` 199,189,166 vs
+  脚本 226,219,205）。收敛成「底图只画不变的装饰，会变色的归运行时」，
+  `gen_daily_report_ui.py` 不再画这三处也不再保留那几个颜色常量，底图已重出并部署。
+- **CR-2026-09-20-017 日报卡片内滚动实际滚不动**：内容 `sizeDelta` 写死成 viewport 高度，
+  Clamped 模式下 `ScrollRect` 认为刚好装得下。改用
+  `ContentSizeFitter.verticalFit = PreferredSize` 按 TMP 首选高度撑开。
+- **CR-2026-09-20-018 散装音效没被部署**：`compile_official.bat` 的逐文件夹清单只列了
+  BGM / SkyIsland / SetBonus / NewWeapons 四个，代码实际还读 Achievement、DragonKing、
+  Goblin、Nurse、items、lottery 六个。这六个在 owner 游戏目录里是早年手工拷的，
+  干净安装会静默无声——许愿台大奖音乐与遗种巢异色揭晓复用的
+  `Assets/Sounds/lottery/special.mp3` 正在其中。改为整树 `xcopy /E` + 逐文件夹缺失告警。
+- **CR-2026-09-20-019 远征 / 纪念碑丢炫彩与异色**：`PetNestChroma.Decorate` 只吃
+  `PetNestPetRecord`，而远征卡、翻牌卡与碑文显示的往往是真死结算后已被移出巢的崽。
+  新增 `SCHEMA+` 字段固化颜色、新增脱离 PetRecord 的 `Decorate` / `DescribePair` 重载，
+  展示入口统一为 `PetNestExpeditionService.DescribeDecoratedPetName`。
+
+### 复核后不成立 / 已过期（3 条）
+
+- **审查第 4 条（立绘 bundle 与作者工程不一致）：refuted。** 比对对象错了——
+  作者工程的 `AssetBundles/` 是旧的临时输出目录，正式出口是 `ResourceRelease/`。
+  逐文件核对 `ResourceRelease/Assets` 与仓库、游戏目录：**全部 SHA-256 一致**，
+  包括 `codex_portraits`（5,025,857 字节）。`AssetBundles/` 里的旧副本是陷阱，
+  已记在交付文档里提醒不要从那里重打。
+- **审查第 5 条（报箱 / 公告栏 / 展示柜没接 3D 模型）：已过期。**
+  四个 builder 现在都先走 `BuildingModelHelper.TryInstantiateBundle` /
+  专用 bundle 加载，缺包才退回占位；`bossrush_daily_mailbox`、`bossrush_campaign_board`、
+  `bossrush_backmountain_showcase`、`petnest_relic_nest` 四个 bundle 均已存在并部署
+  （另一个会话当日 21:11 产出，记录在 `Build/buildings-20260920/author-workspace-deployment.json`）。
+  bundle 内部是否真的含对应 prefab 只能实机确认（本机无 UnityPy，压缩包无法离线开箱）。
+- **审查第 11 条（实机跑的不是第二轮产物）：已过期。** 当日 21:19 另一个会话已重新构建部署；
+  本轮再次构建部署，`Build/BossRush.dll` 与游戏目录 SHA-256 一致
+  `6FF528E2777FAA2351C012E701719EE9D208FCB7EB76151688877E2B68F193EF`。
+
+### 仍需实机（1 条）
+
+- **审查第 10 条（Mode H 九图）**：`TryDeriveMap` 的选点已是 fail-closed，
+  斗士只落在真实刷新点、离场点不会回退到地下隔离点（第二轮修复）。
+  但导航连通性、视野、双方生成与安全退出**只能 L3 验证**，离线无法替代。
+
+### 验证
+
+- 全量守卫 **647 PASS / 0 FAIL / 0 KNOWN-RED**（新增 `LooseSoundDeploymentGuard`；
+  改写 `SetBonusLifecycleGuard`、`DailyReportPresentationGuard`、`SkyIslandMosquitoGuard`）。
+- 执行回归 **51 PASS / 0 FAIL**（3 个依赖本机游戏程序集的夹具需先设
+  `BOSSRUSH_HARMONY_DLL` / `BOSSRUSH_GAME_MANAGED`，设后通过）。
+- 反向验证：11 个探针（4 套装守卫 + 1 图鉴回归 + 2 日报守卫 + 2 音效守卫 + 3 遗种巢回归）
+  全部在预期位置转红，并按字节还原。
+- Windows 正式编译 `Build succeeded!`；`check_dll_identifiers --expect absent` 通过
+  （14 个 Dev 标识全部缺席）；72 个 bundle SHA-256 校验通过；
+  `npm --prefix wiki-site run build` 通过。
+- 未验证：全部运行时观感与手感。本轮未启动游戏、未读写玩家存档（AGENTS §10 由 owner 自己做）。

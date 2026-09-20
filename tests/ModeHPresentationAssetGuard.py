@@ -31,8 +31,10 @@ COMPILE_BAT = os.path.join(REPO_ROOT, "compile_official.bat")
 TEST_BAT = os.path.join(REPO_ROOT, "test_bossrush_official.bat")
 BUNDLE = os.path.join(REPO_ROOT, "Assets", "ui", "modeh_presentation")
 
-UNITY_PROJECT = os.path.join(
-    os.path.dirname(REPO_ROOT), "duckov_modding-main", "UnityFiles", "BossRush")
+sys.path.insert(0, os.path.join(REPO_ROOT, "tools"))
+from unity_project_path import find_unity_project
+
+UNITY_PROJECT = str(find_unity_project() or os.path.join(REPO_ROOT, "__missing_author_project__"))
 BUILDER = os.path.join(UNITY_PROJECT, "Assets", "Editor", "ModeHPresentationBundleBuilder.cs")
 ART_MANIFEST = os.path.join(UNITY_PROJECT, "ArtSource", "ModeH", "asset-manifest.json")
 
@@ -53,7 +55,7 @@ def check_cache(errors):
         (r'"{}"'.format(BUNDLE_NAME), "冻结 bundle 名"),
         (r'"{}"'.format(EMBLEM_SHORT_NAME), "冻结徽记短名"),
         (r'"{}"'.format(BANNER_SHORT_NAME), "冻结横幅短名"),
-        (r"AssetBundle\.LoadFromFile", "经官方 API 加载"),
+        (r"ResourceBundleLoader\.LoadFromFile", "经官方 API 加载"),
         (r"LoadAsset<Sprite>", "按短名取 Sprite"),
         (r"Unload\(true\)", "幂等卸载"),
         (r"ModeHAvailability\.AllowDevRawPngFallback", "raw fallback 只由编译期常量控制"),
@@ -63,7 +65,7 @@ def check_cache(errors):
             errors.append("[Cache] 不满足: " + desc)
 
     # 每 runtime 最多一次 LoadFromFile
-    if len(re.findall(r"AssetBundle\.LoadFromFile", code)) != 1:
+    if len(re.findall(r"ResourceBundleLoader\.LoadFromFile", code)) != 1:
         errors.append("[Cache] LoadFromFile 只允许一个调用点")
     if not re.search(r"if \(_loadAttempted\)|_loadAttempted = true;", code):
         errors.append("[Cache] 必须有“每 runtime 最多加载一次”的一次性标记")

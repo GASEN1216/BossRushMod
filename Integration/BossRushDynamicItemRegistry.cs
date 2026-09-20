@@ -401,6 +401,13 @@ namespace BossRush
                 BossRushItemIds.SkyIslandGnatZapper,
                 BossRushItemIds.SkyIslandSmokeFan);
 
+            // 失落的航向仪：Jeff 序章的交付物，同为零新增 bundle 的克隆兜底。
+            // 漏登记时，玩家仓库里没交付的那一具重启后会退化成官方 FallbackItem，任务就交不掉了。
+            Add(plans, new RegistrationPlan
+            {
+                FallbackLoader = delegate(int typeId) { return SkyIslandNavInstrumentConfig.EnsureRuntimeFallbackRegistrationShell(); }
+            }, BossRushItemIds.SkyIslandNavInstrument);
+
             Add(plans, NewWeaponPlan("viperdagger_melee_model", "viperdagger_item"), NewWeaponIds.ViperDaggerTypeId);
             Add(plans, NewWeaponPlan("summonstaff_melee_model", "summonstaff_item"), NewWeaponIds.SummonStaffTypeId);
             Add(plans, NewWeaponPlan("energyshield_totem_model", "energyshield_item"), NewWeaponIds.EnergyShieldTypeId);
@@ -520,14 +527,14 @@ namespace BossRush
                     return false;
                 }
 
-                bundle = AssetBundle.LoadFromFile(bundlePath);
+                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     DevLog("[BossRushDynamicItemRegistry] AssetBundle.LoadFromFile 失败: " + bundlePath);
                     return false;
                 }
 
-                UnityEngine.Object[] assets = bundle.LoadAllAssets<UnityEngine.Object>();
+                UnityEngine.Object[] assets = ResourceBundleLoader.LoadAllAssets<UnityEngine.Object>(bundle);
                 if (assets == null || assets.Length == 0)
                 {
                     DevLog("[BossRushDynamicItemRegistry] bossrush_ticket AssetBundle 中未找到任何资源");

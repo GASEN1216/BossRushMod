@@ -411,6 +411,7 @@ echo(Utilities\InteractableLootboxInventoryHelper.cs
 echo(Utilities\OriginalCharacterIsolationHelper.cs
 echo(Utilities\OriginalExtractionPointIsolationHelper.cs
 echo(Utilities\ModeExtractionPointFactory.cs
+echo(Utilities\MapPointSceneResolver.cs
 echo(Utilities\MapSelectionEntryInjectionHelper.cs
 echo(Config\Config.cs
 echo(Config\ConfigModeG.cs
@@ -816,6 +817,12 @@ echo(Integration\Reforge\ReforgeDataPersistence.cs
 echo(Integration\Reforge\ReforgeDataPersistenceCleanup.cs
 echo(Integration\Reforge\CustomItemRuntimeStateHelperStaticCacheReset.cs
 echo(Integration\ItemFactory.cs
+echo(Utilities\ResourceBundleLoader.cs
+echo(Integration\ProductionIconCache.cs
+echo(Integration\RawImageLoader.cs
+echo(DebugAndTools\ResourcePerformanceMetrics.cs
+echo(DebugAndTools\F3GameplayValidationResourcePerformance.cs
+echo(Integration\FactoryResourceLoading.cs
 echo(Integration\Items\AwenDepositTokenConfig.cs
 echo(Integration\Items\AwenDepositTokenUsage.cs
 echo(Integration\Items\ItemContentRegistry.cs
@@ -923,6 +930,8 @@ echo(Integration\WishFountain\WishFountainBuilder.cs
 echo(Integration\WishFountain\WishFountainBuilder_DataEventsAndRuntime.cs
 echo(PetNest\PetNestModels.cs
 echo(PetNest\PetNestTuning.cs
+echo(PetNest\PetNestChroma.cs
+echo(PetNest\PetNestAuraEffect.cs
 echo(PetNest\PetNestPersonality.cs
 echo(PetNest\PetNestLineageCatalog.cs
 echo(Config\ConfigPetNest.cs
@@ -970,7 +979,10 @@ echo(Integration\DailyReport\DailyReportService.cs
 echo(Integration\DailyReport\DailyReportContent.cs
 echo(Integration\DailyReport\DailyReportStatsCollector.cs
 echo(Integration\DailyReport\DailyReportInteractable.cs
+echo(Integration\DailyReport\DailyReportLayoutTable.cs
+echo(Integration\DailyReport\DailyReportBackground.cs
 echo(Integration\DailyReport\DailyReportUI.cs
+echo(Integration\DailyReport\DailyReportUI_Dashboard.cs
 echo(Integration\DailyReport\DailyReportUIBridge.cs
 echo(Integration\DailyReport\DailyReportMailboxBuilder.cs
 echo(Integration\DailyReport\DailyReportMailboxRuntime.cs
@@ -982,6 +994,8 @@ echo(Integration\Codex\CodexCodec.cs
 echo(Integration\Codex\CodexPersistence.cs
 echo(Integration\Codex\CodexSaveCoordinator.cs
 echo(Integration\Codex\CodexBossCatalog.cs
+echo(Integration\Codex\CodexOfficialBossRegistry.cs
+echo(Integration\Codex\CodexSceneNames.cs
 echo(Integration\Codex\CodexKillCollector.cs
 echo(Integration\Codex\CodexMilestones.cs
 echo(Integration\Codex\CodexPortraitCache.cs
@@ -1063,6 +1077,7 @@ echo(Localization\BackMountainLocalization.cs
 echo(Integration\BackMountain\BackMountainRuntimeModule.cs
 echo(Integration\SkyIsland\SkyIslandItems.cs
 echo(Integration\SkyIsland\SkyIslandBossGearConfig.cs
+echo(Integration\SkyIsland\SkyIslandNavInstrumentConfig.cs
 echo(Integration\SkyIsland\SkyIslandCompassUsage.cs
 echo(Integration\SkyIsland\SkyIslandFieldcraftUsage.cs
 )>"%OUTPUT_DIR%\bossrush.rsp"
@@ -1198,47 +1213,26 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo Deployed Audio data JSON to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Data\Audio
             )
         )
-        rem FMOD programmer sound 同时支持 wav 与 mp3，两种都要拷
-        if exist "Assets\Sounds\BGM\*.*" (
-            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM"
-            xcopy /Y /I "Assets\Sounds\BGM\*.mp3" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM\" >nul 2>nul
-            xcopy /Y /I "Assets\Sounds\BGM\*.wav" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM\" >nul 2>nul
-            xcopy /Y /I "Assets\Sounds\BGM\*.ogg" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM\" >nul 2>nul
+        rem FMOD programmer sound accepts wav and mp3; deploy the whole Assets\Sounds tree.
+        rem 2026-09-20: the old per-folder list only shipped BGM / SkyIsland / SetBonus / NewWeapons,
+        rem so Achievement, DragonKing, Goblin, Nurse, items and lottery were never deployed.
+        rem A clean install lost the wish fountain jackpot music and the PetNest shiny reveal
+        rem that reuses it, and the failure is silent - the player simply hears nothing.
+        rem Copying the tree also keeps new sound folders shipping without editing this script.
+        if exist "Assets\Sounds" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds"
+            xcopy /E /Y /I "Assets\Sounds" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\" >nul 2>nul
             if errorlevel 1 (
-                echo WARNING: BGM deploy failed.
+                echo WARNING: Sound deploy failed.
             ) else (
-                echo Deployed BGM to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\BGM
+                echo Deployed sound tree to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds
             )
-        )
-        rem SkyIsland local ambient sounds
-        if exist "Assets\Sounds\SkyIsland\*.wav" (
-            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SkyIsland" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SkyIsland"
-            xcopy /Y /I "Assets\Sounds\SkyIsland\*.wav" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SkyIsland\" >nul
-            echo Deployed Sky Island SFX to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SkyIsland
-        )
-        rem SetBonus SFX: frost/thunder set kill and counter sounds (generated by tools\gen_setbonus_sfx.py)
-        if exist "Assets\Sounds\SetBonus\*.*" (
-            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SetBonus" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SetBonus"
-            xcopy /Y /I "Assets\Sounds\SetBonus\*.mp3" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SetBonus\" >nul 2>nul
-            xcopy /Y /I "Assets\Sounds\SetBonus\*.wav" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SetBonus\" >nul 2>nul
-            xcopy /Y /I "Assets\Sounds\SetBonus\*.ogg" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SetBonus\" >nul 2>nul
-            if errorlevel 1 (
-                echo WARNING: SetBonus SFX deploy failed.
-            ) else (
-                echo Deployed SetBonus SFX to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\SetBonus
+            rem Fail loud per folder: a missing folder here means the feature reading it is mute.
+            for %%S in (Achievement BGM DragonKing Goblin NewWeapons Nurse SetBonus SkyIsland items lottery) do (
+                if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\%%S" echo WARNING: sound folder missing after deploy: %%S
             )
-        )
-        rem NewWeapons SFX: P0 five-weapon trigger sounds (generated by tools\gen_newweapon_sfx.py)
-        if exist "Assets\Sounds\NewWeapons\*.*" (
-            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\NewWeapons" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\NewWeapons"
-            xcopy /Y /I "Assets\Sounds\NewWeapons\*.mp3" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\NewWeapons\" >nul 2>nul
-            xcopy /Y /I "Assets\Sounds\NewWeapons\*.wav" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\NewWeapons\" >nul 2>nul
-            xcopy /Y /I "Assets\Sounds\NewWeapons\*.ogg" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\NewWeapons\" >nul 2>nul
-            if errorlevel 1 (
-                echo WARNING: NewWeapons SFX deploy failed.
-            ) else (
-                echo Deployed NewWeapons SFX to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\Sounds\NewWeapons
-            )
+        ) else (
+            echo WARNING: Assets\Sounds missing; every mod sound effect will be silently skipped.
         )
         if exist "Assets\ui\bossrush_ui_skin" (
             if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui"
@@ -1305,6 +1299,15 @@ if %BUILD_EXIT_CODE% EQU 0 (
                 echo WARNING: Campaign raw PNG deploy failed.
             ) else (
                 echo Deployed Campaign raw PNG to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\Campaign
+            )
+        )
+        if exist "Assets\ui\DailyReport\*.png" (
+            if not exist "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\DailyReport" mkdir "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\DailyReport"
+            xcopy /Y /I "Assets\ui\DailyReport\*.png" "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\DailyReport\" >nul
+            if errorlevel 1 (
+                echo WARNING: Daily report background deploy failed.
+            ) else (
+                echo Deployed Daily report background to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets\ui\DailyReport
             )
         )
         if exist "Assets\ui\SkyIsland\*.png" (
@@ -1384,6 +1387,9 @@ if %BUILD_EXIT_CODE% EQU 0 (
             if errorlevel 4 echo WARNING: Items bundle sweep deploy failed.
         )
         echo Deployed Equipment and Items bundle folders to: %GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%\Assets
+        rem Authoritative bundle list: deploy missing categories and fail on SHA-256 mismatch.
+        powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0tools\Deploy-ResourceBundles.ps1" -SourceRoot "%~dp0." -TargetRoot "%GAME_PATH%\Duckov_Data\Mods\%MOD_NAME%"
+        if errorlevel 1 set "BUILD_EXIT_CODE=1"
     )
 ) else (
     echo.

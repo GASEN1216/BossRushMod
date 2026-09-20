@@ -1,14 +1,10 @@
 {
-  "verifiedAt": "2026-09-14T10:47:42.582819+00:00",
-  "classification": [
-    "COMPAT",
-    "SCHEMA+ (author metadata only)",
-    "OPERATIONAL (local asset copy)"
-  ],
-  "status": "ART_AUTHOR_VALIDATION_COMPLETE_GAME_ACCEPTANCE_DEFERRED",
+  "verifiedAt": "2026-09-20T12:46:46.496490+00:00",
+  "classification": "COMPAT / OPERATIONAL",
+  "status": "RESOURCE_PRODUCTION_L2_COMPLETE_L3_PENDING",
   "gameSmoke": {
-    "status": "NOT_PERFORMED_USER_DEFERRED",
-    "reason": "用户明确暂不进行游戏内实测；未进入游戏。"
+    "status": "PENDING_OWNER",
+    "reason": "No game launch or player save access during resource optimization."
   },
   "sourceFbx": {
     "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\SkyIslandWorld.fbx",
@@ -27,19 +23,19 @@
   },
   "raid_bundle": {
     "author_export": {
-      "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
-      "bytes": 105408139,
-      "sha256": "67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636"
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
+      "bytes": 79843738,
+      "sha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee"
     },
     "repo": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
-      "bytes": 105408139,
-      "sha256": "67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636"
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
+      "bytes": 79843738,
+      "sha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee"
     },
     "game": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
-      "bytes": 105408139,
-      "sha256": "67081298da3bd647f37263e725fa9d6a4a8354da3eba564b6204073210eb9636"
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
+      "bytes": 79843738,
+      "sha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee"
     },
     "allThreeMatch": true
   },
@@ -58,8 +54,20 @@
     }
   ],
   "previousVerification": "D:\\code\\ykf\\BossRushMod\\Build\\sky-production-20260914\\backup\\RepoValidationBeforeFinal\\raid_deployment_hashes.json",
-  "shaderVerification": "Three required shaders have compiled passes and Deferred GBuffer; see round03/raid-stage.log",
-  "runtimeDll": "Not changed by this art delivery",
+  "shaderVerification": "Build/resource-production-20260920/shader-validation.log: Environment/Water/Cloud Deferred GBuffer PASS",
+  "runtimeDll": {
+    "repo": {
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Build\\BossRush.dll",
+      "bytes": 5479424,
+      "sha256": "c44b3c6c851968d53024b28aa254d83ea1063a0877dd7180f3d82dfd30b664ec"
+    },
+    "game": {
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\BossRush.dll",
+      "bytes": 5479424,
+      "sha256": "c44b3c6c851968d53024b28aa254d83ea1063a0877dd7180f3d82dfd30b664ec"
+    },
+    "allMatch": true
+  },
   "copiedEvidence": [
     {
       "path": "D:\\code\\ykf\\BossRushMod\\ArtSource\\SkyIsland\\Validation\\sky_island_geometry.json",
@@ -458,22 +466,22 @@
     }
   ],
   "gear_bundle": {
-    "verifiedAt": "2026-09-15T14:21:31.266741+00:00",
-    "round": "SkyIsland boss gear R1 + R2–R4 (17 pieces, TypeID 500086–500102)",
+    "verifiedAt": "2026-09-20T03:45:25.404286+00:00",
+    "round": "2026-09-20 existing helmet calibration preserved; lossless LZ4 recompression",
     "author_export": {
-      "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandBossGearExport\\skyisland_boss_gear",
-      "bytes": 9554567,
-      "sha256": "79d0b9d6892981726aac82b2286a7a0fc257efe081a08e2c683b47e2c028a4ae"
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ProductionResourceExport\\skyisland_boss_gear",
+      "bytes": 6674168,
+      "sha256": "28cd09b5f090fd24cbf795fb0f75a0a7a0cdf3bbd1b5cdf8c3ab5eed0d707f91"
     },
     "repo": {
-      "path": "D:\\code\\ykf\\BossRushMod\\Assets\\Equipment\\skyisland_boss_gear",
-      "bytes": 9554567,
-      "sha256": "79d0b9d6892981726aac82b2286a7a0fc257efe081a08e2c683b47e2c028a4ae"
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Assets\\Equipment\\skyisland_boss_gear",
+      "bytes": 6674168,
+      "sha256": "28cd09b5f090fd24cbf795fb0f75a0a7a0cdf3bbd1b5cdf8c3ab5eed0d707f91"
     },
     "game": {
-      "path": "D:\\software\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Equipment\\skyisland_boss_gear",
-      "bytes": 9554567,
-      "sha256": "79d0b9d6892981726aac82b2286a7a0fc257efe081a08e2c683b47e2c028a4ae"
+      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\Equipment\\skyisland_boss_gear",
+      "bytes": 6674168,
+      "sha256": "28cd09b5f090fd24cbf795fb0f75a0a7a0cdf3bbd1b5cdf8c3ab5eed0d707f91"
     },
     "previous": {
       "sha256": "4ce1556b4e7d21a41305a9d93b9a104cc44d762624a70318e1596cdfc648291c",
@@ -485,5 +493,12 @@
       "status": "PENDING_OWNER_F3",
       "checklist": "天空岛人工清单 2.21–2.23, M_SKY_ISLAND_16–18"
     }
-  }
+  },
+  "resourceOptimization": {
+    "report": "docs/制作教程/20260920_Unity资源优化交付.md",
+    "bundleCount": 68,
+    "evidence": "Build/resource-optimization-20260920/release-validation.json",
+    "previousLedger": "Build/resource-optimization-20260920/raid-deployment-before.json"
+  },
+  "resourceProductionReceipt": "Build/resource-production-20260920/final-sha256.json"
 }

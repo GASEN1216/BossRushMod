@@ -78,7 +78,20 @@ def check(sources):
         ("officialQuest.Register(BuildDefinition())", "序章没有向多任务注册表登记"),
         ("officialQuest.Unregister(SkyIslandOfficialQuestTable.PreludeQuestId)", "序章销毁时没有从注册表撤掉自己"),
         ("SkyIslandOfficialQuestStory.SetBaseSource(story)", "基地故事没有发布给任务桥当事实源"),
-        ('reason = L10n.T("回到基地向 Jeff 交付坐标。"', "序章交付必须回基地（岛上三条才是原地交付）"),
+        ('reason = L10n.T("带着航向仪回基地找 Jeff。"', "序章交付必须回基地（岛上三条才是原地交付）"),
+        # 交付物：头目的尸体箱里出，交付时收走，丢了还能在残骸处再拆一具（否则会把玩家卡在半路）
+        ("SkyIslandNavInstrumentConfig.TryDropInto(boss)", "前置头目没有在建尸体箱前放进交付物"),
+        ("boss.BeforeCharacterSpawnLootOnDead -= OnBeforeLoot", "交付物掉落事件没有成对退订"),
+        ("SkyIslandNavInstrumentConfig.CountOwned() <= 0", "交付没有要求玩家真的带着航向仪"),
+        ("SkyIslandNavInstrumentConfig.TryConsumeOne()", "交付没有收走航向仪"),
+        ("SkyIslandNavInstrumentConfig.TryGiveToPlayer()", "残骸兜底没有真的发一具航向仪（箱子被毁就成死局）"),
+        ("!data.SkyIslandRouteUnlocked && !holdsInstrument", "守卫的在场判据不看「手上有没有」，丢包之后不会重刷"),
+        ("RequiredItemId = SkyIslandNavInstrumentConfig.TYPE_ID, RequiredItemCount = 1, RewardMoney = DeliveryMoney",
+         "序章没有把交付物与奖金交给任务表"),
+        ("DeliveryMoney = 5000", "序章交付奖金未冻结"),
+        # 地图标记：官方按 SceneInfoCollection 的场景 ID 过滤，直接传 Unity 场景名在别的地图上会让标记整条不显示
+        ("MapPointSceneResolver.Resolve(GroundZeroScene)", "地图标记的场景参数没有走共享解析"),
+        ("mapMarker.IsArea = true", "目标只画一个点，零号区那张图上容易被漏看"),
     ):
         require(token in prelude, PRELUDE + "：" + why + "（缺 " + token + "）")
     departure = prelude.split("internal bool TryPrepareDeparture(", 1)[1].split("private void CloseStory()", 1)[0]
@@ -165,11 +178,20 @@ def check(sources):
         ("if (slotChanged) { ClearProjection(entry, manager);", "换槽没有先按新槽整清再重建"),
         ("if (!context.StoryReady || context.Data == null) return;", "故事暂缺（离岛的一两拍）时不能清也不能建"),
         ("internal bool Blocked, CollisionReported;", "ID 冲突 / 注册失败必须按条目 fail-closed，不能整桥停摆"),
+        ("class SkyIslandOfficialQuestReward : Duckov.Quests.Reward", "奖励行没有用官方 Reward 基类"),
+        ("SkyIslandOfficialQuestBridge.IsRewardPaid(questId)",
+         "奖励的「已领取」不是读 Mod 交付事实：每次读档重建投影，玩家在已完成页就能再领一次钱"),
+        ("if (committed && !wasDelivered) active.PayRewardOnce(entry);", "奖金不是在「未交付 → 已交付」那一拍发的"),
+        ("EconomyManager.Add(money)", "奖金没有走官方经济系统"),
     ):
         require(token in quest, QUEST + "：" + why + "（缺 " + token + "）")
     require(quest.count("entry.Blocked = true") >= 2, QUEST + " Quest ID 冲突或结构性注册失败后仍会每秒重试并制造异常")
     require("root.SetActive(false)" not in quest and "PrefabRoot.SetActive(false)" not in quest,
             QUEST + " 的 Quest 模板不能停用，否则官方克隆出的 Quest/Task 会继承停用状态")
+    require("QuestReward_Money" not in quest,
+            QUEST + " 用了官方 QuestReward_Money：它的「已领取」写在实例上，而投影每次加载都重建，玩家能反复领同一笔钱")
+    ordered(quest, "rewardHost.SetActive(false);", "RewardMasterField.SetValue(reward, quest);",
+            QUEST + " 奖励组件在 master 就位前就被激活：官方 Reward.Awake 会拿 null 的 Master 订阅事件")
     require("registrationBlocked" not in quest, QUEST + " 回到了整桥级 fail-closed：一条 ID 冲突不该让整条主线消失")
     ordered(quest, "owned[i] = Owns(entries[i]);", "disposed = true;", QUEST + " 销毁桥时没有先冻结每条的所有权，会清掉冲突 Mod 的同 ID 任务")
 
@@ -271,6 +293,20 @@ def main():
         (PRELUDE, "SkyIslandRaidLease.IsBundleDeployed()", "true"),
         (PRELUDE, "Accept = TryAcceptOfficialQuest, Deliver = TryCompleteOfficialQuest", "Accept = null, Deliver = null"),
         (PRELUDE, "officialQuest.Unregister(SkyIslandOfficialQuestTable.PreludeQuestId)", "officialQuest.Dispose()"),
+        (PRELUDE, "SkyIslandNavInstrumentConfig.TryDropInto(boss)", ""),
+        (PRELUDE, "boss.BeforeCharacterSpawnLootOnDead -= OnBeforeLoot", ""),
+        (PRELUDE, "SkyIslandNavInstrumentConfig.CountOwned() <= 0", "false"),
+        (PRELUDE, "SkyIslandNavInstrumentConfig.TryConsumeOne()", "true"),
+        (PRELUDE, "SkyIslandNavInstrumentConfig.TryGiveToPlayer()", "true"),
+        (PRELUDE, "!data.SkyIslandRouteUnlocked && !holdsInstrument",
+         "!data.Has(SkyIslandStoryFlag.PreludeInstrumentRecovered) && !data.SkyIslandRouteUnlocked"),
+        (PRELUDE, "DeliveryMoney = 5000", "DeliveryMoney = 500"),
+        (PRELUDE, "MapPointSceneResolver.Resolve(GroundZeroScene)", "GroundZeroScene"),
+        (PRELUDE, "mapMarker.IsArea = true", ""),
+        (QUEST, "SkyIslandOfficialQuestBridge.IsRewardPaid(questId)", "false"),
+        (QUEST, "if (committed && !wasDelivered) active.PayRewardOnce(entry);", ""),
+        (QUEST, "EconomyManager.Add(money)", "true"),
+        (QUEST, "rewardHost.SetActive(false);", "rewardHost.SetActive(true);"),
         (QUEST, "manager.ActivateQuest(entry.Def.QuestId, (QuestGiverID)entry.Def.GiverId)", ""),
         (QUEST, "collection.Add(quest);", "root.SetActive(false);\n                collection.Add(quest);"),
         (QUEST, "RemoveSavedQuest(data.activeQuestsData, id)", ""),

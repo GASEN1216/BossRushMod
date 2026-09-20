@@ -350,15 +350,10 @@ namespace BossRush
 
                 if (File.Exists(iconPath))
                 {
-                    byte[] imageData = File.ReadAllBytes(iconPath);
-                    Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                    if (texture.LoadImage(imageData))
+                    weddingBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
+                    if (weddingBuildingIcon != null)
                     {
-                        weddingBuildingIcon = Sprite.Create(
-                            texture,
-                            new Rect(0, 0, texture.width, texture.height),
-                            new Vector2(0.5f, 0.5f)
-                        );
+                        Texture2D texture = weddingBuildingIcon.texture;
                         DevLog("[WeddingBuilding] 建筑图标加载成功: " + iconPath + " (" + texture.width + "x" + texture.height + ")");
                     }
                     else
@@ -410,7 +405,7 @@ namespace BossRush
                         weddingAssetBundle = null;
                     }
 
-                    weddingAssetBundle = AssetBundle.LoadFromFile(bundlePath);
+                    weddingAssetBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                     if (weddingAssetBundle != null)
                     {
                         // 列出 bundle 中所有资源名称，方便调试

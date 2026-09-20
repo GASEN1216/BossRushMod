@@ -6,7 +6,7 @@ Now obtainable: Storm Zone bosses (Four Horsemen, Koko Koko and friends) drop it
 
 ## What Is It?
 
-A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunder Armor** body piece. Each item alone gives modest armor plus storm protection; equipping both activates **Thunder's Wrath** — shock damage heals you, kills build a lightning discharge, and you counter-shock attackers — with cyan flickering eyes and arcs crawling over your shoulders. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
+A **2-piece lightning set** composed of the **Thunder Horn** helmet and **Thunder Armor** body piece. Each item alone gives modest armor plus storm protection; equipping both activates **Thunder's Wrath** — shock damage heals you, normal hits arc to nearby foes, and you counter-shock attackers — with cyan flickering eyes and arcs crawling over your shoulders. An elemental defense and counter set, with lower clearing damage than the Dragon Descendant and Dragon King sets.
 
 ## Set Pieces
 
@@ -31,10 +31,11 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 - **50%** of the shock damage you take is refunded as healing (next frame, green numbers)
 - Storm Protection +2 in total — Storm Zone thunderstorms no longer hurt you
 
-**Chain Lightning (on kill):**
-- After **3 direct kills**, lightning strikes up to **2** enemies within **4 m** of the corpse, dealing **12 shock damage** each
-- Only one hop is dealt; kills never continue the discharge. Maximum once every **5 seconds**
-- Only direct weapon/grenade kills build charge. DoTs and the set's own damage do not count; death, unequipping, and scene changes reset charge
+**Thunderbite (on normal hit):**
+- A normal hit sends an arc from the impact point to up to **2 other** enemies within **4 m**, dealing **7 shock damage** each
+- The enemy you actually shot takes no extra set damage, and the arc never continues into a second hop
+- Maximum once every **1.4 seconds** (internal cooldown, independent of rate of fire)
+- Only direct weapon/grenade hits count. DoTs and the set's own damage do not; death, unequipping and scene changes clear the cooldown
 
 **Counter-Shock (on hit):**
 - When struck by an attacker within **6 meters**, **25%** chance to release a **lightning AOE** at your location: **3 m radius** / **12 shock damage**
@@ -44,16 +45,16 @@ Activates when both pieces are equipped (screen notification appears). Your eyes
 ## Frost Set vs. Thunder Set
 
 - Resistance and heal type: Thunder is shock, Frost is ice
-- Kill skill: Thunder adds damage to nearby targets, Frost freezes nearby targets; both require three direct kills
+- On-hit skill: Thunder arcs damage to nearby targets, Frost freezes the target it struck; both run on their own internal cooldown
 - Counter: Thunder 25% / 5 s / 3 m AOE, Frost 30% / 5 s / freezes the attacker
 - Weather: Thunder ignores storms, Frost resists cold
 
 ## Tips
 
-- The discharge adds occasional damage; a single kill cannot start a clearing chain. Ordinary attacks on a training dummy do not trigger an on-kill effect
+- The arc only adds chip damage to bystanders and fires at most once every 1.4 s, so it never becomes a clearing tool
 - The counter has a 5 s cooldown and deals 12 shock damage; your weapon remains your main damage source
 - Shock resistance and healing improve elemental survival, but you still need to dodge
-- Chain Lightning kills count as yours — codex, daily report and campaign objectives all register them
+- Thunderbite kills count as yours — codex, daily report and campaign objectives all register them
 
 ::: tip
 Thunder Set is for dense multi-enemy waves; Frost Set is better for 1v1 boss control. Pick based on the run type.

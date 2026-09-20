@@ -31,6 +31,17 @@ namespace BossRush
         private static readonly Vector2 PanelSize = new Vector2(1180f, 760f);
         private static readonly Vector2 CardSize = new Vector2(1080f, 140f);
 
+        // 正文区（内容 + 动作条）的垂直预算。BodyTop 是面板局部坐标里正文顶边的 y。
+        // 旧写法把「有动作 = 412 / 无动作 = 572」两个数字直接写在 Refresh 里，
+        // 动作条条数一多就装不下；现在按条数分配，两个区共享同一份预算。
+        private const float BodyTop = 220f;
+        private const float TotalBodyHeight = 572f;
+        private const float ActionRowHeight = 56f;
+        private const float ActionPadding = 16f;
+        private const float ActionGap = 12f;
+        private const float MinActionAreaHeight = 72f;
+        private const float MaxActionAreaHeight = 200f;
+
         private static PetNestUI _instance;
 
         private Canvas _canvas;
@@ -257,13 +268,43 @@ namespace BossRush
                 }
 
                 SpawnActions(content.Actions);
-                // 没有底部动作时把留白还给正文。切页后从列表顶部开始读。
+
+                // 底部动作条按**实际条数**定高，剩下的全部还给内容区
+                // （owner 2026-09-20：「可选择的地方太小了而且中间有很多留白」）。
+                // 旧版无论一条还是九条都占 128px：一条时下面空一大截，
+                // 九条时挤在 128px 的小滚动窗里怎么都看不全。
                 RectTransform viewport = _contentRoot.parent.GetComponent<RectTransform>();
+                RectTransform actionViewport = _actionRoot.parent.GetComponent<RectTransform>();
                 bool hasActions = content.Actions.Count > 0;
-                viewport.sizeDelta = new Vector2(1120f, hasActions ? 412f : 572f);
-                viewport.anchoredPosition = new Vector2(0f, hasActions ? 14f : -66f);
+
+                float actionHeight = hasActions
+                    ? Mathf.Clamp(content.Actions.Count * ActionRowHeight + ActionPadding,
+                        MinActionAreaHeight, MaxActionAreaHeight)
+                    : 0f;
+                float contentHeight = TotalBodyHeight - (hasActions ? actionHeight + ActionGap : 0f);
+
+                viewport.sizeDelta = new Vector2(1120f, contentHeight);
+                viewport.anchoredPosition = new Vector2(0f, BodyTop - contentHeight * 0.5f);
+
+                if (hasActions)
+                {
+                    actionViewport.sizeDelta = new Vector2(1120f, actionHeight);
+                    actionViewport.anchoredPosition = new Vector2(
+                        0f, BodyTop - contentHeight - ActionGap - actionHeight * 0.5f);
+                }
+
+                Transform divider = _contentRoot.parent.parent.Find("ActionDivider");
+                if (divider != null)
+                {
+                    RectTransform dividerRect = divider.GetComponent<RectTransform>();
+                    if (dividerRect != null)
+                    {
+                        dividerRect.anchoredPosition = new Vector2(
+                            0f, BodyTop - contentHeight - ActionGap * 0.5f);
+                    }
+                    divider.gameObject.SetActive(hasActions);
+                }
                 _actionRoot.parent.gameObject.SetActive(hasActions);
-                _contentRoot.parent.parent.Find("ActionDivider").gameObject.SetActive(hasActions);
                 Canvas.ForceUpdateCanvases();
                 _contentRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
                 _actionRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;

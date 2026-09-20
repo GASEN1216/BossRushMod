@@ -1,6 +1,15 @@
 using System;
 using System.Collections.Generic;
 
+namespace BossRush
+{
+    // Scene ownership is real production code here; native async requests are isolated in ResourceProduction.
+    internal static class ResourceBundleLoader
+    {
+        internal static UnityEngine.AssetBundle LoadFromFile(string path) { return UnityEngine.AssetBundle.LoadFromFile(path); }
+    }
+}
+
 namespace UnityEngine
 {
     public class GameObject

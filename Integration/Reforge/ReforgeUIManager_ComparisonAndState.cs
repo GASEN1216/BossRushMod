@@ -178,6 +178,8 @@ namespace BossRush
         /// </summary>
         private static void UpdateReforgeButtonInteractable()
         {
+            if (AffixForge_HandleButtonState()) return;
+
             if (reforgeButton == null) return;
 
             if (selectedItem == null)

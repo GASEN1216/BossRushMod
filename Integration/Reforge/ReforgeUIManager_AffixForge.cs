@@ -83,6 +83,7 @@ namespace BossRush
         private static TextMeshProUGUI affixStoneCountText;
         private static readonly List<AffixRowWidgets> affixRows = new List<AffixRowWidgets>();
         private static bool affixForging;
+        private static Coroutine affixSelectionRefreshCoroutine;
 
         // 被词缀模式隐藏的重铸控件，关闭时按自己的记录还原（Cleanup 会先把共享引用置 null）
         private static GameObject affixHiddenMoneySliderRoot;
@@ -259,6 +260,7 @@ namespace BossRush
 
             try
             {
+                ScheduleAffixSelectionRefresh();
                 bool forgeable = selectedItem != null && AffixForgeSystem.CanAffixForge(selectedItem);
 
                 if (targetNameDisplay != null)
@@ -276,6 +278,8 @@ namespace BossRush
                     reforgeButton.gameObject.SetActive(forgeable);
                 }
 
+                FixCannotForgeIndicator(forgeable);
+                FixNoItemSelectedIndicator();
                 HideReforgeOnlyWidgets();
                 ApplyAffixButtonText();
                 RefreshAffixPanel();
@@ -289,6 +293,56 @@ namespace BossRush
             }
 
             return true;
+        }
+
+        // 官方选物回调可能在我们的回调之后执行 Setup，按分解配方再次隐藏按钮。
+        // 合并到下一帧刷新，既不依赖事件订阅顺序，也不在 Update 中反复扫描 UI。
+        private static void ScheduleAffixSelectionRefresh()
+        {
+            StopAffixSelectionRefresh();
+            if (ModBehaviour.Instance != null)
+            {
+                affixSelectionRefreshCoroutine = ModBehaviour.Instance.StartCoroutine(RefreshAffixSelectionAfterOfficialUI());
+            }
+        }
+
+        private static void StopAffixSelectionRefresh()
+        {
+            if (affixSelectionRefreshCoroutine != null && ModBehaviour.Instance != null)
+            {
+                ModBehaviour.Instance.StopCoroutine(affixSelectionRefreshCoroutine);
+            }
+            affixSelectionRefreshCoroutine = null;
+        }
+
+        private static System.Collections.IEnumerator RefreshAffixSelectionAfterOfficialUI()
+        {
+            yield return null;
+            affixSelectionRefreshCoroutine = null;
+            if (!isReforgeMode || currentForgeMode != ForgeUIMode.AffixForge || decomposeView == null || !decomposeView.open)
+            {
+                yield break;
+            }
+
+            // 只消费当前选择；快速连点、取消选择不能把旧物品的状态写回新面板。
+            selectedItem = Duckov.UI.ItemUIUtilities.SelectedItem;
+
+            // 词缀行也必须在这一帧重刷：官方 Setup 在我们的选物回调**之后**才跑完，
+            // 此前这里只修按钮，于是玩家看到的是「按钮对了、词缀名整列空着」
+            // （owner 2026-09-20 实测「装备的词缀名不见了」）。
+            // BuildAffixPanel 幂等：面板已在就只是 SetActive(true)，不重建行控件。
+            BuildAffixPanel();
+            HideReforgeOnlyWidgets();
+            RefreshAffixPanel();
+            UpdateAffixStoneCount();
+            UpdateAffixProbabilityText();
+
+            if (targetNameDisplay != null)
+            {
+                targetNameDisplay.text = selectedItem != null ? selectedItem.DisplayName : "-";
+            }
+
+            AffixForge_HandleButtonState();
         }
 
         /// <summary>接管 ResetButtonState 与 UpdateReforgeButtonInteractable。</summary>
@@ -311,6 +365,10 @@ namespace BossRush
                 ApplyAffixButtonText();
                 FixCannotForgeIndicator(forgeable);
                 FixNoItemSelectedIndicator();
+                if (noItemSelectedIndicator != null)
+                {
+                    noItemSelectedIndicator.SetActive(selectedItem == null);
+                }
 
                 if (resultDisplayObj != null)
                 {
@@ -417,6 +475,7 @@ namespace BossRush
         /// </summary>
         internal static void CleanupAffixForgeUI()
         {
+            StopAffixSelectionRefresh();
             try
             {
                 if (affixPanelRoot != null)

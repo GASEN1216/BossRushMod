@@ -224,6 +224,8 @@ namespace BossRush
                 BossRushItemIds.SkyIslandWindbreakHood,
                 BossRushItemIds.SkyIslandWindbreakMantle,
                 BossRushItemIds.SkyIslandWindbreakPack,
+                // 失落的航向仪：只从零号区那具尸体箱里出，交付即消耗——不进许愿台、日报与各类品质池。
+                BossRushItemIds.SkyIslandNavInstrument,
             };
         }
     }

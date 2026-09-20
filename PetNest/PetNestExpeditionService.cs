@@ -207,6 +207,32 @@ namespace BossRush
             return record.petId;
         }
 
+        /// <summary>
+        /// 记录上的**装饰名**（炫彩渐变 / 异色金字）。远征列表与翻牌卡都用它。
+        ///
+        /// 崽还在巢里时走活体 PetRecord（改名、后续获得的颜色都即时反映）；
+        /// 崽已被真死结算移除时，走出发那一刻固化在记录里的 petShiny / petChromaA / petChromaB。
+        /// 这正是「黑边卡」那一档——最该显示异色金字的地方，恰恰查不到 PetRecord。
+        /// 只给 TMP 富文本控件用；日志与存档一律用 DescribePetName。
+        /// </summary>
+        internal static string DescribeDecoratedPetName(PetNestExpeditionRecord record)
+        {
+            if (record == null) return string.Empty;
+            string raw = DescribePetName(record);
+            try
+            {
+                PetNestPetRecord pet = PetNestService.TryGetPet(record.petId);
+                if (pet != null) return PetNestChroma.Decorate(pet, raw, L10n.IsChinese);
+                return PetNestChroma.Decorate(
+                    record.petShiny, record.petChromaA, record.petChromaB, raw, L10n.IsChinese);
+            }
+            catch (Exception)
+            {
+                // 装饰失败绝不能让名字整条消失
+                return raw;
+            }
+        }
+
 
         /// <summary>
         /// 派出一只崽。成功后崽被锁定（state=OnExpedition），记录立刻落档。
@@ -256,6 +282,10 @@ namespace BossRush
                 r.petId = pet.id;
                 r.petDisplayName = PetNestService.GetPetDisplayName(pet);
                 r.petLineageKey = pet.lineageKey;
+                // 颜色随出发固化：崽真死后 PetRecord 会被移除，之后再也查不到
+                r.petShiny = pet.shiny;
+                r.petChromaA = pet.chromaA;
+                r.petChromaB = pet.chromaB;
                 r.destinationId = destinationId;
                 r.riskTier = (int)tier;
                 r.departTicks = now;
@@ -973,6 +1003,8 @@ namespace BossRush
                 entry.deathTicks = DateTime.UtcNow.Ticks;
                 entry.careerCount = pet.careerCount;
                 entry.shiny = pet.shiny;
+                entry.chromaA = pet.chromaA;
+                entry.chromaB = pet.chromaB;
                 museum.memorials.Add(entry);
 
                 while (museum.memorials.Count > PetNestTuning.MaxMemorialEntries)

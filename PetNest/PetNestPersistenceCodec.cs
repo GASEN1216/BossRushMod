@@ -167,6 +167,8 @@ namespace BossRush
               .Int("level", pet.level)
               .Int("exp", pet.exp)
               .Bool("shiny", pet.shiny)
+              .Str("chromaA", pet.chromaA)
+              .Str("chromaB", pet.chromaB)
               .Str("personalityId", pet.personalityId)
               .Int("state", pet.state)
               .Str("lockedByExpeditionId", pet.lockedByExpeditionId)
@@ -274,6 +276,9 @@ namespace BossRush
             pet.level = node.GetInt("level", 1);
             pet.exp = node.GetInt("exp", 0);
             pet.shiny = node.GetBool("shiny", false);
+            // SCHEMA+：老档没有炫彩字段，读出空串 = 普通崽
+            pet.chromaA = node.GetString("chromaA", null);
+            pet.chromaB = node.GetString("chromaB", null);
             pet.personalityId = node.GetString("personalityId", null);
             pet.state = node.GetInt("state", (int)PetNestPetState.InNest);
             pet.lockedByExpeditionId = node.GetString("lockedByExpeditionId", null);
@@ -351,6 +356,11 @@ namespace BossRush
                       .Str("petId", r.petId)
                       .Str("petDisplayName", r.petDisplayName)
                       .Str("petLineageKey", r.petLineageKey)
+                      // 炫彩 / 异色随出发固化（SCHEMA+，老档缺键读出 false / null）：
+                      // 崽真死后 PetRecord 会被移除，这三格是远征卡与碑文唯一的颜色来源。
+                      .Bool("petShiny", r.petShiny)
+                      .Str("petChromaA", r.petChromaA)
+                      .Str("petChromaB", r.petChromaB)
                       .Str("destinationId", r.destinationId)
                       .Int("riskTier", r.riskTier)
                       .Long("departTicks", r.departTicks)
@@ -418,6 +428,9 @@ namespace BossRush
                 r.petId = n.GetString("petId", null);
                 r.petDisplayName = n.GetString("petDisplayName", null);
                 r.petLineageKey = n.GetString("petLineageKey", null);
+                r.petShiny = n.GetBool("petShiny", false);
+                r.petChromaA = n.GetString("petChromaA", null);
+                r.petChromaB = n.GetString("petChromaB", null);
                 r.destinationId = n.GetString("destinationId", null);
                 r.riskTier = n.GetInt("riskTier", (int)PetNestRiskTier.Safe);
                 r.departTicks = n.GetLong("departTicks", 0L);
@@ -506,6 +519,8 @@ namespace BossRush
                       .Long("deathTicks", m.deathTicks)
                       .Int("careerCount", m.careerCount)
                       .Bool("shiny", m.shiny)
+                      .Str("chromaA", m.chromaA)
+                      .Str("chromaB", m.chromaB)
                       .EndObject();
                 }
             }
@@ -555,6 +570,8 @@ namespace BossRush
                 m.deathTicks = n.GetLong("deathTicks", 0L);
                 m.careerCount = n.GetInt("careerCount", 0);
                 m.shiny = n.GetBool("shiny", false);
+                m.chromaA = n.GetString("chromaA", null);
+                m.chromaB = n.GetString("chromaB", null);
                 data.memorials.Add(m);
             }
 

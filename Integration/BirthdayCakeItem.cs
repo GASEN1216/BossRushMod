@@ -116,14 +116,14 @@ namespace BossRush
                     return;
                 }
                 
-                bundle = AssetBundle.LoadFromFile(bundlePath);
+                bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (bundle == null)
                 {
                     DevLog("[BirthdayCake] 加载 AssetBundle 失败: " + bundlePath);
                     return;
                 }
 
-                UnityEngine.Object[] assets = bundle.LoadAllAssets<UnityEngine.Object>();
+                UnityEngine.Object[] assets = ResourceBundleLoader.LoadAllAssets<UnityEngine.Object>(bundle);
                 if (assets == null || assets.Length == 0)
                 {
                     DevLog("[BirthdayCake] AssetBundle 中未找到任何资源");

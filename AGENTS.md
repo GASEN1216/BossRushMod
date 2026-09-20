@@ -83,9 +83,9 @@ python tools/run_guards.py --filter OfficialCompileList
 
 自定义物品 / 装备 TypeID 用 500xxx 区间，严格递增，不回填删掉的号。TypeID 会进存档键、掉落表、Wiki 与调试流程，复用会破坏存档。
 
-- 当前登记范围：`500001-500102`。
+- 当前登记范围：`500001-500103`。
 - 保留空洞：`500009`、`500047`，不回填。
-- 下一可用：`500103`。
+- 下一可用：`500104`。
 - 新增时同时更新本节、`docs/contracts.md` §1 与 `docs/Bossrush使用物品ID表.md`（`TypeIdLedgerGuard` 交叉核对前两处），接线清单见 `Integration/AGENTS.md`。Boss、NPC、建筑的字符串 ID 不占这个序列。
 
 ### 4.4 `DisplayNameRaw` 必须配本地化注入
@@ -175,6 +175,7 @@ python tools/run_guards.py --filter OfficialCompileList
 - 存档扩展走 `SCHEMA+`：新字段可选、旧档读出有合理默认值、掩码与版本同步。持久化复用 `Common/Lifecycle/BossRushSaveCoordinatorEngine` 与 `BossRushSlotJsonStore`，不再复制状态机。
 - 重打包会把作者工程当下的全部资产一起发出去：打包前确认作者工程里没有别人未完成的改动，打包与部署后按 `DebugAndTools/SkyIsland/AGENTS.md` §6 核对。
 - **贴图导入设置属于交付内容**：作者工程里的 `TextureImporter` 才决定玩家看到什么，PNG 多大不算数。物品 / 装备 / 图标 128–512（最多 512），立绘、横幅、海报最多 1024，并关掉 `crunchedCompression`（只压磁盘、不省显存，quality 50 在近距离看的图上是可见块状噪点）。口径与批量修正见 `tools/apply_unity_texture_policy.py`，守卫 `tests/UnityTextureImportPolicyGuard.py`。改完必须在 Unity 里重新导入并重打相关 bundle 才生效。
+- **头盔佩戴校准是资源契约**：EquipmentModel 根节点保持单位变换，校准写在网格子节点；官方挂载只清位置/旋转。轴向与盔壳定位逐件核对，不按整体 bounds 统一居中。数值唯一源 `tools/helmet_fit_profiles.json`，经 `tools/helmet_fit.py --sync` 和作者工程 `HelmetFitUtility` 应用；生成不能覆盖或重复烤入偏移，打包须校验与回读。新增/换网格同步校准表；专项规则见 `Integration/AGENTS.md`，守卫 `HelmetFitWiringGuard`、`HelmetFitPolicyPropertyTest`。
 - 作者工程与 Unity Editor 的路径不要写死：统一走 `tools/unity_project_path.py`（`BOSSRUSH_UNITY_PROJECT` / `BOSSRUSH_UNITY_EDITOR` 优先）。写死路径在工程搬家后会让「找不到就跳过」的守卫**静默变成永远 PASS**。
 - 交付记录里写的「本轮不加 TypeID / 不改存档 / 不重打包」只描述那一轮的范围，不是长期规则。
 

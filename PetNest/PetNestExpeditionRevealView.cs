@@ -211,7 +211,9 @@ namespace BossRush
 
         private static string BuildCardTitle(PetNestExpeditionRecord record)
         {
-            string name = PetNestExpeditionService.DescribePetName(record);
+            // 装饰名：黑边卡（没回来）恰恰是 PetRecord 已被移除的那一档，
+            // 只有记录里固化的颜色能让异色 / 炫彩在最后一屏仍然显示出来。
+            string name = PetNestExpeditionService.DescribeDecoratedPetName(record);
 
             if (record.outcomeDead)
             {

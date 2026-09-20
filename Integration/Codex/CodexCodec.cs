@@ -14,6 +14,9 @@
 // 存档字段表（schemaVersion = 1，发布后冻结）：
 //   顶层 schemaVersion(int) / lastUpdatedTicks(long) / entries(array)
 //   条目   k(string 必填) / n(string) / kills(int) / first(long) / fm(string) / fast(float)
+//          fs(string, SCHEMA+ 2026-09-20 追加：初见场景 id；老档缺它，读出空串)
+//   schemaVersion 保持 1：新字段可选、旧档读出有合理默认值，绝不为一个展示字段
+//   把已有存档推进写屏障（AGENTS 4.16 SCHEMA+）。
 // ============================================================================
 
 using System;
@@ -75,6 +78,7 @@ namespace BossRush
                     SimpleJsonHelper.AppendInt(sb, "kills", e.Kills);
                     SimpleJsonHelper.AppendLong(sb, "first", e.FirstKillTicks);
                     SimpleJsonHelper.AppendString(sb, "fm", e.FirstMode ?? string.Empty);
+                    SimpleJsonHelper.AppendString(sb, "fs", e.FirstScene ?? string.Empty);
                     SimpleJsonHelper.AppendFloat(sb, "fast", e.FastestKillSeconds, false);
                     sb.Append('}');
                 }
@@ -142,6 +146,7 @@ namespace BossRush
                         || (node.GetProperty("kills") != null && !node.TryGetInt("kills", out entry.Kills))
                         || (node.GetProperty("first") != null && !node.TryGetLong("first", out entry.FirstKillTicks))
                         || (node.GetProperty("fm") != null && !node.TryGetString("fm", out entry.FirstMode))
+                        || (node.GetProperty("fs") != null && !node.TryGetString("fs", out entry.FirstScene))
                         || (node.GetProperty("fast") != null && !node.TryGetFloat("fast", out entry.FastestKillSeconds)))
                         return null;
                     if (entry.Kills < 0 || entry.FirstKillTicks < 0L
@@ -150,6 +155,7 @@ namespace BossRush
                         || float.IsInfinity(entry.FastestKillSeconds)) return null;
                     if (entry.DisplayName == null) entry.DisplayName = string.Empty;
                     if (entry.FirstMode == null) entry.FirstMode = string.Empty;
+                    if (entry.FirstScene == null) entry.FirstScene = string.Empty;
 
                     data.Entries.Add(entry);
                 }

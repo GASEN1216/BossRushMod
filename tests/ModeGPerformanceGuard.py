@@ -150,7 +150,7 @@ def main():
         for name, pattern, desc in checks:
             if not re.search(pattern, cache):
                 errors.append("[{}] 不满足: {}".format(name, desc))
-        count = len(re.findall(r"AssetBundle\.LoadFromFile\(", cache))
+        count = len(re.findall(r"ResourceBundleLoader\.LoadFromFile\(", cache))
         if count != 1:
             errors.append("[BundleLoadCount] LoadFromFile 出现 {} 次（应为 1）".format(count))
 

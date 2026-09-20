@@ -97,6 +97,10 @@ namespace BossRush
         {
             if (instance == this)
             {
+                foreach (var popup in activePopups)
+                    if (popup.glowImage != null && popup.glowImage.sprite != null) Destroy(popup.glowImage.sprite);
+                if (glowTexture != null && !ProductionIconCache.IsBorrowed(glowTexture)) Destroy(glowTexture);
+                glowTexture = null;
                 instance = null;
                 sharedCanvas = null;
                 activePopups.Clear();
@@ -450,6 +454,7 @@ namespace BossRush
             foreach (var popup in toRemoveBuffer)
             {
                 activePopups.Remove(popup);
+                if (popup.glowImage != null && popup.glowImage.sprite != null) Destroy(popup.glowImage.sprite);
                 Destroy(popup.panelObj);
             }
         }
@@ -499,6 +504,11 @@ namespace BossRush
         /// </summary>
         private Texture2D LoadTexture(string filename)
         {
+            Sprite compressed = ProductionIconCache.Get("Assets/Textures/UI/" + filename);
+            if (compressed != null) return compressed.texture;
+            if (!ProductionIconCache.AllowRawFallback) return null;
+            Texture2D texture = null;
+            bool retained = false;
             try
             {
                 string modPath = ModBehaviour.GetModPath();
@@ -508,9 +518,10 @@ namespace BossRush
                 if (System.IO.File.Exists(path))
                 {
                     byte[] fileData = System.IO.File.ReadAllBytes(path);
-                    Texture2D texture = new Texture2D(2, 2);
-                    if (texture.LoadImage(fileData))
+                    texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+                    if (texture.LoadImage(fileData, true))
                     {
+                        retained = true;
                         return texture;
                     }
                 }
@@ -518,6 +529,10 @@ namespace BossRush
             catch (System.Exception e)
             {
                 ModBehaviour.LogError("[Achievement] 加载纹理失败 " + filename + ": " + e.Message);
+            }
+            finally
+            {
+                if (!retained && texture != null) Destroy(texture);
             }
             return null;
         }

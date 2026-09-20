@@ -236,15 +236,9 @@ namespace BossRush
 
                 if (File.Exists(iconPath))
                 {
-                    byte[] imageData = File.ReadAllBytes(iconPath);
-                    Texture2D texture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-                    if (texture.LoadImage(imageData))
+                    starwishBuildingIcon = ItemFactory.GetSpriteFromFile(Path.Combine("Assets", "buildings", Path.GetFileName(iconPath)));
+                    if (starwishBuildingIcon != null)
                     {
-                        starwishBuildingIcon = Sprite.Create(
-                            texture,
-                            new Rect(0, 0, texture.width, texture.height),
-                            new Vector2(0.5f, 0.5f)
-                        );
                         DevLog("[WishFountain] 建筑图标加载成功");
                     }
                 }
@@ -290,7 +284,7 @@ namespace BossRush
                     starwishAssetBundle = null;
                 }
 
-                starwishAssetBundle = AssetBundle.LoadFromFile(bundlePath);
+                starwishAssetBundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (starwishAssetBundle == null)
                 {
                     DevLog("[WishFountain] AssetBundle 加载失败，使用占位模型: " + bundlePath);

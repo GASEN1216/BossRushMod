@@ -140,14 +140,19 @@ def check_pages(errors):
     if re.search(r"string reason;\s*\n\s*PetNest\w+\.(?:Try\w+|ClearDeployedPet)\([^;]*out reason\);", code):
         errors.append("[反馈] 存在直接丢弃 out reason 的调用")
 
-    # 远征出发页必须明示死亡率
-    depart = re.search(r"private static void AppendDepartActions\([\s\S]{0,2400}?\n        \}", code)
+    # 远征出发页必须明示死亡率。2026-09-20 改成目的地 -> 风险档两级卡片
+    # （owner：底部动作条太小、内容区大片留白），断言随结构一起改。
+    depart = re.search(r"private static void AppendDepartCards\([\s\S]{0,4200}?\n        \}", code)
     if depart is None:
-        errors.append("[明示] 缺少 AppendDepartActions")
+        errors.append("[明示] 缺少 AppendDepartCards")
     else:
         body = depart.group(0)
         if 'T("DeathRateLabel")' not in body or "FormatPercent(deathRate)" not in body:
-            errors.append("[明示] 远征出发按钮必须写明死亡率（赌的知情权是底线）")
+            errors.append("[明示] 远征出发卡片必须写明死亡率（赌的知情权是底线）")
+        if "FormatDuration(PetNestExpeditionService.GetDurationHours(tier))" not in body:
+            errors.append("[明示] 远征出发卡片必须写明时长")
+        if "_expeditionDestinationId" not in body:
+            errors.append("[分层] 远征出发必须是目的地 -> 风险档两级选择")
 
     # 纪念碑必须刻风险档位
     memorial = re.search(r"private static void AppendMemorialCards\([\s\S]{0,1600}?\n        \}", code)

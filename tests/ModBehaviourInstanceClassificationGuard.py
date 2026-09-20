@@ -22,7 +22,7 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 277,
+    "Integration": 282,
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
@@ -36,9 +36,12 @@ EXPECTED_COUNTS = {
     "ModeD": 1,
     "ModeH": 1,
     "DebugAndTools": 4,
+    # 2026-09-20 +1：孵化揭晓演出播放异色大奖音乐（PetNestHatchRevealView.PlayJackpotMusic），
+    # 与 NewWeaponFx.PlaySound 同款取法，属 Keep: 通知/音效，不是新增全局服务依赖。
+    "PetNest": 1,
 }
 
-EXPECTED_TOTAL = 421
+EXPECTED_TOTAL = 427
 
 
 def fail(message: str) -> int:

@@ -148,7 +148,7 @@ namespace BossRush
                     return false;
                 }
 
-                _bundle = AssetBundle.LoadFromFile(bundlePath);
+                _bundle = ResourceBundleLoader.LoadFromFile(bundlePath);
                 if (_bundle == null)
                 {
                     // 文件在却加载不了是真问题（包损坏、Unity 版本不符），与「素材还没做」不同：
