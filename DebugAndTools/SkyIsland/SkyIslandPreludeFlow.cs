@@ -346,9 +346,10 @@ namespace BossRush
             if (jeff != null || jeffAttempts <= 0 || Time.unscaledTime < nextJeffAttempt) return;
             nextJeffAttempt = Time.unscaledTime + 1f;
             jeffAttempts--;
-            foreach (QuestGiver candidate in UnityEngine.Object.FindObjectsOfType<QuestGiver>(true))
+            // 按官方公开枚举识别 Jeff（不猜名字或层级）；全局扫描只在 OfficialQuestGiverLocator 一处，与鸭王征程共享同一次扫描。
+            QuestGiver candidate;
+            if (OfficialQuestGiverLocator.TryFind(QuestGiverID.Jeff, out candidate) && candidate != null)
             {
-                if (candidate == null || candidate.ID != QuestGiverID.Jeff) continue;
                 jeff = candidate;
                 if (officialQuest != null) officialQuest.PrepareGiver(candidate);
                 return;

@@ -413,6 +413,11 @@ echo(Utilities\OriginalExtractionPointIsolationHelper.cs
 echo(Utilities\ModeExtractionPointFactory.cs
 echo(Utilities\MapPointSceneResolver.cs
 echo(Utilities\MapSelectionEntryInjectionHelper.cs
+echo(Utilities\OfficialQuests\OfficialQuestBinding.cs
+echo(Utilities\OfficialQuests\OfficialQuestProjection.cs
+echo(Utilities\OfficialQuests\OfficialQuestComponents.cs
+echo(Utilities\OfficialQuests\OfficialQuestGiverLocator.cs
+echo(Utilities\OfficialQuests\OfficialQuestRuntimeModule.cs
 echo(Config\Config.cs
 echo(Config\ConfigModeG.cs
 echo(Config\NPCSpawnConfig.cs

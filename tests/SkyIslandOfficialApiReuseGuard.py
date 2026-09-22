@@ -38,6 +38,8 @@ DIALOGUE = SKY + "SkyIslandResidentDialogue.cs"
 WORLD = SKY + "SkyIslandWorldStory.cs"
 BRIDGE = SKY + "SkyIslandNoteBridge.cs"
 PRELUDE_QUEST = SKY + "SkyIslandOfficialQuestBridge.cs"
+QUEST_CORE = "Utilities/OfficialQuests/OfficialQuestProjection.cs"
+QUEST_COMPONENTS = "Utilities/OfficialQuests/OfficialQuestComponents.cs"
 BOUNTY = SKY + "SkyIslandBounty.cs"
 GNAT_BOUNTY = SKY + "SkyIslandSessionGnatBounty.cs"
 PANEL = SKY + "SkyIslandStoryPresentation.cs"
@@ -45,7 +47,7 @@ MARKERS = SKY + "SkyIslandMapMarkers.cs"
 FINDINGS = "CODE_REVIEW_FINDINGS.md"
 START = "Integration/BossRushIntegration_StartAndScene.cs"
 
-PATHS = [DIALOGUE, WORLD, BRIDGE, PRELUDE_QUEST, PANEL, START, FINDINGS, MARKERS, BOUNTY, GNAT_BOUNTY]
+PATHS = [DIALOGUE, WORLD, BRIDGE, PRELUDE_QUEST, QUEST_CORE, QUEST_COMPONENTS, PANEL, START, FINDINGS, MARKERS, BOUNTY, GNAT_BOUNTY]
 
 # 天空岛**不许**出现的官方任务系统符号（理由见文件头）。
 # findings 里那条归档小节的标题，守卫按它取范围。
@@ -153,14 +155,17 @@ def check(sources):
 
     # ---- 5) 跨局主线真接官方任务；按出击刷新的委托不混成跨局 Quest ----
     prelude_quest = clean_source(sources[PRELUDE_QUEST])
+    quest_core = clean_source(sources[QUEST_CORE]) + clean_source(sources[QUEST_COMPONENTS])
+    require("IOfficialQuestClient" in prelude_quest and "owner.OfficialQuestRuntime.Projection" in prelude_quest,
+            PRELUDE_QUEST + " 必须作为共享投影核心的客户端接入（2026-09-22 起注册 / 投影 / 过滤都在 Utilities/OfficialQuests/）")
     for token, why in (
         ("QuestCollection", "运行时 Quest prefab 必须登记到官方集合"),
         ("QuestManager", "接取与任务列表必须走官方 manager"),
-        ("class SkyIslandOfficialQuestTask : Duckov.Quests.Task", "目标必须走官方 Task"),
-        ("(QuestGiverID)entry.Def.GiverId", "给予者必须来自任务表（序章是官方 Jeff，岛上是自定义整数）"),
+        ("class OfficialQuestProjectionTask : Duckov.Quests.Task", "目标必须走官方 Task"),
+        ("(QuestGiverID)entry.Binding.GiverId", "给予者必须来自任务定义（序章是官方 Jeff，岛上是自定义整数）"),
         ("FilterSaveSnapshot", "必须隔离官方存档中的 Mod ID，保证卸载兼容"),
     ):
-        require(token in prelude_quest, PRELUDE_QUEST + " 缺 " + token + "：" + why)
+        require(token in quest_core, QUEST_CORE + " 缺 " + token + "：" + why)
     for rel in (BOUNTY, GNAT_BOUNTY):
         for symbol in QUEST_SYMBOLS:
             require(symbol not in sources[rel],
@@ -266,8 +271,9 @@ def main():
         (BRIDGE, "SkyIslandPointText.Lore(id)", '"另写的正文"'),
         # Jeff 序章丢失官方任务系统接线
         (BRIDGE, "using Duckov.NoteIndexs;", "using Duckov.NoteIndexs;\nusing Duckov.Quests;"),
-        (PRELUDE_QUEST, "class SkyIslandOfficialQuestTask : Duckov.Quests.Task",
-         "class SkyIslandOfficialQuestTask : MonoBehaviour"),
+        (QUEST_COMPONENTS, "class OfficialQuestProjectionTask : Duckov.Quests.Task",
+         "class OfficialQuestProjectionTask : MonoBehaviour"),
+        (PRELUDE_QUEST, "owner.OfficialQuestRuntime.Projection", "new OfficialQuestProjection(owner)"),
         # 岛上委托被顺手改成跨局 Quest
         (BOUNTY, "namespace BossRush", "using Duckov.Quests;" + chr(10) + "namespace BossRush"),
         # 自绘面板的理由被删掉

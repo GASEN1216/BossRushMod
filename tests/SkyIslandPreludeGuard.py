@@ -4,8 +4,8 @@
 2026-09-16 起本守卫从「序章单任务」扩成「多任务注册表」口径（文件名保留，FIX_TRACKER 与教程都引它）：
 - 序章：官方 Jeff Quest → 零号区航向仪 / 断风游猎 → 官方交付后开放船点（三层航线门）。
 - 岛上：590011–590013 挂在苇白 / 浮舟 / 钟守（自定义 QuestGiverID 整数 5901–5903）名下，只在岛上接、岛上交。
-- 桥：所有权 = ID + 对象名 + 专用 Task 组件；每条目各自 fail-closed；四类官方快照逐 id 剥离；
-  桥在模块 OnUpdate 里**先于**「岛上会话存在就早退」运行（否则岛上三条任务根本不跑）。
+- 桥：2026-09-22 起注册 / 投影 / 补丁 / 快照过滤都在共享核心 `Utilities/OfficialQuests/`（守卫 `tests/OfficialQuestProjectionGuard.py`），
+  本文件的桥只是天空岛客户端：把任务表定义包成与事实无关的委托交给核心，并负责交付那一拍发钱与离岛后的会话状态。
 - 存档：每条任务 Accepted + Delivered 两位（官方 history 每次都被剥掉，读档只靠这两位重建）；KnownFlags 同步；
   Codec 拒绝「交付无接取 / 交付无事实 / 未解锁航线却有任务位」。
 反向探针在内存里恢复旧写法，确保每条断言真的抓得住。
@@ -64,7 +64,7 @@ def check(sources):
 
     # ---- 1) 序章：官方 Jeff、零号区目标、头目复用、生命周期 ----
     for token, why in (
-        ("candidate.ID != QuestGiverID.Jeff", "必须按官方公开枚举识别 Jeff，不能猜名字或层级"),
+        ("OfficialQuestGiverLocator.TryFind(QuestGiverID.Jeff, out candidate)", "必须经共享定位器按官方公开枚举识别 Jeff，不能猜名字或层级"),
         ("officialQuest.PrepareGiver(candidate)", "找到 Jeff 后没有刷新官方任务标记"),
         ('GroundZeroScene = "Level_GroundZero_1"', "前置调查没有落在官方零号区"),
         ("SimplePointOfInterest.Create", "目标没有复用官方地图标记"),
@@ -99,7 +99,7 @@ def check(sources):
             PRELUDE + " 出发前没有释放基地故事投影")
     require("private const float TickInterval = 0.25f" in prelude and "jeffAttempts = 12" in prelude and "jeffAttempts--" in prelude,
             PRELUDE + " 缺少节流 Tick 或 Jeff 有界重试")
-    require(prelude.count("FindObjectsOfType<QuestGiver>(true)") == 1, PRELUDE + " 的 Jeff 全局扫描必须只有一个有界调用点")
+    require("FindObjectsOfType<QuestGiver>" not in prelude, PRELUDE + " 不得自己扫描给予者：全局扫描只在 OfficialQuestGiverLocator 一处")
     require("BossActivationRange * BossActivationRange" in prelude, PRELUDE + " 必须等玩家接近目标后再创建完整角色")
     bundle_gate = prelude.split("internal void Tick()", 1)[1].split("if (!EnsureStory())", 1)[0] if "internal void Tick()" in prelude else ""
     schedule = prelude.split("internal void Schedule()", 1)[1].split("internal void OnStartedLoading()", 1)[0]
@@ -142,58 +142,35 @@ def check(sources):
 
     require("SkyIslandStoryRules.CanApply(context.Data, definition.AcceptAction, out blocker)" in table,
             TABLE + " 接取必须复用剧情规则")
-    delivery = quest.split("internal static bool TryCommitDelivery(", 1)[1].split("internal static bool IsTaskDone(", 1)[0]
-    ordered(delivery, "SkyIslandOfficialQuestTable.CanDeliver(", "active.DefaultCommit(", QUEST + " 交付必须先验证地点和事实")
     require("SkyIslandOfficialQuestTable.NextContactObjective(data)" in rules, RULES + " HUD 缺少官方任务接取 / 交付引导")
     require('LocalizationHelper.InjectLocalization("BossRush_SkyIsland_QuestGiver",' in table,
             TABLE + " 给予者交互名必须进入已有语言切换注入链")
 
-    # ---- 3) 桥：注册表、所有权、逐条目 fail-closed、四类快照、时序 ----
+    # ---- 3) 桥（天空岛客户端）：定义交给共享核心，事实解析、发钱、离岛状态留在这里 ----
     for token, why in (
-        ("QuestCollection collection = GameplayDataSettings.QuestCollection", "没有向官方任务 prefab 集合登记"),
-        ("manager.ActivateQuest(entry.Def.QuestId, (QuestGiverID)entry.Def.GiverId)", "没有通过官方 QuestManager 激活任务 / 给予者没有走定义"),
-        ("class SkyIslandOfficialQuestTask : Duckov.Quests.Task", "没有使用官方 Task 基类"),
-        ("public int questId;", "Task 必须只带整数回查表（委托不随 Instantiate 克隆）"),
-        ("public int taskId;", "Task 必须只带整数回查表（委托不随 Instantiate 克隆）"),
-        ("Quest.onQuestActivated += OnQuestActivated", "官方接取没有写回 Mod 事实"),
-        ("Quest.onQuestCompleted += OnQuestCompleted", "官方完成没有接回桥"),
-        ("Quest.onQuestActivated -= OnQuestActivated", "接取事件没有退订"),
-        ("Quest.onQuestCompleted -= OnQuestCompleted", "完成事件没有退订"),
-        ("HarmonyPatch(typeof(Quest), nameof(Quest.MeetsPrerequisit))", "任务没有进入给予者的官方可接取列表"),
-        ("HarmonyPatch(typeof(Quest), nameof(Quest.TryComplete))", "官方完成按钮提交前没有先落 Mod 交付事实"),
-        ("HarmonyPatch(typeof(QuestManager), nameof(QuestManager.GenerateSaveData))", "没有隔离官方 Quest 存档快照"),
-        ("HarmonyPatch(typeof(QuestManager), nameof(QuestManager.SetupSaveData)", "读档时没有防御性过滤旧残留"),
-        ("entry.Prefab.gameObject.name == entry.Def.ObjectName", "所有权只比整数 ID，会误伤占用相同 ID 的其它 Mod"),
-        ("entry.Prefab.GetComponent<SkyIslandOfficialQuestTask>() != null", "所有权没有验专用 Task 组件"),
-        ("if (!OwnsRegisteredQuest(entry.Def.QuestId)) continue;", "存档过滤没有逐条按所有权放行冲突 ID"),
-        ("RemoveSavedQuest(data.activeQuestsData, id)", "没有剥离 active 快照"),
-        ("RemoveSavedQuest(data.historyQuestsData, id)", "没有剥离 history 快照"),
-        ("data.completedQuests.Remove(id)", "没有剥离 completedQuests（残留会把 IsQuestAvaliable 永久钉死）"),
-        ("data.everInspectedQuest.Remove(id)", "没有剥离 everInspected"),
-        ("if (!initialized)", "读档时目标已完成会被误报成刚完成，导致每次重建重复通知"),
-        ("lastKnown = current", "读档时目标已完成会被误报成刚完成"),
-        ("ReferenceEquals(entry.CleanedFreshManager, manager)", "空白槽的官方列表清理必须按任务管理器与槽位缓存"),
-        ("entry.CleanedFreshSlot == context.Slot", "空白槽的官方列表清理必须按任务管理器与槽位缓存"),
-        ("bool slotChanged = context.Slot != lastSlot", "换槽没有先按新槽整清再重建"),
-        ("if (slotChanged) { ClearProjection(entry, manager);", "换槽没有先按新槽整清再重建"),
-        ("if (!context.StoryReady || context.Data == null) return;", "故事暂缺（离岛的一两拍）时不能清也不能建"),
-        ("internal bool Blocked, CollisionReported;", "ID 冲突 / 注册失败必须按条目 fail-closed，不能整桥停摆"),
-        ("class SkyIslandOfficialQuestReward : Duckov.Quests.Reward", "奖励行没有用官方 Reward 基类"),
-        ("SkyIslandOfficialQuestBridge.IsRewardPaid(questId)",
+        ("class SkyIslandOfficialQuestBridge : IDisposable, IOfficialQuestClient", "桥必须是共享投影核心的客户端"),
+        ("owner.OfficialQuestRuntime.Projection", "桥必须取共享核心，不得自己 new 一份投影"),
+        ("projection.Register(BuildBinding(definition))", "定义没有交给核心登记"),
+        ("projection.UnregisterClient(this)", "销毁时没有整体撤销自己的定义"),
+        ("CanOffer = () => SkyIslandOfficialQuestTable.CanOffer(def, SkyIslandOfficialQuestStory.Capture(host))", "可接取门没有复用任务表判据"),
+        ("CanDeliver = () => SkyIslandOfficialQuestTable.CanDeliver(def, SkyIslandOfficialQuestStory.Capture(host))", "交付门没有复用任务表判据"),
+        ("IsAccepted = () => HasFlag(def.AcceptedFlag)", "接取位没有读分槽故事"),
+        ("IsDelivered = () => HasFlag(def.DeliveredFlag)", "交付位没有读分槽故事"),
+        ("RewardPaid = () => HasFlag(def.DeliveredFlag)",
          "奖励的「已领取」不是读 Mod 交付事实：每次读档重建投影，玩家在已完成页就能再领一次钱"),
-        ("if (committed && !wasDelivered) active.PayRewardOnce(entry);", "奖金不是在「未交付 → 已交付」那一拍发的"),
+        ("PayReward = () => PayRewardOnce(def)", "交付那一拍的发钱没有交给核心调度"),
+        ("if (data == null || !data.Has(def.DeliveredFlag)) return;", "发钱前没有核对交付事实已落下"),
         ("EconomyManager.Add(money)", "奖金没有走官方经济系统"),
+        ("if (wasOnIsland && !onIsland) SkyIslandOfficialQuestGivers.ClearSessionState();", "离岛后没有清本趟的给予者兜底记录"),
+        ("SkyIslandOfficialQuestGivers.EnsureDeviceFallback(session)", "岛上每拍没有补装置兜底"),
+        ("if (dirty) SkyIslandOfficialQuestGivers.RefreshMarkers();", "事实变化没有刷给予者标记"),
+        ("Done = () => { SkyIslandStoryData data = CurrentData(); return data != null && task.Done(data); }", "目标判据没有按当前故事事实求值"),
     ):
         require(token in quest, QUEST + "：" + why + "（缺 " + token + "）")
-    require(quest.count("entry.Blocked = true") >= 2, QUEST + " Quest ID 冲突或结构性注册失败后仍会每秒重试并制造异常")
-    require("root.SetActive(false)" not in quest and "PrefabRoot.SetActive(false)" not in quest,
-            QUEST + " 的 Quest 模板不能停用，否则官方克隆出的 Quest/Task 会继承停用状态")
+    for banned in ("HarmonyPatch", "QuestCollection", "FilterSaveSnapshot", "manager.ActivateQuest", "new OfficialQuestProjection("):
+        require(banned not in quest, QUEST + " 出现了 " + banned + "：注册 / 投影 / 补丁 / 过滤只能在共享核心（OfficialQuestProjectionGuard）")
     require("QuestReward_Money" not in quest,
             QUEST + " 用了官方 QuestReward_Money：它的「已领取」写在实例上，而投影每次加载都重建，玩家能反复领同一笔钱")
-    ordered(quest, "rewardHost.SetActive(false);", "RewardMasterField.SetValue(reward, quest);",
-            QUEST + " 奖励组件在 master 就位前就被激活：官方 Reward.Awake 会拿 null 的 Master 订阅事件")
-    require("registrationBlocked" not in quest, QUEST + " 回到了整桥级 fail-closed：一条 ID 冲突不该让整条主线消失")
-    ordered(quest, "owned[i] = Owns(entries[i]);", "disposed = true;", QUEST + " 销毁桥时没有先冻结每条的所有权，会清掉冲突 Mod 的同 ID 任务")
 
     # ---- 4) 给予者：Awake 之前写 id、官方任务页缺席不挂、装置兜底只在居民缺席且整队生成完之后 ----
     attach = givers.split("private static bool Attach(", 1)[1] if "private static bool Attach(" in givers else ""
@@ -207,7 +184,7 @@ def check(sources):
         ("session.ResidentsSettled", "居民还没生成完就判「谁缺席」，兜底会挂到每个装置上"),
         ("fallbackAttempts >= FallbackAttemptLimit", "装置兜底没有有界重试"),
         ("NPCInteractionGroupHelper.PrepareGroupedInteractionOwner(device", "兜底给予者必须分组进装置，不另起同点交互体"),
-        ("RefreshIndicatorMethod.Invoke(giver, null)", "剧情事实变了没有刷头顶标记"),
+        ("OfficialQuestGiverLocator.RefreshMarker(giver)", "剧情事实变了没有刷头顶标记（反射只在共享定位器一处）"),
         ("internal static void ResetStaticCaches()", "静态给予者缓存没有唯一清理 owner"),
     ):
         require(token in givers, GIVERS + "：" + why + "（缺 " + token + "）")
@@ -231,9 +208,8 @@ def check(sources):
 
     # ---- 5) 模块接线：桥常驻、先于岛上早退运行、销毁时清理 ----
     require("quests = new SkyIslandOfficialQuestBridge(host)" in runtime, RUNTIME + " 没有持有常驻任务桥")
-    update = runtime.split("public override void OnUpdate(", 1)[1].split("public override", 1)[0] if "public override void OnUpdate(" in runtime else ""
-    ordered(update, "quests.Tick();", "owner.GetComponent<SkyIslandSession>() != null) return;",
-            RUNTIME + " 任务桥的 Tick 排在「岛上会话存在就早退」之后：岛上三条任务根本不跑")
+    require("quests.Tick()" not in runtime,
+            RUNTIME + " 不得再自己 Tick 任务桥：投影由 OfficialQuestRuntimeModule 无条件驱动（不受「岛上会话存在就早退」影响）")
     for token in ("quests.Dispose()", "SkyIslandOfficialQuestGivers.ResetStaticCaches()", "SkyIslandOfficialQuestStory.ResetStaticCaches()"):
         require(token in runtime, RUNTIME + " 销毁时缺 " + token)
     require("SkyIslandPreludeFlow.InjectLocalizations();" in start and "SkyIslandOfficialQuestTable.InjectLocalizations();" in start,
@@ -285,9 +261,9 @@ def main():
         (RESIDENTS, "SkyIslandOfficialQuestGivers.AttachResident(interaction.transform, standaloneGroup, id);", ""),
         (TABLE, 'LocalizationHelper.InjectLocalization("BossRush_SkyIsland_QuestGiver",', 'LocalizationHelper.InjectLocalization("unused",'),
         (TABLE, "SkyIslandStoryRules.CanApply(context.Data, definition.AcceptAction, out blocker)", "true"),
-        (QUEST, "SkyIslandOfficialQuestTable.CanDeliver(entry.Def, SkyIslandOfficialQuestStory.Capture(active.host))", "true"),
+        (QUEST, "CanDeliver = () => SkyIslandOfficialQuestTable.CanDeliver(def, SkyIslandOfficialQuestStory.Capture(host))", "CanDeliver = () => true"),
         (RULES, "SkyIslandOfficialQuestTable.NextContactObjective(data)", "null"),
-        (PRELUDE, "candidate.ID != QuestGiverID.Jeff", "candidate.name != \"Jeff\""),
+        (PRELUDE, "OfficialQuestGiverLocator.TryFind(QuestGiverID.Jeff, out candidate)", "TryFindJeffByNameStub(out candidate)"),
         (PRELUDE, "jeffAttempts--", ""),
         (PRELUDE, "health.OnDeadEvent.RemoveListener(OnDead)", ""),
         (PRELUDE, "SkyIslandRaidLease.IsBundleDeployed()", "true"),
@@ -303,31 +279,25 @@ def main():
         (PRELUDE, "DeliveryMoney = 5000", "DeliveryMoney = 500"),
         (PRELUDE, "MapPointSceneResolver.Resolve(GroundZeroScene)", "GroundZeroScene"),
         (PRELUDE, "mapMarker.IsArea = true", ""),
-        (QUEST, "SkyIslandOfficialQuestBridge.IsRewardPaid(questId)", "false"),
-        (QUEST, "if (committed && !wasDelivered) active.PayRewardOnce(entry);", ""),
+        (QUEST, "RewardPaid = () => HasFlag(def.DeliveredFlag)", "RewardPaid = () => false"),
+        (QUEST, "PayReward = () => PayRewardOnce(def)", "PayReward = null"),
+        (QUEST, "if (data == null || !data.Has(def.DeliveredFlag)) return;", ""),
         (QUEST, "EconomyManager.Add(money)", "true"),
-        (QUEST, "rewardHost.SetActive(false);", "rewardHost.SetActive(true);"),
-        (QUEST, "manager.ActivateQuest(entry.Def.QuestId, (QuestGiverID)entry.Def.GiverId)", ""),
-        (QUEST, "collection.Add(quest);", "root.SetActive(false);\n                collection.Add(quest);"),
-        (QUEST, "RemoveSavedQuest(data.activeQuestsData, id)", ""),
-        (QUEST, "data.everInspectedQuest.Remove(id)", "false"),
-        (QUEST, "if (!OwnsRegisteredQuest(entry.Def.QuestId)) continue;", ""),
-        (QUEST, "entry.Prefab.gameObject.name == entry.Def.ObjectName", "true"),
-        (QUEST, "internal bool Blocked, CollisionReported;", "internal bool CollisionReported;"),
-        (QUEST, "if (!initialized)", "if (false)"),
-        (QUEST, "if (slotChanged) { ClearProjection(entry, manager);", "if (false) {"),
-        (QUEST, "if (!context.StoryReady || context.Data == null) return;", ""),
-        (QUEST, "HarmonyPatch(typeof(Quest), nameof(Quest.TryComplete))", "HarmonyPatch(typeof(Quest), nameof(Quest.ForceComplete))"),
+        (QUEST, "owner.OfficialQuestRuntime.Projection", "new OfficialQuestProjection(owner)"),
+        (QUEST, "projection.UnregisterClient(this)", "projection.Unregister(0)"),
+        (QUEST, "if (wasOnIsland && !onIsland) SkyIslandOfficialQuestGivers.ClearSessionState();", ""),
+        (QUEST, "if (dirty) SkyIslandOfficialQuestGivers.RefreshMarkers();", ""),
         (TABLE, "DeliveredFlag = SkyIslandStoryFlag.HomecomingQuestDelivered", "DeliveredFlag = 0"),
         (TABLE, "context.Data.Has(SkyIslandStoryFlag.BeaconQuestDelivered)", "true"),
         (GIVERS, "GiverIdField.SetValue(component, (QuestGiverID)giverId);", ""),
         (GIVERS, "if (QuestGiverView.Instance == null)", "if (false)"),
         (GIVERS, "session.ResidentsSettled", "true"),
         (GIVERS, "component.spawnPOI = false;", ""),
+        (GIVERS, "OfficialQuestGiverLocator.RefreshMarker(giver)", "RefreshMarkerStub(giver)"),
         (RESIDENTS, "SkyIslandOfficialQuestGivers.AttachResident(relationship.transform, group, id);", ""),
         (RESIDENTS, "finally { spawnFinished = true; }", "finally { }"),
-        (RUNTIME, "if (quests != null) quests.Tick();\n            if (prelude != null) prelude.Tick();",
-         "if (prelude != null) prelude.Tick();\n            if (owner.GetComponent<SkyIslandSession>() != null) return;\n            if (quests != null) quests.Tick();"),
+        (RUNTIME, "if (prelude != null) prelude.Tick();",
+         "if (quests != null) quests.Tick();\n            if (prelude != null) prelude.Tick();"),
         (RUNTIME, "prelude == null || !prelude.RouteUnlocked", "false"),
         (RUNTIME, "prelude.TryPrepareDeparture(out reason)", "true"),
         (SESSION, "SkyIslandPreludeFlow.CanUseRoute(out reason)", "true"),

@@ -30,7 +30,6 @@ namespace BossRush
         private const int FallbackAttemptLimit = 40;
 
         private static readonly FieldInfo GiverIdField = AccessTools.Field(typeof(QuestGiver), "questGiverID");
-        private static readonly MethodInfo RefreshIndicatorMethod = AccessTools.Method(typeof(QuestGiver), "RefreshInspectionIndicator");
         private static readonly List<QuestGiver> attached = new List<QuestGiver>();
         private static readonly HashSet<int> fallbackDone = new HashSet<int>();
         private static int fallbackAttempts;
@@ -140,11 +139,10 @@ namespace BossRush
             }
         }
 
+        /// <summary>头顶标记的反射刷新统一在 <see cref="OfficialQuestGiverLocator"/>（全仓库唯一一处）。</summary>
         internal static void RefreshMarker(QuestGiver giver)
         {
-            if (giver == null || RefreshIndicatorMethod == null) return;
-            try { RefreshIndicatorMethod.Invoke(giver, null); }
-            catch (Exception e) { ModBehaviour.DevLog("[SkyIslandQuest] [WARNING] 任务标记刷新失败: " + e.Message); }
+            OfficialQuestGiverLocator.RefreshMarker(giver);
         }
 
         /// <summary>离岛：这一趟的兜底记录作废（下一趟居民可能又在了）。给予者对象随居民 / 场景一起销毁。</summary>

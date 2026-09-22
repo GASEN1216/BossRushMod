@@ -682,7 +682,8 @@ Breaking/Operational:
   `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
   加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。
   已接受的副作用：已交付任务的 history 投影缺失时用 `ForceComplete` 重建，会再发一次 `Quest.onQuestCompleted`（`AchievementManager` 查不到 `Quest_59xxxx` 直接返回，`BDSManager` 上报一条匿名遥测），每次加载每条至多一次。
-  所有补丁与清理都按条目验证专用模板所有权（ID + 对象名 + `SkyIslandOfficialQuestTask` 组件）；ID 冲突时那一条 fail closed，不得改动占用相同整数 ID 的其它内容。
+  所有补丁与清理都按条目验证专用模板所有权（ID + 对象名 + 核心专用 `OfficialQuestProjectionTask` 组件）；ID 冲突时那一条 fail closed，不得改动占用相同整数 ID 的其它内容。
+  实现落点（2026-09-22）：注册 / 投影 / 四个 Harmony 补丁 / 四类快照过滤 / 给予者扫描全在共享核心 `Utilities/OfficialQuests/`（唯一实例由 `OfficialQuestRuntimeModule` 持有，注册顺序先于天空岛与征程；守卫 `tests/OfficialQuestProjectionGuard.py`）；天空岛桥只是客户端（`IOfficialQuestClient` + `OfficialQuestBinding` 闭包）。
   官方 `QuestGiverView` 在出击图缺席时不挂岛上给予者（fail-closed，自绘面板照常）。岛上按出击刷新的居民委托不接跨局 Quest。
 
 **渲染与程序集**

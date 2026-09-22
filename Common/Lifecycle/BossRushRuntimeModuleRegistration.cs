@@ -5,6 +5,13 @@ namespace BossRush
         private void RegisterRuntimeModules()
         {
             runtimeModuleHost.Register(new ArchitectureSentinelRuntimeModule());
+
+            // 官方任务投影核心单实例纪律：先存字段，再把**同一个引用**注册给 host。
+            // 必须排在天空岛与征程之前：两者在自己的 OnAwake 里向它登记任务定义，
+            // 而 host 按注册顺序回调，先注册的先 OnAwake。全仓库只允许这一处 new。
+            officialQuestRuntime = new OfficialQuestRuntimeModule();
+            runtimeModuleHost.Register(officialQuestRuntime);
+
             runtimeModuleHost.Register(new ModeDRuntimeModule());
             runtimeModuleHost.Register(new DebugToolsRuntimeModule());
             runtimeModuleHost.Register(new SkyIslandRuntimeModule());
@@ -52,6 +59,15 @@ namespace BossRush
             backMountainRuntime = new BackMountainRuntimeModule();
             runtimeModuleHost.Register(backMountainRuntime);
         }
+
+        /// <summary>官方任务投影核心唯一运行时实例。</summary>
+        private OfficialQuestRuntimeModule officialQuestRuntime;
+
+        /// <summary>
+        /// 官方任务投影核心的只读门面。天空岛与征程只能经 <c>OfficialQuestRuntime.Projection</c> 登记 / 撤销任务定义，
+        /// 不得再次 new OfficialQuestRuntimeModule() 或 new OfficialQuestProjection()。
+        /// </summary>
+        internal OfficialQuestRuntimeModule OfficialQuestRuntime { get { return officialQuestRuntime; } }
 
         /// <summary>Mode H 唯一运行时实例。</summary>
         private ModeHRuntimeModule modeHRuntime;

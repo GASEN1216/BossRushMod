@@ -12,6 +12,7 @@
 - Mod 生成的敌人要解除官方距离休眠（`SpawnedEnemyActivationHelper`，原因见 `docs/contracts.md` §7.1），并保留敌对性安全网（根 §4.5）。Mode E/F 有独立阵营体系；Mode G 冻结分支与原版 spawner 角色不走这条解除。
 - `SceneRuntimeGate` 与 gameplay runtime gate 是过图性能关键路径，不在 transition 帧引入重活。
 - `RunScopedRegistry` 的 cleanup 语义与守卫绑定，改结构时同步 `tests/`。
+- `OfficialQuests/` 是官方 `Duckov.Quests` 投影核心（2026-09-22 由天空岛桥抽出）：全仓库只有一个活动实例（`OfficialQuestRuntimeModule` 持有并 Tick，注册顺序先于天空岛与征程），四个 Harmony 目标只在 `OfficialQuestComponents.cs` 装一次，给予者全局扫描只在 `OfficialQuestGiverLocator`。客户端（天空岛、鸭王征程）只提供 `OfficialQuestBinding` 委托，不得在自己目录里再碰 `QuestCollection` / `QuestManager` / 快照过滤（`tests/OfficialQuestProjectionGuard.py`）。
 - 这里的改动影响所有模式：写明影响到哪些模式，并跑受影响模式的守卫与执行回归。
 
 ## 验证

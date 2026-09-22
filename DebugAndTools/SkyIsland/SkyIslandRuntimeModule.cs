@@ -12,7 +12,7 @@ namespace BossRush
     {
         private ModBehaviour owner;
         private SkyIslandPreludeFlow prelude;
-        /// <summary>官方任务桥常驻模块：基地的 Jeff 序章与岛上三条主线都经它投影，岛上会话不另起一份。</summary>
+        /// <summary>官方任务桥（天空岛客户端）：基地的 Jeff 序章与岛上三条主线都经它登记到共享投影核心，岛上会话不另起一份。</summary>
         private SkyIslandOfficialQuestBridge quests;
         private SkyIslandDepartureInteractable departure;
         private List<InteractableBase> boatGroup;
@@ -115,8 +115,7 @@ namespace BossRush
         public override void OnUpdate(float deltaTime, float unscaledDeltaTime)
         {
             if (owner == null) return;
-            // 官方任务桥必须在「岛上会话存在就早退」之前跑：岛上三条任务的接取 / 交付投影全靠它。
-            if (quests != null) quests.Tick();
+            // 官方任务投影由 OfficialQuestRuntimeModule 无条件 Tick（不受「岛上会话存在就早退」影响），这里不再自己驱动。
             if (prelude != null) prelude.Tick();
             // 岛上不再有自绘地图，也就不需要任何输入处理：
             // 官方地图由玩家自己绑定的地图键开合（`CharacterInputControl.OnUIMapInput`）。
