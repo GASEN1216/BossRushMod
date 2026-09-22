@@ -46,9 +46,6 @@ namespace BossRush
         private const float EmissionRate = 8f;
         private const int MaxParticles = 40;
 
-        private const float RetryApplyDuration = 0.75f;
-        private const float RetryApplyInterval = 0.05f;
-
         /// <summary>
         /// 粒子发射源相对角色 pivot 的 Y 轴偏移（大约在身体中心）
         /// </summary>
@@ -148,148 +145,15 @@ namespace BossRush
                 CharacterMainControl character = TryGetTargetCharacter(hurtHealth);
                 CharacterBuffManager buffMgr = TryGetBuffManager(character);
                 bool hasCurse = buffMgr != null && buffMgr.HasBuff(PhantomWitchConfig.CurseBuffID);
-                if (!hasCurse && !CouldApplyFallbackCurseFromNormalAttack(damageInfo))
+                // Health.Hurt 已完成唯一一次 buffChance 判定；这里只观察结果，不重新掷骰。
+                if (hasCurse && character != null)
                 {
-                    return;
-                }
-
-                Buff curseBuff = PhantomWitchAssetManager.GetCurseBuff();
-                if (curseBuff == null)
-                {
-                    return;
-                }
-
-                if (hasCurse)
-                {
-                    if (character != null)
-                    {
-                        TryAttach(character.gameObject);
-                    }
-                    return;
-                }
-
-                if (!ShouldApplyFallbackCurseFromNormalAttack(damageInfo, curseBuff))
-                {
-                    return;
-                }
-
-                float curseChance = ResolveNormalAttackCurseChance(damageInfo);
-                bool shouldApplyBuff = curseChance > 0f && UnityEngine.Random.value <= curseChance;
-                bool appliedImmediately = false;
-                bool queueAttachRetry = buffMgr == null;
-                bool queueApplyRetry = false;
-
-                if (shouldApplyBuff)
-                {
-                    appliedImmediately = TryApplyBuff(hurtHealth, damageInfo.fromCharacter, damageInfo.fromWeaponItemID, curseBuff);
-                    if (!appliedImmediately)
-                    {
-                        queueApplyRetry = true;
-                    }
-                }
-
-                if (appliedImmediately)
-                {
-                    character = TryGetTargetCharacter(hurtHealth);
-                    if (HasCurse(character))
-                    {
-                        TryAttach(character.gameObject);
-                    }
-                    else
-                    {
-                        queueAttachRetry = true;
-                    }
-                }
-
-                if (queueAttachRetry || queueApplyRetry)
-                {
-                    EnqueueRetry(hurtHealth, damageInfo.fromCharacter, damageInfo.fromWeaponItemID, curseBuff, queueApplyRetry);
+                    TryAttach(character.gameObject);
                 }
             }
             catch
             {
             }
-        }
-
-        private static bool CouldApplyFallbackCurseFromNormalAttack(DamageInfo damageInfo)
-        {
-            if (damageInfo.fromWeaponItemID != PhantomWitchScytheIds.WeaponTypeId)
-            {
-                return false;
-            }
-
-            if (damageInfo.isFromBuffOrEffect)
-            {
-                return false;
-            }
-
-            if (!IsMainPlayerAttacker(damageInfo.fromCharacter))
-            {
-                return false;
-            }
-
-            if (damageInfo.buff == null)
-            {
-                return false;
-            }
-
-            if (ResolveNormalAttackCurseChance(damageInfo) <= 0f)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private static bool ShouldApplyFallbackCurseFromNormalAttack(DamageInfo damageInfo, Buff curseBuff)
-        {
-            if (curseBuff == null)
-            {
-                return false;
-            }
-
-            if (damageInfo.fromWeaponItemID != PhantomWitchScytheIds.WeaponTypeId)
-            {
-                return false;
-            }
-
-            if (damageInfo.isFromBuffOrEffect)
-            {
-                return false;
-            }
-
-            if (!IsMainPlayerAttacker(damageInfo.fromCharacter))
-            {
-                return false;
-            }
-
-            if (!MatchesCurseBuffPayload(damageInfo, curseBuff))
-            {
-                return false;
-            }
-
-            if (ResolveNormalAttackCurseChance(damageInfo) <= 0f)
-            {
-                return false;
-            }
-
-            return true;
-        }
-
-        private static void EnqueueRetry(Health hurtHealth, CharacterMainControl attacker, int fromWeaponItemId, Buff curseBuff, bool applyIfMissing)
-        {
-            if (hurtHealth == null || curseBuff == null)
-            {
-                return;
-            }
-
-            PhantomWitchCurseHitRetry retry = hurtHealth.GetComponent<PhantomWitchCurseHitRetry>();
-            if (retry == null)
-            {
-                retry = hurtHealth.gameObject.AddComponent<PhantomWitchCurseHitRetry>();
-            }
-
-            retry.Initialize(hurtHealth, attacker, fromWeaponItemId, curseBuff, applyIfMissing);
         }
 
         private static CharacterMainControl TryGetTargetCharacter(Health hurtHealth)
@@ -352,63 +216,6 @@ namespace BossRush
             }
         }
 
-        private static bool IsMainPlayerAttacker(CharacterMainControl attacker)
-        {
-            if (attacker == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                return attacker == CharacterMainControl.Main;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static bool MatchesCurseBuffPayload(DamageInfo damageInfo, Buff curseBuff)
-        {
-            Buff payloadBuff = damageInfo.buff;
-            if (payloadBuff == null || curseBuff == null)
-            {
-                return false;
-            }
-
-            if (payloadBuff == curseBuff)
-            {
-                return true;
-            }
-
-            try
-            {
-                return payloadBuff.ID == curseBuff.ID;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        private static float ResolveNormalAttackCurseChance(DamageInfo damageInfo)
-        {
-            try
-            {
-                float explicitChance = Mathf.Clamp01(damageInfo.buffChance);
-                if (explicitChance > 0f)
-                {
-                    return explicitChance;
-                }
-            }
-            catch
-            {
-            }
-
-            return 0f;
-        }
-
         private static bool HasCurse(CharacterMainControl character)
         {
             CharacterBuffManager buffMgr = TryGetBuffManager(character);
@@ -423,35 +230,6 @@ namespace BossRush
             }
             catch
             {
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// 通过 DamageReceiver.AddBuff 施加诅咒，兜底普攻 debuff。
-        /// </summary>
-        private static bool TryApplyBuff(Health hurtHealth, CharacterMainControl attacker, int fromWeaponItemId, Buff curseBuff)
-        {
-            if (hurtHealth == null || curseBuff == null)
-            {
-                return false;
-            }
-
-            try
-            {
-                CharacterMainControl targetCharacter = TryGetTargetCharacter(hurtHealth);
-                if (targetCharacter != null)
-                {
-                    targetCharacter.AddBuff(curseBuff, attacker, fromWeaponItemId);
-                    return true;
-                }
-
-                hurtHealth.AddBuff(curseBuff, attacker, fromWeaponItemId);
-                return true;
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.DevLog("[PhantomWitch] [SweatVfx] TryApplyBuff 失败: " + e.Message);
                 return false;
             }
         }
@@ -1013,91 +791,6 @@ namespace BossRush
                 var emission = particleSys.emission;
                 emission.rateOverTime = 0f;
                 particleSys.Stop(false, ParticleSystemStopBehavior.StopEmitting);
-            }
-        }
-
-        private sealed class PhantomWitchCurseHitRetry : MonoBehaviour
-        {
-            private Health targetHealth;
-            private CharacterMainControl attacker;
-            private Buff curseBuff;
-            private int fromWeaponItemId;
-            private float expireTime;
-            private float nextRetryTime;
-            private bool applyIfMissing;
-
-            public void Initialize(Health hurtHealth, CharacterMainControl fromCharacter, int weaponItemId, Buff buff, bool shouldApplyBuff)
-            {
-                targetHealth = hurtHealth;
-                attacker = fromCharacter;
-                curseBuff = buff;
-                fromWeaponItemId = weaponItemId;
-                applyIfMissing |= shouldApplyBuff;
-                expireTime = Time.time + RetryApplyDuration;
-                nextRetryTime = 0f;
-            }
-
-            private void Update()
-            {
-                if (targetHealth == null)
-                {
-                    Destroy(this);
-                    return;
-                }
-
-                if (Time.time < nextRetryTime)
-                {
-                    return;
-                }
-
-                nextRetryTime = Time.time + RetryApplyInterval;
-
-                if (curseBuff == null)
-                {
-                    curseBuff = PhantomWitchAssetManager.GetCurseBuff();
-                    if (curseBuff == null)
-                    {
-                        if (Time.time >= expireTime)
-                        {
-                            Destroy(this);
-                        }
-                        return;
-                    }
-                }
-
-                CharacterMainControl character = TryGetTargetCharacter(targetHealth);
-                if (HasCurse(character))
-                {
-                    if (character != null)
-                    {
-                        TryAttach(character.gameObject);
-                    }
-                    Destroy(this);
-                    return;
-                }
-
-                if (applyIfMissing)
-                {
-                    applyIfMissing = false;
-                    if (TryApplyBuff(targetHealth, attacker, fromWeaponItemId, curseBuff))
-                    {
-                        character = TryGetTargetCharacter(targetHealth);
-                        if (HasCurse(character))
-                        {
-                            if (character != null)
-                            {
-                                TryAttach(character.gameObject);
-                            }
-                            Destroy(this);
-                            return;
-                        }
-                    }
-                }
-
-                if (Time.time >= expireTime)
-                {
-                    Destroy(this);
-                }
             }
         }
 

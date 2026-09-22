@@ -313,6 +313,7 @@ echo(DebugAndTools\F3GameplayValidationSkyIsland.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandRuntimeCases.cs
 echo(DebugAndTools\F3GameplayValidationSkyIslandDrill.cs
+echo(DebugAndTools\F3GameplayValidationAutotestModels.cs
 echo(DebugAndTools\F3GameplayValidationAutotestJudges.cs
 echo(DebugAndTools\F3GameplayValidationAutotest.cs
 echo(DebugAndTools\F3GameplayValidationAutotestActions.cs
@@ -419,6 +420,7 @@ echo(Utilities\OfficialQuests\OfficialQuestComponents.cs
 echo(Utilities\OfficialQuests\OfficialQuestGiverLocator.cs
 echo(Utilities\OfficialQuests\OfficialQuestRuntimeModule.cs
 echo(Config\Config.cs
+echo(Config\BossPoolFactorJson.cs
 echo(Config\ConfigModeG.cs
 echo(Config\NPCSpawnConfig.cs
 echo(Config\LootBlacklistRegistry.cs
@@ -435,6 +437,7 @@ echo(LootAndRewards\LegacyBossLootProbabilityModel.cs
 echo(LootAndRewards\LootAndRewards.cs
 echo(LootAndRewards\LootAndRewardsStaticCacheReset.cs
 echo(LootAndRewards\LootAndRewardsInfiniteHell.cs
+echo(LootAndRewards\InfiniteHellMilestoneDelivery.cs
 echo(LootAndRewards\LootAndRewardsVictoryRewards.cs
 echo(LootAndRewards\LootAndRewardsRandomBossLoot.cs
 echo(LootAndRewards\LootAndRewardsSpecialLoot.cs
@@ -444,6 +447,7 @@ echo(LootAndRewards\ModeEFLootboxTracker.cs
 echo(Interactables\BossRushBuildingInteractableBase.cs
 echo(Interactables\BossRushInteractables.cs
 echo(Interactables\BossRushLootboxInteractables.cs
+echo(Interactables\BossRushReturnInteractable.cs
 echo(ModeD\ModeD.cs
 echo(ModeD\ModeDStaticCacheReset.cs
 echo(ModeD\ModeDRuntimeModule.cs
@@ -666,6 +670,7 @@ echo(Integration\DragonKing\Weapons\DragonFlameMarkTracker.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunConfig.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProfiles.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent.cs
+echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileAgent_HitStage.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunProjectileZones.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime.cs
 echo(Integration\DragonKing\Weapons\DragonKingBossGunRuntime_ProjectilesAndPatches.cs
@@ -885,6 +890,7 @@ echo(Integration\Affinity\Interactables\NPCInteractableBase.cs
 echo(Integration\Affinity\Interactables\NPCGiftInteractable.cs
 echo(Integration\Affinity\Interactables\NPCShopInteractable.cs
 echo(Integration\Affinity\NPCs\GoblinAffinityConfig.cs
+echo(Integration\Affinity\NPCs\GoblinAffinityConfig_LanguageCache.cs
 echo(Integration\Affinity\NPCs\NurseAffinityConfig.cs
 echo(Integration\Affinity\AffinityUIManager.cs
 echo(Integration\Dialogue\DialogueManager.cs
@@ -903,6 +909,7 @@ echo(Achievement\AchievementRuntimeHooks.cs
 echo(Achievement\BossRushAchievementDef.cs
 echo(Achievement\AchievementTracker.cs
 echo(Achievement\BossRushAchievementManager.cs
+echo(Achievement\AchievementRewardJournal.cs
 echo(Achievement\AchievementIconLoader.cs
 echo(Achievement\SteamAchievementPopup.cs
 echo(Achievement\AchievementTriggers.cs

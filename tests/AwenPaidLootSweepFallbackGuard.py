@@ -4,6 +4,7 @@ Guard: paid sweep pending crates must clean up safely while keeping next-sweep e
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SERVICE = Path("Integration/NPCs/Courier/CourierPaidLootSweepService.cs")
@@ -49,7 +50,7 @@ def extract_method(text: str, signature: str) -> str:
 
 
 def main() -> int:
-    service_text = SERVICE.read_text(encoding="utf-8")
+    service_text = clean_source(SERVICE.read_text(encoding="utf-8"))
     courier_text = read_courier_npc_sources()
     tracker_text = TRACKER.read_text(encoding="utf-8")
 
@@ -100,12 +101,19 @@ def main() -> int:
         "CreateStartNextSweepButton(",
         "OnStartNextSweepButtonClicked",
         "开启下次扫箱",
-        "DiscardPendingSweepResultInternal(true, false)",
+        "ReleasePendingSweepResultToPlayer(true, false)",
         "StartNextSweepDelayed(npc)",
     ):
         if required not in service_text:
             return fail("AwenPaidLootSweepFallbackGuard: missing LootView next-sweep button path -> " + required)
 
+    next_sweep = extract_method(service_text, "private static void OnStartNextSweepButtonClicked()")
+    if "ReleasePendingSweepResultToPlayer(true, false)" not in next_sweep or "DiscardPendingSweepResultInternal(" in next_sweep:
+        return fail("AwenPaidLootSweepFallbackGuard: next sweep must return the old crate first")
+    if not (next_sweep.index("ReleasePendingSweepResultToPlayer(true, false)") < next_sweep.index("StartNextSweepDelayed(npc)")):
+        return fail("AwenPaidLootSweepFallbackGuard: next sweep started before delivery")
+    if "if (!TryReturnResultItemsToPlayer(pendingResultInventory)) return;" not in release_method:
+        return fail("AwenPaidLootSweepFallbackGuard: failed delivery must retain the crate owner")
     print("AwenPaidLootSweepFallbackGuard: PASS")
     return 0
 

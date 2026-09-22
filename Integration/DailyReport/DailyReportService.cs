@@ -977,8 +977,11 @@ namespace BossRush
             if (data == null) return false;
             if (DailyReportPersistence.Store(data.Clone()))
             {
-                DailyReportSaveCoordinator.RequestFlush();
-                return true;
+                string error;
+                if (DailyReportSaveCoordinator.RequestFlush(out error)) return true;
+                // 节流/非基地/官方正在保存是正常推迟，硬写失败必须反馈给领取界面。
+                return !DailyReportPersistence.IsStoreFaulted && error != null
+                    && error.StartsWith("flush_deferred_", StringComparison.Ordinal);
             }
             return false;
         }

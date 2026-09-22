@@ -281,8 +281,9 @@ namespace BossRush
                 Vector3 startPos = player.transform.position + forward.normalized * 2f;
 
                 GameObject preview = EntityModelFactory.Create(def.PrefabName, startPos, Quaternion.LookRotation(forward));
-                if (preview == null)
+                if (preview == null || preview.GetComponentInChildren<Renderer>(true) == null)
                 {
+                    if (preview != null) UnityEngine.Object.Destroy(preview);
                     preview = CreateFallbackModeFFortification(type, startPos, Quaternion.LookRotation(forward));
                 }
                 if (preview == null) return false;
@@ -334,6 +335,7 @@ namespace BossRush
         internal void UpdateFortPlacementMode()
         {
             if (!modeFPlacementActive || modeFPlacementPreview == null) return;
+            if (!InputManager.InputActived || IsModeFBountyRadarSuppressedByOverlay()) return;
 
             try
             {
@@ -409,6 +411,7 @@ namespace BossRush
 
         internal void UpdateModeFRepairSelection()
         {
+            if (!InputManager.InputActived || IsModeFBountyRadarSuppressedByOverlay()) return;
             if (!modeFRepairSelectionActive)
             {
                 return;

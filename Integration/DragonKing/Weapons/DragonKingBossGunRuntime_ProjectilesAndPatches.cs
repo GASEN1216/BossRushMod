@@ -311,6 +311,7 @@ namespace BossRush
 
         internal static void RequestFireExplosionEffectWarmup(int desiredPoolSize)
         {
+            if (!IsProjectileWarmupOwnerValid(CharacterMainControl.Main)) return;
             desiredPoolSize = Mathf.Clamp(desiredPoolSize, 0, MaxPooledFireExplosionEffects);
             if (desiredPoolSize <= fireExplosionEffectPool.Count)
             {
@@ -332,7 +333,7 @@ namespace BossRush
             int generation = fireExplosionEffectPoolGeneration;
             try
             {
-                while (generation == fireExplosionEffectPoolGeneration &&
+                while (generation == fireExplosionEffectPoolGeneration && IsProjectileWarmupOwnerValid(CharacterMainControl.Main) &&
                        fireExplosionEffectPool.Count < requestedFireExplosionEffectPoolSize)
                 {
                     FireExplosionEffectHandle effect = CreateFireExplosionEffect();
@@ -375,6 +376,8 @@ namespace BossRush
         internal static void ClearFireExplosionEffectPool()
         {
             fireExplosionEffectPoolGeneration++;
+            fireExplosionEffectWarmupRunning = false;
+            requestedFireExplosionEffectPoolSize = 0;
             while (fireExplosionEffectPool.Count > 0)
             {
                 FireExplosionEffectHandle effect = fireExplosionEffectPool.Pop();
@@ -1128,6 +1131,40 @@ namespace BossRush
                     ModBehaviour.DevLog("[DragonKingBossGun] 覆写详情页口径显示失败: " + e.Message);
                 }
             }
+        }
+    }
+    [HarmonyPatch(typeof(Projectile), "UpdateMoveAndCheck")]
+    internal static class DragonKingBossGunProjectileMovePatch
+    {
+        [HarmonyPrefix]
+        private static bool Prefix(Projectile __instance, out DragonKingBossGunProjectileAgent __state)
+        {
+            __state = __instance != null ? __instance.GetComponent<DragonKingBossGunProjectileAgent>() : null;
+            if (__state == null || !__state.IsActiveForRuntime)
+            {
+                __state = null;
+                return true;
+            }
+
+            if (__state.UsesCustomMovement)
+            {
+                __state.ExecuteCustomMoveAndCheck();
+                return false;
+            }
+
+            __state.OnBeforeBaseMove();
+            return !__state.IsDead;
+        }
+
+        [HarmonyPostfix]
+        private static void Postfix(DragonKingBossGunProjectileAgent __state)
+        {
+            if (__state == null || !__state.IsActiveForRuntime)
+            {
+                return;
+            }
+
+            __state.OnAfterBaseMove();
         }
     }
 }

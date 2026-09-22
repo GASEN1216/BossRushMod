@@ -184,6 +184,8 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator SpawnModeDWaveEnemiesCoroutine(int bossCount, int minionCount)
         {
+            Func<bool> isQueueCurrent = ModeDRuntimeModule.CaptureValidity(this, true);
+            if (!isQueueCurrent()) yield break;
             // 初始化部分（无 yield）
             modeDCurrentWaveEnemies.Clear();
 
@@ -315,6 +317,7 @@ namespace BossRush
             // 注意：这部分不能放在 try-catch 中，因为 C# 不允许在包含 catch 的 try 块中使用 yield
             for (int i = 0; i < reusableSpawnQueue.Count; i++)
             {
+                if (!isQueueCurrent()) yield break;
                 var info = reusableSpawnQueue[i];
                 SpawnModeDEnemy(info.preset, info.position, info.isBoss);
 
@@ -547,6 +550,7 @@ namespace BossRush
         /// </summary>
         private void SpawnModeDEnemy(EnemyPresetInfo preset, Vector3 position, bool isBoss)
         {
+            Func<bool> isSpawnCurrent = ModeDRuntimeModule.CaptureValidity(this, false);
             // 防止跨波迟到敌人污染下一波
             int waveToken = modeDWaveIndex;
 
@@ -556,7 +560,7 @@ namespace BossRush
                 preset,
                 position,
                 isBoss,
-                isActiveCheck: () => modeDActive && modeDWaveIndex == waveToken,
+                isActiveCheck: isSpawnCurrent,
                 onSpawned: (ctx) =>
                 {
                     try
@@ -564,7 +568,7 @@ namespace BossRush
                         CharacterMainControl character = ctx.character;
 
                         // 再次检查波次一致性
-                        if (!modeDActive || modeDWaveIndex != waveToken)
+                        if (!isSpawnCurrent())
                         {
                             UnityEngine.Object.Destroy(character.gameObject);
                             DevLog("[ModeD] 敌人配置完成但波次已变化，销毁敌人");
@@ -644,7 +648,7 @@ namespace BossRush
                         catch { }
 
                         // 再次检查波次一致性
-                        if (!modeDActive || modeDWaveIndex != waveToken)
+                        if (!isSpawnCurrent())
                         {
                             UnityEngine.Object.Destroy(character.gameObject);
                             DevLog("[ModeD] 敌人配置完成但波次已变化，销毁敌人");
@@ -667,14 +671,14 @@ namespace BossRush
                     finally
                     {
                         // 波次一致性守卫：只有当前波的任务才计数
-                        ResolveModeDSpawnCount(waveToken);
+                        if (isSpawnCurrent()) ResolveModeDSpawnCount(waveToken);
                     }
                 },
                 onFailed: () =>
                 {
                     // 生成失败也必须递增 resolved 计数，防止波次卡住
                     DevLog("[ModeD] 敌人生成最终失败，执行兜底结案");
-                    ResolveModeDSpawnCount(waveToken);
+                    if (isSpawnCurrent()) ResolveModeDSpawnCount(waveToken);
                 },
                 waveIndex: modeDWaveIndex
             );
@@ -1101,10 +1105,11 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator ModeDAutoNextWave(float delay, int tokenWave)
         {
+            Func<bool> isAutoNextCurrent = ModeDRuntimeModule.CaptureValidity(this, false);
             if (delay <= 0f)
             {
                 // 立即开波前二次校验
-                if (modeDActive && modeDWaveIndex == tokenWave && modeDWaveCompletePending)
+                if (isAutoNextCurrent() && modeDActive && modeDWaveIndex == tokenWave && modeDWaveCompletePending)
                 {
                     ModeDStartNextWave();
                 }
@@ -1118,6 +1123,7 @@ namespace BossRush
                 // 每帧校验：模式仍激活 + 波次未变 + 仍在等待状态
                 try
                 {
+                    if (!isAutoNextCurrent()) yield break;
                     if (!modeDActive || modeDWaveIndex != tokenWave || !modeDWaveCompletePending)
                     {
                         DevLog("[ModeD] 自动下一波协程已取消（模式/波次状态变化）");
@@ -1133,7 +1139,8 @@ namespace BossRush
             }
 
             // 到时间后二次校验再开波
-            if (modeDActive && modeDWaveIndex == tokenWave && modeDWaveCompletePending)
+            if (!isAutoNextCurrent()) yield break;
+            if (isAutoNextCurrent() && modeDActive && modeDWaveIndex == tokenWave && modeDWaveCompletePending)
             {
                 DevLog("[ModeD] 自动下一波协程触发开波");
                 ModeDStartNextWave();

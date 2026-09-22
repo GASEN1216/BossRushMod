@@ -67,6 +67,7 @@ namespace BossRush
         /// </summary>
         private void ClearDeathWraithState_DeathWraith()
         {
+            deathWraithSpawnGeneration++;
             ClearPendingDeathWraithInfo_DeathWraith();
             pendingDeadBodySpawnContexts.Clear();
             spawningWraithRaidIds.Clear();

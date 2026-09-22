@@ -197,7 +197,7 @@ namespace BossRush
 
             // 检查玩家金钱是否足够支付基础费用
             bool canAfford = playerMoney >= totalCost && playerMoney >= baseCost;
-            reforgeButton.interactable = canAfford;
+            reforgeButton.interactable = canAfford && ReforgeSystem.CanExecuteReforge(selectedItem);
 
             // 如果金钱不足，更新概率显示提示
             if (!canAfford && probabilityText != null)
@@ -205,9 +205,9 @@ namespace BossRush
                 bool usePurification = currentController != null &&
                     ModBehaviour.Instance != null &&
                     ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-                string currencyName = usePurification ? "净化点" : "金钱";
-                string discountInfo = discount > 0 ? string.Format(" ({0:P0}折扣)", discount) : "";
-                probabilityText.text = string.Format("<color=#FF4D4D>{6}不足！\n基础费用: {0}{1}\n投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总{6}: {5}</color>",
+                string currencyName = usePurification ? L10n.T("净化点", "Purification") : L10n.T("金钱", "Money");
+                string discountInfo = discount > 0 ? string.Format(L10n.T(" ({0:P0}折扣)", " ({0:P0} discount)"), discount) : "";
+                probabilityText.text = string.Format(L10n.T("<color=#FF4D4D>{6}不足！\n基础费用: {0}{1}\n投入: {2}\n极性滑块花费: {3}\n所需总额: {4}\n你的当前总{6}: {5}</color>", "<color=#FF4D4D>Not enough {6}!\nBase cost: {0}{1}\nInvestment: {2}\nPolarity cost: {3}\nTotal required: {4}\nYour {6}: {5}</color>"),
                     baseCost, discountInfo, currentMoney, tendencyCost, totalCost, playerMoney, currencyName);
                 probabilityText.color = Color.white;
             }
@@ -224,7 +224,7 @@ namespace BossRush
             {
                 if (selectedItem != null)
                 {
-                    bool canReforge = ReforgeSystem.CanReforge(selectedItem);
+                    bool canReforge = ReforgeSystem.CanExecuteReforge(selectedItem);
                     reforgeButton.gameObject.SetActive(canReforge);
 
                     // 修复按钮下所有文本组件（按钮有两个文本：主文本和InputIndicator中的文本）
@@ -233,7 +233,7 @@ namespace BossRush
                     {
                         if (buttonText != null && (buttonText.text == "分解" || buttonText.text == "Decompose"))
                         {
-                            buttonText.text = "重铸";
+                            buttonText.text = L10n.T("重铸", "Reforge");
                         }
                     }
 
@@ -334,14 +334,14 @@ namespace BossRush
 
             if (selectedItem == null)
             {
-                probabilityText.text = "请选择物品";
+                probabilityText.text = L10n.T("请选择物品", "Select an item");
                 probabilityText.color = Color.gray;
                 return;
             }
 
-            if (!ReforgeSystem.CanReforge(selectedItem))
+            if (!ReforgeSystem.CanExecuteReforge(selectedItem))
             {
-                probabilityText.text = "该物品无法重铸";
+                probabilityText.text = L10n.T("该物品没有未固定的可重铸属性", "This item has no unlocked reforgeable properties.");
                 probabilityText.color = new Color(1f, 0.5f, 0.5f);
                 return;
             }
@@ -380,27 +380,27 @@ namespace BossRush
             // 总计花费: XX
 
             int tendencyCost = GetTendencyCost();
-            string tendencyLine = string.Format("极性费用: {0}\n", tendencyCost);
+            string tendencyLine = string.Format(L10n.T("极性费用: {0}\n", "Polarity cost: {0}\n"), tendencyCost);
             bool usePurification = currentController != null &&
                 ModBehaviour.Instance != null &&
                 ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(currentController);
-            string investLabel = usePurification ? "净化点投入" : "投入";
-            string totalCostLabel = usePurification ? "总计花费(净化点)" : "总计花费";
+            string investLabel = usePurification ? L10n.T("净化点投入", "Purification invested") : L10n.T("投入", "Investment");
+            string totalCostLabel = usePurification ? L10n.T("总计花费(净化点)", "Total cost (Purification)") : L10n.T("总计花费", "Total cost");
 
             float posProb = currentTendencyChance;
             float negProb = 1.0f - currentTendencyChance;
-            string polarityProbLine = string.Format("<color=#00FFFF>负向概率: {0:P0}   正向概率: {1:P0}</color>\n", negProb, posProb);
+            string polarityProbLine = string.Format(L10n.T("<color=#00FFFF>负向概率: {0:P0}   正向概率: {1:P0}</color>\n", "<color=#00FFFF>Negative: {0:P0}   Positive: {1:P0}</color>\n"), negProb, posProb);
 
             int totalCost = currentMoney + tendencyCost;
             string totalCostLine = string.Format("<color=#FFFF00>{0}: {1}</color>", totalCostLabel, totalCost);
 
             probabilityText.text = string.Format(
-                "品质: {0} (系数: {1:F2})\n" +
-                "价值: {2:F0} (系数: {3:F2})\n" +
-                "{11}: {4} (加成: {5:F2})\n" +
+                L10n.T("品质: {0} (系数: {1:F2})\n", "Quality: {0} (factor: {1:F2})\n") +
+                L10n.T("价值: {2:F0} (系数: {3:F2})\n", "Value: {2:F0} (factor: {3:F2})\n") +
+                L10n.T("{11}: {4} (加成: {5:F2})\n", "{11}: {4} (bonus: {5:F2})\n") +
                 "{8}" +
                 "{9}" +
-                "<color={6}>幅度乘数参数: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n" +
+                L10n.T("<color={6}>幅度乘数参数: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n", "<color={6}>Magnitude factor: 0.20×{1:F2}×{3:F2}+{5:F2}={7:P0}</color>\n") +
                 "{10}",
                 rarity, rarityFactor,           // {0}, {1}
                 itemValue, valueFactor,         // {2}, {3}
@@ -424,7 +424,7 @@ namespace BossRush
 
             if (!isReforgeMode) return;
             if (selectedItem == null) return;
-            if (isReforging) return;
+            if (isReforging || !ReforgeSystem.CanExecuteReforge(selectedItem)) return;
 
             int totalCost = currentMoney + GetTendencyCost();
             if (totalCost <= 0 && currentTendencyChance == 0.5f)
@@ -445,6 +445,8 @@ namespace BossRush
             isReforging = true;
 
             bool paidWithPurification = false;
+            bool paidWithGold = false;
+            long goldDebited = 0L;
             bool reforgeCompleted = false;
 
             try
@@ -468,7 +470,14 @@ namespace BossRush
                     else
                     {
                         Cost cost = new Cost((long)totalCost);
-                        paid = EconomyManager.Pay(cost, true, true);
+                        long beforePayment = EconomyManager.Money + EconomyManager.Cash;
+                        try { paid = EconomyManager.Pay(cost, true, true); }
+                        finally
+                        {
+                            // 官方先扣款再通知；通知抛错也必须退回已经扣走的部分。
+                            goldDebited = Math.Max(0L, beforePayment - EconomyManager.Money - EconomyManager.Cash);
+                            paidWithGold = goldDebited > 0L;
+                        }
                     }
 
                     if (!paid)
@@ -481,7 +490,13 @@ namespace BossRush
 
                 // 执行重铸，传入当前的倾向几率
                 var result = ReforgeSystem.Reforge(selectedItem, currentMoney, "player", currentTendencyChance);
-                reforgeCompleted = true;
+                reforgeCompleted = result.Success || result.HasAppliedChanges;
+                if (!result.Success)
+                {
+                    NotificationText.Push(result.ErrorMessage ?? L10n.T("重铸失败", "Reforge failed."));
+                    UpdateUIStateKeepSlider(GetPlayerMoney());
+                    return;
+                }
 
                 // 显示属性变化（现在重铸必定成功）
                 ShowPropertyChanges();
@@ -500,30 +515,26 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                if (ModBehaviour.Instance != null)
-                {
-                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(currentController, totalCost, paidWithPurification && !reforgeCompleted);
-                }
-
-                if (paidWithPurification && !reforgeCompleted)
-                {
-                    try
-                    {
-                        UpdateUIStateKeepSlider(GetPlayerMoney());
-                    }
-                    catch (Exception refreshError)
-                    {
-                        ModBehaviour.DevLog("[ReforgeUI] [WARNING] 重铸失败后刷新净化点 UI 失败: " + refreshError.Message);
-                    }
-
-                    ModBehaviour.DevLog("[ReforgeUI] 重铸异常失败，已回退净化点: " + totalCost);
-                }
-
                 ModBehaviour.DevLog("[ReforgeUI] [ERROR] 重铸失败: " + e.Message);
             }
             finally
             {
-                isReforging = false;
+                try
+                {
+                    if (!reforgeCompleted)
+                    {
+                        if (paidWithPurification && ModBehaviour.Instance != null)
+                            ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(currentController, totalCost, true);
+                        if (paidWithGold) EconomyManager.Add(goldDebited);
+                    }
+                }
+                catch (Exception e) { ModBehaviour.DevLog("[ReforgeUI] 退款通知异常: " + e.Message); }
+                finally
+                {
+                    isReforging = false;
+                    try { if (!reforgeCompleted) UpdateUIStateKeepSlider(GetPlayerMoney()); }
+                    catch (Exception e) { ModBehaviour.DevLog("[ReforgeUI] 退款后刷新失败: " + e.Message); }
+                }
             }
         }
 

@@ -279,7 +279,7 @@ namespace BossRush
             ModeGFateContract.ContractDef second = ModeGFateContract.GetById(preview.contractCandidateIds[1]);
 
             Button firstButton = ZombieModeUIHelper.CreateButton(
-                "Contract_0", st, BuildChoiceLabel(first, true),
+                "Contract_0", st, BuildChoiceLabel(first, false),
                 new Vector2(0.5f, 0.5f), new Vector2(-180f, 18f), new Vector2(330f, 96f),
                 ZombieModeUIHelper.ModalSurfaceColor, 17f, new Vector2(310f, 88f),
                 () => SelectCandidate(0), true);

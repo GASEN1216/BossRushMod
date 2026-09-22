@@ -1,0 +1,40 @@
+using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using ItemStatsSystem;
+using ItemStatsSystem.Stats;
+using UnityEngine;
+namespace BossRush {
+public class CharacterBuffManager { public bool cursed; public bool HasBuff(int id)=>cursed; }
+public class GameObject { }
+public class CharacterMainControl { public static CharacterMainControl Main; public GameObject gameObject=new GameObject(); public CharacterBuffManager manager=new CharacterBuffManager(); public CharacterBuffManager GetBuffManager()=>manager; public void AddBuff(Buff b,CharacterMainControl a,int id){manager.cursed=true;} }
+public class Health { public CharacterMainControl target=new CharacterMainControl(); public CharacterMainControl TryGetCharacter()=>target; public void AddBuff(Buff b,CharacterMainControl a,int id)=>target.AddBuff(b,a,id); }
+public class Buff { public int ID=500043; }
+public struct DamageInfo { public int fromWeaponItemID;public bool isFromBuffOrEffect;public CharacterMainControl fromCharacter;public Buff buff;public float buffChance; }
+public static class PhantomWitchScytheIds {public const int WeaponTypeId=500044;}
+public static class PhantomWitchConfig {public const int CurseBuffID=500043;}
+public static class PhantomWitchAssetManager {public static Buff curse=new Buff();public static Buff GetCurseBuff()=>curse;}
+public static class ModBehaviour {public static void DevLog(string t){} }
+public static class ProbeRandom {public static float Value;}
+public class ProductionHookProbe {
+ private static void TryAttach(GameObject obj){}
+ private static void EnqueueRetry(Health h,CharacterMainControl c,int i,Buff b,bool apply){throw new Exception("unexpected retry fixture path");}
+/* CURSE_METHODS */
+ public static void Main(){
+  foreach(float baseSpeed in new[]{2f,3f,8f})foreach(int layers in new[]{1,2,3}){
+   var speed=new Stat{BaseValue=baseSpeed};speed.AddModifier(new Modifier(/* CURSE_MODIFIER */,/* CURSE_SLOW */*layers,new object()));
+   if(Math.Abs(speed.Value-baseSpeed*(1f-0.3f*layers))>0.00001f)throw new Exception("curse percentage mismatch");
+  }
+  CharacterMainControl.Main=new CharacterMainControl();int hits=0;var combos=new List<object>();
+  foreach(float official in new[]{0.25f,0.75f}) foreach(float fallback in new[]{0.25f,0.75f}){
+   var h=new Health();var damageInfo=new DamageInfo{fromWeaponItemID=500044,fromCharacter=CharacterMainControl.Main,buff=PhantomWitchAssetManager.curse,buffChance=0.5f};
+   // Same ordering and exact predicate as official Health.Hurt lines 312-314; RNG is the fixture seam.
+   if(damageInfo.buff!=null && official<damageInfo.buffChance)h.AddBuff(damageInfo.buff,damageInfo.fromCharacter,damageInfo.fromWeaponItemID);
+   ProbeRandom.Value=fallback;OnGlobalHurt(h,damageInfo);if(h.target.manager.cursed)hits++;
+   combos.Add(new{official,fallback,cursed=h.target.manager.cursed});
+  }
+  if(hits!=2)throw new Exception("curse chance must be one official roll, 2/4");
+  Console.WriteLine(JsonSerializer.Serialize(new{probe="production OnGlobalHurt + official order",normalAttackChance=0.5,appliedCombinations=hits,totalCombinations=4,combos}));
+  foreach(int roots in new[]{9,10}){var detail=PhantomWitchPerformancePolicy.ResolveFxDetailLevel(roots,6,10);Console.WriteLine(JsonSerializer.Serialize(new{probe="production PerformancePolicy",roots,detail=detail.ToString(),standardSkipped=PhantomWitchPerformancePolicy.ShouldSkipEffect(detail,roots,6,10,PhantomWitchFxEffectImportance.Standard),criticalSkipped=PhantomWitchPerformancePolicy.ShouldSkipEffect(detail,roots,6,10,PhantomWitchFxEffectImportance.Critical)}));}
+ }
+}}

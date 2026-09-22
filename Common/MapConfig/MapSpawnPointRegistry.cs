@@ -306,6 +306,10 @@ namespace BossRush
                 return null;
             }
 
+            BossRushJsonValue jsonRoot;
+            string parseError;
+            if (!BossRushJsonParser.TryParse(json, out jsonRoot, out parseError) || jsonRoot.Kind != BossRushJsonKind.Object) return null;
+
             // 提取基本字符串字段
             string sceneName = ExtractStringValue(json, "sceneName");
             string sceneID = ExtractStringValue(json, "sceneID");
@@ -318,21 +322,21 @@ namespace BossRush
             int beaconIndex = ExtractIntValue(json, "beaconIndex");
 
             // 提取 Vector3 数组字段
-            Vector3[] spawnPoints = ExtractVector3Array(json, "spawnPoints");
-            Vector3[] modeESpawnPoints = ExtractVector3Array(json, "modeESpawnPoints");
-            Vector3[] modeHSpawnPoints = ExtractVector3Array(json, "modeHSpawnPoints");
+            Vector3[] spawnPoints = ExtractVector3Array(jsonRoot, "spawnPoints");
+            Vector3[] modeESpawnPoints = ExtractVector3Array(jsonRoot, "modeESpawnPoints");
+            Vector3[] modeHSpawnPoints = ExtractVector3Array(jsonRoot, "modeHSpawnPoints");
 
             // 提取可空 Vector3 字段
-            Vector3? customSpawnPos = ExtractNullableVector3(json, "customSpawnPos");
-            Vector3? defaultSignPos = ExtractNullableVector3(json, "defaultSignPos");
-            Vector3? modeEPlayerSpawnPos = ExtractNullableVector3(json, "modeEPlayerSpawnPos");
-            Vector3? modeHStagingPos = ExtractNullableVector3(json, "modeHStagingPos");
-            Vector3? modeHSpectatorPos = ExtractNullableVector3(json, "modeHSpectatorPos");
-            Vector3? modeHPlayerSpawnPos = ExtractNullableVector3(json, "modeHPlayerSpawnPos");
-            Vector3? modeHExitPos = ExtractNullableVector3(json, "modeHExitPos");
+            Vector3? customSpawnPos = ExtractNullableVector3(jsonRoot, "customSpawnPos");
+            Vector3? defaultSignPos = ExtractNullableVector3(jsonRoot, "defaultSignPos");
+            Vector3? modeEPlayerSpawnPos = ExtractNullableVector3(jsonRoot, "modeEPlayerSpawnPos");
+            Vector3? modeHStagingPos = ExtractNullableVector3(jsonRoot, "modeHStagingPos");
+            Vector3? modeHSpectatorPos = ExtractNullableVector3(jsonRoot, "modeHSpectatorPos");
+            Vector3? modeHPlayerSpawnPos = ExtractNullableVector3(jsonRoot, "modeHPlayerSpawnPos");
+            Vector3? modeHExitPos = ExtractNullableVector3(jsonRoot, "modeHExitPos");
 
             // 提取 mapNorth（必填，默认使用 DEMO 竞技场北方向量）
-            Vector3? mapNorthNullable = ExtractNullableVector3(json, "mapNorth");
+            Vector3? mapNorthNullable = ExtractNullableVector3(jsonRoot, "mapNorth");
             Vector3 mapNorth = mapNorthNullable.HasValue
                 ? mapNorthNullable.Value
                 : new Vector3(-0.959f, 0f, 0.284f);
@@ -616,157 +620,39 @@ namespace BossRush
         /// 从 JSON 中提取可空 Vector3 值
         /// 格式: [x, y, z] 或 null
         /// </summary>
-        private static Vector3? ExtractNullableVector3(string json, string key)
+        private static Vector3? ExtractNullableVector3(BossRushJsonValue root, string key)
         {
-            string pattern = "\"" + key + "\"";
-            int keyPos = json.IndexOf(pattern, StringComparison.Ordinal);
-            if (keyPos < 0) return null;
-
-            int colonPos = json.IndexOf(':', keyPos + pattern.Length);
-            if (colonPos < 0) return null;
-
-            int pos = colonPos + 1;
-            while (pos < json.Length && char.IsWhiteSpace(json[pos])) pos++;
-
-            if (pos >= json.Length) return null;
-
-            // 检查 null
-            if (pos + 4 <= json.Length && json.Substring(pos, 4) == "null")
-            {
-                return null;
-            }
-
-            // 期望 '['
-            if (json[pos] != '[') return null;
-            pos++;
-
-            // 解析三个浮点数
-            float x = ParseNextFloat(json, ref pos);
-            SkipToNextValue(json, ref pos);
-            float y = ParseNextFloat(json, ref pos);
-            SkipToNextValue(json, ref pos);
-            float z = ParseNextFloat(json, ref pos);
-
-            return new Vector3(x, y, z);
+            BossRushJsonValue point = root.GetProperty(key);
+            Vector3? value = ReadVector3(point);
+            if (!value.HasValue && point != null && point.Kind != BossRushJsonKind.Null)
+                ModBehaviour.DevLog("[MapSpawnPointRegistry] [WARNING] 无效坐标，使用默认落点: " + key);
+            return value;
         }
 
-        /// <summary>
-        /// 从 JSON 中提取 Vector3 数组
-        /// 格式: [[x,y,z], [x,y,z], ...] 或 null
-        /// </summary>
-        private static Vector3[] ExtractVector3Array(string json, string key)
+        private static Vector3[] ExtractVector3Array(BossRushJsonValue root, string key)
         {
-            string pattern = "\"" + key + "\"";
-            int keyPos = json.IndexOf(pattern, StringComparison.Ordinal);
-            if (keyPos < 0) return null;
-
-            int colonPos = json.IndexOf(':', keyPos + pattern.Length);
-            if (colonPos < 0) return null;
-
-            int pos = colonPos + 1;
-            while (pos < json.Length && char.IsWhiteSpace(json[pos])) pos++;
-
-            if (pos >= json.Length) return null;
-
-            // 检查 null
-            if (pos + 4 <= json.Length && json.Substring(pos, 4) == "null")
-            {
-                return null;
-            }
-
-            // 期望外层 '['
-            if (json[pos] != '[') return null;
-            pos++;
-
+            List<BossRushJsonValue> points;
+            if (!root.TryGetArray(key, out points) || points.Count == 0) return null;
             var result = new List<Vector3>();
-
-            while (pos < json.Length)
+            foreach (BossRushJsonValue point in points)
             {
-                // 跳过空白和逗号
-                while (pos < json.Length && (char.IsWhiteSpace(json[pos]) || json[pos] == ',')) pos++;
-
-                if (pos >= json.Length) break;
-
-                // 检查外层数组结束
-                if (json[pos] == ']') break;
-
-                // 期望内层 '['
-                if (json[pos] != '[')
-                {
-                    // 跳过非法字符
-                    pos++;
-                    continue;
-                }
-                pos++;
-
-                // 解析三个浮点数
-                float x = ParseNextFloat(json, ref pos);
-                SkipToNextValue(json, ref pos);
-                float y = ParseNextFloat(json, ref pos);
-                SkipToNextValue(json, ref pos);
-                float z = ParseNextFloat(json, ref pos);
-
-                result.Add(new Vector3(x, y, z));
-
-                // 跳到内层 ']'
-                while (pos < json.Length && json[pos] != ']') pos++;
-                if (pos < json.Length) pos++; // 跳过 ']'
+                Vector3? value = ReadVector3(point);
+                // 不把坏分量默认为世界原点；整组无效会走现有地图校验/后备。
+                if (!value.HasValue) return null;
+                result.Add(value.Value);
             }
-
-            return result.Count > 0 ? result.ToArray() : null;
+            return result.ToArray();
         }
 
-        /// <summary>
-        /// 从当前位置解析下一个浮点数
-        /// </summary>
-        private static float ParseNextFloat(string json, ref int pos)
+        private static Vector3? ReadVector3(BossRushJsonValue point)
         {
-            // 跳过空白
-            while (pos < json.Length && char.IsWhiteSpace(json[pos])) pos++;
-
-            int start = pos;
-
-            // 负号
-            if (pos < json.Length && json[pos] == '-') pos++;
-
-            // 整数部分
-            while (pos < json.Length && char.IsDigit(json[pos])) pos++;
-
-            // 小数部分
-            if (pos < json.Length && json[pos] == '.')
-            {
-                pos++;
-                while (pos < json.Length && char.IsDigit(json[pos])) pos++;
-            }
-
-            // 科学计数法
-            if (pos < json.Length && (json[pos] == 'e' || json[pos] == 'E'))
-            {
-                pos++;
-                if (pos < json.Length && (json[pos] == '+' || json[pos] == '-')) pos++;
-                while (pos < json.Length && char.IsDigit(json[pos])) pos++;
-            }
-
-            if (pos == start) return 0f;
-
-            float result;
-            if (float.TryParse(
-                json.Substring(start, pos - start),
-                NumberStyles.Float,
-                CultureInfo.InvariantCulture,
-                out result))
-            {
-                return result;
-            }
-            return 0f;
-        }
-
-        /// <summary>
-        /// 跳过逗号和空白到下一个值
-        /// </summary>
-        private static void SkipToNextValue(string json, ref int pos)
-        {
-            while (pos < json.Length && (char.IsWhiteSpace(json[pos]) || json[pos] == ',')) pos++;
+            if (point == null || point.Kind != BossRushJsonKind.Array ||
+                point.Items == null || point.Items.Count != 3) return null;
+            float x = point.Items[0] == null ? float.NaN : point.Items[0].AsFloat(float.NaN);
+            float y = point.Items[1] == null ? float.NaN : point.Items[1].AsFloat(float.NaN);
+            float z = point.Items[2] == null ? float.NaN : point.Items[2].AsFloat(float.NaN);
+            if (float.IsNaN(x) || float.IsNaN(y) || float.IsNaN(z)) return null;
+            return new Vector3(x, y, z);
         }
 
         #endregion

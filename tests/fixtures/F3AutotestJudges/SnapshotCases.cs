@@ -17,6 +17,7 @@ internal static partial class Program
         else if (a.Money != b.Money) diff = "money";
         else if (a.Language != b.Language) diff = "language";
         else if (a.ForceNight != b.ForceNight) diff = "forceNight";
+        else if (a.BufferCountsIncluded != b.BufferCountsIncluded) diff = "bufferCountsIncluded";
         else if (a.TimeScale != b.TimeScale) diff = "timeScale " + a.TimeScale.ToString("R") + "!=" + b.TimeScale.ToString("R");
         else if (a.OfficialUnlocked.Count != b.OfficialUnlocked.Count) diff = "officialUnlocked.count";
         else if (a.Items.Count != b.Items.Count) diff = "items.count";
@@ -45,7 +46,7 @@ internal static partial class Program
         {
             RunId = "autotest-20260914T101500Z", Slot = 7, RawExists = true,
             Raw = "{\"schemaVersion\":1,\"说明\":\"中文\\\"引号\\\"\"}\n第二行\t制表\\反斜杠 \"裸引号\" {}[]",
-            Money = 5000000000L, Language = "ChineseSimplified", ForceNight = true, TimeScale = 0.37f
+            Money = 5000000000L, Language = "ChineseSimplified", ForceNight = true, TimeScale = 0.37f, BufferCountsIncluded = true
         };
         full.OfficialUnlocked.AddRange(new[] { "SkyIsland_Note_Search_S1", "SkyIsland_Note_Letter_01", "带中文与\"引号\"的键" });
         full.Items[500069] = 1;
@@ -65,6 +66,9 @@ internal static partial class Program
         Check(!SameSnapshot(full, tampered, out diff) && diff == "money", "red: field comparison notices a changed field");
 
         string encoded = F3AutotestJudges.EncodeSnapshot(full);
+        Check(F3AutotestJudges.DecodeSnapshot(encoded).BufferCountsIncluded, "new snapshot preserves complete Buffer counting contract");
+        Check(!F3AutotestJudges.DecodeSnapshot(encoded.Replace(",\"bufferCountsIncluded\":true", "")).BufferCountsIncluded,
+            "legacy snapshot defaults to uncounted Buffer and cannot authorize deleting unknown old items");
         Check(encoded.StartsWith("{\"version\":1,", StringComparison.Ordinal), "snapshot starts with version 1");
         Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":1,", "{\"version\":2,")) == null, "red: snapshot version 2 is rejected");
         Check(F3AutotestJudges.DecodeSnapshot(encoded.Replace("{\"version\":1,", "{")) == null, "red: snapshot without version is rejected");

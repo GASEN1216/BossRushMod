@@ -178,7 +178,9 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    if (item != null) { try { item.DestroyTree(); } catch { /* 单件清理失败不影响其余物品 */ } }
+                    if (item != null && item.InInventory == box.Inventory) { added++; continue; }
+                    if (item != null && item.InInventory == null && item.PluggedIntoSlot == null)
+                    { try { item.DestroyTree(); } catch { /* 只清理未交付的物品 */ } }
                     Debug.LogWarning("[SkyIslandCrate] 物品 " + typeId + " 装箱失败：" + e.Message);
                 }
             }
@@ -249,13 +251,13 @@ namespace BossRush
             while (added < count)
             {
                 Item item = null;
+                int stack = 1;
                 try
                 {
                     // 先问 prefab：缺资源时 InstantiateSync 给的空壳带着同一个 TypeID，回读拦不住它。
                     if (ItemAssetsCollection.GetPrefab(typeId) == null) throw new InvalidOperationException("物品资源缺失");
                     item = ItemAssetsCollection.InstantiateSync(typeId);
                     if (item == null || item.TypeID != typeId) throw new InvalidOperationException("物品实例无效");
-                    int stack = 1;
                     if (item.Stackable)
                     {
                         stack = Mathf.Clamp(count - added, 1, Mathf.Max(1, item.MaxStackCount));
@@ -268,7 +270,9 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
-                    if (item != null) { try { item.DestroyTree(); } catch { /* 单件清理失败不影响其余物品 */ } }
+                    if (item != null && item.InInventory == box.Inventory) { added += stack; continue; }
+                    if (item != null && item.InInventory == null && item.PluggedIntoSlot == null)
+                    { try { item.DestroyTree(); } catch { /* 只清理未交付的物品 */ } }
                     Debug.LogWarning("[SkyIslandCrate] 物品 " + typeId + " 装箱失败：" + e.Message);
                     break;
                 }

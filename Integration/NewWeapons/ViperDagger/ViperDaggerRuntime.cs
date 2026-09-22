@@ -85,7 +85,7 @@ namespace BossRush
         private static void OnHurt(Health targetHealth, DamageInfo damageInfo)
         {
             // 早期退出：检查是否是玩家用毒蛇匕首造成的伤害
-            if (damageInfo.fromWeaponItemID != NewWeaponIds.ViperDaggerTypeId) return;
+            if (damageInfo.fromWeaponItemID != NewWeaponIds.ViperDaggerTypeId || damageInfo.isFromBuffOrEffect) return;
 
             // 检查受击目标。致死那一击官方先发 OnDead 再发 OnHurt，IsDead 已为 true，
             // 在这里被挡掉——死人不该再吃一层毒。

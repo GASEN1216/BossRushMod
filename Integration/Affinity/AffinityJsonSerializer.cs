@@ -24,18 +24,18 @@ namespace BossRush
 
         public static bool Deserialize(string json, Dictionary<string, AffinityData> dataMap)
         {
-            if (!SimpleJsonHelper.FindArrayBounds(json, out int arrayStart, out int arrayEnd))
-                return false;
-
-            SimpleJsonHelper.ForEachObject(json, arrayStart, arrayEnd, (j, start, end) =>
+            BossRushJsonValue root = BossRushJsonParser.ParseOrNull(json);
+            List<BossRushJsonValue> entries;
+            if (root == null || !root.TryGetArray("npcDataList", out entries)) return false;
+            var candidate = new Dictionary<string, AffinityData>();
+            foreach (var entry in entries)
             {
-                var data = ParseAffinityData(j, start, end);
-                if (data != null && !string.IsNullOrEmpty(data.npcId))
-                {
-                    dataMap[data.npcId] = data;
-                }
-            });
-
+                var data = ParseAffinityData(entry);
+                if (data == null || string.IsNullOrEmpty(data.npcId) || candidate.ContainsKey(data.npcId))
+                    return false;
+                candidate.Add(data.npcId, data);
+            }
+            foreach (var entry in candidate) dataMap[entry.Key] = entry.Value;
             return true;
         }
 
@@ -62,27 +62,44 @@ namespace BossRush
             sb.Append('}');
         }
 
-        private static AffinityData ParseAffinityData(string json, int start, int end)
+        private static AffinityData ParseAffinityData(BossRushJsonValue entry)
         {
+            if (entry == null || entry.Kind != BossRushJsonKind.Object) return null;
+            // 可选旧字段保持默认值；已声明却损坏的字段拒收整份记录。
+            foreach (string key in new[] { "points", "lastGiftDay", "lastGiftReaction", "lastChatDay", "cheatingIncidentCount", "lastDecayCheckDay" })
+            {
+                int value;
+                if (entry.GetProperty(key) != null && !entry.TryGetInt(key, out value)) return null;
+            }
+            foreach (string key in new[] { "hasMet", "hasTriggeredStory5", "hasTriggeredStory10", "isMarriedToPlayer", "isFollowingPlayer", "hasPendingCheatingRebuke" })
+            {
+                bool value;
+                if (entry.GetProperty(key) != null && !entry.TryGetBool(key, out value)) return null;
+            }
+            foreach (string key in new[] { "npcId", "interactionHistoryDays", "triggeredEventKeys", "claimedRewardKeys", "marriageDateText" })
+            {
+                string value;
+                if (entry.GetProperty(key) != null && !entry.TryGetString(key, out value)) return null;
+            }
             return new AffinityData
             {
-                npcId = SimpleJsonHelper.ExtractString(json, "npcId", start, end),
-                points = SimpleJsonHelper.ExtractInt(json, "points", start, end),
-                lastGiftDay = SimpleJsonHelper.ExtractInt(json, "lastGiftDay", start, end),
-                lastGiftReaction = SimpleJsonHelper.ExtractInt(json, "lastGiftReaction", start, end),
-                lastChatDay = SimpleJsonHelper.ExtractInt(json, "lastChatDay", start, end),
-                interactionHistoryDays = SimpleJsonHelper.ExtractString(json, "interactionHistoryDays", start, end),
-                hasMet = SimpleJsonHelper.ExtractBool(json, "hasMet", start, end),
-                hasTriggeredStory5 = SimpleJsonHelper.ExtractBool(json, "hasTriggeredStory5", start, end),
-                hasTriggeredStory10 = SimpleJsonHelper.ExtractBool(json, "hasTriggeredStory10", start, end),
-                triggeredEventKeys = SimpleJsonHelper.ExtractString(json, "triggeredEventKeys", start, end),
-                claimedRewardKeys = SimpleJsonHelper.ExtractString(json, "claimedRewardKeys", start, end),
-                isMarriedToPlayer = SimpleJsonHelper.ExtractBool(json, "isMarriedToPlayer", start, end),
-                isFollowingPlayer = SimpleJsonHelper.ExtractBool(json, "isFollowingPlayer", start, end),
-                marriageDateText = SimpleJsonHelper.ExtractString(json, "marriageDateText", start, end),
-                cheatingIncidentCount = SimpleJsonHelper.ExtractInt(json, "cheatingIncidentCount", start, end),
-                hasPendingCheatingRebuke = SimpleJsonHelper.ExtractBool(json, "hasPendingCheatingRebuke", start, end),
-                lastDecayCheckDay = SimpleJsonHelper.ExtractInt(json, "lastDecayCheckDay", start, end)
+                npcId = entry.GetString("npcId", null),
+                points = entry.GetInt("points", 0),
+                lastGiftDay = entry.GetInt("lastGiftDay", -1),
+                lastGiftReaction = entry.GetInt("lastGiftReaction", 0),
+                lastChatDay = entry.GetInt("lastChatDay", -1),
+                interactionHistoryDays = entry.GetString("interactionHistoryDays", string.Empty),
+                hasMet = entry.GetBool("hasMet", false),
+                hasTriggeredStory5 = entry.GetBool("hasTriggeredStory5", false),
+                hasTriggeredStory10 = entry.GetBool("hasTriggeredStory10", false),
+                triggeredEventKeys = entry.GetString("triggeredEventKeys", string.Empty),
+                claimedRewardKeys = entry.GetString("claimedRewardKeys", string.Empty),
+                isMarriedToPlayer = entry.GetBool("isMarriedToPlayer", false),
+                isFollowingPlayer = entry.GetBool("isFollowingPlayer", false),
+                marriageDateText = entry.GetString("marriageDateText", string.Empty),
+                cheatingIncidentCount = entry.GetInt("cheatingIncidentCount", 0),
+                hasPendingCheatingRebuke = entry.GetBool("hasPendingCheatingRebuke", false),
+                lastDecayCheckDay = entry.GetInt("lastDecayCheckDay", -1)
             };
         }
     }

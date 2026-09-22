@@ -13,6 +13,41 @@ namespace BossRush
 {
     public partial class ModBehaviour : Duckov.Modding.ModBehaviour
     {
+        /// <summary>设置商人生命值为 999999，防止被误杀</summary>
+        private void SetModeEMerchantHealth(CharacterMainControl character)
+        {
+            try
+            {
+                // 通过 Stat 系统添加生命值修饰符
+                Item characterItem = character.GetComponent<Item>();
+                if (characterItem != null)
+                {
+                    Stat maxHealthStat = characterItem.GetStat("MaxHealth");
+                    if (maxHealthStat != null)
+                    {
+                        // 添加大量生命值
+                        float delta = 999999f - maxHealthStat.Value;
+                        if (delta > 0)
+                        {
+                            Modifier mod = new Modifier(ModifierType.Add, delta, this);
+                            maxHealthStat.AddModifier(mod);
+                        }
+                    }
+                }
+
+                // 同步当前血量到最大值
+                if (character.Health != null)
+                {
+                    character.Health.SetHealth(character.Health.MaxHealth);
+                    DevLog("[ModeE] 商人生命值已设置: " + character.Health.MaxHealth);
+                }
+            }
+            catch (Exception e)
+            {
+                DevLog("[ModeE] [WARNING] 设置商人生命值失败: " + e.Message);
+            }
+        }
+
         #region Mode E 敌人死亡与动态缩放
 
         private sealed class ModeEEnemyScalingState
@@ -325,7 +360,7 @@ namespace BossRush
                 }
 
                 float totalBonusPercent = modeEPlayerLastHitKillCount * 0.1f;
-                string bubbleText = "生命/伤害+0.1%，总加成" +
+                string bubbleText = L10n.T("生命/伤害+0.1%，总加成", "Health/Damage +0.1%, total bonus ") +
                     totalBonusPercent.ToString("F1", CultureInfo.InvariantCulture) + "%";
 
                 DialogueBubblesManager.Show(bubbleText, player.transform, 2.5f, false, false, -1f, 3f);

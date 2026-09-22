@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // AffinityManager.cs - 好感度管理器
 // ============================================================================
 // 模块说明：
@@ -76,6 +76,10 @@ namespace BossRush
         /// <summary>数据是否有变更（脏标记）</summary>
         private static bool isDirty = false;
 
+        // 已存在的存档无法读取时保持写屏障，只有再次成功 Load 才解除。
+        private static bool loadWriteBlocked;
+        public static bool CanWrite { get { return !loadWriteBlocked; } }
+
         /// <summary>上次保存时间</summary>
         private static float lastSaveTime = 0f;
 
@@ -142,9 +146,9 @@ namespace BossRush
             // 在 Mod 卸载时强制写入，确保数据不会因游戏关闭而丢失
             try
             {
-                SaveImmediate();
+                if (CanWrite) SaveImmediate();
                 // 强制将缓存写入磁盘文件（不更新保存时间戳）
-                Saves.SavesSystem.SaveFile(false);
+                if (CanWrite) Saves.SavesSystem.SaveFile(false);
                 ModBehaviour.DevLog("[Affinity] 好感度数据已强制写入磁盘");
             }
             catch (System.Exception e)
@@ -170,6 +174,7 @@ namespace BossRush
         /// </summary>
         private static void OnCollectSaveData()
         {
+            if (!CanWrite) return;
             SaveImmediate();
 
             // 强制写入磁盘，确保返回主菜单再进入存档时数据不丢失
@@ -347,6 +352,7 @@ namespace BossRush
         /// </summary>
         public static void AddPoints(string npcId, int amount)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             // 确保数据存在
@@ -387,6 +393,7 @@ namespace BossRush
         /// </summary>
         public static void SetPoints(string npcId, int points)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             // 确保数据存在
@@ -517,6 +524,7 @@ namespace BossRush
         /// </summary>
         public static void SetLastGiftDay(string npcId, int day)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -548,6 +556,7 @@ namespace BossRush
         /// <param name="reaction">0=普通, 1=喜欢, -1=不喜欢</param>
         public static void SetLastGiftReaction(string npcId, int reaction)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -576,6 +585,7 @@ namespace BossRush
         /// </summary>
         public static void SetLastChatDay(string npcId, int day)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -698,6 +708,7 @@ namespace BossRush
         /// </summary>
         public static void MarkMet(string npcId)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -745,6 +756,7 @@ namespace BossRush
         /// </summary>
         public static void MarkStory5Triggered(string npcId)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -777,6 +789,7 @@ namespace BossRush
         /// </summary>
         public static void MarkStory10Triggered(string npcId)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -821,6 +834,7 @@ namespace BossRush
 
         public static bool MarkMarriedToPlayer(string npcId, string marriageDateText)
         {
+            if (!CanWrite) return false;
             if (string.IsNullOrEmpty(npcId)) return false;
 
             AffinityData data = GetOrCreateAffinityData(npcId);
@@ -858,6 +872,7 @@ namespace BossRush
 
         public static bool SetSpouseFollowingPlayer(string npcId, bool isFollowing)
         {
+            if (!CanWrite) return false;
             if (string.IsNullOrEmpty(npcId)) return false;
 
             AffinityData data = GetOrCreateAffinityData(npcId);
@@ -885,6 +900,7 @@ namespace BossRush
 
         public static bool DivorceFromPlayer(string npcId, bool resetAffinityToZero = true)
         {
+            if (!CanWrite) return false;
             if (string.IsNullOrEmpty(npcId)) return false;
             if (!npcDataMap.TryGetValue(npcId, out AffinityData data) || data == null || !data.isMarriedToPlayer)
             {
@@ -912,6 +928,7 @@ namespace BossRush
 
         public static void RecordCheatingIncidentForSpouse(string spouseNpcId)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(spouseNpcId)) return;
 
             AffinityData data = GetOrCreateAffinityData(spouseNpcId);
@@ -928,6 +945,7 @@ namespace BossRush
         public static bool TryConsumePendingCheatingRebuke(string spouseNpcId, out int cheatingIncidentCount)
         {
             cheatingIncidentCount = 0;
+            if (!CanWrite) return false;
             if (string.IsNullOrEmpty(spouseNpcId)) return false;
 
             if (!npcDataMap.TryGetValue(spouseNpcId, out AffinityData data) || data == null)
@@ -966,6 +984,7 @@ namespace BossRush
 
         public static void MarkStoryTriggered(string npcId, int storyLevel)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (storyLevel == 5)
@@ -988,6 +1007,7 @@ namespace BossRush
 
         public static void ResetStoryTriggers(string npcId)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             AffinityData data = GetOrCreateAffinityData(npcId);
@@ -1011,6 +1031,7 @@ namespace BossRush
 
         public static void MarkRewardClaimed(string npcId, string rewardKey)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId) || string.IsNullOrEmpty(rewardKey)) return;
 
             AffinityData data = GetOrCreateAffinityData(npcId);

@@ -107,6 +107,15 @@ Mode G 冻结 key：
   独立出击地图仅在会话确认无战斗时经共享 coordinator 保存；离岛推迟由 `SkyIslandStorySaveRecovery` 保留 owner 重试。
   入口在同槽恢复 owner 尚未结束时不得创建第二个 store；换槽、同槽删档必须使旧会话失效。
 
+成就现金领奖补偿（2026-09-22，`SCHEMA+ / COMPAT`，修 `CR-2026-09-21-007`）：
+
+- `BossRush_AchievementCashIntent_v1`：全局字符串，空值表示无待结清领奖；非空采用 `1|slot|achievementId`，先成功落盘才允许发钱。其他槽不能接管未结清意向。
+- `BossRush_AchievementCashReceipts_v1`：当前槽 JSON，`schemaVersion=1`，`receipts` 为已发现金的成就 ID 数组；缺键即空，未知版本、坏数组或重复 ID 建立写屏障。
+
+`AchievementRewardJournal` 复用共享槽位 store 与保存协调器。现金快照与本槽收据同批持久化后才提交既有全局领奖标记，最后清意向。物理保存失败可在原槽重试，不重复到账；全局标记已成功但清意向失败时按已领事实补清。既有成就 ID、全局解锁/领取 key 与奖金不变。天空岛任务现金同样先确认实际到账，再把 `EconomyData` 快照与交付旗标交给同一存档批次；不得恢复为先交付旗标、后无保证发钱。
+
+Dev 专用测试档的 `BossRush_Validation_AutotestSnapshot_v1` 保持 version=1，2026-09-22 增加可选布尔 `bufferCountsIncluded`（SCHEMA+）。新快照为 true，物品数量包括背包、仓库和官方收件箱 Buffer；缺字段视为 false。旧快照遇到相关 Buffer 物品时无法恢复测试前基线，必须保留恢复键并报告 `legacy_snapshot_buffer_baseline_missing`，不能按零基线删物。新快照先回收增量、核对三处总数并采集全部容器，成功后才清恢复键；任一读取或保存失败都保留恢复入口。
+
 末日丧尸模式入场欠账冻结 key（2026-09-12，`SCHEMA+`，修 `CR-2026-09-11-019`）：
 
 - `BossRush_ZombieMode_RefundDebt_Cash` — `long`，入场回滚时退不出去的现金总额。

@@ -33,6 +33,7 @@ namespace BossRush
                 // Mode G 消费点（规格 §20 第 18 条）：传播 PreserveLinkedKillAttribution 至控制器，
                 // 孩儿护我联动死亡的击杀来源归因给玩家；Legacy 路径开关默认 false 不受影响。
                 controller.ModeGPreserveLinkedKillAttribution = ctx.PreserveLinkedKillAttribution;
+                controller.ModeGChildSpawnContext = ctx;
                 CharacterMainControl capturedCharacter = character;
                 DragonKingAbilityController capturedController = controller;
                 bool activated = false;

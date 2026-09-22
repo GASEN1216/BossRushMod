@@ -163,11 +163,16 @@ namespace BossRush
             bool deferActivationUntilNextFrame = false,
             PhantomWitchDeathPresentation deathPresentation = PhantomWitchDeathPresentation.Standard,
             float extraModelScale = 1f,
-            bool isNonWaveSpawn = false)
+            bool isNonWaveSpawn = false,
+            Func<bool> isActiveCheck = null)
         {
             CharacterMainControl character = null;
             PhantomWitchAbilityController abilities = null;
             bool assetReferenceAdded = false;
+            int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            Func<bool> isCurrent = () => this != null && Instance == this &&
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
+                (isActiveCheck == null || isActiveCheck());
 
             try
             {
@@ -179,7 +184,7 @@ namespace BossRush
                 if (basePreset == null)
                 {
                     DevLog("[PhantomWitch] [ERROR] 未找到基础敌人预设");
-                    if (notifyBossRushOnFailure)
+                    if (notifyBossRushOnFailure && isCurrent())
                     {
                         NotifyPhantomWitchSpawnFailed();
                     }
@@ -192,11 +197,12 @@ namespace BossRush
                 Vector3 dir = Vector3.forward;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 character = await basePreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
+                if (!isCurrent()) throw new OperationCanceledException();
 
                 if (character == null)
                 {
                     DevLog("[PhantomWitch] [ERROR] 生成角色失败");
-                    if (notifyBossRushOnFailure)
+                    if (notifyBossRushOnFailure && isCurrent())
                     {
                         NotifyPhantomWitchSpawnFailed();
                     }
@@ -205,6 +211,7 @@ namespace BossRush
 
                 // 自定义 Boss 的后续配装/能力初始化都在这里完成，先让出一帧把生成尖峰摊平。
                 await UniTask.Yield();
+                if (!isCurrent()) throw new OperationCanceledException();
 
                 character.gameObject.name = "BossRush_PhantomWitch";
 
@@ -312,6 +319,7 @@ namespace BossRush
 
                 // 武器实例化和配置包含多次资源访问，低端机上分帧能明显减少出场顿挫。
                 await UniTask.Yield();
+                if (!isCurrent()) throw new OperationCanceledException();
 
                 // 添加能力控制器（放在独立 GO 上，避免 character.Hide/Show
                 // 内部 SetActive(false) 静默杀死所有协程导致技能卡死）
@@ -324,6 +332,7 @@ namespace BossRush
                 if (deferActivationUntilNextFrame)
                 {
                     await UniTask.Yield();
+                if (!isCurrent()) throw new OperationCanceledException();
                 }
 
                 // 激活角色
@@ -392,8 +401,9 @@ namespace BossRush
                         ReleasePhantomWitchInstance();
                     }
                 }
+                if (abilities != null) abilities.OnBossDeath();
                 CleanupFailedPhantomWitchSpawn(character);
-                if (notifyBossRushOnFailure)
+                if (notifyBossRushOnFailure && isCurrent())
                 {
                     NotifyPhantomWitchSpawnFailed();
                 }

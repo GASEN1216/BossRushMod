@@ -1,5 +1,7 @@
 # Boss 框架与生命周期管理
 
+2026-09-22 审计修复（COMPAT）：Legacy 生成器接收可选 `isActiveCheck`，在角色创建、配装及延后激活后校验宿主与场景；未完成请求经 `CleanupCancelledDragonDescendant` 精确移除自己的套装、恢复监视与掉落登记，释放 runtime preset 后销毁角色。通用刷怪核心将同一取消判据传入，并保留按 Boss 类型清理的外层保险。龙息武器先确认真实 prefab 和枪械组件，再替换原槽；实例化、配置或 Plug 失败向外传播，使整次生成回滚，不再返回空手 Boss。Mode G 的 `PhaseProxy` 子龙裔走托管 prepare / commit / activate，关闭 Legacy 波次、掉落与提示入口，并且不覆盖主 Boss 实例字段。对应结构守卫和子龙裔取消回归已通过；真实 Boss 行为待 L3。
+
 <cite>
 **本文引用的文件**
 - [ModBehaviour.cs](file://ModBehaviour.cs)

@@ -8,6 +8,21 @@ namespace BossRush
 {
     internal static partial class PhantomWitchVfxRedesign
     {
+        private static Mesh GetBillboardQuadMesh()
+        {
+            if (cachedBillboardQuadMesh != null) return cachedBillboardQuadMesh;
+            cachedBillboardQuadMesh = Object.Instantiate(GetQuadMesh());
+            cachedBillboardQuadMesh.name = "PW_Redesign_BillboardQuadMesh";
+            cachedBillboardQuadMesh.vertices = new Vector3[]
+            {
+                new Vector3(-0.5f, -0.5f, 0f), new Vector3(0.5f, -0.5f, 0f),
+                new Vector3(0.5f, 0.5f, 0f), new Vector3(-0.5f, 0.5f, 0f)
+            };
+            cachedBillboardQuadMesh.RecalculateNormals();
+            cachedBillboardQuadMesh.RecalculateBounds();
+            return cachedBillboardQuadMesh;
+        }
+
         private static ParticleSystem CreateSoulFlameEmitter(Transform parent, Vector3 localPosition, float rate, float lifeMin, float lifeMax, float speedMin, float speedMax, float sizeMin, float sizeMax, bool worldSpace, ParticleSystemShapeType shapeType)
         {
             GameObject go = new GameObject("SoulFlame");

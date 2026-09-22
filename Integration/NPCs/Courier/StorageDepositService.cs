@@ -100,6 +100,54 @@ namespace BossRush
         private static bool isServiceActive = false;
         private static bool isQuickDepositInProgress = false;
         private static bool isRetrieveAllInProgress = false;
+        private static int depositSessionGeneration;
+        private static DepositTransaction transactionOwner;
+
+        private sealed class DepositTransaction
+        {
+            internal int Session;
+            internal int Slot;
+            internal CharacterMainControl Player;
+            internal Transform Npc;
+            internal bool Purification;
+        }
+
+        private static bool IsTransactionBusy { get { return transactionOwner != null; } }
+
+        private static DepositTransaction TryBeginTransaction()
+        {
+            if (!isServiceActive || IsTransactionBusy || !DepositDataManager.CanWrite) return null;
+            var transaction = new DepositTransaction
+            {
+                Session = depositSessionGeneration,
+                Slot = Saves.SavesSystem.CurrentSlot,
+                Player = CharacterMainControl.Main,
+                Npc = courierNPCTransform,
+                Purification = IsZombieModeTemporaryCourierPurificationService()
+            };
+            if (transaction.Player == null) return null;
+            transactionOwner = transaction;
+            return transaction;
+        }
+
+        private static bool IsCurrentTransaction(DepositTransaction transaction)
+        {
+            return transaction != null && ReferenceEquals(transactionOwner, transaction)
+                && transaction.Session == depositSessionGeneration && isServiceActive
+                && transaction.Slot == Saves.SavesSystem.CurrentSlot
+                && transaction.Player != null && transaction.Player == CharacterMainControl.Main
+                && DepositDataManager.CanWrite;
+        }
+
+        private static void EndTransaction(DepositTransaction transaction)
+        {
+            if (ReferenceEquals(transactionOwner, transaction)) transactionOwner = null;
+        }
+
+        internal static bool OwnsShop(StockShop shop)
+        {
+            return shop != null && ReferenceEquals(shop, depositShop);
+        }
 
         // 商品索引映射（Entry -> DepositedItemData 索引）
         private static Dictionary<StockShop.Entry, int> entryIndexMapping = new Dictionary<StockShop.Entry, int>();

@@ -240,12 +240,14 @@ namespace BossRush.Common.Equipment
             if (characterController.CurrentStamina <= 0.1f)
             {
                 OnStaminaDepleted();
-                return;
+                if (!ContinueUpdatingWhenStaminaDepleted || !Running) return;
             }
 
             // 调用子类的更新逻辑
             OnAbilityUpdate(deltaTime);
         }
+
+        protected virtual bool ContinueUpdatingWhenStaminaDepleted => false;
 
         // ========== 子类可重写的钩子方法 ==========
 

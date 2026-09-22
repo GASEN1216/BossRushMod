@@ -1,5 +1,23 @@
 # FIX_TRACKER.md — 修复状态与兼容性流水账
 
+<!-- BEGIN FULL AUDIT FIXES 2026-09-22 -->
+
+## 2026-09-22 全仓审计报告修复闭环（COMPAT / SCHEMA+ / OPERATIONAL）
+
+原报告 82 项均已逐条复核并关闭；另从未验证线索确认并修复 2 项，共 84 项。其中 75 项在会话开始时已有对应修复，经本轮复核保留；其余 9 项为本轮补修或新增确认。分类为 COMPAT，成就领奖凭据与 Dev 恢复快照为 SCHEMA+，正式构建部署为 OPERATIONAL。
+
+全量守卫 652 PASS / 0 FAIL；全量隔离回归 56 PASS / 0 FAIL；Windows 978 源正式与 Dev 编译通过。正式 DLL 已部署，Build 与游戏目标 SHA-256 一致，14 个 Dev 专用标识缺席；72 个资源包部署哈希检查通过。Wiki 构建和 80 项导航检查通过，237 页 / 39133 个引用无缺失链接或失效锚点。
+
+正式 DLL SHA-256 `f58dea9cca4d4da50e3ab77d08a21790eb2d4e6b89552f5661f2293ed1981a0f`，Dev 构建仅留在验证目录。初始已有修复与本轮补漏分开记录；本地提交按审计修复范围收录，未推送。
+
+里程碑高阶奖励采用原工作区已有的完整标价折现策略：每阶最多 100 皇冠 + 100 合法现金堆，超额入账户，每帧最多 8 实体，long 饱和防溢出；理由与回退约束见交付记录。
+
+没有启动游戏、没有读写玩家存档、没有 L3；具体操作和 F3 看图清单见 [修复闭环](docs/代码审查/2026-09-22_full_audit_fixes.md)。原 82 项与新增两项全部回填状态；仍缺实机触发证据的线索保留未验证。
+
+提交前复核：978 个生产源码与通过正式/Dev 编译的 SHA-256 清单一致，7 个新增生产源码均已登记。AuditModeLifecycle 的支援弹夹具改用保留官方零默认值的最小 ProjectileContext 契约替身，生产 builder 仍逐字抽取，移除对未纳管反编译源码的依赖后专项回归通过。提交仅收录本次审计修复、验证和台账，独立架构计划改动保留在工作区。
+
+<!-- END FULL AUDIT FIXES 2026-09-22 -->
+
 ## 2026-09-22 实机启动报错：资源加载器路径键不一致导致全部 Mod 物品注册失败（COMPAT）
 
 - 现象（owner 实机，`Player.log` 12:38）：启动进基地刷 47 条 `The AssetBundle '…' can't be loaded because another AssetBundle with the same files is already loaded`（bossrush_ticket、birthday_cake、ui/bossrush_wiki 与 Items/、Equipment/ 下全部 bundle），随后 `PlayerStorage.Load` / `LevelManager.CreateMainCharacterAsync` NRE（仓库与角色身上的 Mod 物品拿不到 prefab）。

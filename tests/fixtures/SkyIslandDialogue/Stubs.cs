@@ -20,6 +20,8 @@ namespace Cysharp.Threading.Tasks
             internal TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
         }
         private static readonly List<Waiter> waiters = new List<Waiter>();
+        private static readonly List<TaskCompletionSource<bool>> deferredFrames = new List<TaskCompletionSource<bool>>();
+        public static bool HoldNextFrame;
         public static UniTask WaitUntil(Func<bool> predicate, CancellationToken cancellationToken = default(CancellationToken))
         {
             var waiter = new Waiter { predicate = predicate, token = cancellationToken };
@@ -30,7 +32,19 @@ namespace Cysharp.Threading.Tasks
         public static UniTask NextFrame()
         {
             UnityEngine.Time.realtimeSinceStartup += 1f / 60f;
+            if (HoldNextFrame)
+            {
+                var frame = new TaskCompletionSource<bool>();
+                deferredFrames.Add(frame);
+                return new UniTask { task = frame.Task };
+            }
             return new UniTask { task = Task.CompletedTask };
+        }
+        public static void ReleaseDeferredFrames()
+        {
+            var frames = deferredFrames.ToArray();
+            deferredFrames.Clear();
+            foreach (var frame in frames) frame.SetResult(true);
         }
         public static void Pump()
         {
@@ -95,7 +109,16 @@ namespace Cysharp.Threading.Tasks
 }
 namespace UnityEngine
 {
-    public class Object { public static void DontDestroyOnLoad(Object value) { } public static void Destroy(Object value) { } }
+    public class Object
+    {
+        public bool Destroyed;
+        public static bool operator ==(Object a, Object b) { bool an = ReferenceEquals(a, null) || a.Destroyed, bn = ReferenceEquals(b, null) || b.Destroyed; return an || bn ? an == bn : ReferenceEquals(a, b); }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object other) { return ReferenceEquals(this, other); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
+        public static void DontDestroyOnLoad(Object value) { }
+        public static void Destroy(Object value) { if (!ReferenceEquals(value, null)) value.Destroyed = true; }
+    }
     public class GameObject : Object { public GameObject(string name) { } }
     public class Transform { public GameObject gameObject = new GameObject("resident"); }
     public struct Vector3 { public Vector3(float x, float y, float z) { } }
@@ -155,12 +178,13 @@ namespace Dialogues
         private int confirmedChoice = -1;
         public int ConfirmedChoiceForTest { get { return confirmedChoice; } }
         public static int ConfirmCalls;
+        public static bool ConfirmCompletesRequests = true;
         // 官方 Confirm 推进正在显示的字幕：替身按「最后一条字幕请求」的完成回调来推。
         public void Confirm()
         {
             ConfirmCalls++;
             var lines = NodeCanvas.DialogueTrees.DialogueTree.Lines;
-            if (lines.Count > 0) lines[lines.Count - 1]();
+            if (ConfirmCompletesRequests && lines.Count > 0) lines[lines.Count - 1]();
         }
     }
 }
@@ -179,7 +203,7 @@ namespace BossRush
         public static readonly Dictionary<string, string> Texts = new Dictionary<string, string>();
         public static void InjectLocalization(string key, string text) { Texts[key] = text; }
     }
-    public class DuckovDialogueActor : NodeCanvas.DialogueTrees.IDialogueActor { }
+    public class DuckovDialogueActor : UnityEngine.Object, NodeCanvas.DialogueTrees.IDialogueActor { }
     public static class DialogueActorFactory
     {
         public static bool Fail;

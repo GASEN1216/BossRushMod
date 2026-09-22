@@ -33,6 +33,8 @@ namespace BossRush
 
         /// <summary>上次使用时间戳（用于冷却计算）</summary>
         private static float lastUseTime = -999f;
+        private static int mountRequestGeneration;
+        private static bool mountSpawnPending;
 
         // ============================================================================
         // UsageBehavior 重写
@@ -59,7 +61,7 @@ namespace BossRush
         public override bool CanBeUsed(Item item, object user)
         {
             // 冷却时间检查：当前时间 - 上次使用时间 < 冷却秒数 → 不可使用
-            if (Time.time - lastUseTime < WildHornConfig.COOLDOWN_SECONDS)
+            if (mountSpawnPending || Time.time - lastUseTime < WildHornConfig.COOLDOWN_SECONDS)
             {
                 return false;
             }
@@ -75,7 +77,7 @@ namespace BossRush
             {
                 // 获取玩家角色
                 CharacterMainControl player = user as CharacterMainControl ?? CharacterMainControl.Main;
-                if (player == null)
+                if (player == null || mountSpawnPending)
                 {
                     // 玩家引用为空，安全返回（需求 5.1）
                     ModBehaviour.DevLog("[WildHorn] 玩家角色引用为空，取消使用");
@@ -115,6 +117,16 @@ namespace BossRush
         /// </summary>
         private async UniTaskVoid SpawnMountAsync(CharacterMainControl player)
         {
+            int generation = ++mountRequestGeneration;
+            int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            ModBehaviour host = ModBehaviour.Instance;
+            mountSpawnPending = true;
+            CharacterMainControl horse = null;
+            bool committed = false;
+            Func<bool> isCurrent = () => generation == mountRequestGeneration && host != null &&
+                host == ModBehaviour.Instance && player != null && player == CharacterMainControl.Main &&
+                player.Health != null && !player.Health.IsDead &&
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle;
             try
             {
                 // 获取马匹预设
@@ -131,8 +143,10 @@ namespace BossRush
                 Vector3 spawnPos = player.transform.position + player.transform.forward * 2f + Vector3.up * 0.25f;
                 int sceneIndex = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
 
-                var horse = await vehiclePreset.CreateCharacterAsync(
+                horse = await vehiclePreset.CreateCharacterAsync(
                     spawnPos, Vector3.forward, sceneIndex, null, false);
+
+                if (!isCurrent()) return;
 
                 if (horse == null)
                 {
@@ -149,12 +163,14 @@ namespace BossRush
                     horseAI.master = player;
                     player.horseAI = horseAI;
                     cachedHorseAI = horseAI;
+                    committed = true;
                     ModBehaviour.DevLog("[WildHorn] 坐骑生成成功，已设置 horseAI 和 master 引用");
                 }
                 else
                 {
                     // 没有找到马匹AI组件，仍然缓存角色引用
                     ModBehaviour.DevLog("[WildHorn] 警告: 生成的角色缺少 AISpecialAttachment_Horse 组件");
+                    return;
                 }
 
                 // 根据配置决定是否使用狼模型
@@ -185,9 +201,14 @@ namespace BossRush
                 ModBehaviour.DevLog("[WildHorn] 生成坐骑异常: " + e.Message);
                 try
                 {
-                    ShowBubbleHint(player, WildHornConfig.GetSummonFailHint());
+                    if (isCurrent()) ShowBubbleHint(player, WildHornConfig.GetSummonFailHint());
                 }
                 catch { }
+            }
+            finally
+            {
+                if (!committed && horse != null) UnityEngine.Object.Destroy(horse.gameObject);
+                if (generation == mountRequestGeneration) mountSpawnPending = false;
             }
         }
 
@@ -219,6 +240,8 @@ namespace BossRush
         /// </summary>
         public static void ClearMountCache()
         {
+            mountRequestGeneration++;
+            mountSpawnPending = false;
             cachedHorseAI = null;
             ModBehaviour.DevLog("[WildHorn] 坐骑缓存已清理");
         }

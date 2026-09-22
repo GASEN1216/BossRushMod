@@ -307,6 +307,7 @@ namespace BossRush
                     damageInfo.damagePoint = receiver.transform.position;
                     damageInfo.damageNormal = (receiver.transform.position - realmOrigin).normalized;
                     damageInfo.fromWeaponItemID = PhantomWitchScytheIds.WeaponTypeId;
+                    damageInfo.isFromBuffOrEffect = true;
                     damageInfo.crit = -1;
                     damageInfo.AddElementFactor(ElementTypes.ghost, 1f);
 

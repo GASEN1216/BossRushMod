@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // GoblinAffinityConfig.cs - 哥布林"叮当"好感度配置
 // ============================================================================
 // 哥布林NPC"叮当"的专属好感度配置。
@@ -19,7 +19,7 @@ namespace BossRush
     /// <summary>
     /// 哥布林"叮当"好感度配置
     /// </summary>
-    public class GoblinAffinityConfig : INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig, INPCGiftContainerConfig, INPCRelationshipDialogueConfig
+    public partial class GoblinAffinityConfig : INPCAffinityConfig, INPCGiftConfig, INPCDialogueConfig, INPCShopConfig, INPCGiftContainerConfig, INPCRelationshipDialogueConfig
     {
         /// <summary>Shared singleton to avoid rebuilding config instances.</summary>
         public static readonly GoblinAffinityConfig Instance = new GoblinAffinityConfig();
@@ -95,6 +95,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_unlocksByLevel == null)
                 {
                     _unlocksByLevel = new Dictionary<int, string[]>
@@ -208,6 +209,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_positiveBubbles == null)
                 {
                     _positiveBubbles = new string[]
@@ -268,6 +270,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_negativeBubbles == null)
                 {
                     _negativeBubbles = new string[]
@@ -316,6 +319,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_normalBubbles == null)
                 {
                     _normalBubbles = new string[]

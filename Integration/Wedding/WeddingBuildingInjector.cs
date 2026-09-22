@@ -167,6 +167,8 @@ namespace BossRush
 
         private bool TryUseCachedWeddingNpcPosition(out Vector3 position)
         {
+            if (cachedWeddingBuildingTransform == null || !WeddingBuildingRuntimePolicy.IsPlacedSceneObject(cachedWeddingBuildingTransform.gameObject, weddingBuildingPrefabGO))
+                ResetWeddingBuildingLocationCache();
             if (cachedWeddingNpcSpawnPoint != null)
             {
                 position = cachedWeddingNpcSpawnPoint.position;

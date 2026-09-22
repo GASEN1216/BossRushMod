@@ -433,6 +433,7 @@ namespace BossRush
 
                 ZombieModeBossKind kind = GetZombieModeBossKindForIndex(i);
                 CharacterMainControl boss = await TrySpawnZombieModeBossAsync(runId, GetZombieModeBossSpawnPosition(i), kind);
+                if (!IsZombieModeRunValid(runId) || zombieModeRunState.CombatPhase != ZombieModeCombatPhase.Combat) return;
                 if (boss == null)
                 {
                     zombieModeRunState.CurrentWaveBossesRemaining = Mathf.Max(0, zombieModeRunState.CurrentWaveBossesRemaining - 1);

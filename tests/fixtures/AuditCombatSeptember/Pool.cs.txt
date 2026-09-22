@@ -1,0 +1,57 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using BossRush;
+using UnityEngine;
+class Program
+{
+    static void Main()
+    {
+        DragonKingBossGunRuntime.RequestFireExplosionEffectWarmup(2);
+        UniTask.Advance(); UniTask.Advance();
+        if (DragonKingBossGunRuntime.Count != 2 || DragonKingBossGunRuntime.Running) throw new Exception("normal warmup control failed");
+        Console.WriteLine("CONTROL normal: requested 2, pool=2, running=false");
+        DragonKingBossGunRuntime.ClearFireExplosionEffectPool();
+        DragonKingBossGunRuntime.RequestFireExplosionEffectWarmup(3);
+        if (DragonKingBossGunRuntime.Count != 1 || !DragonKingBossGunRuntime.Running) throw new Exception("warmup did not yield");
+        DragonKingBossGunRuntime.ClearFireExplosionEffectPool();
+        DragonKingBossGunRuntime.RequestFireExplosionEffectWarmup(3);
+        UniTask.Advance(); // Old finally must not clear the new running flag.
+        if (!DragonKingBossGunRuntime.Running) throw new Exception("old finally released successor");
+        UniTask.Advance(); UniTask.Advance(); UniTask.Advance();
+        if (DragonKingBossGunRuntime.Count != 3 || DragonKingBossGunRuntime.Running) throw new Exception("pool did not restart");
+        Console.WriteLine("PASS cancelled warmup restarts; old finally preserves successor");
+    }
+}
+public static class UniTask
+{
+    static Queue<TaskCompletionSource<bool>> pending=new Queue<TaskCompletionSource<bool>>();
+    public static int Pending=>pending.Count;
+    public static Task DelayFrame(int frames){var t=new TaskCompletionSource<bool>();pending.Enqueue(t);return t.Task;}
+    public static void Advance(){pending.Dequeue().SetResult(true);}
+}
+public static class TaskExtensions { public static void Forget(this Task value) { if(value.IsFaulted) throw value.Exception; } }
+namespace UnityEngine
+{
+    public class GameObject { public bool Destroyed; public void SetActive(bool active){} }
+    public static class Object { public static void Destroy(GameObject go){go.Destroyed=true;} }
+    public static class Mathf { public static int Clamp(int value,int min,int max)=>Math.Clamp(value,min,max);public static int Max(int a,int b)=>Math.Max(a,b); }
+}
+namespace BossRush
+{
+    public class CharacterMainControl { public static CharacterMainControl Main = new CharacterMainControl(); }
+    public static partial class DragonKingBossGunRuntime
+    {
+        private static bool IsProjectileWarmupOwnerValid(CharacterMainControl owner) { return owner != null; }
+        /* POOL_METHODS */
+        private const int MaxPooledFireExplosionEffects=96;
+        private class FireExplosionEffectHandle { public UnityEngine.GameObject gameObject=new UnityEngine.GameObject(); }
+        private static readonly Stack<FireExplosionEffectHandle> fireExplosionEffectPool=new Stack<FireExplosionEffectHandle>();
+        private static int fireExplosionEffectPoolGeneration;
+        private static bool fireExplosionEffectWarmupRunning;
+        private static int requestedFireExplosionEffectPoolSize;
+        private static FireExplosionEffectHandle CreateFireExplosionEffect()=>new FireExplosionEffectHandle();
+        public static int Count=>fireExplosionEffectPool.Count;
+        public static bool Running=>fireExplosionEffectWarmupRunning;
+    }
+}

@@ -563,7 +563,7 @@ namespace BossRush
             try
             {
                 // 检查是否是玩家受伤
-                if (health == null) return;
+                if (health == null || health != achievementObservedHealth) return;
                 
                 // 获取玩家 Health 组件进行比对
                 CharacterMainControl player = CharacterMainControl.Main;
@@ -606,6 +606,8 @@ namespace BossRush
 
         // 用于追踪玩家血量变化（检测治疗）
         private float lastPlayerHealth = -1f;
+        private Health achievementObservedHealth;
+        private bool achievementEventsSubscribed;
 
         /// <summary>
         /// 玩家血量变化事件回调（用于无间炼狱无治疗成就追踪）
@@ -619,7 +621,7 @@ namespace BossRush
 
             try
             {
-                if (health == null) return;
+                if (health == null || health != achievementObservedHealth) return;
                 
                 float currentHealth = health.CurrentHealth;
                 
@@ -665,6 +667,8 @@ namespace BossRush
         /// </summary>
         private void SubscribeAchievementEvents()
         {
+            if (achievementEventsSubscribed) return;
+            achievementEventsSubscribed = true;
             try
             {
                 // 订阅物品拾取事件（Mode D 无拾取成就）
@@ -676,21 +680,24 @@ namespace BossRush
                 DevLog("[Achievement] 订阅物品拾取事件失败: " + e.Message);
             }
 
+            LevelManager.OnAfterLevelInitialized += RebindAchievementHealth;
+            RebindAchievementHealth();
+        }
+
+        private void RebindAchievementHealth()
+        {
             try
             {
-                // 订阅玩家血量变化事件（无间炼狱无治疗成就）
                 CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null && player.Health != null)
-                {
-                    player.Health.OnHealthChange.AddListener(OnPlayerHealthChangeForAchievement);
-                    lastPlayerHealth = player.Health.CurrentHealth;
-                    DevLog("[Achievement] 已订阅玩家血量变化事件");
-                }
+                Health current = player == null ? null : player.Health;
+                if (current == achievementObservedHealth) return;
+                if (achievementObservedHealth != null)
+                    achievementObservedHealth.OnHealthChange.RemoveListener(OnPlayerHealthChangeForAchievement);
+                achievementObservedHealth = current;
+                lastPlayerHealth = current == null ? -1f : current.CurrentHealth;
+                if (current != null) current.OnHealthChange.AddListener(OnPlayerHealthChangeForAchievement);
             }
-            catch (Exception e)
-            {
-                DevLog("[Achievement] 订阅玩家血量变化事件失败: " + e.Message);
-            }
+            catch (Exception e) { DevLog("[Achievement] 治疗监听重绑失败: " + e.Message); }
         }
 
         /// <summary>
@@ -698,6 +705,8 @@ namespace BossRush
         /// </summary>
         private void UnsubscribeAchievementEvents()
         {
+            LevelManager.OnAfterLevelInitialized -= RebindAchievementHealth;
+            achievementEventsSubscribed = false;
             try
             {
                 InteractablePickup.OnPickupSuccess -= OnItemPickupForAchievement;
@@ -706,11 +715,9 @@ namespace BossRush
 
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null && player.Health != null)
-                {
-                    player.Health.OnHealthChange.RemoveListener(OnPlayerHealthChangeForAchievement);
-                }
+                if (achievementObservedHealth != null)
+                    achievementObservedHealth.OnHealthChange.RemoveListener(OnPlayerHealthChangeForAchievement);
+                achievementObservedHealth = null;
             }
             catch { }
 

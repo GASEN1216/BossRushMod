@@ -107,8 +107,10 @@ namespace BossRush
                 DevLog("[BossRush] [WARNING] 生成 BossRush 通关奖励失败: " + e.Message);
             }
 
+            Func<bool> isVictoryCurrent = WavesArenaRuntimeModule.CaptureValidity(this, false, false);
             // 等待2秒后显示气泡对话
             await UniTask.Delay(2000);
+            if (!isVictoryCurrent()) return;
 
             try
             {
@@ -137,9 +139,10 @@ namespace BossRush
             }
             finally
             {
-                CompleteVictoryRewardShadowCrate_LootAndRewards();
+                if (isVictoryCurrent()) CompleteVictoryRewardShadowCrate_LootAndRewards();
             }
 
+            if (!isVictoryCurrent()) return;
             try
             {
                 // 生成返回出生点的交互点

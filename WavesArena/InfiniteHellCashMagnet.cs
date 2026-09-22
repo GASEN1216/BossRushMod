@@ -252,7 +252,7 @@ namespace BossRush
                                         cashMagnetBubbleTimer = CashMagnetBubbleWindow;
                                         try
                                         {
-                                            string bubbleText = "吸附现金：<color=red>" + cashMagnetAbsorbedTotal.ToString("N0") + "</color>";
+                                            string bubbleText = L10n.T("吸附现金：", "Cash collected: ") + "<color=red>" + cashMagnetAbsorbedTotal.ToString("N0") + "</color>";
                                             Duckov.UI.DialogueBubbles.DialogueBubblesManager.Show(bubbleText, playerTransform, -1f, false, false, -1f, 3f);
                                         }
                                         catch {}

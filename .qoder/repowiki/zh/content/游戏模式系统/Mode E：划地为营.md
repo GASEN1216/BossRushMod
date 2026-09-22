@@ -396,3 +396,6 @@ Mode E/F 为运行时角色克隆的 `CharacterRandomPreset` 由挂在角色对�
   - 新增事件钩子：通过 ModeE 事件总线与 Harmony 补丁扩展交互与 UI。
 
 [本节为扩展指导，无需具体文件引用]
+
+
+2026-09-22 审计修复（COMPAT，L1，未实机）：商人创建 null / exception 续体在失败清理前核捕获 session，过期请求只回收自己返回的角色，不销毁新局商人。Boss 失败结案与重刷 finally 同样只可释放自己的 session。击杀成长气泡按当前语言解析。为保持文件行数预算，SetModeEMerchantHealth 原样移至 `ModeEBattle_ScalingAndRuntime.cs`，行为未变。

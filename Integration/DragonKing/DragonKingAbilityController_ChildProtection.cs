@@ -21,6 +21,30 @@ namespace BossRush
         }
 
         // ========== 孩儿护我系统方法 ==========
+        private int childSpawnGeneration;
+        internal ManagedBossSpawnContext ModeGChildSpawnContext;
+        private ManagedBossRuntimeHandle managedChildHandle;
+        private bool managedChildCommitted;
+
+        private void ReleaseChild(CharacterMainControl child)
+        {
+            if (child == null) return;
+            if (managedChildHandle != null && managedChildHandle.Character == child)
+            {
+                ManagedBossRuntimeHandle handle = managedChildHandle;
+                managedChildHandle = null;
+                if (managedChildCommitted)
+                {
+                    managedChildCommitted = false;
+                    ModeGChildSpawnContext?.OnAuxiliaryReleased?.Invoke(handle.Character, ManagedBossRole.PhaseProxy);
+                }
+                handle.CleanupOnce(ManagedBossCleanupReason.OwnerInvalid);
+            }
+            else if (child != null && ModBehaviour.Instance != null)
+            {
+                ModBehaviour.Instance.CleanupCancelledDragonDescendant(child);
+            }
+        }
 
         /// <summary>
         /// 孩儿护我序列协程
@@ -345,25 +369,39 @@ namespace BossRush
             // 获取随机刷怪点
             Vector3 spawnPosition = GetRandomSpawnPoint();
 
-            // 使用标志位等待异步生成完成
+            int generation = ++childSpawnGeneration;
+            bool requestActive = true;
             bool spawnCompleted = false;
             CharacterMainControl spawnResult = null;
-
-            // 启动异步生成任务
-            SpawnDescendantAsync(spawnPosition, (result) => {
-                spawnResult = result;
-                spawnCompleted = true;
-            });
-
-            // 等待生成完成（最多等待10秒）
-            float waitTime = 0f;
-            while (!spawnCompleted && waitTime < 10f)
+            Func<bool> isCurrent = () => requestActive && this != null && generation == childSpawnGeneration &&
+                bossCharacter != null && bossHealth != null && !bossHealth.IsDead && isInChildProtection &&
+                ModBehaviour.IsManagedOwnerValid(ModeGChildSpawnContext);
+            try
             {
-                waitTime += Time.deltaTime;
-                yield return null;
+                SpawnDescendantAsync(spawnPosition, isCurrent, result =>
+                {
+                    if (!isCurrent())
+                    {
+                        ReleaseChild(result);
+                        return;
+                    }
+                    spawnResult = result;
+                    spawnCompleted = true;
+                });
+                float waitTime = 0f;
+                while (!spawnCompleted && waitTime < 10f && isCurrent())
+                {
+                    waitTime += Time.deltaTime;
+                    yield return null;
+                }
+                if (!isCurrent()) yield break;
+                spawnedDescendant = spawnResult;
             }
-
-            spawnedDescendant = spawnResult;
+            finally
+            {
+                requestActive = false;
+                if (spawnResult != null && spawnedDescendant != spawnResult) ReleaseChild(spawnResult);
+            }
 
             if (spawnedDescendant == null)
             {
@@ -542,15 +580,40 @@ namespace BossRush
         /// 异步生成龙裔遗族（辅助方法，用于协程中调用异步方法）
         /// 孩儿护我阶段召唤的龙裔不加入波次追踪系统
         /// </summary>
-        private async void SpawnDescendantAsync(Vector3 position, System.Action<CharacterMainControl> callback)
+        private async void SpawnDescendantAsync(Vector3 position, Func<bool> isCurrent, System.Action<CharacterMainControl> callback)
         {
+            ManagedBossPrepareResult prepared = null;
+            bool transferred = false;
+            ModBehaviour host = ModBehaviour.Instance;
             try
             {
                 CharacterMainControl result = null;
-                if (ModBehaviour.Instance != null)
+                if (host != null && isCurrent())
                 {
-                    // 传入 isChildProtectionSummon: true，避免龙裔被加入波次追踪系统
-                    result = await ModBehaviour.Instance.SpawnDragonDescendant(position, isChildProtectionSummon: true);
+                    if (ModeGChildSpawnContext != null)
+                    {
+                        ManagedBossSpawnContext ctx = ManagedBossSpawnContext.CreateModeGPrimary(
+                            DragonDescendantConfig.BOSS_NAME_KEY, isCurrent);
+                        ctx.Role = ManagedBossRole.PhaseProxy;
+                        prepared = await host.PrepareManagedDragonDescendantAsync(position, ctx);
+                        if (!isCurrent() || prepared == null || prepared.Handle == null) return;
+                        var commit = ModeGChildSpawnContext.TryCommitAuxiliaryBeforeActivation;
+                        if (commit == null || !commit(prepared.Character, ManagedBossRole.PhaseProxy)) return;
+                        managedChildHandle = prepared.Handle;
+                        managedChildCommitted = true;
+                        if (!prepared.Handle.ActivateOnce())
+                        {
+                            ReleaseChild(prepared.Character);
+                            return;
+                        }
+                        result = prepared.Character;
+                        transferred = true;
+                    }
+                    else
+                    {
+                        result = await host.SpawnDragonDescendant(position, isChildProtectionSummon: true,
+                            notifyBossRushOnFailure: false, isActiveCheck: isCurrent);
+                    }
                 }
                 callback?.Invoke(result);
             }
@@ -558,6 +621,11 @@ namespace BossRush
             {
                 ModBehaviour.DevLog($"[DragonKing] [WARNING] 异步生成龙裔遗族失败: {e.Message}");
                 callback?.Invoke(null);
+            }
+            finally
+            {
+                if (!transferred && prepared != null && prepared.Handle != null)
+                    prepared.Handle.CleanupOnce(ManagedBossCleanupReason.SpawnRejected);
             }
         }
 
@@ -645,11 +713,13 @@ namespace BossRush
         /// </summary>
         private void CleanupChildProtection()
         {
+            childSpawnGeneration++;
             // 取消龙裔遗族死亡事件订阅
             if (spawnedDescendant != null && spawnedDescendant.Health != null)
             {
                 spawnedDescendant.Health.OnDeadEvent.RemoveListener(OnDescendantDeath);
             }
+            ReleaseChild(spawnedDescendant);
             spawnedDescendant = null;
 
             // 停止孩儿护我协程

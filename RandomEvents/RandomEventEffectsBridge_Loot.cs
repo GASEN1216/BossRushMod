@@ -46,6 +46,8 @@ namespace BossRush
             int qualityMin,
             int qualityMax)
         {
+            GameObject staging = null;
+            InteractableLootbox lootbox = null;
             try
             {
                 InteractableLootbox prefab = GetLootBoxTemplateWithLoader();
@@ -55,7 +57,15 @@ namespace BossRush
                     return null;
                 }
 
-                InteractableLootbox lootbox = UnityEngine.Object.Instantiate(prefab, position, Quaternion.identity);
+                staging = new GameObject("RandomEventAirdropStaging");
+                staging.SetActive(false);
+                lootbox = UnityEngine.Object.Instantiate(prefab, staging.transform);
+                if (lootbox != null)
+                {
+                    lootbox.transform.position = position;
+                    lootbox.transform.rotation = Quaternion.identity;
+                    lootbox.gameObject.SetActive(false);
+                }
                 if (lootbox == null)
                 {
                     return null;
@@ -66,13 +76,15 @@ namespace BossRush
                 // 独立本地 Inventory：避免与其它 Lootbox 通过位置哈希共享同一份库存
                 try
                 {
-                    InteractableLootboxInventoryHelper.EnsureLocalInventory(
+                    if (!InteractableLootboxInventoryHelper.EnsureLocalInventory(
                         lootbox,
-                        RandomEventsTuning.AirdropLootboxInventoryCapacity);
+                        RandomEventsTuning.AirdropLootboxInventoryCapacity))
+                        throw new InvalidOperationException("airdrop inventory unavailable");
                 }
                 catch (Exception e)
                 {
                     DevLog(RandomEventsTuning.LogPrefix + "[WARNING] 空投箱本地库存创建失败: " + e.Message);
+                    throw;
                 }
 
                 // registerSweepTracking 传 false：空投不进扫箱令口径。
@@ -110,15 +122,27 @@ namespace BossRush
 
                 if (loader != null)
                 {
+                    loader.autoSetup = false;
                     ConfigureRandomEventAirdropLoader(loader, itemCount, qualityMin, qualityMax);
                 }
 
+                // 首次激活触发 Loader.Awake.RandomActive；它若按旧位置 key 关闭根物体，
+                // Awake 返回后再恢复一次，此时 Awake 不会重入，也不会共享官方库存。
+                lootbox.gameObject.SetActive(true);
+                if (!lootbox.gameObject.activeSelf) lootbox.gameObject.SetActive(true);
+                if (!lootbox.gameObject.activeInHierarchy)
+                    throw new InvalidOperationException("airdrop root is inactive after setup");
                 return lootbox;
             }
             catch (Exception e)
             {
                 DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 创建空投箱失败: " + e.Message);
+                if (lootbox != null) UnityEngine.Object.Destroy(lootbox.gameObject);
                 return null;
+            }
+            finally
+            {
+                if (staging != null) UnityEngine.Object.Destroy(staging);
             }
         }
 
@@ -468,11 +492,12 @@ namespace BossRush
             long totalCash,
             int pileCount,
             float radius,
-            Action<int, int> onCompleted)
+            Action<int, int> onCompleted,
+            Func<bool> isStillValid = null)
         {
             try
             {
-                SpawnRandomEventCashPilesAsync(center, totalCash, pileCount, radius, onCompleted).Forget();
+                SpawnRandomEventCashPilesAsync(center, totalCash, pileCount, radius, onCompleted, isStillValid).Forget();
             }
             catch (Exception e)
             {
@@ -486,7 +511,8 @@ namespace BossRush
             long totalCash,
             int pileCount,
             float radius,
-            Action<int, int> onCompleted)
+            Action<int, int> onCompleted,
+            Func<bool> isStillValid = null)
         {
             int piles = Mathf.Max(1, pileCount);
             int spawned = 0;
@@ -498,7 +524,8 @@ namespace BossRush
                 for (int i = 0; i < piles; i++)
                 {
                     // 切图后剩余堆一律作废，避免把钱撒到下一张图
-                    if (SceneManager.GetActiveScene().buildIndex != sceneBuildIndex)
+                    if (this == null || (isStillValid != null && !isStillValid())
+                        || SceneManager.GetActiveScene().buildIndex != sceneBuildIndex)
                     {
                         return;
                     }
@@ -518,7 +545,8 @@ namespace BossRush
                         continue;
                     }
 
-                    if (SceneManager.GetActiveScene().buildIndex != sceneBuildIndex)
+                    if (this == null || (isStillValid != null && !isStillValid())
+                        || SceneManager.GetActiveScene().buildIndex != sceneBuildIndex)
                     {
                         try { cash.DestroyTree(); } catch (Exception) { }
                         return;
@@ -563,7 +591,8 @@ namespace BossRush
             }
             finally
             {
-                InvokeRandomEventCashCompletion(onCompleted, piles, spawned);
+                if (this != null && (isStillValid == null || isStillValid()))
+                    InvokeRandomEventCashCompletion(onCompleted, piles, spawned);
             }
         }
 

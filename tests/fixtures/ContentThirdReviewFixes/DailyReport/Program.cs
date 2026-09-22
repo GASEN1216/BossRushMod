@@ -45,6 +45,12 @@ namespace BossRush
             FaultOnNextFlush = false;
             DailyReportPersistence.IsStoreFaulted = true;
         }
+        internal static bool RequestFlush(out string error)
+        {
+            RequestFlush();
+            error = DailyReportPersistence.IsStoreFaulted ? "fixture_store_faulted" : null;
+            return !DailyReportPersistence.IsStoreFaulted;
+        }
         internal static bool TryPrepareCashReward() { return true; }
     }
     static class DailyReportRewards

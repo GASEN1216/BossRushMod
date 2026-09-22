@@ -9,6 +9,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_FIXTURES = (
+    "AuditCoreParsing", "AuditModeLifecycle", "AuditCombatSeptember", "NpcAuditFixes",
     "ModeHSceneEntry",
     "ResourceProduction",
     "ManualSeptemberReview",

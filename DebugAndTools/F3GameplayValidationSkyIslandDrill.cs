@@ -190,18 +190,21 @@ namespace BossRush
             clone.dropBoxOnDead = false;
             clone.setActiveByPlayerDistance = false;
             CharacterMainControl created = null;
+            System.Threading.Tasks.Task<CharacterMainControl> pendingSpawn = null;
             try
             {
-                UniTask<CharacterMainControl>.Awaiter spawning = clone.CreateCharacterAsync(point + Vector3.up * 0.1f, -forward, -1, null, false).GetAwaiter();
+                pendingSpawn = clone.CreateCharacterAsync(point + Vector3.up * 0.1f, -forward, -1, null, false).AsTask();
+                var spawning = pendingSpawn.GetAwaiter();
                 float spawnUntil = Time.realtimeSinceStartup + spawnTimeout;
                 while (!spawning.IsCompleted && Time.realtimeSinceStartup < spawnUntil && !ShouldAbort()) yield return null;
                 // 完成状态先读进局部变量再取结果，取完不再碰 awaiter（UniTaskAwaiterReuseGuard）。
                 bool spawnCompleted = spawning.IsCompleted;
                 if (spawnCompleted)
                 {
-                    try { created = spawning.GetResult(); }
+                    try { created = spawning.GetResult(); pendingSpawn = null; }
                     catch (Exception e) { errors.Add(tag + "spawn_threw_" + e.GetType().Name); }
                 }
+                if (ShouldAbort()) yield break;
                 if (created == null)
                 {
                     errors.Add(tag + (spawnCompleted ? "spawn_returned_null" : "spawn_timeout"));
@@ -270,10 +273,22 @@ namespace BossRush
             finally
             {
                 if (created != null) { created.gameObject.SetActive(false); UnityEngine.Object.Destroy(created.gameObject); }
-                if (clone != null) UnityEngine.Object.Destroy(clone, 0.1f);
+                if (pendingSpawn != null) ReclaimDrillSpawn(pendingSpawn, clone).Forget();
+                else if (clone != null) UnityEngine.Object.Destroy(clone, 0.1f);
             }
             // 上一位的角色销毁要等一帧，免得下一位刷在同一个点上被它挡住。
             yield return null;
+        }
+
+        private static async UniTask ReclaimDrillSpawn(System.Threading.Tasks.Task<CharacterMainControl> task, CharacterRandomPreset preset)
+        {
+            try
+            {
+                CharacterMainControl late = await task;
+                if (late != null) { late.gameObject.SetActive(false); UnityEngine.Object.Destroy(late.gameObject); }
+            }
+            catch (Exception e) { ModBehaviour.DevLog("[SkyIslandDrill] 迟到生成回收: " + e.Message); }
+            finally { if (preset != null) UnityEngine.Object.Destroy(preset, 0.1f); }
         }
 
         // ====================================================================

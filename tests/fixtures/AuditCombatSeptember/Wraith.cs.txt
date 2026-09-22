@@ -1,0 +1,177 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+namespace UnityEngine
+{
+    public class Object
+    {
+        public bool Destroyed;
+        public static void Destroy(Object value)
+        {
+            if (ReferenceEquals(value, null)) return;
+            value.Destroyed = true;
+            var go = value as GameObject;
+            if (!ReferenceEquals(go, null))
+            {
+                if (go.Owner != null) go.Owner.Destroyed = true;
+                if (go.Item != null) go.Item.DestroyTree();
+            }
+        }
+        public static bool operator ==(Object a, Object b)
+        {
+            bool an = ReferenceEquals(a, null) || (!ReferenceEquals(a, null) && a.Destroyed);
+            bool bn = ReferenceEquals(b, null) || (!ReferenceEquals(b, null) && b.Destroyed);
+            return an || bn ? an == bn : ReferenceEquals(a, b);
+        }
+        public static bool operator !=(Object a, Object b) => !(a == b);
+        public override bool Equals(object value) => ReferenceEquals(this, value);
+        public override int GetHashCode() => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);
+    }
+    public class GameObject : Object
+    {
+        public string name;
+        public Object Owner;
+        internal Item Item;
+        public bool Active;
+        public void SetActive(bool value) { Active = value; }
+    }
+}
+
+struct Vector3 { }
+struct Quaternion { public static Quaternion identity => new Quaternion(); }
+struct Scene { public int handle; }
+static class SceneManager { public static int Handle = 10; public static Scene GetActiveScene() => new Scene { handle = Handle }; }
+static class SavesSystem { public static int CurrentSlot = 0; }
+static class UniTask { public static Task Yield() => ModBehaviour.Instance.Flow.Steps[3].Task; }
+class Item : UnityEngine.Object
+{
+    public Flow Flow;
+    public UnityEngine.GameObject gameObject;
+    public int DestroyedCopies;
+    public Item() { gameObject = new UnityEngine.GameObject { Owner = this }; }
+    public void DestroyTree() { Destroyed = true; DestroyedCopies++; UnityEngine.Object.Destroy(gameObject); }
+}
+class ItemTreeData
+{
+    public Flow Flow;
+    public static async Task<Item> InstantiateAsync(ItemTreeData data) { await data.Flow.Steps[0].Task; return data.Flow.Item; }
+}
+class CharacterModel { }
+class Health { public bool showHealthBar; public float MaxHealth = 100; public void SetHealth(float value) { } public void RequestHealthBar() { } }
+class CharacterMainControl : UnityEngine.Object
+{
+    public Flow Flow;
+    public Health Health = new Health();
+    public bool dropBoxOnDead;
+    public UnityEngine.GameObject gameObject;
+    public void SetTeam(Teams team) { }
+}
+enum Teams { scav }
+enum WraithTier { Weak }
+class WraithInfo
+{
+    public bool valid = true;
+    public ItemTreeData itemTreeData;
+    public float playerMaxHealth;
+    public int droppedItemsValue;
+    public long playerTotalWealth;
+    public string playerName;
+}
+class CharacterCreator
+{
+    public Task<Item> LoadOrCreateCharacterItemInstance(int id) => throw new Exception("fallback not expected");
+    public async Task<CharacterMainControl> CreateCharacter(Item item, CharacterModel model, Vector3 position, Quaternion rotation)
+    { await item.Flow.Steps[1].Task; return item.Flow.Character; }
+}
+class LevelManager { public static LevelManager Instance = new LevelManager(); public CharacterCreator CharacterCreator = new CharacterCreator(); }
+static class GameplayDataSettings { public static class ItemAssets { public const int DefaultCharacterItemTypeID = 1; } }
+class DeadBodySpawnContext_DeathWraith { }
+class Flow
+{
+    public readonly TaskCompletionSource<bool>[] Steps = new TaskCompletionSource<bool>[5];
+    public readonly Item Item;
+    public readonly CharacterMainControl Character;
+    public readonly WraithInfo Info;
+    public Flow(int pendingStage)
+    {
+        for (int i = 0; i < Steps.Length; i++)
+        { Steps[i] = new TaskCompletionSource<bool>(); if (i < pendingStage) Steps[i].SetResult(true); }
+        Item = new Item { Flow = this };
+        Character = new CharacterMainControl { Flow = this };
+        Character.gameObject = new UnityEngine.GameObject { Owner = Character, Item = Item };
+        Info = new WraithInfo { itemTreeData = new ItemTreeData { Flow = this } };
+    }
+    public void Complete() { foreach (var step in Steps) step.TrySetResult(true); }
+}
+class ModBehaviour : UnityEngine.Object
+{
+    public static ModBehaviour Instance;
+    public Flow Flow;
+    public bool Enabled = true;
+    private int deathWraithSpawnGeneration;
+    private HashSet<uint> spawningWraithRaidIds = new HashSet<uint>();
+    private Dictionary<uint, CharacterMainControl> activeWraithsByRaidId = new Dictionary<uint, CharacterMainControl>();
+    private Dictionary<CharacterMainControl, uint> activeWraithRaidIdByCharacter = new Dictionary<CharacterMainControl, uint>();
+    private List<DeadBodySpawnContext_DeathWraith> pendingDeadBodySpawnContexts = new List<DeadBodySpawnContext_DeathWraith>();
+    private object _deathWraithListCache;
+    private bool _deathWraithListDirty;
+    private float _deathWraithListDirtySince;
+    public void Spawn(Flow flow) { Flow = flow; TrySpawnStoredDeathWraithForRaid_DeathWraith(7, new Vector3()); }
+    public void Reload() { OnSetFile_DeathWraith(); }
+    public bool Pending => spawningWraithRaidIds.Contains(7);
+    public int Active => activeWraithsByRaidId.Count;
+    public static void DevLog(string value) { }
+    private bool IsDeathWraithSystemEnabled() => Enabled;
+    private WraithInfo FindStoredDeathWraithInfoByRaidId_DeathWraith(uint id) => Flow.Info;
+    private CharacterModel GetMainCharacterModelPrefab_DeathWraith(LevelManager level) => new CharacterModel();
+    private void RestoreWraithItemRuntimeStateRecursive_DeathWraith(Item item, string context) { }
+    private void ApplyStoredWraithFaceData_DeathWraith(CharacterMainControl character, WraithInfo info) { }
+    private Task EnsureStoredBoundMeleeEquipped_DeathWraith(CharacterMainControl character, WraithInfo info) => character.Flow.Steps[2].Task;
+    private Task PrepareWraithCombatLoadout_DeathWraith(CharacterMainControl character) => character.Flow.Steps[4].Task;
+    private void NormalizeDamageMultiplier(CharacterMainControl character) { }
+    private void RestoreWraithMaxHealthSnapshot_DeathWraith(CharacterMainControl character, float value) { }
+    private void ApplyBossStatMultiplier(CharacterMainControl character) { }
+    private void InitializeWraithAI_DeathWraith(CharacterMainControl character, Vector3 position, WraithInfo info) { }
+    private WraithTier ClassifyWraithTier_DeathWraith(int value, long wealth) => WraithTier.Weak;
+    private string GetWraithDisplayName_DeathWraith(string name, WraithTier tier) => "wraith";
+    private string CreateWraithDisplayNameKey_DeathWraith(string name) => name;
+    private void ApplyWraithRuntimePreset_DeathWraith(CharacterMainControl character, WraithInfo info, string key, string name) { }
+    private void ApplyWraithTierStats_DeathWraith(CharacterMainControl character, WraithTier tier) { }
+    private void ClearPendingDeathWraithInfo_DeathWraith() { }
+    private void DestroyWraithInstance_DeathWraith(CharacterMainControl character, string reason) => UnityEngine.Object.Destroy(character.gameObject);
+    /* WRAITH_METHODS */
+    /* WRAITH_CLEANUP */
+}
+class Program
+{
+    static void Require(bool condition, string reason) { if (!condition) throw new Exception(reason); }
+    static void Main()
+    {
+        for (int stage = 0; stage < 5; stage++)
+        {
+            var host = new ModBehaviour(); ModBehaviour.Instance = host;
+            var old = new Flow(stage); host.Spawn(old);
+            Require(host.Pending && host.Active == 0, "old request must suspend at stage " + stage);
+            host.Reload();
+            var successor = new Flow(0); host.Spawn(successor);
+            old.Steps[stage].SetResult(true);
+            Require(host.Pending && host.Active == 0, "old finally released successor at stage " + stage);
+            Require(old.Item.Destroyed, "untransferred item tree remained at stage " + stage);
+            if (stage > 0) Require(old.Character.Destroyed, "late character remained at stage " + stage);
+            successor.Complete();
+            Require(!host.Pending && host.Active == 1 && successor.Character.gameObject.Active, "successor did not commit");
+            host.Reload();
+            Require(host.Active == 0 && successor.Character.Destroyed, "reload did not clean registered character");
+        }
+        for (int stage = 1; stage <= 2; stage++)
+        {
+            var host = new ModBehaviour(); ModBehaviour.Instance = host;
+            var failed = new Flow(stage); host.Spawn(failed);
+            failed.Steps[stage].SetException(new InvalidOperationException("factory/equipment failure"));
+            Require(!host.Pending && host.Active == 0 && failed.Item.Destroyed, "failure lost owned tree");
+            if (stage == 2) Require(failed.Character.Destroyed, "equipment exception orphaned character");
+        }
+        Console.WriteLine("PASS same-slot reload at all 5 awaits, successor request ownership, creation and equipment failure cleanup");
+    }
+}

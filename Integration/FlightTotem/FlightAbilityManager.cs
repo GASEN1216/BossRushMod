@@ -108,6 +108,12 @@ namespace BossRush
                 return;
             }
 
+            if (!IsGameplayInputAllowed())
+            {
+                if (abilityAction != null && abilityAction.Running) abilityAction.StopAction();
+                return;
+            }
+
             base.Update();
 
             if (!abilityEnabled || abilityAction == null || !abilityAction.Running)
@@ -127,7 +133,7 @@ namespace BossRush
 
         public override bool TryExecuteAbility()
         {
-            if (!abilityEnabled) return false;
+            if (!abilityEnabled || !IsGameplayInputAllowed()) return false;
             if (!OnBeforeTryExecute()) return false;
             if (abilityAction == null)
             {
@@ -174,8 +180,19 @@ namespace BossRush
             CacheAndDisableDash(character);
         }
 
+        private static bool IsGameplayInputAllowed()
+        {
+            try
+            {
+                return InputManager.InputActived && !BossRushUI.IsGamePaused() && Time.timeScale > 0f &&
+                    Cursor.lockState != CursorLockMode.None && Duckov.UI.View.ActiveView == null;
+            }
+            catch { return false; }
+        }
+
         public bool IsFlightInputHeld()
         {
+            if (!IsGameplayInputAllowed()) return false;
             if (!inputActionCached)
             {
                 TryCacheInputAction();

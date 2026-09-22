@@ -1,5 +1,13 @@
 # NPC 交互系统
 
+## 2026-09-22 审计修订（COMPAT）
+
+共享 `DialogueManager` 的官方请求捕获 actor、UI 实例、session owner 和请求代次。actor 销毁、UI 被替换或 Cleanup 后，旧字幕/多选等待会取消；已销毁对象按 Unity 的 null 语义判定。原本不带 token 的本地化 key 序列也传播 `OperationCanceledException`，阿稳、羽织、叮当及婚礼文字重播分别处理取消，不再把中断当作成功，也不强行关闭后继对话。输入令牌随场景销毁；取消后的官方 drain 只能推进原 UI、原代次的请求。`DialogueActorFactory` 在 Get/Create 时清掉销毁项，Remove 使用托管引用身份，避免 Unity destroyed-as-null 使字典项无法移除。
+
+赠礼返还在背包无法接收时调用官方 `Item.Drop` 创建拾取代理；主玩家暂缺时交给官方仓库缓冲区持有物品树。仅移动和激活 Item 数据对象不能作为可拾取交付。已婚玩家可进入当日重复赠礼的选物步骤，最终普通礼物/同配偶戒指/其他 NPC 戒指仍在 `NPCGiftSystem.GiveGift` 使用原规则分别裁决。
+
+`SkyIslandDialogue` 直接链接共享生产对话逻辑，验证旧故事取消传播、迟到回调及同一 UI 在 Cleanup 后的 drain 隔离；`NpcAuditFixes` 覆盖 actor 缓存、礼物拾取 API 与仓库缓冲路径。官方动画、场景卸载帧序与真实拾取必须由实机验证。
+
 <cite>
 **本文引用的文件**
 - [NPCInteractableBase.cs](file://Integration/Affinity/Interactables/NPCInteractableBase.cs)

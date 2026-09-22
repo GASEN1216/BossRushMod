@@ -9,11 +9,22 @@ namespace UnityEngine
     {
         private static readonly List<Object> Objects = new List<Object>();
         public string name;
+        private bool destroyed;
         protected Object() { Objects.Add(this); }
+        public static bool operator ==(Object a, Object b)
+        {
+            bool aNull = ReferenceEquals(a, null) || (!ReferenceEquals(a, null) && a.destroyed);
+            bool bNull = ReferenceEquals(b, null) || (!ReferenceEquals(b, null) && b.destroyed);
+            return aNull || bNull ? aNull == bNull : ReferenceEquals(a, b);
+        }
+        public static bool operator !=(Object a, Object b) { return !(a == b); }
+        public override bool Equals(object obj) { return ReferenceEquals(this, obj); }
+        public override int GetHashCode() { return System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this); }
         public static T FindObjectOfType<T>() where T : Object { return Objects.OfType<T>().FirstOrDefault(); }
         public static T[] FindObjectsOfType<T>() where T : Object { return Objects.OfType<T>().ToArray(); }
         public static void Destroy(Object obj)
         {
+            if (obj == null) return;
             GameObject go = obj as GameObject;
             if (go != null)
                 foreach (Component component in go.Components.ToArray()) Destroy(component);
@@ -25,6 +36,7 @@ namespace UnityEngine
                 own.gameObject.Components.Remove(own);
             }
             Objects.Remove(obj);
+            obj.destroyed = true;
         }
         public static void DontDestroyOnLoad(Object obj) { }
     }
@@ -70,7 +82,9 @@ namespace UnityEngine
         public static bool GetKey(KeyCode key) { return false; }
         public static bool GetKeyDown(KeyCode key) { return false; }
     }
-    public static class Time { public static float deltaTime = 0.02f; }
+    public static class Time { public static float deltaTime = 0.02f; public static float timeScale = 1f; }
+    public enum CursorLockMode { None, Locked }
+    public static class Cursor { public static CursorLockMode lockState = CursorLockMode.Locked; }
 }
 namespace UnityEngine.SceneManagement
 {
@@ -146,3 +160,7 @@ namespace BossRush
     public static class AchievementTracker { public static void OnUseFlightTotem() { } }
     public static class BossRushAchievementManager { public static void TryUnlock(string key) { } }
 }
+
+public static class InputManager { public static bool InputActived = true; }
+namespace Duckov.UI { public class View { public static View ActiveView; } }
+namespace BossRush { public static class BossRushUI { public static bool Paused; public static bool IsGamePaused() { return Paused; } } }

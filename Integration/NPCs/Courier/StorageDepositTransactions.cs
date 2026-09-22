@@ -20,36 +20,35 @@ using BossRush.Utils;
 
 namespace BossRush
 {
+    [HarmonyLib.HarmonyPatch(typeof(StockShop), "Sell")]
+    internal static class StorageDepositSellPatch
+    {
+        [HarmonyLib.HarmonyPrefix]
+        private static bool Prefix(StockShop __instance, Item target, ref UniTask __result)
+        {
+            if (!StorageDepositService.OwnsShop(__instance)) return true;
+            __result = StorageDepositService.HandleDepositAsync(target);
+            return false;
+        }
+    }
+
     public static partial class StorageDepositService
     {
-        private static void OnItemSoldByPlayer(StockShop shop, Item soldItem, int price)
-        {
-            // 检查是否是我们的商店
-            if (shop != depositShop) return;
-            if (!isServiceActive) return;
-
-            ModBehaviour.DevLog("[StorageDepositService] 拦截到售出事件: " +
-                (soldItem != null ? soldItem.DisplayName : "null") + ", 价格: " + price);
-
-            if (soldItem == null)
-            {
-                ModBehaviour.DevLog("[StorageDepositService] [WARNING] 无法获取售出物品信息");
-                return;
-            }
-
-            // 异步处理寄存逻辑
-            HandleDepositAsync(soldItem, price).Forget();
-        }
-
         /// <summary>
         /// 异步处理物品寄存（优化：只更新新增的物品，不刷新全部）
         /// </summary>
-        private static async UniTaskVoid HandleDepositAsync(Item soldItem, int price)
+        internal static async UniTask HandleDepositAsync(Item soldItem)
         {
+            DepositTransaction transaction = TryBeginTransaction();
+            if (transaction == null || soldItem == null || !CanDepositItem(soldItem))
+            {
+                if (transaction != null) EndTransaction(transaction);
+                return;
+            }
             try
             {
-                int newIndex = await StoreItemInDepositDataAsync(soldItem, price, "StorageDeposit.HandleDeposit");
-                if (newIndex < 0)
+                int newIndex = await StoreItemInDepositDataAsync(soldItem, 0, "StorageDeposit.HandleDeposit");
+                if (!IsCurrentTransaction(transaction) || newIndex < 0)
                 {
                     return;
                 }
@@ -74,6 +73,7 @@ namespace BossRush
             {
                 ModBehaviour.DevLog("[StorageDepositService] [ERROR] 处理寄存失败: " + e.Message);
             }
+            finally { EndTransaction(transaction); }
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace BossRush
         /// </summary>
         private static async UniTask<int> StoreItemInDepositDataAsync(Item item, int price, string runtimeContext)
         {
-            if (item == null)
+            if (item == null || !IsCurrentTransaction(transactionOwner))
             {
                 return -1;
             }
@@ -131,6 +131,7 @@ namespace BossRush
 
             ModBehaviour.DevLog("[StorageDepositService] 物品已存入寄存数据: " + itemName + ", index=" + newIndex);
 
+            DestroyOriginalDepositedItem(item, itemName);
             bool cached = await CacheDepositedItemInstanceAsync(newIndex, runtimeContext);
             if (cached)
             {

@@ -69,8 +69,15 @@ namespace BossRush
             bool isChildProtectionSummon = false,
             bool notifyBossRushOnFailure = true,
             bool deferActivationUntilNextFrame = false,
-            bool isNonWaveSpawn = false)
+            bool isNonWaveSpawn = false,
+            Func<bool> isActiveCheck = null)
         {
+            CharacterMainControl character = null;
+            bool completed = false;
+            int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            Func<bool> isCurrent = () => this != null && Instance == this &&
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
+                (isActiveCheck == null || isActiveCheck());
             try
             {
                 DevLog("[DragonDescendant] 开始生成龙裔遗族Boss at " + position + (isChildProtectionSummon ? " (孩儿护我召唤)" : ""));
@@ -86,7 +93,7 @@ namespace BossRush
                 if (basePreset == null)
                 {
                     DevLog("[DragonDescendant] [ERROR] 无法找到任何可用预设");
-                    if (!isChildProtectionSummon && notifyBossRushOnFailure)
+                    if (!isChildProtectionSummon && notifyBossRushOnFailure && isCurrent())
                     {
                         NotifyDragonDescendantSpawnFailed();
                     }
@@ -98,12 +105,14 @@ namespace BossRush
                 // 生成角色（不修改原版预设）
                 Vector3 dir = Vector3.forward;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-                var character = await basePreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
+                if (!isCurrent()) return null;
+                character = await basePreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
+                if (!isCurrent()) return null;
 
                 if (character == null)
                 {
                     DevLog("[DragonDescendant] [ERROR] 生成角色失败");
-                    if (!isChildProtectionSummon && notifyBossRushOnFailure)
+                    if (!isChildProtectionSummon && notifyBossRushOnFailure && isCurrent())
                     {
                         NotifyDragonDescendantSpawnFailed();
                     }
@@ -167,6 +176,7 @@ namespace BossRush
 
                 // 装备武器和护甲
                 await EquipDragonDescendant(character);
+                if (!isCurrent()) return null;
 
                 // 添加能力控制器（传入原始武器完整属性）
                 dragonDescendantAbilities = character.gameObject.AddComponent<DragonDescendantAbilityController>();
@@ -175,6 +185,7 @@ namespace BossRush
                 if (deferActivationUntilNextFrame)
                 {
                     await UniTask.Yield();
+                    if (!isCurrent()) return null;
                 }
 
                 // 激活角色
@@ -241,16 +252,21 @@ namespace BossRush
                 }
 
                 // 返回生成的角色引用，供BossRush系统验证
+                completed = true;
                 return character;
             }
             catch (Exception e)
             {
                 DevLog("[DragonDescendant] [ERROR] 生成Boss失败: " + e.Message + "\n" + e.StackTrace);
-                if (!isChildProtectionSummon && notifyBossRushOnFailure)
+                if (!isChildProtectionSummon && notifyBossRushOnFailure && isCurrent())
                 {
                     NotifyDragonDescendantSpawnFailed();
                 }
                 return null;
+            }
+            finally
+            {
+                if (!completed && character != null) CleanupCancelledDragonDescendant(character);
             }
         }
 
@@ -691,6 +707,7 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[DragonDescendant] [WARNING] 装备失败: " + e.Message);
+                throw;
             }
             return UniTask.CompletedTask;
         }
@@ -700,65 +717,29 @@ namespace BossRush
         /// </summary>
         private void EquipDragonBreathWeapon(CharacterMainControl character)
         {
+            var primSlot = character != null ? character.PrimWeaponSlot() : null;
+            if (primSlot == null || ItemAssetsCollection.GetPrefab(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID) == null)
+                throw new InvalidOperationException("Dragon Breath prefab or primary slot is unavailable");
+            Item dragonBreathItem = null;
+            bool equipped = false;
             try
             {
-                if (character == null) return;
-
-                // 获取主武器槽位
-                var primSlot = character.PrimWeaponSlot();
-                if (primSlot == null)
-                {
-                    DevLog("[DragonDescendant] [WARNING] 未找到主武器槽位");
-                    return;
-                }
-
-                // 移除原有武器
-                Item oldWeapon = primSlot.Content;
-                if (oldWeapon != null)
-                {
-                    DevLog("[DragonDescendant] 移除原有武器: " + oldWeapon.name + " (TypeID=" + oldWeapon.TypeID + ")");
-                    // Unplug() 直接返回Item，不需要out参数
-                    Item unpluggedItem = primSlot.Unplug();
-                    // 销毁原有武器实例
-                    if (unpluggedItem != null)
-                    {
-                        UnityEngine.Object.Destroy(unpluggedItem.gameObject);
-                    }
-                }
-
-                // 使用 ItemAssetsCollection.InstantiateSync 创建龙息武器实例
-                Item dragonBreathItem = ItemAssetsCollection.InstantiateSync(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID);
-                if (dragonBreathItem == null)
-                {
-                    DevLog("[DragonDescendant] [WARNING] 创建龙息武器实例失败 (TypeID=" + DragonDescendantConfig.DRAGON_BREATH_TYPE_ID + ")");
-                    return;
-                }
-
-                // 配置龙息武器属性
+                dragonBreathItem = ItemAssetsCollection.InstantiateSync(DragonDescendantConfig.DRAGON_BREATH_TYPE_ID);
+                if (dragonBreathItem == null || dragonBreathItem.TypeID != DragonDescendantConfig.DRAGON_BREATH_TYPE_ID ||
+                    dragonBreathItem.GetComponent<ItemSetting_Gun>() == null)
+                    throw new InvalidOperationException("Dragon Breath instance is invalid");
                 DragonBreathWeaponConfig.ConfigureWeapon(dragonBreathItem);
-
-                // 添加到库存
-                var inventory = character.CharacterItem.Inventory;
-                if (inventory != null)
-                {
-                    inventory.AddItem(dragonBreathItem);
-                }
-
-                // 装备到主武器槽
-                Item pluggedOut;
-                primSlot.Plug(dragonBreathItem, out pluggedOut);
-
-                // 让Boss手持武器
+                Item replaced;
+                primSlot.Plug(dragonBreathItem, out replaced);
+                equipped = primSlot.Content == dragonBreathItem;
+                if (!equipped) throw new InvalidOperationException("Dragon Breath could not be equipped");
                 character.ChangeHoldItem(dragonBreathItem);
-
-                // 为Boss的龙息武器添加火焰特效（从带火AK-47复制）
+                if (replaced != null) UnityEngine.Object.Destroy(replaced.gameObject);
                 TryAddFireEffectsToBossWeapon(character, dragonBreathItem);
-
-                DevLog("[DragonDescendant] 已装备龙息武器 (TypeID=" + DragonDescendantConfig.DRAGON_BREATH_TYPE_ID + ")");
             }
-            catch (Exception e)
+            finally
             {
-                DevLog("[DragonDescendant] [WARNING] 装备龙息武器失败: " + e.Message + "\n" + e.StackTrace);
+                if (!equipped && dragonBreathItem != null) UnityEngine.Object.Destroy(dragonBreathItem.gameObject);
             }
         }
 

@@ -19,6 +19,7 @@ namespace BossRush
         private string cachedSpouseNpcId;
         private int cachedTogetherDays = int.MinValue;
         private string cachedDisplayText;
+        private bool? cachedIsChinese;
         private WeddingChapelReplayInteractable replayInteractable;
 
         protected override void Awake()
@@ -102,11 +103,13 @@ namespace BossRush
                     ? -1
                     : CalculateDaysSinceMarriage(spouseNpcId);
 
-                if (!force && spouseNpcId == cachedSpouseNpcId && togetherDays == cachedTogetherDays)
+                if (!force && cachedIsChinese == L10n.IsChinese && spouseNpcId == cachedSpouseNpcId && togetherDays == cachedTogetherDays)
                 {
                     return;
                 }
 
+                cachedIsChinese = L10n.IsChinese;
+                LocalizationHelper.InjectLocalization("BossRush_WeddingChapel_Replay", L10n.T("回忆当天", "Relive the Moment"));
                 cachedSpouseNpcId = spouseNpcId;
                 cachedTogetherDays = togetherDays;
 

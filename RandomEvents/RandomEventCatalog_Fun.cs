@@ -278,6 +278,7 @@ namespace BossRush
     /// </summary>
     internal sealed class RandomEventGoldenDuckRain : RandomEventBase
     {
+        private RandomEventContext _spawnContext;
         private bool _spawnCompleted;
         private int _requestedPiles;
         private int _spawnedPiles;
@@ -310,6 +311,7 @@ namespace BossRush
                     RandomEventsTuning.GoldenDuckRainPileMin,
                     RandomEventsTuning.GoldenDuckRainPileMax + 1);
 
+                _spawnContext = ctx;
                 _spawnCompleted = false;
                 _requestedPiles = piles;
                 _spawnedPiles = 0;
@@ -320,7 +322,11 @@ namespace BossRush
                     RandomEventsTuning.GoldenDuckRainTotalCash,
                     piles,
                     RandomEventsTuning.GoldenDuckRainScatterRadius,
-                    HandleCashPilesCompleted);
+                    (requested, spawned) =>
+                    {
+                        if (IsSpawnStillValid(ctx)) HandleCashPilesCompleted(requested, spawned);
+                    },
+                    () => IsSpawnStillValid(ctx));
 
                 owner.PlayRandomEventModSound("lottery/special.mp3");
                 return true;
@@ -330,6 +336,12 @@ namespace BossRush
                 ModBehaviour.DevLog(RandomEventsTuning.LogPrefix + "[ERROR] 金鸭雨触发失败: " + e.Message);
                 return false;
             }
+        }
+
+        private bool IsSpawnStillValid(RandomEventContext ctx)
+        {
+            return ReferenceEquals(_spawnContext, ctx) && ctx != null && ctx.Owner != null
+                && UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex == ctx.SceneBuildIndex;
         }
 
         private void HandleCashPilesCompleted(int requested, int spawned)
@@ -351,6 +363,7 @@ namespace BossRush
 
         internal override void OnCleanup(RandomEventContext ctx, RandomEventEndReason reason)
         {
+            if (ReferenceEquals(_spawnContext, ctx)) _spawnContext = null;
             RandomEventEffectHelpers.ClearScope(ctx, reason);
         }
     }

@@ -200,6 +200,11 @@ namespace BossRush
                 data.BountyKindId = root.GetString("bountyKindId", string.Empty);
                 data.BountyTarget = root.GetInt("bountyTarget", 0);
                 data.BountyProgress = root.GetInt("bountyProgress", 0);
+                foreach (string key in new[] { "bountyCompleted", "bountyRewardClaimed" })
+                {
+                    bool value;
+                    if (root.GetProperty(key) != null && !root.TryGetBool(key, out value)) return null;
+                }
                 data.BountyCompleted = root.GetBool("bountyCompleted", false);
                 data.BountyRewardClaimed = root.GetBool("bountyRewardClaimed", false);
                 data.BountyCashReward = root.GetLong("bountyCashReward", 0L);

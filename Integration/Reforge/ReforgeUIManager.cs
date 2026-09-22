@@ -523,7 +523,7 @@ namespace BossRush
                     TextMeshProUGUI buttonText = reforgeButton.GetComponentInChildren<TextMeshProUGUI>();
                     if (buttonText != null)
                     {
-                        buttonText.text = "重铸";
+                        buttonText.text = L10n.T("重铸", "Reforge");
                     }
                 }
 
@@ -994,7 +994,7 @@ namespace BossRush
                 {
                     if (txt.gameObject.name.Contains("Title") || txt.text.Contains("\u6295\u5165") || txt.text.Contains("\u5206\u89e3") || txt.text.Contains("Decompose") || txt.text == "\u6295\u5165" || txt.text == "\u6b63\u8d1f\u6781\u6027\u503e\u5411")
                     {
-                        txt.text = "\u6b63\u8d1f\u6781\u6027\u503e\u5411";
+                        txt.text = L10n.T("正负极性倾向", "Polarity tendency");
                         txt.gameObject.SetActive(true);
                         tendencyText = txt;
                     }
@@ -1045,11 +1045,11 @@ namespace BossRush
             if (tendencyText != null)
             {
                 if (value < -10f)
-                    tendencyText.text = string.Format("<color=#FF4D4D>偏向负面 ({0})</color>", (int)value);
+                    tendencyText.text = string.Format(L10n.T("<color=#FF4D4D>偏向负面 ({0})</color>", "<color=#FF4D4D>Negative tendency ({0})</color>"), (int)value);
                 else if (value > 10f)
-                    tendencyText.text = string.Format("<color=#4DFF4D>偏向正面 (+{0})</color>", (int)value);
+                    tendencyText.text = string.Format(L10n.T("<color=#4DFF4D>偏向正面 (+{0})</color>", "<color=#4DFF4D>Positive tendency (+{0})</color>"), (int)value);
                 else
-                    tendencyText.text = string.Format("平衡 (0)");
+                    tendencyText.text = L10n.T("平衡 (0)", "Balanced (0)");
             }
 
             UpdateReforgeButtonInteractable();
@@ -1080,7 +1080,7 @@ namespace BossRush
                         TextMeshProUGUI buttonText = reforgeButton.GetComponentInChildren<TextMeshProUGUI>();
                         if (buttonText != null)
                         {
-                            buttonText.text = "重铸";
+                            buttonText.text = L10n.T("重铸", "Reforge");
                         }
 
                         ModBehaviour.DevLog("[ReforgeUI] 分解按钮已修改为重铸按钮");

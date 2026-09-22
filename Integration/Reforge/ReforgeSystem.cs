@@ -629,8 +629,25 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 检查物品是否有可显示的Modifiers（Display=true，排除非预制体原生的）
+        /// 检查是否至少有一项未固定的可重铸属性，供按钮与执行入口共同使用。
         /// </summary>
+        public static bool CanExecuteReforge(Item item)
+        {
+            if (item == null) return false;
+            Item prefab = GetItemPrefab(item);
+            if (item.Modifiers != null)
+                foreach (var mod in item.Modifiers)
+                    if (IsModifierEligibleForReforge(item, prefab, mod) && !PropertyLockSystem.IsPropertyLocked(item, mod.Key, PropertyType.Modifier)) return true;
+            if (item.Stats != null)
+                foreach (var stat in item.Stats)
+                    if (IsStatEligibleForReforge(stat) && !PropertyLockSystem.IsPropertyLocked(item, stat.Key, PropertyType.Stat)) return true;
+            if (item.Variables != null)
+                foreach (var variable in item.Variables)
+                    if (IsVariableEligibleForReforge(variable) && !PropertyLockSystem.IsPropertyLocked(item, variable.Key, PropertyType.Variable)) return true;
+            return false;
+        }
+
+        /// <summary>检查物品是否有可显示的原生 Modifier。</summary>
         private static bool HasDisplayableModifiers(Item item)
         {
             if (item == null || item.Modifiers == null) return false;
@@ -806,9 +823,9 @@ namespace BossRush
             result.Success = false;
             result.ModifiedStats = new List<ModifiedStatInfo>();
 
-            if (!CanReforge(item))
+            if (!CanExecuteReforge(item))
             {
-                result.ErrorMessage = "该物品无法重铸";
+                result.ErrorMessage = L10n.T("该物品没有未固定的可重铸属性", "This item has no unlocked reforgeable properties.");
                 return result;
             }
 
@@ -818,7 +835,7 @@ namespace BossRush
 
             if (moneyInvested < baseCost)
             {
-                result.ErrorMessage = string.Format("投入金额不足（最低 {0}）", baseCost);
+                result.ErrorMessage = string.Format(L10n.T("投入金额不足（最低 {0}）", "Investment is too low (minimum {0})."), baseCost);
                 return result;
             }
 
@@ -924,7 +941,7 @@ namespace BossRush
 
                 if (allProperties.Count == 0)
                 {
-                    result.ErrorMessage = "该物品没有可调整的属性";
+                    result.ErrorMessage = L10n.T("该物品没有可调整的属性", "This item has no adjustable properties.");
                     return result;
                 }
 
@@ -1014,6 +1031,10 @@ namespace BossRush
 
                     // 应用修改并保存重铸数据
                     ApplyPropertyChange(prop, newValue, item, prefab);
+                    float appliedValue = prop.Type == PropertyType.Modifier ? ((ModifierDescription)prop.Source).Value
+                        : prop.Type == PropertyType.Stat ? ((Stat)prop.Source).BaseValue
+                        : ((CustomData)prop.Source).GetFloat();
+                    result.HasAppliedChanges |= !Mathf.Approximately(appliedValue, originalValue);
                 }
 
                 // 标记物品已恢复，防止下面 ReapplyModifiers 触发 Harmony Prefix 时重复恢复
@@ -1042,7 +1063,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                result.ErrorMessage = "重铸过程出错: " + e.Message;
+                result.ErrorMessage = L10n.T("重铸过程出错: ", "Reforge failed: ") + e.Message;
                 ModBehaviour.DevLog("[ReforgeSystem] 错误: " + e.Message + "\n" + e.StackTrace);
             }
 

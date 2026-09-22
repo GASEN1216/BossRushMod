@@ -52,21 +52,27 @@ const results = ref<Suggestion[]>([])
 
 const index = shallowRef<any>(null)
 let loaderPromise: Promise<void> | null = null
+let indexGeneration = 0
 
 /** 索引按需拉：读者不搜索就不该替他下载这 250 KB（预热逻辑在 Layout 里）。 */
 function ensureIndex() {
   if (index.value || loaderPromise) return loaderPromise ?? Promise.resolve()
+  const generation = indexGeneration
+  const locale = localeIndex.value
   loading.value = true
   loaderPromise = import('@localSearchIndex')
-    .then((m: any) => loadSearchIndex(localeIndex.value, m.default ?? {}, theme.value))
+    .then((m: any) => loadSearchIndex(locale, m.default ?? {}, theme.value))
     .then((loaded) => {
-      index.value = loaded
+      if (generation === indexGeneration) index.value = loaded
     })
     .catch(() => {
-      index.value = null
+      if (generation === indexGeneration) index.value = null
     })
     .finally(() => {
-      loading.value = false
+      if (generation === indexGeneration) {
+        loading.value = false
+        loaderPromise = null
+      }
     })
   return loaderPromise
 }
@@ -118,6 +124,16 @@ function runSearch() {
 }
 
 let timer: ReturnType<typeof setTimeout> | null = null
+watch(localeIndex, () => {
+  indexGeneration++
+  index.value = null
+  loaderPromise = null
+  loading.value = false
+  results.value = []
+  active.value = -1
+  if (timer) clearTimeout(timer)
+  if (query.value.trim()) ensureIndex().then(runSearch)
+}, { flush: 'sync' })
 watch(query, () => {
   open.value = true
   if (timer) clearTimeout(timer)
@@ -192,6 +208,7 @@ onMounted(() => {
   document.addEventListener('pointerdown', onDocPointer)
 })
 onBeforeUnmount(() => {
+  indexGeneration++
   window.removeEventListener('keydown', onGlobalKey)
   document.removeEventListener('pointerdown', onDocPointer)
   if (timer) clearTimeout(timer)

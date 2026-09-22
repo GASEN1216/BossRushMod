@@ -190,6 +190,7 @@ namespace BossRush
                     // 通过交互点配置当前模式（默认1，只在使用自定义难度时生效）
                     host.ConfigureBossRushMode(bossesPerWave, isInfiniteHell);
                     host.StartFirstWave();
+                    if (!host.IsActive) return;
 
                     // 交互后隐藏同一菜单下的所有难度选项（包括自己和另一个），防止玩家重复选择
                     try

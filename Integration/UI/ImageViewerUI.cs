@@ -53,6 +53,7 @@ namespace BossRush
         // ============================================================================
 
         private bool isOpen = false;
+        private ZombieModeUIHelper.ModalInputLease modalLease;
         private Sprite currentSprite = null;
 
         // ============================================================================
@@ -239,8 +240,7 @@ namespace BossRush
             isOpen = false;
             uiRoot.SetActive(false);
 
-            // 恢复游戏时间
-            Time.timeScale = 1f;
+            if (modalLease != null) { modalLease.Release(); modalLease = null; }
 
             ModBehaviour.DevLog("[ImageViewer] UI已关闭");
         }
@@ -279,7 +279,7 @@ namespace BossRush
             isOpen = true;
 
             // 暂停游戏
-            Time.timeScale = 0f;
+            if (modalLease == null) modalLease = ZombieModeUIHelper.ClaimModalInput(uiRoot, "ImageViewer");
 
             ModBehaviour.DevLog("[ImageViewer] 显示图片: " + title);
         }
@@ -298,7 +298,7 @@ namespace BossRush
 
             uiRoot.SetActive(true);
             isOpen = true;
-            Time.timeScale = 0f;
+            if (modalLease == null) modalLease = ZombieModeUIHelper.ClaimModalInput(uiRoot, "ImageViewer");
 
             ModBehaviour.DevLog("[ImageViewer] 显示占位图: " + placeholderTitle);
         }
@@ -389,10 +389,19 @@ namespace BossRush
 
         private void OnDestroy()
         {
+            if (modalLease != null) { modalLease.Release(); modalLease = null; }
             if (_instance == this)
             {
                 _instance = null;
             }
+        }
+
+        internal static void Shutdown()
+        {
+            if (_instance == null) return;
+            _instance.CloseUI();
+            Destroy(_instance.gameObject);
+            _instance = null;
         }
     }
 }

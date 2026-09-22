@@ -242,6 +242,8 @@ namespace BossRush
             return true;
         }
 
+        protected override bool ContinueUpdatingWhenStaminaDepleted => true;
+
         protected override void OnStaminaDepleted()
         {
             // 切换到缓慢下降模式而不是立即停止（OnAbilityUpdate 中已处理此逻辑）
@@ -440,7 +442,6 @@ namespace BossRush
                     Vector3 velocity = (Vector3)velocityProperty.GetValue(characterMovement);
                     velocity.y = pendingVerticalDelta;
                     velocityProperty.SetValue(characterMovement, velocity);
-                    pendingVerticalDelta = 0f;
                     return;
                 }
                 catch { /* 回退到手动修改位置 */ }
@@ -452,7 +453,6 @@ namespace BossRush
                 Vector3 playerPos = characterTransform.position;
                 playerPos.y += pendingVerticalDelta * Time.fixedDeltaTime;
                 characterTransform.position = playerPos;
-                pendingVerticalDelta = 0f;
             }
         }
 

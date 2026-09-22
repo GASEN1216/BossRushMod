@@ -140,11 +140,18 @@ namespace BossRush
         {
             for (int i = activeEffects.Count - 1; i >= 0; i--)
             {
-                if (activeEffects[i] == null)
+                GameObject effect = activeEffects[i];
+                var recycler = effect != null ? effect.GetComponent<PhantomWitchVfxRedesign.PhantomWitchVfxRecycler>() : null;
+                if (effect == null || (recycler != null && recycler.Owner != this))
                 {
                     activeEffects.RemoveAt(i);
                 }
             }
+        }
+
+        internal void UntrackPooledEffect(GameObject effect)
+        {
+            activeEffects.Remove(effect);
         }
 
         private void TrackEffect(GameObject effect)
@@ -154,7 +161,9 @@ namespace BossRush
                 PruneDestroyedEffects();
                 if (effect != null)
                 {
-                    activeEffects.Add(effect);
+                    var recycler = effect.GetComponent<PhantomWitchVfxRedesign.PhantomWitchVfxRecycler>();
+                    if (recycler != null) recycler.SetOwner(this);
+                    if (!activeEffects.Contains(effect)) activeEffects.Add(effect);
                 }
             }
             catch (Exception e)

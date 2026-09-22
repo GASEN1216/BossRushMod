@@ -230,3 +230,6 @@ Boss 乱入和神秘商人的异步请求全部失败时，`HasFailedToStart` �
 ## 2026-09-17 纯演出桥
 
 烟花与空投尘土现在直接实例化官方 normal/flash FX，并保留镜头轻震；不再调用零伤害 ExplosionManager.CreateExplosion。官方零伤害也会派发 Hurt，缩小半径不能保证无副作用。空投引怪声仍走原调用。接线守卫下钻桥方法并完成破坏探针，视觉与实机事件仍待 L3。
+
+
+2026-09-22 审计修复（COMPAT，L1，未实机）：金鸭雨捕获该次 RandomEventContext，cleanup 失效此 context；逐堆实例化前后和结束回调均复核，未投放的迟到现金销毁，已落地现金保持玩家收益。空投箱先在 inactive 暂存父节点下实例化并配置独立库存/loader，关闭 autoSetup 避免重复填充；显式激活后若 Loader.Awake.RandomActive 又关根节点则恢复一次，并校验 activeInHierarchy，失败不返回成功箱体。

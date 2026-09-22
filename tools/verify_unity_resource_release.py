@@ -7,7 +7,8 @@ import json
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0,str(ROOT/'Build/equipment-inspection'))
+# 已安装/显式 PYTHONPATH 的运行时优先；旧检查目录可能留着另一 Python ABI 的扩展。
+sys.path.append(str(ROOT/'Build/equipment-inspection'))
 
 
 def inspect(path):

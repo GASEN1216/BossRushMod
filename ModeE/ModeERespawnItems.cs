@@ -431,7 +431,7 @@ namespace BossRush
             }
             finally
             {
-                modeERespawnTaskRunning = false;
+                if (IsModeESessionStillValid(modeESessionToken, relatedScene)) modeERespawnTaskRunning = false;
             }
         }
 

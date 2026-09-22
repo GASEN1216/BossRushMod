@@ -523,6 +523,10 @@ namespace BossRush
                     storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                storyDialogueCheckCooldown = NurseNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
+            }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[NurseNPC] [ERROR] Story dialogue failed: " + e.Message);
@@ -532,9 +536,10 @@ namespace BossRush
             finally
             {
                 isInStoryDialogue = false;
-                EndDialogueWithStay(storyPlayed
-                    ? NurseNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION
-                    : NurseNPCConstants.SHORT_DIALOGUE_STAY_DURATION);
+                if (this != null)
+                    EndDialogueWithStay(storyPlayed
+                        ? NurseNPCConstants.DEFAULT_DIALOGUE_STAY_DURATION
+                        : NurseNPCConstants.SHORT_DIALOGUE_STAY_DURATION);
             }
         }
 

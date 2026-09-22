@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 SOURCE = Path("Integration/NPCs/Courier/DepositDataManager.cs")
@@ -46,7 +47,7 @@ def main() -> int:
     if not SOURCE.exists():
         return fail("missing source")
 
-    text = SOURCE.read_text(encoding="utf-8")
+    text = clean_source(SOURCE.read_text(encoding="utf-8"))
 
     for token in [
         'KEY_COMMIT_GENERATION = "BossRush_Deposit_CommitGeneration"',
@@ -60,7 +61,7 @@ def main() -> int:
             return fail("missing snapshot key token: " + token)
 
     load = extract_method(text, "public static void Load()")
-    save = extract_method(text, "public static void Save()")
+    save = extract_method(text, "private static bool TrySave()")
     snapshot = extract_method(text, "private static bool IsCommittedDepositSnapshot(")
     backup = extract_method(text, "private static void SaveBackupFromCurrentCommittedData()")
     writer = extract_method(text, "private static void SaveDepositListsWithGeneration(")
@@ -78,12 +79,14 @@ def main() -> int:
     result = require_in_order(
         load,
         [
+            "loadWriteBlocked = true;",
             "TryLoadCommittedDepositLists(out items, out times, out values)",
+            "RebuildCacheFromLists(items, times, values, false);",
+            "loadWriteBlocked = false;",
             "TryLoadBackupDepositLists(out items, out times, out values)",
-            "TryLoadLegacyMinimumDepositLists(out items, out times, out values)",
-            "RebuildCacheFromLists(items, times, values, recoveredFromBackup || repairedFromLegacy);",
-            "if (recoveredFromBackup || repairedFromLegacy)",
-            "Save();",
+            "RebuildCacheFromLists(items, times, values, false);",
+            "loadWriteBlocked = false;",
+            "if (primaryMissing && items == null && times == null && values == null",
         ],
         "Load recovery path",
     )
@@ -93,6 +96,7 @@ def main() -> int:
     result = require_in_order(
         save,
         [
+            "if (!CanWrite) return false;",
             "SaveBackupFromCurrentCommittedData();",
             "long generation = CreateNextDepositSaveGeneration(KEY_COMMIT_GENERATION);",
             "SaveDepositListsWithGeneration(",
@@ -111,6 +115,12 @@ def main() -> int:
     ]:
         if token not in snapshot:
             return fail("snapshot validation missing token: " + token)
+
+    if "Save();" in load or "TryLoadLegacyMinimumDepositLists" in load:
+        return fail("load must preserve incomplete snapshots without writing a truncated recovery")
+    for signature in ["public static bool TryAddItem(Item item)", "public static void RemoveItem(int index)", "public static void ClearAll()"]:
+        if "if (!CanWrite) return" not in extract_method(text, signature):
+            return fail("write barrier missing from " + signature)
 
     result = require_in_order(
         writer,

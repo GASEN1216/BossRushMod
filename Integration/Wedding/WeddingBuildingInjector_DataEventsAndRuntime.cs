@@ -631,6 +631,7 @@ namespace BossRush
                 var allBuildings = ObjectCache.GetSceneObjectsByType(buildingType);
                 foreach (Component building in allBuildings)
                 {
+                    if (building == null || !WeddingBuildingRuntimePolicy.IsPlacedSceneObject(building.gameObject, weddingBuildingPrefabGO)) continue;
                     string id = idProp?.GetValue(building) as string;
 
                     if (id == WEDDING_BUILDING_ID)

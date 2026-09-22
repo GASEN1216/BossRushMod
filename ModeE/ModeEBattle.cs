@@ -588,6 +588,8 @@ namespace BossRush
                     onSpawned: null,
                     onFailed: () =>
                     {
+                        if (!IsModeEOrModeFSpawnSessionStillValid(modeFSessionToken, modeFRelatedScene,
+                            modeESessionToken, modeESessionRelatedScene)) return;
                         // 龙裔生成失败时回退全局标记，允许后续刷怪点再次尝试
                         if (capturedIsDD)
                         {

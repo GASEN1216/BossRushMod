@@ -115,18 +115,18 @@ namespace Saves
         internal static int CurrentSlot;
         internal static bool IsSaving, FailPhysical, FailKeyWrite;
         internal static int PhysicalWrites;
-        private static readonly Dictionary<int, Dictionary<string, string>> slots = new Dictionary<int, Dictionary<string, string>>();
-        private static Dictionary<string, string> Data
+        private static readonly Dictionary<int, Dictionary<string, object>> slots = new Dictionary<int, Dictionary<string, object>>();
+        private static Dictionary<string, object> Data
         {
-            get { if (!slots.ContainsKey(CurrentSlot)) slots[CurrentSlot] = new Dictionary<string, string>(); return slots[CurrentSlot]; }
+            get { if (!slots.ContainsKey(CurrentSlot)) slots[CurrentSlot] = new Dictionary<string, object>(); return slots[CurrentSlot]; }
         }
         internal static bool KeyExisits(string key) { return Data.ContainsKey(key); }
-        internal static T Load<T>(string key) { return (T)(object)Data[key]; }
+        internal static T Load<T>(string key) { return (T)Data[key]; }
         internal static void Save<T>(string key, T value)
         {
             // 键写入异常是 CR-2026-09-08-003 的起点：它会让共享 store 进入单向 StoreFaulted。
             if (FailKeyWrite && key != "SaveTime") throw new InvalidOperationException("key write unavailable");
-            Data[key] = value is string ? (string)(object)value : Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+            Data[key] = value;
         }
         /// <summary>
         /// 按当前游戏 DLL 的真实语义建模（U4 替身偏差修正）：
@@ -140,6 +140,7 @@ namespace Saves
             if (writeSaveTime) Data["SaveTime"] = DateTime.UtcNow.ToBinary().ToString();
             IsSaving = true;
             if (FailPhysical) throw new InvalidOperationException("disk unavailable");
+            Durable[CurrentSlot] = new Dictionary<string, object>(Data);
             PhysicalWrites++;
             IsSaving = false;
         }
@@ -147,6 +148,24 @@ namespace Saves
         internal static void ClearStuckSaving() { IsSaving = false; }
         internal static void Switch(int slot) { CurrentSlot = slot; if (OnSetFile != null) OnSetFile(); }
         internal static void DeleteCurrent() { Data.Clear(); if (OnSaveDeleted != null) OnSaveDeleted(); }
+        internal static readonly Dictionary<int, Dictionary<string, object>> Durable = new Dictionary<int, Dictionary<string, object>>();
+        internal static readonly Dictionary<string, object> Global = new Dictionary<string, object>();
+        internal static bool FailGlobal, FailGlobalAfterCache;
+        internal static readonly Dictionary<string, object> DurableGlobal = new Dictionary<string, object>();
+        internal static T LoadGlobal<T>(string key, T fallback) { return Global.ContainsKey(key) ? (T)Global[key] : fallback; }
+        internal static void SaveGlobal<T>(string key, T value)
+        {
+            if (FailGlobal) throw new InvalidOperationException("global unavailable");
+            Global[key] = value;
+            if (FailGlobalAfterCache) throw new InvalidOperationException("global physical write failed after cache update");
+            DurableGlobal[key] = value;
+        }
+        internal static void CrashReload(int slot)
+        {
+            slots[slot] = Durable.ContainsKey(slot) ? new Dictionary<string, object>(Durable[slot]) : new Dictionary<string, object>();
+            Switch(slot);
+            Duckov.Economy.EconomyManager.Money = Data.ContainsKey("EconomyData") ? ((Duckov.Economy.EconomyManager.SaveData)Data["EconomyData"]).money : 100;
+        }
         internal static int Subscribers { get { return (OnSetFile == null ? 0 : OnSetFile.GetInvocationList().Length); } }
     }
 }
@@ -173,5 +192,26 @@ namespace BossRush
     {
         internal static void InjectLocalizations(Dictionary<string, string> entries) { }
         internal static void InjectLocalization(string key, string value) { }
+    }
+}
+
+namespace Duckov.Economy
+{
+    internal sealed class Cost { internal long Value; internal Cost(long value) { Value = value; } }
+    internal sealed class EconomyManager
+    {
+        internal static EconomyManager Instance = new EconomyManager();
+        internal static long Money = 100;
+        internal static bool RejectAdd, ThrowAfterAdd;
+        internal static bool Add(long amount)
+        {
+            if (Instance == null || RejectAdd) return false;
+            Money += amount;
+            if (ThrowAfterAdd) throw new InvalidOperationException("observer failed");
+            return true;
+        }
+        internal static bool Pay(Cost cost, bool a, bool b) { if (Instance == null || Money < cost.Value) return false; Money -= cost.Value; return true; }
+        internal struct SaveData { internal long money; }
+        internal object GenerateSaveData() { return new SaveData { money = Money }; }
     }
 }

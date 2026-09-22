@@ -293,6 +293,7 @@ namespace BossRush
     public class ReforgeResult
     {
         public bool Success;
+        public bool HasAppliedChanges;
         public string ErrorMessage;
         public int TotalCost;
         public float FinalProbability;

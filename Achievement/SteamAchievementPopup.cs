@@ -153,6 +153,13 @@ namespace BossRush
             }
         }
 
+        internal static void Shutdown()
+        {
+            if (instance == null) return;
+            instance.gameObject.SetActive(false);
+            Destroy(instance.gameObject);
+        }
+
         #endregion
 
         #region 初始化

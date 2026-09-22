@@ -487,7 +487,8 @@ namespace BossRush
                 if (ai != null && playerDamageReceiver != null)
                 {
                     ai.searchedEnemy = playerDamageReceiver;
-                    try { ai.SetTarget(playerDamageReceiver.transform); } catch { }
+                    try { ai.SetTarget(playerDamageReceiver.transform); }
+                    catch (System.Exception e) { DevLog("[ZombieMode] 聚怪奖励更新索敌失败: " + e.Message); }
                 }
             }
 

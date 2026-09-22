@@ -372,3 +372,7 @@ Build --> Deploy["deploy.yml"]
   - 定期审查主题样式，确保可读性与品牌一致性。
 
 [本节为通用指导，无需特定文件引用]
+
+## 2026-09-22 全仓审计修复复核（COMPAT）
+
+WikiHeadSearch 监听 localeIndex，清空旧索引与结果并递增加载代次，旧语言的迟到结果不覆盖新索引；finally 清 loaderPromise，网络失败后输入可重试。WikiFooter 在挂载后监听 page.lastUpdated 与 lang，站内跳页更新日期，无时间戳则清空。更新日志门户与其它类目一样绑定 collapsed 类驱动真实显隐。

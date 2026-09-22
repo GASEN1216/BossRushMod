@@ -63,6 +63,24 @@ namespace BossRush
         public int MaxLevel => AffinityManager.UNIFIED_MAX_LEVEL;
         
         // 礼物好感度值配置
+        private static bool? cachedTextIsChinese;
+
+        private static void EnsureTextLanguage()
+        {
+            bool isChinese = L10n.IsChinese;
+            if (cachedTextIsChinese == isChinese) return;
+            cachedTextIsChinese = isChinese;
+            _unlocksByLevel = null;
+            _positiveBubbles = null;
+            _negativeBubbles = null;
+            _normalBubbles = null;
+            _healSuccessDialogues = null;
+            _fullHPDialogues = null;
+            _noMoneyDialogues = null;
+            _debuffOnlyDialogues = null;
+            _idleBubbles = null;
+        }
+
         private static Dictionary<string, int> _giftValues;
         public Dictionary<string, int> GiftValues
         {
@@ -87,6 +105,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_unlocksByLevel == null)
                 {
                     _unlocksByLevel = new Dictionary<int, string[]>
@@ -218,6 +237,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_positiveBubbles == null)
                 {
                     _positiveBubbles = new string[]
@@ -276,6 +296,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_negativeBubbles == null)
                 {
                     _negativeBubbles = new string[]
@@ -322,6 +343,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_normalBubbles == null)
                 {
                     _normalBubbles = new string[]
@@ -775,6 +797,7 @@ namespace BossRush
         private static string[] _healSuccessDialogues;
         private string GetRandomHealSuccessDialogue()
         {
+            EnsureTextLanguage();
             if (_healSuccessDialogues == null)
             {
                 _healSuccessDialogues = new string[]
@@ -802,6 +825,7 @@ namespace BossRush
         private static string[] _fullHPDialogues;
         private string GetRandomFullHPDialogue()
         {
+            EnsureTextLanguage();
             if (_fullHPDialogues == null)
             {
                 _fullHPDialogues = new string[]
@@ -824,6 +848,7 @@ namespace BossRush
         private static string[] _noMoneyDialogues;
         private string GetRandomNoMoneyDialogue()
         {
+            EnsureTextLanguage();
             if (_noMoneyDialogues == null)
             {
                 _noMoneyDialogues = new string[]
@@ -846,6 +871,7 @@ namespace BossRush
         private static string[] _debuffOnlyDialogues;
         private string GetRandomDebuffOnlyDialogue()
         {
+            EnsureTextLanguage();
             if (_debuffOnlyDialogues == null)
             {
                 _debuffOnlyDialogues = new string[]
@@ -874,6 +900,7 @@ namespace BossRush
         {
             get
             {
+                EnsureTextLanguage();
                 if (_idleBubbles == null)
                 {
                     _idleBubbles = new string[]

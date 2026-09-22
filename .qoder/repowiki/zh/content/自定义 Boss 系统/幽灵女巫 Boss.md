@@ -1,5 +1,9 @@
 # 幽灵女巫 Boss
 
+2026-09-22 战斗与特效审计修复（COMPAT）：诅咒的 WalkSpeed / RunSpeed 修饰器显式使用 `PercentageAdd`，每层按原配置的 30% 基础速度减速。镰刀普通攻击只由官方 `Health.Hurt` 判定一次附加概率，流汗视觉回调只观察已存在的 Buff；领域 tick 标记 `isFromBuffOrEffect`，不能被直接命中词缀重复消费。决定招式的残影预警和持续领域边界使用 Critical 视觉通道，特效降档不移除危险提示或切换伤害招式。
+
+池化特效归还时解除旧控制器登记，新借用者取得 owner，旧控制器清理只处理仍属于自己的对象。Billboard 使用独立 XY 网格，地面投影仍保留 XZ 网格。执行回归涵盖真实 Stat 的 1 / 2 / 3 层减速、单次概率、跨 owner 借还与领域归因；几何和绘制接线由源码核对，实际画面与帧耗待 owner 实机确认。下方历史快照中的双重 Buff 兜底、共享地面网格做 Billboard 等描述不再适用。
+
 <cite>
 **本文引用的文件**
 - [PhantomWitchBoss.cs](file://Integration/PhantomWitch/PhantomWitchBoss.cs)

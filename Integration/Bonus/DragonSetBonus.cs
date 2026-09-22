@@ -462,15 +462,7 @@ namespace BossRush
                 float actualFireDamage = totalFinalDamage * fireRatio;
                 float fireHealAmount = actualFireDamage * 0.8f; // 80% 转化为治疗
 
-                // 将火焰伤害因子设为 0（免疫火焰伤害）
-                for (int i = 0; i < damageInfo.elementFactors.Count; i++)
-                {
-                    var ef = damageInfo.elementFactors[i];
-                    if (ef.elementType == ElementTypes.fire && ef.factor > 0f)
-                    {
-                        damageInfo.elementFactors[i] = new ElementFactor(ElementTypes.fire, 0f);
-                    }
-                }
+                // OnHurt 已在扣血之后；只回补，不能改写爆炸复用的元素列表。
 
                 DevLog("[DragonSet] 玩家火焰伤害吸收: " + actualFireDamage.ToString("F1") + " -> 治疗: " + fireHealAmount.ToString("F1"));
 
@@ -727,6 +719,8 @@ namespace BossRush
         private static int characterLayerMask = -1;
         private Collider[] hitBuffer = new Collider[16];
         private Transform cachedTransform = null;
+        private CharacterMainControl owner;
+        private int ownerSceneHandle;
 
         /// <summary>
         /// 初始化熔浆区域
@@ -739,6 +733,8 @@ namespace BossRush
             radius = rad;
             createTime = Time.time;
             cachedTransform = transform;
+            owner = CharacterMainControl.Main;
+            ownerSceneHandle = gameObject.scene.handle;
 
             // 缓存点燃Buff
             if (cachedBurnBuff == null)
@@ -763,6 +759,13 @@ namespace BossRush
 
         void Update()
         {
+            if (owner == null || owner != CharacterMainControl.Main || owner.Health == null || owner.Health.IsDead ||
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle != ownerSceneHandle)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             float currentTime = Time.time;
 
             // 检查是否超时
@@ -813,10 +816,9 @@ namespace BossRush
                 if (health.IsDead) continue;
 
                 // 使用 Team.IsEnemy 判断敌友关系
-                // 玩家阵营是 Teams.player，宠物和雇佣兵也是 Teams.player
-                // 只对敌人造成伤害
+                // 使用施法者当前阵营，兼容 Mode E 营旗。
                 Teams targetTeam = character.Team;
-                if (!Team.IsEnemy(Teams.player, targetTeam))
+                if (owner == null || character == owner || !Team.IsEnemy(owner.Team, targetTeam))
                 {
                     // 不是敌人，跳过（包括玩家、宠物、雇佣兵等友方单位）
                     continue;
@@ -834,11 +836,12 @@ namespace BossRush
         {
             try
             {
-                CharacterMainControl player = CharacterMainControl.Main;
+                CharacterMainControl player = owner;
 
                 // 创建伤害信息（来源为玩家）
                 DamageInfo damageInfo = new DamageInfo(player);
                 damageInfo.damageValue = damage;
+                damageInfo.isFromBuffOrEffect = true;
                 damageInfo.damageType = DamageTypes.normal;
                 damageInfo.damagePoint = enemyHealth.transform.position;
                 damageInfo.AddElementFactor(ElementTypes.fire, 1f);

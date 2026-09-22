@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 MODELS = Path("ZombieMode/ZombieModeModels.cs")
@@ -75,6 +76,7 @@ def require(text: str, snippet: str, label: str) -> int:
 
 
 def extract_method(text: str, marker: str) -> str:
+    text = clean_source(text)
     start = text.find(marker)
     if start < 0:
         return ""
@@ -143,7 +145,9 @@ def main() -> int:
     for snippet in [
         "paidWithPurification",
         "reforgeCompleted",
-        "RefundZombieModePurificationPointsForRealNpc(currentController, totalCost, paidWithPurification && !reforgeCompleted)",
+        "if (!reforgeCompleted)",
+        "if (paidWithPurification && ModBehaviour.Instance != null)",
+        "RefundZombieModePurificationPointsForRealNpc(currentController, totalCost, true)",
     ]:
         result = require(reforge_click, snippet, "goblin reforge purification exception rollback")
         if result:
@@ -189,7 +193,7 @@ def main() -> int:
         "TrySpendZombieModePurificationPointsForRealNpc",
         "CanAffordZombieModePurificationPointsForRealNpc",
         "IsZombieModeTemporaryRealNpc(courierNPCTransform)",
-        "private static void OnItemPurchased(StockShop shop, Item purchasedItem)",
+        "internal static async UniTask<bool> RetrieveSingleAsync(int itemTypeID, int amount)",
     ]:
         result = require(courier_storage, snippet, "courier storage purification path")
         if result:

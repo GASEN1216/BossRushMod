@@ -67,7 +67,7 @@ namespace BossRush
             }
 
             int oldCount = DepositDataManager.GetItemCount();
-            DepositDataManager.AddItem(item);
+            if (!DepositDataManager.TryAddItem(item)) return false;
 
             int currentCount = DepositDataManager.GetItemCount();
             if (currentCount <= oldCount)
@@ -84,6 +84,7 @@ namespace BossRush
         /// </summary>
         private static async UniTask<bool> CacheDepositedItemInstanceAsync(int depositIndex, string runtimeContext)
         {
+            int session = depositSessionGeneration;
             var depositedItems = DepositDataManager.GetAllItems();
             if (depositIndex < 0 || depositIndex >= depositedItems.Count)
             {
@@ -108,6 +109,11 @@ namespace BossRush
                 ModBehaviour.DevLog("[StorageDepositService] [WARNING] 恢复寄存物品实例失败: index=" + depositIndex + ", error=" + e.Message);
             }
 
+            if (session != depositSessionGeneration || !isServiceActive)
+            {
+                CleanupSingleRetrievedItem(restoredItem);
+                return false;
+            }
             if (restoredItem == null)
             {
                 try
@@ -127,7 +133,7 @@ namespace BossRush
 
             CustomItemRuntimeStateHelper.RestoreRuntimeState(restoredItem, runtimeContext);
 
-            if (!isServiceActive || depositShop == null)
+            if (session != depositSessionGeneration || !isServiceActive || depositShop == null)
             {
                 if (restoredItem.gameObject != null)
                 {
@@ -445,7 +451,7 @@ namespace BossRush
             else
             {
                 int itemCount = CountPlayerInventoryItems();
-                bool canDeposit = isServiceActive && itemCount > 0;
+                bool canDeposit = isServiceActive && !IsTransactionBusy && DepositDataManager.CanWrite && itemCount > 0;
 
                 displayText = canDeposit
                     ? quickDepositLabel + " (" + itemCount + ")"
@@ -496,7 +502,7 @@ namespace BossRush
         /// </summary>
         private static void OnQuickDepositButtonClicked()
         {
-            if (!isServiceActive || isQuickDepositInProgress)
+            if (!isServiceActive || IsTransactionBusy)
             {
                 return;
             }
@@ -527,6 +533,8 @@ namespace BossRush
                 return;
             }
 
+            DepositTransaction transaction = TryBeginTransaction();
+            if (transaction == null) return;
             isQuickDepositInProgress = true;
             UpdateQuickDepositButtonState();
 
@@ -538,6 +546,7 @@ namespace BossRush
             {
                 for (int i = 0; i < itemsToDeposit.Count; i++)
                 {
+                    if (!IsCurrentTransaction(transaction)) break;
                     Item item = itemsToDeposit[i];
                     if (item == null)
                     {
@@ -548,8 +557,7 @@ namespace BossRush
 
                     try
                     {
-                        int price = GetDepositSellPrice(item);
-                        item.Detach();
+                        int price = 0;
 
                         int newIndex = await StoreItemInDepositDataAsync(item, price, "StorageDeposit.QuickDeposit");
                         if (newIndex < 0)
@@ -571,11 +579,12 @@ namespace BossRush
                     }
                 }
 
+                if (!IsCurrentTransaction(transaction)) return;
                 if (newIndices.Count > 0 && isServiceActive && depositShop != null)
                 {
                     for (int i = 0; i < newIndices.Count; i++)
                     {
-                        if (!isServiceActive || depositShop == null)
+                        if (!IsCurrentTransaction(transaction) || depositShop == null)
                         {
                             break;
                         }
@@ -583,7 +592,7 @@ namespace BossRush
                         await CacheDepositedItemInstanceAsync(newIndices[i], "StorageDeposit.QuickDeposit");
                     }
 
-                    if (isServiceActive && depositShop != null)
+                    if (IsCurrentTransaction(transaction) && depositShop != null)
                     {
                         RefreshShopEntries();
                         RefreshShopUI();
@@ -642,8 +651,12 @@ namespace BossRush
             }
             finally
             {
-                isQuickDepositInProgress = false;
-                UpdateQuickDepositButtonState();
+                if (ReferenceEquals(transactionOwner, transaction))
+                {
+                    isQuickDepositInProgress = false;
+                    EndTransaction(transaction);
+                    UpdateQuickDepositButtonState();
+                }
             }
         }
 

@@ -138,6 +138,7 @@ namespace BossRush
         /// </summary>
         public void StartModeD()
         {
+            ModeDRuntimeModule.Invalidate(this);
             try
             {
                 DevLog("[ModeD] 启动 Mode D 模式");
@@ -250,6 +251,7 @@ namespace BossRush
         /// </summary>
         public void EndModeD()
         {
+            ModeDRuntimeModule.Invalidate(this);
             try
             {
                 // 即使状态已提前关闭，也要幂等清理仍登记的实体。

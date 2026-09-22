@@ -413,9 +413,6 @@ namespace BossRush
                 // 标记对话进行中
                 isInFirstMeetDialogue = true;
 
-                // 立即保存状态到存档（防止中途退出后重复触发）
-                SetFirstMeetTriggered();
-
                 // 停止移动
                 if (movement != null)
                 {
@@ -436,8 +433,21 @@ namespace BossRush
 
                 // 使用 DialogueManager 显示对话序列
                 await DialogueManager.ShowDialogueSequence(dialogueActor, dialogueKeys);
+                // 中断的首次见面留待下次重试；成功播放后才记为已见面。
+                SetFirstMeetTriggered();
 
                 ModBehaviour.DevLog("[CourierNPC] 对话序列完成");
+            }
+            catch (OperationCanceledException)
+            {
+                // 场景或 actor 已失效；不得继续向后继场景发书，也不接管新对话。
+                isInFirstMeetDialogue = false;
+                if (this != null)
+                {
+                    StopTalking();
+                    if (movement != null) movement.SetInService(false);
+                }
+                return;
             }
             catch (Exception e)
             {

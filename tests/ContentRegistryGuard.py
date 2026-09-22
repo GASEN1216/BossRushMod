@@ -68,7 +68,6 @@ EQUIPMENT_TOKENS = [
     "int equipCount = EquipmentFactory.LoadedBundleCount;",
     'DevLog("[BossRush] 自动加载装备完成，共 " + equipCount + " 个");',
     "DragonKingBossGunRuntime.InitializeRuntime();",
-    "DragonKingBossGunRuntime.WarmupProjectileCache();",
     "Item fenHuangHalberd = ItemFactory.GetLoadedItem(FenHuangHalberdIds.WeaponTypeId);",
     'FenHuangHalberdWeaponConfig.TryConfigure(fenHuangHalberd, "FenHuangHalberd");',
     'DevLog("[BossRush] 绑定焚皇断界戟模型失败: " + e.Message);',
@@ -145,6 +144,9 @@ def main() -> int:
 
     item_text = ITEM_REGISTRY.read_text(encoding="utf-8", errors="ignore")
     equipment_text = EQUIPMENT_REGISTRY.read_text(encoding="utf-8", errors="ignore")
+    from cs_source_util import clean_source
+    if "DragonKingBossGunRuntime.WarmupProjectileCache();" in clean_source(equipment_text):
+        return fail("ContentRegistryGuard: equipment registry must not start equipment-specific warmup")
 
     if "private void RegisterItemContentConfigurators()" not in item_text:
         return fail("ContentRegistryGuard: item registry missing RegisterItemContentConfigurators")

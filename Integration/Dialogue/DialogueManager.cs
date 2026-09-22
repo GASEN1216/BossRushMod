@@ -56,6 +56,8 @@ namespace BossRush
         /// <summary>当前会话的归属号，0 表示没有会话。只有开会话的那一方能收掉它。</summary>
         private static int sessionOwner;
         private static int lastSessionOwner;
+        private static DialogueUI sessionUI;
+        private static int requestGeneration;
 
         /// <summary>已经发给官方 DialogueUI、完成回调还没回来的请求数（字幕 + 多选）。不为 0 时新会话排队。</summary>
         private static int pendingOfficialRequests;
@@ -79,6 +81,16 @@ namespace BossRush
         private sealed class OfficialRequest
         {
             internal bool Completed;
+            internal readonly DialogueUI UI = DialogueUI.instance;
+            internal readonly int Owner = sessionOwner;
+            private readonly int generation = requestGeneration;
+            internal bool IsCurrentGeneration { get { return generation == requestGeneration; } }
+
+            internal bool IsAvailable(IDialogueActor actor)
+            {
+                return generation == requestGeneration && Owner == sessionOwner
+                    && UI != null && ReferenceEquals(UI, DialogueUI.instance) && IsActorAvailable(actor);
+            }
             private bool released;
 
             internal void Complete()
@@ -91,7 +103,7 @@ namespace BossRush
             {
                 if (released) return;
                 released = true;
-                pendingOfficialRequests = Math.Max(0, pendingOfficialRequests - 1);
+                if (generation == requestGeneration) pendingOfficialRequests = Math.Max(0, pendingOfficialRequests - 1);
             }
         }
 
@@ -332,7 +344,7 @@ namespace BossRush
             try
             {
                 // 开始对话序列（另一段对话还开着时排队）
-                owner = await AcquireSession(CancellationToken.None);
+                owner = await AcquireSession(CancellationToken.None, actor);
 
                 for (int i = 0; i < localizationKeys.Length; i++)
                 {
@@ -341,6 +353,11 @@ namespace BossRush
                     LocalizedStatement statement = new LocalizedStatement(localizationKeys[i]);
                     await ShowDialogueInternal(actor, statement, skipInputManagement: true);
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // 中断不能被调用者当作完整播放，从而标记剧情或发放奖励。
+                throw;
             }
             catch (Exception e)
             {
@@ -379,7 +396,7 @@ namespace BossRush
             try
             {
                 // 开始对话序列（另一段对话还开着时排队）
-                owner = await AcquireSession(cancellationToken);
+                owner = await AcquireSession(cancellationToken, actor);
 
                 for (int i = 0; i < dialogues.Length; i++)
                 {
@@ -516,6 +533,7 @@ namespace BossRush
         private static async UniTask ShowDialogueInternal(IDialogueActor actor, LocalizedStatement statement, bool skipInputManagement = false, CancellationToken cancellationToken = default(CancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!IsActorAvailable(actor)) throw new OperationCanceledException();
             // 检查 DialogueUI 是否可用
             if (DialogueUI.instance == null)
             {
@@ -530,7 +548,7 @@ namespace BossRush
                 // 管理输入状态（序列里的逐句已经由序列持有会话）
                 if (!skipInputManagement)
                 {
-                    owner = await AcquireSession(cancellationToken);
+                    owner = await AcquireSession(cancellationToken, actor);
                 }
 
                 // 请求独占：迟到回调只标记这一次请求，不能推进下一段。
@@ -554,7 +572,8 @@ namespace BossRush
                 DialogueTree.RequestSubtitles(info);
 
                 // 等待对话完成回调（玩家点击继续）
-                await UniTask.WaitUntil(() => captured.Completed, cancellationToken: cancellationToken);
+                await UniTask.WaitUntil(() => captured.Completed || !captured.IsAvailable(actor), cancellationToken: cancellationToken);
+                if (!captured.IsAvailable(actor)) throw new OperationCanceledException();
             }
             catch (OperationCanceledException)
             {
@@ -585,6 +604,7 @@ namespace BossRush
         private static async UniTask<int> ShowMultipleChoiceInternal(IDialogueActor actor, Dictionary<IStatement, int> options, float timeout, CancellationToken cancellationToken = default(CancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!IsActorAvailable(actor)) throw new OperationCanceledException();
             // 检查 DialogueUI 是否可用
             if (DialogueUI.instance == null)
             {
@@ -598,7 +618,7 @@ namespace BossRush
             try
             {
                 // 管理输入状态（另一段对话还开着时排队）
-                owner = await AcquireSession(cancellationToken);
+                owner = await AcquireSession(cancellationToken, actor);
                 // 选项挂在文本区下面，发请求之前先把它显示出来（见 ShowDialogueTextArea）。
                 ShowDialogueTextArea();
 
@@ -622,7 +642,8 @@ namespace BossRush
                 DialogueTree.RequestMultipleChoices(info);
 
                 // 等待玩家选择
-                await UniTask.WaitUntil(() => captured.Completed, cancellationToken: cancellationToken);
+                await UniTask.WaitUntil(() => captured.Completed || !captured.IsAvailable(actor), cancellationToken: cancellationToken);
+                if (!captured.IsAvailable(actor)) throw new OperationCanceledException();
 
                 ModBehaviour.DevLog(LOG_TAG + " 玩家选择了选项: " + multipleChoiceResult);
                 return multipleChoiceResult;
@@ -652,10 +673,10 @@ namespace BossRush
             float until = Time.realtimeSinceStartup + OfficialDrainSeconds;
             try
             {
-                while (!request.Completed && Time.realtimeSinceStartup < until)
+                while (request.IsCurrentGeneration && !request.Completed && Time.realtimeSinceStartup < until)
                 {
-                    DialogueUI ui = DialogueUI.instance;
-                    if (ui == null) break;
+                    DialogueUI ui = request.UI;
+                    if (ui == null || !ReferenceEquals(ui, DialogueUI.instance)) break;
                     ui.Confirm();
                     await UniTask.NextFrame();
                 }
@@ -679,10 +700,10 @@ namespace BossRush
             float until = Time.realtimeSinceStartup + OfficialDrainSeconds;
             try
             {
-                while (!request.Completed && Time.realtimeSinceStartup < until)
+                while (request.IsCurrentGeneration && !request.Completed && Time.realtimeSinceStartup < until)
                 {
-                    DialogueUI ui = DialogueUI.instance;
-                    if (ui == null || confirmedChoiceField == null) break;
+                    DialogueUI ui = request.UI;
+                    if (ui == null || !ReferenceEquals(ui, DialogueUI.instance) || confirmedChoiceField == null) break;
                     // WaitForChoice 开头会把它复位成 -1，所以每帧看一眼、没选就选上。
                     if ((int)confirmedChoiceField.GetValue(ui) < 0) confirmedChoiceField.SetValue(ui, 0);
                     await UniTask.NextFrame();
@@ -706,17 +727,28 @@ namespace BossRush
         /// 排队拿会话：另一段对话还开着，或者被取消的上一段官方协程还没推完时，逐帧等它空出来再开。
         /// 取消令牌照常生效；官方实例没了（切图）时不再等官方回调。
         /// </summary>
-        private static async UniTask<int> AcquireSession(CancellationToken cancellationToken)
+        private static bool IsActorAvailable(IDialogueActor actor)
         {
+            if (actor == null) return false;
+            UnityEngine.Object unityActor = actor as UnityEngine.Object;
+            return ReferenceEquals(unityActor, null) || unityActor != null;
+        }
+
+        private static async UniTask<int> AcquireSession(CancellationToken cancellationToken, IDialogueActor actor)
+        {
+            DialogueUI expectedUI = DialogueUI.instance;
+            int expectedGeneration = requestGeneration;
             if (sessionOwner != 0 || pendingOfficialRequests > 0)
             {
                 await UniTask.WaitUntil(() =>
                 {
-                    if (DialogueUI.instance == null) pendingOfficialRequests = 0;
+                    if (!IsActorAvailable(actor) || expectedUI == null || !ReferenceEquals(expectedUI, DialogueUI.instance) || expectedGeneration != requestGeneration) return true;
                     return sessionOwner == 0 && pendingOfficialRequests == 0;
                 }, cancellationToken: cancellationToken);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
+            if (!IsActorAvailable(actor) || expectedUI == null || !ReferenceEquals(expectedUI, DialogueUI.instance) || expectedGeneration != requestGeneration) throw new OperationCanceledException();
             int owner = ++lastSessionOwner;
             if (owner <= 0)
             {
@@ -732,6 +764,7 @@ namespace BossRush
         private static void BeginDialogueSession(int owner)
         {
             sessionOwner = owner;
+            sessionUI = DialogueUI.instance;
             if (isDialogueActive) return;
 
             isDialogueActive = true;
@@ -742,7 +775,7 @@ namespace BossRush
                 if (inputDisableToken == null)
                 {
                     inputDisableToken = new GameObject("DialogueManager_InputToken");
-                    UnityEngine.Object.DontDestroyOnLoad(inputDisableToken);
+                    // 会话令牌随场景销毁，避免旧界面在切图后继续占用输入。
                 }
 
                 // 使用游戏原生的输入管理器禁用输入
@@ -779,8 +812,8 @@ namespace BossRush
 
             try
             {
-                // 隐藏对话 UI 主面板（通过反射）
-                HideDialogueUIPanel();
+                // 只收原会话的界面，旧请求不得隐藏后继场景的 UI。
+                if (ReferenceEquals(sessionUI, DialogueUI.instance)) HideDialogueUIPanel();
 
                 // 使用游戏原生的输入管理器恢复输入
                 if (inputDisableToken != null)
@@ -831,6 +864,7 @@ namespace BossRush
             try
             {
                 sessionOwner = 0;
+                requestGeneration++;
                 pendingOfficialRequests = 0;
                 CloseDialogueSession();
 

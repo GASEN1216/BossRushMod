@@ -442,7 +442,7 @@ namespace BossRush
             return modeFCachedPlayerName;
         }
 
-        internal void SetModeFBossDisplayName(CharacterMainControl actor, string displayName, Teams originalFaction)
+        internal void SetModeFBossDisplayName(CharacterMainControl actor, string displayName, Teams originalFaction, string nameKey = null)
         {
             if (actor == null || actor.gameObject == null || string.IsNullOrWhiteSpace(displayName))
             {
@@ -456,6 +456,7 @@ namespace BossRush
             }
 
             marker.DisplayName = displayName;
+            marker.NameKey = nameKey;
             marker.OriginalFaction = originalFaction;
             MarkModeFHealthBarNamesDirty();
         }
@@ -473,7 +474,7 @@ namespace BossRush
                 return null;
             }
 
-            return marker.DisplayName;
+            return string.IsNullOrEmpty(marker.NameKey) ? marker.DisplayName : L10n.T(marker.NameKey);
         }
 
         internal string GetModeFActorDisplayName(CharacterMainControl actor, bool treatNullAsPlayer = false)

@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // NPCGiftInteractable.cs - 通用NPC礼物赠送交互组件
 // ============================================================================
 // 通用的NPC礼物赠送交互组件，支持任意配置了好感度系统的NPC。
@@ -65,7 +65,7 @@ namespace BossRush
             StartNPCDialogue();
 
             // 检查今日是否已赠送（已婚玩家仍可打开容器以赠送钻石戒指）
-            if (!NPCGiftSystem.CanGiftToday(npcId))
+            if (!NPCGiftSystem.CanOpenGiftSelection(npcId))
             {
                 ShowAlreadyGiftedDialogue();
                 return;

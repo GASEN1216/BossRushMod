@@ -228,6 +228,25 @@ namespace BossRush
         /// <summary>
         /// 清理龙裔遗族Boss
         /// </summary>
+        internal void CleanupCancelledDragonDescendant(CharacterMainControl character)
+        {
+            if (character == null) return;
+            UnregisterDragonDescendantSetBonus(character);
+            BossRushAudioManager.Instance?.StopBossBGM(BossBgmKeys.DragonDescendant, character);
+            UnregisterEnemyRecovery(character);
+            ClearBossRandomLootTracking(character);
+            FinalizeBossRushLootboxPathTracking(character);
+            if (currentBoss == character) currentBoss = null;
+            currentWaveBosses?.Remove(character);
+            if (dragonDescendantInstance == character)
+            {
+                dragonDescendantInstance = null;
+                dragonDescendantAbilities = null;
+            }
+            BossCleanupHelpers.DestroyRuntimePreset(character, DragonDescendantConfig.BOSS_NAME_KEY, "DragonDescendant_Preset", "[DragonDescendant]");
+            UnityEngine.Object.Destroy(character.gameObject);
+        }
+
         public void CleanupDragonDescendant()
         {
             try

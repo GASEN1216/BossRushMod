@@ -23,6 +23,12 @@ namespace BossRush
 
             if (!IsActive)
             {
+                var availablePresets = GetFilteredEnemyPresets();
+                if (availablePresets == null || availablePresets.Count == 0)
+                {
+                    ShowMessage(L10n.T("Boss池为空！请至少启用一个Boss。(Ctrl+F10 打开设置)", "Boss pool is empty! Enable at least one Boss. (Ctrl+F10 to open settings)"));
+                    return;
+                }
                 // 记录玩家当前位置作为出生点（BossRush失败时传送回此处）
                 try
                 {
@@ -76,6 +82,7 @@ namespace BossRush
                 BeginAchievementSession(infiniteHellMode ? "InfiniteHell" : "BossRush");
                 ShowMessage(L10n.T("开始BossRush挑战！", "BossRush challenge started!"));
                 SetBossRushRuntimeActive(true);
+                WavesArenaRuntimeModule.ResetMilestones(this);
 
                 // 抽取并应用本局变异词条（必须在生成第一个敌人之前，敌人增益才能作用到首波）
                 TryRollMutatorsForMode(infiniteHellMode ? "InfiniteHell" : "BossRush");
@@ -517,6 +524,7 @@ namespace BossRush
                     return;
                 }
 
+                Func<bool> isSpawnCurrent = WavesArenaRuntimeModule.CaptureValidity(this, true, true);
                 if (bossesPerWave <= 1)
                 {
                     // 单Boss模式：每波只生成一个Boss，同样维护波次计数，便于自检逻辑使用
@@ -530,7 +538,7 @@ namespace BossRush
                     ShowEnemyBanner(preset.displayName, spawnPos, playerMain.transform.position);
 
                     // 使用带验证的异步生成方法
-                    SpawnBossWithVerificationAsync(preset, spawnPos, spawnPoints).Forget();
+                    SpawnBossWithVerificationAsync(preset, spawnPos, spawnPoints, isSpawnCurrent).Forget();
                 }
                 else
                 {
@@ -566,7 +574,7 @@ namespace BossRush
                     }
 
                     // 使用带验证和重试的批量生成方法
-                    SpawnMultipleBossesWithVerificationAsync(bossSpawnInfos, spawnPoints).Forget();
+                    SpawnMultipleBossesWithVerificationAsync(bossSpawnInfos, spawnPoints, isSpawnCurrent).Forget();
                 }
             }
             catch (Exception e)
@@ -578,7 +586,7 @@ namespace BossRush
         /// <summary>
         /// 单Boss模式：带验证的异步生成（包含重试机制）
         /// </summary>
-        private async UniTaskVoid SpawnBossWithVerificationAsync(EnemyPresetInfo preset, Vector3 position, Vector3[] spawnPoints)
+        private async UniTaskVoid SpawnBossWithVerificationAsync(EnemyPresetInfo preset, Vector3 position, Vector3[] spawnPoints, Func<bool> isSpawnCurrent)
         {
             const int maxRetries = 3;
             int attempt = 0;
@@ -586,6 +594,7 @@ namespace BossRush
 
             while (attempt < maxRetries)
             {
+                if (!isSpawnCurrent()) return;
                 attempt++;
 
                 if (attempt > 1)
@@ -597,7 +606,8 @@ namespace BossRush
                     position = FindNearestSafeSpawnPoint(spawnPoints, retryPlayerPos);
                 }
 
-                spawnedBoss = await SpawnEnemyAtPositionAsync(preset, position);
+                spawnedBoss = await SpawnEnemyAtPositionAsync(preset, position, isSpawnCurrent);
+                if (!isSpawnCurrent()) return;
                 if (spawnedBoss != null)
                 {
                     break;
@@ -627,7 +637,7 @@ namespace BossRush
         /// </summary>
         private async UniTaskVoid SpawnMultipleBossesWithVerificationAsync(
             List<(EnemyPresetInfo preset, Vector3 position)> bossSpawnInfos,
-            Vector3[] spawnPoints)
+            Vector3[] spawnPoints, Func<bool> isSpawnCurrent)
         {
             const int maxRetries = 3;
             int expectedCount = bossSpawnInfos.Count;
@@ -649,18 +659,20 @@ namespace BossRush
 
             for (int i = 0; i < bossSpawnInfos.Count; i++)
             {
+                if (!isSpawnCurrent()) return;
                 var info = bossSpawnInfos[i];
                 CharacterMainControl spawnResult = null;
 
                 try
                 {
-                    spawnResult = await SpawnEnemyAtPositionAsync(info.preset, info.position);
+                    spawnResult = await SpawnEnemyAtPositionAsync(info.preset, info.position, isSpawnCurrent);
                 }
                 catch (Exception e)
                 {
                     DevLog("[BossRush] Boss生成异常 #" + i + ": " + e.Message);
                 }
 
+                if (!isSpawnCurrent()) return;
                 results.Add(spawnResult);
 
                 if (spawnResult == null)
@@ -696,6 +708,7 @@ namespace BossRush
 
                 // 等待一小段时间后重试
                 await UniTask.Delay(300);
+                if (!isSpawnCurrent()) return;
 
                 var stillFailed = new List<(EnemyPresetInfo preset, int originalIndex)>();
 
@@ -706,6 +719,7 @@ namespace BossRush
 
                 for (int ri = 0; ri < failedInfos.Count; ri++)
                 {
+                    if (!isSpawnCurrent()) return;
                     var failedInfo = failedInfos[ri];
                     Vector3 newPos = ri < retryPositions.Count
                         ? retryPositions[ri]
@@ -714,13 +728,14 @@ namespace BossRush
                     CharacterMainControl retryResult = null;
                     try
                     {
-                        retryResult = await SpawnEnemyAtPositionAsync(failedInfo.preset, newPos);
+                        retryResult = await SpawnEnemyAtPositionAsync(failedInfo.preset, newPos, isSpawnCurrent);
                     }
                     catch (Exception e)
                     {
                         DevLog("[BossRush] Boss重试生成异常: " + e.Message);
                     }
 
+                    if (!isSpawnCurrent()) return;
                     if (retryResult != null)
                     {
                         resolvedCount++;
@@ -739,6 +754,7 @@ namespace BossRush
                 DevLog("[BossRush] 重试轮 " + retryAttempt + " 完成: 当前已处理总数=" + resolvedCount + ", 仍失败=" + failedInfos.Count);
             }
 
+            if (!isSpawnCurrent()) return;
             // 最终验证
             int finalFailCount = expectedCount - resolvedCount;
             if (finalFailCount > 0)

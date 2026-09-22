@@ -122,8 +122,8 @@ namespace BossRush
                     : new OfficialQuestCommit((out string message) => DefaultCommit(def.AcceptedFlag, def.AcceptAction, out message)),
                 Deliver = def.Deliver != null
                     ? new OfficialQuestCommit(def.Deliver.Invoke)
-                    : new OfficialQuestCommit((out string message) => DefaultCommit(def.DeliveredFlag, def.DeliverAction, out message)),
-                PayReward = () => PayRewardOnce(def),
+                    : new OfficialQuestCommit((out string message) => DefaultCommit(def.DeliveredFlag, def.DeliverAction, out message, def.RewardMoney)),
+                PayReward = null, // 奖金由交付事务与故事事实一起提交。
                 StateStamp = () => { SkyIslandStoryData data = CurrentData(); return data == null ? 0 : data.flags; },
                 Client = this,
             };
@@ -150,33 +150,8 @@ namespace BossRush
             return data != null && data.Has(flag);
         }
 
-        /// <summary>交付成功且这一拍才落下交付事实时发一次钱。失败只记日志：剧情事实已经落下，不能因此回滚任务。</summary>
-        private void PayRewardOnce(SkyIslandOfficialQuestDefinition def)
-        {
-            int money = def.RewardMoney;
-            if (money <= 0) return;
-            SkyIslandStoryData data = CurrentData();
-            if (data == null || !data.Has(def.DeliveredFlag)) return;
-            try
-            {
-                if (EconomyManager.Add(money))
-                {
-                    if (host != null) host.ShowMessage(OfficialQuestText.DescribeMoney(money));
-                    return;
-                }
-            }
-            catch (Exception e)
-            {
-                ModBehaviour.CriticalLog("sky-island-quest-reward-" + def.QuestId,
-                    LogPrefix + " [ERROR] 任务奖金发放异常 quest=" + def.QuestId + ": " + e);
-                return;
-            }
-            ModBehaviour.CriticalLog("sky-island-quest-reward-" + def.QuestId,
-                LogPrefix + " [ERROR] 任务奖金没有发出去 quest=" + def.QuestId + " money=" + money);
-        }
-
         /// <summary>默认的接取 / 交付：只写对应旗标；已经写过就算成功（幂等）。</summary>
-        private bool DefaultCommit(SkyIslandStoryFlag flag, SkyIslandStoryAction action, out string message)
+        private bool DefaultCommit(SkyIslandStoryFlag flag, SkyIslandStoryAction action, out string message, int rewardMoney = 0)
         {
             bool onIsland;
             SkyIslandStoryService story = SkyIslandOfficialQuestStory.Resolve(host, out onIsland);
@@ -187,7 +162,11 @@ namespace BossRush
             }
             if (story.Current.Has(flag)) { message = null; return true; }
             if (!story.CanWrite) { message = story.SaveStatus; return false; }
-            if (!story.TryApply(action, out message)) return false;
+            if (rewardMoney > 0)
+            {
+                if (!story.TryDeliverQuest(action, rewardMoney, out message)) return false;
+            }
+            else if (!story.TryApply(action, out message)) return false;
             story.Tick(true);
             if (host != null && !string.IsNullOrEmpty(message)) host.ShowMessage(message);
             message = null;

@@ -98,6 +98,7 @@ namespace BossRush
     public class ModeFBossDisplayNameMarker : MonoBehaviour
     {
         public string DisplayName;
+        public string NameKey;
         public Teams OriginalFaction = Teams.middle;
     }
 }

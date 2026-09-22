@@ -199,6 +199,35 @@ namespace BossRush
             dragonKingDeathEventHandlers.Clear();
         }
 
+        internal void CleanupCancelledDragonKing(CharacterMainControl character, bool releaseAssetReference = true)
+        {
+            if (character == null) return;
+            DragonKingAbilityController controller;
+            bool acquired = dragonKingInstances.TryGetValue(character, out controller) && controller != null;
+            if (controller != null) controller.OnBossDeath();
+            Action<DamageInfo> lootHandler;
+            if (dragonKingLootEventHandlers.TryGetValue(character, out lootHandler))
+                character.BeforeCharacterSpawnLootOnDead -= lootHandler;
+            UnityEngine.Events.UnityAction<DamageInfo> deathHandler;
+            if (character.Health != null && dragonKingDeathEventHandlers.TryGetValue(character, out deathHandler))
+                character.Health.OnDeadEvent.RemoveListener(deathHandler);
+            dragonKingInstances.Remove(character);
+            dragonKingLootEventHandlers.Remove(character);
+            dragonKingDeathEventHandlers.Remove(character);
+            UnregisterDragonKingSetBonus(character);
+            UnregisterEnemyRecovery(character);
+            ClearBossRandomLootTracking(character);
+            FinalizeBossRushLootboxPathTracking(character);
+            PetNestDropService.ClearTracking(character);
+            AffixForgeStoneDropService.ClearTracking(character);
+            if (currentBoss == character) currentBoss = null;
+            currentWaveBosses?.Remove(character);
+            BossCleanupHelpers.DestroyRuntimePreset(character, DragonKingConfig.BossNameKey, "DragonKing_Preset", "[DragonKing]");
+            UnityEngine.Object.Destroy(character.gameObject);
+            if (acquired && releaseAssetReference) ReleaseDragonKingInstance();
+            if (dragonKingInstances.Count == 0) BossRushAudioManager.Instance?.ResetDragonKingBGMState();
+        }
+
         private void CleanupTrackedDragonKingCharacter(
             CharacterMainControl character,
             HashSet<CharacterMainControl> cleanedCharacters)
@@ -227,8 +256,16 @@ namespace BossRush
             Vector3 position,
             bool notifyBossRushOnFailure = true,
             bool deferActivationUntilNextFrame = false,
-            bool isNonWaveSpawn = false)
+            bool isNonWaveSpawn = false,
+            Func<bool> isActiveCheck = null)
         {
+            CharacterMainControl character = null;
+            bool completed = false;
+            bool assetReferenceAdded = false;
+            int sceneHandle = UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle;
+            Func<bool> isCurrent = () => this != null && Instance == this &&
+                UnityEngine.SceneManagement.SceneManager.GetActiveScene().handle == sceneHandle &&
+                (isActiveCheck == null || isActiveCheck());
             try
             {
                 DevLog($"[DragonKing] 开始生成龙王Boss at {position}");
@@ -239,7 +276,7 @@ namespace BossRush
                 if (basePreset == null)
                 {
                     DevLog("[DragonKing] [ERROR] 未找到基础敌人预设");
-                    if (notifyBossRushOnFailure)
+                    if (notifyBossRushOnFailure && isCurrent())
                     {
                         NotifyBossSpawnFailed();
                     }
@@ -251,12 +288,14 @@ namespace BossRush
                 // 生成角色
                 Vector3 dir = Vector3.forward;
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
-                var character = await basePreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
+                if (!isCurrent()) return null;
+                character = await basePreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
+                if (!isCurrent()) return null;
                 
                 if (character == null)
                 {
                     DevLog("[DragonKing] [ERROR] 生成角色失败");
-                    if (notifyBossRushOnFailure)
+                    if (notifyBossRushOnFailure && isCurrent())
                     {
                         NotifyBossSpawnFailed();
                     }
@@ -311,18 +350,22 @@ namespace BossRush
                 
                 // 装备龙王套装
                 await EquipDragonKing(character);
+                if (!isCurrent()) return null;
                 
                 // 禁用原有AI组件，龙王Boss完全由DragonKingAbilityController控制
                 DisableDragonKingOriginalAI(character);
                 
                 // 添加能力控制器
                 var abilities = character.gameObject.AddComponent<DragonKingAbilityController>();
-                abilities.Initialize(character);
                 dragonKingInstances[character] = abilities;
+                int referenceCountBefore = DragonKingAssetManager.ActiveReferenceCount;
+                try { abilities.Initialize(character); }
+                finally { assetReferenceAdded = DragonKingAssetManager.ActiveReferenceCount > referenceCountBefore; }
 
                 if (deferActivationUntilNextFrame)
                 {
                     await UniTask.Yield();
+                    if (!isCurrent()) return null;
                 }
 
                 // 激活角色
@@ -413,16 +456,21 @@ namespace BossRush
                 // 播放龙王BGM
                 BossRushAudioManager.Instance.PlayDragonKingBGM();
                 
+                completed = true;
                 return character;
             }
             catch (Exception e)
             {
                 DevLog($"[DragonKing] [ERROR] 生成Boss失败: {e.Message}\n{e.StackTrace}");
-                if (notifyBossRushOnFailure)
+                if (notifyBossRushOnFailure && isCurrent())
                 {
                     NotifyBossSpawnFailed();
                 }
                 return null;
+            }
+            finally
+            {
+                if (!completed && character != null) CleanupCancelledDragonKing(character, assetReferenceAdded);
             }
         }
         

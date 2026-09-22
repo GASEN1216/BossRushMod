@@ -19,6 +19,7 @@ namespace BossRush
         /// <returns>衰减的点数（0表示没有衰减）</returns>
         public static int CheckAndApplyDailyDecay(string npcId)
         {
+            if (!CanWrite) return 0;
             // 检查是否启用衰减
             if (!AffinityConfig.ENABLE_DAILY_DECAY) return 0;
             if (string.IsNullOrEmpty(npcId)) return 0;
@@ -155,6 +156,7 @@ namespace BossRush
         /// </summary>
         public static void SetLastDecayCheckDay(string npcId, int day)
         {
+            if (!CanWrite) return;
             if (string.IsNullOrEmpty(npcId)) return;
 
             if (!npcDataMap.ContainsKey(npcId))
@@ -216,6 +218,7 @@ namespace BossRush
         /// </summary>
         private static void MarkDirty()
         {
+            if (!CanWrite) return;
             isDirty = true;
         }
 
@@ -234,6 +237,7 @@ namespace BossRush
         /// </summary>
         private static void SaveImmediate()
         {
+            if (!CanWrite) return;
             try
             {
                 // 使用专用序列化器
@@ -262,12 +266,15 @@ namespace BossRush
         {
             // 先清空数据，确保存档隔离
             npcDataMap.Clear();
+            isDirty = false;
+            loadWriteBlocked = true;
 
             try
             {
                 // 检查是否存在存档数据
                 if (!Saves.SavesSystem.KeyExisits(AffinityConfig.SAVE_KEY))
                 {
+                    loadWriteBlocked = false;
                     ModBehaviour.DevLog("[Affinity] 没有找到存档数据，使用默认值");
                     return;
                 }
@@ -284,6 +291,7 @@ namespace BossRush
                 // 使用专用序列化器反序列化
                 if (AffinityJsonSerializer.Deserialize(json, npcDataMap))
                 {
+                    loadWriteBlocked = false;
                     ModBehaviour.DevLog("[Affinity] 好感度数据已加载，NPC数量: " + npcDataMap.Count);
                 }
                 else
@@ -302,6 +310,7 @@ namespace BossRush
         /// </summary>
         public static void ResetAll()
         {
+            if (!CanWrite) return;
             npcDataMap.Clear();
             SaveImmediate();  // 重置时立即保存
             ModBehaviour.DevLog("[Affinity] 所有好感度数据已重置");

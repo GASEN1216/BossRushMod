@@ -1,0 +1,83 @@
+using System;
+using System.Reflection;
+using System.Text.Json;
+
+struct Vector3 { public float x,y,z; }
+class Transform { public Vector3 position; }
+static class Time { public static float fixedDeltaTime = 0.02f; }
+static class Mathf { public static float Min(float a,float b) { return Math.Min(a,b); } public static float Abs(float a) { return Math.Abs(a); } }
+class Health { public bool IsDead; }
+class Character { public Health Health = new Health(); public float CurrentStamina; public void UseStamina(float v) { CurrentStamina=Math.Max(0,CurrentStamina-v); } }
+class Movement { public Vector3 velocity { get; set; } }
+class Tuning { public float StaminaDrainPerSecond=50; public float SlowDescentStaminaDrainPerSecond=30; public float SlowDescentSpeed=-0.8f; public float UpwardAcceleration=10f/0.3f; public float MaxUpwardSpeed=10; }
+abstract class ActionRoot { protected abstract void OnUpdateAction(float deltaTime); }
+abstract class EquipmentAbilityAction : ActionRoot {
+    protected Character characterController = new Character();
+    protected float actionElapsedTime;
+    protected bool Running=true;
+    protected Tuning config = new Tuning();
+    protected Tuning GetConfig() { return config; }
+    protected virtual bool ShouldAutoConsumeStamina() { return true; }
+    protected virtual void OnStaminaDepleted() { StopAction(); }
+    protected virtual void OnAbilityUpdate(float deltaTime) { }
+    protected void StopAction() { Running=false; }
+    protected void LogIfVerbose(string message) { }
+    protected void PauseGroundConstraint(float v) { }
+    public void RenderStep(float dt) { OnUpdateAction(dt); }
+    /* BASE_POLICY */
+    /* BASE_METHOD */
+}
+class CA_Flight : EquipmentAbilityAction {
+    private int spaceHeldCount,spaceReleaseCount;
+    private bool isSlowDescending;
+    private float currentUpwardSpeed,pendingVerticalDelta;
+    private object flightPlatform = new object();
+    private readonly Transform characterTransform=new Transform();
+    private readonly Movement movement=new Movement();
+    private static PropertyInfo velocityProperty=typeof(Movement).GetProperty("velocity");
+    public bool Held=true;
+    public bool UseFallback;
+    public CA_Flight(float stamina) { characterController.CurrentStamina=stamina; }
+    private bool IsFlightInputHeld() { return Held; }
+    private Transform GetCharacterTransform() { return characterTransform; }
+    private object GetCharacterMovement() { return UseFallback?null:movement; }
+    public void PhysicsStep() { UpdateFlightPlatform(); }
+    public bool IsRunning { get { return Running; } }
+    public bool Descending { get { return isSlowDescending; } }
+    public int ReleaseFrames { get { return spaceReleaseCount; } }
+    public float PendingSpeed { get { return pendingVerticalDelta; } }
+    public float VelocityY { get { return movement.velocity.y; } }
+    public float Height { get { return characterTransform.position.y; } }
+    /* FLIGHT_POLICY */
+    /* FLIGHT_METHODS */
+}
+class Program {
+ static void Main() {
+    var emptyHeld=new CA_Flight(0);
+    emptyHeld.RenderStep(0.02f);
+    emptyHeld.PhysicsStep();
+    var emptyReleased=new CA_Flight(0) { Held=false };
+    for(int i=0;i<8;i++) emptyReleased.RenderStep(0.02f);
+    var smallReleased=new CA_Flight(0.4f) { Held=false };
+    smallReleased.RenderStep(0.001f);
+    var physics=new CA_Flight(100);
+    physics.RenderStep(0.02f);
+    float target=physics.PendingSpeed;
+    physics.PhysicsStep(); float first=physics.VelocityY;
+    physics.PhysicsStep(); float second=physics.VelocityY;
+    var fallback=new CA_Flight(100) { UseFallback=true };
+    fallback.RenderStep(0.02f); float expectedPerStep=fallback.PendingSpeed*Time.fixedDeltaTime;
+    fallback.PhysicsStep(); float heightOne=fallback.Height;
+    fallback.PhysicsStep(); float heightTwo=fallback.Height;
+    if (!emptyHeld.Descending || emptyHeld.VelocityY >= 0 || emptyReleased.IsRunning || first != target || second != target || Math.Abs(heightTwo - 2*heightOne)>0.000001f) throw new Exception("flight regression");
+    Console.WriteLine(JsonSerializer.Serialize(new {
+       source_methods="verbatim; stubs cover stamina, input, transform and velocity property; no Unity renderer/physics simulated",
+       INT08=new { at_zero_descending=emptyHeld.Descending, at_zero_velocity_y=emptyHeld.VelocityY,
+          expected_descending_velocity=-0.8f, release_frames_after_8_updates=emptyReleased.ReleaseFrames,
+          still_running_after_8_released_updates=emptyReleased.IsRunning, positive_stamina_control_release_frames=smallReleased.ReleaseFrames },
+       INT09=new { target_speed=target, first_physics_speed=first, second_physics_speed=second,
+          expected_per_physics_step=expectedPerStep, fallback_height_after_one_step=heightOne, fallback_height_after_two_steps=heightTwo },
+       fixed_behavior=true
+    },new JsonSerializerOptions { WriteIndented=true }));
+ }
+}

@@ -27,6 +27,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using Duckov.Scenes;
 using Duckov.UI;
+using ItemStatsSystem;
 using Pathfinding;
 using Saves;
 using TMPro;
@@ -454,6 +455,62 @@ namespace BossRush
             }
             _probePathValid = completed;
         }
+        /// <summary>背包（含容器）、基地仓库与官方待收取缓冲区的数量；不可读来源标记 n/a/error。</summary>
+        private static int CountOwnedItems(int typeId, out string where)
+        {
+            int pack = -1, storage = -1, buffer = -1;
+            try
+            {
+                CharacterMainControl main = CharacterMainControl.Main;
+                if (main != null && main.CharacterItem != null && main.CharacterItem.Inventory != null)
+                    pack = CountInInventory(main.CharacterItem.Inventory, typeId, 0);
+            }
+            catch (Exception) { pack = -1; }
+            try
+            {
+                if (PlayerStorage.Inventory != null) storage = CountInInventory(PlayerStorage.Inventory, typeId, 0);
+            }
+            catch (Exception) { storage = -1; }
+            try { buffer = CountBufferedItems(typeId); }
+            catch (Exception) { buffer = -1; }
+            where = "pack:" + (pack < 0 ? "error" : pack.ToString()) + "/storage:" + (storage < 0 ? "n/a" : storage.ToString())
+                + "/buffer:" + (buffer < 0 ? "error" : buffer.ToString());
+            return checked(Math.Max(0, pack) + Math.Max(0, storage) + Math.Max(0, buffer));
+        }
+
+        // 官方缓冲区保存完整 ItemTreeData；这里只读数据，不实例化物品，也不引用 Dev 演练。
+        private static int CountBufferedItems(int typeId)
+        {
+            if (PlayerStorageBuffer.Instance == null || PlayerStorageBuffer.Buffer == null)
+                throw new InvalidOperationException("buffer_unavailable");
+            int total = 0;
+            foreach (var tree in PlayerStorageBuffer.Buffer)
+            {
+                if (tree == null) continue;
+                if (tree.entries == null || tree.RootData == null) throw new InvalidOperationException("buffer_tree_unreadable");
+                foreach (var entry in tree.entries)
+                {
+                    if (entry == null) throw new InvalidOperationException("buffer_entry_unreadable");
+                    if (entry.typeID == typeId) total = checked(total + Math.Max(1, entry.StackCount));
+                }
+            }
+            return total;
+        }
+
+        private static int CountInInventory(Inventory inventory, int typeId, int depth)
+        {
+            if (inventory == null || inventory.Content == null || depth > 4) return 0;
+            int total = 0;
+            foreach (Item item in inventory.Content)
+            {
+                if (item == null) continue;
+                if (item.TypeID == typeId) total += item.Stackable ? Math.Max(1, item.StackCount) : 1;
+                if (item.Inventory != null && !ReferenceEquals(item.Inventory, inventory))
+                    total += CountInInventory(item.Inventory, typeId, depth + 1);
+            }
+            return total;
+        }
+
     }
 
     /// <summary>

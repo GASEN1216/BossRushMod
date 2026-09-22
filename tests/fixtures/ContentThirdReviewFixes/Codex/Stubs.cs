@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using BossRush;
 namespace UnityEngine { struct Color { public Color(float r,float g,float b,float a){} } static class Time { public static float time; } }
-enum Teams { player,wolf }
+enum Teams { player,wolf,scav,usec,bear,lab,middle,all }
+// 与官方 Team.IsEnemy 的真实阵营判据一致。
+static class Team { public static bool IsEnemy(Teams selfTeam, Teams targetTeam) { return selfTeam != Teams.middle && (selfTeam == Teams.all || (targetTeam != Teams.middle && selfTeam != targetTeam)); } }
 class LevelManager { public static LevelManager Instance=new LevelManager(); public bool IsBaseLevel; }
 class CharacterRandomPreset { public string nameKey; }
 class CharacterMainControl { public bool IsMainCharacter,isBossCharacter;public Teams Team;public CharacterRandomPreset characterPreset; public object Component;public T GetComponent<T>() where T:class {return Component as T;} public int GetInstanceID(){return GetHashCode();} }
@@ -67,4 +69,3 @@ namespace BossRush {
  static class CodexSaveCoordinator {internal static void RequestFlush(){}}
  static class BossRushAchievementManager {internal static HashSet<string> Unlocked=new HashSet<string>();internal static void Initialize(){}internal static bool TryUnlock(string id){return Unlocked.Add(id);}}
 }
-

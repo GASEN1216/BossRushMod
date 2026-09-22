@@ -563,6 +563,10 @@ namespace BossRush
                     storyDialogueCheckCooldown = GoblinNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
                 }
             }
+            catch (OperationCanceledException)
+            {
+                storyDialogueCheckCooldown = GoblinNPCConstants.STORY_DIALOGUE_RETRY_INTERVAL;
+            }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[GoblinNPC] [ERROR] 故事对话出错: " + e.Message);
@@ -572,9 +576,9 @@ namespace BossRush
             finally
             {
                 isInStoryDialogue = false;
-                StopIdleAnimation();
+                if (this != null) StopIdleAnimation();
 
-                if (isLevel10Story && storyPlayed)
+                if (this != null && isLevel10Story && storyPlayed)
                 {
                     ModBehaviour.DevLog("[GoblinNPC] 10级故事对话结束，停留10秒后再离开");
                     EndDialogueWithStay(10f, false);
@@ -584,7 +588,7 @@ namespace BossRush
                     isInDialogue = false;
                     isIdling = false;
 
-                    if (movement != null)
+                    if (this != null && movement != null)
                     {
                         movement.ResumeWalking();
                     }

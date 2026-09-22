@@ -288,11 +288,12 @@ namespace BossRush
                     "You are not carrying the instrument. There is another one to salvage beside the wreck in Ground Zero.");
                 return false;
             }
-            if (!story.TryApply(SkyIslandStoryAction.UnlockRoute, out reason)) return false;
-            story.Tick(true);
+            if (!story.RequireAssetSnapshot(null, out reason)) return false;
+            if (!story.TryDeliverQuest(SkyIslandStoryAction.UnlockRoute, DeliveryMoney, out reason)) return false;
             // 先落事实再收物品：收不走最多是玩家手里多一具卖不掉的仪器，反过来就是白扣一件交付物。
             if (!SkyIslandNavInstrumentConfig.TryConsumeOne())
                 ModBehaviour.DevLog("[SkyIslandPrelude] [WARNING] 航向仪没有被收走，交付事实已落下。");
+            story.Tick(true);
             routeUnlocked = true;
             holdsInstrument = false;
             ClearJeff();

@@ -1,5 +1,37 @@
 # CODE_REVIEW_FINDINGS.md — 已确认问题库
 
+<!-- BEGIN FULL AUDIT REPAIR INDEX 2026-09-22 -->
+
+## 2026-09-22 全仓审计条目修复闭环
+
+原报告 82 项均已逐条复核并关闭；另从未验证线索确认并修复 2 项，共 84 项。其中 75 项在会话开始时已有对应修复，经本轮复核保留；其余 9 项为本轮补修或新增确认。分类为 COMPAT，成就领奖凭据与 Dev 恢复快照为 SCHEMA+，正式构建部署为 OPERATIONAL。
+
+全量守卫 652 PASS / 0 FAIL；全量隔离回归 56 PASS / 0 FAIL；Windows 978 源正式与 Dev 编译通过。正式 DLL 已部署，Build 与游戏目标 SHA-256 一致，14 个 Dev 专用标识缺席；72 个资源包部署哈希检查通过。Wiki 构建和 80 项导航检查通过，237 页 / 39133 个引用无缺失链接或失效锚点。
+
+对应原审计块的 82 项状态已回填 Fixed，新增 -049/-050 已登记。没有 L3；详细证据与人工清单见 [修复记录](docs/代码审查/2026-09-22_full_audit_fixes.md)。
+
+<!-- END FULL AUDIT REPAIR INDEX 2026-09-22 -->
+
+
+
+<!-- BEGIN FULL AUDIT EXTRA INDEX 2026-09-22 -->
+
+### CR-2026-09-22-049 · P2 / COMPAT · Mode D 旧分帧队列与异步结果缺局身份，同号新局可接收旧派发和结案
+
+- 状态：Fixed / L1+L2；L3 待 owner。
+- 证据：已确认 L1：旧分帧队列继续消费共享刷怪表，完成回调只比较 waveIndex；核心虽检查 modeDActive，同号新局重开后旧任务仍可通过。现由 ModeDRuntimeModule 持有 generation，Start/End/scene/destroy 使旧身份失效；队列、成功/失败回调和自动下一波均复核。L2 覆盖实际 runtime owner 与接线守卫，不宣称 inactive 时必然刷出实体。
+- 位置：`ModeD/ModeDRuntimeModule.cs`, `ModeD/ModeD.cs`, `ModeD/ModeDWaves.cs`。
+
+### CR-2026-09-22-050 · P2 / COMPAT · 丧尸拍照期间 unscaled 阶段与刷新时钟继续推进
+
+- 状态：Fixed / L1+L2；L3 待 owner。
+- 证据：已确认 L1：官方 TimeScaleManager 在 CameraMode.Active 时 timeScale=0，丧尸统一暂停门此前缺 CameraMode 且 Tick 接 unscaledDeltaTime。补入统一门后实际暂停时钟抽取 L2 证明 20 秒拍照不推进，恢复不补扣。
+- 位置：`ZombieMode/ZombieModeEntry.cs`, `ZombieMode/ZombieModeRuntimeHooks.cs`, `Utilities/ModeRuntimeHooks.cs`。
+
+<!-- END FULL AUDIT EXTRA INDEX 2026-09-22 -->
+
+
+
 <!-- MANUAL 17 FIXED 2026-09-22 -->
 
 ## 2026-09-22 人工实测复核修复交付（COMPAT / OPERATIONAL / SAFE）
@@ -33,7 +65,7 @@
 
 ### CR-2026-09-21-001 · P1 / COMPAT · 好感读取失败后下一次存档收集覆盖原有全部关系记录
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `INT-11`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；会话初始已有修复：Load 先建立写屏障；KeyExisits 确认缺键或 JSON 全量成功后解除，失败时 SaveImmediate、Collect、Shutdown 与业务写入均早返。坏 JSON、类型错误和读取异常均在生产类隔离回归中保留原字节。 L3 待 owner。
 - 位置：`Integration/Affinity/AffinityManagerPersistenceAndDecay.cs:261–296`（60bb84b）；`Integration/Affinity/AffinityManager.cs:171–183`（60bb84b）
 - 触发与根因：已有NPCAffinity读取异常或坏JSON，随后正常Collect/退出保存。 Load清空表但失败无写屏障，OnCollectSaveData无条件SaveImmediate并SaveFile。
 - 影响：已有好感/婚姻/跟随/故事/奖励标记被空或默认数据覆盖。
@@ -43,7 +75,7 @@
 
 ### CR-2026-09-21-002 · P1 / COMPAT · 丧尸入场满仓转存后的回滚删除唯一物品副本
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `MODES-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已保留成功转存的完整 inbox 树；SaveBuffer 失败时撤销未提交候选并保留原物。补第二件保存失败与重复回滚的资产守恒回归。L1/L2。 L3 待 owner。
 - 位置：`ZombieMode/ZombieModeInventoryTransfer.cs:85–94`（60bb84b）；`ZombieMode/ZombieModeInventoryTransfer.cs:112–127`（60bb84b）；`ZombieMode/ZombieModeEntry.cs:600–633`（60bb84b）；`ZombieMode/ZombieModeCleanup.cs:389–400`（60bb84b）
 - 触发与根因：丧尸入场时仓库无空格或不可用，原装备/背包物进入官方 inbox 后，后续初始化任一步失败或在最终提交前切图。 转存已 DestroyTree 原物品；回滚仅从 Buffer Remove 对应 ItemTreeData 并 SaveBuffer，未重建或保留树。
 - 影响：原物品唯一副本永久消失。属于玩家资产主流程回归；未证实整个存档不可读，因此按 P1。
@@ -53,7 +85,7 @@
 
 ### CR-2026-09-21-003 · P1 / COMPAT · 寄存加载异常后仍允许用空缓存覆盖原全局列表
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-16`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复已为主快照/备份完整性和读取异常建立写屏障，拒绝缺字段的部分恢复；完整备份可只读入内存。AddItem、ClearAll、Save 的故障注入均无写入；守卫副本去掉屏障已预期转红。 L3 待 owner。
 - 位置：`Integration/NPCs/Courier/DepositDataManager.cs:178–182`（60bb84b）；`Integration/NPCs/Courier/DepositDataManager.cs:232–267`（60bb84b）
 - 触发与根因：打开寄存时LoadGlobal任一读取异常，随后新增寄存并保存。 外层catch清缓存且isLoaded=true，绕过备份恢复并无写屏障；AddItem/Save可继续写原全局key。
 - 影响：旧物品从可读主快照消失，新快照自洽不自动回旧备份，后续保存覆盖备份。
@@ -63,7 +95,7 @@
 
 ### CR-2026-09-21-004 · P1 / COMPAT · 普通寄存单件取回恢复失败时仍删除原完整物品记录
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复将普通/净化点单件取回接管到 Buy 前缀：恢复完整树成功后才收费，交付成功后按记录身份移除。恢复 null/throw 与交付失败均保留记录，交付前异常退款并清理临时物，交付后通知异常不重复交付。 L3 待 owner。
 - 位置：`Integration/NPCs/Courier/StorageDepositSingleRetrieve.cs:138–144`（60bb84b）；`Integration/NPCs/Courier/StorageDepositSingleRetrieve.cs:228–235`（60bb84b）；`Integration/NPCs/Courier/DepositDataManager.cs:273–292`（60bb84b）
 - 触发与根因：普通金币寄存单件取回时 ItemTreeData.InstantiateAsync 返回 null/抛错，或实例补配/交付异常。 占位物购买后异步恢复失败仍 RemoveItem(depositIndex) 并 Save；普通分支没有保留记录和费用退款。
 - 影响：原配件、容器内容与重铸变量从寄存主数据删除；玩家至多留下基础占位物，交付前异常时可能实物也不剩。
@@ -73,7 +105,7 @@
 
 ### CR-2026-09-21-005 · P1 / COMPAT · 寄存单件、批量与关闭重开缺少共同异步事务所有权
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复统一 DepositTransaction，绑定服务代次、槽、玩家和原收费 NPC；单件/批量互斥，Cleanup 换代，await 后拒绝旧上下文，按记录对象提交。可控任务验证旧 A 在关闭/重开 B 后完成时不交付、不移除记录且不释放 B owner。 L3 待 owner。
 - 位置：`Integration/NPCs/Courier/StorageDepositSingleRetrieve.cs:113–126`（60bb84b）；`Integration/NPCs/Courier/StorageDepositBulkActions.cs:413–442`（60bb84b）；`Integration/NPCs/Courier/StorageDepositBulkActions.cs:664–675`（60bb84b）；`Integration/NPCs/Courier/StorageDepositBulkActions.cs:985–993`（60bb84b）
 - 触发与根因：全部取回恢复尚未完成时单件取回相同记录；或关闭服务再重开并再次全部取回，旧 await 随后完成。 单件和批量都保存旧列表索引，缺少 session/generation/稳定记录身份；批量 busy 只保护自身，Cleanup 未取消任务却复位 busy。
 - 影响：同一快照重复交付、旧索引误删/漏删当前记录；旧任务还可能使用后继服务的付款上下文。实际重叠窗口需 L3 测定。
@@ -83,7 +115,7 @@
 
 ### CR-2026-09-21-006 · P1 / COMPAT · NPC 赠礼退回背包失败时只激活数据物品，未创建拾取代理
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复在满包返还时调用官方 Item.Drop 创建拾取代理；主玩家缺席时改交官方仓库缓冲 owner。隔离回归直接抽取生产 DropItemOnGround 验证调用，而非只检查 activeSelf；物理拾取未做 L3。 L3 待 owner。
 - 位置：`Integration/Affinity/Services/NPCGiftContainerService.cs:799–823`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/ItemExtensions.cs:91–123`（60bb84b）
 - 触发与根因：赠礼容器放入不能合并的礼物，再拆分玩家背包其他堆叠填满空格，关闭赠礼窗口；或满背包时 NPC 拒绝礼物。 ReturnContainerItemsToPlayer 先 Detach；AddAndMerge 失败后的 DropItemOnGround 只设位置和 SetActive，未调用官方 Drop/CreatePickupAgent。
 - 影响：物品不在背包/礼物容器，又没有正常可交互拾取入口，切图后丢失。
@@ -93,7 +125,7 @@
 
 ### CR-2026-09-21-007 · P1 / COMPAT · 成就领取标记独立落盘，奖金未与当前槽经济共同保存
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `ROOT-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；全局领奖意向先落盘，本槽现金和收据同批保存，最后提交全局已领；原槽重试不重复发钱。 L3 待 owner。
 - 位置：`Achievement/BossRushAchievementManager.cs:361–388`（60bb84b）；`Achievement/BossRushAchievementManager.cs:420–426`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/Saves/SavesSystem.cs:700–709`（60bb84b）
 - 触发与根因：通过勋章页单件或全部领取奖励后，在下一次官方采集当前槽经济之前异常中断/重载。 EconomyManager.Add 只改活对象；SaveData 却用 SaveGlobal 立即提交全局 claimedRewards。领取入口和 OnMoneyChanged 消费者没有经济快照及共同提交。Add 返回 false 也仍提交领取状态。
 - 影响：领取记录永久为已领，奖金可回到领取前余额且不允许重领；经济 manager 缺席时也会记已领。物品奖励循环只有日志，但当前目录没有配置 itemIds，不能另算不可达的物品漏发缺陷。
@@ -103,7 +135,7 @@
 
 ### CR-2026-09-21-008 · P1 / COMPAT · 晴岚主线交付与现金奖励未共同持久化
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `SKY-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；序章和三条岛上任务统一走 TryDeliverQuest；实际余额确认、交付旗标与现金快照由同一保存批次提交。 L3 待 owner。
 - 位置：`DebugAndTools/SkyIsland/SkyIslandOfficialQuestBridge.cs:138–142`（60bb84b）；`DebugAndTools/SkyIsland/SkyIslandOfficialQuestBridge.cs:523–529`（60bb84b）；`DebugAndTools/SkyIsland/SkyIslandStoryService.cs:734–751`（60bb84b）
 - 触发与根因：交付晴岚主线后，Delivered事实已成功落盘，而尚未进行下一次官方经济采集时进程中断/重载。Tick(true)仍可能被保存门推迟，不保证每次交付立即落盘。 DefaultCommit（及序章自定义 Deliver）先 TryApply + Tick(true)，共享引擎以 SaveFile(false) 保存 Delivered；随后 EconomyManager.Add 只改内存 Money。天空岛 SaveSource 没有 EconomyData 快照义务。
 - 影响：Delivered 已保存而 5000/3000/5000/8000 对应奖金未保存；Claimed 只读 Delivered，重建投影无法补发。
@@ -113,7 +145,7 @@
 
 ### CR-2026-09-21-009 · P1 / COMPAT · 丧尸跳弹、分叉、返程支援弹遗漏僵尸倍率，实际伤害归零
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `MODES-05`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：统一支援弹 builder 继承 gun.DamageFactorToZombie，继续保持 fromWeaponItemID=0。L2：模式代理确认生产方法提取回归，三种伤害 factor 下僵尸倍率为 1.5 且基础伤害为正。 L3 待 owner。
 - 位置：`ZombieMode/ZombieModeRewardTriggerEffects.cs:409–425`（60bb84b）；`ZombieMode/ZombieModeRewardTriggerEffects.cs:83–114`（60bb84b）；`ZombieMode/ZombieModeRewardCatalogAndSelection.cs:291–293`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/Projectile.cs:296–300`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/Health.cs:353–358`（60bb84b）
 - 触发与根因：在丧尸模式取得跳弹/分叉/返程奖励，玩家原始枪弹命中后派生的支援弹再命中丧尸。 default ProjectileContext 的 damageFactorToZombie 为0，builder没有赋值；官方Projectile把0覆盖到DamageInfo，Health对isZombie乘0。
 - 影响：三个正常可选奖励的支援弹伤害收益失效，对应原有代价仍生效；不泛化到别的自制弹体或所有附带效果。
@@ -123,7 +155,7 @@
 
 ### CR-2026-09-21-010 · P1 / COMPAT · 龙套OnHurt清零共享火元素列表，改变同爆炸后续目标伤害
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `INT-20`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：OnDragonSetHurt 不再写调用方共享 elementFactors。L2：原生产回调验证元素列表不变且按现有 80% 规则回补。 L3 待 owner。
 - 位置：`Integration/Bonus/DragonSetBonus.cs:465–473`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/ExplosionManager.cs:37–66`（60bb84b）
 - 触发与根因：火元素爆炸先命中龙套主角再中其他目标，或复用同DamageInfo列表的持续伤害再次执行。 struct中的elementFactors是List引用，OnHurt写factor=0污染调用方共享列表；伤害此时已扣。
 - 影响：后续目标火伤归零、后续订阅者元素失真，当前只额外安排80%治疗。
@@ -133,7 +165,7 @@
 
 ### CR-2026-09-21-011 · P1 / COMPAT · 玩家熔浆硬编码player阵营，Mode E中会烧主角和同旗友军
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-19`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：PlayerLavaZone 捕获 owner / scene，按 owner.Team 判敌，显式排除本人，失效 owner 销毁区域，并标记效果伤害。 L3 待 owner。
 - 位置：`Integration/Bonus/DragonSetBonus.cs:814–826`（60bb84b）；`Integration/Bonus/DragonSetBonus_Dash.cs:420–423`（60bb84b）
 - 触发与根因：以非player营旗进入Mode E，龙王套二段冲刺铺熔浆，或焚皇戟火柱复用PlayerLavaZone；主角/同旗盟友进入区域。 主角已设实际营旗阵营，PlayerLavaZone固定Team.IsEnemy(Teams.player,target)且不排Main，直接Hurt无友伤门。
 - 影响：己方熔浆烧自己和盟友，80%延迟回血不能完全免傷或救已死玩家。
@@ -143,7 +175,7 @@
 
 ### CR-2026-09-21-012 · P1 / COMPAT · 逆鳞棱彩弹无敌友过滤，追踪并直接伤害友军
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-17`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：搜索和碰撞共用 IsPrismaticBoltEnemy，排除 owner 和非敌对角色，伤害标记效果来源。 L3 待 owner。
 - 位置：`Integration/ReverseScale/ReverseScaleAbilityManager.cs:686–696`（60bb84b）；`Integration/ReverseScale/ReverseScaleAbilityManager.cs:726–756`（60bb84b）
 - 触发与根因：有可受伤召唤物/Mode E友军在场时触发逆鳞，友军在搜敌或碰撞范围。 搜敌/碰撞只排主玩家，不做Team.IsEnemy；直接Health.Hurt绕过Projectile阵营过滤，官方Hurt本身不拒绝友伤。
 - 影响：反击弹可锁定/消耗在友军并击傷或击杀；缺少效果来源标记还可被直接击杀系统采集，但不声称无限递归。
@@ -153,7 +185,7 @@
 
 ### CR-2026-09-21-013 · P1 / COMPAT · 旧NPC故事切图中断后堵住共享对话队列
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `INT-13`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；保留初始 actor/UI/session 隔离修复，并补出两个真实遗漏：旧 key 序列吞取消使调用者继续标记故事/发奖，以及 Cleanup 后旧 drain 仍可能确认同一 UI 的后继请求。现在取消传播，阿稳/羽织/叮当/婚礼文字重播独立处理取消；阿稳首次见面完成标记后移；drain 受请求代次门控。新增生产执行回归和两个副本变异均证实边界。 L3 待 owner。
 - 位置：`Integration/Dialogue/DialogueManager.cs:323–352`（60bb84b）；`Integration/Dialogue/DialogueManager.cs:516–574`（60bb84b）；`Integration/Dialogue/DialogueManager.cs:709–727`（60bb84b）
 - 触发与根因：阿稳首次见面/羽织或叮当故事等确认期间切图或回菜单，旧UI销毁；新场景再触发对话。 旧故事CancellationToken.None等待仅看callback；官方DoSubtitle无finally保证回调，NPC销毁不取消，生产未调Cleanup；sessionOwner不清使AcquireSession永远等。
 - 影响：后续共享Mod对话不显示，旧等待和NPC业务悬挂；不宣称新场景一定永久锁移动。
@@ -163,7 +195,7 @@
 
 ### CR-2026-09-21-014 · P1 / COMPAT · 普通重铸全部属性已固定时仍扣费并忽略 Success=false
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；全锁物品在按钮和执行入口统一拒绝；失败且未改属性退还原币种；扣款/退款通知异常也清 busy。新增两项故障用例先红后绿。 L3 待 owner。
 - 位置：`Integration/Reforge/ReforgeUIManager_ComparisonAndState.cs:471–484`（60bb84b）；`Integration/Reforge/ReforgeSystem.cs:619–629`（60bb84b）；`Integration/Reforge/ReforgeSystem.cs:925–929`（60bb84b）
 - 触发与根因：所有可调整属性都被冷淬液固定，投入/极性费用合计大于0且余额足够，再点击普通重铸。 CanReforge/按钮判据不排除已固定属性，扣款后 Reforge 实际跳过全部属性并返回 false，调用者无条件 reforgeCompleted=true。
 - 影响：扣金币或临时丧尸服务净化点但不改变任何属性、不显示失败也不退款。
@@ -173,7 +205,7 @@
 
 ### CR-2026-09-21-015 · P1 / COMPAT · 龙皇召唤超时或取消后，迟到的子龙裔没有回收 owner
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `BOS-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：父代次、requestActive、死亡和 Mode G owner 共同门控，超时 / Dispose 清请求，迟到结果被 ReleaseChild 回收。L2：生产协程和异步方法验证正常接管、10 秒超时、Dispose 后迟到。 L3 待 owner。
 - 位置：`Integration/DragonKing/DragonKingAbilityController_ChildProtection.cs:350–372`（60bb84b）；`Integration/DragonKing/DragonKingAbilityController_ChildProtection.cs:545–556`（60bb84b）；`Integration/DragonKing/DragonKingAbilityController_ChildProtection.cs:646–668`（60bb84b）
 - 触发与根因：孩儿护我子龙裔生成超过 10 秒才返回，或等待期间结束模式 / 清理父方控制器。 回调只写等待协程的局部 spawnResult/spawnCompleted；超时 / StopCoroutine 没有作废异步请求，也未回收迟到结果。
 - 影响：留下已激活、未完成减半属性或父子死亡订阅的 Legacy 子龙裔，退出后仍可继续制造敌人。
@@ -183,7 +215,7 @@
 
 ### CR-2026-09-21-016 · P1 / COMPAT · Mode G 孩儿护我子龙裔绕开 PhaseProxy 托管和掉落抑制
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `BOS-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：Mode G context 传播到父控制器，子龙裔以 PhaseProxy 走 prepare → owner commit → activate，关闭 Legacy 掉落，主实例字段只由 Primary 写入。L2：提交先于激活和取消 prepare 后回收均 PASS。 L3 待 owner。
 - 位置：`Integration/DragonKing/DragonKingBoss_ModeGAdapter.cs:33–35`（60bb84b）；`Integration/DragonKing/DragonKingAbilityController_ChildProtection.cs:553–555`（60bb84b）；`Integration/DragonDescendant/DragonDescendantBoss.cs:230–235`（60bb84b）
 - 触发与根因：Mode G 龙皇正常召唤子龙裔后，结束该局或杀死子龙裔。 适配器只传播 linked credit，不给控制器托管 context / PhaseProxy 回调；子实体通过 Legacy SpawnDragonDescendant 激活并注册标准掉落，未注册到 Mode G 表。
 - 影响：Mode G End 无法可靠回收子实体，普通尸体箱和额外掉落穿透 Mode G 奖励隔离，写共享龙裔实例字段。
@@ -193,7 +225,7 @@
 
 ### CR-2026-09-21-017 · P1 / COMPAT · 标准与无间炼狱的旧异步生成结果可以提交到退出后或新局
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `MODES-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已由 WavesArena owner 捕获波代次、scene handle、玩家身份与存活状态，标准/多 Boss 每次 await 与重试复核；普通工厂提交和专属 Boss 透传相同有效性门。L1；owner 隔离为 L2。 L3 待 owner。
 - 位置：`WavesArena/WavesArenaBossSpawning.cs:581–624`（60bb84b）；`WavesArena/WavesArenaBossSpawning.cs:628–761`（60bb84b）；`ModBehaviour.cs:1171–1251`（60bb84b）；`WavesArena/WavesArena.cs:634–669`（60bb84b）
 - 触发与根因：标准/无间单波或多 Boss 正在创建/重试时死亡、切图或退出；旧任务随后成功/失败，期间可能已重入新局。 factory await、逐次重试及最终成功/失败没有 run/scene/wave 身份验证，使用共享 currentBoss/currentWaveBosses/余数/波次。
 - 影响：旧角色仍激活并写共享 owner，旧失败推进或修正新局波次；具体落地场景依工厂与切图时序，不声称必在基地。
@@ -203,7 +235,7 @@
 
 ### CR-2026-09-21-018 · P1 / COMPAT · Mode E 旧商人创建失败可以销毁后继局商人并关闭经济
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `MODES-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已在商人工厂 null 与异常分支前核对原 session，迟到成功只销毁原请求角色。补真实生产方法抽取的 A/B 局交错回归。L1/L2。 L3 待 owner。
 - 位置：`ModeE/ModeEMerchant.cs:122–144`（60bb84b）；`ModeE/ModeEMerchant.cs:180–194`（60bb84b）；`ModeE/ModeEMerchant.cs:239–257`（60bb84b）；`ModeE/ModeEMerchantSupportClasses.cs:633–659`（60bb84b）
 - 触发与根因：A 局商人创建等待中退出，B 局已建立新商人后 A 的工厂返回 null 或异常。 失败分支在 session 校验之前调用共享 FailModeEShellMerchantBuild；null 参数回退到当前 modeEMerchantNPC 并关经济/销毁。
 - 影响：新局商人消失、贝壳经济入口关闭。
@@ -213,7 +245,7 @@
 
 ### CR-2026-09-21-019 · P1 / COMPAT · 亡魂异步生成在清理或配置关闭后仍可激活登记
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-05`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：已有修复提供宿主 / 场景 / 槽 / generation 门。本轮补 OnSetFile 同槽重载失效、未移交物品树和装备恢复异常的 finally 回收。L2：五个 await 逐一重载并开启相同 raidID 后继请求，旧结果销毁且旧 finally 不释放新预约；factory / 配装异常正确清理。 L3 待 owner。
 - 位置：`Integration/DeathWraith/DeathWraithSpawnFlow.cs:161–190`（60bb84b）；`Integration/DeathWraith/DeathWraithSpawnFlow.cs:217–226`（60bb84b）；`Integration/DeathWraith/DeathWraithLifecycleAndPersistence.cs:68–86`（60bb84b）；`Integration/DeathWraith/DeathWraithSystem.cs:186–200`（60bb84b）
 - 触发与根因：亡魂在CreateCharacter/装备恢复/Yield期间，于同场景关闭亡魂配置；或切图/卸载使请求失效，旧任务随后完成。 多个 await 后无 host/scene handle/slot/开关/generation 复核；清理只销毁已登记实体并清 busy，尚在创建的角色不在集合内。
 - 影响：迟到敌人重新激活/登记，可能残留旧场景和旧槽索引；配置关闭已退订死亡事件后迟到对象也失去该 tracking 清理。
@@ -223,7 +255,7 @@
 
 ### CR-2026-09-22-018 · P1 / COMPAT · 婚礼站位扫描可把地下活动模板当成已放置教堂并迁移配偶
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B13etc-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复在扫描和缓存回读两处调用 IsPlacedSceneObject，排除资源模板、无效/卸载场景以及非当前 active/main 场景实例。夹具验证模板与其他场景均拒绝、当前场景建筑接受；未执行 Unity 实际枚举或迁移。 L3 待 owner。
 - 位置：`Integration/Wedding/WeddingBuildingInjector.cs:476–479`（60bb84b）；`Integration/Wedding/WeddingBuildingInjector.cs:630–641`（60bb84b）；`Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs:631–646`（60bb84b）
 - 触发与根因：已有教堂、当前有未跟随配偶，生成或恢复配偶站位时 Building 扫描先返回 active 且 DontDestroyOnLoad 的运行时模板。 模板与已放置建筑同为 wedding_chapel ID；模板位于 (0,-9999,0) 并在创建末尾激活。FindWeddingBuildingNPCPosition 只按 ID 取首个，不排 weddingBuildingPrefabGO 或非当前场景对象，再缓存其 Transform/SpawnPoint。
 - 影响：实际配偶可生成或移动到模板的地下站位 (0,-9999,2)，后续查找继续复用错误缓存，玩家在放置教堂旁找不到配偶。并非声称所有扫描顺序都必现。
@@ -233,7 +265,7 @@
 
 ### CR-2026-09-22-001 · P1 / COMPAT · 空 Boss 池仍提交开战并隐藏难度选项，重新启用 Boss 后首波无法恢复
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `IF-07`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已在开战副作用前拒绝空池，难度交互在 IsActive 仍 false 时不隐藏选项。L1。 L3 待 owner。
 - 位置：`WavesArena/WavesArenaBossSpawning.cs:73–106`（60bb84b）；`WavesArena/WavesArenaBossSpawning.cs:461–469`（60bb84b）；`Interactables/BossRushInteractables.cs:187–235`（60bb84b）；`WavesArena/WavesArenaSpawnerControl.cs:156–205`（60bb84b）
 - 触发与根因：在 Ctrl+F10 Boss 池设置全不选，然后从竞技场路牌选择任一标准/无间炼狱难度；看到空池提示后按提示重新启用至少一个 Boss。 StartFirstWave 在确认池非空之前就清场并设 IsActive=true，计数归零，再调用 SpawnNextEnemy。空池分支仅显示提示并返回，没有撤销开战或安排重试。调用方不检查启动结果，随后隐藏难度选项并把路牌改成 Cheer。
 - 影响：首波没有生成 Boss，无法击杀推进，也没有下一波倒计时；启用 Boss 后只有过滤缓存改变。首波卡住，玩家需离场重进，空池提示中的设置操作不能让当前挑战继续。
@@ -243,7 +275,7 @@
 
 ### CR-2026-09-22-036 · P1 / COMPAT · 失效波次的迟到龙裔或龙皇只被通用 Destroy，专属生命周期账本未释放
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `TERRA-BOSS-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：实际有效性判据透传到两个专用生成器，各 await 后取消；finally 与外层保险按实例清 ledger / preset。补修龙皇 Initialize 前后引用差值，异常只释放本次取得的引用，不影响同场另一只 Boss。 L3 待 owner。
 - 位置：`Integration/DragonDescendant/DragonDescendantBoss.cs:67–244`（60bb84b）；`Integration/DragonDescendant/DragonDescendantBoss_RuntimeAndCleanup.cs:231–260`（60bb84b）；`Integration/DragonKing/DragonKingBoss.cs:226–416`（60bb84b）；`Integration/DragonKing/DragonKingBoss.cs:768–827`（60bb84b）；`Utilities/EnemySpawnCore.cs:900–918`（60bb84b）
 - 触发与根因：Mode D 的龙裔或龙皇、或 Mode E 的龙裔，在 CreateCharacterAsync 或 deferActivationUntilNextFrame 的 await 期间令其 wave/session token 失效；返回后 EnemySpawnCore 发现 isActiveCheck 为 false。Mode E 明确跳过龙皇，ZombieMode 使用固定僵尸 preset，标准/无间炼狱不走 SpawnEnemyCore，均不在本 finding 触发范围。 两个专用生成器在 await 后已经写入 currentBoss、龙皇实例/掉落/死亡委托字典、火焰套装 Health.OnHurt 集合，并启动 BGM；EnemySpawnCore 的失效分支只 Destroy(character.gameObject)，没有调用 CleanupDragonDescendant、CleanupTrackedDragonKingsOnArenaExit、OnDragonKingDeath 或等价的实例释放方法。
 - 影响：已销毁角色可继续作为 currentBoss 或龙皇字典键；龙裔/龙皇的静态 Health.OnHurt 订阅及集合不会走对应退订路径。当前基线中 CleanupDragonDescendant 与 CleanupTrackedDragonKingsOnArenaExit 没有生产调用者，故不能依赖下一次模式结束自动收束这一迟到实例。
@@ -253,7 +285,7 @@
 
 ### CR-2026-09-22-037 · P1 / COMPAT · 龙裔移除原枪后未核验龙息注册，InstantiateSync 异常被吞而 Boss 空手继续生成
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `TERRA-BOSS-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：龙息 GetPrefab 在原槽替换前预检；校验实例 TypeID / ItemSetting_Gun，Plug 回读确认，失败 throw 到生成 finally。真实官方 InstantiateSync 缺 entry 会抛异常的行为已由审计官方源码证据核对，现不再吞成成功。 L3 待 owner。
 - 位置：`Integration/DragonDescendant/DragonDescendantBoss.cs:701–763`（60bb84b）；`Integration/DragonDescendant/DragonBreathWeaponConfig.cs:165–184`（60bb84b）；`鸭科夫源码/ItemStatsSystem/ItemAssetsCollection.cs:147–208`（60bb84b）
 - 触发与根因：dragon 装备 bundle 未加载、资产丢失或动态注册失败后生成龙裔。 EquipDragonBreathWeapon 先 Unplug 并 Destroy 原枪，再直接调用 ItemAssetsCollection.InstantiateSync(500005)。真实 DLL 的 InstantiateSync 对未登记的 TypeID 读取 Instance.GetEntry(typeID).prefab；GetEntry 返回 null 时在 fallback 逻辑前抛 NullReferenceException。EquipDragonBreathWeapon 的外层 catch 仅写日志，随后 EquipDragonDescendant 和 SpawnDragonDescendant 继续刷新、激活、注册能力并返回成功。
 - 影响：dragon bundle 未加载或动态注册失败时，龙裔的原枪已被销毁，龙息也未装入，Boss 仍作为成功结果进入波次，变为无主武器的核心 Boss。这个路径不依赖旧反编译中“FallbackItem”的错误推断。
@@ -263,7 +295,7 @@
 
 ### CR-2026-09-22-038 · P1 / COMPAT · 荒野号角的在途坐骑创建跨场景后仍绑定旧主角并发布结果
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `TERRA-BOSS-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：坐骑请求捕获主角 / host / scene / generation，创建返回后再校验，迟到 horse 销毁；ClearMountCache 作废 pending，旧 finally 不复位新请求。 L3 待 owner。
 - 位置：`Integration/Items/WildHornUsage.cs:72–100`（60bb84b）；`Integration/Items/WildHornUsage.cs:116–191`（60bb84b）；`Integration/BossRushIntegration_StartAndScene.cs:329–342`（60bb84b）
 - 触发与根因：玩家使用荒野号角，testVehicle.CreateCharacterAsync 尚未返回时切图、结束出击或重建主角。 SpawnMountAsync 只在 await 前记录 sceneIndex，并在 await 后无场景、主角身份、请求代次或 pending owner 校验地把 horseAI.master、player.horseAI 和静态 cachedHorseAI 写到捕获的 player。OnSceneLoaded 仅 ClearMountCache，不能取消 UniTask 或销毁迟到的 horse。
 - 影响：迟到坐骑可以遗留在旧或新场景，并把已销毁的旧 CharacterMainControl 写为主人；新场景第一次使用号角还可能因迟到回调重建缓存而误判已有坐骑。
@@ -273,7 +305,7 @@
 
 ### CR-2026-09-22-039 · P1 / COMPAT · “开启下次扫箱”会直接销毁尚未领取的代收箱物品
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `TERRA-NPC-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复将下次扫箱按钮改为先 ReleasePendingSweepResultToPlayer，失败保留 pending owner 并立即返回，成功清空箱后才新开付费流程。直接抽取生产路径验证 2 件未领物先返还再销毁，返还异常保留两件且无新扫箱；守卫变异确认阻止恢复旧丢弃调用。 L3 待 owner。
 - 位置：`Integration/NPCs/Courier/CourierPaidLootSweepService.cs:757–781`（60bb84b）；`Integration/NPCs/Courier/CourierPaidLootSweepService.cs:784–818`（60bb84b）；`Integration/NPCs/Courier/CourierPaidLootSweepService.cs:1022–1121`（60bb84b）
 - 触发与根因：付费扫箱结果窗口仍含任意物品时，玩家不逐件取走，直接点击结果窗 0.15 秒后出现的“开启下次扫箱 / Start Next Sweep”。 按钮回调进入 DiscardPendingSweepResultInternal，而不是 ReleasePendingSweepResultToPlayer。前者关闭 LootView、Destroy pendingResultObject 并清空所有 owner 引用；只有退出服务和 runtime reset 的路径会先 TryReturnResultItemsToPlayer。
 - 影响：本次已经从 Boss 箱转移进代收箱、但尚未取走的物品失去领取路径，随后下一次扫箱会再次收费。按钮文字没有说明会丢弃上一箱，且同类关闭/卸载路径已经采用返还语义。
@@ -283,7 +315,7 @@
 
 ### CR-2026-09-21-020 · P2 / COMPAT · 龙焰印记到期后再次命中会恢复过期层数
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `BOS-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：AddMark 和 ConsumeMarks 统一以 Time.time < expireTime 判断有效层数。L2：实际 Tracker 覆盖临界时间、重新命中和消费。 L3 待 owner。
 - 位置：`Integration/DragonKing/Weapons/DragonFlameMarkTracker.cs:40–47`（60bb84b）
 - 触发与根因：印记 6 秒到期后、2 秒节流清理下一次执行前，对同一目标再次叠印记。 AddMark 命中字典直接累加旧 stacks 并刷新 expireTime，未检查旧记录是否过期。
 - 影响：过期层数被续上，裂地爆燃按这些层数造成额外伤害。
@@ -293,7 +325,7 @@
 
 ### CR-2026-09-21-021 · P2 / COMPAT · 火焰爆炸池预热中清缓存后 running 标志阻止所有后续预热
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `BOS-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：ClearFireExplosionEffectPool 推进 generation 并同时清 running / requested size，旧 finally 不改后继任务。L2：预热挂起时清池，随后新预热能够完成。 L3 待 owner。
 - 位置：`Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs:321–326`（60bb84b）；`Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs:344–350`（60bb84b）；`Integration/DragonKing/Weapons/DragonKingBossGunRuntime_ProjectilesAndPatches.cs:375–385`（60bb84b）
 - 触发与根因：预热停在 DelayFrame 时，切图或 runtime cleanup 清池。 Clear 递增 generation，未清 running；旧任务 finally 因 generation 不同跳过清标志，后续 Request 永远因 running=true 早退。
 - 影响：本进程后续预热不再启动，池为空时回到同步创建效果；实际帧耗未采样。
@@ -303,7 +335,7 @@
 
 ### CR-2026-09-21-022 · P2 / COMPAT · 焚天龙铳专属预热从通用装备加载入口无条件启动
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `BOS-05`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：通用登记只初始化监听；主玩家持握门控预热，生成物品等待前后均复核 generation / owner，离手和切图取消。 L3 待 owner。
 - 位置：`Integration/EquipmentContentRegistry.cs:30–31`（60bb84b）；`Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs:154–185`（60bb84b）；`Integration/DragonKing/Weapons/DragonKingBossGunRuntime.cs:229–284`（60bb84b）
 - 触发与根因：通用装备加载完成，即使主玩家没有拥有或手持龙铳。 全局 LoadEquipmentContent 无条件启动扫描/GenerateItems 预热，缺少实际手持 owner、scene generation 与 shutdown 取消。
 - 影响：未使用装备仍执行最多三批临时物品生成，旧异步任务在缓存清理后可能回写；违反实际使用门，未采样具体帧耗。
@@ -313,7 +345,7 @@
 
 ### CR-2026-09-21-023 · P2 / COMPAT / OPERATIONAL · F3 收回测试物品后清恢复键，却未保存收回后的容器
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `DEV-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；收回测试物品后核对背包、仓库和官方 Buffer 三处总数并采集容器；成功才清恢复键，失败保留重试。补修 Buffer 纪念品漏回收、清键落盘失败仍汇总 PASS，以及缺主角时误记零基线。新快照可选 bufferCountsIncluded=true；旧快照缺 Buffer 基线时保留恢复键，避免误删原有物。 L3 待 owner。
 - 位置：`DebugAndTools/F3GameplayValidationAutotest.cs:275–293`（60bb84b）；`DebugAndTools/F3GameplayValidationAutotestStory.cs:352–360`（60bb84b）；`DebugAndTools/F3GameplayValidationAutotestStory.cs:619–629`（60bb84b）
 - 触发与根因：自动验收或崩溃恢复在基地收回多余测试物品后，下一次官方采集前中断并重读专用测试档。 ReclaimAutotestItems 只修改活库存；随后清恢复键并 SaveFile(false)，没有采集 MainCharacterItemData/PlayerStorage/Buffer。恢复路径同构；收回结果无条件记 PASS。
 - 影响：官方返基地保存的旧测试物品重读后可再次出现，恢复键已空；验收清理结论可能为假绿。影响限 Dev 专用测试档。
@@ -323,7 +355,7 @@
 
 ### CR-2026-09-21-024 · P2 / COMPAT · 装备能力最终清理未销毁常驻管理器，持握事件继续留存
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-06`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：最终清理注销并 Destroy，OnDestroy 负责退订；本轮回归发现覆盖 Awake 的旧子类没有写基类 _instance，补为经只读 Instance 查找真实 manager。L2：真实 FlightAbilityManager 最终销毁断言 PASS，替身模拟 Unity 假 null 和组件连带销毁。 L3 待 owner。
 - 位置：`Common/Equipment/EquipmentAbilityManager.cs:568–573`（60bb84b）；`Integration/NewWeapons/SummonStaff/SummonStaffManager.cs:85–105`（60bb84b）
 - 触发与根因：Mod 初始化四个武器 manager 后卸载，随后同进程再次加载。 CleanupStatic 只 UnregisterAbility；DontDestroyOnLoad manager 的 OnDestroy 不执行，所以 _instance、输入缓存和召唤法杖持握事件不释放。
 - 影响：卸载保留管理器与全局回调；不同程序集重载可积累旧组件。固定残留数量不等于已实测卡顿。
@@ -333,7 +365,7 @@
 
 ### CR-2026-09-21-025 · P2 / COMPAT · 英文环境普通重铸仍输出中文费用、概率与按钮文字
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-07`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；普通重铸费用、极性概率、按钮和错误消息在刷新时选择中英文本。 L3 待 owner。
 - 位置：`Integration/Reforge/ReforgeUIManager_ComparisonAndState.cs:382–410`（60bb84b）；`Integration/Reforge/ReforgeUIManager_ComparisonAndState.cs:234–238`（60bb84b）
 - 触发与根因：切英文后打开叮当普通重铸，选物并调整投入。 主要说明直接中文拼接赋给 TMP，不走本地化，连英文 Decompose 也直接换成中文重铸。
 - 影响：英文玩家无法按当前语言阅读交易所需的费用、概率和操作信息。
@@ -343,7 +375,7 @@
 
 ### CR-2026-09-21-026 · P2 / COMPAT · 飞行体力耗尽后基类早返阻断滑翔和松手更新
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `INT-08`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：仅飞行覆写 ContinueUpdatingWhenStaminaDepleted，其他能力保持耗尽早返。L2：零体力下降为负速度，松手后停止。 L3 待 owner。
 - 位置：`Common/Equipment/EquipmentAbilityAction.cs:239–247`（60bb84b）；`Integration/FlightTotem/CA_Flight.cs:244–249`（60bb84b）
 - 触发与根因：持续飞行使 CurrentStamina ≤ 0.1，然后继续按住或松开空格。 基类 OnStaminaDepleted 后 return；飞行覆写只置下降标记，不更新速度或停止；实际输入和下降在被跳过的 OnAbilityUpdate。
 - 影响：官方体力恢复前不执行滑翔/松手停止，动作和平台可暂时残留；具体物理表现待 L3。
@@ -353,7 +385,7 @@
 
 ### CR-2026-09-21-027 · P2 / COMPAT · 飞行目标速度在首个物理步清零，低帧率多物理步覆盖成零
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `INT-09`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：pendingVerticalDelta 持续表示目标速度，不在首个物理步清零；既有 Stop / Reset 清理仍保留。L2：两个连续物理步速度一致，位置后备累加两步位移。 L3 待 owner。
 - 位置：`Integration/FlightTotem/CA_Flight.cs:438–455`（60bb84b）；`Integration/FlightTotem/FlightAbilityManager.cs:104–118`（60bb84b）
 - 触发与根因：一个渲染帧间隔执行多个 FixedUpdate。 目标速度每帧写入 pendingVerticalDelta，首个 FixedUpdate 应用后清零，下一步无新 Update 则写零；位置 fallback 也只累计一物理步位移。
 - 影响：上升/下降速度依赖帧调度并可能抖动；没有实测定量比例。
@@ -363,7 +395,7 @@
 
 ### CR-2026-09-21-028 · P2 / COMPAT · 图片查看器的一次性 timeScale 暂停被官方下一帧覆盖
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-10`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；图片查看器持有并释放现有 ModalInputLease，宿主卸载也释放，不再直接硬写全局时间倍率。 L3 待 owner。
 - 位置：`Integration/UI/ImageViewerUI.cs:255–300`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/TimeScaleManager.cs:13–32`（60bb84b）
 - 触发与根因：在游戏中使用叮当涂鸦打开图片或缺图占位。 MonoBehaviour 查看器只在打开时写 Time.timeScale=0，官方 TimeScaleManager 每帧按自己的状态重写；关闭还硬写 1。
 - 影响：全屏图遮住场景时后台仍运行，不能达到代码声明的暂停；输入是否被其他 View 限制未作推断。
@@ -373,7 +405,7 @@
 
 ### CR-2026-09-21-029 · P2 / COMPAT · 旧好感记录缺衰减日期时被当成第0天并额外补扣
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `INT-12`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始解码修复让缺少 lastDecayCheckDay、lastGiftDay、lastChatDay 的旧记录保留 -1。生产回归 day 100、2300 点旧记录首次检查衰减为 0，点数与配偶保持；未修改每日衰减数值。 L3 待 owner。
 - 位置：`Integration/Affinity/AffinityJsonSerializer.cs:80–85`（60bb84b）；`Integration/Affinity/AffinityData.cs:24`（60bb84b）；`Integration/Affinity/AffinityManagerPersistenceAndDecay.cs:49–77`（60bb84b）
 - 触发与根因：旧记录没有lastDecayCheckDay，当前天号较大且NPC生成触发衰减。 字段默认-1被ExtractInt缺字段0覆盖，绕过首次初始化分支，并用不完整互动历史回溯30天。
 - 影响：旧档升级首次加载可额外丢失好感/满级跟随资格。
@@ -383,7 +415,7 @@
 
 ### CR-2026-09-21-030 · P2 / COMPAT · 婚礼教堂建造资格泄漏到未解锁存档槽
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-14`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复通过 WeddingBuildingRequirementsPatch 每次查询当前槽资格与 CanWrite，资源注册仍保留供旧教堂恢复。夹具直接抽取生产后缀验证 A 满资格 -> B 无资格 -> A 满资格；官方 Harmony 实际命中和 UI 仍待 L3。 L3 待 owner。
 - 位置：`Integration/Wedding/WeddingBuildingInjector.cs:208–215`（60bb84b）；`Integration/Wedding/WeddingBuildingInjector_DataEventsAndRuntime.cs:86–91`（60bb84b）
 - 触发与根因：槽A满好感并注入教堂→同进程切未解锁且未建教堂槽B→打开建造菜单。 weddingBuildingInjected无换槽复位；长寿BuildingDataCollection保留空requireBuildings/requireQuests条目，无每槽资格gate。
 - 影响：B槽可提前购买教堂，绕过该槽满好感解锁。
@@ -393,7 +425,7 @@
 
 ### CR-2026-09-21-031 · P2 / COMPAT · NPC商店关闭未销毁每次新建的展示Item实例
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-15`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始修复在生成每个独立展示 Item 时登记 ownedDisplayItems，Cleanup 对自有未进入背包/槽的实例执行 DestroyTree 并清集合，关闭与 ShowUI 失败调用 Cleanup。官方买入生成另一实体，未把购买物登记为展示 owner；未做 Unity 对象数量实测。 L3 待 owner。
 - 位置：`Integration/Affinity/Systems/NPCShopSystem.cs:430–448`（60bb84b）；`Integration/Affinity/Systems/NPCShopSystem.cs:692–708`（60bb84b）
 - 触发与根因：同一场景反复打开关闭叮当小店。 每货品InstantiateSync的独立Item只存字典未挂商店父级；Cleanup只Destroy商店；官方StockShop.OnDestroy只退存档事件。
 - 影响：每轮残留一批展示物品及Unity资源直到场景清理；没有实测性能数字。
@@ -403,7 +435,7 @@
 
 ### CR-2026-09-21-032 · P2 / COMPAT · 毒蛇匕首把Poison tick和灌能附伤误当刀击叠毒
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `INT-18`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：OnHurt 在武器 ID 门同时排除 isFromBuffOrEffect，Poison tick 和灌能不能冒充刀击。 L3 待 owner。
 - 位置：`Integration/NewWeapons/ViperDagger/ViperDaggerRuntime.cs:83–114`（60bb84b）；`Integration/AffixForge/AffixRuntimeService_Effects.cs:376–383`（60bb84b）
 - 触发与根因：毒刀命中后继续持握等待官方Poison tick；或毒刀附灌能后直接攻击。 OnHurt只检查武器ID/持握/主角和目标，没有排isFromBuffOrEffect；官方Poison与灌能都保留原武器ID。
 - 影响：5刀叠层与累计实伤被DoT和附伤放大，脱离真实近身命中要求。
@@ -413,7 +445,7 @@
 
 ### CR-2026-09-21-033 · P2 / COMPAT · E/F/丧尸旧生成失败与 finally 可释放后继局的预约和计数
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `MODES-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已给 E 失败结案/重刷 finally、F 失败/异常与丧尸预约释放/波 Boss 失败补 session/run 门，普通僵尸 slotHeld 单次释放。补 F 旧请求四种结果交错回归。L1；F 生产方法 L2。 L3 待 owner。
 - 位置：`ModeE/ModeEBattle.cs:589–600`（60bb84b）；`ModeE/ModeERespawnItems.cs:432–435`（60bb84b）；`ModeF/ModeFRespawn.cs:714–729`（60bb84b）；`ModeF/ModeFRespawn.cs:792–833`（60bb84b）；`ZombieMode/ZombieModeSpawner.cs:396–400`（60bb84b）；`ZombieMode/ZombieModeSpawner.cs:440–442`（60bb84b）；`ZombieMode/ZombieModeWaveController.cs:435–442`（60bb84b）
 - 触发与根因：旧异步创建在 A 局退出并重开 B 局后才失败，新局已有自己的生成预约/计数。 成功提交验证 session/runId；失败与 finally 使用共享计数/标记，只看当前 active 或完全无身份门。
 - 影响：E 已结案数失真、重刷 running 提前解除；F 新局 inflight 被扣并重新补位、龙裔限制清除；丧尸新局 pending/当前 Boss 余数减少，可能超额派发或提早满足实际余数。
@@ -423,7 +455,7 @@
 
 ### CR-2026-09-21-034 · P2 / COMPAT · 远征补发缺少 prefab 预检，官方空壳可消费奖励游标
 
-- 状态：Fixed (concurrent edit; L1)（本审计未修代码）；证据：L1，原分卷 `PET-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；远征 GrantOneItem 在实例化前验证真实 prefab；缺资源不消费奖励游标。 L3 待 owner。
 - 位置：`PetNest/PetNestExpeditionService.cs:930–942`（60bb84b）；`PetNest/PetNestExpeditionService.cs:961–963`（60bb84b）；`PetNest/PetNestExpeditionService.cs:903–913`（60bb84b）
 - 触发与根因：到期远征保存的奖励 TypeID 仍存在于官方资产表，但 prefab 为空或失效时在基地补发。 GrantOneItem 仅判 InstantiateSync 返回 null；官方为存在但缺 prefab 的条目返回非 null 同 TypeID FallbackItem。共享品质池仅筛 metadata/黑名单。
 - 影响：空壳被作为真实物品发放，grantedLootUnits/rewardsGranted 已提交，资源恢复后不再补发。
@@ -434,7 +466,7 @@
 
 ### CR-2026-09-21-035 · P2 / COMPAT · 金鸭雨的在途现金生成没有事件取消门
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `RNG-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已捕获该次 RandomEventContext，OnCleanup 清 owner；现金每个 await 前后及完成回调复核。補生产方法受控 late success/fault 取消测试。L1/L2。 L3 待 owner。
 - 位置：`RandomEvents/RandomEventEffectsBridge_Loot.cs:498–524`（60bb84b）；`RandomEvents/RandomEventCatalog_Fun.cs:318–323`（60bb84b）；`RandomEvents/RandomEventCatalog_Fun.cs:352–355`（60bb84b）
 - 触发与根因：金鸭雨逐堆 InstantiateAsync/Yield 期间，在同一地图关闭随机事件、结束当前模式或销毁宿主。 循环只比 scene.buildIndex，没有 context/generation/Scope/owner 生存校验；调用者没有把任务注册到 Scope。
 - 影响：停止后尚未完成的现金请求仍继续落地，旧完成回调继续写已结束事件计数。已落地现金保留本身是设计。
@@ -444,7 +476,7 @@
 
 ### CR-2026-09-21-036 · P2 / COMPAT · 随机空投继承或进入 inactive 状态后不会激活
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `RNG-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已在 inactive staging 下克隆、创建本地库存并配置 Loader，移至当前场景后激活；首轮 Awake 随机关闭时再次激活并核对 activeInHierarchy。L1；品质池配置 L2，Unity Awake 时序仍 L3。 L3 待 owner。
 - 位置：`RandomEvents/RandomEventEffectsBridge_Loot.cs:58–63`（60bb84b）；`RandomEvents/RandomEventEffectsBridge_Loot.cs:90–122`（60bb84b）；`ModBehaviour.cs:908–938`（60bb84b）
 - 触发与根因：缓存模板gameObject.activeSelf为false，或新箱Loader.Awake.RandomActive对生成位置返回false。仅父物体inactive而activeSelf为true不等同于此条件。 模板 getter 取首个带 Loader 对象、不排除 inactive 场景实例；Instantiate 后配置链没有显式激活根物体。
 - 影响：OnTrigger 仍报成功和消费配额，下落/landed 对 inactive Transform 也可完成，玩家无法看见或交互。
@@ -454,7 +486,7 @@
 
 ### CR-2026-09-21-037 · P2 / COMPAT · 标准胜利演出延迟结束后可在后继场景创建返回交互体
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `ROOT-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已在 2 秒和气泡等待后验证原 WavesArena owner，结束旧虚影与创建返回体均受同一门控。L1；有效性 L2。 L3 待 owner。
 - 位置：`LootAndRewards/LootAndRewardsVictoryRewards.cs:110–146`（60bb84b）；`WavesArena/WavesArenaEntryAndTeleport.cs:310–359`（60bb84b）
 - 触发与根因：标准挑战胜利后的两秒延迟/气泡等待期间发生切图或死亡返基地，等待在新场景主角存在后恢复。 场景校验只在 async 方法开始；延迟后重新读取 CharacterMainControl.Main，再无条件调用没有场景门的 TryCreateReturnInteractable。
 - 影响：旧胜利对话和返回方块可出现在后继场景；场景清理会把 demoChallengeStartPosition 归零，因此不能据此宣称必然传到旧竞技场坐标。
@@ -464,7 +496,7 @@
 
 ### CR-2026-09-21-038 · P2 / SAFE / OPERATIONAL · 云蚋守卫仍要求旧音效部署语句，完整音效目录部署后全量守卫误报
 
-- 状态：Fixed (concurrent edit)（本审计未修代码）；证据：L2，原分卷 `ROOT-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；云蚋守卫验证整个 Sounds 递归部署及产物，不再断言旧单目录复制语句；补齐本机 Pillow 后通过。 L3 待 owner。
 - 位置：`tests/SkyIslandMosquitoGuard.py:158–160`（60bb84b）；`compile_official.bat:1216–1233`（60bb84b）
 - 触发与根因：在具备 Pillow 等依赖的当前基线执行 python tools/run_guards.py，或 CI source-only 守卫。 守卫按 Assets\Sounds\SkyIsland\*.wav 字面量断言，构建脚本已经改用 xcopy /E /Y /I Assets\Sounds 递归部署整个目录。
 - 影响：正确的当前部署结构使守卫退出 1，阻断全量门禁；这条红项不能作为游戏云蚋音效缺失的证据。
@@ -475,7 +507,7 @@
 
 ### CR-2026-09-21-039 · P2 / COMPAT · 无间炼狱高波数里程碑奖励发生整数溢出
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `ROOT-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已用独立里程碑服务按 long 饱和计算，合法堆叠分帧发放；每阶超额皇冠/现金按完整标价进入账户。L2 验证 15/16/32/33 阶数学边界、1–16 阶完整标价守恒、异常重试与单帧最多 8 件。该既有策略需在交付中说明，不声称原物品形态完全不变。 L3 待 owner。
 - 位置：`LootAndRewards/LootAndRewardsInfiniteHell.cs:215–229`（60bb84b）；`LootAndRewards/LootAndRewardsInfiniteHell.cs:259–263`（60bb84b）
 - 触发与根因：无间炼狱完成第 1600 波及更高里程碑（代码无终点/上限）。 倍率是 32 位 1 << (tier-1)，long cashPerStack 又直接强转 int。第1600波 tier=16，cashPerStack=3276800000，unchecked 转 int 为 -1018167296；第3200波倍率变负，第3300波移位位数回绕。
 - 影响：第1600波负数被写入StackCount后官方setter会DestroyTree，导致这一批现金被销毁；后续倍率还会变负或回绕。同方法生成皇冠数量指数增长但尚无实测帧耗。
@@ -485,7 +517,7 @@
 
 ### CR-2026-09-21-040 · P2 / COMPAT · 百科界面常驻对象和关闭事件缺少宿主卸载清理
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `ROOT-06`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；集成层销毁调用 WikiUIManager.Shutdown，关闭界面、退订取消事件、释放输入并销毁 root。 L3 待 owner。
 - 位置：`Integration/WikiUIManager.cs:154–178`（60bb84b）；`Integration/WikiUIManager.cs:1065–1074`（60bb84b）；`Integration/WikiBookItem.cs:300–309`（60bb84b）
 - 触发与根因：使用冒险家日志创建百科UI，关闭后卸载Mod；或保持百科打开时卸载。 普通静态单例持有 DontDestroyOnLoad 的 uiRoot；类没有销毁/Reset入口，宿主也没有调用其 CloseUI 或清理。只有用户正常关页才解除 OnCancelEarly。
 - 影响：卸载后根Canvas/子物件仍存活；打开状态卸载会留下关闭事件回调。不同程序集重载可累积旧UI。未证明具体帧耗或永久输入锁。
@@ -495,7 +527,7 @@
 
 ### CR-2026-09-21-041 · P2 / COMPAT · 奖励箱通知异常清理会销毁已入箱物品
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `SKY-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；奖励箱 catch 按实际 InInventory 归属确认已交付数量，只销毁未交付的游离实例。 L3 待 owner。
 - 位置：`DebugAndTools/SkyIsland/SkyIslandRewardCrate.cs:175–182`（60bb84b）；`DebugAndTools/SkyIsland/SkyIslandRewardCrate.cs:265–272`（60bb84b）
 - 触发与根因：官方 AddAt 已写库存归属后，后续库存树/重量/contentChanged 观察者抛错。 Fill/AddGoods catch 不回读真实归属，直接 DestroyTree。
 - 影响：已经成功入箱的奖励被删除，added 仍为0，可能进一步撤掉空箱。
@@ -505,7 +537,7 @@
 
 ### CR-2026-09-22-019 · P2 / COMPAT · 飞行图腾直接读取Dash并启动动作，绕过暂停和界面输入门
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `B03-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：输入门统一检查 InputActived、暂停、timeScale、光标和 ActiveView；Update、TryExecuteAbility 与持续按键读取共用门。L2：暂停 / 官方界面拒绝启动，关闭界面后可以重新启动。 L3 待 owner。
 - 位置：`Integration/FlightTotem/FlightAbilityManager.cs:104–118`（60bb84b）；`Integration/FlightTotem/FlightAbilityManager.cs:128–147`（60bb84b）；`Common/Equipment/EquipmentAbilityManager.cs:197–213`（60bb84b）；`Common/Equipment/EquipmentAbilityAction.cs:163–188`（60bb84b）
 - 触发与根因：佩戴飞行图腾且体力≥5，打开会禁止游戏输入的暂停/界面后按Dash（默认空格），或从界面触发同一输入。 FlightAbilityManager只判断场景runtime，基类直接读取InputAction.WasPressedThisFrame/原始空格；无InputManager.InputActived/View/暂停判断。TryExecuteAbility直接StartActionByCharacter，官方该方法也不做输入门控。
 - 影响：游戏输入本应被禁用时仍可启动飞行动作、创建平台/云雾并扣5点启动体力。暂停中物理是否移动取决于Unity调度，不宣称暂停时必然升高；已有体力耗尽/FixedUpdate问题另有独立条目。
@@ -515,7 +547,7 @@
 
 ### CR-2026-09-22-010 · P2 / COMPAT · 黑名单 itemIds 类型错误时误读后续数组并绕过安全回退
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B04-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；黑名单解析改用共享 JSON parser，itemIds 类型错误时拒收整份并走既有安全回退。 L3 待 owner。
 - 位置：`Config/LootBlacklistRegistry.cs:75–95`（60bb84b）；`Config/LootBlacklistRegistry.cs:32–43`（60bb84b）；`Common/Loot/BossRushQualityItemPool.cs:87–96`（60bb84b）
 - 触发与根因：Assets/Data/LootBlacklist.json 被错误编辑为 {"itemIds":null,"other":[500001]} 或 itemIds 是字符串而后面有另一个非空数组；默认随包数据正常。 ParseItemIds 找到键后直接寻找任意后续 [ 和 ]，未确认该数组属于 itemIds。非空解析结果使 RegisterBlacklist 完全采用错误列表，跳过硬编码 fallback。
 - 影响：黑名单内容变成无关数组，多个随机奖励/战利品候选池不再排除应保留的任务或专属物品。没有据此断言默认配置会错发物品。
@@ -525,7 +557,7 @@
 
 ### CR-2026-09-22-020 · P2 / COMPAT · NPC 反馈与教堂文案缓存未按语言切换失效
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B13etc-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2 + L1；初始修复让叮当/羽织语言缓存按 L10n.IsChinese 取用时失效，教堂天数缓存包含语言并重新注入回忆标签。夹具直接验证叮当正向反馈和羽织治疗反馈 CN -> EN -> CN；其余反馈/解锁及教堂缓存接线为 L1，未验证实际界面。 L3 待 owner。
 - 位置：`Integration/Affinity/NPCs/GoblinAffinityConfig.cs:206–214`（60bb84b）；`Integration/Affinity/NPCs/NurseAffinityConfig.cs:775–799`（60bb84b）；`Integration/Wedding/WeddingChapelInteractable.cs:100–130`（60bb84b）；`Integration/Wedding/WeddingChapelInteractable.cs:191–198`（60bb84b）
 - 触发与根因：先在中文读取普通赠礼反应/羽织治疗反馈/解锁说明或教堂天数，再在同会话切为英文后再次查看。反向切换同理。 NPC 的若干 static string[]/Dictionary 首次求值时已选择语言，后续仅判 null；教堂只比较配偶与天数，回忆入口仅 Awake 注入。全局 OnSetLanguage 重注入未清这些字段，也未重建教堂两项 key。
 - 影响：当前语言下仍输出旧语言的礼物/治疗/解锁反馈及教堂标签，出现中英混用；取用时实时 L10n 的名字和普通对话不受这条缓存缺口影响。
@@ -535,7 +567,7 @@
 
 ### CR-2026-09-22-021 · P2 / COMPAT · 对话 actor 缓存随 NPC 重建保留已销毁对象引用
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B13etc-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L2；初始修复在 Get/Create 时清理销毁 key/actor，Remove 通过 ReferenceEquals 识别已销毁托管 key。生产工厂夹具验证 100 次创建销毁后显式 Remove 无残留，以及未 Remove 时下一次 Create 仅保留活 actor；无每帧扫描。 L3 待 owner。
 - 位置：`Integration/Dialogue/DialogueActorFactory.cs:43`（60bb84b）；`Integration/Dialogue/DialogueActorFactory.cs:94–107`（60bb84b）；`Integration/Dialogue/DialogueActorFactory.cs:294–318`（60bb84b）
 - 触发与根因：反复切图并重建阿稳/叮当/羽织等通过工厂创建 actor 的 NPC。 static Dictionary 以 GameObject 为强引用 key，并保存 actor；NPC 销毁没有调用 Remove，工厂没有清扫坏条目或切图清理。Remove 本身用 Unity != null，因此对象已经销毁后调用也不删除旧 key。
 - 影响：每轮已销毁的 GameObject/actor 托管包装及其引用继续留在字典，数量随重建增长，直到最终缓存 reset；没有原生内存或帧耗时实测。
@@ -545,7 +577,7 @@
 
 ### CR-2026-09-22-022 · P2 / COMPAT · 赠礼入口提前检查每日限制，使已婚戒指例外无法到达
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `B13etc-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始修复把唯一入口提前判断改为 CanOpenGiftSelection，已婚可到选物步骤；GiveGift 仍只允许钻石戒指绕过每日限制。顺读完整入口 -> OpenService -> ExecuteGift -> GiveGift 及三类返回消费路径，未执行真实容器选择。 L3 待 owner。
 - 位置：`Integration/Affinity/Interactables/NPCGiftInteractable.cs:65–80`（60bb84b）；`Integration/Affinity/Systems/NPCGiftSystem.cs:58–68`（60bb84b）
 - 触发与根因：玩家已经结婚，目标 NPC 当天已收过礼物，再点击赠礼准备送钻石戒指。 唯一生产赠礼 UI 入口先按 CanGiftToday 早返，尚未允许选择物品；GiveGift 中明文实现的已婚戒指绕过每日限额分支因此到不了。
 - 影响：同配偶重复戒指的专属拒绝/返还对话、向另一 NPC 每次送戒指的花心惩罚分支，在当天目标已收礼时无法触发，玩家只看到普通今日已赠送反馈。
@@ -555,7 +587,7 @@
 
 ### CR-2026-09-22-023 · P2 / COMPAT · 图鉴把 Mode E 非 player 营旗的友方 Boss 计为有效击杀
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B17B20-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；图鉴命中计时与死亡采集都按伤害来源实际阵营调用 Team.IsEnemy，排除 Mode E 同旗 Boss。 L3 待 owner。
 - 位置：`Integration/Codex/CodexKillCollector.cs:114–127`（60bb84b）；`Integration/Codex/CodexKillCollector.cs:184–198`（60bb84b）
 - 触发与根因：Mode E 主角和友方 Boss 同为 wolf/scav/usec/bear/lab 等非 player 阵营，友军被玩家来源的可友伤效果击杀；这条 Health.OnDead 进入全局采集器。 OnGlobalHurt/OnGlobalDead 只比较 victim.Team == Teams.player，没有按实际来源主角的 Team 判断敌对性；雇佣 Boss 不属于 PetNestCompanionAgent 豁免。
 - 影响：友方 Boss 会增加击杀数、解锁图鉴条目，并可触发首条或速杀等图鉴成就。该项是采集资格错误，不声称图鉴本身造成友伤。
@@ -565,7 +597,7 @@
 
 ### CR-2026-09-22-024 · P2 / COMPAT · 日报签到键写入失败后仍向界面返回 Success
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B17B20-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；日报 Store 后检查 RequestFlush 的硬失败，只有正常延期视作已接收；硬写失败不向签到界面返回成功。 L3 待 owner。
 - 位置：`Integration/DailyReport/DailyReportService.cs:975–983`（60bb84b）；`Integration/DailyReport/DailyReportService.cs:583–595`（60bb84b）；`Integration/DailyReport/DailyReportUI.cs:395–420`（60bb84b）
 - 触发与根因：在基地点击签到，候选副本入队成功，但随后的 SavesSystem.Save<string> 抛错或读回不一致。 Persist 只检查 Store 的入队结果，调用丢弃布尔结果的 RequestFlush() 后直接返回 true，未检查同步 flush 已把持久层置为 StoreFaulted。
 - 影响：实际旧快照仍未签到，当前内存和界面却显示已签到/签到成功；已知故障下奖品被正确阻止，但玩家得不到应有的保存失败反馈。
@@ -575,7 +607,7 @@
 
 ### CR-2026-09-22-025 · P2 / COMPAT · 日报滚动文本改成横向拉伸后保留固定宽度，正文溢出裁剪
 
-- 状态：Fixed (concurrent edit; L1)（本审计未修代码）；证据：L1，原分卷 `B17B20-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；日报横向拉伸文本统一清除 sizeDelta.x，避免叠加旧固定宽度。 L3 待 owner。
 - 位置：`Integration/DailyReport/DailyReportUI_Dashboard.cs:241–244`（60bb84b）；`Integration/DailyReport/DailyReportUI_Dashboard.cs:268–283`（60bb84b）
 - 触发与根因：正常打开日报，任何 wrap=true 的正文进入 CreateText 的 ScrollRect 分支，包括进账、悬赏、运势和昨日战绩。 文本创建时 sizeDelta.x = slice.width；移入同宽 viewport 后 anchorMin.x=0、anchorMax.x=1，却没有把 sizeDelta.x/横向 offsets 归零，宽度成为 viewport.width + slice.width。
 - 影响：正文按两倍可见宽度布局，并被 RectMask2D 裁切；换行和滚动高度与可见区域不一致，左右两端可能不可见。
@@ -586,7 +618,7 @@
 
 ### CR-2026-09-22-026 · P2 / COMPAT · 日报已声明悬赏状态的类型错误被降成 false，欠款绕过写屏障消失
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B17B20-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；已声明 bountyCompleted/bountyRewardClaimed 必须为布尔值；错误类型拒收，不把欠款降成未完成。 L3 待 owner。
 - 位置：`Integration/DailyReport/DailyReportCodec.cs:198–212`（60bb84b）；`Integration/DailyReport/DailyReportService.cs:506–520`（60bb84b）
 - 触发与根因：schemaVersion=1 的已有已结算悬赏记录中，bountyCompleted 或 bountyRewardClaimed 仍存在但 JSON 类型不合法，例如字符串；其它冻结奖金与目标字段仍可读。 旧悬赏布尔字段使用 GetBool(..., false)，将缺字段和已声明但类型错误合并；Decode 返回非空，共享 Store 不建立写屏障，GetPendingBountyCash 又依赖被降成 false 的完成标记。
 - 影响：已有欠款可被视为未完成并在下一次 rollover 自洽地重写；相反方向的 claimed 字段损坏也可能导致重新支付。不能把它描述成有效正常存档必现。
@@ -596,7 +628,7 @@
 
 ### CR-2026-09-22-027 · P2 / COMPAT · 幽灵诅咒使用默认 Add 修饰器，百分比减速实际变成固定值减速
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B35-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：WalkSpeed 和 RunSpeed 均在模板激活前写 PercentageAdd。L2：真实 ItemStatsSystem.Stat / Modifier 上 2、3、8 三组基础速度与 1、2、3 层均符合每层 -30%。 L3 待 owner。
 - 位置：`Integration/PhantomWitch/PhantomWitchAssetManager.cs:333–365`（60bb84b）；`Integration/PhantomWitch/PhantomWitchConfig.cs:275–278`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/ModifierAction.cs:11–34`（60bb84b）；`鸭科夫源码/ItemStatsSystem/Stats/ModifierType.cs:6–13`（60bb84b）
 - 触发与根因：Boss 技能或玩家噬魂挽歌给角色挂幽灵诅咒，并叠至 1–3 层。 GetCurseBuff 给两个新建 ModifierAction 写 WalkSpeed/RunSpeed 和 -0.3，但从未写 ModifierType。官方默认枚举 0 是 Add，Awake 按该字段创建 Modifier，层数更新只乘 modifierValue，不改变类型。缓存的 modifierTypeField 在当前生产文件中没有消费者。
 - 影响：“每层降低 30% 移速”实际每层只减 0.3 个速度单位，三层减 0.9；基础速度 3 的干净属性实例变为 2.1，而按文案三层应为 0.3。Boss 诅咒和玩家武器共用该 Buff，均受影响。
@@ -606,7 +638,7 @@
 
 ### CR-2026-09-22-028 · P2 / COMPAT · 镰刀普攻附加诅咒在官方未命中后重新投概率，首次触发率变为 75%
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B35-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：视觉回调只观察 HasBuff，不再独立 roll 或补 AddBuff。L2：四组等权官方 / 旧 fallback 随机输入只有 2 组附加诅咒，首次概率为官方 50%。 L3 待 owner。
 - 位置：`Integration/PhantomWitch/PhantomWitchCurseSweatVfx.cs:148–206`（60bb84b）；`Integration/PhantomWitch/PhantomWitchScytheWeaponConfig.cs:534–550`（60bb84b）；`Integration/PhantomWitch/PhantomWitchScytheConfig.cs:51–52`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/Health.cs:312–314`（60bb84b）；`鸭科夫源码/TeamSoda.Duckov.Core/Health.cs:451–460`（60bb84b）
 - 触发与根因：玩家持噬魂挽歌普攻一个存活、尚未中幽灵诅咒且没有 Buff 抗性的普通角色。 官方 Health.Hurt 已先按 damageInfo.buffChance 投一次概率并 AddBuff，之后才广播 Health.OnHurt。OnGlobalHurt 对没有诅咒的目标又用同一个 0.5 概率重新抽取，无法区分“官方正常没投中”和“装配失败”。
 - 影响：未中诅咒目标首次施加的概率是 0.5 + 0.5×0.5 = 0.75，而配置为 0.5。已有诅咒时该 fallback 早返，因此不是每一击都 75%，问题集中在首次挂上或到期后重挂。
@@ -616,7 +648,7 @@
 
 ### CR-2026-09-22-029 · P2 / COMPAT · 特效数量降档会改写女巫招式，并隐藏仍在伤人的诅咒领域
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B35-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：残影出招轮廓和 Boss 领域持续边界均走 Critical。L2：实际 PerformancePolicy 在 Reduced / Minimal 下不跳过 Critical，相关生产调用由守卫检查。 L3 待 owner。
 - 位置：`Integration/PhantomWitch/PhantomWitchAssetManager.cs:809–817`（60bb84b）；`Integration/PhantomWitch/PhantomWitchAssetManager.cs:866–879`（60bb84b）；`Integration/PhantomWitch/PhantomWitchAbilityController_PackageScheduler.cs:222–269`（60bb84b）；`Integration/PhantomWitch/PhantomWitchPerformancePolicy.cs:49–69`（60bb84b）；`Integration/PhantomWitch/PhantomWitchBossCurseRealmRuntime.cs:28–44`（60bb84b）
 - 触发与根因：共享活动特效根节点达到 10 时，女巫准备残影双段攻击或提交诅咒领域。无间炼狱最多 10 个 Boss，玩家镰刀领域也进入同一个 root 计数，条件并非资源缺失才有。 WraithWindupOutline 和 BossCurseRealmVisual 被标为 Standard；Minimal 档会主动返回 null。招式把 null 当作缺预警资源而 fallback 为普通扫击；Boss 领域则无论 visual 是否存在都会继续创建/运行伤害 runtime。
 - 影响：原本两次 18 点的残影攻击变为一次 18 点普通扫击；领域的短暂预警结束后可能完全没有持续视觉，但仍按 15 点/0.5 秒伤害。性能档位改变玩法与危险提示，无法仅以“可选装饰降档”解释。
@@ -626,7 +658,7 @@
 
 ### CR-2026-09-22-030 · P2 / COMPAT · 女巫特效归池后仍留在旧控制器清理表，会误删新借用者特效并积累重复引用
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B36B28-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：Recycler 归池解除旧 owner，控制器按 owner 裁剪并避免重复登记。L2：A 归还、B 借到同根后清 A 不销毁 B；12 轮借还旧跟踪表归零。 L3 待 owner。
 - 位置：`Integration/PhantomWitch/PhantomWitchVfxRedesign.cs:22–38`（60bb84b）；`Integration/PhantomWitch/PhantomWitchVfxRedesign.cs:146–168`（60bb84b）；`Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs:78–91`（60bb84b）；`Integration/PhantomWitch/PhantomWitchAbilityController_CleanupAndTelemetry.cs:139–159`（60bb84b）
 - 触发与根因：同场两只女巫：A 的闪现特效播放结束进入共享池，B 随后从同 key 借到这个根对象，A 此时死亡或退出清理。单只女巫长时间重复闪现也能累积同对象引用。 VfxRecycler 归池只清子层级并失活，没有解除旧 owner 的 activeEffects 登记或更新租约。TrackEffect 每次无条件 Add；PruneDestroyedEffects 只删 Unity null，已归池但活着的根对象一直留下。
 - 影响：A 的 CleanupAllEffects 会 Destroy 正在由 B 使用的同一根对象，使 B 本次特效提前消失。单 owner 重复借还同一根也令追踪表随施法次数增长；这是托管引用列表增长，未把它夸大为持续创建同数量 native 特效或已测掉帧。
@@ -636,7 +668,7 @@
 
 ### CR-2026-09-22-031 · P2 / COMPAT · 玩家诅咒领域未标记效果伤害，持续 tick 可触发直接命中与击杀词缀
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B36B28-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：领域 DamageInfo 标记 isFromBuffOrEffect，继续保留原武器来源和数值。L2：生产伤害包进入真实 Affix IsPlayerHitOnEnemy 谓词后被拒绝作为直接命中。 L3 待 owner。
 - 位置：`Integration/PhantomWitch/PhantomWitchScytheAction.cs:302–316`（60bb84b）；`Integration/AffixForge/AffixRuntimeService.cs:802–832`（60bb84b）；`Integration/AffixForge/AffixRuntimeService.cs:733–785`（60bb84b）；`Integration/AffixForge/AffixRuntimeService_Effects.cs:108–128`（60bb84b）
 - 触发与根因：主玩家仍手持带汲血或灌能词缀的噬魂挽歌，右键领域对存活敌人每 0.5 秒造成伤害；领域击杀时还可能触发已装备的击杀类词缀。 领域 new DamageInfo(caster) 保留官方构造器默认 isFromBuffOrEffect=false，并写 fromWeaponItemID=500044。Affix 的直接命中/击杀过滤只靠该标记和角色/武器身份，当前领域恰好满足。ModeGTelemetrySuppressionScope 只屏蔽 Mode G 遥测，不改 DamageInfo，也不被 Affix handler 消费。
 - 影响：站在领域中的敌人可持续为汲血/灌能提供额外触发，领域击杀也可被当成直接击杀。不是 Buff 自身二次投概率的问题，与 B35-02 的普攻挂诅咒概率重复独立。
@@ -646,7 +678,7 @@
 
 ### CR-2026-09-22-032 · P2 / COMPAT · 女巫 Billboard 使用地面 XZ 网格，面向相机后高度退化
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B36B28-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；L1：Billboard 使用独立 XY 网格，地面保持原 XZ 网格，静态清理释放新增 mesh。L2：三组宽高下相机平面投影面积等于 width × height，证据见 combat-billboard-geometry.json；未做像素目检。 L3 待 owner。
 - 位置：`Integration/PhantomWitch/PhantomWitchVfxRedesign.cs:955–978`（60bb84b）；`Integration/PhantomWitch/PhantomWitchVfxRedesign.cs:1007–1024`（60bb84b）；`Integration/PhantomWitch/PhantomWitchVfxRedesign_RuntimeComponents.cs:27–36`（60bb84b）
 - 触发与根因：创建任意带 PhantomWitchBillboard 的自建发光 Quad，例如瞬移亮点、蓄力心光或命中血色亮片，并由 LateUpdate 对齐相机。 GetQuadMesh 的四个顶点都在 XZ 平面、y=0；CreateBillboardQuad 用(width,height,1)缩放该网格，随后 Billboard 把世界旋转直接设为 camera.rotation。高度缩放乘的是全零 y，法线则对齐相机 up 而非 forward。
 - 影响：传入 height 对实际网格没有作用；在相机平面投影中四点共线，正交或视轴中心视角退化为线，透视偏轴也不会成为预期的正面矩形。这只影响此工厂创建的 Quad，粒子、LineRenderer 与 PrimitiveType.Quad 光环不在本结论内。
@@ -656,7 +688,7 @@
 
 ### CR-2026-09-22-033 · P2 / COMPAT · Mode H 恢复认证报告丢弃 ActionApplied，使 finish 口令从可选列表消失
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B48-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已恢复合法 ActionApplied=5，拒绝派生状态 PartiallyVerified=4 与越界值。真实 JSON 表/生产 writer/Registry 往返 L2。 L3 待 owner。
 - 位置：`ModeH/ModeHCommandCompatibilityRegistry.cs:327–335`（60bb84b）；`ModeH/ModeHProductionCertification.cs:279–282`（60bb84b）；`ModeH/ModeHProductionCertification.cs:848–854`（60bb84b）；`ModeH/ModeHStateModel.cs:184–199`（60bb84b）；`tests/ModeHCommandCompatibilityGuard.py:119–123`（60bb84b）
 - 触发与根因：正常 Mode H 生产动作认证为 finish 的两个分量写入 ActionApplied=5；首次认证结束立即 BuildReport→ApplyReportToRegistries，或后续命中认证缓存/恢复 Season。 RestoreCertificationEffects 先 ClearStableKey，再以 effect.status > Unavailable(3) 拒绝条目。新增合法 ActionApplied=5 永远被过滤，原有动作证据丢失。旧守卫还要求这一错误上限。
 - 影响：真实 Commands.json 中 finish 全由动作分量组成，报告恢复前可选，之后为 ReportOnly/不可选；实际整备菜单按 IsCommandSelectable 筛掉它。混合字段/动作口令仍可为 PartiallyVerified，不能据此宣称所有动作效果都停止执行。
@@ -666,7 +698,7 @@
 
 ### CR-2026-09-22-034 · P2 / COMPAT · Mode H 生产认证取消后，在途诊断角色没有迟到回收者
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `B49-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；初始工作区已用独立 async owner 接收诊断句柄，取消/超时/旧代次迟到回收，成功接收后外层协程未消费时 Cancel 也可回收。补 late fault/current fault 对照。L1/L2。 L3 待 owner。
 - 位置：`ModeH/ModeHProductionCertification.cs:337–365`（60bb84b）；`ModeH/ModeHProductionCertification.cs:299–305`（60bb84b）；`ModeH/ModeHProductionCertification.cs:639–648`（60bb84b）；`ModeH/ModeHRuntimeModule_SceneFlow.cs:564–569`（支持文件SHA 127a7011b255）；`ModeH/ModeHRuntimeModule_SceneFlow.cs:865–881`（支持文件SHA 127a7011b255）；`ModeH/ModeHSpawnBridge.cs:118–176`（支持文件SHA af5d23e45749）
 - 触发与根因：正常 Mode H 生产认证创建第一只或第二只诊断角色的 await 尚未返回时，玩家点击诊断页取消、切图或宿主清理；raw bridge 随后成功返回。15 秒 key 超时也存在同类所有权缺口。 创建 task 只存在于 CertifyKey 局部变量；_active*Handle 在 GetResult 后才赋值。StopCoroutine/Cancel 只回收已取得 handle，raw CreateIsolatedAsync 没有取消代次或独立完成接收者，晚成功结果无人调用 Recycle。
 - 影响：成功桥仍登记并返回 inactive/无敌角色与 clone preset，诊断临时对象及登记失去回收 owner。不能据此宣称必然在基地刷活怪、永久影响波次或已测具体内存；实际场景销毁时序未知。
@@ -676,7 +708,7 @@
 
 ### CR-2026-09-22-035 · P2 / COMPAT · Mode G 确认页将尚未选择的第一份契约画为已选中
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `B50B47-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已把第一候选初始标签改为未选，与 _selectedCandidateIndex=-1 一致；确认仍要求玩家显式选契约。L1。 L3 待 owner。
 - 位置：`ModeG/ModeGInteractable.cs:197–203`（60bb84b）；`ModeG/ModeGInteractable.cs:278–285`（60bb84b）；`ModeG/ModeGInteractable.cs:383–386`（60bb84b）；`ModeG/ModeGInteractable.cs:424–428`（60bb84b）
 - 触发与根因：正常携带船票和宿命回响信物进入地图，确认页初次打开后不点击契约卡，直接点击立即迎战。 OpenConfirmPage 将 _selectedCandidateIndex 置为 -1，但 Contract_0 调用 BuildChoiceLabel(first,true) 预置选中箭头；没有在建页末尾同步 SelectCandidate(0)。确认逻辑仍要求有效选择索引。
 - 影响：第一项显示 → 选中标记，确认时却提示请先选择契约，需要额外点击。属于局部 UI 状态矛盾；未导致吞票、错误契约提交或整局不可玩。
@@ -686,7 +718,7 @@
 
 ### CR-2026-09-22-002 · P2 / COMPAT · 不完整地图向量被作为零坐标登记，替代玩家安全落点回退
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `COMMON-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；地图向量通过共享 JSON 值解析，必须恰好三个有限数字；坏向量不再成为合法零坐标。 L3 待 owner。
 - 位置：`Common/MapConfig/MapSpawnPointRegistry.cs:643–650`（60bb84b）；`Common/MapConfig/MapSpawnPointRegistry.cs:703–715`（60bb84b）；`Common/MapConfig/MapSpawnPointRegistry.cs:750–761`（60bb84b）；`ModBehaviour.cs:191–205`（60bb84b）；`WavesArena/BossRushEntryFlow.cs:292–296`（60bb84b）
 - 触发与根因：外部 Assets/SpawnPoints 地图 JSON 被错误编辑或损坏：customSpawnPos=[] / ["bad",5,6]，或 spawnPoints=[[]]。默认随包数据未发现这些坏值。 ParseNextFloat 失败返回 0；向量读取不验证三个数字、闭合结构与整体有效性，仍返回 HasValue 的 Vector3 或非空刷新点数组。必填校验只检查数组非空。
 - 影响：错误可选落点成为 (0,0,0)，优先于 defaultSignPos，被标准入场 SetPosition 消费；错误必填刷新点也被登记为零点。未在游戏里验证世界原点地形或坠落结果。
@@ -696,7 +728,7 @@
 
 ### CR-2026-09-22-003 · P2 / COMPAT · 共享浮点读取把有限 double 溢出为 Infinity 后仍返回成功
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `COMMON-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1+L2；double 转 float 后再检查 NaN/Infinity，TryGetFloat 失败归零、AsFloat 返回调用者 fallback。 L3 待 owner。
 - 位置：`Common/Data/BossRushJsonValue.cs:202–211`（60bb84b）；`Common/Data/BossRushJsonValue.cs:359–363`（60bb84b）；`Integration/NPCs/DuckNpc/DuckNpcBlueprint.cs:330–333`（60bb84b）；`Integration/NPCs/DuckNpc/DuckNpcMovement.cs:80–84`（60bb84b）；`Integration/NPCs/DuckNpc/DuckNpcMovement.cs:267–283`（60bb84b）
 - 触发与根因：Assets/Data/DuckNpcs.json 中 canWander=true 的生产 NPC 的 wanderRadius 被错误编辑为 1e39，并在有 A* 图的场景完成 Bind 后开始闲逛。当前随包半径均正常。 TryGetFloat 仅判断 double.IsNaN/IsInfinity，转换为 float 后不验证，返回 true；AsFloat 直接强转。NPC 两层正数判断把 Infinity 当作有效半径，不能触发 8 m 回退。
 - 影响：闲逛目标的分量成为 Infinity/NaN 并交给 Seeker.StartPath，错误半径未安全回退。移动系统异常时会停用移动，NPC 仍可交互；未验证 A* 的最终表现，不宣称宿主崩溃或卡局。
@@ -706,7 +738,7 @@
 
 ### CR-2026-09-22-040 · P2 / COMPAT · 无间炼狱现金吸附提示绕过语言解析，英文界面持续显示中文
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已在现金磁铁气泡取用时通过 L10n.T 解析中英，金额累计窗口保持。L1。 L3 待 owner。
 - 位置：`WavesArena/InfiniteHellCashMagnet.cs:249–256`（60bb84b）
 - 触发与根因：将游戏语言设为英文，进入无间炼狱并走近地上的现金触发磁铁自动拾取。 UpdateFlyingCashPickups 直接用中文字符串拼接累计现金并传给 DialogueBubblesManager.Show；没有经过 L10n.T、LocalizationHelper 或本地化 key。
 - 影响：英文玩家每次吸附现金都会看到中文提示，不符合玩家可见文字的中英契约。
@@ -716,7 +748,7 @@
 
 ### CR-2026-09-22-041 · P2 / COMPAT · Mode E 击杀成长气泡在英文语言下仍固定显示中文
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已在玩家击杀成长气泡取用时解析中英模板，百分比计算保持。L1。 L3 待 owner。
 - 位置：`ModeE/ModeEBattle_ScalingAndRuntime.cs:327–331`（60bb84b）；`ModeE/ModeEBattle_ScalingAndRuntime.cs:587–594`（60bb84b）
 - 触发与根因：英文语言下参加 Mode E，由玩家补刀一个敌对阵营 Boss。 OnModeEEnemyDeath 调用 ShowModeEPlayerGrowthBubble，后者直接拼接中文“生命/伤害+0.1%，总加成”并显示，没有解析当前语言。
 - 影响：击杀成长的即时玩法反馈对英文玩家未本地化；同一路径的贝壳奖励有 L10n.T，不会修正这个独立气泡。
@@ -726,7 +758,7 @@
 
 ### CR-2026-09-22-042 · P2 / COMPAT · Mode F 工事部署和维修在暂停或官方界面打开时仍消费鼠标点击
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已有 overlay/暂停门；本轮补官方 InputManager.InputActived，禁止交互占用期间读鼠标。两入口保持原选择/退款语义。L1。 L3 待 owner。
 - 位置：`ModeF/ModeFFortifications.cs:334–340`（60bb84b）；`ModeF/ModeFFortifications.cs:393–402`（60bb84b）；`ModeF/ModeFFortifications.cs:438–445`（60bb84b）；`ModeF/ModeFPhases.cs:142–146`（60bb84b）
 - 触发与根因：Mode F 使用工事包或维修喷剂进入鼠标选择状态，然后按 Esc 打开暂停菜单或打开背包/商店，在界面内左键或右键操作。 TickModeF 每帧直接调用 UpdateFortPlacementMode/UpdateModeFRepairSelection；两者只检查选择状态并使用 UnityEngine.Input，没有暂停、官方 UI 或交互占用门。宿主 SceneRuntimeGate 只判断地图与加载状态，timeScale=0 不会停止这些鼠标分支。
 - 影响：点击菜单可以确认部署/维修或取消并退款，造成玩家未在场景中确认的动作；鼠标滚轮也可以在操作界面时旋转场景预览。
@@ -736,7 +768,7 @@
 
 ### CR-2026-09-22-043 · P2 / COMPAT · 工事资源缺失时空的模型后备被当成成功，几何后备永远不进入
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已在预览与直接落地识别无 Renderer 模型空壳并销毁，进入已有可见 primitive 后备。L1。 L3 待 owner。
 - 位置：`ModeF/ModeFFortifications.cs:283–288`（60bb84b）；`Utilities/EntityModelFactory.cs:425–430`（60bb84b）；`ModeF/ModeFFortifications_RuntimePlacement.cs:35–53`（60bb84b）
 - 触发与根因：Mode F 或丧尸模式部署工事时，entity bundle 未安装、加载失败，或预制体名在 bundle 中缺失。 EntityModelFactory.Create 对未初始化/找不到 prefab 返回只有 Transform 的非空 GameObject。两个工事入口仅在返回 null 时调用 CreateFallbackModeFFortification，因此绕过已有可见几何后备，继续为无 Renderer 的对象配置 Health 和碰撞体并返回成功。
 - 影响：预览和已部署工事没有可见网格，却会消耗部署物品、占用工事名额并产生不可见障碍。不是对正常随包资产损坏的推断，范围只包括明确的资源缺失分支。
@@ -746,7 +778,7 @@
 
 ### CR-2026-09-22-044 · P2 / COMPAT · Mode F 补位 Boss 缓存已翻译名称，切语言后血条仍保留旧名称
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-05`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已将 preset name key 写入 marker，显示时 L10n.T 解析当前语言；旧 DisplayName 字段仍可兼容没有 key 的调用者。L1。 L3 待 owner。
 - 位置：`ModeF/ModeFRespawn.cs:878–881`（60bb84b）；`ModeF/ModeFUI.cs:445–476`（60bb84b）；`ModeF/ModeFUI.cs:495–508`（60bb84b）
 - 触发与根因：Mode F 生成补位 Boss 后在游戏设置切换中英语言，观察该存活 Boss 的血条、榜首或吞噬公告名称。 补位时将 spawnedPreset.displayName 的已解析字符串写入 ModeFBossDisplayNameMarker；GetModeFActorDisplayName 优先直接返回 marker。语言切换只增加 HP 文本版本并重建后缀，没有重算 marker，因此重建仍取旧名称。
 - 影响：同一条血条可以出现旧语言 Boss 名与新语言悬赏后缀，后续含该角色名的广播也沿用旧语言。
@@ -756,7 +788,7 @@
 
 ### CR-2026-09-22-045 · P2 / COMPAT · 成就治疗监听只绑定初始化时的主角，后续出击可漏记铁人挑战治疗
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `CONT-ROOT-06`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；每次官方关卡初始化重绑主角 Health，先退订旧对象，再绑定新对象并重置血量基准。 L3 待 owner。
 - 位置：`Achievement/AchievementTriggers.cs:679–693`（60bb84b）；`Achievement/AchievementTriggers.cs:709–713`（60bb84b）；`Achievement/AchievementTriggers.cs:214–221`（60bb84b）
 - 触发与根因：Mod 初始化时 CharacterMainControl.Main 尚不存在，或者订阅后读档/出击重建主角；随后在无间炼狱使用治疗并达到第 10 波。 SubscribeAchievementEvents 只由一次 InitializeAchievementSystem 调用，且只绑定当时 player.Health；BeginAchievementSession 只快照 lastPlayerHealth，不重绑定。之后主角没有 OnHealthChange listener，HasUsedHealItem 维持 false。退订也重新读取当前主角，不能移除原 Health 上的 listener。
 - 影响：用过治疗仍可能解锁“铁人挑战”，原主角 Health 仍存活时还保留旧 owner 回调；不能仅凭读取全局伤害事件证明治疗跟踪有效。
@@ -766,7 +798,7 @@
 
 ### CR-2026-09-22-046 · P2 / COMPAT · 成就界面和弹窗常驻对象没有宿主卸载清理，旧 UI 与输入占用可保留
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-07`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；成就模块退出关闭并销毁 AchievementView 与 SteamAchievementPopup，条目 Cleanup 和实例引用同步释放。 L3 待 owner。
 - 位置：`Achievement/AchievementRuntimeHooks.cs:41–47`（60bb84b）；`Achievement/AchievementView.cs:104–143`（60bb84b）；`Achievement/SteamAchievementPopup.cs:146–153`（60bb84b）；`ModBehaviour.cs:777–780`（60bb84b）
 - 触发与根因：加载 Mod 后关闭/卸载该 Mod；若成就面板正打开，其 DisableInput owner 与画布仍存在。重新启用时旧类型的 singleton 也可能被复用。 两个 EnsureInstance 都创建独立 DontDestroyOnLoad GameObject。CleanupAchievementRuntime 只退订事件与清击杀记录，module OnDestroy 只丢 owner；宿主清 manager/icon cache 时没有 Close/Destroy 这两个 UI。AchievementView.OnDestroy 本身也只清 singleton，不归还打开面板的输入占用。
 - 影响：卸载后的成就面板/弹窗继续存在并保留旧回调、条目和输入占用；图标和共享皮肤缓存已被清理，重载 UI 可能引用已销毁资源。未声称每次重载都会堆积新对象。
@@ -776,7 +808,7 @@
 
 ### CR-2026-09-22-048 · P2 / COMPAT · 天空岛头目配装演练超时或取消后丢弃生成任务，迟到角色没有回收入口
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `CONT-ROOT-08`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；演练生成保留 Task；超时/取消后由异步回收者等待迟到角色并销毁角色和专属 preset。 L3 待 owner。
 - 位置：`DebugAndTools/F3GameplayValidationSkyIslandDrill.cs:192–208`（60bb84b）；`DebugAndTools/F3GameplayValidationSkyIslandDrill.cs:270–274`（60bb84b）
 - 触发与根因：仅 Dev 构建：专用测试槽运行天空岛头目配装演练，CreateCharacterAsync 超过 8 秒，或在完成之前取消/结束会话，随后官方创建任务完成。 演练仅轮询局部 awaiter 到截止时间；未完成时记录 spawn_timeout 并离开，不再 GetResult，也未安装迟到结果清理。finally 只销毁已赋值的 created 和克隆 preset，created 在超时/取消时仍为 null，不能回收随后完成的角色。
 - 影响：演练结束后可能留下无演练 owner 的测试角色或在途创建异常，干扰后续测试与当前岛上会话。范围限定 Dev 演练，不影响正式构建可达代码。
@@ -786,7 +818,7 @@
 
 ### CR-2026-09-22-004 · P2 / COMPAT · Boss 池因子编辑页关闭重开后，工具栏模式与列表内容不一致
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `IF-01`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；Boss 池重开按当前编辑模式重建列表，同时清旧因子选择器映射。 L3 待 owner。
 - 位置：`BossFilter/BossFilter.cs:385–410`（60bb84b）；`BossFilter/BossFilter.cs:544–579`（60bb84b）；`BossFilter/BossFilter.cs:1118–1129`（60bb84b）
 - 触发与根因：Ctrl+F10 打开 Boss 池，进入无间炼狱因子页后直接点 X、保存并关闭或 Ctrl+F10，再次打开。 因子页已销毁 Toggle 并清空 bossToggles；OpenBossPoolWindow 复用画布时把 isInfiniteHellFactorMode 设回 false，只更新工具栏并调用 RefreshBossPoolUI，没有重建普通列表。
 - 影响：重开后仍显示因子选择行，工具栏却显示全选/全不选；这些按钮修改的是看不见的启用状态。玩家需要再进因子页并点返回，才能恢复可见 Toggle。
@@ -796,7 +828,7 @@
 
 ### CR-2026-09-22-005 · P2 / COMPAT · 在线 Wiki 切换语言后，顶栏联想继续使用旧语言索引
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `IF-02`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；Wiki 联想按语言变更清索引并递增代次，迟到的旧语言加载不能覆盖当前索引。 L3 待 owner。
 - 位置：`wiki-site/docs/.vitepress/theme/components/WikiHeadSearch.vue:53–71`（60bb84b）；`wiki-site/docs/.vitepress/theme/components/WikiNetbar.vue:40–43`（60bb84b）；`wiki-site/docs/.vitepress/theme/components/WikiHead.vue:153–155`（60bb84b）
 - 触发与根因：先在中文顶栏搜索框触发索引加载，再点 English 进行站内语言切换，并再次输入查询；反向切换同理。 ensureIndex 只要 index 或 loaderPromise 存在就返回，没有按 localeIndex 失效。语言按钮走 VitePress 客户端路由，Theme.Layout 与 WikiHeadSearch 均未以语言为 key，实例持续存在。
 - 影响：英文页的联想结果仍来自中文索引并含中文页面 URL，可能把用户带回中文页；中文专有词或英文名的命中也与当前语言不一致。
@@ -806,7 +838,7 @@
 
 ### CR-2026-09-22-006 · P2 / COMPAT · 在线 Wiki 联想索引首次加载失败后，同页会话内不能重试
 
-- 状态：Open（本审计未修代码）；证据：L2，原分卷 `IF-03`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；联想加载成功或失败都在 finally 释放 loaderPromise，失败后下一次输入可以重新请求。 L3 待 owner。
 - 位置：`wiki-site/docs/.vitepress/theme/components/WikiHeadSearch.vue:57–71`（60bb84b）
 - 触发与根因：首次联想索引 import 或 loadSearchIndex 失败，网络/资源随后恢复，用户重新聚焦输入或输入新词。 catch 将 index 清空，但 finally 只清 loading；已完成的 loaderPromise 一直保留，后续 ensureIndex 因 loaderPromise 为真直接返回，不再发起加载。
 - 影响：顶栏联想持续无结果，加载提示已消失，刷新页面才能恢复；该失败不会破坏完整搜索弹层的独立加载路径。
@@ -816,7 +848,7 @@
 
 ### CR-2026-09-22-007 · P2 / COMPAT · 返回方块直接读取 E 键，会绕过官方界面和暂停输入门
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `IF-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；初始工作区已把返回组件抽至独立文件并在 E 键读取前检查暂停、官方 HUD 和 InputActived。L1。 L3 待 owner。
 - 位置：`Interactables/BossRushLootboxInteractables.cs:1037–1047`（60bb84b）；`ModBehaviour.cs:1718–1765`（60bb84b）
 - 触发与根因：标准挑战胜利后先走入返回方块触发范围，随后打开背包或暂停菜单并按 E。 BossRushReturnInteractable.Update 只检查 playerNear 和 UnityEngine.Input.GetKeyDown(E)，未查询官方输入可用性、View 或暂停。ReturnToBossRushStart 也直接 SetPosition；Time.timeScale=0 不阻止 Update 与原始按键读取。
 - 影响：在官方界面或暂停中仍可被传回挑战起点，并使返回方块失活，消耗此次返回交互。
@@ -826,7 +858,7 @@
 
 ### CR-2026-09-22-008 · P2 / COMPAT · 在线 Wiki 更新日志门户的折叠按钮未控制实际显隐
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `IF-05`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；更新日志门户将折叠状态绑定到实际控制内容显隐的类名。 L3 待 owner。
 - 位置：`wiki-site/docs/.vitepress/theme/components/WikiPanel.vue:56–70`（60bb84b）；`wiki-site/docs/.vitepress/theme/components/WikiPanel.vue:175–185`（60bb84b）；`wiki-site/docs/.vitepress/theme/css/layout.css:298–306`（60bb84b）
 - 触发与根因：宽于 1366 px 时在非日志页点左栏更新日志标题，或在日志页尝试折叠该门户。 点击调用 toggle(changelog) 写 overrides，但更新日志模板的 collapsed 只绑定 !changelogHere，没有读取 collapsed(changelog) 或 overrides。
 - 影响：非日志页始终折叠，点标题不能展开最近版本入口；日志页始终展开，无法收起。901–1366 px 的后置 collapsed 规则也覆盖 hover/focus；小于等于 900 px 的统一展开样式避开本问题。
@@ -836,7 +868,7 @@
 
 ### CR-2026-09-22-009 · P2 / COMPAT · 在线 Wiki 站内跳页后，页脚保留首次页面的最后编辑时间
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `IF-06`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；页脚挂载后监听页面更新时间与语言，路由切换重算；无时间戳页面清空旧值。 L3 待 owner。
 - 位置：`wiki-site/docs/.vitepress/theme/components/WikiFooter.vue:30–40`（60bb84b）；`wiki-site/docs/.vitepress/theme/Layout.vue:125–130`（60bb84b）
 - 触发与根因：从首页或任意已显示最后编辑时间的页面，通过站内导航进入更新时间不同的页面，或切换语言。 formatted 是普通 ref，日期只在 onMounted 回调中根据 page.lastUpdated/lang 计算一次；持久 Layout 中的 WikiFooter 不会因 route/page 改变重新挂载，也没有 watch。
 - 影响：新页页脚误标为首个页面的更新时间；首次页没有时间时，后续有时间页面也不显示。切语言后日期格式仍可能保留旧语言。
@@ -846,7 +878,7 @@
 
 ### CR-2026-09-22-047 · P2 / COMPAT · 龙铳冰刃爆发的 Cold 附加效果无阵营过滤
 
-- 状态：Open（本审计未修代码）；证据：L1，原分卷 `TERRA-BOSS-04`。
+- 状态：Fixed（2026-09-22 复核）；证据：L1；L1：ApplyDeathBuff 复用 IsTraceReceiverUsable，检查真实 caster 与 Team.IsEnemy，同次半径内友军和本人被排除。 L3 待 owner。
 - 位置：`Integration/DragonKing/Weapons/DragonKingBossGunProfiles.cs:184–207`（60bb84b）；`Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs:2115–2141`（60bb84b）；`Integration/DragonKing/Weapons/DragonKingBossGunProjectileAgent.cs:2237–2263`（60bb84b）
 - 触发与根因：玩家使用装填冰刃弹（TypeID 1303）的焚天龙铳，弹体在施放者或友军 1.25 米内命中目标或障碍而结束。 HandleDeath 为冰刃的主投射物在 ExplosionRange > 0 时调用 ApplyDeathBuff(Cold)。该方法遍历半径内所有 DamageReceiver 并直接 AddBuff，没有像 HandleDamageReceiverHit、ApplyRadiusDamage 或 GroundZone 那样检查 sourceContext.team、realFromCharacter 或 Team.IsEnemy。
 - 影响：冰刃的爆发附加减速可施加给玩家本人和同队单位；伤害部分仍走独立过滤，因而这是状态效果的友伤漏洞，不与 INT-19/INT-20 的熔浆/共享元素列表重复。

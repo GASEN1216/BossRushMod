@@ -907,39 +907,6 @@ namespace BossRush
             return ok;
         }
 
-        /// <summary>背包（含背包里的容器）与基地仓库里某一件的数量。仓库在当前场景不可用时记 n/a、按 0 算。</summary>
-        private static int CountOwnedItems(int typeId, out string where)
-        {
-            int pack = 0, storage = -1;
-            try
-            {
-                CharacterMainControl main = CharacterMainControl.Main;
-                if (main != null && main.CharacterItem != null) pack = CountInInventory(main.CharacterItem.Inventory, typeId, 0);
-            }
-            catch (Exception) { pack = -1; }
-            try
-            {
-                if (PlayerStorage.Inventory != null) storage = CountInInventory(PlayerStorage.Inventory, typeId, 0);
-            }
-            catch (Exception) { storage = -1; }
-            where = "pack:" + (pack < 0 ? "error" : pack.ToString()) + "/storage:" + (storage < 0 ? "n/a" : storage.ToString());
-            return Math.Max(0, pack) + Math.Max(0, storage);
-        }
-
-        private static int CountInInventory(Inventory inventory, int typeId, int depth)
-        {
-            if (inventory == null || inventory.Content == null || depth > 4) return 0;
-            int total = 0;
-            foreach (Item item in inventory.Content)
-            {
-                if (item == null) continue;
-                if (item.TypeID == typeId) total += item.Stackable ? Math.Max(1, item.StackCount) : 1;
-                if (item.Inventory != null && !ReferenceEquals(item.Inventory, inventory))
-                    total += CountInInventory(item.Inventory, typeId, depth + 1);
-            }
-            return total;
-        }
-
         /// <summary>
         /// 纪念品图标：prefab 取得到、图标不为空、且不是运行时兜底克隆源（遗种蛋 / 便携安全区 / 尸潮信标 / 尸潮邀请函，
         /// 顺序照 `SkyIslandItems.FindRuntimeFallbackSource`）的图标。只读 prefab，不实例化。

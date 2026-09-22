@@ -39,7 +39,7 @@ namespace BossRush
             int requestedMax = Mathf.Max(1, maxStacks);
             float expireTime = Time.time + Mathf.Max(0.1f, duration);
 
-            if (marks.TryGetValue(id, out data))
+            if (marks.TryGetValue(id, out data) && Time.time < data.expireTime)
             {
                 int effectiveMax = Mathf.Max(data.stacks, requestedMax);
                 data.stacks = Mathf.Min(data.stacks + addCount, effectiveMax);
@@ -92,7 +92,7 @@ namespace BossRush
             DragonFlameMarkData data;
             if (marks.TryGetValue(id, out data))
             {
-                int stackCount = data.stacks;
+                int stackCount = Time.time < data.expireTime ? data.stacks : 0;
                 marks.Remove(id);
                 receiverCache.Remove(id);
                 return stackCount;

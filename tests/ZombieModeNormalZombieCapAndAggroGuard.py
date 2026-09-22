@@ -193,6 +193,9 @@ def main() -> int:
     release = extract_method(spawner, "ReleaseZombieModeNormalSpawnSlot")
     if not release:
         return fail("ReleaseZombieModeNormalSpawnSlot not found")
+    result = require(release, "if (!IsZombieModeRunValid(runId)) return;", "stale callbacks must not consume another run's reservation")
+    if result:
+        return result
     result = require(release, "zombieModeRunState.PendingNormalZombieSpawns = Mathf.Max(0, zombieModeRunState.PendingNormalZombieSpawns - 1);", "failed async spawns must release reserved slots")
     if result:
         return result
@@ -269,7 +272,7 @@ def main() -> int:
         return fail("TrySpawnZombieModeNormalZombieAsync not found")
     for token in [
         "if (!TryReserveZombieModeNormalSpawnSlot(runId))",
-        "ReleaseZombieModeNormalSpawnSlot();",
+        "ReleaseZombieModeNormalSpawnSlot(runId);",
         "zombieModeRunState.LivingNormalZombieCount++;",
     ]:
         result = require(spawn, token, "normal zombie spawn path must enforce cap and maintain living count")

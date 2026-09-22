@@ -29,6 +29,7 @@ namespace BossRush
         /// </summary>
         private async void OnInfiniteHellWaveCompleted_LootAndRewards()
         {
+            Func<bool> isCompletionCurrent = WavesArenaRuntimeModule.CaptureValidity(this, false, true);
             try
             {
                 // 增加波次
@@ -136,7 +137,7 @@ namespace BossRush
 
                     if (player != null)
                     {
-                        string bubble = "现金池已累计：<color=red>" + infiniteHellCashPool.ToString() + "</color>";
+                        string bubble = L10n.T("现金池已累计：", "Total cash earned: ") + "<color=red>" + infiniteHellCashPool.ToString() + "</color>";
                         // 使用文档示例中的最简调用形式，避免可选参数带来的兼容性问题
                         await DialogueBubblesManager.Show(bubble, player.transform);
                     }
@@ -146,6 +147,7 @@ namespace BossRush
                     DevLog("[BossRush] [WARNING] 显示无间炼狱现金池气泡失败: " + e.Message);
                 }
 
+                if (!isCompletionCurrent()) return;
                 // 每 5 波奖励一次 1253 号物品（在路牌位置掉落）
                 try
                 {
@@ -212,12 +214,6 @@ namespace BossRush
                     int currentTier = infiniteHellWaveIndex / 100;
                     if (infiniteHellWaveIndex > 0 && infiniteHellWaveIndex % 100 == 0 && currentTier > infiniteHellMilestoneRewardTier)
                     {
-                        // 递进倍率：2^(tier-1)，使用位运算
-                        int multiplier = 1 << (currentTier - 1);
-                        int crownCount = multiplier;                  // 皇冠数量：1, 2, 4, 8...
-                        long totalCash = 10000000L * multiplier;      // 现金总额：1000万, 2000万, 4000万...
-                        long cashPerStack = totalCash / 100;          // 每叠金额
-
                         // 获取掉落基准位置
                         Vector3 basePos = GetCurrentSceneDefaultPosition();
                         try
@@ -232,44 +228,9 @@ namespace BossRush
                             LogLootWarningLimited("InfiniteHellMilestone_basePos", "定位无间炼狱 100 波里程碑基准点失败", e);
                         }
 
-                        // 掉落皇冠（TypeID 1254）
-                        for (int ci = 0; ci < crownCount; ci++)
-                        {
-                            try
-                            {
-                                Item crown = ItemAssetsCollection.InstantiateSync(1254);
-                                if (crown != null)
-                                {
-                                    Vector3 dir = UnityEngine.Random.insideUnitSphere.normalized;
-                                    crown.Drop(basePos, true, dir, UnityEngine.Random.Range(30f, 60f));
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                LogLootWarningLimited("InfiniteHellMilestone_crown", "掉落无间炼狱里程碑皇冠失败", e);
-                            }
-                        }
+                        WavesArenaRuntimeModule.EnqueueMilestone(this, currentTier, basePos);
 
-                        // 掉落现金（100叠，每叠 cashPerStack）
-                        for (int ci = 0; ci < 100; ci++)
-                        {
-                            try
-                            {
-                                Item cashReward = ItemAssetsCollection.InstantiateSync(EconomyManager.CashItemID);
-                                if (cashReward != null)
-                                {
-                                    cashReward.StackCount = (int)cashPerStack;
-                                    Vector3 dir = UnityEngine.Random.insideUnitSphere.normalized;
-                                    cashReward.Drop(basePos, true, dir, UnityEngine.Random.Range(30f, 60f));
-                                }
-                            }
-                            catch (Exception e)
-                            {
-                                LogLootWarningLimited("InfiniteHellMilestone_cash", "掉落无间炼狱里程碑现金失败", e);
-                            }
-                        }
-
-                        // 更新已发放里程碑阶数
+                        // 更新已提交的里程碑阶数；未交付余额由运行期 owner 逐帧重试
                         infiniteHellMilestoneRewardTier = currentTier;
                     }
                 }

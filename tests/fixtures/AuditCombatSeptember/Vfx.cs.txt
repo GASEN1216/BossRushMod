@@ -1,0 +1,48 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using UnityEngine;
+using Object=UnityEngine.Object;
+namespace UnityEngine {
+ public class Object {public bool destroyed; static List<Object> pending=new List<Object>(); public static void Destroy(Object o){if(!ReferenceEquals(o,null))pending.Add(o);}public static void Flush(){while(pending.Count>0){var q=pending.ToArray();pending.Clear();foreach(var o in q){if(o is GameObject go)foreach(var component in go.components.ToArray())Destroy(component);if(o is Component lifecycle)lifecycle.GetType().GetMethod("OnDestroy",BindingFlags.Instance|BindingFlags.NonPublic)?.Invoke(lifecycle,null);o.destroyed=true;if(o is Component c && !(o is Transform))c.gameObject.components.Remove(c);}}} public static bool operator==(Object a,Object b){bool x=ReferenceEquals(a,null)||(!ReferenceEquals(a,null)&&a.destroyed),y=ReferenceEquals(b,null)||(!ReferenceEquals(b,null)&&b.destroyed);return x||y?x==y:ReferenceEquals(a,b);}public static bool operator!=(Object a,Object b)=>!(a==b);public override bool Equals(object o)=>ReferenceEquals(this,o);public override int GetHashCode()=>System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(this);}
+ public class Component:Object {public GameObject gameObject;public Transform transform=>gameObject.transform;public T GetComponent<T>() where T:Component=>gameObject.GetComponent<T>();}
+ public class MonoBehaviour:Component{}
+ public struct Vector3{public float x,y,z;public Vector3(float x,float y,float z){this.x=x;this.y=y;this.z=z;}public static Vector3 zero=>new Vector3();public static Vector3 one=>new Vector3(1,1,1);public static Vector3 operator-(Vector3 a,Vector3 b)=>new Vector3(a.x-b.x,a.y-b.y,a.z-b.z);public Vector3 normalized=>this;}
+ public struct Quaternion{public static Quaternion identity=>new Quaternion();}
+ public class Transform:Component{public Vector3 position,localScale;public Quaternion rotation;public int childCount=>0;public Transform GetChild(int i)=>throw new Exception("no children in fixture");}
+ public class GameObject:Object{public string name;public bool active;public Transform transform;public List<Component> components=new List<Component>();public GameObject(string n){name=n;transform=new Transform{gameObject=this};components.Add(transform);}public T AddComponent<T>()where T:Component,new(){var x=new T{gameObject=this};components.Add(x);return x;}public T GetComponent<T>()where T:Component=>components.OfType<T>().FirstOrDefault();public T[] GetComponents<T>()where T:Component=>components.OfType<T>().ToArray();public void SetActive(bool b){active=b;}}
+ public static class Time{public static float time;}
+}
+namespace BossRush {
+ public static class ModBehaviour{public static void DevLog(string s){}}
+ public sealed class PhantomWitchFxRootTracker:MonoBehaviour{}
+ public static class PhantomWitchFxRuntime{public static void RegisterEffectRoot(GameObject r){r.AddComponent<PhantomWitchFxRootTracker>();}}
+ public static class PhantomWitchVfxRedesign{private static readonly Dictionary<string,Stack<GameObject>> VfxPools=new Dictionary<string,Stack<GameObject>>();
+/* VFX_METHODS */
+ public static GameObject Acquire(){return GetOrBuildVfx("PW_BlinkInFX",Vector3.zero,0.8f,r=>{});}
+ public static void Recycle(GameObject r){Time.time+=1;var c=r.GetComponent<PhantomWitchVfxRecycler>();typeof(PhantomWitchVfxRecycler).GetMethod("Update",BindingFlags.Instance|BindingFlags.NonPublic).Invoke(c,null);Object.Flush();}
+ public static void Clear(){VfxPools.Clear();}
+}
+ public class PhantomWitchAbilityController{private readonly List<GameObject> activeEffects=new List<GameObject>();
+/* OWNER_METHODS */
+ public void Track(GameObject x)=>TrackEffect(x);public void Clear()=>CleanupAllEffects();public int Count=>activeEffects.Count;public int Unique=>new HashSet<GameObject>(activeEffects).Count;
+}
+ public enum Teams{player,wolf}public class CharacterMainControl{}public class Health{public bool IsMainCharacterHealth,IsDead;public Teams team=Teams.wolf;}public class ActiveAffix{public bool FromHeldWeapon=true;public int SourceTypeId=500044;}public enum DamageTypes{normal}public enum ElementTypes{ghost}
+ public class DamageReceiver{public Transform transform=new GameObject("receiver").transform;}
+ public struct DamageInfo{public bool isFromBuffOrEffect;public CharacterMainControl fromCharacter;public int fromWeaponItemID,crit;public DamageTypes damageType;public float damageValue;public Vector3 damagePoint,damageNormal;public DamageInfo(CharacterMainControl c){this=default;fromCharacter=c;}public void AddElementFactor(ElementTypes e,float v){}}
+ public static class PhantomWitchScytheIds{public const int WeaponTypeId=500044;}
+ public static class AttributionProbe{
+/* ATTRIBUTION_METHOD */
+ public static DamageInfo Make(CharacterMainControl caster,DamageReceiver receiver){Vector3 realmOrigin=Vector3.zero;float overrideDamagePerTick=22;
+/* REALM_DAMAGE */
+ return damageInfo;}
+ public static bool Accepted(Health h,ref DamageInfo i,CharacterMainControl c)=>IsPlayerHitOnEnemy(h,ref i,new ActiveAffix(),c);
+ }
+ public static class Program{public static void Main(){
+  var oa=new PhantomWitchAbilityController();var ob=new PhantomWitchAbilityController();var a=PhantomWitchVfxRedesign.Acquire();oa.Track(a);PhantomWitchVfxRedesign.Recycle(a);var b=PhantomWitchVfxRedesign.Acquire();ob.Track(b);bool same=ReferenceEquals(a,b);oa.Clear();Object.Flush();if(!same||b.destroyed||oa.Count!=0)throw new Exception("recycled root retained by previous owner");Console.WriteLine(JsonSerializer.Serialize(new{probe="production pool and controller ownership",sameRootReused=same,newOwnerEffectDestroyed=b.destroyed,newOwnerEffectWasActive=b.active}));
+  PhantomWitchVfxRedesign.Clear();var oc=new PhantomWitchAbilityController();for(int i=0;i<12;i++){var c=PhantomWitchVfxRedesign.Acquire();oc.Track(c);PhantomWitchVfxRedesign.Recycle(c);}if(oc.Count!=0)throw new Exception("recycled root references grew");Console.WriteLine(JsonSerializer.Serialize(new{probe="production owner list after reuse",trackedReferences=oc.Count,uniqueRoots=oc.Unique}));
+  var caster=new CharacterMainControl();var info=AttributionProbe.Make(caster,new DamageReceiver());var health=new Health();bool accepted=AttributionProbe.Accepted(health,ref info,caster);bool flag=info.isFromBuffOrEffect;if(accepted||!flag)throw new Exception("realm accepted as direct hit");info.isFromBuffOrEffect=true;bool control=AttributionProbe.Accepted(health,ref info,caster);Console.WriteLine(JsonSerializer.Serialize(new{probe="production realm DamageInfo block and affix predicate",sourceType=info.fromWeaponItemID,originalIsFromBuffOrEffect=flag,acceptedAsDirectHit=accepted,markedEffectControlAccepted=control}));
+ }}
+}

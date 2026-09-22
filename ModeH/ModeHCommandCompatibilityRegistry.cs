@@ -331,7 +331,8 @@ namespace BossRush
                         ModeHBehaviorStatusDto effect = command.effectStatuses[k];
                         if (effect == null || effect.entryKind != "effect" || !knownEffects.Contains(effect.entryId)
                             || effect.status < (int)ModeHCommandCompatibilityStatus.Unknown
-                            || effect.status > (int)ModeHCommandCompatibilityStatus.Unavailable) continue;
+                            || effect.status > (int)ModeHCommandCompatibilityStatus.ActionApplied
+                            || effect.status == (int)ModeHCommandCompatibilityStatus.PartiallyVerified) continue;
                         RecordEffectStatus(record.stableKey, effect.entryId, (ModeHCommandCompatibilityStatus)effect.status);
                     }
                 }

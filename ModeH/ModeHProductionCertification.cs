@@ -38,6 +38,7 @@ namespace BossRush
         private bool _cancelled;
         private string _lastError;
         private ModeHCommandCertificationProbe _commandProbe;
+        private int _diagnosticGeneration;
         private ModeHSpawnHandle _activeScavHandle;
         private ModeHSpawnHandle _activeWolfHandle;
 
@@ -333,15 +334,18 @@ namespace BossRush
             ModeHSpawnHandle wolfHandle = null;
             string failure = null;
 
+            int generation = ++_diagnosticGeneration;
             // 逐帧创建两个独立 clone：一只 scav、一只 wolf
             Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> scavTask =
-                ModeHSpawnBridge.CreateIsolatedAsync(audited, stableKey, Teams.scav, map.StagingPos, _diagnostics);
+                CreateOwnedDiagnosticAsync(audited, stableKey, Teams.scav, map.StagingPos, generation, keyDeadline);
             while (scavTask.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
             {
-                if (Time.realtimeSinceStartup >= keyDeadline) break;
+                if (_cancelled || Time.realtimeSinceStartup >= keyDeadline) break;
                 yield return null;
             }
-            try { scavHandle = scavTask.GetAwaiter().GetResult(); }
+            if (scavTask.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
+                failure = "certification_scav_create_timeout";
+            else try { scavHandle = scavTask.GetAwaiter().GetResult(); }
             catch (Exception e) { failure = "certification_scav_create:" + e.GetType().Name; }
             _activeScavHandle = scavHandle;
 
@@ -355,13 +359,15 @@ namespace BossRush
             {
                 yield return null;
                 Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> wolfTask =
-                    ModeHSpawnBridge.CreateIsolatedAsync(audited, stableKey, Teams.wolf, map.StagingPos, _diagnostics);
+                    CreateOwnedDiagnosticAsync(audited, stableKey, Teams.wolf, map.StagingPos, generation, keyDeadline);
                 while (wolfTask.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
                 {
-                    if (Time.realtimeSinceStartup >= keyDeadline) break;
+                    if (_cancelled || Time.realtimeSinceStartup >= keyDeadline) break;
                     yield return null;
                 }
-                try { wolfHandle = wolfTask.GetAwaiter().GetResult(); }
+                if (wolfTask.Status == Cysharp.Threading.Tasks.UniTaskStatus.Pending)
+                    failure = "certification_wolf_create_timeout";
+                else try { wolfHandle = wolfTask.GetAwaiter().GetResult(); }
                 catch (Exception e) { failure = "certification_wolf_create:" + e.GetType().Name; }
                 _activeWolfHandle = wolfHandle;
 
@@ -636,8 +642,35 @@ namespace BossRush
             }
         }
 
+        private async Cysharp.Threading.Tasks.UniTask<ModeHSpawnHandle> CreateOwnedDiagnosticAsync(
+            CharacterRandomPreset preset, string stableKey, Teams team, Vector3 position,
+            int generation, float deadline)
+        {
+            ModeHSpawnHandle handle;
+            try
+            {
+                handle = await ModeHSpawnBridge.CreateIsolatedAsync(preset, stableKey, team, position, _diagnostics);
+            }
+            catch
+            {
+                if (_cancelled || generation != _diagnosticGeneration || Time.realtimeSinceStartup >= deadline)
+                    return null;
+                throw;
+            }
+            if (_cancelled || generation != _diagnosticGeneration || Time.realtimeSinceStartup >= deadline)
+            {
+                ModeHSpawnBridge.Recycle(handle);
+                return null;
+            }
+            // 接收器持有成功结果，协程尚未读取就取消时也能由 ReleaseDiagnosticPair 回收。
+            if (team == Teams.scav) _activeScavHandle = handle;
+            else _activeWolfHandle = handle;
+            return handle;
+        }
+
         private void ReleaseDiagnosticPair()
         {
+            _diagnosticGeneration++;
             if (_commandProbe != null) _commandProbe.Dispose();
             _commandProbe = null;
             UnregisterDiagnostic(_activeScavHandle);

@@ -406,7 +406,7 @@ namespace BossRush
                 {
                     deselectAllButton.gameObject.SetActive(true);
                 }
-                RefreshBossPoolUI();
+                PopulateBossList();
             }
 
             // 将滚动位置重置到顶部
@@ -984,6 +984,7 @@ namespace BossRush
 
             // 清空现有内容
             bossToggles.Clear();
+            bossFactorSelectors.Clear();
             foreach (Transform child in bossPoolContent)
             {
                 UnityEngine.Object.Destroy(child.gameObject);

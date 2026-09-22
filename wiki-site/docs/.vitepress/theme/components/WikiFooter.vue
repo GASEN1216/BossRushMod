@@ -15,7 +15,7 @@
  * 逐值量出来重写的，CSS 与素材全部自制，但出处该说清楚。
  * tests/WikiThemeSwitchGuard.py 会检查这行还在。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useData } from 'vitepress'
 import { useUiText } from '../composables/useUiText'
 import { usePageLinks } from '../composables/usePageLinks'
@@ -28,14 +28,18 @@ const { repo, editPage, issues } = usePageLinks()
 const { href } = useWiki()
 
 const formatted = ref('')
-onMounted(() => {
+const mounted = ref(false)
+onMounted(() => { mounted.value = true })
+watch([mounted, () => page.value.lastUpdated, lang], () => {
+  formatted.value = ''
+  if (!mounted.value) return
   const stamp = page.value.lastUpdated
   if (!stamp) return
   formatted.value = new Intl.DateTimeFormat(lang.value.startsWith('en') ? 'en-US' : 'zh-CN', {
     dateStyle: 'long',
     timeStyle: 'short',
   }).format(new Date(stamp))
-})
+}, { immediate: true })
 
 const feedHref = computed<string | null>(() => theme.value.feedUrl ?? null)
 const footerText = computed(() => theme.value.footer ?? {})

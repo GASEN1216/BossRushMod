@@ -1,6 +1,7 @@
 """Guard: gravity well AI targeting should reuse the player's damage receiver."""
 
 from pathlib import Path
+from cs_source_util import clean_source
 import sys
 
 
@@ -35,7 +36,7 @@ def extract_method_body(text: str, signature: str) -> str | None:
 
 
 def main() -> int:
-    text = SOURCE.read_text(encoding="utf-8-sig")
+    text = clean_source(SOURCE.read_text(encoding="utf-8-sig"))
     body = extract_method_body(text, "internal void RefreshZombieModeGravityWellTargets(")
     if body is None:
         return fail("missing RefreshZombieModeGravityWellTargets body")
@@ -44,7 +45,7 @@ def main() -> int:
         "DamageReceiver playerDamageReceiver = player != null ? player.mainDamageReceiver : null;",
         "if (ai != null && playerDamageReceiver != null)",
         "ai.searchedEnemy = playerDamageReceiver;",
-        "try { ai.SetTarget(playerDamageReceiver.transform); } catch { }",
+        "try { ai.SetTarget(playerDamageReceiver.transform); }",
     ]
     for snippet in required:
         if snippet not in body:

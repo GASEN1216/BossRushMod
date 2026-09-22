@@ -1,5 +1,7 @@
 # 毒蛇匕首（ViperDagger）
 
+2026-09-22 审计修复（COMPAT）：`OnHurt` 在武器 ID 过滤时同时排除 `isFromBuffOrEffect`。官方 Poison tick 和词缀灌能即使保留毒蛇匕首 ID，也不再增加刀击叠毒或累计刀击伤害；毒伤本身仍由原生产逻辑结算。`CombatAuditFixesGuard` 约束此门，实际连续刀击与持续中毒效果待 owner 游戏内确认。
+
 <cite>
 **本文引用的文件**
 - [ViperDaggerConfig.cs](file://Integration/NewWeapons/ViperDagger/ViperDaggerConfig.cs)

@@ -10,6 +10,7 @@ This guard covers the concrete issues found in the Zombie Mode style/perf review
 """
 
 from pathlib import Path
+from cs_source_util import clean_source
 import re
 import sys
 
@@ -67,7 +68,7 @@ def main() -> int:
     combined = "\n".join(path.read_text(encoding="utf-8") for path in ZOMBIE_FILES)
     models = MODELS.read_text(encoding="utf-8") + "\n" + TUNING.read_text(encoding="utf-8")
     entry = ENTRY.read_text(encoding="utf-8")
-    inventory = INVENTORY.read_text(encoding="utf-8")
+    inventory = clean_source(INVENTORY.read_text(encoding="utf-8"))
     pollution = read_pollution()
     spawner = SPAWNER.read_text(encoding="utf-8")
     wave = WAVE.read_text(encoding="utf-8")
@@ -200,13 +201,14 @@ def main() -> int:
     if rollback_match is None:
         return fail("ZombieModeReviewFixGuard: RollbackZombieModeInventoryTransferShell not found")
     rollback_body = rollback_match.group(1)
+    if "PlayerStorageBuffer.Buffer.Remove" in rollback_body:
+        return fail("ZombieModeReviewFixGuard: rollback must retain the only persisted inbox copy")
     for token in [
         "zombieModeEntryTransaction.InventoryTransferredInboxItems",
-        "PlayerStorageBuffer.Buffer.Remove(itemData)",
         "zombieModeEntryTransaction.InventoryTransferredInboxItems.Clear();",
     ]:
         if token not in rollback_body:
-            return fail("ZombieModeReviewFixGuard: rollback must remove direct inbox-buffer entries -> " + token)
+            return fail("ZombieModeReviewFixGuard: rollback must clear transfer bookkeeping while retaining delivered inbox trees -> " + token)
 
     precheck_match = re.search(
         r"private\s+bool\s+TryRunZombieModePrechecks\s*\([^)]*\)\s*\{(.+?)\n\s{8}\}",

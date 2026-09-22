@@ -149,6 +149,19 @@ namespace BossRush
             }
         }
 
+        internal static void Shutdown()
+        {
+            WikiUIManager current = _instance;
+            if (current == null) return;
+            current.CloseUI();
+            current.UnsubscribeEscapeKey();
+            current.EnablePlayerInput();
+            if (current.uiRoot != null) UnityEngine.Object.Destroy(current.uiRoot);
+            current.uiRoot = null;
+            current.uiPrefab = null;
+            _instance = null;
+        }
+
         // ============================================================================
         // 初始化
         // ============================================================================

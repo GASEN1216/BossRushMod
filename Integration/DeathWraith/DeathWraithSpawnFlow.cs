@@ -133,7 +133,12 @@ namespace BossRush
         private async void TrySpawnStoredDeathWraithForRaid_DeathWraith(uint raidID, Vector3 spawnPos)
         {
             CharacterMainControl spawnedWraith = null;
-            bool registered = false;
+            bool ownsRequest = false;
+            int generation = deathWraithSpawnGeneration;
+            int sceneHandle = SceneManager.GetActiveScene().handle;
+            int slot = SavesSystem.CurrentSlot;
+            Func<bool> isCurrent = () => this != null && Instance == this && generation == deathWraithSpawnGeneration &&
+                IsDeathWraithSystemEnabled() && SceneManager.GetActiveScene().handle == sceneHandle && SavesSystem.CurrentSlot == slot;
             try
             {
                 if (!IsDeathWraithSystemEnabled())
@@ -153,13 +158,15 @@ namespace BossRush
                 }
 
                 spawningWraithRaidIds.Add(raidID);
+                ownsRequest = true;
                 DevLog("[DeathWraith] 开始生成与原版遗失物绑定的亡魂: raidID=" + raidID);
 
                 CharacterMainControl wraith = null;
                 try
                 {
-                    wraith = await CreateWraithCharacterFromPlayerSnapshot_DeathWraith(info, spawnPos);
+                    wraith = await CreateWraithCharacterFromPlayerSnapshot_DeathWraith(info, spawnPos, isCurrent);
                     spawnedWraith = wraith;
+                    if (!isCurrent()) return;
                 }
                 catch (Exception e)
                 {
@@ -174,6 +181,7 @@ namespace BossRush
                 }
 
                 await UniTask.Yield();
+                if (!isCurrent()) return;
 
                 NormalizeDamageMultiplier(wraith);
                 RestoreWraithMaxHealthSnapshot_DeathWraith(wraith, info.playerMaxHealth);
@@ -188,6 +196,7 @@ namespace BossRush
                 string displayNameKey = CreateWraithDisplayNameKey_DeathWraith(displayName);
                 ApplyWraithRuntimePreset_DeathWraith(wraith, info, displayNameKey, displayName);
                 await PrepareWraithCombatLoadout_DeathWraith(wraith);
+                if (!isCurrent()) return;
 
                 try
                 {
@@ -222,7 +231,6 @@ namespace BossRush
                 catch { }
 
                 RegisterActiveWraith_DeathWraith(raidID, wraith);
-                registered = true;
                 spawnedWraith = null;
 
                 DevLog("[DeathWraith] 亡魂生成成功: " + displayName + " tier=" + tier + " raidID=" + raidID);
@@ -238,11 +246,8 @@ namespace BossRush
                     DestroyWraithInstance_DeathWraith(spawnedWraith, "生成流程异常中断");
                 }
 
-                if (!registered)
-                {
-                    activeWraithsByRaidId.Remove(raidID);
-                }
-                spawningWraithRaidIds.Remove(raidID);
+                if (ownsRequest && generation == deathWraithSpawnGeneration)
+                    spawningWraithRaidIds.Remove(raidID);
             }
         }
 
@@ -252,9 +257,9 @@ namespace BossRush
         /// </summary>
         private async UniTask<CharacterMainControl> CreateWraithCharacterFromPlayerSnapshot_DeathWraith(
             WraithInfo info,
-            Vector3 spawnPos)
+            Vector3 spawnPos, Func<bool> isCurrent)
         {
-            if (info == null)
+            if (info == null || !isCurrent())
             {
                 return null;
             }
@@ -274,11 +279,14 @@ namespace BossRush
             }
 
             Item characterItem = null;
+            CharacterMainControl wraith = null;
+            bool transferred = false;
             try
             {
                 if (info.itemTreeData != null)
                 {
                     characterItem = await ItemTreeData.InstantiateAsync(info.itemTreeData);
+                    if (!isCurrent()) return null;
                     if (characterItem != null)
                     {
                         RestoreWraithItemRuntimeStateRecursive_DeathWraith(
@@ -291,44 +299,46 @@ namespace BossRush
                 {
                     characterItem = await level.CharacterCreator.LoadOrCreateCharacterItemInstance(
                         GameplayDataSettings.ItemAssets.DefaultCharacterItemTypeID);
+                    if (!isCurrent()) return null;
                     DevLog("[DeathWraith] 未取到死亡时装备树，使用默认主角物品容器创建亡魂宿主");
                 }
-            }
-            catch (Exception e)
-            {
-                DevLog("[DeathWraith] 创建亡魂物品树异常: " + e.Message);
-                return null;
-            }
 
-            if (characterItem == null)
-            {
-                DevLog("[DeathWraith] 亡魂宿主物品树为空，放弃生成");
-                return null;
-            }
+                if (characterItem == null)
+                {
+                    DevLog("[DeathWraith] 亡魂宿主物品树为空，放弃生成");
+                    return null;
+                }
 
-            CharacterMainControl wraith = null;
-            try
-            {
                 wraith = await level.CharacterCreator.CreateCharacter(
                     characterItem,
                     mainCharacterModelPrefab,
                     spawnPos,
                     Quaternion.identity);
+                if (wraith == null || !isCurrent()) return null;
+
+                ApplyStoredWraithFaceData_DeathWraith(wraith, info);
+                await EnsureStoredBoundMeleeEquipped_DeathWraith(wraith, info);
+                if (!isCurrent()) return null;
+                transferred = true;
+                return wraith;
             }
             catch (Exception e)
             {
-                DevLog("[DeathWraith] CharacterCreator.CreateCharacter 异常: " + e.Message);
+                DevLog("[DeathWraith] 创建亡魂宿主或恢复装备异常: " + e.Message);
                 return null;
             }
-
-            if (wraith == null)
+            finally
             {
-                return null;
+                if (!transferred)
+                {
+                    if (wraith != null) DestroyWraithInstance_DeathWraith(wraith, "宿主创建未移交");
+                    else if (characterItem != null)
+                    {
+                        try { characterItem.DestroyTree(); }
+                        catch (Exception e) { DevLog("[DeathWraith] 清理未移交物品树异常: " + e.Message); }
+                    }
+                }
             }
-
-            ApplyStoredWraithFaceData_DeathWraith(wraith, info);
-            await EnsureStoredBoundMeleeEquipped_DeathWraith(wraith, info);
-            return wraith;
         }
 
         private CharacterModel GetMainCharacterModelPrefab_DeathWraith(LevelManager level)

@@ -1,13 +1,14 @@
 """真实物品凭据不得单独写盘；保护资产采集、逐项返还与延期欠账边界。"""
 from pathlib import Path
 import re
+from cs_source_util import clean_source
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def read(path):
     text = (ROOT / path).read_text(encoding="utf-8")
-    return re.sub(r"//[^\n]*|/\*[\s\S]*?\*/", "", text)
+    return clean_source(text)
 
 
 def main():
@@ -43,7 +44,9 @@ def main():
             r'CharacterItem.Save\("MainCharacterItemData"\)', r'Inventory.Save\("PlayerStorage"\)',
             r"PlayerStorageBuffer.SaveBuffer\(\)", r'SavesSystem.Save<float>\("MainCharacterHealth"',
             r"assetSnapshotRequired = true;",
-            r"OnPhysicalSaveSucceeded\(\) \{ owner.assetSnapshotRequired = false; \}",
+            r"OnPhysicalSaveSucceeded\(\) \{ owner.assetSnapshotRequired = false; owner.cashSnapshotRequired = false; \}",
+            r"BeforeCollectSaveData = CollectPendingCash",
+            r"if \(!owner.CollectPendingCash\(\)\)",
             # 出击图（天空岛）里没有基地仓库：永久记录随这一趟结算（owner 2026-09-14「随撤离一起存」）。
             # 写盘编码必须剥掉暂不入档的记录，否则任何一次写盘（含官方收集存档）都会把它和出击前的背包一起存下。
             r"Encode = EncodeForSave",

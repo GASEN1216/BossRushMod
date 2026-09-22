@@ -999,56 +999,6 @@ namespace BossRush
     }
 
     /// <summary>
-    /// Boss Rush 结束后返回出生点的交互类
-    /// </summary>
-    public class BossRushReturnInteractable : MonoBehaviour
-    {
-        private bool playerNear = false;
-
-        void Start()
-        {
-            var col = GetComponent<Collider>();
-            if (col != null)
-            {
-                col.isTrigger = true;
-            }
-        }
-
-        void OnTriggerEnter(Collider other)
-        {
-            if (other.CompareTag("Player") || other.name.Contains("Player"))
-            {
-                playerNear = true;
-                if (BossRush.ModBehaviour.Instance != null)
-                {
-                    BossRush.ModBehaviour.Instance.ShowMessage(L10n.T("按E键返回出生点！", "Press E to return to spawn!"));
-                }
-            }
-        }
-
-        void OnTriggerExit(Collider other)
-        {
-            if (other.CompareTag("Player") || other.name.Contains("Player"))
-            {
-                playerNear = false;
-            }
-        }
-
-        void Update()
-        {
-            if (playerNear && UnityEngine.Input.GetKeyDown(UnityEngine.KeyCode.E))
-            {
-                if (BossRush.ModBehaviour.Instance != null)
-                {
-                    BossRush.ModBehaviour.Instance.ReturnToBossRushStart();
-                }
-
-                gameObject.SetActive(false);
-            }
-        }
-    }
-
-    /// <summary>
     /// 垃圾桶交互组件 - 提供清空箱子功能
     /// <para>在路牌旁边显示，一直可见，包含"清空所有箱子"和"清空空箱子"两个选项</para>
     /// <para>第一个选项直接显示"清空所有箱子"，不显示"垃圾桶"</para>

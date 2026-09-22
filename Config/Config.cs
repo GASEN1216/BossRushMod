@@ -177,6 +177,7 @@ namespace BossRush
                         BossRushConfig loaded = JsonUtility.FromJson<BossRushConfig>(json);
                         if (loaded != null)
                         {
+                            loaded.bossInfiniteHellFactors = BossPoolFactorJson.Read(json);
                             if (loaded.waveIntervalSeconds <= 0f)
                             {
                                 loaded.waveIntervalSeconds = 15f;
@@ -228,7 +229,7 @@ namespace BossRush
                     Directory.CreateDirectory(directory);
                 }
 
-                string json = JsonUtility.ToJson(config, true);
+                string json = BossPoolFactorJson.Write(JsonUtility.ToJson(config, true), config.bossInfiniteHellFactors);
                 File.WriteAllText(path, json);
             }
             catch (Exception e)

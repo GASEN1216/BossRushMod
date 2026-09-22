@@ -43,7 +43,7 @@ REQUIRED_FILTERS = (
     ("info.fromCharacter", "必须只记玩家亲手击杀（环境伤害/随从击杀不算）"),
     ("IsMainCharacter", "必须校验击杀者是主角"),
     ("PetNestCompanionAgent.IsCompanionHealth", "必须排除遗种巢随从"),
-    ("Teams.player", "必须排除友军（宠物 / 雇佣兵 / 临时同伴）"),
+    ("!Team.IsEnemy(info.fromCharacter.Team, victim.Team)", "必须按主角实际阵营排除友军"),
     ("IsBaseLevelSafe", "必须排除基地场景（靶子与演示角色不进战绩）"),
     ("isBossCharacter", "必须保留官方运行时 Boss 标记的收录资格"),
     # owner 2026-09-03 定：Mode H 是观战模式，其击杀不计入图鉴。
@@ -171,7 +171,7 @@ def main():
         return fail(
             "OnGlobalHurt 必须早返已死目标：官方致命一击先派发 OnDead 再派发 OnHurt "
             "且 isDead 已置位，不挡住就会给死人重新开计时，造成计时表泄漏")
-    if "ResolveBossKey(victim)" not in hurt_body or "victim.Team == Teams.player" not in hurt_body:
+    if "ResolveBossKey(victim)" not in hurt_body or "!Team.IsEnemy(info.fromCharacter.Team, victim.Team)" not in hurt_body:
         return fail("OnGlobalHurt 只能给可计入图鉴的敌方 Boss 开表，杂兵与友军不得挤掉 Boss 起点")
     if hurt_body.index("ResolveBossKey(victim)") > hurt_body.index("_fightStart[id] = Time.time"):
         return fail("Boss 身份过滤必须早于写入计时表")

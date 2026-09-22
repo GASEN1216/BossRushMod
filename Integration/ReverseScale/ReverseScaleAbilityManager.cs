@@ -621,6 +621,7 @@ namespace BossRush
                 characterLayerMask = LayerMask.GetMask("Character");
             }
 
+            CharacterMainControl boltOwner = CharacterMainControl.Main;
             float startTime = Time.time;
             Vector3 currentDirection = initialDirection.normalized;
             
@@ -636,7 +637,8 @@ namespace BossRush
             // 预分配碰撞数组（避免每帧GC）
             Collider[] hitBuffer = new Collider[8];
 
-            while (Time.time - startTime < lifetime && bolt != null)
+            while (Time.time - startTime < lifetime && bolt != null && boltOwner != null &&
+                   boltOwner == CharacterMainControl.Main && boltOwner.Health != null && !boltOwner.Health.IsDead)
             {
                 float elapsedTime = Time.time - startTime;
                 Vector3 currentPos = bolt.transform.position;
@@ -686,10 +688,11 @@ namespace BossRush
                         
                         // 性能优化：先检查 Health 组件（更常见），再检查是否是玩家
                         Health enemyHealth = hit.GetComponentInParent<Health>();
-                        if (enemyHealth == null || enemyHealth.IsMainCharacterHealth) continue;
+                        if (!IsPrismaticBoltEnemy(enemyHealth, boltOwner)) continue;
 
                         // 对敌人造成伤害
-                        DamageInfo dmgInfo = new DamageInfo(CharacterMainControl.Main);
+                        DamageInfo dmgInfo = new DamageInfo(boltOwner);
+                        dmgInfo.isFromBuffOrEffect = true;
                         dmgInfo.damageValue = damage;
                         dmgInfo.damagePoint = currentPos;
                         dmgInfo.damageNormal = currentDirection;
@@ -720,6 +723,13 @@ namespace BossRush
         /// 查找最近的敌人（用于棱彩弹追踪）- 优化版本
         /// 性能优化：缩小搜索半径，使用 NonAlloc，提前退出
         /// </summary>
+        private static bool IsPrismaticBoltEnemy(Health health, CharacterMainControl owner)
+        {
+            if (health == null || health.IsDead || owner == null || health == owner.Health) return false;
+            CharacterMainControl target = health.TryGetCharacter();
+            return target != null && target != owner && Team.IsEnemy(owner.Team, target.Team);
+        }
+
         private Transform FindNearestEnemyOptimized(Vector3 position)
         {
             Transform nearest = null;
@@ -736,7 +746,7 @@ namespace BossRush
                 
                 // 性能优化：先检查 Health 组件（更快的排除条件）
                 Health health = collider.GetComponentInParent<Health>();
-                if (health == null || health.IsMainCharacterHealth || health.CurrentHealth <= 0) continue;
+                if (!IsPrismaticBoltEnemy(health, CharacterMainControl.Main)) continue;
                 
                 // 使用平方距离比较（避免 sqrt 运算）
                 float distanceSqr = (collider.transform.position - position).sqrMagnitude;

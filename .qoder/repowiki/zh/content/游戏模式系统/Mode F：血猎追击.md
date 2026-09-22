@@ -369,3 +369,6 @@ Mode F 通过清晰的状态机驱动高压生存体验，结合悬赏系统与�
 
 章节来源：`ModeF/ModeFPhases.cs`、`Common/Stats/RuntimeStatModifierTracker.cs`、
 `tests/StatKeyExistenceGuard.py`。
+
+
+2026-09-22 审计修复（COMPAT，L1，未实机）：补位生成的失败/异常续体在扣 inflight 和清龙裔预约前复核 session。工事部署、维修先检查官方 InputActived，再复用现有完整 overlay 判据；输入禁用、暂停、官方界面、其他 View 和地图打开时停止读取鼠标，恢复后保留原选择。EntityModelFactory 返回无 Renderer 的空壳时，预览和直接落地都销毁空壳并走已有几何后备。补位名称 marker 保存 preset name key，显示时解析当前语言。补位的旧 null / fault / success 与后继请求交错另由 `AuditModeLifecycle` 生产方法抽取回归验证（L2）。

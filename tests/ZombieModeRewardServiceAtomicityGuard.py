@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+from cs_source_util import clean_source
 
 
 REWARDS = Path("ZombieMode/ZombieModeRewards.cs")
@@ -72,6 +73,7 @@ def fail(message: str) -> int:
 
 
 def extract_method_body(text: str, signature: str) -> str:
+    text = clean_source(text)
     start = text.find(signature)
     if start < 0:
         return ""
@@ -251,108 +253,38 @@ def main() -> int:
             return result
 
     retrieve_all_body = extract_method_body(storage, "private static async UniTaskVoid RetrieveAllItemsAsync(int totalFee)")
-    if not retrieve_all_body:
-        return fail("RetrieveAllItemsAsync body not found")
-    for snippet in [
-        "private sealed class RetrieveAllDepositItem",
-        "private static bool isRetrieveAllInProgress = false;",
-        "private static async UniTask<List<RetrieveAllDepositItem>> TryRestoreAllDepositItemsForRetrieveAll",
-        "private static bool TryPayRetrieveFee(int totalFee, string reason)",
-        "private static void RefundRetrieveFee(int totalFee, bool shouldRefund)",
-        "private static void RemoveRetrievedDepositItems(List<int> depositIndices)",
-    ]:
-        result = require(storage, snippet, "retrieve-all atomicity helper")
-        if result:
-            return result
-    result = require_before(
-        retrieve_all_body,
-        "TryRestoreAllDepositItemsForRetrieveAll(depositedItems, failedRestoreIndices)",
-        "TryPayRetrieveFee(payableFee, \"ZombieModeTempCourierDepositRetrieveAll\")",
-        "restore before retrieve-all payment")
-    if result:
-        return result
-    if "DepositDataManager.ClearAll();" in retrieve_all_body:
-        return fail("RetrieveAllItemsAsync must not ClearAll after partial restore/send failures")
-    retrieve_clicked_body = extract_method_body(storage, "private static void OnRetrieveAllClicked()")
-    if not retrieve_clicked_body:
-        return fail("OnRetrieveAllClicked body not found")
-    for snippet in [
-        "if (isRetrieveAllInProgress)",
-        "int totalFee = CalculateTotalRetrieveFee();",
-        "if (!CanAffordRetrieveFee(totalFee))",
-        "isRetrieveAllInProgress = true;",
-        "RetrieveAllItemsAsync(totalFee).Forget();",
-    ]:
-        result = require(retrieve_clicked_body, snippet, "retrieve-all click must preflight full fee before restoring items")
-        if result:
-            return result
-    result = require_before(
-        retrieve_clicked_body,
-        "if (!CanAffordRetrieveFee(totalFee))",
-        "RetrieveAllItemsAsync(totalFee).Forget();",
-        "retrieve-all affordability precheck before item restore")
-    if result:
-        return result
-    result = require(retrieve_all_body, "RemoveRetrievedDepositItems(deliveredIndices);", "remove only delivered deposit records")
-    if result:
-        return result
-    result = require(retrieve_all_body, "RefundRetrieveFee(failedDeliveryFee, failedDeliveryFee > 0);", "refund failed delivery fees")
-    if result:
-        return result
-    result = require(retrieve_all_body, "isRetrieveAllInProgress = false;", "retrieve-all async task must always release reentry guard")
-    if result:
-        return result
-
-    single_retrieve_body = extract_method_body(storage, "private static void OnItemPurchased(StockShop shop, Item purchasedItem)")
-    if not single_retrieve_body:
-        return fail("single retrieve OnItemPurchased body not found")
-    if "TrySpendZombieModePurificationPointsForRealNpc(" in single_retrieve_body:
-        return fail("single temporary courier retrieve must not spend purification before item restore")
-    result = require(
-        single_retrieve_body,
-        "CanAffordZombieModePurificationPointsForRealNpc(courierNPCTransform, fee)",
-        "single temporary courier retrieve affordability precheck")
-    if result:
-        return result
-
-    single_restore_body = extract_method_body(storage, "private static async UniTaskVoid RestoreAndReplaceItemAsync")
-    if not single_restore_body:
-        return fail("single retrieve RestoreAndReplaceItemAsync body not found")
-    result = require(
-        storage,
-        "private static async UniTaskVoid RestoreAndReplaceItemAsync(Item emptyItem, ItemTreeData savedData, int depositIndex, int purificationFee = 0)",
-        "single retrieve restore method accepts deferred purification fee")
-    if result:
-        return result
-    for snippet in [
-        "bool purificationPaymentDeducted = false;",
-        "bool useTemporaryPurificationRetrieve = IsZombieModeTemporaryCourierPurificationService();",
-        "bool deliveryCompleted = false;",
-        "RollbackTemporarySingleRetrievePlaceholder(emptyItem);",
-        "CleanupSingleRetrievedItem(restoredItem);",
-        "string restoredItemName = restoredItem.DisplayName;",
-        "ModBehaviour.DevLog(\"[StorageDepositService] 物品取回完成: \" + restoredItemName);",
-        "bool shouldRefund = purificationPaymentDeducted && !deliveryCompleted;",
-        "RefundZombieModePurificationPointsForRealNpc(courierNPCTransform, purificationFee, shouldRefund);",
-    ]:
-        result = require(single_restore_body, snippet, "single retrieve purification atomicity")
-        if result:
-            return result
-    if "物品取回完成: \" + restoredItem.DisplayName" in single_restore_body:
-        return fail("single retrieve logs restored item after cleanup sentinel is nulled")
-    result = require_before(
-        single_restore_body,
-        "restoredItem = await ItemTreeData.InstantiateAsync(savedData);",
-        "TrySpendZombieModePurificationPointsForRealNpc(",
-        "single retrieve restore before purification payment")
-    if result:
-        return result
-    result = require(
-        single_restore_body,
-        "ItemUtilities.SendToPlayer(restoredItem, true, true);\n                deliveryCompleted = true;",
-        "single retrieve must mark delivery before removing deposit record")
-    if result:
-        return result
+    single_body = extract_method_body(storage, "internal static async UniTask<bool> RetrieveSingleAsync(int itemTypeID, int amount)")
+    for body, label in [(retrieve_all_body, "bulk"), (single_body, "single")]:
+        if not body:
+            return fail(label + " retrieve body missing")
+        for token in ["TryBeginTransaction()", "IsCurrentTransaction(transaction)", "DepositDataManager.RemoveItem(",
+                      "TryDeliverRetrievedItem(", "RefundRetrieveFee(", "EndTransaction(transaction)"]:
+            result = require(body, token, label + " retrieve ownership and compensation")
+            if result: return result
+        result = require_before(body, "await ", "TryPayRetrieveFee(", label + " restore before payment")
+        if result: return result
+        result = require_before(body, "TryDeliverRetrievedItem(", "DepositDataManager.RemoveItem(", label + " delivery before record commit")
+        if result: return result
+        if "DepositDataManager.ClearAll();" in body:
+            return fail(label + " retrieve must preserve failed records")
+    for token in ["DepositDataManager.RemoveItem(restored.DepositData);", "RefundRetrieveFee(paidFee - deliveredFee, paidFee > deliveredFee, transaction);",
+                  "if (ReferenceEquals(transactionOwner, transaction))", "CleanupRestoredRetrieveAllItems(restoredItems);"]:
+        result = require(retrieve_all_body, token, "bulk uses stable records and cannot release a replacement owner")
+        if result: return result
+    for token in ["DepositDataManager.RemoveItem(record);", "if (paid && !delivered) RefundRetrieveFee(fee, true, transaction);",
+                  "CleanupSingleRetrievedItem(restoredItem);", "DepositDataManager.IndexOf(record) < 0"]:
+        result = require(single_body, token, "single retrieve preserves failed records")
+        if result: return result
+    clicked = extract_method_body(storage, "private static void OnRetrieveAllClicked()")
+    result = require_before(clicked, "if (!CanAffordRetrieveFee(totalFee))", "RetrieveAllItemsAsync(totalFee).Forget();", "bulk preflight")
+    if result: return result
+    for token in ["if (IsTransactionBusy || !DepositDataManager.CanWrite)", "TryRestoreAllDepositItemsForRetrieveAll(depositedItems, failedRestoreIndices, transaction)"]:
+        result = require(storage, token, "shared transaction gate")
+        if result: return result
+    for token in ['[HarmonyLib.HarmonyPatch(typeof(StockShop), "Buy")]', "if (!StorageDepositService.OwnsShop(__instance)) return true;",
+                  "__result = StorageDepositService.RetrieveSingleAsync(itemTypeID, amount);"]:
+        result = require(storage, token, "owned shop intercepts before official charge and placeholder")
+        if result: return result
 
     result = require(npc_shop, "UnregisterEvents();\n                    Cleanup();", "NPC shop ShowUI failure must unregister global events")
     if result:

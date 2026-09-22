@@ -273,10 +273,13 @@ namespace BossRush
             bool envOk = RestoreAutotestEnvironment(out env);
             Record("AUTOTEST_ENV_RESTORE", envOk ? "PASS" : "FAIL", 0L, env, envOk ? string.Empty : "environment_not_restored");
 
+            bool itemsOk = _autotest.Snapshot == null;
             if (IsBaseScene() && _autotest.Snapshot != null)
             {
-                _autotest.Info.ItemLedger = ReclaimAutotestItems(_autotest.Snapshot);
-                Record("AUTOTEST_ITEMS_RECLAIM", "PASS", 0L, _autotest.Info.ItemLedger, string.Empty);
+                string itemDetail;
+                itemsOk = TryReclaimAutotestItems(_autotest.Snapshot, out itemDetail);
+                _autotest.Info.ItemLedger = itemDetail;
+                Record("AUTOTEST_ITEMS_RECLAIM", itemsOk ? "PASS" : "FAIL", 0L, itemDetail, itemsOk ? string.Empty : "items_pending_recovery");
                 _autotest.Info.MoneyLedger = AutotestMoneyLedger();
                 // 金钱只记账不还原（2026-09-14 拍板）：验收步骤不买服务，账面变了就记 WARN，AI 对着步骤日志查是哪一步花的。
                 bool moneyUnchanged = AutotestMoneyUnchanged();
@@ -290,8 +293,10 @@ namespace BossRush
                 yield return RunAutotestStages("base_after");
             }
 
-            if (storyOk && _autotest.SnapshotPersisted) ClearAutotestSnapshotKey();
-            _autotest.Info.Status = F3AutotestJudges.RunStatus(storyOk, _cancelRequested, _fatalAbort || _hostLost || _slotChanged,
+            if (storyOk && itemsOk && envOk && _autotest.SnapshotPersisted)
+                itemsOk = ClearAutotestSnapshotKey();
+            if (!itemsOk) { _autotest.Info.RestoreStory = "PENDING_RECOVERY"; _autotestRecoveryCheckedSlot = int.MinValue; }
+            _autotest.Info.Status = F3AutotestJudges.RunStatus(storyOk && itemsOk && envOk, _cancelRequested, _fatalAbort || _hostLost || _slotChanged,
                 _autotest.Records, _autotest.ExpectedSteps);
             _autotest.RestoreDone = true;
             WriteAutotestReport();
@@ -325,8 +330,11 @@ namespace BossRush
                     if (final)
                     {
                         // 清快照键之前先收回发出去的岛上物品：键一清，唯一会收物品的崩溃恢复就再也走不到了。
-                        _autotest.Info.ItemLedger = "sync_fallback:" + ReclaimAutotestItems(_autotest.Snapshot);
-                        if (_autotest.SnapshotPersisted) ClearAutotestSnapshotKey();
+                        string items;
+                        final = TryReclaimAutotestItems(_autotest.Snapshot, out items);
+                        _autotest.Info.ItemLedger = "sync_fallback:" + items;
+                        if (final && _autotest.SnapshotPersisted) final = ClearAutotestSnapshotKey();
+                        if (!final) _autotest.Info.RestoreStory = "PENDING_RECOVERY";
                     }
                     if (!final) _autotestRecoveryCheckedSlot = int.MinValue;
                 }

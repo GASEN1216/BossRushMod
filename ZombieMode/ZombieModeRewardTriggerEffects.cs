@@ -412,6 +412,7 @@ namespace BossRush
             ctx.distance = gun.BulletDistance * distanceFactor;
             ctx.halfDamageDistance = ctx.distance * 0.5f;
             ctx.damage = Mathf.Max(1f, gun.Damage * damageFactor);
+            ctx.damageFactorToZombie = gun.DamageFactorToZombie;
             ctx.penetrate = 0;
             ctx.critRate = 0f;
             ctx.critDamageFactor = gun.CritDamageFactor;

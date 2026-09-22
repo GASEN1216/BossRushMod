@@ -802,23 +802,15 @@ namespace BossRush
             
             try
             {
-                Vector3 dropPosition = Vector3.zero;
+                if (item.InInventory != null || item.PluggedIntoSlot != null) return;
                 CharacterMainControl player = CharacterMainControl.Main;
-                if (player != null)
+                if (player == null)
                 {
-                    dropPosition = player.transform.position + new Vector3(
-                        UnityEngine.Random.Range(-0.5f, 0.5f),
-                        0.5f,
-                        UnityEngine.Random.Range(-0.5f, 0.5f)
-                    );
+                    // 切图期间没有主角时交给官方仓库缓冲区持有完整物品树。
+                    ItemUtilities.SendToPlayerStorage(item, true);
+                    return;
                 }
-                
-                if (item.gameObject != null)
-                {
-                    item.transform.position = dropPosition;
-                    item.gameObject.SetActive(true);
-                    ModBehaviour.DevLog("[NPCGiftContainerService] 物品已丢到地上");
-                }
+                item.Drop(player, true);
             }
             catch (Exception e)
             {

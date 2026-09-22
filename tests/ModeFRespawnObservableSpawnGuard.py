@@ -1,6 +1,7 @@
 """Guard: Mode F replacement respawn must use observable SpawnEnemyCore completion."""
 
 from pathlib import Path
+from cs_source_util import clean_source
 import sys
 
 
@@ -48,7 +49,7 @@ def forbid(text: str, needle: str, message: str) -> int | None:
 
 
 def main() -> int:
-    respawn = RESPAWN.read_text(encoding="utf-8")
+    respawn = clean_source(RESPAWN.read_text(encoding="utf-8"))
     phases = PHASES.read_text(encoding="utf-8")
 
     death_body = extract_method_body(respawn, "private void OnModeFBossDied")
@@ -130,7 +131,7 @@ def main() -> int:
         ("customPreset.aiCombatFactor = 1f;", "Mode F respawn must preserve AI combat factor normalization"),
         ("customPreset.showName = true;", "Mode F respawn must preserve boss health-bar names"),
         ("customPreset.showHealthBar = true;", "Mode F respawn must preserve boss health-bar visibility"),
-        ("SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam);", "Mode F respawn must preserve display name setup"),
+        ("SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam, spawnedPreset.name);", "Mode F respawn must preserve display name setup"),
         ("ctx.character.SetTeam(spawnedTeam);", "Mode F respawn must preserve combat team setup"),
         ("RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);", "Mode F respawn must preserve shared Mode E runtime registration"),
         ("RegisterModeFBoss(ctx.character);", "Mode F respawn must preserve Mode F boss registration"),

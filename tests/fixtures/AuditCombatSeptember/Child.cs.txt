@@ -1,0 +1,70 @@
+using System; using System.Collections; using System.Threading.Tasks; using BossRush;
+class Program {
+ static void Require(bool c,string why){if(!c)throw new Exception(why);}
+ static void Main(){
+  foreach(bool timeout in new[]{true,false}){
+   var parent=new DragonKingAbilityController(); ModBehaviour.Instance=new ModBehaviour();
+   var host=ModBehaviour.Instance; var e=parent.Begin(); Time.deltaTime=timeout?10f:0.02f;
+   Require(e.MoveNext(),"pending request did not yield");
+   if(timeout)Require(!e.MoveNext()&&parent.Deaths==1,"timeout must stop parent");else ((IDisposable)e).Dispose();
+   var late=new CharacterMainControl();host.Request.SetResult(late);
+   Require(late.Destroyed&&parent.Child==null,"late child was not released");
+  }
+  var normal=new DragonKingAbilityController(); ModBehaviour.Instance=new ModBehaviour();
+  var child=new CharacterMainControl(); ModBehaviour.Instance.Request.SetResult(child);
+  Require(!normal.Begin().MoveNext()&&normal.Child==child&&child.Health.OnDeadEvent.Listeners==1,"normal adoption failed");
+  Console.WriteLine("PASS child normal adoption, timeout and IEnumerator.Dispose late cleanup");
+  var modeg=new DragonKingAbilityController();ModBehaviour.Instance=new ModBehaviour();
+  var proxy=new CharacterMainControl();var handle=new ManagedBossRuntimeHandle{Character=proxy};
+  int commits=0;
+  modeg.ModeGChildSpawnContext=new ManagedBossSpawnContext{
+   IsOwnerValid=()=>true,TryCommitAuxiliaryBeforeActivation=(c,r)=>{commits++;handle.Committed=true;return true;}};
+  ModBehaviour.Instance.Prepared.SetResult(new ManagedBossPrepareResult{Character=proxy,Handle=handle});
+  Require(!modeg.Begin().MoveNext()&&modeg.Child==proxy&&commits==1&&handle.Activated,"PhaseProxy did not commit before activation");
+  var cancelledModeg=new DragonKingAbilityController();ModBehaviour.Instance=new ModBehaviour();var pending=ModBehaviour.Instance;
+  cancelledModeg.ModeGChildSpawnContext=modeg.ModeGChildSpawnContext;
+  var pendingEnumerator=cancelledModeg.Begin();Time.deltaTime=0.02f;Require(pendingEnumerator.MoveNext(),"pending Mode G prepare");
+  ((IDisposable)pendingEnumerator).Dispose();
+  var rejected=new CharacterMainControl();var rejectedHandle=new ManagedBossRuntimeHandle{Character=rejected};
+  pending.Prepared.SetResult(new ManagedBossPrepareResult{Character=rejected,Handle=rejectedHandle});
+  Require(rejected.Destroyed&&!rejectedHandle.Activated&&commits==1,"cancelled Mode G proxy was activated or not released");
+  Console.WriteLine("PASS PhaseProxy commit-before-activation and cancelled prepare cleanup");
+ }
+}
+namespace BossRush {
+ public struct Vector3{} public static class Time{public static float deltaTime;}
+ public class DeathEvent{public int Listeners;public void AddListener(Action<object> f){Listeners++;}}
+ public class Health{public bool IsDead;public DeathEvent OnDeadEvent=new DeathEvent();}
+ public class CharacterMainControl{public bool Destroyed;public Health Health=new Health();}
+ public enum ManagedBossRole{PhaseProxy} public enum ManagedBossCleanupReason{OwnerInvalid,SpawnRejected}
+ public class ManagedBossSpawnContext{
+  public Func<bool> IsOwnerValid;public ManagedBossRole Role;
+  public Func<CharacterMainControl,ManagedBossRole,bool> TryCommitAuxiliaryBeforeActivation;
+  public Action<CharacterMainControl,ManagedBossRole> OnAuxiliaryReleased;
+  public static ManagedBossSpawnContext CreateModeGPrimary(string key,Func<bool> gate){return new ManagedBossSpawnContext{IsOwnerValid=gate};}
+ }
+ public class ManagedBossRuntimeHandle{
+  public CharacterMainControl Character;public bool Committed,Activated;public bool ActivateOnce(){if(!Committed)throw new Exception("activated before commit");Activated=true;return true;}
+  public void CleanupOnce(ManagedBossCleanupReason reason){if(Character!=null)Character.Destroyed=true;}
+ }
+ public class ManagedBossPrepareResult{public ManagedBossRuntimeHandle Handle;public CharacterMainControl Character;}
+ public static class DragonDescendantConfig{public const string BOSS_NAME_KEY="dragon";}
+ public class ModBehaviour {
+  public static ModBehaviour Instance; public TaskCompletionSource<CharacterMainControl> Request=new TaskCompletionSource<CharacterMainControl>();
+  public Task<CharacterMainControl> SpawnDragonDescendant(Vector3 p,bool isChildProtectionSummon,bool notifyBossRushOnFailure,Func<bool> isActiveCheck){return Request.Task;}
+  public TaskCompletionSource<ManagedBossPrepareResult> Prepared=new TaskCompletionSource<ManagedBossPrepareResult>();
+  public Task<ManagedBossPrepareResult> PrepareManagedDragonDescendantAsync(Vector3 p,ManagedBossSpawnContext c){return Prepared.Task;}
+  public static bool IsManagedOwnerValid(ManagedBossSpawnContext c){return c==null||c.IsOwnerValid==null||c.IsOwnerValid();}
+  public void CleanupCancelledDragonDescendant(CharacterMainControl c){c.Destroyed=true;}
+  public static void DevLog(string s){}
+ }
+ public class DragonKingAbilityController {
+  private int childSpawnGeneration;internal ManagedBossSpawnContext ModeGChildSpawnContext;private ManagedBossRuntimeHandle managedChildHandle;private bool managedChildCommitted;
+  private CharacterMainControl spawnedDescendant;private CharacterMainControl bossCharacter=new CharacterMainControl();private Health bossHealth=new Health();private bool isInChildProtection=true;
+  private object childProtectionBoltCoroutine;public CharacterMainControl Child=>spawnedDescendant;public int Deaths;
+  public IEnumerator Begin(){return SpawnDescendantForProtection();}private Vector3 GetRandomSpawnPoint(){return new Vector3();}
+  private void TriggerLinkedDeath(){Deaths++;bossHealth.IsDead=true;}private void ApplyDescendantStatReduction(CharacterMainControl c){}private void ShowDescendantDialogue(){}private void OnDescendantDeath(object d){}
+  private IEnumerator ChildProtectionBoltLoop(){yield break;}private object StartCoroutine(IEnumerator e){return e;}
+  /* CHILD_METHODS */
+ }
+}

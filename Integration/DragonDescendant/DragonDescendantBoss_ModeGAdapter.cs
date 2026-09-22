@@ -47,8 +47,11 @@ namespace BossRush
                             || capturedCharacter.Health == null || capturedCharacter.Health.IsDead) return false;
 
                         BeginActivateModeGManagedCharacter(capturedCharacter);
-                        dragonDescendantInstance = capturedCharacter;
-                        dragonDescendantAbilities = capturedController;
+                        if (ctx.Role == ManagedBossRole.Primary)
+                        {
+                            dragonDescendantInstance = capturedCharacter;
+                            dragonDescendantAbilities = capturedController;
+                        }
                         capturedController.Initialize(capturedCharacter, originalWeaponData);
                         RegisterDragonDescendantSetBonus(capturedCharacter);
                         setBonusRegistered = true;

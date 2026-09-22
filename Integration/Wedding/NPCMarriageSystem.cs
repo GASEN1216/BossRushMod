@@ -229,6 +229,10 @@ namespace BossRush
 
                 ModBehaviour.DevLog("[Marriage] 回忆当天：过场播放完毕");
             }
+            catch (OperationCanceledException)
+            {
+                // 共享对话已回收本次会话，不能再强行关闭后继会话。
+            }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[Marriage] 回忆当天异常: " + e.Message);
@@ -731,4 +735,29 @@ namespace BossRush
             }
         }
     }
+    // 建造资格每次由当前槽决定；资源注册仍保留，以恢复旧档中已经放置的教堂。
+    [HarmonyLib.HarmonyPatch(typeof(Duckov.Buildings.BuildingInfo), "RequirementsSatisfied")]
+    internal static class WeddingBuildingRequirementsPatch
+    {
+        [HarmonyLib.HarmonyPostfix]
+        private static void Postfix(Duckov.Buildings.BuildingInfo __instance, ref bool __result)
+        {
+            if (__instance.id == "wedding_chapel" && __instance.prefabName == "WeddingChapel")
+                __result = __result && AffinityManager.CanWrite && AffinityManager.HasAnyNPCEverReachedMaxLevel();
+        }
+    }
+
+    internal static class WeddingBuildingRuntimePolicy
+    {
+        internal static bool IsPlacedSceneObject(GameObject candidate, GameObject template)
+        {
+            if (candidate == null || ReferenceEquals(candidate, template)) return false;
+            var scene = candidate.scene;
+            if (!scene.IsValid() || !scene.isLoaded) return false;
+            var mainScene = Duckov.Scenes.MultiSceneCore.MainScene;
+            return scene == UnityEngine.SceneManagement.SceneManager.GetActiveScene()
+                || (mainScene.HasValue && scene == mainScene.Value);
+        }
+    }
+
 }

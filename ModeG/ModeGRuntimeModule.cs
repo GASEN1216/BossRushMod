@@ -632,7 +632,7 @@ namespace BossRush
             try
             {
                 if (auxiliary == null || auxiliary.Health == null || auxiliary.Health.IsDead) return false;
-                if (role != ManagedBossRole.Auxiliary) return false;
+                if (role != ManagedBossRole.Auxiliary && role != ManagedBossRole.PhaseProxy) return false;
                 if (!CanContinueRun()) return false;
                 return _committedAuxiliaries.Add(auxiliary);
             }

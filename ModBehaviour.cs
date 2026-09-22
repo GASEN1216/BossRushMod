@@ -1081,10 +1081,11 @@ namespace BossRush
         /// 在指定位置生成敌人（使用CharacterRandomPreset）
         /// 返回生成的角色，如果失败返回 null
         /// </summary>
-        private async UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(EnemyPresetInfo preset, Vector3 position)
+        private async UniTask<CharacterMainControl> SpawnEnemyAtPositionAsync(EnemyPresetInfo preset, Vector3 position, Func<bool> isActiveCheck = null)
         {
             try
             {
+                if (isActiveCheck != null && !isActiveCheck()) return null;
                 // 检查是否是龙裔遗族Boss，使用专门的生成方法
                 if (IsDragonDescendantPreset(preset))
                 {
@@ -1092,7 +1093,8 @@ namespace BossRush
                     var dragonBoss = await SpawnDragonDescendant(
                         position,
                         isChildProtectionSummon: false,
-                        notifyBossRushOnFailure: false);
+                        notifyBossRushOnFailure: false,
+                        isActiveCheck: isActiveCheck);
                     MutatorManager.ApplyToEnemy(dragonBoss);
                     return dragonBoss;
                 }
@@ -1101,7 +1103,7 @@ namespace BossRush
                 if (IsDragonKingPreset(preset))
                 {
                     // 龙王使用独立生成逻辑
-                    var dragonKing = await SpawnDragonKing(position, notifyBossRushOnFailure: false);
+                    var dragonKing = await SpawnDragonKing(position, notifyBossRushOnFailure: false, isActiveCheck: isActiveCheck);
                     MutatorManager.ApplyToEnemy(dragonKing);
                     return dragonKing;
                 }
@@ -1109,7 +1111,7 @@ namespace BossRush
                 // 检查是否是幽灵女巫Boss，使用专门的生成方法
                 if (IsPhantomWitchPreset(preset))
                 {
-                    var phantomWitch = await SpawnPhantomWitch(position, notifyBossRushOnFailure: false);
+                    var phantomWitch = await SpawnPhantomWitch(position, notifyBossRushOnFailure: false, isActiveCheck: isActiveCheck);
                     MutatorManager.ApplyToEnemy(phantomWitch);
                     return phantomWitch;
                 }
@@ -1170,6 +1172,11 @@ namespace BossRush
                 // 先生成非激活状态，以便修改属性
                 int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 var character = await targetPreset.CreateCharacterAsync(position, dir, relatedScene, null, false);
+                if (isActiveCheck != null && !isActiveCheck())
+                {
+                    if (character != null) UnityEngine.Object.Destroy(character.gameObject);
+                    return null;
+                }
 
                 if (character == null)
                 {

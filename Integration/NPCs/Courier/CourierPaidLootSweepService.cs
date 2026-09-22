@@ -80,7 +80,7 @@ namespace BossRush
                 return;
             }
 
-            TryReturnResultItemsToPlayer(pendingResultInventory);
+            if (!TryReturnResultItemsToPlayer(pendingResultInventory)) return;
             DiscardPendingSweepResultInternal(closeLootView, false);
 
             if (showMessage)
@@ -757,7 +757,8 @@ namespace BossRush
         private static void OnStartNextSweepButtonClicked()
         {
             Transform npc = pendingResultNpcTransform;
-            DiscardPendingSweepResultInternal(true, false);
+            ReleasePendingSweepResultToPlayer(true, false);
+            if (HasPendingSweepResult()) return;
 
             if (npc != null)
             {
@@ -1075,13 +1076,13 @@ namespace BossRush
             }
         }
 
-        private static void TryReturnResultItemsToPlayer(Inventory resultInventory)
+        private static bool TryReturnResultItemsToPlayer(Inventory resultInventory)
         {
             if (resultInventory == null || resultInventory.Content == null)
             {
-                return;
+                return true;
             }
-
+            bool deliveredAll = true;
             List<Item> items = new List<Item>();
             for (int i = 0; i < resultInventory.Content.Count; i++)
             {
@@ -1112,9 +1113,16 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
+                    if (item != null && item.InInventory == null && item.PluggedIntoSlot == null)
+                    {
+                        deliveredAll = false;
+                        try { resultInventory.AddItem(item); }
+                        catch (Exception restoreError) { ModBehaviour.DevLog("[CourierPaidLootSweep] 保留未交付物品失败: " + restoreError.Message); }
+                    }
                     ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] 返还总箱物品失败: " + e.Message);
                 }
             }
+            return deliveredAll;
         }
 
     }

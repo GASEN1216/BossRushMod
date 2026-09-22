@@ -35,8 +35,9 @@ namespace BossRush
                 if (!reusedPreview)
                 {
                     fortObj = EntityModelFactory.Create(prefabName, position, rotation);
-                    if (fortObj == null)
+                    if (fortObj == null || fortObj.GetComponentInChildren<Renderer>(true) == null)
                     {
+                        if (fortObj != null) UnityEngine.Object.Destroy(fortObj);
                         DevLog("[ModeF] [WARNING] Failed to create fortification model, falling back to runtime geometry: " + prefabName);
                         fortObj = CreateFallbackModeFFortification(type, position, rotation);
                         if (fortObj == null)

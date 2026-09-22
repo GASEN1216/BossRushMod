@@ -1,0 +1,24 @@
+using System; using System.Collections; using System.Collections.Generic; using System.Text.Json;
+enum ElementTypes { fire, physics }
+struct ElementFactor { public ElementTypes elementType; public float factor; public ElementFactor(ElementTypes t,float f){elementType=t;factor=f;} }
+struct DamageInfo { public List<ElementFactor> elementFactors; public float finalDamage; }
+class Health { public bool IsMainCharacterHealth=true; }
+class ModBehaviour {
+ bool dragonSetActive=true; public float ScheduledHeal;
+ static void DevLog(string value){}
+ void StartCoroutine(IEnumerator value){}
+ IEnumerator DelayedHeal(Health health,float value){ScheduledHeal=value;return null;}
+ public void Observe(Health health,DamageInfo damage){OnDragonSetHurt(health,damage);}
+/* FIRE_METHOD */
+}
+class Program {
+ static void Main(){
+  var shared=new List<ElementFactor>{new ElementFactor(ElementTypes.fire,1f)};
+  var incoming=new DamageInfo{elementFactors=shared,finalDamage=100f};
+  var owner=new ModBehaviour();
+  float before=shared[0].factor;
+  owner.Observe(new Health(),incoming);
+  float after=shared[0].factor;
+  if (before != after || Math.Abs(owner.ScheduledHeal-80f)>0.0001f) throw new Exception("shared fire factor or heal changed"); Console.WriteLine(JsonSerializer.Serialize(new { source_method="verbatim OnDragonSetHurt; official struct/List reference semantics modeled; no real physics", before_factor=before, caller_factor_after_handler=incoming.elementFactors[0].factor, shared_source_factor=after, scheduled_heal=owner.ScheduledHeal, subsequent_raw_fire_contribution_at_same_damage=100f*after, input_preserved=before==after },new JsonSerializerOptions{WriteIndented=true}));
+ }
+}

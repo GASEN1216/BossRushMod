@@ -812,7 +812,8 @@ namespace BossRush
                                     isChildProtectionSummon: false,
                                     notifyBossRushOnFailure: false,
                                     deferActivationUntilNextFrame: deferActivationUntilNextFrame,
-                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration);
+                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration,
+                                    isActiveCheck: isActiveCheck);
                             }
                             catch (Exception dragonEx)
                             {
@@ -830,7 +831,8 @@ namespace BossRush
                                     position,
                                     notifyBossRushOnFailure: false,
                                     deferActivationUntilNextFrame: deferActivationUntilNextFrame,
-                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration);
+                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration,
+                                    isActiveCheck: isActiveCheck);
                             }
                             catch (Exception kingEx)
                             {
@@ -848,7 +850,8 @@ namespace BossRush
                                     position,
                                     notifyBossRushOnFailure: false,
                                     deferActivationUntilNextFrame: deferActivationUntilNextFrame,
-                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration);
+                                    isNonWaveSpawn: options != null && options.SuppressWaveBossRegistration,
+                                    isActiveCheck: isActiveCheck);
                             }
                             catch (Exception witchEx)
                             {
@@ -905,7 +908,9 @@ namespace BossRush
                                 {
                                     if (character.gameObject != null)
                                     {
-                                        UnityEngine.Object.Destroy(character.gameObject);
+                                        if (IsDragonDescendantPreset(currentPreset)) CleanupCancelledDragonDescendant(character);
+                                        else if (IsDragonKingPreset(currentPreset)) CleanupCancelledDragonKing(character);
+                                        else CleanupFailedPhantomWitchSpawn(character);
                                     }
                                 }
                                 catch (Exception destroyEx)

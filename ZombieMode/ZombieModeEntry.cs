@@ -528,7 +528,7 @@ namespace BossRush
 
         internal bool IsZombieModeRuntimePaused()
         {
-            return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused();
+            return ZombieModeUIHelper.IsModalInputPaused || IsZombieModeGamePaused() || CameraMode.Active;
         }
 
         private float zombieModeRuntimePausedDuration;

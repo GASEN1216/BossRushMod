@@ -91,6 +91,7 @@ namespace BossRush
         private static readonly Dictionary<int, BulletTypeInfo> emptyBulletTypeDict = new Dictionary<int, BulletTypeInfo>();
         private static readonly MethodInfo presetGenerateItemsMethod = typeof(CharacterRandomPreset).GetMethod("GenerateItems", BindingFlags.Instance | BindingFlags.NonPublic);
         private static bool bossRedProjectileWarmupStarted;
+        private static int projectileWarmupGeneration;
 
         public static void InitializeRuntime()
         {
@@ -100,18 +101,20 @@ namespace BossRush
             }
 
             Health.OnHurt += OnDragonKingBossGunHurt;
+            CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent += OnWarmupOwnerHoldChanged;
             hurtEventSubscribed = true;
+            WarmupProjectileCache();
         }
 
         public static void WarmupProjectileCache()
         {
-            if (cachedDragonProjectile != null || bossRedProjectileWarmupStarted)
+            if (!IsProjectileWarmupOwnerValid(CharacterMainControl.Main) || cachedDragonProjectile != null || bossRedProjectileWarmupStarted)
             {
                 return;
             }
 
             bossRedProjectileWarmupStarted = true;
-            PreloadBossRedProjectileAsync().Forget();
+            PreloadBossRedProjectileAsync(projectileWarmupGeneration, CharacterMainControl.Main).Forget();
         }
 
         public static void CleanupRuntime()
@@ -119,6 +122,7 @@ namespace BossRush
             if (hurtEventSubscribed)
             {
                 Health.OnHurt -= OnDragonKingBossGunHurt;
+                CharacterMainControl.OnMainCharacterChangeHoldItemAgentEvent -= OnWarmupOwnerHoldChanged;
                 hurtEventSubscribed = false;
             }
 
@@ -131,6 +135,7 @@ namespace BossRush
         /// </summary>
         public static void ClearSceneCaches()
         {
+            projectileWarmupGeneration++;
             processedHitPairs.Clear();
             processedGroundZoneShots.Clear();
             processedHitKeysToRemove.Clear();
@@ -151,7 +156,23 @@ namespace BossRush
             statBaselineByItemInstance.Clear();
         }
 
-        private static async UniTaskVoid PreloadBossRedProjectileAsync()
+        private static bool IsProjectileWarmupOwnerValid(CharacterMainControl owner)
+        {
+            return hurtEventSubscribed && owner != null && owner == CharacterMainControl.Main &&
+                owner.Health != null && !owner.Health.IsDead && ModBehaviour.CanRunGameplayRuntimeCached() &&
+                owner.CurrentHoldItemAgent != null && IsDragonKingBossGun(owner.CurrentHoldItemAgent.Item);
+        }
+
+        private static void OnWarmupOwnerHoldChanged(CharacterMainControl owner, DuckovItemAgent agent)
+        {
+            if (owner != CharacterMainControl.Main) return;
+            projectileWarmupGeneration++;
+            bossRedProjectileWarmupStarted = false;
+            ClearFireExplosionEffectPool();
+            WarmupProjectileCache();
+        }
+
+        private static async UniTaskVoid PreloadBossRedProjectileAsync(int generation, CharacterMainControl owner)
         {
             try
             {
@@ -163,8 +184,10 @@ namespace BossRush
                     }
 
                     await UniTask.DelayFrame(1);
+                    if (generation != projectileWarmupGeneration || !IsProjectileWarmupOwnerValid(owner)) return;
                 }
 
+                if (generation != projectileWarmupGeneration || !IsProjectileWarmupOwnerValid(owner)) return;
                 CharacterRandomPreset preset = FindBossRedBasePreset();
                 if (preset == null)
                 {
@@ -173,7 +196,8 @@ namespace BossRush
                     return;
                 }
 
-                Projectile projectile = await ExtractBossRedProjectileAsync(preset);
+                Projectile projectile = await ExtractBossRedProjectileAsync(preset, generation, owner);
+                if (generation != projectileWarmupGeneration || !IsProjectileWarmupOwnerValid(owner)) return;
                 if (projectile == null)
                 {
                     bossRedProjectileWarmupStarted = false;
@@ -186,8 +210,11 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                bossRedProjectileWarmupStarted = false;
                 ModBehaviour.DevLog("[DragonKingBossGun] 预缓存 Boss_Red 弹幕异常: " + e.Message);
+            }
+            finally
+            {
+                if (generation == projectileWarmupGeneration) bossRedProjectileWarmupStarted = false;
             }
         }
 
@@ -226,7 +253,7 @@ namespace BossRush
             return null;
         }
 
-        private static async UniTask<Projectile> ExtractBossRedProjectileAsync(CharacterRandomPreset preset)
+        private static async UniTask<Projectile> ExtractBossRedProjectileAsync(CharacterRandomPreset preset, int generation, CharacterMainControl owner)
         {
             if (preset == null || presetGenerateItemsMethod == null)
             {
@@ -239,7 +266,9 @@ namespace BossRush
                 List<Item> generatedItems = null;
                 try
                 {
+                    if (generation != projectileWarmupGeneration || !IsProjectileWarmupOwnerValid(owner)) return null;
                     generatedItems = await (UniTask<List<Item>>)presetGenerateItemsMethod.Invoke(preset, null);
+                    if (generation != projectileWarmupGeneration || !IsProjectileWarmupOwnerValid(owner)) return null;
                     if (generatedItems == null)
                     {
                         continue;

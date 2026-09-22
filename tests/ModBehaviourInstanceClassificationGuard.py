@@ -21,27 +21,9 @@ EXCLUDE_DIRS = {
     "鸭科夫源码",
 }
 
-EXPECTED_COUNTS = {
-    "Integration": 274,
-    "ZombieMode": 38,
-    "Interactables": 23,
-    "ModeE": 26,
-    "Campaign": 12,
-    "Audio": 9,
-    "ModeF": 6,
-    "Patches": 8,
-    "RandomEvents": 5,
-    "ModeG": 4,
-    "MapSelection": 3,
-    "ModeD": 1,
-    "ModeH": 1,
-    "DebugAndTools": 4,
-    # 2026-09-20 +1：孵化揭晓演出播放异色大奖音乐（PetNestHatchRevealView.PlayJackpotMusic），
-    # 与 NewWeaponFx.PlaySound 同款取法，属 Keep: 通知/音效，不是新增全局服务依赖。
-    "PetNest": 1,
-}
+EXPECTED_COUNTS = {'Audio': 9, 'Campaign': 12, 'DebugAndTools': 4, 'Integration': 269, 'Interactables': 23, 'MapSelection': 3, 'ModeD': 1, 'ModeE': 26, 'ModeF': 6, 'ModeG': 4, 'ModeH': 1, 'Patches': 8, 'PetNest': 1, 'RandomEvents': 5, 'ZombieMode': 38}
 
-EXPECTED_TOTAL = 415
+EXPECTED_TOTAL = 410
 
 
 def fail(message: str) -> int:

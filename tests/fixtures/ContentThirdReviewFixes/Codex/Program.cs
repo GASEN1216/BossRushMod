@@ -101,6 +101,7 @@ class Program
         CheckCodec();
         CheckCapacityAndCleanup();
         CheckKillEligibility();
+        CheckActualPlayerTeam();
         CheckOfficialRosterWithoutBossFlag();
         Console.WriteLine("Codex regression checks=" + checks);
     }
@@ -188,6 +189,32 @@ class Program
         Check(CodexOfficialBossRegistry.IsOfficialCreature("Cname_Bear")
             && CodexPersistence.Current.Find("Cname_Bear") == null,
             "official non-boss creatures do not gain kill eligibility from the display roster");
+    }
+
+    static void CheckActualPlayerTeam()
+    {
+        foreach (Teams team in new[] { Teams.player, Teams.wolf, Teams.scav, Teams.usec, Teams.bear, Teams.lab })
+        {
+            Reset();
+            var player = new CharacterMainControl { IsMainCharacter = true, Team = team };
+            var target = new Health { Character = new CharacterMainControl { isBossCharacter = true, Team = team,
+                characterPreset = new CharacterRandomPreset { nameKey = "allied_boss" } } };
+            var hit = new DamageInfo { fromCharacter = player, finalDamage = 100 };
+            CodexKillCollector.OnGlobalHurt(target, hit);
+            Check(CodexKillCollector.TrackedFightCount == 0, "same actual team does not start timer: " + team);
+            target.IsDead = true;
+            CodexKillCollector.OnGlobalDead(target, hit);
+            Check(CodexPersistence.StoreCalls == 0 && CodexPersistence.Current.Find("allied_boss") == null,
+                "same actual team does not record kill: " + team);
+            target = new Health { Character = new CharacterMainControl { isBossCharacter = true,
+                Team = team == Teams.wolf ? Teams.bear : Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = "hostile_boss" } } };
+            CodexKillCollector.OnGlobalHurt(target, hit);
+            Check(CodexKillCollector.TrackedFightCount == 1, "enemy of actual team starts timer: " + team);
+            target.IsDead = true;
+            CodexKillCollector.OnGlobalDead(target, hit);
+            Check(CodexPersistence.Current.Find("hostile_boss").Kills == 1, "actual enemy kill records: " + team);
+        }
     }
 
     static void CheckNewAchievementThresholds()

@@ -44,6 +44,8 @@ namespace BossRush
             BossRushEventBus.Unsubscribe<BossRushAchievementUnlockedEvent>(OnBossRushAchievementUnlockedEvent);
             ResetAchievementBossKillTracking();
             UnsubscribeAchievementEvents();
+            SafeRuntime.Run("AchievementView.Shutdown", AchievementView.Shutdown);
+            SafeRuntime.Run("SteamAchievementPopup.Shutdown", SteamAchievementPopup.Shutdown);
         }
 
         private void OnBossRushAchievementUnlockedEvent(BossRushAchievementUnlockedEvent eventData)

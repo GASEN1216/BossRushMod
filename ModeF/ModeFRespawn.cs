@@ -754,6 +754,8 @@ namespace BossRush
 
         private async UniTaskVoid RespawnModeFBossAsync()
         {
+            int modeFSessionToken = modeFState.RuntimeSessionToken;
+            int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
             bool selectedDragonDescendant = false;
             ModeEFSpawnProfiler profiler = new ModeEFSpawnProfiler("ModeFRespawn", "DeathRefill");
             try
@@ -778,8 +780,6 @@ namespace BossRush
                     return;
                 }
 
-                int modeFSessionToken = modeFState.RuntimeSessionToken;
-                int relatedScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene().buildIndex;
                 selectedDragonDescendant = IsDragonDescendantPreset(preset);
                 if (selectedDragonDescendant)
                 {
@@ -801,6 +801,7 @@ namespace BossRush
                     onCommit: (ctx) => ConfigureModeFRespawnedBoss(ctx, selectedDragonDescendant, spawnPos)
                 );
                 profiler.Mark("AwaitSpawnCore");
+                if (!IsModeFSessionStillValid(modeFSessionToken, relatedScene)) return;
 
                 if (result == null || !result.success)
                 {
@@ -823,6 +824,7 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeF] [ERROR] RespawnModeFBoss failed: " + e.Message);
+                if (!IsModeFSessionStillValid(modeFSessionToken, relatedScene)) return;
                 if (selectedDragonDescendant)
                 {
                     modeEDragonDescendantSpawned = false;
@@ -875,7 +877,7 @@ namespace BossRush
                 }
 
                 Teams spawnedTeam = ResolveModeFBossCombatTeam(Teams.middle, spawnedPreset, spawnPos);
-                SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam);
+                SetModeFBossDisplayName(ctx.character, spawnedPreset.displayName, spawnedTeam, spawnedPreset.name);
                 ctx.character.SetTeam(spawnedTeam);
                 ctx.character.gameObject.name = "ModeF_" + spawnedPreset.displayName;
                 RegisterModeESharedRuntimeForModeFBoss(ctx.character, ctx.position);

@@ -83,6 +83,8 @@ namespace BossRush
             int modeESessionRelatedScene = -1)
         {
             CharacterMainControl spawnedCharacter = null;
+            Func<bool> isRequestCurrent = () => IsModeEOrModeFSpawnSessionStillValid(
+                modeFSessionToken, modeFRelatedScene, modeESessionToken, modeESessionRelatedScene);
             try
             {
                 if (modeESessionToken > 0 &&
@@ -126,6 +128,11 @@ namespace BossRush
                     null,
                     false);
                 CharacterMainControl character = spawnedCharacter;
+                if (!isRequestCurrent())
+                {
+                    if (character != null) UnityEngine.Object.Destroy(character.gameObject);
+                    return;
+                }
                 if (character == null)
                 {
                     DevLog("[ModeE] [ERROR] CreateCharacterAsync 返回空，神秘商人生成失败");
@@ -180,6 +187,11 @@ namespace BossRush
             catch (Exception e)
             {
                 DevLog("[ModeE] [ERROR] SpawnModeEMerchant 失败: " + e.Message);
+                if (!isRequestCurrent())
+                {
+                    if (spawnedCharacter != null) UnityEngine.Object.Destroy(spawnedCharacter.gameObject);
+                    return;
+                }
                 if (modeESessionToken > 0)
                 {
                     GameObject spawnedGo = null;
@@ -190,45 +202,6 @@ namespace BossRush
                     catch { }
                     FailModeEShellMerchantBuild(spawnedGo, "merchant spawn failed");
                 }
-            }
-        }
-
-        // ====================================================================
-        // 设置商人生命值
-        // ====================================================================
-
-        /// <summary>设置商人生命值为 999999，防止被误杀</summary>
-        private void SetModeEMerchantHealth(CharacterMainControl character)
-        {
-            try
-            {
-                // 通过 Stat 系统添加生命值修饰符
-                Item characterItem = character.GetComponent<Item>();
-                if (characterItem != null)
-                {
-                    Stat maxHealthStat = characterItem.GetStat("MaxHealth");
-                    if (maxHealthStat != null)
-                    {
-                        // 添加大量生命值
-                        float delta = 999999f - maxHealthStat.Value;
-                        if (delta > 0)
-                        {
-                            Modifier mod = new Modifier(ModifierType.Add, delta, this);
-                            maxHealthStat.AddModifier(mod);
-                        }
-                    }
-                }
-
-                // 同步当前血量到最大值
-                if (character.Health != null)
-                {
-                    character.Health.SetHealth(character.Health.MaxHealth);
-                    DevLog("[ModeE] 商人生命值已设置: " + character.Health.MaxHealth);
-                }
-            }
-            catch (Exception e)
-            {
-                DevLog("[ModeE] [WARNING] 设置商人生命值失败: " + e.Message);
             }
         }
 

@@ -116,8 +116,8 @@ namespace BossRush
                 CharacterMainControl victim = target.TryGetCharacter();
                 if (victim == null) return;
 
-                // 6) 排友军：宠物、雇佣兵、临时同伴都是 Teams.player
-                if (victim.Team == Teams.player) return;
+                // 6) Mode E 主角可使用非 player 营旗，按实际来源阵营排除友军。
+                if (!Team.IsEnemy(info.fromCharacter.Team, victim.Team)) return;
 
                 // 7) 排基地场景：基地里的靶子/演示角色不该计入战绩
                 if (IsBaseLevelSafe()) return;
@@ -182,7 +182,7 @@ namespace BossRush
                 // ResolveBossKey 处早返，原先它们的起点只进不出，长局凑满容量后
                 // 会把仍在交战中的 Boss 起点整表冲掉。
                 CharacterMainControl victim = target.TryGetCharacter();
-                if (victim == null || victim.Team == Teams.player) return;
+                if (victim == null || !Team.IsEnemy(info.fromCharacter.Team, victim.Team)) return;
                 if (string.IsNullOrEmpty(ResolveBossKey(victim))) return;
 
                 int id = target.GetInstanceID();

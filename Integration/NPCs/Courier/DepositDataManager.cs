@@ -124,6 +124,8 @@ namespace BossRush
         
         /// <summary>是否已加载</summary>
         private static bool isLoaded = false;
+        private static bool loadWriteBlocked;
+        public static bool CanWrite { get { EnsureLoaded(); return !loadWriteBlocked; } }
         
         // ============================================================================
         // 公共方法
@@ -134,59 +136,59 @@ namespace BossRush
         /// </summary>
         public static void Load()
         {
+            cachedItems.Clear();
+            isLoaded = true;
+            loadWriteBlocked = true;
+            List<ItemTreeData> items = null;
+            List<long> times = null;
+            List<int> values = null;
+            bool primaryReadFailed = false;
             try
             {
-                cachedItems.Clear();
-
-                List<ItemTreeData> items;
-                List<long> times;
-                List<int> values;
-                bool recoveredFromBackup = false;
-                bool repairedFromLegacy = false;
-
-                if (!TryLoadCommittedDepositLists(out items, out times, out values))
+                if (TryLoadCommittedDepositLists(out items, out times, out values))
                 {
-                    if (TryLoadBackupDepositLists(out items, out times, out values))
-                    {
-                        recoveredFromBackup = true;
-                        ModBehaviour.DevLog("[DepositDataManager] [WARNING] 主寄存数据未完整提交，已从备份槽恢复");
-                    }
-                    else if (TryLoadLegacyMinimumDepositLists(out items, out times, out values))
-                    {
-                        repairedFromLegacy = true;
-                        ModBehaviour.DevLog("[DepositDataManager] [WARNING] 未找到完整提交快照，使用旧格式最小一致长度恢复");
-                    }
-                    else
-                    {
-                        ModBehaviour.DevLog("[DepositDataManager] 数据为空或不完整，初始化空列表");
-                        isLoaded = true;
-                        return;
-                    }
+                    RebuildCacheFromLists(items, times, values, false);
+                    loadWriteBlocked = false;
+                    return;
                 }
-
-                RebuildCacheFromLists(items, times, values, recoveredFromBackup || repairedFromLegacy);
-                isLoaded = true;
-
-                if (recoveredFromBackup || repairedFromLegacy)
-                {
-                    Save();
-                }
-
-                ModBehaviour.DevLog("[DepositDataManager] 数据加载成功，共 " + cachedItems.Count + " 件物品");
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[DepositDataManager] [ERROR] 加载数据失败: " + e.Message + "\n" + e.StackTrace);
-                cachedItems.Clear();
-                isLoaded = true;
+                primaryReadFailed = true;
+                ModBehaviour.DevLog("[DepositDataManager] 读取主快照失败: " + e.Message);
+            }
+            bool primaryMissing = !primaryReadFailed && items == null && times == null && values == null;
+            try
+            {
+                if (TryLoadBackupDepositLists(out items, out times, out values))
+                {
+                    RebuildCacheFromLists(items, times, values, false);
+                    loadWriteBlocked = false;
+                    // 恢复只交换内存；首次成功业务提交才写主快照，保留故障原字节。
+                    return;
+                }
+                if (primaryMissing && items == null && times == null && values == null
+                    && SavesSystem.LoadGlobal<long>(KEY_COMMIT_GENERATION, 0L) == 0L
+                    && SavesSystem.LoadGlobal<long>(KEY_BACKUP_COMMIT_GENERATION, 0L) == 0L)
+                    loadWriteBlocked = false;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[DepositDataManager] 读取备份失败，寄存只读: " + e.Message);
             }
         }
-        
+
         /// <summary>
         /// 保存寄存数据（到 Global.json）
         /// </summary>
         public static void Save()
         {
+            TrySave();
+        }
+
+        private static bool TrySave()
+        {
+            if (!CanWrite) return false;
             try
             {
                 List<ItemTreeData> items = new List<ItemTreeData>();
@@ -218,10 +220,13 @@ namespace BossRush
                     values);
 
                 ModBehaviour.DevLog("[DepositDataManager] 数据保存成功，共 " + items.Count + " 件物品");
+                return true;
             }
             catch (Exception e)
             {
+                loadWriteBlocked = true;
                 ModBehaviour.DevLog("[DepositDataManager] [ERROR] 保存数据失败: " + e.Message + "\n" + e.StackTrace);
+                return false;
             }
         }
         
@@ -231,12 +236,17 @@ namespace BossRush
         /// <param name="item">要寄存的物品</param>
         public static void AddItem(Item item)
         {
-            EnsureLoaded();
+            TryAddItem(item);
+        }
+
+        public static bool TryAddItem(Item item)
+        {
+            if (!CanWrite) return false;
             
             if (item == null)
             {
                 ModBehaviour.DevLog("[DepositDataManager] [WARNING] 物品为空，跳过添加");
-                return;
+                return false;
             }
             
             try
@@ -258,11 +268,14 @@ namespace BossRush
                     ", 当前费用: " + depositedItem.GetCurrentFee());
                 
                 // 立即保存
-                Save();
+                if (TrySave()) return true;
+                cachedItems.Remove(depositedItem);
+                return false;
             }
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[DepositDataManager] [ERROR] 添加物品失败: " + e.Message);
+                return false;
             }
         }
         
@@ -272,7 +285,7 @@ namespace BossRush
         /// <param name="index">物品索引</param>
         public static void RemoveItem(int index)
         {
-            EnsureLoaded();
+            if (!CanWrite) return;
             
             if (index < 0 || index >= cachedItems.Count)
             {
@@ -297,6 +310,20 @@ namespace BossRush
         /// <summary>
         /// 获取所有寄存物品
         /// </summary>
+        public static int IndexOf(DepositedItemData record)
+        {
+            EnsureLoaded();
+            return record == null ? -1 : cachedItems.IndexOf(record);
+        }
+
+        public static bool RemoveItem(DepositedItemData record)
+        {
+            int index = IndexOf(record);
+            if (!CanWrite || index < 0) return false;
+            RemoveItem(index);
+            return true;
+        }
+
         public static List<DepositedItemData> GetAllItems()
         {
             EnsureLoaded();
@@ -317,7 +344,7 @@ namespace BossRush
         /// </summary>
         public static void ClearAll()
         {
-            EnsureLoaded();
+            if (!CanWrite) return;
             cachedItems.Clear();
             Save();
             ModBehaviour.DevLog("[DepositDataManager] 已清空所有寄存物品");
@@ -383,17 +410,6 @@ namespace BossRush
                 KEY_BACKUP_VALUES_GENERATION);
         }
 
-        private static bool TryLoadLegacyMinimumDepositLists(
-            out List<ItemTreeData> items,
-            out List<long> times,
-            out List<int> values)
-        {
-            items = SavesSystem.LoadGlobal<List<ItemTreeData>>(KEY_ITEMS, null);
-            times = SavesSystem.LoadGlobal<List<long>>(KEY_TIMES, null);
-            values = SavesSystem.LoadGlobal<List<int>>(KEY_VALUES, null);
-            return items != null && times != null && values != null;
-        }
-
         private static bool IsCommittedDepositSnapshot(
             List<ItemTreeData> items,
             List<long> times,
@@ -412,6 +428,8 @@ namespace BossRush
                 return false;
             }
 
+            for (int i = 0; i < items.Count; i++)
+                if (items[i] == null || values[i] < 0 || times[i] < DateTime.MinValue.Ticks || times[i] > DateTime.MaxValue.Ticks) return false;
             long commitGeneration = SavesSystem.LoadGlobal<long>(commitGenerationKey, 0L);
             long itemsGeneration = SavesSystem.LoadGlobal<long>(itemsGenerationKey, 0L);
             long timesGeneration = SavesSystem.LoadGlobal<long>(timesGenerationKey, 0L);

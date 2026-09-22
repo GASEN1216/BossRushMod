@@ -336,6 +336,7 @@ namespace BossRush
 
                 modifier.targetStatKey = "WalkSpeed";
                 modifier.modifierValue = PhantomWitchConfig.CurseSlowPerLayer;
+                SetFieldSafe(modifier, modifierTypeField, ItemStatsSystem.Stats.ModifierType.PercentageAdd);
 
                 SetFieldSafe(modifier, modifierBuffField, buff);
 
@@ -361,6 +362,7 @@ namespace BossRush
 
                 runModifier.targetStatKey = "RunSpeed";
                 runModifier.modifierValue = PhantomWitchConfig.CurseSlowPerLayer;
+                SetFieldSafe(runModifier, modifierTypeField, ItemStatsSystem.Stats.ModifierType.PercentageAdd);
 
                 SetFieldSafe(runModifier, modifierBuffField, buff);
 
@@ -810,7 +812,7 @@ namespace BossRush
         {
             try
             {
-                if (PhantomWitchFxRuntime.ShouldSkipEffect(PhantomWitchFxEffectImportance.Standard))
+                if (PhantomWitchFxRuntime.ShouldSkipEffect(PhantomWitchFxEffectImportance.Critical))
                 {
                     return null;
                 }
@@ -867,7 +869,7 @@ namespace BossRush
         {
             try
             {
-                if (PhantomWitchFxRuntime.ShouldSkipEffect(PhantomWitchFxEffectImportance.Standard))
+                if (PhantomWitchFxRuntime.ShouldSkipEffect(PhantomWitchFxEffectImportance.Critical))
                 {
                     return null;
                 }

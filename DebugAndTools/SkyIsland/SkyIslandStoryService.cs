@@ -15,6 +15,8 @@ namespace BossRush
         private string lastSaveError;
         private float nextRecoveryAt;
         private bool assetSnapshotRequired;
+        private bool cashSnapshotRequired, rewardCommitting;
+        private SkyIslandStoryAction? cashPaidPendingAction;
         /// <summary>这一趟出击里暂不入档的永久记录 id（见 <see cref="EncodeForSave"/>）。</summary>
         private readonly HashSet<string> raidHeldNotes = new HashSet<string>(StringComparer.Ordinal);
         private string summaryCache, summaryStatus;
@@ -37,7 +39,7 @@ namespace BossRush
                 CreateDefault = SkyIslandStoryRules.CreateDefault,
                 Encode = EncodeForSave, Decode = SkyIslandStoryCodec.Decode,
                 ReadSchemaVersion = SkyIslandStoryCodec.ReadSchemaVersion,
-                NotifySlotChanged = OnSlotChanged
+                NotifySlotChanged = OnSlotChanged, BeforeCollectSaveData = CollectPendingCash
             });
         }
 
@@ -299,6 +301,58 @@ namespace BossRush
             // 不再在回话末尾追加「进度已记录，待安全时机保存」：存档一切正常时那是状态转储、不是剧情（2026-09-14 审核 F-24 ①）；
             // 存档出了问题才需要玩家知道，那一句由 Summary 里的 SaveProblem 给。
             return true;
+        }
+
+        // 与 Campaign 的补偿式交付相同：确认到账、提交候选、同批采集现金，失败保留重试 owner。
+        internal bool TryDeliverQuest(SkyIslandStoryAction action, int money, out string message)
+        {
+            message = L10n.T("奖金暂时无法提交，请稍后重试。", "The reward cannot be committed yet. Please try again.");
+            if (rewardCommitting || !CanWrite || SavesSystem.IsSaving || Duckov.Economy.EconomyManager.Instance == null) return false;
+            SkyIslandStoryData candidate;
+            string appliedMessage;
+            if (!SkyIslandStoryRules.TryApply(Current, action, out candidate, out appliedMessage)) { message = appliedMessage; return false; }
+            if (cashPaidPendingAction.HasValue && cashPaidPendingAction.Value != action) return false;
+            rewardCommitting = true;
+            try
+            {
+                if (!cashPaidPendingAction.HasValue)
+                {
+                    long before = Duckov.Economy.EconomyManager.Money;
+                    if (money <= 0 || before > long.MaxValue - money) return false;
+                    try { Duckov.Economy.EconomyManager.Add(money); }
+                    catch (Exception e) { ModBehaviour.DevLog("[SkyIsland] 奖金通知异常: " + e.Message); }
+                    if (Duckov.Economy.EconomyManager.Money != before + money) return false;
+                    cashPaidPendingAction = action;
+                    cashSnapshotRequired = true;
+                }
+                if (!store.Store(candidate))
+                {
+                    long before = Duckov.Economy.EconomyManager.Money;
+                    try { Duckov.Economy.EconomyManager.Pay(new Duckov.Economy.Cost((long)money), true, true); }
+                    catch (Exception e) { ModBehaviour.DevLog("[SkyIsland] 奖金回滚异常: " + e.Message); }
+                    if (Duckov.Economy.EconomyManager.Money == before - money) cashPaidPendingAction = null;
+                    return false;
+                }
+                cashPaidPendingAction = null;
+                MarkPending(true);
+                message = appliedMessage;
+                return true;
+            }
+            finally { rewardCommitting = false; }
+        }
+
+        private bool CollectPendingCash()
+        {
+            if (rewardCommitting) return false;
+            if (!cashSnapshotRequired) return true;
+            try
+            {
+                if (!IsCurrentSlot || SavesSystem.IsSaving || Duckov.Economy.EconomyManager.Instance == null) return false;
+                SavesSystem.Save<Duckov.Economy.EconomyManager.SaveData>("EconomyData",
+                    (Duckov.Economy.EconomyManager.SaveData)Duckov.Economy.EconomyManager.Instance.GenerateSaveData());
+                return true;
+            }
+            catch (Exception e) { lastSaveError = "cash_collect_failed:" + e.GetType().Name; return false; }
         }
 
         /// <summary>把入口门上线前已经玩过群岛的槽位迁移成完整序章状态，并按既有事实回填岛上主线任务的接取 / 交付位；新槽不动。</summary>
@@ -718,6 +772,8 @@ namespace BossRush
             urgentPending = false;
             if (coordinator != null) coordinator.NotifySlotChanged();
             assetSnapshotRequired = false;
+            cashSnapshotRequired = false;
+            cashPaidPendingAction = null;
         }
 
         private sealed class SaveSource : IBossRushSaveBatchSource
@@ -729,11 +785,12 @@ namespace BossRush
             public string LogPrefix { get { return "[SkyIsland] "; } }
             public bool HasPendingWrite { get { return store.HasPendingWrite; } }
             public bool IsStoreFaulted { get { return store.IsStoreFaulted; } }
-            public bool HasSnapshotObligation { get { return owner.assetSnapshotRequired; } }
+            public bool HasSnapshotObligation { get { return owner.assetSnapshotRequired || owner.cashSnapshotRequired; } }
             public string LastError { get { return store.LastError; } }
             public bool CollectSnapshot(out string error)
             {
                 error = null;
+                if (!owner.CollectPendingCash()) { error = "cash_snapshot_unavailable"; return false; }
                 if (!owner.assetSnapshotRequired) return true;
                 try
                 {
@@ -748,7 +805,7 @@ namespace BossRush
                 catch (Exception e) { error = "asset_collect_failed:" + e.GetType().Name; return false; }
             }
             public bool FlushPending() { return store.FlushPending(); }
-            public void OnPhysicalSaveSucceeded() { owner.assetSnapshotRequired = false; }
+            public void OnPhysicalSaveSucceeded() { owner.assetSnapshotRequired = false; owner.cashSnapshotRequired = false; }
         }
     }
 }

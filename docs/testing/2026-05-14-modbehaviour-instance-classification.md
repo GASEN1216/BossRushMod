@@ -3,7 +3,7 @@
 ## Baseline
 
 - Command: `rg -n "ModBehaviour\\.Instance" --glob "*.cs"`
-- Raw matches: 415
+- Raw matches: 410
 - Current event-bus pilot: achievement popup notification only.
 - Guard evidence: `BossRushEventBusLifecycleGuard.py` PASS; `LongTermGoalNonGoalGuard.py` still blocks broad `EventBus`, `IGameWorldProbe`, and `IBossRushEventSubscriber` abstractions.
 
@@ -21,7 +21,7 @@
 
 | Area | Matches | Classification | Evidence / reason |
 |---|---:|---|---|
-| `Integration/` | 274 | mixed: Unity owner, gameplay state, temporary NPC service query, notification | 2026-09-22 −8：自建战利品展示柜面板退役（ShowcaseUI 删除，陈列改接官方陈列柜；扫描器与标签注入器不用 Instance）。Most usages are NPC/reward/reforge/courier/DragonKing/PhantomWitch wiring. They touch active run state, temporary NPC currency, coroutine owners, or audio/banner notifications. 2026-08-28 +5：日报报箱交互（3）、战绩采集门控（1）、日报面板横幅（1），三处都属 Keep 类别（交互回调宿主、开关查询、通知）。2026-09-04 +4：常驻捏脸 NPC 交互体（`PermanentDuckNpcInteractable`）读配偶跟随/离婚/回家三个选项的可见性，外加一次 null 判空。它是 MonoBehaviour、手上没有 owner 引用，`ModBehaviour.Instance` 是这类交互体的既定取法（与 Interactables/ 同款），且调用前已判空，属 Keep 类别。2026-09-05 +1（CR-2026-09-05-018）：`PermanentDuckNpcModule.IsSpawnRequestValid` 将捕获的 owner 与当前实例比对，阻止旧宿主的后继/迟到请求在新 runtime 登记 NPC，属 Keep: Unity owner；不是新增全局服务依赖。 2026-09-06 +4：冰霜/雷霆套装开放获取与回血取证。`SetBonusBossDropHandler.ShouldDeferToBossRushLootbox`（1）经宿主查 defer 判定，形态与 `FrostmourneBlueBossDropHandler` 完全一致；`SetBonusDamageObservation`（2）是 `Health.Hurt` 的 IL 观察补丁，prefix/取值两处都要拿当前宿主校验套装是否激活、并比对观察上下文归属；另 1 条来自同期交互体/图鉴基类归一化（`ShowcaseInteractable`、`CodexBossCatalog`、`DailyReportInteractable` 增删相抵后的净值）。三处均属 Keep 类别（Harmony 补丁入口、交互体宿主取法），不是新增全局服务依赖。 2026-09-07 +2：P0 五把新武器开放获取与表现层。`NewWeaponBossDropHandler.ShouldDeferToBossRushLootbox`（1）经宿主查 defer 判定，形态与 `SetBonusBossDropHandler` 完全一致；`NewWeaponFx.PlaySound`（1）经宿主播放触发音效，与 `FrostSetBonus_Nova` 走同一个 `PlaySoundEffect` 入口。两处均属 Keep 类别（额外掉落 defer 协议入口、音效通知），不是新增全局服务依赖。 |
+| `Integration/` | 269 | mixed: Unity owner, gameplay state, temporary NPC service query, notification | 2026-09-22 −8：自建战利品展示柜面板退役（ShowcaseUI 删除，陈列改接官方陈列柜；扫描器与标签注入器不用 Instance）。Most usages are NPC/reward/reforge/courier/DragonKing/PhantomWitch wiring. They touch active run state, temporary NPC currency, coroutine owners, or audio/banner notifications. 2026-08-28 +5：日报报箱交互（3）、战绩采集门控（1）、日报面板横幅（1），三处都属 Keep 类别（交互回调宿主、开关查询、通知）。2026-09-04 +4：常驻捏脸 NPC 交互体（`PermanentDuckNpcInteractable`）读配偶跟随/离婚/回家三个选项的可见性，外加一次 null 判空。它是 MonoBehaviour、手上没有 owner 引用，`ModBehaviour.Instance` 是这类交互体的既定取法（与 Interactables/ 同款），且调用前已判空，属 Keep 类别。2026-09-05 +1（CR-2026-09-05-018）：`PermanentDuckNpcModule.IsSpawnRequestValid` 将捕获的 owner 与当前实例比对，阻止旧宿主的后继/迟到请求在新 runtime 登记 NPC，属 Keep: Unity owner；不是新增全局服务依赖。 2026-09-06 +4：冰霜/雷霆套装开放获取与回血取证。`SetBonusBossDropHandler.ShouldDeferToBossRushLootbox`（1）经宿主查 defer 判定，形态与 `FrostmourneBlueBossDropHandler` 完全一致；`SetBonusDamageObservation`（2）是 `Health.Hurt` 的 IL 观察补丁，prefix/取值两处都要拿当前宿主校验套装是否激活、并比对观察上下文归属；另 1 条来自同期交互体/图鉴基类归一化（`ShowcaseInteractable`、`CodexBossCatalog`、`DailyReportInteractable` 增删相抵后的净值）。三处均属 Keep 类别（Harmony 补丁入口、交互体宿主取法），不是新增全局服务依赖。 2026-09-07 +2：P0 五把新武器开放获取与表现层。`NewWeaponBossDropHandler.ShouldDeferToBossRushLootbox`（1）经宿主查 defer 判定，形态与 `SetBonusBossDropHandler` 完全一致；`NewWeaponFx.PlaySound`（1）经宿主播放触发音效，与 `FrostSetBonus_Nova` 走同一个 `PlaySoundEffect` 入口。两处均属 Keep 类别（额外掉落 defer 协议入口、音效通知），不是新增全局服务依赖。 |
 | `ZombieMode/` | 38 | gameplay state and runtime owner | Runtime components ask for `ZombieModeCurrentRunId`, pause state, reward UI, temporary NPC service opening, and projectile/reward effects. These stay direct to avoid changing mode behavior. |
 | `Interactables/` | 23 | gameplay command and UI notification | BossRush sign, difficulty selection, lootbox return/clear actions call active mode commands. The Mode G entry path reuses one captured host instead of repeatedly resolving the singleton; the remaining calls are player-facing commands and should not be event-bus migrated without smoke. |
 | `ModeE/` | 26 | gameplay state / cached instance | Harmony patches and Mode E merchant/UI use the current active mode state and cached instance; guarded by Mode E/F no-gameplay-throttle and parity tests. |
@@ -65,3 +65,5 @@ Classification is complete for the current raw count, and Batch Final-5 is sourc
 2026-09-20（COMPAT）：词缀选物刷新增加 4 条宿主引用：ScheduleAffixSelectionRefresh 的判空/启动与 StopAffixSelectionRefresh 的判空/取消。属于 Keep: Unity owner，用于在官方 UI 回调完成后的下一帧刷新；关闭、切模式及 Cleanup 取消，不新增轮询或全局服务。
 
 2026-09-20 +1: DragonKingAssetManager captures the current ModBehaviour.Instance once as Keep: Unity owner, cancelling asynchronous bundle loading when that host is destroyed.
+
+2026-09-22 审计修复：事务捕获宿主、异步请求核对当前宿主、飞行/武器按实际持有者启动均归 Keep: Unity owner；寄存统一 owner 替代分散的静态查询，减少重复 Instance 取用。上表按本轮最终生产代码重新计数，不扩大解耦范围。

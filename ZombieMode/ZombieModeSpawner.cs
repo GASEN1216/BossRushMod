@@ -331,9 +331,16 @@ namespace BossRush
                     return null;
                 }
 
+                bool slotHeld = true;
+                System.Action releaseSpawnSlot = () =>
+                {
+                    if (!slotHeld) return;
+                    slotHeld = false;
+                    ReleaseZombieModeNormalSpawnSlot(runId);
+                };
                 if (!IsZombieModeNormalSpawnStillAllowed(runId, isSpawnPhaseStillAllowed))
                 {
-                    ReleaseZombieModeNormalSpawnSlot();
+                    releaseSpawnSlot();
                     return null;
                 }
 
@@ -362,7 +369,7 @@ namespace BossRush
                         if (!phaseStillAllowed || runtimePaused)
                         {
                             abortedByPause = phaseStillAllowed && runtimePaused;
-                            ReleaseZombieModeNormalSpawnSlot();
+                            releaseSpawnSlot();
                             DestroyZombieModePausedSpawnCandidate(zombie);
                             tcs.TrySetResult(null);
                             return;
@@ -377,7 +384,7 @@ namespace BossRush
                             : null;
 
                         zombie.gameObject.name = "ZombieMode_NormalZombie_Run" + runId;
-                        ReleaseZombieModeNormalSpawnSlot();
+                        releaseSpawnSlot();
                         ZombieModeEnemyRuntimeMarker marker = RegisterZombieModeEnemyRuntimeShell(runId, zombie, false, ZombieModeBossKind.Titan, -1, enemyKind, specialKind, eliteAffixes);
                         SanitizeBossRushZombieSpawn(zombie, "ZombieModeNormal");
                         PrepareZombieModeSpawnedEnemy(zombie, marker, ZombieModeTuning.NormalZombieForceTraceDistance);
@@ -395,7 +402,7 @@ namespace BossRush
                     },
                     onFailed: () =>
                     {
-                        ReleaseZombieModeNormalSpawnSlot();
+                        releaseSpawnSlot();
                         tcs.TrySetResult(null);
                     },
                     applyEquipment: false,
@@ -437,8 +444,9 @@ namespace BossRush
             return true;
         }
 
-        private void ReleaseZombieModeNormalSpawnSlot()
+        private void ReleaseZombieModeNormalSpawnSlot(int runId)
         {
+            if (!IsZombieModeRunValid(runId)) return;
             zombieModeRunState.PendingNormalZombieSpawns = Mathf.Max(0, zombieModeRunState.PendingNormalZombieSpawns - 1);
         }
 

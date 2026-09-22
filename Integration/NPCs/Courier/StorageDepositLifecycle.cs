@@ -46,6 +46,14 @@ namespace BossRush
                 return;
             }
 
+            DepositDataManager.Load();
+            if (!DepositDataManager.CanWrite)
+            {
+                NotificationText.Push(L10n.T("寄存数据读取失败，请稍后重试。", "Deposit data could not be loaded. Please try again later."));
+                return;
+            }
+            isServiceActive = true;
+            int session = ++depositSessionGeneration;
             ModBehaviour.DevLog("[StorageDepositService] 开始打开寄存服务...");
 
             // 初始化反射缓存
@@ -74,11 +82,11 @@ namespace BossRush
 
             BindPlayerInventory();
 
-            // 加载寄存数据
-            DepositDataManager.Load();
+            // 数据已在取得会话前完整读取。
 
             // 异步创建寄存商店（等待物品实例初始化完成）
             await CreateDepositShopAsync();
+            if (session != depositSessionGeneration || !isServiceActive) return;
 
             // 【关键】在打开 UI 之前，将所有寄存物品解锁
             // 这样原版 StockShopItemEntry.Refresh() 中的 EconomyManager.IsUnlocked() 会返回 true
@@ -104,6 +112,7 @@ namespace BossRush
 
                     // 等待多帧让 UI 完成初始化
                     await UniTask.DelayFrame(3);
+                    if (session != depositSessionGeneration || !isServiceActive) return;
 
                     // 更新每个商品条目的 ItemDisplay（使用正确的物品实例）
                     // 注意：由于已经在 ShowUI 之前解锁了所有物品，这里不需要强制激活
@@ -259,10 +268,10 @@ namespace BossRush
         private static void RegisterEvents()
         {
             // 注册售出事件（拦截原版售出，改为寄存）
-            StockShop.OnItemSoldByPlayer += OnItemSoldByPlayer;
+
 
             // 注册购买事件（物品取回）
-            StockShop.OnItemPurchased += OnItemPurchased;
+
 
             // 注册 UI 关闭事件
             ManagedUIElement.onClose += OnManagedUIElementClose;
@@ -324,8 +333,8 @@ namespace BossRush
             // 先取消商店选择事件
             UnregisterShopSelectionEvent();
 
-            StockShop.OnItemSoldByPlayer -= OnItemSoldByPlayer;
-            StockShop.OnItemPurchased -= OnItemPurchased;
+
+
             ManagedUIElement.onClose -= OnManagedUIElementClose;
             ItemUIUtilities.OnSelectionChanged -= OnSelectionChanged;
         }
@@ -455,6 +464,7 @@ namespace BossRush
         /// </summary>
         private static async UniTask CreateDepositShopAsync()
         {
+            int session = depositSessionGeneration;
             // 清理旧商店
             if (shopObject != null)
             {
@@ -506,6 +516,7 @@ namespace BossRush
 
             // 异步初始化物品实例缓存（等待完成）
             await InitializeItemInstancesAsync();
+            if (session != depositSessionGeneration || !isServiceActive) return;
 
             // 刷新商品列表
             RefreshShopEntries();
@@ -518,6 +529,7 @@ namespace BossRush
         /// </summary>
         private static async UniTask InitializeItemInstancesAsync()
         {
+            int session = depositSessionGeneration;
             if (depositShop == null || itemInstancesField == null) return;
 
             // 清空旧的缓存
@@ -550,6 +562,11 @@ namespace BossRush
                     {
                         // 使用 ItemTreeData.InstantiateAsync 恢复完整物品（包含配件、耐久度等状态）
                         Item restoredItem = await ItemTreeData.InstantiateAsync(depositedItem.itemData);
+                        if (session != depositSessionGeneration || !isServiceActive)
+                        {
+                            CleanupSingleRetrievedItem(restoredItem);
+                            return;
+                        }
 
                         if (restoredItem != null)
                         {
@@ -568,6 +585,7 @@ namespace BossRush
                     {
                         ModBehaviour.DevLog("[StorageDepositService] [WARNING] 恢复物品实例失败: index=" + i + ", error=" + e.Message);
 
+                        if (session != depositSessionGeneration || !isServiceActive) return;
                         // 失败时使用空白物品作为后备
                         Item fallbackItem = ItemAssetsCollection.InstantiateSync(typeID);
                         if (fallbackItem != null)

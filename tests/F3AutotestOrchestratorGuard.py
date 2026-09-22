@@ -32,6 +32,7 @@ EXECUTION = "DebugAndTools/F3GameplayValidationExecution.cs"
 BAT = "compile_official.bat"
 
 AUTOTEST_FILES = (
+    "DebugAndTools/F3GameplayValidationAutotestModels.cs",
     "DebugAndTools/F3GameplayValidationAutotestJudges.cs",
     AUTOTEST,
     ACTIONS,
@@ -356,6 +357,14 @@ def check(src):
         text = autotest.body(name) if autotest else None
         if text is None or "RestoreAutotestEnvironment(out" not in text:
             errors.append("%s 必须复位环境（RestoreAutotestEnvironment：语言、强制夜里、无敌、血量、时间流速）" % name)
+    restore = autotest.body("AutotestLegRestore") if autotest else None
+    if restore is None or not re.search(r"F3AutotestJudges\.RunStatus\(storyOk\s*&&\s*itemsOk\s*&&\s*envOk\s*,", restore):
+        errors.append("收尾报告必须同时计入剧情、物品收回/恢复键落盘和环境恢复结果")
+    reclaim = story.body("TryReclaimAutotestItems") if story else None
+    ordered(errors, reclaim, ("ReclaimAutotestItems(snapshot)", "CountOwnedItems(typeId, out where)",
+            "if (!matches) return false;", 'CharacterItem.Save("MainCharacterItemData")',
+            'PlayerStorage.Inventory.Save("PlayerStorage")', "PlayerStorageBuffer.SaveBuffer()"),
+            "收回物品必须先核对余额，再采集三份容器快照，才能让调用者清恢复键")
     env = story.body("RestoreAutotestEnvironment") if story else None
     for token, why in (("RestoreAutotestLanguage(out", "语言"), ("SkyIslandNight.DevForceNight = snapshot.ForceNight", "强制夜里"),
                        (".SetInvincible(pair.Value)", "临时无敌"), (".SetHealth(pair.Value)", "临时压低的血量"),
@@ -412,6 +421,10 @@ def sub_once(pattern, replacement):
 
 
 PROBES = (
+    ("DebugAndTools/F3GameplayValidationAutotestModels.cs", sub_once(r"\A#if BOSSRUSH_DEV\r?\n", ""), "纯数据模型去掉 Dev 包裹"),
+    (BAT, sub_once(r"echo\(DebugAndTools\\F3GameplayValidationAutotestModels\.cs\r\n", ""), "新模型文件漏登记编译清单"),
+    (AUTOTEST, sub_once(r"RunStatus\(storyOk && itemsOk && envOk,", "RunStatus(storyOk,"), "物品恢复键落盘失败仍报告成功"),
+    (STORY, sub_once(r'CharacterMainControl.Main.CharacterItem.Save\("MainCharacterItemData"\);', ""), "收回后未采集主角容器快照"),
     (ACTIONS, sub_once(r"\A#if BOSSRUSH_DEV\r?\n", ""), "去掉整份 Dev 包裹"),
     (AUTOTEST, sub_once(r"\nnamespace BossRush", "\n#endif\nnamespace BossRush"), "最外层 #if 提前闭合"),
     (BAT, sub_once(r"echo\(DebugAndTools\\F3GameplayValidationAutotestAsserts\.cs\r\n", ""), "编译清单漏登记一个文件"),

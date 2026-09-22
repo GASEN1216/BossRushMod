@@ -67,50 +67,18 @@ namespace BossRush
 
         internal static int[] ParseItemIds(string json)
         {
-            if (string.IsNullOrEmpty(json))
+            BossRushJsonValue root;
+            string error;
+            List<BossRushJsonValue> values;
+            if (!BossRushJsonParser.TryParse(json, out root, out error) ||
+                root == null || !root.TryGetArray("itemIds", out values)) return null;
+            var ids = new List<int>();
+            foreach (BossRushJsonValue value in values)
             {
-                return null;
+                if (value == null || value.Kind != BossRushJsonKind.Integer ||
+                    value.IntegerValue < int.MinValue || value.IntegerValue > int.MaxValue) return null;
+                ids.Add((int)value.IntegerValue);
             }
-
-            int keyIndex = json.IndexOf("\"itemIds\"", System.StringComparison.OrdinalIgnoreCase);
-            if (keyIndex < 0)
-            {
-                return null;
-            }
-
-            int openIndex = json.IndexOf('[', keyIndex);
-            if (openIndex < 0)
-            {
-                return null;
-            }
-
-            int closeIndex = json.IndexOf(']', openIndex + 1);
-            if (closeIndex < 0 || closeIndex <= openIndex)
-            {
-                return null;
-            }
-
-            string arrayText = json.Substring(openIndex + 1, closeIndex - openIndex - 1);
-            List<int> ids = new List<int>();
-            string[] tokens = arrayText.Split(',');
-            for (int i = 0; i < tokens.Length; i++)
-            {
-                string token = tokens[i].Trim();
-                if (string.IsNullOrEmpty(token))
-                {
-                    continue;
-                }
-
-                int id;
-                if (!int.TryParse(token, out id))
-                {
-                    ModBehaviour.DevLog("[LootBlacklistRegistry] [WARNING] LootBlacklist.json itemIds 含非法值: " + token);
-                    return null;
-                }
-
-                ids.Add(id);
-            }
-
             return ids.ToArray();
         }
 

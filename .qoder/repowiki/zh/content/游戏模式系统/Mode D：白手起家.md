@@ -390,3 +390,5 @@ Mode D 通过独立敌池、随机装备与全局掉落池，构建了“从零�
 ## 2026-09-18 征程契约的近战开局工具
 
 `ModeD/ModeDEquipment_StarterKit.cs` 保留原随机配装。仅 `modeDActive` 且征程活动契约含近战击杀目标时，保证调用原 `GiveRandomMeleeWeapon`；无需另建物品池或装备管线。无契约/待交付沿用原 40% 分支，E/F 共用整备不受该保证影响。判据位于 `CampaignObjectiveTracker.NeedsMeleeStarterKit`，开局发装早于追踪武装，所以读取当前契约，不依赖 `IsArmed`。门控由 `CampaignFlowGuard` 钉住，契约判据由 `CampaignPlayability` 执行。局内可正常拾取和穿戴装备，第二章不是全程裸装挑战。
+
+2026-09-22 审计修复（COMPAT，CR-2026-09-22-049）：`ModeDRuntimeModule` 持有生成代次，开局、结束、切图和销毁都会失效旧请求。分帧刷怪队列在每次取共享队列项前验证 owner；单敌生成、成功/失败结案与自动下一波也持有同一代次，因此重开后同号波次不会接收旧任务。沿用既有自动休整 unscaled 计时。`ModeDAsyncOwnerGuard` 与 `AuditModeLifecycle` 验证接线和跨局同号隔离（L1/L2）；实际切图时序待 L3。

@@ -394,6 +394,8 @@ namespace BossRush
         /// <summary>
         /// 手动缓存物品实例（解决动态创建商店的空引用问题）
         /// </summary>
+        private static readonly HashSet<Item> ownedDisplayItems = new HashSet<Item>();
+
         private static void CacheItemInstancesManually(string npcId)
         {
             if (currentShop == null || currentShop.entries == null)
@@ -430,6 +432,7 @@ namespace BossRush
                         Item item = ItemAssetsCollection.InstantiateSync(typeId);
                         if (item != null)
                         {
+                            ownedDisplayItems.Add(item);
                             dict[typeId] = item;
                             if (IsZombieModeTemporaryPurificationShop())
                             {
@@ -691,6 +694,13 @@ namespace BossRush
 
         private static void Cleanup()
         {
+            foreach (Item item in ownedDisplayItems)
+            {
+                if (item == null || item.InInventory != null || item.PluggedIntoSlot != null) continue;
+                try { item.DestroyTree(); }
+                catch (Exception e) { ModBehaviour.DevLog("[NPCShop] 清理展示物品失败: " + e.Message); }
+            }
+            ownedDisplayItems.Clear();
             if (shopObject != null)
             {
                 UnityEngine.Object.Destroy(shopObject);

@@ -180,6 +180,7 @@ namespace BossRush
             new Dictionary<uint, CharacterMainControl>();
         private readonly Dictionary<CharacterMainControl, uint> activeWraithRaidIdByCharacter =
             new Dictionary<CharacterMainControl, uint>();
+        private int deathWraithSpawnGeneration;
         private readonly HashSet<uint> spawningWraithRaidIds = new HashSet<uint>();
         private readonly List<DeadBodySpawnContext_DeathWraith> pendingDeadBodySpawnContexts =
             new List<DeadBodySpawnContext_DeathWraith>();
@@ -230,8 +231,7 @@ namespace BossRush
 
         private void OnSetFile_DeathWraith()
         {
-            pendingDeadBodySpawnContexts.Clear();
-            spawningWraithRaidIds.Clear();
+            ClearDeathWraithState_DeathWraith();
             // 切换存档槽：丢弃内存缓存，下次访问时从新槽位重新加载，避免跨槽串档。
             // 不在此 flush——OnSetFile 发生在切槽时，旧槽的内容应已通过官方存档点写过。
             _deathWraithListCache = null;

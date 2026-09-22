@@ -52,11 +52,13 @@ namespace BossRush
             internal SystemLanguage Language;
             internal bool ForceNight;
             internal float TimeScale;
+            internal bool BufferCountsIncluded;
         }
 
         /// <summary>崩溃恢复进行中：写入门在没有运行中验收时也放行（仍要求专用测试档）。</summary>
         private static bool _autotestRecovering;
         private int _autotestRecoveryCheckedSlot = int.MinValue;
+        private float _autotestRecoveryRetryAt;
 
         #region 快照
 
@@ -86,7 +88,7 @@ namespace BossRush
                     if (!TryRecoverAutotestSnapshot(out recovered)) { reason = "previous_snapshot_not_restored:" + recovered; return false; }
                     metrics = "previous_snapshot=" + recovered + ",";
                 }
-                var snapshot = new AutotestSnapshot { RunId = _runId, Slot = SavesSystem.CurrentSlot };
+                var snapshot = new AutotestSnapshot { RunId = _runId, Slot = SavesSystem.CurrentSlot, BufferCountsIncluded = true };
                 snapshot.RawExists = SavesSystem.KeyExisits(SkyIslandStoryRules.StorageKey);
                 snapshot.Raw = snapshot.RawExists ? SavesSystem.Load<string>(SkyIslandStoryRules.StorageKey) : null;
                 snapshot.Data = snapshot.RawExists ? SkyIslandStoryCodec.Decode(snapshot.Raw) : SkyIslandStoryRules.CreateDefault();
@@ -101,6 +103,8 @@ namespace BossRush
                 {
                     string where;
                     snapshot.Items[typeId] = CountOwnedItems(typeId, out where);
+                    if (where.IndexOf("error", StringComparison.Ordinal) >= 0 || where.IndexOf("n/a", StringComparison.Ordinal) >= 0)
+                        throw new InvalidOperationException("snapshot_item_count_unavailable:" + where);
                 }
                 snapshot.Money = EconomyManager.Money;
                 snapshot.Language = LocalizationManager.CurrentLanguage;
@@ -138,7 +142,8 @@ namespace BossRush
             var record = new F3AutotestSnapshotRecord
             {
                 RunId = snapshot.RunId, Slot = snapshot.Slot, RawExists = snapshot.RawExists, Raw = snapshot.Raw, Money = snapshot.Money,
-                Language = snapshot.Language.ToString(), ForceNight = snapshot.ForceNight, TimeScale = snapshot.TimeScale
+                Language = snapshot.Language.ToString(), ForceNight = snapshot.ForceNight, TimeScale = snapshot.TimeScale,
+                BufferCountsIncluded = snapshot.BufferCountsIncluded
             };
             record.OfficialUnlocked.AddRange(snapshot.OfficialUnlocked);
             foreach (KeyValuePair<int, int> pair in snapshot.Items) record.Items[pair.Key] = pair.Value;
@@ -153,7 +158,8 @@ namespace BossRush
             var snapshot = new AutotestSnapshot
             {
                 RunId = record.RunId, Slot = record.Slot, RawExists = record.RawExists, Raw = record.Raw, Data = data,
-                Money = record.Money, ForceNight = record.ForceNight, TimeScale = record.TimeScale
+                Money = record.Money, ForceNight = record.ForceNight, TimeScale = record.TimeScale,
+                BufferCountsIncluded = record.BufferCountsIncluded
             };
             try { snapshot.Language = (SystemLanguage)Enum.Parse(typeof(SystemLanguage), string.IsNullOrEmpty(record.Language) ? "Unknown" : record.Language, false); }
             catch (Exception) { snapshot.Language = LocalizationManager.CurrentLanguage; }
@@ -349,16 +355,26 @@ namespace BossRush
             }
         }
 
-        private void ClearAutotestSnapshotKey()
+        private bool ClearAutotestSnapshotKey()
         {
             string reason;
-            if (!AutotestWriteAllowed(out reason)) { ModBehaviour.DevLog("[Validation] 快照键未清除: " + reason); return; }
+            if (!AutotestWriteAllowed(out reason)) { ModBehaviour.DevLog("[Validation] 快照键未清除: " + reason); return false; }
+            if (SavesSystem.IsSaving) return false;
+            string previous = null;
             try
             {
+                previous = SavesSystem.Load<string>(AutotestSnapshotKey);
                 SavesSystem.Save<string>(AutotestSnapshotKey, string.Empty);
                 SavesSystem.SaveFile(false);
+                return true;
             }
-            catch (Exception e) { ModBehaviour.DevLog("[Validation] 清除快照键失败: " + e.Message); }
+            catch (Exception e)
+            {
+                try { if (!string.IsNullOrEmpty(previous)) SavesSystem.Save<string>(AutotestSnapshotKey, previous); }
+                catch (Exception restoreError) { ModBehaviour.DevLog("[Validation] 恢复待处理快照键失败: " + restoreError.Message); }
+                ModBehaviour.DevLog("[Validation] 清除快照键失败: " + e.Message);
+                return false;
+            }
         }
 
         /// <summary>
@@ -516,13 +532,54 @@ namespace BossRush
             return parts.Count == 0 ? "no_change" : string.Join(";", parts.ToArray());
         }
 
+        private static bool TryReclaimAutotestItems(AutotestSnapshot snapshot, out string detail)
+        {
+            detail = "reclaim_not_started";
+            string gate;
+            if (snapshot == null || !AutotestWriteAllowed(out gate)) return false;
+            try
+            {
+                if (snapshot.Slot != SavesSystem.CurrentSlot || SavesSystem.IsSaving ||
+                    CharacterMainControl.Main == null || CharacterMainControl.Main.CharacterItem == null ||
+                    PlayerStorage.Inventory == null || PlayerStorageBuffer.Instance == null) return false;
+                // 旧快照没有记录缓冲区基线，不能把原有待收取物误当成验收奖励删除。
+                foreach (int typeId in AutotestLedgerTypeIds)
+                {
+                    int buffered = CountBufferedItems(typeId);
+                    if (!snapshot.BufferCountsIncluded && buffered > 0)
+                    { detail = "legacy_snapshot_buffer_baseline_missing:" + typeId; return false; }
+                }
+                detail = ReclaimAutotestItems(snapshot);
+                bool matches = true;
+                foreach (int typeId in AutotestLedgerTypeIds)
+                {
+                    string where;
+                    int before; snapshot.Items.TryGetValue(typeId, out before);
+                    int after = CountOwnedItems(typeId, out where);
+                    detail += ";verified_" + typeId + "=" + after + "/" + before;
+                    if (after > before || where.IndexOf("error", StringComparison.Ordinal) >= 0
+                        || where.IndexOf("n/a", StringComparison.Ordinal) >= 0) matches = false;
+                    // 消耗过的原有物品按既有约定不补发；只有可靠读数才能判断短缺并清恢复键。
+                }
+                if (!matches) return false;
+                // 先采集收回后的完整容器；恢复键最后清，与资产同一次 SaveFile。
+                CharacterMainControl.Main.CharacterItem.Save("MainCharacterItemData");
+                PlayerStorage.Inventory.Save("PlayerStorage");
+                PlayerStorageBuffer.SaveBuffer();
+                return true;
+            }
+            catch (Exception e) { detail += ";asset_snapshot_failed:" + e.GetType().Name; return false; }
+        }
+
         private static int RemoveOwnedItems(int typeId, int count)
         {
-            int removed = 0;
+            // 纪念品在岛上由官方寄入缓冲区，先收回追加的尾部记录，保留原有记录。
+            int removed = RemoveFromBuffer(typeId, count);
             try
             {
                 CharacterMainControl main = CharacterMainControl.Main;
-                if (main != null && main.CharacterItem != null) removed += RemoveFromInventory(main.CharacterItem.Inventory, typeId, count, 0);
+                if (removed < count && main != null && main.CharacterItem != null)
+                    removed += RemoveFromInventory(main.CharacterItem.Inventory, typeId, count - removed, 0);
             }
             catch (Exception e) { ModBehaviour.DevLog("[Validation] 收回背包物品失败: " + e.Message); }
             try
@@ -531,6 +588,31 @@ namespace BossRush
                     removed += RemoveFromInventory(PlayerStorage.Inventory, typeId, count - removed, 0);
             }
             catch (Exception e) { ModBehaviour.DevLog("[Validation] 收回仓库物品失败: " + e.Message); }
+            return removed;
+        }
+
+        private static int RemoveFromBuffer(int typeId, int count)
+        {
+            int removed = 0;
+            var buffer = PlayerStorageBuffer.Buffer;
+            for (int i = buffer.Count - 1; i >= 0 && removed < count; i--)
+            {
+                var tree = buffer[i];
+                if (tree == null || tree.RootData == null || tree.RootTypeID != typeId) continue;
+                // 本套件寄入的是独立奖品；不拆带其它物品的树，无法回收时后面的复查保留恢复键。
+                if (tree.entries.Count != 1) continue;
+                var entry = tree.RootData;
+                int units = Math.Max(1, entry.StackCount);
+                int take = Math.Min(units, count - removed);
+                if (take == units) buffer.RemoveAt(i);
+                else
+                {
+                    var countValue = entry.variables.Find(value => value.Key == "Count");
+                    if (countValue == null) continue;
+                    countValue.SetInt(units - take);
+                }
+                removed += take;
+            }
             return removed;
         }
 
@@ -591,15 +673,22 @@ namespace BossRush
             int slot;
             try { slot = SavesSystem.CurrentSlot; }
             catch (Exception) { return; }
-            if (slot == _autotestRecoveryCheckedSlot) return;
+            if (slot == _autotestRecoveryCheckedSlot || Time.unscaledTime < _autotestRecoveryRetryAt) return;
             if (!IsBaseScene() || LevelManager.Instance == null || !LevelManager.AfterInit || SavesSystem.IsSaving) return;
             if (SkyIslandSessionOrNull() != null || SkyIslandStorySaveRecovery.IsPending()) return;
             _autotestRecoveryCheckedSlot = slot;
             string detail;
             bool ok = TryRecoverAutotestSnapshot(out detail);
             if (detail == "no_snapshot") return;
-            _status = ok ? "检测到上一轮全自动验收中断，已按快照还原测试档天空岛剧情" : "上一轮全自动验收的快照还原失败：" + detail;
-            UnityEngine.Debug.Log("[BossRushValidation] AUTOTEST_RECOVERY | " + (ok ? "PASS" : "FAIL") + " | " + detail);
+            if (!ok)
+            {
+                _autotestRecoveryCheckedSlot = int.MinValue;
+                _autotestRecoveryRetryAt = Time.unscaledTime + 5f;
+            }
+            string nextStatus = ok ? "检测到上一轮全自动验收中断，已按快照还原测试档天空岛剧情" : "上一轮全自动验收的快照还原失败：" + detail;
+            if (_status != nextStatus)
+                UnityEngine.Debug.Log("[BossRushValidation] AUTOTEST_RECOVERY | " + (ok ? "PASS" : "FAIL") + " | " + detail);
+            _status = nextStatus;
         }
 
         private bool TryRecoverAutotestSnapshot(out string detail)
@@ -613,16 +702,17 @@ namespace BossRush
                 if (!IsDedicatedCurrentSlot()) { detail = "snapshot_on_non_dedicated_slot"; return false; }
                 AutotestSnapshot snapshot = DecodeAutotestSnapshot(json);
                 if (snapshot == null) { detail = "snapshot_unreadable"; return false; }
+                if (snapshot.Slot != SavesSystem.CurrentSlot) { detail = "snapshot_slot_mismatch"; return false; }
                 _autotestRecovering = true;
                 try
                 {
                     string restore;
                     if (!RestoreAutotestStoryAtBase(snapshot.Data, out restore)) { detail = "restore_failed:" + restore; return false; }
-                    string items = ReclaimAutotestItems(snapshot);
+                    string items;
+                    if (!TryReclaimAutotestItems(snapshot, out items)) { detail = "items_pending:" + items; return false; }
                     if (!SameAutotestLanguage(LocalizationManager.CurrentLanguage, snapshot.Language)) LocalizationManager.SetLanguage(snapshot.Language);
                     SkyIslandNight.DevForceNight = snapshot.ForceNight;
-                    SavesSystem.Save<string>(AutotestSnapshotKey, string.Empty);
-                    SavesSystem.SaveFile(false);
+                    if (!ClearAutotestSnapshotKey()) { detail = "snapshot_clear_failed"; return false; }
                     detail = "recovered_run=" + snapshot.RunId + "," + restore + ",items=" + items;
                     return true;
                 }

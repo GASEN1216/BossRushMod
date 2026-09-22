@@ -14,6 +14,7 @@ namespace BossRush
         private static Material cachedAltarMaterial;
         private static Material cachedBrokenAltarMaterial;
         private static Mesh cachedQuadMesh;
+        private static Mesh cachedBillboardQuadMesh;
         private static Texture2D cachedAltarProjectionTexture;
         private static Texture2D cachedBrokenAltarProjectionTexture;
 
@@ -142,6 +143,19 @@ namespace BossRush
             private string poolKey;
             private float recycleTime;
             private bool isScheduled;
+            internal PhantomWitchAbilityController Owner { get; private set; }
+
+            internal void SetOwner(PhantomWitchAbilityController owner)
+            {
+                if (Owner == owner) return;
+                if (Owner != null) Owner.UntrackPooledEffect(gameObject);
+                Owner = owner;
+            }
+
+            private void OnDestroy()
+            {
+                SetOwner(null);
+            }
 
             public void Schedule(string key, float duration)
             {
@@ -155,6 +169,7 @@ namespace BossRush
                 if (isScheduled && Time.time >= recycleTime)
                 {
                     isScheduled = false;
+                    SetOwner(null);
                     CleanupRootForPooling(gameObject);
                     gameObject.SetActive(false);
                     if (!VfxPools.TryGetValue(poolKey, out Stack<GameObject> stack))
@@ -663,6 +678,11 @@ namespace BossRush
                 cachedBrokenAltarMaterial = null;
             }
 
+            if (cachedBillboardQuadMesh != null)
+            {
+                Object.Destroy(cachedBillboardQuadMesh);
+                cachedBillboardQuadMesh = null;
+            }
             if (cachedQuadMesh != null)
             {
                 Object.Destroy(cachedQuadMesh);
@@ -1008,7 +1028,7 @@ namespace BossRush
         {
             GameObject quad = new GameObject("BillboardQuad");
             MeshFilter filter = quad.AddComponent<MeshFilter>();
-            filter.sharedMesh = GetQuadMesh();
+            filter.sharedMesh = GetBillboardQuadMesh();
 
             MeshRenderer renderer = quad.AddComponent<MeshRenderer>();
             renderer.sharedMaterial = GetQuadMaterial();

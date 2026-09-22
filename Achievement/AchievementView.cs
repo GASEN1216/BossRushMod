@@ -137,10 +137,21 @@ namespace BossRush
 
         void OnDestroy()
         {
+            Close();
+            foreach (AchievementEntryUI entry in entries) if (entry != null) entry.Cleanup();
+            entries.Clear();
             if (_instance == this)
             {
                 _instance = null;
             }
+        }
+
+        internal static void Shutdown()
+        {
+            if (_instance == null) return;
+            _instance.Close();
+            _instance.gameObject.SetActive(false);
+            Destroy(_instance.gameObject);
         }
 
         /// <summary>

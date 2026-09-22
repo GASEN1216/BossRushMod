@@ -90,6 +90,7 @@ namespace BossRush
                 return null;
             }
 
+            PruneDestroyedActors();
             // 检查缓存
             DuckovDialogueActor existingActor;
             if (actorCache.TryGetValue(gameObject, out existingActor) && existingActor != null)
@@ -202,6 +203,7 @@ namespace BossRush
         /// <returns>已创建的 Actor，不存在则返回 null</returns>
         public static DuckovDialogueActor Get(GameObject gameObject)
         {
+            PruneDestroyedActors();
             if (gameObject == null) return null;
 
             DuckovDialogueActor actor;
@@ -293,7 +295,7 @@ namespace BossRush
         /// <param name="gameObject">目标 GameObject</param>
         public static void Remove(GameObject gameObject)
         {
-            if (gameObject != null && actorCache.ContainsKey(gameObject))
+            if (!ReferenceEquals(gameObject, null) && actorCache.ContainsKey(gameObject))
             {
                 actorCache.Remove(gameObject);
             }
@@ -302,6 +304,18 @@ namespace BossRush
         /// <summary>
         /// 清理所有缓存
         /// </summary>
+        private static void PruneDestroyedActors()
+        {
+            List<GameObject> stale = null;
+            foreach (var entry in actorCache)
+            {
+                if (entry.Key != null && entry.Value != null) continue;
+                if (stale == null) stale = new List<GameObject>();
+                stale.Add(entry.Key);
+            }
+            if (stale != null) foreach (var key in stale) actorCache.Remove(key);
+        }
+
         public static void ClearCache()
         {
             actorCache.Clear();

@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace BossRush
 {
-    internal sealed class DragonKingBossGunProjectileAgent : MonoBehaviour
+    internal sealed partial class DragonKingBossGunProjectileAgent : MonoBehaviour
     {
         private enum DragonKingBossGunProjectileDeathReason
         {
@@ -2258,63 +2258,12 @@ namespace BossRush
                 }
 
                 DragonKingBossGunRuntime.SharedReceiverIdSet.Add(receiverId);
+                if (!IsTraceReceiverUsable(receiver, receiver.health != null ? receiver.health.TryGetCharacter() : null, false)) continue;
                 receiver.AddBuff(buff, projectile.context.fromCharacter);
             }
         }
 
-        private DragonKingBossGunRuntime.DragonKingBossGunHitStage ResolveHitStage()
-        {
-            if (secondaryProjectile)
-            {
-                return DragonKingBossGunRuntime.DragonKingBossGunHitStage.Secondary;
-            }
 
-            if (returning)
-            {
-                return DragonKingBossGunRuntime.DragonKingBossGunHitStage.Return;
-            }
-
-            if (successfulHits > 0)
-            {
-                return DragonKingBossGunRuntime.DragonKingBossGunHitStage.Followup;
-            }
-
-            return DragonKingBossGunRuntime.DragonKingBossGunHitStage.Primary;
-        }
     }
 
-    [HarmonyPatch(typeof(Projectile), "UpdateMoveAndCheck")]
-    internal static class DragonKingBossGunProjectileMovePatch
-    {
-        [HarmonyPrefix]
-        private static bool Prefix(Projectile __instance, out DragonKingBossGunProjectileAgent __state)
-        {
-            __state = __instance != null ? __instance.GetComponent<DragonKingBossGunProjectileAgent>() : null;
-            if (__state == null || !__state.IsActiveForRuntime)
-            {
-                __state = null;
-                return true;
-            }
-
-            if (__state.UsesCustomMovement)
-            {
-                __state.ExecuteCustomMoveAndCheck();
-                return false;
-            }
-
-            __state.OnBeforeBaseMove();
-            return !__state.IsDead;
-        }
-
-        [HarmonyPostfix]
-        private static void Postfix(DragonKingBossGunProjectileAgent __state)
-        {
-            if (__state == null || !__state.IsActiveForRuntime)
-            {
-                return;
-            }
-
-            __state.OnAfterBaseMove();
-        }
-    }
 }

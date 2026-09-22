@@ -1,0 +1,36 @@
+using System;
+using BossRush;
+class Program
+{
+    static void Main()
+    {
+        var target = new DamageReceiver();
+        DragonFlameMarkTracker.ResetStaticCaches();
+        UnityEngine.Time.time = 0.1f;
+        DragonFlameMarkTracker.AddMark(target, 3, 10, 6f);
+        UnityEngine.Time.time = 6.05f;
+        DragonFlameMarkTracker.CleanupExpired();
+        if (DragonFlameMarkTracker.GetMarkCount(target) != 3) throw new Exception("normal pre-expiry control failed");
+        UnityEngine.Time.time = 6.2f;
+        DragonFlameMarkTracker.AddMark(target, 1, 10, 6f);
+        int actual = DragonFlameMarkTracker.GetMarkCount(target);
+        if (actual != 1) throw new Exception("expected stale mark revival was not reproduced");
+        Console.WriteLine("PASS expiry window: previous 3 marks expired at t=6.1, hit at t=6.2 yields " + actual + " expected 1");
+        int consumed = DragonFlameMarkTracker.ConsumeMark(target);
+        if (consumed != 1) throw new Exception("detonation count changed");
+        Console.WriteLine("PASS detonation consumes " + consumed + " fresh marks only");
+        DragonFlameMarkTracker.AddMark(target, 2, 10, 6f);
+        UnityEngine.Time.time = 12.2f;
+        if (DragonFlameMarkTracker.ConsumeMark(target) != 0) throw new Exception("expiry boundary consumed stale marks");
+    }
+}
+namespace UnityEngine
+{
+    public static class Time { public static float time; }
+    public static class Mathf { public static int Max(int a,int b)=>Math.Max(a,b); public static int Min(int a,int b)=>Math.Min(a,b); public static float Max(float a,float b)=>Math.Max(a,b); }
+}
+namespace BossRush
+{
+    public class DamageReceiver { public int GetInstanceID()=>1; }
+    public static class FenHuangHalberdConfig { public const int MaxMarkStacks=5; public const float MarkDuration=6f; }
+}

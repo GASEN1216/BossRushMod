@@ -1,10 +1,10 @@
 """全自动实机验收（F3「自动验收」）能离线证明的那一半：步骤表、剧情阶段、快照、线性对比度、可见度、manifest。
 
 抽取对象（整份 `#if BOSSRUSH_DEV`，只去掉首尾那一对包裹，行号保持不变）：
-- `DebugAndTools/F3GameplayValidationAutotestJudges.cs`：步骤表模型与纯判据；
+- `DebugAndTools/F3GameplayValidationAutotestJudges.cs` 与 `F3GameplayValidationAutotestModels.cs`：纯判据与步骤表模型；
 - `DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs`：剧情存档门面的 Dev 入口（与链接的生产 SkyIslandStoryService 同一个 partial）。
 
-**不要**给整个工程定义 BOSSRUSH_DEV：别的生产文件里的 Dev 区块引用 Unity，这里只有逐字抽出来的这两份进 Dev 口径。
+**不要**给整个工程定义 BOSSRUSH_DEV：别的生产文件里的 Dev 区块引用 Unity，这里只有显式逐字抽出的文件进 Dev 口径。
 Judges 的代码部分（剥掉注释与字符串字面量之后）一旦出现 Unity 标识，这里当场失败——那一份的全部意义就是能离线执行。
 `SteamScreenshotNote` 这个字符串常量里写着 `UnityEngine.ScreenCapture`，是说明文字不是引用，所以扫描前先把字面量内容抹掉。
 
@@ -20,6 +20,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 OUT = ROOT / 'Build' / 'runtime-regressions' / 'F3AutotestJudges'
 JUDGES = 'DebugAndTools/F3GameplayValidationAutotestJudges.cs'
+MODELS = 'DebugAndTools/F3GameplayValidationAutotestModels.cs'
 STORY_AUTOTEST = 'DebugAndTools/SkyIsland/SkyIslandStoryServiceAutotest.cs'
 FORBIDDEN = ('UnityEngine', 'Mathf.', 'GameObject', 'Transform', 'Texture2D')
 
@@ -107,10 +108,12 @@ def self_test_scanner():
 if __name__ == '__main__':
     self_test_scanner()
     judges_src = (ROOT / JUDGES).read_text(encoding='utf-8-sig')
+    models_src = (ROOT / MODELS).read_text(encoding='utf-8-sig')
     story_src = (ROOT / STORY_AUTOTEST).read_text(encoding='utf-8-sig')
     judges = unwrap_dev(judges_src, JUDGES)
+    models = unwrap_dev(models_src, MODELS)
     story = unwrap_dev(story_src, STORY_AUTOTEST)
-    scanned = code_only(judges)
+    scanned = code_only(judges + models)
     for anchor in ('class F3AutotestJudges', 'BossRushJsonParser', 'SkyIslandStoryCodec'):
         if anchor not in scanned:
             raise SystemExit('扫描视图里找不到 ' + anchor + '：清洗把代码也抹掉了，禁用标识检查没有意义')
@@ -121,9 +124,10 @@ if __name__ == '__main__':
     gen = OUT / 'gen'
     gen.mkdir(parents=True, exist_ok=True)
     (gen / 'AutotestJudges.cs').write_text(judges, encoding='utf-8')
+    (gen / 'AutotestModels.cs').write_text(models, encoding='utf-8')
     (gen / 'SkyIslandStoryServiceAutotest.cs').write_text(story, encoding='utf-8')
     (gen / 'source.sha256').write_text(
-        hashlib.sha256((judges_src + '\0' + story_src).encode('utf-8')).hexdigest(), encoding='utf-8')
+        hashlib.sha256((judges_src + '\0' + models_src + '\0' + story_src).encode('utf-8')).hexdigest(), encoding='utf-8')
     build = subprocess.run([
         'dotnet', 'build', str(HERE / 'Regression.csproj'), '--configuration', 'Release',
         '--output', str(OUT / 'bin'),

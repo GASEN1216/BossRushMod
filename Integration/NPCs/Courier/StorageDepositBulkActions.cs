@@ -181,7 +181,7 @@ namespace BossRush
         /// </summary>
         private static void OnDiscardAllClicked()
         {
-            if (!isServiceActive) return;
+            if (!isServiceActive || IsTransactionBusy || !DepositDataManager.CanWrite) return;
 
             int itemCount = DepositDataManager.GetItemCount();
             if (itemCount == 0)
@@ -413,7 +413,7 @@ namespace BossRush
         private static void OnRetrieveAllClicked()
         {
             if (!isServiceActive) return;
-            if (isRetrieveAllInProgress)
+            if (IsTransactionBusy || !DepositDataManager.CanWrite)
             {
                 ModBehaviour.DevLog("[StorageDepositService] 全部取出正在进行中，忽略重复点击");
                 return;
@@ -438,7 +438,6 @@ namespace BossRush
             }
 
             // 执行全部取出
-            isRetrieveAllInProgress = true;
             RetrieveAllItemsAsync(totalFee).Forget();
         }
 
@@ -455,96 +454,66 @@ namespace BossRush
         /// </summary>
         private static async UniTaskVoid RetrieveAllItemsAsync(int totalFee)
         {
+            DepositTransaction transaction = TryBeginTransaction();
+            if (transaction == null) return;
+            isRetrieveAllInProgress = true;
+            List<RetrieveAllDepositItem> restoredItems = null;
+            int paidFee = 0;
+            int deliveredFee = 0;
             try
             {
-                ModBehaviour.DevLog("[StorageDepositService] 开始全部取出，总费用: " + totalFee);
-
                 var depositedItems = DepositDataManager.GetAllItems();
-                List<int> failedRestoreIndices = new List<int>();
-                List<RetrieveAllDepositItem> restoredItems =
-                    await TryRestoreAllDepositItemsForRetrieveAll(depositedItems, failedRestoreIndices);
-                if (restoredItems.Count <= 0)
+                var failedRestoreIndices = new List<int>();
+                restoredItems = await TryRestoreAllDepositItemsForRetrieveAll(depositedItems, failedRestoreIndices, transaction);
+                if (!IsCurrentTransaction(transaction) || restoredItems.Count == 0) return;
+                int payableFee = CalculateRetrieveAllRestoredFee(restoredItems);
+                if (!TryPayRetrieveFee(payableFee, "ZombieModeTempCourierDepositRetrieveAll", transaction))
                 {
-                    CleanupRestoredRetrieveAllItems(restoredItems);
-                    NotificationText.Push(L10n.T("取出失败，寄存物品已保留。", "Retrieve failed. Deposited items were kept."));
-                    ModBehaviour.DevLog("[StorageDepositService] 全部取出失败：没有物品恢复成功，失败数=" + failedRestoreIndices.Count);
+                    NotificationText.Push(transaction.Purification ? GetTemporaryCourierPurificationInsufficientText()
+                        : LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds"));
+                    return;
+                }
+                paidFee = payableFee;
+                foreach (var restored in restoredItems)
+                {
+                    if (!IsCurrentTransaction(transaction)) break;
+                    if (restored == null || restored.RestoredItem == null || DepositDataManager.IndexOf(restored.DepositData) < 0) continue;
+                    if (!TryDeliverRetrievedItem(restored.RestoredItem)) continue;
+                    restored.RestoredItem = null;
+                    deliveredFee += Mathf.Max(0, restored.Fee);
+                    DepositDataManager.RemoveItem(restored.DepositData);
+                }
+                if (IsCurrentTransaction(transaction))
+                {
+                    foreach (Item display in depositItemInstances.Values) CleanupSingleRetrievedItem(display);
+                    depositItemInstances.Clear();
                     RefreshShopEntries();
                     RefreshShopUI();
                     UpdateRetrieveAllButton();
-                    return;
+                    NotificationText.Push(failedRestoreIndices.Count > 0 || deliveredFee < paidFee
+                        ? L10n.T("部分物品取出失败，失败物品已保留。", "Some items could not be retrieved and were kept in storage.")
+                        : LocalizationHelper.GetLocalizedText("BossRush_StorageService_Retrieved"));
                 }
-
-                int payableFee = CalculateRetrieveAllRestoredFee(restoredItems);
-                if (!TryPayRetrieveFee(payableFee, "ZombieModeTempCourierDepositRetrieveAll"))
-                {
-                    CleanupRestoredRetrieveAllItems(restoredItems);
-                    string msg = IsZombieModeTemporaryCourierPurificationService()
-                        ? GetTemporaryCourierPurificationInsufficientText()
-                        : LocalizationHelper.GetLocalizedText("BossRush_StorageService_InsufficientFunds");
-                    NotificationText.Push(msg);
-                    ModBehaviour.DevLog("[StorageDepositService] 全部取出扣费失败，已保留寄存数据");
-                    return;
-                }
-
-                List<int> deliveredIndices = new List<int>();
-                int failedDeliveryFee = 0;
-                int successCount = 0;
-                for (int i = 0; i < restoredItems.Count; i++)
-                {
-                    RetrieveAllDepositItem restored = restoredItems[i];
-                    if (restored == null || restored.RestoredItem == null)
-                    {
-                        continue;
-                    }
-
-                    try
-                    {
-                        ItemUtilities.SendToPlayer(restored.RestoredItem, true, true);
-                        deliveredIndices.Add(restored.DepositIndex);
-                        successCount++;
-                        ModBehaviour.DevLog("[StorageDepositService] 取出物品: " + restored.RestoredItem.DisplayName);
-                        restored.RestoredItem = null;
-                    }
-                    catch (Exception e)
-                    {
-                        failedDeliveryFee += Mathf.Max(0, restored.Fee);
-                        ModBehaviour.DevLog("[StorageDepositService] [WARNING] 发送取出物品失败: index=" + restored.DepositIndex + ", error=" + e.Message);
-                    }
-                }
-
-                RefundRetrieveFee(failedDeliveryFee, failedDeliveryFee > 0);
-                CleanupRestoredRetrieveAllItems(restoredItems);
-                RemoveRetrievedDepositItems(deliveredIndices);
-                depositItemInstances.Clear();
-
-                // 刷新商店
-                RefreshShopEntries();
-                RefreshShopUI();
-
-                // 更新按钮显示
-                UpdateRetrieveAllButton();
-
-                // 显示通知
-                string notification = failedRestoreIndices.Count > 0 || failedDeliveryFee > 0
-                    ? L10n.T("部分物品取出失败，失败物品已保留。", "Some items could not be retrieved and were kept in storage.")
-                    : LocalizationHelper.GetLocalizedText("BossRush_StorageService_Retrieved");
-                NotificationText.Push(notification);
-
-                ModBehaviour.DevLog("[StorageDepositService] 全部取出完成，共 " + successCount + " 件物品，恢复失败=" + failedRestoreIndices.Count + "，发送失败退款=" + failedDeliveryFee);
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog("[StorageDepositService] [ERROR] 全部取出失败: " + e.Message + "\n" + e.StackTrace);
+                ModBehaviour.DevLog("[StorageDepositService] 全部取出失败，未交付记录保留: " + e.Message);
             }
             finally
             {
-                isRetrieveAllInProgress = false;
+                RefundRetrieveFee(paidFee - deliveredFee, paidFee > deliveredFee, transaction);
+                CleanupRestoredRetrieveAllItems(restoredItems);
+                if (ReferenceEquals(transactionOwner, transaction))
+                {
+                    isRetrieveAllInProgress = false;
+                    EndTransaction(transaction);
+                }
             }
         }
 
         private static async UniTask<List<RetrieveAllDepositItem>> TryRestoreAllDepositItemsForRetrieveAll(
             List<DepositedItemData> depositedItems,
-            List<int> failedRestoreIndices)
+            List<int> failedRestoreIndices, DepositTransaction transaction)
         {
             List<RetrieveAllDepositItem> restoredItems = new List<RetrieveAllDepositItem>();
             if (depositedItems == null)
@@ -554,6 +523,7 @@ namespace BossRush
 
             for (int i = depositedItems.Count - 1; i >= 0; i--)
             {
+                if (!IsCurrentTransaction(transaction)) break;
                 DepositedItemData depositedItem = depositedItems[i];
                 if (depositedItem == null || depositedItem.itemData == null)
                 {
@@ -561,9 +531,15 @@ namespace BossRush
                     continue;
                 }
 
+                Item restoredItem = null;
                 try
                 {
-                    Item restoredItem = await ItemTreeData.InstantiateAsync(depositedItem.itemData);
+                    restoredItem = await ItemTreeData.InstantiateAsync(depositedItem.itemData);
+                    if (!IsCurrentTransaction(transaction))
+                    {
+                        CleanupSingleRetrievedItem(restoredItem);
+                        break;
+                    }
                     if (restoredItem == null)
                     {
                         failedRestoreIndices.Add(i);
@@ -581,6 +557,7 @@ namespace BossRush
                 }
                 catch (Exception e)
                 {
+                    CleanupSingleRetrievedItem(restoredItem);
                     failedRestoreIndices.Add(i);
                     ModBehaviour.DevLog("[StorageDepositService] [WARNING] 取出物品失败: index=" + i + ", error=" + e.Message);
                 }
@@ -609,19 +586,19 @@ namespace BossRush
             return total;
         }
 
-        private static bool TryPayRetrieveFee(int totalFee, string reason)
+        private static bool TryPayRetrieveFee(int totalFee, string reason, DepositTransaction transaction = null)
         {
             if (totalFee <= 0)
             {
                 return true;
             }
 
-            if (courierNPCTransform != null &&
-                ModBehaviour.Instance != null &&
-                ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
+            Transform npc = transaction != null ? transaction.Npc : courierNPCTransform;
+            bool purification = transaction != null ? transaction.Purification : IsZombieModeTemporaryCourierPurificationService();
+            if (purification && ModBehaviour.Instance != null)
             {
                 return ModBehaviour.Instance.TrySpendZombieModePurificationPointsForRealNpc(
-                    courierNPCTransform,
+                    npc,
                     totalFee,
                     reason);
             }
@@ -636,7 +613,7 @@ namespace BossRush
             return true;
         }
 
-        private static void RefundRetrieveFee(int totalFee, bool shouldRefund)
+        private static void RefundRetrieveFee(int totalFee, bool shouldRefund, DepositTransaction transaction = null)
         {
             if (!shouldRefund || totalFee <= 0)
             {
@@ -645,11 +622,12 @@ namespace BossRush
 
             try
             {
-                if (courierNPCTransform != null &&
-                    ModBehaviour.Instance != null &&
-                    ModBehaviour.Instance.IsZombieModeTemporaryRealNpc(courierNPCTransform))
+                if (transaction != null && transaction.Slot != Saves.SavesSystem.CurrentSlot) return;
+                Transform npc = transaction != null ? transaction.Npc : courierNPCTransform;
+                bool purification = transaction != null ? transaction.Purification : IsZombieModeTemporaryCourierPurificationService();
+                if (purification && ModBehaviour.Instance != null)
                 {
-                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(courierNPCTransform, totalFee, true);
+                    ModBehaviour.Instance.RefundZombieModePurificationPointsForRealNpc(npc, totalFee, true);
                     return;
                 }
 
@@ -658,20 +636,6 @@ namespace BossRush
             catch (Exception e)
             {
                 ModBehaviour.DevLog("[StorageDepositService] [WARNING] 全部取出退款失败: " + e.Message);
-            }
-        }
-
-        private static void RemoveRetrievedDepositItems(List<int> depositIndices)
-        {
-            if (depositIndices == null || depositIndices.Count <= 0)
-            {
-                return;
-            }
-
-            depositIndices.Sort();
-            for (int i = depositIndices.Count - 1; i >= 0; i--)
-            {
-                DepositDataManager.RemoveItem(depositIndices[i]);
             }
         }
 
@@ -957,6 +921,9 @@ namespace BossRush
         /// </summary>
         private static void Cleanup()
         {
+            depositSessionGeneration++;
+            transactionOwner = null;
+            isServiceActive = false;
             // 清理"全部取出"按钮
             CleanupRetrieveAllButton();
 

@@ -208,6 +208,7 @@ namespace BossRush
             if (v.Kind != BossRushJsonKind.Float) return false;
             if (double.IsNaN(v.FloatValue) || double.IsInfinity(v.FloatValue)) return false;
             value = (float)v.FloatValue;
+            if (float.IsNaN(value) || float.IsInfinity(value)) { value = 0f; return false; }
             return true;
         }
 
@@ -359,7 +360,11 @@ namespace BossRush
         public float AsFloat(float fallback)
         {
             if (Kind == BossRushJsonKind.Integer) return IntegerValue;
-            if (Kind == BossRushJsonKind.Float) return (float)FloatValue;
+            if (Kind == BossRushJsonKind.Float)
+            {
+                float value = (float)FloatValue;
+                return float.IsNaN(value) || float.IsInfinity(value) ? fallback : value;
+            }
             return fallback;
         }
 

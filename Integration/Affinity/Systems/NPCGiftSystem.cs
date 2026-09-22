@@ -32,8 +32,14 @@ namespace BossRush
         /// <summary>
         /// 检查指定NPC今日是否可以赠送礼物
         /// </summary>
+        public static bool CanOpenGiftSelection(string npcId)
+        {
+            return AffinityManager.CanWrite && (CanGiftToday(npcId) || !string.IsNullOrEmpty(AffinityManager.GetCurrentSpouseNpcId()));
+        }
+
         public static bool CanGiftToday(string npcId)
         {
+            if (!AffinityManager.CanWrite) return false;
             int currentDay = GetCurrentGameDay();
             int lastGiftDay = AffinityManager.GetLastGiftDay(npcId);
             return currentDay != lastGiftDay;
@@ -49,7 +55,7 @@ namespace BossRush
         /// <returns>是否赠送成功</returns>
         public static bool GiveGift(string npcId, Item item, Transform npcTransform = null, INPCController npcController = null)
         {
-            if (string.IsNullOrEmpty(npcId) || item == null)
+            if (!AffinityManager.CanWrite || string.IsNullOrEmpty(npcId) || item == null)
             {
                 ModBehaviour.DevLog("[NPCGift] 赠送失败：参数无效");
                 return false;

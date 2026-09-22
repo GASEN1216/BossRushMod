@@ -28,6 +28,8 @@ namespace BossRush
         private static HashSet<string> unlockedAchievements = new HashSet<string>();
         private static HashSet<string> claimedRewards = new HashSet<string>();
         private static bool isInitialized = false;
+        private static bool claimingReward;
+        private static AchievementRewardJournal rewardJournal;
 
         #endregion
 
@@ -358,37 +360,29 @@ namespace BossRush
             if (!unlockedAchievements.Contains(achievementId)) return false;
             if (claimedRewards.Contains(achievementId)) return false;
 
-            // 发放现金奖励
-            if (achievement.reward != null && achievement.reward.cashReward > 0)
+            if (claimingReward) return false;
+            claimingReward = true;
+            try
             {
-                try
-                {
-                    Duckov.Economy.EconomyManager.Add(achievement.reward.cashReward);
-                    ModBehaviour.DevLog("[Achievement] 发放现金奖励: " + achievement.reward.cashReward);
-                }
-                catch (Exception e)
-                {
-                    ModBehaviour.LogError("[Achievement] 发放现金奖励失败: " + e.Message);
-                }
+                if (rewardJournal == null) rewardJournal = new AchievementRewardJournal();
+                long cash = achievement.reward == null ? 0 : achievement.reward.cashReward;
+                if (!rewardJournal.TryPay(achievementId, cash, IsRewardClaimed)) return false;
+                claimedRewards.Add(achievementId);
+                try { SavesSystem.SaveGlobal(SAVE_KEY_CLAIMED, claimedRewards.ToList()); }
+                catch { claimedRewards.Remove(achievementId); throw; }
+                // 全局标记已成功；意向清理失败下次会按已领事实自动补清，不撤回奖励。
+                try { rewardJournal.Complete(); }
+                catch (Exception e) { ModBehaviour.DevLog("[Achievement] 待清领奖意向: " + e.Message); }
+                try { OnRewardClaimed?.Invoke(achievement); }
+                catch (Exception e) { ModBehaviour.DevLog("[Achievement] 领奖通知异常: " + e.Message); }
+                return true;
             }
-
-            // 发放物品奖励
-            if (achievement.reward?.itemIds != null)
+            catch (Exception e)
             {
-                for (int i = 0; i < achievement.reward.itemIds.Length; i++)
-                {
-                    int itemId = achievement.reward.itemIds[i];
-                    int count = (achievement.reward.itemCounts != null && i < achievement.reward.itemCounts.Length)
-                        ? achievement.reward.itemCounts[i] : 1;
-                    ModBehaviour.DevLog("[Achievement] 发放物品奖励: ID=" + itemId + ", 数量=" + count);
-                }
+                ModBehaviour.LogError("[Achievement] 领奖未完成，可在原存档槽重试: " + e.Message);
+                return false;
             }
-
-            claimedRewards.Add(achievementId);
-            SaveData();
-
-            OnRewardClaimed?.Invoke(achievement);
-            return true;
+            finally { claimingReward = false; }
         }
 
         #endregion
@@ -451,6 +445,8 @@ namespace BossRush
 
         public static void ResetStaticCaches()
         {
+            if (rewardJournal != null) { rewardJournal.Shutdown(); rewardJournal = null; }
+            claimingReward = false;
             AchievementTracker.ForceSave();
             SaveData();
             allAchievements.Clear();

@@ -71,10 +71,10 @@ function toggle(id: string) {
 
 onMounted(() => {
   const stored: Record<string, boolean> = {}
-  for (const { category } of portals.value) {
+  for (const id of [...portals.value.map(({ category }) => category.id), 'changelog']) {
     try {
-      const raw = localStorage.getItem('brs-portal-' + category.id)
-      if (raw === '0' || raw === '1') stored[category.id] = raw === '1'
+      const raw = localStorage.getItem('brs-portal-' + id)
+      if (raw === '0' || raw === '1') stored[id] = raw === '1'
     } catch {
       return
     }
@@ -177,7 +177,7 @@ const otherLangHref = computed(() =>
       id="p-changelog"
       class="mw-portlet portal vector-menu vector-menu-portal"
       :aria-label="locale === 'en' ? CHANGELOG_CATEGORY.en : CHANGELOG_CATEGORY.zh"
-      :class="{ collapsed: !changelogHere }"
+      :class="{ collapsed: collapsed('changelog') }"
     >
       <button class="vector-menu-heading" type="button" @click="toggle('changelog')">
         <span class="vector-menu-heading-label">

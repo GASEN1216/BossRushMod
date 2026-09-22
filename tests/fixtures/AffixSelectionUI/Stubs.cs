@@ -118,6 +118,7 @@ namespace BossRush
     }
     public static class ReforgeSystem
     {
+        public static bool CanExecuteReforge(Item item) { return item != null && item.eligible; }
         public static int QueryCount;
         public static int GetDiscountedCost(Item item) { QueryCount++; return 2000; }
         public static float GetCurrentDiscount() { return 0f; }

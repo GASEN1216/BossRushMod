@@ -44,6 +44,7 @@ internal static class Program
     }
     private static void Main()
     {
+        AuditRewardPersistenceRegression.Run(Check);
         SkyIslandAuditRegression.Run(Check);
         var prelude = Open(100120);
         Reject(prelude, SkyIslandStoryAction.RecoverPreludeInstrument);

@@ -89,8 +89,17 @@ namespace BossRush
             }
 
             PlayerStorageBuffer.Buffer.Add(itemData);
+            try
+            {
+                PlayerStorageBuffer.SaveBuffer();
+            }
+            catch
+            {
+                // 原物尚存；失败回退时撤销候选数据，避免同时返还原物和保留 inbox 副本。
+                PlayerStorageBuffer.Buffer.Remove(itemData);
+                throw;
+            }
             zombieModeEntryTransaction.InventoryTransferredInboxItems.Add(itemData);
-            PlayerStorageBuffer.SaveBuffer();
             item.DestroyTree();
             return true;
         }
@@ -109,18 +118,8 @@ namespace BossRush
                 },
                 (e, item) => DevLog("[ZombieMode] 裸装转移回滚失败: " + e.Message));
 
-            RunScopedRegistry.ForEachReverse(
-                zombieModeEntryTransaction.InventoryTransferredInboxItems,
-                itemData =>
-                {
-                    if (itemData != null)
-                    {
-                        PlayerStorageBuffer.Buffer.Remove(itemData);
-                    }
-                },
-                (e, itemData) => DevLog("[ZombieMode] 裸装 inbox 回滚失败: " + e.Message));
-
-            try { PlayerStorageBuffer.SaveBuffer(); } catch (System.Exception e) { DevLog("[ZombieMode] 裸装 inbox SaveBuffer 回滚失败: " + e.Message); }
+            // inbox 已保存完整物品树，原物已销毁；保留已完成的转存，玩家可从收件箱取回。
+            // 不移除唯一副本，也不重建第二份物品；重复回滚只清本次事务的引用。
             zombieModeEntryTransaction.InventoryTransferredItems.Clear();
             zombieModeEntryTransaction.InventoryTransferredInboxItems.Clear();
             zombieModeEntryTransaction.InventoryTransferStarted = false;

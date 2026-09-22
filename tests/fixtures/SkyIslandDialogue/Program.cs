@@ -70,8 +70,65 @@ internal static class Program
         Check(!noActor.Active && opened == 3, "missing actor still offers services in valid session");
         Check(UniTask.Pending == 0 && !InputManager.Disabled && !DialogueManager.IsDialogueActive, "all owners release resources");
         CheckOptionalConversation();
+        CheckDestroyedSceneDialogue();
+        CheckLegacyStoryCancellation();
+        CheckCleanupStopsOldDrain();
         DialogueManager.Cleanup();
         Console.WriteLine("PASS SkyIslandDialogue (" + checks + " assertions)");
+    }
+
+    private static void CheckDestroyedSceneDialogue()
+    {
+        var oldActor = new DuckovDialogueActor();
+        var old = DialogueManager.ShowDialogueSequenceBilingual(oldActor, new[] { new[] { "旧", "old" } }).task;
+        var oldCallback = DialogueTree.Lines[DialogueTree.Lines.Count - 1];
+        UnityEngine.Object.Destroy(oldActor);
+        Dialogues.DialogueUI.instance = new Dialogues.DialogueUI();
+        UniTask.Pump();
+        Check(old.IsCompleted && !DialogueManager.IsDialogueActive && UniTask.Pending == 0, "destroyed actor and replaced UI cancel a legacy tokenless story");
+        try { old.GetAwaiter().GetResult(); } catch (OperationCanceledException) { }
+        var actor = new DuckovDialogueActor();
+        var current = DialogueManager.ShowDialogueSequenceBilingual(actor, new[] { new[] { "新", "new" } }).task;
+        oldCallback(); UniTask.Pump();
+        Check(!current.IsCompleted && DialogueManager.IsDialogueActive, "late callback cannot finish the replacement scene story");
+        FinishLine(); current.GetAwaiter().GetResult();
+        Check(UniTask.Pending == 0 && !DialogueManager.IsDialogueActive, "new scene story can complete normally");
+    }
+
+    private static void CheckLegacyStoryCancellation()
+    {
+        LocalizationHelper.InjectLocalization("legacy_story", "legacy story");
+        var actor = new DuckovDialogueActor();
+        var story = DialogueManager.ShowDialogueSequence(actor, new[] { "legacy_story" }).task;
+        UnityEngine.Object.Destroy(actor);
+        UniTask.Pump();
+        bool cancelled = false;
+        try { story.GetAwaiter().GetResult(); }
+        catch (OperationCanceledException) { cancelled = true; }
+        Check(cancelled && !DialogueManager.IsDialogueActive, "legacy key story propagates cancellation before reward and story flags");
+    }
+
+    private static void CheckCleanupStopsOldDrain()
+    {
+        var cancellation = new System.Threading.CancellationTokenSource();
+        var actor = new DuckovDialogueActor();
+        var old = DialogueManager.ShowDialogueSequenceBilingual(actor,
+            new[] { new[] { "旧", "old" } }, "old_cleanup", cancellation.Token).task;
+        Dialogues.DialogueUI.ConfirmCompletesRequests = false;
+        UniTask.HoldNextFrame = true;
+        cancellation.Cancel(); UniTask.Pump();
+        try { old.GetAwaiter().GetResult(); } catch (OperationCanceledException) { }
+        DialogueManager.Cleanup();
+        var current = DialogueManager.ShowDialogueSequenceBilingual(new DuckovDialogueActor(),
+            new[] { new[] { "新", "new" } }).task;
+        Dialogues.DialogueUI.ConfirmCompletesRequests = true;
+        UniTask.HoldNextFrame = false;
+        UniTask.ReleaseDeferredFrames(); UniTask.Pump();
+        Check(!current.IsCompleted && DialogueManager.IsDialogueActive,
+            "drain from the cleaned generation cannot confirm a new request on the same UI");
+        FinishLine(); current.GetAwaiter().GetResult();
+        Check(UniTask.Pending == 0 && !InputManager.Disabled, "cleanup replacement releases input and all waits");
+        cancellation.Dispose();
     }
 
     private static void FinishLine()

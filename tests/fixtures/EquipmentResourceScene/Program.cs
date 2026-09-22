@@ -80,8 +80,22 @@ internal static class Program
             Check(ReferenceEquals(player.dashAction, originalDash), "外部 Scene 后卸装恢复：" + path);
         }
         Check(!SceneRuntimeGate.IsModResourceScene(new Scene()), "空路径不能被视作本 Mod 资源 Scene");
+        player.SetSlot(slot, totem);
+        Check(ability.TryExecuteAbility(), "正常输入允许启动飞行");
+        InputManager.InputActived = false;
+        Check(!ability.TryExecuteAbility(), "输入被界面占用时不得启动飞行");
+        InputManager.InputActived = true;
+        BossRushUI.Paused = true;
+        Check(!ability.TryExecuteAbility(), "暂停时不得启动飞行");
+        BossRushUI.Paused = false;
+        Duckov.UI.View.ActiveView = new Duckov.UI.View();
+        Check(!ability.TryExecuteAbility(), "官方面板打开时不得启动飞行");
+        Duckov.UI.View.ActiveView = null;
+        Check(ability.TryExecuteAbility(), "关闭面板后可重新启动");
         UnityEngine.Object.Destroy(effect.gameObject);
-        UnityEngine.Object.Destroy(ability.gameObject);
+        FlightAbilityManager.CleanupStatic();
+        Check(UnityEngine.Object.FindObjectOfType<FlightAbilityManager>() == null,
+            "最终清理必须销毁常驻能力管理器，确保 OnDestroy 可以退订并释放输入缓存");
         Console.WriteLine("EquipmentResourceScene: " + (failures == 0 ? "PASS" : "FAIL") +
             " (" + assertions + " assertions, " + failures + " failures)");
         Environment.ExitCode = failures == 0 ? 0 : 1;

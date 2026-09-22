@@ -31,7 +31,8 @@ def read(path, errors):
 
 def main():
     errors = []
-    cp = read(CHILD_PROTECTION, errors)
+    from cs_source_util import clean_source
+    cp = clean_source(read(CHILD_PROTECTION, errors))
     contracts = read(CONTRACTS, errors)
     attack = read(os.path.join(REPO_ROOT, "Integration", "DragonKing",
                               "DragonKingAbilityController_AttackFlow.cs"), errors)
@@ -44,9 +45,12 @@ def main():
             errors.append("[LateHurt] 已死亡/停用龙王不能因迟到 OnHurt 重启技能或回血: " + token)
 
     if cp:
+        for token in ("requestActive = false;", "generation == childSpawnGeneration", "childSpawnGeneration++;", "isActiveCheck: isCurrent", "ReleaseChild(spawnedDescendant);", "handle.CleanupOnce(ManagedBossCleanupReason.OwnerInvalid);", "commit(prepared.Character, ManagedBossRole.PhaseProxy)"):
+            if token not in cp:
+                errors.append("[RequestOwner] missing cancellation/ownership statement: " + token)
         checks = [
             ("TenSecondTimeout",
-             r"while \(!spawnCompleted && waitTime < 10f\)",
+             r"while \(!spawnCompleted && waitTime < 10f && isCurrent\(\)\)",
              "异步生成等待 10 秒超时（不得无限挂起）"),
             ("TimeoutIncrement",
              r"waitTime \+= Time\.deltaTime;",

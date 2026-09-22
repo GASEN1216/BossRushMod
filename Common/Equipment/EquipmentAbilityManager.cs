@@ -567,9 +567,13 @@ namespace BossRush.Common.Equipment
         /// </summary>
         public static void CleanupStatic()
         {
-            if (_instance != null)
+            // 部分旧子类维护自己的单例并覆盖 Awake；经只读查找仍能取得真实 owner。
+            var manager = Instance;
+            if (manager != null)
             {
-                _instance.UnregisterAbility();
+                _instance = null;
+                manager.UnregisterAbility();
+                Destroy(manager.gameObject);
             }
         }
     }

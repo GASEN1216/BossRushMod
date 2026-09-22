@@ -28,7 +28,6 @@ namespace BossRush
             }
 
             DragonKingBossGunRuntime.InitializeRuntime();
-            DragonKingBossGunRuntime.WarmupProjectileCache();
 
             try
             {

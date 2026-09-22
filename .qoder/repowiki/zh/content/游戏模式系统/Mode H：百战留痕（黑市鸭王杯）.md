@@ -711,3 +711,6 @@ owner 定：「地图选择器里已有的所有图都接入我们 7 月以来�
 （DemoChallenge），玩家仍可在地图选择界面改选。`ManualSeptemberReview` 读取真实九图 JSON，
 验证 1 张显式配置、8 张派生配置均可构建，派生落点来自已有实点且席位不重叠；37 号实验区
 使用既有玩家落点补齐五席。L2 不能证明实际导航连通性、看台视野或完整对局，仍需 L3。
+
+
+2026-09-22 审计修复（COMPAT，L2，未实机）：逐 effect 报告恢复接受合法 ActionApplied=5，拒绝未知状态与仅用于聚合的 PartiallyVerified=4，finish 动作证据在报告往返后保留。诊断创建改走独立 async 接收器；取消、代次变化和超时后晚成功立即 Recycle，返回成功也在协程读取前交给 owner 持有。pending task 超时不再强行 GetResult，保留接收器等待并回收晚结果。执行回归覆盖 scav/wolf 创建期取消、超时、后继代次及返回后尚未被协程读取的取消。
