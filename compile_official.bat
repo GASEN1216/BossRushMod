@@ -1075,7 +1075,7 @@ echo(Integration\BackMountain\GardenSeedInjector.cs
 echo(Integration\BackMountain\GardenSiteJudges.cs
 echo(Integration\BackMountain\GardenConstructionSite.cs
 echo(Integration\BackMountain\ShowcaseDisplayJudges.cs
-echo(Integration\BackMountain\ShowcaseTagInjector.cs
+echo(Integration\BackMountain\ShowcaseTrophyCatalog.cs
 echo(Integration\BackMountain\ShowcaseDisplayScanner.cs
 echo(Integration\BackMountain\RaidMealUsageBehavior.cs
 echo(Integration\BackMountain\RaidMealService.cs

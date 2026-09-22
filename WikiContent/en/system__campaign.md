@@ -72,7 +72,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
 #### Chapter 3 · A Proper Front
 - Go to **Faction War**
 - Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
-- Base: put 1 Boss trophy in an official display cabinet or on a weapon display rack
+- Base: put 1 Boss trophy on an official weapon display rack or a dummy
 - Reward **50,000**. Handing in unlocks the **jukebox tracks**.
 
 #### Chapter 4 · Collect and Leave
@@ -110,7 +110,7 @@ In-run objectives must be met **in the same run**; base-side objectives can be d
   ledger. Unlocked entries stay readable forever.
 - **Arena Backyard**, one per chapter for the first three:
   - Chapter 1 → **the garden**: the base's garden site opens; build it yourself, then Bosses start dropping seeds and what you grow becomes raid meals
-  - Chapter 2 → **the display bonus**: put Boss trophies in the official display cabinet, on the weapon display rack or on a dummy, each one raises your max health
+  - Chapter 2 → **the display bonus**: put Boss trophies on the official weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
   - Chapters 4 through 6 unlock no backyard facility — they pay in cash, clues and ending
 

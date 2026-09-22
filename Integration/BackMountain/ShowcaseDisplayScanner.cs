@@ -1,5 +1,5 @@
 // ============================================================================
-// ShowcaseDisplayScanner.cs - 采集官方陈列柜里实际摆放的 Mod 战利品
+// ShowcaseDisplayScanner.cs - 采集官方枪械展示架 / 假人上实际摆放的 Mod 战利品
 // ============================================================================
 // 官方 Duckov.Buildings.Showcase：item 容器的 SlotCollection 就是展示槽，物品真被搬进去、
 // 官方自己持久化（Item.Save("Showcase_"+id)）、用物品自己的模型陈列。Showcase.Load() 是异步的，
@@ -7,7 +7,7 @@
 // 由运行时模块每帧 FlushIfDirty（首句 O(1) 早返）整体重算并交给 ShowcaseService.ApplyDisplaySnapshot。
 //
 // 门控（AGENTS §4.12）：只在基地且陈列加成已解锁时订阅；未解锁 / 局内零订阅零扫描；
-// 场景切换、换槽、关开关、销毁都退订（命名方法，lambda 退不掉）。基地里新建的柜子经官方
+// 场景切换、换槽、关开关、销毁都退订（命名方法，lambda 退不掉）。基地里新建的枪架 / 假人经官方
 // BuildingManager.OnBuildingBuilt 触发重扫。局外 ShowcaseService 只读缓存挂加成。
 // ============================================================================
 
@@ -21,13 +21,13 @@ using UnityEngine;
 
 namespace BossRush
 {
-    /// <summary>官方陈列柜陈列采集器（Unity 侧，不进执行回归；判据在 ShowcaseDisplayJudges）。</summary>
+    /// <summary>官方展示建筑（枪械展示架 / 假人）陈列采集器（Unity 侧，不进执行回归；判据在 ShowcaseDisplayJudges）。</summary>
     internal static class ShowcaseDisplayScanner
     {
         private static readonly List<Item> _subscribed = new List<Item>();
         private static bool _dirty, _buildSubscribed, _anyShowcaseFound;
 
-        /// <summary>本场景是否找到过至少一个官方陈列柜（老档迁移判据用）。</summary>
+        /// <summary>本场景是否找到过至少一个官方展示建筑（老档迁移判据用）。</summary>
         internal static bool AnyShowcaseFound { get { return _anyShowcaseFound; } }
 
         internal static int SubscriptionCount { get { return _subscribed.Count; } }
@@ -59,7 +59,7 @@ namespace BossRush
             }
             catch (Exception e)
             {
-                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 扫描官方陈列柜失败: " + e.Message);
+                ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 扫描官方展示建筑失败: " + e.Message);
             }
         }
 
@@ -108,7 +108,7 @@ namespace BossRush
                     Item content = slot != null ? slot.Content : null;
                     if (content == null) continue;
                     int typeId = content.TypeID;
-                    if (ShowcaseTagInjector.IsShowcaseTrophy(typeId)) ids.Add(typeId);
+                    if (ShowcaseTrophyCatalog.IsShowcaseTrophy(typeId)) ids.Add(typeId);
                 }
             }
             return ids.ToArray();
@@ -148,7 +148,7 @@ namespace BossRush
         #region F3 只读探针
 
         /// <summary>
-        /// 枚举场上官方陈列柜：DevLog 每柜 ID、每槽 key / requireTags / excludeTags，以及 Mod 物品对每槽的 CanPlug；
+        /// 枚举场上官方展示建筑（枪架 / 假人 / 皮肤柜）：DevLog 每件 ID、每槽 key / requireTags / excludeTags，以及 Mod 物品对每槽的 CanPlug；
         /// metrics 只放计数。只读：Slot.CanPlug 不改状态。
         /// </summary>
         internal static bool ProbeOfficialShowcases(out string metrics, out string reason)
@@ -197,14 +197,14 @@ namespace BossRush
                         index++;
                     }
                 }
-                if (showcases == 0) reason = "场上没有官方陈列柜：先在建造界面造一个「陈列柜」再跑探针";
+                if (showcases == 0) reason = "场上没有官方展示建筑：先在建造界面造一个「枪械展示架」或「假人」再跑探针";
             }
             catch (Exception e)
             {
                 reason = "探针异常: " + e.Message;
             }
             metrics = "showcases=" + showcases + ",slots=" + slots + ",slots_with_tags=" + slotsWithTags
-                + ",modtypes=" + modTypes + ",plug_ok=" + plugOk + ",tagged=" + ShowcaseTagInjector.TaggedCount + ",read_only=true";
+                + ",modtypes=" + modTypes + ",plug_ok=" + plugOk + ",trophies=" + ShowcaseTrophyCatalog.TrophyCount + ",read_only=true";
             return reason == null;
         }
 

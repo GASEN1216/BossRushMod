@@ -205,8 +205,8 @@ namespace BossRush
                             "第二行写了。空手打到第五波，账房抬了下头。",
                             "Line two's written. Bare-handed to wave five. The bookkeeper actually looked up." },
                         new string[] {
-                            "战利品别锁在箱子里，摆到基地的陈列柜、枪械展示架或者假人上，看着自己打回来的东西，人扛得住更多。",
-                            "Stop locking your trophies in a crate. Put them in the display cabinet, on the weapon rack, on a dummy. Looking at what you won keeps you standing longer." },
+                            "战利品别锁在箱子里，摆到基地的枪械展示架或者假人上，看着自己打回来的东西，人扛得住更多。",
+                            "Stop locking your trophies in a crate. Put them on the weapon rack or on a dummy. Looking at what you won keeps you standing longer." },
                         new string[] {
                             "下一章账房要看门面，先摆一件，再来找我。",
                             "The next line is about the look of the place. Put one up, then come see me." }
@@ -218,8 +218,8 @@ namespace BossRush
                             "三行了。那块地记我们名下。",
                             "Three lines. That ground's on our name now." },
                         new string[] {
-                            "来人看了柜子，两眼就走了。两眼就够。",
-                            "Their man looked at the cabinet twice and left. Twice is plenty." },
+                            "来人看了架子，两眼就走了。两眼就够。",
+                            "Their man looked at the rack twice and left. Twice is plenty." },
                         new string[] {
                             "点唱机我加了两首，出击前听一听。第四行要赏金。",
                             "I added two tracks to the jukebox. Play one before you head out. Line four wants bounty money." }
@@ -260,8 +260,8 @@ namespace BossRush
                             "那套甲还挂在擂台上，等下一个不打算回家的人来穿。你有地方回。",
                             "The armor still hangs in the ring, waiting on the next one who isn't planning to go home. You've got somewhere to go home to." },
                         new string[] {
-                            "菜地该收了，柜子上再摆一件。回去吃饭吧。",
-                            "The garden's ready to pick. Put one more piece on the cabinet. Go eat." }
+                            "菜地该收了，架子上再摆一件。回去吃饭吧。",
+                            "The garden's ready to pick. Put one more piece on the rack. Go eat." }
                     };
                 default:
                     return new string[][]

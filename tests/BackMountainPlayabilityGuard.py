@@ -20,17 +20,20 @@ def validate(root):
         if not condition:
             errors.append(message)
 
-    # 2026-09-22 自建登记簿退役：陈列改接官方陈列柜（ShowcaseDisplayScanner 采集、ShowcaseTagInjector 补标签）。
+    # 2026-09-22 自建登记簿退役：陈列改接官方枪械展示架 / 假人（ShowcaseDisplayScanner 采集、ShowcaseTrophyCatalog 判战利品）。
+    # 官方「陈列柜」（要 ShowCase 标签）是废弃建筑，建不了（owner 实机确认）：不得再给 Mod 物品补任何官方展示标签。
     interactable = compact(read('Integration/BackMountain/ShowcaseInteractable.cs'))
     require('NotificationText.Push(' in interactable and 'OpenShowcaseUI' not in interactable,
             'ShowcaseInteractable: 退役的自建柜只提示去官方柜摆放，不再开自绘面板')
-    tagger = compact(read('Integration/BackMountain/ShowcaseTagInjector.cs'))
-    require('BossRushDynamicItemRegistry.GetPublishedTypeIds()' in tagger and 'EquipmentHelper.AddTagToItem(prefab,' in tagger
-            and 'BackMountainItems.GetDefinition(typeId)!=null' in tagger,
-            'ShowcaseTagInjector: 枚举源必须是物品注册表、只走共享 AddTagToItem、排除后山自产种子/餐食')
-    require('ItemAssetsCollection.GetPrefab(' not in tagger
-            and 'BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId)' in tagger,
-            'ShowcaseTagInjector: 取 prefab 只能走 GetRegisteredPrefabWithoutEnsuring；补丁过的 GetPrefab 会对每个 TypeID 强制同步加载 bundle')
+    catalog = compact(read('Integration/BackMountain/ShowcaseTrophyCatalog.cs'))
+    require('BossRushDynamicItemRegistry.GetPublishedTypeIds()' in catalog and 'BackMountainItems.GetDefinition(typeId)!=null' in catalog
+            and 'ShowcaseDisplayJudges.ShouldCountAsTrophy(' in catalog,
+            'ShowcaseTrophyCatalog: 枚举源必须是物品注册表、判据走纯函数 ShouldCountAsTrophy、排除后山自产种子/餐食')
+    require('AddTagToItem(' not in catalog and '"ShowCase"' not in catalog,
+            'ShowcaseTrophyCatalog: 官方陈列柜是废弃建筑，不得再给 Mod 物品补 ShowCase 一类展示标签')
+    require('ItemAssetsCollection.GetPrefab(' not in catalog
+            and 'BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId)' in catalog,
+            'ShowcaseTrophyCatalog: 取 prefab 只能走 GetRegisteredPrefabWithoutEnsuring；补丁过的 GetPrefab 会对每个 TypeID 强制同步加载 bundle')
     scanner = compact(read('Integration/BackMountain/ShowcaseDisplayScanner.cs'))
     require('item.onSlotContentChanged+=HandleSlotContentChanged;' in scanner
             and 'onSlotContentChanged-=HandleSlotContentChanged;' in scanner
@@ -56,7 +59,7 @@ def validate(root):
             and 'CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.TrophyDisplayed,ShowcaseService.HasDisplayedTrophy);' in runtime
             and 'CampaignBaseObjectives.UnregisterProvider(CampaignObjectiveKind.GardenBuilt);' in runtime,
             'Runtime: 征程基地侧目标的事实提供者必须由后山登记并在关开关 / 销毁时撤销')
-    require('ShowcaseDisplayScanner.ClearSubscriptions();' in runtime, 'Runtime: 场景切换 / 换槽 / 关开关必须退订陈列柜槽位事件')
+    require('ShowcaseDisplayScanner.ClearSubscriptions();' in runtime, 'Runtime: 场景切换 / 换槽 / 关开关必须退订展示建筑槽位事件')
 
     items = compact(read('Integration/BackMountain/BackMountainItems.cs'))
     require('map[all[i].LocKey+"_Desc"]=L10n.T(all[i].DescCN,all[i].DescEN);' in items,
@@ -76,7 +79,7 @@ def validate(root):
     f3 = compact(read('DebugAndTools/F3GameplayValidationBackMountain.cs'))
     require(not any(token in f3 for token in ('ShowcaseService.TryDisplay(', 'ShowcaseService.TryRemoveRecord(',
             'RaidMealService.RegisterMeal(', 'RaidMealService.ClearRegisteredMeal(', 'ShowcaseService.ApplyDisplaySnapshot(',
-            'SetActive(', 'EnsureSiteOpen(', 'EnsureTagged(', 'Slot.Plug(', '.Unplug(')),
+            'SetActive(', 'EnsureSiteOpen(', 'AddTagToItem(', 'Slot.Plug(', '.Unplug(')),
             'F3: 后山观察用例不得写入虚构收藏或餐食、不得激活工地、不得打标签、不得搬运槽位内容')
     judges = compact(read('Integration/BackMountain/GardenSiteJudges.cs'))
     require('using' not in judges.replace('usingSystem', ''), 'GardenSiteJudges: 纯判据不得引用 Unity / Duckov')

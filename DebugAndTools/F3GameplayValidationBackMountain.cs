@@ -7,8 +7,8 @@
 //   - 菜地：种子→产出映射（DATA_BACKMOUNTAIN 已覆盖静态表），这里补
 //     GetHarvestResultFor 的反向完备性——每个产出都必须有且只有一个来源种子，
 //     否则玩家会看到「两种种子长出同一颗菜」或「产出物没有来源」。
-//   - 陈列加成（2026-09-22 改接官方陈列柜）：只观察缓存快照的合法性；
-//     SHOWCASE_OFFICIAL_PROBE 打印各官方柜槽位的标签与 Mod 物品 CanPlug（只读，DevLog 明细）；
+//   - 陈列加成（2026-09-22 改接官方枪械展示架 / 假人）：只观察缓存快照的合法性；
+//     SHOWCASE_OFFICIAL_PROBE 打印各官方展示建筑槽位的标签与 Mod 物品 CanPlug（只读，DevLog 明细）；
 //   - 菜地工地：GARDEN_SITE_GATE 只读工地门的状态（不激活、不付款、不写键）。
 //   - 出击餐：官方 Buff 不跨场景，走「食用登记 → 下一局挂 Modifier」。
 //     断言重点是登记只保留一条（后吃覆盖先吃）、ApplyForRun 幂等、
@@ -108,7 +108,7 @@ namespace BossRush
                 out metrics, out reason);
         }
 
-        /// <summary>官方陈列柜探针：槽位标签与 Mod 物品 CanPlug 明细进 DevLog，metrics 只放计数（只读）。</summary>
+        /// <summary>官方展示建筑探针：槽位标签与 Mod 物品 CanPlug 明细进 DevLog，metrics 只放计数（只读）。</summary>
         private bool ValidateOfficialShowcaseProbe(out string metrics, out string reason)
         {
             return ShowcaseDisplayScanner.ProbeOfficialShowcases(out metrics, out reason);

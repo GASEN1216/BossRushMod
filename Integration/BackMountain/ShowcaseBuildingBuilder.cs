@@ -71,7 +71,7 @@ namespace BossRush
             {
                 if (backMountainShowcaseInjected) return;
 
-                // 退役（2026-09-22）：陈列改接官方陈列柜，自建柜不再进建造菜单。
+                // 退役（2026-09-22）：陈列改接官方枪械展示架 / 假人，自建柜不再进建造菜单。
                 // 老档已建过的必须照常注入 BuildingInfo + prefab（官方 BuildingArea 走 building.Info.Prefab，少了就是幽灵建筑）。
                 if (!HasPendingShowcaseBuildingsInManager())
                 {

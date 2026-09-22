@@ -59,8 +59,8 @@ namespace BossRush
 
             AddQuest(map, "ch3",
                 "门面", "A Proper Front",
-                "第三行要证明我们守得住一块地。带船票和营旗去划地为营，选个阵营，把敌方头目干掉 8 个，够数就能回。柜子那边也别忘了，随便摆一件打回来的战利品，账房要派人来基地看门面。",
-                "Line three says we can hold ground. Take a ticket and a faction banner into Faction War, pick a side, and drop 8 hostile bosses. That's enough, come home. Don't forget the cabinet either. Put one of your trophies up, the bookkeeper sends a man round to look the place over.");
+                "第三行要证明我们守得住一块地。带船票和营旗去划地为营，选个阵营，把敌方头目干掉 8 个，够数就能回。架子那边也别忘了，随便摆一件打回来的战利品，账房要派人来基地看门面。",
+                "Line three says we can hold ground. Take a ticket and a faction banner into Faction War, pick a side, and drop 8 hostile bosses. That's enough, come home. Don't forget the rack either. Put one of your trophies up, the bookkeeper sends a man round to look the place over.");
 
             AddQuest(map, "ch4",
                 "收钱走人", "Collect and Leave",
@@ -134,7 +134,7 @@ namespace BossRush
 
             AddClue(map, "clue_ch3",
                 "报名册 第三行",
-                "第三行写着「守住一块地，八个头目」。后面别着一张来人的字条，说我们基地的柜子上摆着东西，「看得出来是自己打的」。\n"
+                "第三行写着「守住一块地，八个头目」。后面别着一张来人的字条，说我们基地的架子上摆着东西，「看得出来是自己打的」。\n"
                 + "杰夫：「他没问价钱，也没问牌子。看的是有没有人真打过。」",
                 "Ledger, Line Three",
                 "Line three reads \"held ground, eight bosses.\" A visitor's note is pinned after it: the base has trophies up, and they \"clearly came off something he killed himself.\"\n"

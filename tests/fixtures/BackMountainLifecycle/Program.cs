@@ -37,7 +37,7 @@ static class Program
     {
         if (module != null) module.OnDestroy(); module = null;
         RaidMealService.ResetStaticCaches(); ShowcaseService.ResetStaticCaches(); GardenSeedInjector.ResetStaticCaches();
-        ShowcaseDisplayScanner.ResetStaticCaches(); GardenConstructionSite.ResetStaticCaches(); ShowcaseTagInjector.ResetStaticCaches();
+        ShowcaseDisplayScanner.ResetStaticCaches(); GardenConstructionSite.ResetStaticCaches(); ShowcaseTrophyCatalog.ResetStaticCaches();
         CampaignBaseObjectives.Providers.Clear(); DialogueManager.IsDialogueActive = false; BossRushUI.Hidden = BossRushUI.Paused = false;
         BackMountainUnlocks.ResetStaticCaches(); BackMountainItems.ResetStaticCaches();
         SavesSystem.Reset(); ItemAssetsCollection.Prefabs.Clear(); CampaignFacilityUnlocks.Tokens.Clear();
@@ -206,12 +206,12 @@ static class Program
     static void Showcase()
     {
         // ---- 判据：筛选 / 归一 / 加成 / 迁移 ----
-        Check(!ShowcaseDisplayJudges.ShouldTagForShowcase(100, 4, false, false, true), "quality 4 is not a trophy");
-        Check(ShowcaseDisplayJudges.ShouldTagForShowcase(100, 5, false, false, true), "quality 5 is a trophy");
-        Check(!ShowcaseDisplayJudges.ShouldTagForShowcase(100, 8, true, false, true), "back mountain seed/meal is never a trophy");
-        Check(!ShowcaseDisplayJudges.ShouldTagForShowcase(100, 8, false, true, true), "deny list excludes function items");
-        Check(!ShowcaseDisplayJudges.ShouldTagForShowcase(100, 8, false, false, false), "unloaded prefab is skipped");
-        Check(!ShowcaseDisplayJudges.ShouldTagForShowcase(0, 8, false, false, true), "invalid id rejected");
+        Check(!ShowcaseDisplayJudges.ShouldCountAsTrophy(100, 4, false, false, true), "quality 4 is not a trophy");
+        Check(ShowcaseDisplayJudges.ShouldCountAsTrophy(100, 5, false, false, true), "quality 5 is a trophy");
+        Check(!ShowcaseDisplayJudges.ShouldCountAsTrophy(100, 8, true, false, true), "back mountain seed/meal is never a trophy");
+        Check(!ShowcaseDisplayJudges.ShouldCountAsTrophy(100, 8, false, true, true), "deny list excludes function items");
+        Check(!ShowcaseDisplayJudges.ShouldCountAsTrophy(100, 8, false, false, false), "unloaded prefab is skipped");
+        Check(!ShowcaseDisplayJudges.ShouldCountAsTrophy(0, 8, false, false, true), "invalid id rejected");
         Func<int, int> q = id => id == 200 ? 8 : id == 100 ? 5 : id >= 300 && id < 320 ? 8 : 0;
         int[] normalized = ShowcaseDisplayJudges.NormalizeDisplaySnapshot(new[] { 100, 100, 7, 200, -1, 0 }, q, 8);
         Check(normalized.Length == 2 && normalized[0] == 200 && normalized[1] == 100, "snapshot dedups, drops invalid/low quality, sorts by quality desc");
@@ -228,22 +228,21 @@ static class Program
         Check(!ShowcaseDisplayJudges.ShouldOverwriteLegacyLedger(1, false, true) && !ShowcaseDisplayJudges.ShouldOverwriteLegacyLedger(1, true, false),
             "legacy ledger kept outside base or without official showcase");
 
-        // ---- 标签注入：注册表枚举、prefab 级、幂等、排除后山自产 ----
+        // ---- 战利品名录：注册表枚举、prefab 级、幂等、排除后山自产；不补任何官方展示标签（陈列柜是废弃建筑） ----
         Reset(); Item(100, 5); Item(200, 8); Item(50, 3);
         BossRushDynamicItemRegistry.Published.Clear();
         BossRushDynamicItemRegistry.Published.AddRange(new[] { 100, 200, 50, BossRushItemIds.DragonFruit, 999 });
-        ShowcaseTagInjector.ResetStaticCaches(); EquipmentHelper.Tagged.Clear();
-        ShowcaseTagInjector.EnsureTagged();
-        Check(EquipmentHelper.Tagged.Count == 2 && EquipmentHelper.Tagged.TrueForAll(p => p.Value == "ShowCase")
-            && EquipmentHelper.Tagged.Exists(p => p.Key == 100) && EquipmentHelper.Tagged.Exists(p => p.Key == 200), "only loaded Q5+ non-meal registry items get the ShowCase tag");
-        ShowcaseTagInjector.EnsureTagged();
-        Check(EquipmentHelper.Tagged.Count == 2, "tagging is idempotent");
-        Check(ShowcaseTagInjector.IsShowcaseTrophy(200) && !ShowcaseTagInjector.IsShowcaseTrophy(50)
-            && !ShowcaseTagInjector.IsShowcaseTrophy(BossRushItemIds.DragonFruit) && !ShowcaseTagInjector.IsShowcaseTrophy(12345), "trophy judgement matches tagging");
+        ShowcaseTrophyCatalog.ResetStaticCaches(); EquipmentHelper.Tagged.Clear();
+        ShowcaseTrophyCatalog.Refresh();
+        Check(ShowcaseTrophyCatalog.TrophyCount == 2 && EquipmentHelper.Tagged.Count == 0, "only loaded Q5+ non-meal registry items enter the catalog, and nothing gets tagged");
+        ShowcaseTrophyCatalog.Refresh();
+        Check(ShowcaseTrophyCatalog.TrophyCount == 2 && EquipmentHelper.Tagged.Count == 0, "refresh is idempotent");
+        Check(ShowcaseTrophyCatalog.IsShowcaseTrophy(200) && !ShowcaseTrophyCatalog.IsShowcaseTrophy(50)
+            && !ShowcaseTrophyCatalog.IsShowcaseTrophy(BossRushItemIds.DragonFruit) && !ShowcaseTrophyCatalog.IsShowcaseTrophy(12345), "trophy judgement matches the catalog");
 
         // ---- 服务：快照覆盖、相同不落盘、写失败恢复、sourceVersion 迁移、换槽、坏档写保护 ----
         Reset(); Item(100, 5); Item(200, 8); Player(); StartModule(); CampaignFacilityUnlocks.Grant(2);
-        BossRushDynamicItemRegistry.Published.Clear(); BossRushDynamicItemRegistry.Published.AddRange(new[] { 100, 200 }); ShowcaseTagInjector.ResetStaticCaches();
+        BossRushDynamicItemRegistry.Published.Clear(); BossRushDynamicItemRegistry.Published.AddRange(new[] { 100, 200 }); ShowcaseTrophyCatalog.ResetStaticCaches();
         Check(ShowcaseService.SourceVersion == 1 && ShowcaseService.DisplayedCount == 0, "fresh slot starts as empty legacy ledger");
         Check(ShowcaseService.ApplyDisplaySnapshot(new[] { 100 }, true), "official snapshot applies at base");
         Check(ShowcaseService.SourceVersion == 2 && ShowcaseService.DisplayedCount == 1 && Near(ShowcaseService.CalculateBonus(), .005f)
@@ -259,7 +258,7 @@ static class Program
         Check(ShowcaseService.ApplyDisplaySnapshot(new[] { 100, 200 }, true) && Near(ShowcaseService.CalculateBonus(), .025f) && Near(Stat("MaxHealth"), 102.5f),
             "retry applies both trophies immediately");
         Check(CampaignBaseObjectives.IsDone(CampaignObjectiveKind.TrophyDisplayed), "campaign trophy_displayed fact reads the cached display");
-        Check(ShowcaseService.ApplyDisplaySnapshot(new int[0], true) && ShowcaseService.DisplayedCount == 0 && Near(Stat("MaxHealth"), 100), "emptying the cabinet removes the bonus");
+        Check(ShowcaseService.ApplyDisplaySnapshot(new int[0], true) && ShowcaseService.DisplayedCount == 0 && Near(Stat("MaxHealth"), 100), "emptying the racks removes the bonus");
         SavesSystem.Switch(1); Check(ShowcaseService.DisplayedCount == 0 && ShowcaseService.SourceVersion == 1 && Near(Stat("MaxHealth"), 100), "slot change clears display and bonus");
         // 老登记簿：非基地不覆盖、无柜不覆盖、基地有柜才覆盖
         SavesSystem.Save(BackMountainConfig.ShowcaseSaveKey, "{\"schemaVersion\":1,\"displayedTypeIds\":[200]}"); ShowcaseService.NotifySlotChanged();

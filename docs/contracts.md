@@ -66,7 +66,7 @@ Mode G 冻结 key：
 鸭王征程 / 竞技场后山 冻结 key（M0 起）：
 
 - `BossRush_Campaign_Progress_v1` — 章节进度、契约状态、线索解锁、已授予 token
-- `BossRush_BackMountain_Showcase_v1`（2026-09-22 `SCHEMA+`：新增可选 `sourceVersion`，缺失 = 1 老登记簿、2 = 官方陈列柜实摆；`schemaVersion` 保持 1，升版会让老档被 `EnsureLoaded` 永久写保护；语义改为「官方陈列柜里现在摆着的 Mod 战利品」，老登记簿只在基地找到官方柜时被覆盖） — 展示柜收藏
+- `BossRush_BackMountain_Showcase_v1`（2026-09-22 `SCHEMA+`：新增可选 `sourceVersion`，缺失 = 1 老登记簿、2 = 官方枪械展示架 / 假人实摆；`schemaVersion` 保持 1，升版会让老档被 `EnsureLoaded` 永久写保护；语义改为「官方陈列柜里现在摆着的 Mod 战利品」，老登记簿只在基地找到官方柜时被覆盖） — 展示柜收藏
 - `BossRush_BackMountain_RaidMeal_v1` — 出击餐待生效登记
 - `BossRush_BackMountain_GardenRatchet_v1` — 槽位级 `bool`，由
   `GardenSeedInjector.RatchetSaveKey` 定义。缺键或读取失败视为 false，由当前解锁状态决定是否注入；

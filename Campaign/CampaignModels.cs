@@ -70,7 +70,7 @@ namespace BossRush
         /// <summary>基地侧：官方菜地已建成（事实由 Integration/BackMountain 经 CampaignBaseObjectives 提供）。</summary>
         GardenBuilt = 10,
 
-        /// <summary>基地侧：官方陈列柜 / 枪械展示架 / 假人里摆着至少一件 Mod 战利品。</summary>
+        /// <summary>基地侧：官方枪械展示架 / 假人上摆着至少一件 Mod 战利品。</summary>
         TrophyDisplayed = 11
     }
 

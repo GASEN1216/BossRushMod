@@ -38,7 +38,7 @@
       "titleEN": "A Proper Front",
       "objectives": [
         { "type": "faction_boss_kills", "threshold": 8, "descCN": "击败 8 名敌方头目", "descEN": "Defeat 8 hostile bosses" },
-        { "type": "trophy_displayed", "threshold": 1, "descCN": "把 1 件 Boss 战利品摆上陈列柜或枪械展示架", "descEN": "Display 1 Boss trophy in a cabinet or on a rack" }
+        { "type": "trophy_displayed", "threshold": 1, "descCN": "把 1 件 Boss 战利品摆上枪械展示架或假人", "descEN": "Display 1 Boss trophy on a weapon rack or a dummy" }
       ],
       "rewardCash": 50000,
       "facilityToken": "BossRush_Campaign_Unlock_Ch3",

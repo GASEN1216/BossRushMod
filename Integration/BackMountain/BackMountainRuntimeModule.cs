@@ -29,8 +29,8 @@
 // 【2026-09-22 三设施改接官方】
 //   菜地：官方基地里的菜地工地默认关着付费交互（父物体 Interactparent inactive），第一章交付后
 //   由 GardenConstructionSite 替官方打开（只 SetActive 那一个父物体，付款 / wasBuilt / 存档全走官方），
-//   开门是单向的，关总开关不回滚。展示柜：自建登记簿退役，ShowcaseDisplayScanner 采集官方陈列柜里
-//   实际摆放的 Mod 战利品（ShowcaseTagInjector 先补官方展示标签）。征程 garden_built / trophy_displayed
+//   开门是单向的，关总开关不回滚。展示柜：自建登记簿退役，ShowcaseDisplayScanner 采集官方枪械展示架 / 假人上
+//   实际摆放的 Mod 战利品（ShowcaseTrophyCatalog 判哪些算战利品；官方陈列柜是废弃建筑，建不了）。征程 garden_built / trophy_displayed
 //   两条基地侧目标的事实由本模块注册进 CampaignBaseObjectives（依赖方向不变：后山读征程，征程不引用后山）。
 // ============================================================================
 
@@ -208,7 +208,7 @@ namespace BossRush
                 GardenConstructionSite.ResetStaticCaches();
                 ShowcaseService.ResetStaticCaches();
                 ShowcaseDisplayScanner.ResetStaticCaches();
-                ShowcaseTagInjector.ResetStaticCaches();
+                ShowcaseTrophyCatalog.ResetStaticCaches();
                 BackMountainItems.ResetStaticCaches();
                 BackMountainUnlocks.ResetStaticCaches();
                 _bootstrapped = false;
@@ -362,8 +362,8 @@ namespace BossRush
                 if (_owner != null) _owner.InitBackMountainShowcase();
 
                 bool baseScene = IsBaseScene() || ModBehaviour.IsBaseHubSceneName(loadedSceneName);
-                // 官方陈列柜：先给 Mod 战利品补展示标签，再订阅场上各柜的槽位事件并重算陈列（未解锁零订阅）
-                ShowcaseTagInjector.EnsureTagged();
+                // 官方枪架 / 假人：先刷新战利品名录，再订阅场上各展示建筑的槽位事件并重算陈列（未解锁零订阅）
+                ShowcaseTrophyCatalog.Refresh();
                 ShowcaseDisplayScanner.RefreshForScene(baseScene,
                     BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase));
                 // 菜地工地：必须排在 GardenSeedInjector.EnsureInjected() 之后（Built 子树激活时官方 Garden.Start 会读作物表）

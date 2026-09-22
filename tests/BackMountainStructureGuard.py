@@ -192,7 +192,7 @@ def main():
     if "SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, previousJson)" not in showcase:
         return fail("展示柜 Save 后回读失败必须还原官方缓存，不能只还原内存列表")
 
-    # ---- 7a) 2026-09-22 陈列改接官方陈列柜：快照覆盖、写失败恢复、SCHEMA+ 不升版、扫描订阅纪律、自建柜退役 ----
+    # ---- 7a) 2026-09-22 陈列改接官方枪械展示架 / 假人：快照覆盖、写失败恢复、SCHEMA+ 不升版、扫描订阅纪律、自建柜退役 ----
     apply = re.search(r"internal\s+static\s+bool\s+ApplyDisplaySnapshot\s*\([^)]*\)\s*\{(.*?)\n        \}", showcase, flags=re.S)
     if not apply:
         return fail(SHOWCASE.as_posix() + " 缺 ApplyDisplaySnapshot：陈列必须由官方柜实摆快照整体覆盖")

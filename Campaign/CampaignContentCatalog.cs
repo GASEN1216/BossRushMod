@@ -112,8 +112,8 @@ namespace BossRush
                     return L10n.T("先在基地建设面板把菜地建起来，再只带船票空手进白手起家，用开局发的近战刀砍 5 个并打到第 5 波。",
                         "Build the garden from the base construction panel first, then enter From Scratch with only a ticket, no gear. Use the starter melee knife for 5 kills and push to wave 5.");
                 case CampaignContentCatalog.ModeModeE:
-                    return L10n.T("带船票和营旗裸装进划地为营，选阵营后干掉 8 个敌方头目，回基地再把 1 件 Boss 战利品摆上陈列柜。",
-                        "Enter Faction War with a ticket and a faction banner, no gear. Pick a side, drop 8 hostile bosses, then put 1 Boss trophy on display back at base.");
+                    return L10n.T("带船票和营旗裸装进划地为营，选阵营后干掉 8 个敌方头目，回基地再把 1 件 Boss 战利品摆上枪械展示架或假人。",
+                        "Enter Faction War with a ticket and a faction banner, no gear. Pick a side, drop 8 hostile bosses, then put 1 Boss trophy on a weapon rack or a dummy back at base.");
                 case CampaignContentCatalog.ModeModeF:
                     return L10n.T("带船票和血猎收发器裸装进血猎追击，干掉 3 个带悬赏印记的目标，再从撤离点走。",
                         "Enter Blood Hunt with a ticket and a Bloodhunt Transponder, no gear. Kill 3 marked targets, then leave through the extraction point.");
@@ -136,8 +136,8 @@ namespace BossRush
                     return L10n.T("已解锁菜地。去基地建设面板建「菜地」，之后 Boss 会掉种子，种出来能做出击餐。",
                         "Garden unlocked. Build \"Garden\" from the base construction panel. Bosses start dropping seeds, and what you grow becomes raid meals.");
                 case "ch2":
-                    return L10n.T("已解锁陈列加成。把 Boss 战利品摆进基地的陈列柜、枪械展示架或假人，每件给生命上限加成。",
-                        "Display bonus unlocked. Put Boss trophies in the base display cabinet, on the weapon display rack or on a dummy. Each one raises your max health.");
+                    return L10n.T("已解锁陈列加成。把 Boss 战利品摆上基地的枪械展示架或假人，每件给生命上限加成。",
+                        "Display bonus unlocked. Put Boss trophies on the base weapon display rack or on a dummy. Each one raises your max health.");
                 case "ch3":
                     return L10n.T("已解锁点唱机战歌。基地点唱机里多了「龙裔挽歌」和「幽影回廊」。",
                         "Jukebox tracks unlocked. \"Dragon Elegy\" and \"Umbral Corridors\" are now in the base jukebox.");
@@ -461,7 +461,7 @@ namespace BossRush
                 MakeObjective(CampaignObjectiveKind.FactionBossKills, 8,
                     "击败 8 名敌方头目", "Defeat 8 hostile bosses"),
                 MakeObjective(CampaignObjectiveKind.TrophyDisplayed, 1,
-                    "把 1 件 Boss 战利品摆上陈列柜或枪械展示架", "Display 1 Boss trophy in a cabinet or on a rack")));
+                    "把 1 件 Boss 战利品摆上枪械展示架或假人", "Display 1 Boss trophy on a weapon rack or a dummy")));
 
             list.Add(MakeChapter(
                 "ch4", 4, ModeModeF, "收钱走人", "Collect and Leave", 75000, 4, "clue_ch4",

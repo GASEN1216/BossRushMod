@@ -8,8 +8,8 @@
   know, and all three use the game's own buildings.
 - Each one does a single thing:
   - **Garden** — turn Boss-dropped seeds into raid meals (the vanilla garden).
-  - **Display bonus** — put the good gear you've earned in the vanilla display cabinet, weapon
-    display rack or dummies for a permanent health bonus.
+  - **Display bonus** — put the good gear you've earned on the vanilla weapon display rack or
+    dummies for a permanent health bonus.
   - **Jukebox** — a few mod battle tracks added to the base's playlist.
 - The Backyard is on by default and there is no master switch to flip. What decides how much of it
   you can use is your progress through the Duck King Campaign.
@@ -39,20 +39,22 @@ tells you what just opened.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.
 - Same rule as vanilla crops: **it only grows while watered**. Forget to water and progress stops.
 
-[warn] Seeds and the food you harvest are not trophies. Putting them in a cabinet gives no bonus.
+[warn] Seeds and the food you harvest are not trophies. They can't go on a rack and give no bonus.
 
 ### Display bonus
 
-- It uses the game's own buildings: build a `Display Cabinet`, a `Weapon Display Rack` or a `Dummy`
-  from the construction menu (any kind, as many as you like).
-- Open the cabinet and **double-click** a mod Boss trophy into it. The cabinet really shows the item's model.
-- Displayed items stay in the cabinet: they don't come on raids and can't be lost on death. Move
-  them back out whenever you want to use them.
+- It uses the game's own buildings: build a `Weapon Display Rack` or a `Dummy` from the construction
+  menu (either kind, as many as you like). The vanilla "Display Cabinet" is an abandoned building that
+  never appears in the menu, so don't go looking for it.
+- Open the rack and **double-click** a mod Boss trophy onto it: guns go on the weapon rack; melee weapons,
+  helmets, armor, face masks and headsets go on a dummy. The rack really shows the item's model.
+- Displayed items stay on the rack: they don't come on raids and can't be lost on death. Move
+  them back off whenever you want to use them.
 
 **How the bonus works**
 
 - Only mod trophies count (quality `5` or above: Boss gear, the new weapons, Sky Island boss gear
-  and the like). A cabinet full of vanilla items gives nothing.
+  and the like). A rack full of vanilla items gives nothing.
 - Each piece gives max health by quality: `+0.5%` for every level above quality 4.
   Quality 5 is `+0.5%`, quality 8 is `+2%`.
 - One of each kind counts. At most `8` pieces count; beyond that, the best 8 by quality are used.
@@ -61,7 +63,7 @@ tells you what just opened.
   **always on**: it counts in the base and in a run.
 - **One of Chapter 3's objectives is to display one trophy first**, then hand in to Jeff.
 
-[tip] If you recorded trophies in the old self-built "Trophy Showcase": that cabinet is retired. Once you enter the base, the bonus is recomputed from what is actually displayed in the vanilla cabinets. An old cabinet you already built can stay as decoration; it is no longer in the build menu.
+[tip] If you recorded trophies in the old self-built "Trophy Showcase": that cabinet is retired. Once you enter the base, the bonus is recomputed from what is actually displayed on the vanilla racks and dummies. An old cabinet you already built can stay as decoration; it is no longer in the build menu.
 
 ### Jukebox
 
@@ -107,7 +109,7 @@ Two more that catch people out:
 
 - **Is the Backyard a new map?** No. All three facilities are in the base; "Backyard" is just a name.
 - **Where is the garden site?** The fenced-off patch of scrap at base. After Chapter 1 is handed in, walk up and the interaction is there.
-- **Will the cabinet take my gear?** It keeps the item until you move it out. The cabinet is base storage: nothing in it goes on raids or gets lost on death.
+- **Will the rack take my gear?** It keeps the item until you move it off. The rack is base storage: nothing on it goes on raids or gets lost on death.
 - **Do two copies of the same item count twice?** No. One of each kind counts.
 - **What if I display more than 8?** Only the best 8 by quality count, and eight is exactly what earns the extra `+5%`.
 - **Can I eat a raid meal during a run?** No, only in the base.
@@ -116,4 +118,4 @@ Two more that catch people out:
 - **Are Boss drops the only way to get seeds?** Yes. Each of the three mod Bosses drops its own,
   and no shop sells them.
 - **Can I turn the whole Backyard off?** There's no such switch — it's default content. Just don't
-  use it: skip the garden, skip the cabinets, and it stays out of your way.
+  use it: skip the garden, skip the racks, and it stays out of your way.

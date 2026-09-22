@@ -1,7 +1,7 @@
 // ============================================================================
-// ShowcaseDisplayJudges.cs - 官方陈列柜陈列加成的纯判据
+// ShowcaseDisplayJudges.cs - 官方展示建筑陈列加成的纯判据
 // ============================================================================
-// 2026-09-22 起自建「战利品登记簿」退役：加成改为按官方陈列柜 / 枪械展示架 / 假人里
+// 2026-09-22 起自建「战利品登记簿」退役：加成改为按官方枪械展示架 / 假人里（陈列柜是官方废弃建筑，建不了）
 // **实际摆放**的 Mod 战利品计算（ShowcaseDisplayScanner 采集，ShowcaseService 缓存与挂加成）。
 // 本文件零 Unity 引用：筛选、归一、算加成、老档迁移判据全是纯函数，执行回归直接链接。
 // 数值口径逐字不变：每高于 Q4 一级 +0.5%，8 件全满再 +5%，上限 +21%。
@@ -24,19 +24,19 @@ namespace BossRush
         /// <summary>可陈列的最低品质。</summary>
         internal const int MinDisplayQuality = 5;
 
-        /// <summary>存档 sourceVersion：1 = 老登记簿（登记不收走），2 = 官方柜实际陈列。</summary>
+        /// <summary>存档 sourceVersion：1 = 老登记簿（登记不收走），2 = 官方展示建筑实际陈列。</summary>
         internal const int LegacyLedgerSourceVersion = 1;
         internal const int OfficialDisplaySourceVersion = 2;
 
         /// <summary>哪些 Mod 物品算「战利品」：品质达标、不是后山自产（种子 / 餐食）、不在功能道具名单里、prefab 在位。</summary>
-        internal static bool ShouldTagForShowcase(int typeId, int quality, bool isBackMountainItem, bool inDenyList, bool prefabLoaded)
+        internal static bool ShouldCountAsTrophy(int typeId, int quality, bool isBackMountainItem, bool inDenyList, bool prefabLoaded)
         {
             return typeId > 0 && prefabLoaded && !isBackMountainItem && !inDenyList && quality >= MinDisplayQuality;
         }
 
         /// <summary>
-        /// 把「官方柜里现在摆着的 TypeID」归一：去重、剔非法与低品质、按品质降序、截到 cap。
-        /// 降序是有意的：玩家柜子里超过 cap 件时取最好的几件，不看摆放顺序。
+        /// 把「官方展示建筑里现在摆着的 TypeID」归一：去重、剔非法与低品质、按品质降序、截到 cap。
+        /// 降序是有意的：架子上超过 cap 件时取最好的几件，不看摆放顺序。
         /// </summary>
         internal static int[] NormalizeDisplaySnapshot(int[] raw, Func<int, int> quality, int cap)
         {
