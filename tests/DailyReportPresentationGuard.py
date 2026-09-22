@@ -91,6 +91,11 @@ def check_scrollable_body(dashboard):
     assert "fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;" in create,         "滚动内容高度必须由 ContentSizeFitter 按实际文本撑开"
     assert re.search(r"text\.rectTransform\.sizeDelta\s*=\s*new Vector2\([^)]*slice\.height", create) is None,         "滚动内容高度不得写死成 viewport 高度，那样 ScrollRect 永远滚不动"
     assert "text.overflowMode = TextOverflowModes.Overflow;" in create, "滚动正文不得按 viewport 截断"
+    anchors = create.index("text.rectTransform.anchorMax = new Vector2(1f, 1f);")
+    reset = create.index("text.rectTransform.sizeDelta = Vector2.zero;")
+    fit = create.index("fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;")
+    assert anchors < reset < fit, "横向 stretch 后必须清旧固定宽度，再由 PreferredSize 撑开高度"
+    assert "fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;" in create
 
 
 def main():

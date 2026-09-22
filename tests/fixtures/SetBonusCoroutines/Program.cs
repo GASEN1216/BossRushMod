@@ -96,6 +96,12 @@ namespace BossRush
         internal readonly Health[] Enemies = { new Health(), new Health(), new Health(), new Health() };
         internal bool Resolving(bool frost) { return frost ? frostBiteResolving : thunderBiteResolving; }
         internal void Reactivate() { BumpSetBonusGeneration(); ResetThunderChainState(); ResetFrostNovaState(); }
+        // 故障注入：模拟同代请求被重复交付，独立验证结算入口的冷却保护。
+        internal IEnumerator DuplicateBite(bool frost)
+        {
+            return frost ? FrostBiteStep(Target, new CharacterMainControl(), Vector3.zero, setBonusGeneration)
+                : ThunderBiteStep(Vector3.zero, new CharacterMainControl(), setBonusGeneration);
+        }
         private static float GetSetBonusElementDamagePortion(Health h, DamageInfo i, ElementTypes t) { return 0f; }
         private IEnumerator DelayedHeal(Health h, float amount) { yield return null; }
         // 模拟一次「主角普攻打中敌人」。effect=true 模拟 DoT / 套装自身伤害。
@@ -168,19 +174,46 @@ internal static class Program
                 Check(BossRush.ThunderRingDeathProbe.IsReset(), "thunder ring lethal OnDead resets charges and clocks");
             }
         }
-        // 旧激活排队的延时结算必须整条作废，且不能污染新激活的 resolving 闸
-        BossRush.ModBehaviour host = new BossRush.ModBehaviour();
-        Time.time = 20f;
-        host.Hit(false);
-        IEnumerator old = host.Scheduled.Dequeue();
-        host.Reactivate();
-        Time.time += 10f;
-        host.Hit(false);
-        IEnumerator current = host.Scheduled.Dequeue();
-        Check(!old.MoveNext(), "old generation exits");
-        Check(host.Scans == 0, "old generation cannot scan or damage");
-        Check(!host.Resolving(false), "old finally cannot leave resolving latched");
-        Check(!current.MoveNext() && host.Scans == 1, "current on-hit still resolves once");
+        // 旧激活醒来后再次命中：不能清掉新激活请求的 pending 而排进第三条请求。
+        BossRush.ModBehaviour host;
+        foreach (bool frost in new[] { false, true })
+        {
+            string label = frost ? "frost" : "thunder";
+            host = new BossRush.ModBehaviour();
+            Time.time = 20f;
+            host.Hit(frost);
+            IEnumerator old = host.Scheduled.Dequeue();
+            host.Reactivate();
+            Time.time = 20.01f;
+            host.Hit(frost);
+            IEnumerator current = host.Scheduled.Dequeue();
+            Time.time = 20.05f;
+            Check(!old.MoveNext(), label + " old generation exits");
+            Check(host.Scans == 0 && host.Target.Hits == 0, label + " old generation cannot scan or damage");
+            host.Hit(frost);
+            Check(host.Scheduled.Count == 0, label + " old generation cannot release current pending gate");
+            Time.time = 20.06f;
+            Check(!current.MoveNext() && (frost ? host.Target.Hits : host.Enemies[0].Hits) == 1,
+                label + " current on-hit still resolves once after stale request exits");
+            Check(!host.Resolving(frost), label + " current resolution releases resolving gate");
+
+            // 即使上游重复交付，结算时的冷却也必须拒绝第二次伤害和扫描。
+            host = new BossRush.ModBehaviour();
+            Time.time = 30f;
+            host.Hit(frost);
+            IEnumerator duplicate = host.DuplicateBite(frost);
+            Check(duplicate.MoveNext(), label + " duplicate delivery reaches the real delayed step");
+            Time.time = 30.06f;
+            host.Drain();
+            Time.time = 30.10f;
+            Check(!duplicate.MoveNext() && (frost ? host.Target.Hits : host.Enemies[0].Hits) == 1,
+                label + " resolution cooldown rejects same-generation duplicate delivery");
+            Check(host.Scans == (frost ? 0 : 1), label + " duplicate delivery does not rescan enemies");
+            Time.time = 32f;
+            host.Hit(frost); host.Drain();
+            Check((frost ? host.Target.Hits : host.Enemies[0].Hits) == 2,
+                label + " cooldown rejection does not leave future attacks pending");
+        }
 
         foreach (bool frost in new[] { false, true })
         {

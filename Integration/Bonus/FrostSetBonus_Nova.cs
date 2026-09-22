@@ -95,10 +95,12 @@ namespace BossRush
         private IEnumerator FrostBiteStep(Health target, CharacterMainControl victim, Vector3 origin, int generation)
         {
             yield return frostBiteWait;
-            frostBitePending = false;
 
             // 代数不符 = 这条是上一次激活（多半是上一张图）排队下来的，目标已作废
             if (!frostSetActive || generation != setBonusGeneration) yield break;
+            // 只有本次激活的请求能释放 pending，旧请求不能放开新请求的排队闸。
+            frostBitePending = false;
+            if (Time.time - lastFrostBiteTime < FROST_BITE_COOLDOWN) yield break;
             if (target == null || target.IsDead) yield break;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null) yield break;

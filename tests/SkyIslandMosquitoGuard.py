@@ -155,9 +155,16 @@ def main():
             errors.append("编译清单缺 %s（新增 .cs 不登记就静默不参与编译）" % name)
     if bat_raw.count(b"\n") != bat_raw.count(b"\r\n"):
         errors.append("compile_official.bat 混进了 LF 换行（cmd 会把行尾拆坏，报与代码无关的错）")
-    for folder in ("Assets\\ui\\SkyIsland", "Assets\\Sounds\\SkyIsland\\*.wav"):
-        if folder not in bat:
-            errors.append("正式编译脚本没有部署 %s（精灵表 / 嗡声到不了游戏目录）" % folder)
+    if "Assets\\ui\\SkyIsland" not in bat:
+        errors.append("正式编译脚本没有部署 Assets\\ui\\SkyIsland（精灵表到不了游戏目录）")
+    # 音效已由整棵 Sounds 树部署。只接受真实 xcopy 命令，注释提到旧路径不算接线。
+    sound_copy = re.search(
+        r'^\s*xcopy\s+/E\s+/Y\s+/I\s+"Assets\\Sounds"\s+'
+        r'"%GAME_PATH%\\Duckov_Data\\Mods\\%MOD_NAME%\\Assets\\Sounds\\"',
+        bat, re.MULTILINE | re.IGNORECASE)
+    sound_audit = re.search(r'for %%S in \(([^)]*)\) do \(', bat)
+    if sound_copy is None or sound_audit is None or "SkyIsland" not in sound_audit.group(1).split():
+        errors.append("正式编译脚本缺完整 Sounds 树复制或 SkyIsland 部署后核验")
     loc_guard = read("tests/SkyIslandLocalizationGuard.py")
     for name in NEW_FILES:
         if '"%s"' % name not in loc_guard:

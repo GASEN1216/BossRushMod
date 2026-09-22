@@ -6,7 +6,7 @@
 //
 // 旧版是一条可滚动的报纸：整页只有分隔线和大段文字，信息全靠读。
 // 新版是仪表盘：一张**无字底图**（Assets/ui/DailyReport/daily_report_bg.png）画出
-// 卡片、标题药丸、图标徽章、签到格与按钮，文字按同一份版面表
+// 卡片、标题药丸与图标徽章，动态签到格、按钮和文字按同一份版面表
 // （Assets/Data/DailyReportLayout.json，DailyReportLayoutTable 读）摆进去。
 //
 // 为什么底图与版面表必须同源：底图是程序合成的（tools/gen_daily_report_ui.py），
@@ -47,7 +47,7 @@ namespace BossRush
             paperFrame = panel.GetComponent<RectTransform>();
             panelRect = paperFrame;
 
-            // 底图：卡片 / 药丸 / 图标 / 签到格全在这张图里，运行时不再画任何形状
+            // 底图只含固定装饰；签到格、按钮和图例色块由后续运行时控件绘制。
             Image background = panel.AddComponent<Image>();
             background.raycastTarget = true;
             Sprite sprite = DailyReportBackground.Load();
@@ -270,6 +270,9 @@ namespace BossRush
                 text.rectTransform.anchorMax = new Vector2(1f, 1f);
                 text.rectTransform.pivot = new Vector2(0.5f, 1f);
                 text.rectTransform.anchoredPosition = Vector2.zero;
+                // 横向 stretch 后清掉原固定宽度；否则正文会变成视口的两倍宽并被遮罩裁掉。
+                // 高度交给下方 ContentSizeFitter，保留整段正文的纵向滚动。
+                text.rectTransform.sizeDelta = Vector2.zero;
                 text.enableAutoSizing = false;
                 text.overflowMode = TextOverflowModes.Overflow;
                 // 内容高度必须**按实际文本**长出来。写死成 viewport 高度

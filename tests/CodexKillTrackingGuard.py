@@ -26,6 +26,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 CODEX_DIR = Path("Integration/Codex")
@@ -44,7 +45,7 @@ REQUIRED_FILTERS = (
     ("PetNestCompanionAgent.IsCompanionHealth", "必须排除遗种巢随从"),
     ("Teams.player", "必须排除友军（宠物 / 雇佣兵 / 临时同伴）"),
     ("IsBaseLevelSafe", "必须排除基地场景（靶子与演示角色不进战绩）"),
-    ("isBossCharacter", "必须只记 Boss，杂兵不得进图鉴"),
+    ("isBossCharacter", "必须保留官方运行时 Boss 标记的收录资格"),
     # owner 2026-09-03 定：Mode H 是观战模式，其击杀不计入图鉴。
     # 这条不能靠 fromCharacter 判定兜住——ERROR 完整互换期间官方会把击杀来源
     # 改写成主角，那一次击杀会伪装成"玩家亲手击杀"混进来。
@@ -62,14 +63,8 @@ def warn(message):
 
 
 def strip_comments(text):
-    """去掉 // 行注释与 /* */ 块注释。
-
-    采集器的注释里成段写着「这里不做字符串拼接、不 DevLog」，不剥注释
-    就会把这些解释本身误判成违规。
-    """
-    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
-    text = re.sub(r"//[^\n]*", "", text)
-    return text
+    """复用词法清理，注释与禁用代码不能冒充生产接线。"""
+    return clean_source(text)
 
 
 def extract_method_body(code, name):
@@ -192,6 +187,16 @@ def main():
             return fail(
                 "丧尸 marker 的 GetComponent 必须被 IsZombieModeActive 门控且门控在前"
                 "（AGENTS.md 4.12），否则每一次普通击杀都白付一次组件查找")
+
+    # 官方名单与运行时 isBoss 标记不完全相同（冰原掠夺者），目录里的官方 Boss 必须能收录。
+    # 该兜底只能在丧尸 marker 分支之后，不能放宽到整个官方生物/展示目录。
+    normalized_resolve = re.sub(r"\s+", " ", resolve_body).strip()
+    roster_return = "return victim.isBossCharacter || CodexOfficialBossRegistry.IsOfficialBoss(key) ? key : null;"
+    if roster_return not in normalized_resolve or "if (!victim.isBossCharacter) return null;" in normalized_resolve:
+        return fail("身份归属必须同时接纳运行时 Boss 和官方 Boss 名单，不能提前拒绝无 Boss 标记的名单条目")
+    marker_return = "return marker.IsBoss ? CodexBossCatalog.BuildZombieBossKey(marker.BossKind) : null;"
+    if marker_return not in normalized_resolve or normalized_resolve.index(marker_return) > normalized_resolve.index(roster_return):
+        return fail("丧尸 marker 必须先于官方 Boss 名单决定收录 key")
 
     # ---- 7) 过滤序的身份闸一条都不能少 ----
     dead_body = extract_method_body(collector, "OnGlobalDead")

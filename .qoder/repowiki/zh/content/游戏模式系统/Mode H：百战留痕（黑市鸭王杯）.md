@@ -1,5 +1,17 @@
 # Mode H：百战留痕（黑市鸭王杯）
 
+2026-09-22 入场位置 owner 修复（COMPAT，CR22-012）：原生 `sceneLoaded` 只负责匹配 typed
+intent 和调度等待。新开局与恢复赛季共用 `ModeHRuntimeModule_SceneFlow` 的单个协程，要求目标
+scene handle、主角、`LevelManager.LevelInited`、`LevelManager.AfterInit`、`!SceneLoader.IsSceneLoading` 和
+`!MultiSceneCore.IsLoading` 连续两帧就绪，然后才依次取得 arena/spectator 租约。等待携带
+请求、场景、槽及入场代数，替换、取消、切图和 shutdown 会作废旧请求；旧协程不能清新句柄
+或退新票。普通 custom 入场在调度前、协程起点和等待后都排除 H；认证已消费 intent 时仍按
+活跃 H owner 排除，避免把看台搬回普通出生点。续赛遇 Storm B0/冷库的主图先通过官方
+`LoadAndTeleport` 到目标子场景，保持旧赛季身份，不重复扣票或创建新赛季。
+官方在 LevelInited 后还会等待 0.25 秒并最终 SetPosition，AfterInit 才是这一步已完成的依据，
+两帧稳定不能替代 AfterInit。`ModeHSceneEntry` 执行真实入口/等待/Legacy 方法体的隔离回归；
+物理、视野与九图完整对局仍待实机。
+
 2026-09-02 F3 验收清理修正：`ForceResetStateForValidation` 复用完整的 `ReleaseRuntimeObjects`
 逆序收尾，先保留 run 上下文尝试押品返还，再停止认证/生成、释放选手与两种租约、关闭 UI，
 最后清空临时状态和 run owner。两种租约提供 `Release(sceneGeneration)`，不提供 `Dispose`。

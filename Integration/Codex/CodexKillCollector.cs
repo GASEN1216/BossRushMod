@@ -286,10 +286,13 @@ namespace BossRush
 
             // 主路：官方/自定义 preset 的 nameKey。三个自定义 Boss 在所有生成路径
             // 上都会被盖成 canonical key，因此这里不需要额外分支。
-            if (!victim.isBossCharacter) return null;
-
+            // 名单里的官方 Boss 也必须可收录：例如冰原掠夺者的官方 preset.isBoss=false，
+            // 若只认运行时标记，目录虽有锁定卡却永远无法解锁，连带挡住全收集。
+            // 只放行官方 Boss 名单，不把整个展示池里的普通精英都当 Boss。
             CharacterRandomPreset preset = victim.characterPreset;
-            return preset != null ? preset.nameKey : null;
+            if (preset == null) return null;
+            string key = preset.nameKey;
+            return victim.isBossCharacter || CodexOfficialBossRegistry.IsOfficialBoss(key) ? key : null;
         }
 
         /// <summary>当前模式 id。只经公开门面读取，全程 no-throw。</summary>

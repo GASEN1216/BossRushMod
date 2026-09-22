@@ -9,6 +9,7 @@
 - [contracts.md](contracts.md)：外部契约与 breaking 边界、TypeID 台账（§1，被守卫解析）、官方 API 静默失败类陷阱（§7.1）
 - [Bossrush使用物品ID表.md](Bossrush使用物品ID表.md)：物品 ID 表
 - [ai-docs-migration.md](ai-docs-migration.md)：AI 协作文档的变更与冲突记录
+- [模块解耦、复用体系与上下文治理计划](设计提案/2026-09-22_BossRushMod模块解耦与上下文治理计划.md) / [GitHub 架构对照与深审记录](设计提案/2026-09-22_BossRushMod_GitHub架构对照与深审记录.md)：模块边界、复用候选、分批实施与开源源码依据；当前为提案，实施状态见文首。
 - [鸭科夫官方任务系统接入教程](制作教程/官方任务系统接入教程.md)：运行时 Quest / Task prefab、官方 NPC 任务页、Mod 权威状态、卸载兼容与验证清单
 - [全项目代码审查提示词.md](全项目代码审查提示词.md)、[天空岛全面优化提示词.md](天空岛全面优化提示词.md)：可复用的长任务提示词（复用前先换掉里面的现状数字）
 - `天空岛_*.md`：天空岛各轮的设计、评估、审核与复审记录（专项规则在 `DebugAndTools/SkyIsland/AGENTS.md`）

@@ -94,6 +94,7 @@ class Program
         for(int i=0;i<10;i++) Check(wait.MoveNext(),"paused reveal does not consume presentation time");
         BossRushUI.Paused=false;
         Check(wait.MoveNext() && !wait.MoveNext(),"reveal wait resumes after unpause");
+        CheckExpeditionPause();
 
         Check(CodexSceneNames.Capture()=="sub","first-seen records combat subscene instead of shared main scene");
         Check(CodexSceneNames.Resolve("late")==null,"unready localization stays unknown");
@@ -127,6 +128,40 @@ class Program
             Check(maps==9,"all nine BossRush maps exercised");
         }
         Console.WriteLine("ManualSeptemberReview: PASS ("+checks+" assertions)");
+    }
+    // Unity 会递归驱动 yield return 的子 IEnumerator，不能丢弃 Current 后误判暂停通过。
+    static bool AdvancePresentation(System.Collections.Generic.Stack<System.Collections.IEnumerator> stack)
+    {
+        while (stack.Count > 0)
+        {
+            var current = stack.Peek();
+            if (!current.MoveNext()) { stack.Pop(); continue; }
+            var child = current.Current as System.Collections.IEnumerator;
+            if (child != null) { stack.Push(child); continue; }
+            return true;
+        }
+        return false;
+    }
+    static void CheckExpeditionPause()
+    {
+        var reveal = new PetNestExpeditionRevealView();
+        var stack = new System.Collections.Generic.Stack<System.Collections.IEnumerator>();
+        stack.Push(reveal.Play());
+        BossRushUI.Paused = true;
+        for (int i = 0; i < 20; i++) Check(AdvancePresentation(stack), "paused expedition keeps its presentation alive");
+        Check(!reveal.HasDetail && PetNestExpeditionService.Revealed == 0,
+            "paused expedition cannot reach result or mark it revealed");
+        BossRushUI.Paused = false;
+        for (int i = 0; i < 20 && !reveal.HasDetail; i++) AdvancePresentation(stack);
+        Check(reveal.HasDetail && PetNestExpeditionService.Revealed == 0, "unpaused expedition reaches readable result before acknowledgement");
+        BossRushUI.Paused = true;
+        for (int i = 0; i < 20; i++) Check(AdvancePresentation(stack), "pausing during result preserves its hold time");
+        Check(PetNestExpeditionService.Revealed == 0 && PetNestExpeditionRevealView.Closed == 0,
+            "pause during hold neither consumes nor closes the card");
+        BossRushUI.Paused = false;
+        for (int i = 0; i < 20 && AdvancePresentation(stack); i++) { }
+        Check(stack.Count == 0 && PetNestExpeditionService.Revealed == 1 && PetNestExpeditionRevealView.Closed == 1,
+            "resuming finishes the same expedition exactly once");
     }
     static Vector3 Point(JsonElement e) { var a=e.EnumerateArray().Select(x=>x.GetSingle()).ToArray();return new Vector3(a[0],a[1],a[2]); }
     static bool Same(Vector3 a,Vector3 b) { return Vector3.Distance(a,b)<.001f; }

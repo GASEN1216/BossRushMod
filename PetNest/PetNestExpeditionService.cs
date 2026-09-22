@@ -233,6 +233,39 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// 在移除原宠的候选事务中补齐旧记录颜色，只认同一 petId 且不覆盖已有快照。
+        /// 只在真死/放生/移除时扫描，避免每次遗魂入账克隆 Bundle 都遍历普通宠的空颜色。
+        /// </summary>
+        internal static void FreezeAppearanceBeforeRemoval(PetNestPetRecord pet)
+        {
+            if (pet == null || string.IsNullOrEmpty(pet.id)
+                || !PetNestPersistenceAccess.IsTransactionActive) return;
+            List<PetNestExpeditionRecord> records = Records;
+            for (int i = 0; i < records.Count; i++)
+            {
+                PetNestExpeditionRecord record = records[i];
+                if (record == null || !string.Equals(record.petId, pet.id, StringComparison.Ordinal)
+                    || record.petShiny || !string.IsNullOrEmpty(record.petChromaA)
+                    || !string.IsNullOrEmpty(record.petChromaB)) continue;
+                record.petShiny = pet.shiny;
+                record.petChromaA = pet.chromaA;
+                record.petChromaB = pet.chromaB;
+            }
+        }
+
+
+        /// <summary>页面与出发操作共用的宠状态判据，锁定或重伤时不提供派遣入口。</summary>
+        internal static bool CanDepart(PetNestPetRecord pet, out string failureReasonId)
+        {
+            failureReasonId = null;
+            if (pet == null) failureReasonId = "pet_not_found";
+            else if (pet.state == (int)PetNestPetState.OnExpedition)
+                failureReasonId = "pet_locked_by_expedition";
+            else if (pet.state == (int)PetNestPetState.Downed)
+                failureReasonId = "pet_downed";
+            return failureReasonId == null;
+        }
 
         /// <summary>
         /// 派出一只崽。成功后崽被锁定（state=OnExpedition），记录立刻落档。
@@ -246,16 +279,7 @@ namespace BossRush
             failureReasonId = null;
 
             PetNestPetRecord pet = PetNestService.TryGetPet(petId);
-            if (pet == null)
-            {
-                failureReasonId = "pet_not_found";
-                return false;
-            }
-            if (pet.state == (int)PetNestPetState.OnExpedition)
-            {
-                failureReasonId = "pet_locked_by_expedition";
-                return false;
-            }
+            if (!CanDepart(pet, out failureReasonId)) return false;
             if (TryGetDestination(destinationId) == null)
             {
                 failureReasonId = "destination_unknown";
@@ -267,10 +291,9 @@ namespace BossRush
                 if (!PetNestPersistenceAccess.BeginTransaction(out failureReasonId)) return false;
                 // 从候选包重新解析实体，禁止继续修改调用方持有的权威缓存引用。
                 pet = PetNestService.TryGetPet(petId);
-                if (pet == null)
+                if (!CanDepart(pet, out failureReasonId))
                 {
                     PetNestPersistenceAccess.AbortTransaction();
-                    failureReasonId = "pet_not_found";
                     return false;
                 }
                 PetNestExpeditionData data = PetNestPersistenceAccess.Expedition;
@@ -304,13 +327,15 @@ namespace BossRush
                 // 崽锁定：不可出战、不可移除、不可陈列
                 pet.state = (int)PetNestPetState.OnExpedition;
                 pet.lockedByExpeditionId = r.id;
-                if (string.Equals(PetNestService.Nest.deployedPetId, pet.id, StringComparison.Ordinal))
+                bool clearedSeat = string.Equals(PetNestService.Nest.deployedPetId, pet.id, StringComparison.Ordinal);
+                if (clearedSeat)
                 {
                     PetNestService.Nest.deployedPetId = null;
                 }
 
                 PetNestMuseumStats.RecordExpedition(pet);
                 if (!CommitBoth(out failureReasonId)) return false;
+                if (clearedSeat) PetNestService.NotifyDeployedPetChanged();
                 record = r;
                 return true;
             }
@@ -438,6 +463,7 @@ namespace BossRush
                 record.settled = true;
 
                 // —— 崽的去向 ——
+                bool clearedSeat = false;
                 if (pet != null)
                 {
                     pet.lockedByExpeditionId = null;
@@ -449,11 +475,13 @@ namespace BossRush
                     if (dead)
                     {
                         // 真死不可逆：移除 PetRecord，纪念碑刻档
+                        FreezeAppearanceBeforeRemoval(pet);
                         AppendMemorial(record, pet);
                         PetNestService.Nest.pets.Remove(pet);
                         if (string.Equals(PetNestService.Nest.deployedPetId, pet.id, StringComparison.Ordinal))
                         {
                             PetNestService.Nest.deployedPetId = null;
+                            clearedSeat = true;
                         }
                     }
                     else
@@ -475,6 +503,7 @@ namespace BossRush
                 {
                     return false;
                 }
+                if (clearedSeat) PetNestService.NotifyDeployedPetChanged();
 
                 // 发奖走独立的可恢复通道：落档成功而发奖失败（或中途崩溃）时，
                 // rewardsGranted 仍为 false；基地 LevelManager 与经济/物品资源就绪后再补发。
@@ -933,6 +962,13 @@ namespace BossRush
             try
             {
                 BossRushDynamicItemRegistry.EnsureRegistered(typeId);
+                // 官方已知条目缺 prefab 时会生成非 null 的 FallbackItem 空壳；
+                // 空壳不能消费持久奖励游标，资源恢复后必须还能补发真实物品。
+                if (ItemAssetsCollection.GetPrefab(typeId) == null)
+                {
+                    ModBehaviour.DevLog("[PetNest] 远征战利品 prefab 未就绪，保留欠账: " + typeId);
+                    return false;
+                }
                 item = ItemAssetsCollection.InstantiateSync(typeId);
                 if (item == null)
                 {

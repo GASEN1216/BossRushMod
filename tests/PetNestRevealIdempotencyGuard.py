@@ -19,6 +19,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
 from petnest_guard_util import read_petnest, report, strip_cs_comments  # noqa: E402
+from cs_source_util import clean_source  # noqa: E402
 
 GUARD = "PetNestRevealIdempotencyGuard"
 
@@ -72,6 +73,14 @@ def check_view(errors, name):
     # 必须可跳过：全屏遮罩 + 不可跳过 + 多张牌 = 最长 27 秒不能操作
     if '"Skip"' not in code:
         errors.append("[可跳过] " + name + " 必须提供跳过入口")
+
+    presentation = clean_source(text)
+    if "new WaitForSecondsRealtime(" in presentation or not re.search(
+            r"if \(!BossRushUI\.IsGamePaused\(\)\)\s*elapsed \+= Time\.unscaledDeltaTime;", presentation):
+        errors.append("[暂停] " + name + " 的表现等待必须在未暂停时才推进")
+    play = re.search(r"private IEnumerator PlayRoutine\(\)[\s\S]*?\n        \}", presentation)
+    if play is None or "yield return WaitForPresentation(" not in play.group(0):
+        errors.append("[暂停] " + name + " 必须实际调用暂停感知等待")
 
 
 def check_hatch_specific(errors):

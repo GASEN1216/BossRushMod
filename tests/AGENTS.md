@@ -21,7 +21,7 @@ runner 全量跑不中断、聚合 PASS/FAIL、强制 UTF-8 输出。不要用 `
 fail-fast 的写法还会让第一个红项遮蔽后面所有守卫。
 
 - 已知红项登记在 `tests/known_red_guards.txt`：失败不计入退出码但会单独列出；登记后又转绿的报 STALE-BASELINE 并判失败，要及时移除。新写的守卫不进这里。
-- CI（`.github/workflows/guards.yml`）跑 `--source-only`：三个依赖 local-only 制品（AssetBundle）的检查标 PARTIAL。发布验证不要用这个参数。干净签出上这三个资源守卫本来就红，不算回归。
+- CI（`.github/workflows/guards.yml`）跑 `--source-only`：依赖 local-only 制品（AssetBundle）的检查标 PARTIAL，清单见 runner 的 `EXTERNAL_ARTIFACT_GUARDS`。发布验证不要用这个参数。干净签出上缺少这些资源不算代码回归，不能据 PARTIAL 宣称发布资源通过。
 - CI 不跑编译。只能在 Linux / WSL 跑时，写明「未做 Windows 编译验证」。
 
 ## 2. 执行回归

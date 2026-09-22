@@ -42,6 +42,7 @@ groups = {
         ('ModeH/ModeHRuntimeModule_CombatProfiles.cs', 'private ModeHProfileDto FindSeasonProfile('),
         ('ModeH/ModeHRuntimeModule_Recovery.cs', 'private bool TryPrepareSeasonResume('),
         ('ModeH/ModeHRuntimeModule_Recovery.cs', 'private bool TryHandleSeasonResumeScene('),
+        ('ModeH/ModeHRuntimeModule_Recovery.cs', 'private void CompleteSeasonResumeScene()'),
         ('ModeH/ModeHRuntimeModule_Recovery.cs', 'private bool IsSeasonResumeRequestCurrent('),
         ('ModeH/ModeHRuntimeModule_Recovery.cs', 'private void FailSeasonResume('),
         ('ModeH/ModeHRuntimeModule_Recovery.cs', 'private void CancelSeasonResume()'),

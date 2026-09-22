@@ -193,13 +193,13 @@ namespace BossRush
 
                 SetText(_cardText, L10n.T("翻牌……", "Turning the card..."));
                 SetText(_detailText, string.Empty);
-                yield return new WaitForSecondsRealtime(CardEnterSeconds);
+                yield return WaitForPresentation(CardEnterSeconds);
 
                 SetText(_cardText, BuildCardTitle(record));
-                yield return new WaitForSecondsRealtime(CardFlipSeconds);
+                yield return WaitForPresentation(CardFlipSeconds);
 
                 SetText(_detailText, BuildCardDetail(record));
-                yield return new WaitForSecondsRealtime(CardHoldSeconds);
+                yield return WaitForPresentation(CardHoldSeconds);
 
                 // 翻完这张才把它移出待翻列表；中途退出的话下次回基地会重新弹
                 string reason;
@@ -207,6 +207,17 @@ namespace BossRush
             }
 
             Stop();
+        }
+
+        /// <summary>与孵化演出同样使用暂停感知的表现时间，暂停不能消耗待翻卡片。</summary>
+        private static IEnumerator WaitForPresentation(float seconds)
+        {
+            float elapsed = 0f;
+            while (elapsed < seconds)
+            {
+                yield return null;
+                if (!BossRushUI.IsGamePaused()) elapsed += Time.unscaledDeltaTime;
+            }
         }
 
         private static string BuildCardTitle(PetNestExpeditionRecord record)

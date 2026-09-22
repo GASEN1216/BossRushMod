@@ -537,6 +537,14 @@ namespace BossRush
             }
 
             page.Body = L10n.T("待派遣：", "Ready to depart: ") + PetNestService.GetDecoratedPetName(pet);
+            string failureReasonId;
+            if (!PetNestExpeditionService.CanDepart(pet, out failureReasonId))
+            {
+                page.Body = PetNestService.GetDecoratedPetName(pet) + "\n"
+                    + PetNestLocalization.DescribeFailure(failureReasonId)
+                    + "\n" + L10n.T("请回巢选择另一只可派遣的崽。", "Pick another available cub in the nest.");
+                return page;
+            }
             AppendDepartCards(page, pet, refresh);
             return page;
         }

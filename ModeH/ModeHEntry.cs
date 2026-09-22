@@ -6,6 +6,13 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
+        /// <summary>普通入场协程不能在 Mode H 已冻结意图或取得 owner 后搬动玩家。</summary>
+        private bool ShouldSkipLegacySceneSetupForModeH()
+        {
+            return BossRushMapSelectionHelper.HasPendingModeHEntryIntent()
+                || IsModeHRunInProgressSafe();
+        }
+
         /// <summary>
         /// 是否存在任一旧模式 owner 或 pending/startup 冲突（设计提案 §17.1）。
         /// 与 Mode G 入口一样逐模式拒绝，不走会死锁的聚合判定。

@@ -116,7 +116,7 @@ namespace BossRush
         /// <summary>
         /// host 场景回调：更新 scene generation。
         /// 注意 OnSceneLoadedIntegrationRuntime 先于本回调执行，Legacy 接管决策此时已定型；
-        /// arena isolation lease 与 spectator lease 在本回调内获取。
+        /// 本回调只调度目标场景就绪等待，官方传送结束后才取得两种租约。
         /// </summary>
         public override void OnSceneLoaded(SceneRuntimeContext context)
         {

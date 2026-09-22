@@ -1,13 +1,13 @@
 // ============================================================================
 // DailyReportBackground.cs - 日报面板底图加载
 // ============================================================================
-// 底图是随 Mod 部署的散图（Assets/ui/DailyReport/daily_report_bg.png），不是 bundle：
-// 它只有一张、只在面板打开时用一次，为它单开一个 AssetBundle 不划算，
-// 形态与 Campaign 的 raw PNG 一致（compile_official.bat 的部署步骤一起拷）。
+// 正式底图优先从共享 production_icons 包按原 PNG 路径借用 Sprite。
+// 修改原 PNG 后必须同步作者工程并重打该包，散图只供包缺席时回退。
+// 只在面板打开时惰性加载，不为单张背景另建资源 owner。
 //
 // fail-open：读不到就返回 null，面板退回纯纸色底，文字位置不变。
-// 缓存：程序化创建的 Sprite / Texture 带 DontSave，切场景不会自动回收，
-// 必须由 ResetStaticCaches 显式销毁，否则每次重建宿主都漏一份贴图。
+// 缓存：借用 Sprite 由 ProductionIconCache 卸载；raw 回退创建的 Sprite / Texture
+// 由 ResetStaticCaches 显式销毁，避免重复释放共享纹理或泄漏自造资源。
 // ============================================================================
 
 using System;

@@ -236,12 +236,16 @@ namespace BossRush
                     return false;
                 }
                 PetNestNestData nest = Nest;
+                PetNestExpeditionService.FreezeAppearanceBeforeRemoval(pet);
                 nest.pets.Remove(pet);
-                if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
+                bool clearedSeat = string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal);
+                if (clearedSeat)
                 {
                     nest.deployedPetId = null;
                 }
-                return CommitCandidate(out failureReasonId);
+                bool ok = CommitCandidate(out failureReasonId);
+                if (ok && clearedSeat) NotifyDeployedPetChanged();
+                return ok;
             }
             catch (Exception e)
             {
@@ -287,14 +291,18 @@ namespace BossRush
                 PetNestNestData nest = Nest;
                 string lineageKey = pet.lineageKey;
 
+                PetNestExpeditionService.FreezeAppearanceBeforeRemoval(pet);
                 nest.pets.Remove(pet);
-                if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
+                bool clearedSeat = string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal);
+                if (clearedSeat)
                 {
                     nest.deployedPetId = null;
                 }
                 AddSouls(lineageKey, PetNestTuning.ReleaseSoulRefund, false);
 
-                return CommitCandidate(out failureReasonId);
+                bool ok = CommitCandidate(out failureReasonId);
+                if (ok && clearedSeat) NotifyDeployedPetChanged();
+                return ok;
             }
             catch (Exception e)
             {
@@ -482,7 +490,7 @@ namespace BossRush
         /// 局内：席位已经不是在场那只时立刻回收随从，不等切图。
         /// 全程 no-throw：表现层同步失败不得回滚已经提交的席位数据。
         /// </summary>
-        private static void NotifyDeployedPetChanged()
+        internal static void NotifyDeployedPetChanged()
         {
             try
             {

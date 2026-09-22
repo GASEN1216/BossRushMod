@@ -22,7 +22,9 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Duckov.Scenes;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace BossRush
 {
@@ -50,6 +52,12 @@ namespace BossRush
 
         /// <summary>认证协程句柄，用于关停时取消。</summary>
         private Coroutine _certificationRoutine;
+
+        // 原生 sceneLoaded 早于官方子场景传送结束。新开局/续赛共用这一个等待 owner。
+        private Coroutine _sceneReadyRoutine;
+        private int _sceneReadyRequestSerial;
+        private int _sceneReadyIntentGeneration;
+        private const float SceneReadyTimeoutSeconds = 30f;
 
         /// <summary>Season 内存副本是否有未落盘的改动。</summary>
         private bool _seasonDirty;
@@ -147,7 +155,120 @@ namespace BossRush
             // 才不会因为「路过一张受支持地图」就把关停状态解除。
             BeginNewRunSession();
 
-            BeginSeasonSetup(context.SceneName, sceneId);
+            ScheduleSceneReadyWait(context, sceneId, frozenGeneration, false);
+        }
+
+        private void ScheduleSceneReadyWait(SceneRuntimeContext context, string sceneId,
+            int intentGeneration, bool resume)
+        {
+            CancelSceneReadyWait();
+            int request = _sceneReadyRequestSerial;
+            _sceneReadyIntentGeneration = intentGeneration;
+            try
+            {
+                _sceneReadyRoutine = _owner.StartCoroutine(WaitForModeHSceneReady(context, sceneId,
+                    intentGeneration, resume, request, _sceneGeneration, ModeHRuntimeGates.SlotGeneration,
+                    resume && _runState != null ? _runState.OwnerToken : 0L));
+            }
+            catch (Exception e)
+            {
+                LogFailure("scene_ready_schedule", e);
+                FailSceneReadyWait(resume, "scene_ready_schedule_failed");
+            }
+        }
+
+        private IEnumerator WaitForModeHSceneReady(SceneRuntimeContext context, string sceneId,
+            int intentGeneration, bool resume, int request, int sceneGeneration, int slotGeneration,
+            long ownerToken)
+        {
+            // 至少让原生 sceneLoaded 返回；AfterInit 已确认官方最终落点，再跨帧稳定检查。
+            yield return null;
+            float elapsed = 0f;
+            bool readyLastFrame = false;
+            while (IsSceneReadyRequestCurrent(context.SceneName, sceneId, intentGeneration,
+                resume, request, sceneGeneration, slotGeneration, ownerToken))
+            {
+                if (!context.Scene.IsValid() || !context.Scene.isLoaded) break;
+                bool ready = IsModeHSceneReady(context.Scene);
+                if (ready && readyLastFrame)
+                {
+                    _sceneReadyRoutine = null;
+                    _sceneReadyIntentGeneration = 0;
+                    if (resume) CompleteSeasonResumeScene();
+                    else BeginSeasonSetup(context.SceneName, sceneId);
+                    yield break;
+                }
+                readyLastFrame = ready;
+                if (!BossRushUI.IsGamePaused()) elapsed += Mathf.Max(0f, Time.unscaledDeltaTime);
+                if (elapsed >= SceneReadyTimeoutSeconds) break;
+                yield return null;
+            }
+
+            // 旧请求不得清新句柄或退新一轮的票；换槽后的资产也不在这里操作。
+            if (request != _sceneReadyRequestSerial) yield break;
+            _sceneReadyRoutine = null;
+            _sceneReadyIntentGeneration = 0;
+            int currentIntent;
+            if (slotGeneration != ModeHRuntimeGates.SlotGeneration
+                || !BossRushMapSelectionHelper.TryMatchModeHSceneIntent(
+                    context.SceneName, sceneId, out currentIntent)
+                || currentIntent != intentGeneration) yield break;
+            FailSceneReadyWait(resume, "scene_not_ready");
+        }
+
+        private bool IsSceneReadyRequestCurrent(string sceneName, string sceneId, int intentGeneration,
+            bool resume, int request, int sceneGeneration, int slotGeneration, long ownerToken)
+        {
+            if (_owner == null || !IsEnabled || _shutdownCompleted || _commandsClosed
+                || request != _sceneReadyRequestSerial || sceneGeneration != _sceneGeneration
+                || slotGeneration != ModeHRuntimeGates.SlotGeneration) return false;
+            int currentIntent;
+            if (!BossRushMapSelectionHelper.TryMatchModeHSceneIntent(sceneName, sceneId, out currentIntent)
+                || currentIntent != intentGeneration) return false;
+            return !resume || IsSeasonResumeRequestCurrent(ownerToken, slotGeneration, intentGeneration);
+        }
+
+        private static bool IsModeHSceneReady(Scene scene)
+        {
+            try
+            {
+                // 官方 LevelInited 后还会等待 0.25 秒再 SetPosition，只有 AfterInit 在那之后。
+                if (SceneLoader.IsSceneLoading || !LevelManager.LevelInited || !LevelManager.AfterInit
+                    || SceneManager.GetActiveScene().handle != scene.handle) return false;
+                MultiSceneCore core = MultiSceneCore.Instance;
+                if (core != null && core.IsLoading) return false;
+                CharacterMainControl player = CharacterMainControl.Main;
+                return player != null && player.Health != null && !player.Health.IsDead;
+            }
+            catch (Exception) { return false; }
+        }
+
+        private bool HasSceneReadyWait(int intentGeneration)
+        {
+            return _sceneReadyRoutine != null && _sceneReadyIntentGeneration == intentGeneration;
+        }
+
+        /// <summary>验收等候使用：入场等待尚未建立 runState，但仍由当前请求持有。</summary>
+        internal bool IsSceneEntryPending { get { return _sceneReadyRoutine != null; } }
+
+        private void FailSceneReadyWait(bool resume, string reason)
+        {
+            if (resume)
+            {
+                CancelSeasonResume();
+                FailSeasonResume(reason);
+            }
+            else AbortSetup(reason, false);
+        }
+
+        private void CancelSceneReadyWait()
+        {
+            _sceneReadyRequestSerial++;
+            Coroutine routine = _sceneReadyRoutine;
+            _sceneReadyRoutine = null;
+            _sceneReadyIntentGeneration = 0;
+            try { if (routine != null && _owner != null) _owner.StopCoroutine(routine); }
+            catch (Exception) { /* 场景或宿主已释放协程 */ }
         }
 
         /// <summary>
@@ -747,6 +868,7 @@ namespace BossRush
         /// </summary>
         private void ReleaseRuntimeObjects()
         {
+            CancelSceneReadyWait();
             // 2. 停止生成队列与认证协程
             try
             {

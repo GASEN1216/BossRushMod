@@ -43,6 +43,9 @@ class Program
         ShowcaseService.ResetStaticCaches();
         ItemUtilities.Delivered.Clear(); RelicEggConfig.FailStamp = false;
         ItemAssetsCollection.FailInstantiate = false; UnityEngine.Random.value = 0;
+        ItemAssetsCollection.MissingPrefabId = ItemAssetsCollection.InstantiateCalls = 0;
+        PetNestBaseIdleSpawner.DeployNotifications = PetNestCompanionRuntime.Cleanups = 0;
+        PetNestUIPages.DepartCardRequests = 0;
         RaidMealService.Reject = RaidMealService.Throw = false; RaidMealService.Registered = 0;
         DailyReportPersistence.Current = new DailyReportData { BountyCompleted = true, BountyKindId = "bounty", BountyDayIndex = 1 };
         DailyReportPersistence.ResetStaticCaches();
@@ -415,6 +418,7 @@ class Program
     {
         CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
+        PetNestLifecycleRepairs();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
     }
 
@@ -522,6 +526,118 @@ class Program
         legacy.Normalize();
         Check(PetNestExpeditionService.DescribeDecoratedPetName(legacy) == "旧崽",
             "legacy record without colors falls back to the plain name");
+    }
+
+    static void PetNestLifecycleRepairs()
+    {
+        string error;
+        for (int action = 0; action < 3; action++)
+        {
+            for (int reject = 0; reject < 2; reject++)
+            {
+                Reset(); PrepareNest();
+                PetNestHatchResult hatch;
+                Check(PetNestHatchService.TryHatchEgg(Egg(), out hatch, out error), "seat cleanup setup hatches cub");
+                Check(PetNestService.TrySetDeployedPet(hatch.Pet.id, out error), "seat cleanup setup deploys cub");
+                int notifications = PetNestBaseIdleSpawner.DeployNotifications;
+                int cleanups = PetNestCompanionRuntime.Cleanups;
+                if (reject != 0) SetPrivate(PetNestPersistence.Bundle, "_storeFaulted", true);
+                PetNestExpeditionRecord record;
+                bool ok = action == 0 ? PetNestService.TryRemovePet(hatch.Pet.id, out error)
+                    : action == 1 ? PetNestService.TryReleasePet(hatch.Pet.id, out error)
+                    : PetNestExpeditionService.TryDepart(hatch.Pet.id, PetNestTuning.DestinationStormSea,
+                        PetNestRiskTier.Safe, out record, out error);
+                Check(ok == (reject == 0), "seat-removing transaction reports acceptance or rejection");
+                Check(PetNestBaseIdleSpawner.DeployNotifications == notifications + (ok ? 1 : 0)
+                    && PetNestCompanionRuntime.Cleanups == cleanups + (ok ? 1 : 0),
+                    "remove release and departure synchronize runtime exactly after successful commit");
+                Check(ok ? PetNestService.Nest.deployedPetId == null
+                    : PetNestService.Nest.deployedPetId == hatch.Pet.id,
+                    "rejected seat transaction retains deployed cub and successful transaction clears it");
+            }
+        }
+
+        Reset(); PrepareNest();
+        var bundle = PetNestPersistence.Bundle.Current;
+        var pet = new PetNestPetRecord { id = "old-cub", lineageKey = "test", displayName = "OldCub",
+            shiny = true, chromaA = "black", chromaB = "white", state = (int)PetNestPetState.OnExpedition,
+            lockedByExpeditionId = "old-trip" };
+        pet.Normalize(); bundle.nest.pets.Add(pet);
+        var oldTrip = new PetNestExpeditionRecord { id = "old-trip", petId = pet.id,
+            petDisplayName = "OldCub", petLineageKey = "test", destinationId = PetNestTuning.DestinationStormSea,
+            riskTier = (int)PetNestRiskTier.Desperate, returnTicks = 0, deathRate = 1, successRate = 0 };
+        oldTrip.Normalize(); bundle.expedition.records.Add(oldTrip);
+        Check(PetNestExpeditionService.TrySettle(oldTrip, out error), "legacy colored expedition settles through production death path");
+        Check(PetNestService.TryGetPet(pet.id) == null, "legacy death removes original cub");
+        var afterDeath = PetNestExpeditionService.Records[0];
+        Check(afterDeath.petShiny && afterDeath.petChromaA == "black" && afterDeath.petChromaB == "white",
+            "legacy expedition freezes known original colors before removal even with existing lineage");
+        var reloaded = PetNestCodec.DecodeBundle(BossRushJsonParser.ParseOrNull(
+            PetNestCodec.EncodeBundle(PetNestPersistence.Bundle.Current)));
+        Check(PetNestExpeditionService.DescribeDecoratedPetName(reloaded.expedition.records[0]).Contains("Shiny")
+            && StripRichText(PetNestExpeditionService.DescribeDecoratedPetName(reloaded.expedition.records[0])).Contains("Black-White"),
+            "legacy death reveal retains shiny and chroma after bundle round trip");
+        Check(reloaded.museum.memorials[0].shiny && reloaded.museum.memorials[0].chromaA == "black",
+            "legacy death memorial agrees with reveal colors");
+        Reset(); PrepareNest();
+        var snapshot = PetNestPersistence.Bundle.Current;
+        pet.state = (int)PetNestPetState.InNest; pet.lockedByExpeditionId = null;
+        snapshot.nest.pets.Add(pet);
+        snapshot.expedition.records.Add(new PetNestExpeditionRecord { id = "existing", settled = true,
+            petId = pet.id, petLineageKey = "test", petChromaA = "red", petChromaB = "blue" });
+        snapshot.expedition.records.Add(new PetNestExpeditionRecord { id = "orphan", settled = true,
+            petId = "missing", petDisplayName = "Unknown" });
+        snapshot.expedition.records.Add(new PetNestExpeditionRecord { id = "old-unrevealed", settled = true,
+            petId = pet.id, petDisplayName = "OldCub" });
+        Check(PetNestService.TryReleasePet(pet.id, out error), "release snapshots colors for old pending results");
+        snapshot = PetNestPersistence.Bundle.Current;
+        Check(snapshot.expedition.records[0].petChromaA == "red" && !snapshot.expedition.records[0].petShiny,
+            "removal does not replace an existing appearance snapshot");
+        Check(snapshot.expedition.records[1].petChromaA == null && !snapshot.expedition.records[1].petShiny,
+            "missing original cub cannot borrow another cub appearance");
+        Check(snapshot.expedition.records[2].petShiny && snapshot.expedition.records[2].petChromaA == "black",
+            "release freezes known appearance before the original cub disappears");
+
+        Reset(); PrepareNest();
+        var debt = PendingEgg("missing-prefab", "gone");
+        debt.outcomeLootTypeIds[0] = 123456;
+        PetNestPersistence.Bundle.Current.expedition.records.Add(debt);
+        ItemAssetsCollection.MissingPrefabId = 123456;
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && ItemUtilities.Delivered.Count == 0
+            && ItemAssetsCollection.InstantiateCalls == 0, "missing prefab cannot instantiate or deliver official fallback");
+        debt = PetNestExpeditionService.Records[0];
+        Check(debt.grantedLootUnits == 0 && !debt.rewardsGranted, "missing prefab retains original reward cursor and debt");
+        ItemAssetsCollection.MissingPrefabId = 0;
+        PetNestExpeditionService.ResetValidationRewardBackend();
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 1 && ItemUtilities.Delivered.Count == 1
+            && !ItemUtilities.Delivered[0].IsFallback, "restored prefab completes persistent reward exactly once");
+        PetNestExpeditionService.ResetValidationRewardBackend();
+        Check(PetNestExpeditionService.TryGrantPendingRewards() == 0 && ItemUtilities.Delivered.Count == 1,
+            "completed reward remains idempotent after prefab recovery");
+
+        Reset(); PrepareNest();
+        Check(!PetNestExpeditionService.CanDepart(null, out error), "missing cub has no departure action");
+        pet = new PetNestPetRecord { id = "selectable", lineageKey = "test" }; pet.Normalize();
+        PetNestPersistence.Bundle.Current.nest.pets.Add(pet);
+        foreach (PetNestPetState state in new[] { PetNestPetState.InNest, PetNestPetState.Deployed,
+            PetNestPetState.OnExpedition, PetNestPetState.Downed })
+        {
+            PetNestService.TryGetPet(pet.id).state = (int)state;
+            bool expected = state == PetNestPetState.InNest || state == PetNestPetState.Deployed;
+            Check(PetNestExpeditionService.CanDepart(PetNestService.TryGetPet(pet.id), out error) == expected,
+                "shared departure predicate distinguishes eligible from locked and downed cubs");
+            PetNestUIPages.DepartCardRequests = 0;
+            PetNestUIPages.BuildExpeditionPage(null, pet.id);
+            Check(PetNestUIPages.DepartCardRequests == (expected ? 1 : 0),
+                "production expedition page only appends departure cards for eligible cubs");
+            if (!expected)
+            {
+                PetNestExpeditionRecord blocked;
+                Check(!PetNestExpeditionService.TryDepart(pet.id, PetNestTuning.DestinationStormSea,
+                    PetNestRiskTier.Safe, out blocked, out error) && PetNestExpeditionService.Records.Count == 0,
+                    "execution rejects the same locked or downed cub hidden by the page");
+            }
+        }
     }
 
     static void PetNestAchievements()

@@ -65,6 +65,7 @@ namespace BossRush
     {
         public static int Generation; public static string SceneName;
         public static int GetPendingModeHSceneGeneration() { return Generation; }
+        public static bool HasPendingModeHEntryIntent() { return Generation > 0; }
         public static bool TryMatchModeHSceneIntent(string name, string id, out int generation)
         { generation = Generation; return name == SceneName && id == "arena-id"; }
     }
@@ -113,6 +114,10 @@ namespace BossRush
         public void Cancel() { CancelSeasonResume(); }
         private void EnsureContentScanned() { }
         private void BeginNewRunSession() { _commandsClosed = false; _seasonDirty = false; }
+        // 本夹具假定宿主已就绪；真实等待/取消时序由 ModeHSceneEntry 链接生产协程覆盖。
+        private void ScheduleSceneReadyWait(SceneRuntimeContext context, string id, int generation, bool resume)
+        { CompleteSeasonResumeScene(); }
+        private void CancelSceneReadyWait() { }
         private void OnTransitionApplied(ModeHTransitionRecord r) { ProjectRunStateIntoSeason(); }
         private void LogFailure(string tag, Exception e) { Failure = tag; }
         private void RequestSuspended(string reason, bool attemptStakeReturn = true) { Failure = reason; TryTransition(_runState.Lifecycle, ModeHLifecycle.Suspended, reason); }

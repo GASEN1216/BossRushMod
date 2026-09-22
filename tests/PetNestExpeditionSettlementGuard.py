@@ -23,6 +23,7 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, "tests"))
 
 from petnest_guard_util import read_petnest, report, strip_cs_comments  # noqa: E402
+from cs_source_util import clean_source  # noqa: E402
 
 GUARD = "PetNestExpeditionSettlementGuard"
 
@@ -82,6 +83,15 @@ def main():
             errors.append("[事务] 出发必须先开启 v2 候选包事务")
         if "CommitBoth(out failureReasonId)" not in body:
             errors.append("[事务] 出发必须原子提交候选包")
+        if body.count("CanDepart(pet, out failureReasonId)") != 2:
+            errors.append("[派遣门控] 出发前与候选实体必须经过同一 CanDepart 判据")
+
+    page_code = clean_source(read_petnest("PetNestUIPages.cs") or "")
+    page = re.search(r"internal static PetNestPageContent BuildExpeditionPage\([\s\S]*?\n        \}", page_code)
+    if page is None or not re.search(
+            r"if \(!PetNestExpeditionService\.CanDepart\(pet, out failureReasonId\)\)\s*\{[^{}]*return page;\s*\}\s*AppendDepartCards\(page, pet, refresh\);",
+            page.group(0)):
+        errors.append("[派遣门控] 远征页必须在共用判据拒绝时返回，不能继续挂出发卡")
 
     # 5. 结算：幂等 + roll 用固化概率 + 先落档再发奖
     settle = re.search(r"internal static bool TrySettle\(PetNestExpeditionRecord record, out string failureReasonId\)[\s\S]{0,6500}?\n        \}", code)
@@ -218,6 +228,10 @@ def main():
         body = one.group(0)
         if "return false;" not in body:
             errors.append("[发奖记账] 可重试失败（实例化失败 / 异常）必须返回 false 保留欠账")
+        ready = re.search(r"if \(ItemAssetsCollection\.GetPrefab\(typeId\) == null\)\s*\{[^{}]*return false;\s*\}", body)
+        instantiate = body.find("ItemAssetsCollection.InstantiateSync(typeId)")
+        if ready is None or instantiate < 0 or ready.end() > instantiate:
+            errors.append("[发奖资源] 必须在实例化前拒绝缺 prefab，不能让官方 FallbackItem 消费奖励游标")
         if "string lineageKey = record.petLineageKey;" not in body:
             errors.append("[奖励身份] 遗种蛋须优先读取远征记录血脉，不能只查仍在巢中的崽")
         failed_stamp = re.search(

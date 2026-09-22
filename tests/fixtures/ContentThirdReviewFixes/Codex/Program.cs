@@ -101,7 +101,93 @@ class Program
         CheckCodec();
         CheckCapacityAndCleanup();
         CheckKillEligibility();
+        CheckOfficialRosterWithoutBossFlag();
         Console.WriteLine("Codex regression checks=" + checks);
+    }
+
+    static void CheckOfficialRosterWithoutBossFlag()
+    {
+        Reset();
+        const string key = "Cname_RaiderIce";
+        // 官方 EnemyPreset_Snow_Raider 的 isBoss=false；用户指定的 Boss 名单包含它。
+        // 夹具读取真实名单，角色标记按实际官方资源复现，不能为方便测试改成 true。
+        CodexBossCatalog.EnsureBuilt(ModBehaviour.Instance);
+        CodexBossInfo card;
+        Check(CodexOfficialBossRegistry.IsOfficialBoss(key) && CodexBossCatalog.TryGet(key, out card),
+            "official roster contains the ice raider before any kill or filtered-pool entry");
+        foreach (CodexBossInfo info in CodexBossCatalog.All)
+            if (info.Key != key) CodexPersistence.Current.GetOrCreate(info.Key, info.DisplayName).Kills = 1;
+        Check(!CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current), "ice raider remains required for completion");
+
+        var target = new Health { Character = new CharacterMainControl
+        {
+            isBossCharacter = false, Team = Teams.wolf,
+            characterPreset = new CharacterRandomPreset { nameKey = key }
+        } };
+        var hit = new DamageInfo { fromCharacter = new CharacterMainControl { IsMainCharacter = true }, finalDamage = 10 };
+        UnityEngine.Time.time = 100;
+        CodexKillCollector.OnGlobalHurt(target, hit);
+        Check(CodexKillCollector.TrackedFightCount == 1, "official roster boss without runtime flag opens a fight timer");
+        UnityEngine.Time.time = 105;
+        target.IsDead = true;
+        CodexKillCollector.OnGlobalDead(target, hit);
+        CodexKillCollector.OnGlobalDead(target, hit);
+        CodexKillCollector.OnGlobalHurt(target, hit);
+        CodexEntry entry = CodexPersistence.Current.Find(key);
+        Check(entry != null && entry.Kills == 1 && entry.FastestKillSeconds == 5
+            && entry.FirstKillTicks > 0 && entry.FirstScene == CodexSceneNames.Captured
+            && entry.FirstMode == CodexTuning.ModeIdRaid && CodexKillCollector.TrackedFightCount == 0,
+            "ice raider records all four values once and lethal OnHurt does not reopen its timer");
+        Check(CodexBossCatalog.IsFullyUnlocked(CodexPersistence.Current)
+            && BossRushAchievementManager.Unlocked.Contains(CodexTuning.AchievementAll),
+            "collecting the real ice raider unlocks completion without changing its runtime boss flag");
+        CodexEntry restored = CodexCodec.Decode(CodexPersistence.SavedJson).Find(key);
+        Check(restored.Kills == 1 && restored.FastestKillSeconds == 5
+            && restored.FirstKillTicks == entry.FirstKillTicks && restored.FirstScene == entry.FirstScene,
+            "ice raider four-value record survives the production codec round trip");
+
+        Reset();
+        // 名单兜底必须留在既有身份过滤之后，不能让同 key 的随从、友军或丧尸杂兵入册。
+        for (int exclusion = 0; exclusion < 7; exclusion++)
+        {
+            target = new Health { Character = new CharacterMainControl
+            {
+                isBossCharacter = false, Team = Teams.wolf,
+                characterPreset = new CharacterRandomPreset { nameKey = key }
+            } };
+            hit.fromCharacter = new CharacterMainControl { IsMainCharacter = exclusion != 0 };
+            ModBehaviour.ModeHRunning = exclusion == 1;
+            target.IsCompanion = exclusion == 2;
+            target.Character.Team = exclusion == 3 ? Teams.player : Teams.wolf;
+            LevelManager.Instance.IsBaseLevel = exclusion == 4;
+            target.IsMainCharacterHealth = exclusion == 5;
+            ModBehaviour.Instance.IsZombieModeActive = exclusion == 6;
+            if (exclusion == 6) target.Character.Component = new ZombieModeEnemyRuntimeMarker { IsBoss = false };
+            CodexKillCollector.OnGlobalHurt(target, hit);
+            target.IsDead = true;
+            CodexKillCollector.OnGlobalDead(target, hit);
+            Check(CodexKillCollector.TrackedFightCount == 0 && CodexPersistence.Current.Entries.Count == 0,
+                "official roster fallback preserves kill eligibility exclusion " + exclusion);
+        }
+        ModBehaviour.ModeHRunning = false;
+        LevelManager.Instance.IsBaseLevel = false;
+        // 同 nameKey 的丧尸 Boss 仍只按 marker 归入丧尸卡，不额外解锁官方卡。
+        target.Character.Component = new ZombieModeEnemyRuntimeMarker { IsBoss = true, BossKind = ZombieModeBossKind.Titan };
+        CodexKillCollector.OnGlobalDead(target, hit);
+        Check(CodexPersistence.Current.Find(key) == null
+            && CodexPersistence.Current.Find(CodexBossCatalog.BuildZombieBossKey(ZombieModeBossKind.Titan)) != null,
+            "zombie marker wins over the official roster name key");
+        ModBehaviour.Instance.IsZombieModeActive = false;
+
+        target = new Health { IsDead = true, Character = new CharacterMainControl
+        {
+            isBossCharacter = false, Team = Teams.wolf,
+            characterPreset = new CharacterRandomPreset { nameKey = "Cname_Bear" }
+        } };
+        CodexKillCollector.OnGlobalDead(target, hit);
+        Check(CodexOfficialBossRegistry.IsOfficialCreature("Cname_Bear")
+            && CodexPersistence.Current.Find("Cname_Bear") == null,
+            "official non-boss creatures do not gain kill eligibility from the display roster");
     }
 
     static void CheckNewAchievementThresholds()

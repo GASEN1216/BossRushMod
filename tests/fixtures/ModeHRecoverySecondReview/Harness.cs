@@ -123,6 +123,7 @@ namespace BossRush
             }};
         }
         private void CancelSeasonResume() { Events.Add("cancel_resume"); }
+        private void CancelSceneReadyWait() { Events.Add("cancel_scene_ready"); }
         private void ReturnEscrowFromRecovery()
         {
             Events.Add("return_escrow");

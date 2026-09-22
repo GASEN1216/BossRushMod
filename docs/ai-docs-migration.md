@@ -263,3 +263,8 @@ Unity 作者工程 manifest 的 URP `17.0.3` 与本机缓存 `14.0.12` 的差异
 - §4.16 新增「作者工程与 Unity Editor 路径不要写死」。起因：仓库里六处写死 `D:/code/ykf/...`，
   工程搬家后这些「找不到就跳过」的引用让守卫静默变成永远 PASS——
   `SkyIslandMiniMapGuard` 的 Unity 构建器检查从来没真正执行过。统一走 `tools/unity_project_path.py`。
+
+
+## 2026-09-22 资源守卫清单归位
+
+`tests/AGENTS.md` 不再把依赖 local-only 制品的守卫写死成“三个”，改以 `tools/run_guards.py` 的 `EXTERNAL_ARTIFACT_GUARDS` 为事实源；新增日报实际 Sprite 检查亦在其中。源码 CI 的 PARTIAL 不等于发布资源验证通过。

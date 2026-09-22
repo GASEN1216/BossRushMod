@@ -25,7 +25,7 @@ def method(path, signature):
 
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
-    extracted = "using System; namespace BossRush { internal static partial class DailyReportService {\n"
+    extracted = "using System; using System.Collections.Generic; namespace BossRush { internal static partial class DailyReportService {\n"
     for signature in ("internal static void TryRedeliverPendingBountyReward()", "private static bool Persist(DailyReportData data)", "internal static long GetPendingBountyCash(DailyReportData data)"):
         extracted += method("Integration/DailyReport/DailyReportService.cs", signature) + "\n"
     extracted += "}\ninternal static partial class DailyReportPersistence {\n"
@@ -36,6 +36,13 @@ def main():
     extracted += "private static void HandleCollectSaveData() { try { if (!BeforeCollectSaveData()) return; FlushPending(); } catch (Exception) { } }\n"
     extracted += "}\ninternal static partial class DailyReportRewards {\n"
     extracted += method("Integration/DailyReport/DailyReportRewards.cs", "internal static bool TryGrantBountyCash(long amount, out string failureReason)")
+    extracted += "}\n"
+    # 远征入口执行生产页面方法；卡片渲染适配器只记录有没有挂上派遣入口。
+    for signature in ("internal sealed class PetNestPageContent", "internal sealed class PetNestCardData",
+                      "internal sealed class PetNestActionData"):
+        extracted += method("PetNest/PetNestUIPages.cs", signature) + "\n"
+    extracted += "internal static partial class PetNestUIPages {\n"
+    extracted += method("PetNest/PetNestUIPages.cs", "internal static PetNestPageContent BuildExpeditionPage(")
     extracted += "}}"
     (OUT / "Extracted.cs").write_text(extracted, encoding="utf-8")
     linked = [

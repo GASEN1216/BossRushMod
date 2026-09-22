@@ -102,10 +102,12 @@ namespace BossRush
         private IEnumerator ThunderBiteStep(Vector3 origin, CharacterMainControl struckTarget, int generation)
         {
             yield return thunderBiteWait;
-            thunderBitePending = false;
 
             // 代数不符 = 这条是上一次激活（多半是上一张图）排队下来的，坐标已作废
             if (!thunderSetActive || generation != setBonusGeneration) yield break;
+            // 只有本次激活的请求能释放 pending；结算再验冷却，防止重复在飞请求双发。
+            thunderBitePending = false;
+            if (Time.time - lastThunderBiteTime < THUNDER_BITE_COOLDOWN) yield break;
             CharacterMainControl player = CharacterMainControl.Main;
             if (player == null) yield break;
 

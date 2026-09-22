@@ -82,9 +82,21 @@ namespace BossRush
             try
             {
                 await SceneLoader.Instance.LoadScene(sceneId, null, true);
+                // 风暴 B0/冷库的加载 ID 先到主图；续赛也必须走到冻结的目标子场景。
+                if (IsSeasonResumeRequestCurrent(ownerToken, slotGeneration, intentGeneration)
+                    && !HasSceneReadyWait(intentGeneration) && _map != null
+                    && Duckov.Scenes.MultiSceneCore.Instance != null
+                    && !string.Equals(UnityEngine.SceneManagement.SceneManager.GetActiveScene().name,
+                        _map.SceneName, StringComparison.Ordinal))
+                {
+                    await Duckov.Scenes.MultiSceneCore.Instance.LoadAndTeleport(
+                        _map.SceneName, _map.PlayerSpawnPos);
+                }
                 if (IsSeasonResumeRequestCurrent(ownerToken, slotGeneration, intentGeneration))
                 {
-                    // 正常由场景回调完成；没有命中回调时保持可重试，绝不在错误地图开赛。
+                    // 场景回调已接到时，让同一 owner 的就绪等待完成，不能在这里抢先取消。
+                    if (HasSceneReadyWait(intentGeneration)) return;
+                    // 没有命中回调时保持可重试，绝不在错误地图开赛。
                     CancelSeasonResume();
                     OpenRecoveryShell("season_resume_scene_not_matched");
                 }
@@ -103,7 +115,9 @@ namespace BossRush
             return _resumeScenePending && !_shutdownCompleted && _runState != null
                 && _runState.OwnerToken == ownerToken
                 && ModeHRuntimeGates.SlotGeneration == slotGeneration
-                && _resumeSceneIntentGeneration == intentGeneration;
+                && _resumeSceneIntentGeneration == intentGeneration
+                && BossRushMapSelectionHelper.HasPendingModeHEntryIntent()
+                && BossRushMapSelectionHelper.GetPendingModeHSceneGeneration() == intentGeneration;
         }
 
         private bool TryHandleSeasonResumeScene(SceneRuntimeContext context)
@@ -117,6 +131,12 @@ namespace BossRush
                     context.SceneName, _map.SceneId, out intentGeneration)
                 || intentGeneration != _resumeSceneIntentGeneration) return true;
 
+            ScheduleSceneReadyWait(context, _map.SceneId, intentGeneration, true);
+            return true;
+        }
+
+        private void CompleteSeasonResumeScene()
+        {
             CancelSeasonResume();
             string failure;
             try
@@ -124,18 +144,18 @@ namespace BossRush
                 _arenaLease = new ModeHArenaIsolationLease();
                 if (!_arenaLease.TryAcquire(_map.SceneName, _sceneGeneration,
                         _runState.OwnerToken, out failure))
-                { FailSeasonResume(failure); return true; }
+                { FailSeasonResume(failure); return; }
                 _spectatorLease = new ModeHSpectatorLease();
                 if (!_spectatorLease.TryAcquire(_map.SpectatorPos, _sceneGeneration,
                         _runState.OwnerToken, out failure))
-                { FailSeasonResume(failure); return true; }
+                { FailSeasonResume(failure); return; }
 
                 _runState.ResetTechnicalRetry();
                 _resumeNeedsMatchReset = true;
                 _recoveryDriveStateSequence = -1;
                 if (_runState.Lifecycle != ModeHLifecycle.Recovering
                     && !TryTransition(_runState.Lifecycle, ModeHLifecycle.Recovering, "player_resume"))
-                { FailSeasonResume("season_resume_transition_failed"); return true; }
+                { FailSeasonResume("season_resume_transition_failed"); return; }
                 _restoredSeasonPending = false;
                 ModeHRuntimeGates.SetRecoveryOnlyBlocked(false, null);
                 DriveRecovery();
@@ -145,7 +165,6 @@ namespace BossRush
                 LogFailure("season_resume_leases", e);
                 FailSeasonResume("season_resume_lease_exception");
             }
-            return true;
         }
 
         private void FailSeasonResume(string failure)
@@ -158,6 +177,7 @@ namespace BossRush
 
         private void CancelSeasonResume()
         {
+            CancelSceneReadyWait();
             if (_resumeScenePending
                 && BossRushMapSelectionHelper.GetPendingModeHSceneGeneration() == _resumeSceneIntentGeneration)
                 ModeHEntry.CancelPendingEntry();

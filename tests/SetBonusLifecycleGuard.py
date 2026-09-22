@@ -12,6 +12,7 @@
 from pathlib import Path
 import re
 import sys
+from cs_source_util import clean_source
 
 
 FROST = Path("Integration/Bonus/FrostSetBonus.cs")
@@ -132,6 +133,28 @@ def main() -> int:
             return fail(label + " must commit its cooldown inside the resolution step, not before StartCoroutine")
         if text.count(cooldown_write) != 1:
             return fail(label + " cooldown must be written exactly once (resolution step only)")
+
+    # 旧代数必须先退出，不能清掉新激活请求的 pending；结算自身也要挡重复交付。
+    for name, text, state, cooldown, effect in (
+        ("Frost", frost_nova, "frost", "FROST_BITE_COOLDOWN", "SpawnSetBurst("),
+        ("Thunder", thunder_storm, "thunder", "THUNDER_BITE_COOLDOWN", "ScanSetBonusEnemies("),
+    ):
+        signature = "private IEnumerator " + name + "BiteStep("
+        source = clean_source(text)
+        if signature not in source:
+            return fail(name + " bite resolution method missing")
+        step = re.sub(r"\s+", " ", source.split(signature, 1)[1].split("\n        }", 1)[0])
+        anchors = (
+            "if (!" + state + "SetActive || generation != setBonusGeneration) yield break;",
+            state + "BitePending = false;",
+            "if (Time.time - last" + name + "BiteTime < " + cooldown + ") yield break;",
+            effect,
+        )
+        positions = [step.find(anchor) for anchor in anchors]
+        if min(positions) < 0 or positions != sorted(positions):
+            return fail(name + " bite must validate generation before releasing pending, then recheck cooldown before effects")
+        if step.count(state + "BitePending = false;") != 1:
+            return fail(name + " bite resolution may release only its current pending request")
 
     # 雷噬扫不到别的敌人 = 不造成任何伤害，此时不得扣冷却
     storm_step = thunder_storm.split("private IEnumerator ThunderBiteStep(", 1)[1]

@@ -105,7 +105,10 @@ namespace ItemStatsSystem
     {
         public static object Instance = new object();
         public static bool FailInstantiate;
-        public static Item InstantiateSync(int id) { return FailInstantiate ? null : new Item { TypeID = id, Lineage = null }; }
+        public static int MissingPrefabId, InstantiateCalls;
+        public static Item GetPrefab(int id) { return id == MissingPrefabId ? null : new Item { TypeID = id }; }
+        // 官方已知条目缺 prefab 时返回同 TypeID 非 null 空壳，不能用 null 替身掩盖它。
+        public static Item InstantiateSync(int id) { InstantiateCalls++; return FailInstantiate ? null : new Item { TypeID = id, Lineage = null, IsFallback = id == MissingPrefabId }; }
         public static ItemMetaData GetMetaData(int id) { return new ItemMetaData { id = id, quality = id >= 200 ? 8 : 5 }; }
     }
     struct ItemMetaData { public int id, quality; }
@@ -114,7 +117,7 @@ namespace ItemStatsSystem
     {
         public int TypeID = 500059, MaxStackCount = 20, Quality;
         public string Lineage = "test";
-        public bool Destroyed, FailSaveOnce, Stackable = true;
+        public bool Destroyed, FailSaveOnce, IsFallback, Stackable = true;
         public Inventory InInventory, Inventory;
         public List<Slot> Slots;
         int count = 1;
@@ -169,6 +172,14 @@ namespace BossRush
         public bool IsBackMountainConfiguredEnabled() { return true; }
     }
     static class L10n { public static bool IsChinese { get { return false; } } public static string T(string cn, string en) { return en; } }
+    static class PetNestLocalization { public static string DescribeFailure(string reason) { return reason; } }
+    internal static partial class PetNestUIPages
+    {
+        internal static int DepartCardRequests;
+        private static string T(string key) { return key; }
+        private static PetNestCardData BuildExpeditionCard(PetNestExpeditionRecord record) { return new PetNestCardData(); }
+        private static void AppendDepartCards(PetNestPageContent page, PetNestPetRecord pet, Action refresh) { DepartCardRequests++; }
+    }
 
     // 2026-09-20：席位变化的表现层同步入口。本夹具只验数据事务，
     // 生成 / 回收随从是 Unity 侧行为，这里用记次数的替身，保证生产方法体原样可编译可执行。

@@ -23,6 +23,7 @@ namespace BossRush
         /// </summary>
         private System.Collections.IEnumerator TeleportPlayerToCustomPosition(Vector3 targetPosition)
         {
+            if (ShouldSkipLegacySceneSetupForModeH()) yield break;
             DevLog("[BossRush] TeleportPlayerToCustomPosition: 开始等待场景初始化，目标位置: " + targetPosition);
 
             // 等待场景完全加载
@@ -46,6 +47,9 @@ namespace BossRush
 
             // 额外等待一小段时间，确保游戏自身的出生点逻辑已执行完毕
             yield return sharedWait05s;
+
+            // 等待期间可能进入 H，或认证已消费 typed intent；两种情况都由 H 持有位置。
+            if (ShouldSkipLegacySceneSetupForModeH()) yield break;
 
             // [Mode E 修复] 使用统一入场判定，只在 Mode E 时跳过 customSpawnPos 传送
             // Mode E 设计为"玩家留在地图默认出生点"，不需要传送到 customSpawnPos

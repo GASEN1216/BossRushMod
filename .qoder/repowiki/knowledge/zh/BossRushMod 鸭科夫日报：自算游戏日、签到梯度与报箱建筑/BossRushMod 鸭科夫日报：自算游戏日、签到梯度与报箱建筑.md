@@ -241,3 +241,11 @@ Dev F3 在专用测试档真实执行签到、跨日、物理保存、清缓存�
 ## 2026-09-19 复核补充
 
 奖品候选改为直接调用 `BossRushQualityItemPool`，日报私有扫描/缓存已移除。报箱注册分别确认元数据与活着的 prefab，失败不置完成标记。阅读面板使用共享文本测量动态排版并按容器缩放，签到子控件固定上沿以容纳长说明，悬赏明确展示失败与待结算状态，刊头显示剩余游玩时间。五类悬赏、签到梯度、日长、已发布 key 和原发奖恢复协议保持不变。详细行为与证据见 `.qoder/repowiki/zh/content/高级功能/日报悬赏欠款.md` 的同日章节。
+
+## 2026-09-22 人工实测复核修复
+
+`COMPAT / OPERATIONAL`。当前报纸使用 `DailyReportLayoutTable` 固定版面，长正文在各自卡片内滚动。`CreateText` 将正文横向锚点伸展到视口后清零 `sizeDelta`，使宽度等于视口；纵向仍由 `ContentSizeFitter.PreferredSize` 按完整文本撑开，横向不启用尺寸拟合。这样英文换行也按可见宽度计算，不再保留旧固定宽度造成双倍宽度裁字。
+
+正式背景由 `ProductionIconCache` 优先借用 `production_icons` 中的 `assets/ui/dailyreport/daily_report_bg.png` Sprite，散图只是回退。底图修改须同步作者工程的 `Assets/ProductionIcons/` 输入、重新导入并重打正式包，不能只更新散图。底图仅保留固定装饰，签到格、按钮和图例色块由运行时绘制。共享判据 `tools/daily_report_art_contract.py` 按版面表检查这些区域，`DailyReportArtPropertyTest` 和正式包验证器都读取实际 Sprite 像素；缺资源或仅检查源码不能算发布资源通过。
+
+本轮 Sprite 别名、几何、导入预算及其余贴图载荷保持原值。离线取色不替代 owner 在游戏中检查描边、字体、滚轮及中英文末行。完整交付与复测见 `docs/testing/20260922人工实测复核修复记录.md`。

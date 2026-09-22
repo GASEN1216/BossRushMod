@@ -33,6 +33,11 @@ def main():
     code = 'using System.Collections; using System.Collections.Generic; using UnityEngine; namespace BossRush { partial class PetNestHatchRevealView {\n'
     code += '\n'.join(member(raw, signature) for signature in signatures) + '\n}}'
     (OUT / 'Reveal.cs').write_text(code, encoding='utf-8')
+    expedition = ROOT / 'PetNest/PetNestExpeditionRevealView.cs'
+    code = 'using System.Collections; using UnityEngine; namespace BossRush { partial class PetNestExpeditionRevealView {\n'
+    code += '\n'.join(member(expedition.read_text(encoding='utf-8-sig'), signature) for signature in (
+        'private IEnumerator PlayRoutine()', 'private static IEnumerator WaitForPresentation(')) + '\n}}'
+    (OUT / 'ExpeditionReveal.cs').write_text(code, encoding='utf-8')
     combat = ROOT / 'Integration/Bonus/SetBonusVisuals.cs'
     code = 'using System; using UnityEngine; namespace BossRush { public partial class ModBehaviour {\n'
     code += member(combat.read_text(encoding='utf-8-sig'), 'private bool TryResolveSetBonusEnemyTarget(')
@@ -48,13 +53,13 @@ def main():
         'PetNest/PetNestBaseIdleSpawner.cs', 'PetNest/PetNestCompanionRuntime.cs',
         'ModeH/ModeHMapSupportRegistry.cs', 'Common/MapConfig/BossRushMapConfig.cs',
         'Integration/Codex/CodexSceneNames.cs')]
-    files = linked + [OUT / 'Reveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs']
+    files = linked + [OUT / 'Reveal.cs', OUT / 'ExpeditionReveal.cs', OUT / 'Combat.cs', HERE / 'Program.cs', HERE / 'Stubs.cs']
     project = '<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>7.3</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><NoWarn>0649;0169;0414</NoWarn></PropertyGroup><ItemGroup>'
     project += ''.join('<Compile Include="' + escape(str(p), {'"': '&quot;'}) + '" />' for p in files)
     project += '</ItemGroup></Project>'
     (OUT / 'Regression.csproj').write_text(project, encoding='utf-8')
     (OUT / 'sources.json').write_text(json.dumps({str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
-        for p in linked + [source, combat]}, indent=2), encoding='utf-8')
+        for p in linked + [source, expedition, combat]}, indent=2), encoding='utf-8')
     return subprocess.call(['dotnet', 'run', '--project', str(OUT / 'Regression.csproj'),
         '--configuration', 'Release', '--', str(OUT / 'maps.json')], cwd=ROOT)
 

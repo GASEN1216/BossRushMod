@@ -432,7 +432,8 @@ namespace BossRush
                     {
                         BossRushMapSelectionHelper.MarkTargetSceneLoadStarted();
                         bossRushArenaPlanned = false;
-                        StartCoroutine(TeleportPlayerToCustomPosition(customPos.Value));
+                        if (!ShouldSkipLegacySceneSetupForModeH())
+                            StartCoroutine(TeleportPlayerToCustomPosition(customPos.Value));
                         BossRushMapSelectionHelper.ClearPendingMapEntry();
                     }
                     else if (scene.name.Contains("Loading") || scene.name.Contains("Menu") ||

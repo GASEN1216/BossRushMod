@@ -174,4 +174,23 @@ namespace BossRush
         public bool Complete { get { return _finished && _detailText.text==BuildDetailText(); } }
         public static IEnumerator Wait() { return WaitForPresentation(1); }
     }
+    class PetNestExpeditionRecord { public string id; }
+    static class PetNestExpeditionService
+    {
+        public static int Revealed;
+        public static bool MarkRevealed(PetNestExpeditionRecord record, out string reason) { reason = null; Revealed++; return true; }
+    }
+    partial class PetNestExpeditionRevealView
+    {
+        const float CardEnterSeconds = .3f, CardFlipSeconds = .55f, CardHoldSeconds = 1.4f;
+        Label _cardText = new Label(), _detailText = new Label();
+        List<PetNestExpeditionRecord> _pending = new List<PetNestExpeditionRecord> { new PetNestExpeditionRecord { id = "trip" } };
+        public static int Closed;
+        static void SetText(Label target, string text) { target.text = text; }
+        static string BuildCardTitle(PetNestExpeditionRecord record) { return record.id; }
+        static string BuildCardDetail(PetNestExpeditionRecord record) { return "result"; }
+        static void Stop() { Closed++; }
+        public bool HasDetail { get { return !string.IsNullOrEmpty(_detailText.text); } }
+        public IEnumerator Play() { return PlayRoutine(); }
+    }
 }

@@ -1,10 +1,10 @@
 {
-  "verifiedAt": "2026-09-20T12:46:46.496490+00:00",
+  "verifiedAt": "2026-09-22T07:58:36.686466+00:00",
   "classification": "COMPAT / OPERATIONAL",
   "status": "RESOURCE_PRODUCTION_L2_COMPLETE_L3_PENDING",
   "gameSmoke": {
     "status": "PENDING_OWNER",
-    "reason": "No game launch or player save access during resource optimization."
+    "reason": "本轮修复交付未启动游戏或访问玩家存档。"
   },
   "sourceFbx": {
     "path": "D:\\code\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\Assets\\SkyIsland\\SkyIslandWorld.fbx",
@@ -23,17 +23,17 @@
   },
   "raid_bundle": {
     "author_export": {
-      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\SkyIslandRaidExport\\sky_island_raid",
+      "path": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\duckov_modding-main\\UnityFiles\\BossRush\\ResourceRelease\\Assets\\arenas\\sky_island_raid",
       "bytes": 79843738,
       "sha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee"
     },
     "repo": {
-      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
+      "path": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\ykf\\BossRushMod\\Assets\\arenas\\sky_island_raid",
       "bytes": 79843738,
       "sha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee"
     },
     "game": {
-      "path": "E:\\SteamLibrary\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
+      "path": "D:\\sofrware\\steam\\steamapps\\common\\Escape from Duckov\\Duckov_Data\\Mods\\BossRush\\Assets\\arenas\\sky_island_raid",
       "bytes": 79843738,
       "sha256": "642adfcf798e7aafe71eef4820628888e9fc58c88d1de14d99e59393654fc8ee"
     },
@@ -500,5 +500,6 @@
     "evidence": "Build/resource-optimization-20260920/release-validation.json",
     "previousLedger": "Build/resource-optimization-20260920/raid-deployment-before.json"
   },
-  "resourceProductionReceipt": "Build/resource-production-20260920/final-sha256.json"
+  "resourceProductionReceipt": "Build/resource-production-20260920/final-sha256.json",
+  "latestDeliveryEvidence": "Build/manual-fix-20260922/final-deployment-evidence.json"
 }
