@@ -36,6 +36,11 @@ BossRush选项修改方案.md
 # 反例（不要放行）：docs/官方本地化表/ 是游戏本体资产的快照，
 # tests/OfficialNameReferenceGuard.py 读不到时会自行 skip 而不是转红，所以不纳管。
 /docs/*
+# Cross-worktree migration plan and its research evidence only.
+!/docs/设计提案/
+/docs/设计提案/*
+!/docs/设计提案/2026-09-22_BossRushMod模块解耦与上下文治理计划.md
+!/docs/设计提案/2026-09-22_BossRushMod_GitHub架构对照与深审记录.md
 !/docs/testing/
 /docs/testing/*
 !/docs/testing/2026-05-14-final-runtime-smoke.md
