@@ -220,6 +220,10 @@ namespace BossRush
                 // DescriptionRaw is derived by the game from DisplayNameRaw + "_Desc".
                 EquipmentHelper.AddTagToItem(item, "Special");
                 EquipmentHelperIcon.TryInjectIcon(item, null, def.IconName);
+                // 克隆源（遗种蛋 ← 便携安全区装置）带着自己的 3D 模型：官方 Crop.RefreshDisplayInstance 与 InteractablePickup
+                // 都走 item.ItemGraphic，不清掉就会「龙息果长在地里是个装置」。清成 null 后官方走 spriteGraphicPfb，
+                // 用物品自己的图标立牌显示（官方无模型物品同一条路），菜地里与掉在地上都认得出是什么。
+                ClearItemGraphic(item);
 
                 // 出击餐要能「吃」；种子不挂使用行为——它是给官方种植 UI 用的，
                 // 挂上反而会在背包里多出一个没有意义的「使用」按钮。
@@ -229,6 +233,16 @@ namespace BossRush
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "配置物品失败 " + typeId + ": " + e.Message);
             }
+        }
+
+        private static readonly System.Reflection.FieldInfo ItemGraphicField =
+            typeof(Item).GetField("itemGraphic", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        /// <summary>把克隆源带来的 3D 模型引用清掉；字段名对不上（官方改名 / 夹具替身）就什么都不做。</summary>
+        private static void ClearItemGraphic(Item item)
+        {
+            try { if (ItemGraphicField != null) ItemGraphicField.SetValue(item, null); }
+            catch (Exception e) { ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "[WARNING] 清除克隆模型引用失败: " + e.Message); }
         }
 
         /// <summary>挂上出击餐的使用行为。形态照 Integration/Items/BrickStoneConfig.cs。</summary>

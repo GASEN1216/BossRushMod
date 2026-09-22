@@ -20,7 +20,7 @@ The three facilities follow the first three chapters of the **Duck King Campaign
 moment you hand in that chapter to Jeff — no need to leave and re-enter the base — and a notice
 tells you what just opened.
 
-- Hand in Chapter 1 `Sign Us Up` → **Garden** (the site opens; you pay to build it)
+- Hand in Chapter 1 `Sign Us Up` → **Garden** (the site opens; you pay Shovel ×1 and Poop ×9 to build it)
 - Hand in Chapter 2 `The Fighter With a Garden` → **Display bonus**
 - Hand in Chapter 3 `A Proper Front` → **Jukebox**
 
@@ -30,6 +30,7 @@ tells you what just opened.
   Chapter 1, Jeff opens the site for you: walk up to the fenced-off pile of scrap at base, interact,
   pay the cost and construction starts. The scrap disappears and the garden appears. The cost shows
   in the notice.
+- The cost is the game's own: `Shovel ×1` (craft it at the Workbench from Metal Plate ×3, Wood ×2, Rope ×1) plus `Poop ×9` (dropped by Fly Members and Fly Captains in Farm Town, J-Lab, Lab Area 37 and the Island Challenge; decomposing one Poop Gun Range Module also gives 5). Storage and backpack both count.
 - **Building the garden is one of Chapter 2's objectives**, so hand in to Jeff once it's up.
 - Once the Garden is unlocked, the three mod Bosses drop **an extra** seed into their loot crate,
   roughly `25%` each. It's a bonus on top — it never takes the place of the Dragon set pieces

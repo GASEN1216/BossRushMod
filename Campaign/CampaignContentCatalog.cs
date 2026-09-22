@@ -109,8 +109,8 @@ namespace BossRush
                     return L10n.T("带装备和船票进标准竞技场，路牌选标准那一档，前两波稳着打，通关回基地找杰夫交任务。",
                         "Bring gear and a ticket into the Standard Arena, pick a standard tier at the sign, play the first two waves safe, then hand in to Jeff at base.");
                 case CampaignContentCatalog.ModeModeD:
-                    return L10n.T("先在基地建设面板把菜地建起来，再只带船票空手进白手起家，用开局发的近战刀砍 5 个并打到第 5 波。",
-                        "Build the garden from the base construction panel first, then enter From Scratch with only a ticket, no gear. Use the starter melee knife for 5 kills and push to wave 5.");
+                    return L10n.T("先带铲子 ×1、粑粑 ×9 去基地的菜地工地交钱动工，再只带船票空手进白手起家，用开局发的近战刀砍 5 个并打到第 5 波。",
+                        "Pay for the garden site at base first (Shovel ×1, Poop ×9), then enter From Scratch with only a ticket, no gear. Use the starter melee knife for 5 kills and push to wave 5.");
                 case CampaignContentCatalog.ModeModeE:
                     return L10n.T("带船票和营旗裸装进划地为营，选阵营后干掉 8 个敌方头目，回基地再把 1 件 Boss 战利品摆上枪械展示架或假人。",
                         "Enter Faction War with a ticket and a faction banner, no gear. Pick a side, drop 8 hostile bosses, then put 1 Boss trophy on a weapon rack or a dummy back at base.");
@@ -133,8 +133,8 @@ namespace BossRush
             switch (chapterId)
             {
                 case "ch1":
-                    return L10n.T("已解锁菜地。去基地建设面板建「菜地」，之后 Boss 会掉种子，种出来能做出击餐。",
-                        "Garden unlocked. Build \"Garden\" from the base construction panel. Bosses start dropping seeds, and what you grow becomes raid meals.");
+                    return L10n.T("已解锁菜地。基地的菜地工地开放了，带铲子 ×1、粑粑 ×9 走过去交钱动工；之后 Boss 会掉种子，种出来能做出击餐。",
+                        "Garden unlocked. The garden site at base is open: bring Shovel ×1 and Poop ×9, walk up and pay. Bosses start dropping seeds, and what you grow becomes raid meals.");
                 case "ch2":
                     return L10n.T("已解锁陈列加成。把 Boss 战利品摆上基地的枪械展示架或假人，每件给生命上限加成。",
                         "Display bonus unlocked. Put Boss trophies on the base weapon display rack or on a dummy. Each one raises your max health.");
