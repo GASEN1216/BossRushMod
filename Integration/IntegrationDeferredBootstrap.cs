@@ -59,6 +59,8 @@ namespace BossRush
             yield return RunDeferredStep_Integration("LoadEquipmentContent", () => LoadEquipmentContent());
             yield return RunDeferredStep_Integration("InitializeEarlyEquipmentAbilitySystems", () => InitializeEarlyEquipmentAbilitySystems());
             yield return RunDeferredStep_Integration("InitializeLateEquipmentAbilitySystems", () => InitializeLateEquipmentAbilitySystems());
+            // Mod 战利品补官方展示标签（prefab 级，幂等；lazy 注册的物品由基地装配再捡漏）
+            yield return RunDeferredStep_Integration("ShowcaseTagInjector.EnsureTagged", () => ShowcaseTagInjector.EnsureTagged());
 
             Scene activeScene = SceneManager.GetActiveScene();
             if (activeScene.IsValid())

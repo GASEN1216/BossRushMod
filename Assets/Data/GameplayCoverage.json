@@ -487,7 +487,7 @@
       "manual": [
         {
           "id": "M_CAMPAIGN_01",
-          "steps": "在公告板领取第 1 章，走标准模式无伤目标与交付；缩小可选 Boss 池后再测。",
+          "steps": "在基地找杰夫接第 1 章，走标准模式无伤目标，回来在杰夫的任务页交付；缩小可选 Boss 池后再测。",
           "expected": "目标数按可达 Boss 池处理；任务可完成；线索进笔记，交付剧情和奖励一次。"
         },
         {
@@ -517,7 +517,8 @@
         "DATA_BACKMOUNTAIN",
         "BACKMOUNTAIN_HARVEST_MAPPING",
         "BACKMOUNTAIN_RAID_MEAL",
-        "BACKMOUNTAIN_UNLOCK_GATE"
+        "BACKMOUNTAIN_UNLOCK_GATE",
+        "GARDEN_SITE_GATE"
       ],
       "wiki": [
         "system__back_mountain"
@@ -525,8 +526,8 @@
       "manual": [
         {
           "id": "M_GARDEN_01",
-          "steps": "用章节 token 逐步解锁，实际建菜地；三种种子各自种植、等待成熟、收获并制作/食用出击餐。",
-          "expected": "官方 Garden 三连入口可用；作物外观与产出对应；食用后下一局实际属性/减伤生效。"
+          "steps": "交付第一章后回基地：看通知条「菜地工地已开放（造价…）」，走到基地菜地工地付费建成；三种种子各自种植、等待成熟、收获并制作/食用出击餐。移走 Mod 读同一档，菜地仍是建成的。",
+          "expected": "交付前工地无交互；交付后官方付费交互出现；建成后官方 Garden 三连入口可用、Mod 种子在可选列表；作物外观与产出对应；食用后下一局实际属性/减伤生效；建成状态由官方存档键持有。"
         },
         {
           "id": "M_GARDEN_02",
@@ -537,20 +538,21 @@
     },
     {
       "id": "SHOWCASE",
-      "title": "后山战利品登记簿与点唱机",
+      "title": "后山陈列加成（官方陈列柜）与点唱机",
       "sources": [
         "Integration/BackMountain"
       ],
       "automatic": [
-        "BACKMOUNTAIN_SHOWCASE_LEDGER",
+        "BACKMOUNTAIN_SHOWCASE_DISPLAY",
+        "SHOWCASE_OFFICIAL_PROBE",
         "BGM_OWNER_LEASES"
       ],
       "wiki": [],
       "manual": [
         {
           "id": "M_SHOWCASE_01",
-          "steps": "从基地实际展示柜登记、重复登记、移除战利品；重启回读；触发上限/未解锁入口。",
-          "expected": "登记不拿走实物；重复不叠加；加成、展示和回读一致，门禁有说明。"
+          "steps": "交付第二章后建官方「陈列柜」，把 1 件 Q8 的 Mod Boss 装备双击摆进去看最大生命；凑 8 件 Q8；取出 1 件；出击进局看血条；老档（旧登记簿 8 件）进基地后看加成；旧自建柜互动。",
+          "expected": "1 件 Q8 +2%，8 件 +21%，取出 1 件回 14%；摆放当场生效不用切场景；出击进局满血含加成；老档在基地按官方柜实摆重算、无写保护日志；旧自建柜仍在、互动只提示、建造菜单搜不到。"
         },
         {
           "id": "M_SHOWCASE_02",

@@ -20,20 +20,24 @@ def validate(root):
         if not condition:
             errors.append(message)
 
-    ui = compact(read('Integration/BackMountain/ShowcaseUI.cs'))
-    require('ZombieModeUIHelper.ClaimModalInput(_root,"TrophyShowcase")' in ui
-            and '_modalLease.Release();' in ui, 'ShowcaseUI: 打开与关闭必须配对取得/释放共享输入租约')
-    require('privatevoidOnDestroy(){ShowcaseUI.NotifyDestroyed(gameObject);}' in ui
-            and 'if(ReferenceEquals(_root,root))Close();' in ui,
-            'ShowcaseUI: 场景销毁释放输入，旧画布不得关闭新画布')
-    require('if(Input.GetKeyDown(KeyCode.Escape)){Close();return;}' in ui,
-            'ShowcaseUI: Esc 必须有关闭入口')
-    require('if(ShowcaseService.CanDisplay(ResolveHeldItem(),outdisplayReason))ZombieModeUIHelper.CreateButton(' in ui
-            and 'if(ResolveEquippedTrophy()!=null)ZombieModeUIHelper.CreateButton(' in ui
-            and 'if(replacement!=null)ZombieModeUIHelper.CreateButton(' in ui,
-            'ShowcaseUI: 可见动作须复用实际服务资格，不能挂无事可做的按钮')
-    require('ShowcaseService.TryDisplay(item)' in ui and '"Backpack"' in ui,
-            'ShowcaseUI: 登记须保留物品复核并可达背包装备')
+    # 2026-09-22 自建登记簿退役：陈列改接官方陈列柜（ShowcaseDisplayScanner 采集、ShowcaseTagInjector 补标签）。
+    interactable = compact(read('Integration/BackMountain/ShowcaseInteractable.cs'))
+    require('NotificationText.Push(' in interactable and 'OpenShowcaseUI' not in interactable,
+            'ShowcaseInteractable: 退役的自建柜只提示去官方柜摆放，不再开自绘面板')
+    tagger = compact(read('Integration/BackMountain/ShowcaseTagInjector.cs'))
+    require('BossRushDynamicItemRegistry.GetPublishedTypeIds()' in tagger and 'EquipmentHelper.AddTagToItem(prefab,' in tagger
+            and 'BackMountainItems.GetDefinition(typeId)!=null' in tagger,
+            'ShowcaseTagInjector: 枚举源必须是物品注册表、只走共享 AddTagToItem、排除后山自产种子/餐食')
+    scanner = compact(read('Integration/BackMountain/ShowcaseDisplayScanner.cs'))
+    require('item.onSlotContentChanged+=HandleSlotContentChanged;' in scanner
+            and 'onSlotContentChanged-=HandleSlotContentChanged;' in scanner
+            and 'BuildingManager.OnBuildingBuilt+=HandleBuildingBuilt;' in scanner
+            and 'BuildingManager.OnBuildingBuilt-=HandleBuildingBuilt;' in scanner,
+            'ShowcaseDisplayScanner: 槽位事件与建筑建成事件必须用命名方法成对订阅/退订')
+    require('internalstaticvoidFlushIfDirty(){if(!_dirty)return;' in scanner,
+            'ShowcaseDisplayScanner: FlushIfDirty 首句必须 O(1) 早返')
+    require('if(!inBaseScene||!unlocked)return;' in scanner,
+            'ShowcaseDisplayScanner: 未解锁 / 局内不得扫描订阅')
 
     runtime = compact(read('Integration/BackMountain/BackMountainRuntimeModule.cs'))
     require('RaidUtilities.OnRaidEnd+=HandleRaidEnded;' in runtime
@@ -41,8 +45,15 @@ def validate(root):
             'Runtime: 出击结束订阅必须配对清理')
     require('RefreshFacilitiesForScene(context.SceneName);' in runtime,
             'Runtime: 基地 sceneLoaded 必须在 Garden.Start 前尝试按槽恢复')
-    require('if(unlockAll!=_lastUnlockAll)' in runtime and 'ShowcaseUI.Tick();' in runtime,
-            'Runtime: 偏好改变及面板输入必须接入宿主 tick')
+    require('if(unlockAll!=_lastUnlockAll)' in runtime and 'ShowcaseDisplayScanner.FlushIfDirty();' in runtime,
+            'Runtime: 偏好改变及陈列脏刷新必须接入宿主 tick')
+    require('GardenSeedInjector.EnsureInjected();' in runtime and runtime.find('GardenSeedInjector.EnsureInjected();') < runtime.find('GardenConstructionSite.EnsureSiteOpen('),
+            'Runtime: 菜地工地开门必须排在作物注入之后（Built 子树激活时官方 Garden.Start 会读作物表）')
+    require('CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.GardenBuilt,GardenConstructionSite.IsGardenBuilt);' in runtime
+            and 'CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.TrophyDisplayed,ShowcaseService.HasDisplayedTrophy);' in runtime
+            and 'CampaignBaseObjectives.UnregisterProvider(CampaignObjectiveKind.GardenBuilt);' in runtime,
+            'Runtime: 征程基地侧目标的事实提供者必须由后山登记并在关开关 / 销毁时撤销')
+    require('ShowcaseDisplayScanner.ClearSubscriptions();' in runtime, 'Runtime: 场景切换 / 换槽 / 关开关必须退订陈列柜槽位事件')
 
     items = compact(read('Integration/BackMountain/BackMountainItems.cs'))
     require('map[all[i].LocKey+"_Desc"]=L10n.T(all[i].DescCN,all[i].DescEN);' in items,
@@ -61,8 +72,16 @@ def validate(root):
 
     f3 = compact(read('DebugAndTools/F3GameplayValidationBackMountain.cs'))
     require(not any(token in f3 for token in ('ShowcaseService.TryDisplay(', 'ShowcaseService.TryRemoveRecord(',
-            'RaidMealService.RegisterMeal(', 'RaidMealService.ClearRegisteredMeal(')),
-            'F3: 后山观察用例不得写入虚构收藏或餐食')
+            'RaidMealService.RegisterMeal(', 'RaidMealService.ClearRegisteredMeal(', 'ShowcaseService.ApplyDisplaySnapshot(',
+            'SetActive(', 'EnsureSiteOpen(', 'EnsureTagged(', 'Slot.Plug(', '.Unplug(')),
+            'F3: 后山观察用例不得写入虚构收藏或餐食、不得激活工地、不得打标签、不得搬运槽位内容')
+    judges = compact(read('Integration/BackMountain/GardenSiteJudges.cs'))
+    require('using' not in judges.replace('usingSystem', ''), 'GardenSiteJudges: 纯判据不得引用 Unity / Duckov')
+    site = compact(read('Integration/BackMountain/GardenConstructionSite.cs'))
+    require('SavesSystem.Save' not in site and 'interactParent.SetActive(true);' in site,
+            'GardenConstructionSite: 只激活付费交互的父物体，绝不写官方存档键')
+    require('GardenSiteJudges.ShouldOpenSite(' in site and 'GardenSiteJudges.IsGardenBuilt(' in site,
+            'GardenConstructionSite: 判据必须走 GardenSiteJudges')
     return errors
 
 

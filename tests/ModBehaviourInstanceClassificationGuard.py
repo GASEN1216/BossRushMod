@@ -22,11 +22,11 @@ EXCLUDE_DIRS = {
 }
 
 EXPECTED_COUNTS = {
-    "Integration": 282,
+    "Integration": 274,
     "ZombieMode": 38,
     "Interactables": 23,
     "ModeE": 26,
-    "Campaign": 16,
+    "Campaign": 12,
     "Audio": 9,
     "ModeF": 6,
     "Patches": 8,
@@ -41,7 +41,7 @@ EXPECTED_COUNTS = {
     "PetNest": 1,
 }
 
-EXPECTED_TOTAL = 427
+EXPECTED_TOTAL = 415
 
 
 def fail(message: str) -> int:

@@ -77,6 +77,12 @@ namespace BossRush
             _pendingNotice = null;
         }
 
+        /// <summary>事实刚改变（Dev 演练 / 手动推进）：立刻刷 Task 与标记，不等下一拍。</summary>
+        internal void NotifyProgressChanged()
+        {
+            if (_registered && _projection != null) _projection.NotifyProgressChanged(this);
+        }
+
         #region IOfficialQuestClient
 
         public string LogTag { get { return QuestLogTag; } }

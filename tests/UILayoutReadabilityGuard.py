@@ -11,7 +11,6 @@ ROOT = Path(__file__).resolve().parent.parent
 PATHS = [
     "Common/UI/BossRushUI.cs", "ZombieMode/ZombieModeUIHelper.cs",
     "PetNest/PetNestUI.cs", "ModeH/ModeHUI.cs", "ModeH/ModeHUIPages.cs",
-    "Campaign/CampaignBoardView.cs", "Integration/BackMountain/ShowcaseUI.cs",
     "Integration/UI/ImageViewerUI.cs", "Achievement/SteamAchievementPopup.cs",
     "Achievement/AchievementView.cs", "Integration/Codex/CodexView.cs",
     "Common/Effects/RingParticleEffect.cs", "ModeH/ModeHRecoveryPanel.cs",
@@ -129,12 +128,6 @@ def check(sources):
             "卡片、战报、配装列表都必须避让换行后的动作区")
     require("BossRushUI.MeasureTextHeight(text" in pages, "战报长行应换行增高并滚动")
 
-    for path in ("Campaign/CampaignBoardView.cs", "Integration/BackMountain/ShowcaseUI.cs"):
-        anchors = vectors(call(sources[path], '"Header", parent,'))[:2]
-        require(anchors == [(0, 1), (1, 1)], path + " 标题背景必须完整横跨面板，不能只锚在右半边")
-    board = sources["Campaign/CampaignBoardView.cs"]
-    require("BossRushUI.MeasureTextHeight(detail" in board and "scroll.content" in board,
-            "征程目标必须按文字高度排入滚动区")
 
     helper = sources["ZombieMode/ZombieModeUIHelper.cs"]
     lib = sources["Common/UI/BossRushUI.cs"]
@@ -219,8 +212,6 @@ def main():
          "new Vector2(0f, -20f), new Vector2(1120f, 520f)"),
         ("ModeH/ModeHUI.cs", '"Enemies", -64f', '"Enemies", -104f'),
         ("ModeH/ModeHUIPages.cs", "cardWidth, 130f, 34f", "cardWidth, 122f, 96f"),
-        ("Integration/BackMountain/ShowcaseUI.cs", '"Header", parent, new Vector2(0f, 1f)',
-         '"Header", parent, new Vector2(0.5f, 1f)'),
         ("ZombieMode/ZombieModeUIHelper.cs", "if (graphic != null) graphic.color = Color.white;", ""),
         ("Common/Effects/RingParticleEffect.cs", "new GradientColorKey(Color.white, 0f)",
          "new GradientColorKey(tint, 0f)"),

@@ -44,6 +44,7 @@ def main():
         "Integration/DailyReport/DailyReportSaveCoordinator.cs",
         "Integration/BackMountain/RaidMealUsageBehavior.cs",
         "Integration/BackMountain/ShowcaseService.cs",
+        "Integration/BackMountain/ShowcaseDisplayJudges.cs",
         "Common/Lifecycle/BossRushSaveFileThrottle.cs",
         "Common/Lifecycle/BossRushSaveCoordinatorEngine.cs",
         "Common/Lifecycle/BossRushSlotJsonStore.cs",

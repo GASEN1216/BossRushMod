@@ -21,7 +21,13 @@ import sys
 
 MODULE = Path("Integration/BackMountain/BackMountainRuntimeModule.cs")
 SHOWCASE = Path("Integration/BackMountain/ShowcaseService.cs")
-SHOWCASE_UI = Path("Integration/BackMountain/ShowcaseUI.cs")
+SHOWCASE_JUDGES = Path("Integration/BackMountain/ShowcaseDisplayJudges.cs")
+SHOWCASE_SCANNER = Path("Integration/BackMountain/ShowcaseDisplayScanner.cs")
+SHOWCASE_BUILDER = Path("Integration/BackMountain/ShowcaseBuildingBuilder.cs")
+GARDEN_JUDGES = Path("Integration/BackMountain/GardenSiteJudges.cs")
+GARDEN_SITE = Path("Integration/BackMountain/GardenConstructionSite.cs")
+JUKEBOX = Path("Integration/BackMountain/JukeboxTrackInjector.cs")
+BGM_TABLE = Path("Audio/BossBgmTrackTable.cs")
 RAID_MEAL = Path("Integration/BackMountain/RaidMealService.cs")
 RAID_MEAL_USE = Path("Integration/BackMountain/RaidMealUsageBehavior.cs")
 UNLOCKS = Path("Integration/BackMountain/BackMountainUnlocks.cs")
@@ -57,8 +63,8 @@ def strip_comments(text):
 
 
 def main():
-    for path in [MODULE, SHOWCASE, SHOWCASE_UI, RAID_MEAL, RAID_MEAL_USE,
-                 UNLOCKS, CONFIG_CONST, REGISTRATION, SCENE] + CONFIG_SOURCES:
+    for path in [MODULE, SHOWCASE, SHOWCASE_JUDGES, SHOWCASE_SCANNER, SHOWCASE_BUILDER, GARDEN_JUDGES, GARDEN_SITE,
+                 JUKEBOX, BGM_TABLE, RAID_MEAL, RAID_MEAL_USE, UNLOCKS, CONFIG_CONST, REGISTRATION, SCENE] + CONFIG_SOURCES:
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
@@ -69,7 +75,12 @@ def main():
     config = strip_comments("\n".join(
         path.read_text(encoding="utf-8", errors="ignore") for path in CONFIG_SOURCES))
     showcase = strip_comments(SHOWCASE.read_text(encoding="utf-8", errors="ignore"))
-    showcase_ui = strip_comments(SHOWCASE_UI.read_text(encoding="utf-8", errors="ignore"))
+    showcase_scanner = strip_comments(SHOWCASE_SCANNER.read_text(encoding="utf-8", errors="ignore"))
+    showcase_builder = strip_comments(SHOWCASE_BUILDER.read_text(encoding="utf-8", errors="ignore"))
+    garden_judges = strip_comments(GARDEN_JUDGES.read_text(encoding="utf-8", errors="ignore"))
+    garden_site = strip_comments(GARDEN_SITE.read_text(encoding="utf-8", errors="ignore"))
+    jukebox = strip_comments(JUKEBOX.read_text(encoding="utf-8", errors="ignore"))
+    bgm_table = strip_comments(BGM_TABLE.read_text(encoding="utf-8", errors="ignore"))
     raid_meal = strip_comments(RAID_MEAL.read_text(encoding="utf-8", errors="ignore"))
     raid_use = strip_comments(RAID_MEAL_USE.read_text(encoding="utf-8", errors="ignore"))
 
@@ -176,18 +187,57 @@ def main():
     # ---- 7) 登记/餐食写入必须可证实，失败不能静默报告成功 ----
     if not re.search(r"private static bool Store\(\)", showcase):
         return fail("展示柜 Store 必须返回 bool，让上层在写失败时回滚内存登记")
-    if "showcase save readback mismatch" not in showcase or "_displayed.Remove(typeId)" not in showcase:
-        return fail("展示柜登记必须回读核对，写失败时撤销刚加入的 TypeID")
-    if "ResolveEquippedTrophy" not in showcase_ui or "ResolveHeldItem" not in showcase_ui:
-        return fail("展示柜必须同时支持手持与穿戴战利品登记")
-    if "OnRemoveRecord(recordTypeId)" not in showcase_ui or "ShowcaseService.TryRemoveRecord(typeId)" not in showcase_ui:
-        return fail("展示柜已登记条目必须有可见撤销入口，否则先登记低品质后无法升级")
-    if "OnReplaceRecord(recordTypeId)" not in showcase_ui or "ShowcaseService.TryReplaceRecord(oldTypeId, replacement, out reason)" not in showcase_ui:
-        return fail("展示柜必须从可见行按钮接通原位替换，满柜仍能升级且失败保留旧记录")
-    if "_displayed[index] = oldTypeId;" not in showcase or "return ValidateTrophy(item, false, out reason);" not in showcase:
-        return fail("展示柜替换必须绕过空位要求并在写入失败时恢复原登记")
+    if "showcase save readback mismatch" not in showcase:
+        return fail("展示柜陈列快照必须回读核对")
     if "SavesSystem.Save<string>(BackMountainConfig.ShowcaseSaveKey, previousJson)" not in showcase:
         return fail("展示柜 Save 后回读失败必须还原官方缓存，不能只还原内存列表")
+
+    # ---- 7a) 2026-09-22 陈列改接官方陈列柜：快照覆盖、写失败恢复、SCHEMA+ 不升版、扫描订阅纪律、自建柜退役 ----
+    apply = re.search(r"internal\s+static\s+bool\s+ApplyDisplaySnapshot\s*\([^)]*\)\s*\{(.*?)\n        \}", showcase, flags=re.S)
+    if not apply:
+        return fail(SHOWCASE.as_posix() + " 缺 ApplyDisplaySnapshot：陈列必须由官方柜实摆快照整体覆盖")
+    if "_displayed = previous;" not in apply.group(1) or "ShowcaseDisplayJudges.SameSnapshot(_displayed, normalized)" not in apply.group(1):
+        return fail(SHOWCASE.as_posix() + " ApplyDisplaySnapshot 必须在写失败时恢复原列表，且与缓存相同时不落盘")
+    if not re.search(r"private const int CurrentSchemaVersion = 1;", showcase) or '"sourceVersion"' not in showcase:
+        return fail(SHOWCASE.as_posix() + " 存档必须保持 schemaVersion=1 并以可选 sourceVersion 区分登记簿 / 官方柜："
+                    "升 schemaVersion 会让 EnsureLoaded 对老档永久写保护（_writeBarrier 不复位）")
+    if "onSlotContentChanged += HandleSlotContentChanged" not in showcase_scanner or "onSlotContentChanged -= HandleSlotContentChanged" not in showcase_scanner:
+        return fail(SHOWCASE_SCANNER.as_posix() + " 槽位事件必须用命名方法成对订阅 / 退订（AGENTS.md 4.6）")
+    if "_subscribed" not in showcase_scanner:
+        return fail(SHOWCASE_SCANNER.as_posix() + " 缺订阅幂等表 _subscribed")
+    flush = re.search(r"internal\s+static\s+void\s+FlushIfDirty\s*\(\)\s*\{\s*if \(!_dirty\) return;", showcase_scanner)
+    if not flush:
+        return fail(SHOWCASE_SCANNER.as_posix() + " FlushIfDirty 首句必须是 if (!_dirty) return;（每帧 O(1) 早返）")
+    init_gate = re.search(r"private\s+void\s+InitBackMountainShowcase\s*\(bool isEarlyInit\)\s*\{(.*?)\n        \}", showcase_builder, flags=re.S)
+    if not init_gate or "IsFacilityUnlocked(BackMountainFacility.Showcase)" in init_gate.group(1) or "HasPendingShowcaseBuildingsInManager()" not in init_gate.group(1):
+        return fail(SHOWCASE_BUILDER.as_posix() + " 自建柜已退役：注入门只能看老档是否建过（HasPendingShowcaseBuildingsInManager），不得再按解锁进建造菜单")
+
+    # ---- 7b) 菜地工地：只读官方键、判据走纯函数、开门排在作物注入之后 ----
+    if not re.search(r'ConstructionSaveKey\s*=\s*"ConstructionSite_GardenConstruction"', garden_judges):
+        return fail(GARDEN_JUDGES.as_posix() + " 官方工地存档键字面值已变（只读契约）")
+    for path in Path("Integration").rglob("*.cs"):
+        text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
+        if 'SavesSystem.Save<bool>("ConstructionSite_' in text or "SavesSystem.Save<bool>(GardenSiteJudges.ConstructionSaveKey" in text:
+            return fail(path.as_posix() + " 写了官方工地存档键：Mod 只能打开付费交互，wasBuilt / 存档全归官方（AGENTS §10）")
+    if "GardenSiteJudges.ShouldOpenSite(" not in garden_site or "interactParent.SetActive(true);" not in garden_site:
+        return fail(GARDEN_SITE.as_posix() + " 开门必须走 GardenSiteJudges.ShouldOpenSite 并只激活付费交互的父物体")
+    refresh = re.search(r"private\s+void\s+RefreshFacilitiesForScene\s*\([^)]*\)\s*\{(.*?)\n        \}", module, flags=re.S)
+    if not refresh:
+        return fail(MODULE.as_posix() + " 找不到 RefreshFacilitiesForScene 方法体")
+    inject_at = refresh.group(1).find("GardenSeedInjector.EnsureInjected();")
+    open_at = refresh.group(1).find("GardenConstructionSite.EnsureSiteOpen(")
+    if inject_at < 0 or open_at < 0 or open_at < inject_at:
+        return fail(MODULE.as_posix() + " 菜地工地开门必须排在 GardenSeedInjector.EnsureInjected() 之后")
+    if "GardenSeedInjector.IsInjected" not in refresh.group(1):
+        return fail(MODULE.as_posix() + " 开门判据必须带 GardenSeedInjector.IsInjected（作物注入早于 Built 子树激活的结构不变式）")
+
+    # ---- 7c) 点唱机英文曲名（CR-2026-09-18-025 回归）----
+    if "L10n.T(track.musicName," not in jukebox or "track.musicNameEn" not in jukebox:
+        return fail(JUKEBOX.as_posix() + " 点唱机曲名必须在取用时按语言解析（CR-2026-09-18-025 回归）")
+    if "FindTrack(selector.entries, path)" not in jukebox or "selector.entries[index] = entry" not in jukebox:
+        return fail(JUKEBOX.as_posix() + " 点唱机必须按音频路径原位替换：按标题判重会在切语言时重复追加并移位官方索引")
+    if 'row.TryGetString("musicNameEn"' not in bgm_table or 'row.TryGetString("musicName", out entry.musicName)' not in bgm_table:
+        return fail(BGM_TABLE.as_posix() + " musicNameEn 必须是可选字段、musicName 必须必填（旧表兼容）")
     if "def == null || def.IsSeed" not in raid_use:
         return fail("出击餐 CanBeUsed 必须拒绝陌生物品和种子")
     if "SavesSystem.IsSaving" in raid_use:
@@ -204,7 +254,7 @@ def main():
             SCENE.as_posix() + " 的 Mod 卸载路径缺少 CleanupBackMountainShowcase()。"
             "展示柜注入器的静态图标引用会跨卸载残留（与遗种巢/婚礼/许愿台同款接线）。")
 
-    print("BackMountainStructureGuard: PASS（单实例 + dormant + 解锁不缓存 + 冻结常量）")
+    print("BackMountainStructureGuard: PASS（单实例 + dormant + 解锁不缓存 + 冻结常量 + 官方柜陈列 / 菜地工地 / 点唱机曲名）")
     return 0
 
 

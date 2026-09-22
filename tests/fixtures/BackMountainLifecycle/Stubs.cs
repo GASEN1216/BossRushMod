@@ -238,14 +238,18 @@ namespace BossRush
         public static void DevLog(string message) { }
         public static void CriticalLog(string message) { }
     }
-    public static partial class BossRushItemIds { public const int RelicEgg = 500059, PortableSafeZoneDevice = 500058, ZombieTideBeacon = 500040, ZombieTideInvitation = 500041; }
+    public static partial class BossRushItemIds { public const int BossRushTicket = 500001, RelicEgg = 500059, PortableSafeZoneDevice = 500058, ZombieTideBeacon = 500040, ZombieTideInvitation = 500041; }
     public static class ItemFactory
     {
         public static readonly Dictionary<int, Action<Item>> Configurators = new Dictionary<int, Action<Item>>();
         public static void RegisterConfigurator(int id, Action<Item> configure) { Configurators[id] = configure; }
         public static Item GetLoadedItem(int id) { return ItemAssetsCollection.GetPrefab(id); }
     }
-    public static class EquipmentHelper { public static void AddTagToItem(Item item, string tag) { } }
+    public static class EquipmentHelper
+    {
+        public static readonly List<KeyValuePair<int, string>> Tagged = new List<KeyValuePair<int, string>>();
+        public static void AddTagToItem(Item item, string tag) { Tagged.Add(new KeyValuePair<int, string>(item.TypeID, tag)); }
+    }
     public static class EquipmentHelperIcon { public static void TryInjectIcon(Item item, object unused, string icon) { } }
     public static class ModeFItemUsageHelper { public static void AttachToItem(Item item) { } }
     public static class L10n { public static bool Chinese = true; public static bool IsChinese { get { return Chinese; } } public static string T(string cn, string en) { return Chinese ? cn : en; } }
@@ -262,27 +266,48 @@ namespace BossRush
         public static bool IsTokenGranted(string token) { return Tokens.Contains(token); }
         public static void Grant(int chapter) { string t = BuildTokenForChapter(chapter); Tokens.Add(t); OnFacilityTokenGranted?.Invoke(t); }
     }
-    internal static partial class ShowcaseUI
+    // 官方陈列柜采集与菜地工地都是 Unity 场景依赖：判据在 *Judges（已链接），这里只替身取数层的静态入口。
+    internal static class ShowcaseDisplayScanner
     {
-        // 仅替代画布控件构造；Open/Close/Tick/销毁回调逐字抽取生产实现。
-        internal static GameObject Root { get { return _root; } }
-        private static void Build()
-        {
-            _root = new GameObject();
-            _isChinese = L10n.IsChinese;
-            _root.AddComponent<ShowcasePanelLifetime>();
-            _modalLease = ZombieModeUIHelper.ClaimModalInput(_root, "TrophyShowcase");
-        }
+        internal static int RefreshCalls, ClearCalls;
+        internal static bool LastInBase, LastUnlocked, AnyShowcaseFound;
+        internal static int SubscriptionCount { get { return 0; } }
+        internal static void RefreshForScene(bool inBaseScene, bool unlocked) { RefreshCalls++; LastInBase = inBaseScene; LastUnlocked = unlocked; }
+        internal static void ClearSubscriptions() { ClearCalls++; }
+        internal static void FlushIfDirty() { }
+        internal static void ResetStaticCaches() { RefreshCalls = ClearCalls = 0; }
     }
-    internal static class ZombieModeUIHelper
+    internal static class GardenConstructionSite
     {
-        internal static int Leases;
-        internal sealed class ModalInputLease
-        {
-            private bool active = true;
-            internal void Release() { if (active) { Leases--; active = false; } }
-        }
-        internal static ModalInputLease ClaimModalInput(GameObject root, string owner) { Leases++; return new ModalInputLease(); }
+        internal static string PendingNotice;
+        internal static bool Built;
+        internal static int OpenCalls;
+        internal static bool LastUnlocked, LastInBase, LastCropsInjected;
+        internal static void NotifySceneChanged(int generation) { }
+        internal static void EnsureSiteOpen(int generation, bool moduleEnabled, bool gardenUnlocked, bool inBaseScene, bool cropsInjected)
+        { OpenCalls++; LastUnlocked = gardenUnlocked; LastInBase = inBaseScene; LastCropsInjected = cropsInjected; }
+        internal static bool IsGardenBuilt() { return Built; }
+        internal static void ResetStaticCaches() { PendingNotice = null; Built = false; OpenCalls = 0; }
+    }
+    internal enum CampaignObjectiveKind { Unknown = 0, GardenBuilt = 10, TrophyDisplayed = 11 }
+    internal static class CampaignBaseObjectives
+    {
+        internal static readonly Dictionary<CampaignObjectiveKind, Func<bool>> Providers = new Dictionary<CampaignObjectiveKind, Func<bool>>();
+        internal static void RegisterProvider(CampaignObjectiveKind kind, Func<bool> provider) { Providers[kind] = provider; }
+        internal static void UnregisterProvider(CampaignObjectiveKind kind) { Providers.Remove(kind); }
+        internal static bool IsDone(CampaignObjectiveKind kind) { Func<bool> p; return Providers.TryGetValue(kind, out p) && p(); }
+    }
+    internal static class DialogueManager { public static bool IsDialogueActive; }
+    internal static class BossRushUI
+    {
+        internal static bool Hidden, Paused;
+        internal static bool IsOfficialHudHidden() { return Hidden; }
+        internal static bool IsGamePaused() { return Paused; }
+    }
+    internal static class BossRushDynamicItemRegistry
+    {
+        internal static readonly List<int> Published = new List<int>();
+        internal static int[] GetPublishedTypeIds() { var ids = Published.ToArray(); Array.Sort(ids); return ids; }
     }
     internal static class BossBgmCoordinator
     {

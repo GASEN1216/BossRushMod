@@ -86,11 +86,19 @@ namespace BossRush
                     return;
                 }
 
-                // dormant 契约：开关关闭时不往建造 UI 塞建筑。
-                // 老档已建过是例外——必须注册 prefab，否则官方会报缺 prefab 的幽灵建筑。
-                if (!_owner.IsCampaignConfiguredEnabled() && !HasPendingCampaignBoardsInManager())
+                // 退役（2026-09-22）：征程改由官方 NPC 杰夫发放，公告板不再进建造菜单。
+                // 老档已建过的必须照常注入 BuildingInfo + prefab：官方 BuildingArea 走 building.Info.Prefab
+                // （Info = BuildingDataCollection.GetInfo(id)），少了 info 那条就是 "No prefab for building" 幽灵建筑。
+                // 建筑管理器未就绪时不能当「没建过」：早期注入那一趟会漏注入，老档留幽灵——不置 injected，等下一个入口重试。
+                CampaignBoardPresence presence = ProbeExistingCampaignBoards();
+                if (presence == CampaignBoardPresence.None)
                 {
-                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "入口开关关闭且未建过，跳过建筑注入（dormant）");
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "公告板已退役且本档未建过，不进建造菜单");
+                    return;
+                }
+                if (presence == CampaignBoardPresence.Unknown)
+                {
+                    ModBehaviour.DevLog(CampaignTuning.LogPrefix + "建筑管理器未就绪，公告板老档探测推迟到下一个入口");
                     return;
                 }
 
@@ -102,7 +110,7 @@ namespace BossRush
                 campaignBoardInjected = true;
 
                 // 早期注入时 BuildingArea 还没 Start，重绘会白跑一趟
-                if (!isEarlyInit && HasPendingCampaignBoardsInManager())
+                if (!isEarlyInit)
                 {
                     _owner.RequestBaseBuildingAreaRepaint("InitCampaignBoardBuilding");
                 }
@@ -507,25 +515,31 @@ namespace BossRush
         }
 
         /// <summary>老档里是否已经建过公告板（dormant 契约的例外判定）。</summary>
-        private bool HasPendingCampaignBoardsInManager()
+        /// <summary>老档探测的三态：Unknown 不能当 None（会漏注入留幽灵建筑）。</summary>
+        internal enum CampaignBoardPresence { Unknown = 0, None = 1, Yes = 2 }
+
+        /// <summary>
+        /// 本档有没有建过公告板（按原始 ID 计数，官方 GetBuildingAmount；不用 Any——它跳过 info 未注册的记录，
+        /// 注入前恒 false，等于循环依赖）。管理器 / 方法拿不到或异常 → Unknown。
+        /// </summary>
+        private CampaignBoardPresence ProbeExistingCampaignBoards()
         {
             try
             {
                 Type managerType = BuildingInjectionHelper.FindGameType("Duckov.Buildings.BuildingManager");
-                if (managerType == null) return false;
+                if (managerType == null) return CampaignBoardPresence.Unknown;
 
                 MethodInfo getAmount = managerType.GetMethod(
                     "GetBuildingAmount", BindingFlags.Public | BindingFlags.Static);
-                if (getAmount == null) return false;
+                if (getAmount == null) return CampaignBoardPresence.Unknown;
 
                 object result = getAmount.Invoke(null, new object[] { CAMPAIGN_BOARD_BUILDING_ID });
-                if (result == null) return false;
-                return Convert.ToInt32(result) > 0;
+                if (result == null) return CampaignBoardPresence.Unknown;
+                return Convert.ToInt32(result) > 0 ? CampaignBoardPresence.Yes : CampaignBoardPresence.None;
             }
             catch (Exception)
             {
-                // 读不到就当作没建过：dormant 时不注入是更保守的一侧
-                return false;
+                return CampaignBoardPresence.Unknown;
             }
         }
 

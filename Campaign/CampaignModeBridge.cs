@@ -21,8 +21,6 @@ namespace BossRush
 {
     public partial class ModBehaviour
     {
-        /// <summary>公告板的兼容入口；状态与 UI 归面板所有。</summary>
-        public void OpenCampaignBoardUI() { CampaignBoardView.OpenForOwner(this); }
 
         #region 轮询状态
 

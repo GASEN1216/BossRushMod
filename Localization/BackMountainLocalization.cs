@@ -21,7 +21,7 @@ namespace BossRush
         {
             Dictionary<string, string> map = new Dictionary<string, string>();
             map["BossRush_BackMountain_Showcase_Interact"] =
-                L10n.T("查看战利品登记簿", "Check the trophy record");
+                L10n.T("查看退役的展示柜", "Inspect the retired showcase");
             LocalizationHelper.InjectLocalizations(map);
 
             InjectBuildingKeys();
@@ -39,10 +39,8 @@ namespace BossRush
             Dictionary<string, string> map = new Dictionary<string, string>();
             map[buildingKey] = L10n.T("战利品展示柜", "Trophy Showcase");
             map[buildingKey + "_Desc"] = L10n.T(
-                "一台带玻璃罩的陈列台。把打到过的高品质战利品拿来登记，柜子会替你记着——"
-                + "东西照样归你，登记得越多，你越经打。",
-                "A display counter under glass. Bring the high-quality trophies you've earned and have them "
-                + "recorded — you keep the gear either way, and the longer the list, the tougher you get.");
+                "旧的战利品登记柜。现在摆进官方的陈列柜、枪械展示架或假人就算数，这个柜子里的登记已经折算过去了。",
+                "The old trophy registry. Official display cabinets, weapon racks and dummies count now, and whatever was registered here has been carried over.");
 
             LocalizationHelper.InjectLocalizations(map);
         }

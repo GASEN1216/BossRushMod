@@ -203,7 +203,6 @@ namespace BossRush
     }
     static class CampaignObjectiveTracker { public static void ResetSession() { } }
     static class CampaignDialoguePlayer { public static void InvalidatePlayback() { } }
-    static class CampaignBoardView { public static void Close() { } }
     static class DailyReportTuning { public const string LogPrefix = "DailyReport"; }
     class DailyReportData
     {

@@ -29,10 +29,8 @@ def check():
     runtime = "Campaign/CampaignRuntimeModule.cs"
     require("ModeD/ModeDEquipment_StarterKit.cs", "private void GivePlayerStarterKit()",
             "if (UnityEngine.Random.value > 0.6f || (modeDActive && IsCampaignConfiguredEnabled() && CampaignObjectiveTracker.NeedsMeleeStarterKit())) { GiveRandomMeleeWeapon(main); }")
-    require(runtime, "public override void OnUpdate(", "CampaignBoardView.Tick();")
-    require("Campaign/CampaignBoardView.cs", "private static void Build()",
-            '_modalLease = ZombieModeUIHelper.ClaimModalInput(_root, "CampaignBoard");')
-    require("Campaign/CampaignBoardView.cs", "internal static void Close()", "_modalLease.Release();")
+    require("Campaign/CampaignBoardInteractable.cs", "protected override void OnInteractCompleted()", "ModBehaviour.Instance.ShowMessage(L10n.T(")
+    require("Campaign/CampaignBoardBuilder.cs", "private void InitCampaignBoardBuilding(bool isEarlyInit)", "if (presence == CampaignBoardPresence.Unknown)")
     require(runtime, "public override void OnSceneLoaded(", "CampaignObjectiveTracker.ResetSession();")
     require(runtime, "public override void OnSceneLoaded(", "CampaignDialoguePlayer.InvalidatePlayback();")
     require(runtime, "public override void OnDestroy()", "_owner.CleanupCampaignFinalBoss(true);")

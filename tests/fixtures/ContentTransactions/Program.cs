@@ -381,42 +381,39 @@ class Program
         SavesSystem.Save(BackMountainConfig.ShowcaseSaveKey, UnityEngine.JsonUtility.ToJson(
             new ShowcaseSaveData { schemaVersion = 1, displayedTypeIds = new[] { 100, 101, 102, 103, 104, 105, 106, 107 } }));
     }
-    static void ShowcaseReplacement()
+    static void ShowcaseSnapshot()
     {
-        string error;
+        // 2026-09-22：登记簿退役，陈列由官方柜实摆快照整体覆盖；事务纪律不变（写失败恢复、回读失败还原官方缓存、存档忙拒绝）。
         Reset(); PrepareShowcase();
-        var replacement = new Item { TypeID = 200, Quality = 8 };
-        Check(!ShowcaseService.CanDisplay(replacement, out error)
-            && ShowcaseService.CanReplaceRecord(100, replacement, out error), "full showcase permits replacing existing slot without requiring empty slot");
-        Check(ShowcaseService.TryReplaceRecord(100, replacement, out error)
-            && ShowcaseService.DisplayedCount == 8 && ShowcaseService.GetDisplayed()[0] == 200
-            && Math.Abs(ShowcaseService.CalculateBonus() - .105f) < .0001f,
-            "Q5 trophy upgrades to Q8 in same slot using unchanged health formula");
-        Check(!ShowcaseService.TryReplaceRecord(101, replacement, out error)
-            && !ShowcaseService.TryReplaceRecord(101, new Item { TypeID = 500065, Quality = 8 }, out error)
-            && !ShowcaseService.TryReplaceRecord(101, new Item { TypeID = 201, Quality = 4 }, out error),
-            "replacement still rejects duplicate trophies, homegrown items and low quality");
+        Check(ShowcaseService.SourceVersion == 1 && ShowcaseService.DisplayedCount == 8
+            && Math.Abs(ShowcaseService.CalculateBonus() - .09f) < .0001f, "legacy ledger without sourceVersion loads with unchanged formula");
+        Check(ShowcaseService.ApplyDisplaySnapshot(new[] { 200, 100 }, true)
+            && ShowcaseService.SourceVersion == 2 && ShowcaseService.DisplayedCount == 2 && ShowcaseService.GetDisplayed()[0] == 200
+            && Math.Abs(ShowcaseService.CalculateBonus() - .025f) < .0001f,
+            "official snapshot replaces the legacy ledger at base and sorts by quality");
+        Check(ShowcaseService.ApplyDisplaySnapshot(new[] { 200, 200, 100, 100, 300, 301, 302, 303, 304, 305, 306 }, true)
+            && ShowcaseService.DisplayedCount == 8 && ShowcaseService.GetDisplayed()[0] >= 200
+            && Math.Abs(ShowcaseService.CalculateBonus() - .21f) < .0001f, "snapshot dedups and keeps the best eight");
         Reset(); PrepareShowcase(); SavesSystem.FailKey = BackMountainConfig.ShowcaseSaveKey;
-        Check(!ShowcaseService.TryReplaceRecord(100, replacement, out error)
-            && ShowcaseService.GetDisplayed()[0] == 100 && ShowcaseService.DisplayedCount == 8,
-            "replacement save failure preserves original record and position");
+        Check(!ShowcaseService.ApplyDisplaySnapshot(new[] { 200 }, true)
+            && ShowcaseService.GetDisplayed()[0] == 100 && ShowcaseService.DisplayedCount == 8 && ShowcaseService.SourceVersion == 1,
+            "snapshot save failure preserves the original ledger and source version");
         ShowcaseService.NotifySlotChanged();
-        Check(ShowcaseService.GetDisplayed()[0] == 100, "failed replacement reload keeps original persisted record");
+        Check(ShowcaseService.GetDisplayed()[0] == 100 && ShowcaseService.DisplayedCount == 8, "failed snapshot reload keeps original persisted record");
         SavesSystem.FailReadAfterSaveKey = BackMountainConfig.ShowcaseSaveKey;
-        Check(!ShowcaseService.TryReplaceRecord(100, replacement, out error)
-            && ShowcaseService.GetDisplayed()[0] == 100, "replacement readback failure restores in-memory original");
+        Check(!ShowcaseService.ApplyDisplaySnapshot(new[] { 200 }, true)
+            && ShowcaseService.GetDisplayed()[0] == 100, "snapshot readback failure restores in-memory original");
         ShowcaseService.NotifySlotChanged();
-        Check(ShowcaseService.GetDisplayed()[0] == 100, "replacement readback failure restores official save cache before reload");
+        Check(ShowcaseService.GetDisplayed()[0] == 100 && ShowcaseService.DisplayedCount == 8, "snapshot readback failure restores official save cache before reload");
         SavesSystem.IsSaving = true;
-        Check(!ShowcaseService.TryRemoveRecord(100) && ShowcaseService.GetDisplayed()[0] == 100,
-            "remove refusal while saving also preserves old record");
+        Check(!ShowcaseService.ApplyDisplaySnapshot(new[] { 200 }, true) && ShowcaseService.GetDisplayed()[0] == 100,
+            "snapshot refusal while saving preserves old record");
         SavesSystem.IsSaving = false;
-        Check(ShowcaseService.TryRemoveRecord(100) && ShowcaseService.DisplayedCount == 7,
-            "explicit remove frees slot for later recording");
+        Check(ShowcaseService.ApplyDisplaySnapshot(new[] { 200 }, true) && ShowcaseService.DisplayedCount == 1, "snapshot applies once saving is done");
     }
     static void Main()
     {
-        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseReplacement();
+        CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
     }

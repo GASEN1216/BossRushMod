@@ -71,11 +71,11 @@ namespace BossRush
             {
                 if (backMountainShowcaseInjected) return;
 
-                bool unlocked = _owner.IsBackMountainConfiguredEnabled()
-                    && BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase);
-                if (!unlocked && !HasPendingShowcaseBuildingsInManager())
+                // 退役（2026-09-22）：陈列改接官方陈列柜，自建柜不再进建造菜单。
+                // 老档已建过的必须照常注入 BuildingInfo + prefab（官方 BuildingArea 走 building.Info.Prefab，少了就是幽灵建筑）。
+                if (!HasPendingShowcaseBuildingsInManager())
                 {
-                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "展示柜未解锁且未建过，跳过建筑注入（dormant）");
+                    ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "自建展示柜已退役且本档未建过，不进建造菜单");
                     return;
                 }
 

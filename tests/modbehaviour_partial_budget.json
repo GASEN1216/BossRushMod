@@ -1,7 +1,7 @@
 {
   "description": "D-1: production host partial ceiling; only lower after responsibilities move to module-owned types.",
-  "max_files": 203,
-  "max_total_lines": 104717,
+  "max_files": 202,
+  "max_total_lines": 104499,
   "allowed_files": [
     "Achievement/AchievementMedalItem.cs",
     "Achievement/AchievementRuntimeHooks.cs",
@@ -43,7 +43,6 @@
     "Integration/Affinity/AffinityRuntimeHooks.cs",
     "Integration/AffixForge/AffixForgeHostCleanup.cs",
     "Integration/BackMountain/BackMountainSeedDrops.cs",
-    "Integration/BackMountain/ShowcaseUI.cs",
     "Integration/BirthdayCakeItem.cs",
     "Integration/Bonus/DragonSetBonus.cs",
     "Integration/Bonus/DragonSetBonus_Dash.cs",

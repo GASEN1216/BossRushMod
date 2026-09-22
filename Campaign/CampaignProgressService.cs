@@ -85,7 +85,6 @@ namespace BossRush
                 CampaignObjectiveTracker.ResetSession();
                 ModBehaviour.Instance?.CleanupCampaignFinalBoss(true);
                 CampaignDialoguePlayer.InvalidatePlayback();
-                CampaignBoardView.Close();
             }
             catch (Exception e)
             {

@@ -22,9 +22,16 @@
 //      SetBonusManager / DragonSetBonus 用的都是这个时机）。
 //
 // 【换槽必须复位展示柜与菜地的按槽内存态】
-//   ShowcaseService 的收藏是按槽存档的内存缓存。不复位的话，同一次会话里
-//   从 A 档切到 B 档会让 A 档的收藏在 B 档继续生效，并在 B 档登记时
-//   把「A 档收藏 + 新条目」整体写进 B 档存档——永久污染。
+//   ShowcaseService 的陈列缓存是按槽存档的内存缓存。不复位的话，同一次会话里
+//   从 A 档切到 B 档会让 A 档的陈列在 B 档继续生效，并在 B 档写入时
+//   把「A 档陈列 + 新条目」整体写进 B 档存档——永久污染。
+//
+// 【2026-09-22 三设施改接官方】
+//   菜地：官方基地里的菜地工地默认关着付费交互（父物体 Interactparent inactive），第一章交付后
+//   由 GardenConstructionSite 替官方打开（只 SetActive 那一个父物体，付款 / wasBuilt / 存档全走官方），
+//   开门是单向的，关总开关不回滚。展示柜：自建登记簿退役，ShowcaseDisplayScanner 采集官方陈列柜里
+//   实际摆放的 Mod 战利品（ShowcaseTagInjector 先补官方展示标签）。征程 garden_built / trophy_displayed
+//   两条基地侧目标的事实由本模块注册进 CampaignBaseObjectives（依赖方向不变：后山读征程，征程不引用后山）。
 // ============================================================================
 
 using System;
@@ -49,6 +56,7 @@ namespace BossRush
         private bool _raidEventSubscribed;
         private bool _lastUnlockAll;
         private bool _lastChinese;
+        private bool _providersRegistered;
 
         #endregion
 
@@ -137,7 +145,8 @@ namespace BossRush
                 EnsureBootstrapped();
 
                 // additive 场景也会触发 sceneLoaded；不能把换区当作出击结束。
-                ShowcaseUI.Close();
+                ShowcaseDisplayScanner.ClearSubscriptions();
+                GardenConstructionSite.NotifySceneChanged(_sceneGeneration);
                 if (CharacterMainControl.Main == null) ShowcaseService.ClearBonuses();
                 RefreshFacilitiesForScene(context.SceneName);
             }
@@ -169,7 +178,6 @@ namespace BossRush
                 if (unlockAll != _lastUnlockAll)
                 {
                     _lastUnlockAll = unlockAll;
-                    ShowcaseUI.Close();
                     if (_owner != null) _owner.NotifyShowcaseSlotChanged();
                     RefreshFacilitiesForScene();
                     if (IsLevelAfterInit()) RefreshCharacterBoundEffects();
@@ -179,7 +187,8 @@ namespace BossRush
                     _lastChinese = L10n.IsChinese;
                     RefreshFacilitiesForScene();
                 }
-                ShowcaseUI.Tick();
+                ShowcaseDisplayScanner.FlushIfDirty();
+                FlushPendingNotice();
             }
             catch (Exception e)
             {
@@ -193,10 +202,13 @@ namespace BossRush
             try
             {
                 ShutdownSubscriptions();
+                UnregisterCampaignProviders();
                 RaidMealService.ResetStaticCaches();
                 GardenSeedInjector.ResetStaticCaches();
+                GardenConstructionSite.ResetStaticCaches();
                 ShowcaseService.ResetStaticCaches();
-                ShowcaseUI.ResetStaticCaches();
+                ShowcaseDisplayScanner.ResetStaticCaches();
+                ShowcaseTagInjector.ResetStaticCaches();
                 BackMountainItems.ResetStaticCaches();
                 BackMountainUnlocks.ResetStaticCaches();
                 _bootstrapped = false;
@@ -223,6 +235,7 @@ namespace BossRush
 
             BackMountainUnlocks.EnsureSubscribed(_owner, HandleFacilityUnlocked);
             EnsureSubscriptions();
+            RegisterCampaignProviders();
 
             _bootstrapped = true;
             _lastUnlockAll = _owner.IsBackMountainUnlockAllConfigured();
@@ -312,7 +325,8 @@ namespace BossRush
                 // 关掉开关也要摘掉已生效的加成，否则它们会一直挂在角色身上
                 RaidMealService.ClearForRun();
                 ShowcaseService.ClearBonuses();
-                ShowcaseUI.Close();
+                ShowcaseDisplayScanner.ClearSubscriptions();
+                UnregisterCampaignProviders();
                 BackMountainUnlocks.Shutdown();
                 ShutdownSubscriptions();
             }
@@ -346,6 +360,15 @@ namespace BossRush
                 GardenSeedInjector.EnsureInjected();
                 JukeboxTrackInjector.EnsureInjected();
                 if (_owner != null) _owner.InitBackMountainShowcase();
+
+                bool baseScene = IsBaseScene() || ModBehaviour.IsBaseHubSceneName(loadedSceneName);
+                // 官方陈列柜：先给 Mod 战利品补展示标签，再订阅场上各柜的槽位事件并重算陈列（未解锁零订阅）
+                ShowcaseTagInjector.EnsureTagged();
+                ShowcaseDisplayScanner.RefreshForScene(baseScene,
+                    BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Showcase));
+                // 菜地工地：必须排在 GardenSeedInjector.EnsureInjected() 之后（Built 子树激活时官方 Garden.Start 会读作物表）
+                GardenConstructionSite.EnsureSiteOpen(_sceneGeneration, IsEnabled,
+                    BackMountainUnlocks.IsFacilityUnlocked(BackMountainFacility.Garden), baseScene, GardenSeedInjector.IsInjected);
             }
             catch (Exception e)
             {
@@ -412,7 +435,7 @@ namespace BossRush
         {
             try
             {
-                ShowcaseUI.Close();
+                ShowcaseDisplayScanner.ClearSubscriptions();
                 RaidMealService.ClearForRun();
                 ShowcaseService.NotifySlotChanged();
                 // 展示柜**建筑条目**必须从官方长寿表里摘掉并复位注入闸：
@@ -428,6 +451,37 @@ namespace BossRush
             {
                 LogFailure("slot_changed", e);
             }
+        }
+
+        /// <summary>
+        /// 菜地工地开门那一拍排队的飘字：等官方对话 / 面板都不在场再弹（交付对话先播、解锁提示后弹）。
+        /// 平时第一条判断即早返，无日志。
+        /// </summary>
+        private static void FlushPendingNotice()
+        {
+            string notice = GardenConstructionSite.PendingNotice;
+            if (notice == null) return;
+            if (DialogueManager.IsDialogueActive || BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused()) return;
+            GardenConstructionSite.PendingNotice = null;
+            try { Duckov.UI.NotificationText.Push(notice); }
+            catch (Exception) { }
+        }
+
+        /// <summary>征程两条基地侧目标的事实提供者（幂等登记；关开关 / 销毁时撤销）。</summary>
+        private void RegisterCampaignProviders()
+        {
+            if (_providersRegistered) return;
+            CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.GardenBuilt, GardenConstructionSite.IsGardenBuilt);
+            CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.TrophyDisplayed, ShowcaseService.HasDisplayedTrophy);
+            _providersRegistered = true;
+        }
+
+        private void UnregisterCampaignProviders()
+        {
+            if (!_providersRegistered) return;
+            CampaignBaseObjectives.UnregisterProvider(CampaignObjectiveKind.GardenBuilt);
+            CampaignBaseObjectives.UnregisterProvider(CampaignObjectiveKind.TrophyDisplayed);
+            _providersRegistered = false;
         }
 
         /// <summary>关卡是否已完成初始化（主角已就绪）。no-throw。</summary>
@@ -464,6 +518,7 @@ namespace BossRush
             try
             {
                 ModBehaviour.DevLog(BackMountainConfig.LogPrefix + "设施解锁: " + facility);
+                // 解锁飘字归征程客户端（交付对话播完后弹），这里只当场接入设施
                 RefreshFacilitiesForScene();
                 // 解锁发生在基地交付契约的那一刻，主角就在场：展示柜加成当场生效，
                 // 不必等玩家重进一次基地

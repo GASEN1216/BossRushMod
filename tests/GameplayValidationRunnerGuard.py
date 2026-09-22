@@ -72,7 +72,7 @@ def main():
             "failed_ids=", "skipped_ids=",
             # 覆盖面扩充：后山、经济、深度流程、泄漏差值。
             'SetStage("3/7 后山与经济")', 'SetStage("5/7 模式深度流程")',
-            "BACKMOUNTAIN_SHOWCASE_LEDGER", "BACKMOUNTAIN_RAID_MEAL",
+            "BACKMOUNTAIN_SHOWCASE_DISPLAY", "BACKMOUNTAIN_RAID_MEAL",
             "AFFIX_FORGE_REJECT_NO_COST", "CODEX_PERSISTENCE_READBACK",
             "MODE_D_MULTI_WAVE", "FINAL_LEAK_DELTA",
             "ValidationForceClearArenaEnemies",

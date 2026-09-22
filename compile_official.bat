@@ -1060,7 +1060,6 @@ echo(Campaign\CampaignModeBridge.cs
 echo(Campaign\CampaignAssetCache.cs
 echo(Campaign\CampaignNoteBridge.cs
 echo(Campaign\CampaignDialoguePlayer.cs
-echo(Campaign\CampaignBoardView.cs
 echo(Campaign\CampaignBoardInteractable.cs
 echo(Campaign\CampaignBoardBuilder.cs
 echo(Campaign\CampaignHud.cs
@@ -1073,12 +1072,16 @@ echo(Integration\BackMountain\BackMountainConfig.cs
 echo(Integration\BackMountain\BackMountainUnlocks.cs
 echo(Integration\BackMountain\BackMountainItems.cs
 echo(Integration\BackMountain\GardenSeedInjector.cs
+echo(Integration\BackMountain\GardenSiteJudges.cs
+echo(Integration\BackMountain\GardenConstructionSite.cs
+echo(Integration\BackMountain\ShowcaseDisplayJudges.cs
+echo(Integration\BackMountain\ShowcaseTagInjector.cs
+echo(Integration\BackMountain\ShowcaseDisplayScanner.cs
 echo(Integration\BackMountain\RaidMealUsageBehavior.cs
 echo(Integration\BackMountain\RaidMealService.cs
 echo(Integration\BackMountain\JukeboxTrackInjector.cs
 echo(Integration\BackMountain\BackMountainSeedDrops.cs
 echo(Integration\BackMountain\ShowcaseService.cs
-echo(Integration\BackMountain\ShowcaseUI.cs
 echo(Integration\BackMountain\ShowcaseInteractable.cs
 echo(Integration\BackMountain\ShowcaseBuildingBuilder.cs
 echo(Localization\BackMountainLocalization.cs

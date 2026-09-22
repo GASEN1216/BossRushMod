@@ -83,7 +83,6 @@ namespace BossRush
     internal static class L10n { internal static bool IsChinese; internal static string T(string cn, string en) { return IsChinese ? cn : en; } }
     internal static class CampaignAssetCache { internal static object GetChapterPoster(int order) { return null; } }
     internal static class CampaignPersistence { internal static bool HasWriteBarrier, IsStoreFaulted; }
-    internal static class CampaignBoardView { internal static void OpenForOwner(ModBehaviour owner) { } }
 
     internal static class JsonDataRegistry
     {

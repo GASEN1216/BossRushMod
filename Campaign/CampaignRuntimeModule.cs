@@ -62,6 +62,12 @@ namespace BossRush
         /// <summary>是否已完成一次 bootstrap。</summary>
         internal bool IsBootstrapped { get { return _bootstrapped; } }
 
+        /// <summary>Dev 演练：立刻刷杰夫任务页的 Task 与头顶标记（平时由核心 0.25 秒一拍自动做）。</summary>
+        internal void SyncOfficialQuests()
+        {
+            if (_questClient != null) _questClient.NotifyProgressChanged();
+        }
+
         #endregion
 
         #region host 六回调
@@ -104,7 +110,6 @@ namespace BossRush
             {
                 _sceneGeneration++;
                 CampaignObjectiveTracker.ResetSession();
-                CampaignBoardView.Close();
                 CampaignDialoguePlayer.InvalidatePlayback();
                 if (_questClient != null) _questClient.ClearPending();
 
@@ -154,7 +159,6 @@ namespace BossRush
                     _owner.TickCampaignModeBridge(deltaTime);
                 }
                 CampaignHud.Tick();
-                CampaignBoardView.Tick();
                 CampaignProgressService.RetryPendingObjectives(unscaledDeltaTime);
                 CampaignSaveCoordinator.Tick();
             }
@@ -183,12 +187,12 @@ namespace BossRush
                 CampaignObjectiveTracker.ResetStaticCaches();
                 CampaignObjectiveCollector.ResetStaticCaches();
                 CampaignContentCatalog.ResetStaticCaches();
-                CampaignBoardView.ResetStaticCaches();
                 CampaignHud.ResetStaticCaches();
                 CampaignDialoguePlayer.ResetStaticCaches();
                 CampaignNoteBridge.ResetStaticCaches();
                 CampaignAssetCache.ResetStaticCaches();
                 CampaignFacilityUnlocks.ResetStaticCaches();
+                CampaignBaseObjectives.ResetStaticCaches();
                 _questClient = null;
                 _bootstrapped = false;
                 _owner = null;
@@ -243,7 +247,6 @@ namespace BossRush
                 if (_questClient != null) _questClient.UnregisterAll();
                 CampaignObjectiveTracker.ResetSession();
                 CampaignProgressService.ResetStaticCaches();
-                CampaignBoardView.Close();
                 CampaignDialoguePlayer.InvalidatePlayback();
                 CampaignHud.ResetStaticCaches();
                 // 必须复位解锁契约：否则关掉战役后，后山仍能查到 token 并保持设施可见，

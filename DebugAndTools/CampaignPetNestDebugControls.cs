@@ -59,8 +59,12 @@ namespace BossRush
                 () => DeliverContract(selectedChapter()));
             Button(panel.transform, L10n.T("自检：所有委托目标是否都能完成", "Self-check: can every contract objective be completed"), host, report,
                 AuditAllObjectives);
-            Button(panel.transform, L10n.T("打开征程公告板", "Open campaign board"), host, report,
-                () => { close(); host.OpenCampaignBoardUI(); return L10n.T("已打开公告板", "Board opened"); });
+            Button(panel.transform, L10n.T("放弃当前契约（演练）", "Abandon current contract (drill)"), host, report,
+                () => CampaignProgressService.TryAbandonContract()
+                    ? L10n.T("已放弃当前契约，章节回到可接取", "Contract abandoned; chapter is available again")
+                    : L10n.T("没有可放弃的契约（或目标达成待写盘）", "Nothing to abandon (or objectives are pending a save)"));
+            Button(panel.transform, L10n.T("同步杰夫任务投影", "Sync Jeff's quest projection"), host, report,
+                () => { host.CampaignRuntime.SyncOfficialQuests(); return L10n.T("已刷新官方任务 Task 与标记", "Official quest tasks and marker refreshed"); });
 
             int lineageIndex = 0;
             int petIndex = 0;
