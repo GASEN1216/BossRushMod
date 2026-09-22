@@ -4000,7 +4000,7 @@ Mode F/G/H、Zombie、终章/BGM、最终清场与存档回读。Player.log 不�
 
 ### CR-2026-09-18-025 · P2 · COMPAT / SCHEMA+ · 英文点唱机仍显示硬编码中文曲名
 
-- 状态：fixed，L3 待 owner 实机。
+- 状态：fixed，L3 待 owner 实机。（2026-09-22 复核：`BgmTracks.json` 的 `musicNameEn`、`BossBgmTrackTable` 可选解析、`JukeboxTrackInjector` 按路径原位替换、部署段与 L2 均在位；`BackMountainStructureGuard` 加三条防回归断言。仍待 L3。）
 - 位置：`Integration/BackMountain/JukeboxTrackInjector.cs`。
 - 证据与修复：原曲目表只有 musicName，注入器无语言路径且按标题判重。新增可选 musicNameEn 并缺省回退旧名；按音频路径更新原槽，语言切换不改索引、不重复追加。
 - 证据等级：L1 当前生产代码与官方源码；可隔离部分 L2 见 `BackMountainLifecycle` / `BackMountainPlayabilityGuard`。
@@ -4013,6 +4013,15 @@ Mode G 本轮收尾补证（2026-09-18）：最终专项守卫37 PASS、生产�
 ## 2026-09-18 鸭王征程生产审核与体验优化
 
 来源：owner 要求全面审核并优化。以下为当前代码确认并已修复的问题；未做 L3，完整范围与验收见 `docs/代码审查/2026-09-18-鸭王征程生产审核与体验优化.md`。第三章去等待属于体验取舍，不列为缺陷。
+
+
+### CR-2026-09-22-001 · documented · COMPAT / SCHEMA+ / WIRE+ · 鸭王征程改由官方 Jeff 发放、后山三设施改接官方建筑（设计决策归档）
+
+- 状态：documented（owner 2026-09-22 拍板；不是缺陷）。
+- 位置：`Utilities/OfficialQuests/`、`Campaign/CampaignOfficialQuestClient.cs`、`Campaign/CampaignQuestTable.cs`、`Campaign/CampaignBaseObjectives.cs`、`Integration/BackMountain/GardenConstructionSite.cs`、`ShowcaseDisplayScanner.cs`、`ShowcaseTagInjector.cs`、`ShowcaseService.cs`。
+- 决定与理由：①征程六章接官方 `Duckov.Quests`（590101–590106，给予者 Jeff=1），投影核心只有一份，Mod 存档仍是权威；旧自绘公告板 / 面板退役，老档已建的保留。②官方基地菜地工地的付费交互父物体默认 inactive，玩家原本没有途径建成，Mod 只激活父物体、不写官方键；官方将来自己放出即 no-op。③自建「战利品登记簿」退役，加成改按官方陈列柜实摆计算（官方柜是基地存储，不带出击，换来真实陈列）；回退 = judges 改回读缓存、`sourceVersion` 回 1。④「建好菜地」放第二章（token 只在交付时发；上一章解锁的东西是下一章目标）。
+- 证据等级：L1 + L2；L3 待 owner（清单见 `docs/代码审查/2026-09-22-鸭王征程重设计交付.md`）。
+- 待 owner 决定：官方陈列柜槽位标签（需 F3 `SHOWCASE_OFFICIAL_PROBE` 实机读出）；若官方陈列柜被 `requireQuests` 门住是否改官方数据；官方将来改成任务解锁菜地时 Mod 是否让位。
 
 ### CR-2026-09-18-026 · P1 / COMPAT · 终章异步生成未与标准波次隔离，旧失败可清掉后继挑战
 

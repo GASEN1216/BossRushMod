@@ -1,5 +1,9 @@
 # AI 协作文档收敛迁移记录
 
+## 2026-09-22 官方任务授权范围扩到鸭王征程（SAFE）
+
+根 `AGENTS.md` §4.14 与 §10 的 `Duckov.Quests` 授权文字改为「天空岛跨局主线 + 鸭王征程六章（590101–590106，给予者官方 Jeff）」，任务表按子系统各一份、投影核心只有 `Utilities/OfficialQuests/` 一份；`Utilities/AGENTS.md` 加 `OfficialQuests/` 职责边界；`docs/contracts.md` §7.1 加征程一行与 ID 保留段、§3.2 加 `chapterId` / `clueId` 冻结说明与基地侧目标口径；教程 `docs/制作教程/官方任务系统接入教程.md` 加 §12a「多客户端：共享投影核心」。
+
 ## 2026-09-20 头盔佩戴与装备尺寸口径统一（SAFE / OPERATIONAL）
 
 按实际官方挂载源码、两龙参考、源网格及 owner 雷霆试戴反馈，修正旧教程的底部原点、统一负 Y 偏移、bounds 约 0.8、根节点全部重置等错误。补充源网格轴向与盔壳中心的区别，Blender 标准化和 Editor 佩戴变换分开；唯一校准表为 `tools/helmet_fit_profiles.json`。同时纠正制作教程建议 600xxx ID 和“仅放包无需内容接线”的旧说法。更新两篇头盔护甲教程、Tripo 教程、模型绑定知识库、根/Integration AGENTS 与 contracts，统一入口为 `docs/制作教程/头盔佩戴与装备尺寸校准.md`。关键约束由入库规则和 HelmetFit 两项检查承载，不只留在 local-only 文档；第一阶段文档保留历史并注明 owner 确认及第二轮入口。
