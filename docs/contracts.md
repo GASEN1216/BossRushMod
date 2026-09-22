@@ -163,6 +163,12 @@ Breaking:
 `ContentSignature`。硬编码表是灾备而非正式发布来源：F3 完整验收只接受
 `Source=Json`、六章及与冻结 fallback 相同的内容签名。
 
+冻结 ID（2026-09-22 换故事《册子上的名字》时确认）：`chapterId` 固定 `ch1`–`ch6`、`clueId` 固定 `clue_ch1`–`clue_ch6`。
+它们分别进了存档 `chapters[].chapterId` / `unlockedClues[]` 与官方笔记键 `Note_BossRushCampaign_clue_chN_*`（官方存档），
+改名 = 老档进度静默归零 + 官方图鉴留孤儿条目（BREAKING）。换故事只换标题、目标类型 / 阈值 / 文案、线索正文与对话台词；
+章节 ↔ 官方 Quest ID 映射为 `590100 + order`（`CampaignQuestTable`）。目标类型 `garden_built` / `trophy_displayed` 是**基地侧**目标：
+不进局内追踪器、不落盘，事实由 `Integration/BackMountain` 经 `CampaignBaseObjectives` 注册提供者给出；`ReadyToDeliver` 仍只由局内目标同局达成触发，交付另核对基地侧目标全真。
+
 ## 4. 地图与 SpawnPoints JSON
 
 `Assets/SpawnPoints/*.json` 是地图刷新点数据契约。字段至少包括：
@@ -668,16 +674,18 @@ Breaking/Operational:
 - 岛上判夜 19–5（`SkyIslandNight.StartHour / EndHour`），刻意等于官方 `TimeOfDayController` 的 `nightStart = 19 / morningStart = 5`（官方 Volume 与敌人夜间感知同相）；仍只经 `SkyIslandLighting.ClockHours()` 读 `GameClock`，不读 `AtNight`。官方改这两个值要跟着改（Dev 只读用例 `SKY_NIGHT_BOUNDARY_OFFICIAL` 实机比对）。
 - `SceneLoader.LoadBaseScene` 恒传 `clickToConinue: true`（`<LoadBaseScene>d__47` IL 实查）：基地读完后停在「点击继续」，等 `clicked` 的循环没有超时；进等待前先 `SetActive(true)` 点击接收器 `pointerClickEventRecevier` 并把 `clicked` 复位。
   无人值守的流程要在接收器激活后调 `NotifyPointerClick`，否则玩法代码发起的返基地（Mode F / 丧尸撤离）会一直停在加载屏。卡加载时先看 `SceneLoader.LoadingComment`，官方每个等待点都写了一句（如 `Wait for click...`）。
-- `Duckov.Quests` 只接天空岛的跨局主线，任务表 `SkyIslandOfficialQuestTable` 一份（2026-09-16 授权）：
+- `Duckov.Quests` 接天空岛跨局主线（任务表 `SkyIslandOfficialQuestTable`，2026-09-16 授权）与鸭王征程六章（任务表 `CampaignQuestTable`，2026-09-22 owner 授权）；投影核心只有 `Utilities/OfficialQuests/` 一份：
 
   | Quest | 给予者（`QuestGiverID` 整数） | 接取 / 交付位 |
   | --- | --- | --- |
   | `590001` 云上的坐标 | 官方 Jeff（1），只在基地接、回基地交 | `PreludeAccepted` / `RouteUnlocked` |
+  | `590101`–`590106` 鸭王征程 ch1–ch6（`590100 + order`） | 官方 Jeff（1），在基地接、在基地交 | 章节状态 `ContractActive` / `Completed`（权威 `BossRush_Campaign_Progress_v1`，见 §3.2）；交付另核对基地侧目标（菜地建成 / 战利品陈列，`CampaignBaseObjectives`） |
   | `590011` 点亮两端航标 | 苇白 `5901`（缺席时 `Search_B` 委托板） | `BeaconQuestAccepted` / `BeaconQuestDelivered` |
   | `590012` 钟庭之争 | 浮舟 `5902`（缺席时 `Search_A` 渡口工台） | `BellCourtQuestAccepted` / `BellCourtQuestDelivered` |
   | `590013` 归航钟 | 钟守 `5903`（缺席时 `Search_H` 钟庭装置） | `HomecomingQuestAccepted` / `HomecomingQuestDelivered` |
 
   区间 5900–5949 归 BossRush 的自定义给予者（官方 UI 不显示给予者名，`Quest.Compare` 只做整数减法，`GetAllQuestsByQuestGiverID` 只做相等比较）。
+  BossRush 保留任务 ID 段：`590001`–`590099` 天空岛入口、`590011`–`590013` 岛上主线、`590101`–`590106` 鸭王征程六章；下一可用 `590107`。征程六章的奖金由 `CampaignProgressService.TryDeliver` 的补偿式事务发放（官方奖励行只展示 `def.RewardCash`，`PayReward = null`），线索与设施 token 同一事务；官方 UI 没有「放弃任务」入口，`TryAbandonContract` 只留 Dev 演练。
   运行时向官方 `QuestCollection` 注册 prefab，接取、任务日志、目标完成通知与交付按钮均走官方 `QuestManager` / `Quest` / `Task` / `QuestGiverView`；岛上三条只在岛上接、岛上交，返航后仍留在官方任务日志里。
   `BossRush_SkyIsland_Story_v1` 仍是唯一权威；官方 `GenerateSaveData` / `SetupSaveData` 快照会剥离这些 ID 的 active、history、completed、ever-inspected 记录（`Quest.SaveData.questGiverID` 随整条记录一起剥掉，卸载后不留野枚举值），
   加载后从 Mod 事实重建官方投影，保证卸载后 `"Quest"/"Data"` 没有孤儿 ID；`completedQuests` 的残留还会把 `IsQuestAvaliable` 永久钉死，所以四类一个都不能少。

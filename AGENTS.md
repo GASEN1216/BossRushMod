@@ -155,7 +155,7 @@ python tools/run_guards.py --filter OfficialCompileList
 - 能直接复用官方 prefab（`GameplayDataSettings.UIPrefabs.*`、克隆 `MapSelectionEntry` 等）就不用共享库重造。
 - 选项先判断再挂，不挂灰掉的占位项；「能不能挂」与「点了会不会被拒」共用同一份判据；同一页超过 3–4 项就分二级。列表页（合成配方、航务委托）例外：上限 6 项，且不带立绘。
   付费服务照主流商店口径（2026-09-14 拍板）：没有要做的不挂；钱不够、还在冷却照挂，按钮上写明价钱或还要等几秒。剧情前置没到、已经做完、纯说明性的占位项一律不挂，「还差什么」进正文。
-- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。跨局、一次性的持久剧情可以在 owner 明确授权后接 `Duckov.Quests`；2026-09-16 已授权的范围是**天空岛跨局主线**：Jeff 序章 590001 加岛上三条 590011–590013（给予者是岛上居民，用官方 enum 之外的整数 5901–5903），任务表只有 `SkyIslandOfficialQuestTable` 一份，以 Mod 分槽故事为权威，官方 Quest 只做 UI / 事件投影，并在保存快照中过滤自定义 ID。按出击刷新的岛内委托不接跨局 Quest（教程见 `docs/制作教程/官方任务系统接入教程.md`）。
+- 叙事走官方对话（`DialogueManager.ShowDialogueSequenceBilingual` / `ShowMultipleChoiceBilingual`，长文案一句一屏），图鉴条目走官方 `NoteIndex`（我们的存档是权威，官方图鉴只做双向镜像）。镜像会随官方存档写进 `NoteIndexData`，2026-09-14 拍板接受为 §10「写入官方存档键」的例外（`docs/contracts.md` §7.1）。自绘面板只在官方给不了的能力上保留，理由写进文件头。跨局、一次性的持久剧情可以在 owner 明确授权后接 `Duckov.Quests`；已授权范围：**天空岛跨局主线**（2026-09-16：Jeff 序章 590001 加岛上三条 590011–590013，给予者是岛上居民，用官方 enum 之外的整数 5901–5903）与**鸭王征程六章**（2026-09-22：590101–590106，给予者官方 Jeff=1）。任务表按子系统各一份（`SkyIslandOfficialQuestTable`、`CampaignQuestTable`），投影核心只有 `Utilities/OfficialQuests/` 一份（唯一实例、四个 Harmony 补丁只装一次，守卫 `OfficialQuestProjectionGuard`），两者都以各自的 Mod 存档为权威，官方 Quest 只做 UI / 事件投影，并在保存快照中过滤自定义 ID。按出击刷新的岛内委托不接跨局 Quest（教程见 `docs/制作教程/官方任务系统接入教程.md`）。
 
 守卫：`BossRushUISharedLibraryGuard`、`BossRushUISkinLoaderGuard`、`SkyIslandUiContrastGuard`、`SkyIslandOfficialApiReuseGuard`、`SkyIslandChoiceGateGuard`。
 
@@ -271,7 +271,7 @@ F3 玩法验收只在 Dev 构建里存在（`BOSSRUSH_DEV_BUILD=1`），目标�
 
 - 删除、迁移、批量重写玩家数据或存档；存档与配置 schema 的破坏性变更（`SCHEMA-`、`BREAKING`）。
 - TypeID 复用、删除、回填；改已发布内容的 TypeID、存档 key、本地化 key。
-- 写入官方存档键或新增 `Duckov.Quests` 任务（卸载 Mod 后官方会对缺失的 id 报错）。官方图鉴 `NoteIndex` 的镜像已于 2026-09-14 拍板为例外；天空岛跨局主线（Jeff 序章 590001 + 岛上 590011–590013，自定义给予者 5901–5903）已于 2026-09-16 明确授权，采用 Mod 状态为权威并过滤官方 active / history / completed / ever-inspected 快照的方案。该授权不自动扩展到其它系统的新任务（§4.14）。
+- 写入官方存档键或新增 `Duckov.Quests` 任务（卸载 Mod 后官方会对缺失的 id 报错）。官方图鉴 `NoteIndex` 的镜像已于 2026-09-14 拍板为例外；天空岛跨局主线（Jeff 序章 590001 + 岛上 590011–590013，自定义给予者 5901–5903）已于 2026-09-16 明确授权，鸭王征程六章（590101–590106，给予者官方 Jeff）已于 2026-09-22 明确授权，都采用 Mod 状态为权威并过滤官方 active / history / completed / ever-inspected 快照的方案（共享核心 `Utilities/OfficialQuests/`）。该授权不自动扩展到其它系统的新任务（§4.14）。
 - 公开 API、跨模块契约、外部协议的破坏性变更（`WIRE-`）；密钥、飞书与生图网关等外部服务配置。
 - `git push`、建 PR、创意工坊发布、改部署流水线或全局改造构建脚本。
 - 启动游戏做测试、读写玩家存档目录（实机由 owner 自己做）。

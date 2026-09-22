@@ -104,11 +104,20 @@ namespace BossRush
                 _progress.Clear();
                 for (int i = 0; i < def.Objectives.Count; i++)
                 {
+                    // 基地侧目标（菜地建成、战利品陈列）不进局内追踪：随时可做、不落盘，
+                    // 由 CampaignBaseObjectives 现查，交付时另行核对。
+                    if (def.Objectives[i] == null || def.Objectives[i].IsBaseScope) continue;
                     CampaignObjectiveProgress item = new CampaignObjectiveProgress();
                     item.Def = def.Objectives[i];
                     item.Current = 0;
                     item.Failed = false;
                     _progress.Add(item);
+                }
+                if (_progress.Count == 0)
+                {
+                    // 只有基地侧目标的章节没有局内可追踪的东西，武装了会在下一次评估瞬间「达成」
+                    ResetSession();
+                    return;
                 }
 
                 ModBehaviour.DevLog(CampaignTuning.LogPrefix + "契约追踪已武装: "

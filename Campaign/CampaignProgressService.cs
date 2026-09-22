@@ -280,7 +280,7 @@ namespace BossRush
         }
 
         /// <summary>
-        /// 局内目标全部达成。把 ReadyToDeliver 落盘，但仍须回公告板主动交付；
+        /// 局内目标全部达成。把 ReadyToDeliver 落盘，但仍须回基地在杰夫的任务页主动交付；
         /// 这样重启不丢进度，也不会跳过剧情对话。
         /// </summary>
         internal static bool NotifyObjectivesSatisfied(string chapterId)
@@ -316,7 +316,7 @@ namespace BossRush
                 string title = def != null ? L10n.T(def.TitleCN, def.TitleEN) : chapterId;
                 ModBehaviour.Instance?.ShowMessage(
                     L10n.T("契约目标已完成：", "Contract objectives complete: ") + title
-                    + L10n.T("　回公告板交付", "  Return to the board to hand it in"));
+                    + L10n.T("　回基地找杰夫交付", "  Go see Jeff at base to hand it in"));
                 return true;
             }
             catch (Exception e)

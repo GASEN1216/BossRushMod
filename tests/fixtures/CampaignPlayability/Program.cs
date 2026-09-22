@@ -73,6 +73,8 @@ internal static class Program
         Check(CampaignProgressService.Notifications == 1, "later damage allowed and completion is idempotent");
 
         Arm("ch2");
+        Check(CampaignObjectiveTracker.Progress.Count == 2 && CampaignObjectiveTracker.Progress[0].Def.Kind == CampaignObjectiveKind.ReachWave,
+            "base-scope garden objective stays out of the in-run tracker");
         Check(CampaignObjectiveTracker.NeedsMeleeStarterKit(), "active melee contract requests its starter tool");
         CampaignProgressService.State = CampaignChapterState.ReadyToDeliver;
         Check(!CampaignObjectiveTracker.NeedsMeleeStarterKit(), "ready contract does not grant extra starter gear");
@@ -105,9 +107,13 @@ internal static class Program
 
         Arm("ch5");
         CampaignObjectiveTracker.ReportWaveReached(4);
+        CampaignObjectiveTracker.ReportExtract();
+        Check(CampaignProgressService.Notifications == 0, "ch5 wave gate is five: wave four plus extraction is not enough");
+        Arm("ch5");
+        CampaignObjectiveTracker.ReportWaveReached(5);
         Check(CampaignProgressService.Notifications == 0, "ch5 requires extraction");
         CampaignObjectiveTracker.ReportExtract();
-        Check(CampaignProgressService.Notifications == 1, "ch5 reachable through wave four and extraction");
+        Check(CampaignProgressService.Notifications == 1, "ch5 reachable through wave five and extraction");
 
         Arm("ch6");
         CampaignProgressService.Reject = true;
@@ -129,8 +135,106 @@ internal static class Program
         Check(!CampaignObjectiveTracker.IsArmed, "ready-to-deliver chapter cannot rearm");
         CheckBridges();
         CheckNotes();
+        CheckQuestTable();
         FinalBossRegression.Run(Check);
         Console.WriteLine("CampaignPlayability: PASS (" + checks + " checks)");
+    }
+
+    private static void CheckQuestTable()
+    {
+        // ---- ID 映射：ch1..ch6 = 590101..590106，往返一致，越界 0 ----
+        for (int order = 1; order <= 6; order++)
+        {
+            int id = CampaignQuestTable.QuestIdForOrder(order);
+            Check(id == 590100 + order, "quest id for chapter " + order);
+            Check(CampaignQuestTable.OrderForQuestId(id) == order, "quest id round trip " + order);
+        }
+        Check(CampaignQuestTable.QuestIdForOrder(0) == 0 && CampaignQuestTable.QuestIdForOrder(7) == 0, "out-of-range order yields 0");
+        Check(CampaignQuestTable.OrderForQuestId(590100) == 0 && CampaignQuestTable.OrderForQuestId(590107) == 0 && CampaignQuestTable.OrderForQuestId(590001) == 0,
+            "out-of-range quest id yields 0 (sky island prelude is not a chapter)");
+        Check(CampaignQuestTable.JeffGiverId == 1, "giver is official Jeff");
+        Check(CampaignQuestTable.NameKey("ch1") == "BossRush_Campaign_ch1_Name" && CampaignQuestTable.DescriptionKey("ch6") == "BossRush_Campaign_ch6_Description",
+            "quest localization keys");
+
+        // ---- CanOffer / CanDeliver 穷举 ----
+        foreach (CampaignChapterState state in (CampaignChapterState[])Enum.GetValues(typeof(CampaignChapterState)))
+            foreach (bool canWrite in new[] { true, false })
+                foreach (bool another in new[] { true, false })
+                {
+                    bool expected = state == CampaignChapterState.Available && canWrite && !another;
+                    Check(CampaignQuestTable.CanOffer(state, canWrite, another) == expected, "CanOffer " + state + " " + canWrite + " " + another);
+                    foreach (bool baseDone in new[] { true, false })
+                    {
+                        bool expectedDeliver = state == CampaignChapterState.ReadyToDeliver && canWrite && baseDone;
+                        Check(CampaignQuestTable.CanDeliver(state, canWrite, baseDone) == expectedDeliver, "CanDeliver " + state + " " + canWrite + " " + baseDone);
+                    }
+                }
+
+        // ---- IsObjectiveDone：局内目标 vs 基地侧目标 ----
+        CampaignChapterDef ch2 = CampaignContentCatalog.GetChapter("ch2");
+        CampaignObjectiveDef garden = ch2.Objectives[0];
+        CampaignObjectiveDef wave = ch2.Objectives[1];
+        Check(garden.IsBaseScope && !wave.IsBaseScope, "ch2 objective scopes");
+        Check(ch2.Objectives.Count == 3 && CampaignContentCatalog.GetChapter("ch3").Objectives[1].Kind == CampaignObjectiveKind.TrophyDisplayed,
+            "ch2 has garden objective, ch3 has trophy objective");
+        var satisfied = new CampaignObjectiveProgress { Def = wave, Current = 5 };
+        var partial = new CampaignObjectiveProgress { Def = wave, Current = 2 };
+        var failed = new CampaignObjectiveProgress { Def = wave, Current = 5, Failed = true };
+        Check(CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.Completed, false, null, false), "completed chapter: run objective done");
+        Check(CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.ReadyToDeliver, false, null, false), "ready chapter: run objective done without tracker");
+        Check(!CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.ContractActive, false, satisfied, false), "unarmed run objective is not done after reload");
+        Check(CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.ContractActive, true, satisfied, false), "armed satisfied run objective done");
+        Check(!CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.ContractActive, true, partial, false), "partial progress not done");
+        Check(!CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.ContractActive, true, failed, false), "failed progress not done");
+        Check(!CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.Available, true, satisfied, false)
+            && !CampaignQuestTable.IsObjectiveDone(wave, CampaignChapterState.Locked, true, satisfied, false), "unaccepted chapter objectives never done");
+        Check(!CampaignQuestTable.IsObjectiveDone(garden, CampaignChapterState.ReadyToDeliver, true, null, false), "ready chapter: base objective still needs the base fact");
+        Check(CampaignQuestTable.IsObjectiveDone(garden, CampaignChapterState.ContractActive, false, null, true), "base fact satisfies base objective regardless of run");
+        Check(CampaignQuestTable.IsObjectiveDone(garden, CampaignChapterState.Completed, false, null, false), "completed chapter: base objective done");
+        Check(!CampaignQuestTable.IsObjectiveDone(null, CampaignChapterState.Completed, true, satisfied, true), "null objective never done");
+
+        // ---- FindProgress 按定义引用而不是下标 ----
+        CampaignProgressService.Active = "ch2";
+        CampaignProgressService.State = CampaignChapterState.ContractActive;
+        CampaignObjectiveTracker.ResetSession();
+        CampaignObjectiveTracker.EnsureArmedFor("modeD");
+        Check(CampaignQuestTable.FindProgress(CampaignObjectiveTracker.Progress, wave) != null
+            && CampaignQuestTable.FindProgress(CampaignObjectiveTracker.Progress, garden) == null, "progress lookup by definition reference");
+
+        // ---- DescribeObjective 文案与目标行同源 ----
+        L10n.IsChinese = true;
+        Check(CampaignQuestTable.DescribeObjective(wave, null, false, false) == "白手起家打到第 5 波", "unarmed run objective shows no number");
+        Check(CampaignQuestTable.DescribeObjective(wave, partial, false, false) == "白手起家打到第 5 波 (2/5)", "partial progress shows x/y");
+        Check(CampaignQuestTable.DescribeObjective(wave, failed, false, false).Contains("本局已失败"), "failed progress says failed this run");
+        Check(CampaignQuestTable.DescribeObjective(wave, null, true, false).Contains("已达成"), "settled objective says done");
+        Check(CampaignQuestTable.DescribeObjective(garden, null, false, false) == "基地：在基地建好菜地", "base objective is prefixed and has no number");
+        Check(CampaignQuestTable.DescribeObjective(garden, null, false, true).Contains("已达成"), "base fact marks base objective done");
+        L10n.IsChinese = false;
+        Check(CampaignQuestTable.DescribeObjective(garden, null, false, false) == "Base: Build the garden at base", "english base objective");
+        Check(CampaignQuestTable.GetModeDisplayName(CampaignContentCatalog.ModeZombie) == "Zombie Mode", "zombie mode display name is the mode's own name");
+        Check(CampaignQuestTable.DescribeObjectiveHint(wave, CampaignContentCatalog.ModeModeD, false) == "Go to: From Scratch", "run objective hint points at the mode");
+        Check(CampaignQuestTable.DescribeObjectiveHint(wave, CampaignContentCatalog.ModeModeD, true) == null, "settled objective has no hint");
+        L10n.IsChinese = true;
+
+        // ---- 基地侧事实注册表：无提供者 = 未完成，异常 = 未完成，可撤销 ----
+        CampaignBaseObjectives.ResetStaticCaches();
+        Check(!CampaignBaseObjectives.IsDone(CampaignObjectiveKind.GardenBuilt), "no provider means not done");
+        Check(!CampaignBaseObjectives.AllDone(ch2) && CampaignBaseObjectives.FirstPending(ch2) == garden, "ch2 blocked on garden");
+        Check(CampaignBaseObjectives.AllDone(CampaignContentCatalog.GetChapter("ch1")), "chapter without base objectives is all done");
+        CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.GardenBuilt, () => true);
+        Check(CampaignBaseObjectives.IsDone(CampaignObjectiveKind.GardenBuilt) && CampaignBaseObjectives.AllDone(ch2) && CampaignBaseObjectives.DoneBits(ch2) == 1,
+            "provider true completes garden objective");
+        CampaignBaseObjectives.RegisterProvider(CampaignObjectiveKind.GardenBuilt, () => { throw new Exception("probe"); });
+        Check(!CampaignBaseObjectives.IsDone(CampaignObjectiveKind.GardenBuilt), "throwing provider counts as not done");
+        CampaignBaseObjectives.UnregisterProvider(CampaignObjectiveKind.GardenBuilt);
+        Check(!CampaignBaseObjectives.HasProvider(CampaignObjectiveKind.GardenBuilt), "provider can be withdrawn");
+
+        // ---- 事实指纹：状态 / 进度 / 基地位任一变化都变 ----
+        int stampA = CampaignQuestTable.ComputeStateStamp(CampaignChapterState.ContractActive, true, new[] { partial }, 0);
+        int stampB = CampaignQuestTable.ComputeStateStamp(CampaignChapterState.ContractActive, true, new[] { satisfied }, 0);
+        int stampC = CampaignQuestTable.ComputeStateStamp(CampaignChapterState.ContractActive, true, new[] { partial }, 1);
+        int stampD = CampaignQuestTable.ComputeStateStamp(CampaignChapterState.ReadyToDeliver, true, new[] { partial }, 0);
+        Check(stampA != stampB && stampA != stampC && stampA != stampD, "state stamp reacts to progress, base bits and state");
     }
 
     private static void CheckBridges()
@@ -158,7 +262,7 @@ internal static class Program
         owner.NotifyCampaignModeFExtracted();
         Check(CampaignProgressService.Notifications == 1, "mode F mark lookup and extract bridge complete together");
         Arm("ch5"); owner = ModBehaviour.Instance;
-        owner.zombieModeRunState = new ZombieRun { LifecyclePhase = 1, CurrentWave = 4 };
+        owner.zombieModeRunState = new ZombieRun { LifecyclePhase = 1, CurrentWave = 5 };
         owner.TickCampaignModeBridge(1f);
         owner.NotifyCampaignZombieExtracted();
         Check(CampaignProgressService.Notifications == 1, "zombie wave and extraction bridge complete together");

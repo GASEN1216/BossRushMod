@@ -39,6 +39,16 @@ def check():
     require(runtime, "private void ShutdownIfEnabledTurnedOff()", "_owner.CleanupCampaignFinalBoss(true);")
     require(runtime, "private void ShutdownIfEnabledTurnedOff()", "CampaignDialoguePlayer.InvalidatePlayback();")
     require(runtime, "public override void OnUpdate(", "CampaignProgressService.RetryPendingObjectives(unscaledDeltaTime);")
+    require(runtime, "internal void EnsureBootstrapped()", "_questClient.RegisterAll(_owner != null && _owner.OfficialQuestRuntime != null ? _owner.OfficialQuestRuntime.Projection : null);")
+    require(runtime, "public override void OnDestroy()", "if (_questClient != null) _questClient.UnregisterAll();")
+    require(runtime, "private void ShutdownIfEnabledTurnedOff()", "if (_questClient != null) _questClient.UnregisterAll();")
+    require(runtime, "public override void OnSceneLoaded(", "if (_questClient != null) _questClient.ClearPending();")
+    client = "Campaign/CampaignOfficialQuestClient.cs"
+    require(client, "public void EndTick(bool dirty)", "if (BossRushUI.IsOfficialHudHidden() || BossRushUI.IsGamePaused()) return;")
+    require(client, "public void EndTick(bool dirty)", "CampaignDialoguePlayer.PlayChapterDelivered(def);")
+    require(client, "public void EndTick(bool dirty)", "_pendingNotice = CampaignContentCatalog.GetDeliveredNotice(def.ChapterId);")
+    require(client, "public void RefreshMarkers()", "OfficialQuestGiverLocator.RefreshMarkerFor(CampaignQuestTable.JeffGiverId);")
+    require("Campaign/CampaignObjectiveTracker.cs", "internal static void EnsureArmedFor(string mode)", "if (def.Objectives[i] == null || def.Objectives[i].IsBaseScope) continue;")
     final = "Campaign/CampaignFinalBoss.cs"
     require(final, "internal bool CanStartCampaignFinalBoss()", "return ShouldCampaignFinalBossAltarExist();")
     require(final, "private async UniTask StartCampaignFinalBossAsync(", "CampaignTuning.FinalBossScale, isNonWaveSpawn: true);")

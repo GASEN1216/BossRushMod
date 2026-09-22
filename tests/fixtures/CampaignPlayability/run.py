@@ -48,6 +48,7 @@ def main():
                          + cancellation + "}}", encoding="utf-8")
     sources = [ROOT / name for name in (
         "Campaign/CampaignModels.cs", "Campaign/CampaignTuning.cs",
+        "Campaign/CampaignQuestTable.cs", "Campaign/CampaignBaseObjectives.cs",
         "Campaign/CampaignContentCatalog.cs", "Campaign/CampaignObjectiveTracker.cs",
         "Campaign/CampaignObjectiveCollector.cs", "Campaign/CampaignFacilityUnlocks.cs",
         "Campaign/CampaignModeBridge.cs", "Campaign/CampaignNoteBridge.cs",

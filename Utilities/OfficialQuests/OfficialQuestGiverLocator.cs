@@ -78,6 +78,15 @@ namespace BossRush
             catch (Exception e) { ModBehaviour.DevLog("[OfficialQuest] [WARNING] 任务标记刷新失败: " + e.Message); }
         }
 
+        /// <summary>按给予者整数刷标记（客户端目录不引用官方类型时用）。找不到返回 false。</summary>
+        internal static bool RefreshMarkerFor(int giverId)
+        {
+            QuestGiver giver;
+            if (!TryFind((QuestGiverID)giverId, out giver)) return false;
+            RefreshMarker(giver);
+            return true;
+        }
+
         internal static void ResetStaticCaches()
         {
             found.Clear();

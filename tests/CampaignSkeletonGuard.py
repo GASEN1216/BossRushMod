@@ -32,6 +32,11 @@ REGISTRATION = Path("Common/Lifecycle/BossRushRuntimeModuleRegistration.cs")
 SCENE = Path("Integration/BossRushIntegration_StartAndScene.cs")
 PLAYER = Path("Campaign/CampaignDialoguePlayer.cs")
 FINAL_BOSS = Path("Campaign/CampaignFinalBoss.cs")
+QUEST_TABLE = Path("Campaign/CampaignQuestTable.cs")
+QUEST_CLIENT = Path("Campaign/CampaignOfficialQuestClient.cs")
+CONTRACTS = Path("docs/contracts.md")
+# 征程目录不得出现的官方任务符号：注册 / 投影 / 补丁 / 给予者扫描全在 Utilities/OfficialQuests/
+QUEST_SYMBOLS = ("QuestManager", "QuestGiverID", "QuestCollection", "QuestGiverView", "Duckov.Quests", "HarmonyPatch(typeof(Quest")
 # 开关接线散在 Config.cs 与提取出去的白名单文件里（同一 partial 类，
 # 拆分只为 LargeFileBudgetGuard 的 1200 行预算），断言时合并来看。
 CONFIG_SOURCES = [
@@ -62,7 +67,7 @@ def strip_comments(text):
 
 def main():
     for path in [MODULE, PROGRESS, UNLOCKS, TUNING, REGISTRATION,
-                 SCENE, PLAYER, FINAL_BOSS] + CONFIG_SOURCES:
+                 SCENE, PLAYER, FINAL_BOSS, QUEST_TABLE, QUEST_CLIENT, CONTRACTS] + CONFIG_SOURCES:
         if not path.is_file():
             return fail("找不到 " + path.as_posix())
 
@@ -214,7 +219,50 @@ def main():
             "F3 验收路径（DebugStartCampaignFinalBossForValidation）必须绕过独白直连生成，"
             "否则对话要等玩家点击才 resolve，RunCampaignFinalBoss 会一路等到超时记 spawn_timeout。")
 
-    print("CampaignSkeletonGuard: PASS（单实例 + dormant + 冻结常量 + 契约 fail-closed + 卸载接线 + 终章独白）")
+    # ---- 9) 官方任务投影：六章只经共享核心登记，Campaign/ 不碰官方任务系统 ----
+    quest_table = strip_comments(QUEST_TABLE.read_text(encoding="utf-8", errors="ignore"))
+    quest_client = strip_comments(QUEST_CLIENT.read_text(encoding="utf-8", errors="ignore"))
+    for name, literal in (("QuestIdBase", "590100"), ("JeffGiverId", "1")):
+        if not re.search(r"\b" + name + r"\s*=\s*" + literal + r"\s*;", quest_table):
+            return fail(QUEST_TABLE.as_posix() + " 的冻结常量 " + name + " 不再等于 " + literal
+                        + "。590101–590106 与给予者 Jeff=1 已登记 docs/contracts.md §7.1，改动是 WIRE-（§10）。")
+    contracts = CONTRACTS.read_text(encoding="utf-8", errors="ignore")
+    if "590101" not in contracts or "590106" not in contracts:
+        return fail("docs/contracts.md 没有登记征程任务 ID 段 590101–590106")
+    for path in Path("Campaign").glob("*.cs"):
+        text = strip_comments(path.read_text(encoding="utf-8", errors="ignore"))
+        for symbol in QUEST_SYMBOLS:
+            if symbol in text:
+                return fail(path.as_posix() + " 引用了官方任务符号 " + symbol
+                            + "：征程只能经 OfficialQuestProjection.Register 投影，注册 / 补丁 / 扫描都在 Utilities/OfficialQuests/")
+    if "projection.Register(" not in quest_client or "IOfficialQuestClient" not in quest_client:
+        return fail(QUEST_CLIENT.as_posix() + " 没有作为共享核心的客户端登记六章")
+    if "EconomyManager" in quest_client or not re.search(r"PayReward\s*=\s*null", quest_client):
+        return fail(QUEST_CLIENT.as_posix() + " 不得自己发钱：奖金、token、线索归 TryDeliver 的补偿式事务（PayReward = null）")
+    if "RewardMoney = def.RewardCash" not in quest_client:
+        return fail(QUEST_CLIENT.as_posix() + " 官方奖励行金额必须与实际发放同源（RewardMoney = def.RewardCash）")
+    deliver = re.search(r"private bool Deliver\(CampaignChapterDef def, out string message\)\s*\{(.*?)\n        \}", quest_client, flags=re.S)
+    if not deliver:
+        return fail(QUEST_CLIENT.as_posix() + " 找不到 Deliver 方法体")
+    deliver_body = deliver.group(1)
+    a = deliver_body.find("CampaignProgressService.TryDeliver(")
+    b = deliver_body.find("_pendingDialogue = def")
+    if a < 0 or b < 0 or a > b:
+        return fail(QUEST_CLIENT.as_posix() + " 交付必须先落事实（TryDeliver）再排剧情对话")
+    if "CampaignBaseObjectives.AllDone(def)" not in quest_client:
+        return fail(QUEST_CLIENT.as_posix() + " 交付门没有核对基地侧目标（菜地建成 / 战利品陈列）")
+    if "ModBehaviour.Instance" in quest_client:
+        return fail(QUEST_CLIENT.as_posix() + " 不得用 ModBehaviour.Instance：客户端持模块引用（ModBehaviourInstanceClassificationGuard 基线）")
+    if "_questClient.UnregisterAll()" not in module or "_questClient.RegisterAll(" not in module:
+        return fail(MODULE.as_posix() + " 必须在 bootstrap 登记六章、在关闭开关 / 销毁时整体撤销")
+    shutdown = re.search(r"private\s+void\s+ShutdownIfEnabledTurnedOff\s*\(\)\s*\{(.*?)\n        \}", module, flags=re.S)
+    if not shutdown or "_questClient.UnregisterAll()" not in shutdown.group(1):
+        return fail(MODULE.as_posix() + " 关掉开关必须把六章从杰夫的任务页撤走（dormant 契约）")
+    for banned in ("using UnityEngine", "using Duckov"):
+        if banned in quest_table:
+            return fail(QUEST_TABLE.as_posix() + " 出现了 " + banned + "：任务表必须无 Unity / Duckov 依赖，执行回归才能逐字链接")
+
+    print("CampaignSkeletonGuard: PASS（单实例 + dormant + 冻结常量 + 契约 fail-closed + 卸载接线 + 终章独白 + 官方任务投影边界）")
     return 0
 
 

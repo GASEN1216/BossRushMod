@@ -5,12 +5,14 @@
 // + Registry + **全量硬编码 fallback**。
 //
 // 【为什么必须有硬编码 fallback】
-//   数据表读不到就没有章节，玩家点开公告板会看到空面板——这是玩家可见故障。
+//   数据表读不到就没有章节，杰夫的任务页上一条征程任务都没有——这是玩家可见故障。
 //   硬编码兜底保证「即使 JSON 丢了/坏了，战役照样能玩」，JSON 与硬编码签名必须同步更新，避免部署旧表。校验不过时**整表回退**，不做逐条挑拣：半张表比没有表更难排查。
 //
 // 【现行数值】
 //   章节奖金 2 万 → 20 万递增（参照成就系统约 1676 万的总奖金量级取的保守值）。
 //   2026-09-18 保留奖金与战斗门槛，第三章移除无额外决策价值的等待门。
+//   2026-09-22 换故事《册子上的名字》：ch2 加基地侧目标「建好菜地」、ch3 加「摆上一件战利品」，
+//   ch5 波次门 4→5（撤离本就在第 5 波 Boss 后，目标行与动作对齐，难度不增）；ID、token、奖金不变。
 // ============================================================================
 
 using System;
@@ -104,24 +106,52 @@ namespace BossRush
             switch (mode)
             {
                 case CampaignContentCatalog.ModeStandard:
-                    return L10n.T("带装备和船票入场，路牌选择标准难度；前两波先求稳；交付解锁后山菜地。",
-                        "Enter with gear and a ticket; choose a standard tier at the sign. Play the first two waves safely; hand in to unlock the garden.");
+                    return L10n.T("带装备和船票进标准竞技场，路牌选标准那一档，前两波稳着打，通关回基地找杰夫交任务。",
+                        "Bring gear and a ticket into the Standard Arena, pick a standard tier at the sign, play the first two waves safe, then hand in to Jeff at base.");
                 case CampaignContentCatalog.ModeModeD:
-                    return L10n.T("只带船票入场（含宠物背包清空），局内可正常穿戴；用开局近战武器积累击杀；交付解锁展示柜。",
-                        "Enter with only a ticket, including an empty pet bag. Equip loot freely; use the starter melee weapon for kills. Hand in to unlock the showcase.");
+                    return L10n.T("先在基地建设面板把菜地建起来，再只带船票空手进白手起家，用开局发的近战刀砍 5 个并打到第 5 波。",
+                        "Build the garden from the base construction panel first, then enter From Scratch with only a ticket, no gear. Use the starter melee knife for 5 kills and push to wave 5.");
                 case CampaignContentCatalog.ModeModeE:
-                    return L10n.T("带船票和营旗入场，选择阵营后击败敌方头目；击杀达标即可回去交付，解锁点唱机战歌。",
-                        "Enter with a ticket and faction banner. Defeat hostile bosses; hand in as soon as the tally is met to unlock jukebox battle tracks.");
+                    return L10n.T("带船票和营旗裸装进划地为营，选阵营后干掉 8 个敌方头目，回基地再把 1 件 Boss 战利品摆上陈列柜。",
+                        "Enter Faction War with a ticket and a faction banner, no gear. Pick a side, drop 8 hostile bosses, then put 1 Boss trophy on display back at base.");
                 case CampaignContentCatalog.ModeModeF:
-                    return L10n.T("带船票和血猎收发器入场；猎取三名悬赏目标后完成模式撤离。",
-                        "Enter with a ticket and Bloodhunt Transceiver. Kill three marked targets, then use the mode's extraction.");
+                    return L10n.T("带船票和血猎收发器裸装进血猎追击，干掉 3 个带悬赏印记的目标，再从撤离点走。",
+                        "Enter Blood Hunt with a ticket and a Bloodhunt Transponder, no gear. Kill 3 marked targets, then leave through the extraction point.");
                 case CampaignContentCatalog.ModeZombie:
-                    return L10n.T("使用尸潮邀请函出发；第 4 波是进度门槛，最早在第 5 波 Boss 战后撤离。",
-                        "Use a Zombie Invitation. Wave 4 meets the wave goal; the first extraction follows the wave 5 Boss.");
+                    return L10n.T("用尸潮邀请函出发，撑到第 5 波，Boss 打完撤离点就开，站上去走。",
+                        "Set out with a Zombie Tide Invitation, hold to wave 5, and the extraction opens once that Boss is down. Step on it and leave.");
                 case CampaignContentCatalog.ModeFinal:
-                    return L10n.T("带装备和船票进竞技场，不带其它模式信物；先别开路牌，交互身边的召唤石。",
-                        "Enter the arena with gear and a ticket, without other mode tokens. Use the nearby altar before starting the sign.");
+                    return L10n.T("带装备和船票进竞技场，不带其它模式信物，别点路牌，按住身边的报名石开打。",
+                        "Enter the arena with gear and a ticket, no other mode tokens. Don't start the sign. Hold the sign-up stone beside you to begin.");
                 default: return string.Empty;
+            }
+        }
+
+        /// <summary>章节交付后的解锁飘字（对话播完再弹）。明确说解锁了什么、去哪用。</summary>
+        internal static string GetDeliveredNotice(string chapterId)
+        {
+            switch (chapterId)
+            {
+                case "ch1":
+                    return L10n.T("已解锁菜地。去基地建设面板建「菜地」，之后 Boss 会掉种子，种出来能做出击餐。",
+                        "Garden unlocked. Build \"Garden\" from the base construction panel. Bosses start dropping seeds, and what you grow becomes raid meals.");
+                case "ch2":
+                    return L10n.T("已解锁陈列加成。把 Boss 战利品摆进基地的陈列柜、枪械展示架或假人，每件给生命上限加成。",
+                        "Display bonus unlocked. Put Boss trophies in the base display cabinet, on the weapon display rack or on a dummy. Each one raises your max health.");
+                case "ch3":
+                    return L10n.T("已解锁点唱机战歌。基地点唱机里多了「龙裔挽歌」和「幽影回廊」。",
+                        "Jukebox tracks unlocked. \"Dragon Elegy\" and \"Umbral Corridors\" are now in the base jukebox.");
+                case "ch4":
+                    return L10n.T("第四行已入册。下一章是疫区那场，出击前先去菜地做一份出击餐。",
+                        "Line four is in the ledger. Next up is the quarantine match. Make a raid meal at the garden before you go.");
+                case "ch5":
+                    return L10n.T("第五行已入册。报名石会立在竞技场里等你，别先点路牌。",
+                        "Line five is in the ledger. A sign-up stone will be waiting in the arena. Don't start the sign first.");
+                case "ch6":
+                    return L10n.T("鸭王征程完成。菜地、陈列加成、点唱机战歌都留着，随时用。",
+                        "Duck King Campaign complete. The garden, the display bonus and the jukebox tracks are yours to keep.");
+                default:
+                    return L10n.T("契约已交付。", "Contract handed in.");
             }
         }
 
@@ -361,6 +391,8 @@ namespace BossRush
                 case "bounty_kills": return CampaignObjectiveKind.BountyKills;
                 case "mode_extract": return CampaignObjectiveKind.ModeExtract;
                 case "final_boss_kill": return CampaignObjectiveKind.FinalBossKill;
+                case "garden_built": return CampaignObjectiveKind.GardenBuilt;
+                case "trophy_displayed": return CampaignObjectiveKind.TrophyDisplayed;
                 default: return CampaignObjectiveKind.Unknown;
             }
         }
@@ -409,40 +441,44 @@ namespace BossRush
             List<CampaignChapterDef> list = new List<CampaignChapterDef>();
 
             list.Add(MakeChapter(
-                "ch1", 1, ModeStandard, "擂台旧影", "Echoes of the Ring", 20000, 1, "clue_ch1",
+                "ch1", 1, ModeStandard, "报个名", "Sign Us Up", 20000, 1, "clue_ch1",
                 MakeObjective(CampaignObjectiveKind.StandardClear, 1,
                     "通关一局标准竞技场", "Clear one standard arena run"),
                 MakeObjective(CampaignObjectiveKind.NoDamageUntilWave, 2,
                     "前 2 波一滴血不掉", "Take zero damage through wave 2")));
 
             list.Add(MakeChapter(
-                "ch2", 2, ModeModeD, "白手起家的誓言", "Vow of the Empty-Handed", 35000, 2, "clue_ch2",
+                "ch2", 2, ModeModeD, "种地的选手", "The Fighter With a Garden", 35000, 2, "clue_ch2",
+                MakeObjective(CampaignObjectiveKind.GardenBuilt, 1,
+                    "在基地建好菜地", "Build the garden at base"),
                 MakeObjective(CampaignObjectiveKind.ReachWave, 5,
                     "白手起家打到第 5 波", "Reach wave 5 from nothing"),
                 MakeObjective(CampaignObjectiveKind.MeleeKills, 5,
-                    "近战送走 5 个", "Put down 5 with melee")));
+                    "用近战武器击杀 5 个", "Kill 5 with a melee weapon")));
 
             list.Add(MakeChapter(
-                "ch3", 3, ModeModeE, "立旗为界", "Planting the Banner", 50000, 3, "clue_ch3",
+                "ch3", 3, ModeModeE, "门面", "A Proper Front", 50000, 3, "clue_ch3",
                 MakeObjective(CampaignObjectiveKind.FactionBossKills, 8,
-                    "击败 8 名敌方头目", "Defeat 8 hostile bosses")));
+                    "击败 8 名敌方头目", "Defeat 8 hostile bosses"),
+                MakeObjective(CampaignObjectiveKind.TrophyDisplayed, 1,
+                    "把 1 件 Boss 战利品摆上陈列柜或枪械展示架", "Display 1 Boss trophy in a cabinet or on a rack")));
 
             list.Add(MakeChapter(
-                "ch4", 4, ModeModeF, "猎杀名单", "The Kill List", 75000, 4, "clue_ch4",
+                "ch4", 4, ModeModeF, "收钱走人", "Collect and Leave", 75000, 4, "clue_ch4",
                 MakeObjective(CampaignObjectiveKind.BountyKills, 3,
-                    "拿下 3 个带悬赏印记的", "Take down 3 marked for bounty"),
+                    "击杀 3 个带悬赏印记的目标", "Kill 3 targets marked for bounty"),
                 MakeObjective(CampaignObjectiveKind.ModeExtract, 1,
                     "成功撤离", "Extract successfully")));
 
             list.Add(MakeChapter(
-                "ch5", 5, ModeZombie, "末日信标", "The Last Beacon", 100000, 5, "clue_ch5",
-                MakeObjective(CampaignObjectiveKind.ReachWave, 4,
-                    "在尸潮里熬到第 4 波", "Ride the tide to wave 4"),
+                "ch5", 5, ModeZombie, "没人肯去的那场", "The Match Nobody Takes", 100000, 5, "clue_ch5",
+                MakeObjective(CampaignObjectiveKind.ReachWave, 5,
+                    "在尸潮里撑到第 5 波", "Hold the tide to wave 5"),
                 MakeObjective(CampaignObjectiveKind.ModeExtract, 1,
                     "成功撤离", "Extract successfully")));
 
             list.Add(MakeChapter(
-                "ch6", 6, ModeFinal, "冠军之影", "Shadow of the Champion", 200000, 6, "clue_ch6",
+                "ch6", 6, ModeFinal, "守擂的那个", "The One Holding the Ring", 200000, 6, "clue_ch6",
                 MakeObjective(CampaignObjectiveKind.FinalBossKill, 1,
                     "打赢冠军之影", "Beat the Shadow of the Champion")));
 

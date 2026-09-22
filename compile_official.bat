@@ -1050,6 +1050,9 @@ echo(Campaign\CampaignFacilityUnlocks.cs
 echo(Campaign\CampaignPersistence.cs
 echo(Campaign\CampaignSaveCoordinator.cs
 echo(Campaign\CampaignContentCatalog.cs
+echo(Campaign\CampaignQuestTable.cs
+echo(Campaign\CampaignBaseObjectives.cs
+echo(Campaign\CampaignOfficialQuestClient.cs
 echo(Campaign\CampaignObjectiveTracker.cs
 echo(Campaign\CampaignObjectiveCollector.cs
 echo(Campaign\CampaignProgressService.cs

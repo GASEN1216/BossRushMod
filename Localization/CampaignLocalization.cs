@@ -4,21 +4,18 @@
 // 形态照 Localization/DailyReportLocalization.cs。接线点是
 // Integration/BossRushIntegration_StartAndScene.cs 的 InjectLocalization_Extra_Integration()。
 //
-// 【术语：用「鸭王」不用「鸭皇」】
-//   ModeH 已经立了「黑市**鸭王**杯」，本战役讲的正是那场赛事名人堂里的事，
-//   两者必须同名，否则玩家会以为是两个不相干的东西。
-//  （「鸭皇图鉴」是 Boss 图鉴，另一个域，不冲突。）
-//
-// 【剧情锚在 ModeH 的真实机制上，不另造设定】
-//   名人堂只有 32 席、第 33 个进来最底下那个就被挤掉——这是 ModeH 已实现的规则
-//  （见设计提案 §17.8 与 ModeHHallOfFamePersistence）。整条线索链就长在这条规则上：
-//   冠军不是被谁抹掉的，是**排队排出去的**。他之后做的每件事都是在找一个
-//   「不会被挤掉的名字」，最后他找到了——代价是不再当选手。
+// 【故事：《册子上的名字》（2026-09-22 换新）】
+//   杰夫嫌竞技场按「流浪选手」结账，要把地堡的名字立到擂台报名册上。六章是账房要的
+//   六行记录，每交一行杰夫把赏金换成基地里真能用的东西：菜地（ch1）、陈列加成（ch2）、
+//   点唱机战歌（ch3）。上一章解锁的设施是下一章的目标（ch2 要建好菜地、ch3 要摆上一件战利品）。
+//   冠军之影 = 擂台的守擂者，穿历任冠军留下的甲，册上只印一道剪影；要立名字先跟他打一场。
+//   全线只依赖「杰夫 + 竞技场 + 基地建设」，不依赖任何别的 Mod 系统的知识。
 //
 // 【范围】这里只注入**官方系统会主动去查表**的 key：
-//   建筑名/描述（官方查 "Building_" + id）、交互提示名、
-//   官方笔记图鉴条目（官方查 "Note_{key}_Title" / "_Content"）。
-//   面板按钮、章节标题、目标描述由 UI 侧内联 L10n.T 双语给出，不进注入表。
+//   官方任务标题 / 说明（Quest.DisplayNameRaw / DescriptionRaw）、建筑名 / 描述（官方查 "Building_" + id）、
+//   交互提示名、官方笔记图鉴条目（官方查 "Note_{key}_Title" / "_Content"）。
+//   目标行、飘字、对话由代码侧内联 L10n.T 双语给出，不进注入表。
+//   说话人杰夫直接用官方键 Character_Jeff，不另注册名字。
 // ============================================================================
 
 using System.Collections.Generic;
@@ -33,19 +30,67 @@ namespace BossRush
         {
             Dictionary<string, string> map = new Dictionary<string, string>();
             map["BossRush_Campaign_Board_Interact"] = L10n.T("看看公告板", "Check the board");
-            map["BossRush_Campaign_FinalBoss_Interact"] = L10n.T("按住召唤石", "Hold the altar stone");
+            map["BossRush_Campaign_FinalBoss_Interact"] = L10n.T("按住报名石", "Hold the sign-up stone");
             map["BossRush_Campaign_FinalBoss_Name"] = L10n.T("冠军之影", "Shadow of the Champion");
-            map["BossRush_Campaign_Broker_Name"] = L10n.T("中间人", "The Broker");
             LocalizationHelper.InjectLocalizations(map);
 
+            InjectQuestKeys();
             InjectBuildingKeys();
             InjectClueKeys();
         }
 
         /// <summary>
+        /// 官方任务页的标题与说明（六章，键 BossRush_Campaign_chN_Name / _Description）。
+        /// 标题与章节表的 titleCN / titleEN 同一串；说明是杰夫在跟你说话，三四句，只用逗号句号。
+        /// </summary>
+        public static void InjectQuestKeys()
+        {
+            Dictionary<string, string> map = new Dictionary<string, string>();
+
+            AddQuest(map, "ch1",
+                "报个名", "Sign Us Up",
+                "竞技场的报名册上没有我们的名字，赏金按流浪选手结，亏得慌。你带上船票去标准竞技场打一局，路牌选标准那一档，开头两波别挨打，账房就看这两行。打完回基地找我，钱我付，后头那块菜地我也让人给你腾出来。",
+                "Our name isn't in the arena's ledger, so they pay us like drifters. It stings. Take a ticket into the Standard Arena, pick a standard tier at the sign, and don't get hit in the first two waves. That's all the bookkeeper reads. Come find me at base after and I'll pay, and I'll have that plot out back cleared for you.");
+
+            AddQuest(map, "ch2",
+                "种地的选手", "The Fighter With a Garden",
+                "菜地建起来了吗，没粮的选手账房不给写第二行。地弄好了就带船票空手进白手起家，身上和宠物背包都得空，打到第 5 波，顺手用发给你的刀砍够 5 个。回来结钱，我再教你一招，打回来的好东西摆出来能长命。",
+                "Is the garden up yet? The bookkeeper won't write line two for a fighter with no food. Once it's planted, take a ticket into From Scratch with nothing on you, empty pet bag included, push to wave 5 and put down 5 with the knife we hand you. Come back for your money, and I'll show you a trick. The good stuff you win keeps you alive longer if you put it on display.");
+
+            AddQuest(map, "ch3",
+                "门面", "A Proper Front",
+                "第三行要证明我们守得住一块地。带船票和营旗去划地为营，选个阵营，把敌方头目干掉 8 个，够数就能回。柜子那边也别忘了，随便摆一件打回来的战利品，账房要派人来基地看门面。",
+                "Line three says we can hold ground. Take a ticket and a faction banner into Faction War, pick a side, and drop 8 hostile bosses. That's enough, come home. Don't forget the cabinet either. Put one of your trophies up, the bookkeeper sends a man round to look the place over.");
+
+            AddQuest(map, "ch4",
+                "收钱走人", "Collect and Leave",
+                "第四行要看我们收得了钱，还走得掉。带船票和血猎收发器裸装进血猎追击，把带悬赏印记的干掉 3 个，撤离点一开就走，别贪。这一章没有新东西给你，钱多给一点。",
+                "Line four wants to see we can collect and still walk out. Ticket and Bloodhunt Transponder, no gear, into Blood Hunt. Kill 3 marked bounties and take the extraction the moment it opens, don't get greedy. No new toys this time, just more money.");
+
+            AddQuest(map, "ch5",
+                "没人肯去的那场", "The Match Nobody Takes",
+                "最后一行是疫区那场，签过名的人没回来过，所以册子上一直空着。用尸潮邀请函出发，投多少现金你自己看，撑到第 5 波，Boss 打完撤离点就开。站上去走，回来这一行就满了。",
+                "The last line is the quarantine match. Everyone who signed it never came back, so the line stayed empty. Use a Zombie Tide Invitation, put in as much cash as you think it's worth, and hold to wave 5. The extraction opens once that Boss is down. Step on it and leave, and the page is full.");
+
+            AddQuest(map, "ch6",
+                "守擂的那个", "The One Holding the Ring",
+                "册子翻到我们那一页了，就差你签。带装备和船票进竞技场，别带其它模式的信物，也别去点路牌。身边会立起一块报名石，按住它，守擂的那个就来，赢了名字就是我们的。",
+                "Our page is open, all it needs is your name. Take gear and a ticket into the arena, leave the other modes' tokens at home, and don't touch the sign. A sign-up stone comes up beside you. Hold it, the one holding the ring answers, and if you win the name is ours.");
+
+            LocalizationHelper.InjectLocalizations(map);
+        }
+
+        private static void AddQuest(Dictionary<string, string> map, string chapterId,
+            string nameCN, string nameEN, string descriptionCN, string descriptionEN)
+        {
+            map[CampaignQuestTable.NameKey(chapterId)] = L10n.T(nameCN, nameEN);
+            map[CampaignQuestTable.DescriptionKey(chapterId)] = L10n.T(descriptionCN, descriptionEN);
+        }
+
+        /// <summary>
         /// 建筑名与描述。官方按 "Building_" + id 硬编码查表，
         /// 缺这两条会在建造 UI 里显示 *Building_bossrush_campaign_board*。
-        /// 建筑注入器在创建 prefab 之前会先调它，顺序不能颠倒。
+        /// 公告板已退役（任务改由杰夫发放）：新档不再进建造菜单，老档已建的照常注册，所以键还要注入。
         /// </summary>
         public static void InjectBuildingKeys()
         {
@@ -54,11 +99,8 @@ namespace BossRush
             Dictionary<string, string> map = new Dictionary<string, string>();
             map[buildingKey] = L10n.T("征程公告板", "Campaign Board");
             map[buildingKey + "_Desc"] = L10n.T(
-                "钉满悬赏纸的旧木板。黑市那边托人带话：鸭王杯名人堂的碑上少了一个名字，"
-                + "有人肯出钱把它找回来。中间人说这活儿不难，就是得多跑几趟。",
-                "An old board plastered with bounty notices. Word from the black market: "
-                + "a name has gone missing from the Duck Cup Hall of Fame plaque, and someone "
-                + "is paying to get it back. The Broker says the job is simple. Just a lot of legwork.");
+                "钉满旧悬赏纸的木板。杰夫把征程的活儿收回自己手里了，这块板子留着当个纪念，拆了也不影响进度。",
+                "An old board plastered with bounty notices. Jeff runs the campaign himself now. Keep it as a souvenir or tear it down, either way your progress is safe.");
 
             LocalizationHelper.InjectLocalizations(map);
         }
@@ -66,96 +108,61 @@ namespace BossRush
         /// <summary>
         /// 线索条目在官方笔记图鉴里的标题与正文。
         /// 官方按 "Note_{key}_Title" / "Note_{key}_Content" 查表，缺了会显示裸 key。
-        /// key 前缀 CampaignTuning.NoteKeyPrefix 与线索 ID 一起构成冻结契约。
+        /// key 前缀 CampaignTuning.NoteKeyPrefix 与线索 ID（clue_ch1..6）一起构成冻结契约：换故事只换文案不换 key。
         ///
-        /// 每条的写法固定为「物证 + 一个精确到荒诞的细节 + 一句旁人证词」，
-        /// 证词轮流交给三位既有 NPC（阿稳/叮当/羽织），让线索链同时把 mod 的老角色串进来。
+        /// 每条 = 报名册上的一行 + 一句杰夫的话。数字全线对得上：六行、十一个签过名的、八个头目、三个悬赏、第五波。
         /// </summary>
         public static void InjectClueKeys()
         {
             Dictionary<string, string> map = new Dictionary<string, string>();
 
             AddClue(map, "clue_ch1",
-                "证物一：两张碑拓",
-                "同一块碑，隔了一季拓的两张。两张都是三十二个名字，一个不多一个不少。"
-                + "把它们对齐了看：顶上多出一个新名字，最底下那个不见了。\n"
-                + "阿稳：「这活儿我送过。名人堂就三十二格，来了第三十三个，最下面那位自己挪窝。"
-                + "签收单上写的是『满员退件』——跟包裹一个待遇。」",
-                "Evidence I: Two Rubbings",
-                "Two rubbings of the same plaque, taken a season apart. Both hold exactly thirty-two "
-                + "names — no more, no fewer. Line them up: a new name at the top, and the bottom one gone.\n"
-                + "Awen: \"I delivered this one. Hall of Fame has thirty-two slots. Number thirty-three "
-                + "walks in, the man at the bottom walks out. The paperwork says 'returned: capacity reached.' "
-                + "Same wording we use for parcels.\"");
+                "报名册 第一行",
+                "账房抄给我们的那一页，一共六行。第一行写着「标准场，通关，开头两波无损」。旁边是我们的名字，铅笔写的，字很小，擦得掉。\n"
+                + "杰夫：「先用铅笔。六行填满才给上墨。」",
+                "Ledger, Line One",
+                "The page the bookkeeper copied out for us. Six lines. The first reads \"Standard Arena, cleared, no damage through wave two.\" Our name sits beside it in pencil, small enough to rub out.\n"
+                + "Jeff: \"Pencil for now. They only ink it once all six are full.\"");
 
             AddClue(map, "clue_ch2",
-                "证物二：当票",
-                "一整套冠军战甲的当票，赎期过了三年没人来赎。签名栏只有一个歪歪扭扭的鸭掌印。"
-                + "当铺老板记得他当天说的话：「留着也没人认了。」\n"
-                + "叮当：「那套甲是叮当重铸的，词条叮当闭着眼都认得出来！他当掉它……"
-                + "是想从头再打一遍，重新排进那三十二格里。叮当才没有觉得可惜呢，哼。」",
-                "Evidence II: A Pawn Ticket",
-                "A ticket for a full set of champion's armor. Three years past redemption, never claimed. "
-                + "The signature box holds only a crooked webbed footprint. The pawnbroker remembers what he "
-                + "said that day: \"Nobody recognizes it any more anyway.\"\n"
-                + "Dingdang: \"Dingdang reforged that set! Dingdang could name its affixes with both eyes shut. "
-                + "He pawned it because he wanted to climb back into those thirty-two slots from nothing. "
-                + "Dingdang is NOT sad about it. Hmph.\"");
+                "报名册 第二行",
+                "第二行写着「空手入场，第五波，近战五杀」。行末盖了个歪章，章上是一株菜苗，账房管这个叫「有粮」。\n"
+                + "杰夫：「一个会自己种地的选手，账房看着都顺眼些。」",
+                "Ledger, Line Two",
+                "Line two reads \"entered with nothing, wave five, five melee kills.\" A crooked stamp sits at the end of the line with a seedling on it. The bookkeeper calls that \"has food.\"\n"
+                + "Jeff: \"A fighter who grows his own. Even the bookkeeper likes the look of that.\"");
 
             AddClue(map, "clue_ch3",
-                "证物三：半张阵营旗",
-                "旗子从中间被割开，只剩靠旗杆那半边。撕口很齐，是刀口，不是扯的。"
-                + "三个不同阵营的头目都说他是自己人，三个都说不出他叫什么。\n"
-                + "阿稳：「查无此人不是没记录，是记录里那一行被人腾出来了。"
-                + "他挨个阵营挂旗，就为了让谁把他名字重新写下来。没人写。」",
-                "Evidence III: Half a Faction Banner",
-                "Cut down the middle; only the half nearest the pole survives. The edge is clean — a blade, "
-                + "not a tear. Three faction bosses each claim he was one of theirs. None of the three can "
-                + "say his name.\n"
-                + "Awen: \"It's not that there's no record. It's that the line where his record sat got "
-                + "cleared for someone else. He flew every banner he could find, hoping somebody would write "
-                + "his name back down. Nobody did.\"");
+                "报名册 第三行",
+                "第三行写着「守住一块地，八个头目」。后面别着一张来人的字条，说我们基地的柜子上摆着东西，「看得出来是自己打的」。\n"
+                + "杰夫：「他没问价钱，也没问牌子。看的是有没有人真打过。」",
+                "Ledger, Line Three",
+                "Line three reads \"held ground, eight bosses.\" A visitor's note is pinned after it: the base has trophies up, and they \"clearly came off something he killed himself.\"\n"
+                + "Jeff: \"He didn't ask what they cost or who made them. He was checking whether anyone here actually fights.\"");
 
             AddClue(map, "clue_ch4",
-                "证物四：一张没发出去的悬赏令",
-                "目标栏写着他自己的名字，落款也是他自己。赏金数额被涂改了十一次，"
-                + "最后那个数字大得没有任何人会去接。\n"
-                + "中间人：「他不是想死。悬赏令是这行里唯一一种『必须把名字写清楚』的纸。"
-                + "没人肯写他的名字，他就自己写，写在唯一写了准数的地方。」",
-                "Evidence IV: A Bounty Notice, Never Posted",
-                "The target field bears his own name. So does the signature. The sum has been scratched out "
-                + "and rewritten eleven times; the final figure is large enough that nobody would ever take "
-                + "the contract.\n"
-                + "The Broker: \"He wasn't looking to die. A bounty notice is the one piece of paper in this "
-                + "trade that *has* to spell your name out. Nobody would write it for him, so he wrote it "
-                + "himself, in the one place the number has to be exact.\"");
+                "报名册 第四行",
+                "第四行写着「三个悬赏，活着撤离」。赏金栏被账房改过一次，原来那个数字划掉了，改高了，旁边注着「入册价」。\n"
+                + "杰夫：「名字还没上墨，价先涨了。册子就是这么个东西。」",
+                "Ledger, Line Four",
+                "Line four reads \"three bounties, extracted alive.\" The bookkeeper revised the fee once: the old figure struck out, a higher one written in, marked \"listed rate.\"\n"
+                + "Jeff: \"Name's still in pencil and the rate already went up. That's what a ledger is for.\"");
 
             AddClue(map, "clue_ch5",
-                "证物五：疫区来信",
-                "信纸被污染烧出一圈焦边。前半页字迹还工整，后半页整个散了架，"
-                + "反复写着同一句：「我还认得自己吗」。数了数，十七遍。第十八遍写到一半没了。\n"
-                + "羽织：「污染改写的是『你是什么』，不是『你叫什么』。他大概以为改一个就能改另一个。"
-                + "……我不是在替他说话。我只是见过太多这样的病历。」",
-                "Evidence V: A Letter from the Quarantine",
-                "The paper is ringed with burn marks from contamination. The first half is steady; the second "
-                + "falls apart entirely, repeating one line over and over: \"Do I still recognize myself?\" "
-                + "Seventeen times. The eighteenth stops halfway.\n"
-                + "Yuzhi: \"Contamination rewrites *what* you are, not *who* you're called. He must have "
-                + "thought changing one would change the other. ...I'm not defending him. I've just read "
-                + "too many charts that end like this.\"");
+                "报名册 第五行",
+                "第五行以前是空的。往前翻，这一行签过十一个名字，十一个后面都画着一道横线，没有回执。现在第十二个名字后面写着「第五波，撤离，回来了」。\n"
+                + "杰夫：「你是第一个把这行填完的。别问我为什么留着这一页。」",
+                "Ledger, Line Five",
+                "Line five used to be empty. Flip back and eleven names have signed it, all eleven with a dash after them and no return receipt. The twelfth now reads \"wave five, extracted, came back.\"\n"
+                + "Jeff: \"You're the first to finish that line. Don't ask why I kept the page.\"");
 
             AddClue(map, "clue_ch6",
-                "结案：冠军之影",
-                "名人堂三十二格，进一个挤一个。Boss 图鉴不挤人——写进去的，一条都不会掉。"
-                + "他没失踪，他换了一本册子。\n"
-                + "中间人：「他现在有个位置了，永久的。代价是那个位置上不写名字，只画一道影子。」\n"
-                + "碑上那一行现在归别人了。没人去刮。",
-                "Case Closed: Shadow of the Champion",
-                "The Hall of Fame holds thirty-two; one in, one out. The bestiary evicts nobody — once you're "
-                + "written in, you stay. He never vanished. He just changed which book he was in.\n"
-                + "The Broker: \"He has a permanent slot now. The price is that the slot doesn't carry a name. "
-                + "Just a silhouette.\"\n"
-                + "That line on the plaque belongs to someone else now. Nobody scrapes it off.");
+                "报名册 我们的那一页",
+                "六行填满，名字上了墨。最后一行是守擂那一场，对手栏印着一道影子，没有名字。历任冠军的甲还挂在擂台上，谁穿上谁就是那道影子。\n"
+                + "杰夫：「这页以后归我们了。你想回来吃饭就回来吃饭，那套甲留给别人。」",
+                "Ledger, Our Page",
+                "Six lines full, the name inked in. The last line is the gatekeeping bout; the opponent column holds a silhouette and no name. The old champions' armor still hangs in the ring, and whoever puts it on becomes that silhouette.\n"
+                + "Jeff: \"The page is ours now. Come home and eat whenever you like. Let somebody else wear the armor.\"");
 
             LocalizationHelper.InjectLocalizations(map);
         }

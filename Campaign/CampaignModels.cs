@@ -15,7 +15,7 @@ namespace BossRush
     /// <summary>单章在玩家侧的可见状态。</summary>
     internal enum CampaignChapterState
     {
-        /// <summary>前置章未完成，公告板上不可见或置灰。</summary>
+        /// <summary>前置章未完成，杰夫的任务页上不出现。</summary>
         Locked = 0,
 
         /// <summary>可接取。</summary>
@@ -24,7 +24,7 @@ namespace BossRush
         /// <summary>已接取，契约生效中（局内 HUD 追踪目标）。</summary>
         ContractActive = 2,
 
-        /// <summary>目标已全部达成，等玩家回公告板交付。</summary>
+        /// <summary>局内目标已全部达成，等玩家回基地找杰夫交付（基地侧目标另在交付时核对）。</summary>
         ReadyToDeliver = 3,
 
         /// <summary>已交付结算。</summary>
@@ -65,7 +65,13 @@ namespace BossRush
         ModeExtract = 8,
 
         /// <summary>终章 Boss 击杀。</summary>
-        FinalBossKill = 9
+        FinalBossKill = 9,
+
+        /// <summary>基地侧：官方菜地已建成（事实由 Integration/BackMountain 经 CampaignBaseObjectives 提供）。</summary>
+        GardenBuilt = 10,
+
+        /// <summary>基地侧：官方陈列柜 / 枪械展示架 / 假人里摆着至少一件 Mod 战利品。</summary>
+        TrophyDisplayed = 11
     }
 
     /// <summary>
@@ -79,11 +85,20 @@ namespace BossRush
         /// <summary>阈值语义随 Kind 变化：击杀数 / 波次号 / 分钟数。</summary>
         internal int Threshold;
 
-        /// <summary>中文描述（HUD 与公告板共用）。</summary>
+        /// <summary>中文描述（HUD 与官方任务日志共用）。</summary>
         internal string DescCN = string.Empty;
 
         /// <summary>英文描述。</summary>
         internal string DescEN = string.Empty;
+
+        /// <summary>
+        /// 基地侧目标：不进局内追踪器、不落盘、随时可做；ReadyToDeliver 仍只看局内目标，
+        /// 交付另外要求它们全真（CampaignQuestTable.CanDeliver）。
+        /// </summary>
+        internal bool IsBaseScope
+        {
+            get { return Kind == CampaignObjectiveKind.GardenBuilt || Kind == CampaignObjectiveKind.TrophyDisplayed; }
+        }
     }
 
     /// <summary>

@@ -3,7 +3,7 @@
 // ============================================================================
 // 硬约束（tests/CampaignSkeletonGuard.py 守卫）：
 //   - 全系统只有一个实例：由 ModBehaviour 持有并把**同一个引用**注册给
-//     BossRushRuntimeModuleHost；公告板、面板、契约追踪与终章决战都只能委托
+//     BossRushRuntimeModuleHost；官方任务客户端、契约追踪与终章决战都只能委托
 //     这份实例，禁止再次 new（照 Mode H / PetNest 的写法）；
 //   - 只复用 host 已有的六个回调，不新增全局 hook；
 //   - **campaignEnabled = false 时全系统 dormant**：不订阅存档、不注入建筑、
@@ -27,6 +27,8 @@ namespace BossRush
         private ModBehaviour _owner;
         private int _sceneGeneration;
         private bool _bootstrapped;
+        /// <summary>官方任务客户端（六章投影到杰夫的任务页）。唯一 owner 是本模块。</summary>
+        private CampaignOfficialQuestClient _questClient;
 
         #endregion
 
@@ -104,6 +106,7 @@ namespace BossRush
                 CampaignObjectiveTracker.ResetSession();
                 CampaignBoardView.Close();
                 CampaignDialoguePlayer.InvalidatePlayback();
+                if (_questClient != null) _questClient.ClearPending();
 
                 // 场景已换 = 上一场决战无论输赢都结束了。玩家打输时 Boss 随场景销毁、
                 // 死亡回调不会来，只有在这里收尾才能让 campaignFinalBossActive 复位，
@@ -167,6 +170,7 @@ namespace BossRush
             try
             {
                 if (_owner != null) _owner.CleanupCampaignFinalBoss(true);
+                if (_questClient != null) _questClient.UnregisterAll();
                 if (_bootstrapped)
                 {
                     // 销毁是最后机会：绕过基地场景闸尽力落一次盘，宁可在战斗帧写一次
@@ -185,6 +189,7 @@ namespace BossRush
                 CampaignNoteBridge.ResetStaticCaches();
                 CampaignAssetCache.ResetStaticCaches();
                 CampaignFacilityUnlocks.ResetStaticCaches();
+                _questClient = null;
                 _bootstrapped = false;
                 _owner = null;
             }
@@ -214,6 +219,10 @@ namespace BossRush
             CampaignProgressService.EnsureInitialized();
 
             _bootstrapped = true;
+            // 六章登记进共享官方任务投影核心（挂在杰夫名下）。核心模块先于本模块注册，这里一定拿得到。
+            if (_questClient == null) _questClient = new CampaignOfficialQuestClient(this);
+            _questClient.RegisterAll(_owner != null && _owner.OfficialQuestRuntime != null
+                ? _owner.OfficialQuestRuntime.Projection : null);
             ModBehaviour.DevLog(CampaignTuning.LogPrefix + "运行时模块已启动");
         }
 
@@ -230,6 +239,8 @@ namespace BossRush
                 CampaignSaveCoordinator.TryFlushOnHostDestroy();
                 CampaignSaveCoordinator.ShutdownSubscription();
                 if (_owner != null) _owner.CleanupCampaignFinalBoss(true);
+                // 关掉开关即从杰夫的任务页撤走六章（核心先冻结所有权再清投影）
+                if (_questClient != null) _questClient.UnregisterAll();
                 CampaignObjectiveTracker.ResetSession();
                 CampaignProgressService.ResetStaticCaches();
                 CampaignBoardView.Close();
