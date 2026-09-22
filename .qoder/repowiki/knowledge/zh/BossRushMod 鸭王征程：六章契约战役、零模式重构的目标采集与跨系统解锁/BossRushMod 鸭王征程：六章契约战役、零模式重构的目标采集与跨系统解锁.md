@@ -18,7 +18,9 @@ source_files:
     - Campaign/CampaignAssetCache.cs
     - Campaign/CampaignNoteBridge.cs
     - Campaign/CampaignDialoguePlayer.cs
-    - Campaign/CampaignBoardView.cs
+    - Campaign/CampaignQuestTable.cs
+    - Campaign/CampaignBaseObjectives.cs
+    - Campaign/CampaignOfficialQuestClient.cs
     - Campaign/CampaignBoardInteractable.cs
     - Campaign/CampaignBoardBuilder.cs
     - Campaign/CampaignHud.cs
@@ -27,9 +29,30 @@ source_files:
     - Config/ConfigCampaign.cs
     - Localization/CampaignLocalization.cs
     - tests/CampaignSkeletonGuard.py
+    - Utilities/OfficialQuests/OfficialQuestProjection.cs
 ---
 
 ## 1. 系统概述
+
+### 2026-09-22 改由官方 Jeff 发放、换新故事《册子上的名字》（COMPAT / SCHEMA+ / WIRE+）
+
+**本节之后的旧内容凡提到「公告板」「自绘六章面板」「中间人」「名人堂 32 席」的，都已过时。**
+
+- 发放链路：六章投影成官方 Quest `590101`–`590106`（`590100 + order`，给予者官方 Jeff=1，2026-09-22 owner 授权），
+  经共享投影核心 `Utilities/OfficialQuests/`（由天空岛桥抽出，唯一实例、四个 Harmony 补丁只装一次）登记。
+  `Campaign/CampaignOfficialQuestClient.cs` 是客户端，`Campaign/CampaignQuestTable.cs` 是纯规则表（ID 映射、可接取 / 可交付 / 目标完成判据、目标行文案）。
+  权威仍是 `CampaignProgressService`：可接取↔`Available`、官方接受→`TryAcceptContract`、Task 行←本局进度 / 基地侧事实、官方「完成任务」→`TryDeliver`
+  （发钱 / token / 线索仍归交付事务，官方奖励行只展示 `def.RewardCash`）。官方 UI 没有放弃入口，`TryAbandonContract` 只留 Dev 演练。
+- 公告板退役：`CampaignBoardView.cs` 删除；`CampaignBoardBuilder` 只在老档已建过（三态 `ProbeExistingCampaignBoards`，`Unknown` 不当 `None`）时注入 info + prefab，
+  新档不进建造菜单；已建的互动只飘字「找杰夫」。
+- 新目标类型 `garden_built` / `trophy_displayed`（基地侧：不进 `CampaignObjectiveTracker`、不落盘，事实由 `Integration/BackMountain` 经 `CampaignBaseObjectives` 注册提供者给出；
+  `ReadyToDeliver` 仍只由局内目标同局达成触发，交付另核对基地侧目标全真）。ch2 加「在基地建好菜地」、ch3 加「摆上一件战利品」、ch5 波次门 4→5；
+  `chapterId` / `clueId` / token / 奖金不变（冻结说明见 `docs/contracts.md` §3.2）。
+- 文案：任务标题 / 说明（`BossRush_Campaign_chN_Name/_Description`）、线索、交付对话、终章独白全部换成杰夫口吻；说话人直接用官方 `Character_Jeff`；召唤石改名报名石。
+  交付后顺序：官方完成面板 → 杰夫对话 → 解锁飘字（`CampaignContentCatalog.GetDeliveredNotice`）。
+- 守卫 / 回归：`CampaignSkeletonGuard`（ID 冻结、`Campaign/` 不含官方任务符号、`PayReward = null`、交付先落事实再排对话）、`CampaignFlowGuard`、
+  `CampaignPlayability`（任务表判据穷举、基地侧目标不武装）、`OfficialQuestProjectionGuard`。
+
 
 鸭王征程是 mod 的**第一个剧情系统**：一条六章的悬赏契约线，把既有的五个玩法入口
 串成一次调查。玩家在基地建「征程公告板」接约，进指定模式完成特殊目标，回来交付，

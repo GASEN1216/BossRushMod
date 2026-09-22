@@ -2,19 +2,19 @@
 
 ## What is it
 
-- The mod's first story campaign: six chapters of contracts, each with a story beat, a piece of
-  evidence, and a payout.
+- The mod's first story campaign: six quests, each with a story beat, a line in the ledger, and a payout.
 - It **does not add a new mode**. You keep playing the modes you already play — there's just one
   extra layer of "and while I'm in here, do this too."
-- The full loop: build a **Campaign Board** at your base → take a contract → go into the mode it
-  names and complete its special objectives → come back and hand it in → hear the Broker out →
-  collect the evidence and the cash → and for the first three chapters, unlock something out at
-  the **arena back mountain**.
-- The story hangs on the Duck Cup Hall of Fame rule: the plaque holds exactly thirty-two slots.
-  When number thirty-three walks in, the name at the bottom walks out. That's how one champion
-  disappeared — nobody erased him, the queue just pushed him off the end.
-- Three familiar faces (Awen, Dingdang, Yuzhi) take turns testifying on the evidence. The rest is
-  yours to piece together.
+- The quests come from **Jeff**, the game's own NPC at your base, and sit on his quest page next to
+  his vanilla quests. The full loop: see Jeff at base and accept → go into the mode the quest names
+  and complete its objectives (two chapters also ask for one thing at base) → come back and hand it
+  in on Jeff's quest page → hear Jeff out → collect the cash and the clue, and for the first three
+  chapters, unlock something out at the **Arena Backyard**.
+- The story is simple. Jeff is tired of the arena paying the bunker like drifters, so he wants its
+  name in the arena's ledger. The six chapters are the six lines the bookkeeper wants, and every
+  line Jeff turns into something you can actually use at base. The last line is the gatekeeping
+  bout: the one holding the ring wears the old champions' armor, the ledger only prints a
+  silhouette for him, and you have to go through him to sign.
 
 <div class="brs-figure">
 
@@ -26,10 +26,11 @@
 
 ## Getting started
 
-### 1. Build a Campaign Board
+### 1. See Jeff at base
 
-- Find `Campaign Board` in the base bunker's build menu. It costs **500**.
-- One per save, placed wherever you like. Walk up and interact to open the contract panel.
+- Walk up to Jeff at your base and open his quest page. Chapter 1 is under "Available".
+- The title, description, objective lines and reward all show on the official quest page, like any vanilla quest.
+- Locked chapters don't appear at all. The next one shows up only after you hand in the current one.
 
 <div class="brs-icon">
 
@@ -39,40 +40,41 @@
 </div>
 
 
-### 2. Take a contract
+### 2. Take a quest
 
-- The panel lists all six chapters, including entry preparation, objectives, and payouts. Press Esc to close.
-- The Broker supplies the evidence after completion; there are no extra quest items to search for in the field.
-- **Only one contract at a time.** Want to switch chapters? Hit "Abandon" first — there is
-  **no penalty at all**. The chapter goes back to available and you can re-take it whenever.
-- Chapters unlock in order; the next one opens only after you hand in the current one. Locked
-  chapters don't even show their title, just `Chapter N · ???`.
+- Press "Accept" and it's on. **Only one campaign quest at a time.**
+- The official quest page has no "abandon" button. Take it and finish it; if a run goes wrong, just
+  start another one, nothing is lost.
 
 ### 3. Go play that mode, normally
 
-- Objectives track themselves. There's nothing extra to press.
+- In-run objectives track themselves. There's nothing extra to press.
 - Once you're in, a tracker strip appears in the **top-right** of the screen, one line per
   objective: `·` in progress, `√` done, `×` failed for this run. Counted objectives show your
   current tally.
 - Playing a **different** mode won't confuse it. Tracking only starts when you enter the mode that
   chapter names, and nothing that happens anywhere else counts.
+- Objective lines starting with "Base:" are base-side objectives (build the garden, put a trophy on
+  display). Do them at base whenever you like; they don't need to happen in the same run.
 
-### 4. Come back and hand it in
+### 4. Come back and hand it in to Jeff
 
-- When every objective is met you'll get a prompt telling you to head back.
-- The cash, the evidence and the story only arrive when you press "Hand In" at the board. Skip it
-  and you get nothing — but the completed state is saved, so you can go do something else and hand
-  it in later.
+- When every in-run objective is met you'll get a prompt telling you to head back.
+- Open Jeff's quest page at base and press "Complete" under "In progress". That's when the cash,
+  the clue and the story arrive. Skip it and you get nothing — but the completed state is saved,
+  so you can go do something else and hand it in later.
+- Handing in shows the official completion panel first, then Jeff says a few words, then a notice
+  tells you what this chapter unlocked and where to use it.
 
 ::: tip
-Forgot what the chapter wants? Check the top-right tracker in a run, or open the board at base — the active card lists the objectives and your current progress.
+Forgot what the chapter wants? Check the top-right tracker in a run, or open Jeff's quest page at base — the active quest lists the objectives and your current progress.
 :::
 
 ## What each chapter asks for
 
-All objectives listed for a chapter must be met **in the same run**. The payout lands when you hand in.
+In-run objectives must be met **in the same run**; base-side objectives can be done any time. The payout lands when you hand in.
 
-### Chapter 1 · Echoes of the Ring
+### Chapter 1 · Sign Us Up
 
 <div class="brs-figure">
 
@@ -81,12 +83,12 @@ All objectives listed for a chapter must be met **in the same run**. The payout 
 
 </div>
 
-- Go to **Standard BossRush** (the board calls it "Standard Arena")
+- Go to **Standard BossRush** (the quest calls it "Standard Arena")
 - Clear one run
 - Take zero damage through wave 2. If your filtered run has fewer than two waves, finish the whole run without damage.
-- Reward **20,000**
+- Reward **20,000**. Handing in opens the base's **garden site** for you.
 
-### Chapter 2 · Vow of the Empty-Handed
+### Chapter 2 · The Fighter With a Garden
 
 <div class="brs-figure">
 
@@ -95,12 +97,13 @@ All objectives listed for a chapter must be met **in the same run**. The payout 
 
 </div>
 
+- Base: build the garden (pay at the site to start construction)
 - Go to **From Scratch**
 - Enter with only a ticket, including an empty pet bag, and reach wave 5. Equip anything you find during the run.
-- Put down 5 with melee. While this contract is active, the starter kit includes a melee weapon.
-- Reward **35,000**
+- Kill 5 with a melee weapon. While this quest is active, the starter kit includes a melee weapon.
+- Reward **35,000**. Handing in unlocks the **display bonus**.
 
-### Chapter 3 · Planting the Banner
+### Chapter 3 · A Proper Front
 
 <div class="brs-figure">
 
@@ -111,9 +114,10 @@ All objectives listed for a chapter must be met **in the same run**. The payout 
 
 - Go to **Faction War**
 - Defeat 8 hostile bosses. Allies and neutral characters do not count; hand in as soon as the tally is met.
-- Reward **50,000**
+- Base: put 1 Boss trophy in an official display cabinet or on a weapon display rack
+- Reward **50,000**. Handing in unlocks the **jukebox tracks**.
 
-### Chapter 4 · The Kill List
+### Chapter 4 · Collect and Leave
 
 <div class="brs-figure">
 
@@ -123,11 +127,11 @@ All objectives listed for a chapter must be met **in the same run**. The payout 
 </div>
 
 - Go to **Blood Hunt**
-- Take down 3 targets carrying a bounty mark
+- Kill 3 targets carrying a bounty mark
 - Extract successfully once
 - Reward **75,000**
 
-### Chapter 5 · The Last Beacon
+### Chapter 5 · The Match Nobody Takes
 
 <div class="brs-figure">
 
@@ -137,15 +141,11 @@ All objectives listed for a chapter must be met **in the same run**. The payout 
 </div>
 
 - Go to **Zombie Mode**
-- Ride the tide to wave 4
-- Extract successfully once
+- Hold the tide to wave 5
+- Extract successfully once (the extraction opens once the wave 5 Boss is down)
 - Reward **100,000**
 
-::: tip
-Wave 4 only meets the wave objective. Zombie Mode offers extraction after Boss waves 5, 10, 15 and so on; you still need a successful extraction.
-:::
-
-### Chapter 6 · Shadow of the Champion
+### Chapter 6 · The One Holding the Ring
 
 <div class="brs-figure">
 
@@ -167,32 +167,33 @@ Wave 4 only meets the wave objective. Zombie Mode offers extraction after Boss w
 </div>
 
 
-- With the final contract active, head into the arena — but **don't touch the central signpost to
+- With the final quest active, head into the arena — but **don't touch the central signpost to
   start a run**. The showdown can't begin while any mode is running.
-- An **altar stone** rises next to you. Hold it to start. There's a monologue before the fight.
+- A **sign-up stone** rises next to you. Hold it to start. The one holding the ring has a few words before the fight.
 - The Shadow of the Champion is an upgraded variant of the **Phantom Witch**: higher stat
   multiplier, noticeably larger, crimson from head to toe. Same moveset, far less room for error —
   don't bring your normal Phantom Witch pacing.
-- Losing or walking away doesn't lock you out. The contract stays, the altar stone comes back when
+- Losing or walking away doesn't lock you out. The quest stays, the sign-up stone comes back when
   you return to the arena, and you can try as many times as you like.
 - If you start another mode mid-showdown, the showdown stands down and cleans itself up.
 
 ## What you walk away with
 
 - **Cash**: **480,000** across all six chapters.
-- **Evidence**: one piece per chapter, written into the game's own **notes**. Read end to end,
-  the six of them are the whole case. Unlocked entries stay readable forever.
-- **Arena back mountain**, one per chapter for the first three:
-  - Chapter 1 → **the garden**: Bosses start dropping seeds, and what you grow becomes raid meals
-  - Chapter 2 → **the Trophy Showcase**: a base building where you display Boss-specific drops
+- **Clues**: one per chapter, written into the game's own **notes**. They are the six lines of the
+  ledger. Unlocked entries stay readable forever.
+- **Arena Backyard**, one per chapter for the first three:
+  - Chapter 1 → **the garden**: the base's garden site opens; build it yourself, then Bosses start dropping seeds and what you grow becomes raid meals
+  - Chapter 2 → **the display bonus**: put Boss trophies in the official display cabinet, on the weapon display rack or on a dummy, each one raises your max health
   - Chapter 3 → **jukebox battle tracks**: the base jukebox picks up the mod's own music
-  - Chapters 4 through 6 unlock no back-mountain facility — they pay in cash, evidence and ending
+  - Chapters 4 through 6 unlock no backyard facility — they pay in cash, clues and ending
 
 ## Questions you might have
 
-- **Does progress carry between runs?** No. Every objective is judged **within a single run**. Miss
-  one and the progress resets for the next attempt. The contract itself never drops, so retry as
-  often as you want.
+- **Does progress carry between runs?** In-run objectives don't. Miss one and the progress resets
+  for the next attempt. The quest itself never drops, so retry as often as you want. Base-side
+  objectives (garden, display) stay done once done.
+- **Do the garden and display objectives have to happen in the same run?** No. Do them at base any time, then hand in to Jeff.
 - **Do kills by others count?** Usually only fatal blows attributed to the main player count. Ordinary companions, pets and environmental finishing blows do not. **In Faction War, kills by a Boss you hired are attributed to you**, subject to the entry's other mode and target requirements.
 - **I broke the no-damage objective — should I finish the run?** The tracker marks it `×`. That
   objective is done for this run and the others can't make up for it. Restarting is faster.
@@ -203,5 +204,7 @@ Wave 4 only meets the wave objective. Zombie Mode offers extraction after Boss w
 - **What's a "bounty mark"?** The marked bounty targets in Blood Hunt. Only kills on marked targets
   are counted.
 - **Can I farm the same chapter's reward?** No. Each chapter can be handed in once.
+- **I already built a Campaign Board in an old save. What now?** Keep it as a souvenir or tear it
+  down; your progress is safe either way. Quests now come from Jeff, and old progress carries over.
 - **What happens across save slots?** Campaign progress follows the **save slot**, so each save
   runs its own campaign.

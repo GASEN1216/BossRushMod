@@ -4,10 +4,12 @@
 
 - The Backyard is what you do **between runs**: grow a little food, show off some trophies,
   put on a new battle track.
-- It is not a new map. "Backyard" is just a name — all three facilities sit in the base you already know.
+- It is not a new map. "Backyard" is just a name — all three facilities sit in the base you already
+  know, and all three use the game's own buildings.
 - Each one does a single thing:
-  - **Garden** — turn Boss-dropped seeds into raid meals.
-  - **Trophy Showcase** — record the good gear you've earned for a permanent health bonus.
+  - **Garden** — turn Boss-dropped seeds into raid meals (the vanilla garden).
+  - **Display bonus** — put the good gear you've earned in the vanilla display cabinet, weapon
+    display rack or dummies for a permanent health bonus.
   - **Jukebox** — a few mod battle tracks added to the base's playlist.
 - The Backyard is on by default and there is no master switch to flip. What decides how much of it
   you can use is your progress through the Duck King Campaign.
@@ -15,52 +17,55 @@
 ## How to unlock it
 
 The three facilities follow the first three chapters of the **Duck King Campaign**. Each opens the
-moment you deliver that chapter's contract — no need to leave and re-enter the base.
+moment you hand in that chapter to Jeff — no need to leave and re-enter the base — and a notice
+tells you what just opened.
 
-- Deliver Chapter 1 `Echoes of the Ring` → **Garden**
-- Deliver Chapter 2 `Vow of the Empty-Handed` → **Trophy Showcase**
-- Deliver Chapter 3 `Planting the Banner` → **Jukebox**
-
-::: tip
-Don't want to follow the story? ModConfig has `Arena Backyard: Skip Campaign Unlocks (Debug)`, off by default — turn it on and all three open immediately.
-:::
+- Hand in Chapter 1 `Sign Us Up` → **Garden** (the site opens; you pay to build it)
+- Hand in Chapter 2 `The Fighter With a Garden` → **Display bonus**
+- Hand in Chapter 3 `A Proper Front` → **Jukebox**
 
 ## Garden
 
-- **Nothing to build.** It uses the planting plots your base already has.
+- Your base already has a garden. Its construction site just stays closed. After you hand in
+  Chapter 1, Jeff opens the site for you: walk up to the fenced-off pile of scrap at base, interact,
+  pay the cost and construction starts. The scrap disappears and the garden appears. The cost shows
+  in the notice.
+- **Building the garden is one of Chapter 2's objectives**, so hand in to Jeff once it's up.
 - Once the Garden is unlocked, the three mod Bosses drop **an extra** seed into their loot crate,
   roughly `25%` each. It's a bonus on top — it never takes the place of the Dragon set pieces
   or the Dragon Lord's exclusive drops.
-- With a seed in hand, open the base's normal planting screen and the mod seeds are simply there
+- With a seed in hand, open the garden's normal planting screen and the mod seeds are simply there
   in the list alongside the vanilla crops.
 - A plant takes about `20` real-time minutes to ripen and yields `2` per harvest.
 - Same rule as vanilla crops: **it only grows while watered**. Forget to water and progress stops.
 
 ::: warning
-Seeds and the food you harvest can't be recorded in the Showcase — that cabinet only takes trophies.
+Seeds and the food you harvest are not trophies. Putting them in a cabinet gives no bonus.
 :::
 
-## Trophy Showcase
+## Display bonus
 
-- Build a `Trophy Showcase` from the base's construction menu: `800` money, 2×1 footprint, one only.
-- Walk up and interact to see eight slots and your current bonus. Record and Replace appear when you have an eligible trophy; existing records can be removed. Press Esc to close.
-
-**The key point: recording does not take your gear away.**
-
-- Just **hold** the trophy in your hands or **wear** it, press the button, and the cabinet remembers it.
-- The item stays yours — keep using it, sell it, whatever. The bonus comes from the fact that you
-  actually earned it, so there's never a "keep the gear or take the stat" trade-off.
-- Once the cabinet is full, you can still replace a slot. The panel checks the held trophy first,
-  then the first eligible worn trophy. Removing a record only frees the slot; it never consumes your item.
+- It uses the game's own buildings: build a `Display Cabinet`, a `Weapon Display Rack` or a `Dummy`
+  from the construction menu (any kind, as many as you like).
+- Open the cabinet and **double-click** a mod Boss trophy into it. The cabinet really shows the item's model.
+- Displayed items stay in the cabinet: they don't come on raids and can't be lost on death. Move
+  them back out whenever you want to use them.
 
 **How the bonus works**
 
-- Only trophies of quality `5` or above that you can hold or wear qualify, including backpacks.
-- Each recorded piece gives max health by quality: `+0.5%` for every level above quality 4.
+- Only mod trophies count (quality `5` or above: Boss gear, the new weapons, Sky Island boss gear
+  and the like). A cabinet full of vanilla items gives nothing.
+- Each piece gives max health by quality: `+0.5%` for every level above quality 4.
   Quality 5 is `+0.5%`, quality 8 is `+2%`.
-- Filling all eight slots adds another `+5%`.
-- For example, eight quality-8 pieces give roughly `+21%` max health.
-- The bonus is **always on**: it counts in the base and in a run, whatever you're carrying.
+- One of each kind counts. At most `8` pieces count; beyond that, the best 8 by quality are used.
+- Eight pieces add another `+5%`, so eight quality-8 pieces give roughly `+21%` max health.
+- Putting things in or taking them out applies immediately, no scene change needed. The bonus is
+  **always on**: it counts in the base and in a run.
+- **One of Chapter 3's objectives is to display one trophy first**, then hand in to Jeff.
+
+::: tip
+If you recorded trophies in the old self-built "Trophy Showcase": that cabinet is retired. Once you enter the base, the bonus is recomputed from what is actually displayed in the vanilla cabinets. An old cabinet you already built can stay as decoration; it is no longer in the build menu.
+:::
 
 <div class="brs-icon">
 
@@ -115,18 +120,14 @@ Chili adds to your equipment's reload speed gain. With no other reload bonuses, 
 ## Questions you might have
 
 - **Is the Backyard a new map?** No. All three facilities are in the base; "Backyard" is just a name.
-- **Will the Showcase take my gear?** No. It only notes that you've owned that kind of trophy —
-  the item never leaves your hands.
-- **Can I record the same item twice?** No. One kind of trophy takes one slot; a repeat just tells
-  you it's already recorded.
-- **Can I undo a record I regret?** Yes. Remove that row to free the slot, or replace it directly with
-  another eligible trophy even when the cabinet is full. If saving fails, the original record remains.
-- **What if the Showcase fills up?** Eight slots is the cap, and filling it is exactly what earns
-  the extra `+5%`.
+- **Where is the garden site?** The fenced-off patch of scrap at base. After Chapter 1 is handed in, walk up and the interaction is there.
+- **Will the cabinet take my gear?** It keeps the item until you move it out. The cabinet is base storage: nothing in it goes on raids or gets lost on death.
+- **Do two copies of the same item count twice?** No. One of each kind counts.
+- **What if I display more than 8?** Only the best 8 by quality count, and eight is exactly what earns the extra `+5%`.
 - **Can I eat a raid meal during a run?** No, only in the base.
 - **Does a meal expire if I don't go out?** No. The record sits there until you actually start a run.
 - **Can I eat two different meals at once?** No, only the last one you ate is kept.
 - **Are Boss drops the only way to get seeds?** Yes. Each of the three mod Bosses drops its own,
   and no shop sells them.
 - **Can I turn the whole Backyard off?** There's no such switch — it's default content. Just don't
-  use it: skip the Showcase, skip the planting, and it stays out of your way.
+  use it: skip the garden, skip the cabinets, and it stays out of your way.

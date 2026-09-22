@@ -14,7 +14,11 @@ source_files:
     - Integration/BackMountain/JukeboxTrackInjector.cs
     - Integration/BackMountain/BackMountainSeedDrops.cs
     - Integration/BackMountain/ShowcaseService.cs
-    - Integration/BackMountain/ShowcaseUI.cs
+    - Integration/BackMountain/ShowcaseDisplayJudges.cs
+    - Integration/BackMountain/ShowcaseDisplayScanner.cs
+    - Integration/BackMountain/ShowcaseTagInjector.cs
+    - Integration/BackMountain/GardenSiteJudges.cs
+    - Integration/BackMountain/GardenConstructionSite.cs
     - Integration/BackMountain/ShowcaseInteractable.cs
     - Integration/BackMountain/ShowcaseBuildingBuilder.cs
     - Integration/BackMountain/BackMountainRuntimeModule.cs
@@ -26,6 +30,23 @@ source_files:
 > 2026-09-18 已按当前实现复审。生命周期、事务、输入租约及验证细节见 `.qoder/repowiki/zh/content/高级功能/竞技场后山修复约定.md` 当日条目。下方带日期的旧修复记录保留历史背景。
 
 ## 1. 系统概述
+
+### 2026-09-22 三设施改接官方建筑（COMPAT / SCHEMA+）
+
+**本节之后的旧内容凡提到「战利品登记簿」「自建展示柜」「ShowcaseUI」「菜地不需要另外建造」的，都已过时。**
+
+- 菜地：官方基地的菜地是一个 `ConstructionSite`（`GardenConstruct`，`_key = "GardenConstruction"`），付费交互父物体 `Interactparent` 默认 inactive、官方代码从不引用它，
+  玩家原本没有途径建成。第一章交付后 `GardenConstructionSite.EnsureSiteOpen` 只 `SetActive(true)` 那一个父物体（判据 `GardenSiteJudges.ShouldOpenSite`，必须排在 `GardenSeedInjector.EnsureInjected()` 之后），
+  付款 / `wasBuilt` / 存档全走官方，Mod 只读官方键 `ConstructionSite_GardenConstruction`（守卫禁止写）。官方将来默认打开或直接建成 → 自动 no-op。开门单向，关总开关不回滚。
+- 展示柜：自建柜退役（`ShowcaseUI.cs` 删除，`ShowcaseBuildingBuilder` 只在老档已建过时注入，互动只提示）。`ShowcaseTagInjector` 给 Mod 战利品 prefab 补官方 `ShowCase` 标签
+  （枚举源 `BossRushDynamicItemRegistry`），`ShowcaseDisplayScanner` 订阅场上各官方 `Showcase.Item.onSlotContentChanged`（未解锁 / 局内零订阅），
+  `ShowcaseService.ApplyDisplaySnapshot` 把「官方柜里实际摆着的 Mod 战利品」整体覆盖为陈列（判据 `ShowcaseDisplayJudges`：去重、按品质降序、截 8 件；公式不变，上限 +21%）。
+  存档 `BossRush_BackMountain_Showcase_v1` 新增可选 `sourceVersion`（缺失 / 0 = 老登记簿，2 = 官方柜实摆），`schemaVersion` 保持 1（升版会让老档永久写保护）；老登记簿只在基地找到官方柜时被覆盖。
+  实施第一步是 Dev 探针 `SHOWCASE_OFFICIAL_PROBE`（各柜槽位 requireTags / excludeTags 与 Mod 物品 `CanPlug` 进 DevLog），槽位要别的标签时只改 `OfficialShowcaseTagNames`。
+- 点唱机：不改代码；`BackMountainStructureGuard` 加三条防回归断言（CR-2026-09-18-025）。
+- 征程基地侧目标 `garden_built` / `trophy_displayed` 的事实由 `BackMountainRuntimeModule` 注册进 `CampaignBaseObjectives`（依赖方向不变），关开关 / 销毁时撤销。
+- 守卫 / 回归：`BackMountainStructureGuard`、`BackMountainPlayabilityGuard`、`ShowcaseHealthSnapshotGuard`（未改仍 PASS）、`BackMountainLifecycle`（判据穷举、快照事务、迁移、提供者登记、飘字延后）、`ContentTransactions`。
+
 
 竞技场后山是「两局之间做点别的」的基地侧循环，三个设施由鸭王征程的章节 token
 逐个解锁（第 1 章→菜地、第 2 章→展示柜、第 3 章→点唱机）。

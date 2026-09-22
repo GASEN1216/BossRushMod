@@ -19,7 +19,7 @@ producing** - the earlier you set them up, the more they've earned by the time y
 
 - **Duck King Codex** — Cost: 4000; What it buys you: Logs every Boss you kill. The first entry alone returns **50,000** in achievement cash
 - **Mailbox** — Cost: 500; What it buys you: A daily paper with a bounty and a check-in wall that pays high-quality prizes as it fills
-- **Campaign Board** — Cost: 500; What it buys you: Takes the six Duck King Campaign contracts. Chapter 1 pays **20,000**
+- **Duck King Campaign from Jeff** — Cost: 0; What it buys you: Six story quests on Jeff's quest page. Chapter 1 pays **20,000**
 
 ::: tip
 The Codex pays for itself ten times over on the first square you light. And it has actually **been logging since the day you installed the Mod** - buying the book just lets you open it.
@@ -27,7 +27,7 @@ The Codex pays for itself ten times over on the first square you light. And it h
 
 ## Then: Take Chapter 1
 
-The board's **Chapter 1, "Echoes of the Ring"** is practically written for your second run:
+Jeff's **Chapter 1, "Sign Us Up"** is practically written for your second run:
 
 - Clear one standard BossRush run
 - Take zero damage through wave 2

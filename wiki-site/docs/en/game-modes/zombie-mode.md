@@ -19,7 +19,7 @@ A Roguelite survival mode in BossRush — you're dropped into a map with nothing
 Zombie Mode has its own lifecycle and reward system, so most Mod systems don't apply here.
 Two exceptions are worth knowing:
 
-- **Duck King Campaign chapter 5, "The Last Beacon", sends you here** - ride the tide to wave 4
+- **Duck King Campaign chapter 5, "The Match Nobody Takes", sends you here** - hold the tide to wave 5
   and extract once, for a 100,000 payout. It's the only chapter that enters Zombie Mode.
 - **All five Zombie Bosses appear in the Duck King Codex** - Titan, Hunter, Splitter, Shielder
   and Corruptor each get a square, tracking total kills, first-seen date and fastest kill just
