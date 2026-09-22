@@ -53,6 +53,17 @@ static class Program
             Check(!flow.Step(), "destroyed factory owner stops");
             oldRequest.Finish(); Check(old.Unloads == 1 && consumed == 1, "destroyed owner releases late result");
         }
+        // 2026-09-22 实机：基地建筑每次进基地重跑装配，消费方还持有 bundle 时不得再发原生加载。
+        owner = new ModBehaviour(); NewRequest(); consumed = 0;
+        int loadsBefore = AssetBundle.Loads;
+        using (var flow = new Flow(FactoryResourceLoading.RunSpecial(owner, "fixture", () => consumed++, () => true)))
+        {
+            Check(!flow.Step() && consumed == 1 && AssetBundle.Loads == loadsBefore, "already-held bundle hands over without native work");
+        }
+        using (var flow = new Flow(FactoryResourceLoading.RunSpecial(owner, "fixture", () => consumed++, () => false)))
+        {
+            Check(flow.Step() && AssetBundle.Loads == loadsBefore + 1, "released bundle loads again");
+        }
     }
     static AssetBundle NewRequest()
     {

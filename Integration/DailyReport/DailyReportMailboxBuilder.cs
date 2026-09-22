@@ -78,6 +78,8 @@ namespace BossRush
         private GameObject dailyReportBuildingPrefabGO;
         private static Sprite dailyReportBuildingIcon;
         private static AssetBundle dailyReportAssetBundle;
+        /// <summary>模型 bundle 是否仍由本建筑持有（基地装配管线据此跳过重复的异步加载）。</summary>
+        internal static bool IsBundleLoaded { get { return dailyReportAssetBundle != null; } }
         private static GameObject dailyReportModelPrefab;
         private Coroutine dailyReportRestoreCoroutine;
         private readonly HashSet<int> preparedDailyReportBuildingInstanceIds = new HashSet<int>();

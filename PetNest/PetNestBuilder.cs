@@ -69,6 +69,8 @@ namespace BossRush
         private GameObject petNestBuildingPrefabGO;
         private static Sprite petNestBuildingIcon;
         private static AssetBundle petNestAssetBundle;
+        /// <summary>模型 bundle 是否仍由本建筑持有（基地装配管线据此跳过重复的异步加载）。</summary>
+        internal static bool IsBundleLoaded { get { return petNestAssetBundle != null; } }
         private static GameObject petNestModelPrefab;
         private Coroutine petNestRestoreCoroutine;
         private readonly HashSet<int> preparedPetNestBuildingInstanceIds = new HashSet<int>();

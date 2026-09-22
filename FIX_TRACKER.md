@@ -7,6 +7,11 @@
 - 修复：`ResourceBundleLoader` 的 `pending` 键统一经 `NormalizeKey`（`Path.GetFullPath`，异常时只换分隔符），`Pending.Key` 记录归一化键；`ShowcaseTagInjector` 取 prefab 改走 `BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring`（原来经补丁过的 `ItemAssetsCollection.GetPrefab` 会对每个 TypeID 触发同步按需注册，CR-2026-09-22-003）。
 - L2：`ResourceProduction` 夹具新增「分隔符 / `.` 别名命中同一租约且不发第二次原生加载」用例，先在旧加载器上转红、修后转绿；`BackMountainPlayabilityGuard` 新增「取 prefab 只走 WithoutEnsuring」断言并反向验证；`BackMountainLifecycle` 回归绿；改动相关守卫绿（唯一红仍是本轮之前就红的 `SkyIslandMosquitoGuard`）。正式构建通过，游戏目录 DLL SHA-256 `8286B630…` 与 `Build/` 一致，`check_dll_identifiers --expect absent` PASS。
 - L3：待 owner 重开游戏，`Player.log` 应无 `can't be loaded because another AssetBundle` 与 `PlayerStorage.Load` NRE。
+- 复核（owner 12:57 Dev 构建跑 F3，`Player.log` 13:29）：物品 / 装备 bundle 的 47 条已清零，仓库与角色 NRE 消失，征程 / 后山用例 `DATA_CAMPAIGN_JSON` / `GARDEN_SITE_GATE` / `SHOWCASE_OFFICIAL_PROBE` / `BACKMOUNTAIN_SHOWCASE_DISPLAY` / `CAMPAIGN_FINAL_BOSS` 全 PASS。剩两条同类噪音与一条过期判据，本轮一起修：
+  - 基地建筑 bundle（weddingchapel / starwish_fountain / petnest_relic_nest / bossrush_daily_mailbox）每次进基地各报一条同样的错（4 × 9 次）：装配管线每次进基地重跑 `RunSpecial`，而建筑自己还持有 bundle，`LoadFromFileAsync` 被 Unity 拒绝后消费方走「已注入，跳过」，功能无损但刷错（CR-2026-09-22-004）。`RunSpecial` 加可选 `alreadyLoaded` 判据，四处传各自持有字段（`DailyReportMailboxBuilder` / `PetNestBuilder` 加 `IsBundleLoaded`）；`ResourceProduction` 夹具加「持有中不发原生加载、释放后照常加载」用例；`PetNestBuilderInjectionGuard` 接线 token 同步。
+  - `DATA_CODEX_FILTER_REFRESH` 红（official=45->45->45）：e80b1c3f（09-20 owner 拍板）起筛选器关掉的官方 Boss 由名单补成锁定卡，目录不再缩，判据过期。`CodexBossInfo` 加 `IsInCurrentPool`（池子给出=true、名单补的=false），用例改判「池子给出的少一格再恢复、目录不缩（名单读不出时允许少一格）」。
+  - 主套件另一条红 `SKY_NIGHT_BOUNDARY_OFFICIAL`（官方 22–6 vs 岛上 19–5）与岛内 6 条红（截信人字幕、镰爪落点 EnemySpawn_C、断风风线、结局手记正文、英文居民 / 浮舟对白）都在天空岛头目 R2–R4 线（09-16 那轮已红 3 条），不属本轮，未动。`GamingConsole.Load` 的 NRE 是已知 P3（教堂整区重绘打断官方游戏机加载）；16 条 `[鸭鸭市场]` NRE 与 `casino_building` 缺 prefab 是别的 Mod。
+  - 游戏目录现为 **Dev** 构建（owner 在跑 F3），交付前要换回正式构建。
 
 ## 2026-09-22 鸭王征程重设计：杰夫发放 + 新故事 + 后山改接官方建筑（COMPAT / SCHEMA+ / WIRE+ / OPERATIONAL）
 

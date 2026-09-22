@@ -51,6 +51,12 @@ namespace BossRush
 
         /// <summary>只在存档里出现、当前池不含（筛选器禁用 / 官方改名）。</summary>
         internal bool IsHistoricalOnly;
+
+        /// <summary>
+        /// 官方条目是否由这一局的过滤池给出（第 1 步）。false = 只在官方名单里、池子没给（筛选器关掉或
+        /// 还没扫到），由第 1b 步补成锁定卡。目录总数不随筛选器变，变的是这个标记。
+        /// </summary>
+        internal bool IsInCurrentPool;
     }
 
     /// <summary>图鉴 Boss 目录。惰性构建，Boss 池变化时由 Invalidate 作废重建。</summary>
@@ -194,6 +200,7 @@ namespace BossRush
                 entry.IsCustomBoss = false;
                 entry.IsZombieBoss = false;
                 entry.IsHistoricalOnly = false;
+                entry.IsInCurrentPool = true;
 
                 byKey[entry.Key] = entry;
                 ordered.Add(entry);
@@ -253,6 +260,7 @@ namespace BossRush
                 entry.IsZombieBoss = false;
                 // 不是历史条目：它是**当前**官方阵容的一员，只是这一局的池子里没有
                 entry.IsHistoricalOnly = false;
+                entry.IsInCurrentPool = false;
 
                 byKey[entry.Key] = entry;
                 ordered.Add(entry);

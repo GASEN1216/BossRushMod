@@ -240,7 +240,7 @@ def check_wiring(errors):
         errors.append("[File] 缺少 Integration/IntegrationDeferredBootstrap.cs")
     else:
         bcode = strip_cs_comments(boot)
-        for token in ['yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/petnest_relic_nest", InitPetNestBuilding);',
+        for token in ['yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/petnest_relic_nest", InitPetNestBuilding, () => PetNestBuilder.IsBundleLoaded);',
                       'RunDeferredStep_Integration("RestorePetNestBuildings"']:
             if token not in bcode:
                 errors.append("[接线] 基地场景装配管线缺少: " + token)

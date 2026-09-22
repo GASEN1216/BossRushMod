@@ -18,7 +18,12 @@ namespace BossRush
             if (owner != null) finish();
         }
 
-        internal static IEnumerator RunSpecial(ModBehaviour owner, string relativePath, Action consume)
+        /// <summary>
+        /// alreadyLoaded：消费方自己还持有这个 bundle（基地建筑每次进基地都会重跑装配）时直接交给消费方，
+        /// 不再 LoadFromFileAsync——同一文件二次加载会被 Unity 拒绝并报 "another AssetBundle with the same files
+        /// is already loaded"（2026-09-22 实机每次进基地四条）。判据与消费方「已注入，跳过」的持有字段同源。
+        /// </summary>
+        internal static IEnumerator RunSpecial(ModBehaviour owner, string relativePath, Action consume, Func<bool> alreadyLoaded = null)
         {
             string path = Path.Combine(ModBehaviour.GetModPath(), relativePath);
             Action guardedConsume = () =>
@@ -26,6 +31,11 @@ namespace BossRush
                 try { consume(); }
                 catch (Exception e) { Debug.LogWarning("[BossRushResources] Register " + relativePath + ": " + e.Message); }
             };
+            if (alreadyLoaded != null && alreadyLoaded())
+            {
+                guardedConsume();
+                yield break;
+            }
             while (owner != null)
             {
                 int scene = SceneManager.GetActiveScene().handle;

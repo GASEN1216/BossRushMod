@@ -267,7 +267,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/weddingchapel", InitWeddingBuilding);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/weddingchapel", InitWeddingBuilding, () => weddingAssetBundle != null);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -279,7 +279,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/starwish_fountain", InitWishFountainBuilding);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/starwish_fountain", InitWishFountainBuilding, () => starwishAssetBundle != null);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -291,7 +291,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/petnest_relic_nest", InitPetNestBuilding);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/petnest_relic_nest", InitPetNestBuilding, () => PetNestBuilder.IsBundleLoaded);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
@@ -303,7 +303,7 @@ namespace BossRush
             {
                 yield break;
             }
-            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/bossrush_daily_mailbox", InitDailyReportMailbox);
+            yield return FactoryResourceLoading.RunSpecial(this, "Assets/buildings/bossrush_daily_mailbox", InitDailyReportMailbox, () => DailyReportMailboxBuilder.IsBundleLoaded);
 
             if (!ShouldContinueDeferredBaseSceneSetup_Integration(sceneName, sceneHandle))
             {
