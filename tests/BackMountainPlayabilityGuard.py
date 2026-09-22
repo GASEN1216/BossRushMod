@@ -28,6 +28,9 @@ def validate(root):
     require('BossRushDynamicItemRegistry.GetPublishedTypeIds()' in tagger and 'EquipmentHelper.AddTagToItem(prefab,' in tagger
             and 'BackMountainItems.GetDefinition(typeId)!=null' in tagger,
             'ShowcaseTagInjector: 枚举源必须是物品注册表、只走共享 AddTagToItem、排除后山自产种子/餐食')
+    require('ItemAssetsCollection.GetPrefab(' not in tagger
+            and 'BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId)' in tagger,
+            'ShowcaseTagInjector: 取 prefab 只能走 GetRegisteredPrefabWithoutEnsuring；补丁过的 GetPrefab 会对每个 TypeID 强制同步加载 bundle')
     scanner = compact(read('Integration/BackMountain/ShowcaseDisplayScanner.cs'))
     require('item.onSlotContentChanged+=HandleSlotContentChanged;' in scanner
             and 'onSlotContentChanged-=HandleSlotContentChanged;' in scanner

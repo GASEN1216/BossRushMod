@@ -29,13 +29,14 @@ namespace BossRush
             internal LoadRecord AssetsRecord;
             internal bool Abandoned, Taken, Finished;
             internal LoadRecord Record;
+            internal string Key;
             internal bool Drained { get { return Finished && (Assets == null || Assets.isDone); } }
             private void ReleaseOwned()
             {
                 if (Bundle != null && !Taken) Bundle.Unload(true);
                 Bundle = null;
                 Pending current;
-                if (pending.TryGetValue(Record.path, out current) && ReferenceEquals(current, this)) pending.Remove(Record.path);
+                if (pending.TryGetValue(Key, out current) && ReferenceEquals(current, this)) pending.Remove(Key);
             }
             internal void Complete(AsyncOperation unused)
             {
@@ -67,6 +68,19 @@ namespace BossRush
             }
         }
 
+        /// <summary>
+        /// pending 的键必须按文件而不是按字符串：Prepare 拿到的是 "Assets/Items/x"，工厂与按需注册拿到的是
+        /// Path.Combine 出来的 "Assets\Items\x"，字面不同、文件相同。键不一致会让同步兜底对同一 bundle 再调一次
+        /// AssetBundle.LoadFromFile，Unity 报 "another AssetBundle with the same files is already loaded" 并返回 null，
+        /// 整批 Mod 物品注册失败（2026-09-22 实机）。
+        /// </summary>
+        private static string NormalizeKey(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return path ?? string.Empty;
+            try { return System.IO.Path.GetFullPath(path); }
+            catch { return path.Replace('/', '\\'); }
+        }
+
         private static LoadRecord Begin(string path, string phase)
         {
             if (history.Count == HistoryCapacity) history.Dequeue();
@@ -80,21 +94,22 @@ namespace BossRush
         /// <summary>同步官方 GetPrefab 契约保留兜底；正常 bootstrap 已经异步准备好。</summary>
         internal static AssetBundle LoadFromFile(string path)
         {
+            string key = NormalizeKey(path);
             Pending operation;
-            if (pending.TryGetValue(path, out operation) && operation.Abandoned && !operation.Drained)
+            if (pending.TryGetValue(key, out operation) && operation.Abandoned && !operation.Drained)
             {
                 var draining = Begin(path, "sync_compatibility");
                 draining.failed = true; draining.cancelled = true; draining.status = "cancel_draining";
                 draining.endedSeconds = Time.realtimeSinceStartupAsDouble;
                 return null;
             }
-            if (pending.TryGetValue(path, out operation) && !operation.Abandoned)
+            if (pending.TryGetValue(key, out operation) && !operation.Abandoned)
             {
                 operation.Taken = true;
                 // 仅官方同步查询抢在预载结束之前触发；Unity 会完成同一个请求，不发第二次加载。
                 AssetBundle result = operation.Request.assetBundle;
                 operation.Complete(null);
-                pending.Remove(path);
+                pending.Remove(key);
                 return result;
             }
             var record = Begin(path, "sync_compatibility");
@@ -129,6 +144,7 @@ namespace BossRush
         internal static IEnumerator Prepare(string path, bool prefabs, Func<bool> cancelled, Action consumer, float timeoutSeconds = 60f)
         {
             int epoch = generation;
+            string key = NormalizeKey(path);
             if (cancelled()) yield break;
             if (!System.IO.File.Exists(path))
             {
@@ -139,7 +155,7 @@ namespace BossRush
             }
             double deadline = Time.realtimeSinceStartupAsDouble + timeoutSeconds;
             Pending existing;
-            if (pending.TryGetValue(path, out existing))
+            if (pending.TryGetValue(key, out existing))
             {
                 // Abandoned native work must drain before re-opening the same bundle.
                 while (!existing.Drained && !cancelled() && epoch == generation && Time.realtimeSinceStartupAsDouble < deadline) yield return null;
@@ -150,10 +166,10 @@ namespace BossRush
                     waiting.failed = true; waiting.status = "timeout"; waiting.endedSeconds = Time.realtimeSinceStartupAsDouble;
                     yield break;
                 }
-                if (pending.TryGetValue(path, out existing) && !existing.Abandoned) { consumer(); yield break; }
-                pending.Remove(path);
+                if (pending.TryGetValue(key, out existing) && !existing.Abandoned) { consumer(); yield break; }
+                pending.Remove(key);
             }
-            var operation = new Pending { Record = Begin(path, "bundle_async") };
+            var operation = new Pending { Record = Begin(path, "bundle_async"), Key = key };
             try { operation.Request = AssetBundle.LoadFromFileAsync(path); }
             catch (Exception e)
             {
@@ -167,7 +183,7 @@ namespace BossRush
                 operation.Record.endedSeconds = Time.realtimeSinceStartupAsDouble;
                 consumer(); yield break;
             }
-            pending[path] = operation;
+            pending[key] = operation;
             operation.Request.completed += operation.Complete;
             AssetBundleRequest assets = null;
             try
@@ -183,7 +199,7 @@ namespace BossRush
                 if (cancelled() || epoch != generation) { operation.Cancel("cancelled"); yield break; }
                 if (operation.Bundle == null)
                 {
-                    pending.Remove(path);
+                    pending.Remove(key);
                     consumer(); yield break;
                 }
                 if (prefabs)
@@ -223,7 +239,7 @@ namespace BossRush
                 if (!ReferenceEquals(operation.Bundle, null)) preparedAssets.Remove(operation.Bundle);
                 if (!operation.Taken) operation.Cancel("cancelled");
                 Pending current;
-                if (operation.Finished && (assets == null || assets.isDone) && pending.TryGetValue(path, out current) && ReferenceEquals(current, operation)) pending.Remove(path);
+                if (operation.Finished && (assets == null || assets.isDone) && pending.TryGetValue(key, out current) && ReferenceEquals(current, operation)) pending.Remove(key);
             }
         }
 

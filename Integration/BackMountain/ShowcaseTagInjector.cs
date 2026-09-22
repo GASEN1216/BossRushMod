@@ -10,6 +10,8 @@
 // 自动纳入，不用改这个文件。判据 ShouldTagForShowcase 在 ShowcaseDisplayJudges（纯函数）。
 // 探针（F3 SHOWCASE_OFFICIAL_PROBE）打印各官方柜槽位的 requireTags；若实机发现槽位要别的标签，
 // 只改 OfficialShowcaseTagNames 这一处。
+// 取 prefab 只走 BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring：ItemAssetsCollection.GetPrefab
+// 被 Harmony 补丁接管，会对每个 TypeID 触发同步按需注册（强制同步加载 bundle），2026-09-22 实机出过一次。
 // ============================================================================
 
 using System;
@@ -51,7 +53,7 @@ namespace BossRush
             try
             {
                 if (!Published.Contains(typeId)) return false;
-                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                Item prefab = BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId);
                 int quality = prefab != null ? prefab.Quality : 0;
                 return ShowcaseDisplayJudges.ShouldTagForShowcase(typeId, quality,
                     BackMountainItems.GetDefinition(typeId) != null, DenyList.Contains(typeId), prefab != null);
@@ -75,7 +77,7 @@ namespace BossRush
                 int typeId = ids[i];
                 if (_tagged.Contains(typeId)) continue;
                 if (!IsShowcaseTrophy(typeId)) continue;
-                Item prefab = ItemAssetsCollection.GetPrefab(typeId);
+                Item prefab = BossRushDynamicItemRegistry.GetRegisteredPrefabWithoutEnsuring(typeId);
                 if (prefab == null) continue;
                 for (int t = 0; t < OfficialShowcaseTagNames.Length; t++) EquipmentHelper.AddTagToItem(prefab, OfficialShowcaseTagNames[t]);
                 _tagged.Add(typeId);

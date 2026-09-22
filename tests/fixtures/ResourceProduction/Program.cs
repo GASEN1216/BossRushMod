@@ -75,6 +75,15 @@ static class Program
         Check(consumed==1 && b.Unloads==0,"owner transfer preserves bundle");
         b.Unload(true);
 
+        // 2026-09-22 实机：Prepare 用 "Assets/x"、消费方用 "Assets\x" 找同一个 bundle，键不一致就会同步二次加载。
+        b=NewRequest();
+        string aliasPath=Path.Combine(args[0],".","fixture").Replace('\\','/');
+        e=ResourceBundleLoader.Prepare(aliasPath,false,()=>false,()=>{int loads=AssetBundle.Loads;
+            Check(ResourceBundleLoader.LoadFromFile(path)==b && AssetBundle.Loads==loads,"separator/dot alias resolves to the pending lease without a second native load");consumed++;});
+        Check(e.MoveNext(),"alias request waits"); AssetBundle.Next.Finish(); Check(!e.MoveNext(),"alias complete"); Dispose(e);
+        Check(consumed==2 && b.Unloads==0,"alias transfer preserves bundle");
+        b.Unload(true);
+
         foreach(string mode in new[]{"cancel","scene","dispose","destroy","timeout"})
         {
             b=NewRequest(); bool cancel=false;

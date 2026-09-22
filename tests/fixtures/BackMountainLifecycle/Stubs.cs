@@ -308,6 +308,7 @@ namespace BossRush
     {
         internal static readonly List<int> Published = new List<int>();
         internal static int[] GetPublishedTypeIds() { var ids = Published.ToArray(); Array.Sort(ids); return ids; }
+        internal static Item GetRegisteredPrefabWithoutEnsuring(int typeId) { return ItemAssetsCollection.GetPrefab(typeId); }
     }
     internal static class BossBgmCoordinator
     {
