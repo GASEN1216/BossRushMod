@@ -3,6 +3,11 @@
 DAILY_REPORT_ALIAS = 'assets/ui/dailyreport/daily_report_bg.png'
 
 
+def legend_count(layout):
+    """图例项数取自版面表（2026-09-22 起 5 项）；旧表没有 count 字段按 4 项。"""
+    return int(layout['legend'].get('count', 4))
+
+
 def measure_chrome(image, layout):
     image = image.convert('RGBA')
     rects, grid, legend = layout['rects'], layout['grid'], layout['legend']
@@ -21,7 +26,7 @@ def measure_chrome(image, layout):
                 grid['x'] + column * (grid['cellWidth'] + grid['gap']),
                 grid['y'] + row * (grid['cellHeight'] + grid['gap']),
                 grid['cellWidth'], grid['cellHeight'])))
-    for index in range(4):
+    for index in range(legend_count(layout)):
         regions.append(('legend_%d' % index, (
             rects['legend'][0] + index * legend['itemWidth'],
             rects['legend'][1] + (rects['legend'][3] - legend['swatch']) / 2,
@@ -41,7 +46,7 @@ def measure_chrome(image, layout):
 def validate_chrome(measured, layout, tolerance=4):
     if not measured:
         return ['Daily report production Sprite pixels were not inspected']
-    expected = {'button'} | {'legend_%d' % i for i in range(4)} | {
+    expected = {'button'} | {'legend_%d' % i for i in range(legend_count(layout))} | {
         'cell_%d_%d' % (r, c)
         for r in range(layout['grid']['rows']) for c in range(layout['grid']['columns'])}
     rows = measured.get('regions', [])

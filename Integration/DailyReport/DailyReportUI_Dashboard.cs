@@ -72,12 +72,14 @@ namespace BossRush
 
         private void BuildHeader()
         {
+            // 报名做成参考图那样的大号粗体压满报头（2026-09-22 第四轮：46 号在 1333 宽的报头里显得小气）
             Rect title = DailyReportLayoutTable.Get("title");
-            mastheadText = CreateText("Masthead", title, 0f, 0.62f, 46f,
+            mastheadText = CreateText("Masthead", title, 0f, 0.68f, 58f,
                 TextAlignmentOptions.BottomLeft, PaperInk, false);
             mastheadText.fontStyle = FontStyles.Bold;
+            mastheadText.characterSpacing = 6f;
 
-            subtitleText = CreateText("Subtitle", title, 0.66f, 1f, 20f,
+            subtitleText = CreateText("Subtitle", title, 0.72f, 1f, 20f,
                 TextAlignmentOptions.TopLeft, PaperInkSoft, false);
 
             Rect meta = DailyReportLayoutTable.Get("infoMeta");
@@ -97,8 +99,10 @@ namespace BossRush
 
             headlineText = CreateText("Tip", DailyReportLayoutTable.Get("incomeTip"), 0f, 1f, 21f,
                 TextAlignmentOptions.Left, PaperInk, true);
-            headlineBodyText = CreateText("IncomeNote", DailyReportLayoutTable.Get("incomeNote"), 0f, 1f, 20f,
-                TextAlignmentOptions.TopLeft, PaperInkSoft, true);
+            // 战绩表按两列排（DailyReportView.JoinColumns），18 号三行正好装进这块，不再露半行
+            Rect note = DailyReportLayoutTable.Get("incomeNote");
+            headlineBodyText = CreateText("IncomeNote", new Rect(note.x + 14f, note.y + 8f, note.width - 28f, note.height - 12f),
+                0f, 1f, 18f, TextAlignmentOptions.TopLeft, PaperInkSoft, true);
         }
 
         private void BuildStatusCard()
@@ -163,8 +167,9 @@ namespace BossRush
             LockFontSize(signInButtonText, 24f);
             signInButtonText.fontStyle = FontStyles.Bold;
 
+            // 参考图：按钮下的期数 / 连签信息居中排，不套盒子（底图只画一条细线）
             signInStatusText = CreateText("SignInStatus", DailyReportLayoutTable.Get("sideText"), 0f, 1f, 19f,
-                TextAlignmentOptions.TopLeft, PaperInkSoft, true);
+                TextAlignmentOptions.Top, PaperInkSoft, true);
 
             BuildLegend();
             BuildCloseButton();
@@ -175,11 +180,13 @@ namespace BossRush
             Rect legend = DailyReportLayoutTable.Get("legend");
             float swatch = DailyReportLayoutTable.LegendSwatch;
             float itemWidth = DailyReportLayoutTable.LegendItemWidth;
-            Color[] colors = { CellEmpty, CellSigned, CellMilestone, CellMilestoneDone };
+            // 顺序与 RefreshLabels 的文案一一对应：已签到 / 未签到 / 今日可签 / 奖励格 / 奖励已领
+            Color[] colors = { CellSigned, CellEmpty, CellToday, CellMilestone, CellMilestoneDone };
+            int count = Mathf.Min(colors.Length, DailyReportLayoutTable.LegendCount);
 
             // 图例色块与签到格共用同一组颜色常量：它们必须始终一致，
             // 所以只能有一个来源，底图不再烤第二份。
-            for (int i = 0; i < colors.Length; i++)
+            for (int i = 0; i < count; i++)
             {
                 Rect box = new Rect(legend.x + i * itemWidth,
                     legend.y + (legend.height - swatch) * 0.5f, swatch, swatch);
@@ -196,6 +203,8 @@ namespace BossRush
                     itemWidth - swatch - 14f, legend.height);
                 TextMeshProUGUI label = CreateText("LegendLabel" + i, labelRect, 0f, 1f, 18f,
                     TextAlignmentOptions.Left, PaperInkSoft, false);
+                // 允许缩到 13 号：英文标签比中文长；框高已按一行中文行高给足（版面表 legend 高 36）
+                label.fontSizeMin = 13f;
                 legendLabels.Add(label);
             }
         }

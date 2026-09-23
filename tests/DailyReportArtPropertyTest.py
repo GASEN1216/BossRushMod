@@ -41,7 +41,7 @@ def main():
     bad_release = copy.deepcopy(release)
     bad_release['daily_report_chrome']['regions'][0]['max_delta'] = 30
     assert any('baked dynamic region' in error for error in validate(bad_release, 'production_icons'))
-    print('DailyReportArtPropertyTest: PASS (raw + actual production Sprite, 35 regions)')
+    print('DailyReportArtPropertyTest: PASS (raw + actual production Sprite, %d regions)' % len(measured['regions']))
     return 0
 
 

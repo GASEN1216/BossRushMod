@@ -37,6 +37,7 @@ namespace BossRush
         private static float _gridX, _gridY, _cellWidth, _cellHeight, _cellGap;
         private static int _columns, _rows;
         private static float _legendSwatch, _legendItemWidth;
+        private static int _legendCount;
         private static float _iconSize, _iconInset, _iconTextIndent;
 
         internal static bool LoadedFromJson { get { EnsureBuilt(); return _loadedFromJson; } }
@@ -50,6 +51,8 @@ namespace BossRush
         internal static int Rows { get { EnsureBuilt(); return _rows; } }
         internal static float LegendSwatch { get { EnsureBuilt(); return _legendSwatch; } }
         internal static float LegendItemWidth { get { EnsureBuilt(); return _legendItemWidth; } }
+        /// <summary>图例项数（2026-09-22 起 5 项；旧表没有这个字段按 4 项读）。</summary>
+        internal static int LegendCount { get { EnsureBuilt(); return _legendCount; } }
         internal static float IconSize { get { EnsureBuilt(); return _iconSize; } }
         internal static float IconInset { get { EnsureBuilt(); return _iconInset; } }
         /// <summary>带图标的块里，文字相对块左边的缩进（让开徽章）。</summary>
@@ -166,6 +169,7 @@ namespace BossRush
             _rows = grid.GetInt("rows", 0);
             _legendSwatch = legend.GetInt("swatch", 0);
             _legendItemWidth = legend.GetInt("itemWidth", 0);
+            _legendCount = legend.GetInt("count", 4);
             _iconSize = icon.GetInt("size", 0);
             _iconInset = icon.GetInt("inset", 0);
             _iconTextIndent = icon.GetInt("textIndent", 0);
@@ -202,14 +206,14 @@ namespace BossRush
 
         private static readonly float[,] FallbackRects =
         {
-            { 22, 20, 1289, 150 }, { 40, 32, 126, 126 }, { 182, 46, 430, 98 },
+            { 22, 20, 1289, 150 }, { 40, 32, 126, 126 }, { 182, 34, 460, 122 },
             { 682, 36, 330, 118 }, { 1026, 36, 269, 118 },
             { 22, 186, 766, 402 }, { 42, 200, 232, 46 }, { 46, 260, 351, 132 },
             { 413, 260, 351, 132 }, { 46, 404, 718, 56 }, { 46, 472, 718, 98 },
             { 804, 186, 507, 402 }, { 824, 200, 300, 46 }, { 828, 260, 221, 132 },
             { 1065, 260, 222, 132 }, { 828, 404, 459, 68 }, { 828, 482, 459, 88 },
-            { 22, 604, 1289, 316 }, { 42, 618, 232, 46 }, { 780, 680, 505, 62 },
-            { 780, 754, 505, 102 }, { 48, 872, 710, 30 },
+            { 22, 604, 1289, 320 }, { 42, 618, 232, 46 }, { 780, 680, 505, 62 },
+            { 780, 754, 505, 102 }, { 48, 870, 710, 36 },
         };
 
         private static void ApplyFallback(Dictionary<string, Rect> rects)
@@ -222,7 +226,7 @@ namespace BossRush
             _gridX = 48f; _gridY = 680f;
             _cellWidth = 62f; _cellHeight = 52f; _cellGap = 10f;
             _columns = 10; _rows = 3;
-            _legendSwatch = 16f; _legendItemWidth = 177f;
+            _legendSwatch = 16f; _legendItemWidth = 142f; _legendCount = 5;
             _iconSize = 34f; _iconInset = 12f; _iconTextIndent = 56f;
         }
 

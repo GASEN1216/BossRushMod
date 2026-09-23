@@ -98,6 +98,31 @@ def check_scrollable_body(dashboard):
     assert "fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;" in create
 
 
+def check_layout_fallback_sync():
+    """版面表的硬编码兜底必须与 Assets/Data/DailyReportLayout.json 同源（2026-09-22）。
+
+    DailyReportLayoutTable 的注释早就写着「与版面表同源」并引用了一个并不存在的守卫；
+    改版面只重跑生成器、忘了改兜底，JSON 坏掉时退回的就是另一套坐标，文字与底图错位。
+    同时钉住图例行高：18 号中文一行约 26 px，加 TMP 上下 margin，低于 31 时整串标签会被清空
+    （2026-09-22 实测图例只剩色块）。
+    """
+    table = source("Integration/DailyReport/DailyReportLayoutTable.cs")
+    spec = json.loads((ROOT / "Assets/Data/DailyReportLayout.json").read_text(encoding="utf-8"))
+    names = re.findall(r'"(\w+)"', table[table.index("FallbackNames ="):table.index("FallbackRects =")])
+    rows = re.findall(r"\{\s*(-?\d+),\s*(-?\d+),\s*(\d+),\s*(\d+)\s*\}",
+                      table[table.index("FallbackRects ="):table.index("private static void ApplyFallback(")])
+    assert len(names) == len(rows) == len(spec["rects"]), "兜底矩形与版面表条目数不一致"
+    for name, row in zip(names, rows):
+        assert [int(v) for v in row] == spec["rects"][name], "兜底矩形与版面表不同源: " + name
+    fallback = method(table, "private static void ApplyFallback(")
+    legend = spec["legend"]
+    for token in ("_legendItemWidth = %sf;" % legend["itemWidth"], "_legendCount = %s;" % legend.get("count", 4),
+                  "_legendSwatch = %sf;" % legend["swatch"]):
+        assert token in fallback, "图例兜底与版面表不同源: " + token
+    assert spec["rects"]["legend"][3] >= 31, "图例行高 %d 放不下一行 18 号中文" % spec["rects"]["legend"][3]
+    assert legend.get("count", 4) * legend["itemWidth"] <= spec["rects"]["legend"][2], "图例项排出了图例行"
+
+
 def main():
     ui = source("Integration/DailyReport/DailyReportUI.cs")
     dashboard = source("Integration/DailyReport/DailyReportUI_Dashboard.cs")
@@ -105,7 +130,7 @@ def main():
     colors = {name: tuple(float(v or 1) for v in values)
               for name, *values in COLOR.findall(ui + shared)}
     threshold = float(re.search(r"LightBackgroundLuminance\s*=\s*([\d.]+)f", shared)[1])
-    for background in ("CellEmpty", "CellSigned", "CellMilestone", "CellMilestoneDone", "PaperRaised"):
+    for background in ("CellEmpty", "CellSigned", "CellToday", "CellMilestone", "CellMilestoneDone", "PaperRaised"):
         bg = colors[background]
         fg = colors["TextOnAccent" if luminance(bg) > threshold else "TextPrimary"]
         # 单元格和按钮均不透明；按钮另查共享三态的按下暗化。
@@ -133,6 +158,7 @@ def main():
     assert "DailyReportLayoutTable.ToAnchored(" in dashboard
     check_single_source_chrome(dashboard)
     check_scrollable_body(dashboard)
+    check_layout_fallback_sync()
     refresh = method(ui, "public void Refresh()")
     assert "RefreshLabels();" in refresh
     labels = method(ui, "private void RefreshLabels()")

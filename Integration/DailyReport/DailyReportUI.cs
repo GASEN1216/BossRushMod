@@ -46,6 +46,8 @@ namespace BossRush
         private static readonly Color CellSigned = new Color(0.28f, 0.38f, 0.23f, 1f);
         private static readonly Color CellMilestone = new Color(0.86f, 0.70f, 0.34f, 1f);
         private static readonly Color CellMilestoneDone = new Color(0.45f, 0.35f, 0.12f, 1f);
+        /// <summary>今天还没签时，下一格（今天要签的那一格）点亮成暖黄，参考图的「当日签到」。</summary>
+        private static readonly Color CellToday = new Color(0.97f, 0.79f, 0.36f, 1f);
         /// <summary>标题药丸上的字色。药丸底是深绿 / 深灰，字必须是浅色。</summary>
         private static readonly Color PillInk = new Color(0.97f, 0.95f, 0.91f, 1f);
         private static readonly Color ButtonIdle = new Color(0.69f, 0.52f, 0.19f, 1f);
@@ -206,7 +208,7 @@ namespace BossRush
                 SetText(statsText, BuildIncomeBlock(issue, data));
                 SetText(bountyText, BuildBountyValueBlock(issue));
                 SetText(headlineText, BuildBountyBlock(issue));
-                SetText(headlineBodyText, JoinLines(issue.StatLines));
+                SetText(headlineBodyText, JoinColumns(issue.StatLines));
                 SetText(fortuneText, issue.FortuneLine);
                 SetText(editorText, issue.Headline);
                 SetText(sideText, issue.HeadlineBody);
@@ -260,6 +262,7 @@ namespace BossRush
 
         private void RefreshSignInGrid(DailyReportData data)
         {
+            bool signedToday = DailyReportService.IsSignedToday;
             for (int i = 0; i < signInCells.Count; i++)
             {
                 int slot = i + 1;
@@ -270,6 +273,7 @@ namespace BossRush
                 bool signed = slot <= data.PeriodSignedCount;
                 int quality = DailyReportService.GetMilestoneQuality(data.PeriodIndex, slot);
                 bool isMilestone = quality > 0;
+                bool isToday = !signedToday && slot == data.PeriodSignedCount + 1;
 
                 if (isMilestone)
                 {
@@ -281,7 +285,7 @@ namespace BossRush
                 }
                 else
                 {
-                    cell.color = signed ? CellSigned : CellEmpty;
+                    cell.color = signed ? CellSigned : (isToday ? CellToday : CellEmpty);
                 }
 
                 if (label == null) continue;
@@ -379,8 +383,9 @@ namespace BossRush
             SetText(statusTitleText, L10n.T("鸭科夫 · 今日状态", "DUCKOV · TODAY"));
             SetText(signInTitleText, L10n.T("今日签到", "CHECK-IN"));
             SetText(closeText, L10n.T("合上报纸", "Close"));
-            string[] labels = { L10n.T("未签", "Upcoming"), L10n.T("已签", "Signed"),
-                L10n.T("★ 奖励格", "★ Reward"), L10n.T("奖励已领", "Claimed") };
+            // 与 BuildLegend 的色块顺序一一对应
+            string[] labels = { L10n.T("已签到", "Signed"), L10n.T("未签到", "Upcoming"),
+                L10n.T("今日可签", "Today"), L10n.T("★ 奖励格", "★ Reward"), L10n.T("奖励已领", "Claimed") };
             for (int i = 0; i < legendLabels.Count && i < labels.Length; i++) SetText(legendLabels[i], labels[i]);
         }
 
@@ -546,14 +551,19 @@ namespace BossRush
             }
         }
 
-        private static string JoinLines(List<string> lines)
+        /// <summary>
+        /// 战绩小表两列排：每两条并成一行，右列用 TMP 的 pos 标签对齐到半宽处。
+        /// 五六条战绩一条一行要五六行，那块只放得下三行多，末行总是露半截（2026-09-22 实测）。
+        /// </summary>
+        private static string JoinColumns(List<string> lines)
         {
             if (lines == null || lines.Count <= 0) return string.Empty;
             string result = string.Empty;
-            for (int i = 0; i < lines.Count; i++)
+            for (int i = 0; i < lines.Count; i += 2)
             {
                 if (i > 0) result += "\n";
                 result += lines[i];
+                if (i + 1 < lines.Count) result += "<pos=50%>" + lines[i + 1];
             }
             return result;
         }
