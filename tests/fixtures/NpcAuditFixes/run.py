@@ -78,8 +78,10 @@ def main():
         parts += [extract(courier + file, signature) for signature in signatures]
     async_host = (HERE.parent / "SkyIslandDialogue/Stubs.cs").read_text(encoding="utf-8-sig").split("namespace UnityEngine")[0]
     generated = async_host + "\nnamespace BossRush { using UnityEngine; using Duckov.Economy; using Duckov.UI; using ItemStatsSystem; using ItemStatsSystem.Data; using Cysharp.Threading.Tasks; public static partial class StorageDepositService {\n" + "\n".join(parts) + "\n}}"
-    sweep = "\n".join(extract(courier + "CourierPaidLootSweepService.cs", sig) for sig in ["public static void ReleasePendingSweepResultToPlayer", "private static void OnStartNextSweepButtonClicked()", "private static bool TryReturnResultItemsToPlayer"])
-    generated += "\nnamespace BossRush {using UnityEngine; using ItemStatsSystem; public static partial class CourierPaidLootSweepService {" + sweep + "}}"
+    sweep = "\n".join(extract(courier + "CourierPaidLootSweepService.cs", sig) for sig in ["public static void ReleasePendingSweepResultToPlayer", "private static void OnStartNextSweepButtonClicked()", "private static bool TryReturnResultItemsToPlayer", "private static void ShowSweepResultMailedBanner", "private static void CaptureSweepProducedItems"])
+    generated += "\nnamespace BossRush {using UnityEngine; using ItemStatsSystem; using Duckov.UI; public static partial class CourierPaidLootSweepService {" + sweep + "}}"
+    mail = "\n".join(extract(courier + "CourierService_CloseAndCleanup.cs", sig) for sig in ["internal static bool CanBufferItemsSilently", "internal static int BufferItemsSilently"])
+    generated += "\nnamespace BossRush {using UnityEngine; using ItemStatsSystem; public static partial class CourierService {" + mail + "}}"
     generated += "\nnamespace BossRush {using UnityEngine; using ItemStatsSystem; public static partial class NPCGiftContainerService {" + extract("Integration/Affinity/Services/NPCGiftContainerService.cs", "private static void DropItemOnGround") + "}}"
     results["Transactions"] = build("Transactions", [courier + "DepositDataManager.cs", courier + "StorageDepositSingleRetrieve.cs"], generated)
     if (HERE / "Reforge.cs").exists():

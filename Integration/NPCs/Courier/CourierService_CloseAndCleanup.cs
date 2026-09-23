@@ -56,6 +56,111 @@ namespace BossRush
         }
 
         /// <summary>
+        /// 官方快递站缓冲是否可写。<c>PlayerStorageBuffer.Awake</c> 里的 <c>LoadBuffer</c> 会先清表，
+        /// 在它跑之前写入会被抹掉，所以先门控 Instance（同 ModeH 押品转存的口径）。
+        /// </summary>
+        internal static bool CanBufferItemsSilently()
+        {
+            try
+            {
+                return PlayerStorageBuffer.Instance != null && PlayerStorageBuffer.Buffer != null;
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierService] [WARNING] 探测快递站缓冲失败: " + e.Message);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// 把一批物品整树静默寄进官方快递站缓冲，只落盘一次；横幅由调用方汇总成一条。
+        /// 不走 <c>PlayerStorage.Push</c>：它每件都推一条「已放入快递」横幅，一批东西会把别的消息全挡住。
+        /// 顺序照官方 Push：先序列化、入缓冲，再 Detach + DestroyTree。
+        /// 序列化失败的物品不动（仍在原容器里），放进 <paramref name="failedItems"/> 交还调用方处理；
+        /// 缓冲不可写时一件都不动，全部放进 failedItems。
+        /// </summary>
+        /// <returns>实际寄出的件数</returns>
+        internal static int BufferItemsSilently(IList<Item> items, List<Item> failedItems)
+        {
+            if (items == null || items.Count <= 0)
+            {
+                return 0;
+            }
+
+            if (!CanBufferItemsSilently())
+            {
+                if (failedItems != null)
+                {
+                    for (int i = 0; i < items.Count; i++)
+                    {
+                        if (items[i] != null) failedItems.Add(items[i]);
+                    }
+                }
+                return 0;
+            }
+
+            int bufferedCount = 0;
+            for (int i = 0; i < items.Count; i++)
+            {
+                Item item = items[i];
+                if (item == null)
+                {
+                    continue;
+                }
+
+                string itemName = null;
+                ItemStatsSystem.Data.ItemTreeData itemData = null;
+                try
+                {
+                    itemName = item.DisplayName;
+                    ReforgeDataPersistence.SyncCurrentReforgeState(item);
+                    itemData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] BufferItemsSilently: 序列化物品失败: " + itemName + ", " + e.Message);
+                    itemData = null;
+                }
+
+                if (itemData == null)
+                {
+                    if (failedItems != null) failedItems.Add(item);
+                    continue;
+                }
+
+                PlayerStorageBuffer.Buffer.Add(itemData);
+                bufferedCount++;
+
+                try
+                {
+                    item.Detach();
+                    item.DestroyTree();
+                }
+                catch (Exception e)
+                {
+                    ModBehaviour.DevLog("[CourierService] [WARNING] BufferItemsSilently: 销毁已寄出物品失败: " + itemName + ", " + e.Message);
+                }
+
+                ModBehaviour.DevLog("[CourierService] BufferItemsSilently: 已寄进快递站: " + itemName);
+            }
+
+            if (bufferedCount > 0)
+            {
+                try
+                {
+                    PlayerStorageBuffer.SaveBuffer();
+                }
+                catch (Exception e)
+                {
+                    // 缓冲条目已在内存里，官方收集存档时（OnCollectSaveData）还会再写一次，不回滚。
+                    Debug.LogWarning("[CourierService] BufferItemsSilently: 快递站落盘失败，等官方存档收集时再写: " + e.Message);
+                }
+            }
+
+            return bufferedCount;
+        }
+
+        /// <summary>
         /// 执行自动发送操作（复用 ExecuteDelivery 的核心逻辑）
         /// </summary>
         /// <param name="fee">已计算好的快递费用</param>
@@ -64,6 +169,13 @@ namespace BossRush
         {
             try
             {
+                // 快递站缓冲没就绪就不收钱：物品留在容器里，由关闭流程原样退回背包。
+                if (!CanBufferItemsSilently())
+                {
+                    ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 快递站缓冲未就绪，不自动发送");
+                    return false;
+                }
+
                 if (!TryPayDeliveryFee(fee))
                 {
                     return false;
@@ -79,29 +191,22 @@ namespace BossRush
                     }
                 }
 
-                // 发送物品到玩家仓库
-                foreach (Item item in itemsToSend)
-                {
-                    item.Detach();  // 先从容器分离
-                    ReforgeDataPersistence.SyncCurrentReforgeState(item);
-
-                    // 直接添加到缓冲区（不显示通知）
-                    var itemData = ItemStatsSystem.Data.ItemTreeData.FromItem(item);
-                    PlayerStorageBuffer.Buffer.Add(itemData);
-                    item.DestroyTree();  // 销毁物品树
-
-                    ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 已发送物品: " + item.DisplayName);
-                }
+                // 静默寄进快递站（不逐件横幅），只落盘一次
+                List<Item> failedItems = new List<Item>();
+                int sentCount = BufferItemsSilently(itemsToSend, failedItems);
 
                 // 记录发送结果（用于告别气泡）
-                lastSentItemCount = itemsToSend.Count;
+                lastSentItemCount = sentCount;
                 lastDeliveryFee = fee;
 
-                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 自动发送完成，共 " + itemsToSend.Count + " 件物品");
+                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 自动发送完成，共 " + sentCount + " 件物品");
 
-                // 立即保存快递数据到存档
-                PlayerStorageBuffer.SaveBuffer();
-                ModBehaviour.DevLog("[CourierService] ExecuteAutoDelivery: 已保存快递数据到存档");
+                if (failedItems.Count > 0)
+                {
+                    // 转存失败的仍在容器里，按原先异常中断的口径交给关闭流程退回背包。
+                    ModBehaviour.DevLog("[CourierService] [WARNING] ExecuteAutoDelivery: " + failedItems.Count + " 件物品未能寄出，退回背包");
+                    return false;
+                }
 
                 // 显示快递完成横幅
                 ShowDeliveryCompleteBanner();

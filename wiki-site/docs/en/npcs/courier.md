@@ -42,6 +42,7 @@ Successful extraction rewards are auto-sent to Storage Point. Find Awen on norma
 - Pricing is based on the current number of sweepable lootboxes; the current rule is **10000 per lootbox**
 - Awen consolidates the current scene's tracked BossRush lootboxes into one **Awen pickup crate**
 - If there are no valid BossRush lootboxes to process, Awen will refuse the job
+- Swept items still in the pickup crate when you press **`Start Next Sweep`** are sent to your base deliveries as one batch, with a single summary notice; anything you put into the crate yourself goes back to your backpack
 
 ### Awen Loot Sweep Token
 

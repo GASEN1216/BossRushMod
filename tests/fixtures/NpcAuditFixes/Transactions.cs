@@ -21,6 +21,7 @@ namespace UnityEngine
     public class Transform : Object { }
     public static class Mathf { public static int Min(int a, int b) { return Math.Min(a, b); } public static int Max(int a, int b) { return Math.Max(a, b); } public static int CeilToInt(float x) { return (int)Math.Ceiling(x); } }
     public static class Time { public static float realtimeSinceStartup; }
+    public static class Debug { public static void LogWarning(object message) { } }
 }
 namespace HarmonyLib { public class HarmonyPatch : Attribute { public HarmonyPatch(Type type, string method) { } } public class HarmonyPrefix : Attribute { } }
 namespace Saves
@@ -74,7 +75,9 @@ namespace Duckov.Economy.UI
 {
     public class StockShopView { public class Selection { public Duckov.Economy.StockShop.Entry Target; } public static StockShopView Instance = new StockShopView(); public Selection Selected; public Selection GetSelection() { return Selected; } }
 }
-namespace Duckov.UI { public static class NotificationText { public static void Push(string text) { } } }
+namespace Duckov.UI { public static class NotificationText { public static readonly List<string> Pushed = new List<string>(); public static void Push(string text) { Pushed.Add(text); } } }
+// Official PlayerStorageBuffer: static list plus a SaveBuffer that persists it; Instance is null before Awake.
+public class PlayerStorageBuffer : UnityEngine.Object { public static PlayerStorageBuffer Instance = new PlayerStorageBuffer(); public static readonly List<ItemTreeData> Buffer = new List<ItemTreeData>(); public static int Saves; public static void SaveBuffer() { Saves++; } }
 public class CharacterMainControl : UnityEngine.Object { public static CharacterMainControl Main = new CharacterMainControl(); public Inventory Inventory = new Inventory(); }
 public static class ItemUtilities
 {
@@ -152,18 +155,20 @@ namespace BossRush
         private static GameObject pendingResultObject;
         private static Inventory pendingResultInventory;
         private static Transform pendingResultNpcTransform;
+        private static readonly HashSet<Item> pendingResultSweepItems = new HashSet<Item>();
         private static bool HasPendingSweepResult() { return pendingResultObject != null; }
         private static void DestroyStartNextSweepButton() { }
         private static object StartNextSweepDelayed(Transform npc) { return npc; }
         private static void DiscardPendingSweepResultInternal(bool close, bool show)
         {
             if (pendingResultInventory.Content.Count != 0) throw new Exception("crate destroyed before remaining items delivered");
-            UnityEngine.Object.Destroy(pendingResultObject); pendingResultObject = null;
+            UnityEngine.Object.Destroy(pendingResultObject); pendingResultObject = null; pendingResultSweepItems.Clear();
         }
         public static Inventory SeedForTest(int count)
         {
             pendingResultObject = new GameObject(); pendingResultInventory = new Inventory(); pendingResultNpcTransform = new Transform();
             for (int i = 0; i < count; i++) pendingResultInventory.AddItem(new Item(i + 1, "sweep" + i));
+            CaptureSweepProducedItems(pendingResultInventory);
             return pendingResultInventory;
         }
         public static void NextForTest() { OnStartNextSweepButtonClicked(); }
@@ -183,6 +188,7 @@ class Program
         Saves.SavesSystem.Global["BossRush_Deposit_Values"] = new List<int> { 1000, 1000 };
         DepositDataManager.ForceReload(); ItemTreeData.Pending.Clear(); CharacterMainControl.Main = new CharacterMainControl();
         Duckov.Economy.EconomyManager.Money = ModBehaviour.Purification = 1000; ItemUtilities.FailBefore = ItemUtilities.FailAfter = false; StorageDepositService.Setup(points);
+        PlayerStorageBuffer.Instance = new PlayerStorageBuffer(); PlayerStorageBuffer.Buffer.Clear(); PlayerStorageBuffer.Saves = 0; Duckov.UI.NotificationText.Pushed.Clear();
     }
     static void Main()
     {
@@ -199,8 +205,15 @@ class Program
         Seed(); var old = StorageDepositService.RetrieveSingleAsync(1, 1).task; StorageDepositService.CloseForTest(); StorageDepositService.Setup(); var next = StorageDepositService.RetrieveSingleAsync(1, 1).task; var late = new Item(1, "old clone"); ItemTreeData.Pending[0].SetResult(late); Check(!old.GetAwaiter().GetResult() && late == null && StorageDepositService.BusyForTest, "late old request cannot deliver or release replacement transaction"); ItemTreeData.Pending[1].SetResult(new Item(1, "gun+attachment")); Check(next.GetAwaiter().GetResult() && CharacterMainControl.Main.Inventory.Content.Count == 1 && DepositDataManager.GetAllItems()[0].itemData.Payload == "container+contents", "stable identity removes exactly the delivered record");
         Seed(); var bulk = StorageDepositService.BulkForTest(); var overlap = StorageDepositService.RetrieveSingleAsync(1, 1).task; Check(!overlap.GetAwaiter().GetResult(), "bulk owner excludes single retrieval"); ItemTreeData.Pending[0].SetResult(new Item(1, "container+contents")); ItemTreeData.Pending[1].SetResult(new Item(1, "gun+attachment")); bulk.GetAwaiter().GetResult(); Check(DepositDataManager.GetItemCount() == 0 && CharacterMainControl.Main.Inventory.Content.Count == 2 && Duckov.Economy.EconomyManager.Money == 980, "bulk delivers each full tree once at exact fee");
         Seed(); ItemUtilities.FailAfter = true; var notified = StorageDepositService.RetrieveSingleAsync(1, 1).task; var actual = new Item(1, "actual"); ItemTreeData.Pending[0].SetResult(actual); Check(notified.GetAwaiter().GetResult() && actual != null && actual.InInventory != null && DepositDataManager.GetItemCount() == 1 && Duckov.Economy.EconomyManager.Money == 990, "post-delivery notification failure neither duplicates nor destroys actual item");
-        Seed(); int nextSweeps = ModBehaviour.NextSweeps; CourierPaidLootSweepService.SeedForTest(2); CourierPaidLootSweepService.NextForTest(); Check(CharacterMainControl.Main.Inventory.Content.Count == 2 && !CourierPaidLootSweepService.PendingForTest && ModBehaviour.NextSweeps == nextSweeps + 1, "next sweep returns two unclaimed items before destroying crate");
-        Seed(); ItemUtilities.FailBefore = true; nextSweeps = ModBehaviour.NextSweeps; var crate = CourierPaidLootSweepService.SeedForTest(2); CourierPaidLootSweepService.NextForTest(); Check(crate.Content.Count == 2 && CourierPaidLootSweepService.PendingForTest && ModBehaviour.NextSweeps == nextSweeps, "failed crate return retains ownership and cannot start next paid sweep");
+        Seed(); int nextSweeps = ModBehaviour.NextSweeps; var mailed = CourierPaidLootSweepService.SeedForTest(2); var mailedItems = new List<Item>(mailed.Content); CourierPaidLootSweepService.NextForTest();
+        Console.WriteLine("next sweep metrics: buffer=" + PlayerStorageBuffer.Buffer.Count + ",saves=" + PlayerStorageBuffer.Saves + ",banners=" + Duckov.UI.NotificationText.Pushed.Count + ",backpack=" + CharacterMainControl.Main.Inventory.Content.Count + ",pending=" + CourierPaidLootSweepService.PendingForTest);
+        Check(PlayerStorageBuffer.Buffer.Count == 2 && PlayerStorageBuffer.Buffer[0].Payload == "sweep0" && PlayerStorageBuffer.Buffer[1].Payload == "sweep1" && mailedItems[0] == null && mailedItems[1] == null && CharacterMainControl.Main.Inventory.Content.Count == 0 && !CourierPaidLootSweepService.PendingForTest && ModBehaviour.NextSweeps == nextSweeps + 1, "next sweep mails every unclaimed item into the delivery buffer before destroying crate");
+        Check(PlayerStorageBuffer.Saves == 1 && Duckov.UI.NotificationText.Pushed.Count == 1 && Duckov.UI.NotificationText.Pushed[0].Contains("2 sweep crate items"), "next sweep saves the buffer once and shows exactly one summary banner");
+        Seed(); CourierPaidLootSweepService.SeedForTest(12); CourierPaidLootSweepService.NextForTest(); Check(PlayerStorageBuffer.Buffer.Count == 12 && PlayerStorageBuffer.Saves == 1 && Duckov.UI.NotificationText.Pushed.Count == 1, "a full crate still produces one save and one banner");
+        Seed(); var mixed = CourierPaidLootSweepService.SeedForTest(2); var foreign = new Item(77, "player-stash"); mixed.AddItem(foreign); CourierPaidLootSweepService.NextForTest();
+        Check(PlayerStorageBuffer.Buffer.Count == 2 && !PlayerStorageBuffer.Buffer.Exists(x => x.Payload == "player-stash") && foreign.InInventory == CharacterMainControl.Main.Inventory && !CourierPaidLootSweepService.PendingForTest, "items the player stuffed into the crate go back to the backpack, not free to deliveries");
+        Seed(); PlayerStorageBuffer.Instance = null; nextSweeps = ModBehaviour.NextSweeps; CourierPaidLootSweepService.SeedForTest(2); CourierPaidLootSweepService.NextForTest(); Check(PlayerStorageBuffer.Buffer.Count == 0 && PlayerStorageBuffer.Saves == 0 && CharacterMainControl.Main.Inventory.Content.Count == 2 && !CourierPaidLootSweepService.PendingForTest && ModBehaviour.NextSweeps == nextSweeps + 1, "buffer not initialized falls back to official per-item delivery without writing the buffer");
+        Seed(); PlayerStorageBuffer.Instance = null; ItemUtilities.FailBefore = true; nextSweeps = ModBehaviour.NextSweeps; var crate = CourierPaidLootSweepService.SeedForTest(2); CourierPaidLootSweepService.NextForTest(); Check(crate.Content.Count == 2 && CourierPaidLootSweepService.PendingForTest && ModBehaviour.NextSweeps == nextSweeps && PlayerStorageBuffer.Buffer.Count == 0, "failed crate return retains ownership and cannot start next paid sweep");
         Seed(); var gift = new Item(9, "gift"); NPCGiftContainerService.DropForTest(gift); Check(gift.PickupCreated, "gift fallback invokes official pickup Drop API"); CharacterMainControl.Main = null; int buffered = ItemUtilities.Buffered; NPCGiftContainerService.DropForTest(new Item(9,"absent-player")); Check(ItemUtilities.Buffered == buffered + 1, "gift without a player transfers to the official buffer owner");
         Console.WriteLine("Transactions " + checks + " PASS");
     }

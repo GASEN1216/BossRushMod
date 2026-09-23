@@ -28,6 +28,7 @@ namespace BossRush
         private static Inventory pendingResultInventory = null;
         private static InteractableLootbox pendingResultLootbox = null;
         private static Transform pendingResultNpcTransform = null;
+        private static readonly HashSet<Item> pendingResultSweepItems = new HashSet<Item>();
 
         private static GameObject startNextSweepButtonObject = null;
         private static Button startNextSweepButton = null;
@@ -89,8 +90,8 @@ namespace BossRush
                 if (mod != null)
                 {
                     mod.ShowMessage(L10n.T(
-                        "旧扫箱结果已返还到玩家背包或仓库。",
-                        "Old sweep crate contents were returned to the player."));
+                        "旧扫箱结果已放进快递。",
+                        "Old sweep crate contents were sent to your base deliveries."));
                 }
             }
         }
@@ -474,6 +475,7 @@ namespace BossRush
             pendingResultInventory = resultInventory;
             pendingResultLootbox = resultLootbox;
             pendingResultNpcTransform = npcTransform;
+            CaptureSweepProducedItems(resultInventory);
             RegisterLootStopHook();
         }
 
@@ -483,6 +485,26 @@ namespace BossRush
             pendingResultInventory = null;
             pendingResultLootbox = null;
             pendingResultNpcTransform = null;
+            pendingResultSweepItems.Clear();
+        }
+
+        /// <summary>记下这一箱里哪些是扫箱产出的（排序合并之后）；只有它们在开启下次扫箱时寄快递。</summary>
+        private static void CaptureSweepProducedItems(Inventory resultInventory)
+        {
+            pendingResultSweepItems.Clear();
+            if (resultInventory == null || resultInventory.Content == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < resultInventory.Content.Count; i++)
+            {
+                Item item = resultInventory.Content[i];
+                if (item != null)
+                {
+                    pendingResultSweepItems.Add(item);
+                }
+            }
         }
 
         private static void BindServiceNpc(Transform npcTransform)
@@ -1083,19 +1105,38 @@ namespace BossRush
                 return true;
             }
             bool deliveredAll = true;
+            // 只有扫箱产出的物品寄快递；玩家自己塞进箱子的东西照旧交还背包（否则开启下次扫箱就成了免快递费的寄件口）。
             List<Item> items = new List<Item>();
+            List<Item> remainingItems = new List<Item>();
             for (int i = 0; i < resultInventory.Content.Count; i++)
             {
                 Item item = resultInventory.Content[i];
-                if (item != null)
+                if (item == null)
                 {
-                    items.Add(item);
+                    continue;
                 }
+
+                if (pendingResultSweepItems.Contains(item)) items.Add(item);
+                else remainingItems.Add(item);
             }
 
-            for (int i = 0; i < items.Count; i++)
+            if (items.Count <= 0 && remainingItems.Count <= 0)
             {
-                Item item = items[i];
+                return true;
+            }
+
+            // 阿稳代收的整箱一律寄进快递：静默入缓冲、一次落盘、只报一条汇总横幅。
+            // 逐件 SendToPlayer 在背包满时每件都推一条官方横幅，会把要看的消息全挡住（2026-09-22 实测第 13 条）。
+            int mailedCount = CourierService.BufferItemsSilently(items, remainingItems);
+            if (mailedCount > 0)
+            {
+                ShowSweepResultMailedBanner(mailedCount);
+            }
+
+            // 玩家塞进来的东西、快递站不可写或个别物品序列化失败：走官方逐件交付，交付不了的留在箱里、不放行下一趟。
+            for (int i = 0; i < remainingItems.Count; i++)
+            {
+                Item item = remainingItems[i];
                 if (item == null)
                 {
                     continue;
@@ -1123,6 +1164,20 @@ namespace BossRush
                 }
             }
             return deliveredAll;
+        }
+
+        private static void ShowSweepResultMailedBanner(int mailedCount)
+        {
+            try
+            {
+                NotificationText.Push(L10n.T(
+                    "<color=#00FF00>阿稳已把扫箱箱子里的 " + mailedCount + " 件物品放进快递</color>",
+                    "<color=#00FF00>Awen sent " + mailedCount + " sweep crate items to your base deliveries</color>"));
+            }
+            catch (Exception e)
+            {
+                ModBehaviour.DevLog("[CourierPaidLootSweep] [WARNING] 显示扫箱寄件横幅失败: " + e.Message);
+            }
         }
 
     }

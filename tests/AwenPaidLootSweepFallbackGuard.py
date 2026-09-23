@@ -20,6 +20,7 @@ COURIER_NPC_SOURCES = [
 def read_courier_npc_sources() -> str:
     return "\n".join(path.read_text(encoding="utf-8") for path in COURIER_NPC_SOURCES)
 TRACKER = Path("LootAndRewards/ModeEFLootboxTracker.cs")
+CLOSE_AND_CLEANUP = Path("Integration/NPCs/Courier/CourierService_CloseAndCleanup.cs")
 
 
 def fail(message: str) -> int:
@@ -114,6 +115,37 @@ def main() -> int:
         return fail("AwenPaidLootSweepFallbackGuard: next sweep started before delivery")
     if "if (!TryReturnResultItemsToPlayer(pendingResultInventory)) return;" not in release_method:
         return fail("AwenPaidLootSweepFallbackGuard: failed delivery must retain the crate owner")
+
+    # 2026-09-22 实测第 13 条：整箱静默寄进快递、只报一条汇总横幅；逐件 SendToPlayer 只做快递站不可写时的兜底。
+    return_method = extract_method(service_text, "private static bool TryReturnResultItemsToPlayer")
+    mail_call = "CourierService.BufferItemsSilently(items, remainingItems)"
+    fallback_call = "ItemUtilities.SendToPlayer(item, true, true)"
+    if mail_call not in return_method or fallback_call not in return_method:
+        return fail("AwenPaidLootSweepFallbackGuard: crate return must mail through CourierService.BufferItemsSilently with SendToPlayer only as fallback")
+    if return_method.index(mail_call) > return_method.index(fallback_call):
+        return fail("AwenPaidLootSweepFallbackGuard: crate return calls SendToPlayer before the silent delivery buffer")
+    if "ShowSweepResultMailedBanner(mailedCount)" not in return_method:
+        return fail("AwenPaidLootSweepFallbackGuard: crate return must show one summary banner")
+    # 只寄扫箱产出的物品：玩家塞进箱子的东西走官方交还，否则「开启下次扫箱」成了免快递费的寄件口。
+    if "if (pendingResultSweepItems.Contains(item)) items.Add(item);" not in return_method:
+        return fail("AwenPaidLootSweepFallbackGuard: only sweep-produced items may be mailed for free")
+    set_pending = extract_method(service_text, "private static void SetPendingSweepResult(")
+    if "CaptureSweepProducedItems(resultInventory);" not in set_pending:
+        return fail("AwenPaidLootSweepFallbackGuard: pending crate must snapshot its sweep-produced items")
+
+    courier_close = clean_source(CLOSE_AND_CLEANUP.read_text(encoding="utf-8"))
+    helper = extract_method(courier_close, "internal static int BufferItemsSilently")
+    if not helper:
+        return fail("AwenPaidLootSweepFallbackGuard: missing CourierService.BufferItemsSilently")
+    for required in ("CanBufferItemsSilently()", "PlayerStorageBuffer.Buffer.Add(itemData)", "PlayerStorageBuffer.SaveBuffer()"):
+        if required not in helper:
+            return fail("AwenPaidLootSweepFallbackGuard: silent delivery helper missing " + required)
+    for forbidden in ("PlayerStorage.Push(", "NotificationText.Push(", "ClearNotificationQueue("):
+        if forbidden in helper:
+            return fail("AwenPaidLootSweepFallbackGuard: silent delivery helper must not use " + forbidden)
+    gate = extract_method(courier_close, "internal static bool CanBufferItemsSilently")
+    if "PlayerStorageBuffer.Instance != null" not in gate:
+        return fail("AwenPaidLootSweepFallbackGuard: silent delivery must gate on PlayerStorageBuffer.Instance (LoadBuffer clears the list on Awake)")
     print("AwenPaidLootSweepFallbackGuard: PASS")
     return 0
 
