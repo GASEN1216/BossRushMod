@@ -259,8 +259,8 @@ namespace BossRush
                     .Append("</color>");
             }
 
-            // Resolve X/11 + 本局契约短标题（详情只在入口/recap 展开）
-            _builder.Append("\nResolve ")
+            // 决意 X/11 + 本局契约短标题（详情只在入口/recap 展开）；中文界面统一叫「决意」，英文保留 Resolve
+            _builder.Append('\n').Append(L10n.T("决意", "Resolve")).Append(' ')
                 .Append(m.resolve)
                 .Append('/')
                 .Append(m.resolveMax);

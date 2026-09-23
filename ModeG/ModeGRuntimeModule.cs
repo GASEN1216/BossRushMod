@@ -801,7 +801,7 @@ namespace BossRush
                                 _resolvesPerAct[_state.actIndex]++;
                             }
                             _host.ShowMessage(L10n.T(
-                                "末位处决完成，Resolve +1",
+                                "最后处决完成，决意 +1",
                                 "Last Stand resolved! Resolve +1"));
                         }
                     }
@@ -1016,7 +1016,7 @@ namespace BossRush
                     }
                     _axisBreakChain++;
                     _maxAxisBreakChain = Math.Max(_maxAxisBreakChain, _axisBreakChain);
-                    _host.ShowMessage(L10n.T("反制破解！Resolve +1", "Counter broken! Resolve +1"));
+                    _host.ShowMessage(L10n.T("反制破解！决意 +1", "Counter broken! Resolve +1"));
                 }
                 else
                 {

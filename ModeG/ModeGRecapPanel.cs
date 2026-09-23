@@ -91,7 +91,7 @@ namespace BossRush
             {
                 string line1 = "<color=#B22222>" + L10n.T("BossRush_ModeG_DefeatTitle") + "</color> "
                     + L10n.T("BossRush_ModeG_WaveWord") + " " + waveNumber + L10n.T("BossRush_ModeG_WaveOfNine")
-                    + " · Resolve " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
+                    + " · " + L10n.T("决意", "Resolve") + " " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
                 string line2 = ComposeNemesisPreviewLine(attribution);
                 return string.IsNullOrEmpty(line2) ? line1 : line1 + "\n" + line2;
             }
@@ -192,7 +192,7 @@ namespace BossRush
                 int wave = module.State != null ? module.State.waveEpoch + 1 : 0;
                 int resolve = module.Adaptive != null ? module.Adaptive.TotalResolve : 0;
                 string summary = L10n.T("BossRush_ModeG_WaveWord") + " " + wave + L10n.T("BossRush_ModeG_WaveOfNine")
-                    + " · Resolve " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
+                    + " · " + L10n.T("决意", "Resolve") + " " + resolve + "/" + ModeGAdaptiveCombat.MaxResolveTotal;
                 if (IsNewBestWave(wave, previousBestWave))
                 {
                     summary += " · <color=#B8860B>" + L10n.T("BossRush_ModeG_NewRecord") + "</color>";
@@ -330,7 +330,7 @@ namespace BossRush
             return L10n.T("BossRush_ModeG_Recap_Rewards") + " " + current
                 + " " + L10n.T("BossRush_ModeG_Recap_ItemsUnit")
                 + " · " + L10n.T("BossRush_ModeG_Recap_ResolveGap") + " "
-                + (nextBoundary - resolve) + " Resolve → "
+                + (nextBoundary - resolve) + L10n.T(" 点决意 → ", " Resolve → ")
                 + next + " " + L10n.T("BossRush_ModeG_Recap_ItemsUnit");
         }
 

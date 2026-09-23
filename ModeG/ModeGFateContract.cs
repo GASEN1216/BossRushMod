@@ -131,42 +131,42 @@ namespace BossRush
         {
             new ContractDef(IdTriadBreaker, ModeGContractFamily.Adaptation, "TriadBreaker",
                 "三轴破晓", "Triad Breaker",
-                "本局内距离、弹药、属性三个反制轴各破解至少一次。",
+                "距离回声、弹药点名、属性封锁三种反制，本局各破解至少一次。",
                 "Break each of the three counter axes (distance, ammo, attribute) at least once this run."),
 
             new ContractDef(IdLastExecutioner, ModeGContractFamily.Execution, "LastExecutioner",
                 "终末行刑者", "Last Executioner",
-                "完成至少 2 次 Last Stand 处决，并以直接伤害终结 R3 宿敌。",
+                "完成至少 2 次最后处决，并用枪械或近战直接击倒 R3 宿敌。",
                 "Complete at least two Last Stand executions and finish an R3 nemesis with direct damage."),
 
             new ContractDef(IdCounterflowChain, ModeGContractFamily.Tempo, "CounterflowChain",
                 "逆流连锁", "Counterflow Chain",
-                "连续破解三个三轴目标（不间断）。",
+                "连续破解三个反制目标，中间不能断。",
                 "Break three axis objectives consecutively without interruption."),
 
             new ContractDef(IdUnbrokenActs, ModeGContractFamily.Tempo, "UnbrokenActs",
                 "三幕无缺", "Unbroken Acts",
-                "三幕中每一幕都达成至少 2 次 Resolve。",
+                "三幕里每一幕都拿到至少 2 点决意。",
                 "Achieve at least 2 Resolves in each of the three acts."),
 
             new ContractDef(IdEdgeWalker, ModeGContractFamily.Style, "EdgeWalker",
                 "边缘行者", "Edge Walker",
-                "第1/4/7波均以枪械或近战直伤收尾，触发三次距离回声。",
+                "第 1、4、7 波都用枪械或近战直接收尾，触发三次距离回声。",
                 "Finish waves 1/4/7 with direct gun or melee hits to trigger three distance echoes."),
 
             new ContractDef(IdArsenalDiscipline, ModeGContractFamily.Style, "ArsenalDiscipline",
                 "武库戒律", "Arsenal Discipline",
-                "触发2次弹药点名和1次属性封锁；学习波需至少5次有效开火，并换用未被点名的弹种。",
+                "触发 2 次弹药点名和 1 次属性封锁；学习波至少有效开火 5 次，并换用没被点名的弹药。",
                 "Trigger 2 ammo bans and 1 attribute lock. Fire 5 valid shots per learning wave; use ammo not yet named."),
 
             new ContractDef(IdFinalMinute, ModeGContractFamily.Execution, "FinalMinute",
                 "最终时刻", "Final Minute",
-                "本局完成三次 Last Stand 处决。",
+                "完成 3 次最后处决（每个多 Boss 波各 1 次）。",
                 "Complete three Last Stand executions this run."),
 
             new ContractDef(IdNemesisDenied, ModeGContractFamily.Adaptation, "NemesisDenied",
                 "宿敌否定", "Nemesis Denied",
-                "第3/6/9波均触发弹药点名；三轮学习分别使用未被点名的弹种，每轮至少5次有效开火。",
+                "第 3、6、9 波都触发弹药点名；每轮学习波换用没被点名的弹药，至少有效开火 5 次。",
                 "Trigger bans on waves 3/6/9: fire 5 valid shots with new, unnamed ammo in each learning wave."),
         };
 

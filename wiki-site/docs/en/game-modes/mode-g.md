@@ -12,7 +12,7 @@ The nine waves form three acts. Waves 3, 6, and 9 feature your Nemesis. Losing a
 - **Fate Echo Relic** (sold by the base vending machine)
 - Your current weapons, armor, ammo, consumables, and other equipment stay with you
 - No Banner or Bloodhunt Transponder (those take priority for Faction War / Blood Hunt)
-- Map selection prepays the ticket. The contract page opens after loading; canceling refunds the ticket, and the Relic is consumed only when you confirm entry
+- Map selection prepays the ticket. The contract page opens after loading; pick a contract to enable "Fight Now", or press "Not Now" to back out with the ticket refunded. The Relic is consumed only when you confirm entry
 
 Canceling the confirmation costs nothing. A wave-9 victory returns one Relic. Death, defeat, and an aborted run grant no normal reward.
 

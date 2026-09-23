@@ -993,12 +993,12 @@ namespace BossRush
                 InjectModeGString("BossRush_ModeG_Hud_Targets", "目标", "Targets");
                 InjectModeGString("BossRush_ModeG_Hud_Nemesis", "宿敌", "Nemesis");
 
-                // 入口确认页强制披露（规格 §3.1：死亡损失规则 + 高 Resolve 备装建议）
+                // 入口确认页强制披露（规格 §3.1：死亡损失规则 + 多攒决意的备装建议；中文统一叫「决意」，英文保留 Resolve）
                 InjectModeGString("BossRush_ModeG_Entry_DeathRule",
                     "死亡损失遵循当前地图规则（可能生成墓碑或掉落物品），本模式不提供额外保装。",
                     "Death losses follow this map's own rules (tomb or dropped items). This mode adds no gear insurance.");
                 InjectModeGString("BossRush_ModeG_Entry_LoadoutHint",
-                    "高 Resolve 建议准备三种弹药与近战备用；这些只影响可选 Resolve，不影响通关。",
+                    "想多攒决意，建议备好三种弹药和一把近战武器；不备也能通关，只是决意会少一些。",
                     "For high Resolve bring three ammo types plus a melee backup. These affect optional Resolve only, never the clear.");
 
                 // 宿敌追猎

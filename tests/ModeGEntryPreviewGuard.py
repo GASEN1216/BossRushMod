@@ -7,7 +7,8 @@ ModeGEntryPreviewGuard — Mode G 入口 preview 守卫（规格 §20 第 4 条�
   署名轮换/两个契约候选/scene pair/能力 revision（>=6 项）；
 - ExpirySeconds 冻结 300 秒；过期 preview 不进 Starting；
 - GetOrCreateModeGEntryPreview 对未过期 preview 原样复用（取消重开不刷契约候选）；
-- Entry 拒绝路径不写 Legacy 存档/BossFilter（静态禁止项）。
+- Entry 拒绝路径不写 Legacy 存档/BossFilter（静态禁止项）；
+- 确认页：未选契约时「立即迎战」不可点，取消是免费退出（不用危险色、不叫「放弃」）。
 """
 import os
 import re
@@ -202,6 +203,23 @@ def main():
                 r".*?return presenter\.OpenConfirmPage\(host, preview\);",
                 interactable, re.DOTALL):
             errors.append("[AutomaticEntryPreflight] 自动入口未消费地图/展示/preview 完整预检")
+        # 2026-09-23 确认页重排：没选契约时「立即迎战」不可点（旧版能先点，再弹一条被确认页挡住的提示），
+        # 打开时就按未选状态置灰；取消是免费退出（CloseModal 退回预扣船票），不得用危险色或「放弃」字样——
+        # 局内的「放弃挑战」（ModeGAbandonPresenter）才是不可逆弃局，两者叫同一个名字会吓退玩家。
+        if not re.search(
+                r"private void RefreshStartButton\(\)[\s\S]*?bool ready = _selectedCandidateIndex >= 0;"
+                r"[\s\S]*?_startButton\.interactable = ready;",
+                interactable):
+            errors.append("[StartGatedOnSelection] 未选契约时「立即迎战」必须不可点")
+        if not re.search(
+                r"private bool OpenConfirmPage\(.*?RefreshStartButton\(\);"
+                r".*?ClaimModalInput\(root, \"ModeGConfirmPage\"\)",
+                interactable, re.DOTALL):
+            errors.append("[StartGatedAtOpen] 确认页打开时未按未选状态置灰「立即迎战」")
+        cancel = re.search(r"CreateButton\(\s*\"Cancel\", st,(.*?)\);", interactable, re.DOTALL)
+        if not cancel or "CloseModal" not in cancel.group(1) \
+                or "Danger" in cancel.group(1) or "放弃" in cancel.group(1):
+            errors.append("[CancelIsFreeExit] 确认页取消必须接 CloseModal，且不得用危险色或「放弃」字样")
 
     for flow in ENTRY_FLOWS:
         flow_content = open(flow, "r", encoding="utf-8", errors="replace").read()
