@@ -188,6 +188,8 @@ namespace BossRush
                 pet.Normalize();
                 nest.nameSerial++;
                 nest.pets.Add(pet);
+                // 保底计数与新崽同一个候选包提交：孵化失败回滚时计数也不会白涨。
+                PetNestPity.Advance(nest, pet);
                 if (!PetNestMuseumStats.TryStageHatch(pet))
                 {
                     failureReasonId = "hatch_stats_failed";
@@ -265,40 +267,73 @@ namespace BossRush
         /// </summary>
         internal static bool TryReleasePet(string petId, out string failureReasonId)
         {
+            return TryReleasePets(new[] { petId }, out failureReasonId);
+        }
+
+        /// <summary>
+        /// 批量放生（owner 2026-09-22：「批量放生，可以选中放生而不是要先出战再放生」）。
+        /// 同一个候选包里逐只移出并返还遗魂：要么全部放生、要么一只都不动，
+        /// 不会出现「放了一半、遗魂只退了一半」。任何一只在远征中或已不存在就整批拒绝。
+        /// </summary>
+        internal static bool TryReleasePets(IList<string> petIds, out string failureReasonId)
+        {
             failureReasonId = null;
-            PetNestPetRecord pet = TryGetPet(petId);
-            if (pet == null)
+            List<string> targets = new List<string>();
+            if (petIds != null)
+            {
+                for (int i = 0; i < petIds.Count; i++)
+                {
+                    string id = petIds[i];
+                    if (!string.IsNullOrEmpty(id) && !targets.Contains(id)) targets.Add(id);
+                }
+            }
+            if (targets.Count == 0)
             {
                 failureReasonId = "pet_not_found";
                 return false;
             }
-            if (pet.state == (int)PetNestPetState.OnExpedition)
+            for (int i = 0; i < targets.Count; i++)
             {
-                failureReasonId = "pet_locked_by_expedition";
-                return false;
+                PetNestPetRecord pet = TryGetPet(targets[i]);
+                if (pet == null)
+                {
+                    failureReasonId = "pet_not_found";
+                    return false;
+                }
+                if (pet.state == (int)PetNestPetState.OnExpedition)
+                {
+                    failureReasonId = "pet_locked_by_expedition";
+                    return false;
+                }
             }
 
             try
             {
                 if (!BeginCandidate(out failureReasonId)) return false;
-                pet = TryGetPet(petId);
-                if (pet == null)
-                {
-                    PetNestPersistenceAccess.AbortTransaction();
-                    failureReasonId = "pet_not_found";
-                    return false;
-                }
                 PetNestNestData nest = Nest;
-                string lineageKey = pet.lineageKey;
-
-                PetNestExpeditionService.FreezeAppearanceBeforeRemoval(pet);
-                nest.pets.Remove(pet);
-                bool clearedSeat = string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal);
-                if (clearedSeat)
+                bool clearedSeat = false;
+                for (int i = 0; i < targets.Count; i++)
                 {
-                    nest.deployedPetId = null;
+                    string petId = targets[i];
+                    // 从候选包重新解析实体；候选包与权威内存是两份对象。
+                    PetNestPetRecord pet = TryGetPet(petId);
+                    if (pet == null)
+                    {
+                        PetNestPersistenceAccess.AbortTransaction();
+                        failureReasonId = "pet_not_found";
+                        return false;
+                    }
+                    string lineageKey = pet.lineageKey;
+
+                    PetNestExpeditionService.FreezeAppearanceBeforeRemoval(pet);
+                    nest.pets.Remove(pet);
+                    if (string.Equals(nest.deployedPetId, petId, StringComparison.Ordinal))
+                    {
+                        nest.deployedPetId = null;
+                        clearedSeat = true;
+                    }
+                    AddSouls(lineageKey, PetNestTuning.ReleaseSoulRefund, false);
                 }
-                AddSouls(lineageKey, PetNestTuning.ReleaseSoulRefund, false);
 
                 bool ok = CommitCandidate(out failureReasonId);
                 if (ok && clearedSeat) NotifyDeployedPetChanged();

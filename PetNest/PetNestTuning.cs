@@ -50,6 +50,19 @@ namespace BossRush
         /// </summary>
         internal const float ChromaChance = 0.10f;
 
+        /// <summary>
+        /// 炫彩保底：连续孵出这么多枚都不是炫彩，这一枚必定是炫彩（颜色仍随机）。
+        /// owner 2026-09-22：「开了十几个蛋了都没有炫彩/异色，你应该弄个保底机制吧」。
+        /// 10% 的自然概率不变，保底只兜住运气最差的那一段；实际平均约 6.5 枚一只。
+        /// </summary>
+        internal const int ChromaPityHatches = 10;
+
+        /// <summary>
+        /// 异色保底：连续这么多枚都不是异色，这一枚必定是异色。
+        /// 自然概率 0.4% 不变，「极为稀有」的定位不动，只保证肝到头一定有；实际平均约 80 枚一只。
+        /// </summary>
+        internal const int ShinyPityHatches = 100;
+
         /// <summary>出身天赋条数（孵化即锁定）。</summary>
         internal const int TalentRollCount = 2;
 

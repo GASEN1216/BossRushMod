@@ -31,7 +31,10 @@ Hatching locks in three things at once, **with no rerolls**:
 
 - **Two endowments** — small bonuses to move speed, damage, health, pet backpack slots, and so on
 - **One temperament** — Reckless / Cautious / Lazy / Loyal
-- **Shiny** — an approximately **1.5%** material variant, purely a collector's honour, tracked separately in the index. It grants no stats at all; it's just proof of luck
+- **Shiny** — about **0.4%**, ultra rare. Its name gets a golden "★ Shiny" with a shimmer, and it wears a golden halo and star sparks. Purely a collector's honour, no stats
+- **Chroma** — about **10%**, any two of ten colours (45 pairs). The name shows the pair as a two-colour gradient ("Black-White - Cub") and the cub carries matching particle effects. Rolled independently of shiny; hitting both gives a shiny chroma cub
+
+**Pity**: if 10 hatches in a row are not chroma, the 10th is guaranteed chroma; if 100 in a row are not shiny, the 100th is guaranteed shiny. The counters reset when one appears, and the hatch and nest pages show how many are left.
 
 Temperament affects combat and following as well as personality:
 
@@ -50,7 +53,7 @@ If an egg's bloodline can no longer be identified after a game update, the syste
 - Its damage is a garnish, not a game-changer. The value is pressure, finishing blows, and simply having it there.
 
 #### Scavenging backpack
-While a cub is out with you, the pet backpack travels with it. A deployed cub adds **4 slots** to your own pet-capacity stat, with further slots from levels, endowments and the Lazy temperament.
+The slots go onto the **official pet backpack**: when the deployed cub joins a BossRush-family raid (the three standard difficulties, From Scratch, Faction War, Blood Hunt), the official pet backpack gets **+4 slots**, with further slots from levels, endowments and the Lazy temperament. Open the pet backpack during the raid to see them; they do not apply in the base or in normal raids, and are removed if the cub is carried off. The nest page shows how many slots the current deployed cub adds.
 
 #### While you are there, it does not die
 - A downed cub **does not die**. It is **carried off wounded**: out for the rest of the run, restored when you return to base.
@@ -65,7 +68,7 @@ While a cub is out with you, the pet backpack travels with it. A deployed cub ad
   - Fate Echo: a grudge between two has no room for a third
   - Zombie Mode: it runs its own lifecycle and rewards
   - Black Market Duck Cup: pet deployment is disabled, including during an ERROR control swap
-- **Base**: cubs idle around the nest, up to 3 at once
+- **Base**: only the deployed cub idles around the nest
 
 ### Disaster Expeditions
 
@@ -122,7 +125,8 @@ Cubs grow by working with you, capping at level 10 ("Adult"), after which they s
 ### Nest capacity and releasing
 
 - **The nest starts with 12 places.** It expands by +4 each time your index reaches 10 / 20 / 30 unlocked bloodlines, up to 24.
-- **Releasing** — pick a cub on the nest page and release it to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released. This is the predictable way to make room when the nest is full, instead of gambling a Desperate expedition and waiting for a cub to die.
+- **Releasing** — click a cub's card on the nest page to select it (no need to deploy it first), then release it to get back 60 relic souls of its bloodline. Releasing is permanent and the cub is not memorialized; a cub away on an expedition cannot be released. This is the predictable way to make room when the nest is full, instead of gambling a Desperate expedition and waiting for a cub to die.
+- **Batch release** — "Batch release..." on the nest page switches to ticking mode: click cards to tick or untick, or tick every releasable cub at once; confirm to release them all in one go, 60 souls back per cub.
 
 ### Tips
 - Souls exist only to condense eggs. Bank **240** of one bloodline and you can target that boss's egg directly — unlucky players can still complete the index.

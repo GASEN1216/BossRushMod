@@ -16,7 +16,9 @@
 //   - **零 Unity 依赖**：粒子色用 (r,g,b) 三个 float 描述，转 Color 由表现层自己做。
 //     这样本文件可以和 PetNestModels 一样被 guard / 离线夹具直接推理。
 //   - 文字色是**实测可读的那一档**，不是「颜色本身」：黑在深色面板上是看不见的，
-//     所以 Black 的文字色取浅灰。粒子色才用真实颜色。
+//     所以 Black 的文字色取深灰（#858B95，对卡片底约 5.2:1）。2026-09-22 之前取的是浅灰 #B9BEC6，
+//     和白几乎一样亮，「黑白」渐变看上去就是一片白（owner 复查原需求时指出）；压到仍过 4.5:1 的
+//     最深一档，黑白两端才看得出明暗。粒子色才用真实颜色。
 //   - 调色板 id 是**存档兼容面**：发布后只增不改、不复用（存进 PetNestPetRecord.chromaA/B）。
 // ============================================================================
 
@@ -52,7 +54,7 @@ namespace BossRush
         /// </summary>
         private static readonly PetNestChromaColor[] Palette =
         {
-            Make("black",  "黑", "Black",   0.08f, 0.08f, 0.10f, "#B9BEC6"),
+            Make("black",  "黑", "Black",   0.08f, 0.08f, 0.10f, "#858B95"),
             Make("white",  "白", "White",   1.00f, 1.00f, 1.00f, "#FFFFFF"),
             Make("red",    "赤", "Crimson", 0.95f, 0.22f, 0.22f, "#FF8A80"),
             Make("orange", "橙", "Amber",   1.00f, 0.55f, 0.12f, "#FFB74D"),

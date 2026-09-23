@@ -418,6 +418,7 @@ class Program
     {
         CampaignCash(); DailyCash(); OfficialStickySaving(); Condense(); Hatch(); PetNestAchievements(); Meals(); ExpeditionEggIdentity(); ShowcaseSnapshot();
         ManualChromaAndDurations();
+        PityGuarantees();
         PetNestLifecycleRepairs();
         Console.WriteLine("ContentTransactions: " + checks + " assertions passed");
     }
@@ -436,6 +437,50 @@ class Program
             if (!inTag) sb.Append(c);
         }
         return sb.ToString();
+    }
+
+    // 2026-09-22 owner：「开了十几个蛋都没有炫彩/异色，弄个保底」。走生产的凝蛋事务，
+    // 随机数钉在不会自然命中的 0.99，只看保底本身。
+    static void PityGuarantees()
+    {
+        PetNestHatchResult result; string error;
+        Reset(); UnityEngine.Random.value = .99f;
+        var bundle = PetNestCodec.CreateDefaultBundle();
+        bundle.nest.soulLedger.Add(new PetNestSoulLedgerEntry { lineageKey = "test", souls = PetNestTuning.SoulsPerCondensedEgg * 20 });
+        SavesSystem.Save(PetNestTuning.BundleStorageKey, PetNestCodec.EncodeBundle(bundle));
+        for (int i = 1; i < PetNestTuning.ChromaPityHatches; i++)
+        {
+            Check(PetNestHatchService.TryCondenseAndHatch("test", out result, out error)
+                && !PetNestChroma.HasChroma(result.Pet) && !result.Pet.shiny, "unlucky hatch " + i + " has no natural chroma");
+        }
+        Check(PetNestService.Nest.hatchesSinceChroma == PetNestTuning.ChromaPityHatches - 1,
+            "pity counter counts every committed plain hatch");
+        Check(PetNestHatchService.TryCondenseAndHatch("test", out result, out error) && PetNestChroma.HasChroma(result.Pet),
+            "the tenth hatch without chroma is guaranteed chroma");
+        // 同一帧里的连续提交会被写盘节流合并，这里按权威内存 + 编解码往返核对（不读节流中的磁盘副本）
+        var roundTrip = PetNestCodec.DecodeNest(BossRushJsonParser.ParseOrNull(PetNestCodec.EncodeNest(PetNestService.Nest)));
+        Check(PetNestService.Nest.hatchesSinceChroma == 0 && roundTrip.hatchesSinceChroma == 0
+            && roundTrip.hatchesSinceShiny == PetNestTuning.ChromaPityHatches,
+            "chroma pity resets while the shiny counter keeps counting, both survive a save round trip");
+
+        while (PetNestService.PetCount < PetNestService.Capacity)
+            Check(PetNestHatchService.TryCondenseAndHatch("test", out result, out error), "fill the nest");
+        int chromaBefore = PetNestService.Nest.hatchesSinceChroma, shinyBefore = PetNestService.Nest.hatchesSinceShiny;
+        Check(!PetNestHatchService.TryCondenseAndHatch("test", out result, out error) && error == "nest_full"
+            && PetNestService.Nest.hatchesSinceChroma == chromaBefore && PetNestService.Nest.hatchesSinceShiny == shinyBefore,
+            "a rejected hatch does not advance pity");
+
+        Check(!PetNestPity.ForceShiny(PetNestTuning.ShinyPityHatches - 2) && PetNestPity.ForceShiny(PetNestTuning.ShinyPityHatches - 1)
+            && PetNestPity.RemainingUntilGuaranteed(0, PetNestTuning.ShinyPityHatches) == PetNestTuning.ShinyPityHatches
+            && PetNestPity.RemainingUntilGuaranteed(PetNestTuning.ShinyPityHatches + 5, PetNestTuning.ShinyPityHatches) == 1,
+            "shiny pity triggers exactly on the last hatch of the window");
+        var shinyPet = new PetNestPetRecord { id = "s", lineageKey = "test", shiny = true };
+        var counters = new PetNestNestData { hatchesSinceChroma = 3, hatchesSinceShiny = 40 };
+        PetNestPity.Advance(counters, shinyPet);
+        Check(counters.hatchesSinceShiny == 0 && counters.hatchesSinceChroma == 4, "a shiny hatch resets only the shiny counter");
+
+        var legacy = PetNestCodec.DecodeNest(BossRushJsonParser.ParseOrNull("{\"capacity\":12,\"nameSerial\":3,\"pets\":[],\"soulLedger\":[]}"));
+        Check(legacy.hatchesSinceChroma == 0 && legacy.hatchesSinceShiny == 0, "old saves without pity fields start from zero");
     }
 
     static void ManualChromaAndDurations()

@@ -465,6 +465,13 @@ namespace BossRush
             button.colors = colors;
             button.transition = Selectable.Transition.ColorTint;
             button.targetGraphic = graphic;
+            // 赋 colors 会触发一次 0.08 秒的非即时过渡，起点是 OnEnable 时按默认 ColorBlock 定下的白色：
+            // 新建或整页重建的按钮都会先白一下再变回底色（审核 F-21；遗种巢点出战/放生「闪一下」，2026-09-22 实测）。
+            // 这里直接把当前底色即时写进去，后续悬停/按下照常走 ColorTint 过渡。
+            if (graphic != null)
+            {
+                graphic.CrossFadeColor(button.IsInteractable() ? normalColor : disabledColor, 0f, true, true);
+            }
 
             // 共享按钮的标签跟着底色走，否则改完配色会留下亮底白字。
             // 只认 CreateButton 建的那个名为 "Text" 的 TMP 子物体，

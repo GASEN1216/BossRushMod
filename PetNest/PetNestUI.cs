@@ -53,6 +53,14 @@ namespace BossRush
         private string _selectedPetId;
         private readonly List<GameObject> _spawned = new List<GameObject>();
 
+        // 批量放生：勾选集合只活在面板里，关面板或切页即丢弃（owner 2026-09-22 要批量放生）。
+        private bool _batchMode;
+        private readonly HashSet<string> _batchSelection = new HashSet<string>();
+
+        // 同一页重绘时保住滚动位置：点出战 / 勾选之后列表跳回顶部，看起来就是「闪一下」。
+        private bool _hasRendered;
+        private PetNestUIPage _lastRenderedPage;
+
         #endregion
 
         #region 打开 / 关闭
@@ -212,7 +220,7 @@ namespace BossRush
                     new Vector2(0.5f, 0.5f),
                     new Vector2(-420f + i * 200f, 268f), new Vector2(190f, 44f),
                     BossRushUIColors.SurfaceRaised, 20f, new Vector2(180f, 40f),
-                    delegate { _page = page; PetNestUIPages.ClearFailure(); Refresh(); }, true);
+                    delegate { _page = page; _batchMode = false; _batchSelection.Clear(); PetNestUIPages.ClearFailure(); Refresh(); }, true);
                 _tabs[page] = tab;
             }
         }
@@ -225,6 +233,10 @@ namespace BossRush
         {
             try
             {
+                RectTransform contentRect = _contentRoot as RectTransform;
+                bool keepScroll = _hasRendered && _lastRenderedPage == _page && contentRect != null;
+                float previousScroll = keepScroll ? contentRect.anchoredPosition.y : 0f;
+                PruneBatchSelection();
                 ClearSpawned();
                 foreach (KeyValuePair<PetNestUIPage, Button> pair in _tabs)
                 {
@@ -306,8 +318,21 @@ namespace BossRush
                 }
                 _actionRoot.parent.gameObject.SetActive(hasActions);
                 Canvas.ForceUpdateCanvases();
-                _contentRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+                if (keepScroll)
+                {
+                    // 同页重绘（出战、勾选、放生后）：留在原来看的位置，按新内容高度夹住
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+                    float maxScroll = Mathf.Max(0f, contentRect.rect.height - viewport.rect.height);
+                    contentRect.anchoredPosition = new Vector2(
+                        contentRect.anchoredPosition.x, Mathf.Clamp(previousScroll, 0f, maxScroll));
+                }
+                else
+                {
+                    _contentRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+                }
                 _actionRoot.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+                _hasRendered = true;
+                _lastRenderedPage = _page;
             }
             catch (Exception e)
             {
@@ -365,9 +390,49 @@ namespace BossRush
                 case PetNestUIPage.Museum:
                     return PetNestUIPages.BuildMuseumPage();
                 default:
-                    return PetNestUIPages.BuildNestPage(
-                        Refresh, ResolveSelectedPetId(), SelectPet, OpenRename, OpenRelease);
+                    PetNestNestPageContext context = new PetNestNestPageContext();
+                    context.SelectedPetId = ResolveSelectedPetId();
+                    context.BatchMode = _batchMode;
+                    context.BatchSelection = _batchSelection;
+                    context.Refresh = Refresh;
+                    context.Select = SelectPet;
+                    context.Rename = OpenRename;
+                    context.Release = OpenRelease;
+                    context.SetBatchMode = SetBatchMode;
+                    context.ToggleBatch = ToggleBatch;
+                    return PetNestUIPages.BuildNestPage(context);
             }
+        }
+
+        /// <summary>进 / 出批量放生模式。进出都清空勾选，避免上一次的勾选残留。</summary>
+        private void SetBatchMode(bool enabled)
+        {
+            _batchMode = enabled;
+            _batchSelection.Clear();
+            PetNestUIPages.ClearFailure();
+            Refresh();
+        }
+
+        private void ToggleBatch(string petId)
+        {
+            if (string.IsNullOrEmpty(petId)) return;
+            if (!_batchSelection.Remove(petId)) _batchSelection.Add(petId);
+        }
+
+        /// <summary>放生、远征之后已经不在巢里 / 远征中的崽从勾选里剔掉。</summary>
+        private void PruneBatchSelection()
+        {
+            if (_batchSelection.Count == 0) return;
+            List<string> stale = null;
+            foreach (string id in _batchSelection)
+            {
+                PetNestPetRecord pet = PetNestService.TryGetPet(id);
+                if (pet != null && pet.state != (int)PetNestPetState.OnExpedition) continue;
+                if (stale == null) stale = new List<string>();
+                stale.Add(id);
+            }
+            if (stale == null) return;
+            for (int i = 0; i < stale.Count; i++) _batchSelection.Remove(stale[i]);
         }
 
         /// <summary>选中一只崽作为远征目标。</summary>
@@ -382,10 +447,10 @@ namespace BossRush
             PetNestRenameModal.Open(petId, Refresh);
         }
 
-        /// <summary>打开放生确认弹窗。关闭后刷新面板，让列表与遗魂账本立刻同步。</summary>
-        private void OpenRelease(string petId)
+        /// <summary>打开放生确认弹窗（单只或批量）。关闭后刷新面板，让列表与遗魂账本立刻同步。</summary>
+        private void OpenRelease(IList<string> petIds)
         {
-            PetNestReleaseConfirmModal.Open(petId, Refresh);
+            PetNestReleaseConfirmModal.Open(petIds, Refresh);
         }
 
         /// <summary>
@@ -488,18 +553,53 @@ namespace BossRush
         {
             if (data == null) return;
 
-            // 选中态（远征目标）用 Warning 描边点出来，否则玩家无从判断"派的是哪只"
-            Color accent = data.Selected
-                ? BossRushUIColors.Warning
-                : (data.Shiny
-                    ? BossRushUIColors.RarityLegendary
-                    : (data.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent));
+            // 左侧色条是这只崽的身份色：异色金、炫彩取第一色（第二色另画一条），其余照旧
+            Color accent;
+            bool chroma = TryParseHexColor(data.ChromaHexA, out accent)
+                && !string.IsNullOrEmpty(data.ChromaHexB);
+            if (data.Shiny) accent = BossRushUIColors.RarityLegendary;
+            else if (!chroma) accent = data.IsDanger ? BossRushUIColors.Danger : BossRushUIColors.Accent;
 
             GameObject card = BossRushUI.CreateCard(
                 "Card", _contentRoot, Vector2.zero, CardSize,
                 BossRushUIColors.SurfaceRaised, accent, true);
             SetLayoutHeight(card, CardSize.y);
             _spawned.Add(card);
+
+            Color second;
+            if (chroma && TryParseHexColor(data.ChromaHexB, out second))
+            {
+                GameObject rail = ZombieModeUIHelper.CreateRect(
+                    "Card_Accent2", card.transform,
+                    new Vector2(0f, 0f), new Vector2(0f, 1f),
+                    new Vector2(8f, 0f), new Vector2(4f, -12f), new Vector2(0f, 0.5f));
+                Image railImage = rail.AddComponent<Image>();
+                railImage.color = second;
+                BossRushUI.ApplyPanelSkin(railImage, 2, BossRushUISkinPart.Hairline);
+                railImage.raycastTarget = false;
+            }
+
+            // 选中态用描边点出来（选中 = 远征 / 放生目标；批量模式下 = 已勾选），
+            // 否则玩家无从判断「作用在哪只」。描边是 CreateCard 建的 Stroke 子物体。
+            if (data.Selected)
+            {
+                Transform stroke = card.transform.Find("Stroke");
+                Image strokeImage = stroke != null ? stroke.GetComponent<Image>() : null;
+                if (strokeImage != null) strokeImage.color = BossRushUIColors.WarningText;
+            }
+
+            // 点卡片本身 = 选中 / 勾选。卡上的按钮在更上层，点按钮不会触发卡片。
+            if (data.OnCardClick != null)
+            {
+                Image surface = card.GetComponent<Image>();
+                Button cardButton = card.AddComponent<Button>();
+                cardButton.targetGraphic = surface;
+                cardButton.transition = Selectable.Transition.None;
+                Navigation navigation = cardButton.navigation;
+                navigation.mode = Navigation.Mode.None;
+                cardButton.navigation = navigation;
+                cardButton.onClick.AddListener(new UnityEngine.Events.UnityAction(data.OnCardClick));
+            }
 
             TextMeshProUGUI title = ZombieModeUIHelper.CreateText(
                 "Title", card.transform, data.Title, 24f,
@@ -509,6 +609,8 @@ namespace BossRush
             title.rectTransform.pivot = new Vector2(0f, 1f);
             title.margin = Vector4.zero;
             BossRushUI.ApplyGameFont(title);
+            // 异色的「小特效」：金字上走一道流光（owner 2026-09-20 / 09-22）
+            if (data.Shiny) PetNestShinyTextShimmer.Attach(title);
 
             if (!string.IsNullOrEmpty(data.Subtitle))
             {
@@ -586,6 +688,15 @@ namespace BossRush
             }
         }
 
+        private static bool TryParseHexColor(string hex, out Color color)
+        {
+            color = Color.white;
+            int r, g, b;
+            if (!PetNestChroma.TryParseHex(hex, out r, out g, out b)) return false;
+            color = new Color(r / 255f, g / 255f, b / 255f, 1f);
+            return true;
+        }
+
         #endregion
 
         #region 清理
@@ -597,5 +708,106 @@ namespace BossRush
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// 异色名字的流光：金字上周期性扫过一道亮带（owner：异色「金灿灿的字并带点小特效」）。
+    /// 只挂在面板里异色卡片的标题上，随卡片销毁；暂停时不动。每帧只改顶点色，
+    /// 不重排版、不分配（基色缓存按字符数失效）。
+    /// </summary>
+    internal sealed class PetNestShinyTextShimmer : MonoBehaviour
+    {
+        private const float SweepSeconds = 1.4f;
+        private const float RestSeconds = 1.6f;
+        private const float BandHalfWidth = 0.18f;
+        private const float MaxGlow = 0.7f;
+
+        private TMP_Text _text;
+        private Color32[][] _baseColors;
+        private int _cachedCharacterCount = -1;
+        private float _phase;
+
+        internal static void Attach(TMP_Text text)
+        {
+            if (text == null || text.GetComponent<PetNestShinyTextShimmer>() != null) return;
+            text.gameObject.AddComponent<PetNestShinyTextShimmer>();
+        }
+
+        private void Awake()
+        {
+            _text = GetComponent<TMP_Text>();
+        }
+
+        private void LateUpdate()
+        {
+            try
+            {
+                if (_text == null || BossRushUI.IsGamePaused()) return;
+                _phase += Time.unscaledDeltaTime;
+                float cycle = SweepSeconds + RestSeconds;
+                if (_phase >= cycle) _phase -= cycle;
+
+                TMP_TextInfo info = _text.textInfo;
+                if (info == null) return;
+                if (_baseColors == null || _cachedCharacterCount != info.characterCount)
+                {
+                    _text.ForceMeshUpdate();
+                    info = _text.textInfo;
+                    CacheBaseColors(info);
+                }
+                if (info.characterCount == 0 || _baseColors == null) return;
+
+                // 亮带从左扫到右（按整行宽度归一化），扫完休息一会儿再来
+                float sweep = _phase <= SweepSeconds ? _phase / SweepSeconds : -1f;
+                float left = float.MaxValue, right = float.MinValue;
+                for (int i = 0; i < info.characterCount; i++)
+                {
+                    TMP_CharacterInfo c = info.characterInfo[i];
+                    if (!c.isVisible) continue;
+                    if (c.bottomLeft.x < left) left = c.bottomLeft.x;
+                    if (c.topRight.x > right) right = c.topRight.x;
+                }
+                float width = Mathf.Max(1f, right - left);
+                float center = left + (sweep * (1f + BandHalfWidth * 2f) - BandHalfWidth) * width;
+
+                for (int i = 0; i < info.characterCount; i++)
+                {
+                    TMP_CharacterInfo c = info.characterInfo[i];
+                    if (!c.isVisible) continue;
+                    int material = c.materialReferenceIndex;
+                    if (material >= _baseColors.Length || material >= info.meshInfo.Length) continue;
+                    Color32[] source = _baseColors[material];
+                    Color32[] target = info.meshInfo[material].colors32;
+                    int vertex = c.vertexIndex;
+                    if (source == null || target == null || vertex + 3 >= source.Length || vertex + 3 >= target.Length) continue;
+                    float x = (c.bottomLeft.x + c.topRight.x) * 0.5f;
+                    float glow = sweep < 0f ? 0f
+                        : Mathf.Clamp01(1f - Mathf.Abs(x - center) / (BandHalfWidth * width)) * MaxGlow;
+                    for (int k = 0; k < 4; k++)
+                    {
+                        Color32 baseColor = source[vertex + k];
+                        Color32 lit = new Color32(255, 250, 225, baseColor.a);
+                        target[vertex + k] = Color32.Lerp(baseColor, lit, glow);
+                    }
+                }
+                _text.UpdateVertexData(TMP_VertexDataUpdateFlags.Colors32);
+            }
+            catch (Exception)
+            {
+                // 纯表现层：出错就停在基色，不影响面板
+                enabled = false;
+            }
+        }
+
+        private void CacheBaseColors(TMP_TextInfo info)
+        {
+            _cachedCharacterCount = info.characterCount;
+            _baseColors = new Color32[info.meshInfo.Length][];
+            for (int i = 0; i < info.meshInfo.Length; i++)
+            {
+                Color32[] colors = info.meshInfo[i].colors32;
+                _baseColors[i] = colors != null ? (Color32[])colors.Clone() : null;
+            }
+        }
     }
 }

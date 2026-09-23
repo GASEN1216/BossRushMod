@@ -165,8 +165,12 @@ namespace BossRush
 
                 // 异色（极为稀有）与炫彩（任意两色搭配）。两者独立 roll：
                 // 异色的炫彩崽是双稀有，名字与光环都会同时体现。
-                pet.shiny = UnityEngine.Random.value < PetNestTuning.ShinyChance;
-                if (UnityEngine.Random.value < PetNestTuning.ChromaChance)
+                // 保底读已提交的计数；计数本身只在孵化事务里推进（PetNestService.TryCommitHatch）。
+                PetNestNestData committed = PetNestService.Nest;
+                pet.shiny = PetNestPity.ForceShiny(committed.hatchesSinceShiny)
+                    || UnityEngine.Random.value < PetNestTuning.ShinyChance;
+                if (PetNestPity.ForceChroma(committed.hatchesSinceChroma)
+                    || UnityEngine.Random.value < PetNestTuning.ChromaChance)
                 {
                     PetNestChroma.RollPair(
                         UnityEngine.Random.value, UnityEngine.Random.value,
@@ -429,5 +433,37 @@ namespace BossRush
         }
 
         #endregion
+    }
+
+    /// <summary>
+    /// 炫彩 / 异色保底（纯规则，无状态）。计数存在巢数据里，孵化事务里推进；
+    /// roll 前读已提交的计数判断「这一枚是不是保底枚」。
+    /// </summary>
+    internal static class PetNestPity
+    {
+        /// <summary>已经连续 N-1 枚不是炫彩，这一枚就是第 N 枚：必出。</summary>
+        internal static bool ForceChroma(int hatchesSinceChroma)
+        {
+            return hatchesSinceChroma >= PetNestTuning.ChromaPityHatches - 1;
+        }
+
+        internal static bool ForceShiny(int hatchesSinceShiny)
+        {
+            return hatchesSinceShiny >= PetNestTuning.ShinyPityHatches - 1;
+        }
+
+        /// <summary>最多再孵几枚必出（含必出的那一枚），至少 1。</summary>
+        internal static int RemainingUntilGuaranteed(int hatchesSince, int pityHatches)
+        {
+            return Math.Max(1, pityHatches - Math.Max(0, hatchesSince));
+        }
+
+        /// <summary>新崽入巢后推进计数：出了就清零，没出就 +1。</summary>
+        internal static void Advance(PetNestNestData nest, PetNestPetRecord pet)
+        {
+            if (nest == null || pet == null) return;
+            nest.hatchesSinceChroma = PetNestChroma.HasChroma(pet) ? 0 : nest.hatchesSinceChroma + 1;
+            nest.hatchesSinceShiny = pet.shiny ? 0 : nest.hatchesSinceShiny + 1;
+        }
     }
 }

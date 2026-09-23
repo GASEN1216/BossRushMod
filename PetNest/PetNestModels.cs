@@ -280,12 +280,18 @@ namespace BossRush
         public int capacity;
         /// <summary>命名序号（生成默认名用）。</summary>
         public int nameSerial;
+        /// <summary>保底计数：距上一只炫彩连续孵了几枚（旧档缺省 0）。</summary>
+        public int hatchesSinceChroma;
+        /// <summary>保底计数：距上一只异色连续孵了几枚（旧档缺省 0）。</summary>
+        public int hatchesSinceShiny;
 
         /// <summary>容器兜底，反序列化后必须调用。</summary>
         public void Normalize()
         {
             if (pets == null) pets = new List<PetNestPetRecord>();
             if (soulLedger == null) soulLedger = new List<PetNestSoulLedgerEntry>();
+            if (hatchesSinceChroma < 0) hatchesSinceChroma = 0;
+            if (hatchesSinceShiny < 0) hatchesSinceShiny = 0;
             for (int i = 0; i < pets.Count; i++)
             {
                 if (pets[i] != null) pets[i].Normalize();
@@ -300,6 +306,8 @@ namespace BossRush
             clone.deployedPetId = deployedPetId;
             clone.capacity = capacity;
             clone.nameSerial = nameSerial;
+            clone.hatchesSinceChroma = hatchesSinceChroma;
+            clone.hatchesSinceShiny = hatchesSinceShiny;
 
             clone.pets = new List<PetNestPetRecord>(pets != null ? pets.Count : 0);
             if (pets != null)

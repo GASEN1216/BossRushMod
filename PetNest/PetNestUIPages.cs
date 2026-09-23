@@ -52,8 +52,31 @@ namespace BossRush
         public Action OnSecondary;
         /// <summary>次动作按钮文案。</summary>
         public string SecondaryLabel;
-        /// <summary>该卡是否处于选中态（远征目标）。</summary>
+        /// <summary>该卡是否处于选中态（远征目标 / 放生目标 / 批量勾选）。</summary>
         public bool Selected;
+        /// <summary>点卡片本身（不是按钮）的回调：选中 / 批量勾选；null 表示卡片不可点。</summary>
+        public Action OnCardClick;
+        /// <summary>炫彩两色（面板可读色 #RRGGBB）；非炫彩为 null。卡片左侧色条用。</summary>
+        public string ChromaHexA;
+        public string ChromaHexB;
+    }
+
+    /// <summary>
+    /// 巢页的交互状态与回调。面板（PetNestUI）持有状态，这里只读；
+    /// 放进一个对象而不是把七八个参数排成一串，避免参数顺序错位。
+    /// </summary>
+    internal sealed class PetNestNestPageContext
+    {
+        public string SelectedPetId;
+        /// <summary>批量放生模式：点卡片是勾选 / 取消勾选，而不是选中单只。</summary>
+        public bool BatchMode;
+        public HashSet<string> BatchSelection;
+        public Action Refresh;
+        public Action<string> Select;
+        public Action<string> Rename;
+        public Action<IList<string>> Release;
+        public Action<bool> SetBatchMode;
+        public Action<string> ToggleBatch;
     }
 
     /// <summary>一个底部动作按钮。</summary>
@@ -124,22 +147,22 @@ namespace BossRush
         #region 巢
 
         /// <summary>巢页：崽列表 + 出战席位 + 遗魂账本摘要。</summary>
-        internal static PetNestPageContent BuildNestPage(
-            Action refresh, string selectedPetId, Action<string> select, Action<string> rename,
-            Action<string> release)
+        internal static PetNestPageContent BuildNestPage(PetNestNestPageContext ctx)
         {
             PetNestPageContent page = new PetNestPageContent();
             page.Title = T("Page_Nest");
+            Action refresh = ctx.Refresh;
 
             List<PetNestPetRecord> pets = PetNestService.Pets;
-            page.Body = L10n.T("巢容量", "Nest capacity") + " " + pets.Count + " / " + PetNestService.Capacity;
+            page.Body = L10n.T("巢容量", "Nest capacity") + " " + pets.Count + " / " + PetNestService.Capacity
+                + DescribeRarityCounts(pets);
 
             string deployedId = PetNestService.Nest.deployedPetId;
             for (int i = 0; i < pets.Count; i++)
             {
                 PetNestPetRecord pet = pets[i];
                 if (pet == null) continue;
-                page.Cards.Add(BuildPetCard(pet, deployedId, selectedPetId, refresh, select, rename));
+                page.Cards.Add(BuildPetCard(pet, deployedId, ctx));
             }
 
             if (pets.Count == 0)
@@ -161,14 +184,23 @@ namespace BossRush
                     page.Lines.Add(T("SystemDesc"));
                 }
             }
+            else if (ctx.BatchMode)
+            {
+                page.Notice = L10n.T("批量放生：点崽的卡片勾选或取消，远征中的崽不能放生。",
+                    "Batch release: click cards to tick or untick. Cubs on an expedition cannot be released.");
+            }
             else
             {
-                PetNestPetRecord selected = PetNestService.TryGetPet(selectedPetId);
+                PetNestPetRecord selected = PetNestService.TryGetPet(ctx.SelectedPetId);
                 page.Lines.Add(selected != null
-                    ? L10n.T("远征目标：", "Expedition target: ") + PetNestService.GetDecoratedPetName(selected)
-                    : L10n.T("点「设为出战」或「改名」都会顺手把这只崽选为远征目标。",
-                        "Deploying or renaming a cub also picks it as the expedition target."));
+                    ? L10n.T("当前选中：", "Selected: ") + PetNestService.GetDecoratedPetName(selected)
+                        + L10n.T("（远征、放生都作用于它）", " (expeditions and release act on it)")
+                    : L10n.T("点崽的卡片即可选中它，远征与放生都作用于选中的崽。",
+                        "Click a cub's card to select it; expeditions and release act on the selected cub."));
             }
+
+            AppendCompanionSlotLine(page);
+            page.Lines.Add(DescribePity());
 
             // 巢满时的扩建提示：容量由图鉴解锁数派生，数字取自 Tuning 避免两套真相
             int[] milestones = PetNestTuning.NestCapacityMilestoneLineageCounts;
@@ -178,6 +210,12 @@ namespace BossRush
                 page.Lines.Add(T("CapacityMilestoneHint") + " ("
                     + PetNestMuseumStats.UnlockedLineageCount + " / "
                     + ResolveNextCapacityMilestone(milestones) + ")");
+            }
+
+            if (ctx.BatchMode)
+            {
+                AppendBatchActions(page, ctx);
+                return page;
             }
 
             page.Actions.Add(new PetNestActionData
@@ -194,21 +232,130 @@ namespace BossRush
 
             // 放生：巢满时唯一可预期的腾位手段（此前只能押亡命远征的死亡率等崽死）。
             // 不可逆，因此走确认弹窗；远征锁定期间禁用（服务层也会再拒一次）。
-            PetNestPetRecord releaseTarget = PetNestService.TryGetPet(selectedPetId);
+            // 点卡片选中即可放生，不必先设为出战（owner 2026-09-22）。
+            PetNestPetRecord releaseTarget = PetNestService.TryGetPet(ctx.SelectedPetId);
+            string releaseTargetId = releaseTarget != null ? releaseTarget.id : null;
             page.Actions.Add(new PetNestActionData
             {
                 Label = T("Release_Action") + (releaseTarget != null
                     ? " · " + PetNestService.GetDecoratedPetName(releaseTarget)
                     : string.Empty),
                 IsDanger = true,
-                Interactable = release != null && releaseTarget != null
+                Interactable = ctx.Release != null && releaseTarget != null
                     && releaseTarget.state != (int)PetNestPetState.OnExpedition,
                 OnClick = delegate
                 {
-                    if (release != null) release(selectedPetId);
+                    if (ctx.Release != null && releaseTargetId != null) ctx.Release(new[] { releaseTargetId });
                 },
             });
+
+            if (pets.Count > 1)
+            {
+                page.Actions.Add(new PetNestActionData
+                {
+                    Label = L10n.T("批量放生…", "Batch release..."),
+                    Interactable = ctx.SetBatchMode != null,
+                    OnClick = delegate { if (ctx.SetBatchMode != null) ctx.SetBatchMode(true); },
+                });
+            }
             return page;
+        }
+
+        /// <summary>批量放生模式的底部动作：放生已勾选 / 全选或全不选 / 退出。</summary>
+        private static void AppendBatchActions(PetNestPageContent page, PetNestNestPageContext ctx)
+        {
+            List<string> picked = new List<string>();
+            List<string> releasable = new List<string>();
+            List<PetNestPetRecord> pets = PetNestService.Pets;
+            for (int i = 0; i < pets.Count; i++)
+            {
+                PetNestPetRecord pet = pets[i];
+                if (pet == null || pet.state == (int)PetNestPetState.OnExpedition) continue;
+                releasable.Add(pet.id);
+                if (ctx.BatchSelection != null && ctx.BatchSelection.Contains(pet.id)) picked.Add(pet.id);
+            }
+
+            int refund = PetNestTuning.ReleaseSoulRefund * picked.Count;
+            page.Actions.Add(new PetNestActionData
+            {
+                Label = L10n.T("放生已勾选的 " + picked.Count + " 只（返还遗魂 +" + refund + "）",
+                    "Release " + picked.Count + " ticked cubs (+" + refund + " souls)"),
+                IsDanger = true,
+                Interactable = picked.Count > 0 && ctx.Release != null,
+                OnClick = delegate { if (ctx.Release != null && picked.Count > 0) ctx.Release(picked); },
+            });
+
+            bool allPicked = releasable.Count > 0 && picked.Count == releasable.Count;
+            page.Actions.Add(new PetNestActionData
+            {
+                Label = allPicked
+                    ? L10n.T("全部取消勾选", "Untick all")
+                    : L10n.T("勾选全部可放生的崽", "Tick every releasable cub"),
+                Interactable = releasable.Count > 0 && ctx.ToggleBatch != null,
+                OnClick = delegate
+                {
+                    if (ctx.ToggleBatch == null) return;
+                    for (int i = 0; i < releasable.Count; i++)
+                    {
+                        bool ticked = ctx.BatchSelection != null && ctx.BatchSelection.Contains(releasable[i]);
+                        if (ticked == allPicked) ctx.ToggleBatch(releasable[i]);
+                    }
+                    if (ctx.Refresh != null) ctx.Refresh();
+                },
+            });
+
+            page.Actions.Add(new PetNestActionData
+            {
+                Label = L10n.T("退出批量放生", "Leave batch release"),
+                OnClick = delegate { if (ctx.SetBatchMode != null) ctx.SetBatchMode(false); },
+            });
+        }
+
+        /// <summary>「炫彩 N 只 · 异色 M 只」小计；两者都没有时不写，避免一行零。</summary>
+        private static string DescribeRarityCounts(List<PetNestPetRecord> pets)
+        {
+            int chroma = 0, shiny = 0;
+            for (int i = 0; i < pets.Count; i++)
+            {
+                if (pets[i] == null) continue;
+                if (PetNestChroma.HasChroma(pets[i])) chroma++;
+                if (pets[i].shiny) shiny++;
+            }
+            if (chroma == 0 && shiny == 0) return string.Empty;
+            return L10n.T("  ·  炫彩 " + chroma + " 只  ·  异色 " + shiny + " 只",
+                "  ·  Chroma " + chroma + "  ·  Shiny " + shiny);
+        }
+
+        /// <summary>保底进度：最多再孵几枚必出炫彩 / 异色（巢页、孵化页共用）。</summary>
+        internal static string DescribePity()
+        {
+            PetNestNestData nest = PetNestService.Nest;
+            int chroma = PetNestPity.RemainingUntilGuaranteed(nest.hatchesSinceChroma, PetNestTuning.ChromaPityHatches);
+            int shiny = PetNestPity.RemainingUntilGuaranteed(nest.hatchesSinceShiny, PetNestTuning.ShinyPityHatches);
+            return L10n.T("保底：最多再孵 " + chroma + " 枚必出炫彩，最多再孵 " + shiny + " 枚必出异色（出了就重新计数）。",
+                "Pity: a chroma cub within " + chroma + " more hatches, a shiny within " + shiny + " (resets when one appears).");
+        }
+
+        /// <summary>
+        /// 出战崽给的「捡漏背包」格子讲清楚：它加在**官方宠物背包**上，只在 BossRush 系列出击里生效。
+        /// owner 2026-09-22 问「加宠物格子在哪里加了」——此前只有天赋说明里提了一句，面板上看不到。
+        /// </summary>
+        private static void AppendCompanionSlotLine(PetNestPageContent page)
+        {
+            PetNestPetRecord deployed = PetNestService.DeployedPet;
+            if (deployed == null)
+            {
+                page.Lines.Add(L10n.T(
+                    "带崽出击：设一只崽为出战，BossRush 系列出击时它会随行，并给官方宠物背包加格子（捡漏背包）。",
+                    "Deploy a cub: it joins your BossRush-family raids and adds slots to the official pet backpack."));
+                return;
+            }
+            int bonus = PetNestCompanionRuntime.ResolveCapacityBonus(deployed);
+            page.Lines.Add(L10n.T(
+                "捡漏背包：出战崽随你进 BossRush 系列出击（标准 / 无间炼狱 / D / E / F）时，官方宠物背包 +" + bonus
+                    + " 格；在出击中打开宠物背包查看。基地与普通出击不生效，崽重伤退场后收回。",
+                "Scavenger backpack: in BossRush-family raids (standard / Endless / D / E / F) the deployed cub adds +"
+                    + bonus + " slots to the official pet backpack; open the pet backpack during the raid. Not active in the base or normal raids; removed if the cub is carried off."));
         }
 
         /// <summary>下一个尚未达成的容量里程碑阈值；全部达成时返回最后一个。</summary>
@@ -222,14 +369,24 @@ namespace BossRush
             return milestones[milestones.Length - 1];
         }
 
-        private static PetNestCardData BuildPetCard(
-            PetNestPetRecord pet, string deployedId, string selectedPetId,
-            Action refresh, Action<string> select, Action<string> rename)
+        private static PetNestCardData BuildPetCard(PetNestPetRecord pet, string deployedId, PetNestNestPageContext ctx)
         {
             PetNestCardData card = new PetNestCardData();
-            card.Selected = string.Equals(pet.id, selectedPetId, StringComparison.Ordinal);
-            card.Title = PetNestService.GetDecoratedPetName(pet);
+            bool locked = pet.state == (int)PetNestPetState.OnExpedition;
+            card.Selected = ctx.BatchMode
+                ? ctx.BatchSelection != null && ctx.BatchSelection.Contains(pet.id)
+                : string.Equals(pet.id, ctx.SelectedPetId, StringComparison.Ordinal);
+            // □ / ■ 都是 GBK 收录字符，批量模式下当勾选框用
+            card.Title = (ctx.BatchMode ? (card.Selected ? "■ " : "□ ") : string.Empty)
+                + PetNestService.GetDecoratedPetName(pet);
             card.Shiny = pet.shiny;
+            PetNestChromaColor colorA = PetNestChroma.Find(pet.chromaA);
+            PetNestChromaColor colorB = PetNestChroma.Find(pet.chromaB);
+            if (colorA != null && colorB != null)
+            {
+                card.ChromaHexA = colorA.TextHex;
+                card.ChromaHexB = colorB.TextHex;
+            }
 
             PetNestLineageInfo lineage;
             string lineageName = PetNestLineageCatalog.TryGet(pet.lineageKey, out lineage) && lineage != null
@@ -242,16 +399,43 @@ namespace BossRush
                     : " (" + pet.exp + "/" + PetNestTuning.PetExpPerLevel + ")")
                 + " · " + PetNestLocalization.DescribePersonality(pet.personalityId);
 
-            card.Body = DescribePetState(pet)
+            string appearance = DescribeAppearance(pet);
+            card.Body = (appearance != null ? appearance + "\n" : string.Empty)
+                + DescribePetState(pet)
                 + "\n" + DescribePersonality(pet)
                 + "\n" + DescribeTalents(pet)
                 + "\n" + DescribeScars(pet);
 
-            bool deployed = string.Equals(pet.id, deployedId, StringComparison.Ordinal);
-            bool selectable = pet.state != (int)PetNestPetState.OnExpedition
-                && pet.state != (int)PetNestPetState.Downed;
-
             string cardPetId = pet.id;
+            if (ctx.BatchMode)
+            {
+                // 批量模式只做勾选，出战 / 改名按钮收起，免得误触把崽派上席位
+                if (!locked)
+                {
+                    card.OnCardClick = delegate
+                    {
+                        if (ctx.ToggleBatch != null) ctx.ToggleBatch(cardPetId);
+                        if (ctx.Refresh != null) ctx.Refresh();
+                    };
+                    card.ActionLabel = card.Selected ? L10n.T("取消勾选", "Untick") : L10n.T("勾选放生", "Tick");
+                    card.OnClick = card.OnCardClick;
+                }
+                else
+                {
+                    card.ActionLabel = L10n.T("远征中", "On expedition");
+                }
+                return card;
+            }
+
+            bool deployed = string.Equals(pet.id, deployedId, StringComparison.Ordinal);
+            bool selectable = !locked && pet.state != (int)PetNestPetState.Downed;
+
+            // 点卡片本身就是选中（远征 / 放生目标），不必先设为出战
+            card.OnCardClick = delegate
+            {
+                if (ctx.Select != null) ctx.Select(cardPetId);
+                if (ctx.Refresh != null) ctx.Refresh();
+            };
 
             card.ActionLabel = deployed
                 ? L10n.T("已出战", "Deployed")
@@ -263,19 +447,43 @@ namespace BossRush
                     string reason;
                     NoteFailure(PetNestService.TrySetDeployedPet(cardPetId, out reason), reason);
                     // 上席同时选中它：远征页的默认目标随之跟上，省掉一次来回
-                    if (select != null) select(cardPetId);
-                    if (refresh != null) refresh();
+                    if (ctx.Select != null) ctx.Select(cardPetId);
+                    if (ctx.Refresh != null) ctx.Refresh();
                 };
             }
 
-            // 次动作：远征中的崽也允许改名，只有它不能被选为新的远征目标
+            // 次动作：远征中的崽也允许改名
             card.SecondaryLabel = L10n.T("改名", "Rename");
             card.OnSecondary = delegate
             {
-                if (select != null && selectable) select(cardPetId);
-                if (rename != null) rename(cardPetId);
+                if (ctx.Select != null) ctx.Select(cardPetId);
+                if (ctx.Rename != null) ctx.Rename(cardPetId);
             };
             return card;
+        }
+
+        /// <summary>
+        /// 外观那一行：炫彩写两色色块 + 搭配名，异色写金色标记。普通崽返回 null（不占一行）。
+        /// 色块 ■ 是 GBK 收录字符，用各色的面板可读色画（owner 2026-09-22：炫彩要在巢里看得出来）。
+        /// </summary>
+        private static string DescribeAppearance(PetNestPetRecord pet)
+        {
+            PetNestChromaColor a = PetNestChroma.Find(pet.chromaA);
+            PetNestChromaColor b = PetNestChroma.Find(pet.chromaB);
+            string text = null;
+            if (a != null && b != null)
+            {
+                text = L10n.T("炫彩：", "Chroma: ")
+                    + "<color=" + a.TextHex + ">■</color><color=" + b.TextHex + ">■</color> "
+                    + PetNestChroma.DescribePair(pet, L10n.IsChinese);
+            }
+            if (pet.shiny)
+            {
+                string shiny = "<color=" + PetNestChroma.ShinyTextHex + "><b>★ "
+                    + L10n.T("异色（极稀有）", "Shiny (ultra rare)") + "</b></color>";
+                text = text == null ? shiny : shiny + "    " + text;
+            }
+            return text;
         }
 
         private static string DescribePetState(PetNestPetRecord pet)
@@ -384,6 +592,8 @@ namespace BossRush
             List<ItemStatsSystem.Item> eggs = PetNestHatchService.CollectAvailableEggs();
             page.Body = L10n.T("背包与仓库里的遗种蛋", "Relic eggs in your inventory and storage")
                 + "：" + eggs.Count;
+            // 保底进度放在孵化页最上面：开蛋前就知道还差几枚（owner 2026-09-22 要保底）
+            page.Notice = DescribePity();
 
             for (int i = 0; i < eggs.Count; i++)
             {
@@ -396,7 +606,7 @@ namespace BossRush
                 card.Title = known ? lineage.DisplayName : T("Fail_lineage_unknown");
                 card.Subtitle = RelicEggConfig.GetDisplayName();
                 card.Body = known
-                    ? L10n.T("孵化后锁定出身、性格与异色。", "Hatching locks endowments, temperament and shiny.")
+                    ? L10n.T("孵化后锁定出身、性格、炫彩与异色。", "Hatching locks endowments, temperament, chroma and shiny.")
                     : T("Fail_lineage_unknown");
                 card.ActionLabel = L10n.T("孵化", "Hatch");
                 if (known)

@@ -6,7 +6,8 @@
 // （远低于凝一枚蛋所需，因此不构成刷遗魂的路径）。
 //
 // 纪律（形态照 PetNestRenameModal）：
-//   - 只调服务层 TryReleasePet，不自己碰存档；失败原因回抛给面板显示；
+//   - 只调服务层 TryReleasePets（单只也走它），不自己碰存档；失败原因回抛给面板显示；
+//   - 批量放生同一个弹窗：名单与返还总数一起披露，一次事务要么全放要么全不动；
 //   - 放生不可逆，必须二次确认，且确认页要把「不进纪念碑 + 返还多少遗魂」讲清楚；
 //   - 层段用 BossRushUILayers.PetNestModal，压在主面板之上；
 //   - **接管输入**：canvas interactive + 独占 modal lease，否则底下的巢面板照样能被点到；
@@ -14,6 +15,7 @@
 // ============================================================================
 
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,27 +32,35 @@ namespace BossRush
 
         private Canvas _canvas;
         private ZombieModeUIHelper.ModalInputLease _modalLease;
-        private string _petId;
+        private readonly List<string> _petIds = new List<string>();
         private Action _onClosed;
 
         /// <summary>
-        /// 打开放生确认弹窗。petId 查不到时直接返回（不弹空窗）。
+        /// 打开放生确认弹窗。petIds 里查不到的崽直接略过，一只都查不到时不弹空窗。
         /// onClosed 在关闭时回调，供面板刷新。
         /// </summary>
-        internal static void Open(string petId, Action onClosed)
+        internal static void Open(IList<string> petIds, Action onClosed)
         {
             try
             {
-                PetNestPetRecord pet = PetNestService.TryGetPet(petId);
-                if (pet == null) return;
+                List<PetNestPetRecord> pets = new List<PetNestPetRecord>();
+                if (petIds != null)
+                {
+                    for (int i = 0; i < petIds.Count; i++)
+                    {
+                        PetNestPetRecord pet = PetNestService.TryGetPet(petIds[i]);
+                        if (pet != null && !pets.Contains(pet)) pets.Add(pet);
+                    }
+                }
+                if (pets.Count == 0) return;
 
                 Close();
                 GameObject host = new GameObject(RootName + "_Host");
                 UnityEngine.Object.DontDestroyOnLoad(host);
                 _instance = host.AddComponent<PetNestReleaseConfirmModal>();
-                _instance._petId = petId;
+                for (int i = 0; i < pets.Count; i++) _instance._petIds.Add(pets[i].id);
                 _instance._onClosed = onClosed;
-                _instance.Build(pet);
+                _instance.Build(pets);
             }
             catch (Exception e)
             {
@@ -109,7 +119,7 @@ namespace BossRush
             if (_instance == this) _instance = null;
         }
 
-        private void Build(PetNestPetRecord pet)
+        private void Build(List<PetNestPetRecord> pets)
         {
             _canvas = BossRushUI.CreateCanvasRoot(RootName, BossRushUILayers.PetNestModal, true);
             _canvas.transform.SetParent(transform, false);
@@ -129,10 +139,10 @@ namespace BossRush
                 TextAlignmentOptions.Center, BossRushUIColors.TextPrimary);
             BossRushUI.ApplyGameFont(title);
 
-            // 放生对象名单独一行：避免玩家在多选状态下放错崽
+            // 放生对象名单独一行：避免玩家在多选状态下放错崽（批量时列出名单）
             TextMeshProUGUI target = ZombieModeUIHelper.CreateText(
                 "Target", surface.transform,
-                PetNestService.GetPetDisplayName(pet),
+                DescribeTargets(pets),
                 22f, new Vector2(0f, 72f), new Vector2(580f, 36f),
                 TextAlignmentOptions.Center, BossRushUIColors.Accent);
             BossRushUI.ApplyGameFont(target);
@@ -140,7 +150,8 @@ namespace BossRush
             // 强制披露：不可逆 + 不进纪念碑 + 返还数量（数字取自 Tuning，避免文案与数值两套真相）
             string warn = LocalizationHelper.GetLocalizedText(
                               PetNestTuning.LocalizationPrefix + "Release_Warn")
-                          + "  (+" + PetNestTuning.ReleaseSoulRefund + ")";
+                          + "  (+" + PetNestTuning.ReleaseSoulRefund
+                          + (pets.Count > 1 ? " × " + pets.Count : string.Empty) + ")";
             TextMeshProUGUI warnText = ZombieModeUIHelper.CreateText(
                 "Warn", surface.transform, warn,
                 17f, new Vector2(0f, 12f), new Vector2(560f, 72f),
@@ -171,7 +182,7 @@ namespace BossRush
             bool ok;
             try
             {
-                ok = PetNestService.TryReleasePet(_petId, out reason);
+                ok = PetNestService.TryReleasePets(_petIds, out reason);
             }
             catch (Exception e)
             {
@@ -182,6 +193,21 @@ namespace BossRush
 
             PetNestUIPages.NoteExternalFailure(ok, reason);
             CloseAndNotify();
+        }
+
+        /// <summary>单只写名字；多只写「N 只：甲、乙、丙…」，名单过长只列前几只。</summary>
+        private static string DescribeTargets(List<PetNestPetRecord> pets)
+        {
+            if (pets.Count == 1) return PetNestService.GetDecoratedPetName(pets[0]);
+            const int maxListed = 4;
+            string names = string.Empty;
+            for (int i = 0; i < pets.Count && i < maxListed; i++)
+            {
+                if (i > 0) names += L10n.T("、", ", ");
+                names += PetNestService.GetPetDisplayName(pets[i]);
+            }
+            if (pets.Count > maxListed) names += L10n.T("等", " ...");
+            return L10n.T(pets.Count + " 只：", pets.Count + " cubs: ") + names;
         }
 
         private void CloseAndNotify()

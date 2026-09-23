@@ -123,7 +123,9 @@ namespace BossRush
             sb.BeginObject()
               .Str("deployedPetId", data.deployedPetId)
               .Int("capacity", data.capacity)
-              .Int("nameSerial", data.nameSerial);
+              .Int("nameSerial", data.nameSerial)
+              .Int("hatchesSinceChroma", data.hatchesSinceChroma)
+              .Int("hatchesSinceShiny", data.hatchesSinceShiny);
 
             sb.BeginArray("pets");
             List<PetNestPetRecord> pets = data.pets;
@@ -235,6 +237,9 @@ namespace BossRush
             data.deployedPetId = payload.GetString("deployedPetId", null);
             data.capacity = payload.GetInt("capacity", PetNestTuning.DefaultNestCapacity);
             data.nameSerial = payload.GetInt("nameSerial", 0);
+            // SCHEMA+：保底计数是可选字段，旧档没有就从 0 开始数；BundleSchemaVersion 不变。
+            data.hatchesSinceChroma = payload.GetInt("hatchesSinceChroma", 0);
+            data.hatchesSinceShiny = payload.GetInt("hatchesSinceShiny", 0);
 
             data.pets = new List<PetNestPetRecord>();
             List<BossRushJsonValue> petNodes = payload.GetArray("pets");
